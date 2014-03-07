@@ -1,1 +1,88 @@
+open import Basic_classes
+open import Bool
+open import Maybe
+
 open import Elf_types
+
+type elf_special_section_index
+  = ELF_SSI_Undefined (* 0 *)
+  | ELF_SSI_LoReserve (* 0xff00 *)
+  | ELF_SSI_HiProc    (* 0xff1f *)
+  | ELF_SSI_LoOS      (* 0xff20 *)
+  | ELF_SSI_HiOS      (* 0xff3f *)
+  | ELF_SSI_Abs       (* 0xfff1 *)
+  | ELF_SSI_Common    (* 0xfff2 *)
+  | ELF_SSI_HiReserve (* 0xffff *)
+
+val elf_special_section_index_to_specified_index : elf_special_section_index -> nat
+let elf_special_section_index_to_specified_index si =
+  match si with
+    | ELF_SSI_Undefined -> 0
+    | ELF_SSI_LoReserve -> 65280 (* 0xff00 *)
+    | ELF_SSI_HiProc    -> 65311 (* 0xff1f *)
+    | ELF_SSI_LoOS      -> 65312 (* 0xff20 *)
+    | ELF_SSI_HiOS      -> 65343 (* 0xff3f *)
+    | ELF_SSI_Abs       -> 65521 (* 0xfff1 *)
+    | ELF_SSI_Common    -> 65522 (* 0xfff2 *)
+    | ELF_SSI_HiReserve -> 65535 (* 0xffff *)
+  end
+;;
+
+val elf_ssi_lo_proc : elf_special_section_index
+let elf_ssi_lo_proc = ELF_SSI_LoReserve
+;;
+
+val elf_ssi_xindex : elf_special_section_index
+let elf_ssi_xindex = ELF_SSI_HiReserve
+;;
+
+val specified_index_to_elf_special_section_index : nat -> maybe elf_special_section_index
+let specified_index_to_elf_special_section_index si =
+  match si with
+    | 0     -> Just ELF_SSI_Undefined
+    | 65280 -> Just ELF_SSI_LoReserve
+    | 65311 -> Just ELF_SSI_HiProc
+    | 65312 -> Just ELF_SSI_LoOS
+    | 65343 -> Just ELF_SSI_HiOS
+    | 65521 -> Just ELF_SSI_Abs
+    | 65522 -> Just ELF_SSI_Common
+    | 65535 -> Just ELF_SSI_HiReserve
+    | _     -> Nothing
+  end
+;;
+
+lemma specified_index_to_elf_special_section_index_agreement1:
+  forall e m.
+    elf_special_section_index_to_specified_index e = m -->
+      specified_index_to_elf_special_section_index m = Just e
+;;
+
+lemma specified_index_to_elf_special_section_index_agreement2:
+  forall e m.
+    specified_index_to_elf_special_section_index m = Just e -->
+      elf_special_section_index_to_specified_index e = m
+;;
+
+type elf32_shdr =
+  <| e32_sh_name      : elf32_word
+   ; e32_sh_type      : elf32_word
+   ; e32_sh_addr      : elf32_addr
+   ; e32_sh_offset    : elf32_off
+   ; e32_sh_size      : elf32_word
+   ; e32_sh_link      : elf32_word
+   ; e32_sh_info      : elf32_word
+   ; e32_sh_addralign : elf32_word
+   ; e32_sh_entsize   : elf32_word
+   |>
+
+type elf64_shdr =
+  <| e64_sh_name      : elf64_word
+   ; e64_sh_type      : elf64_word
+   ; e64_sh_addr      : elf64_addr
+   ; e64_sh_offset    : elf64_off
+   ; e64_sh_size      : elf64_word
+   ; e64_sh_link      : elf64_word
+   ; e64_sh_info      : elf64_word
+   ; e64_sh_addralign : elf64_word
+   ; e64_sh_entsize   : elf64_word
+   |>
