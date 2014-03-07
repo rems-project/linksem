@@ -1,0 +1,9 @@
+open import Basic_classes
+open import Bool
+
+val is_injective : forall 'a 'b. ('a -> 'b) -> bool
+let is_injective f =
+  forall x y.
+    unsafe_structural_equality (f x) (f y) -->
+      unsafe_structural_equality x y
+;;

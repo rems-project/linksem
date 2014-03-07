@@ -1,0 +1,21 @@
+open import Pervasives
+
+type unsigned_char
+
+val unsigned_char_of_nat : nat -> unsigned_char
+
+type elf32_addr
+type elf32_half
+
+val nat_of_elf32_half : elf32_half -> nat
+
+type elf32_off
+type elf32_word
+
+type elf64_addr
+type elf64_half
+
+val nat_of_elf64_half : elf64_half -> nat
+
+type elf64_off
+type elf64_word
