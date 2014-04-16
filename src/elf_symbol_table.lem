@@ -1,0 +1,315 @@
+open import Basic_classes
+open import Bool
+open import Num
+
+open import Elf_types
+
+(** Symbol table indices *)
+
+(** Symbol table index is a subscript into the symbol table, which holds
+  * information needed to locate and relocate a program's symbolic definitions
+  * and references.  Index 0 designates both the first entry in the table and
+  * serves as the undefined symbol index.  [stn_undef] is a mnemonic for that
+  * undefined symbol.
+  *)
+val stn_undef : nat
+let stn_undef = 0
+;;
+
+(** Symbol bindings *)
+
+(** [elf32_st_bind] unpacks the binding information from the [st_info] field
+  * in the record type below.
+  *)
+val elf32_st_bind : unsigned_char -> nat
+let elf32_st_bind i =
+  nat_of_unsigned_char (unsigned_char_rshift i 4)
+;;
+
+(** [elf64_st_bind] unpacks the binding information from the [st_info] field
+  * in the record type below.
+  *)
+val elf64_st_bind : unsigned_char -> nat
+let elf64_st_bind i =
+  nat_of_unsigned_char (unsigned_char_rshift i 4)
+;;
+
+(** [elf32_st_type] unpacks the type information from the [e32_st_info] field
+  * in the record type below.
+  *)
+val elf32_st_type : unsigned_char -> nat
+let elf32_st_type i =
+  nat_of_unsigned_char (unsigned_char_land i (unsigned_char_of_nat 15)) (* 0xf *)
+;;
+
+(** [elf64_st_type] unpacks the type information from the [e64_st_info] field
+  * in the record type below.
+  *)
+val elf64_st_type : unsigned_char -> nat
+let elf64_st_type i =
+  nat_of_unsigned_char (unsigned_char_land i (unsigned_char_of_nat 15)) (* 0xf *)
+;;
+
+(** [elf32_st_info] unpacks other information from the [e32_st_info] field in the
+  * record type below.
+  *)
+val elf32_st_info : unsigned_char -> unsigned_char -> nat
+let elf32_st_info b t =
+  let left   = unsigned_char_lshift b 4 in
+  let right  = unsigned_char_land t (unsigned_char_of_nat 15)  in (* 0xf *)
+  let result = unsigned_char_plus left right in
+    nat_of_unsigned_char result 
+;;
+
+(** [elf64_st_info] unpacks other information from the [e64_st_info] field in the
+  * record type below.
+  *)
+val elf64_st_info : unsigned_char -> unsigned_char -> nat
+let elf64_st_info b t =
+  let left   = unsigned_char_lshift b 4 in
+  let right  = unsigned_char_land t (unsigned_char_of_nat 15)  in (* 0xf *)
+  let result = unsigned_char_plus left right in
+    nat_of_unsigned_char result 
+;;
+
+(** [stb_local]: local symbols are not visible outside the object file
+  * containing their definition.
+  *)
+val stb_local : nat
+let stb_local = 0
+;;
+
+(** [stb_global]: global symbols are visible to all object files being combined.
+  *)
+val stb_global : nat
+let stb_global = 1
+;;
+
+(** [stb_weak]: weak symbols resemble global symbols but their definitions have
+  * lower precedence.
+  *)
+val stb_weak : nat
+let stb_weak = 2
+;;
+
+(** [stb_loos]: start of the range reserved for operating-system specific
+  * semantics.
+  *)
+val stb_loos : nat
+let stb_loos = 10
+;;
+
+(** [stb_hios]: end of the range reserved for operating-system specific
+  * semantics.
+  *)
+val stb_hios : nat
+let stb_hios = 12
+;;
+
+(** [stb_loproc]: start of the range reserved for processor specific semantics.
+  *)
+val stb_loproc : nat
+let stb_loproc = 13
+;;
+
+(** [stb_hiproc]: end of the range reserved for processor specific semantics.
+  *)
+val stb_hiproc : nat
+let stb_hiproc = 15
+;;
+
+(** Symbol types. *)
+
+(** [stt_notype]: the symbol's type is not specified.
+  *)
+val stt_notype : nat
+let stt_notype = 0
+;;
+
+(** [stt_object]: the symbol is associated with a data object, such as a
+  * variable, an array, and so on.
+  *)
+val stt_object : nat
+let stt_object = 1
+;;
+
+(** [stt_func]: the symbol is associated with a function or other executable
+  * code.
+  *)
+val stt_func : nat
+let stt_func = 2
+;;
+
+(** [stt_section]: the symbol is associated with a section.
+  *)
+val stt_section : nat
+let stt_section = 3
+;;
+
+(** [stt_file]: the symbol's name gives the name of the source file associated
+  * with the object file.  Must have [stb_local] binding and its section index
+  * must be [shn_abs].  It must also precede the other [stb_local] symbols for
+  * the file, is present.
+  *)
+val stt_file : nat
+let stt_file = 4
+;;
+
+(** [stt_common]: labels an unitialised common block.
+  *)
+val stt_common : nat
+let stt_common = 5
+;;
+
+(** [stt_tls]: specifies a thread local storage (TLS) entity.  Gives the
+  * assigned offset of the symbol, not its address.  TLS symbols may only be
+  * referenced by special TLS relocations and TLS relocations may only reference
+  * symbols with type [stt_tls].
+  *)
+val stt_tls : nat
+let stt_tls = 6
+;;
+
+(** [stt_loos]: start of the range reserved for operating-system specific
+  * semantics.
+  *)
+val stt_loos : nat
+let stt_loos = 10
+;;
+
+(** [stt_hios]: end of the range reserved for operating-system specific
+  * semantics.
+  *)
+val stt_hios : nat
+let stt_hios = 12
+;;
+
+(** [stt_loproc]: start of the range reserved for processor specific
+  * semantics.
+  *)
+val stt_loproc : nat
+let stt_loproc = 13
+;;
+
+(** [stt_hiproc]: end of the range reserved for processor specific semantics.
+  *)
+val stt_hiproc : nat
+let stt_hiproc = 15
+;;
+
+(** Symbol visibility. *)
+
+(** [elf32_st_visibility] unpacks visibility information from the [e32_st_other]
+  * field in the record type below.
+  *)
+val elf32_st_visibility : unsigned_char -> nat
+let elf32_st_visibility o =
+  nat_of_unsigned_char (unsigned_char_land o (unsigned_char_of_nat 3)) (* 0x3 *)
+;;
+
+(** [elf64_st_visibility] unpacks visibility information from the [e64_st_other]
+  * field in the record type below.
+  *)
+val elf64_st_visibility : unsigned_char -> nat
+let elf64_st_visibility o =
+  nat_of_unsigned_char (unsigned_char_land o (unsigned_char_of_nat 3)) (* 0x3 *)
+;;
+
+(** [stv_default]: symbol visibility is as specified by the symbol's binding
+  * type.  Global and weak symbols are visible outside their defining component
+  * (executable or shared object file).  Local symbols are hidden.  Global and
+  * weak symbols are also pre-emptable: they may be pre-empted by definitions
+  * of the same name in another component.
+  *)
+val stv_default : nat
+let stv_default = 0
+;;
+
+(** [stv_internal]: meaning may be further defined by processor supplements to
+  * further constrain hidden symbols.  An internal symbol in a relocatable file
+  * must be either removed or converted to [stb_local] when the relocatable
+  * object is included in an executable or shared object by the linker.
+  *)
+val stv_internal : nat
+let stv_internal = 1
+;;
+
+(** [stv_hidden]: a symbol in the current component is hidden if its name is not
+  * visible to other components, necessarily protecting the symbol.  A hidden
+  * object may still be referenced from another component if its address is
+  * passed outside.  A hidden symbol in a relocatable object must be either
+  * removed or converted to [stb_local] when the relocatable file is included in
+  * an executable or shared object by the linker.
+  *)
+val stv_hidden : nat
+let stv_hidden = 2
+;;
+
+(** [stv_protected]: a protected symbol is visible in other components but is
+  * not pre-emptable, so that any reference to such a symbol from within the
+  * defining component must be resolved to the definition in that component.
+  * A symbol with [stb_local] binding must not have [stv_protected] visibility.
+  * If a symbol definition with [stv_protected] visibility from a shared object
+  * file is taken as resolving a reference from an executable or another shared
+  * object, the [shn_undef] symbol table entry created has [stv_default]
+  * visibility.
+  *)
+val stv_protected : nat
+let stv_protected = 3
+;;
+
+(** The symbol table entry type. *)
+
+type elf32_sym =
+  <| e32_st_name  : elf32_word
+   ; e32_st_value : elf32_addr
+   ; e32_st_size  : elf32_word
+   ; e32_st_info  : unsigned_char
+   ; e32_st_other : unsigned_char
+   ; e32_st_shndx : elf32_half
+   |>
+;;
+
+type elf64_sym =
+  <| e64_st_name  : elf64_word
+   ; e64_st_value : elf64_addr
+   ; e64_st_size  : elf64_word
+   ; e64_st_info  : unsigned_char
+   ; e64_st_other : unsigned_char
+   ; e64_st_shndx : elf64_half
+   |>
+;;
+
+type elf32_symbol_table = list elf32_sym
+;;
+
+type elf64_symbol_table = list elf64_sym
+;;
+
+val is_valid_elf32_symbol_table : elf32_symbol_table -> bool
+let is_valid_elf32_symbol_table tbl =
+  match tbl with
+    | []    -> false
+    | x::xs ->
+        x.e32_st_name = 0 &&
+        x.e32_st_value = 0 &&
+        x.e32_st_size = 0 &&
+        x.e32_st_info = 0 &&
+        x.e32_st_other = 0 &&
+        x.e32_st_shndx = shn_undef
+  end
+;;
+
+val is_valid_elf64_symbol_table : elf64_symbol_table -> bool
+let is_valid_elf64_symbol_table tbl =
+  match tbl with
+    | []    -> false
+    | x::xs ->
+        x.e64_st_name = 0 &&
+        x.e64_st_value = 0 &&
+        x.e64_st_size = 0 &&
+        x.e64_st_info = 0 &&
+        x.e64_st_other = 0 &&
+        x.e64_st_shndx = shn_undef
+  end
+;;
