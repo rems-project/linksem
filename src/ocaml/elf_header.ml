@@ -23,10 +23,15 @@ let get_program_header_table_size_and_entries hdr =
     size, entry_size
 ;;
 
-let get_section_size_and_entries hdr =
+let get_section_header_table_size_entries_and_offset hdr =
   let size = Int64.to_int hdr.e_shnum in
   let entry_size = Int64.to_int hdr.e_shentsize * 8 in
-    size, entry_size
+  let offset = Int64.to_int hdr.e_shoff * 8 in
+    size, entry_size, offset
+;;
+
+let is_section_header_table_present hdr =
+	Int64.to_int hdr.e_shoff != 0
 ;;
 
 let elf32_magic_number_width = 4 * 8
