@@ -3,207 +3,204 @@ open import Bool
 open import List
 open import Maybe
 
+open import Bitstring
+open import Error
 open import Elf_types
 
 (** Special section indices. *)
 
 (** [shn_undef]: marks an undefined, missing or irrelevant section reference.
   *)
-val shn_undef : nat
-let shn_undef = 0
+let shn_undef : nat = 0
 ;;
 
 (** [shn_loreserve]: this specifies the lower bound of the range of reserved
   * indices.
   *)
-val shn_loreserve : nat
-let shn_loreserve = 65280 (* 0xff00 *)
+let shn_loreserve : nat = 65280 (* 0xff00 *)
 ;;
 
 (** [shn_loproc]: start of the range reserved for processor-specific semantics.
   *)
-val shn_loproc : nat
-let shn_loproc = 65280 (* 0xff00 *)
+let shn_loproc : nat = 65280 (* 0xff00 *)
 ;;
 
 (** [shn_hiproc]: end of the range reserved for processor-specific semantics.
   *)
-val shn_hiproc : nat
-let shn_hiproc = 65311 (* 0xff1f *)
+let shn_hiproc : nat = 65311 (* 0xff1f *)
 ;;
 
 (** [shn_loos]: start of the range reserved for operating system-specific
   * semantics.
   *)
-val shn_loos : nat
-let shn_loos = 65312 (* 0xff20 *)
+let shn_loos : nat = 65312 (* 0xff20 *)
 ;;
 
 (** [shn_hios]: end of the range reserved for operating system-specific
   * semantics.
   *)
-val shn_hios : nat
-let shn_hios = 65343 (* 0xff3f *)
+let shn_hios : nat = 65343 (* 0xff3f *)
 ;;
 
 (** [shn_abs]: specifies the absolute values for the corresponding reference.
   * Symbols defined relative to section number [shn_abs] have absolute values
   * and are not affected by relocation.
   *)
-val shn_abs : nat
-let shn_abs = 65521 (* 0xfff1 *)
+let shn_abs : nat = 65521 (* 0xfff1 *)
 ;;
 
 (** [shn_common]: symbols defined relative to this index are common symbols,
   * such as unallocated C external variables.
   *)
-val shn_common : nat
-let shn_common = 65522 (* 0xfff2 *)
+let shn_common : nat = 65522 (* 0xfff2 *)
 ;;
 
 (** [shn_xindex]: an escape value.  It indicates the actual section header index
   * is too large to fit in the containing field and is located in another
   * location (specific to the structure where it appears).
   *)
-val shn_xindex : nat
-let shn_xindex = 65535 (* 0xffff *)
+let shn_xindex : nat = 65535 (* 0xffff *)
 ;;
 
 (** [shn_hireserve]: specifies the upper-bound of reserved values.
   *)
-val shn_hireserve : nat
-let shn_hireserve = 65535 (* 0xffff *)
+let shn_hireserve : nat = 65535 (* 0xffff *)
 ;;
-
 
 (** Section types. *)
 
-val sht_null : nat
-let sht_null = 0
+let sht_null : nat = 0
 ;;
 
-val sht_progbits : nat
-let sht_progbits = 1
+let sht_progbits : nat = 1
 ;;
 
-val sht_symtab : nat
-let sht_symtab = 2
+let sht_symtab : nat = 2
 ;;
 
-val sht_strtab : nat
-let sht_strtab = 3
+let sht_strtab : nat = 3
 ;;
 
-val sht_rela : nat
-let sht_rela = 4
+let sht_rela : nat = 4
 ;;
 
-val sht_hash : nat
-let sht_hash = 5
+let sht_hash : nat = 5
 ;;
 
-val sht_dynamic : nat
-let sht_dynamic = 6
+let sht_dynamic : nat = 6
 ;;
 
-val sht_note : nat
-let sht_note = 7
+let sht_note : nat = 7
 ;;
 
-val sht_nobits : nat
-let sht_nobits = 8
+let sht_nobits : nat = 8
 ;;
 
-val sht_rel : nat
-let sht_rel = 9
+let sht_rel : nat = 9
 ;;
 
-val sht_shlib : nat
-let sht_shlib = 10
+let sht_shlib : nat = 10
 ;;
 
-val sht_dynsym : nat
-let sht_dynsym = 11
+let sht_dynsym : nat = 11
 ;;
 
-val sht_init_array : nat
-let sht_init_array = 14
+let sht_init_array : nat = 14
 ;;
 
-val sht_fini_array : nat
-let sht_fini_array = 15
+let sht_fini_array : nat = 15
 ;;
 
-val sht_preinit_array : nat
-let sht_preinit_array = 16
+let sht_preinit_array : nat = 16
 ;;
 
-val sht_group : nat
-let sht_group = 17
+let sht_group : nat = 17
 ;;
 
-val sht_symtab_shndx : nat
-let sht_symtab_shndx = 18
+let sht_symtab_shndx : nat = 18
 ;;
 
-val sht_loos : nat
-let sht_loos = 1610612736 (* 0x60000000 *)
+(* XXX: constants too big for Lem to parse, apparently!
+let sht_loos : nat = 1610612736 (* 0x60000000 *)
 ;;
 
-val sht_hios : nat
-let sht_hios = 1879048191 (* 0x6fffffff *)
+let sht_hios : nat = 1879048191 (* 0x6fffffff *)
 ;;
 
-val sht_loproc : nat
-let sht_loproc = 1879048192 (* 0x70000000 *)
+let sht_loproc : nat = 1879048192 (* 0x70000000 *)
 ;;
 
-val sht_hiproc : nat
-let sht_hiproc = 2147483647 (* 0x7fffffff *)
+let sht_hiproc : nat = 2147483647 (* 0x7fffffff *)
 ;;
 
-val sht_louser : nat
-let sht_louser = 2147483648 (* 0x80000000 *)
+let sht_louser : nat = 2147483648 (* 0x80000000 *)
 ;;
 
-val sht_hiuser : nat
-let sht_hiuser = 2415919103 (* 0x8fffffff *)
+let sht_hiuser : nat = 2415919103 (* 0x8fffffff *)
 ;;
+*)
 
-(** Section header type. *)
+(** Section header table entry type. *)
 
-type elf32_shdr =
-  <| e32_sh_name      : elf32_word
-   ; e32_sh_type      : elf32_word
-   ; e32_sh_addr      : elf32_addr
-   ; e32_sh_offset    : elf32_off
-   ; e32_sh_size      : elf32_word
-   ; e32_sh_link      : elf32_word
-   ; e32_sh_info      : elf32_word
-   ; e32_sh_addralign : elf32_word
-   ; e32_sh_entsize   : elf32_word
+type elf32_section_header_table_entry =
+  <| elf32_sh_name      : elf32_word
+   ; elf32_sh_type      : elf32_word
+   ; elf32_sh_addr      : elf32_addr
+   ; elf32_sh_offset    : elf32_off
+   ; elf32_sh_size      : elf32_word
+   ; elf32_sh_link      : elf32_word
+   ; elf32_sh_info      : elf32_word
+   ; elf32_sh_addralign : elf32_word
+   ; elf32_sh_entsize   : elf32_word
    |>
 
-type elf64_shdr =
-  <| e64_sh_name      : elf64_word
-   ; e64_sh_type      : elf64_word
-   ; e64_sh_addr      : elf64_addr
-   ; e64_sh_offset    : elf64_off
-   ; e64_sh_size      : elf64_word
-   ; e64_sh_link      : elf64_word
-   ; e64_sh_info      : elf64_word
-   ; e64_sh_addralign : elf64_word
-   ; e64_sh_entsize   : elf64_word
-   |>
+let read_elf32_section_header_table_entry (bs : bitstring) =
+	read_elf32_word bs >>= fun (sh_name, bs) ->
+	read_elf32_word bs >>= fun (sh_type, bs) ->
+	read_elf32_addr bs >>= fun (sh_addr, bs) ->
+	read_elf32_off bs >>= fun (sh_offset, bs) ->
+	read_elf32_word bs >>= fun (sh_size, bs) ->
+	read_elf32_word bs >>= fun (sh_link, bs) ->
+	read_elf32_word bs >>= fun (sh_info, bs) ->
+	read_elf32_word bs >>= fun (sh_addralign, bs) ->
+	read_elf32_word bs >>= fun (sh_entsize, bs) ->
+		return
+			<| elf32_sh_name = sh_name
+			 ; elf32_sh_type = sh_type
+			 ; elf32_sh_addr = sh_addr
+			 ; elf32_sh_offset = sh_offset
+			 ; elf32_sh_size = sh_size
+			 ; elf32_sh_link = sh_link
+			 ; elf32_sh_info = sh_info
+			 ; elf32_sh_addralign = sh_addralign
+			 ; elf32_sh_entsize = sh_entsize
+			 |>
+;;
 
 (** Section header table type. *)
 
 type elf32_section_header_table = list elf32_shdr
 ;;
 
+let rec read_elf32_section_header_table' bitstream =
+  if length bitstream = 0 then
+    return []
+  else
+    let (eat, rest) = partition entry_size bitstream in
+      read_elf32_section_header_table_entry eat >>= fun sect ->
+      read_elf32_section_header_table' rest     >>= fun tail ->
+      return (sect::tail)
+
+let read_elf32_section_header_table size entry_size offset bitstream : Error elf32_section_header_table =
+	let (prefix, relevant) = partition offset bitstream in
+  let (eat, rest) = partition (size * entry_size) relevant in
+  	read_elf32_section_header_table' eat >>= fun entries ->
+    return (entries, rest)
+;;
+
 val elf32_size_correct : elf32_shdr -> elf32_section_header_table -> bool
 let elf32_size_correct hdr tbl =
-  match hdr.e32_sh_size with
+  match hdr.elf32_sh_size with
     | 0 -> true
     | m -> m = length tbl
   end
@@ -225,7 +222,4 @@ let is_valid_elf32_section_header_table tbl =
         size_correct x tbl &&
         link_correct x
   end
-;;
-
-type elf64_section_header_table = list elf64_shdr
 ;;

@@ -1,0 +1,24 @@
+open import Basic_classes
+open import Bool
+open import Num
+
+type bitstring
+
+declare ocaml target_rep type bitstring = `Bitstring.bitstring`
+
+val length    : bitstring -> nat
+
+declare ocaml target_rep function length = `Bitstring.length`
+
+val partition : nat -> bitstring -> (bitstring * bitstring)
+
+declare ocaml target_rep function partition = `Utility.partition_bitstring`
+
+val equal     : bitstring -> bitstring -> bool
+
+declare ocaml target_rep function equal = unsafe_structural_equality
+
+instance (Eq bitstring)
+	let (=) = equal
+	let (<>) l r = not (equal l r)
+end
