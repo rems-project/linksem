@@ -11,4 +11,13 @@ let (>>=) x f =
 		| Success s -> f s
 		| Fail err  -> Fail err
 	end
-;; 
+
+val repeatM : forall 'a. nat -> error 'a -> error (list 'a)
+let rec repeatM count action =
+	match count with
+		| 0 -> return []
+		| m ->
+				action >>= fun head ->
+				repeatM (m - 1) action >>= fun tail ->
+				return (head::tail)
+	end

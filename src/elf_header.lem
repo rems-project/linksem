@@ -429,6 +429,10 @@ type elf32_elf_header =
    ; elf32_shstrndx : elf32_half         (** Section header table entry for section name string table *)
    |>
 
+val read_elf32_elf_header : bitstring -> error elf32_elf_header
+let read_elf32_elf_header bs =
+	
+
 val is_elf32_elf_header_padding_correct : elf32_elf_header -> bool
 let is_elf32_elf_header_padding_correct ehdr =
   List.index ehdr.elf32_ident 9  = Just (unsigned_char_of_nat 0) &&
