@@ -1,10 +1,12 @@
 type error 'a
 	= Success of 'a
 	| Fail of string
-	
+
+val return : forall 'a. 'a -> error 'a
 let return r = Success r
 
-let (>>=) f x =
+val (>>=) : forall 'a 'b. error 'a -> ('a -> error 'b) -> error 'b
+let (>>=) x f =
 	match x with
 		| Success s -> f s
 		| Fail err  -> Fail err

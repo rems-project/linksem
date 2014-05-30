@@ -31,9 +31,11 @@ type elf32_addr
 
 declare ocaml target_rep type elf32_addr = `Int64.t`
 
+val nat_of_elf32_addr : elf32_addr -> nat
 val read_elf32_addr : bitstring -> error (elf32_addr * bitstring)
 
 declare ocaml target_rep function read_elf32_addr = `Ml_bindings.read_elf32_addr`
+declare ocaml target_rep function nat_of_elf32_addr = `Int64.to_int`
 
 (** elf32_half type and bindings *)
 
@@ -53,9 +55,11 @@ type elf32_off
 
 declare ocaml target_rep type elf32_off = `Int64.t`
 
+val nat_of_elf32_off : elf32_off -> nat
 val read_elf32_off : bitstring -> error (elf32_off * bitstring)
 
 declare ocaml target_rep function read_elf32_off = `Ml_bindings.read_elf32_off`
+declare ocaml target_rep function nat_of_elf32_off = `Int64.to_int`
 
 (** elf32_word type and bindings *)
 
@@ -63,6 +67,8 @@ type elf32_word
 
 declare ocaml target_rep type elf32_word = `Int64.t`
 
+val nat_of_elf32_word : elf32_word -> nat
 val read_elf32_word : bitstring -> error (elf32_word * bitstring)
 
 declare ocaml target_rep function read_elf32_word = `Ml_bindings.read_elf32_word`
+declare ocaml target_rep function nat_of_elf32_word = `Int64.to_int`

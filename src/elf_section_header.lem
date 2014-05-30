@@ -2,6 +2,7 @@ open import Basic_classes
 open import Bool
 open import List
 open import Maybe
+open import Num
 
 open import Bitstring
 open import Error
@@ -145,6 +146,7 @@ let sht_hiuser : nat = 2415919103 (* 0x8fffffff *)
 type elf32_section_header_table_entry =
   <| elf32_sh_name      : elf32_word
    ; elf32_sh_type      : elf32_word
+   ; elf32_sh_flags     : elf32_word
    ; elf32_sh_addr      : elf32_addr
    ; elf32_sh_offset    : elf32_off
    ; elf32_sh_size      : elf32_word
@@ -157,6 +159,7 @@ type elf32_section_header_table_entry =
 let read_elf32_section_header_table_entry (bs : bitstring) =
 	read_elf32_word bs >>= fun (sh_name, bs) ->
 	read_elf32_word bs >>= fun (sh_type, bs) ->
+	read_elf32_word bs >>= fun (sh_flags, bs) ->
 	read_elf32_addr bs >>= fun (sh_addr, bs) ->
 	read_elf32_off bs >>= fun (sh_offset, bs) ->
 	read_elf32_word bs >>= fun (sh_size, bs) ->
@@ -167,6 +170,7 @@ let read_elf32_section_header_table_entry (bs : bitstring) =
 		return
 			<| elf32_sh_name = sh_name
 			 ; elf32_sh_type = sh_type
+			 ; elf32_sh_flags = sh_flags
 			 ; elf32_sh_addr = sh_addr
 			 ; elf32_sh_offset = sh_offset
 			 ; elf32_sh_size = sh_size
@@ -179,30 +183,31 @@ let read_elf32_section_header_table_entry (bs : bitstring) =
 
 (** Section header table type. *)
 
-type elf32_section_header_table = list elf32_shdr
+type elf32_section_header_table = list elf32_section_header_table_entry
 ;;
 
-let rec read_elf32_section_header_table' bitstream =
-  if length bitstream = 0 then
+let rec read_elf32_section_header_table' entry_size bitstring =
+  if length bitstring = 0 then
     return []
   else
-    let (eat, rest) = partition entry_size bitstream in
+    let (eat, rest) = partition entry_size bitstring in
       read_elf32_section_header_table_entry eat >>= fun sect ->
-      read_elf32_section_header_table' rest     >>= fun tail ->
+      read_elf32_section_header_table' entry_size rest     >>= fun tail ->
       return (sect::tail)
 
-let read_elf32_section_header_table size entry_size offset bitstream : Error elf32_section_header_table =
-	let (prefix, relevant) = partition offset bitstream in
+val read_elf32_section_header_table : nat -> nat -> nat -> bitstring -> error (elf32_section_header_table * bitstring)
+let read_elf32_section_header_table size entry_size offset bitstring =
+	let (prefix, relevant) = partition offset bitstring in
   let (eat, rest) = partition (size * entry_size) relevant in
-  	read_elf32_section_header_table' eat >>= fun entries ->
+  	read_elf32_section_header_table' entry_size eat >>= fun entries ->
     return (entries, rest)
 ;;
 
-val elf32_size_correct : elf32_shdr -> elf32_section_header_table -> bool
+val elf32_size_correct : elf32_section_header_table_entry -> elf32_section_header_table -> bool
 let elf32_size_correct hdr tbl =
-  match hdr.elf32_sh_size with
+  match nat_of_elf32_word hdr.elf32_sh_size with
     | 0 -> true
-    | m -> m = length tbl
+    | m -> m = List.length tbl
   end
 ;;
 
@@ -211,15 +216,15 @@ let is_valid_elf32_section_header_table tbl =
   match tbl with
     | []    -> false
     | x::xs ->
-        x.e32_sh_name = 0 &&
-        x.e32_sh_type = sht_null &&
-        x.e32_sh_flags = 0 &&
-        x.e32_sh_addr = 0 &&
-        x.e32_sh_offset = 0 &&
-        x.e32_sh_info = 0 &&
-        x.e32_sh_addralign = 0 &&
-        x.e32_sh_entsize = 0 &&
-        size_correct x tbl &&
-        link_correct x
+        nat_of_elf32_word x.elf32_sh_name = 0 &&
+        nat_of_elf32_word x.elf32_sh_type = sht_null &&
+        nat_of_elf32_word x.elf32_sh_flags = 0 &&
+        nat_of_elf32_addr x.elf32_sh_addr = 0 &&
+        nat_of_elf32_off x.elf32_sh_offset = 0 &&
+        nat_of_elf32_word x.elf32_sh_info = 0 &&
+        nat_of_elf32_word x.elf32_sh_addralign = 0 &&
+        nat_of_elf32_word x.elf32_sh_entsize = 0 &&
+        elf32_size_correct x tbl
+        (* XXX: more correctness criteria in time *)
   end
 ;;
