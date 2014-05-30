@@ -4,7 +4,9 @@ open import List
 open import Maybe
 open import Num
 
+open import Bitstring
 open import Elf_types
+open import Error
 
 (** ELF object file types.  Enumerates the ELF object file types specified in the
  *  System V ABI.  Values between [elf_ft_lo_os] and [elf_ft_hi_os] inclusive are
@@ -429,9 +431,40 @@ type elf32_elf_header =
    ; elf32_shstrndx : elf32_half         (** Section header table entry for section name string table *)
    |>
 
-val read_elf32_elf_header : bitstring -> error elf32_elf_header
+val read_elf32_elf_header : bitstring -> error (elf32_elf_header * bitstring)
 let read_elf32_elf_header bs =
-	
+	read_unsigned_char bs >>= fun (magic_number, bs) ->
+	repeatM' 3 bs read_unsigned_char >>= fun (elf, bs) ->
+	repeatM' ei_nident bs read_unsigned_char >>= fun (ident, bs) ->
+	read_elf32_half bs >>= fun (typ, bs) ->
+	read_elf32_half bs >>= fun (machine, bs) ->
+	read_elf32_word bs >>= fun (version, bs) ->
+	read_elf32_addr bs >>= fun (entry, bs) ->
+	read_elf32_off bs >>= fun (phoff, bs) ->
+	read_elf32_off bs >>= fun (shoff, bs) ->
+	read_elf32_word bs >>= fun (flags, bs) ->
+	read_elf32_half bs >>= fun (ehsize, bs) ->
+	read_elf32_half bs >>= fun (phentsize, bs) ->
+	read_elf32_half bs >>= fun (phnum, bs) ->
+	read_elf32_half bs >>= fun (shentsize, bs) ->
+	read_elf32_half bs >>= fun (shnum, bs) ->
+	read_elf32_half bs >>= fun (shstrndx, bs) ->
+		return
+			(<| elf32_ident = magic_number::elf ++ ident
+			 ; elf32_type  = typ
+			 ; elf32_machine = machine
+			 ; elf32_version = version
+			 ; elf32_entry = entry
+			 ; elf32_phoff = phoff
+			 ; elf32_shoff = shoff
+			 ; elf32_flags = flags
+			 ; elf32_ehsize = ehsize
+			 ; elf32_phentsize = phentsize
+			 ; elf32_phnum = phnum
+			 ; elf32_shentsize = shentsize
+			 ; elf32_shnum = shnum
+			 ; elf32_shstrndx = shstrndx
+			 |>, bs)
 
 val is_elf32_elf_header_padding_correct : elf32_elf_header -> bool
 let is_elf32_elf_header_padding_correct ehdr =

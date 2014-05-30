@@ -1,3 +1,6 @@
+open import List
+open import Num
+
 type error 'a
 	= Success of 'a
 	| Fail of string
@@ -20,4 +23,14 @@ let rec repeatM count action =
 				action >>= fun head ->
 				repeatM (m - 1) action >>= fun tail ->
 				return (head::tail)
+	end
+
+val repeatM' : forall 'a 'b. nat -> 'b -> ('b -> error ('a * 'b)) -> error ((list 'a) * 'b)
+let rec repeatM' count seed action =
+	match count with
+		| 0 -> return ([], seed)
+		| m ->
+				action seed >>= fun (head, seed) ->
+				repeatM' (m - 1) seed action >>= fun (tail, seed) ->
+				return (head::tail, seed)
 	end
