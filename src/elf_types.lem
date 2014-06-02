@@ -18,7 +18,7 @@ val unsigned_char_plus   : unsigned_char -> unsigned_char -> unsigned_char
 val read_unsigned_char   : bitstring     -> error (unsigned_char * bitstring)
 
 declare ocaml target_rep function nat_of_unsigned_char = `Int64.to_int`
-declare ocaml target_rep function unsigned_char_of_nat = `Int64.from_int`
+declare ocaml target_rep function unsigned_char_of_nat = `Int64.of_int`
 declare ocaml target_rep function unsigned_char_land = `Int64.logand`
 declare ocaml target_rep function unsigned_char_lshift = `Int64.shift_left`
 declare ocaml target_rep function unsigned_char_rshift = `Int64.shift_right`
