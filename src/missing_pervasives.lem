@@ -1,8 +1,18 @@
 open import Basic_classes
 open import Bool
+open import List
+
+(** [intercalate sep xs] places [sep] between all elements of [xs]. *)
+val intercalate : forall 'a. 'a -> list 'a -> list 'a
+let rec intercalate sep xs =
+	match xs with
+		| []    -> []
+		| x::xs -> x::sep::intercalate sep xs
+	end
 
 val is_injective : forall 'a 'b. ('a -> 'b) -> bool
-let is_injective f =
+let {ocaml} is_injective f = true (* XXX: ocaml no-op *)
+let ~{ocaml} is_injective f =
   forall x y.
     unsafe_structural_equality (f x) (f y) -->
       unsafe_structural_equality x y

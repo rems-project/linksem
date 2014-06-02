@@ -1,0 +1,41 @@
+open import Function
+open import List
+open import String
+
+open import Missing_pervasives
+
+class (Show 'a)
+	val show : 'a -> string
+end
+
+val boolShow : bool -> string
+let boolShow b =
+	match b with
+		| true -> "true"
+		| false -> "false"
+	end
+
+instance (Show bool)
+	let show = boolShow
+end
+
+instance (Show string)
+	let show = id
+end
+
+val pairShow : forall 'a 'b. Show 'a, Show 'b => ('a * 'b) -> string
+let pairShow (left, right) = "(" ^ show left ^ ", " ^ show right ^ ")"
+
+instance forall 'a 'b. Show 'a, Show 'b => (Show ('a * 'b))
+	let show = pairShow
+end
+
+val listShow : forall 'a. Show 'a => list 'a -> string
+let listShow l =
+	let result = intercalate "; " (map show l) in
+	let folded = foldr (^) "" result in
+		"[" ^ folded ^ "]"
+
+instance forall 'a. Show 'a => (Show (list 'a))
+	let show = listShow
+end

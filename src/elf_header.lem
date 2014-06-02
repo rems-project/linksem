@@ -1,12 +1,15 @@
 open import Basic_classes
 open import Bool
+open import Function
 open import List
 open import Maybe
 open import Num
+open import String
 
 open import Bitstring
 open import Elf_types
 open import Error
+open import Show
 
 (** ELF object file types.  Enumerates the ELF object file types specified in the
  *  System V ABI.  Values between [elf_ft_lo_os] and [elf_ft_hi_os] inclusive are
@@ -36,6 +39,29 @@ let elf_ft_lo_proc : nat = 65280 (* 0xff00 *)
 (** Processor specific *)
 let elf_ft_hi_proc : nat = 65535 (* 0xffff *)
 
+(** [string_of_elf_file_type os proc m] produces a string representation of the
+  * numeric encoding [m] of the ELF file type.  For values reserved for OS or
+  * processor specific values, the higher-order functions [os] and [proc] are
+  * used for printing, respectively.
+  *)
+let string_of_elf_file_type (os_specific : nat -> string) (proc_specific : nat -> string) m =
+	if m = elf_ft_none then
+		"No file type"
+	else if m = elf_ft_rel then
+		"Relocatable file type"
+	else if m = elf_ft_exec then
+		"Executable file type"
+	else if m = elf_ft_dyn then
+		"Shared object file type"
+	else if m = elf_ft_core then
+		"Core file type"
+	else if m >= elf_ft_lo_os && m <= elf_ft_hi_os then
+		os_specific m
+	else if m >= elf_ft_lo_proc && m <= elf_ft_hi_proc then
+		proc_specific m
+	else
+		"XXX: invalid file type"
+
 (** [is_operating_specific_file_type_value] checks whether a numeric value is
   * reserved by the ABI for operating system-specific purposes.
   *)
@@ -54,6 +80,15 @@ let is_processor_specific_object_file_type_value v =
 
 (** Intel 386 *)
 let elf_ma_386 : nat = 3
+
+(** [string_of_elf_machine_architecture m] produces a string representation of
+  * the numeric encoding [m] of the ELF machine architecture.
+  *)
+let string_of_elf_machine_architecture m =
+	if m = elf_ma_386 then
+		"Intel 386 machine architecture"
+	else
+		"XXX: something else"
 
 (* XXX: convert these into top-level definitions later...
 (** [elf_machine_architecture] enumerates all the supported machine architectures
@@ -291,6 +326,18 @@ type elf_machine_architecture
 let elf_ev_none : nat = 0
 (** Current version *)
 let elf_ev_current : nat = 1
+
+(** [string_of_elf_version_number m] produces a string representation of the
+  * numeric encoding [m] of the ELF version number.
+  *)
+let string_of_elf_version_number m =
+	if m = elf_ev_none then
+		"Invalid ELF version"
+	else if m = elf_ev_current then
+		"Current ELF version"
+	else
+		"Extended ELF version"
+
 (** Check that an extended version number is correct (i.e. greater than 1). *)
 let is_valid_extended_version_number (n : nat) = n > 1
 
@@ -347,6 +394,19 @@ let elf_class_32 : nat = 1
 (** 64 bit objects *)
 let elf_class_64 : nat = 2
 
+(** [string_of_elf_file_class m] produces a string representation of the numeric
+  * encoding [m] of the ELF file class.
+  *)
+let string_of_elf_file_class m =
+	if m = elf_class_none then
+		"Invalid ELF file class"
+	else if m = elf_class_32 then
+		"32 bit ELF object"
+	else if m = elf_class_64 then
+		"64 bit ELF object"
+	else
+		"XXX: invalid ELF file class"
+
 (** ELF data encodings.  Byte e_ident[elf_ei_data] specifies the encoding of both the
   * data structures used by object file container and data contained in object
   * file sections.
@@ -358,6 +418,19 @@ let elf_data_none : nat = 0
 let elf_data_2lsb : nat = 1
 (** Two's complement values, most significant byte occupying lowest address *)
 let elf_data_2msb : nat = 2
+
+(** [string_of_elf_data_encoding m] produces a string representation of the
+  * numeric encoding [m] of the ELF data encoding.
+  *)
+let string_of_elf_data_encoding m =
+	if m = elf_data_none then
+		"Invalid data encoding"
+	else if m = elf_data_2lsb then
+		"Two's complement values, LSB at lowest address"
+	else if m = elf_data_2msb then
+		"Two's complement values, MSB at lowest address"
+	else
+		"XXX: invalid data encoding"
 
 (** OS and ABI versions.  Byte e_ident[elf_ei_osabi] identifies the OS- or
   * ABI-specific ELF extensions used by this file. Some fields in other ELF
@@ -399,6 +472,45 @@ let elf_osabi_aros : nat = 15
 (** FenixOS highly-scalable multi-core OS *)
 let elf_osabi_fenixos : nat = 16
 
+(** [string_of_elf_osabi_version m] produces a string representation of the
+  * numeric encoding [m] of the ELF OSABI version.
+  *)
+let string_of_elf_osabi_version m =
+	if m = elf_osabi_none then
+		"No extension or unspecified"
+	else if m = elf_osabi_netbsd then
+		"Hewlett-Packard HP-UX"
+	else if m = elf_osabi_netbsd then
+		"NetBSD"
+	else if m = elf_osabi_gnu then
+		"GNU"
+	else if m = elf_osabi_linux then
+		"Linux (GNU alias)"
+	else if m = elf_osabi_solaris then
+		"Sun Solaris"
+	else if m = elf_osabi_aix then
+		"AIX"
+	else if m = elf_osabi_irix then
+		"IRIX"
+	else if m = elf_osabi_freebsd then
+		"FreeBSD"
+	else if m = elf_osabi_tru64 then
+		"Compaq Tru64 Unix"
+	else if m = elf_osabi_modesto then
+		"Novell Modesto"
+	else if m = elf_osabi_openbsd then
+		"OpenBSD"
+	else if m = elf_osabi_openvms then
+		"OpenVMS"
+	else if m = elf_osabi_nsk then
+		"Hewlett-Packard Non-stop Kernel"
+	else if m = elf_osabi_aros then
+		"Amiga Research OS"
+	else if m = elf_osabi_fenixos then
+		"FenixOS highly-scalable multi-core OS"
+	else
+		"XXX: invalid OSABI version"
+
 (** Checks an architecture defined OSABI version is correct, i.e. in the range
   * 64 to 255 inclusive.
   *)
@@ -430,6 +542,33 @@ type elf32_elf_header =
    ; elf32_shnum    : elf32_half         (** Number of entries in section header table *)
    ; elf32_shstrndx : elf32_half         (** Section header table entry for section name string table *)
    |>
+
+val string_of_elf32_elf_header : (nat -> string) -> (nat -> string) -> elf32_elf_header -> string
+let string_of_elf32_elf_header os proc hdr =
+	let ident = show hdr.elf32_ident in
+	let typ   = string_of_elf_file_type os proc (nat_of_elf32_half hdr.elf32_type) in
+	let mach  = string_of_elf_machine_architecture (nat_of_elf32_half hdr.elf32_machine) in
+	let ver   = string_of_elf_version_number (nat_of_elf32_word hdr.elf32_version) in
+	let entry = show hdr.elf32_entry in
+	let phoff = show hdr.elf32_phoff in
+	let shoff = show hdr.elf32_shoff in
+	let flags = show hdr.elf32_flags in
+	let ehsize = show hdr.elf32_ehsize in
+	let phentsize = show hdr.elf32_phentsize in
+	let phnum     = show hdr.elf32_phnum in
+	let shentsize = show hdr.elf32_shentsize in
+	let shnum     = show hdr.elf32_shnum in
+	let shstrndx  = show hdr.elf32_shstrndx in
+		foldr (^) "" [
+			"Ident: "; ident; " Type: "; typ; " Machine: "; mach; " Version: "; ver
+		]
+
+let string_of_elf32_elf_header_default =
+	string_of_elf32_elf_header (const "OS specific") (const "Processor specific")
+	
+instance (Show elf32_elf_header)
+	let show = string_of_elf32_elf_header_default
+end
 
 val read_elf32_elf_header : bitstring -> error (elf32_elf_header * bitstring)
 let read_elf32_elf_header bs =
