@@ -560,7 +560,10 @@ let string_of_elf32_elf_header os proc hdr =
 	let shnum     = show hdr.elf32_shnum in
 	let shstrndx  = show hdr.elf32_shstrndx in
 		foldr (^) "" [
-			"Ident: "; ident; " Type: "; typ; " Machine: "; mach; " Version: "; ver
+			"Ident: "; ident; "\n";
+			"Type: "; typ; "\n";
+			"Machine: "; mach; "\n";
+			"Version: "; ver
 		]
 
 let string_of_elf32_elf_header_default =
@@ -572,8 +575,6 @@ end
 
 val read_elf32_elf_header : bitstring -> error (elf32_elf_header * bitstring)
 let read_elf32_elf_header bs =
-	read_unsigned_char bs >>= fun (magic_number, bs) ->
-	repeatM' 3 bs read_unsigned_char >>= fun (elf, bs) ->
 	repeatM' ei_nident bs read_unsigned_char >>= fun (ident, bs) ->
 	read_elf32_half bs >>= fun (typ, bs) ->
 	read_elf32_half bs >>= fun (machine, bs) ->
@@ -589,7 +590,7 @@ let read_elf32_elf_header bs =
 	read_elf32_half bs >>= fun (shnum, bs) ->
 	read_elf32_half bs >>= fun (shstrndx, bs) ->
 		return
-			(<| elf32_ident = magic_number::elf ++ ident
+			(<| elf32_ident = ident
 			 ; elf32_type  = typ
 			 ; elf32_machine = machine
 			 ; elf32_version = version

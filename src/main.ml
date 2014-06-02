@@ -17,5 +17,5 @@ let _ =
 		read_elf32_elf_header bs
 	in
 		match result with
-			| Success s -> Printf.printf "success...\n"
-			| Fail err -> Printf.printf "%s\n" err
+			| Fail err       -> Printf.printf "Fail: %s\n" err
+			| Success (s, b) ->	Printf.printf "%s\n" (instance_Show_Show_Elf_header_elf32_elf_header_dict.Show.show_method s)

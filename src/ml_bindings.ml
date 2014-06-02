@@ -2,7 +2,7 @@ open Error
 open Utility
 
 let read_unsigned_char bs =
-  let cut, rest = Utility.partition_bitstring 32 bs in
+  let cut, rest = Utility.partition_bitstring 8 bs in
 	bitmatch cut with
 		| { unsigned : 8 : littleendian } -> return (Int64.of_int unsigned, rest)
 		| { _ } -> Fail "read_unsigned_char"

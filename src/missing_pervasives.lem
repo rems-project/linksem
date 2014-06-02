@@ -7,6 +7,7 @@ val intercalate : forall 'a. 'a -> list 'a -> list 'a
 let rec intercalate sep xs =
 	match xs with
 		| []    -> []
+		| [x]   -> [x]
 		| x::xs -> x::sep::intercalate sep xs
 	end
 
