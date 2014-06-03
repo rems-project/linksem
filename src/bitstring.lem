@@ -8,7 +8,7 @@ declare ocaml target_rep type bitstring = `Bitstring.bitstring`
 
 val length    : bitstring -> nat
 
-declare ocaml target_rep function length = `Bitstring.length`
+declare ocaml target_rep function length = `Bitstring.bitstring_length`
 
 val partition : nat -> bitstring -> (bitstring * bitstring)
 

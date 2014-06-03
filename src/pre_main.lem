@@ -1,0 +1,6 @@
+open import Show
+
+open import Elf_program_header_table
+
+val display : elf32_program_header_table -> string
+let display = show

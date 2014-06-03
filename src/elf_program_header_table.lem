@@ -121,16 +121,10 @@ let read_elf32_program_header_entry bs =
 (** Program header table type *)
 type elf32_program_header_table = list elf32_program_header_entry
 
-let rec read_elf32_program_header_table' size bitstring =
+let rec read_elf32_program_header_table bitstring =
 	if length bitstring = 0 then
-  	return []
+  	return ([], bitstring)
   else
-    let (eat, rest) = partition size bitstring in
-      read_elf32_program_header_entry eat >>= fun entry ->
-      read_elf32_program_header_table' size rest >>= fun tail ->
-      return (entry::tail)
-
-let read_elf_program_header_table num size bitstring =
-  let (eat, rest) = partition (num * size) bitstring in
-    read_elf32_program_header_table' size eat >>= fun entries ->
-    return (entries, rest)
+  	read_elf32_program_header_entry bitstring >>= fun (entry, bitstring) ->
+    read_elf32_program_header_table bitstring >>= fun (tail, bitstring) ->
+    return ((entry::tail), bitstring)

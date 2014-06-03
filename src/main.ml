@@ -1,6 +1,5 @@
 open Error
-
-open Elf_header
+open Pre_main
 
 let acquire_bitstring =
 	let path_to_target = "/usr/bin/ld" in
@@ -13,9 +12,12 @@ let acquire_bitstring =
 let _ =
 	let _ = Printf.printf "Starting...\n" in
 	let result =
-		acquire_bitstring >>= fun bs ->
-		read_elf32_elf_header bs
+		acquire_bitstring >>= fun bs0 ->
+		Elf_header.read_elf32_elf_header bs0 >>= fun (elf_header, bs1) ->
+		let size, entry_size = Elf_header.program_header_table_size_and_entry_size elf_header in
+		Elf_program_header_table.read_elf32_program_header_table bs1 >>= fun (program_header_table, bs2) ->
+		return program_header_table
 	in
 		match result with
-			| Fail err       -> Printf.printf "Fail: %s\n" err
-			| Success (s, b) ->	Printf.printf "%s\n" (instance_Show_Show_Elf_header_elf32_elf_header_dict.Show.show_method s)
+			| Fail err  -> Printf.printf "Fail: %s\n" err
+			| Success s ->	Printf.printf "%s\n" (display s)
