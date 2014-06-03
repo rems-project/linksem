@@ -1,0 +1,136 @@
+open import Basic_classes
+open import Bool
+open import Function
+open import List
+open import Num
+open import String
+
+open import Bitstring
+open import Error
+open import Elf_types
+open import Show
+
+(** Segment types *)
+
+(** Unused array element.  All other members of the structure are undefined. *)
+let elf_pt_null : nat = 0
+(** A loadable segment. *)
+let elf_pt_load : nat = 1
+(** Dynamic linking information. *)
+let elf_pt_dynamic : nat = 2
+(** Specifies the location and size of a null-terminated path name to be used to
+  * invoke an interpreter.
+  *)
+let elf_pt_interp : nat = 3
+(** Specifies location and size of auxiliary information. *)
+let elf_pt_note : nat = 4
+(** Reserved but with unspecified semantics.  If the file contains a segment of
+  * this type then it is to be regarded as non-conformant with the ABI.
+  *)
+let elf_pt_shlib : nat = 5
+(** Specifies the location and size of the program header table. *)
+let elf_pt_phdr : nat = 6
+(** Specifies the thread local storage (TLS) template.  Need not be supported. *)
+let elf_pt_tls : nat = 7
+(** Start of reserved indices for operating system specific semantics. *)
+let elf_pt_loos : nat = 0 (* XXX: too big for Lem? 1610612736 (* 0x60000000 *) *)
+(** End of reserved indices for operating system specific semantics. *)
+let elf_pt_hios : nat = 0 (* XXX: too big for Lem? 1879048191 (* 0x6fffffff *) *)
+(** Start of reserved indices for processor specific semantics. *)
+let elf_pt_loproc : nat = 0 (* XXX: too big for Lem? 1879048192 (* 0x70000000 *) *)
+(** End of reserved indices for processor specific semantics. *)
+let elf_pt_hiproc : nat = 0 (* XXX: too big for Lem? 2147483647 (* 0x7fffffff *) *)
+
+let string_of_elf_segment_type os proc pt =
+	if pt = elf_pt_null then
+		"PT_NULL"
+	else if pt = elf_pt_load then
+		"PT_LOAD"
+	else if pt = elf_pt_dynamic then
+		"PT_DYNAMIC"
+	else if pt = elf_pt_interp then
+		"PT_INTERP"
+	else if pt = elf_pt_note then
+		"PT_NOTE"
+	else if pt = elf_pt_shlib then
+		"PT_SHLIB"
+	else if pt = elf_pt_phdr then
+		"PT_PHDR"
+	else if pt = elf_pt_tls then
+		"PT_TLS"
+	else if pt >= elf_pt_loos && pt <= elf_pt_hios then
+		os pt
+	else if pt >= elf_pt_loproc && pt <= elf_pt_hiproc then
+		proc pt
+	else
+		"XXX: invalid segment type"
+
+(** Program header entry type *)
+
+type elf32_program_header_entry =
+  <| p_type  : elf32_word (** Type of the segment *)
+  ; p_offset : elf32_off  (** Offset from beginning of file for segment *)
+  ; p_vaddr  : elf32_addr (** Virtual address for segment in memory *)
+  ; p_paddr  : elf32_addr (** Physical address for segment *)
+  ; p_filesz : elf32_word (** Size of segment in file, in bytes *)
+  ; p_memsz  : elf32_word (** Size of segment in memory image, in bytes *)
+  ; p_flags  : elf32_word (** Segment flags *)
+  ; p_align  : elf32_word (** Segment alignment memory for memory and file *)
+  |>
+  
+let string_of_elf32_program_header_entry os proc entry =
+	foldr (^) "" [
+		"Segment type: "; string_of_elf_segment_type os proc (nat_of_elf32_word entry.p_type); "\n"
+	; "Offset: "; show entry.p_offset; "\n"
+	; "Virtual address: "; show entry.p_vaddr; "\n"
+	; "Physical address: "; show entry.p_paddr; "\n"
+	; "Segment size (bytes): "; show entry.p_filesz; "\n"
+	; "Segment size in memory image (bytes): "; show entry.p_memsz; "\n"
+	; "Flags: "; show entry.p_flags; "\n"
+  ; "Alignment: "; show entry.p_align; "\n"
+	]
+	
+let string_of_elf32_program_header_entry_default =
+	string_of_elf32_program_header_entry (const "OS specific") (const "Processor specific")
+	
+instance (Show elf32_program_header_entry)
+	let show = string_of_elf32_program_header_entry_default
+end
+  
+val read_elf32_program_header_entry : bitstring -> error (elf32_program_header_entry * bitstring)
+let read_elf32_program_header_entry bs =
+	read_elf32_word bs >>= fun (typ, bs) ->
+	read_elf32_off  bs >>= fun (offset, bs) ->
+	read_elf32_addr bs >>= fun (vaddr, bs) ->
+	read_elf32_addr bs >>= fun (paddr, bs) ->
+	read_elf32_word bs >>= fun (filesz, bs) ->
+	read_elf32_word bs >>= fun (memsz, bs) ->
+	read_elf32_word bs >>= fun (flags, bs) ->
+	read_elf32_word bs >>= fun (align, bs) ->
+		Success (
+			<| p_type = typ
+			 ; p_offset = offset
+			 ; p_vaddr = vaddr
+			 ; p_paddr = paddr
+			 ; p_filesz = filesz
+			 ; p_memsz = memsz
+			 ; p_flags = flags
+			 ; p_align = align
+			 |>, bs)
+
+(** Program header table type *)
+type elf32_program_header_table = list elf32_program_header_entry
+
+let rec read_elf32_program_header_table' size bitstring =
+	if length bitstring = 0 then
+  	return []
+  else
+    let (eat, rest) = partition size bitstring in
+      read_elf32_program_header_entry eat >>= fun entry ->
+      read_elf32_program_header_table' size rest >>= fun tail ->
+      return (entry::tail)
+
+let read_elf_program_header_table num size bitstring =
+  let (eat, rest) = partition (num * size) bitstring in
+    read_elf32_program_header_table' size eat >>= fun entries ->
+    return (entries, rest)

@@ -654,3 +654,8 @@ let elf32_elf_header_section_table_size ehdr =
   let shentsize = nat_of_elf32_half ehdr.elf32_shentsize in
   let shnum     = nat_of_elf32_half ehdr.elf32_shnum in
     shentsize * shnum
+    
+let program_header_table_size_and_entry_size hdr =
+  let size = nat_of_elf32_half hdr.e_phnum in
+  let entry_size = (nat_of_elf32_half hdr.e_phentsize) * 8 in
+    (size, entry_size)
