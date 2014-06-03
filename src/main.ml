@@ -15,7 +15,7 @@ let _ =
 		acquire_bitstring >>= fun bs0 ->
 		Elf_header.read_elf32_elf_header bs0 >>= fun (elf_header, bs1) ->
 		let size, entry_size = Elf_header.program_header_table_size_and_entry_size elf_header in
-		Elf_program_header_table.read_elf32_program_header_table bs1 >>= fun (program_header_table, bs2) ->
+		Elf_program_header_table.read_elf32_program_header_table (size * entry_size) bs1 >>= fun (program_header_table, bs2) ->
 		return program_header_table
 	in
 		match result with
