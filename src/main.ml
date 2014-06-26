@@ -16,7 +16,13 @@ let _ =
 		Elf_header.read_elf32_elf_header bs0 >>= fun (elf_header, bs1) ->
 		let size, entry_size = Elf_header.program_header_table_size_and_entry_size elf_header in
 		Elf_program_header_table.read_elf32_program_header_table (size * entry_size) bs1 >>= fun (program_header_table, bs2) ->
-		return program_header_table
+		  if Elf_header.elf32_elf_header_is_section_table_present elf_header then
+		    let size, entry_size, offset = Elf_header.section_header_table_size_and_entry_size_and_offset elf_header in
+		      Elf_section_header.read_elf32_section_header_table size entry_size offset bs0 >>= fun (section_header_table, bs3) ->
+		      	let _ = Printf.printf "%i\n" (List.length section_header_table) in
+		      		assert false
+		  else
+		    return program_header_table
 	in
 		match result with
 			| Fail err  -> Printf.printf "Fail: %s\n" err
