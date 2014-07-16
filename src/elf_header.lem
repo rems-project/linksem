@@ -666,6 +666,6 @@ let program_header_table_size_and_entry_size hdr =
     
 let section_header_table_size_and_entry_size_and_offset hdr =
   let size = nat_of_elf32_half hdr.elf32_shnum in
-  let entry_size = (nat_of_elf32_half hdr.elf32_shentsize) * 8 in
-  let offset = nat_of_elf32_off hdr.elf32_shoff in
+  let entry_size = nat_of_elf32_half hdr.elf32_shentsize * 8 in
+  let offset = nat_of_elf32_off hdr.elf32_shoff * 8 in
     (size, entry_size, offset)
