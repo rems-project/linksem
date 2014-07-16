@@ -560,10 +560,10 @@ let string_of_elf32_elf_header os proc hdr =
 	let shnum     = show hdr.elf32_shnum in
 	let shstrndx  = show hdr.elf32_shstrndx in
 		foldr (^) "" [
-			"Ident: "; ident; "\n";
-			"Type: "; typ; "\n";
-			"Machine: "; mach; "\n";
-			"Version: "; ver
+			"Header data:"; "\n";
+			"\t"; "Magic number: "; ident; "\n";
+			"\t"; "Type: "; typ; "\t"; "Version: "; ver; "\n";
+			"\t"; "Machine: "; mach; "\n"
 		]
 
 let string_of_elf32_elf_header_default =

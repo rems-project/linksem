@@ -1,7 +1,6 @@
 open import Basic_classes
 open import Bool
 open import List
-open import Maybe
 open import Num
 open import String
 
@@ -245,6 +244,10 @@ let read_elf32_section_header_table_entry (bs : bitstring) =
 
 let string_of_elf32_section_header_table_entry entry =
   foldr (^) "" [
+    "\t"; "Name: "; show entry.elf32_sh_name
+  ; "\t"; "Type: "; string_of_section_type (nat_of_elf32_word entry.elf32_sh_type)
+  ; "\n\t"; "Flags: "; show entry.elf32_sh_flags
+  ; "\t"; "Address: "; show entry.elf32_sh_addr; "\n\n"
   ]
   
 instance (Show elf32_section_header_table_entry)
@@ -297,4 +300,7 @@ let is_valid_elf32_section_header_table tbl =
         elf32_size_correct x tbl
         (* XXX: more correctness criteria in time *)
   end
-;;
+  
+let string_of_elf32_section_header_table (tbl : elf32_section_header_table) : string =
+	"Section header table:" ^ "\n" ^
+		foldr (^) "" (map string_of_elf32_section_header_table_entry tbl)

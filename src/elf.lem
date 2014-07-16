@@ -1,0 +1,64 @@
+open import List
+open import Maybe
+open import Num
+open import String
+
+open import Elf_header
+open import Elf_program_header_table
+open import Elf_section_header
+
+open import Bitstring
+open import Error
+
+type linked_elf_file =
+  <| elf_header : elf32_elf_header
+	 ; elf_section_header_table : maybe elf32_section_header_table
+	 ; elf_program_header_table : elf32_program_header_table
+	 |>
+
+type elf32
+	= Linked of linked_elf_file
+	| Executable
+	
+let is_linked elf =
+	match elf with
+		| Linked _ -> true
+		| _        -> false
+  end
+  
+let is_executable elf =
+	match elf with
+		| Executable -> true
+		| _          -> false
+  end
+  
+let string_of_elf32 elf32 =
+	match elf32 with
+		| Executable ->
+				foldr (^) "" [
+					"Executable ELF file"
+				]
+		| Linked link ->
+			let shdr =
+				match link.elf_section_header_table with
+					| Nothing  -> "No section header table present"
+					| Just hdr -> string_of_elf32_section_header_table hdr
+				end
+			in
+				foldr (^) "\t" [
+				  string_of_elf32_elf_header (fun x -> "Unsupported") (fun x -> "Unsupported") link.elf_header; "\n\n"
+				; string_of_elf32_program_header_table (fun x -> "Unsupported") (fun x -> "Unsupported") link.elf_program_header_table
+				; shdr
+				]
+	end
+  
+let read_elf32 bs0 =
+	read_elf32_elf_header bs0 >>= fun (elf_header, bs1) ->
+	let (size, entry_size) = program_header_table_size_and_entry_size elf_header in
+	read_elf32_program_header_table (size * entry_size) bs1 >>= fun (program_header_table, bs2) ->
+	if elf32_elf_header_is_section_table_present elf_header then
+		let (size, entry_size, offset) = section_header_table_size_and_entry_size_and_offset elf_header in
+			read_elf32_section_header_table size entry_size offset bs0 >>= fun (section_header_table, bs3) ->
+				return (Linked (<| elf_header = elf_header; elf_section_header_table = Just section_header_table; elf_program_header_table = program_header_table |>))
+	else
+		return (Linked (<| elf_header = elf_header; elf_section_header_table = Nothing; elf_program_header_table = program_header_table |>))

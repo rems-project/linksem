@@ -1,6 +1,6 @@
 open import Show
 
-open import Elf_program_header_table
+open import Elf_section_header
 
-val display : elf32_program_header_table -> string
+val display : elf32_section_header_table -> string
 let display = show

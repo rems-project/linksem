@@ -80,14 +80,14 @@ type elf32_program_header_entry =
   
 let string_of_elf32_program_header_entry os proc entry =
 	foldr (^) "" [
-		"Segment type: "; string_of_elf_segment_type os proc (nat_of_elf32_word entry.p_type); "\n"
-	; "Offset: "; show entry.p_offset; "\n"
-	; "Virtual address: "; show entry.p_vaddr; "\n"
-	; "Physical address: "; show entry.p_paddr; "\n"
-	; "Segment size (bytes): "; show entry.p_filesz; "\n"
-	; "Segment size in memory image (bytes): "; show entry.p_memsz; "\n"
-	; "Flags: "; show entry.p_flags; "\n"
-  ; "Alignment: "; show entry.p_align; "\n"
+		"\t"; "Segment type: "; string_of_elf_segment_type os proc (nat_of_elf32_word entry.p_type)
+	; "\t"; "Offset: "; show entry.p_offset
+	; "\n\t"; "Virtual address: "; show entry.p_vaddr
+	; "\t"; "Physical address: "; show entry.p_paddr
+	; "\n\t"; "Segment size (bytes): "; show entry.p_filesz
+	; "\t"; "Segment size in memory image (bytes): "; show entry.p_memsz
+	; "\n\t"; "Flags: "; show entry.p_flags
+  ; "\t"; "Alignment: "; show entry.p_align; "\n\n"
 	]
 	
 let string_of_elf32_program_header_entry_default =
@@ -133,3 +133,7 @@ let read_elf32_program_header_table table_size bitstring =
 	let (eat, rest) = partition table_size bitstring in
 		read_elf32_program_header_table' eat >>= fun table ->
 		return (table, rest)
+		
+let string_of_elf32_program_header_table os proc tbl =
+	"Program header table contents:" ^ "\n" ^
+		foldr (^) "\n" (map (string_of_elf32_program_header_entry os proc) tbl)
