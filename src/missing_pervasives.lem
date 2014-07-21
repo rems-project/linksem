@@ -11,10 +11,9 @@ let rec intercalate sep xs =
 		| x::xs -> x::sep::intercalate sep xs
 	end
 
-val is_injective : forall 'a 'b. ('a -> 'b) -> bool
-let {ocaml} is_injective f = true (* XXX: ocaml no-op *)
-let ~{ocaml} is_injective f =
-  forall x y.
-    unsafe_structural_equality (f x) (f y) -->
-      unsafe_structural_equality x y
-;;
+val null_char : char
+
+declare ocaml target_rep function null_char = `'\000'`
+
+val split_string_on_char : string -> char -> list string
+declare ocaml target_rep function split_string_on_char = `Ml_bindings.split_string_on_char`

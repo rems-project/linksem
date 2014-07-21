@@ -35,3 +35,10 @@ let read_elf32_word bs =
 		| { word : 32 : littleendian } -> return (Int64.of_int32 word, rest)
 		| { _ } -> Fail "read_elf32_word"
 ;;
+
+let split_string_on_char strings c =
+	let enum    = BatString.enum strings in
+	let groups  = BatEnum.group (fun char -> char <> c) enum in
+  let enums   = BatEnum.map BatString.of_enum groups in
+  	BatList.of_enum enums
+;;

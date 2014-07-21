@@ -1,3 +1,3 @@
 dummy:
-	../../lem/lem -ocaml -only_changed_output missing_pervasives.lem show.lem elf_types.lem elf_header.lem elf_program_header_table.lem elf_section_header.lem elf.lem pre_main.lem
-	ocamlfind ocamlc -package bitstring.syntax -syntax camlp4o -I ../../lem/ocaml-lib/_build/ unix.cma bitstring.cma nums.cma nat_num.cmo lem.cmo lem_function.cmo lem_list.cmo missing_pervasives.ml show.ml error.ml utility.ml ml_bindings.ml elf_types.ml elf_header.ml elf_program_header_table.ml elf_section_header.ml pre_main.ml elf.ml main.ml
+	../../lem/lem -ocaml -only_changed_output missing_pervasives.lem show.lem elf_types.lem elf_header.lem elf_program_header_table.lem elf_section_header.lem elf_string_table.lem elf.lem pre_main.lem
+	ocamlfind ocamlc -package bitstring.syntax -package batteries -syntax camlp4o -I ../../lem/ocaml-lib/_build/ unix.cma bitstring.cma nums.cma nat_num.cmo lem.cmo lem_function.cmo lem_list.cmo -linkpkg missing_pervasives.ml show.ml error.ml utility.ml ml_bindings.ml elf_types.ml elf_header.ml elf_program_header_table.ml elf_section_header.ml elf_string_table.ml pre_main.ml elf.ml main.ml
