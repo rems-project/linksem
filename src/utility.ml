@@ -1,4 +1,5 @@
 let partition_bitstring size bitstring =
+	let _ = Printf.printf "Partitioning bitstring at %i...\n" size in
   Bitstring.takebits size bitstring, Bitstring.dropbits size bitstring
 ;;
 
