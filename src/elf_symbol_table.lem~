@@ -233,7 +233,7 @@ let read_elf32_symbol_tables sections bs : error (list elf32_symbol_table) =
 	let offsets_sizes = List.map (fun sect ->
 		let offset = (nat_of_elf32_off sect.elf32_sh_offset) * 8 in
 		let size   =
-			let _ = Missing_pervasives.print ("YYY size: " ^ show (nat_of_elf32_word sect.elf32_sh_size * 8)) in
+			let _ = Missing_pervasives.print ("YYY size: " ^ show (nat_of_elf32_word sect.elf32_sh_entsize * 8)) in
 			nat_of_elf32_word sect.elf32_sh_size * 8
 		in
 			(offset, size)) symtabs

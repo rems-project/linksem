@@ -42,7 +42,7 @@ instance forall 'a. Show 'a => (Show (list 'a))
 end
 
 val natShow : nat -> string
-let natShow = string_of_nat
+let natShow n =
 
 instance (Show nat)
 	let show = natShow

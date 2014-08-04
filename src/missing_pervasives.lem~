@@ -20,7 +20,7 @@ val split_string_on_char : string -> char -> list string
 declare ocaml target_rep function split_string_on_char = `Ml_bindings.split_string_on_char`
 
 val print : string -> unit
-declare ocaml target_rep function print = `print_endline`
+declare ocaml target_rep function print = `Printf.printf`
 
 val string_of_nat : nat -> string
 declare ocaml target_rep function string_of_nat = `string_of_int`

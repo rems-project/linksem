@@ -1,0 +1,12 @@
+type error 'a
+	= Success of 'a
+	| Fail of string
+	
+let return r = Success r
+
+let (>>=) f x =
+	match x with
+		| Success s -> f s
+		| Fail err  -> Fail err
+	end
+;; 
