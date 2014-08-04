@@ -1,4 +1,5 @@
 open import List
+open import List_extra
 open import Maybe
 open import Num
 open import String
@@ -17,6 +18,7 @@ type linked_elf_file =
 	 ; elf_section_header_table : maybe elf32_section_header_table
 	 ; elf_program_header_table : elf32_program_header_table
 	 ; elf_string_table : list string
+	 ; elf_dynamic_string_table : list string
 	 ; elf_symbol_table : list elf32_symbol_table
 	 |>
 
@@ -57,6 +59,7 @@ let string_of_elf32 elf32 =
 				; string_of_elf32_program_header_table (fun x -> "Unsupported") (fun x -> "Unsupported") link.elf_program_header_table
 				; shdr
 				; string_of_elf32_string_table link.elf_string_table
+				; string_of_elf32_dynamic_string_table link.elf_dynamic_string_table
 				; symtabs
 				]
 	end
@@ -71,15 +74,16 @@ let read_elf32 bs0 =
 	    return (Just section_header_table, bs3)
   	else
 	    return (Nothing, bs2)) >>= fun (section_header_table_opt, bs3) ->
-	read_elf32_string_table elf_header section_header_table_opt bs0 >>= fun string_table ->
+	let string_tables = read_elf32_string_tables section_header_table_opt bs0 in
 	(match section_header_table_opt with
 	   | Nothing -> return []
-	   | Just section_header_table -> read_elf32_symbol_table section_header_table bs0
+	   | Just section_header_table -> read_elf32_symbol_tables section_header_table bs0
 	 end) >>= fun symbol_table ->
   return (Linked (
     <| elf_header = elf_header
 	   ; elf_section_header_table = section_header_table_opt
 	   ; elf_program_header_table = program_header_table
-	   ; elf_string_table = string_table
+	   ; elf_string_table = nth (string_tables) 1
+	   ; elf_dynamic_string_table = nth (string_tables) -0
 	   ; elf_symbol_table = symbol_table
 	   |>))

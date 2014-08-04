@@ -11,6 +11,7 @@ open import List
 open import Maybe
 open import Num
 open import String
+open import Show
 
 let get_strings_of_string_table bs =
 	let strings = string_of_bitstring bs in
@@ -33,6 +34,41 @@ let read_elf32_string_table hdr sections bs : error (list string) =
 				end
 	end
 	
+let rec read_elf32_string_tables' offset_sizes (bs : bitstring) : list (list string) =
+	match offset_sizes with
+		| []    -> []
+		| x::xs ->
+			let (offset, size) = x in
+			let (_, relevant)  = Bitstring.partition offset bs in
+			let (cut, _)       = Bitstring.partition size relevant in
+			let strings        = get_strings_of_string_table cut in
+			let tail           = read_elf32_string_tables' xs bs in
+				strings::tail
+	end
+	
+let read_elf32_string_tables sections bs : list string =
+	match sections with
+		| Nothing -> []
+		| Just sections ->
+			let offsets_sizes = List.concat (List.map (fun sect ->
+				if nat_of_elf32_word sect.elf32_sh_type = sht_strtab then
+					let offset = (nat_of_elf32_off sect.elf32_sh_offset) * 8 in
+					let size   =
+						let _ = Missing_pervasives.print ("YYY size: " ^ show (nat_of_elf32_word sect.elf32_sh_size * 8)) in
+							nat_of_elf32_word sect.elf32_sh_size * 8
+					in
+						[(offset, size)]
+				else
+					[]
+				) sections)
+			in
+				read_elf32_string_tables' offsets_sizes bs
+	end
+	
 let string_of_elf32_string_table tbl =
   "String table contents:" ^ "\n\t" ^
+    foldr (^) "" tbl ^ "\n\n"
+    
+let string_of_elf32_dynamic_string_table tbl =
+  "Dynamic string table contents:" ^ "\n\t" ^
     foldr (^) "" tbl ^ "\n\n"

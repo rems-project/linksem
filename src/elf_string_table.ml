@@ -12,6 +12,7 @@ open Lem_list
 open Lem_maybe
 open Lem_num
 open Lem_string
+open Show
 
 let get_strings_of_string_table bs =	
 (let strings = (Bitstring.string_of_bitstring bs) in
@@ -34,6 +35,41 @@ let read_elf32_string_table hdr sections bs : ( string list) error =
 				)
 	))
 	
+let rec read_elf32_string_tables' offset_sizes (bs : Bitstring.bitstring) : ( string list) list =	
+((match offset_sizes with
+		| []    -> []
+		| x::xs ->
+			let (offset, size) = x in
+			let (_, relevant)  = (Utility.partition_bitstring offset bs) in
+			let (cut, _)       = (Utility.partition_bitstring size relevant) in
+			let strings        = (get_strings_of_string_table cut) in
+			let tail           = (read_elf32_string_tables' xs bs) in
+				strings::tail
+	))
+	
+let read_elf32_string_tables sections bs : ( string list) list =	
+((match sections with
+		| None -> []
+		| Some sections ->
+			let offsets_sizes = (List.concat (List.map (fun sect ->
+				if Int64.to_int sect.elf32_sh_type = sht_strtab then
+					let offset = ((Int64.to_int sect.elf32_sh_offset) * 8) in
+					let size   =						
+(let _ = (print_endline ("YYY size: " ^ natShow (Int64.to_int sect.elf32_sh_size * 8))) in
+							Int64.to_int sect.elf32_sh_size * 8)
+					in
+						[(offset, size)]
+				else
+					[]
+				) sections))
+			in
+				read_elf32_string_tables' offsets_sizes bs
+	))
+	
 let string_of_elf32_string_table tbl =  
 ("String table contents:" ^ ("\n\t" ^    
+(List.fold_right (^) tbl "" ^ "\n\n")))
+    
+let string_of_elf32_dynamic_string_table tbl =  
+("Dynamic string table contents:" ^ ("\n\t" ^    
 (List.fold_right (^) tbl "" ^ "\n\n")))
