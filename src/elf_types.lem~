@@ -79,7 +79,7 @@ val string_of_elf32_off : elf32_off -> string
 val nat_of_elf32_off : elf32_off -> nat
 val read_elf32_off : bitstring -> error (elf32_off * bitstring)
 
-declare ocaml target_rep function string-of_elf32_off = `Int64.to_string`
+declare ocaml target_rep function string_of_elf32_off = `Int64.to_string`
 declare ocaml target_rep function read_elf32_off = `Ml_bindings.read_elf32_off`
 declare ocaml target_rep function nat_of_elf32_off = `Int64.to_int`
 
@@ -100,6 +100,24 @@ val read_elf32_word : bitstring -> error (elf32_word * bitstring)
 declare ocaml target_rep function string_of_elf32_word = `Int64.to_string`
 declare ocaml target_rep function read_elf32_word = `Ml_bindings.read_elf32_word`
 declare ocaml target_rep function nat_of_elf32_word = `Int64.to_int`
+
+instance (Show elf32_word)
+	let show = string_of_elf32_word
+end
+
+(** elf32_sword type and bindings *)
+
+type elf32_sword
+
+declare ocaml target_rep type elf32_sword = `Int64.t`
+
+val string_of_elf32_sword : elf32_sword -> string
+val nat_of_elf32_sword : elf32_sword -> nat
+val read_elf32_sword : bitstring -> error (elf32_sword * bitstring)
+
+declare ocaml target_rep function string_of_elf32_sword = `Int64.to_string`
+declare ocaml target_rep function read_elf32_sword = `Ml_bindings.read_elf32_sword`
+declare ocaml target_rep function nat_of_elf32_sword = `Int64.to_int`
 
 instance (Show elf32_word)
 	let show = string_of_elf32_word

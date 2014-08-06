@@ -17,6 +17,7 @@ type linked_elf_file =
   <| elf_header : elf32_elf_header
 	 ; elf_section_header_table : maybe elf32_section_header_table
 	 ; elf_program_header_table : elf32_program_header_table
+	 ; elf_segments : list elf32_sections
 	 ; elf_string_table : list string
 	 ; elf_dynamic_string_table : list string
 	 ; elf_symbol_table : list elf32_symbol_table

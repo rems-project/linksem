@@ -84,6 +84,6 @@ let read_elf32 bs0 =
 	   ; elf_section_header_table = section_header_table_opt
 	   ; elf_program_header_table = program_header_table
 	   ; elf_string_table = nth (string_tables) 1
-	   ; elf_dynamic_string_table = nth (string_tables) -0
+	   ; elf_dynamic_string_table = nth (string_tables) 0
 	   ; elf_symbol_table = symbol_table
 	   |>))
