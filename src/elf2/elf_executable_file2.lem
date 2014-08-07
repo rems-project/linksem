@@ -1,0 +1,76 @@
+open import Bitstring
+open import Missing_pervasives
+
+open import Elf_file1
+open import Elf_header
+open import Elf_section_header_table
+open import Elf_program_header_table
+
+open import Basic_classes
+open import Maybe
+
+(** Type [elf32_executable_file2] represents the lazy unfolding of a 32-bit ELF
+  * file where the structure of the header, program header table (mandatory) and
+  * section header table (optional) have been made explicit.
+  *)
+type elf32_executable_file2 =
+  <| elf32_executable_file2_header               : elf32_header
+   ; elf32_executable_file2_program_header_table : elf32_program_header_table
+   ; elf32_executable_file2_body                 : bitstring
+   ; elf32_executable_file2_section_header_table : maybe elf32_section_header_table
+   |>
+
+(** [refine_elf32_file1 f1] refines the [elf31_file1] [f1] adding the
+  * mandatory program header table and optional section header table to
+  * [f1]'s header.  Fails if [f1]'s header states that no program header
+  * table is present, or if there is some other transcription error when
+  * reading from [f1]'s body.
+  *)
+val refine_elf32_file1 : elf32_file1 -> error elf32_executable_file2
+let refine_elf32_file1 f1 =
+  if not elf32_file1.is_executable_elf32_file1 f1 then
+    Fail "refine_elf32_file1: not an executable file type"
+  else
+    let hdr         = f1.elf32_file1_header in
+    let bs1         = f1.elf32_file1_body   in
+    let pentries    = nat_of_elf32_half hdr.elf32_phnum     in
+    let sentries    = nat_of_elf32_half hdr.elf32_shnum     in
+    let pentry_size = nat_of_elf32_half hdr.elf32_phentsize in
+    let sentry_size = nat_of_elf32_half hdr.elf32_shentsize in
+    let psize       = pentries * pentry_size in
+    let ssize       = sentries * sentry_size in
+    if psize = 0 then
+      Fail "refine_elf32_file1: program header table not present"
+    else
+      let poffset     = nat_of_elf32_off hdr.elf32_phoff * 8 in
+      let soffset     = nat_of_elf32_off hdr.elf32_shoff * 8 in
+      let (_, pcut)   = partition_bitstring poffset bs1 in
+      let (pexact, _) = partition_bitstring psize pcut in
+      read_elf32_program_header_table pentries pentry_size pexact >>= fun pht ->
+        if ssize = 0 then
+          return <| elf32_executable_file2_header = hdr;
+            elf32_executable_file2_program_header_table = pht;
+            elf32_executable_file2_body = bs1;
+            elf32_executable_file2_section_header_table = Nothing |>
+        else
+          let (_, scut)   = partition_bitstring soffset bs1 in
+          let (sexact, _) = partition_bitstring ssize scut  in
+          read_elf32_section_header_table sentries sentry_size sexact >>= fun sht ->
+          return <| elf32_executable_file2_header = hdr;
+            elf32_executable_file2_program_header_table = pht;
+            elf32_executable_file2_body = bs1;
+            elf32_executable_file2_section_header_table = Just sht |>
+
+(** [read_elf32_executable_file2 bs0] creates an [elf32_executable_file2] record
+  * directly from the bitstring [bs0].
+  *)
+val read_elf32_executable_file2 : bitstring -> error elf32_executable_file2
+let read_elf32_executable_file2 bs0 =
+  read_elf32_file1 bs0 >>= refine_elf32_file1
+
+(** [string_of_elf32_executable_file2 f2] creates a string representation of [f2].
+  *)
+val string_of_elf32_executable_file2 : elf32_executable_file2 -> string
+let string_of_elf32_executable_file2 f2 =
+  unwords [
+  ]

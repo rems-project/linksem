@@ -1,0 +1,18 @@
+open import Bitstring
+open import Error
+open import Missing_pervasives
+
+open import Elf_header
+open import Elf_file1
+
+let default_os m =
+  "[Default OS specific print]"
+
+let default_proc m =
+  "[Default processor specific print]"
+
+let _ =
+  Bitstring.acquire "/usr/bin/ld" >>= fun bs0 ->
+  Elf_file1.read_elf32_file1 bs0 >>= fun f1 ->
+  let _ = Missing_pervasives.print (string_of_elf32_file1 default_os default_proc f1) in
+  return ()
