@@ -1,4 +1,7 @@
-open import Pervasives
+open import Num
+open import String
+
+open import Endian
 
 open import Bitstring
 open import Error
@@ -17,7 +20,7 @@ val unsigned_char_land   : unsigned_char -> unsigned_char -> unsigned_char
 val unsigned_char_lshift : unsigned_char -> nat -> unsigned_char
 val unsigned_char_rshift : unsigned_char -> nat -> unsigned_char
 val unsigned_char_plus   : unsigned_char -> unsigned_char -> unsigned_char
-val read_unsigned_char   : bitstring     -> error (unsigned_char * bitstring)
+val read_unsigned_char   : endian -> bitstring -> error (unsigned_char * bitstring)
 
 declare ocaml target_rep function string_of_unsigned_char = `Int64.to_string`
 declare ocaml target_rep function nat_of_unsigned_char = `Int64.to_int`

@@ -1,12 +1,16 @@
 open import Basic_classes
 open import Bool
+open import Function
 open import List
+open import Maybe
 open import Num
 open import String
 
+open import Elf_types
+
 open import Bitstring
 open import Error
-open import Elf_types
+open import Missing_pervasives
 open import Show
 
 (** Special section indices. *)
@@ -133,23 +137,17 @@ let sht_group : nat = 17
   * the escape value SHN_XINDEX.
   *)
 let sht_symtab_shndx : nat = 18
-(** XXX: broken for the time being due to Lem bug. *)
-let sht_loos : nat = 0
-let sht_hios : nat = 0
-let sht_loproc : nat = 0
-let sht_hiproc : nat = 0
-let sht_louser : nat = 0
-let sht_hiuser : nat = 0
-(* XXX: constants too big for Lem to parse, apparently!
-let sht_loos : nat = 1610612736 (* 0x60000000 *)
-let sht_hios : nat = 1879048191 (* 0x6fffffff *)
-let sht_loproc : nat = 1879048192 (* 0x70000000 *)
-let sht_hiproc : nat = 2147483647 (* 0x7fffffff *)
-let sht_louser : nat = 2147483648 (* 0x80000000 *)
-let sht_hiuser : nat = 2415919103 (* 0x8fffffff *)
-*)
+(* XXX: constants too big for Lem to parse, apparently! *)
+let sht_loos   : nat = 0 (* 1610612736 (* 0x60000000 *) *)
+let sht_hios   : nat = 0 (* 1879048191 (* 0x6fffffff *) *)
+let sht_loproc : nat = 0 (* 1879048192 (* 0x70000000 *) *)
+let sht_hiproc : nat = 0 (* 2147483647 (* 0x7fffffff *) *)
+let sht_louser : nat = 0 (* 2147483648 (* 0x80000000 *) *)
+let sht_hiuser : nat = 0 (* 2415919103 (* 0x8fffffff *) *)
 
-let string_of_section_type i =
+val string_of_section_type : (nat -> string) -> (nat -> string) ->
+  (nat -> string) -> nat -> string
+let string_of_section_type os proc user i =
   if i = sht_null then
     "SHT_NULL"
   else if i = sht_progbits then
@@ -185,19 +183,19 @@ let string_of_section_type i =
   else if i = sht_symtab_shndx then
     "SHT_SYMTAB_SHNDX"
   else if i >= sht_loos && i <= sht_hios then
-    "SHT_OS_SPECIFIC"  
+    os i 
   else if i >= sht_loproc && i <= sht_hiproc then
-    "SHT_PROCESSOR_SPECIFIC"
+    proc i
   else if i >= sht_louser && i <= sht_hiuser then
-    "SHT_USER_SPECIFIC"
+    user i
   else
-    "SHT UNDEFINED"
+    "Undefined or invalid section type"
 
 (** Section header table entry type. *)
 
 (** [elf32_section_header_table_entry] is the type of entries in the section
   * header table in 32-bit ELF files.  Each entry in the table details a section
-  * in the body of the ELF file
+  * in the body of the ELF file.
   *) 
 type elf32_section_header_table_entry =
   <| elf32_sh_name      : elf32_word (** Name of the section *)
@@ -213,47 +211,54 @@ type elf32_section_header_table_entry =
    |>
 
 val read_elf32_section_header_table_entry : bitstring -> error elf32_section_header_table_entry
-let read_elf32_section_header_table_entry (bs : bitstring) =
+let read_elf32_section_header_table_entry bs =
 	read_elf32_word bs >>= fun (sh_name, bs) ->
 	read_elf32_word bs >>= fun (sh_type, bs) ->
 	read_elf32_word bs >>= fun (sh_flags, bs) ->
 	read_elf32_addr bs >>= fun (sh_addr, bs) ->
-	read_elf32_off bs >>= fun (sh_offset, bs) ->
+	read_elf32_off  bs >>= fun (sh_offset, bs) ->
 	read_elf32_word bs >>= fun (sh_size, bs) ->
 	read_elf32_word bs >>= fun (sh_link, bs) ->
 	read_elf32_word bs >>= fun (sh_info, bs) ->
 	read_elf32_word bs >>= fun (sh_addralign, bs) ->
 	read_elf32_word bs >>= fun (sh_entsize, bs) ->
-		return
-			<| elf32_sh_name = sh_name
-			 ; elf32_sh_type = sh_type
-			 ; elf32_sh_flags = sh_flags
-			 ; elf32_sh_addr = sh_addr
-			 ; elf32_sh_offset = sh_offset
-			 ; elf32_sh_size = sh_size
-			 ; elf32_sh_link = sh_link
-			 ; elf32_sh_info = sh_info
-			 ; elf32_sh_addralign = sh_addralign
-			 ; elf32_sh_entsize = sh_entsize
-			 |>
+		return <| elf32_sh_name = sh_name; elf32_sh_type = sh_type;
+                elf32_sh_flags = sh_flags; elf32_sh_addr = sh_addr;
+                elf32_sh_offset = sh_offset; elf32_sh_size = sh_size;
+                elf32_sh_link = sh_link; elf32_sh_info = sh_info;
+                elf32_sh_addralign = sh_addralign; elf32_sh_entsize = sh_entsize |>
 
-let string_of_elf32_section_header_table_entry entry =
-  foldr (^) "" [
-    "\t"; "Name: "; show entry.elf32_sh_name
-  ; "\t"; "Type: "; string_of_section_type (nat_of_elf32_word entry.elf32_sh_type)
-  ; "\n\t"; "Flags: "; show entry.elf32_sh_flags
-  ; "\t"; "Address: "; show entry.elf32_sh_addr
-  ; "\t"; "Size: "; show entry.elf32_sh_size; "\n\n"
+let string_of_elf32_section_header_table_entry os proc user entry =
+  unlines [
+    "\t" ^ "Name: "    ^ show entry.elf32_sh_name
+  ; "\t" ^ "Type: "    ^ string_of_section_type os proc user (nat_of_elf32_word entry.elf32_sh_type)
+  ; "\t" ^ "Flags: "   ^ show entry.elf32_sh_flags
+  ; "\t" ^ "Address: " ^ show entry.elf32_sh_addr
+  ; "\t" ^ "Size: "    ^ show entry.elf32_sh_size
   ]
+
+let string_of_elf32_section_header_table_entry_default =
+  string_of_elf32_section_header_table_entry
+    (const "*Default OS specific print*")
+      (const "*Default processor specific print*")
+      (const "*Default user specific print*")
   
 instance (Show elf32_section_header_table_entry)
-  let show = string_of_elf32_section_header_table_entry
+  let show = string_of_elf32_section_header_table_entry_default
 end
 
 (** Section header table type. *)
 
-type elf32_section_header_table = list elf32_section_header_table_entry
-;;
+(** Type [elf32_section_header_table] represents a section header table for 32-bit
+  * ELF files.  A section header table is an array (implemented as a list, here)
+  * of section header table entries.
+  *)
+type elf32_section_header_table =
+  list elf32_section_header_table_entry
+
+class (HasElf32SectionHeaderTable 'a)
+  val get_elf32_section_header_table : 'a -> maybe elf32_section_header_table
+end
 
 let rec read_elf32_section_header_table' entry_size bitstring =
   if length bitstring = 0 then
@@ -297,6 +302,8 @@ let is_valid_elf32_section_header_table tbl =
         (* XXX: more correctness criteria in time *)
   end
   
-let string_of_elf32_section_header_table (tbl : elf32_section_header_table) : string =
-	"Section header table:" ^ "\n" ^
-		foldr (^) "" (map string_of_elf32_section_header_table_entry tbl)
+let string_of_elf32_section_header_table os proc user tbl =
+    unlines [
+      "Section header table contents:"
+    ; unlines (List.map (string_of_elf32_section_header_table_entry os proc user) tbl)
+    ]

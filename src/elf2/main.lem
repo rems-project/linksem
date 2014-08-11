@@ -4,15 +4,19 @@ open import Missing_pervasives
 
 open import Elf_header
 open import Elf_file1
+open import Elf_executable_file2
+open import Elf_executable_file3
 
 let default_os m =
-  "[Default OS specific print]"
+  "*Default OS specific print*"
 
 let default_proc m =
-  "[Default processor specific print]"
+  "*Default processor specific print*"
 
 let _ =
   Bitstring.acquire "/usr/bin/ld" >>= fun bs0 ->
   Elf_file1.read_elf32_file1 bs0 >>= fun f1 ->
   let _ = Missing_pervasives.print (string_of_elf32_file1 default_os default_proc f1) in
+  Elf_executable_file2.refine_elf32_file1 f1 >>= fun ef2 ->
+  let _ = Missing_pervasives.print (string_of_elf32_executable_file2 default_os default_proc default_os default_proc ef2) in
   return ()

@@ -6,8 +6,11 @@ open import Maybe
 open import Num
 open import String
 
-open import Bitstring
+open import Endian
+
 open import Elf_types
+
+open import Bitstring
 open import Error
 open import Missing_pervasives
 open import Show
@@ -571,7 +574,7 @@ let string_of_elf32_header os proc hdr =
 	let shnum     = show hdr.elf32_shnum in
 	let shstrndx  = show hdr.elf32_shstrndx in
 		unlines [
-			"[Header data]:"
+			"Header data:"
 		; "\t" ^ "Magic number: " ^ ident
 		; "\t" ^ "Type: " ^ typ
     ; "\t" ^ "Version: " ^ ver
@@ -580,15 +583,27 @@ let string_of_elf32_header os proc hdr =
 
 val string_of_elf32_header_default : elf32_header -> string
 let string_of_elf32_header_default =
-	string_of_elf32_header (const "OS specific") (const "Processor specific")
+	string_of_elf32_header
+    (const "*Default OS specific print*")
+      (const "*Default processor specific print*")
 	
 instance (Show elf32_header)
 	let show = string_of_elf32_header_default
 end
 
+(** [deduce_endian] deduces the endianness of an ELF file based on the ELF
+  * header's magic number.
+  *)
+val deduce_endian : unsigned_char -> endian
+let deduce_endian = const Little
+
 val read_elf32_header : bitstring -> error (elf32_header * bitstring)
 let read_elf32_header bs =
-	repeatM' ei_nident bs read_unsigned_char >>= fun (ident, bs) ->
+  (* FIXME: what to do here with endianness?  Is there a default for reading the
+   * initial bytes of the header, or do you have to read in as both little and
+   * big endian until the bytes of the magic number match their expected value?
+   *)
+	repeatM' ei_nident bs (read_unsigned_char Little) >>= fun (ident, bs) ->
 	read_elf32_half bs >>= fun (typ, bs) ->
 	read_elf32_half bs >>= fun (machine, bs) ->
 	read_elf32_word bs >>= fun (version, bs) ->
@@ -602,22 +617,13 @@ let read_elf32_header bs =
 	read_elf32_half bs >>= fun (shentsize, bs) ->
 	read_elf32_half bs >>= fun (shnum, bs) ->
 	read_elf32_half bs >>= fun (shstrndx, bs) ->
-		return
-			(<| elf32_ident = ident
-			 ; elf32_type  = typ
-			 ; elf32_machine = machine
-			 ; elf32_version = version
-			 ; elf32_entry = entry
-			 ; elf32_phoff = phoff
-			 ; elf32_shoff = shoff
-			 ; elf32_flags = flags
-			 ; elf32_ehsize = ehsize
-			 ; elf32_phentsize = phentsize
-			 ; elf32_phnum = phnum
-			 ; elf32_shentsize = shentsize
-			 ; elf32_shnum = shnum
-			 ; elf32_shstrndx = shstrndx
-			 |>, bs)
+		return (<| elf32_ident = ident; elf32_type  = typ;
+                 elf32_machine = machine; elf32_version = version;
+                 elf32_entry = entry; elf32_phoff = phoff;
+                 elf32_shoff = shoff; elf32_flags = flags;
+                 elf32_ehsize = ehsize; elf32_phentsize = phentsize;
+                 elf32_phnum = phnum; elf32_shentsize = shentsize;
+                 elf32_shnum = shnum; elf32_shstrndx = shstrndx |>, bs)
 
 val is_elf32_header_padding_correct : elf32_header -> bool
 let is_elf32_header_padding_correct ehdr =

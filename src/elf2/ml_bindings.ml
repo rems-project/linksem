@@ -1,3 +1,4 @@
+open Endian
 open Error
 
 let decimal_string_of_int64 e =
@@ -11,7 +12,6 @@ let hex_string_of_int64 (e : Int64.t) : string =
 ;;
 
 let partition_bitstring size bitstring =
-  (*let _ = Printf.printf "Partitioning bitstring at %i...\n" size in*)
     Bitstring.takebits size bitstring, Bitstring.dropbits size bitstring
 ;;
 
@@ -23,7 +23,7 @@ let acquire_bitstring path_to_target =
     Fail ("acquire_bitstring: cannot open file" ^ path_to_target)
 
 
-let read_unsigned_char bs =
+let read_unsigned_char endian bs =
   let cut, rest = partition_bitstring 8 bs in
 	bitmatch cut with
 	  | { unsigned : 8 : littleendian } -> return (Int64.of_int unsigned, rest)

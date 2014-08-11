@@ -1,0 +1,33 @@
+open import Maybe
+
+open import Elf_header
+open import Elf_types
+open import Elf_section_header_table
+open import Elf_program_header_table
+
+open import Bitstring
+
+(** Type [elf32_executable_file3] represents the lazy unfolding of a 32-bit ELF
+  * file where the header, program header table and optional section header table
+  * have been filled in, with all other data being left uninterpreted.
+  *)
+type elf32_executable_file3 =
+  <| elf32_executable_file3_header               : elf32_header
+   ; elf32_executable_file3_program_header_table : elf32_program_header_table
+   ; elf32_executable_file3_section_header_table : maybe elf32_section_header_table
+   ; elf32_executable_file3_body                 : bitstring
+   |>
+
+instance (HasElf32Header elf32_executable_file3)
+  let get_elf32_header f3 = f3.elf32_executable_file3_header
+end
+
+instance (HasElf32ProgramHeaderTable elf32_executable_file3)
+  let get_elf32_program_header_table f3 =
+    Just (f3.elf32_executable_file3_program_header_table)
+end
+
+instance (HasElf32SectionHeaderTable elf32_executable_file3)
+  let get_elf32_section_header_table f3 =
+    f3.elf32_executable_file3_section_header_table
+end

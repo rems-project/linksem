@@ -1,20 +1,23 @@
-open import Bitstring
+open import Basic_classes
+open import String
+
+open import Endian
+
 open import Elf_header
 open import Elf_types
+
+open import Bitstring
 open import Error
 open import Missing_pervasives
 open import Show
 
-open import Basic_classes
-open import String
-
 (** Type [elf_file1] represents the first lazy unfolding of the structure
   * of an ELF file, wherein the ELF header is populated and all other data
-  * is left uninterpreted.
+  * is left uninterpreted.  Endian information is kept.
   *)
 type elf32_file1 =
-  <| elf32_file1_header : elf32_header
-   ; elf32_file1_body   : bitstring
+  <| elf32_file1_header : elf32_header (** The ELF header (mandatory) *)
+   ; elf32_file1_body   : bitstring    (** Uninterpreted data *)
    |>
 
 instance (HasElf32Header elf32_file1)
@@ -25,9 +28,9 @@ val string_of_elf32_file1 : (nat -> string) -> (nat -> string) -> elf32_file1 ->
 let string_of_elf32_file1 os proc f1 =
   unlines [
     "Type elf32_file1:"
-  ; "\t"; string_of_elf32_header os proc f1.elf32_file1_header
-  ; "[Body]:"
-  ; "\tUninterpreted data of length " ^ show (Bitstring.length f1.elf32_file1_body) ^ "]"
+  ; string_of_elf32_header os proc f1.elf32_file1_header
+  ; "Body:"
+  ; "\tUninterpreted data of length " ^ show (Bitstring.length f1.elf32_file1_body)
   ]
 
 (** [is_executable_efl32_file1] tests whether the ELF file is an executable

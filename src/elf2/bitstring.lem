@@ -23,7 +23,7 @@ declare ocaml target_rep function length = `Bitstring.bitstring_length`
 
 val partition : nat -> bitstring -> (bitstring * bitstring)
 
-declare ocaml target_rep function partition = `Utility.partition_bitstring`
+declare ocaml target_rep function partition = `Ml_bindings.partition_bitstring`
 
 val equal : bitstring -> bitstring -> bool
 
