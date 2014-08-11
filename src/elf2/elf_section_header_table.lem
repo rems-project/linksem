@@ -7,6 +7,7 @@ open import Num
 open import String
 
 open import Elf_types
+open import Endian
 
 open import Bitstring
 open import Error
@@ -210,18 +211,18 @@ type elf32_section_header_table_entry =
    ; elf32_sh_entsize   : elf32_word (** Size of each entry in table, if section is one *)
    |>
 
-val read_elf32_section_header_table_entry : bitstring -> error elf32_section_header_table_entry
-let read_elf32_section_header_table_entry bs =
-	read_elf32_word bs >>= fun (sh_name, bs) ->
-	read_elf32_word bs >>= fun (sh_type, bs) ->
-	read_elf32_word bs >>= fun (sh_flags, bs) ->
-	read_elf32_addr bs >>= fun (sh_addr, bs) ->
-	read_elf32_off  bs >>= fun (sh_offset, bs) ->
-	read_elf32_word bs >>= fun (sh_size, bs) ->
-	read_elf32_word bs >>= fun (sh_link, bs) ->
-	read_elf32_word bs >>= fun (sh_info, bs) ->
-	read_elf32_word bs >>= fun (sh_addralign, bs) ->
-	read_elf32_word bs >>= fun (sh_entsize, bs) ->
+val read_elf32_section_header_table_entry : endian -> bitstring -> error elf32_section_header_table_entry
+let read_elf32_section_header_table_entry endian bs =
+	read_elf32_word endian bs >>= fun (sh_name, bs) ->
+	read_elf32_word endian bs >>= fun (sh_type, bs) ->
+	read_elf32_word endian bs >>= fun (sh_flags, bs) ->
+	read_elf32_addr endian bs >>= fun (sh_addr, bs) ->
+	read_elf32_off  endian bs >>= fun (sh_offset, bs) ->
+	read_elf32_word endian bs >>= fun (sh_size, bs) ->
+	read_elf32_word endian bs >>= fun (sh_link, bs) ->
+	read_elf32_word endian bs >>= fun (sh_info, bs) ->
+	read_elf32_word endian bs >>= fun (sh_addralign, bs) ->
+	read_elf32_word endian bs >>= fun (sh_entsize, bs) ->
 		return <| elf32_sh_name = sh_name; elf32_sh_type = sh_type;
                 elf32_sh_flags = sh_flags; elf32_sh_addr = sh_addr;
                 elf32_sh_offset = sh_offset; elf32_sh_size = sh_size;
@@ -260,20 +261,20 @@ class (HasElf32SectionHeaderTable 'a)
   val get_elf32_section_header_table : 'a -> maybe elf32_section_header_table
 end
 
-let rec read_elf32_section_header_table' entry_size bitstring =
+let rec read_elf32_section_header_table' entry_size endian bitstring =
   if length bitstring = 0 then
     return []
   else
     let (eat, rest) = partition entry_size bitstring in
-      read_elf32_section_header_table_entry eat >>= fun sect ->
-      read_elf32_section_header_table' entry_size rest     >>= fun tail ->
+      read_elf32_section_header_table_entry endian eat >>= fun sect ->
+      read_elf32_section_header_table' entry_size endian rest     >>= fun tail ->
       return (sect::tail)
 
-val read_elf32_section_header_table : nat -> nat -> nat -> bitstring -> error (elf32_section_header_table * bitstring)
-let read_elf32_section_header_table size entry_size offset bitstring =
+val read_elf32_section_header_table : nat -> nat -> nat -> endian -> bitstring -> error (elf32_section_header_table * bitstring)
+let read_elf32_section_header_table size entry_size offset endian bitstring =
 	let (prefix, relevant) = partition offset bitstring in
   let (eat, rest) = partition (size * entry_size) relevant in
-  	read_elf32_section_header_table' entry_size eat >>= fun entries ->
+  	read_elf32_section_header_table' entry_size endian eat >>= fun entries ->
     return (entries, rest)
 ;;
 

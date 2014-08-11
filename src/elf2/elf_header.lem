@@ -579,6 +579,10 @@ let string_of_elf32_header os proc hdr =
 		; "\t" ^ "Type: " ^ typ
     ; "\t" ^ "Version: " ^ ver
 		; "\t" ^ "Machine: " ^ mach
+    ; "\t" ^ "Entry point: " ^ entry
+    ; "\t" ^ "Flags: " ^ flags
+    ; "\t" ^ "Entries in program header table: " ^ phnum
+    ; "\t" ^ "Entries in section header table: " ^ shnum
 		]
 
 val string_of_elf32_header_default : elf32_header -> string
@@ -591,11 +595,15 @@ instance (Show elf32_header)
 	let show = string_of_elf32_header_default
 end
 
+val get_elf32_header_endian : elf32_header -> endian
+let get_elf32_header_endian hdr = Little (* FIXME *)
+
+
 (** [deduce_endian] deduces the endianness of an ELF file based on the ELF
   * header's magic number.
   *)
-val deduce_endian : unsigned_char -> endian
-let deduce_endian = const Little
+val deduce_endian : list unsigned_char -> endian
+let deduce_endian id = Little (* FIXME *)
 
 val read_elf32_header : bitstring -> error (elf32_header * bitstring)
 let read_elf32_header bs =
@@ -603,20 +611,21 @@ let read_elf32_header bs =
    * initial bytes of the header, or do you have to read in as both little and
    * big endian until the bytes of the magic number match their expected value?
    *)
-	repeatM' ei_nident bs (read_unsigned_char Little) >>= fun (ident, bs) ->
-	read_elf32_half bs >>= fun (typ, bs) ->
-	read_elf32_half bs >>= fun (machine, bs) ->
-	read_elf32_word bs >>= fun (version, bs) ->
-	read_elf32_addr bs >>= fun (entry, bs) ->
-	read_elf32_off bs >>= fun (phoff, bs) ->
-	read_elf32_off bs >>= fun (shoff, bs) ->
-	read_elf32_word bs >>= fun (flags, bs) ->
-	read_elf32_half bs >>= fun (ehsize, bs) ->
-	read_elf32_half bs >>= fun (phentsize, bs) ->
-	read_elf32_half bs >>= fun (phnum, bs) ->
-	read_elf32_half bs >>= fun (shentsize, bs) ->
-	read_elf32_half bs >>= fun (shnum, bs) ->
-	read_elf32_half bs >>= fun (shstrndx, bs) ->
+	repeatM' ei_nident bs (read_unsigned_char default_endian) >>= fun (ident, bs) ->
+  let endian = deduce_endian ident in
+	read_elf32_half endian bs >>= fun (typ, bs) ->
+	read_elf32_half endian bs >>= fun (machine, bs) ->
+	read_elf32_word endian bs >>= fun (version, bs) ->
+	read_elf32_addr endian bs >>= fun (entry, bs) ->
+	read_elf32_off  endian bs >>= fun (phoff, bs) ->
+	read_elf32_off  endian bs >>= fun (shoff, bs) ->
+	read_elf32_word endian bs >>= fun (flags, bs) ->
+	read_elf32_half endian bs >>= fun (ehsize, bs) ->
+	read_elf32_half endian bs >>= fun (phentsize, bs) ->
+	read_elf32_half endian bs >>= fun (phnum, bs) ->
+	read_elf32_half endian bs >>= fun (shentsize, bs) ->
+	read_elf32_half endian bs >>= fun (shnum, bs) ->
+	read_elf32_half endian bs >>= fun (shstrndx, bs) ->
 		return (<| elf32_ident = ident; elf32_type  = typ;
                  elf32_machine = machine; elf32_version = version;
                  elf32_entry = entry; elf32_phoff = phoff;
@@ -654,35 +663,35 @@ let is_elf32_header_version_correct ehdr =
   * ELF file header (i.e. [elf32_ident] is [ei_nident] entries long, and other
   * constraints on headers).
   *)
-val is_valid_elf32_header : elf32_header -> bool
-let is_valid_elf32_header ehdr =
+val is_elf32_header_valid : elf32_header -> bool
+let is_elf32_header_valid ehdr =
   List.length ehdr.elf32_ident = ei_nident &&
   is_elf32_header_magic_number_correct ehdr &&
   is_elf32_header_padding_correct ehdr &&
   is_elf32_header_class_correct ehdr &&
   is_elf32_header_version_correct ehdr
 
-(** [elf32_header_program_table_size] calculates the size of the program table
+(** [get_elf32_header_program_table_size] calculates the size of the program table
   * (entry size x number of entries) based on data in the ELF header.
   *)
-val elf32_header_program_table_size : elf32_header -> nat
-let elf32_header_program_table_size ehdr =
+val get_elf32_header_program_table_size : elf32_header -> nat
+let get_elf32_header_program_table_size ehdr =
   let phentsize = nat_of_elf32_half ehdr.elf32_phentsize in
   let phnum     = nat_of_elf32_half ehdr.elf32_phnum in
     phentsize * phnum
 
-(** [elf32_header_is_section_table_present] calculates whether a section table
+(** [is_elf32_header_section_table_present] calculates whether a section table
   * is present in the ELF file or not.
   *)
-val elf32_header_is_section_table_present : elf32_header -> bool
-let elf32_header_is_section_table_present ehdr =
+val is_elf32_header_section_table_present : elf32_header -> bool
+let is_elf32_header_section_table_present ehdr =
   not (nat_of_elf32_off ehdr.elf32_shoff = 0)
 
-(** [elf32_header_section_table_size] calculates the size of the section table
+(** [get_elf32_header_section_table_size] calculates the size of the section table
   * (entry size x number of entries) based on data in the ELF header.
   *)
-val elf32_header_section_table_size : elf32_header -> nat
-let elf32_header_section_table_size ehdr =
+val get_elf32_header_section_table_size : elf32_header -> nat
+let get_elf32_header_section_table_size ehdr =
   let shentsize = nat_of_elf32_half ehdr.elf32_shentsize in
   let shnum     = nat_of_elf32_half ehdr.elf32_shnum in
     shentsize * shnum

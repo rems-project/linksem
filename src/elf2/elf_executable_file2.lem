@@ -49,6 +49,7 @@ let refine_elf32_file1 f1 =
     Fail "refine_elf32_file1: not an executable file type"
   else
     let hdr         = f1.elf32_file1_header in
+    let endian      = get_elf32_header_endian hdr in
     let bs1         = f1.elf32_file1_body   in
     let pentries    = nat_of_elf32_half hdr.elf32_phnum     in
     let pentry_size = nat_of_elf32_half hdr.elf32_phentsize * 8 in
@@ -60,7 +61,7 @@ let refine_elf32_file1 f1 =
         let (_, pcut)   = partition poffset bs1 in
         let (pexact, _) = partition psize pcut in
           (* Bitstring irrelevant below as exact size used... *)
-          read_elf32_program_header_table psize pexact >>= fun (pht, _) ->
+          read_elf32_program_header_table psize endian pexact >>= fun (pht, _) ->
             return <| elf32_executable_file2_header = hdr;
               elf32_executable_file2_program_header_table = pht;
               elf32_executable_file2_body = bs1 |>

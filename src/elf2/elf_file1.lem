@@ -13,7 +13,7 @@ open import Show
 
 (** Type [elf_file1] represents the first lazy unfolding of the structure
   * of an ELF file, wherein the ELF header is populated and all other data
-  * is left uninterpreted.  Endian information is kept.
+  * is left uninterpreted.
   *)
 type elf32_file1 =
   <| elf32_file1_header : elf32_header (** The ELF header (mandatory) *)

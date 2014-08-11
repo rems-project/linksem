@@ -22,40 +22,99 @@ let acquire_bitstring path_to_target =
   with _ ->
     Fail ("acquire_bitstring: cannot open file" ^ path_to_target)
 
+let read_unsigned_char_le bs rest =
+  bitmatch bs with
+    | { unsigned : 8 : littleendian } -> return (Int64.of_int unsigned, rest)
+    | { _ } -> Fail "read_unsigned_char_le"
+;;
+
+let read_unsigned_char_be bs rest =
+  bitmatch bs with
+    | { unsigned : 8 : bigendian } -> return (Int64.of_int unsigned, rest)
+    | { _ } -> Fail "read_unsigned_char_be"
+;;
 
 let read_unsigned_char endian bs =
   let cut, rest = partition_bitstring 8 bs in
-	bitmatch cut with
-	  | { unsigned : 8 : littleendian } -> return (Int64.of_int unsigned, rest)
-	  | { _ } -> Fail "read_unsigned_char"
+    match endian with
+      | Little -> read_unsigned_char_le cut rest
+      | Big    -> read_unsigned_char_be cut rest
 ;;
 
-let read_elf32_addr bs =
+let read_elf32_addr_le bs rest =
+  bitmatch bs with
+    | { addr : 32 : littleendian } -> return (Int64.of_int32 addr, rest)
+    | { _ } -> Fail "read_elf32_addr_le"
+;;
+
+let read_elf32_addr_be bs rest =
+  bitmatch bs with
+    | { addr : 32 : bigendian } -> return (Int64.of_int32 addr, rest)
+    | { _ } -> Fail "read_elf32_addr_be"
+;;
+
+let read_elf32_addr endian bs =
   let cut, rest = partition_bitstring 32 bs in
-	bitmatch cut with
-	  | { addr : 32 : littleendian } -> return (Int64.of_int32 addr, rest)
-	  | { _ } -> Fail "read_elf32_addr"
+  	match endian with
+      | Little -> read_elf32_addr_le cut rest
+      | Big    -> read_elf32_addr_be cut rest
 ;;
 
-let read_elf32_off bs =
+let read_elf32_off_le bs rest =
+  bitmatch bs with
+    | { off : 32 : littleendian } -> return (Int64.of_int32 off, rest)
+    | { _ } -> Fail "read_elf32_off_le"
+;;
+
+let read_elf32_off_be bs rest =
+  bitmatch bs with
+    | { off : 32 : bigendian } -> return (Int64.of_int32 off, rest)
+    | { _ } -> Fail "read_elf32_off_be"
+;;
+
+let read_elf32_off endian bs =
   let cut, rest = partition_bitstring 32 bs in
-	bitmatch cut with
-	  | { off : 32 : littleendian } -> return (Int64.of_int32 off, rest)
-	  | { _ } -> Fail "read_elf32_off"
+    match endian with
+      | Little -> read_elf32_off_le cut rest
+      | Big    -> read_elf32_off_be cut rest
 ;;
 
-let read_elf32_half bs =
+let read_elf32_half_le bs rest =
+  bitmatch bs with
+    | { half : 16 : littleendian } -> return (Int64.of_int half, rest)
+    | { _ } -> Fail "read_elf32_half_le"
+;;
+
+let read_elf32_half_be bs rest =
+  bitmatch bs with
+    | { half : 16 : bigendian } -> return (Int64.of_int half, rest)
+    | { _ } -> Fail "read_elf32_half_be"
+;;
+
+let read_elf32_half endian bs =
   let cut, rest = partition_bitstring 16 bs in
-	bitmatch cut with
-	  | { half : 16 : littleendian } -> return (Int64.of_int half, rest)
-	  | { _ } -> Fail "read_elf32_half"
+    match endian with
+      | Little -> read_elf32_half_le cut rest
+      | Big    -> read_elf32_half_be cut rest
 ;;
 
-let read_elf32_word bs =
+let read_elf32_word_le bs rest =
+  bitmatch bs with
+    | { word : 32 : littleendian } -> return (Int64.of_int32 word, rest)
+    | { _ } -> Fail "read_elf32_word_le"
+;;
+
+let read_elf32_word_be bs rest =
+  bitmatch bs with
+    | { word : 32 : bigendian } -> return (Int64.of_int32 word, rest)
+    | { _ } -> Fail "read_elf32_word_be"
+;;
+
+let read_elf32_word endian bs =
   let cut, rest = partition_bitstring 32 bs in
-	bitmatch cut with
-	  | { word : 32 : littleendian } -> return (Int64.of_int32 word, rest)
-	  | { _ } -> Fail "read_elf32_word"
+    match endian with
+      | Little -> read_elf32_word_le cut rest
+      | Big    -> read_elf32_word_be cut rest
 ;;
 
 let split_string_on_char strings c =

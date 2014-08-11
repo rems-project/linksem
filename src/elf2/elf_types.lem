@@ -43,7 +43,7 @@ declare ocaml target_rep type elf32_addr = `Int64.t`
 
 val string_of_elf32_addr : elf32_addr -> string
 val nat_of_elf32_addr : elf32_addr -> nat
-val read_elf32_addr : bitstring -> error (elf32_addr * bitstring)
+val read_elf32_addr : endian -> bitstring -> error (elf32_addr * bitstring)
 
 declare ocaml target_rep function string_of_elf32_addr = `Int64.to_string`
 declare ocaml target_rep function read_elf32_addr = `Ml_bindings.read_elf32_addr`
@@ -60,7 +60,7 @@ type elf32_half
 declare ocaml target_rep type elf32_half = `Int64.t`
 
 val string_of_elf32_half : elf32_half -> string
-val read_elf32_half : bitstring -> error (elf32_half * bitstring)
+val read_elf32_half : endian -> bitstring -> error (elf32_half * bitstring)
 val nat_of_elf32_half : elf32_half -> nat
 
 declare ocaml target_rep function string_of_elf32_half = `Int64.to_string`
@@ -80,7 +80,7 @@ declare ocaml target_rep type elf32_off = `Int64.t`
 
 val string_of_elf32_off : elf32_off -> string
 val nat_of_elf32_off : elf32_off -> nat
-val read_elf32_off : bitstring -> error (elf32_off * bitstring)
+val read_elf32_off : endian -> bitstring -> error (elf32_off * bitstring)
 
 declare ocaml target_rep function string_of_elf32_off = `Int64.to_string`
 declare ocaml target_rep function read_elf32_off = `Ml_bindings.read_elf32_off`
@@ -98,7 +98,7 @@ declare ocaml target_rep type elf32_word = `Int64.t`
 
 val string_of_elf32_word : elf32_word -> string
 val nat_of_elf32_word : elf32_word -> nat
-val read_elf32_word : bitstring -> error (elf32_word * bitstring)
+val read_elf32_word : endian -> bitstring -> error (elf32_word * bitstring)
 
 declare ocaml target_rep function string_of_elf32_word = `Int64.to_string`
 declare ocaml target_rep function read_elf32_word = `Ml_bindings.read_elf32_word`
@@ -116,7 +116,7 @@ declare ocaml target_rep type elf32_sword = `Int64.t`
 
 val string_of_elf32_sword : elf32_sword -> string
 val nat_of_elf32_sword : elf32_sword -> nat
-val read_elf32_sword : bitstring -> error (elf32_sword * bitstring)
+val read_elf32_sword : endian -> bitstring -> error (elf32_sword * bitstring)
 
 declare ocaml target_rep function string_of_elf32_sword = `Int64.to_string`
 declare ocaml target_rep function read_elf32_sword = `Ml_bindings.read_elf32_sword`

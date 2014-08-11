@@ -7,6 +7,7 @@ open import Num
 open import String
 
 open import Elf_types
+open import Endian
 
 open import Bitstring
 open import Error
@@ -121,20 +122,20 @@ instance (Show elf32_program_header_table_entry)
 	let show = string_of_elf32_program_header_table_entry_default
 end
 
-(** [read_elf32_program_header_table_entry bs0] reads an ELF32 program header table
-  * entry from bitstring [bs0].  If [bs0] is larger than necessary, the excess
-  * is returned from the function, too.
+(** [read_elf32_program_header_table_entry endian bs0] reads an ELF32 program header table
+  * entry from bitstring [bs0] assuming endianness [endian].  If [bs0] is larger
+  * than necessary, the excess is returned from the function, too.
   *)
-val read_elf32_program_header_table_entry : bitstring -> error (elf32_program_header_table_entry * bitstring)
-let read_elf32_program_header_table_entry bs =
-	read_elf32_word bs >>= fun (typ, bs) ->
-	read_elf32_off  bs >>= fun (offset, bs) ->
-	read_elf32_addr bs >>= fun (vaddr, bs) ->
-	read_elf32_addr bs >>= fun (paddr, bs) ->
-	read_elf32_word bs >>= fun (filesz, bs) ->
-	read_elf32_word bs >>= fun (memsz, bs) ->
-	read_elf32_word bs >>= fun (flags, bs) ->
-	read_elf32_word bs >>= fun (align, bs) ->
+val read_elf32_program_header_table_entry : endian -> bitstring -> error (elf32_program_header_table_entry * bitstring)
+let read_elf32_program_header_table_entry endian bs =
+	read_elf32_word endian bs >>= fun (typ, bs) ->
+	read_elf32_off  endian bs >>= fun (offset, bs) ->
+	read_elf32_addr endian bs >>= fun (vaddr, bs) ->
+	read_elf32_addr endian bs >>= fun (paddr, bs) ->
+	read_elf32_word endian bs >>= fun (filesz, bs) ->
+	read_elf32_word endian bs >>= fun (memsz, bs) ->
+	read_elf32_word endian bs >>= fun (flags, bs) ->
+	read_elf32_word endian bs >>= fun (align, bs) ->
 		Success (<| p_type = typ; p_offset = offset;
                 p_vaddr = vaddr; p_paddr = paddr;
                 p_filesz = filesz; p_memsz = memsz;
@@ -153,29 +154,29 @@ class (HasElf32ProgramHeaderTable 'a)
   val get_elf32_program_header_table : 'a -> maybe elf32_program_header_table
 end
 
-(** [read_elf32_program_header_table' bs0] reads an ELF32 program header table from
-  * bitstring [bs0].  The bitstring [bs0] is assumed to have exactly the correct
-  * size for the table.  For internal use, only.  Use [read_elf32_program_header_table]
-  * below instead.
+(** [read_elf32_program_header_table' endian bs0] reads an ELF32 program header table from
+  * bitstring [bs0] assuming endianness [endian].  The bitstring [bs0] is assumed
+  * to have exactly the correct size for the table.  For internal use, only.  Use
+  * [read_elf32_program_header_table] below instead.
   *)
-let rec read_elf32_program_header_table' bs0 =
+let rec read_elf32_program_header_table' endian bs0 =
 	if length bs0 = 0 then
   	return []
   else
-  	read_elf32_program_header_table_entry bs0 >>= fun (entry, bs1) ->
-    read_elf32_program_header_table' bs1 >>= fun tail ->
+  	read_elf32_program_header_table_entry endian bs0 >>= fun (entry, bs1) ->
+    read_elf32_program_header_table' endian bs1 >>= fun tail ->
     return (entry::tail)
 
-(** [read_elf32_program_header_table table_size bs0] reads an ELF32 program header
-  * table from bitstring [bs0] based on the size (in bytes) passed in via [table_size].
+(** [read_elf32_program_header_table table_size endian bs0] reads an ELF32 program header
+  * table from bitstring [bs0] assuming endianness [endian] based on the size (in bytes) passed in via [table_size].
   * This [table_size] argument should be equal to the number of entries in the
   * table multiplied by the fixed entry size.  Bitstring [bs0] may be larger than
   * necessary, in which case the excess is returned.
   *)
-val read_elf32_program_header_table : nat -> bitstring -> error (elf32_program_header_table * bitstring)
-let read_elf32_program_header_table table_size bs0 =
+val read_elf32_program_header_table : nat -> endian -> bitstring -> error (elf32_program_header_table * bitstring)
+let read_elf32_program_header_table table_size endian bs0 =
 	let (eat, rest) = partition table_size bs0 in
-		read_elf32_program_header_table' eat >>= fun table ->
+		read_elf32_program_header_table' endian eat >>= fun table ->
 		return (table, rest)
 
 (** [string_of_elf32_program_header_table os proc tbl] produces a string representation
