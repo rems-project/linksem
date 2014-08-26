@@ -6,30 +6,30 @@ open import String
 
 open import Show
 
-(** Type [endian] describes the endianness of an ELF file.  This is deduced from
+(** Type [endianness] describes the endianness of an ELF file.  This is deduced from
   * the first few bytes (magic number, etc.) of the ELF header.
   *)
-type endian
+type endianness
   = Big    (* Big endian *)
   | Little (* Little endian *)
 
-(** [default_endian] is a default endianness to use when reading in the ELF header
+(** [default_endianness] is a default endianness to use when reading in the ELF header
   * before we have deduced from its entries what the rest of the file is encoded
   * with.
   *)
-val default_endian : endian
-let default_endian = Little
+val default_endianness : endianness
+let default_endianness = Little
 
-(** [string_of_endian e] produces a string representation of the [endian] value
+(** [string_of_endianness e] produces a string representation of the [endianness] value
   * [e].
   *)
-val string_of_endian : endian -> string
-let string_of_endian e =
+val string_of_endianness : endianness -> string
+let string_of_endianness e =
   match e with
     | Big    -> "Big"
     | Little -> "Little"
   end
 
-instance (Show endian)
-  let show = string_of_endian
+instance (Show endianness)
+  let show = string_of_endianness
 end

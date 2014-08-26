@@ -49,7 +49,7 @@ let refine_elf32_file1 f1 =
     Fail "refine_elf32_file1: not an executable file type"
   else
     let hdr         = f1.elf32_file1_header in
-    let endian      = get_elf32_header_endian hdr in
+    let endian      = get_elf32_header_endianness hdr in
     let bs1         = f1.elf32_file1_body   in
     let pentries    = nat_of_elf32_half hdr.elf32_phnum     in
     let pentry_size = nat_of_elf32_half hdr.elf32_phentsize * 8 in

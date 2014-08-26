@@ -557,6 +557,17 @@ class (HasElf32Header 'a)
   val get_elf32_header : 'a -> elf32_header
 end
 
+
+(** [deduce_endian] deduces the endianness of an ELF file based on the ELF
+  * header's magic number.
+  *)
+val deduce_endianness : list unsigned_char -> endianness
+let deduce_endianness id = Endian.Little (* FIXME *)
+
+val get_elf32_header_endianness : elf32_header -> endianness
+let get_elf32_header_endianness hdr =
+  deduce_endianness (hdr.elf32_ident)
+
 val string_of_elf32_header : (nat -> string) -> (nat -> string) -> elf32_header -> string
 let string_of_elf32_header os proc hdr =
 	let ident = show hdr.elf32_ident in
@@ -576,6 +587,7 @@ let string_of_elf32_header os proc hdr =
 		unlines [
 			"Header data:"
 		; "\t" ^ "Magic number: " ^ ident
+    ; "\t" ^ "Endianness: " ^ show (deduce_endianness hdr.elf32_ident)
 		; "\t" ^ "Type: " ^ typ
     ; "\t" ^ "Version: " ^ ver
 		; "\t" ^ "Machine: " ^ mach
@@ -595,24 +607,14 @@ instance (Show elf32_header)
 	let show = string_of_elf32_header_default
 end
 
-val get_elf32_header_endian : elf32_header -> endian
-let get_elf32_header_endian hdr = Little (* FIXME *)
-
-
-(** [deduce_endian] deduces the endianness of an ELF file based on the ELF
-  * header's magic number.
-  *)
-val deduce_endian : list unsigned_char -> endian
-let deduce_endian id = Little (* FIXME *)
-
 val read_elf32_header : bitstring -> error (elf32_header * bitstring)
 let read_elf32_header bs =
   (* FIXME: what to do here with endianness?  Is there a default for reading the
    * initial bytes of the header, or do you have to read in as both little and
    * big endian until the bytes of the magic number match their expected value?
    *)
-	repeatM' ei_nident bs (read_unsigned_char default_endian) >>= fun (ident, bs) ->
-  let endian = deduce_endian ident in
+	repeatM' ei_nident bs (read_unsigned_char default_endianness) >>= fun (ident, bs) ->
+  let endian = deduce_endianness ident in
 	read_elf32_half endian bs >>= fun (typ, bs) ->
 	read_elf32_half endian bs >>= fun (machine, bs) ->
 	read_elf32_word endian bs >>= fun (version, bs) ->

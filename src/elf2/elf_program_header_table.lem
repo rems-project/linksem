@@ -126,7 +126,7 @@ end
   * entry from bitstring [bs0] assuming endianness [endian].  If [bs0] is larger
   * than necessary, the excess is returned from the function, too.
   *)
-val read_elf32_program_header_table_entry : endian -> bitstring -> error (elf32_program_header_table_entry * bitstring)
+val read_elf32_program_header_table_entry : endianness -> bitstring -> error (elf32_program_header_table_entry * bitstring)
 let read_elf32_program_header_table_entry endian bs =
 	read_elf32_word endian bs >>= fun (typ, bs) ->
 	read_elf32_off  endian bs >>= fun (offset, bs) ->
@@ -173,7 +173,7 @@ let rec read_elf32_program_header_table' endian bs0 =
   * table multiplied by the fixed entry size.  Bitstring [bs0] may be larger than
   * necessary, in which case the excess is returned.
   *)
-val read_elf32_program_header_table : nat -> endian -> bitstring -> error (elf32_program_header_table * bitstring)
+val read_elf32_program_header_table : nat -> endianness -> bitstring -> error (elf32_program_header_table * bitstring)
 let read_elf32_program_header_table table_size endian bs0 =
 	let (eat, rest) = partition table_size bs0 in
 		read_elf32_program_header_table' endian eat >>= fun table ->

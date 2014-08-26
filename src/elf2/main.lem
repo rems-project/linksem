@@ -13,10 +13,15 @@ let default_os m =
 let default_proc m =
   "*Default processor specific print*"
 
+let default_user m =
+  "*Default user specific print*"
+
 let _ =
   Bitstring.acquire "/usr/bin/ld" >>= fun bs0 ->
   Elf_file1.read_elf32_file1 bs0 >>= fun f1 ->
   let _ = Missing_pervasives.print (string_of_elf32_file1 default_os default_proc f1) in
   Elf_executable_file2.refine_elf32_file1 f1 >>= fun ef2 ->
   let _ = Missing_pervasives.print (string_of_elf32_executable_file2 default_os default_proc default_os default_proc ef2) in
+  Elf_executable_file3.refine_elf32_executable_file2 ef2 >>= fun ef3 ->
+  let _ = Missing_pervasives.print (string_of_elf32_executable_file3 default_os default_proc default_os default_proc default_os default_proc default_user ef3) in
   return ()

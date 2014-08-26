@@ -53,4 +53,4 @@ let is_shared_object_elf32_file1 f1 =
 val read_elf32_file1 : bitstring -> error elf32_file1
 let read_elf32_file1 bs0 =
   read_elf32_header bs0 >>= fun (hdr, bs1) ->
-  return <| elf32_file1_header = hdr; elf32_file1_body = bs1 |>
+  return <| elf32_file1_header = hdr; elf32_file1_body = bs0 |>

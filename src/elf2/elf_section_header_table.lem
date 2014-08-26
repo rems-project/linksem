@@ -211,7 +211,7 @@ type elf32_section_header_table_entry =
    ; elf32_sh_entsize   : elf32_word (** Size of each entry in table, if section is one *)
    |>
 
-val read_elf32_section_header_table_entry : endian -> bitstring -> error elf32_section_header_table_entry
+val read_elf32_section_header_table_entry : endianness -> bitstring -> error (elf32_section_header_table_entry * bitstring)
 let read_elf32_section_header_table_entry endian bs =
 	read_elf32_word endian bs >>= fun (sh_name, bs) ->
 	read_elf32_word endian bs >>= fun (sh_type, bs) ->
@@ -223,11 +223,11 @@ let read_elf32_section_header_table_entry endian bs =
 	read_elf32_word endian bs >>= fun (sh_info, bs) ->
 	read_elf32_word endian bs >>= fun (sh_addralign, bs) ->
 	read_elf32_word endian bs >>= fun (sh_entsize, bs) ->
-		return <| elf32_sh_name = sh_name; elf32_sh_type = sh_type;
+		return (<| elf32_sh_name = sh_name; elf32_sh_type = sh_type;
                 elf32_sh_flags = sh_flags; elf32_sh_addr = sh_addr;
                 elf32_sh_offset = sh_offset; elf32_sh_size = sh_size;
                 elf32_sh_link = sh_link; elf32_sh_info = sh_info;
-                elf32_sh_addralign = sh_addralign; elf32_sh_entsize = sh_entsize |>
+                elf32_sh_addralign = sh_addralign; elf32_sh_entsize = sh_entsize |>, bs)
 
 let string_of_elf32_section_header_table_entry os proc user entry =
   unlines [
@@ -261,20 +261,18 @@ class (HasElf32SectionHeaderTable 'a)
   val get_elf32_section_header_table : 'a -> maybe elf32_section_header_table
 end
 
-let rec read_elf32_section_header_table' entry_size endian bitstring =
-  if length bitstring = 0 then
+let rec read_elf32_section_header_table' endian bs0 =
+  if length bs0 = 0 then
     return []
   else
-    let (eat, rest) = partition entry_size bitstring in
-      read_elf32_section_header_table_entry endian eat >>= fun sect ->
-      read_elf32_section_header_table' entry_size endian rest     >>= fun tail ->
-      return (sect::tail)
+    read_elf32_section_header_table_entry endian bs0 >>= fun (entry, bs1) ->
+    read_elf32_section_header_table' endian bs1 >>= fun tail ->
+    return (entry::tail)
 
-val read_elf32_section_header_table : nat -> nat -> nat -> endian -> bitstring -> error (elf32_section_header_table * bitstring)
-let read_elf32_section_header_table size entry_size offset endian bitstring =
-	let (prefix, relevant) = partition offset bitstring in
-  let (eat, rest) = partition (size * entry_size) relevant in
-  	read_elf32_section_header_table' entry_size endian eat >>= fun entries ->
+val read_elf32_section_header_table : nat -> endianness -> bitstring -> error (elf32_section_header_table * bitstring)
+let read_elf32_section_header_table table_size endian bs0 =
+  let (eat, rest) = partition table_size bs0 in
+  	read_elf32_section_header_table' endian eat >>= fun entries ->
     return (entries, rest)
 ;;
 
@@ -304,7 +302,11 @@ let is_valid_elf32_section_header_table tbl =
   end
   
 let string_of_elf32_section_header_table os proc user tbl =
-    unlines [
-      "Section header table contents:"
-    ; unlines (List.map (string_of_elf32_section_header_table_entry os proc user) tbl)
-    ]
+  match tbl with
+    | Nothing  -> "Section header table not present"
+    | Just tbl ->
+        unlines [
+          "Section header table contents:"
+        ; unlines (List.map (string_of_elf32_section_header_table_entry os proc user) tbl)
+        ]
+  end
