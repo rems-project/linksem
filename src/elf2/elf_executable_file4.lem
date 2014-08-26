@@ -1,0 +1,17 @@
+open import Maybe
+
+open import Elf_header
+open import Elf_program_header_table
+open import Elf_section_header_table
+open import String_table
+
+open import Bitstring
+open import Error
+
+type elf32_executable_file4 =
+  <| elf32_executable_file4_header                      : elf32_header (** The ELF header (mandatory) *)
+   ; elf32_executable_file4_program_header_table        : elf32_program_header_table (** The program header table (mandatory) *)
+   ; elf32_executable_file4_section_header_table        : maybe elf32_section_header_table (** The section header table (optional) *)
+   ; elf32_executable_file4_section_header_string_table : string_table
+   ; elf32_executable_file4_body                        : bitstring (** Uninterpreted body *)
+   |>
