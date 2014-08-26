@@ -1,8 +1,11 @@
 open import Maybe
+open import Num
 
+open import Elf_executable_file3
 open import Elf_header
 open import Elf_program_header_table
 open import Elf_section_header_table
+open import Elf_types
 open import String_table
 
 open import Bitstring
@@ -15,3 +18,35 @@ type elf32_executable_file4 =
    ; elf32_executable_file4_section_header_string_table : string_table
    ; elf32_executable_file4_body                        : bitstring (** Uninterpreted body *)
    |>
+
+val refine_elf32_executable_file3 : elf32_executable_file3 -> error elf32_executable_file4
+let refine_elf32_executable_file3 f3 =
+  let hdr  = f3.elf32_executable_file3_header in
+  let pht  = f3.elf32_executable_file3_program_header_table in
+  let sht  = f3.elf32_executable_file3_section_header_table in
+  let bs0  = f3.elf32_executable_file3_body in
+    match sht with
+      | Nothing  ->
+          return <| elf32_executable_file4_header = hdr;
+            elf32_executable_file4_program_header_table = pht;
+            elf32_executable_file4_section_header_table = Nothing;
+            elf32_executable_file4_section_header_string_table = String_table.empty;
+            elf32_executable_file4_body = bs0 |>
+      | Just sht ->
+        let idx  = nat_of_elf32_half hdr.elf32_shstrndx in
+        let sect = List.index sht idx in
+          match sect with
+            | Nothing -> Fail "refine_elf32_executable_file3: invalid offset into section header table"
+            | Just sect ->
+              let offset = nat_of_elf32_off sect.elf32_sh_offset * 8 in
+              let size   = nat_of_elf32_word sect.elf32_sh_size * 8 in
+              let (_, cut) = Bitstring.partition offset bs0 in
+              let (rel, _) = Bitstring.partition size cut in
+              let strings  = Bitstring.string_of_bitstring rel in
+                return <| elf32_executable_file4_header = hdr;
+                  elf32_executable_file4_program_header_table = pht;
+                  elf32_executable_file4_section_header_table = Just sht;
+                  elf32_executable_file4_section_header_string_table = String_table.mk_string_table strings Missing_pervasives.null_char;
+                  elf32_executable_file4_body = bs0 |>
+          end
+    end

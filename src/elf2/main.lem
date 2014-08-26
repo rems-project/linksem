@@ -6,6 +6,7 @@ open import Elf_header
 open import Elf_file1
 open import Elf_executable_file2
 open import Elf_executable_file3
+open import Elf_executable_file4
 
 let default_os m =
   "*Default OS specific print*"
@@ -24,4 +25,5 @@ let _ =
   let _ = Missing_pervasives.print (string_of_elf32_executable_file2 default_os default_proc default_os default_proc ef2) in
   Elf_executable_file3.refine_elf32_executable_file2 ef2 >>= fun ef3 ->
   let _ = Missing_pervasives.print (string_of_elf32_executable_file3 default_os default_proc default_os default_proc default_os default_proc default_user ef3) in
+  Elf_executable_file4.refine_elf32_executable_file3 ef3 >>= fun ef4 ->
   return ()
