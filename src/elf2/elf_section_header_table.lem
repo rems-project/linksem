@@ -7,7 +7,7 @@ open import Num
 open import String
 
 open import Elf_types
-open import Endian
+open import Endianness
 
 open import Bitstring
 open import Error

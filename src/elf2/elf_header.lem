@@ -6,7 +6,7 @@ open import Maybe
 open import Num
 open import String
 
-open import Endian
+open import Endianness
 
 open import Elf_types
 
@@ -562,7 +562,7 @@ end
   * header's magic number.
   *)
 val deduce_endianness : list unsigned_char -> endianness
-let deduce_endianness id = Endian.Little (* FIXME *)
+let deduce_endianness id = Little (* FIXME *)
 
 val get_elf32_header_endianness : elf32_header -> endianness
 let get_elf32_header_endianness hdr =

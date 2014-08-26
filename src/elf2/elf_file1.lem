@@ -1,7 +1,7 @@
 open import Basic_classes
 open import String
 
-open import Endian
+open import Endianness
 
 open import Elf_header
 open import Elf_types

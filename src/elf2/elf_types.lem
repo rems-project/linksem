@@ -1,7 +1,7 @@
 open import Num
 open import String
 
-open import Endian
+open import Endianness
 
 open import Bitstring
 open import Error

@@ -1,4 +1,4 @@
-open Endian
+open Endianness
 open Error
 
 let decimal_string_of_int64 e =
