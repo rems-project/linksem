@@ -13,13 +13,45 @@ type unsigned_char
 
 declare ocaml target_rep type unsigned_char = `Int64.t`
 
+(** [string_of_unsigned_char uc] provides a string representation of unsigned
+  * char [uc] (in base 10).
+  *)
 val string_of_unsigned_char : unsigned_char -> string
+
+(** [nat_of_unsigned_char uc] converts an unsigned char [uc] into a nat.
+  *)
 val nat_of_unsigned_char : unsigned_char -> nat
+
+(** [unsigned_char_of_nat n] converts a nat [n] into an unsigned char, wrapping
+  * around if the size of the nat exceeds the storage capacity of an unsigned
+  * char.
+  *)
 val unsigned_char_of_nat : nat -> unsigned_char
+
+(** [unsigned_char_land uc0 uc1] bitwise ANDs two unsigned chars, [uc0] and [uc1]
+  * together.
+  *)
 val unsigned_char_land   : unsigned_char -> unsigned_char -> unsigned_char
+
+(** [unsigned_char_lshift uc n] performs a left bitshift of [n] places on unsigned
+  * char [uc].
+  *)
 val unsigned_char_lshift : unsigned_char -> nat -> unsigned_char
+
+(** [unsigned_char_rshift uc n] performs a right bitshift of [n] places on unsigned
+  * char [uc].
+  *)
 val unsigned_char_rshift : unsigned_char -> nat -> unsigned_char
+
+(** [unsigned_char_plus uc0 uc1] adds two unsigned chars, [uc0] and [uc1].
+  *)
 val unsigned_char_plus   : unsigned_char -> unsigned_char -> unsigned_char
+
+(** [read_unsigned_char end bs0] reads an unsigned char from bitstring [bs0]
+  * assuming endianness [end].  Returns the unsigned char and the remainder of
+  * the bitstring.  Fails if an unsigned char cannot be read from the bitstring,
+  * e.g. if [bs0] is too small.
+  *)
 val read_unsigned_char   : endianness -> bitstring -> error (unsigned_char * bitstring)
 
 declare ocaml target_rep function string_of_unsigned_char = `Int64.to_string`

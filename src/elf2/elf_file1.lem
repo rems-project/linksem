@@ -24,11 +24,12 @@ instance (HasElf32Header elf32_file1)
   let get_elf32_header file1 = file1.elf32_file1_header
 end
 
-val string_of_elf32_file1 : (nat -> string) -> (nat -> string) -> elf32_file1 -> string
-let string_of_elf32_file1 os proc f1 =
+val string_of_elf32_file1 : hdr_print_bundle -> elf32_file1 -> string
+let string_of_elf32_file1 hdr_bdl f1 =
   unlines [
-    "Type elf32_file1:"
-  ; string_of_elf32_header os proc f1.elf32_file1_header
+    "\n*Type elf32_file1:"
+  ; "**Header:"
+  ; string_of_elf32_header hdr_bdl f1.elf32_file1_header
   ; "Body:"
   ; "\tUninterpreted data of length " ^ show (Bitstring.length f1.elf32_file1_body)
   ]

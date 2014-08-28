@@ -62,7 +62,6 @@ let refine_elf32_executable_file2 f2 =
       let (sexact, _) = partition ssize scut in
         (* Bitstring irrelevant below as exact size used... *)
         read_elf32_section_header_table ssize endian sexact >>= fun (sht, _) ->
-        let _           = Missing_pervasives.print "Got here..." in
           return <| elf32_executable_file3_header = hdr;
             elf32_executable_file3_program_header_table = pht;
             elf32_executable_file3_section_header_table = Just sht;
@@ -78,17 +77,22 @@ let read_elf32_executable_file3 bs0 =
 (** string_of_elf32_executable_file3 hdr_os hdr_proc pht_os pht_proc sht_oc sht_proc sht_user f3]
   * creates a string representation of [f3].
   *)
-val string_of_elf32_executable_file3 :
-  (nat -> string) -> (nat -> string) ->
-    (nat -> string) -> (nat -> string) ->
-    (nat -> string) -> (nat -> string) -> (nat -> string) ->
-      elf32_executable_file3 -> string
-let string_of_elf32_executable_file3 hdr_os hdr_proc pht_os pht_proc sht_os sht_proc sht_user f3 =
-  unlines [
-    "Type elf32_executable_file3:"
-  ; string_of_elf32_header hdr_os hdr_proc f3.elf32_executable_file3_header
-  ; string_of_elf32_program_header_table pht_os pht_proc f3.elf32_executable_file3_program_header_table
-  ; string_of_elf32_section_header_table sht_os sht_proc sht_user f3.elf32_executable_file3_section_header_table
-  ; "Body:"
-  ; "\tUninterpreted data of length " ^ show (Bitstring.length f3.elf32_executable_file3_body)
-  ]
+val string_of_elf32_executable_file3 : hdr_print_bundle -> pht_print_bundle -> sht_print_bundle -> elf32_executable_file3 -> string
+let string_of_elf32_executable_file3 hdr_bdl pht_bdl sht_bdl f3 =
+  let sht =
+    match f3.elf32_executable_file3_section_header_table with
+      | Nothing  -> "\tNo section header table present"
+      | Just sht -> string_of_elf32_section_header_table sht_bdl sht
+    end
+  in
+    unlines [
+      "\n*Type elf32_executable_file3:"
+    ; "**Header:"
+    ; string_of_elf32_header hdr_bdl f3.elf32_executable_file3_header
+    ; "**Program header table:"
+    ; string_of_elf32_program_header_table pht_bdl f3.elf32_executable_file3_program_header_table
+    ; "**Section header table:"
+    ; sht
+    ; "**Body:"
+    ; "\tUninterpreted data of length " ^ show (Bitstring.length f3.elf32_executable_file3_body)
+    ]

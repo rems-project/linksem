@@ -179,13 +179,18 @@ let read_elf32_program_header_table table_size endian bs0 =
 		read_elf32_program_header_table' endian eat >>= fun table ->
 		return (table, rest)
 
+(** The [pht_print_bundle] type is used to tidy up other type signatures.  Some of the
+  * top-level string_of_ functions require six or more functions passed to them,
+  * which quickly gets out of hand.  This type is used to reduce that complexity.
+  * The first component of the type is an OS specific print function, the second is
+  * a processor specific print function.
+  *)
+type pht_print_bundle = (nat -> string) * (nat -> string)
+
 (** [string_of_elf32_program_header_table os proc tbl] produces a string representation
   * of program header table [tbl] using [os] and [proc] to render OS- and processor-
   * specific entries.
   *)
-val string_of_elf32_program_header_table : (nat -> string) -> (nat -> string) -> elf32_program_header_table -> string
-let string_of_elf32_program_header_table os proc tbl =
-    unlines [
-      "Program header table contents:"
-    ; unlines (List.map (string_of_elf32_program_header_table_entry os proc) tbl)
-    ]
+val string_of_elf32_program_header_table : pht_print_bundle -> elf32_program_header_table -> string
+let string_of_elf32_program_header_table (os, proc) tbl =
+  unlines (List.map (string_of_elf32_program_header_table_entry os proc) tbl)

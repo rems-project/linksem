@@ -1,4 +1,5 @@
 open import List
+open import Maybe
 open import Num
 open import String
 
@@ -61,7 +62,21 @@ let size tbl =
   * character.
   *)
 val get_string_at : nat -> string_table -> error string
-let get_strings_at index tbl = Fail "TODO"
+let get_string_at index tbl =
+  match Missing_pervasives.string_suffix index (get_base_string tbl) with
+    | Nothing     -> Fail "get_string_at: invalid index into string"
+    | Just suffix ->
+        let delim = get_delimiting_character tbl in
+        let tbl   = mk_string_table suffix delim in
+          match get_strings tbl with
+            | []    -> Fail "get_string_at: empty string returned"
+            | x::xs -> return x
+          end
+  end
+
+class (HasElf32SectionHeaderStringTable 'a)
+  val get_elf32_section_header_string_table : 'a -> string_table
+end
 
 instance (Show string_table)
   let show tbl = unlines (get_strings tbl)

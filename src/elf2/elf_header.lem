@@ -568,40 +568,33 @@ val get_elf32_header_endianness : elf32_header -> endianness
 let get_elf32_header_endianness hdr =
   deduce_endianness (hdr.elf32_ident)
 
-val string_of_elf32_header : (nat -> string) -> (nat -> string) -> elf32_header -> string
-let string_of_elf32_header os proc hdr =
-	let ident = show hdr.elf32_ident in
-	let typ   = string_of_elf_file_type os proc (nat_of_elf32_half hdr.elf32_type) in
-	let mach  = string_of_elf_machine_architecture (nat_of_elf32_half hdr.elf32_machine) in
-	let ver   = string_of_elf_version_number (nat_of_elf32_word hdr.elf32_version) in
-	let entry = show hdr.elf32_entry in
-	let phoff = show hdr.elf32_phoff in
-	let shoff = show hdr.elf32_shoff in
-	let flags = show hdr.elf32_flags in
-	let ehsize = show hdr.elf32_ehsize in
-	let phentsize = show hdr.elf32_phentsize in
-	let phnum     = show hdr.elf32_phnum in
-	let shentsize = show hdr.elf32_shentsize in
-	let shnum     = show hdr.elf32_shnum in
-	let shstrndx  = show hdr.elf32_shstrndx in
-		unlines [
-			"Header data:"
-		; "\t" ^ "Magic number: " ^ ident
-    ; "\t" ^ "Endianness: " ^ show (deduce_endianness hdr.elf32_ident)
-		; "\t" ^ "Type: " ^ typ
-    ; "\t" ^ "Version: " ^ ver
-		; "\t" ^ "Machine: " ^ mach
-    ; "\t" ^ "Entry point: " ^ entry
-    ; "\t" ^ "Flags: " ^ flags
-    ; "\t" ^ "Entries in program header table: " ^ phnum
-    ; "\t" ^ "Entries in section header table: " ^ shnum
-		]
+(** The [hdr_print_bundle] type is used to tidy up other type signatures.  Some of the
+  * top-level string_of_ functions require six or more functions passed to them,
+  * which quickly gets out of hand.  This type is used to reduce that complexity.
+  * The first component of the type is an OS specific print function, the second is
+  * a processor specific print function.
+  *)
+type hdr_print_bundle = (nat -> string) * (nat -> string)
+
+val string_of_elf32_header : hdr_print_bundle -> elf32_header -> string
+let string_of_elf32_header (os, proc) hdr =
+	unlines [
+	  "\t" ^ "Magic number: " ^ show hdr.elf32_ident
+  ; "\t" ^ "Endianness: " ^ show (deduce_endianness hdr.elf32_ident)
+	; "\t" ^ "Type: " ^ string_of_elf_file_type os proc (nat_of_elf32_half hdr.elf32_type)
+  ; "\t" ^ "Version: " ^ string_of_elf_version_number (nat_of_elf32_word hdr.elf32_version)
+	; "\t" ^ "Machine: " ^ string_of_elf_machine_architecture (nat_of_elf32_half hdr.elf32_machine)
+  ; "\t" ^ "Entry point: " ^ show hdr.elf32_entry
+  ; "\t" ^ "Flags: " ^ show hdr.elf32_flags
+  ; "\t" ^ "Entries in program header table: " ^ show hdr.elf32_phnum
+  ; "\t" ^ "Entries in section header table: " ^ show hdr.elf32_shnum
+	]
 
 val string_of_elf32_header_default : elf32_header -> string
 let string_of_elf32_header_default =
 	string_of_elf32_header
-    (const "*Default OS specific print*")
-      (const "*Default processor specific print*")
+    ((const "*Default OS specific print*"),
+      (const "*Default processor specific print*"))
 	
 instance (Show elf32_header)
 	let show = string_of_elf32_header_default

@@ -8,6 +8,7 @@ open import String
 
 open import Elf_types
 open import Endianness
+open import String_table
 
 open import Bitstring
 open import Error
@@ -229,7 +230,16 @@ let read_elf32_section_header_table_entry endian bs =
                 elf32_sh_link = sh_link; elf32_sh_info = sh_info;
                 elf32_sh_addralign = sh_addralign; elf32_sh_entsize = sh_entsize |>, bs)
 
-let string_of_elf32_section_header_table_entry os proc user entry =
+(** The [sht_print_bundle] type is used to tidy up other type signatures.  Some of the
+  * top-level string_of_ functions require six or more functions passed to them,
+  * which quickly gets out of hand.  This type is used to reduce that complexity.
+  * The first component of the type is an OS specific print function, the second is
+  * a processor specific print function.
+  *)
+type sht_print_bundle = (nat -> string) * (nat -> string) * (nat -> string)
+
+val string_of_elf32_section_header_table_entry : sht_print_bundle -> elf32_section_header_table_entry -> string
+let string_of_elf32_section_header_table_entry (os, proc, user) entry =
   unlines [
     "\t" ^ "Name: "    ^ show entry.elf32_sh_name
   ; "\t" ^ "Type: "    ^ string_of_section_type os proc user (nat_of_elf32_word entry.elf32_sh_type)
@@ -238,11 +248,27 @@ let string_of_elf32_section_header_table_entry os proc user entry =
   ; "\t" ^ "Size: "    ^ show entry.elf32_sh_size
   ]
 
+val string_of_elf32_section_header_table_entry' : sht_print_bundle -> string_table -> elf32_section_header_table_entry -> string
+let string_of_elf32_section_header_table_entry' (os, proc, user) stbl entry =
+  let name =
+    match get_string_at (nat_of_elf32_word entry.elf32_sh_name) stbl with
+      | Fail _ -> "Invalid index into string table"
+      | Success i -> i
+    end
+  in
+    unlines [
+      "\t" ^ "Name: "    ^ name
+    ; "\t" ^ "Type: "    ^ string_of_section_type os proc user (nat_of_elf32_word entry.elf32_sh_type)
+    ; "\t" ^ "Flags: "   ^ show entry.elf32_sh_flags
+    ; "\t" ^ "Address: " ^ show entry.elf32_sh_addr
+    ; "\t" ^ "Size: "    ^ show entry.elf32_sh_size
+    ]
+
 let string_of_elf32_section_header_table_entry_default =
   string_of_elf32_section_header_table_entry
-    (const "*Default OS specific print*")
-      (const "*Default processor specific print*")
-      (const "*Default user specific print*")
+    ((const "*Default OS specific print*"),
+      (const "*Default processor specific print*"),
+      (const "*Default user specific print*"))
   
 instance (Show elf32_section_header_table_entry)
   let show = string_of_elf32_section_header_table_entry_default
@@ -300,13 +326,11 @@ let is_valid_elf32_section_header_table tbl =
         elf32_size_correct x tbl
         (* XXX: more correctness criteria in time *)
   end
-  
-let string_of_elf32_section_header_table os proc user tbl =
-  match tbl with
-    | Nothing  -> "Section header table not present"
-    | Just tbl ->
-        unlines [
-          "Section header table contents:"
-        ; unlines (List.map (string_of_elf32_section_header_table_entry os proc user) tbl)
-        ]
-  end
+
+val string_of_elf32_section_header_table : sht_print_bundle -> elf32_section_header_table -> string
+let string_of_elf32_section_header_table sht_bdl tbl =
+  unlines (List.map (string_of_elf32_section_header_table_entry sht_bdl) tbl)
+
+val string_of_elf32_section_header_table' : sht_print_bundle -> string_table -> elf32_section_header_table -> string
+let string_of_elf32_section_header_table' sht_bdl stbl tbl =
+  unlines (List.map (string_of_elf32_section_header_table_entry' sht_bdl stbl) tbl)

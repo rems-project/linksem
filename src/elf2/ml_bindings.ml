@@ -123,3 +123,13 @@ let split_string_on_char strings c =
   let enums   = BatEnum.map BatString.of_enum groups in
   	BatList.of_enum enums
 ;;
+
+let string_suffix index str =
+  if index < 0 || index > String.length str then
+    None
+  else
+    try
+      Some (String.sub str index (String.length str - index))
+    with
+    | _ -> None
+;;

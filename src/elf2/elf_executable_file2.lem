@@ -75,15 +75,14 @@ let read_elf32_executable_file2 bs0 =
 
 (** [string_of_elf32_executable_file2 os proc f2] creates a string representation of [f2].
   *)
-val string_of_elf32_executable_file2 :
-  (nat -> string) -> (nat -> string) ->
-    (nat -> string) -> (nat -> string) ->
-      elf32_executable_file2 -> string
-let string_of_elf32_executable_file2 hdr_os hdr_proc pht_os pht_proc f2 =
+val string_of_elf32_executable_file2 : hdr_print_bundle -> pht_print_bundle -> elf32_executable_file2 -> string
+let string_of_elf32_executable_file2 hdr_bdl pht_bdl f2 =
   unlines [
-    "Type elf32_executable_file2:"
-  ; string_of_elf32_header hdr_os hdr_proc f2.elf32_executable_file2_header
-  ; string_of_elf32_program_header_table pht_os pht_proc f2.elf32_executable_file2_program_header_table
-  ; "Body:"
+    "\n*Type elf32_executable_file2:"
+  ; "**Header:"
+  ; string_of_elf32_header hdr_bdl f2.elf32_executable_file2_header
+  ; "**Program header table:"
+  ; string_of_elf32_program_header_table pht_bdl f2.elf32_executable_file2_program_header_table
+  ; "**Body:"
   ; "\tUninterpreted data of length " ^ show (Bitstring.length f2.elf32_executable_file2_body)
   ]
