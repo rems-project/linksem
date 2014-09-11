@@ -23,19 +23,26 @@ type elf32_executable_file2 =
    ; elf32_executable_file2_body                 : bitstring                  (** Uninterpreted data *)
    |>
 
-val get_elf32_header' : elf32_executable_file2 -> elf32_header
-let get_elf32_header' f2 = f2.elf32_executable_file2_header
-
-instance (HasElf32Header elf32_executable_file2)
-  let get_elf32_header = get_elf32_header'
+class (HasElf32ExecutableFile2 'a)
+  val get_elf32_executable_file2 : 'a -> elf32_executable_file2
 end
 
-(* Because of Lem's braindead type classes... *)
-val get_elf32_program_header_table' : elf32_executable_file2 -> maybe elf32_program_header_table
-let get_elf32_program_header_table' f2 = Just (f2.elf32_executable_file2_program_header_table)
+instance (HasElf32ExecutableFile2 elf32_executable_file2)
+  let get_elf32_executable_file2 f2 = f2
+end
+
+instance (HasElf32File1 elf32_executable_file2)
+  let get_elf32_file1 f2 =
+    <| elf32_file1_header = f2.elf32_executable_file2_header;
+         elf32_file1_body = f2.elf32_executable_file2_body |>
+end
+
+instance (HasElf32Header elf32_executable_file2)
+  let get_elf32_header f2 = f2.elf32_executable_file2_header
+end
 
 instance (HasElf32ProgramHeaderTable elf32_executable_file2)
-  let get_elf32_program_header_table = get_elf32_program_header_table'
+  let get_elf32_program_header_table f2 = Just (f2.elf32_executable_file2_program_header_table)
 end
 
 (** [refine_elf32_file1 f1] refines the [elf31_file1] [f1] adding the

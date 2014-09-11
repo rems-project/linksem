@@ -11,7 +11,7 @@ open import Error
 open import Missing_pervasives
 open import Show
 
-(** Type [elf_file1] represents the first lazy unfolding of the structure
+(** Type [elf32_file1] represents the first lazy unfolding of the structure
   * of an ELF file, wherein the ELF header is populated and all other data
   * is left uninterpreted.
   *)
@@ -19,6 +19,14 @@ type elf32_file1 =
   <| elf32_file1_header : elf32_header (** The ELF header (mandatory) *)
    ; elf32_file1_body   : bitstring    (** Uninterpreted data *)
    |>
+
+class (HasElf32File1 'a)
+  val get_elf32_file1 : 'a -> elf32_file1
+end
+
+instance (HasElf32File1 elf32_file1)
+  let get_elf32_file1 f1 = f1
+end
 
 instance (HasElf32Header elf32_file1)
   let get_elf32_header file1 = file1.elf32_file1_header

@@ -1,0 +1,84 @@
+open import Basic_classes
+open import Maybe
+open import Num
+
+open import Elf_executable_file4
+open import Elf_header
+open import Elf_program_header_table
+open import Elf_section_header_table
+open import Elf_types
+open import String_table
+
+open import Bitstring
+open import Error
+open import Missing_pervasives
+open import Show
+open import String
+
+type elf32_executable_file5 =
+  <| elf32_executable_file5_header                      : elf32_header (** The ELF header (mandatory) *)
+   ; elf32_executable_file5_program_header_table        : elf32_program_header_table (** The program header table (mandatory) *)
+   ; elf32_executable_file5_section_header_table        : maybe elf32_section_header_table (** The section header table (optional) *)
+   ; elf32_executable_file5_section_header_string_table : string_table (** The section header string table *)
+   ; elf32_executable_file5_segments                    : list bitstring (** The list of segments as described by the program header table *)
+   ; elf32_executable_file5_body                        : bitstring (** Uninterpreted body *)
+   |>
+
+class (HasElf32ExecutableFile5 'a)
+  val get_elf32_executable_file5 : 'a -> elf32_executable_file5
+end
+
+instance (HasElf32ExecutableFile5 elf32_executable_file5)
+  let get_elf32_executable_file5 f5 = f5
+end
+
+instance (HasElf32ExecutableFile4 elf32_executable_file5)
+  let get_elf32_executable_file4 f5 =
+    <| elf32_executable_file4_header = f5.elf32_executable_file5_header;
+         elf32_executable_file4_program_header_table = f5.elf32_executable_file5_program_header_table;
+         elf32_executable_file4_section_header_table = f5.elf32_executable_file5_section_header_table;
+         elf32_executable_file4_section_header_string_table = f5.elf32_executable_file5_section_header_string_table;
+         elf32_executable_file4_body = f5.elf32_executable_file5_body |>
+end
+
+instance (HasElf32Header elf32_executable_file5)
+  let get_elf32_header f5 = f5.elf32_executable_file5_header
+end
+
+instance (HasElf32ProgramHeaderTable elf32_executable_file5)
+  let get_elf32_program_header_table f5 = Just (f5.elf32_executable_file5_program_header_table)
+end
+
+instance (HasElf32SectionHeaderTable elf32_executable_file5)
+  let get_elf32_section_header_table f5 = f5.elf32_executable_file5_section_header_table
+end
+
+instance (HasElf32SectionHeaderStringTable elf32_executable_file5)
+  let get_elf32_section_header_string_table f5 = f5.elf32_executable_file5_section_header_string_table
+end
+
+val refine_elf32_executable_file4 : elf32_executable_file4 -> error elf32_executable_file5
+let refine_elf32_executable_file4 f4 =
+  let pht  = f4.elf32_executable_file4_program_header_table in
+  let bdy  = f4.elf32_executable_file4_body in
+  let segs =
+    List.concatMap (fun ph ->
+      if nat_of_elf32_word ph.elf32_p_type = elf_pt_load then
+        let offset   = nat_of_elf32_off ph.elf32_p_offset in
+        let size     = nat_of_elf32_word ph.elf32_p_filesz in
+        let relevant = Bitstring.offset_and_cut offset size bdy in
+        let vaddr    = nat_of_elf32_addr ph.elf32_p_vaddr  in
+        let memsz    = nat_of_elf32_word ph.elf32_p_memsz  in
+          [(relevant, vaddr, memsz, size)]
+      else
+        []
+    ) pht
+  in
+  let img =
+    List.map (fun i ->
+      match i with
+        | (seg, vaddr, memsz, size) -> []
+      end
+    ) segs
+  in
+    Fail ""

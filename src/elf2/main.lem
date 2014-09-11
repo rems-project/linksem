@@ -8,13 +8,13 @@ open import Elf_executable_file2
 open import Elf_executable_file3
 open import Elf_executable_file4
 
-let default_os m =
+let default_os _ =
   "*Default OS specific print*"
 
-let default_proc m =
+let default_proc _ =
   "*Default processor specific print*"
 
-let default_user m =
+let default_user _ =
   "*Default user specific print*"
 
 let default_hdr_bdl =

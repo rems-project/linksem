@@ -81,14 +81,14 @@ let string_of_elf_segment_type os proc pt =
   * shared object file.
   *)
 type elf32_program_header_table_entry =
-  <| p_type  : elf32_word  (** Type of the segment *)
-   ; p_offset : elf32_off  (** Offset from beginning of file for segment *)
-   ; p_vaddr  : elf32_addr (** Virtual address for segment in memory *)
-   ; p_paddr  : elf32_addr (** Physical address for segment *)
-   ; p_filesz : elf32_word (** Size of segment in file, in bytes *)
-   ; p_memsz  : elf32_word (** Size of segment in memory image, in bytes *)
-   ; p_flags  : elf32_word (** Segment flags *)
-   ; p_align  : elf32_word (** Segment alignment memory for memory and file *)
+  <| elf32_p_type   : elf32_word (** Type of the segment *)
+   ; elf32_p_offset : elf32_off  (** Offset from beginning of file for segment *)
+   ; elf32_p_vaddr  : elf32_addr (** Virtual address for segment in memory *)
+   ; elf32_p_paddr  : elf32_addr (** Physical address for segment *)
+   ; elf32_p_filesz : elf32_word (** Size of segment in file, in bytes *)
+   ; elf32_p_memsz  : elf32_word (** Size of segment in memory image, in bytes *)
+   ; elf32_p_flags  : elf32_word (** Segment flags *)
+   ; elf32_p_align  : elf32_word (** Segment alignment memory for memory and file *)
    |>
   
 (** [string_of_elf32_program_header_table_entry os proc et] produces a string
@@ -98,14 +98,14 @@ type elf32_program_header_table_entry =
 val string_of_elf32_program_header_table_entry : (nat -> string) -> (nat -> string) -> elf32_program_header_table_entry -> string
 let string_of_elf32_program_header_table_entry os proc entry =
 	unlines [
-		"\t" ^ "Segment type: " ^ string_of_elf_segment_type os proc (nat_of_elf32_word entry.p_type)
-	; "\t" ^ "Offset: " ^ show entry.p_offset
-	; "\t" ^ "Virtual address: " ^ show entry.p_vaddr
-	; "\t" ^ "Physical address: " ^ show entry.p_paddr
-	; "\t" ^ "Segment size (bytes): " ^ show entry.p_filesz
-	; "\t" ^ "Segment size in memory image (bytes): " ^ show entry.p_memsz
-	; "\t" ^ "Flags: " ^ show entry.p_flags
-  ; "\t" ^ "Alignment: " ^ show entry.p_align
+		"\t" ^ "Segment type: " ^ string_of_elf_segment_type os proc (nat_of_elf32_word entry.elf32_p_type)
+	; "\t" ^ "Offset: " ^ show entry.elf32_p_offset
+	; "\t" ^ "Virtual address: " ^ show entry.elf32_p_vaddr
+	; "\t" ^ "Physical address: " ^ show entry.elf32_p_paddr
+	; "\t" ^ "Segment size (bytes): " ^ show entry.elf32_p_filesz
+	; "\t" ^ "Segment size in memory image (bytes): " ^ show entry.elf32_p_memsz
+	; "\t" ^ "Flags: " ^ show entry.elf32_p_flags
+  ; "\t" ^ "Alignment: " ^ show entry.elf32_p_align
 	]
 
 (** [string_of_elf32_program_header_table_entry_default et] produces a string representation
@@ -136,10 +136,10 @@ let read_elf32_program_header_table_entry endian bs =
 	read_elf32_word endian bs >>= fun (memsz, bs) ->
 	read_elf32_word endian bs >>= fun (flags, bs) ->
 	read_elf32_word endian bs >>= fun (align, bs) ->
-		Success (<| p_type = typ; p_offset = offset;
-                p_vaddr = vaddr; p_paddr = paddr;
-                p_filesz = filesz; p_memsz = memsz;
-                p_flags = flags; p_align = align |>, bs)
+		Success (<| elf32_p_type = typ; elf32_p_offset = offset;
+                elf32_p_vaddr = vaddr; elf32_p_paddr = paddr;
+                elf32_p_filesz = filesz; elf32_p_memsz = memsz;
+                elf32_p_flags = flags; elf32_p_align = align |>, bs)
 
 (** Program header table type *)
 

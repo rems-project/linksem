@@ -25,6 +25,21 @@ type elf32_executable_file3 =
    ; elf32_executable_file3_body                 : bitstring (** Uninterpreted body *)
    |>
 
+class (HasElf32ExecutableFile3 'a)
+  val get_elf32_executable_file3 : 'a -> elf32_executable_file3
+end
+
+instance (HasElf32ExecutableFile3 elf32_executable_file3)
+  let get_elf32_executable_file3 f3 = f3
+end
+
+instance (HasElf32ExecutableFile2 elf32_executable_file3)
+  let get_elf32_executable_file2 f3 =
+    <| elf32_executable_file2_header = f3.elf32_executable_file3_header;
+         elf32_executable_file2_program_header_table = f3.elf32_executable_file3_program_header_table;
+         elf32_executable_file2_body = f3.elf32_executable_file3_body |>
+end
+
 instance (HasElf32Header elf32_executable_file3)
   let get_elf32_header f3 = f3.elf32_executable_file3_header
 end
