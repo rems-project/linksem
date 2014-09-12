@@ -1,0 +1,26 @@
+open import Basic_classes
+open import Bool
+open import Num
+
+open import Elf_types
+
+open import Bitstring
+
+type elf32_interpreted_segment =
+  <| elf32_segment_body  : bitstring            (** Body of the segment *)
+   ; elf32_segment_type  : nat                  (** Type of the segment *)
+   ; elf32_segment_size  : nat                  (** Size of the segment in bytes *)
+   ; elf32_segment_memsz : nat                  (** Size of the segment in memory in bytes *)
+   ; elf32_segment_base  : nat                  (** Base address of the segment *)
+   ; elf32_segment_flags : (bool * bool * bool) (** READ, WRITE, EXECUTE flags. *)
+   |>
+
+val interpret_program_header_flags : elf32_word -> (bool * bool * bool)
+let interpret_program_header_flags flags =
+  let zero = elf32_word_of_int32 0 in
+  let one  = elf32_word_of_int32 1 in
+  let two  = elf32_word_of_int32 2 in
+  let four = elf32_word_of_int32 4 in
+    (elf32_word_land flags one <> zero,
+      elf32_word_land flags two <> zero,
+      elf32_word_land flags four <> zero)

@@ -17,6 +17,25 @@ val empty : bitstring
 
 declare ocaml target_rep function empty = `Bitstring.empty`
 
+(** [zeros m] creates a bitstring of length [m] containing all zeros.
+  *)
+val zeros : nat -> bitstring
+
+declare ocaml target_rep function zeros = `Bitstring.create_bitstring`
+
+(** [create m c] creates a bitstring of length [m] containing all [c]
+  * characters.
+  *)
+val create : nat -> char -> bitstring
+
+declare ocaml target_rep function create = `Bitstring.make_bitstring`
+
+(** [concat xs] concatenates a list of bitstrings [xs] into a single bitstring.
+  *)
+val concat : list bitstring -> bitstring
+
+declare ocaml target_rep function concat = `Bitstring.concat`
+
 (** [acquire fname] acquires a bitstring from a binary file, located at [fname].
   *)
 val acquire : string -> error bitstring

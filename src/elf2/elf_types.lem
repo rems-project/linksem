@@ -130,11 +130,15 @@ declare ocaml target_rep type elf32_word = `Int64.t`
 
 val string_of_elf32_word : elf32_word -> string
 val nat_of_elf32_word : elf32_word -> nat
+val elf32_word_of_int32 : int32 -> elf32_word
+val elf32_word_land : elf32_word -> elf32_word -> elf32_word
 val read_elf32_word : endianness -> bitstring -> error (elf32_word * bitstring)
 
 declare ocaml target_rep function string_of_elf32_word = `Int64.to_string`
 declare ocaml target_rep function read_elf32_word = `Ml_bindings.read_elf32_word`
 declare ocaml target_rep function nat_of_elf32_word = `Int64.to_int`
+declare ocaml target_rep function elf32_word_of_int32 = `Int64.of_int32`
+declare ocaml target_rep function elf32_word_land = `Int64.logand`
 
 instance (Show elf32_word)
 	let show = string_of_elf32_word
