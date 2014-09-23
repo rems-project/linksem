@@ -18,6 +18,10 @@ open import Missing_pervasives
 open import Show
 open import String
 
+(** Type [elf32_executable_file5] is an elf32_executable_file4 type where segments
+  * have been read from the program header table and interpreted.  A process
+  * image can be obtained from this type.
+  *)
 type elf32_executable_file5 =
   <| elf32_executable_file5_header                      : elf32_header (** The ELF header (mandatory) *)
    ; elf32_executable_file5_program_header_table        : elf32_program_header_table (** The program header table (mandatory) *)
@@ -60,6 +64,11 @@ instance (HasElf32SectionHeaderStringTable elf32_executable_file5)
   let get_elf32_section_header_string_table f5 = f5.elf32_executable_file5_section_header_string_table
 end
 
+(** [refine_elf32_executable_file4 f4] refines an elf32_executable_file4 [f4] into
+  * an elf32_executable_file5 by adding the interpreted segment field.  Fails
+  * if an interpreted segment has a memory size smaller than its associated
+  * file size, an invalidation of the ELF spec.
+  *)
 val refine_elf32_executable_file4 : elf32_executable_file4 -> error elf32_executable_file5
 let refine_elf32_executable_file4 f4 =
   let pht  = f4.elf32_executable_file4_program_header_table in
@@ -97,36 +106,54 @@ let refine_elf32_executable_file4 f4 =
       elf32_executable_file5_segments = segs;
       elf32_executable_file5_body = f4.elf32_executable_file4_body |>
 
+(** [read_elf32_executable_file5 bs0] reads an elf32_executable_file5 from bitstring
+  * [bs0].
+  *)
 val read_elf32_executable_file5 : bitstring -> error elf32_executable_file5
 let read_elf32_executable_file5 bs0 =
   read_elf32_executable_file4 bs0 >>= refine_elf32_executable_file4
 
-val construct_image : elf32_executable_file5 -> error (bitstring * nat * elf32_addr)
+(** [construct_image f5] constructs a memory image from an elf32_executable5 object
+  * [f5].  The function returns the following:
+  *    * A list of bytes with a corresponding address where they should be located
+  *      in the program image and,
+  *    * The entry point for the process.  All addresses in the aforementioned list
+  *      should be interpreted wrt this address.
+  * [construct_image] fails if a loadable segment has a memory size smaller than
+  * its associated file size, an error according to the ELF spec.  This should
+  * never happen as relevant checks are made when refining an elf_executable_file4
+  * into an elf_executable_file5.  The function may also fail if there are no loadable
+  * segments in this executable file, again an error.
+  * By the ELF specification, you may assume that the list of bitstring, elf32_addr
+  * pairs is sorted ascending on the second component, i.e. that all pairs are in
+  * order of the address at which point they should be loaded in memory.
+  *)
+val construct_image : elf32_executable_file5 -> error (list (bitstring * elf32_addr) * elf32_addr)
 let construct_image f5 =
   let segs = f5.elf32_executable_file5_segments in
   let entr = f5.elf32_executable_file5_header.elf32_entry in
-  let load = List.filter (fun sg -> sg.elf32_segment_type = elf_pt_load) segs in
-    match load with
-      | []    -> fail "construct_image: an executable ELF file must have at least one loadable segment"
-      | x::xs  ->
-        let low  = x.elf32_segment_base in
-        let laid = List.concatMap (fun sg ->
-          if sg.elf32_segment_memsz = sg.elf32_segment_size then
-            [(sg.elf32_segment_body, sg.elf32_segment_base)]
-          else if sg.elf32_segment_size < sg.elf32_segment_memsz then
-            (* Cannot be negative due to check in constructing [f5]. *)
-            let diff  = sg.elf32_segment_memsz - sg.elf32_segment_size in
-            let zeros = Bitstring.zeros diff in
-            let addr  = sg.elf32_segment_base + sg.elf32_segment_size in
-              [(sg.elf32_segment_body, sg.elf32_segment_base); (zeros, addr)]
-          else
-            [] (* XXX: fail properly? *)) load
-        in
-        let buffer = Bitstring.concat (List.map fst laid) in
-          return (buffer, low, entr)
-        
-    end
+  match List.filter (fun sg -> sg.elf32_segment_type = elf_pt_load) segs with
+    | []    -> fail "construct_image: an executable ELF file must have at least one loadable segment"
+    | x::xs  ->
+      List.mapM (fun sg ->
+        if sg.elf32_segment_memsz = 0 then
+          return []
+        if sg.elf32_segment_memsz = sg.elf32_segment_size then
+          return [(sg.elf32_segment_body, sg.elf32_segment_base)]
+        else if sg.elf32_segment_size < sg.elf32_segment_memsz then
+          (* Cannot be negative due to check in constructing [f5]. *)
+          let diff  = sg.elf32_segment_memsz - sg.elf32_segment_size in
+          let zeros = Bitstring.zeros diff in
+          let addr  = sg.elf32_segment_base + sg.elf32_segment_size in
+            return [(sg.elf32_segment_body, sg.elf32_segment_base); (zeros, addr)]
+        else
+          fail "construct_image: invariant invalidated") load >>= fun bs_base ->
+      return (List.flatten bs_base, entr)
+  end
 
+(** [string_of_elf32_executable_file5 hdr_bdl pht_bdl sht_bdl f5] produces a string
+  * representation of elf32_executable_file5 [f5] using user-supplied print bundles.
+  *)
 val string_of_elf32_executable_file5 : hdr_print_bundle -> pht_print_bundle -> sht_print_bundle -> elf32_executable_file5 -> string
 let string_of_elf32_executable_file5 hdr_bdl pht_bdl sht_bdl f5 =
   let sht =
