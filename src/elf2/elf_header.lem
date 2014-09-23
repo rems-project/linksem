@@ -565,6 +565,28 @@ class (HasElf32Header 'a)
   val get_elf32_header : 'a -> elf32_header
 end
 
+(** [elf64_header] is the type of headers for 32-bit ELF files.
+  *)
+type elf64_header =
+  <| elf64_ident    : list unsigned_char (** Identification field *)
+   ; elf64_type     : elf64_half         (** The object file type *)
+   ; elf64_machine  : elf64_half         (** Required machine architecture *)
+   ; elf64_version  : elf64_word         (** Object file version *)
+   ; elf64_entry    : elf64_addr         (** Virtual address for transfer of control *)
+   ; elf64_phoff    : elf64_off          (** Program header table offset in bytes *)
+   ; elf64_shoff    : elf64_off          (** Section header table offset in bytes *)
+   ; elf64_flags    : elf64_word         (** Processor-specific flags *)
+   ; elf64_ehsize   : elf64_half         (** ELF header size in bytes *)
+   ; elf64_phentsize: elf64_half         (** Program header table entry size in bytes *)
+   ; elf64_phnum    : elf64_half         (** Number of entries in program header table *)
+   ; elf64_shentsize: elf64_half         (** Section header table entry size in bytes *)
+   ; elf64_shnum    : elf64_half         (** Number of entries in section header table *)
+   ; elf64_shstrndx : elf64_half         (** Section header table entry for section name string table *)
+   |>
+
+class (HasElf64Header 'a)
+  val get_elf64_header : 'a -> elf64_header
+end
 
 (** [deduce_endian] deduces the endianness of an ELF file based on the ELF
   * header's magic number.
@@ -575,6 +597,10 @@ let deduce_endianness id = Little (* FIXME *)
 val get_elf32_header_endianness : elf32_header -> endianness
 let get_elf32_header_endianness hdr =
   deduce_endianness (hdr.elf32_ident)
+
+val get_elf64_header_endianness : elf64_header -> endianness
+let get_elf64_header_endianness hdr =
+  deduce_endianness (hdr.elf64_ident)
 
 (** The [hdr_print_bundle] type is used to tidy up other type signatures.  Some of the
   * top-level string_of_ functions require six or more functions passed to them,
@@ -598,14 +624,38 @@ let string_of_elf32_header (os, proc) hdr =
   ; "\t" ^ "Entries in section header table: " ^ show hdr.elf32_shnum
 	]
 
+val string_of_elf64_header : hdr_print_bundle -> elf64_header -> string
+let string_of_elf64_header (os, proc) hdr =
+  unlines [
+    "\t" ^ "Magic number: " ^ show hdr.elf64_ident
+  ; "\t" ^ "Endianness: " ^ show (deduce_endianness hdr.elf64_ident)
+  ; "\t" ^ "Type: " ^ string_of_elf_file_type os proc (nat_of_elf64_half hdr.elf64_type)
+  ; "\t" ^ "Version: " ^ string_of_elf_version_number (nat_of_elf64_word hdr.elf64_version)
+  ; "\t" ^ "Machine: " ^ string_of_elf_machine_architecture (nat_of_elf64_half hdr.elf64_machine)
+  ; "\t" ^ "Entry point: " ^ show hdr.elf64_entry
+  ; "\t" ^ "Flags: " ^ show hdr.elf64_flags
+  ; "\t" ^ "Entries in program header table: " ^ show hdr.elf64_phnum
+  ; "\t" ^ "Entries in section header table: " ^ show hdr.elf64_shnum
+  ]
+
 val string_of_elf32_header_default : elf32_header -> string
 let string_of_elf32_header_default =
 	string_of_elf32_header
     ((const "*Default OS specific print*"),
       (const "*Default processor specific print*"))
+
+val string_of_elf64_header_default : elf64_header -> string
+let string_of_elf64_header_default =
+  string_of_elf64_header
+    ((const "*Default OS specific print*"),
+      (const "*Default processor specific print*"))
 	
 instance (Show elf32_header)
 	let show = string_of_elf32_header_default
+end
+
+instance (Show elf64_header)
+  let show = string_of_elf64_header_default
 end
 
 val read_elf32_header : bitstring -> error (elf32_header * bitstring)
@@ -636,6 +686,35 @@ let read_elf32_header bs =
                  elf32_ehsize = ehsize; elf32_phentsize = phentsize;
                  elf32_phnum = phnum; elf32_shentsize = shentsize;
                  elf32_shnum = shnum; elf32_shstrndx = shstrndx |>, bs)
+
+val read_elf64_header : bitstring -> error (elf64_header * bitstring)
+let read_elf64_header bs =
+  (* FIXME: what to do here with endianness?  Is there a default for reading the
+   * initial bytes of the header, or do you have to read in as both little and
+   * big endian until the bytes of the magic number match their expected value?
+   *)
+  repeatM' ei_nident bs (read_unsigned_char default_endianness) >>= fun (ident, bs) ->
+  let endian = deduce_endianness ident in
+  read_elf64_half endian bs >>= fun (typ, bs) ->
+  read_elf64_half endian bs >>= fun (machine, bs) ->
+  read_elf64_word endian bs >>= fun (version, bs) ->
+  read_elf64_addr endian bs >>= fun (entry, bs) ->
+  read_elf64_off  endian bs >>= fun (phoff, bs) ->
+  read_elf64_off  endian bs >>= fun (shoff, bs) ->
+  read_elf64_word endian bs >>= fun (flags, bs) ->
+  read_elf64_half endian bs >>= fun (ehsize, bs) ->
+  read_elf64_half endian bs >>= fun (phentsize, bs) ->
+  read_elf64_half endian bs >>= fun (phnum, bs) ->
+  read_elf64_half endian bs >>= fun (shentsize, bs) ->
+  read_elf64_half endian bs >>= fun (shnum, bs) ->
+  read_elf64_half endian bs >>= fun (shstrndx, bs) ->
+    return (<| elf64_ident = ident; elf64_type  = typ;
+                 elf64_machine = machine; elf64_version = version;
+                 elf64_entry = entry; elf64_phoff = phoff;
+                 elf64_shoff = shoff; elf64_flags = flags;
+                 elf64_ehsize = ehsize; elf64_phentsize = phentsize;
+                 elf64_phnum = phnum; elf64_shentsize = shentsize;
+                 elf64_shnum = shnum; elf64_shstrndx = shstrndx |>, bs)
 
 val is_elf32_header_padding_correct : elf32_header -> bool
 let is_elf32_header_padding_correct ehdr =
@@ -683,12 +762,28 @@ let get_elf32_header_program_table_size ehdr =
   let phnum     = nat_of_elf32_half ehdr.elf32_phnum in
     phentsize * phnum
 
+(** [get_elf64_header_program_table_size] calculates the size of the program table
+  * (entry size x number of entries) based on data in the ELF header.
+  *)
+val get_elf64_header_program_table_size : elf64_header -> nat
+let get_elf64_header_program_table_size ehdr =
+  let phentsize = nat_of_elf64_half ehdr.elf64_phentsize in
+  let phnum     = nat_of_elf64_half ehdr.elf64_phnum in
+    phentsize * phnum
+
 (** [is_elf32_header_section_table_present] calculates whether a section table
   * is present in the ELF file or not.
   *)
 val is_elf32_header_section_table_present : elf32_header -> bool
 let is_elf32_header_section_table_present ehdr =
   not (nat_of_elf32_off ehdr.elf32_shoff = 0)
+
+(** [is_elf64_header_section_table_present] calculates whether a section table
+  * is present in the ELF file or not.
+  *)
+val is_elf64_header_section_table_present : elf64_header -> bool
+let is_elf64_header_section_table_present ehdr =
+  not (nat_of_elf64_off ehdr.elf64_shoff = 0)
 
 (** [get_elf32_header_section_table_size] calculates the size of the section table
   * (entry size x number of entries) based on data in the ELF header.
@@ -697,4 +792,13 @@ val get_elf32_header_section_table_size : elf32_header -> nat
 let get_elf32_header_section_table_size ehdr =
   let shentsize = nat_of_elf32_half ehdr.elf32_shentsize in
   let shnum     = nat_of_elf32_half ehdr.elf32_shnum in
+    shentsize * shnum
+
+(** [get_elf64_header_section_table_size] calculates the size of the section table
+  * (entry size x number of entries) based on data in the ELF header.
+  *)
+val get_elf64_header_section_table_size : elf64_header -> nat
+let get_elf64_header_section_table_size ehdr =
+  let shentsize = nat_of_elf64_half ehdr.elf64_shentsize in
+  let shnum     = nat_of_elf64_half ehdr.elf64_shnum in
     shentsize * shnum

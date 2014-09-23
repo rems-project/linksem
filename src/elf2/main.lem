@@ -43,12 +43,9 @@ let _ =
     let _  = Missing_pervasives.print (string_of_elf32_executable_file4 default_hdr_bdl default_pht_bdl default_sht_bdl ef4) in
     Elf_executable_file5.refine_elf32_executable_file4 ef4 >>= fun ef5 ->
     let _  = Missing_pervasives.print (string_of_elf32_executable_file5 default_hdr_bdl default_pht_bdl default_sht_bdl ef5) in
-    Elf_executable_file5.construct_image ef5 >>= fun (im, base_addr, entry) ->
-    let _  = Missing_pervasives.print ("Base address: " ^ show base_addr) in
+    Elf_executable_file5.elf32_construct_image ef5 >>= fun (ims_with_addr, entry) ->
     let _  = Missing_pervasives.print ("Entry point: " ^ show entry) in
-    let _  = Missing_pervasives.print ("Image size: " ^ show (Bitstring.length im)) in
-    (* let _  = Missing_pervasives.print (Bitstring.string_of_bitstring im) in *)
-    return im
+    return ims_with_addr
   in
     match res with
       | Fail err  -> Missing_pervasives.print err
