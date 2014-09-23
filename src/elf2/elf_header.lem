@@ -592,7 +592,7 @@ end
   * header's magic number.
   *)
 val deduce_endianness : list unsigned_char -> endianness
-let deduce_endianness id = Little (* FIXME *)
+let deduce_endianness id = Big (* FIXME *)
 
 val get_elf32_header_endianness : elf32_header -> endianness
 let get_elf32_header_endianness hdr =

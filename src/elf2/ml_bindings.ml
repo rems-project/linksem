@@ -136,8 +136,23 @@ let read_elf32_half endian bs =
       | Big    -> read_elf32_half_be cut rest
 ;;
 
+let read_elf64_half_le bs rest =
+  bitmatch bs with
+    | { half : 16 : littleendian } -> return (Int64.of_int half, rest)
+    | { _ } -> Fail "read_elf64_half_le"
+;;
+
+let read_elf64_half_be bs rest =
+  bitmatch bs with
+    | { half : 16 : bigendian } -> return (Int64.of_int half, rest)
+    | { _ } -> Fail "read_elf64_half_be"
+;;
+
 let read_elf64_half endian bs =
-  read_elf32_half endian bs
+  let cut, rest = partition_bitstring 16 bs in
+    match endian with
+      | Little -> read_elf64_half_le cut rest
+      | Big    -> read_elf64_half_be cut rest
 ;;
 
 let read_elf32_word_le bs rest =
