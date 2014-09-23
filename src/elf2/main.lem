@@ -1,6 +1,9 @@
+open import String
+
 open import Bitstring
 open import Error
 open import Missing_pervasives
+open import Show
 
 open import Elf_header
 open import Elf_file1
@@ -29,7 +32,7 @@ let default_sht_bdl =
 
 let _ =
   let res =
-    Bitstring.acquire "/usr/bin/ld" >>= fun bs0 ->
+    Bitstring.acquire "test/a.out" >>= fun bs0 ->
     Elf_file1.read_elf32_file1 bs0 >>= fun f1 ->
     let _  = Missing_pervasives.print (string_of_elf32_file1 default_hdr_bdl f1) in
     Elf_executable_file2.refine_elf32_file1 f1 >>= fun ef2 ->
@@ -40,8 +43,11 @@ let _ =
     let _  = Missing_pervasives.print (string_of_elf32_executable_file4 default_hdr_bdl default_pht_bdl default_sht_bdl ef4) in
     Elf_executable_file5.refine_elf32_executable_file4 ef4 >>= fun ef5 ->
     let _  = Missing_pervasives.print (string_of_elf32_executable_file5 default_hdr_bdl default_pht_bdl default_sht_bdl ef5) in
-    Elf_executable_file5.construct_image ef5 >>= fun im ->
-    let _  = Missing_pervasives.print (Bitstring.string_of_bitstring im) in
+    Elf_executable_file5.construct_image ef5 >>= fun (im, base_addr, entry) ->
+    let _  = Missing_pervasives.print ("Base address: " ^ show base_addr) in
+    let _  = Missing_pervasives.print ("Entry point: " ^ show entry) in
+    let _  = Missing_pervasives.print ("Image size: " ^ show (Bitstring.length im)) in
+    (* let _  = Missing_pervasives.print (Bitstring.string_of_bitstring im) in *)
     return im
   in
     match res with

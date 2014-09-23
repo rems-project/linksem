@@ -2,6 +2,7 @@ open import Basic_classes
 open import List
 open import Maybe
 open import Num
+open import Tuple
 
 open import Elf_executable_file4
 open import Elf_header
@@ -100,13 +101,15 @@ val read_elf32_executable_file5 : bitstring -> error elf32_executable_file5
 let read_elf32_executable_file5 bs0 =
   read_elf32_executable_file4 bs0 >>= refine_elf32_executable_file4
 
-val construct_image : elf32_executable_file5 -> error bitstring
+val construct_image : elf32_executable_file5 -> error (bitstring * nat * elf32_addr)
 let construct_image f5 =
   let segs = f5.elf32_executable_file5_segments in
+  let entr = f5.elf32_executable_file5_header.elf32_entry in
   let load = List.filter (fun sg -> sg.elf32_segment_type = elf_pt_load) segs in
     match load with
       | []    -> fail "construct_image: an executable ELF file must have at least one loadable segment"
-      | load  ->
+      | x::xs  ->
+        let low  = x.elf32_segment_base in
         let laid = List.concatMap (fun sg ->
           if sg.elf32_segment_memsz = sg.elf32_segment_size then
             [(sg.elf32_segment_body, sg.elf32_segment_base)]
@@ -119,7 +122,9 @@ let construct_image f5 =
           else
             [] (* XXX: fail properly? *)) load
         in
-          fail ""
+        let buffer = Bitstring.concat (List.map fst laid) in
+          return (buffer, low, entr)
+        
     end
 
 val string_of_elf32_executable_file5 : hdr_print_bundle -> pht_print_bundle -> sht_print_bundle -> elf32_executable_file5 -> string
