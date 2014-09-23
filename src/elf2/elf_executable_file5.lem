@@ -65,11 +65,11 @@ let refine_elf32_executable_file4 f4 =
   let bdy  = f4.elf32_executable_file4_body in
   let segs =
     List.map (fun ph ->
-      let offset   = nat_of_elf32_off ph.elf32_p_offset  in
-      let size     = nat_of_elf32_word ph.elf32_p_filesz in
+      let offset   = nat_of_elf32_off ph.elf32_p_offset * 8  in
+      let size     = nat_of_elf32_word ph.elf32_p_filesz * 8 in
       let relevant = Bitstring.offset_and_cut offset size bdy in
       let vaddr    = nat_of_elf32_addr ph.elf32_p_vaddr  in
-      let memsz    = nat_of_elf32_word ph.elf32_p_memsz  in
+      let memsz    = nat_of_elf32_word ph.elf32_p_memsz * 8 in
       let typ      = nat_of_elf32_word ph.elf32_p_type   in
       let flags    = interpret_program_header_flags ph.elf32_p_flags in
         <| elf32_segment_body = relevant;
@@ -99,3 +99,49 @@ let refine_elf32_executable_file4 f4 =
 val read_elf32_executable_file5 : bitstring -> error elf32_executable_file5
 let read_elf32_executable_file5 bs0 =
   read_elf32_executable_file4 bs0 >>= refine_elf32_executable_file4
+
+val construct_image : elf32_executable_file5 -> error bitstring
+let construct_image f5 =
+  let segs = f5.elf32_executable_file5_segments in
+  let load = List.filter (fun sg -> sg.elf32_segment_type = elf_pt_load) segs in
+    match load with
+      | []    -> fail "construct_image: an executable ELF file must have at least one loadable segment"
+      | load  ->
+        let laid = List.concatMap (fun sg ->
+          if sg.elf32_segment_memsz = sg.elf32_segment_size then
+            [(sg.elf32_segment_body, sg.elf32_segment_base)]
+          else if sg.elf32_segment_size < sg.elf32_segment_memsz then
+            (* Cannot be negative due to check in constructing [f5]. *)
+            let diff  = sg.elf32_segment_memsz - sg.elf32_segment_size in
+            let zeros = Bitstring.zeros diff in
+            let addr  = sg.elf32_segment_base + sg.elf32_segment_size in
+              [(sg.elf32_segment_body, sg.elf32_segment_base); (zeros, addr)]
+          else
+            [] (* XXX: fail properly? *)) load
+        in
+          fail ""
+    end
+
+val string_of_elf32_executable_file5 : hdr_print_bundle -> pht_print_bundle -> sht_print_bundle -> elf32_executable_file5 -> string
+let string_of_elf32_executable_file5 hdr_bdl pht_bdl sht_bdl f5 =
+  let sht =
+    match f5.elf32_executable_file5_section_header_table with
+      | Nothing  -> "\tNo section header table present"
+      | Just sht -> string_of_elf32_section_header_table' sht_bdl f5.elf32_executable_file5_section_header_string_table sht
+    end
+  in
+  unlines [
+    "\n*Type elf32_executable_file5"
+    ; "**Header"
+    ; string_of_elf32_header hdr_bdl f5.elf32_executable_file5_header
+    ; "**Program header table:"
+    ; string_of_elf32_program_header_table pht_bdl f5.elf32_executable_file5_program_header_table
+    ; "**Section header table:"
+    ; sht
+    ; "**Section header string table:"
+    ; unlines (List.map (fun x -> "\t" ^ x) (get_strings f5.elf32_executable_file5_section_header_string_table))
+    ; "**Interpreted segments:"
+    ; unlines (List.map (fun x -> "\n" ^ string_of_elf32_interpreted_segment x) f5.elf32_executable_file5_segments)
+    ; "**Body:"
+    ; "\tUninterpreted data of length " ^ show (Bitstring.length f5.elf32_executable_file5_body)
+    ]

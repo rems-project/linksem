@@ -21,6 +21,13 @@ val unlines : list string -> string
 let unlines xs =
   foldr (^) "" (intercalate "\n" xs)
 
+(** [bracket xs] concatenates a list of strings [xs], separating each entry with a
+  * space, and bracketing the resulting string.
+  *)
+val bracket : list string -> string
+let bracket xs =
+  "(" ^ foldr (^) "" (intercalate " " xs) ^ ")"
+
 (** [null_char] is the null character. *)
 val null_char : char
 

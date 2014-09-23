@@ -85,6 +85,10 @@ let is_processor_specific_object_file_type_value v =
 
 (** Intel 386 *)
 let elf_ma_386 : nat = 3
+(** IBM PowerPC *)
+let elf_ma_ppc : nat = 20
+(** IBM PowerPC 64 *)
+let elf_ma_ppc64 : nat = 21
 
 (** [string_of_elf_machine_architecture m] produces a string representation of
   * the numeric encoding [m] of the ELF machine architecture.
@@ -93,8 +97,12 @@ val string_of_elf_machine_architecture : nat -> string
 let string_of_elf_machine_architecture m =
 	if m = elf_ma_386 then
 		"Intel 386 architecture"
+  else if m = elf_ma_ppc then
+    "IBM PowerPC"
+  else if m = elf_ma_ppc64 then
+    "IBM PowerPC 64"
 	else
-		"Non-Intel 386 architecture"
+		"Other architecture"
 
 (* XXX: convert these into top-level definitions later...
 (** [elf_machine_architecture] enumerates all the supported machine architectures
@@ -413,7 +421,7 @@ let string_of_elf_file_class m =
 	else if m = elf_class_64 then
 		"64 bit ELF object"
 	else
-		"XXX: invalid ELF file class"
+		"Invalid ELF file class"
 
 (** ELF data encodings.  Byte e_ident[elf_ei_data] specifies the encoding of both the
   * data structures used by object file container and data contained in object
@@ -439,7 +447,7 @@ let string_of_elf_data_encoding m =
 	else if m = elf_data_2msb then
 		"Two's complement values, MSB at lowest address"
 	else
-		"XXX: invalid data encoding"
+		"Invalid data encoding"
 
 (** OS and ABI versions.  Byte e_ident[elf_ei_osabi] identifies the OS- or
   * ABI-specific ELF extensions used by this file. Some fields in other ELF
@@ -519,7 +527,7 @@ let string_of_elf_osabi_version m =
 	else if m = elf_osabi_fenixos then
 		"FenixOS highly-scalable multi-core OS"
 	else
-		"XXX: invalid OSABI version"
+		"Invalid OSABI version"
 
 (** Checks an architecture defined OSABI version is correct, i.e. in the range
   * 64 to 255 inclusive.

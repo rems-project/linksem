@@ -1,10 +1,13 @@
 open import Basic_classes
 open import Bool
 open import Num
+open import String
 
 open import Elf_types
 
 open import Bitstring
+open import Missing_pervasives
+open import Show
 
 type elf32_interpreted_segment =
   <| elf32_segment_body  : bitstring            (** Body of the segment *)
@@ -21,6 +24,24 @@ let interpret_program_header_flags flags =
   let one  = elf32_word_of_int32 1 in
   let two  = elf32_word_of_int32 2 in
   let four = elf32_word_of_int32 4 in
-    (elf32_word_land flags one <> zero,
-      elf32_word_land flags two <> zero,
-      elf32_word_land flags four <> zero)
+    (not (elf32_word_land flags one = zero),
+      not (elf32_word_land flags two = zero),
+      not (elf32_word_land flags four = zero))
+
+val string_of_flags : (bool * bool * bool) -> string
+let string_of_flags flags =
+  match flags with
+    | (read, write, execute) ->
+        bracket [show read; show write; show execute]
+  end
+
+val string_of_elf32_interpreted_segment : elf32_interpreted_segment -> string
+let string_of_elf32_interpreted_segment seg =
+  unlines [
+    "Body of length: " ^ show (Bitstring.length seg.elf32_segment_body)
+  ; "Segment type: " ^ show seg.elf32_segment_type
+  ; "Segment size: " ^ show seg.elf32_segment_size
+  ; "Segment memory size: " ^ show seg.elf32_segment_memsz
+  ; "Segment base address: " ^ show seg.elf32_segment_base
+  ; "Segment flags: " ^ string_of_flags seg.elf32_segment_flags
+  ]

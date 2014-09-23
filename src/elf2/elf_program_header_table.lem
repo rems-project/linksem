@@ -14,7 +14,12 @@ open import Error
 open import Missing_pervasives
 open import Show
 
-(** Segment types *)
+(** Segment types
+  *
+  * FIXME: Bug in Lem as Lem codebase uses [int] type throughout where [BigInt.t]
+  * is really needed, hence chokes on huge constants below, which is why they are
+  * written in the way that they are.
+  *)
 
 (** Unused array element.  All other members of the structure are undefined. *)
 let elf_pt_null : nat = 0
@@ -37,13 +42,13 @@ let elf_pt_phdr : nat = 6
 (** Specifies the thread local storage (TLS) template.  Need not be supported. *)
 let elf_pt_tls : nat = 7
 (** Start of reserved indices for operating system specific semantics. *)
-let elf_pt_loos : nat = 0 (* XXX: too big for Lem? 1610612736 (* 0x60000000 *) *)
+let elf_pt_loos : nat = 128 * 128 * 128 * 256 * 3 (* 1610612736 (* 0x60000000 *) *)
 (** End of reserved indices for operating system specific semantics. *)
-let elf_pt_hios : nat = 0 (* XXX: too big for Lem? 1879048191 (* 0x6fffffff *) *)
+let elf_pt_hios : nat = (469762047 * 4) + 3 (* 1879048191 (* 0x6fffffff *) *)
 (** Start of reserved indices for processor specific semantics. *)
-let elf_pt_loproc : nat = 0 (* XXX: too big for Lem? 1879048192 (* 0x70000000 *) *)
+let elf_pt_loproc : nat = (469762048 * 4) (* 1879048192 (* 0x70000000 *) *)
 (** End of reserved indices for processor specific semantics. *)
-let elf_pt_hiproc : nat = 0 (* XXX: too big for Lem? 2147483647 (* 0x7fffffff *) *)
+let elf_pt_hiproc : nat = (536870911 * 4) + 3 (* 2147483647 (* 0x7fffffff *) *)
 
 (** [string_of_elf_segment_type os proc st] produces a string representation of
   * the coding of an ELF segment type [st] using [os] and [proc] to render OS-

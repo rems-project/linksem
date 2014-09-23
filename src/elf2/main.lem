@@ -7,6 +7,7 @@ open import Elf_file1
 open import Elf_executable_file2
 open import Elf_executable_file3
 open import Elf_executable_file4
+open import Elf_executable_file5
 
 let default_os _ =
   "*Default OS specific print*"
@@ -27,13 +28,23 @@ let default_sht_bdl =
   (default_os, default_proc, default_user)
 
 let _ =
-  Bitstring.acquire "/usr/bin/ld" >>= fun bs0 ->
-  Elf_file1.read_elf32_file1 bs0 >>= fun f1 ->
-  let _ = Missing_pervasives.print (string_of_elf32_file1 default_hdr_bdl f1) in
-  Elf_executable_file2.refine_elf32_file1 f1 >>= fun ef2 ->
-  let _ = Missing_pervasives.print (string_of_elf32_executable_file2 default_hdr_bdl default_pht_bdl ef2) in
-  Elf_executable_file3.refine_elf32_executable_file2 ef2 >>= fun ef3 ->
-  let _ = Missing_pervasives.print (string_of_elf32_executable_file3 default_hdr_bdl default_pht_bdl default_sht_bdl ef3) in
-  Elf_executable_file4.refine_elf32_executable_file3 ef3 >>= fun ef4 ->
-  let _ = Missing_pervasives.print (string_of_elf32_executable_file4 default_hdr_bdl default_pht_bdl default_sht_bdl ef4) in
-  return ()
+  let res =
+    Bitstring.acquire "/usr/bin/ld" >>= fun bs0 ->
+    Elf_file1.read_elf32_file1 bs0 >>= fun f1 ->
+    let _  = Missing_pervasives.print (string_of_elf32_file1 default_hdr_bdl f1) in
+    Elf_executable_file2.refine_elf32_file1 f1 >>= fun ef2 ->
+    let _  = Missing_pervasives.print (string_of_elf32_executable_file2 default_hdr_bdl default_pht_bdl ef2) in
+    Elf_executable_file3.refine_elf32_executable_file2 ef2 >>= fun ef3 ->
+    let _  = Missing_pervasives.print (string_of_elf32_executable_file3 default_hdr_bdl default_pht_bdl default_sht_bdl ef3) in
+    Elf_executable_file4.refine_elf32_executable_file3 ef3 >>= fun ef4 ->
+    let _  = Missing_pervasives.print (string_of_elf32_executable_file4 default_hdr_bdl default_pht_bdl default_sht_bdl ef4) in
+    Elf_executable_file5.refine_elf32_executable_file4 ef4 >>= fun ef5 ->
+    let _  = Missing_pervasives.print (string_of_elf32_executable_file5 default_hdr_bdl default_pht_bdl default_sht_bdl ef5) in
+    Elf_executable_file5.construct_image ef5 >>= fun im ->
+    let _  = Missing_pervasives.print (Bitstring.string_of_bitstring im) in
+    return im
+  in
+    match res with
+      | Fail err  -> Missing_pervasives.print err
+      | Success _ -> Missing_pervasives.print "Success...\n"
+    end

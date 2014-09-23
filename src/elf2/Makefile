@@ -1,7 +1,7 @@
 dummy: all
 
 lem-model:
-	../../../lem/lem -ocaml -only_changed_output missing_pervasives.lem show.lem endianness.lem bitstring.lem elf_types.lem elf_header.lem elf_file1.lem elf_program_header_table.lem elf_executable_file2.lem elf_section_header_table.lem elf_executable_file3.lem string_table.lem elf_executable_file4.lem elf_interpreted_segment.lem elf_executable_file5.lem main.lem
+	../../../lem/lem -ocaml -only_changed_output missing_pervasives.lem show.lem endianness.lem bitstring.lem elf_types.lem elf_interpreted_segment.lem elf_header.lem elf_file1.lem elf_program_header_table.lem elf_executable_file2.lem elf_section_header_table.lem elf_executable_file3.lem string_table.lem elf_executable_file4.lem elf_executable_file5.lem main.lem
 
 clean:
 	rm missing_pervasives.ml show.ml endianness.ml bitstring.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml elf_section_header_table.ml elf_executable_file3.ml string_table.ml elf_executable_file4.ml elf_interpreted_segment.ml elf_executable_file5.ml main.ml

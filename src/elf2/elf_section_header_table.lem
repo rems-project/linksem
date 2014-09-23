@@ -137,15 +137,18 @@ let sht_group : nat = 17
 (** Section is associated with sections of type SHT_SYMTAB and is required if
   * any of the section header indices referenced by that symbol table contains
   * the escape value SHN_XINDEX.
+  *
+  * FIXME: Lem bug as [int] type used throughout Lem codebase, rather than
+  * [BigInt.t], so Lem chokes on these large constants below, hence the weird
+  * way in which they are written.
   *)
 let sht_symtab_shndx : nat = 18
-(* XXX: constants too big for Lem to parse, apparently! *)
-let sht_loos   : nat = 0 (* 1610612736 (* 0x60000000 *) *)
-let sht_hios   : nat = 0 (* 1879048191 (* 0x6fffffff *) *)
-let sht_loproc : nat = 0 (* 1879048192 (* 0x70000000 *) *)
-let sht_hiproc : nat = 0 (* 2147483647 (* 0x7fffffff *) *)
-let sht_louser : nat = 0 (* 2147483648 (* 0x80000000 *) *)
-let sht_hiuser : nat = 0 (* 2415919103 (* 0x8fffffff *) *)
+let sht_loos   : nat = 3 * 1024 * 1024 * 512 (* 1610612736 (* 0x60000000 *) *)
+let sht_hios   : nat = (469762047 * 4) + 3 (* 1879048191 (* 0x6fffffff *) *)
+let sht_loproc : nat = (469762048 * 4) (* 1879048192 (* 0x70000000 *) *)
+let sht_hiproc : nat = (536870911 * 4) + 3 (* 2147483647 (* 0x7fffffff *) *)
+let sht_louser : nat = (536870912 * 4) (* 2147483648 (* 0x80000000 *) *)
+let sht_hiuser : nat = (603979775 * 4) + 3 (* 2415919103 (* 0x8fffffff *) *)
 
 val string_of_section_type : (nat -> string) -> (nat -> string) ->
   (nat -> string) -> nat -> string
