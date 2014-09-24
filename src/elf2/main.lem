@@ -1,4 +1,6 @@
+open import Function
 open import String
+open import Tuple
 
 open import Bitstring
 open import Error
@@ -32,9 +34,13 @@ let default_sht_bdl =
 
 let _ =
   let res =
-    Bitstring.acquire "test/power64-hello" >>= fun bs0 ->
-    Elf_file1.read_elf64_file1 bs0 >>= fun elf_f1 ->
-    let _ = Missing_pervasives.print (Elf_file1.string_of_elf64_file1 default_hdr_bdl elf_f1) in
+    Bitstring.acquire "test/power64-executable-1" >>= fun bs0 ->
+    Elf_executable_file5.read_elf64_executable_file5 bs0 >>= fun elf_f1 ->
+    let _ = Missing_pervasives.print (Elf_executable_file5.string_of_elf64_executable_file5 default_hdr_bdl default_pht_bdl default_sht_bdl elf_f1) in
+    Elf_executable_file5.elf64_construct_image elf_f1 >>= fun (chunks_addr, entry_point) ->
+    let _ = Missing_pervasives.print ("Entry point: " ^ show entry_point) in
+    let _ = Missing_pervasives.print ("#Chunks: " ^ show (List.length chunks_addr)) in
+    let _ = Missing_pervasives.print (unlines (List.map (fun x -> show (snd x)) chunks_addr)) in
     return elf_f1
   in
     match res with

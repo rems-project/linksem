@@ -670,10 +670,6 @@ end
 
 val read_elf32_header : bitstring -> error (elf32_header * bitstring)
 let read_elf32_header bs =
-  (* FIXME: what to do here with endianness?  Is there a default for reading the
-   * initial bytes of the header, or do you have to read in as both little and
-   * big endian until the bytes of the magic number match their expected value?
-   *)
 	repeatM' ei_nident bs (read_unsigned_char default_endianness) >>= fun (ident, bs) ->
   let endian = deduce_endianness ident in
 	read_elf32_half endian bs >>= fun (typ, bs) ->
@@ -689,20 +685,23 @@ let read_elf32_header bs =
 	read_elf32_half endian bs >>= fun (shentsize, bs) ->
 	read_elf32_half endian bs >>= fun (shnum, bs) ->
 	read_elf32_half endian bs >>= fun (shstrndx, bs) ->
-		return (<| elf32_ident = ident; elf32_type  = typ;
-                 elf32_machine = machine; elf32_version = version;
-                 elf32_entry = entry; elf32_phoff = phoff;
-                 elf32_shoff = shoff; elf32_flags = flags;
-                 elf32_ehsize = ehsize; elf32_phentsize = phentsize;
-                 elf32_phnum = phnum; elf32_shentsize = shentsize;
-                 elf32_shnum = shnum; elf32_shstrndx = shstrndx |>, bs)
+    match List.index ident 4 with
+      | Nothing -> fail "read_elf32_header: transcription of ELF identifier failed"
+      | Just c  ->
+        if nat_of_unsigned_char c = elf_class_32 then
+		      return (<| elf32_ident = ident; elf32_type  = typ;
+                      elf32_machine = machine; elf32_version = version;
+                      elf32_entry = entry; elf32_phoff = phoff;
+                      elf32_shoff = shoff; elf32_flags = flags;
+                      elf32_ehsize = ehsize; elf32_phentsize = phentsize;
+                      elf32_phnum = phnum; elf32_shentsize = shentsize;
+                      elf32_shnum = shnum; elf32_shstrndx = shstrndx |>, bs)
+        else
+          fail "read_elf32_header: not a 32-bit ELF file"
+    end
 
 val read_elf64_header : bitstring -> error (elf64_header * bitstring)
 let read_elf64_header bs =
-  (* FIXME: what to do here with endianness?  Is there a default for reading the
-   * initial bytes of the header, or do you have to read in as both little and
-   * big endian until the bytes of the magic number match their expected value?
-   *)
   repeatM' ei_nident bs (read_unsigned_char default_endianness) >>= fun (ident, bs) ->
   let endian = deduce_endianness ident in
   read_elf64_half endian bs >>= fun (typ, bs) ->
@@ -718,13 +717,20 @@ let read_elf64_header bs =
   read_elf64_half endian bs >>= fun (shentsize, bs) ->
   read_elf64_half endian bs >>= fun (shnum, bs) ->
   read_elf64_half endian bs >>= fun (shstrndx, bs) ->
-    return (<| elf64_ident = ident; elf64_type  = typ;
-                 elf64_machine = machine; elf64_version = version;
-                 elf64_entry = entry; elf64_phoff = phoff;
-                 elf64_shoff = shoff; elf64_flags = flags;
-                 elf64_ehsize = ehsize; elf64_phentsize = phentsize;
-                 elf64_phnum = phnum; elf64_shentsize = shentsize;
-                 elf64_shnum = shnum; elf64_shstrndx = shstrndx |>, bs)
+    match List.index ident 4 with
+      | Nothing -> fail "read_elf64_header: transcription of ELF identifier failed"
+      | Just c  ->
+        if nat_of_unsigned_char c = elf_class_64 then
+          return (<| elf64_ident = ident; elf64_type  = typ;
+                     elf64_machine = machine; elf64_version = version;
+                     elf64_entry = entry; elf64_phoff = phoff;
+                     elf64_shoff = shoff; elf64_flags = flags;
+                     elf64_ehsize = ehsize; elf64_phentsize = phentsize;
+                     elf64_phnum = phnum; elf64_shentsize = shentsize;
+                     elf64_shnum = shnum; elf64_shstrndx = shstrndx |>, bs)
+        else
+          fail "read_elf64_header: not a 64-bit ELF file"
+    end
 
 val is_elf32_header_padding_correct : elf32_header -> bool
 let is_elf32_header_padding_correct ehdr =
