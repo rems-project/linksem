@@ -592,7 +592,17 @@ end
   * header's magic number.
   *)
 val deduce_endianness : list unsigned_char -> endianness
-let deduce_endianness id = Big (* FIXME *)
+let deduce_endianness id =
+  match List.index id 5 with
+    | Nothing -> Little (* XXX: random default as read of magic number has failed! *)
+    | Just v  ->
+      if nat_of_unsigned_char v = elf_data_2lsb then
+        Little
+      else if nat_of_unsigned_char v = elf_data_2msb then
+        Big
+      else
+        Little (* XXX: random default as value is not valid! *)
+  end
 
 val get_elf32_header_endianness : elf32_header -> endianness
 let get_elf32_header_endianness hdr =

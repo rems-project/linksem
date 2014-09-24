@@ -39,10 +39,10 @@ let elf32_interpret_program_header_flags flags =
 
 val elf64_interpret_program_header_flags : elf64_word -> (bool * bool * bool)
 let elf64_interpret_program_header_flags flags =
-  let zero = elf64_word_of_int64 0 in
-  let one  = elf64_word_of_int64 1 in
-  let two  = elf64_word_of_int64 2 in
-  let four = elf64_word_of_int64 4 in
+  let zero = elf64_word_of_int32 0 in
+  let one  = elf64_word_of_int32 1 in
+  let two  = elf64_word_of_int32 2 in
+  let four = elf64_word_of_int32 4 in
     (not (elf64_word_land flags one = zero),
       not (elf64_word_land flags two = zero),
       not (elf64_word_land flags four = zero))
