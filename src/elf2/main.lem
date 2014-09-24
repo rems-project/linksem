@@ -14,6 +14,8 @@ open import Elf_executable_file3
 open import Elf_executable_file4
 open import Elf_executable_file5
 
+open import Sail_interface
+
 let default_os _ =
   "*Default OS specific print*"
 
@@ -33,17 +35,7 @@ let default_sht_bdl =
   (default_os, default_proc, default_user)
 
 let _ =
-  let res =
-    Bitstring.acquire "test/power64-executable-1" >>= fun bs0 ->
-    Elf_executable_file5.read_elf64_executable_file5 bs0 >>= fun elf_f1 ->
-    let _ = Missing_pervasives.print (Elf_executable_file5.string_of_elf64_executable_file5 default_hdr_bdl default_pht_bdl default_sht_bdl elf_f1) in
-    Elf_executable_file5.elf64_construct_image elf_f1 >>= fun (chunks_addr, entry_point) ->
-    let _ = Missing_pervasives.print ("Entry point: " ^ show entry_point) in
-    let _ = Missing_pervasives.print ("#Chunks: " ^ show (List.length chunks_addr)) in
-    let _ = Missing_pervasives.print (unlines (List.map (fun x -> show (snd x)) chunks_addr)) in
-    return elf_f1
-  in
-    match res with
-      | Fail err  -> Missing_pervasives.print err
-      | Success _ -> Missing_pervasives.print "Success...\n"
-    end
+  let (chunks_addr, entry) = Sail_interface.populate "test/power64-executable-1" in
+  let _ = Missing_pervasives.print ("Entry point: " ^ show entry) in
+  let _ = Missing_pervasives.print ("#Chunks: " ^ show (List.length chunks_addr)) in
+    ()
