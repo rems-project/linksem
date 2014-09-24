@@ -28,6 +28,7 @@ development.  Developers, users, and testers (at this point there is no distinct
 
     The two constructors of the monad are `Fail` and `Success` and can be
     pattern matched against.
+
   * ELF files are lazily unfolded, with more and more structure added at each stage.
     This idea is to hopefully allow us to talk about corrupted ELF files which
     otherwise have valid data in them.  The first stage of the unfolding is
@@ -43,6 +44,7 @@ development.  Developers, users, and testers (at this point there is no distinct
     From an `elfXX_executable_file5` one may obtain a process image, i.e. a
     collection of loadable memory chunks with a memory address, and an entry
     point for the program, using the `elfXX_obtain_image` functions.
+
   * The central type in the development is `bitstring`, which represents a string
     of uninterpreted bits.  This is provided by the `bitstring` OCaml library,
     and is bound in Lem in the `bitstring.lem` file, which exposes some but not
@@ -50,6 +52,7 @@ development.  Developers, users, and testers (at this point there is no distinct
 
     All reading of data is mediated through `bitstring` and the library's associated
     `bitmatch` construct.
+    
   * The development is partially typeclassed in order to make working with all the
     many types less painful.  This is not currently taken to its conclusion, and
     more typeclasses will be added in time.
