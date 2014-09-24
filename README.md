@@ -4,7 +4,9 @@ Partial ELF (Executable and Linkable Format) specification in Lem, still under
 development.  Developers, users, and testers (at this point there is no distinction
 ):
 
-  * Dominic Mulligan, Stephen Kell and Kathy Gray
+  1. Dominic Mulligan
+  2. Stephen Kell
+  3. Kathy Gray
 
 ## Repository map
 
