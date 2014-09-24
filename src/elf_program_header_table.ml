@@ -3,15 +3,24 @@ open Lem_basic_classes
 open Lem_bool
 open Lem_function
 open Lem_list
+open Lem_maybe
 open Lem_num
 open Lem_string
 
-open Bitstring
-open Error
 open Elf_types
+open Endianness
+
+open Bitstring_local
+open Error
+open Missing_pervasives
 open Show
 
-(** Segment types *)
+(** Segment types
+  *
+  * FIXME: Bug in Lem as Lem codebase uses [int] type throughout where [BigInt.t]
+  * is really needed, hence chokes on huge constants below, which is why they are
+  * written in the way that they are.
+  *)
 
 (** Unused array element.  All other members of the structure are undefined. *)
 let elf_pt_null : int =( 0)
@@ -34,14 +43,19 @@ let elf_pt_phdr : int =( 6)
 (** Specifies the thread local storage (TLS) template.  Need not be supported. *)
 let elf_pt_tls : int =( 7)
 (** Start of reserved indices for operating system specific semantics. *)
-let elf_pt_loos : int =( 0) (* XXX: too big for Lem? 1610612736 (* 0x60000000 *) *)
+let elf_pt_loos : int =(((( 128 * 128) * 128) * 256) * 3) (* 1610612736 (* 0x60000000 *) *)
 (** End of reserved indices for operating system specific semantics. *)
-let elf_pt_hios : int =( 0) (* XXX: too big for Lem? 1879048191 (* 0x6fffffff *) *)
+let elf_pt_hios : int = (( 469762047 * 4) + 3) (* 1879048191 (* 0x6fffffff *) *)
 (** Start of reserved indices for processor specific semantics. *)
-let elf_pt_loproc : int =( 0) (* XXX: too big for Lem? 1879048192 (* 0x70000000 *) *)
+let elf_pt_loproc : int = ( 469762048 * 4) (* 1879048192 (* 0x70000000 *) *)
 (** End of reserved indices for processor specific semantics. *)
-let elf_pt_hiproc : int =( 0) (* XXX: too big for Lem? 2147483647 (* 0x7fffffff *) *)
+let elf_pt_hiproc : int = (( 536870911 * 4) + 3) (* 2147483647 (* 0x7fffffff *) *)
 
+(** [string_of_elf_segment_type os proc st] produces a string representation of
+  * the coding of an ELF segment type [st] using [os] and [proc] to render OS-
+  * and processor-specific codings.
+  *)
+(*val string_of_elf_segment_type : (nat -> string) -> (nat -> string) -> nat -> string*)
 let string_of_elf_segment_type os proc pt =	
 (if pt = elf_pt_null then
 		"PT_NULL"
@@ -64,77 +78,230 @@ let string_of_elf_segment_type os proc pt =
 	else if (pt >= elf_pt_loproc) && (pt <= elf_pt_hiproc) then
 		proc pt
 	else
-		"XXX: invalid segment type")
+		"Undefined or invalid segment type")
 
-(** Program header entry type *)
+(** Program header table entry type *)
 
-type elf32_program_header_entry =
-  { p_type  : Int64.t (** Type of the segment *)
-  ; p_offset : Int64.t  (** Offset from beginning of file for segment *)
-  ; p_vaddr  : Int64.t (** Virtual address for segment in memory *)
-  ; p_paddr  : Int64.t (** Physical address for segment *)
-  ; p_filesz : Int64.t (** Size of segment in file, in bytes *)
-  ; p_memsz  : Int64.t (** Size of segment in memory image, in bytes *)
-  ; p_flags  : Int64.t (** Segment flags *)
-  ; p_align  : Int64.t (** Segment alignment memory for memory and file *)
-  }
+(** Type [elf32_program_header_table_entry] encodes a program header table entry
+  * for 32-bit platforms.  Each entry describes a segment in an executable or
+  * shared object file.
+  *)
+type elf32_program_header_table_entry =
+  { elf32_p_type   : Uint32.t (** Type of the segment *)
+   ; elf32_p_offset : Uint32.t  (** Offset from beginning of file for segment *)
+   ; elf32_p_vaddr  : Uint32.t (** Virtual address for segment in memory *)
+   ; elf32_p_paddr  : Uint32.t (** Physical address for segment *)
+   ; elf32_p_filesz : Uint32.t (** Size of segment in file, in bytes *)
+   ; elf32_p_memsz  : Uint32.t (** Size of segment in memory image, in bytes *)
+   ; elf32_p_flags  : Uint32.t (** Segment flags *)
+   ; elf32_p_align  : Uint32.t (** Segment alignment memory for memory and file *)
+   }
+
+(** Type [elf64_program_header_table_entry] encodes a program header table entry
+  * for 64-bit platforms.  Each entry describes a segment in an executable or
+  * shared object file.
+  *)
+type elf64_program_header_table_entry =
+  { elf64_p_type   : Uint32.t  (** Type of the segment *)
+   ; elf64_p_flags  : Uint32.t  (** Segment flags *)
+   ; elf64_p_offset : Uint64.t   (** Offset from beginning of file for segment *)
+   ; elf64_p_vaddr  : Uint64.t  (** Virtual address for segment in memory *)
+   ; elf64_p_paddr  : Uint64.t  (** Physical address for segment *)
+   ; elf64_p_filesz : Uint64.t (** Size of segment in file, in bytes *)
+   ; elf64_p_memsz  : Uint64.t (** Size of segment in memory image, in bytes *)
+   ; elf64_p_align  : Uint64.t (** Segment alignment memory for memory and file *)
+   }
   
-let string_of_elf32_program_header_entry os proc entry =	
-(List.fold_right (^) [
-		"\t"; "Segment type: "; string_of_elf_segment_type os proc (Int64.to_int entry.p_type)
-	; "\t"; "Offset: "; Int64.to_string entry.p_offset
-	; "\n\t"; "Virtual address: "; Int64.to_string entry.p_vaddr
-	; "\t"; "Physical address: "; Int64.to_string entry.p_paddr
-	; "\n\t"; "Segment size (bytes): "; Int64.to_string entry.p_filesz
-	; "\t"; "Segment size in memory image (bytes): "; Int64.to_string entry.p_memsz
-	; "\n\t"; "Flags: "; Int64.to_string entry.p_flags
-  ; "\t"; "Alignment: "; Int64.to_string entry.p_align; "\n\n"
-	] "")
-	
-let string_of_elf32_program_header_entry_default =	
-(string_of_elf32_program_header_entry ((fun y->"OS specific")) ((fun y->"Processor specific")))
-	
-let instance_Show_Show_Elf_program_header_table_elf32_program_header_entry_dict =({
+(** [string_of_elf32_program_header_table_entry os proc et] produces a string
+  * representation of a 32-bit program header table entry using [os] and [proc]
+  * to render OS- and processor-specific entries.
+  *)
+(*val string_of_elf32_program_header_table_entry : (nat -> string) -> (nat -> string) -> elf32_program_header_table_entry -> string*)
+let string_of_elf32_program_header_table_entry os proc entry =	
+(unlines [		
+("\t" ^ ("Segment type: " ^ string_of_elf_segment_type os proc (Uint32.to_int entry.elf32_p_type)))
+	; ("\t" ^ ("Offset: " ^ Uint32.to_string entry.elf32_p_offset))
+	; ("\t" ^ ("Virtual address: " ^ Uint32.to_string entry.elf32_p_vaddr))
+	; ("\t" ^ ("Physical address: " ^ Uint32.to_string entry.elf32_p_paddr))
+	; ("\t" ^ ("Segment size (bytes): " ^ Uint32.to_string entry.elf32_p_filesz))
+	; ("\t" ^ ("Segment size in memory image (bytes): " ^ Uint32.to_string entry.elf32_p_memsz))
+	; ("\t" ^ ("Flags: " ^ Uint32.to_string entry.elf32_p_flags))
+  ; ("\t" ^ ("Alignment: " ^ Uint32.to_string entry.elf32_p_align))
+	])
 
-  show_method = string_of_elf32_program_header_entry_default})
-  
-(*val read_elf32_program_header_entry : bitstring -> error (elf32_program_header_entry * bitstring)*)
-let read_elf32_program_header_entry bs =	
-(Ml_bindings.read_elf32_word bs >>= (fun (typ, bs) ->
-	Ml_bindings.read_elf32_off  bs >>= (fun (offset, bs) ->
-	Ml_bindings.read_elf32_addr bs >>= (fun (vaddr, bs) ->
-	Ml_bindings.read_elf32_addr bs >>= (fun (paddr, bs) ->
-	Ml_bindings.read_elf32_word bs >>= (fun (filesz, bs) ->
-	Ml_bindings.read_elf32_word bs >>= (fun (memsz, bs) ->
-	Ml_bindings.read_elf32_word bs >>= (fun (flags, bs) ->
-	Ml_bindings.read_elf32_word bs >>= (fun (align, bs) ->
-		Success (
-			{ p_type = typ
-			 ; p_offset = offset
-			 ; p_vaddr = vaddr
-			 ; p_paddr = paddr
-			 ; p_filesz = filesz
-			 ; p_memsz = memsz
-			 ; p_flags = flags
-			 ; p_align = align
-			 }, bs))))))))))
+(** [string_of_elf64_program_header_table_entry os proc et] produces a string
+  * representation of a 64-bit program header table entry using [os] and [proc]
+  * to render OS- and processor-specific entries.
+  *)
+(*val string_of_elf64_program_header_table_entry : (nat -> string) -> (nat -> string) -> elf64_program_header_table_entry -> string*)
+let string_of_elf64_program_header_table_entry os proc entry =  
+(unlines [    
+("\t" ^ ("Segment type: " ^ string_of_elf_segment_type os proc (Uint32.to_int entry.elf64_p_type)))
+  ; ("\t" ^ ("Offset: " ^ Uint64.to_string entry.elf64_p_offset))
+  ; ("\t" ^ ("Virtual address: " ^ Uint64.to_string entry.elf64_p_vaddr))
+  ; ("\t" ^ ("Physical address: " ^ Uint64.to_string entry.elf64_p_paddr))
+  ; ("\t" ^ ("Segment size (bytes): " ^ Uint64.to_string entry.elf64_p_filesz))
+  ; ("\t" ^ ("Segment size in memory image (bytes): " ^ Uint64.to_string entry.elf64_p_memsz))
+  ; ("\t" ^ ("Flags: " ^ Uint32.to_string entry.elf64_p_flags))
+  ; ("\t" ^ ("Alignment: " ^ Uint64.to_string entry.elf64_p_align))
+  ])
+
+(** [string_of_elf32_program_header_table_entry_default et] produces a string representation
+  * of table entry [et] where OS- and processor-specific entries are replaced with
+  * default strings.
+  *)
+(*val string_of_elf32_program_header_table_entry_default : elf32_program_header_table_entry -> string*)
+let string_of_elf32_program_header_table_entry_default =	
+(string_of_elf32_program_header_table_entry
+    ((fun y->"*Default OS specific print*"))
+      ((fun y->"*Default processor specific print*")))
+
+(** [string_of_elf64_program_header_table_entry_default et] produces a string representation
+  * of table entry [et] where OS- and processor-specific entries are replaced with
+  * default strings.
+  *)
+(*val string_of_elf64_program_header_table_entry_default : elf64_program_header_table_entry -> string*)
+let string_of_elf64_program_header_table_entry_default =  
+(string_of_elf64_program_header_table_entry
+    ((fun y->"*Default OS specific print*"))
+      ((fun y->"*Default processor specific print*")))
+	
+let instance_Show_Show_Elf_program_header_table_elf32_program_header_table_entry_dict =({
+
+  show_method = string_of_elf32_program_header_table_entry_default})
+
+let instance_Show_Show_Elf_program_header_table_elf64_program_header_table_entry_dict =({
+
+  show_method = string_of_elf64_program_header_table_entry_default})
+
+(** [read_elf32_program_header_table_entry endian bs0] reads an ELF32 program header table
+  * entry from bitstring [bs0] assuming endianness [endian].  If [bs0] is larger
+  * than necessary, the excess is returned from the function, too.
+  *)
+(*val read_elf32_program_header_table_entry : endianness -> bitstring -> error (elf32_program_header_table_entry * bitstring)*)
+let read_elf32_program_header_table_entry endian bs =	
+(Ml_bindings.read_elf32_word endian bs >>= (fun (typ, bs) ->
+	Ml_bindings.read_elf32_off  endian bs >>= (fun (offset, bs) ->
+	Ml_bindings.read_elf32_addr endian bs >>= (fun (vaddr, bs) ->
+	Ml_bindings.read_elf32_addr endian bs >>= (fun (paddr, bs) ->
+	Ml_bindings.read_elf32_word endian bs >>= (fun (filesz, bs) ->
+	Ml_bindings.read_elf32_word endian bs >>= (fun (memsz, bs) ->
+	Ml_bindings.read_elf32_word endian bs >>= (fun (flags, bs) ->
+	Ml_bindings.read_elf32_word endian bs >>= (fun (align, bs) ->
+		return ({ elf32_p_type = typ; elf32_p_offset = offset;
+                elf32_p_vaddr = vaddr; elf32_p_paddr = paddr;
+                elf32_p_filesz = filesz; elf32_p_memsz = memsz;
+                elf32_p_flags = flags; elf32_p_align = align }, bs))))))))))
+
+(*val read_elf64_program_header_table_entry : endianness -> bitstring -> error (elf64_program_header_table_entry * bitstring)*)
+let read_elf64_program_header_table_entry endian bs =  
+(Ml_bindings.read_elf64_word endian bs >>= (fun (typ, bs) ->
+  Ml_bindings.read_elf64_word endian bs >>= (fun (flags, bs) ->
+  Ml_bindings.read_elf64_off  endian bs >>= (fun (offset, bs) ->
+  Ml_bindings.read_elf64_addr endian bs >>= (fun (vaddr, bs) ->
+  Ml_bindings.read_elf64_addr endian bs >>= (fun (paddr, bs) ->
+  Ml_bindings.read_elf64_xword endian bs >>= (fun (filesz, bs) ->
+  Ml_bindings.read_elf64_xword endian bs >>= (fun (memsz, bs) ->
+  Ml_bindings.read_elf64_xword endian bs >>= (fun (align, bs) ->
+    return ({ elf64_p_type = typ; elf64_p_offset = offset;
+                elf64_p_vaddr = vaddr; elf64_p_paddr = paddr;
+                elf64_p_filesz = filesz; elf64_p_memsz = memsz;
+                elf64_p_flags = flags; elf64_p_align = align }, bs))))))))))
 
 (** Program header table type *)
-type elf32_program_header_table = elf32_program_header_entry list
 
-let rec read_elf32_program_header_table' bitstring1 =	
-(if Bitstring.bitstring_length bitstring1 = 0 then
+(** Type [elf32_program_header_table] represents a program header table for 32-bit
+  * ELF files.  A program header table is an array (implemented as a list, here)
+  * of program header table entries.
+  *)
+type elf32_program_header_table = elf32_program_header_table_entry
+  list
+
+type 'a hasElf32ProgramHeaderTable_class={
+  get_elf32_program_header_table_method : 'a ->  elf32_program_header_table option
+}
+
+(** Type [elf64_program_header_table] represents a program header table for 64-bit
+  * ELF files.  A program header table is an array (implemented as a list, here)
+  * of program header table entries.
+  *)
+type elf64_program_header_table = elf64_program_header_table_entry
+  list
+
+type 'a hasElf64ProgramHeaderTable_class={
+  get_elf64_program_header_table_method : 'a ->  elf64_program_header_table option
+}
+
+(** [read_elf32_program_header_table' endian bs0] reads an ELF32 program header table from
+  * bitstring [bs0] assuming endianness [endian].  The bitstring [bs0] is assumed
+  * to have exactly the correct size for the table.  For internal use, only.  Use
+  * [read_elf32_program_header_table] below instead.
+  *)
+let rec read_elf32_program_header_table' endian bs0 =	
+(if Bitstring.bitstring_length bs0 = 0 then
   	return []
   else
-  	read_elf32_program_header_entry bitstring1 >>= (fun (entry, bitstring0) ->
-    read_elf32_program_header_table' bitstring0 >>= (fun tail ->
+  	read_elf32_program_header_table_entry endian bs0 >>= (fun (entry, bs1) ->
+    read_elf32_program_header_table' endian bs1 >>= (fun tail ->
     return (entry::tail))))
 
-let read_elf32_program_header_table table_size bitstring0 =	
-(let (eat, rest) = (Utility.partition_bitstring table_size bitstring0) in
-		read_elf32_program_header_table' eat >>= (fun table ->
+(** [read_elf64_program_header_table' endian bs0] reads an ELF64 program header table from
+  * bitstring [bs0] assuming endianness [endian].  The bitstring [bs0] is assumed
+  * to have exactly the correct size for the table.  For internal use, only.  Use
+  * [read_elf32_program_header_table] below instead.
+  *)
+let rec read_elf64_program_header_table' endian bs0 =  
+(if Bitstring.bitstring_length bs0 = 0 then
+    return []
+  else
+    read_elf64_program_header_table_entry endian bs0 >>= (fun (entry, bs1) ->
+    read_elf64_program_header_table' endian bs1 >>= (fun tail ->
+    return (entry::tail))))
+
+(** [read_elf32_program_header_table table_size endian bs0] reads an ELF32 program header
+  * table from bitstring [bs0] assuming endianness [endian] based on the size (in bytes) passed in via [table_size].
+  * This [table_size] argument should be equal to the number of entries in the
+  * table multiplied by the fixed entry size.  Bitstring [bs0] may be larger than
+  * necessary, in which case the excess is returned.
+  *)
+(*val read_elf32_program_header_table : nat -> endianness -> bitstring -> error (elf32_program_header_table * bitstring)*)
+let read_elf32_program_header_table table_size endian bs0 =	
+(let (eat, rest) = (Ml_bindings.partition_bitstring table_size bs0) in
+		read_elf32_program_header_table' endian eat >>= (fun table ->
 		return (table, rest)))
-		
-let string_of_elf32_program_header_table os proc tbl =	
-("Program header table contents:" ^ ("\n" ^
-		List.fold_right (^) (List.map (string_of_elf32_program_header_entry os proc) tbl) "\n"))
+
+(** [read_elf64_program_header_table table_size endian bs0] reads an ELF64 program header
+  * table from bitstring [bs0] assuming endianness [endian] based on the size (in bytes) passed in via [table_size].
+  * This [table_size] argument should be equal to the number of entries in the
+  * table multiplied by the fixed entry size.  Bitstring [bs0] may be larger than
+  * necessary, in which case the excess is returned.
+  *)
+(*val read_elf64_program_header_table : nat -> endianness -> bitstring -> error (elf64_program_header_table * bitstring)*)
+let read_elf64_program_header_table table_size endian bs0 =  
+(let (eat, rest) = (Ml_bindings.partition_bitstring table_size bs0) in
+    read_elf64_program_header_table' endian eat >>= (fun table ->
+    return (table, rest)))
+
+(** The [pht_print_bundle] type is used to tidy up other type signatures.  Some of the
+  * top-level string_of_ functions require six or more functions passed to them,
+  * which quickly gets out of hand.  This type is used to reduce that complexity.
+  * The first component of the type is an OS specific print function, the second is
+  * a processor specific print function.
+  *)
+type pht_print_bundle = (int -> string) * (int -> string)
+
+(** [string_of_elf32_program_header_table os proc tbl] produces a string representation
+  * of program header table [tbl] using [os] and [proc] to render OS- and processor-
+  * specific entries.
+  *)
+(*val string_of_elf32_program_header_table : pht_print_bundle -> elf32_program_header_table -> string*)
+let string_of_elf32_program_header_table (os, proc) tbl =  
+(unlines (List.map (string_of_elf32_program_header_table_entry os proc) tbl))
+
+(** [string_of_elf64_program_header_table os proc tbl] produces a string representation
+  * of program header table [tbl] using [os] and [proc] to render OS- and processor-
+  * specific entries.
+  *)
+(*val string_of_elf64_program_header_table : pht_print_bundle -> elf64_program_header_table -> string*)
+let string_of_elf64_program_header_table (os, proc) tbl =  
+(unlines (List.map (string_of_elf64_program_header_table_entry os proc) tbl))

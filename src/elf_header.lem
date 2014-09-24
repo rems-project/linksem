@@ -6,9 +6,13 @@ open import Maybe
 open import Num
 open import String
 
-open import Bitstring
+open import Endianness
+
 open import Elf_types
+
+open import Bitstring
 open import Error
+open import Missing_pervasives
 open import Show
 
 (** ELF object file types.  Enumerates the ELF object file types specified in the
@@ -44,7 +48,8 @@ let elf_ft_hi_proc : nat = 65535 (* 0xffff *)
   * processor specific values, the higher-order functions [os] and [proc] are
   * used for printing, respectively.
   *)
-let string_of_elf_file_type (os_specific : nat -> string) (proc_specific : nat -> string) m =
+val string_of_elf_file_type : (nat -> string) -> (nat -> string) -> nat -> string
+let string_of_elf_file_type os_specific proc_specific m =
 	if m = elf_ft_none then
 		"No file type"
 	else if m = elf_ft_rel then
@@ -60,7 +65,7 @@ let string_of_elf_file_type (os_specific : nat -> string) (proc_specific : nat -
 	else if m >= elf_ft_lo_proc && m <= elf_ft_hi_proc then
 		proc_specific m
 	else
-		"XXX: invalid file type"
+		"Invalid file type"
 
 (** [is_operating_specific_file_type_value] checks whether a numeric value is
   * reserved by the ABI for operating system-specific purposes.
@@ -76,19 +81,28 @@ val is_processor_specific_object_file_type_value : nat -> bool
 let is_processor_specific_object_file_type_value v =
   v >= 65280 && v <= 65535
 
-(** ELF machine architectures *)
+(** ELF machine architectures (TODO: complete the conversion of the enumeration.) *)
 
 (** Intel 386 *)
 let elf_ma_386 : nat = 3
+(** IBM PowerPC *)
+let elf_ma_ppc : nat = 20
+(** IBM PowerPC 64 *)
+let elf_ma_ppc64 : nat = 21
 
 (** [string_of_elf_machine_architecture m] produces a string representation of
   * the numeric encoding [m] of the ELF machine architecture.
   *)
+val string_of_elf_machine_architecture : nat -> string
 let string_of_elf_machine_architecture m =
 	if m = elf_ma_386 then
-		"Intel 386 machine architecture"
+		"Intel 386 architecture"
+  else if m = elf_ma_ppc then
+    "IBM PowerPC"
+  else if m = elf_ma_ppc64 then
+    "IBM PowerPC 64"
 	else
-		"XXX: something else"
+		"Other architecture"
 
 (* XXX: convert these into top-level definitions later...
 (** [elf_machine_architecture] enumerates all the supported machine architectures
@@ -330,6 +344,7 @@ let elf_ev_current : nat = 1
 (** [string_of_elf_version_number m] produces a string representation of the
   * numeric encoding [m] of the ELF version number.
   *)
+val string_of_elf_version_number : nat -> string
 let string_of_elf_version_number m =
 	if m = elf_ev_none then
 		"Invalid ELF version"
@@ -397,6 +412,7 @@ let elf_class_64 : nat = 2
 (** [string_of_elf_file_class m] produces a string representation of the numeric
   * encoding [m] of the ELF file class.
   *)
+val string_of_elf_file_class : nat -> string
 let string_of_elf_file_class m =
 	if m = elf_class_none then
 		"Invalid ELF file class"
@@ -405,7 +421,7 @@ let string_of_elf_file_class m =
 	else if m = elf_class_64 then
 		"64 bit ELF object"
 	else
-		"XXX: invalid ELF file class"
+		"Invalid ELF file class"
 
 (** ELF data encodings.  Byte e_ident[elf_ei_data] specifies the encoding of both the
   * data structures used by object file container and data contained in object
@@ -422,6 +438,7 @@ let elf_data_2msb : nat = 2
 (** [string_of_elf_data_encoding m] produces a string representation of the
   * numeric encoding [m] of the ELF data encoding.
   *)
+val string_of_elf_data_encoding : nat -> string
 let string_of_elf_data_encoding m =
 	if m = elf_data_none then
 		"Invalid data encoding"
@@ -430,7 +447,7 @@ let string_of_elf_data_encoding m =
 	else if m = elf_data_2msb then
 		"Two's complement values, MSB at lowest address"
 	else
-		"XXX: invalid data encoding"
+		"Invalid data encoding"
 
 (** OS and ABI versions.  Byte e_ident[elf_ei_osabi] identifies the OS- or
   * ABI-specific ELF extensions used by this file. Some fields in other ELF
@@ -475,6 +492,7 @@ let elf_osabi_fenixos : nat = 16
 (** [string_of_elf_osabi_version m] produces a string representation of the
   * numeric encoding [m] of the ELF OSABI version.
   *)
+val string_of_elf_osabi_version : nat -> string
 let string_of_elf_osabi_version m =
 	if m = elf_osabi_none then
 		"No extension or unspecified"
@@ -509,7 +527,7 @@ let string_of_elf_osabi_version m =
 	else if m = elf_osabi_fenixos then
 		"FenixOS highly-scalable multi-core OS"
 	else
-		"XXX: invalid OSABI version"
+		"Invalid OSABI version"
 
 (** Checks an architecture defined OSABI version is correct, i.e. in the range
   * 64 to 255 inclusive.
@@ -524,9 +542,9 @@ let is_valid_architecture_defined_osabi_version (n : nat) = n >= 64 && n <= 255
 val ei_nident : nat
 let ei_nident = 16
 
-(** [elf32_elf_header] is the type of headers for 32-bit ELF files.
+(** [elf32_header] is the type of headers for 32-bit ELF files.
   *)
-type elf32_elf_header =
+type elf32_header =
   <| elf32_ident    : list unsigned_char (** Identification field *)
    ; elf32_type     : elf32_half         (** The object file type *)
    ; elf32_machine  : elf32_half         (** Required machine architecture *)
@@ -543,71 +561,179 @@ type elf32_elf_header =
    ; elf32_shstrndx : elf32_half         (** Section header table entry for section name string table *)
    |>
 
-val string_of_elf32_elf_header : (nat -> string) -> (nat -> string) -> elf32_elf_header -> string
-let string_of_elf32_elf_header os proc hdr =
-	let ident = show hdr.elf32_ident in
-	let typ   = string_of_elf_file_type os proc (nat_of_elf32_half hdr.elf32_type) in
-	let mach  = string_of_elf_machine_architecture (nat_of_elf32_half hdr.elf32_machine) in
-	let ver   = string_of_elf_version_number (nat_of_elf32_word hdr.elf32_version) in
-	let entry = show hdr.elf32_entry in
-	let phoff = show hdr.elf32_phoff in
-	let shoff = show hdr.elf32_shoff in
-	let flags = show hdr.elf32_flags in
-	let ehsize = show hdr.elf32_ehsize in
-	let phentsize = show hdr.elf32_phentsize in
-	let phnum     = show hdr.elf32_phnum in
-	let shentsize = show hdr.elf32_shentsize in
-	let shnum     = show hdr.elf32_shnum in
-	let shstrndx  = show hdr.elf32_shstrndx in
-		foldr (^) "" [
-			"Header data:"; "\n";
-			"\t"; "Magic number: "; ident; "\n";
-			"\t"; "Type: "; typ; "\t"; "Version: "; ver; "\n";
-			"\t"; "Machine: "; mach; "\n"
-		]
-
-let string_of_elf32_elf_header_default =
-	string_of_elf32_elf_header (const "OS specific") (const "Processor specific")
-	
-instance (Show elf32_elf_header)
-	let show = string_of_elf32_elf_header_default
+class (HasElf32Header 'a)
+  val get_elf32_header : 'a -> elf32_header
 end
 
-val read_elf32_elf_header : bitstring -> error (elf32_elf_header * bitstring)
-let read_elf32_elf_header bs =
-	repeatM' ei_nident bs read_unsigned_char >>= fun (ident, bs) ->
-	read_elf32_half bs >>= fun (typ, bs) ->
-	read_elf32_half bs >>= fun (machine, bs) ->
-	read_elf32_word bs >>= fun (version, bs) ->
-	read_elf32_addr bs >>= fun (entry, bs) ->
-	read_elf32_off bs >>= fun (phoff, bs) ->
-	read_elf32_off bs >>= fun (shoff, bs) ->
-	read_elf32_word bs >>= fun (flags, bs) ->
-	read_elf32_half bs >>= fun (ehsize, bs) ->
-	read_elf32_half bs >>= fun (phentsize, bs) ->
-	read_elf32_half bs >>= fun (phnum, bs) ->
-	read_elf32_half bs >>= fun (shentsize, bs) ->
-	read_elf32_half bs >>= fun (shnum, bs) ->
-	read_elf32_half bs >>= fun (shstrndx, bs) ->
-		return
-			(<| elf32_ident = ident
-			 ; elf32_type  = typ
-			 ; elf32_machine = machine
-			 ; elf32_version = version
-			 ; elf32_entry = entry
-			 ; elf32_phoff = phoff
-			 ; elf32_shoff = shoff
-			 ; elf32_flags = flags
-			 ; elf32_ehsize = ehsize
-			 ; elf32_phentsize = phentsize
-			 ; elf32_phnum = phnum
-			 ; elf32_shentsize = shentsize
-			 ; elf32_shnum = shnum
-			 ; elf32_shstrndx = shstrndx
-			 |>, bs)
+(** [elf64_header] is the type of headers for 32-bit ELF files.
+  *)
+type elf64_header =
+  <| elf64_ident    : list unsigned_char (** Identification field *)
+   ; elf64_type     : elf64_half         (** The object file type *)
+   ; elf64_machine  : elf64_half         (** Required machine architecture *)
+   ; elf64_version  : elf64_word         (** Object file version *)
+   ; elf64_entry    : elf64_addr         (** Virtual address for transfer of control *)
+   ; elf64_phoff    : elf64_off          (** Program header table offset in bytes *)
+   ; elf64_shoff    : elf64_off          (** Section header table offset in bytes *)
+   ; elf64_flags    : elf64_word         (** Processor-specific flags *)
+   ; elf64_ehsize   : elf64_half         (** ELF header size in bytes *)
+   ; elf64_phentsize: elf64_half         (** Program header table entry size in bytes *)
+   ; elf64_phnum    : elf64_half         (** Number of entries in program header table *)
+   ; elf64_shentsize: elf64_half         (** Section header table entry size in bytes *)
+   ; elf64_shnum    : elf64_half         (** Number of entries in section header table *)
+   ; elf64_shstrndx : elf64_half         (** Section header table entry for section name string table *)
+   |>
 
-val is_elf32_elf_header_padding_correct : elf32_elf_header -> bool
-let is_elf32_elf_header_padding_correct ehdr =
+class (HasElf64Header 'a)
+  val get_elf64_header : 'a -> elf64_header
+end
+
+(** [deduce_endian] deduces the endianness of an ELF file based on the ELF
+  * header's magic number.
+  *)
+val deduce_endianness : list unsigned_char -> endianness
+let deduce_endianness id =
+  match List.index id 5 with
+    | Nothing -> Little (* XXX: random default as read of magic number has failed! *)
+    | Just v  ->
+      if nat_of_unsigned_char v = elf_data_2lsb then
+        Little
+      else if nat_of_unsigned_char v = elf_data_2msb then
+        Big
+      else
+        Little (* XXX: random default as value is not valid! *)
+  end
+
+val get_elf32_header_endianness : elf32_header -> endianness
+let get_elf32_header_endianness hdr =
+  deduce_endianness (hdr.elf32_ident)
+
+val get_elf64_header_endianness : elf64_header -> endianness
+let get_elf64_header_endianness hdr =
+  deduce_endianness (hdr.elf64_ident)
+
+(** The [hdr_print_bundle] type is used to tidy up other type signatures.  Some of the
+  * top-level string_of_ functions require six or more functions passed to them,
+  * which quickly gets out of hand.  This type is used to reduce that complexity.
+  * The first component of the type is an OS specific print function, the second is
+  * a processor specific print function.
+  *)
+type hdr_print_bundle = (nat -> string) * (nat -> string)
+
+val string_of_elf32_header : hdr_print_bundle -> elf32_header -> string
+let string_of_elf32_header (os, proc) hdr =
+	unlines [
+	  "\t" ^ "Magic number: " ^ show hdr.elf32_ident
+  ; "\t" ^ "Endianness: " ^ show (deduce_endianness hdr.elf32_ident)
+	; "\t" ^ "Type: " ^ string_of_elf_file_type os proc (nat_of_elf32_half hdr.elf32_type)
+  ; "\t" ^ "Version: " ^ string_of_elf_version_number (nat_of_elf32_word hdr.elf32_version)
+	; "\t" ^ "Machine: " ^ string_of_elf_machine_architecture (nat_of_elf32_half hdr.elf32_machine)
+  ; "\t" ^ "Entry point: " ^ show hdr.elf32_entry
+  ; "\t" ^ "Flags: " ^ show hdr.elf32_flags
+  ; "\t" ^ "Entries in program header table: " ^ show hdr.elf32_phnum
+  ; "\t" ^ "Entries in section header table: " ^ show hdr.elf32_shnum
+	]
+
+val string_of_elf64_header : hdr_print_bundle -> elf64_header -> string
+let string_of_elf64_header (os, proc) hdr =
+  unlines [
+    "\t" ^ "Magic number: " ^ show hdr.elf64_ident
+  ; "\t" ^ "Endianness: " ^ show (deduce_endianness hdr.elf64_ident)
+  ; "\t" ^ "Type: " ^ string_of_elf_file_type os proc (nat_of_elf64_half hdr.elf64_type)
+  ; "\t" ^ "Version: " ^ string_of_elf_version_number (nat_of_elf64_word hdr.elf64_version)
+  ; "\t" ^ "Machine: " ^ string_of_elf_machine_architecture (nat_of_elf64_half hdr.elf64_machine)
+  ; "\t" ^ "Entry point: " ^ show hdr.elf64_entry
+  ; "\t" ^ "Flags: " ^ show hdr.elf64_flags
+  ; "\t" ^ "Entries in program header table: " ^ show hdr.elf64_phnum
+  ; "\t" ^ "Entries in section header table: " ^ show hdr.elf64_shnum
+  ]
+
+val string_of_elf32_header_default : elf32_header -> string
+let string_of_elf32_header_default =
+	string_of_elf32_header
+    ((const "*Default OS specific print*"),
+      (const "*Default processor specific print*"))
+
+val string_of_elf64_header_default : elf64_header -> string
+let string_of_elf64_header_default =
+  string_of_elf64_header
+    ((const "*Default OS specific print*"),
+      (const "*Default processor specific print*"))
+	
+instance (Show elf32_header)
+	let show = string_of_elf32_header_default
+end
+
+instance (Show elf64_header)
+  let show = string_of_elf64_header_default
+end
+
+val read_elf32_header : bitstring -> error (elf32_header * bitstring)
+let read_elf32_header bs =
+	repeatM' ei_nident bs (read_unsigned_char default_endianness) >>= fun (ident, bs) ->
+  let endian = deduce_endianness ident in
+	read_elf32_half endian bs >>= fun (typ, bs) ->
+	read_elf32_half endian bs >>= fun (machine, bs) ->
+	read_elf32_word endian bs >>= fun (version, bs) ->
+	read_elf32_addr endian bs >>= fun (entry, bs) ->
+	read_elf32_off  endian bs >>= fun (phoff, bs) ->
+	read_elf32_off  endian bs >>= fun (shoff, bs) ->
+	read_elf32_word endian bs >>= fun (flags, bs) ->
+	read_elf32_half endian bs >>= fun (ehsize, bs) ->
+	read_elf32_half endian bs >>= fun (phentsize, bs) ->
+	read_elf32_half endian bs >>= fun (phnum, bs) ->
+	read_elf32_half endian bs >>= fun (shentsize, bs) ->
+	read_elf32_half endian bs >>= fun (shnum, bs) ->
+	read_elf32_half endian bs >>= fun (shstrndx, bs) ->
+    match List.index ident 4 with
+      | Nothing -> fail "read_elf32_header: transcription of ELF identifier failed"
+      | Just c  ->
+        if nat_of_unsigned_char c = elf_class_32 then
+		      return (<| elf32_ident = ident; elf32_type  = typ;
+                      elf32_machine = machine; elf32_version = version;
+                      elf32_entry = entry; elf32_phoff = phoff;
+                      elf32_shoff = shoff; elf32_flags = flags;
+                      elf32_ehsize = ehsize; elf32_phentsize = phentsize;
+                      elf32_phnum = phnum; elf32_shentsize = shentsize;
+                      elf32_shnum = shnum; elf32_shstrndx = shstrndx |>, bs)
+        else
+          fail "read_elf32_header: not a 32-bit ELF file"
+    end
+
+val read_elf64_header : bitstring -> error (elf64_header * bitstring)
+let read_elf64_header bs =
+  repeatM' ei_nident bs (read_unsigned_char default_endianness) >>= fun (ident, bs) ->
+  let endian = deduce_endianness ident in
+  read_elf64_half endian bs >>= fun (typ, bs) ->
+  read_elf64_half endian bs >>= fun (machine, bs) ->
+  read_elf64_word endian bs >>= fun (version, bs) ->
+  read_elf64_addr endian bs >>= fun (entry, bs) ->
+  read_elf64_off  endian bs >>= fun (phoff, bs) ->
+  read_elf64_off  endian bs >>= fun (shoff, bs) ->
+  read_elf64_word endian bs >>= fun (flags, bs) ->
+  read_elf64_half endian bs >>= fun (ehsize, bs) ->
+  read_elf64_half endian bs >>= fun (phentsize, bs) ->
+  read_elf64_half endian bs >>= fun (phnum, bs) ->
+  read_elf64_half endian bs >>= fun (shentsize, bs) ->
+  read_elf64_half endian bs >>= fun (shnum, bs) ->
+  read_elf64_half endian bs >>= fun (shstrndx, bs) ->
+    match List.index ident 4 with
+      | Nothing -> fail "read_elf64_header: transcription of ELF identifier failed"
+      | Just c  ->
+        if nat_of_unsigned_char c = elf_class_64 then
+          return (<| elf64_ident = ident; elf64_type  = typ;
+                     elf64_machine = machine; elf64_version = version;
+                     elf64_entry = entry; elf64_phoff = phoff;
+                     elf64_shoff = shoff; elf64_flags = flags;
+                     elf64_ehsize = ehsize; elf64_phentsize = phentsize;
+                     elf64_phnum = phnum; elf64_shentsize = shentsize;
+                     elf64_shnum = shnum; elf64_shstrndx = shstrndx |>, bs)
+        else
+          fail "read_elf64_header: not a 64-bit ELF file"
+    end
+
+val is_elf32_header_padding_correct : elf32_header -> bool
+let is_elf32_header_padding_correct ehdr =
   List.index ehdr.elf32_ident 9  = Just (unsigned_char_of_nat 0) &&
   List.index ehdr.elf32_ident 10 = Just (unsigned_char_of_nat 0) &&
   List.index ehdr.elf32_ident 11 = Just (unsigned_char_of_nat 0) &&
@@ -616,56 +742,79 @@ let is_elf32_elf_header_padding_correct ehdr =
   List.index ehdr.elf32_ident 14 = Just (unsigned_char_of_nat 0) &&
   List.index ehdr.elf32_ident 15 = Just (unsigned_char_of_nat 0)
 
-val is_elf32_elf_header_magic_number_correct : elf32_elf_header -> bool
-let is_elf32_elf_header_magic_number_correct ehdr =
+val is_elf32_header_magic_number_correct : elf32_header -> bool
+let is_elf32_header_magic_number_correct ehdr =
   List.index ehdr.elf32_ident 0 = Just (unsigned_char_of_nat 127) &&
   List.index ehdr.elf32_ident 1 = Just (unsigned_char_of_nat 69)  &&
   List.index ehdr.elf32_ident 2 = Just (unsigned_char_of_nat 76)  &&
   List.index ehdr.elf32_ident 3 = Just (unsigned_char_of_nat 70)
 
-val is_elf32_elf_header_class_correct : elf32_elf_header -> bool
-let is_elf32_elf_header_class_correct ehdr =
+val is_elf32_header_class_correct : elf32_header -> bool
+let is_elf32_header_class_correct ehdr =
   List.index ehdr.elf32_ident 4 = Just (unsigned_char_of_nat 1)
 
-val is_elf32_elf_header_version_correct : elf32_elf_header -> bool
-let is_elf32_elf_header_version_correct ehdr =
+val is_elf32_header_version_correct : elf32_header -> bool
+let is_elf32_header_version_correct ehdr =
   List.index ehdr.elf32_ident 6 = Just (unsigned_char_of_nat 1)
 
-(** [is_valid_elf32_elf_header] checks whether an [elf32_elf_header] value is a valid 32-bit
+(** [is_valid_elf32_header] checks whether an [elf32_header] value is a valid 32-bit
   * ELF file header (i.e. [elf32_ident] is [ei_nident] entries long, and other
   * constraints on headers).
   *)
-val is_valid_elf32_elf_header : elf32_elf_header -> bool
-let is_valid_elf32_elf_header ehdr =
+val is_elf32_header_valid : elf32_header -> bool
+let is_elf32_header_valid ehdr =
   List.length ehdr.elf32_ident = ei_nident &&
-  is_elf32_elf_header_magic_number_correct ehdr &&
-  is_elf32_elf_header_padding_correct ehdr &&
-  is_elf32_elf_header_class_correct ehdr &&
-  is_elf32_elf_header_version_correct ehdr
+  is_elf32_header_magic_number_correct ehdr &&
+  is_elf32_header_padding_correct ehdr &&
+  is_elf32_header_class_correct ehdr &&
+  is_elf32_header_version_correct ehdr
 
-val elf32_elf_header_program_table_size : elf32_elf_header -> nat
-let elf32_elf_header_program_table_size ehdr =
+(** [get_elf32_header_program_table_size] calculates the size of the program table
+  * (entry size x number of entries) based on data in the ELF header.
+  *)
+val get_elf32_header_program_table_size : elf32_header -> nat
+let get_elf32_header_program_table_size ehdr =
   let phentsize = nat_of_elf32_half ehdr.elf32_phentsize in
   let phnum     = nat_of_elf32_half ehdr.elf32_phnum in
     phentsize * phnum
 
-val elf32_elf_header_is_section_table_present : elf32_elf_header -> bool
-let elf32_elf_header_is_section_table_present ehdr =
+(** [get_elf64_header_program_table_size] calculates the size of the program table
+  * (entry size x number of entries) based on data in the ELF header.
+  *)
+val get_elf64_header_program_table_size : elf64_header -> nat
+let get_elf64_header_program_table_size ehdr =
+  let phentsize = nat_of_elf64_half ehdr.elf64_phentsize in
+  let phnum     = nat_of_elf64_half ehdr.elf64_phnum in
+    phentsize * phnum
+
+(** [is_elf32_header_section_table_present] calculates whether a section table
+  * is present in the ELF file or not.
+  *)
+val is_elf32_header_section_table_present : elf32_header -> bool
+let is_elf32_header_section_table_present ehdr =
   not (nat_of_elf32_off ehdr.elf32_shoff = 0)
 
-val elf32_elf_header_section_table_size : elf32_elf_header -> nat
-let elf32_elf_header_section_table_size ehdr =
+(** [is_elf64_header_section_table_present] calculates whether a section table
+  * is present in the ELF file or not.
+  *)
+val is_elf64_header_section_table_present : elf64_header -> bool
+let is_elf64_header_section_table_present ehdr =
+  not (nat_of_elf64_off ehdr.elf64_shoff = 0)
+
+(** [get_elf32_header_section_table_size] calculates the size of the section table
+  * (entry size x number of entries) based on data in the ELF header.
+  *)
+val get_elf32_header_section_table_size : elf32_header -> nat
+let get_elf32_header_section_table_size ehdr =
   let shentsize = nat_of_elf32_half ehdr.elf32_shentsize in
   let shnum     = nat_of_elf32_half ehdr.elf32_shnum in
     shentsize * shnum
-    
-let program_header_table_size_and_entry_size hdr =
-  let size = nat_of_elf32_half hdr.elf32_phnum in
-  let entry_size = (nat_of_elf32_half hdr.elf32_phentsize) * 8 in
-    (size, entry_size)
-    
-let section_header_table_size_and_entry_size_and_offset hdr =
-  let size = nat_of_elf32_half hdr.elf32_shnum in
-  let entry_size = nat_of_elf32_half hdr.elf32_shentsize * 8 in
-  let offset = nat_of_elf32_off hdr.elf32_shoff * 8 in
-    (size, entry_size, offset)
+
+(** [get_elf64_header_section_table_size] calculates the size of the section table
+  * (entry size x number of entries) based on data in the ELF header.
+  *)
+val get_elf64_header_section_table_size : elf64_header -> nat
+let get_elf64_header_section_table_size ehdr =
+  let shentsize = nat_of_elf64_half ehdr.elf64_shentsize in
+  let shnum     = nat_of_elf64_half ehdr.elf64_shnum in
+    shentsize * shnum

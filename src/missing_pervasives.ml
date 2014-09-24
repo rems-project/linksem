@@ -2,7 +2,9 @@
 open Lem_basic_classes
 open Lem_bool
 open Lem_list
+open Lem_maybe
 open Lem_num
+open Lem_string
 
 (** [intercalate sep xs] places [sep] between all elements of [xs]. *)
 (*val intercalate : forall 'a. 'a -> list 'a -> list 'a*)
@@ -13,10 +15,36 @@ let rec intercalate sep xs =
 		| x::xs -> x::(sep::intercalate sep xs)
 	))
 
+(** [unlines xs] concatenates a list of strings [xs], placing each entry
+  * on a new line.
+  *)
+(*val unlines : list string -> string*)
+let unlines xs =  
+(List.fold_right (^) (intercalate "\n" xs) "")
+
+(** [bracket xs] concatenates a list of strings [xs], separating each entry with a
+  * space, and bracketing the resulting string.
+  *)
+(*val bracket : list string -> string*)
+let bracket xs =  
+("(" ^ (List.fold_right (^) (intercalate " " xs) "" ^ ")"))
+
+(** [null_char] is the null character. *)
 (*val null_char : char*)
 
+(** [split_string_on_char s c] splits a string [s] into a list of substrings
+  * on character [c], otherwise returning the singleton list containing [s]
+  * if [c] is not found in [s].
+  *)
 (*val split_string_on_char : string -> char -> list string*)
 
+(** [print s] prints [s] to stdout. *)
 (*val print : string -> unit*)
 
+(** [string_of_nat m] produces a string representation of natural number [m]. *)
 (*val string_of_nat : nat -> string*)
+
+(** [string_suffix i s] chops [i] characters off [s], returning a new string.
+  * Fails if the index is negative, or beyond the end of the string.
+  *)
+(*val string_suffix : nat -> string -> maybe string*)
