@@ -14,6 +14,8 @@ open Elf_executable_file2
 open Elf_executable_file3
 open Elf_executable_file4
 open Elf_executable_file5
+open Elf_linking_file2
+open Elf_linking_file3
 
 open Sail_interface
 
@@ -36,7 +38,13 @@ let default_sht_bdl =
   (default_os, default_proc, default_user)
 
 let _ =  
-(let (chunks_addr, entry, elf_class1) = (Sail_interface.populate "test/power64-executable-1") in
-  let _ = (print_endline ("Entry point: " ^ string_of_int entry)) in
-  let _ = (print_endline ("#Chunks: " ^ string_of_int (List.length chunks_addr))) in
-    ())
+(let res =    
+(Ml_bindings.acquire_bitstring "/usr/lib/libc.so.6" >>= (fun bs0 ->
+    Elf_linking_file3.read_elf32_linking_file3 bs0 >>= (fun f1 ->
+    let _ = (print_endline (Elf_linking_file3.string_of_elf32_linking_file3 default_hdr_bdl default_sht_bdl default_pht_bdl f1)) in
+    return f1)))
+  in
+    (match res with
+      | Fail err -> print_endline ("[!]: " ^ err)
+      | Success _ -> ()
+    ))

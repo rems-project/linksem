@@ -5,6 +5,9 @@ open import Num
 
 open import Bitstring
 open import Error
+open import Missing_pervasives
+open import Show
+open import String
 
 open import Elf_file1
 open import Elf_header
@@ -78,9 +81,21 @@ let refine_elf32_file1 f1 =
               elf32_linking_file2_body = bs1;
               elf32_linking_file2_section_header_table = sht |>
 
-val read_elf_linking_file2 : bitstring -> error elf32_linking_file2
+val read_elf32_linking_file2 : bitstring -> error elf32_linking_file2
 let read_elf32_linking_file2 bs0 =
   read_elf32_file1 bs0 >>= refine_elf32_file1
+
+val string_of_elf32_linking_file2 : hdr_print_bundle -> sht_print_bundle -> elf32_linking_file2 -> string
+let string_of_elf32_linking_file2 hdr_bdl sht_bdl f2 =
+  unlines [
+    "\n*Type elf32_linking_file2:"
+  ; "**Header:"
+  ; string_of_elf32_header hdr_bdl f2.elf32_linking_file2_header
+  ; "**Program header table:"
+  ; string_of_elf32_section_header_table sht_bdl f2.elf32_linking_file2_section_header_table
+  ; "**Body:"
+  ; "\tUninterpreted data of length " ^ show (Bitstring.length f2.elf32_linking_file2_body)
+  ]
 
 val refine_elf64_file1 : elf64_file1 -> error elf64_linking_file2
 let refine_elf64_file1 f1 =
@@ -108,3 +123,15 @@ let refine_elf64_file1 f1 =
 val read_elf64_linking_file2 : bitstring -> error elf64_linking_file2
 let read_elf64_linking_file2 bs0 =
   read_elf64_file1 bs0 >>= refine_elf64_file1
+
+val string_of_elf64_linking_file2 : hdr_print_bundle -> sht_print_bundle -> elf64_linking_file2 -> string
+let string_of_elf64_linking_file2 hdr_bdl sht_bdl f2 =
+  unlines [
+    "\n*Type elf64_linking_file2:"
+  ; "**Header:"
+  ; string_of_elf64_header hdr_bdl f2.elf64_linking_file2_header
+  ; "**Program header table:"
+  ; string_of_elf64_section_header_table sht_bdl f2.elf64_linking_file2_section_header_table
+  ; "**Body:"
+  ; "\tUninterpreted data of length " ^ show (Bitstring.length f2.elf64_linking_file2_body)
+  ]
