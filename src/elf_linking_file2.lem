@@ -28,6 +28,12 @@ instance (HasElf32LinkingFile2 elf32_linking_file2)
   let get_elf32_linking_file2 f2 = f2
 end
 
+instance (HasElf32File1 elf32_linking_file2)
+  let get_elf32_file1 f2 =
+    <| elf32_file1_header = f2.elf32_linking_file2_header;
+         elf32_file1_body = f2.elf32_linking_file2_body |>
+end
+
 instance (HasElf32Header elf32_linking_file2)
   let get_elf32_header f2 = f2.elf32_linking_file2_header
 end
@@ -48,6 +54,12 @@ end
 
 instance (HasElf64LinkingFile2 elf64_linking_file2)
   let get_elf64_linking_file2 f2 = f2
+end
+
+instance (HasElf64File1 elf64_linking_file2)
+  let get_elf64_file1 f2 =
+    <| elf64_file1_header = f2.elf64_linking_file2_header;
+         elf64_file1_body = f2.elf64_linking_file2_body |>
 end
 
 instance (HasElf64Header elf64_linking_file2)

@@ -25,6 +25,10 @@ class (HasElf32LinkingFile3 'a)
   val get_elf32_linking_file3 : 'a -> elf32_linking_file3
 end
 
+instance (HasElf32LinkingFile3 elf32_linking_file3)
+  let get_elf32_linking_file3 f3 = f3
+end
+
 instance (HasElf32LinkingFile2 elf32_linking_file3)
   let get_elf32_linking_file2 f3 =
     <| elf32_linking_file2_header = f3.elf32_linking_file3_header;
@@ -102,6 +106,10 @@ type elf64_linking_file3 =
 
 class (HasElf64LinkingFile3 'a)
   val get_elf64_linking_file3 : 'a -> elf64_linking_file3
+end
+
+instance (HasElf64LinkingFile3 elf64_linking_file3)
+  let get_elf64_linking_file3 f3 = f3
 end
 
 instance (HasElf64LinkingFile2 elf64_linking_file3)

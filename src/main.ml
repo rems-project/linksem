@@ -16,6 +16,7 @@ open Elf_executable_file4
 open Elf_executable_file5
 open Elf_linking_file2
 open Elf_linking_file3
+open Elf_linking_file4
 
 open Sail_interface
 
