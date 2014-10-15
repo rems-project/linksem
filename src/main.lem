@@ -35,7 +35,7 @@ let default_sht_bdl =
   (default_os, default_proc, default_user)
 
 let _ =
-  let (chunks_addr, entry) = Sail_interface.populate "test/power64-executable-1" in
+  let (chunks_addr, entry, elf_class) = Sail_interface.populate "test/power64-executable-1" in
   let _ = Missing_pervasives.print ("Entry point: " ^ show entry) in
   let _ = Missing_pervasives.print ("#Chunks: " ^ show (List.length chunks_addr)) in
     ()

@@ -36,7 +36,7 @@ let default_sht_bdl =
   (default_os, default_proc, default_user)
 
 let _ =  
-(let (chunks_addr, entry) = (Sail_interface.populate "test/power64-executable-1") in
+(let (chunks_addr, entry, elf_class1) = (Sail_interface.populate "test/power64-executable-1") in
   let _ = (print_endline ("Entry point: " ^ string_of_int entry)) in
   let _ = (print_endline ("#Chunks: " ^ string_of_int (List.length chunks_addr))) in
     ())
