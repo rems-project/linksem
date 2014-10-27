@@ -1,10 +1,13 @@
 open import Basic_classes
 open import Bool
 open import List
+open import String
 open import Tuple
 
 open import Bitstring
 open import Error
+open import Missing_pervasives
+open import Show
 
 open import Elf_types
 open import Endianness
@@ -106,7 +109,24 @@ type elf32_symbol_table_entry =
    ; elf32_st_shndx : elf32_half
    |>
 
+type symtab_print_bundle = (nat -> string) * (nat -> string)
+
+val string_of_elf32_symbol_table_entry : elf32_symbol_table_entry -> string
+let string_of_elf32_symbol_table_entry entry =
+  unlines [
+    "\t" ^ "Name: "  ^ show entry.elf32_st_name
+  ; "\t" ^ "Value: " ^ show entry.elf32_st_value
+  ; "\t" ^ "Size: "  ^ show entry.elf32_st_size
+  ; "\t" ^ "Info: "  ^ show entry.elf32_st_info
+  ; "\t" ^ "Other: " ^ show entry.elf32_st_other
+  ; "\t" ^ "Shndx: " ^ show entry.elf32_st_shndx
+  ]
+
 type elf32_symbol_table = list elf32_symbol_table_entry
+
+val string_of_elf32_symbol_table : elf32_symbol_table -> string
+let string_of_elf32_symbol_table symtab =
+  unlines (List.map string_of_elf32_symbol_table_entry symtab)
 
 class (HasElf32SymbolTable 'a)
   val get_elf32_symbol_table : 'a -> elf32_symbol_table
@@ -144,7 +164,22 @@ type elf64_symbol_table_entry =
    ; elf64_st_size  : elf64_xword
    |>
 
+val string_of_elf64_symbol_table_entry : elf64_symbol_table_entry -> string
+let string_of_elf64_symbol_table_entry entry =
+  unlines [
+    "\t" ^ "Name: "  ^ show entry.elf64_st_name
+  ; "\t" ^ "Info: "  ^ show entry.elf64_st_info
+  ; "\t" ^ "Other: " ^ show entry.elf64_st_other
+  ; "\t" ^ "Shndx: " ^ show entry.elf64_st_shndx
+  ; "\t" ^ "Value: " ^ show entry.elf64_st_value
+  ; "\t" ^ "Size: "  ^ show entry.elf64_st_size
+  ]
+
 type elf64_symbol_table = list elf64_symbol_table_entry
+
+val string_of_elf64_symbol_table : elf64_symbol_table -> string
+let string_of_elf64_symbol_table symtab =
+  unlines (List.map string_of_elf64_symbol_table_entry symtab)
 
 class (HasElf64SymbolTable 'a)
   val get_elf64_symbol_table : 'a -> elf64_symbol_table

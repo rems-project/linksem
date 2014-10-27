@@ -2,10 +2,13 @@
 open Lem_basic_classes
 open Lem_bool
 open Lem_list
+open Lem_string
 open Lem_tuple
 
 open Bitstring_local
 open Error
+open Missing_pervasives
+open Show
 
 open Elf_types
 open Endianness
@@ -107,7 +110,24 @@ type elf32_symbol_table_entry =
    ; elf32_st_shndx : Uint32.t
    }
 
+type symtab_print_bundle = (int -> string) * (int -> string)
+
+(*val string_of_elf32_symbol_table_entry : elf32_symbol_table_entry -> string*)
+let string_of_elf32_symbol_table_entry entry =  
+(unlines [    
+("\t" ^ ("Name: "  ^ Uint32.to_string entry.elf32_st_name))
+  ; ("\t" ^ ("Value: " ^ Uint32.to_string entry.elf32_st_value))
+  ; ("\t" ^ ("Size: "  ^ Uint32.to_string entry.elf32_st_size))
+  ; ("\t" ^ ("Info: "  ^ Uint32.to_string entry.elf32_st_info))
+  ; ("\t" ^ ("Other: " ^ Uint32.to_string entry.elf32_st_other))
+  ; ("\t" ^ ("Shndx: " ^ Uint32.to_string entry.elf32_st_shndx))
+  ])
+
 type elf32_symbol_table = elf32_symbol_table_entry list
+
+(*val string_of_elf32_symbol_table : elf32_symbol_table -> string*)
+let string_of_elf32_symbol_table symtab =  
+(unlines (List.map string_of_elf32_symbol_table_entry symtab))
 
 type 'a hasElf32SymbolTable_class={
   get_elf32_symbol_table_method : 'a -> elf32_symbol_table
@@ -145,7 +165,22 @@ type elf64_symbol_table_entry =
    ; elf64_st_size  : Uint64.t
    }
 
+(*val string_of_elf64_symbol_table_entry : elf64_symbol_table_entry -> string*)
+let string_of_elf64_symbol_table_entry entry =  
+(unlines [    
+("\t" ^ ("Name: "  ^ Uint32.to_string entry.elf64_st_name))
+  ; ("\t" ^ ("Info: "  ^ Uint32.to_string entry.elf64_st_info))
+  ; ("\t" ^ ("Other: " ^ Uint32.to_string entry.elf64_st_other))
+  ; ("\t" ^ ("Shndx: " ^ Uint32.to_string entry.elf64_st_shndx))
+  ; ("\t" ^ ("Value: " ^ Uint64.to_string entry.elf64_st_value))
+  ; ("\t" ^ ("Size: "  ^ Uint64.to_string entry.elf64_st_size))
+  ])
+
 type elf64_symbol_table = elf64_symbol_table_entry list
+
+(*val string_of_elf64_symbol_table : elf64_symbol_table -> string*)
+let string_of_elf64_symbol_table symtab =  
+(unlines (List.map string_of_elf64_symbol_table_entry symtab))
 
 type 'a hasElf64SymbolTable_class={
   get_elf64_symbol_table_method : 'a -> elf64_symbol_table
