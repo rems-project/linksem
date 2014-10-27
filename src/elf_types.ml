@@ -137,7 +137,9 @@ let instance_Show_Show_Elf_types_elf64_off_dict =({
 (*val nat_of_elf32_word : elf32_word -> nat*)
 (*val elf32_word_of_int32 : int32 -> elf32_word*)
 (*val elf32_word_land : elf32_word -> elf32_word -> elf32_word*)
+(*val elf32_word_rshift : elf32_word -> nat -> elf32_word*)
 (*val read_elf32_word : endianness -> bitstring -> error (elf32_word * bitstring)*)
+(*val unsigned_char_of_elf32_word : elf32_word -> unsigned_char*)
 
 let instance_Show_Show_Elf_types_elf32_word_dict =({
 
@@ -188,6 +190,9 @@ let instance_Show_Show_Elf_types_elf64_sword_dict =({
 (*val string_of_elf64_xword : elf64_xword -> string*)
 (*val nat_of_elf64_xword : elf64_xword -> nat*)
 (*val read_elf64_xword : endianness -> bitstring -> error (elf64_xword * bitstring)*)
+(*val elf64_xword_rshift : elf64_xword -> nat -> elf64_xword*)
+(*val elf64_xword_land : elf64_xword -> elf64_xword -> elf64_xword*)
+(*val elf64_xword_of_int64 : int64 -> elf64_xword*)
 
 let instance_Show_Show_Elf_types_elf64_xword_dict =({
 

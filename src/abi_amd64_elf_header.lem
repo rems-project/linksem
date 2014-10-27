@@ -1,0 +1,34 @@
+(** [abi_amd64_elf_header] contains types and definitions relating to ABI
+  * specific ELF header functionality for the AMD64 ABI.
+  *)
+
+open import Basic_classes
+open import Bool
+open import List
+open import Maybe
+
+open import Elf_header
+
+(** [is_valid_abi_amd64_machine_architecture m] checks whether the ELF header's
+  * machine architecture is valud according to the ABI-specific specification.
+  * Machine architecture must be x86-64 (pg 60)
+  *)
+val is_valid_abi_amd64_machine_architecture : nat -> bool
+let is_valid_abi_amd64_machine_architecture m =
+  m = elf_ma_x86_64
+
+(** [is_valid_abi_amd64_magic_number magic] checks whether the ELF header's
+  * magic number is valid according to the ABI-specific specification.
+  * File class must be 64-bit (pg 60)
+  * Data encoding must be little endian (pg 60)
+  *)
+val is_valid_abi_amd64_magic_number : list unsigned_char -> bool
+let is_valid_abi_amd64_magic_number magic =
+  match List.index magic elf_ii_class with
+    | Nothing  -> false
+    | Just cls ->
+      match List.index magic elf_ii_data with
+        | Nothing   -> false
+        | Just data -> (cls = elf_class_64) && (data = elf_data_2lsb)
+      end
+  end

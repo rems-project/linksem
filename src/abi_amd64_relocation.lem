@@ -1,0 +1,115 @@
+(** [abi_amd64_relocation] contains types and definitions relating to ABI
+  * specific relocation functionality for the AMD64 ABI.
+  *)
+
+open import String
+
+(** x86-64 relocation types. *)
+
+let r_x86_64_none : nat = 0
+let r_x86_64_64 : nat = 1
+let r_x86_64_pc32 : nat = 2
+let r_x86_64_got32 : nat = 3
+let r_x86_64_plt32 : nat = 4
+let r_x86_64_copy : nat = 5
+let r_x86_64_glob_dat : nat = 6
+let r_x86_64_jump_slot : nat = 7
+let r_x86_64_relative : nat = 8
+let r_x86_64_gotpcrel : nat = 9
+let r_x86_64_32 : nat = 10
+let r_x86_64_32s : nat = 11
+let r_x86_64_16 : nat = 12
+let r_x86_64_pc16 : nat = 13
+let r_x86_64_8 : nat = 14
+let r_x86_64_pc8 : nat = 15
+let r_x86_64_dtpmod64 : nat = 16
+let r_x86_64_dtpoff64 : nat = 17
+let r_x86_64_tpoff64 : nat = 18
+let r_x86_64_tlsgd : nat = 19
+let r_x86_64_tlsld : nat = 20
+let r_x86_64_dtpoff32 : nat = 21
+let r_x86_64_gottpoff : nat = 22
+let r_x86_64_tpoff32 : nat = 23
+let r_x86_64_pc64 : nat = 24
+let r_x86_64_gotoff64 : nat = 25
+let r_x86_64_gotpc32 : nat = 26
+let r_x86_64_size32 : nat = 32
+let r_x86_64_size64 : nat = 33
+let r_x86_64_gotpc32_tlsdesc : nat = 34
+let r_x86_64_tlsdesc_call : nat = 35
+let r_x86_64_tlsdesc : nat = 36
+let r_x86_64_irelative : nat = 37
+
+(** [string_of_x86_64_relocation_type m] produces a string representation of the
+  * relocation type [m].
+  *)
+val string_of_x86_64_relocation_type : nat -> string
+let string_of_x86_64_relocation_type m =
+  if m = r_x86_64_none then
+    "r_x86_64_none"
+  else if m = r_x86_64_64 then
+    "r_x86_64_64"
+  else if m = r_x86_64_pc32 then
+    "r_x86_64_pc32"
+  else if m = r_x86_64_got32 then
+    "r_x86_64_got32"
+  else if m = r_x86_64_plt32 then
+    "r_x86_64_plt32"
+  else if m = r_x86_64_copy then
+    "r_x86_64_copy"
+  else if m = r_x86_64_glob_dat then
+    "r_x86_64_glob_dat"
+  else if m = r_x86_64_jump_slot then
+    "r_x86_64_jumpslot"
+  else if m = r_x86_64_relative then
+    "r_x86_64_relative"
+  else if m = r_x86_64_gotpcrel then
+    "r_x86_64_gotpcrel"
+  else if m = r_x86_64_32 then
+    "r_x86_64_32"
+  else if m = r_x86_64_32s then
+    "r_x86_64_32s"
+  else if m = r_x86_64_16 then
+    "r_x86_64_16"
+  else if m = r_x86_64_pc16 then
+    "r_x86_64_pc16"
+  else if m = r_x86_64_8 then
+    "r_x86_64_8"
+  else if m = r_x86_64_pc8 then
+    "r_x86_64_pc8"
+  else if m = r_x86_64_dtpmod64 then
+    "r_x86_64_dtpmod64"
+  else if m = r_x86_64_dtpoff64 then
+    "r_x86_64_dtpoff64"
+  else if m = r_x86_64_tpoff64 then
+    "r_x86_64_tpoff64"
+  else if m = r_x86_64_tlsgd then
+    "r_x86_64_tlsgd"
+  else if m = r_x86_64_tlsld then
+    "r_x86_64_tlsld"
+  else if m = r_x86_64_dtpoff32 then
+    "r_x86_64_dtpoff32"
+  else if m = r_x86_64_gottpoff then
+    "r_x86_64_gottpoff"
+  else if m = r_x86_64_tpoff32 then
+    "r_x86_64_tpoff32"
+  else if m = r_x86_64_pc64 then
+    "r_x86_64_pc64"
+  else if m = r_x86_64_gotoff64 then
+    "r_x86_64_gotoff64"
+  else if m = r_x86_64_gotpc32 then
+    "r_x86_64_gotpc32"
+  else if m = r_x86_64_size32 then
+    "r_x86_64_size32"
+  else if m = r_x86_64_size64 then
+    "r_x86_64_size64"
+  else if m = r_x86_64_gotpc32_tlsdesc then
+    "r_x86_64_gotpc32_tlsdesc"
+  else if m = r_x86_64_tlsdesc_call then
+    "r_x86_64_tlsdesc_call"
+  else if m = r_x86_64_tlsdesc then
+    "r_x86_64_tlsdesc"
+  else if m = r_x86_64_irelative then
+    "r_x86_64_irelative"
+  else
+    "Invalid x86-64 relocation type"

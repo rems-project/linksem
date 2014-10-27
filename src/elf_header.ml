@@ -7,6 +7,7 @@ open Lem_maybe
 open Lem_num
 open Lem_string
 
+open Default_printing
 open Endianness
 
 open Elf_types
@@ -90,6 +91,8 @@ let elf_ma_386 : int =( 3)
 let elf_ma_ppc : int =( 20)
 (** IBM PowerPC 64 *)
 let elf_ma_ppc64 : int =( 21)
+(** AMD x86-64 *)
+let elf_ma_x86_64 : int =( 62)
 
 (** [string_of_elf_machine_architecture m] produces a string representation of
   * the numeric encoding [m] of the ELF machine architecture.
@@ -102,6 +105,8 @@ let string_of_elf_machine_architecture m =
     "IBM PowerPC"
   else if m = elf_ma_ppc64 then
     "IBM PowerPC 64"
+  else if m = elf_ma_x86_64 then
+    "AMD x86-64"
 	else
 		"Other architecture")
 
@@ -654,14 +659,14 @@ let string_of_elf64_header (os, proc) hdr =
 (*val string_of_elf32_header_default : elf32_header -> string*)
 let string_of_elf32_header_default =	
 (string_of_elf32_header
-    (((fun y->"*Default OS specific print*")),
-      ((fun y->"*Default processor specific print*"))))
+    (default_os_specific_print,
+      default_proc_specific_print))
 
 (*val string_of_elf64_header_default : elf64_header -> string*)
 let string_of_elf64_header_default =  
 (string_of_elf64_header
-    (((fun y->"*Default OS specific print*")),
-      ((fun y->"*Default processor specific print*"))))
+    (default_os_specific_print,
+      default_proc_specific_print))
 	
 let instance_Show_Show_Elf_header_elf32_header_dict =({
 

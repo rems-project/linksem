@@ -4,6 +4,7 @@ open Lem_string
 open Lem_tuple
 
 open Bitstring_local
+open Default_printing
 open Error
 open Missing_pervasives
 open Show
@@ -20,29 +21,20 @@ open Elf_linking_file4
 
 open Sail_interface
 
-let default_os _ =
-  "*Default OS specific print*"
-
-let default_proc _ =
-  "*Default processor specific print*"
-
-let default_user _ =
-  "*Default user specific print*"
-
 let default_hdr_bdl =
-  (default_os, default_proc)
+  (default_os_specific_print, default_proc_specific_print)
 
 let default_pht_bdl =
-  (default_os, default_proc)
+  (default_os_specific_print, default_proc_specific_print)
 
 let default_sht_bdl =
-  (default_os, default_proc, default_user)
+  (default_os_specific_print, default_proc_specific_print, default_user_specific_print)
 
 let _ =  
 (let res =    
 (Ml_bindings.acquire_bitstring "/usr/lib/libc.so.6" >>= (fun bs0 ->
-    Elf_linking_file3.read_elf32_linking_file3 bs0 >>= (fun f1 ->
-    let _ = (print_endline (Elf_linking_file3.string_of_elf32_linking_file3 default_hdr_bdl default_sht_bdl default_pht_bdl f1)) in
+    Elf_linking_file4.read_elf32_linking_file4 bs0 >>= (fun f1 ->
+    let _ = (print_endline (Elf_linking_file4.string_of_elf32_linking_file4 default_hdr_bdl default_sht_bdl default_pht_bdl f1)) in
     return f1)))
   in
     (match res with
