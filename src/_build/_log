@@ -1,2 +1,78 @@
 ### Starting build.
+# Target: main.ml.depends, tags: { dtypes, extension:ml, file:main.ml, ocaml, ocamldep, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamldep.opt -modules main.ml > main.ml.depends # cached
+# Target: bitstring_local.ml.depends, tags: { dtypes, extension:ml, file:bitstring_local.ml, ocaml, ocamldep, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamldep.opt -modules bitstring_local.ml > bitstring_local.ml.depends # cached
+# Target: bitstring.ml.depends, tags: { dtypes, extension:ml, file:bitstring.ml, ocaml, ocamldep, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamldep.opt -modules bitstring.ml > bitstring.ml.depends # cached
+# Target: src_lem_library/lem_basic_classes.ml.depends, tags: { dtypes, extension:ml, file:src_lem_library/lem_basic_classes.ml, ocaml, ocamldep, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamldep.opt -modules src_lem_library/lem_basic_classes.ml > src_lem_library/lem_basic_classes.ml.depends # cached
+# Target: src_lem_library/lem.ml.depends, tags: { dtypes, extension:ml, file:src_lem_library/lem.ml, ocaml, ocamldep, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamldep.opt -modules src_lem_library/lem.ml > src_lem_library/lem.ml.depends # cached
+# Target: src_lem_library/lem_bool.ml.depends, tags: { dtypes, extension:ml, file:src_lem_library/lem_bool.ml, ocaml, ocamldep, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamldep.opt -modules src_lem_library/lem_bool.ml > src_lem_library/lem_bool.ml.depends # cached
+# Target: src_lem_library/lem.cmo, tags: { byte, compile, dtypes, extension:cmo, extension:ml, file:src_lem_library/lem.cmo, file:src_lem_library/lem.ml, implem, ocaml, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamlc.opt -c -g -I libraries/batteries/_build_src -I ../libraries/bitstring -I libraries/uint/_build/lib -dllpath libraries/uint/_build/lib -dllpath libraries/bitstring -dtypes -I src_lem_library -o src_lem_library/lem.cmo src_lem_library/lem.ml
+# Target: src_lem_library/lem_bool.cmo, tags: { byte, compile, dtypes, extension:cmo, extension:ml, file:src_lem_library/lem_bool.cmo, file:src_lem_library/lem_bool.ml, implem, ocaml, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamlc.opt -c -g -I libraries/batteries/_build_src -I ../libraries/bitstring -I libraries/uint/_build/lib -dllpath libraries/uint/_build/lib -dllpath libraries/bitstring -dtypes -I src_lem_library -o src_lem_library/lem_bool.cmo src_lem_library/lem_bool.ml
+# Target: src_lem_library/lem_num.ml.depends, tags: { dtypes, extension:ml, file:src_lem_library/lem_num.ml, ocaml, ocamldep, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamldep.opt -modules src_lem_library/lem_num.ml > src_lem_library/lem_num.ml.depends # cached
+# Target: src_lem_library/lem_basic_classes.cmo, tags: { byte, compile, dtypes, extension:cmo, extension:ml, file:src_lem_library/lem_basic_classes.cmo, file:src_lem_library/lem_basic_classes.ml, implem, ocaml, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamlc.opt -c -g -I libraries/batteries/_build_src -I ../libraries/bitstring -I libraries/uint/_build/lib -dllpath libraries/uint/_build/lib -dllpath libraries/bitstring -dtypes -I src_lem_library -o src_lem_library/lem_basic_classes.cmo src_lem_library/lem_basic_classes.ml
+# Target: src_lem_library/nat_num.mli.depends, tags: { dtypes, extension:mli, file:src_lem_library/nat_num.mli, ocaml, ocamldep, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamldep.opt -modules src_lem_library/nat_num.mli > src_lem_library/nat_num.mli.depends # cached
+# Target: src_lem_library/nat_num.cmi, tags: { byte, compile, dtypes, extension:mli, file:src_lem_library/nat_num.mli, interf, ocaml, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamlc.opt -c -g -I libraries/batteries/_build_src -I ../libraries/bitstring -I libraries/uint/_build/lib -dllpath libraries/uint/_build/lib -dllpath libraries/bitstring -dtypes -I src_lem_library -o src_lem_library/nat_num.cmi src_lem_library/nat_num.mli
+# Target: src_lem_library/lem_num.cmo, tags: { byte, compile, dtypes, extension:cmo, extension:ml, file:src_lem_library/lem_num.cmo, file:src_lem_library/lem_num.ml, implem, ocaml, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamlc.opt -c -g -I libraries/batteries/_build_src -I ../libraries/bitstring -I libraries/uint/_build/lib -dllpath libraries/uint/_build/lib -dllpath libraries/bitstring -dtypes -I src_lem_library -o src_lem_library/lem_num.cmo src_lem_library/lem_num.ml
+# Target: error.ml.depends, tags: { dtypes, extension:ml, file:error.ml, ocaml, ocamldep, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamldep.opt -modules error.ml > error.ml.depends # cached
+# Target: src_lem_library/lem_list.ml.depends, tags: { dtypes, extension:ml, file:src_lem_library/lem_list.ml, ocaml, ocamldep, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamldep.opt -modules src_lem_library/lem_list.ml > src_lem_library/lem_list.ml.depends # cached
+# Target: src_lem_library/lem_maybe.ml.depends, tags: { dtypes, extension:ml, file:src_lem_library/lem_maybe.ml, ocaml, ocamldep, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamldep.opt -modules src_lem_library/lem_maybe.ml > src_lem_library/lem_maybe.ml.depends # cached
+# Target: src_lem_library/lem_function.ml.depends, tags: { dtypes, extension:ml, file:src_lem_library/lem_function.ml, ocaml, ocamldep, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamldep.opt -modules src_lem_library/lem_function.ml > src_lem_library/lem_function.ml.depends # cached
+# Target: src_lem_library/lem_function.cmo, tags: { byte, compile, dtypes, extension:cmo, extension:ml, file:src_lem_library/lem_function.cmo, file:src_lem_library/lem_function.ml, implem, ocaml, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamlc.opt -c -g -I libraries/batteries/_build_src -I ../libraries/bitstring -I libraries/uint/_build/lib -dllpath libraries/uint/_build/lib -dllpath libraries/bitstring -dtypes -I src_lem_library -o src_lem_library/lem_function.cmo src_lem_library/lem_function.ml
+# Target: src_lem_library/lem_tuple.ml.depends, tags: { dtypes, extension:ml, file:src_lem_library/lem_tuple.ml, ocaml, ocamldep, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamldep.opt -modules src_lem_library/lem_tuple.ml > src_lem_library/lem_tuple.ml.depends # cached
+# Target: src_lem_library/lem_maybe.cmo, tags: { byte, compile, dtypes, extension:cmo, extension:ml, file:src_lem_library/lem_maybe.cmo, file:src_lem_library/lem_maybe.ml, implem, ocaml, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamlc.opt -c -g -I libraries/batteries/_build_src -I ../libraries/bitstring -I libraries/uint/_build/lib -dllpath libraries/uint/_build/lib -dllpath libraries/bitstring -dtypes -I src_lem_library -o src_lem_library/lem_maybe.cmo src_lem_library/lem_maybe.ml
+# Target: src_lem_library/lem_tuple.cmo, tags: { byte, compile, dtypes, extension:cmo, extension:ml, file:src_lem_library/lem_tuple.cmo, file:src_lem_library/lem_tuple.ml, implem, ocaml, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamlc.opt -c -g -I libraries/batteries/_build_src -I ../libraries/bitstring -I libraries/uint/_build/lib -dllpath libraries/uint/_build/lib -dllpath libraries/bitstring -dtypes -I src_lem_library -o src_lem_library/lem_tuple.cmo src_lem_library/lem_tuple.ml
+# Target: src_lem_library/lem_string.ml.depends, tags: { dtypes, extension:ml, file:src_lem_library/lem_string.ml, ocaml, ocamldep, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamldep.opt -modules src_lem_library/lem_string.ml > src_lem_library/lem_string.ml.depends # cached
+# Target: src_lem_library/lem_list.cmo, tags: { byte, compile, dtypes, extension:cmo, extension:ml, file:src_lem_library/lem_list.cmo, file:src_lem_library/lem_list.ml, implem, ocaml, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamlc.opt -c -g -I libraries/batteries/_build_src -I ../libraries/bitstring -I libraries/uint/_build/lib -dllpath libraries/uint/_build/lib -dllpath libraries/bitstring -dtypes -I src_lem_library -o src_lem_library/lem_list.cmo src_lem_library/lem_list.ml
+# Target: src_lem_library/xstring.mli.depends, tags: { dtypes, extension:mli, file:src_lem_library/xstring.mli, ocaml, ocamldep, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamldep.opt -modules src_lem_library/xstring.mli > src_lem_library/xstring.mli.depends # cached
+# Target: src_lem_library/xstring.cmi, tags: { byte, compile, dtypes, extension:mli, file:src_lem_library/xstring.mli, interf, ocaml, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamlc.opt -c -g -I libraries/batteries/_build_src -I ../libraries/bitstring -I libraries/uint/_build/lib -dllpath libraries/uint/_build/lib -dllpath libraries/bitstring -dtypes -I src_lem_library -o src_lem_library/xstring.cmi src_lem_library/xstring.mli
+# Target: show.ml.depends, tags: { dtypes, extension:ml, file:show.ml, ocaml, ocamldep, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamldep.opt -modules show.ml > show.ml.depends # cached
+# Target: src_lem_library/lem_string.cmo, tags: { byte, compile, dtypes, extension:cmo, extension:ml, file:src_lem_library/lem_string.cmo, file:src_lem_library/lem_string.ml, implem, ocaml, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamlc.opt -c -g -I libraries/batteries/_build_src -I ../libraries/bitstring -I libraries/uint/_build/lib -dllpath libraries/uint/_build/lib -dllpath libraries/bitstring -dtypes -I src_lem_library -o src_lem_library/lem_string.cmo src_lem_library/lem_string.ml
+# Target: missing_pervasives.ml.depends, tags: { dtypes, extension:ml, file:missing_pervasives.ml, ocaml, ocamldep, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamldep.opt -modules missing_pervasives.ml > missing_pervasives.ml.depends # cached
+# Target: missing_pervasives.cmo, tags: { byte, compile, dtypes, extension:cmo, extension:ml, file:missing_pervasives.cmo, file:missing_pervasives.ml, implem, ocaml, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamlc.opt -c -g -I libraries/batteries/_build_src -I ../libraries/bitstring -I libraries/uint/_build/lib -dllpath libraries/uint/_build/lib -dllpath libraries/bitstring -dtypes -I src_lem_library -o missing_pervasives.cmo missing_pervasives.ml
+# Target: show.cmo, tags: { byte, compile, dtypes, extension:cmo, extension:ml, file:show.cmo, file:show.ml, implem, ocaml, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamlc.opt -c -g -I libraries/batteries/_build_src -I ../libraries/bitstring -I libraries/uint/_build/lib -dllpath libraries/uint/_build/lib -dllpath libraries/bitstring -dtypes -I src_lem_library -o show.cmo show.ml
+# Target: ml_bindings.ml.depends, tags: { dtypes, extension:ml, file:ml_bindings.ml, ocaml, ocamldep, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamldep.opt -modules ml_bindings.ml > ml_bindings.ml.depends # cached
+# Target: bitstring.cmo, tags: { byte, compile, dtypes, extension:cmo, extension:ml, file:bitstring.cmo, file:bitstring.ml, implem, ocaml, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamlc.opt -c -g -I libraries/batteries/_build_src -I ../libraries/bitstring -I libraries/uint/_build/lib -dllpath libraries/uint/_build/lib -dllpath libraries/bitstring -dtypes -I src_lem_library -o bitstring.cmo bitstring.ml
+# Target: endianness.ml.depends, tags: { dtypes, extension:ml, file:endianness.ml, ocaml, ocamldep, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamldep.opt -modules endianness.ml > endianness.ml.depends # cached
+# Target: error.cmo, tags: { byte, compile, dtypes, extension:cmo, extension:ml, file:error.cmo, file:error.ml, implem, ocaml, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamlc.opt -c -g -I libraries/batteries/_build_src -I ../libraries/bitstring -I libraries/uint/_build/lib -dllpath libraries/uint/_build/lib -dllpath libraries/bitstring -dtypes -I src_lem_library -o error.cmo error.ml
+# Target: endianness.cmo, tags: { byte, compile, dtypes, extension:cmo, extension:ml, file:endianness.cmo, file:endianness.ml, implem, ocaml, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamlc.opt -c -g -I libraries/batteries/_build_src -I ../libraries/bitstring -I libraries/uint/_build/lib -dllpath libraries/uint/_build/lib -dllpath libraries/bitstring -dtypes -I src_lem_library -o endianness.cmo endianness.ml
+# Target: ml_bindings.cmo, tags: { byte, compile, dtypes, extension:cmo, extension:ml, file:ml_bindings.cmo, file:ml_bindings.ml, implem, ocaml, quiet, traverse }
+/usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamlc.opt -c -g -I libraries/batteries/_build_src -I ../libraries/bitstring -I libraries/uint/_build/lib -dllpath libraries/uint/_build/lib -dllpath libraries/bitstring -dtypes -I src_lem_library -o ml_bindings.cmo ml_bindings.ml
++ /usr/groups/netsem/ocaml-4.01.0-with-lwt/bin/ocamlc.opt -c -g -I libraries/batteries/_build_src -I ../libraries/bitstring -I libraries/uint/_build/lib -dllpath libraries/uint/_build/lib -dllpath libraries/bitstring -dtypes -I src_lem_library -o ml_bindings.cmo ml_bindings.ml
+File "ml_bindings.ml", line 11, characters 4-22:
+Error: Unbound value Bitstring.takebits
+Command exited with code 2.
 # Compilation unsuccessful.
