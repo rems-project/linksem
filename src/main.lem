@@ -12,8 +12,6 @@ open import Elf_header
 open import Elf_file1
 open import Elf_executable_file2
 open import Elf_executable_file3
-open import Elf_executable_file4
-open import Elf_executable_file5
 open import Elf_linking_file2
 open import Elf_linking_file3
 open import Elf_linking_file4
@@ -31,12 +29,18 @@ let default_sht_bdl =
 
 let _ =
   let res =
-    Bitstring.acquire "/usr/lib/libc.so.6" >>= fun bs0 ->
-    Elf_linking_file4.read_elf32_linking_file4 bs0 >>= fun f1 ->
-    let _ = Missing_pervasives.print (Elf_linking_file4.string_of_elf32_linking_file4 default_hdr_bdl default_sht_bdl default_pht_bdl f1) in
+    Bitstring.acquire "/usr/bin/ld" >>= fun bs0 ->
+    Elf_executable_file3.read_elf32_executable_file3 bs0 >>= fun f1 ->
+    let _ = Missing_pervasives.print (Elf_executable_file3.string_of_elf32_executable_file3 default_hdr_bdl default_pht_bdl default_sht_bdl f1) in
+    Elf_executable_file3.get_elf32_dynamic_symbol_table f1 >>= fun symtab ->
+    let _ = Missing_pervasives.print ("Symbol table length: " ^ show (List.length symtab)) in
+    let _ = Missing_pervasives.print (Elf_symbol_table.string_of_elf32_symbol_table symtab) in
+    Elf_executable_file3.get_elf32_string_table f1 >>= fun strtab ->
+    Elf_symbol_table.get_elf32_symbol_image_address symtab strtab >>= fun strs ->
+    let _ = Missing_pervasives.print ("Length: " ^ (show (List.length strs))) in
     return f1
   in
     match res with
       | Fail err -> Missing_pervasives.print ("[!]: " ^ err)
-      | Success _ -> ()
+      | Success _ -> Missing_pervasives.print "Success..."
     end

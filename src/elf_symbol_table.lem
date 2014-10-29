@@ -1,6 +1,7 @@
 open import Basic_classes
 open import Bool
 open import List
+open import Maybe
 open import String
 open import Tuple
 
@@ -11,6 +12,7 @@ open import Show
 
 open import Elf_types
 open import Endianness
+open import String_table
 
 (** Undefined symbol index *)
 
@@ -109,6 +111,28 @@ type elf32_symbol_table_entry =
    ; elf32_st_shndx : elf32_half
    |>
 
+(** Extraction of symbol table data *)
+
+(* Functions below common to 32- and 64-bit! *)
+
+val get_symbol_binding : unsigned_char -> nat
+let get_symbol_binding entry =
+  nat_of_unsigned_char (unsigned_char_rshift entry 4)
+
+val get_symbol_type : unsigned_char -> nat
+let get_symbol_type entry =
+  nat_of_unsigned_char (unsigned_char_land entry (unsigned_char_of_nat 15)) (* 0xf *)
+
+val get_symbol_info : unsigned_char -> unsigned_char -> nat
+let get_symbol_info entry0 entry1 =
+  nat_of_unsigned_char (unsigned_char_plus
+    (unsigned_char_lshift entry0 4) (unsigned_char_land entry1
+      (unsigned_char_of_nat 15))) (*0xf*)  
+
+val get_symbol_visibility : unsigned_char -> nat
+let get_symbol_visibility entry =
+  nat_of_unsigned_char (unsigned_char_land entry (unsigned_char_of_nat 3)) (* 0x3*)
+
 type symtab_print_bundle = (nat -> string) * (nat -> string)
 
 val string_of_elf32_symbol_table_entry : elf32_symbol_table_entry -> string
@@ -205,3 +229,12 @@ let rec read_elf64_symbol_table endian bs0 =
     read_elf64_symbol_table_entry endian bs0 >>= fun (head, bs0) ->
     read_elf64_symbol_table endian bs0 >>= fun tail ->
     return (head::tail)
+
+val get_elf32_symbol_image_address : elf32_symbol_table -> string_table -> error (list (string * nat))
+let get_elf32_symbol_image_address symtab strtab =
+  mapM (fun entry ->
+    let name = nat_of_elf32_word entry.elf32_st_name in
+    let addr = nat_of_elf32_addr entry.elf32_st_value in
+      String_table.get_string_at name strtab >>= fun str ->
+      return (str, addr)
+  ) symtab
