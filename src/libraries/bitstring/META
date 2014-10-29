@@ -1,0 +1,22 @@
+name = "bitstring"
+version = "2.0.4"
+description = "Bitstrings and bitstring matching"
+requires = "unix"
+archive(byte) = "bitstring.cma"
+archive(native) = "bitstring.cmxa"
+
+package "persistent" (
+  requires = "bitstring"
+  version = "2.0.4"
+  description = "Persistent patterns for bitstring (requires camlp4)"
+  archive(byte) = "bitstring_persistent.cma"
+  archive(native) = "bitstring_persistent.cmxa"
+)
+
+package "syntax" (
+  version = "2.0.4"
+  requires = "camlp4"
+  description = "Syntax extension: bitstring operators"
+  archive(syntax,preprocessor) = "-parser o -parser op -printer p unix.cma bitstring.cma bitstring_persistent.cma pa_bitstring.cmo"
+  archive(syntax,toploop) = "unix.cma bitstring.cma bitstring_persistent.cma pa_bitstring.cmo"
+)
