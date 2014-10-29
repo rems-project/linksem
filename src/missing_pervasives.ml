@@ -15,6 +15,27 @@ let rec intercalate sep xs =
 		| x::xs -> x::(sep::intercalate sep xs)
 	))
 
+(** [mapMaybei f xs] maps a function expecting an index (the position in the list
+  * [xs] that it is currently viewing) and producing a [maybe] type across a list.
+  * Elements that produce [Nothing] under [f] are discarded in the output, whilst
+  * those producing [Just e] for some [e] are kept.
+  *)
+(*val mapMaybei' : forall 'a 'b. (nat -> 'a -> maybe 'b) -> nat -> list 'a -> list 'b*)
+let rec mapMaybei' f idx xs =  
+((match xs with
+  | []    -> []
+  | x::xs ->
+      (match f idx x with
+      | None -> mapMaybei' f ( 1 + idx) xs
+      | Some e  -> e :: mapMaybei' f ( 1 + idx) xs
+      )
+  ))
+
+(*val mapMaybei : forall 'a 'b. (nat -> 'a -> maybe 'b) -> list 'a -> list 'b*)
+    
+let mapMaybei f xs =  
+(mapMaybei' f( 0) xs)
+
 (** [unlines xs] concatenates a list of strings [xs], placing each entry
   * on a new line.
   *)

@@ -36,7 +36,7 @@ let _ =
     Elf_executable_file3.get_elf32_dynamic_symbol_table f1 >>= (fun symtab ->
     let _ = (print_endline ("Symbol table length: " ^ string_of_int (List.length symtab))) in
     let _ = (print_endline (Elf_symbol_table.string_of_elf32_symbol_table symtab)) in
-    Elf_executable_file3.get_elf32_string_table f1 >>= (fun strtab ->
+    Elf_executable_file3.get_elf32_section_header_string_table f1 >>= (fun strtab ->
     Elf_symbol_table.get_elf32_symbol_image_address symtab strtab >>= (fun strs ->
     let _ = (print_endline ("Length: " ^ (string_of_int (List.length strs)))) in
     return f1))))))
