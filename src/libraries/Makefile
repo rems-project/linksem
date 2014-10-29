@@ -2,7 +2,7 @@ dummy: all
 
 extract:
 	mkdir batteries bitstring uint
-	tar -zxvf batteries.tar.gz -C batteries --strip-components=1
+	tar -zxvf batteries-2.2.tar.gz -C batteries --strip-components=1
 	tar -zxvf bitstring.tar.gz -C bitstring --strip-components=1
 	tar -zxvf uint.tar.gz -C uint --strip-components=1
 
