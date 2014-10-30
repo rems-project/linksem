@@ -1,10 +1,10 @@
 dummy: all
 
 lem-model:
-	../../lem/lem -ocaml -only_changed_output missing_pervasives.lem show.lem endianness.lem default_printing.lem bitstring.lem elf_types.lem elf_interpreted_segment.lem elf_symbol_table.lem elf_header.lem elf_file1.lem elf_program_header_table.lem elf_executable_file2.lem elf_section_header_table.lem elf_executable_file3.lem string_table.lem elf_executable_file4.lem elf_executable_file5.lem elf_linking_file2.lem elf_linking_file3.lem elf_linking_file4.lem elf_relocation.lem sail_interface.lem main.lem
+	../../lem/lem -ocaml -only_changed_output missing_pervasives.lem show.lem endianness.lem default_printing.lem bitstring.lem elf_types.lem elf_interpreted_segment.lem elf_symbol_table.lem elf_header.lem elf_file1.lem elf_program_header_table.lem elf_executable_file2.lem elf_section_header_table.lem elf_executable_file3.lem string_table.lem elf_linking_file2.lem elf_linking_file3.lem elf_relocation.lem sail_interface.lem main.lem
 
 clean:
-	rm -rf missing_pervasives.ml show.ml endianness.ml bitstring_local.ml default_printing.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml elf_section_header_table.ml elf_executable_file3.ml string_table.ml elf_executable_file4.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file5.ml elf_linking_file2.ml elf_linking_file3.ml elf_linking_file4.ml elf_relocation.ml elf_symbol_table.ml sail_interface.ml main.ml
+	rm -rf missing_pervasives.ml show.ml endianness.ml bitstring_local.ml default_printing.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml elf_section_header_table.ml elf_executable_file3.ml string_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file5.ml elf_linking_file2.ml elf_linking_file3.ml elf_relocation.ml elf_symbol_table.ml sail_interface.ml main.ml
 	make -C libraries clean
 	rm -rf elf_section_header.ml elf_symbol_table.ml
 	rm -rf *~
@@ -24,7 +24,7 @@ ocaml:
 unix.cma nums.cma  batteries.cma uint.cma bitstring.cma nat_num.cmo \
 lem.cmo lem_function.cmo lem_list.cmo \
 missing_pervasives.ml \
-show.ml endianness.ml error.ml ml_bindings.ml default_printing.ml bitstring_local.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml string_table.ml elf_section_header_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file3.ml elf_executable_file4.ml elf_executable_file5.ml elf_linking_file2.ml elf_linking_file3.ml elf_linking_file4.ml elf_relocation.ml sail_interface.ml main.ml \
+show.ml endianness.ml error.ml ml_bindings.ml default_printing.ml bitstring_local.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml string_table.ml elf_section_header_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file3.ml elf_linking_file2.ml elf_linking_file3.ml elf_relocation.ml sail_interface.ml main.ml \
 -dllpath libraries/uint/_build/lib -dllpath libraries/bitstring -package bitstring -package uint -package batteries
 
 ocaml_with_ocamlbuild:
@@ -44,7 +44,7 @@ clean_with_ocamlbuild:
 
 stacktrace:
 	export OCAMLRUNPARAM=b
-	ocamlfind ocamlc -package bitstring -package batteries -I ../../lem/ocaml-lib/_build/ unix.cma bitstring.cma nums.cma nat_num.cmo lem.cmo lem_function.cmo lem_list.cmo -linkpkg -g missing_pervasives.ml show.ml endianness.ml error.ml ml_bindings.ml default_printing.ml bitstring_local.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml string_table.ml elf_section_header_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file3.ml elf_executable_file4.ml elf_executable_file5.ml elf_linking_file2.ml elf_linking_file3.ml elf_linking_file4.ml elf_relocation.ml sail_interface.ml main.ml
+	ocamlfind ocamlc -package bitstring -package batteries -I ../../lem/ocaml-lib/_build/ unix.cma bitstring.cma nums.cma nat_num.cmo lem.cmo lem_function.cmo lem_list.cmo -linkpkg -g missing_pervasives.ml show.ml endianness.ml error.ml ml_bindings.ml default_printing.ml bitstring_local.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml string_table.ml elf_section_header_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file3.ml elf_executable_file5.ml elf_linking_file2.ml elf_linking_file3.ml elf_relocation.ml sail_interface.ml main.ml
 
 oldall: lem-model camlp4 ocaml
 

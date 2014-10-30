@@ -12,13 +12,14 @@ open import Missing_pervasives
 open import Show
 
 open import Elf_header
-open import Elf_executable_file5
+open import Elf_executable_file3
 open import Elf_types
 
 type elf_class
   = ELF_Class_32
   | ELF_Class_64
 
+(*
 val populate : string -> list (bitstring * nat) * nat * elf_class
 let populate fname =
   let res =
@@ -48,3 +49,4 @@ let populate fname =
       | Fail err -> failwith err
       | Success chunks -> chunks
     end
+*)

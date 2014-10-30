@@ -34,6 +34,7 @@ let _ =
     Elf_executable_file3.get_elf64_symbol_table f1 >>= fun symtab ->
     Elf_executable_file3.get_elf64_symbol_string_table f1 >>= fun strtab ->
     Elf_symbol_table.get_elf64_symbol_image_address symtab strtab >>= fun strs ->
+    let _ = Missing_pervasives.print (show strs) in
     return f1
   in
     match res with
