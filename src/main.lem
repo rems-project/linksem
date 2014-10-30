@@ -29,16 +29,11 @@ let default_sht_bdl =
 
 let _ =
   let res =
-    Bitstring.acquire "test/power64-executable-1" >>= fun bs0 ->
+    Bitstring.acquire "test/power64-executable-2" >>= fun bs0 ->
     Elf_executable_file3.read_elf64_executable_file3 bs0 >>= fun f1 ->
-    let _ = Missing_pervasives.print (Elf_executable_file3.string_of_elf64_executable_file3 default_hdr_bdl default_pht_bdl default_sht_bdl f1) in
     Elf_executable_file3.get_elf64_symbol_table f1 >>= fun symtab ->
-    let _ = Missing_pervasives.print ("Symbol table length: " ^ show (List.length symtab)) in
-    let _ = Missing_pervasives.print (Elf_symbol_table.string_of_elf64_symbol_table symtab) in
     Elf_executable_file3.get_elf64_symbol_string_table f1 >>= fun strtab ->
-    let _ = Missing_pervasives.print ("XXX: " ^ show strtab) in
     Elf_symbol_table.get_elf64_symbol_image_address symtab strtab >>= fun strs ->
-    let _ = Missing_pervasives.print (show (List.index strs 23)) in
     return f1
   in
     match res with
