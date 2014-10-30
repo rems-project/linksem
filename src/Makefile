@@ -1,3 +1,9 @@
+# this works for PS: 
+# make clean
+# make lem-model
+# make -C libraries
+# make ocaml
+
 dummy: all
 
 lem-model:
@@ -16,7 +22,7 @@ camlp4:
 
 
 ocaml:
-	ocamlfind ocamlc \
+	ocamlc \
 -I libraries/batteries/_build/src \
 -I libraries/bitstring \
 -I libraries/uint/_build/lib  \
@@ -25,17 +31,31 @@ unix.cma nums.cma  batteries.cma uint.cma bitstring.cma nat_num.cmo \
 lem.cmo lem_function.cmo lem_list.cmo \
 missing_pervasives.ml \
 show.ml endianness.ml error.ml ml_bindings.ml default_printing.ml bitstring_local.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml string_table.ml elf_section_header_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file3.ml elf_linking_file2.ml elf_linking_file3.ml elf_relocation.ml sail_interface.ml main.ml \
--dllpath libraries/uint/_build/lib -dllpath libraries/bitstring -package bitstring -package uint -package batteries
+-dllpath libraries/uint/_build/lib -dllpath libraries/bitstring 
+
+
+
+
+
+#  -lib batteries\
+#  -lib bitstring\
+#  -lib uint\
+
+#-package bitstring -package uint -package batteries
 
 ocaml_with_ocamlbuild:
 	ocamlbuild -classic-display \
-  -X libraries -X ocaml-obsolete \
+  -X libraries \
   -cflag -g \
-  -cflags -I,libraries/batteries/_build_src   \
-  -cflags -I,../libraries/bitstring \
-  -cflags -I,libraries/uint/_build/lib \
-  -cflags -dllpath,libraries/uint/_build/lib \
-  -cflags -dllpath,libraries/bitstring \
+  -lflags 'unix.cma nums.cma' \
+  -cflags '-I ../libraries/bitstring' \
+  -lflags '-I ../libraries/bitstring bitstring.cma' \
+  -cflags '-I ../libraries/uint/_build/lib' \
+  -lflags '-I ../libraries/uint/_build/lib uint.cma' \
+  -cflags '-I ../libraries/batteries/_build/src'   \
+  -lflags '-I ../libraries/batteries/_build/src batteries.cma'   \
+  -cflags -dllpath,../libraries/uint/_build/lib \
+  -cflags -dllpath,../libraries/bitstring \
   main.byte 
 
 clean_with_ocamlbuild:
