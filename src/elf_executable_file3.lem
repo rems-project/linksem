@@ -251,7 +251,6 @@ let get_elf64_section_header_string_table f3 =
         end
   end
 
-(*
 val get_elf32_symbol_string_table : elf32_executable_file3 -> error string_table
 let get_elf32_symbol_string_table f3 =
   let bs0 = f3.elf32_executable_file3_body in
@@ -260,16 +259,49 @@ let get_elf32_symbol_string_table f3 =
       | Nothing  -> return String_table.empty
       | Just sht ->
         let strtabs = Missing_pervasives.mapMaybei (fun index sect ->
-          if sect.elf32_sh_type = st_symtab then
-            if index = hdr.elf32_shstrndx then
+          if nat_of_elf32_word sect.elf32_sh_type = sht_strtab then
+            if index = nat_of_elf32_half hdr.elf32_shstrndx then
               Nothing
             else
               Just sect
           else
             Nothing) sht
         in
-        let strings = List.map (fun sects ->
-*)
+        let strings = List.map (fun sect ->
+            let offset  = nat_of_elf32_off  sect.elf32_sh_offset * 8 in
+            let size    = nat_of_elf32_word sect.elf32_sh_size * 8 in
+            let bs1     = Bitstring.offset_and_cut offset size bs0 in
+            let strings = Bitstring.string_of_bitstring bs1 in
+              String_table.mk_string_table strings Missing_pervasives.null_char) strtabs
+        in
+          String_table.concat strings
+    end
+
+val get_elf64_symbol_string_table : elf64_executable_file3 -> error string_table
+let get_elf64_symbol_string_table f3 =
+  let bs0 = f3.elf64_executable_file3_body in
+  let hdr = f3.elf64_executable_file3_header in
+    match f3.elf64_executable_file3_section_header_table with
+      | Nothing  -> return String_table.empty
+      | Just sht ->
+        let strtabs = Missing_pervasives.mapMaybei (fun index sect ->
+          if nat_of_elf64_word sect.elf64_sh_type = sht_strtab then
+            if index = nat_of_elf64_half hdr.elf64_shstrndx then
+              Nothing
+            else
+              Just sect
+          else
+            Nothing) sht
+        in
+        let strings = List.map (fun sect ->
+            let offset  = nat_of_elf64_off  sect.elf64_sh_offset * 8 in
+            let size    = nat_of_elf64_xword sect.elf64_sh_size * 8 in
+            let bs1     = Bitstring.offset_and_cut offset size bs0 in
+            let strings = Bitstring.string_of_bitstring bs1 in
+              String_table.mk_string_table strings Missing_pervasives.null_char) strtabs
+        in
+          String_table.concat strings
+    end
 
 val get_elf32_interpreted_segments : elf32_executable_file3 -> error (list elf32_interpreted_segment)
 let get_elf32_interpreted_segments f3 =

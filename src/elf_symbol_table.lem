@@ -238,3 +238,12 @@ let get_elf32_symbol_image_address symtab strtab =
       String_table.get_string_at name strtab >>= fun str ->
       return (str, addr)
   ) symtab
+
+val get_elf64_symbol_image_address : elf64_symbol_table -> string_table -> error (list (string * nat))
+let get_elf64_symbol_image_address symtab strtab =
+  mapM (fun entry ->
+    let name = nat_of_elf64_word entry.elf64_st_name in
+    let addr = nat_of_elf64_addr entry.elf64_st_value in
+      String_table.get_string_at name strtab >>= fun str ->
+      return (str, addr)
+  ) symtab

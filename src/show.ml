@@ -5,6 +5,7 @@
 
 open Lem_function
 open Lem_list
+open Lem_maybe
 open Lem_num
 open Lem_string
 
@@ -55,6 +56,19 @@ let instance_Show_Show_list_dict dict_Show_Show_a =({
 
   show_method = 
   (string_of_list dict_Show_Show_a)})
+
+(*val string_of_maybe : forall 'a. Show 'a => maybe 'a -> string*)
+let string_of_maybe dict_Show_Show_a m =  
+((match m with
+    | None -> "Nothing"
+    | Some e  -> "Just " ^ 
+  dict_Show_Show_a.show_method e
+  ))
+
+let instance_Show_Show_Maybe_maybe_dict dict_Show_Show_a =({
+
+  show_method = 
+  (string_of_maybe dict_Show_Show_a)})
 
 let instance_Show_Show_nat_dict =({
 

@@ -1,2 +1,0 @@
-dummy:
-	ocamlfind ocamlc -package bitstring.syntax,batteries -syntax camlp4o unix.cma nums.cma /home/dpm/.opam/system/lib/bitstring/bitstring.cma /home/dpm/.opam/system/lib/batteries/batteries.cma error_monad.ml logging.ml utility.ml elf_header.ml elf_section.ml elf_program_header_table.ml elf_string_table.ml elf_symbol_tables.ml main.ml

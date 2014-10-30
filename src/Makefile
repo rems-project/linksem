@@ -16,7 +16,7 @@ camlp4:
 
 
 ocaml:
-	ocamlc \
+	ocamlfind ocamlc \
 -I libraries/batteries/_build/src \
 -I libraries/bitstring \
 -I libraries/uint/_build/lib  \
@@ -25,7 +25,7 @@ unix.cma nums.cma  batteries.cma uint.cma bitstring.cma nat_num.cmo \
 lem.cmo lem_function.cmo lem_list.cmo \
 missing_pervasives.ml \
 show.ml endianness.ml error.ml ml_bindings.ml default_printing.ml bitstring_local.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml string_table.ml elf_section_header_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file3.ml elf_executable_file4.ml elf_executable_file5.ml elf_linking_file2.ml elf_linking_file3.ml elf_linking_file4.ml elf_relocation.ml sail_interface.ml main.ml \
--dllpath libraries/uint/_build/lib -dllpath libraries/bitstring
+-dllpath libraries/uint/_build/lib -dllpath libraries/bitstring -package bitstring -package uint -package batteries
 
 ocaml_with_ocamlbuild:
 	ocamlbuild -classic-display \
