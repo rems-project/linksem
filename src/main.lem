@@ -14,7 +14,6 @@ open import Elf_executable_file2
 open import Elf_executable_file3
 open import Elf_linking_file2
 open import Elf_linking_file3
-open import Elf_linking_file4
 
 open import Sail_interface
 
