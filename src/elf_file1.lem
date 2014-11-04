@@ -79,42 +79,42 @@ let string_of_elf64_file1 hdr_bdl f1 =
   *)
 val is_executable_elf32_file1 : elf32_file1 -> bool
 let is_executable_elf32_file1 f1 =
-  nat_of_elf32_half f1.elf32_file1_header.elf32_type = elf_ft_exec
+  natural_of_elf32_half f1.elf32_file1_header.elf32_type = elf_ft_exec
 
 (** [is_executable_efl64_file1] tests whether the ELF file is an executable
   * file type.
   *)
 val is_executable_elf64_file1 : elf64_file1 -> bool
 let is_executable_elf64_file1 f1 =
-  nat_of_elf64_half f1.elf64_file1_header.elf64_type = elf_ft_exec
+  natural_of_elf64_half f1.elf64_file1_header.elf64_type = elf_ft_exec
 
 (** [is_shared_object_elf32_file1] tests whether the ELF file is a shared object
   * file type.
   *)
 val is_shared_object_elf32_file1 : elf32_file1 -> bool
 let is_shared_object_elf32_file1 f1 =
-  nat_of_elf32_half f1.elf32_file1_header.elf32_type = elf_ft_dyn
+  natural_of_elf32_half f1.elf32_file1_header.elf32_type = elf_ft_dyn
 
 (** [is_shared_object_elf64_file1] tests whether the ELF file is a shared object
 * file type.
 *)
 val is_shared_object_elf64_file1 : elf64_file1 -> bool
 let is_shared_object_elf64_file1 f1 =
-  nat_of_elf64_half f1.elf64_file1_header.elf64_type = elf_ft_dyn
+  natural_of_elf64_half f1.elf64_file1_header.elf64_type = elf_ft_dyn
 
 (** [is_relocatable_elf32_file1] tests whether the ELF file is a relocatable
 * file type.
 *)
 val is_relocatable_elf32_file1 : elf32_file1 -> bool
 let is_relocatable_elf32_file1 f1 =
-  nat_of_elf32_half f1.elf32_file1_header.elf32_type = elf_ft_rel
+  natural_of_elf32_half f1.elf32_file1_header.elf32_type = elf_ft_rel
 
 (** [is_relocatable_elf64_file1] tests whether the ELF file is a relocatable
 * file type.
 *)
 val is_relocatable_elf64_file1 : elf64_file1 -> bool
 let is_relocatable_elf64_file1 f1 =
-  nat_of_elf64_half f1.elf64_file1_header.elf64_type = elf_ft_rel
+  natural_of_elf64_half f1.elf64_file1_header.elf64_type = elf_ft_rel
 
 (** [is_linkable_elf32_file1] tests whether the ELF file is a linkable (shared
   * object or relocatable) file type.

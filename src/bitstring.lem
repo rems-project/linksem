@@ -19,16 +19,16 @@ declare ocaml target_rep function empty = `Bitstring.empty`
 
 (** [zeros m] creates a bitstring of length [m] containing all zeros.
   *)
-val zeros : nat -> bitstring
+val zeros : natural -> bitstring
 
-declare ocaml target_rep function zeros = `Bitstring.create_bitstring`
+declare ocaml target_rep function zeros = `Ml_bindings.create_bitstring`
 
 (** [create m c] creates a bitstring of length [m] containing all [c]
   * characters.
   *)
-val create : nat -> char -> bitstring
+val create : natural -> char -> bitstring
 
-declare ocaml target_rep function create = `Bitstring.make_bitstring`
+declare ocaml target_rep function create = `Ml_bindings.make_bitstring`
 
 (** [concat xs] concatenates a list of bitstrings [xs] into a single bitstring.
   *)
@@ -44,21 +44,21 @@ declare ocaml target_rep function acquire = `Ml_bindings.acquire_bitstring`
 
 (** [length bs0] returns the length of bitstring [bs0].
   *)
-val length : bitstring -> nat
+val length : bitstring -> natural
 
-declare ocaml target_rep function length = `Bitstring.bitstring_length`
+declare ocaml target_rep function length = `Ml_bindings.bitstring_length`
 
 (** [partition offset bs0] cuts [bs0] into two pieces at offset [offset].  Throws
   * an exception if 
   *)
-val partition : nat -> bitstring -> (bitstring * bitstring)
+val partition : natural -> bitstring -> (bitstring * bitstring)
 
 declare ocaml target_rep function partition = `Ml_bindings.partition_bitstring`
 
 (** [offset_and_cut offset size bs0] cuts a [size]-lengthed bitstring out of [bs0]
   * at offset [offset].
   *)
-val offset_and_cut : nat -> nat -> bitstring -> bitstring
+val offset_and_cut : natural -> natural -> bitstring -> bitstring
 let offset_and_cut offset size bs0 =
   let (_, cut) = partition offset bs0 in
   let (rel, _) = partition size cut in

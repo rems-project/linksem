@@ -27,44 +27,44 @@ open Show
  *)
 
 (** No file type *)
-let elf_ft_none : int =( 0)
+let elf_ft_none : Big_int.big_int =(Big_int.big_int_of_int 0)
 (** Relocatable file *)
-let elf_ft_rel : int =( 1)
+let elf_ft_rel : Big_int.big_int =(Big_int.big_int_of_int 1)
 (** Executable file *)
-let elf_ft_exec : int =( 2)
+let elf_ft_exec : Big_int.big_int =(Big_int.big_int_of_int 2)
 (** Shared object file *)
-let elf_ft_dyn : int =( 3)
+let elf_ft_dyn : Big_int.big_int =(Big_int.big_int_of_int 3)
 (** Core file *)
-let elf_ft_core : int =( 4)
+let elf_ft_core : Big_int.big_int =(Big_int.big_int_of_int 4)
 (** Operating-system specific *)
-let elf_ft_lo_os : int =( 65024) (* 0xfe00 *)
+let elf_ft_lo_os : Big_int.big_int =(Big_int.big_int_of_int 65024) (* 0xfe00 *)
 (** Operating-system specific *)
-let elf_ft_hi_os : int =( 65279) (* 0xfeff *)
+let elf_ft_hi_os : Big_int.big_int =(Big_int.big_int_of_int 65279) (* 0xfeff *)
 (** Processor specific *)
-let elf_ft_lo_proc : int =( 65280) (* 0xff00 *)
+let elf_ft_lo_proc : Big_int.big_int =(Big_int.big_int_of_int 65280) (* 0xff00 *)
 (** Processor specific *)
-let elf_ft_hi_proc : int =( 65535) (* 0xffff *)
+let elf_ft_hi_proc : Big_int.big_int =(Big_int.big_int_of_int 65535) (* 0xffff *)
 
 (** [string_of_elf_file_type os proc m] produces a string representation of the
   * numeric encoding [m] of the ELF file type.  For values reserved for OS or
   * processor specific values, the higher-order functions [os] and [proc] are
   * used for printing, respectively.
   *)
-(*val string_of_elf_file_type : (nat -> string) -> (nat -> string) -> nat -> string*)
+(*val string_of_elf_file_type : (natural -> string) -> (natural -> string) -> natural -> string*)
 let string_of_elf_file_type os_specific proc_specific m =	
-(if m = elf_ft_none then
+(if Big_int.eq_big_int m elf_ft_none then
 		"No file type"
-	else if m = elf_ft_rel then
+	else if Big_int.eq_big_int m elf_ft_rel then
 		"Relocatable file type"
-	else if m = elf_ft_exec then
+	else if Big_int.eq_big_int m elf_ft_exec then
 		"Executable file type"
-	else if m = elf_ft_dyn then
+	else if Big_int.eq_big_int m elf_ft_dyn then
 		"Shared object file type"
-	else if m = elf_ft_core then
+	else if Big_int.eq_big_int m elf_ft_core then
 		"Core file type"
-	else if (m >= elf_ft_lo_os) && (m <= elf_ft_hi_os) then
+	else if Big_int.ge_big_int m elf_ft_lo_os && Big_int.le_big_int m elf_ft_hi_os then
 		os_specific m
-	else if (m >= elf_ft_lo_proc) && (m <= elf_ft_hi_proc) then
+	else if Big_int.ge_big_int m elf_ft_lo_proc && Big_int.le_big_int m elf_ft_hi_proc then
 		proc_specific m
 	else
 		"Invalid file type")
@@ -72,40 +72,40 @@ let string_of_elf_file_type os_specific proc_specific m =
 (** [is_operating_specific_file_type_value] checks whether a numeric value is
   * reserved by the ABI for operating system-specific purposes.
   *)
-(*val is_operating_system_specific_object_file_type_value : nat -> bool*)
-let is_operating_system_specific_object_file_type_value v =
-  ((v >= 65024) && (v <= 65279))
+(*val is_operating_system_specific_object_file_type_value : natural -> bool*)
+let is_operating_system_specific_object_file_type_value v = (Big_int.ge_big_int
+  v(Big_int.big_int_of_int 65024) && Big_int.le_big_int v(Big_int.big_int_of_int 65279))
 
 (** [is_processor_specific_file_type_value] checks whether a numeric value is
   * reserved by the ABI for processor-specific purposes.
   *)
-(*val is_processor_specific_object_file_type_value : nat -> bool*)
-let is_processor_specific_object_file_type_value v =
-  ((v >= 65280) && (v <= 65535))
+(*val is_processor_specific_object_file_type_value : natural -> bool*)
+let is_processor_specific_object_file_type_value v = (Big_int.ge_big_int
+  v(Big_int.big_int_of_int 65280) && Big_int.le_big_int v(Big_int.big_int_of_int 65535))
 
 (** ELF machine architectures (TODO: complete the conversion of the enumeration.) *)
 
 (** Intel 386 *)
-let elf_ma_386 : int =( 3)
+let elf_ma_386 : Big_int.big_int =(Big_int.big_int_of_int 3)
 (** IBM PowerPC *)
-let elf_ma_ppc : int =( 20)
+let elf_ma_ppc : Big_int.big_int =(Big_int.big_int_of_int 20)
 (** IBM PowerPC 64 *)
-let elf_ma_ppc64 : int =( 21)
+let elf_ma_ppc64 : Big_int.big_int =(Big_int.big_int_of_int 21)
 (** AMD x86-64 *)
-let elf_ma_x86_64 : int =( 62)
+let elf_ma_x86_64 : Big_int.big_int =(Big_int.big_int_of_int 62)
 
 (** [string_of_elf_machine_architecture m] produces a string representation of
   * the numeric encoding [m] of the ELF machine architecture.
   *)
-(*val string_of_elf_machine_architecture : nat -> string*)
+(*val string_of_elf_machine_architecture : natural -> string*)
 let string_of_elf_machine_architecture m =	
-(if m = elf_ma_386 then
+(if Big_int.eq_big_int m elf_ma_386 then
 		"Intel 386 architecture"
-  else if m = elf_ma_ppc then
+  else if Big_int.eq_big_int m elf_ma_ppc then
     "IBM PowerPC"
-  else if m = elf_ma_ppc64 then
+  else if Big_int.eq_big_int m elf_ma_ppc64 then
     "IBM PowerPC 64"
-  else if m = elf_ma_x86_64 then
+  else if Big_int.eq_big_int m elf_ma_x86_64 then
     "AMD x86-64"
 	else
 		"Other architecture")
@@ -343,64 +343,64 @@ type elf_machine_architecture
   *)
 
 (** Invalid version *)
-let elf_ev_none : int =( 0)
+let elf_ev_none : Big_int.big_int =(Big_int.big_int_of_int 0)
 (** Current version *)
-let elf_ev_current : int =( 1)
+let elf_ev_current : Big_int.big_int =(Big_int.big_int_of_int 1)
 
 (** [string_of_elf_version_number m] produces a string representation of the
   * numeric encoding [m] of the ELF version number.
   *)
-(*val string_of_elf_version_number : nat -> string*)
+(*val string_of_elf_version_number : natural -> string*)
 let string_of_elf_version_number m =	
-(if m = elf_ev_none then
+(if Big_int.eq_big_int m elf_ev_none then
 		"Invalid ELF version"
-	else if m = elf_ev_current then
+	else if Big_int.eq_big_int m elf_ev_current then
 		"Current ELF version"
 	else
 		"Extended ELF version")
 
 (** Check that an extended version number is correct (i.e. greater than 1). *)
-let is_valid_extended_version_number (n : int) = (n > 1)
+let is_valid_extended_version_number (n : Big_int.big_int) = (Big_int.gt_big_int n(Big_int.big_int_of_int 1))
 
 (** Identification indices.  The initial bytes of an ELF header (and an object
   * file) correspond to the e_ident member.
   *)
 
 (** File identification *)
-let elf_ii_mag0 : int =( 0)
+let elf_ii_mag0 : Big_int.big_int =(Big_int.big_int_of_int 0)
 (** File identification *)
-let elf_ii_mag1 : int =( 1)
+let elf_ii_mag1 : Big_int.big_int =(Big_int.big_int_of_int 1)
 (** File identification *)
-let elf_ii_mag2 : int =( 2)
+let elf_ii_mag2 : Big_int.big_int =(Big_int.big_int_of_int 2)
 (** File identification *)
-let elf_ii_mag3 : int =( 3)
+let elf_ii_mag3 : Big_int.big_int =(Big_int.big_int_of_int 3)
 (** File class *)
-let elf_ii_class : int =( 4)
+let elf_ii_class : Big_int.big_int =(Big_int.big_int_of_int 4)
 (** Data encoding *)
-let elf_ii_data : int =( 5)
+let elf_ii_data : Big_int.big_int =(Big_int.big_int_of_int 5)
 (** File version *)
-let elf_ii_version : int =( 6)
+let elf_ii_version : Big_int.big_int =(Big_int.big_int_of_int 6)
 (** Operating system/ABI identification *)
-let elf_ii_osabi : int =( 7)
+let elf_ii_osabi : Big_int.big_int =(Big_int.big_int_of_int 7)
 (** ABI version *)
-let elf_ii_abiversion : int =( 8)
+let elf_ii_abiversion : Big_int.big_int =(Big_int.big_int_of_int 8)
 (** Start of padding bytes *)
-let elf_ii_pad : int =( 9)
+let elf_ii_pad : Big_int.big_int =(Big_int.big_int_of_int 9)
 (** Size of e*_ident[] *)
-let elf_ii_nident : int =( 16)
+let elf_ii_nident : Big_int.big_int =(Big_int.big_int_of_int 16)
 
 (** Magic number indices.  A file's first 4 bytes hold a ``magic number,''
   * identifying the file as an ELF object file.
   *)
 
 (** Position: e*_ident[elf_ii_mag0], 0x7f magic number *)
-let elf_mn_mag0 : int =( 127)
+let elf_mn_mag0 : Big_int.big_int =(Big_int.big_int_of_int 127)
 (** Position: e*_ident[elf_ii_mag1], 'E' format identifier *)
-let elf_mn_mag1 : int =( 69)
+let elf_mn_mag1 : Big_int.big_int =(Big_int.big_int_of_int 69)
 (** Position: e*_ident[elf_ii_mag2], 'L' format identifier *)
-let elf_mn_mag2 : int =( 76)
+let elf_mn_mag2 : Big_int.big_int =(Big_int.big_int_of_int 76)
 (** Position: e*_ident[elf_ii_mag3], 'F' format identifier *)
-let elf_mn_mag3 : int =( 70)
+let elf_mn_mag3 : Big_int.big_int =(Big_int.big_int_of_int 70)
 
 (** ELf file classes.  The file format is designed to be portable among machines
   * of various sizes, without imposing the sizes of the largest machine on the
@@ -409,22 +409,22 @@ let elf_mn_mag3 : int =( 70)
   *)
 
 (** Invalid class *)
-let elf_class_none : int =( 0)
+let elf_class_none : Big_int.big_int =(Big_int.big_int_of_int 0)
 (** 32 bit objects *)
-let elf_class_32 : int =( 1)
+let elf_class_32 : Big_int.big_int =(Big_int.big_int_of_int 1)
 (** 64 bit objects *)
-let elf_class_64 : int =( 2)
+let elf_class_64 : Big_int.big_int =(Big_int.big_int_of_int 2)
 
 (** [string_of_elf_file_class m] produces a string representation of the numeric
   * encoding [m] of the ELF file class.
   *)
-(*val string_of_elf_file_class : nat -> string*)
+(*val string_of_elf_file_class : natural -> string*)
 let string_of_elf_file_class m =	
-(if m = elf_class_none then
+(if Big_int.eq_big_int m elf_class_none then
 		"Invalid ELF file class"
-	else if m = elf_class_32 then
+	else if Big_int.eq_big_int m elf_class_32 then
 		"32 bit ELF object"
-	else if m = elf_class_64 then
+	else if Big_int.eq_big_int m elf_class_64 then
 		"64 bit ELF object"
 	else
 		"Invalid ELF file class")
@@ -435,22 +435,22 @@ let string_of_elf_file_class m =
   *)
 
 (** Invalid data encoding *)
-let elf_data_none : int =( 0)
+let elf_data_none : Big_int.big_int =(Big_int.big_int_of_int 0)
 (** Two's complement values, least significant byte occupying lowest address *)
-let elf_data_2lsb : int =( 1)
+let elf_data_2lsb : Big_int.big_int =(Big_int.big_int_of_int 1)
 (** Two's complement values, most significant byte occupying lowest address *)
-let elf_data_2msb : int =( 2)
+let elf_data_2msb : Big_int.big_int =(Big_int.big_int_of_int 2)
 
 (** [string_of_elf_data_encoding m] produces a string representation of the
   * numeric encoding [m] of the ELF data encoding.
   *)
-(*val string_of_elf_data_encoding : nat -> string*)
+(*val string_of_elf_data_encoding : natural -> string*)
 let string_of_elf_data_encoding m =	
-(if m = elf_data_none then
+(if Big_int.eq_big_int m elf_data_none then
 		"Invalid data encoding"
-	else if m = elf_data_2lsb then
+	else if Big_int.eq_big_int m elf_data_2lsb then
 		"Two's complement values, LSB at lowest address"
-	else if m = elf_data_2msb then
+	else if Big_int.eq_big_int m elf_data_2msb then
 		"Two's complement values, MSB at lowest address"
 	else
 		"Invalid data encoding")
@@ -463,74 +463,74 @@ let string_of_elf_data_encoding m =
   *)
 
 (** No extensions or unspecified *)
-let elf_osabi_none : int =( 0)
+let elf_osabi_none : Big_int.big_int =(Big_int.big_int_of_int 0)
 (** Hewlett-Packard HP-UX *)
-let elf_osabi_hpux : int =( 1)
+let elf_osabi_hpux : Big_int.big_int =(Big_int.big_int_of_int 1)
 (** NetBSD *)
-let elf_osabi_netbsd : int =( 2)
+let elf_osabi_netbsd : Big_int.big_int =(Big_int.big_int_of_int 2)
 (** GNU *)
-let elf_osabi_gnu : int =( 3)
+let elf_osabi_gnu : Big_int.big_int =(Big_int.big_int_of_int 3)
 (** Linux, historical alias for GNU *)
-let elf_osabi_linux : int =( 3)
+let elf_osabi_linux : Big_int.big_int =(Big_int.big_int_of_int 3)
 (** Sun Solaris *)
-let elf_osabi_solaris : int =( 6)
+let elf_osabi_solaris : Big_int.big_int =(Big_int.big_int_of_int 6)
 (** AIX *)
-let elf_osabi_aix : int =( 7)
+let elf_osabi_aix : Big_int.big_int =(Big_int.big_int_of_int 7)
 (** IRIX *)
-let elf_osabi_irix : int =( 8)
+let elf_osabi_irix : Big_int.big_int =(Big_int.big_int_of_int 8)
 (** FreeBSD *)
-let elf_osabi_freebsd : int =( 9)
+let elf_osabi_freebsd : Big_int.big_int =(Big_int.big_int_of_int 9)
 (** Compaq Tru64 Unix *)
-let elf_osabi_tru64 : int =( 10)
+let elf_osabi_tru64 : Big_int.big_int =(Big_int.big_int_of_int 10)
 (** Novell Modesto *)
-let elf_osabi_modesto : int =( 11)
+let elf_osabi_modesto : Big_int.big_int =(Big_int.big_int_of_int 11)
 (** OpenBSD *)
-let elf_osabi_openbsd : int =( 12)
+let elf_osabi_openbsd : Big_int.big_int =(Big_int.big_int_of_int 12)
 (** OpenVMS *)
-let elf_osabi_openvms : int =( 13)
+let elf_osabi_openvms : Big_int.big_int =(Big_int.big_int_of_int 13)
 (** Hewlett-Packard Non-stop Kernel *)
-let elf_osabi_nsk : int =( 14)
+let elf_osabi_nsk : Big_int.big_int =(Big_int.big_int_of_int 14)
 (** Amiga Research OS *)
-let elf_osabi_aros : int =( 15)
+let elf_osabi_aros : Big_int.big_int =(Big_int.big_int_of_int 15)
 (** FenixOS highly-scalable multi-core OS *)
-let elf_osabi_fenixos : int =( 16)
+let elf_osabi_fenixos : Big_int.big_int =(Big_int.big_int_of_int 16)
 
 (** [string_of_elf_osabi_version m] produces a string representation of the
   * numeric encoding [m] of the ELF OSABI version.
   *)
-(*val string_of_elf_osabi_version : nat -> string*)
+(*val string_of_elf_osabi_version : natural -> string*)
 let string_of_elf_osabi_version m =	
-(if m = elf_osabi_none then
+(if Big_int.eq_big_int m elf_osabi_none then
 		"No extension or unspecified"
-	else if m = elf_osabi_netbsd then
+	else if Big_int.eq_big_int m elf_osabi_netbsd then
 		"Hewlett-Packard HP-UX"
-	else if m = elf_osabi_netbsd then
+	else if Big_int.eq_big_int m elf_osabi_netbsd then
 		"NetBSD"
-	else if m = elf_osabi_gnu then
+	else if Big_int.eq_big_int m elf_osabi_gnu then
 		"GNU"
-	else if m = elf_osabi_linux then
+	else if Big_int.eq_big_int m elf_osabi_linux then
 		"Linux (GNU alias)"
-	else if m = elf_osabi_solaris then
+	else if Big_int.eq_big_int m elf_osabi_solaris then
 		"Sun Solaris"
-	else if m = elf_osabi_aix then
+	else if Big_int.eq_big_int m elf_osabi_aix then
 		"AIX"
-	else if m = elf_osabi_irix then
+	else if Big_int.eq_big_int m elf_osabi_irix then
 		"IRIX"
-	else if m = elf_osabi_freebsd then
+	else if Big_int.eq_big_int m elf_osabi_freebsd then
 		"FreeBSD"
-	else if m = elf_osabi_tru64 then
+	else if Big_int.eq_big_int m elf_osabi_tru64 then
 		"Compaq Tru64 Unix"
-	else if m = elf_osabi_modesto then
+	else if Big_int.eq_big_int m elf_osabi_modesto then
 		"Novell Modesto"
-	else if m = elf_osabi_openbsd then
+	else if Big_int.eq_big_int m elf_osabi_openbsd then
 		"OpenBSD"
-	else if m = elf_osabi_openvms then
+	else if Big_int.eq_big_int m elf_osabi_openvms then
 		"OpenVMS"
-	else if m = elf_osabi_nsk then
+	else if Big_int.eq_big_int m elf_osabi_nsk then
 		"Hewlett-Packard Non-stop Kernel"
-	else if m = elf_osabi_aros then
+	else if Big_int.eq_big_int m elf_osabi_aros then
 		"Amiga Research OS"
-	else if m = elf_osabi_fenixos then
+	else if Big_int.eq_big_int m elf_osabi_fenixos then
 		"FenixOS highly-scalable multi-core OS"
 	else
 		"Invalid OSABI version")
@@ -538,7 +538,7 @@ let string_of_elf_osabi_version m =
 (** Checks an architecture defined OSABI version is correct, i.e. in the range
   * 64 to 255 inclusive.
   *)
-let is_valid_architecture_defined_osabi_version (n : int) = ((n >= 64) && (n <= 255))
+let is_valid_architecture_defined_osabi_version (n : Big_int.big_int) = (Big_int.ge_big_int n(Big_int.big_int_of_int 64) && Big_int.le_big_int n(Big_int.big_int_of_int 255))
 
 (** ELF Header type *)
 
@@ -602,9 +602,9 @@ let deduce_endianness id1 =
 ((match Lem_list.list_index id1( 5) with
     | None -> Little (* XXX: random default as read of magic number has failed! *)
     | Some v  ->
-      if Uint32.to_int v = elf_data_2lsb then
+      if Big_int.eq_big_int (Ml_bindings.natural_of_unsigned_char v) elf_data_2lsb then
         Little
-      else if Uint32.to_int v = elf_data_2msb then
+      else if Big_int.eq_big_int (Ml_bindings.natural_of_unsigned_char v) elf_data_2msb then
         Big
       else
         Little (* XXX: random default as value is not valid! *)
@@ -624,7 +624,7 @@ let get_elf64_header_endianness hdr =
   * The first component of the type is an OS specific print function, the second is
   * a processor specific print function.
   *)
-type hdr_print_bundle = (int -> string) * (int -> string)
+type hdr_print_bundle = (Big_int.big_int -> string) * (Big_int.big_int -> string)
 
 (*val string_of_elf32_header : hdr_print_bundle -> elf32_header -> string*)
 let string_of_elf32_header (os, proc) hdr =	
@@ -632,9 +632,9 @@ let string_of_elf32_header (os, proc) hdr =
 ("\t" ^ ("Magic number: " ^ string_of_list 
   instance_Show_Show_Elf_types_unsigned_char_dict hdr.elf32_ident))
   ; ("\t" ^ ("Endianness: " ^ string_of_endianness (deduce_endianness hdr.elf32_ident)))
-	; ("\t" ^ ("Type: " ^ string_of_elf_file_type os proc (Uint32.to_int hdr.elf32_type)))
-  ; ("\t" ^ ("Version: " ^ string_of_elf_version_number (Uint32.to_int hdr.elf32_version)))
-	; ("\t" ^ ("Machine: " ^ string_of_elf_machine_architecture (Uint32.to_int hdr.elf32_machine)))
+	; ("\t" ^ ("Type: " ^ string_of_elf_file_type os proc (Ml_bindings.natural_of_elf32_half hdr.elf32_type)))
+  ; ("\t" ^ ("Version: " ^ string_of_elf_version_number (Ml_bindings.natural_of_elf32_word hdr.elf32_version)))
+	; ("\t" ^ ("Machine: " ^ string_of_elf_machine_architecture (Ml_bindings.natural_of_elf32_half hdr.elf32_machine)))
   ; ("\t" ^ ("Entry point: " ^ Uint32.to_string hdr.elf32_entry))
   ; ("\t" ^ ("Flags: " ^ Uint32.to_string hdr.elf32_flags))
   ; ("\t" ^ ("Entries in program header table: " ^ Uint32.to_string hdr.elf32_phnum))
@@ -647,9 +647,9 @@ let string_of_elf64_header (os, proc) hdr =
 ("\t" ^ ("Magic number: " ^ string_of_list 
   instance_Show_Show_Elf_types_unsigned_char_dict hdr.elf64_ident))
   ; ("\t" ^ ("Endianness: " ^ string_of_endianness (deduce_endianness hdr.elf64_ident)))
-  ; ("\t" ^ ("Type: " ^ string_of_elf_file_type os proc (Uint32.to_int hdr.elf64_type)))
-  ; ("\t" ^ ("Version: " ^ string_of_elf_version_number (Uint32.to_int hdr.elf64_version)))
-  ; ("\t" ^ ("Machine: " ^ string_of_elf_machine_architecture (Uint32.to_int hdr.elf64_machine)))
+  ; ("\t" ^ ("Type: " ^ string_of_elf_file_type os proc (Ml_bindings.natural_of_elf64_half hdr.elf64_type)))
+  ; ("\t" ^ ("Version: " ^ string_of_elf_version_number (Ml_bindings.natural_of_elf64_word hdr.elf64_version)))
+  ; ("\t" ^ ("Machine: " ^ string_of_elf_machine_architecture (Ml_bindings.natural_of_elf64_half hdr.elf64_machine)))
   ; ("\t" ^ ("Entry point: " ^ Uint64.to_string hdr.elf64_entry))
   ; ("\t" ^ ("Flags: " ^ Uint32.to_string hdr.elf64_flags))
   ; ("\t" ^ ("Entries in program header table: " ^ Uint32.to_string hdr.elf64_phnum))
@@ -696,7 +696,7 @@ let read_elf32_header bs =
     (match Lem_list.list_index ident( 4) with
       | None -> fail "read_elf32_header: transcription of ELF identifier failed"
       | Some c  ->
-        if Uint32.to_int c = elf_class_32 then
+        if Big_int.eq_big_int (Ml_bindings.natural_of_unsigned_char c) elf_class_32 then
 		      return ({ elf32_ident = ident; elf32_type  = typ;
                       elf32_machine = machine; elf32_version = version;
                       elf32_entry = entry; elf32_phoff = phoff;
@@ -728,7 +728,7 @@ let read_elf64_header bs =
     (match Lem_list.list_index ident( 4) with
       | None -> fail "read_elf64_header: transcription of ELF identifier failed"
       | Some c  ->
-        if Uint32.to_int c = elf_class_64 then
+        if Big_int.eq_big_int (Ml_bindings.natural_of_unsigned_char c) elf_class_64 then
           return ({ elf64_ident = ident; elf64_type  = typ;
                      elf64_machine = machine; elf64_version = version;
                      elf64_entry = entry; elf64_phoff = phoff;
@@ -742,28 +742,28 @@ let read_elf64_header bs =
 
 (*val is_elf32_header_padding_correct : elf32_header -> bool*)
 let is_elf32_header_padding_correct ehdr =  ((Lem.option_equal (=)  
-(Lem_list.list_index ehdr.elf32_ident( 9)) (Some (Uint32.of_int( 0)))) && ((Lem.option_equal (=)  
-(Lem_list.list_index ehdr.elf32_ident( 10)) (Some (Uint32.of_int( 0)))) && ((Lem.option_equal (=)  
-(Lem_list.list_index ehdr.elf32_ident( 11)) (Some (Uint32.of_int( 0)))) && ((Lem.option_equal (=)  
-(Lem_list.list_index ehdr.elf32_ident( 12)) (Some (Uint32.of_int( 0)))) && ((Lem.option_equal (=)  
-(Lem_list.list_index ehdr.elf32_ident( 13)) (Some (Uint32.of_int( 0)))) && ((Lem.option_equal (=)  
-(Lem_list.list_index ehdr.elf32_ident( 14)) (Some (Uint32.of_int( 0)))) && (Lem.option_equal (=)  
-(Lem_list.list_index ehdr.elf32_ident( 15)) (Some (Uint32.of_int( 0))))))))))
+(Lem_list.list_index ehdr.elf32_ident( 9)) (Some (Uint32.of_int32(Int32.of_int 0)))) && ((Lem.option_equal (=)  
+(Lem_list.list_index ehdr.elf32_ident( 10)) (Some (Uint32.of_int32(Int32.of_int 0)))) && ((Lem.option_equal (=)  
+(Lem_list.list_index ehdr.elf32_ident( 11)) (Some (Uint32.of_int32(Int32.of_int 0)))) && ((Lem.option_equal (=)  
+(Lem_list.list_index ehdr.elf32_ident( 12)) (Some (Uint32.of_int32(Int32.of_int 0)))) && ((Lem.option_equal (=)  
+(Lem_list.list_index ehdr.elf32_ident( 13)) (Some (Uint32.of_int32(Int32.of_int 0)))) && ((Lem.option_equal (=)  
+(Lem_list.list_index ehdr.elf32_ident( 14)) (Some (Uint32.of_int32(Int32.of_int 0)))) && (Lem.option_equal (=)  
+(Lem_list.list_index ehdr.elf32_ident( 15)) (Some (Uint32.of_int32(Int32.of_int 0))))))))))
 
 (*val is_elf32_header_magic_number_correct : elf32_header -> bool*)
 let is_elf32_header_magic_number_correct ehdr = ((Lem.option_equal (=)  
-(Lem_list.list_index ehdr.elf32_ident( 0)) (Some (Uint32.of_int( 127)))) && ((Lem.option_equal (=)  
-(Lem_list.list_index ehdr.elf32_ident( 1)) (Some (Uint32.of_int( 69))))  && ((Lem.option_equal (=)  
-(Lem_list.list_index ehdr.elf32_ident( 2)) (Some (Uint32.of_int( 76))))  && (Lem.option_equal (=)  
-(Lem_list.list_index ehdr.elf32_ident( 3)) (Some (Uint32.of_int( 70)))))))
+(Lem_list.list_index ehdr.elf32_ident( 0)) (Some (Uint32.of_int32(Int32.of_int 127)))) && ((Lem.option_equal (=)  
+(Lem_list.list_index ehdr.elf32_ident( 1)) (Some (Uint32.of_int32(Int32.of_int 69))))  && ((Lem.option_equal (=)  
+(Lem_list.list_index ehdr.elf32_ident( 2)) (Some (Uint32.of_int32(Int32.of_int 76))))  && (Lem.option_equal (=)  
+(Lem_list.list_index ehdr.elf32_ident( 3)) (Some (Uint32.of_int32(Int32.of_int 70)))))))
 
 (*val is_elf32_header_class_correct : elf32_header -> bool*)
 let is_elf32_header_class_correct ehdr = (Lem.option_equal (=)  
-(Lem_list.list_index ehdr.elf32_ident( 4)) (Some (Uint32.of_int( 1))))
+(Lem_list.list_index ehdr.elf32_ident( 4)) (Some (Uint32.of_int32(Int32.of_int 1))))
 
 (*val is_elf32_header_version_correct : elf32_header -> bool*)
 let is_elf32_header_version_correct ehdr = (Lem.option_equal (=)  
-(Lem_list.list_index ehdr.elf32_ident( 6)) (Some (Uint32.of_int( 1))))
+(Lem_list.list_index ehdr.elf32_ident( 6)) (Some (Uint32.of_int32(Int32.of_int 1))))
 
 (** [is_valid_elf32_header] checks whether an [elf32_header] value is a valid 32-bit
   * ELF file header (i.e. [elf32_ident] is [ei_nident] entries long, and other
@@ -780,49 +780,49 @@ let is_elf32_header_valid ehdr =
 (** [get_elf32_header_program_table_size] calculates the size of the program table
   * (entry size x number of entries) based on data in the ELF header.
   *)
-(*val get_elf32_header_program_table_size : elf32_header -> nat*)
+(*val get_elf32_header_program_table_size : elf32_header -> natural*)
 let get_elf32_header_program_table_size ehdr =  
-(let phentsize = (Uint32.to_int ehdr.elf32_phentsize) in
-  let phnum     = (Uint32.to_int ehdr.elf32_phnum) in
-    phentsize * phnum)
+(let phentsize = (Ml_bindings.natural_of_elf32_half ehdr.elf32_phentsize) in
+  let phnum     = (Ml_bindings.natural_of_elf32_half ehdr.elf32_phnum) in Big_int.mult_big_int
+    phentsize phnum)
 
 (** [get_elf64_header_program_table_size] calculates the size of the program table
   * (entry size x number of entries) based on data in the ELF header.
   *)
-(*val get_elf64_header_program_table_size : elf64_header -> nat*)
+(*val get_elf64_header_program_table_size : elf64_header -> natural*)
 let get_elf64_header_program_table_size ehdr =  
-(let phentsize = (Uint32.to_int ehdr.elf64_phentsize) in
-  let phnum     = (Uint32.to_int ehdr.elf64_phnum) in
-    phentsize * phnum)
+(let phentsize = (Ml_bindings.natural_of_elf64_half ehdr.elf64_phentsize) in
+  let phnum     = (Ml_bindings.natural_of_elf64_half ehdr.elf64_phnum) in Big_int.mult_big_int
+    phentsize phnum)
 
 (** [is_elf32_header_section_table_present] calculates whether a section table
   * is present in the ELF file or not.
   *)
 (*val is_elf32_header_section_table_present : elf32_header -> bool*)
 let is_elf32_header_section_table_present ehdr =  
-(not (Uint32.to_int ehdr.elf32_shoff = 0))
+(not ( Big_int.eq_big_int(Ml_bindings.natural_of_elf32_off ehdr.elf32_shoff)(Big_int.big_int_of_int 0)))
 
 (** [is_elf64_header_section_table_present] calculates whether a section table
   * is present in the ELF file or not.
   *)
 (*val is_elf64_header_section_table_present : elf64_header -> bool*)
 let is_elf64_header_section_table_present ehdr =  
-(not (Uint64.to_int ehdr.elf64_shoff = 0))
+(not ( Big_int.eq_big_int(Ml_bindings.natural_of_elf64_off ehdr.elf64_shoff)(Big_int.big_int_of_int 0)))
 
 (** [get_elf32_header_section_table_size] calculates the size of the section table
   * (entry size x number of entries) based on data in the ELF header.
   *)
-(*val get_elf32_header_section_table_size : elf32_header -> nat*)
+(*val get_elf32_header_section_table_size : elf32_header -> natural*)
 let get_elf32_header_section_table_size ehdr =  
-(let shentsize = (Uint32.to_int ehdr.elf32_shentsize) in
-  let shnum     = (Uint32.to_int ehdr.elf32_shnum) in
-    shentsize * shnum)
+(let shentsize = (Ml_bindings.natural_of_elf32_half ehdr.elf32_shentsize) in
+  let shnum     = (Ml_bindings.natural_of_elf32_half ehdr.elf32_shnum) in Big_int.mult_big_int
+    shentsize shnum)
 
 (** [get_elf64_header_section_table_size] calculates the size of the section table
   * (entry size x number of entries) based on data in the ELF header.
   *)
-(*val get_elf64_header_section_table_size : elf64_header -> nat*)
+(*val get_elf64_header_section_table_size : elf64_header -> natural*)
 let get_elf64_header_section_table_size ehdr =  
-(let shentsize = (Uint32.to_int ehdr.elf64_shentsize) in
-  let shnum     = (Uint32.to_int ehdr.elf64_shnum) in
-    shentsize * shnum)
+(let shentsize = (Ml_bindings.natural_of_elf64_half ehdr.elf64_shentsize) in
+  let shnum     = (Ml_bindings.natural_of_elf64_half ehdr.elf64_shnum) in Big_int.mult_big_int
+    shentsize shnum)

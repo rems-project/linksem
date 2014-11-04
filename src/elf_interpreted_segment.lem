@@ -11,19 +11,19 @@ open import Show
 
 type elf32_interpreted_segment =
   <| elf32_segment_body  : bitstring            (** Body of the segment *)
-   ; elf32_segment_type  : nat                  (** Type of the segment *)
-   ; elf32_segment_size  : nat                  (** Size of the segment in bytes *)
-   ; elf32_segment_memsz : nat                  (** Size of the segment in memory in bytes *)
-   ; elf32_segment_base  : nat                  (** Base address of the segment *)
+   ; elf32_segment_type  : natural              (** Type of the segment *)
+   ; elf32_segment_size  : natural              (** Size of the segment in bytes *)
+   ; elf32_segment_memsz : natural              (** Size of the segment in memory in bytes *)
+   ; elf32_segment_base  : natural              (** Base address of the segment *)
    ; elf32_segment_flags : (bool * bool * bool) (** READ, WRITE, EXECUTE flags. *)
    |>
 
 type elf64_interpreted_segment =
   <| elf64_segment_body  : bitstring            (** Body of the segment *)
-   ; elf64_segment_type  : nat                  (** Type of the segment *)
-   ; elf64_segment_size  : nat                  (** Size of the segment in bytes *)
-   ; elf64_segment_memsz : nat                  (** Size of the segment in memory in bytes *)
-   ; elf64_segment_base  : nat                  (** Base address of the segment *)
+   ; elf64_segment_type  : natural              (** Type of the segment *)
+   ; elf64_segment_size  : natural              (** Size of the segment in bytes *)
+   ; elf64_segment_memsz : natural              (** Size of the segment in memory in bytes *)
+   ; elf64_segment_base  : natural              (** Base address of the segment *)
    ; elf64_segment_flags : (bool * bool * bool) (** READ, WRITE, EXECUTE flags. *)
    |>
 

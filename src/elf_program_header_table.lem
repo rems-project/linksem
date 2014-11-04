@@ -22,39 +22,39 @@ open import Show
   *)
 
 (** Unused array element.  All other members of the structure are undefined. *)
-let elf_pt_null : nat = 0
+let elf_pt_null : natural = 0
 (** A loadable segment. *)
-let elf_pt_load : nat = 1
+let elf_pt_load : natural = 1
 (** Dynamic linking information. *)
-let elf_pt_dynamic : nat = 2
+let elf_pt_dynamic : natural = 2
 (** Specifies the location and size of a null-terminated path name to be used to
   * invoke an interpreter.
   *)
-let elf_pt_interp : nat = 3
+let elf_pt_interp : natural = 3
 (** Specifies location and size of auxiliary information. *)
-let elf_pt_note : nat = 4
+let elf_pt_note : natural = 4
 (** Reserved but with unspecified semantics.  If the file contains a segment of
   * this type then it is to be regarded as non-conformant with the ABI.
   *)
-let elf_pt_shlib : nat = 5
+let elf_pt_shlib : natural = 5
 (** Specifies the location and size of the program header table. *)
-let elf_pt_phdr : nat = 6
+let elf_pt_phdr : natural = 6
 (** Specifies the thread local storage (TLS) template.  Need not be supported. *)
-let elf_pt_tls : nat = 7
+let elf_pt_tls : natural = 7
 (** Start of reserved indices for operating system specific semantics. *)
-let elf_pt_loos : nat = 128 * 128 * 128 * 256 * 3 (* 1610612736 (* 0x60000000 *) *)
+let elf_pt_loos : natural = 128 * 128 * 128 * 256 * 3 (* 1610612736 (* 0x60000000 *) *)
 (** End of reserved indices for operating system specific semantics. *)
-let elf_pt_hios : nat = (469762047 * 4) + 3 (* 1879048191 (* 0x6fffffff *) *)
+let elf_pt_hios : natural = (469762047 * 4) + 3 (* 1879048191 (* 0x6fffffff *) *)
 (** Start of reserved indices for processor specific semantics. *)
-let elf_pt_loproc : nat = (469762048 * 4) (* 1879048192 (* 0x70000000 *) *)
+let elf_pt_loproc : natural = (469762048 * 4) (* 1879048192 (* 0x70000000 *) *)
 (** End of reserved indices for processor specific semantics. *)
-let elf_pt_hiproc : nat = (536870911 * 4) + 3 (* 2147483647 (* 0x7fffffff *) *)
+let elf_pt_hiproc : natural = (536870911 * 4) + 3 (* 2147483647 (* 0x7fffffff *) *)
 
 (** [string_of_elf_segment_type os proc st] produces a string representation of
   * the coding of an ELF segment type [st] using [os] and [proc] to render OS-
   * and processor-specific codings.
   *)
-val string_of_elf_segment_type : (nat -> string) -> (nat -> string) -> nat -> string
+val string_of_elf_segment_type : (natural -> string) -> (natural -> string) -> natural -> string
 let string_of_elf_segment_type os proc pt =
 	if pt = elf_pt_null then
 		"PT_NULL"
@@ -115,10 +115,10 @@ type elf64_program_header_table_entry =
   * representation of a 32-bit program header table entry using [os] and [proc]
   * to render OS- and processor-specific entries.
   *)
-val string_of_elf32_program_header_table_entry : (nat -> string) -> (nat -> string) -> elf32_program_header_table_entry -> string
+val string_of_elf32_program_header_table_entry : (natural -> string) -> (natural -> string) -> elf32_program_header_table_entry -> string
 let string_of_elf32_program_header_table_entry os proc entry =
 	unlines [
-		"\t" ^ "Segment type: " ^ string_of_elf_segment_type os proc (nat_of_elf32_word entry.elf32_p_type)
+		"\t" ^ "Segment type: " ^ string_of_elf_segment_type os proc (natural_of_elf32_word entry.elf32_p_type)
 	; "\t" ^ "Offset: " ^ show entry.elf32_p_offset
 	; "\t" ^ "Virtual address: " ^ show entry.elf32_p_vaddr
 	; "\t" ^ "Physical address: " ^ show entry.elf32_p_paddr
@@ -132,10 +132,10 @@ let string_of_elf32_program_header_table_entry os proc entry =
   * representation of a 64-bit program header table entry using [os] and [proc]
   * to render OS- and processor-specific entries.
   *)
-val string_of_elf64_program_header_table_entry : (nat -> string) -> (nat -> string) -> elf64_program_header_table_entry -> string
+val string_of_elf64_program_header_table_entry : (natural -> string) -> (natural -> string) -> elf64_program_header_table_entry -> string
 let string_of_elf64_program_header_table_entry os proc entry =
   unlines [
-    "\t" ^ "Segment type: " ^ string_of_elf_segment_type os proc (nat_of_elf64_word entry.elf64_p_type)
+    "\t" ^ "Segment type: " ^ string_of_elf_segment_type os proc (natural_of_elf64_word entry.elf64_p_type)
   ; "\t" ^ "Offset: " ^ show entry.elf64_p_offset
   ; "\t" ^ "Virtual address: " ^ show entry.elf64_p_vaddr
   ; "\t" ^ "Physical address: " ^ show entry.elf64_p_paddr
@@ -263,7 +263,7 @@ let rec read_elf64_program_header_table' endian bs0 =
   * table multiplied by the fixed entry size.  Bitstring [bs0] may be larger than
   * necessary, in which case the excess is returned.
   *)
-val read_elf32_program_header_table : nat -> endianness -> bitstring -> error (elf32_program_header_table * bitstring)
+val read_elf32_program_header_table : natural -> endianness -> bitstring -> error (elf32_program_header_table * bitstring)
 let read_elf32_program_header_table table_size endian bs0 =
 	let (eat, rest) = partition table_size bs0 in
 		read_elf32_program_header_table' endian eat >>= fun table ->
@@ -275,7 +275,7 @@ let read_elf32_program_header_table table_size endian bs0 =
   * table multiplied by the fixed entry size.  Bitstring [bs0] may be larger than
   * necessary, in which case the excess is returned.
   *)
-val read_elf64_program_header_table : nat -> endianness -> bitstring -> error (elf64_program_header_table * bitstring)
+val read_elf64_program_header_table : natural -> endianness -> bitstring -> error (elf64_program_header_table * bitstring)
 let read_elf64_program_header_table table_size endian bs0 =
   let (eat, rest) = partition table_size bs0 in
     read_elf64_program_header_table' endian eat >>= fun table ->
@@ -287,7 +287,7 @@ let read_elf64_program_header_table table_size endian bs0 =
   * The first component of the type is an OS specific print function, the second is
   * a processor specific print function.
   *)
-type pht_print_bundle = (nat -> string) * (nat -> string)
+type pht_print_bundle = (natural -> string) * (natural -> string)
 
 (** [string_of_elf32_program_header_table os proc tbl] produces a string representation
   * of program header table [tbl] using [os] and [proc] to render OS- and processor-

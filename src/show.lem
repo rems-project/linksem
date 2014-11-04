@@ -67,3 +67,7 @@ end
 instance (Show nat)
 	let show = string_of_nat
 end
+
+instance (Show natural)
+  let show = string_of_natural
+end

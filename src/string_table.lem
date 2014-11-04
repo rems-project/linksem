@@ -78,7 +78,7 @@ let size tbl =
   * from the start of the base string until the first occurrence of the delimiting
   * character.
   *)
-val get_string_at : nat -> string_table -> error string
+val get_string_at : natural -> string_table -> error string
 let get_string_at index tbl =
   match Missing_pervasives.string_suffix index (get_base_string tbl) with
     | Nothing     -> Fail "get_string_at: invalid index into string"

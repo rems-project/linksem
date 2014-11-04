@@ -19,7 +19,7 @@ let rec intercalate sep xs =
   * Elements that produce [Nothing] under [f] are discarded in the output, whilst
   * those producing [Just e] for some [e] are kept.
   *)
-val mapMaybei' : forall 'a 'b. (nat -> 'a -> maybe 'b) -> nat -> list 'a -> list 'b
+val mapMaybei' : forall 'a 'b. (natural -> 'a -> maybe 'b) -> natural -> list 'a -> list 'b
 let rec mapMaybei' f idx xs =
   match xs with
   | []    -> []
@@ -30,7 +30,7 @@ let rec mapMaybei' f idx xs =
       end
   end
 
-val mapMaybei : forall 'a 'b. (nat -> 'a -> maybe 'b) -> list 'a -> list 'b
+val mapMaybei : forall 'a 'b. (natural -> 'a -> maybe 'b) -> list 'a -> list 'b
     
 let mapMaybei f xs =
   mapMaybei' f 0 xs
@@ -72,5 +72,8 @@ declare ocaml target_rep function string_of_nat = `string_of_int`
 (** [string_suffix i s] chops [i] characters off [s], returning a new string.
   * Fails if the index is negative, or beyond the end of the string.
   *)
-val string_suffix : nat -> string -> maybe string
+val string_suffix : natural -> string -> maybe string
 declare ocaml target_rep function string_suffix = `Ml_bindings.string_suffix`
+
+val index : forall 'a. natural -> list 'a -> maybe 'a
+declare ocaml target_rep function index = `Ml_bindings.list_index_big_int`
