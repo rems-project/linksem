@@ -1,2 +1,0 @@
-val display : error elf32_program_header_table -> string
-let display = show
