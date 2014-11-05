@@ -1,1 +1,7 @@
 src/_build
+src/src_elf_libraries/uint/*
+src/src_elf_libraries/uint
+src/src_elf_libraries/bitstring/*
+src/src_elf_libraries/bitstring
+src/src_elf_libraries/batteries/*
+src/src_elf_libraries/batteries

@@ -43,19 +43,33 @@ show.ml endianness.ml error.ml ml_bindings.ml default_printing.ml bitstring_loca
 
 #-package bitstring -package uint -package batteries
 
+make_elf_libraries:
+	-chmod u+w src_elf_libraries/batteries
+	-chmod u+w src_elf_libraries/bitstring
+	-chmod u+w src_elf_libraries/uint
+	rm -rf src_elf_libraries/batteries
+	rm -rf src_elf_libraries/bitstring
+	rm -rf src_elf_libraries/uint
+	$(MAKE) -C src_elf_libraries all
+
+clean_elf_libraries:
+	$(MAKE) -C src_elf_libraries clean
+
+
+
 ocaml_with_ocamlbuild:
 	ocamlbuild -classic-display \
-  -X libraries \
+  -X src_elf_libraries \
   -cflag -g \
   -lflags 'unix.cma nums.cma' \
-  -cflags '-I ../libraries/bitstring' \
-  -lflags '-I ../libraries/bitstring bitstring.cma' \
-  -cflags '-I ../libraries/uint/_build/lib' \
-  -lflags '-I ../libraries/uint/_build/lib uint.cma' \
-  -cflags '-I ../libraries/batteries/_build/src'   \
-  -lflags '-I ../libraries/batteries/_build/src batteries.cma'   \
-  -cflags -dllpath,../libraries/uint/_build/lib \
-  -cflags -dllpath,../libraries/bitstring \
+  -cflags '-I ../src_elf_libraries/bitstring' \
+  -lflags '-I ../src_elf_libraries/bitstring bitstring.cma' \
+  -cflags '-I ../src_elf_libraries/uint/_build/lib' \
+  -lflags '-I ../src_elf_libraries/uint/_build/lib uint.cma' \
+  -cflags '-I ../src_elf_libraries/batteries/_build/src'   \
+  -lflags '-I ../src_elf_libraries/batteries/_build/src batteries.cma'   \
+  -cflags -dllpath,../src_elf_libraries/uint/_build/lib \
+  -cflags -dllpath,../src_elf_libraries/bitstring \
   main_elf.byte 
 
 clean_with_ocamlbuild:
