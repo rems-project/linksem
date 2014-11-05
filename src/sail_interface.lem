@@ -1,6 +1,7 @@
 open import Basic_classes
 open import Function
 open import Maybe
+open import Num
 open import String
 open import Tuple
 
@@ -15,11 +16,11 @@ open import Elf_header
 open import Elf_executable_file3
 open import Elf_types
 
-type elf_class
-  = ELF_Class_32
-  | ELF_Class_64
+type executable_process_image
+  = ELF_Class_32 of elf32_executable_process_image
+  | ELF_Class_64 of elf64_executable_process_image
 
-val populate : string -> executable_process_image * elf_class
+val populate : string -> executable_process_image
 let populate fname =
   let res =
     (* Acquire the data from the file... *)
@@ -32,14 +33,14 @@ let populate fname =
           (* Calculate whether we are dealing with a 32- or 64-bit file based on
            * what we have read...
            *)
-          if nat_of_unsigned_char c = Elf_header.elf_class_32 then
+          if natural_of_unsigned_char c = Elf_header.elf_class_32 then
             Elf_executable_file3.read_elf32_executable_file3 bs0 >>= fun ef5 ->
-            Elf_executable_file3.get_elf32_executable_image ef5 >>= fun (chunks, entry) ->
-            return ((chunks, entry), ELF_Class_32)
-          else if nat_of_unsigned_char c = Elf_header.elf_class_64 then
+            Elf_executable_file3.get_elf32_executable_image ef5 >>= fun img ->
+            return (ELF_Class_32 img)
+          else if natural_of_unsigned_char c = Elf_header.elf_class_64 then
             Elf_executable_file3.read_elf64_executable_file3 bs0 >>= fun ef5 ->
-            Elf_executable_file3.get_elf64_executable_image ef5 >>= fun (chunks, entry) ->
-            return ((chunks, entry), ELF_Class_64)
+            Elf_executable_file3.get_elf64_executable_image ef5 >>= fun img ->
+            return (ELF_Class_64 img)
           else
             fail "populate: ELF class unrecognised"
       end
@@ -49,7 +50,7 @@ let populate fname =
       | Success chunks -> chunks
     end
 
-val obtain_symbol_to_address_mapping : string -> list (string * nat)
+val obtain_symbol_to_address_mapping : string -> list (string * natural)
 let obtain_symbol_to_address_mapping fname =
   let res =
     (* Acquire the data from the file... *)
@@ -62,13 +63,13 @@ let obtain_symbol_to_address_mapping fname =
           (* Calculate whether we are dealing with a 32- or 64-bit file based on
            * what we have read...
            *)
-          if nat_of_unsigned_char c = Elf_header.elf_class_32 then
+          if natural_of_unsigned_char c = Elf_header.elf_class_32 then
             Elf_executable_file3.read_elf32_executable_file3 bs0 >>= fun f1 ->
             Elf_executable_file3.get_elf32_symbol_table f1 >>= fun symtab ->
             Elf_executable_file3.get_elf32_symbol_string_table f1 >>= fun strtab ->
             Elf_symbol_table.get_elf32_symbol_image_address symtab strtab >>= fun strs ->
             return strs
-          else if nat_of_unsigned_char c = Elf_header.elf_class_64 then
+          else if natural_of_unsigned_char c = Elf_header.elf_class_64 then
             Elf_executable_file3.read_elf64_executable_file3 bs0 >>= fun f1 ->
             Elf_executable_file3.get_elf64_symbol_table f1 >>= fun symtab ->
             Elf_executable_file3.get_elf64_symbol_string_table f1 >>= fun strtab ->
@@ -83,7 +84,7 @@ let obtain_symbol_to_address_mapping fname =
       | Success strs -> strs
     end
 
-val populate_and_obtain_symbol_to_address_mapping : string -> ((executable_process_image * elf_class) * list (string * nat))
+val populate_and_obtain_symbol_to_address_mapping : string -> executable_process_image * list (string * natural)
 let populate_and_obtain_symbol_to_address_mapping fname =
   let res =
     (* Acquire the data from the file... *)
@@ -96,20 +97,20 @@ let populate_and_obtain_symbol_to_address_mapping fname =
           (* Calculate whether we are dealing with a 32- or 64-bit file based on
            * what we have read...
            *)
-          if nat_of_unsigned_char c = Elf_header.elf_class_32 then
+          if natural_of_unsigned_char c = Elf_header.elf_class_32 then
             Elf_executable_file3.read_elf32_executable_file3 bs0 >>= fun f1 ->
             Elf_executable_file3.get_elf32_symbol_table f1 >>= fun symtab ->
             Elf_executable_file3.get_elf32_symbol_string_table f1 >>= fun strtab ->
             Elf_symbol_table.get_elf32_symbol_image_address symtab strtab >>= fun strs ->
-            Elf_executable_file3.get_elf32_executable_image f1 >>= fun (chunks, entry) ->
-            return (((chunks, entry), ELF_Class_32), strs)
-          else if nat_of_unsigned_char c = Elf_header.elf_class_64 then
+            Elf_executable_file3.get_elf32_executable_image f1 >>= fun img ->
+            return (ELF_Class_32 img, strs)
+          else if natural_of_unsigned_char c = Elf_header.elf_class_64 then
             Elf_executable_file3.read_elf64_executable_file3 bs0 >>= fun f1 ->
             Elf_executable_file3.get_elf64_symbol_table f1 >>= fun symtab ->
             Elf_executable_file3.get_elf64_symbol_string_table f1 >>= fun strtab ->
             Elf_symbol_table.get_elf64_symbol_image_address symtab strtab >>= fun strs ->
-            Elf_executable_file3.get_elf64_executable_image f1 >>= fun (chunks, entry) ->
-            return (((chunks, entry), ELF_Class_64), strs)
+            Elf_executable_file3.get_elf64_executable_image f1 >>= fun img ->
+            return (ELF_Class_64 img, strs)
           else
             fail "populate_and_obtain_symbol_to_address_mapping: ELF class unrecognised"
       end

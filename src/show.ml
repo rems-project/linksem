@@ -73,3 +73,7 @@ let instance_Show_Show_Maybe_maybe_dict dict_Show_Show_a =({
 let instance_Show_Show_nat_dict =({
 
   show_method = string_of_int})
+
+let instance_Show_Show_Num_natural_dict =({
+
+  show_method = Big_int.string_of_big_int})

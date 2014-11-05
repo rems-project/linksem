@@ -7,8 +7,27 @@ let decimal_string_of_int64 e = let i = Int64.to_int e in string_of_int i
 let hex_string_of_int64 (e : Int64.t) : string =
   let i = Int64.to_int e in Printf.sprintf "0x%x" i
   
+let bitstring_length bs =
+  Big_int.big_int_of_int (Bitstring.bitstring_length bs)
+  
+let create_bitstring len =
+  if Big_int.is_int_big_int len
+  then Bitstring.create_bitstring (Big_int.int_of_big_int len)
+  else failwith "create_bitstring: length too big"
+  
+let make_bitstring len cs =
+  if Big_int.is_int_big_int len
+  then Bitstring.make_bitstring (Big_int.int_of_big_int len) cs
+  else failwith "make_bitstring: length too big"
+  
 let partition_bitstring size bitstring =
-  ((Bitstring.takebits size bitstring), (Bitstring.dropbits size bitstring))
+  if Big_int.is_int_big_int size
+  then
+    (let cut = Big_int.int_of_big_int size
+     in
+       ((Bitstring.takebits cut bitstring),
+        (Bitstring.dropbits cut bitstring)))
+  else failwith "partition_bitstring: size too large"
   
 let acquire_bitstring path_to_target =
   try
@@ -56,7 +75,7 @@ let read_unsigned_char_le bs rest =
         match !__pabitstring_result_1007 with
         | Some x -> x
         | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 28, 2))))
+            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 48, 2))))
   
 let read_unsigned_char_be bs rest =
   let (__pabitstring_data_1008, __pabitstring_original_off_1011,
@@ -97,10 +116,10 @@ let read_unsigned_char_be bs rest =
         match !__pabitstring_result_1014 with
         | Some x -> x
         | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 34, 2))))
+            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 54, 2))))
   
 let read_unsigned_char endian bs =
-  let (cut, rest) = partition_bitstring 8 bs
+  let (cut, rest) = partition_bitstring (Big_int.big_int_of_int 8) bs
   in
     match endian with
     | Little -> read_unsigned_char_le cut rest
@@ -152,7 +171,7 @@ let read_elf32_addr_le bs rest =
         match !__pabitstring_result_1021 with
         | Some x -> x
         | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 52, 2))))
+            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 72, 2))))
   
 let read_elf32_addr_be bs rest =
   let (__pabitstring_data_1022, __pabitstring_original_off_1025,
@@ -196,10 +215,10 @@ let read_elf32_addr_be bs rest =
         match !__pabitstring_result_1028 with
         | Some x -> x
         | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 58, 2))))
+            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 78, 2))))
   
 let read_elf32_addr endian bs =
-  let (cut, rest) = partition_bitstring 32 bs
+  let (cut, rest) = partition_bitstring (Big_int.big_int_of_int 32) bs
   in
     match endian with
     | Little -> read_elf32_addr_le cut rest
@@ -247,7 +266,7 @@ let read_elf64_addr_le bs rest =
         match !__pabitstring_result_1035 with
         | Some x -> x
         | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 71, 2))))
+            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 91, 2))))
   
 let read_elf64_addr_be bs rest =
   let (__pabitstring_data_1036, __pabitstring_original_off_1039,
@@ -291,10 +310,10 @@ let read_elf64_addr_be bs rest =
         match !__pabitstring_result_1042 with
         | Some x -> x
         | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 77, 2))))
+            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 97, 2))))
   
 let read_elf64_addr endian bs =
-  let (cut, rest) = partition_bitstring 64 bs
+  let (cut, rest) = partition_bitstring (Big_int.big_int_of_int 64) bs
   in
     match endian with
     | Little -> read_elf64_addr_le cut rest
@@ -346,7 +365,7 @@ let read_elf32_off_le bs rest =
         match !__pabitstring_result_1049 with
         | Some x -> x
         | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 94, 2))))
+            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 114, 2))))
   
 let read_elf32_off_be bs rest =
   let (__pabitstring_data_1050, __pabitstring_original_off_1053,
@@ -390,10 +409,10 @@ let read_elf32_off_be bs rest =
         match !__pabitstring_result_1056 with
         | Some x -> x
         | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 100, 2))))
+            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 120, 2))))
   
 let read_elf32_off endian bs =
-  let (cut, rest) = partition_bitstring 32 bs
+  let (cut, rest) = partition_bitstring (Big_int.big_int_of_int 32) bs
   in
     match endian with
     | Little -> read_elf32_off_le cut rest
@@ -441,7 +460,7 @@ let read_elf64_off_le bs rest =
         match !__pabitstring_result_1063 with
         | Some x -> x
         | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 113, 2))))
+            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 133, 2))))
   
 let read_elf64_off_be bs rest =
   let (__pabitstring_data_1064, __pabitstring_original_off_1067,
@@ -485,10 +504,10 @@ let read_elf64_off_be bs rest =
         match !__pabitstring_result_1070 with
         | Some x -> x
         | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 119, 2))))
+            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 139, 2))))
   
 let read_elf64_off endian bs =
-  let (cut, rest) = partition_bitstring 64 bs
+  let (cut, rest) = partition_bitstring (Big_int.big_int_of_int 64) bs
   in
     match endian with
     | Little -> read_elf64_off_le cut rest
@@ -538,7 +557,7 @@ let read_elf32_half_le bs rest =
         match !__pabitstring_result_1077 with
         | Some x -> x
         | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 137, 2))))
+            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 157, 2))))
   
 let read_elf32_half_be bs rest =
   let (__pabitstring_data_1078, __pabitstring_original_off_1081,
@@ -580,10 +599,10 @@ let read_elf32_half_be bs rest =
         match !__pabitstring_result_1084 with
         | Some x -> x
         | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 143, 2))))
+            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 163, 2))))
   
 let read_elf32_half endian bs =
-  let (cut, rest) = partition_bitstring 16 bs
+  let (cut, rest) = partition_bitstring (Big_int.big_int_of_int 16) bs
   in
     match endian with
     | Little -> read_elf32_half_le cut rest
@@ -629,7 +648,7 @@ let read_elf64_half_le bs rest =
         match !__pabitstring_result_1091 with
         | Some x -> x
         | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 156, 2))))
+            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 176, 2))))
   
 let read_elf64_half_be bs rest =
   let (__pabitstring_data_1092, __pabitstring_original_off_1095,
@@ -671,10 +690,10 @@ let read_elf64_half_be bs rest =
         match !__pabitstring_result_1098 with
         | Some x -> x
         | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 162, 2))))
+            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 182, 2))))
   
 let read_elf64_half endian bs =
-  let (cut, rest) = partition_bitstring 16 bs
+  let (cut, rest) = partition_bitstring (Big_int.big_int_of_int 16) bs
   in
     match endian with
     | Little -> read_elf64_half_le cut rest
@@ -726,7 +745,7 @@ let read_elf32_word_le bs rest =
         match !__pabitstring_result_1105 with
         | Some x -> x
         | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 180, 2))))
+            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 200, 2))))
   
 let read_elf32_word_be bs rest =
   let (__pabitstring_data_1106, __pabitstring_original_off_1109,
@@ -770,10 +789,10 @@ let read_elf32_word_be bs rest =
         match !__pabitstring_result_1112 with
         | Some x -> x
         | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 186, 2))))
+            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 206, 2))))
   
 let read_elf32_word endian bs =
-  let (cut, rest) = partition_bitstring 32 bs
+  let (cut, rest) = partition_bitstring (Big_int.big_int_of_int 32) bs
   in
     match endian with
     | Little -> read_elf32_word_le cut rest
@@ -821,7 +840,7 @@ let read_elf64_word_le bs rest =
         match !__pabitstring_result_1119 with
         | Some x -> x
         | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 199, 2))))
+            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 219, 2))))
   
 let read_elf64_word_be bs rest =
   let (__pabitstring_data_1120, __pabitstring_original_off_1123,
@@ -865,10 +884,10 @@ let read_elf64_word_be bs rest =
         match !__pabitstring_result_1126 with
         | Some x -> x
         | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 205, 2))))
+            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 225, 2))))
   
 let read_elf64_word endian bs =
-  let (cut, rest) = partition_bitstring 32 bs
+  let (cut, rest) = partition_bitstring (Big_int.big_int_of_int 32) bs
   in
     match endian with
     | Little -> read_elf64_word_le cut rest
@@ -919,7 +938,7 @@ let read_elf32_sword_le bs rest =
         match !__pabitstring_result_1133 with
         | Some x -> x
         | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 223, 2))))
+            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 243, 2))))
   
 let read_elf32_sword_be bs rest =
   let (__pabitstring_data_1134, __pabitstring_original_off_1137,
@@ -962,10 +981,10 @@ let read_elf32_sword_be bs rest =
         match !__pabitstring_result_1140 with
         | Some x -> x
         | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 229, 2))))
+            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 249, 2))))
   
 let read_elf32_sword endian bs =
-  let (cut, rest) = partition_bitstring 32 bs
+  let (cut, rest) = partition_bitstring (Big_int.big_int_of_int 32) bs
   in
     match endian with
     | Little -> read_elf32_sword_le cut rest
@@ -1012,7 +1031,7 @@ let read_elf64_sword_le bs rest =
         match !__pabitstring_result_1147 with
         | Some x -> x
         | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 242, 2))))
+            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 262, 2))))
   
 let read_elf64_sword_be bs rest =
   let (__pabitstring_data_1148, __pabitstring_original_off_1151,
@@ -1055,10 +1074,10 @@ let read_elf64_sword_be bs rest =
         match !__pabitstring_result_1154 with
         | Some x -> x
         | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 248, 2))))
+            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 268, 2))))
   
 let read_elf64_sword endian bs =
-  let (cut, rest) = partition_bitstring 32 bs
+  let (cut, rest) = partition_bitstring (Big_int.big_int_of_int 32) bs
   in
     match endian with
     | Little -> read_elf64_sword_le cut rest
@@ -1109,7 +1128,7 @@ let read_elf64_xword_le bs rest =
         match !__pabitstring_result_1161 with
         | Some x -> x
         | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 265, 2))))
+            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 285, 2))))
   
 let read_elf64_xword_be bs rest =
   let (__pabitstring_data_1162, __pabitstring_original_off_1165,
@@ -1153,10 +1172,10 @@ let read_elf64_xword_be bs rest =
         match !__pabitstring_result_1168 with
         | Some x -> x
         | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 271, 2))))
+            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 291, 2))))
   
 let read_elf64_xword endian bs =
-  let (cut, rest) = partition_bitstring 64 bs
+  let (cut, rest) = partition_bitstring (Big_int.big_int_of_int 64) bs
   in
     match endian with
     | Little -> read_elf64_xword_le cut rest
@@ -1206,7 +1225,7 @@ let read_elf64_sxword_le bs rest =
         match !__pabitstring_result_1175 with
         | Some x -> x
         | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 288, 2))))
+            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 308, 2))))
   
 let read_elf64_sxword_be bs rest =
   let (__pabitstring_data_1176, __pabitstring_original_off_1179,
@@ -1249,10 +1268,10 @@ let read_elf64_sxword_be bs rest =
         match !__pabitstring_result_1182 with
         | Some x -> x
         | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 294, 2))))
+            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 314, 2))))
   
 let read_elf64_sxword endian bs =
-  let (cut, rest) = partition_bitstring 64 bs
+  let (cut, rest) = partition_bitstring (Big_int.big_int_of_int 64) bs
   in
     match endian with
     | Little -> read_elf64_sxword_le cut rest
@@ -1265,10 +1284,49 @@ let split_string_on_char strings c =
   let enums = BatEnum.map BatString.of_enum groups in BatList.of_enum enums
   
 let string_suffix index str =
-  if (index < 0) || (index > (String.length str))
+  if
+    (Big_int.lt_big_int index (Big_int.big_int_of_int 0)) ||
+      (Big_int.gt_big_int index (Big_int.big_int_of_int (String.length str)))
   then None
   else
-    (try Some (String.sub str index ((String.length str) - index))
+    (try
+       if Big_int.is_int_big_int index
+       then
+         Some
+           (String.sub str (Big_int.int_of_big_int index)
+              ((String.length str) - (Big_int.int_of_big_int index)))
+       else failwith "string_suffix: index too large"
      with | _ -> None)
+  
+let natural_of_unsigned_char u =
+  Big_int.big_int_of_string (Uint32.to_string u)
+  
+let natural_of_elf32_half u = Big_int.big_int_of_string (Uint32.to_string u)
+  
+let natural_of_elf64_half u = Big_int.big_int_of_string (Uint32.to_string u)
+  
+let natural_of_elf32_word u = Big_int.big_int_of_string (Uint32.to_string u)
+  
+let natural_of_elf64_word u = Big_int.big_int_of_string (Uint32.to_string u)
+  
+let natural_of_elf32_off u = Big_int.big_int_of_string (Uint32.to_string u)
+  
+let natural_of_elf64_off u = Big_int.big_int_of_string (Uint64.to_string u)
+  
+let natural_of_elf32_addr u = Big_int.big_int_of_string (Uint32.to_string u)
+  
+let natural_of_elf64_addr u = Big_int.big_int_of_string (Uint64.to_string u)
+  
+let natural_of_elf64_xword u = Big_int.big_int_of_string (Uint64.to_string u)
+  
+let rec list_index_big_int index xs =
+  match xs with
+  | [] -> None
+  | x :: xs ->
+      if Big_int.eq_big_int index Big_int.zero_big_int
+      then Some x
+      else
+        list_index_big_int
+          (Big_int.sub_big_int index (Big_int.big_int_of_int 1)) xs
   
 

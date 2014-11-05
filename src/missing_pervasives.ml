@@ -20,21 +20,21 @@ let rec intercalate sep xs =
   * Elements that produce [Nothing] under [f] are discarded in the output, whilst
   * those producing [Just e] for some [e] are kept.
   *)
-(*val mapMaybei' : forall 'a 'b. (nat -> 'a -> maybe 'b) -> nat -> list 'a -> list 'b*)
+(*val mapMaybei' : forall 'a 'b. (natural -> 'a -> maybe 'b) -> natural -> list 'a -> list 'b*)
 let rec mapMaybei' f idx xs =  
 ((match xs with
   | []    -> []
   | x::xs ->
       (match f idx x with
-      | None -> mapMaybei' f ( 1 + idx) xs
-      | Some e  -> e :: mapMaybei' f ( 1 + idx) xs
+      | None -> mapMaybei' f ( Big_int.add_big_int(Big_int.big_int_of_int 1) idx) xs
+      | Some e  -> e :: mapMaybei' f ( Big_int.add_big_int(Big_int.big_int_of_int 1) idx) xs
       )
   ))
 
-(*val mapMaybei : forall 'a 'b. (nat -> 'a -> maybe 'b) -> list 'a -> list 'b*)
+(*val mapMaybei : forall 'a 'b. (natural -> 'a -> maybe 'b) -> list 'a -> list 'b*)
     
 let mapMaybei f xs =  
-(mapMaybei' f( 0) xs)
+(mapMaybei' f(Big_int.big_int_of_int 0) xs)
 
 (** [unlines xs] concatenates a list of strings [xs], placing each entry
   * on a new line.
@@ -68,4 +68,6 @@ let bracket xs =
 (** [string_suffix i s] chops [i] characters off [s], returning a new string.
   * Fails if the index is negative, or beyond the end of the string.
   *)
-(*val string_suffix : nat -> string -> maybe string*)
+(*val string_suffix : natural -> string -> maybe string*)
+
+(*val index : forall 'a. natural -> list 'a -> maybe 'a*)

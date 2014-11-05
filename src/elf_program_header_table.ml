@@ -23,59 +23,59 @@ open Show
   *)
 
 (** Unused array element.  All other members of the structure are undefined. *)
-let elf_pt_null : int =( 0)
+let elf_pt_null : Big_int.big_int =(Big_int.big_int_of_int 0)
 (** A loadable segment. *)
-let elf_pt_load : int =( 1)
+let elf_pt_load : Big_int.big_int =(Big_int.big_int_of_int 1)
 (** Dynamic linking information. *)
-let elf_pt_dynamic : int =( 2)
+let elf_pt_dynamic : Big_int.big_int =(Big_int.big_int_of_int 2)
 (** Specifies the location and size of a null-terminated path name to be used to
   * invoke an interpreter.
   *)
-let elf_pt_interp : int =( 3)
+let elf_pt_interp : Big_int.big_int =(Big_int.big_int_of_int 3)
 (** Specifies location and size of auxiliary information. *)
-let elf_pt_note : int =( 4)
+let elf_pt_note : Big_int.big_int =(Big_int.big_int_of_int 4)
 (** Reserved but with unspecified semantics.  If the file contains a segment of
   * this type then it is to be regarded as non-conformant with the ABI.
   *)
-let elf_pt_shlib : int =( 5)
+let elf_pt_shlib : Big_int.big_int =(Big_int.big_int_of_int 5)
 (** Specifies the location and size of the program header table. *)
-let elf_pt_phdr : int =( 6)
+let elf_pt_phdr : Big_int.big_int =(Big_int.big_int_of_int 6)
 (** Specifies the thread local storage (TLS) template.  Need not be supported. *)
-let elf_pt_tls : int =( 7)
+let elf_pt_tls : Big_int.big_int =(Big_int.big_int_of_int 7)
 (** Start of reserved indices for operating system specific semantics. *)
-let elf_pt_loos : int =(((( 128 * 128) * 128) * 256) * 3) (* 1610612736 (* 0x60000000 *) *)
+let elf_pt_loos : Big_int.big_int = (Big_int.mult_big_int (Big_int.mult_big_int (Big_int.mult_big_int (Big_int.mult_big_int(Big_int.big_int_of_int 128)(Big_int.big_int_of_int 128))(Big_int.big_int_of_int 128))(Big_int.big_int_of_int 256))(Big_int.big_int_of_int 3)) (* 1610612736 (* 0x60000000 *) *)
 (** End of reserved indices for operating system specific semantics. *)
-let elf_pt_hios : int = (( 469762047 * 4) + 3) (* 1879048191 (* 0x6fffffff *) *)
+let elf_pt_hios : Big_int.big_int = (Big_int.add_big_int ( Big_int.mult_big_int(Big_int.big_int_of_int 469762047)(Big_int.big_int_of_int 4))(Big_int.big_int_of_int 3)) (* 1879048191 (* 0x6fffffff *) *)
 (** Start of reserved indices for processor specific semantics. *)
-let elf_pt_loproc : int = ( 469762048 * 4) (* 1879048192 (* 0x70000000 *) *)
+let elf_pt_loproc : Big_int.big_int = ( Big_int.mult_big_int(Big_int.big_int_of_int 469762048)(Big_int.big_int_of_int 4)) (* 1879048192 (* 0x70000000 *) *)
 (** End of reserved indices for processor specific semantics. *)
-let elf_pt_hiproc : int = (( 536870911 * 4) + 3) (* 2147483647 (* 0x7fffffff *) *)
+let elf_pt_hiproc : Big_int.big_int = (Big_int.add_big_int ( Big_int.mult_big_int(Big_int.big_int_of_int 536870911)(Big_int.big_int_of_int 4))(Big_int.big_int_of_int 3)) (* 2147483647 (* 0x7fffffff *) *)
 
 (** [string_of_elf_segment_type os proc st] produces a string representation of
   * the coding of an ELF segment type [st] using [os] and [proc] to render OS-
   * and processor-specific codings.
   *)
-(*val string_of_elf_segment_type : (nat -> string) -> (nat -> string) -> nat -> string*)
+(*val string_of_elf_segment_type : (natural -> string) -> (natural -> string) -> natural -> string*)
 let string_of_elf_segment_type os proc pt =	
-(if pt = elf_pt_null then
+(if Big_int.eq_big_int pt elf_pt_null then
 		"PT_NULL"
-	else if pt = elf_pt_load then
+	else if Big_int.eq_big_int pt elf_pt_load then
 		"PT_LOAD"
-	else if pt = elf_pt_dynamic then
+	else if Big_int.eq_big_int pt elf_pt_dynamic then
 		"PT_DYNAMIC"
-	else if pt = elf_pt_interp then
+	else if Big_int.eq_big_int pt elf_pt_interp then
 		"PT_INTERP"
-	else if pt = elf_pt_note then
+	else if Big_int.eq_big_int pt elf_pt_note then
 		"PT_NOTE"
-	else if pt = elf_pt_shlib then
+	else if Big_int.eq_big_int pt elf_pt_shlib then
 		"PT_SHLIB"
-	else if pt = elf_pt_phdr then
+	else if Big_int.eq_big_int pt elf_pt_phdr then
 		"PT_PHDR"
-	else if pt = elf_pt_tls then
+	else if Big_int.eq_big_int pt elf_pt_tls then
 		"PT_TLS"
-	else if (pt >= elf_pt_loos) && (pt <= elf_pt_hios) then
+	else if Big_int.ge_big_int pt elf_pt_loos && Big_int.le_big_int pt elf_pt_hios then
 		os pt
-	else if (pt >= elf_pt_loproc) && (pt <= elf_pt_hiproc) then
+	else if Big_int.ge_big_int pt elf_pt_loproc && Big_int.le_big_int pt elf_pt_hiproc then
 		proc pt
 	else
 		"Undefined or invalid segment type")
@@ -116,10 +116,10 @@ type elf64_program_header_table_entry =
   * representation of a 32-bit program header table entry using [os] and [proc]
   * to render OS- and processor-specific entries.
   *)
-(*val string_of_elf32_program_header_table_entry : (nat -> string) -> (nat -> string) -> elf32_program_header_table_entry -> string*)
+(*val string_of_elf32_program_header_table_entry : (natural -> string) -> (natural -> string) -> elf32_program_header_table_entry -> string*)
 let string_of_elf32_program_header_table_entry os proc entry =	
 (unlines [		
-("\t" ^ ("Segment type: " ^ string_of_elf_segment_type os proc (Uint32.to_int entry.elf32_p_type)))
+("\t" ^ ("Segment type: " ^ string_of_elf_segment_type os proc (Ml_bindings.natural_of_elf32_word entry.elf32_p_type)))
 	; ("\t" ^ ("Offset: " ^ Uint32.to_string entry.elf32_p_offset))
 	; ("\t" ^ ("Virtual address: " ^ Uint32.to_string entry.elf32_p_vaddr))
 	; ("\t" ^ ("Physical address: " ^ Uint32.to_string entry.elf32_p_paddr))
@@ -133,10 +133,10 @@ let string_of_elf32_program_header_table_entry os proc entry =
   * representation of a 64-bit program header table entry using [os] and [proc]
   * to render OS- and processor-specific entries.
   *)
-(*val string_of_elf64_program_header_table_entry : (nat -> string) -> (nat -> string) -> elf64_program_header_table_entry -> string*)
+(*val string_of_elf64_program_header_table_entry : (natural -> string) -> (natural -> string) -> elf64_program_header_table_entry -> string*)
 let string_of_elf64_program_header_table_entry os proc entry =  
 (unlines [    
-("\t" ^ ("Segment type: " ^ string_of_elf_segment_type os proc (Uint32.to_int entry.elf64_p_type)))
+("\t" ^ ("Segment type: " ^ string_of_elf_segment_type os proc (Ml_bindings.natural_of_elf64_word entry.elf64_p_type)))
   ; ("\t" ^ ("Offset: " ^ Uint64.to_string entry.elf64_p_offset))
   ; ("\t" ^ ("Virtual address: " ^ Uint64.to_string entry.elf64_p_vaddr))
   ; ("\t" ^ ("Physical address: " ^ Uint64.to_string entry.elf64_p_paddr))
@@ -238,7 +238,7 @@ type 'a hasElf64ProgramHeaderTable_class={
   * [read_elf32_program_header_table] below instead.
   *)
 let rec read_elf32_program_header_table' endian bs0 =	
-(if Bitstring.bitstring_length bs0 = 0 then
+(if Big_int.eq_big_int (Ml_bindings.bitstring_length bs0)(Big_int.big_int_of_int 0) then
   	return []
   else
   	read_elf32_program_header_table_entry endian bs0 >>= (fun (entry, bs1) ->
@@ -251,7 +251,7 @@ let rec read_elf32_program_header_table' endian bs0 =
   * [read_elf32_program_header_table] below instead.
   *)
 let rec read_elf64_program_header_table' endian bs0 =  
-(if Bitstring.bitstring_length bs0 = 0 then
+(if Big_int.eq_big_int (Ml_bindings.bitstring_length bs0)(Big_int.big_int_of_int 0) then
     return []
   else
     read_elf64_program_header_table_entry endian bs0 >>= (fun (entry, bs1) ->
@@ -264,7 +264,7 @@ let rec read_elf64_program_header_table' endian bs0 =
   * table multiplied by the fixed entry size.  Bitstring [bs0] may be larger than
   * necessary, in which case the excess is returned.
   *)
-(*val read_elf32_program_header_table : nat -> endianness -> bitstring -> error (elf32_program_header_table * bitstring)*)
+(*val read_elf32_program_header_table : natural -> endianness -> bitstring -> error (elf32_program_header_table * bitstring)*)
 let read_elf32_program_header_table table_size endian bs0 =	
 (let (eat, rest) = (Ml_bindings.partition_bitstring table_size bs0) in
 		read_elf32_program_header_table' endian eat >>= (fun table ->
@@ -276,7 +276,7 @@ let read_elf32_program_header_table table_size endian bs0 =
   * table multiplied by the fixed entry size.  Bitstring [bs0] may be larger than
   * necessary, in which case the excess is returned.
   *)
-(*val read_elf64_program_header_table : nat -> endianness -> bitstring -> error (elf64_program_header_table * bitstring)*)
+(*val read_elf64_program_header_table : natural -> endianness -> bitstring -> error (elf64_program_header_table * bitstring)*)
 let read_elf64_program_header_table table_size endian bs0 =  
 (let (eat, rest) = (Ml_bindings.partition_bitstring table_size bs0) in
     read_elf64_program_header_table' endian eat >>= (fun table ->
@@ -288,7 +288,7 @@ let read_elf64_program_header_table table_size endian bs0 =
   * The first component of the type is an OS specific print function, the second is
   * a processor specific print function.
   *)
-type pht_print_bundle = (int -> string) * (int -> string)
+type pht_print_bundle = (Big_int.big_int -> string) * (Big_int.big_int -> string)
 
 (** [string_of_elf32_program_header_table os proc tbl] produces a string representation
   * of program header table [tbl] using [os] and [proc] to render OS- and processor-

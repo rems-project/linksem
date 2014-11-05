@@ -17,15 +17,15 @@ open Show
   *)
 (*val string_of_unsigned_char : unsigned_char -> string*)
 
-(** [nat_of_unsigned_char uc] converts an unsigned char [uc] into a nat.
+(** [natural_of_unsigned_char uc] converts an unsigned char [uc] into a natural.
   *)
-(*val nat_of_unsigned_char : unsigned_char -> nat*)
+(*val natural_of_unsigned_char : unsigned_char -> natural*)
 
-(** [unsigned_char_of_nat n] converts a nat [n] into an unsigned char, wrapping
+(** [unsigned_char_of_int32 i] converts an [int32] into an unsigned char, wrapping
   * around if the size of the nat exceeds the storage capacity of an unsigned
   * char.
   *)
-(*val unsigned_char_of_nat : nat -> unsigned_char*)
+(*val unsigned_char_of_int32 : int32 -> unsigned_char*)
 
 (** [unsigned_char_land uc0 uc1] bitwise ANDs two unsigned chars, [uc0] and [uc1]
   * together.
@@ -62,7 +62,7 @@ let instance_Show_Show_Elf_types_unsigned_char_dict =({
 (*type elf32_addr*)
 
 (*val string_of_elf32_addr : elf32_addr -> string*)
-(*val nat_of_elf32_addr : elf32_addr -> nat*)
+(*val natural_of_elf32_addr : elf32_addr -> natural*)
 (*val read_elf32_addr : endianness -> bitstring -> error (elf32_addr * bitstring)*)
 
 let instance_Show_Show_Elf_types_elf32_addr_dict =({
@@ -74,7 +74,7 @@ let instance_Show_Show_Elf_types_elf32_addr_dict =({
 (*type elf64_addr*)
 
 (*val string_of_elf64_addr : elf64_addr -> string*)
-(*val nat_of_elf64_addr : elf64_addr -> nat*)
+(*val natural_of_elf64_addr : elf64_addr -> natural*)
 (*val read_elf64_addr : endianness -> bitstring -> error (elf64_addr * bitstring)*)
 
 let instance_Show_Show_Elf_types_elf64_addr_dict =({
@@ -87,7 +87,7 @@ let instance_Show_Show_Elf_types_elf64_addr_dict =({
 
 (*val string_of_elf32_half : elf32_half -> string*)
 (*val read_elf32_half : endianness -> bitstring -> error (elf32_half * bitstring)*)
-(*val nat_of_elf32_half : elf32_half -> nat*)
+(*val natural_of_elf32_half : elf32_half -> natural*)
 
 let instance_Show_Show_Elf_types_elf32_half_dict =({
 
@@ -99,7 +99,7 @@ let instance_Show_Show_Elf_types_elf32_half_dict =({
 
 (*val string_of_elf64_half : elf64_half -> string*)
 (*val read_elf64_half : endianness -> bitstring -> error (elf64_half * bitstring)*)
-(*val nat_of_elf64_half : elf64_half -> nat*)
+(*val natural_of_elf64_half : elf64_half -> natural*)
 
 let instance_Show_Show_Elf_types_elf64_half_dict =({
 
@@ -110,7 +110,7 @@ let instance_Show_Show_Elf_types_elf64_half_dict =({
 (*type elf32_off*)
 
 (*val string_of_elf32_off : elf32_off -> string*)
-(*val nat_of_elf32_off : elf32_off -> nat*)
+(*val natural_of_elf32_off : elf32_off -> natural*)
 (*val read_elf32_off : endianness -> bitstring -> error (elf32_off * bitstring)*)
 
 let instance_Show_Show_Elf_types_elf32_off_dict =({
@@ -122,7 +122,7 @@ let instance_Show_Show_Elf_types_elf32_off_dict =({
 (*type elf64_off*)
 
 (*val string_of_elf64_off : elf64_off -> string*)
-(*val nat_of_elf64_off : elf64_off -> nat*)
+(*val natural_of_elf64_off : elf64_off -> natural*)
 (*val read_elf64_off : endianness -> bitstring -> error (elf64_off * bitstring)*)
 
 let instance_Show_Show_Elf_types_elf64_off_dict =({
@@ -134,7 +134,7 @@ let instance_Show_Show_Elf_types_elf64_off_dict =({
 (*type elf32_word*)
 
 (*val string_of_elf32_word : elf32_word -> string*)
-(*val nat_of_elf32_word : elf32_word -> nat*)
+(*val natural_of_elf32_word : elf32_word -> natural*)
 (*val elf32_word_of_int32 : int32 -> elf32_word*)
 (*val elf32_word_land : elf32_word -> elf32_word -> elf32_word*)
 (*val elf32_word_rshift : elf32_word -> nat -> elf32_word*)
@@ -150,7 +150,7 @@ let instance_Show_Show_Elf_types_elf32_word_dict =({
 (*type elf64_word*)
 
 (*val string_of_elf64_word : elf64_word -> string*)
-(*val nat_of_elf64_word : elf64_word -> nat*)
+(*val natural_of_elf64_word : elf64_word -> natural*)
 (*val elf64_word_of_int32 : int32 -> elf64_word*)
 (*val elf64_word_land : elf64_word -> elf64_word -> elf64_word*)
 (*val read_elf64_word : endianness -> bitstring -> error (elf64_word * bitstring)*)
@@ -164,7 +164,7 @@ let instance_Show_Show_Elf_types_elf64_word_dict =({
 (*type elf32_sword*)
 
 (*val string_of_elf32_sword : elf32_sword -> string*)
-(*val nat_of_elf32_sword : elf32_sword -> nat*)
+(*val natural_of_elf32_sword : elf32_sword -> natural*)
 (*val read_elf32_sword : endianness -> bitstring -> error (elf32_sword * bitstring)*)
 
 let instance_Show_Show_Elf_types_elf32_sword_dict =({
@@ -176,7 +176,7 @@ let instance_Show_Show_Elf_types_elf32_sword_dict =({
 (*type elf64_sword*)
 
 (*val string_of_elf64_sword : elf64_sword -> string*)
-(*val nat_of_elf64_sword : elf64_sword -> nat*)
+(*val natural_of_elf64_sword : elf64_sword -> natural*)
 (*val read_elf64_sword : endianness -> bitstring -> error (elf64_sword * bitstring)*)
 
 let instance_Show_Show_Elf_types_elf64_sword_dict =({
@@ -188,7 +188,7 @@ let instance_Show_Show_Elf_types_elf64_sword_dict =({
 (*type elf64_xword*)
 
 (*val string_of_elf64_xword : elf64_xword -> string*)
-(*val nat_of_elf64_xword : elf64_xword -> nat*)
+(*val natural_of_elf64_xword : elf64_xword -> natural*)
 (*val read_elf64_xword : endianness -> bitstring -> error (elf64_xword * bitstring)*)
 (*val elf64_xword_rshift : elf64_xword -> nat -> elf64_xword*)
 (*val elf64_xword_land : elf64_xword -> elf64_xword -> elf64_xword*)
@@ -203,7 +203,7 @@ let instance_Show_Show_Elf_types_elf64_xword_dict =({
 (*type elf64_sxword*)
 
 (*val string_of_elf64_sxword : elf64_sxword -> string*)
-(*val nat_of_elf64_sxword : elf64_sxword -> nat*)
+(*val natural_of_elf64_sxword : elf64_sxword -> natural*)
 (*val read_elf64_sxword : endianness -> bitstring -> error (elf64_sxword * bitstring)*)
 
 let instance_Show_Show_Elf_types_elf64_sxword_dict =({
