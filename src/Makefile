@@ -11,7 +11,7 @@ lem-model:
 
 clean:
 	rm -rf missing_pervasives.ml show.ml endianness.ml bitstring_local.ml default_printing.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml elf_section_header_table.ml elf_executable_file3.ml string_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file5.ml elf_linking_file2.ml elf_linking_file3.ml elf_relocation.ml elf_symbol_table.ml sail_interface.ml main_elf.ml
-	make -C libraries clean
+	make -C src_elf_libraries clean
 	rm -rf elf_section_header.ml elf_symbol_table.ml
 	rm -rf *~
 	rm -rf *.cmi *.cmo
