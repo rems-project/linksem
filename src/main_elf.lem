@@ -32,8 +32,11 @@ let _ =
     Elf_executable_file3.read_elf64_executable_file3 bs0 >>= fun f1 ->
     Elf_executable_file3.get_elf64_symbol_table f1 >>= fun symtab ->
     Elf_executable_file3.get_elf64_symbol_string_table f1 >>= fun strtab ->
-    Elf_symbol_table.get_elf64_symbol_image_address symtab strtab >>= fun strs ->
-    let _ = Missing_pervasives.print (show strs) in
+    Elf_symbol_table.get_elf64_symbol_image_address symtab strtab >>= fun syms ->
+    let _ = Missing_pervasives.print ("BV: " ^ show (Bitstring.length f1.elf64_executable_file3_body)) in
+    let _ = Missing_pervasives.print (show syms) in
+    Elf_executable_file3.get_elf64_global_symbol_init f1 >>= fun init ->
+    let _ = Missing_pervasives.print (show init) in
     return f1
   in
     match res with

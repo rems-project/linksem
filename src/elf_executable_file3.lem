@@ -1,4 +1,5 @@
 open import Basic_classes
+open import Bool
 open import Num
 open import Maybe
 open import String
@@ -516,3 +517,63 @@ let get_elf64_dynamic_symbol_table f3 =
         else
           fail "get_elf64_symbol_table: an ELF file may only have one symbol table of type SHT_DYNSYM"
   end
+
+(** Symbol name, symbol type, symbol size, symbol address,
+  * symbol initial value uninterpreted.
+  *)
+type global_symbol_init_info
+  = list (string * (natural * natural * natural * maybe bitstring))
+
+val get_elf32_global_symbol_init : elf32_executable_file3 -> error global_symbol_init_info
+let get_elf32_global_symbol_init f3 =
+  let bs0 = f3.elf32_executable_file3_body in
+  get_elf32_symbol_table f3 >>= fun symtab ->
+  get_elf32_symbol_string_table f3 >>= fun strtab ->
+  Elf_symbol_table.get_elf32_symbol_image_address symtab strtab >>= fun strs ->
+    let mapped = mapM (fun (symbol, (typ, size, addr)) ->
+      if typ = Elf_symbol_table.stt_object then
+        get_elf32_executable_image f3 >>= fun (img, entry) ->
+        let chunks =
+          List.filter (fun chunk ->
+            addr >= chunk.elf32_segment_base && addr + size < chunk.elf32_segment_base + chunk.elf32_segment_size
+          ) img
+        in
+          match chunks with
+            | []    -> fail "get_elf32_global_symbol_init: global variable not present in executable image"
+            | [x]   ->
+              let rebase   = addr - x.elf32_segment_base in
+              let relevant = Bitstring.offset_and_cut rebase size x.elf32_segment_body in
+                return (symbol, (typ, size, addr, Just relevant))
+            | x::xs -> fail "get_elf32_global_symbol_init: invariant failed, global variable appears in multiple segments"
+          end
+      else
+        return (symbol, (typ, size, addr, Nothing))) strs
+    in
+      mapped
+
+val get_elf64_global_symbol_init : elf64_executable_file3 -> error global_symbol_init_info
+let get_elf64_global_symbol_init f3 =
+  let bs0 = f3.elf64_executable_file3_body in
+  get_elf64_symbol_table f3 >>= fun symtab ->
+  get_elf64_symbol_string_table f3 >>= fun strtab ->
+  Elf_symbol_table.get_elf64_symbol_image_address symtab strtab >>= fun strs ->
+    let mapped = mapM (fun (symbol, (typ, size, addr)) ->
+      if typ = Elf_symbol_table.stt_object then
+        get_elf64_executable_image f3 >>= fun (img, entry) ->
+        let chunks =
+          List.filter (fun chunk ->
+            addr >= chunk.elf64_segment_base && addr + size < chunk.elf64_segment_base + chunk.elf64_segment_size
+          ) img
+        in
+          match chunks with
+            | []    -> fail "get_elf64_global_symbol_init: global variable not present in executable image"
+            | [x]   ->
+              let rebase   = addr - x.elf64_segment_base in
+              let relevant = Bitstring.offset_and_cut rebase size x.elf64_segment_body in
+                return (symbol, (typ, size, addr, Just relevant))
+            | x::xs -> fail "get_elf64_global_symbol_init: invariant failed, global variable appears in multiple segments"
+          end
+      else
+        return (symbol, (typ, size, addr, Nothing))) strs
+    in
+      mapped

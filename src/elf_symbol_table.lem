@@ -46,19 +46,19 @@ let string_of_symbol_binding m os proc =
 
 (** Symbol types *)
 
-let stt_notype : nat = 0
-let stt_object : nat = 1
-let stt_func : nat = 2
-let stt_section : nat = 3
-let stt_file : nat = 4
-let stt_common : nat = 5
-let stt_tls : nat = 6
-let stt_loos : nat = 10
-let stt_hios : nat = 12
-let stt_loproc : nat = 13
-let stt_hiproc : nat = 15
+let stt_notype : natural = 0
+let stt_object : natural = 1
+let stt_func : natural = 2
+let stt_section : natural = 3
+let stt_file : natural = 4
+let stt_common : natural = 5
+let stt_tls : natural = 6
+let stt_loos : natural = 10
+let stt_hios : natural = 12
+let stt_loproc : natural = 13
+let stt_hiproc : natural = 15
 
-val string_of_symbol_type : nat -> (nat -> string) -> (nat -> string) -> string
+val string_of_symbol_type : natural -> (natural -> string) -> (natural -> string) -> string
 let string_of_symbol_type m os proc =
   if m = stt_notype then
     "STT_NOTYPE"
@@ -83,12 +83,12 @@ let string_of_symbol_type m os proc =
 
 (** Symbol visibility *)
 
-let stv_default : nat = 0
-let stv_internal : nat = 1
-let stv_hidden : nat = 2
-let stv_protected : nat = 3
+let stv_default : natural = 0
+let stv_internal : natural = 1
+let stv_hidden : natural = 2
+let stv_protected : natural = 3
 
-val string_of_symbol_visibility : nat -> string
+val string_of_symbol_visibility : natural -> string
 let string_of_symbol_visibility m =
   if m = stv_default then
     "STV_DEFAULT"
@@ -241,7 +241,7 @@ let get_elf32_symbol_image_address symtab strtab =
   mapM (fun entry ->
     let name = natural_of_elf32_word entry.elf32_st_name in
     let addr = natural_of_elf32_addr entry.elf32_st_value in
-    let size = natural_of_elf32_word entry.elf32_st_size in
+    let size = natural_of_elf32_word entry.elf32_st_size * 8 in
     let typ  = get_symbol_type entry.elf32_st_info in
       String_table.get_string_at name strtab >>= fun str ->
       return (str, (typ, size, addr))

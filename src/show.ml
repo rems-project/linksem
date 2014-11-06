@@ -54,6 +54,18 @@ let instance_Show_Show_tup3_dict dict_Show_Show_a dict_Show_Show_b dict_Show_Sho
   show_method = 
   (string_of_triple dict_Show_Show_a dict_Show_Show_b dict_Show_Show_c)})
 
+(** [string_of_quad p] produces a string representation of quad [p].
+  *)
+(*val string_of_quad : forall 'a 'b 'c 'd. Show 'a, Show 'b, Show 'c, Show 'd => ('a * 'b * 'c * 'd) -> string*)
+let string_of_quad dict_Show_Show_a dict_Show_Show_b dict_Show_Show_c dict_Show_Show_d (left, middle1, middle2, right) =  
+("(" ^ (dict_Show_Show_a.show_method left ^ (", " ^ (dict_Show_Show_b.show_method middle1 ^ (", " ^ (dict_Show_Show_c.show_method middle2 ^ (", " ^ (dict_Show_Show_d.show_method right ^ ")"))))))))
+
+let instance_Show_Show_tup4_dict dict_Show_Show_a dict_Show_Show_b dict_Show_Show_c dict_Show_Show_d =({
+
+  show_method = 
+  (string_of_quad dict_Show_Show_a dict_Show_Show_b dict_Show_Show_c
+     dict_Show_Show_d)})
+
 (** [string_of_list l] produces a string representation of list [l].
   *)
 (*val string_of_list : forall 'a. Show 'a => list 'a -> string*)

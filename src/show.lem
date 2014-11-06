@@ -51,6 +51,16 @@ instance forall 'a 'b 'c. Show 'a, Show 'b, Show 'c => (Show ('a * 'b * 'c))
   let show = string_of_triple
 end
 
+(** [string_of_quad p] produces a string representation of quad [p].
+  *)
+val string_of_quad : forall 'a 'b 'c 'd. Show 'a, Show 'b, Show 'c, Show 'd => ('a * 'b * 'c * 'd) -> string
+let string_of_quad (left, middle1, middle2, right) =
+  "(" ^ show left ^ ", " ^ show middle1 ^ ", " ^ show middle2 ^ ", " ^ show right ^ ")"
+
+instance forall 'a 'b 'c 'd. Show 'a, Show 'b, Show 'c, Show 'd => (Show ('a * 'b * 'c * 'd))
+  let show = string_of_quad
+end
+
 (** [string_of_list l] produces a string representation of list [l].
   *)
 val string_of_list : forall 'a. Show 'a => list 'a -> string

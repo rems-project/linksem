@@ -47,57 +47,57 @@ let string_of_symbol_binding m os proc =
 
 (** Symbol types *)
 
-let stt_notype : int =( 0)
-let stt_object : int =( 1)
-let stt_func : int =( 2)
-let stt_section : int =( 3)
-let stt_file : int =( 4)
-let stt_common : int =( 5)
-let stt_tls : int =( 6)
-let stt_loos : int =( 10)
-let stt_hios : int =( 12)
-let stt_loproc : int =( 13)
-let stt_hiproc : int =( 15)
+let stt_notype : Big_int.big_int =(Big_int.big_int_of_int 0)
+let stt_object : Big_int.big_int =(Big_int.big_int_of_int 1)
+let stt_func : Big_int.big_int =(Big_int.big_int_of_int 2)
+let stt_section : Big_int.big_int =(Big_int.big_int_of_int 3)
+let stt_file : Big_int.big_int =(Big_int.big_int_of_int 4)
+let stt_common : Big_int.big_int =(Big_int.big_int_of_int 5)
+let stt_tls : Big_int.big_int =(Big_int.big_int_of_int 6)
+let stt_loos : Big_int.big_int =(Big_int.big_int_of_int 10)
+let stt_hios : Big_int.big_int =(Big_int.big_int_of_int 12)
+let stt_loproc : Big_int.big_int =(Big_int.big_int_of_int 13)
+let stt_hiproc : Big_int.big_int =(Big_int.big_int_of_int 15)
 
-(*val string_of_symbol_type : nat -> (nat -> string) -> (nat -> string) -> string*)
+(*val string_of_symbol_type : natural -> (natural -> string) -> (natural -> string) -> string*)
 let string_of_symbol_type m os proc =  
-(if m = stt_notype then
+(if Big_int.eq_big_int m stt_notype then
     "STT_NOTYPE"
-  else if m = stt_object then
+  else if Big_int.eq_big_int m stt_object then
     "STT_OBJECT"
-  else if m = stt_func then
+  else if Big_int.eq_big_int m stt_func then
     "STT_FUNC"
-  else if m = stt_section then
+  else if Big_int.eq_big_int m stt_section then
     "STT_SECTION"
-  else if m = stt_file then
+  else if Big_int.eq_big_int m stt_file then
     "STT_FILE"
-  else if m = stt_common then
+  else if Big_int.eq_big_int m stt_common then
     "STT_COMMON"
-  else if m = stt_tls then
+  else if Big_int.eq_big_int m stt_tls then
     "STT_TLS"
-  else if (m >= stt_loos) && (m <= stt_hios) then
+  else if Big_int.ge_big_int m stt_loos && Big_int.le_big_int m stt_hios then
     os m
-  else if (m >= stt_loproc) && (m <= stt_hiproc) then
+  else if Big_int.ge_big_int m stt_loproc && Big_int.le_big_int m stt_hiproc then
     proc m
   else
     "Invalid symbol type")
 
 (** Symbol visibility *)
 
-let stv_default : int =( 0)
-let stv_internal : int =( 1)
-let stv_hidden : int =( 2)
-let stv_protected : int =( 3)
+let stv_default : Big_int.big_int =(Big_int.big_int_of_int 0)
+let stv_internal : Big_int.big_int =(Big_int.big_int_of_int 1)
+let stv_hidden : Big_int.big_int =(Big_int.big_int_of_int 2)
+let stv_protected : Big_int.big_int =(Big_int.big_int_of_int 3)
 
-(*val string_of_symbol_visibility : nat -> string*)
+(*val string_of_symbol_visibility : natural -> string*)
 let string_of_symbol_visibility m =  
-(if m = stv_default then
+(if Big_int.eq_big_int m stv_default then
     "STV_DEFAULT"
-  else if m = stv_internal then
+  else if Big_int.eq_big_int m stv_internal then
     "STV_INTERNAL"
-  else if m = stv_hidden then
+  else if Big_int.eq_big_int m stv_hidden then
     "STV_HIDDEN"
-  else if m = stv_protected then
+  else if Big_int.eq_big_int m stv_protected then
     "STV_PROTECTED"
   else
     "Invalid symbol visibility")
@@ -242,7 +242,7 @@ let get_elf32_symbol_image_address symtab strtab =
 (mapM (fun entry ->
     let name = (Ml_bindings.natural_of_elf32_word entry.elf32_st_name) in
     let addr = (Ml_bindings.natural_of_elf32_addr entry.elf32_st_value) in
-    let size1 = (Ml_bindings.natural_of_elf32_word entry.elf32_st_size) in
+    let size1 = (Big_int.mult_big_int (Ml_bindings.natural_of_elf32_word entry.elf32_st_size)(Big_int.big_int_of_int 8)) in
     let typ  = (get_symbol_type entry.elf32_st_info) in
       String_table.get_string_at name strtab >>= (fun str ->
       return (str, (typ, size1, addr)))
