@@ -43,6 +43,17 @@ let instance_Show_Show_tup2_dict dict_Show_Show_a dict_Show_Show_b =({
   show_method = 
   (string_of_pair dict_Show_Show_a dict_Show_Show_b)})
 
+(** [string_of_triple p] produces a string representation of triple [p].
+  *)
+(*val string_of_triple : forall 'a 'b 'c. Show 'a, Show 'b, Show 'c => ('a * 'b * 'c) -> string*)
+let string_of_triple dict_Show_Show_a dict_Show_Show_b dict_Show_Show_c (left, middle, right) =  
+("(" ^ (dict_Show_Show_a.show_method left ^ (", " ^ (dict_Show_Show_b.show_method middle ^ (", " ^ (dict_Show_Show_c.show_method right ^ ")"))))))
+
+let instance_Show_Show_tup3_dict dict_Show_Show_a dict_Show_Show_b dict_Show_Show_c =({
+
+  show_method = 
+  (string_of_triple dict_Show_Show_a dict_Show_Show_b dict_Show_Show_c)})
+
 (** [string_of_list l] produces a string representation of list [l].
   *)
 (*val string_of_list : forall 'a. Show 'a => list 'a -> string*)

@@ -232,20 +232,29 @@ let rec read_elf64_symbol_table endian bs0 =
     read_elf64_symbol_table endian bs0 >>= (fun tail ->
     return (head::tail))))
 
-(*val get_elf32_symbol_image_address : elf32_symbol_table -> string_table -> error (list (string * natural))*)
+(** Association map of symbol name, symbol type, symbol size, and symbol address.
+  *)
+type symbol_address_map
+  = (string * (Big_int.big_int * Big_int.big_int * Big_int.big_int)) list
+
+(*val get_elf32_symbol_image_address : elf32_symbol_table -> string_table -> error symbol_address_map*)
 let get_elf32_symbol_image_address symtab strtab =  
 (mapM (fun entry ->
     let name = (Ml_bindings.natural_of_elf32_word entry.elf32_st_name) in
     let addr = (Ml_bindings.natural_of_elf32_addr entry.elf32_st_value) in
+    let size1 = (Ml_bindings.natural_of_elf32_word entry.elf32_st_size) in
+    let typ  = (get_symbol_type entry.elf32_st_info) in
       String_table.get_string_at name strtab >>= (fun str ->
-      return (str, addr))
+      return (str, (typ, size1, addr)))
   ) symtab)
 
-(*val get_elf64_symbol_image_address : elf64_symbol_table -> string_table -> error (list (string * natural))*)
+(*val get_elf64_symbol_image_address : elf64_symbol_table -> string_table -> error symbol_address_map*)
 let get_elf64_symbol_image_address symtab strtab =  
 (mapM (fun entry ->
     let name = (Ml_bindings.natural_of_elf64_word entry.elf64_st_name) in
     let addr = (Ml_bindings.natural_of_elf64_addr entry.elf64_st_value) in
+    let size1 = (Ml_bindings.natural_of_elf64_xword entry.elf64_st_size) in
+    let typ  = (get_symbol_type entry.elf64_st_info) in
       String_table.get_string_at name strtab >>= (fun str ->
-      return (str, addr))
+      return (str, (typ, size1, addr)))
   ) symtab)

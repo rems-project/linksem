@@ -41,6 +41,16 @@ instance forall 'a 'b. Show 'a, Show 'b => (Show ('a * 'b))
   let show = string_of_pair
 end
 
+(** [string_of_triple p] produces a string representation of triple [p].
+  *)
+val string_of_triple : forall 'a 'b 'c. Show 'a, Show 'b, Show 'c => ('a * 'b * 'c) -> string
+let string_of_triple (left, middle, right) =
+  "(" ^ show left ^ ", " ^ show middle ^ ", " ^ show right ^ ")"
+
+instance forall 'a 'b 'c. Show 'a, Show 'b, Show 'c => (Show ('a * 'b * 'c))
+  let show = string_of_triple
+end
+
 (** [string_of_list l] produces a string representation of list [l].
   *)
 val string_of_list : forall 'a. Show 'a => list 'a -> string
