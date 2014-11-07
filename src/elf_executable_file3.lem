@@ -562,14 +562,14 @@ let get_elf64_global_symbol_init f3 =
         get_elf64_executable_image f3 >>= fun (img, entry) ->
         let chunks =
           List.filter (fun chunk ->
-            addr >= chunk.elf64_segment_base && addr + size < chunk.elf64_segment_base + chunk.elf64_segment_size
+            addr >= chunk.elf64_segment_base && addr + (size * 8) < chunk.elf64_segment_base + (chunk.elf64_segment_size * 8)
           ) img
         in
           match chunks with
             | []    -> fail "get_elf64_global_symbol_init: global variable not present in executable image"
             | [x]   ->
               let rebase   = addr - x.elf64_segment_base in
-              let relevant = Bitstring.offset_and_cut rebase size x.elf64_segment_body in
+              let relevant = Bitstring.offset_and_cut rebase (size * 8) x.elf64_segment_body in
                 return (symbol, (typ, size, addr, Just relevant))
             | x::xs -> fail "get_elf64_global_symbol_init: invariant failed, global variable appears in multiple segments"
           end
