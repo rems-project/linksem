@@ -28,16 +28,18 @@ let default_sht_bdl =
 
 let _ =
   let res =
-    Bitstring.acquire "test/power64-executable-2" >>= fun bs0 ->
-    Elf_executable_file3.read_elf64_executable_file3 bs0 >>= fun f1 ->
-    Elf_executable_file3.get_elf64_symbol_table f1 >>= fun symtab ->
-    Elf_executable_file3.get_elf64_symbol_string_table f1 >>= fun strtab ->
-    Elf_symbol_table.get_elf64_symbol_image_address symtab strtab >>= fun syms ->
-    let _ = Missing_pervasives.print ("BV: " ^ show (Bitstring.length f1.elf64_executable_file3_body)) in
-    let _ = Missing_pervasives.print (show syms) in
-    Elf_executable_file3.get_elf64_global_symbol_init f1 >>= fun init ->
-    let _ = Missing_pervasives.print (show init) in
-    return f1
+    Bitstring.acquire "test/a.out" >>= fun bs0 ->
+    Elf_executable_file3.read_elf32_executable_file3 bs0 >>= fun f1 ->
+    if Elf_program_header_table.get_elf32_static_linked f1.elf32_executable_file3_program_header_table then
+      Elf_executable_file3.get_elf32_symbol_table f1 >>= fun symtab ->
+      Elf_executable_file3.get_elf32_symbol_string_table f1 >>= fun strtab ->
+      Elf_symbol_table.get_elf32_symbol_image_address symtab strtab >>= fun syms ->
+      let _ = Missing_pervasives.print (show syms) in
+      Elf_executable_file3.get_elf32_global_symbol_init f1 >>= fun init ->
+      let _ = Missing_pervasives.print (show init) in
+      return f1
+    else
+      fail "Not statically linked"
   in
     match res with
       | Fail err -> Missing_pervasives.print ("[!]: " ^ err)
