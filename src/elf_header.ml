@@ -12,7 +12,7 @@ open Endianness
 
 open Elf_types
 
-open Bitstring_local
+open Byte_sequence
 open Error
 open Missing_pervasives
 open Show
@@ -538,7 +538,8 @@ let string_of_elf_osabi_version m =
 (** Checks an architecture defined OSABI version is correct, i.e. in the range
   * 64 to 255 inclusive.
   *)
-let is_valid_architecture_defined_osabi_version (n : Big_int.big_int) = (Big_int.ge_big_int n(Big_int.big_int_of_int 64) && Big_int.le_big_int n(Big_int.big_int_of_int 255))
+let is_valid_architecture_defined_osabi_version (n : Big_int.big_int) = (Big_int.ge_big_int
+  n(Big_int.big_int_of_int 64) && Big_int.le_big_int n(Big_int.big_int_of_int 255))
 
 (** ELF Header type *)
 
@@ -676,7 +677,7 @@ let instance_Show_Show_Elf_header_elf64_header_dict =({
 
   show_method = string_of_elf64_header_default})
 
-(*val read_elf32_header : bitstring -> error (elf32_header * bitstring)*)
+(*val read_elf32_header : byte_sequence -> error (elf32_header * byte_sequence)*)
 let read_elf32_header bs =	
 (repeatM' ei_nident bs (Ml_bindings.read_unsigned_char default_endianness) >>= (fun (ident, bs) ->
   let endian = (deduce_endianness ident) in
@@ -708,7 +709,7 @@ let read_elf32_header bs =
           fail "read_elf32_header: not a 32-bit ELF file"
     ))))))))))))))))
 
-(*val read_elf64_header : bitstring -> error (elf64_header * bitstring)*)
+(*val read_elf64_header : byte_sequence -> error (elf64_header * byte_sequence)*)
 let read_elf64_header bs =  
 (repeatM' ei_nident bs (Ml_bindings.read_unsigned_char default_endianness) >>= (fun (ident, bs) ->
   let endian = (deduce_endianness ident) in

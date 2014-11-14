@@ -7,7 +7,7 @@ open Lem_num
 open Lem_string
 open Lem_tuple
 
-open Bitstring_local
+open Byte_sequence
 open Error
 open Missing_pervasives
 open Show
@@ -158,7 +158,7 @@ type 'a hasElf32SymbolTable_class={
   get_elf32_symbol_table_method : 'a -> elf32_symbol_table
 }
 
-(*val read_elf32_symbol_table_entry : endianness -> bitstring -> error (elf32_symbol_table_entry * bitstring)*)
+(*val read_elf32_symbol_table_entry : endianness -> byte_sequence -> error (elf32_symbol_table_entry * byte_sequence)*)
 let read_elf32_symbol_table_entry endian bs0 =  
 (Ml_bindings.read_elf32_word endian bs0 >>= (fun (st_name, bs0) ->
   Ml_bindings.read_elf32_addr endian bs0 >>= (fun (st_value, bs0) ->
@@ -170,9 +170,9 @@ let read_elf32_symbol_table_entry endian bs0 =
                  elf32_st_size = st_size; elf32_st_info = st_info;
                  elf32_st_other = st_other; elf32_st_shndx = st_shndx }, bs0))))))))
 
-(*val read_elf32_symbol_table : endianness -> bitstring -> error elf32_symbol_table*)
+(*val read_elf32_symbol_table : endianness -> byte_sequence -> error elf32_symbol_table*)
 let rec read_elf32_symbol_table endian bs0 =  
-(if Big_int.eq_big_int (Ml_bindings.bitstring_length bs0)(Big_int.big_int_of_int 0) then
+(if Big_int.eq_big_int (Byte_sequence_wrapper.length bs0)(Big_int.big_int_of_int 0) then
     return []
   else
     read_elf32_symbol_table_entry endian bs0 >>= (fun (head, bs0) ->
@@ -211,7 +211,7 @@ type 'a hasElf64SymbolTable_class={
   get_elf64_symbol_table_method : 'a -> elf64_symbol_table
 }
 
-(*val read_elf64_symbol_table_entry : endianness -> bitstring -> error (elf64_symbol_table_entry * bitstring)*)
+(*val read_elf64_symbol_table_entry : endianness -> byte_sequence -> error (elf64_symbol_table_entry * byte_sequence)*)
 let read_elf64_symbol_table_entry endian bs0 =  
 (Ml_bindings.read_elf64_word endian bs0 >>= (fun (st_name, bs0) ->
   Ml_bindings.read_unsigned_char endian bs0 >>= (fun (st_info, bs0) ->
@@ -223,9 +223,9 @@ let read_elf64_symbol_table_entry endian bs0 =
                  elf64_st_other = st_other; elf64_st_shndx = st_shndx;
                  elf64_st_value = st_value; elf64_st_size = st_size }, bs0))))))))
 
-(*val read_elf64_symbol_table : endianness -> bitstring -> error elf64_symbol_table*)
+(*val read_elf64_symbol_table : endianness -> byte_sequence -> error elf64_symbol_table*)
 let rec read_elf64_symbol_table endian bs0 =  
-(if Big_int.eq_big_int (Ml_bindings.bitstring_length bs0)(Big_int.big_int_of_int 0) then
+(if Big_int.eq_big_int (Byte_sequence_wrapper.length bs0)(Big_int.big_int_of_int 0) then
     return []
   else
     read_elf64_symbol_table_entry endian bs0 >>= (fun (head, bs0) ->

@@ -5,12 +5,12 @@ open import String
 
 open import Elf_types
 
-open import Bitstring
+open import Byte_sequence
 open import Missing_pervasives
 open import Show
 
 type elf32_interpreted_segment =
-  <| elf32_segment_body  : bitstring            (** Body of the segment *)
+  <| elf32_segment_body  : byte_sequence            (** Body of the segment *)
    ; elf32_segment_type  : natural              (** Type of the segment *)
    ; elf32_segment_size  : natural              (** Size of the segment in bytes *)
    ; elf32_segment_memsz : natural              (** Size of the segment in memory in bytes *)
@@ -19,7 +19,7 @@ type elf32_interpreted_segment =
    |>
 
 type elf64_interpreted_segment =
-  <| elf64_segment_body  : bitstring            (** Body of the segment *)
+  <| elf64_segment_body  : byte_sequence            (** Body of the segment *)
    ; elf64_segment_type  : natural              (** Type of the segment *)
    ; elf64_segment_size  : natural              (** Size of the segment in bytes *)
    ; elf64_segment_memsz : natural              (** Size of the segment in memory in bytes *)
@@ -57,7 +57,7 @@ let string_of_flags flags =
 val string_of_elf32_interpreted_segment : elf32_interpreted_segment -> string
 let string_of_elf32_interpreted_segment seg =
   unlines [
-    "Body of length: " ^ show (Bitstring.length seg.elf32_segment_body)
+    "Body of length: " ^ show (Byte_sequence.length seg.elf32_segment_body)
   ; "Segment type: " ^ show seg.elf32_segment_type
   ; "Segment size: " ^ show seg.elf32_segment_size
   ; "Segment memory size: " ^ show seg.elf32_segment_memsz
@@ -68,7 +68,7 @@ let string_of_elf32_interpreted_segment seg =
 val string_of_elf64_interpreted_segment : elf64_interpreted_segment -> string
 let string_of_elf64_interpreted_segment seg =
   unlines [
-    "Body of length: " ^ show (Bitstring.length seg.elf64_segment_body)
+    "Body of length: " ^ show (Byte_sequence.length seg.elf64_segment_body)
   ; "Segment type: " ^ show seg.elf64_segment_type
   ; "Segment size: " ^ show seg.elf64_segment_size
   ; "Segment memory size: " ^ show seg.elf64_segment_memsz

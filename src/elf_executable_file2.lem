@@ -9,7 +9,7 @@ open import Elf_header
 open import Elf_program_header_table
 open import Elf_types
 
-open import Bitstring
+open import Byte_sequence
 open import Error
 open import Missing_pervasives
 open import Show
@@ -20,7 +20,7 @@ open import Show
 type elf32_executable_file2 =
   <| elf32_executable_file2_header               : elf32_header               (** The ELF header (mandatory) *)
    ; elf32_executable_file2_program_header_table : elf32_program_header_table (** The program header table (mandatory) *)
-   ; elf32_executable_file2_body                 : bitstring                  (** Uninterpreted data *)
+   ; elf32_executable_file2_body                 : byte_sequence                  (** Uninterpreted data *)
    |>
 
 class (HasElf32ExecutableFile2 'a)
@@ -51,7 +51,7 @@ end
 type elf64_executable_file2 =
   <| elf64_executable_file2_header               : elf64_header               (** The ELF header (mandatory) *)
    ; elf64_executable_file2_program_header_table : elf64_program_header_table (** The program header table (mandatory) *)
-   ; elf64_executable_file2_body                 : bitstring                  (** Uninterpreted data *)
+   ; elf64_executable_file2_body                 : byte_sequence                  (** Uninterpreted data *)
    |>
 
 class (HasElf64ExecutableFile2 'a)
@@ -90,19 +90,19 @@ let refine_elf32_file1 f1 =
     let endian      = get_elf32_header_endianness hdr in
     let bs1         = f1.elf32_file1_body   in
     let pentries    = natural_of_elf32_half hdr.elf32_phnum     in
-    let pentry_size = natural_of_elf32_half hdr.elf32_phentsize * 8 in
+    let pentry_size = natural_of_elf32_half hdr.elf32_phentsize in
     let psize       = pentries * pentry_size in
       if psize = 0 then
         Fail "refine_elf32_file1: program header table not present"
       else
-        let poffset     = natural_of_elf32_off hdr.elf32_phoff * 8 in
-        let (_, pcut)   = partition poffset bs1 in
-        let (pexact, _) = partition psize pcut in
+        let poffset     = natural_of_elf32_off hdr.elf32_phoff in
+        partition poffset bs1 >>= fun (_, pcut) ->
+        partition psize pcut >>= fun (pexact, _) ->
           (* Bitstring irrelevant below as exact size used... *)
-          read_elf32_program_header_table psize endian pexact >>= fun (pht, _) ->
-            return <| elf32_executable_file2_header = hdr;
-              elf32_executable_file2_program_header_table = pht;
-              elf32_executable_file2_body = bs1 |>
+        read_elf32_program_header_table psize endian pexact >>= fun (pht, _) ->
+          return <| elf32_executable_file2_header = hdr;
+            elf32_executable_file2_program_header_table = pht;
+            elf32_executable_file2_body = bs1 |>
 
 (** [refine_elf64_file1 f1] refines the [elf31_file1] [f1] adding the
   * mandatory program header table to [f1]'s header.  Fails if [f1]'s header
@@ -118,31 +118,31 @@ let refine_elf64_file1 f1 =
     let endian      = get_elf64_header_endianness hdr in
     let bs1         = f1.elf64_file1_body   in
     let pentries    = natural_of_elf64_half hdr.elf64_phnum         in
-    let pentry_size = natural_of_elf64_half hdr.elf64_phentsize * 8 in
+    let pentry_size = natural_of_elf64_half hdr.elf64_phentsize in
     let psize       = pentries * pentry_size in
       if psize = 0 then
         Fail "refine_elf64_file1: program header table not present"
       else
-        let poffset     = natural_of_elf64_off hdr.elf64_phoff * 8 in
-        let (_, pcut)   = partition poffset bs1 in
-        let (pexact, _) = partition psize pcut in
+        let poffset     = natural_of_elf64_off hdr.elf64_phoff in
+        partition poffset bs1 >>= fun (_, pcut) ->
+        partition psize pcut >>= fun (pexact, _) ->
           (* Bitstring irrelevant below as exact size used... *)
-          read_elf64_program_header_table psize endian pexact >>= fun (pht, _) ->
-            return <| elf64_executable_file2_header = hdr;
-              elf64_executable_file2_program_header_table = pht;
-              elf64_executable_file2_body = bs1 |>
+        read_elf64_program_header_table psize endian pexact >>= fun (pht, _) ->
+          return <| elf64_executable_file2_header = hdr;
+            elf64_executable_file2_program_header_table = pht;
+            elf64_executable_file2_body = bs1 |>
 
 (** [read_elf32_executable_file2 bs0] creates an [elf32_executable_file2] record
-  * directly from the bitstring [bs0].
+  * directly from the byte_sequence [bs0].
   *)
-val read_elf32_executable_file2 : bitstring -> error elf32_executable_file2
+val read_elf32_executable_file2 : byte_sequence -> error elf32_executable_file2
 let read_elf32_executable_file2 bs0 =
   read_elf32_file1 bs0 >>= refine_elf32_file1
 
 (** [read_elf64_executable_file2 bs0] creates an [elf64_executable_file2] record
-  * directly from the bitstring [bs0].
+  * directly from the byte_sequence [bs0].
   *)
-val read_elf64_executable_file2 : bitstring -> error elf64_executable_file2
+val read_elf64_executable_file2 : byte_sequence -> error elf64_executable_file2
 let read_elf64_executable_file2 bs0 =
   read_elf64_file1 bs0 >>= refine_elf64_file1
 
@@ -157,7 +157,7 @@ let string_of_elf32_executable_file2 hdr_bdl pht_bdl f2 =
   ; "**Program header table:"
   ; string_of_elf32_program_header_table pht_bdl f2.elf32_executable_file2_program_header_table
   ; "**Body:"
-  ; "\tUninterpreted data of length " ^ show (Bitstring.length f2.elf32_executable_file2_body)
+  ; "\tUninterpreted data of length " ^ show (Byte_sequence.length f2.elf32_executable_file2_body)
   ]
 
 (** [string_of_elf64_executable_file2 os proc f2] creates a string representation of [f2].
@@ -171,5 +171,5 @@ let string_of_elf64_executable_file2 hdr_bdl pht_bdl f2 =
   ; "**Program header table:"
   ; string_of_elf64_program_header_table pht_bdl f2.elf64_executable_file2_program_header_table
   ; "**Body:"
-  ; "\tUninterpreted data of length " ^ show (Bitstring.length f2.elf64_executable_file2_body)
+  ; "\tUninterpreted data of length " ^ show (Byte_sequence.length f2.elf64_executable_file2_body)
   ]

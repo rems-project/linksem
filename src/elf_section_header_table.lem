@@ -10,7 +10,7 @@ open import Elf_types
 open import Endianness
 open import String_table
 
-open import Bitstring
+open import Byte_sequence
 open import Error
 open import Missing_pervasives
 open import Show
@@ -232,7 +232,7 @@ type elf64_section_header_table_entry =
    ; elf64_sh_entsize   : elf64_xword (** Size of each entry in table, if section is one *)
    |>
 
-val read_elf32_section_header_table_entry : endianness -> bitstring -> error (elf32_section_header_table_entry * bitstring)
+val read_elf32_section_header_table_entry : endianness -> byte_sequence -> error (elf32_section_header_table_entry * byte_sequence)
 let read_elf32_section_header_table_entry endian bs =
 	read_elf32_word endian bs >>= fun (sh_name, bs) ->
 	read_elf32_word endian bs >>= fun (sh_type, bs) ->
@@ -251,7 +251,7 @@ let read_elf32_section_header_table_entry endian bs =
                 elf32_sh_addralign = sh_addralign; elf32_sh_entsize = sh_entsize |>, bs)
 
 
-val read_elf64_section_header_table_entry : endianness -> bitstring -> error (elf64_section_header_table_entry * bitstring)
+val read_elf64_section_header_table_entry : endianness -> byte_sequence -> error (elf64_section_header_table_entry * byte_sequence)
 let read_elf64_section_header_table_entry endian bs =
   read_elf64_word endian bs >>= fun (sh_name, bs) ->
   read_elf64_word endian bs >>= fun (sh_type, bs) ->
@@ -381,11 +381,11 @@ let rec read_elf32_section_header_table' endian bs0 =
     read_elf32_section_header_table' endian bs1 >>= fun tail ->
     return (entry::tail)
 
-val read_elf32_section_header_table : natural -> endianness -> bitstring -> error (elf32_section_header_table * bitstring)
+val read_elf32_section_header_table : natural -> endianness -> byte_sequence -> error (elf32_section_header_table * byte_sequence)
 let read_elf32_section_header_table table_size endian bs0 =
-  let (eat, rest) = partition table_size bs0 in
-  	read_elf32_section_header_table' endian eat >>= fun entries ->
-    return (entries, rest)
+  partition table_size bs0 >>= fun (eat, rest) ->
+  read_elf32_section_header_table' endian eat >>= fun entries ->
+  return (entries, rest)
 ;;
 
 let rec read_elf64_section_header_table' endian bs0 =
@@ -396,11 +396,11 @@ let rec read_elf64_section_header_table' endian bs0 =
     read_elf64_section_header_table' endian bs1 >>= fun tail ->
     return (entry::tail)
 
-val read_elf64_section_header_table : natural -> endianness -> bitstring -> error (elf64_section_header_table * bitstring)
+val read_elf64_section_header_table : natural -> endianness -> byte_sequence -> error (elf64_section_header_table * byte_sequence)
 let read_elf64_section_header_table table_size endian bs0 =
-  let (eat, rest) = partition table_size bs0 in
-    read_elf64_section_header_table' endian eat >>= fun entries ->
-    return (entries, rest)
+  partition table_size bs0 >>= fun (eat, rest) ->
+  read_elf64_section_header_table' endian eat >>= fun entries ->
+  return (entries, rest)
 ;;
 
 val elf32_size_correct : elf32_section_header_table_entry -> elf32_section_header_table -> bool

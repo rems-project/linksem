@@ -11,7 +11,7 @@ open import Endianness
 
 open import Elf_types
 
-open import Bitstring
+open import Byte_sequence
 open import Error
 open import Missing_pervasives
 open import Show
@@ -537,7 +537,8 @@ let string_of_elf_osabi_version m =
 (** Checks an architecture defined OSABI version is correct, i.e. in the range
   * 64 to 255 inclusive.
   *)
-let is_valid_architecture_defined_osabi_version (n : natural) = n >= 64 && n <= 255
+let is_valid_architecture_defined_osabi_version (n : natural) =
+  n >= 64 && n <= 255
 
 (** ELF Header type *)
 
@@ -673,7 +674,7 @@ instance (Show elf64_header)
   let show = string_of_elf64_header_default
 end
 
-val read_elf32_header : bitstring -> error (elf32_header * bitstring)
+val read_elf32_header : byte_sequence -> error (elf32_header * byte_sequence)
 let read_elf32_header bs =
 	repeatM' ei_nident bs (read_unsigned_char default_endianness) >>= fun (ident, bs) ->
   let endian = deduce_endianness ident in
@@ -705,7 +706,7 @@ let read_elf32_header bs =
           fail "read_elf32_header: not a 32-bit ELF file"
     end
 
-val read_elf64_header : bitstring -> error (elf64_header * bitstring)
+val read_elf64_header : byte_sequence -> error (elf64_header * byte_sequence)
 let read_elf64_header bs =
   repeatM' ei_nident bs (read_unsigned_char default_endianness) >>= fun (ident, bs) ->
   let endian = deduce_endianness ident in

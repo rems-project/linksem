@@ -3,7 +3,7 @@ open import Bool
 open import Maybe
 open import Num
 
-open import Bitstring
+open import Byte_sequence
 open import Error
 open import Missing_pervasives
 open import Show
@@ -16,7 +16,7 @@ open import Elf_types
 
 type elf32_linking_file2 =
   <| elf32_linking_file2_header               : elf32_header
-   ; elf32_linking_file2_body                 : bitstring
+   ; elf32_linking_file2_body                 : byte_sequence
    ; elf32_linking_file2_section_header_table : elf32_section_header_table
    |>
 
@@ -44,7 +44,7 @@ end
 
 type elf64_linking_file2 =
   <| elf64_linking_file2_header               : elf64_header
-   ; elf64_linking_file2_body                 : bitstring
+   ; elf64_linking_file2_body                 : byte_sequence
    ; elf64_linking_file2_section_header_table : elf64_section_header_table
    |>
 
@@ -85,15 +85,15 @@ let refine_elf32_file1 f1 =
         fail "refine_elf32_file1: section header table not present"
       else
         let soffset     = natural_of_elf32_off hdr.elf32_shoff * 8 in
-        let (_, scut)   = partition soffset bs1 in
-        let (sexact, _) = partition ssize scut in
-          (* Bitstring irrelevant below as exact size used... *)
-          read_elf32_section_header_table ssize endian sexact >>= fun (sht, _) ->
-            return <| elf32_linking_file2_header = hdr;
-              elf32_linking_file2_body = bs1;
-              elf32_linking_file2_section_header_table = sht |>
+        partition soffset bs1 >>= fun (_, scut) ->
+        partition ssize scut >>= fun (sexact, _) ->
+        (* Bitstring irrelevant below as exact size used... *)
+        read_elf32_section_header_table ssize endian sexact >>= fun (sht, _) ->
+          return <| elf32_linking_file2_header = hdr;
+            elf32_linking_file2_body = bs1;
+            elf32_linking_file2_section_header_table = sht |>
 
-val read_elf32_linking_file2 : bitstring -> error elf32_linking_file2
+val read_elf32_linking_file2 : byte_sequence -> error elf32_linking_file2
 let read_elf32_linking_file2 bs0 =
   read_elf32_file1 bs0 >>= refine_elf32_file1
 
@@ -106,7 +106,7 @@ let string_of_elf32_linking_file2 hdr_bdl sht_bdl f2 =
   ; "**Program header table:"
   ; string_of_elf32_section_header_table sht_bdl f2.elf32_linking_file2_section_header_table
   ; "**Body:"
-  ; "\tUninterpreted data of length " ^ show (Bitstring.length f2.elf32_linking_file2_body)
+  ; "\tUninterpreted data of length " ^ show (Byte_sequence.length f2.elf32_linking_file2_body)
   ]
 
 val refine_elf64_file1 : elf64_file1 -> error elf64_linking_file2
@@ -124,15 +124,15 @@ let refine_elf64_file1 f1 =
         fail "refine_elf64_file1: section header table not present"
       else
         let soffset     = natural_of_elf64_off hdr.elf64_shoff * 8 in
-        let (_, scut)   = partition soffset bs1 in
-        let (sexact, _) = partition ssize scut in
-          (* Bitstring irrelevant below as exact size used... *)
-          read_elf64_section_header_table ssize endian sexact >>= fun (sht, _) ->
-            return <| elf64_linking_file2_header = hdr;
-              elf64_linking_file2_body = bs1;
-              elf64_linking_file2_section_header_table = sht |>
+        partition soffset bs1 >>= fun (_, scut) ->
+        partition ssize scut >>= fun (sexact, _) ->
+        (* Bitstring irrelevant below as exact size used... *)
+        read_elf64_section_header_table ssize endian sexact >>= fun (sht, _) ->
+          return <| elf64_linking_file2_header = hdr;
+            elf64_linking_file2_body = bs1;
+            elf64_linking_file2_section_header_table = sht |>
 
-val read_elf64_linking_file2 : bitstring -> error elf64_linking_file2
+val read_elf64_linking_file2 : byte_sequence -> error elf64_linking_file2
 let read_elf64_linking_file2 bs0 =
   read_elf64_file1 bs0 >>= refine_elf64_file1
 
@@ -145,5 +145,5 @@ let string_of_elf64_linking_file2 hdr_bdl sht_bdl f2 =
   ; "**Program header table:"
   ; string_of_elf64_section_header_table sht_bdl f2.elf64_linking_file2_section_header_table
   ; "**Body:"
-  ; "\tUninterpreted data of length " ^ show (Bitstring.length f2.elf64_linking_file2_body)
+  ; "\tUninterpreted data of length " ^ show (Byte_sequence.length f2.elf64_linking_file2_body)
   ]

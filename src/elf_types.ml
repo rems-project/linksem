@@ -4,7 +4,7 @@ open Lem_string
 
 open Endianness
 
-open Bitstring_local
+open Byte_sequence
 open Error
 open Show
 
@@ -46,12 +46,12 @@ open Show
   *)
 (*val unsigned_char_plus   : unsigned_char -> unsigned_char -> unsigned_char*)
 
-(** [read_unsigned_char end bs0] reads an unsigned char from bitstring [bs0]
+(** [read_unsigned_char end bs0] reads an unsigned char from byte_sequence [bs0]
   * assuming endianness [end].  Returns the unsigned char and the remainder of
-  * the bitstring.  Fails if an unsigned char cannot be read from the bitstring,
+  * the byte_sequence.  Fails if an unsigned char cannot be read from the byte_sequence,
   * e.g. if [bs0] is too small.
   *)
-(*val read_unsigned_char   : endianness -> bitstring -> error (unsigned_char * bitstring)*)
+(*val read_unsigned_char   : endianness -> byte_sequence -> error (unsigned_char * byte_sequence)*)
 
 let instance_Show_Show_Elf_types_unsigned_char_dict =({
 
@@ -63,7 +63,7 @@ let instance_Show_Show_Elf_types_unsigned_char_dict =({
 
 (*val string_of_elf32_addr : elf32_addr -> string*)
 (*val natural_of_elf32_addr : elf32_addr -> natural*)
-(*val read_elf32_addr : endianness -> bitstring -> error (elf32_addr * bitstring)*)
+(*val read_elf32_addr : endianness -> byte_sequence -> error (elf32_addr * byte_sequence)*)
 
 let instance_Show_Show_Elf_types_elf32_addr_dict =({
 
@@ -75,7 +75,7 @@ let instance_Show_Show_Elf_types_elf32_addr_dict =({
 
 (*val string_of_elf64_addr : elf64_addr -> string*)
 (*val natural_of_elf64_addr : elf64_addr -> natural*)
-(*val read_elf64_addr : endianness -> bitstring -> error (elf64_addr * bitstring)*)
+(*val read_elf64_addr : endianness -> byte_sequence -> error (elf64_addr * byte_sequence)*)
 
 let instance_Show_Show_Elf_types_elf64_addr_dict =({
 
@@ -86,7 +86,7 @@ let instance_Show_Show_Elf_types_elf64_addr_dict =({
 (*type elf32_half*)
 
 (*val string_of_elf32_half : elf32_half -> string*)
-(*val read_elf32_half : endianness -> bitstring -> error (elf32_half * bitstring)*)
+(*val read_elf32_half : endianness -> byte_sequence -> error (elf32_half * byte_sequence)*)
 (*val natural_of_elf32_half : elf32_half -> natural*)
 
 let instance_Show_Show_Elf_types_elf32_half_dict =({
@@ -98,7 +98,7 @@ let instance_Show_Show_Elf_types_elf32_half_dict =({
 (*type elf64_half*)
 
 (*val string_of_elf64_half : elf64_half -> string*)
-(*val read_elf64_half : endianness -> bitstring -> error (elf64_half * bitstring)*)
+(*val read_elf64_half : endianness -> byte_sequence -> error (elf64_half * byte_sequence)*)
 (*val natural_of_elf64_half : elf64_half -> natural*)
 
 let instance_Show_Show_Elf_types_elf64_half_dict =({
@@ -111,7 +111,7 @@ let instance_Show_Show_Elf_types_elf64_half_dict =({
 
 (*val string_of_elf32_off : elf32_off -> string*)
 (*val natural_of_elf32_off : elf32_off -> natural*)
-(*val read_elf32_off : endianness -> bitstring -> error (elf32_off * bitstring)*)
+(*val read_elf32_off : endianness -> byte_sequence -> error (elf32_off * byte_sequence)*)
 
 let instance_Show_Show_Elf_types_elf32_off_dict =({
 
@@ -123,7 +123,7 @@ let instance_Show_Show_Elf_types_elf32_off_dict =({
 
 (*val string_of_elf64_off : elf64_off -> string*)
 (*val natural_of_elf64_off : elf64_off -> natural*)
-(*val read_elf64_off : endianness -> bitstring -> error (elf64_off * bitstring)*)
+(*val read_elf64_off : endianness -> byte_sequence -> error (elf64_off * byte_sequence)*)
 
 let instance_Show_Show_Elf_types_elf64_off_dict =({
 
@@ -138,7 +138,7 @@ let instance_Show_Show_Elf_types_elf64_off_dict =({
 (*val elf32_word_of_int32 : int32 -> elf32_word*)
 (*val elf32_word_land : elf32_word -> elf32_word -> elf32_word*)
 (*val elf32_word_rshift : elf32_word -> nat -> elf32_word*)
-(*val read_elf32_word : endianness -> bitstring -> error (elf32_word * bitstring)*)
+(*val read_elf32_word : endianness -> byte_sequence -> error (elf32_word * byte_sequence)*)
 (*val unsigned_char_of_elf32_word : elf32_word -> unsigned_char*)
 
 let instance_Show_Show_Elf_types_elf32_word_dict =({
@@ -153,7 +153,7 @@ let instance_Show_Show_Elf_types_elf32_word_dict =({
 (*val natural_of_elf64_word : elf64_word -> natural*)
 (*val elf64_word_of_int32 : int32 -> elf64_word*)
 (*val elf64_word_land : elf64_word -> elf64_word -> elf64_word*)
-(*val read_elf64_word : endianness -> bitstring -> error (elf64_word * bitstring)*)
+(*val read_elf64_word : endianness -> byte_sequence -> error (elf64_word * byte_sequence)*)
 
 let instance_Show_Show_Elf_types_elf64_word_dict =({
 
@@ -165,7 +165,7 @@ let instance_Show_Show_Elf_types_elf64_word_dict =({
 
 (*val string_of_elf32_sword : elf32_sword -> string*)
 (*val natural_of_elf32_sword : elf32_sword -> natural*)
-(*val read_elf32_sword : endianness -> bitstring -> error (elf32_sword * bitstring)*)
+(*val read_elf32_sword : endianness -> byte_sequence -> error (elf32_sword * byte_sequence)*)
 
 let instance_Show_Show_Elf_types_elf32_sword_dict =({
 
@@ -177,7 +177,7 @@ let instance_Show_Show_Elf_types_elf32_sword_dict =({
 
 (*val string_of_elf64_sword : elf64_sword -> string*)
 (*val natural_of_elf64_sword : elf64_sword -> natural*)
-(*val read_elf64_sword : endianness -> bitstring -> error (elf64_sword * bitstring)*)
+(*val read_elf64_sword : endianness -> byte_sequence -> error (elf64_sword * byte_sequence)*)
 
 let instance_Show_Show_Elf_types_elf64_sword_dict =({
 
@@ -189,7 +189,7 @@ let instance_Show_Show_Elf_types_elf64_sword_dict =({
 
 (*val string_of_elf64_xword : elf64_xword -> string*)
 (*val natural_of_elf64_xword : elf64_xword -> natural*)
-(*val read_elf64_xword : endianness -> bitstring -> error (elf64_xword * bitstring)*)
+(*val read_elf64_xword : endianness -> byte_sequence -> error (elf64_xword * byte_sequence)*)
 (*val elf64_xword_rshift : elf64_xword -> nat -> elf64_xword*)
 (*val elf64_xword_land : elf64_xword -> elf64_xword -> elf64_xword*)
 (*val elf64_xword_of_int64 : int64 -> elf64_xword*)
@@ -204,7 +204,7 @@ let instance_Show_Show_Elf_types_elf64_xword_dict =({
 
 (*val string_of_elf64_sxword : elf64_sxword -> string*)
 (*val natural_of_elf64_sxword : elf64_sxword -> natural*)
-(*val read_elf64_sxword : endianness -> bitstring -> error (elf64_sxword * bitstring)*)
+(*val read_elf64_sxword : endianness -> byte_sequence -> error (elf64_sxword * byte_sequence)*)
 
 let instance_Show_Show_Elf_types_elf64_sxword_dict =({
 

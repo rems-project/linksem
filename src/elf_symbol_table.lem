@@ -6,7 +6,7 @@ open import Num
 open import String
 open import Tuple
 
-open import Bitstring
+open import Byte_sequence
 open import Error
 open import Missing_pervasives
 open import Show
@@ -157,7 +157,7 @@ class (HasElf32SymbolTable 'a)
   val get_elf32_symbol_table : 'a -> elf32_symbol_table
 end
 
-val read_elf32_symbol_table_entry : endianness -> bitstring -> error (elf32_symbol_table_entry * bitstring)
+val read_elf32_symbol_table_entry : endianness -> byte_sequence -> error (elf32_symbol_table_entry * byte_sequence)
 let read_elf32_symbol_table_entry endian bs0 =
   read_elf32_word endian bs0 >>= fun (st_name, bs0) ->
   read_elf32_addr endian bs0 >>= fun (st_value, bs0) ->
@@ -169,7 +169,7 @@ let read_elf32_symbol_table_entry endian bs0 =
                  elf32_st_size = st_size; elf32_st_info = st_info;
                  elf32_st_other = st_other; elf32_st_shndx = st_shndx |>, bs0)
 
-val read_elf32_symbol_table : endianness -> bitstring -> error elf32_symbol_table
+val read_elf32_symbol_table : endianness -> byte_sequence -> error elf32_symbol_table
 let rec read_elf32_symbol_table endian bs0 =
   if length bs0 = 0 then
     return []
@@ -210,7 +210,7 @@ class (HasElf64SymbolTable 'a)
   val get_elf64_symbol_table : 'a -> elf64_symbol_table
 end
 
-val read_elf64_symbol_table_entry : endianness -> bitstring -> error (elf64_symbol_table_entry * bitstring)
+val read_elf64_symbol_table_entry : endianness -> byte_sequence -> error (elf64_symbol_table_entry * byte_sequence)
 let read_elf64_symbol_table_entry endian bs0 =
   read_elf64_word endian bs0 >>= fun (st_name, bs0) ->
   read_unsigned_char endian bs0 >>= fun (st_info, bs0) ->
@@ -222,7 +222,7 @@ let read_elf64_symbol_table_entry endian bs0 =
                  elf64_st_other = st_other; elf64_st_shndx = st_shndx;
                  elf64_st_value = st_value; elf64_st_size = st_size |>, bs0)
 
-val read_elf64_symbol_table : endianness -> bitstring -> error elf64_symbol_table
+val read_elf64_symbol_table : endianness -> byte_sequence -> error elf64_symbol_table
 let rec read_elf64_symbol_table endian bs0 =
   if length bs0 = 0 then
     return []

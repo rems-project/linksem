@@ -7,7 +7,7 @@ open import Endianness
 open import Elf_header
 open import Elf_types
 
-open import Bitstring
+open import Byte_sequence
 open import Error
 open import Missing_pervasives
 open import Show
@@ -17,8 +17,8 @@ open import Show
   * is left uninterpreted.
   *)
 type elf32_file1 =
-  <| elf32_file1_header : elf32_header (** The ELF header (mandatory) *)
-   ; elf32_file1_body   : bitstring    (** Uninterpreted data *)
+  <| elf32_file1_header : elf32_header  (** The ELF header (mandatory) *)
+   ; elf32_file1_body   : byte_sequence (** Uninterpreted data *)
    |>
 
 class (HasElf32File1 'a)
@@ -38,8 +38,8 @@ end
   * is left uninterpreted.
   *)
 type elf64_file1 =
-  <| elf64_file1_header : elf64_header (** The ELF header (mandatory) *)
-   ; elf64_file1_body   : bitstring    (** Uninterpreted data *)
+  <| elf64_file1_header : elf64_header  (** The ELF header (mandatory) *)
+   ; elf64_file1_body   : byte_sequence (** Uninterpreted data *)
    |>
 
 class (HasElf64File1 'a)
@@ -61,7 +61,7 @@ let string_of_elf32_file1 hdr_bdl f1 =
   ; "**Header:"
   ; string_of_elf32_header hdr_bdl f1.elf32_file1_header
   ; "Body:"
-  ; "\tUninterpreted data of length " ^ show (Bitstring.length f1.elf32_file1_body)
+  ; "\tUninterpreted data of length " ^ show (Byte_sequence.length f1.elf32_file1_body)
   ]
 
 val string_of_elf64_file1 : hdr_print_bundle -> elf64_file1 -> string
@@ -71,7 +71,7 @@ let string_of_elf64_file1 hdr_bdl f1 =
   ; "**Header:"
   ; string_of_elf64_header hdr_bdl f1.elf64_file1_header
   ; "Body:"
-  ; "\tUninterpreted data of length " ^ show (Bitstring.length f1.elf64_file1_body)
+  ; "\tUninterpreted data of length " ^ show (Byte_sequence.length f1.elf64_file1_body)
   ]
 
 (** [is_executable_efl32_file1] tests whether the ELF file is an executable
@@ -133,7 +133,7 @@ let is_linkable_elf64_file1 f1 =
 (** [read_elf32_file1 bs] lazily unfolds [bs] revealing the ELF file's header,
   * leaving all other data uninterpreted.
   *)
-val read_elf32_file1 : bitstring -> error elf32_file1
+val read_elf32_file1 : byte_sequence -> error elf32_file1
 let read_elf32_file1 bs0 =
   read_elf32_header bs0 >>= fun (hdr, bs1) ->
   return <| elf32_file1_header = hdr; elf32_file1_body = bs0 |>
@@ -141,7 +141,7 @@ let read_elf32_file1 bs0 =
 (** [read_elf64_file1 bs] lazily unfolds [bs] revealing the ELF file's header,
   * leaving all other data uninterpreted.
   *)
-val read_elf64_file1 : bitstring -> error elf64_file1
+val read_elf64_file1 : byte_sequence -> error elf64_file1
 let read_elf64_file1 bs0 =
   read_elf64_header bs0 >>= fun (hdr, bs1) ->
   return <| elf64_file1_header = hdr; elf64_file1_body = bs0 |>

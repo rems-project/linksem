@@ -7,7 +7,7 @@ open import Tuple
 
 open import Assert_extra
 
-open import Bitstring
+open import Byte_sequence
 open import Error
 open import Missing_pervasives
 open import Show
@@ -24,7 +24,7 @@ type executable_process_image
 val populate : string -> error executable_process_image
 let populate fname =
   (* Acquire the data from the file... *)
-  Bitstring.acquire fname >>= fun bs0 ->
+  Byte_sequence.acquire fname >>= fun bs0 ->
   (* Read the magic number and the flags in the header... *)
   repeatM' Elf_header.ei_nident bs0 (read_unsigned_char Endianness.default_endianness) >>= fun (ident, bs) ->
     match List.index ident 4 with
@@ -54,7 +54,7 @@ let populate fname =
 val obtain_global_symbol_init_info : string -> error global_symbol_init_info
 let obtain_global_symbol_init_info fname =
   (* Acquire the data from the file... *)
-  Bitstring.acquire fname >>= fun bs0 ->
+  Byte_sequence.acquire fname >>= fun bs0 ->
   (* Read the magic number and the flags in the header... *)
   repeatM' Elf_header.ei_nident bs0 (read_unsigned_char Endianness.default_endianness) >>= fun (ident, bs) ->
     match List.index ident 4 with
@@ -84,7 +84,7 @@ let obtain_global_symbol_init_info fname =
 val populate_and_obtain_global_symbol_init_info : string -> error (executable_process_image * global_symbol_init_info)
 let populate_and_obtain_global_symbol_init_info fname =
   (* Acquire the data from the file... *)
-  Bitstring.acquire fname >>= fun bs0 ->
+  Byte_sequence.acquire fname >>= fun bs0 ->
   (* Read the magic number and the flags in the header... *)
   repeatM' Elf_header.ei_nident bs0 (read_unsigned_char Endianness.default_endianness) >>= fun (ident, bs) ->
     match List.index ident 4 with

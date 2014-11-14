@@ -10,7 +10,7 @@ open Lem_string
 open Elf_types
 open Endianness
 
-open Bitstring_local
+open Byte_sequence
 open Error
 open Missing_pervasives
 open Show
@@ -175,10 +175,10 @@ let instance_Show_Show_Elf_program_header_table_elf64_program_header_table_entry
   show_method = string_of_elf64_program_header_table_entry_default})
 
 (** [read_elf32_program_header_table_entry endian bs0] reads an ELF32 program header table
-  * entry from bitstring [bs0] assuming endianness [endian].  If [bs0] is larger
+  * entry from byte sequence [bs0] assuming endianness [endian].  If [bs0] is larger
   * than necessary, the excess is returned from the function, too.
   *)
-(*val read_elf32_program_header_table_entry : endianness -> bitstring -> error (elf32_program_header_table_entry * bitstring)*)
+(*val read_elf32_program_header_table_entry : endianness -> byte_sequence -> error (elf32_program_header_table_entry * byte_sequence)*)
 let read_elf32_program_header_table_entry endian bs =	
 (Ml_bindings.read_elf32_word endian bs >>= (fun (typ, bs) ->
 	Ml_bindings.read_elf32_off  endian bs >>= (fun (offset, bs) ->
@@ -193,7 +193,7 @@ let read_elf32_program_header_table_entry endian bs =
                 elf32_p_filesz = filesz; elf32_p_memsz = memsz;
                 elf32_p_flags = flags; elf32_p_align = align }, bs))))))))))
 
-(*val read_elf64_program_header_table_entry : endianness -> bitstring -> error (elf64_program_header_table_entry * bitstring)*)
+(*val read_elf64_program_header_table_entry : endianness -> byte_sequence -> error (elf64_program_header_table_entry * byte_sequence)*)
 let read_elf64_program_header_table_entry endian bs =  
 (Ml_bindings.read_elf64_word endian bs >>= (fun (typ, bs) ->
   Ml_bindings.read_elf64_word endian bs >>= (fun (flags, bs) ->
@@ -233,12 +233,12 @@ type 'a hasElf64ProgramHeaderTable_class={
 }
 
 (** [read_elf32_program_header_table' endian bs0] reads an ELF32 program header table from
-  * bitstring [bs0] assuming endianness [endian].  The bitstring [bs0] is assumed
+  * byte_sequence [bs0] assuming endianness [endian].  The byte_sequence [bs0] is assumed
   * to have exactly the correct size for the table.  For internal use, only.  Use
   * [read_elf32_program_header_table] below instead.
   *)
 let rec read_elf32_program_header_table' endian bs0 =	
-(if Big_int.eq_big_int (Ml_bindings.bitstring_length bs0)(Big_int.big_int_of_int 0) then
+(if Big_int.eq_big_int (Byte_sequence_wrapper.length bs0)(Big_int.big_int_of_int 0) then
   	return []
   else
   	read_elf32_program_header_table_entry endian bs0 >>= (fun (entry, bs1) ->
@@ -246,12 +246,12 @@ let rec read_elf32_program_header_table' endian bs0 =
     return (entry::tail))))
 
 (** [read_elf64_program_header_table' endian bs0] reads an ELF64 program header table from
-  * bitstring [bs0] assuming endianness [endian].  The bitstring [bs0] is assumed
+  * byte_sequence [bs0] assuming endianness [endian].  The byte_sequence [bs0] is assumed
   * to have exactly the correct size for the table.  For internal use, only.  Use
   * [read_elf32_program_header_table] below instead.
   *)
 let rec read_elf64_program_header_table' endian bs0 =  
-(if Big_int.eq_big_int (Ml_bindings.bitstring_length bs0)(Big_int.big_int_of_int 0) then
+(if Big_int.eq_big_int (Byte_sequence_wrapper.length bs0)(Big_int.big_int_of_int 0) then
     return []
   else
     read_elf64_program_header_table_entry endian bs0 >>= (fun (entry, bs1) ->
@@ -259,28 +259,28 @@ let rec read_elf64_program_header_table' endian bs0 =
     return (entry::tail))))
 
 (** [read_elf32_program_header_table table_size endian bs0] reads an ELF32 program header
-  * table from bitstring [bs0] assuming endianness [endian] based on the size (in bytes) passed in via [table_size].
+  * table from byte_sequence [bs0] assuming endianness [endian] based on the size (in bytes) passed in via [table_size].
   * This [table_size] argument should be equal to the number of entries in the
   * table multiplied by the fixed entry size.  Bitstring [bs0] may be larger than
   * necessary, in which case the excess is returned.
   *)
-(*val read_elf32_program_header_table : natural -> endianness -> bitstring -> error (elf32_program_header_table * bitstring)*)
+(*val read_elf32_program_header_table : natural -> endianness -> byte_sequence -> error (elf32_program_header_table * byte_sequence)*)
 let read_elf32_program_header_table table_size endian bs0 =	
-(let (eat, rest) = (Ml_bindings.partition_bitstring table_size bs0) in
-		read_elf32_program_header_table' endian eat >>= (fun table ->
-		return (table, rest)))
+(partition table_size bs0 >>= (fun (eat, rest) ->
+	read_elf32_program_header_table' endian eat >>= (fun table ->
+	return (table, rest))))
 
 (** [read_elf64_program_header_table table_size endian bs0] reads an ELF64 program header
-  * table from bitstring [bs0] assuming endianness [endian] based on the size (in bytes) passed in via [table_size].
+  * table from byte_sequence [bs0] assuming endianness [endian] based on the size (in bytes) passed in via [table_size].
   * This [table_size] argument should be equal to the number of entries in the
   * table multiplied by the fixed entry size.  Bitstring [bs0] may be larger than
   * necessary, in which case the excess is returned.
   *)
-(*val read_elf64_program_header_table : natural -> endianness -> bitstring -> error (elf64_program_header_table * bitstring)*)
+(*val read_elf64_program_header_table : natural -> endianness -> byte_sequence -> error (elf64_program_header_table * byte_sequence)*)
 let read_elf64_program_header_table table_size endian bs0 =  
-(let (eat, rest) = (Ml_bindings.partition_bitstring table_size bs0) in
-    read_elf64_program_header_table' endian eat >>= (fun table ->
-    return (table, rest)))
+(partition table_size bs0 >>= (fun (eat, rest) ->
+  read_elf64_program_header_table' endian eat >>= (fun table ->
+  return (table, rest))))
 
 (** The [pht_print_bundle] type is used to tidy up other type signatures.  Some of the
   * top-level string_of_ functions require six or more functions passed to them,

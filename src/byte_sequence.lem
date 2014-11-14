@@ -1,0 +1,65 @@
+open import Basic_classes
+open import Bool
+open import List
+open import Num
+open import String
+
+open import Error
+open import Show
+
+type byte_sequence
+declare ocaml target_rep type byte_sequence = `Byte_sequence_wrapper.t`
+
+val empty : byte_sequence
+declare ocaml target_rep function empty = `Byte_sequence_wrapper.empty`
+
+val read_char : byte_sequence -> error (char * byte_sequence)
+declare ocaml target_rep function read_char = `Byte_sequence_wrapper.read_char`
+
+val create : natural -> char -> byte_sequence
+declare ocaml target_rep function create = `Byte_sequence_wrapper.create`
+
+val zeros : natural -> byte_sequence
+let zeros m = create m Missing_pervasives.null_char
+
+val length : byte_sequence -> natural
+declare ocaml target_rep function length = `Byte_sequence_wrapper.length`
+
+val concat : list byte_sequence -> byte_sequence
+declare ocaml target_rep function concat = `Byte_sequence_wrapper.concat`
+
+val acquire : string -> error byte_sequence
+declare ocaml target_rep function acquire = `Byte_sequence_wrapper.acquire`
+
+val string_of_byte_sequence : byte_sequence -> string
+declare ocaml target_rep function string_of_byte_sequence = `Byte_sequence_wrapper.string_of_byte_sequence`
+
+val equal : byte_sequence -> byte_sequence -> bool
+declare ocaml target_rep function equal = `Byte_sequence_wrapper.equal`
+
+val dropbytes : natural -> byte_sequence -> error byte_sequence
+declare ocaml target_rep function dropbytes = `Byte_sequence_wrapper.dropbytes`
+
+val takebytes : natural -> byte_sequence -> error byte_sequence
+declare ocaml target_rep function takebytes = `Byte_sequence_wrapper.takebytes`
+
+val partition : natural -> byte_sequence -> error (byte_sequence * byte_sequence)
+let partition idx bs0 =
+  takebytes idx bs0 >>= fun l ->
+  dropbytes idx bs0 >>= fun r ->
+  return (l, r)
+
+val offset_and_cut : natural -> natural -> byte_sequence -> error byte_sequence
+let offset_and_cut off cut bs0 =
+  dropbytes off bs0 >>= fun bs1 ->
+  takebytes cut bs1 >>= fun res ->
+  return res
+
+instance (Show byte_sequence)
+  let show = string_of_byte_sequence
+end
+
+instance (Eq byte_sequence)
+  let (=) = equal
+  let (<>) l r = not (equal l r)
+end

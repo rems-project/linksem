@@ -13,7 +13,7 @@ open import Elf_symbol_table
 open import Elf_program_header_table
 open import String_table
 
-open import Bitstring
+open import Byte_sequence
 open import Error
 open import Missing_pervasives
 open import Show
@@ -26,7 +26,7 @@ type elf32_executable_file3 =
   <| elf32_executable_file3_header               : elf32_header (** The ELF header (mandatory) *)
    ; elf32_executable_file3_program_header_table : elf32_program_header_table (** The program header table (mandatory) *)
    ; elf32_executable_file3_section_header_table : maybe elf32_section_header_table (** The section header table (optional) *)
-   ; elf32_executable_file3_body                 : bitstring (** Uninterpreted body *)
+   ; elf32_executable_file3_body                 : byte_sequence (** Uninterpreted body *)
    |>
 
 class (HasElf32ExecutableFile3 'a)
@@ -66,7 +66,7 @@ type elf64_executable_file3 =
   <| elf64_executable_file3_header               : elf64_header (** The ELF header (mandatory) *)
    ; elf64_executable_file3_program_header_table : elf64_program_header_table (** The program header table (mandatory) *)
    ; elf64_executable_file3_section_header_table : maybe elf64_section_header_table (** The section header table (optional) *)
-   ; elf64_executable_file3_body                 : bitstring (** Uninterpreted body *)
+   ; elf64_executable_file3_body                 : byte_sequence (** Uninterpreted body *)
    |>
 
 class (HasElf64ExecutableFile3 'a)
@@ -108,7 +108,7 @@ let refine_elf32_executable_file2 f2 =
   let endian      = get_elf32_header_endianness hdr in
   let bs1         = f2.elf32_executable_file2_body in
   let sentries    = natural_of_elf32_half hdr.elf32_shnum in
-  let sentry_size = natural_of_elf32_half hdr.elf32_shentsize * 8 in
+  let sentry_size = natural_of_elf32_half hdr.elf32_shentsize in
   let ssize       = sentries * sentry_size in
     if ssize = 0 then
       return <| elf32_executable_file3_header = hdr;
@@ -116,15 +116,15 @@ let refine_elf32_executable_file2 f2 =
         elf32_executable_file3_section_header_table = Nothing;
         elf32_executable_file3_body = bs1 |>
     else
-      let soffset     = natural_of_elf32_off hdr.elf32_shoff * 8 in
-      let (_, scut)   = partition soffset bs1 in
-      let (sexact, _) = partition ssize scut in
-        (* Bitstring irrelevant below as exact size used... *)
-        read_elf32_section_header_table ssize endian sexact >>= fun (sht, _) ->
-          return <| elf32_executable_file3_header = hdr;
-            elf32_executable_file3_program_header_table = pht;
-            elf32_executable_file3_section_header_table = Just sht;
-            elf32_executable_file3_body = bs1 |>
+      let soffset     = natural_of_elf32_off hdr.elf32_shoff in
+      partition soffset bs1 >>= fun (_, scut) ->
+      partition ssize scut >>= fun (sexact, _) ->
+      (* Bitstring irrelevant below as exact size used... *)
+      read_elf32_section_header_table ssize endian sexact >>= fun (sht, _) ->
+        return <| elf32_executable_file3_header = hdr;
+          elf32_executable_file3_program_header_table = pht;
+          elf32_executable_file3_section_header_table = Just sht;
+          elf32_executable_file3_body = bs1 |>
 
 (** [refine_elf64_executable_file2 f2] refines an elf64_executable_file2 [f2] into
   * an elf64_executable_file3 by adding the optional section header table.
@@ -136,7 +136,7 @@ let refine_elf64_executable_file2 f2 =
   let endian      = get_elf64_header_endianness hdr in
   let bs1         = f2.elf64_executable_file2_body in
   let sentries    = natural_of_elf64_half hdr.elf64_shnum in
-  let sentry_size = natural_of_elf64_half hdr.elf64_shentsize * 8 in
+  let sentry_size = natural_of_elf64_half hdr.elf64_shentsize in
   let ssize       = sentries * sentry_size in
     if ssize = 0 then
       return <| elf64_executable_file3_header = hdr;
@@ -144,27 +144,27 @@ let refine_elf64_executable_file2 f2 =
         elf64_executable_file3_section_header_table = Nothing;
         elf64_executable_file3_body = bs1 |>
     else
-      let soffset     = natural_of_elf64_off hdr.elf64_shoff * 8 in
-      let (_, scut)   = partition soffset bs1 in
-      let (sexact, _) = partition ssize scut in
-        (* Bitstring irrelevant below as exact size used... *)
-        read_elf64_section_header_table ssize endian sexact >>= fun (sht, _) ->
-          return <| elf64_executable_file3_header = hdr;
-            elf64_executable_file3_program_header_table = pht;
-            elf64_executable_file3_section_header_table = Just sht;
-            elf64_executable_file3_body = bs1 |>
+      let soffset     = natural_of_elf64_off hdr.elf64_shoff in
+      partition soffset bs1 >>= fun (_, scut) ->
+      partition ssize scut >>= fun (sexact, _) ->
+      (* Bitstring irrelevant below as exact size used... *)
+      read_elf64_section_header_table ssize endian sexact >>= fun (sht, _) ->
+        return <| elf64_executable_file3_header = hdr;
+          elf64_executable_file3_program_header_table = pht;
+          elf64_executable_file3_section_header_table = Just sht;
+          elf64_executable_file3_body = bs1 |>
 
 (** [read_elf32_executable_file3 bs0] reads an elf32_executable_file3 from
-  * bitstring [bs0].
+  * byte_sequence [bs0].
   *)
-val read_elf32_executable_file3 : bitstring -> error elf32_executable_file3
+val read_elf32_executable_file3 : byte_sequence -> error elf32_executable_file3
 let read_elf32_executable_file3 bs0 =
   read_elf32_executable_file2 bs0 >>= refine_elf32_executable_file2
 
 (** [read_elf64_executable_file3 bs0] reads an elf64_executable_file3 from
-  * bitstring [bs0].
+  * byte_sequence [bs0].
   *)
-val read_elf64_executable_file3 : bitstring -> error elf64_executable_file3
+val read_elf64_executable_file3 : byte_sequence -> error elf64_executable_file3
 let read_elf64_executable_file3 bs0 =
   read_elf64_executable_file2 bs0 >>= refine_elf64_executable_file2
 
@@ -188,7 +188,7 @@ let string_of_elf32_executable_file3 hdr_bdl pht_bdl sht_bdl f3 =
     ; "**Section header table:"
     ; sht
     ; "**Body:"
-    ; "\tUninterpreted data of length " ^ show (Bitstring.length f3.elf32_executable_file3_body)
+    ; "\tUninterpreted data of length " ^ show (Byte_sequence.length f3.elf32_executable_file3_body)
     ]
 
 (** string_of_elf64_executable_file3 hdr_os hdr_proc pht_os pht_proc sht_oc sht_proc sht_user f3]
@@ -211,7 +211,7 @@ let string_of_elf64_executable_file3 hdr_bdl pht_bdl sht_bdl f3 =
     ; "**Section header table:"
     ; sht
     ; "**Body:"
-    ; "\tUninterpreted data of length " ^ show (Bitstring.length f3.elf64_executable_file3_body)
+    ; "\tUninterpreted data of length " ^ show (Byte_sequence.length f3.elf64_executable_file3_body)
     ]
 
 val get_elf32_section_header_string_table : elf32_executable_file3 -> error string_table
@@ -224,11 +224,11 @@ let get_elf32_section_header_string_table f3 =
         match Missing_pervasives.index idx sht with
           | Nothing -> fail "get_elf32_string_table: invalid offset into section header table"
           | Just sect ->
-            let offset = natural_of_elf32_off sect.elf32_sh_offset * 8 in
-            let size   = natural_of_elf32_word sect.elf32_sh_size * 8 in
-            let (_, cut) = Bitstring.partition offset bs0 in
-            let (rel, _) = Bitstring.partition size cut in
-            let strings  = Bitstring.string_of_bitstring rel in
+            let offset = natural_of_elf32_off sect.elf32_sh_offset in
+            let size   = natural_of_elf32_word sect.elf32_sh_size in
+            Byte_sequence.partition offset bs0 >>= fun (_, cut) ->
+            Byte_sequence.partition size cut >>= fun (rel, _) ->
+            let strings  = Byte_sequence.string_of_byte_sequence rel in
               return (String_table.mk_string_table strings Missing_pervasives.null_char)
         end
   end
@@ -243,11 +243,11 @@ let get_elf64_section_header_string_table f3 =
         match Missing_pervasives.index idx sht with
           | Nothing -> fail "get_elf64_string_table: invalid offset into section header table"
           | Just sect ->
-            let offset = natural_of_elf64_off sect.elf64_sh_offset * 8 in
-            let size   = natural_of_elf64_xword sect.elf64_sh_size * 8 in
-            let (_, cut) = Bitstring.partition offset bs0 in
-            let (rel, _) = Bitstring.partition size cut in
-            let strings  = Bitstring.string_of_bitstring rel in
+            let offset = natural_of_elf64_off sect.elf64_sh_offset in
+            let size   = natural_of_elf64_xword sect.elf64_sh_size in
+            Byte_sequence.partition offset bs0 >>= fun (_, cut) ->
+            Byte_sequence.partition size cut >>= fun (rel, _) ->
+            let strings  = Byte_sequence.string_of_byte_sequence rel in
               return (String_table.mk_string_table strings Missing_pervasives.null_char)
         end
   end
@@ -268,13 +268,12 @@ let get_elf32_symbol_string_table f3 =
           else
             Nothing) sht
         in
-        let strings = List.map (fun sect ->
-            let offset  = natural_of_elf32_off  sect.elf32_sh_offset * 8 in
-            let size    = natural_of_elf32_word sect.elf32_sh_size * 8 in
-            let bs1     = Bitstring.offset_and_cut offset size bs0 in
-            let strings = Bitstring.string_of_bitstring bs1 in
-              String_table.mk_string_table strings Missing_pervasives.null_char) strtabs
-        in
+          mapM (fun sect ->
+            let offset  = natural_of_elf32_off  sect.elf32_sh_offset in
+            let size    = natural_of_elf32_word sect.elf32_sh_size in
+            Byte_sequence.offset_and_cut offset size bs0 >>= fun bs1 ->
+            let strings = Byte_sequence.string_of_byte_sequence bs1 in
+              return (String_table.mk_string_table strings Missing_pervasives.null_char)) strtabs >>= fun strings ->
           String_table.concat strings
     end
 
@@ -294,13 +293,12 @@ let get_elf64_symbol_string_table f3 =
           else
             Nothing) sht
         in
-        let strings = List.map (fun sect ->
-            let offset  = natural_of_elf64_off  sect.elf64_sh_offset * 8 in
-            let size    = natural_of_elf64_xword sect.elf64_sh_size * 8 in
-            let bs1     = Bitstring.offset_and_cut offset size bs0 in
-            let strings = Bitstring.string_of_bitstring bs1 in
-              String_table.mk_string_table strings Missing_pervasives.null_char) strtabs
-        in
+          mapM (fun sect ->
+            let offset  = natural_of_elf64_off  sect.elf64_sh_offset in
+            let size    = natural_of_elf64_xword sect.elf64_sh_size in
+            Byte_sequence.offset_and_cut offset size bs0 >>= fun bs1 ->
+            let strings = Byte_sequence.string_of_byte_sequence bs1 in
+              return (String_table.mk_string_table strings Missing_pervasives.null_char)) strtabs >>= fun strings ->
           String_table.concat strings
     end
 
@@ -308,44 +306,44 @@ val get_elf32_interpreted_segments : elf32_executable_file3 -> error (list elf32
 let get_elf32_interpreted_segments f3 =
   let pht = f3.elf32_executable_file3_program_header_table in
   let bdy = f3.elf32_executable_file3_body in
-  let segs =
-    List.map (fun ph ->
-      let offset   = natural_of_elf32_off ph.elf32_p_offset * 8  in
-      let size     = natural_of_elf32_word ph.elf32_p_filesz * 8 in
-      let relevant = Bitstring.offset_and_cut offset size bdy in
+    mapM (fun ph ->
+      let offset   = natural_of_elf32_off ph.elf32_p_offset  in
+      let size     = natural_of_elf32_word ph.elf32_p_filesz in
+      Byte_sequence.offset_and_cut offset size bdy >>= fun relevant ->
       let vaddr    = natural_of_elf32_addr ph.elf32_p_vaddr  in
-      let memsz    = natural_of_elf32_word ph.elf32_p_memsz * 8 in
+      let memsz    = natural_of_elf32_word ph.elf32_p_memsz in
       let typ      = natural_of_elf32_word ph.elf32_p_type   in
       let flags    = elf32_interpret_program_header_flags ph.elf32_p_flags in
-        <| elf32_segment_body = relevant; elf32_segment_type = typ;
+        return <| elf32_segment_body = relevant; elf32_segment_type = typ;
              elf32_segment_size = size; elf32_segment_memsz = memsz;
              elf32_segment_base  = vaddr; elf32_segment_flags = flags |>
-    ) pht
-  in
+    ) pht >>= fun segs ->
     mapM (fun sg ->
       if sg.elf32_segment_memsz < sg.elf32_segment_size then
         fail "get_elf32_interpreted_segments: memory size of segment cannot be less than file size"
       else
         return sg) segs
 
+(* TODO: rewrite this as well as [get_elf32_interpreted_segments] above.  Weird
+ * double use of [mapM] is due to changing types with the first map becoming
+ * monadic.  Should be rewritten so that the two [mapM]s are merged.
+ *)
 val get_elf64_interpreted_segments : elf64_executable_file3 -> error (list elf64_interpreted_segment)
 let get_elf64_interpreted_segments f3 =
   let pht = f3.elf64_executable_file3_program_header_table in
   let bdy = f3.elf64_executable_file3_body in
-  let segs =
-    List.map (fun ph ->
-      let offset   = natural_of_elf64_off ph.elf64_p_offset * 8  in
-      let size     = natural_of_elf64_xword ph.elf64_p_filesz * 8 in
-      let relevant = Bitstring.offset_and_cut offset size bdy in
+    mapM (fun ph ->
+      let offset   = natural_of_elf64_off ph.elf64_p_offset  in
+      let size     = natural_of_elf64_xword ph.elf64_p_filesz in
+      Byte_sequence.offset_and_cut offset size bdy >>= fun relevant ->
       let vaddr    = natural_of_elf64_addr ph.elf64_p_vaddr  in
-      let memsz    = natural_of_elf64_xword ph.elf64_p_memsz * 8 in
+      let memsz    = natural_of_elf64_xword ph.elf64_p_memsz in
       let typ      = natural_of_elf64_word ph.elf64_p_type   in
       let flags    = elf64_interpret_program_header_flags ph.elf64_p_flags in
-        <| elf64_segment_body = relevant; elf64_segment_type = typ;
+        return <| elf64_segment_body = relevant; elf64_segment_type = typ;
              elf64_segment_size = size; elf64_segment_memsz = memsz;
              elf64_segment_base  = vaddr; elf64_segment_flags = flags |>
-    ) pht
-  in
+    ) pht >>= fun segs ->
     mapM (fun sg ->
       if sg.elf64_segment_memsz < sg.elf64_segment_size then
         fail "get_elf64_interpreted_segments: memory size of segment cannot be less than file size"
@@ -373,7 +371,7 @@ let get_elf32_executable_image f3 =
             else if sg.elf32_segment_size < sg.elf32_segment_memsz then
               (* Cannot be negative due to check in constructing [segs]. *)
               let diff  = sg.elf32_segment_memsz - sg.elf32_segment_size in
-              let zeros = Bitstring.zeros diff in
+              let zeros = Byte_sequence.zeros diff in
               let addr  = sg.elf32_segment_base + sg.elf32_segment_size in
               let seg   =
                 <| elf32_segment_body = zeros; elf32_segment_type = sg.elf32_segment_type;
@@ -401,7 +399,7 @@ let get_elf64_executable_image f3 =
             else if sg.elf64_segment_size < sg.elf64_segment_memsz then
               (* Cannot be negative due to check in constructing [segs]. *)
               let diff  = sg.elf64_segment_memsz - sg.elf64_segment_size in
-              let zeros = Bitstring.zeros diff in
+              let zeros = Byte_sequence.zeros diff in
               let addr  = sg.elf64_segment_base + sg.elf64_segment_size in
               let seg   =
                 <| elf64_segment_body = zeros; elf64_segment_type = sg.elf64_segment_type;
@@ -431,9 +429,9 @@ let get_elf32_symbol_table f3 =
           match List.index symtabs 0 with
             | Nothing -> fail "get_elf32_symbol_table: invariant failed"
             | Just symtab ->
-              let offset = natural_of_elf32_off symtab.elf32_sh_offset * 8 in
-              let size   = natural_of_elf32_word symtab.elf32_sh_size * 8 in
-              let relevant = Bitstring.offset_and_cut offset size bs0 in
+              let offset = natural_of_elf32_off symtab.elf32_sh_offset in
+              let size   = natural_of_elf32_word symtab.elf32_sh_size in
+              Byte_sequence.offset_and_cut offset size bs0 >>= fun relevant ->
                 read_elf32_symbol_table endian relevant
           end
         else
@@ -457,9 +455,9 @@ let get_elf64_symbol_table f3 =
           match List.index symtabs 0 with
             | Nothing -> fail "get_elf64_symbol_table: invariant failed"
             | Just symtab ->
-              let offset = natural_of_elf64_off symtab.elf64_sh_offset * 8 in
-              let size   = natural_of_elf64_xword symtab.elf64_sh_size * 8 in
-              let relevant = Bitstring.offset_and_cut offset size bs0 in
+              let offset = natural_of_elf64_off symtab.elf64_sh_offset in
+              let size   = natural_of_elf64_xword symtab.elf64_sh_size in
+              Byte_sequence.offset_and_cut offset size bs0 >>= fun relevant ->
                 read_elf64_symbol_table endian relevant
           end
         else
@@ -483,9 +481,9 @@ let get_elf32_dynamic_symbol_table f3 =
           match List.index symtabs 0 with
             | Nothing -> fail "get_elf32_symbol_table: invariant failed"
             | Just symtab ->
-              let offset = natural_of_elf32_off symtab.elf32_sh_offset * 8 in
-              let size   = natural_of_elf32_word symtab.elf32_sh_size * 8 in
-              let relevant = Bitstring.offset_and_cut offset size bs0 in
+              let offset = natural_of_elf32_off symtab.elf32_sh_offset in
+              let size   = natural_of_elf32_word symtab.elf32_sh_size in
+              Byte_sequence.offset_and_cut offset size bs0 >>= fun relevant ->
                 read_elf32_symbol_table endian relevant
           end
         else
@@ -509,9 +507,9 @@ let get_elf64_dynamic_symbol_table f3 =
           match List.index symtabs 0 with
             | Nothing -> fail "get_elf64_symbol_table: invariant failed"
             | Just symtab ->
-              let offset = natural_of_elf64_off symtab.elf64_sh_offset * 8 in
-              let size   = natural_of_elf64_xword symtab.elf64_sh_size * 8 in
-              let relevant = Bitstring.offset_and_cut offset size bs0 in
+              let offset = natural_of_elf64_off symtab.elf64_sh_offset in
+              let size   = natural_of_elf64_xword symtab.elf64_sh_size in
+              Byte_sequence.offset_and_cut offset size bs0 >>= fun relevant ->
                 read_elf64_symbol_table endian relevant
           end
         else
@@ -522,7 +520,7 @@ let get_elf64_dynamic_symbol_table f3 =
   * symbol initial value uninterpreted.
   *)
 type global_symbol_init_info
-  = list (string * (natural * natural * natural * maybe bitstring))
+  = list (string * (natural * natural * natural * maybe byte_sequence))
 
 val get_elf32_global_symbol_init : elf32_executable_file3 -> error global_symbol_init_info
 let get_elf32_global_symbol_init f3 =
@@ -535,14 +533,14 @@ let get_elf32_global_symbol_init f3 =
         get_elf32_executable_image f3 >>= fun (img, entry) ->
         let chunks =
           List.filter (fun chunk ->
-            addr >= chunk.elf32_segment_base && addr + size < chunk.elf32_segment_base + chunk.elf32_segment_size
+            addr >= chunk.elf32_segment_base && addr + (size * 8) < chunk.elf32_segment_base + (chunk.elf32_segment_size * 8)
           ) img
         in
           match chunks with
             | []    -> fail "get_elf32_global_symbol_init: global variable not present in executable image"
             | [x]   ->
               let rebase   = addr - x.elf32_segment_base in
-              let relevant = Bitstring.offset_and_cut rebase size x.elf32_segment_body in
+              Byte_sequence.offset_and_cut rebase size x.elf32_segment_body >>= fun relevant ->
                 return (symbol, (typ, size, addr, Just relevant))
             | x::xs -> fail "get_elf32_global_symbol_init: invariant failed, global variable appears in multiple segments"
           end
@@ -569,7 +567,7 @@ let get_elf64_global_symbol_init f3 =
             | []    -> fail "get_elf64_global_symbol_init: global variable not present in executable image"
             | [x]   ->
               let rebase   = addr - x.elf64_segment_base in
-              let relevant = Bitstring.offset_and_cut rebase (size * 8) x.elf64_segment_body in
+              Byte_sequence.offset_and_cut rebase size x.elf64_segment_body >>= fun relevant ->
                 return (symbol, (typ, size, addr, Just relevant))
             | x::xs -> fail "get_elf64_global_symbol_init: invariant failed, global variable appears in multiple segments"
           end

@@ -2,7 +2,7 @@ open import Basic_classes
 open import Maybe
 open import Num
 
-open import Bitstring
+open import Byte_sequence
 open import Error
 open import Missing_pervasives
 open import Show
@@ -17,7 +17,7 @@ open import Elf_types
 type elf32_linking_file3 =
   <| elf32_linking_file3_header               : elf32_header
    ; elf32_linking_file3_program_header_table : maybe elf32_program_header_table
-   ; elf32_linking_file3_body                 : bitstring
+   ; elf32_linking_file3_body                 : byte_sequence
    ; elf32_linking_file3_section_header_table : elf32_section_header_table
    |>
 
@@ -64,16 +64,16 @@ let refine_elf32_linking_file2 f2 =
         elf32_linking_file3_body = bs1 |>
     else
       let poffset     = natural_of_elf32_off hdr.elf32_phoff * 8 in
-      let (_, pcut)   = partition poffset bs1 in
-      let (pexact, _) = partition psize pcut in
-        (* Bitstring irrelevant below as exact size used... *)
-        read_elf32_program_header_table psize endian pexact >>= fun (pht, _) ->
-          return <| elf32_linking_file3_header = hdr;
-            elf32_linking_file3_program_header_table = Just pht;
-            elf32_linking_file3_section_header_table = sht;
-            elf32_linking_file3_body = bs1 |>
+      partition poffset bs1 >>= fun (_, pcut) ->
+      partition psize pcut >>= fun (pexact, _) ->
+      (* Bitstring irrelevant below as exact size used... *)
+      read_elf32_program_header_table psize endian pexact >>= fun (pht, _) ->
+        return <| elf32_linking_file3_header = hdr;
+          elf32_linking_file3_program_header_table = Just pht;
+          elf32_linking_file3_section_header_table = sht;
+          elf32_linking_file3_body = bs1 |>
 
-val read_elf32_linking_file3 : bitstring -> error elf32_linking_file3
+val read_elf32_linking_file3 : byte_sequence -> error elf32_linking_file3
 let read_elf32_linking_file3 bs0 =
   read_elf32_linking_file2 bs0 >>= refine_elf32_linking_file2
 
@@ -94,13 +94,13 @@ let string_of_elf32_linking_file3 hdr_bdl sht_bdl pht_bdl f3 =
     ; "**Section header table:"
     ; string_of_elf32_section_header_table sht_bdl f3.elf32_linking_file3_section_header_table
     ; "**Body:"
-    ; "\tUninterpreted data of length " ^ show (Bitstring.length f3.elf32_linking_file3_body)
+    ; "\tUninterpreted data of length " ^ show (Byte_sequence.length f3.elf32_linking_file3_body)
     ]
 
 type elf64_linking_file3 =
   <| elf64_linking_file3_header               : elf64_header
    ; elf64_linking_file3_program_header_table : maybe elf64_program_header_table
-   ; elf64_linking_file3_body                 : bitstring
+   ; elf64_linking_file3_body                 : byte_sequence
    ; elf64_linking_file3_section_header_table : elf64_section_header_table
    |>
 
@@ -147,16 +147,16 @@ let refine_elf64_linking_file2 f2 =
         elf64_linking_file3_body = bs1 |>
     else
       let poffset     = natural_of_elf64_off hdr.elf64_phoff * 8 in
-      let (_, pcut)   = partition poffset bs1 in
-      let (pexact, _) = partition psize pcut in
-        (* Bitstring irrelevant below as exact size used... *)
-        read_elf64_program_header_table psize endian pexact >>= fun (pht, _) ->
-          return <| elf64_linking_file3_header = hdr;
-            elf64_linking_file3_program_header_table = Just pht;
-            elf64_linking_file3_section_header_table = sht;
-            elf64_linking_file3_body = bs1 |>
+      partition poffset bs1 >>= fun (_, pcut) ->
+      partition psize pcut >>= fun (pexact, _) ->
+      (* Bitstring irrelevant below as exact size used... *)
+      read_elf64_program_header_table psize endian pexact >>= fun (pht, _) ->
+        return <| elf64_linking_file3_header = hdr;
+          elf64_linking_file3_program_header_table = Just pht;
+          elf64_linking_file3_section_header_table = sht;
+          elf64_linking_file3_body = bs1 |>
 
-val read_elf64_linking_file3 : bitstring -> error elf64_linking_file3
+val read_elf64_linking_file3 : byte_sequence -> error elf64_linking_file3
 let read_elf64_linking_file3 bs0 =
   read_elf64_linking_file2 bs0 >>= refine_elf64_linking_file2
 
@@ -177,5 +177,5 @@ let string_of_elf64_linking_file3 hdr_bdl sht_bdl pht_bdl f3 =
     ; "**Section header table:"
     ; string_of_elf64_section_header_table sht_bdl f3.elf64_linking_file3_section_header_table
     ; "**Body:"
-    ; "\tUninterpreted data of length " ^ show (Bitstring.length f3.elf64_linking_file3_body)
+    ; "\tUninterpreted data of length " ^ show (Byte_sequence.length f3.elf64_linking_file3_body)
     ]

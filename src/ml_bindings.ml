@@ -1,1332 +1,553 @@
 open Endianness
-  
 open Error
-  
-let decimal_string_of_int64 e = let i = Int64.to_int e in string_of_int i
-  
+
+let decimal_string_of_int64 e =
+  let i = Int64.to_int e in
+    string_of_int i
+;;
+
 let hex_string_of_int64 (e : Int64.t) : string =
-  let i = Int64.to_int e in Printf.sprintf "0x%x" i
-  
-let bitstring_length bs =
-  Big_int.big_int_of_int (Bitstring.bitstring_length bs)
-  
-let create_bitstring len =
-  if Big_int.is_int_big_int len
-  then Bitstring.create_bitstring (Big_int.int_of_big_int len)
-  else failwith "create_bitstring: length too big"
-  
-let make_bitstring len cs =
-  if Big_int.is_int_big_int len
-  then Bitstring.make_bitstring (Big_int.int_of_big_int len) cs
-  else failwith "make_bitstring: length too big"
-  
-let partition_bitstring size bitstring =
-  if Big_int.is_int_big_int size
-  then
-    (let cut = Big_int.int_of_big_int size
-     in
-       ((Bitstring.takebits cut bitstring),
-        (Bitstring.dropbits cut bitstring)))
-  else failwith "partition_bitstring: size too large"
-  
-let acquire_bitstring path_to_target =
-  try
-    let bitstring = Bitstring.bitstring_of_file path_to_target
-    in return bitstring
-  with | _ -> Fail ("acquire_bitstring: cannot open file" ^ path_to_target)
-  
+  let i = Int64.to_int e in
+    Printf.sprintf "0x%x" i
+;;
+
+let little_endian_uint32 c1 c2 c3 c4 =
+  let buffer1 = Uint32.shift_left (Uint32.of_int (Char.code c4)) 24 in
+  let buffer2 = Uint32.shift_left (Uint32.of_int (Char.code c3)) 16 in
+  let buffer3 = Uint32.shift_left (Uint32.of_int (Char.code c2)) 8 in
+  let buffer4 = Uint32.of_int (Char.code c1) in
+  let res =
+    Uint32.logor buffer1
+      (Uint32.logor buffer2
+      (Uint32.logor buffer3 buffer4)) in
+  res
+;;
+
+let little_endian_int32 c1 c2 c3 c4 =
+  let buffer1 = Int32.shift_left (Int32.of_int (Char.code c4)) 24 in
+  let buffer2 = Int32.shift_left (Int32.of_int (Char.code c3)) 16 in
+  let buffer3 = Int32.shift_left (Int32.of_int (Char.code c2)) 8 in
+  let buffer4 = Int32.of_int (Char.code c1) in
+  let res =
+    Int32.logor buffer1
+      (Int32.logor buffer2
+      (Int32.logor buffer3 buffer4))
+  in
+    res
+;;
+
+let little_endian_uint64 c1 c2 c3 c4 c5 c6 c7 c8 =
+  let buffer1 = Uint64.shift_left (Uint64.of_int (Char.code c8)) 56 in
+  let buffer2 = Uint64.shift_left (Uint64.of_int (Char.code c7)) 48 in
+  let buffer3 = Uint64.shift_left (Uint64.of_int (Char.code c6)) 40 in
+  let buffer4 = Uint64.shift_left (Uint64.of_int (Char.code c5)) 32 in
+  let buffer5 = Uint64.shift_left (Uint64.of_int (Char.code c4)) 24 in
+  let buffer6 = Uint64.shift_left (Uint64.of_int (Char.code c3)) 16 in
+  let buffer7 = Uint64.shift_left (Uint64.of_int (Char.code c2)) 8 in
+  let buffer8 = Uint64.of_int (Char.code c1) in
+  let res =
+    Uint64.logor buffer1
+      (Uint64.logor buffer2
+      (Uint64.logor buffer3
+      (Uint64.logor buffer4
+      (Uint64.logor buffer5
+      (Uint64.logor buffer6
+      (Uint64.logor buffer7 buffer8))))))
+  in
+    res
+;;
+
+let little_endian_int64 c1 c2 c3 c4 c5 c6 c7 c8 =
+  let buffer1 = Int64.shift_left (Int64.of_int (Char.code c8)) 56 in
+  let buffer2 = Int64.shift_left (Int64.of_int (Char.code c7)) 48 in
+  let buffer3 = Int64.shift_left (Int64.of_int (Char.code c6)) 40 in
+  let buffer4 = Int64.shift_left (Int64.of_int (Char.code c5)) 32 in
+  let buffer5 = Int64.shift_left (Int64.of_int (Char.code c4)) 24 in
+  let buffer6 = Int64.shift_left (Int64.of_int (Char.code c3)) 16 in
+  let buffer7 = Int64.shift_left (Int64.of_int (Char.code c2)) 8 in
+  let buffer8 = Int64.of_int (Char.code c1) in
+  let res =
+    Int64.logor buffer1
+      (Int64.logor buffer2
+      (Int64.logor buffer3
+      (Int64.logor buffer4
+      (Int64.logor buffer5
+      (Int64.logor buffer6
+      (Int64.logor buffer7 buffer8))))))
+  in
+    res
+;;
+
+let big_endian_uint32 c1 c2 c3 c4 =
+  let buffer1 = Uint32.shift_left (Uint32.of_int (Char.code c1)) 24 in
+  let buffer2 = Uint32.shift_left (Uint32.of_int (Char.code c2)) 16 in
+  let buffer3 = Uint32.shift_left (Uint32.of_int (Char.code c3)) 8 in
+  let buffer4 = Uint32.of_int (Char.code c4) in
+  let res = Uint32.logor buffer1 (Uint32.logor buffer2 (Uint32.logor buffer3 buffer4)) in
+  res
+;;
+
+let big_endian_int32 c1 c2 c3 c4 =
+  let buffer1 = Int32.shift_left (Int32.of_int (Char.code c1)) 24 in
+  let buffer2 = Int32.shift_left (Int32.of_int (Char.code c2)) 16 in
+  let buffer3 = Int32.shift_left (Int32.of_int (Char.code c3)) 8 in
+  let buffer4 = Int32.of_int (Char.code c4) in
+  let res =
+    Int32.logor buffer1
+      (Int32.logor buffer2
+      (Int32.logor buffer3 buffer4))
+  in
+    res
+;;
+
+let big_endian_uint64 c1 c2 c3 c4 c5 c6 c7 c8 =
+  let buffer1 = Uint64.shift_left (Uint64.of_int (Char.code c1)) 56 in
+  let buffer2 = Uint64.shift_left (Uint64.of_int (Char.code c2)) 48 in
+  let buffer3 = Uint64.shift_left (Uint64.of_int (Char.code c3)) 40 in
+  let buffer4 = Uint64.shift_left (Uint64.of_int (Char.code c4)) 32 in
+  let buffer5 = Uint64.shift_left (Uint64.of_int (Char.code c5)) 24 in
+  let buffer6 = Uint64.shift_left (Uint64.of_int (Char.code c6)) 16 in
+  let buffer7 = Uint64.shift_left (Uint64.of_int (Char.code c7)) 8 in
+  let buffer8 = Uint64.of_int (Char.code c8) in
+  let res =
+    Uint64.logor buffer1
+      (Uint64.logor buffer2
+      (Uint64.logor buffer3
+      (Uint64.logor buffer4
+      (Uint64.logor buffer5
+      (Uint64.logor buffer6
+      (Uint64.logor buffer7 buffer8))))))
+  in
+    res
+;;
+
+let big_endian_int64 c1 c2 c3 c4 c5 c6 c7 c8 =
+  let buffer1 = Int64.shift_left (Int64.of_int (Char.code c1)) 56 in
+  let buffer2 = Int64.shift_left (Int64.of_int (Char.code c2)) 48 in
+  let buffer3 = Int64.shift_left (Int64.of_int (Char.code c3)) 40 in
+  let buffer4 = Int64.shift_left (Int64.of_int (Char.code c4)) 32 in
+  let buffer5 = Int64.shift_left (Int64.of_int (Char.code c5)) 24 in
+  let buffer6 = Int64.shift_left (Int64.of_int (Char.code c6)) 16 in
+  let buffer7 = Int64.shift_left (Int64.of_int (Char.code c7)) 8 in
+  let buffer8 = Int64.of_int (Char.code c8) in
+  let res =
+    Int64.logor buffer1
+      (Int64.logor buffer2
+      (Int64.logor buffer3
+      (Int64.logor buffer4
+      (Int64.logor buffer5
+      (Int64.logor buffer6
+      (Int64.logor buffer7 buffer8))))))
+  in
+    res
+;;
+
 (** Unsigned char type *)
-let read_unsigned_char_le bs rest =
-  let (__pabitstring_data_1001, __pabitstring_original_off_1004,
-       __pabitstring_original_len_1005) =
-    bs in
-  let __pabitstring_off_1002 = __pabitstring_original_off_1004
-  and __pabitstring_len_1003 = __pabitstring_original_len_1005 in
-  let __pabitstring_off_aligned_1006 = (__pabitstring_off_1002 land 7) = 0
-  in
-    (ignore __pabitstring_off_aligned_1006;
-     let __pabitstring_result_1007 = ref None
-     in
-       ((try
-           (if __pabitstring_len_1003 >= 8
-            then
-              (let v =
-                 if __pabitstring_off_aligned_1006
-                 then
-                   (let o = (__pabitstring_original_off_1004 lsr 3) + 0
-                    in
-                      Char.code (String.unsafe_get __pabitstring_data_1001 o))
-                 else
-                   Bitstring.extract_char_unsigned __pabitstring_data_1001
-                     __pabitstring_off_1002 __pabitstring_len_1003 8 in
-               let __pabitstring_off_1002 = __pabitstring_off_1002 + 8
-               and __pabitstring_len_1003 = __pabitstring_len_1003 - 8
-               in
-                 match v with
-                 | unsigned when true ->
-                     (__pabitstring_result_1007 :=
-                        Some (return ((Uint32.of_int unsigned), rest));
-                      raise Exit)
-                 | _ -> ())
-            else ();
-            __pabitstring_result_1007 := Some (Fail "read_unsigned_char_le");
-            raise Exit)
-         with | Exit -> ());
-        match !__pabitstring_result_1007 with
-        | Some x -> x
-        | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 48, 2))))
-  
-let read_unsigned_char_be bs rest =
-  let (__pabitstring_data_1008, __pabitstring_original_off_1011,
-       __pabitstring_original_len_1012) =
-    bs in
-  let __pabitstring_off_1009 = __pabitstring_original_off_1011
-  and __pabitstring_len_1010 = __pabitstring_original_len_1012 in
-  let __pabitstring_off_aligned_1013 = (__pabitstring_off_1009 land 7) = 0
-  in
-    (ignore __pabitstring_off_aligned_1013;
-     let __pabitstring_result_1014 = ref None
-     in
-       ((try
-           (if __pabitstring_len_1010 >= 8
-            then
-              (let v =
-                 if __pabitstring_off_aligned_1013
-                 then
-                   (let o = (__pabitstring_original_off_1011 lsr 3) + 0
-                    in
-                      Char.code (String.unsafe_get __pabitstring_data_1008 o))
-                 else
-                   Bitstring.extract_char_unsigned __pabitstring_data_1008
-                     __pabitstring_off_1009 __pabitstring_len_1010 8 in
-               let __pabitstring_off_1009 = __pabitstring_off_1009 + 8
-               and __pabitstring_len_1010 = __pabitstring_len_1010 - 8
-               in
-                 match v with
-                 | unsigned when true ->
-                     (__pabitstring_result_1014 :=
-                        Some (return ((Uint32.of_int unsigned), rest));
-                      raise Exit)
-                 | _ -> ())
-            else ();
-            __pabitstring_result_1014 := Some (Fail "read_unsigned_char_be");
-            raise Exit)
-         with | Exit -> ());
-        match !__pabitstring_result_1014 with
-        | Some x -> x
-        | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 54, 2))))
-  
-let read_unsigned_char endian bs =
-  let (cut, rest) = partition_bitstring (Big_int.big_int_of_int 8) bs
-  in
-    match endian with
-    | Little -> read_unsigned_char_le cut rest
-    | Big -> read_unsigned_char_be cut rest
-  
+
+let read_unsigned_char endian bs0 =
+  Byte_sequence_wrapper.read_byte bs0 >>= fun (cs, bs1) ->
+  return (Uint32.of_int (Char.code cs), bs1)
+;;
+
 (** ELF address type:
   * 4 byte unsigned type on 32-bit architectures.
   * 8 byte unsigned type on 64-bit architectures.
   *)
-let read_elf32_addr_le bs rest =
-  let (__pabitstring_data_1015, __pabitstring_original_off_1018,
-       __pabitstring_original_len_1019) =
-    bs in
-  let __pabitstring_off_1016 = __pabitstring_original_off_1018
-  and __pabitstring_len_1017 = __pabitstring_original_len_1019 in
-  let __pabitstring_off_aligned_1020 = (__pabitstring_off_1016 land 7) = 0
-  in
-    (ignore __pabitstring_off_aligned_1020;
-     let __pabitstring_result_1021 = ref None
-     in
-       ((try
-           (if __pabitstring_len_1017 >= 32
-            then
-              (let v =
-                 if __pabitstring_off_aligned_1020
-                 then
-                   (let o = (__pabitstring_original_off_1018 lsr 3) + 0 in
-                    let zero = Int32.of_int 0
-                    in
-                      Bitstring.extract_fastpath_int32_le_unsigned
-                        __pabitstring_data_1015 o zero)
-                 else
-                   Bitstring.extract_int32_le_unsigned
-                     __pabitstring_data_1015 __pabitstring_off_1016
-                     __pabitstring_len_1017 32 in
-               let __pabitstring_off_1016 = __pabitstring_off_1016 + 32
-               and __pabitstring_len_1017 = __pabitstring_len_1017 - 32
-               in
-                 match v with
-                 | addr when true ->
-                     (__pabitstring_result_1021 :=
-                        Some (return ((Uint32.of_int32 addr), rest));
-                      raise Exit)
-                 | _ -> ())
-            else ();
-            __pabitstring_result_1021 := Some (Fail "read_elf32_addr_le");
-            raise Exit)
-         with | Exit -> ());
-        match !__pabitstring_result_1021 with
-        | Some x -> x
-        | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 72, 2))))
-  
-let read_elf32_addr_be bs rest =
-  let (__pabitstring_data_1022, __pabitstring_original_off_1025,
-       __pabitstring_original_len_1026) =
-    bs in
-  let __pabitstring_off_1023 = __pabitstring_original_off_1025
-  and __pabitstring_len_1024 = __pabitstring_original_len_1026 in
-  let __pabitstring_off_aligned_1027 = (__pabitstring_off_1023 land 7) = 0
-  in
-    (ignore __pabitstring_off_aligned_1027;
-     let __pabitstring_result_1028 = ref None
-     in
-       ((try
-           (if __pabitstring_len_1024 >= 32
-            then
-              (let v =
-                 if __pabitstring_off_aligned_1027
-                 then
-                   (let o = (__pabitstring_original_off_1025 lsr 3) + 0 in
-                    let zero = Int32.of_int 0
-                    in
-                      Bitstring.extract_fastpath_int32_be_unsigned
-                        __pabitstring_data_1022 o zero)
-                 else
-                   Bitstring.extract_int32_be_unsigned
-                     __pabitstring_data_1022 __pabitstring_off_1023
-                     __pabitstring_len_1024 32 in
-               let __pabitstring_off_1023 = __pabitstring_off_1023 + 32
-               and __pabitstring_len_1024 = __pabitstring_len_1024 - 32
-               in
-                 match v with
-                 | addr when true ->
-                     (__pabitstring_result_1028 :=
-                        Some (return ((Uint32.of_int32 addr), rest));
-                      raise Exit)
-                 | _ -> ())
-            else ();
-            __pabitstring_result_1028 := Some (Fail "read_elf32_addr_be");
-            raise Exit)
-         with | Exit -> ());
-        match !__pabitstring_result_1028 with
-        | Some x -> x
-        | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 78, 2))))
-  
-let read_elf32_addr endian bs =
-  let (cut, rest) = partition_bitstring (Big_int.big_int_of_int 32) bs
-  in
-    match endian with
-    | Little -> read_elf32_addr_le cut rest
-    | Big -> read_elf32_addr_be cut rest
-  
-let read_elf64_addr_le bs rest =
-  let (__pabitstring_data_1029, __pabitstring_original_off_1032,
-       __pabitstring_original_len_1033) =
-    bs in
-  let __pabitstring_off_1030 = __pabitstring_original_off_1032
-  and __pabitstring_len_1031 = __pabitstring_original_len_1033 in
-  let __pabitstring_off_aligned_1034 = (__pabitstring_off_1030 land 7) = 0
-  in
-    (ignore __pabitstring_off_aligned_1034;
-     let __pabitstring_result_1035 = ref None
-     in
-       ((try
-           (if __pabitstring_len_1031 >= 64
-            then
-              (let v =
-                 if __pabitstring_off_aligned_1034
-                 then
-                   (let o = (__pabitstring_original_off_1032 lsr 3) + 0 in
-                    let zero = Int64.of_int 0
-                    in
-                      Bitstring.extract_fastpath_int64_le_unsigned
-                        __pabitstring_data_1029 o zero)
-                 else
-                   Bitstring.extract_int64_le_unsigned
-                     __pabitstring_data_1029 __pabitstring_off_1030
-                     __pabitstring_len_1031 64 in
-               let __pabitstring_off_1030 = __pabitstring_off_1030 + 64
-               and __pabitstring_len_1031 = __pabitstring_len_1031 - 64
-               in
-                 match v with
-                 | addr when true ->
-                     (__pabitstring_result_1035 :=
-                        Some (return ((Uint64.of_int64 addr), rest));
-                      raise Exit)
-                 | _ -> ())
-            else ();
-            __pabitstring_result_1035 := Some (Fail "read_elf64_addr_le");
-            raise Exit)
-         with | Exit -> ());
-        match !__pabitstring_result_1035 with
-        | Some x -> x
-        | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 91, 2))))
-  
-let read_elf64_addr_be bs rest =
-  let (__pabitstring_data_1036, __pabitstring_original_off_1039,
-       __pabitstring_original_len_1040) =
-    bs in
-  let __pabitstring_off_1037 = __pabitstring_original_off_1039
-  and __pabitstring_len_1038 = __pabitstring_original_len_1040 in
-  let __pabitstring_off_aligned_1041 = (__pabitstring_off_1037 land 7) = 0
-  in
-    (ignore __pabitstring_off_aligned_1041;
-     let __pabitstring_result_1042 = ref None
-     in
-       ((try
-           (if __pabitstring_len_1038 >= 64
-            then
-              (let v =
-                 if __pabitstring_off_aligned_1041
-                 then
-                   (let o = (__pabitstring_original_off_1039 lsr 3) + 0 in
-                    let zero = Int64.of_int 0
-                    in
-                      Bitstring.extract_fastpath_int64_be_unsigned
-                        __pabitstring_data_1036 o zero)
-                 else
-                   Bitstring.extract_int64_be_unsigned
-                     __pabitstring_data_1036 __pabitstring_off_1037
-                     __pabitstring_len_1038 64 in
-               let __pabitstring_off_1037 = __pabitstring_off_1037 + 64
-               and __pabitstring_len_1038 = __pabitstring_len_1038 - 64
-               in
-                 match v with
-                 | addr when true ->
-                     (__pabitstring_result_1042 :=
-                        Some (return ((Uint64.of_int64 addr), rest));
-                      raise Exit)
-                 | _ -> ())
-            else ();
-            __pabitstring_result_1042 := Some (Fail "read_elf64_addr_be");
-            raise Exit)
-         with | Exit -> ());
-        match !__pabitstring_result_1042 with
-        | Some x -> x
-        | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 97, 2))))
-  
-let read_elf64_addr endian bs =
-  let (cut, rest) = partition_bitstring (Big_int.big_int_of_int 64) bs
-  in
-    match endian with
-    | Little -> read_elf64_addr_le cut rest
-    | Big -> read_elf64_addr_be cut rest
-  
+
+let read_elf32_addr_le bs0 =
+  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
+  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
+  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
+  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
+  return (little_endian_uint32 c1 c2 c3 c4, bs4)
+;;
+
+let read_elf32_addr_be bs0 =
+  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
+  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
+  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
+  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
+  return (big_endian_uint32 c1 c2 c3 c4, bs4)
+;;
+
+let read_elf32_addr endian bs0 =
+  match endian with
+    | Little -> read_elf32_addr_le bs0
+    | Big    -> read_elf32_addr_be bs0
+;;
+
+let read_elf64_addr_le bs0 =
+  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
+  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
+  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
+  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
+  Byte_sequence_wrapper.read_byte bs4 >>= fun (c5, bs5) ->
+  Byte_sequence_wrapper.read_byte bs5 >>= fun (c6, bs6) ->
+  Byte_sequence_wrapper.read_byte bs6 >>= fun (c7, bs7) ->
+  Byte_sequence_wrapper.read_byte bs7 >>= fun (c8, bs8) ->
+  return (little_endian_uint64 c1 c2 c3 c4 c5 c6 c7 c8, bs8)
+;;
+
+let read_elf64_addr_be bs0 =
+  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
+  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
+  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
+  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
+  Byte_sequence_wrapper.read_byte bs4 >>= fun (c5, bs5) ->
+  Byte_sequence_wrapper.read_byte bs5 >>= fun (c6, bs6) ->
+  Byte_sequence_wrapper.read_byte bs6 >>= fun (c7, bs7) ->
+  Byte_sequence_wrapper.read_byte bs7 >>= fun (c8, bs8) ->
+  return (big_endian_uint64 c1 c2 c3 c4 c5 c6 c7 c8, bs8)
+;;
+
+let read_elf64_addr endian bs0 =
+  match endian with
+    | Little -> read_elf64_addr_le bs0
+    | Big    -> read_elf64_addr_be bs0
+;;
+
 (** ELF offset type:
   * 4 byte unsigned type on 32-bit architectures.
   * 8 byte unsigned type on 64-bit architectures.
   *)
-let read_elf32_off_le bs rest =
-  let (__pabitstring_data_1043, __pabitstring_original_off_1046,
-       __pabitstring_original_len_1047) =
-    bs in
-  let __pabitstring_off_1044 = __pabitstring_original_off_1046
-  and __pabitstring_len_1045 = __pabitstring_original_len_1047 in
-  let __pabitstring_off_aligned_1048 = (__pabitstring_off_1044 land 7) = 0
-  in
-    (ignore __pabitstring_off_aligned_1048;
-     let __pabitstring_result_1049 = ref None
-     in
-       ((try
-           (if __pabitstring_len_1045 >= 32
-            then
-              (let v =
-                 if __pabitstring_off_aligned_1048
-                 then
-                   (let o = (__pabitstring_original_off_1046 lsr 3) + 0 in
-                    let zero = Int32.of_int 0
-                    in
-                      Bitstring.extract_fastpath_int32_le_unsigned
-                        __pabitstring_data_1043 o zero)
-                 else
-                   Bitstring.extract_int32_le_unsigned
-                     __pabitstring_data_1043 __pabitstring_off_1044
-                     __pabitstring_len_1045 32 in
-               let __pabitstring_off_1044 = __pabitstring_off_1044 + 32
-               and __pabitstring_len_1045 = __pabitstring_len_1045 - 32
-               in
-                 match v with
-                 | off when true ->
-                     (__pabitstring_result_1049 :=
-                        Some (return ((Uint32.of_int32 off), rest));
-                      raise Exit)
-                 | _ -> ())
-            else ();
-            __pabitstring_result_1049 := Some (Fail "read_elf32_off_le");
-            raise Exit)
-         with | Exit -> ());
-        match !__pabitstring_result_1049 with
-        | Some x -> x
-        | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 114, 2))))
-  
-let read_elf32_off_be bs rest =
-  let (__pabitstring_data_1050, __pabitstring_original_off_1053,
-       __pabitstring_original_len_1054) =
-    bs in
-  let __pabitstring_off_1051 = __pabitstring_original_off_1053
-  and __pabitstring_len_1052 = __pabitstring_original_len_1054 in
-  let __pabitstring_off_aligned_1055 = (__pabitstring_off_1051 land 7) = 0
-  in
-    (ignore __pabitstring_off_aligned_1055;
-     let __pabitstring_result_1056 = ref None
-     in
-       ((try
-           (if __pabitstring_len_1052 >= 32
-            then
-              (let v =
-                 if __pabitstring_off_aligned_1055
-                 then
-                   (let o = (__pabitstring_original_off_1053 lsr 3) + 0 in
-                    let zero = Int32.of_int 0
-                    in
-                      Bitstring.extract_fastpath_int32_be_unsigned
-                        __pabitstring_data_1050 o zero)
-                 else
-                   Bitstring.extract_int32_be_unsigned
-                     __pabitstring_data_1050 __pabitstring_off_1051
-                     __pabitstring_len_1052 32 in
-               let __pabitstring_off_1051 = __pabitstring_off_1051 + 32
-               and __pabitstring_len_1052 = __pabitstring_len_1052 - 32
-               in
-                 match v with
-                 | off when true ->
-                     (__pabitstring_result_1056 :=
-                        Some (return ((Uint32.of_int32 off), rest));
-                      raise Exit)
-                 | _ -> ())
-            else ();
-            __pabitstring_result_1056 := Some (Fail "read_elf32_off_be");
-            raise Exit)
-         with | Exit -> ());
-        match !__pabitstring_result_1056 with
-        | Some x -> x
-        | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 120, 2))))
-  
-let read_elf32_off endian bs =
-  let (cut, rest) = partition_bitstring (Big_int.big_int_of_int 32) bs
-  in
-    match endian with
-    | Little -> read_elf32_off_le cut rest
-    | Big -> read_elf32_off_be cut rest
-  
-let read_elf64_off_le bs rest =
-  let (__pabitstring_data_1057, __pabitstring_original_off_1060,
-       __pabitstring_original_len_1061) =
-    bs in
-  let __pabitstring_off_1058 = __pabitstring_original_off_1060
-  and __pabitstring_len_1059 = __pabitstring_original_len_1061 in
-  let __pabitstring_off_aligned_1062 = (__pabitstring_off_1058 land 7) = 0
-  in
-    (ignore __pabitstring_off_aligned_1062;
-     let __pabitstring_result_1063 = ref None
-     in
-       ((try
-           (if __pabitstring_len_1059 >= 64
-            then
-              (let v =
-                 if __pabitstring_off_aligned_1062
-                 then
-                   (let o = (__pabitstring_original_off_1060 lsr 3) + 0 in
-                    let zero = Int64.of_int 0
-                    in
-                      Bitstring.extract_fastpath_int64_le_unsigned
-                        __pabitstring_data_1057 o zero)
-                 else
-                   Bitstring.extract_int64_le_unsigned
-                     __pabitstring_data_1057 __pabitstring_off_1058
-                     __pabitstring_len_1059 64 in
-               let __pabitstring_off_1058 = __pabitstring_off_1058 + 64
-               and __pabitstring_len_1059 = __pabitstring_len_1059 - 64
-               in
-                 match v with
-                 | off when true ->
-                     (__pabitstring_result_1063 :=
-                        Some (return ((Uint64.of_int64 off), rest));
-                      raise Exit)
-                 | _ -> ())
-            else ();
-            __pabitstring_result_1063 := Some (Fail "read_elf64_off_le");
-            raise Exit)
-         with | Exit -> ());
-        match !__pabitstring_result_1063 with
-        | Some x -> x
-        | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 133, 2))))
-  
-let read_elf64_off_be bs rest =
-  let (__pabitstring_data_1064, __pabitstring_original_off_1067,
-       __pabitstring_original_len_1068) =
-    bs in
-  let __pabitstring_off_1065 = __pabitstring_original_off_1067
-  and __pabitstring_len_1066 = __pabitstring_original_len_1068 in
-  let __pabitstring_off_aligned_1069 = (__pabitstring_off_1065 land 7) = 0
-  in
-    (ignore __pabitstring_off_aligned_1069;
-     let __pabitstring_result_1070 = ref None
-     in
-       ((try
-           (if __pabitstring_len_1066 >= 64
-            then
-              (let v =
-                 if __pabitstring_off_aligned_1069
-                 then
-                   (let o = (__pabitstring_original_off_1067 lsr 3) + 0 in
-                    let zero = Int64.of_int 0
-                    in
-                      Bitstring.extract_fastpath_int64_be_unsigned
-                        __pabitstring_data_1064 o zero)
-                 else
-                   Bitstring.extract_int64_be_unsigned
-                     __pabitstring_data_1064 __pabitstring_off_1065
-                     __pabitstring_len_1066 64 in
-               let __pabitstring_off_1065 = __pabitstring_off_1065 + 64
-               and __pabitstring_len_1066 = __pabitstring_len_1066 - 64
-               in
-                 match v with
-                 | off when true ->
-                     (__pabitstring_result_1070 :=
-                        Some (return ((Uint64.of_int64 off), rest));
-                      raise Exit)
-                 | _ -> ())
-            else ();
-            __pabitstring_result_1070 := Some (Fail "read_elf64_off_be");
-            raise Exit)
-         with | Exit -> ());
-        match !__pabitstring_result_1070 with
-        | Some x -> x
-        | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 139, 2))))
-  
-let read_elf64_off endian bs =
-  let (cut, rest) = partition_bitstring (Big_int.big_int_of_int 64) bs
-  in
-    match endian with
-    | Little -> read_elf64_off_le cut rest
-    | Big -> read_elf64_off_be cut rest
-  
+
+let read_elf32_off_le bs0 =
+  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
+  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
+  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
+  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
+  return (little_endian_uint32 c1 c2 c3 c4, bs4)
+;;
+
+let read_elf32_off_be bs0 =
+  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
+  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
+  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
+  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
+  return (big_endian_uint32 c1 c2 c3 c4, bs4)
+;;
+
+let read_elf32_off endian bs0 =
+  match endian with
+    | Little -> read_elf32_off_le bs0
+    | Big    -> read_elf32_off_be bs0
+;;
+
+let read_elf64_off_le bs0 =
+  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
+  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
+  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
+  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
+  Byte_sequence_wrapper.read_byte bs4 >>= fun (c5, bs5) ->
+  Byte_sequence_wrapper.read_byte bs5 >>= fun (c6, bs6) ->
+  Byte_sequence_wrapper.read_byte bs6 >>= fun (c7, bs7) ->
+  Byte_sequence_wrapper.read_byte bs7 >>= fun (c8, bs8) ->
+  return (little_endian_uint64 c1 c2 c3 c4 c5 c6 c7 c8, bs8)
+;;
+
+let read_elf64_off_be bs0 =
+  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
+  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
+  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
+  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
+  Byte_sequence_wrapper.read_byte bs4 >>= fun (c5, bs5) ->
+  Byte_sequence_wrapper.read_byte bs5 >>= fun (c6, bs6) ->
+  Byte_sequence_wrapper.read_byte bs6 >>= fun (c7, bs7) ->
+  Byte_sequence_wrapper.read_byte bs7 >>= fun (c8, bs8) ->
+  return (big_endian_uint64 c1 c2 c3 c4 c5 c6 c7 c8, bs8)
+;;
+
+let read_elf64_off endian bs0 =
+  match endian with
+    | Little -> read_elf64_off_le bs0
+    | Big    -> read_elf64_off_be bs0
+;;
+
 (** ELF half word type:
   * 2 byte unsigned type on 32-bit architectures.
-  * 2 byte unsigned type on 64-bit architecutres.
+  * 2 byte unsigned type on 64-bit architectures.
   *)
-let read_elf32_half_le bs rest =
-  let (__pabitstring_data_1071, __pabitstring_original_off_1074,
-       __pabitstring_original_len_1075) =
-    bs in
-  let __pabitstring_off_1072 = __pabitstring_original_off_1074
-  and __pabitstring_len_1073 = __pabitstring_original_len_1075 in
-  let __pabitstring_off_aligned_1076 = (__pabitstring_off_1072 land 7) = 0
-  in
-    (ignore __pabitstring_off_aligned_1076;
-     let __pabitstring_result_1077 = ref None
-     in
-       ((try
-           (if __pabitstring_len_1073 >= 16
-            then
-              (let v =
-                 if __pabitstring_off_aligned_1076
-                 then
-                   (let o = (__pabitstring_original_off_1074 lsr 3) + 0
-                    in
-                      Bitstring.extract_fastpath_int16_le_unsigned
-                        __pabitstring_data_1071 o)
-                 else
-                   Bitstring.extract_int_le_unsigned __pabitstring_data_1071
-                     __pabitstring_off_1072 __pabitstring_len_1073 16 in
-               let __pabitstring_off_1072 = __pabitstring_off_1072 + 16
-               and __pabitstring_len_1073 = __pabitstring_len_1073 - 16
-               in
-                 match v with
-                 | half when true ->
-                     (__pabitstring_result_1077 :=
-                        Some (return ((Uint32.of_int half), rest));
-                      raise Exit)
-                 | _ -> ())
-            else ();
-            __pabitstring_result_1077 := Some (Fail "read_elf32_half_le");
-            raise Exit)
-         with | Exit -> ());
-        match !__pabitstring_result_1077 with
-        | Some x -> x
-        | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 157, 2))))
-  
-let read_elf32_half_be bs rest =
-  let (__pabitstring_data_1078, __pabitstring_original_off_1081,
-       __pabitstring_original_len_1082) =
-    bs in
-  let __pabitstring_off_1079 = __pabitstring_original_off_1081
-  and __pabitstring_len_1080 = __pabitstring_original_len_1082 in
-  let __pabitstring_off_aligned_1083 = (__pabitstring_off_1079 land 7) = 0
-  in
-    (ignore __pabitstring_off_aligned_1083;
-     let __pabitstring_result_1084 = ref None
-     in
-       ((try
-           (if __pabitstring_len_1080 >= 16
-            then
-              (let v =
-                 if __pabitstring_off_aligned_1083
-                 then
-                   (let o = (__pabitstring_original_off_1081 lsr 3) + 0
-                    in
-                      Bitstring.extract_fastpath_int16_be_unsigned
-                        __pabitstring_data_1078 o)
-                 else
-                   Bitstring.extract_int_be_unsigned __pabitstring_data_1078
-                     __pabitstring_off_1079 __pabitstring_len_1080 16 in
-               let __pabitstring_off_1079 = __pabitstring_off_1079 + 16
-               and __pabitstring_len_1080 = __pabitstring_len_1080 - 16
-               in
-                 match v with
-                 | half when true ->
-                     (__pabitstring_result_1084 :=
-                        Some (return ((Uint32.of_int half), rest));
-                      raise Exit)
-                 | _ -> ())
-            else ();
-            __pabitstring_result_1084 := Some (Fail "read_elf32_half_be");
-            raise Exit)
-         with | Exit -> ());
-        match !__pabitstring_result_1084 with
-        | Some x -> x
-        | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 163, 2))))
-  
-let read_elf32_half endian bs =
-  let (cut, rest) = partition_bitstring (Big_int.big_int_of_int 16) bs
-  in
-    match endian with
-    | Little -> read_elf32_half_le cut rest
-    | Big -> read_elf32_half_be cut rest
-  
-let read_elf64_half_le bs rest =
-  let (__pabitstring_data_1085, __pabitstring_original_off_1088,
-       __pabitstring_original_len_1089) =
-    bs in
-  let __pabitstring_off_1086 = __pabitstring_original_off_1088
-  and __pabitstring_len_1087 = __pabitstring_original_len_1089 in
-  let __pabitstring_off_aligned_1090 = (__pabitstring_off_1086 land 7) = 0
-  in
-    (ignore __pabitstring_off_aligned_1090;
-     let __pabitstring_result_1091 = ref None
-     in
-       ((try
-           (if __pabitstring_len_1087 >= 16
-            then
-              (let v =
-                 if __pabitstring_off_aligned_1090
-                 then
-                   (let o = (__pabitstring_original_off_1088 lsr 3) + 0
-                    in
-                      Bitstring.extract_fastpath_int16_le_unsigned
-                        __pabitstring_data_1085 o)
-                 else
-                   Bitstring.extract_int_le_unsigned __pabitstring_data_1085
-                     __pabitstring_off_1086 __pabitstring_len_1087 16 in
-               let __pabitstring_off_1086 = __pabitstring_off_1086 + 16
-               and __pabitstring_len_1087 = __pabitstring_len_1087 - 16
-               in
-                 match v with
-                 | half when true ->
-                     (__pabitstring_result_1091 :=
-                        Some (return ((Uint32.of_int half), rest));
-                      raise Exit)
-                 | _ -> ())
-            else ();
-            __pabitstring_result_1091 := Some (Fail "read_elf64_half_le");
-            raise Exit)
-         with | Exit -> ());
-        match !__pabitstring_result_1091 with
-        | Some x -> x
-        | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 176, 2))))
-  
-let read_elf64_half_be bs rest =
-  let (__pabitstring_data_1092, __pabitstring_original_off_1095,
-       __pabitstring_original_len_1096) =
-    bs in
-  let __pabitstring_off_1093 = __pabitstring_original_off_1095
-  and __pabitstring_len_1094 = __pabitstring_original_len_1096 in
-  let __pabitstring_off_aligned_1097 = (__pabitstring_off_1093 land 7) = 0
-  in
-    (ignore __pabitstring_off_aligned_1097;
-     let __pabitstring_result_1098 = ref None
-     in
-       ((try
-           (if __pabitstring_len_1094 >= 16
-            then
-              (let v =
-                 if __pabitstring_off_aligned_1097
-                 then
-                   (let o = (__pabitstring_original_off_1095 lsr 3) + 0
-                    in
-                      Bitstring.extract_fastpath_int16_be_unsigned
-                        __pabitstring_data_1092 o)
-                 else
-                   Bitstring.extract_int_be_unsigned __pabitstring_data_1092
-                     __pabitstring_off_1093 __pabitstring_len_1094 16 in
-               let __pabitstring_off_1093 = __pabitstring_off_1093 + 16
-               and __pabitstring_len_1094 = __pabitstring_len_1094 - 16
-               in
-                 match v with
-                 | half when true ->
-                     (__pabitstring_result_1098 :=
-                        Some (return ((Uint32.of_int half), rest));
-                      raise Exit)
-                 | _ -> ())
-            else ();
-            __pabitstring_result_1098 := Some (Fail "read_elf64_half_be");
-            raise Exit)
-         with | Exit -> ());
-        match !__pabitstring_result_1098 with
-        | Some x -> x
-        | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 182, 2))))
-  
-let read_elf64_half endian bs =
-  let (cut, rest) = partition_bitstring (Big_int.big_int_of_int 16) bs
-  in
-    match endian with
-    | Little -> read_elf64_half_le cut rest
-    | Big -> read_elf64_half_be cut rest
-  
+
+let read_elf32_half_le bs0 =
+  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
+  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
+  let buffer1 = Uint32.shift_left (Uint32.of_int (Char.code c2)) 8 in
+  let buffer2 = Uint32.of_int (Char.code c1) in
+  return (Uint32.logor buffer1 buffer2, bs2)
+;;
+
+let read_elf32_half_be bs0 =
+  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
+  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
+  let buffer1 = Uint32.shift_left (Uint32.of_int (Char.code c1)) 8 in
+  let buffer2 = Uint32.of_int (Char.code c2) in
+  return (Uint32.logor buffer1 buffer2, bs2)
+;;
+
+let read_elf32_half endian bs0 =
+  match endian with
+    | Little -> read_elf32_half_le bs0
+    | Big    -> read_elf32_half_be bs0
+;;
+
+let read_elf64_half_le bs0 =
+  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
+  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
+  let buffer1 = Uint32.shift_left (Uint32.of_int (Char.code c2)) 8 in
+  let buffer2 = Uint32.of_int (Char.code c1) in
+  return (Uint32.logor buffer1 buffer2, bs2)
+;;
+
+let read_elf64_half_be bs0 =
+  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
+  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
+  let buffer1 = Uint32.shift_left (Uint32.of_int (Char.code c1)) 8 in
+  let buffer2 = Uint32.of_int (Char.code c2) in
+  return (Uint32.logor buffer1 buffer2, bs2)
+;;
+
+let read_elf64_half endian bs0 =
+  match endian with
+    | Little -> read_elf64_half_le bs0
+    | Big    -> read_elf64_half_be bs0
+;;
+
 (** ELF word type:
   * 4 byte unsigned type on 32-bit architectures.
-  * 4 byte unsigned type on 32-bit architectures.
+  * 4 byte unsigned type on 64-bit architectures.
   *)
-let read_elf32_word_le bs rest =
-  let (__pabitstring_data_1099, __pabitstring_original_off_1102,
-       __pabitstring_original_len_1103) =
-    bs in
-  let __pabitstring_off_1100 = __pabitstring_original_off_1102
-  and __pabitstring_len_1101 = __pabitstring_original_len_1103 in
-  let __pabitstring_off_aligned_1104 = (__pabitstring_off_1100 land 7) = 0
-  in
-    (ignore __pabitstring_off_aligned_1104;
-     let __pabitstring_result_1105 = ref None
-     in
-       ((try
-           (if __pabitstring_len_1101 >= 32
-            then
-              (let v =
-                 if __pabitstring_off_aligned_1104
-                 then
-                   (let o = (__pabitstring_original_off_1102 lsr 3) + 0 in
-                    let zero = Int32.of_int 0
-                    in
-                      Bitstring.extract_fastpath_int32_le_unsigned
-                        __pabitstring_data_1099 o zero)
-                 else
-                   Bitstring.extract_int32_le_unsigned
-                     __pabitstring_data_1099 __pabitstring_off_1100
-                     __pabitstring_len_1101 32 in
-               let __pabitstring_off_1100 = __pabitstring_off_1100 + 32
-               and __pabitstring_len_1101 = __pabitstring_len_1101 - 32
-               in
-                 match v with
-                 | word when true ->
-                     (__pabitstring_result_1105 :=
-                        Some (return ((Uint32.of_int32 word), rest));
-                      raise Exit)
-                 | _ -> ())
-            else ();
-            __pabitstring_result_1105 := Some (Fail "read_elf32_word_le");
-            raise Exit)
-         with | Exit -> ());
-        match !__pabitstring_result_1105 with
-        | Some x -> x
-        | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 200, 2))))
-  
-let read_elf32_word_be bs rest =
-  let (__pabitstring_data_1106, __pabitstring_original_off_1109,
-       __pabitstring_original_len_1110) =
-    bs in
-  let __pabitstring_off_1107 = __pabitstring_original_off_1109
-  and __pabitstring_len_1108 = __pabitstring_original_len_1110 in
-  let __pabitstring_off_aligned_1111 = (__pabitstring_off_1107 land 7) = 0
-  in
-    (ignore __pabitstring_off_aligned_1111;
-     let __pabitstring_result_1112 = ref None
-     in
-       ((try
-           (if __pabitstring_len_1108 >= 32
-            then
-              (let v =
-                 if __pabitstring_off_aligned_1111
-                 then
-                   (let o = (__pabitstring_original_off_1109 lsr 3) + 0 in
-                    let zero = Int32.of_int 0
-                    in
-                      Bitstring.extract_fastpath_int32_be_unsigned
-                        __pabitstring_data_1106 o zero)
-                 else
-                   Bitstring.extract_int32_be_unsigned
-                     __pabitstring_data_1106 __pabitstring_off_1107
-                     __pabitstring_len_1108 32 in
-               let __pabitstring_off_1107 = __pabitstring_off_1107 + 32
-               and __pabitstring_len_1108 = __pabitstring_len_1108 - 32
-               in
-                 match v with
-                 | word when true ->
-                     (__pabitstring_result_1112 :=
-                        Some (return ((Uint32.of_int32 word), rest));
-                      raise Exit)
-                 | _ -> ())
-            else ();
-            __pabitstring_result_1112 := Some (Fail "read_elf32_word_be");
-            raise Exit)
-         with | Exit -> ());
-        match !__pabitstring_result_1112 with
-        | Some x -> x
-        | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 206, 2))))
-  
-let read_elf32_word endian bs =
-  let (cut, rest) = partition_bitstring (Big_int.big_int_of_int 32) bs
-  in
-    match endian with
-    | Little -> read_elf32_word_le cut rest
-    | Big -> read_elf32_word_be cut rest
-  
-let read_elf64_word_le bs rest =
-  let (__pabitstring_data_1113, __pabitstring_original_off_1116,
-       __pabitstring_original_len_1117) =
-    bs in
-  let __pabitstring_off_1114 = __pabitstring_original_off_1116
-  and __pabitstring_len_1115 = __pabitstring_original_len_1117 in
-  let __pabitstring_off_aligned_1118 = (__pabitstring_off_1114 land 7) = 0
-  in
-    (ignore __pabitstring_off_aligned_1118;
-     let __pabitstring_result_1119 = ref None
-     in
-       ((try
-           (if __pabitstring_len_1115 >= 32
-            then
-              (let v =
-                 if __pabitstring_off_aligned_1118
-                 then
-                   (let o = (__pabitstring_original_off_1116 lsr 3) + 0 in
-                    let zero = Int32.of_int 0
-                    in
-                      Bitstring.extract_fastpath_int32_le_unsigned
-                        __pabitstring_data_1113 o zero)
-                 else
-                   Bitstring.extract_int32_le_unsigned
-                     __pabitstring_data_1113 __pabitstring_off_1114
-                     __pabitstring_len_1115 32 in
-               let __pabitstring_off_1114 = __pabitstring_off_1114 + 32
-               and __pabitstring_len_1115 = __pabitstring_len_1115 - 32
-               in
-                 match v with
-                 | word when true ->
-                     (__pabitstring_result_1119 :=
-                        Some (return ((Uint32.of_int32 word), rest));
-                      raise Exit)
-                 | _ -> ())
-            else ();
-            __pabitstring_result_1119 := Some (Fail "read_elf64_word_le");
-            raise Exit)
-         with | Exit -> ());
-        match !__pabitstring_result_1119 with
-        | Some x -> x
-        | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 219, 2))))
-  
-let read_elf64_word_be bs rest =
-  let (__pabitstring_data_1120, __pabitstring_original_off_1123,
-       __pabitstring_original_len_1124) =
-    bs in
-  let __pabitstring_off_1121 = __pabitstring_original_off_1123
-  and __pabitstring_len_1122 = __pabitstring_original_len_1124 in
-  let __pabitstring_off_aligned_1125 = (__pabitstring_off_1121 land 7) = 0
-  in
-    (ignore __pabitstring_off_aligned_1125;
-     let __pabitstring_result_1126 = ref None
-     in
-       ((try
-           (if __pabitstring_len_1122 >= 32
-            then
-              (let v =
-                 if __pabitstring_off_aligned_1125
-                 then
-                   (let o = (__pabitstring_original_off_1123 lsr 3) + 0 in
-                    let zero = Int32.of_int 0
-                    in
-                      Bitstring.extract_fastpath_int32_be_unsigned
-                        __pabitstring_data_1120 o zero)
-                 else
-                   Bitstring.extract_int32_be_unsigned
-                     __pabitstring_data_1120 __pabitstring_off_1121
-                     __pabitstring_len_1122 32 in
-               let __pabitstring_off_1121 = __pabitstring_off_1121 + 32
-               and __pabitstring_len_1122 = __pabitstring_len_1122 - 32
-               in
-                 match v with
-                 | word when true ->
-                     (__pabitstring_result_1126 :=
-                        Some (return ((Uint32.of_int32 word), rest));
-                      raise Exit)
-                 | _ -> ())
-            else ();
-            __pabitstring_result_1126 := Some (Fail "read_elf64_word_be");
-            raise Exit)
-         with | Exit -> ());
-        match !__pabitstring_result_1126 with
-        | Some x -> x
-        | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 225, 2))))
-  
-let read_elf64_word endian bs =
-  let (cut, rest) = partition_bitstring (Big_int.big_int_of_int 32) bs
-  in
-    match endian with
-    | Little -> read_elf64_word_le cut rest
-    | Big -> read_elf64_word_be cut rest
-  
+
+let read_elf32_word_le bs0 =
+  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
+  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
+  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
+  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
+  return (little_endian_uint32 c1 c2 c3 c4, bs4)
+;;
+
+let read_elf32_word_be bs0 =
+  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
+  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
+  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
+  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
+  return (big_endian_uint32 c1 c2 c3 c4, bs4)
+;;
+
+let read_elf32_word endian bs0 =
+  match endian with
+    | Little -> read_elf32_word_le bs0
+    | Big    -> read_elf32_word_be bs0
+;;
+
+let read_elf64_word_le bs0 =
+  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
+  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
+  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
+  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
+  return (little_endian_uint32 c1 c2 c3 c4, bs4)
+;;
+
+let read_elf64_word_be bs0 =
+  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
+  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
+  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
+  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
+  return (big_endian_uint32 c1 c2 c3 c4, bs4)
+;;
+
+let read_elf64_word endian bs0 =
+  match endian with
+    | Little -> read_elf64_word_le bs0
+    | Big    -> read_elf64_word_be bs0
+;;
+
 (** ELF signed word type:
-  * 4 byte signed type on 32-bit architectures
-  * 4 byte signed type on 64-bit architectures
+  * 4 byte signed type on 32-bit architectures.
+  * 4 byte signed type on 64-bit architectures.
   *)
-let read_elf32_sword_le bs rest =
-  let (__pabitstring_data_1127, __pabitstring_original_off_1130,
-       __pabitstring_original_len_1131) =
-    bs in
-  let __pabitstring_off_1128 = __pabitstring_original_off_1130
-  and __pabitstring_len_1129 = __pabitstring_original_len_1131 in
-  let __pabitstring_off_aligned_1132 = (__pabitstring_off_1128 land 7) = 0
-  in
-    (ignore __pabitstring_off_aligned_1132;
-     let __pabitstring_result_1133 = ref None
-     in
-       ((try
-           (if __pabitstring_len_1129 >= 32
-            then
-              (let v =
-                 if __pabitstring_off_aligned_1132
-                 then
-                   (let o = (__pabitstring_original_off_1130 lsr 3) + 0 in
-                    let zero = Int32.of_int 0
-                    in
-                      Bitstring.extract_fastpath_int32_le_unsigned
-                        __pabitstring_data_1127 o zero)
-                 else
-                   Bitstring.extract_int32_le_unsigned
-                     __pabitstring_data_1127 __pabitstring_off_1128
-                     __pabitstring_len_1129 32 in
-               let __pabitstring_off_1128 = __pabitstring_off_1128 + 32
-               and __pabitstring_len_1129 = __pabitstring_len_1129 - 32
-               in
-                 match v with
-                 | word when true ->
-                     (__pabitstring_result_1133 := Some (return (word, rest));
-                      raise Exit)
-                 | _ -> ())
-            else ();
-            __pabitstring_result_1133 := Some (Fail "read_elf32_sword_le");
-            raise Exit)
-         with | Exit -> ());
-        match !__pabitstring_result_1133 with
-        | Some x -> x
-        | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 243, 2))))
-  
-let read_elf32_sword_be bs rest =
-  let (__pabitstring_data_1134, __pabitstring_original_off_1137,
-       __pabitstring_original_len_1138) =
-    bs in
-  let __pabitstring_off_1135 = __pabitstring_original_off_1137
-  and __pabitstring_len_1136 = __pabitstring_original_len_1138 in
-  let __pabitstring_off_aligned_1139 = (__pabitstring_off_1135 land 7) = 0
-  in
-    (ignore __pabitstring_off_aligned_1139;
-     let __pabitstring_result_1140 = ref None
-     in
-       ((try
-           (if __pabitstring_len_1136 >= 32
-            then
-              (let v =
-                 if __pabitstring_off_aligned_1139
-                 then
-                   (let o = (__pabitstring_original_off_1137 lsr 3) + 0 in
-                    let zero = Int32.of_int 0
-                    in
-                      Bitstring.extract_fastpath_int32_be_unsigned
-                        __pabitstring_data_1134 o zero)
-                 else
-                   Bitstring.extract_int32_be_unsigned
-                     __pabitstring_data_1134 __pabitstring_off_1135
-                     __pabitstring_len_1136 32 in
-               let __pabitstring_off_1135 = __pabitstring_off_1135 + 32
-               and __pabitstring_len_1136 = __pabitstring_len_1136 - 32
-               in
-                 match v with
-                 | word when true ->
-                     (__pabitstring_result_1140 := Some (return (word, rest));
-                      raise Exit)
-                 | _ -> ())
-            else ();
-            __pabitstring_result_1140 := Some (Fail "read_elf32_sword_be");
-            raise Exit)
-         with | Exit -> ());
-        match !__pabitstring_result_1140 with
-        | Some x -> x
-        | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 249, 2))))
-  
-let read_elf32_sword endian bs =
-  let (cut, rest) = partition_bitstring (Big_int.big_int_of_int 32) bs
-  in
-    match endian with
-    | Little -> read_elf32_sword_le cut rest
-    | Big -> read_elf32_sword_be cut rest
-  
-let read_elf64_sword_le bs rest =
-  let (__pabitstring_data_1141, __pabitstring_original_off_1144,
-       __pabitstring_original_len_1145) =
-    bs in
-  let __pabitstring_off_1142 = __pabitstring_original_off_1144
-  and __pabitstring_len_1143 = __pabitstring_original_len_1145 in
-  let __pabitstring_off_aligned_1146 = (__pabitstring_off_1142 land 7) = 0
-  in
-    (ignore __pabitstring_off_aligned_1146;
-     let __pabitstring_result_1147 = ref None
-     in
-       ((try
-           (if __pabitstring_len_1143 >= 32
-            then
-              (let v =
-                 if __pabitstring_off_aligned_1146
-                 then
-                   (let o = (__pabitstring_original_off_1144 lsr 3) + 0 in
-                    let zero = Int32.of_int 0
-                    in
-                      Bitstring.extract_fastpath_int32_le_unsigned
-                        __pabitstring_data_1141 o zero)
-                 else
-                   Bitstring.extract_int32_le_unsigned
-                     __pabitstring_data_1141 __pabitstring_off_1142
-                     __pabitstring_len_1143 32 in
-               let __pabitstring_off_1142 = __pabitstring_off_1142 + 32
-               and __pabitstring_len_1143 = __pabitstring_len_1143 - 32
-               in
-                 match v with
-                 | word when true ->
-                     (__pabitstring_result_1147 := Some (return (word, rest));
-                      raise Exit)
-                 | _ -> ())
-            else ();
-            __pabitstring_result_1147 := Some (Fail "read_elf64_sword_le");
-            raise Exit)
-         with | Exit -> ());
-        match !__pabitstring_result_1147 with
-        | Some x -> x
-        | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 262, 2))))
-  
-let read_elf64_sword_be bs rest =
-  let (__pabitstring_data_1148, __pabitstring_original_off_1151,
-       __pabitstring_original_len_1152) =
-    bs in
-  let __pabitstring_off_1149 = __pabitstring_original_off_1151
-  and __pabitstring_len_1150 = __pabitstring_original_len_1152 in
-  let __pabitstring_off_aligned_1153 = (__pabitstring_off_1149 land 7) = 0
-  in
-    (ignore __pabitstring_off_aligned_1153;
-     let __pabitstring_result_1154 = ref None
-     in
-       ((try
-           (if __pabitstring_len_1150 >= 32
-            then
-              (let v =
-                 if __pabitstring_off_aligned_1153
-                 then
-                   (let o = (__pabitstring_original_off_1151 lsr 3) + 0 in
-                    let zero = Int32.of_int 0
-                    in
-                      Bitstring.extract_fastpath_int32_be_unsigned
-                        __pabitstring_data_1148 o zero)
-                 else
-                   Bitstring.extract_int32_be_unsigned
-                     __pabitstring_data_1148 __pabitstring_off_1149
-                     __pabitstring_len_1150 32 in
-               let __pabitstring_off_1149 = __pabitstring_off_1149 + 32
-               and __pabitstring_len_1150 = __pabitstring_len_1150 - 32
-               in
-                 match v with
-                 | word when true ->
-                     (__pabitstring_result_1154 := Some (return (word, rest));
-                      raise Exit)
-                 | _ -> ())
-            else ();
-            __pabitstring_result_1154 := Some (Fail "read_elf64_sword_be");
-            raise Exit)
-         with | Exit -> ());
-        match !__pabitstring_result_1154 with
-        | Some x -> x
-        | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 268, 2))))
-  
-let read_elf64_sword endian bs =
-  let (cut, rest) = partition_bitstring (Big_int.big_int_of_int 32) bs
-  in
-    match endian with
-    | Little -> read_elf64_sword_le cut rest
-    | Big -> read_elf64_sword_be cut rest
-  
+
+let read_elf32_sword_le bs0 =
+  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
+  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
+  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
+  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
+  return (little_endian_int32 c1 c2 c3 c4, bs4)
+;;
+
+let read_elf32_sword_be bs0 =
+  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
+  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
+  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
+  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
+  return (big_endian_int32 c1 c2 c3 c4, bs4)
+;;
+
+let read_elf32_sword endian bs0 =
+  match endian with
+    | Little -> read_elf32_sword_le bs0
+    | Big    -> read_elf32_sword_be bs0
+;;
+
+let read_elf64_sword_le bs0 =
+  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
+  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
+  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
+  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
+  return (little_endian_int32 c1 c2 c3 c4, bs4)
+;;
+
+let read_elf64_sword_be bs0 =
+  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
+  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
+  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
+  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
+  return (big_endian_int32 c1 c2 c3 c4, bs4)
+;;
+
+let read_elf64_sword endian bs0 =
+  match endian with
+    | Little -> read_elf64_sword_le bs0
+    | Big    -> read_elf64_sword_be bs0
+;;
+
 (** ELF extra wide word type:
   * 8 byte unsigned type on 64-bit architectures.
   *)
-let read_elf64_xword_le bs rest =
-  let (__pabitstring_data_1155, __pabitstring_original_off_1158,
-       __pabitstring_original_len_1159) =
-    bs in
-  let __pabitstring_off_1156 = __pabitstring_original_off_1158
-  and __pabitstring_len_1157 = __pabitstring_original_len_1159 in
-  let __pabitstring_off_aligned_1160 = (__pabitstring_off_1156 land 7) = 0
-  in
-    (ignore __pabitstring_off_aligned_1160;
-     let __pabitstring_result_1161 = ref None
-     in
-       ((try
-           (if __pabitstring_len_1157 >= 64
-            then
-              (let v =
-                 if __pabitstring_off_aligned_1160
-                 then
-                   (let o = (__pabitstring_original_off_1158 lsr 3) + 0 in
-                    let zero = Int64.of_int 0
-                    in
-                      Bitstring.extract_fastpath_int64_le_unsigned
-                        __pabitstring_data_1155 o zero)
-                 else
-                   Bitstring.extract_int64_le_unsigned
-                     __pabitstring_data_1155 __pabitstring_off_1156
-                     __pabitstring_len_1157 64 in
-               let __pabitstring_off_1156 = __pabitstring_off_1156 + 64
-               and __pabitstring_len_1157 = __pabitstring_len_1157 - 64
-               in
-                 match v with
-                 | addr when true ->
-                     (__pabitstring_result_1161 :=
-                        Some (return ((Uint64.of_int64 addr), rest));
-                      raise Exit)
-                 | _ -> ())
-            else ();
-            __pabitstring_result_1161 := Some (Fail "read_elf64_xword_le");
-            raise Exit)
-         with | Exit -> ());
-        match !__pabitstring_result_1161 with
-        | Some x -> x
-        | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 285, 2))))
-  
-let read_elf64_xword_be bs rest =
-  let (__pabitstring_data_1162, __pabitstring_original_off_1165,
-       __pabitstring_original_len_1166) =
-    bs in
-  let __pabitstring_off_1163 = __pabitstring_original_off_1165
-  and __pabitstring_len_1164 = __pabitstring_original_len_1166 in
-  let __pabitstring_off_aligned_1167 = (__pabitstring_off_1163 land 7) = 0
-  in
-    (ignore __pabitstring_off_aligned_1167;
-     let __pabitstring_result_1168 = ref None
-     in
-       ((try
-           (if __pabitstring_len_1164 >= 64
-            then
-              (let v =
-                 if __pabitstring_off_aligned_1167
-                 then
-                   (let o = (__pabitstring_original_off_1165 lsr 3) + 0 in
-                    let zero = Int64.of_int 0
-                    in
-                      Bitstring.extract_fastpath_int64_be_unsigned
-                        __pabitstring_data_1162 o zero)
-                 else
-                   Bitstring.extract_int64_be_unsigned
-                     __pabitstring_data_1162 __pabitstring_off_1163
-                     __pabitstring_len_1164 64 in
-               let __pabitstring_off_1163 = __pabitstring_off_1163 + 64
-               and __pabitstring_len_1164 = __pabitstring_len_1164 - 64
-               in
-                 match v with
-                 | addr when true ->
-                     (__pabitstring_result_1168 :=
-                        Some (return ((Uint64.of_int64 addr), rest));
-                      raise Exit)
-                 | _ -> ())
-            else ();
-            __pabitstring_result_1168 := Some (Fail "read_elf64_xword_be");
-            raise Exit)
-         with | Exit -> ());
-        match !__pabitstring_result_1168 with
-        | Some x -> x
-        | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 291, 2))))
-  
-let read_elf64_xword endian bs =
-  let (cut, rest) = partition_bitstring (Big_int.big_int_of_int 64) bs
-  in
-    match endian with
-    | Little -> read_elf64_xword_le cut rest
-    | Big -> read_elf64_xword_be cut rest
-  
+
+let read_elf64_xword_le bs0 =
+  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
+  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
+  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
+  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
+  Byte_sequence_wrapper.read_byte bs4 >>= fun (c5, bs5) ->
+  Byte_sequence_wrapper.read_byte bs5 >>= fun (c6, bs6) ->
+  Byte_sequence_wrapper.read_byte bs6 >>= fun (c7, bs7) ->
+  Byte_sequence_wrapper.read_byte bs7 >>= fun (c8, bs8) ->
+  return (little_endian_uint64 c1 c2 c3 c4 c5 c6 c7 c8, bs8)
+;;
+
+let read_elf64_xword_be bs0 =
+  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
+  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
+  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
+  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
+  Byte_sequence_wrapper.read_byte bs4 >>= fun (c5, bs5) ->
+  Byte_sequence_wrapper.read_byte bs5 >>= fun (c6, bs6) ->
+  Byte_sequence_wrapper.read_byte bs6 >>= fun (c7, bs7) ->
+  Byte_sequence_wrapper.read_byte bs7 >>= fun (c8, bs8) ->
+  return (big_endian_uint64 c1 c2 c3 c4 c5 c6 c7 c8, bs8)
+;;
+
+let read_elf64_xword endian bs0 =
+  match endian with
+    | Little -> read_elf64_xword_le bs0
+    | Big    -> read_elf64_xword_be bs0
+;;
+
 (** ELF signed extra wide word type:
   * 8 byte signed type on 64-bit architectures.
   *)
-let read_elf64_sxword_le bs rest =
-  let (__pabitstring_data_1169, __pabitstring_original_off_1172,
-       __pabitstring_original_len_1173) =
-    bs in
-  let __pabitstring_off_1170 = __pabitstring_original_off_1172
-  and __pabitstring_len_1171 = __pabitstring_original_len_1173 in
-  let __pabitstring_off_aligned_1174 = (__pabitstring_off_1170 land 7) = 0
-  in
-    (ignore __pabitstring_off_aligned_1174;
-     let __pabitstring_result_1175 = ref None
-     in
-       ((try
-           (if __pabitstring_len_1171 >= 64
-            then
-              (let v =
-                 if __pabitstring_off_aligned_1174
-                 then
-                   (let o = (__pabitstring_original_off_1172 lsr 3) + 0 in
-                    let zero = Int64.of_int 0
-                    in
-                      Bitstring.extract_fastpath_int64_le_unsigned
-                        __pabitstring_data_1169 o zero)
-                 else
-                   Bitstring.extract_int64_le_unsigned
-                     __pabitstring_data_1169 __pabitstring_off_1170
-                     __pabitstring_len_1171 64 in
-               let __pabitstring_off_1170 = __pabitstring_off_1170 + 64
-               and __pabitstring_len_1171 = __pabitstring_len_1171 - 64
-               in
-                 match v with
-                 | addr when true ->
-                     (__pabitstring_result_1175 := Some (return (addr, rest));
-                      raise Exit)
-                 | _ -> ())
-            else ();
-            __pabitstring_result_1175 := Some (Fail "read_elf64_sxword_le");
-            raise Exit)
-         with | Exit -> ());
-        match !__pabitstring_result_1175 with
-        | Some x -> x
-        | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 308, 2))))
-  
-let read_elf64_sxword_be bs rest =
-  let (__pabitstring_data_1176, __pabitstring_original_off_1179,
-       __pabitstring_original_len_1180) =
-    bs in
-  let __pabitstring_off_1177 = __pabitstring_original_off_1179
-  and __pabitstring_len_1178 = __pabitstring_original_len_1180 in
-  let __pabitstring_off_aligned_1181 = (__pabitstring_off_1177 land 7) = 0
-  in
-    (ignore __pabitstring_off_aligned_1181;
-     let __pabitstring_result_1182 = ref None
-     in
-       ((try
-           (if __pabitstring_len_1178 >= 64
-            then
-              (let v =
-                 if __pabitstring_off_aligned_1181
-                 then
-                   (let o = (__pabitstring_original_off_1179 lsr 3) + 0 in
-                    let zero = Int64.of_int 0
-                    in
-                      Bitstring.extract_fastpath_int64_be_unsigned
-                        __pabitstring_data_1176 o zero)
-                 else
-                   Bitstring.extract_int64_be_unsigned
-                     __pabitstring_data_1176 __pabitstring_off_1177
-                     __pabitstring_len_1178 64 in
-               let __pabitstring_off_1177 = __pabitstring_off_1177 + 64
-               and __pabitstring_len_1178 = __pabitstring_len_1178 - 64
-               in
-                 match v with
-                 | addr when true ->
-                     (__pabitstring_result_1182 := Some (return (addr, rest));
-                      raise Exit)
-                 | _ -> ())
-            else ();
-            __pabitstring_result_1182 := Some (Fail "read_elf64_sxword_be");
-            raise Exit)
-         with | Exit -> ());
-        match !__pabitstring_result_1182 with
-        | Some x -> x
-        | None ->
-            raise (Match_failure ("ml_bindings_camlp4_sugared.ml", 314, 2))))
-  
-let read_elf64_sxword endian bs =
-  let (cut, rest) = partition_bitstring (Big_int.big_int_of_int 64) bs
-  in
-    match endian with
-    | Little -> read_elf64_sxword_le cut rest
-    | Big -> read_elf64_sxword_be cut rest
-  
+
+let read_elf64_sxword_le bs0 =
+  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
+  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
+  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
+  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
+  Byte_sequence_wrapper.read_byte bs4 >>= fun (c5, bs5) ->
+  Byte_sequence_wrapper.read_byte bs5 >>= fun (c6, bs6) ->
+  Byte_sequence_wrapper.read_byte bs6 >>= fun (c7, bs7) ->
+  Byte_sequence_wrapper.read_byte bs7 >>= fun (c8, bs8) ->
+  return (little_endian_int64 c1 c2 c3 c4 c5 c6 c7 c8, bs7)
+;;
+
+let read_elf64_sxword_be bs0 =
+  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
+  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
+  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
+  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
+  Byte_sequence_wrapper.read_byte bs4 >>= fun (c5, bs5) ->
+  Byte_sequence_wrapper.read_byte bs5 >>= fun (c6, bs6) ->
+  Byte_sequence_wrapper.read_byte bs6 >>= fun (c7, bs7) ->
+  Byte_sequence_wrapper.read_byte bs7 >>= fun (c8, bs8) ->
+  return (big_endian_int64 c1 c2 c3 c4 c5 c6 c7 c8, bs7)
+;;
+
+let read_elf64_sxword endian bs0 =
+  match endian with
+    | Little -> read_elf64_sxword_le bs0
+    | Big    -> read_elf64_sxword_be bs0
+;;
+
 (** Misc. string operations. *)
+
 let split_string_on_char strings c =
-  let enum = BatString.enum strings in
-  let groups = BatEnum.group (fun char -> char <> c) enum in
-  let enums = BatEnum.map BatString.of_enum groups in BatList.of_enum enums
-  
+  let enum    = BatString.enum strings in
+  let groups  = BatEnum.group (fun char -> char <> c) enum in
+  let enums   = BatEnum.map BatString.of_enum groups in
+  	BatList.of_enum enums
+;;
+
 let string_suffix index str =
-  if
-    (Big_int.lt_big_int index (Big_int.big_int_of_int 0)) ||
-      (Big_int.gt_big_int index (Big_int.big_int_of_int (String.length str)))
-  then None
+  if Big_int.lt_big_int index (Big_int.big_int_of_int 0) ||
+    (Big_int.gt_big_int index (Big_int.big_int_of_int (String.length str))) then
+    None
   else
-    (try
-       if Big_int.is_int_big_int index
-       then
-         Some
-           (String.sub str (Big_int.int_of_big_int index)
-              ((String.length str) - (Big_int.int_of_big_int index)))
-       else failwith "string_suffix: index too large"
-     with | _ -> None)
-  
+    try
+      if Big_int.is_int_big_int index then
+        Some (String.sub str (Big_int.int_of_big_int index)
+          (String.length str - (Big_int.int_of_big_int index)))
+      else
+        failwith "string_suffix: index too large"
+    with
+    | _ -> None
+;;
+
 let natural_of_unsigned_char u =
   Big_int.big_int_of_string (Uint32.to_string u)
-  
-let natural_of_elf32_half u = Big_int.big_int_of_string (Uint32.to_string u)
-  
-let natural_of_elf64_half u = Big_int.big_int_of_string (Uint32.to_string u)
-  
-let natural_of_elf32_word u = Big_int.big_int_of_string (Uint32.to_string u)
-  
-let natural_of_elf64_word u = Big_int.big_int_of_string (Uint32.to_string u)
-  
-let natural_of_elf32_off u = Big_int.big_int_of_string (Uint32.to_string u)
-  
-let natural_of_elf64_off u = Big_int.big_int_of_string (Uint64.to_string u)
-  
-let natural_of_elf32_addr u = Big_int.big_int_of_string (Uint32.to_string u)
-  
-let natural_of_elf64_addr u = Big_int.big_int_of_string (Uint64.to_string u)
-  
-let natural_of_elf64_xword u = Big_int.big_int_of_string (Uint64.to_string u)
-  
+;;
+
+let natural_of_elf32_half u =
+  Big_int.big_int_of_string (Uint32.to_string u)
+;;
+
+let natural_of_elf64_half u =
+  Big_int.big_int_of_string (Uint32.to_string u)
+;;
+
+let natural_of_elf32_word u =
+  Big_int.big_int_of_string (Uint32.to_string u)
+;;
+
+let natural_of_elf64_word u =
+  Big_int.big_int_of_string (Uint32.to_string u)
+;;
+
+let natural_of_elf32_off u =
+  Big_int.big_int_of_string (Uint32.to_string u)
+;;
+
+let natural_of_elf64_off u =
+  Big_int.big_int_of_string (Uint64.to_string u)
+;;
+
+let natural_of_elf32_addr u =
+  Big_int.big_int_of_string (Uint32.to_string u)
+;;
+
+let natural_of_elf64_addr u =
+  Big_int.big_int_of_string (Uint64.to_string u)
+;;
+
+let natural_of_elf64_xword u =
+  Big_int.big_int_of_string (Uint64.to_string u)
+;;
+
 let rec list_index_big_int index xs =
   match xs with
-  | [] -> None
-  | x :: xs ->
-      if Big_int.eq_big_int index Big_int.zero_big_int
-      then Some x
+    | []    -> None
+    | x::xs ->
+      if Big_int.eq_big_int index Big_int.zero_big_int then
+        Some x
       else
-        list_index_big_int
-          (Big_int.sub_big_int index (Big_int.big_int_of_int 1)) xs
-  
-
+        list_index_big_int (Big_int.sub_big_int index (Big_int.big_int_of_int 1)) xs
+;;
