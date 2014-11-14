@@ -7,32 +7,26 @@
 dummy: all
 
 lem-model:
-	../../lem/lem -ocaml -only_changed_output missing_pervasives.lem show.lem endianness.lem default_printing.lem bitstring.lem elf_types.lem elf_interpreted_segment.lem elf_symbol_table.lem elf_header.lem elf_file1.lem elf_program_header_table.lem elf_executable_file2.lem elf_section_header_table.lem elf_executable_file3.lem string_table.lem elf_linking_file2.lem elf_linking_file3.lem elf_relocation.lem sail_interface.lem main_elf.lem
+	../../lem/lem -ocaml -only_changed_output missing_pervasives.lem show.lem endianness.lem default_printing.lem byte_sequence.lem elf_types.lem elf_interpreted_segment.lem elf_symbol_table.lem elf_header.lem elf_file1.lem elf_program_header_table.lem elf_executable_file2.lem elf_section_header_table.lem elf_executable_file3.lem string_table.lem elf_linking_file2.lem elf_linking_file3.lem elf_relocation.lem sail_interface.lem main_elf.lem
 
 clean:
-	rm -rf missing_pervasives.ml show.ml endianness.ml bitstring_local.ml default_printing.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml elf_section_header_table.ml elf_executable_file3.ml string_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file5.ml elf_linking_file2.ml elf_linking_file3.ml elf_relocation.ml elf_symbol_table.ml sail_interface.ml main_elf.ml
+	rm -rf missing_pervasives.ml show.ml endianness.ml byte_sequence.ml default_printing.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml elf_section_header_table.ml elf_executable_file3.ml string_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file5.ml elf_linking_file2.ml elf_linking_file3.ml elf_relocation.ml elf_symbol_table.ml sail_interface.ml main_elf.ml
 	make -C src_elf_libraries clean
 	rm -rf elf_section_header.ml elf_symbol_table.ml
 	rm -rf *~
 	rm -rf *.cmi *.cmo
 
-camlp4:
-	camlp4 '-I' '/home/dpm/.opam/4.01.0/lib/ocaml/camlp4' '-I' '/home/dpm/.opam/4.01.0/lib/bitstring' '-parser' 'o' '-parser' 'op' '-printer' 'p' 'unix.cma' 'bitstring.cma' 'bitstring_persistent.cma' 'pa_bitstring.cmo' pa_o.cmo pr_o.cmo -oml_bindings.ml 'ml_bindings_camlp4_sugared.ml'
-
-
-
 ocaml:
 	ocamlfind ocamlc \
 -I libraries/batteries/_build/src \
--I libraries/bitstring \
 -I libraries/uint/_build/lib  \
 -I ../../lem/ocaml-lib/_build/ \
-unix.cma nums.cma  batteries.cma uint.cma bitstring.cma nat_num.cmo \
+unix.cma nums.cma  batteries.cma uint.cma nat_num.cmo \
 lem.cmo lem_function.cmo lem_list.cmo \
 missing_pervasives.ml \
-show.ml endianness.ml error.ml ml_bindings.ml default_printing.ml bitstring_local.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml string_table.ml elf_section_header_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file3.ml elf_linking_file2.ml elf_linking_file3.ml elf_relocation.ml sail_interface.ml main_elf.ml \
--dllpath libraries/uint/_build/lib -dllpath libraries/bitstring \
--package bitstring -package uint -package batteries
+show.ml endianness.ml error.ml ml_bindings.ml default_printing.ml byte_sequence.ml byte_sequence_wrapper.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml string_table.ml elf_section_header_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file3.ml elf_linking_file2.ml elf_linking_file3.ml elf_relocation.ml sail_interface.ml main_elf.ml \
+-dllpath libraries/uint/_build/lib \
+-package uint -package batteries
 
 
 
@@ -46,10 +40,8 @@ show.ml endianness.ml error.ml ml_bindings.ml default_printing.ml bitstring_loca
 
 make_elf_libraries:
 	-chmod u+w src_elf_libraries/batteries
-	-chmod u+w src_elf_libraries/bitstring
 	-chmod u+w src_elf_libraries/uint
 	rm -rf src_elf_libraries/batteries
-	rm -rf src_elf_libraries/bitstring
 	rm -rf src_elf_libraries/uint
 	$(MAKE) -C src_elf_libraries all
 
@@ -63,25 +55,17 @@ ocaml_with_ocamlbuild:
   -X src_elf_libraries \
   -cflag -g \
   -lflags 'unix.cma nums.cma' \
-  -cflags '-I ../src_elf_libraries/bitstring' \
-  -lflags '-I ../src_elf_libraries/bitstring bitstring.cma' \
   -cflags '-I ../src_elf_libraries/uint/_build/lib' \
   -lflags '-I ../src_elf_libraries/uint/_build/lib uint.cma' \
   -cflags '-I ../src_elf_libraries/batteries/_build/src'   \
   -lflags '-I ../src_elf_libraries/batteries/_build/src batteries.cma'   \
-  -cflags -dllpath,../src_elf_libraries/uint/_build/lib \
-  -cflags -dllpath,../src_elf_libraries/bitstring \
+  -cflags -dllpath,src_elf_libraries/uint/_build/lib \
+  -lflags -dllpath,src_elf_libraries/uint/_build/lib \
   main_elf.byte 
 
 clean_with_ocamlbuild:
 	ocamlbuild -classic-display -clean
 
-
-stacktrace:
-	export OCAMLRUNPARAM=b
-	ocamlfind ocamlc -package bitstring -package batteries -I ../../lem/ocaml-lib/_build/ unix.cma bitstring.cma nums.cma nat_num.cmo lem.cmo lem_function.cmo lem_list.cmo -linkpkg -g missing_pervasives.ml show.ml endianness.ml error.ml ml_bindings.ml default_printing.ml bitstring_local.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml string_table.ml elf_section_header_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file3.ml elf_executable_file5.ml elf_linking_file2.ml elf_linking_file3.ml elf_relocation.ml sail_interface.ml main_elf.ml
-
-oldall: lem-model camlp4 ocaml
 
 all: ocaml
 
@@ -90,4 +74,4 @@ execute:
 
 go: all execute
 
-go-debug: lem-model stacktrace execute
+
