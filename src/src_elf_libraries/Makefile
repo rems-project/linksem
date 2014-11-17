@@ -1,7 +1,7 @@
 dummy: all
 
 extract:
-	mkdir batteries uint
+	mkdir batteries
 	tar -zxvf batteries-2.2.tar.gz -C batteries --strip-components=1
 
 clean:

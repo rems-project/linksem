@@ -7,7 +7,7 @@
 dummy: all
 
 lem-model:
-	../../lem/lem -ocaml -only_changed_output missing_pervasives.lem show.lem endianness.lem default_printing.lem byte_sequence.lem elf_types.lem elf_interpreted_segment.lem elf_symbol_table.lem elf_header.lem elf_file1.lem elf_program_header_table.lem elf_executable_file2.lem elf_section_header_table.lem elf_executable_file3.lem string_table.lem elf_linking_file2.lem elf_linking_file3.lem elf_relocation.lem sail_interface.lem main_elf.lem
+	../../lem/lem -ocaml -only_changed_output missing_pervasives.lem show.lem endianness.lem default_printing.lem byte_sequence.lem uint32.lem elf_types.lem elf_interpreted_segment.lem elf_symbol_table.lem elf_header.lem elf_file1.lem elf_program_header_table.lem elf_executable_file2.lem elf_section_header_table.lem elf_executable_file3.lem string_table.lem elf_linking_file2.lem elf_linking_file3.lem elf_relocation.lem sail_interface.lem main_elf.lem
 
 clean:
 	rm -rf missing_pervasives.ml show.ml endianness.ml byte_sequence.ml default_printing.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml elf_section_header_table.ml elf_executable_file3.ml string_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file5.ml elf_linking_file2.ml elf_linking_file3.ml elf_relocation.ml elf_symbol_table.ml sail_interface.ml main_elf.ml
@@ -40,9 +40,7 @@ show.ml endianness.ml error.ml ml_bindings.ml default_printing.ml byte_sequence.
 
 make_elf_libraries:
 	-chmod u+w src_elf_libraries/batteries
-	-chmod u+w src_elf_libraries/uint
 	rm -rf src_elf_libraries/batteries
-	rm -rf src_elf_libraries/uint
 	$(MAKE) -C src_elf_libraries all
 
 clean_elf_libraries:
@@ -55,12 +53,8 @@ ocaml_with_ocamlbuild:
   -X src_elf_libraries \
   -cflag -g \
   -lflags 'unix.cma nums.cma' \
-  -cflags '-I ../src_elf_libraries/uint/_build/lib' \
-  -lflags '-I ../src_elf_libraries/uint/_build/lib uint.cma' \
   -cflags '-I ../src_elf_libraries/batteries/_build/src'   \
   -lflags '-I ../src_elf_libraries/batteries/_build/src batteries.cma'   \
-  -cflags -dllpath,src_elf_libraries/uint/_build/lib \
-  -lflags -dllpath,src_elf_libraries/uint/_build/lib \
   main_elf.byte 
 
 clean_with_ocamlbuild:
