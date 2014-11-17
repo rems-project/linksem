@@ -1,0 +1,38 @@
+open import Num
+open import String
+
+type uint32
+
+declare ocaml target_rep type uint32 = `Uint32_wrapper.uint32`
+
+val add : uint32 -> uint32 -> uint32
+
+declare ocaml target_rep function add = `Uint32_wrapper.add`
+
+val of_int : int -> uint32
+
+declare ocaml target_rep function of_int = `Uint32_wrapper.of_int`
+
+val of_int32 : int32 -> uint32
+
+declare ocaml target_rep function of_int32 = `Uint32_wrapper.of_int32`
+
+val shift_left : uint32 -> nat -> uint32
+
+declare ocaml target_rep function shift_left = `Uint32_wrapper.shift_left`
+
+val shift_right : uint32 -> nat -> uint32
+
+declare ocaml target_rep function shift_right = `Uint32_wrapper.shift_right`
+
+val logand : uint32 -> uint32 -> uint32
+
+declare ocaml target_rep function logand = `Uint32_wrapper.logand`
+
+val logor : uint32 -> uint32 -> uint32
+
+declare ocaml target_rep function logor = `Uint32_wrapper.logor`
+
+val string_of_uint32 : uint32 -> string
+
+declare ocaml target_rep function string_of_uint32 = `Uint32_wrapper.to_string`

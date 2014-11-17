@@ -105,12 +105,12 @@ let string_of_symbol_visibility m =
 (** ELF32 symbol table type *)
 
 type elf32_symbol_table_entry =
-  { elf32_st_name  : Uint32.t
-   ; elf32_st_value : Uint32.t
-   ; elf32_st_size  : Uint32.t
-   ; elf32_st_info  : Uint32.t
-   ; elf32_st_other : Uint32.t
-   ; elf32_st_shndx : Uint32.t
+  { elf32_st_name  : Uint32_wrapper.uint32
+   ; elf32_st_value : Uint32_wrapper.uint32
+   ; elf32_st_size  : Uint32_wrapper.uint32
+   ; elf32_st_info  : Uint32_wrapper.uint32
+   ; elf32_st_other : Uint32_wrapper.uint32
+   ; elf32_st_shndx : Uint32_wrapper.uint32
    }
 
 (** Extraction of symbol table data *)
@@ -119,33 +119,33 @@ type elf32_symbol_table_entry =
 
 (*val get_symbol_binding : unsigned_char -> natural*)
 let get_symbol_binding entry =  
-(Ml_bindings.natural_of_unsigned_char (Uint32.shift_right entry( 4)))
+(Ml_bindings.natural_of_unsigned_char (Uint32_wrapper.shift_right entry( 4)))
 
 (*val get_symbol_type : unsigned_char -> natural*)
 let get_symbol_type entry =  
-(Ml_bindings.natural_of_unsigned_char (Uint32.logand entry (Uint32.of_int32(Int32.of_int 15)))) (* 0xf *)
+(Ml_bindings.natural_of_unsigned_char (Uint32_wrapper.logand entry (Uint32_wrapper.of_int32(Int32.of_int 15)))) (* 0xf *)
 
 (*val get_symbol_info : unsigned_char -> unsigned_char -> natural*)
 let get_symbol_info entry0 entry1 =  
-(Ml_bindings.natural_of_unsigned_char (Uint32.add
-    (Uint32.shift_left entry0( 4)) (Uint32.logand entry1
-      (Uint32.of_int32(Int32.of_int 15))))) (*0xf*)  
+(Ml_bindings.natural_of_unsigned_char (Uint32_wrapper.add
+    (Uint32_wrapper.shift_left entry0( 4)) (Uint32_wrapper.logand entry1
+      (Uint32_wrapper.of_int32(Int32.of_int 15))))) (*0xf*)  
 
 (*val get_symbol_visibility : unsigned_char -> natural*)
 let get_symbol_visibility entry =  
-(Ml_bindings.natural_of_unsigned_char (Uint32.logand entry (Uint32.of_int32(Int32.of_int 3)))) (* 0x3*)
+(Ml_bindings.natural_of_unsigned_char (Uint32_wrapper.logand entry (Uint32_wrapper.of_int32(Int32.of_int 3)))) (* 0x3*)
 
 type symtab_print_bundle = (Big_int.big_int -> string) * (Big_int.big_int -> string)
 
 (*val string_of_elf32_symbol_table_entry : elf32_symbol_table_entry -> string*)
 let string_of_elf32_symbol_table_entry entry =  
 (unlines [    
-("\t" ^ ("Name: "  ^ Uint32.to_string entry.elf32_st_name))
-  ; ("\t" ^ ("Value: " ^ Uint32.to_string entry.elf32_st_value))
-  ; ("\t" ^ ("Size: "  ^ Uint32.to_string entry.elf32_st_size))
-  ; ("\t" ^ ("Info: "  ^ Uint32.to_string entry.elf32_st_info))
-  ; ("\t" ^ ("Other: " ^ Uint32.to_string entry.elf32_st_other))
-  ; ("\t" ^ ("Shndx: " ^ Uint32.to_string entry.elf32_st_shndx))
+("\t" ^ ("Name: "  ^ Uint32_wrapper.to_string entry.elf32_st_name))
+  ; ("\t" ^ ("Value: " ^ Uint32_wrapper.to_string entry.elf32_st_value))
+  ; ("\t" ^ ("Size: "  ^ Uint32_wrapper.to_string entry.elf32_st_size))
+  ; ("\t" ^ ("Info: "  ^ Uint32_wrapper.to_string entry.elf32_st_info))
+  ; ("\t" ^ ("Other: " ^ Uint32_wrapper.to_string entry.elf32_st_other))
+  ; ("\t" ^ ("Shndx: " ^ Uint32_wrapper.to_string entry.elf32_st_shndx))
   ])
 
 type elf32_symbol_table = elf32_symbol_table_entry list
@@ -182,23 +182,23 @@ let rec read_elf32_symbol_table endian bs0 =
 (** ELF64 symbol table type *)
 
 type elf64_symbol_table_entry =
-  { elf64_st_name  : Uint32.t
-   ; elf64_st_info  : Uint32.t
-   ; elf64_st_other : Uint32.t
-   ; elf64_st_shndx : Uint32.t
-   ; elf64_st_value : Uint64.t
-   ; elf64_st_size  : Uint64.t
+  { elf64_st_name  : Uint32_wrapper.uint32
+   ; elf64_st_info  : Uint32_wrapper.uint32
+   ; elf64_st_other : Uint32_wrapper.uint32
+   ; elf64_st_shndx : Uint32_wrapper.uint32
+   ; elf64_st_value : Uint64_wrapper.uint64
+   ; elf64_st_size  : Uint64_wrapper.uint64
    }
 
 (*val string_of_elf64_symbol_table_entry : elf64_symbol_table_entry -> string*)
 let string_of_elf64_symbol_table_entry entry =  
 (unlines [    
-("\t" ^ ("Name: "  ^ Uint32.to_string entry.elf64_st_name))
-  ; ("\t" ^ ("Info: "  ^ Uint32.to_string entry.elf64_st_info))
-  ; ("\t" ^ ("Other: " ^ Uint32.to_string entry.elf64_st_other))
-  ; ("\t" ^ ("Shndx: " ^ Uint32.to_string entry.elf64_st_shndx))
-  ; ("\t" ^ ("Value: " ^ Uint64.to_string entry.elf64_st_value))
-  ; ("\t" ^ ("Size: "  ^ Uint64.to_string entry.elf64_st_size))
+("\t" ^ ("Name: "  ^ Uint32_wrapper.to_string entry.elf64_st_name))
+  ; ("\t" ^ ("Info: "  ^ Uint32_wrapper.to_string entry.elf64_st_info))
+  ; ("\t" ^ ("Other: " ^ Uint32_wrapper.to_string entry.elf64_st_other))
+  ; ("\t" ^ ("Shndx: " ^ Uint32_wrapper.to_string entry.elf64_st_shndx))
+  ; ("\t" ^ ("Value: " ^ Uint64_wrapper.to_string entry.elf64_st_value))
+  ; ("\t" ^ ("Size: "  ^ Uint64_wrapper.to_string entry.elf64_st_size))
   ])
 
 type elf64_symbol_table = elf64_symbol_table_entry list

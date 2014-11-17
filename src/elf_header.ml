@@ -552,20 +552,20 @@ let ei_nident =( 16)
 (** [elf32_header] is the type of headers for 32-bit ELF files.
   *)
 type elf32_header =
-  { elf32_ident    : Uint32.t list (** Identification field *)
-   ; elf32_type     : Uint32.t         (** The object file type *)
-   ; elf32_machine  : Uint32.t         (** Required machine architecture *)
-   ; elf32_version  : Uint32.t         (** Object file version *)
-   ; elf32_entry    : Uint32.t         (** Virtual address for transfer of control *)
-   ; elf32_phoff    : Uint32.t          (** Program header table offset in bytes *)
-   ; elf32_shoff    : Uint32.t          (** Section header table offset in bytes *)
-   ; elf32_flags    : Uint32.t         (** Processor-specific flags *)
-   ; elf32_ehsize   : Uint32.t         (** ELF header size in bytes *)
-   ; elf32_phentsize: Uint32.t         (** Program header table entry size in bytes *)
-   ; elf32_phnum    : Uint32.t         (** Number of entries in program header table *)
-   ; elf32_shentsize: Uint32.t         (** Section header table entry size in bytes *)
-   ; elf32_shnum    : Uint32.t         (** Number of entries in section header table *)
-   ; elf32_shstrndx : Uint32.t         (** Section header table entry for section name string table *)
+  { elf32_ident    : Uint32_wrapper.uint32 list (** Identification field *)
+   ; elf32_type     : Uint32_wrapper.uint32         (** The object file type *)
+   ; elf32_machine  : Uint32_wrapper.uint32         (** Required machine architecture *)
+   ; elf32_version  : Uint32_wrapper.uint32         (** Object file version *)
+   ; elf32_entry    : Uint32_wrapper.uint32         (** Virtual address for transfer of control *)
+   ; elf32_phoff    : Uint32_wrapper.uint32          (** Program header table offset in bytes *)
+   ; elf32_shoff    : Uint32_wrapper.uint32          (** Section header table offset in bytes *)
+   ; elf32_flags    : Uint32_wrapper.uint32         (** Processor-specific flags *)
+   ; elf32_ehsize   : Uint32_wrapper.uint32         (** ELF header size in bytes *)
+   ; elf32_phentsize: Uint32_wrapper.uint32         (** Program header table entry size in bytes *)
+   ; elf32_phnum    : Uint32_wrapper.uint32         (** Number of entries in program header table *)
+   ; elf32_shentsize: Uint32_wrapper.uint32         (** Section header table entry size in bytes *)
+   ; elf32_shnum    : Uint32_wrapper.uint32         (** Number of entries in section header table *)
+   ; elf32_shstrndx : Uint32_wrapper.uint32         (** Section header table entry for section name string table *)
    }
 
 type 'a hasElf32Header_class={
@@ -575,20 +575,20 @@ type 'a hasElf32Header_class={
 (** [elf64_header] is the type of headers for 32-bit ELF files.
   *)
 type elf64_header =
-  { elf64_ident    : Uint32.t list (** Identification field *)
-   ; elf64_type     : Uint32.t         (** The object file type *)
-   ; elf64_machine  : Uint32.t         (** Required machine architecture *)
-   ; elf64_version  : Uint32.t         (** Object file version *)
-   ; elf64_entry    : Uint64.t         (** Virtual address for transfer of control *)
-   ; elf64_phoff    : Uint64.t          (** Program header table offset in bytes *)
-   ; elf64_shoff    : Uint64.t          (** Section header table offset in bytes *)
-   ; elf64_flags    : Uint32.t         (** Processor-specific flags *)
-   ; elf64_ehsize   : Uint32.t         (** ELF header size in bytes *)
-   ; elf64_phentsize: Uint32.t         (** Program header table entry size in bytes *)
-   ; elf64_phnum    : Uint32.t         (** Number of entries in program header table *)
-   ; elf64_shentsize: Uint32.t         (** Section header table entry size in bytes *)
-   ; elf64_shnum    : Uint32.t         (** Number of entries in section header table *)
-   ; elf64_shstrndx : Uint32.t         (** Section header table entry for section name string table *)
+  { elf64_ident    : Uint32_wrapper.uint32 list (** Identification field *)
+   ; elf64_type     : Uint32_wrapper.uint32         (** The object file type *)
+   ; elf64_machine  : Uint32_wrapper.uint32         (** Required machine architecture *)
+   ; elf64_version  : Uint32_wrapper.uint32         (** Object file version *)
+   ; elf64_entry    : Uint64_wrapper.uint64         (** Virtual address for transfer of control *)
+   ; elf64_phoff    : Uint64_wrapper.uint64          (** Program header table offset in bytes *)
+   ; elf64_shoff    : Uint64_wrapper.uint64          (** Section header table offset in bytes *)
+   ; elf64_flags    : Uint32_wrapper.uint32         (** Processor-specific flags *)
+   ; elf64_ehsize   : Uint32_wrapper.uint32         (** ELF header size in bytes *)
+   ; elf64_phentsize: Uint32_wrapper.uint32         (** Program header table entry size in bytes *)
+   ; elf64_phnum    : Uint32_wrapper.uint32         (** Number of entries in program header table *)
+   ; elf64_shentsize: Uint32_wrapper.uint32         (** Section header table entry size in bytes *)
+   ; elf64_shnum    : Uint32_wrapper.uint32         (** Number of entries in section header table *)
+   ; elf64_shstrndx : Uint32_wrapper.uint32         (** Section header table entry for section name string table *)
    }
 
 type 'a hasElf64Header_class={
@@ -636,10 +636,10 @@ let string_of_elf32_header (os, proc) hdr =
 	; ("\t" ^ ("Type: " ^ string_of_elf_file_type os proc (Ml_bindings.natural_of_elf32_half hdr.elf32_type)))
   ; ("\t" ^ ("Version: " ^ string_of_elf_version_number (Ml_bindings.natural_of_elf32_word hdr.elf32_version)))
 	; ("\t" ^ ("Machine: " ^ string_of_elf_machine_architecture (Ml_bindings.natural_of_elf32_half hdr.elf32_machine)))
-  ; ("\t" ^ ("Entry point: " ^ Uint32.to_string hdr.elf32_entry))
-  ; ("\t" ^ ("Flags: " ^ Uint32.to_string hdr.elf32_flags))
-  ; ("\t" ^ ("Entries in program header table: " ^ Uint32.to_string hdr.elf32_phnum))
-  ; ("\t" ^ ("Entries in section header table: " ^ Uint32.to_string hdr.elf32_shnum))
+  ; ("\t" ^ ("Entry point: " ^ Uint32_wrapper.to_string hdr.elf32_entry))
+  ; ("\t" ^ ("Flags: " ^ Uint32_wrapper.to_string hdr.elf32_flags))
+  ; ("\t" ^ ("Entries in program header table: " ^ Uint32_wrapper.to_string hdr.elf32_phnum))
+  ; ("\t" ^ ("Entries in section header table: " ^ Uint32_wrapper.to_string hdr.elf32_shnum))
 	])
 
 (*val string_of_elf64_header : hdr_print_bundle -> elf64_header -> string*)
@@ -651,10 +651,10 @@ let string_of_elf64_header (os, proc) hdr =
   ; ("\t" ^ ("Type: " ^ string_of_elf_file_type os proc (Ml_bindings.natural_of_elf64_half hdr.elf64_type)))
   ; ("\t" ^ ("Version: " ^ string_of_elf_version_number (Ml_bindings.natural_of_elf64_word hdr.elf64_version)))
   ; ("\t" ^ ("Machine: " ^ string_of_elf_machine_architecture (Ml_bindings.natural_of_elf64_half hdr.elf64_machine)))
-  ; ("\t" ^ ("Entry point: " ^ Uint64.to_string hdr.elf64_entry))
-  ; ("\t" ^ ("Flags: " ^ Uint32.to_string hdr.elf64_flags))
-  ; ("\t" ^ ("Entries in program header table: " ^ Uint32.to_string hdr.elf64_phnum))
-  ; ("\t" ^ ("Entries in section header table: " ^ Uint32.to_string hdr.elf64_shnum))
+  ; ("\t" ^ ("Entry point: " ^ Uint64_wrapper.to_string hdr.elf64_entry))
+  ; ("\t" ^ ("Flags: " ^ Uint32_wrapper.to_string hdr.elf64_flags))
+  ; ("\t" ^ ("Entries in program header table: " ^ Uint32_wrapper.to_string hdr.elf64_phnum))
+  ; ("\t" ^ ("Entries in section header table: " ^ Uint32_wrapper.to_string hdr.elf64_shnum))
   ])
 
 (*val string_of_elf32_header_default : elf32_header -> string*)
@@ -742,29 +742,29 @@ let read_elf64_header bs =
     ))))))))))))))))
 
 (*val is_elf32_header_padding_correct : elf32_header -> bool*)
-let is_elf32_header_padding_correct ehdr =  ((Lem.option_equal (=)  
-(Lem_list.list_index ehdr.elf32_ident( 9)) (Some (Uint32.of_int32(Int32.of_int 0)))) && ((Lem.option_equal (=)  
-(Lem_list.list_index ehdr.elf32_ident( 10)) (Some (Uint32.of_int32(Int32.of_int 0)))) && ((Lem.option_equal (=)  
-(Lem_list.list_index ehdr.elf32_ident( 11)) (Some (Uint32.of_int32(Int32.of_int 0)))) && ((Lem.option_equal (=)  
-(Lem_list.list_index ehdr.elf32_ident( 12)) (Some (Uint32.of_int32(Int32.of_int 0)))) && ((Lem.option_equal (=)  
-(Lem_list.list_index ehdr.elf32_ident( 13)) (Some (Uint32.of_int32(Int32.of_int 0)))) && ((Lem.option_equal (=)  
-(Lem_list.list_index ehdr.elf32_ident( 14)) (Some (Uint32.of_int32(Int32.of_int 0)))) && (Lem.option_equal (=)  
-(Lem_list.list_index ehdr.elf32_ident( 15)) (Some (Uint32.of_int32(Int32.of_int 0))))))))))
+let is_elf32_header_padding_correct ehdr =  ((Lem.option_equal Uint32_wrapper.equal  
+(Lem_list.list_index ehdr.elf32_ident( 9)) (Some (Uint32_wrapper.of_int32(Int32.of_int 0)))) && ((Lem.option_equal Uint32_wrapper.equal  
+(Lem_list.list_index ehdr.elf32_ident( 10)) (Some (Uint32_wrapper.of_int32(Int32.of_int 0)))) && ((Lem.option_equal Uint32_wrapper.equal  
+(Lem_list.list_index ehdr.elf32_ident( 11)) (Some (Uint32_wrapper.of_int32(Int32.of_int 0)))) && ((Lem.option_equal Uint32_wrapper.equal  
+(Lem_list.list_index ehdr.elf32_ident( 12)) (Some (Uint32_wrapper.of_int32(Int32.of_int 0)))) && ((Lem.option_equal Uint32_wrapper.equal  
+(Lem_list.list_index ehdr.elf32_ident( 13)) (Some (Uint32_wrapper.of_int32(Int32.of_int 0)))) && ((Lem.option_equal Uint32_wrapper.equal  
+(Lem_list.list_index ehdr.elf32_ident( 14)) (Some (Uint32_wrapper.of_int32(Int32.of_int 0)))) && (Lem.option_equal Uint32_wrapper.equal  
+(Lem_list.list_index ehdr.elf32_ident( 15)) (Some (Uint32_wrapper.of_int32(Int32.of_int 0))))))))))
 
 (*val is_elf32_header_magic_number_correct : elf32_header -> bool*)
-let is_elf32_header_magic_number_correct ehdr = ((Lem.option_equal (=)  
-(Lem_list.list_index ehdr.elf32_ident( 0)) (Some (Uint32.of_int32(Int32.of_int 127)))) && ((Lem.option_equal (=)  
-(Lem_list.list_index ehdr.elf32_ident( 1)) (Some (Uint32.of_int32(Int32.of_int 69))))  && ((Lem.option_equal (=)  
-(Lem_list.list_index ehdr.elf32_ident( 2)) (Some (Uint32.of_int32(Int32.of_int 76))))  && (Lem.option_equal (=)  
-(Lem_list.list_index ehdr.elf32_ident( 3)) (Some (Uint32.of_int32(Int32.of_int 70)))))))
+let is_elf32_header_magic_number_correct ehdr = ((Lem.option_equal Uint32_wrapper.equal  
+(Lem_list.list_index ehdr.elf32_ident( 0)) (Some (Uint32_wrapper.of_int32(Int32.of_int 127)))) && ((Lem.option_equal Uint32_wrapper.equal  
+(Lem_list.list_index ehdr.elf32_ident( 1)) (Some (Uint32_wrapper.of_int32(Int32.of_int 69))))  && ((Lem.option_equal Uint32_wrapper.equal  
+(Lem_list.list_index ehdr.elf32_ident( 2)) (Some (Uint32_wrapper.of_int32(Int32.of_int 76))))  && (Lem.option_equal Uint32_wrapper.equal  
+(Lem_list.list_index ehdr.elf32_ident( 3)) (Some (Uint32_wrapper.of_int32(Int32.of_int 70)))))))
 
 (*val is_elf32_header_class_correct : elf32_header -> bool*)
-let is_elf32_header_class_correct ehdr = (Lem.option_equal (=)  
-(Lem_list.list_index ehdr.elf32_ident( 4)) (Some (Uint32.of_int32(Int32.of_int 1))))
+let is_elf32_header_class_correct ehdr = (Lem.option_equal Uint32_wrapper.equal  
+(Lem_list.list_index ehdr.elf32_ident( 4)) (Some (Uint32_wrapper.of_int32(Int32.of_int 1))))
 
 (*val is_elf32_header_version_correct : elf32_header -> bool*)
-let is_elf32_header_version_correct ehdr = (Lem.option_equal (=)  
-(Lem_list.list_index ehdr.elf32_ident( 6)) (Some (Uint32.of_int32(Int32.of_int 1))))
+let is_elf32_header_version_correct ehdr = (Lem.option_equal Uint32_wrapper.equal  
+(Lem_list.list_index ehdr.elf32_ident( 6)) (Some (Uint32_wrapper.of_int32(Int32.of_int 1))))
 
 (** [is_valid_elf32_header] checks whether an [elf32_header] value is a valid 32-bit
   * ELF file header (i.e. [elf32_ident] is [ei_nident] entries long, and other

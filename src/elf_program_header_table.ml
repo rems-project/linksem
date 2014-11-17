@@ -87,14 +87,14 @@ let string_of_elf_segment_type os proc pt =
   * shared object file.
   *)
 type elf32_program_header_table_entry =
-  { elf32_p_type   : Uint32.t (** Type of the segment *)
-   ; elf32_p_offset : Uint32.t  (** Offset from beginning of file for segment *)
-   ; elf32_p_vaddr  : Uint32.t (** Virtual address for segment in memory *)
-   ; elf32_p_paddr  : Uint32.t (** Physical address for segment *)
-   ; elf32_p_filesz : Uint32.t (** Size of segment in file, in bytes *)
-   ; elf32_p_memsz  : Uint32.t (** Size of segment in memory image, in bytes *)
-   ; elf32_p_flags  : Uint32.t (** Segment flags *)
-   ; elf32_p_align  : Uint32.t (** Segment alignment memory for memory and file *)
+  { elf32_p_type   : Uint32_wrapper.uint32 (** Type of the segment *)
+   ; elf32_p_offset : Uint32_wrapper.uint32  (** Offset from beginning of file for segment *)
+   ; elf32_p_vaddr  : Uint32_wrapper.uint32 (** Virtual address for segment in memory *)
+   ; elf32_p_paddr  : Uint32_wrapper.uint32 (** Physical address for segment *)
+   ; elf32_p_filesz : Uint32_wrapper.uint32 (** Size of segment in file, in bytes *)
+   ; elf32_p_memsz  : Uint32_wrapper.uint32 (** Size of segment in memory image, in bytes *)
+   ; elf32_p_flags  : Uint32_wrapper.uint32 (** Segment flags *)
+   ; elf32_p_align  : Uint32_wrapper.uint32 (** Segment alignment memory for memory and file *)
    }
 
 (** Type [elf64_program_header_table_entry] encodes a program header table entry
@@ -102,14 +102,14 @@ type elf32_program_header_table_entry =
   * shared object file.
   *)
 type elf64_program_header_table_entry =
-  { elf64_p_type   : Uint32.t  (** Type of the segment *)
-   ; elf64_p_flags  : Uint32.t  (** Segment flags *)
-   ; elf64_p_offset : Uint64.t   (** Offset from beginning of file for segment *)
-   ; elf64_p_vaddr  : Uint64.t  (** Virtual address for segment in memory *)
-   ; elf64_p_paddr  : Uint64.t  (** Physical address for segment *)
-   ; elf64_p_filesz : Uint64.t (** Size of segment in file, in bytes *)
-   ; elf64_p_memsz  : Uint64.t (** Size of segment in memory image, in bytes *)
-   ; elf64_p_align  : Uint64.t (** Segment alignment memory for memory and file *)
+  { elf64_p_type   : Uint32_wrapper.uint32  (** Type of the segment *)
+   ; elf64_p_flags  : Uint32_wrapper.uint32  (** Segment flags *)
+   ; elf64_p_offset : Uint64_wrapper.uint64   (** Offset from beginning of file for segment *)
+   ; elf64_p_vaddr  : Uint64_wrapper.uint64  (** Virtual address for segment in memory *)
+   ; elf64_p_paddr  : Uint64_wrapper.uint64  (** Physical address for segment *)
+   ; elf64_p_filesz : Uint64_wrapper.uint64 (** Size of segment in file, in bytes *)
+   ; elf64_p_memsz  : Uint64_wrapper.uint64 (** Size of segment in memory image, in bytes *)
+   ; elf64_p_align  : Uint64_wrapper.uint64 (** Segment alignment memory for memory and file *)
    }
   
 (** [string_of_elf32_program_header_table_entry os proc et] produces a string
@@ -120,13 +120,13 @@ type elf64_program_header_table_entry =
 let string_of_elf32_program_header_table_entry os proc entry =	
 (unlines [		
 ("\t" ^ ("Segment type: " ^ string_of_elf_segment_type os proc (Ml_bindings.natural_of_elf32_word entry.elf32_p_type)))
-	; ("\t" ^ ("Offset: " ^ Uint32.to_string entry.elf32_p_offset))
-	; ("\t" ^ ("Virtual address: " ^ Uint32.to_string entry.elf32_p_vaddr))
-	; ("\t" ^ ("Physical address: " ^ Uint32.to_string entry.elf32_p_paddr))
-	; ("\t" ^ ("Segment size (bytes): " ^ Uint32.to_string entry.elf32_p_filesz))
-	; ("\t" ^ ("Segment size in memory image (bytes): " ^ Uint32.to_string entry.elf32_p_memsz))
-	; ("\t" ^ ("Flags: " ^ Uint32.to_string entry.elf32_p_flags))
-  ; ("\t" ^ ("Alignment: " ^ Uint32.to_string entry.elf32_p_align))
+	; ("\t" ^ ("Offset: " ^ Uint32_wrapper.to_string entry.elf32_p_offset))
+	; ("\t" ^ ("Virtual address: " ^ Uint32_wrapper.to_string entry.elf32_p_vaddr))
+	; ("\t" ^ ("Physical address: " ^ Uint32_wrapper.to_string entry.elf32_p_paddr))
+	; ("\t" ^ ("Segment size (bytes): " ^ Uint32_wrapper.to_string entry.elf32_p_filesz))
+	; ("\t" ^ ("Segment size in memory image (bytes): " ^ Uint32_wrapper.to_string entry.elf32_p_memsz))
+	; ("\t" ^ ("Flags: " ^ Uint32_wrapper.to_string entry.elf32_p_flags))
+  ; ("\t" ^ ("Alignment: " ^ Uint32_wrapper.to_string entry.elf32_p_align))
 	])
 
 (** [string_of_elf64_program_header_table_entry os proc et] produces a string
@@ -137,13 +137,13 @@ let string_of_elf32_program_header_table_entry os proc entry =
 let string_of_elf64_program_header_table_entry os proc entry =  
 (unlines [    
 ("\t" ^ ("Segment type: " ^ string_of_elf_segment_type os proc (Ml_bindings.natural_of_elf64_word entry.elf64_p_type)))
-  ; ("\t" ^ ("Offset: " ^ Uint64.to_string entry.elf64_p_offset))
-  ; ("\t" ^ ("Virtual address: " ^ Uint64.to_string entry.elf64_p_vaddr))
-  ; ("\t" ^ ("Physical address: " ^ Uint64.to_string entry.elf64_p_paddr))
-  ; ("\t" ^ ("Segment size (bytes): " ^ Uint64.to_string entry.elf64_p_filesz))
-  ; ("\t" ^ ("Segment size in memory image (bytes): " ^ Uint64.to_string entry.elf64_p_memsz))
-  ; ("\t" ^ ("Flags: " ^ Uint32.to_string entry.elf64_p_flags))
-  ; ("\t" ^ ("Alignment: " ^ Uint64.to_string entry.elf64_p_align))
+  ; ("\t" ^ ("Offset: " ^ Uint64_wrapper.to_string entry.elf64_p_offset))
+  ; ("\t" ^ ("Virtual address: " ^ Uint64_wrapper.to_string entry.elf64_p_vaddr))
+  ; ("\t" ^ ("Physical address: " ^ Uint64_wrapper.to_string entry.elf64_p_paddr))
+  ; ("\t" ^ ("Segment size (bytes): " ^ Uint64_wrapper.to_string entry.elf64_p_filesz))
+  ; ("\t" ^ ("Segment size in memory image (bytes): " ^ Uint64_wrapper.to_string entry.elf64_p_memsz))
+  ; ("\t" ^ ("Flags: " ^ Uint32_wrapper.to_string entry.elf64_p_flags))
+  ; ("\t" ^ ("Alignment: " ^ Uint64_wrapper.to_string entry.elf64_p_align))
   ])
 
 (** [string_of_elf32_program_header_table_entry_default et] produces a string representation

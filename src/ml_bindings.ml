@@ -12,14 +12,14 @@ let hex_string_of_int64 (e : Int64.t) : string =
 ;;
 
 let little_endian_uint32 c1 c2 c3 c4 =
-  let buffer1 = Uint32.shift_left (Uint32.of_int (Char.code c4)) 24 in
-  let buffer2 = Uint32.shift_left (Uint32.of_int (Char.code c3)) 16 in
-  let buffer3 = Uint32.shift_left (Uint32.of_int (Char.code c2)) 8 in
-  let buffer4 = Uint32.of_int (Char.code c1) in
+  let buffer1 = Uint32_wrapper.shift_left (Uint32_wrapper.of_int (Char.code c4)) 24 in
+  let buffer2 = Uint32_wrapper.shift_left (Uint32_wrapper.of_int (Char.code c3)) 16 in
+  let buffer3 = Uint32_wrapper.shift_left (Uint32_wrapper.of_int (Char.code c2)) 8 in
+  let buffer4 = Uint32_wrapper.of_int (Char.code c1) in
   let res =
-    Uint32.logor buffer1
-      (Uint32.logor buffer2
-      (Uint32.logor buffer3 buffer4)) in
+    Uint32_wrapper.logor buffer1
+      (Uint32_wrapper.logor buffer2
+      (Uint32_wrapper.logor buffer3 buffer4)) in
   res
 ;;
 
@@ -37,22 +37,22 @@ let little_endian_int32 c1 c2 c3 c4 =
 ;;
 
 let little_endian_uint64 c1 c2 c3 c4 c5 c6 c7 c8 =
-  let buffer1 = Uint64.shift_left (Uint64.of_int (Char.code c8)) 56 in
-  let buffer2 = Uint64.shift_left (Uint64.of_int (Char.code c7)) 48 in
-  let buffer3 = Uint64.shift_left (Uint64.of_int (Char.code c6)) 40 in
-  let buffer4 = Uint64.shift_left (Uint64.of_int (Char.code c5)) 32 in
-  let buffer5 = Uint64.shift_left (Uint64.of_int (Char.code c4)) 24 in
-  let buffer6 = Uint64.shift_left (Uint64.of_int (Char.code c3)) 16 in
-  let buffer7 = Uint64.shift_left (Uint64.of_int (Char.code c2)) 8 in
-  let buffer8 = Uint64.of_int (Char.code c1) in
+  let buffer1 = Uint64_wrapper.shift_left (Uint64_wrapper.of_int (Char.code c8)) 56 in
+  let buffer2 = Uint64_wrapper.shift_left (Uint64_wrapper.of_int (Char.code c7)) 48 in
+  let buffer3 = Uint64_wrapper.shift_left (Uint64_wrapper.of_int (Char.code c6)) 40 in
+  let buffer4 = Uint64_wrapper.shift_left (Uint64_wrapper.of_int (Char.code c5)) 32 in
+  let buffer5 = Uint64_wrapper.shift_left (Uint64_wrapper.of_int (Char.code c4)) 24 in
+  let buffer6 = Uint64_wrapper.shift_left (Uint64_wrapper.of_int (Char.code c3)) 16 in
+  let buffer7 = Uint64_wrapper.shift_left (Uint64_wrapper.of_int (Char.code c2)) 8 in
+  let buffer8 = Uint64_wrapper.of_int (Char.code c1) in
   let res =
-    Uint64.logor buffer1
-      (Uint64.logor buffer2
-      (Uint64.logor buffer3
-      (Uint64.logor buffer4
-      (Uint64.logor buffer5
-      (Uint64.logor buffer6
-      (Uint64.logor buffer7 buffer8))))))
+    Uint64_wrapper.logor buffer1
+      (Uint64_wrapper.logor buffer2
+      (Uint64_wrapper.logor buffer3
+      (Uint64_wrapper.logor buffer4
+      (Uint64_wrapper.logor buffer5
+      (Uint64_wrapper.logor buffer6
+      (Uint64_wrapper.logor buffer7 buffer8))))))
   in
     res
 ;;
@@ -79,11 +79,11 @@ let little_endian_int64 c1 c2 c3 c4 c5 c6 c7 c8 =
 ;;
 
 let big_endian_uint32 c1 c2 c3 c4 =
-  let buffer1 = Uint32.shift_left (Uint32.of_int (Char.code c1)) 24 in
-  let buffer2 = Uint32.shift_left (Uint32.of_int (Char.code c2)) 16 in
-  let buffer3 = Uint32.shift_left (Uint32.of_int (Char.code c3)) 8 in
-  let buffer4 = Uint32.of_int (Char.code c4) in
-  let res = Uint32.logor buffer1 (Uint32.logor buffer2 (Uint32.logor buffer3 buffer4)) in
+  let buffer1 = Uint32_wrapper.shift_left (Uint32_wrapper.of_int (Char.code c1)) 24 in
+  let buffer2 = Uint32_wrapper.shift_left (Uint32_wrapper.of_int (Char.code c2)) 16 in
+  let buffer3 = Uint32_wrapper.shift_left (Uint32_wrapper.of_int (Char.code c3)) 8 in
+  let buffer4 = Uint32_wrapper.of_int (Char.code c4) in
+  let res = Uint32_wrapper.logor buffer1 (Uint32_wrapper.logor buffer2 (Uint32_wrapper.logor buffer3 buffer4)) in
   res
 ;;
 
@@ -101,22 +101,22 @@ let big_endian_int32 c1 c2 c3 c4 =
 ;;
 
 let big_endian_uint64 c1 c2 c3 c4 c5 c6 c7 c8 =
-  let buffer1 = Uint64.shift_left (Uint64.of_int (Char.code c1)) 56 in
-  let buffer2 = Uint64.shift_left (Uint64.of_int (Char.code c2)) 48 in
-  let buffer3 = Uint64.shift_left (Uint64.of_int (Char.code c3)) 40 in
-  let buffer4 = Uint64.shift_left (Uint64.of_int (Char.code c4)) 32 in
-  let buffer5 = Uint64.shift_left (Uint64.of_int (Char.code c5)) 24 in
-  let buffer6 = Uint64.shift_left (Uint64.of_int (Char.code c6)) 16 in
-  let buffer7 = Uint64.shift_left (Uint64.of_int (Char.code c7)) 8 in
-  let buffer8 = Uint64.of_int (Char.code c8) in
+  let buffer1 = Uint64_wrapper.shift_left (Uint64_wrapper.of_int (Char.code c1)) 56 in
+  let buffer2 = Uint64_wrapper.shift_left (Uint64_wrapper.of_int (Char.code c2)) 48 in
+  let buffer3 = Uint64_wrapper.shift_left (Uint64_wrapper.of_int (Char.code c3)) 40 in
+  let buffer4 = Uint64_wrapper.shift_left (Uint64_wrapper.of_int (Char.code c4)) 32 in
+  let buffer5 = Uint64_wrapper.shift_left (Uint64_wrapper.of_int (Char.code c5)) 24 in
+  let buffer6 = Uint64_wrapper.shift_left (Uint64_wrapper.of_int (Char.code c6)) 16 in
+  let buffer7 = Uint64_wrapper.shift_left (Uint64_wrapper.of_int (Char.code c7)) 8 in
+  let buffer8 = Uint64_wrapper.of_int (Char.code c8) in
   let res =
-    Uint64.logor buffer1
-      (Uint64.logor buffer2
-      (Uint64.logor buffer3
-      (Uint64.logor buffer4
-      (Uint64.logor buffer5
-      (Uint64.logor buffer6
-      (Uint64.logor buffer7 buffer8))))))
+    Uint64_wrapper.logor buffer1
+      (Uint64_wrapper.logor buffer2
+      (Uint64_wrapper.logor buffer3
+      (Uint64_wrapper.logor buffer4
+      (Uint64_wrapper.logor buffer5
+      (Uint64_wrapper.logor buffer6
+      (Uint64_wrapper.logor buffer7 buffer8))))))
   in
     res
 ;;
@@ -146,7 +146,7 @@ let big_endian_int64 c1 c2 c3 c4 c5 c6 c7 c8 =
 
 let read_unsigned_char endian bs0 =
   Byte_sequence_wrapper.read_byte bs0 >>= fun (cs, bs1) ->
-  return (Uint32.of_int (Char.code cs), bs1)
+  return (Uint32_wrapper.of_int (Char.code cs), bs1)
 ;;
 
 (** ELF address type:
@@ -271,17 +271,17 @@ let read_elf64_off endian bs0 =
 let read_elf32_half_le bs0 =
   Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
   Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
-  let buffer1 = Uint32.shift_left (Uint32.of_int (Char.code c2)) 8 in
-  let buffer2 = Uint32.of_int (Char.code c1) in
-  return (Uint32.logor buffer1 buffer2, bs2)
+  let buffer1 = Uint32_wrapper.shift_left (Uint32_wrapper.of_int (Char.code c2)) 8 in
+  let buffer2 = Uint32_wrapper.of_int (Char.code c1) in
+  return (Uint32_wrapper.logor buffer1 buffer2, bs2)
 ;;
 
 let read_elf32_half_be bs0 =
   Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
   Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
-  let buffer1 = Uint32.shift_left (Uint32.of_int (Char.code c1)) 8 in
-  let buffer2 = Uint32.of_int (Char.code c2) in
-  return (Uint32.logor buffer1 buffer2, bs2)
+  let buffer1 = Uint32_wrapper.shift_left (Uint32_wrapper.of_int (Char.code c1)) 8 in
+  let buffer2 = Uint32_wrapper.of_int (Char.code c2) in
+  return (Uint32_wrapper.logor buffer1 buffer2, bs2)
 ;;
 
 let read_elf32_half endian bs0 =
@@ -293,17 +293,17 @@ let read_elf32_half endian bs0 =
 let read_elf64_half_le bs0 =
   Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
   Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
-  let buffer1 = Uint32.shift_left (Uint32.of_int (Char.code c2)) 8 in
-  let buffer2 = Uint32.of_int (Char.code c1) in
-  return (Uint32.logor buffer1 buffer2, bs2)
+  let buffer1 = Uint32_wrapper.shift_left (Uint32_wrapper.of_int (Char.code c2)) 8 in
+  let buffer2 = Uint32_wrapper.of_int (Char.code c1) in
+  return (Uint32_wrapper.logor buffer1 buffer2, bs2)
 ;;
 
 let read_elf64_half_be bs0 =
   Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
   Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
-  let buffer1 = Uint32.shift_left (Uint32.of_int (Char.code c1)) 8 in
-  let buffer2 = Uint32.of_int (Char.code c2) in
-  return (Uint32.logor buffer1 buffer2, bs2)
+  let buffer1 = Uint32_wrapper.shift_left (Uint32_wrapper.of_int (Char.code c1)) 8 in
+  let buffer2 = Uint32_wrapper.of_int (Char.code c2) in
+  return (Uint32_wrapper.logor buffer1 buffer2, bs2)
 ;;
 
 let read_elf64_half endian bs0 =
@@ -503,43 +503,43 @@ let string_suffix index str =
 ;;
 
 let natural_of_unsigned_char u =
-  Big_int.big_int_of_string (Uint32.to_string u)
+  Big_int.big_int_of_string (Uint32_wrapper.to_string u)
 ;;
 
 let natural_of_elf32_half u =
-  Big_int.big_int_of_string (Uint32.to_string u)
+  Big_int.big_int_of_string (Uint32_wrapper.to_string u)
 ;;
 
 let natural_of_elf64_half u =
-  Big_int.big_int_of_string (Uint32.to_string u)
+  Big_int.big_int_of_string (Uint32_wrapper.to_string u)
 ;;
 
 let natural_of_elf32_word u =
-  Big_int.big_int_of_string (Uint32.to_string u)
+  Big_int.big_int_of_string (Uint32_wrapper.to_string u)
 ;;
 
 let natural_of_elf64_word u =
-  Big_int.big_int_of_string (Uint32.to_string u)
+  Big_int.big_int_of_string (Uint32_wrapper.to_string u)
 ;;
 
 let natural_of_elf32_off u =
-  Big_int.big_int_of_string (Uint32.to_string u)
+  Big_int.big_int_of_string (Uint32_wrapper.to_string u)
 ;;
 
 let natural_of_elf64_off u =
-  Big_int.big_int_of_string (Uint64.to_string u)
+  Big_int.big_int_of_string (Uint64_wrapper.to_string u)
 ;;
 
 let natural_of_elf32_addr u =
-  Big_int.big_int_of_string (Uint32.to_string u)
+  Big_int.big_int_of_string (Uint32_wrapper.to_string u)
 ;;
 
 let natural_of_elf64_addr u =
-  Big_int.big_int_of_string (Uint64.to_string u)
+  Big_int.big_int_of_string (Uint64_wrapper.to_string u)
 ;;
 
 let natural_of_elf64_xword u =
-  Big_int.big_int_of_string (Uint64.to_string u)
+  Big_int.big_int_of_string (Uint64_wrapper.to_string u)
 ;;
 
 let rec list_index_big_int index xs =
