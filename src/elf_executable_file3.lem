@@ -533,7 +533,8 @@ let get_elf32_global_symbol_init f3 =
         get_elf32_executable_image f3 >>= fun (img, entry) ->
         let chunks =
           List.filter (fun chunk ->
-            addr >= chunk.elf32_segment_base && addr + size < chunk.elf32_segment_base + chunk.elf32_segment_size
+            addr >= chunk.elf32_segment_base &&
+              addr + size <= chunk.elf32_segment_base + chunk.elf32_segment_size
           ) img
         in
           match chunks with
@@ -560,7 +561,8 @@ let get_elf64_global_symbol_init f3 =
         get_elf64_executable_image f3 >>= fun (img, entry) ->
         let chunks =
           List.filter (fun chunk ->
-            addr >= chunk.elf64_segment_base && addr + size < chunk.elf64_segment_base + chunk.elf64_segment_size
+            addr >= chunk.elf64_segment_base &&
+              addr + size <= chunk.elf64_segment_base + chunk.elf64_segment_size
           ) img
         in
           match chunks with
