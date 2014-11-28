@@ -11,20 +11,33 @@ let one_big_int : big_int =
 ;;
 
 let acquire (fname : string) : t error =
-  let rec go ic =
-    try
+  let char_list = ref [] in
+  try
+    let ic = open_in_bin fname in
+    while true do
       let c = input_char ic in
-      c::go ic
-    with End_of_file ->
-      []
+      let _ = char_list := c :: !char_list in
+        ()
+    done;
+    let _ = close_in ic in
+    Fail "acquire: the impossible happened"
+  with End_of_file ->
+    Success (List.rev !char_list)
+;;
+
+let serialise (fname : string) (bytes : t) : unit error =
+  let rec go oc bytes =
+    match bytes with
+      | []    -> ()
+      | x::xs -> output_char oc x; go oc xs
   in
     try
-      let ic = open_in_bin fname in
-      let res = go ic in
-      let _ = close_in ic in
-        Success res
+      let oc = open_out_bin fname in
+      let _  = go oc bytes in
+      let _  = close_out oc in
+        Success ()
     with _ ->
-        Fail "acquire: no such file or directory"
+      Fail "serialise: unable to open file for writing"
 ;;
 
 let read_byte (ts : t) : (char * t) error =
@@ -50,6 +63,10 @@ let length (ts : t) : big_int =
 
 let concat (ts : t list) : t =
   List.fold_right (@) ts []
+;;
+
+let from_byte_lists (ts : char list list) =
+  List.flatten ts
 ;;
 
 let rec takebytes (m : big_int) (ts : t) : t error =
@@ -110,4 +127,8 @@ let string_of_byte_sequence (ts : t) : string =
       "string_of_byte_sequence: sequence too large for OCaml strings"
     else
       go ts 0 (String.create (int_of_big_int (length ts)))
+;;
+
+let bytes_of_unsigned_char (u : Uint32_wrapper.uint32) =
+  assert false
 ;;

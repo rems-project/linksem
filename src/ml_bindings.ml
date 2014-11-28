@@ -149,6 +149,11 @@ let read_unsigned_char endian bs0 =
   return (Uint32_wrapper.of_int (Char.code cs), bs1)
 ;;
 
+let bytes_of_unsigned_char x =
+  let _, _, _, byte = Uint32_wrapper.to_bytes x in
+    byte
+;;
+
 (** ELF address type:
   * 4 byte unsigned type on 32-bit architectures.
   * 8 byte unsigned type on 64-bit architectures.
@@ -174,6 +179,22 @@ let read_elf32_addr endian bs0 =
   match endian with
     | Little -> read_elf32_addr_le bs0
     | Big    -> read_elf32_addr_be bs0
+;;
+
+let bytes_of_elf32_addr_be x =
+  let (b3, b2, b1, b0) = Uint32_wrapper.to_bytes x in
+    [b3; b2; b1; b0]
+;;
+
+let bytes_of_elf32_addr_le x =
+  let (b3, b2, b1, b0) = Uint32_wrapper.to_bytes x in
+    [b0; b1; b2; b3]
+;;
+
+let bytes_of_elf32_addr endian x =
+  match endian with
+    | Little -> bytes_of_elf32_addr_le x
+    | Big    -> bytes_of_elf32_addr_be x
 ;;
 
 let read_elf64_addr_le bs0 =
@@ -206,6 +227,10 @@ let read_elf64_addr endian bs0 =
     | Big    -> read_elf64_addr_be bs0
 ;;
 
+let bytes_of_elf64_addr endian x =
+  assert false
+;;
+
 (** ELF offset type:
   * 4 byte unsigned type on 32-bit architectures.
   * 8 byte unsigned type on 64-bit architectures.
@@ -231,6 +256,22 @@ let read_elf32_off endian bs0 =
   match endian with
     | Little -> read_elf32_off_le bs0
     | Big    -> read_elf32_off_be bs0
+;;
+
+let bytes_of_elf32_off_be x =
+  let (b3, b2, b1, b0) = Uint32_wrapper.to_bytes x in
+    [b3; b2; b1; b0]
+;;
+
+let bytes_of_elf32_off_le x =
+  let (b3, b2, b1, b0) = Uint32_wrapper.to_bytes x in
+    [b0; b1; b2; b3]
+;;
+
+let bytes_of_elf32_off endian x =
+  match endian with
+    | Little -> bytes_of_elf32_off_le x
+    | Big    -> bytes_of_elf32_off_be x
 ;;
 
 let read_elf64_off_le bs0 =
@@ -263,6 +304,10 @@ let read_elf64_off endian bs0 =
     | Big    -> read_elf64_off_be bs0
 ;;
 
+let bytes_of_elf64_off endian x =
+  assert false
+;;
+
 (** ELF half word type:
   * 2 byte unsigned type on 32-bit architectures.
   * 2 byte unsigned type on 64-bit architectures.
@@ -290,6 +335,22 @@ let read_elf32_half endian bs0 =
     | Big    -> read_elf32_half_be bs0
 ;;
 
+let bytes_of_elf32_half_le x =
+  let (b3, b2, b1, b0) = Uint32_wrapper.to_bytes x in
+    [b0; b1]
+;;
+
+let bytes_of_elf32_half_be x =
+  let (b3, b2, b1, b0) = Uint32_wrapper.to_bytes x in
+    [b1; b0]
+;;
+
+let bytes_of_elf32_half endian x =
+  match endian with
+    | Little -> bytes_of_elf32_half_le x
+    | Big    -> bytes_of_elf32_half_be x
+;;
+
 let read_elf64_half_le bs0 =
   Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
   Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
@@ -310,6 +371,10 @@ let read_elf64_half endian bs0 =
   match endian with
     | Little -> read_elf64_half_le bs0
     | Big    -> read_elf64_half_be bs0
+;;
+
+let bytes_of_elf64_half endian x =
+  assert false
 ;;
 
 (** ELF word type:
@@ -339,6 +404,22 @@ let read_elf32_word endian bs0 =
     | Big    -> read_elf32_word_be bs0
 ;;
 
+let bytes_of_elf32_word_be x =
+  let (b3, b2, b1, b0) = Uint32_wrapper.to_bytes x in
+    [b3; b2; b1; b0]
+;;
+
+let bytes_of_elf32_word_le x =
+  let (b3, b2, b1, b0) = Uint32_wrapper.to_bytes x in
+    [b0; b1; b2; b3]
+;;
+
+let bytes_of_elf32_word endian x =
+  match endian with
+    | Little -> bytes_of_elf32_word_le x
+    | Big    -> bytes_of_elf32_word_be x
+;;
+
 let read_elf64_word_le bs0 =
   Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
   Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
@@ -359,6 +440,10 @@ let read_elf64_word endian bs0 =
   match endian with
     | Little -> read_elf64_word_le bs0
     | Big    -> read_elf64_word_be bs0
+;;
+
+let bytes_of_elf64_word endian x =
+  assert false
 ;;
 
 (** ELF signed word type:
@@ -388,6 +473,10 @@ let read_elf32_sword endian bs0 =
     | Big    -> read_elf32_sword_be bs0
 ;;
 
+let bytes_of_elf32_sword endian x =
+  assert false
+;;
+
 let read_elf64_sword_le bs0 =
   Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
   Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
@@ -408,6 +497,10 @@ let read_elf64_sword endian bs0 =
   match endian with
     | Little -> read_elf64_sword_le bs0
     | Big    -> read_elf64_sword_be bs0
+;;
+
+let bytes_of_elf64_sword endian x =
+  assert false
 ;;
 
 (** ELF extra wide word type:
@@ -444,6 +537,10 @@ let read_elf64_xword endian bs0 =
     | Big    -> read_elf64_xword_be bs0
 ;;
 
+let bytes_of_elf64_xword endian x =
+  assert false
+;;
+
 (** ELF signed extra wide word type:
   * 8 byte signed type on 64-bit architectures.
   *)
@@ -476,6 +573,10 @@ let read_elf64_sxword endian bs0 =
   match endian with
     | Little -> read_elf64_sxword_le bs0
     | Big    -> read_elf64_sxword_be bs0
+;;
+
+let bytes_of_elf64_sxword endian x =
+  assert false
 ;;
 
 (** Misc. string operations. *)

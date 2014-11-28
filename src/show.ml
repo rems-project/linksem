@@ -15,6 +15,15 @@ type 'a show_class={
   show_method : 'a -> string
 }
 
+(** [string_of_unit u] produces a string representation of unit [u].
+  *)
+(*val string_of_unit : unit -> string*)
+let string_of_unit u = "()"
+
+let instance_Show_Show_unit_dict =({
+
+  show_method = string_of_unit})
+
 (** [string_of_bool b] produces a string representation of boolean [b].
   *)
 (*val string_of_bool : bool -> string*)

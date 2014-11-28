@@ -674,6 +674,26 @@ instance (Show elf64_header)
   let show = string_of_elf64_header_default
 end
 
+val bytes_of_elf32_header : elf32_header -> byte_sequence
+let bytes_of_elf32_header hdr =
+  let endian = deduce_endianness hdr.elf32_ident in
+    Byte_sequence.from_byte_lists [
+      List.map bytes_of_unsigned_char hdr.elf32_ident
+    ; bytes_of_elf32_half endian hdr.elf32_type
+    ; bytes_of_elf32_half endian hdr.elf32_machine
+    ; bytes_of_elf32_word endian hdr.elf32_version
+    ; bytes_of_elf32_addr endian hdr.elf32_entry
+    ; bytes_of_elf32_off  endian hdr.elf32_phoff
+    ; bytes_of_elf32_off  endian hdr.elf32_shoff
+    ; bytes_of_elf32_word endian hdr.elf32_flags
+    ; bytes_of_elf32_half endian hdr.elf32_ehsize
+    ; bytes_of_elf32_half endian hdr.elf32_phentsize
+    ; bytes_of_elf32_half endian hdr.elf32_phnum
+    ; bytes_of_elf32_half endian hdr.elf32_shentsize
+    ; bytes_of_elf32_half endian hdr.elf32_shnum
+    ; bytes_of_elf32_half endian hdr.elf32_shstrndx
+    ]
+
 val read_elf32_header : byte_sequence -> error (elf32_header * byte_sequence)
 let read_elf32_header bs =
 	repeatM' ei_nident bs (read_unsigned_char default_endianness) >>= fun (ident, bs) ->

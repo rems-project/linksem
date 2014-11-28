@@ -41,3 +41,11 @@ let to_string l =
 let equal l r =
   Big_int.eq_big_int l r
 ;;
+
+let to_bytes u : char * char * char * char =
+  let b0 = Char.chr (Big_int.int_of_big_int (logand u (Big_int.big_int_of_string "255"))) in
+  let b1 = Char.chr (Big_int.int_of_big_int (shift_right (logand u (Big_int.big_int_of_string "65280")) 8)) in
+  let b2 = Char.chr (Big_int.int_of_big_int (shift_right (logand u (Big_int.big_int_of_string "16711680")) 16)) in
+  let b3 = Char.chr (Big_int.int_of_big_int (shift_right (logand u (Big_int.big_int_of_string "4278190080")) 24)) in
+    b3, b2, b1, b0
+;;

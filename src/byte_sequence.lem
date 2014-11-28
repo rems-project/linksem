@@ -7,16 +7,18 @@ open import String
 open import Error
 open import Show
 
+type byte = char
+
 type byte_sequence
 declare ocaml target_rep type byte_sequence = `Byte_sequence_wrapper.t`
 
 val empty : byte_sequence
 declare ocaml target_rep function empty = `Byte_sequence_wrapper.empty`
 
-val read_char : byte_sequence -> error (char * byte_sequence)
+val read_char : byte_sequence -> error (byte * byte_sequence)
 declare ocaml target_rep function read_char = `Byte_sequence_wrapper.read_char`
 
-val create : natural -> char -> byte_sequence
+val create : natural -> byte -> byte_sequence
 declare ocaml target_rep function create = `Byte_sequence_wrapper.create`
 
 val zeros : natural -> byte_sequence
@@ -28,8 +30,14 @@ declare ocaml target_rep function length = `Byte_sequence_wrapper.length`
 val concat : list byte_sequence -> byte_sequence
 declare ocaml target_rep function concat = `Byte_sequence_wrapper.concat`
 
+val from_byte_lists : list (list byte) -> byte_sequence
+declare ocaml target_rep function from_byte_lists = `Byte_sequence_wrapper.from_byte_lists`
+
 val acquire : string -> error byte_sequence
 declare ocaml target_rep function acquire = `Byte_sequence_wrapper.acquire`
+
+val serialise : string -> byte_sequence -> error unit
+declare ocaml target_rep function serialise = `Byte_sequence_wrapper.serialise`
 
 val string_of_byte_sequence : byte_sequence -> string
 declare ocaml target_rep function string_of_byte_sequence = `Byte_sequence_wrapper.string_of_byte_sequence`
