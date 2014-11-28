@@ -232,6 +232,21 @@ type elf64_section_header_table_entry =
    ; elf64_sh_entsize   : elf64_xword (** Size of each entry in table, if section is one *)
    |>
 
+val bytes_of_elf32_section_header_table_entry : endianness -> elf32_section_header_table_entry -> byte_sequence
+let bytes_of_elf32_section_header_table_entry endian entry =
+  Byte_sequence.from_byte_lists [
+    bytes_of_elf32_word endian entry.elf32_sh_name
+  ; bytes_of_elf32_word endian entry.elf32_sh_type
+  ; bytes_of_elf32_word endian entry.elf32_sh_flags
+  ; bytes_of_elf32_addr endian entry.elf32_sh_addr
+  ; bytes_of_elf32_off  endian entry.elf32_sh_offset
+  ; bytes_of_elf32_word endian entry.elf32_sh_size
+  ; bytes_of_elf32_word endian entry.elf32_sh_link
+  ; bytes_of_elf32_word endian entry.elf32_sh_info
+  ; bytes_of_elf32_word endian entry.elf32_sh_addralign
+  ; bytes_of_elf32_word endian entry.elf32_sh_entsize
+  ]
+
 val read_elf32_section_header_table_entry : endianness -> byte_sequence -> error (elf32_section_header_table_entry * byte_sequence)
 let read_elf32_section_header_table_entry endian bs =
 	read_elf32_word endian bs >>= fun (sh_name, bs) ->
@@ -250,6 +265,20 @@ let read_elf32_section_header_table_entry endian bs =
                 elf32_sh_link = sh_link; elf32_sh_info = sh_info;
                 elf32_sh_addralign = sh_addralign; elf32_sh_entsize = sh_entsize |>, bs)
 
+val bytes_of_elf64_section_header_table_entry : endianness -> elf64_section_header_table_entry -> byte_sequence
+let bytes_of_elf64_section_header_table_entry endian entry =
+  Byte_sequence.from_byte_lists [
+    bytes_of_elf64_word  endian entry.elf64_sh_name
+  ; bytes_of_elf64_word  endian entry.elf64_sh_type
+  ; bytes_of_elf64_xword endian entry.elf64_sh_flags
+  ; bytes_of_elf64_addr  endian entry.elf64_sh_addr
+  ; bytes_of_elf64_off   endian entry.elf64_sh_offset
+  ; bytes_of_elf64_xword endian entry.elf64_sh_size
+  ; bytes_of_elf64_word  endian entry.elf64_sh_link
+  ; bytes_of_elf64_word  endian entry.elf64_sh_info
+  ; bytes_of_elf64_xword endian entry.elf64_sh_addralign
+  ; bytes_of_elf64_xword endian entry.elf64_sh_entsize
+  ]
 
 val read_elf64_section_header_table_entry : endianness -> byte_sequence -> error (elf64_section_header_table_entry * byte_sequence)
 let read_elf64_section_header_table_entry endian bs =
@@ -373,6 +402,10 @@ class (HasElf64SectionHeaderTable 'a)
   val get_elf64_section_header_table : 'a -> maybe elf64_section_header_table
 end
 
+val bytes_of_elf32_section_header_table : endianness -> elf32_section_header_table -> byte_sequence
+let bytes_of_elf32_section_header_table endian tbl =
+  Byte_sequence.concat (List.map (bytes_of_elf32_section_header_table_entry endian) tbl)
+
 let rec read_elf32_section_header_table' endian bs0 =
   if length bs0 = 0 then
     return []
@@ -387,6 +420,10 @@ let read_elf32_section_header_table table_size endian bs0 =
   read_elf32_section_header_table' endian eat >>= fun entries ->
   return (entries, rest)
 ;;
+
+val bytes_of_elf64_section_header_table : endianness -> elf64_section_header_table -> byte_sequence
+let bytes_of_elf64_section_header_table endian tbl =
+  Byte_sequence.concat (List.map (bytes_of_elf64_section_header_table_entry endian) tbl)
 
 let rec read_elf64_section_header_table' endian bs0 =
   if length bs0 = 0 then
