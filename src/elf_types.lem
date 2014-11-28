@@ -171,7 +171,7 @@ val string_of_elf64_half : elf64_half -> string
 val read_elf64_half : endianness -> byte_sequence -> error (elf64_half * byte_sequence)
 val natural_of_elf64_half : elf64_half -> natural
 val equal_elf64_half : elf64_half -> elf64_half -> bool
-val bytes_of_elf64_half : endianness -> elf32_half -> list byte
+val bytes_of_elf64_half : endianness -> elf64_half -> list byte
 
 declare ocaml target_rep function string_of_elf64_half = `Uint32_wrapper.to_string`
 declare ocaml target_rep function read_elf64_half = `Ml_bindings.read_elf64_half`

@@ -726,6 +726,26 @@ let read_elf32_header bs =
           fail "read_elf32_header: not a 32-bit ELF file"
     end
 
+val bytes_of_elf64_header : elf64_header -> byte_sequence
+let bytes_of_elf64_header hdr =
+  let endian = deduce_endianness hdr.elf64_ident in
+    Byte_sequence.from_byte_lists [
+      List.map bytes_of_unsigned_char hdr.elf64_ident
+    ; bytes_of_elf64_half endian hdr.elf64_type
+    ; bytes_of_elf64_half endian hdr.elf64_machine
+    ; bytes_of_elf64_word endian hdr.elf64_version
+    ; bytes_of_elf64_addr endian hdr.elf64_entry
+    ; bytes_of_elf64_off  endian hdr.elf64_phoff
+    ; bytes_of_elf64_off  endian hdr.elf64_shoff
+    ; bytes_of_elf64_word endian hdr.elf64_flags
+    ; bytes_of_elf64_half endian hdr.elf64_ehsize
+    ; bytes_of_elf64_half endian hdr.elf64_phentsize
+    ; bytes_of_elf64_half endian hdr.elf64_phnum
+    ; bytes_of_elf64_half endian hdr.elf64_shentsize
+    ; bytes_of_elf64_half endian hdr.elf64_shnum
+    ; bytes_of_elf64_half endian hdr.elf64_shstrndx
+    ]
+
 val read_elf64_header : byte_sequence -> error (elf64_header * byte_sequence)
 let read_elf64_header bs =
   repeatM' ei_nident bs (read_unsigned_char default_endianness) >>= fun (ident, bs) ->
