@@ -9,6 +9,15 @@ open import Maybe
 
 open import Elf_header
 
+val abi_amd64_data_encoding : natural
+let abi_amd64_data_encoding = elf_data_2lsb
+
+val abi_amd64_file_class : natural
+let abi_amd64_file_class = elf_class_64
+
+val abi_amd64_file_version : natural
+let abi_amd64_file_version = elf_ev_current
+
 (** [is_valid_abi_amd64_machine_architecture m] checks whether the ELF header's
   * machine architecture is valid according to the ABI-specific specification.
   * Machine architecture must be x86-64 (pg 60)
@@ -29,6 +38,7 @@ let is_valid_abi_amd64_magic_number magic =
     | Just cls ->
       match List.index magic elf_ii_data with
         | Nothing   -> false
-        | Just data -> (cls = elf_class_64) && (data = elf_data_2lsb)
+        | Just data ->
+            (cls = abi_amd64_file_class) && (data = abi_amd64_data_encoding)
       end
   end

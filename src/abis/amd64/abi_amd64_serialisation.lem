@@ -1,0 +1,51 @@
+open import List
+
+open import Byte_sequence
+
+open import Elf_header
+open import Elf_section_header_table
+open import Elf_types
+
+open import Abi_amd64_elf_header
+
+(** [abi_amd64_elf_ident abi_version] produces the ELF identification field for
+  * the ELF header based on ABI-specific information and the [abi_version]
+  * argument passed in.
+  *)
+val abi_amd64_elf_ident : natural -> list unsigned_char
+let abi_amd64_elf_ident abi_version =
+  List.map unsigned_char_of_int32 
+    [127; 69; 76; 70; (* 127 E L F *)
+     abi_amd64_file_class; abi_amd64_data_encoding; abi_amd64_file_version;
+     elf_osabi_none; abi_version; 0;
+     0; 0; 0;
+     0; 0; 0]
+
+(** [abi_amd64_generate_elf_header entry phoff phnum] produces an ELF header for
+  * 64-bit PPC ELF files.  The function expects the [entry] address to start
+  * execution from, the offset of the program header table in [phoff] and the
+  * number of entries in the program header table in [phnum].
+  *)
+val abi_amd64_generate_elf_header : elf64_addr -> elf64_off -> elf64_half -> elf64_header
+let abi_amd64_generate_elf_header entry phoff phnum =
+  <| elf64_ident      = abi_amd64_elf_ident 0;
+      elf64_type      = elf64_half_of_natural elf_ft_exec;
+      elf64_machine   = elf64_half_of_natural elf_ma_x86_64;
+      elf64_version   = elf64_word_of_natural elf_ev_current;
+      elf64_entry     = entry;
+      elf64_phoff     = phoff
+      elf64_shoff     = elf64_off_of_int64 0;
+      elf64_flags     = elf64_word_of_natural 0;
+      elf64_ehsize    = elf64_half_of_natural 64;
+      elf64_phentsize = elf64_half_of_natural 56;
+      elf64_phnum     = phnum
+      elf64_shentsize = elf64_half_of_int32 0;
+      elf64_shnum     = elf64_half_of_int32 0;
+      elf64_shstrndx  = elf64_half_of_natural shn_undef |>
+
+(** [abi_amd64_serialise exec_segment] produces byte sequence serialisation of
+  * an ELF file based on the executable segment passed to the function
+  * in [exec_segment].
+  *)
+val abi_amd64_serialise : elf64_addr -> list byte -> byte_sequence
+let abi_amd64_serialise entry executable_code = Byte_sequence.empty
