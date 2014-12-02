@@ -10,7 +10,7 @@ open import Maybe
 open import Elf_header
 
 (** [is_valid_abi_amd64_machine_architecture m] checks whether the ELF header's
-  * machine architecture is valud according to the ABI-specific specification.
+  * machine architecture is valid according to the ABI-specific specification.
   * Machine architecture must be x86-64 (pg 60)
   *)
 val is_valid_abi_amd64_machine_architecture : nat -> bool
