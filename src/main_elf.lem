@@ -32,7 +32,7 @@ let default_sht_bdl =
 let _ =
   let res =
     let entry = elf64_addr_of_int64 0 in
-    let bytes = Abi_amd64_serialisation.abi_amd64_serialise entry [] in
+    let bytes = Abi_amd64_serialisation.abi_amd64_serialise entry Byte_sequence.empty in
       Byte_sequence.serialise "test/usr-bin-ld.out" bytes
   in
     match res with

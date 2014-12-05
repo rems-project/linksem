@@ -409,6 +409,8 @@ end
 
 val unsafe_nat_of_natural : natural -> nat
 val unsafe_int32_of_natural : natural -> int32
+val unsafe_int64_of_natural : natural -> int64
 
 declare ocaml target_rep function unsafe_nat_of_natural = `Big_int.int_of_big_int`
 declare ocaml target_rep function unsafe_int32_of_natural = `Big_int.int32_of_big_int`
+declare ocaml target_rep function unsafe_int64_of_natural = `Big_int.int64_of_big_int`
