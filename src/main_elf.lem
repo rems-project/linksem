@@ -14,8 +14,11 @@ open import Elf_executable_file2
 open import Elf_executable_file3
 open import Elf_linking_file2
 open import Elf_linking_file3
+open import Elf_types
 
 open import Sail_interface
+
+open import Abi_amd64_serialisation
 
 let default_hdr_bdl =
   (default_os_specific_print, default_proc_specific_print)
@@ -28,13 +31,9 @@ let default_sht_bdl =
 
 let _ =
   let res =
-    Byte_sequence.acquire "test/a.out" >>= fun bs0 ->
-    let _ = Missing_pervasives.print (show bs0) in
-    Elf_file1.read_elf32_file1 bs0 >>= fun f1 ->
-    let _ = Missing_pervasives.print (Elf_file1.string_of_elf32_file1 default_hdr_bdl f1) in
-    let bytes = Elf_header.bytes_of_elf32_header f1.elf32_file1_header in
-    Byte_sequence.serialise "test/usr-bin-ld.out" bytes >>= fun res ->
-    return res
+    let entry = elf64_addr_of_int64 0 in
+    let bytes = Abi_amd64_serialisation.abi_amd64_serialise entry [] in
+      Byte_sequence.serialise "test/usr-bin-ld.out" bytes
   in
     match res with
       | Fail err  -> Missing_pervasives.print ("[!]: " ^ err)

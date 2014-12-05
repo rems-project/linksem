@@ -227,8 +227,20 @@ let read_elf64_addr endian bs0 =
     | Big    -> read_elf64_addr_be bs0
 ;;
 
+let bytes_of_elf64_addr_be x =
+  let (b7, b6, b5, b4, b3, b2, b1, b0) = Uint64_wrapper.to_bytes x in
+    [b7; b6; b5; b4; b3; b2; b1; b0]
+;;
+
+let bytes_of_elf64_addr_le x =
+  let (b7, b6, b5, b4, b3, b2, b1, b0) = Uint64_wrapper.to_bytes x in
+    [b0; b1; b2; b3; b4; b5; b6; b7]
+;;
+
 let bytes_of_elf64_addr endian x =
-  assert false
+  match endian with
+    | Little -> bytes_of_elf64_addr_le x
+    | Big    -> bytes_of_elf64_addr_be x
 ;;
 
 (** ELF offset type:
@@ -304,8 +316,20 @@ let read_elf64_off endian bs0 =
     | Big    -> read_elf64_off_be bs0
 ;;
 
+let bytes_of_elf64_off_be x =
+  let (b7, b6, b5, b4, b3, b2, b1, b0) = Uint64_wrapper.to_bytes x in
+    [b7; b6; b5; b4; b3; b2; b1; b0]
+;;
+
+let bytes_of_elf64_off_le x =
+  let (b7, b6, b5, b4, b3, b2, b1, b0) = Uint64_wrapper.to_bytes x in
+    [b0; b1; b2; b3; b4; b5; b6; b7]
+;;
+
 let bytes_of_elf64_off endian x =
-  assert false
+  match endian with
+    | Little -> bytes_of_elf64_off_le x
+    | Big    -> bytes_of_elf64_off_be x
 ;;
 
 (** ELF half word type:
@@ -373,8 +397,20 @@ let read_elf64_half endian bs0 =
     | Big    -> read_elf64_half_be bs0
 ;;
 
+let bytes_of_elf64_half_le x =
+  let (b3, b2, b1, b0) = Uint32_wrapper.to_bytes x in
+    [b0; b1]
+;;
+
+let bytes_of_elf64_half_be x =
+  let (b3, b2, b1, b0) = Uint32_wrapper.to_bytes x in
+    [b1; b0]
+;;
+
 let bytes_of_elf64_half endian x =
-  assert false
+  match endian with
+    | Little -> bytes_of_elf64_half_le x
+    | Big    -> bytes_of_elf64_half_be x
 ;;
 
 (** ELF word type:
@@ -442,8 +478,20 @@ let read_elf64_word endian bs0 =
     | Big    -> read_elf64_word_be bs0
 ;;
 
+let bytes_of_elf64_word_be x =
+  let (b3, b2, b1, b0) = Uint32_wrapper.to_bytes x in
+    [b3; b2; b1; b0]
+;;
+
+let bytes_of_elf64_word_le x =
+  let (b3, b2, b1, b0) = Uint32_wrapper.to_bytes x in
+    [b0; b1; b2; b3]
+;;
+
 let bytes_of_elf64_word endian x =
-  assert false
+  match endian with
+    | Little -> bytes_of_elf64_word_le x
+    | Big    -> bytes_of_elf64_word_be x
 ;;
 
 (** ELF signed word type:

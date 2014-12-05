@@ -115,6 +115,7 @@ declare ocaml target_rep type elf64_addr = `Uint64_wrapper.uint64`
 
 val string_of_elf64_addr : elf64_addr -> string
 val natural_of_elf64_addr : elf64_addr -> natural
+val elf64_addr_of_int64 : int64 -> elf64_addr
 val read_elf64_addr : endianness -> byte_sequence -> error (elf64_addr * byte_sequence)
 val equal_elf64_addr : elf64_addr -> elf64_addr -> bool
 val bytes_of_elf64_addr : endianness -> elf64_addr -> list byte
@@ -124,6 +125,7 @@ declare ocaml target_rep function read_elf64_addr = `Ml_bindings.read_elf64_addr
 declare ocaml target_rep function natural_of_elf64_addr = `Ml_bindings.natural_of_elf64_addr`
 declare ocaml target_rep function equal_elf64_addr = `Uint64_wrapper.equal`
 declare ocaml target_rep function bytes_of_elf64_addr = `Ml_bindings.bytes_of_elf64_addr`
+declare ocaml target_rep function elf64_addr_of_int64 = `Uint64_wrapper.of_int64`
 
 instance (Eq elf64_addr)
   let (=) = equal_elf64_addr
@@ -170,6 +172,7 @@ declare ocaml target_rep type elf64_half = `Uint32_wrapper.uint32`
 val string_of_elf64_half : elf64_half -> string
 val read_elf64_half : endianness -> byte_sequence -> error (elf64_half * byte_sequence)
 val natural_of_elf64_half : elf64_half -> natural
+val elf64_half_of_int32 : int32 -> elf64_half
 val equal_elf64_half : elf64_half -> elf64_half -> bool
 val bytes_of_elf64_half : endianness -> elf64_half -> list byte
 
@@ -177,6 +180,7 @@ declare ocaml target_rep function string_of_elf64_half = `Uint32_wrapper.to_stri
 declare ocaml target_rep function read_elf64_half = `Ml_bindings.read_elf64_half`
 declare ocaml target_rep function natural_of_elf64_half = `Ml_bindings.natural_of_elf64_half`
 declare ocaml target_rep function equal_elf64_half = `Uint32_wrapper.equal`
+declare ocaml target_rep function elf64_half_of_int32 = `Uint32_wrapper.of_int32`
 declare ocaml target_rep function bytes_of_elf64_half = `Ml_bindings.bytes_of_elf64_half`
 
 instance (Eq elf64_half)
@@ -223,6 +227,7 @@ declare ocaml target_rep type elf64_off = `Uint64_wrapper.uint64`
 
 val string_of_elf64_off : elf64_off -> string
 val natural_of_elf64_off : elf64_off -> natural
+val elf64_off_of_int64 : int64 -> elf64_off
 val read_elf64_off : endianness -> byte_sequence -> error (elf64_off * byte_sequence)
 val equal_elf64_off : elf64_off -> elf64_off -> bool
 val bytes_of_elf64_off : endianness -> elf64_off -> list byte
@@ -231,6 +236,7 @@ declare ocaml target_rep function string_of_elf64_off = `Uint64_wrapper.to_strin
 declare ocaml target_rep function read_elf64_off = `Ml_bindings.read_elf64_off`
 declare ocaml target_rep function natural_of_elf64_off = `Ml_bindings.natural_of_elf64_off`
 declare ocaml target_rep function equal_elf64_off = `Uint64_wrapper.equal`
+declare ocaml target_rep function elf64_off_of_int64 = `Uint64_wrapper.of_int64`
 declare ocaml target_rep function bytes_of_elf64_off = `Ml_bindings.bytes_of_elf64_off`
 
 instance (Eq elf64_off)
@@ -400,3 +406,9 @@ declare ocaml target_rep function bytes_of_elf64_sxword = `Ml_bindings.bytes_of_
 instance (Show elf64_sxword)
   let show = string_of_elf64_sxword
 end
+
+val unsafe_nat_of_natural : natural -> nat
+val unsafe_int32_of_natural : natural -> int32
+
+declare ocaml target_rep function unsafe_nat_of_natural = `Big_int.int_of_big_int`
+declare ocaml target_rep function unsafe_int32_of_natural = `Big_int.int32_of_big_int`

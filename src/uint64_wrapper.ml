@@ -43,3 +43,19 @@ let to_string l =
 let equal l r =
   Big_int.eq_big_int l r
 ;;
+
+let to_bytes u : char * char * char * char * char * char * char * char =
+  let u1 = Big_int.mult_big_int (Big_int.big_int_of_string "4278190080") (Big_int.big_int_of_string "255") in (* 0xFF00000000 *)
+  let u2 = Big_int.mult_big_int (Big_int.big_int_of_string "4278190080") (Big_int.big_int_of_string "65280") in (* 0xFF0000000000 *)
+  let u3 = Big_int.mult_big_int (Big_int.big_int_of_string "4278190080") (Big_int.big_int_of_string "16711680") in (* 0xFF000000000000 *)
+  let u4 = Big_int.mult_big_int (Big_int.big_int_of_string "4278190080") (Big_int.big_int_of_string "4278190080") in (* 0xFF00000000000000 *)
+  let b0 = Char.chr (Big_int.int_of_big_int (logand u (Big_int.big_int_of_string "255"))) in (* 0xFF *)
+  let b1 = Char.chr (Big_int.int_of_big_int (shift_right (logand u (Big_int.big_int_of_string "65280")) 8)) in (* 0xFF00 *)
+  let b2 = Char.chr (Big_int.int_of_big_int (shift_right (logand u (Big_int.big_int_of_string "16711680")) 16)) in (* 0xFF0000 *)
+  let b3 = Char.chr (Big_int.int_of_big_int (shift_right (logand u (Big_int.big_int_of_string "4278190080")) 24)) in (* 0xFF000000 *)
+  let b4 = Char.chr (Big_int.int_of_big_int (shift_right (logand u u1) 32)) in (* 0xFF00000000 *)
+  let b5 = Char.chr (Big_int.int_of_big_int (shift_right (logand u u2) 40)) in (* 0xFF0000000000 *)
+  let b6 = Char.chr (Big_int.int_of_big_int (shift_right (logand u u3) 48)) in (* 0xFF000000000000 *)
+  let b7 = Char.chr (Big_int.int_of_big_int (shift_right (logand u u4) 56)) in (* 0xFF00000000000000 *)
+    b7, b6, b5, b4, b3, b2, b1, b0
+;;

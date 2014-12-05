@@ -5,12 +5,19 @@
 open import Basic_classes
 open import Bool
 open import List
+open import Num
 open import Maybe
 
 open import Elf_header
+open import Elf_types
+
+open import Endianness
 
 val abi_amd64_data_encoding : natural
 let abi_amd64_data_encoding = elf_data_2lsb
+
+val abi_amd64_endianness : endianness
+let abi_amd64_endianness = Little (* Must match above *)
 
 val abi_amd64_file_class : natural
 let abi_amd64_file_class = elf_class_64
@@ -22,7 +29,7 @@ let abi_amd64_file_version = elf_ev_current
   * machine architecture is valid according to the ABI-specific specification.
   * Machine architecture must be x86-64 (pg 60)
   *)
-val is_valid_abi_amd64_machine_architecture : nat -> bool
+val is_valid_abi_amd64_machine_architecture : natural -> bool
 let is_valid_abi_amd64_machine_architecture m =
   m = elf_ma_x86_64
 
@@ -33,12 +40,13 @@ let is_valid_abi_amd64_machine_architecture m =
   *)
 val is_valid_abi_amd64_magic_number : list unsigned_char -> bool
 let is_valid_abi_amd64_magic_number magic =
-  match List.index magic elf_ii_class with
+  match List.index magic (unsafe_nat_of_natural elf_ii_class) with
     | Nothing  -> false
     | Just cls ->
-      match List.index magic elf_ii_data with
+      match List.index magic (unsafe_nat_of_natural elf_ii_data) with
         | Nothing   -> false
         | Just data ->
-            (cls = abi_amd64_file_class) && (data = abi_amd64_data_encoding)
+            (natural_of_unsigned_char cls = abi_amd64_file_class) &&
+              (natural_of_unsigned_char data = abi_amd64_data_encoding)
       end
   end
