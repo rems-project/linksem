@@ -585,8 +585,20 @@ let read_elf64_xword endian bs0 =
     | Big    -> read_elf64_xword_be bs0
 ;;
 
+let bytes_of_elf64_xword_be x =
+  let (b7, b6, b5, b4, b3, b2, b1, b0) = Uint64_wrapper.to_bytes x in
+    [b7; b6; b5; b4; b3; b2; b1; b0]
+;;
+
+let bytes_of_elf64_xword_le x =
+  let (b7, b6, b5, b4, b3, b2, b1, b0) = Uint64_wrapper.to_bytes x in
+    [b0; b1; b2; b3; b4; b5; b6; b7]
+;;
+
 let bytes_of_elf64_xword endian x =
-  assert false
+  match endian with
+    | Little -> bytes_of_elf64_xword_le x
+    | Big    -> bytes_of_elf64_xword_be x
 ;;
 
 (** ELF signed extra wide word type:

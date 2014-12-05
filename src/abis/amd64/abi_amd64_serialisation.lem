@@ -45,10 +45,29 @@ let abi_amd64_generate_elf_header entry phoff phnum =
       elf64_shentsize = elf64_half_of_int32 0;
       elf64_shnum     = elf64_half_of_int32 0;
       elf64_shstrndx  = elf64_half_of_int32 (unsafe_int32_of_natural shn_undef) |>
+(*
+  <| elf64_p_type   : elf64_word  (** Type of the segment *)
+   ; elf64_p_flags  : elf64_word  (** Segment flags *)
+   ; elf64_p_offset : elf64_off   (** Offset from beginning of file for segment *)
+   ; elf64_p_vaddr  : elf64_addr  (** Virtual address for segment in memory *)
+   ; elf64_p_paddr  : elf64_addr  (** Physical address for segment *)
+   ; elf64_p_filesz : elf64_xword (** Size of segment in file, in bytes *)
+   ; elf64_p_memsz  : elf64_xword (** Size of segment in memory image, in bytes *)
+   ; elf64_p_align  : elf64_xword (** Segment alignment memory for memory and file *)
+   |>
+*)
+val abi_amd64_generate_null_program_header : elf64_program_header_table_entry
+let abi_amd64_generate_null_program_header =
+  <| elf64_p_type = elf64_word_of_int32 (unsafe_int32_of_natural elf_pt_null);
+      elf64_p_flags = elf64_word_of_int32 0; elf64_p_offset = elf64_off_of_int64 0;
+      elf64_p_vaddr = elf64_addr_of_int64 0; elf64_p_paddr = elf64_addr_of_int64 0;
+      elf64_p_filesz = elf64_xword_of_int64 0; elf64_p_memsz = elf64_xword_of_int64 0;
+      elf64_p_align = elf64_xword_of_int64 0 |>
 
-val abi_amd64_generate_program_header_table : elf64_off -> nat -> elf64_program_header_table
-let abi_amd64_generate_program_header_table pht_off num_entries =
-  []
+val abi_amd64_generate_program_header_table : elf64_program_header_table
+let abi_amd64_generate_program_header_table =
+  let null_entry = abi_amd64_generate_null_program_header in
+    [null_entry]
 
 (** [abi_amd64_serialise exec_segment] produces byte sequence serialisation of
   * an ELF file based on the executable segment passed to the function
@@ -63,9 +82,8 @@ let abi_amd64_generate_program_header_table pht_off num_entries =
 val abi_amd64_serialise : elf64_addr -> list byte -> byte_sequence
 let abi_amd64_serialise entry executable_code =
   let hdr  = abi_amd64_generate_elf_header entry (elf64_off_of_int64 64)
-              (elf64_half_of_int32 2) (* dummy + exec *) in
-  let pht  = abi_amd64_generate_program_header_table (elf64_off_of_int64 64)
-              (List.length executable_code) in
+              (elf64_half_of_int32 1) (* 2 = dummy + exec *) in
+  let pht  = abi_amd64_generate_program_header_table in
   let exec = Byte_sequence.from_byte_lists [executable_code] in
     Byte_sequence.concat [
       Elf_header.bytes_of_elf64_header hdr
