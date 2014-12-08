@@ -10,7 +10,7 @@ open import Missing_pervasives
 open import Show
 
 type elf32_interpreted_segment =
-  <| elf32_segment_body  : byte_sequence            (** Body of the segment *)
+  <| elf32_segment_body  : byte_sequence        (** Body of the segment *)
    ; elf32_segment_type  : natural              (** Type of the segment *)
    ; elf32_segment_size  : natural              (** Size of the segment in bytes *)
    ; elf32_segment_memsz : natural              (** Size of the segment in memory in bytes *)
@@ -26,6 +26,9 @@ type elf64_interpreted_segment =
    ; elf64_segment_base  : natural              (** Base address of the segment *)
    ; elf64_segment_flags : (bool * bool * bool) (** READ, WRITE, EXECUTE flags. *)
    |>
+
+type elf32_interpreted_segments = list elf32_interpreted_segment
+type elf64_interpreted_segments = list elf64_interpreted_segment
 
 val elf32_interpret_program_header_flags : elf32_word -> (bool * bool * bool)
 let elf32_interpret_program_header_flags flags =

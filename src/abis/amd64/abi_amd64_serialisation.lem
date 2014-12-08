@@ -1,9 +1,11 @@
 open import Basic_classes
 open import List
+open import Maybe
 open import Num
 
 open import Byte_sequence
 
+open import Elf_executable_file3
 open import Elf_header
 open import Elf_program_header_table
 open import Elf_section_header_table
@@ -66,7 +68,7 @@ let abi_amd64_generate_null_program_header =
 
 val abi_amd64_generate_exec_program_header : elf64_addr -> elf64_xword -> elf64_program_header_table_entry
 let abi_amd64_generate_exec_program_header vaddr sz =
-  let exec_flags = elf64_word_of_int32 1 in
+  let exec_flags = elf64_word_of_int32 5 in (* read and execute *)
   let offset     = elf64_off_of_int64 (64 + 112) (* header + 2 table entries *) in
     <| elf64_p_type = elf64_word_of_int32 (unsafe_int32_of_natural elf_pt_load);
         elf64_p_flags = exec_flags; elf64_p_offset = offset;
@@ -83,6 +85,16 @@ let abi_amd64_generate_program_header_table exec_vaddr exec =
     ; exec_entry
     ]
 
+val abi_amd64_generate_elf_executable_file3 : elf64_addr -> byte_sequence -> elf64_executable_file3
+let abi_amd64_generate_elf_executable_file3 entry exec =
+  let hdr = abi_amd64_generate_elf_header entry
+              (elf64_off_of_int64 64) (elf64_half_of_int32 2) (* 2 = dummy + exec *) in
+  let pht = abi_amd64_generate_program_header_table entry exec in
+    <| elf64_executable_file3_header = hdr;
+        elf64_executable_file3_program_header_table = pht;
+        elf64_executable_file3_section_header_table = Nothing;
+        elf64_executable_file3_body = exec |>
+
 (** [abi_amd64_serialise exec_segment] produces byte sequence serialisation of
   * an ELF file based on the executable segment passed to the function
   * in [exec_segment].
@@ -93,13 +105,7 @@ let abi_amd64_generate_program_header_table exec_vaddr exec =
   *    [ Null segment (0 bytes)                ]
   *    [ exec_segment                          ]
   *)
-val abi_amd64_serialise : elf64_addr -> byte_sequence -> byte_sequence
+val abi_amd64_serialise : elf64_addr -> byte_sequence ->  byte_sequence
 let abi_amd64_serialise entry exec =
-  let hdr  = abi_amd64_generate_elf_header entry (elf64_off_of_int64 64)
-              (elf64_half_of_int32 2) (* 2 = dummy + exec *) in
-  let pht  = abi_amd64_generate_program_header_table entry exec in
-    Byte_sequence.concat [
-      Elf_header.bytes_of_elf64_header hdr
-    ; Elf_program_header_table.bytes_of_elf64_program_header_table abi_amd64_endianness pht
-    ; exec
-    ]
+  let f3 = abi_amd64_generate_elf_executable_file3 entry exec in
+    serialise_elf64_executable_file3 f3

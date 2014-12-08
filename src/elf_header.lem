@@ -594,6 +594,38 @@ class (HasElf64Header 'a)
   val get_elf64_header : 'a -> elf64_header
 end
 
+val is_elf32_executable_file : elf32_header -> bool
+let is_elf32_executable_file hdr =
+  natural_of_elf32_half hdr.elf32_type = elf_ft_exec
+
+val is_elf64_executable_file : elf64_header -> bool
+let is_elf64_executable_file hdr =
+  natural_of_elf64_half hdr.elf64_type = elf_ft_exec
+
+val is_elf32_shared_object_file : elf32_header -> bool
+let is_elf32_shared_object_file hdr =
+  natural_of_elf32_half hdr.elf32_type = elf_ft_dyn
+
+val is_elf64_shared_object_file : elf64_header -> bool
+let is_elf64_shared_object_file hdr =
+  natural_of_elf64_half hdr.elf64_type = elf_ft_dyn
+
+val is_elf32_relocatable_file : elf32_header -> bool
+let is_elf32_relocatable_file hdr =
+  natural_of_elf32_half hdr.elf32_type = elf_ft_rel
+
+val is_elf64_relocatable_file : elf64_header -> bool
+let is_elf64_relocatable_file hdr =
+  natural_of_elf64_half hdr.elf64_type = elf_ft_rel
+
+val is_elf32_linkable_file : elf32_header -> bool
+let is_elf32_linkable_file hdr =
+  is_elf32_shared_object_file hdr || is_elf32_relocatable_file hdr
+
+val is_elf64_linkable_file : elf64_header -> bool
+let is_elf64_linkable_file hdr =
+  is_elf64_shared_object_file hdr || is_elf64_relocatable_file hdr
+
 (** [deduce_endian] deduces the endianness of an ELF file based on the ELF
   * header's magic number.
   *)

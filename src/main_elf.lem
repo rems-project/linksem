@@ -9,9 +9,7 @@ open import Missing_pervasives
 open import Show
 
 open import Elf_header
-open import Elf_file1
-open import Elf_executable_file2
-open import Elf_executable_file3
+open import Elf_executable_file
 open import Elf_linking_file2
 open import Elf_linking_file3
 open import Elf_types
@@ -31,11 +29,12 @@ let default_sht_bdl =
 
 let _ =
   let res =
-    let entry = elf64_addr_of_int64 0 in
-    let bytes = Abi_amd64_serialisation.abi_amd64_serialise entry Byte_sequence.empty in
-      Byte_sequence.serialise "test/usr-bin-ld.out" bytes
+    Byte_sequence.acquire "test/a.out" >>= fun bs0 ->
+    Elf_executable_file.read_elf32_executable_file bs0 >>= fun ef ->
+    Elf_executable_file.get_elf32_global_symbol_init ef >>= fun syms ->
+    return (show syms)
   in
     match res with
       | Fail err  -> Missing_pervasives.print ("[!]: " ^ err)
-      | Success e -> Missing_pervasives.print ("Success..." ^ show e)
+      | Success e -> Missing_pervasives.print e
     end

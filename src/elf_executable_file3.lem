@@ -577,3 +577,11 @@ let get_elf64_global_symbol_init f3 =
         return (symbol, (typ, size, addr, Nothing))) strs
     in
       mapped
+
+val serialise_elf64_executable_file3 : elf64_executable_file3 -> byte_sequence
+let serialise_elf64_executable_file3 f3 =
+  let endian = get_elf64_header_endianness f3.elf64_executable_file3_header in
+    Byte_sequence.concat [
+      bytes_of_elf64_header f3.elf64_executable_file3_header
+    ; bytes_of_elf64_program_header_table endian f3.elf64_executable_file3_program_header_table
+    ]
