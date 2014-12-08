@@ -1,0 +1,37 @@
+open import List
+open import String
+
+open import Elf_types
+
+open import Byte_sequence
+
+type elf32_interpreted_section =
+  <| elf32_section_name       : string        (** Name of the section *)
+   ; elf32_section_type       : natural       (** Type of the section *)
+   ; elf32_section_flags      : natural       (** Flags associated with the section *)
+   ; elf32_section_base       : natural       (** Base address of the section in memory *)
+   ; elf32_section_offset     : natural       (** Offset from beginning of file *)
+   ; elf32_section_size       : natural       (** Section size in bytes *)
+   ; elf32_section_link       : natural       (** Section header table index link *)
+   ; elf32_section_info       : natural       (** Extra information, depends on section type *)
+   ; elf32_section_align      : natural       (** Alignment constraints for section *)
+   ; elf32_section_entry_size : natural       (** Size of each entry in table, if section is one *)
+   ; elf32_section_body       : byte_sequence (** Body of section *)
+   |>
+
+type elf64_interpreted_section =
+  <| elf64_section_name       : string        (** Name of the section *)
+   ; elf64_section_type       : natural       (** Type of the section *)
+   ; elf64_section_flags      : natural       (** Flags associated with the section *)
+   ; elf64_section_base       : natural       (** Base address of the section in memory *)
+   ; elf64_section_offset     : natural       (** Offset from beginning of file *)
+   ; elf64_section_size       : natural       (** Section size in bytes *)
+   ; elf64_section_link       : natural       (** Section header table index link *)
+   ; elf64_section_info       : natural       (** Extra information, depends on section type *)
+   ; elf64_section_align      : natural       (** Alignment constraints for section *)
+   ; elf64_section_entry_size : natural       (** Size of each entry in table, if section is one *)
+   ; elf64_section_body       : byte_sequence (** Body of section *)
+   |>
+
+type elf32_interpreted_sections = list elf32_interpreted_section
+type elf64_interpreted_sections = list elf64_interpreted_section
