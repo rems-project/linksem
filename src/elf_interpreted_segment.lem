@@ -15,15 +15,19 @@ type elf32_interpreted_segment =
    ; elf32_segment_size  : natural              (** Size of the segment in bytes *)
    ; elf32_segment_memsz : natural              (** Size of the segment in memory in bytes *)
    ; elf32_segment_base  : natural              (** Base address of the segment *)
+   ; elf32_segment_paddr : natural              (** Physical address of segment *)
+   ; elf32_segment_align : natural              (** Alignment of the segment *)
    ; elf32_segment_flags : (bool * bool * bool) (** READ, WRITE, EXECUTE flags. *)
    |>
 
 type elf64_interpreted_segment =
-  <| elf64_segment_body  : byte_sequence            (** Body of the segment *)
+  <| elf64_segment_body  : byte_sequence        (** Body of the segment *)
    ; elf64_segment_type  : natural              (** Type of the segment *)
    ; elf64_segment_size  : natural              (** Size of the segment in bytes *)
    ; elf64_segment_memsz : natural              (** Size of the segment in memory in bytes *)
    ; elf64_segment_base  : natural              (** Base address of the segment *)
+   ; elf64_segment_paddr : natural              (** Physical address of segment *)
+   ; elf64_segment_align : natural              (** Alignment of the segment *)
    ; elf64_segment_flags : (bool * bool * bool) (** READ, WRITE, EXECUTE flags. *)
    |>
 
@@ -65,6 +69,7 @@ let string_of_elf32_interpreted_segment seg =
   ; "Segment size: " ^ show seg.elf32_segment_size
   ; "Segment memory size: " ^ show seg.elf32_segment_memsz
   ; "Segment base address: " ^ show seg.elf32_segment_base
+  ; "Segment physical address: " ^ show seg.elf32_segment_paddr
   ; "Segment flags: " ^ string_of_flags seg.elf32_segment_flags
   ]
 
@@ -76,5 +81,6 @@ let string_of_elf64_interpreted_segment seg =
   ; "Segment size: " ^ show seg.elf64_segment_size
   ; "Segment memory size: " ^ show seg.elf64_segment_memsz
   ; "Segment base address: " ^ show seg.elf64_segment_base
+  ; "Segment physical address: " ^ show seg.elf64_segment_paddr
   ; "Segment flags: " ^ string_of_flags seg.elf64_segment_flags
   ]

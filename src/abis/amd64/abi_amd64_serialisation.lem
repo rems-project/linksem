@@ -5,7 +5,7 @@ open import Num
 
 open import Byte_sequence
 
-open import Elf_executable_file3
+open import Elf_executable_file
 open import Elf_header
 open import Elf_program_header_table
 open import Elf_section_header_table
@@ -85,8 +85,9 @@ let abi_amd64_generate_program_header_table exec_vaddr exec =
     ; exec_entry
     ]
 
-val abi_amd64_generate_elf_executable_file3 : elf64_addr -> byte_sequence -> elf64_executable_file3
-let abi_amd64_generate_elf_executable_file3 entry exec =
+(*
+val abi_amd64_generate_elf_executable_file : elf64_addr -> byte_sequence -> elf64_executable_file
+let abi_amd64_generate_elf_executable_file entry exec =
   let hdr = abi_amd64_generate_elf_header entry
               (elf64_off_of_int64 64) (elf64_half_of_int32 2) (* 2 = dummy + exec *) in
   let pht = abi_amd64_generate_program_header_table entry exec in
@@ -109,3 +110,4 @@ val abi_amd64_serialise : elf64_addr -> byte_sequence ->  byte_sequence
 let abi_amd64_serialise entry exec =
   let f3 = abi_amd64_generate_elf_executable_file3 entry exec in
     serialise_elf64_executable_file3 f3
+*)
