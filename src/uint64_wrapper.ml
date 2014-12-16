@@ -12,6 +12,10 @@ let add l r =
   Big_int.mod_big_int (Big_int.add_big_int l r) max_int
 ;;
 
+let minus l r =
+  Big_int.mod_big_int (Big_int.sub_big_int l r) max_int
+;;
+
 let of_int i =
   Big_int.big_int_of_int i
 ;;

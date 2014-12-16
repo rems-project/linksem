@@ -119,6 +119,10 @@ val elf64_addr_of_int64 : int64 -> elf64_addr
 val read_elf64_addr : endianness -> byte_sequence -> error (elf64_addr * byte_sequence)
 val equal_elf64_addr : elf64_addr -> elf64_addr -> bool
 val bytes_of_elf64_addr : endianness -> elf64_addr -> list byte
+val elf64_addr_minus : elf64_addr -> elf64_addr -> elf64_addr
+val elf64_addr_rshift : elf64_addr -> nat -> elf64_addr
+val elf64_addr_lshift : elf64_addr -> nat -> elf64_addr
+val elf64_addr_land : elf64_addr -> elf64_addr -> elf64_addr
 
 declare ocaml target_rep function string_of_elf64_addr = `Uint64_wrapper.to_string`
 declare ocaml target_rep function read_elf64_addr = `Ml_bindings.read_elf64_addr`
@@ -126,6 +130,10 @@ declare ocaml target_rep function natural_of_elf64_addr = `Ml_bindings.natural_o
 declare ocaml target_rep function equal_elf64_addr = `Uint64_wrapper.equal`
 declare ocaml target_rep function bytes_of_elf64_addr = `Ml_bindings.bytes_of_elf64_addr`
 declare ocaml target_rep function elf64_addr_of_int64 = `Uint64_wrapper.of_int64`
+declare ocaml target_rep function elf64_addr_minus = `Uint64_wrapper.minus`
+declare ocaml target_rep function elf64_addr_lshift = `Uint64_wrapper.shift_left`
+declare ocaml target_rep function elf64_addr_rshift = `Uint64_wrapper.shift_right`
+declare ocaml target_rep function elf64_addr_land = `Uint64_wrapper.logand`
 
 instance (Eq elf64_addr)
   let (=) = equal_elf64_addr
@@ -408,9 +416,11 @@ instance (Show elf64_sxword)
 end
 
 val unsafe_nat_of_natural : natural -> nat
+val unsafe_int_of_natural : natural -> int
 val unsafe_int32_of_natural : natural -> int32
 val unsafe_int64_of_natural : natural -> int64
 
 declare ocaml target_rep function unsafe_nat_of_natural = `Big_int.int_of_big_int`
+declare ocaml target_rep function unsafe_int_of_natural = `Big_int.int_of_big_int`
 declare ocaml target_rep function unsafe_int32_of_natural = `Big_int.int32_of_big_int`
 declare ocaml target_rep function unsafe_int64_of_natural = `Big_int.int64_of_big_int`

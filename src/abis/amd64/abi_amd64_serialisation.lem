@@ -131,17 +131,55 @@ let abi_amd64_generate_data_heap_interpreted_segment entry_point segment_size =
 
 val abi_amd64_entry_point_addr : elf64_addr
 let abi_amd64_entry_point_addr =
-  elf64_addr_of_int64 268501552 (* 0x10010230 *)
+  elf64_addr_of_int64 4194304 (* 0x400000 *)
+
+val abi_amd64_data_heap_addr : elf64_addr
+let abi_amd64_data_heap_addr =
+  elf64_addr_of_int64 (536870912 * 2) (* 67108864 * 16 *)
+
+val abi_amd64_code_heap_addr : elf64_addr
+let abi_amd64_code_heap_addr =
+  elf64_addr_of_int64 67108864 (* 16 * 4194304 *)
+
+val byte_of_int : int -> byte
+
+declare ocaml target_rep function byte_of_int = `Char.chr`
+
+val unsafe_int_of_elf64_addr : elf64_addr -> int
+let unsafe_int_of_elf64_addr addr =
+  unsafe_int_of_natural (natural_of_elf64_addr addr)
+
+val relocation_fixup : byte_sequence
+let relocation_fixup =
+  let relocation = elf64_addr_minus 
+                    (elf64_addr_minus abi_amd64_data_heap_addr abi_amd64_entry_point_addr)
+                    (elf64_addr_of_int64 9)
+  in
+    Byte_sequence.from_byte_lists
+    [[ byte_of_int 72
+    ; byte_of_int 199
+    ; byte_of_int 68
+    ; byte_of_int 36
+    ; byte_of_int 248
+    ; byte_of_int (unsafe_int_of_elf64_addr (elf64_addr_land relocation (elf64_addr_of_int64 255)))
+    ; byte_of_int (unsafe_int_of_elf64_addr (elf64_addr_land (elf64_addr_rshift relocation 8) (elf64_addr_of_int64 255)))
+    ; byte_of_int (unsafe_int_of_elf64_addr (elf64_addr_land (elf64_addr_rshift relocation 16) (elf64_addr_of_int64 255)))
+    ; byte_of_int (unsafe_int_of_elf64_addr (elf64_addr_land (elf64_addr_rshift relocation 24) (elf64_addr_of_int64 255)))
+    ; byte_of_int 72
+    ; byte_of_int 139
+    ; byte_of_int 68
+    ; byte_of_int 36
+    ; byte_of_int 248
+    ]]
 
 val abi_amd64_generate_executable_file : byte_sequence -> natural -> natural -> elf64_executable_file
 let abi_amd64_generate_executable_file exec_code data_heap_size code_heap_size =
+  let exec_code' = Byte_sequence.concat [relocation_fixup; exec_code] in
   let hdr       = abi_amd64_generate_elf_header abi_amd64_entry_point_addr
                     (elf64_off_of_int64 64) (elf64_half_of_int32 3) in
-  let exec      = abi_amd64_generate_exec_interpreted_segment (natural_of_elf64_addr abi_amd64_entry_point_addr) exec_code in
-  let code_heap_entry = (natural_of_elf64_addr abi_amd64_entry_point_addr) + exec.elf64_segment_size in
-  let data_heap_entry = (natural_of_elf64_addr abi_amd64_entry_point_addr) + exec.elf64_segment_size + code_heap_size in
-  let code_heap = abi_amd64_generate_code_heap_interpreted_segment code_heap_entry code_heap_size in
-  let data_heap = abi_amd64_generate_data_heap_interpreted_segment data_heap_entry data_heap_size in
+  let exec      = abi_amd64_generate_exec_interpreted_segment (natural_of_elf64_addr abi_amd64_entry_point_addr) exec_code' in
+  let code_heap = abi_amd64_generate_code_heap_interpreted_segment (natural_of_elf64_addr abi_amd64_code_heap_addr) code_heap_size in
+  let data_heap = abi_amd64_generate_data_heap_interpreted_segment (natural_of_elf64_addr abi_amd64_code_heap_addr) data_heap_size in
   let pht       = abi_amd64_generate_program_header_table exec code_heap data_heap in
     <| elf64_executable_file_header = hdr; elf64_executable_file_program_header_table = pht;
           elf64_executable_file_interpreted_segments = [exec; code_heap; data_heap];
