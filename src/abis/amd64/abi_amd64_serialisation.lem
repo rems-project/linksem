@@ -119,7 +119,7 @@ let abi_amd64_generate_code_heap_interpreted_segment entry_point segment_size =
     <| elf64_segment_body = seg; elf64_segment_size = segment_size;
         elf64_segment_memsz = segment_size; elf64_segment_base = entry_point;
         elf64_segment_paddr = entry_point; elf64_segment_align = 4096;
-        elf64_segment_flags = (true, false, true); elf64_segment_type = elf_pt_load |>
+        elf64_segment_flags = (true, true, true); elf64_segment_type = elf_pt_load |>
 
 val abi_amd64_generate_data_heap_interpreted_segment : natural -> natural -> elf64_interpreted_segment
 let abi_amd64_generate_data_heap_interpreted_segment entry_point segment_size =
@@ -127,19 +127,19 @@ let abi_amd64_generate_data_heap_interpreted_segment entry_point segment_size =
     <| elf64_segment_body = seg; elf64_segment_size = segment_size;
         elf64_segment_memsz = segment_size; elf64_segment_base = entry_point;
         elf64_segment_paddr = entry_point; elf64_segment_align = 4096;
-        elf64_segment_flags = (true, false, false); elf64_segment_type = elf_pt_load |>
+        elf64_segment_flags = (true, true, false); elf64_segment_type = elf_pt_load |>
 
 val abi_amd64_entry_point_addr : elf64_addr
 let abi_amd64_entry_point_addr =
-  elf64_addr_of_int64 4194536 (* 0x400000 *)
+  elf64_addr_of_int64 (4194304 + 232) (* 0x400000 *)
 
 val abi_amd64_code_heap_addr : elf64_addr
 let abi_amd64_code_heap_addr =
-  elf64_addr_of_int64 ((0536871162 * 2) + 1) (* 67108864 * 16 *)
+  elf64_addr_of_int64 (67108864 + 2000)(* 16 * 4194304 *)
 
 val abi_amd64_data_heap_addr : elf64_addr
 let abi_amd64_data_heap_addr =
-  elf64_addr_of_int64 67109620 (* 16 * 4194304 *)
+  elf64_addr_of_int64 ((67108864 * 16) + 2255) (* 67108864 * 16 *) 
 
 val byte_of_int : int -> byte
 

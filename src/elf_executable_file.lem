@@ -56,11 +56,6 @@ let bytes_of_elf64_executable_file ef =
       ) buffer
     in
     let final_layout = [hdr_layout; pht_layout] ++ segs_layout in
-    let _            =
-      Missing_pervasives.print (unlines (
-        List.map (fun (x, y) ->
-          "At offset: " ^ show x ^ " of length " ^ show (Byte_sequence.length y)) final_layout))
-    in
     let concats =
       foldM (fun x y ->
         let (current_offset, so_far) = x in
