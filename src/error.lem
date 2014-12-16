@@ -72,6 +72,13 @@ let rec mapM f xs =
 				return (hd::tl)
 	end
 
+val foldM : forall 'a 'b. ('a -> 'b -> error 'a) -> 'a -> list 'b -> error 'a
+let rec foldM f e xs =
+  match xs with
+    | []    -> return e
+    | x::xs -> f e x >>= fun res -> foldM f res xs
+  end
+
 (** [string_of_error err] produces a string representation of [err].
   *)
 val string_of_error : forall 'a. Show 'a => error 'a -> string

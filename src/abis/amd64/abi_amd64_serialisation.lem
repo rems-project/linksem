@@ -7,6 +7,7 @@ open import Byte_sequence
 
 open import Elf_executable_file
 open import Elf_header
+open import Elf_interpreted_segment
 open import Elf_program_header_table
 open import Elf_section_header_table
 open import Elf_types
@@ -33,81 +34,80 @@ let abi_amd64_elf_ident abi_version =
   *)
 val abi_amd64_generate_elf_header : elf64_addr -> elf64_off -> elf64_half -> elf64_header
 let abi_amd64_generate_elf_header entry phoff phnum =
-  <| elf64_ident      = abi_amd64_elf_ident 0;
-      elf64_type      = elf64_half_of_int32 (unsafe_int32_of_natural elf_ft_exec);
-      elf64_machine   = elf64_half_of_int32 (unsafe_int32_of_natural elf_ma_x86_64);
-      elf64_version   = elf64_word_of_int32 (unsafe_int32_of_natural elf_ev_current);
-      elf64_entry     = entry;
-      elf64_phoff     = phoff;
-      elf64_shoff     = elf64_off_of_int64 0;
-      elf64_flags     = elf64_word_of_int32 0;
-      elf64_ehsize    = elf64_half_of_int32 64;
-      elf64_phentsize = elf64_half_of_int32 56;
-      elf64_phnum     = phnum;
-      elf64_shentsize = elf64_half_of_int32 0;
-      elf64_shnum     = elf64_half_of_int32 0;
-      elf64_shstrndx  = elf64_half_of_int32 (unsafe_int32_of_natural shn_undef) |>
-(*
-  <| elf64_p_type   : elf64_word  (** Type of the segment *)
-   ; elf64_p_flags  : elf64_word  (** Segment flags *)
-   ; elf64_p_offset : elf64_off   (** Offset from beginning of file for segment *)
-   ; elf64_p_vaddr  : elf64_addr  (** Virtual address for segment in memory *)
-   ; elf64_p_paddr  : elf64_addr  (** Physical address for segment *)
-   ; elf64_p_filesz : elf64_xword (** Size of segment in file, in bytes *)
-   ; elf64_p_memsz  : elf64_xword (** Size of segment in memory image, in bytes *)
-   ; elf64_p_align  : elf64_xword (** Segment alignment memory for memory and file *)
-   |>
-*)
-val abi_amd64_generate_null_program_header : elf64_program_header_table_entry
-let abi_amd64_generate_null_program_header =
-  <| elf64_p_type = elf64_word_of_int32 (unsafe_int32_of_natural elf_pt_null);
-      elf64_p_flags = elf64_word_of_int32 0; elf64_p_offset = elf64_off_of_int64 0;
-      elf64_p_vaddr = elf64_addr_of_int64 0; elf64_p_paddr = elf64_addr_of_int64 0;
-      elf64_p_filesz = elf64_xword_of_int64 0; elf64_p_memsz = elf64_xword_of_int64 0;
-      elf64_p_align = elf64_xword_of_int64 0 |>
+  <| elf64_ident     = abi_amd64_elf_ident 0;
+     elf64_type      = elf64_half_of_int32 (unsafe_int32_of_natural elf_ft_exec);
+     elf64_machine   = elf64_half_of_int32 (unsafe_int32_of_natural elf_ma_x86_64);
+     elf64_version   = elf64_word_of_int32 (unsafe_int32_of_natural elf_ev_current);
+     elf64_entry     = entry;
+     elf64_phoff     = phoff;
+     elf64_shoff     = elf64_off_of_int64  0;
+     elf64_flags     = elf64_word_of_int32 0;
+     elf64_ehsize    = elf64_half_of_int32 64;
+     elf64_phentsize = elf64_half_of_int32 56;
+     elf64_phnum     = phnum;
+     elf64_shentsize = elf64_half_of_int32 0;
+     elf64_shnum     = elf64_half_of_int32 0;
+     elf64_shstrndx  = elf64_half_of_int32 (unsafe_int32_of_natural shn_undef)
+  |>
 
-val abi_amd64_generate_exec_program_header : elf64_addr -> elf64_xword -> elf64_program_header_table_entry
-let abi_amd64_generate_exec_program_header vaddr sz =
-  let exec_flags = elf64_word_of_int32 5 in (* read and execute *)
-  let offset     = elf64_off_of_int64 (64 + 112) (* header + 2 table entries *) in
-    <| elf64_p_type = elf64_word_of_int32 (unsafe_int32_of_natural elf_pt_load);
-        elf64_p_flags = exec_flags; elf64_p_offset = offset;
-        elf64_p_vaddr = vaddr; elf64_p_paddr = elf64_addr_of_int64 0;
-        elf64_p_filesz = sz; elf64_p_memsz = sz;
-        elf64_p_align = elf64_xword_of_int64 0 |>
+val elf64_pack_segment_flags : (bool * bool * bool) -> elf64_word
+let elf64_pack_segment_flags (r, w, x) = elf64_word_of_int32 0
 
-val abi_amd64_generate_program_header_table : elf64_addr -> byte_sequence -> elf64_program_header_table
-let abi_amd64_generate_program_header_table exec_vaddr exec =
-  let null_entry = abi_amd64_generate_null_program_header in
-  let exec_sz    = elf64_xword_of_int64 (unsafe_int64_of_natural (Byte_sequence.length exec)) in
-  let exec_entry = abi_amd64_generate_exec_program_header exec_vaddr exec_sz in
-    [ null_entry
-    ; exec_entry
-    ]
+val elf64_header_size : natural
+let elf64_header_size = 64
 
-(*
-val abi_amd64_generate_elf_executable_file : elf64_addr -> byte_sequence -> elf64_executable_file
-let abi_amd64_generate_elf_executable_file entry exec =
-  let hdr = abi_amd64_generate_elf_header entry
-              (elf64_off_of_int64 64) (elf64_half_of_int32 2) (* 2 = dummy + exec *) in
-  let pht = abi_amd64_generate_program_header_table entry exec in
-    <| elf64_executable_file3_header = hdr;
-        elf64_executable_file3_program_header_table = pht;
-        elf64_executable_file3_section_header_table = Nothing;
-        elf64_executable_file3_body = exec |>
+val elf64_program_header_table_entry_size : natural
+let elf64_program_header_table_entry_size = 56
 
-(** [abi_amd64_serialise exec_segment] produces byte sequence serialisation of
-  * an ELF file based on the executable segment passed to the function
-  * in [exec_segment].
-  *
-  * File layout:
-  *    [ ELF Header (fixed size: 64 bytes)     ]
-  *    [ Program header table at 64 byte offset]
-  *    [ Null segment (0 bytes)                ]
-  *    [ exec_segment                          ]
-  *)
-val abi_amd64_serialise : elf64_addr -> byte_sequence ->  byte_sequence
-let abi_amd64_serialise entry exec =
-  let f3 = abi_amd64_generate_elf_executable_file3 entry exec in
-    serialise_elf64_executable_file3 f3
-*)
+val abi_amd64_generate_program_header_table : elf64_interpreted_segment -> elf64_interpreted_segment -> elf64_program_header_table
+let abi_amd64_generate_program_header_table exec scratch =
+  (* exec segment and then base *)
+  let exec_header =
+    <| elf64_p_type   = elf64_word_of_int32 (unsafe_int32_of_natural exec.elf64_segment_type);
+       elf64_p_flags  = elf64_pack_segment_flags exec.elf64_segment_flags;
+       elf64_p_offset = elf64_off_of_int64 (unsafe_int64_of_natural (elf64_header_size + (elf64_program_header_table_entry_size * 2)));
+       elf64_p_vaddr  = elf64_addr_of_int64 (unsafe_int64_of_natural exec.elf64_segment_base);
+       elf64_p_paddr  = elf64_addr_of_int64 0;
+       elf64_p_filesz = elf64_xword_of_int64 (unsafe_int64_of_natural exec.elf64_segment_size);
+       elf64_p_memsz  = elf64_xword_of_int64 (unsafe_int64_of_natural exec.elf64_segment_size);
+       elf64_p_align  = elf64_xword_of_int64 (unsafe_int64_of_natural exec.elf64_segment_align) |>
+  in
+  let scratch_header =
+    <| elf64_p_type   = elf64_word_of_int32 (unsafe_int32_of_natural scratch.elf64_segment_type);
+       elf64_p_flags  = elf64_pack_segment_flags scratch.elf64_segment_flags;
+       elf64_p_offset = elf64_off_of_int64 (unsafe_int64_of_natural (elf64_header_size + (elf64_program_header_table_entry_size * 2) + exec.elf64_segment_size));
+       elf64_p_vaddr  = elf64_addr_of_int64 (unsafe_int64_of_natural scratch.elf64_segment_base);
+       elf64_p_paddr  = elf64_addr_of_int64 0;
+       elf64_p_filesz = elf64_xword_of_int64 (unsafe_int64_of_natural scratch.elf64_segment_size);
+       elf64_p_memsz  = elf64_xword_of_int64 (unsafe_int64_of_natural scratch.elf64_segment_size);
+       elf64_p_align  = elf64_xword_of_int64 (unsafe_int64_of_natural scratch.elf64_segment_align) |>
+  in
+    [exec_header; scratch_header]
+
+val abi_amd64_generate_exec_interpreted_segment : natural -> byte_sequence -> elf64_interpreted_segment
+let abi_amd64_generate_exec_interpreted_segment entry_point exec_code =
+  let segment_size = Byte_sequence.length exec_code in
+    <| elf64_segment_body = exec_code; elf64_segment_size = segment_size;
+          elf64_segment_memsz = segment_size; elf64_segment_base = entry_point;
+          elf64_segment_paddr = 0; elf64_segment_align = 0;
+          elf64_segment_flags = (true, false, true); elf64_segment_type = elf_pt_load |>
+
+val abi_amd64_generate_scratch_interpreted_segment : natural -> natural -> elf64_interpreted_segment
+let abi_amd64_generate_scratch_interpreted_segment entry_point segment_size =
+  let seg = Byte_sequence.create segment_size Missing_pervasives.null_char in
+    <| elf64_segment_body = seg; elf64_segment_size = segment_size;
+        elf64_segment_memsz = segment_size; elf64_segment_base = entry_point;
+        elf64_segment_paddr = 0; elf64_segment_align = 0;
+        elf64_segment_flags = (true, false, false); elf64_segment_type = elf_pt_load |>
+
+val abi_amd64_generate_executable_file : (natural * byte_sequence) -> (natural * natural) -> elf64_executable_file
+let abi_amd64_generate_executable_file (exec_entry_point, exec_code) (scratch_entry_point, scratch_space) =
+  let hdr     = abi_amd64_generate_elf_header (elf64_addr_of_int64 (unsafe_int64_of_natural exec_entry_point))
+                (elf64_off_of_int64 64) (elf64_half_of_int32 1) in
+  let exec    = abi_amd64_generate_exec_interpreted_segment exec_entry_point exec_code in
+  let scratch = abi_amd64_generate_scratch_interpreted_segment scratch_entry_point scratch_space in
+  let pht     = abi_amd64_generate_program_header_table exec scratch in
+    <| elf64_executable_file_header = hdr; elf64_executable_file_program_header_table = pht;
+          elf64_executable_file_interpreted_segments = [exec; scratch];
+          elf64_executable_file_interpreted_sections = [];
+          elf64_executable_file_section_header_table = [] |>

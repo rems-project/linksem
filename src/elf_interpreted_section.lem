@@ -1,12 +1,16 @@
 open import List
+open import Num
 open import String
 
 open import Elf_types
 
 open import Byte_sequence
 
+open import Missing_pervasives
+open import Show
+
 type elf32_interpreted_section =
-  <| elf32_section_name       : string        (** Name of the section *)
+  <| elf32_section_name       : natural       (** Name of the section *)
    ; elf32_section_type       : natural       (** Type of the section *)
    ; elf32_section_flags      : natural       (** Flags associated with the section *)
    ; elf32_section_base       : natural       (** Base address of the section in memory *)
@@ -20,7 +24,7 @@ type elf32_interpreted_section =
    |>
 
 type elf64_interpreted_section =
-  <| elf64_section_name       : string        (** Name of the section *)
+  <| elf64_section_name       : natural       (** Name of the section *)
    ; elf64_section_type       : natural       (** Type of the section *)
    ; elf64_section_flags      : natural       (** Flags associated with the section *)
    ; elf64_section_base       : natural       (** Base address of the section in memory *)
@@ -35,3 +39,33 @@ type elf64_interpreted_section =
 
 type elf32_interpreted_sections = list elf32_interpreted_section
 type elf64_interpreted_sections = list elf64_interpreted_section
+
+val string_of_elf32_interpreted_section : elf32_interpreted_section -> string
+let string_of_elf32_interpreted_section is =
+   unlines [
+     "Name: " ^ show is.elf32_section_name
+   ; "Type: " ^ show is.elf32_section_type 
+   ; "Flags: " ^ show is.elf32_section_type
+   ; "Base address: " ^ show is.elf32_section_base
+   ; "Section offset: " ^ show is.elf32_section_offset
+   ; "Section size: " ^ show is.elf32_section_size
+   ; "Link: " ^ show is.elf32_section_link
+   ; "Info: " ^ show is.elf32_section_info
+   ; "Section alignment: " ^ show is.elf32_section_align
+   ; "Entry size: " ^ show is.elf32_section_entry_size
+   ]
+
+val string_of_elf64_interpreted_section : elf64_interpreted_section -> string
+let string_of_elf64_interpreted_section is =
+   unlines [
+     "Name: " ^ show is.elf64_section_name
+   ; "Type: " ^ show is.elf64_section_type 
+   ; "Flags: " ^ show is.elf64_section_type
+   ; "Base address: " ^ show is.elf64_section_base
+   ; "Section offset: " ^ show is.elf64_section_offset
+   ; "Section size: " ^ show is.elf64_section_size
+   ; "Link: " ^ show is.elf64_section_link
+   ; "Info: " ^ show is.elf64_section_info
+   ; "Section alignment: " ^ show is.elf64_section_align
+   ; "Entry size: " ^ show is.elf64_section_entry_size
+   ]

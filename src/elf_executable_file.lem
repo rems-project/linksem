@@ -1,10 +1,12 @@
 open import Basic_classes
 open import Bool
+open import List
 open import Num
 open import Maybe
 open import String
 
 open import Elf_header
+open import Elf_interpreted_section
 open import Elf_interpreted_segment
 open import Elf_types
 open import Elf_section_header_table
@@ -19,30 +21,87 @@ open import Missing_pervasives
 open import Show
 
 type elf32_executable_file =
-  <| elf32_executable_file_header                      : elf32_header
-   ; elf32_executable_file_program_header_table        : elf32_program_header_table
-   ; elf32_executable_file_section_header_table        : elf32_section_header_table
-   ; elf32_executable_file_interpreted_segments        : elf32_interpreted_segments
-   (* ; elf32_executable_file_interpreted_sections        : elf32_interpreted_sections *)
-   ; elf32_executable_file_section_header_string_table : string_table
-   ; elf32_executable_file_symbol_string_table         : string_table
-   ; elf32_executable_file_symbol_table                : elf32_symbol_table
-   ; elf32_executable_file_dynamic_symbol_table        : elf32_symbol_table
-   ; elf32_executable_file_body                        : byte_sequence
+  <| elf32_executable_file_header               : elf32_header
+   ; elf32_executable_file_program_header_table : elf32_program_header_table
+   ; elf32_executable_file_section_header_table : elf32_section_header_table
+   ; elf32_executable_file_interpreted_segments : elf32_interpreted_segments
+   ; elf32_executable_file_interpreted_sections : elf32_interpreted_sections
    |>
 
+val bytes_of_elf32_executable_file : elf32_executable_file -> error byte_sequence
+let bytes_of_elf32_executable_file ef = fail "XXX: not implemented"
+
 type elf64_executable_file =
-  <| elf64_executable_file_header                      : elf64_header
-   ; elf64_executable_file_program_header_table        : elf64_program_header_table
-   ; elf64_executable_file_section_header_table        : elf64_section_header_table
-   ; elf64_executable_file_interpreted_segments        : elf64_interpreted_segments
-   (* ; elf32_executable_file_interpreted_sections        : elf32_interpreted_sections *)
-   ; elf64_executable_file_section_header_string_table : string_table
-   ; elf64_executable_file_symbol_string_table         : string_table
-   ; elf64_executable_file_symbol_table                : elf64_symbol_table
-   ; elf64_executable_file_dynamic_symbol_table        : elf64_symbol_table
-   ; elf64_executable_file_body                        : byte_sequence
+  <| elf64_executable_file_header               : elf64_header
+   ; elf64_executable_file_program_header_table : elf64_program_header_table
+   ; elf64_executable_file_section_header_table : elf64_section_header_table
+   ; elf64_executable_file_interpreted_segments : elf64_interpreted_segments
+   ; elf64_executable_file_interpreted_sections : elf64_interpreted_sections
    |>
+
+type ordering
+  = Equal
+  | Less
+  | Greater
+
+(* XXX: define *)
+val sortBy : forall 'a. ('a -> 'a -> ordering) -> list 'a -> list 'a
+let sortBy ord xs = xs
+
+(* XXX: define *)
+val naturalOrdering : natural -> natural -> ordering
+let naturalOrdering left right =
+  if left = right then
+    Equal
+  else if left < right then
+    Less
+  else
+    Greater
+
+val bytes_of_elf64_executable_file : elf64_executable_file -> error byte_sequence
+let bytes_of_elf64_executable_file ef =
+  let endian      = get_elf64_header_endianness ef.elf64_executable_file_header in
+  let hdr_bytes   = bytes_of_elf64_header ef.elf64_executable_file_header in
+  let hdr_layout  = (0, hdr_bytes) in
+  let pht_bytes   = bytes_of_elf64_program_header_table endian ef.elf64_executable_file_program_header_table in
+  let pht_off     = natural_of_elf64_off ef.elf64_executable_file_header.elf64_phoff in
+  let pht_layout  = (pht_off, pht_bytes) in
+  if List.length ef.elf64_executable_file_program_header_table =
+    List.length ef.elf64_executable_file_interpreted_segments then
+    let buffer = List.zip ef.elf64_executable_file_program_header_table ef.elf64_executable_file_interpreted_segments in
+    let segs_layout =
+      List.map (fun (seg, interp_seg) ->
+        (natural_of_elf64_off seg.elf64_p_offset, interp_seg.elf64_segment_body)
+      ) buffer
+    in
+    let final_layout = [hdr_layout; pht_layout] ++ segs_layout in
+    let _            =
+      Missing_pervasives.print (unlines (
+        List.map (fun (x, y) ->
+          "At offset: " ^ show x ^ " of length " ^ show (Byte_sequence.length y)) final_layout))
+    in
+    let concats =
+      foldM (fun x y ->
+        let (current_offset, so_far) = x in
+        let (point_to_add, body) = y in
+          if point_to_add < current_offset then
+            fail "bytes_of_elf64_executable_file: cannot have overlapping components of ELF file"
+          else if point_to_add = current_offset then
+            let concat = Byte_sequence.concat [so_far; body] in
+            let delta  = current_offset + Byte_sequence.length body in
+              return (delta, concat)
+          else
+            let diff   = point_to_add - current_offset in
+            let reps   = Byte_sequence.create diff Missing_pervasives.null_char in
+            let concat = Byte_sequence.concat [so_far; reps; body] in
+            let delta  = point_to_add + Byte_sequence.length body in
+              return (delta, concat)
+      ) (0, Byte_sequence.empty) final_layout
+    in
+      concats >>= fun (offset, body) ->
+      return body
+  else
+    fail "bytes_of_elf64_executable_file: interpreted segments and program header table must have same length"
 
 val obtain_elf32_program_header_table : elf32_header -> byte_sequence -> error elf32_program_header_table
 let obtain_elf32_program_header_table hdr bs0 =
@@ -146,143 +205,49 @@ let obtain_elf64_interpreted_segments pht bdy =
                     elf64_segment_align = align; elf64_segment_paddr = paddr |>
     ) pht
 
-val obtain_elf32_section_header_string_table : elf32_header -> elf32_section_header_table -> byte_sequence -> error string_table
-let obtain_elf32_section_header_string_table hdr sht bs0 =
-  let idx = natural_of_elf32_half hdr.elf32_shstrndx in
-    match Missing_pervasives.index idx sht with
-      | Nothing -> fail "obtain_elf32_string_table: invalid offset into section header table"
-      | Just sect ->
-          let offset = natural_of_elf32_off sect.elf32_sh_offset in
-          let size   = natural_of_elf32_word sect.elf32_sh_size in
-          Byte_sequence.offset_and_cut offset size bs0 >>= fun rel ->
-          let strings  = Byte_sequence.string_of_byte_sequence rel in
-          return (String_table.mk_string_table strings Missing_pervasives.null_char)
-    end
+val obtain_elf32_interpreted_sections : elf32_section_header_table -> byte_sequence -> error elf32_interpreted_sections
+let obtain_elf32_interpreted_sections sht bs0 =
+  mapM (fun sh ->
+    let offset = natural_of_elf32_off  sh.elf32_sh_offset in
+    let size   = natural_of_elf32_word sh.elf32_sh_size in
+    let name   = natural_of_elf32_word sh.elf32_sh_name in
+    let typ    = natural_of_elf32_word sh.elf32_sh_type in
+    let flags  = natural_of_elf32_word sh.elf32_sh_flags in
+    let base   = natural_of_elf32_addr sh.elf32_sh_addr in
+    let link   = natural_of_elf32_word sh.elf32_sh_link in
+    let info   = natural_of_elf32_word sh.elf32_sh_info in
+    let align  = natural_of_elf32_word sh.elf32_sh_addralign in
+    let entry_size = natural_of_elf32_word sh.elf32_sh_entsize in
+    Byte_sequence.offset_and_cut offset size bs0 >>= fun relevant ->
+      return <| elf32_section_name = name; elf32_section_type = typ;
+          elf32_section_size = size; elf32_section_offset = offset;
+          elf32_section_flags = flags; elf32_section_base = base;
+          elf32_section_link = link; elf32_section_info = info;
+          elf32_section_align = align; elf32_section_body = relevant;
+          elf32_section_entry_size = entry_size |>
+  ) sht
 
-val obtain_elf64_section_header_string_table : elf64_header -> elf64_section_header_table -> byte_sequence -> error string_table
-let obtain_elf64_section_header_string_table hdr sht bs0 =
-  let idx = natural_of_elf64_half hdr.elf64_shstrndx in
-    match Missing_pervasives.index idx sht with
-      | Nothing -> fail "obtain_elf64_string_table: invalid offset into section header table"
-      | Just sect ->
-          let offset = natural_of_elf64_off   sect.elf64_sh_offset in
-          let size   = natural_of_elf64_xword sect.elf64_sh_size in
-          Byte_sequence.offset_and_cut offset size bs0 >>= fun rel ->
-          let strings  = Byte_sequence.string_of_byte_sequence rel in
-          return (String_table.mk_string_table strings Missing_pervasives.null_char)
-    end
-
-val obtain_elf32_symbol_string_table : elf32_header -> elf32_section_header_table -> byte_sequence -> error string_table
-let obtain_elf32_symbol_string_table hdr sht bs0 =
-  let strtabs = Missing_pervasives.mapMaybei (fun index sect ->
-    if natural_of_elf32_word sect.elf32_sh_type = sht_strtab then
-      if index = natural_of_elf32_half hdr.elf32_shstrndx then
-        Nothing
-      else
-        Just sect
-    else
-      Nothing) sht
-  in
-    mapM (fun sect ->
-      let offset  = natural_of_elf32_off  sect.elf32_sh_offset in
-      let size    = natural_of_elf32_word sect.elf32_sh_size in
-      Byte_sequence.offset_and_cut offset size bs0 >>= fun bs1 ->
-      let strings = Byte_sequence.string_of_byte_sequence bs1 in
-      return (String_table.mk_string_table strings Missing_pervasives.null_char)) strtabs
-    >>= fun strings ->
-      String_table.concat strings
-
-val obtain_elf64_symbol_string_table : elf64_header -> elf64_section_header_table -> byte_sequence -> error string_table
-let obtain_elf64_symbol_string_table hdr sht bs0 =
-  let strtabs = Missing_pervasives.mapMaybei (fun index sect ->
-    if natural_of_elf64_word sect.elf64_sh_type = sht_strtab then
-      if index = natural_of_elf64_half hdr.elf64_shstrndx then
-        Nothing
-      else
-        Just sect
-    else
-      Nothing) sht
-  in
-    mapM (fun sect ->
-      let offset  = natural_of_elf64_off   sect.elf64_sh_offset in
-      let size    = natural_of_elf64_xword sect.elf64_sh_size in
-      Byte_sequence.offset_and_cut offset size bs0 >>= fun bs1 ->
-      let strings = Byte_sequence.string_of_byte_sequence bs1 in
-      return (String_table.mk_string_table strings Missing_pervasives.null_char)) strtabs
-    >>= fun strings ->
-      String_table.concat strings
-
-val obtain_elf32_symbol_table : elf32_header -> elf32_section_header_table -> byte_sequence -> error elf32_symbol_table
-let obtain_elf32_symbol_table hdr sht bs0 =
-  let endian = get_elf32_header_endianness hdr in
-  let symtabs = List.filter (fun sect ->
-    natural_of_elf32_word sect.elf32_sh_type = sht_symtab
-    ) sht
-  in
-    match symtabs with
-      | [] -> return []
-      | [symtab] ->
-        let offset = natural_of_elf32_off symtab.elf32_sh_offset in
-        let size   = natural_of_elf32_word symtab.elf32_sh_size in
-        Byte_sequence.offset_and_cut offset size bs0 >>= fun relevant ->
-        read_elf32_symbol_table endian relevant
-      | _ ->
-        fail "obtain_elf32_symbol_table: an ELF file may only have one symbol table of type SHT_SYMTAB"
-    end
-
-val obtain_elf64_symbol_table : elf64_header -> elf64_section_header_table -> byte_sequence -> error elf64_symbol_table
-let obtain_elf64_symbol_table hdr sht bs0 =
-  let endian  = get_elf64_header_endianness hdr in
-  let symtabs = List.filter (fun sect ->
-    natural_of_elf64_word sect.elf64_sh_type = sht_symtab
-    ) sht
-  in
-    match symtabs with
-      | [] -> return []
-      | [symtab] ->
-        let offset = natural_of_elf64_off   symtab.elf64_sh_offset in
-        let size   = natural_of_elf64_xword symtab.elf64_sh_size in
-        Byte_sequence.offset_and_cut offset size bs0 >>= fun relevant ->
-        read_elf64_symbol_table endian relevant
-      | _ ->
-        fail "obtain_elf64_symbol_table: an ELF file may only have one symbol table of type SHT_SYMTAB"
-    end
-
-val obtain_elf32_dynamic_symbol_table : elf32_header -> elf32_section_header_table -> byte_sequence -> error elf32_symbol_table
-let obtain_elf32_dynamic_symbol_table hdr sht bs0 =
-  let endian = get_elf32_header_endianness hdr in
-  let symtabs = List.filter (fun sect ->
-    natural_of_elf32_word sect.elf32_sh_type = sht_dynsym
-    ) sht
-  in
-    match symtabs with
-      | [] -> return []
-      | [symtab] ->
-        let offset = natural_of_elf32_off symtab.elf32_sh_offset in
-        let size   = natural_of_elf32_word symtab.elf32_sh_size in
-        Byte_sequence.offset_and_cut offset size bs0 >>= fun relevant ->
-        read_elf32_symbol_table endian relevant
-      | _ ->
-        fail "obtain_elf32_dynamic_symbol_table: an ELF file may only have one symbol table of type SHT_DYNSYM"
-    end
-
-val obtain_elf64_dynamic_symbol_table : elf64_header -> elf64_section_header_table -> byte_sequence -> error elf64_symbol_table
-let obtain_elf64_dynamic_symbol_table hdr sht bs0 =
-  let endian  = get_elf64_header_endianness hdr in
-  let symtabs = List.filter (fun sect ->
-    natural_of_elf64_word sect.elf64_sh_type = sht_dynsym
-    ) sht
-  in
-    match symtabs with
-      | [] -> return []
-      | [symtab] ->
-        let offset = natural_of_elf64_off   symtab.elf64_sh_offset in
-        let size   = natural_of_elf64_xword symtab.elf64_sh_size in
-        Byte_sequence.offset_and_cut offset size bs0 >>= fun relevant ->
-        read_elf64_symbol_table endian relevant
-      | _ ->
-        fail "obtain_elf64_dynamic_symbol_table: an ELF file may only have one symbol table of type SHT_DYNSYM"
-    end
+val obtain_elf64_interpreted_sections : elf64_section_header_table -> byte_sequence -> error elf64_interpreted_sections
+let obtain_elf64_interpreted_sections sht bs0 =
+  mapM (fun sh ->
+    let offset = natural_of_elf64_off   sh.elf64_sh_offset in
+    let size   = natural_of_elf64_xword sh.elf64_sh_size in
+    let name   = natural_of_elf64_word  sh.elf64_sh_name in
+    let typ    = natural_of_elf64_word  sh.elf64_sh_type in
+    let flags  = natural_of_elf64_xword sh.elf64_sh_flags in
+    let base   = natural_of_elf64_addr  sh.elf64_sh_addr in
+    let link   = natural_of_elf64_word  sh.elf64_sh_link in
+    let info   = natural_of_elf64_word  sh.elf64_sh_info in
+    let align  = natural_of_elf64_xword sh.elf64_sh_addralign in
+    let entry_size = natural_of_elf64_xword sh.elf64_sh_entsize in
+    Byte_sequence.offset_and_cut offset size bs0 >>= fun relevant ->
+      return <| elf64_section_name = name; elf64_section_type = typ;
+          elf64_section_size = size; elf64_section_offset = offset;
+          elf64_section_flags = flags; elf64_section_base = base;
+          elf64_section_link = link; elf64_section_info = info;
+          elf64_section_align = align; elf64_section_body = relevant;
+          elf64_section_entry_size = entry_size |>
+  ) sht
 
 val read_elf32_executable_file : byte_sequence -> error elf32_executable_file
 let read_elf32_executable_file bs0 =
@@ -293,19 +258,12 @@ let read_elf32_executable_file bs0 =
     obtain_elf32_program_header_table hdr bs0 >>= fun pht  ->
     obtain_elf32_section_header_table hdr bs0 >>= fun sht  ->
     obtain_elf32_interpreted_segments pht bs0 >>= fun segs ->
-    obtain_elf32_section_header_string_table hdr sht bs0 >>= fun sect_hdr_stbl ->
-    obtain_elf32_symbol_table hdr sht bs0 >>= fun sym_tab ->
-    obtain_elf32_symbol_string_table hdr sht bs0 >>= fun sym_stbl ->
-    obtain_elf32_dynamic_symbol_table hdr sht bs0 >>= fun dynsym_tab ->
+    obtain_elf32_interpreted_sections sht bs0 >>= fun sects ->
     return <| elf32_executable_file_header = hdr;
                 elf32_executable_file_program_header_table = pht;
                 elf32_executable_file_section_header_table = sht;
                 elf32_executable_file_interpreted_segments = segs;
-                elf32_executable_file_section_header_string_table = sect_hdr_stbl;
-                elf32_executable_file_symbol_table = sym_tab;
-                elf32_executable_file_symbol_string_table = sym_stbl;
-                elf32_executable_file_dynamic_symbol_table = dynsym_tab;
-                elf32_executable_file_body = bs0 |>
+                elf32_executable_file_interpreted_sections = sects |>
 
 val read_elf64_executable_file : byte_sequence -> error elf64_executable_file
 let read_elf64_executable_file bs0 =
@@ -316,19 +274,188 @@ let read_elf64_executable_file bs0 =
     obtain_elf64_program_header_table hdr bs0 >>= fun pht  ->
     obtain_elf64_section_header_table hdr bs0 >>= fun sht  ->
     obtain_elf64_interpreted_segments pht bs0 >>= fun segs ->
-    obtain_elf64_section_header_string_table hdr sht bs0 >>= fun sect_hdr_stbl ->
-    obtain_elf64_symbol_table hdr sht bs0 >>= fun sym_tab ->
-    obtain_elf64_symbol_string_table hdr sht bs0 >>= fun sym_stbl ->
-    obtain_elf64_dynamic_symbol_table hdr sht bs0 >>= fun dynsym_tab ->
+    obtain_elf64_interpreted_sections sht bs0 >>= fun sects ->
     return <| elf64_executable_file_header = hdr;
                 elf64_executable_file_program_header_table = pht;
                 elf64_executable_file_section_header_table = sht;
                 elf64_executable_file_interpreted_segments = segs;
-                elf64_executable_file_section_header_string_table = sect_hdr_stbl;
-                elf64_executable_file_symbol_table = sym_tab;
-                elf64_executable_file_symbol_string_table = sym_stbl;
-                elf64_executable_file_dynamic_symbol_table = dynsym_tab;
-                elf64_executable_file_body = bs0 |>
+                elf64_executable_file_interpreted_sections = sects |>
+
+val get_elf32_reconstructed_body : elf32_interpreted_segments -> error byte_sequence
+let get_elf32_reconstructed_body segs = fail ""
+
+val get_elf64_reconstructed_body : elf64_interpreted_segments -> error byte_sequence
+let get_elf64_reconstructed_body segs = fail ""
+
+val get_elf32_executable_file_section_header_string_table : elf32_executable_file -> error string_table
+let get_elf32_executable_file_section_header_string_table f3 =
+  let hdr  = f3.elf32_executable_file_header in
+  let sht  = f3.elf32_executable_file_section_header_table in
+  let segs = f3.elf32_executable_file_interpreted_segments in
+  let idx  = natural_of_elf32_half hdr.elf32_shstrndx in
+  get_elf32_reconstructed_body segs >>= fun bs0 ->
+    match Missing_pervasives.index idx sht with
+      | Nothing -> fail "obtain_elf32_string_table: invalid offset into section header table"
+      | Just sect ->
+          let offset = natural_of_elf32_off sect.elf32_sh_offset in
+          let size   = natural_of_elf32_word sect.elf32_sh_size in
+          Byte_sequence.offset_and_cut offset size bs0 >>= fun rel ->
+          let strings  = Byte_sequence.string_of_byte_sequence rel in
+          return (String_table.mk_string_table strings Missing_pervasives.null_char)
+    end
+
+val get_elf64_executable_file_section_header_string_table : elf64_executable_file -> error string_table
+let get_elf64_executable_file_section_header_string_table f3 =
+  let hdr  = f3.elf64_executable_file_header in
+  let sht  = f3.elf64_executable_file_section_header_table in
+  let segs = f3.elf64_executable_file_interpreted_segments in
+  let idx  = natural_of_elf64_half hdr.elf64_shstrndx in
+  get_elf64_reconstructed_body segs >>= fun bs0 ->
+    match Missing_pervasives.index idx sht with
+      | Nothing -> fail "obtain_elf64_string_table: invalid offset into section header table"
+      | Just sect ->
+          let offset = natural_of_elf64_off   sect.elf64_sh_offset in
+          let size   = natural_of_elf64_xword sect.elf64_sh_size in
+          Byte_sequence.offset_and_cut offset size bs0 >>= fun rel ->
+          let strings  = Byte_sequence.string_of_byte_sequence rel in
+          return (String_table.mk_string_table strings Missing_pervasives.null_char)
+    end
+
+val get_elf32_executable_file_symbol_string_table : elf32_executable_file -> error string_table
+let get_elf32_executable_file_symbol_string_table f3 =
+  let hdr     = f3.elf32_executable_file_header in
+  let sht     = f3.elf32_executable_file_section_header_table in
+  let segs    = f3.elf32_executable_file_interpreted_segments in
+  let strtabs = Missing_pervasives.mapMaybei (fun index sect ->
+    if natural_of_elf32_word sect.elf32_sh_type = sht_strtab then
+      if index = natural_of_elf32_half hdr.elf32_shstrndx then
+        Nothing
+      else
+        Just sect
+    else
+      Nothing) sht
+  in
+    get_elf32_reconstructed_body segs >>= fun bs0 ->
+    mapM (fun sect ->
+      let offset  = natural_of_elf32_off  sect.elf32_sh_offset in
+      let size    = natural_of_elf32_word sect.elf32_sh_size in
+      Byte_sequence.offset_and_cut offset size bs0 >>= fun bs1 ->
+      let strings = Byte_sequence.string_of_byte_sequence bs1 in
+      return (String_table.mk_string_table strings Missing_pervasives.null_char)) strtabs
+    >>= fun strings ->
+      String_table.concat strings
+
+val get_elf64_executable_file_symbol_string_table : elf64_executable_file -> error string_table
+let get_elf64_executable_file_symbol_string_table f3 =
+  let hdr     = f3.elf64_executable_file_header in
+  let sht     = f3.elf64_executable_file_section_header_table in
+  let segs    = f3.elf64_executable_file_interpreted_segments in
+  let strtabs = Missing_pervasives.mapMaybei (fun index sect ->
+    if natural_of_elf64_word sect.elf64_sh_type = sht_strtab then
+      if index = natural_of_elf64_half hdr.elf64_shstrndx then
+        Nothing
+      else
+        Just sect
+    else
+      Nothing) sht
+  in
+    get_elf64_reconstructed_body segs >>= fun bs0 ->
+    mapM (fun sect ->
+      let offset  = natural_of_elf64_off   sect.elf64_sh_offset in
+      let size    = natural_of_elf64_xword sect.elf64_sh_size in
+      Byte_sequence.offset_and_cut offset size bs0 >>= fun bs1 ->
+      let strings = Byte_sequence.string_of_byte_sequence bs1 in
+      return (String_table.mk_string_table strings Missing_pervasives.null_char)) strtabs
+    >>= fun strings ->
+      String_table.concat strings
+
+val get_elf32_executable_file_symbol_table : elf32_executable_file -> error elf32_symbol_table
+let get_elf32_executable_file_symbol_table f3 =
+  let hdr     = f3.elf32_executable_file_header in
+  let sht     = f3.elf32_executable_file_section_header_table in
+  let segs    = f3.elf32_executable_file_interpreted_segments in
+  let endian  = get_elf32_header_endianness hdr in
+  let symtabs = List.filter (fun sect ->
+    natural_of_elf32_word sect.elf32_sh_type = sht_symtab
+    ) sht
+  in
+    match symtabs with
+      | [] -> return []
+      | [symtab] ->
+        let offset = natural_of_elf32_off symtab.elf32_sh_offset in
+        let size   = natural_of_elf32_word symtab.elf32_sh_size in
+        get_elf32_reconstructed_body segs >>= fun bs0 ->
+        Byte_sequence.offset_and_cut offset size bs0 >>= fun relevant ->
+        read_elf32_symbol_table endian relevant
+      | _ ->
+        fail "obtain_elf32_symbol_table: an ELF file may only have one symbol table of type SHT_SYMTAB"
+    end
+
+val get_elf64_executable_file_symbol_table : elf64_executable_file -> error elf64_symbol_table
+let get_elf64_executable_file_symbol_table f3 =
+  let hdr     = f3.elf64_executable_file_header in
+  let sht     = f3.elf64_executable_file_section_header_table in
+  let segs    = f3.elf64_executable_file_interpreted_segments in
+  let endian  = get_elf64_header_endianness hdr in
+  let symtabs = List.filter (fun sect ->
+    natural_of_elf64_word sect.elf64_sh_type = sht_symtab
+    ) sht
+  in
+    match symtabs with
+      | [] -> return []
+      | [symtab] ->
+        let offset = natural_of_elf64_off   symtab.elf64_sh_offset in
+        let size   = natural_of_elf64_xword symtab.elf64_sh_size in
+        get_elf64_reconstructed_body segs >>= fun bs0 ->
+        Byte_sequence.offset_and_cut offset size bs0 >>= fun relevant ->
+        read_elf64_symbol_table endian relevant
+      | _ ->
+        fail "obtain_elf64_symbol_table: an ELF file may only have one symbol table of type SHT_SYMTAB"
+    end
+
+val get_elf32_executable_file_dynamic_symbol_table : elf32_executable_file -> error elf32_symbol_table
+let get_elf32_executable_file_dynamic_symbol_table ef =
+  let hdr     = ef.elf32_executable_file_header in
+  let sht     = ef.elf32_executable_file_section_header_table in
+  let segs    = ef.elf32_executable_file_interpreted_segments in
+  let endian  = get_elf32_header_endianness hdr in
+  let symtabs = List.filter (fun sect ->
+    natural_of_elf32_word sect.elf32_sh_type = sht_dynsym
+    ) sht
+  in
+    match symtabs with
+      | [] -> return []
+      | [symtab] ->
+        let offset = natural_of_elf32_off symtab.elf32_sh_offset in
+        let size   = natural_of_elf32_word symtab.elf32_sh_size in
+        get_elf32_reconstructed_body segs >>= fun bs0 ->
+        Byte_sequence.offset_and_cut offset size bs0 >>= fun relevant ->
+        read_elf32_symbol_table endian relevant
+      | _ ->
+        fail "obtain_elf32_dynamic_symbol_table: an ELF file may only have one symbol table of type SHT_DYNSYM"
+    end
+
+val get_elf64_executable_file_dynamic_symbol_table : elf64_executable_file -> error elf64_symbol_table
+let get_elf64_executable_file_dynamic_symbol_table ef =
+  let hdr     = ef.elf64_executable_file_header in
+  let sht     = ef.elf64_executable_file_section_header_table in
+  let segs    = ef.elf64_executable_file_interpreted_segments in
+  let endian  = get_elf64_header_endianness hdr in
+  let symtabs = List.filter (fun sect ->
+    natural_of_elf64_word sect.elf64_sh_type = sht_dynsym
+    ) sht
+  in
+    match symtabs with
+      | [] -> return []
+      | [symtab] ->
+        let offset = natural_of_elf64_off   symtab.elf64_sh_offset in
+        let size   = natural_of_elf64_xword symtab.elf64_sh_size in
+        get_elf64_reconstructed_body segs >>= fun bs0 ->
+        Byte_sequence.offset_and_cut offset size bs0 >>= fun relevant ->
+        read_elf64_symbol_table endian relevant
+      | _ ->
+        fail "obtain_elf64_dynamic_symbol_table: an ELF file may only have one symbol table of type SHT_DYNSYM"
+    end
 
 type elf32_executable_process_image =
   elf32_interpreted_segments * natural
@@ -336,8 +463,8 @@ type elf32_executable_process_image =
 type elf64_executable_process_image =
   elf64_interpreted_segments * natural
 
-val get_elf32_executable_image : elf32_executable_file -> error elf32_executable_process_image
-let get_elf32_executable_image f3 =
+val get_elf32_executable_file_image : elf32_executable_file -> error elf32_executable_process_image
+let get_elf32_executable_file_image f3 =
   let entr = f3.elf32_executable_file_header.elf32_entry in
   let segs = f3.elf32_executable_file_interpreted_segments in
     match List.filter (fun sg -> sg.elf32_segment_type = elf_pt_load) segs with
@@ -367,8 +494,8 @@ let get_elf32_executable_image f3 =
           return (List.concat bs_base, natural_of_elf32_addr entr)
     end
 
-val get_elf64_executable_image : elf64_executable_file -> error elf64_executable_process_image
-let get_elf64_executable_image f3 = 
+val get_elf64_executable_file_image : elf64_executable_file -> error elf64_executable_process_image
+let get_elf64_executable_file_image f3 = 
   let entr = f3.elf64_executable_file_header.elf64_entry in
   let segs = f3.elf64_executable_file_interpreted_segments in
     match List.filter (fun sg -> sg.elf64_segment_type = elf_pt_load) segs with
@@ -401,15 +528,16 @@ let get_elf64_executable_image f3 =
 type global_symbol_init_info
   = list (string * (natural * natural * natural * maybe byte_sequence))
 
-val get_elf32_global_symbol_init : elf32_executable_file -> error global_symbol_init_info
-let get_elf32_global_symbol_init f3 =
-  let bs0    = f3.elf32_executable_file_body in
-  let symtab = f3.elf32_executable_file_symbol_table in
-  let strtab = f3.elf32_executable_file_symbol_string_table in
+val get_elf32_executable_file_global_symbol_init : elf32_executable_file -> error global_symbol_init_info
+let get_elf32_executable_file_global_symbol_init f3 =
+  let segs   = f3.elf32_executable_file_interpreted_segments in
+  get_elf32_reconstructed_body segs >>= fun bs0 ->
+  get_elf32_executable_file_symbol_table f3 >>= fun symtab ->
+  get_elf32_executable_file_symbol_string_table f3 >>= fun strtab ->
   Elf_symbol_table.get_elf32_symbol_image_address symtab strtab >>= fun strs ->
     let mapped = mapM (fun (symbol, (typ, size, addr)) ->
       if typ = Elf_symbol_table.stt_object then
-        get_elf32_executable_image f3 >>= fun (img, entry) ->
+        get_elf32_executable_file_image f3 >>= fun (img, entry) ->
         let chunks =
           List.filter (fun chunk ->
             addr >= chunk.elf32_segment_base &&
@@ -429,15 +557,16 @@ let get_elf32_global_symbol_init f3 =
     in
       mapped
 
-val get_elf64_global_symbol_init : elf64_executable_file -> error global_symbol_init_info
-let get_elf64_global_symbol_init f3 =
-  let bs0    = f3.elf64_executable_file_body in
-  let symtab = f3.elf64_executable_file_symbol_table in
-  let strtab = f3.elf64_executable_file_symbol_string_table in
+val get_elf64_executable_file_global_symbol_init : elf64_executable_file -> error global_symbol_init_info
+let get_elf64_executable_file_global_symbol_init f3 =
+  let segs   = f3.elf64_executable_file_interpreted_segments in
+  get_elf64_reconstructed_body segs >>= fun bs0 ->
+  get_elf64_executable_file_symbol_table f3 >>= fun symtab ->
+  get_elf64_executable_file_symbol_string_table f3 >>= fun strtab ->
   Elf_symbol_table.get_elf64_symbol_image_address symtab strtab >>= fun strs ->
     let mapped = mapM (fun (symbol, (typ, size, addr)) ->
       if typ = Elf_symbol_table.stt_object then
-        get_elf64_executable_image f3 >>= fun (img, entry) ->
+        get_elf64_executable_file_image f3 >>= fun (img, entry) ->
         let chunks =
           List.filter (fun chunk ->
             addr >= chunk.elf64_segment_base &&
@@ -459,36 +588,40 @@ let get_elf64_global_symbol_init f3 =
 
 val string_of_elf32_executable_file : hdr_print_bundle -> pht_print_bundle -> sht_print_bundle -> elf32_executable_file -> string
 let string_of_elf32_executable_file hdr_bdl pht_bdl sht_bdl f3 =
-  unlines [
-    "\n*Type elf32_executable_file:"
-  ; "**Header:"
-  ; string_of_elf32_header hdr_bdl f3.elf32_executable_file_header
-  ; "**Program header table:"
-  ; string_of_elf32_program_header_table pht_bdl f3.elf32_executable_file_program_header_table
-  ; "**Section header table:"
-  ; string_of_elf32_section_header_table' sht_bdl f3.elf32_executable_file_section_header_string_table f3.elf32_executable_file_section_header_table
-  ; "**Symbol string table:"
-  ; show (f3.elf32_executable_file_symbol_string_table)
-  ; "**Static symbol table:"
-  ; string_of_elf32_symbol_table f3.elf32_executable_file_symbol_table
-  ; "**Dynamic symbol table:"
-  ; string_of_elf32_symbol_table f3.elf32_executable_file_dynamic_symbol_table
-  ]
+  match get_elf32_executable_file_section_header_string_table f3 with
+    | Fail err ->
+      unlines [
+        "\nError obtaining ELF section header string table:"
+      ; err
+      ]
+    | Success strtab ->
+      unlines [
+        "\n*Type elf32_executable_file:"
+      ; "**Header:"
+      ; string_of_elf32_header hdr_bdl f3.elf32_executable_file_header
+      ; "**Program header table:"
+      ; string_of_elf32_program_header_table pht_bdl f3.elf32_executable_file_program_header_table
+      ; "**Section header table:"
+      ; string_of_elf32_section_header_table' sht_bdl strtab f3.elf32_executable_file_section_header_table
+      ]
+  end
 
 val string_of_elf64_executable_file : hdr_print_bundle -> pht_print_bundle -> sht_print_bundle -> elf64_executable_file -> string
 let string_of_elf64_executable_file hdr_bdl pht_bdl sht_bdl f3 =
-  unlines [
-    "\n*Type elf64_executable_file:"
-  ; "**Header:"
-  ; string_of_elf64_header hdr_bdl f3.elf64_executable_file_header
-  ; "**Program header table:"
-  ; string_of_elf64_program_header_table pht_bdl f3.elf64_executable_file_program_header_table
-  ; "**Section header table:"
-  ; string_of_elf64_section_header_table' sht_bdl f3.elf64_executable_file_section_header_string_table f3.elf64_executable_file_section_header_table
-  ; "**Symbol string table:"
-  ; show (f3.elf64_executable_file_symbol_string_table)
-  ; "**Static symbol table:"
-  ; string_of_elf64_symbol_table f3.elf64_executable_file_symbol_table
-  ; "**Dynamic symbol table:"
-  ; string_of_elf64_symbol_table f3.elf64_executable_file_dynamic_symbol_table
-  ]
+  match get_elf64_executable_file_section_header_string_table f3 with
+    | Fail err ->
+      unlines [
+        "\nError obtaining ELF section header string table:"
+      ; err
+      ]
+    | Success strtab ->
+      unlines [
+        "\n*Type elf64_executable_file:"
+      ; "**Header:"
+      ; string_of_elf64_header hdr_bdl f3.elf64_executable_file_header
+      ; "**Program header table:"
+      ; string_of_elf64_program_header_table pht_bdl f3.elf64_executable_file_program_header_table
+      ; "**Section header table:"
+      ; string_of_elf64_section_header_table' sht_bdl strtab f3.elf64_executable_file_section_header_table
+      ]
+  end

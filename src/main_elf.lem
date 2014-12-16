@@ -10,12 +10,12 @@ open import Show
 
 open import Elf_header
 open import Elf_executable_file
-open import Elf_linking_file2
-open import Elf_linking_file3
+open import Elf_program_header_table
 open import Elf_types
 
 open import Sail_interface
 
+open import Abi_amd64_elf_header
 open import Abi_amd64_serialisation
 
 let default_hdr_bdl =
@@ -29,10 +29,11 @@ let default_sht_bdl =
 
 let _ =
   let res =
-    Byte_sequence.acquire "test/a.out" >>= fun bs0 ->
-    Elf_executable_file.read_elf32_executable_file bs0 >>= fun ef ->
-    Elf_executable_file.get_elf32_global_symbol_init ef >>= fun syms ->
-    return (show syms)
+    let ef = Abi_amd64_serialisation.abi_amd64_generate_executable_file
+                (255, Byte_sequence.empty) (255, 255) in
+    Elf_executable_file.bytes_of_elf64_executable_file ef >>= fun bytes ->
+    Byte_sequence.serialise "test/usr-bin-ld.out" bytes >>= fun s ->
+    return (show s)
   in
     match res with
       | Fail err  -> Missing_pervasives.print ("[!]: " ^ err)
