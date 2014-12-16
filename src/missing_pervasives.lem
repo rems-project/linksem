@@ -5,6 +5,28 @@ open import Maybe
 open import Num
 open import String
 
+type ordering
+  = Equal
+  | Less
+  | Greater
+
+declare ocaml target_rep type ordering = `int`
+
+val natural_ordering : natural -> natural -> ordering
+let natural_ordering left right =
+  if left = right then
+    Equal
+  else if left < right then
+    Less
+  else
+    Greater
+
+declare ocaml target_rep function natural_ordering = `Big_int.compare_big_int`
+
+val sort_by : forall 'a. ('a -> 'a -> ordering) -> list 'a -> list 'a
+
+declare ocaml target_rep function sort_by = `List.sort`
+
 (** [intercalate sep xs] places [sep] between all elements of [xs]. *)
 val intercalate : forall 'a. 'a -> list 'a -> list 'a
 let rec intercalate sep xs =

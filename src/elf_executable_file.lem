@@ -39,25 +39,6 @@ type elf64_executable_file =
    ; elf64_executable_file_interpreted_sections : elf64_interpreted_sections
    |>
 
-type ordering
-  = Equal
-  | Less
-  | Greater
-
-(* XXX: define *)
-val sortBy : forall 'a. ('a -> 'a -> ordering) -> list 'a -> list 'a
-let sortBy ord xs = xs
-
-(* XXX: define *)
-val naturalOrdering : natural -> natural -> ordering
-let naturalOrdering left right =
-  if left = right then
-    Equal
-  else if left < right then
-    Less
-  else
-    Greater
-
 val bytes_of_elf64_executable_file : elf64_executable_file -> error byte_sequence
 let bytes_of_elf64_executable_file ef =
   let endian      = get_elf64_header_endianness ef.elf64_executable_file_header in

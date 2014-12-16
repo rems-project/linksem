@@ -6,6 +6,22 @@ open Lem_maybe
 open Lem_num
 open Lem_string
 
+(*type ordering
+  = Equal
+  | Less
+  | Greater*)
+
+(*val natural_ordering : natural -> natural -> ordering*)
+(*let natural_ordering left right =
+  if (Instance_Basic_classes_Eq_Num_natural.=) left right then
+    Equal
+  else if (Instance_Basic_classes_Ord_Num_natural.<) left right then
+    Less
+  else
+    Greater*)
+
+(*val sort_by : forall 'a. ('a -> 'a -> ordering) -> list 'a -> list 'a*)
+
 (** [intercalate sep xs] places [sep] between all elements of [xs]. *)
 (*val intercalate : forall 'a. 'a -> list 'a -> list 'a*)
 let rec intercalate sep xs =	
