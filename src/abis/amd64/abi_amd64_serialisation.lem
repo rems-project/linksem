@@ -50,8 +50,19 @@ let abi_amd64_generate_elf_header entry phoff phnum =
      elf64_shstrndx  = elf64_half_of_int32 (unsafe_int32_of_natural shn_undef)
   |>
 
+val int32_of_bool : bool -> int32
+let int32_of_bool b =
+  match b with
+    | true  -> 1
+    | false -> 0
+  end
+
 val elf64_pack_segment_flags : (bool * bool * bool) -> elf64_word
-let elf64_pack_segment_flags (r, w, x) = elf64_word_of_int32 0
+let elf64_pack_segment_flags (r, w, x) =
+  let xflag = 1 * int32_of_bool x in
+  let wflag = 2 * int32_of_bool w in
+  let rflag = 4 * int32_of_bool r in
+    elf64_word_of_int32 (xflag + wflag + rflag)
 
 val elf64_header_size : natural
 let elf64_header_size = 64
@@ -59,30 +70,40 @@ let elf64_header_size = 64
 val elf64_program_header_table_entry_size : natural
 let elf64_program_header_table_entry_size = 56
 
-val abi_amd64_generate_program_header_table : elf64_interpreted_segment -> elf64_interpreted_segment -> elf64_program_header_table
-let abi_amd64_generate_program_header_table exec scratch =
+val abi_amd64_generate_program_header_table : elf64_interpreted_segment -> elf64_interpreted_segment -> elf64_interpreted_segment -> elf64_program_header_table
+let abi_amd64_generate_program_header_table exec code_heap data_heap =
   (* exec segment and then base *)
   let exec_header =
     <| elf64_p_type   = elf64_word_of_int32 (unsafe_int32_of_natural exec.elf64_segment_type);
        elf64_p_flags  = elf64_pack_segment_flags exec.elf64_segment_flags;
-       elf64_p_offset = elf64_off_of_int64 (unsafe_int64_of_natural (elf64_header_size + (elf64_program_header_table_entry_size * 2)));
+       elf64_p_offset = elf64_off_of_int64 (unsafe_int64_of_natural (elf64_header_size + (elf64_program_header_table_entry_size * 3)));
        elf64_p_vaddr  = elf64_addr_of_int64 (unsafe_int64_of_natural exec.elf64_segment_base);
        elf64_p_paddr  = elf64_addr_of_int64 0;
        elf64_p_filesz = elf64_xword_of_int64 (unsafe_int64_of_natural exec.elf64_segment_size);
        elf64_p_memsz  = elf64_xword_of_int64 (unsafe_int64_of_natural exec.elf64_segment_size);
        elf64_p_align  = elf64_xword_of_int64 (unsafe_int64_of_natural exec.elf64_segment_align) |>
   in
-  let scratch_header =
-    <| elf64_p_type   = elf64_word_of_int32 (unsafe_int32_of_natural scratch.elf64_segment_type);
-       elf64_p_flags  = elf64_pack_segment_flags scratch.elf64_segment_flags;
-       elf64_p_offset = elf64_off_of_int64 (unsafe_int64_of_natural (elf64_header_size + (elf64_program_header_table_entry_size * 2) + exec.elf64_segment_size));
-       elf64_p_vaddr  = elf64_addr_of_int64 (unsafe_int64_of_natural scratch.elf64_segment_base);
+  let code_heap_header =
+    <| elf64_p_type   = elf64_word_of_int32 (unsafe_int32_of_natural code_heap.elf64_segment_type);
+       elf64_p_flags  = elf64_pack_segment_flags code_heap.elf64_segment_flags;
+       elf64_p_offset = elf64_off_of_int64 (unsafe_int64_of_natural (elf64_header_size + (elf64_program_header_table_entry_size * 3) + exec.elf64_segment_size));
+       elf64_p_vaddr  = elf64_addr_of_int64 (unsafe_int64_of_natural code_heap.elf64_segment_base);
        elf64_p_paddr  = elf64_addr_of_int64 0;
-       elf64_p_filesz = elf64_xword_of_int64 (unsafe_int64_of_natural scratch.elf64_segment_size);
-       elf64_p_memsz  = elf64_xword_of_int64 (unsafe_int64_of_natural scratch.elf64_segment_size);
-       elf64_p_align  = elf64_xword_of_int64 (unsafe_int64_of_natural scratch.elf64_segment_align) |>
+       elf64_p_filesz = elf64_xword_of_int64 (unsafe_int64_of_natural code_heap.elf64_segment_size);
+       elf64_p_memsz  = elf64_xword_of_int64 (unsafe_int64_of_natural code_heap.elf64_segment_size);
+       elf64_p_align  = elf64_xword_of_int64 (unsafe_int64_of_natural code_heap.elf64_segment_align) |>
   in
-    [exec_header; scratch_header]
+  let data_heap_header =
+    <| elf64_p_type   = elf64_word_of_int32 (unsafe_int32_of_natural data_heap.elf64_segment_type);
+       elf64_p_flags  = elf64_pack_segment_flags data_heap.elf64_segment_flags;
+       elf64_p_offset = elf64_off_of_int64 (unsafe_int64_of_natural (elf64_header_size + (elf64_program_header_table_entry_size * 3) + exec.elf64_segment_size + code_heap.elf64_segment_size));
+       elf64_p_vaddr  = elf64_addr_of_int64 (unsafe_int64_of_natural data_heap.elf64_segment_base);
+       elf64_p_paddr  = elf64_addr_of_int64 0;
+       elf64_p_filesz = elf64_xword_of_int64 (unsafe_int64_of_natural data_heap.elf64_segment_size);
+       elf64_p_memsz  = elf64_xword_of_int64 (unsafe_int64_of_natural data_heap.elf64_segment_size);
+       elf64_p_align  = elf64_xword_of_int64 (unsafe_int64_of_natural data_heap.elf64_segment_align) |>
+  in
+    [exec_header; code_heap_header; data_heap_header]
 
 val abi_amd64_generate_exec_interpreted_segment : natural -> byte_sequence -> elf64_interpreted_segment
 let abi_amd64_generate_exec_interpreted_segment entry_point exec_code =
@@ -92,22 +113,37 @@ let abi_amd64_generate_exec_interpreted_segment entry_point exec_code =
           elf64_segment_paddr = 0; elf64_segment_align = 0;
           elf64_segment_flags = (true, false, true); elf64_segment_type = elf_pt_load |>
 
-val abi_amd64_generate_scratch_interpreted_segment : natural -> natural -> elf64_interpreted_segment
-let abi_amd64_generate_scratch_interpreted_segment entry_point segment_size =
+val abi_amd64_generate_code_heap_interpreted_segment : natural -> natural -> elf64_interpreted_segment
+let abi_amd64_generate_code_heap_interpreted_segment entry_point segment_size =
+  let seg = Byte_sequence.create segment_size Missing_pervasives.null_char in
+    <| elf64_segment_body = seg; elf64_segment_size = segment_size;
+        elf64_segment_memsz = segment_size; elf64_segment_base = entry_point;
+        elf64_segment_paddr = 0; elf64_segment_align = 0;
+        elf64_segment_flags = (true, false, true); elf64_segment_type = elf_pt_load |>
+
+val abi_amd64_generate_data_heap_interpreted_segment : natural -> natural -> elf64_interpreted_segment
+let abi_amd64_generate_data_heap_interpreted_segment entry_point segment_size =
   let seg = Byte_sequence.create segment_size Missing_pervasives.null_char in
     <| elf64_segment_body = seg; elf64_segment_size = segment_size;
         elf64_segment_memsz = segment_size; elf64_segment_base = entry_point;
         elf64_segment_paddr = 0; elf64_segment_align = 0;
         elf64_segment_flags = (true, false, false); elf64_segment_type = elf_pt_load |>
 
-val abi_amd64_generate_executable_file : (natural * byte_sequence) -> (natural * natural) -> elf64_executable_file
-let abi_amd64_generate_executable_file (exec_entry_point, exec_code) (scratch_entry_point, scratch_space) =
-  let hdr     = abi_amd64_generate_elf_header (elf64_addr_of_int64 (unsafe_int64_of_natural exec_entry_point))
-                (elf64_off_of_int64 64) (elf64_half_of_int32 1) in
-  let exec    = abi_amd64_generate_exec_interpreted_segment exec_entry_point exec_code in
-  let scratch = abi_amd64_generate_scratch_interpreted_segment scratch_entry_point scratch_space in
-  let pht     = abi_amd64_generate_program_header_table exec scratch in
+val abi_amd64_entry_point_addr : elf64_addr
+let abi_amd64_entry_point_addr =
+  elf64_addr_of_int64 268501552 (* 0x10010230 *)
+
+val abi_amd64_generate_executable_file : byte_sequence -> natural -> natural -> elf64_executable_file
+let abi_amd64_generate_executable_file exec_code data_heap_size code_heap_size =
+  let hdr       = abi_amd64_generate_elf_header abi_amd64_entry_point_addr
+                    (elf64_off_of_int64 64) (elf64_half_of_int32 3) in
+  let exec      = abi_amd64_generate_exec_interpreted_segment (natural_of_elf64_addr abi_amd64_entry_point_addr) exec_code in
+  let code_heap_entry = (natural_of_elf64_addr abi_amd64_entry_point_addr) + exec.elf64_segment_size in
+  let data_heap_entry = (natural_of_elf64_addr abi_amd64_entry_point_addr) + exec.elf64_segment_size + code_heap_size in
+  let code_heap = abi_amd64_generate_code_heap_interpreted_segment code_heap_entry code_heap_size in
+  let data_heap = abi_amd64_generate_data_heap_interpreted_segment data_heap_entry data_heap_size in
+  let pht       = abi_amd64_generate_program_header_table exec code_heap data_heap in
     <| elf64_executable_file_header = hdr; elf64_executable_file_program_header_table = pht;
-          elf64_executable_file_interpreted_segments = [exec; scratch];
+          elf64_executable_file_interpreted_segments = [exec; code_heap; data_heap];
           elf64_executable_file_interpreted_sections = [];
           elf64_executable_file_section_header_table = [] |>

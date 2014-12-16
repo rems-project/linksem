@@ -30,7 +30,7 @@ let default_sht_bdl =
 let _ =
   let res =
     let ef = Abi_amd64_serialisation.abi_amd64_generate_executable_file
-                (255, Byte_sequence.empty) (255, 255) in
+                (Byte_sequence.create 255 null_char) 255 255 in
     Elf_executable_file.bytes_of_elf64_executable_file ef >>= fun bytes ->
     Byte_sequence.serialise "test/usr-bin-ld.out" bytes >>= fun s ->
     return (show s)
