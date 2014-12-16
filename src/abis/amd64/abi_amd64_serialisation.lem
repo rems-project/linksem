@@ -131,15 +131,15 @@ let abi_amd64_generate_data_heap_interpreted_segment entry_point segment_size =
 
 val abi_amd64_entry_point_addr : elf64_addr
 let abi_amd64_entry_point_addr =
-  elf64_addr_of_int64 4194304 (* 0x400000 *)
-
-val abi_amd64_data_heap_addr : elf64_addr
-let abi_amd64_data_heap_addr =
-  elf64_addr_of_int64 (536870912 * 2) (* 67108864 * 16 *)
+  elf64_addr_of_int64 4194536 (* 0x400000 *)
 
 val abi_amd64_code_heap_addr : elf64_addr
 let abi_amd64_code_heap_addr =
-  elf64_addr_of_int64 67108864 (* 16 * 4194304 *)
+  elf64_addr_of_int64 ((0536871162 * 2) + 1) (* 67108864 * 16 *)
+
+val abi_amd64_data_heap_addr : elf64_addr
+let abi_amd64_data_heap_addr =
+  elf64_addr_of_int64 67109620 (* 16 * 4194304 *)
 
 val byte_of_int : int -> byte
 
@@ -151,9 +151,9 @@ let unsafe_int_of_elf64_addr addr =
 
 val relocation_fixup : byte_sequence
 let relocation_fixup =
-  let relocation = elf64_addr_minus 
+  let relocation = abi_amd64_data_heap_addr (* elf64_addr_minus 
                     (elf64_addr_minus abi_amd64_data_heap_addr abi_amd64_entry_point_addr)
-                    (elf64_addr_of_int64 9)
+                    (elf64_addr_of_int64 9) *)
   in
     Byte_sequence.from_byte_lists
     [[ byte_of_int 72
