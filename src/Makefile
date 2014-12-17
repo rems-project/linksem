@@ -22,7 +22,7 @@ lem-model:
 
 clean:
 	rm -rf missing_pervasives.ml show.ml endianness.ml uint32.ml uint64.ml byte_sequence.ml default_printing.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml elf_section_header_table.ml elf_executable_file3.ml string_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file5.ml elf_linking_file2.ml elf_linking_file3.ml elf_relocation.ml elf_symbol_table.ml sail_interface.ml elf_executable_file.ml elf_interpreted_section.ml main_elf.ml
-	make -C src_elf_libraries clean
+	$(MAKE) -C src_elf_libraries clean
 	rm -rf elf_section_header.ml elf_symbol_table.ml
 	rm -rf *~
 	rm -rf *.cmi *.cmo
@@ -88,9 +88,8 @@ ocaml_with_ocamlbuild:
 clean_with_ocamlbuild:
 	ocamlbuild -classic-display -clean
 
-
 stacktrace:
-	export OCAMLRUNPARAM=b
+	export OCAMLRUNPARAM=b; \
 	ocamlfind ocamlc -package bitstring -package batteries -I ../../lem/ocaml-lib/_build/ unix.cma bitstring.cma nums.cma nat_num.cmo lem.cmo lem_function.cmo lem_list.cmo -linkpkg -g missing_pervasives.ml show.ml endianness.ml error.ml ml_bindings.ml default_printing.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml string_table.ml elf_section_header_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file3.ml elf_executable_file5.ml elf_linking_file2.ml elf_linking_file3.ml elf_relocation.ml sail_interface.ml main_elf.ml
 
 oldall: lem-model camlp4 ocaml
