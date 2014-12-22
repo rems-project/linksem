@@ -15,27 +15,32 @@ lem-model:
 	endianness.lem default_printing.lem uint32.lem uint64.lem byte_sequence.lem \
 	elf_types.lem elf_interpreted_segment.lem elf_interpreted_section.lem elf_symbol_table.lem \
 	elf_header.lem elf_program_header_table.lem \
+	abis/amd64/abi_amd64_elf_header.lem \
+	abis/power64/abi_power64_elf_header.lem \
+	abis/abis.lem \
 	elf_section_header_table.lem \
 	string_table.lem elf_executable_file.lem \
 	elf_relocation.lem \
 	adaptors/sail_interface.lem \
-	abis/amd64/abi_amd64_elf_header.lem abis/amd64/abi_amd64_serialisation.lem \
-	abis/power64/abi_power64_elf_header.lem \
+	abis/amd64/abi_amd64_serialisation.lem \
 	main_elf.lem
 
 clean:
-	rm -rf missing_pervasives.ml show.ml endianness.ml uint32.ml uint64.ml byte_sequence.ml default_printing.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml elf_section_header_table.ml elf_executable_file3.ml string_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file5.ml elf_linking_file2.ml elf_linking_file3.ml elf_relocation.ml elf_symbol_table.ml sail_interface.ml elf_executable_file.ml elf_interpreted_section.ml main_elf.ml
+	rm -rf missing_pervasives.ml show.ml abis.ml endianness.ml uint32.ml uint64.ml byte_sequence.ml default_printing.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml elf_section_header_table.ml elf_executable_file3.ml string_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file5.ml elf_linking_file2.ml elf_linking_file3.ml elf_relocation.ml elf_symbol_table.ml sail_interface.ml elf_executable_file.ml elf_interpreted_section.ml main_elf.ml
 	$(MAKE) -C src_elf_libraries clean
 	rm -rf elf_section_header.ml elf_symbol_table.ml
+	rm -rf abis/abis.ml abis/amd64/*.ml abis/power64/*.ml
 	rm -rf *~
 	rm -rf *.cmi *.cmo
+	rm -rf abis/*.cmi abis/*.cmo
+	rm -rf abis/*/*.cmi abis/*/*.cmo
 
 ocaml:
 	ocamlfind ocamlc \
 -I libraries/batteries/_build/src \
 -I $(LEMDIR)/ocaml-lib/_build/ \
 -I adaptors \
--I abis/amd64 -I abis/power64 \
+-I abis -I abis/amd64 -I abis/power64 \
 -g \
 unix.cma nums.cma batteries.cma nat_num.cmo \
 lem.cmo lem_function.cmo lem_list.cmo lem_num.cmo \
@@ -43,13 +48,15 @@ missing_pervasives.ml \
 show.ml endianness.ml error.ml uint32.ml uint64.ml uint32_wrapper.ml \
 uint64_wrapper.ml byte_sequence_wrapper.ml ml_bindings.ml default_printing.ml \
 byte_sequence.ml elf_types.ml elf_header.ml \
+abis/amd64/abi_amd64_elf_header.ml \
+abis/power64/abi_power64_elf_header.ml \
+abis/abis.ml \
 elf_program_header_table.ml string_table.ml \
 elf_section_header_table.ml elf_interpreted_segment.ml elf_interpreted_section.ml elf_symbol_table.ml \
 elf_executable_file.ml \
 elf_relocation.ml \
 adaptors/sail_interface.ml \
-abis/amd64/abi_amd64_elf_header.ml abis/amd64/abi_amd64_serialisation.ml \
-abis/power64/abi_power64_elf_header.ml \
+abis/amd64/abi_amd64_serialisation.ml \
 main_elf.ml \
 -package batteries
 

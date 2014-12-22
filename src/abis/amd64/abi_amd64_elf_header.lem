@@ -25,6 +25,12 @@ let abi_amd64_file_class = elf_class_64
 val abi_amd64_file_version : natural
 let abi_amd64_file_version = elf_ev_current
 
+val abi_amd64_page_size_min : natural
+let abi_amd64_page_size_min = 4096
+
+val abi_amd64_page_size_max : natural
+let abi_amd64_page_size_max = 65536
+
 (** [is_valid_abi_amd64_machine_architecture m] checks whether the ELF header's
   * machine architecture is valid according to the ABI-specific specification.
   * Machine architecture must be x86-64 (pg 60)

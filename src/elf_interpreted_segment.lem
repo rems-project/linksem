@@ -17,6 +17,7 @@ type elf32_interpreted_segment =
    ; elf32_segment_base  : natural              (** Base address of the segment *)
    ; elf32_segment_paddr : natural              (** Physical address of segment *)
    ; elf32_segment_align : natural              (** Alignment of the segment *)
+   ; elf32_segment_offset : natural             (** Offset of the segment *)
    ; elf32_segment_flags : (bool * bool * bool) (** READ, WRITE, EXECUTE flags. *)
    |>
 
@@ -28,6 +29,7 @@ type elf64_interpreted_segment =
    ; elf64_segment_base  : natural              (** Base address of the segment *)
    ; elf64_segment_paddr : natural              (** Physical address of segment *)
    ; elf64_segment_align : natural              (** Alignment of the segment *)
+   ; elf64_segment_offset : natural             (** Offset of the segment *)
    ; elf64_segment_flags : (bool * bool * bool) (** READ, WRITE, EXECUTE flags. *)
    |>
 

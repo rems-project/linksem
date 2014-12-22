@@ -20,6 +20,8 @@ open import Error
 open import Missing_pervasives
 open import Show
 
+open import Abis
+
 type elf32_executable_file =
   <| elf32_executable_file_header               : elf32_header
    ; elf32_executable_file_program_header_table : elf32_program_header_table
@@ -31,6 +33,12 @@ type elf32_executable_file =
 val bytes_of_elf32_executable_file : elf32_executable_file -> error byte_sequence
 let bytes_of_elf32_executable_file ef = fail "XXX: not implemented"
 
+(** Invariant:
+      * Program header table and interpreted segments are in correspondence:
+        * Length of two lists must be identical
+        * First element of PHT must describe first interpreted segment, second
+          element should describe second element, and so on.
+*)
 type elf64_executable_file =
   <| elf64_executable_file_header               : elf64_header
    ; elf64_executable_file_program_header_table : elf64_program_header_table
@@ -49,11 +57,11 @@ let bytes_of_elf64_executable_file ef =
   let pht_layout  = (pht_off, pht_bytes) in
   if List.length ef.elf64_executable_file_program_header_table =
     List.length ef.elf64_executable_file_interpreted_segments then
-    let buffer = List.zip ef.elf64_executable_file_program_header_table ef.elf64_executable_file_interpreted_segments in
+    let zip = List.zip ef.elf64_executable_file_program_header_table ef.elf64_executable_file_interpreted_segments in
     let segs_layout =
       List.map (fun (seg, interp_seg) ->
         (natural_of_elf64_off seg.elf64_p_offset, interp_seg.elf64_segment_body)
-      ) buffer
+      ) zip
     in
     let final_layout = [hdr_layout; pht_layout] ++ segs_layout in
     let concats =
@@ -157,7 +165,8 @@ let obtain_elf32_interpreted_segments pht bdy =
         return <| elf32_segment_body = relevant; elf32_segment_type = typ;
                     elf32_segment_size = size; elf32_segment_memsz = memsz;
                     elf32_segment_base  = vaddr; elf32_segment_flags = flags;
-                    elf32_segment_paddr = paddr; elf32_segment_align = align |>
+                    elf32_segment_paddr = paddr; elf32_segment_align = align;
+                    elf32_segment_offset = offset |>
     ) pht
 
 val obtain_elf64_interpreted_segments : elf64_program_header_table -> byte_sequence -> error elf64_interpreted_segments
@@ -178,7 +187,8 @@ let obtain_elf64_interpreted_segments pht bdy =
         return <| elf64_segment_body = relevant; elf64_segment_type = typ;
                     elf64_segment_size = size; elf64_segment_memsz = memsz;
                     elf64_segment_base  = vaddr; elf64_segment_flags = flags;
-                    elf64_segment_align = align; elf64_segment_paddr = paddr |>
+                    elf64_segment_align = align; elf64_segment_paddr = paddr;
+                    elf64_segment_offset = offset |>
     ) pht
 
 val obtain_elf32_interpreted_sections : elf32_section_header_table -> byte_sequence -> error elf32_interpreted_sections
@@ -462,7 +472,8 @@ let get_elf32_executable_file_image f3 =
                 <| elf32_segment_body = zeros; elf32_segment_type = sg.elf32_segment_type;
                     elf32_segment_size = diff; elf32_segment_memsz = diff;
                     elf32_segment_base = addr; elf32_segment_flags = sg.elf32_segment_flags;
-                    elf32_segment_align = align; elf32_segment_paddr = paddr |>
+                    elf32_segment_align = align; elf32_segment_paddr = paddr;
+                    elf32_segment_offset = sg.elf32_segment_offset |>
               in
                 return [sg; seg]
             else
@@ -493,7 +504,8 @@ let get_elf64_executable_file_image f3 =
                 <| elf64_segment_body = zeros; elf64_segment_type = sg.elf64_segment_type;
                     elf64_segment_size = diff; elf64_segment_memsz = diff;
                     elf64_segment_base = addr; elf64_segment_flags = sg.elf64_segment_flags;
-                    elf64_segment_align = align; elf64_segment_paddr = paddr |>
+                    elf64_segment_align = align; elf64_segment_paddr = paddr;
+                    elf64_segment_offset = sg.elf64_segment_offset |>
               in
                 return [sg; seg]
             else

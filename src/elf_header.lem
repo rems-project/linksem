@@ -626,6 +626,26 @@ val is_elf64_linkable_file : elf64_header -> bool
 let is_elf64_linkable_file hdr =
   is_elf64_shared_object_file hdr || is_elf64_relocatable_file hdr
 
+val get_elf32_machine_architecture : elf32_header -> natural
+let get_elf32_machine_architecture hdr =
+  natural_of_elf32_half hdr.elf32_machine
+
+val get_elf64_machine_architecture : elf64_header -> natural
+let get_elf64_machine_architecture hdr =
+  natural_of_elf64_half hdr.elf64_machine
+
+val get_elf32_osabi : elf32_header -> natural
+let get_elf32_osabi hdr =
+  match List.index hdr.elf32_ident (unsafe_nat_of_natural elf_ii_osabi) with
+    | Just osabi -> natural_of_unsigned_char osabi
+  end (* Partial: should never return Nothing *)
+
+val get_elf64_osabi : elf64_header -> natural
+let get_elf64_osabi hdr =
+  match List.index hdr.elf64_ident (unsafe_nat_of_natural elf_ii_osabi) with
+    | Just osabi -> natural_of_unsigned_char osabi
+  end (* Partial: should never return Nothing *)
+
 (** [deduce_endian] deduces the endianness of an ELF file based on the ELF
   * header's magic number.
   *)

@@ -419,8 +419,29 @@ val unsafe_nat_of_natural : natural -> nat
 val unsafe_int_of_natural : natural -> int
 val unsafe_int32_of_natural : natural -> int32
 val unsafe_int64_of_natural : natural -> int64
+val unsafe_byte_of_int : int -> byte
 
 declare ocaml target_rep function unsafe_nat_of_natural = `Big_int.int_of_big_int`
 declare ocaml target_rep function unsafe_int_of_natural = `Big_int.int_of_big_int`
 declare ocaml target_rep function unsafe_int32_of_natural = `Big_int.int32_of_big_int`
 declare ocaml target_rep function unsafe_int64_of_natural = `Big_int.int64_of_big_int`
+declare ocaml target_rep function unsafe_byte_of_int = `Char.chr`
+
+val int32_of_bool : bool -> int32
+let int32_of_bool b =
+  match b with
+    | true  -> 1
+    | false -> 0
+  end
+
+val unsafe_elf64_off_of_natural : natural -> elf64_off
+let unsafe_elf64_off_of_natural m =
+  elf64_off_of_int64 (unsafe_int64_of_natural m)
+
+val unsafe_elf64_addr_of_natural : natural -> elf64_addr
+let unsafe_elf64_addr_of_natural m =
+  elf64_addr_of_int64 (unsafe_int64_of_natural m)
+
+val unsafe_int_of_elf64_addr : elf64_addr -> int
+let unsafe_int_of_elf64_addr addr =
+  unsafe_int_of_natural (natural_of_elf64_addr addr)
