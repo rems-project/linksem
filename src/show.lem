@@ -7,6 +7,7 @@ open import List
 open import Maybe
 open import Num
 open import String
+open import String_extra
 
 open import Missing_pervasives
 
@@ -98,5 +99,5 @@ instance (Show nat)
 end
 
 instance (Show natural)
-  let show = string_of_natural
+  let show = stringFromNatural
 end
