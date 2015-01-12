@@ -9221,11 +9221,15 @@ let program =
 
 let _ =
   let res =
+  (*
     let ef = Abi_amd64_serialisation.abi_amd64_generate_executable_file
                 program 255 255 in
     Elf_executable_file.bytes_of_elf64_executable_file ef >>= fun bytes ->
     Byte_sequence.serialise "test/elf-test.out" bytes >>= fun s ->
     return (show s)
+  *)
+    Sail_interface.populate_and_obtain_global_symbol_init_info "test/hello6-perf-100" >>= fun (img, globals) ->
+    return (show globals)
   in
     match res with
       | Fail err  -> Missing_pervasives.print ("[!]: " ^ err)

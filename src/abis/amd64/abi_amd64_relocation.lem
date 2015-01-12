@@ -2,48 +2,55 @@
   * specific relocation functionality for the AMD64 ABI.
   *)
 
+open import Basic_classes
+open import Num
 open import String
+
+open import Error
+
+open import Elf_executable_file
+open import Elf_relocation
 
 (** x86-64 relocation types. *)
 
-let r_x86_64_none : nat = 0
-let r_x86_64_64 : nat = 1
-let r_x86_64_pc32 : nat = 2
-let r_x86_64_got32 : nat = 3
-let r_x86_64_plt32 : nat = 4
-let r_x86_64_copy : nat = 5
-let r_x86_64_glob_dat : nat = 6
-let r_x86_64_jump_slot : nat = 7
-let r_x86_64_relative : nat = 8
-let r_x86_64_gotpcrel : nat = 9
-let r_x86_64_32 : nat = 10
-let r_x86_64_32s : nat = 11
-let r_x86_64_16 : nat = 12
-let r_x86_64_pc16 : nat = 13
-let r_x86_64_8 : nat = 14
-let r_x86_64_pc8 : nat = 15
-let r_x86_64_dtpmod64 : nat = 16
-let r_x86_64_dtpoff64 : nat = 17
-let r_x86_64_tpoff64 : nat = 18
-let r_x86_64_tlsgd : nat = 19
-let r_x86_64_tlsld : nat = 20
-let r_x86_64_dtpoff32 : nat = 21
-let r_x86_64_gottpoff : nat = 22
-let r_x86_64_tpoff32 : nat = 23
-let r_x86_64_pc64 : nat = 24
-let r_x86_64_gotoff64 : nat = 25
-let r_x86_64_gotpc32 : nat = 26
-let r_x86_64_size32 : nat = 32
-let r_x86_64_size64 : nat = 33
-let r_x86_64_gotpc32_tlsdesc : nat = 34
-let r_x86_64_tlsdesc_call : nat = 35
-let r_x86_64_tlsdesc : nat = 36
-let r_x86_64_irelative : nat = 37
+let r_x86_64_none : natural = 0
+let r_x86_64_64 : natural = 1
+let r_x86_64_pc32 : natural = 2
+let r_x86_64_got32 : natural = 3
+let r_x86_64_plt32 : natural = 4
+let r_x86_64_copy : natural = 5
+let r_x86_64_glob_dat : natural = 6
+let r_x86_64_jump_slot : natural = 7
+let r_x86_64_relative : natural = 8
+let r_x86_64_gotpcrel : natural = 9
+let r_x86_64_32 : natural = 10
+let r_x86_64_32s : natural = 11
+let r_x86_64_16 : natural = 12
+let r_x86_64_pc16 : natural = 13
+let r_x86_64_8 : natural = 14
+let r_x86_64_pc8 : natural = 15
+let r_x86_64_dtpmod64 : natural = 16
+let r_x86_64_dtpoff64 : natural = 17
+let r_x86_64_tpoff64 : natural = 18
+let r_x86_64_tlsgd : natural = 19
+let r_x86_64_tlsld : natural = 20
+let r_x86_64_dtpoff32 : natural = 21
+let r_x86_64_gottpoff : natural = 22
+let r_x86_64_tpoff32 : natural = 23
+let r_x86_64_pc64 : natural = 24
+let r_x86_64_gotoff64 : natural = 25
+let r_x86_64_gotpc32 : natural = 26
+let r_x86_64_size32 : natural = 32
+let r_x86_64_size64 : natural = 33
+let r_x86_64_gotpc32_tlsdesc : natural = 34
+let r_x86_64_tlsdesc_call : natural = 35
+let r_x86_64_tlsdesc : natural = 36
+let r_x86_64_irelative : natural = 37
 
 (** [string_of_x86_64_relocation_type m] produces a string representation of the
   * relocation type [m].
   *)
-val string_of_x86_64_relocation_type : nat -> string
+val string_of_x86_64_relocation_type : natural -> string
 let string_of_x86_64_relocation_type m =
   if m = r_x86_64_none then
     "r_x86_64_none"
@@ -113,3 +120,18 @@ let string_of_x86_64_relocation_type m =
     "r_x86_64_irelative"
   else
     "Invalid x86-64 relocation type"
+
+val abi_amd64_apply_relocation : elf64_relocation_a -> elf64_executable_file ->
+  error elf64_executable_process_image
+let abi_amd64_apply_relocation rel ef =
+  get_elf64_executable_file_image ef >>= fun img ->
+  let rel_type = elf64_relocation_r_type rel.elf64_ra_info in
+    if rel_type = r_x86_64_none then
+      return img
+    else if rel_type = r_x86_64_64 then
+      fail ""
+    else if rel_type = r_x86_64_pc32 then
+      fail ""
+    else if rel_type = r_x86_64_got32 then
+      fail ""
+    else fail "abi_amd64_apply_relocation: relocation not yet implemented"

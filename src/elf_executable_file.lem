@@ -31,7 +31,65 @@ type elf32_executable_file =
    |>
 
 val bytes_of_elf32_executable_file : elf32_executable_file -> error byte_sequence
-let bytes_of_elf32_executable_file ef = fail "XXX: not implemented"
+let bytes_of_elf32_executable_file ef =
+  let endian      = get_elf32_header_endianness ef.elf32_executable_file_header in
+  let hdr_bytes   = bytes_of_elf32_header ef.elf32_executable_file_header in
+  let hdr_layout  = (0, hdr_bytes) in
+  let pht_bytes   = bytes_of_elf32_program_header_table endian ef.elf32_executable_file_program_header_table in
+  let sht_bytes   = bytes_of_elf32_section_header_table endian ef.elf32_executable_file_section_header_table in
+  let pht_off     = natural_of_elf32_off ef.elf32_executable_file_header.elf32_phoff in
+  let sht_off     = natural_of_elf32_off ef.elf32_executable_file_header.elf32_shoff in
+  let pht_layout  = (pht_off, pht_bytes) in
+  let sht_layout  = (sht_off, sht_bytes) in
+  if List.length ef.elf32_executable_file_program_header_table =
+    List.length ef.elf32_executable_file_interpreted_segments then
+    if List.length ef.elf32_executable_file_section_header_table =
+      List.length ef.elf32_executable_file_interpreted_sections then
+      let segs_zip = List.zip ef.elf32_executable_file_program_header_table ef.elf32_executable_file_interpreted_segments in
+      let sects_zip = List.zip ef.elf32_executable_file_section_header_table ef.elf32_executable_file_interpreted_sections in
+      let segs_layout =
+        List.map (fun (seg, interp_seg) ->
+          (natural_of_elf32_off seg.elf32_p_offset, interp_seg.elf32_segment_body)
+        ) segs_zip
+      in
+      let sects_layout =
+        List.map (fun (sect, interp_sect) ->
+          (natural_of_elf32_off sect.elf32_sh_offset, interp_sect.elf32_section_body)
+        ) sects_zip
+      in
+      let pre_layout = [hdr_layout; pht_layout; sht_layout] ++ sects_layout ++ segs_layout in
+      let final_layout =
+        sort_by (fun (off_x, _) (off_y, _) -> natural_ordering off_x off_y)
+          pre_layout
+      in
+      let concats =
+        foldM (fun x y ->
+          let (current_offset, so_far) = x in
+          let (point_to_add, body) = y in
+            if point_to_add < current_offset then
+              let diff = current_offset - point_to_add in
+                (* Completely contained inside other segment *)
+                if Byte_sequence.length body < diff then
+                  return (current_offset, so_far)
+                else
+                  Byte_sequence.partition diff body >>= fun (_, cut) ->
+                  let concat = Byte_sequence.concat [so_far; cut] in
+                  let delta  = current_offset + Byte_sequence.length cut in
+                    return (delta, concat)
+            else
+              let diff   = point_to_add - current_offset in
+              let reps   = Byte_sequence.create diff Missing_pervasives.null_char in
+              let concat = Byte_sequence.concat [so_far; reps; body] in
+              let delta  = point_to_add + Byte_sequence.length body in
+                return (delta, concat)
+        ) (0, Byte_sequence.empty) final_layout
+      in
+        concats >>= fun (offset, body) ->
+        return body
+    else
+      fail "bytes_of_elf32_executable_file: interpreted sections and section header table must have same length"
+  else
+    fail "bytes_of_elf32_executable_file: interpreted segments and program header table must have same length"
 
 (** Invariant:
       * Program header table and interpreted segments are in correspondence:
@@ -53,37 +111,58 @@ let bytes_of_elf64_executable_file ef =
   let hdr_bytes   = bytes_of_elf64_header ef.elf64_executable_file_header in
   let hdr_layout  = (0, hdr_bytes) in
   let pht_bytes   = bytes_of_elf64_program_header_table endian ef.elf64_executable_file_program_header_table in
+  let sht_bytes   = bytes_of_elf64_section_header_table endian ef.elf64_executable_file_section_header_table in
   let pht_off     = natural_of_elf64_off ef.elf64_executable_file_header.elf64_phoff in
+  let sht_off     = natural_of_elf64_off ef.elf64_executable_file_header.elf64_shoff in
   let pht_layout  = (pht_off, pht_bytes) in
+  let sht_layout  = (sht_off, sht_bytes) in
   if List.length ef.elf64_executable_file_program_header_table =
     List.length ef.elf64_executable_file_interpreted_segments then
-    let zip = List.zip ef.elf64_executable_file_program_header_table ef.elf64_executable_file_interpreted_segments in
-    let segs_layout =
-      List.map (fun (seg, interp_seg) ->
-        (natural_of_elf64_off seg.elf64_p_offset, interp_seg.elf64_segment_body)
-      ) zip
-    in
-    let final_layout = [hdr_layout; pht_layout] ++ segs_layout in
-    let concats =
-      foldM (fun x y ->
-        let (current_offset, so_far) = x in
-        let (point_to_add, body) = y in
-          if point_to_add < current_offset then
-            fail "bytes_of_elf64_executable_file: cannot have overlapping components of ELF file"
-          else if point_to_add = current_offset then
-            let concat = Byte_sequence.concat [so_far; body] in
-            let delta  = current_offset + Byte_sequence.length body in
-              return (delta, concat)
-          else
-            let diff   = point_to_add - current_offset in
-            let reps   = Byte_sequence.create diff Missing_pervasives.null_char in
-            let concat = Byte_sequence.concat [so_far; reps; body] in
-            let delta  = point_to_add + Byte_sequence.length body in
-              return (delta, concat)
-      ) (0, Byte_sequence.empty) final_layout
-    in
-      concats >>= fun (offset, body) ->
-      return body
+    if List.length ef.elf64_executable_file_section_header_table =
+      List.length ef.elf64_executable_file_interpreted_sections then
+      let segs_zip = List.zip ef.elf64_executable_file_program_header_table ef.elf64_executable_file_interpreted_segments in
+      let sects_zip = List.zip ef.elf64_executable_file_section_header_table ef.elf64_executable_file_interpreted_sections in
+      let segs_layout =
+        List.map (fun (seg, interp_seg) ->
+          (natural_of_elf64_off seg.elf64_p_offset, interp_seg.elf64_segment_body)
+        ) segs_zip
+      in
+      let sects_layout =
+        List.map (fun (sect, interp_sect) ->
+          (natural_of_elf64_off sect.elf64_sh_offset, interp_sect.elf64_section_body)
+        ) sects_zip
+      in
+      let pre_layout = [hdr_layout; pht_layout; sht_layout] ++ sects_layout ++ segs_layout in
+      let final_layout =
+        sort_by (fun (off_x, _) (off_y, _) -> natural_ordering off_x off_y)
+          pre_layout
+      in
+      let concats =
+        foldM (fun x y ->
+          let (current_offset, so_far) = x in
+          let (point_to_add, body) = y in
+            if point_to_add < current_offset then
+              let diff = current_offset - point_to_add in
+                (* Completely contained inside other segment *)
+                if Byte_sequence.length body < diff then
+                  return (current_offset, so_far)
+                else
+                  Byte_sequence.partition diff body >>= fun (_, cut) ->
+                  let concat = Byte_sequence.concat [so_far; cut] in
+                  let delta  = current_offset + Byte_sequence.length cut in
+                    return (delta, concat)
+            else
+              let diff   = point_to_add - current_offset in
+              let reps   = Byte_sequence.create diff Missing_pervasives.null_char in
+              let concat = Byte_sequence.concat [so_far; reps; body] in
+              let delta  = point_to_add + Byte_sequence.length body in
+                return (delta, concat)
+        ) (0, Byte_sequence.empty) final_layout
+      in
+        concats >>= fun (offset, body) ->
+        return body
+    else
+      fail "bytes_of_elf64_executable_file: interpreted sections and section header table must have same length"
   else
     fail "bytes_of_elf64_executable_file: interpreted segments and program header table must have same length"
 
@@ -267,19 +346,13 @@ let read_elf64_executable_file bs0 =
                 elf64_executable_file_interpreted_segments = segs;
                 elf64_executable_file_interpreted_sections = sects |>
 
-val get_elf32_reconstructed_body : elf32_interpreted_segments -> error byte_sequence
-let get_elf32_reconstructed_body segs = fail ""
-
-val get_elf64_reconstructed_body : elf64_interpreted_segments -> error byte_sequence
-let get_elf64_reconstructed_body segs = fail ""
-
 val get_elf32_executable_file_section_header_string_table : elf32_executable_file -> error string_table
 let get_elf32_executable_file_section_header_string_table f3 =
   let hdr  = f3.elf32_executable_file_header in
   let sht  = f3.elf32_executable_file_section_header_table in
   let segs = f3.elf32_executable_file_interpreted_segments in
   let idx  = natural_of_elf32_half hdr.elf32_shstrndx in
-  get_elf32_reconstructed_body segs >>= fun bs0 ->
+  bytes_of_elf32_executable_file f3 >>= fun bs0 ->
     match Missing_pervasives.index idx sht with
       | Nothing -> fail "obtain_elf32_string_table: invalid offset into section header table"
       | Just sect ->
@@ -296,7 +369,7 @@ let get_elf64_executable_file_section_header_string_table f3 =
   let sht  = f3.elf64_executable_file_section_header_table in
   let segs = f3.elf64_executable_file_interpreted_segments in
   let idx  = natural_of_elf64_half hdr.elf64_shstrndx in
-  get_elf64_reconstructed_body segs >>= fun bs0 ->
+  bytes_of_elf64_executable_file f3 >>= fun bs0 ->
     match Missing_pervasives.index idx sht with
       | Nothing -> fail "obtain_elf64_string_table: invalid offset into section header table"
       | Just sect ->
@@ -321,7 +394,7 @@ let get_elf32_executable_file_symbol_string_table f3 =
     else
       Nothing) sht
   in
-    get_elf32_reconstructed_body segs >>= fun bs0 ->
+    bytes_of_elf32_executable_file f3 >>= fun bs0 ->
     mapM (fun sect ->
       let offset  = natural_of_elf32_off  sect.elf32_sh_offset in
       let size    = natural_of_elf32_word sect.elf32_sh_size in
@@ -345,7 +418,7 @@ let get_elf64_executable_file_symbol_string_table f3 =
     else
       Nothing) sht
   in
-    get_elf64_reconstructed_body segs >>= fun bs0 ->
+    bytes_of_elf64_executable_file f3 >>= fun bs0 ->
     mapM (fun sect ->
       let offset  = natural_of_elf64_off   sect.elf64_sh_offset in
       let size    = natural_of_elf64_xword sect.elf64_sh_size in
@@ -370,7 +443,7 @@ let get_elf32_executable_file_symbol_table f3 =
       | [symtab] ->
         let offset = natural_of_elf32_off symtab.elf32_sh_offset in
         let size   = natural_of_elf32_word symtab.elf32_sh_size in
-        get_elf32_reconstructed_body segs >>= fun bs0 ->
+        bytes_of_elf32_executable_file f3 >>= fun bs0 ->
         Byte_sequence.offset_and_cut offset size bs0 >>= fun relevant ->
         read_elf32_symbol_table endian relevant
       | _ ->
@@ -392,7 +465,7 @@ let get_elf64_executable_file_symbol_table f3 =
       | [symtab] ->
         let offset = natural_of_elf64_off   symtab.elf64_sh_offset in
         let size   = natural_of_elf64_xword symtab.elf64_sh_size in
-        get_elf64_reconstructed_body segs >>= fun bs0 ->
+        bytes_of_elf64_executable_file f3 >>= fun bs0 ->
         Byte_sequence.offset_and_cut offset size bs0 >>= fun relevant ->
         read_elf64_symbol_table endian relevant
       | _ ->
@@ -414,7 +487,7 @@ let get_elf32_executable_file_dynamic_symbol_table ef =
       | [symtab] ->
         let offset = natural_of_elf32_off symtab.elf32_sh_offset in
         let size   = natural_of_elf32_word symtab.elf32_sh_size in
-        get_elf32_reconstructed_body segs >>= fun bs0 ->
+        bytes_of_elf32_executable_file ef >>= fun bs0 ->
         Byte_sequence.offset_and_cut offset size bs0 >>= fun relevant ->
         read_elf32_symbol_table endian relevant
       | _ ->
@@ -436,7 +509,7 @@ let get_elf64_executable_file_dynamic_symbol_table ef =
       | [symtab] ->
         let offset = natural_of_elf64_off   symtab.elf64_sh_offset in
         let size   = natural_of_elf64_xword symtab.elf64_sh_size in
-        get_elf64_reconstructed_body segs >>= fun bs0 ->
+        bytes_of_elf64_executable_file ef >>= fun bs0 ->
         Byte_sequence.offset_and_cut offset size bs0 >>= fun relevant ->
         read_elf64_symbol_table endian relevant
       | _ ->
@@ -519,7 +592,7 @@ type global_symbol_init_info
 val get_elf32_executable_file_global_symbol_init : elf32_executable_file -> error global_symbol_init_info
 let get_elf32_executable_file_global_symbol_init f3 =
   let segs   = f3.elf32_executable_file_interpreted_segments in
-  get_elf32_reconstructed_body segs >>= fun bs0 ->
+  bytes_of_elf32_executable_file f3 >>= fun bs0 ->
   get_elf32_executable_file_symbol_table f3 >>= fun symtab ->
   get_elf32_executable_file_symbol_string_table f3 >>= fun strtab ->
   Elf_symbol_table.get_elf32_symbol_image_address symtab strtab >>= fun strs ->
@@ -548,7 +621,7 @@ let get_elf32_executable_file_global_symbol_init f3 =
 val get_elf64_executable_file_global_symbol_init : elf64_executable_file -> error global_symbol_init_info
 let get_elf64_executable_file_global_symbol_init f3 =
   let segs   = f3.elf64_executable_file_interpreted_segments in
-  get_elf64_reconstructed_body segs >>= fun bs0 ->
+  bytes_of_elf64_executable_file f3 >>= fun bs0 ->
   get_elf64_executable_file_symbol_table f3 >>= fun symtab ->
   get_elf64_executable_file_symbol_string_table f3 >>= fun strtab ->
   Elf_symbol_table.get_elf64_symbol_image_address symtab strtab >>= fun strs ->

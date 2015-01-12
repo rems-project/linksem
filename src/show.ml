@@ -8,6 +8,7 @@ open Lem_list
 open Lem_maybe
 open Lem_num
 open Lem_string
+open Lem_string_extra
 
 open Missing_pervasives
 

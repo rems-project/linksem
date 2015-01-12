@@ -22,7 +22,7 @@ lem-model:
 	string_table.lem elf_executable_file.lem \
 	elf_relocation.lem \
 	adaptors/sail_interface.lem \
-	abis/amd64/abi_amd64_serialisation.lem \
+	abis/amd64/abi_amd64_serialisation.lem abis/amd64/abi_amd64_relocation.lem \
 	main_elf.lem
 
 clean:
@@ -56,7 +56,7 @@ elf_section_header_table.ml elf_interpreted_segment.ml elf_interpreted_section.m
 elf_executable_file.ml \
 elf_relocation.ml \
 adaptors/sail_interface.ml \
-abis/amd64/abi_amd64_serialisation.ml \
+abis/amd64/abi_amd64_serialisation.ml abis/amd64/abi_amd64_relocation.ml \
 main_elf.ml \
 -package batteries
 
