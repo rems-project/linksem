@@ -41,7 +41,7 @@ type elf32_interpreted_sections = list elf32_interpreted_section
 type elf64_interpreted_sections = list elf64_interpreted_section
 
 val string_of_elf32_interpreted_section : elf32_interpreted_section -> string
-let string_of_elf32_interpreted_section is =
+let {ocaml} string_of_elf32_interpreted_section is =
    unlines [
      "Name: " ^ show is.elf32_section_name
    ; "Type: " ^ show is.elf32_section_type 
@@ -56,7 +56,7 @@ let string_of_elf32_interpreted_section is =
    ]
 
 val string_of_elf64_interpreted_section : elf64_interpreted_section -> string
-let string_of_elf64_interpreted_section is =
+let {ocaml} string_of_elf64_interpreted_section is =
    unlines [
      "Name: " ^ show is.elf64_section_name
    ; "Type: " ^ show is.elf64_section_type 

@@ -122,22 +122,22 @@ let get_symbol_binding entry =
 
 val get_symbol_type : unsigned_char -> natural
 let get_symbol_type entry =
-  natural_of_unsigned_char (unsigned_char_land entry (unsigned_char_of_int32 15)) (* 0xf *)
+  natural_of_unsigned_char (unsigned_char_land entry (unsigned_char_of_natural 15)) (* 0xf *)
 
 val get_symbol_info : unsigned_char -> unsigned_char -> natural
 let get_symbol_info entry0 entry1 =
   natural_of_unsigned_char (unsigned_char_plus
     (unsigned_char_lshift entry0 4) (unsigned_char_land entry1
-      (unsigned_char_of_int32 15))) (*0xf*)  
+      (unsigned_char_of_natural 15))) (*0xf*)  
 
 val get_symbol_visibility : unsigned_char -> natural
 let get_symbol_visibility entry =
-  natural_of_unsigned_char (unsigned_char_land entry (unsigned_char_of_int32 3)) (* 0x3*)
+  natural_of_unsigned_char (unsigned_char_land entry (unsigned_char_of_natural 3)) (* 0x3*)
 
 type symtab_print_bundle = (natural -> string) * (natural -> string)
 
 val string_of_elf32_symbol_table_entry : elf32_symbol_table_entry -> string
-let string_of_elf32_symbol_table_entry entry =
+let {ocaml} string_of_elf32_symbol_table_entry entry =
   unlines [
     "\t" ^ "Name: "  ^ show entry.elf32_st_name
   ; "\t" ^ "Value: " ^ show entry.elf32_st_value
@@ -150,7 +150,7 @@ let string_of_elf32_symbol_table_entry entry =
 type elf32_symbol_table = list elf32_symbol_table_entry
 
 val string_of_elf32_symbol_table : elf32_symbol_table -> string
-let string_of_elf32_symbol_table symtab =
+let {ocaml} string_of_elf32_symbol_table symtab =
   unlines (List.map string_of_elf32_symbol_table_entry symtab)
 
 class (HasElf32SymbolTable 'a)
@@ -190,7 +190,7 @@ type elf64_symbol_table_entry =
    |>
 
 val string_of_elf64_symbol_table_entry : elf64_symbol_table_entry -> string
-let string_of_elf64_symbol_table_entry entry =
+let {ocaml} string_of_elf64_symbol_table_entry entry =
   unlines [
     "\t" ^ "Name: "  ^ show entry.elf64_st_name
   ; "\t" ^ "Info: "  ^ show entry.elf64_st_info
@@ -203,7 +203,7 @@ let string_of_elf64_symbol_table_entry entry =
 type elf64_symbol_table = list elf64_symbol_table_entry
 
 val string_of_elf64_symbol_table : elf64_symbol_table -> string
-let string_of_elf64_symbol_table symtab =
+let {ocaml} string_of_elf64_symbol_table symtab =
   unlines (List.map string_of_elf64_symbol_table_entry symtab)
 
 class (HasElf64SymbolTable 'a)

@@ -5,12 +5,33 @@ open import Maybe
 open import Num
 open import String
 
+open import {isabelle} `$ISABELLE_HOME/src/HOL/Word/Word`
+open import {isabelle} `Elf_Types_Local`
+
+type byte
+
+declare ocaml    target_rep type byte = `char`
+declare isabelle target_rep type byte = `8` `word`
+
+val char_of_byte : byte -> char
+
+declare ocaml    target_rep function char_of_byte = ``
+declare isabelle target_rep function char_of_byte = `Elf_Types_Local.char_of_unsigned_char`
+
+val natural_of_bool : bool -> natural
+let natural_of_bool b =
+  match b with
+    | true  -> 1
+    | false -> 0
+  end
+
 type ordering
   = Equal
   | Less
   | Greater
 
-declare ocaml target_rep type ordering = `int`
+declare ocaml    target_rep type ordering = `int`
+declare isabelle target_rep type ordering = `Elf_Types_Local.ordering`
 
 val natural_ordering : natural -> natural -> ordering
 let natural_ordering left right =
@@ -25,7 +46,8 @@ declare ocaml target_rep function natural_ordering = `Big_int.compare_big_int`
 
 val sort_by : forall 'a. ('a -> 'a -> ordering) -> list 'a -> list 'a
 
-declare ocaml target_rep function sort_by = `List.sort`
+declare ocaml    target_rep function sort_by = `List.sort`
+declare isabelle target_rep function sort_by = `Elf_Types_Local.merge_sort`
 
 (** [intercalate sep xs] places [sep] between all elements of [xs]. *)
 val intercalate : forall 'a. 'a -> list 'a -> list 'a
@@ -72,16 +94,19 @@ let bracket xs =
   "(" ^ foldr (^) "" (intercalate " " xs) ^ ")"
 
 (** [null_char] is the null character. *)
-val null_char : char
+val null_char : byte
 
-declare ocaml target_rep function null_char = `'\000'`
+declare ocaml    target_rep function null_char = `'\000'`
+declare isabelle target_rep function null_char = `0` `::` `8` `word`
 
 (** [split_string_on_char s c] splits a string [s] into a list of substrings
   * on character [c], otherwise returning the singleton list containing [s]
   * if [c] is not found in [s].
   *)
 val split_string_on_char : string -> char -> list string
+
 declare ocaml target_rep function split_string_on_char = `Ml_bindings.split_string_on_char`
+declare isabelle target_rep function split_string_on_char = `Elf_Types_Local.split_string_on_char`
 
 (** [print s] prints [s] to stdout. *)
 val print : string -> unit
@@ -95,7 +120,11 @@ declare ocaml target_rep function string_of_nat = `string_of_int`
   * Fails if the index is negative, or beyond the end of the string.
   *)
 val string_suffix : natural -> string -> maybe string
+
 declare ocaml target_rep function string_suffix = `Ml_bindings.string_suffix`
+declare isabelle target_rep function string_suffix = `Elf_Types_Local.string_suffix`
 
 val index : forall 'a. natural -> list 'a -> maybe 'a
-declare ocaml target_rep function index = `Ml_bindings.list_index_big_int`
+
+declare ocaml    target_rep function index      = `Ml_bindings.list_index_big_int`
+declare isabelle target_rep function index i xs = `Elf_Types_Local.index` xs i

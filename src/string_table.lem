@@ -22,7 +22,7 @@ let mk_string_table base sep =
 (** [empty] is the empty string table with an arbitrary choice of delimiter.
   *)
 val empty : string_table
-let empty = Strings (Missing_pervasives.null_char, "")
+let empty = Strings (char_of_byte Missing_pervasives.null_char, "")
 
 (** [get_delimiating_character tbl] returns the delimiting character associated
   * with the string table [tbl], used to split the strings.
@@ -56,6 +56,8 @@ let concat xs =
         else
           fail "concat: string tables must have same delimiting characters"
   end
+
+declare {isabelle} rename function concat = concat_string_table
 
 (** [get_strings tbl] obtains the strings stored in the table, separated using
   * the designated separator as a delimiting character.

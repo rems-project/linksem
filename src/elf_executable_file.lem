@@ -20,14 +20,13 @@ open import Error
 open import Missing_pervasives
 open import Show
 
-open import Abis
-
 type elf32_executable_file =
   <| elf32_executable_file_header               : elf32_header
    ; elf32_executable_file_program_header_table : elf32_program_header_table
    ; elf32_executable_file_section_header_table : elf32_section_header_table
    ; elf32_executable_file_interpreted_segments : elf32_interpreted_segments
    ; elf32_executable_file_interpreted_sections : elf32_interpreted_sections
+   ; elf32_executable_file_bits_and_bobs        : list (natural * byte_sequence)
    |>
 
 val bytes_of_elf32_executable_file : elf32_executable_file -> error byte_sequence
@@ -41,6 +40,7 @@ let bytes_of_elf32_executable_file ef =
   let sht_off     = natural_of_elf32_off ef.elf32_executable_file_header.elf32_shoff in
   let pht_layout  = (pht_off, pht_bytes) in
   let sht_layout  = (sht_off, sht_bytes) in
+  let bab_layout  = ef.elf32_executable_file_bits_and_bobs in
   if List.length ef.elf32_executable_file_program_header_table =
     List.length ef.elf32_executable_file_interpreted_segments then
     if List.length ef.elf32_executable_file_section_header_table =
@@ -57,7 +57,7 @@ let bytes_of_elf32_executable_file ef =
           (natural_of_elf32_off sect.elf32_sh_offset, interp_sect.elf32_section_body)
         ) sects_zip
       in
-      let pre_layout = [hdr_layout; pht_layout; sht_layout] ++ sects_layout ++ segs_layout in
+      let pre_layout = [hdr_layout; pht_layout; sht_layout] ++ sects_layout ++ segs_layout ++ bab_layout in
       let final_layout =
         sort_by (fun (off_x, _) (off_y, _) -> natural_ordering off_x off_y)
           pre_layout
@@ -103,6 +103,7 @@ type elf64_executable_file =
    ; elf64_executable_file_section_header_table : elf64_section_header_table
    ; elf64_executable_file_interpreted_segments : elf64_interpreted_segments
    ; elf64_executable_file_interpreted_sections : elf64_interpreted_sections
+   ; elf64_executable_file_bits_and_bobs        : list (natural * byte_sequence)
    |>
 
 val bytes_of_elf64_executable_file : elf64_executable_file -> error byte_sequence
@@ -116,6 +117,7 @@ let bytes_of_elf64_executable_file ef =
   let sht_off     = natural_of_elf64_off ef.elf64_executable_file_header.elf64_shoff in
   let pht_layout  = (pht_off, pht_bytes) in
   let sht_layout  = (sht_off, sht_bytes) in
+  let bab_layout  = ef.elf64_executable_file_bits_and_bobs in
   if List.length ef.elf64_executable_file_program_header_table =
     List.length ef.elf64_executable_file_interpreted_segments then
     if List.length ef.elf64_executable_file_section_header_table =
@@ -132,7 +134,7 @@ let bytes_of_elf64_executable_file ef =
           (natural_of_elf64_off sect.elf64_sh_offset, interp_sect.elf64_section_body)
         ) sects_zip
       in
-      let pre_layout = [hdr_layout; pht_layout; sht_layout] ++ sects_layout ++ segs_layout in
+      let pre_layout = [hdr_layout; pht_layout; sht_layout] ++ sects_layout ++ segs_layout ++ bab_layout in
       let final_layout =
         sort_by (fun (off_x, _) (off_y, _) -> natural_ordering off_x off_y)
           pre_layout
@@ -314,6 +316,122 @@ let obtain_elf64_interpreted_sections sht bs0 =
           elf64_section_entry_size = entry_size |>
   ) sht
 
+val find_first_not_in_range : natural -> list (natural * natural) -> natural
+let rec find_first_not_in_range start ranges =
+  match List.filter (fun (x, y) -> start >= x && start <= y) ranges with
+    | [] -> start
+    | _  -> find_first_not_in_range (start + 1) ranges
+  end
+
+val find_first_in_range : natural -> list (natural * natural) -> natural
+let rec find_first_in_range start ranges =
+  match List.filter (fun (x, y) -> start >= x && start <= y) ranges with
+    | [] -> find_first_in_range (start + 1) ranges
+    | _  -> start
+  end
+
+val compute_differences : natural -> natural -> list (natural * natural) -> error (list (natural * natural))
+let rec compute_differences start max ranges =
+  if start = max then
+    return []
+  else if start > max then
+    fail "compute_differences: passed maximum"
+  else
+    let first = find_first_not_in_range start ranges in
+      if first >= max then
+        return []
+      else
+        let last = find_first_in_range first ranges in
+          if last > max then
+            return [(first, max)]
+          else
+            compute_differences last max ranges >>= fun tail ->
+            return ((first, last)::tail)
+
+val obtain_elf32_bits_and_bobs : elf32_header -> elf32_program_header_table -> elf32_interpreted_segments
+  -> elf32_section_header_table -> elf32_interpreted_sections -> byte_sequence -> error (list (natural * byte_sequence))
+let obtain_elf32_bits_and_bobs hdr segs interp_segs sects interp_sects bs0 =
+  let hdr_off_len  = (0, natural_of_elf32_half hdr.elf32_ehsize) in
+  let pht_off      = natural_of_elf32_off hdr.elf32_phoff in
+  let pht_len      = natural_of_elf32_half hdr.elf32_phentsize * natural_of_elf32_half hdr.elf32_phnum in
+  let pht_off_len  = (pht_off, pht_off + pht_len) in
+  let sht_off      = natural_of_elf32_off hdr.elf32_shoff in
+  let sht_len      = natural_of_elf32_half hdr.elf32_shentsize * natural_of_elf32_half hdr.elf32_shnum in
+  let sht_off_len  = (sht_off, sht_off + sht_len) in
+    if List.length interp_segs = List.length segs then
+      let seg_zip = List.zip segs interp_segs in
+      if List.length interp_sects = List.length sects then
+        let sect_zip = List.zip sects interp_sects in
+        let seg_off_len  =
+          List.map (fun (seg, interp_seg) ->
+            let start = natural_of_elf32_off seg.elf32_p_offset in
+            let len   = interp_seg.elf32_segment_size in
+            (start, start + len)) seg_zip
+        in
+        let sect_off_len =
+          List.map (fun (sect, interp_sect) ->
+            let start = natural_of_elf32_off sect.elf32_sh_offset in
+            let len   = interp_sect.elf32_section_size in
+            (start, start + len)) sect_zip
+        in
+        let pre_layout   = hdr_off_len :: pht_off_len :: sht_off_len :: seg_off_len ++ sect_off_len in
+        let layout       =
+          sort_by (fun (off_x, _) (off_y, _) ->
+            natural_ordering off_x off_y
+          ) pre_layout
+        in
+          compute_differences 0 (Byte_sequence.length bs0) layout >>= fun diffs ->
+            mapM (fun (start, len) ->
+              Byte_sequence.offset_and_cut start len bs0 >>= fun rel ->
+              return (start, rel)
+            ) diffs
+      else
+        fail "obtain_elf32_bits_and_bobs: section header table and interpreted section differ in length"
+    else
+      fail "obtain_elf32_bits_and_bobs: program header table and interpreted segments differ in length"
+
+val obtain_elf64_bits_and_bobs : elf64_header -> elf64_program_header_table -> elf64_interpreted_segments
+  -> elf64_section_header_table -> elf64_interpreted_sections -> byte_sequence -> error (list (natural * byte_sequence))
+let obtain_elf64_bits_and_bobs hdr segs interp_segs sects interp_sects bs0 =
+  let hdr_off_len  = (0, natural_of_elf64_half hdr.elf64_ehsize) in
+  let pht_off      = natural_of_elf64_off hdr.elf64_phoff in
+  let pht_len      = natural_of_elf64_half hdr.elf64_phentsize * natural_of_elf64_half hdr.elf64_phnum in
+  let pht_off_len  = (pht_off, pht_off + pht_len) in
+  let sht_off      = natural_of_elf64_off hdr.elf64_shoff in
+  let sht_len      = natural_of_elf64_half hdr.elf64_shentsize * natural_of_elf64_half hdr.elf64_shnum in
+  let sht_off_len  = (sht_off, sht_off + sht_len) in
+    if List.length interp_segs = List.length segs then
+      let seg_zip = List.zip segs interp_segs in
+      if List.length interp_sects = List.length sects then
+        let sect_zip = List.zip sects interp_sects in
+        let seg_off_len  =
+          List.map (fun (seg, interp_seg) ->
+            let start = natural_of_elf64_off seg.elf64_p_offset in
+            let len   = interp_seg.elf64_segment_size in
+            (start, start + len)) seg_zip
+        in
+        let sect_off_len =
+          List.map (fun (sect, interp_sect) ->
+            let start = natural_of_elf64_off sect.elf64_sh_offset in
+            let len   = interp_sect.elf64_section_size in
+            (start, start + len)) sect_zip
+        in
+        let pre_layout   = hdr_off_len :: pht_off_len :: sht_off_len :: seg_off_len ++ sect_off_len in
+        let layout       =
+          sort_by (fun (off_x, _) (off_y, _) ->
+            natural_ordering off_x off_y
+          ) pre_layout
+        in
+          compute_differences 0 (Byte_sequence.length bs0) layout >>= fun diffs ->
+            mapM (fun (start, len) ->
+              Byte_sequence.offset_and_cut start len bs0 >>= fun rel ->
+              return (start, rel)
+            ) diffs
+      else
+        fail "obtain_elf64_bits_and_bobs: section header table and interpreted section differ in length"
+    else
+      fail "obtain_elf64_bits_and_bobs: program header table and interpreted segments differ in length"
+
 val read_elf32_executable_file : byte_sequence -> error elf32_executable_file
 let read_elf32_executable_file bs0 =
   read_elf32_header bs0 >>= fun (hdr, bs1) ->
@@ -324,11 +442,13 @@ let read_elf32_executable_file bs0 =
     obtain_elf32_section_header_table hdr bs0 >>= fun sht  ->
     obtain_elf32_interpreted_segments pht bs0 >>= fun segs ->
     obtain_elf32_interpreted_sections sht bs0 >>= fun sects ->
+    obtain_elf32_bits_and_bobs hdr pht segs sht sects bs0 >>= fun bits_and_bobs ->
     return <| elf32_executable_file_header = hdr;
                 elf32_executable_file_program_header_table = pht;
                 elf32_executable_file_section_header_table = sht;
                 elf32_executable_file_interpreted_segments = segs;
-                elf32_executable_file_interpreted_sections = sects |>
+                elf32_executable_file_interpreted_sections = sects;
+                elf32_executable_file_bits_and_bobs = bits_and_bobs |>
 
 val read_elf64_executable_file : byte_sequence -> error elf64_executable_file
 let read_elf64_executable_file bs0 =
@@ -340,11 +460,13 @@ let read_elf64_executable_file bs0 =
     obtain_elf64_section_header_table hdr bs0 >>= fun sht  ->
     obtain_elf64_interpreted_segments pht bs0 >>= fun segs ->
     obtain_elf64_interpreted_sections sht bs0 >>= fun sects ->
+    obtain_elf64_bits_and_bobs hdr pht segs sht sects bs0 >>= fun bits_and_bobs ->
     return <| elf64_executable_file_header = hdr;
                 elf64_executable_file_program_header_table = pht;
                 elf64_executable_file_section_header_table = sht;
                 elf64_executable_file_interpreted_segments = segs;
-                elf64_executable_file_interpreted_sections = sects |>
+                elf64_executable_file_interpreted_sections = sects;
+                elf64_executable_file_bits_and_bobs = bits_and_bobs |>
 
 val get_elf32_executable_file_section_header_string_table : elf32_executable_file -> error string_table
 let get_elf32_executable_file_section_header_string_table f3 =
@@ -360,7 +482,7 @@ let get_elf32_executable_file_section_header_string_table f3 =
           let size   = natural_of_elf32_word sect.elf32_sh_size in
           Byte_sequence.offset_and_cut offset size bs0 >>= fun rel ->
           let strings  = Byte_sequence.string_of_byte_sequence rel in
-          return (String_table.mk_string_table strings Missing_pervasives.null_char)
+          return (String_table.mk_string_table strings (Missing_pervasives.char_of_byte Missing_pervasives.null_char))
     end
 
 val get_elf64_executable_file_section_header_string_table : elf64_executable_file -> error string_table
@@ -377,7 +499,7 @@ let get_elf64_executable_file_section_header_string_table f3 =
           let size   = natural_of_elf64_xword sect.elf64_sh_size in
           Byte_sequence.offset_and_cut offset size bs0 >>= fun rel ->
           let strings  = Byte_sequence.string_of_byte_sequence rel in
-          return (String_table.mk_string_table strings Missing_pervasives.null_char)
+          return (String_table.mk_string_table strings (Missing_pervasives.char_of_byte Missing_pervasives.null_char))
     end
 
 val get_elf32_executable_file_symbol_string_table : elf32_executable_file -> error string_table
@@ -400,7 +522,7 @@ let get_elf32_executable_file_symbol_string_table f3 =
       let size    = natural_of_elf32_word sect.elf32_sh_size in
       Byte_sequence.offset_and_cut offset size bs0 >>= fun bs1 ->
       let strings = Byte_sequence.string_of_byte_sequence bs1 in
-      return (String_table.mk_string_table strings Missing_pervasives.null_char)) strtabs
+      return (String_table.mk_string_table strings (Missing_pervasives.char_of_byte Missing_pervasives.null_char))) strtabs
     >>= fun strings ->
       String_table.concat strings
 
@@ -424,7 +546,7 @@ let get_elf64_executable_file_symbol_string_table f3 =
       let size    = natural_of_elf64_xword sect.elf64_sh_size in
       Byte_sequence.offset_and_cut offset size bs0 >>= fun bs1 ->
       let strings = Byte_sequence.string_of_byte_sequence bs1 in
-      return (String_table.mk_string_table strings Missing_pervasives.null_char)) strtabs
+      return (String_table.mk_string_table strings (Missing_pervasives.char_of_byte Missing_pervasives.null_char))) strtabs
     >>= fun strings ->
       String_table.concat strings
 
@@ -648,7 +770,7 @@ let get_elf64_executable_file_global_symbol_init f3 =
       mapped
 
 val string_of_elf32_executable_file : hdr_print_bundle -> pht_print_bundle -> sht_print_bundle -> elf32_executable_file -> string
-let string_of_elf32_executable_file hdr_bdl pht_bdl sht_bdl f3 =
+let {ocaml} string_of_elf32_executable_file hdr_bdl pht_bdl sht_bdl f3 =
   match get_elf32_executable_file_section_header_string_table f3 with
     | Fail err ->
       unlines [
@@ -664,11 +786,13 @@ let string_of_elf32_executable_file hdr_bdl pht_bdl sht_bdl f3 =
       ; string_of_elf32_program_header_table pht_bdl f3.elf32_executable_file_program_header_table
       ; "**Section header table:"
       ; string_of_elf32_section_header_table' sht_bdl strtab f3.elf32_executable_file_section_header_table
+      ; "**Bits and bobs (unused junk space):"
+      ; show f3.elf32_executable_file_bits_and_bobs
       ]
   end
 
 val string_of_elf64_executable_file : hdr_print_bundle -> pht_print_bundle -> sht_print_bundle -> elf64_executable_file -> string
-let string_of_elf64_executable_file hdr_bdl pht_bdl sht_bdl f3 =
+let {ocaml} string_of_elf64_executable_file hdr_bdl pht_bdl sht_bdl f3 =
   match get_elf64_executable_file_section_header_string_table f3 with
     | Fail err ->
       unlines [
@@ -684,5 +808,7 @@ let string_of_elf64_executable_file hdr_bdl pht_bdl sht_bdl f3 =
       ; string_of_elf64_program_header_table pht_bdl f3.elf64_executable_file_program_header_table
       ; "**Section header table:"
       ; string_of_elf64_section_header_table' sht_bdl strtab f3.elf64_executable_file_section_header_table
+      ; "**Bits and bobs (unused junk space):"
+      ; show f3.elf64_executable_file_bits_and_bobs
       ]
   end

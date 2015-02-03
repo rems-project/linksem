@@ -145,7 +145,7 @@ let big_endian_int64 c1 c2 c3 c4 c5 c6 c7 c8 =
 (** Unsigned char type *)
 
 let read_unsigned_char endian bs0 =
-  Byte_sequence_wrapper.read_byte bs0 >>= fun (cs, bs1) ->
+  Byte_sequence.read_char bs0 >>= fun (cs, bs1) ->
   return (Uint32_wrapper.of_int (Char.code cs), bs1)
 ;;
 
@@ -160,18 +160,18 @@ let bytes_of_unsigned_char x =
   *)
 
 let read_elf32_addr_le bs0 =
-  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
-  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
-  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
-  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
+  Byte_sequence.read_char bs0 >>= fun (c1, bs1) ->
+  Byte_sequence.read_char bs1 >>= fun (c2, bs2) ->
+  Byte_sequence.read_char bs2 >>= fun (c3, bs3) ->
+  Byte_sequence.read_char bs3 >>= fun (c4, bs4) ->
   return (little_endian_uint32 c1 c2 c3 c4, bs4)
 ;;
 
 let read_elf32_addr_be bs0 =
-  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
-  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
-  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
-  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
+  Byte_sequence.read_char bs0 >>= fun (c1, bs1) ->
+  Byte_sequence.read_char bs1 >>= fun (c2, bs2) ->
+  Byte_sequence.read_char bs2 >>= fun (c3, bs3) ->
+  Byte_sequence.read_char bs3 >>= fun (c4, bs4) ->
   return (big_endian_uint32 c1 c2 c3 c4, bs4)
 ;;
 
@@ -198,26 +198,26 @@ let bytes_of_elf32_addr endian x =
 ;;
 
 let read_elf64_addr_le bs0 =
-  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
-  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
-  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
-  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
-  Byte_sequence_wrapper.read_byte bs4 >>= fun (c5, bs5) ->
-  Byte_sequence_wrapper.read_byte bs5 >>= fun (c6, bs6) ->
-  Byte_sequence_wrapper.read_byte bs6 >>= fun (c7, bs7) ->
-  Byte_sequence_wrapper.read_byte bs7 >>= fun (c8, bs8) ->
+  Byte_sequence.read_char bs0 >>= fun (c1, bs1) ->
+  Byte_sequence.read_char bs1 >>= fun (c2, bs2) ->
+  Byte_sequence.read_char bs2 >>= fun (c3, bs3) ->
+  Byte_sequence.read_char bs3 >>= fun (c4, bs4) ->
+  Byte_sequence.read_char bs4 >>= fun (c5, bs5) ->
+  Byte_sequence.read_char bs5 >>= fun (c6, bs6) ->
+  Byte_sequence.read_char bs6 >>= fun (c7, bs7) ->
+  Byte_sequence.read_char bs7 >>= fun (c8, bs8) ->
   return (little_endian_uint64 c1 c2 c3 c4 c5 c6 c7 c8, bs8)
 ;;
 
 let read_elf64_addr_be bs0 =
-  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
-  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
-  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
-  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
-  Byte_sequence_wrapper.read_byte bs4 >>= fun (c5, bs5) ->
-  Byte_sequence_wrapper.read_byte bs5 >>= fun (c6, bs6) ->
-  Byte_sequence_wrapper.read_byte bs6 >>= fun (c7, bs7) ->
-  Byte_sequence_wrapper.read_byte bs7 >>= fun (c8, bs8) ->
+  Byte_sequence.read_char bs0 >>= fun (c1, bs1) ->
+  Byte_sequence.read_char bs1 >>= fun (c2, bs2) ->
+  Byte_sequence.read_char bs2 >>= fun (c3, bs3) ->
+  Byte_sequence.read_char bs3 >>= fun (c4, bs4) ->
+  Byte_sequence.read_char bs4 >>= fun (c5, bs5) ->
+  Byte_sequence.read_char bs5 >>= fun (c6, bs6) ->
+  Byte_sequence.read_char bs6 >>= fun (c7, bs7) ->
+  Byte_sequence.read_char bs7 >>= fun (c8, bs8) ->
   return (big_endian_uint64 c1 c2 c3 c4 c5 c6 c7 c8, bs8)
 ;;
 
@@ -249,18 +249,18 @@ let bytes_of_elf64_addr endian x =
   *)
 
 let read_elf32_off_le bs0 =
-  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
-  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
-  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
-  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
+  Byte_sequence.read_char bs0 >>= fun (c1, bs1) ->
+  Byte_sequence.read_char bs1 >>= fun (c2, bs2) ->
+  Byte_sequence.read_char bs2 >>= fun (c3, bs3) ->
+  Byte_sequence.read_char bs3 >>= fun (c4, bs4) ->
   return (little_endian_uint32 c1 c2 c3 c4, bs4)
 ;;
 
 let read_elf32_off_be bs0 =
-  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
-  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
-  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
-  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
+  Byte_sequence.read_char bs0 >>= fun (c1, bs1) ->
+  Byte_sequence.read_char bs1 >>= fun (c2, bs2) ->
+  Byte_sequence.read_char bs2 >>= fun (c3, bs3) ->
+  Byte_sequence.read_char bs3 >>= fun (c4, bs4) ->
   return (big_endian_uint32 c1 c2 c3 c4, bs4)
 ;;
 
@@ -287,26 +287,26 @@ let bytes_of_elf32_off endian x =
 ;;
 
 let read_elf64_off_le bs0 =
-  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
-  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
-  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
-  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
-  Byte_sequence_wrapper.read_byte bs4 >>= fun (c5, bs5) ->
-  Byte_sequence_wrapper.read_byte bs5 >>= fun (c6, bs6) ->
-  Byte_sequence_wrapper.read_byte bs6 >>= fun (c7, bs7) ->
-  Byte_sequence_wrapper.read_byte bs7 >>= fun (c8, bs8) ->
+  Byte_sequence.read_char bs0 >>= fun (c1, bs1) ->
+  Byte_sequence.read_char bs1 >>= fun (c2, bs2) ->
+  Byte_sequence.read_char bs2 >>= fun (c3, bs3) ->
+  Byte_sequence.read_char bs3 >>= fun (c4, bs4) ->
+  Byte_sequence.read_char bs4 >>= fun (c5, bs5) ->
+  Byte_sequence.read_char bs5 >>= fun (c6, bs6) ->
+  Byte_sequence.read_char bs6 >>= fun (c7, bs7) ->
+  Byte_sequence.read_char bs7 >>= fun (c8, bs8) ->
   return (little_endian_uint64 c1 c2 c3 c4 c5 c6 c7 c8, bs8)
 ;;
 
 let read_elf64_off_be bs0 =
-  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
-  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
-  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
-  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
-  Byte_sequence_wrapper.read_byte bs4 >>= fun (c5, bs5) ->
-  Byte_sequence_wrapper.read_byte bs5 >>= fun (c6, bs6) ->
-  Byte_sequence_wrapper.read_byte bs6 >>= fun (c7, bs7) ->
-  Byte_sequence_wrapper.read_byte bs7 >>= fun (c8, bs8) ->
+  Byte_sequence.read_char bs0 >>= fun (c1, bs1) ->
+  Byte_sequence.read_char bs1 >>= fun (c2, bs2) ->
+  Byte_sequence.read_char bs2 >>= fun (c3, bs3) ->
+  Byte_sequence.read_char bs3 >>= fun (c4, bs4) ->
+  Byte_sequence.read_char bs4 >>= fun (c5, bs5) ->
+  Byte_sequence.read_char bs5 >>= fun (c6, bs6) ->
+  Byte_sequence.read_char bs6 >>= fun (c7, bs7) ->
+  Byte_sequence.read_char bs7 >>= fun (c8, bs8) ->
   return (big_endian_uint64 c1 c2 c3 c4 c5 c6 c7 c8, bs8)
 ;;
 
@@ -338,16 +338,16 @@ let bytes_of_elf64_off endian x =
   *)
 
 let read_elf32_half_le bs0 =
-  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
-  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
+  Byte_sequence.read_char bs0 >>= fun (c1, bs1) ->
+  Byte_sequence.read_char bs1 >>= fun (c2, bs2) ->
   let buffer1 = Uint32_wrapper.shift_left (Uint32_wrapper.of_int (Char.code c2)) 8 in
   let buffer2 = Uint32_wrapper.of_int (Char.code c1) in
   return (Uint32_wrapper.logor buffer1 buffer2, bs2)
 ;;
 
 let read_elf32_half_be bs0 =
-  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
-  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
+  Byte_sequence.read_char bs0 >>= fun (c1, bs1) ->
+  Byte_sequence.read_char bs1 >>= fun (c2, bs2) ->
   let buffer1 = Uint32_wrapper.shift_left (Uint32_wrapper.of_int (Char.code c1)) 8 in
   let buffer2 = Uint32_wrapper.of_int (Char.code c2) in
   return (Uint32_wrapper.logor buffer1 buffer2, bs2)
@@ -376,16 +376,16 @@ let bytes_of_elf32_half endian x =
 ;;
 
 let read_elf64_half_le bs0 =
-  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
-  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
+  Byte_sequence.read_char bs0 >>= fun (c1, bs1) ->
+  Byte_sequence.read_char bs1 >>= fun (c2, bs2) ->
   let buffer1 = Uint32_wrapper.shift_left (Uint32_wrapper.of_int (Char.code c2)) 8 in
   let buffer2 = Uint32_wrapper.of_int (Char.code c1) in
   return (Uint32_wrapper.logor buffer1 buffer2, bs2)
 ;;
 
 let read_elf64_half_be bs0 =
-  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
-  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
+  Byte_sequence.read_char bs0 >>= fun (c1, bs1) ->
+  Byte_sequence.read_char bs1 >>= fun (c2, bs2) ->
   let buffer1 = Uint32_wrapper.shift_left (Uint32_wrapper.of_int (Char.code c1)) 8 in
   let buffer2 = Uint32_wrapper.of_int (Char.code c2) in
   return (Uint32_wrapper.logor buffer1 buffer2, bs2)
@@ -419,18 +419,18 @@ let bytes_of_elf64_half endian x =
   *)
 
 let read_elf32_word_le bs0 =
-  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
-  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
-  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
-  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
+  Byte_sequence.read_char bs0 >>= fun (c1, bs1) ->
+  Byte_sequence.read_char bs1 >>= fun (c2, bs2) ->
+  Byte_sequence.read_char bs2 >>= fun (c3, bs3) ->
+  Byte_sequence.read_char bs3 >>= fun (c4, bs4) ->
   return (little_endian_uint32 c1 c2 c3 c4, bs4)
 ;;
 
 let read_elf32_word_be bs0 =
-  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
-  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
-  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
-  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
+  Byte_sequence.read_char bs0 >>= fun (c1, bs1) ->
+  Byte_sequence.read_char bs1 >>= fun (c2, bs2) ->
+  Byte_sequence.read_char bs2 >>= fun (c3, bs3) ->
+  Byte_sequence.read_char bs3 >>= fun (c4, bs4) ->
   return (big_endian_uint32 c1 c2 c3 c4, bs4)
 ;;
 
@@ -457,18 +457,18 @@ let bytes_of_elf32_word endian x =
 ;;
 
 let read_elf64_word_le bs0 =
-  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
-  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
-  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
-  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
+  Byte_sequence.read_char bs0 >>= fun (c1, bs1) ->
+  Byte_sequence.read_char bs1 >>= fun (c2, bs2) ->
+  Byte_sequence.read_char bs2 >>= fun (c3, bs3) ->
+  Byte_sequence.read_char bs3 >>= fun (c4, bs4) ->
   return (little_endian_uint32 c1 c2 c3 c4, bs4)
 ;;
 
 let read_elf64_word_be bs0 =
-  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
-  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
-  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
-  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
+  Byte_sequence.read_char bs0 >>= fun (c1, bs1) ->
+  Byte_sequence.read_char bs1 >>= fun (c2, bs2) ->
+  Byte_sequence.read_char bs2 >>= fun (c3, bs3) ->
+  Byte_sequence.read_char bs3 >>= fun (c4, bs4) ->
   return (big_endian_uint32 c1 c2 c3 c4, bs4)
 ;;
 
@@ -500,18 +500,18 @@ let bytes_of_elf64_word endian x =
   *)
 
 let read_elf32_sword_le bs0 =
-  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
-  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
-  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
-  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
+  Byte_sequence.read_char bs0 >>= fun (c1, bs1) ->
+  Byte_sequence.read_char bs1 >>= fun (c2, bs2) ->
+  Byte_sequence.read_char bs2 >>= fun (c3, bs3) ->
+  Byte_sequence.read_char bs3 >>= fun (c4, bs4) ->
   return (little_endian_int32 c1 c2 c3 c4, bs4)
 ;;
 
 let read_elf32_sword_be bs0 =
-  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
-  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
-  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
-  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
+  Byte_sequence.read_char bs0 >>= fun (c1, bs1) ->
+  Byte_sequence.read_char bs1 >>= fun (c2, bs2) ->
+  Byte_sequence.read_char bs2 >>= fun (c3, bs3) ->
+  Byte_sequence.read_char bs3 >>= fun (c4, bs4) ->
   return (big_endian_int32 c1 c2 c3 c4, bs4)
 ;;
 
@@ -526,18 +526,18 @@ let bytes_of_elf32_sword endian x =
 ;;
 
 let read_elf64_sword_le bs0 =
-  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
-  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
-  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
-  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
+  Byte_sequence.read_char bs0 >>= fun (c1, bs1) ->
+  Byte_sequence.read_char bs1 >>= fun (c2, bs2) ->
+  Byte_sequence.read_char bs2 >>= fun (c3, bs3) ->
+  Byte_sequence.read_char bs3 >>= fun (c4, bs4) ->
   return (little_endian_int32 c1 c2 c3 c4, bs4)
 ;;
 
 let read_elf64_sword_be bs0 =
-  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
-  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
-  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
-  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
+  Byte_sequence.read_char bs0 >>= fun (c1, bs1) ->
+  Byte_sequence.read_char bs1 >>= fun (c2, bs2) ->
+  Byte_sequence.read_char bs2 >>= fun (c3, bs3) ->
+  Byte_sequence.read_char bs3 >>= fun (c4, bs4) ->
   return (big_endian_int32 c1 c2 c3 c4, bs4)
 ;;
 
@@ -556,26 +556,26 @@ let bytes_of_elf64_sword endian x =
   *)
 
 let read_elf64_xword_le bs0 =
-  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
-  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
-  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
-  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
-  Byte_sequence_wrapper.read_byte bs4 >>= fun (c5, bs5) ->
-  Byte_sequence_wrapper.read_byte bs5 >>= fun (c6, bs6) ->
-  Byte_sequence_wrapper.read_byte bs6 >>= fun (c7, bs7) ->
-  Byte_sequence_wrapper.read_byte bs7 >>= fun (c8, bs8) ->
+  Byte_sequence.read_char bs0 >>= fun (c1, bs1) ->
+  Byte_sequence.read_char bs1 >>= fun (c2, bs2) ->
+  Byte_sequence.read_char bs2 >>= fun (c3, bs3) ->
+  Byte_sequence.read_char bs3 >>= fun (c4, bs4) ->
+  Byte_sequence.read_char bs4 >>= fun (c5, bs5) ->
+  Byte_sequence.read_char bs5 >>= fun (c6, bs6) ->
+  Byte_sequence.read_char bs6 >>= fun (c7, bs7) ->
+  Byte_sequence.read_char bs7 >>= fun (c8, bs8) ->
   return (little_endian_uint64 c1 c2 c3 c4 c5 c6 c7 c8, bs8)
 ;;
 
 let read_elf64_xword_be bs0 =
-  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
-  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
-  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
-  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
-  Byte_sequence_wrapper.read_byte bs4 >>= fun (c5, bs5) ->
-  Byte_sequence_wrapper.read_byte bs5 >>= fun (c6, bs6) ->
-  Byte_sequence_wrapper.read_byte bs6 >>= fun (c7, bs7) ->
-  Byte_sequence_wrapper.read_byte bs7 >>= fun (c8, bs8) ->
+  Byte_sequence.read_char bs0 >>= fun (c1, bs1) ->
+  Byte_sequence.read_char bs1 >>= fun (c2, bs2) ->
+  Byte_sequence.read_char bs2 >>= fun (c3, bs3) ->
+  Byte_sequence.read_char bs3 >>= fun (c4, bs4) ->
+  Byte_sequence.read_char bs4 >>= fun (c5, bs5) ->
+  Byte_sequence.read_char bs5 >>= fun (c6, bs6) ->
+  Byte_sequence.read_char bs6 >>= fun (c7, bs7) ->
+  Byte_sequence.read_char bs7 >>= fun (c8, bs8) ->
   return (big_endian_uint64 c1 c2 c3 c4 c5 c6 c7 c8, bs8)
 ;;
 
@@ -606,26 +606,26 @@ let bytes_of_elf64_xword endian x =
   *)
 
 let read_elf64_sxword_le bs0 =
-  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
-  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
-  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
-  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
-  Byte_sequence_wrapper.read_byte bs4 >>= fun (c5, bs5) ->
-  Byte_sequence_wrapper.read_byte bs5 >>= fun (c6, bs6) ->
-  Byte_sequence_wrapper.read_byte bs6 >>= fun (c7, bs7) ->
-  Byte_sequence_wrapper.read_byte bs7 >>= fun (c8, bs8) ->
+  Byte_sequence.read_char bs0 >>= fun (c1, bs1) ->
+  Byte_sequence.read_char bs1 >>= fun (c2, bs2) ->
+  Byte_sequence.read_char bs2 >>= fun (c3, bs3) ->
+  Byte_sequence.read_char bs3 >>= fun (c4, bs4) ->
+  Byte_sequence.read_char bs4 >>= fun (c5, bs5) ->
+  Byte_sequence.read_char bs5 >>= fun (c6, bs6) ->
+  Byte_sequence.read_char bs6 >>= fun (c7, bs7) ->
+  Byte_sequence.read_char bs7 >>= fun (c8, bs8) ->
   return (little_endian_int64 c1 c2 c3 c4 c5 c6 c7 c8, bs7)
 ;;
 
 let read_elf64_sxword_be bs0 =
-  Byte_sequence_wrapper.read_byte bs0 >>= fun (c1, bs1) ->
-  Byte_sequence_wrapper.read_byte bs1 >>= fun (c2, bs2) ->
-  Byte_sequence_wrapper.read_byte bs2 >>= fun (c3, bs3) ->
-  Byte_sequence_wrapper.read_byte bs3 >>= fun (c4, bs4) ->
-  Byte_sequence_wrapper.read_byte bs4 >>= fun (c5, bs5) ->
-  Byte_sequence_wrapper.read_byte bs5 >>= fun (c6, bs6) ->
-  Byte_sequence_wrapper.read_byte bs6 >>= fun (c7, bs7) ->
-  Byte_sequence_wrapper.read_byte bs7 >>= fun (c8, bs8) ->
+  Byte_sequence.read_char bs0 >>= fun (c1, bs1) ->
+  Byte_sequence.read_char bs1 >>= fun (c2, bs2) ->
+  Byte_sequence.read_char bs2 >>= fun (c3, bs3) ->
+  Byte_sequence.read_char bs3 >>= fun (c4, bs4) ->
+  Byte_sequence.read_char bs4 >>= fun (c5, bs5) ->
+  Byte_sequence.read_char bs5 >>= fun (c6, bs6) ->
+  Byte_sequence.read_char bs6 >>= fun (c7, bs7) ->
+  Byte_sequence.read_char bs7 >>= fun (c8, bs8) ->
   return (big_endian_int64 c1 c2 c3 c4 c5 c6 c7 c8, bs7)
 ;;
 

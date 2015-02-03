@@ -55,7 +55,7 @@ let elf_pt_hiproc : natural = (536870911 * 4) + 3 (* 2147483647 (* 0x7fffffff *)
   * and processor-specific codings.
   *)
 val string_of_elf_segment_type : (natural -> string) -> (natural -> string) -> natural -> string
-let string_of_elf_segment_type os proc pt =
+let {ocaml} string_of_elf_segment_type os proc pt =
 	if pt = elf_pt_null then
 		"PT_NULL"
 	else if pt = elf_pt_load then
@@ -116,7 +116,7 @@ type elf64_program_header_table_entry =
   * to render OS- and processor-specific entries.
   *)
 val string_of_elf32_program_header_table_entry : (natural -> string) -> (natural -> string) -> elf32_program_header_table_entry -> string
-let string_of_elf32_program_header_table_entry os proc entry =
+let {ocaml} string_of_elf32_program_header_table_entry os proc entry =
 	unlines [
 		"\t" ^ "Segment type: " ^ string_of_elf_segment_type os proc (natural_of_elf32_word entry.elf32_p_type)
 	; "\t" ^ "Offset: " ^ show entry.elf32_p_offset
@@ -133,7 +133,7 @@ let string_of_elf32_program_header_table_entry os proc entry =
   * to render OS- and processor-specific entries.
   *)
 val string_of_elf64_program_header_table_entry : (natural -> string) -> (natural -> string) -> elf64_program_header_table_entry -> string
-let string_of_elf64_program_header_table_entry os proc entry =
+let {ocaml} string_of_elf64_program_header_table_entry os proc entry =
   unlines [
     "\t" ^ "Segment type: " ^ string_of_elf_segment_type os proc (natural_of_elf64_word entry.elf64_p_type)
   ; "\t" ^ "Offset: " ^ show entry.elf64_p_offset
@@ -150,7 +150,7 @@ let string_of_elf64_program_header_table_entry os proc entry =
   * default strings.
   *)
 val string_of_elf32_program_header_table_entry_default : elf32_program_header_table_entry -> string
-let string_of_elf32_program_header_table_entry_default =
+let {ocaml} string_of_elf32_program_header_table_entry_default =
 	string_of_elf32_program_header_table_entry
     (const "*Default OS specific print*")
       (const "*Default processor specific print*")
@@ -160,7 +160,7 @@ let string_of_elf32_program_header_table_entry_default =
   * default strings.
   *)
 val string_of_elf64_program_header_table_entry_default : elf64_program_header_table_entry -> string
-let string_of_elf64_program_header_table_entry_default =
+let {ocaml} string_of_elf64_program_header_table_entry_default =
   string_of_elf64_program_header_table_entry
     (const "*Default OS specific print*")
       (const "*Default processor specific print*")
@@ -326,7 +326,7 @@ type pht_print_bundle = (natural -> string) * (natural -> string)
   * specific entries.
   *)
 val string_of_elf32_program_header_table : pht_print_bundle -> elf32_program_header_table -> string
-let string_of_elf32_program_header_table (os, proc) tbl =
+let {ocaml} string_of_elf32_program_header_table (os, proc) tbl =
   unlines (List.map (string_of_elf32_program_header_table_entry os proc) tbl)
 
 (** [string_of_elf64_program_header_table os proc tbl] produces a string representation
@@ -334,7 +334,7 @@ let string_of_elf32_program_header_table (os, proc) tbl =
   * specific entries.
   *)
 val string_of_elf64_program_header_table : pht_print_bundle -> elf64_program_header_table -> string
-let string_of_elf64_program_header_table (os, proc) tbl =
+let {ocaml} string_of_elf64_program_header_table (os, proc) tbl =
   unlines (List.map (string_of_elf64_program_header_table_entry os proc) tbl)
 
 val get_elf32_dynamic_linked : elf32_program_header_table -> bool

@@ -18,10 +18,14 @@ type error 'a
 val return : forall 'a. 'a -> error 'a
 let return r = Success r
 
+declare {isabelle} rename function return = error_return
+
 (** [fail err] represents a failing computation, with error message [err].
   *)
 val fail : forall 'a. string -> error 'a
 let fail err = Fail err
+
+declare {isabelle} rename function fail = error_fail
 
 (** [(>>=)] is the monadic binding function for [error].
   *)
@@ -82,7 +86,7 @@ let rec foldM f e xs =
 (** [string_of_error err] produces a string representation of [err].
   *)
 val string_of_error : forall 'a. Show 'a => error 'a -> string
-let string_of_error e =
+let {ocaml} string_of_error e =
 	match e with
 		| Fail err -> "Fail: " ^ err
 		| Success s -> show s

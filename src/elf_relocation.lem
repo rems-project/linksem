@@ -30,7 +30,7 @@ let elf32_relocation_r_sym w =
 
 val elf32_relocation_r_type : elf32_word -> natural
 let elf32_relocation_r_type w =
-  natural_of_unsigned_char (unsigned_char_of_elf32_word w)
+  natural_of_elf32_word w
 
 val elf64_relocation_r_sym : elf64_xword -> natural
 let elf64_relocation_r_sym w =
@@ -39,4 +39,4 @@ let elf64_relocation_r_sym w =
 val elf64_relocation_r_type : elf64_xword -> natural
 let elf64_relocation_r_type w =
   let magic = (65536 * 65536) - 1 in (* 0xffffffffL *)
-    natural_of_elf64_xword (elf64_xword_land w (elf64_xword_of_int64 magic))
+    natural_of_elf64_xword (elf64_xword_land w (elf64_xword_of_natural magic))

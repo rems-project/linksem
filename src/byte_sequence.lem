@@ -5,51 +5,150 @@ open import Num
 open import String
 
 open import Error
+open import Missing_pervasives
 open import Show
 
-type byte = char
-
-type byte_sequence
-declare ocaml target_rep type byte_sequence = `Byte_sequence_wrapper.t`
+type byte_sequence =
+  Sequence of list byte
 
 val empty : byte_sequence
-declare ocaml target_rep function empty = `Byte_sequence_wrapper.empty`
+let empty = Sequence []
 
 val read_char : byte_sequence -> error (byte * byte_sequence)
-declare ocaml target_rep function read_char = `Byte_sequence_wrapper.read_char`
+let read_char (Sequence ts) =
+  match ts with
+    | []    -> fail "read_char: sequence is empty"
+    | x::xs -> return (x, Sequence xs)
+  end
+
+val repeat : natural -> byte -> list byte
+let rec repeat count c =
+  match count with
+    | 0 -> []
+    | m -> c::repeat (count - 1) c
+  end
 
 val create : natural -> byte -> byte_sequence
-declare ocaml target_rep function create = `Byte_sequence_wrapper.create`
+let create count c =
+  Sequence (repeat count c)
 
 val zeros : natural -> byte_sequence
 let zeros m = create m Missing_pervasives.null_char
 
 val length : byte_sequence -> natural
-declare ocaml target_rep function length = `Byte_sequence_wrapper.length`
+let length (Sequence ts) =
+  List.foldr (fun x y -> y + 1) 0 ts
+;;
 
 val concat : list byte_sequence -> byte_sequence
-declare ocaml target_rep function concat = `Byte_sequence_wrapper.concat`
+let rec concat ts =
+  match ts with
+    | []                 -> Sequence []
+    | ((Sequence x)::xs) ->
+      match concat xs with
+        | Sequence tail -> Sequence (x ++ tail)
+      end
+  end
+
+declare {isabelle} rename function concat = concat_byte_sequence
 
 val from_byte_lists : list (list byte) -> byte_sequence
-declare ocaml target_rep function from_byte_lists = `Byte_sequence_wrapper.from_byte_lists`
+let from_byte_lists ts =
+  Sequence (List.concat ts)
 
-val acquire : string -> error byte_sequence
-declare ocaml target_rep function acquire = `Byte_sequence_wrapper.acquire`
+val string_of_char_list : list char -> string
 
-val serialise : string -> byte_sequence -> error unit
-declare ocaml target_rep function serialise = `Byte_sequence_wrapper.serialise`
+declare ocaml target_rep function string_of_char_list = `Byte_sequence_wrapper.string_of_char_list`
+
+val char_list_of_byte_list : list byte -> list char
+
+declare ocaml    target_rep function char_list_of_byte_list = ``
+declare isabelle target_rep function char_list_of_byte_list xs = `List.map` `undefined` xs
 
 val string_of_byte_sequence : byte_sequence -> string
-declare ocaml target_rep function string_of_byte_sequence = `Byte_sequence_wrapper.string_of_byte_sequence`
+let string_of_byte_sequence (Sequence ts) =
+  let cs = char_list_of_byte_list ts in
+    String.toString cs
 
 val equal : byte_sequence -> byte_sequence -> bool
-declare ocaml target_rep function equal = `Byte_sequence_wrapper.equal`
+let rec equal left right =
+  match (left, right) with
+    | (Sequence [], Sequence []) -> true
+    | (Sequence (x::xs), Sequence (y::ys)) ->
+        x = y && equal (Sequence xs) (Sequence ys)
+    | (_, _) -> false
+  end
+
+let inline {isabelle} equal = unsafe_structural_equality
 
 val dropbytes : natural -> byte_sequence -> error byte_sequence
-declare ocaml target_rep function dropbytes = `Byte_sequence_wrapper.dropbytes`
+let rec dropbytes count (Sequence ts) =
+  match count with
+    | 0 -> return (Sequence ts)
+    | m ->
+      match ts with
+        | []    ->
+          fail "dropbytes: cannot drop more bytes than are contained in sequence"
+        | x::xs ->
+          dropbytes (count - 1) (Sequence xs)
+      end
+  end
 
 val takebytes : natural -> byte_sequence -> error byte_sequence
-declare ocaml target_rep function takebytes = `Byte_sequence_wrapper.takebytes`
+let rec takebytes count (Sequence ts) =
+  match count with
+    | 0 -> return (Sequence [])
+    | m ->
+      match ts with
+        | [] ->
+          fail "takebytes: cannot take more bytes than are contained in sequence"
+        | x::xs ->
+          takebytes (count - 1) (Sequence xs) >>= fun tail ->
+          match tail with
+            | Sequence t -> return (Sequence (x::t))
+          end
+      end
+  end
+
+val read_4_bytes_le : byte_sequence -> error ((byte * byte * byte * byte) * byte_sequence)
+let read_4_bytes_le bs0 =
+  read_char bs0 >>= fun (b0, bs1) ->
+  read_char bs1 >>= fun (b1, bs2) ->
+  read_char bs2 >>= fun (b2, bs3) ->
+  read_char bs3 >>= fun (b3, bs4) ->
+  return ((b0, b1, b2, b3), bs4)
+
+val read_4_bytes_be : byte_sequence -> error ((byte * byte * byte * byte) * byte_sequence)
+let read_4_bytes_be bs0 =
+  read_char bs0 >>= fun (b0, bs1) ->
+  read_char bs1 >>= fun (b1, bs2) ->
+  read_char bs2 >>= fun (b2, bs3) ->
+  read_char bs3 >>= fun (b3, bs4) ->
+  return ((b3, b2, b1, b0), bs4)
+
+val read_8_bytes_le : byte_sequence -> error ((byte * byte * byte * byte * byte * byte * byte * byte) * byte_sequence)
+let read_8_bytes_le bs0 =
+  read_char bs0 >>= fun (b0, bs1) ->
+  read_char bs1 >>= fun (b1, bs2) ->
+  read_char bs2 >>= fun (b2, bs3) ->
+  read_char bs3 >>= fun (b3, bs4) ->
+  read_char bs4 >>= fun (b4, bs5) ->
+  read_char bs5 >>= fun (b5, bs6) ->
+  read_char bs6 >>= fun (b6, bs7) ->
+  read_char bs7 >>= fun (b7, bs8) ->
+  return ((b0, b1, b2, b3, b4, b5, b6, b7), bs8)
+
+val read_8_bytes_be : byte_sequence -> error ((byte * byte * byte * byte * byte * byte * byte * byte) * byte_sequence)
+let read_8_bytes_be bs0 =
+  read_char bs0 >>= fun (b0, bs1) ->
+  read_char bs1 >>= fun (b1, bs2) ->
+  read_char bs2 >>= fun (b2, bs3) ->
+  read_char bs3 >>= fun (b3, bs4) ->
+  read_char bs4 >>= fun (b4, bs5) ->
+  read_char bs5 >>= fun (b5, bs6) ->
+  read_char bs6 >>= fun (b6, bs7) ->
+  read_char bs7 >>= fun (b7, bs8) ->
+  return ((b7, b6, b5, b4, b3, b2, b1, b0), bs8)
 
 val partition : natural -> byte_sequence -> error (byte_sequence * byte_sequence)
 let partition idx bs0 =

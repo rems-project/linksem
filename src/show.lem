@@ -12,13 +12,13 @@ open import String_extra
 open import Missing_pervasives
 
 class (Show 'a)
-  val show : 'a -> string
+  val {ocaml} show : 'a -> string
 end
 
 (** [string_of_unit u] produces a string representation of unit [u].
   *)
 val string_of_unit : unit -> string
-let string_of_unit u = "()"
+let {ocaml} string_of_unit u = "()"
 
 instance (Show unit)
   let show = string_of_unit
@@ -27,7 +27,7 @@ end
 (** [string_of_bool b] produces a string representation of boolean [b].
   *)
 val string_of_bool : bool -> string
-let string_of_bool b =
+let {ocaml} string_of_bool b =
   match b with
     | true  -> "true"
     | false -> "false"
@@ -37,14 +37,20 @@ instance (Show bool)
   let show = string_of_bool
 end
 
+(** To give control over extraction as instances cannot be target specific, but
+  * the functions they are bound to can be...
+  *)
+val string_of_string : string -> string
+let {ocaml} string_of_string x = x
+
 instance (Show string)
-  let show = id
+  let show = string_of_string
 end
 
 (** [string_of_pair p] produces a string representation of pair [p].
   *)
 val string_of_pair : forall 'a 'b. Show 'a, Show 'b => ('a * 'b) -> string
-let string_of_pair (left, right) =
+let {ocaml} string_of_pair (left, right) =
   "(" ^ show left ^ ", " ^ show right ^ ")"
 
 instance forall 'a 'b. Show 'a, Show 'b => (Show ('a * 'b))
@@ -54,7 +60,7 @@ end
 (** [string_of_triple p] produces a string representation of triple [p].
   *)
 val string_of_triple : forall 'a 'b 'c. Show 'a, Show 'b, Show 'c => ('a * 'b * 'c) -> string
-let string_of_triple (left, middle, right) =
+let {ocaml} string_of_triple (left, middle, right) =
   "(" ^ show left ^ ", " ^ show middle ^ ", " ^ show right ^ ")"
 
 instance forall 'a 'b 'c. Show 'a, Show 'b, Show 'c => (Show ('a * 'b * 'c))
@@ -64,7 +70,7 @@ end
 (** [string_of_quad p] produces a string representation of quad [p].
   *)
 val string_of_quad : forall 'a 'b 'c 'd. Show 'a, Show 'b, Show 'c, Show 'd => ('a * 'b * 'c * 'd) -> string
-let string_of_quad (left, middle1, middle2, right) =
+let {ocaml} string_of_quad (left, middle1, middle2, right) =
   "(" ^ show left ^ ", " ^ show middle1 ^ ", " ^ show middle2 ^ ", " ^ show right ^ ")"
 
 instance forall 'a 'b 'c 'd. Show 'a, Show 'b, Show 'c, Show 'd => (Show ('a * 'b * 'c * 'd))
@@ -74,7 +80,7 @@ end
 (** [string_of_list l] produces a string representation of list [l].
   *)
 val string_of_list : forall 'a. Show 'a => list 'a -> string
-let string_of_list l =
+let {ocaml} string_of_list l =
   let result = intercalate "," (List.map show l) in
   let folded = foldr (^) "" result in
     "[" ^ folded ^ "]"
@@ -84,7 +90,7 @@ instance forall 'a. Show 'a => (Show (list 'a))
 end
 
 val string_of_maybe : forall 'a. Show 'a => maybe 'a -> string
-let string_of_maybe m =
+let {ocaml} string_of_maybe m =
   match m with
     | Nothing -> "Nothing"
     | Just e  -> "Just " ^ show e
@@ -93,6 +99,13 @@ let string_of_maybe m =
 instance forall 'a. Show 'a => (Show (maybe 'a))
   let show = string_of_maybe
 end
+
+val string_of_nat : nat -> string
+let rec {ocaml} string_of_nat m =
+  match m with
+    | 0 -> "0"
+    | m -> "S(" ^ string_of_nat (m - 1) ^ ")"
+  end
 
 instance (Show nat)
 	let show = string_of_nat

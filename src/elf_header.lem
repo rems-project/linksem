@@ -50,7 +50,7 @@ let elf_ft_hi_proc : natural = 65535 (* 0xffff *)
   * used for printing, respectively.
   *)
 val string_of_elf_file_type : (natural -> string) -> (natural -> string) -> natural -> string
-let string_of_elf_file_type os_specific proc_specific m =
+let {ocaml} string_of_elf_file_type os_specific proc_specific m =
 	if m = elf_ft_none then
 		"No file type"
 	else if m = elf_ft_rel then
@@ -97,7 +97,7 @@ let elf_ma_x86_64 : natural = 62
   * the numeric encoding [m] of the ELF machine architecture.
   *)
 val string_of_elf_machine_architecture : natural -> string
-let string_of_elf_machine_architecture m =
+let {ocaml} string_of_elf_machine_architecture m =
 	if m = elf_ma_386 then
 		"Intel 386 architecture"
   else if m = elf_ma_ppc then
@@ -350,7 +350,7 @@ let elf_ev_current : natural = 1
   * numeric encoding [m] of the ELF version number.
   *)
 val string_of_elf_version_number : natural -> string
-let string_of_elf_version_number m =
+let {ocaml} string_of_elf_version_number m =
 	if m = elf_ev_none then
 		"Invalid ELF version"
 	else if m = elf_ev_current then
@@ -418,7 +418,7 @@ let elf_class_64 : natural = 2
   * encoding [m] of the ELF file class.
   *)
 val string_of_elf_file_class : natural -> string
-let string_of_elf_file_class m =
+let {ocaml} string_of_elf_file_class m =
 	if m = elf_class_none then
 		"Invalid ELF file class"
 	else if m = elf_class_32 then
@@ -444,7 +444,7 @@ let elf_data_2msb : natural = 2
   * numeric encoding [m] of the ELF data encoding.
   *)
 val string_of_elf_data_encoding : natural -> string
-let string_of_elf_data_encoding m =
+let {ocaml} string_of_elf_data_encoding m =
 	if m = elf_data_none then
 		"Invalid data encoding"
 	else if m = elf_data_2lsb then
@@ -498,7 +498,7 @@ let elf_osabi_fenixos : natural = 16
   * numeric encoding [m] of the ELF OSABI version.
   *)
 val string_of_elf_osabi_version : natural -> string
-let string_of_elf_osabi_version m =
+let {ocaml} string_of_elf_osabi_version m =
 	if m = elf_osabi_none then
 		"No extension or unspecified"
 	else if m = elf_osabi_netbsd then
@@ -679,7 +679,7 @@ let get_elf64_header_endianness hdr =
 type hdr_print_bundle = (natural -> string) * (natural -> string)
 
 val string_of_elf32_header : hdr_print_bundle -> elf32_header -> string
-let string_of_elf32_header (os, proc) hdr =
+let {ocaml} string_of_elf32_header (os, proc) hdr =
 	unlines [
 	  "\t" ^ "Magic number: " ^ show hdr.elf32_ident
   ; "\t" ^ "Endianness: " ^ show (deduce_endianness hdr.elf32_ident)
@@ -693,7 +693,7 @@ let string_of_elf32_header (os, proc) hdr =
 	]
 
 val string_of_elf64_header : hdr_print_bundle -> elf64_header -> string
-let string_of_elf64_header (os, proc) hdr =
+let {ocaml} string_of_elf64_header (os, proc) hdr =
   unlines [
     "\t" ^ "Magic number: " ^ show hdr.elf64_ident
   ; "\t" ^ "Endianness: " ^ show (deduce_endianness hdr.elf64_ident)
@@ -707,13 +707,13 @@ let string_of_elf64_header (os, proc) hdr =
   ]
 
 val string_of_elf32_header_default : elf32_header -> string
-let string_of_elf32_header_default =
+let {ocaml} string_of_elf32_header_default =
 	string_of_elf32_header
     (default_os_specific_print,
       default_proc_specific_print)
 
 val string_of_elf64_header_default : elf64_header -> string
-let string_of_elf64_header_default =
+let {ocaml} string_of_elf64_header_default =
   string_of_elf64_header
     (default_os_specific_print,
       default_proc_specific_print)
@@ -832,28 +832,28 @@ let read_elf64_header bs =
 
 val is_elf32_header_padding_correct : elf32_header -> bool
 let is_elf32_header_padding_correct ehdr =
-  List.index ehdr.elf32_ident 9  = Just (unsigned_char_of_int32 0) &&
-  List.index ehdr.elf32_ident 10 = Just (unsigned_char_of_int32 0) &&
-  List.index ehdr.elf32_ident 11 = Just (unsigned_char_of_int32 0) &&
-  List.index ehdr.elf32_ident 12 = Just (unsigned_char_of_int32 0) &&
-  List.index ehdr.elf32_ident 13 = Just (unsigned_char_of_int32 0) &&
-  List.index ehdr.elf32_ident 14 = Just (unsigned_char_of_int32 0) &&
-  List.index ehdr.elf32_ident 15 = Just (unsigned_char_of_int32 0)
+  List.index ehdr.elf32_ident 9  = Just (unsigned_char_of_natural 0) &&
+  List.index ehdr.elf32_ident 10 = Just (unsigned_char_of_natural 0) &&
+  List.index ehdr.elf32_ident 11 = Just (unsigned_char_of_natural 0) &&
+  List.index ehdr.elf32_ident 12 = Just (unsigned_char_of_natural 0) &&
+  List.index ehdr.elf32_ident 13 = Just (unsigned_char_of_natural 0) &&
+  List.index ehdr.elf32_ident 14 = Just (unsigned_char_of_natural 0) &&
+  List.index ehdr.elf32_ident 15 = Just (unsigned_char_of_natural 0)
 
 val is_elf32_header_magic_number_correct : elf32_header -> bool
 let is_elf32_header_magic_number_correct ehdr =
-  List.index ehdr.elf32_ident 0 = Just (unsigned_char_of_int32 127) &&
-  List.index ehdr.elf32_ident 1 = Just (unsigned_char_of_int32 69)  &&
-  List.index ehdr.elf32_ident 2 = Just (unsigned_char_of_int32 76)  &&
-  List.index ehdr.elf32_ident 3 = Just (unsigned_char_of_int32 70)
+  List.index ehdr.elf32_ident 0 = Just (unsigned_char_of_natural 127) &&
+  List.index ehdr.elf32_ident 1 = Just (unsigned_char_of_natural 69)  &&
+  List.index ehdr.elf32_ident 2 = Just (unsigned_char_of_natural 76)  &&
+  List.index ehdr.elf32_ident 3 = Just (unsigned_char_of_natural 70)
 
 val is_elf32_header_class_correct : elf32_header -> bool
 let is_elf32_header_class_correct ehdr =
-  List.index ehdr.elf32_ident 4 = Just (unsigned_char_of_int32 1)
+  List.index ehdr.elf32_ident 4 = Just (unsigned_char_of_natural 1)
 
 val is_elf32_header_version_correct : elf32_header -> bool
 let is_elf32_header_version_correct ehdr =
-  List.index ehdr.elf32_ident 6 = Just (unsigned_char_of_int32 1)
+  List.index ehdr.elf32_ident 6 = Just (unsigned_char_of_natural 1)
 
 (** [is_valid_elf32_header] checks whether an [elf32_header] value is a valid 32-bit
   * ELF file header (i.e. [elf32_ident] is [ei_nident] entries long, and other
