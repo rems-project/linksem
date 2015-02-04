@@ -153,10 +153,10 @@ let abi_amd64_data_heap_addr = 67108864 * 16
 val quad_le_bytes_of_natural : natural -> byte * byte * byte * byte
 let quad_le_bytes_of_natural m =
   let conv = elf64_addr_of_natural m in
-  let b0   = unsafe_byte_of_int (unsafe_int_of_elf64_addr (elf64_addr_land conv (elf64_addr_of_int64 255))) in
-  let b1   = unsafe_byte_of_int (unsafe_int_of_elf64_addr (elf64_addr_land (elf64_addr_rshift conv 8) (elf64_addr_of_int64 255))) in
-  let b2   = unsafe_byte_of_int (unsafe_int_of_elf64_addr (elf64_addr_land (elf64_addr_rshift conv 16) (elf64_addr_of_int64 255))) in
-  let b3   = unsafe_byte_of_int (unsafe_int_of_elf64_addr (elf64_addr_land (elf64_addr_rshift conv 24) (elf64_addr_of_int64 255))) in
+  let b0   = byte_of_natural (natural_of_elf64_addr (elf64_addr_land conv (elf64_addr_of_natural 255))) in
+  let b1   = byte_of_natural (natural_of_elf64_addr (elf64_addr_land (elf64_addr_rshift conv 8) (elf64_addr_of_natural 255))) in
+  let b2   = byte_of_natural (natural_of_elf64_addr (elf64_addr_land (elf64_addr_rshift conv 16) (elf64_addr_of_natural 255))) in
+  let b3   = byte_of_natural (natural_of_elf64_addr (elf64_addr_land (elf64_addr_rshift conv 24) (elf64_addr_of_natural 255))) in
     (b0, b1, b2, b3)
 
 val abi_amd64_generate_data_heap_interpreted_segment : natural -> natural -> natural -> natural -> elf64_interpreted_segment
@@ -188,53 +188,53 @@ val init_data_heap_instrs : byte_sequence
 let init_data_heap_instrs =
   let (b0, b1, b2, b3) = quad_le_bytes_of_natural abi_amd64_data_heap_addr in
     Byte_sequence.from_byte_lists
-      [[ unsafe_byte_of_int 72
-      ; unsafe_byte_of_int 199
-      ; unsafe_byte_of_int 68
-      ; unsafe_byte_of_int 36
-      ; unsafe_byte_of_int 248
+      [[ byte_of_natural 72
+      ; byte_of_natural 199
+      ; byte_of_natural 68
+      ; byte_of_natural 36
+      ; byte_of_natural 248
       ; b0
       ; b1
       ; b2
       ; b3
-      ; unsafe_byte_of_int 72
-      ; unsafe_byte_of_int 139
-      ; unsafe_byte_of_int 68
-      ; unsafe_byte_of_int 36
-      ; unsafe_byte_of_int 248
+      ; byte_of_natural 72
+      ; byte_of_natural 139
+      ; byte_of_natural 68
+      ; byte_of_natural 36
+      ; byte_of_natural 248
       ]]
 
 val exit_syscall_instrs : byte_sequence
 let exit_syscall_instrs =
   Byte_sequence.from_byte_lists
     [[
-      unsafe_byte_of_int 72;
-      unsafe_byte_of_int 199;
-      unsafe_byte_of_int 192;
-      unsafe_byte_of_int 60;
-      unsafe_byte_of_int 0;
-      unsafe_byte_of_int 0;
-      unsafe_byte_of_int 0;
-      unsafe_byte_of_int 15;
-      unsafe_byte_of_int 5
+      byte_of_natural 72;
+      byte_of_natural 199;
+      byte_of_natural 192;
+      byte_of_natural 60;
+      byte_of_natural 0;
+      byte_of_natural 0;
+      byte_of_natural 0;
+      byte_of_natural 15;
+      byte_of_natural 5
     ]]
 
 val push_instr : natural -> byte_sequence
 let push_instr addr =
   let (b0, b1, b2, b3) = quad_le_bytes_of_natural addr in
     Byte_sequence.from_byte_lists [[
-      unsafe_byte_of_int 104;
+      byte_of_natural 104;
       b0; b1; b2; b3
     ]]
 
 val setup_return_code_instr : byte_sequence
 let setup_return_code_instr =
   Byte_sequence.from_byte_lists [[
-    unsafe_byte_of_int 191;
-    unsafe_byte_of_int 0;
-    unsafe_byte_of_int 0;
-    unsafe_byte_of_int 0;
-    unsafe_byte_of_int 0
+    byte_of_natural 191;
+    byte_of_natural 0;
+    byte_of_natural 0;
+    byte_of_natural 0;
+    byte_of_natural 0
   ]]
 
 val abi_amd64_generate_executable_file : byte_sequence -> natural -> natural -> elf64_executable_file
@@ -246,8 +246,8 @@ let abi_amd64_generate_executable_file exec_code code_heap_size data_heap_size  
   let pre_entry    = 5 + abi_amd64_entry_point_addr + Byte_sequence.length exec_code' in
   let exec_code    = Byte_sequence.concat [push_instr pre_entry; exec_code'; setup_return_code_instr; exit_syscall_instrs] in
   let hdr          = abi_amd64_generate_elf_header
-                       (unsafe_elf64_addr_of_natural abi_amd64_entry_point_addr)
-                         (elf64_off_of_int64 64) (elf64_half_of_int32 3) in
+                       (elf64_addr_of_natural abi_amd64_entry_point_addr)
+                         (elf64_off_of_natural 64) (elf64_half_of_natural 3) in
   let exec_off_i   = 64 + 3 * 56 in
   let exec_off_adj = compute_virtual_address_adjustment abi_amd64_page_size_max exec_off_i abi_amd64_entry_point_addr in
   let exec_off     = exec_off_i + exec_off_adj in

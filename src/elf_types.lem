@@ -908,7 +908,7 @@ val unsafe_int_of_natural   : natural -> int
 declare ocaml    target_rep function unsafe_int_of_natural = `Big_int.int_of_big_int`
 declare isabelle target_rep function unsafe_int_of_natural = `int`
 
-val unsafe_byte_of_int : int -> byte
+val byte_of_natural : natural -> byte
 
-declare ocaml    target_rep function unsafe_byte_of_int = `Char.chr`
-declare isabelle target_rep function unsafe_byte_of_int = `word_of_int`
+declare ocaml    target_rep function byte_of_natural = `Ml_bindings.byte_of_natural`
+declare isabelle target_rep function byte_of_natural = `unat`

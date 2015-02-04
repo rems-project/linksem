@@ -6,6 +6,17 @@ open Lem_maybe
 open Lem_num
 open Lem_string
 
+(*type byte*)
+
+(*val char_of_byte : byte -> char*)
+
+(*val natural_of_bool : bool -> natural*)
+let natural_of_bool b =  
+((match b with
+    | true  ->Big_int.big_int_of_int 1
+    | false ->Big_int.big_int_of_int 0
+  ))
+
 (*type ordering
   = Equal
   | Less
@@ -67,7 +78,7 @@ let bracket xs =
 ("(" ^ (List.fold_right (^) (intercalate " " xs) "" ^ ")"))
 
 (** [null_char] is the null character. *)
-(*val null_char : char*)
+(*val null_char : byte*)
 
 (** [split_string_on_char s c] splits a string [s] into a list of substrings
   * on character [c], otherwise returning the singleton list containing [s]
