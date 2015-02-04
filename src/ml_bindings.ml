@@ -1,6 +1,21 @@
 open Endianness
 open Error
 
+let bytes_of_int32 (i : Int32.t) = assert false
+;;
+
+let bytes_of_int64 (i : Int64.t) = assert false
+;;
+
+let int32_of_quad c1 c2 c3 c4 = assert false
+;;
+
+let int64_of_oct c1 c2 c3 c4 c5 c6 c7 c8 = assert false
+;;
+
+let char_of_bigint (i : Big_int.big_int) : char = assert false
+;;
+
 let decimal_string_of_int64 e =
   let i = Int64.to_int e in
     string_of_int i

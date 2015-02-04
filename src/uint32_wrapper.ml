@@ -10,12 +10,23 @@ let add l r =
   Big_int.mod_big_int (Big_int.add_big_int l r) max_int
 ;;
 
+let of_char (c : char) : uint32 =
+  Big_int.big_int_of_int (Char.code c)
+;;
+
 let of_int (i : int) =
   Big_int.big_int_of_int i
 ;;
 
+let of_bigint (i : Big_int.big_int) : uint32 =
+  assert false
+;;
+
 let of_int32 (i : Int32.t) =
   Big_int.big_int_of_int32 i
+;;
+
+let to_bigint (u : uint32) : Big_int.big_int = u
 ;;
 
 let shift_left i s =
@@ -38,8 +49,14 @@ let to_string l =
   Big_int.string_of_big_int l
 ;;
 
+let to_char u = assert false
+;;
+
 let equal l r =
   Big_int.eq_big_int l r
+;;
+
+let of_quad c1 c2 c3 c4 = assert false
 ;;
 
 let to_bytes u : char * char * char * char =

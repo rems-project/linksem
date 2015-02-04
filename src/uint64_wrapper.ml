@@ -48,6 +48,16 @@ let equal l r =
   Big_int.eq_big_int l r
 ;;
 
+let of_oct c1 c2 c3 c4 c5 c6 c7 c8 = assert false
+;;
+
+let to_bigint (u : uint64) : Big_int.big_int =
+  u
+;;
+
+let of_bigint (u : Big_int.big_int) : uint64 = assert false
+;;
+
 let to_bytes u : char * char * char * char * char * char * char * char =
   let u1 = Big_int.mult_big_int (Big_int.big_int_of_string "4278190080") (Big_int.big_int_of_string "255") in (* 0xFF00000000 *)
   let u2 = Big_int.mult_big_int (Big_int.big_int_of_string "4278190080") (Big_int.big_int_of_string "65280") in (* 0xFF0000000000 *)
