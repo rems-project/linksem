@@ -19,7 +19,7 @@ let of_int (i : int) =
 ;;
 
 let of_bigint (i : Big_int.big_int) : uint32 =
-  assert false
+  Big_int.mod_big_int i max_int
 ;;
 
 let of_int32 (i : Int32.t) =
@@ -49,7 +49,8 @@ let to_string l =
   Big_int.string_of_big_int l
 ;;
 
-let to_char u = assert false
+let to_char u =
+  Char.chr (Big_int.int_of_big_int u)
 ;;
 
 let equal l r =
