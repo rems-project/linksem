@@ -7,10 +7,25 @@ let bytes_of_int32 (i : Int32.t) = assert false
 let bytes_of_int64 (i : Int64.t) = assert false
 ;;
 
-let int32_of_quad c1 c2 c3 c4 = assert false
+let int32_of_quad c1 c2 c3 c4 =
+  let b1 = Int32.of_int (Char.code c1) in
+  let b2 = Int32.shift_left (Int32.of_int (Char.code c2)) 8 in
+  let b3 = Int32.shift_left (Int32.of_int (Char.code c3)) 16 in
+  let b4 = Int32.shift_left (Int32.of_int (Char.code c4)) 24 in
+    Int32.add b1 (Int32.add b2 (Int32.add b3 b4))
 ;;
 
-let int64_of_oct c1 c2 c3 c4 c5 c6 c7 c8 = assert false
+let int64_of_oct c1 c2 c3 c4 c5 c6 c7 c8 =
+  let b1 = Int64.of_int (Char.code c1) in
+  let b2 = Int64.shift_left (Int64.of_int (Char.code c2)) 8 in
+  let b3 = Int64.shift_left (Int64.of_int (Char.code c3)) 16 in
+  let b4 = Int64.shift_left (Int64.of_int (Char.code c4)) 24 in
+  let b5 = Int64.shift_left (Int64.of_int (Char.code c5)) 32 in
+  let b6 = Int64.shift_left (Int64.of_int (Char.code c6)) 40 in
+  let b7 = Int64.shift_left (Int64.of_int (Char.code c7)) 48 in
+  let b8 = Int64.shift_left (Int64.of_int (Char.code c8)) 56 in
+    Int64.add b1 (Int64.add b2 (Int64.add b3 (Int64.add b4
+        (Int64.add b5 (Int64.add b6 (Int64.add b7 b8))))))
 ;;
 
 let char_of_bigint (i : Big_int.big_int) : char =
