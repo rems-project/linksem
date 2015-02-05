@@ -56,7 +56,7 @@ ocaml:
 unix.cma nums.cma batteries.cma nat_num.cmo \
 lem.cmo lem_function.cmo lem_list.cmo lem_num.cmo xstring.cmo \
 missing_pervasives.ml \
-show.ml endianness.ml error.ml uint32.ml uint64.ml uint32_wrapper.ml \
+show.ml endianness.ml error.ml uint32.ml uint64.ml uint16_wrapper.ml uint32_wrapper.ml \
 uint64_wrapper.ml byte_sequence_wrapper.ml byte_sequence.ml byte_sequence_extra.ml ml_bindings.ml default_printing.ml \
 elf_types.ml elf_header.ml \
 abis/amd64/abi_amd64_elf_header.ml \

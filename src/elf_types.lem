@@ -319,57 +319,57 @@ end
 
 type elf64_half
 
-declare ocaml    target_rep type elf64_half = `Uint32_wrapper.uint32`
-declare isabelle target_rep type elf64_half = `uint32`
+declare ocaml    target_rep type elf64_half = `Uint16_wrapper.uint16`
+declare isabelle target_rep type elf64_half = `uint16`
 
 val string_of_elf64_half : elf64_half -> string
 
-declare ocaml target_rep function string_of_elf64_half = `Uint32_wrapper.to_string`
+declare ocaml target_rep function string_of_elf64_half = `Uint16_wrapper.to_string`
 
-val elf64_half_of_quad : byte -> byte -> byte -> byte -> elf64_half
+val elf64_half_of_dual : byte -> byte -> elf64_half
 
-declare ocaml    target_rep function elf64_half_of_quad = `Uint32_wrapper.of_quad`
-declare isabelle target_rep function elf64_half_of_quad = `Elf_Types_Local.uint32_of_quad`
+declare ocaml    target_rep function elf64_half_of_dual = `Uint16_wrapper.of_dual`
+declare isabelle target_rep function elf64_half_of_dual = `Elf_Types_Local.uint16_of_dual`
 
 val read_elf64_half : endianness -> byte_sequence -> error (elf64_half * byte_sequence)
 let read_elf64_half endian bs0 =
   match endian with
+    | Big ->
+      Byte_sequence.read_2_bytes_be bs0 >>= fun ((b1, b2), bs1) ->
+      return (elf64_half_of_dual b2 b1, bs1)
     | Little ->
-      Byte_sequence.read_4_bytes_le bs0 >>= fun ((b1, b2, b3, b4), bs1) ->
-      return (elf64_half_of_quad b1 b2 b3 b4, bs1)
-    | Big    ->
-      Byte_sequence.read_4_bytes_be bs0 >>= fun ((b1, b2, b3, b4), bs1) ->
-      return (elf64_half_of_quad b1 b2 b3 b4, bs1)
+      Byte_sequence.read_2_bytes_le bs0 >>= fun ((b1, b2), bs1) ->
+      return (elf64_half_of_dual b2 b1, bs1)
   end
 
 val natural_of_elf64_half : elf64_half -> natural
 
-declare ocaml    target_rep function natural_of_elf64_half = `Uint32_wrapper.to_bigint`
+declare ocaml    target_rep function natural_of_elf64_half = `Uint16_wrapper.to_bigint`
 declare isabelle target_rep function natural_of_elf64_half = `unat`
 
 val elf64_half_of_natural : natural -> elf64_half
 
-declare ocaml target_rep function elf64_half_of_natural = `Uint32_wrapper.of_bigint`
+declare ocaml target_rep function elf64_half_of_natural = `Uint16_wrapper.of_bigint`
 
 val equal_elf64_half : elf64_half -> elf64_half -> bool
 
-declare ocaml target_rep function equal_elf64_half = `Uint32_wrapper.equal`
+declare ocaml target_rep function equal_elf64_half = `Uint16_wrapper.equal`
 let inline {isabelle} equal_elf64_half = unsafe_structural_equality
 
-val quad_of_elf64_half : elf64_half -> (byte * byte * byte * byte)
+val dual_of_elf64_half : elf64_half -> (byte * byte)
 
-declare ocaml    target_rep function quad_of_elf64_half = `Uint32_wrapper.to_bytes`
-declare isabelle target_rep function quad_of_elf64_half = `Elf_Types_Local.quad_of_uint32`
+declare ocaml    target_rep function dual_of_elf64_half = `Uint16_wrapper.to_bytes`
+declare isabelle target_rep function dual_of_elf64_half = `Elf_Types_Local.dual_of_uint16`
 
 val bytes_of_elf64_half : endianness -> elf64_half -> list byte
 let bytes_of_elf64_half endian w =
   match endian with
-    | Little ->
-      let (b0, b1, b2, b3) = quad_of_elf64_half w in
-        [b0; b1; b2; b3]
-    | Big    ->
-      let (b0, b1, b2, b3) = quad_of_elf64_half w in
-        [b3; b2; b1; b0]
+    | Big ->
+      let (b0, b1) = dual_of_elf64_half w in
+        [b0; b1]
+    | Little    ->
+      let (b0, b1) = dual_of_elf64_half w in
+        [b1; b0]
   end
 
 instance (Eq elf64_half)

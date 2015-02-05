@@ -56,7 +56,12 @@ let equal l r =
   Big_int.eq_big_int l r
 ;;
 
-let of_quad c1 c2 c3 c4 = assert false
+let of_quad c1 c2 c3 c4 =
+  let b1 = Big_int.big_int_of_int (Char.code c1) in
+  let b2 = shift_left (Big_int.big_int_of_int (Char.code c2)) 8 in
+  let b3 = shift_left (Big_int.big_int_of_int (Char.code c3)) 16 in
+  let b4 = shift_left (Big_int.big_int_of_int (Char.code c4)) 24 in
+    Big_int.add_big_int b1 (Big_int.add_big_int b2 (Big_int.add_big_int b3 b4))
 ;;
 
 let to_bytes u : char * char * char * char =

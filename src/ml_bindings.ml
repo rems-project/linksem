@@ -13,7 +13,9 @@ let int32_of_quad c1 c2 c3 c4 = assert false
 let int64_of_oct c1 c2 c3 c4 c5 c6 c7 c8 = assert false
 ;;
 
-let char_of_bigint (i : Big_int.big_int) : char = assert false
+let char_of_bigint (i : Big_int.big_int) : char =
+  let i = Big_int.int_of_big_int i in
+    Char.chr i
 ;;
 
 let decimal_string_of_int64 e =

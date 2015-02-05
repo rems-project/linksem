@@ -48,14 +48,27 @@ let equal l r =
   Big_int.eq_big_int l r
 ;;
 
-let of_oct c1 c2 c3 c4 c5 c6 c7 c8 = assert false
+let of_oct c1 c2 c3 c4 c5 c6 c7 c8 =
+  let b1 = Big_int.big_int_of_int (Char.code c1) in
+  let b2 = shift_left (Big_int.big_int_of_int (Char.code c2)) 8 in
+  let b3 = shift_left (Big_int.big_int_of_int (Char.code c3)) 16 in
+  let b4 = shift_left (Big_int.big_int_of_int (Char.code c4)) 24 in
+  let b5 = shift_left (Big_int.big_int_of_int (Char.code c5)) 32 in
+  let b6 = shift_left (Big_int.big_int_of_int (Char.code c6)) 40 in
+  let b7 = shift_left (Big_int.big_int_of_int (Char.code c7)) 48 in
+  let b8 = shift_left (Big_int.big_int_of_int (Char.code c8)) 56 in
+    Big_int.add_big_int b1 (Big_int.add_big_int b2
+      (Big_int.add_big_int b3 (Big_int.add_big_int b4
+        (Big_int.add_big_int b5 (Big_int.add_big_int b6
+          (Big_int.add_big_int b7 b8))))))
 ;;
 
 let to_bigint (u : uint64) : Big_int.big_int =
   u
 ;;
 
-let of_bigint (u : Big_int.big_int) : uint64 = assert false
+let of_bigint (u : Big_int.big_int) : uint64 =
+  Big_int.mod_big_int u max_int
 ;;
 
 let to_bytes u : char * char * char * char * char * char * char * char =
