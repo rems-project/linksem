@@ -9223,10 +9223,11 @@ let program =
 *)
 let _ =
   let res =
-    Byte_sequence_extra.acquire "test/hello6-perf-100" >>= fun bs0 ->
-    Elf_executable_file.read_elf64_executable_file bs0 >>= fun ef1 ->
-    return (Elf_executable_file.string_of_elf64_executable_file default_hdr_bdl
-      default_pht_bdl default_sht_bdl ef1)
+    Byte_sequence_extra.acquire "test/a.out" >>= fun bs0 ->
+    Elf_executable_file.read_elf32_executable_file bs0 >>= fun ef1 ->
+    Elf_executable_file.get_elf32_executable_file_global_symbol_init ef1 >>= fun strs ->
+    return (Elf_executable_file.string_of_elf32_executable_file default_hdr_bdl default_pht_bdl
+      default_sht_bdl ef1)
   in
     match res with
       | Fail err  -> Missing_pervasives.print ("[!]: " ^ err)

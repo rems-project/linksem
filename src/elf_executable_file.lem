@@ -453,10 +453,9 @@ let read_elf32_executable_file bs0 =
 val read_elf64_executable_file : byte_sequence -> error elf64_executable_file
 let read_elf64_executable_file bs0 =
   read_elf64_header bs0 >>= fun (hdr, bs1) ->
-  let _ = Missing_pervasives.print (string_of_elf64_header ((fun xz -> "XXX"), (fun xz -> "XXX")) hdr) in
-  (* if not (is_elf64_executable_file hdr) then
+  if not (is_elf64_executable_file hdr) then
     fail "read_elf64_executable_file: ELF file is not an executable file"
-  else *)
+  else
     obtain_elf64_program_header_table hdr bs0 >>= fun pht  ->
     obtain_elf64_section_header_table hdr bs0 >>= fun sht  ->
     obtain_elf64_interpreted_segments pht bs0 >>= fun segs ->
