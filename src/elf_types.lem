@@ -134,10 +134,10 @@ let read_elf32_addr endian bs0 =
   match endian with
     | Little ->
       Byte_sequence.read_4_bytes_le bs0 >>= fun ((b1, b2, b3, b4), bs1) ->
-      return (elf32_addr_of_quad b1 b2 b3 b4, bs1)
+      return (elf32_addr_of_quad b4 b3 b2 b1, bs1)
     | Big    ->
       Byte_sequence.read_4_bytes_be bs0 >>= fun ((b1, b2, b3, b4), bs1) ->
-      return (elf32_addr_of_quad b1 b2 b3 b4, bs1)
+      return (elf32_addr_of_quad b4 b3 b2 b1, bs1)
   end
 
 val equal_elf32_addr : elf32_addr -> elf32_addr -> bool
@@ -201,10 +201,10 @@ let read_elf64_addr endian bs0 =
   match endian with
     | Little ->
       Byte_sequence.read_8_bytes_le bs0 >>= fun ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) ->
-      return (elf64_addr_of_oct b1 b2 b3 b4 b5 b6 b7 b8, bs1)
+      return (elf64_addr_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1)
     | Big    ->
       Byte_sequence.read_8_bytes_be bs0 >>= fun ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) ->
-      return (elf64_addr_of_oct b1 b2 b3 b4 b5 b6 b7 b8, bs1)
+      return (elf64_addr_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1)
   end
 
 val equal_elf64_addr : elf64_addr -> elf64_addr -> bool
@@ -257,53 +257,53 @@ end
 
 type elf32_half
 
-declare ocaml    target_rep type elf32_half = `Uint32_wrapper.uint32`
-declare isabelle target_rep type elf32_half = `uint32`
+declare ocaml    target_rep type elf32_half = `Uint16_wrapper.uint16`
+declare isabelle target_rep type elf32_half = `uint16`
 
 val string_of_elf32_half : elf32_half -> string
 
-declare ocaml target_rep function string_of_elf32_half = `Uint32_wrapper.to_string`
+declare ocaml target_rep function string_of_elf32_half = `Uint16_wrapper.to_string`
 
-val elf32_half_of_quad : byte -> byte -> byte -> byte -> elf32_half
+val elf32_half_of_dual : byte -> byte -> elf32_half
 
-declare ocaml    target_rep function elf32_half_of_quad = `Uint32_wrapper.of_quad`
-declare isabelle target_rep function elf32_half_of_quad = `Elf_Types_Local.uint32_of_quad`
+declare ocaml    target_rep function elf32_half_of_dual = `Uint16_wrapper.of_dual`
+declare isabelle target_rep function elf32_half_of_dual = `Elf_Types_Local.uint16_of_dual`
 
 val read_elf32_half : endianness -> byte_sequence -> error (elf32_half * byte_sequence)
 let read_elf32_half endian bs0 =
   match endian with
     | Little ->
-      Byte_sequence.read_4_bytes_le bs0 >>= fun ((b1, b2, b3, b4), bs1) ->
-      return (elf32_half_of_quad b1 b2 b3 b4, bs1)
+      Byte_sequence.read_2_bytes_le bs0 >>= fun ((b1, b2), bs1) ->
+      return (elf32_half_of_dual b2 b1, bs1)
     | Big    ->
-      Byte_sequence.read_4_bytes_be bs0 >>= fun ((b1, b2, b3, b4), bs1) ->
-      return (elf32_half_of_quad b1 b2 b3 b4, bs1)
+      Byte_sequence.read_2_bytes_be bs0 >>= fun ((b1, b2), bs1) ->
+      return (elf32_half_of_dual b2 b1, bs1)
   end
 
 val natural_of_elf32_half : elf32_half -> natural
 
-declare ocaml    target_rep function natural_of_elf32_half = `Uint32_wrapper.to_bigint`
+declare ocaml    target_rep function natural_of_elf32_half = `Uint16_wrapper.to_bigint`
 declare isabelle target_rep function natural_of_elf32_half = `unat`
 
 val equal_elf32_half : elf32_half -> elf32_half -> bool
 
-declare ocaml target_rep function equal_elf32_half = `Uint32_wrapper.equal`
+declare ocaml target_rep function equal_elf32_half = `Uint16_wrapper.equal`
 let inline {isabelle} equal_elf32_half = unsafe_structural_equality
 
-val quad_of_elf32_half : elf32_half -> (byte * byte * byte * byte)
+val dual_of_elf32_half : elf32_half -> (byte * byte)
 
-declare ocaml    target_rep function quad_of_elf32_half = `Uint32_wrapper.to_bytes`
-declare isabelle target_rep function quad_of_elf32_half = `Elf_Types_Local.quad_of_uint32`
+declare ocaml    target_rep function dual_of_elf32_half = `Uint16_wrapper.to_bytes`
+declare isabelle target_rep function dual_of_elf32_half = `Elf_Types_Local.dual_of_uint16`
 
 val bytes_of_elf32_half : endianness -> elf32_half -> list byte
 let bytes_of_elf32_half endian h =
   match endian with
     | Little ->
-      let (b0, b1, b2, b3) = quad_of_elf32_half h in
-        [b0; b1; b2; b3]
+      let (b0, b1) = dual_of_elf32_half h in
+        [b0; b1]
     | Big    ->
-      let (b0, b1, b2, b3) = quad_of_elf32_half h in
-        [b3; b2; b1; b0]
+      let (b0, b1) = dual_of_elf32_half h in
+        [b1; b0]
   end
 
 instance (Eq elf32_half)
@@ -407,10 +407,10 @@ let read_elf32_off endian bs0 =
   match endian with
     | Little ->
       Byte_sequence.read_4_bytes_le bs0 >>= fun ((b1, b2, b3, b4), bs1) ->
-      return (elf32_off_of_quad b1 b2 b3 b4, bs1)
+      return (elf32_off_of_quad b4 b3 b2 b1, bs1)
     | Big    ->
       Byte_sequence.read_4_bytes_be bs0 >>= fun ((b1, b2, b3, b4), bs1) ->
-      return (elf32_off_of_quad b1 b2 b3 b4, bs1)
+      return (elf32_off_of_quad b4 b3 b2 b1, bs1)
   end
 
 val equal_elf32_off : elf32_off -> elf32_off -> bool
@@ -474,10 +474,10 @@ let read_elf64_off endian bs0 =
   match endian with
     | Little ->
       Byte_sequence.read_8_bytes_le bs0 >>= fun ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) ->
-      return (elf64_off_of_oct b1 b2 b3 b4 b5 b6 b7 b8, bs1)
+      return (elf64_off_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1)
     | Big    ->
       Byte_sequence.read_8_bytes_be bs0 >>= fun ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) ->
-      return (elf64_off_of_oct b1 b2 b3 b4 b5 b6 b7 b8, bs1)
+      return (elf64_off_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1)
   end
 
 val equal_elf64_off : elf64_off -> elf64_off -> bool
@@ -551,10 +551,10 @@ let read_elf32_word endian bs0 =
   match endian with
     | Little ->
       Byte_sequence.read_4_bytes_le bs0 >>= fun ((b1, b2, b3, b4), bs1) ->
-      return (elf32_word_of_quad b1 b2 b3 b4, bs1)
+      return (elf32_word_of_quad b4 b3 b2 b1, bs1)
     | Big    ->
       Byte_sequence.read_4_bytes_be bs0 >>= fun ((b1, b2, b3, b4), bs1) ->
-      return (elf32_word_of_quad b1 b2 b3 b4, bs1)
+      return (elf32_word_of_quad b4 b3 b2 b1, bs1)
   end
 
 val unsigned_char_of_elf32_word : elf32_word -> unsigned_char
@@ -627,10 +627,10 @@ let read_elf64_word endian bs0 =
   match endian with
     | Little ->
       Byte_sequence.read_4_bytes_le bs0 >>= fun ((b1, b2, b3, b4), bs1) ->
-      return (elf64_word_of_quad b1 b2 b3 b4, bs1)
+      return (elf64_word_of_quad b4 b3 b2 b1, bs1)
     | Big    ->
       Byte_sequence.read_4_bytes_be bs0 >>= fun ((b1, b2, b3, b4), bs1) ->
-      return (elf64_word_of_quad b1 b2 b3 b4, bs1)
+      return (elf64_word_of_quad b4 b3 b2 b1, bs1)
   end
 
 val equal_elf64_word : elf64_word -> elf64_word -> bool
@@ -689,10 +689,10 @@ let read_elf32_sword endian bs0 =
   match endian with
     | Little ->
       Byte_sequence.read_4_bytes_le bs0 >>= fun ((b1, b2, b3, b4), bs1) ->
-      return (elf32_sword_of_quad b1 b2 b3 b4, bs1)
+      return (elf32_sword_of_quad b4 b3 b2 b1, bs1)
     | Big    ->
       Byte_sequence.read_4_bytes_be bs0 >>= fun ((b1, b2, b3, b4), bs1) ->
-      return (elf32_sword_of_quad b1 b2 b3 b4, bs1)
+      return (elf32_sword_of_quad b4 b3 b2 b1, bs1)
   end
 
 val quad_of_elf32_sword : elf32_sword -> (byte * byte * byte * byte)
@@ -741,10 +741,10 @@ let read_elf64_sword endian bs0 =
   match endian with
     | Little ->
       Byte_sequence.read_4_bytes_le bs0 >>= fun ((b1, b2, b3, b4), bs1) ->
-      return (elf64_sword_of_quad b1 b2 b3 b4, bs1)
+      return (elf64_sword_of_quad b4 b3 b2 b1, bs1)
     | Big    ->
       Byte_sequence.read_4_bytes_be bs0 >>= fun ((b1, b2, b3, b4), bs1) ->
-      return (elf64_sword_of_quad b1 b2 b3 b4, bs1)
+      return (elf64_sword_of_quad b4 b3 b2 b1, bs1)
   end
 
 val quad_of_elf64_sword : elf64_sword -> (byte * byte * byte * byte)
@@ -793,10 +793,10 @@ let read_elf64_xword endian bs0 =
   match endian with
     | Little ->
       Byte_sequence.read_8_bytes_le bs0 >>= fun ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) ->
-      return (elf64_xword_of_oct b1 b2 b3 b4 b5 b6 b7 b8, bs1)
+      return (elf64_xword_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1)
     | Big    ->
       Byte_sequence.read_8_bytes_be bs0 >>= fun ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) ->
-      return (elf64_xword_of_oct b1 b2 b3 b4 b5 b6 b7 b8, bs1)
+      return (elf64_xword_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1)
   end
 
 val elf64_xword_rshift : elf64_xword -> nat -> elf64_xword
@@ -868,10 +868,10 @@ let read_elf64_sxword endian bs0 =
   match endian with
     | Little ->
       Byte_sequence.read_8_bytes_le bs0 >>= fun ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) ->
-      return (elf64_sxword_of_oct b1 b2 b3 b4 b5 b6 b7 b8, bs1)
+      return (elf64_sxword_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1)
     | Big    ->
       Byte_sequence.read_8_bytes_be bs0 >>= fun ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) ->
-      return (elf64_sxword_of_oct b1 b2 b3 b4 b5 b6 b7 b8, bs1)
+      return (elf64_sxword_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1)
   end
 
 val oct_of_elf64_sxword : elf64_sxword -> (byte * byte * byte * byte * byte * byte * byte * byte)

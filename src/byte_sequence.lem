@@ -148,7 +148,7 @@ let read_8_bytes_le bs0 =
   read_char bs5 >>= fun (b5, bs6) ->
   read_char bs6 >>= fun (b6, bs7) ->
   read_char bs7 >>= fun (b7, bs8) ->
-  return ((b0, b1, b2, b3, b4, b5, b6, b7), bs8)
+  return ((b7, b6, b5, b4, b3, b2, b1, b0), bs8)
 
 val read_8_bytes_be : byte_sequence -> error ((byte * byte * byte * byte * byte * byte * byte * byte) * byte_sequence)
 let read_8_bytes_be bs0 =
@@ -160,7 +160,7 @@ let read_8_bytes_be bs0 =
   read_char bs5 >>= fun (b5, bs6) ->
   read_char bs6 >>= fun (b6, bs7) ->
   read_char bs7 >>= fun (b7, bs8) ->
-  return ((b7, b6, b5, b4, b3, b2, b1, b0), bs8)
+  return ((b0, b1, b2, b3, b4, b5, b6, b7), bs8)
 
 val partition : natural -> byte_sequence -> error (byte_sequence * byte_sequence)
 let partition idx bs0 =
