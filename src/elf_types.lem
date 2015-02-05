@@ -108,7 +108,10 @@ instance (Show unsigned_char)
 	let show = string_of_unsigned_char
 end
 
-(** elf32_addr type and bindings *)
+(** ELF address type:
+  * 4 byte unsigned type on 32-bit architectures.
+  * 8 byte unsigned type on 64-bit architectures.
+  *)
 
 type elf32_addr
 
@@ -253,7 +256,10 @@ instance (Show elf64_addr)
   let show = string_of_elf64_addr
 end
 
-(** elf32_half type and bindings *)
+(** ELF half word type:
+  * 2 byte unsigned type on 32-bit architectures.
+  * 2 byte unsigned type on 64-bit architectures.
+  *)
 
 type elf32_half
 
@@ -381,7 +387,10 @@ instance (Show elf64_half)
   let show = string_of_elf64_half
 end
 
-(** elf32_off type and bindings *)
+(** ELF offset type:
+  * 4 byte unsigned type on 32-bit architectures.
+  * 8 byte unsigned type on 64-bit architectures.
+  *)
 
 type elf32_off
 
@@ -510,7 +519,10 @@ instance (Show elf64_off)
   let show = string_of_elf64_off
 end
 
-(** elf32_word type and bindings *)
+(** ELF word type:
+  * 4 byte unsigned type on 32-bit architectures.
+  * 4 byte unsigned type on 64-bit architectures.
+  *)
 
 type elf32_word
 
@@ -663,7 +675,10 @@ instance (Show elf64_word)
   let show = string_of_elf64_word
 end
 
-(** elf32_sword type and bindings *)
+(** ELF signed word type:
+  * 4 byte signed type on 32-bit architectures.
+  * 4 byte signed type on 64-bit architectures.
+  *)
 
 type elf32_sword
 
@@ -767,7 +782,9 @@ instance (Show elf64_sword)
   let show = string_of_elf64_sword
 end
 
-(** elf64_sword type and bindings *)
+(** ELF extra wide word type:
+  * 8 byte unsigned type on 64-bit architectures.
+  *)
 
 type elf64_xword
 
@@ -842,7 +859,9 @@ instance (Show elf64_xword)
   let show = string_of_elf64_xword
 end
 
-(** elf64_sxword type and bindings *)
+(** ELF signed extra wide word type:
+  * 8 byte signed type on 64-bit architectures.
+  *)
 
 type elf64_sxword
 
