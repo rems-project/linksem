@@ -62,6 +62,8 @@ function (sequential,domintros)  repeatM  :: " nat \<Rightarrow> 'a error \<Righ
 				error_return (head # tail))))" 
 by pat_completeness auto
 
+termination by lexicographic_order
+
 
 (** [repeatM' count seed action] is a variant of [repeatM] that acts like [repeatM]
   * apart from any successful result returns a tuple whose second component is [seed]
@@ -76,6 +78,7 @@ function (sequential,domintros)  repeatM'  :: " nat \<Rightarrow> 'b \<Rightarro
 				error_return ((head # tail), seed))))" 
 by pat_completeness auto
 
+termination by lexicographic_order
 	
 (** [mapM f xs] maps [f] across [xs], failing if [f] fails on any element of [xs].
   *)
@@ -88,6 +91,7 @@ function (sequential,domintros)  mapM  :: "('a \<Rightarrow> 'b error)\<Rightarr
 				error_return (hd # tl))))" 
 by pat_completeness auto
 
+termination by lexicographic_order
 
 (*val foldM : forall 'a 'b. ('a -> 'b -> error 'a) -> 'a -> list 'b -> error 'a*)
 function (sequential,domintros)  foldM  :: "('a \<Rightarrow> 'b \<Rightarrow> 'a error)\<Rightarrow> 'a \<Rightarrow> 'b list \<Rightarrow> 'a error "  where 
@@ -95,6 +99,7 @@ function (sequential,domintros)  foldM  :: "('a \<Rightarrow> 'b \<Rightarrow> '
 |" foldM f e (x # xs) = ( f e x >>= (\<lambda> res .  foldM f res xs))" 
 by pat_completeness auto
 
+termination by lexicographic_order
 
 (** [string_of_error err] produces a string representation of [err].
   *)
