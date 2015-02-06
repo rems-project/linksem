@@ -28,6 +28,14 @@ begin
 datatype byte_sequence =
   Sequence "  word 8 list "
 
+(*val acquire_byte_list : string -> error (list byte)*)
+
+(*val acquire : string -> error byte_sequence*)
+
+(*val serialise_byte_list : string -> list byte -> error unit*)
+
+(*val serialise : string -> byte_sequence -> error unit*)
+
 (*val empty : byte_sequence*)
 definition empty  :: " byte_sequence "  where 
      " empty = ( Sequence [])"
