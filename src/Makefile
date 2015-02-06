@@ -12,7 +12,7 @@ dummy: all
 lem-model:
 	$(LEM) -ocaml -only_changed_output \
 	missing_pervasives.lem show.lem \
-	endianness.lem default_printing.lem byte_sequence.lem byte_sequence_extra.lem \
+	endianness.lem default_printing.lem byte_sequence.lem \
 	elf_types.lem elf_interpreted_segment.lem elf_interpreted_section.lem elf_symbol_table.lem \
 	elf_header.lem elf_program_header_table.lem \
 	abis/amd64/abi_amd64_elf_header.lem \
@@ -37,7 +37,7 @@ isa-extraction:
 	mv *.thy ../auto_generated/isabelle/
 
 clean:
-	rm -rf missing_pervasives.ml show.ml abis.ml endianness.ml uint32.ml uint64.ml byte_sequence.ml byte_sequence_extra.ml default_printing.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml elf_section_header_table.ml elf_executable_file3.ml string_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file5.ml elf_linking_file2.ml elf_linking_file3.ml elf_relocation.ml elf_symbol_table.ml sail_interface.ml elf_executable_file.ml elf_interpreted_section.ml main_elf.ml
+	rm -rf missing_pervasives.ml show.ml abis.ml endianness.ml uint32.ml uint64.ml byte_sequence.ml default_printing.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml elf_section_header_table.ml elf_executable_file3.ml string_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file5.ml elf_linking_file2.ml elf_linking_file3.ml elf_relocation.ml elf_symbol_table.ml sail_interface.ml elf_executable_file.ml elf_interpreted_section.ml main_elf.ml
 	$(MAKE) -C src_elf_libraries clean
 	rm -rf elf_section_header.ml elf_symbol_table.ml
 	rm -rf abis/abis.ml abis/amd64/*.ml abis/power64/*.ml
@@ -57,7 +57,7 @@ unix.cma nums.cma batteries.cma nat_num.cmo \
 lem.cmo lem_function.cmo lem_list.cmo lem_num.cmo xstring.cmo \
 missing_pervasives.ml \
 show.ml endianness.ml error.ml uint16_wrapper.ml uint32_wrapper.ml \
-uint64_wrapper.ml byte_sequence_wrapper.ml byte_sequence.ml byte_sequence_extra.ml ml_bindings.ml default_printing.ml \
+uint64_wrapper.ml byte_sequence_wrapper.ml byte_sequence.ml ml_bindings.ml default_printing.ml \
 elf_types.ml elf_header.ml \
 abis/amd64/abi_amd64_elf_header.ml \
 abis/power64/abi_power64_elf_header.ml \
