@@ -20,33 +20,33 @@ open import Error
 open import Missing_pervasives
 open import Show
 
-type elf32_executable_file =
-  <| elf32_executable_file_header               : elf32_header
-   ; elf32_executable_file_program_header_table : elf32_program_header_table
-   ; elf32_executable_file_section_header_table : elf32_section_header_table
-   ; elf32_executable_file_interpreted_segments : elf32_interpreted_segments
-   ; elf32_executable_file_interpreted_sections : elf32_interpreted_sections
-   ; elf32_executable_file_bits_and_bobs        : list (natural * byte_sequence)
+type elf32_file =
+  <| elf32_file_header               : elf32_header
+   ; elf32_file_program_header_table : elf32_program_header_table
+   ; elf32_file_section_header_table : elf32_section_header_table
+   ; elf32_file_interpreted_segments : elf32_interpreted_segments
+   ; elf32_file_interpreted_sections : elf32_interpreted_sections
+   ; elf32_file_bits_and_bobs        : list (natural * byte_sequence)
    |>
 
-val bytes_of_elf32_executable_file : elf32_executable_file -> error byte_sequence
-let bytes_of_elf32_executable_file ef =
-  let endian      = get_elf32_header_endianness ef.elf32_executable_file_header in
-  let hdr_bytes   = bytes_of_elf32_header ef.elf32_executable_file_header in
+val bytes_of_elf32_file : elf32_file -> error byte_sequence
+let bytes_of_elf32_file ef =
+  let endian      = get_elf32_header_endianness ef.elf32_file_header in
+  let hdr_bytes   = bytes_of_elf32_header ef.elf32_file_header in
   let hdr_layout  = (0, hdr_bytes) in
-  let pht_bytes   = bytes_of_elf32_program_header_table endian ef.elf32_executable_file_program_header_table in
-  let sht_bytes   = bytes_of_elf32_section_header_table endian ef.elf32_executable_file_section_header_table in
-  let pht_off     = natural_of_elf32_off ef.elf32_executable_file_header.elf32_phoff in
-  let sht_off     = natural_of_elf32_off ef.elf32_executable_file_header.elf32_shoff in
+  let pht_bytes   = bytes_of_elf32_program_header_table endian ef.elf32_file_program_header_table in
+  let sht_bytes   = bytes_of_elf32_section_header_table endian ef.elf32_file_section_header_table in
+  let pht_off     = natural_of_elf32_off ef.elf32_file_header.elf32_phoff in
+  let sht_off     = natural_of_elf32_off ef.elf32_file_header.elf32_shoff in
   let pht_layout  = (pht_off, pht_bytes) in
   let sht_layout  = (sht_off, sht_bytes) in
-  let bab_layout  = ef.elf32_executable_file_bits_and_bobs in
-  if List.length ef.elf32_executable_file_program_header_table =
-    List.length ef.elf32_executable_file_interpreted_segments then
-    if List.length ef.elf32_executable_file_section_header_table =
-      List.length ef.elf32_executable_file_interpreted_sections then
-      let segs_zip = List.zip ef.elf32_executable_file_program_header_table ef.elf32_executable_file_interpreted_segments in
-      let sects_zip = List.zip ef.elf32_executable_file_section_header_table ef.elf32_executable_file_interpreted_sections in
+  let bab_layout  = ef.elf32_file_bits_and_bobs in
+  if List.length ef.elf32_file_program_header_table =
+    List.length ef.elf32_file_interpreted_segments then
+    if List.length ef.elf32_file_section_header_table =
+      List.length ef.elf32_file_interpreted_sections then
+      let segs_zip = List.zip ef.elf32_file_program_header_table ef.elf32_file_interpreted_segments in
+      let sects_zip = List.zip ef.elf32_file_section_header_table ef.elf32_file_interpreted_sections in
       let segs_layout =
         List.map (fun (seg, interp_seg) ->
           (natural_of_elf32_off seg.elf32_p_offset, interp_seg.elf32_segment_body)
@@ -87,9 +87,9 @@ let bytes_of_elf32_executable_file ef =
         concats >>= fun (offset, body) ->
         return body
     else
-      fail "bytes_of_elf32_executable_file: interpreted sections and section header table must have same length"
+      fail "bytes_of_elf32_file: interpreted sections and section header table must have same length"
   else
-    fail "bytes_of_elf32_executable_file: interpreted segments and program header table must have same length"
+    fail "bytes_of_elf32_file: interpreted segments and program header table must have same length"
 
 (** Invariant:
       * Program header table and interpreted segments are in correspondence:
@@ -97,33 +97,33 @@ let bytes_of_elf32_executable_file ef =
         * First element of PHT must describe first interpreted segment, second
           element should describe second element, and so on.
 *)
-type elf64_executable_file =
-  <| elf64_executable_file_header               : elf64_header
-   ; elf64_executable_file_program_header_table : elf64_program_header_table
-   ; elf64_executable_file_section_header_table : elf64_section_header_table
-   ; elf64_executable_file_interpreted_segments : elf64_interpreted_segments
-   ; elf64_executable_file_interpreted_sections : elf64_interpreted_sections
-   ; elf64_executable_file_bits_and_bobs        : list (natural * byte_sequence)
+type elf64_file =
+  <| elf64_file_header               : elf64_header
+   ; elf64_file_program_header_table : elf64_program_header_table
+   ; elf64_file_section_header_table : elf64_section_header_table
+   ; elf64_file_interpreted_segments : elf64_interpreted_segments
+   ; elf64_file_interpreted_sections : elf64_interpreted_sections
+   ; elf64_file_bits_and_bobs        : list (natural * byte_sequence)
    |>
 
-val bytes_of_elf64_executable_file : elf64_executable_file -> error byte_sequence
-let bytes_of_elf64_executable_file ef =
-  let endian      = get_elf64_header_endianness ef.elf64_executable_file_header in
-  let hdr_bytes   = bytes_of_elf64_header ef.elf64_executable_file_header in
+val bytes_of_elf64_file : elf64_file -> error byte_sequence
+let bytes_of_elf64_file ef =
+  let endian      = get_elf64_header_endianness ef.elf64_file_header in
+  let hdr_bytes   = bytes_of_elf64_header ef.elf64_file_header in
   let hdr_layout  = (0, hdr_bytes) in
-  let pht_bytes   = bytes_of_elf64_program_header_table endian ef.elf64_executable_file_program_header_table in
-  let sht_bytes   = bytes_of_elf64_section_header_table endian ef.elf64_executable_file_section_header_table in
-  let pht_off     = natural_of_elf64_off ef.elf64_executable_file_header.elf64_phoff in
-  let sht_off     = natural_of_elf64_off ef.elf64_executable_file_header.elf64_shoff in
+  let pht_bytes   = bytes_of_elf64_program_header_table endian ef.elf64_file_program_header_table in
+  let sht_bytes   = bytes_of_elf64_section_header_table endian ef.elf64_file_section_header_table in
+  let pht_off     = natural_of_elf64_off ef.elf64_file_header.elf64_phoff in
+  let sht_off     = natural_of_elf64_off ef.elf64_file_header.elf64_shoff in
   let pht_layout  = (pht_off, pht_bytes) in
   let sht_layout  = (sht_off, sht_bytes) in
-  let bab_layout  = ef.elf64_executable_file_bits_and_bobs in
-  if List.length ef.elf64_executable_file_program_header_table =
-    List.length ef.elf64_executable_file_interpreted_segments then
-    if List.length ef.elf64_executable_file_section_header_table =
-      List.length ef.elf64_executable_file_interpreted_sections then
-      let segs_zip = List.zip ef.elf64_executable_file_program_header_table ef.elf64_executable_file_interpreted_segments in
-      let sects_zip = List.zip ef.elf64_executable_file_section_header_table ef.elf64_executable_file_interpreted_sections in
+  let bab_layout  = ef.elf64_file_bits_and_bobs in
+  if List.length ef.elf64_file_program_header_table =
+    List.length ef.elf64_file_interpreted_segments then
+    if List.length ef.elf64_file_section_header_table =
+      List.length ef.elf64_file_interpreted_sections then
+      let segs_zip = List.zip ef.elf64_file_program_header_table ef.elf64_file_interpreted_segments in
+      let sects_zip = List.zip ef.elf64_file_section_header_table ef.elf64_file_interpreted_sections in
       let segs_layout =
         List.map (fun (seg, interp_seg) ->
           (natural_of_elf64_off seg.elf64_p_offset, interp_seg.elf64_segment_body)
@@ -164,9 +164,9 @@ let bytes_of_elf64_executable_file ef =
         concats >>= fun (offset, body) ->
         return body
     else
-      fail "bytes_of_elf64_executable_file: interpreted sections and section header table must have same length"
+      fail "bytes_of_elf64_file: interpreted sections and section header table must have same length"
   else
-    fail "bytes_of_elf64_executable_file: interpreted segments and program header table must have same length"
+    fail "bytes_of_elf64_file: interpreted segments and program header table must have same length"
 
 val obtain_elf32_program_header_table : elf32_header -> byte_sequence -> error elf32_program_header_table
 let obtain_elf32_program_header_table hdr bs0 =
@@ -432,49 +432,43 @@ let obtain_elf64_bits_and_bobs hdr segs interp_segs sects interp_sects bs0 =
     else
       fail "obtain_elf64_bits_and_bobs: program header table and interpreted segments differ in length"
 
-val read_elf32_executable_file : byte_sequence -> error elf32_executable_file
-let read_elf32_executable_file bs0 =
+val read_elf32_file : byte_sequence -> error elf32_file
+let read_elf32_file bs0 =
   read_elf32_header bs0 >>= fun (hdr, bs1) ->
-  if not (is_elf32_executable_file hdr) then
-    fail "read_elf32_executable_file: ELF file is not an executable file"
-  else
-    obtain_elf32_program_header_table hdr bs0 >>= fun pht  ->
-    obtain_elf32_section_header_table hdr bs0 >>= fun sht  ->
-    obtain_elf32_interpreted_segments pht bs0 >>= fun segs ->
-    obtain_elf32_interpreted_sections sht bs0 >>= fun sects ->
-    obtain_elf32_bits_and_bobs hdr pht segs sht sects bs0 >>= fun bits_and_bobs ->
-    return <| elf32_executable_file_header = hdr;
-                elf32_executable_file_program_header_table = pht;
-                elf32_executable_file_section_header_table = sht;
-                elf32_executable_file_interpreted_segments = segs;
-                elf32_executable_file_interpreted_sections = sects;
-                elf32_executable_file_bits_and_bobs = bits_and_bobs |>
+  obtain_elf32_program_header_table hdr bs0 >>= fun pht  ->
+  obtain_elf32_section_header_table hdr bs0 >>= fun sht  ->
+  obtain_elf32_interpreted_segments pht bs0 >>= fun segs ->
+  obtain_elf32_interpreted_sections sht bs0 >>= fun sects ->
+  obtain_elf32_bits_and_bobs hdr pht segs sht sects bs0 >>= fun bits_and_bobs ->
+  return <| elf32_file_header = hdr;
+              elf32_file_program_header_table = pht;
+              elf32_file_section_header_table = sht;
+              elf32_file_interpreted_segments = segs;
+              elf32_file_interpreted_sections = sects;
+              elf32_file_bits_and_bobs = bits_and_bobs |>
 
-val read_elf64_executable_file : byte_sequence -> error elf64_executable_file
-let read_elf64_executable_file bs0 =
+val read_elf64_file : byte_sequence -> error elf64_file
+let read_elf64_file bs0 =
   read_elf64_header bs0 >>= fun (hdr, bs1) ->
-  if not (is_elf64_executable_file hdr) then
-    fail "read_elf64_executable_file: ELF file is not an executable file"
-  else
-    obtain_elf64_program_header_table hdr bs0 >>= fun pht  ->
-    obtain_elf64_section_header_table hdr bs0 >>= fun sht  ->
-    obtain_elf64_interpreted_segments pht bs0 >>= fun segs ->
-    obtain_elf64_interpreted_sections sht bs0 >>= fun sects ->
-    obtain_elf64_bits_and_bobs hdr pht segs sht sects bs0 >>= fun bits_and_bobs ->
-    return <| elf64_executable_file_header = hdr;
-                elf64_executable_file_program_header_table = pht;
-                elf64_executable_file_section_header_table = sht;
-                elf64_executable_file_interpreted_segments = segs;
-                elf64_executable_file_interpreted_sections = sects;
-                elf64_executable_file_bits_and_bobs = bits_and_bobs |>
+  obtain_elf64_program_header_table hdr bs0 >>= fun pht  ->
+  obtain_elf64_section_header_table hdr bs0 >>= fun sht  ->
+  obtain_elf64_interpreted_segments pht bs0 >>= fun segs ->
+  obtain_elf64_interpreted_sections sht bs0 >>= fun sects ->
+  obtain_elf64_bits_and_bobs hdr pht segs sht sects bs0 >>= fun bits_and_bobs ->
+  return <| elf64_file_header = hdr;
+              elf64_file_program_header_table = pht;
+              elf64_file_section_header_table = sht;
+              elf64_file_interpreted_segments = segs;
+              elf64_file_interpreted_sections = sects;
+              elf64_file_bits_and_bobs = bits_and_bobs |>
 
-val get_elf32_executable_file_section_header_string_table : elf32_executable_file -> error string_table
-let get_elf32_executable_file_section_header_string_table f3 =
-  let hdr  = f3.elf32_executable_file_header in
-  let sht  = f3.elf32_executable_file_section_header_table in
-  let segs = f3.elf32_executable_file_interpreted_segments in
+val get_elf32_file_section_header_string_table : elf32_file -> error string_table
+let get_elf32_file_section_header_string_table f3 =
+  let hdr  = f3.elf32_file_header in
+  let sht  = f3.elf32_file_section_header_table in
+  let segs = f3.elf32_file_interpreted_segments in
   let idx  = natural_of_elf32_half hdr.elf32_shstrndx in
-  bytes_of_elf32_executable_file f3 >>= fun bs0 ->
+  bytes_of_elf32_file f3 >>= fun bs0 ->
     match Missing_pervasives.index idx sht with
       | Nothing -> fail "obtain_elf32_string_table: invalid offset into section header table"
       | Just sect ->
@@ -485,13 +479,13 @@ let get_elf32_executable_file_section_header_string_table f3 =
           return (String_table.mk_string_table strings (Missing_pervasives.char_of_byte Missing_pervasives.null_char))
     end
 
-val get_elf64_executable_file_section_header_string_table : elf64_executable_file -> error string_table
-let get_elf64_executable_file_section_header_string_table f3 =
-  let hdr  = f3.elf64_executable_file_header in
-  let sht  = f3.elf64_executable_file_section_header_table in
-  let segs = f3.elf64_executable_file_interpreted_segments in
+val get_elf64_file_section_header_string_table : elf64_file -> error string_table
+let get_elf64_file_section_header_string_table f3 =
+  let hdr  = f3.elf64_file_header in
+  let sht  = f3.elf64_file_section_header_table in
+  let segs = f3.elf64_file_interpreted_segments in
   let idx  = natural_of_elf64_half hdr.elf64_shstrndx in
-  bytes_of_elf64_executable_file f3 >>= fun bs0 ->
+  bytes_of_elf64_file f3 >>= fun bs0 ->
     match Missing_pervasives.index idx sht with
       | Nothing -> fail "obtain_elf64_string_table: invalid offset into section header table"
       | Just sect ->
@@ -502,11 +496,11 @@ let get_elf64_executable_file_section_header_string_table f3 =
           return (String_table.mk_string_table strings (Missing_pervasives.char_of_byte Missing_pervasives.null_char))
     end
 
-val get_elf32_executable_file_symbol_string_table : elf32_executable_file -> error string_table
-let get_elf32_executable_file_symbol_string_table f3 =
-  let hdr     = f3.elf32_executable_file_header in
-  let sht     = f3.elf32_executable_file_section_header_table in
-  let segs    = f3.elf32_executable_file_interpreted_segments in
+val get_elf32_file_symbol_string_table : elf32_file -> error string_table
+let get_elf32_file_symbol_string_table f3 =
+  let hdr     = f3.elf32_file_header in
+  let sht     = f3.elf32_file_section_header_table in
+  let segs    = f3.elf32_file_interpreted_segments in
   let strtabs = Missing_pervasives.mapMaybei (fun index sect ->
     if natural_of_elf32_word sect.elf32_sh_type = sht_strtab then
       if index = natural_of_elf32_half hdr.elf32_shstrndx then
@@ -516,7 +510,7 @@ let get_elf32_executable_file_symbol_string_table f3 =
     else
       Nothing) sht
   in
-    bytes_of_elf32_executable_file f3 >>= fun bs0 ->
+    bytes_of_elf32_file f3 >>= fun bs0 ->
     mapM (fun sect ->
       let offset  = natural_of_elf32_off  sect.elf32_sh_offset in
       let size    = natural_of_elf32_word sect.elf32_sh_size in
@@ -526,11 +520,11 @@ let get_elf32_executable_file_symbol_string_table f3 =
     >>= fun strings ->
       String_table.concat strings
 
-val get_elf64_executable_file_symbol_string_table : elf64_executable_file -> error string_table
-let get_elf64_executable_file_symbol_string_table f3 =
-  let hdr     = f3.elf64_executable_file_header in
-  let sht     = f3.elf64_executable_file_section_header_table in
-  let segs    = f3.elf64_executable_file_interpreted_segments in
+val get_elf64_file_symbol_string_table : elf64_file -> error string_table
+let get_elf64_file_symbol_string_table f3 =
+  let hdr     = f3.elf64_file_header in
+  let sht     = f3.elf64_file_section_header_table in
+  let segs    = f3.elf64_file_interpreted_segments in
   let strtabs = Missing_pervasives.mapMaybei (fun index sect ->
     if natural_of_elf64_word sect.elf64_sh_type = sht_strtab then
       if index = natural_of_elf64_half hdr.elf64_shstrndx then
@@ -540,7 +534,7 @@ let get_elf64_executable_file_symbol_string_table f3 =
     else
       Nothing) sht
   in
-    bytes_of_elf64_executable_file f3 >>= fun bs0 ->
+    bytes_of_elf64_file f3 >>= fun bs0 ->
     mapM (fun sect ->
       let offset  = natural_of_elf64_off   sect.elf64_sh_offset in
       let size    = natural_of_elf64_xword sect.elf64_sh_size in
@@ -550,11 +544,11 @@ let get_elf64_executable_file_symbol_string_table f3 =
     >>= fun strings ->
       String_table.concat strings
 
-val get_elf32_executable_file_symbol_table : elf32_executable_file -> error elf32_symbol_table
-let get_elf32_executable_file_symbol_table f3 =
-  let hdr     = f3.elf32_executable_file_header in
-  let sht     = f3.elf32_executable_file_section_header_table in
-  let segs    = f3.elf32_executable_file_interpreted_segments in
+val get_elf32_file_symbol_table : elf32_file -> error elf32_symbol_table
+let get_elf32_file_symbol_table f3 =
+  let hdr     = f3.elf32_file_header in
+  let sht     = f3.elf32_file_section_header_table in
+  let segs    = f3.elf32_file_interpreted_segments in
   let endian  = get_elf32_header_endianness hdr in
   let symtabs = List.filter (fun sect ->
     natural_of_elf32_word sect.elf32_sh_type = sht_symtab
@@ -565,18 +559,18 @@ let get_elf32_executable_file_symbol_table f3 =
       | [symtab] ->
         let offset = natural_of_elf32_off symtab.elf32_sh_offset in
         let size   = natural_of_elf32_word symtab.elf32_sh_size in
-        bytes_of_elf32_executable_file f3 >>= fun bs0 ->
+        bytes_of_elf32_file f3 >>= fun bs0 ->
         Byte_sequence.offset_and_cut offset size bs0 >>= fun relevant ->
         read_elf32_symbol_table endian relevant
       | _ ->
         fail "obtain_elf32_symbol_table: an ELF file may only have one symbol table of type SHT_SYMTAB"
     end
 
-val get_elf64_executable_file_symbol_table : elf64_executable_file -> error elf64_symbol_table
-let get_elf64_executable_file_symbol_table f3 =
-  let hdr     = f3.elf64_executable_file_header in
-  let sht     = f3.elf64_executable_file_section_header_table in
-  let segs    = f3.elf64_executable_file_interpreted_segments in
+val get_elf64_file_symbol_table : elf64_file -> error elf64_symbol_table
+let get_elf64_file_symbol_table f3 =
+  let hdr     = f3.elf64_file_header in
+  let sht     = f3.elf64_file_section_header_table in
+  let segs    = f3.elf64_file_interpreted_segments in
   let endian  = get_elf64_header_endianness hdr in
   let symtabs = List.filter (fun sect ->
     natural_of_elf64_word sect.elf64_sh_type = sht_symtab
@@ -587,18 +581,18 @@ let get_elf64_executable_file_symbol_table f3 =
       | [symtab] ->
         let offset = natural_of_elf64_off   symtab.elf64_sh_offset in
         let size   = natural_of_elf64_xword symtab.elf64_sh_size in
-        bytes_of_elf64_executable_file f3 >>= fun bs0 ->
+        bytes_of_elf64_file f3 >>= fun bs0 ->
         Byte_sequence.offset_and_cut offset size bs0 >>= fun relevant ->
         read_elf64_symbol_table endian relevant
       | _ ->
         fail "obtain_elf64_symbol_table: an ELF file may only have one symbol table of type SHT_SYMTAB"
     end
 
-val get_elf32_executable_file_dynamic_symbol_table : elf32_executable_file -> error elf32_symbol_table
-let get_elf32_executable_file_dynamic_symbol_table ef =
-  let hdr     = ef.elf32_executable_file_header in
-  let sht     = ef.elf32_executable_file_section_header_table in
-  let segs    = ef.elf32_executable_file_interpreted_segments in
+val get_elf32_file_dynamic_symbol_table : elf32_file -> error elf32_symbol_table
+let get_elf32_file_dynamic_symbol_table ef =
+  let hdr     = ef.elf32_file_header in
+  let sht     = ef.elf32_file_section_header_table in
+  let segs    = ef.elf32_file_interpreted_segments in
   let endian  = get_elf32_header_endianness hdr in
   let symtabs = List.filter (fun sect ->
     natural_of_elf32_word sect.elf32_sh_type = sht_dynsym
@@ -609,18 +603,18 @@ let get_elf32_executable_file_dynamic_symbol_table ef =
       | [symtab] ->
         let offset = natural_of_elf32_off symtab.elf32_sh_offset in
         let size   = natural_of_elf32_word symtab.elf32_sh_size in
-        bytes_of_elf32_executable_file ef >>= fun bs0 ->
+        bytes_of_elf32_file ef >>= fun bs0 ->
         Byte_sequence.offset_and_cut offset size bs0 >>= fun relevant ->
         read_elf32_symbol_table endian relevant
       | _ ->
         fail "obtain_elf32_dynamic_symbol_table: an ELF file may only have one symbol table of type SHT_DYNSYM"
     end
 
-val get_elf64_executable_file_dynamic_symbol_table : elf64_executable_file -> error elf64_symbol_table
-let get_elf64_executable_file_dynamic_symbol_table ef =
-  let hdr     = ef.elf64_executable_file_header in
-  let sht     = ef.elf64_executable_file_section_header_table in
-  let segs    = ef.elf64_executable_file_interpreted_segments in
+val get_elf64_file_dynamic_symbol_table : elf64_file -> error elf64_symbol_table
+let get_elf64_file_dynamic_symbol_table ef =
+  let hdr     = ef.elf64_file_header in
+  let sht     = ef.elf64_file_section_header_table in
+  let segs    = ef.elf64_file_interpreted_segments in
   let endian  = get_elf64_header_endianness hdr in
   let symtabs = List.filter (fun sect ->
     natural_of_elf64_word sect.elf64_sh_type = sht_dynsym
@@ -631,7 +625,7 @@ let get_elf64_executable_file_dynamic_symbol_table ef =
       | [symtab] ->
         let offset = natural_of_elf64_off   symtab.elf64_sh_offset in
         let size   = natural_of_elf64_xword symtab.elf64_sh_size in
-        bytes_of_elf64_executable_file ef >>= fun bs0 ->
+        bytes_of_elf64_file ef >>= fun bs0 ->
         Byte_sequence.offset_and_cut offset size bs0 >>= fun relevant ->
         read_elf64_symbol_table endian relevant
       | _ ->
@@ -644,134 +638,146 @@ type elf32_executable_process_image =
 type elf64_executable_process_image =
   elf64_interpreted_segments * natural
 
-val get_elf32_executable_file_image : elf32_executable_file -> error elf32_executable_process_image
-let get_elf32_executable_file_image f3 =
-  let entr = f3.elf32_executable_file_header.elf32_entry in
-  let segs = f3.elf32_executable_file_interpreted_segments in
-    match List.filter (fun sg -> sg.elf32_segment_type = elf_pt_load) segs with
-      | []    -> fail "get_elf32_executable_image: an executable ELF file must have at least one loadable segment"
-      | load  ->
-          mapM (fun sg ->
-            if sg.elf32_segment_memsz = 0 then
-              return []
-            else if sg.elf32_segment_memsz = sg.elf32_segment_size then
-              return [sg]
-            else if sg.elf32_segment_size < sg.elf32_segment_memsz then
-              (* Cannot be negative due to check in constructing [segs]. *)
-              let diff  = sg.elf32_segment_memsz - sg.elf32_segment_size in
-              let zeros = Byte_sequence.zeros diff in
-              let addr  = sg.elf32_segment_base + sg.elf32_segment_size in
-              let align = sg.elf32_segment_align in
-              let paddr = sg.elf32_segment_paddr in
-              let seg   =
-                <| elf32_segment_body = zeros; elf32_segment_type = sg.elf32_segment_type;
-                    elf32_segment_size = diff; elf32_segment_memsz = diff;
-                    elf32_segment_base = addr; elf32_segment_flags = sg.elf32_segment_flags;
-                    elf32_segment_align = align; elf32_segment_paddr = paddr;
-                    elf32_segment_offset = sg.elf32_segment_offset |>
-              in
-                return [sg; seg]
-            else
-              fail "get_elf32_executable_image: invariant invalidated") load >>= fun bs_base ->
-          return (List.concat bs_base, natural_of_elf32_addr entr)
-    end
+val get_elf32_executable_image : elf32_file -> error elf32_executable_process_image
+let get_elf32_executable_image f3 =
+  if is_elf32_executable_file f3.elf32_file_header then
+    let entr = f3.elf32_file_header.elf32_entry in
+    let segs = f3.elf32_file_interpreted_segments in
+      match List.filter (fun sg -> sg.elf32_segment_type = elf_pt_load) segs with
+        | []    -> fail "get_elf32_executable_image: an executable ELF file must have at least one loadable segment"
+        | load  ->
+            mapM (fun sg ->
+              if sg.elf32_segment_memsz = 0 then
+                return []
+              else if sg.elf32_segment_memsz = sg.elf32_segment_size then
+                return [sg]
+              else if sg.elf32_segment_size < sg.elf32_segment_memsz then
+                (* Cannot be negative due to check in constructing [segs]. *)
+                let diff  = sg.elf32_segment_memsz - sg.elf32_segment_size in
+                let zeros = Byte_sequence.zeros diff in
+                let addr  = sg.elf32_segment_base + sg.elf32_segment_size in
+                let align = sg.elf32_segment_align in
+                let paddr = sg.elf32_segment_paddr in
+                let seg   =
+                  <| elf32_segment_body = zeros; elf32_segment_type = sg.elf32_segment_type;
+                      elf32_segment_size = diff; elf32_segment_memsz = diff;
+                      elf32_segment_base = addr; elf32_segment_flags = sg.elf32_segment_flags;
+                      elf32_segment_align = align; elf32_segment_paddr = paddr;
+                      elf32_segment_offset = sg.elf32_segment_offset |>
+                in
+                  return [sg; seg]
+              else
+                fail "get_elf32_executable_image: invariant invalidated") load >>= fun bs_base ->
+            return (List.concat bs_base, natural_of_elf32_addr entr)
+      end
+  else
+    fail "get_elf32_executable_image: not an ELF executable file"
 
-val get_elf64_executable_file_image : elf64_executable_file -> error elf64_executable_process_image
-let get_elf64_executable_file_image f3 = 
-  let entr = f3.elf64_executable_file_header.elf64_entry in
-  let segs = f3.elf64_executable_file_interpreted_segments in
-    match List.filter (fun sg -> sg.elf64_segment_type = elf_pt_load) segs with
-      | []    -> fail "get_elf64_executable_image: an executable ELF file must have at least one loadable segment"
-      | load  ->
-          mapM (fun sg ->
-            if sg.elf64_segment_memsz = 0 then
-              return []
-            else if sg.elf64_segment_memsz = sg.elf64_segment_size then
-              return [sg]
-            else if sg.elf64_segment_size < sg.elf64_segment_memsz then
-              (* Cannot be negative due to check in constructing [segs]. *)
-              let diff  = sg.elf64_segment_memsz - sg.elf64_segment_size in
-              let zeros = Byte_sequence.zeros diff in
-              let addr  = sg.elf64_segment_base + sg.elf64_segment_size in
-              let align = sg.elf64_segment_align in
-              let paddr = sg.elf64_segment_paddr in
-              let seg   =
-                <| elf64_segment_body = zeros; elf64_segment_type = sg.elf64_segment_type;
-                    elf64_segment_size = diff; elf64_segment_memsz = diff;
-                    elf64_segment_base = addr; elf64_segment_flags = sg.elf64_segment_flags;
-                    elf64_segment_align = align; elf64_segment_paddr = paddr;
-                    elf64_segment_offset = sg.elf64_segment_offset |>
-              in
-                return [sg; seg]
-            else
-              fail "get_elf64_executable_image: invariant invalidated") load >>= fun bs_base ->
-          return (List.concat bs_base, natural_of_elf64_addr entr)
-    end
+val get_elf64_executable_image : elf64_file -> error elf64_executable_process_image
+let get_elf64_executable_image f3 = 
+  if is_elf64_executable_file f3.elf64_file_header then
+    let entr = f3.elf64_file_header.elf64_entry in
+    let segs = f3.elf64_file_interpreted_segments in
+      match List.filter (fun sg -> sg.elf64_segment_type = elf_pt_load) segs with
+        | []    -> fail "get_elf64_executable_image: an executable ELF file must have at least one loadable segment"
+        | load  ->
+            mapM (fun sg ->
+              if sg.elf64_segment_memsz = 0 then
+                return []
+              else if sg.elf64_segment_memsz = sg.elf64_segment_size then
+                return [sg]
+              else if sg.elf64_segment_size < sg.elf64_segment_memsz then
+                (* Cannot be negative due to check in constructing [segs]. *)
+                let diff  = sg.elf64_segment_memsz - sg.elf64_segment_size in
+                let zeros = Byte_sequence.zeros diff in
+                let addr  = sg.elf64_segment_base + sg.elf64_segment_size in
+                let align = sg.elf64_segment_align in
+                let paddr = sg.elf64_segment_paddr in
+                let seg   =
+                  <| elf64_segment_body = zeros; elf64_segment_type = sg.elf64_segment_type;
+                      elf64_segment_size = diff; elf64_segment_memsz = diff;
+                      elf64_segment_base = addr; elf64_segment_flags = sg.elf64_segment_flags;
+                      elf64_segment_align = align; elf64_segment_paddr = paddr;
+                      elf64_segment_offset = sg.elf64_segment_offset |>
+                in
+                  return [sg; seg]
+              else
+                fail "get_elf64_executable_image: invariant invalidated") load >>= fun bs_base ->
+            return (List.concat bs_base, natural_of_elf64_addr entr)
+      end
+  else
+    fail "elf64_get_executable_image: not an executable ELF file"
 
 type global_symbol_init_info
   = list (string * (natural * natural * natural * maybe byte_sequence))
 
-val get_elf32_executable_file_global_symbol_init : elf32_executable_file -> error global_symbol_init_info
-let get_elf32_executable_file_global_symbol_init f3 =
-  let segs   = f3.elf32_executable_file_interpreted_segments in
-  bytes_of_elf32_executable_file f3 >>= fun bs0 ->
-  get_elf32_executable_file_symbol_table f3 >>= fun symtab ->
-  get_elf32_executable_file_symbol_string_table f3 >>= fun strtab ->
-  Elf_symbol_table.get_elf32_symbol_image_address symtab strtab >>= fun strs ->
-    let mapped = mapM (fun (symbol, (typ, size, addr)) ->
-      if typ = Elf_symbol_table.stt_object then
-        get_elf32_executable_file_image f3 >>= fun (img, entry) ->
-        let chunks =
-          List.filter (fun chunk ->
-            addr >= chunk.elf32_segment_base &&
-              addr + size <= chunk.elf32_segment_base + chunk.elf32_segment_size
-          ) img
-        in
-          match chunks with
-            | []    -> fail "get_elf32_global_symbol_init: global variable not present in executable image"
-            | [x]   ->
-              let rebase   = addr - x.elf32_segment_base in
-              Byte_sequence.offset_and_cut rebase size x.elf32_segment_body >>= fun relevant ->
-                return (symbol, (typ, size, addr, Just relevant))
-            | x::xs -> fail "get_elf32_global_symbol_init: invariant failed, global variable appears in multiple segments"
-          end
-      else
-        return (symbol, (typ, size, addr, Nothing))) strs
-    in
-      mapped
+val get_elf32_file_global_symbol_init : elf32_file -> error global_symbol_init_info
+let get_elf32_file_global_symbol_init f3 =
+  if is_elf32_executable_file f3.elf32_file_header then
+    let segs   = f3.elf32_file_interpreted_segments in
+    bytes_of_elf32_file f3 >>= fun bs0 ->
+    get_elf32_file_symbol_table f3 >>= fun symtab ->
+    get_elf32_file_symbol_string_table f3 >>= fun strtab ->
+    Elf_symbol_table.get_elf32_symbol_image_address symtab strtab >>= fun strs ->
+      let mapped = mapM (fun (symbol, (typ, size, addr)) ->
+        if typ = Elf_symbol_table.stt_object then
+          get_elf32_executable_image f3 >>= fun (img, entry) ->
+          let chunks =
+            List.filter (fun chunk ->
+              addr >= chunk.elf32_segment_base &&
+                addr + size <= chunk.elf32_segment_base + chunk.elf32_segment_size
+            ) img
+          in
+            match chunks with
+              | []    -> fail "get_elf32_global_symbol_init: global variable not present in executable image"
+              | [x]   ->
+                let rebase   = addr - x.elf32_segment_base in
+                Byte_sequence.offset_and_cut rebase size x.elf32_segment_body >>= fun relevant ->
+                  return (symbol, (typ, size, addr, Just relevant))
+              | x::xs -> fail "get_elf32_global_symbol_init: invariant failed, global variable appears in multiple segments"
+            end
+        else
+          return (symbol, (typ, size, addr, Nothing))) strs
+      in
+        mapped
+  else
+    fail "get_elf32_file_global_symbol_init: not an executable ELF file"
 
-val get_elf64_executable_file_global_symbol_init : elf64_executable_file -> error global_symbol_init_info
-let get_elf64_executable_file_global_symbol_init f3 =
-  let segs   = f3.elf64_executable_file_interpreted_segments in
-  bytes_of_elf64_executable_file f3 >>= fun bs0 ->
-  get_elf64_executable_file_symbol_table f3 >>= fun symtab ->
-  get_elf64_executable_file_symbol_string_table f3 >>= fun strtab ->
-  Elf_symbol_table.get_elf64_symbol_image_address symtab strtab >>= fun strs ->
-    let mapped = mapM (fun (symbol, (typ, size, addr)) ->
-      if typ = Elf_symbol_table.stt_object then
-        get_elf64_executable_file_image f3 >>= fun (img, entry) ->
-        let chunks =
-          List.filter (fun chunk ->
-            addr >= chunk.elf64_segment_base &&
-              addr + size <= chunk.elf64_segment_base + chunk.elf64_segment_size
-          ) img
-        in
-          match chunks with
-            | []    -> fail "get_elf64_global_symbol_init: global variable not present in executable image"
-            | [x]   ->
-              let rebase   = addr - x.elf64_segment_base in
-              Byte_sequence.offset_and_cut rebase size x.elf64_segment_body >>= fun relevant ->
-                return (symbol, (typ, size, addr, Just relevant))
-            | x::xs -> fail "get_elf64_global_symbol_init: invariant failed, global variable appears in multiple segments"
-          end
-      else
-        return (symbol, (typ, size, addr, Nothing))) strs
-    in
-      mapped
+val get_elf64_file_global_symbol_init : elf64_file -> error global_symbol_init_info
+let get_elf64_file_global_symbol_init f3 =
+  if is_elf64_executable_file f3.elf64_file_header then
+    let segs   = f3.elf64_file_interpreted_segments in
+    bytes_of_elf64_file f3 >>= fun bs0 ->
+    get_elf64_file_symbol_table f3 >>= fun symtab ->
+    get_elf64_file_symbol_string_table f3 >>= fun strtab ->
+    Elf_symbol_table.get_elf64_symbol_image_address symtab strtab >>= fun strs ->
+      let mapped = mapM (fun (symbol, (typ, size, addr)) ->
+        if typ = Elf_symbol_table.stt_object then
+          get_elf64_executable_image f3 >>= fun (img, entry) ->
+          let chunks =
+            List.filter (fun chunk ->
+              addr >= chunk.elf64_segment_base &&
+                addr + size <= chunk.elf64_segment_base + chunk.elf64_segment_size
+            ) img
+          in
+            match chunks with
+              | []    -> fail "get_elf64_global_symbol_init: global variable not present in executable image"
+              | [x]   ->
+                let rebase   = addr - x.elf64_segment_base in
+                Byte_sequence.offset_and_cut rebase size x.elf64_segment_body >>= fun relevant ->
+                  return (symbol, (typ, size, addr, Just relevant))
+              | x::xs -> fail "get_elf64_global_symbol_init: invariant failed, global variable appears in multiple segments"
+            end
+        else
+          return (symbol, (typ, size, addr, Nothing))) strs
+      in
+        mapped
+  else
+    fail "get_elf64_global_symbol_init: not an executable ELF file"
 
-val string_of_elf32_executable_file : hdr_print_bundle -> pht_print_bundle -> sht_print_bundle -> elf32_executable_file -> string
-let {ocaml} string_of_elf32_executable_file hdr_bdl pht_bdl sht_bdl f3 =
-  match get_elf32_executable_file_section_header_string_table f3 with
+val string_of_elf32_file : hdr_print_bundle -> pht_print_bundle -> sht_print_bundle -> elf32_file -> string
+let {ocaml} string_of_elf32_file hdr_bdl pht_bdl sht_bdl f3 =
+  match get_elf32_file_section_header_string_table f3 with
     | Fail err ->
       unlines [
         "\nError obtaining ELF section header string table:"
@@ -779,21 +785,21 @@ let {ocaml} string_of_elf32_executable_file hdr_bdl pht_bdl sht_bdl f3 =
       ]
     | Success strtab ->
       unlines [
-        "\n*Type elf32_executable_file:"
+        "\n*Type elf32_file:"
       ; "**Header:"
-      ; string_of_elf32_header hdr_bdl f3.elf32_executable_file_header
+      ; string_of_elf32_header hdr_bdl f3.elf32_file_header
       ; "**Program header table:"
-      ; string_of_elf32_program_header_table pht_bdl f3.elf32_executable_file_program_header_table
+      ; string_of_elf32_program_header_table pht_bdl f3.elf32_file_program_header_table
       ; "**Section header table:"
-      ; string_of_elf32_section_header_table' sht_bdl strtab f3.elf32_executable_file_section_header_table
+      ; string_of_elf32_section_header_table' sht_bdl strtab f3.elf32_file_section_header_table
       ; "**Bits and bobs (unused junk space):"
-      ; show f3.elf32_executable_file_bits_and_bobs
+      ; show f3.elf32_file_bits_and_bobs
       ]
   end
 
-val string_of_elf64_executable_file : hdr_print_bundle -> pht_print_bundle -> sht_print_bundle -> elf64_executable_file -> string
-let {ocaml} string_of_elf64_executable_file hdr_bdl pht_bdl sht_bdl f3 =
-  match get_elf64_executable_file_section_header_string_table f3 with
+val string_of_elf64_file : hdr_print_bundle -> pht_print_bundle -> sht_print_bundle -> elf64_file -> string
+let {ocaml} string_of_elf64_file hdr_bdl pht_bdl sht_bdl f3 =
+  match get_elf64_file_section_header_string_table f3 with
     | Fail err ->
       unlines [
         "\nError obtaining ELF section header string table:"
@@ -801,14 +807,14 @@ let {ocaml} string_of_elf64_executable_file hdr_bdl pht_bdl sht_bdl f3 =
       ]
     | Success strtab ->
       unlines [
-        "\n*Type elf64_executable_file:"
+        "\n*Type elf64_file:"
       ; "**Header:"
-      ; string_of_elf64_header hdr_bdl f3.elf64_executable_file_header
+      ; string_of_elf64_header hdr_bdl f3.elf64_file_header
       ; "**Program header table:"
-      ; string_of_elf64_program_header_table pht_bdl f3.elf64_executable_file_program_header_table
+      ; string_of_elf64_program_header_table pht_bdl f3.elf64_file_program_header_table
       ; "**Section header table:"
-      ; string_of_elf64_section_header_table' sht_bdl strtab f3.elf64_executable_file_section_header_table
+      ; string_of_elf64_section_header_table' sht_bdl strtab f3.elf64_file_section_header_table
       ; "**Bits and bobs (unused junk space):"
-      ; show f3.elf64_executable_file_bits_and_bobs
+      ; show f3.elf64_file_bits_and_bobs
       ]
   end

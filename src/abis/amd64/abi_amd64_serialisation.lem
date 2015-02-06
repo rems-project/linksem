@@ -6,7 +6,7 @@ open import Num
 open import Byte_sequence
 open import Missing_pervasives
 
-open import Elf_executable_file
+open import Elf_file
 open import Elf_header
 open import Elf_interpreted_segment
 open import Elf_program_header_table
@@ -237,7 +237,7 @@ let setup_return_code_instr =
     byte_of_natural 0
   ]]
 
-val abi_amd64_generate_executable_file : byte_sequence -> natural -> natural -> elf64_executable_file
+val abi_amd64_generate_executable_file : byte_sequence -> natural -> natural -> elf64_file
 let abi_amd64_generate_executable_file exec_code code_heap_size data_heap_size  =
   let exec_code'   = Byte_sequence.concat [
                        init_data_heap_instrs;
@@ -265,8 +265,8 @@ let abi_amd64_generate_executable_file exec_code code_heap_size data_heap_size  
                        abi_amd64_data_heap_addr data_off data_heap_size code_heap_size in
   let pht          = abi_amd64_generate_program_header_table
                        exec code_heap data_heap in
-    <| elf64_executable_file_header = hdr; elf64_executable_file_program_header_table = pht;
-          elf64_executable_file_interpreted_segments = [exec; code_heap; data_heap];
-          elf64_executable_file_interpreted_sections = [];
-          elf64_executable_file_section_header_table = [];
-          elf64_executable_file_bits_and_bobs = [] |>
+    <| elf64_file_header = hdr; elf64_file_program_header_table = pht;
+          elf64_file_interpreted_segments = [exec; code_heap; data_heap];
+          elf64_file_interpreted_sections = [];
+          elf64_file_section_header_table = [];
+          elf64_file_bits_and_bobs = [] |>

@@ -8,7 +8,8 @@ open import String
 
 open import Error
 
-open import Elf_executable_file
+open import Elf_file
+open import Elf_header
 open import Elf_relocation
 
 (** x86-64 relocation types. *)
@@ -121,17 +122,20 @@ let string_of_x86_64_relocation_type m =
   else
     "Invalid x86-64 relocation type"
 
-val abi_amd64_apply_relocation : elf64_relocation_a -> elf64_executable_file ->
+val abi_amd64_apply_relocation : elf64_relocation_a -> elf64_file ->
   error elf64_executable_process_image
 let abi_amd64_apply_relocation rel ef =
-  get_elf64_executable_file_image ef >>= fun img ->
-  let rel_type = elf64_relocation_r_type rel.elf64_ra_info in
-    if rel_type = r_x86_64_none then
-      return img
-    else if rel_type = r_x86_64_64 then
-      fail ""
-    else if rel_type = r_x86_64_pc32 then
-      fail ""
-    else if rel_type = r_x86_64_got32 then
-      fail ""
-    else fail "abi_amd64_apply_relocation: relocation not yet implemented"
+  if is_elf64_executable_file ef.elf64_file_header then
+    get_elf64_executable_image ef >>= fun img ->
+    let rel_type = elf64_relocation_r_type rel.elf64_ra_info in
+      if rel_type = r_x86_64_none then
+        return img
+      else if rel_type = r_x86_64_64 then
+        fail ""
+      else if rel_type = r_x86_64_pc32 then
+        fail ""
+      else if rel_type = r_x86_64_got32 then
+        fail ""
+      else fail "abi_amd64_apply_relocation: relocation not yet implemented"
+  else
+    fail "abi_amd64_apply_relocation: not an executable ELF file"

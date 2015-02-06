@@ -12,14 +12,14 @@ dummy: all
 lem-model:
 	$(LEM) -ocaml -only_changed_output \
 	missing_pervasives.lem show.lem \
-	endianness.lem default_printing.lem uint32.lem uint64.lem byte_sequence.lem byte_sequence_extra.lem \
+	endianness.lem default_printing.lem byte_sequence.lem byte_sequence_extra.lem \
 	elf_types.lem elf_interpreted_segment.lem elf_interpreted_section.lem elf_symbol_table.lem \
 	elf_header.lem elf_program_header_table.lem \
 	abis/amd64/abi_amd64_elf_header.lem \
 	abis/power64/abi_power64_elf_header.lem \
 	abis/abis.lem \
 	elf_section_header_table.lem \
-	string_table.lem elf_executable_file.lem \
+	string_table.lem elf_file.lem \
 	elf_relocation.lem \
 	adaptors/sail_interface.lem \
 	abis/amd64/abi_amd64_serialisation.lem abis/amd64/abi_amd64_relocation.lem \
@@ -32,7 +32,7 @@ isa-extraction:
 	elf_types.lem elf_interpreted_segment.lem elf_interpreted_section.lem elf_symbol_table.lem \
 	elf_header.lem elf_program_header_table.lem \
 	elf_section_header_table.lem \
-	string_table.lem elf_executable_file.lem
+	string_table.lem elf_file.lem
 
 	mv *.thy ../auto_generated/isabelle/
 
@@ -56,7 +56,7 @@ ocaml:
 unix.cma nums.cma batteries.cma nat_num.cmo \
 lem.cmo lem_function.cmo lem_list.cmo lem_num.cmo xstring.cmo \
 missing_pervasives.ml \
-show.ml endianness.ml error.ml uint32.ml uint64.ml uint16_wrapper.ml uint32_wrapper.ml \
+show.ml endianness.ml error.ml uint16_wrapper.ml uint32_wrapper.ml \
 uint64_wrapper.ml byte_sequence_wrapper.ml byte_sequence.ml byte_sequence_extra.ml ml_bindings.ml default_printing.ml \
 elf_types.ml elf_header.ml \
 abis/amd64/abi_amd64_elf_header.ml \
@@ -64,7 +64,7 @@ abis/power64/abi_power64_elf_header.ml \
 abis/abis.ml \
 elf_program_header_table.ml string_table.ml \
 elf_section_header_table.ml elf_interpreted_segment.ml elf_interpreted_section.ml elf_symbol_table.ml \
-elf_executable_file.ml \
+elf_file.ml \
 elf_relocation.ml \
 adaptors/sail_interface.ml \
 abis/amd64/abi_amd64_serialisation.ml abis/amd64/abi_amd64_relocation.ml \

@@ -10,7 +10,7 @@ open import Missing_pervasives
 open import Show
 
 open import Elf_header
-open import Elf_executable_file
+open import Elf_file
 open import Elf_program_header_table
 open import Elf_types
 
@@ -9224,10 +9224,9 @@ let program =
 let _ =
   let res =
     Byte_sequence_extra.acquire "test/a.out" >>= fun bs0 ->
-    Elf_executable_file.read_elf32_executable_file bs0 >>= fun ef1 ->
-    Elf_executable_file.get_elf32_executable_file_global_symbol_init ef1 >>= fun strs ->
-    return (Elf_executable_file.string_of_elf32_executable_file default_hdr_bdl default_pht_bdl
-      default_sht_bdl ef1)
+    Elf_file.read_elf32_file bs0 >>= fun ef1 ->
+    Elf_file.get_elf32_file_global_symbol_init ef1 >>= fun strs ->
+    return (Elf_file.string_of_elf32_file default_hdr_bdl default_pht_bdl default_sht_bdl ef1)
   in
     match res with
       | Fail err  -> Missing_pervasives.print ("[!]: " ^ err)
