@@ -15,7 +15,7 @@ val acquire_byte_list : string -> error (list byte)
 declare ocaml target_rep function acquire_byte_list = `Byte_sequence_wrapper.acquire_char_list`
 
 val acquire : string -> error byte_sequence
-let acquire fname =
+let {ocaml} acquire fname =
   acquire_byte_list fname >>= fun bs ->
   return (Sequence bs)
 
@@ -23,7 +23,7 @@ val serialise_byte_list : string -> list byte -> error unit
 declare ocaml target_rep function serialise_byte_list = `Byte_sequence_wrapper.serialise_char_list`
 
 val serialise : string -> byte_sequence -> error unit
-let serialise fname ss =
+let {ocaml} serialise fname ss =
   match ss with
     | Sequence ts -> serialise_byte_list fname ts
   end
