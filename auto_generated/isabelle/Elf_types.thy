@@ -82,14 +82,17 @@ begin
 definition read_unsigned_char  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(Elf_Types_Local.unsigned_char*byte_sequence)error "  where 
      " read_unsigned_char endian bs0 = (
   Byte_sequence.read_char bs0 >>= (\<lambda> (u1, bs1) . 
-  error_return ( u1, bs1)))"
+  error_return (id u1, bs1)))"
 
 
 (*val bytes_of_unsigned_char : unsigned_char -> byte*)
 
 (*val equal_unsigned_char  : unsigned_char -> unsigned_char -> bool*)
 
-(** elf32_addr type and bindings *)
+(** ELF address type:
+  * 4 byte unsigned type on 32-bit architectures.
+  * 8 byte unsigned type on 64-bit architectures.
+  *)
 
 (*type elf32_addr*)
 
@@ -103,10 +106,10 @@ definition read_unsigned_char  :: " endianness \<Rightarrow> byte_sequence \<Rig
 fun read_elf32_addr  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(uint32*byte_sequence)error "  where 
      " read_elf32_addr Little bs0 = (
       Byte_sequence.read_4_bytes_le bs0 >>= (\<lambda> ((b1, b2, b3, b4), bs1) . 
-      error_return (Elf_Types_Local.uint32_of_quad b1 b2 b3 b4, bs1)))"
+      error_return (Elf_Types_Local.uint32_of_quad b4 b3 b2 b1, bs1)))"
 |" read_elf32_addr Big bs0 = (
       Byte_sequence.read_4_bytes_be bs0 >>= (\<lambda> ((b1, b2, b3, b4), bs1) . 
-      error_return (Elf_Types_Local.uint32_of_quad b1 b2 b3 b4, bs1)))" 
+      error_return (Elf_Types_Local.uint32_of_quad b4 b3 b2 b1, bs1)))" 
 declare read_elf32_addr.simps [simp del]
 
 
@@ -115,7 +118,7 @@ declare read_elf32_addr.simps [simp del]
 (*val quad_of_elf32_addr : elf32_addr -> (byte * byte * byte * byte)*)
 
 (*val bytes_of_elf32_addr : endianness -> elf32_addr -> list byte*)
-fun bytes_of_elf32_addr  :: " endianness \<Rightarrow> uint32 \<Rightarrow>( 8 word)list "  where 
+fun bytes_of_elf32_addr  :: " endianness \<Rightarrow> uint32 \<Rightarrow>( word 8)list "  where 
      " bytes_of_elf32_addr Little w = (
       (let (b0, b1, b2, b3) = (Elf_Types_Local.quad_of_uint32 w) in
         [b0, b1, b2, b3]))"
@@ -141,10 +144,10 @@ declare bytes_of_elf32_addr.simps [simp del]
 fun read_elf64_addr  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(Elf_Types_Local.uint64*byte_sequence)error "  where 
      " read_elf64_addr Little bs0 = (
       Byte_sequence.read_8_bytes_le bs0 >>= (\<lambda> ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) . 
-      error_return (Elf_Types_Local.uint64_of_oct b1 b2 b3 b4 b5 b6 b7 b8, bs1)))"
+      error_return (Elf_Types_Local.uint64_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1)))"
 |" read_elf64_addr Big bs0 = (
       Byte_sequence.read_8_bytes_be bs0 >>= (\<lambda> ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) . 
-      error_return (Elf_Types_Local.uint64_of_oct b1 b2 b3 b4 b5 b6 b7 b8, bs1)))" 
+      error_return (Elf_Types_Local.uint64_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1)))" 
 declare read_elf64_addr.simps [simp del]
 
 
@@ -153,7 +156,7 @@ declare read_elf64_addr.simps [simp del]
 (*val oct_of_elf64_addr : elf64_addr -> (byte * byte * byte * byte * byte * byte * byte * byte)*)
 
 (*val bytes_of_elf64_addr : endianness -> elf64_addr -> list byte*)
-fun bytes_of_elf64_addr  :: " endianness \<Rightarrow> Elf_Types_Local.uint64 \<Rightarrow>( 8 word)list "  where 
+fun bytes_of_elf64_addr  :: " endianness \<Rightarrow> Elf_Types_Local.uint64 \<Rightarrow>( word 8)list "  where 
      " bytes_of_elf64_addr Little w = (
       (let (b0, b1, b2, b3, b4, b5, b6, b7) = (Elf_Types_Local.oct_of_uint64 w) in
         [b0, b1, b2, b3, b4, b5, b6, b7]))"
@@ -171,22 +174,25 @@ declare bytes_of_elf64_addr.simps [simp del]
 
 (*val elf64_addr_land : elf64_addr -> elf64_addr -> elf64_addr*)
 
-(** elf32_half type and bindings *)
+(** ELF half word type:
+  * 2 byte unsigned type on 32-bit architectures.
+  * 2 byte unsigned type on 64-bit architectures.
+  *)
 
 (*type elf32_half*)
 
 (*val string_of_elf32_half : elf32_half -> string*)
 
-(*val elf32_half_of_quad : byte -> byte -> byte -> byte -> elf32_half*)
+(*val elf32_half_of_dual : byte -> byte -> elf32_half*)
 
 (*val read_elf32_half : endianness -> byte_sequence -> error (elf32_half * byte_sequence)*)
-fun read_elf32_half  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(uint32*byte_sequence)error "  where 
+fun read_elf32_half  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(uint16*byte_sequence)error "  where 
      " read_elf32_half Little bs0 = (
-      Byte_sequence.read_4_bytes_le bs0 >>= (\<lambda> ((b1, b2, b3, b4), bs1) . 
-      error_return (Elf_Types_Local.uint32_of_quad b1 b2 b3 b4, bs1)))"
+      Byte_sequence.read_2_bytes_le bs0 >>= (\<lambda> ((b1, b2), bs1) . 
+      error_return (Elf_Types_Local.uint16_of_dual b2 b1, bs1)))"
 |" read_elf32_half Big bs0 = (
-      Byte_sequence.read_4_bytes_be bs0 >>= (\<lambda> ((b1, b2, b3, b4), bs1) . 
-      error_return (Elf_Types_Local.uint32_of_quad b1 b2 b3 b4, bs1)))" 
+      Byte_sequence.read_2_bytes_be bs0 >>= (\<lambda> ((b1, b2), bs1) . 
+      error_return (Elf_Types_Local.uint16_of_dual b2 b1, bs1)))" 
 declare read_elf32_half.simps [simp del]
 
 
@@ -194,16 +200,16 @@ declare read_elf32_half.simps [simp del]
 
 (*val equal_elf32_half : elf32_half -> elf32_half -> bool*)
 
-(*val quad_of_elf32_half : elf32_half -> (byte * byte * byte * byte)*)
+(*val dual_of_elf32_half : elf32_half -> (byte * byte)*)
 
 (*val bytes_of_elf32_half : endianness -> elf32_half -> list byte*)
-fun bytes_of_elf32_half  :: " endianness \<Rightarrow> uint32 \<Rightarrow>( 8 word)list "  where 
+fun bytes_of_elf32_half  :: " endianness \<Rightarrow> uint16 \<Rightarrow>( word 8)list "  where 
      " bytes_of_elf32_half Little h = (
-      (let (b0, b1, b2, b3) = (Elf_Types_Local.quad_of_uint32 h) in
-        [b0, b1, b2, b3]))"
+      (let (b0, b1) = (Elf_Types_Local.dual_of_uint16 h) in
+        [b0, b1]))"
 |" bytes_of_elf32_half Big h = (
-      (let (b0, b1, b2, b3) = (Elf_Types_Local.quad_of_uint32 h) in
-        [b3, b2, b1, b0]))" 
+      (let (b0, b1) = (Elf_Types_Local.dual_of_uint16 h) in
+        [b1, b0]))" 
 declare bytes_of_elf32_half.simps [simp del]
 
 
@@ -213,16 +219,16 @@ declare bytes_of_elf32_half.simps [simp del]
 
 (*val string_of_elf64_half : elf64_half -> string*)
 
-(*val elf64_half_of_quad : byte -> byte -> byte -> byte -> elf64_half*)
+(*val elf64_half_of_dual : byte -> byte -> elf64_half*)
 
 (*val read_elf64_half : endianness -> byte_sequence -> error (elf64_half * byte_sequence)*)
-fun read_elf64_half  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(uint32*byte_sequence)error "  where 
-     " read_elf64_half Little bs0 = (
-      Byte_sequence.read_4_bytes_le bs0 >>= (\<lambda> ((b1, b2, b3, b4), bs1) . 
-      error_return (Elf_Types_Local.uint32_of_quad b1 b2 b3 b4, bs1)))"
-|" read_elf64_half Big bs0 = (
-      Byte_sequence.read_4_bytes_be bs0 >>= (\<lambda> ((b1, b2, b3, b4), bs1) . 
-      error_return (Elf_Types_Local.uint32_of_quad b1 b2 b3 b4, bs1)))" 
+fun read_elf64_half  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(uint16*byte_sequence)error "  where 
+     " read_elf64_half Big bs0 = (
+      Byte_sequence.read_2_bytes_be bs0 >>= (\<lambda> ((b1, b2), bs1) . 
+      error_return (Elf_Types_Local.uint16_of_dual b2 b1, bs1)))"
+|" read_elf64_half Little bs0 = (
+      Byte_sequence.read_2_bytes_le bs0 >>= (\<lambda> ((b1, b2), bs1) . 
+      error_return (Elf_Types_Local.uint16_of_dual b2 b1, bs1)))" 
 declare read_elf64_half.simps [simp del]
 
 
@@ -232,20 +238,23 @@ declare read_elf64_half.simps [simp del]
 
 (*val equal_elf64_half : elf64_half -> elf64_half -> bool*)
 
-(*val quad_of_elf64_half : elf64_half -> (byte * byte * byte * byte)*)
+(*val dual_of_elf64_half : elf64_half -> (byte * byte)*)
 
 (*val bytes_of_elf64_half : endianness -> elf64_half -> list byte*)
-fun bytes_of_elf64_half  :: " endianness \<Rightarrow> uint32 \<Rightarrow>( 8 word)list "  where 
-     " bytes_of_elf64_half Little w = (
-      (let (b0, b1, b2, b3) = (Elf_Types_Local.quad_of_uint32 w) in
-        [b0, b1, b2, b3]))"
-|" bytes_of_elf64_half Big w = (
-      (let (b0, b1, b2, b3) = (Elf_Types_Local.quad_of_uint32 w) in
-        [b3, b2, b1, b0]))" 
+fun bytes_of_elf64_half  :: " endianness \<Rightarrow> uint16 \<Rightarrow>( word 8)list "  where 
+     " bytes_of_elf64_half Big w = (
+      (let (b0, b1) = (Elf_Types_Local.dual_of_uint16 w) in
+        [b0, b1]))"
+|" bytes_of_elf64_half Little w = (
+      (let (b0, b1) = (Elf_Types_Local.dual_of_uint16 w) in
+        [b1, b0]))" 
 declare bytes_of_elf64_half.simps [simp del]
 
 
-(** elf32_off type and bindings *)
+(** ELF offset type:
+  * 4 byte unsigned type on 32-bit architectures.
+  * 8 byte unsigned type on 64-bit architectures.
+  *)
 
 (*type elf32_off*)
 
@@ -259,10 +268,10 @@ declare bytes_of_elf64_half.simps [simp del]
 fun read_elf32_off  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(uint32*byte_sequence)error "  where 
      " read_elf32_off Little bs0 = (
       Byte_sequence.read_4_bytes_le bs0 >>= (\<lambda> ((b1, b2, b3, b4), bs1) . 
-      error_return (Elf_Types_Local.uint32_of_quad b1 b2 b3 b4, bs1)))"
+      error_return (Elf_Types_Local.uint32_of_quad b4 b3 b2 b1, bs1)))"
 |" read_elf32_off Big bs0 = (
       Byte_sequence.read_4_bytes_be bs0 >>= (\<lambda> ((b1, b2, b3, b4), bs1) . 
-      error_return (Elf_Types_Local.uint32_of_quad b1 b2 b3 b4, bs1)))" 
+      error_return (Elf_Types_Local.uint32_of_quad b4 b3 b2 b1, bs1)))" 
 declare read_elf32_off.simps [simp del]
 
 
@@ -271,7 +280,7 @@ declare read_elf32_off.simps [simp del]
 (*val quad_of_elf32_off : elf32_off -> (byte * byte * byte * byte)*)
 
 (*val bytes_of_elf32_off : endianness -> elf32_off -> list byte*)
-fun bytes_of_elf32_off  :: " endianness \<Rightarrow> uint32 \<Rightarrow>( 8 word)list "  where 
+fun bytes_of_elf32_off  :: " endianness \<Rightarrow> uint32 \<Rightarrow>( word 8)list "  where 
      " bytes_of_elf32_off Little w = (
       (let (b0, b1, b2, b3) = (Elf_Types_Local.quad_of_uint32 w) in
         [b0, b1, b2, b3]))"
@@ -297,10 +306,10 @@ declare bytes_of_elf32_off.simps [simp del]
 fun read_elf64_off  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(uint64*byte_sequence)error "  where 
      " read_elf64_off Little bs0 = (
       Byte_sequence.read_8_bytes_le bs0 >>= (\<lambda> ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) . 
-      error_return (Elf_Types_Local.uint64_of_oct b1 b2 b3 b4 b5 b6 b7 b8, bs1)))"
+      error_return (Elf_Types_Local.uint64_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1)))"
 |" read_elf64_off Big bs0 = (
       Byte_sequence.read_8_bytes_be bs0 >>= (\<lambda> ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) . 
-      error_return (Elf_Types_Local.uint64_of_oct b1 b2 b3 b4 b5 b6 b7 b8, bs1)))" 
+      error_return (Elf_Types_Local.uint64_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1)))" 
 declare read_elf64_off.simps [simp del]
 
 
@@ -309,7 +318,7 @@ declare read_elf64_off.simps [simp del]
 (*val oct_of_elf64_off : elf64_off -> (byte * byte * byte * byte * byte * byte * byte * byte)*)
 
 (*val bytes_of_elf64_off : endianness -> elf64_off -> list byte*)
-fun bytes_of_elf64_off  :: " endianness \<Rightarrow> uint64 \<Rightarrow>( 8 word)list "  where 
+fun bytes_of_elf64_off  :: " endianness \<Rightarrow> uint64 \<Rightarrow>( word 8)list "  where 
      " bytes_of_elf64_off Little w = (
       (let (b0, b1, b2, b3, b4, b5, b6, b7) = (Elf_Types_Local.oct_of_uint64 w) in
         [b0, b1, b2, b3, b4, b5, b6, b7]))"
@@ -319,7 +328,10 @@ fun bytes_of_elf64_off  :: " endianness \<Rightarrow> uint64 \<Rightarrow>( 8 wo
 declare bytes_of_elf64_off.simps [simp del]
 
 
-(** elf32_word type and bindings *)
+(** ELF word type:
+  * 4 byte unsigned type on 32-bit architectures.
+  * 4 byte unsigned type on 64-bit architectures.
+  *)
 
 (*type elf32_word*)
 
@@ -339,10 +351,10 @@ declare bytes_of_elf64_off.simps [simp del]
 fun read_elf32_word  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(uint32*byte_sequence)error "  where 
      " read_elf32_word Little bs0 = (
       Byte_sequence.read_4_bytes_le bs0 >>= (\<lambda> ((b1, b2, b3, b4), bs1) . 
-      error_return (Elf_Types_Local.uint32_of_quad b1 b2 b3 b4, bs1)))"
+      error_return (Elf_Types_Local.uint32_of_quad b4 b3 b2 b1, bs1)))"
 |" read_elf32_word Big bs0 = (
       Byte_sequence.read_4_bytes_be bs0 >>= (\<lambda> ((b1, b2, b3, b4), bs1) . 
-      error_return (Elf_Types_Local.uint32_of_quad b1 b2 b3 b4, bs1)))" 
+      error_return (Elf_Types_Local.uint32_of_quad b4 b3 b2 b1, bs1)))" 
 declare read_elf32_word.simps [simp del]
 
 
@@ -353,7 +365,7 @@ declare read_elf32_word.simps [simp del]
 (*val quad_of_elf32_word : elf32_word -> (byte * byte * byte * byte)*)
 
 (*val bytes_of_elf32_word : endianness -> elf32_word -> list byte*)
-fun bytes_of_elf32_word  :: " endianness \<Rightarrow> uint32 \<Rightarrow>( 8 word)list "  where 
+fun bytes_of_elf32_word  :: " endianness \<Rightarrow> uint32 \<Rightarrow>( word 8)list "  where 
      " bytes_of_elf32_word Little w = (
       (let (b0, b1, b2, b3) = (Elf_Types_Local.quad_of_uint32 w) in
         [b0, b1, b2, b3]))"
@@ -381,10 +393,10 @@ declare bytes_of_elf32_word.simps [simp del]
 fun read_elf64_word  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(uint32*byte_sequence)error "  where 
      " read_elf64_word Little bs0 = (
       Byte_sequence.read_4_bytes_le bs0 >>= (\<lambda> ((b1, b2, b3, b4), bs1) . 
-      error_return (Elf_Types_Local.uint32_of_quad b1 b2 b3 b4, bs1)))"
+      error_return (Elf_Types_Local.uint32_of_quad b4 b3 b2 b1, bs1)))"
 |" read_elf64_word Big bs0 = (
       Byte_sequence.read_4_bytes_be bs0 >>= (\<lambda> ((b1, b2, b3, b4), bs1) . 
-      error_return (Elf_Types_Local.uint32_of_quad b1 b2 b3 b4, bs1)))" 
+      error_return (Elf_Types_Local.uint32_of_quad b4 b3 b2 b1, bs1)))" 
 declare read_elf64_word.simps [simp del]
 
 
@@ -393,7 +405,7 @@ declare read_elf64_word.simps [simp del]
 (*val quad_of_elf64_word : elf64_word -> (byte * byte * byte * byte)*)
 
 (*val bytes_of_elf64_word : endianness -> elf64_word -> list byte*)
-fun bytes_of_elf64_word  :: " endianness \<Rightarrow> uint32 \<Rightarrow>( 8 word)list "  where 
+fun bytes_of_elf64_word  :: " endianness \<Rightarrow> uint32 \<Rightarrow>( word 8)list "  where 
      " bytes_of_elf64_word Little w = (
       (let (b0, b1, b2, b3) = (Elf_Types_Local.quad_of_uint32 w) in
         [b0, b1, b2, b3]))"
@@ -403,7 +415,10 @@ fun bytes_of_elf64_word  :: " endianness \<Rightarrow> uint32 \<Rightarrow>( 8 w
 declare bytes_of_elf64_word.simps [simp del]
 
 
-(** elf32_sword type and bindings *)
+(** ELF signed word type:
+  * 4 byte signed type on 32-bit architectures.
+  * 4 byte signed type on 64-bit architectures.
+  *)
 
 (*type elf32_sword*)
 
@@ -417,17 +432,17 @@ declare bytes_of_elf64_word.simps [simp del]
 fun read_elf32_sword  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(sint32*byte_sequence)error "  where 
      " read_elf32_sword Little bs0 = (
       Byte_sequence.read_4_bytes_le bs0 >>= (\<lambda> ((b1, b2, b3, b4), bs1) . 
-      error_return (Elf_Types_Local.sint32_of_quad b1 b2 b3 b4, bs1)))"
+      error_return (Elf_Types_Local.sint32_of_quad b4 b3 b2 b1, bs1)))"
 |" read_elf32_sword Big bs0 = (
       Byte_sequence.read_4_bytes_be bs0 >>= (\<lambda> ((b1, b2, b3, b4), bs1) . 
-      error_return (Elf_Types_Local.sint32_of_quad b1 b2 b3 b4, bs1)))" 
+      error_return (Elf_Types_Local.sint32_of_quad b4 b3 b2 b1, bs1)))" 
 declare read_elf32_sword.simps [simp del]
 
 
 (*val quad_of_elf32_sword : elf32_sword -> (byte * byte * byte * byte)*)
 
 (*val bytes_of_elf32_sword : endianness -> elf32_sword -> list byte*)
-fun bytes_of_elf32_sword  :: " endianness \<Rightarrow> sint32 \<Rightarrow>( 8 word)list "  where 
+fun bytes_of_elf32_sword  :: " endianness \<Rightarrow> sint32 \<Rightarrow>( word 8)list "  where 
      " bytes_of_elf32_sword Little w = (
       (let (b0, b1, b2, b3) = (Elf_Types_Local.quad_of_sint32 w) in
         [b0, b1, b2, b3]))"
@@ -451,17 +466,17 @@ declare bytes_of_elf32_sword.simps [simp del]
 fun read_elf64_sword  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(sint32*byte_sequence)error "  where 
      " read_elf64_sword Little bs0 = (
       Byte_sequence.read_4_bytes_le bs0 >>= (\<lambda> ((b1, b2, b3, b4), bs1) . 
-      error_return (Elf_Types_Local.sint32_of_quad b1 b2 b3 b4, bs1)))"
+      error_return (Elf_Types_Local.sint32_of_quad b4 b3 b2 b1, bs1)))"
 |" read_elf64_sword Big bs0 = (
       Byte_sequence.read_4_bytes_be bs0 >>= (\<lambda> ((b1, b2, b3, b4), bs1) . 
-      error_return (Elf_Types_Local.sint32_of_quad b1 b2 b3 b4, bs1)))" 
+      error_return (Elf_Types_Local.sint32_of_quad b4 b3 b2 b1, bs1)))" 
 declare read_elf64_sword.simps [simp del]
 
 
 (*val quad_of_elf64_sword : elf64_sword -> (byte * byte * byte * byte)*)
 
 (*val bytes_of_elf64_sword : endianness -> elf64_sword -> list byte*)
-fun bytes_of_elf64_sword  :: " endianness \<Rightarrow> sint32 \<Rightarrow>( 8 word)list "  where 
+fun bytes_of_elf64_sword  :: " endianness \<Rightarrow> sint32 \<Rightarrow>( word 8)list "  where 
      " bytes_of_elf64_sword Little w = (
       (let (b0, b1, b2, b3) = (Elf_Types_Local.quad_of_sint32 w) in
         [b0, b1, b2, b3]))"
@@ -471,7 +486,9 @@ fun bytes_of_elf64_sword  :: " endianness \<Rightarrow> sint32 \<Rightarrow>( 8 
 declare bytes_of_elf64_sword.simps [simp del]
 
 
-(** elf64_sword type and bindings *)
+(** ELF extra wide word type:
+  * 8 byte unsigned type on 64-bit architectures.
+  *)
 
 (*type elf64_xword*)
 
@@ -485,10 +502,10 @@ declare bytes_of_elf64_sword.simps [simp del]
 fun read_elf64_xword  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(uint64*byte_sequence)error "  where 
      " read_elf64_xword Little bs0 = (
       Byte_sequence.read_8_bytes_le bs0 >>= (\<lambda> ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) . 
-      error_return (Elf_Types_Local.uint64_of_oct b1 b2 b3 b4 b5 b6 b7 b8, bs1)))"
+      error_return (Elf_Types_Local.uint64_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1)))"
 |" read_elf64_xword Big bs0 = (
       Byte_sequence.read_8_bytes_be bs0 >>= (\<lambda> ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) . 
-      error_return (Elf_Types_Local.uint64_of_oct b1 b2 b3 b4 b5 b6 b7 b8, bs1)))" 
+      error_return (Elf_Types_Local.uint64_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1)))" 
 declare read_elf64_xword.simps [simp del]
 
 
@@ -503,7 +520,7 @@ declare read_elf64_xword.simps [simp del]
 (*val oct_of_elf64_xword : elf64_xword -> (byte * byte * byte * byte * byte * byte * byte * byte)*)
 
 (*val bytes_of_elf64_xword : endianness -> elf64_xword -> list byte*)
-fun bytes_of_elf64_xword  :: " endianness \<Rightarrow> uint64 \<Rightarrow>( 8 word)list "  where 
+fun bytes_of_elf64_xword  :: " endianness \<Rightarrow> uint64 \<Rightarrow>( word 8)list "  where 
      " bytes_of_elf64_xword Little x = (
       (let (b0, b1, b2, b3, b4, b5, b6, b7) = (Elf_Types_Local.oct_of_uint64 x) in
         [b0, b1, b2, b3, b4, b5, b6, b7]))"
@@ -513,7 +530,9 @@ fun bytes_of_elf64_xword  :: " endianness \<Rightarrow> uint64 \<Rightarrow>( 8 
 declare bytes_of_elf64_xword.simps [simp del]
 
 
-(** elf64_sxword type and bindings *)
+(** ELF signed extra wide word type:
+  * 8 byte signed type on 64-bit architectures.
+  *)
 
 (*type elf64_sxword*)
 
@@ -527,17 +546,17 @@ declare bytes_of_elf64_xword.simps [simp del]
 fun read_elf64_sxword  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(sint64*byte_sequence)error "  where 
      " read_elf64_sxword Little bs0 = (
       Byte_sequence.read_8_bytes_le bs0 >>= (\<lambda> ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) . 
-      error_return (Elf_Types_Local.sint64_of_oct b1 b2 b3 b4 b5 b6 b7 b8, bs1)))"
+      error_return (Elf_Types_Local.sint64_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1)))"
 |" read_elf64_sxword Big bs0 = (
       Byte_sequence.read_8_bytes_be bs0 >>= (\<lambda> ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) . 
-      error_return (Elf_Types_Local.sint64_of_oct b1 b2 b3 b4 b5 b6 b7 b8, bs1)))" 
+      error_return (Elf_Types_Local.sint64_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1)))" 
 declare read_elf64_sxword.simps [simp del]
 
 
 (*val oct_of_elf64_sxword : elf64_sxword -> (byte * byte * byte * byte * byte * byte * byte * byte)*)
 
 (*val bytes_of_elf64_sxword : endianness -> elf64_sxword -> list byte*)
-fun bytes_of_elf64_sxword  :: " endianness \<Rightarrow> sint64 \<Rightarrow>( 8 word)list "  where 
+fun bytes_of_elf64_sxword  :: " endianness \<Rightarrow> sint64 \<Rightarrow>( word 8)list "  where 
      " bytes_of_elf64_sxword Little w = (
       (let (b0, b1, b2, b3, b4, b5, b6, b7) = (Elf_Types_Local.oct_of_sint64 w) in
         [b0, b1, b2, b3, b4, b5, b6, b7]))"
@@ -551,4 +570,4 @@ declare bytes_of_elf64_sxword.simps [simp del]
 
 (*val unsafe_int_of_natural   : natural -> int*)
 
-(*val unsafe_byte_of_int : int -> byte*)end
+(*val byte_of_natural : natural -> byte*)end

@@ -26,7 +26,7 @@ begin
 (*open import Show*)
 
 datatype byte_sequence =
-  Sequence "  8 word list "
+  Sequence "  word 8 list "
 
 (*val empty : byte_sequence*)
 definition empty  :: " byte_sequence "  where 
@@ -34,14 +34,14 @@ definition empty  :: " byte_sequence "  where
 
 
 (*val read_char : byte_sequence -> error (byte * byte_sequence)*)
-fun read_char  :: " byte_sequence \<Rightarrow>( 8 word*byte_sequence)error "  where 
+fun read_char  :: " byte_sequence \<Rightarrow>( word 8*byte_sequence)error "  where 
      " read_char (Sequence([])) = ( error_fail (''read_char: sequence is empty''))"
 |" read_char (Sequence(x # xs)) = ( error_return (x, Sequence xs))" 
 declare read_char.simps [simp del]
 
 
 (*val repeat : natural -> byte -> list byte*)
-function (sequential,domintros)  repeat  :: " nat \<Rightarrow> 8 word \<Rightarrow>( 8 word)list "  where 
+function (sequential,domintros)  repeat  :: " nat \<Rightarrow> word 8 \<Rightarrow>( word 8)list "  where 
      " repeat count1 c = (
   (case  count1 of
       0 => []
@@ -51,7 +51,7 @@ by pat_completeness auto
 
 
 (*val create : natural -> byte -> byte_sequence*)
-definition create  :: " nat \<Rightarrow> 8 word \<Rightarrow> byte_sequence "  where 
+definition create  :: " nat \<Rightarrow> word 8 \<Rightarrow> byte_sequence "  where 
      " create count1 c = (
   Sequence (repeat count1 c))"
 
@@ -80,7 +80,7 @@ by pat_completeness auto
 
 
 (*val from_byte_lists : list (list byte) -> byte_sequence*)
-definition from_byte_lists  :: "(( 8 word)list)list \<Rightarrow> byte_sequence "  where 
+definition from_byte_lists  :: "(( word 8)list)list \<Rightarrow> byte_sequence "  where 
      " from_byte_lists ts = (
   Sequence (List.concat ts))"
 
@@ -141,19 +141,25 @@ function (sequential,domintros)  takebytes  :: " nat \<Rightarrow> byte_sequence
 by pat_completeness auto
 
 
-(*val read_4_bytes_le : byte_sequence -> error ((byte * byte * byte * byte) * byte_sequence)*)
-definition read_4_bytes_le  :: " byte_sequence \<Rightarrow>(( 8 word* 8 word* 8 word* 8 word)*byte_sequence)error "  where 
-     " read_4_bytes_le bs0 = (
+(*val read_2_bytes_le : byte_sequence -> error ((byte * byte) * byte_sequence)*)
+definition read_2_bytes_le  :: " byte_sequence \<Rightarrow>(( word 8* word 8)*byte_sequence)error "  where 
+     " read_2_bytes_le bs0 = (
   read_char bs0 >>= (\<lambda> (b0, bs1) . 
   read_char bs1 >>= (\<lambda> (b1, bs2) . 
-  read_char bs2 >>= (\<lambda> (b2, bs3) . 
-  read_char bs3 >>= (\<lambda> (b3, bs4) . 
-  error_return ((b0, b1, b2, b3), bs4))))))"
+  error_return ((b1, b0), bs2))))"
 
 
-(*val read_4_bytes_be : byte_sequence -> error ((byte * byte * byte * byte) * byte_sequence)*)
-definition read_4_bytes_be  :: " byte_sequence \<Rightarrow>(( 8 word* 8 word* 8 word* 8 word)*byte_sequence)error "  where 
-     " read_4_bytes_be bs0 = (
+(*val read_2_bytes_be : byte_sequence -> error ((byte * byte) * byte_sequence)*)
+definition read_2_bytes_be  :: " byte_sequence \<Rightarrow>(( word 8* word 8)*byte_sequence)error "  where 
+     " read_2_bytes_be bs0 = (
+  read_char bs0 >>= (\<lambda> (b0, bs1) . 
+  read_char bs1 >>= (\<lambda> (b1, bs2) . 
+  error_return ((b0, b1), bs2))))"
+
+
+(*val read_4_bytes_le : byte_sequence -> error ((byte * byte * byte * byte) * byte_sequence)*)
+definition read_4_bytes_le  :: " byte_sequence \<Rightarrow>(( word 8* word 8* word 8* word 8)*byte_sequence)error "  where 
+     " read_4_bytes_le bs0 = (
   read_char bs0 >>= (\<lambda> (b0, bs1) . 
   read_char bs1 >>= (\<lambda> (b1, bs2) . 
   read_char bs2 >>= (\<lambda> (b2, bs3) . 
@@ -161,8 +167,18 @@ definition read_4_bytes_be  :: " byte_sequence \<Rightarrow>(( 8 word* 8 word* 8
   error_return ((b3, b2, b1, b0), bs4))))))"
 
 
+(*val read_4_bytes_be : byte_sequence -> error ((byte * byte * byte * byte) * byte_sequence)*)
+definition read_4_bytes_be  :: " byte_sequence \<Rightarrow>(( word 8* word 8* word 8* word 8)*byte_sequence)error "  where 
+     " read_4_bytes_be bs0 = (
+  read_char bs0 >>= (\<lambda> (b0, bs1) . 
+  read_char bs1 >>= (\<lambda> (b1, bs2) . 
+  read_char bs2 >>= (\<lambda> (b2, bs3) . 
+  read_char bs3 >>= (\<lambda> (b3, bs4) . 
+  error_return ((b0, b1, b2, b3), bs4))))))"
+
+
 (*val read_8_bytes_le : byte_sequence -> error ((byte * byte * byte * byte * byte * byte * byte * byte) * byte_sequence)*)
-definition read_8_bytes_le  :: " byte_sequence \<Rightarrow>(( 8 word* 8 word* 8 word* 8 word* 8 word* 8 word* 8 word* 8 word)*byte_sequence)error "  where 
+definition read_8_bytes_le  :: " byte_sequence \<Rightarrow>(( word 8* word 8* word 8* word 8* word 8* word 8* word 8* word 8)*byte_sequence)error "  where 
      " read_8_bytes_le bs0 = (
   read_char bs0 >>= (\<lambda> (b0, bs1) . 
   read_char bs1 >>= (\<lambda> (b1, bs2) . 
@@ -172,11 +188,11 @@ definition read_8_bytes_le  :: " byte_sequence \<Rightarrow>(( 8 word* 8 word* 8
   read_char bs5 >>= (\<lambda> (b5, bs6) . 
   read_char bs6 >>= (\<lambda> (b6, bs7) . 
   read_char bs7 >>= (\<lambda> (b7, bs8) . 
-  error_return ((b0, b1, b2, b3, b4, b5, b6, b7), bs8))))))))))"
+  error_return ((b7, b6, b5, b4, b3, b2, b1, b0), bs8))))))))))"
 
 
 (*val read_8_bytes_be : byte_sequence -> error ((byte * byte * byte * byte * byte * byte * byte * byte) * byte_sequence)*)
-definition read_8_bytes_be  :: " byte_sequence \<Rightarrow>(( 8 word* 8 word* 8 word* 8 word* 8 word* 8 word* 8 word* 8 word)*byte_sequence)error "  where 
+definition read_8_bytes_be  :: " byte_sequence \<Rightarrow>(( word 8* word 8* word 8* word 8* word 8* word 8* word 8* word 8)*byte_sequence)error "  where 
      " read_8_bytes_be bs0 = (
   read_char bs0 >>= (\<lambda> (b0, bs1) . 
   read_char bs1 >>= (\<lambda> (b1, bs2) . 
@@ -186,7 +202,7 @@ definition read_8_bytes_be  :: " byte_sequence \<Rightarrow>(( 8 word* 8 word* 8
   read_char bs5 >>= (\<lambda> (b5, bs6) . 
   read_char bs6 >>= (\<lambda> (b6, bs7) . 
   read_char bs7 >>= (\<lambda> (b7, bs8) . 
-  error_return ((b7, b6, b5, b4, b3, b2, b1, b0), bs8))))))))))"
+  error_return ((b0, b1, b2, b3, b4, b5, b6, b7), bs8))))))))))"
 
 
 (*val partition : natural -> byte_sequence -> error (byte_sequence * byte_sequence)*)

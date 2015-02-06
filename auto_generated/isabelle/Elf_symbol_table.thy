@@ -190,7 +190,7 @@ record elf32_symbol_table_entry =
    
  elf32_st_other ::" Elf_Types_Local.unsigned_char "
    
- elf32_st_shndx ::" uint32 "
+ elf32_st_shndx ::" uint16 "
    
 
 
@@ -274,7 +274,7 @@ record elf64_symbol_table_entry =
    
  elf64_st_other ::" Elf_Types_Local.unsigned_char "
    
- elf64_st_shndx ::" uint32 "
+ elf64_st_shndx ::" uint16 "
    
  elf64_st_value ::" Elf_Types_Local.uint64 "
    

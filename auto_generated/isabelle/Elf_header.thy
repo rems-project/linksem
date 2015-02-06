@@ -603,9 +603,9 @@ record elf32_header =
   
  elf32_ident    ::" Elf_Types_Local.unsigned_char list " (** Identification field *)
    
- elf32_type     ::" uint32 "         (** The object file type *)
+ elf32_type     ::" uint16 "         (** The object file type *)
    
- elf32_machine  ::" uint32 "         (** Required machine architecture *)
+ elf32_machine  ::" uint16 "         (** Required machine architecture *)
    
  elf32_version  ::" uint32 "         (** Object file version *)
    
@@ -617,17 +617,17 @@ record elf32_header =
    
  elf32_flags    ::" uint32 "         (** Processor-specific flags *)
    
- elf32_ehsize   ::" uint32 "         (** ELF header size in bytes *)
+ elf32_ehsize   ::" uint16 "         (** ELF header size in bytes *)
    
- elf32_phentsize::" uint32 "         (** Program header table entry size in bytes *)
+ elf32_phentsize::" uint16 "         (** Program header table entry size in bytes *)
    
- elf32_phnum    ::" uint32 "         (** Number of entries in program header table *)
+ elf32_phnum    ::" uint16 "         (** Number of entries in program header table *)
    
- elf32_shentsize::" uint32 "         (** Section header table entry size in bytes *)
+ elf32_shentsize::" uint16 "         (** Section header table entry size in bytes *)
    
- elf32_shnum    ::" uint32 "         (** Number of entries in section header table *)
+ elf32_shnum    ::" uint16 "         (** Number of entries in section header table *)
    
- elf32_shstrndx ::" uint32 "         (** Section header table entry for section name string table *)
+ elf32_shstrndx ::" uint16 "         (** Section header table entry for section name string table *)
    
 
 
@@ -643,9 +643,9 @@ record elf64_header =
   
  elf64_ident    ::" Elf_Types_Local.unsigned_char list " (** Identification field *)
    
- elf64_type     ::" uint32 "         (** The object file type *)
+ elf64_type     ::" uint16 "         (** The object file type *)
    
- elf64_machine  ::" uint32 "         (** Required machine architecture *)
+ elf64_machine  ::" uint16 "         (** Required machine architecture *)
    
  elf64_version  ::" uint32 "         (** Object file version *)
    
@@ -657,17 +657,17 @@ record elf64_header =
    
  elf64_flags    ::" uint32 "         (** Processor-specific flags *)
    
- elf64_ehsize   ::" uint32 "         (** ELF header size in bytes *)
+ elf64_ehsize   ::" uint16 "         (** ELF header size in bytes *)
    
- elf64_phentsize::" uint32 "         (** Program header table entry size in bytes *)
+ elf64_phentsize::" uint16 "         (** Program header table entry size in bytes *)
    
- elf64_phnum    ::" uint32 "         (** Number of entries in program header table *)
+ elf64_phnum    ::" uint16 "         (** Number of entries in program header table *)
    
- elf64_shentsize::" uint32 "         (** Section header table entry size in bytes *)
+ elf64_shentsize::" uint16 "         (** Section header table entry size in bytes *)
    
- elf64_shnum    ::" uint32 "         (** Number of entries in section header table *)
+ elf64_shnum    ::" uint16 "         (** Number of entries in section header table *)
    
- elf64_shstrndx ::" uint32 "         (** Section header table entry for section name string table *)
+ elf64_shstrndx ::" uint16 "         (** Section header table entry for section name string table *)
    
 
 
@@ -740,7 +740,7 @@ definition get_elf64_machine_architecture  :: " elf64_header \<Rightarrow> nat "
 (*val get_elf32_osabi : elf32_header -> natural*)
 definition get_elf32_osabi  :: " elf32_header \<Rightarrow> nat "  where 
      " get_elf32_osabi hdr = (
-  (case  index(elf32_ident   hdr) ( elf_ii_osabi) of
+  (case  index(elf32_ident   hdr) (id elf_ii_osabi) of
       Some osabi => unat osabi
   ))"
  (* Partial: should never return Nothing *)
@@ -748,7 +748,7 @@ definition get_elf32_osabi  :: " elf32_header \<Rightarrow> nat "  where
 (*val get_elf64_osabi : elf64_header -> natural*)
 definition get_elf64_osabi  :: " elf64_header \<Rightarrow> nat "  where 
      " get_elf64_osabi hdr = (
-  (case  index(elf64_ident   hdr) ( elf_ii_osabi) of
+  (case  index(elf64_ident   hdr) (id elf_ii_osabi) of
       Some osabi => unat osabi
   ))"
  (* Partial: should never return Nothing *)
