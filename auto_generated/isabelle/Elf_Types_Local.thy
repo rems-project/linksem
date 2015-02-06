@@ -44,6 +44,48 @@ begin
 
   declare unsigned_char_plus_def [simp]
 
+  section {* 16-bit unsigned type *}
+
+  type_synonym uint16 = "16 word"
+
+  definition uint16_of_nat :: "nat \<Rightarrow> uint16" where
+    "uint16_of_nat n \<equiv> of_int (int n)"
+
+  declare uint16_of_nat_def [simp]
+
+  fun uint16_of_dual :: "byte \<Rightarrow> byte \<Rightarrow> uint16" where
+    "uint16_of_dual u1 u2 = undefined"
+
+  definition dual_of_uint16 :: "uint16 \<Rightarrow> (byte \<times> byte)" where
+    "dual_of_uint16 u \<equiv> undefined"
+
+  declare dual_of_uint16_def [simp]
+
+  definition uint16_land :: "uint16 \<Rightarrow> uint16 \<Rightarrow> uint16" where
+    "uint16_land left right \<equiv> bitAND left right"
+
+  declare uint16_land_def [simp]
+
+  definition uint16_lor :: "uint16 \<Rightarrow> uint16 \<Rightarrow> uint16" where
+    "uint16_lor left right \<equiv> bitOR left right"
+
+  declare uint16_lor_def [simp]
+
+  definition uint16_plus :: "uint16 \<Rightarrow> uint16 \<Rightarrow> uint16" where
+    "uint16_plus left right \<equiv> of_int (uint left + uint right)"
+
+  declare uint16_plus_def [simp]
+
+  definition uint16_lshift :: "uint16 \<Rightarrow> nat \<Rightarrow> uint16" where
+    "uint16_lshift u shift \<equiv> (shiftl1 ^^ shift) u"
+
+  declare uint16_lshift_def [simp]
+
+  definition uint16_rshift :: "uint16 \<Rightarrow> nat \<Rightarrow> uint16" where
+    "uint16_rshift u shift \<equiv> (shiftr1 ^^ shift) u"
+
+  declare uint16_rshift_def [simp]
+
   section {* 32-bit unsigned type *}
 
   type_synonym uint32 = "32 word"
