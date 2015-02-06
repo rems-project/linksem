@@ -7,33 +7,35 @@
 LEMDIR ?= ../../lem
 LEM ?= $(LEMDIR)/lem
 
-dummy: all
+LEM_UTIL_SRC := default_printing.lem missing_pervasives.lem show.lem endianness.lem
+LEM_UTIL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC)) error.ml
 
-lem-model:
-	$(LEM) -ocaml -only_changed_output \
-	missing_pervasives.lem show.lem \
-	endianness.lem default_printing.lem byte_sequence.lem byte_sequence_extra.lem \
-	elf_types.lem elf_interpreted_segment.lem elf_interpreted_section.lem elf_symbol_table.lem \
+LEM_ELF_SRC := byte_sequence.lem \
+	elf_types.lem elf_interpreted_segment.lem elf_interpreted_section.lem string_table.lem elf_symbol_table.lem \
 	elf_header.lem elf_program_header_table.lem \
-	abis/amd64/abi_amd64_elf_header.lem \
+	elf_section_header_table.lem \
+	elf_file.lem
+	
+LEM_ABI_SRC := abis/amd64/abi_amd64_elf_header.lem \
 	abis/power64/abi_power64_elf_header.lem \
 	abis/abis.lem \
-	elf_section_header_table.lem \
-	string_table.lem elf_file.lem \
 	elf_relocation.lem \
 	adaptors/sail_interface.lem \
-	abis/amd64/abi_amd64_serialisation.lem abis/amd64/abi_amd64_relocation.lem \
-	main_elf.lem
+	abis/amd64/abi_amd64_serialisation.lem abis/amd64/abi_amd64_relocation.lem
+
+LEM_MODEL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC))
+
+dummy: all
+
+lem-model: $(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC)
+	$(LEM) -ocaml -only_changed_output $+
+
+main_elf.ml main_link.ml: %.ml: $(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) %.lem
+	$(LEM) -ocaml $+
 
 isa-extraction:
 	$(LEM) -isa -only_changed_output \
-	missing_pervasives.lem show.lem \
-	endianness.lem byte_sequence.lem \
-	elf_types.lem elf_interpreted_segment.lem elf_interpreted_section.lem elf_symbol_table.lem \
-	elf_header.lem elf_program_header_table.lem \
-	elf_section_header_table.lem \
-	string_table.lem elf_file.lem
-
+	$(LEM_ELF_SRC)
 	mv *.thy ../auto_generated/isabelle/
 
 clean:
@@ -46,30 +48,36 @@ clean:
 	rm -rf abis/*.cmi abis/*.cmo
 	rm -rf abis/*/*.cmi abis/*/*.cmo
 
-ocaml:
-	ocamlfind ocamlc \
--I libraries/batteries/_build/src \
+ocaml: main_elf
+
+main_elf main_link: OCAMLFLAGS += -I libraries/batteries/_build/src \
 -I $(LEMDIR)/ocaml-lib/_build/ \
 -I adaptors \
 -I abis -I abis/amd64 -I abis/power64 \
--g \
-unix.cma nums.cma batteries.cma nat_num.cmo \
-lem.cmo lem_function.cmo lem_list.cmo lem_num.cmo xstring.cmo \
-missing_pervasives.ml \
-show.ml endianness.ml error.ml uint16_wrapper.ml uint32_wrapper.ml \
-uint64_wrapper.ml byte_sequence_wrapper.ml byte_sequence.ml byte_sequence_extra.ml ml_bindings.ml default_printing.ml \
-elf_types.ml elf_header.ml \
-abis/amd64/abi_amd64_elf_header.ml \
-abis/power64/abi_power64_elf_header.ml \
-abis/abis.ml \
-elf_program_header_table.ml string_table.ml \
-elf_section_header_table.ml elf_interpreted_segment.ml elf_interpreted_section.ml elf_symbol_table.ml \
-elf_file.ml \
-elf_relocation.ml \
-adaptors/sail_interface.ml \
-abis/amd64/abi_amd64_serialisation.ml abis/amd64/abi_amd64_relocation.ml \
-main_elf.ml \
--package batteries
+-g
+
+main_elf main_link: OCAMLFIND_PACKAGES := -package batteries
+
+OCAML_LIB_OBJS := unix.cma nums.cma batteries.cma nat_num.cmo 
+LEM_OCAML_OBJS := lem.cmo lem_function.cmo lem_list.cmo lem_num.cmo xstring.cmo
+OCAML_HELPERS := uint16_wrapper.ml uint32_wrapper.ml \
+uint64_wrapper.ml byte_sequence_wrapper.ml ml_bindings.ml
+
+# error depends on show
+# byte_sequence depends on error
+# elf_types depends on ml_bindings
+# ml_bindings depends on endianness
+# GAH. doing a topsort manually is a sign of failure
+
+main_elf main_link: %: %.ml $(OCAML_HELPERS) lem-model
+	ocamlfind ocamlc $(OCAMLFLAGS) -o "$@" \
+	$(OCAML_LIB_OBJS) \
+	$(LEM_OCAML_OBJS) \
+	$(LEM_UTIL_ML) \
+	$(OCAML_HELPERS) \
+	$(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
+	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC)) \
+	"$<" $(OCAMLFIND_PACKAGES)
 
 #  -lib batteries\
 #  -lib bitstring\
@@ -91,7 +99,7 @@ clean_elf_libraries:
 
 
 
-ocaml_with_ocamlbuild:
+ocaml_with_ocamlbuild: lem-model
 	ocamlbuild -classic-display \
   -X src_elf_libraries \
   -cflag -g \
