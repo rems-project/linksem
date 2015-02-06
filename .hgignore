@@ -1,3 +1,5 @@
+syntax: glob
+
 src/_build
 src/src_elf_libraries/uint/*
 src/src_elf_libraries/uint
@@ -5,3 +7,11 @@ src/src_elf_libraries/bitstring/*
 src/src_elf_libraries/bitstring
 src/src_elf_libraries/batteries/*
 src/src_elf_libraries/batteries
+src/main_link
+src/main_elf
+*.cmi
+*.cmo
+src/abis/abis.ml
+src/test/link-01/a.out
+src/test/link-01/file1.o
+src/test/link-01/file2.o
