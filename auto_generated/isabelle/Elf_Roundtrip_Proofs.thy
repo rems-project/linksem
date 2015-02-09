@@ -7,6 +7,15 @@ begin
 
   section {* Error monad properties *}
 
+  fun is_failing :: "'a error \<Rightarrow> bool" where
+    "is_failing (Fail err) = True"
+  | "is_failing _          = False"
+
+  lemma is_failing_propagates [simp]:
+    assumes "is_failing f"
+    shows "is_failing (f >>= g)"
+  using assms by(cases f, auto simp add: error_bind.simps)
+
   lemma error_return_bind_neutral1 [simp]:
     shows "error_return x >>= f = f x"
   unfolding error_return_def by (simp add: error_bind.simps)
@@ -24,8 +33,8 @@ begin
     shows "x >>= (\<lambda>r. f r) = (case x of Success r \<Rightarrow> f r | Fail e \<Rightarrow> Fail e)"
   by(cases x, simp_all, auto simp add: error_bind.simps)
 
-  lemma repeatM_length [simp]:
-    fixes m :: "nat" and act :: "'a error"
+  lemma repeatM_length [simp, rule_format]:
+    fixes m :: "nat" and act :: "'a error" and r :: "'a list"
     assumes "repeatM m act = Success r"
     shows "List.length r = m"
   sorry
@@ -72,35 +81,28 @@ begin
     shows "List.length (repeat m c) = m"
   by(induct m, simp add: repeat.simps, auto simp add: repeat.simps)
 
+  lemma length_inner [simp]:
+    shows "length (Sequence ss) = List.length ss"
+  by(induct ss, auto simp add: length.simps)
+
   lemma create_length [simp]:
     shows "length (create m c) = m"
-  sorry
+  proof -
+    have "length (create m c) = length (Sequence (repeat m c))" unfolding create_def by auto
+    moreover have "... = List.length (repeat m c)" by auto
+    moreover have "... = m" using repeat_length by auto
+    ultimately show "length (create m c) = m" by auto
+  qed
 
   lemma dropbytes_Zero [simp]:
     shows "dropbytes 0 bs = Success bs"
   by(cases bs, auto simp add: dropbytes.simps error_return_def)
 
   lemma dropbytes_length_Fail [simp]:
-    shows "Byte_sequence.length bs < m \<Longrightarrow> \<exists>err. dropbytes m bs = Fail err"
-  apply(induct rule: dropbytes.induct)
-  apply(rule exI)
-  apply(case_tac count1)
-  apply simp
-  apply(case_tac ts)
-  apply(simp add: error_fail_def)
-  apply clarify
-  apply(subst dropbytes.simps)
-  apply(subst nat.split)
-  apply(rule conjI)
-  apply simp
-  apply(rule allI)
-  apply(rule impI)+
-  apply(subst list.split)
-  apply(rule conjI)
-  apply simp
-  apply(rule allI)+
-  apply clarify
-  apply(simp only: atomize_exL)
+    fixes m :: "nat" and bs :: "byte_sequence"
+    assumes "m > length bs"
+    shows "fails (dropbytes m bs)"
+  
 
   lemma dropbytes_length [simp]:
     fixes m :: "nat" and bs out :: "byte_sequence"

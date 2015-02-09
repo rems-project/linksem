@@ -175,7 +175,7 @@ let obtain_elf32_program_header_table hdr bs0 =
   let pentry_size = natural_of_elf32_half hdr.elf32_phentsize in
   let psize       = pentries * pentry_size in
     if psize = 0 then
-      fail "obtain_elf32_program_header_table: mandatory program header table not present"
+      return []
     else
       let poffset = natural_of_elf32_off hdr.elf32_phoff in
       Byte_sequence.offset_and_cut poffset psize bs0 >>= fun pexact ->
@@ -190,7 +190,7 @@ let obtain_elf64_program_header_table hdr bs0 =
   let pentry_size = natural_of_elf64_half hdr.elf64_phentsize in
   let psize       = pentries * pentry_size in
     if psize = 0 then
-      fail "obtain_elf64_program_header_table: mandatory program header table not present"
+      return []
     else
       let poffset = natural_of_elf64_off hdr.elf64_phoff in
       Byte_sequence.offset_and_cut poffset psize bs0 >>= fun pexact ->
