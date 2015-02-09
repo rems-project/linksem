@@ -62,6 +62,52 @@ begin
       ultimately show ?case by auto
   qed
 
+  section {* Byte sequence properties *}
+
+  lemma empty_length [simp]:
+    shows "length empty = 0"
+  unfolding empty_def by (auto simp add: length.simps)
+
+  lemma repeat_length [simp]:
+    shows "List.length (repeat m c) = m"
+  by(induct m, simp add: repeat.simps, auto simp add: repeat.simps)
+
+  lemma create_length [simp]:
+    shows "length (create m c) = m"
+  sorry
+
+  lemma dropbytes_Zero [simp]:
+    shows "dropbytes 0 bs = Success bs"
+  by(cases bs, auto simp add: dropbytes.simps error_return_def)
+
+  lemma dropbytes_length_Fail [simp]:
+    shows "Byte_sequence.length bs < m \<Longrightarrow> \<exists>err. dropbytes m bs = Fail err"
+  apply(induct rule: dropbytes.induct)
+  apply(rule exI)
+  apply(case_tac count1)
+  apply simp
+  apply(case_tac ts)
+  apply(simp add: error_fail_def)
+  apply clarify
+  apply(subst dropbytes.simps)
+  apply(subst nat.split)
+  apply(rule conjI)
+  apply simp
+  apply(rule allI)
+  apply(rule impI)+
+  apply(subst list.split)
+  apply(rule conjI)
+  apply simp
+  apply(rule allI)+
+  apply clarify
+  apply(simp only: atomize_exL)
+
+  lemma dropbytes_length [simp]:
+    fixes m :: "nat" and bs out :: "byte_sequence"
+    assumes "dropbytes m bs = Success out"
+    shows "length bs = length out + m"
+  using assms proof(induct m)
+
   section {* Helpful lemmas *}
 
   lemma elf64_header_out_in_roundtrip:
