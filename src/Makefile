@@ -25,7 +25,15 @@ LEM_ABI_SRC := abis/amd64/abi_amd64_elf_header.lem \
 
 LEM_MODEL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC))
 
-dummy: all
+default: lem-model main_elf main_link
+
+ldgram.y.hacked: ldgram.y
+	cat "$<" | \
+	tr '\n' '\f' | \
+	sed "s/\([^']\){[^}]*}/\1/g" | \
+	tr '\f' '\n' | \
+	grep '\([:|;]\|[A-Za-z0-9_]\{2,\}\)' | \
+	tail -n+35 > "$@" || rm -f "$@"
 
 lem-model: $(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC)
 	$(LEM) -ocaml -only_changed_output $+
