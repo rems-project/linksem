@@ -53,11 +53,13 @@ begin
 
   declare uint16_of_nat_def [simp]
 
-  fun uint16_of_dual :: "byte \<Rightarrow> byte \<Rightarrow> uint16" where
-    "uint16_of_dual u1 u2 = undefined"
+  find_consts "'a word \<Rightarrow> 'b word"
+
+  definition uint16_of_dual :: "byte \<Rightarrow> byte \<Rightarrow> uint16" where
+    "uint16_of_dual u1 u2 \<equiv> Word.word_cat u1 u2"
 
   definition dual_of_uint16 :: "uint16 \<Rightarrow> (byte \<times> byte)" where
-    "dual_of_uint16 u \<equiv> undefined"
+    "dual_of_uint16 u \<equiv> Word.word_split u"
 
   declare dual_of_uint16_def [simp]
 

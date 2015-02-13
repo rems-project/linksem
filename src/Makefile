@@ -19,7 +19,7 @@ LEM_ELF_SRC := byte_sequence.lem \
 LEM_ABI_SRC := abis/amd64/abi_amd64_elf_header.lem \
 	abis/power64/abi_power64_elf_header.lem \
 	abis/abis.lem \
-	elf_relocation.lem \
+	elf_relocation.lem abstract_linker_script.lem \
 	adaptors/sail_interface.lem \
 	abis/amd64/abi_amd64_serialisation.lem abis/amd64/abi_amd64_relocation.lem
 
