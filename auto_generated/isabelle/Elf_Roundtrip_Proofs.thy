@@ -102,13 +102,46 @@ begin
       hence "List.length xs = x" using **** by auto
       hence "List.length (s#xs) = Suc x" by auto
       thus "List.length r = Suc x" using ****** by auto
+    qed
   qed
 
-  lemma repeatM'_length [simp]:
+  lemma repeatM'_length [rule_format]:
     fixes m :: "nat" and e :: "'a" and f :: "'a \<Rightarrow> ('b \<times> 'a) error" and r :: "'b list" and rest :: "'a"
-    assumes "repeatM' m e f = Success (r, rest)"
-    shows "List.length r = m"
-  sorry
+    shows "repeatM' m e f = Success (r, rest) \<longrightarrow> List.length r = m"
+  proof(induct m arbitrary: e f r rest)
+    fix e :: "'a"
+    fix f :: "'a \<Rightarrow> ('b \<times> 'a) error"
+    fix r :: "'b list"
+    fix rest :: "'a"
+    show "repeatM' 0 e f = Success (r, rest) \<longrightarrow> List.length r = 0"
+    proof
+      assume "repeatM' 0 e f = Success (r, rest)"
+      hence "error_return ([], e) = Success (r, rest)" using repeatM'.simps by auto
+      hence "Success ([], e) = Success (r, rest)" using error_return_def by metis
+      hence "[] = r" by simp
+      thus "List.length r = 0" by simp
+    qed
+  next
+    fix m :: "nat"
+    fix e :: "'a"
+    fix f :: "'a \<Rightarrow> ('b \<times> 'a) error"
+    fix r rest
+    assume IH: "(\<And>(e :: 'a) (f :: 'a \<Rightarrow> ('b \<times> 'a) error) r rest. repeatM' m e f = Success (r, rest) \<longrightarrow> List.length r = m)"
+    show "repeatM' (Suc m) e f = Success (r, rest) \<longrightarrow> List.length r = Suc m"
+    proof(rule impI)
+      assume "repeatM' (Suc m) e f = Success (r, rest)"
+      hence *: "f e >>= (\<lambda>(hd, sd). repeatM' m sd f >>= (\<lambda>(tl, sd'). error_return (hd#tl, sd'))) = Success (r, rest)" using repeatM'.simps by auto
+      obtain x and s where "f e = Success (x, s) \<and> (repeatM' m s f >>= (\<lambda>(tl, sd'). error_return (x#tl, sd')) = Success (r, rest))" using error_bind_Success[OF *] by auto
+      hence "f e = Success (x, s)" and **: "repeatM' m s f >>= (\<lambda>(tl, sd'). error_return (x#tl, sd')) = Success (r, rest)" by auto
+      obtain xs and s' where "repeatM' m s f = Success (xs, s') \<and> error_return (x#xs, s') = Success (r, rest)" using error_bind_Success[OF **] by auto
+      hence ***: "repeatM' m s f = Success (xs, s')" and "error_return (x#xs, s') = Success (r, rest)" by auto
+      hence "Success (x#xs, s') = Success (r, rest)" using error_return_def by metis
+      hence ****: "x#xs = r" by auto
+      also have "List.length xs = m" using IH[rule_format, OF ***] by auto
+      hence "List.length (x#xs) = Suc m" by auto
+      thus "List.length r = Suc m" using **** by auto
+    qed
+  qed
   
   lemma mapM_length [simp]:
     fixes f :: "'a \<Rightarrow> 'b error" and i :: "'a list" and r :: "'b list"
