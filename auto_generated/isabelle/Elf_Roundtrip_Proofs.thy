@@ -84,7 +84,7 @@ begin
         error_return x >>= (\<lambda>h. mapM error_return xs >>= (\<lambda>t. error_return (h#t)))" by simp
       moreover have "... = mapM error_return xs >>= (\<lambda>t. error_return (x#t))" using error_return_def error_bind.simps by metis
       moreover have "... = Success xs >>= (\<lambda>t. error_return (x#t))" using * by simp
-      moreover have "...  = error_return (x#xs)" using error_bind.simps by auto
+      moreover have "...  = error_return (x#xs)" using error_bind.simps by metis
       moreover have "... = Success (x#xs)" using error_return_def by metis
       ultimately show ?case by auto
   qed
@@ -101,13 +101,7 @@ begin
 
   lemma length_cons [simp]:
     shows "Byte_sequence.length (Sequence (x#xs)) = 1 + Byte_sequence.length (Sequence xs)"
-  sorry
-
-  lemma Byte_sequence_induct:
-    assumes "\<And>bs. bs = Sequence [] \<Longrightarrow> P bs" and
-      "\<And>bs bs' x xs. bs = Sequence xs \<Longrightarrow> bs' = Sequence (x#xs) \<Longrightarrow> P bs \<Longrightarrow> P bs'"
-    shows "\<And>bs. P bs"
-  sorry
+  by(auto simp add: Byte_sequence.length.simps)
 
   lemma Byte_sequence_length_list_length_interchange [simp]:
     fixes ts :: "byte list"
@@ -141,21 +135,9 @@ begin
     from this show "P (Suc m)" using P1[where x="Suc m"] by auto
   qed
 
-  lemma dropbytes_length_is_failing [simp]:
-    fixes m :: "nat" and bs :: "byte_sequence"
-    assumes "m > length bs"
-    shows "is_failing (dropbytes m bs)"
-  using assms proof(induct m rule: nat_minus_one_induct)
-    assume "Byte_sequence.length bs < 0"
-    obtain ts where *: "is_failing (dropbytes 0 bs) = is_failing (dropbytes 0 (Sequence ts))" by (metis dropbytes_Zero is_failing.simps(2))
-    have "is_failing (dropbytes 0 (Sequence ts))"
-    proof(cases ts)
-      assume "ts = []"
-
   lemma dropbytes_length [simp]:
     fixes m :: "nat" and bs out :: "byte_sequence"
-    assumes "dropbytes m bs = Success out"
-    shows "length bs = length out + m"
+    shows "dropbytes m bs = Success out \<longrightarrow> length bs = length out + m"
   sorry
 
   section {* Helpful lemmas *}
@@ -164,20 +146,160 @@ begin
     fixes e :: "endianness" and u :: "unsigned_char" and bs0 :: "byte_sequence" and bs1 :: "(8 word) list"
     assumes "read_unsigned_char e bs0 = Success (u, Sequence bs1)"
     shows "bs0 = Sequence (u#bs1)"
-  sorry
+  using assms unfolding read_unsigned_char_def proof(cases bs0, clarify)
+    fix xs
+    assume *: "bs0 = Sequence xs"
+    assume **: "read_char (Sequence xs) >>= (\<lambda>(u1, bs1). error_return (id u1, bs1)) = Success (u, Sequence bs1)"
+    show "xs = u#bs1"
+    using * ** by(cases xs, clarify, auto simp add: read_char.simps error_fail_def error_return_def error_bind.simps)
+  qed      
 
   lemma unsigned_char_in_out_roundtrip:
     assumes "bs0 = Sequence (u#bs1)"
     shows "read_unsigned_char e bs0 = Success (u, Sequence bs1)"
-  proof -
-    thm read_unsigned_char_def
-    have "read_unsigned_char e bs0 = read_unsigned_char e (Sequence (u#bs1))" using assms by simp
-    moreover have "... = read_char (Sequence (u#bs1)) >>= (\<lambda>(h, t). error_return (h, t))" using read_unsigned_char_def by auto
-    moreover have "... = Success (u, Sequence bs1) >>= (\<lambda>(h, t). error_return (h, t))" using read_char.simps error_return_def by metis
-    moreover have "... = error_return (u, Sequence bs1)" by simp
-    moreover have "... = Success (u, Sequence bs1)" using error_return_def by metis
-    ultimately show ?thesis by auto
-  qed
+  using assms
+  by(clarify, auto simp add: read_unsigned_char_def read_char.simps error_return_def error_bind.simps)
+
+  lemma dual_of_uint16_uint16_of_dual_inv:
+    fixes u1 u2 :: "8 word"
+    shows "dual_of_uint16 (uint16_of_dual u1 u2) = (u1, u2)"
+  unfolding dual_of_uint16_def uint16_of_dual_def
+    using word_size word_cat_split_size
+  sorry
+
+  lemma elf64_half_out_in_roundtrip:
+    fixes e :: "endianness" and u :: "uint16" and bs0 :: "byte_sequence" and bs bs1 :: "(8 word) list"
+    assumes "read_elf64_half e bs0 = Success (u, Sequence bs1)"
+        and "bytes_of_elf64_half e u = [u1, u2]"
+    shows "bs0 = Sequence ([u2, u1]@bs1)"
+  using assms
+    apply(case_tac e, clarify)
+      apply(case_tac bs0, clarify)
+      apply(case_tac list, clarify)
+      apply(simp only: read_elf64_half.simps)
+      apply(simp only: read_2_bytes_be_def)
+      apply(simp only: read_char.simps)
+      apply(simp only: error_fail_def)
+      apply(simp only: error_bind.simps)
+      apply(simp only: error.simps)
+      apply clarify
+      apply(case_tac lista, clarify)
+      apply(simp only: read_elf64_half.simps)
+      apply(simp only: read_2_bytes_be_def)
+      apply(simp only: read_char.simps)
+      apply(simp only: error_return_def)
+      apply(simp only: error_bind.simps)
+      apply auto
+      apply(simp only: read_char.simps)
+      apply(simp only: error_fail_def)
+      apply(simp only: error_bind.simps)
+      apply(simp only: error.simps)
+      apply(simp only: read_elf64_half.simps)
+      apply(simp only: read_2_bytes_be_def)
+      apply(simp only: read_char.simps)
+      apply(simp only: error_return_def)
+      apply(simp only: error_bind.simps)
+      apply auto
+      apply(simp only: read_char.simps)
+      apply(simp only: error_return_def)
+      apply(simp only: error_bind.simps)
+      apply auto
+      apply(simp only: error_bind.simps)
+      apply auto
+      apply(simp only: bytes_of_elf64_half.simps)
+      apply(simp only: Let_def)
+      apply(simp only: dual_of_uint16_uint16_of_dual_inv)
+      apply auto
+      apply(simp only: read_elf64_half.simps)
+      apply(simp only: read_2_bytes_be_def)
+      apply(simp only: read_char.simps)
+      apply(simp only: error_return_def)
+      apply(simp only: error_bind.simps)
+      apply auto
+      apply(simp only: read_char.simps)
+      apply(simp only: error_return_def)
+      apply(simp only: error_bind.simps)
+      apply auto
+      apply(simp only: error_bind.simps)
+      apply auto
+      apply(simp only: bytes_of_elf64_half.simps)
+      apply(simp only: dual_of_uint16_uint16_of_dual_inv)
+      apply auto
+      apply(simp only: read_elf64_half.simps)
+      apply(simp only: read_2_bytes_be_def)
+      apply(simp only: read_char.simps)
+      apply(simp only: error_return_def)
+      apply(simp only: error_bind.simps)
+      apply auto
+      apply(simp only: read_char.simps)
+      apply(simp only: error_return_def error_bind.simps)
+      apply auto
+      apply(simp only: error_bind.simps)
+      apply auto
+    (* Little case *)
+      apply(case_tac bs0, clarify)
+      apply(case_tac list, clarify)
+      apply(simp only: read_elf64_half.simps)
+      apply(simp only: read_2_bytes_le_def)
+      apply(simp only: read_char.simps)
+      apply(simp only: error_fail_def)
+      apply(simp only: error_bind.simps)
+      apply(simp only: error.simps)
+      apply clarify
+      apply(case_tac lista, clarify)
+      apply(simp only: read_elf64_half.simps)
+      apply(simp only: read_2_bytes_le_def)
+      apply(simp only: read_char.simps)
+      apply(simp only: error_return_def)
+      apply(simp only: error_bind.simps)
+      apply auto
+      apply(simp only: read_char.simps)
+      apply(simp only: error_fail_def)
+      apply(simp only: error_bind.simps)
+      apply(simp only: error.simps)
+      apply(simp only: read_elf64_half.simps)
+      apply(simp only: read_2_bytes_le_def)
+      apply(simp only: read_char.simps)
+      apply(simp only: error_return_def)
+      apply(simp only: error_bind.simps)
+      apply auto
+      apply(simp only: read_char.simps)
+      apply(simp only: error_return_def)
+      apply(simp only: error_bind.simps)
+      apply auto
+      apply(simp only: error_bind.simps)
+      apply auto
+      apply(simp only: bytes_of_elf64_half.simps)
+      apply(simp only: Let_def)
+      apply(simp only: dual_of_uint16_uint16_of_dual_inv)
+      apply auto
+      apply(simp only: read_elf64_half.simps)
+      apply(simp only: read_2_bytes_le_def)
+      apply(simp only: read_char.simps)
+      apply(simp only: error_return_def)
+      apply(simp only: error_bind.simps)
+      apply auto
+      apply(simp only: read_char.simps)
+      apply(simp only: error_return_def)
+      apply(simp only: error_bind.simps)
+      apply auto
+      apply(simp only: error_bind.simps)
+      apply auto
+      apply(simp only: bytes_of_elf64_half.simps)
+      apply(simp only: dual_of_uint16_uint16_of_dual_inv)
+      apply auto
+      apply(simp only: read_elf64_half.simps)
+      apply(simp only: read_2_bytes_le_def)
+      apply(simp only: read_char.simps)
+      apply(simp only: error_return_def)
+      apply(simp only: error_bind.simps)
+      apply auto
+      apply(simp only: read_char.simps)
+      apply(simp only: error_return_def error_bind.simps)
+      apply auto
+      apply(simp only: error_bind.simps)
+      apply auto
+  done
 
   lemma elf64_header_out_in_roundtrip:
     fixes hdr64 :: "elf64_header" and bs :: "byte_sequence"
