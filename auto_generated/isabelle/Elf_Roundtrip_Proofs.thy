@@ -234,6 +234,15 @@ begin
     apply(auto simp add: word_size)
   done
 
+  lemma uint16_of_dual_dual_of_uint16_inv:
+    fixes u1 u2 :: "8 word"
+    assumes *: "dual_of_uint16 w = (u1, u2)"
+    shows "uint16_of_dual u1 u2 = w"
+  using assms unfolding dual_of_uint16_def uint16_of_dual_def
+    apply(rule word_cat_split_alt[rotated])
+    apply(auto simp add: word_size)
+  done
+
   lemma elf64_half_out_in_roundtrip:
     fixes e :: "endianness" and u :: "uint16" and bs0 :: "byte_sequence" and bs bs1 :: "(8 word) list"
     assumes "read_elf64_half e bs0 = Success (u, Sequence bs1)"
@@ -366,6 +375,45 @@ begin
       apply auto
       apply(simp only: error_bind.simps)
       apply auto
+  done
+
+  lemma elf64_half_in_out_roundtrip:
+    fixes e :: "endianness" and u :: "uint16" and bs0 :: "byte_sequence" and bs bs1 :: "(8 word) list"
+    assumes "bytes_of_elf64_half e u = [u2, u1]"
+    shows "read_elf64_half e (Sequence (u1#u2#bs1)) = Success (u, Sequence bs1)"
+  using assms
+    apply(case_tac e, clarify)
+      apply(simp only: read_elf64_half.simps)
+      apply(simp only: read_2_bytes_be_def)
+      apply(simp only: read_char.simps)
+      apply(simp only: error_return_def error_bind.simps)
+      apply auto
+      apply(simp only: read_char.simps)
+      apply(simp only: error_return_def error_bind.simps)
+      apply auto
+      apply(simp only: error_bind.simps)
+      apply auto
+      apply(simp only: bytes_of_elf64_half.simps)
+      apply(simp only: Let_def)
+      apply(case_tac "dual_of_uint16 u", auto)
+      apply(rule uint16_of_dual_dual_of_uint16_inv)
+      apply(simp only: dual_of_uint16_def)
+    (* Little *)
+      apply(simp only: read_elf64_half.simps)
+      apply(simp only: read_2_bytes_le_def)
+      apply(simp only: read_char.simps)
+      apply(simp only: error_return_def error_bind.simps)
+      apply auto
+      apply(simp only: read_char.simps)
+      apply(simp only: error_return_def error_bind.simps)
+      apply auto
+      apply(simp only: error_bind.simps)
+      apply auto
+      apply(simp only: bytes_of_elf64_half.simps)
+      apply(simp only: Let_def)
+      apply(case_tac "dual_of_uint16 u", auto)
+      apply(rule uint16_of_dual_dual_of_uint16_inv)
+      apply(simp only: dual_of_uint16_def)
   done
 
   lemma elf64_header_out_in_roundtrip:
