@@ -5,6 +5,22 @@ imports
   Elf_file
 begin
 
+  section {* Custom induction principles *}
+
+  lemma nat_minus_one_induct:
+    fixes P :: "nat \<Rightarrow> bool" and x :: "nat"
+    assumes P0: "P 0" and P1: "\<And>x. P (x - 1) \<Longrightarrow> P x"
+    shows "P x"
+  proof(induct x rule: nat.induct)
+    show "P 0" using P0 .
+  next
+    fix m :: "nat"
+    assume Pm: "P m"
+    have "P m = P (Suc m - 1)" by auto
+    hence "P (Suc m - 1)" using Pm by auto
+    from this show "P (Suc m)" using P1[where x="Suc m"] by auto
+  qed
+
   section {* Error monad properties *}
 
   fun is_failing :: "'a error \<Rightarrow> bool" where
@@ -42,6 +58,11 @@ begin
     shows "x >>= error_return = x"
   by(cases x, simp_all, auto simp add: error_bind.simps error_return_def)
 
+  lemma error_bind_Success:
+    assumes "f >>= g = Success s"
+    shows "\<exists>x. f = Success x \<and> g x = Success s"
+  using assms by(cases f, clarify, auto simp add: error_bind.simps)
+
   lemma error_bind_compose [simp]:
     shows "(x >>= f) >>= g = x >>= (\<lambda>y. f y >>= g)"
   by(cases x, simp_all, auto simp add: error_bind.simps)
@@ -53,9 +74,35 @@ begin
 
   lemma repeatM_length [simp, rule_format]:
     fixes m :: "nat" and act :: "'a error" and r :: "'a list"
-    assumes "repeatM m act = Success r"
-    shows "List.length r = m"
-  sorry
+    shows "repeatM m act = Success r \<longrightarrow> List.length r = m"
+  proof(induct m arbitrary: r)
+    show "\<And>r. repeatM 0 act = Success r \<longrightarrow> List.length r = 0"
+    proof
+      fix r
+      assume "repeatM 0 act = Success r"
+      hence "error_return [] = Success r" using repeatM.simps by auto
+      hence "Success [] = Success r" using error_return_def by metis
+      hence "[] = r" by simp
+      thus "List.length r = 0" by auto
+    qed
+  next
+    fix x r
+    assume IH: "\<And>r. repeatM x act = Success r \<longrightarrow> List.length r = x"
+    show "repeatM (Suc x) act = Success r \<longrightarrow> List.length r = (Suc x)"
+    proof
+      assume "repeatM (Suc x) act = Success r"
+      hence *: "act >>= (\<lambda>hd. repeatM x act >>= (\<lambda>tl. error_return (hd#tl))) = Success r" using repeatM.simps by auto
+      obtain s :: "'a" where "act = Success s \<and> ((repeatM x act >>= (\<lambda>tl. error_return (s#tl))) = Success r)" using error_bind_Success[OF *] by blast
+      hence **: "act = Success s" and ***: "(repeatM x act >>= (\<lambda>tl. error_return (s#tl))) = Success r" by auto
+      obtain xs where "(repeatM x act = Success xs) \<and> (error_return (s#xs) = Success r)" using error_bind_Success[OF ***] by blast
+      hence ****: "repeatM x act = Success xs" and *****: "error_return (s#xs) = Success r" by auto
+      hence "Success (s#xs) = Success r" using ***** error_return_def by metis
+      hence ******: "s#xs = r" by simp
+      have "\<And>r. repeatM x act = Success r \<Longrightarrow> List.length r = x" using IH by auto
+      hence "List.length xs = x" using **** by auto
+      hence "List.length (s#xs) = Suc x" by auto
+      thus "List.length r = Suc x" using ****** by auto
+  qed
 
   lemma repeatM'_length [simp]:
     fixes m :: "nat" and e :: "'a" and f :: "'a \<Rightarrow> ('b \<times> 'a) error" and r :: "'b list" and rest :: "'a"
@@ -121,20 +168,6 @@ begin
     shows "dropbytes 0 bs = Success bs"
   by(cases bs, auto simp add: dropbytes.simps error_return_def)
 
-  lemma nat_minus_one_induct:
-    fixes P :: "nat \<Rightarrow> bool" and x :: "nat"
-    assumes P0: "P 0" and P1: "\<And>x. P (x - 1) \<Longrightarrow> P x"
-    shows "P x"
-  proof(induct x rule: nat.induct)
-    show "P 0" using P0 .
-  next
-    fix m :: "nat"
-    assume Pm: "P m"
-    have "P m = P (Suc m - 1)" by auto
-    hence "P (Suc m - 1)" using Pm by auto
-    from this show "P (Suc m)" using P1[where x="Suc m"] by auto
-  qed
-
   lemma dropbytes_length [simp]:
     fixes m :: "nat" and bs out :: "byte_sequence"
     shows "dropbytes m bs = Success out \<longrightarrow> length bs = length out + m"
@@ -163,9 +196,7 @@ begin
   lemma dual_of_uint16_uint16_of_dual_inv:
     fixes u1 u2 :: "8 word"
     shows "dual_of_uint16 (uint16_of_dual u1 u2) = (u1, u2)"
-  unfolding dual_of_uint16_def uint16_of_dual_def
-    using word_size word_cat_split_size
-  sorry
+  unfolding dual_of_uint16_def uint16_of_dual_def sorry
 
   lemma elf64_half_out_in_roundtrip:
     fixes e :: "endianness" and u :: "uint16" and bs0 :: "byte_sequence" and bs bs1 :: "(8 word) list"
