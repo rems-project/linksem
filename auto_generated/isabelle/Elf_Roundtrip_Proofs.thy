@@ -229,7 +229,10 @@ begin
   lemma dual_of_uint16_uint16_of_dual_inv:
     fixes u1 u2 :: "8 word"
     shows "dual_of_uint16 (uint16_of_dual u1 u2) = (u1, u2)"
-  unfolding dual_of_uint16_def uint16_of_dual_def sorry
+  unfolding dual_of_uint16_def uint16_of_dual_def
+    apply(rule word_split_cat_alt[OF refl])
+    apply(auto simp add: word_size)
+  done
 
   lemma elf64_half_out_in_roundtrip:
     fixes e :: "endianness" and u :: "uint16" and bs0 :: "byte_sequence" and bs bs1 :: "(8 word) list"
@@ -368,7 +371,16 @@ begin
   lemma elf64_header_out_in_roundtrip:
     fixes hdr64 :: "elf64_header" and bs :: "byte_sequence"
     shows "read_elf64_header (bytes_of_elf64_header hdr64) = Success (hdr64, bs)"
-  sorry
+  apply(case_tac hdr64, clarify)
+  apply(simp only: bytes_of_elf64_header_def)
+  apply(simp only: deduce_endianness_def)
+  apply auto
+  apply(case_tac "Elf_Types_Local.index elf64_ident 5")
+  apply auto
+  apply(simp only: from_byte_lists_def)
+  apply(simp only: List.concat.simps)
+  apply(simp only: read_elf64_header_def)
+  apply(simp only: ei_nident_def)
 
   section {* The main roundtripping theorems *}
 
