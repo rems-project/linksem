@@ -1,0 +1,628 @@
+%type <etree> exp opt_exp_with_type mustbe_exp opt_at phdr_type phdr_val
+%type <etree> opt_exp_without_type opt_subalign opt_align
+%type <fill> fill_opt fill_exp
+%type <name_list> exclude_name_list
+%type <wildcard_list> file_NAME_list
+%type <flag_info_list> sect_flag_list
+%type <flag_info> sect_flags
+%type <name> memspec_opt casesymlist
+%type <name> memspec_at_opt
+%type <cname> wildcard_name
+%type <wildcard> wildcard_spec
+%token <bigint> INT
+%token <name> NAME LNAME
+%type <integer> length
+%type <phdr> phdr_qualifiers
+%type <nocrossref> nocrossref_list
+%type <section_phdr> phdr_opt
+%type <integer> opt_nocrossrefs
+%right <token> PLUSEQ MINUSEQ MULTEQ DIVEQ  '=' LSHIFTEQ RSHIFTEQ   ANDEQ OREQ
+%right <token> '?' ':'
+%left <token> OROR
+%left <token>  ANDAND
+%left <token> '|'
+%left <token>  '^'
+%left  <token> '&'
+%left <token>  EQ NE
+%left  <token> '<' '>' LE GE
+%left  <token> LSHIFT RSHIFT
+%left  <token> '+' '-'
+%left  <token> '*' '/' '%'
+%right UNARY
+%token END
+%left <token> '('
+%token <token> ALIGN_K BLOCK BIND QUAD SQUAD LONG SHORT BYTE
+%token SECTIONS PHDRS INSERT_K AFTER BEFORE
+%token DATA_SEGMENT_ALIGN DATA_SEGMENT_RELRO_END DATA_SEGMENT_END
+%token SORT_BY_NAME SORT_BY_ALIGNMENT SORT_NONE
+%token SORT_BY_INIT_PRIORITY
+%token '{' '}'
+%token SIZEOF_HEADERS OUTPUT_FORMAT FORCE_COMMON_ALLOCATION OUTPUT_ARCH
+%token INHIBIT_COMMON_ALLOCATION
+%token SEGMENT_START
+%token INCLUDE
+%token MEMORY
+%token REGION_ALIAS
+%token LD_FEATURE
+%token NOLOAD DSECT COPY INFO OVERLAY
+%token DEFINED TARGET_K SEARCH_DIR MAP ENTRY
+%token <integer> NEXT
+%token SIZEOF ALIGNOF ADDR LOADADDR MAX_K MIN_K
+%token STARTUP HLL SYSLIB FLOAT NOFLOAT NOCROSSREFS
+%token ORIGIN FILL
+%token LENGTH CREATE_OBJECT_SYMBOLS INPUT GROUP OUTPUT CONSTRUCTORS
+%token ALIGNMOD AT SUBALIGN HIDDEN PROVIDE PROVIDE_HIDDEN AS_NEEDED
+%type <token> assign_op atype attributes_opt sect_constraint opt_align_with_input
+%type <name>  filename
+%token CHIP LIST SECT ABSOLUTE  LOAD NEWLINE ENDWORD ORDER NAMEWORD ASSERT_K
+%token LOG2CEIL FORMAT PUBLIC DEFSYMEND BASE ALIAS TRUNCATE REL
+%token INPUT_SCRIPT INPUT_MRI_SCRIPT INPUT_DEFSYM CASE EXTERN START
+%token <name> VERS_TAG VERS_IDENTIFIER
+%token GLOBAL LOCAL VERSIONK INPUT_VERSION_SCRIPT
+%token KEEP ONLY_IF_RO ONLY_IF_RW SPECIAL INPUT_SECTION_FLAGS ALIGN_WITH_INPUT
+%token EXCLUDE_FILE
+%token CONSTANT
+%type <versyms> vers_defns
+%type <versnode> vers_tag
+%type <deflist> verdep
+%token INPUT_DYNAMIC_LIST
+file:
+		INPUT_SCRIPT script_file
+	|	INPUT_MRI_SCRIPT mri_script_file
+	|	INPUT_VERSION_SCRIPT version_script_file
+	|	INPUT_DYNAMIC_LIST dynamic_list_file
+	|	INPUT_DEFSYM defsym_expr
+	;
+filename:  NAME;
+defsym_expr:
+		NAME '=' exp
+	;
+/* SYNTAX WITHIN AN MRI SCRIPT FILE */
+mri_script_file:
+	     mri_script_lines
+	;
+mri_script_lines:
+		mri_script_lines mri_script_command NEWLINE
+          |
+	;
+mri_script_command:
+		CHIP  exp
+	|	CHIP  exp ',' exp
+	|	NAME 	
+	|	LIST  	
+        |       ORDER ordernamelist
+	|       ENDWORD
+        |       PUBLIC NAME '=' exp
+        |       PUBLIC NAME ',' exp
+        |       PUBLIC NAME  exp
+	| 	FORMAT NAME
+	|	SECT NAME ',' exp
+	|	SECT NAME  exp
+	|	SECT NAME '=' exp
+	|	ALIGN_K NAME '=' exp
+	|	ALIGN_K NAME ',' exp
+	|	ALIGNMOD NAME '=' exp
+	|	ALIGNMOD NAME ',' exp
+	|	ABSOLUTE mri_abs_name_list
+	|	LOAD	 mri_load_name_list
+	|       NAMEWORD NAME
+	|	ALIAS NAME ',' NAME
+	|	ALIAS NAME ',' INT
+	|	BASE     exp
+	|	TRUNCATE INT
+	|	CASE casesymlist
+	|	EXTERN extern_name_list
+	|	INCLUDE filename
+		mri_script_lines END
+	|	START NAME
+        |
+	;
+ordernamelist:
+	      ordernamelist ',' NAME         
+	|     ordernamelist  NAME         
+      	|
+	;
+mri_load_name_list:
+		NAME
+	|	mri_load_name_list ',' NAME 
+	;
+mri_abs_name_list:
+ 		NAME
+	|	mri_abs_name_list ','  NAME
+	;
+casesymlist:
+	  /* empty */ 
+	| NAME
+	| casesymlist ',' NAME
+	;
+/* Parsed as expressions so that commas separate entries */
+extern_name_list:
+	extern_name_list_body
+extern_name_list_body:
+	  NAME
+	| extern_name_list_body NAME
+	| extern_name_list_body ',' NAME
+	;
+script_file:
+	ifile_list
+        ;
+ifile_list:
+	ifile_list ifile_p1
+        |
+	;
+ifile_p1:
+		memory
+	|	sections
+	|	phdrs
+	|	startup
+	|	high_level_library
+	|	low_level_library
+	|	floating_point_support
+	|	statement_anywhere
+	|	version
+        |	 ';'
+	|	TARGET_K '(' NAME ')'
+	|	SEARCH_DIR '(' filename ')'
+	|	OUTPUT '(' filename ')'
+        |	OUTPUT_FORMAT '(' NAME ')'
+	|	OUTPUT_FORMAT '(' NAME ',' NAME ',' NAME ')'
+        |	OUTPUT_ARCH '(' NAME ')'
+	|	FORCE_COMMON_ALLOCATION
+	|	INHIBIT_COMMON_ALLOCATION
+	|	INPUT '(' input_list ')'
+	|	GROUP
+		    '(' input_list ')'
+     	|	MAP '(' filename ')'
+	|	INCLUDE filename
+		ifile_list END
+	|	NOCROSSREFS '(' nocrossref_list ')'
+	|	EXTERN '(' extern_name_list ')'
+	|	INSERT_K AFTER NAME
+	|	INSERT_K BEFORE NAME
+	|	REGION_ALIAS '(' NAME ',' NAME ')'
+	|	LD_FEATURE '(' NAME ')'
+	;
+input_list:
+		input_list1
+input_list1:
+		NAME
+	|	input_list1 ',' NAME
+	|	input_list1 NAME
+	|	LNAME
+	|	input_list1 ',' LNAME
+	|	input_list1 LNAME
+	|	AS_NEEDED '('
+		     input_list1 ')'
+	|	input_list1 ',' AS_NEEDED '('
+		     input_list1 ')'
+	|	input_list1 AS_NEEDED '('
+		     input_list1 ')'
+	;
+sections:
+		SECTIONS '{' sec_or_group_p1 '}'
+	;
+sec_or_group_p1:
+		sec_or_group_p1 section
+	|	sec_or_group_p1 statement_anywhere
+	|
+	;
+statement_anywhere:
+		ENTRY '(' NAME ')'
+	|	assignment end
+	|	ASSERT_K   '(' exp ',' NAME ')'
+	;
+/* The '*' and '?' cases are there because the lexer returns them as
+   separate tokens rather than as NAME.  */
+wildcard_name:
+		NAME
+	|	'*'
+	|	'?'
+	;
+wildcard_spec:
+		wildcard_name
+	| 	EXCLUDE_FILE '(' exclude_name_list ')' wildcard_name
+	|	SORT_BY_NAME '(' wildcard_name ')'
+	|	SORT_BY_ALIGNMENT '(' wildcard_name ')'
+	|	SORT_NONE '(' wildcard_name ')'
+	|	SORT_BY_NAME '(' SORT_BY_ALIGNMENT '(' wildcard_name ')' ')'
+	|	SORT_BY_NAME '(' SORT_BY_NAME '(' wildcard_name ')' ')'
+	|	SORT_BY_ALIGNMENT '(' SORT_BY_NAME '(' wildcard_name ')' ')'
+	|	SORT_BY_ALIGNMENT '(' SORT_BY_ALIGNMENT '(' wildcard_name ')' ')'
+	|	SORT_BY_NAME '(' EXCLUDE_FILE '(' exclude_name_list ')' wildcard_name ')'
+	|	SORT_BY_INIT_PRIORITY '(' wildcard_name ')'
+	;
+sect_flag_list:	NAME
+			  else
+			  n->valid = FALSE;
+			  n->next = NULL;
+			  $$ = n;
+	|	sect_flag_list '&' NAME
+			  else
+			  n->valid = FALSE;
+			  n->next = $1;
+			  $$ = n;
+	;
+sect_flags:
+		INPUT_SECTION_FLAGS '(' sect_flag_list ')'
+	;
+exclude_name_list:
+		exclude_name_list wildcard_name
+	|
+		wildcard_name
+	;
+file_NAME_list:
+		file_NAME_list opt_comma wildcard_spec
+	|
+		wildcard_spec
+	;
+input_section_spec_no_keep:
+		NAME
+	|	sect_flags NAME
+        |	'[' file_NAME_list ']'
+        |	sect_flags '[' file_NAME_list ']'
+	|	wildcard_spec '(' file_NAME_list ')'
+	|	sect_flags wildcard_spec '(' file_NAME_list ')'
+	;
+input_section_spec:
+		input_section_spec_no_keep
+	|	KEEP '('
+		input_section_spec_no_keep ')'
+	;
+statement:
+	  	assignment end
+	|	CREATE_OBJECT_SYMBOLS
+        |	';'
+        |	CONSTRUCTORS
+	| SORT_BY_NAME '(' CONSTRUCTORS ')'
+	| input_section_spec
+        | length '(' mustbe_exp ')'
+	| FILL '(' fill_exp ')'
+	| ASSERT_K   '(' exp ',' NAME ')' end
+	| INCLUDE filename
+		statement_list_opt END
+	;
+statement_list:
+		statement_list statement
+  	|  	statement
+	;
+statement_list_opt:
+		/* empty */
+	|	statement_list
+	;
+length:
+		QUAD
+	|	SQUAD
+	|	LONG
+	| 	SHORT
+	|	BYTE
+	;
+fill_exp:
+	mustbe_exp
+	;
+fill_opt:
+	  '=' fill_exp
+	| 	
+	;
+assign_op:
+		PLUSEQ
+	|	MINUSEQ
+	| 	MULTEQ
+	| 	DIVEQ
+	| 	LSHIFTEQ
+	| 	RSHIFTEQ
+	| 	ANDEQ
+	| 	OREQ
+	;
+end:	';' | ','
+	;
+assignment:
+		NAME '=' mustbe_exp
+	|	NAME assign_op mustbe_exp
+	|	HIDDEN '(' NAME '=' mustbe_exp ')'
+	|	PROVIDE '(' NAME '=' mustbe_exp ')'
+	|	PROVIDE_HIDDEN '(' NAME '=' mustbe_exp ')'
+	;
+opt_comma:
+		','	|	;
+memory:
+		MEMORY '{' memory_spec_list_opt '}'
+	;
+memory_spec_list_opt: memory_spec_list | ;
+memory_spec_list:
+		memory_spec_list opt_comma memory_spec
+	|	memory_spec
+	;
+memory_spec: 	NAME
+		attributes_opt ':'
+		origin_spec opt_comma length_spec
+	|	INCLUDE filename
+		memory_spec_list_opt END
+	;
+origin_spec:
+	ORIGIN '=' mustbe_exp
+	;
+length_spec:
+             LENGTH '=' mustbe_exp
+	;
+attributes_opt:
+		/* empty */
+	|	'(' attributes_list ')'
+	;
+attributes_list:
+		attributes_string
+	|	attributes_list attributes_string
+	;
+attributes_string:
+		NAME
+	|	'!' NAME
+	;
+startup:
+	STARTUP '(' filename ')'
+	;
+high_level_library:
+		HLL '(' high_level_library_NAME_list ')'
+	|	HLL '(' ')'
+	;
+high_level_library_NAME_list:
+		high_level_library_NAME_list opt_comma filename
+	|	filename
+	;
+low_level_library:
+	SYSLIB '(' low_level_library_NAME_list ')'
+	; low_level_library_NAME_list:
+		low_level_library_NAME_list opt_comma filename
+	|
+	;
+floating_point_support:
+		FLOAT
+	|	NOFLOAT
+	;
+nocrossref_list:
+		/* empty */
+	|	NAME nocrossref_list
+	|	NAME ',' nocrossref_list
+	;
+mustbe_exp:		 
+		exp
+	;
+exp	:
+		'-' exp %prec UNARY
+	|	'(' exp ')'
+	|	NEXT '(' exp ')' %prec UNARY
+	|	'!' exp %prec UNARY
+	|	'+' exp %prec UNARY
+	|	'~' exp %prec UNARY
+	|	exp '*' exp
+	|	exp '/' exp
+	|	exp '%' exp
+	|	exp '+' exp
+	|	exp '-' exp
+	|	exp LSHIFT exp
+	|	exp RSHIFT exp
+	|	exp EQ exp
+	|	exp NE exp
+	|	exp LE exp
+  	|	exp GE exp
+	|	exp '<' exp
+	|	exp '>' exp
+	|	exp '&' exp
+	|	exp '^' exp
+	|	exp '|' exp
+	|	exp '?' exp ':' exp
+	|	exp ANDAND exp
+	|	exp OROR exp
+	|	DEFINED '(' NAME ')'
+	|	INT
+        |	SIZEOF_HEADERS
+	|	ALIGNOF '(' NAME ')'
+	|	SIZEOF '(' NAME ')'
+	|	ADDR '(' NAME ')'
+	|	LOADADDR '(' NAME ')'
+	|	CONSTANT '(' NAME ')'
+	|	ABSOLUTE '(' exp ')'
+	|	ALIGN_K '(' exp ')'
+	|	ALIGN_K '(' exp ',' exp ')'
+	|	DATA_SEGMENT_ALIGN '(' exp ',' exp ')'
+	|	DATA_SEGMENT_RELRO_END '(' exp ',' exp ')'
+	|	DATA_SEGMENT_END '(' exp ')'
+        |       SEGMENT_START '(' NAME ',' exp ')'
+	|	BLOCK '(' exp ')'
+	|	NAME
+	|	MAX_K '(' exp ',' exp ')'
+	|	MIN_K '(' exp ',' exp ')'
+	|	ASSERT_K '(' exp ',' NAME ')'
+	|	ORIGIN '(' NAME ')'
+	|	LENGTH '(' NAME ')'
+	|	LOG2CEIL '(' exp ')'
+	;
+memspec_at_opt:
+                AT '>' NAME 
+        |       
+        ;
+opt_at:
+		AT '(' exp ')' 
+	|	
+	;
+opt_align:
+		ALIGN_K '(' exp ')' 
+	|	
+	;
+opt_align_with_input:
+		ALIGN_WITH_INPUT 
+	|	
+	;
+opt_subalign:
+		SUBALIGN '(' exp ')' 
+	|	
+	;
+sect_constraint:
+		ONLY_IF_RO 
+	|	ONLY_IF_RW 
+	|	SPECIAL 
+	|	
+	;
+section:	NAME 		
+		opt_exp_with_type
+		opt_at
+		opt_align
+		opt_align_with_input
+		opt_subalign	
+		sect_constraint
+		statement_list_opt
+		memspec_opt memspec_at_opt phdr_opt fill_opt
+		opt_comma
+	|	OVERLAY
+		opt_exp_without_type opt_nocrossrefs opt_at opt_subalign
+		overlay_section
+		memspec_opt memspec_at_opt phdr_opt fill_opt
+		opt_comma
+	|	/* The GROUP case is just enough to support the gcc
+		   svr3.ifile script.  It is not intended to be full
+		   support.  I'm not even sure what GROUP is supposed
+		   to mean.  */
+		GROUP 
+		opt_exp_with_type
+		'{' sec_or_group_p1 '}'
+	|	INCLUDE filename
+		sec_or_group_p1 END
+	;
+type:
+	   NOLOAD  
+	|  DSECT   
+	|  COPY    
+	|  INFO    
+	|  OVERLAY 
+	;
+atype:
+	 	'(' type ')'
+  	| 	/* EMPTY */ 
+  	| 	'(' ')' 
+	;
+opt_exp_with_type:
+		exp atype ':'		
+	|	atype ':'		
+	|	/* The BIND cases are to support the gcc svr3.ifile
+		   script.  They aren't intended to implement full
+		   support for the BIND keyword.  I'm not even sure
+		   what BIND is supposed to mean.  */
+		BIND '(' exp ')' atype ':' 
+	|	BIND '(' exp ')' BLOCK '(' exp ')' atype ':'
+	;
+opt_exp_without_type:
+		exp ':'		
+	|	':'		
+	;
+opt_nocrossrefs:
+		/* empty */
+	|	NOCROSSREFS
+	;
+memspec_opt:
+		'>' NAME
+	|	
+	;
+phdr_opt:
+		/* empty */
+	|	phdr_opt ':' NAME
+	;
+overlay_section:
+		/* empty */
+	|	overlay_section
+		NAME
+		'{' statement_list_opt '}'
+		phdr_opt fill_opt
+		opt_comma
+	;
+phdrs:
+		PHDRS '{' phdr_list '}'
+	;
+phdr_list:
+		/* empty */
+	|	phdr_list phdr
+	;
+phdr:
+		NAME 
+		  phdr_type phdr_qualifiers 
+		  ';'
+	;
+phdr_type:
+		exp
+		;
+		      s = $1->name.name;
+		      for (i = 0;
+			   i < sizeof phdr_types / sizeof phdr_types[0];
+			if (strcmp (s, phdr_types[i]) == 0)
+		      if (i == sizeof phdr_types / sizeof phdr_types[0])
+	;
+phdr_qualifiers:
+		/* empty */
+	|	NAME phdr_val phdr_qualifiers
+	|	AT '(' exp ')' phdr_qualifiers
+	;
+phdr_val:
+		/* empty */
+	| '(' exp ')'
+	;
+dynamic_list_file:
+		dynamic_list_nodes
+	;
+dynamic_list_nodes:
+		dynamic_list_node
+	|	dynamic_list_nodes dynamic_list_node
+	;
+dynamic_list_node:
+		'{' dynamic_list_tag '}' ';'
+	;
+dynamic_list_tag:
+		vers_defns ';'
+	;
+/* This syntax is used within an external version script file.  */
+version_script_file:
+		vers_nodes
+	;
+/* This is used within a normal linker script file.  */
+version:
+		VERSIONK '{' vers_nodes '}'
+	;
+vers_nodes:
+		vers_node
+	|	vers_nodes vers_node
+	;
+vers_node:
+		'{' vers_tag '}' ';'
+	|	VERS_TAG '{' vers_tag '}' ';'
+	|	VERS_TAG '{' vers_tag '}' verdep ';'
+	;
+verdep:
+		VERS_TAG
+	|	verdep VERS_TAG
+	;
+vers_tag:
+		/* empty */
+	|	vers_defns ';'
+	|	GLOBAL ':' vers_defns ';'
+	|	LOCAL ':' vers_defns ';'
+	|	GLOBAL ':' vers_defns ';' LOCAL ':' vers_defns ';'
+	;
+vers_defns:
+		VERS_IDENTIFIER
+        |       NAME
+	|	vers_defns ';' VERS_IDENTIFIER
+	|	vers_defns ';' NAME
+	|	vers_defns ';' EXTERN NAME '{'
+		vers_defns opt_semicolon '}'
+	|	EXTERN NAME '{'
+		vers_defns opt_semicolon '}'
+	|	GLOBAL
+	|	vers_defns ';' GLOBAL
+	|	LOCAL
+	|	vers_defns ';' LOCAL
+	|	EXTERN
+	|	vers_defns ';' EXTERN
+	;
+opt_semicolon:
+		/* empty */
+	|	';'
+	;
+void
+yyerror(arg)
+     const char *arg;
