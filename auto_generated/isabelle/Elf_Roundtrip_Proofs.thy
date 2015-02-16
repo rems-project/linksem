@@ -145,9 +145,35 @@ begin
   
   lemma mapM_length [simp]:
     fixes f :: "'a \<Rightarrow> 'b error" and i :: "'a list" and r :: "'b list"
-    assumes "mapM f i = Success r"
-    shows "List.length r = List.length i"
-  sorry
+    shows "mapM f i = Success r \<longrightarrow> List.length i = List.length r"
+  proof(induct i arbitrary: r)
+    fix r
+    show "mapM f [] = Success r \<longrightarrow> List.length [] = List.length r"
+    proof
+      assume "mapM f [] = Success r"
+      hence "error_return [] = Success r" using mapM.simps by auto
+      hence "Success [] = Success r" using error_return_def by metis
+      hence "[] = r" using error.simps by auto
+      thus "List.length [] = List.length r" by auto
+    qed
+  next
+    fix x xs r
+    assume IH: "(\<And>r. mapM f xs = Success r \<longrightarrow> List.length xs = List.length r)"
+    show "mapM f (x#xs) = Success r \<longrightarrow> List.length (x#xs) = List.length r"
+    proof
+      assume "mapM f (x#xs) = Success r"
+      hence "f x >>= (\<lambda>hd. mapM f xs >>= (\<lambda>tl. error_return (hd#tl))) = Success r" using mapM.simps by auto
+      from this obtain hd' where "f x = Success hd' \<and> ((mapM f xs >>= (\<lambda>tl. error_return (hd'#tl))) = Success r)" using error_bind_Success by fastforce
+      hence "f x = Success hd'" and "mapM f xs >>= (\<lambda>tl. error_return (hd'#tl)) = Success r" by auto
+      from this obtain tl' where "(mapM f xs = Success tl') \<and> (error_return (hd'#tl') = Success r)" using error_bind_Success by fastforce
+      hence *: "mapM f xs = Success tl'" and "error_return (hd'#tl') = Success r" by auto
+      hence "Success (hd'#tl') = Success r" using error_return_def by metis
+      hence **: "hd'#tl' = r" by auto
+      also have "List.length xs = List.length tl'" using IH[rule_format, OF *] by auto
+      hence "List.length (x#xs) = List.length (hd'#tl')" by auto
+      thus "List.length (x#xs) = List.length r" using ** by auto
+    qed
+  qed
 
   lemma mapM_error_return [simp]:
     fixes i :: "'a list"
