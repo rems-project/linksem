@@ -297,14 +297,15 @@ begin
   lemma quad_of_uint32_uint32_of_quad_inv:
     fixes u1 u2 u3 u4 :: "8 word"
     shows "quad_of_uint32 (uint32_of_quad u1 u2 u3 u4) = (u1, u2, u3, u4)"
-  unfolding quad_of_uint32_def uint32_of_quad_def
+    apply(unfold uint32_of_quad_def)
     apply(simp only: Let_def)
-    apply(case_tac "word_split (word_cat (word_cat u1 u2) (word_cat u3 u4))")
-    apply(erule forw_subst, auto)
-    apply(case_tac "word_split a")
-    apply(rule back_subst)
-    apply(rule word_split_cat_alt[OF refl])
-    apply(auto simp add: word_size)
+    apply(unfold quad_of_uint32_def)
+    apply(subst word_split_cat_alt, auto)
+    apply(simp add: word_size)
+    apply(subst word_split_cat_alt, auto)
+    apply(simp add: word_size)
+    apply(subst word_split_cat_alt, auto)
+    apply(simp add: word_size)
   done
 
   lemma uint16_of_dual_dual_of_uint16_inv:
@@ -489,6 +490,7 @@ begin
       apply(simp only: Let_def)
       apply(simp only: quad_of_uint32_def)
       apply(simp only: Let_def)
+      apply(case_tac "word_split (word_cat (word_cat ac ab) (word_cat aa a))")
 
   lemma elf64_half_in_out_roundtrip:
     fixes e :: "endianness" and u :: "uint16" and bs0 :: "byte_sequence" and bs bs1 :: "(8 word) list"
