@@ -317,11 +317,38 @@ begin
     apply(auto simp add: word_size)
   done
 
+  lemma uint32_of_quad_quad_of_uint32_inv:
+    fixes u1 u2 u3 u4 :: "8 word"
+    assumes *: "quad_of_uint32 w = (u1, u2, u3, u4)"
+    shows "uint32_of_quad u1 u2 u3 u4 = w"
+  using assms unfolding quad_of_uint32_def uint32_of_quad_def
+    apply(simp only: Let_def)
+    apply(subst word_cat_split_alt[where w="w"])
+    apply(auto simp add: word_size)
+    apply(case_tac "word_split w")
+    apply rotate_tac
+    apply(frule forw_subst, auto)
+    apply(subst word_cat_split_alt)
+    apply(auto simp add: word_size)
+    apply(thin_tac "word_split w = (a,b)")
+    apply(subst word_split_cat_alt, auto simp add: word_size)
+    apply(subst word_cat_split_alt)
+    apply(auto simp add: word_size)
+    apply(simp add: split_def)
+    apply auto
+    apply(thin_tac "word_split w = (a,b)")
+    apply(simp add: split_def)
+    apply(rule sym)
+    apply(rule word_cat_split_alt)
+    apply(simp add: word_size)
+    apply auto
+  done
+
   lemma elf64_half_out_in_roundtrip:
     fixes e :: "endianness" and u :: "uint16" and bs0 :: "byte_sequence" and bs bs1 :: "(8 word) list"
     assumes "read_elf64_half e bs0 = Success (u, Sequence bs1)"
         and "bytes_of_elf64_half e u = [u1, u2]"
-    shows "bs0 = Sequence ([u2, u1]@bs1)"
+    shows "bs0 = Sequence ([u1, u2]@bs1)"
   using assms
     apply(case_tac e, clarify)
       apply(case_tac bs0, clarify)
@@ -455,42 +482,93 @@ begin
     fixes e :: "endianness" and u :: "uint32" and bs0 :: "byte_sequence" and bs bs1 :: "(8 word) list"
     assumes "read_elf64_word e bs0 = Success (u, Sequence bs1)"
         and "bytes_of_elf64_word e u = [u1, u2, u3, u4]"
-    shows "bs0 = Sequence ([u4, u3, u2, u1]@bs1)"
+    shows "bs0 = Sequence ([u1, u2, u3, u4]@bs1)"
   using assms
     apply(case_tac e, clarify)
-    apply(case_tac bs0, clarify)
-    apply(case_tac list, clarify)
-      apply(simp only: read_elf64_word.simps)
-      apply(simp only: read_4_bytes_be_def)
-      apply(simp only: read_char.simps)
-      apply(auto simp add: error_bind.simps error_fail_def)
-      apply(simp only: read_elf64_word.simps)
-      apply(simp only: read_4_bytes_be_def)
-      apply(simp only: read_char.simps)
-      apply(auto simp add: error_bind.simps error_fail_def)
+      apply(case_tac bs0, clarify)
+      apply(case_tac list, clarify)
+      apply(simp only: read_elf64_word.simps read_4_bytes_be_def)
+      apply(simp only: read_char.simps error_fail_def error_bind.simps)
+      apply(simp only: error.simps)
+      apply clarify
+      apply(simp only: read_elf64_word.simps read_4_bytes_be_def)
+      apply(simp only: read_char.simps error_return_def error_bind.simps)
       apply(case_tac "lista", clarify)
-      apply(simp only: read_char.simps)
-      apply(auto simp add: error_bind.simps error_fail_def)
-      apply(simp only: read_char.simps)
-      apply(auto simp add: error_bind.simps error_return_def)
-      apply(case_tac "list", clarify)
-      apply(simp only: read_char.simps)
-      apply(auto simp add: error_bind.simps error_fail_def)
-      apply(simp only: read_char.simps)
-      apply(auto simp add: error_bind.simps error_return_def)
-      apply(case_tac "lista", clarify)
-      apply(simp only: read_char.simps)
-      apply(auto simp add: error_bind.simps error_fail_def)
-      apply(simp only: read_char.simps)
-      apply(auto simp add: error_bind.simps error_return_def)
-      (* UNDEFINED *)
-      apply(simp only: uint32_of_quad_def)
-      apply(simp only: Let_def)
+      apply(simp only: read_char.simps error_fail_def error_bind.simps)
+      apply(simp only: error.simps)
+      apply clarify
+      apply(simp only: read_char.simps error_return_def error_bind.simps)
+      apply(case_tac "listb", clarify)
+      apply(simp only: read_char.simps error_fail_def error_bind.simps)
+      apply(simp only: error.simps)
+      apply clarify
+      apply(simp only: read_char.simps error_return_def error_bind.simps)
+      apply(case_tac "listc", clarify)
+      apply(simp only: read_char.simps error_fail_def error_bind.simps)
+      apply(simp only: error.simps)
+      apply clarify
+      apply(simp only: read_char.simps error_return_def error_bind.simps)
+      apply(simp only: split_def)
+      apply(auto simp add: error_bind.simps)
       apply(simp only: bytes_of_elf64_word.simps)
-      apply(simp only: Let_def)
-      apply(simp only: quad_of_uint32_def)
-      apply(simp only: Let_def)
-      apply(case_tac "word_split (word_cat (word_cat ac ab) (word_cat aa a))")
+      apply(simp only: quad_of_uint32_uint32_of_quad_inv)
+      apply(simp only: Let_def split_def)
+      apply auto
+      apply(simp only: bytes_of_elf64_word.simps)
+      apply(simp only: quad_of_uint32_uint32_of_quad_inv)
+      apply(simp only: Let_def split_def)
+      apply auto
+      apply(simp only: bytes_of_elf64_word.simps)
+      apply(simp only: quad_of_uint32_uint32_of_quad_inv)
+      apply(simp only: Let_def split_def)
+      apply auto
+      apply(simp only: bytes_of_elf64_word.simps)
+      apply(simp only: quad_of_uint32_uint32_of_quad_inv)
+      apply(simp only: Let_def split_def)
+      apply auto
+    (* Little case *)
+      apply(case_tac bs0, clarify)
+      apply(case_tac list, clarify)
+      apply(simp only: read_elf64_word.simps read_4_bytes_le_def)
+      apply(simp only: read_char.simps error_fail_def error_bind.simps)
+      apply(simp only: error.simps)
+      apply clarify
+      apply(simp only: read_elf64_word.simps read_4_bytes_le_def)
+      apply(simp only: read_char.simps error_return_def error_bind.simps)
+      apply(case_tac "lista", clarify)
+      apply(simp only: read_char.simps error_fail_def error_bind.simps)
+      apply(simp only: error.simps)
+      apply clarify
+      apply(simp only: read_char.simps error_return_def error_bind.simps)
+      apply(case_tac "listb", clarify)
+      apply(simp only: read_char.simps error_fail_def error_bind.simps)
+      apply(simp only: error.simps)
+      apply clarify
+      apply(simp only: read_char.simps error_return_def error_bind.simps)
+      apply(case_tac "listc", clarify)
+      apply(simp only: read_char.simps error_fail_def error_bind.simps)
+      apply(simp only: error.simps)
+      apply clarify
+      apply(simp only: read_char.simps error_return_def error_bind.simps)
+      apply(simp only: split_def)
+      apply(auto simp add: error_bind.simps)
+      apply(simp only: bytes_of_elf64_word.simps)
+      apply(simp only: quad_of_uint32_uint32_of_quad_inv)
+      apply(simp only: Let_def split_def)
+      apply auto
+      apply(simp only: bytes_of_elf64_word.simps)
+      apply(simp only: quad_of_uint32_uint32_of_quad_inv)
+      apply(simp only: Let_def split_def)
+      apply auto
+      apply(simp only: bytes_of_elf64_word.simps)
+      apply(simp only: quad_of_uint32_uint32_of_quad_inv)
+      apply(simp only: Let_def split_def)
+      apply auto
+      apply(simp only: bytes_of_elf64_word.simps)
+      apply(simp only: quad_of_uint32_uint32_of_quad_inv)
+      apply(simp only: Let_def split_def)
+      apply auto
+  done
 
   lemma elf64_half_in_out_roundtrip:
     fixes e :: "endianness" and u :: "uint16" and bs0 :: "byte_sequence" and bs bs1 :: "(8 word) list"

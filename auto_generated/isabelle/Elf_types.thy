@@ -244,10 +244,10 @@ declare read_elf64_half.simps [simp del]
 fun bytes_of_elf64_half  :: " endianness \<Rightarrow> uint16 \<Rightarrow>( 8 word)list "  where 
      " bytes_of_elf64_half Big w = (
       (let (b0, b1) = (Elf_Types_Local.dual_of_uint16 w) in
-        [b0, b1]))"
+        [b1, b0]))"
 |" bytes_of_elf64_half Little w = (
       (let (b0, b1) = (Elf_Types_Local.dual_of_uint16 w) in
-        [b1, b0]))" 
+        [b0, b1]))" 
 declare bytes_of_elf64_half.simps [simp del]
 
 
