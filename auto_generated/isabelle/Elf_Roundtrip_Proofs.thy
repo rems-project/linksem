@@ -609,6 +609,43 @@ begin
       apply(simp only: dual_of_uint16_def)
   done
 
+  lemma elf64_word_in_out_roundtrip:
+    fixes e :: "endianness" and u :: "uint32" and bs0 :: "byte_sequence" and bs bs1 :: "(8 word) list"
+    assumes "bytes_of_elf64_word e u = [u1, u2, u3, u4]"
+    shows "read_elf64_word e (Sequence (u1#u2#u3#u4#bs1)) = Success (u, Sequence bs1)"
+  using assms
+    apply(case_tac e, clarify)
+    apply(simp only: read_elf64_word.simps)
+    apply(simp only: read_4_bytes_be_def)
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply auto
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply auto
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply auto
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply auto
+    apply(simp only: error_bind.simps)
+    apply auto
+    apply(simp only: bytes_of_elf64_word.simps Let_def split_def)
+    apply(auto simp add: uint32_of_quad_quad_of_uint32_inv)
+  (* Little case *)
+    apply(simp only: read_elf64_word.simps)
+    apply(simp only: read_4_bytes_le_def)
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply auto
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply auto
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply auto
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply auto
+    apply(simp only: error_bind.simps)
+    apply auto
+    apply(simp only: bytes_of_elf64_word.simps Let_def split_def)
+    apply(auto simp add: uint32_of_quad_quad_of_uint32_inv)
+  done
+
   lemma elf64_header_out_in_roundtrip:
     fixes hdr64 :: "elf64_header" and bs :: "byte_sequence"
     shows "read_elf64_header (bytes_of_elf64_header hdr64) = Success (hdr64, bs)"
