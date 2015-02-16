@@ -197,10 +197,17 @@ begin
     "int_of_sint32 s \<equiv> sint s"
 
   definition quad_of_sint32 :: "sint32 \<Rightarrow> (byte \<times> byte \<times> byte \<times> byte)" where
-    "quad_of_sint32 s \<equiv> undefined"
+    "quad_of_sint32 s \<equiv>
+       (let (upper :: 16 word, lower :: 16 word) = Word.word_split s in
+        let (upperu :: 8 word, upperl :: 8 word) = Word.word_split upper in
+        let (loweru :: 8 word, lowerl :: 8 word) = Word.word_split lower in
+          (upperu, upperl, loweru, lowerl))"
 
   definition sint32_of_quad :: "byte \<Rightarrow> byte \<Rightarrow> byte \<Rightarrow> byte \<Rightarrow> sint32" where
-    "sint32_of_quad b1 b2 b3 b4 \<equiv> undefined"
+    "sint32_of_quad b1 b2 b3 b4 \<equiv>
+      (let (upper :: 16 word) = Word.word_cat b1 b2 in
+       let (lower :: 16 word) = Word.word_cat b3 b4 in
+         Word.word_cat upper lower)"
 
   section {* Signed 64-bit integers *}
 
@@ -242,10 +249,21 @@ begin
   declare sint64_lor_def [simp]
 
   definition sint64_of_oct :: "byte \<Rightarrow> byte \<Rightarrow> byte \<Rightarrow> byte \<Rightarrow> byte \<Rightarrow> byte \<Rightarrow> byte \<Rightarrow> byte \<Rightarrow> sint64" where
-    "sint64_of_oct b1 b2 b3 b4 b5 b6 b7 b8 \<equiv> undefined"
+    "sint64_of_oct b1 b2 b3 b4 b5 b6 b7 b8 \<equiv>
+      (let (upper :: 32 word) = word_cat ((word_cat b1 b2) :: 16 word) ((word_cat b3 b4) :: 16 word) in
+       let (lower :: 32 word) = word_cat ((word_cat b5 b6) :: 16 word) ((word_cat b7 b8) :: 16 word) in
+         word_cat upper lower)"
 
   definition oct_of_sint64 :: "sint64 \<Rightarrow> (byte \<times> byte \<times> byte \<times> byte \<times> byte \<times> byte \<times> byte \<times> byte)" where
-    "oct_of_sint64 s \<equiv> undefined"
+    "oct_of_sint64 s \<equiv>
+      (let (upper :: 32 word, lower :: 32 word) = word_split s in
+       let (upperu :: 16 word, upperl :: 16 word) = word_split upper in
+       let (loweru :: 16 word, lowerl :: 16 word) = word_split lower in
+       let (upperuu :: 8 word, upperul :: 8 word) = word_split upperu in
+       let (upperlu :: 8 word, upperll :: 8 word) = word_split upperl in
+       let (loweruu :: 8 word, lowerul :: 8 word) = word_split loweru in
+       let (lowerlu :: 8 word, lowerll :: 8 word) = word_split lowerl in
+        (upperuu, upperul, upperlu, upperll, loweruu, lowerul, lowerlu, lowerll))"
 
   section {* Miscellaneous operations *}
 

@@ -697,13 +697,39 @@ begin
     fixes e :: "endianness" and u :: "uint64" and bs0 :: "byte_sequence" and bs bs1 :: "(8 word) list"
     assumes "bytes_of_elf64_addr e u = [u1, u2, u3, u4, u5, u6, u7, u8]"
     shows "read_elf64_addr e (Sequence (u1#u2#u3#u4#u5#u6#u7#u8#bs1)) = Success (u, Sequence bs1)"
-  using assms sorry
+  using assms
+    apply(case_tac e, clarify)
+    apply(simp only: read_elf64_addr.simps)
+    apply(simp only: read_8_bytes_be_def)
+    apply(simp only: read_char.simps error_return_def error_bind.simps, simp add: case_prodI)+
+    apply(simp only: bytes_of_elf64_addr.simps Let_def split_def)
+    apply(auto simp add: uint64_of_oct_oct_of_uint64_inv)
+  (* Little case *)
+    apply(simp only: read_elf64_addr.simps)
+    apply(simp only: read_8_bytes_le_def)
+    apply(simp only: read_char.simps error_return_def error_bind.simps, simp add: case_prodI)+
+    apply(simp only: bytes_of_elf64_addr.simps Let_def split_def)
+    apply(auto simp add: uint64_of_oct_oct_of_uint64_inv)
+  done
 
   lemma elf64_off_in_out_roundtrip:
     fixes e :: "endianness" and u :: "uint64" and bs0 :: "byte_sequence" and bs bs1 :: "(8 word) list"
     assumes "bytes_of_elf64_off e u = [u1, u2, u3, u4, u5, u6, u7, u8]"
     shows "read_elf64_off e (Sequence (u1#u2#u3#u4#u5#u6#u7#u8#bs1)) = Success (u, Sequence bs1)"
-  using assms sorry
+  using assms
+    apply(case_tac e, clarify)
+    apply(simp only: read_elf64_off.simps)
+    apply(simp only: read_8_bytes_be_def)
+    apply(simp only: read_char.simps error_return_def error_bind.simps, simp add: case_prodI)+
+    apply(simp only: bytes_of_elf64_off.simps Let_def split_def)
+    apply(auto simp add: uint64_of_oct_oct_of_uint64_inv)
+  (* Little case *)
+    apply(simp only: read_elf64_off.simps)
+    apply(simp only: read_8_bytes_le_def)
+    apply(simp only: read_char.simps error_return_def error_bind.simps, simp add: case_prodI)+
+    apply(simp only: bytes_of_elf64_off.simps Let_def split_def)
+    apply(auto simp add: uint64_of_oct_oct_of_uint64_inv)
+  done
 
   lemma elf64_sword_in_out_roundtrip:
     fixes e :: "endianness" and u :: "sint32" and bs0 :: "byte_sequence" and bs bs1 :: "(8 word) list"
@@ -711,24 +737,47 @@ begin
     shows "read_elf64_sword e (Sequence (u1#u2#u3#u4#bs1)) = Success (u, Sequence bs1)"
   using assms
     apply(case_tac e, clarify)
-    apply(simp only: bytes_of_elf64_sword.simps)
     apply(simp only: read_elf64_sword.simps)
     apply(simp only: read_4_bytes_be_def)
-    apply(simp only: read_char.simps error_return_def error_bind.simps, auto)+
-    apply(simp only: quad_of_sint32_def)
-    (* UNDEFINED *)
+    apply(simp only: read_char.simps error_return_def error_bind.simps, simp add: case_prodI)+
+    apply(simp only: bytes_of_elf64_sword.simps)
+    apply(simp only: Let_def)
+    (* XXX: need sint32 rountrip lemmas *)
+  sorry
+    
 
   lemma elf64_xword_in_out_roundtrip:
     fixes e :: "endianness" and u :: "uint64" and bs0 :: "byte_sequence" and bs bs1 :: "(8 word) list"
     assumes "bytes_of_elf64_xword e u = [u1, u2, u3, u4, u5, u6, u7, u8]"
     shows "read_elf64_xword e (Sequence (u1#u2#u3#u4#u5#u6#u7#u8#bs1)) = Success (u, Sequence bs1)"
-  using assms sorry
+  using assms
+    apply(case_tac e, clarify)
+    apply(simp only: read_elf64_xword.simps)
+    apply(simp only: read_8_bytes_be_def)
+    apply(simp only: read_char.simps error_return_def error_bind.simps, simp add: case_prodI)+
+    apply(simp only: bytes_of_elf64_xword.simps Let_def split_def)
+    apply(auto simp add: uint64_of_oct_oct_of_uint64_inv)
+  (* Little case *)
+    apply(simp only: read_elf64_xword.simps)
+    apply(simp only: read_8_bytes_le_def)
+    apply(simp only: read_char.simps error_return_def error_bind.simps, simp add: case_prodI)+
+    apply(simp only: bytes_of_elf64_xword.simps Let_def split_def)
+    apply(auto simp add: uint64_of_oct_oct_of_uint64_inv)
+  done
 
   lemma elf64_sxword_in_out_roundtrip:
     fixes e :: "endianness" and u :: "sint64" and bs0 :: "byte_sequence" and bs bs1 :: "(8 word) list"
     assumes "bytes_of_elf64_sxword e u = [u1, u2, u3, u4, u5, u6, u7, u8]"
     shows "read_elf64_sxword e (Sequence (u1#u2#u3#u4#u5#u6#u7#u8#bs1)) = Success (u, Sequence bs1)"
-  using assms sorry
+  using assms
+    apply(case_tac e, clarify)
+    apply(simp only: read_elf64_sxword.simps)
+    apply(simp only: read_8_bytes_be_def)
+    apply(simp only: read_char.simps error_return_def error_bind.simps, simp add: case_prodI)+
+    apply(simp only: bytes_of_elf64_sxword.simps)
+    apply(simp only: Let_def)
+    (* XXX: need sint64 roundtrip lemmas *)
+  sorry
 
   section {* Roundtripping for ELF components *}
 
