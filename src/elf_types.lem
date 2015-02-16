@@ -372,10 +372,10 @@ let bytes_of_elf64_half endian w =
   match endian with
     | Big ->
       let (b0, b1) = dual_of_elf64_half w in
-        [b0; b1]
+        [b1; b0]
     | Little    ->
       let (b0, b1) = dual_of_elf64_half w in
-        [b1; b0]
+        [b0; b1]
   end
 
 instance (Eq elf64_half)
