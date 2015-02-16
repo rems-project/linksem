@@ -572,7 +572,7 @@ begin
 
   lemma elf64_half_in_out_roundtrip:
     fixes e :: "endianness" and u :: "uint16" and bs0 :: "byte_sequence" and bs bs1 :: "(8 word) list"
-    assumes "bytes_of_elf64_half e u = [u2, u1]"
+    assumes "bytes_of_elf64_half e u = [u1, u2]"
     shows "read_elf64_half e (Sequence (u1#u2#bs1)) = Success (u, Sequence bs1)"
   using assms
     apply(case_tac e, clarify)
