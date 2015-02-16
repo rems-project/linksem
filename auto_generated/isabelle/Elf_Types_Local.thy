@@ -138,12 +138,23 @@ begin
   type_synonym uint64 = "64 word"
 
   definition oct_of_uint64 :: "uint64 \<Rightarrow> (byte \<times> byte \<times> byte \<times> byte \<times> byte \<times> byte \<times> byte \<times> byte)" where
-    "oct_of_uint64 u \<equiv> undefined"
+    "oct_of_uint64 u \<equiv>
+      (let (upper :: 32 word, lower :: 32 word) = word_split u in
+       let (upperu :: 16 word, upperl :: 16 word) = word_split upper in
+       let (loweru :: 16 word, lowerl :: 16 word) = word_split lower in
+       let (upperuu :: 8 word, upperul :: 8 word) = word_split upperu in
+       let (upperlu :: 8 word, upperll :: 8 word) = word_split upperl in
+       let (loweruu :: 8 word, lowerul :: 8 word) = word_split loweru in
+       let (lowerlu :: 8 word, lowerll :: 8 word) = word_split lowerl in
+        (upperuu, upperul, upperlu, upperll, loweruu, lowerul, lowerlu, lowerll))"
 
   declare oct_of_uint64_def [simp]
 
   definition uint64_of_oct :: "byte \<Rightarrow> byte \<Rightarrow> byte \<Rightarrow> byte \<Rightarrow> byte \<Rightarrow> byte \<Rightarrow> byte \<Rightarrow> byte \<Rightarrow> uint64" where
-    "uint64_of_oct b1 b2 b3 b4 b5 b6 b7 b8 = undefined"
+    "uint64_of_oct b1 b2 b3 b4 b5 b6 b7 b8 =
+      (let (upper :: 32 word) = word_cat ((word_cat b1 b2) :: 16 word) ((word_cat b3 b4) :: 16 word) in
+       let (lower :: 32 word) = word_cat ((word_cat b5 b6) :: 16 word) ((word_cat b7 b8) :: 16 word) in
+         word_cat upper lower)"
 
   definition uint64_of_nat :: "nat \<Rightarrow> uint64" where
     "uint64_of_nat n = of_int (int n)"

@@ -266,25 +266,9 @@ begin
     qed
   qed
 
-  section {* Helpful lemmas *}
+  section {* Helpful lemmas *}  
 
-  lemma unsigned_char_out_in_roundtrip:
-    fixes e :: "endianness" and u :: "unsigned_char" and bs0 :: "byte_sequence" and bs1 :: "(8 word) list"
-    assumes "read_unsigned_char e bs0 = Success (u, Sequence bs1)"
-    shows "bs0 = Sequence (u#bs1)"
-  using assms unfolding read_unsigned_char_def proof(cases bs0, clarify)
-    fix xs
-    assume *: "bs0 = Sequence xs"
-    assume **: "read_char (Sequence xs) >>= (\<lambda>(u1, bs1). error_return (id u1, bs1)) = Success (u, Sequence bs1)"
-    show "xs = u#bs1"
-    using * ** by(cases xs, clarify, auto simp add: read_char.simps error_fail_def error_return_def error_bind.simps)
-  qed      
-
-  lemma unsigned_char_in_out_roundtrip:
-    assumes "bs0 = Sequence (u#bs1)"
-    shows "read_unsigned_char e bs0 = Success (u, Sequence bs1)"
-  using assms
-  by(clarify, auto simp add: read_unsigned_char_def read_char.simps error_return_def error_bind.simps)
+  subsection {* Converting between bytes and (un)signed types *}
 
   lemma dual_of_uint16_uint16_of_dual_inv:
     fixes u1 u2 :: "8 word"
@@ -306,6 +290,31 @@ begin
     apply(simp add: word_size)
     apply(subst word_split_cat_alt, auto)
     apply(simp add: word_size)
+  done
+
+  lemma oct_of_uint64_uint64_of_oct_inv:
+    fixes u1 u2 u3 u4 u5 u6 u7 u8 :: "8 word"
+    shows "oct_of_uint64 (uint64_of_oct u1 u2 u3 u4 u5 u6 u7 u8) = (u1, u2, u3, u4, u5, u6, u7, u8)"
+    apply(unfold uint64_of_oct_def)
+    apply(simp only: Let_def)
+    apply(unfold oct_of_uint64_def)
+    apply(subst word_split_cat_alt, auto)
+    apply(simp add: word_size)
+    apply(simp add: split_def)
+    apply(subst word_split_cat_alt, auto)+
+    apply(simp add: word_size)+
+    apply(subst word_split_cat_alt, auto)+
+    apply(simp add: word_size)+
+    apply(subst word_split_cat_alt, auto)+
+    apply(simp add: word_size)+
+    apply(subst word_split_cat_alt, auto)+
+    apply(simp add: word_size)+
+    apply(subst word_split_cat_alt, auto)+
+    apply(simp add: word_size)+
+    apply(subst word_split_cat_alt, auto)+
+    apply(simp add: word_size)+
+    apply(subst word_split_cat_alt, auto)+
+    apply(simp add: word_size)+
   done
 
   lemma uint16_of_dual_dual_of_uint16_inv:
@@ -343,6 +352,29 @@ begin
     apply(simp add: word_size)
     apply auto
   done
+
+  lemma uint64_of_oct_oct_of_uint64_inv:
+    fixes u1 u2 u3 u4 u5 u6 u7 u8 :: "8 word"
+    assumes *: "oct_of_uint64 w = (u1, u2, u3, u4, u5, u6, u7, u8)"
+    shows "uint64_of_oct u1 u2 u3 u4 u5 u6 u7 u8 = w"
+  using assms unfolding oct_of_uint64_def uint64_of_oct_def
+  sorry
+
+  subsection {* Roundtripping for (un)signed types *}
+
+  subsubsection {* Out-in *}
+
+  lemma unsigned_char_out_in_roundtrip:
+    fixes e :: "endianness" and u :: "unsigned_char" and bs0 :: "byte_sequence" and bs1 :: "(8 word) list"
+    assumes "read_unsigned_char e bs0 = Success (u, Sequence bs1)"
+    shows "bs0 = Sequence (u#bs1)"
+  using assms unfolding read_unsigned_char_def proof(cases bs0, clarify)
+    fix xs
+    assume *: "bs0 = Sequence xs"
+    assume **: "read_char (Sequence xs) >>= (\<lambda>(u1, bs1). error_return (id u1, bs1)) = Success (u, Sequence bs1)"
+    show "xs = u#bs1"
+    using * ** by(cases xs, clarify, auto simp add: read_char.simps error_fail_def error_return_def error_bind.simps)
+  qed
 
   lemma elf64_half_out_in_roundtrip:
     fixes e :: "endianness" and u :: "uint16" and bs0 :: "byte_sequence" and bs bs1 :: "(8 word) list"
@@ -570,6 +602,21 @@ begin
       apply auto
   done
 
+  lemma elf64_addr_out_in_roundtrip:
+    fixes e :: "endianness" and u :: "uint64" and bs0 :: "byte_sequence" and bs bs1 :: "(8 word) list"
+    assumes "read_elf64_addr e bs0 = Success (u, Sequence bs1)"
+        and "bytes_of_elf64_addr e u = [u1, u2, u3, u4, u5, u6, u7, u8]"
+    shows "bs0 = Sequence ([u1, u2, u3, u4, u5, u6, u7, u8]@bs1)"
+  using assms sorry
+
+  subsubsection {* In-out *}
+
+  lemma unsigned_char_in_out_roundtrip:
+    assumes "bs0 = Sequence (u#bs1)"
+    shows "read_unsigned_char e bs0 = Success (u, Sequence bs1)"
+  using assms
+  by(clarify, auto simp add: read_unsigned_char_def read_char.simps error_return_def error_bind.simps)
+
   lemma elf64_half_in_out_roundtrip:
     fixes e :: "endianness" and u :: "uint16" and bs0 :: "byte_sequence" and bs bs1 :: "(8 word) list"
     assumes "bytes_of_elf64_half e u = [u1, u2]"
@@ -646,19 +693,53 @@ begin
     apply(auto simp add: uint32_of_quad_quad_of_uint32_inv)
   done
 
+  lemma elf64_addr_in_out_roundtrip:
+    fixes e :: "endianness" and u :: "uint64" and bs0 :: "byte_sequence" and bs bs1 :: "(8 word) list"
+    assumes "bytes_of_elf64_addr e u = [u1, u2, u3, u4, u5, u6, u7, u8]"
+    shows "read_elf64_addr e (Sequence (u1#u2#u3#u4#u5#u6#u7#u8#bs1)) = Success (u, Sequence bs1)"
+  using assms sorry
+
+  lemma elf64_off_in_out_roundtrip:
+    fixes e :: "endianness" and u :: "uint64" and bs0 :: "byte_sequence" and bs bs1 :: "(8 word) list"
+    assumes "bytes_of_elf64_off e u = [u1, u2, u3, u4, u5, u6, u7, u8]"
+    shows "read_elf64_off e (Sequence (u1#u2#u3#u4#u5#u6#u7#u8#bs1)) = Success (u, Sequence bs1)"
+  using assms sorry
+
+  lemma elf64_sword_in_out_roundtrip:
+    fixes e :: "endianness" and u :: "sint32" and bs0 :: "byte_sequence" and bs bs1 :: "(8 word) list"
+    assumes "bytes_of_elf64_sword e u = [u1, u2, u3, u4]"
+    shows "read_elf64_sword e (Sequence (u1#u2#u3#u4#bs1)) = Success (u, Sequence bs1)"
+  using assms
+    apply(case_tac e, clarify)
+    apply(simp only: bytes_of_elf64_sword.simps)
+    apply(simp only: read_elf64_sword.simps)
+    apply(simp only: read_4_bytes_be_def)
+    apply(simp only: read_char.simps error_return_def error_bind.simps, auto)+
+    apply(simp only: quad_of_sint32_def)
+    (* UNDEFINED *)
+
+  lemma elf64_xword_in_out_roundtrip:
+    fixes e :: "endianness" and u :: "uint64" and bs0 :: "byte_sequence" and bs bs1 :: "(8 word) list"
+    assumes "bytes_of_elf64_xword e u = [u1, u2, u3, u4, u5, u6, u7, u8]"
+    shows "read_elf64_xword e (Sequence (u1#u2#u3#u4#u5#u6#u7#u8#bs1)) = Success (u, Sequence bs1)"
+  using assms sorry
+
+  lemma elf64_sxword_in_out_roundtrip:
+    fixes e :: "endianness" and u :: "sint64" and bs0 :: "byte_sequence" and bs bs1 :: "(8 word) list"
+    assumes "bytes_of_elf64_sxword e u = [u1, u2, u3, u4, u5, u6, u7, u8]"
+    shows "read_elf64_sxword e (Sequence (u1#u2#u3#u4#u5#u6#u7#u8#bs1)) = Success (u, Sequence bs1)"
+  using assms sorry
+
+  section {* Roundtripping for ELF components *}
+
+  subsection {* Out-in *}
+
   lemma elf64_header_out_in_roundtrip:
     fixes hdr64 :: "elf64_header" and bs :: "byte_sequence"
     shows "read_elf64_header (bytes_of_elf64_header hdr64) = Success (hdr64, bs)"
-  apply(case_tac hdr64, clarify)
-  apply(simp only: bytes_of_elf64_header_def)
-  apply(simp only: deduce_endianness_def)
-  apply auto
-  apply(case_tac "Elf_Types_Local.index elf64_ident 5")
-  apply auto
-  apply(simp only: from_byte_lists_def)
-  apply(simp only: List.concat.simps)
-  apply(simp only: read_elf64_header_def)
-  apply(simp only: ei_nident_def)
+  sorry
+
+  subsection {* In-out *}
 
   section {* The main roundtripping theorems *}
 
