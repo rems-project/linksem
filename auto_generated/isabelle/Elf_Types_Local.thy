@@ -61,8 +61,6 @@ begin
   definition dual_of_uint16 :: "uint16 \<Rightarrow> (byte \<times> byte)" where
     "dual_of_uint16 u \<equiv> Word.word_split u"
 
-  declare dual_of_uint16_def [simp]
-
   definition uint16_land :: "uint16 \<Rightarrow> uint16 \<Rightarrow> uint16" where
     "uint16_land left right \<equiv> bitAND left right"
 
@@ -97,13 +95,18 @@ begin
 
   declare uint32_of_nat_def [simp]
 
-  fun uint32_of_quad :: "byte \<Rightarrow> byte \<Rightarrow> byte \<Rightarrow> byte \<Rightarrow> uint32" where
-    "uint32_of_quad u1 u2 u3 u4 = undefined"
+  definition uint32_of_quad :: "byte \<Rightarrow> byte \<Rightarrow> byte \<Rightarrow> byte \<Rightarrow> uint32" where
+    "uint32_of_quad u1 u2 u3 u4 \<equiv>
+      (let (upper :: 16 word) = Word.word_cat u1 u2 in
+       let (lower :: 16 word) = Word.word_cat u3 u4 in
+         Word.word_cat upper lower)"
 
   definition quad_of_uint32 :: "uint32 \<Rightarrow> (byte \<times> byte \<times> byte \<times> byte)" where
-    "quad_of_uint32 u \<equiv> undefined"
-
-  declare quad_of_uint32_def [simp]
+    "quad_of_uint32 u \<equiv>
+       (let (upper :: 16 word, lower :: 16 word) = Word.word_split u in
+        let (upperu :: 8 word, upperl :: 8 word) = Word.word_split upper in
+        let (loweru :: 8 word, lowerl :: 8 word) = Word.word_split lower in
+          (upperu, upperl, loweru, lowerl))"
 
   definition uint32_land :: "uint32 \<Rightarrow> uint32 \<Rightarrow> uint32" where
     "uint32_land left right \<equiv> bitAND left right"

@@ -204,7 +204,41 @@ begin
   lemma dropbytes_length [simp]:
     fixes m :: "nat" and bs out :: "byte_sequence"
     shows "dropbytes m bs = Success out \<longrightarrow> length bs = length out + m"
-  sorry
+  proof(induct m arbitrary: bs out)
+    fix bs out
+    show "dropbytes 0 bs = Success out \<longrightarrow> length bs = length out + 0"
+    proof(cases bs, safe)
+      fix xs
+      assume "dropbytes 0 (Sequence xs) = Success out"
+      hence "error_return (Sequence xs) = Success out" using dropbytes.simps by auto
+      hence "Success (Sequence xs) = Success out" using error_return_def by metis
+      hence "Sequence xs = out" by fastforce
+      hence "length (Sequence xs) = length out" by auto
+      thus "length (Sequence xs) = length out + 0" by auto
+    qed
+  next
+    fix m bs out
+    assume IH: "(\<And>bs out. dropbytes m bs = Success out \<longrightarrow> length bs = length out + m)"
+    show "dropbytes (Suc m) bs = Success out \<longrightarrow> length bs = length out + (Suc m)"
+    proof(cases bs, erule forw_subst)
+      fix xs
+      show "dropbytes (Suc m) (Sequence xs) = Success out \<longrightarrow> length (Sequence xs) = length out + (Suc m)"
+      proof(cases xs, safe)
+        assume "dropbytes (Suc m) (Sequence []) = Success out"
+        hence "\<exists>err. error_fail err = Success out" using dropbytes.simps by auto
+        hence "\<exists>err. Fail err = Success out" using error_fail_def by metis
+        thus "length (Sequence []) = length out + (Suc m)" using error.simps by auto
+      next
+        fix y ys
+        assume "dropbytes (Suc m) (Sequence (y#ys)) = Success out"
+        hence "dropbytes (Suc m - 1) (Sequence ys) = Success out" using dropbytes.simps by auto
+        hence "dropbytes m (Sequence ys) = Success out" using arith by auto
+        hence "length (Sequence ys) = length out + m" using IH[rule_format] by metis
+        hence "length (Sequence (y#ys)) = Suc (length out + m)" using length.simps by auto
+        thus "length (Sequence (y#ys)) = length out + Suc m" by auto
+      qed
+    qed
+  qed
 
   section {* Helpful lemmas *}
 
@@ -230,6 +264,19 @@ begin
     fixes u1 u2 :: "8 word"
     shows "dual_of_uint16 (uint16_of_dual u1 u2) = (u1, u2)"
   unfolding dual_of_uint16_def uint16_of_dual_def
+    apply(rule word_split_cat_alt[OF refl])
+    apply(auto simp add: word_size)
+  done
+
+  lemma quad_of_uint32_uint32_of_quad_inv:
+    fixes u1 u2 u3 u4 :: "8 word"
+    shows "quad_of_uint32 (uint32_of_quad u1 u2 u3 u4) = (u1, u2, u3, u4)"
+  unfolding quad_of_uint32_def uint32_of_quad_def
+    apply(simp only: Let_def)
+    apply(case_tac "word_split (word_cat (word_cat u1 u2) (word_cat u3 u4))")
+    apply(erule forw_subst, auto)
+    apply(case_tac "word_split a")
+    apply(rule back_subst)
     apply(rule word_split_cat_alt[OF refl])
     apply(auto simp add: word_size)
   done
@@ -376,6 +423,46 @@ begin
       apply(simp only: error_bind.simps)
       apply auto
   done
+
+  lemma elf64_word_out_in_roundtrip:
+    fixes e :: "endianness" and u :: "uint32" and bs0 :: "byte_sequence" and bs bs1 :: "(8 word) list"
+    assumes "read_elf64_word e bs0 = Success (u, Sequence bs1)"
+        and "bytes_of_elf64_word e u = [u1, u2, u3, u4]"
+    shows "bs0 = Sequence ([u4, u3, u2, u1]@bs1)"
+  using assms
+    apply(case_tac e, clarify)
+    apply(case_tac bs0, clarify)
+    apply(case_tac list, clarify)
+      apply(simp only: read_elf64_word.simps)
+      apply(simp only: read_4_bytes_be_def)
+      apply(simp only: read_char.simps)
+      apply(auto simp add: error_bind.simps error_fail_def)
+      apply(simp only: read_elf64_word.simps)
+      apply(simp only: read_4_bytes_be_def)
+      apply(simp only: read_char.simps)
+      apply(auto simp add: error_bind.simps error_fail_def)
+      apply(case_tac "lista", clarify)
+      apply(simp only: read_char.simps)
+      apply(auto simp add: error_bind.simps error_fail_def)
+      apply(simp only: read_char.simps)
+      apply(auto simp add: error_bind.simps error_return_def)
+      apply(case_tac "list", clarify)
+      apply(simp only: read_char.simps)
+      apply(auto simp add: error_bind.simps error_fail_def)
+      apply(simp only: read_char.simps)
+      apply(auto simp add: error_bind.simps error_return_def)
+      apply(case_tac "lista", clarify)
+      apply(simp only: read_char.simps)
+      apply(auto simp add: error_bind.simps error_fail_def)
+      apply(simp only: read_char.simps)
+      apply(auto simp add: error_bind.simps error_return_def)
+      (* UNDEFINED *)
+      apply(simp only: uint32_of_quad_def)
+      apply(simp only: Let_def)
+      apply(simp only: bytes_of_elf64_word.simps)
+      apply(simp only: Let_def)
+      apply(simp only: quad_of_uint32_def)
+      apply(simp only: Let_def)
 
   lemma elf64_half_in_out_roundtrip:
     fixes e :: "endianness" and u :: "uint16" and bs0 :: "byte_sequence" and bs bs1 :: "(8 word) list"
