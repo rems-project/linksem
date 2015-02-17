@@ -266,6 +266,31 @@ begin
     qed
   qed
 
+  lemma takebytes_length:
+    assumes "sz < length bs0" and "takebytes sz bs0 = Success bs1"
+    shows "length bs1 = sz"
+  sorry
+
+  lemma partition_length:
+   assumes "sz < length bs0" and "partition sz bs0 = Success (lft, rgt)"
+    shows "length bs0 = length lft + length rgt"
+  using assms proof -
+    have "partition sz bs0 = Success (lft, rgt)" using assms by auto
+    hence "takebytes sz bs0 >>= (\<lambda>l. dropbytes sz bs0 >>= (\<lambda>r. error_return (l, r))) = Success (lft, rgt)" using partition_def by metis
+    from this obtain l' where *: "takebytes sz bs0 = Success l' \<and> (dropbytes sz bs0 >>= (\<lambda>r. error_return (l', r)) = Success (lft, rgt))" using error_bind_Success by fastforce
+    hence "takebytes sz bs0 = Success l'" by auto
+    hence S: "length l' = sz" using takebytes_length assms by auto
+    also have "(dropbytes sz bs0 >>= (\<lambda>r. error_return (l', r)) = Success (lft, rgt))" using * by auto
+    from this obtain r' where **: "dropbytes sz bs0 = Success r' \<and> error_return (l', r') = Success (lft, rgt)" using error_bind_Success by fastforce
+    hence "error_return (l', r') = Success (lft, rgt)" by auto
+    hence "Success (l', r') = Success(lft, rgt)" using error_return_def by metis
+    hence L: "l' = lft" and R: "r' = rgt" by auto
+    have "dropbytes sz bs0 = Success r'" using ** by auto
+    hence "length bs0 = length r' + sz" using dropbytes_length assms by auto
+    hence "length bs0 = length r' + length l'" using S by auto
+    thus "length bs0 = length lft + length rgt" using L R by auto
+  qed
+
   section {* Helpful lemmas *}
 
   subsection {* Converting between bytes and (un)signed types *}
@@ -1965,19 +1990,16 @@ begin
     apply(simp only: error_fail_def error.simps)
   done
 
+  lemma elf64_program_header_table_in_out_roundtrip:
+    assumes "read_elf64_program_header_table sz e bs0 = Success (pht64, Sequence bs1)"
+    assumes "bytes_of_elf64_program_header_table e hdr64 = Sequence bs2"
+    shows "bs0 = Sequence (bs2 @ bs1)"
+  using assms
+    apply(simp only: read_elf64_program_header_table_def)
+
   section {* The main roundtripping theorems *}
 
-  theorem elf64_out_in_roundtrip:
-    fixes ef64 :: "elf64_file" and bs :: "byte_sequence"
-    assumes "bytes_of_elf64_file ef64 = Success bs"
-    shows "read_elf64_file bs = Success ef64"
-  sorry
-
-  theorem elf64_in_out_roundtrip:
-    fixes ef64 :: "elf64_file" and bs :: "byte_sequence"
-    assumes "read_elf64_file bs = Success ef64"
-    shows "bytes_of_elf64_file ef64 = Success bs"
-  sorry
+  subsection {* Out-in *}
 
   theorem elf32_out_in_roundtrip:
     fixes ef32 :: "elf32_file" and bs :: "byte_sequence"
@@ -1985,10 +2007,24 @@ begin
     shows "read_elf32_file bs = Success ef64"
   sorry
 
+  theorem elf64_out_in_roundtrip:
+    fixes ef64 :: "elf64_file" and bs :: "byte_sequence"
+    assumes "bytes_of_elf64_file ef64 = Success bs"
+    shows "read_elf64_file bs = Success ef64"
+  sorry
+
+  subsection {* In-out *}
+
   theorem elf32_in_out_roundtrip:
     fixes ef32 :: "elf32_file" and bs :: "byte_sequence"
     assumes "read_elf32_file bs = Success ef32"
     shows "bytes_of_elf32_file ef32 = Success bs"
+  sorry
+
+  theorem elf64_in_out_roundtrip:
+    fixes ef64 :: "elf64_file" and bs :: "byte_sequence"
+    assumes "read_elf64_file bs = Success ef64"
+    shows "bytes_of_elf64_file ef64 = Success bs"
   sorry
 
 end
