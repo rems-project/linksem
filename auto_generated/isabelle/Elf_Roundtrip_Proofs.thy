@@ -266,7 +266,7 @@ begin
     qed
   qed
 
-  section {* Helpful lemmas *}  
+  section {* Helpful lemmas *}
 
   subsection {* Converting between bytes and (un)signed types *}
 
@@ -292,12 +292,50 @@ begin
     apply(simp add: word_size)
   done
 
+  lemma quad_of_sint32_sint32_of_quad_inv:
+    shows "quad_of_sint32 (sint32_of_quad u1 u2 u3 u4) = (u1, u2, u3, u4)"
+    apply(unfold sint32_of_quad_def)
+    apply(simp only: Let_def)
+    apply(unfold quad_of_sint32_def)
+    apply(subst word_split_cat_alt, auto)
+    apply(simp add: word_size)
+    apply(subst word_split_cat_alt, auto)
+    apply(simp add: word_size)
+    apply(subst word_split_cat_alt, auto)
+    apply(simp add: word_size)
+  done
+
   lemma oct_of_uint64_uint64_of_oct_inv:
     fixes u1 u2 u3 u4 u5 u6 u7 u8 :: "8 word"
     shows "oct_of_uint64 (uint64_of_oct u1 u2 u3 u4 u5 u6 u7 u8) = (u1, u2, u3, u4, u5, u6, u7, u8)"
     apply(unfold uint64_of_oct_def)
     apply(simp only: Let_def)
     apply(unfold oct_of_uint64_def)
+    apply(subst word_split_cat_alt, auto)
+    apply(simp add: word_size)
+    apply(simp add: split_def)
+    apply(subst word_split_cat_alt, auto)+
+    apply(simp add: word_size)+
+    apply(subst word_split_cat_alt, auto)+
+    apply(simp add: word_size)+
+    apply(subst word_split_cat_alt, auto)+
+    apply(simp add: word_size)+
+    apply(subst word_split_cat_alt, auto)+
+    apply(simp add: word_size)+
+    apply(subst word_split_cat_alt, auto)+
+    apply(simp add: word_size)+
+    apply(subst word_split_cat_alt, auto)+
+    apply(simp add: word_size)+
+    apply(subst word_split_cat_alt, auto)+
+    apply(simp add: word_size)+
+  done
+
+  lemma oct_of_sint64_sint64_of_oct_inv:
+    fixes u1 u2 u3 u4 u5 u6 u7 u8 :: "8 word"
+    shows "oct_of_sint64 (sint64_of_oct u1 u2 u3 u4 u5 u6 u7 u8) = (u1, u2, u3, u4, u5, u6, u7, u8)"
+    apply(unfold sint64_of_oct_def)
+    apply(simp only: Let_def)
+    apply(unfold oct_of_sint64_def)
     apply(subst word_split_cat_alt, auto)
     apply(simp add: word_size)
     apply(simp add: split_def)
@@ -353,11 +391,44 @@ begin
     apply auto
   done
 
+  lemma sint32_of_quad_quad_of_sint32_inv:
+    assumes *: "quad_of_sint32 w = (u1, u2, u3, u4)"
+    shows "sint32_of_quad u1 u2 u3 u4 = w"
+  using assms unfolding quad_of_sint32_def sint32_of_quad_def
+    apply(simp only: Let_def)
+    apply(subst word_cat_split_alt[where w="w"])
+    apply(auto simp add: word_size)
+    apply(case_tac "word_split w")
+    apply rotate_tac
+    apply(frule forw_subst, auto)
+    apply(subst word_cat_split_alt)
+    apply(auto simp add: word_size)
+    apply(thin_tac "word_split w = (a,b)")
+    apply(subst word_split_cat_alt, auto simp add: word_size)
+    apply(subst word_cat_split_alt)
+    apply(auto simp add: word_size)
+    apply(simp add: split_def)
+    apply auto
+    apply(thin_tac "word_split w = (a,b)")
+    apply(simp add: split_def)
+    apply(rule sym)
+    apply(rule word_cat_split_alt)
+    apply(simp add: word_size)
+    apply auto
+  done
+
   lemma uint64_of_oct_oct_of_uint64_inv:
     fixes u1 u2 u3 u4 u5 u6 u7 u8 :: "8 word"
     assumes *: "oct_of_uint64 w = (u1, u2, u3, u4, u5, u6, u7, u8)"
     shows "uint64_of_oct u1 u2 u3 u4 u5 u6 u7 u8 = w"
   using assms unfolding oct_of_uint64_def uint64_of_oct_def
+  sorry
+
+  lemma sint64_of_oct_oct_of_sint64_inv:
+    fixes u1 u2 u3 u4 u5 u6 u7 u8 :: "8 word"
+    assumes *: "oct_of_sint64 w = (u1, u2, u3, u4, u5, u6, u7, u8)"
+    shows "sint64_of_oct u1 u2 u3 u4 u5 u6 u7 u8 = w"
+  using assms unfolding oct_of_sint64_def sint64_of_oct_def
   sorry
 
   subsection {* Roundtripping for (un)signed types *}
@@ -741,10 +812,17 @@ begin
     apply(simp only: read_4_bytes_be_def)
     apply(simp only: read_char.simps error_return_def error_bind.simps, simp add: case_prodI)+
     apply(simp only: bytes_of_elf64_sword.simps)
-    apply(simp only: Let_def)
-    (* XXX: need sint32 rountrip lemmas *)
-  sorry
-    
+    apply(simp only: Let_def split_def)
+    apply(auto simp add: sint32_of_quad_quad_of_sint32_inv)
+  (* Little case *)
+    apply(case_tac e, clarify)
+    apply(simp only: read_elf64_sword.simps)
+    apply(simp only: read_4_bytes_le_def)
+    apply(simp only: read_char.simps error_return_def error_bind.simps, simp add: case_prodI)+
+    apply(simp only: bytes_of_elf64_sword.simps)
+    apply(simp only: Let_def split_def)
+    apply(auto simp add: sint32_of_quad_quad_of_sint32_inv)
+  done
 
   lemma elf64_xword_in_out_roundtrip:
     fixes e :: "endianness" and u :: "uint64" and bs0 :: "byte_sequence" and bs bs1 :: "(8 word) list"
@@ -775,9 +853,16 @@ begin
     apply(simp only: read_8_bytes_be_def)
     apply(simp only: read_char.simps error_return_def error_bind.simps, simp add: case_prodI)+
     apply(simp only: bytes_of_elf64_sxword.simps)
-    apply(simp only: Let_def)
-    (* XXX: need sint64 roundtrip lemmas *)
-  sorry
+    apply(simp only: Let_def split_def)
+    apply(auto simp add: sint64_of_oct_oct_of_sint64_inv)
+  (* Little case *)
+    apply(simp only: read_elf64_sxword.simps)
+    apply(simp only: read_8_bytes_le_def)
+    apply(simp only: read_char.simps error_return_def error_bind.simps, simp add: case_prodI)+
+    apply(simp only: bytes_of_elf64_sxword.simps)
+    apply(simp only: Let_def split_def)
+    apply(auto simp add: sint64_of_oct_oct_of_sint64_inv)
+  done
 
   section {* Roundtripping for ELF components *}
 
@@ -789,6 +874,19 @@ begin
   sorry
 
   subsection {* In-out *}
+
+  lemma elf64_header_in_out_roundtrip:
+    assumes "read_elf64_header bs0 = Success (hdr64, Sequence bs1)"
+    assumes "bytes_of_elf64_header hdr64 = Sequence bs2"
+    shows "bs0 = Sequence (bs2 @ bs1)"
+  using assms
+    apply(case_tac bs0)
+    apply rotate_tac apply rotate_tac
+    apply(case_tac list, clarify)
+    apply(simp only: read_elf64_header_def)
+    apply(simp only: ei_nident_def)
+    apply(simp only: Let_def)
+    apply(simp only: default_endianness_def)
 
   section {* The main roundtripping theorems *}
 
