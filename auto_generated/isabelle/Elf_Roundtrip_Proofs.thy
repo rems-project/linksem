@@ -190,7 +190,7 @@ begin
         error_return x >>= (\<lambda>h. mapM error_return xs >>= (\<lambda>t. error_return (h#t)))" by simp
       moreover have "... = mapM error_return xs >>= (\<lambda>t. error_return (x#t))" using error_return_def error_bind.simps by metis
       moreover have "... = Success xs >>= (\<lambda>t. error_return (x#t))" using * by simp
-      moreover have "...  = error_return (x#xs)" using error_bind.simps by metis
+      moreover have "... = error_return (x#xs)" using error_bind.simps by metis
       moreover have "... = Success (x#xs)" using error_return_def by metis
       ultimately show ?case by auto
   qed
@@ -267,12 +267,54 @@ begin
   qed
 
   lemma takebytes_length:
-    assumes "sz < length bs0" and "takebytes sz bs0 = Success bs1"
-    shows "length bs1 = sz"
-  sorry
+    shows "takebytes sz bs0 = Success bs1 \<longrightarrow> length bs1 = sz"
+  proof(induct sz arbitrary: bs0 bs1)
+    fix bs0 bs1
+    show "takebytes 0 bs0 = Success bs1 \<longrightarrow> length bs1 = 0"
+    proof(cases bs0, safe)
+      fix xs
+      assume "takebytes 0 (Sequence xs) = Success bs1"
+      hence "error_return (Sequence []) = Success bs1" using takebytes.simps by auto
+      hence "Success (Sequence []) = Success bs1" using error_return_def by metis
+      hence "Sequence [] = bs1" by auto
+      thus "length bs1 = 0" using length.simps by auto
+    qed
+  next
+    fix sz bs0 bs1
+    assume IH: "(\<And>bs0 bs1. takebytes sz bs0 = Success bs1 \<longrightarrow> length bs1 = sz)"
+    show "takebytes (Suc sz) bs0 = Success bs1 \<longrightarrow> length bs1 = Suc sz"
+    proof(cases bs0, erule forw_subst)
+      fix xs
+      show "takebytes (Suc sz) (Sequence xs) = Success bs1 \<longrightarrow> length bs1 = Suc sz"
+      proof(cases xs, safe)
+        assume "takebytes (Suc sz) (Sequence []) = Success bs1"
+        hence "\<exists>err. error_fail err = Success bs1" using takebytes.simps by auto
+        hence "\<exists>err. Fail err = Success bs1" using error_fail_def by metis
+        thus "length bs1 = Suc sz" using error.simps by auto
+      next
+        fix y ys
+        assume "takebytes (Suc sz) (Sequence (y#ys)) = Success bs1"
+        hence "(takebytes ((Suc sz) - 1) (Sequence ys) >>= (\<lambda>t. case t of (Sequence t') \<Rightarrow> error_return (Sequence (y#t')))) = Success bs1" using takebytes.simps by auto
+        from this obtain t'' where **: "takebytes ((Suc sz) - 1) (Sequence ys) = Success t'' \<and> (case t'' of (Sequence t') \<Rightarrow> error_return (Sequence (y#t')) = Success bs1)" using error_bind_Success sorry
+        hence "takebytes sz (Sequence ys) = Success t''" using arith by auto
+        hence *: "length t'' = sz" using IH by metis
+        also have "case t'' of Sequence t' \<Rightarrow> error_return (Sequence (y#t')) = Success bs1" using ** by auto
+        thus "length bs1 = Suc sz"
+        proof(cases t'', clarify, auto simp add: case_prodI)
+          fix zs
+          assume "error_return (Sequence (y#zs)) = Success bs1" and **: "t'' = Sequence zs"
+          hence "Success (Sequence (y#zs)) = Success bs1" using error_return_def by metis
+          hence "Sequence (y#zs) = bs1" by auto
+          hence "length bs1 = Suc (length (Sequence zs))" by auto
+          hence "length bs1 = Suc (length t'')" using ** by auto
+          thus "length bs1 = Suc sz" using * by auto
+        qed
+      qed
+    qed
+  qed
 
   lemma partition_length:
-   assumes "sz < length bs0" and "partition sz bs0 = Success (lft, rgt)"
+   assumes "partition sz bs0 = Success (lft, rgt)"
     shows "length bs0 = length lft + length rgt"
   using assms proof -
     have "partition sz bs0 = Success (lft, rgt)" using assms by auto
