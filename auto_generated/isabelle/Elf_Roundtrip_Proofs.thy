@@ -875,18 +875,22 @@ begin
 
   subsection {* In-out *}
 
+  lemma Suc_16_15:
+    shows "16 = Suc 15"
+  by simp
+
   lemma elf64_header_in_out_roundtrip:
     assumes "read_elf64_header bs0 = Success (hdr64, Sequence bs1)"
     assumes "bytes_of_elf64_header hdr64 = Sequence bs2"
     shows "bs0 = Sequence (bs2 @ bs1)"
   using assms
-    apply(case_tac bs0)
-    apply rotate_tac apply rotate_tac
+    apply(case_tac bs0, clarify)
     apply(case_tac list, clarify)
     apply(simp only: read_elf64_header_def)
     apply(simp only: ei_nident_def)
     apply(simp only: Let_def)
     apply(simp only: default_endianness_def)
+    
 
   section {* The main roundtripping theorems *}
 
