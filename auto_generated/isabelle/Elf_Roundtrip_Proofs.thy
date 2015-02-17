@@ -1650,7 +1650,7 @@ begin
     apply(auto simp add: case_prodI)
     apply(simp only: error_fail_def error.simps)
     apply(simp only: read_elf64_half.simps read_2_bytes_le_def)
-apply(case_tac list, clarify)
+    apply(case_tac list, clarify)
     apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
     apply clarify
     apply(simp only: read_char.simps error_return_def error_bind.simps)
@@ -1942,7 +1942,7 @@ apply(case_tac list, clarify)
     apply(auto simp add: case_prodI)
     apply(simp only: error_bind.simps)
     apply(auto simp add: case_prodI)
-apply(case_tac "unat ad = elf_class_64")
+    apply(case_tac "unat ad = elf_class_64")
     apply simp
     apply(case_tac hdr64)
     apply simp
