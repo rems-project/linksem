@@ -201,6 +201,16 @@ begin
     shows "length empty = 0"
   unfolding empty_def by (auto simp add: length.simps)
 
+  lemma length_empty [simp]:
+    assumes "length bs0 = 0"
+    shows "bs0 = Sequence []"
+  using assms
+    apply(case_tac bs0, simp)
+    apply(case_tac list, simp)
+    apply(simp only: length.simps)
+    apply auto
+  done
+
   lemma repeat_length [simp]:
     shows "List.length (repeat m c) = m"
   by(induct m, simp add: repeat.simps, auto simp add: repeat.simps)
@@ -332,6 +342,11 @@ begin
     hence "length bs0 = length r' + length l'" using S by auto
     thus "length bs0 = length lft + length rgt" using L R by auto
   qed
+
+  lemma partition_reconstitute:
+    assumes "partition sz bs0 = Success (Sequence lft, Sequence rgt)"
+    shows "bs0 = Sequence (lft @ rgt)"
+  sorry
 
   section {* Helpful lemmas *}
 
@@ -2032,12 +2047,689 @@ begin
     apply(simp only: error_fail_def error.simps)
   done
 
+  lemma elf64_program_header_table_entry_in_out_roundtrip:
+    assumes "read_elf64_program_header_table_entry e bs0 = Success (ent, Sequence bs1)"
+        and "bytes_of_elf64_program_header_table_entry e ent = Sequence bs2"
+      shows "bs0 = Sequence (bs2@bs1)"
+  using assms
+    apply(case_tac e, simp)
+    apply(case_tac bs0, simp)
+    apply(case_tac list, simp)
+    apply(simp only: read_elf64_program_header_table_entry_def)
+    apply(simp only: read_elf64_word.simps read_4_bytes_be_def read_char.simps)
+    apply(simp only: error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_elf64_program_header_table_entry_def)
+    apply(simp only: read_elf64_word.simps read_4_bytes_be_def read_char.simps)
+    apply(simp only: error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp add: error_bind.simps)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: read_elf64_off.simps)
+    apply(simp only: read_8_bytes_be_def)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: read_elf64_addr.simps)
+    apply(simp only: read_8_bytes_be_def)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: read_elf64_xword.simps)
+    apply(simp only: read_8_bytes_be_def)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(unfold bytes_of_elf64_program_header_table_entry_def)
+    apply(simp only: from_byte_lists_def List.concat.simps)
+    apply(case_tac ent, simp)
+    apply(simp only: bytes_of_elf64_word.simps)
+    apply(simp only: quad_of_uint32_uint32_of_quad_inv)
+    apply(simp only: bytes_of_elf64_off.simps)
+    apply(simp only: oct_of_uint64_uint64_of_oct_inv)
+    apply(simp only: bytes_of_elf64_addr.simps)
+    apply(simp only: oct_of_uint64_uint64_of_oct_inv)
+    apply(simp only: bytes_of_elf64_xword.simps)
+    apply(simp only: oct_of_uint64_uint64_of_oct_inv)
+    apply simp
+    apply(case_tac bs0, simp)
+    apply(case_tac list, simp)
+    apply(simp only: read_elf64_program_header_table_entry_def)
+    apply(simp only: read_elf64_word.simps read_4_bytes_le_def read_char.simps)
+    apply(simp only: error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_elf64_program_header_table_entry_def)
+    apply(simp only: read_elf64_word.simps read_4_bytes_le_def read_char.simps)
+    apply(simp only: error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp add: error_bind.simps)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: read_elf64_off.simps)
+    apply(simp only: read_8_bytes_le_def)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: read_elf64_addr.simps)
+    apply(simp only: read_8_bytes_le_def)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: read_elf64_xword.simps)
+    apply(simp only: read_8_bytes_le_def)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac list, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(case_tac lista, simp)
+    apply(simp only: read_char.simps error_fail_def error_bind.simps error.simps)
+    apply simp
+    apply(simp only: read_char.simps error_return_def error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: error_bind.simps)
+    apply(auto simp add: case_prodI)
+    apply(simp only: from_byte_lists_def List.concat.simps)
+    apply(case_tac ent, simp)
+    apply(simp only: bytes_of_elf64_word.simps)
+    apply(simp only: quad_of_uint32_uint32_of_quad_inv)
+    apply(simp only: bytes_of_elf64_off.simps)
+    apply(simp only: oct_of_uint64_uint64_of_oct_inv)
+    apply(simp only: bytes_of_elf64_addr.simps)
+    apply(simp only: oct_of_uint64_uint64_of_oct_inv)
+    apply(simp only: bytes_of_elf64_xword.simps)
+    apply(simp only: oct_of_uint64_uint64_of_oct_inv)
+    apply simp
+  done
+
+  termination read_elf64_program_header_table'
+    sorry
+
   lemma elf64_program_header_table_in_out_roundtrip:
+    fixes sz :: "nat" and e :: "endianness" and bs0 :: "byte_sequence" and bs1 :: "(8 word) list" and pht64 :: "elf64_program_header_table"
     assumes "read_elf64_program_header_table sz e bs0 = Success (pht64, Sequence bs1)"
-    assumes "bytes_of_elf64_program_header_table e hdr64 = Sequence bs2"
+    assumes "bytes_of_elf64_program_header_table e pht64 = Sequence bs2"
     shows "bs0 = Sequence (bs2 @ bs1)"
   using assms
-    apply(simp only: read_elf64_program_header_table_def)
+    thm read_elf64_program_header_table_def
+    thm read_elf64_program_header_table'.simps
+    thm read_elf64_program_header_table_entry_def
 
   section {* The main roundtripping theorems *}
 
