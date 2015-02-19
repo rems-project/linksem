@@ -23,33 +23,6 @@ begin
 
   section {* Error monad properties *}
 
-  fun is_failing :: "'a error \<Rightarrow> bool" where
-    "is_failing (Fail err) = True"
-  | "is_failing _          = False"
-
-  lemma is_failing_err_exists:
-    fixes f :: "'a error"
-    assumes "is_failing f"
-    shows "\<exists>err :: string. f = Fail err"
-  using assms by(cases f, auto)
-
-  lemma is_failing_propagates1 [simp]:
-    assumes "is_failing f"
-    shows "is_failing (f >>= g)"
-  using assms by(cases f, auto simp add: error_bind.simps)
-
-  lemma is_failing_propagates2:
-    fixes f :: "'a error" and g :: "'a \<Rightarrow> 'b error"
-    assumes "\<exists>a. f = Success a \<and> is_failing (g a)"
-    shows "is_failing (f >>= g)"
-  using assms by(cases f, auto simp add: error_bind.simps)
-
-  lemma is_failing_dichotomy:
-    fixes f :: "'a error" and g :: "'a \<Rightarrow> 'b error"
-    assumes "is_failing (f >>= g)"
-    shows "is_failing f \<or> (\<exists>a. f = Success a \<and> is_failing (g a))"
-  using assms by(cases f, auto simp add: error_bind.simps)
-
   lemma error_return_bind_neutral1 [simp]:
     shows "error_return x >>= f = f x"
   unfolding error_return_def by (simp add: error_bind.simps)
@@ -343,13 +316,73 @@ begin
     thus "length bs0 = length lft + length rgt" using L R by auto
   qed
 
+  lemma takebytes_success:
+    shows "takebytes sz bs0 = Success (Sequence bs1) \<longrightarrow> (\<exists>bs2. bs0 = Sequence (bs1 @ bs2))"
+  proof(induct sz arbitrary: bs0 bs1)
+    fix bs0 bs1
+    show "takebytes 0 bs0 = Success (Sequence bs1) \<longrightarrow> (\<exists>bs2. bs0 = Sequence (bs1 @ bs2))"
+    proof(cases bs0, erule forw_subst)
+      fix xs
+      show "takebytes 0 (Sequence xs) = Success (Sequence bs1) \<longrightarrow> (\<exists>bs2. (Sequence xs) = Sequence (bs1 @ bs2))"
+      proof
+        assume "takebytes 0 (Sequence xs) = Success (Sequence bs1)"
+        hence "error_return (Sequence []) = Success (Sequence bs1)" using takebytes.simps by simp
+        hence "Success (Sequence []) = Success (Sequence bs1)" using error_return_def by metis
+        hence "[] = bs1" by simp
+        hence "xs = bs1 @ xs" by simp
+        thus "\<exists>bs2. Sequence xs = Sequence (bs1 @ bs2)" by simp
+      qed
+    qed
+  next
+    fix sz bs0 bs1
+    assume IH: "(\<And>bs0 bs1. takebytes sz bs0 = Success (Sequence bs1) \<longrightarrow>
+                  (\<exists>bs2. bs0 = Sequence (bs1 @ bs2)))"
+    show "takebytes (Suc sz) bs0 = Success (Sequence bs1) \<longrightarrow>
+            (\<exists>bs2. bs0 = Sequence (bs1 @ bs2))"
+    proof(cases bs0, erule forw_subst)
+      fix xs
+      show "takebytes (Suc sz) (Sequence xs) = Success (Sequence bs1) \<longrightarrow>
+            (\<exists>bs2. Sequence xs = Sequence (bs1 @ bs2))"
+      proof(cases xs, erule forw_subst, rule impI)
+        assume "takebytes (Suc sz) (Sequence []) = Success (Sequence bs1)"
+        hence "\<exists>err. error_fail err = Success (Sequence bs1)" using takebytes.simps by auto
+        hence "\<exists>err. Fail err = Success (Sequence bs1)" using error_fail_def by metis
+        thus "\<exists>bs2. Sequence [] = Sequence (bs1 @ bs2)" using error.simps by auto
+      next
+        fix y ys
+        assume A: "xs = y#ys"
+        show "takebytes (Suc sz) (Sequence xs) = Success (Sequence bs1) \<longrightarrow>
+                (\<exists>bs2. Sequence xs = Sequence (bs1 @ bs2))"
+        using A proof(clarify)
+          assume "takebytes (Suc sz) (Sequence (y#ys)) = Success (Sequence bs1)"
+          hence "takebytes sz (Sequence ys) >>= (\<lambda>t. case t of Sequence t' \<Rightarrow> error_return (Sequence (y#t'))) = Success (Sequence bs1)" using takebytes.simps by auto
+          from this obtain t'' where "(takebytes sz (Sequence ys) = Success t'') \<and> (case t'' of Sequence t' \<Rightarrow> error_return (Sequence (y#t'))) = Success (Sequence bs1)" using error_bind_Success[where s="Sequence bs1"] by auto
+          hence *: "takebytes sz (Sequence ys) = Success t''" and **: "(case t'' of Sequence t' \<Rightarrow> error_return (Sequence (y#t'))) = Success (Sequence bs1)" by simp+
+          from this obtain bs1' where ***: "t'' = Sequence bs1'" using byte_sequence.exhaust by auto
+          hence "case (Sequence bs1') of Sequence t' \<Rightarrow> error_return (Sequence (y#t')) = Success (Sequence bs1)" using ** by auto
+          hence "error_return (Sequence (y#bs1')) = Success (Sequence bs1)" by auto
+          hence "Success (Sequence (y#bs1')) = Success (Sequence bs1)" using error_return_def by metis
+          hence ****: "y#bs1' = bs1" by simp
+          also have "\<exists>bs2. Sequence ys = Sequence (bs1' @ bs2)" using IH * *** by blast
+          from this obtain bs2 where "Sequence ys = Sequence (bs1' @ bs2)" by blast
+          hence "Sequence (y#ys) = Sequence (y#(bs1' @ bs2))" by auto
+          hence "Sequence (y#ys) = Sequence ((y#bs1') @ bs2)" by auto
+          hence "\<exists>bs2. Sequence (y#ys) = Sequence ((y#bs1') @ bs2)" by auto
+          thus "\<exists>bs2. Sequence (y#ys) = Sequence (bs1 @ bs2)" using **** by simp
+        qed
+      qed
+    qed
+  qed
+
   lemma partition_reconstitute:
     assumes "partition sz bs0 = Success (Sequence lft, Sequence rgt)"
     shows "bs0 = Sequence (lft @ rgt)"
+  using assms
   sorry
 
   section {* Helpful lemmas *}
 
+  (* More precise control over numeral desugaring than plain `simp'. *)
   lemma Suc_lemmas:
     shows "16 = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0)))))))))))))))"
       and "5 = Suc (Suc (Suc (Suc (Suc 0))))"

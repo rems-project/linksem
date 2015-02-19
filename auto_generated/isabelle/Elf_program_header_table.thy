@@ -292,7 +292,6 @@ function (sequential,domintros)  read_elf32_program_header_table'  :: " endianne
     error_return (entry # tail))))" 
 by pat_completeness auto
 
-
 definition bytes_of_elf64_program_header_table  :: " endianness \<Rightarrow>(elf64_program_header_table_entry)list \<Rightarrow> byte_sequence "  where 
      " bytes_of_elf64_program_header_table endian tbl = (
   Byte_sequence.concat_byte_sequence (List.map (bytes_of_elf64_program_header_table_entry endian) tbl))"
