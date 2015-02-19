@@ -316,7 +316,7 @@ begin
     thus "length bs0 = length lft + length rgt" using L R by auto
   qed
 
-  lemma takebytes_success:
+  lemma takebytes_success [rule_format]:
     shows "takebytes sz bs0 = Success (Sequence bs1) \<longrightarrow> (\<exists>bs2. bs0 = Sequence (bs1 @ bs2))"
   proof(induct sz arbitrary: bs0 bs1)
     fix bs0 bs1
@@ -539,11 +539,52 @@ begin
   done
 
   lemma uint64_of_oct_oct_of_uint64_inv:
-    fixes u1 u2 u3 u4 u5 u6 u7 u8 :: "8 word"
-    assumes *: "oct_of_uint64 w = (u1, u2, u3, u4, u5, u6, u7, u8)"
-    shows "uint64_of_oct u1 u2 u3 u4 u5 u6 u7 u8 = w"
+    fixes u1 u2 u3 u4 u5 u6 u7 u8 :: "8 word" and w :: "64 word"
+    shows "oct_of_uint64 w = (u1, u2, u3, u4, u5, u6, u7, u8) \<longrightarrow> uint64_of_oct u1 u2 u3 u4 u5 u6 u7 u8 = w"
   using assms unfolding oct_of_uint64_def uint64_of_oct_def
-  sorry
+    apply(rule prod.exhaust[where y="word_split w"])
+    apply(simp only: Let_def)
+    apply(rule forw_subst, assumption)
+    apply simp
+    apply(rule_tac ?y="word_split x1" in prod.exhaust)
+    apply(rule forw_subst, assumption)
+    apply simp
+    apply(rule_tac ?y="word_split x2" in prod.exhaust)
+    apply(rule forw_subst, assumption)
+    apply simp
+    apply(rule_tac ?y="word_split x1a" in prod.exhaust)
+    apply(rule forw_subst, assumption)
+    apply simp
+    apply(rule_tac ?y="word_split x2a" in prod.exhaust)
+    apply(rule forw_subst, assumption)
+    apply simp
+    apply(rule_tac ?y="word_split x1b" in prod.exhaust)
+    apply(rule forw_subst, assumption)
+    apply simp
+    apply(rule impI)
+    apply(erule conjE)+
+    apply clarify
+    apply(rule word_cat_split_alt)
+    apply(auto simp add: word_size)
+    apply(rule sym)
+    apply(rule word_cat_split_alt)
+    apply(auto simp add: word_size)
+    apply(rule sym)
+    apply(rule word_cat_split_alt)
+    apply(auto simp add: word_size)
+    apply(rule sym)
+    apply(rule word_cat_split_alt)
+    apply(auto simp add: word_size)
+    apply(rule sym)
+    apply(rule word_cat_split_alt)
+    apply(auto simp add: word_size)
+    apply(rule sym)
+    apply(rule word_cat_split_alt)
+    apply(auto simp add: word_size)
+    apply(rule sym)
+    apply(rule word_cat_split_alt)
+    apply(auto simp add: word_size)
+  done
 
   lemma sint64_of_oct_oct_of_sint64_inv:
     fixes u1 u2 u3 u4 u5 u6 u7 u8 :: "8 word"
