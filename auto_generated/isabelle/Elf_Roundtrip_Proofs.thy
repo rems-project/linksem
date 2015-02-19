@@ -538,10 +538,10 @@ begin
     apply auto
   done
 
-  lemma uint64_of_oct_oct_of_uint64_inv:
+  lemma uint64_of_oct_oct_of_uint64_inv [rule_format]:
     fixes u1 u2 u3 u4 u5 u6 u7 u8 :: "8 word" and w :: "64 word"
     shows "oct_of_uint64 w = (u1, u2, u3, u4, u5, u6, u7, u8) \<longrightarrow> uint64_of_oct u1 u2 u3 u4 u5 u6 u7 u8 = w"
-  using assms unfolding oct_of_uint64_def uint64_of_oct_def
+  unfolding oct_of_uint64_def uint64_of_oct_def
     apply(rule prod.exhaust[where y="word_split w"])
     apply(simp only: Let_def)
     apply(rule forw_subst, assumption)
@@ -586,12 +586,53 @@ begin
     apply(auto simp add: word_size)
   done
 
-  lemma sint64_of_oct_oct_of_sint64_inv:
-    fixes u1 u2 u3 u4 u5 u6 u7 u8 :: "8 word"
-    assumes *: "oct_of_sint64 w = (u1, u2, u3, u4, u5, u6, u7, u8)"
-    shows "sint64_of_oct u1 u2 u3 u4 u5 u6 u7 u8 = w"
-  using assms unfolding oct_of_sint64_def sint64_of_oct_def
-  sorry
+  lemma sint64_of_oct_oct_of_sint64_inv [rule_format]:
+    fixes u1 u2 u3 u4 u5 u6 u7 u8 :: "8 word" and w :: "64 word"
+    shows "oct_of_sint64 w = (u1, u2, u3, u4, u5, u6, u7, u8) \<longrightarrow> sint64_of_oct u1 u2 u3 u4 u5 u6 u7 u8 = w"
+  unfolding oct_of_sint64_def sint64_of_oct_def
+    apply(rule prod.exhaust[where y="word_split w"])
+    apply(simp only: Let_def)
+    apply(rule forw_subst, assumption)
+    apply simp
+    apply(rule_tac ?y="word_split x1" in prod.exhaust)
+    apply(rule forw_subst, assumption)
+    apply simp
+    apply(rule_tac ?y="word_split x2" in prod.exhaust)
+    apply(rule forw_subst, assumption)
+    apply simp
+    apply(rule_tac ?y="word_split x1a" in prod.exhaust)
+    apply(rule forw_subst, assumption)
+    apply simp
+    apply(rule_tac ?y="word_split x2a" in prod.exhaust)
+    apply(rule forw_subst, assumption)
+    apply simp
+    apply(rule_tac ?y="word_split x1b" in prod.exhaust)
+    apply(rule forw_subst, assumption)
+    apply simp
+    apply(rule impI)
+    apply(erule conjE)+
+    apply clarify
+    apply(rule word_cat_split_alt)
+    apply(auto simp add: word_size)
+    apply(rule sym)
+    apply(rule word_cat_split_alt)
+    apply(auto simp add: word_size)
+    apply(rule sym)
+    apply(rule word_cat_split_alt)
+    apply(auto simp add: word_size)
+    apply(rule sym)
+    apply(rule word_cat_split_alt)
+    apply(auto simp add: word_size)
+    apply(rule sym)
+    apply(rule word_cat_split_alt)
+    apply(auto simp add: word_size)
+    apply(rule sym)
+    apply(rule word_cat_split_alt)
+    apply(auto simp add: word_size)
+    apply(rule sym)
+    apply(rule word_cat_split_alt)
+    apply(auto simp add: word_size)
+  done
 
   subsection {* Roundtripping for (un)signed types *}
 
