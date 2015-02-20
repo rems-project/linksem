@@ -128,3 +128,12 @@ val index : forall 'a. natural -> list 'a -> maybe 'a
 
 declare ocaml    target_rep function index      = `Ml_bindings.list_index_big_int`
 declare isabelle target_rep function index i xs = `Elf_Types_Local.index` xs i
+
+val replicate : forall 'a. natural -> 'a -> list 'a
+let rec replicate len e =
+	match len with
+		| 0 -> []
+		| m -> e :: replicate (m - 1) e
+	end
+
+declare isabelle target_rep function replicate = `List.replicate`
