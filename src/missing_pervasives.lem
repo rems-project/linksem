@@ -129,6 +129,25 @@ val index : forall 'a. natural -> list 'a -> maybe 'a
 declare ocaml    target_rep function index      = `Ml_bindings.list_index_big_int`
 declare isabelle target_rep function index i xs = `Elf_Types_Local.index` xs i
 
+val find_index_helper : forall 'a. natural -> ('a -> bool) -> list 'a -> maybe natural
+let rec find_index_helper count p xs =
+	match xs with
+		| []    -> Nothing
+		| y::ys ->
+			if p y then
+				Just count
+			else
+				find_index_helper (count + 1) p ys
+	end
+
+val find_index : forall 'a. ('a -> bool) -> list 'a -> maybe natural
+let find_index = find_index_helper 0
+
+val length : forall 'a. list 'a -> natural
+let length xs = List.foldr (fun x y -> 1 + y) 0 xs
+
+declare isabelle target_rep function length = `List.length`
+
 val replicate : forall 'a. natural -> 'a -> list 'a
 let rec replicate len e =
 	match len with
