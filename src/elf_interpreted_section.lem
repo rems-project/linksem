@@ -1,3 +1,5 @@
+open import Basic_classes
+open import Bool
 open import List
 open import Num
 open import String
@@ -22,6 +24,25 @@ type elf32_interpreted_section =
    ; elf32_section_entry_size : natural       (** Size of each entry in table, if section is one *)
    ; elf32_section_body       : byte_sequence (** Body of section *)
    |>
+   
+val elf32_interpreted_section_equal : elf32_interpreted_section -> elf32_interpreted_section -> bool
+let elf32_interpreted_section_equal x y =
+	x.elf32_section_name = y.elf32_section_name &&
+	x.elf32_section_type = y.elf32_section_type &&
+	x.elf32_section_flags = y.elf32_section_flags &&
+	x.elf32_section_base = y.elf32_section_base &&
+	x.elf32_section_offset = y.elf32_section_offset &&
+	x.elf32_section_size = y.elf32_section_size &&
+	x.elf32_section_link = y.elf32_section_link &&
+	x.elf32_section_info = y.elf32_section_info &&
+	x.elf32_section_align = y.elf32_section_align &&
+	x.elf32_section_entry_size = y.elf32_section_entry_size &&
+	x.elf32_section_body = y.elf32_section_body
+   
+instance (Eq elf32_interpreted_section)
+	let (=)      = elf32_interpreted_section_equal
+	let (<>) x y = not (elf32_interpreted_section_equal x y)
+end
 
 type elf64_interpreted_section =
   <| elf64_section_name       : natural       (** Name of the section *)
@@ -36,6 +57,25 @@ type elf64_interpreted_section =
    ; elf64_section_entry_size : natural       (** Size of each entry in table, if section is one *)
    ; elf64_section_body       : byte_sequence (** Body of section *)
    |>
+   
+val elf64_interpreted_section_equal : elf64_interpreted_section -> elf64_interpreted_section -> bool
+let elf64_interpreted_section_equal x y =
+	x.elf64_section_name = y.elf64_section_name &&
+	x.elf64_section_type = y.elf64_section_type &&
+	x.elf64_section_flags = y.elf64_section_flags &&
+	x.elf64_section_base = y.elf64_section_base &&
+	x.elf64_section_offset = y.elf64_section_offset &&
+	x.elf64_section_size = y.elf64_section_size &&
+	x.elf64_section_link = y.elf64_section_link &&
+	x.elf64_section_info = y.elf64_section_info &&
+	x.elf64_section_align = y.elf64_section_align &&
+	x.elf64_section_entry_size = y.elf64_section_entry_size &&
+	x.elf64_section_body = y.elf64_section_body
+	
+instance (Eq elf64_interpreted_section)
+	let (=)      = elf64_interpreted_section_equal
+	let (<>) x y = not (elf64_interpreted_section_equal x y)
+end
 
 type elf32_interpreted_sections = list elf32_interpreted_section
 type elf64_interpreted_sections = list elf64_interpreted_section
