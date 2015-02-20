@@ -141,10 +141,10 @@ let rec find_index_helper count p xs =
 	end
 
 val find_index : forall 'a. ('a -> bool) -> list 'a -> maybe natural
-let find_index = find_index_helper 0
+let find_index p xs = find_index_helper 0 p xs
 
 val length : forall 'a. list 'a -> natural
-let length xs = List.foldr (fun x y -> 1 + y) 0 xs
+let length xs = List.foldr (fun _ y -> 1 + y) 0 xs
 
 declare isabelle target_rep function length = `List.length`
 
