@@ -171,7 +171,7 @@ let read_elf32_symbol_table_entry endian bs0 =
 
 val read_elf32_symbol_table : endianness -> byte_sequence -> error elf32_symbol_table
 let rec read_elf32_symbol_table endian bs0 =
-  if length bs0 = 0 then
+  if Byte_sequence.length bs0 = 0 then
     return []
   else
     read_elf32_symbol_table_entry endian bs0 >>= fun (head, bs0) ->
@@ -224,7 +224,7 @@ let read_elf64_symbol_table_entry endian bs0 =
 
 val read_elf64_symbol_table : endianness -> byte_sequence -> error elf64_symbol_table
 let rec read_elf64_symbol_table endian bs0 =
-  if length bs0 = 0 then
+  if Byte_sequence.length bs0 = 0 then
     return []
   else
     read_elf64_symbol_table_entry endian bs0 >>= fun (head, bs0) ->

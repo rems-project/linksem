@@ -98,3 +98,27 @@ let bracket xs =
 (*val string_suffix : natural -> string -> maybe string*)
 
 (*val index : forall 'a. natural -> list 'a -> maybe 'a*)
+
+(*val find_index_helper : forall 'a. natural -> ('a -> bool) -> list 'a -> maybe natural*)
+let rec find_index_helper count p xs =	
+((match xs with
+		| []    -> None
+		| y::ys ->
+			if p y then
+				Some count
+			else
+				find_index_helper ( Big_int.add_big_int count(Big_int.big_int_of_int 1)) p ys
+	))
+
+(*val find_index : forall 'a. ('a -> bool) -> list 'a -> maybe natural*)
+let find_index0 p xs = (find_index_helper(Big_int.big_int_of_int 0) p xs)
+
+(*val length : forall 'a. list 'a -> natural*)
+let length xs = (List.fold_right (fun _ y -> Big_int.add_big_int(Big_int.big_int_of_int 1) y) xs (Big_int.big_int_of_int 0))
+
+(*val replicate : forall 'a. natural -> 'a -> list 'a*)
+let rec replicate0 len e = 
+  (
+  if(Big_int.eq_big_int len (Big_int.big_int_of_int 0)) then ([]) else
+    (e ::
+       replicate0 ( Nat_num.natural_monus len (Big_int.big_int_of_int 1)) e))

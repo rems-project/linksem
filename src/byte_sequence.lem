@@ -3,6 +3,7 @@ open import Bool
 open import List
 open import Num
 open import String
+open import Assert_extra
 
 open import Error
 open import Missing_pervasives
@@ -118,7 +119,7 @@ let rec takebytes count (Sequence ts) =
     | m ->
       match ts with
         | [] ->
-          fail "takebytes: cannot take more bytes than are contained in sequence"
+          failwith "takebytes: cannot take more bytes than are contained in sequence"
         | x::xs ->
           takebytes (count - 1) (Sequence xs) >>= fun tail ->
           match tail with

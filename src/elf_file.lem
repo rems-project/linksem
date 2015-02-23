@@ -394,6 +394,7 @@ val obtain_elf64_bits_and_bobs : elf64_header -> elf64_program_header_table -> e
   -> elf64_section_header_table -> elf64_interpreted_sections -> byte_sequence -> error (list (natural * byte_sequence))
 let obtain_elf64_bits_and_bobs hdr segs interp_segs sects interp_sects bs0 =
   let hdr_off_len  = (0, natural_of_elf64_half hdr.elf64_ehsize) in
+  
   let pht_off      = natural_of_elf64_off hdr.elf64_phoff in
   let pht_len      = natural_of_elf64_half hdr.elf64_phentsize * natural_of_elf64_half hdr.elf64_phnum in
   let pht_off_len  = (pht_off, pht_off + pht_len) in
@@ -423,8 +424,10 @@ let obtain_elf64_bits_and_bobs hdr segs interp_segs sects interp_sects bs0 =
           ) pre_layout
         in
           compute_differences 0 (Byte_sequence.length bs0) layout >>= fun diffs ->
-            mapM (fun (start, len) ->
-              Byte_sequence.offset_and_cut start len bs0 >>= fun rel ->
+            mapM (fun (start, finish) ->
+    let _ = Missing_pervasives.print ("Got to blah bb18! now doing offset_and_cut start:" ^ (show start) ^ " len:" ^ (show (finish - start)) ^ " seq len: " ^ (show (Byte_sequence.length bs0))^ "\n") in
+              Byte_sequence.offset_and_cut start (finish - start) bs0 >>= fun rel ->
+    let _ = Missing_pervasives.print ("Got to blah bb19!") in
               return (start, rel)
             ) diffs
       else

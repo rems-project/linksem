@@ -1,0 +1,401 @@
+open import Basic_classes
+open import Function
+open import String
+open import Tuple
+open import Bool
+open import List
+open import Sorting
+open import Num
+open import Maybe
+open import Assert_extra
+
+open import Byte_sequence
+open import Default_printing
+open import Error
+open import Missing_pervasives
+open import Show
+
+open import Elf_header
+open import Elf_file
+open import Elf_interpreted_section
+open import Elf_interpreted_segment
+open import Elf_section_header_table
+open import Elf_program_header_table
+open import Elf_types
+open import Elf_relocation
+open import Endianness
+
+open import Sail_interface
+
+open import Abi_amd64_elf_header
+open import Abi_amd64_serialisation
+
+let default_hdr_bdl =
+  (default_os_specific_print, default_proc_specific_print)
+
+let default_pht_bdl =
+  (default_os_specific_print, default_proc_specific_print)
+
+let default_sht_bdl =
+  (default_os_specific_print, default_proc_specific_print, default_user_specific_print)
+
+type input_item = InputFilename of string (* can be ELF or script *)
+           | Arg of string            (* eg -bsymbolic, changing symbol resolution*)
+
+type input_data = list input_item
+
+type output_data = elf64_file
+
+val segment_load_ranges : elf64_interpreted_segments -> list (natural * natural)
+let segment_load_ranges es = 
+    let get_range : elf64_interpreted_segment -> list (natural * natural) = (
+        fun x -> if x.elf64_segment_type = elf_pt_load 
+            then [(x.elf64_segment_base, x.elf64_segment_base + x.elf64_segment_memsz)] 
+            else []
+    )
+    in
+    foldl (++) [] (List.map get_range es) 
+
+val range_contains : (natural * natural) -> (natural * natural) -> bool
+let range_contains (r1begin, r1end) (r2begin, r2end) = 
+    (* r1 is at least as big as r2 *)
+    r2begin >= r1begin && r2end <= r1end
+
+val range_overlaps : (natural * natural) -> (natural * natural) -> bool
+let range_overlaps (r1begin, r1end) (r2begin, r2end) =
+    (r1begin < r2end && r1end > r2begin) || (r2begin < r1end && r2end > r1begin)
+    
+val is_partition : list (natural * natural) -> list (natural * natural) -> bool
+let is_partition rs ranges = 
+    (* 1. each element of the first list falls entirely within some element
+     * from the second list. *)
+    let r_is_contained_by_some_range
+     = fun r -> foldl (||) false (List.map (fun range -> range_contains range r) ranges)
+    in
+    all (fun r -> r_is_contained_by_some_range r) rs
+    &&
+    (* 2. elements of the first list do not overlap *)
+    all (fun r -> all (fun r2 -> (r = r2) || (not (range_overlaps r r2))) rs) rs
+
+val range_models_section : elf64_interpreted_section -> natural -> natural -> bool
+let range_models_section s base len = 
+    true
+
+val     nat_range : natural -> natural -> list natural
+let rec nat_range base len =
+    match len with 
+        0 -> []
+    |   _ -> base :: (nat_range (base + 1) (len - 1))
+    end
+
+val width_of_relocation : elf64_relocation -> natural
+let width_of_relocation r = 8 (* FIXME *)
+
+val width_of_relocation_a : elf64_relocation_a -> natural
+let width_of_relocation_a r = 8 (* FIXME *)
+
+(* Expand a sorted list of ranges into a list of bool, where the list contains
+ * true if its index is included in one or more ranges, else false. *)
+val expand_ranges : list (natural * natural) -> list bool -> list bool
+let rec expand_ranges sorted_ranges accum =
+    match sorted_ranges with
+        [] -> accum
+     |  (base, len) :: more -> 
+            (* pad the accum so that it reaches up to base *)
+            let up_to_base = (Missing_pervasives.replicate (base - (Missing_pervasives.length accum)) true)
+            in
+            let up_to_end_of_range = up_to_base ++ (Missing_pervasives.replicate len false)
+            in
+            expand_ranges more (accum ++ up_to_end_of_range)
+    end
+
+val make_byte_pattern : list byte -> list bool -> list (maybe byte)
+let rec make_byte_pattern bytes dontcares = 
+    match bytes with
+          [] -> []
+        | b :: bs -> match dontcares with 
+                er :: more -> (if er then Just b else Nothing) :: (make_byte_pattern bs more)
+              | _ -> failwith "make_byte_pattern: unequal length"
+              end
+    end
+
+val section_as_byte_pattern : endianness -> elf64_interpreted_section -> elf64_interpreted_sections -> list (maybe byte)
+let section_as_byte_pattern endian s all_s =
+    (* *)
+    let maybeIndex = Missing_pervasives.find_index (fun el -> el = s) all_s
+    in
+    let index = match maybeIndex with 
+        Just i -> i
+        | _ -> failwith "section not in list of sections"
+    end
+    in
+    let relss = [rels | forall (rels MEM all_s) | 
+        rels.elf64_section_type = sht_rel && rels.elf64_section_info = index]
+    in
+    let relss_records = List.concatMap
+        (fun rels -> match read_elf64_relocation_section rels.elf64_section_size endian rels.elf64_section_body with
+            Fail _ -> failwith "reading rels"
+            | Success (recs, rest) -> recs
+        end)
+        relss
+    in
+    let relass = [relas | forall (relas MEM all_s) | 
+        relas.elf64_section_type = sht_rela && relas.elf64_section_info = index]
+    in
+    let relass_records = List.concatMap 
+        (fun relas -> match read_elf64_relocation_a_section relas.elf64_section_size endian relas.elf64_section_body with
+            Fail _ -> failwith "reading relas"
+            | Success (recs, rest) -> recs
+        end)
+        relass
+    in
+    (* Now we have all the relocation sections; turn them into lists of relocated ranges. *)
+    let rel_ranges : list (natural * natural) = List.map (fun r -> (natural_of_elf64_addr r.elf64_r_offset, (width_of_relocation r))) relss_records
+    in
+    let rela_ranges : list (natural * natural) = List.map (fun r -> (natural_of_elf64_addr r.elf64_ra_offset, (width_of_relocation_a r))) relass_records
+    in
+    let ranges = rel_ranges ++ rela_ranges
+    in
+    let sorted_ranges = sortBy (fun (base1, len1) -> (fun (base2, len2) -> base1 < base2)) ranges
+    in
+    let expanded_ranges_short = expand_ranges sorted_ranges []
+    in
+    let expanded_ranges = append expanded_ranges_short (Missing_pervasives.replicate (s.elf64_section_size - (Missing_pervasives.length expanded_ranges_short)) true)
+    in
+    let s_bytes = match s.elf64_section_body with Sequence(bs) -> bs end
+    in
+    let byte_pattern = make_byte_pattern s_bytes expanded_ranges
+    in
+    let _ = Missing_pervasives.print ("Section name-number " ^ (show s.elf64_section_name) ^ " has byte-pattern of length " ^ (show (Missing_pervasives.length byte_pattern)) ^ "\n") in
+    byte_pattern
+
+val byte_option_matches_byte : maybe byte -> byte -> bool
+let byte_option_matches_byte optb b =
+    match optb with 
+            Nothing -> true 
+        |   Just some -> some = b 
+    end
+
+val byte_list_matches_pattern : list (maybe byte) -> list byte -> bool
+let rec byte_list_matches_pattern pattern bytes = 
+    match pattern with 
+        [] -> true
+        | optbyte :: more -> match bytes with 
+                [] -> failwith "byte_list_matches_pattern: unequal length"
+                | abyte :: morebytes -> 
+                    byte_option_matches_byte optbyte abyte && byte_list_matches_pattern more morebytes
+            end
+    end
+
+val pattern_possible_starts_in_one_byte_sequence : list (maybe byte) -> list byte -> natural -> list natural
+let rec pattern_possible_starts_in_one_byte_sequence pattern seq offset =
+    match pattern with 
+        [] -> [offset]
+        | byte_pattern :: more -> (* nonempty, so check for nonempty seq *)
+            match seq with 
+                [] -> [] (* ran out of bytes in the sequence, so no match *)
+                | byte :: bytes -> let matched_this_byte = match byte_pattern with
+                            Nothing -> true
+                            | Just b -> (b = byte)
+                            end
+                       in
+                       let full_matches_starting_later
+                        = pattern_possible_starts_in_one_byte_sequence pattern bytes (offset + 1)
+                       in
+                       if matched_this_byte && byte_list_matches_pattern more bytes
+                          then offset :: full_matches_starting_later
+                          else full_matches_starting_later
+            end
+    end
+
+val pattern_possible_starts_in_one_load_phdr : list (maybe byte) -> elf64_interpreted_segment -> natural -> list natural
+let pattern_possible_starts_in_one_load_phdr pattern seg offset =
+    match seg.elf64_segment_body with 
+        Sequence(bytes) ->
+            let ret = pattern_possible_starts_in_one_byte_sequence pattern bytes 0
+            in  
+            let _ = Missing_pervasives.print 
+                ("Pattern of length " ^ (show (Missing_pervasives.length pattern)) 
+                ^ " (" ^ (show pattern) ^ ")"
+                ^ " matched " ^ (show (Missing_pervasives.length ret)) ^ " ways: "
+                ^ (show ret) ^ "\n") in
+            ret
+    end
+
+val pattern_possible_starts_in_load_phdrs : list (maybe byte) -> elf64_file -> list natural
+let pattern_possible_starts_in_load_phdrs pattern f =
+    (* for each virtual address in a segment, evaluate whether
+       it might be a representation of our pattern *)
+    let get_starts = fun seg -> pattern_possible_starts_in_one_load_phdr pattern seg 0
+    in 
+    let load_segs = List.filter (fun seg -> seg.elf64_segment_type = elf_pt_load) f.elf64_file_interpreted_segments
+    in
+    let _ = Missing_pervasives.print ("Output file has " ^ (show (Missing_pervasives.length load_segs)) 
+        ^ " PT_LOAD segments\n")
+    in
+    (* only PT_LOAD segments are relevant *)
+    let all_segs_starts = List.map get_starts load_segs
+    in
+    let seg_startlist_pairs = zip load_segs all_segs_starts
+    in
+    let seg_start_pairs = [(seg, start) | forall ((seg, starts) MEM seg_startlist_pairs) (start MEM starts) | true ]
+    in
+    let vaddr_starts = List.map (fun (seg, start) -> seg.elf64_segment_base + start) seg_start_pairs
+    in
+    vaddr_starts
+
+val     all_global_assignments_accum
+ : list ((elf64_interpreted_section * elf64_file) * list natural)
+  -> list (list (elf64_interpreted_section * natural))
+  -> list (list (elf64_interpreted_section * natural))
+let rec all_global_assignments_accum s_and_ss accum =
+    match s_and_ss with
+        [] -> accum
+    |   ((sec, f), starts) :: more -> 
+            let all_assignments_for_sec = 
+                [(sec, start) | forall (start MEM starts) | true]
+            in
+            (* for each global assignment so far, we make 
+             * n new ones, as a list then flatten together *)
+            let add_assignment
+             = fun global_ass -> [(sec, start) :: global_ass | forall ((sec, start) MEM all_assignments_for_sec) | true]
+            in
+            let new_accum : list (list (elf64_interpreted_section * natural)) = 
+                (* map from list to list of lists *)
+                List.concatMap add_assignment accum
+            in
+            all_global_assignments_accum more new_accum
+    end
+ 
+val all_allocated_user_sections_in_load_phdrs : list elf64_file -> elf64_file -> bool
+let all_allocated_user_sections_in_load_phdrs efs out =
+    (* There must exist a contiguous partitioning of the segments' memory space 
+     * s.t. for each section, exactly one element of the partition models the segment
+     * where "models" is defined in terms of file contents and relocation.
+     * There *may* be elements of the partition unaccounted by any input section,
+     * although the linker should not inject garbage randomly... tighten this down later.
+     * 
+     * The space of partitionings is very large in the presence of even a bit of 
+     * padding. So don't enumerate that directly. Instead, for each section, look
+     * for places where that section might start. Then enumerate the non-overlapping
+     * assignments of sections to start addresses.
+     * 
+     * Instead, for each section, get its possible starting (seg, off) positions
+     * then check that there exists a partition.
+     *)
+    let is_alloc : elf64_interpreted_section -> bool
+     = (fun x -> (elf64_xword_land 
+        (elf64_xword_of_natural x.elf64_section_flags) 
+        (elf64_xword_of_natural shf_alloc))
+         = (elf64_xword_of_natural shf_alloc))
+    in
+    let is_user : elf64_interpreted_section -> bool
+     = (fun x -> x.elf64_section_type = sht_progbits
+     || x.elf64_section_type = sht_nobits)
+    in
+    let is_alloc_and_user : elf64_interpreted_section -> bool 
+     = (fun x -> (is_alloc x) && (is_user x))
+    in
+    let alloc_section_file_pairs
+     = [    (section, f) 
+            | forall (f MEM efs) (section MEM f.elf64_file_interpreted_sections)
+            | is_alloc_and_user section
+    ]
+    in
+    let _ = Missing_pervasives.print ("Inputs have a total of " ^ 
+        (show (Missing_pervasives.length alloc_section_file_pairs)) ^ " allocatable user sections.")
+    in
+    (* FIXME: check (somewhere) that endianness is consistent across input files and outputs *)
+    let endian = get_elf64_header_endianness (out.elf64_file_header)
+    in
+    (* We get a list with one element per alloc section. 
+     * That element is a list of possible start vaddrs for that section. *) 
+    let section_possible_seg_starts : list (list natural) = 
+        List.map 
+            (fun (sec, file) -> pattern_possible_starts_in_load_phdrs (section_as_byte_pattern endian sec file.elf64_file_interpreted_sections) out) 
+                alloc_section_file_pairs
+    in
+    let _ = Missing_pervasives.print ("Found the following" ^ 
+        " content-matching ways to map input sections onto output segments: " ^ 
+        (show section_possible_seg_starts))
+    in
+    let load_ranges = segment_load_ranges out.elf64_file_interpreted_segments
+    in
+    (* Make a list of all possible global assignments. 
+     * A global assignment is a list of (sections, address) pairs
+     * To enumerate all of them, 
+     * we pick a (section, starts-list) pair from the head of the list, 
+     * append all (section, start) pairs in that list to the assignments accumulated for earlier sections,
+     * then recurse to accumulate further.
+     *)
+    let sections_and_possible_starts : list ((elf64_interpreted_section * elf64_file) * list natural)
+     = zip alloc_section_file_pairs section_possible_seg_starts
+    in
+    let all_global_assignments : list (list (elf64_interpreted_section * natural))
+     = all_global_assignments_accum sections_and_possible_starts [[]]
+    in
+    let _ = Missing_pervasives.print ("Enumerated " ^ 
+        (show (Missing_pervasives.length all_global_assignments)) ^ 
+        " global assignments of input sections onto output vaddrs:\n")
+    in
+    let all_global_assignments_as_intervals : list (list (natural * natural)) = 
+        List.map
+        (fun assignment -> [(base, base + section.elf64_section_size) | forall ((section, base) MEM assignment) | true])
+        all_global_assignments
+    in
+    let valid_assignments = List.filter (fun ass -> is_partition ass load_ranges) all_global_assignments_as_intervals
+    in
+    let _ = Missing_pervasives.print ("Of these, " ^ 
+        (show (Missing_pervasives.length valid_assignments)) ^ 
+        " are valid partitionings\n")
+    in
+    (Missing_pervasives.length valid_assignments) > 0
+
+val correctly_linked : list elf64_file -> elf64_file -> bool
+let correctly_linked efs out = 
+    (* 0. TODO: well-formedness *) 
+    (* 1. all allocatable input sections are in LOADed output segments *)
+    if is_elf64_executable_file out.elf64_file_header 
+        && List.all is_elf64_linkable_file (List.map (fun x -> x.elf64_file_header) efs)
+        && (natural_of_elf64_half out.elf64_file_header.elf64_phnum) * (natural_of_elf64_half out.elf64_file_header.elf64_phentsize) > 0
+        && List.all (fun x -> (natural_of_elf64_half x.elf64_file_header.elf64_shnum) * (natural_of_elf64_half x.elf64_file_header.elf64_shentsize) > 0) efs
+        then all_allocated_user_sections_in_load_phdrs efs out
+    else false
+        
+
+val top_level_spec : input_data -> output_data -> bool
+let top_level_spec ins out =
+(* let top-level-spec inputs = 
+   ... first map dominic over the files there
+   ... make something of type elf_file -> bool
+   ... compose that with dominic^-1 *)
+  let input_files = List.concatMap
+    (fun x -> match x with InputFilename fname -> [fname] | _ -> [] end) 
+    ins
+  in
+  let res =   
+    mapM Byte_sequence.acquire input_files >>= fun input_bs ->
+      mapM Elf_file.read_elf64_file input_bs >>= fun efs ->
+          (return (correctly_linked efs out))
+  in
+    match res with 
+      | Fail err -> let _ = Missing_pervasives.print err in false
+      | Success result -> result
+    end
+
+
+let _ =
+  let res =
+    Byte_sequence.acquire "test/link-01/a.out" >>= fun out ->
+    let _ = Missing_pervasives.print ("Got to blah0!") in
+    Elf_file.read_elf64_file out >>= fun eout ->
+    return (show (top_level_spec [InputFilename "test/link-01/file1.o";
+                                  InputFilename "test/link-01/file2.o"]
+                                 eout))
+  in
+    match res with
+      | Fail err  -> Missing_pervasives.print ("[!]: " ^ err)
+      | Success e -> Missing_pervasives.print e
+    end
+
+

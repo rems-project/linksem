@@ -1,3 +1,4 @@
+open import Basic_classes
 open import List
 open import Num
 
@@ -11,10 +12,13 @@ type expression (* Denote addresses, whether known or to be ascertained *)
   = Var   of string   (* Ranges over memory addresses *)
   | Const of natural  (* Fixed memory address *)
 
+(* These are *one-place* predicates on unsigned integer solutions (usually representing 
+ * addresses). Implicitly, every binary relation is being applied to the solution. HMM: is 
+ * this sane? Taking my lead from KLEE / SMT solver formulae. *)
 type value_formula
   = VFTrue
   | VFFalse
-  | VFBinaryRelation of binary_relation * expression * expression
+  | VFBinaryRelation of binary_relation * expression
   | VFBinaryConnective of binary_connective * value_formula * value_formula
   | VFNot of value_formula
 
@@ -39,3 +43,4 @@ let rec mk_range left right =
   else
     let l = Const left in
     let r = Const right in
+    VFBinaryConnective And (VFBinaryRelation Lt r) (VFNot (VFBinaryRelation Lt l))

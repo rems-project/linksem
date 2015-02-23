@@ -67,7 +67,7 @@ main_elf main_link: OCAMLFLAGS += -I libraries/batteries/_build/src \
 main_elf main_link: OCAMLFIND_PACKAGES := -package batteries
 
 OCAML_LIB_OBJS := unix.cma nums.cma batteries.cma nat_num.cmo 
-LEM_OCAML_OBJS := lem.cmo lem_function.cmo lem_list.cmo lem_num.cmo xstring.cmo
+LEM_OCAML_OBJS := lem.cmo lem_function.cmo lem_list.cmo lem_num.cmo lem_sorting.cmo xstring.cmo
 OCAML_HELPERS := uint16_wrapper.ml uint32_wrapper.ml \
 uint64_wrapper.ml byte_sequence_wrapper.ml ml_bindings.ml
 

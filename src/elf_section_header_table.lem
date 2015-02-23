@@ -196,6 +196,20 @@ let {ocaml} string_of_section_type os proc user i =
   else
     "Undefined or invalid section type"
 
+(** Section flag numeric values. *)
+let shf_write            : natural = 1
+let shf_alloc            : natural = 2
+let shf_execinstr        : natural = 4
+let shf_merge            : natural = 16
+let shf_strings          : natural = 32
+let shf_info_link        : natural = 64
+let shf_link_order       : natural = 128
+let shf_os_nonconforming : natural = 256
+let shf_group            : natural = 512
+let shf_tls              : natural = 1024
+val section_is_os_specific : natural -> bool        (* mask 0x0ff00000 *)
+val section_is_processor_specific : natural -> bool (* mask 0xf0000000 *)
+
 (** Section header table entry type. *)
 
 (** [elf32_section_header_table_entry] is the type of entries in the section
@@ -409,7 +423,7 @@ let bytes_of_elf32_section_header_table endian tbl =
   Byte_sequence.concat (List.map (bytes_of_elf32_section_header_table_entry endian) tbl)
 
 let rec read_elf32_section_header_table' endian bs0 =
-  if length bs0 = 0 then
+  if Byte_sequence.length bs0 = 0 then
     return []
   else
     read_elf32_section_header_table_entry endian bs0 >>= fun (entry, bs1) ->
@@ -428,7 +442,7 @@ let bytes_of_elf64_section_header_table endian tbl =
   Byte_sequence.concat (List.map (bytes_of_elf64_section_header_table_entry endian) tbl)
 
 let rec read_elf64_section_header_table' endian bs0 =
-  if length bs0 = 0 then
+  if Byte_sequence.length bs0 = 0 then
     return []
   else
     read_elf64_section_header_table_entry endian bs0 >>= fun (entry, bs1) ->

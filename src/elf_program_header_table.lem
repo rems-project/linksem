@@ -266,7 +266,7 @@ let bytes_of_elf32_program_header_table endian tbl =
   * [read_elf32_program_header_table] below instead.
   *)
 let rec read_elf32_program_header_table' endian bs0 =
-	if length bs0 = 0 then
+	if Byte_sequence.length bs0 = 0 then
   	return []
   else
   	read_elf32_program_header_table_entry endian bs0 >>= fun (entry, bs1) ->
@@ -282,7 +282,7 @@ let bytes_of_elf64_program_header_table endian tbl =
   * [read_elf32_program_header_table] below instead.
   *)
 let rec read_elf64_program_header_table' endian bs0 =
-  if length bs0 = 0 then
+  if Byte_sequence.length bs0 = 0 then
     return []
   else
     read_elf64_program_header_table_entry endian bs0 >>= fun (entry, bs1) ->

@@ -1,4 +1,14 @@
+open import Basic_classes
 open import Num
+open import List
+
+open import Endianness
+open import Byte_sequence
+open import Error
+
+open import String
+open import Show
+open import Missing_pervasives
 
 open import Elf_types
 
@@ -40,3 +50,46 @@ val elf64_relocation_r_type : elf64_xword -> natural
 let elf64_relocation_r_type w =
   let magic = (65536 * 65536) - 1 in (* 0xffffffffL *)
     natural_of_elf64_xword (elf64_xword_land w (elf64_xword_of_natural magic))
+    
+val read_elf64_relocation : endianness -> byte_sequence -> error (elf64_relocation * byte_sequence)
+let read_elf64_relocation endian bs =
+  read_elf64_addr endian bs >>= fun (r_offset, bs) ->
+  read_elf64_xword endian bs >>= fun (r_info, bs) ->
+      return (<| elf64_r_offset = r_offset; elf64_r_info = r_info |>, bs)
+
+val read_elf64_relocation_a : endianness -> byte_sequence -> error (elf64_relocation_a * byte_sequence)
+let read_elf64_relocation_a endian bs =
+  read_elf64_addr endian bs >>= fun (r_offset, bs) ->
+  read_elf64_xword endian bs >>= fun (r_info, bs) ->
+  read_elf64_sxword endian bs >>= fun (r_addend, bs) ->
+      return (<| elf64_ra_offset = r_offset; elf64_ra_info = r_info; elf64_ra_addend = r_addend |>, bs)
+
+let rec read_elf64_relocation_section' endian bs0 =
+  if Byte_sequence.length bs0 = 0 then
+    return []
+  else
+    read_elf64_relocation endian bs0 >>= fun (entry, bs1) ->
+    read_elf64_relocation_section' endian bs1 >>= fun tail ->
+    return (entry::tail)
+
+val read_elf64_relocation_section : natural -> endianness -> byte_sequence -> error (list elf64_relocation * byte_sequence)
+let read_elf64_relocation_section table_size endian bs0 =
+    let _ = Missing_pervasives.print ("Tbl size: " ^ show table_size ^ " bs size: " ^ show (Byte_sequence.length bs0)) in
+  partition table_size bs0 >>= fun (eat, rest) ->
+  read_elf64_relocation_section' endian eat >>= fun entries ->
+  return (entries, rest)
+
+let rec read_elf64_relocation_a_section' endian bs0 =
+  if Byte_sequence.length bs0 = 0 then
+    return []
+  else
+    read_elf64_relocation_a endian bs0 >>= fun (entry, bs1) ->
+    read_elf64_relocation_a_section' endian bs1 >>= fun tail ->
+    return (entry::tail)
+
+val read_elf64_relocation_a_section : natural -> endianness -> byte_sequence -> error (list elf64_relocation_a * byte_sequence)
+let read_elf64_relocation_a_section table_size endian bs0 =
+    let _ = Missing_pervasives.print ("Tbl size: " ^ show table_size ^ " bs size: " ^ show (Byte_sequence.length bs0)) in
+  partition table_size bs0 >>= fun (eat, rest) ->
+  read_elf64_relocation_a_section' endian eat >>= fun entries ->
+  return (entries, rest)
