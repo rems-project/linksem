@@ -25,7 +25,7 @@ LEM_ABI_SRC := abis/amd64/abi_amd64_elf_header.lem \
 
 LEM_MODEL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC))
 
-default: lem-model main_elf main_link
+default: lem-model main_elf main_elf.opt main_link main_link.opt
 
 ldgram.y.hacked: ldgram.y
 	cat "$<" | \
@@ -58,7 +58,7 @@ clean:
 
 ocaml: main_elf
 
-main_elf main_link: OCAMLFLAGS += -I libraries/batteries/_build/src \
+main_elf main_link main_elf.opt main_link.opt: OCAMLFLAGS += -I src_elf_libraries/batteries/_build/src \
 -I $(LEMDIR)/ocaml-lib/_build/ \
 -I adaptors \
 -I abis -I abis/amd64 -I abis/power64 \
@@ -81,6 +81,21 @@ main_elf main_link: %: %.ml $(OCAML_HELPERS) lem-model
 	ocamlfind ocamlc $(OCAMLFLAGS) -o "$@" \
 	$(OCAML_LIB_OBJS) \
 	$(LEM_OCAML_OBJS) \
+	$(LEM_UTIL_ML) \
+	$(OCAML_HELPERS) \
+	$(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
+	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC)) \
+	"$<" $(OCAMLFIND_PACKAGES)
+
+OCAML_LIB_OBJS_OPT := unix.cmxa nums.cmxa batteries.cmxa nat_num.cmx 
+LEM_OCAML_OBJS_OPT := lem.cmx lem_function.cmx lem_list.cmx lem_num.cmx lem_sorting.cmx xstring.cmx
+#OCAML_HELPERS := uint16_wrapper.ml uint32_wrapper.ml \
+#uint64_wrapper.ml byte_sequence_wrapper.ml ml_bindings.ml
+
+main_elf.opt main_link.opt: %.opt: %.ml $(OCAML_HELPERS) lem-model
+	ocamlfind ocamlopt $(OCAMLFLAGS) -o "$@" \
+	$(OCAML_LIB_OBJS_OPT) \
+	$(LEM_OCAML_OBJS_OPT) \
 	$(LEM_UTIL_ML) \
 	$(OCAML_HELPERS) \
 	$(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
