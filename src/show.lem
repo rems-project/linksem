@@ -100,12 +100,15 @@ instance forall 'a. Show 'a => (Show (maybe 'a))
   let show = string_of_maybe
 end
 
+
 val string_of_nat : nat -> string
-let rec {ocaml} string_of_nat m =
+(* let rec {ocaml} string_of_nat m =
   match m with
     | 0 -> "0"
     | m -> "S(" ^ string_of_nat (m - 1) ^ ")"
   end
+  *)
+declare ocaml target_rep function string_of_nat = `Pervasives.string_of_int`
 
 instance (Show nat)
 	let show = string_of_nat
