@@ -41,6 +41,7 @@ let default_sht_bdl =
 
 type input_item = InputFilename of string (* can be ELF or script *)
            | Arg of string            (* eg -bsymbolic, changing symbol resolution*)
+           | InputFileGroup of list string (* archives *)
 
 type input_data = list input_item
 
@@ -75,7 +76,7 @@ let is_partition rs ranges =
     all (fun r -> r_is_contained_by_some_range r) rs
     &&
     (* 2. elements of the first list do not overlap *)
-    all (fun r -> all (fun r2 -> (r = r2) || (not (range_overlaps r r2))) rs) rs
+    all (fun r -> all (fun r2 -> (r = (* should be "=="? *) r2) || (not (range_overlaps r r2))) rs) rs
 
 val range_models_section : elf64_interpreted_section -> natural -> natural -> bool
 let range_models_section s base len = 
@@ -166,7 +167,7 @@ let section_as_byte_pattern endian s all_s =
     in
     let byte_pattern = make_byte_pattern s_bytes expanded_ranges
     in
-    let _ = Missing_pervasives.print ("Section name-number " ^ (show s.elf64_section_name) ^ " has byte-pattern of length " ^ (show (Missing_pervasives.length byte_pattern)) ^ "\n") in
+    let _ = Missing_pervasives.prints ("Section name-number " ^ (show s.elf64_section_name) ^ " has byte-pattern of length " ^ (show (Missing_pervasives.length byte_pattern)) ^ "\n") in
     byte_pattern
 
 val byte_option_matches_byte : maybe byte -> byte -> bool
@@ -181,32 +182,41 @@ let rec byte_list_matches_pattern pattern bytes =
     match pattern with 
         [] -> true
         | optbyte :: more -> match bytes with 
-                [] -> failwith "byte_list_matches_pattern: unequal length"
+                [] -> false
                 | abyte :: morebytes -> 
-                    byte_option_matches_byte optbyte abyte && byte_list_matches_pattern more morebytes
+                    byte_option_matches_byte optbyte abyte 
+                 && byte_list_matches_pattern more morebytes
+            end
+    end
+    
+val accum_pattern_possible_starts_in_one_byte_sequence : list (maybe byte) -> nat -> list byte -> nat -> natural -> list natural -> list natural
+let rec accum_pattern_possible_starts_in_one_byte_sequence pattern pattern_len seq seq_len offset accum =
+    (* let _ = Missing_pervasives.prints ("At offset " ^ (show offset) ^ "\n")
+    in *)
+    match pattern with
+        [] -> offset :: accum
+        | byte_pattern :: more_byte_patterns -> (* nonempty, so check for nonempty seq *)
+            match seq with 
+                [] -> accum (* ran out of bytes in the sequence, so no match *)
+                | byte :: more_bytes -> let matched_this_byte = 
+                            (pattern_len >= seq_len) 
+                            && byte_option_matches_byte byte_pattern byte
+                       in
+                       accum_pattern_possible_starts_in_one_byte_sequence 
+                           pattern pattern_len more_bytes (seq_len - 1) (offset + 1) (
+                           if matched_this_byte && byte_list_matches_pattern more_byte_patterns more_bytes
+                              then offset :: accum
+                              else accum
+                           )
             end
     end
 
 val pattern_possible_starts_in_one_byte_sequence : list (maybe byte) -> list byte -> natural -> list natural
-let rec pattern_possible_starts_in_one_byte_sequence pattern seq offset =
-    match pattern with 
-        [] -> [offset]
-        | byte_pattern :: more -> (* nonempty, so check for nonempty seq *)
-            match seq with 
-                [] -> [] (* ran out of bytes in the sequence, so no match *)
-                | byte :: bytes -> let matched_this_byte = match byte_pattern with
-                            Nothing -> true
-                            | Just b -> (b = byte)
-                            end
-                       in
-                       let full_matches_starting_later
-                        = pattern_possible_starts_in_one_byte_sequence pattern bytes (offset + 1)
-                       in
-                       if matched_this_byte && byte_list_matches_pattern more bytes
-                          then offset :: full_matches_starting_later
-                          else full_matches_starting_later
-            end
-    end
+let pattern_possible_starts_in_one_byte_sequence pattern seq offset =
+    let _ = Missing_pervasives.prints ("Looking for matches of " ^
+        (show (List.length pattern)) ^ "-byte pattern in " ^ (show (List.length seq)) ^ "-byte region\n")
+    in
+    accum_pattern_possible_starts_in_one_byte_sequence pattern (List.length pattern) seq (List.length seq) offset []
 
 val pattern_possible_starts_in_one_load_phdr : list (maybe byte) -> elf64_interpreted_segment -> natural -> list natural
 let pattern_possible_starts_in_one_load_phdr pattern seg offset =
@@ -214,7 +224,7 @@ let pattern_possible_starts_in_one_load_phdr pattern seg offset =
         Sequence(bytes) ->
             let ret = pattern_possible_starts_in_one_byte_sequence pattern bytes 0
             in  
-            let _ = Missing_pervasives.print 
+            let _ = Missing_pervasives.prints 
                 ("Pattern of length " ^ (show (Missing_pervasives.length pattern)) 
                 ^ " (" ^ (show pattern) ^ ")"
                 ^ " matched " ^ (show (Missing_pervasives.length ret)) ^ " ways: "
@@ -230,7 +240,7 @@ let pattern_possible_starts_in_load_phdrs pattern f =
     in 
     let load_segs = List.filter (fun seg -> seg.elf64_segment_type = elf_pt_load) f.elf64_file_interpreted_segments
     in
-    let _ = Missing_pervasives.print ("Output file has " ^ (show (Missing_pervasives.length load_segs)) 
+    let _ = Missing_pervasives.prints ("Output file has " ^ (show (Missing_pervasives.length load_segs)) 
         ^ " PT_LOAD segments\n")
     in
     (* only PT_LOAD segments are relevant *)
@@ -302,7 +312,7 @@ let all_allocated_user_sections_in_load_phdrs efs out =
             | is_alloc_and_user section
     ]
     in
-    let _ = Missing_pervasives.print ("Inputs have a total of " ^ 
+    let _ = Missing_pervasives.prints ("Inputs have a total of " ^ 
         (show (Missing_pervasives.length alloc_section_file_pairs)) ^ " allocatable user sections.")
     in
     (* FIXME: check (somewhere) that endianness is consistent across input files and outputs *)
@@ -315,7 +325,7 @@ let all_allocated_user_sections_in_load_phdrs efs out =
             (fun (sec, file) -> pattern_possible_starts_in_load_phdrs (section_as_byte_pattern endian sec file.elf64_file_interpreted_sections) out) 
                 alloc_section_file_pairs
     in
-    let _ = Missing_pervasives.print ("Found the following" ^ 
+    let _ = Missing_pervasives.prints ("Found the following" ^ 
         " content-matching ways to map input sections onto output segments: " ^ 
         (show section_possible_seg_starts))
     in
@@ -334,7 +344,7 @@ let all_allocated_user_sections_in_load_phdrs efs out =
     let all_global_assignments : list (list (elf64_interpreted_section * natural))
      = all_global_assignments_accum sections_and_possible_starts [[]]
     in
-    let _ = Missing_pervasives.print ("Enumerated " ^ 
+    let _ = Missing_pervasives.prints ("Enumerated " ^ 
         (show (Missing_pervasives.length all_global_assignments)) ^ 
         " global assignments of input sections onto output vaddrs:\n")
     in
@@ -345,7 +355,7 @@ let all_allocated_user_sections_in_load_phdrs efs out =
     in
     let valid_assignments = List.filter (fun ass -> is_partition ass load_ranges) all_global_assignments_as_intervals
     in
-    let _ = Missing_pervasives.print ("Of these, " ^ 
+    let _ = Missing_pervasives.prints ("Of these, " ^ 
         (show (Missing_pervasives.length valid_assignments)) ^ 
         " are valid partitionings\n")
     in
@@ -379,23 +389,30 @@ let top_level_spec ins out =
           (return (correctly_linked efs out))
   in
     match res with 
-      | Fail err -> let _ = Missing_pervasives.print err in false
+      | Fail err -> let _ = Missing_pervasives.println err in false
       | Success result -> result
     end
 
 
 let _ =
   let res =
-    Byte_sequence.acquire "test/link-01/a.out" >>= fun out ->
-    let _ = Missing_pervasives.print ("Got to blah0!") in
+    Byte_sequence.acquire "../test/hello-static-gnu/hello" >>= fun out ->
+    let _ = Missing_pervasives.println ("Got to blah0!") in
     Elf_file.read_elf64_file out >>= fun eout ->
-    return (show (top_level_spec [InputFilename "test/link-01/file1.o";
-                                  InputFilename "test/link-01/file2.o"]
+    return (show (top_level_spec [ InputFilename "../test/hello-static-gnu/crt1.o"
+                                 ; InputFilename "../test/hello-static-gnu/crti.o"
+                                 ; InputFilename "../test/hello-static-gnu/crtbeginT.o"
+                                 ; InputFileGroup(["../test/hello-static-gnu/libgcc.a"
+                                                  ;"../test/hello-static-gnu/libgcc_eh.a"
+                                                  ;"../test/hello-static-gnu/lib.a"])
+                                 ; InputFilename "../test/hello-static-gnu/crtend.o"
+                                 ; InputFilename "../test/hello-static-gnu/crtn.o"
+                                 ]
                                  eout))
   in
     match res with
-      | Fail err  -> Missing_pervasives.print ("[!]: " ^ err)
-      | Success e -> Missing_pervasives.print e
+      | Fail err  -> Missing_pervasives.println ("[!]: " ^ err)
+      | Success e -> Missing_pervasives.println e
     end
 
 

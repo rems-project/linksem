@@ -74,7 +74,7 @@ let rec read_elf64_relocation_section' endian bs0 =
 
 val read_elf64_relocation_section : natural -> endianness -> byte_sequence -> error (list elf64_relocation * byte_sequence)
 let read_elf64_relocation_section table_size endian bs0 =
-    let _ = Missing_pervasives.print ("Tbl size: " ^ show table_size ^ " bs size: " ^ show (Byte_sequence.length bs0)) in
+    let _ = Missing_pervasives.prints ("Tbl size: " ^ show table_size ^ " bs size: " ^ show (Byte_sequence.length bs0)) in
   partition table_size bs0 >>= fun (eat, rest) ->
   read_elf64_relocation_section' endian eat >>= fun entries ->
   return (entries, rest)
@@ -89,7 +89,7 @@ let rec read_elf64_relocation_a_section' endian bs0 =
 
 val read_elf64_relocation_a_section : natural -> endianness -> byte_sequence -> error (list elf64_relocation_a * byte_sequence)
 let read_elf64_relocation_a_section table_size endian bs0 =
-    let _ = Missing_pervasives.print ("Tbl size: " ^ show table_size ^ " bs size: " ^ show (Byte_sequence.length bs0)) in
+    let _ = Missing_pervasives.prints ("Tbl size: " ^ show table_size ^ " bs size: " ^ show (Byte_sequence.length bs0)) in
   partition table_size bs0 >>= fun (eat, rest) ->
   read_elf64_relocation_a_section' endian eat >>= fun entries ->
   return (entries, rest)

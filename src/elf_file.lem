@@ -425,9 +425,9 @@ let obtain_elf64_bits_and_bobs hdr segs interp_segs sects interp_sects bs0 =
         in
           compute_differences 0 (Byte_sequence.length bs0) layout >>= fun diffs ->
             mapM (fun (start, finish) ->
-    let _ = Missing_pervasives.print ("Got to blah bb18! now doing offset_and_cut start:" ^ (show start) ^ " len:" ^ (show (finish - start)) ^ " seq len: " ^ (show (Byte_sequence.length bs0))^ "\n") in
+    let _ = Missing_pervasives.prints ("Got to blah bb18! now doing offset_and_cut start:" ^ (show start) ^ " len:" ^ (show (finish - start)) ^ " seq len: " ^ (show (Byte_sequence.length bs0))^ "\n") in
               Byte_sequence.offset_and_cut start (finish - start) bs0 >>= fun rel ->
-    let _ = Missing_pervasives.print ("Got to blah bb19!") in
+    let _ = Missing_pervasives.prints ("Got to blah bb19!\n") in
               return (start, rel)
             ) diffs
       else

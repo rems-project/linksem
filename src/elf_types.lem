@@ -959,18 +959,3 @@ let bytes_of_elf64_sxword endian w =
 instance (Show elf64_sxword)
   let show = string_of_elf64_sxword
 end
-
-val unsafe_nat_of_natural : natural -> nat
-
-declare ocaml    target_rep function unsafe_nat_of_natural = `Big_int.int_of_big_int`
-declare isabelle target_rep function unsafe_nat_of_natural = `id`
-
-val unsafe_int_of_natural   : natural -> int
-
-declare ocaml    target_rep function unsafe_int_of_natural = `Big_int.int_of_big_int`
-declare isabelle target_rep function unsafe_int_of_natural = `int`
-
-val byte_of_natural : natural -> byte
-
-declare ocaml    target_rep function byte_of_natural = `Ml_bindings.char_of_bigint`
-declare isabelle target_rep function byte_of_natural = `unat`

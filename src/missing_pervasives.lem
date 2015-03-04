@@ -25,6 +25,21 @@ let natural_of_bool b =
     | false -> 0
   end
 
+val unsafe_nat_of_natural : natural -> nat
+
+declare ocaml    target_rep function unsafe_nat_of_natural = `Big_int.int_of_big_int`
+declare isabelle target_rep function unsafe_nat_of_natural = `id`
+
+val unsafe_int_of_natural   : natural -> int
+
+declare ocaml    target_rep function unsafe_int_of_natural = `Big_int.int_of_big_int`
+declare isabelle target_rep function unsafe_int_of_natural = `int`
+
+val byte_of_natural : natural -> byte
+
+declare ocaml    target_rep function byte_of_natural = `Ml_bindings.char_of_bigint`
+declare isabelle target_rep function byte_of_natural = `unat`
+
 type ordering
   = Equal
   | Less
@@ -108,9 +123,13 @@ val split_string_on_char : string -> char -> list string
 declare ocaml target_rep function split_string_on_char = `Ml_bindings.split_string_on_char`
 declare isabelle target_rep function split_string_on_char = `Elf_Types_Local.split_string_on_char`
 
-(** [print s] prints [s] to stdout. *)
-val print : string -> unit
-declare ocaml target_rep function print = `print_endline`
+(** [println s] prints [s] to stdout, adding a trailing newline. *)
+val println : string -> unit
+declare ocaml target_rep function println = `print_endline`
+
+(** [prints s] prints [s] to stdout, without adding a trailing newline. *)
+val prints : string -> unit
+declare ocaml target_rep function prints = `print_string`
 
 (** [string_of_nat m] produces a string representation of natural number [m]. *)
 val string_of_nat : nat -> string
@@ -144,7 +163,12 @@ val find_index : forall 'a. ('a -> bool) -> list 'a -> maybe natural
 let find_index p xs = find_index_helper 0 p xs
 
 val length : forall 'a. list 'a -> natural
-let length xs = List.foldr (fun _ y -> 1 + y) 0 xs
+let ~{ocaml} length xs = List.foldr (fun _ y -> 1 + y) 0 xs
+
+val nat_length : forall 'a. list 'a -> nat
+declare ocaml target_rep function nat_length = `List.length`
+
+let {ocaml} length xs = naturalFromNat (nat_length xs)
 
 declare isabelle target_rep function length = `List.length`
 

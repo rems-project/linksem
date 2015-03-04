@@ -55,7 +55,7 @@ let zeros m = create m Missing_pervasives.null_char
 
 val length : byte_sequence -> natural
 let length (Sequence ts) =
-  List.foldr (fun x y -> y + 1) 0 ts
+  naturalFromNat (List.length ts)
 ;;
 
 val concat : list byte_sequence -> byte_sequence
@@ -112,21 +112,40 @@ let rec dropbytes count (Sequence ts) =
       end
   end
 
+(* We want a tail-recursive append. reverse_append l1 l2 appends l2 to the
+ * reverse of l1. So we get [l1-backwards] [l2]. So just reverse l1. *)
+val list_append : forall 'a. list 'a -> list 'a -> list 'a
+let list_append l1 l2 =
+    List.reverseAppend (List.reverse l1) l2
+
+val list_take_with_accum : forall 'a. nat -> list 'a -> list 'a -> list 'a
+let rec list_take_with_accum n reverse_acc l =
+  (*  let _ = Missing_pervasives.prints ("Taking a byte; have accumulated " ^ (show (List.length acc) ^ " so far\n"))
+   in *)
+   match n with
+        0 -> List.reverse reverse_acc
+      | _ -> match l with
+            [] -> failwith "list_take_with_accum: not enough elements"
+            | x :: xs -> list_take_with_accum (n-1) (x :: reverse_acc) xs
+        end
+    end
+
+val takebytes_r: nat -> byte_sequence -> error byte_sequence
+let rec takebytes_r count (Sequence ts) = 
+  if List.length ts >= count then 
+    return (Sequence (list_take_with_accum count [] ts))
+  else failwith "takebytes: cannot take more bytes than are contained in sequence"
+
 val takebytes : natural -> byte_sequence -> error byte_sequence
-let rec takebytes count (Sequence ts) =
-  match count with
-    | 0 -> return (Sequence [])
-    | m ->
-      match ts with
-        | [] ->
-          failwith "takebytes: cannot take more bytes than are contained in sequence"
-        | x::xs ->
-          takebytes (count - 1) (Sequence xs) >>= fun tail ->
-          match tail with
-            | Sequence t -> return (Sequence (x::t))
-          end
-      end
-  end
+let takebytes count (Sequence ts) =
+      let _ = Missing_pervasives.prints ("Trying to take " ^ (show count) ^ " bytes from sequence of "
+        ^ (show (List.length ts)) ^ "\n")
+      in
+      let result = takebytes_r (Missing_pervasives.unsafe_nat_of_natural count) (Sequence ts)
+      in 
+      let _ = Missing_pervasives.prints ("Succeeded\n")
+      in
+      result
 
 val read_2_bytes_le : byte_sequence -> error ((byte * byte) * byte_sequence)
 let read_2_bytes_le bs0 =

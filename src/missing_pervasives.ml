@@ -17,6 +17,12 @@ let natural_of_bool b =
     | false ->Big_int.big_int_of_int 0
   ))
 
+(*val unsafe_nat_of_natural : natural -> nat*)
+
+(*val unsafe_int_of_natural   : natural -> int*)
+
+(*val byte_of_natural : natural -> byte*)
+
 (*type ordering
   = Equal
   | Less
@@ -86,8 +92,11 @@ let bracket xs =
   *)
 (*val split_string_on_char : string -> char -> list string*)
 
-(** [print s] prints [s] to stdout. *)
-(*val print : string -> unit*)
+(** [println s] prints [s] to stdout, adding a trailing newline. *)
+(*val println : string -> unit*)
+
+(** [prints s] prints [s] to stdout, without adding a trailing newline. *)
+(*val prints : string -> unit*)
 
 (** [string_of_nat m] produces a string representation of natural number [m]. *)
 (*val string_of_nat : nat -> string*)
@@ -114,7 +123,10 @@ let rec find_index_helper count p xs =
 let find_index0 p xs = (find_index_helper(Big_int.big_int_of_int 0) p xs)
 
 (*val length : forall 'a. list 'a -> natural*)
-let length xs = (List.fold_right (fun _ y -> Big_int.add_big_int(Big_int.big_int_of_int 1) y) xs (Big_int.big_int_of_int 0))
+
+(*val nat_length : forall 'a. list 'a -> nat*)
+
+let length xs = (Big_int.big_int_of_int (List.length xs))
 
 (*val replicate : forall 'a. natural -> 'a -> list 'a*)
 let rec replicate0 len e = 
