@@ -9223,9 +9223,9 @@ let program =
 let _ =
   let res =
     Byte_sequence.acquire "../test/link-01/a.out" >>= fun bs0 ->
-    Elf_file.read_elf32_file bs0 >>= fun ef1 ->
-    Elf_file.get_elf32_file_global_symbol_init ef1 >>= fun strs ->
-    return (Elf_file.string_of_elf32_file default_hdr_bdl default_pht_bdl default_sht_bdl ef1)
+    Elf_file.read_elf64_file bs0 >>= fun ef1 ->
+    Elf_file.get_elf64_file_global_symbol_init ef1 >>= fun strs ->
+    return (Elf_file.string_of_elf64_file default_hdr_bdl default_pht_bdl default_sht_bdl ef1)
   in
     match res with
       | Fail err  -> Missing_pervasives.println ("[!]: " ^ err)

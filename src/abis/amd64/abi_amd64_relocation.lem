@@ -5,6 +5,7 @@
 open import Basic_classes
 open import Num
 open import String
+open import Missing_pervasives
 
 open import Error
 

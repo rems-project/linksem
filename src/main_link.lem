@@ -404,7 +404,7 @@ let _ =
                                  ; InputFilename "../test/hello-static-gnu/crtbeginT.o"
                                  ; InputFileGroup(["../test/hello-static-gnu/libgcc.a"
                                                   ;"../test/hello-static-gnu/libgcc_eh.a"
-                                                  ;"../test/hello-static-gnu/lib.a"])
+                                                  ;"../test/hello-static-gnu/libc.a"])
                                  ; InputFilename "../test/hello-static-gnu/crtend.o"
                                  ; InputFilename "../test/hello-static-gnu/crtn.o"
                                  ]

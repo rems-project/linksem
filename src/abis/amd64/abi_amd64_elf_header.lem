@@ -7,6 +7,7 @@ open import Bool
 open import List
 open import Num
 open import Maybe
+open import Missing_pervasives
 
 open import Elf_header
 open import Elf_types
