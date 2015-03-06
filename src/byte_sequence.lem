@@ -138,13 +138,13 @@ let rec takebytes_r count (Sequence ts) =
 
 val takebytes : natural -> byte_sequence -> error byte_sequence
 let takebytes count (Sequence ts) =
-      let _ = Missing_pervasives.prints ("Trying to take " ^ (show count) ^ " bytes from sequence of "
+      (* let _ = Missing_pervasives.prints ("Trying to take " ^ (show count) ^ " bytes from sequence of "
         ^ (show (List.length ts)) ^ "\n")
-      in
+      in *)
       let result = takebytes_r (Missing_pervasives.unsafe_nat_of_natural count) (Sequence ts)
       in 
-      let _ = Missing_pervasives.prints ("Succeeded\n")
-      in
+      (*let _ = Missing_pervasives.prints ("Succeeded\n")
+      in *)
       result
 
 val read_2_bytes_le : byte_sequence -> error ((byte * byte) * byte_sequence)
