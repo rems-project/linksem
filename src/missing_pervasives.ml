@@ -5,6 +5,7 @@ open Lem_list
 open Lem_maybe
 open Lem_num
 open Lem_string
+open Lem_assert_extra
 
 (*type byte*)
 
@@ -128,9 +129,18 @@ let find_index0 p xs = (find_index_helper(Big_int.big_int_of_int 0) p xs)
 
 let length xs = (Big_int.big_int_of_int (List.length xs))
 
+(*val argv : list string*)
+
 (*val replicate : forall 'a. natural -> 'a -> list 'a*)
 let rec replicate0 len e = 
   (
   if(Big_int.eq_big_int len (Big_int.big_int_of_int 0)) then ([]) else
     (e ::
        replicate0 ( Nat_num.natural_monus len (Big_int.big_int_of_int 1)) e))
+
+(*val hd : forall 'a. list 'a -> 'a*)
+let hd l =     
+((match l with
+        | [] -> failwith "hd of empty list"
+        | x :: xs -> x
+    ))

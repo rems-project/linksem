@@ -14,16 +14,18 @@ LEM_ELF_SRC := byte_sequence.lem \
 	elf_types.lem elf_interpreted_segment.lem elf_interpreted_section.lem string_table.lem elf_symbol_table.lem \
 	elf_header.lem elf_program_header_table.lem \
 	elf_section_header_table.lem \
-	elf_file.lem
+	elf_file.lem 
 	
-LEM_ABI_SRC := abis/amd64/abi_amd64_elf_header.lem \
+LEM_ABI_SRC := abstract_abi.lem abis/amd64/abi_amd64_elf_header.lem \
 	abis/power64/abi_power64_elf_header.lem \
 	abis/abis.lem \
 	elf_relocation.lem abstract_linker_script.lem \
 	adaptors/sail_interface.lem \
 	abis/amd64/abi_amd64_serialisation.lem abis/amd64/abi_amd64_relocation.lem
 
-LEM_MODEL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC))
+LEM_LINK_SRC := command_line.lem
+
+LEM_MODEL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC))
 
 default: lem-model main_elf main_elf.opt main_link main_link.opt
 
@@ -35,10 +37,10 @@ ldgram.y.hacked: ldgram.y
 	grep '\([:|;]\|[A-Za-z0-9_]\{2,\}\)' | \
 	tail -n+35 > "$@" || rm -f "$@"
 
-lem-model: $(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC)
+lem-model: $(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC)
 	$(LEM) -ocaml -only_changed_output $+
 
-main_elf.ml main_link.ml: %.ml: $(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) %.lem
+main_elf.ml main_link.ml: %.ml: $(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC) %.lem
 	$(LEM) -ocaml $+
 
 isa-extraction:
@@ -85,12 +87,12 @@ main_elf main_link: %: %.ml $(OCAML_HELPERS) lem-model
 	$(OCAML_HELPERS) \
 	$(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC)) \
+	$(patsubst %.lem,%.ml,$(LEM_LINK_SRC)) \
 	"$<" $(OCAMLFIND_PACKAGES)
 
 OCAML_LIB_OBJS_OPT := unix.cmxa nums.cmxa batteries.cmxa nat_num.cmx 
 LEM_OCAML_OBJS_OPT := lem.cmx lem_function.cmx lem_list.cmx lem_num.cmx lem_sorting.cmx xstring.cmx
-#OCAML_HELPERS := uint16_wrapper.ml uint32_wrapper.ml \
-#uint64_wrapper.ml byte_sequence_wrapper.ml ml_bindings.ml
+# OCAML_HELPERS are the same in the .opt case as above
 
 main_elf.opt main_link.opt: %.opt: %.ml $(OCAML_HELPERS) lem-model
 	ocamlfind ocamlopt $(OCAMLFLAGS) -o "$@" \
@@ -100,13 +102,8 @@ main_elf.opt main_link.opt: %.opt: %.ml $(OCAML_HELPERS) lem-model
 	$(OCAML_HELPERS) \
 	$(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC)) \
+	$(patsubst %.lem,%.ml,$(LEM_LINK_SRC)) \
 	"$<" $(OCAMLFIND_PACKAGES)
-
-#  -lib batteries\
-#  -lib bitstring\
-#  -lib uint\
-
-#-package bitstring -package uint -package batteries
 
 make_elf_libraries:
 	-chmod u+w src_elf_libraries/batteries
@@ -119,8 +116,6 @@ make_elf_libraries:
 
 clean_elf_libraries:
 	$(MAKE) -C src_elf_libraries clean
-
-
 
 ocaml_with_ocamlbuild: lem-model
 	ocamlbuild -classic-display \

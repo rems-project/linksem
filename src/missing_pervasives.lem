@@ -4,6 +4,7 @@ open import List
 open import Maybe
 open import Num
 open import String
+open import Assert_extra
 
 open import {isabelle} `$ISABELLE_HOME/src/HOL/Word/Word`
 open import {isabelle} `Elf_Types_Local`
@@ -170,6 +171,9 @@ declare ocaml target_rep function nat_length = `List.length`
 
 let {ocaml} length xs = naturalFromNat (nat_length xs)
 
+val argv : list string
+declare ocaml target_rep function argv = `Ml_bindings.argv_list`
+
 declare isabelle target_rep function length = `List.length`
 
 val replicate : forall 'a. natural -> 'a -> list 'a
@@ -178,5 +182,12 @@ let rec replicate len e =
 		| 0 -> []
 		| m -> e :: replicate (m - 1) e
 	end
+
+val hd : forall 'a. list 'a -> 'a
+let hd l =
+     match l with
+        | [] -> failwith "hd of empty list"
+        | x :: xs -> x
+    end
 
 declare isabelle target_rep function replicate = `List.replicate`

@@ -116,3 +116,5 @@ let rec list_index_big_int index xs =
       else
         list_index_big_int (Big_int.sub_big_int index (Big_int.big_int_of_int 1)) xs
 ;;
+
+let argv_list = Array.to_list Sys.argv
