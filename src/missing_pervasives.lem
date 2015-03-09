@@ -190,4 +190,11 @@ let hd l =
         | x :: xs -> x
     end
 
+val tl : forall 'a. list 'a -> list 'a
+let tl l =
+     match l with
+        | [] -> failwith "tl of empty list"
+        | x :: xs -> xs
+    end
+
 declare isabelle target_rep function replicate = `List.replicate`

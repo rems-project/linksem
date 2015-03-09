@@ -726,6 +726,10 @@ instance (Show elf64_header)
   let show = string_of_elf64_header_default
 end
 
+val read_elf_ident : byte_sequence -> error (list unsigned_char * byte_sequence)
+let read_elf_ident bs
+ = repeatM' ei_nident bs (read_unsigned_char default_endianness)
+
 val bytes_of_elf32_header : elf32_header -> byte_sequence
 let bytes_of_elf32_header hdr =
   let endian = deduce_endianness hdr.elf32_ident in
@@ -748,7 +752,7 @@ let bytes_of_elf32_header hdr =
 
 val read_elf32_header : byte_sequence -> error (elf32_header * byte_sequence)
 let read_elf32_header bs =
-	repeatM' ei_nident bs (read_unsigned_char default_endianness) >>= fun (ident, bs) ->
+	read_elf_ident bs >>= fun (ident, bs) ->
   let endian = deduce_endianness ident in
 	read_elf32_half endian bs >>= fun (typ, bs) ->
 	read_elf32_half endian bs >>= fun (machine, bs) ->
@@ -798,9 +802,10 @@ let bytes_of_elf64_header hdr =
     ; bytes_of_elf64_half endian hdr.elf64_shstrndx
     ]
 
+
 val read_elf64_header : byte_sequence -> error (elf64_header * byte_sequence)
 let read_elf64_header bs =
-  repeatM' ei_nident bs (read_unsigned_char default_endianness) >>= fun (ident, bs) ->
+  read_elf_ident bs >>= fun (ident, bs) ->
   let endian = deduce_endianness ident in
   read_elf64_half endian bs >>= fun (typ, bs) ->
   read_elf64_half endian bs >>= fun (machine, bs) ->
@@ -827,7 +832,10 @@ let read_elf64_header bs =
                      elf64_phnum = phnum; elf64_shentsize = shentsize;
                      elf64_shnum = shnum; elf64_shstrndx = shstrndx |>, bs)
         else
-          fail "read_elf64_header: not a 64-bit ELF file"
+          fail ("read_elf64_header: not a 64-bit ELF file (ident: "
+            ^ (show (List.map (fun n -> byte_of_natural (natural_of_unsigned_char n)) ident)) 
+            ^ ")"
+            )
     end
 
 val is_elf32_header_padding_correct : elf32_header -> bool

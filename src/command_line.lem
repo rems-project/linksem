@@ -395,7 +395,7 @@ let rec cook_argv acc args =
 
 val command_line : unit -> interpreted_command_line
 let command_line = fun _ -> (
-    let cooked_argv = cook_argv [] argv
+    let cooked_argv = cook_argv [] (Missing_pervasives.tl argv)
     in
     (* Now we use our fold-alike. *)
     let state = foldl_suffix read_one_arg initial_state cooked_argv

@@ -144,3 +144,10 @@ let hd l =
         | [] -> failwith "hd of empty list"
         | x :: xs -> x
     ))
+
+(*val tl : forall 'a. list 'a -> list 'a*)
+let tl l =     
+((match l with
+        | [] -> failwith "tl of empty list"
+        | x :: xs -> xs
+    ))

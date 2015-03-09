@@ -1,0 +1,51 @@
+open import Basic_classes
+open import List
+open import Maybe
+open import Num
+
+open import Byte_sequence
+open import Missing_pervasives
+
+open import Elf_file
+open import Elf_header
+open import Elf_interpreted_segment
+open import Elf_program_header_table
+open import Elf_section_header_table
+open import Elf_types
+
+(* This record collects things that ABIs may or must define. *)
+
+type abi = <| is_valid_elf_ident : list unsigned_char -> bool
+                                (* doesn't this generalise outrageously? is_valid_elf_file? *)
+            ; reloc              : natural -> (natural * (natural -> natural -> natural -> maybe natural))
+                                (* number  ->  width   * (symaddr -> addend  -> existing-> relocated) *)
+            |>
+
+(* Do we want "existing", or is it a kind of addend? 
+ * It feels like modelling both separately is the right thing. 
+ * In ELF, exactly one of these is used.
+ * But we can imagine systems where both are used. 
+ * I remember being tripped up by this in Mach-O, although I think
+ * this was an interaction between the way addends came in (inline)
+ * and how I later processed them (pulling them out-of-line but not 
+ * zeroing the inlined copy; fine for ELF, double-relocs for Mach-O). *)
+
+val null_abi : abi
+let null_abi = <| is_valid_elf_ident = fun x -> true
+                ; reloc = fun r -> (8, fun symaddr -> (fun addend -> (fun existing -> Nothing)))
+                |>
+
+(* HMM. For the elf_ident, I don't really want to express it this way.
+ * I want something more bidirectional: something that can tell me 
+ * not only that a given ident is valid for a given ABI, but also, 
+ * to *construct* an ident for a given abstract ELF file satisfying x.
+ * This is very much like a lens. 
+ * 
+ * Similarly for relocs, I might want a way to map back to an allowable
+ * *concrete* representation, from some *abstract* description of the 
+ * reloc's intent (i.e. a symbol binding: "point this reference at symbol
+ * Foo"), given the constraints imposed by the ABI (such as "use only 
+ * RELA, not rel". FIXME: figure out how to lensify what we're doing. *) 
+
+val all_abis : list abi
+let all_abis = [null_abi]
