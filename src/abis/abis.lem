@@ -2,12 +2,10 @@ open import Basic_classes
 open import Bool
 open import Num
 
-open import Elf_header
-
+open import Abstract_abi
+open import Abi_amd64_relocation
 open import Abi_amd64_elf_header
+open import Abi_amd64
 
-open import Error
-
-val compute_virtual_address_adjustment : natural -> natural -> natural -> natural
-let compute_virtual_address_adjustment max_page_size offset vaddr =
-  (vaddr - offset) mod max_page_size
+val all_abis : list abi
+let all_abis = [sysv_amd64_std_abi; null_abi]

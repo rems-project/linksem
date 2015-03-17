@@ -5,7 +5,6 @@ open import Num
 open import String
 
 open import Elf_types
-
 open import Byte_sequence
 
 open import Missing_pervasives

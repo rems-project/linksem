@@ -1,0 +1,41 @@
+(** [abi_amd64] contains top-level definition for the AMD64 ABI.
+  *)
+
+open import Basic_classes
+open import Bool
+open import List
+open import Num
+open import Maybe
+open import Missing_pervasives
+
+open import Elf_header
+open import Elf_types
+open import Elf_file
+open import Elf_interpreted_section
+
+open import Endianness
+open import Abstract_abi
+open import Abi_amd64_relocation
+open import Abi_amd64_elf_header
+
+val header_is_amd64 : elf64_header -> bool
+let header_is_amd64 h =  
+    null_abi.is_valid_elf_header h
+    && List.index h.elf64_ident (unsafe_nat_of_natural elf_ii_data) = Just (unsigned_char_of_natural elf_data_2lsb)
+    && is_valid_abi_amd64_machine_architecture (natural_of_elf64_half h.elf64_machine)
+    && is_valid_abi_amd64_magic_number h.elf64_ident
+
+val section_is_special : elf64_interpreted_section -> elf64_file -> bool
+let section_is_special s f = 
+    null_abi.section_is_special s f ||
+    match name_of_elf64_interpreted_section s f with 
+        Just ".eh_frame" -> true (* HACK because SHT_X86_64_UNWIND is often not used *)
+       | _ -> false
+    end
+
+val sysv_amd64_std_abi : abi
+let sysv_amd64_std_abi = 
+   <| is_valid_elf_header = header_is_amd64
+    ; reloc = fun r -> (width_of_x86_64_relocation r, fun symaddr -> (fun addend -> (fun existing -> Nothing)))
+    ; section_is_special = section_is_special
+    |>

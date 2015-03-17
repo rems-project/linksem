@@ -393,13 +393,13 @@ let elf_ii_nident : natural = 16
   *)
 
 (** Position: e*_ident[elf_ii_mag0], 0x7f magic number *)
-let elf_mn_mag0 : natural = 127
+let elf_mn_mag0 : unsigned_char = unsigned_char_of_natural 127
 (** Position: e*_ident[elf_ii_mag1], 'E' format identifier *)
-let elf_mn_mag1 : natural = 69
+let elf_mn_mag1 : unsigned_char = unsigned_char_of_natural 69
 (** Position: e*_ident[elf_ii_mag2], 'L' format identifier *)
-let elf_mn_mag2 : natural = 76
+let elf_mn_mag2 : unsigned_char = unsigned_char_of_natural 76
 (** Position: e*_ident[elf_ii_mag3], 'F' format identifier *)
-let elf_mn_mag3 : natural = 70
+let elf_mn_mag3 : unsigned_char = unsigned_char_of_natural 70
 
 (** ELf file classes.  The file format is designed to be portable among machines
   * of various sizes, without imposing the sizes of the largest machine on the

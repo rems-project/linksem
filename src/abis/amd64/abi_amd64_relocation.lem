@@ -5,13 +5,16 @@
 open import Basic_classes
 open import Num
 open import String
+open import Maybe
 open import Missing_pervasives
 
 open import Error
 
+open import Elf_types
 open import Elf_file
 open import Elf_header
 open import Elf_relocation
+open import Elf_symbol_table
 
 (** x86-64 relocation types. *)
 
@@ -122,6 +125,46 @@ let string_of_x86_64_relocation_type m =
     "r_x86_64_irelative"
   else
     "Invalid x86-64 relocation type"
+
+(** [width_of_x86_64_relocation m s] yields the width in bytes of the relocatable field, 
+  * when resolving to a defined maybe symbol [s] (or Nothing, if weak).
+  *)
+val width_of_x86_64_relocation : natural -> maybe elf64_symbol_table_entry -> natural
+let width_of_x86_64_relocation m s =
+  if m = r_x86_64_none then 0
+  else if m = r_x86_64_64 then 8
+  else if m = r_x86_64_pc32 then 4
+  else if m = r_x86_64_got32 then 4
+  else if m = r_x86_64_plt32 then 4
+  else if m = r_x86_64_copy then match s with Nothing -> 0 | Just s -> natural_of_elf64_xword s.elf64_st_size end
+  else if m = r_x86_64_glob_dat then match s with Nothing -> 0 | Just s -> natural_of_elf64_xword s.elf64_st_size end (* CHECK *)
+  else if m = r_x86_64_jump_slot then 4 (* CHECK *)
+  else if m = r_x86_64_relative then 8 (* CHECK *)
+  else if m = r_x86_64_gotpcrel then 8 (* CHECK *)
+  else if m = r_x86_64_32 then 4
+  else if m = r_x86_64_32s then 4
+  else if m = r_x86_64_16 then 2
+  else if m = r_x86_64_pc16 then 2
+  else if m = r_x86_64_8 then 1
+  else if m = r_x86_64_pc8 then 1
+  else if m = r_x86_64_dtpmod64 then 8 (* CHECK *)
+  else if m = r_x86_64_dtpoff64 then 8 (* CHECK *)
+  else if m = r_x86_64_tpoff64 then 8 (* CHECK *)
+  else if m = r_x86_64_tlsgd then 8 (* CHECK *)
+  else if m = r_x86_64_tlsld then 8 (* CHECK *)
+  else if m = r_x86_64_dtpoff32 then 4 (* CHECK *)
+  else if m = r_x86_64_gottpoff then 8 (* CHECK *)
+  else if m = r_x86_64_tpoff32 then 4 (* CHECK *)
+  else if m = r_x86_64_pc64 then 8
+  else if m = r_x86_64_gotoff64 then 8
+  else if m = r_x86_64_gotpc32 then 4
+  else if m = r_x86_64_size32 then 4
+  else if m = r_x86_64_size64 then 8
+  else if m = r_x86_64_gotpc32_tlsdesc then 8 (* CHECK *)
+  else if m = r_x86_64_tlsdesc_call then 4 (* CHECK *)
+  else if m = r_x86_64_tlsdesc then 8 (* CHECK *)
+  else if m = r_x86_64_irelative then 8 (* CHECK *)
+  else 0 (* invalid *)
 
 val abi_amd64_apply_relocation : elf64_relocation_a -> elf64_file ->
   error elf64_executable_process_image

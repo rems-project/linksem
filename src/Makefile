@@ -30,10 +30,11 @@ LEM_ELF_SRC := byte_sequence.lem archive.lem \
 	
 LEM_ABI_SRC := abstract_abi.lem abis/amd64/abi_amd64_elf_header.lem \
 	abis/power64/abi_power64_elf_header.lem \
-	abis/abis.lem \
 	elf_relocation.lem abstract_linker_script.lem \
 	adaptors/sail_interface.lem \
-	abis/amd64/abi_amd64_serialisation.lem abis/amd64/abi_amd64_relocation.lem
+	abis/amd64/abi_amd64_serialisation.lem abis/amd64/abi_amd64_relocation.lem \
+	abis/amd64/abi_amd64.lem \
+	abis/abis.lem \
 
 LEM_LINK_SRC := command_line.lem input_list.lem
 

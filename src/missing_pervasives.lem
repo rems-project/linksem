@@ -84,6 +84,11 @@ val natural_of_decimal_string : string -> natural
 let natural_of_decimal_string s = 
     natural_of_decimal_string_helper 0 (toCharList s)
 
+val hex_string_of_natural : natural -> string
+let rec hex_string_of_natural n = 
+    if n <= 16 then toString [hex_char_of_nibble n]
+    else (hex_string_of_natural (n / 16)) ^ (toString [hex_char_of_nibble (n mod 16)])
+
 val natural_of_bool : bool -> natural
 let natural_of_bool b =
   match b with

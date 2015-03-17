@@ -819,3 +819,11 @@ let {ocaml} string_of_elf64_file hdr_bdl pht_bdl sht_bdl f3 =
       ; show f3.elf64_file_bits_and_bobs
       ]
   end
+
+val name_of_elf64_interpreted_section : elf64_interpreted_section -> elf64_file -> maybe string
+let name_of_elf64_interpreted_section sec file = 
+    match (get_elf64_file_section_header_string_table file >>= fun strtab -> 
+           get_string_at sec.elf64_section_name strtab) with 
+            Success(n) -> Just n 
+            | Fail(_) -> Nothing
+    end

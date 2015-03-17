@@ -101,6 +101,11 @@ let rec natural_of_decimal_string_helper acc chars =
 let natural_of_decimal_string s =    
  (natural_of_decimal_string_helper(Big_int.big_int_of_int 0) (Xstring.explode s))
 
+(*val hex_string_of_natural : natural -> string*)
+let rec hex_string_of_natural n =    
+ (if Big_int.le_big_int n(Big_int.big_int_of_int 16) then Xstring.implode [hex_char_of_nibble n]
+    else (hex_string_of_natural ( Big_int.div_big_int n(Big_int.big_int_of_int 16))) ^ (Xstring.implode [hex_char_of_nibble ( Big_int.mod_big_int n(Big_int.big_int_of_int 16))]))
+
 (*val natural_of_bool : bool -> natural*)
 let natural_of_bool b =  
 ((match b with
