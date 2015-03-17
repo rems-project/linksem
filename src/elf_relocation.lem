@@ -10,7 +10,7 @@ open import String
 open import Show
 open import Missing_pervasives
 
-open import Elf_types
+open import Elf_types_native_uint
 
 type elf32_relocation =
   <| elf32_r_offset : elf32_addr (** Address at which to relocate *)
@@ -19,7 +19,7 @@ type elf32_relocation =
 
 type elf32_relocation_a =
   <| elf32_ra_offset : elf32_addr  (** Address at which to relocate *)
-   ; elf32_ra_info   : elf32_word  (** Symbol table index/type of reloation to apply *)
+   ; elf32_ra_info   : elf32_word  (** Symbol table index/type of relocation to apply *)
    ; elf32_ra_addend : elf32_sword (** Addend used to compute value to be stored *)
    |>
 
@@ -30,7 +30,7 @@ type elf64_relocation =
 
 type elf64_relocation_a =
   <| elf64_ra_offset : elf64_addr   (** Address at which to relocate *)
-   ; elf64_ra_info   : elf64_xword  (** Symbol table index/type of reloation to apply *)
+   ; elf64_ra_info   : elf64_xword  (** Symbol table index/type of relocation to apply *)
    ; elf64_ra_addend : elf64_sxword (** Addend used to compute value to be stored *)
    |>
 

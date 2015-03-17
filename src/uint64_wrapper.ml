@@ -63,6 +63,21 @@ let of_oct c1 c2 c3 c4 c5 c6 c7 c8 =
           (Big_int.add_big_int b7 b8))))))
 ;;
 
+let of_oct_native c1 c2 c3 c4 c5 c6 c7 c8 =
+  let b1 = Uint64.of_int (Char.code c1) in
+  let b2 = Uint64.shift_left (Uint64.of_int (Char.code c2)) 8 in
+  let b3 = Uint64.shift_left (Uint64.of_int (Char.code c3)) 16 in
+  let b4 = Uint64.shift_left (Uint64.of_int (Char.code c4)) 24 in
+  let b5 = Uint64.shift_left (Uint64.of_int (Char.code c5)) 32 in
+  let b6 = Uint64.shift_left (Uint64.of_int (Char.code c6)) 40 in
+  let b7 = Uint64.shift_left (Uint64.of_int (Char.code c7)) 48 in
+  let b8 = Uint64.shift_left (Uint64.of_int (Char.code c8)) 56 in
+    Uint64.add b1 (Uint64.add b2
+      (Uint64.add b3 (Uint64.add b4
+        (Uint64.add b5 (Uint64.add b6
+          (Uint64.add b7 b8))))))
+;;
+
 let to_bigint (u : uint64) : Big_int.big_int =
   u
 ;;
@@ -84,5 +99,21 @@ let to_bytes u : char * char * char * char * char * char * char * char =
   let b5 = Char.chr (Big_int.int_of_big_int (shift_right (logand u u2) 40)) in (* 0xFF0000000000 *)
   let b6 = Char.chr (Big_int.int_of_big_int (shift_right (logand u u3) 48)) in (* 0xFF000000000000 *)
   let b7 = Char.chr (Big_int.int_of_big_int (shift_right (logand u u4) 56)) in (* 0xFF00000000000000 *)
+    b7, b6, b5, b4, b3, b2, b1, b0
+;;
+
+let to_bytes_native u : char * char * char * char * char * char * char * char =
+  let u1 = Uint64.mul (Uint64.of_string "4278190080") (Uint64.of_string "255") in (* 0xFF00000000 *)
+  let u2 = Uint64.mul (Uint64.of_string "4278190080") (Uint64.of_string "65280") in (* 0xFF0000000000 *)
+  let u3 = Uint64.mul (Uint64.of_string "4278190080") (Uint64.of_string "16711680") in (* 0xFF000000000000 *)
+  let u4 = Uint64.mul (Uint64.of_string "4278190080") (Uint64.of_string "4278190080") in (* 0xFF00000000000000 *)
+  let b0 = Char.chr (Uint64.to_int (Uint64.logand u (Uint64.of_string "255"))) in (* 0xFF *)
+  let b1 = Char.chr (Uint64.to_int (Uint64.shift_right (Uint64.logand u (Uint64.of_string "65280")) 8)) in (* 0xFF00 *)
+  let b2 = Char.chr (Uint64.to_int (Uint64.shift_right (Uint64.logand u (Uint64.of_string "16711680")) 16)) in (* 0xFF0000 *)
+  let b3 = Char.chr (Uint64.to_int (Uint64.shift_right (Uint64.logand u (Uint64.of_string "4278190080")) 24)) in (* 0xFF000000 *)
+  let b4 = Char.chr (Uint64.to_int (Uint64.shift_right (Uint64.logand u u1) 32)) in (* 0xFF00000000 *)
+  let b5 = Char.chr (Uint64.to_int (Uint64.shift_right (Uint64.logand u u2) 40)) in (* 0xFF0000000000 *)
+  let b6 = Char.chr (Uint64.to_int (Uint64.shift_right (Uint64.logand u u3) 48)) in (* 0xFF000000000000 *)
+  let b7 = Char.chr (Uint64.to_int (Uint64.shift_right (Uint64.logand u u4) 56)) in (* 0xFF00000000000000 *)
     b7, b6, b5, b4, b3, b2, b1, b0
 ;;

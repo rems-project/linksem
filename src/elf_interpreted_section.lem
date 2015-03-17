@@ -4,7 +4,7 @@ open import List
 open import Num
 open import String
 
-open import Elf_types
+open import Elf_types_native_uint
 
 open import Byte_sequence
 

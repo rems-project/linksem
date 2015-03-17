@@ -21,6 +21,12 @@ begin
     from this show "P (Suc m)" using P1[where x="Suc m"] by auto
   qed
 
+  lemma byte_sequence_length_induct:
+    fixes bs :: "byte_sequence" and P :: "byte_sequence \<Rightarrow> bool"
+    assumes "P empty" and "(\<And>xs ys. P xs \<Longrightarrow> length xs < length ys \<Longrightarrow> P ys)"
+    shows "P bs"
+  sorry
+
   section {* Error monad properties *}
 
   lemma error_return_bind_neutral1 [simp]:
@@ -374,11 +380,9 @@ begin
     qed
   qed
 
-  lemma partition_reconstitute:
-    assumes "partition sz bs0 = Success (Sequence lft, Sequence rgt)"
-    shows "bs0 = Sequence (lft @ rgt)"
-  using assms
-  sorry
+  lemma partition_reconstitute [rule_format]:
+    shows "partition sz bs0 = Success (Sequence lft, Sequence rgt) \<longrightarrow> bs0 = Sequence (lft @ rgt)"
+  using assms sorry
 
   section {* Helpful lemmas *}
 
@@ -3871,6 +3875,52 @@ begin
     apply simp
   done
 
+  corollary read_elf64_section_header_table_entry_in_out_roundtrip2:
+    assumes "read_elf64_section_header_table_entry e (Sequence (bs2@bs1)) = Success (ent, Sequence bs1)"
+      shows "bytes_of_elf64_section_header_table_entry e ent = Sequence bs2"
+  using assms
+  sorry
+
+  termination read_elf64_section_header_table'
+    sorry
+
+  lemma read_elf64_section_header_table'_in_out_roundrip:
+    shows "read_elf64_section_header_table' e bs0 = Success tbl \<longrightarrow> bytes_of_elf64_section_header_table e tbl = bs0"
+  using assms proof(cases bs0, erule forw_subst)
+    fix xs
+    show "read_elf64_section_header_table' e (Sequence xs) = Success tbl \<longrightarrow>
+            bytes_of_elf64_section_header_table e tbl = Sequence xs"
+    proof(induct xs arbitrary: e tbl rule: measure_induct_rule[where f="List.length"])
+      fix x :: "(8 word) list"
+      fix e tbl
+      assume IH: "(\<And>y e tbl.
+           List.length y < List.length x \<Longrightarrow>
+           read_elf64_section_header_table' e (Sequence y) = Success tbl \<longrightarrow>
+           bytes_of_elf64_section_header_table e tbl = Sequence y)"
+      show "read_elf64_section_header_table' e (Sequence x) = Success tbl \<longrightarrow>
+       bytes_of_elf64_section_header_table e tbl = Sequence x"
+      proof(rule impI)
+        assume "read_elf64_section_header_table' e (Sequence x) = Success tbl"
+        hence *: "(if Byte_sequence.length (Sequence x) = 0 then error_return []
+                else read_elf64_section_header_table_entry e
+                  (Sequence x) >>=(\<lambda>(entry, bs1).
+                    read_elf64_section_header_table' e bs1>>=
+                      (\<lambda>tail. error_return (entry # tail)))) = Success tbl" using read_elf64_section_header_table'.simps by auto
+        thus "bytes_of_elf64_section_header_table e tbl = Sequence x"
+        proof(cases "length (Sequence x) = 0")
+          assume L: "length (Sequence x) = 0"
+          hence "error_return [] = Success tbl" using * by auto
+          hence "[] = tbl" using error_return_def error.simps by metis
+          thus "bytes_of_elf64_section_header_table e tbl = Sequence x" using bytes_of_elf64_section_header_table_def length_empty[OF L] by simp
+        next
+          assume L: "length (Sequence x) \<noteq> 0"
+          hence "read_elf64_section_header_table_entry e (Sequence x) >>= (\<lambda>(entry, bs1).
+                 read_elf64_section_header_table' e bs1 >>= (\<lambda>tail. error_return (entry # tail))) = Success tbl" using * by auto
+          from this obtain entry' bs1' where "read_elf64_section_header_table_entry e (Sequence x) = Success (entry', Sequence bs1') \<and> (read_elf64_section_header_table' e (Sequence bs1') >>= (\<lambda>tail. error_return (entry' # tail)) = Success tbl)" using prod_cases error_bind_Success byte_sequence.induct sorry
+          hence "read_elf64_section_header_table_entry e (Sequence x) = Success (entry', Sequence bs1')" by simp
+          hence "List.length bs1' < List.length x" sorry
+          oops
+
   section {* The main roundtripping theorems *}
 
   subsection {* Out-in *}
@@ -3895,10 +3945,60 @@ begin
     shows "bytes_of_elf32_file ef32 = Success bs"
   sorry
 
+  lemma read_elf64_header_in_out_roundtrip:
+    assumes "read_elf64_header (Sequence bs0) = Success (hdr, Sequence bs1)"
+    assumes "bytes_of_elf64_header hdr = Sequence bs2"
+    shows "bs0 = bs2@bs1"
+  sorry
+
+  lemma obtain_elf64_program_header_table_compositional:
+    "obtain_elf64_program_header_table hdr (Sequence bs0) = Success pht \<longrightarrow>
+      (\<exists>entry bs1 pht'.
+       let endianness = get_elf64_header_endiannness hdr in
+       let hdr' = hdr\<lparr> elf64_phoff := elf64_word_of_nat (unat (elf64_phoff hdr) + unat (elf64_phentsize hdr)) \<rparr>
+                     \<lparr> elf64_phnum := elf64_half_of_nat (unat (elf64_phnum hdr) - 1) \<rparr> in
+        read_elf64_program_header_table_entry endianness (Sequence bs0) = Success (entry, bs1) \<and>
+        obtain_elf64_program_header_table hdr' bs1 = Success pht' \<and>
+        pht = entry # pht' \<and> Sequence bs0 = concat_byte_sequence [(bytes_of_elf64_program_header_entry endianness entry), bs1])"
+  sorry
+
+  thm measure_induct[where P="\<lambda>bs0. obtain_elf64_program_header_table hdr (Sequence bs0) = Success pht \<longrightarrow>
+            bytes_of_elf64_program_header_table e pht = Sequence bs1 \<longrightarrow> bs0 = bs1 @ List.drop (List.length bs1) bs0" and f="List.length"]
+
+  lemma obtain_elf64_program_header_table_in_out_roundtrip:
+    shows "obtain_elf64_program_header_table hdr (Sequence bs0) = Success pht \<longrightarrow>
+            bytes_of_elf64_program_header_table e pht = Sequence bs1 \<longrightarrow> bs0 = bs1 @ List.drop (List.length bs1) bs0"
+  apply(rule measure_induct[where P="\<lambda>bs0. obtain_elf64_program_header_table hdr (Sequence bs0) = Success pht \<longrightarrow>
+            bytes_of_elf64_program_header_table e pht = Sequence bs1 \<longrightarrow> bs0 = bs1 @ List.drop (List.length bs1) bs0" and f="List.length"])
+
+
+
+
+  apply(simp only: bytes_of_elf64_program_header_table_def)
+  apply(auto simp add: concat_byte_sequence.simps)
+  apply(simp only: bytes_of_elf64_program_header_table_def)
+  apply(auto simp add: concat_byte_sequence.simps)
+  apply(simp only: obtain_elf64_program_header_table_def)
+  apply(simp only: get_elf64_header_endianness_def deduce_endianness_def)
+  apply(simp only: Suc_lemmas)
+  apply(simp add: Elf_Types_Local.index.simps)
+  apply(case_tac "unat elf64_phnum", simp_all)
+  apply(auto simp add: error_fail_def error.simps)
+  apply(case_tac "unat elf64_phentsize", simp_all)
+  apply(auto simp add: error_fail_def error.simps)
+  apply(simp only: offset_and_cut_def)
+  apply(case_tac "unat elf64_phoff", simp_all)
+
+  lemma error_bind_Success2:
+    assumes "\<exists>x. f = Success x \<and> g x = Success y"
+    shows "f >>= g = Success y"
+  using assms
+  by(auto simp add: error_bind.simps)
+
   theorem elf64_in_out_roundtrip:
     fixes ef64 :: "elf64_file" and bs :: "byte_sequence"
     assumes "read_elf64_file bs = Success ef64"
     shows "bytes_of_elf64_file ef64 = Success bs"
-  sorry
+  using assms
 
 end

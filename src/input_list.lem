@@ -19,7 +19,7 @@ open import Show
 
 open import Archive
 open import Command_line
-open import Elf_types
+open import Elf_types_native_uint
 open import Elf_file
 open import Elf_header
 

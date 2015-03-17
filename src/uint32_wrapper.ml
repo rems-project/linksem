@@ -65,10 +65,34 @@ let of_quad c1 c2 c3 c4 =
     Big_int.add_big_int b1 (Big_int.add_big_int b2 (Big_int.add_big_int b3 b4))
 ;;
 
+let of_quad_native c1 c2 c3 c4 =
+  let b1 = Uint32.of_int (Char.code c1) in
+  let b2 = Uint32.shift_left (Uint32.of_int (Char.code c2)) 8 in
+  let b3 = Uint32.shift_left (Uint32.of_int (Char.code c3)) 16 in
+  let b4 = Uint32.shift_left (Uint32.of_int (Char.code c4)) 24 in
+    Uint32.add b1 (Uint32.add b2 (Uint32.add b3 b4))
+;;
+
+let of_dual_native c1 c2 = of_quad_native c1 c2 '\000' '\000'
+;;
+
 let to_bytes u : char * char * char * char =
   let b0 = Char.chr (Big_int.int_of_big_int (logand u (Big_int.big_int_of_string "255"))) in
   let b1 = Char.chr (Big_int.int_of_big_int (shift_right (logand u (Big_int.big_int_of_string "65280")) 8)) in
   let b2 = Char.chr (Big_int.int_of_big_int (shift_right (logand u (Big_int.big_int_of_string "16711680")) 16)) in
   let b3 = Char.chr (Big_int.int_of_big_int (shift_right (logand u (Big_int.big_int_of_string "4278190080")) 24)) in
     b3, b2, b1, b0
+;;
+
+let to_bytes_native u : char * char * char * char =
+  let b0 = Char.chr (Uint32.to_int (Uint32.logand u (Uint32.of_string "255"))) in
+  let b1 = Char.chr (Uint32.to_int (Uint32.shift_right (Uint32.logand u (Uint32.of_string "65280")) 8)) in
+  let b2 = Char.chr (Uint32.to_int (Uint32.shift_right (Uint32.logand u (Uint32.of_string "16711680")) 16)) in
+  let b3 = Char.chr (Uint32.to_int (Uint32.shift_right (Uint32.logand u (Uint32.of_string "4278190080")) 24)) in
+    b3, b2, b1, b0
+;;
+
+let to_dual_bytes_native u : char * char =
+  let (b3, b2, b1, b0) = to_bytes_native u in
+    b1, b0
 ;;

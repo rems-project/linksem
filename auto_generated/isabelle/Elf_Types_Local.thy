@@ -12,37 +12,23 @@ begin
   definition char_of_unsigned_char :: "unsigned_char \<Rightarrow> char" where
     "char_of_unsigned_char w \<equiv> String.char_of_nat (unat w)"
 
-  declare char_of_unsigned_char_def [simp]
-
   definition unsigned_char_of_nat :: "nat \<Rightarrow> unsigned_char" where
     "unsigned_char_of_nat n \<equiv> of_int (int n)"
-
-  declare unsigned_char_of_nat_def [simp]
 
   definition unsigned_char_land :: "unsigned_char \<Rightarrow> unsigned_char \<Rightarrow> unsigned_char" where
     "unsigned_char_land left right \<equiv> bitAND left right"
 
-  declare unsigned_char_land_def [simp]
-
   definition unsigned_char_lor :: "unsigned_char \<Rightarrow> unsigned_char \<Rightarrow> unsigned_char" where
     "unsigned_char_lor left right \<equiv> bitOR left right"
-
-  declare unsigned_char_lor_def [simp]
 
   definition unsigned_char_lshift :: "unsigned_char \<Rightarrow> nat \<Rightarrow> unsigned_char" where
     "unsigned_char_lshift c shift \<equiv> (shiftl1 ^^ shift) c"
 
-  declare unsigned_char_lshift_def [simp]
-
   definition unsigned_char_rshift :: "unsigned_char \<Rightarrow> nat \<Rightarrow> unsigned_char" where
     "unsigned_char_rshift c shift \<equiv> (shiftr1 ^^ shift) c"
 
-  declare unsigned_char_rshift_def [simp]
-
   definition unsigned_char_plus :: "unsigned_char \<Rightarrow> unsigned_char \<Rightarrow> unsigned_char" where
     "unsigned_char_plus left right \<equiv> of_int (uint left + uint right)"
-
-  declare unsigned_char_plus_def [simp]
 
   section {* 16-bit unsigned type *}
 
@@ -50,10 +36,6 @@ begin
 
   definition uint16_of_nat :: "nat \<Rightarrow> uint16" where
     "uint16_of_nat n \<equiv> of_int (int n)"
-
-  declare uint16_of_nat_def [simp]
-
-  find_consts "'a word \<Rightarrow> 'b word"
 
   definition uint16_of_dual :: "byte \<Rightarrow> byte \<Rightarrow> uint16" where
     "uint16_of_dual u1 u2 \<equiv> Word.word_cat u1 u2"
@@ -64,27 +46,17 @@ begin
   definition uint16_land :: "uint16 \<Rightarrow> uint16 \<Rightarrow> uint16" where
     "uint16_land left right \<equiv> bitAND left right"
 
-  declare uint16_land_def [simp]
-
   definition uint16_lor :: "uint16 \<Rightarrow> uint16 \<Rightarrow> uint16" where
     "uint16_lor left right \<equiv> bitOR left right"
-
-  declare uint16_lor_def [simp]
 
   definition uint16_plus :: "uint16 \<Rightarrow> uint16 \<Rightarrow> uint16" where
     "uint16_plus left right \<equiv> of_int (uint left + uint right)"
 
-  declare uint16_plus_def [simp]
-
   definition uint16_lshift :: "uint16 \<Rightarrow> nat \<Rightarrow> uint16" where
     "uint16_lshift u shift \<equiv> (shiftl1 ^^ shift) u"
 
-  declare uint16_lshift_def [simp]
-
   definition uint16_rshift :: "uint16 \<Rightarrow> nat \<Rightarrow> uint16" where
     "uint16_rshift u shift \<equiv> (shiftr1 ^^ shift) u"
-
-  declare uint16_rshift_def [simp]
 
   section {* 32-bit unsigned type *}
 
@@ -92,8 +64,6 @@ begin
 
   definition uint32_of_nat :: "nat \<Rightarrow> uint32" where
     "uint32_of_nat n \<equiv> of_int (int n)"
-
-  declare uint32_of_nat_def [simp]
 
   definition uint32_of_quad :: "byte \<Rightarrow> byte \<Rightarrow> byte \<Rightarrow> byte \<Rightarrow> uint32" where
     "uint32_of_quad u1 u2 u3 u4 \<equiv>
@@ -111,27 +81,17 @@ begin
   definition uint32_land :: "uint32 \<Rightarrow> uint32 \<Rightarrow> uint32" where
     "uint32_land left right \<equiv> bitAND left right"
 
-  declare uint32_land_def [simp]
-
   definition uint32_lor :: "uint32 \<Rightarrow> uint32 \<Rightarrow> uint32" where
     "uint32_lor left right \<equiv> bitOR left right"
-
-  declare uint32_lor_def [simp]
 
   definition uint32_plus :: "uint32 \<Rightarrow> uint32 \<Rightarrow> uint32" where
     "uint32_plus left right \<equiv> of_int (uint left + uint right)"
 
-  declare uint32_plus_def [simp]
-
   definition uint32_lshift :: "uint32 \<Rightarrow> nat \<Rightarrow> uint32" where
     "uint32_lshift u shift \<equiv> (shiftl1 ^^ shift) u"
 
-  declare uint32_lshift_def [simp]
-
   definition uint32_rshift :: "uint32 \<Rightarrow> nat \<Rightarrow> uint32" where
     "uint32_rshift u shift \<equiv> (shiftr1 ^^ shift) u"
-
-  declare uint32_rshift_def [simp]
 
   section {* 64-bit unsigned types *}
 
@@ -148,8 +108,6 @@ begin
        let (lowerlu :: 8 word, lowerll :: 8 word) = word_split lowerl in
         (upperuu, upperul, upperlu, upperll, loweruu, lowerul, lowerlu, lowerll))"
 
-  declare oct_of_uint64_def [simp]
-
   definition uint64_of_oct :: "byte \<Rightarrow> byte \<Rightarrow> byte \<Rightarrow> byte \<Rightarrow> byte \<Rightarrow> byte \<Rightarrow> byte \<Rightarrow> byte \<Rightarrow> uint64" where
     "uint64_of_oct b1 b2 b3 b4 b5 b6 b7 b8 =
       (let (upper :: 32 word) = word_cat ((word_cat b1 b2) :: 16 word) ((word_cat b3 b4) :: 16 word) in
@@ -159,32 +117,20 @@ begin
   definition uint64_of_nat :: "nat \<Rightarrow> uint64" where
     "uint64_of_nat n = of_int (int n)"
 
-  declare uint64_of_nat_def [simp]
-
   definition uint64_land :: "uint64 \<Rightarrow> uint64 \<Rightarrow> uint64" where
     "uint64_land left right \<equiv> bitAND left right"
-
-  declare uint64_land_def [simp]
 
   definition uint64_lor :: "uint64 \<Rightarrow> uint64 \<Rightarrow> uint64" where
     "uint64_lor left right \<equiv> bitOR left right"
 
-  declare uint64_lor_def [simp]
-
   definition uint64_plus :: "uint64 \<Rightarrow> uint64 \<Rightarrow> uint64" where
     "uint64_plus left right \<equiv> of_int (uint left + uint right)"
-
-  declare uint64_plus_def [simp]
 
   definition uint64_lshift :: "uint64 \<Rightarrow> nat \<Rightarrow> uint64" where
     "uint64_lshift u shift = (shiftl1 ^^ shift) u"
 
-  declare uint64_lshift_def [simp]
-
   definition uint64_rshift :: "uint64 \<Rightarrow> nat \<Rightarrow> uint64" where
     "uint64_rshift u shift \<equiv> (shiftr1 ^^ shift) u"
-
-  declare uint64_rshift_def [simp]
 
   section {* Signed 32-bit integers *}
 
@@ -216,37 +162,23 @@ begin
   definition sint64_of_int :: "int \<Rightarrow> sint64" where
     "sint64_of_int s = of_int s"
 
-  declare sint64_of_int_def [simp]
-
   definition int_of_sint64 :: "sint64 \<Rightarrow> int" where
     "int_of_sint64 s = sint s"
-
-  declare int_of_sint64_def [simp]
 
   definition sint64_plus :: "sint64 \<Rightarrow> sint64 \<Rightarrow> sint64" where
     "sint64_plus left right \<equiv> of_int (sint left + sint right)"
 
-  declare sint64_plus_def [simp]
-
   definition sint64_lshift :: "sint64 \<Rightarrow> nat \<Rightarrow> sint64" where
     "sint64_lshift s shift \<equiv> (shiftl1 ^^ shift) s"
-
-  declare sint64_lshift_def [simp]
 
   definition sint64_rshift :: "sint64 \<Rightarrow> nat \<Rightarrow> sint64" where
     "sint64_rshift s shift \<equiv> (shiftr1 ^^ shift) s"
 
-  declare sint64_rshift_def [simp]
-
   definition sint64_land :: "sint64 \<Rightarrow> sint64 \<Rightarrow> sint64" where
     "sint64_land left right \<equiv> bitAND left right"
 
-  declare sint64_land_def [simp]
-
   definition sint64_lor :: "sint64 \<Rightarrow> sint64 \<Rightarrow> sint64" where
     "sint64_lor left right \<equiv> bitOR left right"
-
-  declare sint64_lor_def [simp]
 
   definition sint64_of_oct :: "byte \<Rightarrow> byte \<Rightarrow> byte \<Rightarrow> byte \<Rightarrow> byte \<Rightarrow> byte \<Rightarrow> byte \<Rightarrow> byte \<Rightarrow> sint64" where
     "sint64_of_oct b1 b2 b3 b4 b5 b6 b7 b8 \<equiv>

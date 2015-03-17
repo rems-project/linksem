@@ -11,7 +11,7 @@ open import Error
 open import Missing_pervasives
 open import Show
 
-open import Elf_types
+open import Elf_types_native_uint
 open import Endianness
 open import String_table
 

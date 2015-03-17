@@ -21,7 +21,7 @@ open import Elf_interpreted_section
 open import Elf_interpreted_segment
 open import Elf_section_header_table
 open import Elf_program_header_table
-open import Elf_types
+open import Elf_types_native_uint
 open import Elf_relocation
 open import Endianness
 

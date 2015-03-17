@@ -9,7 +9,7 @@ open import String
 open import Default_printing
 open import Endianness
 
-open import Elf_types
+open import Elf_types_native_uint
 
 open import Byte_sequence
 open import Error
