@@ -9,8 +9,6 @@ open import Num
 open import String
 open import String_extra
 
-open import Missing_pervasives
-
 class (Show 'a)
   val {ocaml} show : 'a -> string
 end
@@ -75,18 +73,6 @@ let {ocaml} string_of_quad (left, middle1, middle2, right) =
 
 instance forall 'a 'b 'c 'd. Show 'a, Show 'b, Show 'c, Show 'd => (Show ('a * 'b * 'c * 'd))
   let show = string_of_quad
-end
-
-(** [string_of_list l] produces a string representation of list [l].
-  *)
-val string_of_list : forall 'a. Show 'a => list 'a -> string
-let {ocaml} string_of_list l =
-  let result = intercalate "," (List.map show l) in
-  let folded = foldr (^) "" result in
-    "[" ^ folded ^ "]"
-
-instance forall 'a. Show 'a => (Show (list 'a))
-	let show = string_of_list
 end
 
 val string_of_maybe : forall 'a. Show 'a => maybe 'a -> string

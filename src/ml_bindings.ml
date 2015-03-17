@@ -1,6 +1,12 @@
 open Endianness
 open Error
 
+let id_char (i : char) = i
+;;
+
+let natural_of_char (i: char) = Uint32_wrapper.to_bigint (Uint32_wrapper.of_char i)
+;;
+
 let bytes_of_int32 (i : Int32.t) = assert false
 ;;
 

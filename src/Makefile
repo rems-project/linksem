@@ -1,16 +1,28 @@
 # this works for PS: 
 # make clean
-# make lem-model
+# make lem-all-ocaml
 # make -C libraries
 # make ocaml
 
 LEMDIR ?= ../../lem
 LEM ?= $(LEMDIR)/lem
 
-LEM_UTIL_SRC := default_printing.lem missing_pervasives.lem show.lem endianness.lem
-LEM_UTIL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC)) error.ml
+LEM_UTIL_SRC := default_printing.lem missing_pervasives.lem show.lem endianness.lem error.lem
+# Some of the utility code is directly in ML, some in Lem; order matters!
+# GAH. doing a topsort manually is a sign of failure.
+ALL_UTIL_ML :=   uint16_wrapper.ml uint32_wrapper.ml uint64_wrapper.ml \
+show.ml endianness.ml error.ml ml_bindings.ml missing_pervasives.ml \
+ default_printing.ml \
+ byte_sequence_wrapper.ml
 
-LEM_ELF_SRC := byte_sequence.lem \
+# Nasty cycle:
+# show depends on missing_pervasives
+# missing_pervasives depends on ml_bindings
+# ml_bindings depends on endianness
+# endianness depends on show
+# -- Show should be split up. For now, just split off the problematic byte stuff into Missing_pervasives.
+
+LEM_ELF_SRC := byte_sequence.lem archive.lem \
 	elf_types.lem elf_interpreted_segment.lem elf_interpreted_section.lem string_table.lem elf_symbol_table.lem \
 	elf_header.lem elf_program_header_table.lem \
 	elf_section_header_table.lem \
@@ -23,11 +35,26 @@ LEM_ABI_SRC := abstract_abi.lem abis/amd64/abi_amd64_elf_header.lem \
 	adaptors/sail_interface.lem \
 	abis/amd64/abi_amd64_serialisation.lem abis/amd64/abi_amd64_relocation.lem
 
-LEM_LINK_SRC := command_line.lem
+LEM_LINK_SRC := command_line.lem input_list.lem
 
 LEM_MODEL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC))
 
-default: lem-model main_elf main_elf.opt main_link main_link.opt
+OCAML_LIB_OBJS := unix.cma nums.cma batteries.cma nat_num.cmo 
+LEM_OCAML_OBJS := lem.cmo lem_function.cmo lem_list.cmo lem_num.cmo lem_sorting.cmo xstring.cmo
+
+OCAML_LIB_OBJS_OPT := $(patsubst %.cma,%.cmxa,$(patsubst %.cmo,%.cmx,$(OCAML_LIB_OBJS)))
+LEM_OCAML_OBJS_OPT := $(patsubst %.cma,%.cmxa,$(patsubst %.cmo,%.cmx,$(LEM_OCAML_OBJS)))
+
+# Want the following order:
+# OCaml library
+# Lem library objs
+# OCaml helpers from this repo
+# Lem utility code
+# Lem ELF code
+# Lem ABI code
+# Lem linking code
+
+default: lem-all-ocaml main_elf main_elf.opt main_link main_link.opt
 
 ldgram.y.hacked: ldgram.y
 	cat "$<" | \
@@ -37,11 +64,8 @@ ldgram.y.hacked: ldgram.y
 	grep '\([:|;]\|[A-Za-z0-9_]\{2,\}\)' | \
 	tail -n+35 > "$@" || rm -f "$@"
 
-lem-model: $(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC)
+lem-all-ocaml: $(filter-out error.lem,$(LEM_UTIL_SRC)) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC) main_link.lem main_elf.lem
 	$(LEM) -ocaml -only_changed_output $+
-
-main_elf.ml main_link.ml: %.ml: $(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC) %.lem
-	$(LEM) -ocaml $+
 
 isa-extraction:
 	$(LEM) -isa -only_changed_output \
@@ -66,40 +90,23 @@ main_elf main_link main_elf.opt main_link.opt: OCAMLFLAGS += -I src_elf_librarie
 -I abis -I abis/amd64 -I abis/power64 \
 -g
 
-main_elf main_link: OCAMLFIND_PACKAGES := -package batteries
+main_elf main_link main_elf.opt main_link.opt: OCAMLFIND_PACKAGES := -package batteries
 
-OCAML_LIB_OBJS := unix.cma nums.cma batteries.cma nat_num.cmo 
-LEM_OCAML_OBJS := lem.cmo lem_function.cmo lem_list.cmo lem_num.cmo lem_sorting.cmo xstring.cmo
-OCAML_HELPERS := uint16_wrapper.ml uint32_wrapper.ml \
-uint64_wrapper.ml byte_sequence_wrapper.ml ml_bindings.ml
-
-# error depends on show
-# byte_sequence depends on error
-# elf_types depends on ml_bindings
-# ml_bindings depends on endianness
-# GAH. doing a topsort manually is a sign of failure
-
-main_elf main_link: %: %.ml $(OCAML_HELPERS) lem-model
+main_elf main_link: %: %.ml $(ALL_UTIL_ML) lem-all-ocaml
 	ocamlfind ocamlc $(OCAMLFLAGS) -o "$@" \
 	$(OCAML_LIB_OBJS) \
 	$(LEM_OCAML_OBJS) \
-	$(LEM_UTIL_ML) \
-	$(OCAML_HELPERS) \
+	$(ALL_UTIL_ML) \
 	$(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_LINK_SRC)) \
 	"$<" $(OCAMLFIND_PACKAGES)
 
-OCAML_LIB_OBJS_OPT := unix.cmxa nums.cmxa batteries.cmxa nat_num.cmx 
-LEM_OCAML_OBJS_OPT := lem.cmx lem_function.cmx lem_list.cmx lem_num.cmx lem_sorting.cmx xstring.cmx
-# OCAML_HELPERS are the same in the .opt case as above
-
-main_elf.opt main_link.opt: %.opt: %.ml $(OCAML_HELPERS) lem-model
+main_elf.opt main_link.opt: %.opt: %.ml $(ALL_UTIL_ML) lem-all-ocaml
 	ocamlfind ocamlopt $(OCAMLFLAGS) -o "$@" \
 	$(OCAML_LIB_OBJS_OPT) \
 	$(LEM_OCAML_OBJS_OPT) \
-	$(LEM_UTIL_ML) \
-	$(OCAML_HELPERS) \
+	$(ALL_UTIL_ML) \
 	$(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_LINK_SRC)) \
@@ -117,7 +124,7 @@ make_elf_libraries:
 clean_elf_libraries:
 	$(MAKE) -C src_elf_libraries clean
 
-ocaml_with_ocamlbuild: lem-model
+ocaml_with_ocamlbuild: lem-all-ocaml
 	ocamlbuild -classic-display \
   -X src_elf_libraries \
   -cflag -g \
@@ -139,7 +146,7 @@ stacktrace:
 	export OCAMLRUNPARAM=b; \
 	ocamlfind ocamlc -package bitstring -package batteries -I $(LEMDIR)/ocaml-lib/_build/ unix.cma bitstring.cma nums.cma nat_num.cmo lem.cmo lem_function.cmo lem_list.cmo -linkpkg -g missing_pervasives.ml show.ml endianness.ml error.ml ml_bindings.ml default_printing.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml string_table.ml elf_section_header_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file3.ml elf_executable_file5.ml elf_linking_file2.ml elf_linking_file3.ml elf_relocation.ml sail_interface.ml main_elf.ml
 
-oldall: lem-model camlp4 ocaml
+oldall: lem-all-ocaml camlp4 ocaml
 
 all: ocaml
 
@@ -148,4 +155,4 @@ execute:
 
 go: all execute
 
-go-debug: lem-model stacktrace execute
+go-debug: lem-all-ocaml stacktrace execute

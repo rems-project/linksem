@@ -3,7 +3,6 @@
   *)
 
 open import String
-
 open import Show
 
 (** Type [endianness] describes the endianness of an ELF file.  This is deduced from

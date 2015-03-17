@@ -5,6 +5,7 @@ open import String_extra
 open import Tuple
 open import Bool
 open import List
+open import List_extra
 open import Sorting
 open import Num
 open import Maybe
@@ -16,7 +17,7 @@ open import Error
 open import Missing_pervasives
 open import Show
 
-(* Here we try to model the command line of GNU ld(binutils). 
+(* Here we try to model the command line of GNU ld.bfd.
  * 
  * Some options are global modifiers affecting the link output. 
  * Others have effect only for some subset of input files.
@@ -27,13 +28,15 @@ open import Show
 
 type input_file_spec = Filename of string    (* /path/to/file.{o,a,so,...} -- might be script! *)
                      | Libname of string     (* -llib *)
-type input_file_options = <| fmt : string
-                           ; libpath : list string
-                           ; link_sharedlibs : bool      (* -Bstatic *)
-                           ; check_sections : bool
-                           ; copy_dt_needed : bool
-                           ; whole_archive : bool
+type input_file_options = <| input_fmt : string
+                           ; input_libpath : list string
+                           ; input_link_sharedlibs : bool      (* -Bstatic *)
+                           ; input_check_sections : bool
+                           ; input_copy_dt_needed : bool
+                           ; input_whole_archive : bool
+                           ; input_as_needed : bool
                            |>
+                           
 type link_option = OutputFilename of string
                  | ForceCommonDefined of bool        (* -d, -dc, -dp *)
                  | Soname of string                  (* -soname *)
@@ -62,8 +65,8 @@ type input_file = File of input_file_and_options
 
 (* Reading the command-line: 
  * we encode the meaning of a linker command token 
- * using a 1-lookahead reader function interpreting a list of argument definitions.
- * The 1-lookahead is necessary because sometimes the interpretation of an option
+ * using a reader function interpreting a list of argument definitions.
+ * Lookahead is necessary: sometimes the interpretation of an option
  * depends on the next argument (e.g. whether it's a file, directory or another option).
  * The list of argument definitions is from lists of strings to constructor function invocations.
  * We use lists of strings since many options have synonyms.
@@ -84,12 +87,13 @@ type command_state = <| input_files           : list input_file
 val initial_state : command_state
 let initial_state = <| input_files = []
                      ; link_options = [OutputFilename("a.out")]
-                     ; current_input_options = <| fmt = "elf64-x86-64"   (* FIXME *)
-                                                ; libpath = ["/usr/lib"] (* FIXME: this probably isn't the right place to supply the default search path *)
-                                                ; link_sharedlibs = true
-                                                ; check_sections = true
-                                                ; copy_dt_needed = false
-                                                ; whole_archive = false
+                     ; current_input_options = <| input_fmt = "elf64-x86-64"   (* FIXME *)
+                                                ; input_libpath = ["/usr/lib"] (* FIXME: this probably isn't the right place to supply the default search path *)
+                                                ; input_link_sharedlibs = true
+                                                ; input_check_sections = true
+                                                ; input_copy_dt_needed = false
+                                                ; input_whole_archive = false
+                                                ; input_as_needed = true (* FIXME *)
                                                 |>
                      ; current_group = Nothing
                      ; stack = []
@@ -138,8 +142,10 @@ let set_or_replace_option opt state =
      ; stack = state.stack
      |>
 
+type option_def = (list option_token) * option_argspecs * (option_argvals -> command_state -> command_state) * string
+
 (* the table is a list of: ... options    and their arg names ... and the option's meaning as a function... and a help string *)
-val command_line_table : list ((list option_token) * option_argspecs * (option_argvals -> command_state -> command_state) * string)
+val command_line_table : list option_def
 let command_line_table = [
   (* per-input options *) 
   (["-b"; "--format"],                            (["TARGET"], []),    fun args -> (fun state -> state), "Specify target for following input files");
@@ -172,12 +178,12 @@ let command_line_table = [
   (["-G"; "--gpsize"],                            (["SIZE"], []),      fun _ -> (fun state -> state), "Small data size (if no size, same as --shared) **srk NOTE this quirk!**");
   (["-h"; "-soname"],                             (["FILENAME"], []),  fun _ -> (fun state -> state), "Set internal name of shared library");
   (["-I"; "--dynamic-linker"],                    (["PROGRAM"], []),   fun _ -> (fun state -> state), "Set PROGRAM as the dynamic linker to use");
-  (["--sysroot=(.*)"],                            ([], ["DIRECTORY"]), fun _ -> (fun state -> state), "Override the default sysroot location");
+  (["--sysroot="],                                ([], ["DIRECTORY"]), fun _ -> (fun state -> state), "Override the default sysroot location");
   (["-m"],                                        (["EMULATION"], []), fun _ -> (fun state -> state), "Set emulation");
   (["-n"; "--nmagic"],                            ([], []),            fun _ -> (fun state -> state), "Do not page align data");
   (["-N"; "--omagic"],                            ([], []),            fun _ -> (fun state -> state), "Do not page align data, do not make text readonly");
   (["--no-omagic"],                               ([], []),            fun _ -> (fun state -> state), "Page align data, make text readonly");
-  (["-o"; "--output"],                            (["FILE"], []),      fun argvals -> set_or_replace_option (OutputFilename(hd (fst argvals))), "Set output file name");
+  (["-o"; "--output"],                            (["FILE"], []),      fun argvals -> set_or_replace_option (OutputFilename(head (fst argvals))), "Set output file name");
   (["-O"],                                        ([], []),            fun _ -> (fun state -> state), "Optimise output file");
   (["-q"; "--emit-relocs"],                       ([], []),            fun _ -> (fun state -> state), "Generate relocations in final output");
   (["-r"; "-i"; "--relocatable"],                 ([], []),            fun _ -> (fun state -> state), "Generate relocatable output");
@@ -186,7 +192,7 @@ let command_line_table = [
   (["--strip-discarded"],                         ([], []),            fun _ -> (fun state -> state), "Strip symbols in discarded sections");
   (["--no-strip-discarded"],                      ([], []),            fun _ -> (fun state -> state), "Do not strip symbols in discarded sections");
   (["--default-script"; "-dT"],                   (["FILE"], []),      fun _ -> (fun state -> state), "Read default linker script");
-  (["--unique(=.*)?"],                            ([], ["SECTION"]),   fun _ -> (fun state -> state), "Don't merge input [SECTION | orphan] sections");
+  (["--unique="],                                 ([], ["SECTION"]),   fun _ -> (fun state -> state), "Don't merge input [SECTION | orphan] sections");
   (["-Ur"],                                       ([], []),            fun _ -> (fun state -> state), "Build global constructor/destructor tables ( **srk**: like -r, but... )");
   (["-x"; "--discard-all"],                       ([], []),            fun _ -> (fun state -> state), "Discard all local symbols");
   (["-X"; "--discard-locals"],                    ([], []),            fun _ -> (fun state -> state), "Discard temporary local symbols (default)");
@@ -196,7 +202,7 @@ let command_line_table = [
   (["--force-exe-suffix"],                        ([], []),            fun _ -> (fun state -> state), "Force generation of file with .exe suffix");
   (["--gc-sections"],                             ([], []),            fun _ -> (fun state -> state), "**srk: uncertain: can repeat?** Remove unused sections (on some targets)");
   (["--no-gc-sections"],                          ([], []),            fun _ -> (fun state -> state), "**srk: uncertain: can repeat?** Don't remove unused sections (default)");
-  (["--hash-size=(.*)"],                          ([], ["NUMBER"]),    fun _ -> (fun state -> state), "Set default hash table size close to <NUMBER>");
+  (["--hash-size="],                              ([], ["NUMBER"]),    fun _ -> (fun state -> state), "Set default hash table size close to <NUMBER>");
   (["--no-define-common"],                        ([], []),            fun _ -> (fun state -> state), "Do not define Common storage");
   (["--no-undefined"],                            ([], []),            fun _ -> (fun state -> state), "Do not allow unresolved references in object files");
   (["--allow-shlib-undefined"],                   ([], []),            fun _ -> (fun state -> state), "Allow unresolved references in shared libraries");
@@ -211,13 +217,13 @@ let command_line_table = [
   (["-rpath"],                                    (["PATH"], []),      fun _ -> (fun state -> state), "Set runtime shared library search path");
   (["-shared"; "-Bshareable"],                    ([], []),            fun _ -> (fun state -> state), "Create a shared library");
   (["-pie"; "--pic-executable"],                  ([], []),            fun _ -> (fun state -> state), "Create a position independent executable");
-  (["--sort-common=(ascending|descending)"],      ([], ["order"]),     fun _ -> (fun state -> state), "Sort common symbols by alignment [in specified order]");
-  (["--sort-section=(name|alignment)"],           ([], ["key"]),       fun _ -> (fun state -> state), "Sort sections by name or maximum alignment");
+  (["--sort-common="],(* (ascending|descending) *)([], ["order"]),     fun _ -> (fun state -> state), "Sort common symbols by alignment [in specified order]");
+  (["--sort-section="],(* (name|alignment) *)     ([], ["key"]),       fun _ -> (fun state -> state), "Sort sections by name or maximum alignment");
   (["--spare-dynamic-tags"],                      (["COUNT"], []),     fun _ -> (fun state -> state), "How many tags to reserve in .dynamic section");
-  (["--split-by-file=(.*)"],                      ([], ["SIZE"]),      fun _ -> (fun state -> state), "Split output sections every SIZE octets");
-  (["--split-by-reloc=(.*)"],                     ([], ["COUNT"]),     fun _ -> (fun state -> state), "Split output sections every COUNT relocs");
+  (["--split-by-file="],                          ([], ["SIZE"]),      fun _ -> (fun state -> state), "Split output sections every SIZE octets");
+  (["--split-by-reloc="],                         ([], ["COUNT"]),     fun _ -> (fun state -> state), "Split output sections every COUNT relocs");
   (["--traditional-format"],                      ([], []),            fun _ -> (fun state -> state), "Use same format as native linker");
-  (["--unresolved-symbols=(.*)"],                 ([], ["method"]),    fun _ -> (fun state -> state), "How to handle unresolved symbols.  <method> is: ignore-all, report-all, ignore-in-object-files, ignore-in-shared-libs");
+  (["--unresolved-symbols="],                     ([], ["method"]),    fun _ -> (fun state -> state), "How to handle unresolved symbols.  <method> is: ignore-all, report-all, ignore-in-object-files, ignore-in-shared-libs");
   (["--dynamic-list-data"],                       ([], []),            fun _ -> (fun state -> state), "Add data symbols to dynamic list");
   (["--dynamic-list-cpp-new"],                    ([], []),            fun _ -> (fun state -> state), "Use C++ operator new/delete dynamic list");
   (["--dynamic-list-cpp-typeinfo "],              ([], []),            fun _ -> (fun state -> state), "Use C++ typeinfo dynamic list");
@@ -226,17 +232,17 @@ let command_line_table = [
   (* the following are specific to ELF emulations *)
   (["--audit=(.*)"],                              ([], ["AUDITLIB"]),  fun _ -> (fun state -> state), "Specify a library to use for auditing");
   (["-Bgroup"],                                   ([], []),            fun _ -> (fun state -> state), "Selects group name lookup rules for DSO");
-  (["--build-id(=.*)?"],                          ([], ["STYLE"]),     fun _ -> (fun state -> state), "Generate build ID note");
+  (["--build-id="],                               ([], ["STYLE"]),     fun _ -> (fun state -> state), "Generate build ID note");
   (["-P"],                                        (["AUDITLIB"], []),  fun _ -> (fun state -> state), "Specify a library to use for auditing dependencies");
-  (["--depaudit=(.*)"],                           ([], ["AUDITLIB"]),  fun _ -> (fun state -> state), "Specify a library to use for auditing dependencies");
+  (["--depaudit="],                               ([], ["AUDITLIB"]),  fun _ -> (fun state -> state), "Specify a library to use for auditing dependencies");
   (["--disable-new-dtags"],                       ([], []),            fun _ -> (fun state -> state), "Disable new dynamic tags");
   (["--enable-new-dtags"],                        ([], []),            fun _ -> (fun state -> state), "Enable new dynamic tags");
   (["--eh-frame-hdr"],                            ([], []),            fun _ -> (fun state -> state), "Create .eh_frame_hdr section");
-  (["--exclude-libs=(.*)"],                       ([], ["LIBS"]),      fun _ -> (fun state -> state), "Make all symbols in LIBS hidden");
-  (["--hash-style=(.*)"],                         ([], ["STYLE"]),     fun _ -> (fun state -> state), "Set hash style to sysv, gnu or both");
+  (["--exclude-libs="],                           ([], ["LIBS"]),      fun _ -> (fun state -> state), "Make all symbols in LIBS hidden");
+  (["--hash-style="],                             ([], ["STYLE"]),     fun _ -> (fun state -> state), "Set hash style to sysv, gnu or both");
   (* NOTE: for these to work, we hack our word-splitter to merge -z options into a single word with a single space in *)
   (["-z combreloc"],                              ([], []),            fun _ -> (fun state -> state), "Merge dynamic relocs into one section and sort");
-  (["-z common-page-size=(.*)"],                  ([], ["SIZE"]),      fun _ -> (fun state -> state), "Set common page size to SIZE");
+  (["-z common-page-size="],                      ([], ["SIZE"]),      fun _ -> (fun state -> state), "Set common page size to SIZE");
   (["-z defs"],                                   ([], []),            fun _ -> (fun state -> state), "Report unresolved symbols in object files.");
   (["-z execstack"],                              ([], []),            fun _ -> (fun state -> state), "Mark executable as requiring executable stack");
   (["-z global"],                                 ([], []),            fun _ -> (fun state -> state), "Make symbols in DSO available for subsequently loaded objects");
@@ -244,7 +250,7 @@ let command_line_table = [
   (["-z interpose"],                              ([], []),            fun _ -> (fun state -> state), "Mark object to interpose all DSOs but executable");
   (["-z lazy"],                                   ([], []),            fun _ -> (fun state -> state), "Mark object lazy runtime binding (default)");
   (["-z loadfltr"],                               ([], []),            fun _ -> (fun state -> state), "Mark object requiring immediate process");
-  (["-z max-page-size=(.*)"],                     ([], ["SIZE"]),      fun _ -> (fun state -> state), "Set maximum page size to SIZE");
+  (["-z max-page-size="],                         ([], ["SIZE"]),      fun _ -> (fun state -> state), "Set maximum page size to SIZE");
   (["-z nocombreloc"],                            ([], []),            fun _ -> (fun state -> state), "Don't merge dynamic relocs into one section");
   (["-z nocopyreloc"],                            ([], []),            fun _ -> (fun state -> state), "Don't create copy relocs");
   (["-z nodefaultlib"],                           ([], []),            fun _ -> (fun state -> state), "Mark object not to use default search paths");
@@ -256,7 +262,7 @@ let command_line_table = [
   (["-z now"],                                    ([], []),            fun _ -> (fun state -> state), "Mark object non-lazy runtime binding");
   (["-z origin"],                                 ([], []),            fun _ -> (fun state -> state), "Mark object requiring immediate $ORIGIN processing at runtime");
   (["-z relro"],                                  ([], []),            fun _ -> (fun state -> state), "Create RELRO program header");
-  (["-z stacksize=(.*)"],                         ([], ["SIZE"]),      fun _ -> (fun state -> state), "Set size of stack segment");
+  (["-z stacksize="],                             ([], ["SIZE"]),      fun _ -> (fun state -> state), "Set size of stack segment");
   (["-z bndplt"],                                 ([], []),            fun _ -> (fun state -> state), "Always generate BND prefix in PLT entries");
   (["--ld-generated-unwind-info"],                ([], []),            fun _ -> (fun state -> state), "Generate exception handling info for PLT.");
   (["--no-ld-generated-unwind-info"],             ([], []),            fun _ -> (fun state -> state), "Don't do so.");
@@ -287,10 +293,11 @@ let command_line_table = [
   (["-V"],                                        ([], []),                  fun _ -> (fun state -> state), "Print version and emulation information");
   (["-y"; "--trace-symbol"],                      (["SYMBOL"], []),          fun _ -> (fun state -> state), "Trace mentions of SYMBOL");
   (["--cref"],                                    ([], []),                  fun _ -> (fun state -> state), "Output cross reference table");
-  (["--demangle(=.*)?"],                          ([], ["STYLE"]),             fun _ -> (fun state -> state), "Demangle symbol names [using STYLE]");
+  (["--demangle="],                               ([], ["STYLE"]),             fun _ -> (fun state -> state), "Demangle symbol names [using STYLE]");
   (["--print-gc-sections"],                       ([], []),                  fun _ -> (fun state -> state), "List removed unused sections on stderr");
   (["--no-print-gc-sections"],                    ([], []),                  fun _ -> (fun state -> state), "Do not list removed unused sections");
   (["-Map"],                                      (["FILE"], []),            fun _ -> (fun state -> state), "Write a map file");
+  (["-Map="],                                     ([], ["FILE"]),            fun _ -> (fun state -> state), "Write a map file");
   (["--help"],                                    ([], []),                  fun _ -> (fun state -> state), "Print option help");
   (["--no-keep-memory"],                          ([], []),                  fun _ -> (fun state -> state), "Use less memory and more disk I/O");
   (["--no-demangle"],                             ([], []),                  fun _ -> (fun state -> state), "Do not demangle symbol names");
@@ -299,7 +306,7 @@ let command_line_table = [
   (["--reduce-memory-overheads"],                 ([], []),                  fun _ -> (fun state -> state), "Reduce memory overheads, possibly taking much longer");
   (["--stats"],                                   ([], []),                  fun _ -> (fun state -> state), "Print memory usage statistics");
   (["--target-help"],                             ([], []),                  fun _ -> (fun state -> state), "Display target specific options");
-  (["--verbose(=.*)"],                            ([], ["NUMBER"]),          fun _ -> (fun state -> state), "Output lots of information during link");
+  (["--verbose="],                                ([], ["NUMBER"]),          fun _ -> (fun state -> state), "Output lots of information during link");
   (* unknown *)
   (["--embedded-relocs"],                         ([], []),                  fun _ -> (fun state -> state), "Generate embedded relocs");
   (["--task-link"],                               (["SYMBOL"], []),          fun _ -> (fun state -> state), "Do task level linking");
@@ -335,6 +342,57 @@ let command_line_table = [
 (*(["@FILE"], [], fun _ -> (fun state -> state), "Read options from FILE") *) (* processed during word-splitting phase *);
 ]
 
+val delete_trailing_equals: string -> maybe string
+let delete_trailing_equals str = 
+    let cs = toCharList str
+    in
+    if [#'='] = drop ((List.length cs) - 1) cs
+        then Just (toString (take ((List.length cs) - 1) cs))
+        else (* let _ = Missing_pervasives.println ("No trailing equals: " ^ str)
+            in *)
+            Nothing
+
+val string_following_equals_at : nat -> string -> maybe string
+let string_following_equals_at pos str = 
+    let (first, second) = List.splitAt pos (toCharList str)
+    in match second with 
+        #'=' :: rest -> Just (toString rest)
+        | _ -> (* let _ = Missing_pervasives.println ("No trailing equals at " ^ (show pos) ^ ": " ^ str)
+            in *)
+            Nothing
+    end
+
+val equal_modulo_trailing_equals : string -> string -> bool
+let equal_modulo_trailing_equals argstr argdef = 
+    (* we allow argdef to have a trailing equals; if it does, 
+     * we allow the argstring to have the equals (or not) and trailing stuff,
+     * which will become an arg  *)
+    let result = match (delete_trailing_equals argdef) with 
+        Just matched -> 
+            let following_equals = string_following_equals_at (stringLength matched) argstr
+            in
+            match following_equals with 
+                Just following -> (* okay; does the pre-equals part match? *)
+                    matched = toString (take ((stringLength argdef) - 1) (toCharList argstr))
+                | _ -> (* the argstr is allowed not to have a trailing equals *) argstr = matched
+            end
+        | Nothing -> (* no trailing equals *) argdef = argstr
+    end
+    in 
+    (* let _ = Missing_pervasives.println ("Do '" ^ argstr ^ "' and '" ^ argdef ^ "' match modulo trailing equals? " ^ (show result))
+    in *) result
+    
+
+val matching_arg_and_alias : string -> list option_def -> maybe (string * option_def)
+let rec matching_arg_and_alias arg options = match options with 
+    [] -> Nothing
+    | (aliases, argspec, meaning, doc) :: more_opts -> 
+        match find (fun alias -> equal_modulo_trailing_equals arg alias) aliases with 
+            Just found_alias -> Just (found_alias, (aliases, argspec, meaning, doc))
+            | Nothing -> matching_arg_and_alias arg more_opts
+        end
+    end
+
 (* We don't try to convert from strings to other things here; 
  * everything we record is either a bool, meaning option -A was "present", for some A,
  * or a string somearg, meaning option -A somearg was present, for some A. *)
@@ -348,18 +406,22 @@ let read_one_arg state args =
     (* Get the first string and look it up in our table. *)
     match args with
         [] -> (state, [])
-    |   some_arg :: more -> 
-            let pred = fun (aliases, argspec, meaning, doc) -> 
-                match (find (fun a -> a = some_arg) aliases) with Just _ -> true | Nothing -> false 
-                end
-            in
-            match (find (fun ent -> pred ent) command_line_table) with 
-                Just (aliases, (argspec_extras, argspec_regex), meaning, doc) ->
+    |   some_arg :: more -> match (matching_arg_and_alias some_arg command_line_table) with
+            (* We need to handle argdefs that have trailing equals. This means 
+             * an extra arg might follow the equals. We need some helper functions. *)
+                Just (alias, (aliases, (argspec_extras, argspec_regex), meaning, doc)) ->
                     (* Return a new state, by applying the argument's meaning. 
                      * We have to supply the option's argument strings to the meaning function. *)
                     let argstrings = take (List.length argspec_extras) more
                     in 
-                    let regex_matches = [] (* FIXME *)
+                    let regex_matches = match delete_trailing_equals some_arg with
+                        Just prefix -> 
+                            match (string_following_equals_at ((stringLength alias) - 1) some_arg) with 
+                                Just following_equals -> [following_equals]
+                                | Nothing -> failwith "impossible: '=' not where it was a moment ago"
+                            end
+                        | Nothing -> []
+                    end
                     in 
                     let new_state = meaning (argstrings, regex_matches) state
                     in
@@ -395,7 +457,7 @@ let rec cook_argv acc args =
 
 val command_line : unit -> interpreted_command_line
 let command_line = fun _ -> (
-    let cooked_argv = cook_argv [] (Missing_pervasives.tl argv)
+    let cooked_argv = cook_argv [] (tail argv)
     in
     (* Now we use our fold-alike. *)
     let state = foldl_suffix read_one_arg initial_state cooked_argv

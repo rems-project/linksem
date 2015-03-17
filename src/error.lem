@@ -1,7 +1,6 @@
 open import List
 open import Num
 open import String
-
 open import Show
 
 (** [error] is a type used to represent potentially failing computations. [Success]

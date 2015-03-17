@@ -1,0 +1,223 @@
+open import Basic_classes
+open import Function
+open import String
+open import String_extra
+open import Tuple
+open import Bool
+open import List
+open import List_extra
+open import Sorting
+open import Num
+open import Maybe
+open import Assert_extra
+
+open import Byte_sequence
+open import Default_printing
+open import Error
+open import Missing_pervasives
+open import Show
+
+open import Archive
+open import Command_line
+open import Elf_types
+open import Elf_file
+open import Elf_header
+
+(* Here we elaborate away various properties of the command line: 
+ * archives, groups, library paths, -l, --as-needed, --whole-archive
+ * 
+ * What we get out is a list of input files and the options applying to them.
+ * Input files are either relocatable files, shared objects or linker scripts.
+ *)
+
+type input_item = Reloc of (byte_sequence * string)
+                 | Shared of (byte_sequence * string)
+                 | Script of (byte_sequence * string)
+
+val string_of_input_item : input_item -> string
+let string_of_input_item item = match item with
+    Reloc(seq, name) -> "relocatable file '" ^ name ^ "' of length " ^ (show (Byte_sequence.length seq))
+    | Shared(seq, name) -> "shared object '" ^ name ^ "' of length " ^ (show (Byte_sequence.length seq))
+    | Script(seq, name) -> "script '" ^ name ^ "' of length " ^ (show (Byte_sequence.length seq))
+end
+
+instance (Show input_item)
+    let show = string_of_input_item
+end
+
+type input_options =  <| item_fmt : string
+                       ; item_check_sections : bool
+                       ; item_copy_dt_needed : bool
+                       ; item_force_output : bool  (* true for .o, false for .a unless --whole-archive, 
+                                                 true for .so with --no-as-needed, 
+                                                 false for .so with --as-needed *)
+                       ; item_suppliers : list nat (* which inputs can supply symbol definitions *)
+                       |>
+
+type input_list = list (input_item * input_options)
+
+val lib_filename_from_spec : string -> string -> string
+let lib_filename_from_spec spec ext =
+    match (toCharList spec) with
+        #':' :: more -> (toString more)
+        | _ -> "lib" ^ spec ^ "." ^ ext
+    end
+
+val find_library_in : string -> list string -> list string -> maybe string
+let find_library_in spec extensions pathlist = 
+    (* Recall the GNU libc's "libc.so is a linker script" hack. 
+     * This tells us that we should only look at file extensions, not contents. *)
+    let file_exists name = 
+        match Byte_sequence.acquire name with (* FIXME: use cheaper call *)
+            Success _ -> true
+            | Fail _ -> false
+        end
+    in
+    let expand_candidate_libname = fun path -> fun ext -> (path ^ "/" ^ (lib_filename_from_spec spec ext))
+    in
+    let get_expansions_existing = fun path -> 
+        [cand | forall (cand MEM (List.map (expand_candidate_libname path) extensions)) | file_exists cand]
+    in
+    let found_by_path = List.map (fun path -> (path, get_expansions_existing path)) pathlist
+    in 
+    (* Do we take the first path for which some extension is found? 
+     * Or do we keep going if we prefer shared libraries, say? 
+     * I think it's the former. *)
+    match List.find (fun (path, exps) -> (List.length exps) > 0) found_by_path with
+        Just (path, exps) -> Just(head exps)
+        | Nothing -> Nothing
+    end
+
+val find_libraries : list Command_line.input_file -> list Command_line.input_file -> list Command_line.input_file
+let rec find_libraries inputs acc = 
+    match inputs with 
+        [] -> acc
+        | input :: more_inputs ->
+            match input with 
+                File(spec, options)
+                    -> match spec with
+                        Filename(str)
+                            -> find_libraries more_inputs (acc ++ [File(Filename(str), options)])
+                        | Libname(str) 
+                            -> 
+                                let extensions = if options.input_link_sharedlibs then ["so"; "a"] else ["a"]
+                                in
+                                let found = find_library_in str extensions options.input_libpath
+                                in match found with
+                                    Nothing -> failwith ("couldn't find library matching '" ^ str ^ "'")
+                                    | Just result -> find_libraries more_inputs (acc ++ [File(Filename(result), options)])
+                               end
+                        end
+                | Group(spec_option_pair_list) 
+                    -> 
+                    (* We just expand any libraries. Treat the group as a list of File 
+                     * (i.e. members may be Filename or Libname) 
+                     * leaving the Group intact, for now. *)
+                    let group_as_files = List.map (fun (spec, options) -> File(spec, options)) spec_option_pair_list
+                    in
+                    let expanded_list = find_libraries group_as_files []
+                    in 
+                    let expanded_list_as_spec_option_pairs = List.map (fun input -> 
+                        match input with 
+                            File(Filename(spec), options) -> (Filename(spec), options) 
+                            | Group(_) -> failwith "can't have nested groups"
+                            | File(_, _) -> failwith "impossible: didn't expand libname"
+                        end
+                        ) expanded_list
+                    in 
+                    find_libraries more_inputs (acc ++ [Group(expanded_list_as_spec_option_pairs)])
+            end
+    end
+
+val is_elf64_with_type : elf64_half -> byte_sequence -> bool
+let is_elf64_with_type typ seq = 
+    (*let _ = Missing_pervasives.prints ("elf64? " ^ 
+        (match seq with Sequence(bs) -> show (List.take 16 bs) end))
+    in*)
+    match Elf_file.read_elf64_file seq with
+    Success(e) -> (* let _ = Missing_pervasives.println ": yes" in *) (e.elf64_file_header.elf64_type = typ)
+    | Fail _ -> (* let _ = Missing_pervasives.println ": no" in *) false
+    end
+
+val is_archive : byte_sequence -> bool
+let is_archive seq =
+    match read_archive_global_header seq with
+        Success _ -> true
+        | Fail _ -> false
+    end
+
+val make_input_items_and_options : string -> Command_line.input_file_options -> list (input_item * input_options)
+let make_input_items_and_options fname cmdopts =
+    match Byte_sequence.acquire fname with
+        Fail _ -> failwith ("could not open file " ^ fname)
+        | Success seq ->
+            if is_elf64_with_type (elf64_half_of_natural elf_ft_rel) seq
+            then [(Reloc(seq, fname), <| item_fmt = cmdopts.input_fmt
+                                ; item_check_sections = cmdopts.input_check_sections
+                                ; item_copy_dt_needed = cmdopts.input_copy_dt_needed
+                                ; item_force_output = true
+                                ; item_suppliers = [] (* FIXME *)
+                                |>)]
+            else if is_elf64_with_type (elf64_half_of_natural elf_ft_dyn) seq
+            then [(Shared(seq, fname), <| item_fmt = cmdopts.input_fmt
+                                 ; item_check_sections = cmdopts.input_check_sections
+                                 ; item_copy_dt_needed = cmdopts.input_copy_dt_needed
+                                 ; item_force_output = if cmdopts.input_as_needed then false else true
+                                 ; item_suppliers = [] (* FIXME *)
+                                 |>)]
+            else (* Is it an archive? *)
+                if is_archive seq then
+                    match read_archive seq with
+                        Fail _ -> failwith ("could not read archive " ^ fname)
+                        | Success pairs -> 
+                            let _ = Missing_pervasives.println (fname ^ " is an archive with " ^ (show (List.length pairs)) ^ " members")
+                            in 
+                            let not_elf = List.filter (fun (fname, seq) -> not (is_elf64_with_type (elf64_half_of_natural elf_ft_rel) seq)) pairs 
+                            in
+                            if List.length not_elf = 0 
+                            then List.map (fun (fname, seq) -> (Reloc(seq, fname), <| item_fmt = cmdopts.input_fmt
+                                                                    ; item_check_sections = cmdopts.input_check_sections
+                                                                    ; item_copy_dt_needed = cmdopts.input_copy_dt_needed
+                                                                    ; item_force_output = if cmdopts.input_whole_archive then true else false
+                                                                    ; item_suppliers = [] (* FIXME *)
+                                                                    |>)) pairs
+                            else let (names, seqs) = unzip not_elf in 
+                            failwith ("archive with unsupported contents (" ^ (show names) ^ ")")
+                    end
+                else [(Script(seq, fname), <| item_fmt = cmdopts.input_fmt
+                                ; item_check_sections = cmdopts.input_check_sections
+                                ; item_copy_dt_needed = cmdopts.input_copy_dt_needed
+                                ; item_force_output = true
+                                ; item_suppliers = [] (* FIXME *)
+                                |>)]
+   end
+
+val elaborate_input_helper : list Command_line.input_file -> input_list -> input_list
+let rec elaborate_input_helper inputs acc = 
+    let items_from_one_spec_options_pair = fun (spec, opt) -> 
+        match spec with
+            Filename(str) -> make_input_items_and_options str opt
+            | Libname _ -> failwith "elaborate_input not defined for libraries; call find_libraries first"
+        end
+    in
+    match inputs with
+        [] -> acc
+        | input :: more_inputs -> 
+            match input with 
+                File(spec, options)
+                    -> match spec with
+                        Filename(str)
+                            -> elaborate_input_helper more_inputs (acc ++ (items_from_one_spec_options_pair (spec, options)))
+                        | Libname(str) 
+                            -> failwith "elaborate_input not defined for libraries; call find_libraries first"
+                        end
+                | Group(specs_and_options)
+                    (* Every member of a group is either a filename or a libname.
+                     * We have already expanded the libnames.
+                     * FIXME: "suppliers" gets accounted for here. *)
+                    -> elaborate_input_helper more_inputs (acc ++ (List.concatMap items_from_one_spec_options_pair specs_and_options))
+            end
+    end
+    
+val elaborate_input : list Command_line.input_file -> input_list
+let rec elaborate_input inputs = elaborate_input_helper inputs []

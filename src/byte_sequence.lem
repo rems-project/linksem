@@ -134,7 +134,7 @@ val takebytes_r: nat -> byte_sequence -> error byte_sequence
 let rec takebytes_r count (Sequence ts) = 
   if List.length ts >= count then 
     return (Sequence (list_take_with_accum count [] ts))
-  else failwith "takebytes: cannot take more bytes than are contained in sequence"
+  else fail "takebytes: cannot take more bytes than are contained in sequence"
 
 val takebytes : natural -> byte_sequence -> error byte_sequence
 let takebytes count (Sequence ts) =

@@ -6,10 +6,100 @@ open Lem_maybe
 open Lem_num
 open Lem_string
 open Lem_assert_extra
+open Show
 
 (*type byte*)
+(*val natural_of_byte : byte -> natural*)
 
 (*val char_of_byte : byte -> char*)
+
+(* Define how to print a byte in hex *)
+(*val hex_char_of_nibble : natural -> char*)
+let hex_char_of_nibble n = 
+  (
+  if(Big_int.eq_big_int n (Big_int.big_int_of_int 0)) then '0' else
+    (
+    if(Big_int.eq_big_int n (Big_int.big_int_of_int 1)) then '1' else
+      (
+      if(Big_int.eq_big_int n (Big_int.big_int_of_int 2)) then '2' else
+        (
+        if(Big_int.eq_big_int n (Big_int.big_int_of_int 3)) then '3' else
+          (
+          if(Big_int.eq_big_int n (Big_int.big_int_of_int 4)) then '4' else
+            (
+            if(Big_int.eq_big_int n (Big_int.big_int_of_int 5)) then 
+            '5' else
+              (
+              if(Big_int.eq_big_int n (Big_int.big_int_of_int 6)) then 
+              '6' else
+                (
+                if(Big_int.eq_big_int n (Big_int.big_int_of_int 7)) then 
+                '7' else
+                  (
+                  if(Big_int.eq_big_int n (Big_int.big_int_of_int 8)) then
+                    '8' else
+                    (
+                    if(Big_int.eq_big_int n (Big_int.big_int_of_int 9)) then
+                      '9' else
+                      (
+                      if(Big_int.eq_big_int n (Big_int.big_int_of_int 10)) then
+                        'a' else
+                        (
+                        if(Big_int.eq_big_int n (Big_int.big_int_of_int 11)) then
+                          'b' else
+                          (
+                          if(Big_int.eq_big_int n (Big_int.big_int_of_int 12)) then
+                            'c' else
+                            (
+                            if(Big_int.eq_big_int n
+                                 (Big_int.big_int_of_int 13)) then 'd' else
+                              (
+                              if(Big_int.eq_big_int n
+                                   (Big_int.big_int_of_int 14)) then 
+                              'e' else
+                                (
+                                if(Big_int.eq_big_int n
+                                     (Big_int.big_int_of_int 15)) then 
+                                'f' else
+                                  failwith "Incomplete Pattern at File \"missing_pervasives.lem\", line 30, character 5 to line 47, character 7"))))))))))))))))
+
+let hex_string_of_byte b =    
+ (Xstring.implode [ hex_char_of_nibble ( Big_int.div_big_int(Ml_bindings.natural_of_char b)(Big_int.big_int_of_int 16))
+             ; hex_char_of_nibble ( Big_int.mod_big_int(Ml_bindings.natural_of_char b)(Big_int.big_int_of_int 16))])
+
+let instance_Show_Show_Missing_pervasives_byte_dict =({
+
+  show_method = hex_string_of_byte})
+
+(*val natural_of_decimal_digit : char -> maybe natural*)
+let natural_of_decimal_digit c =    
+ ((match c with
+          '0' -> Some(Big_int.big_int_of_int 0)
+        | '1' -> Some(Big_int.big_int_of_int 1)
+        | '2' -> Some(Big_int.big_int_of_int 2)
+        | '3' -> Some(Big_int.big_int_of_int 3)
+        | '4' -> Some(Big_int.big_int_of_int 4)
+        | '5' -> Some(Big_int.big_int_of_int 5)
+        | '6' -> Some(Big_int.big_int_of_int 6)
+        | '7' -> Some(Big_int.big_int_of_int 7)
+        | '8' -> Some(Big_int.big_int_of_int 8)
+        | '9' -> Some(Big_int.big_int_of_int 9)
+        | _ -> None
+    ))
+
+(*val natural_of_decimal_string_helper : natural -> list char -> natural*)
+let rec natural_of_decimal_string_helper acc chars =    
+((match chars with 
+        [] -> acc
+        | c :: cs -> (match natural_of_decimal_digit c with
+            Some dig -> natural_of_decimal_string_helper ( Big_int.add_big_int( Big_int.mult_big_int(Big_int.big_int_of_int 10) acc) dig) cs
+            | None -> acc
+        )
+    ))
+
+(*val natural_of_decimal_string : string -> natural*)
+let natural_of_decimal_string s =    
+ (natural_of_decimal_string_helper(Big_int.big_int_of_int 0) (Xstring.explode s))
 
 (*val natural_of_bool : bool -> natural*)
 let natural_of_bool b =  
@@ -48,6 +138,20 @@ let rec intercalate sep xs =
 		| [x]   -> [x]
 		| x::xs -> x::(sep::intercalate sep xs)
 	))
+
+(** [string_of_list l] produces a string representation of list [l].
+  *)
+(*val string_of_list : forall 'a. Show 'a => list 'a -> string*)
+let string_of_list dict_Show_Show_a l =  
+(let result = (intercalate "," (List.map  
+  dict_Show_Show_a.show_method l)) in
+  let folded = (List.fold_left (^) "" result) in
+    "[" ^ (folded ^ "]"))
+
+let instance_Show_Show_list_dict dict_Show_Show_a =({
+
+  show_method = 
+  (string_of_list dict_Show_Show_a)})
 
 (** [mapMaybei f xs] maps a function expecting an index (the position in the list
   * [xs] that it is currently viewing) and producing a [maybe] type across a list.
@@ -137,17 +241,3 @@ let rec replicate0 len e =
   if(Big_int.eq_big_int len (Big_int.big_int_of_int 0)) then ([]) else
     (e ::
        replicate0 ( Nat_num.natural_monus len (Big_int.big_int_of_int 1)) e))
-
-(*val hd : forall 'a. list 'a -> 'a*)
-let hd l =     
-((match l with
-        | [] -> failwith "hd of empty list"
-        | x :: xs -> x
-    ))
-
-(*val tl : forall 'a. list 'a -> list 'a*)
-let tl l =     
-((match l with
-        | [] -> failwith "tl of empty list"
-        | x :: xs -> xs
-    ))

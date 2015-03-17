@@ -80,41 +80,9 @@ val unsigned_char_of_byte : byte -> unsigned_char
 declare ocaml    target_rep function unsigned_char_of_byte = `Uint32_wrapper.of_char`
 declare isabelle target_rep function unsigned_char_of_byte = `id`
 
-val natural_of_byte : byte -> natural
 let natural_of_byte b
     = natural_of_unsigned_char (unsigned_char_of_byte b)
 
-(* Now we can define how to print a byte in hex *)
-val hex_string_of_nibble : natural -> string
-let hex_string_of_nibble n =
-    match n with
-            0 -> "0"
-        |   1 -> "1" 
-        |   2 -> "2" 
-        |   3 -> "3" 
-        |   4 -> "4" 
-        |   5 -> "5" 
-        |   6 -> "6" 
-        |   7 -> "7" 
-        |   8 -> "8" 
-        |   9 -> "9" 
-        |   10 -> "a"
-        |   11 -> "b" 
-        |   12 -> "c" 
-        |   13 -> "d" 
-        |   14 -> "e" 
-        |   15 -> "f"
-        | _ -> failwith "impossible nibble"
-    end
-
-let hex_string_of_byte b = 
-    (hex_string_of_nibble ((natural_of_byte b) / 16))
-    ^ (hex_string_of_nibble ((natural_of_byte b) mod 16))
-
-instance (Show byte)
-    let show = hex_string_of_byte
-end
-   
 (** [read_unsigned_char end bs0] reads an unsigned char from byte_sequence [bs0]
   * assuming endianness [end].  Returns the unsigned char and the remainder of
   * the byte_sequence.  Fails if an unsigned char cannot be read from the byte_sequence,

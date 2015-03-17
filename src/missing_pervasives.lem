@@ -5,6 +5,7 @@ open import Maybe
 open import Num
 open import String
 open import Assert_extra
+open import Show
 
 open import {isabelle} `$ISABELLE_HOME/src/HOL/Word/Word`
 open import {isabelle} `Elf_Types_Local`
@@ -13,11 +14,75 @@ type byte
 
 declare ocaml    target_rep type byte = `char`
 declare isabelle target_rep type byte = `8` `word`
+val natural_of_byte : byte -> natural
+
+declare ocaml    target_rep function natural_of_byte = `Ml_bindings.natural_of_char`
+declare isabelle target_rep function natural_of_byte = `unat`
 
 val char_of_byte : byte -> char
 
-declare ocaml    target_rep function char_of_byte = ``
+declare ocaml    target_rep function char_of_byte = `Ml_bindings.id_char`
 declare isabelle target_rep function char_of_byte = `Elf_Types_Local.char_of_unsigned_char`
+
+(* Define how to print a byte in hex *)
+val hex_char_of_nibble : natural -> char
+let hex_char_of_nibble n =
+    match n with
+            0 -> #'0'
+        |   1 -> #'1'
+        |   2 -> #'2' 
+        |   3 -> #'3' 
+        |   4 -> #'4'
+        |   5 -> #'5' 
+        |   6 -> #'6' 
+        |   7 -> #'7' 
+        |   8 -> #'8' 
+        |   9 -> #'9' 
+        |   10 -> #'a'
+        |   11 -> #'b' 
+        |   12 -> #'c' 
+        |   13 -> #'d' 
+        |   14 -> #'e' 
+        |   15 -> #'f'
+    end
+
+let hex_string_of_byte b = 
+    toString [ hex_char_of_nibble ((natural_of_byte b) / 16)
+             ; hex_char_of_nibble ((natural_of_byte b) mod 16)]
+
+instance (Show byte)
+    let show = hex_string_of_byte
+end
+
+val natural_of_decimal_digit : char -> maybe natural
+let natural_of_decimal_digit c = 
+    match c with
+          #'0' -> Just 0
+        | #'1' -> Just 1
+        | #'2' -> Just 2
+        | #'3' -> Just 3
+        | #'4' -> Just 4
+        | #'5' -> Just 5
+        | #'6' -> Just 6
+        | #'7' -> Just 7
+        | #'8' -> Just 8
+        | #'9' -> Just 9
+        | _ -> Nothing
+    end
+
+val natural_of_decimal_string_helper : natural -> list char -> natural
+let rec natural_of_decimal_string_helper acc chars =
+    match chars with 
+        [] -> acc
+        | c :: cs -> match natural_of_decimal_digit c with
+            Just dig -> natural_of_decimal_string_helper ((10 * acc) + dig) cs
+            | Nothing -> acc
+        end
+    end
+
+val natural_of_decimal_string : string -> natural
+let natural_of_decimal_string s = 
+    natural_of_decimal_string_helper 0 (toCharList s)
 
 val natural_of_bool : bool -> natural
 let natural_of_bool b =
@@ -73,6 +138,18 @@ let rec intercalate sep xs =
 		| [x]   -> [x]
 		| x::xs -> x::sep::intercalate sep xs
 	end
+
+(** [string_of_list l] produces a string representation of list [l].
+  *)
+val string_of_list : forall 'a. Show 'a => list 'a -> string
+let {ocaml} string_of_list l =
+  let result = intercalate "," (List.map show l) in
+  let folded = foldl (^) "" result in
+    "[" ^ folded ^ "]"
+
+instance forall 'a. Show 'a => (Show (list 'a))
+	let show = string_of_list
+end
 
 (** [mapMaybei f xs] maps a function expecting an index (the position in the list
   * [xs] that it is currently viewing) and producing a [maybe] type across a list.
@@ -182,19 +259,5 @@ let rec replicate len e =
 		| 0 -> []
 		| m -> e :: replicate (m - 1) e
 	end
-
-val hd : forall 'a. list 'a -> 'a
-let hd l =
-     match l with
-        | [] -> failwith "hd of empty list"
-        | x :: xs -> x
-    end
-
-val tl : forall 'a. list 'a -> list 'a
-let tl l =
-     match l with
-        | [] -> failwith "tl of empty list"
-        | x :: xs -> xs
-    end
 
 declare isabelle target_rep function replicate = `List.replicate`

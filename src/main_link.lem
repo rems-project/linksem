@@ -30,6 +30,7 @@ open import Abi_amd64_elf_header
 open import Abi_amd64_serialisation
 
 open import Command_line
+open import Input_list
 
 let default_hdr_bdl =
   (default_os_specific_print, default_proc_specific_print)
@@ -228,7 +229,7 @@ let pattern_possible_starts_in_one_load_phdr pattern seg offset =
             let _ = Missing_pervasives.prints 
                 ("Pattern of length " ^ (show (Missing_pervasives.length pattern)) 
                 ^ " (" ^ (show pattern) ^ ")"
-                ^ " matched byte sequence " ^ (show bytes)
+                ^ " matched byte sequence " ^ (if List.length bytes < 200000 then (show bytes) else "(very long list)")
                 ^ " in " ^ (show (Missing_pervasives.length ret)) ^ " ways: "
                 ^ (show ret) ^ "\n") in
             ret
@@ -250,8 +251,10 @@ let pattern_possible_starts_in_load_phdrs pattern f =
     in
     let seg_startlist_pairs = zip load_segs all_segs_starts
     in
+    let _ = Missing_pervasives.println "Got to blah ss1" in
     let seg_start_pairs = [(seg, start) | forall ((seg, starts) MEM seg_startlist_pairs) (start MEM starts) | true ]
     in
+    let _ = Missing_pervasives.println "Got to blah ss2" in
     let vaddr_starts = List.map (fun (seg, start) -> seg.elf64_segment_base + start) seg_start_pairs
     in
     vaddr_starts
@@ -363,54 +366,59 @@ let all_allocated_user_sections_in_load_phdrs a efs out =
     in
     (Missing_pervasives.length valid_assignments) > 0
 
-val correctly_linked : abi -> list elf64_file -> elf64_file -> bool
-let correctly_linked a efs out = 
+val correctly_linked : abi -> input_list -> list link_option -> elf64_file -> bool
+let correctly_linked a input_items options eout = 
     (* 0. TODO: well-formedness *) 
     (* 1. all allocatable input sections are in LOADed output segments *)
-    if is_elf64_executable_file out.elf64_file_header 
-        && List.all is_elf64_linkable_file (List.map (fun x -> x.elf64_file_header) efs)
-        && (natural_of_elf64_half out.elf64_file_header.elf64_phnum) * (natural_of_elf64_half out.elf64_file_header.elf64_phentsize) > 0
-        && List.all (fun x -> (natural_of_elf64_half x.elf64_file_header.elf64_shnum) * (natural_of_elf64_half x.elf64_file_header.elf64_shentsize) > 0) efs
-        then all_allocated_user_sections_in_load_phdrs a efs out
-    else false
-        
-
-val top_level_spec : list input_file -> elf64_file -> bool
-let top_level_spec ins out =
-(* let top-level-spec inputs = 
-   ... first map dominic over the files there
-   ... make something of type elf_file -> bool
-   ... compose that with dominic^-1 *)
-  let input_files = List.concatMap
-    (fun x -> match x with File(Filename(fname), (* options *)_) -> [fname] | _ -> [] end) 
-    ins
-  in
-  let res =   
-    mapM (fun fname -> 
-        let acquired = Byte_sequence.acquire fname in 
-        let _ = Missing_pervasives.println ("Successfully opened input file" ^ fname)
-        in acquired) input_files
-    >>= fun input_bs ->
-      mapM (fun stream -> let elf = Elf_file.read_elf64_file stream in
-        let _ = Missing_pervasives.println "Input file seems to be a valid ELF file" in
-        elf) input_bs 
-    >>= fun efs ->
-          let guessed_abi = find (fun a -> a.is_valid_elf_ident out.elf64_file_header.elf64_ident) all_abis
-          in
-          match guessed_abi with
-            Just a -> (return (correctly_linked a efs out))
-          | Nothing -> Fail("output file does not conform to any known ABI")
-          end
-  in
-    match res with 
-      | Fail err -> let _ = Missing_pervasives.println err in false
-      | Success result -> result
+    let required_input_seqs = List.concatMap
+        (fun (item, options) -> match item with 
+            Reloc(seq, fname) -> 
+                let _ = Missing_pervasives.println ("Adding reloc file " ^ fname) in
+                if options.item_force_output then [seq] else 
+                    let _ = Missing_pervasives.println 
+                        ("Skipping object not required in output " ^ fname) 
+                    in []
+            | Shared(seq, fname) -> 
+                let _ = Missing_pervasives.println ("Skipping shared object " ^ fname) in []
+            | Script(seq, fname) -> 
+                let _ = Missing_pervasives.println ("Skipping linker script " ^ fname) in []
+        end) 
+        input_items
+    in
+    let ef_of_seq = fun s -> match Elf_file.read_elf64_file s with
+        Success(e) -> e
+        | Fail(_) -> failwith "non-ELF or non-relocatable input file"
     end
+    in
+    let required_efs = List.map ef_of_seq required_input_seqs 
+    in
+    if is_elf64_executable_file eout.elf64_file_header 
+        && (natural_of_elf64_half eout.elf64_file_header.elf64_phnum) * (natural_of_elf64_half eout.elf64_file_header.elf64_phentsize) > 0
+        && List.all (fun x -> (natural_of_elf64_half x.elf64_file_header.elf64_shnum) * (natural_of_elf64_half x.elf64_file_header.elf64_shentsize) > 0) required_efs
+        then all_allocated_user_sections_in_load_phdrs a required_efs eout
+    else false
 
+(* We need to elaborate the command line to handle objects, archives 
+ * and archive groups appropriately. 
+ * We could imagine a relation between objects such that 
+ * (o1, o2) is in the relation
+ * iff definitions in o1 might be used to satisfy references in o2. ("o1 supplies o2")
+ * If o1 is a .o, all other .o files are searched.
+ * If o1 comes from an archive and is not in a group, it only supplies *preceding* objects (whether from an archive or a .o).
+ * If o1 comes from an archive in a group, it supplies preceding objects and any objects from the same group.
+ * 
+ * That doesn't capture the ordering, though: 
+ * for each object, there's an ordered list of other objects 
+ * in which to search for the *first* definition. *)
 
 let _ =
   let res =
     let (input_files, options) = command_line ()
+    in
+    let (input_items, item_options) = unzip (elaborate_input input_files)
+    in
+    let _ = Missing_pervasives.println ("Got " ^ (show (List.length input_items)) ^ " input items: {"
+        ^ (List.foldl (^) "" (List.map (fun item -> (show item) ^ ",") input_items)) ^ "}")
     in
     let output_file_options
      = filter (fun el -> match el with OutputFilename(s) -> true | _ -> false end) options
@@ -425,7 +433,13 @@ let _ =
     let _ = Missing_pervasives.println ("Successfully opened output file") in
     Elf_file.read_elf64_file out >>= fun eout ->
     let _ = Missing_pervasives.println ("Output file seems to be an ELF file") in
-    return (show (top_level_spec input_files eout))
+    let guessed_abi = find (fun a -> a.is_valid_elf_ident eout.elf64_file_header.elf64_ident) all_abis
+    in
+    match guessed_abi with
+      Just a -> let v = (correctly_linked a (zip input_items item_options) options eout) in 
+        return (show v)
+    | Nothing -> Fail("output file does not conform to any known ABI")
+    end
   in
     match res with
       | Fail err  -> Missing_pervasives.println ("[!]: " ^ err)
