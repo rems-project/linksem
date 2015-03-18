@@ -118,6 +118,30 @@ val list_append : forall 'a. list 'a -> list 'a -> list 'a
 let list_append l1 l2 =
     List.reverseAppend (List.reverse l1) l2
 
+val list_concat : forall 'a. list (list 'a) -> list 'a 
+let list_concat ll = foldl list_append [] ll
+
+val list_concat_map : forall 'a 'b. ('a -> list 'b) -> list 'a -> list 'b
+let list_concat_map f l = 
+    list_concat (List.map f l)
+
+val list_reverse_concat_map_helper : forall 'a 'b. ('a -> list 'b) -> list 'b -> list 'a -> list 'b
+let rec list_reverse_concat_map_helper f acc ll = 
+    let lcons = (fun l -> (fun i -> i :: l))
+    in
+    match ll with
+      | []      -> acc
+      | item :: items -> 
+            (* item is a thing that maps to a list. it needn't be a list yet *)
+            let mapped_list = f item
+            in 
+            (* let _ = Missing_pervasives.println ("Map function gave us a list of " ^ (show (List.length mapped_list)) ^ " items") in *)
+            list_reverse_concat_map_helper f (List.foldl lcons acc (f item)) items
+    end
+
+val list_reverse_concat_map : forall 'a 'b. ('a -> list 'b) -> list 'a -> list 'b
+let list_reverse_concat_map f ll = list_reverse_concat_map_helper f [] ll
+
 val list_take_with_accum : forall 'a. nat -> list 'a -> list 'a -> list 'a
 let rec list_take_with_accum n reverse_acc l =
   (*  let _ = Missing_pervasives.prints ("Taking a byte; have accumulated " ^ (show (List.length acc) ^ " so far\n"))

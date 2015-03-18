@@ -184,14 +184,14 @@ let mapMaybei f xs =
   *)
 (*val unlines : list string -> string*)
 let unlines xs =  
-(List.fold_right (^) (intercalate "\n" xs) "")
+(List.fold_left (^) "" (intercalate "\n" xs))
 
 (** [bracket xs] concatenates a list of strings [xs], separating each entry with a
   * space, and bracketing the resulting string.
   *)
 (*val bracket : list string -> string*)
 let bracket xs =  
-("(" ^ (List.fold_right (^) (intercalate " " xs) "" ^ ")"))
+("(" ^ (List.fold_left (^) "" (intercalate " " xs) ^ ")"))
 
 (** [null_char] is the null character. *)
 (*val null_char : byte*)

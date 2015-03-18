@@ -182,14 +182,14 @@ let mapMaybei f xs =
   *)
 val unlines : list string -> string
 let unlines xs =
-  foldr (^) "" (intercalate "\n" xs)
+  foldl (^) "" (intercalate "\n" xs)
 
 (** [bracket xs] concatenates a list of strings [xs], separating each entry with a
   * space, and bracketing the resulting string.
   *)
 val bracket : list string -> string
 let bracket xs =
-  "(" ^ foldr (^) "" (intercalate " " xs) ^ ")"
+  "(" ^ foldl (^) "" (intercalate " " xs) ^ ")"
 
 (** [null_char] is the null character. *)
 val null_char : byte
@@ -246,7 +246,7 @@ val find_index : forall 'a. ('a -> bool) -> list 'a -> maybe natural
 let find_index p xs = find_index_helper 0 p xs
 
 val length : forall 'a. list 'a -> natural
-let ~{ocaml} length xs = List.foldr (fun _ y -> 1 + y) 0 xs
+let ~{ocaml} length xs = List.foldl (fun y _ -> 1 + y) 0 xs
 
 val nat_length : forall 'a. list 'a -> nat
 declare ocaml target_rep function nat_length = `List.length`

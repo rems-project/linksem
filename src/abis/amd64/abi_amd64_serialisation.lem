@@ -11,7 +11,7 @@ open import Elf_header
 open import Elf_interpreted_segment
 open import Elf_program_header_table
 open import Elf_section_header_table
-open import Elf_types
+open import Elf_types_native_uint
 
 open import Abstract_abi
 open import Abi_amd64_elf_header

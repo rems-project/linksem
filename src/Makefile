@@ -10,10 +10,13 @@ LEM ?= $(LEMDIR)/lem
 LEM_UTIL_SRC := default_printing.lem missing_pervasives.lem show.lem endianness.lem error.lem
 # Some of the utility code is directly in ML, some in Lem; order matters!
 # GAH. doing a topsort manually is a sign of failure.
-ALL_UTIL_ML :=   uint16_wrapper.ml uint32_wrapper.ml uint64_wrapper.ml \
-show.ml endianness.ml error.ml ml_bindings.ml missing_pervasives.ml \
+ALL_UTIL_ML := \
+ uint64_wrapper.ml uint32_wrapper.ml \
+ show.ml endianness.ml error.ml ml_bindings.ml missing_pervasives.ml \
  default_printing.ml \
  byte_sequence_wrapper.ml
+
+#uint16_wrapper.ml uint32_wrapper.ml uint64_wrapper.ml 
 
 # Nasty cycle:
 # show depends on missing_pervasives
@@ -23,7 +26,7 @@ show.ml endianness.ml error.ml ml_bindings.ml missing_pervasives.ml \
 # -- Show should be split up. For now, just split off the problematic byte stuff into Missing_pervasives.
 
 LEM_ELF_SRC := byte_sequence.lem archive.lem \
-	elf_types.lem elf_interpreted_segment.lem elf_interpreted_section.lem string_table.lem elf_symbol_table.lem \
+	elf_types_native_uint.lem elf_interpreted_segment.lem elf_interpreted_section.lem string_table.lem elf_symbol_table.lem \
 	elf_header.lem elf_program_header_table.lem \
 	elf_section_header_table.lem \
 	elf_file.lem 
@@ -40,7 +43,7 @@ LEM_LINK_SRC := command_line.lem input_list.lem
 
 LEM_MODEL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC))
 
-OCAML_LIB_OBJS := unix.cma nums.cma batteries.cma nat_num.cmo 
+OCAML_LIB_OBJS := unix.cma nums.cma batteries.cma nat_num.cmo uint.cma
 LEM_OCAML_OBJS := lem.cmo lem_function.cmo lem_list.cmo lem_num.cmo lem_sorting.cmo xstring.cmo
 
 OCAML_LIB_OBJS_OPT := $(patsubst %.cma,%.cmxa,$(patsubst %.cmo,%.cmx,$(OCAML_LIB_OBJS)))
@@ -65,6 +68,10 @@ ldgram.y.hacked: ldgram.y
 	grep '\([:|;]\|[A-Za-z0-9_]\{2,\}\)' | \
 	tail -n+35 > "$@" || rm -f "$@"
 
+.PHONY: libraries
+libraries:
+	$(MAKE) -C src_elf_libraries
+
 lem-all-ocaml: $(filter-out error.lem,$(LEM_UTIL_SRC)) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC) main_link.lem main_elf.lem
 	$(LEM) -ocaml -only_changed_output $+
 
@@ -86,14 +93,15 @@ clean:
 ocaml: main_elf
 
 main_elf main_link main_elf.opt main_link.opt: OCAMLFLAGS += -I src_elf_libraries/batteries/_build/src \
+-I src_elf_libraries/ocaml-uint/_build/lib \
 -I $(LEMDIR)/ocaml-lib/_build/ \
 -I adaptors \
 -I abis -I abis/amd64 -I abis/power64 \
 -g
 
-main_elf main_link main_elf.opt main_link.opt: OCAMLFIND_PACKAGES := -package batteries
+main_elf main_link main_elf.opt main_link.opt: OCAMLFIND_PACKAGES := #-package batteries -package uint
 
-main_elf main_link: %: %.ml $(ALL_UTIL_ML) lem-all-ocaml
+main_elf main_link: %: %.ml libraries $(ALL_UTIL_ML) lem-all-ocaml
 	ocamlfind ocamlc $(OCAMLFLAGS) -o "$@" \
 	$(OCAML_LIB_OBJS) \
 	$(LEM_OCAML_OBJS) \
@@ -103,7 +111,7 @@ main_elf main_link: %: %.ml $(ALL_UTIL_ML) lem-all-ocaml
 	$(patsubst %.lem,%.ml,$(LEM_LINK_SRC)) \
 	"$<" $(OCAMLFIND_PACKAGES)
 
-main_elf.opt main_link.opt: %.opt: %.ml $(ALL_UTIL_ML) lem-all-ocaml
+main_elf.opt main_link.opt: %.opt: %.ml libraries $(ALL_UTIL_ML) lem-all-ocaml
 	ocamlfind ocamlopt $(OCAMLFLAGS) -o "$@" \
 	$(OCAML_LIB_OBJS_OPT) \
 	$(LEM_OCAML_OBJS_OPT) \
@@ -115,11 +123,9 @@ main_elf.opt main_link.opt: %.opt: %.ml $(ALL_UTIL_ML) lem-all-ocaml
 
 make_elf_libraries:
 	-chmod u+w src_elf_libraries/batteries
-	-chmod u+w src_elf_libraries/bitstring
-	-chmod u+w src_elf_libraries/uint
+	-chmod u+w src_elf_libraries/ocaml-uint
 	rm -rf src_elf_libraries/batteries
-	rm -rf src_elf_libraries/bitstring
-	rm -rf src_elf_libraries/uint
+	rm -rf src_elf_libraries/ocaml-uint
 	$(MAKE) -C src_elf_libraries all
 
 clean_elf_libraries:
@@ -132,11 +138,11 @@ ocaml_with_ocamlbuild: lem-all-ocaml
   -lflags 'unix.cma nums.cma' \
   -cflags '-I ../src_elf_libraries/bitstring' \
   -lflags '-I ../src_elf_libraries/bitstring bitstring.cma' \
-  -cflags '-I ../src_elf_libraries/uint/_build/lib' \
-  -lflags '-I ../src_elf_libraries/uint/_build/lib uint.cma' \
+  -cflags '-I ../src_elf_libraries/ocaml-uint/_build/lib' \
+  -lflags '-I ../src_elf_libraries/ocaml-uint/_build/lib uint.cma' \
   -cflags '-I ../src_elf_libraries/batteries/_build/src'   \
   -lflags '-I ../src_elf_libraries/batteries/_build/src batteries.cma'   \
-  -cflags -dllpath,../src_elf_libraries/uint/_build/lib \
+  -cflags -dllpath,../src_elf_libraries/ocaml-uint/_build/lib \
   -cflags -dllpath,../src_elf_libraries/bitstring \
   main_elf.byte 
 
@@ -145,7 +151,7 @@ clean_with_ocamlbuild:
 
 stacktrace:
 	export OCAMLRUNPARAM=b; \
-	ocamlfind ocamlc -package bitstring -package batteries -I $(LEMDIR)/ocaml-lib/_build/ unix.cma bitstring.cma nums.cma nat_num.cmo lem.cmo lem_function.cmo lem_list.cmo -linkpkg -g missing_pervasives.ml show.ml endianness.ml error.ml ml_bindings.ml default_printing.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml string_table.ml elf_section_header_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file3.ml elf_executable_file5.ml elf_linking_file2.ml elf_linking_file3.ml elf_relocation.ml sail_interface.ml main_elf.ml
+	ocamlfind ocamlc -package batteries -I $(LEMDIR)/ocaml-lib/_build/ unix.cma bitstring.cma nums.cma nat_num.cmo lem.cmo lem_function.cmo lem_list.cmo -linkpkg -g missing_pervasives.ml show.ml endianness.ml error.ml ml_bindings.ml default_printing.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml string_table.ml elf_section_header_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file3.ml elf_executable_file5.ml elf_linking_file2.ml elf_linking_file3.ml elf_relocation.ml sail_interface.ml main_elf.ml
 
 oldall: lem-all-ocaml camlp4 ocaml
 

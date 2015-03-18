@@ -22,7 +22,7 @@ open import Elf_interpreted_section
 open import Elf_interpreted_segment
 open import Elf_section_header_table
 open import Elf_program_header_table
-open import Elf_types
+open import Elf_types_native_uint
 open import Elf_relocation
 open import String_table
 
@@ -234,7 +234,7 @@ let pattern_possible_starts_in_one_load_phdr phdr_name pattern seg offset =
                 ^ " (" ^ (show pattern) ^ ")"
                 ^ " matched bytes of phdr " ^ phdr_name
                 ^ " in " ^ (show (Missing_pervasives.length ret)) ^ " ways: "
-                ^ (if (Missing_pervasives.length ret) < 20000 then (show ret) else "(not shown)") ^ "\n") in
+                ^ (if (Missing_pervasives.length ret) < 2000 then (show ret) else "(not shown)") ^ "\n") in
             ret
     end
 
@@ -264,6 +264,10 @@ let pattern_possible_starts_in_load_phdrs pattern f =
     in
     vaddr_starts
 
+val sec_and_start_as_interval : elf64_interpreted_section -> natural -> (natural * natural)
+let sec_and_start_as_interval sec start = 
+    (start, start + sec.elf64_section_size)
+
 val     all_global_assignments_accum
  : list ((elf64_interpreted_section * elf64_file * string) * list natural)
   -> list (list (elf64_interpreted_section * natural))
@@ -272,21 +276,33 @@ let rec all_global_assignments_accum s_and_ss accum =
     match s_and_ss with
         [] -> accum
     |   ((sec, f, fname), starts) :: more -> 
+            let _ = Missing_pervasives.println "Blah a0" in
             let all_assignments_for_sec = 
                 [(sec, start) | forall (start MEM starts) | true]
             in
+            let _ = Missing_pervasives.println "Blah a1" in
             (* for each global assignment so far, we make 
              * n new ones, as a list then flatten together *)
+            let _ = Missing_pervasives.println "Blah a2" in
             let add_assignment
-             = fun global_ass -> [(sec, start) :: global_ass | forall ((sec, start) MEM all_assignments_for_sec) | true]
+             = fun global_ass -> [
+                    if (List.all (fun (other_sec, other_start) -> 
+                        (not (range_overlaps (sec_and_start_as_interval sec start) 
+                            (sec_and_start_as_interval other_sec other_start)))) global_ass)
+                    then (sec, start) :: global_ass 
+                    else global_ass
+                    | forall ((sec, start) MEM all_assignments_for_sec) 
+                    | true]
             in
             let new_accum : list (list (elf64_interpreted_section * natural)) = 
                 (* map from list to list of lists *)
-                List.concatMap add_assignment accum
+                let _ = Missing_pervasives.println "Blah a3" in
+                list_reverse_concat_map add_assignment accum
             in
+            let _ = Missing_pervasives.println "Blah a4" in
             all_global_assignments_accum more new_accum
     end
- 
+
 val all_allocated_user_sections_in_load_phdrs : abi -> list elf64_file -> list string -> elf64_file -> bool
 let all_allocated_user_sections_in_load_phdrs a efs names out =
     (* There must exist a contiguous partitioning of the segments' memory space 
@@ -344,10 +360,11 @@ let all_allocated_user_sections_in_load_phdrs a efs names out =
                 pattern_possible_starts_in_load_phdrs (section_as_byte_pattern a endian sec file.elf64_file_interpreted_sections) out) 
                 alloc_section_triples
     in
-    let _ = Missing_pervasives.println ("Found the following" ^ 
-        " content-matching ways to map input sections onto output segments: " ^ 
-        (show section_possible_seg_starts))
+    let len = List.length section_possible_seg_starts in
+    let _ = Missing_pervasives.println ("Found " ^ (show (List.map List.length section_possible_seg_starts)) ^ 
+        " content-matching ways to map input sections onto output segments.")
     in
+    let _ = Missing_pervasives.println "Blah 1" in
     let load_ranges = segment_load_ranges out.elf64_file_interpreted_segments
     in
     (* Make a list of all possible global assignments. 
@@ -357,23 +374,28 @@ let all_allocated_user_sections_in_load_phdrs a efs names out =
      * append all (section, start) pairs in that list to the assignments accumulated for earlier sections,
      * then recurse to accumulate further.
      *)
+    let _ = Missing_pervasives.println "Blah 2" in
     let sections_and_possible_starts : list ((elf64_interpreted_section * elf64_file * string) * list natural)
      = zip alloc_section_triples section_possible_seg_starts
     in
+    let _ = Missing_pervasives.println "Blah 3" in
     let all_global_assignments : list (list (elf64_interpreted_section * natural))
      = all_global_assignments_accum sections_and_possible_starts [[]]
     in
+    let _ = Missing_pervasives.println "Blah 4" in
     let _ = Missing_pervasives.prints ("Enumerated " ^ 
         (show (Missing_pervasives.length all_global_assignments)) ^ 
         " global assignments of input sections onto output vaddrs:\n")
     in
+    let _ = Missing_pervasives.println "Blah 5" in
     let all_global_assignments_as_intervals : list (list (natural * natural)) = 
         List.map
-        (fun assignment -> [(base, base + section.elf64_section_size) | forall ((section, base) MEM assignment) | true])
+        (fun assignment -> [(sec_and_start_as_interval section base) | forall ((section, base) MEM assignment) | true])
         all_global_assignments
     in
     let valid_assignments = List.filter (fun ass -> is_partition ass load_ranges) all_global_assignments_as_intervals
     in
+    let _ = Missing_pervasives.println "Blah 6" in
     let _ = Missing_pervasives.prints ("Of these, " ^ 
         (show (Missing_pervasives.length valid_assignments)) ^ 
         " are valid partitionings\n")

@@ -10,7 +10,7 @@ open import Missing_pervasives
 
 open import Error
 
-open import Elf_types
+open import Elf_types_native_uint
 open import Elf_file
 open import Elf_header
 open import Elf_relocation

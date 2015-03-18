@@ -5,7 +5,7 @@ open import Maybe
 open import Missing_pervasives
 
 open import Elf_header
-open import Elf_types
+open import Elf_types_native_uint
 
 open import Endianness
 

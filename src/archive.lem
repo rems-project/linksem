@@ -62,34 +62,48 @@ let read_archive_global_header seq =
     match seq with
         Sequence(bs) ->
             (* let _ = Missing_pervasives.prints ("Archive? " ^ (show (take 16 bs)) ^ "? ")
-            in *)
+            in*)
             let chars = List.map char_of_byte (take 8 bs) in 
             if (toString chars) = "!<arch>\n"
-            then(* let _ = Missing_pervasives.println ": yes" in*) return (chars, Sequence(drop 8 bs))
-            else(* let _ = Missing_pervasives.println ": no" in*) fail "not an archive"
+            then (* let _ = Missing_pervasives.println ": yes" in *) return (chars, Sequence(drop 8 bs))
+            else (* let _ = Missing_pervasives.println ": no" in *) fail "not an archive"
     end
 
 val accum_archive_contents : (list (string * byte_sequence)) -> byte_sequence -> error (list (string * byte_sequence))
-let rec accum_archive_contents accum seq = 
-    match read_archive_entry_header seq with
+let rec accum_archive_contents accum whole_seq = 
+    (* let _ = Missing_pervasives.prints "Can read a header? " in *)
+    match read_archive_entry_header whole_seq with
         Success(hdr, seq) -> match seq with
                 Sequence(next_bs) ->
+                    (* let _ = Missing_pervasives.println ("yes; next_bs has length " ^ (show (List.length next_bs))) in *)
                     let amount_to_drop = if hdr.size mod 2 = 0 then hdr.size else hdr.size + 1
                     in
+                    (* let _ = Missing_pervasives.println ("amount_to_drop is " ^ (show amount_to_drop)) in *)
                     (* Skip the '//' magic entries *)
                     let new_accum = match toCharList hdr.name with
                         #'/' :: rest -> accum
                         | _ -> ((hdr.name, Sequence(take (hdr.size) next_bs)) :: accum)
                     end
                     in
-                    accum_archive_contents new_accum (Sequence(drop amount_to_drop next_bs))
+                    match (Byte_sequence.dropbytes (naturalFromNat amount_to_drop) seq) with
+                        Success new_seq -> accum_archive_contents new_accum new_seq
+                        | Fail _ -> 
+                            (* let _ = Missing_pervasives.println "failed to drop!" in *)
+                            return accum
+                    end
                 end
-        | Fail e -> return accum
+        | Fail e -> 
+            (* let _ = Missing_pervasives.println "no" in *)
+            return accum
     end
 
 val read_archive : byte_sequence -> error (list (string * byte_sequence))
 let read_archive bs = 
     read_archive_global_header bs >>= fun (hdr, seq) -> 
-        accum_archive_contents [] seq 
+        let result = accum_archive_contents [] seq 
+        in 
+        (* let _ = Missing_pervasives.println "Finished reading archive"
+        in *)
+        result
     
         

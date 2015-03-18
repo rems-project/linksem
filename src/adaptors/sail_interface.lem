@@ -15,7 +15,7 @@ open import Show
 open import Elf_header
 open import Elf_file
 open import Elf_symbol_table
-open import Elf_types
+open import Elf_types_native_uint
 
 type executable_process_image
   = ELF_Class_32 of elf32_executable_process_image
