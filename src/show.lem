@@ -86,6 +86,14 @@ instance forall 'a. Show 'a => (Show (maybe 'a))
   let show = string_of_maybe
 end
 
+(** [show_else s m] produces a string representation of maybe [m], using [s] 
+  * in the case [m] = Nothing. *)
+val show_else : forall 'a. Show 'a => string -> maybe 'a -> string
+let show_else subst m = 
+    match m with 
+          Just x -> show x 
+        | Nothing -> subst 
+    end
 
 val string_of_nat : nat -> string
 (* let rec {ocaml} string_of_nat m =
