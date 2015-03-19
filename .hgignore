@@ -58,3 +58,10 @@ src/abis/amd64/abi_amd64_serialisation.ml
 src/abis/power64/abi_power64_elf_header.ml
 src/adaptors/sail_interface.ml
 *.opt
+src/abis/amd64/abi_amd64.ml
+src/abstract_abi.ml
+src/archive.ml
+src/command_line.ml
+src/elf_types_native_uint.ml
+src/input_list.ml
+src/src_elf_libraries/ocaml-uint/*
