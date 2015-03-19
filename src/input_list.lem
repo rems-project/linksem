@@ -36,8 +36,8 @@ type input_item = Reloc of (byte_sequence * string)
 
 val string_of_input_item : input_item -> string
 let string_of_input_item item = match item with
-    Reloc(seq, name) -> "relocatable file '" ^ name ^ "' of length " ^ (show (Byte_sequence.length seq))
-    | Shared(seq, name) -> "shared object '" ^ name ^ "' of length " ^ (show (Byte_sequence.length seq))
+    Reloc(seq, name) -> "relocatable file '" ^ name (* ^ "' of length " ^ (show (Byte_sequence.length seq)) *)
+    | Shared(seq, name) -> "shared object '" ^ name (* ^ "' of length " ^ (show (Byte_sequence.length seq)) *)
     | Script(seq, name) -> "script '" ^ name ^ "' of length " ^ (show (Byte_sequence.length seq))
 end
 

@@ -279,13 +279,14 @@ let obtain_elf32_interpreted_sections sht bs0 =
     let size   = natural_of_elf32_word sh.elf32_sh_size in
     let name   = natural_of_elf32_word sh.elf32_sh_name in
     let typ    = natural_of_elf32_word sh.elf32_sh_type in
+    let filesz = if typ = sht_nobits then 0 else size in
     let flags  = natural_of_elf32_word sh.elf32_sh_flags in
     let base   = natural_of_elf32_addr sh.elf32_sh_addr in
     let link   = natural_of_elf32_word sh.elf32_sh_link in
     let info   = natural_of_elf32_word sh.elf32_sh_info in
     let align  = natural_of_elf32_word sh.elf32_sh_addralign in
     let entry_size = natural_of_elf32_word sh.elf32_sh_entsize in
-    Byte_sequence.offset_and_cut offset size bs0 >>= fun relevant ->
+    Byte_sequence.offset_and_cut offset filesz bs0 >>= fun relevant ->
       return <| elf32_section_name = name; elf32_section_type = typ;
           elf32_section_size = size; elf32_section_offset = offset;
           elf32_section_flags = flags; elf32_section_base = base;
@@ -301,13 +302,14 @@ let obtain_elf64_interpreted_sections sht bs0 =
     let size   = natural_of_elf64_xword sh.elf64_sh_size in
     let name   = natural_of_elf64_word  sh.elf64_sh_name in
     let typ    = natural_of_elf64_word  sh.elf64_sh_type in
+    let filesz = if typ = sht_nobits then 0 else size in
     let flags  = natural_of_elf64_xword sh.elf64_sh_flags in
     let base   = natural_of_elf64_addr  sh.elf64_sh_addr in
     let link   = natural_of_elf64_word  sh.elf64_sh_link in
     let info   = natural_of_elf64_word  sh.elf64_sh_info in
     let align  = natural_of_elf64_xword sh.elf64_sh_addralign in
     let entry_size = natural_of_elf64_xword sh.elf64_sh_entsize in
-    Byte_sequence.offset_and_cut offset size bs0 >>= fun relevant ->
+    Byte_sequence.offset_and_cut offset filesz bs0 >>= fun relevant ->
       return <| elf64_section_name = name; elf64_section_type = typ;
           elf64_section_size = size; elf64_section_offset = offset;
           elf64_section_flags = flags; elf64_section_base = base;

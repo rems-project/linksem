@@ -70,6 +70,12 @@ let rec concat ts =
 
 declare {isabelle} rename function concat = concat_byte_sequence
 
+val zero_pad_to_length : natural -> byte_sequence -> byte_sequence
+let zero_pad_to_length len bs = 
+    let curlen = length bs
+    in 
+    if curlen >= len then bs else concat [bs ; (zeros (len - curlen))]
+
 val from_byte_lists : list (list byte) -> byte_sequence
 let from_byte_lists ts =
   Sequence (List.concat ts)
