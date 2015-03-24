@@ -499,6 +499,38 @@ let get_elf64_file_section_header_string_table f3 =
           return (String_table.mk_string_table strings (Missing_pervasives.char_of_byte Missing_pervasives.null_char))
     end
 
+val find_elf32_symbols_by_type : elf32_file -> natural -> error (elf32_symbol_table * string_table)
+let find_elf32_symbols_by_type f t =
+    let found_symtab_index = List.find (fun sh -> sh.elf32_section_type = t) f.elf32_file_interpreted_sections in
+    match found_symtab_index with 
+        Nothing -> fail "no such symtab"
+        | Just sec -> return sec
+    end >>= fun sec ->
+    match List.index f.elf32_file_interpreted_sections (natFromNatural sec.elf32_section_link) with
+        Nothing -> fail "no associated strtab"
+        | Just strs -> return strs
+    end >>= fun strs -> 
+    let strings = Byte_sequence.string_of_byte_sequence strs.elf32_section_body in
+    let strtab = String_table.mk_string_table strings (char_of_byte null_char) in
+    read_elf32_symbol_table (get_elf32_header_endianness f.elf32_file_header) sec.elf32_section_body >>= fun symtab ->
+    return (symtab, strtab)
+
+val find_elf64_symbols_by_type : elf64_file -> natural -> error (elf64_symbol_table * string_table)
+let find_elf64_symbols_by_type f t =
+    let found_symtab_index = List.find (fun sh -> sh.elf64_section_type = t) f.elf64_file_interpreted_sections in
+    match found_symtab_index with 
+        Nothing -> fail "no such symtab"
+        | Just sec -> return sec
+    end >>= fun sec ->
+    match List.index f.elf64_file_interpreted_sections (natFromNatural sec.elf64_section_link) with
+        Nothing -> fail "no associated strtab"
+        | Just strs -> return strs
+    end >>= fun strs -> 
+    let strings = Byte_sequence.string_of_byte_sequence strs.elf64_section_body in
+    let strtab = String_table.mk_string_table strings (char_of_byte null_char) in
+    read_elf64_symbol_table (get_elf64_header_endianness f.elf64_file_header) sec.elf64_section_body >>= fun symtab ->
+    return (symtab, strtab)
+
 val get_elf32_file_symbol_string_table : elf32_file -> error string_table
 let get_elf32_file_symbol_string_table f3 =
   let hdr     = f3.elf32_file_header in

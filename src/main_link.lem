@@ -33,6 +33,7 @@ open import Abis
 
 open import Command_line
 open import Input_list
+open import Linkable_list
 
 let default_hdr_bdl =
   (default_os_specific_print, default_proc_specific_print)
@@ -438,37 +439,38 @@ let all_allocated_user_sections_in_load_phdrs a efs names out =
     in
     (Missing_pervasives.length valid_assignments) > 0
 
-val correctly_linked : abi -> input_list -> list string -> list link_option -> elf64_file -> bool
-let correctly_linked a input_items names options eout = 
-    (* 0. TODO: well-formedness *) 
-    (* 1. all allocatable input sections are in LOADed output segments *)
-    let required_input_seqs = List.concatMap
-        (fun (item, options) -> match item with 
-            Reloc(seq, fname) -> 
-                let _ = Missing_pervasives.println ("Adding reloc file " ^ fname) in
-                if options.item_force_output then [seq] else 
-                    let _ = Missing_pervasives.println 
-                        ("Skipping object not required in output " ^ fname) 
-                    in []
-            | Shared(seq, fname) -> 
-                let _ = Missing_pervasives.println ("Skipping shared object " ^ fname) in []
-            | Script(seq, fname) -> 
-                let _ = Missing_pervasives.println ("Skipping linker script " ^ fname) in []
-        end) 
-        input_items
+val correctly_linked : abi -> linkable_list -> list string -> list link_option -> elf64_file -> bool
+let correctly_linked a linkables names options eout = 
+    let initial_included_indices = mapMaybei (fun i -> (fun item -> 
+        let (obj, input_item, options) = item 
+        in 
+        if options.item_force_output 
+        then Just i
+        else Nothing
+    )) linkables 
     in
-    let ef_of_seq = fun s -> match Elf_file.read_elf64_file s with
-        Success(e) -> e
-        | Fail(_) -> failwith "non-ELF or non-relocatable input file"
+    let _ = Missing_pervasives.println ("Initial included linkables are "
+        ^ (show (mapMaybe (List.index linkables) (List.map natFromNatural initial_included_indices))))
+    in
+    let (required_linkables : linkable_list)
+     = accumulate_needed_inputs default_symbol_oracle linkables initial_included_indices []
+    in
+    let elf_phdrs_size = fun ef -> (natural_of_elf64_half ef.elf64_file_header.elf64_phnum) 
+            * (natural_of_elf64_half ef.elf64_file_header.elf64_phentsize)
+    in 
+    let elf_shdrs_size = fun ef -> (natural_of_elf64_half ef.elf64_file_header.elf64_shnum) * (natural_of_elf64_half ef.elf64_file_header.elf64_shentsize)
+    in 
+    let elf_of_linkable = fun l -> match l with
+        (RelocELF(ef), _, _) -> ef
+        | _ -> failwith "unsupported linkable"
     end
     in
-    let required_efs = List.map ef_of_seq required_input_seqs 
-    in
-    if is_elf64_executable_file eout.elf64_file_header 
-        && (natural_of_elf64_half eout.elf64_file_header.elf64_phnum) * (natural_of_elf64_half eout.elf64_file_header.elf64_phentsize) > 0
-        && List.all (fun x -> (natural_of_elf64_half x.elf64_file_header.elf64_shnum) * (natural_of_elf64_half x.elf64_file_header.elf64_shentsize) > 0) required_efs
-        then all_allocated_user_sections_in_load_phdrs a required_efs names eout
-    else false
+    is_elf64_executable_file eout.elf64_file_header 
+     && elf_phdrs_size eout > 0
+     && List.all (fun l -> (elf_shdrs_size (elf_of_linkable l)) > 0) required_linkables
+     && all_allocated_user_sections_in_load_phdrs a 
+        (List.map elf_of_linkable required_linkables) 
+        names eout
 
 (* We need to elaborate the command line to handle objects, archives 
  * and archive groups appropriately. 
@@ -485,15 +487,17 @@ let correctly_linked a input_items names options eout =
 
 let _ =
   let res =
-    let (input_files, options) = command_line ()
+    let (input_files, link_options) = command_line ()
     in
-    let (input_items, item_options) = unzip (elaborate_input input_files)
+    let items_and_options = elaborate_input input_files
+    in
+    let (input_items, item_options) = unzip items_and_options
     in
     let _ = Missing_pervasives.println ("Got " ^ (show (List.length input_items)) ^ " input items: {"
         ^ (List.foldl (^) "" (List.map (fun item -> (show item) ^ ",") input_items)) ^ "}")
     in
     let output_file_options
-     = filter (fun el -> match el with OutputFilename(s) -> true | _ -> false end) options
+     = filter (fun el -> match el with OutputFilename(s) -> true | _ -> false end) link_options
     in
     let output_file = match output_file_options with
         [] -> failwith "impossible: no output file specified, despite default value of `a.out'"
@@ -507,10 +511,14 @@ let _ =
     let _ = Missing_pervasives.println ("Output file seems to be an ELF file") in
     let guessed_abi = find (fun a -> a.is_valid_elf_header eout.elf64_file_header) all_abis
     in
-    let names = List.map string_of_input_item input_items
+    let make_linkable = fun (it, opts) -> linkable_item_of_input_item_and_options it opts
+    in
+    let linkable_items_and_options = List.map make_linkable items_and_options
+    in
+    let names = List.map show input_items
     in
     match guessed_abi with
-      Just a -> let v = (correctly_linked a (zip input_items item_options) names options eout) in 
+      Just a -> let v = (correctly_linked a linkable_items_and_options names link_options eout) in 
         return (show v)
     | Nothing -> Fail("output file does not conform to any known ABI")
     end

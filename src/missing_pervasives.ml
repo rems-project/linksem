@@ -7,6 +7,7 @@ open Lem_num
 open Lem_string
 open Lem_assert_extra
 open Show
+open Lem_sorting
 
 (*type byte*)
 (*val natural_of_byte : byte -> natural*)
@@ -61,7 +62,7 @@ let hex_char_of_nibble n =
                                 if(Big_int.eq_big_int n
                                      (Big_int.big_int_of_int 15)) then 
                                 'f' else
-                                  failwith "Incomplete Pattern at File \"missing_pervasives.lem\", line 30, character 5 to line 47, character 7"))))))))))))))))
+                                  failwith "Incomplete Pattern at File \"missing_pervasives.lem\", line 31, character 5 to line 48, character 7"))))))))))))))))
 
 let hex_string_of_byte b =    
  (Xstring.implode [ hex_char_of_nibble ( Big_int.div_big_int(Ml_bindings.natural_of_char b)(Big_int.big_int_of_int 16))
@@ -179,6 +180,77 @@ let rec mapMaybei' f idx xs =
 let mapMaybei f xs =  
 (mapMaybei' f(Big_int.big_int_of_int 0) xs)
 
+(** [partitionii is xs] returns a pair of lists: firstly those elements in [xs] that are
+    at indices in [is], the remaining elements. It preserves the order of elements in xs. *)
+    
+(*val partitionii' : forall 'a. natural -> list natural -> list 'a 
+    -> list (natural * 'a) (* accumulates the 'in' partition *)
+    -> list (natural * 'a) (* accumulates the 'out' partition *)
+    -> (list (natural * 'a) * list (natural * 'a))*)
+let rec partitionii' (offset : Big_int.big_int) sorted_is xs reverse_accum reverse_accum_compl =    
+( 
+    (* offset o means "xs begins at index o, as reckoned by the indices in sorted_is" *)(match sorted_is with
+        [] -> (Lem_list.reverse reverse_accum, Lem_list.reverse reverse_accum_compl)
+        | i :: more_is -> 
+            let (length_to_split_off : int) = (Big_int.int_of_big_int ( Nat_num.natural_monus i offset))
+            in
+            let (left, right) = (Lem_list.split_at length_to_split_off xs) in
+            let left_indices : Big_int.big_int list = (Lem_list.genlist 
+                (fun j -> Big_int.add_big_int (Big_int.big_int_of_int j) offset)
+                (List.length left)) 
+            in
+            let left_with_indices = (list_combine left_indices left) in
+            (* left begins at offset, right begins at offset + i *)
+            (match right with 
+                [] -> (* We got to the end of the list before the target index. *) 
+                    (Lem_list.reverse reverse_accum, 
+                     Lem_list.reverseAppend reverse_accum_compl left_with_indices)
+                | x :: more_xs -> 
+                    (* x is at index i by definition, so more_xs starts with index i + 1 *)
+                    partitionii' (Big_int.add_big_int i(Big_int.big_int_of_int 1)) more_is more_xs ((i, x) :: reverse_accum) 
+                        (Lem_list.reverseAppend left_with_indices reverse_accum_compl)
+            )
+    ))
+
+(*val filteri : forall 'a. list natural -> list 'a -> list 'a*)
+let filteri is xs =    
+ (let sorted_is = (List.sort Big_int.compare_big_int is) in
+    let (accum, accum_compl) = (partitionii'(Big_int.big_int_of_int 0) sorted_is xs [] [])
+    in 
+    let (just_indices, just_items) = (List.split accum)
+    in 
+    just_items)
+
+(*val filterii : forall 'a. list natural -> list 'a -> list (natural * 'a)*)
+let filterii is xs =    
+ (let sorted_is = (List.sort Big_int.compare_big_int is) in
+    let (accum, accum_compl) = (partitionii'(Big_int.big_int_of_int 0) sorted_is xs [] [])
+    in 
+    accum)
+
+(*val partitioni : forall 'a. list natural -> list 'a -> (list 'a * list 'a)*)
+let partitioni is xs =    
+ (let sorted_is = (List.sort Big_int.compare_big_int is) in
+    let (accum, accum_compl) = (partitionii'(Big_int.big_int_of_int 0) sorted_is xs [] [])
+    in
+    let (just_indices, just_items) = (List.split accum)
+    in
+    let (just_indices_compl, just_items_compl) = (List.split accum_compl)
+    in
+    (just_items, just_items_compl))
+
+(*val partitionii : forall 'a. list natural -> list 'a -> (list (natural * 'a) * list (natural * 'a))*)
+let partitionii is xs =    
+ (let sorted_is = (List.sort Big_int.compare_big_int is) in
+    partitionii'(Big_int.big_int_of_int 0) sorted_is xs [] [])
+
+(** [unzip3 ls] takes a list of triples and returns a triple of lists. *)
+(*val unzip3: forall 'a 'b 'c. list ('a * 'b * 'c) -> (list 'a * list 'b * list 'c)*)
+let rec unzip3 l = ((match l with
+  | [] -> ([], [], [])
+  | (x, y, z) :: xyzs -> let (xs, ys, zs) = (unzip3 xyzs) in ((x :: xs), (y :: ys), (z :: zs))
+))
+
 (** [unlines xs] concatenates a list of strings [xs], placing each entry
   * on a new line.
   *)
@@ -246,3 +318,45 @@ let rec replicate0 len e =
   if(Big_int.eq_big_int len (Big_int.big_int_of_int 0)) then ([]) else
     (e ::
        replicate0 ( Nat_num.natural_monus len (Big_int.big_int_of_int 1)) e))
+
+(* We want a tail-recursive append. reverse_append l1 l2 appends l2 to the
+ * reverse of l1. So we get [l1-backwards] [l2]. So just reverse l1. *)
+(*val list_append : forall 'a. list 'a -> list 'a -> list 'a*)
+let list_append l1 l2 =    
+(Lem_list.reverseAppend (Lem_list.reverse l1) l2)
+
+(*val list_concat : forall 'a. list (list 'a) -> list 'a*) 
+let list_concat ll = (List.fold_left list_append [] ll)
+
+(*val list_concat_map : forall 'a 'b. ('a -> list 'b) -> list 'a -> list 'b*)
+let list_concat_map f l =    
+ (list_concat (List.map f l))
+
+(*val list_reverse_concat_map_helper : forall 'a 'b. ('a -> list 'b) -> list 'b -> list 'a -> list 'b*)
+let rec list_reverse_concat_map_helper f acc ll =    
+ (let lcons = (fun l -> (fun i -> i :: l))
+    in
+    (match ll with
+      | []      -> acc
+      | item :: items -> 
+            (* item is a thing that maps to a list. it needn't be a list yet *)
+            let mapped_list = (f item)
+            in 
+            (* let _ = Missing_pervasives.println ("Map function gave us a list of " ^ (show (List.length mapped_list)) ^ " items") in *)
+            list_reverse_concat_map_helper f (List.fold_left lcons acc (f item)) items
+    ))
+
+(*val list_reverse_concat_map : forall 'a 'b. ('a -> list 'b) -> list 'a -> list 'b*)
+let list_reverse_concat_map f ll = (list_reverse_concat_map_helper f [] ll)
+
+(*val list_take_with_accum : forall 'a. nat -> list 'a -> list 'a -> list 'a*)
+let rec list_take_with_accum n reverse_acc l =   
+(
+  (*  let _ = Missing_pervasives.prints ("Taking a byte; have accumulated " ^ (show (List.length acc) ^ " so far\n"))
+   in *)(match n with
+        0 -> Lem_list.reverse reverse_acc
+      | _ -> (match l with
+            [] -> failwith "list_take_with_accum: not enough elements"
+            | x :: xs -> list_take_with_accum (Nat_num.nat_monus n( 1)) (x :: reverse_acc) xs
+        )
+    ))

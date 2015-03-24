@@ -39,7 +39,7 @@ LEM_ABI_SRC := abstract_abi.lem abis/amd64/abi_amd64_elf_header.lem \
 	abis/amd64/abi_amd64.lem \
 	abis/abis.lem \
 
-LEM_LINK_SRC := command_line.lem input_list.lem
+LEM_LINK_SRC := command_line.lem input_list.lem linkable_list.lem
 
 LEM_MODEL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC))
 

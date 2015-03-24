@@ -17,19 +17,19 @@ open import String_table
 
 (** Undefined symbol index *)
 
-let stn_undef : nat = 0
+let stn_undef : natural = 0
 
 (** Symbol binding *)
 
-let stb_local : nat = 0
-let stb_global : nat = 1
-let stb_weak : nat = 2
-let stb_loos : nat = 10
-let stb_hios : nat = 12
-let stb_loproc : nat = 13
-let stb_hiproc : nat = 15
+let stb_local : natural = 0
+let stb_global : natural = 1
+let stb_weak : natural = 2
+let stb_loos : natural = 10
+let stb_hios : natural = 12
+let stb_loproc : natural = 13
+let stb_hiproc : natural = 15
 
-val string_of_symbol_binding : nat -> (nat -> string) -> (nat -> string) -> string
+val string_of_symbol_binding : natural -> (natural -> string) -> (natural -> string) -> string
 let string_of_symbol_binding m os proc =
   if m = stb_local then
     "STB_LOCAL"
@@ -134,6 +134,15 @@ val get_symbol_visibility : unsigned_char -> natural
 let get_symbol_visibility entry =
   natural_of_unsigned_char (unsigned_char_land entry (unsigned_char_of_natural 3)) (* 0x3*)
 
+val is_elf32_null_entry : elf32_symbol_table_entry -> bool
+let is_elf32_null_entry ent = 
+    (natural_of_elf32_word ent.elf32_st_name) = 0
+    && (natural_of_elf32_addr ent.elf32_st_value = 0)
+    && (natural_of_elf32_word ent.elf32_st_size = 0)
+    && (natural_of_unsigned_char ent.elf32_st_info = 0)
+    && (natural_of_unsigned_char ent.elf32_st_other = 0)
+    && (natural_of_elf32_half ent.elf32_st_shndx = 0)
+
 type symtab_print_bundle = (natural -> string) * (natural -> string)
 
 val string_of_elf32_symbol_table_entry : elf32_symbol_table_entry -> string
@@ -146,6 +155,10 @@ let {ocaml} string_of_elf32_symbol_table_entry entry =
   ; "\t" ^ "Other: " ^ show entry.elf32_st_other
   ; "\t" ^ "Shndx: " ^ show entry.elf32_st_shndx
   ]
+
+instance (Show elf32_symbol_table_entry)
+    let show = string_of_elf32_symbol_table_entry
+end
 
 type elf32_symbol_table = list elf32_symbol_table_entry
 
@@ -199,6 +212,19 @@ let {ocaml} string_of_elf64_symbol_table_entry entry =
   ; "\t" ^ "Value: " ^ show entry.elf64_st_value
   ; "\t" ^ "Size: "  ^ show entry.elf64_st_size
   ]
+
+instance (Show elf64_symbol_table_entry)
+    let show = string_of_elf64_symbol_table_entry
+end
+
+val is_elf64_null_entry : elf64_symbol_table_entry -> bool
+let is_elf64_null_entry ent = 
+    (natural_of_elf64_word ent.elf64_st_name) = 0
+    && (natural_of_elf64_addr ent.elf64_st_value = 0)
+    && (natural_of_elf64_xword ent.elf64_st_size = 0)
+    && (natural_of_unsigned_char ent.elf64_st_info = 0)
+    && (natural_of_unsigned_char ent.elf64_st_other = 0)
+    && (natural_of_elf64_half ent.elf64_st_shndx = 0)
 
 type elf64_symbol_table = list elf64_symbol_table_entry
 
