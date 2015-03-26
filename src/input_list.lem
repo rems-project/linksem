@@ -35,7 +35,25 @@ type input_blob =  Reloc of byte_sequence
                  | Shared of byte_sequence
                  | Script of byte_sequence
 
-type input_item = string * input_blob
+(* We remember where the input item came from on the command line,
+ * using "coordinates" identifying the index in the higher-up list
+ * followed by the index within that item. *)
+type origin_coord = InArchive of (natural * natural) (* archive-id, pos-within-archive *)
+                  | InGroup of (natural * natural)   (* group-id, pos-within-group *)
+
+val string_of_origin_coord : origin_coord -> string
+let string_of_origin_coord c = match c with
+    InArchive(aid, aidx) -> "at position " ^ (show aidx) ^ " within archive at position " ^ (show aid)
+    | InGroup(gid, gidx) -> "at position " ^ (show gidx) ^ " within group at position " ^ (show gid)
+end
+
+instance (Show origin_coord)
+    let show = string_of_origin_coord
+end
+
+type input_origin = input_unit * list origin_coord
+
+type input_item = string * input_blob * input_origin
 
 val string_of_input_blob : input_blob -> string
 let string_of_input_blob item = match item with
@@ -50,28 +68,11 @@ end
 
 (* About symbol resolution and "suppliers".
  * 
- * Normally, 
- * 
- * - any .o file can supply any other .o file on the command line
- * - any .a file supplies only files appearing to its left
- *      i.e. "it is searched once for definitions"
- * - does a .o file supply a .a file? to both its right and left? Experimentally, YES.
- * 
  * Groups change this.
  * 
  * When we expand a .a file into a list of .o files, what is the supplier
  * relation among them? I *THINK* that within the archive, each can supply any other,
  * but outside the archive, each can only supply leftmore.
- * 
- * What's the best way to encode this? 
- * A completely manifest representation of "who can supply who" 
- * could easily get broken as we expand archives independently
- * or otherwise make substitutions in the input list.
- * So we make it a function from input lists to a list of bool.
- * We also give it an int, denoting its *own* position in the
- * input list; we fail if this isn't a sane value.
- * The question of whether an object can supply itself is not
- * completely obvious (it can, I *think* ).
  *)
 
 type can_supply_function = list input_item -> nat -> list bool
@@ -82,7 +83,6 @@ type input_options =  <| item_fmt : string
                        ; item_force_output : bool  (* true for .o, false for .a unless --whole-archive, 
                                                  true for .so with --no-as-needed, 
                                                  false for .so with --as-needed *)
-                       ; item_can_supply_definitions_to : can_supply_function (* which inputs we can supply symbol definitions to *)
                        |>
 
 val string_of_input_options : input_options -> string
@@ -165,77 +165,79 @@ let is_archive seq =
         | Fail _ -> false
     end
 
-val open_file_and_expand : string -> list input_item
-let open_file_and_expand fname = 
+val open_file_and_expand : string -> input_unit -> natural -> list input_item
+let open_file_and_expand fname u fpos = 
     match Byte_sequence.acquire fname with
         Fail _ -> failwith ("could not open file " ^ fname)
         | Success seq ->
-            if is_elf64_with_type (elf64_half_of_natural elf_ft_rel) seq then [(fname, Reloc(seq))]
-            else if is_elf64_with_type (elf64_half_of_natural elf_ft_dyn) seq then [(fname, Shared(seq))]
-            else if is_archive seq then
-                match read_archive seq with
-                    Fail _ -> failwith ("could not read archive " ^ fname)
-                    | Success pairs -> 
-                        let _ = Missing_pervasives.println (fname ^ " is an archive with " ^ (show (List.length pairs)) ^ " members")
-                        in 
-                        let not_elf = List.filter (fun (fname, seq) -> not (is_elf64_with_type (elf64_half_of_natural elf_ft_rel) seq)) pairs 
-                        in
-                        if List.length not_elf = 0 
-                        then List.map (fun (fname, seq) -> (fname, Reloc(seq))) pairs
-                        else let (names, seqs) = unzip not_elf in 
-                            failwith ("archive with unsupported contents (" ^ (show names) ^ ")")
+            if is_elf64_with_type (elf64_half_of_natural elf_ft_rel) seq 
+            then [(fname, Reloc(seq), (u, []))]
+            else if is_elf64_with_type (elf64_half_of_natural elf_ft_dyn) seq 
+                then [(fname, Shared(seq), (u, []))]
+                else if is_archive seq 
+                    then
+                        match read_archive seq with
+                            Fail _ -> failwith ("could not read archive " ^ fname)
+                            | Success pairs -> 
+                                let _ = Missing_pervasives.println (fname ^ " is an archive with " ^ (show (List.length pairs)) ^ " members")
+                                in 
+                                let not_elf = List.filter (fun (fname, seq) -> not (is_elf64_with_type (elf64_half_of_natural elf_ft_rel) seq)) pairs 
+                                in
+                                if List.length not_elf = 0 
+                                then mapMaybei 
+                                    (fun (i : natural) -> (fun (fname, seq) -> 
+                                        Just (fname, Reloc(seq), (u, [InArchive(fpos, i)]))
+                                    )) pairs
+                                else let (names, seqs) = unzip not_elf in 
+                                    failwith ("archive with unsupported contents (" ^ (show names) ^ ")")
                 end
-            else [(fname, Script(seq))]
+            else [(fname, Script(seq), (u, []))]
     end
 
-val make_input_items_and_options : list input_item -> Command_line.input_file_options -> nat -> list (input_item * input_options)
-let make_input_items_and_options file_list cmdopts rightmore_items_in_group =
+val make_input_items_and_options : list input_item -> Command_line.input_file_options -> list origin_coord -> list (input_item * input_options)
+let make_input_items_and_options file_list cmdopts coords_to_append =
     match file_list with
          [] -> failwith "impossible: empty list of files"
-       | [(fname, Reloc(seq))] -> 
-            [((fname, Reloc(seq)), 
+       | [(fname, Reloc(seq), (u, coords))] -> 
+            [((fname, Reloc(seq), (u, coords ++ coords_to_append)), 
                 <| item_fmt = cmdopts.input_fmt
                  ; item_check_sections = cmdopts.input_check_sections
                  ; item_copy_dt_needed = cmdopts.input_copy_dt_needed
                  ; item_force_output = true
-                 ; item_can_supply_definitions_to = toplevel_dot_o_can_supply
                  |>)]
-       | [(fname, Shared(seq))] ->
-            [((fname, Shared(seq)), 
+       | [(fname, Shared(seq), (u, coords))] ->
+            [((fname, Shared(seq), (u, coords ++ coords_to_append)), 
                  <| item_fmt = cmdopts.input_fmt
                   ; item_check_sections = cmdopts.input_check_sections
                   ; item_copy_dt_needed = cmdopts.input_copy_dt_needed
                   ; item_force_output = if cmdopts.input_as_needed then false else true
-                  ; item_can_supply_definitions_to = toplevel_shared_can_supply
                   |>)]
-       | [(fname, Script(seq))] ->
-            [((fname, Script(seq)), 
+       | [(fname, Script(seq), (u, coords))] ->
+            [((fname, Script(seq), (u, coords ++ coords_to_append)), 
                 <| item_fmt = cmdopts.input_fmt
                  ; item_check_sections = cmdopts.input_check_sections
                  ; item_copy_dt_needed = cmdopts.input_copy_dt_needed
                  ; item_force_output = true
-                 ; item_can_supply_definitions_to = toplevel_dot_o_can_supply (* CHECK!? *)
                  |>)]
-       | relocpair :: more_relocpairs (* guaranteed to be all relocs, from one archive *) -> 
-            mapMaybei (fun i -> (fun (fname, reloc) -> Just
-                ((fname, reloc), <| item_fmt = cmdopts.input_fmt
-                                   ; item_check_sections = cmdopts.input_check_sections
-                                   ; item_copy_dt_needed = cmdopts.input_copy_dt_needed
-                                   ; item_force_output = if cmdopts.input_whole_archive then true else false
-                                   ; item_can_supply_definitions_to = 
-                                    let rightmore_items_in_list = List.length file_list - (natFromNatural i)
-                                    in
-                                    (fun input_list -> (fun pos -> 
-                                        List.genlist 
-                                            (fun ndx -> ndx <= pos + rightmore_items_in_list + rightmore_items_in_group) 
-                                            (List.length input_list)))
-                                   |>)
-            )) file_list
+       | _ -> (* guaranteed to be all relocs, from one archive *)
+            let (items_and_options : list (input_item * input_options)) = 
+                mapMaybei (fun i -> (fun (fname, reloc, (u, coords)) -> 
+                    let (item : input_item) = (fname, reloc, (u, coords ++ coords_to_append))
+                    in
+                    let (options : input_options) = 
+                          <| item_fmt = cmdopts.input_fmt
+                           ; item_check_sections = cmdopts.input_check_sections
+                           ; item_copy_dt_needed = cmdopts.input_copy_dt_needed
+                           ; item_force_output = if cmdopts.input_whole_archive then true else false
+                           |>
+                    in Just (item, options)
+                )) file_list
+            in items_and_options
        | _ -> failwith "impossible expanded input item"
    end
 
-val elaborate_input_helper : list Command_line.input_file -> input_list -> input_list
-let rec elaborate_input_helper inputs acc = 
+val elaborate_input_helper : natural -> list Command_line.input_unit -> input_list -> input_list
+let rec elaborate_input_helper input_pos inputs acc = 
     match inputs with
         [] -> acc
         | input :: more_inputs -> 
@@ -243,13 +245,14 @@ let rec elaborate_input_helper inputs acc =
                 File(spec, options)
                     -> match spec with
                         Filename(str)
-                            -> elaborate_input_helper more_inputs 
-                                (acc ++ (make_input_items_and_options (open_file_and_expand str) options 0))
+                            -> elaborate_input_helper (input_pos + 1) more_inputs 
+                                (acc ++ (make_input_items_and_options
+                                    (open_file_and_expand str input input_pos) options []))
                         | Libname(str) 
-                            -> elaborate_input_helper more_inputs 
+                            -> elaborate_input_helper (input_pos + 1) more_inputs 
                                 (acc ++ (make_input_items_and_options 
-                                            (open_file_and_expand (find_one_library_filename options str)) 
-                                            options 0))
+                                    (open_file_and_expand (find_one_library_filename options str) input input_pos)
+                                        options []))
                         end
                 | Group(specs_and_options) ->
                     (* Every member of a group is either a filename or a libname.
@@ -262,29 +265,20 @@ let rec elaborate_input_helper inputs acc =
                     in
                     (* Now expand archives into file lists. *)
                     let group_with_file_lists 
-                     = List.map (fun (str, options) -> (open_file_and_expand str, options)) group_with_lib_files
+                     = mapMaybei (fun i -> (fun (str, options) -> 
+                        Just ((open_file_and_expand str input input_pos), options)
+                        )) group_with_lib_files
                     in
                     (* Now expand them into files and fix up the options appropriately *)
                     let to_add
-                     = mapMaybei (fun group_index -> (fun (file_list, options) -> (
-                        let rightmore_objects_in_group = 
-                            let group_remainder
-                             = List.drop (natFromNatural (group_index + 1)) group_with_file_lists
-                            in
-                            let group_remainder_object_counts
-                             = List.map (fun (fl, optl) -> Missing_pervasives.length fl) group_remainder
-                            in
-                            let total_object_count 
-                             = foldl (+) 0 group_remainder_object_counts
-                            in
-                            total_object_count
-                        in Just(
-                            make_input_items_and_options file_list options (natFromNatural rightmore_objects_in_group)
+                     = mapMaybei (fun index_in_group -> (fun (file_list, options) -> (
+                        Just(
+                            make_input_items_and_options file_list options [InGroup(input_pos, index_in_group)]
                         )))) group_with_file_lists
                     in
-                    elaborate_input_helper more_inputs (acc ++ (List.concat to_add))
+                    elaborate_input_helper (input_pos + 1) more_inputs (acc ++ (List.concat to_add))
             end
     end
     
-val elaborate_input : list Command_line.input_file -> input_list
-let rec elaborate_input inputs = elaborate_input_helper inputs []
+val elaborate_input : list Command_line.input_unit -> input_list
+let rec elaborate_input inputs = elaborate_input_helper 0 inputs []

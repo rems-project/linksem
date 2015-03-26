@@ -5,6 +5,8 @@ open import Tuple
 open import Bool
 open import List
 open import Sorting
+import Set
+import Set_extra
 open import Num
 open import Maybe
 open import Assert_extra
@@ -452,8 +454,17 @@ let correctly_linked a linkables names options eout =
     let _ = Missing_pervasives.println ("Initial included linkables are "
         ^ (show (mapMaybe (List.index linkables) (List.map natFromNatural initial_included_indices))))
     in
-    let (required_linkables : linkable_list)
-     = accumulate_needed_inputs default_symbol_oracle linkables initial_included_indices []
+    let (all_bindings : list (symbol_reference * maybe symbol_definition))
+     = accumulate_bindings linkables (all_definitions_by_name linkables) {} initial_included_indices [] 
+    in
+    (* get the set of all inputs to which some binding was formed *)
+    let required_definitions = mapMaybei (fun i -> (fun (ref, maybe_def) -> maybe_def)) all_bindings
+    in
+    let required_indices = { def.def_idx | forall (def MEM required_definitions) | true }
+    in
+    let required_indices_list = Set_extra.toList required_indices
+    in
+    let required_linkables_list = List.mapMaybe (fun idx -> List.index linkables (natFromNatural idx)) required_indices_list
     in
     let elf_phdrs_size = fun ef -> (natural_of_elf64_half ef.elf64_file_header.elf64_phnum) 
             * (natural_of_elf64_half ef.elf64_file_header.elf64_phentsize)
@@ -467,9 +478,9 @@ let correctly_linked a linkables names options eout =
     in
     is_elf64_executable_file eout.elf64_file_header 
      && elf_phdrs_size eout > 0
-     && List.all (fun l -> (elf_shdrs_size (elf_of_linkable l)) > 0) required_linkables
+     && List.all (fun l -> (elf_shdrs_size (elf_of_linkable l)) > 0) required_linkables_list
      && all_allocated_user_sections_in_load_phdrs a 
-        (List.map elf_of_linkable required_linkables) 
+        (List.map elf_of_linkable required_linkables_list) 
         names eout
 
 (* We need to elaborate the command line to handle objects, archives 
@@ -487,9 +498,9 @@ let correctly_linked a linkables names options eout =
 
 let _ =
   let res =
-    let (input_files, link_options) = command_line ()
+    let (input_units, link_options) = command_line ()
     in
-    let items_and_options = elaborate_input input_files
+    let items_and_options = elaborate_input input_units
     in
     let (input_items, item_options) = unzip items_and_options
     in

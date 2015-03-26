@@ -179,8 +179,8 @@ let mapMaybei f xs =
   mapMaybei' f 0 xs
 
 (** [partitionii is xs] returns a pair of lists: firstly those elements in [xs] that are
-    at indices in [is], the remaining elements. It preserves the order of elements in xs. *)
-    
+    at indices in [is], and secondly the remaining elements. 
+    It preserves the order of elements in xs. *)
 val partitionii' : forall 'a. natural -> list natural -> list 'a 
     -> list (natural * 'a) (* accumulates the 'in' partition *)
     -> list (natural * 'a) (* accumulates the 'out' partition *)

@@ -44,7 +44,8 @@ LEM_LINK_SRC := command_line.lem input_list.lem linkable_list.lem
 LEM_MODEL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC))
 
 OCAML_LIB_OBJS := unix.cma nums.cma batteries.cma nat_num.cmo uint.cma
-LEM_OCAML_OBJS := lem.cmo lem_function.cmo lem_list.cmo lem_num.cmo lem_sorting.cmo xstring.cmo
+LEM_OCAML_OBJS := lem.cmo lem_basic_classes.cmo lem_function.cmo lem_list.cmo lem_num.cmo lem_sorting.cmo \
+    xstring.cmo pset.cmo pmap.cmo lem_maybe.cmo lem_set.cmo
 
 OCAML_LIB_OBJS_OPT := $(patsubst %.cma,%.cmxa,$(patsubst %.cmo,%.cmx,$(OCAML_LIB_OBJS)))
 LEM_OCAML_OBJS_OPT := $(patsubst %.cma,%.cmxa,$(patsubst %.cmo,%.cmx,$(LEM_OCAML_OBJS)))

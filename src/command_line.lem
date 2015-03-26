@@ -28,6 +28,18 @@ open import Show
 
 type input_file_spec = Filename of string    (* /path/to/file.{o,a,so,...} -- might be script! *)
                      | Libname of string     (* -llib *)
+
+val string_of_input_file_spec : input_file_spec -> string
+let string_of_input_file_spec spec = 
+    match spec with
+        Filename(s) -> "file `" ^ s ^ "'"
+        | Libname(s) -> "library `" ^ s ^ "'"
+    end
+
+instance (Show input_file_spec)
+    let show = string_of_input_file_spec
+end
+
 type input_file_options = <| input_fmt : string
                            ; input_libpath : list string
                            ; input_link_sharedlibs : bool      (* -Bstatic *)
@@ -44,7 +56,8 @@ type link_option = OutputFilename of string
                  (* more here! *) 
 
 (* To allow filtering out a previous setting for a given option, we define
- * an equality relation that is true if options are of the same constructor. *)
+ * an equality relation that is true if options are of the same constructor.
+ * Seems like a bit of a HACK. *)
 instance (Eq link_option)
     let (=) = fun opt1 -> 
         (fun opt2 -> 
@@ -60,8 +73,21 @@ instance (Eq link_option)
 end
 
 type input_file_and_options = input_file_spec * input_file_options
-type input_file = File of input_file_and_options
+type input_unit = File of input_file_and_options
                 | Group of list (input_file_and_options)   (* NOT recursive *)
+
+val string_of_input_unit : input_unit -> string
+let string_of_input_unit u = 
+    match u with
+        File(spec, opts) -> 
+            "single " ^ (show spec)
+       | Group(spec_opt_list) -> 
+            "group: [" ^ (show (List.map (fun (spec, opts) -> spec) spec_opt_list)) ^ "]"
+    end
+
+instance (Show input_unit)
+    let show = string_of_input_unit
+end
 
 (* Reading the command-line: 
  * we encode the meaning of a linker command token 
@@ -76,7 +102,7 @@ type input_file = File of input_file_and_options
 (* As we read the command line, we keep a current state which is the collection
  * of seen input files, seen whole-link options, and input file options that will
  * apply to any input files we add subsequently. *)
-type command_state = <| input_files           : list input_file 
+type command_state = <| input_units           : list input_unit
                       ; link_options          : list link_option
                       ; current_input_options : input_file_options
                       ; current_group         : maybe (list input_file_and_options)
@@ -85,7 +111,7 @@ type command_state = <| input_files           : list input_file
                       
 (* This is the "default state" when we start reading input options *)
 val initial_state : command_state
-let initial_state = <| input_files = []
+let initial_state = <| input_units = []
                      ; link_options = [OutputFilename("a.out")]
                      ; current_input_options = <| input_fmt = "elf64-x86-64"   (* FIXME *)
                                                 ; input_libpath = ["/usr/lib"] (* FIXME: this probably isn't the right place to supply the default search path *)
@@ -99,7 +125,7 @@ let initial_state = <| input_files = []
                      ; stack = []
                      |>
 
-type interpreted_command_line = list input_file * list link_option
+type interpreted_command_line = list input_unit * list link_option
 
 val add_input_file : command_state -> string -> command_state
 let add_input_file state s = 
@@ -113,14 +139,14 @@ let add_input_file state s =
     in
     if state.current_group = Nothing 
     then
-        <| input_files = state.input_files ++ [File(spec, state.current_input_options)]
+        <| input_units = state.input_units ++ [File(spec, state.current_input_options)]
          ; link_options = state.link_options
          ; current_input_options = state.current_input_options
          ; current_group = state.current_group
          ; stack = state.stack
          |>
     else 
-        <| input_files = state.input_files
+        <| input_units = state.input_units
          ; link_options = state.link_options
          ; current_input_options = state.current_input_options
          ; current_group = let toAppend = [(spec, state.current_input_options)] in 
@@ -135,7 +161,7 @@ type option_argvals = list string * list string
 
 val set_or_replace_option : link_option -> command_state -> command_state
 let set_or_replace_option opt state = 
-    <| input_files = state.input_files
+    <| input_units = state.input_units
      ; link_options = (filter (fun existing -> existing <> opt) state.link_options) ++ [opt]
      ; current_input_options = state.current_input_options
      ; current_group = state.current_group
@@ -461,5 +487,5 @@ let command_line = fun _ -> (
     in
     (* Now we use our fold-alike. *)
     let state = foldl_suffix read_one_arg initial_state cooked_argv
-    in (state.input_files, state.link_options)
+    in (state.input_units, state.link_options)
 )

@@ -6,6 +6,9 @@ open import Tuple
 open import Bool
 open import List
 open import List_extra
+open import Set
+open import Set_extra
+import Map
 open import Sorting
 open import Num
 open import Maybe
@@ -55,17 +58,17 @@ let linkable_item_of_input_item_and_options it opts =
     (* 0. TODO: well-formedness *) 
     (* 1. all allocatable input sections are in LOADed output segments *)
     match (match it with
-        (fname, Reloc(seq)) -> 
+        (fname, Reloc(seq), origin) -> 
             let _ = Missing_pervasives.println ("Considering relocatable file " ^ fname) in
             Elf_file.read_elf64_file seq >>= fun e ->
             return (RelocELF(e), it, opts)
-        | (fname, Shared(seq)) -> 
+        | (fname, Shared(seq), origin) -> 
             let _ = Missing_pervasives.println ("Skipping shared object " ^ fname) in 
             fail "unsupported input item"
-        | (fname, Script(seq)) -> 
+        | (fname, Script(seq), origin) -> 
             let _ = Missing_pervasives.println ("Skipping linker script " ^ fname) in
             fail "unsupported input item"
-        end) 
+        end)
     with
         Success(item) -> item
         | Fail(str) -> failwith (str ^ ": non-ELF or non-relocatable input file")
@@ -76,247 +79,297 @@ let string_of_linkable l = match l with
     (_, item, _) -> show item
 end
 
-val item_defines_symbol : string -> linkable_item -> bool
-let item_defines_symbol sym item = 
-    match item with 
-        (RelocELF(e), _, _) -> 
-            let result = 
-                find_elf64_symbols_by_type e sht_symtab >>= fun (symtab, strtab) ->
-                match List.find (fun ent -> (
-                    match (get_string_at (natural_of_elf64_word ent.elf64_st_name) strtab) with
-                        Success str -> 
-                            str = sym 
-                            && (natural_of_elf64_half ent.elf64_st_shndx) <> stn_undef 
-                        | Fail _ -> false
-                    end
-                    )) symtab 
-                with
-                    Just found -> return found
-                    | Nothing -> fail "not found"
-                end
-            in 
-            match result with
-                Success _ -> true
-                | Fail _ -> false
-            end
-        | _ -> false
-    end
+type symbol_reference
+ = <| ref_symname : string                  (* symbol name *)
+    ; ref_syment : elf64_symbol_table_entry (* undefined (referencing) symbol *)
+    ; ref_idx : natural                     (* referencing index in linkables list *)
+    ; ref_sym_scn : natural                 (* symtab section idx *) 
+      (* TODO: might also want rel section index *)
+    |>                             
 
-val item_defined_symbols : linkable_item -> list (string * elf64_symbol_table_entry)
-let item_defined_symbols item = 
-    match item with 
+type symbol_definition
+ = <| def_symname : string
+    ; def_syment : elf64_symbol_table_entry (* definition's symtab entry *)
+    ; def_idx : natural                     (* index in linkables list *)
+    ; def_sym_scn : natural                 (* symtab section index, to disamiguate dynsym *)
+    |>
+
+(* How do we signal "multiple definitions"? 
+ * This is part of the policy baked into the particular oracle:
+ * are multiple definitions okay, or do we fail?
+ * 
+ * NOTE that multiple definitions *globally* is not the same as 
+ * multiple definitions as candidates for a given binding. We
+ * can get the former even if we don't have the latter, in some
+ * weird group/archive arrangements. The right place to detect
+ * this condition is probably when generating the output symtab.
+ *)
+  
+val extract_satisfying_symbols_from_symtab_of_type : natural -> linkable_item 
+    -> (elf64_symbol_table_entry -> bool) -> list (string * elf64_symbol_table_entry * natural)
+let extract_satisfying_symbols_from_symtab_of_type t item pred =
+    match item with
         (RelocELF(e), _, _) -> 
             let result = 
-                find_elf64_symbols_by_type e sht_symtab >>= fun (symtab, strtab) ->
-                return (mapMaybei (fun index -> (fun ent -> (
+                find_elf64_symbols_by_type e t >>= fun (symtab, strtab, scnidx) ->
+                return (mapMaybei (fun _ -> (fun ent -> (
                     match (get_string_at (natural_of_elf64_word ent.elf64_st_name) strtab) with
-                        Success str -> Just (str, ent)
+                        Success str ->
+                            (* exclude undefineds *) 
+                            if (pred ent)
+                            then Just(str, ent, scnidx)
+                            else Nothing
                         | Fail _ -> Nothing
                     end
                     ))) symtab)
-            in 
+            in
             match result with
-                Success pairs -> pairs
+                Success defs -> defs
                 | Fail _ -> []
             end
         | _ -> []
     end
-    
-val item_undefined_symbols : linkable_item -> list (string * elf64_symbol_table_entry)
-let item_undefined_symbols item = 
-    match item with 
-        (RelocELF(e), _, _) -> 
-            let result = 
-                find_elf64_symbols_by_type e sht_symtab >>= fun (symtab, strtab) ->
-                return (mapMaybei (fun index -> (fun ent -> (
-                    if ((not (is_elf64_null_entry ent))
-                        && (natural_of_elf64_half ent.elf64_st_shndx) = stn_undef)
-                    then match (get_string_at (natural_of_elf64_word ent.elf64_st_name) strtab) with
-                        Success str -> 
-                            let _ = Missing_pervasives.println ("Undefined symbol with index " 
-                                ^ (show ent.elf64_st_name)
-                                ^ " has name " ^ str) in
-                            Just (str, ent)
-                        | Fail s -> 
-                            let _ = Missing_pervasives.println 
-                                ("Warning: failed strtab lookup: " ^ s) in
-                            Nothing (* HMM *)
-                    end
-                    else Nothing
-                ))) symtab)
-            in 
-            match result with
-                Success pairs -> pairs
-                | Fail s -> let _ = Missing_pervasives.println ("Warning: failed to get symtab: " ^ s) in []
-            end
-        | _ -> []
+
+let definitions_pred = fun ent -> (natural_of_elf64_half ent.elf64_st_shndx) <> stn_undef 
+
+let references_pred = fun ent -> (natural_of_elf64_half ent.elf64_st_shndx) = stn_undef 
+
+(* This function only knows how to extract symbols. 
+ * It doesn't know the index into the linkables list of whatever object we're extracting from.
+ * So we return a function from that to the eventual list. Is this good style? HMM. *)
+let extract_definitions_from_symtab_of_type t item
+ = fun def_idx -> List.map (fun (str, ent, scnidx) -> <|
+               def_symname = str
+             ; def_syment = ent
+             ; def_idx = def_idx
+             ; def_sym_scn = scnidx
+             |>) (extract_satisfying_symbols_from_symtab_of_type t item definitions_pred)
+
+let extract_references_from_symtab_of_type t item
+= fun ref_idx -> List.map (fun (str, ent, scnidx) -> <|
+               ref_symname = str
+             ; ref_syment = ent
+             ; ref_idx = ref_idx
+             ; ref_sym_scn = scnidx
+             |>)  (extract_satisfying_symbols_from_symtab_of_type t item references_pred)
+
+val add_definition_to_map : symbol_definition -> Map.map string (list symbol_definition)
+                    -> Map.map string (list symbol_definition)
+let add_definition_to_map def m = 
+    match Map.lookup def.def_symname m with
+        Just curlist -> Map.insert def.def_symname (def :: curlist) m
+        | Nothing -> Map.insert def.def_symname [def] m
     end
 
-val can_resolve_symbols_from : list linkable_item -> nat -> nat -> bool
-let can_resolve_symbols_from linkables reference_index supplier_index =
-    let (all_objs, all_inputs, all_options) = unzip3 linkables
+val all_definitions_by_name : linkable_list -> Map.map string (list symbol_definition)
+let all_definitions_by_name linkables = 
+    let make_defs = (fun (idx : nat) -> 
+        (fun item -> (extract_definitions_from_symtab_of_type sht_symtab item) (naturalFromNat idx))
+    )
     in
-    let (ref_obj, ref_input, ref_opts) = match List.index linkables reference_index with
-        Just x -> x
-        | Nothing -> failwith "impossible: reference index not in list"
+    let list_of_deflists = List.mapi make_defs linkables
+    in 
+    foldl (fun accum -> (fun deflist -> 
+        foldl (fun m -> (fun def -> add_definition_to_map def m)) accum deflist
+    )) Map.empty list_of_deflists
+ 
+type binding_oracle = 
+    linkable_list 
+    -> Map.map string (list symbol_definition)
+    -> symbol_reference
+    -> maybe symbol_definition
+
+val resolve_one_reference_default : binding_oracle
+let resolve_one_reference_default linkables defmap ref =
+    (* Get the list of all definitions *)
+    let deflist = match Map.lookup ref.ref_symname defmap with
+        Just l -> l
+        | Nothing -> []
     end
     in
-    match List.index linkables supplier_index with 
-        Nothing -> false
-       | Just (candidate_obj, candidate_input_item, candidate_options) ->
-            let flags = candidate_options.item_can_supply_definitions_to all_inputs reference_index in
-            let (fname, blob) = candidate_input_item in
-            match List.index flags reference_index with
-                Nothing -> 
-                    let _ = Missing_pervasives.println 
-                    ("Warning: input item index " 
-                        ^ (show reference_index)
-                        ^ "(" ^ (show candidate_input_item) ^ ")"
-                        ^ " out of bounds in can-supply-to vector from " ^ fname) in false
-                | Just flag -> 
-                    let _ = Missing_pervasives.println 
-                    ("Input item index " 
-                        ^ (show reference_index) 
-                        ^ "(" ^ (show ref_input) ^ ")"
-                        ^ (if flag then " can" else " cannot")
-                        ^ " be supplied definitions from " ^ fname) in 
-                    flag
-            end
-    end
-    
-
-val default_symbol_oracle : list (natural * linkable_item) -> linkable_list -> natural -> string -> list nat
-let default_symbol_oracle included_linkables_with_indices all_linkables reference_index symname = 
-    let _ = (Missing_pervasives.println ("Oracle asked about symbol named " ^ symname)) in
-    (* 0. which input are we resolving from? *)
-    let (included_indices, included_linkables) = unzip included_linkables_with_indices
-    in
-    let (all_objs, all_inputs, all_options) = unzip3 all_linkables
-    in
-    let reference_input_and_options = List.index all_inputs (natFromNatural reference_index)
-    in
-    (* 1. which other inputs is this symbol allowed to be looked up in? *)
-    let (candidate_input_indices : list nat) = mapMaybe (fun (index, item) -> 
-            if can_resolve_symbols_from all_linkables (natFromNatural reference_index) (natFromNatural index)
-                && item_defines_symbol symname item
-            then 
-                let _ = (Missing_pervasives.println ("Found definition in item " ^ (show index))) in
-                Just (natFromNatural index)
-            else Nothing
-        ) included_linkables_with_indices
-    in
-    candidate_input_indices
-
-type symbol_oracle = list (natural * linkable_item) -> linkable_list -> natural -> string -> list nat
-
-val accumulate_needed_inputs : symbol_oracle -> linkable_list -> list natural -> list (natural * string) -> linkable_list
-let rec accumulate_needed_inputs symo input_linkables indices_included ignored_unsatisfieds = 
-    (* We remove any object file that does not need to be used in the link. 
-     * This depends on symbol resolution, which we factor out into a separate
-     * oracle. So we proceed as follows:
+    (* Filter the list by eligibility rules. 
+     * Normally, 
      * 
-     * - pick an undefined symbol in the included list
-     * - search for the first definition
-     * - include that object in the list
+     * - any .o file can supply any other .o file on the command line
+     * - any .a file supplies only files appearing to its left
+     *      i.e. "it is searched once for definitions"
+     * - does a .o file supply a .a file? to both its right and left? Experimentally, YES.
+     *
+     * So the restrictions are
+     * - archives may not supply weak references
+     * - archives may only supply to the left, or to themselves, or to objects in the same group
      *)
-    let (included, not_included) = partitionii indices_included input_linkables
+    let ref_linkable = match List.index linkables (natFromNatural ref.ref_idx) with
+        Just l -> l
+        | Nothing -> failwith "impossible: referencing linkable is not in linkables list"
+    end
     in
-    (* What's the index of the first included item having a nonempty unsatisfied-undefineds list? *)
-    let syms_not_yet_satisfied_in = fun i -> 
-        (List.filter (fun sym -> 
-            let (symname, syment) = sym in
-            List.null (symo included input_linkables i symname)))
+    let (ref_obj, (ref_fname, ref_blob, (ref_u, ref_coords)), ref_options) = ref_linkable
     in
-    let includeds_with_unsatisfied_undefineds
-     = mapMaybe (fun (i, l) -> 
-                            match item_undefined_symbols l with
-                                [] -> 
-                                    let _ = Missing_pervasives.println 
-                                    ("Item " ^ (show l) ^ " has no undefined symbols")
-                                    in
-                                    Nothing 
-                                    (* symo only returns list of possible definitions, out of already-included objects *)
-                                | syms -> let not_yet_satisfied = syms_not_yet_satisfied_in i syms 
-                                          in
-                                          if List.null not_yet_satisfied
-                                                then (* it's satisfied by what's already included *)
-                                                    let _ = Missing_pervasives.println 
-                                                    ("Item " 
-                                                        ^ (show l) 
-                                                        ^ " only has undefined symbols already satisfied"
-                                                    )
-                                                    in
-                                                    Nothing 
-                                                else 
-                                                    let _ = Missing_pervasives.println 
-                                                        ("Considering as-yet unsatisfied undefined symbols " 
-                                                        ^ (show not_yet_satisfied) 
-                                                        ^ " in " 
-                                                        ^ (show l)
-                                                        )
-                                                    in
-                                                    Just (i, not_yet_satisfied)
-                            end) included
-    in
-    (* How do we handle weaks? 
-     * These show up as unsatisfied undefineds. 
-     * We try to satisfy them, as usual, but 
-     * if we can't, we add them to the list of "ignored unsatisfied undefineds". *)
-    let filter_ignoreds = fun (referencing_idx, syms_to_search_for) ->
-            (referencing_idx, 
-                (* make a new, filtered list *)
-                [(symname, syment) | forall ((symname, syment) MEM syms_to_search_for) | 
-                    List.all 
-                        ((<>) (referencing_idx, symname))
-                        ignored_unsatisfieds 
-                ]
-            )
-    in
-    let includeds_with_unsatisfied_undefineds_not_ignored = 
-        List.map filter_ignoreds includeds_with_unsatisfied_undefineds
-    in
-    match includeds_with_unsatisfied_undefineds_not_ignored with
-        [] -> (* successful termination *)
-            List.map (fun (i, item) -> item) included
-        | ((referencing_idx, syms_to_search_for) :: more_refs) ->
-            match (syms_not_yet_satisfied_in referencing_idx syms_to_search_for) with
-                [] -> failwith "impossible: included-with-undefined has no undefined symbols"
-                | sym_to_search_for :: more_syms -> 
-                    (* All right. Find the first non-included object defining this symbol and include it. *)
-                    let (symname, syment) = sym_to_search_for in
-                    let definitions_found = mapMaybe (fun (i, l) -> 
-                        if item_defines_symbol symname l
-                        then Just (i, l)
-                        else Nothing
-                        ) not_included
-                    in
-                    let (referencing_obj, referencing_item, referencing_options)
-                     = match List.index input_linkables (natFromNatural referencing_idx) with
-                        Just r -> r
-                        | Nothing -> failwith "impossible: referencing item not present"
-                    end
-                    in
-                    match definitions_found with
-                        [] -> (* undefined symbol -- is it weak? If so, add it to the ignore list
-                               * and recurse. *)
-                            if (get_symbol_binding syment.elf64_st_info) = stb_weak
-                                then
-                                    accumulate_needed_inputs 
-                                        symo input_linkables indices_included [] (* ((referencing_idx, symname)::ignored_unsatisfieds) *)
-                                else failwith ("undefined symbol in " ^ (show referencing_item) 
-                                    ^ ": " ^ symname)
-                       | (defining_idx, defining_item) :: more_defs -> 
-                            (* Included it and recurse *)
-                            let _ = Missing_pervasives.println 
-                                ("Included linkable item " ^ (string_of_linkable defining_item)
-                                    ^ " to satisfy a reference to symbol " ^ symname
-                                    ^ " in object " 
-                                    ^ (match (List.index input_linkables (natFromNatural referencing_idx)) with
-                                        Nothing -> failwith "impossible"
-                                        | Just l -> string_of_linkable l
-                                        end))
-                            in
-                            accumulate_needed_inputs symo input_linkables (defining_idx :: indices_included) ignored_unsatisfieds
-                    end
+    let def_is_eligible = (fun def -> 
+        let ref_is_weak = (get_symbol_binding ref.ref_syment.elf64_st_info) = stb_weak
+        in
+        let def_linkable = match List.index linkables (natFromNatural def.def_idx) with
+            Just l -> l
+            | Nothing -> failwith "impossible: defining linkable is not in linkables list"
+        end
+        in
+        let (def_obj, (def_fname, def_blob, def_origin), def_options) = def_linkable
+        in
+        let (def_u, def_coords) = def_origin
+        in
+        (* NASTY *)
+        let (def_in_group, def_in_archive) = match def_coords with
+              InArchive(aid, aidx) :: InGroup(gid, gidx) :: [] -> (Just gid, Just aid)
+            | InArchive(aid, aidx) :: []                       -> (Nothing, Just aid)
+            | InGroup(gid, gidx) :: []                         -> (Just gid, Nothing)
+            | []                                               -> (Nothing, Nothing)
+            | _ -> failwith "internal error: didn't understand origin coordinates of definition"
+        end
+        in
+        let ref_is_leftmore = ref.ref_idx <= def.def_idx
+        in
+        (* For simplicity we include the case of "same archive" in "in group with". *)
+        let ref_is_in_group_with_def = match def_in_group with 
+              Nothing -> false
+            | Just def_gid -> 
+                match ref_coords with
+                  InArchive(_, _) :: InGroup(def_gid, _) :: [] -> true
+                | InGroup(def_gid, _) :: []                    -> true
+                | _ -> false
+                end
             end
+        in
+        (* but maybe same archive? *)
+        let ref_and_def_are_in_same_archive = match (def_coords, ref_coords) with
+            ([InArchive(x1, _)], [InArchive(x2, _)]) -> x1 = x2
+            | _ -> false
+        end
+        in
+        let def_is_in_archive = match def_in_archive with
+            Just _ -> true
+            | Nothing -> false
+        end
+        in
+        if def_is_in_archive
+        then
+            (not ref_is_weak) 
+            && (
+                   ref_is_leftmore 
+                || ref_and_def_are_in_same_archive
+                || ref_is_in_group_with_def
+            )
+        else 
+            true
+    )
+    in
+    let eligible_defs = List.filter def_is_eligible deflist
+    in
+    let target = match eligible_defs with 
+        [] -> Nothing
+        | [d] -> Just d
+        | d :: ds -> 
+            (* Break ties by which definition appeared first in the left-to-right order. *)
+            let sorted = sortBy (fun d1 -> (fun d2 -> d1.def_idx < d2.def_idx)) eligible_defs
+            in
+            match sorted with 
+                first :: more -> Just first
+                | _ -> failwith "impossible: sorted list is shorter than original"
+            end
+    end
+    in 
+    let _ = Missing_pervasives.println ("Bound a reference from `" 
+                ^ ref.ref_symname ^ "' in " ^ ref_fname
+                ^ " to " ^ (match target with
+                    Just def -> " a definition in "^ (show (List.index linkables (natFromNatural def.def_idx)))
+                    | Nothing -> "no definition"
+                end))
+    in
+    target
+
+val resolve_all :
+    linkable_list
+    -> Map.map string (list symbol_definition)                (* all definitions *)
+    -> binding_oracle
+    -> list symbol_reference
+    -> list (symbol_reference * maybe symbol_definition)
+let resolve_all linkables all_defs oracle refs = 
+    List.map (fun ref -> (ref, (oracle linkables all_defs ref))) refs
+
+(* To accumulate which inputs are needed, we build a list of all symbol definitions 
+ * in the linkable list, then  We work with a list of undefineds, starting with this in the 
+ * forced-output objects. We then iterate. *)
+val resolve_undefs_in_one_object : 
+    linkable_list
+    -> Map.map string (list symbol_definition)                (* all definitions *)
+    -> binding_oracle
+    -> natural
+    -> list (symbol_reference * maybe symbol_definition)
+let resolve_undefs_in_one_object linkables all_defs oracle idx =
+    (* Get this object's list of references *)
+    let item = match List.index linkables (natFromNatural idx) with
+        Just it -> it
+        | Nothing -> failwith "impossible: linkable not in list of linkables"
+    end
+    in
+    let reflist = (extract_references_from_symtab_of_type sht_symtab item) idx
+    in
+    resolve_all linkables all_defs oracle reflist
+
+val accumulate_input_objects :
+    linkable_list
+    -> Map.map string (list symbol_definition)                (* all definitions *)
+    -> set natural                                       (* inputs fully-bound so far *)
+    -> list natural                                       (* ordered list of inputs to bind next *)
+    -> list (symbol_reference * maybe symbol_definition)  (* bindings made so far *)
+    -> list (symbol_reference * maybe symbol_definition)  (* all accumulated bindings bindings *)
+let rec accumulate_bindings linkables all_defs fully_bound to_bind bindings_accum =
+    (* This is like foldl, except that each stage
+     * can add stuff to the work list *)
+    match to_bind with 
+        [] -> bindings_accum (* termination *)
+        | l_idx :: more_idx ->
+            (* Get the new bindings for this object *)
+            let new_bindings = resolve_undefs_in_one_object 
+                linkables
+                all_defs
+                resolve_one_reference_default
+                l_idx
+            in
+            let new_fully_bound = Set.insert l_idx fully_bound
+            in
+            (* Which of the new bindings are to objects 
+             * not yet fully bound or not yet in the to-bind list? *)
+            let new_bindings_def_idx = list_concat_map (fun (ref, maybe_def) -> 
+                match maybe_def with 
+                    Just def -> [def.def_idx]
+                    | Nothing -> []
+                end
+            ) new_bindings 
+            in
+            let new_bindings_def_idx_set = Set.fromList new_bindings_def_idx
+            in
+            let included_linkables_idx = fully_bound union (Set.fromList to_bind)
+            in
+            let new_l_idx = new_bindings_def_idx_set \ included_linkables_idx
+            in
+            let new_l_idx_list = Set_extra.toList new_l_idx
+            in
+            let _ = Missing_pervasives.println (
+                if List.null new_l_idx_list 
+                then
+                    "Fully bound references in  " ^ (show (List.index linkables (natFromNatural l_idx)))
+                        ^ " using only already-included linkables (" 
+                        ^ (show (List.map (fun i -> List.index linkables (natFromNatural i)) (Set_extra.toList included_linkables_idx)))
+                else
+                    "Including additional linkables "
+                    ^ (show (List.mapMaybe (fun i -> List.index linkables (natFromNatural i)) new_l_idx_list))
+                )
+            in
+            accumulate_bindings
+                linkables
+                all_defs
+                new_fully_bound
+                (more_idx ++ new_l_idx_list)
+                (bindings_accum ++ new_bindings)
     end
