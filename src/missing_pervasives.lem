@@ -99,12 +99,12 @@ let natural_of_bool b =
 
 val unsafe_nat_of_natural : natural -> nat
 
-declare ocaml    target_rep function unsafe_nat_of_natural = `Big_int.int_of_big_int`
+declare ocaml    target_rep function unsafe_nat_of_natural = `Nat_big_num.to_int`
 declare isabelle target_rep function unsafe_nat_of_natural = `id`
 
 val unsafe_int_of_natural   : natural -> int
 
-declare ocaml    target_rep function unsafe_int_of_natural = `Big_int.int_of_big_int`
+declare ocaml    target_rep function unsafe_int_of_natural = `Nat_big_num.to_int`
 declare isabelle target_rep function unsafe_int_of_natural = `int`
 
 val byte_of_natural : natural -> byte
@@ -129,7 +129,7 @@ let natural_ordering left right =
   else
     Greater
 
-declare ocaml target_rep function natural_ordering = `Big_int.compare_big_int`
+declare ocaml target_rep function natural_ordering = `Nat_big_num.compare`
 
 val sort_by : forall 'a. ('a -> 'a -> ordering) -> list 'a -> list 'a
 
