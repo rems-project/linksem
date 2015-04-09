@@ -104,7 +104,7 @@ main_elf main_link main_elf.opt main_link.opt: OCAMLFLAGS += -I src_elf_librarie
 main_elf main_link main_elf.opt main_link.opt: OCAMLFIND_PACKAGES := #-package batteries -package uint
 
 main_elf main_link: %: %.ml libraries $(ALL_UTIL_ML) lem-all-ocaml
-	ocamlfind ocamlc $(OCAMLFLAGS) -o "$@" \
+	ocamlfind ocamlc $(OCAMLFLAGS) -o "$@" -g \
 	$(OCAML_LIB_OBJS) \
 	$(LEM_OCAML_OBJS) \
 	$(ALL_UTIL_ML) \
