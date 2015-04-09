@@ -1,12 +1,6 @@
 open Endianness
 open Error
 
-let id_char (i : char) = i
-;;
-
-let natural_of_char (i: char) = Uint32_wrapper.to_bigint (Uint32_wrapper.of_char i)
-;;
-
 let bytes_of_int32 (i : Int32.t) = assert false
 ;;
 
@@ -34,11 +28,6 @@ let int64_of_oct c1 c2 c3 c4 c5 c6 c7 c8 =
         (Int64.add b5 (Int64.add b6 (Int64.add b7 b8))))))
 ;;
 
-let char_of_bigint (i : Big_int.big_int) : char =
-  let i = Big_int.int_of_big_int i in
-    Char.chr i
-;;
-
 let decimal_string_of_int64 e =
   let i = Int64.to_int e in
     string_of_int i
@@ -59,68 +48,22 @@ let split_string_on_char strings c =
 ;;
 
 let string_suffix index str =
-  if Big_int.lt_big_int index (Big_int.big_int_of_int 0) ||
-    (Big_int.gt_big_int index (Big_int.big_int_of_int (String.length str))) then
+  if Nat_big_num.less index (Nat_big_num.of_int 0) ||
+    (Nat_big_num.greater index (Nat_big_num.of_int (String.length str))) then
     None
   else
-    try
-      if Big_int.is_int_big_int index then
-        Some (String.sub str (Big_int.int_of_big_int index)
-          (String.length str - (Big_int.int_of_big_int index)))
-      else
-        failwith "string_suffix: index too large"
-    with
-    | _ -> None
-;;
-
-let natural_of_unsigned_char u =
-  Big_int.big_int_of_string (Uint32_wrapper.to_string u)
-;;
-
-let natural_of_elf32_half u =
-  Big_int.big_int_of_string (Uint32_wrapper.to_string u)
-;;
-
-let natural_of_elf64_half u =
-  Big_int.big_int_of_string (Uint32_wrapper.to_string u)
-;;
-
-let natural_of_elf32_word u =
-  Big_int.big_int_of_string (Uint32_wrapper.to_string u)
-;;
-
-let natural_of_elf64_word u =
-  Big_int.big_int_of_string (Uint32_wrapper.to_string u)
-;;
-
-let natural_of_elf32_off u =
-  Big_int.big_int_of_string (Uint32_wrapper.to_string u)
-;;
-
-let natural_of_elf64_off u =
-  Big_int.big_int_of_string (Uint64_wrapper.to_string u)
-;;
-
-let natural_of_elf32_addr u =
-  Big_int.big_int_of_string (Uint32_wrapper.to_string u)
-;;
-
-let natural_of_elf64_addr u =
-  Big_int.big_int_of_string (Uint64_wrapper.to_string u)
-;;
-
-let natural_of_elf64_xword u =
-  Big_int.big_int_of_string (Uint64_wrapper.to_string u)
+  	let idx = Nat_big_num.to_int index in
+  		Some (String.sub str idx (String.length str - idx))
 ;;
 
 let rec list_index_big_int index xs =
   match xs with
     | []    -> None
     | x::xs ->
-      if Big_int.eq_big_int index Big_int.zero_big_int then
+      if Nat_big_num.equal index (Nat_big_num.of_int 0) then
         Some x
       else
-        list_index_big_int (Big_int.sub_big_int index (Big_int.big_int_of_int 1)) xs
+        list_index_big_int (Nat_big_num.sub index (Nat_big_num.of_int 1)) xs
 ;;
 
 let argv_list = Array.to_list Sys.argv

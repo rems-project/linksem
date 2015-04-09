@@ -50,7 +50,7 @@ LEM_LINK_SRC := command_line.lem input_list.lem linkable_list.lem
 
 LEM_MODEL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC))
 
-OCAML_LIB_OBJS := unix.cma nums.cma batteries.cma nat_num.cmo uint.cma
+OCAML_LIB_OBJS := unix.cma nums.cma zarith.cma batteries.cma nat_num.cmo nat_big_num.cmo uint.cma
 LEM_OCAML_OBJS := lem.cmo lem_basic_classes.cmo lem_function.cmo lem_list.cmo lem_num.cmo lem_sorting.cmo \
     xstring.cmo pset.cmo pmap.cmo lem_maybe.cmo lem_set.cmo
 
@@ -102,7 +102,8 @@ ocaml: main_elf
 
 main_elf main_link main_elf.opt main_link.opt: OCAMLFLAGS += -I src_elf_libraries/batteries/_build/src \
 -I src_elf_libraries/ocaml-uint/_build/lib \
--I $(LEMDIR)/ocaml-lib/_build/ \
+-I $(LEMDIR)/ocaml-lib/ \
+-I $(LEMDIR)/ocaml-lib/dependencies/zarith/ \
 -I adaptors \
 -I abis -I abis/amd64 -I abis/power64 -I abis/aarch64 \
 -g
@@ -110,7 +111,7 @@ main_elf main_link main_elf.opt main_link.opt: OCAMLFLAGS += -I src_elf_librarie
 main_elf main_link main_elf.opt main_link.opt: OCAMLFIND_PACKAGES := #-package batteries -package uint
 
 main_elf main_link: %: %.ml libraries $(ALL_UTIL_ML) lem-all-ocaml
-	ocamlfind ocamlc $(OCAMLFLAGS) -o "$@" \
+	ocamlfind ocamlc $(OCAMLFLAGS) -o "$@" -g \
 	$(OCAML_LIB_OBJS) \
 	$(LEM_OCAML_OBJS) \
 	$(ALL_UTIL_ML) \
