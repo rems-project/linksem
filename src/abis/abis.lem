@@ -3,9 +3,8 @@ open import Bool
 open import Num
 
 open import Abstract_abi
-open import Abi_amd64_relocation
-open import Abi_amd64_elf_header
 open import Abi_amd64
+open import Abi_aarch64_le
 
 val all_abis : list abi
-let all_abis = [sysv_amd64_std_abi; null_abi]
+let all_abis = [sysv_amd64_std_abi; sysv_aarch64_le_std_abi; null_abi]

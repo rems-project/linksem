@@ -29,13 +29,20 @@ LEM_ELF_SRC := byte_sequence.lem archive.lem \
 	elf_types_native_uint.lem elf_interpreted_segment.lem elf_interpreted_section.lem string_table.lem elf_symbol_table.lem \
 	elf_header.lem elf_program_header_table.lem \
 	elf_section_header_table.lem \
+	elf_relocation.lem \
 	elf_file.lem 
 	
-LEM_ABI_SRC := abstract_abi.lem abis/amd64/abi_amd64_elf_header.lem \
+LEM_ABI_SRC := abstract_abi.lem \
+	abis/amd64/abi_amd64_elf_header.lem \
 	abis/power64/abi_power64_elf_header.lem \
-	elf_relocation.lem abstract_linker_script.lem \
+	abis/aarch64/abi_aarch64_le_elf_header.lem \
+	abis/aarch64/abi_aarch64_le_serialisation.lem \
+	abis/aarch64/abi_aarch64_relocation.lem \
+	abis/aarch64/abi_aarch64_le.lem \
+	abstract_linker_script.lem \
 	adaptors/sail_interface.lem \
-	abis/amd64/abi_amd64_serialisation.lem abis/amd64/abi_amd64_relocation.lem \
+	abis/amd64/abi_amd64_serialisation.lem \
+	abis/amd64/abi_amd64_relocation.lem \
 	abis/amd64/abi_amd64.lem \
 	abis/abis.lem \
 
@@ -97,7 +104,7 @@ main_elf main_link main_elf.opt main_link.opt: OCAMLFLAGS += -I src_elf_librarie
 -I src_elf_libraries/ocaml-uint/_build/lib \
 -I $(LEMDIR)/ocaml-lib/_build/ \
 -I adaptors \
--I abis -I abis/amd64 -I abis/power64 \
+-I abis -I abis/amd64 -I abis/power64 -I abis/aarch64 \
 -g
 
 main_elf main_link main_elf.opt main_link.opt: OCAMLFIND_PACKAGES := #-package batteries -package uint

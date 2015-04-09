@@ -92,6 +92,8 @@ let elf_ma_ppc : natural = 20
 let elf_ma_ppc64 : natural = 21
 (** AMD x86-64 *)
 let elf_ma_x86_64 : natural = 62
+(** AArch64 *) 
+let elf_ma_aarch64 : natural = 183
 
 (** [string_of_elf_machine_architecture m] produces a string representation of
   * the numeric encoding [m] of the ELF machine architecture.

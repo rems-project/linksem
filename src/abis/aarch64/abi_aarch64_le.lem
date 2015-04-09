@@ -1,0 +1,37 @@
+(** [abi_aarch64_le] contains top-level definition for the AArch64 ABI (little-endian case).
+  *)
+
+open import Basic_classes
+open import Bool
+open import List
+open import Num
+open import Maybe
+open import Missing_pervasives
+
+open import Elf_header
+open import Elf_types_native_uint
+open import Elf_file
+open import Elf_interpreted_section
+
+open import Endianness
+open import Abstract_abi
+open import Abi_aarch64_relocation
+open import Abi_aarch64_le_elf_header
+
+val header_is_aarch64_le : elf64_header -> bool
+let header_is_aarch64_le h =  
+    null_abi.is_valid_elf_header h
+    && List.index h.elf64_ident (unsafe_nat_of_natural elf_ii_data) = Just (unsigned_char_of_natural elf_data_2lsb)
+    && is_valid_abi_aarch64_le_machine_architecture (natural_of_elf64_half h.elf64_machine)
+    && is_valid_abi_aarch64_le_magic_number h.elf64_ident
+
+val section_is_special : elf64_interpreted_section -> elf64_file -> bool
+let section_is_special s f = 
+    null_abi.section_is_special s f || (* FIXME *) false
+
+val sysv_aarch64_le_std_abi : abi
+let sysv_aarch64_le_std_abi = 
+   <| is_valid_elf_header = header_is_aarch64_le
+    ; reloc = fun r -> (width_of_aarch64_relocation r, fun symaddr -> (fun addend -> (fun existing -> Nothing)))
+    ; section_is_special = section_is_special
+    |>

@@ -1,0 +1,44 @@
+(** [abi_aarch64_relocation] contains types and definitions relating to ABI
+  * specific relocation functionality for the AArch64 ABI (little-endian case).
+  *)
+
+open import Basic_classes
+open import Num
+open import String
+open import Maybe
+open import Missing_pervasives
+
+open import Error
+
+open import Elf_types_native_uint
+open import Elf_file
+open import Elf_header
+open import Elf_relocation
+open import Elf_symbol_table
+
+(** relocations *)
+
+let r_aarch64_none : natural = 0
+
+(** [string_of_aarch64_relocation_type m] produces a string representation of the
+  * relocation type [m].
+  *)
+val string_of_aarch64_relocation_type : natural -> string
+let string_of_aarch64_relocation_type m =
+  if m = r_aarch64_none then
+    "R_AARCH64_NONE"
+  else 
+    "Invalid AArch64 relocation type"
+
+(** [width_of_aarch64_relocation m s] yields the width in bytes of the relocatable field, 
+  * when resolving to a defined maybe symbol [s] (or Nothing, if weak).
+  *)
+val width_of_aarch64_relocation : natural -> maybe elf64_symbol_table_entry -> natural
+let width_of_aarch64_relocation m s =
+  if m = r_aarch64_none then 0
+  else 0 (* invalid *)
+
+val abi_aarch64_apply_relocation : elf64_relocation_a -> elf64_file ->
+  error elf64_executable_process_image
+let abi_aarch64_apply_relocation rel ef =
+  fail "abi_aarch64_apply_relocation: relocation not yet implemented"
