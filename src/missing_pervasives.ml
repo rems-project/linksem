@@ -9,6 +9,9 @@ open Lem_assert_extra
 open Show
 open Lem_sorting
 
+(*val id : forall 'a. 'a -> 'a*)
+let id0 x = x
+
 (*type byte*)
 (*val natural_of_byte : byte -> natural*)
 
@@ -18,55 +21,50 @@ open Lem_sorting
 (*val hex_char_of_nibble : natural -> char*)
 let hex_char_of_nibble n = 
   (
-  if(Big_int.eq_big_int n (Big_int.big_int_of_int 0)) then '0' else
+  if(Nat_big_num.equal n (Nat_big_num.of_int 0)) then '0' else
     (
-    if(Big_int.eq_big_int n (Big_int.big_int_of_int 1)) then '1' else
+    if(Nat_big_num.equal n (Nat_big_num.of_int 1)) then '1' else
       (
-      if(Big_int.eq_big_int n (Big_int.big_int_of_int 2)) then '2' else
+      if(Nat_big_num.equal n (Nat_big_num.of_int 2)) then '2' else
         (
-        if(Big_int.eq_big_int n (Big_int.big_int_of_int 3)) then '3' else
+        if(Nat_big_num.equal n (Nat_big_num.of_int 3)) then '3' else
           (
-          if(Big_int.eq_big_int n (Big_int.big_int_of_int 4)) then '4' else
+          if(Nat_big_num.equal n (Nat_big_num.of_int 4)) then '4' else
             (
-            if(Big_int.eq_big_int n (Big_int.big_int_of_int 5)) then 
-            '5' else
+            if(Nat_big_num.equal n (Nat_big_num.of_int 5)) then '5' else
               (
-              if(Big_int.eq_big_int n (Big_int.big_int_of_int 6)) then 
-              '6' else
+              if(Nat_big_num.equal n (Nat_big_num.of_int 6)) then '6' else
                 (
-                if(Big_int.eq_big_int n (Big_int.big_int_of_int 7)) then 
-                '7' else
+                if(Nat_big_num.equal n (Nat_big_num.of_int 7)) then '7' else
                   (
-                  if(Big_int.eq_big_int n (Big_int.big_int_of_int 8)) then
-                    '8' else
+                  if(Nat_big_num.equal n (Nat_big_num.of_int 8)) then 
+                  '8' else
                     (
-                    if(Big_int.eq_big_int n (Big_int.big_int_of_int 9)) then
-                      '9' else
+                    if(Nat_big_num.equal n (Nat_big_num.of_int 9)) then 
+                    '9' else
                       (
-                      if(Big_int.eq_big_int n (Big_int.big_int_of_int 10)) then
+                      if(Nat_big_num.equal n (Nat_big_num.of_int 10)) then
                         'a' else
                         (
-                        if(Big_int.eq_big_int n (Big_int.big_int_of_int 11)) then
+                        if(Nat_big_num.equal n (Nat_big_num.of_int 11)) then
                           'b' else
                           (
-                          if(Big_int.eq_big_int n (Big_int.big_int_of_int 12)) then
+                          if(Nat_big_num.equal n (Nat_big_num.of_int 12)) then
                             'c' else
                             (
-                            if(Big_int.eq_big_int n
-                                 (Big_int.big_int_of_int 13)) then 'd' else
+                            if(Nat_big_num.equal n (Nat_big_num.of_int 13)) then
+                              'd' else
                               (
-                              if(Big_int.eq_big_int n
-                                   (Big_int.big_int_of_int 14)) then 
-                              'e' else
+                              if(Nat_big_num.equal n (Nat_big_num.of_int 14)) then
+                                'e' else
                                 (
-                                if(Big_int.eq_big_int n
-                                     (Big_int.big_int_of_int 15)) then 
-                                'f' else
-                                  failwith "Incomplete Pattern at File \"missing_pervasives.lem\", line 31, character 5 to line 48, character 7"))))))))))))))))
+                                if(Nat_big_num.equal n
+                                     (Nat_big_num.of_int 15)) then 'f' else
+                                  failwith "Incomplete Pattern at File \"missing_pervasives.lem\", line 34, character 5 to line 51, character 7"))))))))))))))))
 
 let hex_string_of_byte b =    
- (Xstring.implode [ hex_char_of_nibble ( Big_int.div_big_int(Ml_bindings.natural_of_char b)(Big_int.big_int_of_int 16))
-             ; hex_char_of_nibble ( Big_int.mod_big_int(Ml_bindings.natural_of_char b)(Big_int.big_int_of_int 16))])
+ (Xstring.implode [ hex_char_of_nibble ( Nat_big_num.div(Nat_big_num.of_int (Char.code b))(Nat_big_num.of_int 16))
+             ; hex_char_of_nibble ( Nat_big_num.modulus(Nat_big_num.of_int (Char.code b))(Nat_big_num.of_int 16))])
 
 let instance_Show_Show_Missing_pervasives_byte_dict =({
 
@@ -75,16 +73,16 @@ let instance_Show_Show_Missing_pervasives_byte_dict =({
 (*val natural_of_decimal_digit : char -> maybe natural*)
 let natural_of_decimal_digit c =    
  ((match c with
-          '0' -> Some(Big_int.big_int_of_int 0)
-        | '1' -> Some(Big_int.big_int_of_int 1)
-        | '2' -> Some(Big_int.big_int_of_int 2)
-        | '3' -> Some(Big_int.big_int_of_int 3)
-        | '4' -> Some(Big_int.big_int_of_int 4)
-        | '5' -> Some(Big_int.big_int_of_int 5)
-        | '6' -> Some(Big_int.big_int_of_int 6)
-        | '7' -> Some(Big_int.big_int_of_int 7)
-        | '8' -> Some(Big_int.big_int_of_int 8)
-        | '9' -> Some(Big_int.big_int_of_int 9)
+          '0' -> Some(Nat_big_num.of_int 0)
+        | '1' -> Some(Nat_big_num.of_int 1)
+        | '2' -> Some(Nat_big_num.of_int 2)
+        | '3' -> Some(Nat_big_num.of_int 3)
+        | '4' -> Some(Nat_big_num.of_int 4)
+        | '5' -> Some(Nat_big_num.of_int 5)
+        | '6' -> Some(Nat_big_num.of_int 6)
+        | '7' -> Some(Nat_big_num.of_int 7)
+        | '8' -> Some(Nat_big_num.of_int 8)
+        | '9' -> Some(Nat_big_num.of_int 9)
         | _ -> None
     ))
 
@@ -93,25 +91,25 @@ let rec natural_of_decimal_string_helper acc chars =
 ((match chars with 
         [] -> acc
         | c :: cs -> (match natural_of_decimal_digit c with
-            Some dig -> natural_of_decimal_string_helper ( Big_int.add_big_int( Big_int.mult_big_int(Big_int.big_int_of_int 10) acc) dig) cs
+            Some dig -> natural_of_decimal_string_helper ( Nat_big_num.add( Nat_big_num.mul(Nat_big_num.of_int 10) acc) dig) cs
             | None -> acc
         )
     ))
 
 (*val natural_of_decimal_string : string -> natural*)
 let natural_of_decimal_string s =    
- (natural_of_decimal_string_helper(Big_int.big_int_of_int 0) (Xstring.explode s))
+ (natural_of_decimal_string_helper(Nat_big_num.of_int 0) (Xstring.explode s))
 
 (*val hex_string_of_natural : natural -> string*)
 let rec hex_string_of_natural n =    
- (if Big_int.le_big_int n(Big_int.big_int_of_int 16) then Xstring.implode [hex_char_of_nibble n]
-    else (hex_string_of_natural ( Big_int.div_big_int n(Big_int.big_int_of_int 16))) ^ (Xstring.implode [hex_char_of_nibble ( Big_int.mod_big_int n(Big_int.big_int_of_int 16))]))
+ (if Nat_big_num.less_equal n(Nat_big_num.of_int 16) then Xstring.implode [hex_char_of_nibble n]
+    else (hex_string_of_natural ( Nat_big_num.div n(Nat_big_num.of_int 16))) ^ (Xstring.implode [hex_char_of_nibble ( Nat_big_num.modulus n(Nat_big_num.of_int 16))]))
 
 (*val natural_of_bool : bool -> natural*)
 let natural_of_bool b =  
 ((match b with
-    | true  ->Big_int.big_int_of_int 1
-    | false ->Big_int.big_int_of_int 0
+    | true  ->Nat_big_num.of_int 1
+    | false ->Nat_big_num.of_int 0
   ))
 
 (*val unsafe_nat_of_natural : natural -> nat*)
@@ -170,15 +168,15 @@ let rec mapMaybei' f idx xs =
   | []    -> []
   | x::xs ->
       (match f idx x with
-      | None -> mapMaybei' f ( Big_int.add_big_int(Big_int.big_int_of_int 1) idx) xs
-      | Some e  -> e :: mapMaybei' f ( Big_int.add_big_int(Big_int.big_int_of_int 1) idx) xs
+      | None -> mapMaybei' f ( Nat_big_num.add(Nat_big_num.of_int 1) idx) xs
+      | Some e  -> e :: mapMaybei' f ( Nat_big_num.add(Nat_big_num.of_int 1) idx) xs
       )
   ))
 
 (*val mapMaybei : forall 'a 'b. (natural -> 'a -> maybe 'b) -> list 'a -> list 'b*)
     
 let mapMaybei f xs =  
-(mapMaybei' f(Big_int.big_int_of_int 0) xs)
+(mapMaybei' f(Nat_big_num.of_int 0) xs)
 
 (** [partitionii is xs] returns a pair of lists: firstly those elements in [xs] that are
     at indices in [is], and secondly the remaining elements. 
@@ -187,35 +185,35 @@ let mapMaybei f xs =
     -> list (natural * 'a) (* accumulates the 'in' partition *)
     -> list (natural * 'a) (* accumulates the 'out' partition *)
     -> (list (natural * 'a) * list (natural * 'a))*)
-let rec partitionii' (offset : Big_int.big_int) sorted_is xs reverse_accum reverse_accum_compl =    
+let rec partitionii' (offset : Nat_big_num.num) sorted_is xs reverse_accum reverse_accum_compl =    
 ( 
     (* offset o means "xs begins at index o, as reckoned by the indices in sorted_is" *)(match sorted_is with
-        [] -> (Lem_list.reverse reverse_accum, Lem_list.reverse reverse_accum_compl)
+        [] -> (List.rev reverse_accum, List.rev reverse_accum_compl)
         | i :: more_is -> 
-            let (length_to_split_off : int) = (Big_int.int_of_big_int ( Nat_num.natural_monus i offset))
+            let (length_to_split_off : int) = (Nat_big_num.to_int ( Nat_big_num.sub_nat i offset))
             in
             let (left, right) = (Lem_list.split_at length_to_split_off xs) in
-            let left_indices : Big_int.big_int list = (Lem_list.genlist 
-                (fun j -> Big_int.add_big_int (Big_int.big_int_of_int j) offset)
+            let left_indices : Nat_big_num.num list = (Lem_list.genlist 
+                (fun j -> Nat_big_num.add (Nat_big_num.of_int j) offset)
                 (List.length left)) 
             in
             let left_with_indices = (list_combine left_indices left) in
             (* left begins at offset, right begins at offset + i *)
             (match right with 
                 [] -> (* We got to the end of the list before the target index. *) 
-                    (Lem_list.reverse reverse_accum, 
-                     Lem_list.reverseAppend reverse_accum_compl left_with_indices)
+                    (List.rev reverse_accum, 
+                     List.rev_append reverse_accum_compl left_with_indices)
                 | x :: more_xs -> 
                     (* x is at index i by definition, so more_xs starts with index i + 1 *)
-                    partitionii' (Big_int.add_big_int i(Big_int.big_int_of_int 1)) more_is more_xs ((i, x) :: reverse_accum) 
-                        (Lem_list.reverseAppend left_with_indices reverse_accum_compl)
+                    partitionii' (Nat_big_num.add i(Nat_big_num.of_int 1)) more_is more_xs ((i, x) :: reverse_accum) 
+                        (List.rev_append left_with_indices reverse_accum_compl)
             )
     ))
 
 (*val filteri : forall 'a. list natural -> list 'a -> list 'a*)
 let filteri is xs =    
- (let sorted_is = (List.sort Big_int.compare_big_int is) in
-    let (accum, accum_compl) = (partitionii'(Big_int.big_int_of_int 0) sorted_is xs [] [])
+ (let sorted_is = (List.sort Nat_big_num.compare is) in
+    let (accum, accum_compl) = (partitionii'(Nat_big_num.of_int 0) sorted_is xs [] [])
     in 
     let (just_indices, just_items) = (List.split accum)
     in 
@@ -223,15 +221,15 @@ let filteri is xs =
 
 (*val filterii : forall 'a. list natural -> list 'a -> list (natural * 'a)*)
 let filterii is xs =    
- (let sorted_is = (List.sort Big_int.compare_big_int is) in
-    let (accum, accum_compl) = (partitionii'(Big_int.big_int_of_int 0) sorted_is xs [] [])
+ (let sorted_is = (List.sort Nat_big_num.compare is) in
+    let (accum, accum_compl) = (partitionii'(Nat_big_num.of_int 0) sorted_is xs [] [])
     in 
     accum)
 
 (*val partitioni : forall 'a. list natural -> list 'a -> (list 'a * list 'a)*)
 let partitioni is xs =    
- (let sorted_is = (List.sort Big_int.compare_big_int is) in
-    let (accum, accum_compl) = (partitionii'(Big_int.big_int_of_int 0) sorted_is xs [] [])
+ (let sorted_is = (List.sort Nat_big_num.compare is) in
+    let (accum, accum_compl) = (partitionii'(Nat_big_num.of_int 0) sorted_is xs [] [])
     in
     let (just_indices, just_items) = (List.split accum)
     in
@@ -241,8 +239,8 @@ let partitioni is xs =
 
 (*val partitionii : forall 'a. list natural -> list 'a -> (list (natural * 'a) * list (natural * 'a))*)
 let partitionii is xs =    
- (let sorted_is = (List.sort Big_int.compare_big_int is) in
-    partitionii'(Big_int.big_int_of_int 0) sorted_is xs [] [])
+ (let sorted_is = (List.sort Nat_big_num.compare is) in
+    partitionii'(Nat_big_num.of_int 0) sorted_is xs [] [])
 
 (** [unzip3 ls] takes a list of triples and returns a triple of lists. *)
 (*val unzip3: forall 'a 'b 'c. list ('a * 'b * 'c) -> (list 'a * list 'b * list 'c)*)
@@ -298,32 +296,31 @@ let rec find_index_helper count p xs =
 			if p y then
 				Some count
 			else
-				find_index_helper ( Big_int.add_big_int count(Big_int.big_int_of_int 1)) p ys
+				find_index_helper ( Nat_big_num.add count(Nat_big_num.of_int 1)) p ys
 	))
 
 (*val find_index : forall 'a. ('a -> bool) -> list 'a -> maybe natural*)
-let find_index0 p xs = (find_index_helper(Big_int.big_int_of_int 0) p xs)
+let find_index0 p xs = (find_index_helper(Nat_big_num.of_int 0) p xs)
 
 (*val length : forall 'a. list 'a -> natural*)
 
 (*val nat_length : forall 'a. list 'a -> nat*)
 
-let length xs = (Big_int.big_int_of_int (List.length xs))
+let length xs = (Nat_big_num.of_int (List.length xs))
 
 (*val argv : list string*)
 
 (*val replicate : forall 'a. natural -> 'a -> list 'a*)
 let rec replicate0 len e = 
   (
-  if(Big_int.eq_big_int len (Big_int.big_int_of_int 0)) then ([]) else
-    (e ::
-       replicate0 ( Nat_num.natural_monus len (Big_int.big_int_of_int 1)) e))
+  if(Nat_big_num.equal len (Nat_big_num.of_int 0)) then ([]) else
+    (e :: replicate0 ( Nat_big_num.sub_nat len (Nat_big_num.of_int 1)) e))
 
 (* We want a tail-recursive append. reverse_append l1 l2 appends l2 to the
  * reverse of l1. So we get [l1-backwards] [l2]. So just reverse l1. *)
 (*val list_append : forall 'a. list 'a -> list 'a -> list 'a*)
 let list_append l1 l2 =    
-(Lem_list.reverseAppend (Lem_list.reverse l1) l2)
+(List.rev_append (List.rev l1) l2)
 
 (*val list_concat : forall 'a. list (list 'a) -> list 'a*) 
 let list_concat ll = (List.fold_left list_append [] ll)
@@ -354,7 +351,7 @@ let rec list_take_with_accum n reverse_acc l =
 (
   (*  let _ = Missing_pervasives.prints ("Taking a byte; have accumulated " ^ (show (List.length acc) ^ " so far\n"))
    in *)(match n with
-        0 -> Lem_list.reverse reverse_acc
+        0 -> List.rev reverse_acc
       | _ -> (match l with
             [] -> failwith "list_take_with_accum: not enough elements"
             | x :: xs -> list_take_with_accum (Nat_num.nat_monus n( 1)) (x :: reverse_acc) xs
