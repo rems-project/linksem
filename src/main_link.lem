@@ -5,6 +5,7 @@ open import Tuple
 open import Bool
 open import List
 open import Sorting
+import Map
 import Set
 import Set_extra
 open import Num
@@ -113,8 +114,32 @@ let rec make_byte_pattern bytes dontcares =
               end
     end
 
-val section_as_byte_pattern : abi -> endianness -> elf64_interpreted_section -> elf64_interpreted_sections -> list (maybe byte)
-let section_as_byte_pattern a endian s all_s =
+val encode_relocated_bytes : abi -> natural -> natural -> natural -> natural -> linkable_item -> linkable_item -> (symbol_reference * maybe symbol_definition)
+ -> list (maybe byte)
+let encode_relocated_bytes   a      r_type     site_addr  addend     existing   ref_l            def_l             binding
+ = (* We shouldn't need the relocation record from the referring linkable;
+     * assume that's been handled by the caller. *)
+    (* 0. Ask the ABI about this relocation type id *)
+    let (widthfn, applyfn) = a.reloc r_type
+    in
+    let (ref, maybe_def) = binding
+    in
+    let maybe_defsym = match maybe_def with
+     Nothing -> Nothing
+     | Just s -> Just s.def_syment
+    end
+    in
+    (* widthfn is (maybe elf64_symbol_table_entry -> natural)  *)
+    (* applyfn is all naturals: (symaddr -> addend  -> existing -> relocated) *)
+    Missing_pervasives.replicate (widthfn maybe_defsym) Nothing
+
+val section_as_byte_pattern : 
+abi -> endianness 
+    -> elf64_interpreted_section 
+    -> elf64_interpreted_sections 
+    -> Map.map (natural * natural * natural) (list (symbol_reference * maybe symbol_definition))
+    -> list (maybe byte)
+let section_as_byte_pattern a endian s all_s all_bindings_by_ref_idx_scn_symind =
     (* Zero-pad a bss section *)
     let body = 
         if s.elf64_section_type = sht_nobits 
@@ -150,27 +175,51 @@ let section_as_byte_pattern a endian s all_s =
         end)
         relass
     in
-    (* Now we have all the relocation sections; turn them into lists of relocated ranges. *)
-    let rel_ranges : list (natural * natural)
-     = let width_of_relocation = fun r -> let (width_fun, f) = a.reloc (elf64_relocation_r_type r.elf64_r_info) in (width_fun Nothing) (* FIXME *)
-     in List.map (fun r -> (natural_of_elf64_addr r.elf64_r_offset, (width_of_relocation r))) relss_records
+    (* Now we have all the relocation sections; turn them into lists of relocated ranges:
+     * (offset, byte-pattern). For relocations we don't understand yet, we relax it to
+     * a list of maybe-bytes *)
+    let (rel_ranges : list (natural * list (maybe byte)))
+     =  let (width_of_relocation : elf64_relocation -> natural) = (fun r -> 
+            let (width_fun, f) = a.reloc (elf64_relocation_r_type r.elf64_r_info) 
+            in width_fun Nothing) (* FIXME *)
+        in List.map (fun r -> 
+            (natural_of_elf64_addr r.elf64_r_offset, 
+                (* encode_relocated_bytes a (elf64_relocation_r_type r.elf64_r_type) (* site_addr*) r.elf64_r_offset (* addend *) 0 (* existing *) 0 (* ref_l *)  (* def_l *)  (* binding *) *)
+                Missing_pervasives.replicate (width_of_relocation r) Nothing
+            )) relss_records
     in
-    let rela_ranges : list (natural * natural)
-     = let width_of_relocation_a = fun ra -> let (width_fun, f) = a.reloc (elf64_relocation_r_type ra.elf64_ra_info) in (width_fun Nothing) (* FIXME *)
-     in List.map (fun r -> (natural_of_elf64_addr r.elf64_ra_offset, (width_of_relocation_a r))) relass_records
+    let (rela_ranges : list (natural * list (maybe byte)))
+     =  let (width_of_relocation_a : elf64_relocation_a -> natural) = (fun ra -> 
+            let (width_fun, f) = a.reloc (elf64_relocation_r_type ra.elf64_ra_info) 
+            in width_fun Nothing) (* FIXME *)
+         in List.map (fun r -> 
+            (natural_of_elf64_addr r.elf64_ra_offset, 
+                (* encode_relocated_bytes  a (elf64_relocation_r_type r.elf64_r_type) (* site_addr*) r.elf64_r_offset (* addend *) 0 (* existing *) 0 (* ref_l *)  (* def_l *)  (* binding *) *)
+                Missing_pervasives.replicate (width_of_relocation_a r) Nothing
+            )) relass_records
     in
-    let ranges = rel_ranges ++ rela_ranges
+    let r_ranges = rel_ranges ++ rela_ranges
     in
-    let sorted_ranges = sortBy (fun (base1, len1) -> (fun (base2, len2) -> base1 < base2)) ranges
+    let sorted_r_ranges = sortBy (fun (base1, pat1) -> (fun (base2, pat2) -> base1 < base2)) r_ranges
     in
-    let expanded_ranges_short = expand_ranges sorted_ranges []
+    let expanded_r_ranges_short = expand_ranges (List.map (fun (b, pat) -> (b, Missing_pervasives.length pat)) sorted_r_ranges) []
     in
-    let expanded_ranges = append expanded_ranges_short (Missing_pervasives.replicate (s.elf64_section_size - (Missing_pervasives.length expanded_ranges_short)) true)
+    let expanded_ranges = append expanded_r_ranges_short 
+        (Missing_pervasives.replicate 
+            (s.elf64_section_size - (Missing_pervasives.length expanded_r_ranges_short)) 
+            true
+        )
     in
     let byte_pattern = make_byte_pattern s_bytes expanded_ranges
     in
     let _ = Missing_pervasives.prints ("Section name-number " ^ (show s.elf64_section_name) ^ " has byte-pattern of length " ^ (show (Missing_pervasives.length byte_pattern)) ^ "\n") in
     byte_pattern
+
+val elf_of_linkable : linkable_item -> elf64_file
+let elf_of_linkable l = match l with
+    (RelocELF(ef), _, _) -> ef
+    | _ -> failwith "unsupported linkable"
+end
 
 val byte_option_matches_byte : maybe byte -> byte -> bool
 let byte_option_matches_byte optb b =
@@ -278,13 +327,17 @@ let sec_and_start_as_interval sec start =
     (start, start + sec.elf64_section_size)
 
 val     all_global_assignments_accum
- : list ((elf64_interpreted_section * elf64_file * string) * list natural)
+ : list ((elf64_interpreted_section * linkable_item) * list natural)
   -> list (list (elf64_interpreted_section * natural))
   -> list (list (elf64_interpreted_section * natural))
-let rec all_global_assignments_accum s_and_ss accum =
-    match s_and_ss with
+let rec all_global_assignments_accum s_and_ls accum =
+    match s_and_ls with
         [] -> accum
-    |   ((sec, f, fname), starts) :: more -> 
+    |   ((sec, l), starts) :: more -> 
+            let f = elf_of_linkable l
+            in 
+            let (obj, (fname, _, _), opts) = l
+            in 
             let _ = Missing_pervasives.println ("Placing section " ^ 
                 (show_else "(no name)" (name_of_elf64_interpreted_section sec f)) ^ " from file " ^ fname 
                 ^ " in each of " ^ (show (List.length accum)) ^ " accumulated layouts") in
@@ -331,8 +384,8 @@ let rec all_global_assignments_accum s_and_ss accum =
             all_global_assignments_accum more new_accum
     end
 
-val all_allocated_user_sections_in_load_phdrs : abi -> list elf64_file -> list string -> elf64_file -> bool
-let all_allocated_user_sections_in_load_phdrs a efs names out =
+val all_allocated_user_sections_in_load_phdrs : abi -> list linkable_item -> list elf64_file -> list string -> elf64_file -> list (symbol_reference * maybe symbol_definition) -> bool
+let all_allocated_user_sections_in_load_phdrs a linkables efs names out all_bindings =
     (* There must exist a contiguous partitioning of the segments' memory space 
      * s.t. for each section, exactly one element of the partition models the segment
      * where "models" is defined in terms of file contents and relocation.
@@ -347,6 +400,8 @@ let all_allocated_user_sections_in_load_phdrs a efs names out =
      * Instead, for each section, get its possible starting (seg, off) positions
      * then check that there exists a partition.
      *)
+    let (all_refs, all_maybe_defs) = unzip all_bindings
+    in
     let is_alloc : elf64_interpreted_section -> elf64_file -> bool
      = (fun s -> (fun f -> (elf64_xword_land 
         (elf64_xword_of_natural s.elf64_section_flags) 
@@ -361,32 +416,52 @@ let all_allocated_user_sections_in_load_phdrs a efs names out =
     in
     let efs_with_name = zip efs names
     in
-    let alloc_section_triples
-     = [    (section, f, fname)
-            | forall ((f, fname) MEM efs_with_name) (section MEM f.elf64_file_interpreted_sections)
-            | is_alloc_and_user section f
+    let alloc_sections_and_linkables
+     = [    (section, l)
+            | forall (l MEM linkables) (section MEM (let ef = (elf_of_linkable l) in ef.elf64_file_interpreted_sections))
+            | let ef = elf_of_linkable l in is_alloc_and_user section ef
     ]
     in
     let _ = Missing_pervasives.println ("Inputs have a total of " ^ 
-        (show (Missing_pervasives.length alloc_section_triples)) ^ " allocatable user sections.")
+        (show (Missing_pervasives.length alloc_sections_and_linkables)) ^ " allocatable user sections.")
     in
     (* FIXME: check (somewhere) that endianness is consistent across input files and outputs *)
     let endian = get_elf64_header_endianness (out.elf64_file_header)
+    in
+    let (all_bindings_by_ref_idx_scn_symind : 
+            Map.map (natural * natural * natural) (list (symbol_reference * maybe symbol_definition))
+        )
+     = foldl (fun m -> (fun (ref, maybe_def) -> 
+            let k = (ref.ref_idx, ref.ref_sym_scn, ref.ref_sym_idx)
+            in
+            let maybe_existing = Map.lookup k m
+            in
+            let existing_list = match maybe_existing with
+                Nothing -> []
+                | Just l -> l
+            end
+            in
+            (Map.insert k ((ref, maybe_def) :: existing_list) m)))
+        Map.empty all_bindings
     in
     (* We get a list with one element per alloc section. 
      * That element is a list of possible start vaddrs for that section. *) 
     let section_possible_seg_starts : list (list natural) = 
         List.map 
-            (fun (sec, file, fname) -> 
+            (fun (sec, l) -> 
+                let file = elf_of_linkable l
+                in
                 let _ = Missing_pervasives.println ("Considering section "
                     ^ (match name_of_elf64_interpreted_section sec file with 
                            Just n -> n
                          | Nothing -> "(unknown)" 
                        end
-                       ) ^ " in " ^ fname)
+                       ) ^ " in " ^ (show l))
                 in
-                pattern_possible_starts_in_load_phdrs (section_as_byte_pattern a endian sec file.elf64_file_interpreted_sections) out) 
-                alloc_section_triples
+                let pat = section_as_byte_pattern a endian sec file.elf64_file_interpreted_sections all_bindings_by_ref_idx_scn_symind
+                in
+                pattern_possible_starts_in_load_phdrs pat out
+            ) alloc_sections_and_linkables
     in
     let len = List.length section_possible_seg_starts in
     let _ = Missing_pervasives.println ("Found " ^ (show (List.map List.length section_possible_seg_starts)) ^ 
@@ -403,8 +478,8 @@ let all_allocated_user_sections_in_load_phdrs a efs names out =
      * then recurse to accumulate further.
      *)
     let _ = Missing_pervasives.println "Blah 2" in
-    let sections_and_possible_starts : list ((elf64_interpreted_section * elf64_file * string) * list natural)
-     = zip alloc_section_triples section_possible_seg_starts
+    let sections_and_possible_starts : list ((elf64_interpreted_section * linkable_item) * list natural)
+     = zip alloc_sections_and_linkables section_possible_seg_starts
     in
     (* Sort the list so that the most constrained sections come first.  Since we 
      * avoid accumulating overlapping mappings, this avoids making the list of 
@@ -412,7 +487,7 @@ let all_allocated_user_sections_in_load_phdrs a efs names out =
      * effort when trying to place later sections. *)
     let _ = Missing_pervasives.println "Blah 3" in
     let sorted_sections_and_possible_starts = Sorting.sortBy 
-        (fun ((sec1, ef1, fname1), starts1) -> (fun ((sec2, ef2, fname2), starts2) -> 
+        (fun ((sec1, l1), starts1) -> (fun ((sec2, l1), starts2) -> 
             (List.length starts1) < (List.length starts2)))
         sections_and_possible_starts
     in
@@ -471,17 +546,13 @@ let correctly_linked a linkables names options eout =
     in 
     let elf_shdrs_size = fun ef -> (natural_of_elf64_half ef.elf64_file_header.elf64_shnum) * (natural_of_elf64_half ef.elf64_file_header.elf64_shentsize)
     in 
-    let elf_of_linkable = fun l -> match l with
-        (RelocELF(ef), _, _) -> ef
-        | _ -> failwith "unsupported linkable"
-    end
-    in
     is_elf64_executable_file eout.elf64_file_header 
      && elf_phdrs_size eout > 0
      && List.all (fun l -> (elf_shdrs_size (elf_of_linkable l)) > 0) required_linkables_list
      && all_allocated_user_sections_in_load_phdrs a 
+        required_linkables_list
         (List.map elf_of_linkable required_linkables_list) 
-        names eout
+        names eout all_bindings
 
 (* We need to elaborate the command line to handle objects, archives 
  * and archive groups appropriately. 

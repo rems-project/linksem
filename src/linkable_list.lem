@@ -84,8 +84,10 @@ type symbol_reference
     ; ref_syment : elf64_symbol_table_entry (* undefined (referencing) symbol *)
     ; ref_idx : natural                     (* referencing index in linkables list *)
     ; ref_sym_scn : natural                 (* symtab section idx *) 
-      (* TODO: might also want rel section index *)
-    |>                             
+    ; ref_sym_idx : natural                 (* index into symbol table *)
+      (* TODO: might also want rel section index, i.e. bind at relocation-record granularity.
+       * Currently we bind only at undef-symbol-name-per-input-object granularity. *)
+    |>
 
 type symbol_definition
  = <| def_symname : string
@@ -137,6 +139,7 @@ let references_pred = fun ent -> (natural_of_elf64_half ent.elf64_st_shndx) = st
 (* This function only knows how to extract symbols. 
  * It doesn't know the index into the linkables list of whatever object we're extracting from.
  * So we return a function from that to the eventual list. Is this good style? HMM. *)
+val extract_definitions_from_symtab_of_type : natural -> linkable_item -> (natural -> list symbol_definition)
 let extract_definitions_from_symtab_of_type t item
  = fun def_idx -> List.map (fun (str, ent, scnidx) -> <|
                def_symname = str
@@ -145,13 +148,15 @@ let extract_definitions_from_symtab_of_type t item
              ; def_sym_scn = scnidx
              |>) (extract_satisfying_symbols_from_symtab_of_type t item definitions_pred)
 
+val extract_references_from_symtab_of_type : natural -> linkable_item -> (natural -> list symbol_reference)
 let extract_references_from_symtab_of_type t item
-= fun ref_idx -> List.map (fun (str, ent, scnidx) -> <|
+= fun ref_idx -> mapMaybei (fun symidx -> (fun (str, ent, scnidx) -> Just <|
                ref_symname = str
              ; ref_syment = ent
              ; ref_idx = ref_idx
              ; ref_sym_scn = scnidx
-             |>)  (extract_satisfying_symbols_from_symtab_of_type t item references_pred)
+             ; ref_sym_idx = symidx
+             |>))  (extract_satisfying_symbols_from_symtab_of_type t item references_pred)
 
 val add_definition_to_map : symbol_definition -> Map.map string (list symbol_definition)
                     -> Map.map string (list symbol_definition)
