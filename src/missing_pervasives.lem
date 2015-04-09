@@ -11,18 +11,21 @@ open import Sorting
 open import {isabelle} `$ISABELLE_HOME/src/HOL/Word/Word`
 open import {isabelle} `Elf_Types_Local`
 
+val id : forall 'a. 'a -> 'a
+let id x = x
+
 type byte
 
 declare ocaml    target_rep type byte = `char`
 declare isabelle target_rep type byte = `8` `word`
 val natural_of_byte : byte -> natural
 
-declare ocaml    target_rep function natural_of_byte = `Ml_bindings.natural_of_char`
+declare ocaml    target_rep function natural_of_byte x = `Nat_big_num.of_int` (`Char.code` x)
 declare isabelle target_rep function natural_of_byte = `unat`
 
 val char_of_byte : byte -> char
 
-declare ocaml    target_rep function char_of_byte = `Ml_bindings.id_char`
+declare ocaml    target_rep function char_of_byte x = ``x
 declare isabelle target_rep function char_of_byte = `Elf_Types_Local.char_of_unsigned_char`
 
 (* Define how to print a byte in hex *)
@@ -109,7 +112,7 @@ declare isabelle target_rep function unsafe_int_of_natural = `int`
 
 val byte_of_natural : natural -> byte
 
-declare ocaml    target_rep function byte_of_natural = `Ml_bindings.char_of_bigint`
+declare ocaml    target_rep function byte_of_natural x = `Char.chr` (`Nat_big_num.to_int` x)
 declare isabelle target_rep function byte_of_natural = `unat`
 
 type ordering
