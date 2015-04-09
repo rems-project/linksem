@@ -90,8 +90,12 @@ let elf_ma_386 : natural = 3
 let elf_ma_ppc : natural = 20
 (** IBM PowerPC 64 *)
 let elf_ma_ppc64 : natural = 21
+(** ARM 32-bit *)
+let elf_ma_arm : natural = 40
 (** AMD x86-64 *)
 let elf_ma_x86_64 : natural = 62
+(** ARM 64-bit *)
+let elf_ma_aarch64 : natural = 183
 
 (** [string_of_elf_machine_architecture m] produces a string representation of
   * the numeric encoding [m] of the ELF machine architecture.
@@ -104,8 +108,12 @@ let {ocaml} string_of_elf_machine_architecture m =
     "IBM PowerPC"
   else if m = elf_ma_ppc64 then
     "IBM PowerPC 64"
+  else if m = elf_ma_arm then
+    "ARM 32-bit"
   else if m = elf_ma_x86_64 then
     "AMD x86-64"
+  else if m = elf_ma_aarch64 then
+    "ARM 64-bit"
 	else
 		"Other architecture"
 
