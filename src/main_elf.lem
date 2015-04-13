@@ -7,6 +7,7 @@ open import Default_printing
 open import Error
 open import Missing_pervasives
 open import Show
+open import Assert_extra
 
 open import Elf_header
 open import Elf_file
@@ -9222,7 +9223,13 @@ let program =
 *)
 let _ =
   let res =
-    Byte_sequence.acquire "../test/mixed-binaries/aarch64-executable-1" >>= fun bs0 ->
+    let arg = match argv with
+        progname :: fname :: more -> fname
+        | [progname] -> "a.out"
+        | _ -> failwith "impossible: no argv[0]"
+    end
+    in
+    Byte_sequence.acquire arg >>= fun bs0 ->
     Elf_file.read_elf64_file bs0 >>= fun ef1 ->
     Elf_file.get_elf64_file_global_symbol_init ef1 >>= fun syms ->
     return (show syms)
