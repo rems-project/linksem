@@ -39,20 +39,19 @@ type memory_image = Map.map string memory_image_element
  * relevant ELFy thing when we use it. OH, but then 'a is different for
  * every distinct ELF thing, which is no good. Can we define a mapping
  * from an umbrella "ELF" type to the relevant types in each case? *)
-type range_tag = SymbolDef
-               | RelocationSite
-               | GlobalOffsetTable
-               | ProcedureLinkageTable
-               | ImageBase (* necessary? *)
+type range_tag 'symdef 'reloc 'abifeature = 
+                 SymbolDef of 'symdef
+               | RelocationSite of 'reloc
+               | ImageBase of natural (* offset from start of image's VAS; often 0 *)
                | EntryPoint
-               | ProcedureDescriptor (* for ppc *) 
-               (* |  ... *)
+               | AbiFeature of 'abifeature 
 
 type range = natural * natural (* start, length *)
 
-type annotation = range * range_tag
+type annotation 'symdef 'reloc 'abifeature = range * range_tag 'symdef 'reloc 'abifeature
 
-type annotated_memory_image = memory_image * Map.map (string * range) (list annotation)
+type annotated_memory_image 'symdef 'reloc 'abifeature = 
+    memory_image * Map.map (string * range) (list (annotation 'symdef 'reloc 'abifeature))
 
 val range_contains : (natural * natural) -> (natural * natural) -> bool
 let range_contains (r1begin, r1len) (r2begin, r2len) = 
