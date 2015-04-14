@@ -65,3 +65,11 @@ src/command_line.ml
 src/elf_types_native_uint.ml
 src/input_list.ml
 src/src_elf_libraries/ocaml-uint/*
+src/abis/aarch64/abi_aarch64_le.ml
+src/abis/aarch64/abi_aarch64_le_elf_header.ml
+src/abis/aarch64/abi_aarch64_le_serialisation.ml
+src/abis/aarch64/abi_aarch64_relocation.ml
+src/abis/amd64/abi_amd64_elf_header.lem.orig
+src/elf_memory_image.ml
+src/linkable_list.ml
+src/memory_image.ml

@@ -28,6 +28,8 @@ open import Elf_symbol_table
 open import String_table
 open import Input_list
 
+open import Elf_memory_image
+
 type script = byte_sequence (* FIXME *)
 
 type linkable_object = RelocELF of elf64_file
@@ -78,23 +80,6 @@ val string_of_linkable : linkable_item -> string
 let string_of_linkable l = match l with 
     (_, item, _) -> show item
 end
-
-type symbol_reference
- = <| ref_symname : string                  (* symbol name *)
-    ; ref_syment : elf64_symbol_table_entry (* undefined (referencing) symbol *)
-    ; ref_idx : natural                     (* referencing index in linkables list *)
-    ; ref_sym_scn : natural                 (* symtab section idx *) 
-    ; ref_sym_idx : natural                 (* index into symbol table *)
-      (* TODO: might also want rel section index, i.e. bind at relocation-record granularity.
-       * Currently we bind only at undef-symbol-name-per-input-object granularity. *)
-    |>
-
-type symbol_definition
- = <| def_symname : string
-    ; def_syment : elf64_symbol_table_entry (* definition's symtab entry *)
-    ; def_idx : natural                     (* index in linkables list *)
-    ; def_sym_scn : natural                 (* symtab section index, to disamiguate dynsym *)
-    |>
 
 (* How do we signal "multiple definitions"? 
  * This is part of the policy baked into the particular oracle:

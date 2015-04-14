@@ -30,7 +30,7 @@ LEM_ELF_SRC := byte_sequence.lem archive.lem \
 	elf_header.lem elf_program_header_table.lem \
 	elf_section_header_table.lem \
 	elf_relocation.lem \
-	elf_file.lem 
+	elf_file.lem memory_image.lem elf_memory_image.lem
 	
 LEM_ABI_SRC := abstract_abi.lem \
 	abis/amd64/abi_amd64_elf_header.lem \

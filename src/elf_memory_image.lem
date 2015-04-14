@@ -1,0 +1,213 @@
+open import Basic_classes
+open import Function
+open import String
+open import Tuple
+open import Bool
+open import List
+open import Sorting
+import Map
+import Set
+open import Num
+open import Maybe
+open import Assert_extra
+
+open import Byte_sequence
+open import Default_printing
+open import Error
+open import Missing_pervasives
+open import Show
+open import Endianness
+
+open import Elf_header
+open import Elf_file
+open import Elf_interpreted_section
+open import Elf_interpreted_segment
+open import Elf_section_header_table
+open import Elf_program_header_table
+open import Elf_symbol_table
+open import Elf_types_native_uint
+open import Elf_relocation
+open import String_table
+
+open import Abstract_abi
+
+open import Memory_image
+
+type symbol_reference
+ = <| ref_symname : string                  (* symbol name *)
+    ; ref_syment : elf64_symbol_table_entry (* undefined (referencing) symbol *)
+    ; ref_idx : natural                     (* referencing index in linkables list *)
+    ; ref_sym_scn : natural                 (* symtab section idx *) 
+    ; ref_sym_idx : natural                 (* index into symbol table *)
+      (* TODO: might also want rel section index, i.e. bind at relocation-record granularity.
+       * Currently we bind only at undef-symbol-name-per-input-object granularity. *)
+    |>
+
+type symbol_definition
+ = <| def_symname : string
+    ; def_syment : elf64_symbol_table_entry (* definition's symtab entry *)
+    ; def_idx : natural                     (* index in linkables list *)
+    ; def_sym_scn : natural                 (* symtab section index, to disamiguate dynsym *)
+    |>
+
+val segment_load_ranges : elf64_interpreted_segments -> list (natural * natural)
+let segment_load_ranges es = 
+    let get_range : elf64_interpreted_segment -> list (natural * natural) = (
+        fun x -> if x.elf64_segment_type = elf_pt_load 
+            then [(x.elf64_segment_base, x.elf64_segment_base + x.elf64_segment_memsz)] 
+            else []
+    )
+    in
+    foldl (++) [] (List.map get_range es) 
+
+val range_models_section : elf64_interpreted_section -> natural -> natural -> bool
+let range_models_section s base len = 
+    true
+
+val encode_relocated_bytes : abi -> natural -> natural -> natural -> natural -> (* linkable_item -> linkable_item -> *) (symbol_reference * maybe symbol_definition) ->
+    list (maybe byte)
+let encode_relocated_bytes   a      r_type     site_addr  addend     existing   (* ref_l            def_l            *) binding
+ = (* We shouldn't need the relocation record from the referring linkable;
+     * assume that's been handled by the caller. *)
+    (* 0. Ask the ABI about this relocation type id *)
+    let (widthfn, applyfn) = a.reloc r_type
+    in
+    let (ref, maybe_def) = binding
+    in
+    let maybe_defsym = match maybe_def with
+     Nothing -> Nothing
+     | Just s -> Just s.def_syment
+    end
+    in
+    (* widthfn is (maybe elf64_symbol_table_entry -> natural)  *)
+    (* applyfn is all naturals: (symaddr -> addend  -> existing -> relocated) *)
+    Missing_pervasives.replicate (widthfn maybe_defsym) Nothing
+
+val section_as_byte_pattern : 
+abi -> endianness 
+    -> elf64_interpreted_section 
+    -> elf64_interpreted_sections 
+    -> Map.map (natural * natural * natural) (list (symbol_reference * maybe symbol_definition))
+    -> list (maybe byte)
+let section_as_byte_pattern a endian s all_s all_bindings_by_ref_idx_scn_symind =
+    (* Zero-pad a bss section *)
+    let body = 
+        if s.elf64_section_type = sht_nobits 
+        then Byte_sequence.zeros s.elf64_section_size
+        else s.elf64_section_body
+    in
+    let s_bytes = match body with Sequence(bs) -> bs end
+    in
+    let maybeIndex = Missing_pervasives.find_index (fun el -> el = s) all_s
+    in
+    let index = match maybeIndex with 
+        Just i -> i
+        | _ -> failwith "section not in list of sections"
+    end
+    in
+    let relss = [rels | forall (rels MEM all_s) | 
+        rels.elf64_section_type = sht_rel && rels.elf64_section_info = index]
+    in
+    let relss_records = List.concatMap
+        (fun rels -> match read_elf64_relocation_section rels.elf64_section_size endian rels.elf64_section_body with
+            Fail _ -> failwith "reading rels"
+            | Success (recs, rest) -> recs
+        end)
+        relss
+    in
+    let relass = [relas | forall (relas MEM all_s) | 
+        relas.elf64_section_type = sht_rela && relas.elf64_section_info = index]
+    in
+    let relass_records = List.concatMap 
+        (fun relas -> match read_elf64_relocation_a_section relas.elf64_section_size endian relas.elf64_section_body with
+            Fail _ -> failwith "reading relas"
+            | Success (recs, rest) -> recs
+        end)
+        relass
+    in
+    (* Now we have all the relocation sections; turn them into lists of relocated ranges:
+     * (offset, byte-pattern). For relocations we don't understand yet, we relax it to
+     * a list of maybe-bytes *)
+    let (rel_ranges : list (natural * list (maybe byte)))
+     =  let (width_of_relocation : elf64_relocation -> natural) = (fun r -> 
+            let (width_fun, f) = a.reloc (elf64_relocation_r_type r.elf64_r_info) 
+            in width_fun Nothing) (* FIXME *)
+        in List.map (fun r -> 
+            (natural_of_elf64_addr r.elf64_r_offset, 
+                (* encode_relocated_bytes a (elf64_relocation_r_type r.elf64_r_type) (* site_addr*) r.elf64_r_offset (* addend *) 0 (* existing *) 0 (* ref_l *)  (* def_l *)  (* binding *) *)
+                Missing_pervasives.replicate (width_of_relocation r) Nothing
+            )) relss_records
+    in
+    let (rela_ranges : list (natural * list (maybe byte)))
+     =  let (width_of_relocation_a : elf64_relocation_a -> natural) = (fun ra -> 
+            let (width_fun, f) = a.reloc (elf64_relocation_r_type ra.elf64_ra_info) 
+            in width_fun Nothing) (* FIXME *)
+         in List.map (fun r -> 
+            (natural_of_elf64_addr r.elf64_ra_offset, 
+                (* encode_relocated_bytes  a (elf64_relocation_r_type r.elf64_r_type) (* site_addr*) r.elf64_r_offset (* addend *) 0 (* existing *) 0 (* ref_l *)  (* def_l *)  (* binding *) *)
+                Missing_pervasives.replicate (width_of_relocation_a r) Nothing
+            )) relass_records
+    in
+    let r_ranges = rel_ranges ++ rela_ranges
+    in
+    let sorted_r_ranges = sortBy (fun (base1, pat1) -> (fun (base2, pat2) -> base1 < base2)) r_ranges
+    in
+    let expanded_r_ranges_short = expand_ranges (List.map (fun (b, pat) -> (b, Missing_pervasives.length pat)) sorted_r_ranges) []
+    in
+    let expanded_ranges = append expanded_r_ranges_short 
+        (Missing_pervasives.replicate 
+            (s.elf64_section_size - (Missing_pervasives.length expanded_r_ranges_short)) 
+            true
+        )
+    in
+    let byte_pattern = make_byte_pattern s_bytes expanded_ranges
+    in
+    let _ = Missing_pervasives.prints ("Section name-number " ^ (show s.elf64_section_name) ^ " has byte-pattern of length " ^ (show (Missing_pervasives.length byte_pattern)) ^ "\n") in
+    byte_pattern
+
+val pattern_possible_starts_in_one_load_phdr : string -> list (maybe byte) -> elf64_interpreted_segment -> natural -> list natural
+let pattern_possible_starts_in_one_load_phdr phdr_name pattern seg offset =
+    (* zero-pad the segment body to memsz *)
+    match zero_pad_to_length seg.elf64_segment_memsz seg.elf64_segment_body with 
+        Sequence(bytes) ->
+            let ret = pattern_possible_starts_in_one_byte_sequence pattern bytes 0
+            in  
+            let _ = Missing_pervasives.prints 
+                ("Pattern of length " ^ (show (Missing_pervasives.length pattern)) 
+                ^ " (" ^ (show pattern) ^ ")"
+                ^ " matched bytes of phdr " ^ phdr_name
+                ^ " in " ^ (show (Missing_pervasives.length ret)) ^ " ways: "
+                ^ (if (Missing_pervasives.length ret) < 2000 then (show ret) else "(not shown)") ^ "\n") in
+            ret
+    end
+
+val pattern_possible_starts_in_load_phdrs : list (maybe byte) -> elf64_file -> list natural
+let pattern_possible_starts_in_load_phdrs pattern f =
+    (* for each virtual address in a segment, evaluate whether
+       it might be a representation of our pattern *)
+    (* only PT_LOAD segments are relevant *)
+    let load_segs = List.filter (fun seg -> seg.elf64_segment_type = elf_pt_load) f.elf64_file_interpreted_segments
+    in
+    let _ = Missing_pervasives.prints ("Output file has " ^ (show (Missing_pervasives.length load_segs)) 
+        ^ " PT_LOAD segments\n")
+    in
+    let seg_name = fun seg -> hex_string_of_natural seg.elf64_segment_base
+    in
+    let get_starts = fun seg -> pattern_possible_starts_in_one_load_phdr (seg_name seg) pattern seg 0
+    in 
+    let all_segs_starts = List.map get_starts load_segs
+    in
+    let seg_startlist_pairs = zip load_segs all_segs_starts
+    in
+    (* let _ = Missing_pervasives.println "Got to blah ss1" in *)
+    let seg_start_pairs = [(seg, start) | forall ((seg, starts) MEM seg_startlist_pairs) (start MEM starts) | true ]
+    in
+    (* let _ = Missing_pervasives.println "Got to blah ss2" in *)
+    let vaddr_starts = List.map (fun (seg, start) -> seg.elf64_segment_base + start) seg_start_pairs
+    in
+    vaddr_starts
+
+
+val sec_and_start_as_interval : elf64_interpreted_section -> natural -> (natural * natural)
+let sec_and_start_as_interval sec start = 
+    (start, start + sec.elf64_section_size)
