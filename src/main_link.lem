@@ -73,8 +73,8 @@ let rec all_global_assignments_accum s_and_ls accum =
                     (sec, start)
                      | forall ((sec, start) MEM all_assignments_for_sec)
                      | List.all (fun (other_sec, other_start) -> 
-                        (not (range_overlaps (sec_and_start_as_interval sec start) 
-                            (sec_and_start_as_interval other_sec other_start)))) global_ass
+                        (not (range_overlaps (sec_and_start_as_range sec start) 
+                            (sec_and_start_as_range other_sec other_start)))) global_ass
             ]
             in
             let all_additions_to_existing_global_assignments = 
@@ -224,7 +224,7 @@ let all_allocated_user_sections_in_load_phdrs a linkables efs names out all_bind
     let _ = Missing_pervasives.println "Blah 5" in
     let all_global_assignments_as_intervals : list (list (natural * natural)) = 
         List.map
-        (fun assignment -> [(sec_and_start_as_interval section base) | forall ((section, base) MEM assignment) | true])
+        (fun assignment -> [(sec_and_start_as_range section base) | forall ((section, base) MEM assignment) | true])
         all_global_assignments
     in
     let valid_assignments = List.filter (fun ass -> is_partition ass load_ranges) all_global_assignments_as_intervals

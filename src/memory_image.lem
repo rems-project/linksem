@@ -54,15 +54,15 @@ type annotation = range * range_tag
 
 type annotated_memory_image = memory_image * Map.map (string * range) (list annotation)
 
-
 val range_contains : (natural * natural) -> (natural * natural) -> bool
-let range_contains (r1begin, r1end) (r2begin, r2end) = 
+let range_contains (r1begin, r1len) (r2begin, r2len) = 
     (* r1 is at least as big as r2 *)
-    r2begin >= r1begin && r2end <= r1end
+    r2begin >= r1begin && (r2begin + r2len) <= (r1begin + r1len)
 
 val range_overlaps : (natural * natural) -> (natural * natural) -> bool
-let range_overlaps (r1begin, r1end) (r2begin, r2end) =
-    (r1begin < r2end && r1end > r2begin) || (r2begin < r1end && r2end > r1begin)
+let range_overlaps (r1begin, r1len) (r2begin, r2len) =
+    (r1begin < (r2begin + r2len) && (r1begin + r1len) > r2begin)
+     || (r2begin < (r1begin + r1len) && (r2begin + r2len) > r1begin)
     
 val is_partition : list (natural * natural) -> list (natural * natural) -> bool
 let is_partition rs ranges = 

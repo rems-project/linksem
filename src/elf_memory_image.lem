@@ -208,6 +208,6 @@ let pattern_possible_starts_in_load_phdrs pattern f =
     vaddr_starts
 
 
-val sec_and_start_as_interval : elf64_interpreted_section -> natural -> (natural * natural)
-let sec_and_start_as_interval sec start = 
-    (start, start + sec.elf64_section_size)
+val sec_and_start_as_range : elf64_interpreted_section -> natural -> (natural * natural)
+let sec_and_start_as_range sec start = 
+    (start, sec.elf64_section_size)
