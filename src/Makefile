@@ -3,15 +3,24 @@
 # (but make sure you've run `make' in the contrib/ directory. Or 
 #  run `make' from the top level, like a user should.)
 
+THIS_MAKEFILE := $(realpath $(lastword $(MAKEFILE_LIST)))
+REPOROOT := $(dir $(THIS_MAKEFILE))/..
+
 LEMDIR ?= ../../lem
 LEM ?= $(LEMDIR)/lem
 CONTRIB ?= ../contrib
 BATTERIES ?= $(CONTRIB)/batteries/_build/src
 UINT ?= $(CONTRIB)/ocaml-uint/_build/lib
-BITSTRING ?= $(CONTRIB)/bitstring
 
 OCAML_LEM_INCLUDES ?= -I $(LEMDIR)/ocaml-lib/ \
 -I $(LEMDIR)/ocaml-lib/dependencies/zarith/
+
+ifeq ($(realpath $(BATTERIES)),)
+$(error Please run `make' in $(REPOROOT)/contrib or set BATTERIES)
+endif
+ifeq ($(realpath $(UINT)),)
+$(error Please run `make' in $(REPOROOT)/contrib or set UINT)
+endif
 
 LEM_UTIL_SRC := default_printing.lem missing_pervasives.lem show.lem endianness.lem error.lem
 # Some of the utility code is directly in ML, some in Lem; order matters!
@@ -137,14 +146,11 @@ ocaml_with_ocamlbuild: lem-all-ocaml
   -X $(CONTRIB) \
   -cflag -g \
   -lflags 'unix.cma nums.cma' \
-  -cflags '-I $(BITSTRING)' \
-  -lflags '-I $(BITSTRING) bitstring.cma' \
   -cflags '-I $(UINT)' \
   -lflags '-I $(UINT) uint.cma' \
   -cflags '-I $(BATTERIES)'   \
   -lflags '-I $(BATTERIES) batteries.cma'   \
   -cflags -dllpath,$(UINT) \
-  -cflags -dllpath,$(BITSTRING) \
   main_elf.byte 
 
 clean_with_ocamlbuild:
@@ -152,7 +158,7 @@ clean_with_ocamlbuild:
 
 stacktrace:
 	export OCAMLRUNPARAM=b; \
-	ocamlfind ocamlc -package batteries -I $(LEMDIR)/ocaml-lib/_build/ unix.cma bitstring.cma nums.cma nat_num.cmo lem.cmo lem_function.cmo lem_list.cmo -linkpkg -g missing_pervasives.ml show.ml endianness.ml error.ml ml_bindings.ml default_printing.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml string_table.ml elf_section_header_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file3.ml elf_executable_file5.ml elf_linking_file2.ml elf_linking_file3.ml elf_relocation.ml sail_interface.ml main_elf.ml
+	ocamlfind ocamlc -package batteries -I $(LEMDIR)/ocaml-lib/_build/ unix.cma nums.cma nat_num.cmo lem.cmo lem_function.cmo lem_list.cmo -linkpkg -g missing_pervasives.ml show.ml endianness.ml error.ml ml_bindings.ml default_printing.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml string_table.ml elf_section_header_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file3.ml elf_executable_file5.ml elf_linking_file2.ml elf_linking_file3.ml elf_relocation.ml sail_interface.ml main_elf.ml
 
 oldall: lem-all-ocaml camlp4 ocaml
 

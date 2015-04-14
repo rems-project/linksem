@@ -1,5 +1,6 @@
 syntax: glob
 
+contrib/*/*
 src/_build
 src/src_elf_libraries/uint/*
 src/src_elf_libraries/uint
