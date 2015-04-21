@@ -50,6 +50,14 @@ type symbol_definition
     ; def_sym_scn : natural                 (* symtab section index, to disamiguate dynsym *)
     |>
 
+type elf_memory_image 'abifeature
+ = memory_image (string * elf64_symbol_table_entry) elf64_relocation_entry 'abifeature
+
+(*
+val null_abi_lift_memory_image : elf64_file -> elf_memory_image
+let null_abi_lift_memory_image ef =
+*)
+
 val segment_load_ranges : elf64_interpreted_segments -> list (natural * natural)
 let segment_load_ranges es = 
     let get_range : elf64_interpreted_segment -> list (natural * natural) = (
@@ -207,7 +215,7 @@ let pattern_possible_starts_in_load_phdrs pattern f =
     in
     vaddr_starts
 
-
 val sec_and_start_as_range : elf64_interpreted_section -> natural -> (natural * natural)
 let sec_and_start_as_range sec start = 
     (start, sec.elf64_section_size)
+

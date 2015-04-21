@@ -47,7 +47,7 @@ LEM_ELF_SRC := byte_sequence.lem archive.lem \
 	elf_relocation.lem \
 	elf_file.lem 
 	
-LEM_ABI_SRC := abstract_abi.lem \
+LEM_ABI_SRC := memory_image.lem abstract_abi.lem \
 	abis/amd64/abi_amd64_elf_header.lem \
 	abis/power64/abi_power64_elf_header.lem \
 	abis/aarch64/abi_aarch64_le_elf_header.lem \
@@ -60,8 +60,9 @@ LEM_ABI_SRC := abstract_abi.lem \
 	abis/amd64/abi_amd64_relocation.lem \
 	abis/amd64/abi_amd64.lem \
 	abis/abis.lem \
+	elf_memory_image.lem \
 
-LEM_LINK_SRC := memory_image.lem elf_memory_image.lem command_line.lem input_list.lem linkable_list.lem
+LEM_LINK_SRC := command_line.lem input_list.lem linkable_list.lem
 
 LEM_MODEL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC))
 

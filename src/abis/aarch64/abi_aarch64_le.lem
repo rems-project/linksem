@@ -32,6 +32,6 @@ let section_is_special s f =
 val sysv_aarch64_le_std_abi : abi
 let sysv_aarch64_le_std_abi = 
    <| is_valid_elf_header = header_is_aarch64_le
-    ; reloc = fun r -> (width_of_aarch64_relocation r, fun symaddr -> (fun addend -> (fun existing -> Nothing)))
+    ; reloc = fun r -> (width_of_aarch64_relocation r, fun _ -> Nothing)
     ; section_is_special = section_is_special
     |>
