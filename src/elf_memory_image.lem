@@ -51,7 +51,7 @@ type symbol_definition
     |>
 
 type elf_memory_image 'abifeature
- = memory_image (string * elf64_symbol_table_entry) elf64_relocation_entry 'abifeature
+ = annotated_memory_image (string * elf64_symbol_table_entry) elf64_relocation_a 'abifeature
 
 (*
 val null_abi_lift_memory_image : elf64_file -> elf_memory_image
