@@ -103,13 +103,12 @@ isa-extraction:
 	mv *.thy ../auto_generated/isabelle/
 
 clean:
-	rm -rf missing_pervasives.ml show.ml abis.ml endianness.ml uint32.ml uint64.ml byte_sequence.ml byte_sequence_extra.ml default_printing.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml elf_section_header_table.ml elf_executable_file3.ml string_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file5.ml elf_linking_file2.ml elf_linking_file3.ml elf_relocation.ml elf_symbol_table.ml sail_interface.ml elf_executable_file.ml elf_interpreted_section.ml main_elf.ml
-	rm -rf elf_section_header.ml elf_symbol_table.ml
-	rm -rf abis/abis.ml abis/amd64/*.ml abis/power64/*.ml
+	rm -f $(filter-out error.ml,$(LEM_MODEL_ML))
+	rm -f _tags
 	rm -rf *~
-	rm -rf *.cmi *.cmo
-	rm -rf abis/*.cmi abis/*.cmo
-	rm -rf abis/*/*.cmi abis/*/*.cmo
+	rm -f *.cmi *.cmo *.cmx *.o
+	rm -f abis/*.cmi abis/*.cmo abis/*.cmx abis/*.o
+	rm -f abis/*/*.cmi abis/*/*.cmo abis/*/*.cmx abis/*/*.o
 
 ocaml: main_elf
 
