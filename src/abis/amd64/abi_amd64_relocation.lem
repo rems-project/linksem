@@ -5,6 +5,7 @@
 open import Basic_classes
 open import Num
 open import String
+open import Map
 open import Maybe
 open import Missing_pervasives
 
@@ -56,72 +57,72 @@ let r_x86_64_irelative : natural = 37
   * relocation type [m].
   *)
 val string_of_x86_64_relocation_type : natural -> string
-let string_of_x86_64_relocation_type m =
-  if m = r_x86_64_none then
+let string_of_x86_64_relocation_type rel_type =
+  if rel_type = r_x86_64_none then
     "r_x86_64_none"
-  else if m = r_x86_64_64 then
+  else if rel_type = r_x86_64_64 then
     "r_x86_64_64"
-  else if m = r_x86_64_pc32 then
+  else if rel_type = r_x86_64_pc32 then
     "r_x86_64_pc32"
-  else if m = r_x86_64_got32 then
+  else if rel_type = r_x86_64_got32 then
     "r_x86_64_got32"
-  else if m = r_x86_64_plt32 then
+  else if rel_type = r_x86_64_plt32 then
     "r_x86_64_plt32"
-  else if m = r_x86_64_copy then
+  else if rel_type = r_x86_64_copy then
     "r_x86_64_copy"
-  else if m = r_x86_64_glob_dat then
+  else if rel_type = r_x86_64_glob_dat then
     "r_x86_64_glob_dat"
-  else if m = r_x86_64_jump_slot then
+  else if rel_type = r_x86_64_jump_slot then
     "r_x86_64_jumpslot"
-  else if m = r_x86_64_relative then
+  else if rel_type = r_x86_64_relative then
     "r_x86_64_relative"
-  else if m = r_x86_64_gotpcrel then
+  else if rel_type = r_x86_64_gotpcrel then
     "r_x86_64_gotpcrel"
-  else if m = r_x86_64_32 then
+  else if rel_type = r_x86_64_32 then
     "r_x86_64_32"
-  else if m = r_x86_64_32s then
+  else if rel_type = r_x86_64_32s then
     "r_x86_64_32s"
-  else if m = r_x86_64_16 then
+  else if rel_type = r_x86_64_16 then
     "r_x86_64_16"
-  else if m = r_x86_64_pc16 then
+  else if rel_type = r_x86_64_pc16 then
     "r_x86_64_pc16"
-  else if m = r_x86_64_8 then
+  else if rel_type = r_x86_64_8 then
     "r_x86_64_8"
-  else if m = r_x86_64_pc8 then
+  else if rel_type = r_x86_64_pc8 then
     "r_x86_64_pc8"
-  else if m = r_x86_64_dtpmod64 then
+  else if rel_type = r_x86_64_dtpmod64 then
     "r_x86_64_dtpmod64"
-  else if m = r_x86_64_dtpoff64 then
+  else if rel_type = r_x86_64_dtpoff64 then
     "r_x86_64_dtpoff64"
-  else if m = r_x86_64_tpoff64 then
+  else if rel_type = r_x86_64_tpoff64 then
     "r_x86_64_tpoff64"
-  else if m = r_x86_64_tlsgd then
+  else if rel_type = r_x86_64_tlsgd then
     "r_x86_64_tlsgd"
-  else if m = r_x86_64_tlsld then
+  else if rel_type = r_x86_64_tlsld then
     "r_x86_64_tlsld"
-  else if m = r_x86_64_dtpoff32 then
+  else if rel_type = r_x86_64_dtpoff32 then
     "r_x86_64_dtpoff32"
-  else if m = r_x86_64_gottpoff then
+  else if rel_type = r_x86_64_gottpoff then
     "r_x86_64_gottpoff"
-  else if m = r_x86_64_tpoff32 then
+  else if rel_type = r_x86_64_tpoff32 then
     "r_x86_64_tpoff32"
-  else if m = r_x86_64_pc64 then
+  else if rel_type = r_x86_64_pc64 then
     "r_x86_64_pc64"
-  else if m = r_x86_64_gotoff64 then
+  else if rel_type = r_x86_64_gotoff64 then
     "r_x86_64_gotoff64"
-  else if m = r_x86_64_gotpc32 then
+  else if rel_type = r_x86_64_gotpc32 then
     "r_x86_64_gotpc32"
-  else if m = r_x86_64_size32 then
+  else if rel_type = r_x86_64_size32 then
     "r_x86_64_size32"
-  else if m = r_x86_64_size64 then
+  else if rel_type = r_x86_64_size64 then
     "r_x86_64_size64"
-  else if m = r_x86_64_gotpc32_tlsdesc then
+  else if rel_type = r_x86_64_gotpc32_tlsdesc then
     "r_x86_64_gotpc32_tlsdesc"
-  else if m = r_x86_64_tlsdesc_call then
+  else if rel_type = r_x86_64_tlsdesc_call then
     "r_x86_64_tlsdesc_call"
-  else if m = r_x86_64_tlsdesc then
+  else if rel_type = r_x86_64_tlsdesc then
     "r_x86_64_tlsdesc"
-  else if m = r_x86_64_irelative then
+  else if rel_type = r_x86_64_irelative then
     "r_x86_64_irelative"
   else
     "Invalid x86-64 relocation type"
@@ -130,56 +131,133 @@ let string_of_x86_64_relocation_type m =
   * when resolving to a defined maybe symbol [s] (or Nothing, if weak).
   *)
 val width_of_x86_64_relocation : natural -> maybe elf64_symbol_table_entry -> natural
-let width_of_x86_64_relocation m s =
-  if m = r_x86_64_none then 0
-  else if m = r_x86_64_64 then 8
-  else if m = r_x86_64_pc32 then 4
-  else if m = r_x86_64_got32 then 4
-  else if m = r_x86_64_plt32 then 4
-  else if m = r_x86_64_copy then match s with Nothing -> 0 | Just s -> natural_of_elf64_xword s.elf64_st_size end
-  else if m = r_x86_64_glob_dat then match s with Nothing -> 0 | Just s -> natural_of_elf64_xword s.elf64_st_size end (* CHECK *)
-  else if m = r_x86_64_jump_slot then 4 (* CHECK *)
-  else if m = r_x86_64_relative then 8 (* CHECK *)
-  else if m = r_x86_64_gotpcrel then 8 (* CHECK *)
-  else if m = r_x86_64_32 then 4
-  else if m = r_x86_64_32s then 4
-  else if m = r_x86_64_16 then 2
-  else if m = r_x86_64_pc16 then 2
-  else if m = r_x86_64_8 then 1
-  else if m = r_x86_64_pc8 then 1
-  else if m = r_x86_64_dtpmod64 then 8 (* CHECK *)
-  else if m = r_x86_64_dtpoff64 then 8 (* CHECK *)
-  else if m = r_x86_64_tpoff64 then 8 (* CHECK *)
-  else if m = r_x86_64_tlsgd then 8 (* CHECK *)
-  else if m = r_x86_64_tlsld then 8 (* CHECK *)
-  else if m = r_x86_64_dtpoff32 then 4 (* CHECK *)
-  else if m = r_x86_64_gottpoff then 8 (* CHECK *)
-  else if m = r_x86_64_tpoff32 then 4 (* CHECK *)
-  else if m = r_x86_64_pc64 then 8
-  else if m = r_x86_64_gotoff64 then 8
-  else if m = r_x86_64_gotpc32 then 4
-  else if m = r_x86_64_size32 then 4
-  else if m = r_x86_64_size64 then 8
-  else if m = r_x86_64_gotpc32_tlsdesc then 4 (* CHECK *)
-  else if m = r_x86_64_tlsdesc_call then 4 (* CHECK *)
-  else if m = r_x86_64_tlsdesc then 8 (* CHECK *)
-  else if m = r_x86_64_irelative then 8 (* CHECK *)
+let width_of_x86_64_relocation rel_type s =
+  if rel_type = r_x86_64_none then 0
+  else if rel_type = r_x86_64_64 then 8
+  else if rel_type = r_x86_64_pc32 then 4
+  else if rel_type = r_x86_64_got32 then 4
+  else if rel_type = r_x86_64_plt32 then 4
+  else if rel_type = r_x86_64_copy then match s with Nothing -> 0 | Just s -> natural_of_elf64_xword s.elf64_st_size end
+  else if rel_type = r_x86_64_glob_dat then match s with Nothing -> 0 | Just s -> natural_of_elf64_xword s.elf64_st_size end (* CHECK *)
+  else if rel_type = r_x86_64_jump_slot then 4 (* CHECK *)
+  else if rel_type = r_x86_64_relative then 8 (* CHECK *)
+  else if rel_type = r_x86_64_gotpcrel then 8 (* CHECK *)
+  else if rel_type = r_x86_64_32 then 4
+  else if rel_type = r_x86_64_32s then 4
+  else if rel_type = r_x86_64_16 then 2
+  else if rel_type = r_x86_64_pc16 then 2
+  else if rel_type = r_x86_64_8 then 1
+  else if rel_type = r_x86_64_pc8 then 1
+  else if rel_type = r_x86_64_dtpmod64 then 8 (* CHECK *)
+  else if rel_type = r_x86_64_dtpoff64 then 8 (* CHECK *)
+  else if rel_type = r_x86_64_tpoff64 then 8 (* CHECK *)
+  else if rel_type = r_x86_64_tlsgd then 8 (* CHECK *)
+  else if rel_type = r_x86_64_tlsld then 8 (* CHECK *)
+  else if rel_type = r_x86_64_dtpoff32 then 4 (* CHECK *)
+  else if rel_type = r_x86_64_gottpoff then 8 (* CHECK *)
+  else if rel_type = r_x86_64_tpoff32 then 4 (* CHECK *)
+  else if rel_type = r_x86_64_pc64 then 8
+  else if rel_type = r_x86_64_gotoff64 then 8
+  else if rel_type = r_x86_64_gotpc32 then 4
+  else if rel_type = r_x86_64_size32 then 4
+  else if rel_type = r_x86_64_size64 then 8
+  else if rel_type = r_x86_64_gotpc32_tlsdesc then 4 (* CHECK *)
+  else if rel_type = r_x86_64_tlsdesc_call then 4 (* CHECK *)
+  else if rel_type = r_x86_64_tlsdesc then 8 (* CHECK *)
+  else if rel_type = r_x86_64_irelative then 8 (* CHECK *)
   else 0 (* invalid *)
 
-val abi_amd64_apply_relocation : elf64_relocation_a -> elf64_file ->
-  error elf64_executable_process_image
-let abi_amd64_apply_relocation rel ef =
-  if is_elf64_executable_file ef.elf64_file_header then
-    get_elf64_executable_image ef >>= fun img ->
+type integer_bit_width
+  = I8
+  | I16
+  | I32
+  | I64
+  | I128
+
+val abi_amd64_apply_relocation : elf64_relocation_a -> integer -> integer ->
+  integer -> integer -> integer -> integer -> integer -> elf64_file ->
+  error (Map.map elf64_addr (integer * integer_bit_width))
+let abi_amd64_apply_relocation rel b_val g_val got_val l_val p_val s_val z_val ef =
+  if is_elf64_relocatable_file ef.elf64_file_header then
     let rel_type = elf64_relocation_r_type rel.elf64_ra_info in
+    let a_val    = integer_of_elf64_sxword rel.elf64_ra_addend in
+      (** No calculation *)
       if rel_type = r_x86_64_none then
-        return img
+        return Map.empty
+      (** Calculation: S + A *)
       else if rel_type = r_x86_64_64 then
-        fail ""
+      	let result = s_val + a_val in
+      	let addr   = rel.elf64_ra_offset in
+      		return (Map.singleton addr (result, I64))
       else if rel_type = r_x86_64_pc32 then
-        fail ""
-      else if rel_type = r_x86_64_got32 then
-        fail ""
-      else fail "abi_amd64_apply_relocation: relocation not yet implemented"
+      	fail "abi_amd64_apply_relocation: r_x86_64_pc32 not implemented"
+  		else if rel_type = r_x86_64_got32 then
+    		fail "abi_amd64_apply_relocation: r_x86_64_got32 not implemented"
+  		else if rel_type = r_x86_64_plt32 then
+    		fail "abi_amd64_apply_relocation: r_x86_64_plt32 not implemented"
+		  else if rel_type = r_x86_64_copy then
+		    fail "abi_amd64_apply_relocation: r_x86_64_copy not implemented"
+		  else if rel_type = r_x86_64_glob_dat then
+		    fail "abi_amd64_apply_relocation: r_x86_64_glob_dat not implemented"
+		  else if rel_type = r_x86_64_jump_slot then
+		    fail "abi_amd64_apply_relocation: r_x86_64_jumpslot not implemented"
+		  else if rel_type = r_x86_64_relative then
+		    fail "abi_amd64_apply_relocation: r_x86_64_relative not implemented"
+		  else if rel_type = r_x86_64_gotpcrel then
+		    fail "abi_amd64_apply_relocation: r_x86_64_gotpcrel not implemented"
+		  else if rel_type = r_x86_64_32 then
+      	let result = s_val + a_val in
+      	let addr   = rel.elf64_ra_offset in
+      		return (Map.singleton addr (result, I32))
+		  else if rel_type = r_x86_64_32s then
+      	let result = s_val + a_val in
+      	let addr   = rel.elf64_ra_offset in
+      		return (Map.singleton addr (result, I32))
+		  else if rel_type = r_x86_64_16 then
+      	let result = s_val + a_val in
+      	let addr   = rel.elf64_ra_offset in
+      		return (Map.singleton addr (result, I16))
+		  else if rel_type = r_x86_64_pc16 then
+		    fail "abi_amd64_apply_relocation: r_x86_64_pc16 not implemented"
+		  else if rel_type = r_x86_64_8 then
+		    fail "abi_amd64_apply_relocation: r_x86_64_8 not implemented"
+		  else if rel_type = r_x86_64_pc8 then
+		    fail "abi_amd64_apply_relocation: r_x86_64_pc8 not implemented"
+		  else if rel_type = r_x86_64_dtpmod64 then
+		    fail "abi_amd64_apply_relocation: r_x86_64_dtpmod64 not implemented"
+		  else if rel_type = r_x86_64_dtpoff64 then
+		    fail "abi_amd64_apply_relocation: r_x86_64_dtpoff64 not implemented"
+		  else if rel_type = r_x86_64_tpoff64 then
+		    fail "abi_amd64_apply_relocation: r_x86_64_tpoff64 not implemented"
+		  else if rel_type = r_x86_64_tlsgd then
+		    fail "abi_amd64_apply_relocation: r_x86_64_tlsgd not implemented"
+		  else if rel_type = r_x86_64_tlsld then
+		    fail "abi_amd64_apply_relocation: r_x86_64_tlsld not implemented"
+		  else if rel_type = r_x86_64_dtpoff32 then
+		    fail "abi_amd64_apply_relocation: r_x86_64_dtpoff32 not implemented"
+		  else if rel_type = r_x86_64_gottpoff then
+		    fail "abi_amd64_apply_relocation: r_x86_64_gottpoff not implemented"
+		  else if rel_type = r_x86_64_tpoff32 then
+		    fail "abi_amd64_apply_relocation: r_x86_64_tpoff32 not implemented"
+		  else if rel_type = r_x86_64_pc64 then
+		    fail "abi_amd64_apply_relocation: r_x86_64_pc64 not implemented"
+		  else if rel_type = r_x86_64_gotoff64 then
+		    fail "abi_amd64_apply_relocation: r_x86_64_gotoff64 not implemented"
+		  else if rel_type = r_x86_64_gotpc32 then
+		    fail "abi_amd64_apply_relocation: r_x86_64_gotpc32 not implemented"
+		  else if rel_type = r_x86_64_size32 then
+		    fail "abi_amd64_apply_relocation: r_x86_64_size32 not implemented"
+		  else if rel_type = r_x86_64_size64 then
+		    fail "abi_amd64_apply_relocation: r_x86_64_size64 not implemented"
+		  else if rel_type = r_x86_64_gotpc32_tlsdesc then
+		    fail "abi_amd64_apply_relocation: r_x86_64_gotpc32_tlsdesc not implemented"
+		  else if rel_type = r_x86_64_tlsdesc_call then
+		    fail "abi_amd64_apply_relocation: r_x86_64_tlsdesc_call not implemented"
+		  else if rel_type = r_x86_64_tlsdesc then
+		    fail "abi_amd64_apply_relocation: r_x86_64_tlsdesc not implemented"
+		  else if rel_type = r_x86_64_irelative then
+		    fail "abi_amd64_apply_relocation: r_x86_64_irelative not implemented"
+		  else
+		  	fail "abi_amd64_apply_relocation: invalid relocation type"
   else
-    fail "abi_amd64_apply_relocation: not an executable ELF file"
+  	fail "abi_amd64_apply_relocation: not a relocatable file"
