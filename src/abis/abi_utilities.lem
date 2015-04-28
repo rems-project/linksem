@@ -1,0 +1,6 @@
+type integer_bit_width
+  = I8
+  | I16
+  | I32
+  | I64
+  | I64X2

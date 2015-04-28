@@ -3,19 +3,21 @@
   *)
 
 open import Basic_classes
-open import Num
-open import String
 open import Map
 open import Maybe
-open import Missing_pervasives
+open import Num
+open import String
 
 open import Error
+open import Missing_pervasives
 
 open import Elf_types_native_uint
 open import Elf_file
 open import Elf_header
 open import Elf_relocation
 open import Elf_symbol_table
+
+open import Abi_utilities
 
 (** x86-64 relocation types. *)
 

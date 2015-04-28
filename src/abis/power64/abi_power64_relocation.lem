@@ -1,0 +1,348 @@
+(** [abi_power64_relocation] contains types and definitions specific to
+  * relocations in the Power64 ABI
+  *)
+
+open import Basic_classes
+open import Map
+open import Maybe
+open import Num
+open import String
+
+open import Error
+open import Missing_pervasives
+
+open import Elf_types_native_uint
+open import Elf_file
+open import Elf_header
+open import Elf_relocation
+open import Elf_symbol_table
+
+open import Abi_utilities
+
+(** Power64 relocation types *)
+
+let r_ppc64_none : natural = 0
+let r_ppc64_addr32 : natural = 1
+let r_ppc64_addr24 : natural = 2
+let r_ppc64_addr16 : natural = 3
+let r_ppc64_addr16_lo : natural = 4
+let r_ppc64_addr16_hi : natural = 5
+let r_ppc64_addr16_ha : natural = 6
+let r_ppc64_addr14 : natural = 7
+let r_ppc64_addr14_brtaken : natural = 8
+let r_ppc64_addr14_brntaken : natural = 9
+let r_ppc64_rel24 : natural = 10
+let r_ppc64_rel14 : natural = 11
+let r_ppc64_rel14_brtaken : natural = 12
+let r_ppc64_rel14_brntaken : natural = 13
+let r_ppc64_got16 : natural = 14
+let r_ppc64_got16_lo : natural = 15
+let r_ppc64_got16_hi : natural = 16
+let r_ppc64_got16_ha : natural = 17
+let r_ppc64_copy : natural = 19
+let r_ppc64_glob_dat : natural = 20
+let r_ppc64_jmp_slot : natural = 21
+let r_ppc64_relative : natural = 22
+let r_ppc64_uaddr32 : natural = 24
+let r_ppc64_uaddr16 : natural = 25
+let r_ppc64_rel32 : natural = 26
+let r_ppc64_plt32 : natural = 27
+let r_ppc64_pltrel32 : natural = 28
+let r_ppc64_plt16_lo : natural = 29
+let r_ppc64_plt16_hi : natural = 30
+let r_ppc64_plt16_ha : natural = 31
+let r_ppc64_sectoff : natural = 33
+let r_ppc64_sectoff_lo : natural = 34
+let r_ppc64_sectoff_hi : natural = 35
+let r_ppc64_sectoff_ha : natural = 36
+let r_ppc64_addr30 : natural = 37
+let r_ppc64_addr64 : natural = 38
+let r_ppc64_addr16_higher : natural = 39
+let r_ppc64_addr16_highera : natural = 40
+let r_ppc64_addr16_highest : natural = 41
+let r_ppc64_addr16_highesta : natural = 42
+let r_ppc64_uaddr64 : natural = 43
+let r_ppc64_rel64 : natural = 44
+let r_ppc64_plt64 : natural = 45
+let r_ppc64_pltrel64 : natural = 46
+let r_ppc64_toc16 : natural = 47
+let r_ppc64_toc16_lo : natural = 48
+let r_ppc64_toc16_hi : natural = 49
+let r_ppc64_toc16_ha : natural = 50
+let r_ppc64_toc : natural = 51
+let r_ppc64_pltgot16 : natural = 52
+let r_ppc64_pltgot16_lo : natural = 53
+let r_ppc64_pltgot16_hi : natural = 54
+let r_ppc64_pltgot16_ha : natural = 55
+let r_ppc64_addr16_ds : natural = 56
+let r_ppc64_addr16_lo_ds : natural = 57
+let r_ppc64_got16_ds : natural = 58
+let r_ppc64_got16_lo_ds : natural = 59
+let r_ppc64_plt16_lo_ds : natural = 60
+let r_ppc64_sectoff_ds : natural = 61
+let r_ppc64_sectoff_lo_ds : natural = 62
+let r_ppc64_toc16_ds : natural = 63
+let r_ppc64_toc16_lo_ds : natural = 64
+let r_ppc64_pltgot16_ds : natural = 65
+let r_ppc64_pltgot16_lo_ds : natural = 66
+let r_ppc64_tls : natural = 67
+let r_ppc64_dtpmod64 : natural = 68
+let r_ppc64_tprel16 : natural = 69
+let r_ppc64_tprel16_lo : natural = 60
+let r_ppc64_tprel16_hi : natural = 71
+let r_ppc64_tprel16_ha : natural = 72
+let r_ppc64_tprel64 : natural = 73
+let r_ppc64_dtprel16 : natural = 74
+let r_ppc64_dtprel16_lo : natural = 75
+let r_ppc64_dtprel16_hi : natural = 76
+let r_ppc64_dtprel16_ha : natural = 77
+let r_ppc64_dtprel64 : natural = 78
+let r_ppc64_got_tlsgd16 : natural = 79
+let r_ppc64_got_tlsgd16_lo : natural = 80
+let r_ppc64_got_tlsgd16_hi : natural = 81
+let r_ppc64_got_tlsgd16_ha : natural = 82
+let r_ppc64_got_tlsld16 : natural = 83
+let r_ppc64_got_tlsld16_lo : natural = 84
+let r_ppc64_got_tlsld16_hi : natural = 85
+let r_ppc64_got_tlsld16_ha : natural = 86
+let r_ppc64_got_tprel16_ds : natural = 87
+let r_ppc64_got_tprel16_lo_ds : natural = 88
+let r_ppc64_got_tprel16_hi : natural = 89
+let r_ppc64_got_tprel16_ha : natural = 90
+let r_ppc64_got_dtprel16_ds : natural = 91
+let r_ppc64_got_dtprel16_lo_ds : natural = 92
+let r_ppc64_got_dtprel16_hi : natural = 93
+let r_ppc64_got_dtprel16_ha : natural = 94
+let r_ppc64_tprel16_ds : natural = 95
+let r_ppc64_tprel16_lo_ds : natural = 96
+let r_ppc64_tprel16_higher : natural = 97
+let r_ppc64_tprel16_highera : natural = 98
+let r_ppc64_tprel16_highest : natural = 99
+let r_ppc64_tprel16_highesta : natural = 100
+let r_ppc64_dtprel16_ds : natural = 101
+let r_ppc64_dtprel16_lo_ds : natural = 102
+let r_ppc64_dtprel16_higher : natural = 103
+let r_ppc64_dtprel16_highera : natural = 104
+let r_ppc64_dtprel16_highest : natural = 105
+let r_ppc64_dtprel16_highesta : natural = 106
+
+(** [string_of_ppc64_relocation_type rel_type] produces a string representation
+  * of relocation type [rel_type].
+  *)
+val string_of_ppc64_relocation_type : natural -> string
+let string_of_ppc64_relocation_type rel_type =
+  if rel_type = r_ppc64_none then
+    "r_ppc64_none"
+  else if rel_type = r_ppc64_addr32 then
+  	"r_ppc64_addr32"
+  else if rel_type = r_ppc64_addr24 then
+    "r_ppc64_addr24"
+	else if rel_type = r_ppc64_addr16 then
+	  "r_ppc64_addr16"
+  else if rel_type = r_ppc64_addr16_lo then
+    "r_ppc64_addr16_lo"
+  else if rel_type = r_ppc64_addr16_hi then
+    "r_ppc64_addr16_hi"
+  else if rel_type = r_ppc64_addr16_ha then
+    "r_ppc64_addr16_ha"
+  else if rel_type = r_ppc64_addr14 then
+    "r_ppc64_addr14"
+  else if rel_type = r_ppc64_addr14_brtaken then
+    "r_ppc64_addr14_brtaken"
+  else if rel_type = r_ppc64_addr14_brntaken then
+    "r_ppc64_addr14_brntaken"
+  else if rel_type = r_ppc64_rel24 then
+    "r_ppc64_rel24"
+  else if rel_type = r_ppc64_rel14 then
+    "r_ppc64_rel14"
+  else if rel_type = r_ppc64_rel14_brtaken then
+    "r_ppc64_rel14_brtaken"
+  else if rel_type = r_ppc64_rel14_brntaken then
+    "r_ppc64_rel14_brntaken"
+  else if rel_type = r_ppc64_got16 then
+    "r_ppc64_got16"
+  else if rel_type = r_ppc64_got16_lo then
+    "r_ppc64_got16_lo"
+  else if rel_type = r_ppc64_got16_hi then
+    "r_ppc64_got16_hi"
+  else if rel_type = r_ppc64_got16_ha then
+    "r_ppc64_got16_ha"
+  else if rel_type = r_ppc64_copy then
+    "r_ppc64_copy"
+  else if rel_type = r_ppc64_glob_dat then
+    "r_ppc64_glob_dat"
+  else if rel_type = r_ppc64_jmp_slot then
+    "r_ppc64_jmp_slot"
+  else if rel_type = r_ppc64_relative then
+    "r_ppc64_relative"
+  else if rel_type = r_ppc64_uaddr32 then
+    "r_ppc64_uaddr32"
+  else if rel_type = r_ppc64_uaddr16 then
+    "r_ppc64_uaddr16"
+  else if rel_type = r_ppc64_rel32 then
+    "r_ppc64_rel32"
+  else if rel_type = r_ppc64_plt32 then
+    "r_ppc64_plt32"
+  else if rel_type = r_ppc64_pltrel32 then
+    "r_ppc64_pltrel32"
+  else if rel_type = r_ppc64_plt16_lo then
+    "r_ppc64_plt16_lo"
+  else if rel_type = r_ppc64_plt16_hi then
+    "r_ppc64_plt16_hi"
+  else if rel_type = r_ppc64_plt16_ha then
+    "r_ppc64_plt16_ha"
+  else if rel_type = r_ppc64_sectoff then
+    "r_ppc64_sectoff"
+  else if rel_type = r_ppc64_sectoff_lo then
+    "r_ppc64_sectoff_lo"
+  else if rel_type = r_ppc64_sectoff_hi then
+    "r_ppc64_sectoff_hi"
+  else if rel_type = r_ppc64_sectoff_ha then
+    "r_ppc64_sectoff_ha"
+  else if rel_type = r_ppc64_addr30 then
+    "r_ppc64_addr30"
+  else if rel_type = r_ppc64_addr64 then
+    "r_ppc64_addr64"
+  else if rel_type = r_ppc64_addr16_higher then
+    "r_ppc64_addr16_higher"
+  else if rel_type = r_ppc64_addr16_highera then
+    "r_ppc64_addr16_highera"
+  else if rel_type = r_ppc64_addr16_highest then
+    "r_ppc64_addr16_highest"
+  else if rel_type = r_ppc64_addr16_highesta then
+    "r_ppc64_addr16_highesta"
+  else if rel_type = r_ppc64_uaddr64 then
+    "r_ppc64_uaddr64"
+  else if rel_type = r_ppc64_rel64 then
+    "r_ppc64_rel64"
+  else if rel_type = r_ppc64_plt64 then
+    "r_ppc64_plt64"
+  else if rel_type = r_ppc64_pltrel64 then
+    "r_ppc64_pltrel64"
+  else if rel_type = r_ppc64_toc16 then
+    "r_ppc64_toc16"
+  else if rel_type = r_ppc64_toc16_lo then
+    "r_ppc64_toc16_lo"
+  else if rel_type = r_ppc64_toc16_hi then
+    "r_ppc64_toc16_hi"
+  else if rel_type = r_ppc64_toc16_ha then
+    "r_ppc64_toc16_ha"
+  else if rel_type = r_ppc64_toc then
+    "r_ppc64_toc"
+  else if rel_type = r_ppc64_pltgot16 then
+    "r_ppc64_pltgot16"
+  else if rel_type = r_ppc64_pltgot16_lo then
+    "r_ppc64_pltgot16_lo"
+  else if rel_type = r_ppc64_pltgot16_hi then
+    "r_ppc64_pltgot16_hi"
+  else if rel_type = r_ppc64_pltgot16_ha then
+    "r_ppc64_pltgot16_ha"
+  else if rel_type = r_ppc64_addr16_ds then
+    "r_ppc64_addr16_ds"
+  else if rel_type = r_ppc64_addr16_lo_ds then
+    "r_ppc64_addr16_ds"
+  else if rel_type = r_ppc64_got16_ds then
+    "r_ppc64_got16_ds"
+  else if rel_type = r_ppc64_got16_lo_ds then
+    "r_ppc64_got16_lo_ds"
+  else if rel_type = r_ppc64_plt16_lo_ds then
+    "r_ppc64_plt16_lo_ds"
+  else if rel_type = r_ppc64_sectoff_ds then
+    "r_ppc64_sectoff_ds"
+  else if rel_type = r_ppc64_sectoff_lo_ds then
+    "r_ppc64_sectoff_lo_ds"
+  else if rel_type = r_ppc64_toc16_ds then
+    "r_ppc64_toc16_ds"
+  else if rel_type = r_ppc64_toc16_lo_ds then
+    "r_ppc64_toc16_lo_ds"
+  else if rel_type = r_ppc64_pltgot16_ds then
+    "r_ppc64_pltgot16_ds"
+  else if rel_type = r_ppc64_pltgot16_lo_ds then
+    "r_ppc64_pltgot16_lo_ds"
+  else if rel_type = r_ppc64_tls then
+    "r_ppc64_tls"
+  else if rel_type = r_ppc64_dtpmod64 then
+    "r_ppc64_dtpmod64"
+  else if rel_type = r_ppc64_tprel16 then
+    "r_ppc64_tprel16"
+  else if rel_type = r_ppc64_tprel16_lo then
+    "r_ppc64_tprel16_lo"
+  else if rel_type = r_ppc64_tprel16_hi then
+    "r_ppc64_tprel16_hi"
+  else if rel_type = r_ppc64_tprel16_ha then
+    "r_ppc64_tprel16_ha"
+  else if rel_type = r_ppc64_tprel64 then
+    "r_ppc64_tprel64"
+  else if rel_type = r_ppc64_dtprel16 then
+    "r_ppc64_dtprel16"
+  else if rel_type = r_ppc64_dtprel16_lo then
+    "r_ppc64_dtprel16_lo"
+  else if rel_type = r_ppc64_dtprel16_hi then
+    "r_ppc64_dtprel16_hi"
+  else if rel_type = r_ppc64_dtprel16_ha then
+    "r_ppc64_dtprel16_ha"
+  else if rel_type = r_ppc64_dtprel64 then
+    "r_ppc64_dtprel64"
+  else if rel_type = r_ppc64_got_tlsgd16 then
+    "r_ppc64_got_tlsgd16"
+  else if rel_type = r_ppc64_got_tlsgd16_lo then
+    "r_ppc64_got_tlsgd16_lo"
+  else if rel_type = r_ppc64_got_tlsgd16_hi then
+    "r_ppc64_got_tlsgd16_hi"
+  else if rel_type = r_ppc64_got_tlsgd16_ha then
+    "r_ppc64_got_tlsgd16_ha"
+  else if rel_type = r_ppc64_got_tlsld16 then
+    "r_ppc64_got_tlsld16"
+  else if rel_type = r_ppc64_got_tlsld16_lo then
+    "r_ppc64_got_tlsld16_lo"
+  else if rel_type = r_ppc64_got_tlsld16_hi then
+    "r_ppc64_got_tlsld16_hi"
+  else if rel_type = r_ppc64_got_tlsld16_ha then
+    "r_ppc64_got_tlsld16_ha"
+  else if rel_type = r_ppc64_got_tprel16_ds then
+    "r_ppc64_got_tprel16_ds"
+  else if rel_type = r_ppc64_got_tprel16_lo_ds then
+    "r_ppc64_got_tprel16_lo_ds"
+  else if rel_type = r_ppc64_got_tprel16_hi then
+    "r_ppc64_got_tprel16_hi"
+  else if rel_type = r_ppc64_got_tprel16_ha then
+    "r_ppc64_got_tprel16_ha"
+  else if rel_type = r_ppc64_got_dtprel16_ds then
+    "r_ppc64_got_dtprel16_ds"
+  else if rel_type = r_ppc64_got_dtprel16_lo_ds then
+    "r_ppc64_got_dtprel16_lo_ds"
+  else if rel_type = r_ppc64_got_dtprel16_hi then
+    "r_ppc64_got_dtprel16_hi"
+  else if rel_type = r_ppc64_got_dtprel16_ha then
+    "r_ppc64_got_dtprel16_ha"
+  else if rel_type = r_ppc64_tprel16_ds then
+    "r_ppc64_tprel16_ds"
+  else if rel_type = r_ppc64_tprel16_lo_ds then
+    "r_ppc64_tprel16_lo_ds"
+  else if rel_type = r_ppc64_tprel16_higher then
+    "r_ppc64_tprel16_higher"
+  else if rel_type = r_ppc64_tprel16_highera then
+    "r_ppc64_tprel16_highera"
+  else if rel_type = r_ppc64_tprel16_highest then
+    "r_ppc64_tprel16_highest"
+  else if rel_type = r_ppc64_tprel16_highesta then
+    "r_ppc64_tprel16_highesta"
+  else if rel_type = r_ppc64_dtprel16_ds then
+    "r_ppc64_dtprel16_ds"
+  else if rel_type = r_ppc64_dtprel16_lo_ds then
+    "r_ppc64_dtprel16_lo_ds"
+  else if rel_type = r_ppc64_dtprel16_higher then
+    "r_ppc64_dtprel16_higher"
+  else if rel_type = r_ppc64_dtprel16_highera then
+    "r_ppc64_dtprel16_highera"
+  else if rel_type = r_ppc64_dtprel16_highest then
+    "r_ppc64_dtprel16_highest"
+  else if rel_type = r_ppc64_dtprel16_highesta then
+    "r_ppc64_dtprel16_highesta"
+  else
+    "Invalid Power64 relocation type"  
+
+val abi_ppc64_apply_relocation : elf64_relocation_a -> elf64_file ->
+  error (Map.map elf64_addr (integer * integer_bit_width))
+let abi_ppc64_apply_relocation rel_type ef =
+  fail "not implemented yet"
