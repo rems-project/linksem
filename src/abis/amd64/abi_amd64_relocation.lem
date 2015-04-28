@@ -211,125 +211,136 @@ let abi_amd64_apply_relocation rel b_val g_val got_val l_val p_val s_val z_val e
   if is_elf64_relocatable_file ef.elf64_file_header then
     let rel_type = elf64_relocation_r_type rel.elf64_ra_info in
     let a_val    = integer_of_elf64_sxword rel.elf64_ra_addend in
-      (** No calculation *)
+      (** No width, No calculation *)
       if rel_type = r_x86_64_none then
         return Map.empty
-      (** Calculation: S + A *)
+      (** Width: 64 Calculation: S + A *)
       else if rel_type = r_x86_64_64 then
       	let result = s_val + a_val in
       	let addr   = rel.elf64_ra_offset in
       		return (Map.singleton addr (result, I64))
-      (** Calculation: S + A - P *)
+      (** Width: 32 Calculation: S + A - P *)
       else if rel_type = r_x86_64_pc32 then
       	let result = (s_val + a_val) - p_val in
       	let addr   = rel.elf64_ra_offset in
       		return (Map.singleton addr (result, I32))
-      (** Calculation: G + A *)
+      (** Width: 32 Calculation: G + A *)
   		else if rel_type = r_x86_64_got32 then
       	let result = g_val + a_val in
       	let addr   = rel.elf64_ra_offset in
       		return (Map.singleton addr (result, I32))
-      (** Calculation: L + A - P *)
+      (** Width: 32 Calculation: L + A - P *)
   		else if rel_type = r_x86_64_plt32 then
     		fail "abi_amd64_apply_relocation: r_x86_64_plt32 not implemented"
-    	(** Calculation: NONE *)
+    	(** No width, No calculation *)
 		  else if rel_type = r_x86_64_copy then
 		    fail "abi_amd64_apply_relocation: r_x86_64_copy not implemented"
-		  (** Calculation: S *)
+		  (** Width: 64 Calculation: S *)
 		  else if rel_type = r_x86_64_glob_dat then
       	let result = s_val in
       	let addr   = rel.elf64_ra_offset in
       		return (Map.singleton addr (result, I64))
-		  (** Calculation: S *)
+		  (** Width: 64 Calculation: S *)
 		  else if rel_type = r_x86_64_jump_slot then
       	let result = s_val in
       	let addr   = rel.elf64_ra_offset in
       		return (Map.singleton addr (result, I64))
-		  (** Calculation: B + A *)
+		  (** Width: 64 Calculation: B + A *)
 		  else if rel_type = r_x86_64_relative then
       	let result = b_val + a_val in
       	let addr   = rel.elf64_ra_offset in
       		return (Map.singleton addr (result, I64))
-		  (** Calculation: G + GOT + A - P *)
+		  (** Width: 32 Calculation: G + GOT + A - P *)
 		  else if rel_type = r_x86_64_gotpcrel then
       	let result = (g_val + got_val + a_val) - p_val in
       	let addr   = rel.elf64_ra_offset in
       		return (Map.singleton addr (result, I32))
-		  (** Calculation: S + A *)
+		  (** Width: 32 Calculation: S + A *)
 		  else if rel_type = r_x86_64_32 then
       	let result = s_val + a_val in
       	let addr   = rel.elf64_ra_offset in
       		return (Map.singleton addr (result, I32))
-		  (** Calculation: S + A *)
+		  (** Width: 32 Calculation: S + A *)
 		  else if rel_type = r_x86_64_32s then
       	let result = s_val + a_val in
       	let addr   = rel.elf64_ra_offset in
       		return (Map.singleton addr (result, I32))
-		  (** Calculation: S + A *)
+		  (** Width: 16 Calculation: S + A *)
 		  else if rel_type = r_x86_64_16 then
       	let result = s_val + a_val in
       	let addr   = rel.elf64_ra_offset in
       		return (Map.singleton addr (result, I16))
-		  (** Calculation: S + A - P *)
+		  (** Width: 16 Calculation: S + A - P *)
 		  else if rel_type = r_x86_64_pc16 then
       	let result = (s_val + a_val) - p_val in
       	let addr   = rel.elf64_ra_offset in
       		return (Map.singleton addr (result, I16))
-		  (** Calculation: S + A *)
+		  (** Width: 8 Calculation: S + A *)
 		  else if rel_type = r_x86_64_8 then
       	let result = s_val + a_val in
       	let addr   = rel.elf64_ra_offset in
       		return (Map.singleton addr (result, I8))
-      (** Calculation: S + A - P *)
+      (** Width 8: Calculation: S + A - P *)
 		  else if rel_type = r_x86_64_pc8 then
       	let result = (s_val + a_val) - p_val in
       	let addr   = rel.elf64_ra_offset in
       		return (Map.singleton addr (result, I8))
+      (** Width: 64 *)
 		  else if rel_type = r_x86_64_dtpmod64 then
 		    fail "abi_amd64_apply_relocation: r_x86_64_dtpmod64 not implemented"
+      (** Width: 64 *)
 		  else if rel_type = r_x86_64_dtpoff64 then
 		    fail "abi_amd64_apply_relocation: r_x86_64_dtpoff64 not implemented"
+      (** Width: 64 *)
 		  else if rel_type = r_x86_64_tpoff64 then
 		    fail "abi_amd64_apply_relocation: r_x86_64_tpoff64 not implemented"
+      (** Width: 32 *)
 		  else if rel_type = r_x86_64_tlsgd then
 		    fail "abi_amd64_apply_relocation: r_x86_64_tlsgd not implemented"
+      (** Width: 32 *)
 		  else if rel_type = r_x86_64_tlsld then
 		    fail "abi_amd64_apply_relocation: r_x86_64_tlsld not implemented"
+      (** Width: 32 *)
 		  else if rel_type = r_x86_64_dtpoff32 then
 		    fail "abi_amd64_apply_relocation: r_x86_64_dtpoff32 not implemented"
+      (** Width: 32 *)
 		  else if rel_type = r_x86_64_gottpoff then
 		    fail "abi_amd64_apply_relocation: r_x86_64_gottpoff not implemented"
+      (** Width: 32 *)
 		  else if rel_type = r_x86_64_tpoff32 then
 		    fail "abi_amd64_apply_relocation: r_x86_64_tpoff32 not implemented"
-		  (** Calculation: S + A - P *)
+		  (** Width: 64 Calculation: S + A - P *)
 		  else if rel_type = r_x86_64_pc64 then
       	let result = (s_val + a_val) - p_val in
       	let addr   = rel.elf64_ra_offset in
       		return (Map.singleton addr (result, I64))
-		  (** Calculation: S + A - GOT *)
+		  (** Width: 64 Calculation: S + A - GOT *)
 		  else if rel_type = r_x86_64_gotoff64 then
       	let result = (s_val + a_val) - got_val in
       	let addr   = rel.elf64_ra_offset in
       		return (Map.singleton addr (result, I64))
-		  (** Calculation: GOT + A - P *)
+		  (** Width: 32 Calculation: GOT + A - P *)
 		  else if rel_type = r_x86_64_gotpc32 then
       	let result = (got_val + a_val) - p_val in
       	let addr   = rel.elf64_ra_offset in
       		return (Map.singleton addr (result, I32))
-		  (** Calculation: Z + A *)
+		  (** Width: 32 Calculation: Z + A *)
 		  else if rel_type = r_x86_64_size32 then
       	let result = z_val + a_val in
       	let addr   = rel.elf64_ra_offset in
       		return (Map.singleton addr (result, I32))
-		  (** Calculation: Z + A *)
+		  (** Width: 64 Calculation: Z + A *)
 		  else if rel_type = r_x86_64_size64 then
       	let result = z_val + a_val in
       	let addr   = rel.elf64_ra_offset in
       		return (Map.singleton addr (result, I64))
+      (** Width: 32 *)
 		  else if rel_type = r_x86_64_gotpc32_tlsdesc then
 		    fail "abi_amd64_apply_relocation: r_x86_64_gotpc32_tlsdesc not implemented"
+      (** No width *)
 		  else if rel_type = r_x86_64_tlsdesc_call then
 		    fail "abi_amd64_apply_relocation: r_x86_64_tlsdesc_call not implemented"
+		  (** Width: 64X2 *)
 		  else if rel_type = r_x86_64_tlsdesc then
 		    fail "abi_amd64_apply_relocation: r_x86_64_tlsdesc not implemented"
 		  (** Calculation: irelative(B + A) *)
