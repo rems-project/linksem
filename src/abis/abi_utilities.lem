@@ -1,6 +1,26 @@
+open import Num
+
 type integer_bit_width
   = I8
+  | Low14
   | I16
+  | Half16ds
+  | Low24
+  | Word30
   | I32
   | I64
   | I64X2
+  
+val natural_of_integer_bit_width : integer_bit_width -> natural
+let natural_of_integer_bit_width i =
+  match i with
+    | I8       -> 8
+    | Low14    -> 14
+    | I16      -> 16
+    | Half16ds -> 16
+    | Low24    -> 24
+    | Word30   -> 30
+    | I32      -> 32
+    | I64      -> 64
+    | I64X2    -> 128
+  end
