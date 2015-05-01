@@ -384,8 +384,11 @@ type can_fail
 
 val abi_ppc64_apply_relocation : elf64_relocation_a -> integer -> integer ->
   integer -> integer -> integer -> integer -> integer -> integer -> integer ->
-    elf64_file -> error (Map.map elf64_addr (integer * integer_bit_width * can_fail))
-let abi_ppc64_apply_relocation rel s_val b_val p_val l_val g_val r_val m_val toc_val dtpmod_val ef =
+    integer -> integer -> integer -> integer -> integer -> integer -> elf64_file ->
+      error (Map.map elf64_addr (integer * integer_bit_width * can_fail))
+let abi_ppc64_apply_relocation rel s_val b_val p_val l_val g_val r_val m_val
+          toc_val dtpmod_val tprel_val dtprel_val gottlsgd_val gottlsld_val
+          gottprel_val gotdtprel_val ef =
   if is_elf64_relocatable_file ef.elf64_file_header then
     let rel_type = elf64_relocation_r_type rel.elf64_ra_info in
     let a_val    = integer_of_elf64_sxword rel.elf64_ra_addend in
@@ -522,37 +525,37 @@ let abi_ppc64_apply_relocation rel s_val b_val p_val l_val g_val r_val m_val toc
       else if rel_type = r_ppc64_plt16_lo then
         let result = mod_lo l_val in
       	let addr   = rel.elf64_ra_offset in
-      	return (Map.singleton addr (result, Half16, CannotFail))
+      	return (Map.singleton addr (result, I16, CannotFail))
       (** Width: Half16 Calculation: #hi(L) *)
       else if rel_type = r_ppc64_plt16_hi then
         let result = mod_hi l_val in
       	let addr   = rel.elf64_ra_offset in
-      	return (Map.singleton addr (result, Half16, CannotFail))
+      	return (Map.singleton addr (result, I16, CannotFail))
       (** Width: Half16 Calculation: #ha(L) *)
       else if rel_type = r_ppc64_plt16_ha then
         let result = mod_ha l_val in
       	let addr   = rel.elf64_ra_offset in
-      	return (Map.singleton addr (result, Half16, CannotFail))
+      	return (Map.singleton addr (result, I16, CannotFail))
       (** Width: Half16 Calculation: R + A *)
       else if rel_type = r_ppc64_sectoff then
         let result = r_val + a_val in
       	let addr   = rel.elf64_ra_offset in
-      	return (Map.singleton addr (result, Half16, CanFail))
+      	return (Map.singleton addr (result, I16, CanFail))
       (** Width: Half16 Calculation: #lo(R + A) *)
       else if rel_type = r_ppc64_sectoff_lo then
         let result = mod_lo (r_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
-      	return (Map.singleton addr (result, Half16, CannotFail))
+      	return (Map.singleton addr (result, I16, CannotFail))
       (** Width: Half16 Calculation: #hi(R + A) *)
       else if rel_type = r_ppc64_sectoff_hi then
         let result = mod_hi (r_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
-      	return (Map.singleton addr (result, Half16, CannotFail))
+      	return (Map.singleton addr (result, I16, CannotFail))
       (** Width: Half16 Calculation: #ha(R + A) *)
       else if rel_type = r_ppc64_sectoff_ha then
         let result = mod_ha (r_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
-      	return (Map.singleton addr (result, Half16, CannotFail))
+      	return (Map.singleton addr (result, I16, CannotFail))
       (** Width: Word30 Calculation: ((S + A) - P) >> 2 *)
       else if rel_type = r_ppc64_addr30 then
         let result = ((s_val + a_val) - p_val) div 4 in
@@ -567,22 +570,22 @@ let abi_ppc64_apply_relocation rel s_val b_val p_val l_val g_val r_val m_val toc
       else if rel_type = r_ppc64_addr16_higher then
         let result = mod_higher (s_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
-      	return (Map.singleton addr (result, Half16, CannotFail))
+      	return (Map.singleton addr (result, I16, CannotFail))
       (** Width: Half16 Calculation: #highera(S + A) *)
       else if rel_type = r_ppc64_addr16_highera then
         let result = mod_highera (s_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
-      	return (Map.singleton addr (result, Half16, CannotFail))
+      	return (Map.singleton addr (result, I16, CannotFail))
       (** Width: Half16 Calculation: #highest(S + A) *)
       else if rel_type = r_ppc64_addr16_highest then
         let result = mod_highest (s_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
-      	return (Map.singleton addr (result, Half16, CannotFail))
+      	return (Map.singleton addr (result, I16, CannotFail))
       (** Width: Half16 Calculation: #highesta(S + A) *)
       else if rel_type = r_ppc64_addr16_highesta then
         let result = mod_highesta (s_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
-      	return (Map.singleton addr (result, Half16, CannotFail))
+      	return (Map.singleton addr (result, I16, CannotFail))
       (** Width: I64 Calculation: S + A *)
       else if rel_type = r_ppc64_uaddr64 then
         let result = s_val + a_val in
@@ -607,22 +610,22 @@ let abi_ppc64_apply_relocation rel s_val b_val p_val l_val g_val r_val m_val toc
       else if rel_type = r_ppc64_toc16 then
       	let result = (s_val + a_val) - toc_val in
       	let addr   = rel.elf64_ra_offset in
-      	return (Map.singleton addr (result, Half16, CanFail))
+      	return (Map.singleton addr (result, I16, CanFail))
       (** Width: Half16 Calculation: #lo((S + A) - TOC) *)
       else if rel_type = r_ppc64_toc16_lo then
       	let result = mod_lo ((s_val + a_val) - toc_val) in
       	let addr   = rel.elf64_ra_offset in
-      	return (Map.singleton addr (result, Half16, CanFail))
+      	return (Map.singleton addr (result, I16, CanFail))
       (** Width: Half16 Calculation: #hi((S + A) - TOC) *)
       else if rel_type = r_ppc64_toc16_hi then
       	let result = mod_hi ((s_val + a_val) - toc_val) in
       	let addr   = rel.elf64_ra_offset in
-      	return (Map.singleton addr (result, Half16, CanFail))
+      	return (Map.singleton addr (result, I16, CanFail))
       (** Width: Half16 Calculation: #ha((S + A) - TOC) *)
       else if rel_type = r_ppc64_toc16_ha then
       	let result = mod_ha ((s_val + a_val) - toc_val) in
       	let addr   = rel.elf64_ra_offset in
-      	return (Map.singleton addr (result, Half16, CanFail))
+      	return (Map.singleton addr (result, I16, CanFail))
       (** Width: I64 Calculation: .TOC *)
       else if rel_type = r_ppc64_toc then
       	let result = toc_val in
@@ -632,22 +635,22 @@ let abi_ppc64_apply_relocation rel s_val b_val p_val l_val g_val r_val m_val toc
       else if rel_type = r_ppc64_pltgot16 then
       	let result = m_val in
       	let addr   = rel.elf64_ra_offset in
-      	return (Map.singleton addr (result, Half16, CanFail))
+      	return (Map.singleton addr (result, I16, CanFail))
       (** Width: Half16 Calculation: #lo(M) *)
       else if rel_type = r_ppc64_pltgot16_lo then
       	let result = mod_lo m_val in
       	let addr   = rel.elf64_ra_offset in
-      	return (Map.singleton addr (result, Half16, CannotFail))
+      	return (Map.singleton addr (result, I16, CannotFail))
       (** Width: Half16 Calculation: #hi(M) *)
       else if rel_type = r_ppc64_pltgot16_hi then
       	let result = mod_hi m_val in
       	let addr   = rel.elf64_ra_offset in
-      	return (Map.singleton addr (result, Half16, CannotFail))
+      	return (Map.singleton addr (result, I16, CannotFail))
       (** Width: Half16 Calculation: #ha(M) *)
       else if rel_type = r_ppc64_pltgot16_ha then
       	let result = mod_ha m_val in
       	let addr   = rel.elf64_ra_offset in
-      	return (Map.singleton addr (result, Half16, CannotFail))
+      	return (Map.singleton addr (result, I16, CannotFail))
       (** Width: Half16ds Calculation: (S + A) >> 2 *)
       else if rel_type = r_ppc64_addr16_ds then
       	let result = (s_val + a_val) div 4 in
@@ -712,81 +715,157 @@ let abi_ppc64_apply_relocation rel s_val b_val p_val l_val g_val r_val m_val toc
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I64, CannotFail))
       else if rel_type = r_ppc64_tprel16 then
-        fail "abi_ppc64_apply_relocation: r_ppc64_tprel16 not implemented"
+      	let result = tprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CanFail))
       else if rel_type = r_ppc64_tprel16_lo then
-        fail "abi_ppc64_apply_relocation: r_ppc64_tprel16_lo not implemented"
+      	let result = mod_lo tprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
       else if rel_type = r_ppc64_tprel16_hi then
-        fail "abi_ppc64_apply_relocation: r_ppc64_tprel16_hi not implemented"
+      	let result = mod_hi tprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
       else if rel_type = r_ppc64_tprel16_ha then
-        fail "abi_ppc64_apply_relocation: r_ppc64_tprel16_ha not implemented"
+      	let result = mod_ha tprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
       else if rel_type = r_ppc64_tprel64 then
-        fail "abi_ppc64_apply_relocation: r_ppc64_tprel64 not implemented"
+      	let result = tprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I64, CannotFail))
       else if rel_type = r_ppc64_dtprel16 then
-        fail "abi_ppc64_apply_relocation: r_ppc64_dtprel16 not implemented"
+      	let result = dtprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CanFail))
       else if rel_type = r_ppc64_dtprel16_lo then
-        fail "abi_ppc64_apply_relocation: r_ppc64_dtprel16_lo not implemented"
+      	let result = mod_lo dtprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
       else if rel_type = r_ppc64_dtprel16_hi then
-        fail "abi_ppc64_apply_relocation: r_ppc64_dtprel16_hi not implemented"
+      	let result = mod_hi dtprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
       else if rel_type = r_ppc64_dtprel16_ha then
-        fail "abi_ppc64_apply_relocation: r_ppc64_dtprel16_ha not implemented"
+      	let result = mod_ha dtprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
       else if rel_type = r_ppc64_dtprel64 then
-        fail "abi_ppc64_apply_relocation: r_ppc64_dtprel64 not implemented"
+      	let result = dtprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I64, CannotFail))
       else if rel_type = r_ppc64_got_tlsgd16 then
-        fail "abi_ppc64_apply_relocation: r_ppc64_got_tlsgd16 not implemented"
+      	let result = gottlsgd_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CanFail))
       else if rel_type = r_ppc64_got_tlsgd16_lo then
-        fail "abi_ppc64_apply_relocation: r_ppc64_got_tlsgd16_lo not implemented"
+      	let result = mod_lo gottlsgd_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
       else if rel_type = r_ppc64_got_tlsgd16_hi then
-        fail "abi_ppc64_apply_relocation: r_ppc64_got_tlsgd16_hi not implemented"
+      	let result = mod_hi gottlsgd_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
       else if rel_type = r_ppc64_got_tlsgd16_ha then
-        fail "abi_ppc64_apply_relocation: r_ppc64_got_tlsgd16_ha not implemented"
+      	let result = mod_ha gottlsgd_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
       else if rel_type = r_ppc64_got_tlsld16 then
-        fail "abi_ppc64_apply_relocation: r_ppc64_got_tlsld16 not implemented"
+      	let result = gottlsgd_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CanFail))
       else if rel_type = r_ppc64_got_tlsld16_lo then
-        fail "abi_ppc64_apply_relocation: r_ppc64_got_tlsld16_lo not implemented"
+      	let result = mod_lo gottlsld_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
       else if rel_type = r_ppc64_got_tlsld16_hi then
-        fail "abi_ppc64_apply_relocation: r_ppc64_got_tlsld16_hi not implemented"
+      	let result = mod_hi gottlsld_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
       else if rel_type = r_ppc64_got_tlsld16_ha then
-        fail "abi_ppc64_apply_relocation: r_ppc64_got_tlsld16_ha not implemented"
+      	let result = mod_ha gottlsld_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
       else if rel_type = r_ppc64_got_tprel16_ds then
-        fail "abi_ppc64_apply_relocation: r_ppc64_got_tprel16_ds not implemented"
+      	let result = gottprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Half16ds, CanFail))
       else if rel_type = r_ppc64_got_tprel16_lo_ds then
-        fail "abi_ppc64_apply_relocation: r_ppc64_got_tprel16_lo_ds not implemented"
+      	let result = mod_lo gottprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Half16ds, CannotFail))
       else if rel_type = r_ppc64_got_tprel16_hi then
-        fail "abi_ppc64_apply_relocation: r_ppc64_got_tprel16_hi not implemented"
+      	let result = mod_hi gottprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
       else if rel_type = r_ppc64_got_tprel16_ha then
-        fail "abi_ppc64_apply_relocation: r_ppc64_got_tprel16_ha not implemented"
+      	let result = mod_ha gottprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
       else if rel_type = r_ppc64_got_dtprel16_ds then
-        fail "abi_ppc64_apply_relocation: r_ppc64_got_dtprel16_ds not implemented"
+      	let result = gotdtprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Half16ds, CanFail))
       else if rel_type = r_ppc64_got_dtprel16_lo_ds then
-        fail "abi_ppc64_apply_relocation: r_ppc64_got_dtprel16_lo_ds not implemented"
+      	let result = mod_lo gotdtprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Half16ds, CannotFail))
       else if rel_type = r_ppc64_got_dtprel16_hi then
-        fail "abi_ppc64_apply_relocation: r_ppc64_got_dtprel16_hi not implemented"
+      	let result = mod_hi gotdtprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
       else if rel_type = r_ppc64_got_dtprel16_ha then
-        fail "abi_ppc64_apply_relocation: r_ppc64_got_dtprel16_ha not implemented"
+      	let result = mod_ha gotdtprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
       else if rel_type = r_ppc64_tprel16_ds then
-        fail "abi_ppc64_apply_relocation: r_ppc64_tprel16_ds not implemented"
+      	let result = tprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Half16ds, CanFail))
       else if rel_type = r_ppc64_tprel16_lo_ds then
-        fail "abi_ppc64_apply_relocation: r_ppc64_tprel16_lo_ds not implemented"
+      	let result = mod_lo tprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Half16ds, CannotFail))
       else if rel_type = r_ppc64_tprel16_higher then
-        fail "abi_ppc64_apply_relocation: r_ppc64_tprel16_higher not implemented"
+      	let result = mod_higher tprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
       else if rel_type = r_ppc64_tprel16_highera then
-        fail "abi_ppc64_apply_relocation: r_ppc64_tprel16_highera not implemented"
+      	let result = mod_highera tprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
       else if rel_type = r_ppc64_tprel16_highest then
-        fail "abi_ppc64_apply_relocation: r_ppc64_tprel16_highest not implemented"
+      	let result = mod_highest tprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
       else if rel_type = r_ppc64_tprel16_highesta then
-        fail "abi_ppc64_apply_relocation: r_ppc64_tprel16_highesta not implemented"
+      	let result = mod_highesta tprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
       else if rel_type = r_ppc64_dtprel16_ds then
-        fail "abi_ppc64_apply_relocation: r_ppc64_dtprel16_ds not implemented"
+      	let result = dtprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Half16ds, CanFail))
       else if rel_type = r_ppc64_dtprel16_lo_ds then
-        fail "abi_ppc64_apply_relocation: r_ppc64_dtprel16_lo_ds not implemented"
+      	let result = mod_lo dtprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Half16ds, CannotFail))
       else if rel_type = r_ppc64_dtprel16_higher then
-        fail "abi_ppc64_apply_relocation: r_ppc64_dtprel16_higher not implemented"
+      	let result = mod_higher dtprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
       else if rel_type = r_ppc64_dtprel16_highera then
-        fail "abi_ppc64_apply_relocation: r_ppc64_dtprel16_highera not implemented"
+      	let result = mod_highera dtprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
       else if rel_type = r_ppc64_dtprel16_highest then
-        fail "abi_ppc64_apply_relocation: r_ppc64_dtprel16_highest not implemented"
+      	let result = mod_highest dtprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
       else if rel_type = r_ppc64_dtprel16_highesta then
-        fail "abi_ppc64_apply_relocation: r_ppc64_dtprel16_highesta not implemented"
+      	let result = mod_highesta dtprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
       else
         fail "abi_ppc64_apply_relocation: unrecognised relocation type"  
   else
