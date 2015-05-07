@@ -104,7 +104,6 @@ isa-extraction:
 
 clean:
 	rm -f $(filter-out error.ml,$(LEM_MODEL_ML))
-	rm -f _tags
 	rm -rf *~
 	rm -f *.cmi *.cmo *.cmx *.o
 	rm -f abis/*.cmi abis/*.cmo abis/*.cmx abis/*.o
