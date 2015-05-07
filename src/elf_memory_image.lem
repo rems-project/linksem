@@ -50,8 +50,16 @@ type symbol_definition
     ; def_sym_scn : natural                 (* symtab section index, to disamiguate dynsym *)
     |>
 
+(* ELF file features with which we can label ranges of the memory image. *)
+type elf_file_feature = 
+    ELFHeader of elf64_header
+    | ELFSectionHeaderTable (* OR do we want to expand these? *)
+    | ELFProgramHeaderTable
+    | ELFSection
+    (* FIXME: finish this *)
+
 type elf_memory_image 'abifeature
- = annotated_memory_image (string * elf64_symbol_table_entry) elf64_relocation_a 'abifeature
+ = annotated_memory_image (string * elf64_symbol_table_entry) elf64_relocation_a elf_file_feature 'abifeature
 
 (*
 val null_abi_lift_memory_image : elf64_file -> elf_memory_image

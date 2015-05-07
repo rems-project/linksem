@@ -21,10 +21,14 @@ open import Endianness
 type byte_pattern = maybe byte
 
 (* An element might have an address, and it has some contents. *)
-type memory_image_element = maybe natural * list byte_pattern
+type memory_image_element = <| startpos : maybe natural 
+                             ; contents : list byte_pattern
+                             |>
 
 (* Memory image elements all have identities. For convenience
- * we make the identities strings. *)
+ * we make the identities strings. The string contents are arbitrary,
+ * and only their equality is relevant, but choosing friendly names
+ * like "ELF header" is a nice idea.*)
 type memory_image = Map.map string memory_image_element
 
 (* We can also annotate arbitrary ranges of bytes within an element
@@ -39,19 +43,20 @@ type memory_image = Map.map string memory_image_element
  * relevant ELFy thing when we use it. OH, but then 'a is different for
  * every distinct ELF thing, which is no good. Can we define a mapping
  * from an umbrella "ELF" type to the relevant types in each case? *)
-type range_tag 'symdef 'reloc 'abifeature = 
-                 SymbolDef of 'symdef
-               | RelocationSite of 'reloc
+type range_tag 'symdef 'reloc 'filefeature 'abifeature = 
                | ImageBase of natural (* offset from start of image's VAS; often 0 *)
                | EntryPoint
+               | SymbolDef of 'symdef
+               | RelocationSite of 'reloc
+               | FileFeature of 'filefeature    (* file feature other than symdef and reloc *)
                | AbiFeature of 'abifeature 
 
 type range = natural * natural (* start, length *)
 
-type annotation 'symdef 'reloc 'abifeature = range * range_tag 'symdef 'reloc 'abifeature
+type annotation 'symdef 'reloc 'filefeature 'abifeature = range * range_tag 'symdef 'reloc 'filefeature 'abifeature
 
-type annotated_memory_image 'symdef 'reloc 'abifeature = 
-    memory_image * Map.map (string * range) (list (annotation 'symdef 'reloc 'abifeature))
+type annotated_memory_image 'symdef 'reloc 'filefeature 'abifeature = 
+    memory_image * Map.map (string * range) (list (annotation 'symdef 'reloc 'filefeature 'abifeature))
 
 val range_contains : (natural * natural) -> (natural * natural) -> bool
 let range_contains (r1begin, r1len) (r2begin, r2len) = 
