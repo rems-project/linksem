@@ -687,17 +687,20 @@ let get_elf64_file_dynamic_symbol_table ef =
         fail "obtain_elf64_dynamic_symbol_table: an ELF file may only have one symbol table of type SHT_DYNSYM"
     end
 
+(** Segments, entry point, machine type *)
 type elf32_executable_process_image =
-  elf32_interpreted_segments * natural
+  elf32_interpreted_segments * natural * natural
 
+(** Segments, entry point, machine type *)
 type elf64_executable_process_image =
-  elf64_interpreted_segments * natural
+  elf64_interpreted_segments * natural * natural
 
 val get_elf32_executable_image : elf32_file -> error elf32_executable_process_image
 let get_elf32_executable_image f3 =
   if is_elf32_executable_file f3.elf32_file_header then
     let entr = f3.elf32_file_header.elf32_entry in
     let segs = f3.elf32_file_interpreted_segments in
+    let mach = f3.elf32_file_header.elf32_machine in
       match List.filter (fun sg -> sg.elf32_segment_type = elf_pt_load) segs with
         | []    -> fail "get_elf32_executable_image: an executable ELF file must have at least one loadable segment"
         | load  ->
@@ -723,7 +726,7 @@ let get_elf32_executable_image f3 =
                   return [sg; seg]
               else
                 fail "get_elf32_executable_image: invariant invalidated") load >>= fun bs_base ->
-            return (List.concat bs_base, natural_of_elf32_addr entr)
+            return (List.concat bs_base, natural_of_elf32_addr entr, natural_of_elf32_half mach)
       end
   else
     fail "get_elf32_executable_image: not an ELF executable file"
@@ -733,6 +736,7 @@ let get_elf64_executable_image f3 =
   if is_elf64_executable_file f3.elf64_file_header then
     let entr = f3.elf64_file_header.elf64_entry in
     let segs = f3.elf64_file_interpreted_segments in
+    let mach = f3.elf64_file_header.elf64_machine in
       match List.filter (fun sg -> sg.elf64_segment_type = elf_pt_load) segs with
         | []    -> fail "get_elf64_executable_image: an executable ELF file must have at least one loadable segment"
         | load  ->
@@ -758,7 +762,7 @@ let get_elf64_executable_image f3 =
                   return [sg; seg]
               else
                 fail "get_elf64_executable_image: invariant invalidated") load >>= fun bs_base ->
-            return (List.concat bs_base, natural_of_elf64_addr entr)
+            return (List.concat bs_base, natural_of_elf64_addr entr, natural_of_elf64_half mach)
       end
   else
     fail "elf64_get_executable_image: not an executable ELF file"
@@ -776,7 +780,7 @@ let get_elf32_file_global_symbol_init f3 =
     Elf_symbol_table.get_elf32_symbol_image_address symtab strtab >>= fun strs ->
       let mapped = mapM (fun (symbol, (typ, size, addr)) ->
         if typ = Elf_symbol_table.stt_object then
-          get_elf32_executable_image f3 >>= fun (img, entry) ->
+          get_elf32_executable_image f3 >>= fun (img, entry, mach) ->
           let chunks =
             List.filter (fun chunk ->
               addr >= chunk.elf32_segment_base &&
@@ -808,7 +812,7 @@ let get_elf64_file_global_symbol_init f3 =
     Elf_symbol_table.get_elf64_symbol_image_address symtab strtab >>= fun strs ->
       let mapped = mapM (fun (symbol, (typ, size, addr)) ->
         if typ = Elf_symbol_table.stt_object then
-          get_elf64_executable_image f3 >>= fun (img, entry) ->
+          get_elf64_executable_image f3 >>= fun (img, entry, mach) ->
           let chunks =
             List.filter (fun chunk ->
               addr >= chunk.elf64_segment_base &&
