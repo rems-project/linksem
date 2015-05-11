@@ -82,20 +82,446 @@ val is_processor_specific_object_file_type_value : natural -> bool
 let is_processor_specific_object_file_type_value v =
   v >= 65280 && v <= 65535
 
-(** ELF machine architectures (TODO: complete the conversion of the enumeration.) *)
+(** ELF machine architectures *)
 
-(** Intel 386 *)
-let elf_ma_386 : natural = 3
-(** IBM PowerPC *)
-let elf_ma_ppc : natural = 20
-(** IBM PowerPC 64 *)
-let elf_ma_ppc64 : natural = 21
-(** ARM 32-bit *)
-let elf_ma_arm : natural = 40
-(** AMD x86-64 *)
-let elf_ma_x86_64 : natural = 62
-(** ARM AArch64 *) 
+(** Nanoradio optimised RISC *)
+let elf_ma_norc : natural = 218
+(** iCelero CoolEngine *)
+let elf_ma_cool : natural = 217
+(** Cognitive Smart Memory Processor *)
+let elf_ma_coge : natural = 216
+(** Paneve CDP architecture family *)
+let elf_ma_cdp : natural = 215
+(** KM211 KVARC processor *)
+let elf_ma_kvarc : natural = 214
+(** KM211 KMX8 8-bit processor *)
+let elf_ma_kmx8 : natural = 213
+(** KM211 KMX16 16-bit processor *)
+let elf_ma_kmx16 : natural = 212
+(** KM211 KMX32 32-bit processor *)
+let elf_ma_kmx32 : natural = 211
+(** KM211 KM32 32-bit processor *)
+let elf_ma_km32 : natural = 210
+(** Microchip 8-bit PIC(r) family *)
+let elf_ma_mchp_pic : natural = 204
+(** XMOS xCORE processor family *)
+let elf_ma_xcore : natural = 203
+(** Beyond BA2 CPU architecture *)
+let elf_ma_ba2 : natural = 202
+(** Beyond BA1 CPU architecture *)  
+let elf_ma_ba1 : natural = 201
+(** Freescale 56800EX Digital Signal Controller (DSC) *)
+let elf_ma_5600ex : natural = 200
+(** 199 Renesas 78KOR family *)
+let elf_ma_78kor : natural = 199
+(** Broadcom VideoCore V processor *)
+let elf_ma_videocore5 : natural = 198
+(** Renesas RL78 family *)
+let elf_ma_rl78 : natural = 197
+(** Open8 8-bit RISC soft processing core *)
+let elf_ma_open8 : natural = 196
+(** Synopsys ARCompact V2 *)
+let elf_ma_arc_compact2 : natural = 195
+(** KIPO_KAIST Core-A 2nd generation processor family *)
+let elf_ma_corea_2nd : natural = 194
+(** KIPO_KAIST Core-A 1st generation processor family *)
+let elf_ma_corea_1st : natural = 193
+(** CloudShield architecture family *)
+let elf_ma_cloudshield : natural = 192
+(** Infineon Technologies SLE9X core *)
+let elf_ma_sle9x : natural = 179
+(** Intel L10M *)
+let elf_ma_l10m : natural = 180
+(** Intel K10M *)
+let elf_ma_k10m : natural = 181
+(** ARM 64-bit architecture (AARCH64) *)
 let elf_ma_aarch64 : natural = 183
+(** Atmel Corporation 32-bit microprocessor family *)
+let elf_ma_avr32 : natural = 185
+(** STMicroelectronics STM8 8-bit microcontroller *)
+let elf_ma_stm8 : natural = 186
+(** Tilera TILE64 multicore architecture family *)
+let elf_ma_tile64 : natural = 187
+(** Tilera TILEPro multicore architecture family *)
+let elf_ma_tilepro : natural = 188
+(** Xilinix MicroBlaze 32-bit RISC soft processor core *)
+let elf_ma_microblaze : natural = 189
+(** NVIDIA CUDA architecture *)
+let elf_ma_cuda : natural = 190
+(** Tilera TILE-Gx multicore architecture family *)
+let elf_ma_tilegx : natural = 191
+(** Cypress M8C microprocessor *)
+let elf_ma_cypress : natural = 161
+(** Renesas R32C series microprocessors *)
+let elf_ma_r32c : natural = 162
+(** NXP Semiconductors TriMedia architecture family *)
+let elf_ma_trimedia : natural = 163
+(** QUALCOMM DSP6 processor *)
+let elf_ma_qdsp6 : natural = 164
+(** Intel 8051 and variants *)
+let elf_ma_8051 : natural = 165
+(** STMicroelectronics STxP7x family of configurable and extensible RISC processors *)
+let elf_ma_stxp7x : natural = 166
+(** Andes Technology compact code size embedded RISC processor family *)
+let elf_ma_nds32 : natural = 167
+(** Cyan Technology eCOG1X family *)
+let elf_ma_ecog1x : natural = 168
+(** Dallas Semiconductor MAXQ30 Core Micro-controllers *)
+let elf_ma_maxq30 : natural = 169
+(** New Japan Radio (NJR) 16-bit DSP Processor *)
+let elf_ma_ximo16 : natural = 170
+(** M2000 Reconfigurable RISC Microprocessor *)
+let elf_ma_manik : natural = 171
+(** Cray Inc. NV2 vector architecture *)
+let elf_ma_craynv2 : natural = 172
+(** Renesas RX family *)
+let elf_ma_rx : natural = 173
+(** Imagination Technologies META processor architecture *)
+let elf_ma_metag : natural = 174
+(** MCST Elbrus general purpose hardware architecture *)
+let elf_ma_mcst_elbrus : natural = 175
+(** Cyan Technology eCOG16 family *)
+let elf_ma_ecog16 : natural = 176
+(** National Semiconductor CompactRISC CR16 16-bit microprocessor *)
+let elf_ma_cr16 : natural = 177
+(** Freescale Extended Time Processing Unit *)
+let elf_ma_etpu : natural = 178
+(** Altium TSK3000 core *)
+let elf_ma_tsk3000 : natural = 131
+(** Freescale RS08 embedded processor *)
+let elf_ma_rs08 : natural = 132
+(** Analog Devices SHARC family of 32-bit DSP processors *)
+let elf_ma_sharc : natural = 133
+(** Cyan Technology eCOG2 microprocessor *)
+let elf_ma_ecog2 : natural = 134
+(** Sunplus S+core7 RISC processor *)
+let elf_ma_ccore7 : natural = 135
+(** New Japan Radio (NJR) 24-bit DSP Processor *)
+let elf_ma_dsp24 : natural = 136
+(** Broadcom VideoCore III processor *)
+let elf_ma_videocore3 : natural = 137
+(** RISC processor for Lattice FPGA architecture *)
+let elf_ma_latticemico32 : natural = 138
+(** Seiko Epson C17 family *)
+let elf_ma_c17 : natural = 139
+(** The Texas Instruments TMS320C6000 DSP family *)
+let elf_ma_c6000 : natural = 140
+(** The Texas Instruments TMS320C2000 DSP family *)
+let elf_ma_c2000 : natural = 141
+(** The Texas Instruments TMS320C55x DSP family *)
+let elf_ma_c5500 : natural = 142
+(** STMicroelectronics 64bit VLIW Data Signal Processor *)
+let elf_ma_mmdsp_plus : natural = 160
+(** LSI Logic 16-bit DSP Processor *)
+let elf_ma_zsp : natural = 79
+(** Donald Knuth's educational 64-bit processor *)
+let elf_ma_mmix : natural = 80
+(** Harvard University machine-independent object files *)
+let elf_ma_huany : natural = 81
+(** SiTera Prism *)
+let elf_ma_prism : natural = 82
+(** Atmel AVR 8-bit microcontroller *)
+let elf_ma_avr : natural = 83
+(** Fujitsu FR30 *)
+let elf_ma_fr30 : natural = 84
+(** Mitsubishi D10V *)
+let elf_ma_d10v : natural = 85
+(** Mitsubishi D30V *)
+let elf_ma_d30v : natural = 86
+(** NEC v850 *)
+let elf_ma_v850 : natural = 87
+(** Mitsubishi M32R *)
+let elf_ma_m32r : natural = 88
+(** Matsushita MN10300 *)
+let elf_ma_mn10300 : natural = 89
+(** Matsushita MN10200 *)
+let elf_ma_mn10200 : natural = 90
+(** picoJava *)
+let elf_ma_pj : natural = 91
+(** OpenRISC 32-bit embedded processor *)
+let elf_ma_openrisc : natural = 92
+(** ARC International ARCompact processor (old spelling/synonym: ELF_MA_ARC_A5) *)
+let elf_ma_arc_compact : natural = 93
+(** Tensilica Xtensa Architecture *)
+let elf_ma_xtensa : natural = 94
+(** Alphamosaic VideoCore processor *)
+let elf_ma_videocore : natural = 95
+(** Thompson Multimedia General Purpose Processor *)
+let elf_ma_tmm_gpp : natural = 96
+(** National Semiconductor 32000 series *)
+let elf_ma_ns32k : natural = 97
+(** Tenor Network TPC processor *)
+let elf_ma_tpc : natural = 98
+(** Trebia SNP 1000 processor *)
+let elf_ma_snp1k : natural = 99
+(** STMicroelectronics ST200 microcontroller *)
+let elf_ma_st200 : natural = 100
+(** Ubicom IP2xxx microcontroller family *)
+let elf_ma_ip2k : natural = 101
+(** MAX Processor *)
+let elf_ma_max : natural = 102
+(** National Semiconductor CompactRISC microprocessor *)
+let elf_ma_cr : natural = 103
+(** Fujitsu F2MC16 *)
+let elf_ma_f2mc16 : natural = 104
+(** Texas Instruments embedded microcontroller msp430 *)
+let elf_ma_msp430 : natural = 105
+(** Analog Devices Blackfin (DSP) processor *)
+let elf_ma_blackfin : natural = 106
+(** S1C33 Family of Seiko Epson processors *)
+let elf_ma_se_c33 : natural = 107
+(** Sharp embedded microprocessor *)
+let elf_ma_sep : natural = 108
+(** Arca RISC Microprocessor *)
+let elf_ma_arca : natural = 109
+(** Microprocessor series from PKU-Unity Ltd. and MPRC of Peking University *)
+let elf_ma_unicore : natural = 110
+(** eXcess: 16/32/64-bit configurable embedded CPU *)
+let elf_ma_excess : natural = 111
+(** Icera Semiconductor Inc. Deep Execution Processor *)
+let elf_ma_dxp : natural = 112
+(** Altera Nios II soft-core processor *)
+let elf_ma_altera_nios2 : natural = 113
+(** National Semiconductor CompactRISC CRX microprocessor *)
+let elf_ma_crx : natural = 114
+(** Motorola XGATE embedded processor *)
+let elf_ma_xgate : natural = 115
+(** Infineon C16x/XC16x processor *)
+let elf_ma_c166 : natural = 116
+(** Renesas M16C series microprocessors *)
+let elf_ma_m16c : natural = 117
+(** Microchip Technology dsPIC30F Digital Signal Controller *)
+let elf_ma_dspic30f : natural = 118
+(** Freescale Communication Engine RISC core *)
+let elf_ma_ce : natural = 119
+(** Renesas M32C series microprocessors *)
+let elf_ma_m32c : natural = 120
+(** No machine *)
+let elf_ma_none : natural = 0
+(** AT&T WE 32100 *)
+let elf_ma_m32 : natural = 1
+(** SPARC *)
+let elf_ma_sparc : natural = 2
+(** Intel 80386 *)
+let elf_ma_386 : natural = 3
+(** Motorola 68000 *)
+let elf_ma_68k : natural = 4
+(** Motorola 88000 *)
+let elf_ma_88k : natural = 5
+(** Intel 80860 *)
+let elf_ma_860 : natural = 7
+(** MIPS I Architecture *)
+let elf_ma_mips : natural = 8
+(** IBM System/370 Processor *)
+let elf_ma_s370 : natural = 9
+(** MIPS RS3000 Little-endian *)
+let elf_ma_mips_rs3_le : natural = 10
+(** Hewlett-Packard PA-RISC *)
+let elf_ma_parisc : natural = 15
+(** Fujitsu VPP500 *)
+let elf_ma_vpp500 : natural = 17
+(** Enhanced instruction set SPARC *)
+let elf_ma_sparc32plus : natural = 18
+(** Intel 80960 *)
+let elf_ma_960 : natural = 19
+(** PowerPC *)
+let elf_ma_ppc : natural = 20
+(** 64-bit PowerPC *)
+let elf_ma_ppc64 : natural = 21
+(** IBM System/390 Processor *)
+let elf_ma_s390 : natural = 22
+(** IBM SPU/SPC *)
+let elf_ma_spu : natural = 23
+(** NEC V800 *)
+let elf_ma_v800 : natural = 36
+(** Fujitsu FR20 *)
+let elf_ma_fr20 : natural = 37
+(** TRW RH-32 *)
+let elf_ma_rh32 : natural = 38
+(** Motorola RCE *)
+let elf_ma_rce : natural = 39
+(** ARM 32-bit architecture (AARCH32) *)
+let elf_ma_arm : natural = 40
+(** Digital Alpha *)
+let elf_ma_alpha : natural = 41
+(** Hitachi SH *)
+let elf_ma_sh : natural = 42
+(** SPARC Version 9 *)
+let elf_ma_sparcv9 : natural = 43
+(** Siemens TriCore embedded processor *)
+let elf_ma_tricore : natural = 44
+(** Argonaut RISC Core, Argonaut Technologies Inc. *)
+let elf_ma_arc : natural = 45
+(** Hitachi H8/300 *)
+let elf_ma_h8_300 : natural = 46
+(** Hitachi H8/300H *)
+let elf_ma_h8_300h : natural = 47
+(** Hitachi H8S *)
+let elf_ma_h8s : natural = 48
+(** Hitachi H8/500 *)
+let elf_ma_h8_500 : natural = 49
+(** Intel IA-64 processor architecture *)
+let elf_ma_ia_64 : natural = 50
+(** Stanford MIPS-X *)
+let elf_ma_mips_x : natural = 51
+(** Motorola ColdFire *)
+let elf_ma_coldfire : natural = 52
+(** Motorola M68HC12 *)
+let elf_ma_68hc12 : natural = 53
+(** Fujitsu MMA Multimedia Accelerator *)
+let elf_ma_mma : natural = 54
+(** Siemens PCP *)
+let elf_ma_pcp : natural = 55
+(** Sony nCPU embedded RISC processor *)
+let elf_ma_ncpu : natural = 56
+(** Denso NDR1 microprocessor *)
+let elf_ma_ndr1 : natural = 57
+(** Motorola Star*Core processor *)
+let elf_ma_starcore : natural = 58
+(** Toyota ME16 processor *)
+let elf_ma_me16 : natural = 59
+(** STMicroelectronics ST100 processor *)
+let elf_ma_st100 : natural = 60
+(** Advanced Logic Corp. TinyJ embedded processor family *)
+let elf_ma_tinyj : natural = 61
+(** AMD x86-64 architecture *)
+let elf_ma_x86_64 : natural = 62
+(** Sony DSP Processor *)
+let elf_ma_pdsp : natural = 63
+(** Digital Equipment Corp. PDP-10 *)
+let elf_ma_pdp10 : natural = 64
+(** Digital Equipment Corp. PDP-11 *)
+let elf_ma_pdp11 : natural = 65
+(** Siemens FX66 microcontroller *)
+let elf_ma_fx66 : natural = 66
+(** STMicroelectronics ST9+ 8/16 bit microcontroller *)
+let elf_ma_st9plus : natural = 67
+(** STMicroelectronics ST7 8-bit microcontroller *)
+let elf_ma_st7 : natural = 68
+(** Motorola MC68HC16 Microcontroller *)
+let elf_ma_68hc16 : natural = 69
+(** Motorola MC68HC11 Microcontroller *)
+let elf_ma_68hc11 : natural = 70
+(** Motorola MC68HC08 Microcontroller *)
+let elf_ma_68hc08 : natural = 71
+(** Motorola MC68HC05 Microcontroller *)
+let elf_ma_68hc05 : natural = 72
+(** Silicon Graphics SVx *)
+let elf_ma_svx : natural = 73
+(** STMicroelectronics ST19 8-bit microcontroller *)
+let elf_ma_st19 : natural = 74
+(** Digital VAX *)
+let elf_ma_vax : natural = 75
+(** Axis Communications 32-bit embedded processor *)
+let elf_ma_cris : natural = 76
+(** Infineon Technologies 32-bit embedded processor *)
+let elf_ma_javelin : natural = 77
+(** Element 14 64-bit DSP Processor *)
+let elf_ma_firepath : natural = 78
+(** Reserved by Intel *)
+let elf_ma_intel209 : natural = 209
+(** Reserved by Intel *)
+let elf_ma_intel208 : natural = 208
+(** Reserved by Intel *)
+let elf_ma_intel207 : natural = 207
+(** Reserved by Intel *)
+let elf_ma_intel206 : natural = 206
+(** Reserved by Intel *)
+let elf_ma_intel205 : natural = 205
+(** Reserved by Intel *)
+let elf_ma_intel182 : natural = 182
+(** Reserved by ARM *)
+let elf_ma_arm184 : natural = 184
+(** Reserved for future use *)
+let elf_ma_reserved6 : natural = 6
+(** Reserved for future use *)
+let elf_ma_reserved11 : natural = 11
+(** Reserved for future use *)
+let elf_ma_reserved12 : natural = 12
+(** Reserved for future use *)
+let elf_ma_reserved13 : natural = 13
+(** Reserved for future use *)
+let elf_ma_reserved14 : natural = 14
+(** Reserved for future use *)
+let elf_ma_reserved16 : natural = 16
+(** Reserved for future use *)
+let elf_ma_reserved24 : natural = 24
+(** Reserved for future use *)
+let elf_ma_reserved25 : natural = 25
+(** Reserved for future use *)
+let elf_ma_reserved26 : natural = 26
+(** Reserved for future use *)
+let elf_ma_reserved27 : natural = 27
+(** Reserved for future use *)
+let elf_ma_reserved28 : natural = 28
+(** Reserved for future use *)
+let elf_ma_reserved29 : natural = 29
+(** Reserved for future use *)
+let elf_ma_reserved30 : natural = 30
+(** Reserved for future use *)
+let elf_ma_reserved31 : natural = 31
+(** Reserved for future use *)
+let elf_ma_reserved32 : natural = 32
+(** Reserved for future use *)
+let elf_ma_reserved33 : natural = 33
+(** Reserved for future use *)
+let elf_ma_reserved34 : natural = 34
+(** Reserved for future use *)
+let elf_ma_reserved35 : natural = 35
+(** Reserved for future use *)
+let elf_ma_reserved121 : natural = 121
+(** Reserved for future use *)
+let elf_ma_reserved122 : natural = 122
+(** Reserved for future use *)
+let elf_ma_reserved123 : natural = 123
+(** Reserved for future use *)
+let elf_ma_reserved124 : natural = 124
+(** Reserved for future use *)
+let elf_ma_reserved125 : natural = 125
+(** Reserved for future use *)
+let elf_ma_reserved126 : natural = 126
+(** Reserved for future use *)
+let elf_ma_reserved127 : natural = 127
+(** Reserved for future use *)
+let elf_ma_reserved128 : natural = 128
+(** Reserved for future use *)
+let elf_ma_reserved129 : natural = 129
+(** Reserved for future use *)
+let elf_ma_reserved130 : natural = 130
+(** Reserved for future use *)
+let elf_ma_reserved143 : natural = 143
+(** Reserved for future use *)
+let elf_ma_reserved144 : natural = 144
+(** Reserved for future use *)
+let elf_ma_reserved145 : natural = 145
+(** Reserved for future use *)
+let elf_ma_reserved146 : natural = 146
+(** Reserved for future use *)
+let elf_ma_reserved147 : natural = 147
+(** Reserved for future use *)
+let elf_ma_reserved148 : natural = 148
+(** Reserved for future use *)
+let elf_ma_reserved149 : natural = 149
+(** Reserved for future use *)
+let elf_ma_reserved150 : natural = 150
+(** Reserved for future use *)
+let elf_ma_reserved151 : natural = 151
+(** Reserved for future use *)
+let elf_ma_reserved152 : natural = 152
+(** Reserved for future use *)
+let elf_ma_reserved153 : natural = 153
+(** Reserved for future use *)
+let elf_ma_reserved154 : natural = 154
+(** Reserved for future use *)
+let elf_ma_reserved155 : natural = 155
+(** Reserved for future use *)
+let elf_ma_reserved156 : natural = 156
+(** Reserved for future use *)
+let elf_ma_reserved157 : natural = 157
+(** Reserved for future use *)
+let elf_ma_reserved158 : natural = 158
+(** Reserved for future use *)
+let elf_ma_reserved159 : natural = 159
 
 (** [string_of_elf_machine_architecture m] produces a string representation of
   * the numeric encoding [m] of the ELF machine architecture.
@@ -116,233 +542,6 @@ let {ocaml} string_of_elf_machine_architecture m =
     "ARM 64-bit"
 	else
 		"Other architecture"
-
-(* XXX: convert these into top-level definitions later...
-(** [elf_machine_architecture] enumerates all the supported machine architectures
-  * in the System V ABI.
-  *)
-type elf_machine_architecture
-  = ELF_MA_Norc          (* Nanoradio optimised RISC *)
-  | ELF_MA_Cool          (* iCelero CoolEngine *)
-  | ELF_MA_Coge          (* Cognitive Smart Memory Processor *)
-  | ELF_MA_CDP           (* Paneve CDP architecture family *)
-  | ELF_MA_KVARC         (* KM211 KVARC processor *)
-  | ELF_MA_KMX8          (* KM211 KMX8 8-bit processor *)
-  | ELF_MA_KMX16         (* KM211 KMX16 16-bit processor *)
-  | ELF_MA_KMX32         (* KM211 KMX32 32-bit processor *)
-  | ELF_MA_KM32          (* KM211 KM32 32-bit processor *)
-  | ELF_MA_MCHP_PIC      (* Microchip 8-bit PIC(r) family *)
-  | ELF_MA_XCORE         (* XMOS xCORE processor family *)
-  | ELF_MA_BA2           (* Beyond BA2 CPU architecture *)
-  | ELF_MA_BA1           (* Beyond BA1 CPU architecture *)  
-  | ELF_MA_5600EX        (* Freescale 56800EX Digital Signal Controller (DSC) *)
-  | ELF_MA_78KOR         (* 199 Renesas 78KOR family *)
-  | ELF_MA_VideoCore5    (* Broadcom VideoCore V processor *)
-  | ELF_MA_RL78          (* Renesas RL78 family *)
-  | ELF_MA_Open8         (* Open8 8-bit RISC soft processing core *)
-  | ELF_MA_ARC_Compact2  (* Synopsys ARCompact V2 *)
-  | ELF_MA_CoreA_2nd     (* KIPO_KAIST Core-A 2nd generation processor family *)
-  | ELF_MA_CoreA_1st     (* KIPO_KAIST Core-A 1st generation processor family *)
-  | ELF_MA_CloudShield   (* CloudShield architecture family *)
-  | ELF_MA_SLE9X         (* Infineon Technologies SLE9X core *)
-  | ELF_MA_L10M          (* Intel L10M *)
-  | ELF_MA_K10M          (* Intel K10M *)
-  | ELF_MA_AArch64       (* ARM 64-bit architecture (AARCH64) *)
-  | ELF_MA_AVR32         (* Atmel Corporation 32-bit microprocessor family *)
-  | ELF_MA_STM8          (* STMicroelectronics STM8 8-bit microcontroller *)
-  | ELF_MA_TILE64        (* Tilera TILE64 multicore architecture family *)
-  | ELF_MA_TILEPro       (* Tilera TILEPro multicore architecture family *)
-  | ELF_MA_MicroBlaze    (* Xilinix MicroBlaze 32-bit RISC soft processor core *)
-  | ELF_MA_CUDA          (* NVIDIA CUDA architecture *)
-  | ELF_MA_TILEGx        (* Tilera TILE-Gx multicore architecture family *)
-  | ELF_MA_Cypress       (* Cypress M8C microprocessor *)
-  | ELF_MA_R32C          (* Renesas R32C series microprocessors *)
-  | ELF_MA_TriMedia      (* NXP Semiconductors TriMedia architecture family *)
-  | ELF_MA_QDSP6         (* QUALCOMM DSP6 processor *)
-  | ELF_MA_8051          (* Intel 8051 and variants *)
-  | ELF_MA_STXP7X        (* STMicroelectronics STxP7x family of configurable and extensible RISC processors *)
-  | ELF_MA_NDS32         (* Andes Technology compact code size embedded RISC processor family *)
-  | ELF_MA_eCOG1X        (* Cyan Technology eCOG1X family *)
-  | ELF_MA_MAXQ30        (* Dallas Semiconductor MAXQ30 Core Micro-controllers *)
-  | ELF_MA_XIMO16        (* New Japan Radio (NJR) 16-bit DSP Processor *)
-  | ELF_MA_MANIK         (* M2000 Reconfigurable RISC Microprocessor *)
-  | ELF_MA_CrayNV2       (* Cray Inc. NV2 vector architecture *)
-  | ELF_MA_RX            (* Renesas RX family *)
-  | ELF_MA_METAG         (* Imagination Technologies META processor architecture *)
-  | ELF_MA_MCST_Elbrus   (* MCST Elbrus general purpose hardware architecture *)
-  | ELF_MA_eCOG16        (* Cyan Technology eCOG16 family *)
-  | ELF_MA_CR16          (* National Semiconductor CompactRISC CR16 16-bit microprocessor *)
-  | ELF_MA_ETPU          (* Freescale Extended Time Processing Unit *)
-  | ELF_MA_TSK3000       (* Altium TSK3000 core *)
-  | ELF_MA_RS08          (* Freescale RS08 embedded processor *)
-  | ELF_MA_SHARC         (* Analog Devices SHARC family of 32-bit DSP processors *)
-  | ELF_MA_eCOG2         (* Cyan Technology eCOG2 microprocessor *)
-  | ELF_MA_Score7        (* Sunplus S+core7 RISC processor *)
-  | ELF_MA_DSP24         (* New Japan Radio (NJR) 24-bit DSP Processor *)
-  | ELF_MA_VideoCore3    (* Broadcom VideoCore III processor *)
-  | ELF_MA_LatticeMICO32 (* RISC processor for Lattice FPGA architecture *)
-  | ELF_MA_C17           (* Seiko Epson C17 family *)
-  | ELF_MA_C6000         (* The Texas Instruments TMS320C6000 DSP family *)
-  | ELF_MA_C2000         (* The Texas Instruments TMS320C2000 DSP family *)
-  | ELF_MA_C5500         (* The Texas Instruments TMS320C55x DSP family *)
-  | ELF_MA_MMDSP_PLUS    (* STMicroelectronics 64bit VLIW Data Signal Processor *)
-  | ELF_MA_ZSP           (* LSI Logic 16-bit DSP Processor *)
-  | ELF_MA_MMIX          (* Donald Knuth's educational 64-bit processor *)
-  | ELF_MA_HUANY         (* Harvard University machine-independent object files *)
-  | ELF_MA_Prism         (* SiTera Prism *)
-  | ELF_MA_AVR           (* Atmel AVR 8-bit microcontroller *)
-  | ELF_MA_FR30          (* Fujitsu FR30 *)
-  | ELF_MA_D10V          (* Mitsubishi D10V *)
-  | ELF_MA_D30V          (* Mitsubishi D30V *)
-  | ELF_MA_v850          (* NEC v850 *)
-  | ELF_MA_M32R          (* Mitsubishi M32R *)
-  | ELF_MA_MN10300       (* Matsushita MN10300 *)
-  | ELF_MA_MN10200       (* Matsushita MN10200 *)
-  | ELF_MA_pJ            (* picoJava *)
-  | ELF_MA_OpenRISC      (* OpenRISC 32-bit embedded processor *)
-  | ELF_MA_ARC_Compact   (* ARC International ARCompact processor (old spelling/synonym: ELF_MA_ARC_A5) *)
-  | ELF_MA_Xtensa        (* Tensilica Xtensa Architecture *)
-  | ELF_MA_VideoCore     (* Alphamosaic VideoCore processor *)
-  | ELF_MA_TMM_GPP       (* Thompson Multimedia General Purpose Processor *)
-  | ELF_MA_NS32K         (* National Semiconductor 32000 series *)
-  | ELF_MA_TPC           (* Tenor Network TPC processor *)
-  | ELF_MA_SNP1K         (* Trebia SNP 1000 processor *)
-  | ELF_MA_ST200         (* STMicroelectronics ST200 microcontroller *)
-  | ELF_MA_IP2K          (* Ubicom IP2xxx microcontroller family *)
-  | ELF_MA_MAX           (* MAX Processor *)
-  | ELF_MA_CR            (* National Semiconductor CompactRISC microprocessor *)
-  | ELF_MA_F2MC16        (* Fujitsu F2MC16 *)
-  | ELF_MA_MSP430        (* Texas Instruments embedded microcontroller msp430 *)
-  | ELF_MA_Blackfin      (* Analog Devices Blackfin (DSP) processor *)
-  | ELF_MA_SE_C33        (* S1C33 Family of Seiko Epson processors *)
-  | ELF_MA_SEP           (* Sharp embedded microprocessor *)
-  | ELF_MA_Arca          (* Arca RISC Microprocessor *)
-  | ELF_MA_Unicore       (* Microprocessor series from PKU-Unity Ltd. and MPRC of Peking University *)
-  | ELF_MA_eXcess        (* eXcess: 16/32/64-bit configurable embedded CPU *)
-  | ELF_MA_DXP           (* Icera Semiconductor Inc. Deep Execution Processor *)
-  | ELF_MA_Altera_Nios2  (* Altera Nios II soft-core processor *)
-  | ELF_MA_CRX           (* National Semiconductor CompactRISC CRX microprocessor *)
-  | ELF_MA_XGATE         (* Motorola XGATE embedded processor *)
-  | ELF_MA_C166          (* Infineon C16x/XC16x processor *)
-  | ELF_MA_M16C          (* Renesas M16C series microprocessors *)
-  | ELF_MA_dsPIC30F      (* Microchip Technology dsPIC30F Digital Signal Controller *)
-  | ELF_MA_CE            (* Freescale Communication Engine RISC core *)
-  | ELF_MA_M32C          (* Renesas M32C series microprocessors *)
-  | ELF_MA_None          (* No machine *)
-  | ELF_MA_M32           (* AT&T WE 32100 *)
-  | ELF_MA_SPARC         (* SPARC *)
-  | ELF_MA_386           (* Intel 80386 *)
-  | ELF_MA_68K           (* Motorola 68000 *)
-  | ELF_MA_88K           (* Motorola 88000 *)
-  | ELF_MA_860           (* Intel 80860 *)
-  | ELF_MA_MIPS          (* MIPS I Architecture *)
-  | ELF_MA_S370          (* IBM System/370 Processor *)
-  | ELF_MA_MIPS_RS3_LE   (* MIPS RS3000 Little-endian *)
-  | ELF_MA_PARISC        (* Hewlett-Packard PA-RISC *)
-  | ELF_MA_VPP500        (* Fujitsu VPP500 *)
-  | ELF_MA_SPARC32PLUS   (* Enhanced instruction set SPARC *)
-  | ELF_MA_960           (* Intel 80960 *)
-  | ELF_MA_PPC           (* PowerPC *)
-  | ELF_MA_PPC64         (* 64-bit PowerPC *)
-  | ELF_MA_S390          (* IBM System/390 Processor *)
-  | ELF_MA_SPU           (* IBM SPU/SPC *)
-  | ELF_MA_V800          (* NEC V800 *)
-  | ELF_MA_FR20          (* Fujitsu FR20 *)
-  | ELF_MA_RH32          (* TRW RH-32 *)
-  | ELF_MA_RCE           (* Motorola RCE *)
-  | ELF_MA_ARM           (* ARM 32-bit architecture (AARCH32) *)
-  | ELF_MA_Alpha         (* Digital Alpha *)
-  | ELF_MA_SH            (* Hitachi SH *)
-  | ELF_MA_SPARCv9       (* SPARC Version 9 *)
-  | ELF_MA_TriCore       (* Siemens TriCore embedded processor *)
-  | ELF_MA_ARC           (* Argonaut RISC Core, Argonaut Technologies Inc. *)
-  | ELF_MA_H8_300        (* Hitachi H8/300 *)
-  | ELF_MA_H8_300H       (* Hitachi H8/300H *)
-  | ELF_MA_H8S           (* Hitachi H8S *)
-  | ELF_MA_H8_500        (* Hitachi H8/500 *)
-  | ELF_MA_IA_64         (* Intel IA-64 processor architecture *)
-  | ELF_MA_MIPS_X        (* Stanford MIPS-X *)
-  | ELF_MA_ColdFire      (* Motorola ColdFire *)
-  | ELF_MA_68HC12        (* Motorola M68HC12 *)
-  | ELF_MA_MMA           (* Fujitsu MMA Multimedia Accelerator *)
-  | ELF_MA_PCP           (* Siemens PCP *)
-  | ELF_MA_nCPU          (* Sony nCPU embedded RISC processor *)
-  | ELF_MA_NDR1          (* Denso NDR1 microprocessor *)
-  | ELF_MA_StarCore      (* Motorola Star*Core processor *)
-  | ELF_MA_ME16          (* Toyota ME16 processor *)
-  | ELF_MA_ST100         (* STMicroelectronics ST100 processor *)
-  | ELF_MA_TinyJ         (* Advanced Logic Corp. TinyJ embedded processor family *)
-  | ELF_MA_X86_64        (* AMD x86-64 architecture *)
-  | ELF_MA_PDSP          (* Sony DSP Processor *)
-  | ELF_MA_PDP10         (* Digital Equipment Corp. PDP-10 *)
-  | ELF_MA_PDP11         (* Digital Equipment Corp. PDP-11 *)
-  | ELF_MA_FX66          (* Siemens FX66 microcontroller *)
-  | ELF_MA_ST9Plus       (* STMicroelectronics ST9+ 8/16 bit microcontroller *)
-  | ELF_MA_ST7           (* STMicroelectronics ST7 8-bit microcontroller *)
-  | ELF_MA_68HC16        (* Motorola MC68HC16 Microcontroller *)
-  | ELF_MA_68HC11        (* Motorola MC68HC11 Microcontroller *)
-  | ELF_MA_68HC08        (* Motorola MC68HC08 Microcontroller *)
-  | ELF_MA_68HC05        (* Motorola MC68HC05 Microcontroller *)
-  | ELF_MA_SVx           (* Silicon Graphics SVx *)
-  | ELF_MA_ST19          (* STMicroelectronics ST19 8-bit microcontroller *)
-  | ELF_MA_VAX           (* Digital VAX *)
-  | ELF_MA_CRIS          (* Axis Communications 32-bit embedded processor *)
-  | ELF_MA_Javelin       (* Infineon Technologies 32-bit embedded processor *)
-  | ELF_MA_Firepath      (* Element 14 64-bit DSP Processor *)
-  | ELF_MA_Intel209      (* Reserved by Intel *)
-  | ELF_MA_Intel208      (* Reserved by Intel *)
-  | ELF_MA_Intel207      (* Reserved by Intel *)
-  | ELF_MA_Intel206      (* Reserved by Intel *)
-  | ELF_MA_Intel205      (* Reserved by Intel *)
-  | ELF_MA_Intel182      (* Reserved by Intel *)
-  | ELF_MA_ARM184        (* Reserved by ARM *)
-  | ELF_MA_Reserved6     (* Reserved for future use *)
-  | ELF_MA_Reserved11    (* Reserved for future use *)
-  | ELF_MA_Reserved12    (* Reserved for future use *)
-  | ELF_MA_Reserved13    (* Reserved for future use *)
-  | ELF_MA_Reserved14    (* Reserved for future use *)
-  | ELF_MA_Reserved16    (* Reserved for future use *)
-  | ELF_MA_Reserved24    (* Reserved for future use *)
-  | ELF_MA_Reserved25    (* Reserved for future use *)
-  | ELF_MA_Reserved26    (* Reserved for future use *)
-  | ELF_MA_Reserved27    (* Reserved for future use *)
-  | ELF_MA_Reserved28    (* Reserved for future use *)
-  | ELF_MA_Reserved29    (* Reserved for future use *)
-  | ELF_MA_Reserved30    (* Reserved for future use *)
-  | ELF_MA_Reserved31    (* Reserved for future use *)
-  | ELF_MA_Reserved32    (* Reserved for future use *)
-  | ELF_MA_Reserved33    (* Reserved for future use *)
-  | ELF_MA_Reserved34    (* Reserved for future use *)
-  | ELF_MA_Reserved35    (* Reserved for future use *)
-  | ELF_MA_Reserved121   (* Reserved for future use *)
-  | ELF_MA_Reserved122   (* Reserved for future use *)
-  | ELF_MA_Reserved123   (* Reserved for future use *)
-  | ELF_MA_Reserved124   (* Reserved for future use *)
-  | ELF_MA_Reserved125   (* Reserved for future use *)
-  | ELF_MA_Reserved126   (* Reserved for future use *)
-  | ELF_MA_Reserved127   (* Reserved for future use *)
-  | ELF_MA_Reserved128   (* Reserved for future use *)
-  | ELF_MA_Reserved129   (* Reserved for future use *)
-  | ELF_MA_Reserved130   (* Reserved for future use *)
-  | ELF_MA_Reserved143   (* Reserved for future use *)
-  | ELF_MA_Reserved144   (* Reserved for future use *)
-  | ELF_MA_Reserved145   (* Reserved for future use *)
-  | ELF_MA_Reserved146   (* Reserved for future use *)
-  | ELF_MA_Reserved147   (* Reserved for future use *)
-  | ELF_MA_Reserved148   (* Reserved for future use *)
-  | ELF_MA_Reserved149   (* Reserved for future use *)
-  | ELF_MA_Reserved150   (* Reserved for future use *)
-  | ELF_MA_Reserved151   (* Reserved for future use *)
-  | ELF_MA_Reserved152   (* Reserved for future use *)
-  | ELF_MA_Reserved153   (* Reserved for future use *)
-  | ELF_MA_Reserved154   (* Reserved for future use *)
-  | ELF_MA_Reserved155   (* Reserved for future use *)
-  | ELF_MA_Reserved156   (* Reserved for future use *)
-  | ELF_MA_Reserved157   (* Reserved for future use *)
-  | ELF_MA_Reserved158   (* Reserved for future use *)
-  | ELF_MA_Reserved159   (* Reserved for future use *)
-  | ELF_MA_ReservedExt of nat (* Reserved for future use *)
-*)
 
 (** ELF version numbers.  Denotes the ELF version number of an ELF file.  Current is
   * defined to have a value of 1 with the present specification.  Extensions
