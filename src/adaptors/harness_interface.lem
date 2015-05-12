@@ -1,0 +1,31 @@
+open import String
+
+open import Byte_sequence
+open import Error
+
+open import Elf_file
+
+val open_elf32_file : string -> error elf32_file
+let open_elf32_file fname =
+  (* Acquire the data from the file... *)
+  Byte_sequence.acquire fname >>= fun bs0 ->
+  (* Read the magic number and the flags in the header... *)
+  repeatM' Elf_header.ei_nident bs0 (read_unsigned_char Endianness.default_endianness) >>= fun (ident, bs) ->
+    match List.index ident 4 with
+      | Nothing -> fail "open_elf32_file: ELF ident transcription error"
+      | Just c  ->
+        (* Calculate whether we are dealing with a 32- or 64-bit file based on
+         * what we have read...
+         *)
+        if natural_of_unsigned_char c = Elf_header.elf_class_32 then
+          Elf_file.read_elf32_file bs0 >>= fun ef5 ->
+          if Elf_program_header_table.get_elf32_static_linked ef5.elf32_file_program_header_table then
+          	return ef5
+          else
+            fail "open_elf32_file: not a statically linked executable"
+        else if natural_of_unsigned_char c = Elf_header.elf_class_64 then
+          fail "open_elf32_file: 64bit ELF file detected"
+        else
+          fail "open_elf32_file: ELF class unrecognised"
+    end
+	
