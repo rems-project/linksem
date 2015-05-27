@@ -17,7 +17,7 @@ open import Error
 open import Missing_pervasives
 open import Show
 
-(* Here we try to model the command line of GNU ld.bfd.
+(* Type [input_file_spec] is an attempty to model the command line of GNU ld.bfd.
  * 
  * Some options are global modifiers affecting the link output. 
  * Others have effect only for some subset of input files.
@@ -25,68 +25,82 @@ open import Show
  * whereby each argument selects one such possibility for all subsequent input files, 
  * until a different argument selects another possibility for ensuring inputs.
  *)
-
-type input_file_spec = Filename of string    (* /path/to/file.{o,a,so,...} -- might be script! *)
-                     | Libname of string     (* -llib *)
+type input_file_spec
+  = Filename of string (** /path/to/file.{o,a,so,...} -- might be script! *)
+  | Libname  of string (** -llib *)
 
 val string_of_input_file_spec : input_file_spec -> string
 let string_of_input_file_spec spec = 
-    match spec with
-        Filename(s) -> "file `" ^ s ^ "'"
-        | Libname(s) -> "library `" ^ s ^ "'"
-    end
+  match spec with
+    | Filename s -> "file `" ^ s ^ "'"
+    | Libname s  -> "library `" ^ s ^ "'"
+  end
 
 instance (Show input_file_spec)
-    let show = string_of_input_file_spec
+  let show = string_of_input_file_spec
 end
 
-type input_file_options = <| input_fmt : string
-                           ; input_libpath : list string
-                           ; input_link_sharedlibs : bool      (* -Bstatic *)
-                           ; input_check_sections : bool
-                           ; input_copy_dt_needed : bool
-                           ; input_whole_archive : bool
-                           ; input_as_needed : bool
-                           |>
+type input_file_options =
+  <| input_fmt             : string
+   ; input_libpath         : list string
+   ; input_link_sharedlibs : bool        (** -Bstatic *)
+   ; input_check_sections  : bool
+   ; input_copy_dt_needed  : bool
+   ; input_whole_archive   : bool
+   ; input_as_needed       : bool
+   |>
                            
-type link_option = OutputFilename of string
-                 | ForceCommonDefined of bool        (* -d, -dc, -dp *)
-                 | Soname of string                  (* -soname *)
-                 | EntryAddress of natural
-                 (* more here! *) 
+type link_option
+  = OutputFilename     of string
+  | ForceCommonDefined of bool    (** -d, -dc, -dp *)
+  | Soname             of string  (** -soname *)
+  | EntryAddress       of natural
+  (* XXX: more here! *) 
 
 (* To allow filtering out a previous setting for a given option, we define
  * an equality relation that is true if options are of the same constructor.
- * Seems like a bit of a HACK. *)
+ * Seems like a bit of a HACK.
+ *)
+
+let link_option_of_same_class lo1 lo2 =
+  match (lo1, lo2) with
+    | (OutputFilename _, OutputFilename _) -> true
+    | (ForceCommonDefined _, ForceCommonDefined _) -> true
+    | (Soname _, Soname _) -> true
+    | (EntryAddress _, EntryAddress _) -> true
+    | _ -> false
+  end
+
 instance (Eq link_option)
-    let (=) = fun opt1 -> 
-        (fun opt2 -> 
-            match (opt1, opt2) with 
-                | (OutputFilename(_), OutputFilename(_))        -> true
-                | (ForceCommonDefined(_), ForceCommonDefined(_)) -> true
-                | (Soname(_), Soname(_)) -> true
-                | (EntryAddress(_), EntryAddress(_)) -> true
-                | _ -> false
-            end
-        )
-    let (<>) = fun opt1 -> (fun opt2 -> not (opt1 = opt2))
+  (** XXX: hack, hack, hack!  Not a 'real' equality and could break some of the
+    * functions that have an Eq typeclass constraint as they will no longer be
+    * well-defined.
+    * We should consider not using [Eq] here and instead using the '..._with'
+    * functions that take an explicit comparison function, adding more if
+    * necessary.
+    *)
+  let (=)            = link_option_of_same_class
+  let (<>) opt1 opt2 = not (link_option_of_same_class opt1 opt2)
 end
 
-type input_file_and_options = input_file_spec * input_file_options
-type input_unit = File of input_file_and_options
-                | Group of list (input_file_and_options)   (* NOT recursive *)
+type input_file_and_options
+  = input_file_spec * input_file_options
+
+type input_unit
+  = File  of input_file_and_options
+  | Group of list (input_file_and_options) (* NOT recursive *)
 
 val string_of_input_unit : input_unit -> string
 let string_of_input_unit u = 
-    match u with
-        File(spec, opts) -> 
-            "single " ^ (show spec)
-       | Group(spec_opt_list) -> 
-            "group: [" ^ (show (List.map (fun (spec, opts) -> spec) spec_opt_list)) ^ "]"
-    end
+  match u with
+    | File (spec, opts) -> 
+        "single " ^ show spec
+    | Group spec_opt_list -> 
+        "group: [" ^ (show (List.map fst spec_opt_list)) ^ "]"
+  end
 
 instance (Show input_unit)
-    let show = string_of_input_unit
+  let show = string_of_input_unit
 end
 
 (* Reading the command-line: 
@@ -102,73 +116,77 @@ end
 (* As we read the command line, we keep a current state which is the collection
  * of seen input files, seen whole-link options, and input file options that will
  * apply to any input files we add subsequently. *)
-type command_state = <| input_units           : list input_unit
-                      ; link_options          : list link_option
-                      ; current_input_options : input_file_options
-                      ; current_group         : maybe (list input_file_and_options)
-                      ; stack                 : list command_state
-                      |>
+type command_state =
+  <| input_units           : list input_unit
+   ; link_options          : list link_option
+   ; current_input_options : input_file_options
+   ; current_group         : maybe (list input_file_and_options)
+   ; stack                 : list command_state
+   |>
                       
-(* This is the "default state" when we start reading input options *)
+(** [initial_state] is the "default state" when we start reading input options.
+  *)
 val initial_state : command_state
-let initial_state = <| input_units = []
-                     ; link_options = [OutputFilename("a.out")]
-                     ; current_input_options = <| input_fmt = "elf64-x86-64"   (* FIXME *)
-                                                ; input_libpath = ["/usr/lib"] (* FIXME: this probably isn't the right place to supply the default search path *)
-                                                ; input_link_sharedlibs = true
-                                                ; input_check_sections = true
-                                                ; input_copy_dt_needed = false
-                                                ; input_whole_archive = false
-                                                ; input_as_needed = true (* FIXME *)
-                                                |>
-                     ; current_group = Nothing
-                     ; stack = []
-                     |>
+let initial_state =
+  <| input_units           = []
+   ; link_options          = [OutputFilename("a.out")]
+   ; current_input_options =
+       <| input_fmt             = "elf64-x86-64"   (* FIXME *)
+        ; input_libpath         = ["/usr/lib"] (* FIXME: this probably isn't the right place to supply the default search path *)
+        ; input_link_sharedlibs = true
+        ; input_check_sections  = true
+        ; input_copy_dt_needed  = false
+        ; input_whole_archive   = false
+        ; input_as_needed       = true (* FIXME *)
+        |>
+   ; current_group         = Nothing
+   ; stack                 = []
+   |>
 
-type interpreted_command_line = list input_unit * list link_option
+type interpreted_command_line
+  = list input_unit * list link_option
 
 val add_input_file : command_state -> string -> command_state
 let add_input_file state s = 
-    let chars = toCharList s 
-    in
-    let spec = match chars with 
-        #'-' :: #'l' :: more -> Libname(toString more)
-        | #'-' :: more -> failwith ("not a valid option or input file: " ^ s)
-        | _ -> Filename(s)
+  let chars = toCharList s in
+  let spec =
+    match chars with 
+      | #'-'::#'l'::more -> Libname (toString more)
+      | #'-'::more       -> failwith ("add_input_file: not a valid option or input file: " ^ s)
+      | _                -> Filename s
     end
-    in
-    if state.current_group = Nothing 
-    then
-        <| input_units = state.input_units ++ [File(spec, state.current_input_options)]
-         ; link_options = state.link_options
-         ; current_input_options = state.current_input_options
-         ; current_group = state.current_group
-         ; stack = state.stack
-         |>
-    else 
-        <| input_units = state.input_units
-         ; link_options = state.link_options
-         ; current_input_options = state.current_input_options
-         ; current_group = let toAppend = [(spec, state.current_input_options)] in 
-            match state.current_group with Just l -> Just(l ++ toAppend) | Nothing -> Just(toAppend) 
-            end
-         ; stack = state.stack
-         |>
+  in
+    match state.current_group with
+      | Nothing -> 
+          <| input_units = state.input_units ++ [File (spec, state.current_input_options)]
+               ; link_options = state.link_options ; current_input_options = state.current_input_options
+               ; current_group = state.current_group ; stack = state.stack |>
+      | Just l  -> 
+          <| input_units = state.input_units ; link_options = state.link_options
+               ; current_input_options = state.current_input_options
+               ; current_group = Just (l ++ [(spec, state.current_input_options)]) ; stack = state.stack |>
+    end
 
-type option_token = string
-type option_argspecs = list string * list string
-type option_argvals = list string * list string
+type option_token
+  = string
+  
+type option_argspecs
+  = list string * list string
+  
+type option_argvals
+  = list string * list string
 
 val set_or_replace_option : link_option -> command_state -> command_state
 let set_or_replace_option opt state = 
-    <| input_units = state.input_units
-     ; link_options = (filter (fun existing -> existing <> opt) state.link_options) ++ [opt]
-     ; current_input_options = state.current_input_options
-     ; current_group = state.current_group
-     ; stack = state.stack
-     |>
+  <| input_units           = state.input_units
+   ; link_options          = (filter (fun existing -> existing <> opt) state.link_options) ++ [opt]
+   ; current_input_options = state.current_input_options
+   ; current_group         = state.current_group
+   ; stack                 = state.stack
+   |>
 
-type option_def = (list option_token) * option_argspecs * (option_argvals -> command_state -> command_state) * string
+type option_def =
+  list option_token * option_argspecs * (option_argvals -> command_state -> command_state) * string
 
 (* the table is a list of: ... options    and their arg names ... and the option's meaning as a function... and a help string *)
 val command_line_table : list option_def
@@ -370,54 +388,61 @@ let command_line_table = [
 
 val delete_trailing_equals: string -> maybe string
 let delete_trailing_equals str = 
-    let cs = toCharList str
-    in
-    if [#'='] = drop ((List.length cs) - 1) cs
-        then Just (toString (take ((List.length cs) - 1) cs))
-        else (* let _ = Missing_pervasives.println ("No trailing equals: " ^ str)
-            in *)
-            Nothing
+  let cs = toCharList str in
+    if [#'='] = drop ((List.length cs) - 1) cs then
+      Just (toString (take ((List.length cs) - 1) cs))
+    else
+      (* let _ = Missing_pervasives.println ("No trailing equals: " ^ str) in *)
+      Nothing
 
 val string_following_equals_at : nat -> string -> maybe string
 let string_following_equals_at pos str = 
-    let (first, second) = List.splitAt pos (toCharList str)
-    in match second with 
-        #'=' :: rest -> Just (toString rest)
-        | _ -> (* let _ = Missing_pervasives.println ("No trailing equals at " ^ (show pos) ^ ": " ^ str)
-            in *)
-            Nothing
+  let (first, second) = List.splitAt pos (toCharList str) in
+    match second with 
+      | #'='::rest -> Just (toString rest)
+      | _ ->
+        (* let _ = Missing_pervasives.println ("No trailing equals at " ^ (show pos) ^ ": " ^ str) in *)
+        Nothing
     end
 
 val equal_modulo_trailing_equals : string -> string -> bool
 let equal_modulo_trailing_equals argstr argdef = 
-    (* we allow argdef to have a trailing equals; if it does, 
-     * we allow the argstring to have the equals (or not) and trailing stuff,
-     * which will become an arg  *)
-    let result = match (delete_trailing_equals argdef) with 
-        Just matched -> 
-            let following_equals = string_following_equals_at (stringLength matched) argstr
-            in
-            match following_equals with 
-                Just following -> (* okay; does the pre-equals part match? *)
-                    matched = toString (take ((stringLength argdef) - 1) (toCharList argstr))
-                | _ -> (* the argstr is allowed not to have a trailing equals *) argstr = matched
-            end
-        | Nothing -> (* no trailing equals *) argdef = argstr
+  (* we allow argdef to have a trailing equals; if it does, 
+   * we allow the argstring to have the equals (or not) and trailing stuff,
+   * which will become an arg
+   *)
+  let result =
+    match delete_trailing_equals argdef with 
+      | Just matched -> 
+        let following_equals = string_following_equals_at (stringLength matched) argstr in
+          match following_equals with 
+            | Just following ->
+                (* okay; does the pre-equals part match? *)
+                matched = toString (take ((stringLength argdef) - 1) (toCharList argstr))
+            | _ ->
+                (* the argstr is allowed not to have a trailing equals *)
+                argstr = matched
+          end
+      | Nothing ->
+          (* no trailing equals *)
+          argdef = argstr
     end
-    in 
+  in 
     (* let _ = Missing_pervasives.println ("Do '" ^ argstr ^ "' and '" ^ argdef ^ "' match modulo trailing equals? " ^ (show result))
-    in *) result
+    in *)
+    result
     
 
 val matching_arg_and_alias : string -> list option_def -> maybe (string * option_def)
-let rec matching_arg_and_alias arg options = match options with 
-    [] -> Nothing
-    | (aliases, argspec, meaning, doc) :: more_opts -> 
+let rec matching_arg_and_alias arg options =
+  match options with 
+    | []                                          -> Nothing
+    | (aliases, argspec, meaning, doc)::more_opts -> 
         match find (fun alias -> equal_modulo_trailing_equals arg alias) aliases with 
-            Just found_alias -> Just (found_alias, (aliases, argspec, meaning, doc))
-            | Nothing -> matching_arg_and_alias arg more_opts
+          | Just found_alias -> Just (found_alias, (aliases, argspec, meaning, doc))
+          | Nothing          -> matching_arg_and_alias arg more_opts
         end
-    end
+  end
 
 (* We don't try to convert from strings to other things here; 
  * everything we record is either a bool, meaning option -A was "present", for some A,
@@ -429,63 +454,68 @@ let rec matching_arg_and_alias arg options = match options with
 
 val read_one_arg : command_state -> list string -> (command_state * list string)
 let read_one_arg state args =
-    (* Get the first string and look it up in our table. *)
-    match args with
-        [] -> (state, [])
-    |   some_arg :: more -> match (matching_arg_and_alias some_arg command_line_table) with
-            (* We need to handle argdefs that have trailing equals. This means 
-             * an extra arg might follow the equals. We need some helper functions. *)
-                Just (alias, (aliases, (argspec_extras, argspec_regex), meaning, doc)) ->
-                    (* Return a new state, by applying the argument's meaning. 
-                     * We have to supply the option's argument strings to the meaning function. *)
-                    let argstrings = take (List.length argspec_extras) more
-                    in 
-                    let regex_matches = match delete_trailing_equals some_arg with
-                        Just prefix -> 
-                            match (string_following_equals_at ((stringLength alias) - 1) some_arg) with 
-                                Just following_equals -> [following_equals]
-                                | Nothing -> failwith "impossible: '=' not where it was a moment ago"
-                            end
-                        | Nothing -> []
+  (* Get the first string and look it up in our table. *)
+  match args with
+    | []             -> (state, [])
+    | some_arg::more ->
+        match (matching_arg_and_alias some_arg command_line_table) with
+          (* We need to handle argdefs that have trailing equals. This means 
+           * an extra arg might follow the equals. We need some helper functions.
+           *)
+          | Just (alias, (aliases, (argspec_extras, argspec_regex), meaning, doc)) ->
+              (* Return a new state, by applying the argument's meaning. 
+               * We have to supply the option's argument strings to the meaning function.
+               *)
+            let argstrings = take (List.length argspec_extras) more in 
+            let regex_matches =
+              match delete_trailing_equals some_arg with
+                | Just prefix -> 
+                    match (string_following_equals_at ((stringLength alias) - 1) some_arg) with 
+                      | Just following_equals -> [following_equals]
+                      | Nothing -> failwith "impossible: '=' not where it was a moment ago"
                     end
-                    in 
-                    let new_state = meaning (argstrings, regex_matches) state
-                    in
-                    (new_state, drop (List.length argspec_extras) more)
-                | Nothing -> 
-                    (* If we didn't match any args, we ought to be an input file. *)
-                    (add_input_file state some_arg, more)
-            end
-    end
+                | Nothing -> []
+              end
+            in 
+            let new_state = meaning (argstrings, regex_matches) state in
+              (new_state, drop (List.length argspec_extras) more)
+          | Nothing -> 
+            (* If we didn't match any args, we ought to be an input file. *)
+            (add_input_file state some_arg, more)
+        end
+  end
 
 (* To fold over the command-line arguments we need a fold that passes 
  * suffixes of the list, not individual elements, and gives us back
  * the continuation that we need to fold over: a pair of folded-value, new-list. *)
 val foldl_suffix : forall 'a 'b. ('a -> list 'b -> ('a * list 'b)) -> 'a -> list 'b -> 'a (* originally foldl *)
-let rec foldl_suffix f a l = match l with
-  | []      -> a
-  | x :: xs -> 
-    let (new_a, new_list) = f a l
-    in foldl_suffix f new_a new_list
-end
+let rec foldl_suffix f a l =
+  match l with
+    | []      -> a
+    | x::xs -> 
+      let (new_a, new_list) = f a l in
+        foldl_suffix f new_a new_list
+  end
 
 (* the word-splitting in argv needs a little fixing up. *)
 val cook_argv : list string -> list string -> list string
 let rec cook_argv acc args = 
-    match args with
-        [] -> acc
-      | "-z" :: more -> match more with 
-         [] -> failwith "-z must be followed by another argument"
-         | something :: yetmore -> cook_argv (acc ++ ["-z " ^ something]) yetmore
-         end
-      | something :: more -> cook_argv (acc ++ [something]) more
-    end
+  match args with
+    | []              -> acc
+    | "-z"::more      ->
+      match more with 
+        | []                 ->
+            failwith "-z must be followed by another argument"
+        | something::yetmore ->
+            cook_argv (acc ++ ["-z " ^ something]) yetmore
+      end
+    | something::more ->
+        cook_argv (acc ++ [something]) more
+  end
 
 val command_line : unit -> interpreted_command_line
-let command_line = fun _ -> (
-    let cooked_argv = cook_argv [] (tail argv)
-    in
-    (* Now we use our fold-alike. *)
-    let state = foldl_suffix read_one_arg initial_state cooked_argv
-    in (state.input_units, state.link_options)
-)
+let command_line () =
+  let cooked_argv = cook_argv [] (tail argv) in
+  (* Now we use our fold-alike. *)
+  let state = foldl_suffix read_one_arg initial_state cooked_argv in
+    (state.input_units, state.link_options)
