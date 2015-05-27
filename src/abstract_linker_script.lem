@@ -3,14 +3,18 @@ open import List
 open import Num
 
 type binary_relation
-  = Eq | Lt
+  = Eq
+  | Lt
 
 type binary_connective
-  = And | Or
+  = And (** Conjunction *)
+  | Or  (** Disjunction *)
 
-type expression (* Denote addresses, whether known or to be ascertained *)
-  = Var   of string   (* Ranges over memory addresses *)
-  | Const of natural  (* Fixed memory address *)
+(** The type [expression] denotes addresses, whether known or to be ascertained.
+  *)
+type expression
+  = Var   of string   (** Ranges over memory addresses *)
+  | Const of natural  (** Fixed memory address *)
 
 (* These are *one-place* predicates on unsigned integer solutions (usually representing 
  * addresses). Implicitly, every binary relation is being applied to the solution. HMM: is 

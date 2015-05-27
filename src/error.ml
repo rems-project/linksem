@@ -19,6 +19,13 @@ type 'a error
 (*val return : forall 'a. 'a -> error 'a*)
 let return r = (Success r)
 
+(*val with_success : forall 'a 'b. error 'a -> 'b -> ('a -> 'b) -> 'b*)
+let with_success err fl suc =  
+((match err with
+    | Success s -> suc s
+    | Fail err  -> fl
+  ))
+
 (** [fail err] represents a failing computation, with error message [err].
   *)
 (*val fail : forall 'a. string -> error 'a*)
@@ -33,12 +40,12 @@ let (>>=) x f =
 		| Fail err  -> Fail err
 	))
 	
-(** [asMaybe e] drops an [error] value into a [maybe] value, throwing away
+(** [as_maybe e] drops an [error] value into a [maybe] value, throwing away
   * error information.
   *)
 
-(*val asMaybe : forall 'a. error 'a -> maybe 'a*)
-let asMaybe e =  
+(*val as_maybe : forall 'a. error 'a -> maybe 'a*)
+let as_maybe e =  
 ((match e with
     | Fail err -> None
     | Success s -> Some s

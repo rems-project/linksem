@@ -1,4 +1,5 @@
 open import Basic_classes
+open import Function
 open import List
 open import Maybe
 open import Num
@@ -20,24 +21,24 @@ open import Memory_image
 
 (* This record collects things that ABIs may or must define. *)
 
-type abi = <| is_valid_elf_header : elf64_header -> bool
-                                (* doesn't this generalise outrageously? is_valid_elf_file? *)
-            ; reloc              : natural -> ((maybe elf64_symbol_table_entry -> natural) * (memory_image -> maybe natural))
-                                (* number  ->  width   * (symaddr -> addend  -> existing-> relocated) *)
-            ; section_is_special : elf64_interpreted_section -> elf64_file -> bool
-            |>
+type abi =
+  <| is_valid_elf_header : elf64_header -> bool (* doesn't this generalise outrageously? is_valid_elf_file? *)
+   ; reloc               : natural -> ((maybe elf64_symbol_table_entry -> natural) * (memory_image -> maybe natural)) (** number -> width * (symaddr -> addend -> existing -> relocated) *)
+   ; section_is_special  : elf64_interpreted_section -> elf64_file -> bool
+   |>
+
 
 (* Do we want "existing", or is it a kind of addend? 
  * We do want it -- modelling both separately is necessary, 
  * because we model relocations bytewise, but some arches
- * do bitfield relocations (think ARM). *)
-
+ * do bitfield relocations (think ARM).
+ *)
 val null_abi : abi
-let null_abi = <| is_valid_elf_header = fun x -> List.take 4 x.elf64_ident = [elf_mn_mag0; elf_mn_mag1; elf_mn_mag2; elf_mn_mag3]
-                ; reloc = fun r -> (fun _ -> 8, fun _ -> Nothing)
-                ; section_is_special = (fun s -> (fun f -> s.elf64_section_type <> sht_progbits
-                     && s.elf64_section_type <> sht_nobits))
-                |>
+let null_abi =
+  <| is_valid_elf_header = fun x -> List.take 4 x.elf64_ident = [elf_mn_mag0; elf_mn_mag1; elf_mn_mag2; elf_mn_mag3]
+   ; reloc               = const (const 8, const Nothing)
+   ; section_is_special  = fun s -> (const (s.elf64_section_type <> sht_progbits && s.elf64_section_type <> sht_nobits))
+   |>
 
 (* HMM. For the elf_ident, I don't really want to express it this way.
  * I want something more bidirectional: something that can tell me 
@@ -49,8 +50,8 @@ let null_abi = <| is_valid_elf_header = fun x -> List.take 4 x.elf64_ident = [el
  * *concrete* representation, from some *abstract* description of the 
  * reloc's intent (i.e. a symbol binding: "point this reference at symbol
  * Foo"), given the constraints imposed by the ABI (such as "use only 
- * RELA, not rel". FIXME: figure out how to lensify what we're doing. *) 
- 
+ * RELA, not rel". FIXME: figure out how to lensify what we're doing.
+ *) 
 val compute_virtual_address_adjustment : natural -> natural -> natural -> natural
 let compute_virtual_address_adjustment max_page_size offset vaddr =
   (vaddr - offset) mod max_page_size
