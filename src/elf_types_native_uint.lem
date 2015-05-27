@@ -696,7 +696,7 @@ declare ocaml target_rep function string_of_elf32_sword = `Int32.to_string`
 
 val integer_of_elf32_sword : elf32_sword -> integer
 
-declare ocaml    target_rep function integer_of_elf32_sword = `Ml_bindings.bigint_of_int32`
+declare ocaml    target_rep function integer_of_elf32_sword = `Nat_big_num.of_int32`
 declare isabelle target_rep function integer_of_elf32_sword = `sint`
 
 val elf32_sword_of_quad : byte -> byte -> byte -> byte -> elf32_sword
@@ -748,7 +748,7 @@ declare ocaml target_rep function string_of_elf64_sword = `Int32.to_string`
 
 val integer_of_elf64_sword : elf64_sword -> integer
 
-declare ocaml    target_rep function integer_of_elf64_sword = `Ml_bindings.bigint_of_int32`
+declare ocaml    target_rep function integer_of_elf64_sword = `Nat_big_num.of_int32`
 declare isabelle target_rep function integer_of_elf64_sword = `sint`
 
 val elf64_sword_of_quad : byte -> byte -> byte -> byte -> elf64_sword

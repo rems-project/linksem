@@ -6,6 +6,8 @@ open import Maybe
 open import Num
 open import String
 
+open import Assert_extra
+
 open import Default_printing
 open import Endianness
 
@@ -845,12 +847,14 @@ val get_elf32_osabi : elf32_header -> natural
 let get_elf32_osabi hdr =
   match List.index hdr.elf32_ident (unsafe_nat_of_natural elf_ii_osabi) with
     | Just osabi -> natural_of_unsigned_char osabi
+    | Nothing    -> failwith "get_elf32_osabi: lookup in ident failed"
   end (* Partial: should never return Nothing *)
 
 val get_elf64_osabi : elf64_header -> natural
 let get_elf64_osabi hdr =
   match List.index hdr.elf64_ident (unsafe_nat_of_natural elf_ii_osabi) with
     | Just osabi -> natural_of_unsigned_char osabi
+    | Nothing    -> failwith "get_elf64_osabi: lookup in ident failed"
   end (* Partial: should never return Nothing *)
 
 (** [deduce_endian] deduces the endianness of an ELF file based on the ELF
@@ -859,14 +863,14 @@ let get_elf64_osabi hdr =
 val deduce_endianness : list unsigned_char -> endianness
 let deduce_endianness id =
   match List.index id 5 with
-    | Nothing -> Little (* XXX: random default as read of magic number has failed! *)
+    | Nothing -> failwith "deduce_endianness: read of magic number has failed"
     | Just v  ->
       if natural_of_unsigned_char v = elf_data_2lsb then
         Little
       else if natural_of_unsigned_char v = elf_data_2msb then
         Big
       else
-        Little (* XXX: random default as value is not valid! *)
+        failwith "deduce_endianness: value is not valid"
   end
 
 val get_elf32_header_endianness : elf32_header -> endianness

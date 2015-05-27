@@ -44,7 +44,7 @@ LEM_ELF_SRC := byte_sequence.lem archive.lem \
 	elf_types_native_uint.lem elf_interpreted_segment.lem elf_interpreted_section.lem string_table.lem elf_symbol_table.lem \
 	elf_header.lem elf_program_header_table.lem \
 	elf_section_header_table.lem \
-	elf_relocation.lem \
+	elf_relocation.lem elf_dynamic.lem \
 	elf_file.lem 
 	
 LEM_ABI_SRC := memory_image.lem abstract_abi.lem \
@@ -71,7 +71,7 @@ LEM_C_INTERFACE_SRC := adaptors/harness_interface.lem
 
 LEM_MODEL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC))
 
-OCAML_LIB_OBJS := unix.cma nums.cma zarith.cma batteries.cma nat_num.cmo nat_big_num.cmo uint.cma
+OCAML_LIB_OBJS := unix.cma nums.cma zarith.cma batteries.cma nat_num.cmo big_int_impl.cmo nat_big_num.cmo uint.cma
 LEM_OCAML_OBJS := lem.cmo lem_basic_classes.cmo lem_function.cmo lem_list.cmo lem_num.cmo lem_sorting.cmo \
     xstring.cmo pset.cmo pmap.cmo lem_maybe.cmo lem_set.cmo
 

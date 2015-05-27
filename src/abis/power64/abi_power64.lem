@@ -25,23 +25,21 @@ open import Elf_interpreted_segment
   *)
 val abi_power64_compute_program_entry_point : list elf64_interpreted_segment -> elf64_addr -> error elf64_addr
 let abi_power64_compute_program_entry_point segs entry =
-	let entry = natural_of_elf64_addr entry in
-	let filtered = List.filter (
-	    fun seg ->
-		    let base = seg.elf64_segment_base in
-		    let size = seg.elf64_segment_memsz in
-			    base <= entry && entry <= (base + size)
-	    ) segs
-	in
-		match filtered with
-			| []  ->
-					fail "abi_power64_compute_program_entry_point: no program segment contains the program entry point"
-			| [x] ->
-					let rebase = entry - x.elf64_segment_base in
-				  Byte_sequence.offset_and_cut rebase 8 x.elf64_segment_body >>= fun bytes ->
-				  Byte_sequence.read_8_bytes_le bytes >>= fun (bytes, _) ->
-				  let (b1,b2,b3,b4,b5,b6,b7,b8) = bytes in
-				  return (Elf_types_native_uint.elf64_addr_of_oct b1 b2 b3 b4 b5 b6 b7 b8)
-			| _   ->
-					fail "abi_power64_compute_program_entry_point: multiple program segments contain the program entry point"
-		end
+  let entry = natural_of_elf64_addr entry in
+  let filtered = List.filter (
+      fun seg ->
+        let base = seg.elf64_segment_base in
+        let size = seg.elf64_segment_memsz in
+          base <= entry && entry <= (base + size)
+      ) segs
+  in
+    match filtered with
+      | []  -> fail "abi_power64_compute_program_entry_point: no program segment contains the program entry point"
+      | [x] ->
+        let rebase = entry - x.elf64_segment_base in
+        Byte_sequence.offset_and_cut rebase 8 x.elf64_segment_body >>= fun bytes ->
+        Byte_sequence.read_8_bytes_le bytes >>= fun (bytes, _) ->
+        let (b1,b2,b3,b4,b5,b6,b7,b8) = bytes in
+        return (Elf_types_native_uint.elf64_addr_of_oct b1 b2 b3 b4 b5 b6 b7 b8)
+      | _   -> fail "abi_power64_compute_program_entry_point: multiple program segments contain the program entry point"
+    end

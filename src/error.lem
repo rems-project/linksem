@@ -1,4 +1,5 @@
 open import List
+open import Maybe
 open import Num
 open import String
 open import Show
@@ -34,6 +35,17 @@ let (>>=) x f =
 		| Success s -> f s
 		| Fail err  -> Fail err
 	end
+	
+(** [asMaybe e] drops an [error] value into a [maybe] value, throwing away
+  * error information.
+  *)
+
+val asMaybe : forall 'a. error 'a -> maybe 'a
+let asMaybe e =
+  match e with
+    | Fail err -> Nothing
+    | Success s -> Just s
+  end
 
 (** [repeatM count action] fails if [action] is a failing computation, or
   * successfully produces a list [count] elements long, where each element is
