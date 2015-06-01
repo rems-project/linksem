@@ -1,7 +1,22 @@
+(** [elf_section_header_table] provides types, functions and other definitions
+  * for working with section header tables and their entries.
+  *
+  * TODO:  All relevant definitions and types are now captured.  Some obvious
+  * 'helper' functions can still be written:
+  *
+  *   * Extract SHT indices of section groups.
+  *   * Finish the formalisation of the 'special sections' with their expected
+  *     types and attributes.  See the TODO comment above the
+  *     [construct_special_sections] function.
+  *   * Formalise the natural language invariants on section headers and the
+  *     section header table expressed in the SCO specification.
+  *)
+
 open import Basic_classes
 open import Bool
 open import Function
 open import List
+open import Map
 open import Maybe
 open import Num
 open import String
@@ -197,18 +212,129 @@ let {ocaml} string_of_section_type os proc user i =
     "Undefined or invalid section type"
 
 (** Section flag numeric values. *)
+
+(** The section contains data that should be writable during program execution.
+  *)
 let shf_write            : natural = 1
+
+(** The section occupies memory during program execution.
+  *)
 let shf_alloc            : natural = 2
+
+(** The section contains executable instructions.
+  *)
 let shf_execinstr        : natural = 4
+
+(** The data in the section may be merged to reduce duplication.  Each section
+  * is compared based on name, type and flags set with sections with identical
+  * values at run time being mergeable.
+  *)
 let shf_merge            : natural = 16
+
+(** The section contains null-terminated character strings.
+  *)
 let shf_strings          : natural = 32
+
+(** The [info] field of this section header contains a section header table
+  * index.
+  *)
 let shf_info_link        : natural = 64
+
+(** Adds special link ordering for link editors.
+  *)
 let shf_link_order       : natural = 128
+
+(** This section requires special OS-specific processing beyond the standard
+  * link rules.
+  *)
 let shf_os_nonconforming : natural = 256
+
+(** This section is a member (potentially the only member) of a link group.
+  *)
 let shf_group            : natural = 512
+
+(** This section contains Thread Local Storage (TLS) meaning that each thread of
+  * execution has its own instance of this data.
+  *)
 let shf_tls              : natural = 1024
-val section_is_os_specific : natural -> bool        (* mask 0x0ff00000 *)
-val section_is_processor_specific : natural -> bool (* mask 0xf0000000 *)
+
+(** This section contains compressed data.  Compressed data may not be marked as
+  * allocatable.
+  *)
+let shf_compressed       : natural = 2048
+
+(** All bits included in these masks are reserved for OS and processor specific
+  * semantics respectively.
+  *)
+let shf_mask_os          : natural = 267386880      (* 0x0ff00000 *)
+let shf_mask_proc        : natural = 4 * 1006632960 (* 0xf0000000 *)
+
+(** Section compression. *)
+
+(** Type [elf32_compression_header] provides information about the compression and
+  * decompression of compressed sections.  All compressed sections on ELF32 begin
+  * with an [elf32_compression_header] entry.
+  *)
+type elf32_compression_header =
+  <| elf32_chdr_type      : elf32_word  (** Specifies the compression algorithm *)
+   ; elf32_chdr_size      : elf32_word  (** Size in bytes of the uncompressed data *)
+   ; elf32_chdr_addralign : elf32_word  (** Specifies the required alignment of the uncompressed data *)
+   |>
+
+(** Type [elf64_compression_header] provides information about the compression and
+  * decompression of compressed sections.  All compressed sections on ELF64 begin
+  * with an [elf64_compression_header] entry.
+  *)   
+type elf64_compression_header =
+  <| elf64_chdr_type      : elf64_word  (** Specified the compression algorithm *)
+   ; elf64_chdr_reserved  : elf64_word
+   ; elf64_chdr_size      : elf64_xword (** Size in bytes of the uncompressed data *)
+   ; elf64_chdr_addralign : elf64_xword (** Specifies the required alignment of the uncompressed data *)
+   |>
+
+(** This section is compressed with the ZLIB algorithm.  The compressed data begins
+  * at the first byte immediately following the end of the compression header.
+  *)   
+let elfcompress_zlib   : natural = 1
+
+(** Values in these ranges are reserved for OS-specific semantics.
+  *)
+let elfcompress_loos   : natural = 4 * 402653184       (* 0x60000000 *)
+let elfcompress_hios   : natural = (2 * 939524095) + 1 (* 0x6fffffff *)
+
+(** Values in these ranges are reserved for processor-specific semantics.
+  *)
+let elfcompress_loproc : natural = 4 * 469762048        (* 0x70000000 *)
+let elfcompress_hiproc : natural = (2 * 1073741823) + 1 (* 0x7fffffff *)
+
+(** [read_elf32_compression_header ed bs0] reads an [elf32_compression_header]
+  * entry from byte sequence [bs0], interpreting [bs0] with endianness [ed].
+  * Also returns the suffix of [bs0] after reading in the compression header.
+  * Fails if the header cannot be read.
+  *)
+val read_elf32_compression_header : endianness -> byte_sequence ->
+  error (elf32_compression_header * byte_sequence)
+let read_elf32_compression_header ed bs0 =
+  read_elf32_word ed bs0 >>= fun (typ, bs1) ->
+  read_elf32_word ed bs1 >>= fun (siz, bs2) ->
+  read_elf32_word ed bs2 >>= fun (ali, bs3) ->
+  return (<| elf32_chdr_type = typ; elf32_chdr_size = siz;
+    elf32_chdr_addralign = ali |>, bs3)
+
+(** [read_elf64_compression_header ed bs0] reads an [elf64_compression_header]
+  * entry from byte sequence [bs0], interpreting [bs0] with endianness [ed].
+  * Also returns the suffix of [bs0] after reading in the compression header.
+  * Fails if the header cannot be read.
+  *)
+val read_elf64_compression_header : endianness -> byte_sequence ->
+  error (elf64_compression_header * byte_sequence)
+let read_elf64_compression_header ed bs0 =
+  read_elf64_word ed bs0  >>= fun (typ, bs1) ->
+  read_elf64_word ed bs1  >>= fun (res, bs2) ->
+  read_elf64_xword ed bs2 >>= fun (siz, bs3) ->
+  read_elf64_xword ed bs3 >>= fun (ali, bs4) ->
+  return (<| elf64_chdr_type = typ; elf64_chdr_reserved = res;
+    elf64_chdr_size = siz; elf64_chdr_addralign = ali |>, bs4)
 
 (** Section header table entry type. *)
 
@@ -246,7 +372,11 @@ type elf64_section_header_table_entry =
    ; elf64_sh_entsize   : elf64_xword (** Size of each entry in table, if section is one *)
    |>
 
-val bytes_of_elf32_section_header_table_entry : endianness -> elf32_section_header_table_entry -> byte_sequence
+(** [bytes_of_elf32_section_header_table_entry ed ent] blits [ent] to a byte sequence
+  * assuming endianness [ed].
+  *)
+val bytes_of_elf32_section_header_table_entry : endianness ->
+  elf32_section_header_table_entry -> byte_sequence
 let bytes_of_elf32_section_header_table_entry endian entry =
   Byte_sequence.from_byte_lists [
     bytes_of_elf32_word endian entry.elf32_sh_name
@@ -261,7 +391,12 @@ let bytes_of_elf32_section_header_table_entry endian entry =
   ; bytes_of_elf32_word endian entry.elf32_sh_entsize
   ]
 
-val read_elf32_section_header_table_entry : endianness -> byte_sequence -> error (elf32_section_header_table_entry * byte_sequence)
+(** [read_elf32_section_header_table_entry ed bs0] reads a section header table
+  * entry from [bs0] assuming endianness [ed].  Also returns the suffix of [bs0]
+  * after parsing.  Fails if the entry cannot be read.
+  *)
+val read_elf32_section_header_table_entry : endianness -> byte_sequence ->
+  error (elf32_section_header_table_entry * byte_sequence)
 let read_elf32_section_header_table_entry endian bs =
 	read_elf32_word endian bs >>= fun (sh_name, bs) ->
 	read_elf32_word endian bs >>= fun (sh_type, bs) ->
@@ -279,7 +414,11 @@ let read_elf32_section_header_table_entry endian bs =
                 elf32_sh_link = sh_link; elf32_sh_info = sh_info;
                 elf32_sh_addralign = sh_addralign; elf32_sh_entsize = sh_entsize |>, bs)
 
-val bytes_of_elf64_section_header_table_entry : endianness -> elf64_section_header_table_entry -> byte_sequence
+(** [bytes_of_elf64_section_header_table_entry ed ent] blits [ent] to a byte sequence
+  * assuming endianness [ed].
+  *)
+val bytes_of_elf64_section_header_table_entry : endianness ->
+  elf64_section_header_table_entry -> byte_sequence
 let bytes_of_elf64_section_header_table_entry endian entry =
   Byte_sequence.from_byte_lists [
     bytes_of_elf64_word  endian entry.elf64_sh_name
@@ -294,7 +433,12 @@ let bytes_of_elf64_section_header_table_entry endian entry =
   ; bytes_of_elf64_xword endian entry.elf64_sh_entsize
   ]
 
-val read_elf64_section_header_table_entry : endianness -> byte_sequence -> error (elf64_section_header_table_entry * byte_sequence)
+(** [read_elf64_section_header_table_entry ed bs0] reads a section header table
+  * entry from [bs0] assuming endianness [ed].  Also returns the suffix of [bs0]
+  * after parsing.  Fails if the entry cannot be read.
+  *)
+val read_elf64_section_header_table_entry : endianness -> byte_sequence ->
+  error (elf64_section_header_table_entry * byte_sequence)
 let read_elf64_section_header_table_entry endian bs =
   read_elf64_word endian bs >>= fun (sh_name, bs) ->
   read_elf64_word endian bs >>= fun (sh_type, bs) ->
@@ -320,7 +464,13 @@ let read_elf64_section_header_table_entry endian bs =
   *)
 type sht_print_bundle = (natural -> string) * (natural -> string) * (natural -> string)
 
-val string_of_elf32_section_header_table_entry : sht_print_bundle -> elf32_section_header_table_entry -> string
+(** [string_of_elf32_section_header_table_entry sht ent] produces a string
+  * representation of section header table entry [ent] using [sht], a
+  * [sht_print_bundle].
+  * OCaml specific definition.
+  *)
+val string_of_elf32_section_header_table_entry : sht_print_bundle ->
+  elf32_section_header_table_entry -> string
 let {ocaml} string_of_elf32_section_header_table_entry (os, proc, user) entry =
   unlines [
     "\t" ^ "Name: "    ^ show entry.elf32_sh_name
@@ -330,7 +480,13 @@ let {ocaml} string_of_elf32_section_header_table_entry (os, proc, user) entry =
   ; "\t" ^ "Size: "    ^ show entry.elf32_sh_size
   ]
 
-val string_of_elf64_section_header_table_entry : sht_print_bundle -> elf64_section_header_table_entry -> string
+(** [string_of_elf64_section_header_table_entry sht ent] produces a string
+  * representation of section header table entry [ent] using [sht], a
+  * [sht_print_bundle].
+  * OCaml specific definition.
+  *)
+val string_of_elf64_section_header_table_entry : sht_print_bundle ->
+  elf64_section_header_table_entry -> string
 let {ocaml} string_of_elf64_section_header_table_entry (os, proc, user) entry =
   unlines [
     "\t" ^ "Name: "    ^ show entry.elf64_sh_name
@@ -403,20 +559,12 @@ end
 type elf32_section_header_table =
   list elf32_section_header_table_entry
 
-class (HasElf32SectionHeaderTable 'a)
-  val get_elf32_section_header_table : 'a -> maybe elf32_section_header_table
-end
-
 (** Type [elf64_section_header_table] represents a section header table for 64-bit
   * ELF files.  A section header table is an array (implemented as a list, here)
   * of section header table entries.
   *)
 type elf64_section_header_table =
   list elf64_section_header_table_entry
-
-class (HasElf64SectionHeaderTable 'a)
-  val get_elf64_section_header_table : 'a -> maybe elf64_section_header_table
-end
 
 val bytes_of_elf32_section_header_table : endianness -> elf32_section_header_table -> byte_sequence
 let bytes_of_elf32_section_header_table endian tbl =
@@ -482,18 +630,83 @@ let is_valid_elf32_section_header_table tbl =
         (* XXX: more correctness criteria in time *)
   end
 
-val string_of_elf32_section_header_table : sht_print_bundle -> elf32_section_header_table -> string
+val string_of_elf32_section_header_table : sht_print_bundle ->
+  elf32_section_header_table -> string
 let {ocaml} string_of_elf32_section_header_table sht_bdl tbl =
   unlines (List.map (string_of_elf32_section_header_table_entry sht_bdl) tbl)
 
-val string_of_elf32_section_header_table' : sht_print_bundle -> string_table -> elf32_section_header_table -> string
+val string_of_elf32_section_header_table' : sht_print_bundle -> string_table ->
+  elf32_section_header_table -> string
 let {ocaml} string_of_elf32_section_header_table' sht_bdl stbl tbl =
   unlines (List.map (string_of_elf32_section_header_table_entry' sht_bdl stbl) tbl)
 
-val string_of_elf64_section_header_table : sht_print_bundle -> elf64_section_header_table -> string
+val string_of_elf64_section_header_table : sht_print_bundle ->
+  elf64_section_header_table -> string
 let {ocaml} string_of_elf64_section_header_table sht_bdl tbl =
   unlines (List.map (string_of_elf64_section_header_table_entry sht_bdl) tbl)
 
-val string_of_elf64_section_header_table' : sht_print_bundle -> string_table -> elf64_section_header_table -> string
+val string_of_elf64_section_header_table' : sht_print_bundle -> string_table ->
+  elf64_section_header_table -> string
 let {ocaml} string_of_elf64_section_header_table' sht_bdl stbl tbl =
   unlines (List.map (string_of_elf64_section_header_table_entry' sht_bdl stbl) tbl)
+  
+(** Section groups *)
+
+(** This is a COMDAT group and may duplicate other COMDAT groups in other object
+  * files.
+  *)
+let grp_comdat   : natural = 1
+
+(** Any bits in the following mask ranges are reserved exclusively for OS and
+  * processor specific semantics, respectively.
+  *)
+let grp_maskos   : natural = 267386880      (* 0x0ff00000 *)
+let grp_maskproc : natural = 4 * 1006632960 (* 0xf0000000 *)
+
+(** Special sections *)
+
+(** [construct_special_sections] contains a finite map from section name (as
+  * a string) to the expected attributes and flags expected of that section,
+  * as specified in the ELF specification.
+  *
+  * TODO: some of these entries are not fixed and change depending on the content
+  *       of the rest of the ELF file.  For example the entry for .symtab_shndx
+  *       has flags that depend on the flags of the corresponding symbol table
+  *       entry.  Entries of this type are currently commented out.  Fill them
+  *       in.
+  *)
+val construct_special_sections : Map.map string (natural * natural)
+let construct_special_section =
+    Map.fromList [
+      (".bss", (sht_nobits, shf_alloc + shf_write))
+    ; (".comment", (sht_progbits, 0))
+    ; (".data", (sht_progbits, shf_alloc + shf_write))
+    ; (".data1", (sht_progbits, shf_alloc + shf_write))
+    ; (".debug", (sht_progbits, 0))
+    (* ; (".dynamic", (sht_dynamic, ?)) *)
+    ; (".dynstr", (sht_strtab, shf_alloc))
+    ; (".dynsym", (sht_dynsym, shf_alloc))
+    ; (".fini", (sht_progbits, shf_alloc + shf_execinstr))
+    ; (".fini_array", (sht_fini_array, shf_alloc + shf_write))
+    (* ; (".got", (sht_progbits, ?)) *)
+    ; (".hash", (sht_hash, shf_alloc))
+    ; (".init", (sht_progbits, shf_alloc + shf_execinstr))
+    ; (".init_array", (sht_init_array, shf_alloc + shf_write))
+    (* ; (".interp", (sht_progbits, ?)) *)
+    ; (".line", (sht_progbits, 0))
+    ; (".note", (sht_note, 0))
+    (* ; (".plt", (sht_progbits, ?)) *)
+    ; (".preinit_array", (sht_preinit_array, shf_alloc + shf_write))
+    (* ; (".relname", (sht_rel, ?)) *)
+    (* ; (".relaname", (sht_rela, ?)) *)
+    ; (".rodata", (sht_progbits, shf_alloc))
+    ; (".rodata1", (sht_progbits, shf_alloc))
+    ; (".shstrtab", (sht_strtab, 0))
+    (* ; (".strtab", (sht_strtab, ?)) *)
+    (* ; (".symtab", (sht_symtab, ?)) *)
+    (* ; (".symtab_shndx", (sht_symtab_shndx, ?)) *)
+    ; (".tbss", (sht_nobits, shf_alloc + shf_write + shf_tls))
+    ; (".tdata", (sht_progbits, shf_alloc + shf_write + shf_tls))
+    ; (".tdata1", (sht_progbits, shf_alloc + shf_write + shf_tls))
+    ; (".text", (sht_progbits, shf_alloc + shf_execinstr))
+    ]

@@ -1,3 +1,15 @@
+(** [elf_header] includes types, functions and other definitions for working with
+  * ELF headers.
+  *
+  * TODO: all relevant definitions and functions are now formalised, though
+  * invariants expressed in natural language in the SCO specification are not
+  * all formalised.
+  *
+  *  * Formalise all natural language header invariants from the SCO
+  *    specification.
+  *
+  *)
+
 open import Basic_classes
 open import Bool
 open import Function
