@@ -1,3 +1,10 @@
+(** [elf_relocation] formalises types, functions and other definitions for working
+  * with ELF relocation and relocation with addend entries.
+  *
+  * TODO:
+  *     * Formalise the ELF32_R_INFO and ELF64_R_INFO macros.
+  *)
+
 open import Basic_classes
 open import Num
 open import List
@@ -11,6 +18,8 @@ open import Show
 open import Missing_pervasives
 
 open import Elf_types_native_uint
+
+(** ELF relocation records *)
 
 type elf32_relocation =
   <| elf32_r_offset : elf32_addr (** Address at which to relocate *)
@@ -34,36 +43,86 @@ type elf64_relocation_a =
    ; elf64_ra_addend : elf64_sxword (** Addend used to compute value to be stored *)
    |>
 
+(** Extracting useful information *)
+
+(** [elf32_relocation_r_sym w] computes the symbol table index associated with
+  * an ELF32 relocation(a) entry.
+  * [w] here is the [r_info] member of the [elf32_relocation(a)] type.
+  *)
 val elf32_relocation_r_sym : elf32_word -> natural
 let elf32_relocation_r_sym w =
   natural_of_elf32_word (elf32_word_rshift w 8)
 
-val elf32_relocation_r_type : elf32_word -> natural
-let elf32_relocation_r_type w =
-  natural_of_elf32_word w
-
+(** [elf64_relocation_r_sym w] computes the symbol table index associated with
+  * an ELF64 relocation(a) entry.
+  * [w] here is the [r_info] member of the [elf64_relocation(a)] type.
+  *)
 val elf64_relocation_r_sym : elf64_xword -> natural
 let elf64_relocation_r_sym w =
   natural_of_elf64_xword (elf64_xword_rshift w 32)
 
+(** [elf32_relocation_r_type w] computes the symbol type associated with an ELF32
+  * relocation(a) entry.
+  * [w] here is the [r_info] member of the [elf32_relocation(a)] type.
+  *)
+val elf32_relocation_r_type : elf32_word -> natural
+let elf32_relocation_r_type w =
+  natural_of_elf32_word w
+
+(** [elf64_relocation_r_type w] computes the symbol type associated with an ELF64
+  * relocation(a) entry.
+  * [w] here is the [r_info] member of the [elf64_relocation(a)] type.
+  *)
 val elf64_relocation_r_type : elf64_xword -> natural
 let elf64_relocation_r_type w =
   let magic = (65536 * 65536) - 1 in (* 0xffffffffL *)
     natural_of_elf64_xword (elf64_xword_land w (elf64_xword_of_natural magic))
     
-val read_elf64_relocation : endianness -> byte_sequence -> error (elf64_relocation * byte_sequence)
+(** Reading relocation entries *)
+    
+val read_elf32_relocation : endianness -> byte_sequence ->
+  error (elf32_relocation * byte_sequence)
+let read_elf32_relocation endian bs =
+  read_elf32_addr endian bs >>= fun (r_offset, bs) ->
+  read_elf32_word endian bs >>= fun (r_info, bs) ->
+  return (<| elf32_r_offset = r_offset; elf32_r_info = r_info |>, bs)
+    
+val read_elf64_relocation : endianness -> byte_sequence ->
+  error (elf64_relocation * byte_sequence)
 let read_elf64_relocation endian bs =
-  read_elf64_addr endian bs >>= fun (r_offset, bs) ->
+  read_elf64_addr endian bs  >>= fun (r_offset, bs) ->
   read_elf64_xword endian bs >>= fun (r_info, bs) ->
-      return (<| elf64_r_offset = r_offset; elf64_r_info = r_info |>, bs)
+  return (<| elf64_r_offset = r_offset; elf64_r_info = r_info |>, bs)
+
+val read_elf32_relocation_a : endianness -> byte_sequence ->
+  error (elf32_relocation_a * byte_sequence)
+let read_elf32_relocation_a endian bs =
+  read_elf32_addr endian bs  >>= fun (r_offset, bs) ->
+  read_elf32_word endian bs  >>= fun (r_info, bs) ->
+  read_elf32_sword endian bs >>= fun (r_addend, bs) ->
+  return (<| elf32_ra_offset = r_offset; elf32_ra_info = r_info;
+    elf32_ra_addend = r_addend |>, bs)
 
 val read_elf64_relocation_a : endianness -> byte_sequence -> error (elf64_relocation_a * byte_sequence)
 let read_elf64_relocation_a endian bs =
-  read_elf64_addr endian bs >>= fun (r_offset, bs) ->
-  read_elf64_xword endian bs >>= fun (r_info, bs) ->
+  read_elf64_addr endian bs   >>= fun (r_offset, bs) ->
+  read_elf64_xword endian bs  >>= fun (r_info, bs) ->
   read_elf64_sxword endian bs >>= fun (r_addend, bs) ->
-      return (<| elf64_ra_offset = r_offset; elf64_ra_info = r_info; elf64_ra_addend = r_addend |>, bs)
+  return (<| elf64_ra_offset = r_offset; elf64_ra_info = r_info;
+    elf64_ra_addend = r_addend |>, bs)
 
+val read_elf32_relocation_section' : endianness -> byte_sequence ->
+  error (list elf32_relocation)
+let rec read_elf32_relocation_section' endian bs0 =
+  if Byte_sequence.length bs0 = 0 then
+    return []
+  else
+    read_elf32_relocation endian bs0 >>= fun (entry, bs1) ->
+    read_elf32_relocation_section' endian bs1 >>= fun tail ->
+    return (entry::tail)
+
+val read_elf64_relocation_section' : endianness -> byte_sequence ->
+  error (list elf64_relocation)
 let rec read_elf64_relocation_section' endian bs0 =
   if Byte_sequence.length bs0 = 0 then
     return []
@@ -71,14 +130,19 @@ let rec read_elf64_relocation_section' endian bs0 =
     read_elf64_relocation endian bs0 >>= fun (entry, bs1) ->
     read_elf64_relocation_section' endian bs1 >>= fun tail ->
     return (entry::tail)
-
-val read_elf64_relocation_section : natural -> endianness -> byte_sequence -> error (list elf64_relocation * byte_sequence)
-let read_elf64_relocation_section table_size endian bs0 =
-    let _ = Missing_pervasives.prints ("Tbl size: " ^ show table_size ^ " bs size: " ^ show (Byte_sequence.length bs0)) in
-  partition table_size bs0 >>= fun (eat, rest) ->
-  read_elf64_relocation_section' endian eat >>= fun entries ->
-  return (entries, rest)
-
+    
+val read_elf32_relocation_a_section' : endianness -> byte_sequence ->
+  error (list elf32_relocation_a)
+let rec read_elf32_relocation_a_section' endian bs0 =
+  if Byte_sequence.length bs0 = 0 then
+    return []
+  else
+    read_elf32_relocation_a endian bs0 >>= fun (entry, bs1) ->
+    read_elf32_relocation_a_section' endian bs1 >>= fun tail ->
+    return (entry::tail)
+    
+val read_elf64_relocation_a_section' : endianness -> byte_sequence ->
+  error (list elf64_relocation_a)
 let rec read_elf64_relocation_a_section' endian bs0 =
   if Byte_sequence.length bs0 = 0 then
     return []
@@ -86,10 +150,31 @@ let rec read_elf64_relocation_a_section' endian bs0 =
     read_elf64_relocation_a endian bs0 >>= fun (entry, bs1) ->
     read_elf64_relocation_a_section' endian bs1 >>= fun tail ->
     return (entry::tail)
+    
+val read_elf32_relocation_section : natural -> endianness -> byte_sequence
+  -> error (list elf32_relocation * byte_sequence)
+let read_elf32_relocation_section table_size endian bs0 =
+  partition table_size bs0 >>= fun (eat, rest) ->
+  read_elf32_relocation_section' endian eat >>= fun entries ->
+  return (entries, rest)
 
-val read_elf64_relocation_a_section : natural -> endianness -> byte_sequence -> error (list elf64_relocation_a * byte_sequence)
+val read_elf64_relocation_section : natural -> endianness -> byte_sequence
+  -> error (list elf64_relocation * byte_sequence)
+let read_elf64_relocation_section table_size endian bs0 =
+  partition table_size bs0 >>= fun (eat, rest) ->
+  read_elf64_relocation_section' endian eat >>= fun entries ->
+  return (entries, rest)
+
+val read_elf32_relocation_a_section : natural -> endianness -> byte_sequence ->
+  error (list elf32_relocation_a * byte_sequence)
+let read_elf32_relocation_a_section table_size endian bs0 =
+  partition table_size bs0 >>= fun (eat, rest) ->
+  read_elf32_relocation_a_section' endian eat >>= fun entries ->
+  return (entries, rest)
+
+val read_elf64_relocation_a_section : natural -> endianness -> byte_sequence ->
+  error (list elf64_relocation_a * byte_sequence)
 let read_elf64_relocation_a_section table_size endian bs0 =
-    let _ = Missing_pervasives.prints ("Tbl size: " ^ show table_size ^ " bs size: " ^ show (Byte_sequence.length bs0)) in
   partition table_size bs0 >>= fun (eat, rest) ->
   read_elf64_relocation_a_section' endian eat >>= fun entries ->
   return (entries, rest)
