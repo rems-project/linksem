@@ -80,6 +80,11 @@ let elf64_relocation_r_type w =
     
 (** Reading relocation entries *)
     
+(** [read_elf32_relocation ed bs0] parses an [elf32_relocation] record from
+  * byte sequence [bs0] assuming endianness [ed].  The suffix of [bs0] remaining
+  * after parsing is also returned.
+  * Fails if the relocation record cannot be parsed.
+  *)
 val read_elf32_relocation : endianness -> byte_sequence ->
   error (elf32_relocation * byte_sequence)
 let read_elf32_relocation endian bs =
@@ -87,6 +92,11 @@ let read_elf32_relocation endian bs =
   read_elf32_word endian bs >>= fun (r_info, bs) ->
   return (<| elf32_r_offset = r_offset; elf32_r_info = r_info |>, bs)
     
+(** [read_elf64_relocation ed bs0] parses an [elf64_relocation] record from
+  * byte sequence [bs0] assuming endianness [ed].  The suffix of [bs0] remaining
+  * after parsing is also returned.
+  * Fails if the relocation record cannot be parsed.
+  *)
 val read_elf64_relocation : endianness -> byte_sequence ->
   error (elf64_relocation * byte_sequence)
 let read_elf64_relocation endian bs =
@@ -94,6 +104,11 @@ let read_elf64_relocation endian bs =
   read_elf64_xword endian bs >>= fun (r_info, bs) ->
   return (<| elf64_r_offset = r_offset; elf64_r_info = r_info |>, bs)
 
+(** [read_elf32_relocation_a ed bs0] parses an [elf32_relocation_a] record from
+  * byte sequence [bs0] assuming endianness [ed].  The suffix of [bs0] remaining
+  * after parsing is also returned.
+  * Fails if the relocation record cannot be parsed.
+  *)
 val read_elf32_relocation_a : endianness -> byte_sequence ->
   error (elf32_relocation_a * byte_sequence)
 let read_elf32_relocation_a endian bs =
@@ -103,6 +118,11 @@ let read_elf32_relocation_a endian bs =
   return (<| elf32_ra_offset = r_offset; elf32_ra_info = r_info;
     elf32_ra_addend = r_addend |>, bs)
 
+(** [read_elf64_relocation_a ed bs0] parses an [elf64_relocation_a] record from
+  * byte sequence [bs0] assuming endianness [ed].  The suffix of [bs0] remaining
+  * after parsing is also returned.
+  * Fails if the relocation record cannot be parsed.
+  *)
 val read_elf64_relocation_a : endianness -> byte_sequence -> error (elf64_relocation_a * byte_sequence)
 let read_elf64_relocation_a endian bs =
   read_elf64_addr endian bs   >>= fun (r_offset, bs) ->
@@ -111,6 +131,11 @@ let read_elf64_relocation_a endian bs =
   return (<| elf64_ra_offset = r_offset; elf64_ra_info = r_info;
     elf64_ra_addend = r_addend |>, bs)
 
+(** [read_elf32_relocation_section' ed bs0] parses a list of [elf32_relocation]
+  * records from byte sequence [bs0], which is assumed to have the exact size
+  * required, assuming endianness [ed].
+  * Fails if any of the records cannot be parsed.
+  *)
 val read_elf32_relocation_section' : endianness -> byte_sequence ->
   error (list elf32_relocation)
 let rec read_elf32_relocation_section' endian bs0 =
@@ -121,6 +146,11 @@ let rec read_elf32_relocation_section' endian bs0 =
     read_elf32_relocation_section' endian bs1 >>= fun tail ->
     return (entry::tail)
 
+(** [read_elf64_relocation_section' ed bs0] parses a list of [elf64_relocation]
+  * records from byte sequence [bs0], which is assumed to have the exact size
+  * required, assuming endianness [ed].
+  * Fails if any of the records cannot be parsed.
+  *)
 val read_elf64_relocation_section' : endianness -> byte_sequence ->
   error (list elf64_relocation)
 let rec read_elf64_relocation_section' endian bs0 =
@@ -131,6 +161,11 @@ let rec read_elf64_relocation_section' endian bs0 =
     read_elf64_relocation_section' endian bs1 >>= fun tail ->
     return (entry::tail)
     
+(** [read_elf32_relocation_a_section' ed bs0] parses a list of [elf32_relocation_a]
+  * records from byte sequence [bs0], which is assumed to have the exact size
+  * required, assuming endianness [ed].
+  * Fails if any of the records cannot be parsed.
+  *)
 val read_elf32_relocation_a_section' : endianness -> byte_sequence ->
   error (list elf32_relocation_a)
 let rec read_elf32_relocation_a_section' endian bs0 =
@@ -141,6 +176,11 @@ let rec read_elf32_relocation_a_section' endian bs0 =
     read_elf32_relocation_a_section' endian bs1 >>= fun tail ->
     return (entry::tail)
     
+(** [read_elf64_relocation_a_section' ed bs0] parses a list of [elf64_relocation_a]
+  * records from byte sequence [bs0], which is assumed to have the exact size
+  * required, assuming endianness [ed].
+  * Fails if any of the records cannot be parsed.
+  *)
 val read_elf64_relocation_a_section' : endianness -> byte_sequence ->
   error (list elf64_relocation_a)
 let rec read_elf64_relocation_a_section' endian bs0 =
@@ -151,6 +191,12 @@ let rec read_elf64_relocation_a_section' endian bs0 =
     read_elf64_relocation_a_section' endian bs1 >>= fun tail ->
     return (entry::tail)
     
+(** [read_elf32_relocation_section sz ed bs0] reads in a list of [elf32_relocation]
+  * records from a prefix of [bs0] of size [sz] assuming endianness [ed].  The
+  * suffix of [bs0] remaining after parsing is also returned.
+  * Fails if any of the records cannot be parsed or if the length of [bs0] is
+  * less than [sz].
+  *)
 val read_elf32_relocation_section : natural -> endianness -> byte_sequence
   -> error (list elf32_relocation * byte_sequence)
 let read_elf32_relocation_section table_size endian bs0 =
@@ -158,6 +204,12 @@ let read_elf32_relocation_section table_size endian bs0 =
   read_elf32_relocation_section' endian eat >>= fun entries ->
   return (entries, rest)
 
+(** [read_elf64_relocation_section sz ed bs0] reads in a list of [elf64_relocation]
+  * records from a prefix of [bs0] of size [sz] assuming endianness [ed].  The
+  * suffix of [bs0] remaining after parsing is also returned.
+  * Fails if any of the records cannot be parsed or if the length of [bs0] is
+  * less than [sz].
+  *)
 val read_elf64_relocation_section : natural -> endianness -> byte_sequence
   -> error (list elf64_relocation * byte_sequence)
 let read_elf64_relocation_section table_size endian bs0 =
@@ -165,6 +217,12 @@ let read_elf64_relocation_section table_size endian bs0 =
   read_elf64_relocation_section' endian eat >>= fun entries ->
   return (entries, rest)
 
+(** [read_elf32_relocation_a_section sz ed bs0] reads in a list of [elf32_relocation_a]
+  * records from a prefix of [bs0] of size [sz] assuming endianness [ed].  The
+  * suffix of [bs0] remaining after parsing is also returned.
+  * Fails if any of the records cannot be parsed or if the length of [bs0] is
+  * less than [sz].
+  *)
 val read_elf32_relocation_a_section : natural -> endianness -> byte_sequence ->
   error (list elf32_relocation_a * byte_sequence)
 let read_elf32_relocation_a_section table_size endian bs0 =
@@ -172,6 +230,12 @@ let read_elf32_relocation_a_section table_size endian bs0 =
   read_elf32_relocation_a_section' endian eat >>= fun entries ->
   return (entries, rest)
 
+(** [read_elf64_relocation_a_section sz ed bs0] reads in a list of [elf64_relocation_a]
+  * records from a prefix of [bs0] of size [sz] assuming endianness [ed].  The
+  * suffix of [bs0] remaining after parsing is also returned.
+  * Fails if any of the records cannot be parsed or if the length of [bs0] is
+  * less than [sz].
+  *)
 val read_elf64_relocation_a_section : natural -> endianness -> byte_sequence ->
   error (list elf64_relocation_a * byte_sequence)
 let read_elf64_relocation_a_section table_size endian bs0 =
