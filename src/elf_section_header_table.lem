@@ -158,6 +158,10 @@ let sht_group : natural = 17
   * way in which they are written.
   *)
 let sht_symtab_shndx : natural = 18
+
+(** The following ranges are reserved solely for OS-, processor- and user-
+  * specific semantics, respectively.
+  *)
 let sht_loos   : natural = 3 * 1024 * 1024 * 512 (* 1610612736 (* 0x60000000 *) *)
 let sht_hios   : natural = (469762047 * 4) + 3 (* 1879048191 (* 0x6fffffff *) *)
 let sht_loproc : natural = (469762048 * 4) (* 1879048192 (* 0x70000000 *) *)
@@ -372,6 +376,24 @@ type elf64_section_header_table_entry =
    ; elf64_sh_entsize   : elf64_xword (** Size of each entry in table, if section is one *)
    |>
 
+(** Section header table type *)
+
+(** Type [elf32_section_header_table] represents a section header table for 32-bit
+  * ELF files.  A section header table is an array (implemented as a list, here)
+  * of section header table entries.
+  *)
+type elf32_section_header_table =
+  list elf32_section_header_table_entry
+
+(** Type [elf64_section_header_table] represents a section header table for 64-bit
+  * ELF files.  A section header table is an array (implemented as a list, here)
+  * of section header table entries.
+  *)
+type elf64_section_header_table =
+  list elf64_section_header_table_entry
+
+(** Parsing and blitting *)
+
 (** [bytes_of_elf32_section_header_table_entry ed ent] blits [ent] to a byte sequence
   * assuming endianness [ed].
   *)
@@ -440,14 +462,14 @@ let bytes_of_elf64_section_header_table_entry endian entry =
 val read_elf64_section_header_table_entry : endianness -> byte_sequence ->
   error (elf64_section_header_table_entry * byte_sequence)
 let read_elf64_section_header_table_entry endian bs =
-  read_elf64_word endian bs >>= fun (sh_name, bs) ->
-  read_elf64_word endian bs >>= fun (sh_type, bs) ->
+  read_elf64_word endian bs  >>= fun (sh_name, bs) ->
+  read_elf64_word endian bs  >>= fun (sh_type, bs) ->
   read_elf64_xword endian bs >>= fun (sh_flags, bs) ->
-  read_elf64_addr endian bs >>= fun (sh_addr, bs) ->
-  read_elf64_off  endian bs >>= fun (sh_offset, bs) ->
+  read_elf64_addr endian bs  >>= fun (sh_addr, bs) ->
+  read_elf64_off  endian bs  >>= fun (sh_offset, bs) ->
   read_elf64_xword endian bs >>= fun (sh_size, bs) ->
-  read_elf64_word endian bs >>= fun (sh_link, bs) ->
-  read_elf64_word endian bs >>= fun (sh_info, bs) ->
+  read_elf64_word endian bs  >>= fun (sh_link, bs) ->
+  read_elf64_word endian bs  >>= fun (sh_info, bs) ->
   read_elf64_xword endian bs >>= fun (sh_addralign, bs) ->
   read_elf64_xword endian bs >>= fun (sh_entsize, bs) ->
     return (<| elf64_sh_name = sh_name; elf64_sh_type = sh_type;
@@ -456,13 +478,131 @@ let read_elf64_section_header_table_entry endian bs =
                 elf64_sh_link = sh_link; elf64_sh_info = sh_info;
                 elf64_sh_addralign = sh_addralign; elf64_sh_entsize = sh_entsize |>, bs)
 
+(** [bytes_of_elf32_section_header_table ed tbl] blits section header table [tbl]
+  * to a byte sequence assuming endianness [ed].
+  *)
+val bytes_of_elf32_section_header_table : endianness ->
+  elf32_section_header_table -> byte_sequence
+let bytes_of_elf32_section_header_table endian tbl =
+  Byte_sequence.concat (List.map (bytes_of_elf32_section_header_table_entry endian) tbl)
+  
+(** [bytes_of_elf64_section_header_table ed tbl] blits section header table [tbl]
+  * to a byte sequence assuming endianness [ed].
+  *)
+val bytes_of_elf64_section_header_table : endianness ->
+  elf64_section_header_table -> byte_sequence
+let bytes_of_elf64_section_header_table endian tbl =
+  Byte_sequence.concat (List.map (bytes_of_elf64_section_header_table_entry endian) tbl)
+
+(** [read_elf32_section_header_table' ed bs0] parses an ELF32 section header table
+  * from byte sequence [bs0] assuming endianness [ed].  Assumes [bs0] is of the
+  * exact length required to parse the entire table.
+  * Fails if any of the section header table entries cannot be parsed.
+  *)
+val read_elf32_section_header_table' : endianness -> byte_sequence ->
+  error elf32_section_header_table
+let rec read_elf32_section_header_table' endian bs0 =
+  if Byte_sequence.length bs0 = 0 then
+    return []
+  else
+    read_elf32_section_header_table_entry endian bs0 >>= fun (entry, bs1) ->
+    read_elf32_section_header_table' endian bs1 >>= fun tail ->
+    return (entry::tail)
+    
+(** [read_elf64_section_header_table' ed bs0] parses an ELF64 section header table
+  * from byte sequence [bs0] assuming endianness [ed].  Assumes [bs0] is of the
+  * exact length required to parse the entire table.
+  * Fails if any of the section header table entries cannot be parsed.
+  *)
+val read_elf64_section_header_table' : endianness -> byte_sequence ->
+  error elf64_section_header_table
+let rec read_elf64_section_header_table' endian bs0 =
+  if Byte_sequence.length bs0 = 0 then
+    return []
+  else
+    read_elf64_section_header_table_entry endian bs0 >>= fun (entry, bs1) ->
+    read_elf64_section_header_table' endian bs1 >>= fun tail ->
+    return (entry::tail)
+
+(** [read_elf32_section_header_table sz ed bs0] parses an ELF32 section header
+  * table from a [sz] sized prefix of byte sequence [bs0] assuming endianness
+  * [ed].  The suffix of [bs0] remaining after parsing is also returned.
+  * Fails if any of the section header entries cannot be parsed or if [sz] is
+  * greater than the length of [bs0].
+  *)
+val read_elf32_section_header_table : natural -> endianness -> byte_sequence ->
+  error (elf32_section_header_table * byte_sequence)
+let read_elf32_section_header_table table_size endian bs0 =
+  partition table_size bs0 >>= fun (eat, rest) ->
+  read_elf32_section_header_table' endian eat >>= fun entries ->
+  return (entries, rest)
+;;
+
+(** [read_elf64_section_header_table sz ed bs0] parses an ELF64 section header
+  * table from a [sz] sized prefix of byte sequence [bs0] assuming endianness
+  * [ed].  The suffix of [bs0] remaining after parsing is also returned.
+  * Fails if any of the section header entries cannot be parsed or if [sz] is
+  * greater than the length of [bs0].
+  *)
+val read_elf64_section_header_table : natural -> endianness -> byte_sequence ->
+  error (elf64_section_header_table * byte_sequence)
+let read_elf64_section_header_table table_size endian bs0 =
+  partition table_size bs0 >>= fun (eat, rest) ->
+  read_elf64_section_header_table' endian eat >>= fun entries ->
+  return (entries, rest)
+;;
+
+(** Correctness criteria *)
+
+(** TODO: what is going on here? *)
+val elf32_size_correct : elf32_section_header_table_entry ->
+  elf32_section_header_table -> bool
+let elf32_size_correct hdr tbl =
+  let m = natural_of_elf32_word hdr.elf32_sh_size in
+    if m = 0 then
+      true
+    else
+      m = naturalFromNat (List.length tbl)
+;;
+
+(** TODO: what is going on here? *)
+val elf64_size_correct : elf64_section_header_table_entry ->
+  elf64_section_header_table -> bool
+let elf64_size_correct hdr tbl =
+  let m = natural_of_elf32_word hdr.elf64_sh_size in
+    if m = 0 then
+      true
+    else
+      m = naturalFromNat (List.length tbl)
+;;
+
+val is_valid_elf32_section_header_table : elf32_section_header_table -> bool
+let is_valid_elf32_section_header_table tbl =
+  match tbl with
+    | []    -> false
+    | x::xs ->
+        natural_of_elf32_word x.elf32_sh_name = 0 &&
+        natural_of_elf32_word x.elf32_sh_type = sht_null &&
+        natural_of_elf32_word x.elf32_sh_flags = 0 &&
+        natural_of_elf32_addr x.elf32_sh_addr = 0 &&
+        natural_of_elf32_off x.elf32_sh_offset = 0 &&
+        natural_of_elf32_word x.elf32_sh_info = 0 &&
+        natural_of_elf32_word x.elf32_sh_addralign = 0 &&
+        natural_of_elf32_word x.elf32_sh_entsize = 0 &&
+        elf32_size_correct x tbl
+        (* XXX: more correctness criteria in time *)
+  end
+
+(** Pretty printing *)
+
 (** The [sht_print_bundle] type is used to tidy up other type signatures.  Some of the
   * top-level string_of_ functions require six or more functions passed to them,
   * which quickly gets out of hand.  This type is used to reduce that complexity.
   * The first component of the type is an OS specific print function, the second is
   * a processor specific print function.
   *)
-type sht_print_bundle = (natural -> string) * (natural -> string) * (natural -> string)
+type sht_print_bundle =
+  (natural -> string) * (natural -> string) * (natural -> string)
 
 (** [string_of_elf32_section_header_table_entry sht ent] produces a string
   * representation of section header table entry [ent] using [sht], a
@@ -496,7 +636,8 @@ let {ocaml} string_of_elf64_section_header_table_entry (os, proc, user) entry =
   ; "\t" ^ "Size: "    ^ show entry.elf64_sh_size
   ]
 
-val string_of_elf32_section_header_table_entry' : sht_print_bundle -> string_table -> elf32_section_header_table_entry -> string
+val string_of_elf32_section_header_table_entry' : sht_print_bundle ->
+  string_table -> elf32_section_header_table_entry -> string
 let {ocaml} string_of_elf32_section_header_table_entry' (os, proc, user) stbl entry =
   let name =
     match get_string_at (natural_of_elf32_word entry.elf32_sh_name) stbl with
@@ -512,7 +653,8 @@ let {ocaml} string_of_elf32_section_header_table_entry' (os, proc, user) stbl en
     ; "\t" ^ "Size: "    ^ show entry.elf32_sh_size
     ]
 
-val string_of_elf64_section_header_table_entry' : sht_print_bundle -> string_table -> elf64_section_header_table_entry -> string
+val string_of_elf64_section_header_table_entry' : sht_print_bundle ->
+  string_table -> elf64_section_header_table_entry -> string
 let {ocaml} string_of_elf64_section_header_table_entry' (os, proc, user) stbl entry =
   let name =
     match get_string_at (natural_of_elf64_word entry.elf64_sh_name) stbl with
@@ -550,100 +692,36 @@ instance (Show elf64_section_header_table_entry)
   let show = string_of_elf64_section_header_table_entry_default
 end
 
-(** Section header table type. *)
-
-(** Type [elf32_section_header_table] represents a section header table for 32-bit
-  * ELF files.  A section header table is an array (implemented as a list, here)
-  * of section header table entries.
-  *)
-type elf32_section_header_table =
-  list elf32_section_header_table_entry
-
-(** Type [elf64_section_header_table] represents a section header table for 64-bit
-  * ELF files.  A section header table is an array (implemented as a list, here)
-  * of section header table entries.
-  *)
-type elf64_section_header_table =
-  list elf64_section_header_table_entry
-
-val bytes_of_elf32_section_header_table : endianness -> elf32_section_header_table -> byte_sequence
-let bytes_of_elf32_section_header_table endian tbl =
-  Byte_sequence.concat (List.map (bytes_of_elf32_section_header_table_entry endian) tbl)
-
-let rec read_elf32_section_header_table' endian bs0 =
-  if Byte_sequence.length bs0 = 0 then
-    return []
-  else
-    read_elf32_section_header_table_entry endian bs0 >>= fun (entry, bs1) ->
-    read_elf32_section_header_table' endian bs1 >>= fun tail ->
-    return (entry::tail)
-
-val read_elf32_section_header_table : natural -> endianness -> byte_sequence -> error (elf32_section_header_table * byte_sequence)
-let read_elf32_section_header_table table_size endian bs0 =
-  partition table_size bs0 >>= fun (eat, rest) ->
-  read_elf32_section_header_table' endian eat >>= fun entries ->
-  return (entries, rest)
-;;
-
-val bytes_of_elf64_section_header_table : endianness -> elf64_section_header_table -> byte_sequence
-let bytes_of_elf64_section_header_table endian tbl =
-  Byte_sequence.concat (List.map (bytes_of_elf64_section_header_table_entry endian) tbl)
-
-let rec read_elf64_section_header_table' endian bs0 =
-  if Byte_sequence.length bs0 = 0 then
-    return []
-  else
-    read_elf64_section_header_table_entry endian bs0 >>= fun (entry, bs1) ->
-    read_elf64_section_header_table' endian bs1 >>= fun tail ->
-    return (entry::tail)
-
-val read_elf64_section_header_table : natural -> endianness -> byte_sequence -> error (elf64_section_header_table * byte_sequence)
-let read_elf64_section_header_table table_size endian bs0 =
-  partition table_size bs0 >>= fun (eat, rest) ->
-  read_elf64_section_header_table' endian eat >>= fun entries ->
-  return (entries, rest)
-;;
-
-val elf32_size_correct : elf32_section_header_table_entry -> elf32_section_header_table -> bool
-let elf32_size_correct hdr tbl =
-  let m = natural_of_elf32_word hdr.elf32_sh_size in
-    if m = 0 then
-      true
-    else
-      m = naturalFromNat (List.length tbl)
-;;
-
-val is_valid_elf32_section_header_table : elf32_section_header_table -> bool
-let is_valid_elf32_section_header_table tbl =
-  match tbl with
-    | []    -> false
-    | x::xs ->
-        natural_of_elf32_word x.elf32_sh_name = 0 &&
-        natural_of_elf32_word x.elf32_sh_type = sht_null &&
-        natural_of_elf32_word x.elf32_sh_flags = 0 &&
-        natural_of_elf32_addr x.elf32_sh_addr = 0 &&
-        natural_of_elf32_off x.elf32_sh_offset = 0 &&
-        natural_of_elf32_word x.elf32_sh_info = 0 &&
-        natural_of_elf32_word x.elf32_sh_addralign = 0 &&
-        natural_of_elf32_word x.elf32_sh_entsize = 0 &&
-        elf32_size_correct x tbl
-        (* XXX: more correctness criteria in time *)
-  end
-
 val string_of_elf32_section_header_table : sht_print_bundle ->
   elf32_section_header_table -> string
 let {ocaml} string_of_elf32_section_header_table sht_bdl tbl =
   unlines (List.map (string_of_elf32_section_header_table_entry sht_bdl) tbl)
 
-val string_of_elf32_section_header_table' : sht_print_bundle -> string_table ->
-  elf32_section_header_table -> string
-let {ocaml} string_of_elf32_section_header_table' sht_bdl stbl tbl =
-  unlines (List.map (string_of_elf32_section_header_table_entry' sht_bdl stbl) tbl)
+val string_of_elf32_section_header_table_default : elf32_section_header_table ->
+  string
+let {ocaml} string_of_elf32_section_header_table_default =
+  string_of_elf32_section_header_table
+    ((const "*Default OS specific print*"),
+      (const "*Default processor specific print*"),
+      (const "*Default user specific print*"))
 
 val string_of_elf64_section_header_table : sht_print_bundle ->
   elf64_section_header_table -> string
 let {ocaml} string_of_elf64_section_header_table sht_bdl tbl =
   unlines (List.map (string_of_elf64_section_header_table_entry sht_bdl) tbl)
+  
+val string_of_elf64_section_header_table_default : elf64_section_header_table ->
+  string
+let {ocaml} string_of_elf64_section_header_table_default =
+  string_of_elf64_section_header_table
+    ((const "*Default OS specific print*"),
+      (const "*Default processor specific print*"),
+      (const "*Default user specific print*"))
+
+val string_of_elf32_section_header_table' : sht_print_bundle -> string_table ->
+  elf32_section_header_table -> string
+let {ocaml} string_of_elf32_section_header_table' sht_bdl stbl tbl =
+  unlines (List.map (string_of_elf32_section_header_table_entry' sht_bdl stbl) tbl)
 
 val string_of_elf64_section_header_table' : sht_print_bundle -> string_table ->
   elf64_section_header_table -> string
