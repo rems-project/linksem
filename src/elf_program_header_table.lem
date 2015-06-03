@@ -1,3 +1,21 @@
+(** [elf_program_header_table] contains type, functions and other definitions
+  * for working with program header tables and their entries and ELF segments.
+  * Related files are [elf_interpreted_segments] which extracts information
+  * derived from PHTs presented in this file and converts it into a more usable
+  * format for processing.
+  *
+  * TODO:
+  *    * Add utility functions for extracting more useful information, e.g. the
+  *      associated interpreter for dynamically linked files.
+  *    * Extract the TLS template from segments marked pt_tls.
+  *    * Extract notes from segments marked pt_note.
+  *
+  * FIXME:
+  * Bug in Lem as Lem codebase uses [int] type throughout where [BigInt.t]
+  * is really needed, hence chokes on huge constants below, which is why they are
+  * written in the way that they are.
+  *)
+
 open import Basic_classes
 open import Bool
 open import Function
@@ -14,12 +32,7 @@ open import Error
 open import Missing_pervasives
 open import Show
 
-(** Segment types
-  *
-  * FIXME: Bug in Lem as Lem codebase uses [int] type throughout where [BigInt.t]
-  * is really needed, hence chokes on huge constants below, which is why they are
-  * written in the way that they are.
-  *)
+(** Segment types *)
 
 (** Unused array element.  All other members of the structure are undefined. *)
 let elf_pt_null : natural = 0
@@ -78,6 +91,79 @@ let {ocaml} string_of_elf_segment_type os proc pt =
 		proc pt
 	else
 		"Undefined or invalid segment type"
+		
+(** Segments permission flags *)
+
+(** Execute bit *)
+let elf_pf_x        : natural = 1
+(** Write bit *)
+let elf_pf_w        : natural = 2
+(** Read bit *)
+let elf_pf_r        : natural = 4
+(** The following two bit ranges are reserved for OS- and processor-specific
+  * flags respectively.
+  *)
+let elf_pf_maskos   : natural = 267386880  (* 0x0ff00000 *)
+let elf_pf_maskproc : natural = 4026531840 (* 0xf0000000 *)
+
+(** [exact_permission_of_permission m]: ELF has two interpretations of a RWX-style
+  * permission bit [m], an exact permission and an allowable permission.  These
+  * permissions allow us to interpret a flag as an upper bound for behaviour and
+  * an ABI-compliant implementation can choose to interpret the flag [m] as either.
+  *
+  * In the exact interpretation, the upper bound is exactly the natural interpretation
+  * of the flag.  This is encoded in [exact_permission_of_permission], which is
+  * a glorified identity function, though included for completeness.
+  *)
+val exact_permissions_of_permission : natural -> error natural
+let exact_permissions_of_permission m =
+  if m = 0 then
+    return 0
+  else if m = elf_pf_x then
+    return 1
+  else if m = elf_pf_w then
+    return 2
+  else if m = elf_pf_r then
+    return 4
+  else if m = elf_pf_x + elf_pf_w then
+    return 3
+  else if m = elf_pf_x + elf_pf_r then
+    return 5
+  else if m = elf_pf_w + elf_pf_r then
+    return 6
+  else if m = elf_pf_x + elf_pf_r + elf_pr_w then
+    return 7
+  else
+    fail "exact_permission_of_permission: invalid permission flag"
+
+(** [allowable_permission_of_permission m]: ELF has two interpretations of a RWX-style
+  * permission bit [m], an exact permission and an allowable permission.  These
+  * permissions allow us to interpret a flag as an upper bound for behaviour and
+  * an ABI-compliant implementation can choose to interpret the flag [m] as either.
+  *
+  * In the allowable interpretation, the upper bound is more lax than the natural
+  * interpretation of the flag.
+  *)
+val allowable_permissions_of_permission : natural -> error natural
+let allowable_permissions_of_permission m =
+  if m = 0 then
+    return 0
+  else if m = elf_pf_x then
+    return 5
+  else if m = elf_pf_w then
+    return 7
+  else if m = elf_pf_r then
+    return 5
+  else if m = elf_pf_x + elf_pf_w then
+    return 7
+  else if m = elf_pf_x + elf_pf_r then
+    return 5
+  else if m = elf_pf_w + elf_pf_r then
+    return 7
+  else if m = elf_pf_x + elf_pf_r + elf_pr_w then
+    return 7
+  else
+    fail "exact_permission_of_permission: invalid permission flag"
 
 (** Program header table entry type *)
 
@@ -173,6 +259,11 @@ instance (Show elf64_program_header_table_entry)
   let show = string_of_elf64_program_header_table_entry_default
 end
 
+(** Parsing and blitting *)
+
+(** [bytes_of_elf32_program_header_table_entry ed ent] blits a 32-bit program
+  * header table entry [ent] into a byte sequence assuming endianness [ed].
+  *)
 val bytes_of_elf32_program_header_table_entry : endianness -> elf32_program_header_table_entry -> byte_sequence
 let bytes_of_elf32_program_header_table_entry endian entry =
   Byte_sequence.from_byte_lists [
@@ -185,12 +276,30 @@ let bytes_of_elf32_program_header_table_entry endian entry =
   ; bytes_of_elf32_word endian entry.elf32_p_flags
   ; bytes_of_elf32_word endian entry.elf32_p_align
   ]
+  
+(** [bytes_of_elf64_program_header_table_entry ed ent] blits a 64-bit program
+  * header table entry [ent] into a byte sequence assuming endianness [ed].
+  *)
+val bytes_of_elf64_program_header_table_entry : endianness -> elf64_program_header_table_entry -> byte_sequence
+let bytes_of_elf64_program_header_table_entry endian entry =
+  Byte_sequence.from_byte_lists [
+    bytes_of_elf64_word  endian entry.elf64_p_type
+  ; bytes_of_elf64_word  endian entry.elf64_p_flags
+  ; bytes_of_elf64_off   endian entry.elf64_p_offset
+  ; bytes_of_elf64_addr  endian entry.elf64_p_vaddr
+  ; bytes_of_elf64_addr  endian entry.elf64_p_paddr
+  ; bytes_of_elf64_xword endian entry.elf64_p_filesz
+  ; bytes_of_elf64_xword endian entry.elf64_p_memsz
+  ; bytes_of_elf64_xword endian entry.elf64_p_align
+  ]
 
 (** [read_elf32_program_header_table_entry endian bs0] reads an ELF32 program header table
   * entry from byte sequence [bs0] assuming endianness [endian].  If [bs0] is larger
   * than necessary, the excess is returned from the function, too.
+  * Fails if the entry cannot be read.
   *)
-val read_elf32_program_header_table_entry : endianness -> byte_sequence -> error (elf32_program_header_table_entry * byte_sequence)
+val read_elf32_program_header_table_entry : endianness -> byte_sequence ->
+  error (elf32_program_header_table_entry * byte_sequence)
 let read_elf32_program_header_table_entry endian bs =
 	read_elf32_word endian bs >>= fun (typ, bs) ->
 	read_elf32_off  endian bs >>= fun (offset, bs) ->
@@ -205,20 +314,13 @@ let read_elf32_program_header_table_entry endian bs =
                 elf32_p_filesz = filesz; elf32_p_memsz = memsz;
                 elf32_p_flags = flags; elf32_p_align = align |>, bs)
 
-val bytes_of_elf64_program_header_table_entry : endianness -> elf64_program_header_table_entry -> byte_sequence
-let bytes_of_elf64_program_header_table_entry endian entry =
-  Byte_sequence.from_byte_lists [
-    bytes_of_elf64_word  endian entry.elf64_p_type
-  ; bytes_of_elf64_word  endian entry.elf64_p_flags
-  ; bytes_of_elf64_off   endian entry.elf64_p_offset
-  ; bytes_of_elf64_addr  endian entry.elf64_p_vaddr
-  ; bytes_of_elf64_addr  endian entry.elf64_p_paddr
-  ; bytes_of_elf64_xword endian entry.elf64_p_filesz
-  ; bytes_of_elf64_xword endian entry.elf64_p_memsz
-  ; bytes_of_elf64_xword endian entry.elf64_p_align
-  ]
-
-val read_elf64_program_header_table_entry : endianness -> byte_sequence -> error (elf64_program_header_table_entry * byte_sequence)
+(** [read_elf64_program_header_table_entry endian bs0] reads an ELF64 program header table
+  * entry from byte sequence [bs0] assuming endianness [endian].  If [bs0] is larger
+  * than necessary, the excess is returned from the function, too.
+  * Fails if the entry cannot be read.
+  *)
+val read_elf64_program_header_table_entry : endianness -> byte_sequence ->
+  error (elf64_program_header_table_entry * byte_sequence)
 let read_elf64_program_header_table_entry endian bs =
   read_elf64_word endian bs >>= fun (typ, bs) ->
   read_elf64_word endian bs >>= fun (flags, bs) ->
@@ -242,10 +344,6 @@ let read_elf64_program_header_table_entry endian bs =
 type elf32_program_header_table =
   list elf32_program_header_table_entry
 
-class (HasElf32ProgramHeaderTable 'a)
-  val get_elf32_program_header_table : 'a -> maybe elf32_program_header_table
-end
-
 (** Type [elf64_program_header_table] represents a program header table for 64-bit
   * ELF files.  A program header table is an array (implemented as a list, here)
   * of program header table entries.
@@ -253,12 +351,17 @@ end
 type elf64_program_header_table =
   list elf64_program_header_table_entry
 
-class (HasElf64ProgramHeaderTable 'a)
-  val get_elf64_program_header_table : 'a -> maybe elf64_program_header_table
-end
-
+(** [bytes_of_elf32_program_header_table ed tbl] blits an ELF32 program header
+  * table into a byte sequence assuming endianness [ed].
+  *)
 let bytes_of_elf32_program_header_table endian tbl =
   Byte_sequence.concat (List.map (bytes_of_elf32_program_header_table_entry endian) tbl)
+
+(** [bytes_of_elf64_program_header_table ed tbl] blits an ELF64 program header
+  * table into a byte sequence assuming endianness [ed].
+  *)  
+let bytes_of_elf64_program_header_table endian tbl =
+  Byte_sequence.concat (List.map (bytes_of_elf64_program_header_table_entry endian) tbl)
 
 (** [read_elf32_program_header_table' endian bs0] reads an ELF32 program header table from
   * byte_sequence [bs0] assuming endianness [endian].  The byte_sequence [bs0] is assumed
@@ -272,9 +375,6 @@ let rec read_elf32_program_header_table' endian bs0 =
   	read_elf32_program_header_table_entry endian bs0 >>= fun (entry, bs1) ->
     read_elf32_program_header_table' endian bs1 >>= fun tail ->
     return (entry::tail)
-
-let bytes_of_elf64_program_header_table endian tbl =
-  Byte_sequence.concat (List.map (bytes_of_elf64_program_header_table_entry endian) tbl)
 
 (** [read_elf64_program_header_table' endian bs0] reads an ELF64 program header table from
   * byte_sequence [bs0] assuming endianness [endian].  The byte_sequence [bs0] is assumed
@@ -295,7 +395,8 @@ let rec read_elf64_program_header_table' endian bs0 =
   * table multiplied by the fixed entry size.  Bitstring [bs0] may be larger than
   * necessary, in which case the excess is returned.
   *)
-val read_elf32_program_header_table : natural -> endianness -> byte_sequence -> error (elf32_program_header_table * byte_sequence)
+val read_elf32_program_header_table : natural -> endianness -> byte_sequence ->
+  error (elf32_program_header_table * byte_sequence)
 let read_elf32_program_header_table table_size endian bs0 =
 	partition table_size bs0 >>= fun (eat, rest) ->
 	read_elf32_program_header_table' endian eat >>= fun table ->
@@ -307,7 +408,8 @@ let read_elf32_program_header_table table_size endian bs0 =
   * table multiplied by the fixed entry size.  Bitstring [bs0] may be larger than
   * necessary, in which case the excess is returned.
   *)
-val read_elf64_program_header_table : natural -> endianness -> byte_sequence -> error (elf64_program_header_table * byte_sequence)
+val read_elf64_program_header_table : natural -> endianness -> byte_sequence ->
+  error (elf64_program_header_table * byte_sequence)
 let read_elf64_program_header_table table_size endian bs0 =
   partition table_size bs0 >>= fun (eat, rest) ->
   read_elf64_program_header_table' endian eat >>= fun table ->
@@ -337,18 +439,38 @@ val string_of_elf64_program_header_table : pht_print_bundle -> elf64_program_hea
 let {ocaml} string_of_elf64_program_header_table (os, proc) tbl =
   unlines (List.map (string_of_elf64_program_header_table_entry os proc) tbl)
 
+(** Static/dynamic linkage *)
+
+(** [get_elf32_dynamic_linked pht] tests whether an ELF32 file is a dynamically
+  * linked object by traversing the program header table and attempting to find
+  * a header describing a segment with the name of an associated interpreter.
+  * Returns [true] if any such header is found, [false] --- indicating static
+  * linkage --- otherwise.
+  *)
 val get_elf32_dynamic_linked : elf32_program_header_table -> bool
 let get_elf32_dynamic_linked pht =
   List.any (fun p -> natural_of_elf32_word p.elf32_p_type = elf_pt_interp) pht
 
-val get_elf32_static_linked : elf32_program_header_table -> bool
-let get_elf32_static_linked pht =
-  not (get_elf32_dynamic_linked pht)
-
+(** [get_elf64_dynamic_linked pht] tests whether an ELF64 file is a dynamically
+  * linked object by traversing the program header table and attempting to find
+  * a header describing a segment with the name of an associated interpreter.
+  * Returns [true] if any such header is found, [false] --- indicating static
+  * linkage --- otherwise.
+  *)
 val get_elf64_dynamic_linked : elf64_program_header_table -> bool
 let get_elf64_dynamic_linked pht =
   List.any (fun p -> natural_of_elf64_word p.elf64_p_type = elf_pt_interp) pht
 
+(** [get_elf32_static_linked] is a utility function defined as the inverse
+  * of [get_elf32_dynamic_linked].
+  *)
+val get_elf32_static_linked : elf32_program_header_table -> bool
+let get_elf32_static_linked pht =
+  not (get_elf32_dynamic_linked pht)
+
+(** [get_elf64_static_linked] is a utility function defined as the inverse
+  * of [get_elf64_dynamic_linked].
+  *)
 val get_elf64_static_linked : elf64_program_header_table -> bool
 let get_elf64_static_linked pht =
   not (get_elf64_dynamic_linked pht)
