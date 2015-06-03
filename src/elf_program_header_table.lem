@@ -103,8 +103,8 @@ let elf_pf_r        : natural = 4
 (** The following two bit ranges are reserved for OS- and processor-specific
   * flags respectively.
   *)
-let elf_pf_maskos   : natural = 267386880  (* 0x0ff00000 *)
-let elf_pf_maskproc : natural = 4026531840 (* 0xf0000000 *)
+let elf_pf_maskos   : natural = 267386880      (* 0x0ff00000 *)
+let elf_pf_maskproc : natural = 4 * 1006632960 (* 0xf0000000 *)
 
 (** [exact_permission_of_permission m]: ELF has two interpretations of a RWX-style
   * permission bit [m], an exact permission and an allowable permission.  These
@@ -131,7 +131,7 @@ let exact_permissions_of_permission m =
     return 5
   else if m = elf_pf_w + elf_pf_r then
     return 6
-  else if m = elf_pf_x + elf_pf_r + elf_pr_w then
+  else if m = elf_pf_x + elf_pf_r + elf_pf_w then
     return 7
   else
     fail "exact_permission_of_permission: invalid permission flag"
@@ -160,7 +160,7 @@ let allowable_permissions_of_permission m =
     return 5
   else if m = elf_pf_w + elf_pf_r then
     return 7
-  else if m = elf_pf_x + elf_pf_r + elf_pr_w then
+  else if m = elf_pf_x + elf_pf_r + elf_pf_w then
     return 7
   else
     fail "exact_permission_of_permission: invalid permission flag"

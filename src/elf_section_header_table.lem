@@ -569,7 +569,7 @@ let elf32_size_correct hdr tbl =
 val elf64_size_correct : elf64_section_header_table_entry ->
   elf64_section_header_table -> bool
 let elf64_size_correct hdr tbl =
-  let m = natural_of_elf32_word hdr.elf64_sh_size in
+  let m = natural_of_elf64_xword hdr.elf64_sh_size in
     if m = 0 then
       true
     else
