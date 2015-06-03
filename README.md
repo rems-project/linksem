@@ -74,10 +74,16 @@ building them, use 'make lem-all-ocaml' in Step 3 above instead of 'make'.
     
 ## Known issues
 
-Currently a bug in Lem prevents 'error.lem' from being extracted correctly to
-OCaml. Therefore any changes to 'error.lem' require special attention, namely
-hand editing 'error.ml', the Lem generated ML file, to add parentheses around
-the infix monadic bind operator '>>=' to avoid an OCaml parse error.
+  1. Currently a bug in Lem prevents 'error.lem' from being extracted correctly to
+     OCaml. Therefore any changes to 'error.lem' require special attention, namely
+     hand editing 'error.ml', the Lem generated ML file, to add parentheses around
+     the infix monadic bind operator '>>=' to avoid an OCaml parse error.
+  2. Another bug in Lem prevents us from writing large numeric constants in their
+     most natural form. Rather, any constant that exceeds the range of the OCaml
+     'int' type must be split into smaller constants that are added or multiplied
+     together, due to the Lem parser using 'int' throughout. Where this happens
+     the total of the computation (i.e. the constant's value) is noted in a
+     comment.
 
 All other issues, infelicities or missing pieces of formalisation should be
 noted in a camldoc-style comment at the top of the relevant Lem file.
