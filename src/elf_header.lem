@@ -972,24 +972,44 @@ let bytes_of_elf32_header hdr =
     ; bytes_of_elf32_half endian hdr.elf32_shnum
     ; bytes_of_elf32_half endian hdr.elf32_shstrndx
     ]
+    
+val is_elf32_header_padding_correct : elf32_header -> bool
+let is_elf32_header_padding_correct ehdr =
+  List.index ehdr.elf32_ident 9  = Just (unsigned_char_of_natural 0) &&
+  List.index ehdr.elf32_ident 10 = Just (unsigned_char_of_natural 0) &&
+  List.index ehdr.elf32_ident 11 = Just (unsigned_char_of_natural 0) &&
+  List.index ehdr.elf32_ident 12 = Just (unsigned_char_of_natural 0) &&
+  List.index ehdr.elf32_ident 13 = Just (unsigned_char_of_natural 0) &&
+  List.index ehdr.elf32_ident 14 = Just (unsigned_char_of_natural 0) &&
+  List.index ehdr.elf32_ident 15 = Just (unsigned_char_of_natural 0)
+
+val is_magic_number_correct : list unsigned_char -> bool
+let is_magic_number_correct ident =
+  List.index ident 0 = Just (unsigned_char_of_natural 127) &&
+  List.index ident 1 = Just (unsigned_char_of_natural 69)  &&
+  List.index ident 2 = Just (unsigned_char_of_natural 76)  &&
+  List.index ident 3 = Just (unsigned_char_of_natural 70)
 
 val read_elf32_header : byte_sequence -> error (elf32_header * byte_sequence)
 let read_elf32_header bs =
 	read_elf_ident bs >>= fun (ident, bs) ->
-  let endian = deduce_endianness ident in
-	read_elf32_half endian bs >>= fun (typ, bs) ->
-	read_elf32_half endian bs >>= fun (machine, bs) ->
-	read_elf32_word endian bs >>= fun (version, bs) ->
-	read_elf32_addr endian bs >>= fun (entry, bs) ->
-	read_elf32_off  endian bs >>= fun (phoff, bs) ->
-	read_elf32_off  endian bs >>= fun (shoff, bs) ->
-	read_elf32_word endian bs >>= fun (flags, bs) ->
-	read_elf32_half endian bs >>= fun (ehsize, bs) ->
-	read_elf32_half endian bs >>= fun (phentsize, bs) ->
-	read_elf32_half endian bs >>= fun (phnum, bs) ->
-	read_elf32_half endian bs >>= fun (shentsize, bs) ->
-	read_elf32_half endian bs >>= fun (shnum, bs) ->
-	read_elf32_half endian bs >>= fun (shstrndx, bs) ->
+	if not (is_magic_number_correct ident) then
+	  fail "read_elf32_header: magic number incorrect"
+	else
+    let endian = deduce_endianness ident in
+	  read_elf32_half endian bs >>= fun (typ, bs) ->
+	  read_elf32_half endian bs >>= fun (machine, bs) ->
+	  read_elf32_word endian bs >>= fun (version, bs) ->
+	  read_elf32_addr endian bs >>= fun (entry, bs) ->
+	  read_elf32_off  endian bs >>= fun (phoff, bs) ->
+	  read_elf32_off  endian bs >>= fun (shoff, bs) ->
+	  read_elf32_word endian bs >>= fun (flags, bs) ->
+	  read_elf32_half endian bs >>= fun (ehsize, bs) ->
+	  read_elf32_half endian bs >>= fun (phentsize, bs) ->
+	  read_elf32_half endian bs >>= fun (phnum, bs) ->
+	  read_elf32_half endian bs >>= fun (shentsize, bs) ->
+	  read_elf32_half endian bs >>= fun (shnum, bs) ->
+	  read_elf32_half endian bs >>= fun (shstrndx, bs) ->
     match List.index ident 4 with
       | Nothing -> fail "read_elf32_header: transcription of ELF identifier failed"
       | Just c  ->
@@ -1029,20 +1049,23 @@ let bytes_of_elf64_header hdr =
 val read_elf64_header : byte_sequence -> error (elf64_header * byte_sequence)
 let read_elf64_header bs =
   read_elf_ident bs >>= fun (ident, bs) ->
-  let endian = deduce_endianness ident in
-  read_elf64_half endian bs >>= fun (typ, bs) ->
-  read_elf64_half endian bs >>= fun (machine, bs) ->
-  read_elf64_word endian bs >>= fun (version, bs) ->
-  read_elf64_addr endian bs >>= fun (entry, bs) ->
-  read_elf64_off  endian bs >>= fun (phoff, bs) ->
-  read_elf64_off  endian bs >>= fun (shoff, bs) ->
-  read_elf64_word endian bs >>= fun (flags, bs) ->
-  read_elf64_half endian bs >>= fun (ehsize, bs) ->
-  read_elf64_half endian bs >>= fun (phentsize, bs) ->
-  read_elf64_half endian bs >>= fun (phnum, bs) ->
-  read_elf64_half endian bs >>= fun (shentsize, bs) ->
-  read_elf64_half endian bs >>= fun (shnum, bs) ->
-  read_elf64_half endian bs >>= fun (shstrndx, bs) ->
+  if not (is_magic_number_correct ident) then
+    fail "read_elf64_header: magic number incorrect"
+  else
+    let endian = deduce_endianness ident in
+    read_elf64_half endian bs >>= fun (typ, bs) ->
+    read_elf64_half endian bs >>= fun (machine, bs) ->
+    read_elf64_word endian bs >>= fun (version, bs) ->
+    read_elf64_addr endian bs >>= fun (entry, bs) ->
+    read_elf64_off  endian bs >>= fun (phoff, bs) ->
+    read_elf64_off  endian bs >>= fun (shoff, bs) ->
+    read_elf64_word endian bs >>= fun (flags, bs) ->
+    read_elf64_half endian bs >>= fun (ehsize, bs) ->
+    read_elf64_half endian bs >>= fun (phentsize, bs) ->
+    read_elf64_half endian bs >>= fun (phnum, bs) ->
+    read_elf64_half endian bs >>= fun (shentsize, bs) ->
+    read_elf64_half endian bs >>= fun (shnum, bs) ->
+    read_elf64_half endian bs >>= fun (shstrndx, bs) ->
     match List.index ident 4 with
       | Nothing -> fail "read_elf64_header: transcription of ELF identifier failed"
       | Just c  ->
@@ -1061,23 +1084,6 @@ let read_elf64_header bs =
             )
     end
 
-val is_elf32_header_padding_correct : elf32_header -> bool
-let is_elf32_header_padding_correct ehdr =
-  List.index ehdr.elf32_ident 9  = Just (unsigned_char_of_natural 0) &&
-  List.index ehdr.elf32_ident 10 = Just (unsigned_char_of_natural 0) &&
-  List.index ehdr.elf32_ident 11 = Just (unsigned_char_of_natural 0) &&
-  List.index ehdr.elf32_ident 12 = Just (unsigned_char_of_natural 0) &&
-  List.index ehdr.elf32_ident 13 = Just (unsigned_char_of_natural 0) &&
-  List.index ehdr.elf32_ident 14 = Just (unsigned_char_of_natural 0) &&
-  List.index ehdr.elf32_ident 15 = Just (unsigned_char_of_natural 0)
-
-val is_elf32_header_magic_number_correct : elf32_header -> bool
-let is_elf32_header_magic_number_correct ehdr =
-  List.index ehdr.elf32_ident 0 = Just (unsigned_char_of_natural 127) &&
-  List.index ehdr.elf32_ident 1 = Just (unsigned_char_of_natural 69)  &&
-  List.index ehdr.elf32_ident 2 = Just (unsigned_char_of_natural 76)  &&
-  List.index ehdr.elf32_ident 3 = Just (unsigned_char_of_natural 70)
-
 val is_elf32_header_class_correct : elf32_header -> bool
 let is_elf32_header_class_correct ehdr =
   List.index ehdr.elf32_ident 4 = Just (unsigned_char_of_natural 1)
@@ -1093,7 +1099,7 @@ let is_elf32_header_version_correct ehdr =
 val is_elf32_header_valid : elf32_header -> bool
 let is_elf32_header_valid ehdr =
   List.length ehdr.elf32_ident = ei_nident &&
-  is_elf32_header_magic_number_correct ehdr &&
+  is_magic_number_correct ehdr.elf32_ident &&
   is_elf32_header_padding_correct ehdr &&
   is_elf32_header_class_correct ehdr &&
   is_elf32_header_version_correct ehdr
