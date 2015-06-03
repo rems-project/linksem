@@ -54,6 +54,8 @@ The top-level directory structure is as follows:
       extracting executable process information to the 'ppcmem2'/'sail' project.
   * 'talks' contains the LaTeX source code of talks and other publicity material
     relating to the linking formalisation.
+  * 'test' contains example ELF binaries for multiple platforms/ABIs to test the
+    various formalisations against.
     
 ## Build process
 
