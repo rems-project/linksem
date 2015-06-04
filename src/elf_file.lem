@@ -396,7 +396,7 @@ let obtain_elf32_bits_and_bobs hdr segs interp_segs sects interp_sects bs0 =
         in
           compute_differences 0 (Byte_sequence.length bs0) layout >>= fun diffs ->
             mapM (fun (start, len) ->
-              Byte_sequence.offset_and_cut start len bs0 >>= fun rel ->
+              Byte_sequence.offset_and_cut start (len - start) bs0 >>= fun rel ->
               return (start, rel)
             ) diffs
       else
