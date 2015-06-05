@@ -6,8 +6,9 @@ TEST_FILES=test
 function perform_diff
 {
   EXECUTABLE_NAME=$1
-  READELF_RESULT=`readelf --file-header $EXECUTABLE_NAME`
-  MAIN_ELF_RESULT=`$MAIN_ELF $EXECUTABLE_NAME`
+  FLAG=$2
+  READELF_RESULT=`readelf $FLAG $EXECUTABLE_NAME`
+  MAIN_ELF_RESULT=`$MAIN_ELF $FLAG $EXECUTABLE_NAME`
   RESULT=`diff <(echo "$MAIN_ELF_RESULT") <(echo "$READELF_RESULT")`
   if [ $? -eq 0 ]; then
     echo $(tput setaf 2)
@@ -28,7 +29,14 @@ function perform_diff
   fi
 }
 
+if [ $# -ne 1 ]; then
+  printf "./harness.sh <flag>\n"
+  exit -1
+fi
+
+FLAG=$1
+
 for f in $(ls $TEST_FILES); do
   echo "testing: " $f
-  perform_diff $TEST_FILES/$f
+  perform_diff $TEST_FILES/$f $FLAG
 done

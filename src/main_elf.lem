@@ -1,3 +1,4 @@
+open import Basic_classes
 open import Function
 open import String
 open import Tuple
@@ -31,15 +32,21 @@ let default_sht_bdl =
 
 let _ =
   let res =
-    let arg =
+    let (flag, arg) =
       match argv with
-        | progname::fname::more -> fname
-        | _                     -> failwith "usage: main_elf <fname>"
+        | progname::flag::fname::more -> (flag, fname)
+        | _                           -> failwith "usage: main_elf <flag> <fname>"
       end
     in
     Byte_sequence.acquire arg    >>= fun bs0 ->
     Elf_file.read_elf32_file bs0 >>= fun f1  ->
-    return (Harness_interface.harness_string_of_elf32_header f1.elf32_file_header)
+      let ret =
+        if flag = "--file-header" then
+          Harness_interface.harness_string_of_elf32_header f1.elf32_file_header
+        else
+          "XXX"
+      in
+        return ret
   in
     match res with
       | Fail err  -> Missing_pervasives.println ("[!]: " ^ err)
