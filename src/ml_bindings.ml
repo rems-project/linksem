@@ -1,6 +1,13 @@
 open Endianness
 open Error
 
+open Printf
+
+let hex_string_of_big_int i : string =
+  let i0 = Nat_big_num.to_int i in
+    Printf.sprintf "%x" i0
+;;
+
 let bytes_of_int32 (i : Int32.t) = assert false
 ;;
 

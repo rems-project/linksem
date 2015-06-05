@@ -68,13 +68,13 @@ let {ocaml} string_of_elf_file_type os_specific proc_specific m =
 	if m = elf_ft_none then
 		"No file type"
 	else if m = elf_ft_rel then
-		"Relocatable file type"
+		"REL (Relocatable file)"
 	else if m = elf_ft_exec then
-		"Executable file type"
+		"EXEC (Executable file)"
 	else if m = elf_ft_dyn then
-		"Shared object file type"
+		"DYN (Shared object file)"
 	else if m = elf_ft_core then
-		"Core file type"
+		"CORE (Core file)"
 	else if m >= elf_ft_lo_os && m <= elf_ft_hi_os then
 		os_specific m
 	else if m >= elf_ft_lo_proc && m <= elf_ft_hi_proc then
@@ -543,17 +543,17 @@ let elf_ma_reserved159 : natural = 159
 val string_of_elf_machine_architecture : natural -> string
 let {ocaml} string_of_elf_machine_architecture m =
 	if m = elf_ma_386 then
-		"Intel 386 architecture"
+		"Intel 80386"
   else if m = elf_ma_ppc then
-    "IBM PowerPC"
+    "PowerPC"
   else if m = elf_ma_ppc64 then
-    "IBM PowerPC 64"
+    "PowerPC64"
   else if m = elf_ma_arm then
-    "ARM 32-bit"
+    "AArch"
   else if m = elf_ma_x86_64 then
-    "AMD x86-64"
+    "AMD64"
   else if m = elf_ma_aarch64 then
-    "ARM 64-bit"
+    "AArch64"
 	else
 		"Other architecture"
 
@@ -575,7 +575,7 @@ let {ocaml} string_of_elf_version_number m =
 	if m = elf_ev_none then
 		"Invalid ELF version"
 	else if m = elf_ev_current then
-		"Current ELF version"
+		"1 (current)"
 	else
 		"Extended ELF version"
 
@@ -643,9 +643,9 @@ let {ocaml} string_of_elf_file_class m =
 	if m = elf_class_none then
 		"Invalid ELF file class"
 	else if m = elf_class_32 then
-		"32 bit ELF object"
+		"ELF32"
 	else if m = elf_class_64 then
-		"64 bit ELF object"
+		"ELF64"
 	else
 		"Invalid ELF file class"
 
@@ -669,9 +669,9 @@ let {ocaml} string_of_elf_data_encoding m =
 	if m = elf_data_none then
 		"Invalid data encoding"
 	else if m = elf_data_2lsb then
-		"Two's complement values, LSB at lowest address"
+		"2's complement, little endian"
 	else if m = elf_data_2msb then
-		"Two's complement values, MSB at lowest address"
+		"2's complement, big endian"
 	else
 		"Invalid data encoding"
 
@@ -721,7 +721,7 @@ let elf_osabi_fenixos : natural = 16
 val string_of_elf_osabi_version : natural -> string
 let {ocaml} string_of_elf_osabi_version m =
 	if m = elf_osabi_none then
-		"No extension or unspecified"
+		"UNIX - System V"
 	else if m = elf_osabi_netbsd then
 		"Hewlett-Packard HP-UX"
 	else if m = elf_osabi_netbsd then
@@ -729,7 +729,7 @@ let {ocaml} string_of_elf_osabi_version m =
 	else if m = elf_osabi_gnu then
 		"GNU"
 	else if m = elf_osabi_linux then
-		"Linux (GNU alias)"
+		"Linux"
 	else if m = elf_osabi_solaris then
 		"Sun Solaris"
 	else if m = elf_osabi_aix then
@@ -788,10 +788,6 @@ type elf32_header =
    ; elf32_shstrndx : elf32_half         (** Section header table entry for section name string table *)
    |>
 
-class (HasElf32Header 'a)
-  val get_elf32_header : 'a -> elf32_header
-end
-
 (** [elf64_header] is the type of headers for 32-bit ELF files.
   *)
 type elf64_header =
@@ -810,10 +806,6 @@ type elf64_header =
    ; elf64_shnum    : elf64_half         (** Number of entries in section header table *)
    ; elf64_shstrndx : elf64_half         (** Section header table entry for section name string table *)
    |>
-
-class (HasElf64Header 'a)
-  val get_elf64_header : 'a -> elf64_header
-end
 
 val is_elf32_executable_file : elf32_header -> bool
 let is_elf32_executable_file hdr =
@@ -868,7 +860,63 @@ let get_elf64_osabi hdr =
     | Just osabi -> natural_of_unsigned_char osabi
     | Nothing    -> failwith "get_elf64_osabi: lookup in ident failed"
   end (* Partial: should never return Nothing *)
+  
+val get_elf32_data_encoding : elf32_header -> natural
+let get_elf32_data_encoding hdr =
+  match List.index hdr.elf32_ident (unsafe_nat_of_natural elf_ii_data) with
+    | Just data -> natural_of_unsigned_char data
+    | Nothing    -> failwith "get_elf32_data_encoding: lookup in ident failed"
+  end (* Partial: should never return Nothing *)
 
+val get_elf64_data_encoding : elf64_header -> natural
+let get_elf64_data_encoding hdr =
+  match List.index hdr.elf64_ident (unsafe_nat_of_natural elf_ii_data) with
+    | Just data -> natural_of_unsigned_char data
+    | Nothing    -> failwith "get_elf64_data_encoding: lookup in ident failed"
+  end (* Partial: should never return Nothing *)
+  
+val get_elf32_file_class : elf32_header -> natural
+let get_elf32_file_class hdr =
+  match List.index hdr.elf32_ident (unsafe_nat_of_natural elf_ii_class) with
+    | Just cls -> natural_of_unsigned_char cls
+    | Nothing    -> failwith "get_elf32_file_class: lookup in ident failed"
+  end (* Partial: should never return Nothing *)
+
+val get_elf64_file_class : elf64_header -> natural
+let get_elf64_file_class hdr =
+  match List.index hdr.elf64_ident (unsafe_nat_of_natural elf_ii_class) with
+    | Just cls -> natural_of_unsigned_char cls
+    | Nothing    -> failwith "get_elf64_file_class: lookup in ident failed"
+  end (* Partial: should never return Nothing *)
+
+val get_elf32_version_number : elf32_header -> natural
+let get_elf32_version_number hdr =
+  match List.index hdr.elf32_ident (unsafe_nat_of_natural elf_ii_version) with
+    | Just ver -> natural_of_unsigned_char ver
+    | Nothing    -> failwith "get_elf32_version_number: lookup in ident failed"
+  end (* Partial: should never return Nothing *)
+
+val get_elf64_version_number : elf64_header -> natural
+let get_elf64_version_number hdr =
+  match List.index hdr.elf64_ident (unsafe_nat_of_natural elf_ii_version) with
+    | Just ver -> natural_of_unsigned_char ver
+    | Nothing    -> failwith "get_elf64_version_number: lookup in ident failed"
+  end (* Partial: should never return Nothing *)
+  
+val get_elf32_abi_version : elf32_header -> natural
+let get_elf32_abi_version hdr =
+  match List.index hdr.elf32_ident (unsafe_nat_of_natural elf_ii_abiversion) with
+    | Just ver -> natural_of_unsigned_char ver
+    | Nothing    -> failwith "get_elf32_abi_version: lookup in ident failed"
+  end (* Partial: should never return Nothing *)
+
+val get_elf64_abi_version : elf64_header -> natural
+let get_elf64_abi_version hdr =
+  match List.index hdr.elf64_ident (unsafe_nat_of_natural elf_ii_abiversion) with
+    | Just ver -> natural_of_unsigned_char ver
+    | Nothing    -> failwith "get_elf64_abi_version: lookup in ident failed"
+  end (* Partial: should never return Nothing *)
+  
 (** [deduce_endian] deduces the endianness of an ELF file based on the ELF
   * header's magic number.
   *)

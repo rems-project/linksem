@@ -8,12 +8,12 @@ function perform_diff
   EXECUTABLE_NAME=$1
   READELF_RESULT=`readelf --file-header $EXECUTABLE_NAME`
   MAIN_ELF_RESULT=`$MAIN_ELF $EXECUTABLE_NAME`
-  RESULT=`diff <(echo $MAIN_ELF_RESULT) <(echo $READELF_RESULT)`
+  RESULT=`diff <(echo "$MAIN_ELF_RESULT") <(echo "$READELF_RESULT")`
   if [ $? -eq 0 ]; then
-    echo $(tput setaf 1)
+    echo $(tput setaf 2)
     echo "PASSED:"
     echo $(tput sgr0)
-    printf "\tFor ""$EXECUTABLE_NAME"""
+    printf "\tFor ""$EXECUTABLE_NAME""\n"
   else
     echo $(tput setaf 1)
     echo "TEST FAILED:"
@@ -23,6 +23,8 @@ function perform_diff
     echo $MAIN_ELF_RESULT
     printf "\nWhereas readelf returned:\n\n"
     echo $READELF_RESULT
+    printf "\nDIFF:\n"
+    echo $RESULT
   fi
 }
 

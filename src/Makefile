@@ -57,6 +57,7 @@ LEM_ABI_SRC := memory_image.lem abstract_abi.lem \
 	abis/aarch64/abi_aarch64_le.lem \
 	abstract_linker_script.lem \
 	adaptors/sail_interface.lem \
+	adaptors/harness_interface.lem \
 	abis/abi_utilities.lem \
 	abis/amd64/abi_amd64_serialisation.lem \
 	abis/amd64/abi_amd64_relocation.lem \
@@ -66,8 +67,6 @@ LEM_ABI_SRC := memory_image.lem abstract_abi.lem \
 	elf_memory_image.lem \
 
 LEM_LINK_SRC := command_line.lem input_list.lem linkable_list.lem
-
-LEM_C_INTERFACE_SRC := adaptors/harness_interface.lem
 
 LEM_MODEL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC))
 
@@ -98,7 +97,7 @@ ldgram.y.hacked: ldgram.y
 	tail -n+35 > "$@" || rm -f "$@"
 
 .PHONY: lem-all-ocaml
-lem-all-ocaml: $(filter-out error.lem,$(LEM_UTIL_SRC)) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_C_INTERFACE_SRC) $(LEM_LINK_SRC) main_link.lem main_elf.lem
+lem-all-ocaml: $(filter-out error.lem,$(LEM_UTIL_SRC)) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC) main_link.lem main_elf.lem
 	$(LEM) -ocaml -only_changed_output $+
 
 .PHONY: isa-extraction

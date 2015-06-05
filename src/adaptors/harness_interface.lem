@@ -5,5 +5,59 @@ open import String
 
 open import Error
 open import Missing_pervasives
+open import Show
+
+open import Default_printing
 
 open import Elf_header
+open import Elf_types_native_uint
+
+val unsafe_hex_string_of_natural : natural -> string
+declare ocaml target_rep function unsafe_hex_string_of_natural = `Ml_bindings.hex_string_of_big_int`
+
+val unsafe_hex_string_of_uc_list : list unsigned_char -> string
+let rec unsafe_hex_string_of_uc_list xs =
+  match xs with
+    | []       -> ""
+    | x::y::xs ->
+      let sx = unsafe_hex_string_of_natural (natural_of_unsigned_char x) in
+      let sy = unsafe_hex_string_of_natural (natural_of_unsigned_char y) in
+      let sx =
+        if String.stringLength sx = 2 then
+          sx
+        else
+          "0" ^ sx
+      in
+      let sy =
+        if String.stringLength sy = 2 then
+          sy
+        else
+          "0" ^ sy
+      in
+        sx ^ " " ^ sy ^ " " ^ unsafe_hex_string_of_uc_list xs
+  end
+
+val harness_string_of_elf32_header : elf32_header -> string
+let harness_string_of_elf32_header hdr =
+  unlines [
+    "ELF Header:"
+  ; "  Magic:" ^ "   "                           ^ unsafe_hex_string_of_uc_list (hdr.elf32_ident)
+  ; "  Class:" ^ "                             " ^ string_of_elf_file_class (get_elf32_file_class hdr)
+  ; "  Data:" ^ "                              " ^ string_of_elf_data_encoding (get_elf32_data_encoding hdr)
+  ; "  Version:" ^ "                           " ^ string_of_elf_version_number (get_elf32_version_number hdr)
+  ; "  OS/ABI:" ^ "                            " ^ string_of_elf_osabi_version (get_elf32_osabi hdr)
+  ; "  ABI Version:" ^ "                       " ^ show (get_elf32_abi_version hdr)
+  ; "  Type:" ^ "                              " ^ string_of_elf_file_type default_os_specific_print default_proc_specific_print (natural_of_elf32_half hdr.elf32_type)
+  ; "  Machine:" ^ "                           " ^ string_of_elf_machine_architecture (natural_of_elf32_half hdr.elf32_machine)
+  ; "  Version:" ^ "                           " ^ "0x" ^ unsafe_hex_string_of_natural (natural_of_elf32_word hdr.elf32_version)
+  ; "  Entry point address:" ^ "               " ^ "0x" ^ unsafe_hex_string_of_natural (natural_of_elf32_addr hdr.elf32_entry)
+  ; "  Start of program headers:" ^ "          " ^ show hdr.elf32_phoff ^ " (bytes into file)"
+  ; "  Start of section headers:" ^ "          " ^ show hdr.elf32_shoff ^ " (bytes into file)"
+  ; "  Flags:" ^ "                             " ^ "0x" ^ unsafe_hex_string_of_natural (natural_of_elf32_word hdr.elf32_flags)
+  ; "  Size of this header:" ^ "               " ^ show hdr.elf32_ehsize ^ " (bytes)"
+  ; "  Size of program headers:" ^ "           " ^ show hdr.elf32_phentsize ^ " (bytes)"
+  ; "  Number of program headers:" ^ "         " ^ show hdr.elf32_phnum
+  ; "  Size of section headers:" ^ "           " ^ show hdr.elf32_shentsize ^ " (bytes)"
+  ; "  Number of section headers:" ^ "         " ^ show hdr.elf32_shnum
+  ; "  Section header string table index:" ^ " " ^ show hdr.elf32_shstrndx
+  ]
