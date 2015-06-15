@@ -19,6 +19,8 @@ open import Elf_types_native_uint
 
 val hex_string_of_big_int_no_padding : natural -> string
 declare ocaml target_rep function hex_string_of_big_int_no_padding = `Ml_bindings.hex_string_of_big_int_no_padding`
+val hex_string_of_big_int_pad2 : natural -> string
+declare ocaml target_rep function hex_string_of_big_int_pad2 = `Ml_bindings.hex_string_of_big_int_pad2`
 val hex_string_of_big_int_pad5 : natural -> string
 declare ocaml target_rep function hex_string_of_big_int_pad5 = `Ml_bindings.hex_string_of_big_int_pad5`
 val hex_string_of_big_int_pad6 : natural -> string
@@ -31,7 +33,9 @@ declare ocaml target_rep function hex_string_of_nat_pad2 = `Ml_bindings.hex_stri
 
 val unsafe_hex_string_of_natural : nat -> natural -> string
 let unsafe_hex_string_of_natural pad m =
-  if pad = 5 then
+  if pad = 2 then
+    hex_string_of_big_int_pad2 m
+  else if pad = 5 then
     hex_string_of_big_int_pad5 m
   else if pad = 6 then
     hex_string_of_big_int_pad6 m
@@ -168,3 +172,85 @@ let harness_string_of_elf32_program_headers os proc hdr pht sht stbl bs0 =
   ; "  Segment Sections..."
   ; harness_string_of_elf32_segment_section_mappings pht sht stbl
   ]
+  
+val harness_sht_flag_legend : string
+let harness_sht_flag_legend =
+  "\nKey to Flags:
+  W (write), A (alloc), X (execute), M (merge), S (strings)
+  I (info), L (link order), G (group), T (TLS), E (exclude), x (unknown)
+  O (extra OS processing required) o (OS specific), p (processor specific)"
+  
+val harness_string_of_elf32_sht : (natural -> string) -> (natural -> string) -> (natural -> string) -> elf32_section_header_table -> string_table -> string
+let harness_string_of_elf32_sht os proc usr sht stbl =
+  "  [Nr] Name              Type            Addr     Off    Size   ES Flg Lk Inf Al\n" ^
+  unlines (List.mapi (fun i -> fun sec ->
+    let is =
+      let temp = show i in
+        if stringLength temp = 1 then
+          " " ^ temp
+        else
+          temp
+    in
+    let str = "  [" ^ is ^ "]" in
+    let ((gap : string), name) =
+      match String_table.get_string_at (natural_of_elf32_word sec.elf32_sh_name) stbl with
+        | Fail err   -> ("", "ERR " ^ err)
+        | Success nm ->
+          if natural_of_elf32_word sec.elf32_sh_type = sht_null then
+            let gap = List.foldr (^) " " (Missing_pervasives.replicate 17 " ") in
+            (gap, "")
+          else
+            let glen = naturalFromNat (17 - String.stringLength nm) in
+            let gap = List.foldr (^) " " (Missing_pervasives.replicate glen " ") in
+              (gap, nm)
+      end
+    in
+    let str = str ^ " " ^ name ^ gap in
+    let typ = string_of_section_type os proc usr (natural_of_elf32_word sec.elf32_sh_type) in
+    let str = str ^ typ in
+    let (gap, addr) =
+      let mx  = naturalFromNat (15 - String.stringLength typ) in
+      let gap = List.foldr (^) " " (Missing_pervasives.replicate mx " ") in
+        (gap, unsafe_hex_string_of_natural 8 (natural_of_elf32_addr sec.elf32_sh_addr))
+    in
+    let str = str ^ gap ^ addr in
+    let off = unsafe_hex_string_of_natural 6 (natural_of_elf32_off sec.elf32_sh_offset) in
+    let str = str ^ " " ^ off in
+    let size = unsafe_hex_string_of_natural 6 (natural_of_elf32_word sec.elf32_sh_size) in
+    let str = str ^ " " ^ size in
+    let es  = unsafe_hex_string_of_natural 2 (natural_of_elf32_word sec.elf32_sh_entsize) in
+    let str = str ^ " " ^ es in
+    let flg = string_of_section_flags os proc (natural_of_elf32_word sec.elf32_sh_flags) in
+    let str = str ^ " " ^ flg in
+    let (gap, lnk) =
+      let l  = show (natural_of_elf32_word sec.elf32_sh_link) in
+      let gp = naturalFromNat (2 - String.stringLength l) in
+      let gp = List.foldr (^) " " (replicate gp " ") in
+        (gp, l)
+    in
+    let str = str ^ gap ^ lnk in
+    let (gap, info) =
+      let i  = show (natural_of_elf32_word sec.elf32_sh_info) in
+      let gp = naturalFromNat (3 - String.stringLength i) in
+      let gp = List.foldr (^) " " (replicate gp " ") in
+        (gp, i)
+    in
+    let str = str ^ gap ^ info in
+    let (gap, align) =
+      let a  = show (natural_of_elf32_word sec.elf32_sh_addralign) in
+      let gp = naturalFromNat (2 - String.stringLength a) in
+      let gp = List.foldr (^) " " (replicate gp " ") in
+        (gp, a)
+    in
+    let str = str ^ gap ^ align in
+      str) sht)
+    
+
+val harness_string_of_elf32_section_headers : (natural -> string) -> (natural -> string) -> (natural -> string) -> elf32_header -> elf32_section_header_table -> string_table -> string
+let harness_string_of_elf32_section_headers os proc usr hdr sht stbl =
+  unlines [
+    "There are " ^ show (List.length sht) ^ " section headers, starting at offset 0x" ^ unsafe_hex_string_of_natural 0 (natural_of_elf32_off hdr.elf32_shoff) ^ ":"
+  ; ""
+  ; "Section Headers:"
+  ; harness_string_of_elf32_sht os proc usr sht stbl
+  ] ^ harness_sht_flag_legend

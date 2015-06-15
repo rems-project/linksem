@@ -175,39 +175,39 @@ val string_of_section_type : (natural -> string) -> (natural -> string) ->
   (natural -> string) -> natural -> string
 let {ocaml} string_of_section_type os proc user i =
   if i = sht_null then
-    "SHT_NULL"
+    "NULL"
   else if i = sht_progbits then
-    "SHT_PROGBITS"
+    "PROGBITS"
   else if i = sht_symtab then
-    "SHT_SYMTAB"
+    "SYMTAB"
   else if i = sht_strtab then
-    "SHT_STRTAB"
+    "STRTAB"
   else if i = sht_rela then
-    "SHT_RELA"
+    "RELA"
   else if i = sht_hash then
-    "SHT_HASH"
+    "HASH"
   else if i = sht_dynamic then
-    "SHT_DYNAMIC"
+    "DYNAMIC"
   else if i = sht_note then
-    "SHT_NOTE"
+    "NOTE"
   else if i = sht_nobits then
-    "SHT_NOBITS"
+    "NOBITS"
   else if i = sht_rel then
-    "SHT_REL"
+    "REL"
   else if i = sht_shlib then
-    "SHT_SHLIB"
+    "SHLIB"
   else if i = sht_dynsym then
-    "SHT_DYNSYM"
+    "DYNSYM"
   else if i = sht_init_array then
-    "SHT_INIT_ARRAY"
+    "INIT_ARRAY"
   else if i = sht_fini_array then
-    "SHT_FINI_ARRAY"
+    "FINI_ARRAY"
   else if i = sht_preinit_array then
-    "SHT_PREINIT_ARRAY"
+    "PREINIT_ARRAY"
   else if i = sht_group then
-    "SHT_GROUP"
+    "GROUP"
   else if i = sht_symtab_shndx then
-    "SHT_SYMTAB_SHNDX"
+    "SYMTAB_SHNDX"
   else if i >= sht_loos && i <= sht_hios then
     os i 
   else if i >= sht_loproc && i <= sht_hiproc then
@@ -274,6 +274,22 @@ let shf_compressed       : natural = 2048
   *)
 let shf_mask_os          : natural = 267386880      (* 0x0ff00000 *)
 let shf_mask_proc        : natural = 4 * 1006632960 (* 0xf0000000 *)
+
+(* TODO: finish me! *)
+val string_of_section_flags : (natural -> string) -> (natural -> string) -> natural -> string
+let string_of_section_flags os proc f =
+  if f = shf_write then
+    "W"
+  else if f = shf_alloc then
+    "  A"
+  else if f = shf_execinstr then
+    "  X"
+  else if f = shf_alloc + shf_execinstr then
+    " AX"
+  else if f = shf_write + shf_alloc then
+    " WA"
+  else
+    "   "
 
 (** Section compression. *)
 

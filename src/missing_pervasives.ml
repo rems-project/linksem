@@ -357,3 +357,8 @@ let rec list_take_with_accum n reverse_acc l =
             | x :: xs -> list_take_with_accum (Nat_num.nat_monus n( 1)) (x :: reverse_acc) xs
         )
     ))
+
+(*val unsafe_string_take : natural -> string -> string*)
+let unsafe_string_take m str =  
+(let m = (Nat_big_num.to_int m) in
+    Xstring.implode (Lem_list.take m (Xstring.explode str)))

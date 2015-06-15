@@ -71,6 +71,22 @@ let _ =
                   f1.elf32_file_section_header_table
                   stbl
                   bs0
+              else if flag = "--section-headers" then
+                Harness_interface.harness_string_of_elf32_section_headers
+                  (fun x -> (* XXX: ABI specific, move elsewhere *)
+                    if x = 2 * 939524091 then
+                      "GNU_HASH"
+                    else if x = 2 * 939524095 then
+                      "VERNEED"
+                    else if x = (2 * 939524095) + 1 then
+                      "VERSYM"
+                    else
+                      show x)
+                  (fun x -> show x)
+                  (fun x -> show x)
+                  f1.elf32_file_header
+                  f1.elf32_file_section_header_table
+                  stbl
               else
                 failwith "Unrecognised flag"
             in
