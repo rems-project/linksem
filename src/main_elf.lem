@@ -1,5 +1,7 @@
 open import Basic_classes
 open import Function
+open import Maybe
+open import Num
 open import String
 open import Tuple
 
@@ -9,6 +11,8 @@ open import Error
 open import Missing_pervasives
 open import Show
 open import Assert_extra
+
+open import Endianness
 
 open import Elf_header
 open import Elf_file
@@ -39,14 +43,43 @@ let _ =
       end
     in
     Byte_sequence.acquire arg    >>= fun bs0 ->
-    Elf_file.read_elf32_file bs0 >>= fun f1  ->
-      let ret =
-        if flag = "--file-header" then
-          Harness_interface.harness_string_of_elf32_header f1.elf32_file_header
+    repeatM' Elf_header.ei_nident bs0 (read_unsigned_char Endianness.default_endianness) >>= fun (ident, bs) ->
+    match List.index ident 4 with
+      | Nothing -> failwith "ELF ident transcription error"
+      | Just c  ->
+        if natural_of_unsigned_char c = Elf_header.elf_class_32 then
+          Elf_file.read_elf32_file bs0 >>= fun f1  ->
+          get_elf32_file_section_header_string_table f1 >>= fun stbl ->
+            let ret =
+              if flag = "--file-header" then
+                Harness_interface.harness_string_of_elf32_file_header f1.elf32_file_header
+              else if flag = "--program-headers" then
+                Harness_interface.harness_string_of_elf32_program_headers
+                  (fun x -> (* XXX: ABI specific, move elsewhere *)
+                    if x = 4 * 421345620 then
+                      "GNU_EH_FRAME"
+                    else if x = (4 * 421345620) + 1 then
+                      "GNU_STACK"
+                    else if x = (4 * 421345620) + 2 then
+                      "GNU_RELRO"
+                    else
+                      show x)
+                  (fun x ->
+                    show x)
+                  f1.elf32_file_header
+                  f1.elf32_file_program_header_table
+                  f1.elf32_file_section_header_table
+                  stbl
+                  bs0
+              else
+                failwith "Unrecognised flag"
+            in
+              return ret
+        else if natural_of_unsigned_char c = Elf_header.elf_class_64 then
+          failwith "64-bit not supported"
         else
-          "XXX"
-      in
-        return ret
+          failwith "ELF ident transcription error"
+    end
   in
     match res with
       | Fail err  -> Missing_pervasives.println ("[!]: " ^ err)

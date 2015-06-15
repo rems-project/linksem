@@ -70,21 +70,21 @@ let elf_pt_hiproc : natural = (536870911 * 4) + 3 (* 2147483647 (* 0x7fffffff *)
 val string_of_elf_segment_type : (natural -> string) -> (natural -> string) -> natural -> string
 let {ocaml} string_of_elf_segment_type os proc pt =
 	if pt = elf_pt_null then
-		"PT_NULL"
+		"NULL"
 	else if pt = elf_pt_load then
-		"PT_LOAD"
+		"LOAD"
 	else if pt = elf_pt_dynamic then
-		"PT_DYNAMIC"
+		"DYNAMIC"
 	else if pt = elf_pt_interp then
-		"PT_INTERP"
+		"INTERP"
 	else if pt = elf_pt_note then
-		"PT_NOTE"
+		"NOTE"
 	else if pt = elf_pt_shlib then
-		"PT_SHLIB"
+		"SHLIB"
 	else if pt = elf_pt_phdr then
-		"PT_PHDR"
+		"PHDR"
 	else if pt = elf_pt_tls then
-		"PT_TLS"
+		"TLS"
 	else if pt >= elf_pt_loos && pt <= elf_pt_hios then
 		os pt
 	else if pt >= elf_pt_loproc && pt <= elf_pt_hiproc then
@@ -164,6 +164,27 @@ let allowable_permissions_of_permission m =
     return 7
   else
     fail "exact_permission_of_permission: invalid permission flag"
+    
+val string_of_elf_segment_permissions : natural -> string
+let string_of_elf_segment_permissions m =
+  if m = 0 then
+    "  "
+  else if m = elf_pf_x then
+    "  E"
+  else if m = elf_pf_w then
+    " W "
+  else if m = elf_pf_r then
+    "R  "
+  else if m = elf_pf_x + elf_pf_w then
+    " WE"
+  else if m = elf_pf_x + elf_pf_r then
+    "R E"
+  else if m = elf_pf_w + elf_pf_r then
+    "RW "
+  else if m = elf_pf_x + elf_pf_r + elf_pf_w then
+    "RWE"
+  else
+    "Invalid permisssion flag"
 
 (** Program header table entry type *)
 
@@ -474,3 +495,25 @@ let get_elf32_static_linked pht =
 val get_elf64_static_linked : elf64_program_header_table -> bool
 let get_elf64_static_linked pht =
   not (get_elf64_dynamic_linked pht)
+  
+val get_elf32_requested_interpreter : elf32_program_header_table_entry ->
+  byte_sequence -> error string
+let get_elf32_requested_interpreter pent bs0 =
+  if natural_of_elf32_word pent.elf32_p_type = elf_pt_interp then
+    let off = natural_of_elf32_off  pent.elf32_p_offset in
+    let siz = natural_of_elf32_word pent.elf32_p_filesz in
+      Byte_sequence.offset_and_cut off (siz - 1) bs0 >>= fun cut ->
+      return (Byte_sequence.string_of_byte_sequence cut)
+  else
+    fail "get_elf32_requested_interpreter: not an INTERP segment header"
+  
+val get_elf64_requested_interpreter : elf64_program_header_table_entry ->
+  byte_sequence -> error string
+let get_elf64_requested_interpreter pent bs0 =
+  if natural_of_elf64_word pent.elf64_p_type = elf_pt_interp then
+    let off = natural_of_elf64_off   pent.elf64_p_offset in
+    let siz = natural_of_elf64_xword pent.elf64_p_filesz in
+      Byte_sequence.offset_and_cut off (siz - 1) bs0 >>= fun cut ->
+      return (Byte_sequence.string_of_byte_sequence cut)
+  else
+    fail "get_elf64_requested_interpreter: not an INTERP segment header"

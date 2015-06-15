@@ -7,7 +7,7 @@ function perform_diff
 {
   EXECUTABLE_NAME=$1
   FLAG=$2
-  READELF_RESULT=`readelf $FLAG $EXECUTABLE_NAME`
+  READELF_RESULT=`readelf --wide $FLAG $EXECUTABLE_NAME`
   MAIN_ELF_RESULT=`$MAIN_ELF $FLAG $EXECUTABLE_NAME`
   RESULT=`diff <(echo "$MAIN_ELF_RESULT") <(echo "$READELF_RESULT")`
   if [ $? -eq 0 ]; then

@@ -61,6 +61,7 @@ LEM_ABI_SRC := memory_image.lem abstract_abi.lem \
 	abis/abi_utilities.lem \
 	abis/amd64/abi_amd64_serialisation.lem \
 	abis/amd64/abi_amd64_relocation.lem \
+	abis/amd64/abi_amd64_program_header_table.lem \
 	abis/amd64/abi_amd64.lem \
 	abis/power64/abi_power64_relocation.lem \
 	abis/abis.lem \

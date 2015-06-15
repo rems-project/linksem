@@ -85,12 +85,12 @@ let get_string_at index tbl =
   match Missing_pervasives.string_suffix index (get_base_string tbl) with
     | Nothing     -> Fail ("get_string_at: invalid index (" ^ (show index) ^ ") into string")
     | Just suffix ->
-        let delim = get_delimiting_character tbl in
-        let tbl   = mk_string_table suffix delim in
-          match get_strings tbl with
-            | []    -> Fail "get_string_at: empty string returned"
-            | x::xs -> return x
-          end
+      let delim = get_delimiting_character tbl in
+      let tbl   = mk_string_table suffix delim in
+        match get_strings tbl with
+          | []    -> Fail "get_string_at: empty string returned"
+          | x::xs -> return x
+        end
   end
 
 class (HasElf32SectionHeaderStringTable 'a)

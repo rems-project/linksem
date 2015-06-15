@@ -21,14 +21,16 @@ open import Maybe
 open import Num
 open import String
 
-open import Elf_types_native_uint
-open import Endianness
-open import String_table
-
 open import Byte_sequence
 open import Error
 open import Missing_pervasives
 open import Show
+
+open import Endianness
+open import String_table
+
+open import Elf_types_native_uint
+open import Elf_program_header_table
 
 (** Special section indices. *)
 
@@ -727,6 +729,49 @@ val string_of_elf64_section_header_table' : sht_print_bundle -> string_table ->
   elf64_section_header_table -> string
 let {ocaml} string_of_elf64_section_header_table' sht_bdl stbl tbl =
   unlines (List.map (string_of_elf64_section_header_table_entry' sht_bdl stbl) tbl)
+  
+(** Section to segment mappings *)
+
+val get_elf32_section_to_segment_mapping : elf32_section_header_table -> elf32_program_header_table_entry ->
+  string_table -> error (list string)
+let rec get_elf32_section_to_segment_mapping sects pent stbl =
+  match sects with
+    | []    -> return []
+    | x::xs ->
+      let sect_addr   = natural_of_elf32_addr x.elf32_sh_addr in
+      let sect_size   = natural_of_elf32_word x.elf32_sh_size in
+      let pent_vaddr  = natural_of_elf32_addr pent.elf32_p_vaddr in
+      let pent_size   = natural_of_elf32_word pent.elf32_p_memsz in
+        if pent_size = 0 then
+          get_elf32_section_to_segment_mapping xs pent stbl
+        else
+          if sect_addr >= pent_vaddr && sect_addr + sect_size <= pent_vaddr + pent_size then
+            let nm = natural_of_elf32_word x.elf32_sh_name in
+              get_string_at nm stbl >>= fun str ->
+              get_elf32_section_to_segment_mapping xs pent stbl >>= fun tl ->
+              return (str :: tl)
+          else
+            get_elf32_section_to_segment_mapping xs pent stbl
+  end
+  
+val get_elf64_section_to_segment_mapping : elf64_section_header_table -> elf64_program_header_table_entry ->
+  string_table -> error (list string)
+let rec get_elf64_section_to_segment_mapping sects pent stbl =
+  match sects with
+    | []    -> return []
+    | x::xs ->
+      let sect_addr   = natural_of_elf64_addr x.elf64_sh_addr in
+      let sect_size   = natural_of_elf64_xword x.elf64_sh_size in
+      let pent_vaddr  = natural_of_elf64_addr pent.elf64_p_vaddr in
+      let pent_size   = natural_of_elf64_xword pent.elf64_p_memsz in
+        if sect_addr >= pent_vaddr && sect_addr + sect_size <= pent_vaddr + pent_size then
+          let nm = natural_of_elf64_word x.elf64_sh_name in
+            get_string_at nm stbl >>= fun str ->
+            get_elf64_section_to_segment_mapping xs pent stbl >>= fun tl ->
+            return (str :: tl)
+        else
+          get_elf64_section_to_segment_mapping xs pent stbl
+  end
   
 (** Section groups *)
 
