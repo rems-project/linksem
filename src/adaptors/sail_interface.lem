@@ -14,12 +14,14 @@ open import Show
 
 open import Elf_header
 open import Elf_file
+open import Elf_interpreted_section
+open import String_table
 open import Elf_symbol_table
 open import Elf_types_native_uint
 
 type executable_process_image
-  = ELF_Class_32 of elf32_executable_process_image
-  | ELF_Class_64 of elf64_executable_process_image
+  = ELF_Class_32 of (elf32_executable_process_image * string_table * elf32_interpreted_sections)
+  | ELF_Class_64 of (elf64_executable_process_image * string_table * elf64_interpreted_sections)
 
 val populate : string -> error executable_process_image
 let populate fname =
@@ -37,14 +39,16 @@ let populate fname =
           Elf_file.read_elf32_file bs0 >>= fun ef5 ->
           if Elf_program_header_table.get_elf32_static_linked ef5.elf32_file_program_header_table then
             Elf_file.get_elf32_executable_image ef5 >>= fun img ->
-            return (ELF_Class_32 img)
+            Elf_file.get_elf32_file_section_header_string_table ef5 >>= fun stbl ->
+            return (ELF_Class_32 (img, stbl, ef5.elf32_file_interpreted_sections))
           else
             fail "populate: not a statically linked executable"
         else if natural_of_unsigned_char c = Elf_header.elf_class_64 then
           Elf_file.read_elf64_file bs0 >>= fun ef5 ->
           if Elf_program_header_table.get_elf64_static_linked ef5.elf64_file_program_header_table then
             Elf_file.get_elf64_executable_image ef5 >>= fun img ->
-            return (ELF_Class_64 img)
+            Elf_file.get_elf64_file_section_header_string_table ef5 >>= fun stbl ->
+            return (ELF_Class_64 (img, stbl, ef5.elf64_file_interpreted_sections))
           else
             fail "populate: not a statically linked executable"
         else
@@ -98,7 +102,8 @@ let populate_and_obtain_global_symbol_init_info fname =
           if Elf_program_header_table.get_elf32_static_linked f1.elf32_file_program_header_table then
             Elf_file.get_elf32_file_global_symbol_init f1 >>= fun init ->
             Elf_file.get_elf32_executable_image f1 >>= fun img ->
-            return (ELF_Class_32 img, init)
+            Elf_file.get_elf32_file_section_header_string_table f1 >>= fun stbl ->            
+            return ((ELF_Class_32 (img, stbl, f1.elf32_file_interpreted_sections)), init)
           else
             fail "populate_and_obtain_global_symbol_init_info: not a statically linked executable"
         else if natural_of_unsigned_char c = Elf_header.elf_class_64 then
@@ -106,8 +111,10 @@ let populate_and_obtain_global_symbol_init_info fname =
           if Elf_program_header_table.get_elf64_static_linked f1.elf64_file_program_header_table then
             Elf_file.get_elf64_file_global_symbol_init f1 >>= fun init ->
             Elf_file.get_elf64_executable_image f1 >>= fun img ->
-            return (ELF_Class_64 img, init)
+            Elf_file.get_elf64_file_section_header_string_table f1 >>= fun stbl ->
+            return ((ELF_Class_64 (img, stbl, f1.elf64_file_interpreted_sections)), init)
           else
-            fail "populate_and_obtain_global_symbol_init_info: not a statically linked executable"       else
+            fail "populate_and_obtain_global_symbol_init_info: not a statically linked executable"
+        else
           fail "populate_and_obtain_global_symbol_init_info: ELF class unrecognised"
     end
