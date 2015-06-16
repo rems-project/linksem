@@ -110,16 +110,13 @@ let inline {isabelle} equal = unsafe_structural_equality
 
 val dropbytes : natural -> byte_sequence -> error byte_sequence
 let rec dropbytes count (Sequence ts) =
-  match count with
-    | 0 -> return (Sequence ts)
-    | m ->
-      match ts with
-        | []    ->
-          fail "dropbytes: cannot drop more bytes than are contained in sequence"
-        | x::xs ->
-          dropbytes (count - 1) (Sequence xs)
-      end
-  end
+  if count = Missing_pervasives.naturalZero then
+    return (Sequence ts)
+  else
+    match ts with
+      | []    -> fail "dropbytes: cannot drop more bytes than are contained in sequence"
+      | x::xs -> dropbytes (count - 1) (Sequence xs)
+    end
 
 val takebytes_r: nat -> byte_sequence -> error byte_sequence
 let rec takebytes_r count (Sequence ts) = 

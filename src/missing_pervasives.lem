@@ -11,6 +11,10 @@ open import Sorting
 open import {isabelle} `$ISABELLE_HOME/src/HOL/Word/Word`
 open import {isabelle} `Elf_Types_Local`
 
+val naturalZero : natural
+
+declare ocaml target_rep function naturalZero = `Nat_big_num.zero`
+
 val id : forall 'a. 'a -> 'a
 let id x = x
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 MAIN_ELF=../../src/main_elf.opt
-TEST_FILES=test
+TEST_FILES=/usr/bin/
 
 function perform_diff
 {

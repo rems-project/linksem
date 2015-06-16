@@ -727,7 +727,7 @@ let {ocaml} string_of_elf_osabi_version m =
 	else if m = elf_osabi_netbsd then
 		"NetBSD"
 	else if m = elf_osabi_gnu then
-		"GNU"
+		"UNIX - GNU"
 	else if m = elf_osabi_linux then
 		"Linux"
 	else if m = elf_osabi_solaris then

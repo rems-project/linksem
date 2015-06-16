@@ -254,3 +254,9 @@ let harness_string_of_elf32_section_headers os proc usr hdr sht stbl =
   ; "Section Headers:"
   ; harness_string_of_elf32_sht os proc usr sht stbl
   ] ^ harness_sht_flag_legend
+  
+(*
+val harness_string_of_elf32_symbols : elf32_file -> string
+let harness_string_of_elf32_symbols f1 =
+  Elf_file.get_elf32_file_dynamic_symbol_table f1 >>= fun dynsym ->
+*)
