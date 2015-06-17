@@ -1,0 +1,15 @@
+open import Basic_classes
+open import Num
+open import String
+
+(** The segment contains the stack unwind tables *)
+let abi_amd64_pt_gnu_eh_frame  : natural = 2 * 842691240 (* 0x6474e550 *)
+let abi_amd64_pt_sunw_eh_frame : natural = 2 * 842691240 (* 0x6474e550 *)
+let abi_amd64_pt_sunw_unwind   : natural = 2 * 842691240 (* 0x6474e550 *)
+
+val abi_amd64_string_of_elf_segment_type : natural -> string
+let abi_amd64_string_of_elf_segment_type m =
+  if m = abi_amd64_pt_gnu_eh_frame then
+    "GNU_EH_FRAME"
+  else
+    "Invalid"
