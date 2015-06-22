@@ -27,6 +27,11 @@ let hex_string_of_big_int_pad8 i : string =
     Printf.sprintf "%08x" i0
 ;;
 
+let hex_string_of_big_int_pad16 i : string =
+  let i0 = Nat_big_num.to_int i in
+    Printf.sprintf "%016x" i0
+;;
+
 let hex_string_of_big_int_no_padding i : string =
   let i0 = Nat_big_num.to_int i in
     Printf.sprintf "%x" i0

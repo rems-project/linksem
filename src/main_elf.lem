@@ -92,7 +92,49 @@ let _ =
             in
               return ret
         else if natural_of_unsigned_char c = Elf_header.elf_class_64 then
-          failwith "64-bit not supported"
+          Elf_file.read_elf64_file bs0 >>= fun f1  ->
+          get_elf64_file_section_header_string_table f1 >>= fun stbl ->
+            let ret =
+              if flag = "--file-header" then
+                Harness_interface.harness_string_of_elf64_file_header f1.elf64_file_header
+              else if flag = "--program-headers" then
+                Harness_interface.harness_string_of_elf64_program_headers
+                  (fun x -> (* XXX: ABI specific, move elsewhere *)
+                    if x = 4 * 421345620 then
+                      "GNU_EH_FRAME"
+                    else if x = (4 * 421345620) + 1 then
+                      "GNU_STACK"
+                    else if x = (4 * 421345620) + 2 then
+                      "GNU_RELRO"
+                    else
+                      show x)
+                  (fun x ->
+                    show x)
+                  f1.elf64_file_header
+                  f1.elf64_file_program_header_table
+                  f1.elf64_file_section_header_table
+                  stbl
+                  bs0
+              else if flag = "--section-headers" then
+                Harness_interface.harness_string_of_elf64_section_headers
+                  (fun x -> (* XXX: ABI specific, move elsewhere *)
+                    if x = 2 * 939524091 then
+                      "GNU_HASH"
+                    else if x = 2 * 939524095 then
+                      "VERNEED"
+                    else if x = (2 * 939524095) + 1 then
+                      "VERSYM"
+                    else
+                      show x)
+                  (fun x -> show x)
+                  (fun x -> show x)
+                  f1.elf64_file_header
+                  f1.elf64_file_section_header_table
+                  stbl
+              else
+                failwith "Unimplemented (for ELF64) or unrecognised flag"
+            in
+              return ret
         else
           failwith "ELF ident transcription error"
     end

@@ -288,6 +288,22 @@ let string_of_section_flags os proc f =
     " AX"
   else if f = shf_write + shf_alloc then
     " WA"
+  else if f = shf_merge then
+    " M "
+  else if f = shf_strings then
+    "  S"
+  else if f = shf_merge + shf_strings then
+    " MS"
+  else if f = shf_tls then
+    "  T"
+  else if f = shf_tls + shf_alloc then
+    " AT"
+  else if f = shf_write + shf_alloc + shf_tls then
+    "WAT"
+  else if f = shf_info_link then
+    "  I"
+  else if f = shf_alloc + shf_info_link then
+    " AI"
   else
     "   "
 
@@ -780,13 +796,16 @@ let rec get_elf64_section_to_segment_mapping sects pent stbl =
       let sect_size   = natural_of_elf64_xword x.elf64_sh_size in
       let pent_vaddr  = natural_of_elf64_addr pent.elf64_p_vaddr in
       let pent_size   = natural_of_elf64_xword pent.elf64_p_memsz in
-        if sect_addr >= pent_vaddr && sect_addr + sect_size <= pent_vaddr + pent_size then
-          let nm = natural_of_elf64_word x.elf64_sh_name in
-            get_string_at nm stbl >>= fun str ->
-            get_elf64_section_to_segment_mapping xs pent stbl >>= fun tl ->
-            return (str :: tl)
-        else
+        if pent_size = 0 then
           get_elf64_section_to_segment_mapping xs pent stbl
+        else
+          if sect_addr >= pent_vaddr && sect_addr + sect_size <= pent_vaddr + pent_size then
+            let nm = natural_of_elf64_word x.elf64_sh_name in
+              get_string_at nm stbl >>= fun str ->
+              get_elf64_section_to_segment_mapping xs pent stbl >>= fun tl ->
+              return (str :: tl)
+          else
+            get_elf64_section_to_segment_mapping xs pent stbl
   end
   
 (** Section groups *)
