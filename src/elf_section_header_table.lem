@@ -275,7 +275,7 @@ let shf_compressed       : natural = 2048
 let shf_mask_os          : natural = 267386880      (* 0x0ff00000 *)
 let shf_mask_proc        : natural = 4 * 1006632960 (* 0xf0000000 *)
 
-(* TODO: finish me! *)
+(* TODO: finish me!  Add as required. *)
 val string_of_section_flags : (natural -> string) -> (natural -> string) -> natural -> string
 let string_of_section_flags os proc f =
   if f = shf_write then
@@ -764,6 +764,38 @@ let {ocaml} string_of_elf64_section_header_table' sht_bdl stbl tbl =
   
 (** Section to segment mappings *)
 
+(** [elf32_tbss_special shdr seg] implements the ELF_TBSS_SPECIAL macro from readelf:
+  *
+  * #define ELF_TBSS_SPECIAL(sec_hdr, segment)			\
+  *   (((sec_hdr)->sh_flags & SHF_TLS) != 0				\
+  *   && (sec_hdr)->sh_type == SHT_NOBITS				\
+  *   && (segment)->p_type != PT_TLS)
+  *
+  * From readelf source code, file [internal.h].
+  *
+  *)
+val elf32_tbss_special : elf32_section_header_table_entry -> elf32_program_header_table_entry -> bool
+let elf32_tbss_special sec_hdr segment =
+  (elf32_word_land sec_hdr.elf32_sh_flags (elf32_word_of_natural shf_tls)) <> elf32_word_of_natural 0 &&
+    ((natural_of_elf32_word sec_hdr.elf32_sh_type) = sht_nobits) &&
+    ((natural_of_elf32_word segment.elf32_p_type) <> elf_pt_tls)
+    
+(** [elf64_tbss_special shdr seg] implements the ELF_TBSS_SPECIAL macro from readelf:
+  *
+  * #define ELF_TBSS_SPECIAL(sec_hdr, segment)			\
+  *   (((sec_hdr)->sh_flags & SHF_TLS) != 0				\
+  *   && (sec_hdr)->sh_type == SHT_NOBITS				\
+  *   && (segment)->p_type != PT_TLS)
+  *
+  * From readelf source code, file [internal.h].
+  *
+  *)
+val elf64_tbss_special : elf64_section_header_table_entry -> elf64_program_header_table_entry -> bool
+let elf64_tbss_special sec_hdr segment =
+  (elf64_xword_land sec_hdr.elf64_sh_flags (elf64_xword_of_natural shf_tls)) <> elf64_xword_of_natural 0 &&
+    ((natural_of_elf64_word sec_hdr.elf64_sh_type) = sht_nobits) &&
+    ((natural_of_elf64_word segment.elf64_p_type) <> elf_pt_tls)
+
 val get_elf32_section_to_segment_mapping : elf32_section_header_table -> elf32_program_header_table_entry ->
   string_table -> error (list string)
 let rec get_elf32_section_to_segment_mapping sects pent stbl =
@@ -778,10 +810,13 @@ let rec get_elf32_section_to_segment_mapping sects pent stbl =
           get_elf32_section_to_segment_mapping xs pent stbl
         else
           if sect_addr >= pent_vaddr && sect_addr + sect_size <= pent_vaddr + pent_size then
-            let nm = natural_of_elf32_word x.elf32_sh_name in
-              get_string_at nm stbl >>= fun str ->
-              get_elf32_section_to_segment_mapping xs pent stbl >>= fun tl ->
-              return (str :: tl)
+            if elf32_tbss_special x pent then
+              get_elf32_section_to_segment_mapping xs pent stbl
+            else
+              let nm = natural_of_elf32_word x.elf32_sh_name in
+                get_string_at nm stbl >>= fun str ->
+                get_elf32_section_to_segment_mapping xs pent stbl >>= fun tl ->
+                return (str :: tl)
           else
             get_elf32_section_to_segment_mapping xs pent stbl
   end
@@ -800,10 +835,13 @@ let rec get_elf64_section_to_segment_mapping sects pent stbl =
           get_elf64_section_to_segment_mapping xs pent stbl
         else
           if sect_addr >= pent_vaddr && sect_addr + sect_size <= pent_vaddr + pent_size then
-            let nm = natural_of_elf64_word x.elf64_sh_name in
-              get_string_at nm stbl >>= fun str ->
-              get_elf64_section_to_segment_mapping xs pent stbl >>= fun tl ->
-              return (str :: tl)
+            if elf64_tbss_special x pent then
+              get_elf64_section_to_segment_mapping xs pent stbl
+            else
+              let nm = natural_of_elf64_word x.elf64_sh_name in
+                get_string_at nm stbl >>= fun str ->
+                get_elf64_section_to_segment_mapping xs pent stbl >>= fun tl ->
+                return (str :: tl)
           else
             get_elf64_section_to_segment_mapping xs pent stbl
   end
