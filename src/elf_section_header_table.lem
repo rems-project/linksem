@@ -171,6 +171,13 @@ let sht_hiproc : natural = (536870911 * 4) + 3 (* 2147483647 (* 0x7fffffff *) *)
 let sht_louser : natural = (536870912 * 4) (* 2147483648 (* 0x80000000 *) *)
 let sht_hiuser : natural = (603979775 * 4) + 3 (* 2415919103 (* 0x8fffffff *) *)
 
+(** GNU extensions, as specified in the LSB *)
+let sht_gnu_hash    : natural = (2 * 939524091)     (* 0x6FFFFFF6 *)
+let sht_gnu_verdef  : natural = (2 * 939524095) - 1 (* 0x6ffffffd *)
+let sht_gnu_verneed : natural = (2 * 939524095)     (* 0x6ffffffe *)
+let sht_gnu_versym  : natural = (2 * 939524095) + 1 (* 0x6fffffff *)
+
+(* XXX: is GNU stuff supposed to be hardcoded here? *)
 val string_of_section_type : (natural -> string) -> (natural -> string) ->
   (natural -> string) -> natural -> string
 let {ocaml} string_of_section_type os proc user i =
@@ -208,6 +215,14 @@ let {ocaml} string_of_section_type os proc user i =
     "GROUP"
   else if i = sht_symtab_shndx then
     "SYMTAB_SHNDX"
+  else if i = sht_gnu_hash then
+    "GNU_HASH"
+  else if i = sht_gnu_verdef then
+    "VERDEF"
+  else if i = sht_gnu_verneed then
+    "VERNEED"
+  else if i = sht_gnu_versym then
+    "VERSYM"
   else if i >= sht_loos && i <= sht_hios then
     os i 
   else if i >= sht_loproc && i <= sht_hiproc then
@@ -795,6 +810,72 @@ let elf64_tbss_special sec_hdr segment =
   (elf64_xword_land sec_hdr.elf64_sh_flags (elf64_xword_of_natural shf_tls)) <> elf64_xword_of_natural 0 &&
     ((natural_of_elf64_word sec_hdr.elf64_sh_type) = sht_nobits) &&
     ((natural_of_elf64_word segment.elf64_p_type) <> elf_pt_tls)
+    
+(**
+  * [elf32_section_in_segment sec_hdr segment] implements the
+  * ELF_SECTION_IN_SEGMENT1 macro from readelf.  Note the macro is always used
+  * with [check_vma] and [strict] set to 1.
+  *
+  #define ELF_SECTION_IN_SEGMENT_1(sec_hdr, segment, check_vma, strict)	\
+  ((/* Only PT_LOAD, PT_GNU_RELRO and PT_TLS segments can contain	\
+       SHF_TLS sections.  */						\
+    ((((sec_hdr)->sh_flags & SHF_TLS) != 0)				\
+     && ((segment)->p_type == PT_TLS					\
+	 || (segment)->p_type == PT_GNU_RELRO				\
+	 || (segment)->p_type == PT_LOAD))				\
+    /* PT_TLS segment contains only SHF_TLS sections, PT_PHDR no	\
+       sections at all.  */						\
+    || (((sec_hdr)->sh_flags & SHF_TLS) == 0				\
+	&& (segment)->p_type != PT_TLS					\
+	&& (segment)->p_type != PT_PHDR))				\
+   /* PT_LOAD and similar segments only have SHF_ALLOC sections.  */	\
+   && !(((sec_hdr)->sh_flags & SHF_ALLOC) == 0				\
+	&& ((segment)->p_type == PT_LOAD				\
+	    || (segment)->p_type == PT_DYNAMIC				\
+	    || (segment)->p_type == PT_GNU_EH_FRAME			\
+	    || (segment)->p_type == PT_GNU_RELRO			\
+	    || (segment)->p_type == PT_GNU_STACK))			\
+   /* Any section besides one of type SHT_NOBITS must have file		\
+      offsets within the segment.  */					\
+   && ((sec_hdr)->sh_type == SHT_NOBITS					\
+       || ((bfd_vma) (sec_hdr)->sh_offset >= (segment)->p_offset	\
+	   && (!(strict)						\
+	       || ((sec_hdr)->sh_offset - (segment)->p_offset		\
+		   <= (segment)->p_filesz - 1))				\
+	   && (((sec_hdr)->sh_offset - (segment)->p_offset		\
+		+ ELF_SECTION_SIZE(sec_hdr, segment))			\
+	       <= (segment)->p_filesz)))				\
+   /* SHF_ALLOC sections must have VMAs within the segment.  */		\
+   && (!(check_vma)							\
+       || ((sec_hdr)->sh_flags & SHF_ALLOC) == 0			\
+       || ((sec_hdr)->sh_addr >= (segment)->p_vaddr			\
+	   && (!(strict)						\
+	       || ((sec_hdr)->sh_addr - (segment)->p_vaddr		\
+		   <= (segment)->p_memsz - 1))				\
+	   && (((sec_hdr)->sh_addr - (segment)->p_vaddr			\
+		+ ELF_SECTION_SIZE(sec_hdr, segment))			\
+	       <= (segment)->p_memsz)))					\
+   /* No zero size sections at start or end of PT_DYNAMIC.  */		\
+   && ((segment)->p_type != PT_DYNAMIC					\
+       || (sec_hdr)->sh_size != 0					\
+       || (segment)->p_memsz == 0					\
+       || (((sec_hdr)->sh_type == SHT_NOBITS				\
+	    || ((bfd_vma) (sec_hdr)->sh_offset > (segment)->p_offset	\
+	        && ((sec_hdr)->sh_offset - (segment)->p_offset		\
+		    < (segment)->p_filesz)))				\
+	   && (((sec_hdr)->sh_flags & SHF_ALLOC) == 0			\
+	       || ((sec_hdr)->sh_addr > (segment)->p_vaddr		\
+		   && ((sec_hdr)->sh_addr - (segment)->p_vaddr		\
+  *
+  * From [internal.h] of readelf's source code.
+  *)
+  
+val elf32_section_in_segment : elf32_section_header_table_entry -> elf32_program_header_table_entry -> bool
+let elf32_section_in_segment sec_hdr segment =
+  ((elf32_word_land sec_hdr.elf32_sh_flags (elf32_word_of_natural shf_tls)) <> elf32_word_of_natural 0 &&
+    (segment.elf32_p_type = elf32_word_of_natural elf_pt_tls ||
+     segment.elf32_p_type = elf32_word_of_natural elf_pt_gnu_relro ||
+     segment.elf32_p_type = elf32_word_of_natural elf_pt_load))
 
 val get_elf32_section_to_segment_mapping : elf32_section_header_table -> elf32_program_header_table_entry ->
   string_table -> error (list string)

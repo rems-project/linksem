@@ -122,7 +122,7 @@ let harness_string_of_elf64_file_header hdr =
   
 val harness_string_of_elf32_program_header_table_entry : (natural -> string) -> (natural -> string) -> byte_sequence -> elf32_program_header_table_entry -> string
 let harness_string_of_elf32_program_header_table_entry os proc bs0 pent =
-  let typ = string_of_elf_segment_type os proc (natural_of_elf32_word pent.elf32_p_type) in
+  let typ = string_of_segment_type os proc (natural_of_elf32_word pent.elf32_p_type) in
   let typ_s =
     let len = 15 - String.stringLength typ in
       if len <= 0 then
@@ -157,7 +157,7 @@ let harness_string_of_elf32_program_header_table_entry os proc bs0 pent =
       
 val harness_string_of_elf64_program_header_table_entry : (natural -> string) -> (natural -> string) -> byte_sequence -> elf64_program_header_table_entry -> string
 let harness_string_of_elf64_program_header_table_entry os proc bs0 pent =
-  let typ = string_of_elf_segment_type os proc (natural_of_elf64_word pent.elf64_p_type) in
+  let typ = string_of_segment_type os proc (natural_of_elf64_word pent.elf64_p_type) in
   let typ_s =
     let len = 15 - String.stringLength typ in
       if len <= 0 then

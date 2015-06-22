@@ -17,6 +17,7 @@ open import Endianness
 open import Elf_header
 open import Elf_file
 open import Elf_program_header_table
+open import Elf_section_header_table
 open import Elf_types_native_uint
 
 open import Harness_interface
@@ -99,15 +100,8 @@ let _ =
                 Harness_interface.harness_string_of_elf64_file_header f1.elf64_file_header
               else if flag = "--program-headers" then
                 Harness_interface.harness_string_of_elf64_program_headers
-                  (fun x -> (* XXX: GNU specific, move elsewhere *)
-                    if x = 4 * 421345620 then
-                      "GNU_EH_FRAME"
-                    else if x = (4 * 421345620) + 1 then
-                      "GNU_STACK"
-                    else if x = (4 * 421345620) + 2 then
-                      "GNU_RELRO"
-                    else
-                      show x)
+                  (fun x -> 
+                    string_of_segment_type show show x)
                   (fun x ->
                     show x)
                   f1.elf64_file_header
@@ -117,15 +111,8 @@ let _ =
                   bs0
               else if flag = "--section-headers" then
                 Harness_interface.harness_string_of_elf64_section_headers
-                  (fun x -> (* XXX: GNU specific, move elsewhere *)
-                    if x = 2 * 939524091 then
-                      "GNU_HASH"
-                    else if x = 2 * 939524095 then
-                      "VERNEED"
-                    else if x = (2 * 939524095) + 1 then
-                      "VERSYM"
-                    else
-                      show x)
+                  (fun x ->
+                    string_of_section_type show show show x)
                   (fun x -> show x)
                   (fun x -> show x)
                   f1.elf64_file_header
