@@ -200,12 +200,12 @@ let harness_string_of_elf64_pht os proc pht bs0 =
     "  Type           Offset   VirtAddr           PhysAddr           FileSiz  MemSiz   Flg Align\n" ^
       unlines (List.map (harness_string_of_elf64_program_header_table_entry os proc bs0) pht)
 
-val harness_string_of_elf32_segment_section_mappings : elf32_program_header_table -> elf32_section_header_table -> string_table -> string
-let harness_string_of_elf32_segment_section_mappings pht sht stbl =
+val harness_string_of_elf32_segment_section_mappings : elf32_header -> elf32_program_header_table -> elf32_section_header_table -> string_table -> string
+let harness_string_of_elf32_segment_section_mappings hdr pht sht stbl =
   let map =
     List.mapi (fun i -> fun pent ->
       let mapping =
-        match get_elf32_section_to_segment_mapping sht pent stbl with
+        match get_elf32_section_to_segment_mapping hdr sht pent stbl with
           | Fail err   -> ["ERR: " ^ err]
           | Success mp -> intercalate " " mp
         end
@@ -226,12 +226,12 @@ let harness_string_of_elf32_segment_section_mappings pht sht stbl =
   in
     List.foldr (^) "" (intercalate "\n" map)
     
-val harness_string_of_elf64_segment_section_mappings : elf64_program_header_table -> elf64_section_header_table -> string_table -> string
-let harness_string_of_elf64_segment_section_mappings pht sht stbl =
+val harness_string_of_elf64_segment_section_mappings : elf64_header -> elf64_program_header_table -> elf64_section_header_table -> string_table -> string
+let harness_string_of_elf64_segment_section_mappings hdr pht sht stbl =
   let map =
     List.mapi (fun i -> fun pent ->
       let mapping =
-        match get_elf64_section_to_segment_mapping sht pent stbl with
+        match get_elf64_section_to_segment_mapping hdr sht pent stbl with
           | Fail err   -> ["ERR: " ^ err]
           | Success mp -> intercalate " " mp
         end
@@ -265,7 +265,7 @@ let harness_string_of_elf32_program_headers os proc hdr pht sht stbl bs0 =
   ; ""
   ; " Section to Segment mapping:"
   ; "  Segment Sections..."
-  ; harness_string_of_elf32_segment_section_mappings pht sht stbl
+  ; harness_string_of_elf32_segment_section_mappings hdr pht sht stbl
   ]
   
 val harness_string_of_elf64_program_headers : (natural -> string) -> (natural -> string) -> elf64_header -> elf64_program_header_table -> elf64_section_header_table -> string_table -> byte_sequence -> string
@@ -281,7 +281,7 @@ let harness_string_of_elf64_program_headers os proc hdr pht sht stbl bs0 =
   ; ""
   ; " Section to Segment mapping:"
   ; "  Segment Sections..."
-  ; harness_string_of_elf64_segment_section_mappings pht sht stbl
+  ; harness_string_of_elf64_segment_section_mappings hdr pht sht stbl
   ]
   
 val harness_sht_flag_legend : string
