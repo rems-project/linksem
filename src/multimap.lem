@@ -1,0 +1,111 @@
+open import Bool 
+open import Basic_classes 
+open import Maybe 
+open import Function 
+open import Num 
+open import List
+open import Set
+open import Set_extra
+open import Assert_extra
+
+(* HMM. Is the right thing instead to implement multiset first? Probably. *)
+
+(* This is a set of pairs
+ * augmented with operations implementing a particular kind of 
+ * map.
+ * 
+ * This map differs from the Lem map in the following ways.
+ * 
+ * 0. The basic idea: a single key, supplied as a "query",
+ *    can map to many (key, value) results.
+ * 
+ * 1. The user supplies an equivalence relation on keys, which
+ *    is coarser-grained than the ordering relation
+ *    used to order the set. It must be consistent with it, though: 
+ *    equivalent keys should appear as a contiguous range in the 
+ *    ordering.
+ * 
+ * 2. This allows many "non-equal" keys, hence present independently
+ *    in the set of pairs, to be "equivalent" for the purposes of a 
+ *    query.
+ * 
+ * 3. The coarse-grained equivalence relation can be supplied on a 
+ *    per-query basis, meaning that different queries on the same
+ *    set can query by finer or coarser criteria (while respecting 
+ *    the requirement to be consistent with the ordering).
+ * 
+ * Although this seems more complicated than writing a map from 
+ * k to list (k, v), which would allow us to ditch the finer ordering, 
+ * 
+ *)
+
+type multimap 'k 'v = set ('k * 'v)
+
+(* In order for bisection search within a set to work, 
+ * we need the equivalence class to tell us whether we're less than or
+ * greater than the members of the key's class. 
+ * It effectively identifies a set of ranges. *)
+type key_equiv 'k = 'k -> 'k -> ordering
+
+(*
+val hasMapping : forall 'k 'v. key_equiv 'k -> multimap 'k 'v -> bool
+let inline hasMapping equiv m =
+*)
+
+(*
+val mappingCount : forall 'k 'v. key_equiv 'k -> multimap 'k 'v -> natural
+val any : forall 'k 'v. ('k -> 'v -> bool) -> multimap 'k 'v -> bool 
+val all : forall 'k 'v. ('k -> 'v -> bool) -> multimap 'k 'v -> bool 
+*)
+val findLowestEquiv : forall 'k 'v. 
+    Ord 'k, Ord 'v, SetType 'k, SetType 'v =>
+        key_equiv 'k -> 'k -> ('k -> 'k -> bool) -> multimap 'k 'v -> maybe ('k * 'v) -> maybe ('k * 'v)
+let rec findLowestEquiv equiv k lessThan subSet maybeBest = 
+    match Set_extra.chooseAndSplit subSet with
+        Nothing -> (* empty subset *) maybeBest
+      | Just(lower, ((chosenK: 'k), (chosenV : 'v)), higher) ->
+            (* is k equiv to chosen? *)
+            if equiv k chosenK = EQ
+            then
+                (* recurse down lower subSet; best is whichever is lower *)
+                match maybeBest with 
+                  | Nothing -> findLowestEquiv equiv k lessThan lower (Just(chosenK, chosenV))
+                  | Just(bestK, bestV) -> if lessThan k bestK
+                        then findLowestEquiv equiv k lessThan lower (Just(chosenK, chosenV))
+                        else findLowestEquiv equiv k lessThan lower maybeBest
+                end
+            else
+                (* k is not equiv to chosen; do we need to look lower or higher? *)
+                if lessThan k chosenK
+                then
+                    (* k is lower, so look lower for equivs-to-k *)
+                    findLowestEquiv equiv k lessThan lower maybeBest
+                else
+                    (* k is higher *)
+                    findLowestEquiv equiv k lessThan higher maybeBest
+    end
+
+(* get the list of all pairs with key equiv to k. *)
+val lookupBy : forall 'k 'v. 
+    Ord 'k, Ord 'v, SetType 'k, SetType 'v =>
+        key_equiv 'k -> 'k -> multimap 'k 'v -> list ('k * 'v)
+let lookupBy equiv k m = 
+    (* Find the lowest and highest elements equiv to k. 
+     * We do this using chooseAndSplit recursively. *)
+    match findLowestEquiv equiv k (<) m Nothing with
+        Nothing -> []
+        | Just lowestEquiv -> let (highestEquiv : ('k * 'v)) = match findLowestEquiv equiv k (>) m Nothing with
+            Nothing -> failwith "impossible: lowest equiv but no highest equiv"
+            | Just highestEquiv -> highestEquiv
+        end
+        in
+        (* FIXME: split is currently needlessly inefficient on OCaml! *)
+        let (lowerThanLow, highEnough) = Set.split lowestEquiv m
+        in 
+        let (wanted, tooHigh) = Set.split highestEquiv highEnough
+        in
+        (lowestEquiv :: (toList wanted)) ++ [highestEquiv]
+    end
+
+(* To delete all pairs with key equiv to k, can use deleteBy *)
+
