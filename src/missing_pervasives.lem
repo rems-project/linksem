@@ -11,6 +11,10 @@ open import Sorting
 open import {isabelle} `$ISABELLE_HOME/src/HOL/Word/Word`
 open import {isabelle} `Elf_Types_Local`
 
+val naturalZero : natural
+
+declare ocaml target_rep function naturalZero = `Nat_big_num.zero`
+
 val id : forall 'a. 'a -> 'a
 let id x = x
 
@@ -384,3 +388,8 @@ let rec list_take_with_accum n reverse_acc l =
             | x :: xs -> list_take_with_accum (n-1) (x :: reverse_acc) xs
         end
     end
+
+val unsafe_string_take : natural -> string -> string
+let unsafe_string_take m str =
+  let m = unsafe_nat_of_natural m in
+    String.toString (List.take m (String.toCharList str))

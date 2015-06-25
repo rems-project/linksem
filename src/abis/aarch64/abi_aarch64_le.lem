@@ -6,17 +6,31 @@ open import Bool
 open import List
 open import Num
 open import Maybe
+
+open import Error
 open import Missing_pervasives
 
 open import Elf_header
 open import Elf_types_native_uint
 open import Elf_file
+open import Elf_interpreted_segment
 open import Elf_interpreted_section
 
 open import Endianness
 open import Elf_memory_image
 open import Abi_aarch64_relocation
 open import Abi_aarch64_le_elf_header
+
+(** [abi_aarch64_le_compute_program_entry_point segs entry] computes the program
+  * entry point using ABI-specific conventions.  On AArch64 the entry point in
+  * the ELF header ([entry] here) is the real entry point.  On other ABIs, e.g.
+  * PowerPC64, the entry point [entry] is a pointer into one of the segments
+  * constituting the process image (passed in as [segs] here for a uniform
+  * interface).
+  *)
+val abi_aarch64_le_compute_program_entry_point : list elf64_interpreted_segments -> elf64_addr -> error elf64_addr
+let abi_aarch64_le_compute_program_entry_point segs entry =
+	return entry
 
 val header_is_aarch64_le : elf64_header -> bool
 let header_is_aarch64_le h = 

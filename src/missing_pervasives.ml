@@ -9,6 +9,8 @@ open Lem_assert_extra
 open Show
 open Lem_sorting
 
+(*val naturalZero : natural*)
+
 (*val id : forall 'a. 'a -> 'a*)
 let id0 x = x
 
@@ -60,7 +62,7 @@ let hex_char_of_nibble n =
                                 (
                                 if(Nat_big_num.equal n
                                      (Nat_big_num.of_int 15)) then 'f' else
-                                  failwith "Incomplete Pattern at File \"missing_pervasives.lem\", line 34, character 5 to line 51, character 7"))))))))))))))))
+                                  failwith "Incomplete Pattern at File \"missing_pervasives.lem\", line 38, character 5 to line 55, character 7"))))))))))))))))
 
 let hex_string_of_byte b =    
  (Xstring.implode [ hex_char_of_nibble ( Nat_big_num.div(Nat_big_num.of_int (Char.code b))(Nat_big_num.of_int 16))
@@ -357,3 +359,8 @@ let rec list_take_with_accum n reverse_acc l =
             | x :: xs -> list_take_with_accum (Nat_num.nat_monus n( 1)) (x :: reverse_acc) xs
         )
     ))
+
+(*val unsafe_string_take : natural -> string -> string*)
+let unsafe_string_take m str =  
+(let m = (Nat_big_num.to_int m) in
+    Xstring.implode (Lem_list.take m (Xstring.explode str)))

@@ -44,10 +44,11 @@ LEM_ELF_SRC := byte_sequence.lem archive.lem \
 	elf_types_native_uint.lem elf_interpreted_segment.lem elf_interpreted_section.lem string_table.lem elf_symbol_table.lem \
 	elf_header.lem elf_program_header_table.lem \
 	elf_section_header_table.lem \
-	elf_relocation.lem \
+	elf_relocation.lem elf_dynamic.lem \
 	elf_file.lem 
 	
 LEM_ABI_SRC := memory_image.lem elf_memory_image.lem \
+	abis/power64/abi_power64.lem \
 	abis/power64/abi_power64_elf_header.lem \
 	abis/aarch64/abi_aarch64_le_elf_header.lem \
 	abis/aarch64/abi_aarch64_le_serialisation.lem \
@@ -56,18 +57,23 @@ LEM_ABI_SRC := memory_image.lem elf_memory_image.lem \
 	abstract_linker_script.lem \
 	adaptors/sail_interface.lem \
 	abis/amd64/abi_amd64_elf_header.lem \
+	adaptors/harness_interface.lem \
+	abis/abi_utilities.lem \
 	abis/amd64/abi_amd64_serialisation.lem \
 	abis/amd64/abi_amd64_relocation.lem \
+	abis/amd64/abi_amd64_program_header_table.lem \
 	abis/amd64/abi_amd64.lem \
+	abis/power64/abi_power64_relocation.lem \
 	abis/abis.lem \
+	elf_memory_image.lem \
 
 LEM_LINK_SRC := command_line.lem input_list.lem linkable_list.lem linker_script.lem link.lem
 
 LEM_MODEL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC))
 
-OCAML_LIB_OBJS := unix.cma nums.cma zarith.cma batteries.cma nat_num.cmo nat_big_num.cmo uint.cma
+OCAML_LIB_OBJS := unix.cma nums.cma zarith.cma batteries.cma nat_num.cmo big_int_impl.cmo nat_big_num.cmo uint.cma
 LEM_OCAML_OBJS := lem.cmo lem_basic_classes.cmo lem_function.cmo lem_list.cmo lem_num.cmo lem_sorting.cmo \
-    xstring.cmo pset.cmo pmap.cmo lem_maybe.cmo lem_set.cmo
+    xstring.cmo pset.cmo pmap.cmo lem_maybe.cmo lem_map.cmo lem_set.cmo
 
 OCAML_LIB_OBJS_OPT := $(patsubst %.cma,%.cmxa,$(patsubst %.cmo,%.cmx,$(OCAML_LIB_OBJS)))
 LEM_OCAML_OBJS_OPT := $(patsubst %.cma,%.cmxa,$(patsubst %.cmo,%.cmx,$(LEM_OCAML_OBJS)))
@@ -110,7 +116,7 @@ clean:
 
 ocaml: main_elf
 
-main_elf main_link main_elf.opt main_link.opt: OCAMLFLAGS += -I $(BATTERIES) \
+main_elf main_link main_elf.opt main_link.opt c_interface: OCAMLFLAGS += -I $(BATTERIES) \
 -I $(UINT) \
 $(OCAML_LEM_INCLUDES) \
 -I adaptors \
@@ -130,7 +136,7 @@ main_elf main_link: %: %.ml $(ALL_UTIL_ML) lem-all-ocaml
 	"$<" $(OCAMLFIND_PACKAGES)
 
 main_elf.opt main_link.opt: %.opt: %.ml $(ALL_UTIL_ML) lem-all-ocaml
-	ocamlfind ocamlopt $(OCAMLFLAGS) -o "$@" \
+	ocamlfind ocamlopt $(OCAMLFLAGS) -o "$@" -g \
 	$(OCAML_LIB_OBJS_OPT) \
 	$(LEM_OCAML_OBJS_OPT) \
 	$(ALL_UTIL_ML) \

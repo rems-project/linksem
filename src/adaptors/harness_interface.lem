@@ -1,0 +1,447 @@
+open import Basic_classes
+open import Maybe
+open import Num
+open import String
+
+open import Byte_sequence
+open import Error
+open import Missing_pervasives
+open import Show
+
+open import Default_printing
+
+open import String_table
+
+open import Elf_header
+open import Elf_program_header_table
+open import Elf_section_header_table
+open import Elf_types_native_uint
+
+val hex_string_of_big_int_no_padding : natural -> string
+declare ocaml target_rep function hex_string_of_big_int_no_padding = `Ml_bindings.hex_string_of_big_int_no_padding`
+val hex_string_of_big_int_pad2 : natural -> string
+declare ocaml target_rep function hex_string_of_big_int_pad2 = `Ml_bindings.hex_string_of_big_int_pad2`
+val hex_string_of_big_int_pad5 : natural -> string
+declare ocaml target_rep function hex_string_of_big_int_pad5 = `Ml_bindings.hex_string_of_big_int_pad5`
+val hex_string_of_big_int_pad6 : natural -> string
+declare ocaml target_rep function hex_string_of_big_int_pad6 = `Ml_bindings.hex_string_of_big_int_pad6`
+val hex_string_of_big_int_pad8 : natural -> string
+declare ocaml target_rep function hex_string_of_big_int_pad8 = `Ml_bindings.hex_string_of_big_int_pad8`
+val hex_string_of_big_int_pad16 : natural -> string
+declare ocaml target_rep function hex_string_of_big_int_pad16 = `Ml_bindings.hex_string_of_big_int_pad16`
+
+val hex_string_of_nat_pad2 : nat -> string
+declare ocaml target_rep function hex_string_of_nat_pad2 = `Ml_bindings.hex_string_of_nat_pad2`
+
+val unsafe_hex_string_of_natural : nat -> natural -> string
+let unsafe_hex_string_of_natural pad m =
+  if pad = 2 then
+    hex_string_of_big_int_pad2 m
+  else if pad = 5 then
+    hex_string_of_big_int_pad5 m
+  else if pad = 6 then
+    hex_string_of_big_int_pad6 m
+  else if pad = 8 then
+    hex_string_of_big_int_pad8 m
+  else if pad = 16 then
+    hex_string_of_big_int_pad16 m
+  else
+    hex_string_of_big_int_no_padding m
+
+val unsafe_hex_string_of_uc_list : list unsigned_char -> string
+let rec unsafe_hex_string_of_uc_list xs =
+  match xs with
+    | []       -> ""
+    | x::y::xs ->
+      let sx = unsafe_hex_string_of_natural 2 (natural_of_unsigned_char x) in
+      let sy = unsafe_hex_string_of_natural 2 (natural_of_unsigned_char y) in
+      let sx =
+        if String.stringLength sx = 2 then
+          sx
+        else
+          "0" ^ sx
+      in
+      let sy =
+        if String.stringLength sy = 2 then
+          sy
+        else
+          "0" ^ sy
+      in
+        sx ^ " " ^ sy ^ " " ^ unsafe_hex_string_of_uc_list xs
+  end
+
+val harness_string_of_elf32_file_header : elf32_header -> string
+let harness_string_of_elf32_file_header hdr =
+  unlines [
+    "ELF Header:"
+  ; "  Magic:" ^ "   "                           ^ unsafe_hex_string_of_uc_list (hdr.elf32_ident)
+  ; "  Class:" ^ "                             " ^ string_of_elf_file_class (get_elf32_file_class hdr)
+  ; "  Data:" ^ "                              " ^ string_of_elf_data_encoding (get_elf32_data_encoding hdr)
+  ; "  Version:" ^ "                           " ^ string_of_elf_version_number (get_elf32_version_number hdr)
+  ; "  OS/ABI:" ^ "                            " ^ string_of_elf_osabi_version (get_elf32_osabi hdr)
+  ; "  ABI Version:" ^ "                       " ^ show (get_elf32_abi_version hdr)
+  ; "  Type:" ^ "                              " ^ string_of_elf_file_type default_os_specific_print default_proc_specific_print (natural_of_elf32_half hdr.elf32_type)
+  ; "  Machine:" ^ "                           " ^ string_of_elf_machine_architecture (natural_of_elf32_half hdr.elf32_machine)
+  ; "  Version:" ^ "                           " ^ "0x" ^ unsafe_hex_string_of_natural 1 (natural_of_elf32_word hdr.elf32_version)
+  ; "  Entry point address:" ^ "               " ^ "0x" ^ unsafe_hex_string_of_natural 1 (natural_of_elf32_addr hdr.elf32_entry)
+  ; "  Start of program headers:" ^ "          " ^ show hdr.elf32_phoff ^ " (bytes into file)"
+  ; "  Start of section headers:" ^ "          " ^ show hdr.elf32_shoff ^ " (bytes into file)"
+  ; "  Flags:" ^ "                             " ^ "0x" ^ unsafe_hex_string_of_natural 1 (natural_of_elf32_word hdr.elf32_flags)
+  ; "  Size of this header:" ^ "               " ^ show hdr.elf32_ehsize ^ " (bytes)"
+  ; "  Size of program headers:" ^ "           " ^ show hdr.elf32_phentsize ^ " (bytes)"
+  ; "  Number of program headers:" ^ "         " ^ show hdr.elf32_phnum
+  ; "  Size of section headers:" ^ "           " ^ show hdr.elf32_shentsize ^ " (bytes)"
+  ; "  Number of section headers:" ^ "         " ^ show hdr.elf32_shnum
+  ; "  Section header string table index:" ^ " " ^ show hdr.elf32_shstrndx
+  ]
+  
+val harness_string_of_elf64_file_header : elf64_header -> string
+let harness_string_of_elf64_file_header hdr =
+  unlines [
+    "ELF Header:"
+  ; "  Magic:" ^ "   "                           ^ unsafe_hex_string_of_uc_list (hdr.elf64_ident)
+  ; "  Class:" ^ "                             " ^ string_of_elf_file_class (get_elf64_file_class hdr)
+  ; "  Data:" ^ "                              " ^ string_of_elf_data_encoding (get_elf64_data_encoding hdr)
+  ; "  Version:" ^ "                           " ^ string_of_elf_version_number (get_elf64_version_number hdr)
+  ; "  OS/ABI:" ^ "                            " ^ string_of_elf_osabi_version (get_elf64_osabi hdr)
+  ; "  ABI Version:" ^ "                       " ^ show (get_elf64_abi_version hdr)
+  ; "  Type:" ^ "                              " ^ string_of_elf_file_type default_os_specific_print default_proc_specific_print (natural_of_elf64_half hdr.elf64_type)
+  ; "  Machine:" ^ "                           " ^ string_of_elf_machine_architecture (natural_of_elf64_half hdr.elf64_machine)
+  ; "  Version:" ^ "                           " ^ "0x" ^ unsafe_hex_string_of_natural 1 (natural_of_elf64_word hdr.elf64_version)
+  ; "  Entry point address:" ^ "               " ^ "0x" ^ unsafe_hex_string_of_natural 1 (natural_of_elf64_addr hdr.elf64_entry)
+  ; "  Start of program headers:" ^ "          " ^ show hdr.elf64_phoff ^ " (bytes into file)"
+  ; "  Start of section headers:" ^ "          " ^ show hdr.elf64_shoff ^ " (bytes into file)"
+  ; "  Flags:" ^ "                             " ^ "0x" ^ unsafe_hex_string_of_natural 1 (natural_of_elf64_word hdr.elf64_flags)
+  ; "  Size of this header:" ^ "               " ^ show hdr.elf64_ehsize ^ " (bytes)"
+  ; "  Size of program headers:" ^ "           " ^ show hdr.elf64_phentsize ^ " (bytes)"
+  ; "  Number of program headers:" ^ "         " ^ show hdr.elf64_phnum
+  ; "  Size of section headers:" ^ "           " ^ show hdr.elf64_shentsize ^ " (bytes)"
+  ; "  Number of section headers:" ^ "         " ^ show hdr.elf64_shnum
+  ; "  Section header string table index:" ^ " " ^ show hdr.elf64_shstrndx
+  ]
+  
+val harness_string_of_elf32_program_header_table_entry : (natural -> string) -> (natural -> string) -> byte_sequence -> elf32_program_header_table_entry -> string
+let harness_string_of_elf32_program_header_table_entry os proc bs0 pent =
+  let typ = string_of_segment_type os proc (natural_of_elf32_word pent.elf32_p_type) in
+  let typ_s =
+    let len = 15 - String.stringLength typ in
+      if len <= 0 then
+        ""
+      else
+        List.foldr (^) "" (replicate (naturalFromNat len) " ")
+  in
+  List.foldr (^) "" [
+    "  "
+  ; typ ; typ_s
+  ; "0x" ^ unsafe_hex_string_of_natural 6 (natural_of_elf32_off pent.elf32_p_offset)
+  ; " "
+  ; "0x" ^ unsafe_hex_string_of_natural 8 (natural_of_elf32_addr pent.elf32_p_vaddr)
+  ; " "
+  ; "0x" ^ unsafe_hex_string_of_natural 8 (natural_of_elf32_addr pent.elf32_p_paddr)
+  ; " "
+  ; "0x" ^ unsafe_hex_string_of_natural 5 (natural_of_elf32_word pent.elf32_p_filesz)
+  ; " "
+  ; "0x" ^ unsafe_hex_string_of_natural 5 (natural_of_elf32_word pent.elf32_p_memsz)
+  ; " "
+  ; string_of_elf_segment_permissions (natural_of_elf32_word pent.elf32_p_flags)
+  ; " "
+  ; "0x" ^ unsafe_hex_string_of_natural 1 (natural_of_elf32_word pent.elf32_p_align)
+  ] ^
+    if natural_of_elf32_word pent.elf32_p_type = elf_pt_interp then
+      match Elf_program_header_table.get_elf32_requested_interpreter pent bs0 with
+        | Fail f    -> "\n      [Requesting program interpreter: " ^ f ^ "]"
+        | Success s -> "\n      [Requesting program interpreter: " ^ s ^ "]"
+      end
+    else
+      ""
+      
+val harness_string_of_elf64_program_header_table_entry : (natural -> string) -> (natural -> string) -> byte_sequence -> elf64_program_header_table_entry -> string
+let harness_string_of_elf64_program_header_table_entry os proc bs0 pent =
+  let typ = string_of_segment_type os proc (natural_of_elf64_word pent.elf64_p_type) in
+  let typ_s =
+    let len = 15 - String.stringLength typ in
+      if len <= 0 then
+        ""
+      else
+        List.foldr (^) "" (replicate (naturalFromNat len) " ")
+  in
+  List.foldr (^) "" [
+    "  "
+  ; typ ; typ_s
+  ; "0x" ^ unsafe_hex_string_of_natural 6 (natural_of_elf64_off pent.elf64_p_offset)
+  ; " "
+  ; "0x" ^ unsafe_hex_string_of_natural 16 (natural_of_elf64_addr pent.elf64_p_vaddr)
+  ; " "
+  ; "0x" ^ unsafe_hex_string_of_natural 16 (natural_of_elf64_addr pent.elf64_p_paddr)
+  ; " "
+  ; "0x" ^ unsafe_hex_string_of_natural 6 (natural_of_elf64_xword pent.elf64_p_filesz)
+  ; " "
+  ; "0x" ^ unsafe_hex_string_of_natural 6 (natural_of_elf64_xword pent.elf64_p_memsz)
+  ; " "
+  ; string_of_elf_segment_permissions (natural_of_elf64_word pent.elf64_p_flags)
+  ; " "
+  ; "0x" ^ unsafe_hex_string_of_natural 1 (natural_of_elf64_xword pent.elf64_p_align)
+  ] ^
+    if natural_of_elf64_word pent.elf64_p_type = elf_pt_interp then
+      match Elf_program_header_table.get_elf64_requested_interpreter pent bs0 with
+        | Fail f    -> "\n      [Requesting program interpreter: " ^ f ^ "]"
+        | Success s -> "\n      [Requesting program interpreter: " ^ s ^ "]"
+      end
+    else
+      ""
+  
+val harness_string_of_efl32_pht : (natural -> string) -> (natural -> string) -> elf32_program_header_table -> byte_sequence -> string
+let harness_string_of_elf32_pht os proc pht bs0 =
+    "  Type           Offset   VirtAddr   PhysAddr   FileSiz MemSiz  Flg Align\n" ^
+      unlines (List.map (harness_string_of_elf32_program_header_table_entry os proc bs0) pht)
+
+val harness_string_of_efl64_pht : (natural -> string) -> (natural -> string) -> elf64_program_header_table -> byte_sequence -> string
+let harness_string_of_elf64_pht os proc pht bs0 =
+    "  Type           Offset   VirtAddr           PhysAddr           FileSiz  MemSiz   Flg Align\n" ^
+      unlines (List.map (harness_string_of_elf64_program_header_table_entry os proc bs0) pht)
+
+val harness_string_of_elf32_segment_section_mappings : elf32_header -> elf32_program_header_table -> elf32_section_header_table -> string_table -> string
+let harness_string_of_elf32_segment_section_mappings hdr pht sht stbl =
+  let map =
+    List.mapi (fun i -> fun pent ->
+      let mapping =
+        match get_elf32_section_to_segment_mapping hdr sht pent stbl with
+          | Fail err   -> ["ERR: " ^ err]
+          | Success mp -> intercalate " " mp
+        end
+      in
+      let str =
+        let temp = List.foldr (^) "" mapping in
+          if temp = "" then
+            temp
+          else
+            temp ^ " "
+      in
+        List.foldr (^) "" [
+          "   " ^ hex_string_of_nat_pad2 i
+        ; "     "
+        ; str
+        ]
+    ) pht
+  in
+    List.foldr (^) "" (intercalate "\n" map)
+    
+val harness_string_of_elf64_segment_section_mappings : elf64_header -> elf64_program_header_table -> elf64_section_header_table -> string_table -> string
+let harness_string_of_elf64_segment_section_mappings hdr pht sht stbl =
+  let map =
+    List.mapi (fun i -> fun pent ->
+      let mapping =
+        match get_elf64_section_to_segment_mapping hdr sht pent stbl with
+          | Fail err   -> ["ERR: " ^ err]
+          | Success mp -> intercalate " " mp
+        end
+      in
+      let str =
+        let temp = List.foldr (^) "" mapping in
+          if temp = "" then
+            temp
+          else
+            temp ^ " "
+      in
+        List.foldr (^) "" [
+          "   " ^ hex_string_of_nat_pad2 i
+        ; "     "
+        ; str
+        ]
+    ) pht
+  in
+    List.foldr (^) "" (intercalate "\n" map)
+  
+val harness_string_of_elf32_program_headers : (natural -> string) -> (natural -> string) -> elf32_header -> elf32_program_header_table -> elf32_section_header_table -> string_table -> byte_sequence -> string
+let harness_string_of_elf32_program_headers os proc hdr pht sht stbl bs0 =
+  unlines [
+    ""
+  ; "Elf file type is " ^ string_of_elf_file_type default_os_specific_print default_proc_specific_print (natural_of_elf32_half hdr.elf32_type)
+  ; "Entry point " ^ "0x" ^ unsafe_hex_string_of_natural 1 (natural_of_elf32_addr hdr.elf32_entry)
+  ; "There are " ^ show (List.length pht) ^ " program headers, starting at offset " ^ show hdr.elf32_phoff
+  ; ""
+  ; "Program Headers:"
+  ; harness_string_of_elf32_pht os proc pht bs0
+  ; ""
+  ; " Section to Segment mapping:"
+  ; "  Segment Sections..."
+  ; harness_string_of_elf32_segment_section_mappings hdr pht sht stbl
+  ]
+  
+val harness_string_of_elf64_program_headers : (natural -> string) -> (natural -> string) -> elf64_header -> elf64_program_header_table -> elf64_section_header_table -> string_table -> byte_sequence -> string
+let harness_string_of_elf64_program_headers os proc hdr pht sht stbl bs0 =
+  unlines [
+    ""
+  ; "Elf file type is " ^ string_of_elf_file_type default_os_specific_print default_proc_specific_print (natural_of_elf64_half hdr.elf64_type)
+  ; "Entry point " ^ "0x" ^ unsafe_hex_string_of_natural 1 (natural_of_elf64_addr hdr.elf64_entry)
+  ; "There are " ^ show (List.length pht) ^ " program headers, starting at offset " ^ show hdr.elf64_phoff
+  ; ""
+  ; "Program Headers:"
+  ; harness_string_of_elf64_pht os proc pht bs0
+  ; ""
+  ; " Section to Segment mapping:"
+  ; "  Segment Sections..."
+  ; harness_string_of_elf64_segment_section_mappings hdr pht sht stbl
+  ]
+  
+val harness_sht_flag_legend : string
+let harness_sht_flag_legend =
+  "\nKey to Flags:
+  W (write), A (alloc), X (execute), M (merge), S (strings)
+  I (info), L (link order), G (group), T (TLS), E (exclude), x (unknown)
+  O (extra OS processing required) o (OS specific), p (processor specific)"
+  
+val harness_string_of_elf32_sht : (natural -> string) -> (natural -> string) -> (natural -> string) -> elf32_section_header_table -> string_table -> string
+let harness_string_of_elf32_sht os proc usr sht stbl =
+  "  [Nr] Name              Type            Addr     Off    Size   ES Flg Lk Inf Al\n" ^
+  unlines (List.mapi (fun i -> fun sec ->
+    let is =
+      let temp = show i in
+        if stringLength temp = 1 then
+          " " ^ temp
+        else
+          temp
+    in
+    let str = "  [" ^ is ^ "]" in
+    let ((gap : string), name) =
+      match String_table.get_string_at (natural_of_elf32_word sec.elf32_sh_name) stbl with
+        | Fail err   -> ("", "ERR " ^ err)
+        | Success nm ->
+          if natural_of_elf32_word sec.elf32_sh_type = sht_null then
+            let gap = List.foldr (^) " " (Missing_pervasives.replicate 17 " ") in
+            (gap, "")
+          else
+            let glen = naturalFromNat (17 - String.stringLength nm) in
+            let gap = List.foldr (^) " " (Missing_pervasives.replicate glen " ") in
+              (gap, nm)
+      end
+    in
+    let str = str ^ " " ^ name ^ gap in
+    let typ = string_of_section_type os proc usr (natural_of_elf32_word sec.elf32_sh_type) in
+    let str = str ^ typ in
+    let (gap, addr) =
+      let mx  = naturalFromNat (15 - String.stringLength typ) in
+      let gap = List.foldr (^) " " (Missing_pervasives.replicate mx " ") in
+        (gap, unsafe_hex_string_of_natural 8 (natural_of_elf32_addr sec.elf32_sh_addr))
+    in
+    let str = str ^ gap ^ addr in
+    let off = unsafe_hex_string_of_natural 6 (natural_of_elf32_off sec.elf32_sh_offset) in
+    let str = str ^ " " ^ off in
+    let size = unsafe_hex_string_of_natural 6 (natural_of_elf32_word sec.elf32_sh_size) in
+    let str = str ^ " " ^ size in
+    let es  = unsafe_hex_string_of_natural 2 (natural_of_elf32_word sec.elf32_sh_entsize) in
+    let str = str ^ " " ^ es in
+    let flg = string_of_section_flags os proc (natural_of_elf32_word sec.elf32_sh_flags) in
+    let str = str ^ " " ^ flg in
+    let (gap, lnk) =
+      let l  = show (natural_of_elf32_word sec.elf32_sh_link) in
+      let gp = naturalFromNat (2 - String.stringLength l) in
+      let gp = List.foldr (^) " " (replicate gp " ") in
+        (gp, l)
+    in
+    let str = str ^ gap ^ lnk in
+    let (gap, info) =
+      let i  = show (natural_of_elf32_word sec.elf32_sh_info) in
+      let gp = naturalFromNat (3 - String.stringLength i) in
+      let gp = List.foldr (^) " " (replicate gp " ") in
+        (gp, i)
+    in
+    let str = str ^ gap ^ info in
+    let (gap, align) =
+      let a  = show (natural_of_elf32_word sec.elf32_sh_addralign) in
+      let gp = naturalFromNat (2 - String.stringLength a) in
+      let gp = List.foldr (^) " " (replicate gp " ") in
+        (gp, a)
+    in
+    let str = str ^ gap ^ align in
+      str) sht)
+    
+val harness_string_of_elf64_sht : (natural -> string) -> (natural -> string) -> (natural -> string) -> elf64_section_header_table -> string_table -> string
+let harness_string_of_elf64_sht os proc usr sht stbl =
+  "  [Nr] Name              Type            Address          Off    Size   ES Flg Lk Inf Al\n" ^
+  unlines (List.mapi (fun i -> fun sec ->
+    let is =
+      let temp = show i in
+        if stringLength temp = 1 then
+          " " ^ temp
+        else
+          temp
+    in
+    let str = "  [" ^ is ^ "]" in
+    let ((gap : string), name) =
+      match String_table.get_string_at (natural_of_elf64_word sec.elf64_sh_name) stbl with
+        | Fail err   -> ("", "ERR " ^ err)
+        | Success nm ->
+          if natural_of_elf64_word sec.elf64_sh_type = sht_null then
+            let gap = List.foldr (^) " " (Missing_pervasives.replicate 17 " ") in
+            (gap, "")
+          else
+            let glen = naturalFromNat (17 - String.stringLength nm) in
+            let gap = List.foldr (^) " " (Missing_pervasives.replicate glen " ") in
+              (gap, nm)
+      end
+    in
+    let str = str ^ " " ^ name ^ gap in
+    let typ = string_of_section_type os proc usr (natural_of_elf64_word sec.elf64_sh_type) in
+    let str = str ^ typ in
+    let (gap, addr) =
+      let mx  = naturalFromNat (15 - String.stringLength typ) in
+      let gap = List.foldr (^) " " (Missing_pervasives.replicate mx " ") in
+        (gap, unsafe_hex_string_of_natural 16 (natural_of_elf64_addr sec.elf64_sh_addr))
+    in
+    let str = str ^ gap ^ addr in
+    let off = unsafe_hex_string_of_natural 6 (natural_of_elf64_off sec.elf64_sh_offset) in
+    let str = str ^ " " ^ off in
+    let size = unsafe_hex_string_of_natural 6 (natural_of_elf64_xword sec.elf64_sh_size) in
+    let str = str ^ " " ^ size in
+    let es  = unsafe_hex_string_of_natural 2 (natural_of_elf64_xword sec.elf64_sh_entsize) in
+    let str = str ^ " " ^ es in
+    let flg = string_of_section_flags os proc (natural_of_elf64_xword sec.elf64_sh_flags) in
+    let str = str ^ " " ^ flg in
+    let (gap, lnk) =
+      let l  = show (natural_of_elf64_word sec.elf64_sh_link) in
+      let gp = naturalFromNat (2 - String.stringLength l) in
+      let gp = List.foldr (^) " " (replicate gp " ") in
+        (gp, l)
+    in
+    let str = str ^ gap ^ lnk in
+    let (gap, info) =
+      let i  = show (natural_of_elf64_word sec.elf64_sh_info) in
+      let gp = naturalFromNat (3 - String.stringLength i) in
+      let gp = List.foldr (^) " " (replicate gp " ") in
+        (gp, i)
+    in
+    let str = str ^ gap ^ info in
+    let (gap, align) =
+      let a  = show (natural_of_elf64_xword sec.elf64_sh_addralign) in
+      let gp = naturalFromNat (2 - String.stringLength a) in
+      let gp = List.foldr (^) " " (replicate gp " ") in
+        (gp, a)
+    in
+    let str = str ^ gap ^ align in
+      str) sht)
+    
+
+val harness_string_of_elf32_section_headers : (natural -> string) -> (natural -> string) -> (natural -> string) -> elf32_header -> elf32_section_header_table -> string_table -> string
+let harness_string_of_elf32_section_headers os proc usr hdr sht stbl =
+  unlines [
+    "There are " ^ show (List.length sht) ^ " section headers, starting at offset 0x" ^ unsafe_hex_string_of_natural 0 (natural_of_elf32_off hdr.elf32_shoff) ^ ":"
+  ; ""
+  ; "Section Headers:"
+  ; harness_string_of_elf32_sht os proc usr sht stbl
+  ] ^ harness_sht_flag_legend
+  
+val harness_string_of_elf64_section_headers : (natural -> string) -> (natural -> string) -> (natural -> string) -> elf64_header -> elf64_section_header_table -> string_table -> string
+let harness_string_of_elf64_section_headers os proc usr hdr sht stbl =
+  unlines [
+    "There are " ^ show (List.length sht) ^ " section headers, starting at offset 0x" ^ unsafe_hex_string_of_natural 0 (natural_of_elf64_off hdr.elf64_shoff) ^ ":"
+  ; ""
+  ; "Section Headers:"
+  ; harness_string_of_elf64_sht os proc usr sht stbl
+  ] ^ harness_sht_flag_legend
+  
+(*
+val harness_string_of_elf32_symbols : elf32_file -> string
+let harness_string_of_elf32_symbols f1 =
+  Elf_file.get_elf32_file_dynamic_symbol_table f1 >>= fun dynsym ->
+*)
