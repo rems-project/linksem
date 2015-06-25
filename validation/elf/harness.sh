@@ -1,7 +1,7 @@
 #!/bin/bash
 
 MAIN_ELF=../../src/main_elf.opt
-TEST_FILES=../../test/mixed-binaries
+TEST_FILES=/usr/bin
 
 function perform_diff
 {
