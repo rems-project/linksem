@@ -26,17 +26,17 @@ type expression (* Denote addresses, whether known or to be ascertained *)
 type value_formula
   = VFTrue
   | VFFalse
-  | VFBinaryRelation of binary_relation * expression
-  | VFBinaryConnective of binary_connective * value_formula * value_formula
+  | VFBinaryRelation of (binary_relation * expression)
+  | VFBinaryConnective of (binary_connective * value_formula * value_formula)
   | VFNot of value_formula
 
 type memory_image_formula
   = MIFTrue
   | MIFFalse
-  | MIFExists of string * memory_image_formula
-  | MIFBinaryRelation of binary_relation * expression * expression
-  | MIFBinaryConnective of binary_connective * memory_image_formula * memory_image_formula
-  | MIFAssertValueFormula of expression * value_formula
+  | MIFExists of (string * memory_image_formula)
+  | MIFBinaryRelation of (binary_relation * expression * expression)
+  | MIFBinaryConnective of (binary_connective * memory_image_formula * memory_image_formula)
+  | MIFAssertValueFormula of (expression * value_formula)
   | MIFNot of memory_image_formula
 
 type memory_image
@@ -51,4 +51,4 @@ let rec mk_range left right =
   else
     let l = Const left in
     let r = Const right in
-    VFBinaryConnective And (VFBinaryRelation Lt r) (VFNot (VFBinaryRelation Lt l))
+    VFBinaryConnective(And, VFBinaryRelation(Lt, r), VFNot(VFBinaryRelation(Lt, l)))

@@ -3,6 +3,7 @@ open import List
 open import Maybe
 open import Num
 open import String
+open import Byte_sequence
 
 open import Error
 open import Missing_pervasives
@@ -18,6 +19,11 @@ type string_table
 val mk_string_table : string -> char -> string_table
 let mk_string_table base sep =
   Strings (sep, base)
+
+(** [string_table_of_byte_sequence seq] constructs a string table, using the NUL
+  * character as terminator, from a byte sequence. *)
+val string_table_of_byte_sequence : byte_sequence -> string_table
+let string_table_of_byte_sequence seq = mk_string_table (string_of_byte_sequence seq) (char_of_byte Missing_pervasives.null_char)
 
 (** [empty] is the empty string table with an arbitrary choice of delimiter.
   *)

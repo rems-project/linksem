@@ -5,31 +5,113 @@ open import Tuple
 open import Bool
 open import List
 open import Sorting
-import Map
-import Set
+open import Map
+open import Set
+open import Multimap
 open import Num
 open import Maybe
 open import Assert_extra
 
-open import Byte_sequence
-open import Default_printing
-open import Error
+open import Elf_file
+open import Elf_header
+open import Elf_interpreted_segment
+open import Elf_interpreted_section
+open import Elf_program_header_table
+open import Elf_section_header_table
+open import Elf_symbol_table
+open import Elf_types_native_uint
+
 open import Missing_pervasives
-open import Show
-open import Endianness
+
+(* Now we can define memory images *)
 
 type byte_pattern = maybe byte
 
-(* An element might have an address, and it has some contents. *)
+type elf_memory_image
+
+(* An element might have an address/offset, and it has some contents. *)
 type memory_image_element = <| startpos : maybe natural 
+                             ; length   : maybe natural
                              ; contents : list byte_pattern
                              |>
+
+(* HMM -- ideally I want to fold these into the memory image notion
+ * and the startpos thingy. *)
+type allocated_symbols_map = Map.map string (natural * natural) (* start, length *)
+
+(* Instead of modelling address calculations (in linker scripts) like so:
+
+type address_expr = natural -> allocated_symbols_map -> natural
+                  ( pos     -> environment           -> result address )
+                  
+   ... we model it as expressions in terms of CursorPosition. HMM.
+*) 
+
+type expr_operand = Var of string
+                   | CursorPosition          (* only valid in certain expressions... HMM *)
+                   | Constant of natural
+                   | UnOp of (expr_unary_operation * expr_operand)
+                   | BinOp of (expr_binary_operation * expr_operand * expr_operand)
+and
+expr_unary_operation = Neg of expr_operand
+                           | BitwiseInverse of expr_operand
+and 
+expr_binary_operation = Add of (expr_operand * expr_operand)
+                           | Sub of (expr_operand * expr_operand)
+                           | BitwiseAnd of (expr_operand * expr_operand)
+                           | BitwiseOr of (expr_operand * expr_operand)
+
+type expr_binary_relation = 
+    Lt
+    | Lte
+    | Gt
+    | Gte
+    | Eq
+    | Neq
+
+type expr = 
+    False
+    | True
+    | Not of expr
+    | And of (expr * expr)
+    | Or of (expr * expr)
+    | BinRel of (expr_binary_relation * expr_operand)  (* LH operand is the expr's value *)
+
+(*
+val cond_expr : expr -> expr -> expr -> expr
+let cond_expr expr1 expr2 expr3 = (Or((And(expr1, expr2)), (And((Not(expr1)), expr3))))
+*)
 
 (* Memory image elements all have identities. For convenience
  * we make the identities strings. The string contents are arbitrary,
  * and only their equality is relevant, but choosing friendly names
- * like "ELF header" is a nice idea.*)
+ * like "ELF header" is good practice.*)
 type memory_image = Map.map string memory_image_element
+(* An "element" of an ELF image, in the linking phase, is either a section,
+ * the ELF header, the section header table or the program header table.
+ * 
+ * PROBLEM: We'd like to use section names as the identifiers
+ * for those elements that are sections.
+ * but we can't, because they are not guaranteed to be unique. 
+ * 
+ * SOLUTION: Names that are unique in the file are used as keys. 
+ * If not unique, the sections are treated as anonymous and given
+ * gensym'd string ids (FIXME: implement this).
+ * 
+ * FIXME: am I sure that a multimap is not the right solution?
+ * It defeats the concept of unique IDs, but maybe they're not necessary.
+ *)
+
+(* Currently, our elements have unique names, which are strings.
+ * We *don't* want to encode any meaning onto these strings.
+ * All meaning should be encoded into labelled ranges.
+ * We want to be able to look up 
+ *
+ * - elements
+ * - ranges within elements
+ * 
+ * ... by their *labels* -- or sometimes just *part* of their labels.
+ *)
 
 (* We can also annotate arbitrary ranges of bytes within an element
  * with arbitrary metadata. 
@@ -44,19 +126,147 @@ type memory_image = Map.map string memory_image_element
  * every distinct ELF thing, which is no good. Can we define a mapping
  * from an umbrella "ELF" type to the relevant types in each case? *)
 type range_tag 'symdef 'reloc 'filefeature 'abifeature = 
-               | ImageBase of natural (* offset from start of image's VAS; often 0 *)
+               | ImageBase
                | EntryPoint
                | SymbolDef of 'symdef
                | RelocationSite of 'reloc
                | FileFeature of 'filefeature    (* file feature other than symdef and reloc *)
-               | AbiFeature of 'abifeature 
+               | AbiFeature of 'abifeature
+
+
+(* Now we don't need the hacky map key instances. *)
+
+(* separate maps per tag? 
+ * 
+ * YES
+ * i.e.
+ * one map
+ * for each kind of tag.
+ * 
+ * How do we deal with 'filefeature and 'abifeature
+ * which themselves are multi-variant types? e.g. ElfSection, ElfHeader, etc..
+ * Want to extend the collection of maps available. 
+ * I think that's okay, if clunky... just make the `filefeature be the whole map.
+ *)
+
+(*
+let null_entry_point = EntryPoint
+
+type null_abi_feature_type = unit
+*)
 
 type range = natural * natural (* start, length *)
 
-type annotation 'symdef 'reloc 'filefeature 'abifeature = range * range_tag 'symdef 'reloc 'filefeature 'abifeature
+type element_range = string * range
 
-type annotated_memory_image 'symdef 'reloc 'filefeature 'abifeature = 
-    memory_image * Map.map (string * range) (list (annotation 'symdef 'reloc 'filefeature 'abifeature))
+type annotated_memory_image 'symdef 'reloc 'filefeature 'abifeature = <|
+      by_name : memory_image 
+    ; by_element_range : map element_range (list (range_tag 'symdef 'reloc 'filefeature 'abifeature))
+    ; by_tag           : multimap (range_tag 'symdef 'reloc 'filefeature 'abifeature) (string * range)
+|>
+
+let empty_annotated_memory_image = <|
+      by_name = Map.empty
+    ; by_element_range = Map.empty
+    ; by_tag = Set.empty
+|>
+
+val tagCompare : forall 'symdef 'reloc 'filefeature 'abifeature.
+SetType 'filefeature, 
+SetType 'abifeature =>
+range_tag 'symdef 'reloc 'filefeature 'abifeature 
+    -> range_tag 'symdef 'reloc 'filefeature 'abifeature
+    -> Basic_classes.ordering
+let tagCompare k1 k2 = 
+    match (k1, k2) with
+        (ImageBase, ImageBase) -> EQ
+        | (EntryPoint, EntryPoint) -> EQ
+        | (SymbolDef(_), SymbolDef(_)) -> EQ
+        | (RelocationSite(_), RelocationSite(_)) -> EQ
+        | (FileFeature(arg1), FileFeature(arg2)) -> setElemCompare arg1 arg2
+        | (AbiFeature(arg1), AbiFeature(arg2)) -> setElemCompare arg1 arg2
+        (* what compares LT? *)
+        | (ImageBase, _) -> LT
+        | (EntryPoint, SymbolDef(_)) -> LT
+        | (EntryPoint, RelocationSite(_)) -> LT
+        | (EntryPoint, FileFeature(_)) -> LT
+        | (EntryPoint, AbiFeature(_)) -> LT
+        | (SymbolDef(_), RelocationSite(_)) -> LT
+        | (SymbolDef(_), FileFeature(_)) -> LT
+        | (SymbolDef(_), AbiFeature(_)) -> LT
+        | (RelocationSite(_), FileFeature(_)) -> LT
+        | (RelocationSite(_), AbiFeature(_)) -> LT
+        | (FileFeature(_), AbiFeature(_)) -> LT
+        (* else it's GT *)
+        | (_, _) -> GT
+    end
+
+val tagMatches : forall 'symdef 'reloc 'filefeature 'abifeature.
+SetType 'filefeature, 
+SetType 'abifeature =>
+range_tag 'symdef 'reloc 'filefeature 'abifeature 
+    -> range_tag 'symdef 'reloc 'filefeature 'abifeature
+    -> bool
+let tagMatches k1 k2 = tagCompare k1 k2 = EQ
+
+(* Define that equality relation. *)
+instance forall 'symdef 'reloc 'filefeature 'abifeature.
+SetType 'filefeature, SetType 'abifeature 
+=> (SetType (range_tag 'symdef 'reloc 'filefeature 'abifeature))
+    let setElemCompare = tagCompare
+end
+instance forall 'symdef 'reloc 'filefeature 'abifeature.
+SetType 'filefeature, SetType 'abifeature 
+=> (Ord (range_tag 'symdef 'reloc 'filefeature 'abifeature))
+    let compare = tagCompare
+    let (<) = fun tag1 -> (fun tag2 -> (tagCompare tag1 tag2 = LT))
+    let (<=) = fun tag1 -> (fun tag2 -> Set.member (tagCompare tag1 tag2) {LT; EQ})
+    let (>) = fun tag1 -> (fun tag2 -> (tagCompare tag1 tag2 = GT))
+    let (>=) = fun tag1 -> (fun tag2 -> Set.member (tagCompare tag1 tag2) {GT; EQ})
+end
+
+val unique_tag_matching : forall 'symdef 'reloc 'filefeature 'abifeature.
+SetType 'filefeature, SetType 'abifeature 
+=>     range_tag 'symdef 'reloc 'filefeature 'abifeature
+    -> annotated_memory_image 'symdef 'reloc 'filefeature 'abifeature
+    -> range_tag 'symdef 'reloc 'filefeature 'abifeature
+let unique_tag_matching tag img = 
+    match Multimap.lookupBy tagCompare tag img.by_tag with
+        [] -> failwith "no tag match found"
+        | [(tag, elRange)] -> tag
+        | _ -> failwith "more than one tag match when asserted unique"
+    end
+    
+val tagged_ranges_matching_tag : forall 'symdef 'reloc 'filefeature 'abifeature.
+SetType 'filefeature, SetType 'abifeature 
+=>     range_tag 'symdef 'reloc 'filefeature 'abifeature
+    -> annotated_memory_image 'symdef 'reloc 'filefeature 'abifeature
+    -> list (range_tag 'symdef 'reloc 'filefeature 'abifeature * element_range)
+let tagged_ranges_matching_tag tag img = 
+    Multimap.lookupBy tagCompare tag img.by_tag
+    
+val unique_tag_matching_at_range_exact : forall 'symdef 'reloc 'filefeature 'abifeature.
+SetType 'abifeature, SetType 'filefeature =>
+    element_range
+    -> range_tag 'symdef 'reloc 'filefeature 'abifeature
+    -> annotated_memory_image 'symdef 'reloc 'filefeature 'abifeature
+    -> range_tag 'symdef 'reloc 'filefeature 'abifeature
+let unique_tag_matching_at_range_exact r tag img = 
+    (* 1. find tags a unique range labelled as ELF section header table. *)
+    let (allRangeMatches : list (range_tag 'symdef 'reloc 'filefeature 'abifeature))
+     = match Map.lookup r img.by_element_range with
+        Just(results) -> results
+        | Nothing -> []
+    end
+    in
+    let (tagAlsoMatches : list (range_tag  'symdef 'reloc 'filefeature 'abifeature))
+     = List.filter (fun x -> tagCompare x tag = EQ) allRangeMatches
+    in
+    match tagAlsoMatches with
+        [] -> failwith "no range/tag match when asserted to exist"
+        | [x] -> x
+        | _ -> failwith "multiple range/tag match when asserted unique"
+    end
 
 val range_contains : (natural * natural) -> (natural * natural) -> bool
 let range_contains (r1begin, r1len) (r2begin, r2len) = 
@@ -75,10 +285,10 @@ let is_partition rs ranges =
     let r_is_contained_by_some_range
      = fun r -> foldl (||) false (List.map (fun range -> range_contains range r) ranges)
     in
-    all (fun r -> r_is_contained_by_some_range r) rs
+    List.all (fun r -> r_is_contained_by_some_range r) rs
     &&
     (* 2. elements of the first list do not overlap *)
-    all (fun r -> all (fun r2 -> (r = (* should be "=="? *) r2) || (not (range_overlaps r r2))) rs) rs
+    List.all (fun r -> List.all (fun r2 -> (r = (* should be "=="? *) r2) || (not (range_overlaps r r2))) rs) rs
 
 val     nat_range : natural -> natural -> list natural
 let rec nat_range base len =
@@ -170,4 +380,3 @@ let pattern_possible_starts_in_one_byte_sequence pattern seq offset =
         (show (List.length pattern)) ^ "-byte pattern in " ^ (show (List.length seq)) ^ "-byte region\n")
     in *)
     accum_pattern_possible_starts_in_one_byte_sequence pattern (List.length pattern) seq (List.length seq) offset []
-

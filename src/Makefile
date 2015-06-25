@@ -22,7 +22,7 @@ ifeq ($(realpath $(UINT)),)
 $(error Please run `make' in $(REPOROOT)/contrib or set UINT)
 endif
 
-LEM_UTIL_SRC := default_printing.lem missing_pervasives.lem show.lem endianness.lem error.lem
+LEM_UTIL_SRC := default_printing.lem missing_pervasives.lem show.lem endianness.lem error.lem multimap.lem
 # Some of the utility code is directly in ML, some in Lem; order matters!
 # GAH. doing a topsort manually is a sign of failure.
 ALL_UTIL_ML := \
@@ -47,8 +47,7 @@ LEM_ELF_SRC := byte_sequence.lem archive.lem \
 	elf_relocation.lem \
 	elf_file.lem 
 	
-LEM_ABI_SRC := memory_image.lem abstract_abi.lem \
-	abis/amd64/abi_amd64_elf_header.lem \
+LEM_ABI_SRC := memory_image.lem elf_memory_image.lem \
 	abis/power64/abi_power64_elf_header.lem \
 	abis/aarch64/abi_aarch64_le_elf_header.lem \
 	abis/aarch64/abi_aarch64_le_serialisation.lem \
@@ -56,13 +55,13 @@ LEM_ABI_SRC := memory_image.lem abstract_abi.lem \
 	abis/aarch64/abi_aarch64_le.lem \
 	abstract_linker_script.lem \
 	adaptors/sail_interface.lem \
+	abis/amd64/abi_amd64_elf_header.lem \
 	abis/amd64/abi_amd64_serialisation.lem \
 	abis/amd64/abi_amd64_relocation.lem \
 	abis/amd64/abi_amd64.lem \
 	abis/abis.lem \
-	elf_memory_image.lem \
 
-LEM_LINK_SRC := command_line.lem input_list.lem linkable_list.lem
+LEM_LINK_SRC := command_line.lem input_list.lem linkable_list.lem linker_script.lem link.lem
 
 LEM_MODEL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC))
 

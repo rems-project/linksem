@@ -921,3 +921,8 @@ let bytes_of_elf64_sxword endian w =
 instance (Show elf64_sxword)
   let show = string_of_elf64_sxword
 end
+
+val unsafe_natural_land : natural -> natural -> natural
+let unsafe_natural_land arg1 arg2 = natural_of_elf64_xword (
+    elf64_xword_land (elf64_xword_of_natural arg1) (elf64_xword_of_natural arg2)
+)

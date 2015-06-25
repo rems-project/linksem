@@ -53,7 +53,22 @@ type link_option = OutputFilename of string
                  | ForceCommonDefined of bool        (* -d, -dc, -dp *)
                  | Soname of string                  (* -soname *)
                  | EntryAddress of natural
+                 | TextSegmentStart of natural
+                 | RodataSegmentStart of natural
+                 | LdataSegmentStart of natural
                  (* more here! *) 
+
+val tagEqual : link_option -> link_option -> bool
+let tagEqual opt1 opt2 = match (opt1, opt2) with
+    (OutputFilename(_), OutputFilename(_)) -> true
+    (* | (ForceCommonDefined, ForceCommonDefined) -> true *)
+    | (Soname(_), Soname(_)) -> true
+    (* | (EntryAddress, EntryAddress) -> true *)
+    | (TextSegmentStart(_), TextSegmentStart(_)) -> true
+    | (RodataSegmentStart(_), RodataSegmentStart(_)) -> true
+    | (LdataSegmentStart(_), LdataSegmentStart(_)) -> true
+    | _ -> false
+end
 
 (* To allow filtering out a previous setting for a given option, we define
  * an equality relation that is true if options are of the same constructor.
@@ -167,6 +182,54 @@ let set_or_replace_option opt state =
      ; current_group = state.current_group
      ; stack = state.stack
      |>
+
+val find_option_matching_tag : link_option -> list link_option -> maybe link_option
+let rec find_option_matching_tag tag options = 
+    List.find (tagEqual tag) options
+
+val accumulate_hex_chars : natural -> list char -> natural
+let rec accumulate_hex_chars acc chars = match chars with
+    [] -> acc
+    | #'0' :: rest -> accumulate_hex_chars (acc * 16) rest
+    | #'1' :: rest -> accumulate_hex_chars (acc * 16 + 1) rest
+    | #'2' :: rest -> accumulate_hex_chars (acc * 16 + 2) rest
+    | #'3' :: rest -> accumulate_hex_chars (acc * 16 + 3) rest
+    | #'4' :: rest -> accumulate_hex_chars (acc * 16 + 4) rest
+    | #'5' :: rest -> accumulate_hex_chars (acc * 16 + 5) rest
+    | #'6' :: rest -> accumulate_hex_chars (acc * 16 + 6) rest
+    | #'7' :: rest -> accumulate_hex_chars (acc * 16 + 7) rest
+    | #'8' :: rest -> accumulate_hex_chars (acc * 16 + 8) rest
+    | #'9' :: rest -> accumulate_hex_chars (acc * 16 + 9) rest
+    | #'a' :: rest -> accumulate_hex_chars (acc * 16 + 10) rest
+    | #'b' :: rest -> accumulate_hex_chars (acc * 16 + 11) rest
+    | #'c' :: rest -> accumulate_hex_chars (acc * 16 + 12) rest
+    | #'d' :: rest -> accumulate_hex_chars (acc * 16 + 13) rest
+    | #'e' :: rest -> accumulate_hex_chars (acc * 16 + 14) rest
+    | #'f' :: rest -> accumulate_hex_chars (acc * 16 + 15) rest
+    | _ -> acc
+end
+
+val accumulate_dec_chars : natural -> list char -> natural
+let rec accumulate_dec_chars acc chars = match chars with
+    [] -> acc
+    | #'0' :: rest -> accumulate_hex_chars (acc * 10) rest
+    | #'1' :: rest -> accumulate_hex_chars (acc * 10 + 1) rest
+    | #'2' :: rest -> accumulate_hex_chars (acc * 10 + 2) rest
+    | #'3' :: rest -> accumulate_hex_chars (acc * 10 + 3) rest
+    | #'4' :: rest -> accumulate_hex_chars (acc * 10 + 4) rest
+    | #'5' :: rest -> accumulate_hex_chars (acc * 10 + 5) rest
+    | #'6' :: rest -> accumulate_hex_chars (acc * 10 + 6) rest
+    | #'7' :: rest -> accumulate_hex_chars (acc * 10 + 7) rest
+    | #'8' :: rest -> accumulate_hex_chars (acc * 10 + 8) rest
+    | #'9' :: rest -> accumulate_hex_chars (acc * 10 + 9) rest
+    | _ -> acc
+end
+
+val parse_address : string -> natural
+let parse_address s = match toCharList s with
+    #'0' :: #'x' :: more -> accumulate_hex_chars 0 more
+    | chars -> accumulate_dec_chars 0 chars
+end
 
 type option_def = (list option_token) * option_argspecs * (option_argvals -> command_state -> command_state) * string
 
@@ -307,9 +370,9 @@ let command_line_table = [
   (["-Tbss"],                                     (["ADDRESS"], []),         fun _ -> (fun state -> state), "Set address of .bss section");
   (["-Tdata"],                                    (["ADDRESS"], []),         fun _ -> (fun state -> state), "Set address of .data section");
   (["-Ttext"],                                    (["ADDRESS"], []),         fun _ -> (fun state -> state), "Set address of .text section");
-  (["-Ttext-segment"],                            (["ADDRESS"], []),         fun _ -> (fun state -> state), "Set address of text segment");
-  (["-Trodata-segment"],                          (["ADDRESS"], []),         fun _ -> (fun state -> state), "Set address of rodata segment");
-  (["-Tldata-segment"],                           (["ADDRESS"], []),         fun _ -> (fun state -> state), "Set address of ldata segment");
+  (["-Ttext-segment"],                            (["ADDRESS"], []),         fun argvals -> set_or_replace_option (TextSegmentStart(parse_address (head (fst argvals)))), "Set address of text segment");
+  (["-Trodata-segment"],                          (["ADDRESS"], []),         fun argvals -> set_or_replace_option (RodataSegmentStart(parse_address (head (fst argvals)))), "Set address of rodata segment");
+  (["-Tldata-segment"],                           (["ADDRESS"], []),         fun argvals -> set_or_replace_option (LdataSegmentStart(parse_address (head (fst argvals)))), "Set address of ldata segment");
   (["--version-script"],                          (["FILE"], []),            fun _ -> (fun state -> state), "Read version information script");
   (["--version-exports-section"],                 (["SYMBOL"], []),          fun _ -> (fun state -> state), "Take export symbols list from .exports, using SYMBOL as the version.");
   (* linker internal debugging/diagnostics and performance tuning *)

@@ -14,24 +14,45 @@ open import Elf_file
 open import Elf_interpreted_section
 
 open import Endianness
-open import Abstract_abi
+open import Elf_memory_image
 open import Abi_aarch64_relocation
 open import Abi_aarch64_le_elf_header
 
 val header_is_aarch64_le : elf64_header -> bool
-let header_is_aarch64_le h =  
+let header_is_aarch64_le h = 
     null_abi.is_valid_elf_header h
     && List.index h.elf64_ident (unsafe_nat_of_natural elf_ii_data) = Just (unsigned_char_of_natural elf_data_2lsb)
     && is_valid_abi_aarch64_le_machine_architecture (natural_of_elf64_half h.elf64_machine)
     && is_valid_abi_aarch64_le_magic_number h.elf64_ident
+    
+type aarch64_le_abi_feature = GOT | PLT (* placeholder / FIXME *)
 
-val section_is_special : elf64_interpreted_section -> elf64_file -> bool
+val abiFeatureCompare : aarch64_le_abi_feature -> aarch64_le_abi_feature -> Basic_classes.ordering
+let abiFeatureCompare k1 k2 = 
+    match (k1, k2) with
+        (GOT, GOT) -> EQ
+        | (PLT, PLT) -> EQ
+        (* what compares LT? *)
+        | (GOT, _) -> LT
+        (* else it's GT *)
+        | (_, _) -> GT
+    end
+
+instance (SetType aarch64_le_abi_feature)
+    let setElemCompare = abiFeatureCompare
+end
+
+val section_is_special : elf64_interpreted_section -> elf_memory_image any_abi_feature -> bool
 let section_is_special s f = 
-    null_abi.section_is_special s f || (* FIXME *) false
+    elf_section_is_special s f || (* FIXME *) false
 
 val sysv_aarch64_le_std_abi : abi
 let sysv_aarch64_le_std_abi = 
    <| is_valid_elf_header = header_is_aarch64_le
     ; reloc = fun r -> (width_of_aarch64_relocation r, fun _ -> Nothing)
     ; section_is_special = section_is_special
+    ; section_is_large = (fun _ -> (fun _ -> false))
+    ; maxpagesize = null_abi.maxpagesize
+    ; minpagesize = null_abi.minpagesize
+    ; commonpagesize = null_abi.commonpagesize
     |>

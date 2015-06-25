@@ -1,0 +1,742 @@
+open import Basic_classes
+open import Function
+open import String
+open import Tuple
+open import Bool
+open import List
+open import Sorting
+open import Num
+open import Maybe
+open import Assert_extra
+import Map
+
+open import Byte_sequence
+open import Default_printing
+open import Error
+open import Missing_pervasives
+open import Show
+
+open import Elf_header
+open import Elf_file
+open import Elf_interpreted_section
+
+open import Abis
+open import Command_line
+open import Input_list
+open import Memory_image
+open import Elf_memory_image (* HMM -- ideally we'd be ELF-agnostic in this file. 
+     But Abstract_abi is now merged into Elf_memory_image, so never mind. *)
+open import Elf_symbol_table
+open import Elf_section_header_table
+open import Elf_types_native_uint
+
+(* We model two kinds of linker script: "implicit scripts", which are supplied 
+ * on the command line as input objects, and "control scripts" of which there
+ * is exactly one per link job. The abstract syntax of each script comes from the
+ * same grammar. 
+ * 
+ * We define the control script as a bunch of functions, to allow for
+ * link jobs where we don't have an AST and the script behaviour is hard-coded. 
+ *)
+
+(* Input sections come from individual (relocatable) ELF files. 
+ * The name of this file is important! 
+ * 
+ * Each input "section" is always an identified section or common symbol 
+ * *within* some ELF memory image. *)
+                                                (* symtab's secidx, symbol's symind, symname *)
+type input_section_spec
+ = Common of (string * elf_memory_image any_abi_feature * natural * natural * string * elf64_symbol_table_entry) (* string is symbol name -- must be a COMMON symbol *)
+                                                  (* section's secidx, secname *)
+ | InputSection of (string * elf_memory_image any_abi_feature
+    * natural * string * elf64_interpreted_section) (* string is section name *)
+
+(* A control script defines
+ * - output sections
+ * - a mapping from output sections to (ordered) input sections
+ * - extra symbols
+ * - output format etc. (skip this for now)
+ *)
+
+(* We will have to deal with merging etc. at some point, somewhere
+ * (maybe here, maybe not); for now we just produce an ordered list 
+ * of sections. 
+ *)
+ 
+(* We can't model linker scripts as plain Lem functions without writing
+ * them to a very different structure than that of scripts. The reason is that
+ * certain features of the script language necessitate multiple passes
+ * over the script structure. For example, to figure out how big an
+ * output section is, hence where to begin the next section, you need to 
+ * know which of the input sections are marked for KEEP. For that, you need 
+ * a def-use graph over input sections. But for that, you also need to account 
+ * for *all* symbol definitions, and the script itself is allowed to add new 
+ * ones (right in among its input sections). So we have to do one pass to
+ * enumerate the symbol additions, and another pass to eliminate sections
+ * that we don't want to KEEP.
+ *
+ * Other gotchas include:
+ * 
+ * - symbol provision and address advancement can occur in among the input 
+ * section queries, but also outside any output section. 
+ * 
+ * - semantics of DATA_SEGMENT_ALIGN depend on future script contents
+ * 
+ * - ONLY_IF_RO and ONLY_IF_RW are tricky: need to evaluate the input section
+ * queries
+ * 
+ * - semantics of empty sections are subtle (". = ." will force an empty section
+ * to be emitted, but ". = . + 0" will not do so).
+ * 
+ * Our approach is to define an interpreter for (at present) most of the script 
+ * language.
+ *)
+
+type symbol_def_policy = AlwaysDefine
+                        | ProvideIfUsed
+
+type input_selector  = list input_section_spec -> list input_section_spec
+
+type address_expr = Memory_image.expr
+
+type output_guard = AlwaysOutput
+                  | OnlyIfRo
+                  | OnlyIfRw
+                  
+type symbol_spec = (natural * unsigned_char * unsigned_char) (* size, info, other *)
+
+type script_element =
+  DefineSymbol of (symbol_def_policy * string * symbol_spec)
+| AdvanceAddress of (* address_expr -- WHY did I want this? *) (natural -> natural -> natural)
+| MarkAndAlignDataSegment of (natural * natural) (* maxpagesize, commonpagesize *)
+| MarkDataSegmentEnd
+| MarkDataSegmentRelroEnd of (natural * address_expr)
+| OutputSection of (output_guard * maybe address_expr * string * list script_element)
+| DiscardSection of input_selector 
+  (* Input queries can only occur within an output section. 
+     Output sections may not nest within other output sections. 
+     (Ideally we would use something like polymorphic variants to encode this.)
+   *)
+| InputQuery of (retain_policy * sort_policy * input_selector)
+and 
+ retain_policy = DefaultKeep
+                    | KeepEvenWhenGC
+and
+ sort_policy = DefaultSort (* Use command line sort option, else input order *)
+                  | InputOrder (* Always use input order *)
+                  | ByName
+                  | ByNameThenAlignment
+                  | ByAlignment
+                  | ByAlignmentThenName
+                  | ByInitPriority
+
+(* A linker control script is a function from inputs to output elements. 
+ * We can define them in syntax (using an interpreter) 
+ * or in Lem directly (as functions). *)
+type linker_control_script = list script_element
+
+val all_suffixes : list char -> list (list char)
+let rec all_suffixes chars =
+    match chars with 
+        [] -> [[]]
+        | c :: morecs -> chars :: (all_suffixes morecs)
+    end
+
+val glob_match : list char -> list char -> bool
+let rec glob_match pat str = 
+    match (pat, str) with
+        ([], []) -> true
+        | (#'?':: morepat, _ :: morestr) -> glob_match morepat morestr
+        | (#'*':: morepat, _) ->
+            (* if any suffix of the remaining string matches
+             * the remaining pattern, we've matched the pattern 
+             * from '*' onwards. *)
+            let or_suffix_match = fun matched -> (fun newlist ->
+                matched || glob_match morepat newlist)
+            in 
+            List.foldl (or_suffix_match) false (all_suffixes str)
+        | (patc :: morepat, c :: morestr) -> patc = c && glob_match morepat morestr
+        | ([], _) -> (* ran out of pattern *) false
+        | (_, []) -> (* ran out of str *) false
+    end
+
+
+val default_symbol_spec : symbol_spec
+let default_symbol_spec = (0, unsigned_char_of_natural 0, unsigned_char_of_natural 0)
+
+(* These Lem functions replicate linker script functions or builtin behaviours. *)
+
+val only_sections : input_selector 
+let only_sections inputs = mapMaybe
+    (fun i -> match i with 
+      | InputSection(fname, _, _, secname, sec) -> Just(i)
+      | _ -> Nothing
+    end) inputs
+
+val filter_and_concat : (input_section_spec -> bool) -> input_selector (* a.k.a. (list input_section_spec) -> list elf64_interpreted_section *)
+let filter_and_concat p inputs = List.filter p (only_sections inputs)
+
+val name_matches : string -> input_section_spec -> bool
+let name_matches pat input =
+    match input with
+        InputSection(fname, _, _, secname, sec) -> glob_match (toCharList pat) (toCharList secname)
+        | _ -> false
+    end
+
+val file_matches : string -> input_section_spec -> bool
+let file_matches pat input = 
+    match input with
+        InputSection(fname, _, _, secname, sec) -> glob_match (toCharList pat) (toCharList fname)
+        | _ -> false
+    end
+
+val align_up : natural -> natural -> natural
+let align_up addr align = 
+    let quot = addr / align
+    in
+    if quot * align = addr then addr else (quot + 1) * align
+
+(* DATA_SEGMENT_ALIGN is defined by two formulae 
+ * (over pos and commonpagesize/maxpagesize)
+ * "... depending on whether the latter uses fewer COMMONPAGESIZE sized
+  pages for the data segment (area between the result of this
+  expression and `DATA_SEGMENT_END') than the former or not.  If the
+  latter form is used, it means COMMONPAGESIZE bytes of runtime
+  memory will be saved at the expense of up to COMMONPAGESIZE wasted
+  bytes in the on-disk file."
+
+  So the amount of padding that gets inserted here depends on the location
+  of something that comes *later*, namely DATA_SEGMENT_END. 
+  So, we can't model it as a function of the current position. 
+  Instead, we add MarkDataSegmentEnd and friends 
+  to the script_element ADT.
+ *)
+
+let has_writability = fun writable -> (fun inputsec -> (
+    match inputsec with
+        Common(_, img, symtabsecidx, symind, synname, syment) 
+            -> (* all common symbols are potentially writable *) true
+        | InputSection(fname, img, secidx, secname, sec)
+            -> let (flags : natural) = match elf_memory_image_section_by_index secidx img with 
+                          Just x -> x.elf64_section_flags
+                        | Nothing -> failwith "impossible: no such section"
+                     end
+                in 
+                flag_is_set shf_write flags
+    end
+))
+
+(* LARGE_COMMON seems to have been defined in this patch set:
+    https://sourceware.org/ml/binutils/2005-07/txt00014.txt
+   and at the time was "only for x86-64". It seems to be analogous
+   to ".lbss", i.e. "large bss". libbfd defines SHF_X86_64_LARGE.
+   The best comment seems to be in llvm's Support/ELF.h:
+   
+0814   // If an object file section does not have this flag set, then it may not hold
+0815   // more than 2GB and can be freely referred to in objects using smaller code
+0816   // models. Otherwise, only objects using larger code models can refer to them.
+0817   // For example, a medium code model object can refer to data in a section that
+0818   // sets this flag besides being able to refer to data in a section that does
+0819   // not set it; likewise, a small code model object can refer only to code in a
+0820   // section that does not set this flag.
+   
+ *)
+
+val address_zero : natural -> natural -> natural
+let address_zero = fun pos -> (fun secs -> 0)
+
+val default_linker_control_script : abi -> maybe natural -> maybe natural -> maybe natural -> natural -> linker_control_script
+let default_linker_control_script a user_text_segment_start user_data_segment_start user_rodata_segment_start elf_headers_size = 
+    let segment_start name default = match name with 
+      "ldata-segment" -> match user_data_segment_start with 
+        Nothing -> default
+        | Just addr -> (* fun _ -> *) addr
+        end
+    | "text-segment" -> match user_text_segment_start with 
+        Nothing -> default
+        | Just addr -> (* fun _ -> *) addr
+        end
+    end
+    in
+    let is_large_common = (fun isec -> match isec with 
+    Common(fname, img, symtabidx, symind, symname, syment)
+         -> let referenced_sec
+             = match elf_memory_image_section_by_index (natural_of_elf64_half syment.elf64_st_shndx) img with
+                Just s -> s
+                | Nothing -> failwith "impossible: symbol references invalid section index"
+            end
+            in 
+            a.section_is_large referenced_sec img
+    | _ -> false
+    end)
+    in
+    let is_common = (fun isec -> match isec with 
+        Common(_, _, _, _, _, _) -> not (is_large_common isec)
+         | _ -> false
+    end)
+    in
+    [
+        (* For now, we base our script on the GNU bfd linker's scripts. 
+           Here's the static -z combreloc one.
+           
+/* Script for -z combreloc: combine and sort reloc sections */
+/* Copyright (C) 2014 Free Software Foundation, Inc.
+   Copying and distribution of this script, with or without modification,
+   are permitted in any medium without royalty provided the copyright
+   notice and this notice are preserved.  */
+OUTPUT_FORMAT("elf64-x86-64", "elf64-x86-64",
+              "elf64-x86-64")
+OUTPUT_ARCH(i386:x86-64)
+ENTRY(_start)
+SEARCH_DIR("=/usr/x86_64-linux-gnu/lib64"); SEARCH_DIR("=/usr/local/lib/x86_64-linux-gnu"); SEARCH_DIR("=/usr/local/lib64"); SEARCH_DIR("=/lib/x86_64-linux-gnu"); SEARCH_DIR("=/lib64"); SEARCH_DIR("=/usr/lib/x86_64-linux-gnu"); SEARCH_DIR("=/usr/lib64"); SEARCH_DIR("=/usr/x86_64-linux-gnu/lib"); SEARCH_DIR("=/usr/local/lib"); SEARCH_DIR("=/lib"); SEARCH_DIR("=/usr/lib");
+SECTIONS
+{
+  /* Read-only sections, merged into text segment: */
+  PROVIDE (__executable_start = SEGMENT_START("text-segment", 0x400000)); . = SEGMENT_START("text-segment", 0x400000) + SIZEOF_HEADERS;
+  .interp         : { *(.interp) }
+  .note.gnu.build-id : { *(.note.gnu.build-id) }
+  .hash           : { *(.hash) }
+  .gnu.hash       : { *(.gnu.hash) }
+  .dynsym         : { *(.dynsym) }
+  .dynstr         : { *(.dynstr) }
+  .gnu.version    : { *(.gnu.version) }
+  .gnu.version_d  : { *(.gnu.version_d) }
+  .gnu.version_r  : { *(.gnu.version_r) }
+  .rela.dyn       :
+    {
+      *(.rela.init)
+      *(.rela.text .rela.text.* .rela.gnu.linkonce.t.* )
+      *(.rela.fini)
+      *(.rela.rodata .rela.rodata.* .rela.gnu.linkonce.r.* )
+      *(.rela.data .rela.data.* .rela.gnu.linkonce.d.* )
+      *(.rela.tdata .rela.tdata.* .rela.gnu.linkonce.td.* )
+      *(.rela.tbss .rela.tbss.* .rela.gnu.linkonce.tb.* )
+      *(.rela.ctors)
+      *(.rela.dtors)
+      *(.rela.got)
+      *(.rela.bss .rela.bss.* .rela.gnu.linkonce.b.* )
+      *(.rela.ldata .rela.ldata.* .rela.gnu.linkonce.l.* )
+      *(.rela.lbss .rela.lbss.* .rela.gnu.linkonce.lb.* )
+      *(.rela.lrodata .rela.lrodata.* .rela.gnu.linkonce.lr.* )
+      *(.rela.ifunc)
+    }
+  .rela.plt       :
+    {
+      *(.rela.plt)
+      PROVIDE_HIDDEN (__rela_iplt_start = .);
+      *(.rela.iplt)
+      PROVIDE_HIDDEN (__rela_iplt_end = .);
+    }
+  .init           :
+  {
+    KEEP ( *(SORT_NONE(.init)))
+  }
+  .plt            : { *(.plt) *(.iplt) }
+  .plt.bnd        : { *(.plt.bnd) }
+  .text           :
+  {
+    *(.text.unlikely .text.*_unlikely .text.unlikely.* )
+    *(.text.exit .text.exit.* )
+    *(.text.startup .text.startup.* )
+    *(.text.hot .text.hot.* )
+    *(.text .stub .text.* .gnu.linkonce.t.* )
+    /* .gnu.warning sections are handled specially by elf32.em.  */
+    *(.gnu.warning)
+  }
+  .fini           :
+  {
+    KEEP ( *(SORT_NONE(.fini)))
+  }
+   PROVIDE (__etext = .);
+  PROVIDE (_etext = .);
+  PROVIDE (etext = .);
+  .rodata         : { *(.rodata .rodata.* .gnu.linkonce.r.* ) }
+  .rodata1        : { *(.rodata1) }
+  .eh_frame_hdr : { *(.eh_frame_hdr) }
+  .eh_frame       : ONLY_IF_RO { KEEP ( *(.eh_frame)) }
+  .gcc_except_table   : ONLY_IF_RO { *(.gcc_except_table
+  .gcc_except_table.* ) }
+  /* These sections are generated by the Sun/Oracle C++ compiler.  */
+  .exception_ranges   : ONLY_IF_RO { *(.exception_ranges
+  .exception_ranges* ) }
+  /* Adjust the address for the data segment.  We want to adjust up to
+     the same address within the page on the next page up.  */
+  . = ALIGN (CONSTANT (MAXPAGESIZE)) - ((CONSTANT (MAXPAGESIZE) - .) & (CONSTANT (MAXPAGESIZE) - 1)); . = DATA_SEGMENT_ALIGN (CONSTANT (MAXPAGESIZE), CONSTANT (COMMONPAGESIZE));
+  /* Exception handling  */
+  .eh_frame       : ONLY_IF_RW { KEEP ( *(.eh_frame)) }
+  .gcc_except_table   : ONLY_IF_RW { *(.gcc_except_table .gcc_except_table.* ) }
+  .exception_ranges   : ONLY_IF_RW { *(.exception_ranges .exception_ranges* ) }
+  /* Thread Local Storage sections  */
+  .tdata          : { *(.tdata .tdata.* .gnu.linkonce.td.* ) }
+  .tbss           : { *(.tbss .tbss.* .gnu.linkonce.tb.* ) *(.tcommon) }
+  .preinit_array     :
+  {
+    PROVIDE_HIDDEN (__preinit_array_start = .);
+    KEEP ( *(.preinit_array))
+    PROVIDE_HIDDEN (__preinit_array_end = .);
+  }
+  .init_array     :
+  {
+    PROVIDE_HIDDEN (__init_array_start = .);
+    KEEP ( *(SORT_BY_INIT_PRIORITY(.init_array.* ) SORT_BY_INIT_PRIORITY(.ctors.* )))
+    KEEP ( *(.init_array EXCLUDE_FILE ( *crtbegin.o *crtbegin?.o *crtend.o *crtend?.o ) .ctors))
+    PROVIDE_HIDDEN (__init_array_end = .);
+  }
+  .fini_array     :
+  {
+    PROVIDE_HIDDEN (__fini_array_start = .);
+    KEEP ( *(SORT_BY_INIT_PRIORITY(.fini_array.* ) SORT_BY_INIT_PRIORITY(.dtors.* )))
+    KEEP ( *(.fini_array EXCLUDE_FILE ( *crtbegin.o *crtbegin?.o *crtend.o *crtend?.o ) .dtors))
+    PROVIDE_HIDDEN (__fini_array_end = .);
+  }
+  .ctors          :
+  {
+    /* gcc uses crtbegin.o to find the start of
+       the constructors, so we make sure it is
+       first.  Because this is a wildcard, it
+       doesn't matter if the user does not
+       actually link against crtbegin.o; the
+       linker won't look for a file to match a
+       wildcard.  The wildcard also means that it
+       doesn't matter which directory crtbegin.o
+       is in.  */
+    KEEP ( *crtbegin.o(.ctors))
+    KEEP ( *crtbegin?.o(.ctors))
+    /* We don't want to include the .ctor section from
+       the crtend.o file until after the sorted ctors.
+       The .ctor section from the crtend file contains the
+       end of ctors marker and it must be last */
+    KEEP ( *(EXCLUDE_FILE ( *crtend.o *crtend?.o ) .ctors))
+    KEEP ( *(SORT(.ctors.* )))
+    KEEP ( *(.ctors))
+  }
+  .dtors          :
+  {
+    KEEP ( *crtbegin.o(.dtors))
+    KEEP ( *crtbegin?.o(.dtors))
+    KEEP ( *(EXCLUDE_FILE ( *crtend.o *crtend?.o ) .dtors))
+    KEEP ( *(SORT(.dtors.* )))
+    KEEP ( *(.dtors))
+  }
+  .jcr            : { KEEP ( *(.jcr)) }
+  .data.rel.ro : { *(.data.rel.ro.local* .gnu.linkonce.d.rel.ro.local.* ) *(.data.rel.ro .data.rel.ro.* .gnu.linkonce.d.rel.ro.* ) }
+  .dynamic        : { *(.dynamic) }
+  .got            : { *(.got) *(.igot) }
+  . = DATA_SEGMENT_RELRO_END (SIZEOF (.got.plt) >= 24 ? 24 : 0, .);
+  .got.plt        : { *(.got.plt)  *(.igot.plt) }
+  .data           :
+  {
+    *(.data .data.* .gnu.linkonce.d.* )
+    SORT(CONSTRUCTORS)
+  }
+  .data1          : { *(.data1) }
+  _edata = .; PROVIDE (edata = .);
+  . = .;
+  __bss_start = .;
+  .bss            :
+  {
+   *(.dynbss)
+   *(.bss .bss.* .gnu.linkonce.b.* )
+   *(COMMON)
+   /* Align here to ensure that the .bss section occupies space up to
+      _end.  Align after .bss to ensure correct alignment even if the
+      .bss section disappears because there are no input sections.
+      FIXME: Why do we need it? When there is no .bss section, we don't
+      pad the .data section.  */
+   . = ALIGN(. != 0 ? 64 / 8 : 1);
+  }
+  .lbss   :
+  {
+    *(.dynlbss)
+    *(.lbss .lbss.* .gnu.linkonce.lb.* )
+    *(LARGE_COMMON)
+  }
+  . = ALIGN(64 / 8);
+  . = SEGMENT_START("ldata-segment", .);
+  .lrodata   ALIGN(CONSTANT (MAXPAGESIZE)) + (. & (CONSTANT (MAXPAGESIZE) - 1)) :
+  {
+    *(.lrodata .lrodata.* .gnu.linkonce.lr.* )
+  }
+  .ldata   ALIGN(CONSTANT (MAXPAGESIZE)) + (. & (CONSTANT (MAXPAGESIZE) - 1)) :
+  {
+    *(.ldata .ldata.* .gnu.linkonce.l.* )
+    . = ALIGN(. != 0 ? 64 / 8 : 1);
+  }
+  . = ALIGN(64 / 8);
+  _end = .; PROVIDE (end = .);
+  . = DATA_SEGMENT_END (.);
+  /* Stabs debugging sections.  */
+  .stab          0 : { *(.stab) }
+  .stabstr       0 : { *(.stabstr) }
+  .stab.excl     0 : { *(.stab.excl) }
+  .stab.exclstr  0 : { *(.stab.exclstr) }
+  .stab.index    0 : { *(.stab.index) }
+  .stab.indexstr 0 : { *(.stab.indexstr) }
+  .comment       0 : { *(.comment) }
+  /* DWARF debug sections.
+     Symbols in the DWARF debugging sections are relative to the beginning
+     of the section so we begin them at 0.  */
+  /* DWARF 1 */
+  .debug          0 : { *(.debug) }
+  .line           0 : { *(.line) }
+  /* GNU DWARF 1 extensions */
+  .debug_srcinfo  0 : { *(.debug_srcinfo) }
+  .debug_sfnames  0 : { *(.debug_sfnames) }
+  /* DWARF 1.1 and DWARF 2 */
+  .debug_aranges  0 : { *(.debug_aranges) }
+  .debug_pubnames 0 : { *(.debug_pubnames) }
+  /* DWARF 2 */
+  .debug_info     0 : { *(.debug_info .gnu.linkonce.wi.* ) }
+  .debug_abbrev   0 : { *(.debug_abbrev) }
+  .debug_line     0 : { *(.debug_line .debug_line.* .debug_line_end ) }
+  .debug_frame    0 : { *(.debug_frame) }
+  .debug_str      0 : { *(.debug_str) }
+  .debug_loc      0 : { *(.debug_loc) }
+  .debug_macinfo  0 : { *(.debug_macinfo) }
+  /* SGI/MIPS DWARF 2 extensions */
+  .debug_weaknames 0 : { *(.debug_weaknames) }
+  .debug_funcnames 0 : { *(.debug_funcnames) }
+  .debug_typenames 0 : { *(.debug_typenames) }
+  .debug_varnames  0 : { *(.debug_varnames) }
+  /* DWARF 3 */
+  .debug_pubtypes 0 : { *(.debug_pubtypes) }
+  .debug_ranges   0 : { *(.debug_ranges) }
+  /* DWARF Extension.  */
+  .debug_macro    0 : { *(.debug_macro) }
+  .gnu.attributes 0 : { KEEP ( *(.gnu.attributes)) }
+  /DISCARD/ : { *(.note.GNU-stack) *(.gnu_debuglink) *(.gnu.lto_* ) }
+}
+         *)
+         
+         (*  function from 
+                  inputs and configuration
+             to
+                  output sections-with-address-and-policy, output symbols-with-address-and-attributes, 
+                      discards, orphans
+             BUT
+                   1. policy is not a property of output sections, but of *inputs within outputs*
+                         i.e. KEEP( *(.init))
+         
+             what's helpful for writing such functions?
+             
+             e.g. only_if_ro (input_query) (output ): 
+             
+             i.e.    ++ only_if_ro OutputSection(AlwaysOutput, Nothing, ".eh_frame", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".eh_frame"))])
+
+                 want to take a bunch of outputs
+                         and return a bunch of outputs?
+                         
+                         if so, need to return a "current address"
+             
+          *)
+    (DefineSymbol(ProvideIfUsed, "__executable_start", default_symbol_spec))
+  ; AdvanceAddress((* BinRel(Eq, Constant( *) fun _ -> (fun _ -> 
+        (segment_start "text-segment" (4 * 1048576)) + elf_headers_size))
+  ; OutputSection(AlwaysOutput, Nothing, ".interp", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".interp"))])
+  ; OutputSection(AlwaysOutput, Nothing, ".note.gnu.build-id", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".note.gnu.build-id"))])
+  ; OutputSection(AlwaysOutput, Nothing, ".hash", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".hash"))])
+  ; OutputSection(AlwaysOutput, Nothing, ".gnu_hash", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".gnu.hash"))])
+  ; OutputSection(AlwaysOutput, Nothing, ".dynsym", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".dynsym"))])
+  ; OutputSection(AlwaysOutput, Nothing, ".dynstr", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".dynstr"))])
+  ; OutputSection(AlwaysOutput, Nothing, ".gnu.version", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".gnu.version"))])
+  ; OutputSection(AlwaysOutput, Nothing, ".gnu.version_d", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".gnu.version_d"))])
+  ; OutputSection(AlwaysOutput, Nothing, ".gnu.version_r", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".gnu.version_r"))])
+  ; OutputSection(AlwaysOutput, Nothing, ".rela.dyn", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".rela.init"))
+                                       ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
+      fun s -> name_matches ".rela.text" s || name_matches ".rela.text.*" s || name_matches ".rela.gnu.linkonce.t.*" s))
+                                       ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
+      fun s -> name_matches ".rela.rodata" s || name_matches ".rela.rodata.*" s || name_matches ".rela.gnu.linkonce.r.*" s))
+                                       ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
+      fun s -> name_matches ".rela.data" s || name_matches ".rela.data.*" s || name_matches ".rela.gnu.linkonce.d.*" s))
+                                       ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
+      fun s -> name_matches ".rela.tdata" s || name_matches ".rela.tdata.*" s || name_matches ".rela.gnu.linkonce.td.*" s))
+                                       ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
+      fun s -> name_matches ".rela.tbss" s || name_matches ".rela.tbss.*" s || name_matches ".rela.gnu.linkonce.tb.*" s))
+                                       ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".rela.ctors"))
+                                       ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".rela.got"))
+                                       ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
+      fun s -> name_matches ".rela.bss" s || name_matches ".rela.bss.*" s || name_matches ".rela.gnu.linkonce.b.*" s))
+                                       ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
+      fun s -> name_matches ".rela.ldata" s || name_matches ".rela.ldata.*" s || name_matches ".rela.gnu.linkonce.l.*" s))
+                                       ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
+      fun s -> name_matches ".rela.lbss" s || name_matches ".rela.lbss.*" s || name_matches ".rela.gnu.linkonce.lb.*" s))
+                                       ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".rela.ifunc"))
+    ])
+  ; OutputSection(AlwaysOutput, Nothing, ".rela.plt", [
+      InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".rela.plt"))
+    ; DefineSymbol(ProvideIfUsed, "__rela_iplt_start", (0, make_symbol_info stb_local stt_notype (* FIXME *), make_symbol_other stv_hidden))
+    ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".rela.iplt"))
+    ; DefineSymbol(ProvideIfUsed, "__rela_iplt_end", (0, make_symbol_info stb_local stt_notype (* FIXME *), make_symbol_other stv_hidden))
+    ])
+  ; OutputSection(AlwaysOutput, Nothing, ".init", [
+      InputQuery(KeepEvenWhenGC, InputOrder, filter_and_concat (name_matches ".init"))
+    ])
+  ; OutputSection(AlwaysOutput, Nothing, ".plt", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".plt"))
+                         ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".iplt"))
+    ])
+  ; OutputSection(AlwaysOutput, Nothing, ".plt.bnd", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".plt.bnd"))])
+  ; OutputSection(AlwaysOutput, Nothing, ".text", [
+      InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
+        fun s -> name_matches ".text.unlikely" s || name_matches ".text.*_unlikely" s || name_matches ".text.unlikely.*" s
+       ))
+    ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (  
+        fun s -> name_matches ".text.exit" s || name_matches ".text.exit.*" s))
+    ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
+        fun s -> name_matches ".text.startup" s || name_matches ".text.startup.*" s))
+    ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
+        fun s -> name_matches ".text.hot" s || name_matches ".text.hot.*" s))
+    ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
+        fun s -> name_matches ".text" s || name_matches ".stub" s || name_matches ".text.*" s || name_matches ".gnu.linkonce.t.*" s))
+    ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
+         (* .gnu.warning sections are handled specially by elf32.em.  *)
+        fun s -> name_matches ".gnu_warning" s))
+    ])
+  ; OutputSection(AlwaysOutput, Nothing, ".fini", [
+      InputQuery(KeepEvenWhenGC, InputOrder, filter_and_concat (name_matches ".fini"))
+    ])
+  ; DefineSymbol(ProvideIfUsed, "__etext", default_symbol_spec)
+  ; DefineSymbol(ProvideIfUsed, "_etext", default_symbol_spec)
+  ; DefineSymbol(ProvideIfUsed, "etext", default_symbol_spec)
+  ; OutputSection(AlwaysOutput, Nothing, ".rodata", [
+    InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
+        fun s -> name_matches ".rodata" s || name_matches ".rodata.*" s || name_matches ".gnu.linkonce.r.*" s
+    ))])
+  ; OutputSection(AlwaysOutput, Nothing, ".eh_frame_hdr", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".eh_frame_hdr")) ])
+  ; OutputSection(OnlyIfRo, Nothing, ".eh_frame", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".eh_frame"))])
+  ; OutputSection(OnlyIfRo, Nothing, ".gcc_except_table", [InputQuery(DefaultKeep, DefaultSort, 
+    filter_and_concat (fun s -> name_matches ".gcc_except_table" s || name_matches ".gcc_except_table.*" s))])
+  ; OutputSection(OnlyIfRo, Nothing, ".exception_ranges", [InputQuery(DefaultKeep, DefaultSort, 
+    filter_and_concat (fun s -> name_matches ".exception_ranges" s || name_matches ".exception_ranges*" s))])
+  ; AdvanceAddress(fun addr -> (fun _ -> 
+      (* BinRel(Eq, Constant( *)
+    align_up addr (a.maxpagesize - (unsafe_natural_land (a.maxpagesize - addr) (a.maxpagesize - 1)))
+    ))
+  ; MarkAndAlignDataSegment(a.maxpagesize, a.commonpagesize)
+  ; OutputSection(OnlyIfRw, Nothing, ".eh_frame", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".eh_frame"))])
+  ; OutputSection(OnlyIfRw, Nothing, ".gcc_except_table", [InputQuery(DefaultKeep, DefaultSort, 
+    filter_and_concat (fun s -> name_matches ".gcc_except_table" s || name_matches ".gcc_except_table.*" s))])
+  ; OutputSection(OnlyIfRw, Nothing, ".exception_ranges", [InputQuery(DefaultKeep, DefaultSort, 
+    filter_and_concat (fun s -> name_matches ".exception_ranges" s || name_matches ".exception_ranges*" s))])
+  ; OutputSection(AlwaysOutput, Nothing, ".tdata", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat 
+        (fun s -> name_matches ".tdata" s || name_matches ".tdata.*" s || name_matches ".gnu.linkonce.td.*" s))])
+  ; OutputSection(AlwaysOutput, Nothing, ".tbss", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat 
+        (fun s -> name_matches ".tbss" s || name_matches ".tbss.*" s || name_matches ".gnu.linkonce.tb.*" s))
+        ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".tcommon"))])
+  ; OutputSection(AlwaysOutput, Nothing, ".preinit_array", [
+        DefineSymbol(ProvideIfUsed, "__preinit_array_start", default_symbol_spec)
+      ; InputQuery(KeepEvenWhenGC, DefaultSort, filter_and_concat (fun s -> name_matches ".preinit_array" s))
+      ; DefineSymbol(ProvideIfUsed, "__preinit_array_end", default_symbol_spec)
+    ])
+    ]
+
+
+type output_section_composition_element = 
+    IncludeInputSection of retain_policy * string (* file *) * natural (* shndx *)
+    | Hole of natural (* size *)
+
+type output_section_spec = (string * (list output_section_composition_element))
+
+type link_algorithm_feature =
+    Discard
+    | Orphan
+    | IncludeInOutputSection of (string * natural) (* ordinal in list of composition elements *)
+    
+val accumulate_image : 
+    elf_memory_image any_abi_feature -> 
+    maybe output_section_spec ->  (* cur_sec -- the current output section spec *)
+    maybe input_section_spec ->   (* last input section to be output -- might not have one *)
+    linker_control_script -> 
+    elf_memory_image any_abi_feature
+let rec accumulate_image acc cur_sec last_inputsec script = 
+    match script with
+        [] -> acc
+        | element :: more_elements ->
+            let do_nothing = (acc, cur_sec, last_inputsec) 
+            in
+            let (new_acc, new_cur_sec, new_last_inputsec) = match element with
+                DefineSymbol(symdefpol, name, (symsize, syminfo, symother)) ->
+                    (* Label the current section in the image 
+                     * with a new symbol definition. If there isn't
+                     * a current section, use the ABS section (what is that labelling?). *)
+                    (* (Map.insert , , , ) *)
+                    do_nothing
+                | AdvanceAddress(expr) -> 
+                     (* If we're inside a section, update the logical addr, 
+                      * else insert a hole *)
+                     match cur_sec with
+                        Nothing -> do_nothing
+                            (* This assignment is setting a new LMA. *)
+                            (* (acc,  *)
+                        | Just sec -> do_nothing
+                    end
+                | MarkAndAlignDataSegment(maxpagesize, commonpagesize) -> 
+                     (* The "data segment end" is a distinguished label, 
+                      * so we can encode the whole thing into a conditional. *)
+                     do_nothing
+                | MarkDataSegmentEnd -> do_nothing
+                | MarkDataSegmentRelroEnd(align, expr) -> do_nothing
+                | OutputSection(outputguard, maybe_expr, name, sub_elements) -> do_nothing
+                  (*  Output sections may not nest within other output sections. *)
+                | DiscardSection(selector) -> do_nothing
+                | InputQuery(retainpol, sortpol, selector) -> do_nothing
+                  (* Input queries can only occur within an output section. *)
+            end
+            in
+            accumulate_image new_acc new_cur_sec new_last_inputsec more_elements
+    end
+
+(* Now we need to write an interpreter for all that. *)
+val interpret_linker_control_script : 
+    linker_control_script 
+    -> list input_section_spec 
+    -> elf_memory_image any_abi_feature
+let interpret_linker_control_script script inputs = 
+    accumulate_image empty_annotated_memory_image Nothing Nothing script
+
+    (* What is the output of a linker script?
+     * Recall that we need multiple passes:
+     * 
+     * 1. enumerate output sections
+                       + their constituent input sections
+                              + the *input* sections' attributes (keep; others?)
+                       + symbols defined in the script, with attributes (hidden, provide-or-...)
+              
+              ** we haven't yet calculated addresses
+              ** ... because some input sections might go away on GC
+              ** in this step, what do we *eliminate* from the input language?
+                     -- input queries, I suppose
+                     -- sorting (we can put sections in order)
+                     
+            memory image interpretation:
+            - label all input sections/commons with 
+                  output section name   (or "orphan" or "discard")
+            - instantiate all output sections in the output memory image
+                  with vague address (a fresh symbolic value) and vague length
+            - symbolify address assignments/advancements in the script
+                  --- this labelling is a key part of the link map!
+                  --- what do we label? ideally don't want to label input sections
+                          -- the start of output sections *only*
+                          -- holes in input sections
+            - 
+
+     * 2. optionally do GC; erase now-unneeded input sections & attributes
+     * 
+     * 3. place orphans?
+     * 
+     * 4. fix address assignments (including data segment alignment)
+     * 
+     * This function just does the first one. It creates the output memory image
+     * and labels it with all the information that is directly embodied in the script.
+     * We can do this by recursing down the script, accumulating the image as we go.
+     *)
+
+(* 
+val place_orphans :                  elf_memory_image 'abifeature -> elf_memory_image 'abifeature
+val section_gc :                     elf_memory_image 'abifeature -> elf_memory_image 'abifeature
+val concretise_addresses :           elf_memory_image 'abifeature -> elf_memory_image 'abifeature
+val remove_algorithm_features  :     elf_memory_image 'abifeature -> elf_memory_image 'abifeature
+val generate_missing_abi_features :  elf_memory_image 'abifeature -> elf_memory_image 'abifeature
+val generate_missing_file_features : elf_memory_image 'abifeature -> elf_memory_image 'abifeature
+val remove_non_output_features :     elf_memory_image 'abifeature -> elf_memory_image 'abifeature
+val to_elf_file :                    elf_memory_image 'abifeature -> elf64_file
+*)

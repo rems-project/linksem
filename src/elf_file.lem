@@ -881,3 +881,12 @@ let name_of_elf64_interpreted_section sec file =
             Success(n) -> Just n 
             | Fail(_) -> Nothing
     end
+    
+val flag_is_set : natural -> natural -> bool
+let flag_is_set flag v = 
+    (* HACK: convert to elf64_xword first. Flags never live 
+     * in objects bigger than 64 bits. *)
+    elf64_xword_land 
+            (elf64_xword_of_natural v) 
+            (elf64_xword_of_natural flag)
+    = (elf64_xword_of_natural flag)

@@ -124,15 +124,20 @@ val get_symbol_type : unsigned_char -> natural
 let get_symbol_type entry =
   natural_of_unsigned_char (unsigned_char_land entry (unsigned_char_of_natural 15)) (* 0xf *)
 
-val get_symbol_info : unsigned_char -> unsigned_char -> natural
-let get_symbol_info entry0 entry1 =
-  natural_of_unsigned_char (unsigned_char_plus
-    (unsigned_char_lshift entry0 4) (unsigned_char_land entry1
-      (unsigned_char_of_natural 15))) (*0xf*)  
+val make_symbol_info : natural -> natural -> unsigned_char
+let make_symbol_info binding symtype =
+  unsigned_char_plus
+    (unsigned_char_lshift (unsigned_char_of_natural binding) 4)
+    (unsigned_char_land (unsigned_char_of_natural symtype)
+      (unsigned_char_of_natural 15)) (*0xf*)  
 
 val get_symbol_visibility : unsigned_char -> natural
-let get_symbol_visibility entry =
-  natural_of_unsigned_char (unsigned_char_land entry (unsigned_char_of_natural 3)) (* 0x3*)
+let get_symbol_visibility info =
+  natural_of_unsigned_char (unsigned_char_land info (unsigned_char_of_natural 3)) (* 0x3*)
+  
+val make_symbol_other : natural -> unsigned_char
+let make_symbol_other visibility =
+  unsigned_char_of_natural visibility
 
 val is_elf32_null_entry : elf32_symbol_table_entry -> bool
 let is_elf32_null_entry ent = 
@@ -216,16 +221,19 @@ let {ocaml} string_of_elf64_symbol_table_entry entry =
 instance (Show elf64_symbol_table_entry)
     let show = string_of_elf64_symbol_table_entry
 end
+   
+let (elf64_null_symbol_table_entry : elf64_symbol_table_entry) =
+  <| elf64_st_name  = elf64_word_of_natural 0
+   ; elf64_st_info  = unsigned_char_of_natural 0
+   ; elf64_st_other = unsigned_char_of_natural 0
+   ; elf64_st_shndx = elf64_half_of_natural 0
+   ; elf64_st_value = elf64_addr_of_natural 0
+   ; elf64_st_size  = elf64_xword_of_natural 0
+   |>
 
 val is_elf64_null_entry : elf64_symbol_table_entry -> bool
-let is_elf64_null_entry ent = 
-    (natural_of_elf64_word ent.elf64_st_name) = 0
-    && (natural_of_elf64_addr ent.elf64_st_value = 0)
-    && (natural_of_elf64_xword ent.elf64_st_size = 0)
-    && (natural_of_unsigned_char ent.elf64_st_info = 0)
-    && (natural_of_unsigned_char ent.elf64_st_other = 0)
-    && (natural_of_elf64_half ent.elf64_st_shndx = 0)
-
+let is_elf64_null_entry ent = (ent = elf64_null_symbol_table_entry)
+ 
 type elf64_symbol_table = list elf64_symbol_table_entry
 
 val string_of_elf64_symbol_table : elf64_symbol_table -> string

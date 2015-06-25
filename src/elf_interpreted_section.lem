@@ -5,6 +5,7 @@ open import Num
 open import String
 
 open import Elf_types_native_uint
+open import Elf_section_header_table
 open import Byte_sequence
 
 open import Missing_pervasives
@@ -70,11 +71,47 @@ let elf64_interpreted_section_equal x y =
 	x.elf64_section_align = y.elf64_section_align &&
 	x.elf64_section_entry_size = y.elf64_section_entry_size &&
 	x.elf64_section_body = y.elf64_section_body
-	
+
+let (null_elf64_interpreted_section : elf64_interpreted_section) = <| 
+     elf64_section_name = 0
+   ; elf64_section_type = 0
+   ; elf64_section_flags = 0
+   ; elf64_section_base = 0
+   ; elf64_section_offset = 0
+   ; elf64_section_size = 0
+   ; elf64_section_link = 0
+   ; elf64_section_info = 0
+   ; elf64_section_align = 0
+   ; elf64_section_entry_size = 0 
+   ; elf64_section_body = Sequence([])
+|>
+
 instance (Eq elf64_interpreted_section)
 	let (=)      = elf64_interpreted_section_equal
 	let (<>) x y = not (elf64_interpreted_section_equal x y)
 end
+
+val elf64_interpreted_section_matches_section_header : 
+    elf64_interpreted_section
+        -> elf64_section_header_table_entry
+            -> bool
+let elf64_interpreted_section_matches_section_header i sh =
+        i.elf64_section_name = natural_of_elf64_word sh.elf64_sh_name &&
+        i.elf64_section_type = natural_of_elf64_word sh.elf64_sh_type &&
+        i.elf64_section_flags = natural_of_elf64_xword sh.elf64_sh_flags &&
+        i.elf64_section_base (* WHY? *) = natural_of_elf64_addr sh.elf64_sh_addr &&
+        i.elf64_section_offset = natural_of_elf64_off sh.elf64_sh_offset &&
+        i.elf64_section_size = natural_of_elf64_xword sh.elf64_sh_size &&
+        i.elf64_section_link = natural_of_elf64_word sh.elf64_sh_link &&
+        i.elf64_section_info = natural_of_elf64_word sh.elf64_sh_info &&
+        i.elf64_section_align = natural_of_elf64_xword sh.elf64_sh_addralign (* WHY? *) &&
+        i.elf64_section_entry_size (* WHY? *) = natural_of_elf64_xword sh.elf64_sh_entsize
+    (* NOTE that we can have multiple sections *indistinguishable*
+     * except by their section header table index. Imagine 
+     * multiple zero-size bss sections at the same address with the same name.
+     * That's why in elf_memory_image we always label each ElfSection
+     * with its SHT index.
+     *)
 
 type elf32_interpreted_sections = list elf32_interpreted_section
 type elf64_interpreted_sections = list elf64_interpreted_section

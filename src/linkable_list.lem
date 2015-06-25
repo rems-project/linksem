@@ -21,8 +21,11 @@ open import Missing_pervasives
 open import Show
 
 open import Elf_types_native_uint
-open import Elf_file
+open import Elf_memory_image
 open import Elf_header
+open import Elf_file
+open import Memory_image
+open import Elf_memory_image
 open import Elf_section_header_table
 open import Elf_symbol_table
 open import String_table
@@ -32,9 +35,9 @@ open import Elf_memory_image
 
 type script = byte_sequence (* FIXME *)
 
-type linkable_object = RelocELF of elf64_file
-                     | SharedELF of elf64_file
-                     | ScriptAST of script
+type linkable_object = RelocELF of elf_memory_image any_abi_feature    (* memory image without address assignments *)
+                     | SharedELF of elf_memory_image any_abi_feature   (* memory image with address assignments *)
+                     | ScriptAST of script       (* FIXME: should be elaborated away *)
 
 val string_of_linkable_object : linkable_object -> string
 let string_of_linkable_object l = match l with
@@ -55,6 +58,12 @@ type linkable_list = list linkable_item
 
 type symbol_resolution_oracle = linkable_list -> nat -> string -> list nat
 
+let image_of_linkable_item item = match item with
+    (RelocELF(image), _, _) -> image
+    | (SharedELF(image), _, _) -> image
+    | _ -> failwith "no image"
+end
+
 val linkable_item_of_input_item_and_options : input_item -> input_options -> linkable_item
 let linkable_item_of_input_item_and_options it opts = 
     (* 0. TODO: well-formedness *) 
@@ -63,7 +72,7 @@ let linkable_item_of_input_item_and_options it opts =
         (fname, Reloc(seq), origin) -> 
             let _ = Missing_pervasives.println ("Considering relocatable file " ^ fname) in
             Elf_file.read_elf64_file seq >>= fun e ->
-            return (RelocELF(e), it, opts)
+            return (RelocELF(elf_memory_image_of_elf64_file e), it, opts)
         | (fname, Shared(seq), origin) -> 
             let _ = Missing_pervasives.println ("Skipping shared object " ^ fname) in 
             fail "unsupported input item"
@@ -91,57 +100,6 @@ end
  * weird group/archive arrangements. The right place to detect
  * this condition is probably when generating the output symtab.
  *)
-  
-val extract_satisfying_symbols_from_symtab_of_type : natural -> linkable_item 
-    -> (elf64_symbol_table_entry -> bool) -> list (string * elf64_symbol_table_entry * natural)
-let extract_satisfying_symbols_from_symtab_of_type t item pred =
-    match item with
-        (RelocELF(e), _, _) -> 
-            let result = 
-                find_elf64_symbols_by_type e t >>= fun (symtab, strtab, scnidx) ->
-                return (mapMaybei (fun _ -> (fun ent -> (
-                    match (get_string_at (natural_of_elf64_word ent.elf64_st_name) strtab) with
-                        Success str ->
-                            (* exclude undefineds *) 
-                            if (pred ent)
-                            then Just(str, ent, scnidx)
-                            else Nothing
-                        | Fail _ -> Nothing
-                    end
-                    ))) symtab)
-            in
-            match result with
-                Success defs -> defs
-                | Fail _ -> []
-            end
-        | _ -> []
-    end
-
-let definitions_pred = fun ent -> (natural_of_elf64_half ent.elf64_st_shndx) <> stn_undef 
-
-let references_pred = fun ent -> (natural_of_elf64_half ent.elf64_st_shndx) = stn_undef 
-
-(* This function only knows how to extract symbols. 
- * It doesn't know the index into the linkables list of whatever object we're extracting from.
- * So we return a function from that to the eventual list. Is this good style? HMM. *)
-val extract_definitions_from_symtab_of_type : natural -> linkable_item -> (natural -> list symbol_definition)
-let extract_definitions_from_symtab_of_type t item
- = fun def_idx -> List.map (fun (str, ent, scnidx) -> <|
-               def_symname = str
-             ; def_syment = ent
-             ; def_idx = def_idx
-             ; def_sym_scn = scnidx
-             |>) (extract_satisfying_symbols_from_symtab_of_type t item definitions_pred)
-
-val extract_references_from_symtab_of_type : natural -> linkable_item -> (natural -> list symbol_reference)
-let extract_references_from_symtab_of_type t item
-= fun ref_idx -> mapMaybei (fun symidx -> (fun (str, ent, scnidx) -> Just <|
-               ref_symname = str
-             ; ref_syment = ent
-             ; ref_idx = ref_idx
-             ; ref_sym_scn = scnidx
-             ; ref_sym_idx = symidx
-             |>))  (extract_satisfying_symbols_from_symtab_of_type t item references_pred)
 
 val add_definition_to_map : symbol_definition -> Map.map string (list symbol_definition)
                     -> Map.map string (list symbol_definition)
@@ -153,26 +111,48 @@ let add_definition_to_map def m =
 
 val all_definitions_by_name : linkable_list -> Map.map string (list symbol_definition)
 let all_definitions_by_name linkables = 
-    let make_defs = (fun (idx : nat) -> 
-        (fun item -> (extract_definitions_from_symtab_of_type sht_symtab item) (naturalFromNat idx))
-    )
+
+(*
+    let make_defs = (fun (idx : nat) -> (fun item ->
+        [((naturalFromNat idx), s) | forall (s MEM (extract_definitions_from_symtab_of_type sht_symtab item)) | true]
+    ))
     in
     let list_of_deflists = List.mapi make_defs linkables
-    in 
+    in *)
+    
+    (* Now that linkables are ELF memory images, we can make the 
+     * list of definitions much more easily. *)
+    let list_of_deflists = List.mapi (fun (idx : nat) -> (fun (item : linkable_item) ->
+        let img = image_of_linkable_item item
+        in 
+        let (all_def_tags, all_def_ranges)
+         = unzip (Multimap.lookupBy Memory_image.tagCompare (SymbolDef(null_symbol_definition)) img.by_tag)
+        in
+        let all_defs = List.map (fun tag -> match tag with
+            SymbolDef(def) -> def
+            | _ -> failwith "matched tag not a symbol definition"
+        end) all_def_tags
+        in
+        [(idx, def) | forall (def MEM all_defs) | true]
+    )) linkables
+    in
     foldl (fun accum -> (fun deflist -> 
-        foldl (fun m -> (fun def -> add_definition_to_map def m)) accum deflist
+        foldl (fun m -> (fun (def_idx, def) -> add_definition_to_map def m)) accum deflist
     )) Map.empty list_of_deflists
  
 type binding_oracle = 
     linkable_list 
-    -> Map.map string (list symbol_definition)
-    -> symbol_reference
-    -> maybe symbol_definition
+    -> Map.map string (list (natural * symbol_definition))
+    -> (natural * symbol_reference)
+    -> maybe (natural * symbol_definition)
 
 val resolve_one_reference_default : binding_oracle
-let resolve_one_reference_default linkables defmap ref =
+let resolve_one_reference_default linkables defmap ref_idx_and_ref =
+    let (ref_idx, ref) = ref_idx_and_ref
+    in
     (* Get the list of all definitions *)
-    let deflist = match Map.lookup ref.ref_symname defmap with
+    let (deflist : list (natural * symbol_definition))
+     = match Map.lookup ref.ref_symname defmap with
         Just l -> l
         | Nothing -> []
     end
@@ -189,17 +169,17 @@ let resolve_one_reference_default linkables defmap ref =
      * - archives may not supply weak references
      * - archives may only supply to the left, or to themselves, or to objects in the same group
      *)
-    let ref_linkable = match List.index linkables (natFromNatural ref.ref_idx) with
+    let ref_linkable = match List.index linkables (natFromNatural ref_idx) with
         Just l -> l
         | Nothing -> failwith "impossible: referencing linkable is not in linkables list"
     end
     in
     let (ref_obj, (ref_fname, ref_blob, (ref_u, ref_coords)), ref_options) = ref_linkable
     in
-    let def_is_eligible = (fun def -> 
+    let def_is_eligible = (fun (def_idx, def) -> 
         let ref_is_weak = (get_symbol_binding ref.ref_syment.elf64_st_info) = stb_weak
         in
-        let def_linkable = match List.index linkables (natFromNatural def.def_idx) with
+        let def_linkable = match List.index linkables (natFromNatural def_idx) with
             Just l -> l
             | Nothing -> failwith "impossible: defining linkable is not in linkables list"
         end
@@ -217,7 +197,7 @@ let resolve_one_reference_default linkables defmap ref =
             | _ -> failwith "internal error: didn't understand origin coordinates of definition"
         end
         in
-        let ref_is_leftmore = ref.ref_idx <= def.def_idx
+        let ref_is_leftmore = ref_idx <= def_idx
         in
         (* For simplicity we include the case of "same archive" in "in group with". *)
         let ref_is_in_group_with_def = match def_in_group with 
@@ -255,34 +235,41 @@ let resolve_one_reference_default linkables defmap ref =
     in
     let eligible_defs = List.filter def_is_eligible deflist
     in
-    let target = match eligible_defs with 
-        [] -> Nothing
-        | [d] -> Just d
-        | d :: ds -> 
+    let (maybe_target_def_idx, maybe_target_def) = match eligible_defs with 
+        [] -> (Nothing, Nothing)
+        | [(def_idx, def)] -> (Just def_idx, Just def)
+        | (d_idx, d) :: more_pairs -> 
             (* Break ties by which definition appeared first in the left-to-right order. *)
-            let sorted = sortBy (fun d1 -> (fun d2 -> d1.def_idx < d2.def_idx)) eligible_defs
+            let sorted = sortBy (fun (d_idx1, d1) -> (fun (d_idx2, d2) -> d_idx1 < d_idx2)) eligible_defs
             in
             match sorted with 
-                first :: more -> Just first
+                (first_d_idx, first_d) :: _ -> (Just first_d_idx, Just first_d)
                 | _ -> failwith "impossible: sorted list is shorter than original"
             end
     end
     in 
-    let _ = Missing_pervasives.println ("Bound a reference from `" 
+    let _ = Missing_pervasives.prints ("Bound a reference from `" 
                 ^ ref.ref_symname ^ "' in " ^ ref_fname
-                ^ " to " ^ (match target with
-                    Just def -> " a definition in "^ (show (List.index linkables (natFromNatural def.def_idx)))
-                    | Nothing -> "no definition"
-                end))
+                ^ " to ")
     in
-    target
+    match (maybe_target_def_idx, maybe_target_def) with
+        (Just target_def_idx, Just target_def) ->
+            let _ = Missing_pervasives.println (" a definition in "^ (show (List.index linkables (natFromNatural target_def_idx))))
+            in
+            Just(target_def_idx, target_def)
+    |  (Nothing, Nothing) -> 
+            let _ = Missing_pervasives.println " no definition"
+            in
+            Nothing
+    | _ -> failwith "impossible: non-matching maybes for target_def_idx and target_def"
+    end
 
 val resolve_all :
     linkable_list
-    -> Map.map string (list symbol_definition)                (* all definitions *)
+    -> Map.map string (list (natural * symbol_definition))                (* all definitions *)
     -> binding_oracle
-    -> list symbol_reference
-    -> list (symbol_reference * maybe symbol_definition)
+    -> list (natural * symbol_reference)
+    -> list ((natural * symbol_reference) * maybe (natural * symbol_definition))
 let resolve_all linkables all_defs oracle refs = 
     List.map (fun ref -> (ref, (oracle linkables all_defs ref))) refs
 
@@ -291,10 +278,10 @@ let resolve_all linkables all_defs oracle refs =
  * forced-output objects. We then iterate. *)
 val resolve_undefs_in_one_object : 
     linkable_list
-    -> Map.map string (list symbol_definition)                (* all definitions *)
+    -> Map.map string (list (natural * symbol_definition))                (* all definitions *)
     -> binding_oracle
     -> natural
-    -> list (symbol_reference * maybe symbol_definition)
+    -> list ((natural * symbol_reference) * maybe (natural * symbol_definition))
 let resolve_undefs_in_one_object linkables all_defs oracle idx =
     (* Get this object's list of references *)
     let item = match List.index linkables (natFromNatural idx) with
@@ -302,13 +289,23 @@ let resolve_undefs_in_one_object linkables all_defs oracle idx =
         | Nothing -> failwith "impossible: linkable not in list of linkables"
     end
     in
-    let reflist = (extract_references_from_symtab_of_type sht_symtab item) idx
+    let img = image_of_linkable_item item
+    in 
+    let (all_ref_tags, all_ref_ranges)
+     = unzip (Multimap.lookupBy Memory_image.tagCompare (RelocationSite(null_symbol_reference)) img.by_tag)
+    in
+    let all_refs = List.map (fun tag -> match tag with
+        RelocationSite(ref) -> ref
+        | _ -> failwith "matched tag not a relocation site"
+    end) all_ref_tags
+    in
+    let reflist = [(idx, ref) | forall (ref MEM all_refs) | true]
     in
     resolve_all linkables all_defs oracle reflist
 
 val accumulate_input_objects :
     linkable_list
-    -> Map.map string (list symbol_definition)                (* all definitions *)
+    -> Map.map string (list (natural * symbol_definition))                (* all definitions *)
     -> set natural                                       (* inputs fully-bound so far *)
     -> list natural                                       (* ordered list of inputs to bind next *)
     -> list (symbol_reference * maybe symbol_definition)  (* bindings made so far *)
@@ -330,9 +327,9 @@ let rec accumulate_bindings linkables all_defs fully_bound to_bind bindings_accu
             in
             (* Which of the new bindings are to objects 
              * not yet fully bound or not yet in the to-bind list? *)
-            let new_bindings_def_idx = list_concat_map (fun (ref, maybe_def) -> 
-                match maybe_def with 
-                    Just def -> [def.def_idx]
+            let new_bindings_def_idx = list_concat_map (fun (ref, maybe_def_and_idx) -> 
+                match maybe_def_and_idx with 
+                    Just (def_idx, def) -> [def_idx]
                     | Nothing -> []
                 end
             ) new_bindings 

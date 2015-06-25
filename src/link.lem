@@ -1,0 +1,42 @@
+open import Basic_classes
+open import Function
+open import String
+open import Tuple
+open import Bool
+open import List
+open import Sorting
+import Map
+import Set
+import Set_extra
+open import Num
+open import Maybe
+open import Assert_extra
+
+open import Byte_sequence
+open import Default_printing
+open import Error
+open import Missing_pervasives
+open import Show
+open import Endianness
+
+open import Elf_header
+open import Elf_interpreted_section
+open import Elf_interpreted_segment
+open import Elf_section_header_table
+open import Elf_program_header_table
+open import Elf_types_native_uint
+
+open import Abis
+
+open import Linkable_list
+import Command_line
+
+open import Memory_image
+open import Elf_memory_image
+open import Linker_script
+
+val link : linker_control_script -> list Command_line.link_option -> linkable_list -> elf_memory_image any_abi_feature
+let link script options linkables = 
+    (* <| *)
+        empty_annotated_memory_image
+    (* |> *)

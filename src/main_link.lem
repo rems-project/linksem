@@ -29,7 +29,6 @@ open import Elf_types_native_uint
 open import Elf_relocation
 open import String_table
 
-open import Abstract_abi
 open import Abi_amd64_elf_header
 open import Abi_amd64_serialisation
 open import Abis
@@ -41,238 +40,32 @@ open import Linkable_list
 open import Memory_image
 open import Elf_memory_image
 
-val elf_of_linkable : linkable_item -> elf64_file
-let elf_of_linkable l = match l with
-    (RelocELF(ef), _, _) -> ef
-    | _ -> failwith "unsupported linkable"
-end
-val     all_global_assignments_accum
- : list ((elf64_interpreted_section * linkable_item) * list natural)
-  -> list (list (elf64_interpreted_section * natural))
-  -> list (list (elf64_interpreted_section * natural))
-let rec all_global_assignments_accum s_and_ls accum =
-    match s_and_ls with
-        [] -> accum
-    |   ((sec, l), starts) :: more -> 
-            let f = elf_of_linkable l
-            in 
-            let (obj, (fname, _, _), opts) = l
-            in 
-            let _ = Missing_pervasives.println ("Placing section " ^ 
-                (show_else "(no name)" (name_of_elf64_interpreted_section sec f)) ^ " from file " ^ fname 
-                ^ " in each of " ^ (show (List.length accum)) ^ " accumulated layouts") in
-            let all_assignments_for_sec = 
-                [(sec, start) | forall (start MEM starts) | true]
-            in
-            let _ = Missing_pervasives.println "Blah a1" in
-            (* For each global assignment so far, we add the current (section, start)
-             * *if* it doesn't overlap with other assignments. *)
-            let _ = Missing_pervasives.println "Blah a2" in
-            let ways_to_add_this_section_to_a_global_assignment
-             = fun global_ass -> [
-                    (sec, start)
-                     | forall ((sec, start) MEM all_assignments_for_sec)
-                     | List.all (fun (other_sec, other_start) -> 
-                        (not (range_overlaps (sec_and_start_as_range sec start) 
-                            (sec_and_start_as_range other_sec other_start)))) global_ass
-            ]
-            in
-            let all_additions_to_existing_global_assignments = 
-                List.map ways_to_add_this_section_to_a_global_assignment accum
-            in
-            let accum_and_additions = zip accum all_additions_to_existing_global_assignments
-            in
-            (* Compute the new accumulator as a function of the old one. 
-             * If, give an global assignment, none of the section starts is okay, 
-             * then we will remove that assignment from the accumulator, i.e. prune/backtrack.
-             *)
-            let new_accum : list (list (elf64_interpreted_section * natural)) = 
-                 list_reverse_concat_map 
-                    (fun global_ass -> 
-                        let ways_to_extend
-                         = ways_to_add_this_section_to_a_global_assignment global_ass 
-                        in 
-                        (* let _ = Missing_pervasives.println ("Found " ^ (show (List.length ways_to_extend))
-                            ^ " ways to place this section in one global assignment")
-                        in *)
-                        [ new_ass :: global_ass | 
-                            forall (new_ass MEM ways_to_extend) | true ]
-                     )
-                accum
-            in
-            let _ = Missing_pervasives.println "Blah a4" in
-            all_global_assignments_accum more new_accum
-    end
+open import Linker_script
+open import Link
 
-val all_allocated_user_sections_in_load_phdrs : abi -> list linkable_item -> list elf64_file -> list string -> elf64_file -> list (symbol_reference * maybe symbol_definition) -> bool
-let all_allocated_user_sections_in_load_phdrs a linkables efs names out all_bindings =
-    (* There must exist a contiguous partitioning of the segments' memory space 
-     * s.t. for each section, exactly one element of the partition models the segment
-     * where "models" is defined in terms of file contents and relocation.
-     * There *may* be elements of the partition unaccounted by any input section,
-     * although the linker should not inject garbage randomly... tighten this down later.
-     * 
-     * The space of partitionings is very large in the presence of even a bit of 
-     * padding. So don't enumerate that directly. Instead, for each section, look
-     * for places where that section might start. Then enumerate the non-overlapping
-     * assignments of sections to start addresses.
-     * 
-     * Instead, for each section, get its possible starting (seg, off) positions
-     * then check that there exists a partition.
-     *)
-    let (all_refs, all_maybe_defs) = unzip all_bindings
-    in
-    let is_alloc : elf64_interpreted_section -> elf64_file -> bool
-     = (fun s -> (fun f -> (elf64_xword_land 
-        (elf64_xword_of_natural s.elf64_section_flags) 
-        (elf64_xword_of_natural shf_alloc))
-         = (elf64_xword_of_natural shf_alloc)))
-    in
-    let is_user : elf64_interpreted_section -> elf64_file -> bool
-     = fun s -> (fun f -> (not (a.section_is_special s f)))
-    in
-    let is_alloc_and_user : elf64_interpreted_section -> elf64_file -> bool 
-     = (fun s -> (fun f -> (is_alloc s f) && (is_user s f)))
-    in
-    let efs_with_name = zip efs names
-    in
-    let alloc_sections_and_linkables
-     = [    (section, l)
-            | forall (l MEM linkables) (section MEM (let ef = (elf_of_linkable l) in ef.elf64_file_interpreted_sections))
-            | let ef = elf_of_linkable l in is_alloc_and_user section ef
-    ]
-    in
-    let _ = Missing_pervasives.println ("Inputs have a total of " ^ 
-        (show (Missing_pervasives.length alloc_sections_and_linkables)) ^ " allocatable user sections.")
-    in
-    (* FIXME: check (somewhere) that endianness is consistent across input files and outputs *)
-    let endian = get_elf64_header_endianness (out.elf64_file_header)
-    in
-    let (all_bindings_by_ref_idx_scn_symind : 
-            Map.map (natural * natural * natural) (list (symbol_reference * maybe symbol_definition))
-        )
-     = foldl (fun m -> (fun (ref, maybe_def) -> 
-            let k = (ref.ref_idx, ref.ref_sym_scn, ref.ref_sym_idx)
-            in
-            let maybe_existing = Map.lookup k m
-            in
-            let existing_list = match maybe_existing with
-                Nothing -> []
-                | Just l -> l
-            end
-            in
-            (Map.insert k ((ref, maybe_def) :: existing_list) m)))
-        Map.empty all_bindings
-    in
-    (* We get a list with one element per alloc section. 
-     * That element is a list of possible start vaddrs for that section. *) 
-    let section_possible_seg_starts : list (list natural) = 
-        List.map 
-            (fun (sec, l) -> 
-                let file = elf_of_linkable l
-                in
-                let _ = Missing_pervasives.println ("Considering section "
-                    ^ (match name_of_elf64_interpreted_section sec file with 
-                           Just n -> n
-                         | Nothing -> "(unknown)" 
-                       end
-                       ) ^ " in " ^ (show l))
-                in
-                let pat = section_as_byte_pattern a endian sec file.elf64_file_interpreted_sections all_bindings_by_ref_idx_scn_symind
-                in
-                pattern_possible_starts_in_load_phdrs pat out
-            ) alloc_sections_and_linkables
-    in
-    let len = List.length section_possible_seg_starts in
-    let _ = Missing_pervasives.println ("Found " ^ (show (List.map List.length section_possible_seg_starts)) ^ 
-        " content-matching ways to map input sections onto output segments.")
-    in
-    let _ = Missing_pervasives.println "Blah 1" in
-    let load_ranges = segment_load_ranges out.elf64_file_interpreted_segments
-    in
-    (* Make a list of all possible global assignments. 
-     * A global assignment is a list of (sections, address) pairs
-     * To enumerate all of them, 
-     * we pick a (section, starts-list) pair from the head of the list, 
-     * append all (section, start) pairs in that list to the assignments accumulated for earlier sections,
-     * then recurse to accumulate further.
-     *)
-    let _ = Missing_pervasives.println "Blah 2" in
-    let sections_and_possible_starts : list ((elf64_interpreted_section * linkable_item) * list natural)
-     = zip alloc_sections_and_linkables section_possible_seg_starts
-    in
-    (* Sort the list so that the most constrained sections come first.  Since we 
-     * avoid accumulating overlapping mappings, this avoids making the list of 
-     * assignments blow up with "blocking" placements that just cause wasted
-     * effort when trying to place later sections. *)
-    let _ = Missing_pervasives.println "Blah 3" in
-    let sorted_sections_and_possible_starts = Sorting.sortBy 
-        (fun ((sec1, l1), starts1) -> (fun ((sec2, l1), starts2) -> 
-            (List.length starts1) < (List.length starts2)))
-        sections_and_possible_starts
-    in
-    let _ = Missing_pervasives.println ("After sorting: " ^ (show (List.map (fun (s, starts) -> List.length starts) sorted_sections_and_possible_starts)))
-    in
-    let all_global_assignments : list (list (elf64_interpreted_section * natural))
-     = all_global_assignments_accum sorted_sections_and_possible_starts [[]]
-    in
-    let _ = Missing_pervasives.println "Blah 4" in
-    let _ = Missing_pervasives.prints ("Enumerated " ^ 
-        (show (Missing_pervasives.length all_global_assignments)) ^ 
-        " global assignments of input sections onto output vaddrs:\n")
-    in
-    let _ = Missing_pervasives.println "Blah 5" in
-    let all_global_assignments_as_intervals : list (list (natural * natural)) = 
-        List.map
-        (fun assignment -> [(sec_and_start_as_range section base) | forall ((section, base) MEM assignment) | true])
-        all_global_assignments
-    in
-    let valid_assignments = List.filter (fun ass -> is_partition ass load_ranges) all_global_assignments_as_intervals
-    in
-    let _ = Missing_pervasives.println "Blah 6" in
-    let _ = Missing_pervasives.prints ("Of these, " ^ 
-        (show (Missing_pervasives.length valid_assignments)) ^ 
-        " are valid partitionings\n")
-    in
-    (Missing_pervasives.length valid_assignments) > 0
+val images_equal_modulo_alignment : 
+    forall 'abifeature. 
+        SetType 'abifeature =>
+            elf_memory_image 'abifeature -> elf_memory_image 'abifeature -> bool
+let images_equal_modulo_alignment img1 img2 =
+    img1.by_tag = img2.by_tag (* FIXME: the "modulo alignment" part *)
 
 val correctly_linked : abi -> linkable_list -> list string -> list link_option -> elf64_file -> bool
 let correctly_linked a linkables names options eout = 
-    let initial_included_indices = mapMaybei (fun i -> (fun item -> 
-        let (obj, input_item, options) = item 
-        in 
-        if options.item_force_output 
-        then Just i
-        else Nothing
-    )) linkables 
+    let output_image = elf_memory_image_of_elf64_file eout
     in
-    let _ = Missing_pervasives.println ("Initial included linkables are "
-        ^ (show (mapMaybe (List.index linkables) (List.map natFromNatural initial_included_indices))))
+    let script = default_linker_control_script a 
+        (* user_text_segment_start *) (match Command_line.find_option_matching_tag (TextSegmentStart(0)) options with Just(TextSegmentStart(addr)) -> Just addr | _ -> Nothing end)
+        (* user_data_segment_start *) Nothing
+        (* user_rodata_segment_start *) (match Command_line.find_option_matching_tag (RodataSegmentStart(0)) options with Just(RodataSegmentStart(addr)) -> Just addr | _ -> Nothing end)
+        (* elf_headers_size *) (* HACK: take these from the output file. *)
+            ((natural_of_elf64_half eout.elf64_file_header.elf64_ehsize) + 
+            ((natural_of_elf64_half eout.elf64_file_header.elf64_phnum) 
+                * (natural_of_elf64_half eout.elf64_file_header.elf64_phentsize)))
     in
-    let (all_bindings : list (symbol_reference * maybe symbol_definition))
-     = accumulate_bindings linkables (all_definitions_by_name linkables) {} initial_included_indices [] 
+    let linked_image = link script options linkables
     in
-    (* get the set of all inputs to which some binding was formed *)
-    let required_definitions = mapMaybei (fun i -> (fun (ref, maybe_def) -> maybe_def)) all_bindings
-    in
-    let required_indices = { def.def_idx | forall (def MEM required_definitions) | true }
-    in
-    let required_indices_list = Set_extra.toList required_indices
-    in
-    let required_linkables_list = List.mapMaybe (fun idx -> List.index linkables (natFromNatural idx)) required_indices_list
-    in
-    let elf_phdrs_size = fun ef -> (natural_of_elf64_half ef.elf64_file_header.elf64_phnum) 
-            * (natural_of_elf64_half ef.elf64_file_header.elf64_phentsize)
-    in 
-    let elf_shdrs_size = fun ef -> (natural_of_elf64_half ef.elf64_file_header.elf64_shnum) * (natural_of_elf64_half ef.elf64_file_header.elf64_shentsize)
-    in 
-    is_elf64_executable_file eout.elf64_file_header 
-     && elf_phdrs_size eout > 0
-     && List.all (fun l -> (elf_shdrs_size (elf_of_linkable l)) > 0) required_linkables_list
-     && all_allocated_user_sections_in_load_phdrs a 
-        required_linkables_list
-        (List.map elf_of_linkable required_linkables_list) 
-        names eout all_bindings
+    images_equal_modulo_alignment output_image linked_image
 
 (* We need to elaborate the command line to handle objects, archives 
  * and archive groups appropriately. 

@@ -5,7 +5,7 @@ open import Tuple
 open import Bool
 open import List
 open import Sorting
-import Map
+open import Map
 import Set
 open import Num
 open import Maybe
@@ -29,14 +29,19 @@ open import Elf_types_native_uint
 open import Elf_relocation
 open import String_table
 
-open import Abstract_abi
-
 open import Memory_image
+
+(* ELF file features with which we can label ranges of the memory image. *)
+type elf_file_feature = 
+    ElfHeader of elf64_header
+    | ElfSectionHeaderTable of elf64_section_header_table (* do we want to expand these? *)
+    | ElfProgramHeaderTable of elf64_program_header_table
+    | ElfSection of (natural * elf64_interpreted_section) (* SHT idx *)
+    | ElfSegment of (natural * elf64_interpreted_segment) (* PHT idx *)
 
 type symbol_reference
  = <| ref_symname : string                  (* symbol name *)
     ; ref_syment : elf64_symbol_table_entry (* undefined (referencing) symbol *)
-    ; ref_idx : natural                     (* referencing index in linkables list *)
     ; ref_sym_scn : natural                 (* symtab section idx *) 
     ; ref_sym_idx : natural                 (* index into symbol table *)
       (* TODO: might also want rel section index, i.e. bind at relocation-record granularity.
@@ -46,21 +51,252 @@ type symbol_reference
 type symbol_definition
  = <| def_symname : string
     ; def_syment : elf64_symbol_table_entry (* definition's symtab entry *)
-    ; def_idx : natural                     (* index in linkables list *)
     ; def_sym_scn : natural                 (* symtab section index, to disamiguate dynsym *)
     |>
 
-(* ELF file features with which we can label ranges of the memory image. *)
-type elf_file_feature = 
-    ELFHeader of elf64_header
-    | ELFSectionHeaderTable (* OR do we want to expand these? *)
-    | ELFProgramHeaderTable
-    | ELFSection
-    (* FIXME: finish this *)
-
 type elf_memory_image 'abifeature
- = annotated_memory_image (string * elf64_symbol_table_entry) elf64_relocation_a elf_file_feature 'abifeature
+ = annotated_memory_image symbol_definition symbol_reference elf_file_feature 'abifeature
 
+type amd64_abi_feature
+type aarch64_le_abi_feature
+type any_abi_feature = Amd64AbiFeature of amd64_abi_feature
+                     | Aarch64LeAbiFeature of aarch64_le_abi_feature
+
+(* This record collects things that ABIs may or must define. 
+ * 
+ * Since we want to put all ABIs in a list and select one at run time, 
+ * we can't maintain a type-level distinction between ABIs; we have to
+ * use elf_memory_image any_abi_feature. In fact I think the whole
+ * memory_image polymorphism stuff should just be erased (TODO, FIXME, etc.).
+ *)
+type abi = (* forall 'abifeature. *)
+   <| is_valid_elf_header : elf64_header -> bool
+                        (* doesn't this generalise outrageously? is_valid_elf_file? *)
+    ; reloc              : natural -> ((maybe elf64_symbol_table_entry -> natural) * (memory_image -> maybe natural))
+                        (* number  ->  width   * (symaddr -> addend  -> existing-> relocated) *)
+    ; section_is_special : elf64_interpreted_section -> elf_memory_image any_abi_feature -> bool
+    ; section_is_large   : elf64_interpreted_section -> elf_memory_image any_abi_feature -> bool
+    ; maxpagesize        : natural
+    ; minpagesize        : natural
+    ; commonpagesize     : natural
+    |>
+
+(* Do we want "existing", or is it a kind of addend? 
+ * We do want it -- modelling both separately is necessary, 
+ * because we model relocations bytewise, but some arches
+ * do bitfield relocations (think ARM). *)
+
+type null_abi_feature = unit
+
+let elf_section_is_special s f = s.elf64_section_type <> sht_progbits
+                     && s.elf64_section_type <> sht_nobits
+
+val null_abi : abi
+let null_abi = <| is_valid_elf_header = fun x -> List.take 4 x.elf64_ident = [elf_mn_mag0; elf_mn_mag1; elf_mn_mag2; elf_mn_mag3]
+                ; reloc = fun r -> (fun _ -> 8, fun _ -> Nothing)
+                ; section_is_special = elf_section_is_special
+                ; section_is_large = (fun s -> (fun f -> false))
+                ; maxpagesize = 2 * 256 * 4096 (* 2MB; bit of a guess, based on gdb and prelink code *)
+                ; minpagesize = 1024 (* bit of a guess again *)
+                ; commonpagesize = 4096
+                |>
+
+(* HMM. For the elf_ident, I don't really want to express it this way.
+ * I want something more bidirectional: something that can tell me 
+ * not only that a given ident is valid for a given ABI, but also, 
+ * to *construct* an ident for a given abstract ELF file satisfying x.
+ * This is very much like a lens. 
+ * 
+ * Similarly for relocs, I might want a way to map back to an allowable
+ * *concrete* representation, from some *abstract* description of the 
+ * reloc's intent (i.e. a symbol binding: "point this reference at symbol
+ * Foo"), given the constraints imposed by the ABI (such as "use only 
+ * RELA, not rel". FIXME: figure out how to lensify what we're doing. *) 
+ 
+val compute_virtual_address_adjustment : natural -> natural -> natural -> natural
+let compute_virtual_address_adjustment max_page_size offset vaddr =
+  (vaddr - offset) mod max_page_size
+
+
+type elf_range_tag 'abifeature = range_tag symbol_definition symbol_reference elf_file_feature 'abifeature
+
+let null_symbol_reference = <|
+    ref_symname = ""
+    ; ref_syment = elf64_null_symbol_table_entry
+    ; ref_sym_scn = 0
+    ; ref_sym_idx = 0
+|>
+
+let null_symbol_definition = <|
+    def_symname = ""
+    ; def_syment = elf64_null_symbol_table_entry
+    ; def_sym_scn = 0
+|>
+
+
+let null_section_header_table = ElfSectionHeaderTable([])
+let null_program_header_table = ElfProgramHeaderTable([])
+let null_elf_header = <| 
+     elf64_ident    = []
+   ; elf64_type     = elf64_half_of_natural 0  
+   ; elf64_machine  = elf64_half_of_natural 0  
+   ; elf64_version  = elf64_word_of_natural 0  
+   ; elf64_entry    = elf64_addr_of_natural 0  
+   ; elf64_phoff    = elf64_off_of_natural 0   
+   ; elf64_shoff    = elf64_off_of_natural 0   
+   ; elf64_flags    = elf64_word_of_natural 0  
+   ; elf64_ehsize   = elf64_half_of_natural 0  
+   ; elf64_phentsize= elf64_half_of_natural 0  
+   ; elf64_phnum    = elf64_half_of_natural 0  
+   ; elf64_shentsize= elf64_half_of_natural 0  
+   ; elf64_shnum    = elf64_half_of_natural 0  
+   ; elf64_shstrndx = elf64_half_of_natural 0  
+   |>
+
+val elfFeatureCompare : elf_file_feature -> elf_file_feature -> Basic_classes.ordering
+let elfFeatureCompare k1 k2 = 
+    match (k1, k2) with
+        (ElfHeader _ , ElfHeader _) -> EQ
+        | (ElfSectionHeaderTable(_), ElfSectionHeaderTable(_)) -> EQ
+        | (ElfProgramHeaderTable(_), ElfProgramHeaderTable(_)) -> EQ
+        | (ElfSection(_, _), ElfSection(_, _)) -> EQ
+        | (ElfSegment(_, _), ElfSegment(_, _)) -> EQ
+        (* what compares LT? *)
+        | (ElfHeader(_), _) -> LT
+        | (ElfSectionHeaderTable, ElfProgramHeaderTable(_)) -> LT
+        | (ElfSectionHeaderTable, ElfSection(_, _)) -> LT
+        | (ElfSectionHeaderTable, ElfSegment(_, _)) -> LT
+        | (ElfProgramHeaderTable, ElfSection(_, _)) -> LT
+        | (ElfProgramHeaderTable(_), ElfSegment(_, _)) -> LT
+        | (ElfSection(_, _), ElfSegment(_, _)) -> LT
+        (* else it's GT *)
+        | (_, _) -> GT
+    end
+
+instance (SetType elf_file_feature)
+    let setElemCompare = elfFeatureCompare
+end
+
+val elf_memory_image_header : forall 'abifeature.
+    SetType 'abifeature =>
+        elf_memory_image 'abifeature -> elf64_header
+let elf_memory_image_header img = 
+    (* 1. find a unique range labelled as ELF section header table. *)
+    match unique_tag_matching (FileFeature(ElfHeader(null_elf_header))) img with
+        FileFeature(ElfHeader(x)) -> x
+        | _ -> failwith "impossible: no header"
+    end
+
+val elf_memory_image_sht : forall 'abifeature.
+    SetType 'abifeature =>
+        elf_memory_image 'abifeature -> maybe elf64_section_header_table
+let elf_memory_image_sht img = 
+    match unique_tag_matching (FileFeature(null_section_header_table)) img with
+        FileFeature(ElfSectionHeaderTable(x)) -> Just x
+        | _ -> Nothing
+    end
+
+val elf_memory_image_section_ranges : forall 'abifeature. 
+    SetType 'abifeature =>
+        elf_memory_image 'abifeature -> (list (elf_range_tag 'abifeature) * list (element_range))
+let elf_memory_image_section_ranges img = 
+    (* find all element ranges labelled as ELF sections *)
+    unzip (
+        tagged_ranges_matching_tag (FileFeature(ElfSection(0, null_elf64_interpreted_section))) img
+    )
+
+val elf_memory_image_section_by_index : forall 'abifeature.
+    SetType 'abifeature =>
+        natural -> elf_memory_image 'abifeature -> maybe elf64_interpreted_section
+let elf_memory_image_section_by_index idx img = 
+    (* find all element ranges labelled as ELF sections *)
+    let (allSectionTags, allSectionElementRanges) = elf_memory_image_section_ranges img 
+    in
+    let matches = mapMaybei (fun i -> (fun tag -> match tag with
+         FileFeature(ElfSection(idx, s)) -> Just s
+        | FileFeature(ElfSection(_, s)) -> Nothing
+        | _ -> failwith "impossible"
+    end)) allSectionTags
+    in
+    match matches with
+        [] -> Nothing
+        | [x] -> Just x
+        | _ -> failwith "impossible: more than one ELF section with same index"
+    end
+
+val name_of_elf_interpreted_section : 
+    elf64_interpreted_section -> elf64_interpreted_section -> maybe string
+let name_of_elf_interpreted_section s shstrtab = 
+    match get_string_at s.elf64_section_name (string_table_of_byte_sequence shstrtab.elf64_section_body) with
+        Success(x) -> Just x
+        | Fail(e) -> Nothing
+    end
+
+val elf_memory_image_sections_by_name : forall 'abifeature.
+    SetType 'abifeature =>
+        string -> elf_memory_image 'abifeature -> list elf64_interpreted_section
+let elf_memory_image_sections_by_name name img = 
+    (* We have to get all sections and their names,
+     * because section names need not be unique. *)
+    let ((all_section_tags, all_section_ranges) : (list (elf_range_tag 'abifeature) * list (element_range)))
+     = elf_memory_image_section_ranges img
+    in
+    let maybe_shstrtab = elf_memory_image_section_by_index (natural_of_elf64_half ((elf_memory_image_header img).elf64_shstrndx)) img
+    in
+    let shstrtab = match maybe_shstrtab with 
+        Nothing -> failwith "no shtstrtab"
+        | Just x -> x
+    end
+    in
+    let all_interpreted_sections = List.map (fun tag -> 
+        match tag with
+            FileFeature(ElfSection(idx, i)) -> i
+            | _ -> failwith "impossible: non-section in list of sections"
+        end) all_section_tags
+    in
+    let all_section_names = List.map (fun i -> 
+        let (stringtab : string_table) = string_table_of_byte_sequence (shstrtab.elf64_section_body) in
+        match get_string_at i.elf64_section_name stringtab with
+            Fail _ -> Nothing
+            | Success x -> Just x
+        end) all_interpreted_sections
+    in
+    mapMaybe (fun (n, i) -> if Just(name) = n then Just i else Nothing) (zip all_section_names all_interpreted_sections)
+(*
+val elf_memory_image_unique_section_by_name : forall 'abifeature.
+    SetType 'abifeature =>
+        string -> elf_memory_image 'abifeature -> elf64_interpreted_section
+let elf_memory_image_unique_section_by_name name img = 
+    match Map.lookup name img.by_name with
+        Just el -> match el with
+            FileFeature(ElfSection(_, x)) -> x
+            | _ -> failwith "impossible: section name does not name a section"
+        end
+        | 
+        | Nothing -> failwith ("no section named '" ^ name ^ "' but asserted unique")
+    end
+*)
+
+val name_of_elf_section : forall 'abifeature.
+    SetType 'abifeature =>
+        elf64_interpreted_section -> elf_memory_image 'abifeature -> maybe string
+let name_of_elf_section sec img = 
+   let shstrndx = natural_of_elf64_half ((elf_memory_image_header img).elf64_shstrndx)
+   in
+   match elf_memory_image_section_by_index shstrndx img with
+        Nothing -> Nothing
+        | Just shstrtab -> name_of_elf_interpreted_section sec shstrtab
+  end
+
+val name_of_elf_element : forall 'abifeature.
+    SetType 'abifeature =>
+        elf_file_feature -> elf_memory_image 'abifeature -> maybe string
+let name_of_elf_element feature img = 
+    match feature with
+        ElfSection(_, sec) -> name_of_elf_section sec img
+        | _ -> Nothing (* FIXME *) 
+    end
+    
 (*
 val null_abi_lift_memory_image : elf64_file -> elf_memory_image
 let null_abi_lift_memory_image ef =
@@ -83,7 +319,7 @@ let range_models_section s base len =
 val encode_relocated_bytes : abi -> natural -> natural -> natural -> natural -> (* linkable_item -> linkable_item -> *) (symbol_reference * maybe symbol_definition) ->
     list (maybe byte)
 let encode_relocated_bytes   a      r_type     site_addr  addend     existing   (* ref_l            def_l            *) binding
- = (* We shouldn't need the relocation record from the referring linkable;
+ =  (* We shouldn't need the relocation record from the referring linkable;
      * assume that's been handled by the caller. *)
     (* 0. Ask the ABI about this relocation type id *)
     let (widthfn, applyfn) = a.reloc r_type
@@ -99,8 +335,9 @@ let encode_relocated_bytes   a      r_type     site_addr  addend     existing   
     (* applyfn is all naturals: (symaddr -> addend  -> existing -> relocated) *)
     Missing_pervasives.replicate (widthfn maybe_defsym) Nothing
 
-val section_as_byte_pattern : 
-abi -> endianness 
+val section_as_byte_pattern : forall 'abifeature.
+abi 
+    -> endianness 
     -> elf64_interpreted_section 
     -> elf64_interpreted_sections 
     -> Map.map (natural * natural * natural) (list (symbol_reference * maybe symbol_definition))
@@ -227,3 +464,165 @@ val sec_and_start_as_range : elf64_interpreted_section -> natural -> (natural * 
 let sec_and_start_as_range sec start = 
     (start, sec.elf64_section_size)
 
+(* Here we build the image of a file in file offset space. 
+ * To transform to memory space, we
+ * 
+ * - switch positions to be addresses
+ * - switch lengths of nobits etc. to be memory lengths
+ * - PROBLEM: an offset might map to >1 virtual address.
+ *   So we have to clone it as multiple elements.
+ *   Each gets a label identifying the "file feature" it came from
+ *   -- i.e. sections, ELF header, SHT and PHT are all file features.
+ * - PROBLEM: the memory image might only contain part of an element.
+ *   We need to reflect this truncatedness somehow in the label.
+ * 
+ * Is the offset-space view really useful?
+ * SORT OF: want to be able to make an image out of relocatable ELF files
+ * that have no address assignments or phdrs yet.
+ * AHA. NO. This is not an offset-space view; it's a sectionwise memory view.
+ * All allocatable sections become elements with Nothing as their address.
+ * The remainder of the ELF file *should* be represented as labels.
+ * But, hmm, some stuff like the ELF header and SHT will likely get discarded.
+ * 
+ * In short, we should work entirely with memory space.
+ * Then
+ * 
+ * - do we want to encode the aliasing of multiple virtual addresses
+ *   down to single "features" in offset-space, like multiple mappings
+ *   of the ELF header, say?
+ *)
+
+val offset_to_vaddr_mappings : elf64_file -> natural -> list (natural * elf64_interpreted_segment)
+let offset_to_vaddr_mappings f off = 
+    List.mapMaybe (fun ph ->
+        if off >= ph.elf64_segment_offset
+            && off < ph.elf64_segment_base + ph.elf64_segment_size
+        then Just (ph.elf64_segment_base + (off - ph.elf64_segment_offset), ph)
+        else Nothing
+    ) f.elf64_file_interpreted_segments
+
+val gensym : string -> string
+let gensym hint = hint (* FIXME: remember duplicates *)
+
+val extract_satisfying_symbols_from_symtab_of_type : natural -> elf64_file 
+    -> (elf64_symbol_table_entry -> bool) -> list (string * elf64_symbol_table_entry * natural)
+let extract_satisfying_symbols_from_symtab_of_type t e pred =
+    let result = 
+        find_elf64_symbols_by_type e t >>= fun (symtab, strtab, scnidx) ->
+        return (mapMaybei (fun _ -> (fun ent -> (
+            match (get_string_at (natural_of_elf64_word ent.elf64_st_name) strtab) with
+                Success str ->
+                    (* exclude undefineds *) 
+                    if (pred ent)
+                    then Just(str, ent, scnidx)
+                    else Nothing
+                | Fail _ -> Nothing
+            end
+            ))) symtab)
+    in
+    match result with
+        Success defs -> defs
+        | Fail _ -> []
+    end
+
+let definitions_pred = fun ent -> (natural_of_elf64_half ent.elf64_st_shndx) <> stn_undef 
+let references_pred = fun ent -> (natural_of_elf64_half ent.elf64_st_shndx) = stn_undef 
+
+(* This function only knows how to extract symbols. 
+ * It doesn't know the index into the linkables list of whatever object we're extracting from.
+ * So we return a function from that to the eventual list. Is this good style? HMM. *)
+val extract_definitions_from_symtab_of_type : natural -> elf64_file -> list symbol_definition
+let extract_definitions_from_symtab_of_type t e
+ = List.map (fun (str, ent, scnidx) -> <|
+               def_symname = str
+             ; def_syment = ent
+             ; def_sym_scn = scnidx
+             |>) (extract_satisfying_symbols_from_symtab_of_type t e definitions_pred)
+
+val extract_references_from_symtab_of_type : natural -> elf64_file -> list symbol_reference
+let extract_references_from_symtab_of_type t e
+= mapMaybei (fun symidx -> (fun (str, ent, scnidx) -> Just <|
+               ref_symname = str
+             ; ref_syment = ent
+             ; ref_sym_scn = scnidx
+             ; ref_sym_idx = symidx
+             |>))  (extract_satisfying_symbols_from_symtab_of_type t e references_pred)
+
+
+val elf_memory_image_of_elf64_file : elf64_file -> elf_memory_image any_abi_feature
+let elf_memory_image_of_elf64_file f = 
+    let (section_name_is_unique : string -> bool) = (fun s ->
+        match mapMaybe (fun sec -> 
+            match name_of_elf64_interpreted_section sec f with
+                Just s -> Just sec
+                | Just _ -> Nothing
+                | Nothing -> Nothing
+            end) f.elf64_file_interpreted_sections
+        with
+            [_] -> true
+            | _ -> false
+        end
+    )
+    in
+    let unique_name_for_section = (fun idx -> (fun s -> 
+        let (maybe_secname : maybe string) = name_of_elf64_interpreted_section s f
+        in match maybe_secname with
+            Just secname -> if section_name_is_unique secname then secname else gensym secname
+            | Nothing -> gensym ("section" ^ (show idx))
+        end)
+    )
+    in
+    (* Do we have program headers? This decides whether we choose a 
+     * sectionwise or segmentwise view. *)
+    match f.elf64_file_program_header_table with
+        [] ->   let section_names_and_images = mapMaybei (fun i -> (fun s -> 
+                    Just(unique_name_for_section i s, <|
+                        startpos = Nothing
+                      ; length = Just s.elf64_section_size
+                      ; contents = [] (* FIXME *)
+                    |>))) f.elf64_file_interpreted_sections
+                in
+                let (annotations : list (elf_range_tag any_abi_feature)) = List.map (fun x -> SymbolDef(x))
+                    (extract_definitions_from_symtab_of_type sht_symtab f)
+                in
+                 <|
+                      by_name = Map.fromList section_names_and_images  (* : memory_image -- the image elements, without annotation, i.e. 
+                        a map from string to (startpos, length, contents)
+                        -- an element is the ELF header, PHT, SHT, section or segment
+                        -- exploit the fact that section names beginning `.' are reserved, and 
+                           the reserved ones don't use caps: ".PHT", ".SHT", ".HDR"
+                        -- what about ambiguous section names? use ".GENSYM_<...>" perhaps 
+                      *)
+                    ; by_element_range = Map.fromList []
+                        (* : map element_range (list (range_tag 'symdef 'reloc 'filefeature 'abifeature))
+                         -- annotations are reloc sites, symbol defs, ELF sections/segments/headers, PLT/GOT/...  *)
+                    ; by_tag = Set.fromList []
+                        (*  : multimap (range_tag 'symdef 'reloc 'filefeature 'abifeature) (string * range) 
+                         -- annotations by *)
+                  |>
+      | pht -> let segment_names_and_images = mapMaybei (fun i -> (fun seg -> 
+                    Just(gensym (show seg.elf64_segment_base) ^ "_" ^ (show seg.elf64_segment_type), 
+                    <|
+                        startpos = Just seg.elf64_segment_base
+                      ; length = Just seg.elf64_segment_memsz
+                      ; contents = [] (* FIXME *)
+                     |>)
+                )) f.elf64_file_interpreted_segments
+                in
+                (* let annotations = *)
+                 <|
+                      by_name = Map.fromList segment_names_and_images  (* : memory_image -- the image elements, without annotation, i.e. 
+                        a map from string to (startpos, length, contents)
+                        -- an element is the ELF header, PHT, SHT, section or segment
+                        -- exploit the fact that section names beginning `.' are reserved, and 
+                           the reserved ones don't use caps: ".PHT", ".SHT", ".HDR"
+                        -- what about ambiguous section names? use ".GENSYM_<...>" perhaps 
+                      *)
+                    ; by_element_range = Map.fromList []
+                        (* : map element_range (list (range_tag 'symdef 'reloc 'filefeature 'abifeature))
+                         -- annotations are reloc sites, symbol defs, ELF sections/segments/headers, PLT/GOT/...  *)
+                    ; by_tag = Set.fromList []
+                        (*  : multimap (range_tag 'symdef 'reloc 'filefeature 'abifeature) (string * range) 
+                         -- annotations by *)
+                  |>
+    end
