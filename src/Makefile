@@ -24,10 +24,11 @@ endif
 
 LEM_UTIL_SRC := default_printing.lem missing_pervasives.lem show.lem endianness.lem error.lem multimap.lem
 # Some of the utility code is directly in ML, some in Lem; order matters!
+# NOTE: LEM_UTIL_SRC and ALL_UTIL_ML need to be kept in sync manually.
 # GAH. doing a topsort manually is a sign of failure.
 ALL_UTIL_ML := \
  uint64_wrapper.ml uint32_wrapper.ml \
- show.ml endianness.ml error.ml ml_bindings.ml missing_pervasives.ml \
+ show.ml endianness.ml multimap.ml error.ml ml_bindings.ml missing_pervasives.ml \
  default_printing.ml \
  byte_sequence_wrapper.ml
 
@@ -41,10 +42,12 @@ ALL_UTIL_ML := \
 # -- Show should be split up. For now, just split off the problematic byte stuff into Missing_pervasives.
 
 LEM_ELF_SRC := byte_sequence.lem archive.lem \
-	elf_types_native_uint.lem elf_interpreted_segment.lem elf_interpreted_section.lem string_table.lem elf_symbol_table.lem \
+	elf_types_native_uint.lem \
+	string_table.lem elf_symbol_table.lem \
 	elf_header.lem elf_program_header_table.lem \
 	elf_section_header_table.lem \
 	elf_relocation.lem elf_dynamic.lem \
+	elf_interpreted_segment.lem elf_interpreted_section.lem \
 	elf_file.lem 
 	
 LEM_ABI_SRC := memory_image.lem elf_memory_image.lem \
@@ -64,16 +67,16 @@ LEM_ABI_SRC := memory_image.lem elf_memory_image.lem \
 	abis/amd64/abi_amd64_program_header_table.lem \
 	abis/amd64/abi_amd64.lem \
 	abis/power64/abi_power64_relocation.lem \
-	abis/abis.lem \
-	elf_memory_image.lem \
+	abis/abis.lem
 
 LEM_LINK_SRC := command_line.lem input_list.lem linkable_list.lem linker_script.lem link.lem
 
+# LEM_MODEL_ML includes all OCaml except for the main programs
 LEM_MODEL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC))
 
 OCAML_LIB_OBJS := unix.cma nums.cma zarith.cma batteries.cma nat_num.cmo big_int_impl.cmo nat_big_num.cmo uint.cma
 LEM_OCAML_OBJS := lem.cmo lem_basic_classes.cmo lem_function.cmo lem_list.cmo lem_num.cmo lem_sorting.cmo \
-    xstring.cmo pset.cmo pmap.cmo lem_maybe.cmo lem_map.cmo lem_set.cmo
+    xstring.cmo pset.cmo pmap.cmo lem_maybe.cmo lem_map.cmo lem_set.cmo lem_string_extra.cmo
 
 OCAML_LIB_OBJS_OPT := $(patsubst %.cma,%.cmxa,$(patsubst %.cmo,%.cmx,$(OCAML_LIB_OBJS)))
 LEM_OCAML_OBJS_OPT := $(patsubst %.cma,%.cmxa,$(patsubst %.cmo,%.cmx,$(LEM_OCAML_OBJS)))
@@ -109,6 +112,8 @@ isa-extraction:
 
 clean:
 	rm -f $(filter-out error.ml,$(LEM_MODEL_ML))
+	rm -f main_elf.ml main_link.ml
+	rm -f main_elf main_link main_elf.opt main_link.opt
 	rm -rf *~
 	rm -f *.cmi *.cmo *.cmx *.o
 	rm -f abis/*.cmi abis/*.cmo abis/*.cmx abis/*.o
@@ -125,14 +130,19 @@ $(OCAML_LEM_INCLUDES) \
 
 main_elf main_link main_elf.opt main_link.opt: OCAMLFIND_PACKAGES := #-package batteries -package uint
 
+main_elf main_elf.opt: OCAML_LEM_SRC += $(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
+	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC))
+
+main_link main_link.opt: OCAML_LEM_SRC += $(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
+	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC)) \
+	$(patsubst %.lem,%.ml,$(LEM_LINK_SRC)) \
+
 main_elf main_link: %: %.ml $(ALL_UTIL_ML) lem-all-ocaml
 	ocamlfind ocamlc $(OCAMLFLAGS) -o "$@" -g \
 	$(OCAML_LIB_OBJS) \
 	$(LEM_OCAML_OBJS) \
 	$(ALL_UTIL_ML) \
-	$(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
-	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC)) \
-	$(patsubst %.lem,%.ml,$(LEM_LINK_SRC)) \
+	$(OCAML_LEM_SRC) \
 	"$<" $(OCAMLFIND_PACKAGES)
 
 main_elf.opt main_link.opt: %.opt: %.ml $(ALL_UTIL_ML) lem-all-ocaml
