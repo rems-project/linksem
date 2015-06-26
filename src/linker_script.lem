@@ -46,9 +46,9 @@ open import Elf_types_native_uint
  * *within* some ELF memory image. *)
                                                 (* symtab's secidx, symbol's symind, symname *)
 type input_section_spec
- = Common of (string * elf_memory_image any_abi_feature * natural * natural * string * elf64_symbol_table_entry) (* string is symbol name -- must be a COMMON symbol *)
+ = Common of (string * elf_memory_image * natural * natural * string * elf64_symbol_table_entry) (* string is symbol name -- must be a COMMON symbol *)
                                                   (* section's secidx, secname *)
- | InputSection of (string * elf_memory_image any_abi_feature
+ | InputSection of (string * elf_memory_image
     * natural * string * elf64_interpreted_section) (* string is section name *)
 
 (* A control script defines
@@ -642,11 +642,11 @@ type link_algorithm_feature =
     | IncludeInOutputSection of (string * natural) (* ordinal in list of composition elements *)
     
 val accumulate_image : 
-    elf_memory_image any_abi_feature -> 
+    elf_memory_image -> 
     maybe output_section_spec ->  (* cur_sec -- the current output section spec *)
     maybe input_section_spec ->   (* last input section to be output -- might not have one *)
     linker_control_script -> 
-    elf_memory_image any_abi_feature
+    elf_memory_image
 let rec accumulate_image acc cur_sec last_inputsec script = 
     match script with
         [] -> acc
@@ -689,7 +689,7 @@ let rec accumulate_image acc cur_sec last_inputsec script =
 val interpret_linker_control_script : 
     linker_control_script 
     -> list input_section_spec 
-    -> elf_memory_image any_abi_feature
+    -> elf_memory_image
 let interpret_linker_control_script script inputs = 
     accumulate_image empty_annotated_memory_image Nothing Nothing script
 

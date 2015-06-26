@@ -27,8 +27,6 @@ open import Missing_pervasives
 
 type byte_pattern = maybe byte
 
-type elf_memory_image
-
 (* An element might have an address/offset, and it has some contents. *)
 type memory_image_element = <| startpos : maybe natural 
                              ; length   : maybe natural
@@ -113,6 +111,34 @@ type memory_image = Map.map string memory_image_element
  * ... by their *labels* -- or sometimes just *part* of their labels.
  *)
 
+(* ELF file features with which we can label ranges of the memory image. *)
+type elf_file_feature = 
+    ElfHeader of elf64_header
+    | ElfSectionHeaderTable of elf64_section_header_table (* do we want to expand these? *)
+    | ElfProgramHeaderTable of elf64_program_header_table
+    | ElfSection of (natural * elf64_interpreted_section) (* SHT idx *)
+    | ElfSegment of (natural * elf64_interpreted_segment) (* PHT idx *)
+
+type symbol_reference
+ = <| ref_symname : string                  (* symbol name *)
+    ; ref_syment : elf64_symbol_table_entry (* undefined (referencing) symbol *)
+    ; ref_sym_scn : natural                 (* symtab section idx *) 
+    ; ref_sym_idx : natural                 (* index into symbol table *)
+      (* TODO: might also want rel section index, i.e. bind at relocation-record granularity.
+       * Currently we bind only at undef-symbol-name-per-input-object granularity. *)
+    |>
+
+type symbol_definition
+ = <| def_symname : string
+    ; def_syment : elf64_symbol_table_entry (* definition's symtab entry *)
+    ; def_sym_scn : natural                 (* symtab section index, to disamiguate dynsym *)
+    |>
+
+type amd64_abi_feature
+type aarch64_le_abi_feature
+type any_abi_feature = Amd64AbiFeature of amd64_abi_feature
+                     | Aarch64LeAbiFeature of aarch64_le_abi_feature
+
 (* We can also annotate arbitrary ranges of bytes within an element
  * with arbitrary metadata. 
  * 
@@ -125,44 +151,22 @@ type memory_image = Map.map string memory_image_element
  * relevant ELFy thing when we use it. OH, but then 'a is different for
  * every distinct ELF thing, which is no good. Can we define a mapping
  * from an umbrella "ELF" type to the relevant types in each case? *)
-type range_tag 'symdef 'reloc 'filefeature 'abifeature = 
+type range_tag =
                | ImageBase
                | EntryPoint
-               | SymbolDef of 'symdef
-               | RelocationSite of 'reloc
-               | FileFeature of 'filefeature    (* file feature other than symdef and reloc *)
-               | AbiFeature of 'abifeature
-
-
-(* Now we don't need the hacky map key instances. *)
-
-(* separate maps per tag? 
- * 
- * YES
- * i.e.
- * one map
- * for each kind of tag.
- * 
- * How do we deal with 'filefeature and 'abifeature
- * which themselves are multi-variant types? e.g. ElfSection, ElfHeader, etc..
- * Want to extend the collection of maps available. 
- * I think that's okay, if clunky... just make the `filefeature be the whole map.
- *)
-
-(*
-let null_entry_point = EntryPoint
-
-type null_abi_feature_type = unit
-*)
+               | SymbolDef of symbol_definition
+               | RelocationSite of symbol_reference
+               | FileFeature of elf_file_feature (* file feature other than symdef and reloc *)
+               | AbiFeature of any_abi_feature
 
 type range = natural * natural (* start, length *)
 
 type element_range = string * range
 
-type annotated_memory_image 'symdef 'reloc 'filefeature 'abifeature = <|
+type annotated_memory_image = <|
       by_name : memory_image 
-    ; by_element_range : map element_range (list (range_tag 'symdef 'reloc 'filefeature 'abifeature))
-    ; by_tag           : multimap (range_tag 'symdef 'reloc 'filefeature 'abifeature) (string * range)
+    ; by_element_range : map element_range (list range_tag)
+    ; by_tag           : multimap range_tag (string * range)
 |>
 
 let empty_annotated_memory_image = <|
@@ -171,12 +175,7 @@ let empty_annotated_memory_image = <|
     ; by_tag = Set.empty
 |>
 
-val tagCompare : forall 'symdef 'reloc 'filefeature 'abifeature.
-SetType 'filefeature, 
-SetType 'abifeature =>
-range_tag 'symdef 'reloc 'filefeature 'abifeature 
-    -> range_tag 'symdef 'reloc 'filefeature 'abifeature
-    -> Basic_classes.ordering
+val tagCompare : range_tag -> range_tag -> Basic_classes.ordering
 let tagCompare k1 k2 = 
     match (k1, k2) with
         (ImageBase, ImageBase) -> EQ
@@ -201,23 +200,15 @@ let tagCompare k1 k2 =
         | (_, _) -> GT
     end
 
-val tagMatches : forall 'symdef 'reloc 'filefeature 'abifeature.
-SetType 'filefeature, 
-SetType 'abifeature =>
-range_tag 'symdef 'reloc 'filefeature 'abifeature 
-    -> range_tag 'symdef 'reloc 'filefeature 'abifeature
-    -> bool
+val tagMatches : range_tag -> range_tag -> bool
 let tagMatches k1 k2 = tagCompare k1 k2 = EQ
 
-(* Define that equality relation. *)
-instance forall 'symdef 'reloc 'filefeature 'abifeature.
-SetType 'filefeature, SetType 'abifeature 
-=> (SetType (range_tag 'symdef 'reloc 'filefeature 'abifeature))
+(* 
+instance (SetType range_tag)
     let setElemCompare = tagCompare
 end
-instance forall 'symdef 'reloc 'filefeature 'abifeature.
-SetType 'filefeature, SetType 'abifeature 
-=> (Ord (range_tag 'symdef 'reloc 'filefeature 'abifeature))
+*)
+instance (Ord range_tag)
     let compare = tagCompare
     let (<) = fun tag1 -> (fun tag2 -> (tagCompare tag1 tag2 = LT))
     let (<=) = fun tag1 -> (fun tag2 -> Set.member (tagCompare tag1 tag2) {LT; EQ})
@@ -225,11 +216,7 @@ SetType 'filefeature, SetType 'abifeature
     let (>=) = fun tag1 -> (fun tag2 -> Set.member (tagCompare tag1 tag2) {GT; EQ})
 end
 
-val unique_tag_matching : forall 'symdef 'reloc 'filefeature 'abifeature.
-SetType 'filefeature, SetType 'abifeature 
-=>     range_tag 'symdef 'reloc 'filefeature 'abifeature
-    -> annotated_memory_image 'symdef 'reloc 'filefeature 'abifeature
-    -> range_tag 'symdef 'reloc 'filefeature 'abifeature
+val unique_tag_matching : range_tag -> annotated_memory_image -> range_tag
 let unique_tag_matching tag img = 
     match Multimap.lookupBy tagCompare tag img.by_tag with
         [] -> failwith "no tag match found"
@@ -237,29 +224,24 @@ let unique_tag_matching tag img =
         | _ -> failwith "more than one tag match when asserted unique"
     end
     
-val tagged_ranges_matching_tag : forall 'symdef 'reloc 'filefeature 'abifeature.
-SetType 'filefeature, SetType 'abifeature 
-=>     range_tag 'symdef 'reloc 'filefeature 'abifeature
-    -> annotated_memory_image 'symdef 'reloc 'filefeature 'abifeature
-    -> list (range_tag 'symdef 'reloc 'filefeature 'abifeature * element_range)
+val tagged_ranges_matching_tag : range_tag -> annotated_memory_image -> list (range_tag * element_range)
 let tagged_ranges_matching_tag tag img = 
     Multimap.lookupBy tagCompare tag img.by_tag
     
-val unique_tag_matching_at_range_exact : forall 'symdef 'reloc 'filefeature 'abifeature.
-SetType 'abifeature, SetType 'filefeature =>
+val unique_tag_matching_at_range_exact : 
     element_range
-    -> range_tag 'symdef 'reloc 'filefeature 'abifeature
-    -> annotated_memory_image 'symdef 'reloc 'filefeature 'abifeature
-    -> range_tag 'symdef 'reloc 'filefeature 'abifeature
+    -> range_tag 
+    -> annotated_memory_image
+    -> range_tag
 let unique_tag_matching_at_range_exact r tag img = 
     (* 1. find tags a unique range labelled as ELF section header table. *)
-    let (allRangeMatches : list (range_tag 'symdef 'reloc 'filefeature 'abifeature))
+    let (allRangeMatches : list range_tag)
      = match Map.lookup r img.by_element_range with
         Just(results) -> results
         | Nothing -> []
     end
     in
-    let (tagAlsoMatches : list (range_tag  'symdef 'reloc 'filefeature 'abifeature))
+    let (tagAlsoMatches : list range_tag)
      = List.filter (fun x -> tagCompare x tag = EQ) allRangeMatches
     in
     match tagAlsoMatches with

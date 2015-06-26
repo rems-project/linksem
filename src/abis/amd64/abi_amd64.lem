@@ -56,7 +56,7 @@ let abiFeatureCompare k1 k2 =
         | (_, _) -> GT
     end
 
-val section_is_special : elf64_interpreted_section -> elf_memory_image any_abi_feature -> bool
+val section_is_special : elf64_interpreted_section -> elf_memory_image -> bool
 let section_is_special s img = 
     elf_section_is_special s img ||
     match name_of_elf_section s img with 

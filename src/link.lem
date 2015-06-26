@@ -35,7 +35,7 @@ open import Memory_image
 open import Elf_memory_image
 open import Linker_script
 
-val link : linker_control_script -> list Command_line.link_option -> linkable_list -> elf_memory_image any_abi_feature
+val link : linker_control_script -> list Command_line.link_option -> linkable_list -> elf_memory_image
 let link script options linkables = 
     (* <| *)
         empty_annotated_memory_image

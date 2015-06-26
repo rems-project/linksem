@@ -43,10 +43,7 @@ open import Elf_memory_image
 open import Linker_script
 open import Link
 
-val images_equal_modulo_alignment : 
-    forall 'abifeature. 
-        SetType 'abifeature =>
-            elf_memory_image 'abifeature -> elf_memory_image 'abifeature -> bool
+val images_equal_modulo_alignment : elf_memory_image -> elf_memory_image -> bool
 let images_equal_modulo_alignment img1 img2 =
     img1.by_tag = img2.by_tag (* FIXME: the "modulo alignment" part *)
 

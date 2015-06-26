@@ -35,8 +35,8 @@ open import Elf_memory_image
 
 type script = byte_sequence (* FIXME *)
 
-type linkable_object = RelocELF of elf_memory_image any_abi_feature    (* memory image without address assignments *)
-                     | SharedELF of elf_memory_image any_abi_feature   (* memory image with address assignments *)
+type linkable_object = RelocELF of elf_memory_image    (* memory image without address assignments *)
+                     | SharedELF of elf_memory_image   (* memory image with address assignments *)
                      | ScriptAST of script       (* FIXME: should be elaborated away *)
 
 val string_of_linkable_object : linkable_object -> string

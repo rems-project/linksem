@@ -56,7 +56,7 @@ instance (SetType aarch64_le_abi_feature)
     let setElemCompare = abiFeatureCompare
 end
 
-val section_is_special : elf64_interpreted_section -> elf_memory_image any_abi_feature -> bool
+val section_is_special : elf64_interpreted_section -> elf_memory_image -> bool
 let section_is_special s f = 
     elf_section_is_special s f || (* FIXME *) false
 
