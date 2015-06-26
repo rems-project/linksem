@@ -24,6 +24,7 @@ open import Elf_interpreted_section
 open import Elf_interpreted_segment
 open import Elf_section_header_table
 open import Elf_program_header_table
+open import Elf_symbol_table
 open import Elf_types_native_uint
 
 open import Abis
@@ -35,8 +36,35 @@ open import Memory_image
 open import Elf_memory_image
 open import Linker_script
 
-val link : linker_control_script -> list Command_line.link_option -> linkable_list -> elf_memory_image
-let link script options linkables = 
+let section_name isec img = match name_of_elf_section isec img with
+    Just x -> x
+    | Nothing -> ""
+end
+
+let all_sections_with_indices img = elf_memory_image_sections_with_indices img
+
+let all_common_symbols img = List.filter (fun def -> 
+    Elf_symbol_table.get_symbol_type def.def_syment.elf64_st_info = stt_common
+) (elf_memory_image_defined_symbols img)
+
+val expand_sections : abi -> Linkable_list.linkable_item -> list Linker_script.input_section_spec
+let expand_sections a item = match item with
+    (RelocELF(img), (fname, blob, origin), input_opts) -> 
+        (* One item per input *user* section, i.e. not including relocs, strtab, etc. *)
+        [InputSection(fname, img, secidx, section_name isec img, isec) | forall ((isec, secidx) MEM all_sections_with_indices img) | not (a.section_is_special isec img)]
+        ++
+        (* One item per common symbol *)
+        [Common(fname, img, syment) | forall (syment MEM all_common_symbols img) | true]
+    | _ -> failwith "non-reloc linkable not supported yet"
+end
+
+val link : linker_control_script -> abi -> list Command_line.link_option -> linkable_list -> elf_memory_image
+let link script a options linkables = 
+    let input_sections = Missing_pervasives.list_concat_map (expand_sections a) linkables
+    in
+    let output_sections = interpret_linker_control_script script input_sections 
+    in
+    build_memory_image output_sections
     (* <| *)
         empty_annotated_memory_image
     (* |> *)

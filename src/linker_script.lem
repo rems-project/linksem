@@ -44,9 +44,8 @@ open import Elf_types_native_uint
  * 
  * Each input "section" is always an identified section or common symbol 
  * *within* some ELF memory image. *)
-                                                (* symtab's secidx, symbol's symind, symname *)
 type input_section_spec
- = Common of (string * elf_memory_image * natural * natural * string * elf64_symbol_table_entry) (* string is symbol name -- must be a COMMON symbol *)
+ = Common of (string * elf_memory_image * symbol_definition) (* string is symbol name -- must be a COMMON symbol *)
                                                   (* section's secidx, secname *)
  | InputSection of (string * elf_memory_image
     * natural * string * elf64_interpreted_section) (* string is section name *)
@@ -214,7 +213,7 @@ let align_up addr align =
 
 let has_writability = fun writable -> (fun inputsec -> (
     match inputsec with
-        Common(_, img, symtabsecidx, symind, synname, syment) 
+        Common(_, _, _)
             -> (* all common symbols are potentially writable *) true
         | InputSection(fname, img, secidx, secname, sec)
             -> let (flags : natural) = match elf_memory_image_section_by_index secidx img with 
@@ -259,9 +258,9 @@ let default_linker_control_script a user_text_segment_start user_data_segment_st
     end
     in
     let is_large_common = (fun isec -> match isec with 
-    Common(fname, img, symtabidx, symind, symname, syment)
+    Common(fname, img, def)
          -> let referenced_sec
-             = match elf_memory_image_section_by_index (natural_of_elf64_half syment.elf64_st_shndx) img with
+             = match elf_memory_image_section_by_index (natural_of_elf64_half def.def_syment.elf64_st_shndx) img with
                 Just s -> s
                 | Nothing -> failwith "impossible: symbol references invalid section index"
             end
@@ -271,7 +270,7 @@ let default_linker_control_script a user_text_segment_start user_data_segment_st
     end)
     in
     let is_common = (fun isec -> match isec with 
-        Common(_, _, _, _, _, _) -> not (is_large_common isec)
+        Common(fname, _, _) -> not (is_large_common isec)
          | _ -> false
     end)
     in
