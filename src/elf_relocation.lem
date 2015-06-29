@@ -67,7 +67,7 @@ let elf64_relocation_r_sym w =
   *)
 val elf32_relocation_r_type : elf32_word -> natural
 let elf32_relocation_r_type w =
-  natural_of_elf32_word w
+  (natural_of_elf32_word w) mod 255
 
 (** [elf64_relocation_r_type w] computes the symbol type associated with an ELF64
   * relocation(a) entry.
