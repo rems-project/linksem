@@ -24,7 +24,10 @@ open import Harness_interface
 open import Sail_interface
 
 open import Abi_amd64_elf_header
+open import Abi_amd64_relocation
 open import Abi_amd64_serialisation
+
+open import Abi_x86_relocation
 
 let default_hdr_bdl =
   (default_os_specific_print, default_proc_specific_print)
@@ -92,7 +95,7 @@ let _ =
               else if flag = "--relocs" then
                 Harness_interface.harness_string_of_elf32_relocs
                   f1
-                  show
+                  string_of_x86_relocation_type (* XXX: generic way to obtain correct ABI needed *)
                   bs0
               else
                 failwith "Unrecognised flag"
