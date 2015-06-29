@@ -238,7 +238,7 @@ let elf_memory_image_sections_with_name name img =
 (*
 val elf_memory_image_unique_section_with_name : string -> elf_memory_image -> elf64_interpreted_section
 let elf_memory_image_unique_section_with_name name img = 
-    match Map.lookup name img.by_name with
+    match Map.lookup name img.image with
         Just el -> match el with
             FileFeature(ElfSection(_, x)) -> x
             | _ -> failwith "impossible: section name does not name a section"
@@ -293,7 +293,7 @@ let elf_memory_image_symbols_with_name name img =
 (*
 val elf_memory_image_unique_symbol_with_name : string -> elf_memory_image -> symbol_def
 let elf_memory_image_unique_symbol_with_name name img = 
-    match Map.lookup name img.by_name with
+    match Map.lookup name img.image with
         Just el -> match el with
             FileFeature(ElfSection(_, x)) -> x
             | _ -> failwith "impossible: section name does not name a section"
@@ -609,14 +609,14 @@ let elf_memory_image_of_elf64_file f =
                     (extract_definitions_from_symtab_of_type sht_symtab f)
                 in
                  <|
-                      by_name = Map.fromList section_names_and_images  (* : memory_image -- the image elements, without annotation, i.e. 
+                      image = Map.fromList section_names_and_images  (* : memory_image -- the image elements, without annotation, i.e. 
                         a map from string to (startpos, length, contents)
                         -- an element is the ELF header, PHT, SHT, section or segment
                         -- exploit the fact that section names beginning `.' are reserved, and 
                            the reserved ones don't use caps: ".PHT", ".SHT", ".HDR"
                         -- what about ambiguous section names? use ".GENSYM_<...>" perhaps 
                       *)
-                    ; by_element_range = Map.fromList []
+                    ; by_range = Set.fromList []
                         (* : map element_range (list (range_tag 'symdef 'reloc 'filefeature 'abifeature))
                          -- annotations are reloc sites, symbol defs, ELF sections/segments/headers, PLT/GOT/...  *)
                     ; by_tag = Set.fromList []
@@ -634,14 +634,14 @@ let elf_memory_image_of_elf64_file f =
                 in
                 (* let annotations = *)
                  <|
-                      by_name = Map.fromList segment_names_and_images  (* : memory_image -- the image elements, without annotation, i.e. 
+                      image = Map.fromList segment_names_and_images  (* : memory_image -- the image elements, without annotation, i.e. 
                         a map from string to (startpos, length, contents)
                         -- an element is the ELF header, PHT, SHT, section or segment
                         -- exploit the fact that section names beginning `.' are reserved, and 
                            the reserved ones don't use caps: ".PHT", ".SHT", ".HDR"
                         -- what about ambiguous section names? use ".GENSYM_<...>" perhaps 
                       *)
-                    ; by_element_range = Map.fromList []
+                    ; by_range = Set.fromList []
                         (* : map element_range (list (range_tag 'symdef 'reloc 'filefeature 'abifeature))
                          -- annotations are reloc sites, symbol defs, ELF sections/segments/headers, PLT/GOT/...  *)
                     ; by_tag = Set.fromList []

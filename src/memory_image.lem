@@ -165,15 +165,15 @@ type range = natural * natural (* start, length *)
 type element_range = string * range
 
 type annotated_memory_image = <|
-      by_name : memory_image 
-    ; by_element_range : map element_range (list range_tag)
-    ; by_tag           : multimap range_tag (string * range)
+      image            : memory_image 
+    ; by_range         : multimap element_range range_tag
+    ; by_tag           : multimap range_tag element_range
 |>
 
 let empty_annotated_memory_image = <|
-      by_name = Map.empty
-    ; by_element_range = Map.empty
-    ; by_tag = Set.empty
+      image            = Map.empty
+    ; by_range         = Set.empty
+    ; by_tag           = Set.empty
 |>
 
 val tagCompare : range_tag -> range_tag -> Basic_classes.ordering
@@ -228,7 +228,10 @@ let unique_tag_matching tag img =
 val tagged_ranges_matching_tag : range_tag -> annotated_memory_image -> list (range_tag * element_range)
 let tagged_ranges_matching_tag tag img = 
     Multimap.lookupBy tagCompare tag img.by_tag
-    
+
+val element_range_compare : element_range -> element_range -> Basic_classes.ordering
+let element_range_compare = pairCompare compare compare
+
 val unique_tag_matching_at_range_exact : 
     element_range
     -> range_tag 
@@ -236,14 +239,9 @@ val unique_tag_matching_at_range_exact :
     -> range_tag
 let unique_tag_matching_at_range_exact r tag img = 
     (* 1. find tags a unique range labelled as ELF section header table. *)
-    let (allRangeMatches : list range_tag)
-     = match Map.lookup r img.by_element_range with
-        Just(results) -> results
-        | Nothing -> []
-    end
+    let (_, (allRangeMatches : list range_tag)) = unzip (Multimap.lookupBy element_range_compare r img.by_range)
     in
-    let (tagAlsoMatches : list range_tag)
-     = List.filter (fun x -> tagCompare x tag = EQ) allRangeMatches
+    let (tagAlsoMatches : list range_tag) = List.filter (fun x -> tagCompare x tag = EQ) allRangeMatches
     in
     match tagAlsoMatches with
         [] -> failwith "no range/tag match when asserted to exist"
