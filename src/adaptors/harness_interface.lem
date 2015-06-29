@@ -526,11 +526,14 @@ let harness_string_of_elf32_relocs f1 os bs0 =
   let endian    = get_elf32_header_endianness hdr in
   let rel_secs  = List.filter (fun x ->
     x.elf32_sh_type = elf32_word_of_natural sht_rel) sht in
-  match get_elf32_file_symbol_string_table f1 with
-    | Fail err     -> err
-    | Success stbl ->
-    match get_elf32_file_section_header_string_table f1 with
+  if List.length rel_secs = 0 then
+    "\nThere are no relocations in this file."
+  else
+    match get_elf32_file_symbol_string_table f1 with
       | Fail err     -> err
-      | Success shdr -> "\n" ^ harness_string_of_elf32_relocs' endian os f1 rel_secs shdr stbl bs0
+      | Success stbl ->
+      match get_elf32_file_section_header_string_table f1 with
+        | Fail err     -> err
+        | Success shdr -> "\n" ^ harness_string_of_elf32_relocs' endian os f1 rel_secs shdr stbl bs0
+      end
     end
-  end
