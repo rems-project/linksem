@@ -51,6 +51,7 @@ let _ =
         if natural_of_unsigned_char c = Elf_header.elf_class_32 then
           Elf_file.read_elf32_file bs0 >>= fun f1  ->
           get_elf32_file_section_header_string_table f1 >>= fun stbl ->
+          get_elf32_file_symbol_table f1 >>= fun symtab ->
             let ret =
               if flag = "--file-header" then
                 Harness_interface.harness_string_of_elf32_file_header f1.elf32_file_header
@@ -88,6 +89,11 @@ let _ =
                   f1.elf32_file_header
                   f1.elf32_file_section_header_table
                   stbl
+              else if flag = "--relocs" then
+                Harness_interface.harness_string_of_elf32_relocs
+                  f1
+                  show
+                  bs0
               else
                 failwith "Unrecognised flag"
             in
