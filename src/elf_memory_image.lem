@@ -127,6 +127,7 @@ let null_symbol_definition = <|
     def_symname = ""
     ; def_syment = elf64_null_symbol_table_entry
     ; def_sym_scn = 0
+    ; def_sym_idx = 0
 |>
 
 
@@ -197,12 +198,27 @@ let name_of_elf_interpreted_section s shstrtab =
         | Fail(e) -> Nothing
     end
 
-val elf_memory_image_sections_by_name : string -> elf_memory_image -> list elf64_interpreted_section
-let elf_memory_image_sections_by_name name img = 
+val elf_memory_image_sections_with_indices : elf_memory_image -> list (elf64_interpreted_section * natural)
+let elf_memory_image_sections_with_indices img = 
     (* We have to get all sections and their names,
      * because section names need not be unique. *)
     let ((all_section_tags, all_section_ranges) : (list elf_range_tag * list element_range))
      = elf_memory_image_section_ranges img
+    in
+    List.map (fun tag -> 
+        match tag with
+            FileFeature(ElfSection(idx, i)) -> (i, idx)
+            | _ -> failwith "impossible: non-section in list of sections"
+        end) all_section_tags
+
+val elf_memory_image_sections : elf_memory_image -> list elf64_interpreted_section
+let elf_memory_image_sections img = 
+    let (secs, _) = unzip (elf_memory_image_sections_with_indices img)
+    in secs
+
+val elf_memory_image_sections_with_name : string -> elf_memory_image -> list elf64_interpreted_section
+let elf_memory_image_sections_with_name name img = 
+    let all_interpreted_sections = elf_memory_image_sections img
     in
     let maybe_shstrtab = elf_memory_image_section_by_index (natural_of_elf64_half ((elf_memory_image_header img).elf64_shstrndx)) img
     in
@@ -210,12 +226,6 @@ let elf_memory_image_sections_by_name name img =
         Nothing -> failwith "no shtstrtab"
         | Just x -> x
     end
-    in
-    let all_interpreted_sections = List.map (fun tag -> 
-        match tag with
-            FileFeature(ElfSection(idx, i)) -> i
-            | _ -> failwith "impossible: non-section in list of sections"
-        end) all_section_tags
     in
     let all_section_names = List.map (fun i -> 
         let (stringtab : string_table) = string_table_of_byte_sequence (shstrtab.elf64_section_body) in
@@ -226,8 +236,8 @@ let elf_memory_image_sections_by_name name img =
     in
     mapMaybe (fun (n, i) -> if Just(name) = n then Just i else Nothing) (zip all_section_names all_interpreted_sections)
 (*
-val elf_memory_image_unique_section_by_name : string -> elf_memory_image -> elf64_interpreted_section
-let elf_memory_image_unique_section_by_name name img = 
+val elf_memory_image_unique_section_with_name : string -> elf_memory_image -> elf64_interpreted_section
+let elf_memory_image_unique_section_with_name name img = 
     match Map.lookup name img.by_name with
         Just el -> match el with
             FileFeature(ElfSection(_, x)) -> x
@@ -237,6 +247,62 @@ let elf_memory_image_unique_section_by_name name img =
         | Nothing -> failwith ("no section named '" ^ name ^ "' but asserted unique")
     end
 *)
+
+val elf_memory_image_symbol_def_ranges : elf_memory_image -> (list elf_range_tag * list element_range)
+let elf_memory_image_symbol_def_ranges img = 
+    (* find all element ranges labelled as ELF symbols *)
+    unzip (
+        tagged_ranges_matching_tag (SymbolDef(null_symbol_definition)) img
+    )
+
+val name_of_symbol_def : symbol_definition -> string
+let name_of_symbol_def sym = sym.def_symname
+
+val elf_memory_image_defined_symbols : elf_memory_image -> list symbol_definition
+let elf_memory_image_defined_symbols img = 
+    let ((all_symbol_tags, all_symbol_ranges) : (list elf_range_tag * list element_range))
+     = elf_memory_image_section_ranges img
+    in
+    List.mapMaybe (fun tag -> 
+        match tag with
+            SymbolDef(ent) -> Just ent
+            | _ -> failwith "impossible: non-symbol def in list of symbol defs"
+        end) all_symbol_tags
+
+(*
+val elf_memory_image_symbols_with_name : string -> elf_memory_image -> list symbol_definition
+let elf_memory_image_symbols_with_name name img = 
+    let all_interpreted_sections = elf_memory_image_sections img
+    in
+    let maybe_shstrtab = elf_memory_image_section_by_index (natural_of_elf64_half ((elf_memory_image_header img).elf64_shstrndx)) img
+    in
+    let shstrtab = match maybe_shstrtab with 
+        Nothing -> failwith "no shtstrtab"
+        | Just x -> x
+    end
+    in
+    let all_section_names = List.map (fun i -> 
+        let (stringtab : string_table) = string_table_of_byte_sequence (shstrtab.elf64_section_body) in
+        match get_string_at i.elf64_section_name stringtab with
+            Fail _ -> Nothing
+            | Success x -> Just x
+        end) all_interpreted_sections
+    in
+    mapMaybe (fun (n, i) -> if Just(name) = n then Just i else Nothing) (zip all_section_names all_interpreted_sections)
+*)
+(*
+val elf_memory_image_unique_symbol_with_name : string -> elf_memory_image -> symbol_def
+let elf_memory_image_unique_symbol_with_name name img = 
+    match Map.lookup name img.by_name with
+        Just el -> match el with
+            FileFeature(ElfSection(_, x)) -> x
+            | _ -> failwith "impossible: section name does not name a section"
+        end
+        | 
+        | Nothing -> failwith ("no section named '" ^ name ^ "' but asserted unique")
+    end
+*)
+
 
 val name_of_elf_section : elf64_interpreted_section -> elf_memory_image -> maybe string
 let name_of_elf_section sec img = 
@@ -489,11 +555,12 @@ let references_pred = fun ent -> (natural_of_elf64_half ent.elf64_st_shndx) = st
  * So we return a function from that to the eventual list. Is this good style? HMM. *)
 val extract_definitions_from_symtab_of_type : natural -> elf64_file -> list symbol_definition
 let extract_definitions_from_symtab_of_type t e
- = List.map (fun (str, ent, scnidx) -> <|
+ = List.mapi (fun i -> (fun (str, ent, scnidx) -> <|
                def_symname = str
              ; def_syment = ent
              ; def_sym_scn = scnidx
-             |>) (extract_satisfying_symbols_from_symtab_of_type t e definitions_pred)
+             ; def_sym_idx = naturalFromNat i
+             |>)) (extract_satisfying_symbols_from_symtab_of_type t e definitions_pred)
 
 val extract_references_from_symtab_of_type : natural -> elf64_file -> list symbol_reference
 let extract_references_from_symtab_of_type t e

@@ -60,7 +60,7 @@ let correctly_linked a linkables names options eout =
             ((natural_of_elf64_half eout.elf64_file_header.elf64_phnum) 
                 * (natural_of_elf64_half eout.elf64_file_header.elf64_phentsize)))
     in
-    let linked_image = link script options linkables
+    let linked_image = link script a options linkables
     in
     images_equal_modulo_alignment output_image linked_image
 
