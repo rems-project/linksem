@@ -44,11 +44,18 @@ open import Elf_types_native_uint
  * 
  * Each input "section" is always an identified section or common symbol 
  * *within* some ELF memory image. *)
-type input_section_spec
+
+type input_section_rec = <| 
+    fname : string
+;   img   : elf_memory_image
+;   shndx : natural
+;   secname: string
+;   isec : elf64_interpreted_section
+|>
+
+type input_spec
  = Common of (string * elf_memory_image * symbol_definition) (* string is symbol name -- must be a COMMON symbol *)
-                                                  (* section's secidx, secname *)
- | InputSection of (string * elf_memory_image
-    * natural * string * elf64_interpreted_section) (* string is section name *)
+ | InputSection of input_section_rec
 
 (* A control script defines
  * - output sections
@@ -94,7 +101,7 @@ type input_section_spec
 type symbol_def_policy = AlwaysDefine
                         | ProvideIfUsed
 
-type input_selector  = list input_section_spec -> list input_section_spec
+type input_selector  = list input_spec -> list input_spec
 
 type address_expr = Memory_image.expr
 
@@ -168,24 +175,24 @@ let default_symbol_spec = (0, unsigned_char_of_natural 0, unsigned_char_of_natur
 val only_sections : input_selector 
 let only_sections inputs = mapMaybe
     (fun i -> match i with 
-      | InputSection(fname, _, _, secname, sec) -> Just(i)
+      | InputSection(_) -> Just(i)
       | _ -> Nothing
     end) inputs
 
-val filter_and_concat : (input_section_spec -> bool) -> input_selector (* a.k.a. (list input_section_spec) -> list elf64_interpreted_section *)
+val filter_and_concat : (input_spec -> bool) -> input_selector (* a.k.a. (list input_spec) -> list elf64_interpreted_section *)
 let filter_and_concat p inputs = List.filter p (only_sections inputs)
 
-val name_matches : string -> input_section_spec -> bool
+val name_matches : string -> input_spec -> bool
 let name_matches pat input =
     match input with
-        InputSection(fname, _, _, secname, sec) -> glob_match (toCharList pat) (toCharList secname)
+        InputSection(inp) -> glob_match (toCharList pat) (toCharList inp.secname)
         | _ -> false
     end
 
-val file_matches : string -> input_section_spec -> bool
+val file_matches : string -> input_spec -> bool
 let file_matches pat input = 
     match input with
-        InputSection(fname, _, _, secname, sec) -> glob_match (toCharList pat) (toCharList fname)
+        InputSection(inp) -> glob_match (toCharList pat) (toCharList inp.fname)
         | _ -> false
     end
 
@@ -215,8 +222,8 @@ let has_writability = fun writable -> (fun inputsec -> (
     match inputsec with
         Common(_, _, _)
             -> (* all common symbols are potentially writable *) true
-        | InputSection(fname, img, secidx, secname, sec)
-            -> let (flags : natural) = match elf_memory_image_section_by_index secidx img with 
+        | InputSection(inp)
+            -> let (flags : natural) = match elf_memory_image_section_by_index inp.shndx inp.img with 
                           Just x -> x.elf64_section_flags
                         | Nothing -> failwith "impossible: no such section"
                      end
@@ -630,7 +637,7 @@ SECTIONS
 
 
 type output_section_composition_element = 
-    IncludeInputSection of retain_policy * string (* file *) * natural (* shndx *)
+    IncludeInputSection of (retain_policy * string (* file *) * natural (* shndx *))
     | Hole of natural (* size *)
 
 type output_section_spec = (string * (list output_section_composition_element))
@@ -642,17 +649,18 @@ type link_algorithm_feature =
     
 val accumulate_image : 
     elf_memory_image -> 
+    list input_spec -> (* inputs *)
     maybe output_section_spec ->  (* cur_sec -- the current output section spec *)
-    maybe input_section_spec ->   (* last input section to be output -- might not have one *)
+    maybe input_spec ->   (* last input section to be output -- might not have one *)
     linker_control_script -> 
     elf_memory_image
-let rec accumulate_image acc cur_sec last_inputsec script = 
+let rec accumulate_image acc inputs cur_output_sec last_inputsec script = 
     match script with
-        [] -> acc
+        [] -> (* FIXME: add the current output section to the image, then we're finished *) acc
         | element :: more_elements ->
-            let do_nothing = (acc, cur_sec, last_inputsec) 
+            let do_nothing = (acc, cur_output_sec, last_inputsec) 
             in
-            let (new_acc, new_cur_sec, new_last_inputsec) = match element with
+            let (new_acc, new_cur_output_sec, new_last_inputsec) = match element with
                 DefineSymbol(symdefpol, name, (symsize, syminfo, symother)) ->
                     (* Label the current section in the image 
                      * with a new symbol definition. If there isn't
@@ -662,35 +670,54 @@ let rec accumulate_image acc cur_sec last_inputsec script =
                 | AdvanceAddress(expr) -> 
                      (* If we're inside a section, update the logical addr, 
                       * else insert a hole *)
-                     match cur_sec with
+                     match cur_output_sec with
                         Nothing -> do_nothing
                             (* This assignment is setting a new LMA. *)
                             (* (acc,  *)
                         | Just sec -> do_nothing
-                    end
+                     end
                 | MarkAndAlignDataSegment(maxpagesize, commonpagesize) -> 
                      (* The "data segment end" is a distinguished label, 
                       * so we can encode the whole thing into a conditional. *)
                      do_nothing
                 | MarkDataSegmentEnd -> do_nothing
                 | MarkDataSegmentRelroEnd(align, expr) -> do_nothing
-                | OutputSection(outputguard, maybe_expr, name, sub_elements) -> do_nothing
-                  (*  Output sections may not nest within other output sections. *)
+                | OutputSection(outputguard, maybe_expr, name, sub_elements) -> 
+                    (* If we have a current output section, finish it and add it to the image *)
+                    (* Recurse down the list of input queries
+                       Output sections may not nest within other output sections. *)
+                    do_nothing
                 | DiscardSection(selector) -> do_nothing
-                | InputQuery(retainpol, sortpol, selector) -> do_nothing
-                  (* Input queries can only occur within an output section. *)
+                | InputQuery(retainpol, sortpol, selector) -> 
+                    (* Input queries can only occur within an output section. *)
+                    match cur_output_sec with
+                        Nothing -> failwith "linker script error: input query without output section"
+                        | Just (output_sec_name, output_composition) ->
+                            (* Search input memory images for matching sections. *)
+                            let (matchList : list input_section_rec) = mapMaybe (fun inp -> 
+                                match inp with
+                                    InputSection(x) -> Just x
+                                   | _ -> Nothing
+                                end) (selector inputs)
+                            in
+                            (* Add them to the current output spec *)
+                            (acc, Just (output_sec_name, 
+                                output_composition ++ 
+                                [IncludeInputSection(retainpol, input_sec.fname, input_sec.shndx) | forall (input_sec MEM matchList) | true]),
+                            last_inputsec)
+                    end
             end
             in
-            accumulate_image new_acc new_cur_sec new_last_inputsec more_elements
+            accumulate_image new_acc inputs new_cur_output_sec new_last_inputsec more_elements
     end
 
 (* Now we need to write an interpreter for all that. *)
 val interpret_linker_control_script : 
     linker_control_script 
-    -> list input_section_spec 
+    -> list input_spec 
     -> elf_memory_image
 let interpret_linker_control_script script inputs = 
-    accumulate_image empty_annotated_memory_image Nothing Nothing script
+    accumulate_image empty_annotated_memory_image inputs Nothing Nothing script
 
     (* What is the output of a linker script?
      * Recall that we need multiple passes:

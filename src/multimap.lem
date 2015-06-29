@@ -16,7 +16,7 @@ open import Assert_extra
  * 
  * This map differs from the Lem map in the following ways.
  * 
- * 0. The basic idea: a single key, supplied as a "query",
+ * 0. The basic idea: it's a multimap, so a single key, supplied as a "query",
  *    can map to many (key, value) results.
  * 
  * 1. The user supplies an equivalence relation on keys, which
