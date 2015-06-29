@@ -66,6 +66,7 @@ LEM_ABI_SRC := memory_image.lem elf_memory_image.lem \
 	abis/amd64/abi_amd64_relocation.lem \
 	abis/amd64/abi_amd64_program_header_table.lem \
 	abis/amd64/abi_amd64.lem \
+	abis/x86/abi_x86_relocation.lem \
 	abis/power64/abi_power64_relocation.lem \
 	abis/abis.lem
 
@@ -125,7 +126,7 @@ main_elf main_link main_elf.opt main_link.opt c_interface: OCAMLFLAGS += -I $(BA
 -I $(UINT) \
 $(OCAML_LEM_INCLUDES) \
 -I adaptors \
--I abis -I abis/amd64 -I abis/power64 -I abis/aarch64 \
+-I abis -I abis/amd64 -I abis/power64 -I abis/aarch64 -I abis/x86 \
 -g
 
 main_elf main_link main_elf.opt main_link.opt: OCAMLFIND_PACKAGES := #-package batteries -package uint
