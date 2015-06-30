@@ -8,33 +8,33 @@ let hex_string_of_nat_pad2 i : string =
 ;;
 
 let hex_string_of_big_int_pad6 i : string =
-  let i0 = Nat_big_num.to_int i in
-    Printf.sprintf "%06x" i0
+  let i0 = Nat_big_num.to_int64 i in
+    Printf.sprintf "%06Lx" i0
 ;;
 
 let hex_string_of_big_int_pad2 i : string =
-  let i0 = Nat_big_num.to_int i in
-    Printf.sprintf "%02x" i0
+  let i0 = Nat_big_num.to_int64 i in
+    Printf.sprintf "%02Lx" i0
 ;;
 
 let hex_string_of_big_int_pad5 i : string =
-  let i0 = Nat_big_num.to_int i in
-    Printf.sprintf "%05x" i0
+  let i0 = Nat_big_num.to_int64 i in
+    Printf.sprintf "%05Lx" i0
 ;;
 
 let hex_string_of_big_int_pad8 i : string =
-  let i0 = Nat_big_num.to_int i in
-    Printf.sprintf "%08x" i0
+  let i0 = Nat_big_num.to_int64 i in
+    Printf.sprintf "%08Lx" i0
 ;;
 
 let hex_string_of_big_int_pad16 i : string =
-  let i0 = Nat_big_num.to_int i in
-    Printf.sprintf "%016x" i0
+  let i0 = Nat_big_num.to_int64 i in
+    Printf.sprintf "%016Lx" i0
 ;;
 
 let hex_string_of_big_int_no_padding i : string =
-  let i0 = Nat_big_num.to_int i in
-    Printf.sprintf "%x" i0
+  let i0 = Nat_big_num.to_int64 i in
+    Printf.sprintf "%Lx" i0
 ;;
 
 let bytes_of_int32 (i : Int32.t) = assert false

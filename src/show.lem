@@ -111,3 +111,11 @@ end
 instance (Show natural)
   let show = stringFromNatural
 end
+
+val string_of_integer : integer -> string
+
+declare ocaml target_rep function string_of_integer = `Nat_big_num.to_string`
+
+instance (Show integer)
+  let show = string_of_integer
+end

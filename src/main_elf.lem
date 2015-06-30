@@ -127,6 +127,11 @@ let _ =
                   f1.elf64_file_header
                   f1.elf64_file_section_header_table
                   stbl
+              else if flag = "--relocs" then
+                Harness_interface.harness_string_of_elf64_relocs
+                  f1
+                  string_of_amd64_relocation_type (* XXX: generic way to obtain correct ABI needed *)
+                  bs0
               else
                 failwith "Unimplemented (for ELF64) or unrecognised flag"
             in

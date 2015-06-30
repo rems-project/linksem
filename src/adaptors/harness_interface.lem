@@ -23,6 +23,8 @@ open import Elf_types_native_uint
 
 val hex_string_of_big_int_no_padding : natural -> string
 declare ocaml target_rep function hex_string_of_big_int_no_padding = `Ml_bindings.hex_string_of_big_int_no_padding`
+val hex_string_of_big_int_no_padding' : integer -> string
+declare ocaml target_rep function hex_string_of_big_int_no_padding' = `Ml_bindings.hex_string_of_big_int_no_padding`
 val hex_string_of_big_int_pad2 : natural -> string
 declare ocaml target_rep function hex_string_of_big_int_pad2 = `Ml_bindings.hex_string_of_big_int_pad2`
 val hex_string_of_big_int_pad5 : natural -> string
@@ -491,6 +493,55 @@ let harness_string_of_elf32_reloc_entry os symtab stbl rel =
                 ]
     end
     
+val harness_string_of_elf64_reloc_a_entry : (natural -> string) -> elf64_symbol_table -> string_table -> elf64_relocation_a -> string
+let harness_string_of_elf64_reloc_a_entry os symtab stbl rel =
+  let off  = natural_of_elf64_addr  rel.elf64_ra_offset in
+  let inf  = natural_of_elf64_xword rel.elf64_ra_info in
+  let add  = integer_of_elf64_sxword rel.elf64_ra_addend in
+  let typ  = os (elf64_relocation_r_type rel.elf64_ra_info) in
+  let typs =
+    let len = naturalFromNat (22 - String.stringLength typ) in
+      concatS (replicate len " ")
+  in
+  let idx  = elf64_relocation_r_sym rel.elf64_ra_info in
+    match List.index symtab (unsafe_nat_of_natural idx) with
+      | Nothing  -> "harness_string_of_elf64_reloca_entry: Nothing returned"
+      | Just sym ->
+          let nm = natural_of_elf64_word sym.elf64_st_name in
+            if nm = stn_undef then
+              concatS [
+                unsafe_hex_string_of_natural 16 off
+              ; "  "
+              ; unsafe_hex_string_of_natural 16 inf
+              ; " "
+              ; typ
+              ; typs
+              ; "                    "
+              ; hex_string_of_big_int_no_padding' add
+              ]
+            else
+              let vlu = " " ^ unsafe_hex_string_of_natural 16 (natural_of_elf64_addr sym.elf64_st_value) in
+              let nm =
+                match String_table.get_string_at nm stbl with
+                  | Fail    f -> f
+                  | Success n -> n
+                end
+              in
+                concatS [
+                  unsafe_hex_string_of_natural 16 off
+                ; "  "
+                ; unsafe_hex_string_of_natural 16 inf
+                ; " "
+                ; typ
+                ; typs
+                ; vlu
+                ; " "
+                ; nm
+                ; " + "
+                ; hex_string_of_big_int_no_padding' add
+                ]
+    end
+    
 val harness_string_of_elf32_relocs' : endianness -> (natural -> string) -> elf32_file -> elf32_section_header_table -> string_table -> string_table -> byte_sequence -> string
 let harness_string_of_elf32_relocs' endian os f1 sht shdr stbl bs0 =
   let rels =
@@ -518,6 +569,34 @@ let harness_string_of_elf32_relocs' endian os f1 sht shdr stbl bs0 =
       | Fail err -> err
       | Success s -> concatS (intercalate "\n\n" s)
     end
+    
+val harness_string_of_elf64_relocs' : endianness -> (natural -> string) -> elf64_file -> elf64_section_header_table -> string_table -> string_table -> byte_sequence -> string
+let harness_string_of_elf64_relocs' endian os f1 sht shdr stbl bs0 =
+  let rels =
+    mapM (fun ent ->
+      let off = natural_of_elf64_off  ent.elf64_sh_offset in
+      let siz = natural_of_elf64_xword ent.elf64_sh_size in
+      let lnk = natural_of_elf64_word ent.elf64_sh_link in
+        Byte_sequence.offset_and_cut off siz bs0 >>= fun rels ->
+        Elf_relocation.read_elf64_relocation_a_section' endian rels >>= fun sect ->
+        Elf_file.get_elf64_symbol_table_by_index f1 lnk >>= fun symtab ->
+        return (sect, ent, symtab)
+    ) sht
+  >>=
+    mapM (fun (rels, ent, symtab) ->
+      let nm  = natural_of_elf64_word ent.elf64_sh_name in
+      let off = unsafe_hex_string_of_natural 4 (natural_of_elf64_off ent.elf64_sh_offset) in
+      let len = show (List.length rels) in
+      String_table.get_string_at nm shdr >>= fun nm ->
+      let hdr = "Relocation section '" ^ nm ^ "' at offset 0x" ^ off ^ " contains " ^ len ^ " entries:\n" in
+      let ttl = "    Offset             Info             Type               Symbol's Value  Symbol's Name + Addend\n" in
+      let body = concatS (intercalate "\n" (List.map (harness_string_of_elf64_reloc_a_entry os symtab stbl) rels)) in
+      return (hdr ^ ttl ^ body))
+  in
+    match rels with
+      | Fail err -> err
+      | Success s -> concatS (intercalate "\n\n" s)
+    end
   
 val harness_string_of_elf32_relocs : elf32_file -> (natural -> string) -> byte_sequence -> string
 let harness_string_of_elf32_relocs f1 os bs0 =
@@ -535,5 +614,24 @@ let harness_string_of_elf32_relocs f1 os bs0 =
       match get_elf32_file_section_header_string_table f1 with
         | Fail err     -> err
         | Success shdr -> "\n" ^ harness_string_of_elf32_relocs' endian os f1 rel_secs shdr stbl bs0
+      end
+    end
+    
+val harness_string_of_elf64_relocs : elf64_file -> (natural -> string) -> byte_sequence -> string
+let harness_string_of_elf64_relocs f1 os bs0 =
+  let hdr       = f1.elf64_file_header in
+  let sht       = f1.elf64_file_section_header_table in
+  let endian    = get_elf64_header_endianness hdr in
+  let rel_secs  = List.filter (fun x ->
+    x.elf64_sh_type = elf64_word_of_natural sht_rela) sht in
+  if List.length rel_secs = 0 then
+    "\nThere are no relocations in this file."
+  else
+    match get_elf64_file_symbol_string_table f1 with
+      | Fail err     -> err
+      | Success stbl ->
+      match get_elf64_file_section_header_string_table f1 with
+        | Fail err     -> err
+        | Success shdr -> "\n" ^ harness_string_of_elf64_relocs' endian os f1 rel_secs shdr stbl bs0
       end
     end
