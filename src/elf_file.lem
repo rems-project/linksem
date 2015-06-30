@@ -699,6 +699,16 @@ let get_elf32_symbol_table_by_index ef link =
         read_elf32_symbol_table endian sym.elf32_section_body
     end
     
+val get_elf32_string_table_by_index : elf32_file -> natural -> error string_table
+let get_elf32_string_table_by_index ef link =
+  let hdr     = ef.elf32_file_header in
+  let sht     = ef.elf32_file_section_header_table in
+  let sects   = ef.elf32_file_interpreted_sections in
+    match List.index sects (unsafe_nat_of_natural link) with
+      | Nothing  -> fail "get_elf32_string_table_by_index: invalid index"
+      | Just sym -> return (mk_string_table (Byte_sequence.string_of_byte_sequence sym.elf32_section_body) (char_of_byte Missing_pervasives.null_char))
+    end
+    
 val get_elf64_symbol_table_by_index : elf64_file -> natural -> error elf64_symbol_table
 let get_elf64_symbol_table_by_index ef link =
   let hdr     = ef.elf64_file_header in
@@ -709,6 +719,16 @@ let get_elf64_symbol_table_by_index ef link =
       | Nothing  -> fail "get_elf64_symbol_table_by_index: invalid index"
       | Just sym ->
         read_elf64_symbol_table endian sym.elf64_section_body
+    end
+    
+val get_elf64_string_table_by_index : elf64_file -> natural -> error string_table
+let get_elf64_string_table_by_index ef link =
+  let hdr     = ef.elf64_file_header in
+  let sht     = ef.elf64_file_section_header_table in
+  let sects   = ef.elf64_file_interpreted_sections in
+    match List.index sects (unsafe_nat_of_natural link) with
+      | Nothing  -> fail "get_elf64_string_table_by_index: invalid index"
+      | Just sym -> return (mk_string_table (Byte_sequence.string_of_byte_sequence sym.elf64_section_body) (char_of_byte Missing_pervasives.null_char))
     end
 
 type segment_provenance

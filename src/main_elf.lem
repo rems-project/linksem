@@ -97,6 +97,12 @@ let _ =
                   f1
                   string_of_x86_relocation_type (* XXX: generic way to obtain correct ABI needed *)
                   bs0
+              else if flag = "--symbols" then
+                  Harness_interface.harness_string_of_elf32_syms
+                  f1
+                  show
+                  show
+                  bs0
               else
                 failwith "Unrecognised flag"
             in

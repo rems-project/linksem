@@ -1,4 +1,5 @@
 open import Basic_classes
+open import Bool
 open import Maybe
 open import Num
 open import String
@@ -634,4 +635,91 @@ let harness_string_of_elf64_relocs f1 os bs0 =
         | Fail err     -> err
         | Success shdr -> "\n" ^ harness_string_of_elf64_relocs' endian os f1 rel_secs shdr stbl bs0
       end
+    end
+    
+val harness_string_of_elf32_symbol_table_entry : nat -> (natural -> string) -> (natural -> string) -> string_table -> elf32_symbol_table_entry -> string
+let harness_string_of_elf32_symbol_table_entry num os proc stbl ent =
+  let vlu = unsafe_hex_string_of_natural 8 (natural_of_elf32_addr ent.elf32_st_value) in
+  let siz = unsafe_hex_string_of_natural 0 (natural_of_elf32_word ent.elf32_st_size) in
+  let typ = string_of_symbol_type (get_symbol_type ent.elf32_st_info) os proc in
+  let bnd = string_of_symbol_binding (get_symbol_binding ent.elf32_st_info) os proc in
+  let vis = string_of_symbol_visibility (natural_of_unsigned_char ent.elf32_st_other) in
+  let ndx =
+    let tmp = natural_of_elf32_half ent.elf32_st_shndx in
+      if tmp = stn_undef then
+        "UND"
+      else
+        show tmp
+  in
+  let nm =
+    match String_table.get_string_at (natural_of_elf32_word ent.elf32_st_name) stbl with
+      | Fail err -> err
+      | Success s -> s
+    end
+  in
+    concatS [
+      "   "
+    ; show num ^ ":"
+    ; " "
+    ; vlu
+    ; "   "
+    ; siz
+    ; " "
+    ; typ
+    ; "  "
+    ; bnd
+    ; " "
+    ; vis
+    ; " "
+    ; ndx
+    ; " "
+    ; nm
+    ]
+    
+val harness_string_of_elf32_syms' : endianness -> (natural -> string) -> (natural -> string) -> elf32_file -> elf32_section_header_table -> string_table -> byte_sequence -> string
+let harness_string_of_elf32_syms' endian os proc f1 sht shdr bs0 =
+  let rels =
+    mapM (fun ent ->
+      let off = natural_of_elf32_off  ent.elf32_sh_offset in
+      let _   = Missing_pervasives.println ("off: " ^ show off) in
+      let siz = natural_of_elf32_word ent.elf32_sh_size in
+      let _   = Missing_pervasives.println ("size: " ^ show siz) in
+      let _   = Missing_pervasives.println ("bs0: " ^ show (Byte_sequence.length bs0)) in
+      let lnk = natural_of_elf32_word ent.elf32_sh_link in
+        Byte_sequence.offset_and_cut off siz bs0 >>= fun syms ->
+        Elf_symbol_table.read_elf32_symbol_table endian syms >>= fun sect ->
+        Elf_file.get_elf32_string_table_by_index f1 lnk >>= fun strtab ->
+        return (sect, ent, strtab)
+    ) sht
+  >>=
+    mapM (fun (syms, ent, strtab) ->
+      let nm  = natural_of_elf32_word ent.elf32_sh_name in
+      let len = show (List.length syms) in
+      String_table.get_string_at nm shdr >>= fun nm ->
+      let hdr = "Symbol table '" ^ nm ^ "' contains " ^ len ^ " entries:\n" in
+      let ttl = "   Num:    Value          Size Type    Bind   Vis      Ndx Name\n" in
+      let body = concatS (intercalate "\n" (List.mapi (fun n -> harness_string_of_elf32_symbol_table_entry n os proc strtab) syms)) in
+      return (hdr ^ ttl ^ body))
+  in
+    match rels with
+      | Fail err -> err
+      | Success s -> concatS (intercalate "\n\n" s)
+    end
+    
+val harness_string_of_elf32_syms : elf32_file -> (natural -> string) -> (natural -> string) -> byte_sequence -> string
+let harness_string_of_elf32_syms f1 os proc bs0 =
+  let hdr = f1.elf32_file_header in
+  let sht = f1.elf32_file_section_header_table in
+  let endian = get_elf32_header_endianness hdr in
+  let sym_secs = List.filter (fun x ->
+    x.elf32_sh_type = elf32_word_of_natural sht_dynsym ||
+    x.elf32_sh_type = elf32_word_of_natural sht_symtab) sht
+  in
+  if List.length sym_secs = 0 then
+    "\nThere are no symbols in this file."
+  else
+    match get_elf32_file_section_header_string_table f1 with
+      | Fail err     -> err
+      | Success shdr ->
+        harness_string_of_elf32_syms' endian os proc f1 sym_secs shdr bs0
     end
