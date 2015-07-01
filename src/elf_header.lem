@@ -551,7 +551,7 @@ let {ocaml} string_of_elf_machine_architecture m =
   else if m = elf_ma_arm then
     "AArch"
   else if m = elf_ma_x86_64 then
-    "AMD64"
+    "Advanced Micro Devices X86-64"
   else if m = elf_ma_aarch64 then
     "AArch64"
 	else

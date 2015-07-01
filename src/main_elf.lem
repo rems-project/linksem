@@ -29,6 +29,7 @@ open import Abi_amd64_serialisation
 
 open import Abi_x86_relocation
 
+open import Gnu_ext_program_header_table
 open import Gnu_ext_section_header_table
 
 let default_hdr_bdl =
@@ -62,15 +63,7 @@ let _ =
                 Harness_interface.harness_string_of_elf32_file_header f1.elf32_file_header
               else if flag = "--program-headers" then
                 Harness_interface.harness_string_of_elf32_program_headers
-                  (fun x -> (* XXX: GNU specific, move elsewhere *)
-                    if x = 4 * 421345620 then
-                      "GNU_EH_FRAME"
-                    else if x = (4 * 421345620) + 1 then
-                      "GNU_STACK"
-                    else if x = (4 * 421345620) + 2 then
-                      "GNU_RELRO"
-                    else
-                      show x)
+                  string_of_gnu_ext_segment_type 
                   (fun x ->
                     show x)
                   f1.elf32_file_header
@@ -109,10 +102,8 @@ let _ =
                 Harness_interface.harness_string_of_elf64_file_header f1.elf64_file_header
               else if flag = "--program-headers" then
                 Harness_interface.harness_string_of_elf64_program_headers
-                  (fun x -> 
-                    string_of_segment_type show show x)
-                  (fun x ->
-                    show x)
+                  string_of_gnu_ext_segment_type
+                  show
                   f1.elf64_file_header
                   f1.elf64_file_program_header_table
                   f1.elf64_file_section_header_table

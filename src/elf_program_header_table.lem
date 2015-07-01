@@ -63,19 +63,6 @@ let elf_pt_loproc : natural = (469762048 * 4) (* 1879048192 (* 0x70000000 *) *)
 (** End of reserved indices for processor specific semantics. *)
 let elf_pt_hiproc : natural = (536870911 * 4) + 3 (* 2147483647 (* 0x7fffffff *) *)
 
-(** GNU extensions, as defined in the LSB *)
-
-(** The element specifies the location and size of a segment that may be made
-  * read-only after relocations have been processed.
-  *)
-let elf_pt_gnu_relro : natural = (4 * 421345620) + 2 (* 0x6474e552 *)
-(** The [p_flags] member specifies the permissions of the segment containing the
-  * stack and is used to indicate whether the stack should be executable.
-  *)
-let elf_pt_gnu_stack : natural = (4 * 421345620) + 1 (* 0x6474e551 *)
-(** Element specifies the location and size of exception handling information. *)
-let elf_pt_gnu_eh_frame : natural = 4 * 421345620    (* 0x6474e550 *)
-
 (** [string_of_elf_segment_type os proc st] produces a string representation of
   * the coding of an ELF segment type [st] using [os] and [proc] to render OS-
   * and processor-specific codings.
@@ -99,12 +86,6 @@ let {ocaml} string_of_segment_type os proc pt =
 		"PHDR"
 	else if pt = elf_pt_tls then
 		"TLS"
-  else if pt = elf_pt_gnu_relro then
-    "GNU_RELRO"
-  else if pt = elf_pt_gnu_stack then
-    "GNU_STACK"
-  else if pt = elf_pt_gnu_eh_frame then
-    "GNU_EH_FRAME"
 	else if pt >= elf_pt_loos && pt <= elf_pt_hios then
 		os pt
 	else if pt >= elf_pt_loproc && pt <= elf_pt_hiproc then

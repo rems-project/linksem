@@ -71,12 +71,14 @@ LEM_ABI_SRC := memory_image.lem elf_memory_image.lem \
 	abis/abis.lem
 	
 LEM_GNU_SRC := gnu_extensions/gnu_ext_section_header_table.lem \
-  gnu_extensions/gnu_ext_symbol_versioning.lem
+  gnu_extensions/gnu_ext_symbol_versioning.lem \
+  gnu_extensions/gnu_ext_program_header_table.lem \
+  gnu_extensions/gnu_ext_section_to_segment_mapping.lem
 
 LEM_LINK_SRC := command_line.lem input_list.lem linkable_list.lem linker_script.lem link.lem
 
 # LEM_MODEL_ML includes all OCaml except for the main programs
-LEM_MODEL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_GNU_SRC) $(LEM_LINK_SRC))
+LEM_MODEL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_GNU_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC))
 
 OCAML_LIB_OBJS := unix.cma nums.cma zarith.cma batteries.cma nat_num.cmo big_int_impl.cmo nat_big_num.cmo uint.cma
 LEM_OCAML_OBJS := lem.cmo lem_basic_classes.cmo lem_function.cmo lem_list.cmo lem_num.cmo lem_sorting.cmo \
@@ -105,7 +107,7 @@ ldgram.y.hacked: ldgram.y
 	tail -n+35 > "$@" || rm -f "$@"
 
 .PHONY: lem-all-ocaml
-lem-all-ocaml: $(filter-out error.lem,$(LEM_UTIL_SRC)) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_GNU_SRC) $(LEM_LINK_SRC) main_link.lem main_elf.lem
+lem-all-ocaml: $(filter-out error.lem,$(LEM_UTIL_SRC)) $(LEM_ELF_SRC) $(LEM_GNU_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC) main_link.lem main_elf.lem
 	$(LEM) -ocaml -only_changed_output $+
 
 .PHONY: isa-extraction
@@ -122,6 +124,7 @@ clean:
 	rm -f *.cmi *.cmo *.cmx *.o
 	rm -f abis/*.cmi abis/*.cmo abis/*.cmx abis/*.o
 	rm -f abis/*/*.cmi abis/*/*.cmo abis/*/*.cmx abis/*/*.o
+	rm -f gnu_extensions/*.cmi gnu_extensions/*.cmo gnu_extensions/*.cmx gnu_extensions/*.o
 
 ocaml: main_elf
 
@@ -135,13 +138,13 @@ $(OCAML_LEM_INCLUDES) \
 main_elf main_link main_elf.opt main_link.opt: OCAMLFIND_PACKAGES := #-package batteries -package uint
 
 main_elf main_elf.opt: OCAML_LEM_SRC += $(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
-	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC)) \
-	$(patsubst %.lem,%.ml,$(LEM_GNU_SRC))
+	$(patsubst %.lem,%.ml,$(LEM_GNU_SRC)) \
+	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC))
 
 main_link main_link.opt: OCAML_LEM_SRC += $(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
-	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_GNU_SRC)) \
-	$(patsubst %.lem,%.ml,$(LEM_LINK_SRC)) \
+	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC)) \
+	$(patsubst %.lem,%.ml,$(LEM_LINK_SRC))
 
 main_elf main_link: %: %.ml $(ALL_UTIL_ML) lem-all-ocaml
 	ocamlfind ocamlc $(OCAMLFLAGS) -o "$@" -g \
@@ -157,8 +160,8 @@ main_elf.opt main_link.opt: %.opt: %.ml $(ALL_UTIL_ML) lem-all-ocaml
 	$(LEM_OCAML_OBJS_OPT) \
 	$(ALL_UTIL_ML) \
 	$(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
-	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_GNU_SRC)) \
+	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_LINK_SRC)) \
 	"$<" $(OCAMLFIND_PACKAGES)
 

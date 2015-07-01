@@ -22,6 +22,8 @@ open import Elf_section_header_table
 open import Elf_symbol_table
 open import Elf_types_native_uint
 
+open import Gnu_ext_section_to_segment_mapping
+
 val hex_string_of_big_int_no_padding : natural -> string
 declare ocaml target_rep function hex_string_of_big_int_no_padding = `Ml_bindings.hex_string_of_big_int_no_padding`
 val hex_string_of_big_int_no_padding' : integer -> string
@@ -215,7 +217,7 @@ let harness_string_of_elf32_segment_section_mappings hdr pht sht stbl =
   let map =
     List.mapi (fun i -> fun pent ->
       let mapping =
-        match get_elf32_section_to_segment_mapping hdr sht pent stbl with
+        match get_elf32_section_to_segment_mapping hdr sht pent elf32_section_in_segment stbl with
           | Fail err   -> ["ERR: " ^ err]
           | Success mp -> intercalate " " mp
         end
@@ -241,7 +243,7 @@ let harness_string_of_elf64_segment_section_mappings hdr pht sht stbl =
   let map =
     List.mapi (fun i -> fun pent ->
       let mapping =
-        match get_elf64_section_to_segment_mapping hdr sht pent stbl with
+        match get_elf64_section_to_segment_mapping hdr sht pent elf64_section_in_segment stbl with
           | Fail err   -> ["ERR: " ^ err]
           | Success mp -> intercalate " " mp
         end

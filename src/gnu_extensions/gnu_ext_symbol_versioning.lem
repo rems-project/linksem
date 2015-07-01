@@ -24,3 +24,45 @@ type gnu_ext_elf64_verdef =
    ; gnu_ext_elf64_vd_aux     : elf64_word
    ; gnu_ext_elf64_vd_next    : elf64_word
    |>
+   
+type gnu_ext_elf32_veraux =
+  <| gnu_ext_elf32_vda_name : elf32_word
+   ; gnu_ext_elf32_vda_next : elf32_word
+   |>
+   
+type gnu_ext_elf64_veraux =
+  <| gnu_ext_elf64_vda_name : elf64_word
+   ; gnu_ext_elf64_vda_next : elf64_word
+   |>
+   
+type gnu_ext_elf32_verneed =
+  <| gnu_ext_elf32_vn_version : elf32_half
+   ; gnu_ext_elf32_vn_cnt     : elf32_half
+   ; gnu_ext_elf32_vn_file    : elf32_word
+   ; gnu_ext_elf32_vn_aux     : elf32_word
+   ; gnu_ext_elf32_vn_next    : elf32_word
+   |>
+   
+type gnu_ext_elf64_verneed =
+  <| gnu_ext_elf64_vn_version : elf64_half
+   ; gnu_ext_elf64_vn_cnt     : elf64_half
+   ; gnu_ext_elf64_vn_file    : elf64_word
+   ; gnu_ext_elf64_vn_aux     : elf64_word
+   ; gnu_ext_elf64_vn_next    : elf64_word
+   |>
+   
+type gnu_ext_elf32_vernaux =
+  <| gnu_ext_elf32_vna_hash  : elf32_word
+   ; gnu_ext_elf32_vna_flags : elf32_half
+   ; gnu_ext_elf32_vna_other : elf32_half
+   ; gnu_ext_elf32_vna_name  : elf32_word
+   ; gnu_ext_elf32_vna_next  : elf32_word
+   |>
+   
+type gnu_ext_elf64_vernaux =
+  <| gnu_ext_elf64_vna_hash  : elf64_word
+   ; gnu_ext_elf64_vna_flags : elf64_half
+   ; gnu_ext_elf64_vna_other : elf64_half
+   ; gnu_ext_elf64_vna_name  : elf64_word
+   ; gnu_ext_elf64_vna_next  : elf64_word
+   |>
