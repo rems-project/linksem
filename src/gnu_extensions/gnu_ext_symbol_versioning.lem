@@ -2,7 +2,11 @@
   * relating to the GNU symbol versioning extensions (i.e. contents of
   * GNU_VERSYM sections).
   *)
-  
+
+open import Byte_sequence
+open import Endianness
+open import Error
+
 open import Elf_types_native_uint
   
 type gnu_ext_elf32_verdef =
@@ -25,6 +29,34 @@ type gnu_ext_elf64_verdef =
    ; gnu_ext_elf64_vd_next    : elf64_word
    |>
    
+val read_gnu_ext_elf32_verdef : endianness -> byte_sequence -> error (gnu_ext_elf32_verdef * byte_sequence)
+let read_gnu_ext_elf32_verdef endian bs0 =
+  read_elf32_half endian bs0 >>= fun (ver, bs0) ->
+  read_elf32_half endian bs0 >>= fun (flg, bs0) ->
+  read_elf32_half endian bs0 >>= fun (ndx, bs0) ->
+  read_elf32_half endian bs0 >>= fun (cnt, bs0) ->
+  read_elf32_word endian bs0 >>= fun (hsh, bs0) ->
+  read_elf32_word endian bs0 >>= fun (aux, bs0) ->
+  read_elf32_word endian bs0 >>= fun (nxt, bs0) ->
+    return (<| gnu_ext_elf32_vd_version = ver; gnu_ext_elf32_vd_flags = flg;
+      gnu_ext_elf32_vd_ndx = ndx; gnu_ext_elf32_vd_cnt = cnt;
+        gnu_ext_elf32_vd_hash = hsh; gnu_ext_elf32_vd_aux = aux;
+      gnu_ext_elf32_vd_next = nxt |>, bs0)
+      
+val read_gnu_ext_elf64_verdef : endianness -> byte_sequence -> error (gnu_ext_elf64_verdef * byte_sequence)
+let read_gnu_ext_elf64_verdef endian bs0 =
+  read_elf64_half endian bs0 >>= fun (ver, bs0) ->
+  read_elf64_half endian bs0 >>= fun (flg, bs0) ->
+  read_elf64_half endian bs0 >>= fun (ndx, bs0) ->
+  read_elf64_half endian bs0 >>= fun (cnt, bs0) ->
+  read_elf64_word endian bs0 >>= fun (hsh, bs0) ->
+  read_elf64_word endian bs0 >>= fun (aux, bs0) ->
+  read_elf64_word endian bs0 >>= fun (nxt, bs0) ->
+    return (<| gnu_ext_elf64_vd_version = ver; gnu_ext_elf64_vd_flags = flg;
+      gnu_ext_elf64_vd_ndx = ndx; gnu_ext_elf64_vd_cnt = cnt;
+        gnu_ext_elf64_vd_hash = hsh; gnu_ext_elf64_vd_aux = aux;
+      gnu_ext_elf64_vd_next = nxt |>, bs0)
+   
 type gnu_ext_elf32_veraux =
   <| gnu_ext_elf32_vda_name : elf32_word
    ; gnu_ext_elf32_vda_next : elf32_word
@@ -34,6 +66,18 @@ type gnu_ext_elf64_veraux =
   <| gnu_ext_elf64_vda_name : elf64_word
    ; gnu_ext_elf64_vda_next : elf64_word
    |>
+   
+val read_gnu_ext_elf32_veraux : endianness -> byte_sequence -> error (gnu_ext_elf32_veraux * byte_sequence)
+let read_gnu_ext_elf32_veraux endian bs0 =
+  read_elf32_word endian bs0 >>= fun (nme, bs0) ->
+  read_elf32_word endian bs0 >>= fun (nxt, bs0) ->
+    return (<| gnu_ext_elf32_vda_name = nme; gnu_ext_elf32_vda_next = nxt |>, bs0)
+    
+val read_gnu_ext_elf64_veraux : endianness -> byte_sequence -> error (gnu_ext_elf64_veraux * byte_sequence)
+let read_gnu_ext_elf64_veraux endian bs0 =
+  read_elf64_word endian bs0 >>= fun (nme, bs0) ->
+  read_elf64_word endian bs0 >>= fun (nxt, bs0) ->
+    return (<| gnu_ext_elf64_vda_name = nme; gnu_ext_elf64_vda_next = nxt |>, bs0)
    
 type gnu_ext_elf32_verneed =
   <| gnu_ext_elf32_vn_version : elf32_half
@@ -51,6 +95,28 @@ type gnu_ext_elf64_verneed =
    ; gnu_ext_elf64_vn_next    : elf64_word
    |>
    
+val read_gnu_ext_elf32_verneed : endianness -> byte_sequence -> error (gnu_ext_elf32_verneed * byte_sequence)
+let read_gnu_ext_elf32_verneed endian bs0 =
+  read_elf32_half endian bs0 >>= fun (ver, bs0) ->
+  read_elf32_half endian bs0 >>= fun (cnt, bs0) ->
+  read_elf32_word endian bs0 >>= fun (fle, bs0) ->
+  read_elf32_word endian bs0 >>= fun (aux, bs0) ->
+  read_elf32_word endian bs0 >>= fun (nxt, bs0) ->
+    return (<| gnu_ext_elf32_vn_version = ver; gnu_ext_elf32_vn_cnt = cnt;
+      gnu_ext_elf32_vn_file = fle; gnu_ext_elf32_vn_aux = aux;
+        gnu_ext_elf32_vn_next = nxt |>, bs0)
+
+val read_gnu_ext_elf64_verneed : endianness -> byte_sequence -> error (gnu_ext_elf64_verneed * byte_sequence)
+let read_gnu_ext_elf64_verneed endian bs0 =
+  read_elf64_half endian bs0 >>= fun (ver, bs0) ->
+  read_elf64_half endian bs0 >>= fun (cnt, bs0) ->
+  read_elf64_word endian bs0 >>= fun (fle, bs0) ->
+  read_elf64_word endian bs0 >>= fun (aux, bs0) ->
+  read_elf64_word endian bs0 >>= fun (nxt, bs0) ->
+    return (<| gnu_ext_elf64_vn_version = ver; gnu_ext_elf64_vn_cnt = cnt;
+      gnu_ext_elf64_vn_file = fle; gnu_ext_elf64_vn_aux = aux;
+        gnu_ext_elf64_vn_next = nxt |>, bs0)
+   
 type gnu_ext_elf32_vernaux =
   <| gnu_ext_elf32_vna_hash  : elf32_word
    ; gnu_ext_elf32_vna_flags : elf32_half
@@ -66,3 +132,25 @@ type gnu_ext_elf64_vernaux =
    ; gnu_ext_elf64_vna_name  : elf64_word
    ; gnu_ext_elf64_vna_next  : elf64_word
    |>
+   
+val read_gnu_ext_elf32_vernaux : endianness -> byte_sequence -> error (gnu_ext_elf32_vernaux * byte_sequence)
+let read_gnu_ext_elf32_vernaux endian bs0 =
+  read_elf32_word endian bs0 >>= fun (hsh, bs0) ->
+  read_elf32_half endian bs0 >>= fun (flg, bs0) ->
+  read_elf32_half endian bs0 >>= fun (otr, bs0) ->
+  read_elf32_word endian bs0 >>= fun (nme, bs0) ->
+  read_elf32_word endian bs0 >>= fun (nxt, bs0) ->
+    return (<| gnu_ext_elf32_vna_hash = hsh; gnu_ext_elf32_vna_flags = flg;
+      gnu_ext_elf32_vna_other = otr; gnu_ext_elf32_vna_name = nme;
+    gnu_ext_elf32_vna_next = nxt |>, bs0)
+    
+val read_gnu_ext_elf64_vernaux : endianness -> byte_sequence -> error (gnu_ext_elf64_vernaux * byte_sequence)
+let read_gnu_ext_elf64_vernaux endian bs0 =
+  read_elf64_word endian bs0 >>= fun (hsh, bs0) ->
+  read_elf64_half endian bs0 >>= fun (flg, bs0) ->
+  read_elf64_half endian bs0 >>= fun (otr, bs0) ->
+  read_elf64_word endian bs0 >>= fun (nme, bs0) ->
+  read_elf64_word endian bs0 >>= fun (nxt, bs0) ->
+    return (<| gnu_ext_elf64_vna_hash = hsh; gnu_ext_elf64_vna_flags = flg;
+      gnu_ext_elf64_vna_other = otr; gnu_ext_elf64_vna_name = nme;
+    gnu_ext_elf64_vna_next = nxt |>, bs0)
