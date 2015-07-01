@@ -294,9 +294,24 @@ let harness_string_of_elf64_program_headers os proc hdr pht sht stbl bs0 =
   ; harness_string_of_elf64_segment_section_mappings hdr pht sht stbl
   ]
   
-val harness_sht_flag_legend : string
-let harness_sht_flag_legend =
+val harness_sht32_flag_legend : string
+let harness_sht32_flag_legend =
   "\nKey to Flags:
+  W (write), A (alloc), X (execute), M (merge), S (strings)
+  I (info), L (link order), G (group), T (TLS), E (exclude), x (unknown)
+  O (extra OS processing required) o (OS specific), p (processor specific)"
+  
+val harness_sht64_flag_legend : natural -> string
+let harness_sht64_flag_legend mach =
+  if mach = elf_ma_x86_64 ||
+     mach = elf_ma_l10m ||
+     mach = elf_ma_k10m then
+    "\nKey to Flags:
+  W (write), A (alloc), X (execute), M (merge), S (strings), l (large)
+  I (info), L (link order), G (group), T (TLS), E (exclude), x (unknown)
+  O (extra OS processing required) o (OS specific), p (processor specific)"
+  else
+    "\nKey to Flags:
   W (write), A (alloc), X (execute), M (merge), S (strings)
   I (info), L (link order), G (group), T (TLS), E (exclude), x (unknown)
   O (extra OS processing required) o (OS specific), p (processor specific)"
@@ -439,7 +454,7 @@ let harness_string_of_elf32_section_headers os proc usr hdr sht stbl =
   ; ""
   ; "Section Headers:"
   ; harness_string_of_elf32_sht os proc usr sht stbl
-  ] ^ harness_sht_flag_legend
+  ] ^ harness_sht32_flag_legend
   
 val harness_string_of_elf64_section_headers : (natural -> string) -> (natural -> string) -> (natural -> string) -> elf64_header -> elf64_section_header_table -> string_table -> string
 let harness_string_of_elf64_section_headers os proc usr hdr sht stbl =
@@ -448,7 +463,7 @@ let harness_string_of_elf64_section_headers os proc usr hdr sht stbl =
   ; ""
   ; "Section Headers:"
   ; harness_string_of_elf64_sht os proc usr sht stbl
-  ] ^ harness_sht_flag_legend
+  ] ^ harness_sht64_flag_legend (natural_of_elf64_half hdr.elf64_machine)
   
 val harness_string_of_elf32_reloc_entry : (natural -> string) -> elf32_symbol_table -> string_table -> elf32_relocation -> string
 let harness_string_of_elf32_reloc_entry os symtab stbl rel =

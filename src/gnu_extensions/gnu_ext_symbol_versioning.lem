@@ -1,0 +1,26 @@
+(** The [gnu_ext_symbol_versioning] defines constants, types and functions
+  * relating to the GNU symbol versioning extensions (i.e. contents of
+  * GNU_VERSYM sections).
+  *)
+  
+open import Elf_types_native_uint
+  
+type gnu_ext_elf32_verdef =
+  <| gnu_ext_elf32_vd_version : elf32_half
+   ; gnu_ext_elf32_vd_flags   : elf32_half
+   ; gnu_ext_elf32_vd_ndx     : elf32_half
+   ; gnu_ext_elf32_vd_cnt     : elf32_half
+   ; gnu_ext_elf32_vd_hash    : elf32_word
+   ; gnu_ext_elf32_vd_aux     : elf32_word
+   ; gnu_ext_elf32_vd_next    : elf32_word
+   |>
+   
+type gnu_ext_elf64_verdef =
+  <| gnu_ext_elf64_vd_version : elf64_half
+   ; gnu_ext_elf64_vd_flags   : elf64_half
+   ; gnu_ext_elf64_vd_ndx     : elf64_half
+   ; gnu_ext_elf64_vd_cnt     : elf64_half
+   ; gnu_ext_elf64_vd_hash    : elf64_word
+   ; gnu_ext_elf64_vd_aux     : elf64_word
+   ; gnu_ext_elf64_vd_next    : elf64_word
+   |>

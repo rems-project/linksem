@@ -1,0 +1,27 @@
+(** The module [gnu_ext_section_header_table] implements function, definitions
+  * and types relating to the GNU extensions to the standard ELF section header
+  * table.
+  *)
+
+open import Basic_classes
+open import Num
+
+(** GNU extended section types as specified in the LSB *)
+
+let sht_gnu_hash    : natural = (2 * 939524091)     (* 0x6FFFFFF6 *)
+let sht_gnu_verdef  : natural = (2 * 939524095) - 1 (* 0x6ffffffd *)
+let sht_gnu_verneed : natural = (2 * 939524095)     (* 0x6ffffffe *)
+let sht_gnu_versym  : natural = (2 * 939524095) + 1 (* 0x6fffffff *)
+
+val string_of_gnu_ext_section_type : natural -> string
+let {ocaml} string_of_gnu_ext_section_type i =
+  if i = sht_gnu_hash then
+    "GNU_HASH"
+  else if i = sht_gnu_verdef then
+    "VERDEF"
+  else if i = sht_gnu_verneed then
+    "VERNEED"
+  else if i = sht_gnu_versym then
+    "VERSYM"
+  else
+    "Invalid GNU EXT section type"

@@ -172,12 +172,6 @@ let sht_hiproc : natural = (536870911 * 4) + 3 (* 2147483647 (* 0x7fffffff *) *)
 let sht_louser : natural = (536870912 * 4) (* 2147483648 (* 0x80000000 *) *)
 let sht_hiuser : natural = (603979775 * 4) + 3 (* 2415919103 (* 0x8fffffff *) *)
 
-(** GNU extensions, as specified in the LSB *)
-let sht_gnu_hash    : natural = (2 * 939524091)     (* 0x6FFFFFF6 *)
-let sht_gnu_verdef  : natural = (2 * 939524095) - 1 (* 0x6ffffffd *)
-let sht_gnu_verneed : natural = (2 * 939524095)     (* 0x6ffffffe *)
-let sht_gnu_versym  : natural = (2 * 939524095) + 1 (* 0x6fffffff *)
-
 (* XXX: is GNU stuff supposed to be hardcoded here? *)
 val string_of_section_type : (natural -> string) -> (natural -> string) ->
   (natural -> string) -> natural -> string
@@ -216,14 +210,6 @@ let {ocaml} string_of_section_type os proc user i =
     "GROUP"
   else if i = sht_symtab_shndx then
     "SYMTAB_SHNDX"
-  else if i = sht_gnu_hash then
-    "GNU_HASH"
-  else if i = sht_gnu_verdef then
-    "VERDEF"
-  else if i = sht_gnu_verneed then
-    "VERNEED"
-  else if i = sht_gnu_versym then
-    "VERSYM"
   else if i >= sht_loos && i <= sht_hios then
     os i 
   else if i >= sht_loproc && i <= sht_hiproc then
@@ -293,7 +279,7 @@ let shf_mask_proc        : natural = 4 * 1006632960 (* 0xf0000000 *)
 
 (* TODO: finish me!  Add as required. *)
 val string_of_section_flags : (natural -> string) -> (natural -> string) -> natural -> string
-let string_of_section_flags os proc f =
+let {ocaml} string_of_section_flags os proc f =
   if f = shf_write then
     "W"
   else if f = shf_alloc then
