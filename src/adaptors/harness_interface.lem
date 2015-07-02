@@ -698,10 +698,7 @@ let harness_string_of_elf32_syms' endian os proc f1 sht shdr bs0 =
   let rels =
     mapM (fun ent ->
       let off = natural_of_elf32_off  ent.elf32_sh_offset in
-      let _   = Missing_pervasives.println ("off: " ^ show off) in
       let siz = natural_of_elf32_word ent.elf32_sh_size in
-      let _   = Missing_pervasives.println ("size: " ^ show siz) in
-      let _   = Missing_pervasives.println ("bs0: " ^ show (Byte_sequence.length bs0)) in
       let lnk = natural_of_elf32_word ent.elf32_sh_link in
         Byte_sequence.offset_and_cut off siz bs0 >>= fun syms ->
         Elf_symbol_table.read_elf32_symbol_table endian syms >>= fun sect ->

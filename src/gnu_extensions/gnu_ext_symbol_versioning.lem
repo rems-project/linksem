@@ -3,11 +3,65 @@
   * GNU_VERSYM sections).
   *)
 
+open import Basic_classes
+
 open import Byte_sequence
 open import Endianness
 open import Error
 
+open import Elf_section_header_table
+open import Elf_symbol_table
 open import Elf_types_native_uint
+
+open import Gnu_ext_section_header_table
+
+type gnu_ext_elf32_symbol_version_table =
+  list elf32_half
+  
+type gnu_ext_elf64_symbol_version_table =
+  list elf64_half
+
+val obtain_gnu_ext_elf32_symbol_version_table : endianness -> elf32_section_header_table -> elf32_symbol_table -> byte_sequence -> error gnu_ext_elf32_symbol_version_table
+let obtain_gnu_ext_elf32_symbol_version_table endian sht dynsym bs0 =
+  let dlen = List.length dynsym in
+    if dlen = 0 then
+      return []
+    else
+      let vers = List.filter (fun ent ->
+          ent.elf32_sh_type = elf32_word_of_natural sht_gnu_versym
+        ) sht
+      in
+        match vers with
+          | []    -> return []
+          | [ver] ->
+            let off = natural_of_elf32_off  ver.elf32_sh_offset in
+            let siz = natural_of_elf32_word ver.elf32_sh_size in
+            Byte_sequence.offset_and_cut off siz bs0         >>= fun ver      ->
+            Error.repeatM' dlen bs0 (read_elf32_half endian) >>= fun (ver, _) ->
+            return ver
+          | _     -> fail "obtain_gnu_ext_elf32_symbol_version_table: multiple sections of type .gnu_versym present in file"
+        end
+ 
+val obtain_gnu_ext_elf64_symbol_version_table : endianness -> elf64_section_header_table -> elf64_symbol_table -> byte_sequence -> error gnu_ext_elf64_symbol_version_table
+let obtain_gnu_ext_elf64_symbol_version_table endian sht dynsym bs0 =
+  let dlen = List.length dynsym in
+    if dlen = 0 then
+      return []
+    else
+      let vers = List.filter (fun ent ->
+          ent.elf64_sh_type = elf64_word_of_natural sht_gnu_versym
+        ) sht
+      in
+        match vers with
+          | []    -> return []
+          | [ver] ->
+            let off = natural_of_elf64_off   ver.elf64_sh_offset in
+            let siz = natural_of_elf64_xword ver.elf64_sh_size in
+            Byte_sequence.offset_and_cut off siz bs0         >>= fun ver      ->
+            Error.repeatM' dlen bs0 (read_elf64_half endian) >>= fun (ver, _) ->
+            return ver
+          | _     -> fail "obtain_gnu_ext_elf64_symbol_version_table: multiple sections of type .gnu_versym present in file"
+        end
   
 type gnu_ext_elf32_verdef =
   <| gnu_ext_elf32_vd_version : elf32_half
