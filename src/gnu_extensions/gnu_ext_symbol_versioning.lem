@@ -4,6 +4,8 @@
   *)
 
 open import Basic_classes
+open import List
+open import Num
 
 open import Byte_sequence
 open import Endianness
@@ -12,6 +14,8 @@ open import Error
 open import Elf_section_header_table
 open import Elf_symbol_table
 open import Elf_types_native_uint
+
+open import Missing_pervasives
 
 open import Gnu_ext_section_header_table
 
@@ -25,6 +29,7 @@ val obtain_gnu_ext_elf32_symbol_version_table : endianness -> elf32_section_head
 let obtain_gnu_ext_elf32_symbol_version_table endian sht dynsym bs0 =
   let dlen = List.length dynsym in
     if dlen = 0 then
+      let _ = Missing_pervasives.println "WWW" in
       return []
     else
       let vers = List.filter (fun ent ->
@@ -32,7 +37,9 @@ let obtain_gnu_ext_elf32_symbol_version_table endian sht dynsym bs0 =
         ) sht
       in
         match vers with
-          | []    -> return []
+          | []    ->
+            let _ = Missing_pervasives.println "PPP" in
+              return []
           | [ver] ->
             let off = natural_of_elf32_off  ver.elf32_sh_offset in
             let siz = natural_of_elf32_word ver.elf32_sh_size in
@@ -110,6 +117,56 @@ let read_gnu_ext_elf64_verdef endian bs0 =
       gnu_ext_elf64_vd_ndx = ndx; gnu_ext_elf64_vd_cnt = cnt;
         gnu_ext_elf64_vd_hash = hsh; gnu_ext_elf64_vd_aux = aux;
       gnu_ext_elf64_vd_next = nxt |>, bs0)
+      
+val gnu_ext_elf32_verdef_size : natural
+let gnu_ext_elf32_verdef_size =
+  160
+  
+val gnu_ext_elf64_verdef_size : natural
+let gnu_ext_elf64_verdef_size =
+  256
+      
+val read_gnu_ext_elf32_verdefs : endianness -> byte_sequence -> natural -> error (list gnu_ext_elf32_verdef)
+let rec read_gnu_ext_elf32_verdefs endian bs0 off =
+  Byte_sequence.offset_and_cut off gnu_ext_elf32_verdef_size bs0 >>= fun vd ->
+  read_gnu_ext_elf32_verdef endian vd >>= fun (verdef, _) ->
+  let off = natural_of_elf32_word verdef.gnu_ext_elf32_vd_next in
+  read_gnu_ext_elf32_verdefs endian bs0 off >>= fun tail ->
+  return (verdef::tail)
+  
+val read_gnu_ext_elf64_verdefs : endianness -> byte_sequence -> natural -> error (list gnu_ext_elf64_verdef)
+let rec read_gnu_ext_elf64_verdefs endian bs0 off =
+  Byte_sequence.offset_and_cut off gnu_ext_elf32_verdef_size bs0 >>= fun vd ->
+  read_gnu_ext_elf64_verdef endian vd >>= fun (verdef, _) ->
+  let off = natural_of_elf64_word verdef.gnu_ext_elf64_vd_next in
+  read_gnu_ext_elf64_verdefs endian bs0 off >>= fun tail ->
+  return (verdef::tail)
+      
+val obtain_gnu_ext_elf32_verdef : endianness -> elf32_section_header_table -> byte_sequence -> error (list gnu_ext_elf32_verdef)
+let obtain_gnu_ext_elf32_verdef endian sht bs0 =
+  let verdefs = List.filter (fun ent ->
+    ent.elf32_sh_type = elf32_word_of_natural sht_gnu_verneed) sht
+  in
+    match verdefs with
+      | []  -> fail "obtain_gnu_ext_elf32_verdef: mandatory VERNEED section missing"
+      | [x] ->
+        let off = natural_of_elf32_off x.elf32_sh_offset in
+        read_gnu_ext_elf32_verdefs endian bs0 off
+      | _   -> fail "obtain_gnu_ext_elf32_verdef: multiple VERNEED sections present in file"
+    end
+    
+val obtain_gnu_ext_elf64_verdef : endianness -> elf64_section_header_table -> byte_sequence -> error (list gnu_ext_elf64_verdef)
+let obtain_gnu_ext_elf64_verdef endian sht bs0 =
+  let verdefs = List.filter (fun ent ->
+    ent.elf64_sh_type = elf64_word_of_natural sht_gnu_verneed) sht
+  in
+    match verdefs with
+      | []  -> fail "obtain_gnu_ext_elf64_verdef: mandatory VERNEED section missing"
+      | [x] ->
+        let off = natural_of_elf64_off x.elf64_sh_offset in
+        read_gnu_ext_elf64_verdefs endian bs0 off
+      | _   -> fail "obtain_gnu_ext_elf64_verdef: multiple VERNEED sections present in file"
+    end
    
 type gnu_ext_elf32_veraux =
   <| gnu_ext_elf32_vda_name : elf32_word

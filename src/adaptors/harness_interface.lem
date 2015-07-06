@@ -23,6 +23,7 @@ open import Elf_symbol_table
 open import Elf_types_native_uint
 
 open import Gnu_ext_section_to_segment_mapping
+open import Gnu_ext_symbol_versioning
 
 val hex_string_of_big_int_no_padding : natural -> string
 declare ocaml target_rep function hex_string_of_big_int_no_padding = `Ml_bindings.hex_string_of_big_int_no_padding`
@@ -654,8 +655,8 @@ let harness_string_of_elf64_relocs f1 os bs0 =
       end
     end
     
-val harness_string_of_elf32_symbol_table_entry : nat -> (natural -> string) -> (natural -> string) -> string_table -> elf32_symbol_table_entry -> string
-let harness_string_of_elf32_symbol_table_entry num os proc stbl ent =
+val harness_string_of_elf32_symbol_table_entry : nat -> (natural -> string) -> (natural -> string) -> string_table -> maybe elf32_half -> elf32_symbol_table_entry -> string
+let harness_string_of_elf32_symbol_table_entry num os proc stbl sym_ver ent =
   let vlu = unsafe_hex_string_of_natural 8 (natural_of_elf32_addr ent.elf32_st_value) in
   let siz = unsafe_hex_string_of_natural 0 (natural_of_elf32_word ent.elf32_st_size) in
   let typ = string_of_symbol_type (get_symbol_type ent.elf32_st_info) os proc in
@@ -674,46 +675,80 @@ let harness_string_of_elf32_symbol_table_entry num os proc stbl ent =
       | Success s -> s
     end
   in
-    concatS [
-      "   "
-    ; show num ^ ":"
-    ; " "
-    ; vlu
-    ; "   "
-    ; siz
-    ; " "
-    ; typ
-    ; "  "
-    ; bnd
-    ; " "
-    ; vis
-    ; " "
-    ; ndx
-    ; " "
-    ; nm
-    ]
+    match sym_ver with
+      | Nothing ->
+          concatS [
+            "   "
+          ; show num ^ ":"
+          ; " "
+          ; vlu
+          ; "   "
+          ; siz
+          ; " "
+          ; typ
+          ; "  "
+          ; bnd
+          ; " "
+          ; vis
+          ; " "
+          ; ndx
+          ; " "
+          ; nm
+          ]
+      | Just ver ->
+        let ver = natural_of_elf32_half ver in
+          concatS [
+            "   "
+          ; show num ^ ":"
+          ; " "
+          ; vlu
+          ; "   "
+          ; siz
+          ; " "
+          ; typ
+          ; "  "
+          ; bnd
+          ; " "
+          ; vis
+          ; " "
+          ; ndx
+          ; " "
+          ; nm
+          ; " "
+          ; "(" ^ show ver ^ ")"
+          ]
+    end
     
-val harness_string_of_elf32_syms' : endianness -> (natural -> string) -> (natural -> string) -> elf32_file -> elf32_section_header_table -> string_table -> byte_sequence -> string
-let harness_string_of_elf32_syms' endian os proc f1 sht shdr bs0 =
+val harness_string_of_elf32_syms' : endianness -> (natural -> string) -> (natural -> string) -> elf32_file -> elf32_section_header_table -> elf32_section_header_table -> string_table -> byte_sequence -> string
+let harness_string_of_elf32_syms' endian os proc f1 filtered_sht sht shdr bs0 =
   let rels =
     mapM (fun ent ->
       let off = natural_of_elf32_off  ent.elf32_sh_offset in
       let siz = natural_of_elf32_word ent.elf32_sh_size in
       let lnk = natural_of_elf32_word ent.elf32_sh_link in
+      let typ = natural_of_elf32_word ent.elf32_sh_type in
         Byte_sequence.offset_and_cut off siz bs0 >>= fun syms ->
         Elf_symbol_table.read_elf32_symbol_table endian syms >>= fun sect ->
         Elf_file.get_elf32_string_table_by_index f1 lnk >>= fun strtab ->
-        return (sect, ent, strtab)
-    ) sht
+        return (sect, ent, strtab, typ)
+    ) filtered_sht
   >>=
-    mapM (fun (syms, ent, strtab) ->
+    mapM (fun (syms, ent, strtab, typ) ->
       let nm  = natural_of_elf32_word ent.elf32_sh_name in
       let len = show (List.length syms) in
       String_table.get_string_at nm shdr >>= fun nm ->
       let hdr = "Symbol table '" ^ nm ^ "' contains " ^ len ^ " entries:\n" in
       let ttl = "   Num:    Value          Size Type    Bind   Vis      Ndx Name\n" in
-      let body = concatS (intercalate "\n" (List.mapi (fun n -> harness_string_of_elf32_symbol_table_entry n os proc strtab) syms)) in
-      return (hdr ^ ttl ^ body))
+      if typ = sht_dynsym then
+        obtain_gnu_ext_elf32_symbol_version_table endian sht syms bs0 >>= fun ver ->
+        let body = concatS (intercalate "\n" (List.mapi (fun n ->
+          let ver = List.index ver n in
+            harness_string_of_elf32_symbol_table_entry n os proc strtab ver) syms))
+        in
+          return (hdr ^ ttl ^ body)
+      else  
+        let body = concatS (intercalate "\n" (List.mapi (fun n -> harness_string_of_elf32_symbol_table_entry n os proc strtab Nothing) syms)) in
+        return (hdr ^ ttl ^ body))
   in
     match rels with
       | Fail err -> err
@@ -735,5 +770,5 @@ let harness_string_of_elf32_syms f1 os proc bs0 =
     match get_elf32_file_section_header_string_table f1 with
       | Fail err     -> err
       | Success shdr ->
-        harness_string_of_elf32_syms' endian os proc f1 sym_secs shdr bs0
+        harness_string_of_elf32_syms' endian os proc f1 sym_secs sht shdr bs0
     end
