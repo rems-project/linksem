@@ -322,6 +322,12 @@ type gnu_ext_elf64_vernaux =
    ; gnu_ext_elf64_vna_next  : elf64_word
    |>
    
+val gnu_ext_elf32_vernaux_size : natural
+let gnu_ext_elf32_vernaux_size = 128
+
+val gnu_ext_elf64_vernaux_size : natural
+let gnu_ext_elf64_vernaux_size = 224
+   
 val read_gnu_ext_elf32_vernaux : endianness -> byte_sequence -> error (gnu_ext_elf32_vernaux * byte_sequence)
 let read_gnu_ext_elf32_vernaux endian bs0 =
   read_elf32_word endian bs0 >>= fun (hsh, bs0) ->
@@ -343,3 +349,27 @@ let read_gnu_ext_elf64_vernaux endian bs0 =
     return (<| gnu_ext_elf64_vna_hash = hsh; gnu_ext_elf64_vna_flags = flg;
       gnu_ext_elf64_vna_other = otr; gnu_ext_elf64_vna_name = nme;
     gnu_ext_elf64_vna_next = nxt |>, bs0)
+    
+val obtain_gnu_ext_elf32_vernaux : endianness -> list gnu_ext_elf32_verneed -> byte_sequence -> error (list gnu_ext_elf32_vernaux)
+let rec obtain_gnu_ext_elf32_vernaux endian verneed bs0 =
+  match verneed with
+    | []    -> return []
+    | x::xs ->
+      let off = natural_of_elf32_word x.gnu_ext_elf32_vn_next in
+      Byte_sequence.offset_and_cut off gnu_ext_elf32_vernaux_size bs0 >>= fun vn ->
+      read_gnu_ext_elf32_vernaux endian vn >>= fun (vernaux, _) ->
+      obtain_gnu_ext_elf32_vernaux endian xs bs0 >>= fun tail ->
+      return (vernaux::tail)
+  end
+  
+val obtain_gnu_ext_elf64_vernaux : endianness -> list gnu_ext_elf64_verneed -> byte_sequence -> error (list gnu_ext_elf64_vernaux)
+let rec obtain_gnu_ext_elf64_vernaux endian verneed bs0 =
+  match verneed with
+    | []    -> return []
+    | x::xs ->
+      let off = natural_of_elf64_word x.gnu_ext_elf64_vn_next in
+      Byte_sequence.offset_and_cut off gnu_ext_elf64_vernaux_size bs0 >>= fun vn ->
+      read_gnu_ext_elf64_vernaux endian vn >>= fun (vernaux, _) ->
+      obtain_gnu_ext_elf64_vernaux endian xs bs0 >>= fun tail ->
+      return (vernaux::tail)
+  end
