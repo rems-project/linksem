@@ -93,5 +93,5 @@ let to_bytes_native u : char * char * char * char =
 
 let to_dual_bytes_native u : char * char =
   let (b3, b2, b1, b0) = to_bytes_native u in
-    b1, b0
+    b0, b1
 ;;

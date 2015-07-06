@@ -286,7 +286,7 @@ let obtain_gnu_ext_elf32_verneed endian sht bs0 =
     ent.elf32_sh_type = elf32_word_of_natural sht_gnu_verneed) sht
   in
     match verneeds with
-      | []  -> fail "obtain_gnu_ext_elf32_verneed: mandatory VERNEED section missing"
+      | []  -> return [] (* XXX? *)
       | [x] ->
         let off = natural_of_elf32_off x.elf32_sh_offset in
         read_gnu_ext_elf32_verneeds endian bs0 off
@@ -299,7 +299,7 @@ let obtain_gnu_ext_elf64_verneed endian sht bs0 =
     ent.elf64_sh_type = elf64_word_of_natural sht_gnu_verneed) sht
   in
     match verneeds with
-      | []  -> fail "obtain_gnu_ext_elf64_verneed: mandatory VERNEED section missing"
+      | []  -> return [] (* XXX? *)
       | [x] ->
         let off = natural_of_elf64_off x.elf64_sh_offset in
         read_gnu_ext_elf64_verneeds endian bs0 off
@@ -355,7 +355,7 @@ let rec obtain_gnu_ext_elf32_vernaux endian verneed bs0 =
   match verneed with
     | []    -> return []
     | x::xs ->
-      let off = natural_of_elf32_word x.gnu_ext_elf32_vn_next in
+      let off = natural_of_elf32_word x.gnu_ext_elf32_vn_aux in
       Byte_sequence.offset_and_cut off gnu_ext_elf32_vernaux_size bs0 >>= fun vn ->
       read_gnu_ext_elf32_vernaux endian vn >>= fun (vernaux, _) ->
       obtain_gnu_ext_elf32_vernaux endian xs bs0 >>= fun tail ->
@@ -367,7 +367,7 @@ let rec obtain_gnu_ext_elf64_vernaux endian verneed bs0 =
   match verneed with
     | []    -> return []
     | x::xs ->
-      let off = natural_of_elf64_word x.gnu_ext_elf64_vn_next in
+      let off = natural_of_elf64_word x.gnu_ext_elf64_vn_aux in
       Byte_sequence.offset_and_cut off gnu_ext_elf64_vernaux_size bs0 >>= fun vn ->
       read_gnu_ext_elf64_vernaux endian vn >>= fun (vernaux, _) ->
       obtain_gnu_ext_elf64_vernaux endian xs bs0 >>= fun tail ->

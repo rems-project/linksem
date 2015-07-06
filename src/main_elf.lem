@@ -1,6 +1,7 @@
 open import Basic_classes
 open import Function
 open import Maybe
+open import List
 open import Num
 open import String
 open import Tuple
@@ -40,6 +41,31 @@ let default_pht_bdl =
 
 let default_sht_bdl =
   (default_os_specific_print, default_proc_specific_print, default_user_specific_print)
+
+val reverse_nibbles : list string -> list string
+let rec reverse_nibbles ss =
+  match ss with
+    | s1::s2::ss -> (s2 ^ s1)::(reverse_nibbles ss)
+    | x          -> x
+  end
+
+val chunks : list string -> list (list string)
+let rec chunks ss =
+  match ss with
+    | s1::s2::s3::s4::s5::s6::s7::s8::ss ->
+      [s1;s2;s3;s4;s5;s6;s7;s8]::(chunks ss)
+    | ss -> [ss]
+  end
+  
+val provide_offsets : list (list string) -> list (string * list string)
+let provide_offsets ss =
+  List.mapi (fun i x ->
+    let hx = unsafe_hex_string_of_natural 7 ((naturalFromNat i) * 16) in
+      (hx, x)) ss
+      
+val print_chunk : string * list string -> string
+let print_chunk (off, ss) =
+  off ^ " " ^ concatS (intercalate " " ss)
 
 let _ =
   let res =
@@ -85,11 +111,24 @@ let _ =
                   string_of_x86_relocation_type (* XXX: generic way to obtain correct ABI needed *)
                   bs0
               else if flag = "--symbols" then
-                  Harness_interface.harness_string_of_elf32_syms
+                Harness_interface.harness_string_of_elf32_syms
                   f1
                   show
                   show
                   bs0
+              else if flag = "--in-out" then
+                match Elf_file.bytes_of_elf32_file f1 with
+                  | Fail    f -> f
+                  | Success s ->
+                    let ss =
+                      List.map (unsafe_hex_string_of_natural 2)
+                        (List.map natural_of_byte (Byte_sequence.byte_list_of_byte_sequence s))
+                    in
+                    let chunks = provide_offsets (chunks (reverse_nibbles ss)) in
+                    let lines  = concatS (intercalate "\n" (List.map print_chunk chunks)) in
+                    let _      = Byte_sequence.serialise "mainelf-inout" s in
+                      show lines
+                end
               else
                 failwith "Unrecognised flag"
             in

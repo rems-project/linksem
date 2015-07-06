@@ -12,6 +12,12 @@ open import Show
 type byte_sequence =
   Sequence of list byte
 
+val byte_list_of_byte_sequence : byte_sequence -> list byte
+let byte_list_of_byte_sequence bs0 =
+  match bs0 with
+    | Sequence xs -> xs
+  end
+
 val acquire_byte_list : string -> error (list byte)
 declare ocaml target_rep function acquire_byte_list = `Byte_sequence_wrapper.acquire_char_list`
 

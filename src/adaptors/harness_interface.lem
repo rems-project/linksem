@@ -35,6 +35,8 @@ val hex_string_of_big_int_pad5 : natural -> string
 declare ocaml target_rep function hex_string_of_big_int_pad5 = `Ml_bindings.hex_string_of_big_int_pad5`
 val hex_string_of_big_int_pad6 : natural -> string
 declare ocaml target_rep function hex_string_of_big_int_pad6 = `Ml_bindings.hex_string_of_big_int_pad6`
+val hex_string_of_big_int_pad7 : natural -> string
+declare ocaml target_rep function hex_string_of_big_int_pad7 = `Ml_bindings.hex_string_of_big_int_pad7`
 val hex_string_of_big_int_pad8 : natural -> string
 declare ocaml target_rep function hex_string_of_big_int_pad8 = `Ml_bindings.hex_string_of_big_int_pad8`
 val hex_string_of_big_int_pad16 : natural -> string
@@ -54,6 +56,8 @@ let unsafe_hex_string_of_natural pad m =
     hex_string_of_big_int_pad5 m
   else if pad = 6 then
     hex_string_of_big_int_pad6 m
+  else if pad = 7 then
+    hex_string_of_big_int_pad7 m
   else if pad = 8 then
     hex_string_of_big_int_pad8 m
   else if pad = 16 then
@@ -741,6 +745,9 @@ let harness_string_of_elf32_syms' endian os proc f1 filtered_sht sht shdr bs0 =
       let ttl = "   Num:    Value          Size Type    Bind   Vis      Ndx Name\n" in
       if typ = sht_dynsym then
         obtain_gnu_ext_elf32_symbol_version_table endian sht syms bs0 >>= fun ver ->
+        obtain_gnu_ext_elf32_verdef endian sht bs0 >>= fun verdefs ->
+        obtain_gnu_ext_elf32_veraux endian verdefs bs0 >>= fun veraux ->
+        
         let body = concatS (intercalate "\n" (List.mapi (fun n ->
           let ver = List.index ver n in
             harness_string_of_elf32_symbol_table_entry n os proc strtab ver) syms))
