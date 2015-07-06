@@ -145,27 +145,27 @@ let rec read_gnu_ext_elf64_verdefs endian bs0 off =
 val obtain_gnu_ext_elf32_verdef : endianness -> elf32_section_header_table -> byte_sequence -> error (list gnu_ext_elf32_verdef)
 let obtain_gnu_ext_elf32_verdef endian sht bs0 =
   let verdefs = List.filter (fun ent ->
-    ent.elf32_sh_type = elf32_word_of_natural sht_gnu_verneed) sht
+    ent.elf32_sh_type = elf32_word_of_natural sht_gnu_verdef) sht
   in
     match verdefs with
-      | []  -> fail "obtain_gnu_ext_elf32_verdef: mandatory VERNEED section missing"
+      | []  -> return [] (* XXX? *)
       | [x] ->
         let off = natural_of_elf32_off x.elf32_sh_offset in
         read_gnu_ext_elf32_verdefs endian bs0 off
-      | _   -> fail "obtain_gnu_ext_elf32_verdef: multiple VERNEED sections present in file"
+      | _   -> fail "obtain_gnu_ext_elf32_verdef: multiple VERDEF sections present in file"
     end
     
 val obtain_gnu_ext_elf64_verdef : endianness -> elf64_section_header_table -> byte_sequence -> error (list gnu_ext_elf64_verdef)
 let obtain_gnu_ext_elf64_verdef endian sht bs0 =
   let verdefs = List.filter (fun ent ->
-    ent.elf64_sh_type = elf64_word_of_natural sht_gnu_verneed) sht
+    ent.elf64_sh_type = elf64_word_of_natural sht_gnu_verdef) sht
   in
     match verdefs with
-      | []  -> fail "obtain_gnu_ext_elf64_verdef: mandatory VERNEED section missing"
+      | []  -> return [] (* XXX? *)
       | [x] ->
         let off = natural_of_elf64_off x.elf64_sh_offset in
         read_gnu_ext_elf64_verdefs endian bs0 off
-      | _   -> fail "obtain_gnu_ext_elf64_verdef: multiple VERNEED sections present in file"
+      | _   -> fail "obtain_gnu_ext_elf64_verdef: multiple VERDEF sections present in file"
     end
    
 type gnu_ext_elf32_veraux =
@@ -178,6 +178,12 @@ type gnu_ext_elf64_veraux =
    ; gnu_ext_elf64_vda_next : elf64_word
    |>
    
+val gnu_ext_elf32_veraux_size : natural
+let gnu_ext_elf32_veraux_size = 64
+
+val gnu_ext_elf64_veraux_size : natural
+let gnu_ext_elf64_veraux_size = 128
+   
 val read_gnu_ext_elf32_veraux : endianness -> byte_sequence -> error (gnu_ext_elf32_veraux * byte_sequence)
 let read_gnu_ext_elf32_veraux endian bs0 =
   read_elf32_word endian bs0 >>= fun (nme, bs0) ->
@@ -189,6 +195,30 @@ let read_gnu_ext_elf64_veraux endian bs0 =
   read_elf64_word endian bs0 >>= fun (nme, bs0) ->
   read_elf64_word endian bs0 >>= fun (nxt, bs0) ->
     return (<| gnu_ext_elf64_vda_name = nme; gnu_ext_elf64_vda_next = nxt |>, bs0)
+    
+val obtain_gnu_ext_elf32_veraux : endianness -> list gnu_ext_elf32_verdef -> byte_sequence -> error (list gnu_ext_elf32_veraux)
+let rec obtain_gnu_ext_elf32_veraux endian verdefs bs0 =
+  match verdefs with
+    | []    -> return []
+    | x::xs ->
+      let off = natural_of_elf32_word x.gnu_ext_elf32_vd_aux in
+      Byte_sequence.offset_and_cut off gnu_ext_elf32_veraux_size bs0 >>= fun vd ->
+      read_gnu_ext_elf32_veraux endian bs0 >>= fun (veraux, _) ->
+      obtain_gnu_ext_elf32_veraux endian xs bs0 >>= fun tail ->
+      return (veraux::tail)
+  end
+  
+val obtain_gnu_ext_elf64_veraux : endianness -> list gnu_ext_elf64_verdef -> byte_sequence -> error (list gnu_ext_elf64_veraux)
+let rec obtain_gnu_ext_elf64_veraux endian verdefs bs0 =
+  match verdefs with
+    | []    -> return []
+    | x::xs ->
+      let off = natural_of_elf64_word x.gnu_ext_elf64_vd_aux in
+      Byte_sequence.offset_and_cut off gnu_ext_elf64_veraux_size bs0 >>= fun vd ->
+      read_gnu_ext_elf64_veraux endian bs0 >>= fun (veraux, _) ->
+      obtain_gnu_ext_elf64_veraux endian xs bs0 >>= fun tail ->
+      return (veraux::tail)
+  end
    
 type gnu_ext_elf32_verneed =
   <| gnu_ext_elf32_vn_version : elf32_half
