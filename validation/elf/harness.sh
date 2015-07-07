@@ -1,7 +1,7 @@
 #!/bin/bash
 
 MAIN_ELF=../../src/main_elf.opt
-TEST_FILES=/usr/bin
+TEST_FILES=../../test/mixed-binaries
 
 function perform_readelf_diff
 {
@@ -63,7 +63,6 @@ FLAG=$1
 
 for f in $(ls $TEST_FILES); do
   FTYPE=`file $TEST_FILES/$f | cut -f2 -d' '`
-  echo $FTYPE
   if [ $FTYPE == "ELF" ]; then
     echo "testing: " $f
     if [ $FLAG == "--in-out" ]; then
