@@ -49,24 +49,35 @@ let rec reverse_nibbles ss =
     | x          -> x
   end
 
-val chunks : list string -> list (list string)
+val chunks : list string -> list (list string) * nat
 let rec chunks ss =
   match ss with
     | s1::s2::s3::s4::s5::s6::s7::s8::ss ->
-      [s1;s2;s3;s4;s5;s6;s7;s8]::(chunks ss)
-    | ss -> [ss]
+      let (tail, miss) = chunks ss in
+        (([s1;s2;s3;s4;s5;s6;s7;s8]::tail), miss)
+    | ss ->
+      let missing = naturalFromNat (8 - List.length ss) in
+      let bits    = replicate missing "    " in
+      let fixed   = intercalate " " bits in
+      let buff    = ss ++ [concatS fixed] in
+        ([buff], List.length ss)
   end
   
-val provide_offsets : list (list string) -> list (string * list string)
-let provide_offsets ss =
+val provide_offsets : (list (list string) * nat) -> list (string * list string)
+let provide_offsets (ss, ed) =
   List.mapi (fun i x ->
     let hx = unsafe_hex_string_of_natural 7 ((naturalFromNat i) * 16) in
       (hx, x)) ss
+  ++
+    [(unsafe_hex_string_of_natural 7 (((naturalFromNat (List.length ss - 1)) * 16) + naturalFromNat (ed * 2)), [])]
       
 val print_chunk : string * list string -> string
 let print_chunk (off, ss) =
-  off ^ " " ^ concatS (intercalate " " ss)
-
+  match ss with
+    | [] -> off
+    | _  -> off ^ " " ^ concatS (intercalate " " ss)
+  end
+    
 let _ =
   let res =
     let (flag, arg) =
