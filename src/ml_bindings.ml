@@ -22,6 +22,11 @@ let hex_string_of_big_int_pad2 i : string =
     Printf.sprintf "%02Lx" i0
 ;;
 
+let hex_string_of_big_int_pad4 i : string =
+  let i0 = Nat_big_num.to_int64 i in
+    Printf.sprintf "%04Lx" i0
+;;
+
 let hex_string_of_big_int_pad5 i : string =
   let i0 = Nat_big_num.to_int64 i in
     Printf.sprintf "%05Lx" i0

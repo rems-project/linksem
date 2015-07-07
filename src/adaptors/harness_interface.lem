@@ -31,6 +31,8 @@ val hex_string_of_big_int_no_padding' : integer -> string
 declare ocaml target_rep function hex_string_of_big_int_no_padding' = `Ml_bindings.hex_string_of_big_int_no_padding`
 val hex_string_of_big_int_pad2 : natural -> string
 declare ocaml target_rep function hex_string_of_big_int_pad2 = `Ml_bindings.hex_string_of_big_int_pad2`
+val hex_string_of_big_int_pad4 : natural -> string
+declare ocaml target_rep function hex_string_of_big_int_pad4 = `Ml_bindings.hex_string_of_big_int_pad4`
 val hex_string_of_big_int_pad5 : natural -> string
 declare ocaml target_rep function hex_string_of_big_int_pad5 = `Ml_bindings.hex_string_of_big_int_pad5`
 val hex_string_of_big_int_pad6 : natural -> string
@@ -54,6 +56,8 @@ let unsafe_hex_string_of_natural pad m =
     hex_string_of_big_int_pad2 m
   else if pad = 5 then
     hex_string_of_big_int_pad5 m
+  else if pad = 4 then
+    hex_string_of_big_int_pad4 m
   else if pad = 6 then
     hex_string_of_big_int_pad6 m
   else if pad = 7 then

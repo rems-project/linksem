@@ -57,10 +57,13 @@ let rec chunks ss =
         (([s1;s2;s3;s4;s5;s6;s7;s8]::tail), miss)
     | ss ->
       let missing = naturalFromNat (8 - List.length ss) in
-      let bits    = replicate missing "    " in
-      let fixed   = intercalate " " bits in
-      let buff    = ss ++ [concatS fixed] in
-        ([buff], List.length ss)
+        if missing = 8 then
+          ([], List.length ss)
+        else
+          let bits    = replicate missing "    " in
+          let fixed   = intercalate " " bits in
+          let buff    = ss ++ [concatS fixed] in
+            ([buff], List.length ss)
   end
   
 val provide_offsets : (list (list string) * nat) -> list (string * list string)
@@ -69,8 +72,11 @@ let provide_offsets (ss, ed) =
     let hx = unsafe_hex_string_of_natural 7 ((naturalFromNat i) * 16) in
       (hx, x)) ss
   ++
-    [(unsafe_hex_string_of_natural 7 (((naturalFromNat (List.length ss - 1)) * 16) + naturalFromNat (ed * 2)), [])]
-      
+    if ed = 0 then
+      [(unsafe_hex_string_of_natural 7 ((naturalFromNat (List.length ss)) * 16), [])]
+    else
+      [(unsafe_hex_string_of_natural 7 (((naturalFromNat (List.length ss - 1)) * 16) + naturalFromNat (ed * 2)), [])]
+    
 val print_chunk : string * list string -> string
 let print_chunk (off, ss) =
   match ss with
@@ -172,6 +178,19 @@ let _ =
                   f1
                   string_of_amd64_relocation_type (* XXX: generic way to obtain correct ABI needed *)
                   bs0
+              else if flag = "--in-out" then
+                match Elf_file.bytes_of_elf64_file f1 with
+                  | Fail    f -> f
+                  | Success s ->
+                    let ss =
+                      List.map (unsafe_hex_string_of_natural 2)
+                        (List.map natural_of_byte (Byte_sequence.byte_list_of_byte_sequence s))
+                    in
+                    let chunks = provide_offsets (chunks (reverse_nibbles ss)) in
+                    let lines  = concatS (intercalate "\n" (List.map print_chunk chunks)) in
+                    let _      = Byte_sequence.serialise "mainelf-inout" s in
+                      show lines
+                end
               else
                 failwith "Unimplemented (for ELF64) or unrecognised flag"
             in
