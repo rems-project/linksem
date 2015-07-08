@@ -45,17 +45,17 @@ let bytes_of_elf32_file ef =
     List.length ef.elf32_file_interpreted_segments then
     if List.length ef.elf32_file_section_header_table =
       List.length ef.elf32_file_interpreted_sections then
-      let segs_zip = List.zip ef.elf32_file_program_header_table ef.elf32_file_interpreted_segments in
+      let segs_zip  = List.zip ef.elf32_file_program_header_table ef.elf32_file_interpreted_segments in
       let sects_zip = List.zip ef.elf32_file_section_header_table ef.elf32_file_interpreted_sections in
       let segs_layout =
         List.map (fun (seg, interp_seg) ->
           (natural_of_elf32_off seg.elf32_p_offset, interp_seg.elf32_segment_body)
-        ) segs_zip
+        ) (List.filter (fun (x, _) -> x.elf32_p_filesz <> elf32_word_of_natural 0) segs_zip)
       in
       let sects_layout =
         List.map (fun (sect, interp_sect) ->
           (natural_of_elf32_off sect.elf32_sh_offset, interp_sect.elf32_section_body)
-        ) sects_zip
+        ) (List.filter (fun (x, _) -> x.elf32_sh_type <> elf32_word_of_natural sht_nobits) sects_zip)
       in
       let pre_layout = [hdr_layout; pht_layout; sht_layout] ++ sects_layout ++ segs_layout ++ bab_layout in
       let final_layout =
@@ -127,12 +127,12 @@ let bytes_of_elf64_file ef =
       let segs_layout =
         List.map (fun (seg, interp_seg) ->
           (natural_of_elf64_off seg.elf64_p_offset, interp_seg.elf64_segment_body)
-        ) segs_zip
+        ) (List.filter (fun (x, _) -> x.elf64_p_filesz <> elf64_xword_of_natural 0) segs_zip)
       in
       let sects_layout =
         List.map (fun (sect, interp_sect) ->
           (natural_of_elf64_off sect.elf64_sh_offset, interp_sect.elf64_section_body)
-        ) sects_zip
+        ) (List.filter (fun (x, _) -> x.elf64_sh_type <> elf64_word_of_natural sht_nobits) sects_zip)
       in
       let pre_layout = [hdr_layout; pht_layout; sht_layout] ++ sects_layout ++ segs_layout ++ bab_layout in
       let final_layout =

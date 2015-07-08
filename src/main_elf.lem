@@ -143,7 +143,7 @@ let _ =
                     in
                     let chunks = provide_offsets (chunks (reverse_nibbles ss)) in
                     let lines  = concatS (intercalate "\n" (List.map print_chunk chunks)) in
-                    let _      = Byte_sequence.serialise "mainelf-inout" s in
+                    (*let _      = Byte_sequence.serialise "mainelf-inout" s in*)
                       show lines
                 end
               else
@@ -188,7 +188,7 @@ let _ =
                     in
                     let chunks = provide_offsets (chunks (reverse_nibbles ss)) in
                     let lines  = concatS (intercalate "\n" (List.map print_chunk chunks)) in
-                    let _      = Byte_sequence.serialise "mainelf-inout" s in
+                    (*let _      = Byte_sequence.serialise "mainelf-inout" s in*)
                       show lines
                 end
               else
