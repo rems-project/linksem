@@ -16,17 +16,17 @@ open import Missing_pervasives
 open import Show
 
 type elf32_interpreted_section =
-  <| elf32_section_name       : natural       (** Name of the section *)
-   ; elf32_section_type       : natural       (** Type of the section *)
-   ; elf32_section_flags      : natural       (** Flags associated with the section *)
-   ; elf32_section_base       : natural       (** Base address of the section in memory *)
-   ; elf32_section_offset     : natural       (** Offset from beginning of file *)
-   ; elf32_section_size       : natural       (** Section size in bytes *)
-   ; elf32_section_link       : natural       (** Section header table index link *)
-   ; elf32_section_info       : natural       (** Extra information, depends on section type *)
-   ; elf32_section_align      : natural       (** Alignment constraints for section *)
-   ; elf32_section_entry_size : natural       (** Size of each entry in table, if section is one *)
-   ; elf32_section_body       : byte_sequence (** Body of section *)
+  <| elf32_section_name    : natural       (** Name of the section *)
+   ; elf32_section_type    : natural       (** Type of the section *)
+   ; elf32_section_flags   : natural       (** Flags associated with the section *)
+   ; elf32_section_addr    : natural       (** Base address of the section in memory *)
+   ; elf32_section_offset  : natural       (** Offset from beginning of file *)
+   ; elf32_section_size    : natural       (** Section size in bytes *)
+   ; elf32_section_link    : natural       (** Section header table index link *)
+   ; elf32_section_info    : natural       (** Extra information, depends on section type *)
+   ; elf32_section_align   : natural       (** Alignment constraints for section *)
+   ; elf32_section_entsize : natural       (** Size of each entry in table, if section is one *)
+   ; elf32_section_body    : byte_sequence (** Body of section *)
    |>
    
 val elf32_interpreted_section_equal : elf32_interpreted_section -> elf32_interpreted_section -> bool
@@ -34,13 +34,13 @@ let elf32_interpreted_section_equal x y =
 	x.elf32_section_name = y.elf32_section_name &&
 	x.elf32_section_type = y.elf32_section_type &&
 	x.elf32_section_flags = y.elf32_section_flags &&
-	x.elf32_section_base = y.elf32_section_base &&
+	x.elf32_section_addr = y.elf32_section_addr &&
 	x.elf32_section_offset = y.elf32_section_offset &&
 	x.elf32_section_size = y.elf32_section_size &&
 	x.elf32_section_link = y.elf32_section_link &&
 	x.elf32_section_info = y.elf32_section_info &&
 	x.elf32_section_align = y.elf32_section_align &&
-	x.elf32_section_entry_size = y.elf32_section_entry_size &&
+	x.elf32_section_entsize = y.elf32_section_entsize &&
 	x.elf32_section_body = y.elf32_section_body
    
 instance (Eq elf32_interpreted_section)
@@ -49,17 +49,17 @@ instance (Eq elf32_interpreted_section)
 end
 
 type elf64_interpreted_section =
-  <| elf64_section_name       : natural       (** Name of the section *)
-   ; elf64_section_type       : natural       (** Type of the section *)
-   ; elf64_section_flags      : natural       (** Flags associated with the section *)
-   ; elf64_section_base       : natural       (** Base address of the section in memory *)
-   ; elf64_section_offset     : natural       (** Offset from beginning of file *)
-   ; elf64_section_size       : natural       (** Section size in bytes *)
-   ; elf64_section_link       : natural       (** Section header table index link *)
-   ; elf64_section_info       : natural       (** Extra information, depends on section type *)
-   ; elf64_section_align      : natural       (** Alignment constraints for section *)
-   ; elf64_section_entry_size : natural       (** Size of each entry in table, if section is one *)
-   ; elf64_section_body       : byte_sequence (** Body of section *)
+  <| elf64_section_name    : natural       (** Name of the section *)
+   ; elf64_section_type    : natural       (** Type of the section *)
+   ; elf64_section_flags   : natural       (** Flags associated with the section *)
+   ; elf64_section_addr    : natural       (** Base address of the section in memory *)
+   ; elf64_section_offset  : natural       (** Offset from beginning of file *)
+   ; elf64_section_size    : natural       (** Section size in bytes *)
+   ; elf64_section_link    : natural       (** Section header table index link *)
+   ; elf64_section_info    : natural       (** Extra information, depends on section type *)
+   ; elf64_section_align   : natural       (** Alignment constraints for section *)
+   ; elf64_section_entsize : natural       (** Size of each entry in table, if section is one *)
+   ; elf64_section_body    : byte_sequence (** Body of section *)
    |>
    
 val elf64_interpreted_section_equal : elf64_interpreted_section -> elf64_interpreted_section -> bool
@@ -67,28 +67,44 @@ let elf64_interpreted_section_equal x y =
 	x.elf64_section_name = y.elf64_section_name &&
 	x.elf64_section_type = y.elf64_section_type &&
 	x.elf64_section_flags = y.elf64_section_flags &&
-	x.elf64_section_base = y.elf64_section_base &&
+	x.elf64_section_addr = y.elf64_section_addr &&
 	x.elf64_section_offset = y.elf64_section_offset &&
 	x.elf64_section_size = y.elf64_section_size &&
 	x.elf64_section_link = y.elf64_section_link &&
 	x.elf64_section_info = y.elf64_section_info &&
 	x.elf64_section_align = y.elf64_section_align &&
-	x.elf64_section_entry_size = y.elf64_section_entry_size &&
+	x.elf64_section_entsize = y.elf64_section_entsize &&
 	x.elf64_section_body = y.elf64_section_body
 
-let (null_elf64_interpreted_section : elf64_interpreted_section) = <| 
-     elf64_section_name = 0
+val null_elf32_interpreted_section : elf32_interpreted_section
+let null_elf32_interpreted_section =
+  <| elf32_section_name = 0
+   ; elf32_section_type = 0
+   ; elf32_section_flags = 0
+   ; elf32_section_addr = 0
+   ; elf32_section_offset = 0
+   ; elf32_section_size = 0
+   ; elf32_section_link = 0
+   ; elf32_section_info = 0
+   ; elf32_section_align = 0
+   ; elf32_section_entsize = 0 
+   ; elf32_section_body = Byte_sequence.empty
+   |>
+
+val null_elf64_interpreted_section : elf64_interpreted_section
+let null_elf64_interpreted_section =
+  <| elf64_section_name = 0
    ; elf64_section_type = 0
    ; elf64_section_flags = 0
-   ; elf64_section_base = 0
+   ; elf64_section_addr = 0
    ; elf64_section_offset = 0
    ; elf64_section_size = 0
    ; elf64_section_link = 0
    ; elf64_section_info = 0
    ; elf64_section_align = 0
-   ; elf64_section_entry_size = 0 
-   ; elf64_section_body = Sequence([])
-|>
+   ; elf64_section_entsize = 0 
+   ; elf64_section_body = Byte_sequence.empty
+   |>
 
 instance (Eq elf64_interpreted_section)
 	let (=)      = elf64_interpreted_section_equal
@@ -100,22 +116,22 @@ val elf64_interpreted_section_matches_section_header :
         -> elf64_section_header_table_entry
             -> bool
 let elf64_interpreted_section_matches_section_header i sh =
-        i.elf64_section_name = natural_of_elf64_word sh.elf64_sh_name &&
-        i.elf64_section_type = natural_of_elf64_word sh.elf64_sh_type &&
-        i.elf64_section_flags = natural_of_elf64_xword sh.elf64_sh_flags &&
-        i.elf64_section_base (* WHY? *) = natural_of_elf64_addr sh.elf64_sh_addr &&
-        i.elf64_section_offset = natural_of_elf64_off sh.elf64_sh_offset &&
-        i.elf64_section_size = natural_of_elf64_xword sh.elf64_sh_size &&
-        i.elf64_section_link = natural_of_elf64_word sh.elf64_sh_link &&
-        i.elf64_section_info = natural_of_elf64_word sh.elf64_sh_info &&
-        i.elf64_section_align = natural_of_elf64_xword sh.elf64_sh_addralign (* WHY? *) &&
-        i.elf64_section_entry_size (* WHY? *) = natural_of_elf64_xword sh.elf64_sh_entsize
-    (* NOTE that we can have multiple sections *indistinguishable*
-     * except by their section header table index. Imagine 
-     * multiple zero-size bss sections at the same address with the same name.
-     * That's why in elf_memory_image we always label each ElfSection
-     * with its SHT index.
-     *)
+  i.elf64_section_name = natural_of_elf64_word sh.elf64_sh_name &&
+  i.elf64_section_type = natural_of_elf64_word sh.elf64_sh_type &&
+  i.elf64_section_flags = natural_of_elf64_xword sh.elf64_sh_flags &&
+  i.elf64_section_addr = natural_of_elf64_addr sh.elf64_sh_addr &&
+  i.elf64_section_offset = natural_of_elf64_off sh.elf64_sh_offset &&
+  i.elf64_section_size = natural_of_elf64_xword sh.elf64_sh_size &&
+  i.elf64_section_link = natural_of_elf64_word sh.elf64_sh_link &&
+  i.elf64_section_info = natural_of_elf64_word sh.elf64_sh_info &&
+  i.elf64_section_align = natural_of_elf64_xword sh.elf64_sh_addralign (* WHY? *) &&
+  i.elf64_section_entsize = natural_of_elf64_xword sh.elf64_sh_entsize
+  (* NOTE that we can have multiple sections *indistinguishable*
+   * except by their section header table index. Imagine 
+   * multiple zero-size bss sections at the same address with the same name.
+   * That's why in elf_memory_image we always label each ElfSection
+   * with its SHT index.
+   *)
 
 type elf32_interpreted_sections = list elf32_interpreted_section
 type elf64_interpreted_sections = list elf64_interpreted_section
@@ -126,13 +142,13 @@ let {ocaml} string_of_elf32_interpreted_section is =
      "Name: " ^ show is.elf32_section_name
    ; "Type: " ^ show is.elf32_section_type 
    ; "Flags: " ^ show is.elf32_section_type
-   ; "Base address: " ^ show is.elf32_section_base
+   ; "Base address: " ^ show is.elf32_section_addr
    ; "Section offset: " ^ show is.elf32_section_offset
    ; "Section size: " ^ show is.elf32_section_size
    ; "Link: " ^ show is.elf32_section_link
    ; "Info: " ^ show is.elf32_section_info
    ; "Section alignment: " ^ show is.elf32_section_align
-   ; "Entry size: " ^ show is.elf32_section_entry_size
+   ; "Entry size: " ^ show is.elf32_section_entsize
    ]
 
 val string_of_elf64_interpreted_section : elf64_interpreted_section -> string
@@ -141,13 +157,13 @@ let {ocaml} string_of_elf64_interpreted_section is =
      "Name: " ^ show is.elf64_section_name
    ; "Type: " ^ show is.elf64_section_type 
    ; "Flags: " ^ show is.elf64_section_type
-   ; "Base address: " ^ show is.elf64_section_base
+   ; "Base address: " ^ show is.elf64_section_addr
    ; "Section offset: " ^ show is.elf64_section_offset
    ; "Section size: " ^ show is.elf64_section_size
    ; "Link: " ^ show is.elf64_section_link
    ; "Info: " ^ show is.elf64_section_info
    ; "Section alignment: " ^ show is.elf64_section_align
-   ; "Entry size: " ^ show is.elf64_section_entry_size
+   ; "Entry size: " ^ show is.elf64_section_entsize
    ]
    
     
