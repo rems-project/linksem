@@ -48,7 +48,7 @@ LEM_ELF_SRC := byte_sequence.lem archive.lem \
 	elf_section_header_table.lem \
 	elf_relocation.lem elf_dynamic.lem \
 	elf_interpreted_segment.lem elf_interpreted_section.lem \
-	elf_file.lem 
+	elf_note.lem elf_file.lem 
 	
 LEM_ABI_SRC := memory_image.lem elf_memory_image.lem \
 	abis/power64/abi_power64.lem \

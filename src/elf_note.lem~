@@ -1,0 +1,50 @@
+open import List
+open import Num
+
+open import Byte_sequence
+open import Endianness
+open import Error
+
+open import Elf_types_native_uint
+
+type elf32_note =
+  <| elf32_note_namesz : elf32_word
+   ; elf32_note_descsz : elf32_word
+   ; elf32_note_type   : elf32_word
+   ; elf32_note_name   : list elf32_word
+   ; elf32_note_desc   : list elf32_word
+   |>
+   
+type elf64_note =
+  <| elf64_note_namesz : elf64_xword
+   ; elf64_note_descsz : elf64_xword
+   ; elf64_note_type   : elf64_xword
+   ; elf64_note_name   : list elf64_xword
+   ; elf64_note_desc   : list elf64_xword
+   |>
+   
+val read_elf32_note : endianness -> byte_sequence -> error (elf32_note * byte_sequence)
+let read_elf32_note endian bs0 =
+  read_elf32_word endian bs0 >>= fun (namesz, bs0) ->
+  read_elf32_word endian bs0 >>= fun (descsz, bs0) ->
+  read_elf32_word endian bs0 >>= fun (typ, bs0) ->
+  let namesz' = natFromNatural (natural_of_elf32_word namesz) in
+  let descsz' = natFromNatural (natural_of_elf32_word descsz) in
+  repeatM' namesz' bs0 (read_elf32_word endian) >>= fun (name, bs0) ->
+  repeatM' descsz' bs0 (read_elf32_word endian) >>= fun (desc, bs0) ->
+  return (<| elf32_note_namesz = namesz; elf32_note_descsz = descsz;
+    elf32_note_type = typ; elf32_note_name = name; elf32_note_desc = desc |>,
+      bs0)
+      
+val read_elf64_note : endianness -> byte_sequence -> error (elf64_note * byte_sequence)
+let read_elf64_note endian bs0 =
+  read_elf64_xword endian bs0 >>= fun (namesz, bs0) ->
+  read_elf64_xword endian bs0 >>= fun (descsz, bs0) ->
+  read_elf64_xword endian bs0 >>= fun (typ, bs0) ->
+  let namesz' = natFromNatural (natural_of_elf64_xword namesz) in
+  let descsz' = natFromNatural (natural_of_elf64_xword descsz) in
+  repeatM' namesz' bs0 (read_elf64_xword endian) >>= fun (name, bs0) ->
+  repeatM' descsz' bs0 (read_elf64_xword endian) >>= fun (desc, bs0) ->
+  return (<| elf64_note_namesz = namesz; elf64_note_descsz = descsz;
+    elf64_note_type = typ; elf64_note_name = name; elf64_note_desc = desc |>,
+      bs0)
