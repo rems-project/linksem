@@ -99,14 +99,6 @@ let get_string_at index tbl =
         end
   end
 
-class (HasElf32SectionHeaderStringTable 'a)
-  val get_elf32_section_header_string_table : 'a -> string_table
-end
-
-class (HasElf64SectionHeaderStringTable 'a)
-  val get_elf64_section_header_string_table : 'a -> string_table
-end
-
 instance (Show string_table)
   let show tbl = unlines (get_strings tbl)
 end

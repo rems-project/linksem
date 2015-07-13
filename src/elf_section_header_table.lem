@@ -823,15 +823,15 @@ let rec get_elf64_section_to_segment_mapping hdr sects pent isin stbl =
   match sects with
     | []    -> return []
     | x::xs ->
-        if not (isin hdr x pent) then
-          get_elf64_section_to_segment_mapping hdr xs pent isin stbl
-        else if is_elf64_tbss_special x pent then
-          get_elf64_section_to_segment_mapping hdr xs pent isin stbl
-        else
-          let nm = natural_of_elf64_word x.elf64_sh_name in
-            get_string_at nm stbl >>= fun str ->
-            get_elf64_section_to_segment_mapping hdr xs pent isin stbl >>= fun tl ->
-            return (str :: tl)
+      if not (isin hdr x pent) then
+        get_elf64_section_to_segment_mapping hdr xs pent isin stbl
+      else if is_elf64_tbss_special x pent then
+        get_elf64_section_to_segment_mapping hdr xs pent isin stbl
+      else
+        let nm = natural_of_elf64_word x.elf64_sh_name in
+          get_string_at nm stbl >>= fun str ->
+          get_elf64_section_to_segment_mapping hdr xs pent isin stbl >>= fun tl ->
+          return (str :: tl)
   end
   
 (** Section groups *)
@@ -859,8 +859,8 @@ let grp_maskproc : natural = 4 * 1006632960 (* 0xf0000000 *)
   *       entry.  Entries of this type are currently commented out.  Fill them
   *       in.
   *)
-val construct_special_sections : Map.map string (natural * natural)
-let construct_special_section =
+val elf_special_sections : Map.map string (natural * natural)
+let elf_special_sections =
     Map.fromList [
       (".bss", (sht_nobits, shf_alloc + shf_write))
     ; (".comment", (sht_progbits, 0))

@@ -149,7 +149,7 @@ let rec intercalate sep xs =
   *)
 (*val string_of_list : forall 'a. Show 'a => list 'a -> string*)
 let string_of_list dict_Show_Show_a l =  
-(let result = (intercalate "," (List.map  
+(let result = (intercalate "," (Llist.map  
   dict_Show_Show_a.show_method l)) in
   let folded = (List.fold_left (^) "" result) in
     "[" ^ (folded ^ "]"))
@@ -329,7 +329,7 @@ let list_concat ll = (List.fold_left list_append [] ll)
 
 (*val list_concat_map : forall 'a 'b. ('a -> list 'b) -> list 'a -> list 'b*)
 let list_concat_map f l =    
- (list_concat (List.map f l))
+ (list_concat (Llist.map f l))
 
 (*val list_reverse_concat_map_helper : forall 'a 'b. ('a -> list 'b) -> list 'b -> list 'a -> list 'b*)
 let rec list_reverse_concat_map_helper f acc ll =    

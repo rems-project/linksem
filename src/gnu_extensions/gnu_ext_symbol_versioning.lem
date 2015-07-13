@@ -19,6 +19,9 @@ open import Missing_pervasives
 
 open import Gnu_ext_section_header_table
 
+(** [gnu_ext_elf32_symbol_version_table] is an array (linked list, here) of
+  * [elf32_half] entries.
+  *)
 type gnu_ext_elf32_symbol_version_table =
   list elf32_half
   

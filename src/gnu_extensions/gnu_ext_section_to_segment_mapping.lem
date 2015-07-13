@@ -7,6 +7,9 @@ open import Elf_program_header_table
 open import Elf_section_header_table
 open import Elf_types_native_uint
 
+open import String
+open import Show
+
 open import Gnu_ext_program_header_table
 
 (**
@@ -159,35 +162,35 @@ let elf64_sect_size hdr sec_hdr segment =
     
 val elf32_section_in_segment3 : elf32_header -> elf32_section_header_table_entry -> elf32_program_header_table_entry -> bool
 let elf32_section_in_segment3 hdr sec_hdr segment =
-  let sec_off = natural_of_elf32_off  sec_hdr.elf32_sh_offset in
-  let seg_off = natural_of_elf32_off  segment.elf32_p_offset in
-  let seg_fsz = natural_of_elf32_word segment.elf32_p_filesz in
-  let sec_siz = elf32_sect_size hdr sec_hdr segment in
+  let sec_off = integerFromNatural (natural_of_elf32_off  sec_hdr.elf32_sh_offset) in
+  let seg_off = integerFromNatural (natural_of_elf32_off  segment.elf32_p_offset) in
+  let seg_fsz = integerFromNatural (natural_of_elf32_word segment.elf32_p_filesz) in
+  let sec_siz = integerFromNatural (elf32_sect_size hdr sec_hdr segment) in
     elf32_section_of_type sec_hdr sht_nobits ||
     (sec_off >= seg_off &&
-    sec_off - seg_off <= seg_fsz - 1 &&
-    sec_off - (seg_off + sec_siz) <= seg_fsz)
+    ((sec_off - seg_off) <= (seg_fsz - 1)) &&
+    (sec_off - (seg_off + sec_siz) <= seg_fsz))
   
 val elf64_section_in_segment3 : elf64_header -> elf64_section_header_table_entry -> elf64_program_header_table_entry -> bool
 let elf64_section_in_segment3 hdr sec_hdr segment =
-  let sec_off = natural_of_elf64_off   sec_hdr.elf64_sh_offset in
-  let seg_off = natural_of_elf64_off   segment.elf64_p_offset in
-  let seg_fsz = natural_of_elf64_xword segment.elf64_p_filesz in
-  let sec_siz = elf64_sect_size hdr sec_hdr segment in
+  let sec_off = integerFromNatural (natural_of_elf64_off   sec_hdr.elf64_sh_offset) in
+  let seg_off = integerFromNatural (natural_of_elf64_off   segment.elf64_p_offset) in
+  let seg_fsz = integerFromNatural (natural_of_elf64_xword segment.elf64_p_filesz) in
+  let sec_siz = integerFromNatural (elf64_sect_size hdr sec_hdr segment) in
     elf64_section_of_type sec_hdr sht_nobits ||
     (sec_off >= seg_off &&
-    sec_off - seg_off <= seg_fsz - 1 &&
-    sec_off - (seg_off + sec_siz) <= seg_fsz)
+    ((sec_off - seg_off) <= (seg_fsz - 1)) &&
+    (sec_off - (seg_off + sec_siz) <= seg_fsz))
       
 (** SHF_ALLOC sections must have VMAs within the segment
   *)
   
 val elf32_section_in_segment4 : elf32_header -> elf32_section_header_table_entry -> elf32_program_header_table_entry -> bool
 let elf32_section_in_segment4 hdr sec_hdr segment =
-  let sec_addr = natural_of_elf32_addr sec_hdr.elf32_sh_addr in
-  let seg_vadr = natural_of_elf32_addr segment.elf32_p_vaddr in
-  let seg_mmsz = natural_of_elf32_word segment.elf32_p_memsz in
-  let sec_size = elf32_sect_size hdr sec_hdr segment in
+  let sec_addr = integerFromNatural (natural_of_elf32_addr sec_hdr.elf32_sh_addr) in
+  let seg_vadr = integerFromNatural (natural_of_elf32_addr segment.elf32_p_vaddr) in
+  let seg_mmsz = integerFromNatural (natural_of_elf32_word segment.elf32_p_memsz) in
+  let sec_size = integerFromNatural (elf32_sect_size hdr sec_hdr segment) in
     (not (elf32_section_flags sec_hdr shf_alloc) ||
      sec_addr >= seg_vadr) &&
      sec_addr - seg_vadr <= seg_mmsz - 1 &&
@@ -195,10 +198,10 @@ let elf32_section_in_segment4 hdr sec_hdr segment =
   
 val elf64_section_in_segment4 : elf64_header -> elf64_section_header_table_entry -> elf64_program_header_table_entry -> bool
 let elf64_section_in_segment4 hdr sec_hdr segment =
-  let sec_addr = natural_of_elf64_addr  sec_hdr.elf64_sh_addr in
-  let seg_vadr = natural_of_elf64_addr  segment.elf64_p_vaddr in
-  let seg_mmsz = natural_of_elf64_xword segment.elf64_p_memsz in
-  let sec_size = elf64_sect_size hdr sec_hdr segment in
+  let sec_addr = integerFromNatural (natural_of_elf64_addr  sec_hdr.elf64_sh_addr) in
+  let seg_vadr = integerFromNatural (natural_of_elf64_addr  segment.elf64_p_vaddr) in
+  let seg_mmsz = integerFromNatural (natural_of_elf64_xword segment.elf64_p_memsz) in
+  let sec_size = integerFromNatural (elf64_sect_size hdr sec_hdr segment) in
      (not (elf64_section_flags sec_hdr shf_alloc) ||
      sec_addr >= seg_vadr) &&
      sec_addr - seg_vadr <= seg_mmsz - 1 &&
@@ -208,13 +211,13 @@ let elf64_section_in_segment4 hdr sec_hdr segment =
 
 val elf32_section_in_segment5 : elf32_section_header_table_entry -> elf32_program_header_table_entry -> bool
 let elf32_section_in_segment5 sec_hdr segment =
-  let sec_siz = natural_of_elf32_word sec_hdr.elf32_sh_size in
-  let seg_msz = natural_of_elf32_word segment.elf32_p_memsz in
-  let sec_off = natural_of_elf32_off  sec_hdr.elf32_sh_offset in
-  let seg_off = natural_of_elf32_off  segment.elf32_p_offset in
-  let seg_fsz = natural_of_elf32_word segment.elf32_p_filesz in
-  let sec_adr = natural_of_elf32_addr sec_hdr.elf32_sh_addr in
-  let seg_vad = natural_of_elf32_addr segment.elf32_p_vaddr in
+  let sec_siz = integerFromNatural (natural_of_elf32_word sec_hdr.elf32_sh_size) in
+  let seg_msz = integerFromNatural (natural_of_elf32_word segment.elf32_p_memsz) in
+  let sec_off = integerFromNatural (natural_of_elf32_off  sec_hdr.elf32_sh_offset) in
+  let seg_off = integerFromNatural (natural_of_elf32_off  segment.elf32_p_offset) in
+  let seg_fsz = integerFromNatural (natural_of_elf32_word segment.elf32_p_filesz) in
+  let sec_adr = integerFromNatural (natural_of_elf32_addr sec_hdr.elf32_sh_addr) in
+  let seg_vad = integerFromNatural (natural_of_elf32_addr segment.elf32_p_vaddr) in
     (not (elf32_segment_of_type segment elf_pt_dynamic)) ||
     sec_siz <> 0 ||
     seg_msz = 0 ||
@@ -227,13 +230,13 @@ let elf32_section_in_segment5 sec_hdr segment =
 
 val elf64_section_in_segment5 : elf64_section_header_table_entry -> elf64_program_header_table_entry -> bool
 let elf64_section_in_segment5 sec_hdr segment =
-  let sec_siz = natural_of_elf64_xword sec_hdr.elf64_sh_size in
-  let seg_msz = natural_of_elf64_xword segment.elf64_p_memsz in
-  let sec_off = natural_of_elf64_off   sec_hdr.elf64_sh_offset in
-  let seg_off = natural_of_elf64_off   segment.elf64_p_offset in
-  let seg_fsz = natural_of_elf64_xword segment.elf64_p_filesz in
-  let sec_adr = natural_of_elf64_addr  sec_hdr.elf64_sh_addr in
-  let seg_vad = natural_of_elf64_addr  segment.elf64_p_vaddr in
+  let sec_siz = integerFromNatural (natural_of_elf64_xword sec_hdr.elf64_sh_size) in
+  let seg_msz = integerFromNatural (natural_of_elf64_xword segment.elf64_p_memsz) in
+  let sec_off = integerFromNatural (natural_of_elf64_off   sec_hdr.elf64_sh_offset) in
+  let seg_off = integerFromNatural (natural_of_elf64_off   segment.elf64_p_offset) in
+  let seg_fsz = integerFromNatural (natural_of_elf64_xword segment.elf64_p_filesz) in
+  let sec_adr = integerFromNatural (natural_of_elf64_addr  sec_hdr.elf64_sh_addr) in
+  let seg_vad = integerFromNatural (natural_of_elf64_addr  segment.elf64_p_vaddr) in
     (not (elf64_segment_of_type segment elf_pt_dynamic)) ||
     sec_siz <> 0 ||
     seg_msz = 0 ||

@@ -70,10 +70,11 @@ LEM_ABI_SRC := memory_image.lem elf_memory_image.lem \
 	abis/power64/abi_power64_relocation.lem \
 	abis/abis.lem
 	
-LEM_GNU_SRC := gnu_extensions/gnu_ext_section_header_table.lem \
-  gnu_extensions/gnu_ext_symbol_versioning.lem \
-  gnu_extensions/gnu_ext_program_header_table.lem \
-  gnu_extensions/gnu_ext_section_to_segment_mapping.lem
+LEM_GNU_SRC := gnu_extensions/gnu_ext_types_native_uint.lem \
+	gnu_extensions/gnu_ext_section_header_table.lem \
+	gnu_extensions/gnu_ext_symbol_versioning.lem \
+	gnu_extensions/gnu_ext_program_header_table.lem \
+	gnu_extensions/gnu_ext_section_to_segment_mapping.lem
 
 LEM_LINK_SRC := command_line.lem input_list.lem linkable_list.lem linker_script.lem link.lem
 
@@ -82,7 +83,7 @@ LEM_MODEL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_GNU_S
 
 OCAML_LIB_OBJS := unix.cma nums.cma zarith.cma batteries.cma nat_num.cmo big_int_impl.cmo nat_big_num.cmo uint.cma
 LEM_OCAML_OBJS := lem.cmo lem_basic_classes.cmo lem_function.cmo lem_list.cmo lem_num.cmo lem_sorting.cmo \
-    xstring.cmo pset.cmo pmap.cmo lem_maybe.cmo lem_map.cmo lem_set.cmo lem_string_extra.cmo
+    xstring.cmo llist.cmo pset.cmo pmap.cmo lem_maybe.cmo lem_map.cmo lem_set.cmo lem_string_extra.cmo
 
 OCAML_LIB_OBJS_OPT := $(patsubst %.cma,%.cmxa,$(patsubst %.cmo,%.cmx,$(OCAML_LIB_OBJS)))
 LEM_OCAML_OBJS_OPT := $(patsubst %.cma,%.cmxa,$(patsubst %.cmo,%.cmx,$(LEM_OCAML_OBJS)))
