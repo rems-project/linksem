@@ -101,15 +101,17 @@ end
  * this condition is probably when generating the output symtab.
  *)
 
-val add_definition_to_map : symbol_definition -> Map.map string (list symbol_definition)
-                    -> Map.map string (list symbol_definition)
-let add_definition_to_map def m = 
+val add_definition_to_map : (natural * symbol_definition) -> Map.map string (list (natural * symbol_definition))
+                    -> Map.map string (list (natural * symbol_definition))
+let add_definition_to_map def_idx_and_def m = 
+    let (def_idx, def) = def_idx_and_def
+    in
     match Map.lookup def.def_symname m with
-        Just curlist -> Map.insert def.def_symname (def :: curlist) m
-        | Nothing -> Map.insert def.def_symname [def] m
+        Just curlist -> Map.insert def.def_symname ((def_idx, def) :: curlist) m
+        | Nothing -> Map.insert def.def_symname [(def_idx, def)] m
     end
 
-val all_definitions_by_name : linkable_list -> Map.map string (list symbol_definition)
+val all_definitions_by_name : linkable_list -> Map.map string (list (natural * symbol_definition))
 let all_definitions_by_name linkables = 
 
 (*
@@ -133,11 +135,11 @@ let all_definitions_by_name linkables =
             | _ -> failwith "matched tag not a symbol definition"
         end) all_def_tags
         in
-        [(idx, def) | forall (def MEM all_defs) | true]
+        [(naturalFromNat idx, def) | forall (def MEM all_defs) | true]
     )) linkables
     in
     foldl (fun accum -> (fun deflist -> 
-        foldl (fun m -> (fun (def_idx, def) -> add_definition_to_map def m)) accum deflist
+        foldl (fun m -> (fun (def_idx, def) -> add_definition_to_map (def_idx, def) m)) accum deflist
     )) Map.empty list_of_deflists
  
 type binding_oracle = 
@@ -303,13 +305,13 @@ let resolve_undefs_in_one_object linkables all_defs oracle idx =
     in
     resolve_all linkables all_defs oracle reflist
 
-val accumulate_input_objects :
+val accumulate_bindings :
     linkable_list
     -> Map.map string (list (natural * symbol_definition))                (* all definitions *)
     -> set natural                                       (* inputs fully-bound so far *)
     -> list natural                                       (* ordered list of inputs to bind next *)
-    -> list (symbol_reference * maybe symbol_definition)  (* bindings made so far *)
-    -> list (symbol_reference * maybe symbol_definition)  (* all accumulated bindings bindings *)
+    -> list ((natural * symbol_reference) * maybe (natural * symbol_definition))  (* bindings made so far *)
+    -> list ((natural * symbol_reference) * maybe (natural * symbol_definition))  (* all accumulated bindings bindings *)
 let rec accumulate_bindings linkables all_defs fully_bound to_bind bindings_accum =
     (* This is like foldl, except that each stage
      * can add stuff to the work list *)

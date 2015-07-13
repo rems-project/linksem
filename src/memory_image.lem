@@ -165,13 +165,13 @@ type range = natural * natural (* start, length *)
 type element_range = string * range
 
 type annotated_memory_image = <|
-      image            : memory_image 
+      elements         : memory_image 
     ; by_range         : multimap element_range range_tag
     ; by_tag           : multimap range_tag element_range
 |>
 
 let empty_annotated_memory_image = <|
-      image            = Map.empty
+      elements         = Map.empty
     ; by_range         = Set.empty
     ; by_tag           = Set.empty
 |>
@@ -321,6 +321,13 @@ let rec byte_list_matches_pattern pattern bytes =
                  && byte_list_matches_pattern more morebytes
             end
     end
+
+val append_to_byte_pattern_at_offset : natural -> list (maybe byte) -> list (maybe byte) -> list (maybe byte)
+let append_to_byte_pattern_at_offset offset pat1 pat2 =
+    let pad_length = offset - Missing_pervasives.length pat1
+    in
+    if pad_length < 0 then failwith "can't append at offset already used"
+    else pat1 ++ (List.replicate (unsafe_nat_of_natural pad_length) Nothing) ++ pat2
 
 val accum_pattern_possible_starts_in_one_byte_sequence : list (maybe byte) -> nat -> list byte -> nat -> natural -> list natural -> list natural
 let rec accum_pattern_possible_starts_in_one_byte_sequence pattern pattern_len seq seq_len offset accum =

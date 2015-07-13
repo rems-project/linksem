@@ -29,6 +29,7 @@ open import Elf_types_native_uint
 
 open import Abis
 
+open import Input_list
 open import Linkable_list
 import Command_line
 
@@ -72,7 +73,29 @@ let build_memory_image os =
 
 val link : linker_control_script -> abi -> list Command_line.link_option -> linkable_list -> elf_memory_image
 let link script a options linkables = 
-    let input_sections = Missing_pervasives.list_concat_map (expand_sections a) linkables
+    let initial_included_indices = mapMaybei (fun i -> (fun (obj, inp, (opts : input_options)) -> 
+        if opts.item_force_output 
+        then Just i
+        else Nothing
+    )) linkables
+    in
+    let (accumulated_bindings : list ((natural * symbol_reference) * maybe (natural * symbol_definition)))
+     = accumulate_bindings linkables (all_definitions_by_name linkables) {} initial_included_indices [] 
+    in
+    let referenced_object_indices = Set.fromList (mapMaybe (fun ((ref_idx, ref_sym), maybe_def_idx_and_sym) -> 
+        match maybe_def_idx_and_sym with
+            Nothing -> Nothing
+            | Just (def_idx, def_sym) -> Just def_idx
+        end
+    ) accumulated_bindings)
+    in
+    let linkables_not_discarded = mapMaybei (fun i -> (fun (obj, inp, opts) -> 
+        if Set.member i referenced_object_indices || opts.item_force_output 
+        then Just (obj, inp, opts) 
+        else Nothing
+    )) linkables
+    in
+    let input_sections = Missing_pervasives.list_concat_map (expand_sections a) linkables_not_discarded
     in
     let output_image = interpret_linker_control_script script input_sections 
     in

@@ -190,6 +190,24 @@ let elf_memory_image_section_by_index idx img =
         | _ -> failwith "impossible: more than one ELF section with same index"
     end
 
+val elf_memory_image_element_coextensive_with_section : natural -> elf_memory_image -> maybe string
+let elf_memory_image_element_coextensive_with_section idx img = 
+    (* find all element ranges labelled as ELF sections *)
+    let (allSectionTags, allSectionElementRanges) = elf_memory_image_section_ranges img 
+    in
+    let matches = mapMaybei (fun i -> (fun (tag, (elName, (rangeStart, rangeLen))) -> match tag with
+         FileFeature(ElfSection(idx, s)) -> if rangeStart = 0 && rangeLen = s.elf64_section_size then Just elName else Nothing
+        | FileFeature(ElfSection(_, s)) -> Nothing
+        | _ -> failwith "impossible"
+    end)) (zip allSectionTags allSectionElementRanges)
+    in
+    match matches with
+        [] -> Nothing
+        | [x] -> Just x
+        | _ -> failwith "impossible: more than one ELF section with same index"
+    end
+
+
 val name_of_elf_interpreted_section : 
     elf64_interpreted_section -> elf64_interpreted_section -> maybe string
 let name_of_elf_interpreted_section s shstrtab = 
@@ -609,7 +627,7 @@ let elf_memory_image_of_elf64_file f =
                     (extract_definitions_from_symtab_of_type sht_symtab f)
                 in
                  <|
-                      image = Map.fromList section_names_and_images  (* : memory_image -- the image elements, without annotation, i.e. 
+                      elements = Map.fromList section_names_and_images  (* : memory_image -- the image elements, without annotation, i.e. 
                         a map from string to (startpos, length, contents)
                         -- an element is the ELF header, PHT, SHT, section or segment
                         -- exploit the fact that section names beginning `.' are reserved, and 
@@ -634,7 +652,7 @@ let elf_memory_image_of_elf64_file f =
                 in
                 (* let annotations = *)
                  <|
-                      image = Map.fromList segment_names_and_images  (* : memory_image -- the image elements, without annotation, i.e. 
+                      elements = Map.fromList segment_names_and_images  (* : memory_image -- the image elements, without annotation, i.e. 
                         a map from string to (startpos, length, contents)
                         -- an element is the ELF header, PHT, SHT, section or segment
                         -- exploit the fact that section names beginning `.' are reserved, and 
