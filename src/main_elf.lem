@@ -1,6 +1,7 @@
 open import Basic_classes
 open import Function
 open import Maybe
+open import List
 open import Num
 open import String
 open import Tuple
@@ -29,6 +30,9 @@ open import Abi_amd64_serialisation
 
 open import Abi_x86_relocation
 
+open import Gnu_ext_program_header_table
+open import Gnu_ext_section_header_table
+
 let default_hdr_bdl =
   (default_os_specific_print, default_proc_specific_print)
 
@@ -38,6 +42,48 @@ let default_pht_bdl =
 let default_sht_bdl =
   (default_os_specific_print, default_proc_specific_print, default_user_specific_print)
 
+val reverse_nibbles : list string -> list string
+let rec reverse_nibbles ss =
+  match ss with
+    | s1::s2::ss -> (s2 ^ s1)::(reverse_nibbles ss)
+    | x          -> x
+  end
+
+val chunks : list string -> list (list string) * nat
+let rec chunks ss =
+  match ss with
+    | s1::s2::s3::s4::s5::s6::s7::s8::ss ->
+      let (tail, miss) = chunks ss in
+        (([s1;s2;s3;s4;s5;s6;s7;s8]::tail), miss)
+    | ss ->
+      let missing = naturalFromNat (8 - List.length ss) in
+        if missing = 8 then
+          ([], List.length ss)
+        else
+          let bits    = replicate missing "    " in
+          let fixed   = intercalate " " bits in
+          let buff    = ss ++ [concatS fixed] in
+            ([buff], List.length ss)
+  end
+  
+val provide_offsets : (list (list string) * nat) -> list (string * list string)
+let provide_offsets (ss, ed) =
+  List.mapi (fun i x ->
+    let hx = unsafe_hex_string_of_natural 7 ((naturalFromNat i) * 16) in
+      (hx, x)) ss
+  ++
+    if ed = 0 then
+      [(unsafe_hex_string_of_natural 7 ((naturalFromNat (List.length ss)) * 16), [])]
+    else
+      [(unsafe_hex_string_of_natural 7 (((naturalFromNat (List.length ss - 1)) * 16) + naturalFromNat (ed * 2)), [])]
+    
+val print_chunk : string * list string -> string
+let print_chunk (off, ss) =
+  match ss with
+    | [] -> off
+    | _  -> off ^ " " ^ concatS (intercalate " " ss)
+  end
+    
 let _ =
   let res =
     let (flag, arg) =
@@ -60,15 +106,7 @@ let _ =
                 Harness_interface.harness_string_of_elf32_file_header f1.elf32_file_header
               else if flag = "--program-headers" then
                 Harness_interface.harness_string_of_elf32_program_headers
-                  (fun x -> (* XXX: GNU specific, move elsewhere *)
-                    if x = 4 * 421345620 then
-                      "GNU_EH_FRAME"
-                    else if x = (4 * 421345620) + 1 then
-                      "GNU_STACK"
-                    else if x = (4 * 421345620) + 2 then
-                      "GNU_RELRO"
-                    else
-                      show x)
+                  string_of_gnu_ext_segment_type 
                   (fun x ->
                     show x)
                   f1.elf32_file_header
@@ -78,15 +116,7 @@ let _ =
                   bs0
               else if flag = "--section-headers" then
                 Harness_interface.harness_string_of_elf32_section_headers
-                  (fun x -> (* XXX: GNU specific, move elsewhere *)
-                    if x = 2 * 939524091 then
-                      "GNU_HASH"
-                    else if x = 2 * 939524095 then
-                      "VERNEED"
-                    else if x = (2 * 939524095) + 1 then
-                      "VERSYM"
-                    else
-                      show x)
+                  string_of_gnu_ext_section_type
                   (fun x -> show x)
                   (fun x -> show x)
                   f1.elf32_file_header
@@ -97,6 +127,25 @@ let _ =
                   f1
                   string_of_x86_relocation_type (* XXX: generic way to obtain correct ABI needed *)
                   bs0
+              else if flag = "--symbols" then
+                Harness_interface.harness_string_of_elf32_syms
+                  f1
+                  show
+                  show
+                  bs0
+              else if flag = "--in-out" then
+                match Elf_file.bytes_of_elf32_file f1 with
+                  | Fail    f -> f
+                  | Success s ->
+                    let ss =
+                      List.map (unsafe_hex_string_of_natural 2)
+                        (List.map natural_of_byte (Byte_sequence.byte_list_of_byte_sequence s))
+                    in
+                    let chunks = provide_offsets (chunks (reverse_nibbles ss)) in
+                    let lines  = concatS (intercalate "\n" (List.map print_chunk chunks)) in
+                    (*let _      = Byte_sequence.serialise "mainelf-inout" s in*)
+                      show lines
+                end
               else
                 failwith "Unrecognised flag"
             in
@@ -109,10 +158,8 @@ let _ =
                 Harness_interface.harness_string_of_elf64_file_header f1.elf64_file_header
               else if flag = "--program-headers" then
                 Harness_interface.harness_string_of_elf64_program_headers
-                  (fun x -> 
-                    string_of_segment_type show show x)
-                  (fun x ->
-                    show x)
+                  string_of_gnu_ext_segment_type
+                  show
                   f1.elf64_file_header
                   f1.elf64_file_program_header_table
                   f1.elf64_file_section_header_table
@@ -120,13 +167,30 @@ let _ =
                   bs0
               else if flag = "--section-headers" then
                 Harness_interface.harness_string_of_elf64_section_headers
-                  (fun x ->
-                    string_of_section_type show show show x)
+                  string_of_gnu_ext_section_type
                   (fun x -> show x)
                   (fun x -> show x)
                   f1.elf64_file_header
                   f1.elf64_file_section_header_table
                   stbl
+              else if flag = "--relocs" then
+                Harness_interface.harness_string_of_elf64_relocs
+                  f1
+                  string_of_amd64_relocation_type (* XXX: generic way to obtain correct ABI needed *)
+                  bs0
+              else if flag = "--in-out" then
+                match Elf_file.bytes_of_elf64_file f1 with
+                  | Fail    f -> f
+                  | Success s ->
+                    let ss =
+                      List.map (unsafe_hex_string_of_natural 2)
+                        (List.map natural_of_byte (Byte_sequence.byte_list_of_byte_sequence s))
+                    in
+                    let chunks = provide_offsets (chunks (reverse_nibbles ss)) in
+                    let lines  = concatS (intercalate "\n" (List.map print_chunk chunks)) in
+                    (*let _      = Byte_sequence.serialise "mainelf-inout" s in*)
+                      show lines
+                end
               else
                 failwith "Unimplemented (for ELF64) or unrecognised flag"
             in

@@ -1,12 +1,16 @@
 open import Basic_classes
 open import Bool
 open import List
+open import Maybe
 open import Num
 open import String
 
+open import Byte_sequence
+open import Error
+open import String_table
+
 open import Elf_types_native_uint
 open import Elf_section_header_table
-open import Byte_sequence
 
 open import Missing_pervasives
 open import Show
@@ -145,3 +149,40 @@ let {ocaml} string_of_elf64_interpreted_section is =
    ; "Section alignment: " ^ show is.elf64_section_align
    ; "Entry size: " ^ show is.elf64_section_entry_size
    ]
+   
+    
+val is_valid_elf32_section_header_table_entry : elf32_interpreted_section ->
+  string_table -> bool
+let is_valid_elf32_section_header_table_entry ent stbl =
+  match String_table.get_string_at ent.elf32_section_name stbl with
+    | Fail    f    -> false
+    | Success name ->
+      match Map.lookup name elf_special_sections with
+        | Nothing           -> false (* ??? *)
+        | Just (typ, flags) ->
+            typ = ent.elf32_section_type && flags = ent.elf32_section_flags
+      end
+  end
+  
+val is_valid_elf32_section_header_table : list elf32_interpreted_section ->
+  string_table -> bool
+let is_valid_elf32_section_header_table ents stbl =
+  List.all (fun x -> is_valid_elf32_section_header_table_entry x stbl) ents
+  
+val is_valid_elf64_section_header_table_entry : elf64_interpreted_section ->
+  string_table -> bool
+let is_valid_elf64_section_header_table_entry ent stbl =
+  match String_table.get_string_at ent.elf64_section_name stbl with
+    | Fail    f    -> false
+    | Success name ->
+      match Map.lookup name elf_special_sections with
+        | Nothing           -> false (* ??? *)
+        | Just (typ, flags) ->
+            typ = ent.elf64_section_type && flags = ent.elf64_section_flags
+      end
+  end
+  
+val is_valid_elf64_section_header_table : list elf64_interpreted_section ->
+  string_table -> bool
+let is_valid_elf64_section_header_table ents stbl =
+  List.all (fun x -> is_valid_elf64_section_header_table_entry x stbl) ents   

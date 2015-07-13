@@ -99,7 +99,7 @@ let to_bytes u : char * char * char * char * char * char * char * char =
   let b5 = Char.chr (Nat_big_num.to_int (shift_right (logand u u2) 40)) in (* 0xFF0000000000 *)
   let b6 = Char.chr (Nat_big_num.to_int (shift_right (logand u u3) 48)) in (* 0xFF000000000000 *)
   let b7 = Char.chr (Nat_big_num.to_int (shift_right (logand u u4) 56)) in (* 0xFF00000000000000 *)
-    b7, b6, b5, b4, b3, b2, b1, b0
+    b0,b1,b2,b3,b4,b5,b6,b7
 ;;
 
 let to_bytes_native u : char * char * char * char * char * char * char * char =
@@ -115,5 +115,5 @@ let to_bytes_native u : char * char * char * char * char * char * char * char =
   let b5 = Char.chr (Uint64.to_int (Uint64.shift_right (Uint64.logand u u2) 40)) in (* 0xFF0000000000 *)
   let b6 = Char.chr (Uint64.to_int (Uint64.shift_right (Uint64.logand u u3) 48)) in (* 0xFF000000000000 *)
   let b7 = Char.chr (Uint64.to_int (Uint64.shift_right (Uint64.logand u u4) 56)) in (* 0xFF00000000000000 *)
-    b7, b6, b5, b4, b3, b2, b1, b0
+    b0,b1,b2,b3,b4,b5,b6,b7
 ;;

@@ -57,11 +57,11 @@ let stb_hiproc : natural = 15
 val string_of_symbol_binding : natural -> (natural -> string) -> (natural -> string) -> string
 let {ocaml} string_of_symbol_binding m os proc =
   if m = stb_local then
-    "STB_LOCAL"
+    "LOCAL"
   else if m = stb_global then
-    "STB_GLOBAL"
+    "GLOBAL"
   else if m = stb_weak then
-    "STB_WEAK"
+    "WEAK"
   else if m >= stb_loos && m <= stb_hios then
     os m
   else if m >= stb_loproc && m <= stb_hiproc then
@@ -118,19 +118,19 @@ let stt_hiproc : natural = 15
 val string_of_symbol_type : natural -> (natural -> string) -> (natural -> string) -> string
 let string_of_symbol_type m os proc =
   if m = stt_notype then
-    "STT_NOTYPE"
+    "NOTYPE"
   else if m = stt_object then
-    "STT_OBJECT"
+    "OBJECT"
   else if m = stt_func then
-    "STT_FUNC"
+    "FUNC"
   else if m = stt_section then
-    "STT_SECTION"
+    "SECTION"
   else if m = stt_file then
-    "STT_FILE"
+    "FILE"
   else if m = stt_common then
-    "STT_COMMON"
+    "COMMON"
   else if m = stt_tls then
-    "STT_TLS"
+    "TLS"
   else if m >= stt_loos && m <= stt_hios then
     os m
   else if m >= stt_loproc && m <= stt_hiproc then
@@ -166,13 +166,13 @@ let stv_protected : natural = 3
 val string_of_symbol_visibility : natural -> string
 let string_of_symbol_visibility m =
   if m = stv_default then
-    "STV_DEFAULT"
+    "DEFAULT"
   else if m = stv_internal then
-    "STV_INTERNAL"
+    "INTERNAL"
   else if m = stv_hidden then
-    "STV_HIDDEN"
+    "HIDDEN"
   else if m = stv_protected then
-    "STV_PROTECTED"
+    "PROTECTED"
   else
     "Invalid symbol visibility"
 

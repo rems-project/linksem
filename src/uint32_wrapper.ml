@@ -80,7 +80,7 @@ let to_bytes u : char * char * char * char =
   let b1 = Char.chr (Nat_big_num.to_int (shift_right (logand u (Nat_big_num.of_string "65280")) 8)) in
   let b2 = Char.chr (Nat_big_num.to_int (shift_right (logand u (Nat_big_num.of_string "16711680")) 16)) in
   let b3 = Char.chr (Nat_big_num.to_int (shift_right (logand u (Nat_big_num.of_string "4278190080")) 24)) in
-    b3, b2, b1, b0
+    b0, b1, b2, b3
 ;;
 
 let to_bytes_native u : char * char * char * char =
@@ -88,10 +88,10 @@ let to_bytes_native u : char * char * char * char =
   let b1 = Char.chr (Uint32.to_int (Uint32.shift_right (Uint32.logand u (Uint32.of_string "65280")) 8)) in
   let b2 = Char.chr (Uint32.to_int (Uint32.shift_right (Uint32.logand u (Uint32.of_string "16711680")) 16)) in
   let b3 = Char.chr (Uint32.to_int (Uint32.shift_right (Uint32.logand u (Uint32.of_string "4278190080")) 24)) in
-    b3, b2, b1, b0
+    b0, b1, b2, b3
 ;;
 
 let to_dual_bytes_native u : char * char =
   let (b3, b2, b1, b0) = to_bytes_native u in
-    b1, b0
+    b3, b2
 ;;
