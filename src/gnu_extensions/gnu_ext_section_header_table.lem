@@ -21,6 +21,8 @@ open import Elf_interpreted_section
   * several ELF binaries collected in the wild...
   *
   * TODO: find out where this comes from?
+  * ANSW: a mailing list apparently!  See here:
+  *   https://sourceware.org/ml/binutils/2006-10/msg00377.html
   *)
 let sht_gnu_hash    : natural = (2 * 939524091)     (* 0x6FFFFFF6 *)
 
