@@ -1,3 +1,4 @@
+open import Basic_classes
 open import List
 open import Num
 
@@ -5,6 +6,8 @@ open import Byte_sequence
 open import Endianness
 open import Error
 
+open import Elf_program_header_table
+open import Elf_section_header_table
 open import Elf_types_native_uint
 
 type elf32_note =
@@ -48,3 +51,67 @@ let read_elf64_note endian bs0 =
   return (<| elf64_note_namesz = namesz; elf64_note_descsz = descsz;
     elf64_note_type = typ; elf64_note_name = name; elf64_note_desc = desc |>,
       bs0)
+      
+val obtain_elf32_note_sections : endianness -> elf32_section_header_table ->
+  byte_sequence -> error (list elf32_note)
+let obtain_elf32_note_sections endian sht bs0 =
+  let note_sects =
+    List.filter (fun x ->
+      x.elf32_sh_type = elf32_word_of_natural sht_note
+    ) sht
+  in
+    mapM (fun x ->
+      let offset = natural_of_elf32_off x.elf32_sh_offset in
+      let size   = natural_of_elf32_word x.elf32_sh_size in
+      Byte_sequence.offset_and_cut offset size bs0 >>= fun rel ->
+      read_elf32_note endian bs0 >>= fun (note, _) ->
+      return note
+    ) note_sects
+    
+val obtain_elf64_note_sections : endianness -> elf64_section_header_table ->
+  byte_sequence -> error (list elf64_note)
+let obtain_elf64_note_sections endian sht bs0 =
+  let note_sects =
+    List.filter (fun x ->
+      x.elf64_sh_type = elf64_word_of_natural sht_note
+    ) sht
+  in
+    mapM (fun x ->
+      let offset = natural_of_elf64_off x.elf64_sh_offset in
+      let size   = natural_of_elf64_xword x.elf64_sh_size in
+      Byte_sequence.offset_and_cut offset size bs0 >>= fun rel ->
+      read_elf64_note endian bs0 >>= fun (note, _) ->
+      return note
+    ) note_sects
+    
+val obtain_elf32_note_segments : endianness -> elf32_program_header_table ->
+  byte_sequence -> error (list elf32_note)
+let obtain_elf32_note_segments endian pht bs0 =
+  let note_segs =
+    List.filter (fun x ->
+      x.elf32_p_type = elf32_word_of_natural elf_pt_note
+    ) pht
+  in
+    mapM (fun x ->
+      let offset = natural_of_elf32_off x.elf32_p_offset in
+      let size   = natural_of_elf32_word x.elf32_p_filesz in
+      Byte_sequence.offset_and_cut offset size bs0 >>= fun rel ->
+      read_elf32_note endian bs0 >>= fun (note, _) ->
+      return note
+    ) note_segs
+    
+val obtain_elf64_note_segments : endianness -> elf64_program_header_table ->
+  byte_sequence -> error (list elf64_note)
+let obtain_elf64_note_segments endian pht bs0 =
+  let note_segs =
+    List.filter (fun x ->
+      x.elf64_p_type = elf64_word_of_natural elf_pt_note
+    ) pht
+  in
+    mapM (fun x ->
+      let offset = natural_of_elf64_off x.elf64_p_offset in
+      let size   = natural_of_elf64_xword x.elf64_p_filesz in
+      Byte_sequence.offset_and_cut offset size bs0 >>= fun rel ->
+      read_elf64_note endian bs0 >>= fun (note, _) ->
+      return note
+    ) note_segs
