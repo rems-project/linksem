@@ -32,7 +32,7 @@ open import String_table
 open import Memory_image
 
 (* Now that we've got rid of the polymorphism, these things are identical *)
-type elf_memory_image = annotated_memory_image (* symbol_definition symbol_reference elf_file_feature 'abifeature *)
+type elf_memory_image = annotated_memory_image
 
 val elfFeatureCompare : elf_file_feature -> elf_file_feature -> Basic_classes.ordering
 let elfFeatureCompare k1 k2 = 
@@ -123,13 +123,25 @@ let null_symbol_reference = <|
     ; ref_sym_idx = 0
 |>
 
+let null_elf_relocation_a =
+  <| elf64_ra_offset = elf64_addr_of_natural 0  
+   ; elf64_ra_info   = elf64_xword_of_natural 0 
+   ; elf64_ra_addend = elf64_sxword_of_integer 0
+   |>
+
+let null_symbol_reference_and_reloc_site = <|
+    ref = null_symbol_reference
+    ; ref_relent = null_elf_relocation_a
+    ; ref_rel_scn = 0
+    ; ref_rel_idx = 0
+    ; ref_src_scn = 0
+|>
 let null_symbol_definition = <|
     def_symname = ""
     ; def_syment = elf64_null_symbol_table_entry
     ; def_sym_scn = 0
     ; def_sym_idx = 0
 |>
-
 
 let null_section_header_table = ElfSectionHeaderTable([])
 let null_program_header_table = ElfProgramHeaderTable([])
@@ -443,20 +455,16 @@ let section_as_byte_pattern a endian s all_s all_bindings_by_ref_idx_scn_symind 
     in
     let r_ranges = rel_ranges ++ rela_ranges
     in
-    let sorted_r_ranges = sortBy (fun (base1, pat1) -> (fun (base2, pat2) -> base1 < base2)) r_ranges
+    let sorted_r_bases_and_pats = sortBy (fun (base1, pat1) -> (fun (base2, pat2) -> base1 < base2)) r_ranges
     in
-    let expanded_r_ranges_short = expand_ranges (List.map (fun (b, pat) -> (b, Missing_pervasives.length pat)) sorted_r_ranges) []
+    let sorted_r_ranges = List.map (fun (b, pat) -> (b, Missing_pervasives.length pat)) sorted_r_bases_and_pats
     in
-    let expanded_ranges = append expanded_r_ranges_short 
-        (Missing_pervasives.replicate 
-            (s.elf64_section_size - (Missing_pervasives.length expanded_r_ranges_short)) 
-            true
-        )
+    let expanded_r_ranges = expand_sorted_ranges sorted_r_ranges s.elf64_section_size []
     in
-    let byte_pattern = make_byte_pattern s_bytes expanded_ranges
+    let bp = make_byte_pattern s_bytes expanded_r_ranges
     in
-    let _ = Missing_pervasives.prints ("Section name-number " ^ (show s.elf64_section_name) ^ " has byte-pattern of length " ^ (show (Missing_pervasives.length byte_pattern)) ^ "\n") in
-    byte_pattern
+    let _ = Missing_pervasives.prints ("Section name-number " ^ (show s.elf64_section_name) ^ " has byte-pattern of length " ^ (show (Missing_pervasives.length bp)) ^ "\n") in
+    bp
 
 val pattern_possible_starts_in_one_load_phdr : string -> list (maybe byte) -> elf64_interpreted_segment -> natural -> list natural
 let pattern_possible_starts_in_one_load_phdr phdr_name pattern seg offset =
@@ -544,100 +552,288 @@ let offset_to_vaddr_mappings f off =
 val gensym : string -> string
 let gensym hint = hint (* FIXME: remember duplicates *)
 
-val extract_satisfying_symbols_from_symtab_of_type : natural -> elf64_file 
-    -> (elf64_symbol_table_entry -> bool) -> list (string * elf64_symbol_table_entry * natural)
-let extract_satisfying_symbols_from_symtab_of_type t e pred =
-    let result = 
-        find_elf64_symbols_by_type e t >>= fun (symtab, strtab, scnidx) ->
-        return (mapMaybei (fun _ -> (fun ent -> (
-            match (get_string_at (natural_of_elf64_word ent.elf64_st_name) strtab) with
-                Success str ->
-                    (* exclude undefineds *) 
-                    if (pred ent)
-                    then Just(str, ent, scnidx)
-                    else Nothing
-                | Fail _ -> Nothing
-            end
-            ))) symtab)
+val extract_symbol : (elf64_symbol_table * string_table * natural) -> natural -> maybe (string * elf64_symbol_table_entry)
+let extract_symbol symtab_triple symidx = 
+    let (symtab, strtab, scnidx) = symtab_triple
     in
-    match result with
-        Success defs -> defs
-        | Fail _ -> []
+    match index symidx symtab with
+        Just ent -> 
+            match (get_string_at (natural_of_elf64_word ent.elf64_st_name) strtab) with
+                Success str -> Just (str, ent)
+                | Fail _ -> Just ("", ent)    (* ELF doesn't distinguish "no string" from "empty string" *)
+            end
+      | Nothing -> Nothing
     end
+
+val extract_satisfying_symbols : (elf64_symbol_table * string_table * natural) ->
+    (elf64_symbol_table_entry -> bool) -> list (string * elf64_symbol_table_entry * natural (* scnidx *) * natural (* symidx *))
+let extract_satisfying_symbols symtab_triple pred =
+    let (symtab, strtab, scnidx) = symtab_triple
+    in
+    mapMaybei (fun symidx -> (fun ent ->
+        (match (get_string_at (natural_of_elf64_word ent.elf64_st_name) strtab) with
+            Success str ->
+                (* exclude undefineds *) 
+                if (pred ent)
+                then Just(str, ent, scnidx, symidx)
+                else Nothing
+            | Fail _ -> Nothing
+        end)
+        )) symtab
+        
+val extract_all_symbols : (elf64_symbol_table * string_table * natural) -> list (string * elf64_symbol_table_entry * natural (* scnidx *) * natural (* symidx *))
+let extract_all_symbols symtab_triple = extract_satisfying_symbols symtab_triple (fun _ -> true) 
 
 let definitions_pred = fun ent -> (natural_of_elf64_half ent.elf64_st_shndx) <> stn_undef 
 let references_pred = fun ent -> (natural_of_elf64_half ent.elf64_st_shndx) = stn_undef 
 
-(* This function only knows how to extract symbols. 
- * It doesn't know the index into the linkables list of whatever object we're extracting from.
- * So we return a function from that to the eventual list. Is this good style? HMM. *)
 val extract_definitions_from_symtab_of_type : natural -> elf64_file -> list symbol_definition
-let extract_definitions_from_symtab_of_type t e
- = List.mapi (fun i -> (fun (str, ent, scnidx) -> <|
-               def_symname = str
-             ; def_syment = ent
-             ; def_sym_scn = scnidx
-             ; def_sym_idx = naturalFromNat i
-             |>)) (extract_satisfying_symbols_from_symtab_of_type t e definitions_pred)
+let extract_definitions_from_symtab_of_type t e = 
+    match (find_elf64_symtab_by_type t e >>= fun symtab -> (
+        let (allsyms : list (string * elf64_symbol_table_entry * natural (* scnidx *) * natural (* symidx *)))
+         = extract_satisfying_symbols symtab definitions_pred
+        in
+        let (extracted : list symbol_definition)
+         = mapMaybei (fun i -> (fun (str, ent, scnidx, symidx) -> Just <|
+                   def_symname = str
+                 ; def_syment = ent
+                 ; def_sym_scn = scnidx
+                 ; def_sym_idx = symidx
+                 |>)) allsyms
+        in return extracted
+    )) with Fail _ -> [] | Success x -> x end
 
 val extract_references_from_symtab_of_type : natural -> elf64_file -> list symbol_reference
-let extract_references_from_symtab_of_type t e
-= mapMaybei (fun symidx -> (fun (str, ent, scnidx) -> Just <|
-               ref_symname = str
-             ; ref_syment = ent
-             ; ref_sym_scn = scnidx
-             ; ref_sym_idx = symidx
-             |>))  (extract_satisfying_symbols_from_symtab_of_type t e references_pred)
+let extract_references_from_symtab_of_type t e = 
+    match (find_elf64_symtab_by_type t e >>= fun symtab -> (
+    let (allsyms : list (string * elf64_symbol_table_entry * natural (* scnidx *) * natural (* symidx *)))
+     = extract_satisfying_symbols symtab references_pred
+    in
+    let (extracted : list symbol_reference) = 
+        mapMaybei (fun symidx -> (fun (str, ent, scnidx, symidx) -> Just <|
+                   ref_symname = str
+                 ; ref_syment = ent
+                 ; ref_sym_scn = scnidx
+                 ; ref_sym_idx = symidx
+                 |>)) allsyms
+    in return extracted
+    )) with Fail _ -> [] | Success x -> x end
 
-
-val elf_memory_image_of_elf64_file : elf64_file -> elf_memory_image
-let elf_memory_image_of_elf64_file f = 
-    let (section_name_is_unique : string -> bool) = (fun s ->
-        match mapMaybe (fun sec -> 
-            match name_of_elf64_interpreted_section sec f with
-                Just s -> Just sec
-                | Just _ -> Nothing
-                | Nothing -> Nothing
-            end) f.elf64_file_interpreted_sections
+val extract_all_relocs : elf64_file -> list (natural (* scn *) * natural (* rel idx *) * natural (* rel src scn *) * elf64_relocation_a)
+let extract_all_relocs e = 
+    let (all_rel_sections : list (natural * elf64_interpreted_section)) = mapMaybei (fun i -> (fun isec -> 
+        if isec.elf64_section_type = sht_rel then Just (i, isec) else Nothing
+    )) e.elf64_file_interpreted_sections
+    in
+    let (all_rela_sections : list (natural * elf64_interpreted_section)) = mapMaybei (fun i -> (fun isec -> 
+        if isec.elf64_section_type = sht_rela then Just (i, isec) else Nothing
+    )) e.elf64_file_interpreted_sections 
+    in
+    let rel_to_rela = fun rel -> <|
+         elf64_ra_offset = rel.elf64_r_offset
+       ; elf64_ra_info   = rel.elf64_r_info
+       ; elf64_ra_addend = elf64_sxword_of_integer 0
+    |>
+    in
+    let endian = get_elf64_header_endianness e.elf64_file_header
+    in
+    (* Build per-section lists of rels paired with their originating section id.
+     * We also pair each element with its index *in that section*, and then flatten
+     * the whole lot using mapConcat. *)
+    let (all_rels_list : list (natural * natural * natural * elf64_relocation_a)) = list_reverse_concat_map (fun (scn, isec) -> 
+        match read_elf64_relocation_section   isec.elf64_section_size endian isec.elf64_section_body
         with
-            [_] -> true
-            | _ -> false
+            Success (relocs, _) -> mapMaybei (fun idx -> (fun rel -> Just (scn, idx,isec.elf64_section_info, rel_to_rela rel))) relocs
+            | Fail _ -> []
+        end) all_rel_sections
+    in 
+    let (all_relas_list : list (natural * natural * natural * elf64_relocation_a)) = list_reverse_concat_map (fun (scn, isec) -> 
+        match read_elf64_relocation_a_section isec.elf64_section_size endian isec.elf64_section_body
+        with
+            Success (relocs, _) -> mapMaybei (fun idx -> (fun rela -> Just (scn, idx, isec.elf64_section_info, rela))) relocs
+            | Fail _ -> []
+        end) all_rela_sections
+    in
+    all_rels_list ++ all_relas_list
+
+val extract_all_relocs_as_symbol_references : elf64_file -> list symbol_reference_and_reloc_site
+let extract_all_relocs_as_symbol_references e
+=   let all_relocs = extract_all_relocs e
+    in
+    let all_symtab_triples_by_scnidx = mapMaybei (fun scnidx -> (fun isec ->
+        if isec.elf64_section_type = sht_symtab
+        then
+            let found = find_elf64_symbols_by_symtab_idx scnidx e
+            in
+            match found with 
+                Fail _ -> Nothing
+                | Success triple -> Just (scnidx, triple)
+            end
+        else Nothing
+    )) e.elf64_file_interpreted_sections
+    in
+    let (all_extracted_symtabs_by_scnidx : (Map.map natural (list (string * elf64_symbol_table_entry * natural (* scnidx *) * natural (* symidx *)))))
+     = List.foldl (fun acc -> (fun (scnidx, triple) -> Map.insert scnidx (extract_all_symbols triple) acc)) Map.empty all_symtab_triples_by_scnidx
+    in
+    let ref_for_relocation_a_in_section_index = fun rel_scn_idx -> (fun rela -> 
+        let rela_isec = match index rel_scn_idx e.elf64_file_interpreted_sections with
+            Just x -> x
+            | Nothing -> failwith "relocation references nonexistent section"
+        end
+        in
+        let symtab_idx = rela_isec.elf64_section_link
+        in
+        match Map.lookup symtab_idx all_extracted_symtabs_by_scnidx with
+            Nothing -> failwith "referenced symtab does not exist"
+            | Just quads ->
+                let sym_idx = elf64_relocation_r_sym rela.elf64_ra_info
+                in
+                let maybe_quad = Missing_pervasives.index sym_idx quads
+                in
+                match maybe_quad with
+                    Just(symname, syment, scnidx, symidx) -> <|
+                           ref_symname = symname
+                         ; ref_syment = syment
+                         ; ref_sym_scn = symtab_idx
+                         ; ref_sym_idx = sym_idx
+                         |>
+                    | Nothing -> failwith "referenced symbol does not exist"
+                end
         end
     )
     in
-    let unique_name_for_section = (fun idx -> (fun s -> 
-        let (maybe_secname : maybe string) = name_of_elf64_interpreted_section s f
-        in match maybe_secname with
-            Just secname -> if section_name_is_unique secname then secname else gensym secname
-            | Nothing -> gensym ("section" ^ (show idx))
-        end)
-    )
-    in
+    List.map (fun (scn, idx, srcscn, rela) -> <|
+          ref = (* NOTE that a reference is not necessarily to an undefined symbol! *) ref_for_relocation_a_in_section_index scn rela
+        ; ref_relent =  rela
+        ; ref_rel_scn = scn
+        ; ref_rel_idx = idx
+        ; ref_src_scn = srcscn (* what section does the reference come from? it's the 'info' link of the rel section header *)
+        |>) all_relocs
+
+val section_name_is_unique : string -> elf64_file -> bool
+let section_name_is_unique name f =
+    match mapMaybe (fun sec -> 
+        match name_of_elf64_interpreted_section sec f with
+            Just name -> Just sec
+            | Just _ -> Nothing
+            | Nothing -> Nothing
+        end) f.elf64_file_interpreted_sections
+    with
+        [_] -> true
+        | _ -> false
+    end
+
+val unique_name_for_section_from_index : natural -> elf64_interpreted_section -> elf64_file -> string
+let unique_name_for_section_from_index idx s f = 
+    let (maybe_secname : maybe string) = name_of_elf64_interpreted_section s f
+    in match maybe_secname with
+        Just secname -> if section_name_is_unique secname f then secname else gensym secname
+        | Nothing -> gensym ("section" ^ (show idx))
+    end
+
+val elf_memory_image_of_elf64_file : abi -> elf64_file -> elf_memory_image
+let elf_memory_image_of_elf64_file a f = 
     (* Do we have program headers? This decides whether we choose a 
      * sectionwise or segmentwise view. *)
     match f.elf64_file_program_header_table with
-        [] ->   let section_names_and_images = mapMaybei (fun i -> (fun s -> 
-                    Just(unique_name_for_section i s, <|
+        [] ->   let section_names_and_elements = mapMaybei (fun i -> (fun isec -> 
+                   Just (unique_name_for_section_from_index i isec f, <|
                         startpos = Nothing
-                      ; length = Just s.elf64_section_size
-                      ; contents = [] (* FIXME *)
-                    |>))) f.elf64_file_interpreted_sections
+                      ; length = Just isec.elf64_section_size
+                      ; contents = byte_pattern_of_byte_sequence isec.elf64_section_body
+                    |>)
+                )) f.elf64_file_interpreted_sections
                 in
-                let (annotations : list elf_range_tag) = List.map (fun x -> SymbolDef(x))
+                (* -- annotations are reloc sites, symbol defs, ELF sections/segments/headers, PLT/GOT/...  *)
+                let (elf_sections : list (element_range * range_tag)) = mapMaybei (fun secidx -> (
+                    (fun (isec, (secname, _)) -> 
+                        let (r : element_range) = ((secname, (0, isec.elf64_section_size)))
+                        in
+                        Just (r, FileFeature(ElfSection(secidx, isec)))
+                    )))
+                    (zip f.elf64_file_interpreted_sections section_names_and_elements)
+                in
+                let (symbol_defs : list (element_range * range_tag)) = mapMaybe
+                    (fun x -> 
+                        let section_num = natural_of_elf64_half x.def_syment.elf64_st_shndx
+                        in
+                        if      section_num = shn_abs    then
+                            (* what do we label? FIXME *) Nothing
+                        else if section_num = shn_common then (* FIXME *) Nothing
+                        else
+                            let (section_name, _) = match index section_num section_names_and_elements with
+                                Just x -> x
+                                | Nothing -> failwith ("symbol " ^ x.def_symname ^ " references nonexistent section")
+                            end
+                            in
+                            Just ((section_name, (natural_of_elf64_addr x.def_syment.elf64_st_value, natural_of_elf64_xword x.def_syment.elf64_st_size)), SymbolDef(x))
+                    )
                     (extract_definitions_from_symtab_of_type sht_symtab f)
                 in
+                let (all_reloc_sites : list (element_range * range_tag)) = List.map 
+                    (fun x ->
+                        let (section_name, _) = match index (x.ref_src_scn) section_names_and_elements with
+                            Just y -> y
+                            | Nothing -> failwith "relocs came from nonexistent section"
+                        end
+                        in
+                        let (szfun, applyfn) = a.reloc (elf64_relocation_r_type x.ref_relent.elf64_ra_info)
+                        in
+                        let sz = szfun Nothing (* FIXME *)
+                        in
+                        let (offset : elf64_addr) = x.ref_relent.elf64_ra_offset
+                        in 
+                        ((section_name, (natural_of_elf64_addr offset, sz)), RelocationSite(x))
+                    )
+                    (extract_all_relocs_as_symbol_references f)
+                in
+                let elf_header = [(("header", (0, natural_of_elf64_half f.elf64_file_header.elf64_ehsize)), FileFeature(ElfHeader(f.elf64_file_header)))]
+                in
+                let all_annotations_list =  all_reloc_sites ++ symbol_defs ++ elf_sections ++ elf_header
+                in
+                let all_annotations = Set.fromList all_annotations_list
+                in
+                let (apply_content_relocations : string -> byte_pattern -> byte_pattern) = (fun name -> (fun content -> 
+                    let this_element_reloc_annotations = List.filter (fun ((n, range), _) -> name = n) all_reloc_sites
+                    in
+                    let ((this_element_name_and_reloc_ranges : list (string * (natural * natural))), _) = unzip this_element_reloc_annotations
+                    in
+                    let (this_element_reloc_ranges : list (natural * natural)) = snd (unzip this_element_name_and_reloc_ranges)
+                    in
+                    let (all_ranges_expanded : list bool) = expand_unsorted_ranges this_element_reloc_ranges (Missing_pervasives.length content) []
+                    in
+                    relax_byte_pattern content all_ranges_expanded
+                ))
+                in
+                let new_elements_list = List.map (fun (name, element) -> 
+                    (* We can now mark the relocation sites in the section contents as "subject to change". *)
+                    (
+                        name, 
+                        <|
+                           startpos = element.startpos
+                         ; length   = element.length
+                         ; contents = apply_content_relocations name element.contents
+                         |>
+                    )
+                  ) section_names_and_elements
+                in
+                            (*
+                            List.foldr (fun acc -> (fun  element.contents this_element_reloc_ranges
+                            let (expand_and_relax : list (maybe byte) -> (natural * natural) -> list (maybe byte)) = fun pat -> (fun r -> (
+                                relax_byte_pattern pat (expand_ranges r)
+                            ))
+                            in*)
                  <|
-                      elements = Map.fromList section_names_and_images  (* : memory_image -- the image elements, without annotation, i.e. 
+                      elements = Map.fromList new_elements_list
+                      (* : memory_image -- the image elements, without annotation, i.e. 
                         a map from string to (startpos, length, contents)
                         -- an element is the ELF header, PHT, SHT, section or segment
                         -- exploit the fact that section names beginning `.' are reserved, and 
                            the reserved ones don't use caps: ".PHT", ".SHT", ".HDR"
                         -- what about ambiguous section names? use ".GENSYM_<...>" perhaps 
                       *)
-                    ; by_range = Set.fromList []
-                        (* : map element_range (list (range_tag 'symdef 'reloc 'filefeature 'abifeature))
-                         -- annotations are reloc sites, symbol defs, ELF sections/segments/headers, PLT/GOT/...  *)
-                    ; by_tag = Set.fromList []
+                    ; by_range = all_annotations
+                    ; by_tag = let (fst, snd) = unzip all_annotations_list in Set.fromList (zip snd fst)
                         (*  : multimap (range_tag 'symdef 'reloc 'filefeature 'abifeature) (string * range) 
                          -- annotations by *)
                   |>
@@ -666,4 +862,5 @@ let elf_memory_image_of_elf64_file f =
                         (*  : multimap (range_tag 'symdef 'reloc 'filefeature 'abifeature) (string * range) 
                          -- annotations by *)
                   |>
+
     end

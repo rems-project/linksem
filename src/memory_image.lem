@@ -11,7 +11,9 @@ open import Multimap
 open import Num
 open import Maybe
 open import Assert_extra
+open import Show
 
+open import Byte_sequence
 open import Elf_file
 open import Elf_header
 open import Elf_interpreted_segment
@@ -20,17 +22,19 @@ open import Elf_program_header_table
 open import Elf_section_header_table
 open import Elf_symbol_table
 open import Elf_types_native_uint
+open import Elf_relocation
 
 open import Missing_pervasives
 
 (* Now we can define memory images *)
 
-type byte_pattern = maybe byte
+type byte_pattern_element = maybe byte
+type byte_pattern = list byte_pattern_element
 
 (* An element might have an address/offset, and it has some contents. *)
 type memory_image_element = <| startpos : maybe natural 
                              ; length   : maybe natural
-                             ; contents : list byte_pattern
+                             ; contents : byte_pattern
                              |>
 
 (* HMM -- ideally I want to fold these into the memory image notion
@@ -124,8 +128,14 @@ type symbol_reference
     ; ref_syment : elf64_symbol_table_entry (* undefined (referencing) symbol *)
     ; ref_sym_scn : natural                 (* symtab section idx *) 
     ; ref_sym_idx : natural                 (* index into symbol table *)
-      (* TODO: might also want rel section index, i.e. bind at relocation-record granularity.
-       * Currently we bind only at undef-symbol-name-per-input-object granularity. *)
+    |>
+    
+type symbol_reference_and_reloc_site = <|
+      ref         : symbol_reference
+    ; ref_relent  : elf64_relocation_a 
+    ; ref_rel_scn : natural  (* the relocation section idx *)
+    ; ref_rel_idx : natural  (* the index of the relocation rec *)
+    ; ref_src_scn : natural  (* the section *from which* the reference logically comes *)
     |>
 
 type symbol_definition
@@ -156,7 +166,7 @@ type range_tag =
                | ImageBase
                | EntryPoint
                | SymbolDef of symbol_definition
-               | RelocationSite of symbol_reference
+               | RelocationSite of symbol_reference_and_reloc_site
                | FileFeature of elf_file_feature (* file feature other than symdef and reloc *)
                | AbiFeature of any_abi_feature
 
@@ -280,28 +290,51 @@ let rec nat_range base len =
 
 (* Expand a sorted list of ranges into a list of bool, where the list contains
  * true if its index is included in one or more ranges, else false. *)
-val expand_ranges : list (natural * natural) -> list bool -> list bool
-let rec expand_ranges sorted_ranges accum =
+val expand_sorted_ranges : list (natural * natural) -> natural -> list bool -> list bool
+let rec expand_sorted_ranges sorted_ranges min_length accum =
     match sorted_ranges with
-        [] -> accum
+        [] -> accum ++ (
+            let pad_length = max 0 (min_length - (Missing_pervasives.length accum))
+            in
+            let _ = Missing_pervasives.println (
+                "padding ranges cares list with " ^ (show pad_length) ^ 
+                " cares (accumulated " ^ (show (Missing_pervasives.length accum)) ^ 
+                ", min length " ^ (show min_length) ^ ")")
+            in
+            Missing_pervasives.replicate pad_length true)
      |  (base, len) :: more -> 
             (* pad the accum so that it reaches up to base *)
             let up_to_base = (Missing_pervasives.replicate (base - (Missing_pervasives.length accum)) true)
             in
             let up_to_end_of_range = up_to_base ++ (Missing_pervasives.replicate len false)
             in
-            expand_ranges more (accum ++ up_to_end_of_range)
+            expand_sorted_ranges more min_length (accum ++ up_to_end_of_range)
     end
 
+val expand_unsorted_ranges : list (natural * natural) -> natural -> list bool -> list bool
+let rec expand_unsorted_ranges unsorted_ranges min_length accum =
+    expand_sorted_ranges (sortBy (fun (base1, len1) -> (fun (base2, len2) -> base1 < base2)) unsorted_ranges) min_length accum
+
 val make_byte_pattern : list byte -> list bool -> list (maybe byte)
-let rec make_byte_pattern bytes dontcares = 
+let rec make_byte_pattern bytes cares = 
     match bytes with
           [] -> []
-        | b :: bs -> match dontcares with 
-                er :: more -> (if er then Just b else Nothing) :: (make_byte_pattern bs more)
+        | b :: bs -> match cares with 
+                care :: more -> (if not care then Nothing else Just b) :: (make_byte_pattern bs more)
               | _ -> failwith "make_byte_pattern: unequal length"
               end
     end
+
+val relax_byte_pattern : list (maybe byte) -> list bool -> list (maybe byte)
+let rec relax_byte_pattern bytes cares = 
+    match bytes with
+          [] -> []
+        | b :: bs -> match cares with 
+                care :: more -> (if not care then Nothing else b) :: (relax_byte_pattern bs more)
+              | _ -> failwith ("relax_byte_pattern: unequal length (no more cares with " ^ (show (Missing_pervasives.length (b :: bs))) ^ " bytes left)")
+              end
+    end
+
 
 val byte_option_matches_byte : maybe byte -> byte -> bool
 let byte_option_matches_byte optb b =
@@ -336,12 +369,12 @@ let rec accum_pattern_possible_starts_in_one_byte_sequence pattern pattern_len s
     match pattern with
         [] -> (* let _ = Missing_pervasives.prints ("terminating with hit (empty pattern)\n") in *)
             offset :: accum
-        | byte_pattern :: more_byte_patterns -> (* nonempty, so check for nonempty seq *)
+        | bpe :: more_bpes -> (* nonempty, so check for nonempty seq *)
             match seq with 
                 [] -> (*let _ = Missing_pervasives.prints ("terminating with miss (empty pattern)\n") 
                     in *) accum (* ran out of bytes in the sequence, so no match *)
                 | byte :: more_bytes -> let matched_this_byte = 
-                            byte_option_matches_byte byte_pattern byte
+                            byte_option_matches_byte bpe byte
                        in
                        (* let _ = Missing_pervasives.prints ("Byte " ^ (show byte) ^ " matched " ^ (show byte_pattern) ^ "? " ^ (show matched_this_byte) ^ "; ") 
                        in *)
@@ -350,7 +383,7 @@ let rec accum_pattern_possible_starts_in_one_byte_sequence pattern pattern_len s
                        (* let _ = Missing_pervasives.prints ("enough bytes remaining (" ^ (show seq_len) ^ ") to match rest of pattern (" ^ (show pattern_len) ^ ")? " ^ (show sequence_long_enough) ^ "; ") 
                        in *)
                        let matched_here = matched_this_byte && sequence_long_enough &&
-                        byte_list_matches_pattern more_byte_patterns more_bytes
+                        byte_list_matches_pattern more_bpes more_bytes
                        in
                        (* let _ = Missing_pervasives.prints ("matched pattern anchored here? " ^ (show matched_this_byte) ^ "\n") 
                        in *)
@@ -368,3 +401,8 @@ let pattern_possible_starts_in_one_byte_sequence pattern seq offset =
         (show (List.length pattern)) ^ "-byte pattern in " ^ (show (List.length seq)) ^ "-byte region\n")
     in *)
     accum_pattern_possible_starts_in_one_byte_sequence pattern (List.length pattern) seq (List.length seq) offset []
+
+val byte_pattern_of_byte_sequence : byte_sequence -> list (maybe byte)
+let byte_pattern_of_byte_sequence seq = match seq with
+    Sequence(bs) -> List.map (fun b -> Just b) bs
+end

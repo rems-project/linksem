@@ -64,15 +64,15 @@ let image_of_linkable_item item = match item with
     | _ -> failwith "no image"
 end
 
-val linkable_item_of_input_item_and_options : input_item -> input_options -> linkable_item
-let linkable_item_of_input_item_and_options it opts = 
+val linkable_item_of_input_item_and_options : abi -> input_item -> input_options -> linkable_item
+let linkable_item_of_input_item_and_options a it opts = 
     (* 0. TODO: well-formedness *) 
     (* 1. all allocatable input sections are in LOADed output segments *)
     match (match it with
         (fname, Reloc(seq), origin) -> 
             let _ = Missing_pervasives.println ("Considering relocatable file " ^ fname) in
             Elf_file.read_elf64_file seq >>= fun e ->
-            return (RelocELF(elf_memory_image_of_elf64_file e), it, opts)
+            return (RelocELF(elf_memory_image_of_elf64_file a e), it, opts)
         | (fname, Shared(seq), origin) -> 
             let _ = Missing_pervasives.println ("Skipping shared object " ^ fname) in 
             fail "unsupported input item"
@@ -294,14 +294,16 @@ let resolve_undefs_in_one_object linkables all_defs oracle idx =
     let img = image_of_linkable_item item
     in 
     let (all_ref_tags, all_ref_ranges)
-     = unzip (Multimap.lookupBy Memory_image.tagCompare (RelocationSite(null_symbol_reference)) img.by_tag)
+     = unzip (Multimap.lookupBy Memory_image.tagCompare (RelocationSite(null_symbol_reference_and_reloc_site)) img.by_tag)
     in
     let all_refs = List.map (fun tag -> match tag with
-        RelocationSite(ref) -> ref
+        RelocationSite(r) -> r.ref
         | _ -> failwith "matched tag not a relocation site"
     end) all_ref_tags
     in
     let reflist = [(idx, ref) | forall (ref MEM all_refs) | true]
+    in
+    let _ = Missing_pervasives.println ("object " ^ (show item) ^ " has " ^ (show (List.length reflist)) ^ " undefined references")
     in
     resolve_all linkables all_defs oracle reflist
 

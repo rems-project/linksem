@@ -510,14 +510,9 @@ let get_elf64_file_section_header_string_table f3 =
           let strings  = Byte_sequence.string_of_byte_sequence rel in
           return (String_table.mk_string_table strings (Missing_pervasives.char_of_byte Missing_pervasives.null_char))
     end
-
-val find_elf32_symbols_by_type : elf32_file -> natural -> error (elf32_symbol_table * string_table * natural)
-let find_elf32_symbols_by_type f t =
-    let found_symtab_index = find_index (fun sh -> sh.elf32_section_type = t) f.elf32_file_interpreted_sections in
-    match found_symtab_index with 
-        Nothing -> fail "no such symtab"
-        | Just sec_idx -> return sec_idx
-    end >>= fun sec_idx ->
+    
+val find_elf32_symbols_by_symtab_idx : natural -> elf32_file -> error (elf32_symbol_table * string_table * natural)
+let find_elf32_symbols_by_symtab_idx sec_idx f =
     match List.index f.elf32_file_interpreted_sections (natFromNatural sec_idx) with
         Nothing -> fail "impossible: interpreted section found but not indexable"
         | Just sec -> return sec
@@ -531,13 +526,16 @@ let find_elf32_symbols_by_type f t =
     read_elf32_symbol_table (get_elf32_header_endianness f.elf32_file_header) sec.elf32_section_body >>= fun symtab ->
     return (symtab, strtab, sec_idx)
 
-val find_elf64_symbols_by_type : elf64_file -> natural -> error (elf64_symbol_table * string_table * natural)
-let find_elf64_symbols_by_type f t =
-    let found_symtab_index = find_index (fun sh -> sh.elf64_section_type = t) f.elf64_file_interpreted_sections in
+val find_elf32_symtab_by_type : natural -> elf32_file -> error (elf32_symbol_table * string_table * natural)
+let find_elf32_symtab_by_type t f =
+    let found_symtab_index = find_index (fun sh -> sh.elf32_section_type = t) f.elf32_file_interpreted_sections in
     match found_symtab_index with 
         Nothing -> fail "no such symtab"
         | Just sec_idx -> return sec_idx
-    end >>= fun sec_idx ->
+    end >>= fun sec_idx -> find_elf32_symbols_by_symtab_idx sec_idx f
+
+val find_elf64_symbols_by_symtab_idx : natural -> elf64_file -> error (elf64_symbol_table * string_table * natural)
+let find_elf64_symbols_by_symtab_idx sec_idx f =
     match List.index f.elf64_file_interpreted_sections (natFromNatural sec_idx) with
         Nothing -> fail "impossible: interpreted section found but not indexable"
         | Just sec -> return sec
@@ -550,6 +548,14 @@ let find_elf64_symbols_by_type f t =
     let strtab = String_table.mk_string_table strings (char_of_byte null_char) in
     read_elf64_symbol_table (get_elf64_header_endianness f.elf64_file_header) sec.elf64_section_body >>= fun symtab ->
     return (symtab, strtab, sec_idx)
+
+val find_elf64_symtab_by_type : natural -> elf64_file -> error (elf64_symbol_table * string_table * natural)
+let find_elf64_symtab_by_type t f =
+    let found_symtab_index = find_index (fun sh -> sh.elf64_section_type = t) f.elf64_file_interpreted_sections in
+    match found_symtab_index with 
+        Nothing -> fail "no such symtab"
+        | Just sec_idx -> return sec_idx
+    end >>= fun sec_idx -> find_elf64_symbols_by_symtab_idx sec_idx f
 
 val get_elf32_file_symbol_string_table : elf32_file -> error string_table
 let get_elf32_file_symbol_string_table f3 =

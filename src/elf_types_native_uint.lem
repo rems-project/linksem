@@ -883,7 +883,7 @@ declare isabelle target_rep function integer_of_elf64_sxword = `sint`
 
 val elf64_sxword_of_integer : integer -> elf64_sxword
 
-declare ocaml    target_rep function elf64_sxword_of_integer = ``
+declare ocaml    target_rep function elf64_sxword_of_integer = `Nat_big_num.to_int64`
 declare isabelle target_rep function elf64_sxword_of_integer = `of_int`
 
 val elf64_sxword_of_oct : byte -> byte -> byte -> byte -> byte -> byte -> byte -> byte -> elf64_sxword
