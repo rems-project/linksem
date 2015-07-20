@@ -1,0 +1,57 @@
+open import Basic_classes
+open import Bool
+open import List
+open import Maybe
+
+open import Byte_sequence
+open import Endianness
+open import Error
+open import String_table
+
+open import Elf_note
+open import Elf_section_header_table
+open import Elf_types_native_uint
+
+open import Gnu_ext_section_header_table
+
+val gnu_ext_check_elf32_abi_note_tag_section : endianness -> elf32_section_header_table ->
+  string_table -> byte_sequence -> bool
+let gnu_ext_check_elf32_abi_note_tag_section endian sht sect_hdr_tbl bs0 =
+  let abi_note_sects =
+    List.filter (fun x ->
+      if natural_of_elf32_word x.elf32_sh_type = sht_note then
+        let nm = natural_of_elf32_word x.elf32_sh_name in
+          match String_table.get_string_at nm sect_hdr_tbl with
+            | Success name -> name = ".note.ABI-tag"
+            | Fail _       -> false
+          end
+      else
+        false
+    ) sht
+  in
+    match abi_note_sects with
+      | [note] ->
+        let off = natural_of_elf32_off note.elf32_sh_offset in
+        let siz = natural_of_elf32_word note.elf32_sh_size in
+        let abi_tag =
+          Byte_sequence.offset_and_cut off siz bs0 >>= fun rel ->
+          Elf_note.read_elf32_note endian rel >>= fun (abi_tag, _) ->
+          return abi_tag
+        in
+          match abi_tag with
+            | Fail _          -> false
+            | Success abi_tag ->
+              let str = name_string_of_elf32_note abi_tag in
+                if str = "GNU" then
+                  if natural_of_elf32_word abi_tag.elf32_note_descsz >= 16 then
+                    if List.length (List.take 16 abi_tag.elf32_note_desc) < 16 then
+                      false
+                    else
+                      (* XXX: *) true
+                  else
+                    false
+                else
+                  false
+          end
+      | _      -> false
+    end
