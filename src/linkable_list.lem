@@ -251,7 +251,7 @@ let resolve_one_reference_default linkables defmap ref_idx_and_ref =
     end
     in 
     let _ = Missing_pervasives.prints ("Bound a reference from `" 
-                ^ ref.ref_symname ^ "' in " ^ ref_fname
+                ^ ref.ref_symname ^ "' (UND symbol at index " ^ (show ref.ref_sym_idx) ^ ") in " ^ ref_fname
                 ^ " to ")
     in
     match (maybe_target_def_idx, maybe_target_def) with
