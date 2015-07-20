@@ -227,6 +227,24 @@ let obtain_elf64_section_header_table hdr bs0 =
       (* Byte sequence irrelevant below as exact size used... *)
       read_elf64_section_header_table ssize endian sexact >>= fun (sht, _) ->
       return sht
+      
+val obtain_elf32_section_header_string_table : elf32_header -> elf32_section_header_table -> byte_sequence -> error string_table
+let obtain_elf32_section_header_string_table hdr sht bs0 =
+  match index (natural_of_elf32_half hdr.elf32_shstrndx) sht with 
+    Nothing -> fail "no section header string table"
+    | Just x -> return x
+  end >>= fun sh ->
+  Byte_sequence.offset_and_cut (natural_of_elf32_off sh.elf32_sh_offset) (natural_of_elf32_word sh.elf32_sh_size) bs0 >>= fun sexact ->
+  return (string_table_of_byte_sequence sexact)
+      
+val obtain_elf64_section_header_string_table : elf64_header -> elf64_section_header_table -> byte_sequence -> error string_table
+let obtain_elf64_section_header_string_table hdr sht bs0 =
+  match index (natural_of_elf64_half hdr.elf64_shstrndx) sht with 
+    Nothing -> fail "no section header string table"
+    | Just x -> return x
+  end >>= fun sh ->
+  Byte_sequence.offset_and_cut (natural_of_elf64_off sh.elf64_sh_offset) (natural_of_elf64_xword sh.elf64_sh_size) bs0 >>= fun sexact ->
+  return (string_table_of_byte_sequence sexact)
 
 val obtain_elf32_interpreted_segments : elf32_program_header_table -> byte_sequence -> error elf32_interpreted_segments
 let obtain_elf32_interpreted_segments pht bdy =
@@ -278,8 +296,8 @@ let obtain_elf64_interpreted_segments pht bdy =
                     elf64_segment_offset = offset |>
     ) pht
 
-val obtain_elf32_interpreted_sections : elf32_section_header_table -> byte_sequence -> error elf32_interpreted_sections
-let obtain_elf32_interpreted_sections sht bs0 =
+val obtain_elf32_interpreted_sections : string_table -> elf32_section_header_table -> byte_sequence -> error elf32_interpreted_sections
+let obtain_elf32_interpreted_sections shstrtab sht bs0 =
   mapM (fun sh ->
     let offset = natural_of_elf32_off  sh.elf32_sh_offset in
     let size   = natural_of_elf32_word sh.elf32_sh_size in
@@ -292,6 +310,7 @@ let obtain_elf32_interpreted_sections sht bs0 =
     let info   = natural_of_elf32_word sh.elf32_sh_info in
     let align  = natural_of_elf32_word sh.elf32_sh_addralign in
     let entry_size = natural_of_elf32_word sh.elf32_sh_entsize in
+    let name_string = match (get_string_at name shstrtab) with Success n -> n | Fail _ -> "" end in
       (if filesz = 0 then
         return Byte_sequence.empty
       else
@@ -301,11 +320,12 @@ let obtain_elf32_interpreted_sections sht bs0 =
           elf32_section_flags = flags; elf32_section_addr = base;
           elf32_section_link = link; elf32_section_info = info;
           elf32_section_align = align; elf32_section_body = relevant;
-          elf32_section_entsize = entry_size |>
+          elf32_section_entsize = entry_size;
+          elf32_section_name_as_string = name_string |>
   ) sht
 
-val obtain_elf64_interpreted_sections : elf64_section_header_table -> byte_sequence -> error elf64_interpreted_sections
-let obtain_elf64_interpreted_sections sht bs0 =
+val obtain_elf64_interpreted_sections : string_table -> elf64_section_header_table -> byte_sequence -> error elf64_interpreted_sections
+let obtain_elf64_interpreted_sections shstrtab sht bs0 =
   mapM (fun sh ->
     let offset = natural_of_elf64_off   sh.elf64_sh_offset in
     let size   = natural_of_elf64_xword sh.elf64_sh_size in
@@ -318,6 +338,7 @@ let obtain_elf64_interpreted_sections sht bs0 =
     let info   = natural_of_elf64_word  sh.elf64_sh_info in
     let align  = natural_of_elf64_xword sh.elf64_sh_addralign in
     let entry_size = natural_of_elf64_xword sh.elf64_sh_entsize in
+    let name_string = match (get_string_at name shstrtab) with Success n -> n | Fail _ -> "" end in 
       (if filesz = 0 then
         return Byte_sequence.empty
       else
@@ -327,7 +348,8 @@ let obtain_elf64_interpreted_sections sht bs0 =
           elf64_section_flags = flags; elf64_section_addr = base;
           elf64_section_link = link; elf64_section_info = info;
           elf64_section_align = align; elf64_section_body = relevant;
-          elf64_section_entsize = entry_size |>
+          elf64_section_entsize = entry_size;
+          elf64_section_name_as_string = name_string |>
   ) sht
 
 val find_first_not_in_range : natural -> list (natural * natural) -> natural
@@ -452,8 +474,9 @@ let read_elf32_file bs0 =
   read_elf32_header bs0 >>= fun (hdr, bs1) ->
   obtain_elf32_program_header_table hdr bs0 >>= fun pht  ->
   obtain_elf32_section_header_table hdr bs0 >>= fun sht  ->
+  obtain_elf32_section_header_string_table hdr sht bs0 >>= fun shstrtab ->
   obtain_elf32_interpreted_segments pht bs0 >>= fun segs ->
-  obtain_elf32_interpreted_sections sht bs0 >>= fun sects ->
+  obtain_elf32_interpreted_sections shstrtab sht bs0 >>= fun sects ->
   obtain_elf32_bits_and_bobs hdr pht segs sht sects bs0 >>= fun bits_and_bobs ->
   return <| elf32_file_header = hdr;
               elf32_file_program_header_table = pht;
@@ -467,8 +490,9 @@ let read_elf64_file bs0 =
   read_elf64_header bs0 >>= fun (hdr, bs1) ->
   obtain_elf64_program_header_table hdr bs0 >>= fun pht  ->
   obtain_elf64_section_header_table hdr bs0 >>= fun sht  ->
+  obtain_elf64_section_header_string_table hdr sht bs0 >>= fun shstrtab ->
   obtain_elf64_interpreted_segments pht bs0 >>= fun segs ->
-  obtain_elf64_interpreted_sections sht bs0 >>= fun sects ->
+  obtain_elf64_interpreted_sections shstrtab sht bs0 >>= fun sects ->
   obtain_elf64_bits_and_bobs hdr pht segs sht sects bs0 >>= fun bits_and_bobs ->
   return <| elf64_file_header = hdr;
               elf64_file_program_header_table = pht;
@@ -932,14 +956,6 @@ let {ocaml} string_of_elf64_file hdr_bdl pht_bdl sht_bdl f3 =
       ]
   end
 
-val name_of_elf64_interpreted_section : elf64_interpreted_section -> elf64_file -> maybe string
-let name_of_elf64_interpreted_section sec file = 
-    match (get_elf64_file_section_header_string_table file >>= fun strtab -> 
-           get_string_at sec.elf64_section_name strtab) with 
-            Success(n) -> Just n 
-            | Fail(_) -> Nothing
-    end
-    
 val flag_is_set : natural -> natural -> bool
 let flag_is_set flag v = 
     (* HACK: convert to elf64_xword first. Flags never live 

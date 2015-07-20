@@ -27,22 +27,24 @@ type elf32_interpreted_section =
    ; elf32_section_align   : natural       (** Alignment constraints for section *)
    ; elf32_section_entsize : natural       (** Size of each entry in table, if section is one *)
    ; elf32_section_body    : byte_sequence (** Body of section *)
+   ; elf32_section_name_as_string : string (** Name of the section, as a string; "" for no name (name = 0) *)
    |>
    
 val elf32_interpreted_section_equal : elf32_interpreted_section -> elf32_interpreted_section -> bool
 let elf32_interpreted_section_equal x y =
-	x.elf32_section_name = y.elf32_section_name &&
-	x.elf32_section_type = y.elf32_section_type &&
-	x.elf32_section_flags = y.elf32_section_flags &&
-	x.elf32_section_addr = y.elf32_section_addr &&
-	x.elf32_section_offset = y.elf32_section_offset &&
-	x.elf32_section_size = y.elf32_section_size &&
-	x.elf32_section_link = y.elf32_section_link &&
-	x.elf32_section_info = y.elf32_section_info &&
-	x.elf32_section_align = y.elf32_section_align &&
-	x.elf32_section_entsize = y.elf32_section_entsize &&
-	x.elf32_section_body = y.elf32_section_body
-   
+    x.elf32_section_name = y.elf32_section_name &&
+    x.elf32_section_type = y.elf32_section_type &&
+    x.elf32_section_flags = y.elf32_section_flags &&
+    x.elf32_section_addr = y.elf32_section_addr &&
+    x.elf32_section_offset = y.elf32_section_offset &&
+    x.elf32_section_size = y.elf32_section_size &&
+    x.elf32_section_link = y.elf32_section_link &&
+    x.elf32_section_info = y.elf32_section_info &&
+    x.elf32_section_align = y.elf32_section_align &&
+    x.elf32_section_entsize = y.elf32_section_entsize &&
+    x.elf32_section_body = y.elf32_section_body &&
+    x.elf32_section_name_as_string = y.elf32_section_name_as_string
+
 instance (Eq elf32_interpreted_section)
 	let (=)      = elf32_interpreted_section_equal
 	let (<>) x y = not (elf32_interpreted_section_equal x y)
@@ -60,21 +62,23 @@ type elf64_interpreted_section =
    ; elf64_section_align   : natural       (** Alignment constraints for section *)
    ; elf64_section_entsize : natural       (** Size of each entry in table, if section is one *)
    ; elf64_section_body    : byte_sequence (** Body of section *)
+   ; elf64_section_name_as_string : string (** Name of the section, as a string; "" for no name (name = 0) *)
    |>
    
 val elf64_interpreted_section_equal : elf64_interpreted_section -> elf64_interpreted_section -> bool
 let elf64_interpreted_section_equal x y =
-	x.elf64_section_name = y.elf64_section_name &&
-	x.elf64_section_type = y.elf64_section_type &&
-	x.elf64_section_flags = y.elf64_section_flags &&
-	x.elf64_section_addr = y.elf64_section_addr &&
-	x.elf64_section_offset = y.elf64_section_offset &&
-	x.elf64_section_size = y.elf64_section_size &&
-	x.elf64_section_link = y.elf64_section_link &&
-	x.elf64_section_info = y.elf64_section_info &&
-	x.elf64_section_align = y.elf64_section_align &&
-	x.elf64_section_entsize = y.elf64_section_entsize &&
-	x.elf64_section_body = y.elf64_section_body
+    x.elf64_section_name = y.elf64_section_name &&
+    x.elf64_section_type = y.elf64_section_type &&
+    x.elf64_section_flags = y.elf64_section_flags &&
+    x.elf64_section_addr = y.elf64_section_addr &&
+    x.elf64_section_offset = y.elf64_section_offset &&
+    x.elf64_section_size = y.elf64_section_size &&
+    x.elf64_section_link = y.elf64_section_link &&
+    x.elf64_section_info = y.elf64_section_info &&
+    x.elf64_section_align = y.elf64_section_align &&
+    x.elf64_section_entsize = y.elf64_section_entsize &&
+    x.elf64_section_body = y.elf64_section_body &&
+    x.elf64_section_name_as_string = y.elf64_section_name_as_string
 
 val null_elf32_interpreted_section : elf32_interpreted_section
 let null_elf32_interpreted_section =
@@ -89,6 +93,7 @@ let null_elf32_interpreted_section =
    ; elf32_section_align = 0
    ; elf32_section_entsize = 0 
    ; elf32_section_body = Byte_sequence.empty
+   ; elf32_section_name_as_string = ""
    |>
 
 val null_elf64_interpreted_section : elf64_interpreted_section
@@ -104,6 +109,7 @@ let null_elf64_interpreted_section =
    ; elf64_section_align = 0
    ; elf64_section_entsize = 0 
    ; elf64_section_body = Byte_sequence.empty
+   ; elf64_section_name_as_string = ""
    |>
 
 instance (Eq elf64_interpreted_section)
@@ -126,6 +132,7 @@ let elf64_interpreted_section_matches_section_header i sh =
   i.elf64_section_info = natural_of_elf64_word sh.elf64_sh_info &&
   i.elf64_section_align = natural_of_elf64_xword sh.elf64_sh_addralign (* WHY? *) &&
   i.elf64_section_entsize = natural_of_elf64_xword sh.elf64_sh_entsize
+  (* Don't compare the name as a string, because it's implied by the shshtrtab index. *)
   (* NOTE that we can have multiple sections *indistinguishable*
    * except by their section header table index. Imagine 
    * multiple zero-size bss sections at the same address with the same name.
@@ -139,7 +146,7 @@ type elf64_interpreted_sections = list elf64_interpreted_section
 val string_of_elf32_interpreted_section : elf32_interpreted_section -> string
 let {ocaml} string_of_elf32_interpreted_section is =
    unlines [
-     "Name: " ^ show is.elf32_section_name
+     "Name: " ^ is.elf32_section_name_as_string ^ "(" ^ (show is.elf32_section_name) ^ ")"
    ; "Type: " ^ show is.elf32_section_type 
    ; "Flags: " ^ show is.elf32_section_type
    ; "Base address: " ^ show is.elf32_section_addr
@@ -154,7 +161,7 @@ let {ocaml} string_of_elf32_interpreted_section is =
 val string_of_elf64_interpreted_section : elf64_interpreted_section -> string
 let {ocaml} string_of_elf64_interpreted_section is =
    unlines [
-     "Name: " ^ show is.elf64_section_name
+     "Name: " ^ is.elf64_section_name_as_string ^ "(" ^ (show is.elf64_section_name) ^ ")"
    ; "Type: " ^ show is.elf64_section_type 
    ; "Flags: " ^ show is.elf64_section_type
    ; "Base address: " ^ show is.elf64_section_addr

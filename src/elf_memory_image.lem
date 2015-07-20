@@ -291,7 +291,7 @@ let name_of_symbol_def sym = sym.def_symname
 val elf_memory_image_defined_symbols : elf_memory_image -> list symbol_definition
 let elf_memory_image_defined_symbols img = 
     let ((all_symbol_tags, all_symbol_ranges) : (list elf_range_tag * list element_range))
-     = elf_memory_image_section_ranges img
+     = elf_memory_image_symbol_def_ranges img
     in
     List.mapMaybe (fun tag -> 
         match tag with
@@ -573,7 +573,7 @@ let extract_satisfying_symbols symtab_triple pred =
     mapMaybei (fun symidx -> (fun ent ->
         (match (get_string_at (natural_of_elf64_word ent.elf64_st_name) strtab) with
             Success str ->
-                (* exclude undefineds *) 
+                (* exclude those that don't match *) 
                 if (pred ent)
                 then Just(str, ent, scnidx, symidx)
                 else Nothing
@@ -713,23 +713,17 @@ let extract_all_relocs_as_symbol_references e
 val section_name_is_unique : string -> elf64_file -> bool
 let section_name_is_unique name f =
     match mapMaybe (fun sec -> 
-        match name_of_elf64_interpreted_section sec f with
-            Just name -> Just sec
-            | Just _ -> Nothing
-            | Nothing -> Nothing
-        end) f.elf64_file_interpreted_sections
+        if name = sec.elf64_section_name_as_string then Just sec else Nothing
+    ) f.elf64_file_interpreted_sections
     with
         [_] -> true
         | _ -> false
     end
 
 val unique_name_for_section_from_index : natural -> elf64_interpreted_section -> elf64_file -> string
-let unique_name_for_section_from_index idx s f = 
-    let (maybe_secname : maybe string) = name_of_elf64_interpreted_section s f
-    in match maybe_secname with
-        Just secname -> if section_name_is_unique secname f then secname else gensym secname
-        | Nothing -> gensym ("section" ^ (show idx))
-    end
+let unique_name_for_section_from_index idx s f =
+    let secname = s.elf64_section_name_as_string
+    in if section_name_is_unique secname f then secname else gensym secname
 
 val elf_memory_image_of_elf64_file : abi -> elf64_file -> elf_memory_image
 let elf_memory_image_of_elf64_file a f = 
