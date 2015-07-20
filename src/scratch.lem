@@ -2,9 +2,23 @@ open import Byte_sequence
 open import Error
 open import Missing_pervasives
 
+open import Endianness
+open import Show
+
 open import Elf_file
+open import Elf_header
 open import Elf_note
 open import Elf_section_header_table
 
 let _ =
-  println "scratch"
+  let res =
+    Byte_sequence.acquire "/usr/bin/ld.gold" >>= fun bs0 ->
+    Elf_file.read_elf32_file bs0 >>= fun ef1 ->
+    let endian = get_elf32_header_endianness ef1.elf32_file_header in
+    Elf_note.obtain_elf32_note_section_and_segments endian ef1.elf32_file_program_header_table ef1.elf32_file_section_header_table bs0 >>= fun notes ->
+    return (show (List.length notes))
+      in
+    match res with
+      | Fail err  -> println err
+      | Success s -> println s
+    end
