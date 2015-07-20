@@ -12,13 +12,13 @@ open import Elf_section_header_table
 
 let _ =
   let res =
-    Byte_sequence.acquire "/usr/bin/ld.gold" >>= fun bs0 ->
+    Byte_sequence.acquire "/usr/bin/less" >>= fun bs0 ->
     Elf_file.read_elf32_file bs0 >>= fun ef1 ->
     let endian = get_elf32_header_endianness ef1.elf32_file_header in
     Elf_note.obtain_elf32_note_section_and_segments endian ef1.elf32_file_program_header_table ef1.elf32_file_section_header_table bs0 >>= fun notes ->
-    return (show (List.length notes))
-      in
+    return (List.map name_string_of_elf32_note notes)
+  in
     match res with
       | Fail err  -> println err
-      | Success s -> println s
+      | Success s -> println (show s)
     end
