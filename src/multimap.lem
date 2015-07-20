@@ -7,6 +7,9 @@ open import List
 open import Set
 open import Set_extra
 open import Assert_extra
+open import Missing_pervasives
+open import String
+open import Show
 
 (* HMM. Is the right thing instead to implement multiset first? Probably. *)
 
@@ -45,7 +48,7 @@ type multimap 'k 'v = set ('k * 'v)
  * we need the equivalence class to tell us whether we're less than or
  * greater than the members of the key's class. 
  * It effectively identifies a set of ranges. *)
-type key_equiv 'k = 'k -> 'k -> ordering
+type key_equiv 'k = 'k -> 'k -> Basic_classes.ordering
 
 (*
 val hasMapping : forall 'k 'v. key_equiv 'k -> multimap 'k 'v -> bool
@@ -59,7 +62,12 @@ val all : forall 'k 'v. ('k -> 'v -> bool) -> multimap 'k 'v -> bool
 *)
 val findLowestEquiv : forall 'k 'v. 
     Ord 'k, Ord 'v, SetType 'k, SetType 'v =>
-        key_equiv 'k -> 'k -> ('k -> 'k -> bool) -> multimap 'k 'v -> maybe ('k * 'v) -> maybe ('k * 'v)
+        key_equiv 'k 
+        -> 'k 
+        -> ('k -> 'k -> bool) 
+        -> multimap 'k 'v 
+        -> maybe ('k * 'v) 
+        -> maybe ('k * 'v)
 let rec findLowestEquiv equiv k lessThan subSet maybeBest = 
     match Set_extra.chooseAndSplit subSet with
         Nothing -> (* empty subset *) maybeBest
@@ -67,12 +75,24 @@ let rec findLowestEquiv equiv k lessThan subSet maybeBest =
             (* is k equiv to chosen? *)
             if equiv k chosenK = EQ
             then
+                (* is chosen less than our current best? *)
+                let (bestK, bestV) = match maybeBest with
+                    Nothing -> (chosenK, chosenV)
+                    | Just(currentBestK, currentBestV) -> 
+                        if lessThan chosenK currentBestK 
+                            then (chosenK, chosenV)
+                            else (currentBestK, currentBestV)
+                end
+                in
                 (* recurse down lower subSet; best is whichever is lower *)
-                match maybeBest with 
-                  | Nothing -> findLowestEquiv equiv k lessThan lower (Just(chosenK, chosenV))
-                  | Just(bestK, bestV) -> if lessThan k bestK
+                let foundLowerBest = findLowestEquiv equiv k lessThan lower (Just(bestK, bestV))
+                in
+                match foundLowerBest with 
+                  | Nothing -> (* chosen is the best we can do *) Just(bestK, bestV)
+                  | Just(foundLowerK, foundLowerV) -> 
+                        if lessThan chosenK foundLowerK
                         then findLowestEquiv equiv k lessThan lower (Just(chosenK, chosenV))
-                        else findLowestEquiv equiv k lessThan lower maybeBest
+                        else findLowestEquiv equiv k lessThan lower foundLowerBest
                 end
             else
                 (* k is not equiv to chosen; do we need to look lower or higher? *)
@@ -85,6 +105,84 @@ let rec findLowestEquiv equiv k lessThan subSet maybeBest =
                     findLowestEquiv equiv k lessThan higher maybeBest
     end
 
+(* Note we can't just use findLowestEquiv with inverted relations, because 
+ * chooseAndSplit returns us (lower, chosen, higher) and we need to swap
+ * around how we consume that. *)
+val findHighestEquiv : forall 'k 'v. 
+    Ord 'k, Ord 'v, SetType 'k, SetType 'v =>
+        key_equiv 'k 
+        -> 'k 
+        -> ('k -> 'k -> bool) 
+        -> multimap 'k 'v 
+        -> maybe ('k * 'v) 
+        -> maybe ('k * 'v)
+let rec findHighestEquiv equiv k greaterThan subSet maybeBest = 
+    match Set_extra.chooseAndSplit subSet with
+        Nothing -> (* empty subset *) maybeBest
+      | Just(lower, ((chosenK: 'k), (chosenV : 'v)), higher) ->
+            (* is k equiv to chosen? *)
+            if equiv k chosenK = EQ
+            then
+                (* is chosen greater than our current best? *)
+                let (bestK, bestV) = match maybeBest with
+                    Nothing -> (chosenK, chosenV)
+                    | Just(currentBestK, currentBestV) -> 
+                        if greaterThan chosenK currentBestK 
+                            then (chosenK, chosenV)
+                            else (currentBestK, currentBestV)
+                end
+                in
+                (* recurse down higher subSet; best is whichever is higher *)
+                let foundHigherBest = findHighestEquiv equiv k greaterThan higher (Just(bestK, bestV))
+                in
+                match foundHigherBest with 
+                  | Nothing -> (* chosen is the best we can do *) Just(bestK, bestV)
+                  | Just(foundHigherK, foundHigherV) -> 
+                        if greaterThan chosenK foundHigherK
+                        then findHighestEquiv equiv k greaterThan higher (Just(chosenK, chosenV))
+                        else findHighestEquiv equiv k greaterThan higher foundHigherBest
+                end
+            else
+                (* k is not equiv to chosen; do we need to look lower or higher? *)
+                if greaterThan k chosenK
+                then
+                    (* k is higher than chosen, so look higher for equivs-to-k *)
+                    findHighestEquiv equiv k greaterThan higher maybeBest
+                else
+                    (* k is lower than chosen, so look lower *)
+                    findHighestEquiv equiv k greaterThan lower maybeBest
+    end
+
+let _ = Missing_pervasives.println ("choose_and_split {3, 4, 5} is " ^ 
+    (match Set_extra.chooseAndSplit ({3;4;5} : set natural)
+     with Just (l, m, r) -> (show (toList l, m, toList r))
+     | Nothing -> "Nothing" end))
+
+assert lowest_simple: findLowestEquiv (fun (x : natural) -> (fun (y : natural) ->
+     if (x >= 3 && x < 5 && y >= 3 && y <= 5) then EQ
+     else if (x < 3 && y < 3) then EQ
+     else if (x > 5 && y > 5) then EQ
+     else (compare x y)
+)) 4 (<) ({ (1, 0); (2, 0); (3, 0); (4, 0); (5, 0); (6, 0) } : set (natural * natural)) Nothing = Just (3, 0)
+assert lowest_empty: findLowestEquiv (fun (x : natural) -> (fun (y : natural) ->
+     if (x >= 3 && x < 5 && y >= 3 && y <= 5) then EQ
+     else if (x < 3 && y < 3) then EQ
+     else if (x > 5 && y > 5) then EQ
+     else (compare x y)
+)) 4 (<) ({} : set (natural * natural)) Nothing = Nothing
+assert lowest_onepast: findLowestEquiv (fun (x : natural) -> (fun (y : natural) ->
+     if (x >= 3 && x < 5 && y >= 3 && y <= 5) then EQ
+     else if (x < 3 && y < 3) then EQ
+     else if (x > 5 && y > 5) then EQ
+     else (compare x y)
+)) 4 (<) ({ (6, 0) } : set (natural * natural)) Nothing = Nothing
+assert lowest_oneprev: findLowestEquiv (fun (x : natural) -> (fun (y : natural) ->
+     if (x >= 3 && x < 5 && y >= 3 && y <= 5) then EQ
+     else if (x < 3 && y < 3) then EQ
+     else if (x > 5 && y > 5) then EQ
+     else (compare x y)
+)) 4 (<) ({ (2, 0) } : set (natural * natural)) Nothing = Nothing
+
 (* get the list of all pairs with key equiv to k. *)
 val lookupBy : forall 'k 'v. 
     Ord 'k, Ord 'v, SetType 'k, SetType 'v =>
@@ -94,7 +192,14 @@ let lookupBy equiv k m =
      * We do this using chooseAndSplit recursively. *)
     match findLowestEquiv equiv k (<) m Nothing with
         Nothing -> []
-        | Just lowestEquiv -> let (highestEquiv : ('k * 'v)) = match findLowestEquiv equiv k (>) m Nothing with
+        | Just lowestEquiv -> 
+            let (highestEquiv : ('k * 'v)) = 
+            
+                (* We can't just invert the relation on the set, because
+                 * the whole set is ordered *)
+                match findHighestEquiv equiv k (>) m Nothing with
+                
+            
             Nothing -> failwith "impossible: lowest equiv but no highest equiv"
             | Just highestEquiv -> highestEquiv
         end
@@ -106,6 +211,32 @@ let lookupBy equiv k m =
         in
         (lowestEquiv :: (toList wanted)) ++ [highestEquiv]
     end
+
+assert highest_simple: findHighestEquiv (fun (x : natural) -> (fun (y : natural) ->
+     if (x >= 3 && x < 5 && y >= 3 && y <= 5) then EQ
+     else if (x < 3 && y < 3) then EQ
+     else if (x > 5 && y > 5) then EQ
+     else (compare x y)
+)) 4 (>) ({ (1, 0); (2, 0); (3, 0); (4, 0); (5, 0); (6, 0) } : set (natural * natural)) Nothing = Just (5, 0)
+assert highest_empty: findHighestEquiv (fun (x : natural) -> (fun (y : natural) ->
+     if (x >= 3 && x < 5 && y >= 3 && y <= 5) then EQ
+     else if (x < 3 && y < 3) then EQ
+     else if (x > 5 && y > 5) then EQ
+     else (compare x y)
+)) 4 (>) ({} : set (natural * natural)) Nothing = Nothing
+assert highest_onepast: findHighestEquiv (fun (x : natural) -> (fun (y : natural) ->
+     if (x >= 3 && x < 5 && y >= 3 && y <= 5) then EQ
+     else if (x < 3 && y < 3) then EQ
+     else if (x > 5 && y > 5) then EQ
+     else (compare x y)
+)) 4 (>) ({ (6, 0) } : set (natural * natural)) Nothing = Nothing
+assert highest_oneprev: findHighestEquiv (fun (x : natural) -> (fun (y : natural) ->
+     if (x >= 3 && x < 5 && y >= 3 && y <= 5) then EQ
+     else if (x < 3 && y < 3) then EQ
+     else if (x > 5 && y > 5) then EQ
+     else (compare x y)
+)) 4 (>) ({ (2, 0) } : set (natural * natural)) Nothing = Nothing
+
 
 (* To delete all pairs with key equiv to k, can use deleteBy *)
 
