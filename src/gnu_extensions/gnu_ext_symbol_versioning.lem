@@ -30,9 +30,8 @@ type gnu_ext_elf64_symbol_version_table =
 
 val obtain_gnu_ext_elf32_symbol_version_table : endianness -> elf32_section_header_table -> elf32_symbol_table -> byte_sequence -> error gnu_ext_elf32_symbol_version_table
 let obtain_gnu_ext_elf32_symbol_version_table endian sht dynsym bs0 =
-  let dlen = List.length dynsym in
+  let dlen = naturalFromNat (List.length dynsym) in
     if dlen = 0 then
-      let _ = Missing_pervasives.println "WWW" in
       return []
     else
       let vers = List.filter (fun ent ->
@@ -41,7 +40,6 @@ let obtain_gnu_ext_elf32_symbol_version_table endian sht dynsym bs0 =
       in
         match vers with
           | []    ->
-            let _ = Missing_pervasives.println "PPP" in
               return []
           | [ver] ->
             let off = natural_of_elf32_off  ver.elf32_sh_offset in
@@ -54,7 +52,7 @@ let obtain_gnu_ext_elf32_symbol_version_table endian sht dynsym bs0 =
  
 val obtain_gnu_ext_elf64_symbol_version_table : endianness -> elf64_section_header_table -> elf64_symbol_table -> byte_sequence -> error gnu_ext_elf64_symbol_version_table
 let obtain_gnu_ext_elf64_symbol_version_table endian sht dynsym bs0 =
-  let dlen = List.length dynsym in
+  let dlen = naturalFromNat (List.length dynsym) in
     if dlen = 0 then
       return []
     else

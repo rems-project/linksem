@@ -766,7 +766,7 @@ let is_valid_architecture_defined_osabi_version (n : natural) =
 (** [ei_nident] is the fixed length of the identification field in the
   * [elf32_ehdr] type.
   *)
-val ei_nident : nat
+val ei_nident : natural
 let ei_nident = 16
 
 (** [elf32_header] is the type of headers for 32-bit ELF files.
@@ -1145,7 +1145,7 @@ let is_elf32_header_version_correct ehdr =
   *)
 val is_elf32_header_valid : elf32_header -> bool
 let is_elf32_header_valid ehdr =
-  List.length ehdr.elf32_ident = ei_nident &&
+  naturalFromNat (List.length ehdr.elf32_ident) = ei_nident &&
   is_magic_number_correct ehdr.elf32_ident &&
   is_elf32_header_padding_correct ehdr &&
   is_elf32_header_class_correct ehdr &&
