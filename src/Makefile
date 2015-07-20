@@ -108,7 +108,7 @@ ldgram.y.hacked: ldgram.y
 	tail -n+35 > "$@" || rm -f "$@"
 
 .PHONY: lem-all-ocaml
-lem-all-ocaml: $(filter-out error.lem,$(LEM_UTIL_SRC)) $(LEM_ELF_SRC) $(LEM_GNU_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC) main_link.lem main_elf.lem
+lem-all-ocaml: $(filter-out error.lem,$(LEM_UTIL_SRC)) $(LEM_ELF_SRC) $(LEM_GNU_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC) main_link.lem main_elf.lem scratch.lem
 	$(LEM) -ocaml -only_changed_output $+
 
 .PHONY: isa-extraction
@@ -129,14 +129,18 @@ clean:
 
 ocaml: main_elf
 
-main_elf main_link main_elf.opt main_link.opt c_interface: OCAMLFLAGS += -I $(BATTERIES) \
+main_elf main_link main_elf.opt main_link.opt scratch: OCAMLFLAGS += -I $(BATTERIES) \
 -I $(UINT) \
 $(OCAML_LEM_INCLUDES) \
 -I adaptors \
 -I abis -I abis/amd64 -I abis/power64 -I abis/aarch64 -I abis/x86 -I gnu_extensions \
 -g
 
-main_elf main_link main_elf.opt main_link.opt: OCAMLFIND_PACKAGES := #-package batteries -package uint
+main_elf main_link main_elf.opt main_link.opt scratch scratch.opt: OCAMLFIND_PACKAGES := #-package batteries -package uint
+
+scratch scratch.opt: OCAML_LEM_SRC += $(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
+	$(patsubst %.lem,%.ml,$(LEM_GNU_SRC)) \
+	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC))
 
 main_elf main_elf.opt: OCAML_LEM_SRC += $(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_GNU_SRC)) \
@@ -147,7 +151,7 @@ main_link main_link.opt: OCAML_LEM_SRC += $(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) 
 	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_LINK_SRC))
 
-main_elf main_link: %: %.ml $(ALL_UTIL_ML) lem-all-ocaml
+main_elf main_link scratch: %: %.ml $(ALL_UTIL_ML) lem-all-ocaml
 	ocamlfind ocamlc $(OCAMLFLAGS) -o "$@" -g \
 	$(OCAML_LIB_OBJS) \
 	$(LEM_OCAML_OBJS) \
@@ -155,7 +159,7 @@ main_elf main_link: %: %.ml $(ALL_UTIL_ML) lem-all-ocaml
 	$(OCAML_LEM_SRC) \
 	"$<" $(OCAMLFIND_PACKAGES)
 
-main_elf.opt main_link.opt: %.opt: %.ml $(ALL_UTIL_ML) lem-all-ocaml
+main_elf.opt main_link.opt scratch.opt: %.opt: %.ml $(ALL_UTIL_ML) lem-all-ocaml
 	ocamlfind ocamlopt $(OCAMLFLAGS) -o "$@" -g \
 	$(OCAML_LIB_OBJS_OPT) \
 	$(LEM_OCAML_OBJS_OPT) \

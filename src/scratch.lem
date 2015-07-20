@@ -1,0 +1,10 @@
+open import Byte_sequence
+open import Error
+open import Missing_pervasives
+
+open import Elf_file
+open import Elf_note
+open import Elf_section_header_table
+
+let _ =
+  println "scratch"
