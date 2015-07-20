@@ -115,3 +115,9 @@ let obtain_elf64_note_segments endian pht bs0 =
       read_elf64_note endian bs0 >>= fun (note, _) ->
       return note
     ) note_segs
+    
+val name_string_of_elf32_note : endianness -> elf32_note -> string
+let name_string_of_elf32_note endian note =
+  let bytes = List.map (bytes_of_elf32_word endian) note.elf32_note_name in
+  let bs0   = Byte_sequence.from_byte_lists bytes in
+    Byte_sequence.string_of_byte_sequence bs0

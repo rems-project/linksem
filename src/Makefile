@@ -83,7 +83,7 @@ LEM_MODEL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_GNU_S
 
 OCAML_LIB_OBJS := unix.cma nums.cma zarith.cma batteries.cma nat_num.cmo big_int_impl.cmo nat_big_num.cmo uint.cma
 LEM_OCAML_OBJS := lem.cmo lem_basic_classes.cmo lem_function.cmo lem_list.cmo lem_num.cmo lem_sorting.cmo \
-    xstring.cmo llist.cmo pset.cmo pmap.cmo lem_maybe.cmo lem_map.cmo lem_set.cmo lem_string_extra.cmo
+    xstring.cmo pset.cmo pmap.cmo lem_maybe.cmo lem_map.cmo lem_set.cmo lem_string_extra.cmo
 
 OCAML_LIB_OBJS_OPT := $(patsubst %.cma,%.cmxa,$(patsubst %.cmo,%.cmx,$(OCAML_LIB_OBJS)))
 LEM_OCAML_OBJS_OPT := $(patsubst %.cma,%.cmxa,$(patsubst %.cmo,%.cmx,$(LEM_OCAML_OBJS)))
