@@ -18,7 +18,7 @@ let _ =
     Elf_file.read_elf32_file bs0 >>= fun ef1 ->
     let endian = get_elf32_header_endianness ef1.elf32_file_header in
     Elf_file.get_elf32_file_section_header_string_table ef1 >>= fun sect_hdr ->
-    return (gnu_ext_check_elf32_abi_note_tag_section endian ef1.elf32_file_section_header_table sect_hdr bs0)
+    return (gnu_ext_extract_elf32_earliest_compatible_kernel endian ef1.elf32_file_section_header_table sect_hdr bs0)
   in
     match res with
       | Fail err  -> println err
