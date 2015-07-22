@@ -143,7 +143,6 @@ let _ =
                     in
                     let chunks = provide_offsets (chunks (reverse_nibbles ss)) in
                     let lines  = concatS (intercalate "\n" (List.map print_chunk chunks)) in
-                    (*let _      = Byte_sequence.serialise "mainelf-inout" s in*)
                       show lines
                 end
               else
@@ -178,6 +177,12 @@ let _ =
                   f1
                   string_of_amd64_relocation_type (* XXX: generic way to obtain correct ABI needed *)
                   bs0
+              else if flag = "--symbols" then
+                Harness_interface.harness_string_of_elf64_syms
+                  f1
+                  show
+                  show
+                  bs0
               else if flag = "--in-out" then
                 match Elf_file.bytes_of_elf64_file f1 with
                   | Fail    f -> f
@@ -188,7 +193,6 @@ let _ =
                     in
                     let chunks = provide_offsets (chunks (reverse_nibbles ss)) in
                     let lines  = concatS (intercalate "\n" (List.map print_chunk chunks)) in
-                    (*let _      = Byte_sequence.serialise "mainelf-inout" s in*)
                       show lines
                 end
               else
