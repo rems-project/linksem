@@ -708,10 +708,14 @@ let harness_string_of_elf32_symbol_table_entry num os proc stbl ent =
       concatS (replicate (naturalFromNat pad) " ")
   in
   let nm =
-    match String_table.get_string_at (natural_of_elf32_word ent.elf32_st_name) stbl with
-      | Fail err -> err
-      | Success s -> s
-    end
+    let idx = natural_of_elf32_word ent.elf32_st_name in
+      if idx = 0 then
+        ""
+      else
+        match String_table.get_string_at idx stbl with
+          | Fail err -> err
+          | Success s -> s
+        end
   in
   let num =
     let temp = show num in
@@ -786,6 +790,7 @@ let harness_string_of_elf32_syms f1 os proc bs0 =
     match get_elf32_file_section_header_string_table f1 with
       | Fail err     -> err
       | Success shdr ->
+        "\n" ^
         harness_string_of_elf32_syms' endian os proc f1 sym_secs sht shdr bs0
     end
     
@@ -834,10 +839,14 @@ let harness_string_of_elf64_symbol_table_entry num os proc stbl ent =
       concatS (replicate (naturalFromNat pad) " ")
   in
   let nm =
-    match String_table.get_string_at (natural_of_elf64_word ent.elf64_st_name) stbl with
-      | Fail err -> err
-      | Success s -> s
-    end
+    let idx = natural_of_elf64_word ent.elf64_st_name in
+      if idx = 0 then
+        ""
+      else
+        match String_table.get_string_at idx stbl with
+          | Fail err -> err
+          | Success s -> s
+        end
   in
   let num =
     let temp = show num in
@@ -911,5 +920,6 @@ let harness_string_of_elf64_syms f1 os proc bs0 =
     match get_elf64_file_section_header_string_table f1 with
       | Fail err     -> err
       | Success shdr ->
+        "\n" ^
         harness_string_of_elf64_syms' endian os proc f1 sym_secs sht shdr bs0
     end
