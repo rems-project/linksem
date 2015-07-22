@@ -698,6 +698,13 @@ let harness_string_of_elf32_symbol_table_entry num os proc stbl ent =
       else
         show tmp
   in
+  let ndx_pad =
+    let pad = 3 - stringLength ndx in
+    if pad = 0 then
+      ""
+    else
+      concatS (replicate (naturalFromNat pad) " ")
+  in
   let nm =
     match String_table.get_string_at (natural_of_elf32_word ent.elf32_st_name) stbl with
       | Fail err -> err
@@ -727,7 +734,7 @@ let harness_string_of_elf32_symbol_table_entry num os proc stbl ent =
     ; " "
     ; vis_pad; vis
     ; "  "
-    ; ndx
+    ; ndx_pad; ndx
     ; " "
     ; nm
     ]
