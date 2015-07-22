@@ -584,7 +584,7 @@ let harness_string_of_elf32_relocs' endian os f1 sht shdr stbl bs0 =
   >>=
     mapM (fun (rels, ent, symtab) ->
       let nm  = natural_of_elf32_word ent.elf32_sh_name in
-      let off = unsafe_hex_string_of_natural 4 (natural_of_elf32_off ent.elf32_sh_offset) in
+      let off = unsafe_hex_string_of_natural 0 (natural_of_elf32_off ent.elf32_sh_offset) in
       let len = show (List.length rels) in
       String_table.get_string_at nm shdr >>= fun nm ->
       let hdr = "Relocation section '" ^ nm ^ "' at offset 0x" ^ off ^ " contains " ^ len ^ " entries:\n" in
@@ -612,7 +612,7 @@ let harness_string_of_elf64_relocs' endian os f1 sht shdr stbl bs0 =
   >>=
     mapM (fun (rels, ent, symtab) ->
       let nm  = natural_of_elf64_word ent.elf64_sh_name in
-      let off = unsafe_hex_string_of_natural 4 (natural_of_elf64_off ent.elf64_sh_offset) in
+      let off = unsafe_hex_string_of_natural 0 (natural_of_elf64_off ent.elf64_sh_offset) in
       let len = show (List.length rels) in
       String_table.get_string_at nm shdr >>= fun nm ->
       let hdr = "Relocation section '" ^ nm ^ "' at offset 0x" ^ off ^ " contains " ^ len ^ " entries:\n" in
