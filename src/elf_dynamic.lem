@@ -237,8 +237,8 @@ type tag_correspondence
   | C_Ptr
   | C_Ignored
   
-val tag_correspondence_of_tag : natural -> (natural -> tag_correspondence) ->
-  (natural -> tag_correspondence) -> error tag_correspondence
+val tag_correspondence_of_tag : natural -> (natural -> error tag_correspondence) ->
+  (natural -> error tag_correspondence) -> error tag_correspondence
 let tag_correspondence_of_tag tag os proc =
   if tag = dt_null then
     return C_Ignored
@@ -309,14 +309,14 @@ let tag_correspondence_of_tag tag os proc =
   else if tag = dt_preinit_arraysz then
     return C_Val
   else if tag >= dt_loos && tag <= dt_hios then
-    return (os tag)
+    os tag
   else if tag >= dt_loproc && tag <= dt_hiproc then
-    return (proc tag)
+    proc tag
   else
     fail "tag_correspondence_of_tag: invalid dynamic section tag"
     
-val elf32_dyn_of_bytestring : endianness -> byte_sequence -> (natural -> tag_correspondence) ->
-  (natural -> tag_correspondence) -> error (elf32_dyn * byte_sequence)
+val elf32_dyn_of_bytestring : endianness -> byte_sequence -> (natural -> error tag_correspondence) ->
+  (natural -> error tag_correspondence) -> error (elf32_dyn * byte_sequence)
 let elf32_dyn_of_bytestring endian bs0 os proc =
   read_elf32_sword endian bs0 >>= fun (tag0, bs1) ->
   let tag = naturalFromInteger (integer_of_elf32_sword tag0) in
@@ -341,8 +341,8 @@ let elf32_dyn_of_bytestring endian bs0 os proc =
         end
     end
     
-val elf64_dyn_of_bytestring : endianness -> byte_sequence -> (natural -> tag_correspondence) ->
-  (natural -> tag_correspondence) -> error (elf64_dyn * byte_sequence)
+val elf64_dyn_of_bytestring : endianness -> byte_sequence -> (natural -> error tag_correspondence) ->
+  (natural -> error tag_correspondence) -> error (elf64_dyn * byte_sequence)
 let elf64_dyn_of_bytestring endian bs0 os proc =
   read_elf64_sxword endian bs0 >>= fun (tag0, bs1) ->
   let tag = naturalFromInteger (integer_of_elf64_sxword tag0) in
