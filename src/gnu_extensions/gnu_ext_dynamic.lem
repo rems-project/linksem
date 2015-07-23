@@ -1,0 +1,46 @@
+open import Num
+
+(** Additional dynamic entries, see LSB section 11.3.2.2.
+  * All values taken from elf.c from binutils and GLIBC as the LSB does not
+  * specify them.
+  *
+  *  98 #define OLD_DT_LOOS     0x60000000
+  *  99 #define DT_LOOS         0x6000000d
+  * 100 #define DT_HIOS         0x6ffff000
+  * 101 #define DT_VALRNGLO     0x6ffffd00
+  * 102 #define DT_VALRNGHI     0x6ffffdff
+  * 103 #define DT_ADDRRNGLO    0x6ffffe00
+  * 104 #define DT_ADDRRNGHI    0x6ffffeff
+  * 105 #define DT_VERSYM       0x6ffffff0
+  * 106 #define DT_RELACOUNT    0x6ffffff9
+  * 107 #define DT_RELCOUNT     0x6ffffffa
+  * 108 #define DT_FLAGS_1      0x6ffffffb
+  * 109 #define DT_VERDEF       0x6ffffffc
+  * 110 #define DT_VERDEFNUM    0x6ffffffd
+  * 111 #define DT_VERNEED      0x6ffffffe
+  * 112 #define DT_VERNEEDNUM   0x6fffffff
+  * 113 #define OLD_DT_HIOS     0x6fffffff
+  * 114 #define DT_LOPROC       0x70000000
+  * 115 #define DT_HIPROC       0x7fffffff
+  *)
+
+let elf_dt_gnu_addrrnghi  : natural = (939523967 * 2) + 1  (*0x6ffffeff*)
+let elf_dt_gnu_addrrnglo  : natural = 939523840 * 2        (*0x6ffffe00*)
+let elf_dt_gnu_auxiliary  : natural = (1073741822 * 2) + 1 (*0x7ffffffd*)
+let elf_dt_gnu_filter     : natural = (1073741823 * 2) + 1 (*0x7fffffff*)
+(** The following is "specified" in the LSB document but is not present in the
+  * elf.c file so taken from elf.h from GLIBC:
+  *)
+let elf_dt_gnu_num        : natural = 32 (** ??? This should match something *)
+let elf_dt_gnu_posflag_1  : natural = (939523838 * 2) + 1 (*0x6ffffdfd*)
+let elf_dt_gnu_relcount   : natural = 939524093 * 2       (*0x6ffffffa*)
+let elf_dt_gnu_syminent   : natural = (939523839 * 2) + 1 (*0x6ffffdff*)
+let elf_dt_gnu_syminfo    : natural = (939523967 * 2) + 1 (*0x6ffffeff*)
+let elf_dt_gnu_syminsz    : natural = 939523839 * 2       (*0x6ffffdfe*)
+let elf_dt_gnu_valrnghi   : natural = (939523839 * 2) + 1 (*0x6ffffdff*)
+let elf_dt_gnu_valrnglo   : natural = (939523712 * 2)     (*0x6ffffd00*)
+let elf_dt_gnu_verdef     : natural = 939524094 * 2       (*0x6ffffffc*)
+let elf_dt_gnu_verdefnum  : natural = (939524094 * 2) + 1 (*0x6ffffffd*)
+let elf_dt_gnu_verneed    : natural = 939524095 * 2       (*0x6ffffffe*)
+let elf_dt_gnu_verneednum : natural = (939524095 * 2) + 1 (*0x6fffffff*)
+let elf_dt_gnu_versym     : natural = 939524096           (*0x6ffffff0*)

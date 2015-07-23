@@ -14,6 +14,7 @@ open import Default_printing
 open import Endianness
 open import String_table
 
+open import Elf_dynamic
 open import Elf_file
 open import Elf_header
 open import Elf_program_header_table
@@ -922,4 +923,24 @@ let harness_string_of_elf64_syms f1 os proc bs0 =
       | Success shdr ->
         "\n" ^
         harness_string_of_elf64_syms' endian os proc f1 sym_secs sht shdr bs0
+    end
+    
+val harness_string_of_elf32_dynamic_section' : elf32_program_header_table_entry -> byte_sequence -> string
+let harness_string_of_elf32_dynamic_section' dyn bs0 =
+  let off  = unsafe_hex_string_of_natural 6 (natural_of_elf32_off dyn.elf32_p_offset) in
+  ""
+    
+val harness_string_of_elf32_dynamic_section : elf32_file -> byte_sequence -> string
+let harness_string_of_elf32_dynamic_section f1 bs0 =
+  let pht = f1.elf32_file_program_header_table in
+  let dyn =
+    List.filter (fun x ->
+      x.elf32_p_type = elf32_word_of_natural elf_pt_dynamic
+    ) pht
+  in
+    match dyn with
+      | []  -> "\nThere is no dynamic section in this file."
+      | [x] ->
+          harness_string_of_elf32_dynamic_section' x bs0
+      | _   -> "Multiple dynamic sections detected."
     end
