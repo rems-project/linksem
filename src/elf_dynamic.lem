@@ -6,10 +6,12 @@ open import Basic_classes
 open import Bool
 open import List
 open import Num
+open import String
 
 open import Byte_sequence
 open import Endianness
 open import Error
+open import Show
 
 open import Elf_types_native_uint
 
@@ -238,9 +240,9 @@ type tag_correspondence
   | C_Ptr
   | C_Ignored
   
-val tag_correspondence_of_tag : natural -> (natural -> error tag_correspondence) ->
+val tag_correspondence_of_tag : natural -> (natural -> bool) -> (natural -> error tag_correspondence) ->
   (natural -> error tag_correspondence) -> error tag_correspondence
-let tag_correspondence_of_tag tag os proc =
+let tag_correspondence_of_tag tag os_additional_ranges os proc =
   if tag = dt_null then
     return C_Ignored
   else if tag = dt_needed then
@@ -313,15 +315,19 @@ let tag_correspondence_of_tag tag os proc =
     os tag
   else if tag >= dt_loproc && tag <= dt_hiproc then
     proc tag
+  else if os_additional_ranges tag then
+    os tag
   else
-    fail "tag_correspondence_of_tag: invalid dynamic section tag"
+    fail ("tag_correspondence_of_tag: invalid dynamic section tag: " ^ show tag)
     
-val read_elf32_dyn : endianness -> byte_sequence -> (natural -> error tag_correspondence) ->
+val read_elf32_dyn : endianness -> byte_sequence -> (natural -> bool) -> (natural -> error tag_correspondence) ->
   (natural -> error tag_correspondence) -> error (elf32_dyn * byte_sequence)
-let read_elf32_dyn endian bs0 os proc =
+let read_elf32_dyn endian bs0 os_additional_ranges os proc =
   read_elf32_sword endian bs0 >>= fun (tag0, bs1) ->
+  let _   = Missing_pervasives.println (show (integer_of_elf32_sword tag0)) in
   let tag = naturalFromInteger (integer_of_elf32_sword tag0) in
-  tag_correspondence_of_tag tag os proc >>= fun corr ->
+  let _   = Missing_pervasives.println (show tag) in
+  tag_correspondence_of_tag tag os_additional_ranges os proc >>= fun corr ->
     match corr with
       | C_Ptr ->
         read_elf32_addr endian bs1 >>= fun (ptr, bs2) ->
@@ -342,12 +348,12 @@ let read_elf32_dyn endian bs0 os proc =
         end
     end
     
-val read_elf64_dyn : endianness -> byte_sequence -> (natural -> error tag_correspondence) ->
+val read_elf64_dyn : endianness -> byte_sequence -> (natural -> bool) -> (natural -> error tag_correspondence) ->
   (natural -> error tag_correspondence) -> error (elf64_dyn * byte_sequence)
-let read_elf64_dyn endian bs0 os proc =
+let read_elf64_dyn endian bs0 os_additional_ranges os proc =
   read_elf64_sxword endian bs0 >>= fun (tag0, bs1) ->
   let tag = naturalFromInteger (integer_of_elf64_sxword tag0) in
-  tag_correspondence_of_tag tag os proc >>= fun corr ->
+  tag_correspondence_of_tag tag os_additional_ranges os proc >>= fun corr ->
     match corr with
       | C_Ptr ->
         read_elf64_addr endian bs1 >>= fun (ptr, bs2) ->
@@ -368,24 +374,26 @@ let read_elf64_dyn endian bs0 os proc =
         end
     end
     
-val obtain_elf32_dynamic_section_contents : endianness -> byte_sequence -> (natural -> error tag_correspondence) ->
+val obtain_elf32_dynamic_section_contents : endianness -> byte_sequence ->
+  (natural -> bool) -> (natural -> error tag_correspondence) ->
   (natural -> error tag_correspondence) -> error (list elf32_dyn)
-let rec obtain_elf32_dynamic_section_contents endian bs0 os proc =
+let rec obtain_elf32_dynamic_section_contents endian bs0 os_additional_ranges os proc =
   if Byte_sequence.length bs0 = 0 then
     return []
   else
-    read_elf32_dyn endian bs0 os proc >>= fun (head, bs0) ->
-    obtain_elf32_dynamic_section_contents endian bs0 os proc >>= fun tail ->
+    read_elf32_dyn endian bs0 os_additional_ranges os proc >>= fun (head, bs0) ->
+    obtain_elf32_dynamic_section_contents endian bs0 os_additional_ranges os proc >>= fun tail ->
     return (head::tail)
     
-val obtain_elf64_dynamic_section_contents : endianness -> byte_sequence -> (natural -> error tag_correspondence) ->
+val obtain_elf64_dynamic_section_contents : endianness -> byte_sequence ->
+  (natural -> bool) -> (natural -> error tag_correspondence) ->
   (natural -> error tag_correspondence) -> error (list elf64_dyn)
-let rec obtain_elf64_dynamic_section_contents endian bs0 os proc =
+let rec obtain_elf64_dynamic_section_contents endian bs0 os_additional_ranges os proc =
   if Byte_sequence.length bs0 = 0 then
     return []
   else
-    read_elf64_dyn endian bs0 os proc >>= fun (head, bs0) ->
-    obtain_elf64_dynamic_section_contents endian bs0 os proc >>= fun tail ->
+    read_elf64_dyn endian bs0 os_additional_ranges os proc >>= fun (head, bs0) ->
+    obtain_elf64_dynamic_section_contents endian bs0 os_additional_ranges os proc >>= fun tail ->
     return (head::tail)
 
 (** DT Flags values *)

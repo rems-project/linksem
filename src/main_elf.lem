@@ -30,6 +30,7 @@ open import Abi_amd64_serialisation
 
 open import Abi_x86_relocation
 
+open import Gnu_ext_dynamic
 open import Gnu_ext_program_header_table
 open import Gnu_ext_section_header_table
 
@@ -133,6 +134,13 @@ let _ =
                   show
                   show
                   bs0
+              else if flag = "--dynamic" then
+                Harness_interface.harness_string_of_elf32_dynamic_section
+                  f1
+                  bs0
+                  gnu_ext_os_additional_ranges
+                  (fun x -> gnu_ext_tag_correspondence_of_tag x gnu_ext_tag_correspondence_of_tag0)
+                  (fun x -> Error.fail "proc correspondence: from main_elf")
               else if flag = "--in-out" then
                 match Elf_file.bytes_of_elf32_file f1 with
                   | Fail    f -> f

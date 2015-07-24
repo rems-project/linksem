@@ -929,14 +929,17 @@ val harness_string_of_elf32_dyn_entry : elf32_dyn -> string
 let harness_string_of_elf32_dyn_entry dyn = "DYN"
     
 val harness_string_of_elf32_dynamic_section' : endianness -> elf32_program_header_table_entry
-  -> byte_sequence -> (natural -> error tag_correspondence) -> (natural -> error tag_correspondence) -> string
-let harness_string_of_elf32_dynamic_section' endian dyn bs0 os proc =
+  -> byte_sequence -> (natural -> bool) -> (natural -> error tag_correspondence) ->
+    (natural -> error tag_correspondence) -> string
+let harness_string_of_elf32_dynamic_section' endian dyn bs0 os_additional_ranges os proc =
   let off = natural_of_elf32_off dyn.elf32_p_offset in
+  let _   = Missing_pervasives.println ("OFF: " ^ show off) in
   let siz = natural_of_elf32_word dyn.elf32_p_filesz in
   let res =
     Byte_sequence.offset_and_cut off siz bs0 >>= fun rel ->
-    obtain_elf32_dynamic_section_contents endian bs0 os proc >>= fun dyns ->
-    return (List.map harness_string_of_elf32_dyn_entry dyns)
+    obtain_elf32_dynamic_section_contents endian rel os_additional_ranges os proc >>= fun dyns ->
+    (*return (List.map harness_string_of_elf32_dyn_entry dyns)*)
+    return dyns
   in
     match res with
       | Fail    f -> f
@@ -950,8 +953,9 @@ let harness_string_of_elf32_dynamic_section' endian dyn bs0 os proc =
     end
     
 val harness_string_of_elf32_dynamic_section : elf32_file -> byte_sequence ->
-  (natural -> error tag_correspondence) -> (natural -> error tag_correspondence) -> string
-let harness_string_of_elf32_dynamic_section f1 bs0 os proc =
+  (natural -> bool) -> (natural -> error tag_correspondence) ->
+    (natural -> error tag_correspondence) -> string
+let harness_string_of_elf32_dynamic_section f1 bs0 os_additional_ranges os proc =
   let endian = get_elf32_header_endianness f1.elf32_file_header in
   let pht = f1.elf32_file_program_header_table in
   let dyn =
@@ -962,6 +966,6 @@ let harness_string_of_elf32_dynamic_section f1 bs0 os proc =
     match dyn with
       | []  -> "\nThere is no dynamic section in this file."
       | [x] ->
-          harness_string_of_elf32_dynamic_section' endian x bs0 os proc
+          harness_string_of_elf32_dynamic_section' endian x bs0 os_additional_ranges os proc
       | _   -> "Multiple dynamic sections detected."
     end

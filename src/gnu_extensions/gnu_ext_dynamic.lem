@@ -49,16 +49,38 @@ let elf_dt_gnu_verdef     : natural = 939524094 * 2       (*0x6ffffffc*)
 let elf_dt_gnu_verdefnum  : natural = (939524094 * 2) + 1 (*0x6ffffffd*)
 let elf_dt_gnu_verneed    : natural = 939524095 * 2       (*0x6ffffffe*)
 let elf_dt_gnu_verneednum : natural = (939524095 * 2) + 1 (*0x6fffffff*)
-let elf_dt_gnu_versym     : natural = 939524096           (*0x6ffffff0*)
+let elf_dt_gnu_versym     : natural = 939524088 * 2       (*0x6ffffff0*)
 
 (** Not present in the LSB but turns up in "real" ELF files... *)
 
-let elf_dt_gnu_hash    : natural = (939523962 * 2) + 1 (*0x6ffffef5*)
+let elf_dt_gnu_hash    : natural = (939523962 * 2) + 1  (*0x6ffffef5*)
 let elf_dt_gnu_flags_1 : natural = (939524093 * 2) + 1  (*0x6ffffffb*)
+
+val gnu_ext_os_additional_ranges : natural -> bool
+let gnu_ext_os_additional_ranges m =
+  if m >= elf_dt_gnu_addrrnglo && m <= elf_dt_gnu_addrrnghi then
+    true
+  else (* ad hoc extensions go here... *)
+    m = elf_dt_gnu_verneed ||
+    m = elf_dt_gnu_verneednum ||
+    m = elf_dt_gnu_versym
+
+val gnu_ext_tag_correspondence_of_tag0 : natural -> error tag_correspondence
+let gnu_ext_tag_correspondence_of_tag0 m =
+  if m = elf_dt_gnu_hash then
+    return C_Ptr
+  else if m = elf_dt_gnu_flags_1 then
+    return C_Val
+  else
+    fail "gnu_ext_tag_correspondence_of_tag0: invalid dynamic tag"
 
 val gnu_ext_tag_correspondence_of_tag : natural -> (natural -> error tag_correspondence) -> error tag_correspondence
 let gnu_ext_tag_correspondence_of_tag m arch =
-  if m = elf_dt_gnu_versym then
+  if m >= elf_dt_gnu_addrrnglo && m <= elf_dt_gnu_addrrnghi then
+    arch m
+  else if m >= elf_dt_gnu_valrnglo && m <= elf_dt_gnu_valrnghi then
+    return C_Val
+  else if m = elf_dt_gnu_versym then
     return C_Ptr
   else if m = elf_dt_gnu_verneednum then
     return C_Val
@@ -68,8 +90,6 @@ let gnu_ext_tag_correspondence_of_tag m arch =
     return C_Val
   else if m = elf_dt_gnu_verdef then
     return C_Ptr
-  else if m >= elf_dt_gnu_valrnglo && m <= elf_dt_gnu_valrnghi then
-    return C_Val
   else if m = elf_dt_gnu_syminsz then
     return C_Val (** unsure *)
   else if m = elf_dt_gnu_syminfo then
@@ -86,11 +106,5 @@ let gnu_ext_tag_correspondence_of_tag m arch =
     return C_Val (** unsure *)
   else if m = elf_dt_gnu_auxiliary then
     return C_Val (** unsure *)
-  else if m = elf_dt_gnu_hash then
-    return C_Ptr
-  else if m = elf_dt_gnu_flags_1 then
-    return C_Val
-  else if m >= elf_dt_gnu_addrrnglo && m <= elf_dt_gnu_addrrnghi then
-    arch m
   else
     fail "gnu_ext_tag_correspondence_of_tag: unrecognised GNU dynamic tag"
