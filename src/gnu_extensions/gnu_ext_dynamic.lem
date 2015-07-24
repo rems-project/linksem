@@ -63,7 +63,9 @@ let gnu_ext_os_additional_ranges m =
   else (* ad hoc extensions go here... *)
     m = elf_dt_gnu_verneed ||
     m = elf_dt_gnu_verneednum ||
-    m = elf_dt_gnu_versym
+    m = elf_dt_gnu_versym ||
+    m = elf_dt_gnu_flags_1 ||
+    m = elf_dt_gnu_relcount
 
 val gnu_ext_tag_correspondence_of_tag0 : natural -> error tag_correspondence
 let gnu_ext_tag_correspondence_of_tag0 m =
@@ -71,21 +73,25 @@ let gnu_ext_tag_correspondence_of_tag0 m =
     return C_Ptr
   else if m = elf_dt_gnu_flags_1 then
     return C_Val
-  else
-    fail "gnu_ext_tag_correspondence_of_tag0: invalid dynamic tag"
-
-val gnu_ext_tag_correspondence_of_tag : natural -> (natural -> error tag_correspondence) -> error tag_correspondence
-let gnu_ext_tag_correspondence_of_tag m arch =
-  if m >= elf_dt_gnu_addrrnglo && m <= elf_dt_gnu_addrrnghi then
-    arch m
-  else if m >= elf_dt_gnu_valrnglo && m <= elf_dt_gnu_valrnghi then
-    return C_Val
   else if m = elf_dt_gnu_versym then
     return C_Ptr
   else if m = elf_dt_gnu_verneednum then
     return C_Val
   else if m = elf_dt_gnu_verneed then
     return C_Ptr
+  else if m = elf_dt_gnu_relcount then
+    return C_Val
+  else
+    fail "gnu_ext_tag_correspondence_of_tag0: invalid dynamic tag"
+
+val gnu_ext_tag_correspondence_of_tag : natural -> (natural -> bool) -> (natural -> error tag_correspondence) -> error tag_correspondence
+let gnu_ext_tag_correspondence_of_tag m os_additional_ranges arch =
+  if m >= elf_dt_gnu_addrrnglo && m <= elf_dt_gnu_addrrnghi then
+    arch m
+  else if m >= elf_dt_gnu_valrnglo && m <= elf_dt_gnu_valrnghi then
+    return C_Val
+  else if os_additional_ranges m then
+    arch m
   else if m = elf_dt_gnu_verdefnum then
     return C_Val
   else if m = elf_dt_gnu_verdef then
@@ -96,8 +102,6 @@ let gnu_ext_tag_correspondence_of_tag m arch =
     return C_Ptr (** unsure *)
   else if m = elf_dt_gnu_syminent then
     return C_Val (** unsure *)
-  else if m = elf_dt_gnu_relcount then
-    return C_Val
   else if m = elf_dt_gnu_posflag_1 then
     return C_Val (** unsure *)
   else if m = elf_dt_gnu_num then
@@ -115,21 +119,25 @@ let {ocaml} string_of_gnu_ext_dynamic_tag0 m =
     "GNU_HASH"
   else if m = elf_dt_gnu_flags_1 then
     "FLAGS_1"
-  else
-    "Invalid dynamic tag"
-    
-val string_of_gnu_ext_dynamic_tag : natural -> (natural -> string) -> string
-let {ocaml} string_of_gnu_ext_dynamic_tag m arch =
-  if m >= elf_dt_gnu_addrrnglo && m <= elf_dt_gnu_addrrnghi then
-    arch m
-  else if m >= elf_dt_gnu_valrnglo && m <= elf_dt_gnu_valrnghi then
-    arch m
   else if m = elf_dt_gnu_versym then
     "VERSYM"
   else if m = elf_dt_gnu_verneednum then
     "VERNEEDNUM"
   else if m = elf_dt_gnu_verneed then
     "VERNEED"
+  else if m = elf_dt_gnu_relcount then
+    "RELCOUNT"
+  else
+    "Invalid dynamic tag"
+    
+val string_of_gnu_ext_dynamic_tag : natural -> (natural -> bool) -> (natural -> string) -> string
+let {ocaml} string_of_gnu_ext_dynamic_tag m os_additional_ranges arch =
+  if m >= elf_dt_gnu_addrrnglo && m <= elf_dt_gnu_addrrnghi then
+    arch m
+  else if m >= elf_dt_gnu_valrnglo && m <= elf_dt_gnu_valrnghi then
+    arch m
+  else if os_additional_ranges m then
+    arch m
   else if m = elf_dt_gnu_verdefnum then
     "VERDEFNUM"
   else if m = elf_dt_gnu_verdef then
@@ -140,8 +148,6 @@ let {ocaml} string_of_gnu_ext_dynamic_tag m arch =
     "SYMINFO"
   else if m = elf_dt_gnu_syminent then
     "SYMINENT"
-  else if m = elf_dt_gnu_relcount then
-    "RELCOUNT"
   else if m = elf_dt_gnu_posflag_1 then
     "POSFLAG_1"
   else if m = elf_dt_gnu_num then

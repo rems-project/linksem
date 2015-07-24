@@ -140,9 +140,9 @@ let _ =
                   f1
                   bs0
                   gnu_ext_os_additional_ranges
-                  (fun x -> gnu_ext_tag_correspondence_of_tag x gnu_ext_tag_correspondence_of_tag0)
+                  (fun x -> gnu_ext_tag_correspondence_of_tag x gnu_ext_os_additional_ranges gnu_ext_tag_correspondence_of_tag0)
                   (fun x -> Error.fail "proc correspondence: from main_elf")
-                  (fun x -> string_of_dynamic_tag x gnu_ext_os_additional_ranges (fun x -> string_of_gnu_ext_dynamic_tag x string_of_gnu_ext_dynamic_tag0) (fun _ -> "proc: from main_elf"))
+                  (fun x -> string_of_dynamic_tag x gnu_ext_os_additional_ranges (fun x -> string_of_gnu_ext_dynamic_tag x gnu_ext_os_additional_ranges string_of_gnu_ext_dynamic_tag0) (fun _ -> "proc: from main_elf"))
               else if flag = "--in-out" then
                 match Elf_file.bytes_of_elf32_file f1 with
                   | Fail    f -> f
