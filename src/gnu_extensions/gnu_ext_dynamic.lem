@@ -108,3 +108,47 @@ let gnu_ext_tag_correspondence_of_tag m arch =
     return C_Val (** unsure *)
   else
     fail "gnu_ext_tag_correspondence_of_tag: unrecognised GNU dynamic tag"
+    
+val string_of_gnu_ext_dynamic_tag0 : natural -> string
+let {ocaml} string_of_gnu_ext_dynamic_tag0 m =
+  if m = elf_dt_gnu_hash then
+    "GNU_HASH"
+  else if m = elf_dt_gnu_flags_1 then
+    "FLAGS_1"
+  else
+    "Invalid dynamic tag"
+    
+val string_of_gnu_ext_dynamic_tag : natural -> (natural -> string) -> string
+let {ocaml} string_of_gnu_ext_dynamic_tag m arch =
+  if m >= elf_dt_gnu_addrrnglo && m <= elf_dt_gnu_addrrnghi then
+    arch m
+  else if m >= elf_dt_gnu_valrnglo && m <= elf_dt_gnu_valrnghi then
+    arch m
+  else if m = elf_dt_gnu_versym then
+    "VERSYM"
+  else if m = elf_dt_gnu_verneednum then
+    "VERNEEDNUM"
+  else if m = elf_dt_gnu_verneed then
+    "VERNEED"
+  else if m = elf_dt_gnu_verdefnum then
+    "VERDEFNUM"
+  else if m = elf_dt_gnu_verdef then
+    "VERDEF"
+  else if m = elf_dt_gnu_syminsz then
+    "SYMINSZ"
+  else if m = elf_dt_gnu_syminfo then
+    "SYMINFO"
+  else if m = elf_dt_gnu_syminent then
+    "SYMINENT"
+  else if m = elf_dt_gnu_relcount then
+    "RELCOUNT"
+  else if m = elf_dt_gnu_posflag_1 then
+    "POSFLAG_1"
+  else if m = elf_dt_gnu_num then
+    "NUM"
+  else if m = elf_dt_gnu_filter then
+    "FILTER"
+  else if m = elf_dt_gnu_auxiliary then
+    "AUXILIARY"
+  else
+    "Invalid dynamic tag"

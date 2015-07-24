@@ -157,78 +157,80 @@ let dt_hiproc : natural = (2 * 1073741823) + 1 (* 0x7fffffff *)
   * used to produce the resulting value.  For tag values between LO_PROC and
   * HI_PROC [proc] is used to produce the resulting value.
   *)
-val string_of_dynamic_tag : natural -> (natural -> string) -> (natural -> string)
+val string_of_dynamic_tag : natural -> (natural -> bool) -> (natural -> string) -> (natural -> string)
   -> string
-let string_of_dynamic_tag tag os proc =
+let string_of_dynamic_tag tag os_additional_ranges os proc =
   if tag = dt_null then
-    "DT_NULL"
+    "NULL"
   else if tag = dt_needed then
-    "DT_NEEDED"
+    "NEEDED"
   else if tag = dt_pltrelsz then
-    "DT_PLTRELSZ"
+    "PLTRELSZ"
   else if tag = dt_pltgot then
-    "DT_PLTGOT"
+    "PLTGOT"
   else if tag = dt_hash then
-    "DT_HASH"
+    "HASH"
   else if tag = dt_strtab then
-    "DT_STRTAB"
+    "STRTAB"
   else if tag = dt_symtab then
-    "DT_SYMTAB"
+    "SYMTAB"
   else if tag = dt_rela then
-    "DT_RELA"
+    "RELA"
   else if tag = dt_relasz then
-    "DT_RELASZ"
+    "RELASZ"
   else if tag = dt_relaent then
-    "DT_RELAENT"
+    "RELAENT"
   else if tag = dt_strsz then
-    "DT_STRSZ"
+    "STRSZ"
   else if tag = dt_syment then
-    "DT_SYMENT"
+    "SYMENT"
   else if tag = dt_init then
-    "DT_INIT"
+    "INIT"
   else if tag = dt_fini then
-    "DT_FINI"
+    "FINI"
   else if tag = dt_soname then
-    "DT_SONAME"
+    "SONAME"
   else if tag = dt_rpath then
-    "DT_RPATH"
+    "RPATH"
   else if tag = dt_symbolic then
-    "DT_SYMBOLIC"
+    "SYMBOLIC"
   else if tag = dt_rel then
-    "DT_REL"
+    "REL"
   else if tag = dt_relsz then
-    "DT_RELSZ"
+    "RELSZ"
   else if tag = dt_relent then
-    "DT_RELENT"
+    "RELENT"
   else if tag = dt_pltrel then
-    "DT_PLTREL"
+    "PLTREL"
   else if tag = dt_debug then
-    "DT_DEBUG"
+    "DEBUG"
   else if tag = dt_textrel then
-    "DT_TEXTREL"
+    "TEXTREL"
   else if tag = dt_jmprel then
-    "DT_JMPREL"
+    "JMPREL"
   else if tag = dt_bindnow then
-    "DT_BINDNOW"
+    "BINDNOW"
   else if tag = dt_init_array then
-    "DT_INIT_ARRAY"
+    "INIT_ARRAY"
   else if tag = dt_fini_array then
-    "DT_FINI_ARRAY"
+    "FINI_ARRAY"
   else if tag = dt_init_arraysz then
-    "DT_INIT_ARRAYSZ"
+    "INIT_ARRAYSZ"
   else if tag = dt_fini_arraysz then
-    "DT_FINI_ARRAYSZ"
+    "FINI_ARRAYSZ"
   else if tag = dt_runpath then
-    "DT_RUNPATH"
+    "RUNPATH"
   else if tag = dt_flags then
-    "DT_FLAGS"
+    "FLAGS"
   else if tag = dt_encoding then
-    "DT_ENCODING"
+    "ENCODING"
   else if tag = dt_preinit_array then
-    "DT_PREINIT_ARRAY"
+    "PREINIT_ARRAY"
   else if tag = dt_preinit_arraysz then
-    "DT_PREINIT_ARRAYSZ"
+    "PREINIT_ARRAYSZ"
   else if tag >= dt_loos && tag <= dt_hios then
+    os tag
+  else if os_additional_ranges tag then
     os tag
   else if tag >= dt_loproc && tag <= dt_hiproc then
     proc tag
@@ -324,9 +326,7 @@ val read_elf32_dyn : endianness -> byte_sequence -> (natural -> bool) -> (natura
   (natural -> error tag_correspondence) -> error (elf32_dyn * byte_sequence)
 let read_elf32_dyn endian bs0 os_additional_ranges os proc =
   read_elf32_sword endian bs0 >>= fun (tag0, bs1) ->
-  let _   = Missing_pervasives.println (show (integer_of_elf32_sword tag0)) in
   let tag = naturalFromInteger (integer_of_elf32_sword tag0) in
-  let _   = Missing_pervasives.println (show tag) in
   tag_correspondence_of_tag tag os_additional_ranges os proc >>= fun corr ->
     match corr with
       | C_Ptr ->
