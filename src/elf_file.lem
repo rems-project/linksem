@@ -845,8 +845,9 @@ let get_elf64_executable_image f3 =
   else
     fail "elf64_get_executable_image: not an executable ELF file"
 
+(** Name, (type, size, addr, chunk of data if relevant, binding) *)
 type global_symbol_init_info
-  = list (string * (natural * natural * natural * maybe byte_sequence))
+  = list (string * (natural * natural * natural * maybe byte_sequence * natural))
 
 val get_elf32_file_global_symbol_init : elf32_file -> error global_symbol_init_info
 let get_elf32_file_global_symbol_init f3 =
@@ -856,7 +857,7 @@ let get_elf32_file_global_symbol_init f3 =
     get_elf32_file_symbol_table f3 >>= fun symtab ->
     get_elf32_file_symbol_string_table f3 >>= fun strtab ->
     Elf_symbol_table.get_elf32_symbol_image_address symtab strtab >>= fun strs ->
-      let mapped = mapM (fun (symbol, (typ, size, addr)) ->
+      let mapped = mapM (fun (symbol, (typ, size, addr, bind)) ->
         if typ = Elf_symbol_table.stt_object then
           get_elf32_executable_image f3 >>= fun (img, entry, mach) ->
           let chunks =
@@ -870,11 +871,11 @@ let get_elf32_file_global_symbol_init f3 =
               | [(x, _)]   ->
                 let rebase   = addr - x.elf32_segment_base in
                 Byte_sequence.offset_and_cut rebase size x.elf32_segment_body >>= fun relevant ->
-                  return (symbol, (typ, size, addr, Just relevant))
+                  return (symbol, (typ, size, addr, Just relevant, bind))
               | x::xs -> fail "get_elf32_global_symbol_init: invariant failed, global variable appears in multiple segments"
             end
         else
-          return (symbol, (typ, size, addr, Nothing))) strs
+          return (symbol, (typ, size, addr, Nothing, bind))) strs
       in
         mapped
   else
@@ -888,7 +889,7 @@ let get_elf64_file_global_symbol_init f3 =
     get_elf64_file_symbol_table f3 >>= fun symtab ->
     get_elf64_file_symbol_string_table f3 >>= fun strtab ->
     Elf_symbol_table.get_elf64_symbol_image_address symtab strtab >>= fun strs ->
-      let mapped = mapM (fun (symbol, (typ, size, addr)) ->
+      let mapped = mapM (fun (symbol, (typ, size, addr, bind)) ->
         if typ = Elf_symbol_table.stt_object then
           get_elf64_executable_image f3 >>= fun (img, entry, mach) ->
           let chunks =
@@ -902,11 +903,11 @@ let get_elf64_file_global_symbol_init f3 =
               | [(x, _)]   ->
                 let rebase   = addr - x.elf64_segment_base in
                 Byte_sequence.offset_and_cut rebase size x.elf64_segment_body >>= fun relevant ->
-                  return (symbol, (typ, size, addr, Just relevant))
+                  return (symbol, (typ, size, addr, Just relevant, bind))
               | x::xs -> fail "get_elf64_global_symbol_init: invariant failed, global variable appears in multiple segments"
             end
         else
-          return (symbol, (typ, size, addr, Nothing))) strs
+          return (symbol, (typ, size, addr, Nothing, bind))) strs
       in
         mapped
   else
