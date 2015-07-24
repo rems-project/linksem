@@ -382,6 +382,9 @@ let rec obtain_elf32_dynamic_section_contents endian bs0 os_additional_ranges os
     return []
   else
     read_elf32_dyn endian bs0 os_additional_ranges os proc >>= fun (head, bs0) ->
+    if integer_of_elf32_sword head.elf32_dyn_tag = integerFromNatural dt_null then (* DT_NULL marks end of array *)
+      return [head]
+    else
     obtain_elf32_dynamic_section_contents endian bs0 os_additional_ranges os proc >>= fun tail ->
     return (head::tail)
     
@@ -393,8 +396,11 @@ let rec obtain_elf64_dynamic_section_contents endian bs0 os_additional_ranges os
     return []
   else
     read_elf64_dyn endian bs0 os_additional_ranges os proc >>= fun (head, bs0) ->
-    obtain_elf64_dynamic_section_contents endian bs0 os_additional_ranges os proc >>= fun tail ->
-    return (head::tail)
+    if integer_of_elf64_sxword head.elf64_dyn_tag = integerFromNatural dt_null then (* DT_NULL marks end of array *)
+      return [head]
+    else
+      obtain_elf64_dynamic_section_contents endian bs0 os_additional_ranges os proc >>= fun tail ->
+      return (head::tail)
 
 (** DT Flags values *)
 
