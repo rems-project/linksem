@@ -40,6 +40,7 @@ let elf_dt_gnu_filter     : natural = (1073741823 * 2) + 1 (*0x7fffffff*)
 let elf_dt_gnu_num        : natural = 32 (** ??? This should match something *)
 let elf_dt_gnu_posflag_1  : natural = (939523838 * 2) + 1 (*0x6ffffdfd*)
 let elf_dt_gnu_relcount   : natural = 939524093 * 2       (*0x6ffffffa*)
+let elf_dt_gnu_relacount  : natural = (939524092 * 2) + 1 (*0x6FFFFFF9*)
 let elf_dt_gnu_syminent   : natural = (939523839 * 2) + 1 (*0x6ffffdff*)
 let elf_dt_gnu_syminfo    : natural = (939523967 * 2) + 1 (*0x6ffffeff*)
 let elf_dt_gnu_syminsz    : natural = 939523839 * 2       (*0x6ffffdfe*)
@@ -65,7 +66,8 @@ let gnu_ext_os_additional_ranges m =
     m = elf_dt_gnu_verneednum ||
     m = elf_dt_gnu_versym ||
     m = elf_dt_gnu_flags_1 ||
-    m = elf_dt_gnu_relcount
+    m = elf_dt_gnu_relcount ||
+    m = elf_dt_gnu_relacount
 
 val gnu_ext_tag_correspondence_of_tag0 : natural -> error tag_correspondence
 let gnu_ext_tag_correspondence_of_tag0 m =
@@ -80,6 +82,8 @@ let gnu_ext_tag_correspondence_of_tag0 m =
   else if m = elf_dt_gnu_verneed then
     return C_Ptr
   else if m = elf_dt_gnu_relcount then
+    return C_Val
+  else if m = elf_dt_gnu_relacount then
     return C_Val
   else
     fail "gnu_ext_tag_correspondence_of_tag0: invalid dynamic tag"
@@ -127,6 +131,8 @@ let {ocaml} string_of_gnu_ext_dynamic_tag0 m =
     "VERNEED"
   else if m = elf_dt_gnu_relcount then
     "RELCOUNT"
+  else if m = elf_dt_gnu_relacount then
+    "RELACOUNT"
   else
     "Invalid dynamic tag"
     

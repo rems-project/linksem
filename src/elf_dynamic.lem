@@ -433,15 +433,15 @@ let df_static_tls : natural = 16 (* 0x10 *)
   *)
 val string_of_dt_flag : natural -> string
 let string_of_dt_flag flag =
-  if unsafe_natural_land flag df_origin = 1 then
+  if unsafe_natural_land flag df_origin <> 0 then
     "ORIGIN"
-  else if unsafe_natural_land flag df_symbolic = 1 then
+  else if unsafe_natural_land flag df_symbolic <> 0 then
     "SYMBOLIC"
-  else if unsafe_natural_land flag df_textrel = 1 then
+  else if unsafe_natural_land flag df_textrel <> 0 then
     "TEXTREL"
-  else if unsafe_natural_land flag df_bindnow = 1 then
+  else if unsafe_natural_land flag df_bindnow <> 0 then
     "BIND_NOW"
-  else if unsafe_natural_land flag df_static_tls = 1 then
+  else if unsafe_natural_land flag df_static_tls <> 0 then
     "STATIC_TLS"
   else (* XXX: more as required *)
     "Invalid flag"
@@ -470,7 +470,7 @@ type dyn_value 'addr 'size
   | Ignored
   
 type elf32_dyn_value = dyn_value elf32_addr elf32_word
-type elf64_dyn_value = dyn_value elf64_addr elf64_word
+type elf64_dyn_value = dyn_value elf64_addr elf64_xword
 
 val get_string_table_of_elf32_dyn_section : endianness -> list elf32_dyn -> elf32_section_header_table -> byte_sequence ->
   error string_table
@@ -485,7 +485,6 @@ let get_string_table_of_elf32_dyn_section endian dyns sht bs0 =
         match strtab.elf32_dyn_d_un with
           | D_Val     v -> fail "get_string_table_of_elf32_dyn_section: STRTAB must be a PTR"
           | D_Ptr     p ->
-            let _ = Missing_pervasives.println (show (natural_of_elf32_addr p)) in
             let sect =
               List.filter (fun s ->
                 s.elf32_sh_addr = p &&
@@ -506,6 +505,41 @@ let get_string_table_of_elf32_dyn_section endian dyns sht bs0 =
         end
       | []       -> fail "get_string_table_of_elf32_dyn_section: no string table entry"
       | _        -> fail "get_string_table_of_elf32_dyn_section: multiple string table entries"
+    end
+    
+val get_string_table_of_elf64_dyn_section : endianness -> list elf64_dyn -> elf64_section_header_table -> byte_sequence ->
+  error string_table
+let get_string_table_of_elf64_dyn_section endian dyns sht bs0 =
+  let strtabs =
+    List.filter (fun x ->
+      integer_of_elf64_sxword x.elf64_dyn_tag = integerFromNatural dt_strtab
+    ) dyns
+  in
+    match strtabs with
+      | [strtab] ->
+        match strtab.elf64_dyn_d_un with
+          | D_Val     v -> fail "get_string_table_of_elf64_dyn_section: STRTAB must be a PTR"
+          | D_Ptr     p ->
+            let sect =
+              List.filter (fun s ->
+                s.elf64_sh_addr = p &&
+                  s.elf64_sh_type = elf64_word_of_natural sht_strtab
+              ) sht
+            in
+              match sect with
+                | []  -> fail "get_string_table_of_elf64_dyn_section: no section entry with same address as STRTAB"
+                | [s] ->
+                  let off = natural_of_elf64_off  s.elf64_sh_offset in
+                  let siz = natural_of_elf64_xword s.elf64_sh_size in
+                  Byte_sequence.offset_and_cut off siz bs0 >>= fun rel ->
+                  let strings  = Byte_sequence.string_of_byte_sequence rel in
+                  return (String_table.mk_string_table strings (Missing_pervasives.char_of_byte Missing_pervasives.null_char))
+                | _   -> fail "get_string_table_of_elf64_dyn_section: multiple section entries with same address as STRTAB"
+              end
+          | D_Ignored i -> fail "get_string_table_of_elf64_dyn_section: STRTAB must be a PTR"
+        end
+      | []       -> fail "get_string_table_of_elf64_dyn_section: no string table entry"
+      | _        -> fail "get_string_table_of_elf64_dyn_section: multiple string table entries"
     end
     
 val get_value_of_elf32_dyn : elf32_dyn -> string_table -> error elf32_dyn_value
@@ -730,6 +764,233 @@ let get_value_of_elf32_dyn dyn stab =
         | D_Val     v -> return v
         | D_Ptr     p -> fail "get_value_of_elf32_dyn_entry: PREINIT_ARRAYSZ must be a VAL"
         | D_Ignored i -> fail "get_value_of_elf32_dyn_entry: PREINIT_ARRAYSZ must be a VAL"
+      end >>= fun sz ->
+      return (Size sz)
+    else
+      fail "XXX"
+      
+val get_value_of_elf64_dyn : elf64_dyn -> string_table -> error elf64_dyn_value
+let get_value_of_elf64_dyn dyn stab =
+  let tag = naturalFromInteger (integer_of_elf64_sxword dyn.elf64_dyn_tag) in
+    if tag = dt_null then
+      return Null
+    else if tag = dt_needed then
+      match dyn.elf64_dyn_d_un with
+        | D_Val v     -> return v
+        | D_Ptr p     -> fail "get_value_of_elf64_dyn_entry: NEEDED must be a Val"
+        | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: NEEDED must be a Val"
+      end >>= fun off ->
+        let off = natural_of_elf64_xword off in
+        String_table.get_string_at off stab >>= fun str ->
+        return (Library str)
+    else if tag = dt_pltrelsz then
+      match dyn.elf64_dyn_d_un with
+        | D_Val     v -> return v
+        | D_Ptr     p -> fail "get_value_of_elf64_dyn_entry: PLTRELSZ must be a Val"
+        | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: PLTRELSZ must be a Val"
+      end >>= fun sz ->
+      return (Size sz)
+    else if tag = dt_pltgot then
+      match dyn.elf64_dyn_d_un with
+        | D_Val     v -> fail "get_value_of_elf64_dyn_entry: PLTGOT must be a PTR"
+        | D_Ptr     p -> return p
+        | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: PLTGOT must be a PTR"
+      end >>= fun ptr ->
+      return (Address ptr)
+    else if tag = dt_hash then
+      match dyn.elf64_dyn_d_un with
+        | D_Val     v -> fail "get_value_of_elf64_dyn_entry: HASH must be a PTR"
+        | D_Ptr     p -> return p
+        | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: HASH must be a PTR"
+      end >>= fun ptr ->
+      return (Address ptr)
+    else if tag = dt_strtab then
+      match dyn.elf64_dyn_d_un with
+        | D_Val     v -> fail "get_value_of_elf64_dyn_entry: STRTAB must be a PTR"
+        | D_Ptr     p -> return p
+        | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: STRTAB must be a PTR"
+      end >>= fun ptr ->
+      return (Address ptr)
+    else if tag = dt_symtab then
+      match dyn.elf64_dyn_d_un with
+        | D_Val     v -> fail "get_value_of_elf64_dyn_entry: SYMTAB must be a PTR"
+        | D_Ptr     p -> return p
+        | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: SYMTAB must be a PTR"
+      end >>= fun ptr ->
+      return (Address ptr)
+    else if tag = dt_rela then
+      match dyn.elf64_dyn_d_un with
+        | D_Val     v -> fail "get_value_of_elf64_dyn_entry: RELA must be a PTR"
+        | D_Ptr     p -> return p
+        | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: RELA must be a PTR"
+      end >>= fun ptr ->
+      return (Address ptr)
+    else if tag = dt_relasz then
+      match dyn.elf64_dyn_d_un with
+        | D_Val     v -> return v
+        | D_Ptr     p -> fail "get_value_of_elf64_dyn_entry: RELASZ must be a VAL"
+        | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: RELASZ must be a VAL"
+      end >>= fun sz ->
+      return (Size sz)
+    else if tag = dt_relaent then
+      match dyn.elf64_dyn_d_un with
+        | D_Val     v -> return v
+        | D_Ptr     p -> fail "get_value_of_elf64_dyn_entry: RELAENT must be a VAL"
+        | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: RELAENT must be a VAL"
+      end >>= fun sz ->
+      return (Size sz)
+    else if tag = dt_strsz then
+      match dyn.elf64_dyn_d_un with
+        | D_Val     v -> return v
+        | D_Ptr     p -> fail "get_value_of_elf64_dyn_entry: STRSZ must be a VAL"
+        | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: STRSZ must be a VAL"
+      end >>= fun sz ->
+      return (Size sz)
+    else if tag = dt_syment then
+      match dyn.elf64_dyn_d_un with
+        | D_Val     v -> return v
+        | D_Ptr     p -> fail "get_value_of_elf64_dyn_entry: SYMENT must be a VAL"
+        | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: SYMENT must be a VAL"
+      end >>= fun sz ->
+      return (Size sz)
+    else if tag = dt_init then
+      match dyn.elf64_dyn_d_un with
+        | D_Val     v -> fail "get_value_of_elf64_dyn_entry: INIT must be a PTR"
+        | D_Ptr     p -> return p
+        | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: INIT must be a PTR"
+      end >>= fun ptr ->
+      return (Address ptr)
+    else if tag = dt_fini then
+      match dyn.elf64_dyn_d_un with
+        | D_Val     v -> fail "get_value_of_elf64_dyn_entry: FINI must be a PTR"
+        | D_Ptr     p -> return p
+        | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: FINI must be a PTR"
+      end >>= fun ptr ->
+      return (Address ptr)
+    else if tag = dt_soname then
+      match dyn.elf64_dyn_d_un with
+        | D_Val v     -> return v
+        | D_Ptr p     -> fail "get_value_of_elf64_dyn_entry: SONAME must be a Val"
+        | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: SONAME must be a Val"
+      end >>= fun off ->
+        let off = natural_of_elf64_xword off in
+        String_table.get_string_at off stab >>= fun str ->
+        return (FName str)
+    else if tag = dt_rpath then
+      match dyn.elf64_dyn_d_un with
+        | D_Val v     -> return v
+        | D_Ptr p     -> fail "get_value_of_elf64_dyn_entry: RPATH must be a Val"
+        | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: RPATH must be a Val"
+      end >>= fun off ->
+        let off = natural_of_elf64_xword off in
+        String_table.get_string_at off stab >>= fun str ->
+        return (Path str)
+    else if tag = dt_symbolic then
+      return Ignored
+    else if tag = dt_rel then
+      match dyn.elf64_dyn_d_un with
+        | D_Val     v -> fail "get_value_of_elf64_dyn_entry: REL must be a PTR"
+        | D_Ptr     p -> return p
+        | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: REL must be a PTR"
+      end >>= fun ptr ->
+      return (Address ptr)
+    else if tag = dt_relsz then
+      match dyn.elf64_dyn_d_un with
+        | D_Val     v -> return v
+        | D_Ptr     p -> fail "get_value_of_elf64_dyn_entry: RELSZ must be a VAL"
+        | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: RELSZ must be a VAL"
+      end >>= fun sz ->
+      return (Size sz)
+    else if tag = dt_relent then
+      match dyn.elf64_dyn_d_un with
+        | D_Val     v -> return v
+        | D_Ptr     p -> fail "get_value_of_elf64_dyn_entry: RELENT must be a VAL"
+        | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: RELENT must be a VAL"
+      end >>= fun sz ->
+      return (Size sz)
+    else if tag = dt_pltrel then
+      match dyn.elf64_dyn_d_un with
+        | D_Val     v -> return v
+        | D_Ptr     p -> fail "get_value_of_elf64_dyn_entry: PLTREL must be a VAL"
+        | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: PLTREL must be a VAL"
+      end >>= fun r ->
+        if natural_of_elf64_xword r = dt_rel then
+          return (RelType Rel)
+        else if natural_of_elf64_xword r = dt_rela then
+          return (RelType RelA)
+        else
+          fail "get_value_of_elf64_dyn_entry: PLTREL neither REL nor RELA"
+    else if tag = dt_debug then
+      return Null
+    else if tag = dt_textrel then
+      return Ignored
+    else if tag = dt_jmprel then
+      match dyn.elf64_dyn_d_un with
+        | D_Val     v -> fail "get_value_of_elf64_dyn_entry: JMPREL must be a PTR"
+        | D_Ptr     p -> return p
+        | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: JMPREL must be a PTR"
+      end >>= fun ptr ->
+      return (Address ptr)
+    else if tag = dt_bindnow then
+      return Ignored
+    else if tag = dt_init_array then
+      match dyn.elf64_dyn_d_un with
+        | D_Val     v -> fail "get_value_of_elf64_dyn_entry: INIT_ARRAY must be a PTR"
+        | D_Ptr     p -> return p
+        | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: INIT_ARRAY must be a PTR"
+      end >>= fun ptr ->
+      return (Address ptr)
+    else if tag = dt_fini_array then
+      match dyn.elf64_dyn_d_un with
+        | D_Val     v -> fail "get_value_of_elf64_dyn_entry: FINI_ARRAY must be a PTR"
+        | D_Ptr     p -> return p
+        | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: FINI_ARRAY must be a PTR"
+      end >>= fun ptr ->
+      return (Address ptr)
+    else if tag = dt_init_arraysz then
+      match dyn.elf64_dyn_d_un with
+        | D_Val     v -> return v
+        | D_Ptr     p -> fail "get_value_of_elf64_dyn_entry: INIT_ARRAYSZ must be a VAL"
+        | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: INIT_ARRAYSZ must be a VAL"
+      end >>= fun sz ->
+      return (Size sz)
+    else if tag = dt_fini_arraysz then
+      match dyn.elf64_dyn_d_un with
+        | D_Val     v -> return v
+        | D_Ptr     p -> fail "get_value_of_elf64_dyn_entry: FINI_ARRAYSZ must be a VAL"
+        | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: FINI_ARRAYSZ must be a VAL"
+      end >>= fun sz ->
+      return (Size sz)
+    else if tag = dt_runpath then
+      match dyn.elf64_dyn_d_un with
+        | D_Val v     -> return v
+        | D_Ptr p     -> fail "get_value_of_elf64_dyn_entry: RUNPATH must be a Val"
+        | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: RUNPATH must be a Val"
+      end >>= fun off ->
+        let off = natural_of_elf64_xword off in
+        String_table.get_string_at off stab >>= fun str ->
+        return (Path str)
+    else if tag = dt_flags then
+      match dyn.elf64_dyn_d_un with
+        | D_Val v     -> return v
+        | D_Ptr p     -> fail "get_value_of_elf64_dyn_entry: FLAGS must be a Val"
+        | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: FLAGS must be a Val"
+      end >>= fun flags ->
+        return (Flags (natural_of_elf64_xword flags))
+    else if tag = dt_encoding then
+      fail "ENCODING"
+    else if tag = dt_preinit_array then
+      match dyn.elf64_dyn_d_un with
+        | D_Val     v -> fail "get_value_of_elf64_dyn_entry: PREINIT_ARRAY must be a PTR"
+        | D_Ptr     p -> return p
+        | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: PREINIT_ARRAY must be a PTR"
+      end >>= fun ptr ->
+      return (Address ptr)
+    else if tag = dt_preinit_arraysz then
+      match dyn.elf64_dyn_d_un with
+        | D_Val     v -> return v
+        | D_Ptr     p -> fail "get_value_of_elf64_dyn_entry: PREINIT_ARRAYSZ must be a VAL"
+        | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: PREINIT_ARRAYSZ must be a VAL"
       end >>= fun sz ->
       return (Size sz)
     else

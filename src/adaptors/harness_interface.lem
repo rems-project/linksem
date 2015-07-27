@@ -1023,3 +1023,72 @@ let harness_string_of_elf32_dynamic_section f1 bs0 os_additional_ranges os proc 
       | [x] -> harness_string_of_elf32_dynamic_section' endian x sht bs0 os_additional_ranges os proc os_print
       | _   -> "Multiple dynamic sections detected."
     end
+    
+val harness_string_of_elf64_dyn_entry : elf64_dyn -> (natural -> string) -> string_table -> string
+let harness_string_of_elf64_dyn_entry dyn typ stbl =
+  let tag = unsafe_hex_string_of_natural 16 (naturalFromInteger (integer_of_elf64_sxword dyn.elf64_dyn_tag)) in
+  let typ = "(" ^ typ (naturalFromInteger (integer_of_elf64_sxword dyn.elf64_dyn_tag)) ^ ")" in
+  let vlu =
+    match get_value_of_elf64_dyn dyn stbl with
+      | Fail    f -> f
+      | Success v -> string_of_elf64_dyn_value v
+    end
+  in
+  let vlu_pad =
+    let pad = 21 - stringLength typ in
+    if pad = 0 then
+      ""
+    else
+      let reps = replicate (naturalFromNat pad) " " in
+      concatS reps
+  in
+    concatS [
+      " "
+    ; "0x" ^ tag
+    ; " "
+    ; typ
+    ; vlu_pad; vlu
+    ]
+    
+val harness_string_of_elf64_dynamic_section' : endianness -> elf64_program_header_table_entry
+  -> elf64_section_header_table -> byte_sequence -> (natural -> bool) -> (natural -> error tag_correspondence) ->
+    (natural -> error tag_correspondence) -> (natural -> string) -> string
+let harness_string_of_elf64_dynamic_section' endian dyn sht bs0 os_additional_ranges os proc os_print =
+  let off = natural_of_elf64_off dyn.elf64_p_offset in
+  let siz = natural_of_elf64_xword dyn.elf64_p_filesz in
+  let res =
+    Byte_sequence.offset_and_cut off siz bs0 >>= fun rel ->
+    obtain_elf64_dynamic_section_contents endian rel os_additional_ranges os proc >>= fun dyns ->
+    get_string_table_of_elf64_dyn_section endian dyns sht bs0 >>= fun stbl ->
+    return (List.map (fun x -> harness_string_of_elf64_dyn_entry x os_print stbl) dyns)
+  in
+    match res with
+      | Fail    f -> f
+      | Success s ->
+        let off = unsafe_hex_string_of_natural 6 off in
+        let entries = show (List.length s) in
+        concatS [
+          "\n"
+        ; "Dynamic section at offset 0x" ^ off ^ " contains " ^ entries ^ " entries:\n"
+        ; "  Tag        Type                         Name/Value\n"
+        ; concatS (intercalate "\n" s)
+        ]
+    end
+    
+val harness_string_of_elf64_dynamic_section : elf64_file -> byte_sequence ->
+  (natural -> bool) -> (natural -> error tag_correspondence) ->
+    (natural -> error tag_correspondence) -> (natural -> string) -> string
+let harness_string_of_elf64_dynamic_section f1 bs0 os_additional_ranges os proc os_print =
+  let endian = get_elf64_header_endianness f1.elf64_file_header in
+  let pht = f1.elf64_file_program_header_table in
+  let sht = f1.elf64_file_section_header_table in
+  let dyn =
+    List.filter (fun x ->
+      x.elf64_p_type = elf64_word_of_natural elf_pt_dynamic
+    ) pht
+  in
+    match dyn with
+      | []  -> "\nThere is no dynamic section in this file."
+      | [x] -> harness_string_of_elf64_dynamic_section' endian x sht bs0 os_additional_ranges os proc os_print
+      | _   -> "Multiple dynamic sections detected."
+    end
