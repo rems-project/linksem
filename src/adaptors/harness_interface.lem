@@ -925,21 +925,27 @@ let harness_string_of_elf64_syms f1 os proc bs0 =
         harness_string_of_elf64_syms' endian os proc f1 sym_secs sht shdr bs0
     end
     
-val harness_string_of_elf32_dyn_entry : elf32_dyn -> string
-let harness_string_of_elf32_dyn_entry dyn = "DYN"
+val harness_string_of_elf32_dyn_entry : elf32_dyn -> (natural -> string) -> string
+let harness_string_of_elf32_dyn_entry dyn typ =
+  let tag = unsafe_hex_string_of_natural 8 (naturalFromInteger (integer_of_elf32_sword dyn.elf32_dyn_tag)) in
+  let typ = typ (naturalFromInteger (integer_of_elf32_sword dyn.elf32_dyn_tag)) in
+  concatS [
+    " "
+  ; "0x" ^ tag
+  ; " "
+  ; "(" ^ typ ^ ")"
+  ]
     
 val harness_string_of_elf32_dynamic_section' : endianness -> elf32_program_header_table_entry
   -> byte_sequence -> (natural -> bool) -> (natural -> error tag_correspondence) ->
-    (natural -> error tag_correspondence) -> string
-let harness_string_of_elf32_dynamic_section' endian dyn bs0 os_additional_ranges os proc =
+    (natural -> error tag_correspondence) -> (natural -> string) -> string
+let harness_string_of_elf32_dynamic_section' endian dyn bs0 os_additional_ranges os proc os_print =
   let off = natural_of_elf32_off dyn.elf32_p_offset in
-  let _   = Missing_pervasives.println ("OFF: " ^ show off) in
   let siz = natural_of_elf32_word dyn.elf32_p_filesz in
   let res =
     Byte_sequence.offset_and_cut off siz bs0 >>= fun rel ->
     obtain_elf32_dynamic_section_contents endian rel os_additional_ranges os proc >>= fun dyns ->
-    (*return (List.map harness_string_of_elf32_dyn_entry dyns)*)
-    return dyns
+    return (List.map (fun x -> harness_string_of_elf32_dyn_entry x os_print) dyns)
   in
     match res with
       | Fail    f -> f
@@ -948,14 +954,16 @@ let harness_string_of_elf32_dynamic_section' endian dyn bs0 os_additional_ranges
         let entries = show (List.length s) in
         concatS [
           "\n"
-        ; "Dynamic section at offset " ^ off ^ " contains " ^ entries ^ " entries:"
+        ; "Dynamic section at offset 0x" ^ off ^ " contains " ^ entries ^ " entries:\n"
+        ; "  Tag        Type                         Name/Value\n"
+        ; concatS (intercalate "\n" s)
         ]
     end
     
 val harness_string_of_elf32_dynamic_section : elf32_file -> byte_sequence ->
   (natural -> bool) -> (natural -> error tag_correspondence) ->
-    (natural -> error tag_correspondence) -> string
-let harness_string_of_elf32_dynamic_section f1 bs0 os_additional_ranges os proc =
+    (natural -> error tag_correspondence) -> (natural -> string) -> string
+let harness_string_of_elf32_dynamic_section f1 bs0 os_additional_ranges os proc os_print =
   let endian = get_elf32_header_endianness f1.elf32_file_header in
   let pht = f1.elf32_file_program_header_table in
   let dyn =
@@ -966,6 +974,6 @@ let harness_string_of_elf32_dynamic_section f1 bs0 os_additional_ranges os proc 
     match dyn with
       | []  -> "\nThere is no dynamic section in this file."
       | [x] ->
-          harness_string_of_elf32_dynamic_section' endian x bs0 os_additional_ranges os proc
+          harness_string_of_elf32_dynamic_section' endian x bs0 os_additional_ranges os proc os_print
       | _   -> "Multiple dynamic sections detected."
     end
