@@ -27,9 +27,12 @@
 
 \begin{itemize}
 \item
-Lem model of ELF derived from the SCO specification and \texttt{readelf} and \texttt{Linux} sources where the former is ambiguous or misleading
+We review and clarify the roles played by linking and loading in mainstream systems, and the importance of the application binary interface (ABI), linker and other murky aspects of the platform in predicting program baheviour.
 \item
-Exact binary preservation of Lem parsing and blitting of ELF files demonstrated by automated \texttt{diff}ing against \texttt{hexdump}, a trusted external oracle
+Lem model of ELF derived from the SCO specification and \texttt{readelf} and \texttt{Linux} sources where the former is ambiguous or misleading.
+To our knowledge this is the first formal model of a realistic and widely-used linking and executable format.
+\item
+Exact binary preservation of Lem parsing and blitting of ELF files demonstrated by automated \texttt{diff}ing against \texttt{hexdump}, a trusted external oracle.
 \item
 Accurate extraction of the contents of: file headers, section headers, program headers, ABI-specific relocation information, static and dynamic symbol tables, and the contents of the \texttt{.dynamic} section, verified using automated \texttt{diff}ing against \texttt{readelf}, a trusted external oracle
 \item
@@ -42,7 +45,7 @@ An executable specification of static linking of ELF binaries, built atop our fo
 Capturing even simple link-jobs requires the additional specification of linker script and the linker command line.
 Our specification is modeled as a predicate between input object files, command line and linker script arguments, and output statically linked binaries.
 \item
-Validation of our specification of static linking by demonstrating it correctly witnesses the static linking of the \texttt{Linux} and \texttt{Mirage} kernels.
+Validation of our specification of static linking by demonstrating it correctly witnesses the static linking of the \texttt{Linux} and \texttt{Mirage} kernels, and demonstrate the non-triviality of our specification by demonstrating its ability to detect `bad' links using a body of linker-level malware.
 \end{itemize}
 
 \subsection{Lem, our specification tool}
