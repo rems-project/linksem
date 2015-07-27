@@ -27,10 +27,10 @@ LEM_UTIL_SRC := default_printing.lem missing_pervasives.lem show.lem endianness.
 # NOTE: LEM_UTIL_SRC and ALL_UTIL_ML need to be kept in sync manually.
 # GAH. doing a topsort manually is a sign of failure.
 ALL_UTIL_ML := \
- uint64_wrapper.ml uint32_wrapper.ml \
- show.ml endianness.ml error.ml ml_bindings.ml missing_pervasives.ml multimap.ml multimapAuxiliary.ml \
- default_printing.ml \
- byte_sequence_wrapper.ml
+	uint64_wrapper.ml uint32_wrapper.ml \
+	show.ml endianness.ml error.ml ml_bindings.ml missing_pervasives.ml multimap.ml \
+	default_printing.ml \
+	byte_sequence_wrapper.ml
 
 #uint16_wrapper.ml uint32_wrapper.ml uint64_wrapper.ml 
 
@@ -75,7 +75,8 @@ LEM_GNU_SRC := gnu_extensions/gnu_ext_types_native_uint.lem \
 	gnu_extensions/gnu_ext_symbol_versioning.lem \
 	gnu_extensions/gnu_ext_program_header_table.lem \
 	gnu_extensions/gnu_ext_section_to_segment_mapping.lem \
-	gnu_extensions/gnu_ext_note.lem
+	gnu_extensions/gnu_ext_note.lem \
+	gnu_extensions/gnu_ext_dynamic.lem
 
 LEM_LINK_SRC := command_line.lem input_list.lem linkable_list.lem linker_script.lem link.lem
 
