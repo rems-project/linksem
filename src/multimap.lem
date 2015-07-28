@@ -168,6 +168,7 @@ let rec findHighestEquiv equiv k greaterThan subSet maybeBest =
                     findHighestEquiv equiv k greaterThan lower maybeBest
     end
 
+(*
 let _ = Missing_pervasives.println ("choose_and_split {3, 4, 5} is " ^ 
     (match Set_extra.chooseAndSplit ({3;4;5} : set natural)
      with Just (l, m, r) -> (show (toList l, m, toList r))
@@ -182,6 +183,7 @@ assert highest_onepast: findHighestEquiv testEquiv
 4 (>) ({ (6, 0) } : set (natural * natural)) Nothing = Nothing
 assert highest_oneprev: findHighestEquiv testEquiv
 4 (>) ({ (2, 0) } : set (natural * natural)) Nothing = Nothing
+*)
 
 (* get the list of all pairs with key equiv to k. *)
 val lookupBy : forall 'k 'v. 
