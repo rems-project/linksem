@@ -170,10 +170,21 @@ for implementing separate compilation. Rather, software's semantics depend cruci
 on the influence of the linker, which implements features not expressible 
 in any source language.
 
+% 
+
 \item We present the first realistic formal model of ELF linking, including 
 not only the ELF file format and linking operation but also 
 the semantically important aspects of the linker command line and linker scripts.
 Our model captures archives, symbol visibility and \ldots{} FIXME (list more features here).
+
+\item We present experimental data 
+gathered in the process of writing the linking spec, 
+illustrating that FIXME (hope for significant discrepancy).
+TWO experiments: symbol resolution ``defined where, referenced where'' 
+(multiple definitions make life interesting; more for dynamic linking than static, so 
+may or may not be a goer for this paper); ``defined how, referenced how'', i.e.\ symbol flavour
+interactions (should at least turn up the ``undefined weak thread-local'' problems in amd64, 
+hopefully others).
 
 \item We evaluate the model's completeness with respect to real linkers 
 in a large-scale cross-validation experiment
