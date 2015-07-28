@@ -1,0 +1,141 @@
+open import Basic_classes
+open import Function
+open import String
+open import Tuple
+open import Bool
+open import List
+open import Sorting
+open import Map
+open import Set
+open import Multimap
+open import Num
+open import Maybe
+open import Assert_extra
+open import Show
+
+open import Byte_sequence
+open import Elf_file
+open import Elf_header
+open import Elf_interpreted_segment
+open import Elf_interpreted_section
+open import Elf_program_header_table
+open import Elf_section_header_table
+open import Elf_symbol_table
+open import Elf_types_native_uint
+open import Elf_relocation
+open import Memory_image
+open import Abis
+
+open import Missing_pervasives
+
+
+val elfFileFeatureConstructorToNaturalList : elf_file_feature -> list natural
+let elfFileFeatureConstructorToNaturalList f = match f with
+    ElfHeader(_) -> [0]
+    | ElfSectionHeaderTable(_) -> [1]
+    | ElfProgramHeaderTable(_) -> [2]
+    | ElfSection(_) -> [3]
+    | ElfSegment(_) -> [4]
+end
+
+val elfFileFeatureCompare : elf_file_feature -> elf_file_feature -> Basic_classes.ordering
+let elfFileFeatureCompare f1 f2 = 
+    match (elfFileFeatureConstructorToNaturalList f1, elfFileFeatureConstructorToNaturalList f2) with
+        ([], []) -> failwith "impossible: elf file feature has empty natural list (case 0)"
+    |   (_, [])  -> failwith "impossible: elf file feature has empty natural list (case 1)"
+    |   ([], _)  -> failwith "impossible: elf file feature has empty natural list (case 2)"
+    |   ((hd1 :: tl1), (hd2 :: tl2)) -> 
+            if hd1 < hd2 then LT else if hd1 > hd2 then GT else
+                match (f1, f2) with
+                    (ElfHeader(x1), ElfHeader(x2)) -> compare x1 x2
+                    | (ElfSectionHeaderTable(x1), ElfSectionHeaderTable(x2)) -> compare x1 x2
+                    | (ElfProgramHeaderTable(x1), ElfProgramHeaderTable(x2)) -> compare x1 x2
+                    | (ElfSection(x1), ElfSection(x2)) -> compare x1 x2
+                    | (ElfSegment(x1), ElfSegment(x2)) -> compare x1 x2
+                    | _ -> failwith "impossible: tag constructors not equal but natural list heads were equal"
+                end
+    end
+
+instance (Ord elf_file_feature)
+    let compare = elfFileFeatureCompare
+    let (<) = fun f1 -> (fun f2 -> (elfFileFeatureCompare f1 f2 = LT))
+    let (<=) = fun f1 -> (fun f2 -> Set.member (elfFileFeatureCompare f1 f2) {LT; EQ})
+    let (>) = fun f1 -> (fun f2 -> (elfFileFeatureCompare f1 f2 = GT))
+    let (>=) = fun f1 -> (fun f2 -> Set.member (elfFileFeatureCompare f1 f2) {GT; EQ})
+end
+
+val tagConstructorToNaturalList : forall 'abifeature. ToNaturalList 'abifeature => range_tag 'abifeature -> list natural
+let tagConstructorToNaturalList t = match t with 
+    ImageBase -> [0]
+    | EntryPoint -> [1]
+    | SymbolDef(_) -> [2]
+    | RelocationSite(_) -> [3]
+    | FileFeature(f) -> 4 :: (elfFileFeatureConstructorToNaturalList f)
+    | AbiFeature(af) -> 5 :: (toNaturalList af)
+end
+
+val tagEquiv : forall 'abifeature. ToNaturalList 'abifeature => range_tag 'abifeature -> range_tag 'abifeature -> bool
+let tagEquiv k1 k2 = 
+    EQ = (List.lexicographicCompare (tagConstructorToNaturalList k1) (tagConstructorToNaturalList k2))
+
+val tagCompare : forall 'abifeature. ToNaturalList 'abifeature, Ord 'abifeature => range_tag 'abifeature -> range_tag 'abifeature -> Basic_classes.ordering
+let tagCompare k1 k2 = 
+    match ((tagConstructorToNaturalList k1), (tagConstructorToNaturalList k2)) with
+        ([], []) -> failwith "impossible: tag has empty natural list (case 0)"
+    |   (_, [])  -> failwith "impossible: tag has empty natural list (case 1)"
+    |   ([], _)  -> failwith "impossible: tag has empty natural list (case 2)"
+    |   ((hd1 :: tl1), (hd2 :: tl2)) -> 
+            if hd1 < hd2 then LT else if hd1 > hd2 then GT else
+                match (k1, k2) with
+                    (ImageBase, ImageBase) -> EQ
+                    | (EntryPoint, EntryPoint) -> EQ
+                    | (SymbolDef(x1), SymbolDef(x2)) -> compare x1 x2
+                    | (RelocationSite(x1), RelocationSite(x2)) -> compare x1 x2
+                    | (FileFeature(x1), FileFeature(x2)) -> compare x1 x2
+                    | (AbiFeature(x1), AbiFeature(x2)) -> compare x1 x2
+                    | _ -> failwith "impossible: tag constructors not equal but natural list heads were equal"
+                end
+    end
+
+instance forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature => (Ord range_tag 'abifeature)
+    let compare = tagCompare
+    let (<) = fun tag1 -> (fun tag2 -> (tagCompare tag1 tag2 = LT))
+    let (<=) = fun tag1 -> (fun tag2 -> Set.member (tagCompare tag1 tag2) {LT; EQ})
+    let (>) = fun tag1 -> (fun tag2 -> (tagCompare tag1 tag2 = GT))
+    let (>=) = fun tag1 -> (fun tag2 -> Set.member (tagCompare tag1 tag2) {GT; EQ})
+end
+
+(* ------- end of Ord / compare / ConstructorToNaturalList functions *)
+
+
+val unique_tag_matching : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature => range_tag 'abifeature -> annotated_memory_image 'abifeature -> range_tag 'abifeature
+let unique_tag_matching tag img = 
+    match Multimap.lookupBy tagCompare tag img.by_tag with
+        [] -> failwith "no tag match found"
+        | [(tag, elRange)] -> tag
+        | _ -> failwith "more than one tag match when asserted unique"
+    end
+    
+val tagged_ranges_matching_tag : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature => range_tag 'abifeature -> annotated_memory_image 'abifeature -> list (range_tag 'abifeature * element_range)
+let tagged_ranges_matching_tag tag img = 
+    Multimap.lookupBy tagCompare tag img.by_tag
+
+val element_range_compare : element_range -> element_range -> Basic_classes.ordering
+let element_range_compare = pairCompare compare compare
+
+val unique_tag_matching_at_range_exact : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature =>
+    element_range
+    -> range_tag 'abifeature
+    -> annotated_memory_image 'abifeature
+    -> range_tag 'abifeature
+let unique_tag_matching_at_range_exact r tag img = 
+    (* 1. find tags a unique range labelled as ELF section header table. *)
+    let (_, (allRangeMatches : list (range_tag 'abifeature))) = unzip (Multimap.lookupBy element_range_compare r img.by_range)
+    in
+    let (tagAlsoMatches : list (range_tag 'abifeature)) = List.filter (fun x -> tagCompare x tag = EQ) allRangeMatches
+    in
+    match tagAlsoMatches with
+        [] -> failwith "no range/tag match when asserted to exist"
+        | [x] -> x
+        | _ -> failwith "multiple range/tag match when asserted unique"
+    end
