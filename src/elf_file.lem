@@ -547,7 +547,8 @@ let find_elf32_symbols_by_symtab_idx sec_idx f =
     end >>= fun strs -> 
     let strings = Byte_sequence.string_of_byte_sequence strs.elf32_section_body in
     let strtab = String_table.mk_string_table strings (char_of_byte null_char) in
-    read_elf32_symbol_table (get_elf32_header_endianness f.elf32_file_header) sec.elf32_section_body >>= fun symtab ->
+    let endian = get_elf32_header_endianness f.elf32_file_header in
+    read_elf32_symbol_table endian sec.elf32_section_body >>= fun symtab ->
     return (symtab, strtab, sec_idx)
 
 val find_elf32_symtab_by_type : natural -> elf32_file -> error (elf32_symbol_table * string_table * natural)
@@ -570,7 +571,8 @@ let find_elf64_symbols_by_symtab_idx sec_idx f =
     end >>= fun strs -> 
     let strings = Byte_sequence.string_of_byte_sequence strs.elf64_section_body in
     let strtab = String_table.mk_string_table strings (char_of_byte null_char) in
-    read_elf64_symbol_table (get_elf64_header_endianness f.elf64_file_header) sec.elf64_section_body >>= fun symtab ->
+    let endian = get_elf64_header_endianness f.elf64_file_header in
+    read_elf64_symbol_table endian sec.elf64_section_body >>= fun symtab ->
     return (symtab, strtab, sec_idx)
 
 val find_elf64_symtab_by_type : natural -> elf64_file -> error (elf64_symbol_table * string_table * natural)

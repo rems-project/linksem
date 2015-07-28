@@ -99,9 +99,6 @@ type memory_image = Map.map string memory_image_element
  * SOLUTION: Names that are unique in the file are used as keys. 
  * If not unique, the sections are treated as anonymous and given
  * gensym'd string ids (FIXME: implement this).
- * 
- * FIXME: am I sure that a multimap is not the right solution?
- * It defeats the concept of unique IDs, but maybe they're not necessary.
  *)
 
 (* Currently, our elements have unique names, which are strings.
@@ -129,7 +126,19 @@ type symbol_reference
     ; ref_sym_scn : natural                 (* symtab section idx *) 
     ; ref_sym_idx : natural                 (* index into symbol table *)
     |>
-    
+
+let symRefCompare x1 x2 =
+        compare (x1.ref_symname, x1.ref_syment, x1.ref_sym_scn, x1.ref_sym_idx)
+                (x2.ref_symname, x2.ref_syment, x2.ref_sym_scn, x2.ref_sym_idx)
+                
+instance (Ord symbol_reference)
+    let compare = symRefCompare
+    let (<) = fun f1 -> (fun f2 -> (symRefCompare f1 f2 = LT))
+    let (<=) = fun f1 -> (fun f2 -> Set.member (symRefCompare f1 f2) {LT; EQ})
+    let (>) = fun f1 -> (fun f2 -> (symRefCompare f1 f2 = GT))
+    let (>=) = fun f1 -> (fun f2 -> Set.member (symRefCompare f1 f2) {GT; EQ})
+end
+
 type symbol_reference_and_reloc_site = <|
       ref         : symbol_reference
     ; ref_relent  : elf64_relocation_a 
@@ -138,6 +147,18 @@ type symbol_reference_and_reloc_site = <|
     ; ref_src_scn : natural  (* the section *from which* the reference logically comes *)
     |>
 
+let symRefAndRelocSiteCompare x1 x2 =
+        compare (x1.ref, x1.ref_relent, x1.ref_rel_idx, x1.ref_src_scn)
+                (x2.ref, x2.ref_relent, x2.ref_rel_idx, x2.ref_src_scn)
+                
+instance (Ord symbol_reference_and_reloc_site)
+    let compare = symRefAndRelocSiteCompare
+    let (<) = fun f1 -> (fun f2 -> (symRefAndRelocSiteCompare f1 f2 = LT))
+    let (<=) = fun f1 -> (fun f2 -> Set.member (symRefAndRelocSiteCompare f1 f2) {LT; EQ})
+    let (>) = fun f1 -> (fun f2 -> (symRefAndRelocSiteCompare f1 f2 = GT))
+    let (>=) = fun f1 -> (fun f2 -> Set.member (symRefAndRelocSiteCompare f1 f2) {GT; EQ})
+end
+
 type symbol_definition
  = <| def_symname : string
     ; def_syment : elf64_symbol_table_entry (* definition's symtab entry *)
@@ -145,10 +166,42 @@ type symbol_definition
     ; def_sym_idx : natural
     |>
 
-type amd64_abi_feature
-type aarch64_le_abi_feature
-type any_abi_feature = Amd64AbiFeature of amd64_abi_feature
-                     | Aarch64LeAbiFeature of aarch64_le_abi_feature
+let symDefCompare x1 x2 =
+        compare (x1.def_symname, x1.def_syment, x1.def_sym_scn, x1.def_sym_idx)
+                (x2.def_symname, x2.def_syment, x2.def_sym_scn, x2.def_sym_idx)
+
+instance (Ord symbol_definition)
+    let compare = symDefCompare
+    let (<) = fun f1 -> (fun f2 -> (symDefCompare f1 f2 = LT))
+    let (<=) = fun f1 -> (fun f2 -> Set.member (symDefCompare f1 f2) {LT; EQ})
+    let (>) = fun f1 -> (fun f2 -> (symDefCompare f1 f2 = GT))
+    let (>=) = fun f1 -> (fun f2 -> Set.member (symDefCompare f1 f2) {GT; EQ})
+end
+
+class (ToNaturalList 'a)
+    val toNaturalList : 'a -> list natural
+end
+
+(* In order to store tags in a set, we need a total ordering
+ * to be defined on them.
+ * 
+ * But also, in order to look up entries 
+ * by tag constructor *alone* (e.g. ImageBase, EntryPoint, etc.)
+ * we need a looser version of the same ordering.
+ * 
+ * So we factor it into a few stages.
+ * 
+ * - map tag constructors to integers. We'll use this to define the 
+ * equivalence classes. Since we want to do queries of the form
+ *
+ *     FileFeature(ElfSection(_))
+ *
+ * to get all sections, say, we actually map to a *list* of integers,
+ * where each constructor contributes one element to the list.
+ * Since lists are lexicographically ordered, we get a total ordering
+ * just as good as if we'd used only naturals.
+ *)
+
 
 (* We can also annotate arbitrary ranges of bytes within an element
  * with arbitrary metadata. 
@@ -162,102 +215,86 @@ type any_abi_feature = Amd64AbiFeature of amd64_abi_feature
  * relevant ELFy thing when we use it. OH, but then 'a is different for
  * every distinct ELF thing, which is no good. Can we define a mapping
  * from an umbrella "ELF" type to the relevant types in each case? *)
-type range_tag =
-               | ImageBase
+type range_tag 'abifeature = (*  forall 'abifeature . *)
+                 ImageBase
                | EntryPoint
                | SymbolDef of symbol_definition
                | RelocationSite of symbol_reference_and_reloc_site
                | FileFeature of elf_file_feature (* file feature other than symdef and reloc *)
-               | AbiFeature of any_abi_feature
+               | AbiFeature of 'abifeature
 
 type range = natural * natural (* start, length *)
 
 type element_range = string * range
 
-type annotated_memory_image = <|
+type annotated_memory_image 'abifeature = <|
       elements         : memory_image 
-    ; by_range         : multimap element_range range_tag
-    ; by_tag           : multimap range_tag element_range
+    ; by_range         : multimap element_range (range_tag 'abifeature)
+    ; by_tag           : multimap (range_tag 'abifeature) element_range
 |>
 
-let empty_annotated_memory_image = <|
+(*
+let (empty_annotated_memory_image : annotated_memory_image any_abi_feature) = <|
       elements         = Map.empty
     ; by_range         = Set.empty
     ; by_tag           = Set.empty
 |>
-
-val tagCompare : range_tag -> range_tag -> Basic_classes.ordering
-let tagCompare k1 k2 = 
-    match (k1, k2) with
-        (ImageBase, ImageBase) -> EQ
-        | (EntryPoint, EntryPoint) -> EQ
-        | (SymbolDef(_), SymbolDef(_)) -> EQ
-        | (RelocationSite(_), RelocationSite(_)) -> EQ
-        | (FileFeature(arg1), FileFeature(arg2)) -> setElemCompare arg1 arg2
-        | (AbiFeature(arg1), AbiFeature(arg2)) -> setElemCompare arg1 arg2
-        (* what compares LT? *)
-        | (ImageBase, _) -> LT
-        | (EntryPoint, SymbolDef(_)) -> LT
-        | (EntryPoint, RelocationSite(_)) -> LT
-        | (EntryPoint, FileFeature(_)) -> LT
-        | (EntryPoint, AbiFeature(_)) -> LT
-        | (SymbolDef(_), RelocationSite(_)) -> LT
-        | (SymbolDef(_), FileFeature(_)) -> LT
-        | (SymbolDef(_), AbiFeature(_)) -> LT
-        | (RelocationSite(_), FileFeature(_)) -> LT
-        | (RelocationSite(_), AbiFeature(_)) -> LT
-        | (FileFeature(_), AbiFeature(_)) -> LT
-        (* else it's GT *)
-        | (_, _) -> GT
-    end
-
-val tagMatches : range_tag -> range_tag -> bool
-let tagMatches k1 k2 = tagCompare k1 k2 = EQ
-
-(* 
-instance (SetType range_tag)
-    let setElemCompare = tagCompare
-end
 *)
-instance (Ord range_tag)
-    let compare = tagCompare
-    let (<) = fun tag1 -> (fun tag2 -> (tagCompare tag1 tag2 = LT))
-    let (<=) = fun tag1 -> (fun tag2 -> Set.member (tagCompare tag1 tag2) {LT; EQ})
-    let (>) = fun tag1 -> (fun tag2 -> (tagCompare tag1 tag2 = GT))
-    let (>=) = fun tag1 -> (fun tag2 -> Set.member (tagCompare tag1 tag2) {GT; EQ})
-end
+(* This record collects things that ABIs may or must define. 
+ * 
+ * Since we want to put all ABIs in a list and select one at run time, 
+ * we can't maintain a type-level distinction between ABIs; we have to
+ * use elf_memory_image any_abi_feature. That's why the previous
+ * memory_image polymorphism stuff was better off just erased.
+ *)
+type abi 'abifeature = (* forall 'abifeature. *)
+   <| is_valid_elf_header : elf64_header -> bool
+                        (* doesn't this generalise outrageously? is_valid_elf_file? *)
+    ; reloc              : natural -> ((maybe elf64_symbol_table_entry -> natural) * (annotated_memory_image 'abifeature -> maybe natural))
+                        (* number  ->  width   * (symaddr -> addend  -> existing-> relocated) *)
+    ; section_is_special : elf64_interpreted_section -> annotated_memory_image 'abifeature -> bool
+    ; section_is_large   : elf64_interpreted_section -> annotated_memory_image 'abifeature -> bool
+    ; maxpagesize        : natural
+    ; minpagesize        : natural
+    ; commonpagesize     : natural
+    |>
 
-val unique_tag_matching : range_tag -> annotated_memory_image -> range_tag
-let unique_tag_matching tag img = 
-    match Multimap.lookupBy tagCompare tag img.by_tag with
-        [] -> failwith "no tag match found"
-        | [(tag, elRange)] -> tag
-        | _ -> failwith "more than one tag match when asserted unique"
-    end
-    
-val tagged_ranges_matching_tag : range_tag -> annotated_memory_image -> list (range_tag * element_range)
-let tagged_ranges_matching_tag tag img = 
-    Multimap.lookupBy tagCompare tag img.by_tag
+(* Do we want "existing", or is it a kind of addend? 
+ * We do want it -- modelling both separately is necessary, 
+ * because we model relocations bytewise, but some arches
+ * do bitfield relocations (think ARM). *)
 
-val element_range_compare : element_range -> element_range -> Basic_classes.ordering
-let element_range_compare = pairCompare compare compare
+type null_abi_feature = unit
 
-val unique_tag_matching_at_range_exact : 
-    element_range
-    -> range_tag 
-    -> annotated_memory_image
-    -> range_tag
-let unique_tag_matching_at_range_exact r tag img = 
-    (* 1. find tags a unique range labelled as ELF section header table. *)
-    let (_, (allRangeMatches : list range_tag)) = unzip (Multimap.lookupBy element_range_compare r img.by_range)
-    in
-    let (tagAlsoMatches : list range_tag) = List.filter (fun x -> tagCompare x tag = EQ) allRangeMatches
-    in
-    match tagAlsoMatches with
-        [] -> failwith "no range/tag match when asserted to exist"
-        | [x] -> x
-        | _ -> failwith "multiple range/tag match when asserted unique"
-    end
+let elf_section_is_special s f = s.elf64_section_type <> sht_progbits
+                     && s.elf64_section_type <> sht_nobits
+
+val noop_reloc : forall 'abifeature. natural -> ((maybe elf64_symbol_table_entry -> natural) * (annotated_memory_image 'abifeature -> maybe natural))
+let noop_reloc r = (fun r_type -> 8, fun sym_val -> Nothing)
+
+val is_valid_elf_header : elf64_header -> bool
+let is_valid_elf_header = fun x -> List.take 4 x.elf64_ident = [elf_mn_mag0; elf_mn_mag1; elf_mn_mag2; elf_mn_mag3]
+(*
+val null_abi : forall 'abifeature. abi 'abifeature (* *not* null_abi_feature because then we can't put it in a list with other ABIs *)
+let null_abi = <| is_valid_elf_header = is_valid_elf_header
+                ; reloc = noop_reloc
+                ; section_is_special = elf_section_is_special
+                ; section_is_large = (fun s -> (fun f -> false))
+                ; maxpagesize = 2 * 256 * 4096 (* 2MB; bit of a guess, based on gdb and prelink code *)
+                ; minpagesize = 1024 (* bit of a guess again *)
+                ; commonpagesize = 4096
+                |>
+*)
+
+val null_abi_concrete : abi null_abi_feature 
+let (null_abi_concrete : abi null_abi_feature) = <| is_valid_elf_header = is_valid_elf_header
+                ; reloc = noop_reloc
+                ; section_is_special = elf_section_is_special
+                ; section_is_large = (fun s -> (fun f -> false))
+                ; maxpagesize = 2 * 256 * 4096 (* 2MB; bit of a guess, based on gdb and prelink code *)
+                ; minpagesize = 1024 (* bit of a guess again *)
+                ; commonpagesize = 4096
+                |>
 
 val range_contains : (natural * natural) -> (natural * natural) -> bool
 let range_contains (r1begin, r1len) (r2begin, r2len) = 
@@ -296,11 +333,11 @@ let rec expand_sorted_ranges sorted_ranges min_length accum =
         [] -> accum ++ (
             let pad_length = max 0 (min_length - (Missing_pervasives.length accum))
             in
-            let _ = Missing_pervasives.println (
+            (* let _ = Missing_pervasives.println (
                 "padding ranges cares list with " ^ (show pad_length) ^ 
                 " cares (accumulated " ^ (show (Missing_pervasives.length accum)) ^ 
                 ", min length " ^ (show min_length) ^ ")")
-            in
+            in *)
             Missing_pervasives.replicate pad_length true)
      |  (base, len) :: more -> 
             (* pad the accum so that it reaches up to base *)

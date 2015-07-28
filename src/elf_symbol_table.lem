@@ -9,6 +9,7 @@ open import Maybe
 open import Num
 open import String
 open import Tuple
+import Set
 
 open import Byte_sequence
 open import Error
@@ -186,6 +187,22 @@ type elf32_symbol_table_entry =
    ; elf32_st_other : unsigned_char  (** Currently specifies the symbol's visibility *)
    ; elf32_st_shndx : elf32_half     (** Section header index symbol is defined with respect to *)
    |>
+
+let elf32_symbol_table_entry_compare ent1 ent2 = 
+    compare (natural_of_elf32_word ent1.elf32_st_name, natural_of_elf32_addr ent1.elf32_st_value, 
+        natural_of_elf32_word ent1.elf32_st_size, natural_of_unsigned_char ent1.elf32_st_info, 
+        natural_of_unsigned_char ent1.elf32_st_other, natural_of_elf32_half ent1.elf32_st_shndx)
+       (natural_of_elf32_word ent2.elf32_st_name, natural_of_elf32_addr ent2.elf32_st_value, 
+        natural_of_elf32_word ent2.elf32_st_size, natural_of_unsigned_char ent2.elf32_st_info, 
+        natural_of_unsigned_char ent2.elf32_st_other, natural_of_elf32_half ent2.elf32_st_shndx)
+
+instance (Ord elf32_symbol_table_entry)
+    let compare = elf32_symbol_table_entry_compare
+    let (<) = fun f1 -> (fun f2 -> (elf32_symbol_table_entry_compare f1 f2 = LT))
+    let (<=) = fun f1 -> (fun f2 -> Set.member (elf32_symbol_table_entry_compare f1 f2) {LT; EQ})
+    let (>) = fun f1 -> (fun f2 -> (elf32_symbol_table_entry_compare f1 f2 = GT))
+    let (>=) = fun f1 -> (fun f2 -> Set.member (elf32_symbol_table_entry_compare f1 f2) {GT; EQ})
+end
    
 type elf64_symbol_table_entry =
   <| elf64_st_name  : elf64_word     (** Index into the object file's string table *)
@@ -195,7 +212,23 @@ type elf64_symbol_table_entry =
    ; elf64_st_value : elf64_addr     (** Gives the value of the associated symbol *)
    ; elf64_st_size  : elf64_xword    (** Size of the associated symbol *)
    |>
-   
+
+let elf64_symbol_table_entry_compare ent1 ent2 = 
+    compare (natural_of_elf64_word ent1.elf64_st_name, natural_of_elf64_addr ent1.elf64_st_value, 
+        natural_of_elf64_xword ent1.elf64_st_size, natural_of_unsigned_char ent1.elf64_st_info, 
+        natural_of_unsigned_char ent1.elf64_st_other, natural_of_elf64_half ent1.elf64_st_shndx)
+       (natural_of_elf64_word ent2.elf64_st_name, natural_of_elf64_addr ent2.elf64_st_value, 
+        natural_of_elf64_xword ent2.elf64_st_size, natural_of_unsigned_char ent2.elf64_st_info, 
+        natural_of_unsigned_char ent2.elf64_st_other, natural_of_elf64_half ent2.elf64_st_shndx)
+
+instance (Ord elf64_symbol_table_entry)
+    let compare = elf64_symbol_table_entry_compare
+    let (<) = fun f1 -> (fun f2 -> (elf64_symbol_table_entry_compare f1 f2 = LT))
+    let (<=) = fun f1 -> (fun f2 -> Set.member (elf64_symbol_table_entry_compare f1 f2) {LT; EQ})
+    let (>) = fun f1 -> (fun f2 -> (elf64_symbol_table_entry_compare f1 f2 = GT))
+    let (>=) = fun f1 -> (fun f2 -> Set.member (elf64_symbol_table_entry_compare f1 f2) {GT; EQ})
+end
+  
 type elf32_symbol_table =
   list elf32_symbol_table_entry
   

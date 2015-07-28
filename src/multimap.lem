@@ -105,6 +105,21 @@ let rec findLowestEquiv equiv k lessThan subSet maybeBest =
                     findLowestEquiv equiv k lessThan higher maybeBest
     end
 
+val testEquiv : natural -> natural -> Basic_classes.ordering
+let testEquiv x y = if (x >= 3 && x < 5 && y >= 3 && y <= 5) then EQ
+     else if (x < 3 && y < 3) then EQ
+     else if (x > 5 && y > 5) then EQ
+     else (compare x y)
+
+assert lowest_simple: findLowestEquiv testEquiv 
+4 (<) ({ (1, 0); (2, 0); (3, 0); (4, 0); (5, 0); (6, 0) } : set (natural * natural)) Nothing = Just (3, 0)
+assert lowest_empty: findLowestEquiv testEquiv
+4 (<) ({} : set (natural * natural)) Nothing = Nothing
+assert lowest_onepast: findLowestEquiv testEquiv
+4 (<) ({ (6, 0) } : set (natural * natural)) Nothing = Nothing
+assert lowest_oneprev: findLowestEquiv testEquiv 
+4 (<) ({ (2, 0) } : set (natural * natural)) Nothing = Nothing
+
 (* Note we can't just use findLowestEquiv with inverted relations, because 
  * chooseAndSplit returns us (lower, chosen, higher) and we need to swap
  * around how we consume that. *)
@@ -158,30 +173,15 @@ let _ = Missing_pervasives.println ("choose_and_split {3, 4, 5} is " ^
      with Just (l, m, r) -> (show (toList l, m, toList r))
      | Nothing -> "Nothing" end))
 
-assert lowest_simple: findLowestEquiv (fun (x : natural) -> (fun (y : natural) ->
-     if (x >= 3 && x < 5 && y >= 3 && y <= 5) then EQ
-     else if (x < 3 && y < 3) then EQ
-     else if (x > 5 && y > 5) then EQ
-     else (compare x y)
-)) 4 (<) ({ (1, 0); (2, 0); (3, 0); (4, 0); (5, 0); (6, 0) } : set (natural * natural)) Nothing = Just (3, 0)
-assert lowest_empty: findLowestEquiv (fun (x : natural) -> (fun (y : natural) ->
-     if (x >= 3 && x < 5 && y >= 3 && y <= 5) then EQ
-     else if (x < 3 && y < 3) then EQ
-     else if (x > 5 && y > 5) then EQ
-     else (compare x y)
-)) 4 (<) ({} : set (natural * natural)) Nothing = Nothing
-assert lowest_onepast: findLowestEquiv (fun (x : natural) -> (fun (y : natural) ->
-     if (x >= 3 && x < 5 && y >= 3 && y <= 5) then EQ
-     else if (x < 3 && y < 3) then EQ
-     else if (x > 5 && y > 5) then EQ
-     else (compare x y)
-)) 4 (<) ({ (6, 0) } : set (natural * natural)) Nothing = Nothing
-assert lowest_oneprev: findLowestEquiv (fun (x : natural) -> (fun (y : natural) ->
-     if (x >= 3 && x < 5 && y >= 3 && y <= 5) then EQ
-     else if (x < 3 && y < 3) then EQ
-     else if (x > 5 && y > 5) then EQ
-     else (compare x y)
-)) 4 (<) ({ (2, 0) } : set (natural * natural)) Nothing = Nothing
+
+assert highest_simple: findHighestEquiv testEquiv
+4 (>) ({ (1, 0); (2, 0); (3, 0); (4, 0); (5, 0); (6, 0) } : set (natural * natural)) Nothing = Just (5, 0)
+assert highest_empty: findHighestEquiv testEquiv
+4 (>) ({} : set (natural * natural)) Nothing = Nothing
+assert highest_onepast: findHighestEquiv testEquiv 
+4 (>) ({ (6, 0) } : set (natural * natural)) Nothing = Nothing
+assert highest_oneprev: findHighestEquiv testEquiv
+4 (>) ({ (2, 0) } : set (natural * natural)) Nothing = Nothing
 
 (* get the list of all pairs with key equiv to k. *)
 val lookupBy : forall 'k 'v. 
@@ -212,31 +212,20 @@ let lookupBy equiv k m =
         (lowestEquiv :: (toList wanted)) ++ [highestEquiv]
     end
 
-assert highest_simple: findHighestEquiv (fun (x : natural) -> (fun (y : natural) ->
-     if (x >= 3 && x < 5 && y >= 3 && y <= 5) then EQ
-     else if (x < 3 && y < 3) then EQ
-     else if (x > 5 && y > 5) then EQ
-     else (compare x y)
-)) 4 (>) ({ (1, 0); (2, 0); (3, 0); (4, 0); (5, 0); (6, 0) } : set (natural * natural)) Nothing = Just (5, 0)
-assert highest_empty: findHighestEquiv (fun (x : natural) -> (fun (y : natural) ->
-     if (x >= 3 && x < 5 && y >= 3 && y <= 5) then EQ
-     else if (x < 3 && y < 3) then EQ
-     else if (x > 5 && y > 5) then EQ
-     else (compare x y)
-)) 4 (>) ({} : set (natural * natural)) Nothing = Nothing
-assert highest_onepast: findHighestEquiv (fun (x : natural) -> (fun (y : natural) ->
-     if (x >= 3 && x < 5 && y >= 3 && y <= 5) then EQ
-     else if (x < 3 && y < 3) then EQ
-     else if (x > 5 && y > 5) then EQ
-     else (compare x y)
-)) 4 (>) ({ (6, 0) } : set (natural * natural)) Nothing = Nothing
-assert highest_oneprev: findHighestEquiv (fun (x : natural) -> (fun (y : natural) ->
-     if (x >= 3 && x < 5 && y >= 3 && y <= 5) then EQ
-     else if (x < 3 && y < 3) then EQ
-     else if (x > 5 && y > 5) then EQ
-     else (compare x y)
-)) 4 (>) ({ (2, 0) } : set (natural * natural)) Nothing = Nothing
+let _ = Missing_pervasives.println
+("lookupBy testEquiv 4 { (1, 0); (2, 0); (3, 0); (4, 0); (5, 0); (6, 0) } is : "
+^ (show (lookupBy testEquiv 
+4 ({ (1, 0); (2, 0); (3, 0); (4, 0); (5, 0); (6, 0) } : set (natural * natural)))))
 
+assert lookup_simple : lookupBy testEquiv 
+4 ({ (1, 0); (2, 0); (3, 0); (4, 0); (5, 0); (6, 0) } : set (natural * natural))
+= ([(3, 0); (4, 0); (5, 0)] : list (natural * natural))
+assert lookup_empty: lookupBy testEquiv
+4 ({} : set (natural * natural)) = ([]: list (natural * natural))
+assert lookup_onepast: lookupBy testEquiv
+4 ({ (6, 0) } : set (natural * natural)) = ([] : list (natural * natural))
+assert lookup_oneprev: lookupBy testEquiv 
+4 ({ (2, 0) } : set (natural * natural)) = ([] : list (natural * natural))
 
 (* To delete all pairs with key equiv to k, can use deleteBy *)
 

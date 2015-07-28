@@ -64,15 +64,13 @@ let image_of_linkable_item item = match item with
     | _ -> failwith "no image"
 end
 
-val linkable_item_of_input_item_and_options : abi -> input_item -> input_options -> linkable_item
+val linkable_item_of_input_item_and_options : forall 'abifeature. abi 'abifeature -> input_item -> input_options -> linkable_item
 let linkable_item_of_input_item_and_options a it opts = 
-    (* 0. TODO: well-formedness *) 
-    (* 1. all allocatable input sections are in LOADed output segments *)
     match (match it with
         (fname, Reloc(seq), origin) -> 
             let _ = Missing_pervasives.println ("Considering relocatable file " ^ fname) in
             Elf_file.read_elf64_file seq >>= fun e ->
-            return (RelocELF(elf_memory_image_of_elf64_file a e), it, opts)
+            return (RelocELF(elf_memory_image_of_elf64_file a fname e), it, opts)
         | (fname, Shared(seq), origin) -> 
             let _ = Missing_pervasives.println ("Skipping shared object " ^ fname) in 
             fail "unsupported input item"
@@ -113,22 +111,13 @@ let add_definition_to_map def_idx_and_def m =
 
 val all_definitions_by_name : linkable_list -> Map.map string (list (natural * symbol_definition))
 let all_definitions_by_name linkables = 
-
-(*
-    let make_defs = (fun (idx : nat) -> (fun item ->
-        [((naturalFromNat idx), s) | forall (s MEM (extract_definitions_from_symtab_of_type sht_symtab item)) | true]
-    ))
-    in
-    let list_of_deflists = List.mapi make_defs linkables
-    in *)
-    
     (* Now that linkables are ELF memory images, we can make the 
      * list of definitions much more easily. *)
     let list_of_deflists = List.mapi (fun (idx : nat) -> (fun (item : linkable_item) ->
         let img = image_of_linkable_item item
         in 
         let (all_def_tags, all_def_ranges)
-         = unzip (Multimap.lookupBy Memory_image.tagCompare (SymbolDef(null_symbol_definition)) img.by_tag)
+         = unzip (Multimap.lookupBy Memory_image_orderings.tagCompare (SymbolDef(null_symbol_definition)) img.by_tag)
         in
         let all_defs = List.map (fun tag -> match tag with
             SymbolDef(def) -> def
@@ -152,9 +141,12 @@ val resolve_one_reference_default : binding_oracle
 let resolve_one_reference_default linkables defmap ref_idx_and_ref =
     let (ref_idx, ref) = ref_idx_and_ref
     in
-    (* Get the list of all definitions *)
+    (* Get the list of all definitions whose name matches. 
+     * Don't match empty names. *)
     let (deflist : list (natural * symbol_definition))
-     = match Map.lookup ref.ref_symname defmap with
+     = if ref.ref_symname = "" 
+       then [] 
+       else match Map.lookup ref.ref_symname defmap with
         Just l -> l
         | Nothing -> []
     end
@@ -190,7 +182,6 @@ let resolve_one_reference_default linkables defmap ref_idx_and_ref =
         in
         let (def_u, def_coords) = def_origin
         in
-        (* NASTY *)
         let (def_in_group, def_in_archive) = match def_coords with
               InArchive(aid, aidx) :: InGroup(gid, gidx) :: [] -> (Just gid, Just aid)
             | InArchive(aid, aidx) :: []                       -> (Nothing, Just aid)
@@ -251,7 +242,8 @@ let resolve_one_reference_default linkables defmap ref_idx_and_ref =
     end
     in 
     let _ = Missing_pervasives.prints ("Bound a reference from `" 
-                ^ ref.ref_symname ^ "' (UND symbol at index " ^ (show ref.ref_sym_idx) ^ ") in " ^ ref_fname
+                ^ ref.ref_symname ^ "' (UND symbol at index " ^ (show ref.ref_sym_idx) ^ " in symtab "
+                ^ (show ref.ref_sym_scn) ^ " in " ^ ref_fname
                 ^ " to ")
     in
     match (maybe_target_def_idx, maybe_target_def) with
@@ -294,8 +286,15 @@ let resolve_undefs_in_one_object linkables all_defs oracle idx =
     let img = image_of_linkable_item item
     in 
     let (all_ref_tags, all_ref_ranges)
-     = unzip (Multimap.lookupBy Memory_image.tagCompare (RelocationSite(null_symbol_reference_and_reloc_site)) img.by_tag)
+     = unzip (Multimap.lookupBy Memory_image_orderings.tagCompare (RelocationSite(null_symbol_reference_and_reloc_site)) img.by_tag)
     in
+    (* Here we are extracting and binding each relocation site individually. 
+     * FIXME: is this correct? 
+     * - There might be more than one relocation site 
+     * referencing the same symbol name, in a given object.
+     * - There might be an UND symbol which is not actually
+     * used by a relocation site, but is nevertheless in need of
+     * being resolved. *)
     let all_refs = List.map (fun tag -> match tag with
         RelocationSite(r) -> r.ref
         | _ -> failwith "matched tag not a relocation site"
@@ -303,7 +302,15 @@ let resolve_undefs_in_one_object linkables all_defs oracle idx =
     in
     let reflist = [(idx, ref) | forall (ref MEM all_refs) | true]
     in
-    let _ = Missing_pervasives.println ("object " ^ (show item) ^ " has " ^ (show (List.length reflist)) ^ " undefined references")
+    let _ = Missing_pervasives.println ("object " ^ (show item) ^ " has " ^ 
+        (show (List.length reflist)) ^ " reloc references (symname, sym_scn, sym_idx, st_shndx) (" ^ 
+        (show (List.map (fun x -> ("\"" ^ x.ref_symname ^ "\"", x.ref_sym_scn, x.ref_sym_idx, x.ref_syment.elf64_st_shndx)) all_refs)) ^ ")")
+    in
+    let und_reflist = [(idx, ref) | forall ((idx, ref) MEM reflist) | natural_of_elf64_half ref.ref_syment.elf64_st_shndx = shn_undef]
+    in
+    let _ = Missing_pervasives.println ("... of which " ^
+        (show (List.length und_reflist)) ^ " are to undefined symbols: (symname, sym_scn, sym_idx, st_shndx) (" ^ 
+        (show (List.map (fun (idx, x) -> ("\"" ^ x.ref_symname ^ "\"", x.ref_sym_scn, x.ref_sym_idx, x.ref_syment.elf64_st_shndx)) und_reflist)) ^ ")")
     in
     resolve_all linkables all_defs oracle reflist
 

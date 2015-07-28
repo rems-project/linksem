@@ -17,6 +17,7 @@ open import List
 open import Maybe
 open import Num
 open import String
+import Set
 
 open import Assert_extra
 
@@ -787,7 +788,32 @@ type elf32_header =
    ; elf32_shnum    : elf32_half         (** Number of entries in section header table *)
    ; elf32_shstrndx : elf32_half         (** Section header table entry for section name string table *)
    |>
+   
+val elf32_header_compare : elf32_header -> elf32_header -> Basic_classes.ordering
+let elf32_header_compare h1 h2 = 
+    compare (List.map natural_of_unsigned_char h1.elf32_ident, [natural_of_elf32_half h1.elf32_type; 
+            natural_of_elf32_half h1.elf32_machine ; natural_of_elf32_word h1.elf32_version ; 
+            natural_of_elf32_addr h1.elf32_entry ; natural_of_elf32_off h1.elf32_phoff ; natural_of_elf32_off h1.elf32_shoff ; 
+            natural_of_elf32_word h1.elf32_flags ; natural_of_elf32_half h1.elf32_ehsize ; 
+            natural_of_elf32_half h1.elf32_phentsize; natural_of_elf32_half h1.elf32_phnum ; 
+            natural_of_elf32_half h1.elf32_shentsize; natural_of_elf32_half h1.elf32_shnum ; 
+            natural_of_elf32_half h1.elf32_shstrndx])
+     (List.map natural_of_unsigned_char h2.elf32_ident, [natural_of_elf32_half h2.elf32_type; 
+            natural_of_elf32_half h2.elf32_machine ; natural_of_elf32_word h2.elf32_version ; 
+            natural_of_elf32_addr h2.elf32_entry ; natural_of_elf32_off h2.elf32_phoff ; natural_of_elf32_off h2.elf32_shoff ; 
+            natural_of_elf32_word h2.elf32_flags ; natural_of_elf32_half h2.elf32_ehsize ; 
+            natural_of_elf32_half h2.elf32_phentsize; natural_of_elf32_half h2.elf32_phnum ; 
+            natural_of_elf32_half h2.elf32_shentsize; natural_of_elf32_half h2.elf32_shnum ; 
+            natural_of_elf32_half h2.elf32_shstrndx])
 
+instance (Ord elf32_header)
+    let compare = elf32_header_compare
+    let (<) = fun f1 -> (fun f2 -> (elf32_header_compare f1 f2 = LT))
+    let (<=) = fun f1 -> (fun f2 -> Set.member (elf32_header_compare f1 f2) {LT; EQ})
+    let (>) = fun f1 -> (fun f2 -> (elf32_header_compare f1 f2 = GT))
+    let (>=) = fun f1 -> (fun f2 -> Set.member (elf32_header_compare f1 f2) {GT; EQ})
+end
+  
 (** [elf64_header] is the type of headers for 32-bit ELF files.
   *)
 type elf64_header =
@@ -806,6 +832,31 @@ type elf64_header =
    ; elf64_shnum    : elf64_half         (** Number of entries in section header table *)
    ; elf64_shstrndx : elf64_half         (** Section header table entry for section name string table *)
    |>
+
+val elf64_header_compare : elf64_header -> elf64_header -> Basic_classes.ordering
+let elf64_header_compare h1 h2 = 
+    compare (List.map natural_of_unsigned_char h1.elf64_ident, [natural_of_elf64_half h1.elf64_type; 
+            natural_of_elf64_half h1.elf64_machine ; natural_of_elf64_word h1.elf64_version ; 
+            natural_of_elf64_addr h1.elf64_entry ; natural_of_elf64_off h1.elf64_phoff ; natural_of_elf64_off h1.elf64_shoff ; 
+            natural_of_elf64_word h1.elf64_flags ; natural_of_elf64_half h1.elf64_ehsize ; 
+            natural_of_elf64_half h1.elf64_phentsize; natural_of_elf64_half h1.elf64_phnum ; 
+            natural_of_elf64_half h1.elf64_shentsize; natural_of_elf64_half h1.elf64_shnum ; 
+            natural_of_elf64_half h1.elf64_shstrndx])
+     (List.map natural_of_unsigned_char h2.elf64_ident, [natural_of_elf64_half h2.elf64_type; 
+            natural_of_elf64_half h2.elf64_machine ; natural_of_elf64_word h2.elf64_version ; 
+            natural_of_elf64_addr h2.elf64_entry ; natural_of_elf64_off h2.elf64_phoff ; natural_of_elf64_off h2.elf64_shoff ; 
+            natural_of_elf64_word h2.elf64_flags ; natural_of_elf64_half h2.elf64_ehsize ; 
+            natural_of_elf64_half h2.elf64_phentsize; natural_of_elf64_half h2.elf64_phnum ; 
+            natural_of_elf64_half h2.elf64_shentsize; natural_of_elf64_half h2.elf64_shnum ; 
+            natural_of_elf64_half h2.elf64_shstrndx])
+
+instance (Ord elf64_header)
+    let compare = elf64_header_compare
+    let (<) = fun f1 -> (fun f2 -> (elf64_header_compare f1 f2 = LT))
+    let (<=) = fun f1 -> (fun f2 -> Set.member (elf64_header_compare f1 f2) {LT; EQ})
+    let (>) = fun f1 -> (fun f2 -> (elf64_header_compare f1 f2 = GT))
+    let (>=) = fun f1 -> (fun f2 -> Set.member (elf64_header_compare f1 f2) {GT; EQ})
+end
 
 val is_elf32_executable_file : elf32_header -> bool
 let is_elf32_executable_file hdr =

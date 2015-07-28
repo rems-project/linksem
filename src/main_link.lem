@@ -47,9 +47,9 @@ val images_equal_modulo_alignment : elf_memory_image -> elf_memory_image -> bool
 let images_equal_modulo_alignment img1 img2 =
     img1.by_tag = img2.by_tag (* FIXME: the "modulo alignment" part *)
 
-val correctly_linked : abi -> linkable_list -> list string -> list link_option -> elf64_file -> bool
+val correctly_linked : abi any_abi_feature -> linkable_list -> list string -> list link_option -> elf64_file -> bool
 let correctly_linked a linkables names options eout = 
-    let output_image = elf_memory_image_of_elf64_file a eout
+    let output_image = elf_memory_image_of_elf64_file a "(output file)" eout
     in
     let script = default_linker_control_script a 
         (* user_text_segment_start *) (match Command_line.find_option_matching_tag (TextSegmentStart(0)) options with Just(TextSegmentStart(addr)) -> Just addr | _ -> Nothing end)

@@ -18,6 +18,16 @@ let byte_list_of_byte_sequence bs0 =
     | Sequence xs -> xs
   end
 
+let compare_byte_sequence s1 s2 = compare (byte_list_of_byte_sequence s1) (byte_list_of_byte_sequence s2)
+
+instance (Ord byte_sequence) 
+    let compare = compare_byte_sequence
+    let (<) = fun f1 -> (fun f2 -> (compare_byte_sequence f1 f2 = LT))
+    let (<=) = fun f1 -> (fun f2 -> let result = compare_byte_sequence f1 f2 in result = LT || result = EQ)
+    let (>) = fun f1 -> (fun f2 -> (compare_byte_sequence f1 f2 = GT))
+    let (>=) = fun f1 -> (fun f2 -> let result = compare_byte_sequence f1 f2 in result = GT || result = EQ)
+end
+
 val acquire_byte_list : string -> error (list byte)
 declare ocaml target_rep function acquire_byte_list = `Byte_sequence_wrapper.acquire_char_list`
 

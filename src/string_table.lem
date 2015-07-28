@@ -94,7 +94,7 @@ let get_string_at index tbl =
       let delim = get_delimiting_character tbl in
       let tbl   = mk_string_table suffix delim in
         match get_strings tbl with
-          | []    -> Fail "get_string_at: empty string returned"
+          | []    -> return ""
           | x::xs -> return x
         end
   end

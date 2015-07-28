@@ -251,7 +251,7 @@ let has_writability = fun writable -> (fun input_sec -> (
 val address_zero : natural -> natural -> natural
 let address_zero = fun pos -> (fun secs -> 0)
 
-val default_linker_control_script : abi -> maybe natural -> maybe natural -> maybe natural -> natural -> linker_control_script
+val default_linker_control_script : abi any_abi_feature -> maybe natural -> maybe natural -> maybe natural -> natural -> linker_control_script
 let default_linker_control_script a user_text_segment_start user_data_segment_start user_rodata_segment_start elf_headers_size = 
     let segment_start name default = match name with 
       "ldata-segment" -> match user_data_segment_start with 
@@ -817,7 +817,7 @@ val interpret_linker_control_script :
     -> list input_spec 
     -> elf_memory_image
 let interpret_linker_control_script script inputs = 
-    accumulate_image empty_annotated_memory_image inputs Nothing Nothing script
+    accumulate_image empty_elf_memory_image inputs Nothing Nothing script
 
     (* What is the output of a linker script?
      * Recall that we need multiple passes:

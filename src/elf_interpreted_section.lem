@@ -65,6 +65,37 @@ type elf64_interpreted_section =
    ; elf64_section_name_as_string : string (** Name of the section, as a string; "" for no name (name = 0) *)
    |>
    
+let compare_elf64_interpreted_section s1 s2 = 
+   compare 
+    ([s1.elf64_section_name    ;
+s1.elf64_section_type    ;
+s1.elf64_section_flags   ;
+s1.elf64_section_addr    ;
+s1.elf64_section_offset  ;
+s1.elf64_section_size    ;
+s1.elf64_section_link    ;
+s1.elf64_section_info    ;
+s1.elf64_section_align   ;
+s1.elf64_section_entsize], s1.elf64_section_body) ([s2.elf64_section_name    ;
+s2.elf64_section_type    ;
+s2.elf64_section_flags   ;
+s2.elf64_section_addr    ;
+s2.elf64_section_offset  ;
+s2.elf64_section_size    ;
+s2.elf64_section_link    ;
+s2.elf64_section_info    ;
+s2.elf64_section_align   ;
+s2.elf64_section_entsize], s2.elf64_section_body)
+
+instance (Ord elf64_interpreted_section)
+    let compare = compare_elf64_interpreted_section
+    let (<) = fun f1 -> (fun f2 -> (compare_elf64_interpreted_section f1 f2 = LT))
+    let (<=) = fun f1 -> (fun f2 -> Set.member (compare_elf64_interpreted_section f1 f2) {LT; EQ})
+    let (>) = fun f1 -> (fun f2 -> (compare_elf64_interpreted_section f1 f2 = GT))
+    let (>=) = fun f1 -> (fun f2 -> Set.member (compare_elf64_interpreted_section f1 f2) {GT; EQ})
+end
+
+   
 val elf64_interpreted_section_equal : elf64_interpreted_section -> elf64_interpreted_section -> bool
 let elf64_interpreted_section_equal x y =
     x.elf64_section_name = y.elf64_section_name &&

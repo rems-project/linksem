@@ -23,6 +23,7 @@ open import List
 open import Maybe
 open import Num
 open import String
+import Set
 
 open import Elf_types_native_uint
 open import Endianness
@@ -204,6 +205,32 @@ type elf32_program_header_table_entry =
    ; elf32_p_align  : elf32_word (** Segment alignment memory for memory and file *)
    |>
 
+let compare_elf32_program_header_table_entry h1 h2 = 
+    compare [natural_of_elf32_word h1.elf32_p_type;
+    natural_of_elf32_off h1.elf32_p_offset;
+    natural_of_elf32_addr h1.elf32_p_vaddr;
+    natural_of_elf32_addr h1.elf32_p_paddr;
+    natural_of_elf32_word h1.elf32_p_filesz;
+    natural_of_elf32_word h1.elf32_p_memsz; 
+    natural_of_elf32_word h1.elf32_p_flags;
+    natural_of_elf32_word h1.elf32_p_align]
+    [natural_of_elf32_word h2.elf32_p_type;
+    natural_of_elf32_off h2.elf32_p_offset;
+    natural_of_elf32_addr h2.elf32_p_vaddr;
+    natural_of_elf32_addr h2.elf32_p_paddr;
+    natural_of_elf32_word h2.elf32_p_filesz;
+    natural_of_elf32_word h2.elf32_p_memsz; 
+    natural_of_elf32_word h2.elf32_p_flags;
+    natural_of_elf32_word h2.elf32_p_align]
+
+instance (Ord elf32_program_header_table_entry)
+    let compare = compare_elf32_program_header_table_entry
+    let (<) = fun f1 -> (fun f2 -> (compare_elf32_program_header_table_entry f1 f2 = LT))
+    let (<=) = fun f1 -> (fun f2 -> Set.member (compare_elf32_program_header_table_entry f1 f2) {LT; EQ})
+    let (>) = fun f1 -> (fun f2 -> (compare_elf32_program_header_table_entry f1 f2 = GT))
+    let (>=) = fun f1 -> (fun f2 -> Set.member (compare_elf32_program_header_table_entry f1 f2) {GT; EQ})
+end
+
 (** Type [elf64_program_header_table_entry] encodes a program header table entry
   * for 64-bit platforms.  Each entry describes a segment in an executable or
   * shared object file.
@@ -218,6 +245,33 @@ type elf64_program_header_table_entry =
    ; elf64_p_memsz  : elf64_xword (** Size of segment in memory image, in bytes *)
    ; elf64_p_align  : elf64_xword (** Segment alignment memory for memory and file *)
    |>
+
+let compare_elf64_program_header_table_entry h1 h2 = 
+    compare [natural_of_elf64_word h1.elf64_p_type;
+    natural_of_elf64_off h1.elf64_p_offset;
+    natural_of_elf64_addr h1.elf64_p_vaddr;
+    natural_of_elf64_addr h1.elf64_p_paddr;
+    natural_of_elf64_xword h1.elf64_p_filesz;
+    natural_of_elf64_xword h1.elf64_p_memsz; 
+    natural_of_elf64_word h1.elf64_p_flags;
+    natural_of_elf64_xword h1.elf64_p_align]
+    [natural_of_elf64_word h2.elf64_p_type;
+    natural_of_elf64_off h2.elf64_p_offset;
+    natural_of_elf64_addr h2.elf64_p_vaddr;
+    natural_of_elf64_addr h2.elf64_p_paddr;
+    natural_of_elf64_xword h2.elf64_p_filesz;
+    natural_of_elf64_xword h2.elf64_p_memsz; 
+    natural_of_elf64_word h2.elf64_p_flags;
+    natural_of_elf64_xword h2.elf64_p_align]
+
+instance (Ord elf64_program_header_table_entry)
+    let compare = compare_elf64_program_header_table_entry
+    let (<) = fun f1 -> (fun f2 -> (compare_elf64_program_header_table_entry f1 f2 = LT))
+    let (<=) = fun f1 -> (fun f2 -> Set.member (compare_elf64_program_header_table_entry f1 f2) {LT; EQ})
+    let (>) = fun f1 -> (fun f2 -> (compare_elf64_program_header_table_entry f1 f2 = GT))
+    let (>=) = fun f1 -> (fun f2 -> Set.member (compare_elf64_program_header_table_entry f1 f2) {GT; EQ})
+end
+
   
 (** [string_of_elf32_program_header_table_entry os proc et] produces a string
   * representation of a 32-bit program header table entry using [os] and [proc]

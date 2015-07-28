@@ -394,6 +394,37 @@ type elf32_section_header_table_entry =
    ; elf32_sh_addralign : elf32_word (** Alignment constraints for section *)
    ; elf32_sh_entsize   : elf32_word (** Size of each entry in table, if section is one *)
    |>
+   
+let compare_elf32_section_header_table_entry h1 h2 = 
+   compare 
+    [natural_of_elf32_word h1.elf32_sh_name;
+    natural_of_elf32_word h1.elf32_sh_type; 
+    natural_of_elf32_word h1.elf32_sh_flags;
+    natural_of_elf32_addr h1.elf32_sh_addr; 
+    natural_of_elf32_off h1.elf32_sh_offset;
+    natural_of_elf32_word h1.elf32_sh_size; 
+    natural_of_elf32_word h1.elf32_sh_link; 
+    natural_of_elf32_word h1.elf32_sh_info; 
+    natural_of_elf32_word h1.elf32_sh_addralign; 
+    natural_of_elf32_word h1.elf32_sh_entsize]
+    [natural_of_elf32_word h2.elf32_sh_name;
+    natural_of_elf32_word h2.elf32_sh_type; 
+    natural_of_elf32_word h2.elf32_sh_flags;
+    natural_of_elf32_addr h2.elf32_sh_addr; 
+    natural_of_elf32_off h2.elf32_sh_offset;
+    natural_of_elf32_word h2.elf32_sh_size; 
+    natural_of_elf32_word h2.elf32_sh_link; 
+    natural_of_elf32_word h2.elf32_sh_info; 
+    natural_of_elf32_word h2.elf32_sh_addralign; 
+    natural_of_elf32_word h2.elf32_sh_entsize]
+
+instance (Ord elf32_section_header_table_entry)
+    let compare = compare_elf32_section_header_table_entry
+    let (<) = fun f1 -> (fun f2 -> (compare_elf32_section_header_table_entry f1 f2 = LT))
+    let (<=) = fun f1 -> (fun f2 -> Set.member (compare_elf32_section_header_table_entry f1 f2) {LT; EQ})
+    let (>) = fun f1 -> (fun f2 -> (compare_elf32_section_header_table_entry f1 f2 = GT))
+    let (>=) = fun f1 -> (fun f2 -> Set.member (compare_elf32_section_header_table_entry f1 f2) {GT; EQ})
+end
 
 (** [elf64_section_header_table_entry] is the type of entries in the section
   * header table in 64-bit ELF files.  Each entry in the table details a section
@@ -412,6 +443,36 @@ type elf64_section_header_table_entry =
    ; elf64_sh_entsize   : elf64_xword (** Size of each entry in table, if section is one *)
    |>
 
+let compare_elf64_section_header_table_entry h1 h2 = 
+   compare 
+    [natural_of_elf64_word h1.elf64_sh_name;
+    natural_of_elf64_word h1.elf64_sh_type; 
+    natural_of_elf64_xword h1.elf64_sh_flags;
+    natural_of_elf64_addr h1.elf64_sh_addr; 
+    natural_of_elf64_off h1.elf64_sh_offset;
+    natural_of_elf64_xword h1.elf64_sh_size; 
+    natural_of_elf64_word h1.elf64_sh_link; 
+    natural_of_elf64_word h1.elf64_sh_info; 
+    natural_of_elf64_xword h1.elf64_sh_addralign; 
+    natural_of_elf64_xword h1.elf64_sh_entsize]
+    [natural_of_elf64_word h2.elf64_sh_name;
+    natural_of_elf64_word h2.elf64_sh_type; 
+    natural_of_elf64_xword h2.elf64_sh_flags;
+    natural_of_elf64_addr h2.elf64_sh_addr; 
+    natural_of_elf64_off h2.elf64_sh_offset;
+    natural_of_elf64_xword h2.elf64_sh_size; 
+    natural_of_elf64_word h2.elf64_sh_link; 
+    natural_of_elf64_word h2.elf64_sh_info; 
+    natural_of_elf64_xword h2.elf64_sh_addralign; 
+    natural_of_elf64_xword h2.elf64_sh_entsize]
+
+instance (Ord elf64_section_header_table_entry)
+    let compare = compare_elf64_section_header_table_entry
+    let (<) = fun f1 -> (fun f2 -> (compare_elf64_section_header_table_entry f1 f2 = LT))
+    let (<=) = fun f1 -> (fun f2 -> Set.member (compare_elf64_section_header_table_entry f1 f2) {LT; EQ})
+    let (>) = fun f1 -> (fun f2 -> (compare_elf64_section_header_table_entry f1 f2 = GT))
+    let (>=) = fun f1 -> (fun f2 -> Set.member (compare_elf64_section_header_table_entry f1 f2) {GT; EQ})
+end
 (** Section header table type *)
 
 (** Type [elf32_section_header_table] represents a section header table for 32-bit

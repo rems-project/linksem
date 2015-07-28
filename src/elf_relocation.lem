@@ -8,6 +8,7 @@
 open import Basic_classes
 open import Num
 open import List
+import Set
 
 open import Endianness
 open import Byte_sequence
@@ -42,6 +43,22 @@ type elf64_relocation_a =
    ; elf64_ra_info   : elf64_xword  (** Symbol table index/type of relocation to apply *)
    ; elf64_ra_addend : elf64_sxword (** Addend used to compute value to be stored *)
    |>
+
+(* We exclusively use elf64_relocation_a in range tags, regardless of what file/reloc 
+ * the info came from, so only this one needs an Ord instance. *)
+let elf64_relocation_a_compare ent1 ent2 = 
+    compare (natural_of_elf64_addr ent1.elf64_ra_offset, natural_of_elf64_xword ent1.elf64_ra_info,
+        integer_of_elf64_sxword ent1.elf64_ra_addend) 
+        (natural_of_elf64_addr ent2.elf64_ra_offset, natural_of_elf64_xword ent2.elf64_ra_info,
+        integer_of_elf64_sxword ent2.elf64_ra_addend)
+
+instance (Ord elf64_relocation_a)
+    let compare = elf64_relocation_a_compare
+    let (<) = fun f1 -> (fun f2 -> (elf64_relocation_a_compare f1 f2 = LT))
+    let (<=) = fun f1 -> (fun f2 -> Set.member (elf64_relocation_a_compare f1 f2) {LT; EQ})
+    let (>) = fun f1 -> (fun f2 -> (elf64_relocation_a_compare f1 f2 = GT))
+    let (>=) = fun f1 -> (fun f2 -> Set.member (elf64_relocation_a_compare f1 f2) {GT; EQ})
+end   
 
 (** Extracting useful information *)
 

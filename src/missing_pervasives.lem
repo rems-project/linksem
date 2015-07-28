@@ -27,6 +27,16 @@ val natural_of_byte : byte -> natural
 declare ocaml    target_rep function natural_of_byte x = `Nat_big_num.of_int` (`Char.code` x)
 declare isabelle target_rep function natural_of_byte = `unat`
 
+let compare_byte b1 b2 = compare (natural_of_byte b1) (natural_of_byte b2)
+
+instance (Ord byte)
+    let compare = compare_byte
+    let (<) = fun f1 -> (fun f2 -> (compare_byte f1 f2 = LT))
+    let (<=) = fun f1 -> (fun f2 -> let result = compare_byte f1 f2 in result = LT || result = EQ)
+    let (>) = fun f1 -> (fun f2 -> (compare_byte f1 f2 = GT))
+    let (>=) = fun f1 -> (fun f2 -> let result = compare_byte f1 f2 in result = GT || result =  EQ)
+end
+
 val char_of_byte : byte -> char
 
 declare ocaml    target_rep function char_of_byte x = ``x

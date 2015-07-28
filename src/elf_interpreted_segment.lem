@@ -32,6 +32,31 @@ type elf64_interpreted_segment =
    ; elf64_segment_offset : natural             (** Offset of the segment *)
    ; elf64_segment_flags : (bool * bool * bool) (** READ, WRITE, EXECUTE flags. *)
    |>
+   
+let compare_elf64_interpreted_segment s1 s2 = 
+    compare 
+    (s1.elf64_segment_body, [s1.elf64_segment_type  ;
+s1.elf64_segment_size  ;
+s1.elf64_segment_memsz ;
+s1.elf64_segment_base  ;
+s1.elf64_segment_paddr ;
+s1.elf64_segment_align ;
+s1.elf64_segment_offset],  let (f1, f2, f3) = s1.elf64_segment_flags in List.map natural_of_bool [f1; f2; f3])
+(s2.elf64_segment_body, [s2.elf64_segment_type  ;
+s2.elf64_segment_size  ;
+s2.elf64_segment_memsz ;
+s2.elf64_segment_base  ;
+s2.elf64_segment_paddr ;
+s2.elf64_segment_align ;
+s2.elf64_segment_offset], let (f1, f2, f3) = s2.elf64_segment_flags in List.map natural_of_bool [f1; f2; f3])
+
+instance (Ord elf64_interpreted_segment)
+    let compare = compare_elf64_interpreted_segment
+    let (<) = fun f1 -> (fun f2 -> (compare_elf64_interpreted_segment f1 f2 = LT))
+    let (<=) = fun f1 -> (fun f2 -> let result = compare_elf64_interpreted_segment f1 f2 in result = LT || result = EQ)
+    let (>) = fun f1 -> (fun f2 -> (compare_elf64_interpreted_segment f1 f2 = GT))
+    let (>=) = fun f1 -> (fun f2 -> let result = compare_elf64_interpreted_segment f1 f2 in result = GT || result = EQ)
+end
 
 type elf32_interpreted_segments = list elf32_interpreted_segment
 type elf64_interpreted_segments = list elf64_interpreted_segment
