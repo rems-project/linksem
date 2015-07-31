@@ -233,23 +233,33 @@ type annotated_memory_image 'abifeature = <|
     ; by_tag           : multimap (range_tag 'abifeature) element_range
 |>
 
-(*
-let (empty_annotated_memory_image : annotated_memory_image any_abi_feature) = <|
-      elements         = Map.empty
-    ; by_range         = Set.empty
-    ; by_tag           = Set.empty
-|>
-*)
+(* Basic ELFy and ABI-y things. *)
+(* FIXME: shouldn't really be here, but need to be in some low-lying module, and 
+ * keeping out of elf_* for now to avoid duplication into elf64_, elf32_. *)
+let elf_section_is_special s f = s.elf64_section_type <> sht_progbits
+                     && s.elf64_section_type <> sht_nobits
+
+val noop_reloc : forall 'abifeature. natural -> ((maybe elf64_symbol_table_entry -> natural) * (annotated_memory_image 'abifeature -> maybe natural))
+let noop_reloc r = (fun r_type -> 8, fun sym_val -> Nothing)
+
 (* This record collects things that ABIs may or must define. 
  * 
  * Since we want to put all ABIs in a list and select one at run time, 
  * we can't maintain a type-level distinction between ABIs; we have to
- * use elf_memory_image any_abi_feature. That's why the previous
- * memory_image polymorphism stuff was better off just erased.
+ * use elf_memory_image any_abi_feature. To avoid a reference cycle,
+ * stay polymorphic in the ABI feature type until we define specific ABIs.
+ * In practice we'll use only any_abi_feature, because we need to pull
+ * the ABI out of a list at run time.
  *)
+type null_abi_feature = unit
+
 type abi 'abifeature = (* forall 'abifeature. *)
    <| is_valid_elf_header : elf64_header -> bool
                         (* doesn't this generalise outrageously? is_valid_elf_file? *)
+    (* Do we want "existing", or is it a kind of addend? 
+     * We do want it -- modelling both separately is necessary, 
+     * because we model relocations bytewise, but some arches
+     * do bitfield relocations (think ARM). *)
     ; reloc              : natural -> ((maybe elf64_symbol_table_entry -> natural) * (annotated_memory_image 'abifeature -> maybe natural))
                         (* number  ->  width   * (symaddr -> addend  -> existing-> relocated) *)
     ; section_is_special : elf64_interpreted_section -> annotated_memory_image 'abifeature -> bool
@@ -258,43 +268,6 @@ type abi 'abifeature = (* forall 'abifeature. *)
     ; minpagesize        : natural
     ; commonpagesize     : natural
     |>
-
-(* Do we want "existing", or is it a kind of addend? 
- * We do want it -- modelling both separately is necessary, 
- * because we model relocations bytewise, but some arches
- * do bitfield relocations (think ARM). *)
-
-type null_abi_feature = unit
-
-let elf_section_is_special s f = s.elf64_section_type <> sht_progbits
-                     && s.elf64_section_type <> sht_nobits
-
-val noop_reloc : forall 'abifeature. natural -> ((maybe elf64_symbol_table_entry -> natural) * (annotated_memory_image 'abifeature -> maybe natural))
-let noop_reloc r = (fun r_type -> 8, fun sym_val -> Nothing)
-
-val is_valid_elf_header : elf64_header -> bool
-let is_valid_elf_header = fun x -> List.take 4 x.elf64_ident = [elf_mn_mag0; elf_mn_mag1; elf_mn_mag2; elf_mn_mag3]
-(*
-val null_abi : forall 'abifeature. abi 'abifeature (* *not* null_abi_feature because then we can't put it in a list with other ABIs *)
-let null_abi = <| is_valid_elf_header = is_valid_elf_header
-                ; reloc = noop_reloc
-                ; section_is_special = elf_section_is_special
-                ; section_is_large = (fun s -> (fun f -> false))
-                ; maxpagesize = 2 * 256 * 4096 (* 2MB; bit of a guess, based on gdb and prelink code *)
-                ; minpagesize = 1024 (* bit of a guess again *)
-                ; commonpagesize = 4096
-                |>
-*)
-
-val null_abi_concrete : abi null_abi_feature 
-let (null_abi_concrete : abi null_abi_feature) = <| is_valid_elf_header = is_valid_elf_header
-                ; reloc = noop_reloc
-                ; section_is_special = elf_section_is_special
-                ; section_is_large = (fun s -> (fun f -> false))
-                ; maxpagesize = 2 * 256 * 4096 (* 2MB; bit of a guess, based on gdb and prelink code *)
-                ; minpagesize = 1024 (* bit of a guess again *)
-                ; commonpagesize = 4096
-                |>
 
 val range_contains : (natural * natural) -> (natural * natural) -> bool
 let range_contains (r1begin, r1len) (r2begin, r2len) = 
@@ -443,3 +416,7 @@ val byte_pattern_of_byte_sequence : byte_sequence -> list (maybe byte)
 let byte_pattern_of_byte_sequence seq = match seq with
     Sequence(bs) -> List.map (fun b -> Just b) bs
 end
+
+val compute_virtual_address_adjustment : natural -> natural -> natural -> natural
+let compute_virtual_address_adjustment max_page_size offset vaddr =
+  (vaddr - offset) mod max_page_size

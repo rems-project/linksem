@@ -39,6 +39,7 @@ open import Linkable_list
 
 open import Memory_image
 open import Elf_memory_image
+open import Elf_memory_image_of_elf64_file
 
 open import Linker_script
 open import Link

@@ -36,7 +36,7 @@ let abi_amd64_compute_program_entry_point segs entry =
 
 val header_is_amd64 : elf64_header -> bool
 let header_is_amd64 h =  
-    null_abi_concrete.is_valid_elf_header h
+    is_valid_elf64_header h
     && List.index h.elf64_ident (unsafe_nat_of_natural elf_ii_data) = Just (unsigned_char_of_natural elf_data_2lsb)
     && is_valid_abi_amd64_machine_architecture (natural_of_elf64_half h.elf64_machine)
     && is_valid_abi_amd64_magic_number h.elf64_ident
@@ -87,18 +87,3 @@ let section_is_special s img =
         ".eh_frame" -> true (* HACK needed because SHT_X86_64_UNWIND is often not used *)
        | _ -> false
     end
-
-val sysv_amd64_std_abi : forall 'abifeature. abi 'abifeature
-let sysv_amd64_std_abi = 
-   <| is_valid_elf_header = header_is_amd64
-    ; reloc = fun r -> (width_of_x86_64_relocation r, fun _ -> Nothing)
-    ; section_is_special = section_is_special
-    ; section_is_large = (fun s -> (fun f -> flag_is_set shf_x86_64_large s.elf64_section_flags))
-    ; maxpagesize = 65536
-    ; minpagesize = 4096
-    ; commonpagesize = 4096
-    |>
-
-instance (SetType amd64_abi_feature)
-    let setElemCompare = abiFeatureCompare
-end

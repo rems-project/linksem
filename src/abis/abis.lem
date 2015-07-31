@@ -1,20 +1,57 @@
 open import Basic_classes
 open import Bool
 open import Num
+open import Maybe
 open import List
 open import Assert_extra
 
+open import Elf_file
+open import Elf_header
+open import Elf_interpreted_section
 open import Memory_image
 open import Abi_amd64
+open import Abi_amd64_relocation
 open import Abi_aarch64_le
-
-val all_abis : forall 'abifeature. list (abi 'abifeature)
-let all_abis = [sysv_amd64_std_abi; sysv_aarch64_le_std_abi(* ; null_abi *)]
-
-type null_abi_feature = unit
+open import Abi_aarch64_relocation
 
 type any_abi_feature = Amd64AbiFeature of amd64_abi_feature
                      | Aarch64LeAbiFeature of aarch64_le_abi_feature
+
+val null_abi : abi any_abi_feature 
+let (null_abi : abi any_abi_feature) = <|
+      is_valid_elf_header = is_valid_elf64_header
+    ; reloc = noop_reloc
+    ; section_is_special = elf_section_is_special
+    ; section_is_large = (fun s -> (fun f -> false))
+    ; maxpagesize = 2 * 256 * 4096 (* 2MB; bit of a guess, based on gdb and prelink code *)
+    ; minpagesize = 1024 (* bit of a guess again *)
+    ; commonpagesize = 4096
+    |>
+
+val sysv_amd64_std_abi : abi any_abi_feature
+let sysv_amd64_std_abi = 
+   <| is_valid_elf_header = header_is_amd64
+    ; reloc = fun r -> (width_of_x86_64_relocation r, fun _ -> Nothing)
+    ; section_is_special = section_is_special
+    ; section_is_large = (fun s -> (fun f -> flag_is_set shf_x86_64_large s.elf64_section_flags))
+    ; maxpagesize = 65536
+    ; minpagesize = 4096
+    ; commonpagesize = 4096
+    |>
+
+val sysv_aarch64_le_std_abi : abi any_abi_feature
+let sysv_aarch64_le_std_abi = 
+   <| is_valid_elf_header = header_is_aarch64_le
+    ; reloc = fun r -> (width_of_aarch64_relocation r, fun _ -> Nothing)
+    ; section_is_special = section_is_special
+    ; section_is_large = (fun _ -> (fun _ -> false))
+    ; maxpagesize = null_abi.maxpagesize
+    ; minpagesize = null_abi.minpagesize
+    ; commonpagesize = null_abi.commonpagesize
+    |>
+
+val all_abis : list (abi any_abi_feature)
+let all_abis = [sysv_amd64_std_abi; sysv_aarch64_le_std_abi; null_abi]
 
 (*
 val amd64AbiFeatureConstructorToNaturalList : amd64_abi_feature -> list natural

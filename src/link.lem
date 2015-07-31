@@ -35,6 +35,7 @@ import Command_line
 
 open import Memory_image
 open import Elf_memory_image
+open import Elf_memory_image_of_elf64_file
 open import Linker_script
 
 let section_name isec img = match name_of_elf_section isec img with

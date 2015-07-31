@@ -6,6 +6,7 @@ open import Num
 open import Byte_sequence
 open import Missing_pervasives
 
+open import Memory_image
 open import Elf_file
 open import Elf_header
 open import Elf_interpreted_segment
@@ -13,7 +14,6 @@ open import Elf_program_header_table
 open import Elf_section_header_table
 open import Elf_types_native_uint
 
-open import Elf_memory_image
 open import Abi_amd64_elf_header
 
 (** [abi_amd64_elf_ident abi_version] produces the ELF identification field for

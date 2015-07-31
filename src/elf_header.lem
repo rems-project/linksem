@@ -789,6 +789,9 @@ type elf32_header =
    ; elf32_shstrndx : elf32_half         (** Section header table entry for section name string table *)
    |>
    
+val is_valid_elf32_header : elf32_header -> bool
+let is_valid_elf32_header = fun x -> List.take 4 x.elf32_ident = [elf_mn_mag0; elf_mn_mag1; elf_mn_mag2; elf_mn_mag3]
+
 val elf32_header_compare : elf32_header -> elf32_header -> Basic_classes.ordering
 let elf32_header_compare h1 h2 = 
     compare (List.map natural_of_unsigned_char h1.elf32_ident, [natural_of_elf32_half h1.elf32_type; 
@@ -832,6 +835,9 @@ type elf64_header =
    ; elf64_shnum    : elf64_half         (** Number of entries in section header table *)
    ; elf64_shstrndx : elf64_half         (** Section header table entry for section name string table *)
    |>
+
+val is_valid_elf64_header : elf64_header -> bool
+let is_valid_elf64_header = fun x -> List.take 4 x.elf64_ident = [elf_mn_mag0; elf_mn_mag1; elf_mn_mag2; elf_mn_mag3]
 
 val elf64_header_compare : elf64_header -> elf64_header -> Basic_classes.ordering
 let elf64_header_compare h1 h2 = 

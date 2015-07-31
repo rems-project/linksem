@@ -35,7 +35,7 @@ let abi_aarch64_le_compute_program_entry_point segs entry =
 
 val header_is_aarch64_le : elf64_header -> bool
 let header_is_aarch64_le h = 
-    Memory_image.is_valid_elf_header h
+    is_valid_elf64_header h
     && List.index h.elf64_ident (unsafe_nat_of_natural elf_ii_data) = Just (unsigned_char_of_natural elf_data_2lsb)
     && is_valid_abi_aarch64_le_machine_architecture (natural_of_elf64_half h.elf64_machine)
     && is_valid_abi_aarch64_le_magic_number h.elf64_ident
@@ -78,14 +78,3 @@ end
 val section_is_special : forall 'abifeature. elf64_interpreted_section -> annotated_memory_image 'abifeature -> bool
 let section_is_special s f = 
     elf_section_is_special s f || (* FIXME *) false
-
-val sysv_aarch64_le_std_abi : forall 'abifeature. abi 'abifeature
-let sysv_aarch64_le_std_abi = 
-   <| is_valid_elf_header = header_is_aarch64_le
-    ; reloc = fun r -> (width_of_aarch64_relocation r, fun _ -> Nothing)
-    ; section_is_special = section_is_special
-    ; section_is_large = (fun _ -> (fun _ -> false))
-    ; maxpagesize = null_abi_concrete.maxpagesize
-    ; minpagesize = null_abi_concrete.minpagesize
-    ; commonpagesize = null_abi_concrete.commonpagesize
-    |>

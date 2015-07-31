@@ -26,6 +26,7 @@ open import Input_list
 open import Memory_image
 open import Elf_memory_image (* HMM -- ideally we'd be ELF-agnostic in this file. 
      But Abstract_abi is now merged into Elf_memory_image, so never mind. *)
+open import Elf_memory_image_of_elf64_file
 open import Elf_symbol_table
 open import Elf_section_header_table
 open import Elf_types_native_uint

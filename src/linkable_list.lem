@@ -32,6 +32,7 @@ open import String_table
 open import Input_list
 
 open import Elf_memory_image
+open import Elf_memory_image_of_elf64_file
 
 type script = byte_sequence (* FIXME *)
 
