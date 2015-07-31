@@ -281,11 +281,25 @@ val bracket : list string -> string
 let bracket xs =
   "(" ^ foldl (^) "" (intercalate " " xs) ^ ")"
 
-(** [null_char] is the null character. *)
-val null_char : byte
+(** [null_byte] is the null character a a byte. *)
+val null_byte : byte
 
-declare ocaml    target_rep function null_char = `'\000'`
+declare ocaml    target_rep function null_byte = `'\000'`
+declare isabelle target_rep function null_byte = `0` `::` `8` `word`
+
+(** [null_char] is the null character. *)
+val null_char : char
+let {ocaml} null_char = char_of_byte null_byte
+
 declare isabelle target_rep function null_char = `0` `::` `8` `word`
+
+(** [println s] prints [s] to stdout, adding a trailing newline. *)
+val println : string -> unit
+declare ocaml target_rep function println = `print_endline`
+
+(** [prints s] prints [s] to stdout, without adding a trailing newline. *)
+val prints : string -> unit
+declare ocaml target_rep function prints = `print_string`
 
 (** [split_string_on_char s c] splits a string [s] into a list of substrings
   * on character [c], otherwise returning the singleton list containing [s]
@@ -296,14 +310,12 @@ val split_string_on_char : string -> char -> list string
 declare ocaml target_rep function split_string_on_char = `Ml_bindings.split_string_on_char`
 declare isabelle target_rep function split_string_on_char = `Elf_Types_Local.split_string_on_char`
 
-(** [println s] prints [s] to stdout, adding a trailing newline. *)
-val println : string -> unit
-declare ocaml target_rep function println = `print_endline`
-
-(** [prints s] prints [s] to stdout, without adding a trailing newline. *)
-val prints : string -> unit
-declare ocaml target_rep function prints = `print_string`
-
+assert split_string_null : (let afterSplit = split_string_on_char (toString ([null_char; #'s'; null_char; #'t']: list char)) null_char
+    in 
+    let _ = println ("split string is " ^ (show afterSplit))
+    in
+    afterSplit = [""; "s"; "t"])
+    
 (** [string_of_nat m] produces a string representation of natural number [m]. *)
 val string_of_nat : nat -> string
 declare ocaml target_rep function string_of_nat = `string_of_int`

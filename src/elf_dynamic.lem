@@ -498,7 +498,7 @@ let get_string_table_of_elf32_dyn_section endian dyns sht bs0 =
                   let siz = natural_of_elf32_word s.elf32_sh_size in
                   Byte_sequence.offset_and_cut off siz bs0 >>= fun rel ->
                   let strings  = Byte_sequence.string_of_byte_sequence rel in
-                  return (String_table.mk_string_table strings (Missing_pervasives.char_of_byte Missing_pervasives.null_char))
+                  return (String_table.mk_string_table strings (Missing_pervasives.null_char))
                 | _   -> fail "get_string_table_of_elf32_dyn_section: multiple section entries with same address as STRTAB"
               end
           | D_Ignored i -> fail "get_string_table_of_elf32_dyn_section: STRTAB must be a PTR"
@@ -533,7 +533,7 @@ let get_string_table_of_elf64_dyn_section endian dyns sht bs0 =
                   let siz = natural_of_elf64_xword s.elf64_sh_size in
                   Byte_sequence.offset_and_cut off siz bs0 >>= fun rel ->
                   let strings  = Byte_sequence.string_of_byte_sequence rel in
-                  return (String_table.mk_string_table strings (Missing_pervasives.char_of_byte Missing_pervasives.null_char))
+                  return (String_table.mk_string_table strings Missing_pervasives.null_char)
                 | _   -> fail "get_string_table_of_elf64_dyn_section: multiple section entries with same address as STRTAB"
               end
           | D_Ignored i -> fail "get_string_table_of_elf64_dyn_section: STRTAB must be a PTR"

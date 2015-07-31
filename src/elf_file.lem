@@ -78,7 +78,7 @@ let bytes_of_elf32_file ef =
                     return (delta, concat)
             else
               let diff   = point_to_add - current_offset in
-              let reps   = Byte_sequence.create diff Missing_pervasives.null_char in
+              let reps   = Byte_sequence.create diff Missing_pervasives.null_byte in
               let concat = Byte_sequence.concat [so_far; reps; body] in
               let delta  = point_to_add + Byte_sequence.length body in
                 return (delta, concat)
@@ -155,7 +155,7 @@ let bytes_of_elf64_file ef =
                     return (delta, concat)
             else
               let diff   = point_to_add - current_offset in
-              let reps   = Byte_sequence.create diff Missing_pervasives.null_char in
+              let reps   = Byte_sequence.create diff Missing_pervasives.null_byte in
               let concat = Byte_sequence.concat [so_far; reps; body] in
               let delta  = point_to_add + Byte_sequence.length body in
                 return (delta, concat)
@@ -515,7 +515,7 @@ let get_elf32_file_section_header_string_table f3 =
           let size   = natural_of_elf32_word sect.elf32_sh_size in
           Byte_sequence.offset_and_cut offset size bs0 >>= fun rel ->
           let strings  = Byte_sequence.string_of_byte_sequence rel in
-          return (String_table.mk_string_table strings (Missing_pervasives.char_of_byte Missing_pervasives.null_char))
+          return (String_table.mk_string_table strings Missing_pervasives.null_char)
     end
 
 val get_elf64_file_section_header_string_table : elf64_file -> error string_table
@@ -532,7 +532,7 @@ let get_elf64_file_section_header_string_table f3 =
           let size   = natural_of_elf64_xword sect.elf64_sh_size in
           Byte_sequence.offset_and_cut offset size bs0 >>= fun rel ->
           let strings  = Byte_sequence.string_of_byte_sequence rel in
-          return (String_table.mk_string_table strings (Missing_pervasives.char_of_byte Missing_pervasives.null_char))
+          return (String_table.mk_string_table strings Missing_pervasives.null_char)
     end
     
 val find_elf32_symbols_by_symtab_idx : natural -> elf32_file -> error (elf32_symbol_table * string_table * natural)
@@ -546,7 +546,7 @@ let find_elf32_symbols_by_symtab_idx sec_idx f =
         | Just strs -> return strs
     end >>= fun strs -> 
     let strings = Byte_sequence.string_of_byte_sequence strs.elf32_section_body in
-    let strtab = String_table.mk_string_table strings (char_of_byte null_char) in
+    let strtab = String_table.mk_string_table strings null_char in
     let endian = get_elf32_header_endianness f.elf32_file_header in
     read_elf32_symbol_table endian sec.elf32_section_body >>= fun symtab ->
     return (symtab, strtab, sec_idx)
@@ -570,7 +570,7 @@ let find_elf64_symbols_by_symtab_idx sec_idx f =
         | Just strs -> return strs
     end >>= fun strs -> 
     let strings = Byte_sequence.string_of_byte_sequence strs.elf64_section_body in
-    let strtab = String_table.mk_string_table strings (char_of_byte null_char) in
+    let strtab = String_table.mk_string_table strings null_char in
     let endian = get_elf64_header_endianness f.elf64_file_header in
     read_elf64_symbol_table endian sec.elf64_section_body >>= fun symtab ->
     return (symtab, strtab, sec_idx)
@@ -603,7 +603,7 @@ let get_elf32_file_symbol_string_table f3 =
       let size    = natural_of_elf32_word sect.elf32_sh_size in
       Byte_sequence.offset_and_cut offset size bs0 >>= fun bs1 ->
       let strings = Byte_sequence.string_of_byte_sequence bs1 in
-      return (String_table.mk_string_table strings (Missing_pervasives.char_of_byte Missing_pervasives.null_char))) strtabs
+      return (String_table.mk_string_table strings Missing_pervasives.null_char)) strtabs
     >>= fun strings ->
       String_table.concat strings
 
@@ -627,7 +627,7 @@ let get_elf64_file_symbol_string_table f3 =
       let size    = natural_of_elf64_xword sect.elf64_sh_size in
       Byte_sequence.offset_and_cut offset size bs0 >>= fun bs1 ->
       let strings = Byte_sequence.string_of_byte_sequence bs1 in
-      return (String_table.mk_string_table strings (Missing_pervasives.char_of_byte Missing_pervasives.null_char))) strtabs
+      return (String_table.mk_string_table strings Missing_pervasives.null_char)) strtabs
     >>= fun strings ->
       String_table.concat strings
 
@@ -738,7 +738,7 @@ let get_elf32_string_table_by_index ef link =
   let sects   = ef.elf32_file_interpreted_sections in
     match List.index sects (unsafe_nat_of_natural link) with
       | Nothing  -> fail "get_elf32_string_table_by_index: invalid index"
-      | Just sym -> return (mk_string_table (Byte_sequence.string_of_byte_sequence sym.elf32_section_body) (char_of_byte Missing_pervasives.null_char))
+      | Just sym -> return (mk_string_table (Byte_sequence.string_of_byte_sequence sym.elf32_section_body) Missing_pervasives.null_char)
     end
     
 val get_elf64_symbol_table_by_index : elf64_file -> natural -> error elf64_symbol_table
@@ -760,7 +760,7 @@ let get_elf64_string_table_by_index ef link =
   let sects   = ef.elf64_file_interpreted_sections in
     match List.index sects (unsafe_nat_of_natural link) with
       | Nothing  -> fail "get_elf64_string_table_by_index: invalid index"
-      | Just sym -> return (mk_string_table (Byte_sequence.string_of_byte_sequence sym.elf64_section_body) (char_of_byte Missing_pervasives.null_char))
+      | Just sym -> return (mk_string_table (Byte_sequence.string_of_byte_sequence sym.elf64_section_body) Missing_pervasives.null_char)
     end
 
 type segment_provenance

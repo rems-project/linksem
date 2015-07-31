@@ -128,7 +128,7 @@ let abi_amd64_generate_exec_interpreted_segment vma offset exec_code =
 
 val abi_amd64_generate_code_heap_interpreted_segment : natural -> natural -> natural -> elf64_interpreted_segment
 let abi_amd64_generate_code_heap_interpreted_segment vma offset segment_size =
-  let seg = Byte_sequence.create segment_size Missing_pervasives.null_char in
+  let seg = Byte_sequence.create segment_size Missing_pervasives.null_byte in
     <| elf64_segment_body = seg;
         elf64_segment_size = segment_size;
         elf64_segment_memsz = segment_size;
@@ -166,11 +166,11 @@ let abi_amd64_generate_data_heap_interpreted_segment vma off segment_size code_h
   let (pc0, pc1, pc2, pc3) = quad_le_bytes_of_natural 0 in
   let (gc0, gc1, gc2, gc3) = quad_le_bytes_of_natural 0 in
   let preamble       = Byte_sequence.from_byte_lists [[
-                          d0; d1; d2; d3; null_char; null_char; null_char; null_char;
-                          c0; c1; c2; c3; null_char; null_char; null_char; null_char;
-                          sz0; sz1; sz2; sz3; null_char; null_char; null_char; null_char;
-                          pc0; pc1; pc2; pc3; null_char; null_char; null_char; null_char;
-                          gc0; gc1; gc2; gc3; null_char; null_char; null_char; null_char
+                          d0; d1; d2; d3; null_byte; null_byte; null_byte; null_byte;
+                          c0; c1; c2; c3; null_byte; null_byte; null_byte; null_byte;
+                          sz0; sz1; sz2; sz3; null_byte; null_byte; null_byte; null_byte;
+                          pc0; pc1; pc2; pc3; null_byte; null_byte; null_byte; null_byte;
+                          gc0; gc1; gc2; gc3; null_byte; null_byte; null_byte; null_byte
                        ]] in
     <| elf64_segment_body = preamble;
         elf64_segment_size  = Byte_sequence.length preamble;

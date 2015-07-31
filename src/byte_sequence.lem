@@ -68,7 +68,7 @@ let create count c =
 
 val zeros : natural -> byte_sequence
 let zeros m =
-  create m Missing_pervasives.null_char
+  create m Missing_pervasives.null_byte
 
 val length : byte_sequence -> natural
 let length (Sequence ts) =
