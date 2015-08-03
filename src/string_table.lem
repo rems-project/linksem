@@ -65,23 +65,6 @@ let concat xs =
 
 declare {isabelle} rename function concat = concat_string_table
 
-(** [get_strings tbl] obtains the strings stored in the table, separated using
-  * the designated separator as a delimiting character.
-  *)
-val get_strings : string_table -> list string
-let get_strings tbl =
-  match tbl with
-    | Strings (sep, base) ->
-        Missing_pervasives.split_string_on_char base sep
-  end
-
-(** [size tbl] returns the number of strings separated by the designated
-  * separator in the string table [tbl].
-  *)
-val size : string_table -> nat
-let size tbl =
-  List.length (get_strings tbl)
-
 (** [get_string_at index tbl] returns the string starting at character [index]
   * from the start of the base string until the first occurrence of the delimiting
   * character.
@@ -92,13 +75,15 @@ let get_string_at index tbl =
     | Nothing     -> Fail ("get_string_at: invalid index (" ^ (show index) ^ ") into string")
     | Just suffix ->
       let delim = get_delimiting_character tbl in
-      let tbl   = mk_string_table suffix delim in
-        match get_strings tbl with
-          | []    -> return ""
-          | x::xs -> return x
-        end
+      match string_index delim suffix with
+        Just(idx) -> match string_prefix idx suffix with
+            Just(s) -> Success s
+            | Nothing -> Fail ("get_string_at: impossible: index (" ^ (show idx) ^ ")")
+            end
+        | Nothing -> Success suffix
+      end
   end
 
 instance (Show string_table)
-  let show tbl = unlines (get_strings tbl)
+  let show tbl = toString (List.map (fun c -> if c = #'\000' then #'\n' else c) (toCharList (get_base_string tbl)))
 end

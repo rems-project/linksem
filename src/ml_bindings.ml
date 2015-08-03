@@ -91,7 +91,10 @@ let split_string_on_char strings c =
   let groups  = BatEnum.group (fun char -> char <> c) enum in
   (* Filter out the groups that correspond to the separator char 
    * (each may have >=1 copies thereof). *)
-  let filtered= BatList.filter (fun l -> match BatList.of_enum l with c :: _ -> false | _ -> true) (BatList.of_enum groups) in
+  (* FIXME: this filter "consumes" each l, so empty strings come out. Suggest 
+   * binning Batteries altogether -- we don't really need this function, since
+   * splitting string tables into strings is mostly pointless. *)
+  let filtered= BatList.filter (fun l -> match BatList.of_enum l with x :: _ when x = c -> false | _ -> true) (BatList.of_enum groups) in
   let enums   = BatEnum.map BatString.of_enum (BatList.enum filtered) in
     BatList.of_enum enums
 ;;
@@ -103,6 +106,19 @@ let string_suffix index str =
   else
   	let idx = Nat_big_num.to_int index in
   		Some (String.sub str idx (String.length str - idx))
+;;
+
+let string_prefix index str =
+  if (* index < 0 *) Nat_big_num.less index (Nat_big_num.of_int 0) ||
+     (* index > length str *) (Nat_big_num.greater index (Nat_big_num.of_int (String.length str))) then
+    None
+  else
+  	let idx = Nat_big_num.to_int index in
+  		Some (String.sub str 0 idx)
+;;
+
+let string_index (c: char) (s : string) = try Some(Nat_big_num.of_int (String.index s c))
+    with Not_found -> None
 ;;
 
 let rec list_index_big_int index xs =

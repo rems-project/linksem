@@ -28,9 +28,10 @@ LEM_UTIL_SRC := default_printing.lem missing_pervasives.lem show.lem endianness.
 # GAH. doing a topsort manually is a sign of failure.
 ALL_UTIL_ML := \
 	uint64_wrapper.ml uint32_wrapper.ml \
-	show.ml endianness.ml error.ml ml_bindings.ml missing_pervasives.ml missing_pervasivesAuxiliary.ml multimap.ml \
+	show.ml endianness.ml error.ml ml_bindings.ml missing_pervasives.ml multimap.ml \
 	default_printing.ml \
-	byte_sequence_wrapper.ml
+	byte_sequence_wrapper.ml \
+	# missing_pervasivesAuxiliary.ml
 
 #uint16_wrapper.ml uint32_wrapper.ml uint64_wrapper.ml 
 

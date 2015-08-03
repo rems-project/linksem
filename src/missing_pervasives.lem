@@ -304,6 +304,10 @@ declare ocaml target_rep function prints = `print_string`
 (** [split_string_on_char s c] splits a string [s] into a list of substrings
   * on character [c], otherwise returning the singleton list containing [s]
   * if [c] is not found in [s].
+  * 
+  * NOTE: quirkily, this doesn't discard separators (e.g. because NUL characters 
+  * are significant when indexing into string tables). FIXME: given this, is this 
+  * function really reusable? I suspect not.
   *)
 val split_string_on_char : string -> char -> list string
 
@@ -320,13 +324,28 @@ assert split_string_null : (let afterSplit = split_string_on_char (toString ([nu
 val string_of_nat : nat -> string
 declare ocaml target_rep function string_of_nat = `string_of_int`
 
-(** [string_suffix i s] chops [i] characters off [s], returning a new string.
+(** [string_suffix i s] returns all but the first [i] characters of [s].
   * Fails if the index is negative, or beyond the end of the string.
   *)
 val string_suffix : natural -> string -> maybe string
 
 declare ocaml target_rep function string_suffix = `Ml_bindings.string_suffix`
 declare isabelle target_rep function string_suffix = `Elf_Types_Local.string_suffix`
+
+(** [string_prefix i s] returns the first [i] characters of [s].
+  * Fails if the index is negative, or beyond the end of the string.
+  *)
+val string_prefix : natural -> string -> maybe string
+
+declare ocaml target_rep function string_prefix = `Ml_bindings.string_prefix`
+(* FIXME: isabelle *)
+
+(** [string_index c s] returns [Just(i)] where [i] is the index of the first 
+  * occurrence if [c] in [s], if it exists, otherwise returns [Nothing]. *)
+val string_index : char -> string -> maybe natural
+
+declare ocaml target_rep function string_index = `Ml_bindings.string_index`
+(* FIXME: isabelle *)
 
 val index : forall 'a. natural -> list 'a -> maybe 'a
 
