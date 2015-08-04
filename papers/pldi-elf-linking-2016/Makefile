@@ -1,6 +1,6 @@
 LATEX ?= pdflatex
 
-BASENAME ?= $(shell basename $(shell pwd) | sed -r 's/-[0-9]+(\..*)?$$//' )
+BASENAME ?= $(shell basename $(shell pwd))
 $(warning BASENAME is $(BASENAME))
 
 SPELLING_LANG ?= en_GB-ise-w_accents
