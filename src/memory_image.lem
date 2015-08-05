@@ -163,7 +163,7 @@ type symbol_definition
  = <| def_symname : string
     ; def_syment : elf64_symbol_table_entry (* definition's symtab entry *)
     ; def_sym_scn : natural                 (* symtab section index, to disamiguate dynsym *)
-    ; def_sym_idx : natural
+    ; def_sym_idx : natural                 (* index of symbol into the symtab *)
     |>
 
 let symDefCompare x1 x2 =

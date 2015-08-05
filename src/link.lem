@@ -92,7 +92,8 @@ let link script a options linkables =
     in
     let linkables_not_discarded = mapMaybei (fun i -> (fun (obj, inp, opts) -> 
         if Set.member i referenced_object_indices || opts.item_force_output 
-        then Just (obj, inp, opts) 
+        then let _ = Missing_pervasives.println ("Did not discard: " ^ (show inp))
+            in Just (obj, inp, opts) 
         else Nothing
     )) linkables
     in

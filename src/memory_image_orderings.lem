@@ -110,15 +110,17 @@ end
 
 val unique_tag_matching : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature => range_tag 'abifeature -> annotated_memory_image 'abifeature -> range_tag 'abifeature
 let unique_tag_matching tag img = 
-    match Multimap.lookupBy tagCompare tag img.by_tag with
+    match Multimap.lookupBy tagEquiv tag img.by_tag with
         [] -> failwith "no tag match found"
-        | [(tag, elRange)] -> tag
-        | _ -> failwith "more than one tag match when asserted unique"
+        | [(t, r)] -> t
+        | x -> failwith ("more than one tag match (ranges: " ^ 
+            (show (List.map (fun (t, r) -> r) x))
+            ^  ") when asserted unique")
     end
     
 val tagged_ranges_matching_tag : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature => range_tag 'abifeature -> annotated_memory_image 'abifeature -> list (range_tag 'abifeature * element_range)
 let tagged_ranges_matching_tag tag img = 
-    Multimap.lookupBy tagCompare tag img.by_tag
+    Multimap.lookupBy tagEquiv tag img.by_tag
 
 val element_range_compare : element_range -> element_range -> Basic_classes.ordering
 let element_range_compare = pairCompare compare compare
@@ -130,9 +132,9 @@ val unique_tag_matching_at_range_exact : forall 'abifeature. Ord 'abifeature, To
     -> range_tag 'abifeature
 let unique_tag_matching_at_range_exact r tag img = 
     (* 1. find tags a unique range labelled as ELF section header table. *)
-    let (_, (allRangeMatches : list (range_tag 'abifeature))) = unzip (Multimap.lookupBy element_range_compare r img.by_range)
+    let (_, (allRangeMatches : list (range_tag 'abifeature))) = unzip (Multimap.lookupBy (=) r img.by_range)
     in
-    let (tagAlsoMatches : list (range_tag 'abifeature)) = List.filter (fun x -> tagCompare x tag = EQ) allRangeMatches
+    let (tagAlsoMatches : list (range_tag 'abifeature)) = List.filter (fun x -> tagEquiv x tag) allRangeMatches
     in
     match tagAlsoMatches with
         [] -> failwith "no range/tag match when asserted to exist"

@@ -119,7 +119,7 @@ let elf_memory_image_of_elf64_file a fname f =
                 let _ = Missing_pervasives.println ("Extracted " ^ (show (length all_reloc_sites)) ^ " reloc site tags from "
                     ^ "file " ^ fname ^ ": " ^ (show (List.map reloc_as_triple all_reloc_sites)))
                 in
-                let retrieved_reloc_sites = Multimap.lookupBy Memory_image_orderings.tagCompare 
+                let retrieved_reloc_sites = Multimap.lookupBy Memory_image_orderings.tagEquiv
                     (RelocationSite(null_symbol_reference_and_reloc_site)) 
                     (let (fst, snd) = unzip all_reloc_sites in Set.fromList (zip snd fst))
                 in
@@ -128,7 +128,13 @@ let elf_memory_image_of_elf64_file a fname f =
                 in
                 let elf_header = [(("header", (0, natural_of_elf64_half f.elf64_file_header.elf64_ehsize)), FileFeature(ElfHeader(f.elf64_file_header)))]
                 in
+                let _ = Missing_pervasives.println ("ELF header contributes " ^ (show (List.length elf_header)) ^ " annotations.")
+                in
                 let all_annotations_list =  all_reloc_sites ++ symbol_defs ++ elf_sections ++ elf_header
+                in
+                let all_annotations_length = List.length all_annotations_list
+                in
+                let _ = Missing_pervasives.println ("total annotations: " ^ (show all_annotations_length))
                 in
                 let all_annotations = Set.fromList all_annotations_list
                 in
@@ -206,7 +212,6 @@ let elf_memory_image_of_elf64_file a fname f =
 
 val elf_memory_image_header : elf_memory_image -> elf64_header
 let elf_memory_image_header img = 
-    (* 1. find a unique range labelled as ELF section header table. *)
     match unique_tag_matching (FileFeature(ElfHeader(null_elf_header))) img with
         FileFeature(ElfHeader(x)) -> x
         | _ -> failwith "impossible: no header"
@@ -232,15 +237,14 @@ let elf_memory_image_section_by_index idx img =
     let (allSectionTags, allSectionElementRanges) = elf_memory_image_section_ranges img 
     in
     let matches = mapMaybei (fun i -> (fun tag -> match tag with
-         FileFeature(ElfSection(idx, s)) -> Just s
-        | FileFeature(ElfSection(_, s)) -> Nothing
+         FileFeature(ElfSection(itsIdx, s)) -> if itsIdx = idx then Just s else Nothing
         | _ -> failwith "impossible"
     end)) allSectionTags
     in
     match matches with
         [] -> Nothing
         | [x] -> Just x
-        | _ -> failwith "impossible: more than one ELF section with same index"
+        | x -> failwith ("impossible: more than one ELF section with same index (" ^ (show idx) ^ ")")
     end
 
 val elf_memory_image_element_coextensive_with_section : natural -> elf_memory_image -> maybe string
@@ -249,15 +253,14 @@ let elf_memory_image_element_coextensive_with_section idx img =
     let (allSectionTags, allSectionElementRanges) = elf_memory_image_section_ranges img 
     in
     let matches = mapMaybei (fun i -> (fun (tag, (elName, (rangeStart, rangeLen))) -> match tag with
-         FileFeature(ElfSection(idx, s)) -> if rangeStart = 0 && rangeLen = s.elf64_section_size then Just elName else Nothing
-        | FileFeature(ElfSection(_, s)) -> Nothing
+         FileFeature(ElfSection(itsIdx, s)) -> if itsIdx = idx && rangeStart = 0 && rangeLen = s.elf64_section_size then Just elName else Nothing
         | _ -> failwith "impossible"
     end)) (zip allSectionTags allSectionElementRanges)
     in
     match matches with
         [] -> Nothing
         | [x] -> Just x
-        | _ -> failwith "impossible: more than one ELF section with same index"
+        | _ -> failwith ("impossible: more than one ELF section coextensive with section " ^ (show idx))
     end
 
 
