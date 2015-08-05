@@ -21,8 +21,11 @@ open import Show
  * 
  * 0. The basic idea: it's a multimap, so a single key, supplied as a "query",
  *    can map to many (key, value) results.
+ *    But PROBLEM: how do we store them in a tree? We're using OCaml's
+ *    Set implementation underneath, and that doesn't allow duplicates.
  * 
- * 1. The user supplies an equivalence relation on keys, which
+ * 1. ANSWER: require keys still be unique, but that the user supplies an 
+ *    equivalence relation on them, which
  *    is coarser-grained than the ordering relation
  *    used to order the set. It must be consistent with it, though: 
  *    equivalent keys should appear as a contiguous range in the 
@@ -39,7 +42,10 @@ open import Show
  * 
  * Although this seems more complicated than writing a map from 
  * k to list (k, v), which would allow us to ditch the finer ordering, 
- * 
+ * it scales better (no lists) and allows certain range queries which 
+ * would be harder to implement under that approach. It also has the 
+ * nice property that the inverse multimap is represented as the same
+ * set but with the pairs reversed.
  *)
 
 type multimap 'k 'v = set ('k * 'v)
@@ -48,7 +54,7 @@ type multimap 'k 'v = set ('k * 'v)
  * we need the equivalence class to tell us whether we're less than or
  * greater than the members of the key's class. 
  * It effectively identifies a set of ranges. *)
-type key_equiv 'k = 'k -> 'k -> Basic_classes.ordering
+type key_equiv 'k = 'k -> 'k -> bool
 
 (*
 val hasMapping : forall 'k 'v. key_equiv 'k -> multimap 'k 'v -> bool
@@ -73,7 +79,7 @@ let rec findLowestEquiv equiv k lessThan subSet maybeBest =
         Nothing -> (* empty subset *) maybeBest
       | Just(lower, ((chosenK: 'k), (chosenV : 'v)), higher) ->
             (* is k equiv to chosen? *)
-            if equiv k chosenK = EQ
+            if equiv k chosenK
             then
                 (* is chosen less than our current best? *)
                 let (bestK, bestV) = match maybeBest with
@@ -105,11 +111,11 @@ let rec findLowestEquiv equiv k lessThan subSet maybeBest =
                     findLowestEquiv equiv k lessThan higher maybeBest
     end
 
-val testEquiv : natural -> natural -> Basic_classes.ordering
-let testEquiv x y = if (x >= 3 && x < 5 && y >= 3 && y <= 5) then EQ
-     else if (x < 3 && y < 3) then EQ
-     else if (x > 5 && y > 5) then EQ
-     else (compare x y)
+val testEquiv : natural -> natural -> bool
+let testEquiv x y = if (x >= 3 && x < 5 && y >= 3 && y <= 5) then true
+     else if (x < 3 && y < 3) then true
+     else if (x > 5 && y > 5) then true
+     else false
 
 assert lowest_simple: findLowestEquiv testEquiv 
 4 (<) ({ (1, 0); (2, 0); (3, 0); (4, 0); (5, 0); (6, 0) } : set (natural * natural)) Nothing = Just (3, 0)
@@ -136,7 +142,7 @@ let rec findHighestEquiv equiv k greaterThan subSet maybeBest =
         Nothing -> (* empty subset *) maybeBest
       | Just(lower, ((chosenK: 'k), (chosenV : 'v)), higher) ->
             (* is k equiv to chosen? *)
-            if equiv k chosenK = EQ
+            if equiv k chosenK
             then
                 (* is chosen greater than our current best? *)
                 let (bestK, bestV) = match maybeBest with
@@ -195,22 +201,22 @@ let lookupBy equiv k m =
         Nothing -> []
         | Just lowestEquiv -> 
             let (highestEquiv : ('k * 'v)) = 
-            
                 (* We can't just invert the relation on the set, because
                  * the whole set is ordered *)
                 match findHighestEquiv equiv k (>) m Nothing with
-                
-            
-            Nothing -> failwith "impossible: lowest equiv but no highest equiv"
-            | Just highestEquiv -> highestEquiv
-        end
+                    Nothing -> failwith "impossible: lowest equiv but no highest equiv"
+                    | Just highestEquiv -> highestEquiv
+                end
         in
         (* FIXME: split is currently needlessly inefficient on OCaml! *)
         let (lowerThanLow, highEnough) = Set.split lowestEquiv m
         in 
         let (wanted, tooHigh) = Set.split highestEquiv highEnough
         in
-        (lowestEquiv :: (toList wanted)) ++ [highestEquiv]
+        (lowestEquiv :: (toList wanted)) ++ (
+            (* don't include the lowest and highest twice, if they're the same *)
+            if lowestEquiv < highestEquiv then [highestEquiv] else []
+        )
     end
 
 (*
@@ -225,6 +231,8 @@ assert lookup_simple : lookupBy testEquiv
 = ([(3, 0); (4, 0); (5, 0)] : list (natural * natural))
 assert lookup_empty: lookupBy testEquiv
 4 ({} : set (natural * natural)) = ([]: list (natural * natural))
+assert lookup_singleton: lookupBy testEquiv 
+4 ({(5, 0)} : set (natural * natural)) = ([(5, 0)]: list (natural * natural))
 assert lookup_onepast: lookupBy testEquiv
 4 ({ (6, 0) } : set (natural * natural)) = ([] : list (natural * natural))
 assert lookup_oneprev: lookupBy testEquiv 
