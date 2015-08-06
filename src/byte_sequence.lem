@@ -134,9 +134,9 @@ let rec dropbytes count (Sequence ts) =
       | x::xs -> dropbytes (count - 1) (Sequence xs)
     end
 
-val takebytes_r: nat -> byte_sequence -> error byte_sequence
-let rec takebytes_r count (Sequence ts) = 
-  if List.length ts >= count then 
+val takebytes_r_with_length: nat -> natural -> byte_sequence -> error byte_sequence
+let rec takebytes_r_with_length count ts_length (Sequence ts) = 
+  if ts_length >= (naturalFromNat count) then 
     return (Sequence (list_take_with_accum count [] ts))
   else
     fail "takebytes: cannot take more bytes than are contained in sequence"
@@ -144,7 +144,14 @@ let rec takebytes_r count (Sequence ts) =
 val takebytes : natural -> byte_sequence -> error byte_sequence
 let takebytes count (Sequence ts) =
   (* let _ = Missing_pervasives.prints ("Trying to take " ^ (show count) ^ " bytes from sequence of " ^ (show (List.length ts)) ^ "\n") in *)
-  let result = takebytes_r (Missing_pervasives.unsafe_nat_of_natural count) (Sequence ts) in 
+  let result = takebytes_r_with_length (Missing_pervasives.unsafe_nat_of_natural count) (Missing_pervasives.length ts) (Sequence ts) in 
+  (*let _ = Missing_pervasives.prints ("Succeeded\n") in *)
+    result
+
+val takebytes_with_length : natural -> natural -> byte_sequence -> error byte_sequence
+let takebytes_with_length count ts_length (Sequence ts) =
+  (* let _ = Missing_pervasives.prints ("Trying to take " ^ (show count) ^ " bytes from sequence of " ^ (show (List.length ts)) ^ "\n") in *)
+  let result = takebytes_r_with_length (Missing_pervasives.unsafe_nat_of_natural count) ts_length (Sequence ts) in 
   (*let _ = Missing_pervasives.prints ("Succeeded\n") in *)
     result
 
@@ -203,6 +210,12 @@ let read_8_bytes_be bs0 =
 val partition : natural -> byte_sequence -> error (byte_sequence * byte_sequence)
 let partition idx bs0 =
   takebytes idx bs0 >>= fun l ->
+  dropbytes idx bs0 >>= fun r ->
+  return (l, r)
+
+val partition_with_length : natural -> natural -> byte_sequence -> error (byte_sequence * byte_sequence)
+let partition_with_length idx bs0_length bs0 =
+  takebytes_with_length idx bs0_length bs0 >>= fun l ->
   dropbytes idx bs0 >>= fun r ->
   return (l, r)
 
