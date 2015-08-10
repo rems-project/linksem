@@ -57,10 +57,6 @@ let elf_dt_gnu_versym     : natural = 939524088 * 2       (*0x6ffffff0*)
 let elf_dt_gnu_hash    : natural = (939523962 * 2) + 1  (*0x6ffffef5*)
 let elf_dt_gnu_flags_1 : natural = (939524093 * 2) + 1  (*0x6ffffffb*)
 
-val gnu_ext_os_ranges : natural -> bool
-let gnu_ext_os_ranges m =
-  m = 
-
 val gnu_ext_os_additional_ranges : natural -> bool
 let gnu_ext_os_additional_ranges m =
   if m >= elf_dt_gnu_addrrnglo && m <= elf_dt_gnu_addrrnghi then
@@ -121,10 +117,12 @@ let gnu_ext_tag_correspondence_of_tag m os_additional_ranges arch =
   else
     fail "gnu_ext_tag_correspondence_of_tag: unrecognised GNU dynamic tag"
     
+(*
 val gnu_ext_elf32_value_of_elf32_dyn : elf32_dyn -> string_table -> error elf32_dyn_value
 let gnu_ext_elf32_value_of_elf32_dyn dyn stab =
   let tag = naturalFromInteger (integer_of_elf32_sword dyn.elf32_dyn_tag) in
     if tag = 
+*)
     
 val string_of_gnu_ext_dynamic_tag0 : natural -> string
 let {ocaml} string_of_gnu_ext_dynamic_tag0 m =
