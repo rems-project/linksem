@@ -15,11 +15,14 @@ UINT ?= $(CONTRIB)/ocaml-uint/_build/lib
 OCAML_LEM_INCLUDES ?= -I $(LEMDIR)/ocaml-lib/ \
 -I $(LEMDIR)/ocaml-lib/dependencies/zarith/
 
+$(warning MAKECMDGOALS is $(MAKECMDGOALS))
+ifneq ($(MAKECMDGOALS),clean)
 ifeq ($(realpath $(BATTERIES)),)
 $(error Please run `make' in $(REPOROOT)/contrib or set BATTERIES)
 endif
 ifeq ($(realpath $(UINT)),)
 $(error Please run `make' in $(REPOROOT)/contrib or set UINT)
+endif
 endif
 
 LEM_UTIL_SRC := default_printing.lem missing_pervasives.lem show.lem endianness.lem error.lem multimap.lem
