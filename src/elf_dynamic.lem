@@ -542,8 +542,8 @@ let get_string_table_of_elf64_dyn_section endian dyns sht bs0 =
       | _        -> fail "get_string_table_of_elf64_dyn_section: multiple string table entries"
     end
     
-val get_value_of_elf32_dyn : elf32_dyn -> string_table -> error elf32_dyn_value
-let get_value_of_elf32_dyn dyn stab =
+val get_value_of_elf32_dyn : elf32_dyn -> (natural -> bool) -> string_table -> error elf32_dyn_value
+let get_value_of_elf32_dyn dyn os_additional_ranges stab =
   let tag = naturalFromInteger (integer_of_elf32_sword dyn.elf32_dyn_tag) in
     if tag = dt_null then
       return Null
@@ -766,11 +766,13 @@ let get_value_of_elf32_dyn dyn stab =
         | D_Ignored i -> fail "get_value_of_elf32_dyn_entry: PREINIT_ARRAYSZ must be a VAL"
       end >>= fun sz ->
       return (Size sz)
+    else if os_additional_ranges tag then
+      fail "YYY"
     else
-      fail "XXX"
+      fail "get_value_of_elf32_dyn: unrecognised tag type"
       
-val get_value_of_elf64_dyn : elf64_dyn -> string_table -> error elf64_dyn_value
-let get_value_of_elf64_dyn dyn stab =
+val get_value_of_elf64_dyn : elf64_dyn -> (natural -> bool) -> string_table -> error elf64_dyn_value
+let get_value_of_elf64_dyn dyn os_additional_ranges stab =
   let tag = naturalFromInteger (integer_of_elf64_sxword dyn.elf64_dyn_tag) in
     if tag = dt_null then
       return Null
@@ -993,5 +995,7 @@ let get_value_of_elf64_dyn dyn stab =
         | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: PREINIT_ARRAYSZ must be a VAL"
       end >>= fun sz ->
       return (Size sz)
+    else if os_additional_ranges tag then
+      fail "YYY"
     else
-      fail "XXX"
+      fail "get_value_of_elf64_dyn: unrecognised tag type"
