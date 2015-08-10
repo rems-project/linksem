@@ -69,14 +69,14 @@ val linkable_item_of_input_item_and_options : forall 'abifeature. abi 'abifeatur
 let linkable_item_of_input_item_and_options a it opts = 
     match (match it with
         (fname, Reloc(seq), origin) -> 
-            let _ = Missing_pervasives.println ("Considering relocatable file " ^ fname) in
+            let _ = Missing_pervasives.errln ("Considering relocatable file " ^ fname) in
             Elf_file.read_elf64_file seq >>= fun e ->
             return (RelocELF(elf_memory_image_of_elf64_file a fname e), it, opts)
         | (fname, Shared(seq), origin) -> 
-            let _ = Missing_pervasives.println ("Skipping shared object " ^ fname) in 
+            let _ = Missing_pervasives.errln ("Skipping shared object " ^ fname) in 
             fail "unsupported input item"
         | (fname, Script(seq), origin) -> 
-            let _ = Missing_pervasives.println ("Skipping linker script " ^ fname) in
+            let _ = Missing_pervasives.errln ("Skipping linker script " ^ fname) in
             fail "unsupported input item"
         end)
     with
@@ -241,7 +241,7 @@ let resolve_one_reference_default linkables defmap ref_idx_and_ref_and_linkable 
             end
     end
     in 
-    let _ = Missing_pervasives.prints ("Bound a reference from `" 
+    let _ = Missing_pervasives.errs ("Bound a reference from `" 
                 ^ ref.ref_symname ^ "' (" ^ 
                 (if (natural_of_elf64_half ref.ref_syment.elf64_st_shndx) = shn_undef then "UND" else "defined") ^ 
                 " symbol at index " ^ (show ref.ref_sym_idx) ^ " in symtab "
@@ -250,11 +250,11 @@ let resolve_one_reference_default linkables defmap ref_idx_and_ref_and_linkable 
     in
     match (maybe_target_def_idx, maybe_target_def, maybe_target_def_linkable) with
         (Just target_def_idx, Just target_def, Just target_def_linkable) ->
-            let _ = Missing_pervasives.println (" a definition in "^ (show (target_def_linkable)))
+            let _ = Missing_pervasives.errln (" a definition in "^ (show (target_def_linkable)))
             in
             Just(target_def_idx, target_def, target_def_linkable)
     |  (Nothing, Nothing, Nothing) -> 
-            let _ = Missing_pervasives.println " no definition"
+            let _ = Missing_pervasives.errln " no definition"
             in
             Nothing
     | _ -> failwith "impossible: non-matching maybes for target_def_idx and target_def"
@@ -304,13 +304,13 @@ let resolve_undefs_in_one_object linkables all_defs oracle idx =
     in
     let reflist = [(idx, ref, item) | forall (ref MEM all_refs) | true]
     in
-    let _ = Missing_pervasives.println ("object " ^ (show item) ^ " has " ^ 
+    let _ = Missing_pervasives.errln ("object " ^ (show item) ^ " has " ^ 
         (show (List.length reflist)) ^ " reloc references (symname, sym_scn, sym_idx, st_shndx) (" ^ 
         (show (List.map (fun x -> ("\"" ^ x.ref_symname ^ "\"", x.ref_sym_scn, x.ref_sym_idx, x.ref_syment.elf64_st_shndx)) all_refs)) ^ ")")
     in
     let und_reflist = [(idx, ref, ref_item) | forall ((idx, ref, ref_item) MEM reflist) | natural_of_elf64_half ref.ref_syment.elf64_st_shndx = shn_undef]
     in
-    let _ = Missing_pervasives.println ("... of which " ^
+    let _ = Missing_pervasives.errln ("... of which " ^
         (show (List.length und_reflist)) ^ " are to undefined symbols: (symname, sym_scn, sym_idx, st_shndx) (" ^ 
         (show (List.map (fun (idx, x, _) -> ("\"" ^ x.ref_symname ^ "\"", x.ref_sym_scn, x.ref_sym_idx, x.ref_syment.elf64_st_shndx)) und_reflist)) ^ ")")
     in
@@ -355,7 +355,7 @@ let rec accumulate_bindings linkables all_defs fully_bound to_bind bindings_accu
             in
             let new_l_idx_list = Set_extra.toList new_l_idx
             in
-            let _ = Missing_pervasives.println (
+            let _ = Missing_pervasives.errln (
                 if List.null new_l_idx_list 
                 then
                     "Fully bound references in  " ^ (show (List.index linkables (natFromNatural l_idx)))

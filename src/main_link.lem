@@ -88,7 +88,7 @@ let _ =
     in
     let (input_items, item_options) = unzip items_and_options
     in
-    let _ = Missing_pervasives.println ("Got " ^ (show (List.length input_items)) ^ " input items: {"
+    let _ = Missing_pervasives.errln ("Got " ^ (show (List.length input_items)) ^ " input items: {"
         ^ (List.foldl (^) "" (List.map (fun item -> (show item) ^ ",") input_items)) ^ "}")
     in
     let output_file_options
@@ -101,9 +101,9 @@ let _ =
     end
     in
     Byte_sequence.acquire output_file >>= fun out ->
-    let _ = Missing_pervasives.println ("Successfully opened output file") in
+    let _ = Missing_pervasives.errln ("Successfully opened output file") in
     Elf_file.read_elf64_file out >>= fun eout ->
-    let _ = Missing_pervasives.println ("Output file seems to be an ELF file") in
+    let _ = Missing_pervasives.errln ("Output file seems to be an ELF file") in
     let guessed_abi = find (fun a -> a.is_valid_elf_header eout.elf64_file_header) all_abis
     in
     let a = match guessed_abi with
@@ -121,8 +121,8 @@ let _ =
     in return (show v)
   in
     match res with
-      | Fail err  -> Missing_pervasives.println ("[!]: " ^ err)
-      | Success e -> Missing_pervasives.println e
+      | Fail err  -> Missing_pervasives.errln ("[!]: " ^ err)
+      | Success e -> Missing_pervasives.errln e
     end
 
 

@@ -222,6 +222,6 @@ let _ =
     end
   in
     match res with
-      | Fail err  -> Missing_pervasives.println ("[!]: " ^ err)
-      | Success e -> Missing_pervasives.println (show e)
+      | Fail err  -> Missing_pervasives.errln ("[!]: " ^ err)
+      | Success e -> Missing_pervasives.outln (show e)
     end

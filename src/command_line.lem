@@ -437,7 +437,7 @@ let delete_trailing_equals str =
     in
     if [#'='] = drop ((List.length cs) - 1) cs
         then Just (toString (take ((List.length cs) - 1) cs))
-        else (* let _ = Missing_pervasives.println ("No trailing equals: " ^ str)
+        else (* let _ = Missing_pervasives.errln ("No trailing equals: " ^ str)
             in *)
             Nothing
 
@@ -446,7 +446,7 @@ let string_following_equals_at pos str =
     let (first, second) = List.splitAt pos (toCharList str)
     in match second with 
         #'=' :: rest -> Just (toString rest)
-        | _ -> (* let _ = Missing_pervasives.println ("No trailing equals at " ^ (show pos) ^ ": " ^ str)
+        | _ -> (* let _ = Missing_pervasives.errln ("No trailing equals at " ^ (show pos) ^ ": " ^ str)
             in *)
             Nothing
     end
@@ -468,7 +468,7 @@ let equal_modulo_trailing_equals argstr argdef =
         | Nothing -> (* no trailing equals *) argdef = argstr
     end
     in 
-    (* let _ = Missing_pervasives.println ("Do '" ^ argstr ^ "' and '" ^ argdef ^ "' match modulo trailing equals? " ^ (show result))
+    (* let _ = Missing_pervasives.errln ("Do '" ^ argstr ^ "' and '" ^ argdef ^ "' match modulo trailing equals? " ^ (show result))
     in *) result
     
 

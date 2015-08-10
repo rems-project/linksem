@@ -175,7 +175,7 @@ let rec findHighestEquiv equiv k greaterThan subSet maybeBest =
     end
 
 (*
-let _ = Missing_pervasives.println ("choose_and_split {3, 4, 5} is " ^ 
+let _ = Missing_pervasives.errln ("choose_and_split {3, 4, 5} is " ^ 
     (match Set_extra.chooseAndSplit ({3;4;5} : set natural)
      with Just (l, m, r) -> (show (toList l, m, toList r))
      | Nothing -> "Nothing" end))
@@ -220,7 +220,7 @@ let lookupBy equiv k m =
     end
 
 (*
-let _ = Missing_pervasives.println
+let _ = Missing_pervasives.errln
 ("lookupBy testEquiv 4 { (1, 0); (2, 0); (3, 0); (4, 0); (5, 0); (6, 0) } is : "
 ^ (show (lookupBy testEquiv 
 4 ({ (1, 0); (2, 0); (3, 0); (4, 0); (5, 0); (6, 0) } : set (natural * natural)))))

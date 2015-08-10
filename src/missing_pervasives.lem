@@ -294,8 +294,8 @@ let {ocaml} null_char = char_of_byte null_byte
 declare isabelle target_rep function null_char = `0` `::` `8` `word`
 
 (** [println s] prints [s] to stdout, adding a trailing newline. *)
-val println : string -> unit
-declare ocaml target_rep function println = `print_endline`
+(* val println : string -> unit *)
+(* declare ocaml target_rep function println = `print_endline` *)
 
 (** [prints s] prints [s] to stdout, without adding a trailing newline. *)
 (* val prints : string -> unit *)
@@ -303,19 +303,19 @@ declare ocaml target_rep function println = `print_endline`
 
 (** [errln s] prints [s] to stderr, adding a trailing newline. *)
 val errln : string -> unit
-declare ocaml target_rep function prerrln = `prerr_endline`
+declare ocaml target_rep function errln = `prerr_endline`
 
 (** [errs s] prints [s] to stderr, without adding a trailing newline. *)
 val errs : string -> unit
-declare ocaml target_rep function prerrs = `prerr_string`
+declare ocaml target_rep function errs = `prerr_string`
 
 (** [outln s] prints [s] to stdout, adding a trailing newline. *)
 val outln : string -> unit
-declare ocaml target_rep function println = `print_endline`
+declare ocaml target_rep function outln = `print_endline`
 
 (** [outs s] prints [s] to stdout, without adding a trailing newline. *)
 val outs : string -> unit
-declare ocaml target_rep function prints = `print_string`
+declare ocaml target_rep function outs = `print_string`
 
 (** [split_string_on_char s c] splits a string [s] into a list of substrings
   * on character [c], otherwise returning the singleton list containing [s]
@@ -332,7 +332,7 @@ declare isabelle target_rep function split_string_on_char = `Elf_Types_Local.spl
 
 assert split_string_null : (let afterSplit = split_string_on_char (toString ([null_char; #'s'; null_char; #'t']: list char)) null_char
     in 
-    let _ = println ("split string is " ^ (show afterSplit))
+    let _ = errln ("split string is " ^ (show afterSplit))
     in
     afterSplit = [""; "s"; "t"])
     
@@ -427,7 +427,7 @@ let rec list_reverse_concat_map_helper f acc ll =
             (* item is a thing that maps to a list. it needn't be a list yet *)
             let mapped_list = f item
             in 
-            (* let _ = Missing_pervasives.println ("Map function gave us a list of " ^ (show (List.length mapped_list)) ^ " items") in *)
+            (* let _ = Missing_pervasives.errln ("Map function gave us a list of " ^ (show (List.length mapped_list)) ^ " items") in *)
             list_reverse_concat_map_helper f (List.foldl lcons acc (f item)) items
     end
 
@@ -436,7 +436,7 @@ let list_reverse_concat_map f ll = list_reverse_concat_map_helper f [] ll
 
 val list_take_with_accum : forall 'a. nat -> list 'a -> list 'a -> list 'a
 let rec list_take_with_accum n reverse_acc l =
-  (*  let _ = Missing_pervasives.prints ("Taking a byte; have accumulated " ^ (show (List.length acc) ^ " so far\n"))
+  (*  let _ = Missing_pervasives.errs ("Taking a byte; have accumulated " ^ (show (List.length acc) ^ " so far\n"))
    in *)
    match n with
         0 -> List.reverse reverse_acc

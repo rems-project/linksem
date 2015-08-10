@@ -91,7 +91,7 @@ let link script a options linkables =
     )) (Map.empty : Map.map natural (symbol_reference * linkable_item)) accumulated_bindings
     in
     (* Print something similar to GNU ld's linker map output, about include archive members. *)
-    let _ = Missing_pervasives.println "Archive member included to satisfy reference by file (symbol)\n" in
+    let _ = Missing_pervasives.outln "Archive member included to satisfy reference by file (symbol)\n" in
     let linkables_not_discarded = mapMaybei (fun i -> (fun (obj, inp, opts) -> 
         let referenced_object_map_entry = Map.lookup i referenced_object_indices_and_reasons
         in
@@ -118,7 +118,7 @@ let link script a options linkables =
                             then ("\n" ^ (makeString 30 #' '))
                             else makeString (30 - lhs_name_len) #' '
                         in
-                        Missing_pervasives.println (
+                        Missing_pervasives.outln (
                             lhs_name ^ spacing ^ 
                             (match ref_origin with
                                 (_, InArchive(bid, bidx, bname) :: _) -> bname ^ "(" ^ ref_name ^ ")"

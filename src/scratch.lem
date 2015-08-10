@@ -21,6 +21,6 @@ let _ =
     return (gnu_ext_extract_elf32_earliest_compatible_kernel endian ef1.elf32_file_section_header_table sect_hdr bs0)
   in
     match res with
-      | Fail err  -> println err
-      | Success s -> println (show s)
+      | Fail err  -> outln err
+      | Success s -> outln (show s)
     end

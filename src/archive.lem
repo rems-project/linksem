@@ -34,7 +34,7 @@ let read_archive_entry_header seq_length seq =
     match seq with
       | Sequence bs ->
         let header_length = 60 in
-        (* let _ = Missing_pervasives.prints ("Archive entry header? " ^ (show (take 16 bs)) ^ "? ") in *)
+        (* let _ = Missing_pervasives.errs ("Archive entry header? " ^ (show (take 16 bs)) ^ "? ") in *)
         partition_with_length header_length seq_length seq >>= fun (header, rest) -> 
         offset_and_cut 58 2 header >>= fun magic -> 
         offset_and_cut 0  16 header >>= fun name -> 
@@ -44,7 +44,7 @@ let read_archive_entry_header seq_length seq =
         offset_and_cut 40 8  header >>= fun mode_str -> 
         offset_and_cut 48 10 header >>= fun size_str -> 
         let size = natural_of_decimal_string (string_of_byte_sequence size_str) in 
-                (* let _ = Missing_pervasives.println (": yes, size " ^ (show size)) in *)
+                (* let _ = Missing_pervasives.errln (": yes, size " ^ (show size)) in *)
         return (<| name = string_of_byte_sequence name; timestamp = (0 : natural) (* FIXME *);
           uid = 0 (* FIXME *) ; gid = 0 (* FIXME *) ; mode = 0 (* FIXME *);
             size = unsafe_nat_of_natural size (* FIXME *) |>, seq_length - header_length, rest)
@@ -54,31 +54,31 @@ val read_archive_global_header : byte_sequence -> error (archive_global_header *
 let read_archive_global_header seq =
   match seq with
     | Sequence bs ->
-            (* let _ = Missing_pervasives.prints ("Archive? " ^ (show (take 16 bs)) ^ "? ")
+            (* let _ = Missing_pervasives.errs ("Archive? " ^ (show (take 16 bs)) ^ "? ")
             in*)
       let chars = List.map char_of_byte (take 8 bs) in 
         if toString chars = "!<arch>\n" then
-          (* let _ = Missing_pervasives.println ": yes" in *)
+          (* let _ = Missing_pervasives.errln ": yes" in *)
           return (chars, Sequence(drop 8 bs))
         else
-          (* let _ = Missing_pervasives.println ": no" in *)
+          (* let _ = Missing_pervasives.errln ": no" in *)
           fail "read_archive_global_header: not an archive"
     end
 
 val accum_archive_contents : (list (string * byte_sequence)) -> natural -> byte_sequence -> error (list (string * byte_sequence))
 let rec accum_archive_contents accum whole_seq_length whole_seq = 
-  (* let _ = Missing_pervasives.prints "Can read a header? " in *)
+  (* let _ = Missing_pervasives.errs "Can read a header? " in *)
   Error.with_success (read_archive_entry_header whole_seq_length whole_seq) (return accum) (fun (hdr, (seq_length : natural), seq) ->
     match seq with
       | Sequence next_bs ->
-        (* let _ = Missing_pervasives.println ("yes; next_bs has length " ^ (show (List.length next_bs))) in *)
+        (* let _ = Missing_pervasives.errln ("yes; next_bs has length " ^ (show (List.length next_bs))) in *)
         let amount_to_drop =
           if hdr.size mod 2 = 0 then
             (naturalFromNat hdr.size)
           else
             (naturalFromNat hdr.size) + 1
         in
-        (* let _ = Missing_pervasives.println ("amount_to_drop is " ^ (show amount_to_drop)) in *)
+        (* let _ = Missing_pervasives.errln ("amount_to_drop is " ^ (show amount_to_drop)) in *)
         (* Skip the '//' magic entries *)
         let new_accum =
           match toCharList hdr.name with
@@ -94,5 +94,5 @@ val read_archive : byte_sequence -> error (list (string * byte_sequence))
 let read_archive bs = 
   read_archive_global_header bs >>= fun (hdr, seq) -> 
   let result = accum_archive_contents [] (Byte_sequence.length seq) seq  in 
-  (* let _ = Missing_pervasives.println "Finished reading archive" in *)
+  (* let _ = Missing_pervasives.errln "Finished reading archive" in *)
   result

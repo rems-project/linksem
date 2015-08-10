@@ -150,12 +150,12 @@ let find_one_library_filename options str =
 
 val is_elf64_with_type : elf64_half -> byte_sequence -> bool
 let is_elf64_with_type typ seq = 
-    (*let _ = Missing_pervasives.prints ("elf64? " ^ 
+    (*let _ = Missing_pervasives.errs ("elf64? " ^ 
         (match seq with Sequence(bs) -> show (List.take 16 bs) end))
     in*)
     match Elf_file.read_elf64_file seq with
-    Success(e) -> (* let _ = Missing_pervasives.println ": yes" in *) (e.elf64_file_header.elf64_type = typ)
-    | Fail _ -> (* let _ = Missing_pervasives.println ": no" in *) false
+    Success(e) -> (* let _ = Missing_pervasives.errln ": yes" in *) (e.elf64_file_header.elf64_type = typ)
+    | Fail _ -> (* let _ = Missing_pervasives.errln ": no" in *) false
     end
 
 val is_archive : byte_sequence -> bool
@@ -179,7 +179,7 @@ let open_file_and_expand toplevel_fname u fpos =
                         match read_archive seq with
                             Fail _ -> failwith ("could not read archive " ^ toplevel_fname)
                             | Success (pairs : list (string * byte_sequence)) -> 
-                                let _ = Missing_pervasives.println (toplevel_fname ^ " is an archive with " ^ (show (List.length pairs)) ^ " members")
+                                let _ = Missing_pervasives.errln (toplevel_fname ^ " is an archive with " ^ (show (List.length pairs)) ^ " members")
                                 in 
                                 let not_elf = List.filter (fun (inner_fname, seq) -> not (is_elf64_with_type (elf64_half_of_natural elf_ft_rel) seq)) pairs 
                                 in

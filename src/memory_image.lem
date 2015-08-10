@@ -322,7 +322,7 @@ let rec expand_sorted_ranges sorted_ranges min_length accum =
         [] -> accum ++ (
             let pad_length = max 0 (min_length - (Missing_pervasives.length accum))
             in
-            (* let _ = Missing_pervasives.println (
+            (* let _ = Missing_pervasives.errln (
                 "padding ranges cares list with " ^ (show pad_length) ^ 
                 " cares (accumulated " ^ (show (Missing_pervasives.length accum)) ^ 
                 ", min length " ^ (show min_length) ^ ")")
@@ -390,28 +390,28 @@ let append_to_byte_pattern_at_offset offset pat1 pat2 =
 
 val accum_pattern_possible_starts_in_one_byte_sequence : list (maybe byte) -> nat -> list byte -> nat -> natural -> list natural -> list natural
 let rec accum_pattern_possible_starts_in_one_byte_sequence pattern pattern_len seq seq_len offset accum =
-    (* let _ = Missing_pervasives.prints ("At offset " ^ (show offset) ^ "... ")
+    (* let _ = Missing_pervasives.errs ("At offset " ^ (show offset) ^ "... ")
     in *)
     match pattern with
-        [] -> (* let _ = Missing_pervasives.prints ("terminating with hit (empty pattern)\n") in *)
+        [] -> (* let _ = Missing_pervasives.errs ("terminating with hit (empty pattern)\n") in *)
             offset :: accum
         | bpe :: more_bpes -> (* nonempty, so check for nonempty seq *)
             match seq with 
-                [] -> (*let _ = Missing_pervasives.prints ("terminating with miss (empty pattern)\n") 
+                [] -> (*let _ = Missing_pervasives.errs ("terminating with miss (empty pattern)\n") 
                     in *) accum (* ran out of bytes in the sequence, so no match *)
                 | byte :: more_bytes -> let matched_this_byte = 
                             byte_option_matches_byte bpe byte
                        in
-                       (* let _ = Missing_pervasives.prints ("Byte " ^ (show byte) ^ " matched " ^ (show byte_pattern) ^ "? " ^ (show matched_this_byte) ^ "; ") 
+                       (* let _ = Missing_pervasives.errs ("Byte " ^ (show byte) ^ " matched " ^ (show byte_pattern) ^ "? " ^ (show matched_this_byte) ^ "; ") 
                        in *)
                        let sequence_long_enough = (seq_len >= pattern_len) 
                        in
-                       (* let _ = Missing_pervasives.prints ("enough bytes remaining (" ^ (show seq_len) ^ ") to match rest of pattern (" ^ (show pattern_len) ^ ")? " ^ (show sequence_long_enough) ^ "; ") 
+                       (* let _ = Missing_pervasives.errs ("enough bytes remaining (" ^ (show seq_len) ^ ") to match rest of pattern (" ^ (show pattern_len) ^ ")? " ^ (show sequence_long_enough) ^ "; ") 
                        in *)
                        let matched_here = matched_this_byte && sequence_long_enough &&
                         byte_list_matches_pattern more_bpes more_bytes
                        in
-                       (* let _ = Missing_pervasives.prints ("matched pattern anchored here? " ^ (show matched_this_byte) ^ "\n") 
+                       (* let _ = Missing_pervasives.errs ("matched pattern anchored here? " ^ (show matched_this_byte) ^ "\n") 
                        in *)
                        accum_pattern_possible_starts_in_one_byte_sequence 
                            pattern pattern_len 
@@ -423,7 +423,7 @@ let rec accum_pattern_possible_starts_in_one_byte_sequence pattern pattern_len s
 
 val pattern_possible_starts_in_one_byte_sequence : list (maybe byte) -> list byte -> natural -> list natural
 let pattern_possible_starts_in_one_byte_sequence pattern seq offset =
-    (* let _ = Missing_pervasives.prints ("Looking for matches of " ^
+    (* let _ = Missing_pervasives.errs ("Looking for matches of " ^
         (show (List.length pattern)) ^ "-byte pattern in " ^ (show (List.length seq)) ^ "-byte region\n")
     in *)
     accum_pattern_possible_starts_in_one_byte_sequence pattern (List.length pattern) seq (List.length seq) offset []
