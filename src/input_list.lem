@@ -38,12 +38,12 @@ type input_blob =  Reloc of byte_sequence
 (* We remember where the input item came from on the command line,
  * using "coordinates" identifying the index in the higher-up list
  * followed by the index within that item. *)
-type origin_coord = InArchive of (natural * natural) (* archive-id, pos-within-archive *)
+type origin_coord = InArchive of (natural * natural * string) (* archive-id, pos-within-archive, archive-name *)
                   | InGroup of (natural * natural)   (* group-id, pos-within-group *)
 
 val string_of_origin_coord : origin_coord -> string
 let string_of_origin_coord c = match c with
-    InArchive(aid, aidx) -> "at position " ^ (show aidx) ^ " within archive at position " ^ (show aid)
+    InArchive(aid, aidx, aname) -> "at position " ^ (show aidx) ^ " within archive " ^ aname ^ " (at position " ^ (show aid) ^ ")"
     | InGroup(gid, gidx) -> "at position " ^ (show gidx) ^ " within group at position " ^ (show gid)
 end
 
@@ -166,32 +166,40 @@ let is_archive seq =
     end
 
 val open_file_and_expand : string -> input_unit -> natural -> list input_item
-let open_file_and_expand fname u fpos = 
-    match Byte_sequence.acquire fname with
-        Fail _ -> failwith ("could not open file " ^ fname)
+let open_file_and_expand toplevel_fname u fpos = 
+    match Byte_sequence.acquire toplevel_fname with
+        Fail _ -> failwith ("could not open file " ^ toplevel_fname)
         | Success seq ->
             if is_elf64_with_type (elf64_half_of_natural elf_ft_rel) seq 
-            then [(fname, Reloc(seq), (u, []))]
+            then [(toplevel_fname, Reloc(seq), (u, []))]
             else if is_elf64_with_type (elf64_half_of_natural elf_ft_dyn) seq 
-                then [(fname, Shared(seq), (u, []))]
+                then [(toplevel_fname, Shared(seq), (u, []))]
                 else if is_archive seq 
                     then
                         match read_archive seq with
-                            Fail _ -> failwith ("could not read archive " ^ fname)
-                            | Success pairs -> 
-                                let _ = Missing_pervasives.println (fname ^ " is an archive with " ^ (show (List.length pairs)) ^ " members")
+                            Fail _ -> failwith ("could not read archive " ^ toplevel_fname)
+                            | Success (pairs : list (string * byte_sequence)) -> 
+                                let _ = Missing_pervasives.println (toplevel_fname ^ " is an archive with " ^ (show (List.length pairs)) ^ " members")
                                 in 
-                                let not_elf = List.filter (fun (fname, seq) -> not (is_elf64_with_type (elf64_half_of_natural elf_ft_rel) seq)) pairs 
+                                let not_elf = List.filter (fun (inner_fname, seq) -> not (is_elf64_with_type (elf64_half_of_natural elf_ft_rel) seq)) pairs 
                                 in
                                 if List.length not_elf = 0 
                                 then mapMaybei 
-                                    (fun (i : natural) -> (fun (fname, seq) -> 
-                                        Just (fname, Reloc(seq), (u, [InArchive(fpos, i)]))
+                                    (fun (i : natural) -> (fun ((inner_fname : string), seq) -> 
+                                        let (trimmed_inner_fname : string) = match ((string_index_of #'/' inner_fname) : maybe natural) with
+                                            Nothing -> inner_fname
+                                            | Just (ind : natural) -> match string_prefix ind inner_fname with
+                                                Just s -> s
+                                                | Nothing -> failwith "impossible: string has character index >= its length"
+                                            end
+                                        end
+                                        in
+                                        Just (trimmed_inner_fname, Reloc(seq), (u, [InArchive(fpos, i, toplevel_fname)]))
                                     )) pairs
                                 else let (names, seqs) = unzip not_elf in 
                                     failwith ("archive with unsupported contents (" ^ (show names) ^ ")")
                 end
-            else [(fname, Script(seq), (u, []))]
+            else [(toplevel_fname, Script(seq), (u, []))]
     end
 
 val make_input_items_and_options : list input_item -> Command_line.input_file_options -> list origin_coord -> list (input_item * input_options)

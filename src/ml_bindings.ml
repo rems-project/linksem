@@ -117,7 +117,7 @@ let string_prefix index str =
   		Some (String.sub str 0 idx)
 ;;
 
-let string_index (c: char) (s : string) = try Some(Nat_big_num.of_int (String.index s c))
+let string_index_of (c: char) (s : string) = try Some(Nat_big_num.of_int (String.index s c))
     with Not_found -> None
 ;;
 

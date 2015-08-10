@@ -66,12 +66,6 @@ let expand_sections a item = match item with
     | _ -> failwith "non-reloc linkable not supported yet"
 end
 
-val build_memory_image : output_section_spec -> elf_memory_image
-let build_memory_image os = 
-    (* <| *)
-        empty_elf_memory_image
-    (* |> *)
-
 val link : linker_control_script -> abi any_abi_feature -> list Command_line.link_option -> linkable_list -> elf_memory_image
 let link script a options linkables = 
     let initial_included_indices = mapMaybei (fun i -> (fun (obj, inp, (opts : input_options)) -> 
@@ -80,20 +74,64 @@ let link script a options linkables =
         else Nothing
     )) linkables
     in
-    let (accumulated_bindings : list ((natural * symbol_reference) * maybe (natural * symbol_definition)))
+    let (accumulated_bindings : list ((natural * symbol_reference * linkable_item) * maybe (natural * symbol_definition * linkable_item)))
      = accumulate_bindings linkables (all_definitions_by_name linkables) {} initial_included_indices [] 
     in
-    let referenced_object_indices = Set.fromList (mapMaybe (fun ((ref_idx, ref_sym), maybe_def_idx_and_sym) -> 
-        match maybe_def_idx_and_sym with
-            Nothing -> Nothing
-            | Just (def_idx, def_sym) -> Just def_idx
+    (* Keep a map whose keys are referenced objects, and whose values are 
+     * *some* (diagnostic purposes only) reference to that linkable. *)
+    let referenced_object_indices_and_reasons = List.foldl (fun acc_m -> (fun ((ref_idx, ref_sym, ref_linkable), maybe_def_idx_and_sym_and_linkable) -> 
+        match maybe_def_idx_and_sym_and_linkable with
+            Nothing -> acc_m
+            | Just (def_idx, def_sym, def_linkable) -> 
+                (* Make sure the map contains this key. *)
+                if Map.lookup def_idx acc_m = Nothing 
+                    then Map.insert def_idx (ref_sym, ref_linkable) acc_m
+                    else acc_m
         end
-    ) accumulated_bindings)
+    )) (Map.empty : Map.map natural (symbol_reference * linkable_item)) accumulated_bindings
     in
+    (* Print something similar to GNU ld's linker map output, about include archive members. *)
+    let _ = Missing_pervasives.println "Archive member included to satisfy reference by file (symbol)\n" in
     let linkables_not_discarded = mapMaybei (fun i -> (fun (obj, inp, opts) -> 
-        if Set.member i referenced_object_indices || opts.item_force_output 
-        then let _ = Missing_pervasives.println ("Did not discard: " ^ (show inp))
-            in Just (obj, inp, opts) 
+        let referenced_object_map_entry = Map.lookup i referenced_object_indices_and_reasons
+        in
+        let referenced = (referenced_object_map_entry <> Nothing)
+        in
+        (* Print our link map thing *)
+        let _ = (
+            if (not referenced) then () else
+                (* Did it come from an archive? *)
+                let (name, _, (inp_unit, coordlist)) = inp in
+                match coordlist with
+                    InArchive(aid, aidx, aname) :: _ ->
+                        (* yes, from an archive, so print a line *)
+                        let (ref_sym, (ref_obj, (ref_name, ref_blob, ref_origin), ref_opts)) = match referenced_object_map_entry with
+                            Just(x, y) -> (x, y)
+                            | Nothing -> failwith "impossible: referenced item has no definition"
+                        end
+                        in
+                        let lhs_name = aname ^ "(" ^ name ^ ")"
+                        in
+                        let lhs_name_len = stringLength lhs_name
+                        in
+                        let spacing = if lhs_name_len >= 30
+                            then ("\n" ^ (makeString 30 #' '))
+                            else makeString (30 - lhs_name_len) #' '
+                        in
+                        Missing_pervasives.println (
+                            lhs_name ^ spacing ^ 
+                            (match ref_origin with
+                                (_, InArchive(bid, bidx, bname) :: _) -> bname ^ "(" ^ ref_name ^ ")"
+                                | _ -> ref_name
+                            end)
+                            ^ " (" ^ ref_sym.ref_symname ^ ")"
+                        )
+                    | _ (* not from an archive *) -> ()
+                end
+        )
+        in
+        if referenced || opts.item_force_output 
+        then Just (obj, inp, opts) 
         else Nothing
     )) linkables
     in
@@ -101,6 +139,4 @@ let link script a options linkables =
     in
     let output_image = interpret_linker_control_script script input_sections 
     in
-    output_image (*
-    build_memory_image output_sections
-    *)
+    output_image

@@ -75,7 +75,7 @@ let get_string_at index tbl =
     | Nothing     -> Fail ("get_string_at: invalid index (" ^ (show index) ^ ") into string")
     | Just suffix ->
       let delim = get_delimiting_character tbl in
-      match string_index delim suffix with
+      match string_index_of delim suffix with
         Just(idx) -> match string_prefix idx suffix with
             Just(s) -> Success s
             | Nothing -> Fail ("get_string_at: impossible: index (" ^ (show idx) ^ ")")

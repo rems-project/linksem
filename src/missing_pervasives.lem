@@ -340,11 +340,11 @@ val string_prefix : natural -> string -> maybe string
 declare ocaml target_rep function string_prefix = `Ml_bindings.string_prefix`
 (* FIXME: isabelle *)
 
-(** [string_index c s] returns [Just(i)] where [i] is the index of the first 
+(** [string_index_of c s] returns [Just(i)] where [i] is the index of the first 
   * occurrence if [c] in [s], if it exists, otherwise returns [Nothing]. *)
-val string_index : char -> string -> maybe natural
+val string_index_of : char -> string -> maybe natural
 
-declare ocaml target_rep function string_index = `Ml_bindings.string_index`
+declare ocaml target_rep function string_index_of = `Ml_bindings.string_index_of`
 (* FIXME: isabelle *)
 
 val index : forall 'a. natural -> list 'a -> maybe 'a

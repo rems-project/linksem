@@ -136,7 +136,7 @@ type binding_oracle =
     linkable_list 
     -> Map.map string (list (natural * symbol_definition * linkable_item))
     -> (natural * symbol_reference * linkable_item)
-    -> maybe (natural * symbol_definition)
+    -> maybe (natural * symbol_definition * linkable_item)
 
 val resolve_one_reference_default : binding_oracle
 let resolve_one_reference_default linkables defmap ref_idx_and_ref_and_linkable =
@@ -179,10 +179,10 @@ let resolve_one_reference_default linkables defmap ref_idx_and_ref_and_linkable 
         let (def_u, def_coords) = def_origin
         in
         let (def_in_group, def_in_archive) = match def_coords with
-              InArchive(aid, aidx) :: InGroup(gid, gidx) :: [] -> (Just gid, Just aid)
-            | InArchive(aid, aidx) :: []                       -> (Nothing, Just aid)
-            | InGroup(gid, gidx) :: []                         -> (Just gid, Nothing)
-            | []                                               -> (Nothing, Nothing)
+              InArchive(aid, aidx, _) :: InGroup(gid, gidx) :: [] -> (Just gid, Just aid)
+            | InArchive(aid, aidx, _) :: []                       -> (Nothing, Just aid)
+            | InGroup(gid, gidx) :: []                            -> (Just gid, Nothing)
+            | []                                                  -> (Nothing, Nothing)
             | _ -> failwith "internal error: didn't understand origin coordinates of definition"
         end
         in
@@ -193,7 +193,7 @@ let resolve_one_reference_default linkables defmap ref_idx_and_ref_and_linkable 
               Nothing -> false
             | Just def_gid -> 
                 match ref_coords with
-                  InArchive(_, _) :: InGroup(def_gid, _) :: [] -> true
+                  InArchive(_, _, _) :: InGroup(def_gid, _) :: [] -> true
                 | InGroup(def_gid, _) :: []                    -> true
                 | _ -> false
                 end
@@ -201,7 +201,7 @@ let resolve_one_reference_default linkables defmap ref_idx_and_ref_and_linkable 
         in
         (* but maybe same archive? *)
         let ref_and_def_are_in_same_archive = match (def_coords, ref_coords) with
-            ([InArchive(x1, _)], [InArchive(x2, _)]) -> x1 = x2
+            ([InArchive(x1, _, _)], [InArchive(x2, _, _)]) -> x1 = x2
             | _ -> false
         end
         in
@@ -252,7 +252,7 @@ let resolve_one_reference_default linkables defmap ref_idx_and_ref_and_linkable 
         (Just target_def_idx, Just target_def, Just target_def_linkable) ->
             let _ = Missing_pervasives.println (" a definition in "^ (show (target_def_linkable)))
             in
-            Just(target_def_idx, target_def)
+            Just(target_def_idx, target_def, target_def_linkable)
     |  (Nothing, Nothing, Nothing) -> 
             let _ = Missing_pervasives.println " no definition"
             in
@@ -265,9 +265,9 @@ val resolve_all :
     -> Map.map string (list (natural * symbol_definition * linkable_item))                (* all definitions *)
     -> binding_oracle
     -> list (natural * symbol_reference * linkable_item)
-    -> list ((natural * symbol_reference) * maybe (natural * symbol_definition))
+    -> list ((natural * symbol_reference * linkable_item) * maybe (natural * symbol_definition * linkable_item))
 let resolve_all linkables all_defs oracle refs = 
-    List.map (fun (ref_idx, ref, ref_linkable) -> ((ref_idx, ref), (oracle linkables all_defs (ref_idx, ref, ref_linkable)))) refs
+    List.map (fun (ref_idx, ref, ref_linkable) -> ((ref_idx, ref, ref_linkable), (oracle linkables all_defs (ref_idx, ref, ref_linkable)))) refs
 
 (* To accumulate which inputs are needed, we build a list of all symbol definitions 
  * in the linkable list, then  We work with a list of undefineds, starting with this in the 
@@ -277,7 +277,7 @@ val resolve_undefs_in_one_object :
     -> Map.map string (list (natural * symbol_definition * linkable_item))                (* all definitions *)
     -> binding_oracle
     -> natural
-    -> list ((natural * symbol_reference) * maybe (natural * symbol_definition))
+    -> list ((natural * symbol_reference * linkable_item) * maybe (natural * symbol_definition * linkable_item))
 let resolve_undefs_in_one_object linkables all_defs oracle idx =
     (* Get this object's list of references *)
     let item = match List.index linkables (natFromNatural idx) with
@@ -321,8 +321,8 @@ val accumulate_bindings :
     -> Map.map string (list (natural * symbol_definition * linkable_item))                (* all definitions *)
     -> set natural                                       (* inputs fully-bound so far *)
     -> list natural                                       (* ordered list of inputs to bind next *)
-    -> list ((natural * symbol_reference) * maybe (natural * symbol_definition))  (* bindings made so far *)
-    -> list ((natural * symbol_reference) * maybe (natural * symbol_definition))  (* all accumulated bindings bindings *)
+    -> list ((natural * symbol_reference * linkable_item) * maybe (natural * symbol_definition * linkable_item))  (* bindings made so far *)
+    -> list ((natural * symbol_reference * linkable_item) * maybe (natural * symbol_definition * linkable_item))  (* all accumulated bindings bindings *)
 let rec accumulate_bindings linkables all_defs fully_bound to_bind bindings_accum =
     (* This is like foldl, except that each stage
      * can add stuff to the work list *)
@@ -340,9 +340,9 @@ let rec accumulate_bindings linkables all_defs fully_bound to_bind bindings_accu
             in
             (* Which of the new bindings are to objects 
              * not yet fully bound or not yet in the to-bind list? *)
-            let new_bindings_def_idx = list_concat_map (fun (ref, maybe_def_and_idx) -> 
-                match maybe_def_and_idx with 
-                    Just (def_idx, def) -> [def_idx]
+            let new_bindings_def_idx = list_concat_map (fun (ref, maybe_def_and_idx_and_linkable) -> 
+                match maybe_def_and_idx_and_linkable with 
+                    Just (def_idx, def, def_linkable) -> [def_idx]
                     | Nothing -> []
                 end
             ) new_bindings 

@@ -769,6 +769,7 @@ let rec accumulate_image acc inputs cur_output_sec last_input_sec script =
                     (* NOTE that this sub-accumulation will never add a new output section
                      * because output sections can't nest. *)
                     in
+                    (* FIXME: place any orphans. PROBLEM: linkers are allowed to differ in how they do this. *)
                     (new_acc, cur_output_sec, last_input_sec) 
                 | DiscardSection(selector) -> do_nothing
                 | InputQuery(retainpol, sortpol, selector) -> 
@@ -792,24 +793,10 @@ let rec accumulate_image acc inputs cur_output_sec last_input_sec script =
                     end
             end
             in
-(*
-val accumulate_image : 
-    elf_memory_image -> 
-    list input_spec -> 
-    maybe output_section_spec ->  
-    maybe input_spec ->   
-    linker_control_script -> 
-    elf_memory_image
-*)
-            let app1 = accumulate_image (new_acc : elf_memory_image)
-            in
-            let app2 = app1 (inputs : list input_spec) 
-            in
-            let app3 = app2 (new_cur_output_sec : maybe output_section_spec)
-            in
-            let app4 = app3 (new_last_input_sec : maybe input_spec)
-            in
-            app4 (more_elements : linker_control_script)
+            accumulate_image (new_acc : elf_memory_image) (inputs : list input_spec) 
+                (new_cur_output_sec : maybe output_section_spec)
+                (new_last_input_sec : maybe input_spec)
+                (more_elements : linker_control_script)
     end
 
 (* Now we need to write an interpreter for all that. *)

@@ -118,7 +118,7 @@ let unique_tag_matching tag img =
             ^  ") when asserted unique")
     end
     
-val tagged_ranges_matching_tag : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature => range_tag 'abifeature -> annotated_memory_image 'abifeature -> list (range_tag 'abifeature * element_range)
+val tagged_ranges_matching_tag : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature => range_tag 'abifeature -> annotated_memory_image 'abifeature -> list (range_tag 'abifeature * maybe element_range)
 let tagged_ranges_matching_tag tag img = 
     Multimap.lookupBy tagEquiv tag img.by_tag
 
@@ -126,7 +126,7 @@ val element_range_compare : element_range -> element_range -> Basic_classes.orde
 let element_range_compare = pairCompare compare compare
 
 val unique_tag_matching_at_range_exact : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature =>
-    element_range
+    maybe element_range
     -> range_tag 'abifeature
     -> annotated_memory_image 'abifeature
     -> range_tag 'abifeature

@@ -63,15 +63,15 @@ let elf_memory_image_of_elf64_file a fname f =
                 )) f.elf64_file_interpreted_sections
                 in
                 (* -- annotations are reloc sites, symbol defs, ELF sections/segments/headers, PLT/GOT/...  *)
-                let (elf_sections : list (element_range * elf_range_tag)) = mapMaybei (fun secidx -> (
+                let (elf_sections : list (maybe element_range * elf_range_tag)) = mapMaybei (fun secidx -> (
                     (fun (isec, (secname, _)) -> 
-                        let (r : element_range) = ((secname, (0, isec.elf64_section_size)))
+                        let (r : maybe element_range) = (Just(secname, (0, isec.elf64_section_size)))
                         in
                         Just (r, FileFeature(ElfSection(secidx, isec)))
                     )))
                     (zip f.elf64_file_interpreted_sections section_names_and_elements)
                 in
-                let (symbol_defs : list (element_range * elf_range_tag)) = mapMaybe
+                let (symbol_defs : list (maybe element_range * elf_range_tag)) = mapMaybe
                     (fun x -> 
                         let section_num = natural_of_elf64_half x.def_syment.elf64_st_shndx
                         in
@@ -84,7 +84,7 @@ let elf_memory_image_of_elf64_file a fname f =
                                 | Nothing -> failwith ("symbol " ^ x.def_symname ^ " references nonexistent section")
                             end
                             in
-                            Just ((section_name, (natural_of_elf64_addr x.def_syment.elf64_st_value, natural_of_elf64_xword x.def_syment.elf64_st_size)), SymbolDef(x))
+                            Just (Just(section_name, (natural_of_elf64_addr x.def_syment.elf64_st_value, natural_of_elf64_xword x.def_syment.elf64_st_size)), SymbolDef(x))
                     )
                     (extract_definitions_from_symtab_of_type sht_symtab f)
                 in
@@ -110,6 +110,8 @@ let elf_memory_image_of_elf64_file a fname f =
                     )
                     (extract_all_relocs_as_symbol_references fname f)
                 in
+                let all_reloc_pairs = List.map (fun (el_range, r_tag) -> (Just el_range, r_tag)) all_reloc_sites
+                in
                 let reloc_as_triple = fun (_, x) -> (match x with
                             RelocationSite(r) -> 
                                     (r.ref_rel_scn, r.ref_rel_idx, r.ref_src_scn)
@@ -126,11 +128,11 @@ let elf_memory_image_of_elf64_file a fname f =
                 let _ = Missing_pervasives.println ("Re-reading: retrieved " ^ (show (length retrieved_reloc_sites)) ^ " reloc site tags from "
                     ^ "file " ^ fname ^ ": " ^ (show (List.map reloc_as_triple (let (fst, snd) = unzip retrieved_reloc_sites in zip snd fst))))
                 in
-                let elf_header = [(("header", (0, natural_of_elf64_half f.elf64_file_header.elf64_ehsize)), FileFeature(ElfHeader(f.elf64_file_header)))]
+                let elf_header = [(Just("header", (0, natural_of_elf64_half f.elf64_file_header.elf64_ehsize)), FileFeature(ElfHeader(f.elf64_file_header)))]
                 in
                 let _ = Missing_pervasives.println ("ELF header contributes " ^ (show (List.length elf_header)) ^ " annotations.")
                 in
-                let all_annotations_list =  all_reloc_sites ++ symbol_defs ++ elf_sections ++ elf_header
+                let all_annotations_list = all_reloc_pairs ++ symbol_defs ++ elf_sections ++ elf_header
                 in
                 let all_annotations_length = List.length all_annotations_list
                 in
@@ -138,10 +140,10 @@ let elf_memory_image_of_elf64_file a fname f =
                 in
                 let all_annotations = Set.fromList all_annotations_list
                 in
-                let (apply_content_relocations : string -> byte_pattern -> byte_pattern) = (fun name -> (fun content -> 
-                    let this_element_reloc_annotations = List.filter (fun ((n, range), _) -> name = n) all_reloc_sites
+                let (apply_content_relocations : string -> byte_pattern -> byte_pattern) = (fun (name : string) -> (fun content -> 
+                    let this_element_reloc_sites = List.filter (fun ((n, range), _) -> name = n) all_reloc_sites
                     in
-                    let ((this_element_name_and_reloc_ranges : list (string * (natural * natural))), _) = unzip this_element_reloc_annotations
+                    let ((this_element_name_and_reloc_ranges : list (string * (natural * natural))), _) = unzip this_element_reloc_sites
                     in
                     let (this_element_reloc_ranges : list (natural * natural)) = snd (unzip this_element_name_and_reloc_ranges)
                     in
@@ -223,13 +225,22 @@ let elf_memory_image_sht img =
         FileFeature(ElfSectionHeaderTable(x)) -> Just x
         | _ -> Nothing
     end
+    
+val make_ranges_definite : list (maybe element_range) -> list element_range
+let make_ranges_definite rs = 
+    List.map (fun (maybeR : maybe element_range) -> match maybeR with
+            Just r -> r
+            | Nothing -> failwith "impossible: range not definite, but asserted to be"
+        end) rs
 
 val elf_memory_image_section_ranges : elf_memory_image -> (list elf_range_tag * list element_range)
 let elf_memory_image_section_ranges img = 
     (* find all element ranges labelled as ELF sections *)
-    unzip (
-        tagged_ranges_matching_tag (FileFeature(ElfSection(0, null_elf64_interpreted_section))) img
-    )
+    let tagged_ranges = tagged_ranges_matching_tag (FileFeature(ElfSection(0, null_elf64_interpreted_section))) img
+    in
+    let (tags, maybe_ranges) = unzip tagged_ranges
+    in
+    (tags, make_ranges_definite maybe_ranges)
 
 val elf_memory_image_section_by_index : natural -> elf_memory_image -> maybe elf64_interpreted_section
 let elf_memory_image_section_by_index idx img = 
@@ -325,9 +336,11 @@ let elf_memory_image_unique_section_with_name name img =
 val elf_memory_image_symbol_def_ranges : elf_memory_image -> (list elf_range_tag * list element_range)
 let elf_memory_image_symbol_def_ranges img = 
     (* find all element ranges labelled as ELF symbols *)
-    unzip (
+    let (tags, maybe_ranges) = unzip (
         tagged_ranges_matching_tag (SymbolDef(null_symbol_definition)) img
     )
+    in
+    (tags, make_ranges_definite maybe_ranges)
 
 val name_of_symbol_def : symbol_definition -> string
 let name_of_symbol_def sym = sym.def_symname
