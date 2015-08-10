@@ -298,7 +298,23 @@ val println : string -> unit
 declare ocaml target_rep function println = `print_endline`
 
 (** [prints s] prints [s] to stdout, without adding a trailing newline. *)
-val prints : string -> unit
+(* val prints : string -> unit *)
+(* declare ocaml target_rep function prints = `print_string` *)
+
+(** [errln s] prints [s] to stderr, adding a trailing newline. *)
+val errln : string -> unit
+declare ocaml target_rep function prerrln = `prerr_endline`
+
+(** [errs s] prints [s] to stderr, without adding a trailing newline. *)
+val errs : string -> unit
+declare ocaml target_rep function prerrs = `prerr_string`
+
+(** [outln s] prints [s] to stdout, adding a trailing newline. *)
+val outln : string -> unit
+declare ocaml target_rep function println = `print_endline`
+
+(** [outs s] prints [s] to stdout, without adding a trailing newline. *)
+val outs : string -> unit
 declare ocaml target_rep function prints = `print_string`
 
 (** [split_string_on_char s c] splits a string [s] into a list of substrings

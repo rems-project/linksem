@@ -88,14 +88,25 @@ let elf_memory_image_of_elf64_file a fname f =
                     )
                     (extract_definitions_from_symtab_of_type sht_symtab f)
                 in
+                let (symbol_refs : list (maybe element_range * elf_range_tag)) = mapMaybe
+                    (fun (x : symbol_reference) -> 
+                        Just (Nothing, SymbolRef(<| ref = x; maybe_reloc = Nothing |>))
+                    )
+                    (extract_references_from_symtab_of_type sht_symtab f)
+                in
                 let (all_reloc_sites : list (element_range * elf_range_tag)) = List.map 
-                    (fun x ->
-                        let (section_name, _) = match index (x.ref_src_scn) section_names_and_elements with
+                    (fun (x : symbol_reference_and_reloc_site) ->
+                        let rel = match x.maybe_reloc with 
+                            Just rel -> rel
+                            | Nothing -> failwith "impossible: reloc site has no reloc"
+                        end
+                        in
+                        let (section_name, _) = match index (rel.ref_src_scn) section_names_and_elements with
                             Just y -> y
                             | Nothing -> failwith "relocs came from nonexistent section"
                         end
                         in
-                        let (szfun, applyfn) = a.reloc (elf64_relocation_r_type x.ref_relent.elf64_ra_info)
+                        let (szfun, applyfn) = a.reloc (elf64_relocation_r_type rel.ref_relent.elf64_ra_info)
                         in
                         let sz = szfun Nothing (* FIXME: for copy relocs, the size depends on the *definition*.
                              AHA! a copy reloc always *has* a symbol definition locally; it just gets its *value*
@@ -104,25 +115,27 @@ let elf_memory_image_of_elf64_file a fname f =
                              copied is the minimum of that symbol's size and the overridden (copied-from .so)'s 
                              symbol's size. *)
                         in
-                        let (offset : elf64_addr) = x.ref_relent.elf64_ra_offset
+                        let (offset : elf64_addr) = rel.ref_relent.elf64_ra_offset
                         in 
-                        ((section_name, (natural_of_elf64_addr offset, sz)), RelocationSite(x))
+                        ((section_name, (natural_of_elf64_addr offset, sz)), SymbolRef(x))
                     )
                     (extract_all_relocs_as_symbol_references fname f)
                 in
                 let all_reloc_pairs = List.map (fun (el_range, r_tag) -> (Just el_range, r_tag)) all_reloc_sites
                 in
                 let reloc_as_triple = fun (_, x) -> (match x with
-                            RelocationSite(r) -> 
-                                    (r.ref_rel_scn, r.ref_rel_idx, r.ref_src_scn)
-                                | _ -> failwith "unexpected tag"
-                            end)
+                            SymbolRef(r) -> match r.maybe_reloc with
+                                Just rel -> (rel.ref_rel_scn, rel.ref_rel_idx, rel.ref_src_scn)
+                                | Nothing -> failwith "impossible: "
+                                end
+                            | _ -> failwith "unexpected tag"
+                        end)
                 in
                 let _ = Missing_pervasives.println ("Extracted " ^ (show (length all_reloc_sites)) ^ " reloc site tags from "
                     ^ "file " ^ fname ^ ": " ^ (show (List.map reloc_as_triple all_reloc_sites)))
                 in
                 let retrieved_reloc_sites = Multimap.lookupBy Memory_image_orderings.tagEquiv
-                    (RelocationSite(null_symbol_reference_and_reloc_site)) 
+                    (SymbolRef(null_symbol_reference_and_reloc_site)) 
                     (let (fst, snd) = unzip all_reloc_sites in Set.fromList (zip snd fst))
                 in
                 let _ = Missing_pervasives.println ("Re-reading: retrieved " ^ (show (length retrieved_reloc_sites)) ^ " reloc site tags from "
@@ -132,7 +145,7 @@ let elf_memory_image_of_elf64_file a fname f =
                 in
                 let _ = Missing_pervasives.println ("ELF header contributes " ^ (show (List.length elf_header)) ^ " annotations.")
                 in
-                let all_annotations_list = all_reloc_pairs ++ symbol_defs ++ elf_sections ++ elf_header
+                let all_annotations_list = all_reloc_pairs ++ symbol_refs ++ symbol_defs ++ elf_sections ++ elf_header
                 in
                 let all_annotations_length = List.length all_annotations_list
                 in

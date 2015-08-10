@@ -139,18 +139,34 @@ instance (Ord symbol_reference)
     let (>=) = fun f1 -> (fun f2 -> Set.member (symRefCompare f1 f2) {GT; EQ})
 end
 
-type symbol_reference_and_reloc_site = <|
-      ref         : symbol_reference
-    ; ref_relent  : elf64_relocation_a 
+type reloc_site = <|
+      ref_relent  : elf64_relocation_a 
     ; ref_rel_scn : natural  (* the relocation section idx *)
     ; ref_rel_idx : natural  (* the index of the relocation rec *)
     ; ref_src_scn : natural  (* the section *from which* the reference logically comes *)
+|>
+
+let relocSiteCompare x1 x2 =
+        compare (x1.ref_relent, x1.ref_rel_idx, x1.ref_src_scn)
+                (x2.ref_relent, x2.ref_rel_idx, x2.ref_src_scn)
+                
+instance (Ord reloc_site)
+    let compare = relocSiteCompare
+    let (<) = fun f1 -> (fun f2 -> (relocSiteCompare f1 f2 = LT))
+    let (<=) = fun f1 -> (fun f2 -> Set.member (relocSiteCompare f1 f2) {LT; EQ})
+    let (>) = fun f1 -> (fun f2 -> (relocSiteCompare f1 f2 = GT))
+    let (>=) = fun f1 -> (fun f2 -> Set.member (relocSiteCompare f1 f2) {GT; EQ})
+end
+
+type symbol_reference_and_reloc_site = <|
+      ref         : symbol_reference
+    ; maybe_reloc : maybe reloc_site
     |>
 
 let symRefAndRelocSiteCompare x1 x2 =
-        compare (x1.ref, x1.ref_relent, x1.ref_rel_idx, x1.ref_src_scn)
-                (x2.ref, x2.ref_relent, x2.ref_rel_idx, x2.ref_src_scn)
-                
+        compare (x1.ref, x1.maybe_reloc)
+                (x2.ref, x2.maybe_reloc)
+
 instance (Ord symbol_reference_and_reloc_site)
     let compare = symRefAndRelocSiteCompare
     let (<) = fun f1 -> (fun f2 -> (symRefAndRelocSiteCompare f1 f2 = LT))
@@ -219,7 +235,7 @@ type range_tag 'abifeature = (*  forall 'abifeature . *)
                  ImageBase
                | EntryPoint
                | SymbolDef of symbol_definition
-               | RelocationSite of symbol_reference_and_reloc_site
+               | SymbolRef of symbol_reference_and_reloc_site
                | FileFeature of elf_file_feature (* file feature other than symdef and reloc *)
                | AbiFeature of 'abifeature
 

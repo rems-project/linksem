@@ -288,7 +288,7 @@ let resolve_undefs_in_one_object linkables all_defs oracle idx =
     let img = image_of_linkable_item item
     in 
     let (all_ref_tags, all_ref_ranges)
-     = unzip (Multimap.lookupBy Memory_image_orderings.tagEquiv (RelocationSite(null_symbol_reference_and_reloc_site)) img.by_tag)
+     = unzip (Multimap.lookupBy Memory_image_orderings.tagEquiv (SymbolRef(null_symbol_reference_and_reloc_site)) img.by_tag)
     in
     (* Here we are extracting and binding each relocation site individually. 
      * FIXME: is this correct? 
@@ -298,7 +298,7 @@ let resolve_undefs_in_one_object linkables all_defs oracle idx =
      * used by a relocation site, but is nevertheless in need of
      * being resolved. *)
     let all_refs = List.map (fun tag -> match tag with
-        RelocationSite(r) -> r.ref
+        SymbolRef(r) -> r.ref
         | _ -> failwith "matched tag not a relocation site"
     end) all_ref_tags
     in

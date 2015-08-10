@@ -74,12 +74,15 @@ let null_elf_relocation_a =
    |>
 
 let null_symbol_reference_and_reloc_site = <|
-    ref = null_symbol_reference
-    ; ref_relent = null_elf_relocation_a
-    ; ref_rel_scn = 0
-    ; ref_rel_idx = 0
-    ; ref_src_scn = 0
-|>
+      ref = null_symbol_reference
+    ; maybe_reloc = 
+        Just   <| ref_relent = null_elf_relocation_a
+                ; ref_rel_scn = 0
+                ; ref_rel_idx = 0
+                ; ref_src_scn = 0
+                |>
+    |>
+
 let null_symbol_definition = <|
     def_symname = ""
     ; def_syment = elf64_null_symbol_table_entry
@@ -492,8 +495,10 @@ let extract_all_relocs_as_symbol_references fname e
     in
     List.map (fun (scn, idx, srcscn, rela) -> <|
           ref = (* NOTE that a reference is not necessarily to an undefined symbol! *) ref_for_relocation_a_in_section_index scn idx rela
-        ; ref_relent =  rela
-        ; ref_rel_scn = scn
-        ; ref_rel_idx = idx
-        ; ref_src_scn = srcscn (* what section does the reference come from? it's the 'info' link of the rel section header *)
+        ; maybe_reloc = Just 
+           <| ref_relent = rela
+            ; ref_rel_scn = scn
+            ; ref_rel_idx = idx
+            ; ref_src_scn = srcscn (* what section does the reference come from? it's the 'info' link of the rel section header *)
+            |>
         |>) all_relocs
