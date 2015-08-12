@@ -18,7 +18,153 @@ open import Elf_symbol_table
 
 (** Relocations *)
 
+(** Static miscallaneous relocations *)
+
 let r_aarch64_none : natural = 0
+let r_aarch64_withdrawn : natural = 256  (** Treated as R_AARCH6_NONE *)
+
+(** Static data relocations *)
+
+let r_aarch64_abs64 : natural = 257
+let r_aarch64_abs32 : natural = 258
+let r_aarch64_abs16 : natural = 259
+let r_aarch64_prel64 : natural = 260
+let r_aarch64_prel32 : natural = 261
+let r_aarch64_prel16 : natural = 262
+
+(** Static AARCH64 relocations *)
+
+let r_aarch64_movw_uabs_g0 : natural = 263
+let r_aarch64_movw_uabs_g0_nc : natural = 264
+let r_aarch64_movw_uabs_g1 : natural = 265
+let r_aarch64_movw_uabs_g1_nc : natural = 266
+let r_aarch64_movw_uabs_g2 : natural = 267
+let r_aarch64_movw_uabs_g2_nc : natural = 268
+let r_aarch64_movw_uabs_g3 : natural = 269
+
+let r_aarch64_movw_sabs_g0 : natural = 270
+let r_aarch64_movw_sabs_g1 : natural = 271
+let r_aarch64_movw_sabs_g2 : natural = 272
+
+let r_aarch64_ld_prel_lo19 : natural = 273
+let r_aarch64_adr_prel_lo21 : natural = 274
+let r_aarch64_adr_prel_pg_hi21 : natural = 275
+let r_aarch64_adr_prel_pg_hi21_nc : natural = 276
+let r_aarch64_add_abs_lo12_nc : natural = 277
+let r_aarch64_ldst8_abs_lo12_nc : natural = 278
+let r_aarch64_ldst16_abs_lo12_nc : natural = 284
+let r_aarch64_ldst32_abs_lo12_nc : natural = 285
+let r_aarch64_ldst64_abs_lo12_nc : natural = 286
+let r_aarch64_ldst128_abs_lo12_nc : natural = 299
+
+let r_aarch64_tstbr14 : natural = 279
+let r_aarch64_condbr19 : natural = 280
+let r_aarch64_jump26 : natural = 282
+let r_aarch64_call26 : natural = 283
+
+let r_aarch64_movw_prel_g0 : natural = 287
+let r_aarch64_movw_prel_g0_nc : natural = 288
+let r_aarch64_movw_prel_g1 : natural = 289
+let r_aarch64_movw_prel_g1_nc : natural = 290
+let r_aarch64_movw_prel_g2 : natural = 291
+let r_aarch64_movw_prel_g2_nc : natural = 292
+let r_aarch64_movw_prel_g3 : natural = 293
+
+let r_aarch64_movw_gotoff_g0 : natural = 300
+let r_aarch64_movw_gotoff_g0_nc : natural = 301
+let r_aarch64_movw_gotoff_g1 : natural = 302
+let r_aarch64_movw_gotoff_g1_nc : natural = 303
+let r_aarch64_movw_gotoff_g2 : natural = 304
+let r_aarch64_movw_gotoff_g2_nc : natural = 305
+let r_aarch64_movw_gotoff_g3 : natural = 306
+
+let r_aarch64_gotrel64 : natural = 307
+let r_aarch64_gotrel32 : natural = 308
+
+let r_aarch64_got_ld_prel19 : natural = 309
+let r_aarch64_got_ld64_gotoff_lo15 : natural = 310
+let r_aarch64_adr_got_page : natural = 311
+let r_aarch64_ld64_got_lo12_nc : natural = 312
+let r_aarch64_ld64_gotpage_lo15 : natural = 313
+
+(** Dynamic TLS relocations *)
+
+let r_aarch64_tlsgd_adr_prel21 : natural = 512
+let r_aarch64_tlsgd_adr_page21 : natural = 513
+let r_aarch64_tlsgd_add_lo12_nc : natural = 514
+let r_aarch64_tlsgd_movw_g1 : natural = 515
+let r_aarch64_tlsgd_movw_g0_nc : natural = 516
+
+let r_aarch64_tlsld_adr_prel21 : natural = 517
+let r_aarch64_tlsld_adr_page21 : natural = 518
+let r_aarch64_tlsld_add_lo12_nc : natural = 519
+let r_aarch64_tlsld_movw_g1 : natural = 520
+let r_aarch64_tlsld_movw_g0_nc : natural = 521
+let r_aarch64_tlsld_ld_prel19 : natural = 522
+let r_aarch64_tlsld_movw_dtprel_g2 : natural = 523
+let r_aarch64_tlsld_movw_dtprel_g1 : natural = 524
+let r_aarch64_tlsld_movw_dtprel_g1_nc : natural = 525
+let r_aarch64_tlsld_movw_dtprel_g0 : natural = 526
+let r_aarch64_tlsld_movw_dtprel_g0_nc : natural = 527
+let r_aarch64_tlsld_add_dtprel_hi12 : natural = 528
+let r_aarch64_tlsld_add_dtprel_lo12 : natural = 529
+let r_aarch64_tlsld_add_dtprel_lo12_nc : natural = 530
+let r_aarch64_tlsld_ldst8_dtprel_lo12 : natural = 531
+let r_aarch64_tlsld_ldst8_dtprel_lo12_nc : natural = 532
+let r_aarch64_tlsld_ldst16_dtprel_lo12 : natural = 533
+let r_aarch64_tlsld_ldst16_dtprel_lo12_nc : natural = 534
+let r_aarch64_tlsld_ldst32_dtprel_lo12 : natural = 535
+let r_aarch64_tlsld_ldst32_dtprel_lo12_nc : natural = 536
+let r_aarch64_tlsld_ldst64_dtprel_lo12 : natural = 537
+let r_aarch64_tlsld_ldst64_dtprel_lo12_nc : natural = 538
+let r_aarch64_tlsld_ldst128_dtprel_lo12 : natural = 572
+let r_aarch64_tlsld_ldst128_dtprel_lo12_nc : natural = 573
+
+let r_aarch64_tlsie_movw_gottprel_g1 : natural = 539
+let r_aarch64_tlsie_movw_gottprel_g0_nc : natural = 540
+let r_aarch64_tlsie_movw_gottprel_page21 : natural = 541
+let r_aarch64_tlsie_movw_gottprel_lo12_nc : natural = 542
+let r_aarch64_tlsie_movw_gottprel_prel19 : natural = 543
+
+let r_aarch64_tlsle_movw_tprel_g2 : natural = 544
+let r_aarch64_tlsle_movw_tprel_g1 : natural = 545
+let r_aarch64_tlsle_movw_tprel_g1_nc : natural = 546
+let r_aarch64_tlsle_movw_tprel_g0 : natural = 547
+let r_aarch64_tlsle_movw_tprel_g0_nc : natural = 548
+let r_aarch64_add_tprel_hi12 : natural = 549
+let r_aarch64_add_tprel_lo12 : natural = 550
+let r_aarch64_add_tprel_lo12_nc : natural = 551
+let r_aarch64_ldst8_tprel_lo12 : natural = 552
+let r_aarch64_ldst8_tprel_lo12_nc : natural = 553
+let r_aarch64_ldst16_tprel_lo12 : natural = 554
+let r_aarch64_ldst16_tprel_lo12_nc : natural = 555
+let r_aarch64_ldst32_tprel_lo12 : natural = 556
+let r_aarch64_ldst32_tprel_lo12_nc : natural = 557
+let r_aarch64_ldst64_tprel_lo12 : natural = 558
+let r_aarch64_ldst64_tprel_lo12_nc : natural = 559
+let r_aarch64_ldst128_tprel_lo12 : natural = 570
+let r_aarch64_ldst128_tprel_lo12_nc : natural = 571
+
+let r_aarch64_tlsdesc_ld_prel19 : natural = 560
+let r_aarch64_tlsdesc_adr_prel21 : natural =  561
+let r_aarch64_tlsdesc_adr_page21 : natural = 562
+let r_aarch64_tlsdesc_ld64_lo12 : natural = 563
+let r_aarch64_tlsdesc_add_lo12 : natural = 564
+let r_aarch64_tlsdesc_off_g1 : natural = 565
+let r_aarch64_tlsdesc_off_g0_nc : natural = 566
+let r_aarch64_tlsdesc_ldr : natural = 567
+let r_aarch64_tlsdesc_add : natural = 568
+let r_aarch64_tlsdesc_call : natural = 569
+
+let r_aarch64_copy : natural = 1024
+let r_aarch64_glob_dat : natural = 1025
+let r_aarch64_jump_slot : natural = 1026
+let r_aarch64_relative : natural = 1027
+let r_aarch64_tls_dtprel64 : natural = 1028
+let r_aarch64_tls_dtpmod64 : natural = 1029
+let r_aarch64_tls_tprel64 : natural = 1030
+let r_aarch64_tlsdesc : natural = 1031
+let r_aarch64_irelative : natural = 1032
 
 (** [string_of_aarch64_relocation_type m] produces a string representation of the
   * relocation type [m].
