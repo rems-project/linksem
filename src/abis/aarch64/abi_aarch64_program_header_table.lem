@@ -1,3 +1,4 @@
+open import Basic_classes
 open import Num
 
 (** AARCH64 specific segment types.  See Section 5.1 *)
