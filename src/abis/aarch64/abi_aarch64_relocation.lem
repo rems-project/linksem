@@ -16,7 +16,7 @@ open import Elf_header
 open import Elf_relocation
 open import Elf_symbol_table
 
-(** relocations *)
+(** Relocations *)
 
 let r_aarch64_none : natural = 0
 
@@ -35,8 +35,10 @@ let string_of_aarch64_relocation_type m =
   *)
 val width_of_aarch64_relocation : natural -> maybe elf64_symbol_table_entry -> natural
 let width_of_aarch64_relocation m s =
-  if m = r_aarch64_none then 0
-  else 0 (* invalid *)
+  if m = r_aarch64_none then
+    0
+  else
+    0 (* invalid *)
 
 val abi_aarch64_apply_relocation : elf64_relocation_a -> elf64_file ->
   error elf64_executable_process_image

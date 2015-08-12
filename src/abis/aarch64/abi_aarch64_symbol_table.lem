@@ -1,0 +1,17 @@
+open import Basic_classes
+open import Bool
+
+open import Elf_symbol_table
+
+(** Two types of weak symbol are defined in the AARCH64 ABI.  See Section 4.5.
+  *)
+
+val is_aarch64_weak_reference : elf64_symbol_table_entry -> bool
+let is_aarch64_weak_reference ent =
+  ent.elf64_st_shndx = st_undef &&
+    get_symbol_binding ent.elf64_st_info = stb_weak
+
+val is_aarch64_weak_definition : elf64_symbol_table_entry -> bool
+let is_aarch64_weak_definition ent =
+  ent.elf64_st_shndx <> st_undef &&
+    get_symbol_binding ent.elf64_st_info = stb_weak
