@@ -395,12 +395,16 @@ declare ocaml target_rep function argv = `Ml_bindings.argv_list`
 
 declare isabelle target_rep function length = `List.length`
 
+val replicate_revacc : forall 'a. list 'a -> natural -> 'a -> list 'a
+let rec replicate_revacc revacc len e =
+	match len with
+		| 0 -> reverse revacc
+		| m -> replicate_revacc (e :: revacc) (m - 1) e
+	end
+
 val replicate : forall 'a. natural -> 'a -> list 'a
 let rec replicate len e =
-	match len with
-		| 0 -> []
-		| m -> e :: replicate (m - 1) e
-	end
+	replicate_revacc [] len e
 
 declare isabelle target_rep function replicate = `List.replicate`
 
