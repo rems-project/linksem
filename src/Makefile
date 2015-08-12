@@ -58,6 +58,9 @@ LEM_ABI_SRC := memory_image.lem \
 	abis/power64/abi_power64.lem \
 	abis/power64/abi_power64_elf_header.lem \
 	abis/aarch64/abi_aarch64_le_elf_header.lem \
+	abis/aarch64/abi_aarch64_symbol_table.lem \
+	abis/aarch64/abi_aarch64_section_header_table.lem \
+	abis/aarch64/abi_aarch64_program_header_table.lem \
 	abis/aarch64/abi_aarch64_le_serialisation.lem \
 	abis/aarch64/abi_aarch64_relocation.lem \
 	abis/aarch64/abi_aarch64_le.lem \
