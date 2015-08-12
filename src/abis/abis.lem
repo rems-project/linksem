@@ -17,6 +17,7 @@ open import Abi_aarch64_relocation
 type any_abi_feature = Amd64AbiFeature of amd64_abi_feature
                      | Aarch64LeAbiFeature of aarch64_le_abi_feature
 
+(* null_abi captures ABI details common to all ELF-based, System V-based systems. *)
 val null_abi : abi any_abi_feature 
 let (null_abi : abi any_abi_feature) = <|
       is_valid_elf_header = is_valid_elf64_header
@@ -26,6 +27,7 @@ let (null_abi : abi any_abi_feature) = <|
     ; maxpagesize = 2 * 256 * 4096 (* 2MB; bit of a guess, based on gdb and prelink code *)
     ; minpagesize = 1024 (* bit of a guess again *)
     ; commonpagesize = 4096
+    ; symbol_is_generated_by_linker = (fun symname -> symname = "_GLOBAL_OFFSET_TABLE_")
     |>
 
 val sysv_amd64_std_abi : abi any_abi_feature
@@ -37,6 +39,7 @@ let sysv_amd64_std_abi =
     ; maxpagesize = 65536
     ; minpagesize = 4096
     ; commonpagesize = 4096
+    ; symbol_is_generated_by_linker = null_abi.symbol_is_generated_by_linker
     |>
 
 val sysv_aarch64_le_std_abi : abi any_abi_feature
@@ -48,6 +51,7 @@ let sysv_aarch64_le_std_abi =
     ; maxpagesize = null_abi.maxpagesize
     ; minpagesize = null_abi.minpagesize
     ; commonpagesize = null_abi.commonpagesize
+    ; symbol_is_generated_by_linker = null_abi.symbol_is_generated_by_linker
     |>
 
 val all_abis : list (abi any_abi_feature)

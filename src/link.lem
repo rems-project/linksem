@@ -74,8 +74,10 @@ let link script a options linkables =
         else Nothing
     )) linkables
     in
+    let defmap =  all_definitions_by_name linkables
+    in
     let (accumulated_bindings : list ((natural * symbol_reference * linkable_item) * maybe (natural * symbol_definition * linkable_item)))
-     = accumulate_bindings linkables (all_definitions_by_name linkables) {} initial_included_indices [] 
+     = accumulate_bindings a linkables defmap {} initial_included_indices [] 
     in
     (* Keep a map whose keys are referenced objects, and whose values are 
      * *some* (diagnostic purposes only) reference to that linkable. *)

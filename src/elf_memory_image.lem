@@ -349,7 +349,7 @@ val extract_all_symbols : (elf64_symbol_table * string_table * natural) -> list 
 let extract_all_symbols symtab_triple = extract_satisfying_symbols symtab_triple (fun _ -> true) 
 
 let definitions_pred = fun ent -> (natural_of_elf64_half ent.elf64_st_shndx) <> stn_undef 
-let references_pred = fun ent -> (natural_of_elf64_half ent.elf64_st_shndx) = stn_undef 
+let references_pred = fun ent -> (natural_of_elf64_half ent.elf64_st_shndx) = stn_undef && (not (is_elf64_null_entry ent))
 
 val extract_definitions_from_symtab_of_type : natural -> elf64_file -> list symbol_definition
 let extract_definitions_from_symtab_of_type t e = 

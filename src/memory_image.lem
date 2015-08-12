@@ -283,6 +283,7 @@ type abi 'abifeature = (* forall 'abifeature. *)
     ; maxpagesize        : natural
     ; minpagesize        : natural
     ; commonpagesize     : natural
+    ; symbol_is_generated_by_linker : string -> bool
     |>
 
 val range_contains : (natural * natural) -> (natural * natural) -> bool
@@ -341,26 +342,33 @@ val expand_unsorted_ranges : list (natural * natural) -> natural -> list bool ->
 let rec expand_unsorted_ranges unsorted_ranges min_length accum =
     expand_sorted_ranges (sortBy (fun (base1, len1) -> (fun (base2, len2) -> base1 < base2)) unsorted_ranges) min_length accum
 
-val make_byte_pattern : list byte -> list bool -> list (maybe byte)
-let rec make_byte_pattern bytes cares = 
+val make_byte_pattern_revacc : list (maybe byte) -> list byte -> list bool -> list (maybe byte)
+let rec make_byte_pattern_revacc revacc bytes cares = 
     match bytes with
-          [] -> []
+          [] -> reverse revacc
         | b :: bs -> match cares with 
-                care :: more -> (if not care then Nothing else Just b) :: (make_byte_pattern bs more)
+                care :: more -> make_byte_pattern_revacc ((if not care then Nothing else Just b) :: revacc) bs more
               | _ -> failwith "make_byte_pattern: unequal length"
               end
     end
 
-val relax_byte_pattern : list (maybe byte) -> list bool -> list (maybe byte)
-let rec relax_byte_pattern bytes cares = 
+val make_byte_pattern : list byte -> list bool -> list (maybe byte)
+let rec make_byte_pattern bytes cares = 
+    make_byte_pattern_revacc [] bytes cares
+
+val relax_byte_pattern_revacc : list (maybe byte) -> list (maybe byte) -> list bool -> list (maybe byte)
+let rec relax_byte_pattern_revacc revacc bytes cares = 
     match bytes with
-          [] -> []
+          [] -> reverse revacc
         | b :: bs -> match cares with 
-                care :: more -> (if not care then Nothing else b) :: (relax_byte_pattern bs more)
+                care :: more -> relax_byte_pattern_revacc ((if not care then Nothing else b) :: revacc) bs more
               | _ -> failwith ("relax_byte_pattern: unequal length (no more cares with " ^ (show (Missing_pervasives.length (b :: bs))) ^ " bytes left)")
               end
     end
-
+    
+val relax_byte_pattern : list (maybe byte) -> list bool -> list (maybe byte)
+let rec relax_byte_pattern bytes cares = 
+    relax_byte_pattern_revacc [] bytes cares
 
 val byte_option_matches_byte : maybe byte -> byte -> bool
 let byte_option_matches_byte optb b =
