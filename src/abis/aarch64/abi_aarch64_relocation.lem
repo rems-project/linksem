@@ -434,7 +434,7 @@ let width_of_aarch64_relocation rel_type s =
 val abi_aarch64_apply_relocation : elf64_relocation_a -> integer -> integer ->
   integer -> elf64_file ->
     error (Map.map elf64_addr (integer * integer_bit_width * can_fail))
-let abi_aarch64_apply_relocation rel s_val a_val got_val ef =
+let abi_aarch64_apply_relocation rel s_val p_val got_val ef =
   if is_elf64_relocatable_file ef.elf64_file_header then
     let rel_type = elf64_relocation_r_type rel.elf64_ra_info in
     let a_val    = integer_of_elf64_sxword rel.elf64_ra_addend in

@@ -55,8 +55,10 @@ LEM_ELF_SRC := byte_sequence.lem archive.lem \
 	elf_note.lem elf_file.lem 
 	
 LEM_ABI_SRC := memory_image.lem \
+	abis/abi_utilities.lem \
 	abis/power64/abi_power64.lem \
 	abis/power64/abi_power64_elf_header.lem \
+	abis/power64/abi_power64_section_header_table.lem \
 	abis/aarch64/abi_aarch64_le_elf_header.lem \
 	abis/aarch64/abi_aarch64_symbol_table.lem \
 	abis/aarch64/abi_aarch64_section_header_table.lem \
@@ -68,7 +70,6 @@ LEM_ABI_SRC := memory_image.lem \
 	adaptors/sail_interface.lem \
 	abis/amd64/abi_amd64_elf_header.lem \
 	adaptors/harness_interface.lem \
-	abis/abi_utilities.lem \
 	abis/amd64/abi_amd64_serialisation.lem \
 	abis/amd64/abi_amd64_relocation.lem \
 	abis/amd64/abi_amd64_program_header_table.lem \

@@ -1,0 +1,16 @@
+open import Map
+open import Num
+
+open import Elf_section_header_table
+
+(** See Section 4.2 *)
+
+val abi_power64_special_sections : Map.map string (natural * natural)
+let abi_power64_special_sections =
+  Map.fromList [
+    (".glink", (sht_progbits, shf_alloc + shf_execinstr))
+  ; (".got", (sht_progbits, shf_alloc + shf_write))
+  ; (".toc", (sht_progbits, shf_alloc + shf_write))
+  ; (".tocbss", (sht_nobits, shf_alloc + shf_write))
+  ; (".plt", (sht_nobits, shf_alloc + shf_write))
+  ]
