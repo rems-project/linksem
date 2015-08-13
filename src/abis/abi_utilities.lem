@@ -1,15 +1,18 @@
 open import Num
 
 type integer_bit_width
-  = I8
+  = I8        (** Signed 8 bit *)
   | Low14
-  | I16
+  | I16       (** Signed 16 bit *)
   | Half16ds
   | Low24
   | Word30
-  | I32
-  | I64
-  | I64X2
+  | I32       (** Signed 32 bit *)
+  | I64       (** Signed 64 bit *)
+  | I64X2     (** Signed 128 bit *)
+  | U16       (** Unsigned 16 bit *)
+  | U32       (** Unsigned 32 bit *)
+  | U48       (** Unsigned 48 bit *)
   
 val natural_of_integer_bit_width : integer_bit_width -> natural
 let natural_of_integer_bit_width i =
@@ -18,9 +21,22 @@ let natural_of_integer_bit_width i =
     | Low14    -> 14
     | I16      -> 16
     | Half16ds -> 16
+    | U16      -> 16
     | Low24    -> 24
     | Word30   -> 30
     | I32      -> 32
+    | U32      -> 32
+    | U48      -> 48
     | I64      -> 64
     | I64X2    -> 128
   end
+  
+(** Some relocations may fail, for example:
+  * Page 58, Power ABI: relocation types whose Field column is marked with an
+  * asterisk are subject to failure is the value computed does not fit in the
+  * allocated bits.  [can_fail] type passes this information back to the caller
+  * of the relocation application function.
+  *)
+type can_fail
+  = CanFail    (** [CanFail] signals a potential failing relocation calculation *)
+  | CannotFail (** [CannotFail] states the relocation calculation cannot fail *)

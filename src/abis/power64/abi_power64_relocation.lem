@@ -373,15 +373,6 @@ let mod_highest x = x (* TODO *)
 val mod_highesta : integer -> integer
 let mod_highesta x = x (* TODO *)
 
-(** Page 58, Power ABI: relocation types whose Field column is marked with an
-  * asterisk are subject to failure is the value computed does not fit in the
-  * allocated bits.  [can_fail] type passes this information back to the caller
-  * of the relocation application function.
-  *)
-type can_fail
-  = CanFail    (** [CanFail] signals a potential failing relocation calculation *)
-  | CannotFail (** [CannotFail] states the relocation calculation cannot fail *)
-
 val abi_ppc64_apply_relocation : elf64_relocation_a -> integer -> integer ->
   integer -> integer -> integer -> integer -> integer -> integer -> integer ->
     integer -> integer -> integer -> integer -> integer -> integer -> elf64_file ->

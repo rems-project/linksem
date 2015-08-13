@@ -16,14 +16,12 @@ open import Elf_header
 open import Elf_relocation
 open import Elf_symbol_table
 
-(** Relocations *)
+open import Abi_utilities
 
-(** Static miscallaneous relocations *)
+(** Relocations *)
 
 let r_aarch64_none : natural = 0
 let r_aarch64_withdrawn : natural = 256  (** Treated as R_AARCH6_NONE *)
-
-(** Static data relocations *)
 
 let r_aarch64_abs64 : natural = 257
 let r_aarch64_abs32 : natural = 258
@@ -31,8 +29,6 @@ let r_aarch64_abs16 : natural = 259
 let r_aarch64_prel64 : natural = 260
 let r_aarch64_prel32 : natural = 261
 let r_aarch64_prel16 : natural = 262
-
-(** Static AARCH64 relocations *)
 
 let r_aarch64_movw_uabs_g0 : natural = 263
 let r_aarch64_movw_uabs_g0_nc : natural = 264
@@ -86,8 +82,6 @@ let r_aarch64_got_ld64_gotoff_lo15 : natural = 310
 let r_aarch64_adr_got_page : natural = 311
 let r_aarch64_ld64_got_lo12_nc : natural = 312
 let r_aarch64_ld64_gotpage_lo15 : natural = 313
-
-(** Dynamic TLS relocations *)
 
 let r_aarch64_tlsgd_adr_prel21 : natural = 512
 let r_aarch64_tlsgd_adr_page21 : natural = 513
@@ -171,254 +165,254 @@ let r_aarch64_irelative : natural = 1032
   *)
   
 val string_of_aarch64_relocation_type : natural -> string
-let {ocaml} string_of_aarch64_relocation_type m =
-  if m = r_aarch64_none then
+let {ocaml} string_of_aarch64_relocation_type rel_type =
+  if rel_type = r_aarch64_none then
     "AARCH64_NONE"
-  else if m = r_aarch64_withdrawn then
+  else if rel_type = r_aarch64_withdrawn then
     "AARCH64_NONE"
-  else if m = r_aarch64_abs64 then
+  else if rel_type = r_aarch64_abs64 then
     "AARCH64_ABS64"
-  else if m = r_aarch64_abs32 then
+  else if rel_type = r_aarch64_abs32 then
     "AARCH64_ABS32"
-  else if m = r_aarch64_abs16 then
+  else if rel_type = r_aarch64_abs16 then
     "AARCH64_ABS16"
-  else if m = r_aarch64_prel64 then
+  else if rel_type = r_aarch64_prel64 then
     "AARCH64_PREL64"
-  else if m = r_aarch64_prel32 then
+  else if rel_type = r_aarch64_prel32 then
     "AARCH64_PREL32"
-  else if m = r_aarch64_prel16 then
+  else if rel_type = r_aarch64_prel16 then
     "AARCH64_PREL16"
-  else if m = r_aarch64_movw_uabs_g0 then
+  else if rel_type = r_aarch64_movw_uabs_g0 then
     "AARCH64_MOVW_UABS_G0"
-  else if m = r_aarch64_movw_uabs_g0_nc then
+  else if rel_type = r_aarch64_movw_uabs_g0_nc then
     "AARCH64_MOVW_UABS_G0_NC"
-  else if m = r_aarch64_movw_uabs_g1 then
+  else if rel_type = r_aarch64_movw_uabs_g1 then
     "AARCH64_MOVW_UABS_G1"
-  else if m = r_aarch64_movw_uabs_g1_nc then
+  else if rel_type = r_aarch64_movw_uabs_g1_nc then
     "AARCH64_MOVW_UABS_G1_NC"
-  else if m = r_aarch64_movw_uabs_g2 then
+  else if rel_type = r_aarch64_movw_uabs_g2 then
     "AARCH64_MOVW_UABS_G2"
-  else if m = r_aarch64_movw_uabs_g2_nc then
+  else if rel_type = r_aarch64_movw_uabs_g2_nc then
     "AARCH64_MOVW_UABS_G2_NC"
-  else if m = r_aarch64_movw_uabs_g3 then
+  else if rel_type = r_aarch64_movw_uabs_g3 then
     "AARCH64_MOVW_UABS_G3"
-  else if m = r_aarch64_movw_sabs_g0 then
+  else if rel_type = r_aarch64_movw_sabs_g0 then
     "AARCH64_MOVW_SABS_G0"
-  else if m = r_aarch64_movw_sabs_g1 then
+  else if rel_type = r_aarch64_movw_sabs_g1 then
     "AARCH64_MOVW_SABS_G1"
-  else if m = r_aarch64_movw_sabs_g2 then
+  else if rel_type = r_aarch64_movw_sabs_g2 then
     "AARCH64_MOVW_SABS_G2"
-  else if m = r_aarch64_ld_prel_lo19 then
+  else if rel_type = r_aarch64_ld_prel_lo19 then
     "AARCH64_LD_PREL_LO19"
-  else if m = r_aarch64_adr_prel_lo21 then
+  else if rel_type = r_aarch64_adr_prel_lo21 then
     "AARCH64_ADR_PREL_LO21"
-  else if m = r_aarch64_adr_prel_pg_hi21 then
+  else if rel_type = r_aarch64_adr_prel_pg_hi21 then
     "AARCH64_ADR_PREL_PG_HI21"
-  else if m = r_aarch64_adr_prel_pg_hi21_nc then
+  else if rel_type = r_aarch64_adr_prel_pg_hi21_nc then
     "AARCH64_ADR_PREL_PG_HI21_NC"
-  else if m = r_aarch64_add_abs_lo12_nc then
+  else if rel_type = r_aarch64_add_abs_lo12_nc then
     "AARCH64_ADD_ABS_LO12_NC"
-  else if m = r_aarch64_ldst8_abs_lo12_nc then
+  else if rel_type = r_aarch64_ldst8_abs_lo12_nc then
     "AARCH64_LDST8_ABS_LO12_NC"
-  else if m = r_aarch64_ldst16_abs_lo12_nc then
+  else if rel_type = r_aarch64_ldst16_abs_lo12_nc then
     "AARCH64_LDST16_ABS_LO12_NC"
-  else if m = r_aarch64_ldst32_abs_lo12_nc then
+  else if rel_type = r_aarch64_ldst32_abs_lo12_nc then
     "AARCH64_LDST32_ABS_LO12_NC"
-  else if m = r_aarch64_ldst64_abs_lo12_nc then
+  else if rel_type = r_aarch64_ldst64_abs_lo12_nc then
     "AARCH64_LDST64_ABS_LO12_NC"
-  else if m = r_aarch64_ldst128_abs_lo12_nc then
+  else if rel_type = r_aarch64_ldst128_abs_lo12_nc then
     "AARCH64_LDST128_ABS_LO12_NC"
-  else if m = r_aarch64_tstbr14 then
+  else if rel_type = r_aarch64_tstbr14 then
     "AARCH64_TSTBR14"
-  else if m = r_aarch64_condbr19 then
+  else if rel_type = r_aarch64_condbr19 then
     "AARCH64_CONBR19"
-  else if m = r_aarch64_jump26 then
+  else if rel_type = r_aarch64_jump26 then
     "AARCH64_JUMP26"
-  else if m = r_aarch64_call26 then
+  else if rel_type = r_aarch64_call26 then
     "AARCH64_CALL26"
-  else if m = r_aarch64_movw_prel_g0 then
+  else if rel_type = r_aarch64_movw_prel_g0 then
     "AARCH64_MOVW_PREL_G0"
-  else if m = r_aarch64_movw_prel_g0_nc then
+  else if rel_type = r_aarch64_movw_prel_g0_nc then
     "AARCH64_MOVW_PREL_G0_NC"
-  else if m = r_aarch64_movw_prel_g1 then
+  else if rel_type = r_aarch64_movw_prel_g1 then
     "AARCH64_MOVW_PREL_G1"
-  else if m = r_aarch64_movw_prel_g1_nc then
+  else if rel_type = r_aarch64_movw_prel_g1_nc then
     "AARCH64_MOVW_PREL_G1_NC"
-  else if m = r_aarch64_movw_prel_g2 then
+  else if rel_type = r_aarch64_movw_prel_g2 then
     "AARCH64_MOVW_PREL_G2"
-  else if m = r_aarch64_movw_prel_g2_nc then
+  else if rel_type = r_aarch64_movw_prel_g2_nc then
     "AARCH64_MOVW_PREL_G2_NC"
-  else if m = r_aarch64_movw_prel_g3 then
+  else if rel_type = r_aarch64_movw_prel_g3 then
     "AARCH64_MOVW_PREL_G3"
-  else if m = r_aarch64_movw_gotoff_g0 then
+  else if rel_type = r_aarch64_movw_gotoff_g0 then
     "AARCH64_MOVW_GOTOFF_G0"
-  else if m = r_aarch64_movw_gotoff_g0_nc then
+  else if rel_type = r_aarch64_movw_gotoff_g0_nc then
     "AARCH64_MOVW_GOTOFF_G0_NC"
-  else if m = r_aarch64_movw_gotoff_g1 then
+  else if rel_type = r_aarch64_movw_gotoff_g1 then
     "AARCH64_MOVW_GOTOFF_G1"
-  else if m = r_aarch64_movw_gotoff_g1_nc then
+  else if rel_type = r_aarch64_movw_gotoff_g1_nc then
     "AARCH64_MOVW_GOTOFF_G1_NC"
-  else if m = r_aarch64_movw_gotoff_g2 then
+  else if rel_type = r_aarch64_movw_gotoff_g2 then
     "AARCH64_MOVW_GOTOFF_G2"
-  else if m = r_aarch64_movw_gotoff_g2_nc then
+  else if rel_type = r_aarch64_movw_gotoff_g2_nc then
     "AARCH64_MOVW_GOTOFF_G2_NC"
-  else if m = r_aarch64_movw_gotoff_g3 then
+  else if rel_type = r_aarch64_movw_gotoff_g3 then
     "AARCH64_MOVW_GOTOFF_G3"
-  else if m = r_aarch64_gotrel64 then
+  else if rel_type = r_aarch64_gotrel64 then
     "AARCH64_GOTREL64"
-  else if m = r_aarch64_gotrel32 then
+  else if rel_type = r_aarch64_gotrel32 then
     "AARCH64_GOTREL32"
-  else if m = r_aarch64_got_ld_prel19 then
+  else if rel_type = r_aarch64_got_ld_prel19 then
     "AARCH64_GOT_LD_PREL19"
-  else if m = r_aarch64_got_ld64_gotoff_lo15 then
+  else if rel_type = r_aarch64_got_ld64_gotoff_lo15 then
     "AARCH64_GOT_LD64_GOTOFF_LO15"
-  else if m = r_aarch64_adr_got_page then
+  else if rel_type = r_aarch64_adr_got_page then
     "AARCH64_ADR_GOT_PAGE"
-  else if m = r_aarch64_ld64_got_lo12_nc then
+  else if rel_type = r_aarch64_ld64_got_lo12_nc then
     "AARCH64_LD64_GOT_LO12_NC"
-  else if m = r_aarch64_ld64_gotpage_lo15 then
+  else if rel_type = r_aarch64_ld64_gotpage_lo15 then
     "AARCH64_LD64_GOTPAGE_LO15"
-  else if m = r_aarch64_tlsgd_adr_prel21 then
+  else if rel_type = r_aarch64_tlsgd_adr_prel21 then
     "AARCH64_TLSGD_ADR_PREL21"
-  else if m = r_aarch64_tlsgd_adr_page21 then
+  else if rel_type = r_aarch64_tlsgd_adr_page21 then
     "AARCH64_TLSGD_ADR_PAGE21"
-  else if m = r_aarch64_tlsgd_add_lo12_nc then
+  else if rel_type = r_aarch64_tlsgd_add_lo12_nc then
     "AARCH64_TLSGD_ADD_LO12_NC"
-  else if m = r_aarch64_tlsgd_movw_g1 then
+  else if rel_type = r_aarch64_tlsgd_movw_g1 then
     "AARCH64_TLSGD_MOVW_G1"
-  else if m = r_aarch64_tlsgd_movw_g0_nc then
+  else if rel_type = r_aarch64_tlsgd_movw_g0_nc then
     "AARCH64_TlSGD_MOVW_G0_NC"
-  else if m = r_aarch64_tlsld_adr_prel21 then
+  else if rel_type = r_aarch64_tlsld_adr_prel21 then
     "AARCH64_TLSLD_ADR_PREL21"
-  else if m = r_aarch64_tlsld_adr_page21 then
+  else if rel_type = r_aarch64_tlsld_adr_page21 then
     "AARCH64_TLSLD_ADR_PAGE21"
-  else if m = r_aarch64_tlsld_add_lo12_nc then
+  else if rel_type = r_aarch64_tlsld_add_lo12_nc then
     "AARCH64_TLSLD_ADD_LO12_NC"
-  else if m = r_aarch64_tlsld_movw_g1 then
+  else if rel_type = r_aarch64_tlsld_movw_g1 then
     "AARCH64_TLSLD_MOVW_G1"
-  else if m = r_aarch64_tlsld_movw_g0_nc then
+  else if rel_type = r_aarch64_tlsld_movw_g0_nc then
     "AARCH64_TLSLD_MOVW_G0_NC"
-  else if m = r_aarch64_tlsld_ld_prel19 then
+  else if rel_type = r_aarch64_tlsld_ld_prel19 then
     "AARCH64_TLSLD_LD_PREL19"
-  else if m = r_aarch64_tlsld_movw_dtprel_g2 then
+  else if rel_type = r_aarch64_tlsld_movw_dtprel_g2 then
     "AARCH64_TLSLD_MOVW_DTPREL_G2"
-  else if m = r_aarch64_tlsld_movw_dtprel_g1 then
+  else if rel_type = r_aarch64_tlsld_movw_dtprel_g1 then
     "AARCH64_TLSLD_MOVW_DTPREL_G1"
-  else if m = r_aarch64_tlsld_movw_dtprel_g1_nc then
+  else if rel_type = r_aarch64_tlsld_movw_dtprel_g1_nc then
     "AARCH64_TLSLD_MOVW_DTPREL_G1_NC"
-  else if m = r_aarch64_tlsld_movw_dtprel_g0 then
+  else if rel_type = r_aarch64_tlsld_movw_dtprel_g0 then
     "AARCH64_TLSLD_MOVW_DTPREL_G0"
-  else if m = r_aarch64_tlsld_movw_dtprel_g0_nc then
+  else if rel_type = r_aarch64_tlsld_movw_dtprel_g0_nc then
     "AARCH64_TLSLD_MOVW_DTPREL_G0_NC"
-  else if m = r_aarch64_tlsld_add_dtprel_hi12 then
+  else if rel_type = r_aarch64_tlsld_add_dtprel_hi12 then
     "AARCH64_TLSLD_ADD_DTPREL_HI12"
-  else if m = r_aarch64_tlsld_add_dtprel_lo12 then
+  else if rel_type = r_aarch64_tlsld_add_dtprel_lo12 then
     "AARCH64_TLSLD_ADD_DTPREL_LO12"
-  else if m = r_aarch64_tlsld_add_dtprel_lo12_nc then
+  else if rel_type = r_aarch64_tlsld_add_dtprel_lo12_nc then
     "AARCH64_TLSLD_ADD_DTPREL_LO12_NC"
-  else if m = r_aarch64_tlsld_ldst8_dtprel_lo12 then
+  else if rel_type = r_aarch64_tlsld_ldst8_dtprel_lo12 then
     "AARCH64_TLSLD_LDST8_DTPREL_LO12"
-  else if m = r_aarch64_tlsld_ldst8_dtprel_lo12_nc then
+  else if rel_type = r_aarch64_tlsld_ldst8_dtprel_lo12_nc then
     "AARCH64_TLSLD_LDST8_DTPREL_LO12_NC"
-  else if m = r_aarch64_tlsld_ldst16_dtprel_lo12 then
+  else if rel_type = r_aarch64_tlsld_ldst16_dtprel_lo12 then
     "AARCH64_TLSLD_LDST16_DTPREL_LO12"
-  else if m = r_aarch64_tlsld_ldst16_dtprel_lo12_nc then
+  else if rel_type = r_aarch64_tlsld_ldst16_dtprel_lo12_nc then
     "AARCH64_TLSLD_LDST16_DTPREL_LO12_NC"
-  else if m = r_aarch64_tlsld_ldst32_dtprel_lo12 then
+  else if rel_type = r_aarch64_tlsld_ldst32_dtprel_lo12 then
     "AARCH64_TLSLD_LDST32_DTPREL_LO12"
-  else if m = r_aarch64_tlsld_ldst32_dtprel_lo12_nc then
+  else if rel_type = r_aarch64_tlsld_ldst32_dtprel_lo12_nc then
     "AARCH64_TLSLD_LDST32_DTPREL_LO12_NC"
-  else if m = r_aarch64_tlsld_ldst64_dtprel_lo12 then
+  else if rel_type = r_aarch64_tlsld_ldst64_dtprel_lo12 then
     "AARCH64_TLSLD_LDST64_DPTREL_LO12"
-  else if m = r_aarch64_tlsld_ldst64_dtprel_lo12_nc then
+  else if rel_type = r_aarch64_tlsld_ldst64_dtprel_lo12_nc then
     "AARCH64_TLSLD_LDST64_DTPREL_LO12_NC"
-  else if m = r_aarch64_tlsld_ldst128_dtprel_lo12 then
+  else if rel_type = r_aarch64_tlsld_ldst128_dtprel_lo12 then
     "AARCH64_TLSLD_LDST128_DTPREL_LO12"
-  else if m = r_aarch64_tlsld_ldst128_dtprel_lo12_nc then
+  else if rel_type = r_aarch64_tlsld_ldst128_dtprel_lo12_nc then
     "AARCH64_TLSLD_LDST128_DTPREL_LO12_NC"
-  else if m = r_aarch64_tlsie_movw_gottprel_g1 then
+  else if rel_type = r_aarch64_tlsie_movw_gottprel_g1 then
     "AARCH64_TLSIE_MOVW_GOTTPREL_G1"
-  else if m = r_aarch64_tlsie_movw_gottprel_g0_nc then
+  else if rel_type = r_aarch64_tlsie_movw_gottprel_g0_nc then
     "AARCH64_TLSIE_MOVW_GOTTPREL_G0_NC"
-  else if m = r_aarch64_tlsie_movw_gottprel_page21 then
+  else if rel_type = r_aarch64_tlsie_movw_gottprel_page21 then
     "AARCH64_TLSIE_MOVW_GOTTPREL_PAGE21"
-  else if m = r_aarch64_tlsie_movw_gottprel_lo12_nc then
+  else if rel_type = r_aarch64_tlsie_movw_gottprel_lo12_nc then
     "AARCH64_TLSIE_MOVW_GOTTPREL_LO12_NC"
-  else if m = r_aarch64_tlsie_movw_gottprel_prel19 then
+  else if rel_type = r_aarch64_tlsie_movw_gottprel_prel19 then
     "AARCH64_TLSIE_MOVW_GOTTPREL_PREL19"
-  else if m = r_aarch64_tlsle_movw_tprel_g2 then
+  else if rel_type = r_aarch64_tlsle_movw_tprel_g2 then
     "AARCH64_TLSLE_MOVW_TPREL_G2"
-  else if m = r_aarch64_tlsle_movw_tprel_g1 then
+  else if rel_type = r_aarch64_tlsle_movw_tprel_g1 then
     "AARCH64_TLSLE_MOVW_TPREL_G1"
-  else if m = r_aarch64_tlsle_movw_tprel_g1_nc then
+  else if rel_type = r_aarch64_tlsle_movw_tprel_g1_nc then
     "AARCH64_TLSLE_MOVW_TPREL_G1_NC"
-  else if m = r_aarch64_tlsle_movw_tprel_g0 then
+  else if rel_type = r_aarch64_tlsle_movw_tprel_g0 then
     "AARCH64_TLSLE_MOVW_TPREL_G0"
-  else if m = r_aarch64_tlsle_movw_tprel_g0_nc then
+  else if rel_type = r_aarch64_tlsle_movw_tprel_g0_nc then
     "AARCH64_TLSLE_MOVW_TPREL_G0_NC"
-  else if m = r_aarch64_add_tprel_hi12 then
+  else if rel_type = r_aarch64_add_tprel_hi12 then
     "AARCH64_ADD_TPREL_HI12"
-  else if m = r_aarch64_add_tprel_lo12 then
+  else if rel_type = r_aarch64_add_tprel_lo12 then
     "AARCH64_ADD_TPREL_LO12"
-  else if m = r_aarch64_add_tprel_lo12_nc then
+  else if rel_type = r_aarch64_add_tprel_lo12_nc then
     "AARCH64_ADD_TPREL_LO12_NC"
-  else if m = r_aarch64_ldst8_tprel_lo12 then
+  else if rel_type = r_aarch64_ldst8_tprel_lo12 then
     "AARCH64_LDST8_TPREL_LO12"
-  else if m = r_aarch64_ldst8_tprel_lo12_nc then
+  else if rel_type = r_aarch64_ldst8_tprel_lo12_nc then
     "AARCH64_LDST8_TPREL_LO12_NC"
-  else if m = r_aarch64_ldst16_tprel_lo12 then
+  else if rel_type = r_aarch64_ldst16_tprel_lo12 then
     "AARCH64_LDST16_TPREL_LO12"
-  else if m = r_aarch64_ldst16_tprel_lo12_nc then
+  else if rel_type = r_aarch64_ldst16_tprel_lo12_nc then
     "AARCH64_LDST16_TPREL_LO12_NC"
-  else if m = r_aarch64_ldst32_tprel_lo12 then
+  else if rel_type = r_aarch64_ldst32_tprel_lo12 then
     "AARCH64_LDST32_TPREL_LO12"
-  else if m = r_aarch64_ldst32_tprel_lo12_nc then
+  else if rel_type = r_aarch64_ldst32_tprel_lo12_nc then
     "AARCH64_LDST32_TPREL_LO12_NC"
-  else if m = r_aarch64_ldst64_tprel_lo12 then
+  else if rel_type = r_aarch64_ldst64_tprel_lo12 then
     "AARCH64_LDST64_TPREL_LO12"
-  else if m = r_aarch64_ldst64_tprel_lo12_nc then
+  else if rel_type = r_aarch64_ldst64_tprel_lo12_nc then
     "AARCH64_LDST64_TPREL_LO12_NC"
-  else if m = r_aarch64_ldst128_tprel_lo12 then
+  else if rel_type = r_aarch64_ldst128_tprel_lo12 then
     "AARCH64_LDST128_TPREL_LO12"
-  else if m = r_aarch64_ldst128_tprel_lo12_nc then
+  else if rel_type = r_aarch64_ldst128_tprel_lo12_nc then
     "AARCH64_LDST128_TPREL_LO12_NC"
-  else if m = r_aarch64_tlsdesc_ld_prel19 then
+  else if rel_type = r_aarch64_tlsdesc_ld_prel19 then
     "AARCH64_TLSDESC_LS_PREL19"
-  else if m = r_aarch64_tlsdesc_adr_prel21 then
+  else if rel_type = r_aarch64_tlsdesc_adr_prel21 then
     "AARCH64_TLSDESC_ADR_PREL21"
-  else if m = r_aarch64_tlsdesc_adr_page21 then
+  else if rel_type = r_aarch64_tlsdesc_adr_page21 then
     "AARCH64_TLSDESC_ADR_PAGE21"
-  else if m = r_aarch64_tlsdesc_ld64_lo12 then
+  else if rel_type = r_aarch64_tlsdesc_ld64_lo12 then
     "AARCH64_TLSDESC_LD64_LO12"
-  else if m = r_aarch64_tlsdesc_add_lo12 then
+  else if rel_type = r_aarch64_tlsdesc_add_lo12 then
     "AARCH64_TLSDESC_ADD_LO12"
-  else if m = r_aarch64_tlsdesc_off_g1 then
+  else if rel_type = r_aarch64_tlsdesc_off_g1 then
     "AARCH64_TLSDESC_OFF_G1"
-  else if m = r_aarch64_tlsdesc_off_g0_nc then
+  else if rel_type = r_aarch64_tlsdesc_off_g0_nc then
     "AARCH64_TLSDESC_OFF_G0_NC"
-  else if m = r_aarch64_tlsdesc_ldr then
+  else if rel_type = r_aarch64_tlsdesc_ldr then
     "AARCH64_TLSDESC_LDR"
-  else if m = r_aarch64_tlsdesc_add then
+  else if rel_type = r_aarch64_tlsdesc_add then
     "AARCH64_TLSDESC_ADD"
-  else if m = r_aarch64_tlsdesc_call then
+  else if rel_type = r_aarch64_tlsdesc_call then
     "AARCH64_TLSDESC_CALL"
-  else if m = r_aarch64_copy then
+  else if rel_type = r_aarch64_copy then
     "AARCH64_COPY"
-  else if m = r_aarch64_glob_dat then
+  else if rel_type = r_aarch64_glob_dat then
     "AARCH64_GLOB_DAT"
-  else if m = r_aarch64_jump_slot then
+  else if rel_type = r_aarch64_jump_slot then
     "AARCH64_JUMP_SLOT"
-  else if m = r_aarch64_relative then
+  else if rel_type = r_aarch64_relative then
     "AARCH64_RELATIVE"
-  else if m = r_aarch64_tls_dtprel64 then
+  else if rel_type = r_aarch64_tls_dtprel64 then
     "AARCH64_DTPREL64"
-  else if m = r_aarch64_tls_dtpmod64 then
+  else if rel_type = r_aarch64_tls_dtpmod64 then
     "AARCH64_DTPMOD64"
-  else if m = r_aarch64_tls_tprel64 then
+  else if rel_type = r_aarch64_tls_tprel64 then
     "AARCH64_TPREL64"
-  else if m = r_aarch64_tlsdesc then
+  else if rel_type = r_aarch64_tlsdesc then
     "AARCH64_TLSDESC"
-  else if m = r_aarch64_irelative then
+  else if rel_type = r_aarch64_irelative then
     "AARCH64_IRELATIVE"
   else
     "Invalid AARCH64 relocation type"
@@ -427,13 +421,292 @@ let {ocaml} string_of_aarch64_relocation_type m =
   * when resolving to a defined maybe symbol [s] (or Nothing, if weak).
   *)
 val width_of_aarch64_relocation : natural -> maybe elf64_symbol_table_entry -> natural
-let width_of_aarch64_relocation m s =
-  if m = r_aarch64_none then
+let width_of_aarch64_relocation rel_type s =
+  if rel_type = r_aarch64_none then
     0
   else
-    0 (* invalid *)
+    0 (* TODO *)
 
-val abi_aarch64_apply_relocation : elf64_relocation_a -> elf64_file ->
-  error elf64_executable_process_image
-let abi_aarch64_apply_relocation rel ef =
-  fail "abi_aarch64_apply_relocation: relocation not yet implemented"
+(** TODO: unclear from ABI spec. whether overflow check on relocations is
+  * supposed to cause relocation to fail if not satisfied or whether there is
+  * wrap-around.  Resolve.
+  *)
+val abi_aarch64_apply_relocation : elf64_relocation_a -> integer -> integer ->
+  integer -> elf64_file ->
+    error (Map.map elf64_addr (integer * integer_bit_width * can_fail))
+let abi_aarch64_apply_relocation rel s_val a_val got_val ef =
+  if is_elf64_relocatable_file ef.elf64_file_header then
+    let rel_type = elf64_relocation_r_type rel.elf64_ra_info in
+    let a_val    = integer_of_elf64_sxword rel.elf64_ra_addend in
+      (** No width, no calculation *)
+      if rel_type = r_aarch64_none then
+        return Map.empty
+      (** No width, no calculation *)
+      else if rel_type = r_aarch64_withdrawn then
+        return Map.empty
+      (** Signed 64 bit width, calculation: S + A *)
+      else if rel_type = r_aarch64_abs64 then
+      	let result = s_val + a_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I64, CannotFail))
+      (** Signed 32 bit width, calculation: S + A *)
+      else if rel_type = r_aarch64_abs32 then
+      	let result = s_val + a_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I32, CanFail))
+      (** Signed 16 bith width, calculation: S + A *)
+      else if rel_type = r_aarch64_abs16 then
+      	let result = s_val + a_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CanFail))
+      (** Signed 64 bit width, calculation: S + A - P *)
+      else if rel_type = r_aarch64_prel64 then
+      	let result = (s_val + a_val) - p_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I64, CannotFail))
+      (** Signed 32 bit width, calculation: S + A - P *)
+      else if rel_type = r_aarch64_prel32 then
+      	let result = (s_val + a_val) - p_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I32, CanFail))
+      (** Signed 16 bit width, calculation: S + A - P *)
+      else if rel_type = r_aarch64_prel16 then
+      	let result = (s_val + a_val) - p_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CanFail))
+      else if rel_type = r_aarch64_movw_uabs_g0 then
+        fail "AARCH64_MOVW_UABS_G0"
+      else if rel_type = r_aarch64_movw_uabs_g0_nc then
+        fail "AARCH64_MOVW_UABS_G0_NC"
+      else if rel_type = r_aarch64_movw_uabs_g1 then
+        fail "AARCH64_MOVW_UABS_G1"
+      else if rel_type = r_aarch64_movw_uabs_g1_nc then
+        fail "AARCH64_MOVW_UABS_G1_NC"
+      else if rel_type = r_aarch64_movw_uabs_g2 then
+        fail "AARCH64_MOVW_UABS_G2"
+      else if rel_type = r_aarch64_movw_uabs_g2_nc then
+        fail "AARCH64_MOVW_UABS_G2_NC"
+      else if rel_type = r_aarch64_movw_uabs_g3 then
+        fail "AARCH64_MOVW_UABS_G3"
+      else if rel_type = r_aarch64_movw_sabs_g0 then
+        fail "AARCH64_MOVW_SABS_G0"
+      else if rel_type = r_aarch64_movw_sabs_g1 then
+        fail "AARCH64_MOVW_SABS_G1"
+      else if rel_type = r_aarch64_movw_sabs_g2 then
+        fail "AARCH64_MOVW_SABS_G2"
+      else if rel_type = r_aarch64_ld_prel_lo19 then
+        fail "AARCH64_LD_PREL_LO19"
+      else if rel_type = r_aarch64_adr_prel_lo21 then
+        fail "AARCH64_ADR_PREL_LO21"
+      else if rel_type = r_aarch64_adr_prel_pg_hi21 then
+        fail "AARCH64_ADR_PREL_PG_HI21"
+      else if rel_type = r_aarch64_adr_prel_pg_hi21_nc then
+        fail "AARCH64_ADR_PREL_PG_HI21_NC"
+      else if rel_type = r_aarch64_add_abs_lo12_nc then
+        fail "AARCH64_ADD_ABS_LO12_NC"
+      else if rel_type = r_aarch64_ldst8_abs_lo12_nc then
+        fail "AARCH64_LDST8_ABS_LO12_NC"
+      else if rel_type = r_aarch64_ldst16_abs_lo12_nc then
+        fail "AARCH64_LDST16_ABS_LO12_NC"
+      else if rel_type = r_aarch64_ldst32_abs_lo12_nc then
+        fail "AARCH64_LDST32_ABS_LO12_NC"
+      else if rel_type = r_aarch64_ldst64_abs_lo12_nc then
+        fail "AARCH64_LDST64_ABS_LO12_NC"
+      else if rel_type = r_aarch64_ldst128_abs_lo12_nc then
+        fail "AARCH64_LDST128_ABS_LO12_NC"
+      else if rel_type = r_aarch64_tstbr14 then
+        fail "AARCH64_TSTBR14"
+      else if rel_type = r_aarch64_condbr19 then
+        fail "AARCH64_CONBR19"
+      else if rel_type = r_aarch64_jump26 then
+        fail "AARCH64_JUMP26"
+      else if rel_type = r_aarch64_call26 then
+        fail "AARCH64_CALL26"
+      else if rel_type = r_aarch64_movw_prel_g0 then
+        fail "AARCH64_MOVW_PREL_G0"
+      else if rel_type = r_aarch64_movw_prel_g0_nc then
+        fail "AARCH64_MOVW_PREL_G0_NC"
+      else if rel_type = r_aarch64_movw_prel_g1 then
+        fail "AARCH64_MOVW_PREL_G1"
+      else if rel_type = r_aarch64_movw_prel_g1_nc then
+        fail "AARCH64_MOVW_PREL_G1_NC"
+      else if rel_type = r_aarch64_movw_prel_g2 then
+        fail "AARCH64_MOVW_PREL_G2"
+      else if rel_type = r_aarch64_movw_prel_g2_nc then
+        fail "AARCH64_MOVW_PREL_G2_NC"
+      else if rel_type = r_aarch64_movw_prel_g3 then
+        fail "AARCH64_MOVW_PREL_G3"
+      else if rel_type = r_aarch64_movw_gotoff_g0 then
+        fail "AARCH64_MOVW_GOTOFF_G0"
+      else if rel_type = r_aarch64_movw_gotoff_g0_nc then
+        fail "AARCH64_MOVW_GOTOFF_G0_NC"
+      else if rel_type = r_aarch64_movw_gotoff_g1 then
+        fail "AARCH64_MOVW_GOTOFF_G1"
+      else if rel_type = r_aarch64_movw_gotoff_g1_nc then
+        fail "AARCH64_MOVW_GOTOFF_G1_NC"
+      else if rel_type = r_aarch64_movw_gotoff_g2 then
+        fail "AARCH64_MOVW_GOTOFF_G2"
+      else if rel_type = r_aarch64_movw_gotoff_g2_nc then
+        fail "AARCH64_MOVW_GOTOFF_G2_NC"
+      else if rel_type = r_aarch64_movw_gotoff_g3 then
+        fail "AARCH64_MOVW_GOTOFF_G3"
+      else if rel_type = r_aarch64_gotrel64 then
+        fail "AARCH64_GOTREL64"
+      else if rel_type = r_aarch64_gotrel32 then
+        fail "AARCH64_GOTREL32"
+      else if rel_type = r_aarch64_got_ld_prel19 then
+        fail "AARCH64_GOT_LD_PREL19"
+      else if rel_type = r_aarch64_got_ld64_gotoff_lo15 then
+        fail "AARCH64_GOT_LD64_GOTOFF_LO15"
+      else if rel_type = r_aarch64_adr_got_page then
+        fail "AARCH64_ADR_GOT_PAGE"
+      else if rel_type = r_aarch64_ld64_got_lo12_nc then
+        fail "AARCH64_LD64_GOT_LO12_NC"
+      else if rel_type = r_aarch64_ld64_gotpage_lo15 then
+        fail "AARCH64_LD64_GOTPAGE_LO15"
+      else if rel_type = r_aarch64_tlsgd_adr_prel21 then
+        fail "AARCH64_TLSGD_ADR_PREL21"
+      else if rel_type = r_aarch64_tlsgd_adr_page21 then
+        fail "AARCH64_TLSGD_ADR_PAGE21"
+      else if rel_type = r_aarch64_tlsgd_add_lo12_nc then
+        fail "AARCH64_TLSGD_ADD_LO12_NC"
+      else if rel_type = r_aarch64_tlsgd_movw_g1 then
+        fail "AARCH64_TLSGD_MOVW_G1"
+      else if rel_type = r_aarch64_tlsgd_movw_g0_nc then
+        fail "AARCH64_TlSGD_MOVW_G0_NC"
+      else if rel_type = r_aarch64_tlsld_adr_prel21 then
+        fail "AARCH64_TLSLD_ADR_PREL21"
+      else if rel_type = r_aarch64_tlsld_adr_page21 then
+        fail "AARCH64_TLSLD_ADR_PAGE21"
+      else if rel_type = r_aarch64_tlsld_add_lo12_nc then
+        fail "AARCH64_TLSLD_ADD_LO12_NC"
+      else if rel_type = r_aarch64_tlsld_movw_g1 then
+        fail "AARCH64_TLSLD_MOVW_G1"
+      else if rel_type = r_aarch64_tlsld_movw_g0_nc then
+        fail "AARCH64_TLSLD_MOVW_G0_NC"
+      else if rel_type = r_aarch64_tlsld_ld_prel19 then
+        fail "AARCH64_TLSLD_LD_PREL19"
+      else if rel_type = r_aarch64_tlsld_movw_dtprel_g2 then
+        fail "AARCH64_TLSLD_MOVW_DTPREL_G2"
+      else if rel_type = r_aarch64_tlsld_movw_dtprel_g1 then
+        fail "AARCH64_TLSLD_MOVW_DTPREL_G1"
+      else if rel_type = r_aarch64_tlsld_movw_dtprel_g1_nc then
+        fail "AARCH64_TLSLD_MOVW_DTPREL_G1_NC"
+      else if rel_type = r_aarch64_tlsld_movw_dtprel_g0 then
+        fail "AARCH64_TLSLD_MOVW_DTPREL_G0"
+      else if rel_type = r_aarch64_tlsld_movw_dtprel_g0_nc then
+        fail "AARCH64_TLSLD_MOVW_DTPREL_G0_NC"
+      else if rel_type = r_aarch64_tlsld_add_dtprel_hi12 then
+        fail "AARCH64_TLSLD_ADD_DTPREL_HI12"
+      else if rel_type = r_aarch64_tlsld_add_dtprel_lo12 then
+        fail "AARCH64_TLSLD_ADD_DTPREL_LO12"
+      else if rel_type = r_aarch64_tlsld_add_dtprel_lo12_nc then
+        fail "AARCH64_TLSLD_ADD_DTPREL_LO12_NC"
+      else if rel_type = r_aarch64_tlsld_ldst8_dtprel_lo12 then
+        fail "AARCH64_TLSLD_LDST8_DTPREL_LO12"
+      else if rel_type = r_aarch64_tlsld_ldst8_dtprel_lo12_nc then
+        fail "AARCH64_TLSLD_LDST8_DTPREL_LO12_NC"
+      else if rel_type = r_aarch64_tlsld_ldst16_dtprel_lo12 then
+        fail "AARCH64_TLSLD_LDST16_DTPREL_LO12"
+      else if rel_type = r_aarch64_tlsld_ldst16_dtprel_lo12_nc then
+        fail "AARCH64_TLSLD_LDST16_DTPREL_LO12_NC"
+      else if rel_type = r_aarch64_tlsld_ldst32_dtprel_lo12 then
+        fail "AARCH64_TLSLD_LDST32_DTPREL_LO12"
+      else if rel_type = r_aarch64_tlsld_ldst32_dtprel_lo12_nc then
+        fail "AARCH64_TLSLD_LDST32_DTPREL_LO12_NC"
+      else if rel_type = r_aarch64_tlsld_ldst64_dtprel_lo12 then
+        fail "AARCH64_TLSLD_LDST64_DPTREL_LO12"
+      else if rel_type = r_aarch64_tlsld_ldst64_dtprel_lo12_nc then
+        fail "AARCH64_TLSLD_LDST64_DTPREL_LO12_NC"
+      else if rel_type = r_aarch64_tlsld_ldst128_dtprel_lo12 then
+        fail "AARCH64_TLSLD_LDST128_DTPREL_LO12"
+      else if rel_type = r_aarch64_tlsld_ldst128_dtprel_lo12_nc then
+        fail "AARCH64_TLSLD_LDST128_DTPREL_LO12_NC"
+      else if rel_type = r_aarch64_tlsie_movw_gottprel_g1 then
+        fail "AARCH64_TLSIE_MOVW_GOTTPREL_G1"
+      else if rel_type = r_aarch64_tlsie_movw_gottprel_g0_nc then
+        fail "AARCH64_TLSIE_MOVW_GOTTPREL_G0_NC"
+      else if rel_type = r_aarch64_tlsie_movw_gottprel_page21 then
+        fail "AARCH64_TLSIE_MOVW_GOTTPREL_PAGE21"
+      else if rel_type = r_aarch64_tlsie_movw_gottprel_lo12_nc then
+        fail "AARCH64_TLSIE_MOVW_GOTTPREL_LO12_NC"
+      else if rel_type = r_aarch64_tlsie_movw_gottprel_prel19 then
+        fail "AARCH64_TLSIE_MOVW_GOTTPREL_PREL19"
+      else if rel_type = r_aarch64_tlsle_movw_tprel_g2 then
+        fail "AARCH64_TLSLE_MOVW_TPREL_G2"
+      else if rel_type = r_aarch64_tlsle_movw_tprel_g1 then
+        fail "AARCH64_TLSLE_MOVW_TPREL_G1"
+      else if rel_type = r_aarch64_tlsle_movw_tprel_g1_nc then
+        fail "AARCH64_TLSLE_MOVW_TPREL_G1_NC"
+      else if rel_type = r_aarch64_tlsle_movw_tprel_g0 then
+        fail "AARCH64_TLSLE_MOVW_TPREL_G0"
+      else if rel_type = r_aarch64_tlsle_movw_tprel_g0_nc then
+        fail "AARCH64_TLSLE_MOVW_TPREL_G0_NC"
+      else if rel_type = r_aarch64_add_tprel_hi12 then
+        fail "AARCH64_ADD_TPREL_HI12"
+      else if rel_type = r_aarch64_add_tprel_lo12 then
+        fail "AARCH64_ADD_TPREL_LO12"
+      else if rel_type = r_aarch64_add_tprel_lo12_nc then
+        fail "AARCH64_ADD_TPREL_LO12_NC"
+      else if rel_type = r_aarch64_ldst8_tprel_lo12 then
+        fail "AARCH64_LDST8_TPREL_LO12"
+      else if rel_type = r_aarch64_ldst8_tprel_lo12_nc then
+        fail "AARCH64_LDST8_TPREL_LO12_NC"
+      else if rel_type = r_aarch64_ldst16_tprel_lo12 then
+        fail "AARCH64_LDST16_TPREL_LO12"
+      else if rel_type = r_aarch64_ldst16_tprel_lo12_nc then
+        fail "AARCH64_LDST16_TPREL_LO12_NC"
+      else if rel_type = r_aarch64_ldst32_tprel_lo12 then
+        fail "AARCH64_LDST32_TPREL_LO12"
+      else if rel_type = r_aarch64_ldst32_tprel_lo12_nc then
+        fail "AARCH64_LDST32_TPREL_LO12_NC"
+      else if rel_type = r_aarch64_ldst64_tprel_lo12 then
+        fail "AARCH64_LDST64_TPREL_LO12"
+      else if rel_type = r_aarch64_ldst64_tprel_lo12_nc then
+        fail "AARCH64_LDST64_TPREL_LO12_NC"
+      else if rel_type = r_aarch64_ldst128_tprel_lo12 then
+        fail "AARCH64_LDST128_TPREL_LO12"
+      else if rel_type = r_aarch64_ldst128_tprel_lo12_nc then
+        fail "AARCH64_LDST128_TPREL_LO12_NC"
+      else if rel_type = r_aarch64_tlsdesc_ld_prel19 then
+        fail "AARCH64_TLSDESC_LS_PREL19"
+      else if rel_type = r_aarch64_tlsdesc_adr_prel21 then
+        fail "AARCH64_TLSDESC_ADR_PREL21"
+      else if rel_type = r_aarch64_tlsdesc_adr_page21 then
+        fail "AARCH64_TLSDESC_ADR_PAGE21"
+      else if rel_type = r_aarch64_tlsdesc_ld64_lo12 then
+        fail "AARCH64_TLSDESC_LD64_LO12"
+      else if rel_type = r_aarch64_tlsdesc_add_lo12 then
+        fail "AARCH64_TLSDESC_ADD_LO12"
+      else if rel_type = r_aarch64_tlsdesc_off_g1 then
+        fail "AARCH64_TLSDESC_OFF_G1"
+      else if rel_type = r_aarch64_tlsdesc_off_g0_nc then
+        fail "AARCH64_TLSDESC_OFF_G0_NC"
+      else if rel_type = r_aarch64_tlsdesc_ldr then
+        fail "AARCH64_TLSDESC_LDR"
+      else if rel_type = r_aarch64_tlsdesc_add then
+        fail "AARCH64_TLSDESC_ADD"
+      else if rel_type = r_aarch64_tlsdesc_call then
+        fail "AARCH64_TLSDESC_CALL"
+      else if rel_type = r_aarch64_copy then
+        fail "AARCH64_COPY"
+      else if rel_type = r_aarch64_glob_dat then
+        fail "AARCH64_GLOB_DAT"
+      else if rel_type = r_aarch64_jump_slot then
+        fail "AARCH64_JUMP_SLOT"
+      else if rel_type = r_aarch64_relative then
+        fail "AARCH64_RELATIVE"
+      else if rel_type = r_aarch64_tls_dtprel64 then
+        fail "AARCH64_DTPREL64"
+      else if rel_type = r_aarch64_tls_dtpmod64 then
+        fail "AARCH64_DTPMOD64"
+      else if rel_type = r_aarch64_tls_tprel64 then
+        fail "AARCH64_TPREL64"
+      else if rel_type = r_aarch64_tlsdesc then
+        fail "AARCH64_TLSDESC"
+      else if rel_type = r_aarch64_irelative then
+        fail "AARCH64_IRELATIVE"
+      else
+        fail "Invalid AARCH64 relocation type"
+  else
+  	fail "abi_aarch64_apply_relocation: not a relocatable file"
