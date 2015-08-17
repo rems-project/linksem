@@ -460,8 +460,8 @@ let mod_gtprel x = x (** FIXME *)
 val mod_gldm : integer -> integer
 let mod_gldm x = x (** FIXME *)
 
-val mod_gtlsidx : integer -> integer
-let mod_gtlsidx x = x (** FIXME *)
+val mod_gtlsidx : integer -> integer -> integer
+let mod_gtlsidx x y = x (** FIXME *)
 
 val mod_gdat : integer -> integer
 let mod_gdat x = x (** FIXME *)
@@ -574,75 +574,148 @@ let abi_aarch64_apply_relocation rel s_val p_val got_val ef =
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I32, CannotFail))
       else if rel_type = r_aarch64_ldst8_abs_lo12_nc then
-        fail "AARCH64_LDST8_ABS_LO12_NC"
+      	let result = s_val + a_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I32, CannotFail))
       else if rel_type = r_aarch64_ldst16_abs_lo12_nc then
-        fail "AARCH64_LDST16_ABS_LO12_NC"
+      	let result = s_val + a_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I32, CannotFail))
       else if rel_type = r_aarch64_ldst32_abs_lo12_nc then
-        fail "AARCH64_LDST32_ABS_LO12_NC"
+      	let result = s_val + a_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I32, CannotFail))
       else if rel_type = r_aarch64_ldst64_abs_lo12_nc then
-        fail "AARCH64_LDST64_ABS_LO12_NC"
+      	let result = s_val + a_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I32, CannotFail))
       else if rel_type = r_aarch64_ldst128_abs_lo12_nc then
-        fail "AARCH64_LDST128_ABS_LO12_NC"
+      	let result = s_val + a_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I32, CannotFail))
       else if rel_type = r_aarch64_tstbr14 then
-        fail "AARCH64_TSTBR14"
+      	let result = (s_val + a_val) - p_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I15, CanFail))
       else if rel_type = r_aarch64_condbr19 then
-        fail "AARCH64_CONBR19"
+      	let result = (s_val + a_val) - p_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I20, CanFail))
       else if rel_type = r_aarch64_jump26 then
-        fail "AARCH64_JUMP26"
+      	let result = (s_val + a_val) - p_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I27, CanFail))
       else if rel_type = r_aarch64_call26 then
-        fail "AARCH64_CALL26"
+      	let result = (s_val + a_val) - p_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I27, CanFail))
       else if rel_type = r_aarch64_movw_prel_g0 then
-        fail "AARCH64_MOVW_PREL_G0"
+      	let result = (s_val + a_val) - p_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CanFail))
       else if rel_type = r_aarch64_movw_prel_g0_nc then
-        fail "AARCH64_MOVW_PREL_G0_NC"
+      	let result = (s_val + a_val) - p_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
       else if rel_type = r_aarch64_movw_prel_g1 then
-        fail "AARCH64_MOVW_PREL_G1"
+      	let result = (s_val + a_val) - p_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I32, CanFail))
       else if rel_type = r_aarch64_movw_prel_g1_nc then
-        fail "AARCH64_MOVW_PREL_G1_NC"
+      	let result = (s_val + a_val) - p_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I32, CannotFail))
       else if rel_type = r_aarch64_movw_prel_g2 then
-        fail "AARCH64_MOVW_PREL_G2"
+      	let result = (s_val + a_val) - p_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I48, CanFail))
       else if rel_type = r_aarch64_movw_prel_g2_nc then
-        fail "AARCH64_MOVW_PREL_G2_NC"
+      	let result = (s_val + a_val) - p_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I48, CannotFail))
       else if rel_type = r_aarch64_movw_prel_g3 then
-        fail "AARCH64_MOVW_PREL_G3"
+      	let result = (s_val + a_val) - p_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I64, CannotFail))
       else if rel_type = r_aarch64_movw_gotoff_g0 then
-        fail "AARCH64_MOVW_GOTOFF_G0"
+      	let result = mod_g (mod_gdat (s_val + a_val)) - got_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CanFail))
       else if rel_type = r_aarch64_movw_gotoff_g0_nc then
-        fail "AARCH64_MOVW_GOTOFF_G0_NC"
+      	let result = mod_g (mod_gdat (s_val + a_val)) - got_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
       else if rel_type = r_aarch64_movw_gotoff_g1 then
-        fail "AARCH64_MOVW_GOTOFF_G1"
+      	let result = mod_g (mod_gdat (s_val + a_val)) - got_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I32, CanFail))
       else if rel_type = r_aarch64_movw_gotoff_g1_nc then
-        fail "AARCH64_MOVW_GOTOFF_G1_NC"
+      	let result = mod_g (mod_gdat (s_val + a_val)) - got_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I32, CannotFail))
       else if rel_type = r_aarch64_movw_gotoff_g2 then
-        fail "AARCH64_MOVW_GOTOFF_G2"
+      	let result = mod_g (mod_gdat (s_val + a_val)) - got_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I48, CanFail))
       else if rel_type = r_aarch64_movw_gotoff_g2_nc then
-        fail "AARCH64_MOVW_GOTOFF_G2_NC"
+      	let result = mod_g (mod_gdat (s_val + a_val)) - got_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I32, CannotFail))
       else if rel_type = r_aarch64_movw_gotoff_g3 then
-        fail "AARCH64_MOVW_GOTOFF_G3"
+      	let result = mod_g (mod_gdat (s_val + a_val)) - got_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I64, CannotFail))
       else if rel_type = r_aarch64_gotrel64 then
-        fail "AARCH64_GOTREL64"
+      	let result = (s_val + a_val) - got_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I64, CannotFail))
       else if rel_type = r_aarch64_gotrel32 then
-        fail "AARCH64_GOTREL32"
+      	let result = (s_val + a_val) - got_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I32, CanFail))
       else if rel_type = r_aarch64_got_ld_prel19 then
-        fail "AARCH64_GOT_LD_PREL19"
+      	let result = mod_g (mod_gdat (s_val + a_val)) - p_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I20, CanFail))
       else if rel_type = r_aarch64_got_ld64_gotoff_lo15 then
-        fail "AARCH64_GOT_LD64_GOTOFF_LO15"
+      	let result = mod_g (mod_gdat (s_val + a_val)) - got_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U15, CanFail))
       else if rel_type = r_aarch64_adr_got_page then
-        fail "AARCH64_ADR_GOT_PAGE"
+      	let result = mod_page (mod_g (mod_gdat (s_val + a_val))) - mod_page p_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I32, CanFail))
       else if rel_type = r_aarch64_ld64_got_lo12_nc then
-        fail "AARCH64_LD64_GOT_LO12_NC"
+        (** requires ad hoc check *)
+      	let result = mod_g (mod_gdat (s_val + a_val)) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I20, CannotFail))
       else if rel_type = r_aarch64_ld64_gotpage_lo15 then
-        fail "AARCH64_LD64_GOTPAGE_LO15"
+        (** requires ad hoc check *)
+      	let result = mod_g (mod_gdat (s_val + a_val)) - mod_page got_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U15, CanFail))
       else if rel_type = r_aarch64_tlsgd_adr_prel21 then
-        fail "AARCH64_TLSGD_ADR_PREL21"
+      	let result = mod_g (mod_gtlsidx s_val a_val) - p_val  in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I20, CanFail))
       else if rel_type = r_aarch64_tlsgd_adr_page21 then
-        fail "AARCH64_TLSGD_ADR_PAGE21"
+      	let result = mod_page (mod_g (mod_gtlsidx s_val a_val)) - mod_page p_val  in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I32, CanFail))
       else if rel_type = r_aarch64_tlsgd_add_lo12_nc then
-        fail "AARCH64_TLSGD_ADD_LO12_NC"
+      	let result = mod_g (mod_gtlsidx s_val a_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I12, CannotFail))
       else if rel_type = r_aarch64_tlsgd_movw_g1 then
-        fail "AARCH64_TLSGD_MOVW_G1"
+        (** requires ad hoc check *)
+      	let result = mod_g (mod_gtlsidx s_val a_val) - got_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
       else if rel_type = r_aarch64_tlsgd_movw_g0_nc then
-        fail "AARCH64_TlSGD_MOVW_G0_NC"
+      	let result = mod_g (mod_gtlsidx s_val a_val) - got_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
       else if rel_type = r_aarch64_tlsld_adr_prel21 then
         fail "AARCH64_TLSLD_ADR_PREL21"
       else if rel_type = r_aarch64_tlsld_adr_page21 then
@@ -702,41 +775,77 @@ let abi_aarch64_apply_relocation rel s_val p_val got_val ef =
       else if rel_type = r_aarch64_tlsie_movw_gottprel_prel19 then
         fail "AARCH64_TLSIE_MOVW_GOTTPREL_PREL19"
       else if rel_type = r_aarch64_tlsle_movw_tprel_g2 then
-        fail "AARCH64_TLSLE_MOVW_TPREL_G2"
+      	let result = mod_tprel (s_val + a_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U16, CanFail))
       else if rel_type = r_aarch64_tlsle_movw_tprel_g1 then
-        fail "AARCH64_TLSLE_MOVW_TPREL_G1"
+      	let result = mod_tprel (s_val + a_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U16, CanFail))
       else if rel_type = r_aarch64_tlsle_movw_tprel_g1_nc then
-        fail "AARCH64_TLSLE_MOVW_TPREL_G1_NC"
+      	let result = mod_tprel (s_val + a_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U16, CannotFail))
       else if rel_type = r_aarch64_tlsle_movw_tprel_g0 then
-        fail "AARCH64_TLSLE_MOVW_TPREL_G0"
+      	let result = mod_tprel (s_val + a_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U16, CanFail))
       else if rel_type = r_aarch64_tlsle_movw_tprel_g0_nc then
-        fail "AARCH64_TLSLE_MOVW_TPREL_G0_NC"
+      	let result = mod_tprel (s_val + a_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U16, CannotFail))
       else if rel_type = r_aarch64_add_tprel_hi12 then
-        fail "AARCH64_ADD_TPREL_HI12"
+      	let result = mod_tprel (s_val + a_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U24, CanFail))
       else if rel_type = r_aarch64_add_tprel_lo12 then
-        fail "AARCH64_ADD_TPREL_LO12"
+      	let result = mod_tprel (s_val + a_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U12, CanFail))
       else if rel_type = r_aarch64_add_tprel_lo12_nc then
-        fail "AARCH64_ADD_TPREL_LO12_NC"
+      	let result = mod_tprel (s_val + a_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U12, CannotFail))
       else if rel_type = r_aarch64_ldst8_tprel_lo12 then
-        fail "AARCH64_LDST8_TPREL_LO12"
+      	let result = mod_tprel (s_val + a_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U12, CanFail))
       else if rel_type = r_aarch64_ldst8_tprel_lo12_nc then
-        fail "AARCH64_LDST8_TPREL_LO12_NC"
+      	let result = mod_tprel (s_val + a_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U12, CannotFail))
       else if rel_type = r_aarch64_ldst16_tprel_lo12 then
-        fail "AARCH64_LDST16_TPREL_LO12"
+      	let result = mod_tprel (s_val + a_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U12, CanFail))
       else if rel_type = r_aarch64_ldst16_tprel_lo12_nc then
-        fail "AARCH64_LDST16_TPREL_LO12_NC"
+      	let result = mod_tprel (s_val + a_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U12, CannotFail))
       else if rel_type = r_aarch64_ldst32_tprel_lo12 then
-        fail "AARCH64_LDST32_TPREL_LO12"
+      	let result = mod_tprel (s_val + a_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U12, CanFail))
       else if rel_type = r_aarch64_ldst32_tprel_lo12_nc then
-        fail "AARCH64_LDST32_TPREL_LO12_NC"
+      	let result = mod_tprel (s_val + a_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U12, CannotFail))
       else if rel_type = r_aarch64_ldst64_tprel_lo12 then
-        fail "AARCH64_LDST64_TPREL_LO12"
+      	let result = mod_tprel (s_val + a_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U12, CanFail))
       else if rel_type = r_aarch64_ldst64_tprel_lo12_nc then
-        fail "AARCH64_LDST64_TPREL_LO12_NC"
+      	let result = mod_tprel (s_val + a_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U12, CannotFail))
       else if rel_type = r_aarch64_ldst128_tprel_lo12 then
-        fail "AARCH64_LDST128_TPREL_LO12"
+      	let result = mod_tprel (s_val + a_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U12, CanFail))
       else if rel_type = r_aarch64_ldst128_tprel_lo12_nc then
-        fail "AARCH64_LDST128_TPREL_LO12_NC"
+      	let result = mod_tprel (s_val + a_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U12, CannotFail))
       else if rel_type = r_aarch64_tlsdesc_ld_prel19 then
         (** requires ad hoc test *)
       	let result = mod_g (mod_gtlsdesc (s_val + a_val)) - p_val in
