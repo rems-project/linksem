@@ -670,6 +670,24 @@ let elf64_size_correct hdr tbl =
       m = naturalFromNat (List.length tbl)
 ;;
 
+val is_elf32_addr_addralign_correct : elf32_section_header_table_entry -> bool
+let is_elf32_addr_addralign_correct ent =
+  let align = natural_of_elf32_word ent.elf32_sh_addralign in
+  let addr  = natural_of_elf32_addr ent.elf32_sh_addr in
+    if addr mod align = 0 then
+      align = 0 || align = 1 (* TODO: or a power of two *)
+    else
+      false
+    
+val is_elf64_addr_addralign_correct : elf64_section_header_table_entry -> bool
+let is_elf64_addr_addralign_correct ent =
+  let align = natural_of_elf64_xword ent.elf64_sh_addralign in
+  let addr  = natural_of_elf64_addr ent.elf64_sh_addr in
+    if addr mod align = 0 then
+      align = 0 || align = 1 (* TODO: or a power of two *)
+    else
+      false
+
 val is_valid_elf32_section_header_table : elf32_section_header_table -> bool
 let is_valid_elf32_section_header_table tbl =
   match tbl with

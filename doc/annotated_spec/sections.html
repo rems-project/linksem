@@ -2,6 +2,7 @@
 <!-- saved from url=(0058)http://www.sco.com/developers/gabi/latest/ch4.sheader.html -->
 <html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>Sections </title></head><body><p>
 </p><h1>Sections</h1><p>
+<font color="red">See file elf_section_header_table.lem for relevant definitions and types.</font>
 An object file's section header table lets one
 locate all the file's sections.
 The section header table is an array of <code>Elf32_Shdr</code> 
@@ -78,7 +79,10 @@ index is to be found elsewhere, in a larger field.
 <td align="right"><code>0xffff</code></td>
 </tr>
 </tbody></table>
-</p><hr>
+</p>
+<font color="red">Special section index constants above are captured as Lem constants in two places.
+Constants SHN_UNDEF and SHN_XINDEX are defined in elf_header.lem as shn_undef and shn_xindex respectively, whereas all other constants are defined in elf_section_header_table.lem.</font>
+<hr>
 <p>
 </p><dl compact="">
 <p></p><dt><code>SHN_UNDEF</code></dt><dd>
@@ -185,6 +189,8 @@ typedef struct {
 } Elf64_Shdr;
 </code>
 </p></pre>
+<font color="red">See Lem record types elfXX_section_header_table_entry for XX=32,64 for implementations of the above records in elf_section_header_table.lem.
+See also types elfXX_section_header_table for XX=32,64 for types representing linked lists of section header table entries.</font>
 <hr>
 <p>
 </p><dl compact="">
@@ -243,6 +249,7 @@ The value of <code>sh_addr</code>
 must be congruent to 0, modulo the value of <code>sh_addralign</code>.
 Currently, only 0 and positive integral powers of two are allowed.
 Values 0 and 1 mean the section has no alignment constraints.
+<font color="red">See functions is_elfXX_addr_addralign_correct for XX=32,64 for this test.</font>
 <p></p></dd><dt><code>sh_entsize</code></dt><dd>
 Some sections hold a table of fixed-size entries,
 such as a symbol table.
@@ -351,7 +358,9 @@ A section header's <code>sh_type</code> member specifies the section's semantics
 <td align="right"><code>0xffffffff</code></td>
 </tr>
 </tbody></table>
-</p><hr>
+</p>
+<font color="red">Section type constants defined above are captured in Lem as constants sht_null through to sht_hiuser in elf_section_header_table.lem.</font>
+<hr>
 <p>
 </p></a><dl compact=""><a name="sh_type" <="" a="">
 <p></p><dt><code>SHT_NULL</code></dt><dd>
@@ -1412,10 +1421,10 @@ see the ABI supplement for the desired processor.
 <hr>
 <i>
 <small>
-© 1997, 1998, 1999, 2000, 2001 The Santa Cruz Operation, Inc.  All rights reserved.
-© 2002 Caldera International.  All rights reserved.
-© 2003-2010 The SCO Group.  All rights reserved.
-© 2011-2015 Xinuos Inc.  All rights reserved.
+\A9 1997, 1998, 1999, 2000, 2001 The Santa Cruz Operation, Inc.  All rights reserved.
+\A9 2002 Caldera International.  All rights reserved.
+\A9 2003-2010 The SCO Group.  All rights reserved.
+\A9 2011-2015 Xinuos Inc.  All rights reserved.
 </small>
 </i>
 
