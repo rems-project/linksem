@@ -2,6 +2,7 @@
 <!-- saved from url=(0058)http://www.sco.com/developers/gabi/latest/ch4.eheader.html -->
 <html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>ELF Header</title>
 </head><body><h1>ELF Header</h1>
+<font color="red">See file elf_header.lem for all relevant definitions.</font>
 <p>
 Some object file control structures can grow, because the ELF header
 contains their actual sizes. If the object file format changes, a program
@@ -13,6 +14,7 @@ if extensions are defined.
 <b>Figure 4-3: ELF Header</b>
 <p>
 </p><pre><code>#define EI_NIDENT 16
+<font color="red">Definition ei_nident in elf_header.lem</font>
 
 typedef struct {
         unsigned char   e_ident[EI_NIDENT];
@@ -47,6 +49,7 @@ typedef struct {
         Elf64_Half      e_shnum;
         Elf64_Half      e_shstrndx;
 } Elf64_Ehdr;</code>
+<font color="red">Types elf32_header and elf64_header in elf_header.lem.</font>
 </pre>
 <hr>
 <dl compact="">
@@ -111,6 +114,7 @@ appear below in <a href="http://www.sco.com/developers/gabi/latest/ch4.eheader.h
 <td>Processor-specific</td>
 </tr>
 </tbody></table>
+<font color="red">The above constants are defined as elf_ft_none through elf_ft_hiproc in elf_header.lem.</font>
 </p><p>
 Although the core file contents are unspecified, 
 type <code>ET_CORE</code>
@@ -123,6 +127,8 @@ through <code>ET_HIPROC</code>
 (inclusive) are reserved for processor-specific semantics. If meanings
 are specified, the processor supplement explains them. Other values are
 reserved and will be assigned to new object file types as necessary.
+<font color="red">Predicates for testing whether a file type is machine- or processor-specific are defined in elf_header.lem.
+See iis_processor_specific_object_file_type_value for example.</font>
 </p><p><a name="e_machine"></a>
 </p><dt><code>e_machine</code></dt>
 <dd>This member's value specifies the required architecture for
@@ -1241,7 +1247,7 @@ an individual file. </dd>
 <td align="right"><code>216</code></td>
 <td>Cognitive Smart Memory Processor</td>
 </tr>
-<!--30 August 2013 for iCelero, Inc - Christian Grössler  (chris@icelero.com)
+<!--30 August 2013 for iCelero, Inc - Christian Gr\F6ssler  (chris@icelero.com)
   --29 June 2015 chip title change - Christian Gr\366ssler  (christian.groessler@bluechipsys.com) -->
 <tr>
 <td><code>EM_COOL</code></td>
@@ -1305,6 +1311,7 @@ an individual file. </dd>
 </tr>
 
 </tbody></table>
+<font color="red">The machine type flags above are defined as constants elf_ma_none through to elf_ma_riscv in the file elf_header.lem.</font>
 </p><p>
 Other values are reserved and will be assigned to new machines 
 as necessary.
@@ -1333,51 +1340,80 @@ machine would be called <code>EF_XYZ_WIDGET</code>.
 <td>Current version</td>
 </tr>
 </tbody></table>
+<font color="red">The version flags above are captured as constants elf_ev_none and elf_ev_current in the file elf_header.lem.</font>
 </p><p>
 The value <code>1</code> signifies the original file format; 
 extensions will create new versions with higher numbers. 
 Although the value of <code>EV_CURRENT</code>
 is shown as <code>1</code> in the previous table, it will 
 change as necessary to reflect the current version number.
+<font color="red">A predicate is_valid_extended_version_number is provided in elf_header.lem for checking extended versions of the file version.</font>
 </p><dt><code>e_entry</code></dt>
-<dd>This member gives the virtual address to which the 
+<dd>
+<font color="red">See fields elf32_entry and elf64_entry in records elf32_header and elf64_header, respectively, in elf_header.lem.</font>
+This member gives the virtual address to which the 
 system first transfers
 control, thus starting the process. If the file has no associated entry
-point, this member holds zero. </dd>
+point, this member holds zero.
+<font color="red">See has_elfXX_header_associated_entry_point for XX=32,64 in elf_header.lem.</font>
+</dd>
 <dt><code>e_phoff</code></dt>
-<dd>This member holds the program header table's file offset in bytes.
-If the file has no program header table, this member holds zero. </dd>
+<dd>
+<font color="red">See fields elf32_phoff and elf64_phoff in records elf32_header and elf64_header, respectively, in elf_header.lem.</font>
+This member holds the program header table's file offset in bytes.
+If the file has no program header table, this member holds zero.
+<font color="red">See is_elfXX_header_program_table_present for XX=32,64 in elf_header.lem.</font>
+</dd>
 <dt><code>e_shoff</code></dt>
-<dd>This member holds the section header table's file offset in bytes.
-If the file has no section header table, this member holds zero. </dd>
+<dd>
+<font color="red">See fields elf32_shoff and elf64_shoff in records elf32_header and elf64_header, respectively, in elf_header.lem.</font>
+This member holds the section header table's file offset in bytes.
+If the file has no section header table, this member holds zero.
+<font color="red">See is_elfXX_header_section_table_present for XX=32,64 in elf_header.lem.</font>
+</dd>
 <dt><code>e_flags</code></dt>
-<dd>This member holds processor-specific flags associated with the file.
+<dd>
+<font color="red">See fields elf32_flags and elf64_flags in records elf32_header and elf64_header, respectively, in elf_header.lem.</font>
+This member holds processor-specific flags associated with the file.
 Flag names take the form 
 <code>EF_</code><i>machine</i><b>_</b><i>flag</i>.  </dd>
 <dt><code>e_ehsize</code></dt>
-<dd>This member holds the ELF header's size in bytes. </dd>
+<dd>
+<font color="red">See fields elf32_ehsize and elf64_ehsize in records elf32_header and elf64_header, respectively, in elf_header.lem.</font>
+This member holds the ELF header's size in bytes. </dd>
 <dt><code>e_phentsize</code></dt>
-<dd>This member holds the size in bytes of one entry in the file's program
+<dd>
+<font color="red">See fields elf32_phentsize and elf64_phentsize in records elf32_header and elf64_header, respectively, in elf_header.lem.</font>
+This member holds the size in bytes of one entry in the file's program
 header table; all entries are the same size. </dd>
 <dt><code>e_phnum</code></dt>
-<dd>This member holds the number of entries in the program header table.
+<dd>
+<font color="red">See fields elf32_phnum and elf64_phnum in records elf32_header and elf64_header, respectively, in elf_header.lem.</font>
+This member holds the number of entries in the program header table.
 Thus the product of 
 <code>e_phentsize</code> and <code>e_phnum</code> gives the
 table's size in bytes. 
 If a file has no program header table, <code>e_phnum</code>
-holds the value zero. </dd>
+holds the value zero.
+<font color="red">See functions get_elfXX_header_program_table_size for XX=32,64 in elf_header.lem for this calculation.</font>
+</dd>
 <dt><code>e_shentsize</code></dt>
-<dd>This member holds a section header's size in bytes. A section header
+<dd>
+<font color="red">See fields elf32_shentsize and elf64_shentsize in records elf32_header and elf64_header, respectively, in elf_header.lem.</font>
+This member holds a section header's size in bytes. A section header
 is one entry in the section header table; all entries are the same size.
 </dd>
 <dt><code>e_shnum</code></dt>
 <a name="many_sections"></a>
-<dd>This member holds the number of entries in the section header table.
+<dd>
+<font color="red">See fields elf32_shnum and elf64_shnum in records elf32_header and elf64_header, respectively, in elf_header.lem.</font>
+This member holds the number of entries in the section header table.
 Thus the product of <code>e_shentsize</code> and 
 <code>e_shnum</code> gives the
 section header table's size in bytes. 
 If a file has no section header table,
 <code>e_shnum</code> holds the value zero.
+<font color="red">See functions get_elfXX_header_program_table_size for XX=32,64 in elf_header.lem for this calculation.</font>
 <p>
 If the number of sections is greater than or equal to
 <code>SHN_LORESERVE</code> (<code>0xff00</code>), this member
@@ -1386,15 +1422,19 @@ entries is contained in the <code>sh_size</code> field of
 the section header at index <code>0</code>.
 (Otherwise, the <code>sh_size</code> member of the initial entry 
 contains <code>0</code>.)
+<font color="red">See functions is_elfXX_header_section_size_in_section_header_table for XX=32,64 in elf_header.lem.</font>
 </p></dd>
 <dt><code>e_shstrndx</code></dt>
-<dd>This member holds the section header table index of the 
+<dd>
+<font color="red">See fields elf32_shstrndx and elf64_shstrndx in records elf32_header and elf64_header, respectively, in elf_header.lem.</font>
+This member holds the section header table index of the 
 entry associated with the section name string table. 
 If the file has no section name string
 table, this member holds the value <code>SHN_UNDEF</code>. 
 See <a href="http://www.sco.com/developers/gabi/latest/ch4.sheader.html">``Sections''</a>
 and <a href="http://www.sco.com/developers/gabi/latest/ch4.strtab.html">``String Table''</a> below 
 for more information.
+<font color="red">See has_elfXX_header_string_table for XX=32,64 in elf_header.lem.</font>
 <p>
 If the section name string table section index is greater than or equal to
 <code>SHN_LORESERVE</code> (<code>0xff00</code>), this member
@@ -1404,7 +1444,9 @@ is contained in the <code>sh_link</code> field of
 the section header at index <code>0</code>.
 (Otherwise, the <code>sh_link</code> member of the initial entry 
 contains <code>0</code>.)
-</p></dd>
+<font color="red">See functions is_elfXX_header_string_table_index_in_link for XX=32,64 in elf_header.lem.</font>
+</p>
+</dd>
 </dl>
 <p><a name="elfid"></a>
 </p><h2>ELF Identification</h2>
@@ -1484,13 +1526,14 @@ the <code>e_ident</code> member.
 <td>Size of <code>e_ident[]</code></td>
 </tr>
 </tbody></table>
+<font color="red">The constants above are captured as Lem constants elf_ii_mag0 through elf_ii_nident in elf_header.lem.</font>
 </p><hr>
 <p>
 These indexes access bytes that hold the following values.
 </p><dl compact="">
 <dt><code>EI_MAG0</code>&nbsp;to&nbsp;<code>EI_MAG3</code></dt>
 <dd>A file's first 4 bytes hold a ``magic number,'' identifying the file
-as an ELF object file. </dd>
+as an ELF object file.</dd>
 <p>
 <table border="" cellspacing="0">
 <tbody><tr>
@@ -1519,6 +1562,7 @@ as an ELF object file. </dd>
 <td><code>e_ident[EI_MAG3]</code></td>
 </tr>
 </tbody></table>
+<font color="red">See function is_magic_number_correct in elf_header.lem for magic number test.</font>
 </p><p>
 </p><dt><code>EI_CLASS</code></dt>
 <dd>The next byte, <code>e_ident[EI_CLASS]</code>, identifies the 
@@ -1546,6 +1590,9 @@ file's class, or capacity. </dd>
 <td>64-bit objects</td>
 </tr>
 </tbody></table>
+<font color="red">See Lem constants elf_class_none, elf_class_32 and elf_class_64 in elf_header.lem.
+See also functions get_elfXX_file_class for XX=32,64 for extraction of the file class from the header.
+</font>
 </p><p>
 The file format is designed to be portable among machines of various
 sizes, without imposing the sizes of the largest machine on the 
@@ -1595,6 +1642,8 @@ The following encodings are currently defined.
 <td>See below</td>
 </tr>
 </tbody></table>
+<font color="red">See constants elf_data_none, elf_data_2lsb and elf_data_2msb in elf_header.lem.
+See also functions get_elfXX_data_encoding for XX=32,64 for extraction of the data encoding from the ELF header.</font>
 </p><p>
 Other values are reserved and will be assigned to new 
 encodings as necessary.
@@ -1608,7 +1657,9 @@ same byte order as that of the running program.
 <dd>Byte <code>e_ident[EI_VERSION]</code> specifies the 
 ELF header version
 number. Currently, this value must be <code>EV_CURRENT</code>, 
-as explained above for <code>e_version</code>. </dd>
+as explained above for <code>e_version</code>.
+<font color="red">See functions get_elfXX_version_number and is_valid_elfXX_version_number (for XX=32,64) to obtain and check the correctness of the ELF version number, respectively.</font>
+</dd>
 <p><a name="osabi"></a>
 </p><dt><code>EI_OSABI</code></dt>
 <dd>Byte <code>e_ident[EI_OSABI]</code> identifies the
@@ -1738,6 +1789,8 @@ where <code>0</code> can also be taken to mean <i>unspecified</i>.
 <td>Architecture-specific value range</td>
 </tr>
 </tbody></table>
+<font color="red">The constants above are captured as Lem constants elf_osabi_none through to elf_osabi_openvos in elf_header.lem.
+See also functions get_elfXX_abi_version for XX=32,64 and is_valid_architecture_defined_osabi_version for obtaining the OSABI version and checking whether an OSABI version is architecure defined, respectively.</font>
 </p></dd>
 <p><a name="abiversion"></a>
 </p><dt><code>EI_ABIVERSION</code></dt>
@@ -1751,7 +1804,9 @@ field by the processor supplement or no version values are
 specified for the ABI determined by a particular value of the
 <code>EI_OSABI</code> byte, the value <code>0</code> shall
 be used for the <code>EI_ABIVERSION</code> byte; it
-indicates <i>unspecified</i>.</dd>
+indicates <i>unspecified</i>.
+<font color="red">See functions get_elfXX_abi_version for XX=32,64 to extract the ABI version in elf_header.lem.</font>
+</dd>
 <p>
 </p><dt><code>EI_PAD</code></dt>
 <dd>This value marks the beginning of the unused bytes in 
@@ -1871,10 +1926,10 @@ The ABI supplement for the desired processor describes the details.
 <hr>
 <i>
 <small>
-© 1997, 1998, 1999, 2000, 2001 The Santa Cruz Operation, Inc.  All rights reserved.
-© 2002 Caldera International.  All rights reserved.
-© 2003-2011 The SCO Group.  All rights reserved.
-© 2011-2015 Xinuos Inc.  All rights reserved.
+\A9 1997, 1998, 1999, 2000, 2001 The Santa Cruz Operation, Inc.  All rights reserved.
+\A9 2002 Caldera International.  All rights reserved.
+\A9 2003-2011 The SCO Group.  All rights reserved.
+\A9 2011-2015 Xinuos Inc.  All rights reserved.
 </small>
 </i>
 
