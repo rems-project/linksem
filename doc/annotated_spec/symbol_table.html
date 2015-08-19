@@ -2,6 +2,7 @@
 <!-- saved from url=(0057)http://www.sco.com/developers/gabi/latest/ch4.symtab.html -->
 <html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>Symbol Table</title></head><body><p>
 </p><h1>Symbol Table</h1><p>
+<font color="red">See Lem file elf_symbol_table.lem for an implementation of symbol tables.</font>
 An object file's symbol table holds information
 needed to locate and relocate a program's symbolic
 definitions and references.
@@ -18,6 +19,7 @@ initial entry are specified later in this section.
 <td align="center"><code>0</code></td>
 </tr>
 </tbody></table>
+<font color="red">See constant stn_undef in elf_symbol_table.lem.</font>
 </p><p>
 A symbol table entry has the following format.
 </p><hr>
@@ -43,6 +45,8 @@ typedef struct {
 } Elf64_Sym;
 </code></pre><code>
 </code>
+<font color="red">See Lem records elfXX_symbol_table_entry for XX=32,64 for implementations of the above records in elf_symbol_table.lem.
+See also types elfXX_symbol_table for types representing lists of the above records.</font>
 <hr>
 <p>
 </p><dl compact="">
@@ -83,6 +87,8 @@ both 32 and 64-bit objects.
    #define ELF64_ST_TYPE(i)   ((i)&amp;0xf)
    #define ELF64_ST_INFO(b,t) (((b)&lt;&lt;4)+((t)&amp;0xf))
 </pre>
+<font color="red">See functions get_symbol_type and get_symbol_info in elf_symbol_table.lem for an implementation of the macros above.
+ELFXX_ST_INFO is not needed as direct access to the symbol table entry's info field can be used instead.</font>
 <hr>
 <a name="st_other"></a>
 <p></p></dd><dt><code>st_other</code></dt><dd>
@@ -95,6 +101,7 @@ no defined meaning.
 <pre>   #define ELF32_ST_VISIBILITY(o) ((o)&amp;0x3)
    #define ELF64_ST_VISIBILITY(o) ((o)&amp;0x3)
 </pre>
+<font color="red">See function get_symbol_visibility in elf_symbol_table.lem for an implementation of the above macro.</font>
 <hr>
 <p></p></dd><dt><code>st_shndx</code></dt><dd>
 Every symbol table entry is <i>defined</i> in relation
@@ -109,6 +116,7 @@ If this member contains <code>SHN_XINDEX</code>,
 then the actual section header index is too large to fit in this field.
 The actual value is contained in the associated
 section of type <code>SHT_SYMTAB_SHNDX</code>.
+<font color="red">See the functions is_elfXX_shndx_too_large for XX=32,64 that test whether a section header table index is stored elsewhere.</font>
 </p></dd></dl>
 <p>
 A symbol's binding determines the linkage visibility
@@ -148,7 +156,9 @@ and behavior.
 <td align="right"><code>15</code></td>
 </tr>
 </tbody></table>
-</p><hr>
+</p>
+<font color="red">The symbol binding constants above are capture as Lem constants stb_local through to stb_hiproc in file elf_symbol_table.lem.</font>
+<hr>
 <dl compact="">
 <p></p><dt><code>STB_LOCAL</code></dt><dd>
 Local symbols are not visible outside the object file
@@ -271,7 +281,9 @@ the associated entity.
 <td align="right"><code>15</code></td>
 </tr>
 </tbody></table>
-</p><hr>
+</p>
+<font color="red">Symbol type constants above are captured as Lem constants stt_notype through to stt_hiproc in file elf_symbol_table.lem.</font>
+<hr>
 <p>
 </p><dl compact="">
 <p></p><dt><code>STT_NOTYPE</code></dt><dd>
@@ -375,7 +387,9 @@ become part of an executable or shared object.
 <td align="right"><code>3</code></td>
 </tr>
 </tbody></table>
-</p><hr>
+</p>
+<font color="red">The symbol visibility constants above are captured as Lem constants stv_default through to stv_protected in elf_symbol_table.lem.</font>
+<hr>
 <p>
 </p><dl compact="">
 <p></p><dt><code>STV_DEFAULT</code></dt><dd>
@@ -511,6 +525,7 @@ that correspond to symbol table entries with <code>SHN_XINDEX</code>
 will hold valid section header indexes;
 all other entries will have value <code>0</code>.
 </dd></dl>
+<font color="red">Section header indices such as SHN_UNDEF are defined in elf_header.lem and elf_section_header_table.lem respectively.</font>
 <p>
 The symbol table entry for index 0 (<code>STN_UNDEF</code>)
 is reserved; it holds the following.
@@ -552,7 +567,9 @@ is reserved; it holds the following.
 <td>No section</td>
 </tr>
 </tbody></table>
-</p><hr>
+</p>
+<font color="red">See functions is_elfXX_null_entry for XX=32,64 in elf_symbol_table.lem for null entry tests.</font>
+<hr>
 <a name="symbol_values"></a>
 <h2>Symbol Values</h2>
 Symbol table entries for different object file types have
@@ -584,10 +601,10 @@ efficient access by the appropriate programs.
 <hr>
 <i>
 <small>
-© 1997, 1998, 1999, 2000, 2001 The Santa Cruz Operation, Inc.  All rights reserved.
-© 2002 Caldera International.  All rights reserved.
-© 2003-2010 The SCO Group.  All rights reserved.
-© 2011-2014 Xinuos Inc.  All rights reserved.
+\A9 1997, 1998, 1999, 2000, 2001 The Santa Cruz Operation, Inc.  All rights reserved.
+\A9 2002 Caldera International.  All rights reserved.
+\A9 2003-2010 The SCO Group.  All rights reserved.
+\A9 2011-2014 Xinuos Inc.  All rights reserved.
 </small>
 </i>
 

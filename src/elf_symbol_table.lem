@@ -16,6 +16,7 @@ open import Error
 open import Missing_pervasives
 open import Show
 
+open import Elf_header
 open import Elf_types_native_uint
 open import Endianness
 open import String_table
@@ -273,6 +274,14 @@ let get_symbol_visibility info =
 val make_symbol_other : natural -> unsigned_char
 let make_symbol_other visibility =
   unsigned_char_of_natural visibility
+  
+val is_elf32_shndx_too_large : elf32_symbol_table_entry -> bool
+let is_elf32_shndx_too_large syment =
+  natural_of_elf32_half syment.elf32_st_shndx = shn_xindex
+  
+val is_elf64_shndx_too_large : elf64_symbol_table_entry -> bool
+let is_elf64_shndx_too_large syment =
+  natural_of_elf64_half syment.elf64_st_shndx = shn_xindex
 
 (** NULL tests *)
 

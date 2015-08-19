@@ -47,8 +47,8 @@ ALL_UTIL_ML := \
 
 LEM_ELF_SRC := byte_sequence.lem archive.lem \
 	elf_types_native_uint.lem \
-	string_table.lem elf_symbol_table.lem \
-	elf_header.lem elf_program_header_table.lem \
+	string_table.lem \
+	elf_header.lem elf_symbol_table.lem elf_program_header_table.lem \
 	elf_section_header_table.lem \
 	elf_relocation.lem elf_dynamic.lem \
 	elf_interpreted_segment.lem elf_interpreted_section.lem \
