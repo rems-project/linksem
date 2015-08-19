@@ -1822,6 +1822,9 @@ in a file. Class <code>ELFCLASS32</code> files use objects
 that occupy 1, 2, and 4 bytes. Class <code>ELFCLASS64</code> files
 use objects that occupy 1, 2, 4, and 8 bytes. Under the defined
 encodings, objects are represented as shown below.
+<font color="red">See function deduce_endianness in elf_header.lem for extraction of file endianness.
+See also Lem file endianness.lem for functions and types for working with endianness.
+</font>
 </p><p>
 Encoding <code>ELFDATA2LSB</code> specifies 2's complement values,
 with the least significant byte occupying the lowest address. 
