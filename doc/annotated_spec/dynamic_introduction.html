@@ -1,0 +1,65 @@
+
+<!-- saved from url=(0056)http://www.sco.com/developers/gabi/latest/ch5.intro.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>Chapter 5: Program Loading and Dynamic Linking</title></head><body><p>
+</p><h1>Introduction</h1><p>
+This section describes the object file
+information and system actions that create running programs.
+Some information here applies to all systems;
+information specific to one processor resides in
+sections marked accordingly.
+</p><p>
+Executable and shared object files statically represent programs.
+To execute such programs, the system uses the files to create
+dynamic program representations, or process images.
+As section ''Virtual Address Space'' in Chapter 3 of the 
+processor supplement describes, a process image has segments that
+hold its text, data, stack, and so on.  This chapter's major sections
+discuss the following:
+</p><ul>
+<li>
+<a href="http://www.sco.com/developers/gabi/latest/ch5.pheader.html">Program Header.</a>
+This section complements Chapter 4, describing
+object file structures that relate directly to program execution.
+The primary data structure, a program header table, locates
+segment images within the file and contains other information
+necessary to create the memory image for the program.
+</li><li>
+<a href="http://www.sco.com/developers/gabi/latest/ch5.prog_loading.html">Program Loading.</a>
+Given an object file, the system must load
+it into memory for the program to run.
+</li><li>
+<a href="http://www.sco.com/developers/gabi/latest/ch5.dynamic.html">Dynamic linking.</a> 
+After the system loads the program it must complete
+the process image by resolving symbolic references among the object
+files that compose the process.
+</li></ul>
+<hr>
+<img src="./dynamic_introduction_files/warning.gif" alt="NOTE:">
+The processor supplement defines a naming convention for ELF constants
+that have processor ranges specified.  Names such as <code>DT_</code>,
+<code>PT_</code>,
+for processor specific extensions, incorporate the name of the
+processor: <code>DT_M32_SPECIAL</code>, for example.
+Pre-existing processor
+extensions not using this convention will be supported.
+<table>
+<tbody><tr><th>Pre-Existing Extensions</th>
+</tr><tr>
+<td><code>DT_JUMP_REL</code></td>
+</tr>
+</tbody></table>
+<hr>
+<a href="http://www.sco.com/developers/gabi/latest/ch4.reloc.html"><img src="./dynamic_introduction_files/previous.gif" alt="Previous"></a>
+<a href="http://www.sco.com/developers/gabi/latest/contents.html"><img src="./dynamic_introduction_files/contents.gif" alt="Contents"></a>
+<a href="http://www.sco.com/developers/gabi/latest/ch5.pheader.html"><img src="./dynamic_introduction_files/next.gif" alt="Next"></a>
+<hr>
+<i>
+<small>
+© 1997, 1998, 1999, 2000, 2001 The Santa Cruz Operation, Inc.  All rights reserved.
+© 2002 Caldera International.  All rights reserved.
+© 2003-2010 The SCO Group.  All rights reserved.
+© 2011-2014 Xinuos Inc.  All rights reserved.
+</small>
+</i>
+
+</body></html>

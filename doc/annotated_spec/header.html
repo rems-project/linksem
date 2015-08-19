@@ -1,0 +1,1881 @@
+
+<!-- saved from url=(0058)http://www.sco.com/developers/gabi/latest/ch4.eheader.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>ELF Header</title>
+</head><body><h1>ELF Header</h1>
+<p>
+Some object file control structures can grow, because the ELF header
+contains their actual sizes. If the object file format changes, a program
+may encounter control structures that are larger or smaller than expected.
+Programs might therefore ignore ``extra'' information. The treatment of
+``missing'' information depends on context and will be specified when and
+if extensions are defined. 
+</p><hr>
+<b>Figure 4-3: ELF Header</b>
+<p>
+</p><pre><code>#define EI_NIDENT 16
+
+typedef struct {
+        unsigned char   e_ident[EI_NIDENT];
+        Elf32_Half      e_type;
+        Elf32_Half      e_machine;
+        Elf32_Word      e_version;
+        Elf32_Addr      e_entry;
+        Elf32_Off       e_phoff;
+        Elf32_Off       e_shoff;
+        Elf32_Word      e_flags;
+        Elf32_Half      e_ehsize;
+        Elf32_Half      e_phentsize;
+        Elf32_Half      e_phnum;
+        Elf32_Half      e_shentsize;
+        Elf32_Half      e_shnum;
+        Elf32_Half      e_shstrndx;
+} Elf32_Ehdr;
+
+typedef struct {
+        unsigned char   e_ident[EI_NIDENT];
+        Elf64_Half      e_type;
+        Elf64_Half      e_machine;
+        Elf64_Word      e_version;
+        Elf64_Addr      e_entry;
+        Elf64_Off       e_phoff;
+        Elf64_Off       e_shoff;
+        Elf64_Word      e_flags;
+        Elf64_Half      e_ehsize;
+        Elf64_Half      e_phentsize;
+        Elf64_Half      e_phnum;
+        Elf64_Half      e_shentsize;
+        Elf64_Half      e_shnum;
+        Elf64_Half      e_shstrndx;
+} Elf64_Ehdr;</code>
+</pre>
+<hr>
+<dl compact="">
+<dt><code>e_ident</code></dt>
+<dd>The initial bytes mark the file as an object file and 
+provide machine-independent
+data with which to decode and interpret the file's contents. 
+Complete descriptions
+appear below in <a href="http://www.sco.com/developers/gabi/latest/ch4.eheader.html#elfid">``ELF Identification''</a>. </dd>
+<dt><code>e_type</code></dt>
+<dd>This member identifies the object file type. </dd>
+<p>
+<table border="" cellspacing="0">
+<tbody><tr>
+<th><b>Name</b></th>
+<th><b>Value</b></th>
+<th><b>Meaning</b></th>
+</tr>
+<tr>
+<td><code>ET_NONE</code></td>
+<td align="right"><code>0</code></td>
+<td>No file type</td>
+</tr>
+<tr>
+<td><code>ET_REL</code></td>
+<td align="right"><code>1</code></td>
+<td>Relocatable file</td>
+</tr>
+<tr>
+<td><code>ET_EXEC</code></td>
+<td align="right"><code>2</code></td>
+<td>Executable file</td>
+</tr>
+<tr>
+<td><code>ET_DYN</code></td>
+<td align="right"><code>3</code></td>
+<td>Shared object file</td>
+</tr>
+<tr>
+<td><code>ET_CORE</code></td>
+<td align="right"><code>4</code></td>
+<td>Core file</td>
+</tr>
+<tr>
+<td><code>ET_LOOS</code></td>
+<td align="right"><code>0xfe00</code></td>
+<td>Operating system-specific</td>
+</tr>
+<tr>
+<td><code>ET_HIOS</code></td>
+<td align="right"><code>0xfeff</code></td>
+<td>Operating system-specific</td>
+</tr>
+<tr>
+<td><code>ET_LOPROC</code></td>
+<td align="right"><code>0xff00</code></td>
+<td>Processor-specific</td>
+</tr>
+<tr>
+<td><code>ET_HIPROC</code></td>
+<td align="right"><code>0xffff</code></td>
+<td>Processor-specific</td>
+</tr>
+</tbody></table>
+</p><p>
+Although the core file contents are unspecified, 
+type <code>ET_CORE</code>
+is reserved to mark the file. 
+Values from <code>ET_LOOS</code> 
+through <code>ET_HIOS</code>
+(inclusive) are reserved for operating system-specific semantics.
+Values from <code>ET_LOPROC</code> 
+through <code>ET_HIPROC</code>
+(inclusive) are reserved for processor-specific semantics. If meanings
+are specified, the processor supplement explains them. Other values are
+reserved and will be assigned to new object file types as necessary.
+</p><p><a name="e_machine"></a>
+</p><dt><code>e_machine</code></dt>
+<dd>This member's value specifies the required architecture for
+an individual file. </dd>
+<p>
+<table border="" cellspacing="0">
+<tbody><tr>
+<th><b>Name</b></th>
+<th><b>Value</b></th>
+<th><b>Meaning</b></th>
+</tr>
+<tr>
+<td><code>EM_NONE</code></td>
+<td align="right"><code>0</code></td>
+<td>No machine</td>
+</tr>
+<!-- AT&T, before 1994 -->
+<tr>
+<td><code>EM_M32</code></td>
+<td align="right"><code>1</code></td>
+<td>AT&amp;T WE 32100</td>
+</tr>
+<!-- Sun Microsystems, before 1994 -->
+<tr>
+<td><code>EM_SPARC</code></td>
+<td align="right"><code>2</code></td>
+<td>SPARC</td>
+</tr>
+<!-- USL, before 1994 -->
+<tr>
+<td><code>EM_386</code></td>
+<td align="right"><code>3</code></td>
+<td>Intel 80386</td>
+</tr>
+<!-- before 1994 -->
+<tr>
+<td><code>EM_68K</code></td>
+<td align="right"><code>4</code></td>
+<td>Motorola 68000</td>
+</tr>
+<!-- before 1994 -->
+<tr>
+<td><code>EM_88K</code></td>
+<td align="right"><code>5</code></td>
+<td>Motorola 88000</td>
+</tr>
+<!-- before 1994, was EM_486, Intel 80486 -->
+<!-- 11 May 2015, H.J. Lu, Intel (hjl.tools AT gmail DOT com) -->
+<tr>
+<td><code>EM_IAMCU</code></td>
+<td align="right"><code>6</code></td>
+<td>Intel MCU</td>
+</tr>
+<!-- before 1994 -->
+<tr>
+<td><code>EM_860</code></td>
+<td align="right"><code>7</code></td>
+<td>Intel 80860</td>
+</tr>
+<!-- before 1994 -->
+<tr>
+<td><code>EM_MIPS</code></td>
+<td align="right"><code>8</code></td>
+<td>MIPS I Architecture</td>
+</tr>
+<!-- Amdahl? before 1994, then Hannaford Bros, 10/99 -->
+<tr>
+<td><code>EM_S370</code></td>
+<td align="right"><code>9</code></td>
+<td>IBM System/370 Processor</td>
+</tr>
+<!-- before 1994 -->
+<tr>
+<td><code>EM_MIPS_RS3_LE</code></td>
+<td align="right"><code>10</code></td>
+<td>MIPS RS3000 Little-endian</td>
+</tr>
+<!-- before 1994, 11 reserved for RS/6000 -->
+<tr>
+<td align="right">reserved</td>
+<td align="right"><code>11-14</code></td>
+<td>Reserved for future use</td>
+</tr>
+<!-- Hewlett-Packard, before 1994 -->
+<tr>
+<td><code>EM_PARISC</code></td>
+<td align="right"><code>15</code></td>
+<td>Hewlett-Packard PA-RISC</td>
+</tr>
+<!-- before 1994, reserved for nCUBE -->
+<tr>
+<td align="right">reserved</td>
+<td align="right"><code>16</code></td>
+<td>Reserved for future use</td>
+</tr>
+<!-- Fujitsu, 4/94 -->
+<tr>
+<td><code>EM_VPP500</code></td>
+<td align="right"><code>17</code></td>
+<td>Fujitsu VPP500</td>
+</tr>
+<!-- SunSoft, 7/94 -->
+<tr>
+<td><code>EM_SPARC32PLUS</code></td>
+<td align="right"><code>18</code></td>
+<td>Enhanced instruction set SPARC</td>
+</tr>
+<!-- TIS, 10/94 -->
+<tr>
+<td><code>EM_960</code></td>
+<td align="right"><code>19</code></td>
+<td>Intel 80960</td>
+</tr>
+<!-- TIS, 10/94 -->
+<tr>
+<td><code>EM_PPC</code></td>
+<td align="right"><code>20</code></td>
+<td>PowerPC</td>
+</tr>
+<!-- TIS, 10/94, then IBM 10/99 -->
+<tr>
+<td><code>EM_PPC64</code></td>
+<td align="right"><code>21</code></td>
+<td>64-bit PowerPC</td>
+</tr>
+<!-- IBM (Deutschland) by Martin Schwidefsky, 12/00 -->
+<tr>
+<td><code>EM_S390</code></td>
+<td align="right"><code>22</code></td>
+<td>IBM System/390 Processor</td>
+</tr>
+<!-- 22 Feb 2005 for Daniel A. Brokenshire (brokensh@us.ibm.com) -->
+<tr>
+<td><code>EM_SPU</code></td>
+<td align="right"><code>23</code></td>
+<td>IBM SPU/SPC</td>
+</tr>
+<!-- TIS, 10/94, reserved for Power/PowerPC -->
+<tr>
+<td align="right">reserved</td>
+<td align="right"><code>24-35</code></td>
+<td>Reserved for future use</td>
+</tr>
+<!-- Green Hills Software, 6/95 -->
+<tr>
+<td><code>EM_V800</code></td>
+<td align="right"><code>36</code></td>
+<td>NEC V800</td>
+</tr>
+<!-- Green Hills Software, 7/95 -->
+<tr>
+<td><code>EM_FR20</code></td>
+<td align="right"><code>37</code></td>
+<td>Fujitsu FR20</td>
+</tr>
+<!-- Green Hills Software, 9/95 -->
+<tr> <td><code>EM_RH32</code></td>
+<td align="right"><code>38</code></td>
+<td>TRW RH-32</td>
+</tr>
+<!-- Motorola, 12/95 -->
+<tr>
+<td><code>EM_RCE</code></td>
+<td align="right"><code>39</code></td>
+<td>Motorola RCE</td>
+</tr>
+<!-- Green Hills Software, 3/96 -->
+<!-- 10 Nov 2011 description change Richard Earnshaw (Richard.Earnshaw@arm.com) for ARM -->
+<tr>
+<td><code>EM_ARM</code></td>
+<td align="right"><code>40</code></td>
+<td>ARM 32-bit architecture (AARCH32)</td>
+</tr>
+<!-- Digital, 5/96 -->
+<tr>
+<td><code>EM_ALPHA</code></td>
+<td align="right"><code>41</code></td>
+<td>Digital Alpha</td>
+</tr>
+<!-- Green Hills Software, 5/96 -->
+<tr>
+<td><code>EM_SH</code></td>
+<td align="right"><code>42</code></td>
+<td>Hitachi SH</td>
+</tr>
+<!-- Sun Microsystems, 6/96 -->
+<tr>
+<td><code>EM_SPARCV9</code></td>
+<td align="right"><code>43</code></td>
+<td>SPARC Version 9</td>
+</tr>
+<!-- Green Hills Software, 9/96 -->
+<tr>
+<td><code>EM_TRICORE</code></td>
+<td align="right"><code>44</code></td>
+<td>Siemens TriCore embedded processor</td>
+</tr>
+<!-- MetaWare, 12/96 -->
+<tr>
+<td><code>EM_ARC</code></td>
+<td align="right"><code>45</code></td>
+<td>Argonaut RISC Core, Argonaut Technologies Inc.</td>
+</tr>
+<!-- Hitachi, 1/97 -->
+<tr>
+<td><code>EM_H8_300</code></td>
+<td align="right"><code>46</code></td>
+<td>Hitachi H8/300</td>
+</tr>
+<!-- Hitachi, 1/97 -->
+<tr>
+<td><code>EM_H8_300H</code></td>
+<td align="right"><code>47</code></td>
+<td>Hitachi H8/300H</td>
+</tr>
+<!-- Hitachi, 1/97 -->
+<tr>
+<td><code>EM_H8S</code></td>
+<td align="right"><code>48</code></td>
+<td>Hitachi H8S</td>
+</tr>
+<!-- Hitachi, 1/97 -->
+<tr>
+<td><code>EM_H8_500</code></td>
+<td align="right"><code>49</code></td>
+<td>Hitachi H8/500</td>
+</tr>
+<!-- Intel, 1/97 -->
+<tr>
+<td><code>EM_IA_64</code></td>
+<td align="right"><code>50</code></td>
+<td>Intel IA-64 processor architecture</td>
+</tr>
+<!-- Green Hills Software, 2/97 -->
+<tr>
+<td><code>EM_MIPS_X</code></td>
+<td align="right"><code>51</code></td>
+<td>Stanford MIPS-X</td>
+</tr>
+<!-- Green Hills Software, 5/97 -->
+<tr>
+<td><code>EM_COLDFIRE</code></td>
+<td align="right"><code>52</code></td>
+<td>Motorola ColdFire</td>
+</tr>
+<!-- Motorola, 11/97 -->
+<tr>
+<td><code>EM_68HC12</code></td>
+<td align="right"><code>53</code></td>
+<td>Motorola M68HC12</td>
+</tr>
+<!-- Green Hills Software, 5/98 -->
+<tr>
+<td><code>EM_MMA</code></td>
+<td align="right"><code>54</code></td>
+<td>Fujitsu MMA Multimedia Accelerator</td>
+</tr>
+<!-- Green Hills Software, 5/98 -->
+<tr>
+<td><code>EM_PCP</code></td>
+<td align="right"><code>55</code></td>
+<td>Siemens PCP</td>
+</tr>
+<!-- Green Hills Software, 5/98 -->
+<tr>
+<td><code>EM_NCPU</code></td>
+<td align="right"><code>56</code></td>
+<td>Sony nCPU embedded RISC processor</td>
+</tr>
+<!-- Green Hills Software, 6/98 -->
+<tr>
+<td><code>EM_NDR1</code></td>
+<td align="right"><code>57</code></td>
+<td>Denso NDR1 microprocessor</td>
+</tr>
+<!-- Green Hills Software, 10/98 -->
+<tr>
+<td><code>EM_STARCORE</code></td>
+<td align="right"><code>58</code></td>
+<td>Motorola Star*Core processor</td>
+</tr>
+<!-- Green Hills Software, 10/98 -->
+<tr>
+<td><code>EM_ME16</code></td>
+<td align="right"><code>59</code></td>
+<td>Toyota ME16 processor</td>
+</tr>
+<!-- Green Hills Software, 12/98 -->
+<tr>
+<td><code>EM_ST100</code></td>
+<td align="right"><code>60</code></td>
+<td>STMicroelectronics ST100 processor</td>
+</tr>
+<!-- Advanced Logic Corp., 1/99 -->
+<tr>
+<td><code>EM_TINYJ</code></td>
+<td align="right"><code>61</code></td>
+<td>Advanced Logic Corp. TinyJ embedded processor family</td>
+</tr>
+<!-- CodeSourcery, 2000 -->
+<tr>
+<td><code>EM_X86_64</code></td>
+<td align="right"><code>62</code></td>
+<td>AMD x86-64 architecture</td>
+</tr>
+<!-- Green Hills, 2000 -->
+<tr>
+<td><code>EM_PDSP</code></td>
+<td align="right"><code>63</code></td>
+<td>Sony DSP Processor</td>
+</tr>
+<!-- Lars Brinkoff, lars@nocrew.org, 30 May 2002 -->
+<tr>
+<td><code>EM_PDP10</code></td>
+<td align="right"><code>64</code></td>
+<td>Digital Equipment Corp. PDP-10</td>
+</tr>
+<!-- Lars Brinkoff, lars@nocrew.org, 30 May 2002 -->
+<tr>
+<td><code>EM_PDP11</code></td>
+<td align="right"><code>65</code></td>
+<td>Digital Equipment Corp. PDP-11</td>
+</tr>
+<!-- Siemens AG, 6/98 -->
+<tr>
+<td><code>EM_FX66</code></td>
+<td align="right"><code>66</code></td>
+<td>Siemens FX66 microcontroller</td>
+</tr>
+<!-- STMicroelectronics, 6/99 -->
+<tr>
+<td><code>EM_ST9PLUS</code></td>
+<td align="right"><code>67</code></td>
+<td>STMicroelectronics ST9+ 8/16 bit microcontroller</td>
+</tr>
+<!-- STMicroelectronics, 6/99 -->
+<tr>
+<td><code>EM_ST7</code></td>
+<td align="right"><code>68</code></td>
+<td>STMicroelectronics ST7 8-bit microcontroller</td>
+</tr>
+<!-- Motorola, 6/99 -->
+<tr>
+<td><code>EM_68HC16</code></td>
+<td align="right"><code>69</code></td>
+<td>Motorola MC68HC16 Microcontroller</td>
+</tr>
+<!-- Motorola, 6/99 -->
+<tr>
+<td><code>EM_68HC11</code></td>
+<td align="right"><code>70</code></td>
+<td>Motorola MC68HC11 Microcontroller</td>
+</tr>
+<!-- Motorola, 6/99 -->
+<tr>
+<td><code>EM_68HC08</code></td>
+<td align="right"><code>71</code></td>
+<td>Motorola MC68HC08 Microcontroller</td>
+</tr>
+<!-- Motorola, 6/99 -->
+<tr>
+<td><code>EM_68HC05</code></td>
+<td align="right"><code>72</code></td>
+<td>Motorola MC68HC05 Microcontroller</td>
+</tr>
+<!-- Silicon Graphics, 6/99 -->
+<tr>
+<td><code>EM_SVX</code></td>
+<td align="right"><code>73</code></td>
+<td>Silicon Graphics SVx</td>
+</tr>
+<!-- STMicroelectronics, 6/99 -->
+<tr>
+<td><code>EM_ST19</code></td>
+<td align="right"><code>74</code></td>
+<td>STMicroelectronics ST19 8-bit microcontroller</td>
+</tr>
+<!-- 3am Software Foundry, 8/99 -->
+<tr>
+<td><code>EM_VAX</code></td>
+<td align="right"><code>75</code></td>
+<td>Digital VAX</td>
+<!-- Axis Communications AB, 10/99 -->
+</tr><tr>
+<td><code>EM_CRIS</code></td>
+<td align="right"><code>76</code></td>
+<td>Axis Communications 32-bit embedded processor</td>
+</tr>
+<!-- Infineon Technologies, 10/99 -->
+<tr>
+<td><code>EM_JAVELIN</code></td>
+<td align="right"><code>77</code></td>
+<td>Infineon Technologies 32-bit embedded processor</td>
+</tr>
+<!-- Green Hills Software, 11/99 -->
+<tr>
+<td><code>EM_FIREPATH</code></td>
+<td align="right"><code>78</code></td>
+<td>Element 14 64-bit DSP Processor</td>
+</tr>
+<!-- Green Hills Software, 11/99 -->
+<tr>
+<td><code>EM_ZSP</code></td>
+<td align="right"><code>79</code></td>
+<td>LSI Logic 16-bit DSP Processor</td>
+</tr>
+<!-- MMIXmasters  volunteer organization, 2/00 -->
+<tr>
+<td><code>EM_MMIX</code></td>
+<td align="right"><code>80</code></td>
+<td>Donald Knuth's educational 64-bit processor</td>
+</tr>
+<!-- Harvard University, Division of Engineering and Applied Sciences 3/00 -->
+<tr>
+<td><code>EM_HUANY</code></td>
+<td align="right"><code>81</code></td>
+<td>Harvard University machine-independent object files</td>
+</tr>
+
+<!-- Cygnus 4/00 -->
+<tr>
+<td><code>EM_PRISM</code></td>
+<td align="right"><code>82</code></td>
+<td>SiTera Prism</td>
+</tr>
+<!-- RedHat, 11/2000 -->
+<tr>
+<td><code>EM_AVR</code></td>
+<td align="right"><code>83</code></td>
+<td>Atmel AVR 8-bit microcontroller</td>
+</tr>
+<tr>
+<td><code>EM_FR30</code></td>
+<td align="right"><code>84</code></td>
+<td>Fujitsu FR30</td>
+</tr>
+<tr>
+<td><code>EM_D10V</code></td>
+<td align="right"><code>85</code></td>
+<td>Mitsubishi D10V</td>
+</tr>
+<tr>
+<td><code>EM_D30V</code></td>
+<td align="right"><code>86</code></td>
+<td>Mitsubishi D30V</td>
+</tr>
+<tr>
+<td><code>EM_V850</code></td>
+<td align="right"><code>87</code></td>
+<td>NEC v850</td>
+</tr>
+<tr>
+<td><code>EM_M32R</code></td>
+<td align="right"><code>88</code></td>
+<td>Mitsubishi M32R</td>
+</tr>
+<tr>
+<td><code>EM_MN10300</code></td>
+<td align="right"><code>89</code></td>
+<td>Matsushita MN10300</td>
+</tr>
+<tr>
+<td><code>EM_MN10200</code></td>
+<td align="right"><code>90</code></td>
+<td>Matsushita MN10200</td>
+</tr>
+<tr>
+<td><code>EM_PJ</code></td>
+<td align="right"><code>91</code></td>
+<td>picoJava</td>
+</tr>
+<tr>
+<td><code>EM_OPENRISC</code></td>
+<td align="right"><code>92</code></td>
+<td>OpenRISC 32-bit embedded processor</td>
+</tr>
+<!-- MetaWare, 3 May 2001 -->
+<!-- Marcus Mauro <marcusm@arc.com>: rename to EM_ARC_COMPACT, 10 May 2004 -->
+<tr>
+<td><code>EM_ARC_COMPACT</code></td>
+<td align="right"><code>93</code></td>
+<td>ARC International ARCompact processor (old spelling/synonym: EM_ARC_A5)</td>
+</tr>
+<!-- Tensilica, Inc. 16 May 2001 -->
+<!-- Bob Wilson and David Heine (bwilson@ and dlheine@tensilica.com) -->
+<tr>
+<td><code>EM_XTENSA</code></td>
+<td align="right"><code>94</code></td>
+<td>Tensilica Xtensa Architecture</td>
+</tr>
+<!-- 5 Jul 2001 for Dom Cobley (dom.cobley@camcon.co.uk) -->
+<tr>
+<td><code>EM_VIDEOCORE</code></td>
+<td align="right"><code>95</code></td>
+<td>Alphamosaic VideoCore processor</td>
+</tr>
+<!-- 19 Jul 2001 for Harshad R. Joglekar (harshad.joglekar@wipro.com) -->
+<tr>
+<td><code>EM_TMM_GPP</code></td>
+<td align="right"><code>96</code></td>
+<td>Thompson Multimedia General Purpose Processor</td>
+</tr>
+<!-- 29 Oct 2001 for Simon Burge (simonb@wasabisystems.com) NetBSD -->
+<tr>
+<td><code>EM_NS32K</code></td>
+<td align="right"><code>97</code></td>
+<td>National Semiconductor 32000 series</td>
+</tr>
+<!-- 7 Jun 2002 for Alan Lehotsky (apl@alum.mit.edu) -->
+<tr>
+<td><code>EM_TPC</code></td>
+<td align="right"><code>98</code></td>
+<td>Tenor Network TPC processor</td>
+</tr>
+<!-- 7 Jun 2002 for Alan Lehotsky (apl@alum.mit.edu) -->
+<tr>
+<td><code>EM_SNP1K</code></td>
+<td align="right"><code>99</code></td>
+<td>Trebia SNP 1000 processor</td>
+</tr>
+<!-- 10 Jun 2002 for Christian Bertin (Christian Bertin@st.com) -->
+<tr>
+<td><code>EM_ST200</code></td>
+<td align="right"><code>100</code></td>
+<td>STMicroelectronics (www.st.com) ST200 microcontroller</td>
+</tr>
+<!-- 8 Jul 2002 for Denis Chertykov (denisc@overta.ru) -->
+<tr>
+<td><code>EM_IP2K</code></td>
+<td align="right"><code>101</code></td>
+<td>Ubicom IP2xxx microcontroller family</td>
+</tr>
+<!-- 17 Jul 2002 for Mike Krebs (mkrebs@ghs.com) Green Hills Software (www.ghs.com) -->
+<tr>
+<td><code>EM_MAX</code></td>
+<td align="right"><code>102</code></td>
+<td>MAX Processor</td>
+</tr>
+<!-- 8 Oct 2002 for Gali Carmel (Gali.Carmel@nsc.com) National Semiconductor (www.nsc.com) -->
+<tr>
+<td><code>EM_CR</code></td>
+<td align="right"><code>103</code></td>
+<td>National Semiconductor CompactRISC microprocessor</td>
+</tr>
+<!-- 9 Oct 2002 for Takashi Urushiyama (urushiyama@ms.ed.fujitsu.co.jp) Fujitsu Japan -->
+<tr>
+<td><code>EM_F2MC16</code></td>
+<td align="right"><code>104</code></td>
+<td>Fujitsu F2MC16</td>
+</tr>
+<!-- 6 Jan 2003 for Dmitry Diky <diwil@mail.ru> -->
+<tr>
+<td><code>EM_MSP430</code></td>
+<td align="right"><code>105</code></td>
+<td>Texas Instruments embedded microcontroller msp430</td>
+</tr>
+<!-- 19 Mar 2003 for Mike Haden <mike@ghs.com> Green Hills Software, Inc. -->
+<!-- owner/contact is Stephen Kilbane (stephen.kilbane@analog.com) Analog Devices -->
+<tr>
+<td><code>EM_BLACKFIN</code></td>
+<td align="right"><code>106</code></td>
+<td>Analog Devices Blackfin (DSP) processor</td>
+</tr>
+<!-- 2 May 2003 for Yoon Chang Hwan <Yoon.Chang.Hwan@exc.epson.co.jp> Seiko Epson -->
+<tr>
+<td><code>EM_SE_C33</code></td>
+<td align="right"><code>107</code></td>
+<td>S1C33 Family of Seiko Epson processors</td>
+</tr>
+<!-- 9 May 2003 for Michael Meissner <meissner@the-meissners.org> -->
+<!-- with a contact/owner of sharp@the-meissners.org -->
+<tr>
+<td><code>EM_SEP</code></td>
+<td align="right"><code>108</code></td>
+<td>Sharp embedded microprocessor</td>
+</tr>
+<!-- 15 May 2003 for Richard Yang <hfyang@arca.com.cn> of ARCA Tech. Corp. -->
+<tr>
+<td><code>EM_ARCA</code></td>
+<td align="right"><code>109</code></td>
+<td>Arca RISC Microprocessor</td>
+</tr>
+<!-- 03 Nov 2003 for Gao Yi <gaoyi@mprc.pku.edu.cn> of the Microprocessor -->
+<!-- Research Center, Peking University.  Contact: unicore@mprc.pku.edu.cn -->
+<tr>
+<td><code>EM_UNICORE</code></td>
+<td align="right"><code>110</code></td>
+<td>Microprocessor series from PKU-Unity Ltd. and MPRC of Peking University</td>
+</tr>
+<!-- 21 Jan 2004 for Jon Beniston <jon@beniston.com> -->
+<tr>
+<td><code>EM_EXCESS</code></td>
+<td align="right"><code>111</code></td>
+<td>eXcess: 16/32/64-bit configurable embedded CPU</td>
+</tr>
+<!-- 23 Jan 2004 for Dave Edwards <dave@icerasemi.com> -->
+<tr>
+<td><code>EM_DXP</code></td>
+<td align="right"><code>112</code></td>
+<td>Icera Semiconductor Inc. Deep Execution Processor</td>
+</tr>
+<!-- 3 Feb 2004 for Nigel Gray <NGRAY@altera.com> -->
+<!-- Second-generation Altera Nios soft-core processor -->
+<!-- Based on the MIPS I architecture and used in Altera FPGAs. -->
+<tr>
+<td><code>EM_ALTERA_NIOS2</code></td>
+<td align="right"><code>113</code></td>
+<td>Altera Nios II soft-core processor</td>
+</tr>
+<!-- 18 Mar 2004 for Tomer Levi (Tomer.Levi@nsc.com) National Semiconductor (www.nsc.com) -->
+<tr>
+<td><code>EM_CRX</code></td>
+<td align="right"><code>114</code></td>
+<td>National Semiconductor CompactRISC CRX microprocessor</td>
+</tr>
+<!-- 14 Apr 2004 for Daniel Friederich (Daniel.Friederick@motorola.com) -->
+<tr>
+<td><code>EM_XGATE</code></td>
+<td align="right"><code>115</code></td>
+<td>Motorola XGATE embedded processor</td>
+</tr>
+<!-- 30 Apr 2004 for Eric ter Haar (eric.ter.haar@altium.nl) -->
+<tr>
+<td><code>EM_C166</code></td>
+<td align="right"><code>116</code></td>
+<td>Infineon C16x/XC16x processor</td>
+</tr>
+<!-- 30 Apr 2004 for Eric ter Haar (eric.ter.haar@altium.nl) -->
+<tr>
+<td><code>EM_M16C</code></td>
+<td align="right"><code>117</code></td>
+<td>Renesas M16C series microprocessors</td>
+</tr>
+<!-- 27 May 2004 for John Elliott (john.elliott@microchip.com) (480)792-4318 -->
+<!-- Microchip Technology; 2355 West Chandler Blvd; Chandler, AZ 85224 -->
+<tr>
+<td><code>EM_DSPIC30F</code></td>
+<td align="right"><code>118</code></td>
+<td>Microchip Technology dsPIC30F Digital Signal Controller</td>
+</tr>
+<!-- 7 Jun 2004 for Serge Lamikhov (Serge.Lamikhov@freescale.com) -->
+<!-- and Eyal Harari (Eyal.Harari@freescale.com) -->
+<tr>
+<td><code>EM_CE</code></td>
+<td align="right"><code>119</code></td>
+<td>Freescale Communication Engine RISC core</td>
+</tr>
+<!-- 28 Jul 2004 for Kawajiri Satoshi (kawajiri.satoshi@renesas.com) -->
+<!-- with owner/contact Takahashi Kazuya (takahashi.kazuya2@renesas.com) -->
+<!-- Renesas Solutions Corp.; Cross Tool Group1; Microcomputer Tool Development Department -->
+<tr>
+<td><code>EM_M32C</code></td>
+<td align="right"><code>120</code></td>
+<td>Renesas M32C series microprocessors</td>
+</tr>
+<!-- 29 Jul 2004 for Mike Haden (mike@ghs.com) for local use by Green Hills -->
+<tr>
+<td align="right">reserved</td>
+<td align="right"><code>121-130</code></td>
+<td>Reserved for future use</td>
+</tr>
+<!-- 1 Oct 2004 for Eric ter Haar (eric.ter.haar@altium.nl) -->
+<tr>
+<td><code>EM_TSK3000</code></td>
+<td align="right"><code>131</code></td>
+<td>Altium TSK3000 core</td>
+</tr>
+<!-- 24 Mar 2005 for Daniel Friederich (Daniel.Friederich@freescale.com) -->
+<tr>
+<td><code>EM_RS08</code></td>
+<td align="right"><code>132</code></td>
+<td>Freescale RS08 embedded processor</td>
+</tr>
+<!-- 7 Apr 2005 for Stephen Kilbane (stephen.kilbane@analog.com) -->
+<tr>
+<td><code>EM_SHARC</code></td>
+<td align="right"><code>133</code></td>
+<td>Analog Devices SHARC family of 32-bit DSP processors</td>
+</tr>
+<!-- 26 Jul 2005 for Matt Kern (matt.kern@cyantechnology.com) -->
+<!-- Cyan Technology; Tel +44 (0) 1954 234400; Fax +44 (0) 870 705 9975 -->
+<tr>
+<td><code>EM_ECOG2</code></td>
+<td align="right"><code>134</code></td>
+<td>Cyan Technology eCOG2 microprocessor</td>
+</tr>
+<!-- 04 Nov 2005 for Pei-Lin (Sunny) Tsai (pltsai@sunplus.com) -->
+<tr>
+<td><code>EM_SCORE7</code></td>
+<td align="right"><code>135</code></td>
+<td>Sunplus S+core7 RISC processor</td>
+</tr>
+<!-- 11 Jan 2006 for New Japan Radio Co., Ltd (dsp24-registry@ki.nu) -->
+<!-- for Makoto.Fujiwara@office.ki.nu, KINU Corporation, Chiba, Japan -->
+<tr>
+<td><code>EM_DSP24</code></td>
+<td align="right"><code>136</code></td>
+<td>New Japan Radio (NJR) 24-bit DSP Processor</td>
+</tr>
+<!-- 8 Feb 2006 for Dominic Cobley <dc4@broadcom.com> for Broadcom -->
+<tr>
+<td><code>EM_VIDEOCORE3</code></td>
+<td align="right"><code>137</code></td>
+<td>Broadcom VideoCore III processor</td>
+</tr>
+<!-- 5 May 2006 for James Khong <james.khong@latticesemi.com> -->
+<tr>
+<td><code>EM_LATTICEMICO32</code></td>
+<td align="right"><code>138</code></td>
+<td>RISC processor for Lattice FPGA architecture</td>
+</tr>
+<!-- 7 Jul 2006 for Matsuoka Hiroki <Matsuoka.Hiroki@exc.epson.co.jp> Seiko Epson -->
+<tr>
+<td><code>EM_SE_C17</code></td>
+<td align="right"><code>139</code></td>
+<td>Seiko Epson C17 family</td>
+</tr>
+<!-- 31 Aug 2009 for Anbu Gopalrajan <anbu@ti.com> from the pool below -->
+<tr>
+<td><code>EM_TI_C6000</code></td>
+<td align="right"><code>140</code></td>
+<td>The Texas Instruments TMS320C6000 DSP family</td>
+</tr>
+<!-- 3 Sep 2009 for Anbu Gopalrajan <anbu@ti.com> from the pool below -->
+<tr>
+<td><code>EM_TI_C2000</code></td>
+<td align="right"><code>141</code></td>
+<td>The Texas Instruments TMS320C2000 DSP family</td>
+</tr>
+<!-- 3 Sep 2009 for Anbu Gopalrajan <anbu@ti.com> from the pool below -->
+<tr>
+<td><code>EM_TI_C5500</code></td>
+<td align="right"><code>142</code></td>
+<td>The Texas Instruments TMS320C55x DSP family</td>
+</tr>
+<!-- 19 Nov 2004 for Don Darling (ddarling@ti.com) -->
+<!-- for Texas Instruments for the TMS320Cxxxx family -->
+<tr>
+<!-- 05 Oct 2014 for Cody Addison (c-addison@ti.com) -->
+<!-- for Texas Instruments Application Specific RISC Processor, 32bit fetch -->
+<td><code>EM_TI_ARP32</code></td>
+<td align="right"><code>143</code></td>
+<td>Texas Instruments Application Specific RISC Processor, 32bit fetch</td>
+</tr>
+<tr>
+<!-- 05 Oct 2014 for Cody Addison (c-addison@ti.com) -->
+<!-- for Texas Instruments Programmable Realtime Unit -->
+<td><code>EM_TI_PRU</code></td>
+<td align="right"><code>144</code></td>
+<td>Texas Instruments Programmable Realtime Unit</td>
+</tr>
+<tr>
+<td align="right">reserved</td>
+<td align="right"><code>145-159</code></td>
+<td>Reserved for future use</td>
+</tr>
+<!-- 18 Sep 2006 for Jean-Marc Gentit (jean-marc.gentit@st.com) -->
+<!-- of STMicroelectronics for their VLIW DSP -->
+<tr>
+<td><code>EM_MMDSP_PLUS</code></td>
+<td align="right"><code>160</code></td>
+
+</tr><tr>
+<td align="right">reserved</td>
+<td align="right"><code>145-159</code></td>
+<td>Reserved for future use</td>
+</tr>
+<!-- 18 Sep 2006 for Jean-Marc Gentit (jean-marc.gentit@st.com) -->
+<!-- of STMicroelectronics for their VLIW DSP -->
+<tr>
+<td><code>EM_MMDSP_PLUS</code></td>
+<td align="right"><code>160</code></td>
+<td>STMicroelectronics 64bit VLIW Data Signal Processor</td>
+</tr>
+<!-- 21 Sep 2006 for Jim Blandy (jimb@codesourcery.com) -->
+<tr>
+<td><code>EM_CYPRESS_M8C</code></td>
+<td align="right"><code>161</code></td>
+<td>Cypress M8C microprocessor</td>
+</tr>
+<!-- 31 Oct 2006 for Chikashi Kawaguchi (kawaguchi.chikashi@renesas.com) -->
+<tr>
+<td><code>EM_R32C</code></td>
+<td align="right"><code>162</code></td>
+<td>Renesas R32C series microprocessors</td>
+</tr>
+<!-- 8 Nov 2006 for Joachim Trescher (Joachim.Trescher@nxp.com) -->
+<tr>
+<td><code>EM_TRIMEDIA</code></td>
+<td align="right"><code>163</code></td>
+<td>NXP Semiconductors TriMedia architecture family</td>
+</tr>
+<!-- 4 Jan 2007 for Rajiv Narayan (rajiv@qualcomm.com) -->
+<tr>
+<td><code>EM_QDSP6</code></td>
+<td align="right"><code>164</code></td>
+<td>QUALCOMM DSP6 Processor</td>
+</tr>
+<!-- 4 Jan 2007 for Sandra Loosemore (sandra@codesourcery.com) -->
+<tr>
+<td><code>EM_8051</code></td>
+<td align="right"><code>165</code></td>
+<td>Intel 8051 and variants</td>
+</tr>
+<!-- 18 Apr 2007 for Herve Chauvet (herve.chauvet@st.com) -->
+<tr>
+<td><code>EM_STXP7X</code></td>
+<td align="right"><code>166</code></td>
+<td>STMicroelectronics STxP7x family of configurable and extensible RISC processors</td>
+</tr>
+<!-- 4 May 2007 for Eric Haw-Luen Tsai (erictsai@andestech.com) -->
+<tr>
+<td><code>EM_NDS32</code></td>
+<td align="right"><code>167</code></td>
+<td>Andes Technology compact code size embedded RISC processor family</td>
+</tr>
+<!-- 15 May 2007 for Matt Kern (matt.kern@cyantechnology.com) -->
+<!-- Cyan Technology; Tel +44 (0) 1954 234400; Fax +44 (0) 870 705 9975 -->
+<tr>
+<td><code>EM_ECOG1</code></td>
+<td align="right"><code>168</code></td>
+<td>Cyan Technology eCOG1X family</td>
+</tr>
+<!-- 16 May 2008 for Matt Kern (matt.kern@cyantechnology.com) -->
+<!-- Change above to eCOG1X family, but keep old name as synonym -->
+<tr>
+<td><code>EM_ECOG1X</code></td>
+<td align="right"><code>168</code></td>
+<td>Cyan Technology eCOG1X family</td>
+</tr>
+<!-- 17 July 2007 for Shiv Shankar Maurya (shiv.maurya@dalsemi.com) -->
+<tr>
+<td><code>EM_MAXQ30</code></td>
+<td align="right"><code>169</code></td>
+<td>Dallas Semiconductor MAXQ30 Core Micro-controllers</td>
+</tr>
+<!-- 24 July 2007 for Makoto.Fujiwara@office.ki.nu with owner -->
+<!-- ximo16-registry@ki.nu New Japan Radio Co., Ltd. -->
+<tr>
+<td><code>EM_XIMO16</code></td>
+<td align="right"><code>170</code></td>
+<td>New Japan Radio (NJR) 16-bit DSP Processor</td>
+</tr>
+<!-- 26 Oct 2007 for Sandeep Dutta (sdutta@m2000.com, sandeepdutta@comcast.net ) -->
+<tr>
+<td><code>EM_MANIK</code></td>
+<td align="right"><code>171</code></td>
+<td>M2000 Reconfigurable RISC Microprocessor</td>
+</tr>
+<!-- 15 Nov 2007 for Greg Titus (gbt@cray.com) -->
+<tr>
+<td><code>EM_CRAYNV2</code></td>
+<td align="right"><code>172</code></td>
+<td>Cray Inc. NV2 vector architecture</td>
+</tr>
+<!-- 9 Jan 2008 for Hiromi Nagayama (nagayama.hiromi@renesas.com) -->
+<tr>
+<td><code>EM_RX</code></td>
+<td align="right"><code>173</code></td>
+<td>Renesas RX family</td>
+</tr>
+<!-- 25 Mar 2008 for Will Newton (will.newton@imgtec.com) -->
+<tr>
+<td><code>EM_METAG</code></td>
+<td align="right"><code>174</code></td>
+<td>Imagination Technologies META processor architecture</td>
+</tr>
+<!-- 2 Apr 2008 for Vladimir Volkonsky (vol@mcst.ru) -->
+<tr>
+<td><code>EM_MCST_ELBRUS</code></td>
+<td align="right"><code>175</code></td>
+<td>MCST Elbrus general purpose hardware architecture</td>
+</tr>
+<!-- 16 May 2008 for Matt Kern (matt.kern@cyantechnology.com) -->
+<!-- Cyan Technology; Tel +44 (0) 1954 234400; Fax +44 (0) 870 705 9975 -->
+<tr>
+<td><code>EM_ECOG16</code></td>
+<td align="right"><code>176</code></td>
+<td>Cyan Technology eCOG16 family</td>
+</tr>
+<!-- 17 Jun 2008 for M R Swami Reddy <MR.Swami.Reddy@nsc.com> -->
+<tr>
+<td><code>EM_CR16</code></td>
+<td align="right"><code>177</code></td>
+<td>National Semiconductor CompactRISC CR16 16-bit microprocessor</td>
+</tr>
+<!-- 30 Jul 2008 for Serge Lamikhov <Serge.Lamikhov@freescale.com> -->
+<tr>
+<td><code>EM_ETPU</code></td>
+<td align="right"><code>178</code></td>
+<td>Freescale Extended Time Processing Unit</td>
+</tr>
+<!-- 13 Mar 2009 for Joerg Schwaerzler <Joerg.Schwaerzler@infineon.com> -->
+<!-- contact: Infineon Call and Support Center: support@infineon.com -->
+<tr>
+<td><code>EM_SLE9X</code></td>
+<td align="right"><code>179</code></td>
+<td>Infineon Technologies SLE9X core</td>
+</tr>
+<!-- 1 Apr 2009 by H.J. Lu (hongjiu.lu@intel.com) 180-182 for Intel -->
+<!-- 05 Aug 2011 for H.J. Lu (hongjiu.lu@intel.com) -->
+<tr>
+<td><code>EM_L10M</code></td>
+<td align="right"><code>180</code></td>
+<td>Intel L10M</td>
+</tr>
+<!-- 05 Aug 2011 for H.J. Lu (hongjiu.lu@intel.com) -->
+<tr>
+<td><code>EM_K10M</code></td>
+<td align="right"><code>181</code></td>
+<td>Intel K10M</td>
+</tr>
+<tr>
+<td align="right">reserved</td>
+<td align="right"><code>182</code></td>
+<td>Reserved for future Intel use</td>
+</tr>
+<!-- 10 Nov 2011 by Richard Earnshaw (Richard.Earnshaw@arm.com) for ARM -->
+<tr>
+<td><code>EM_AARCH64</code></td>
+<td align="right"><code>183</code></td>
+<td>ARM 64-bit architecture (AARCH64)</td>
+</tr>
+<!-- 14 Apr 2009 by Richard Earnshaw (Richard.Earnshaw@arm.com) for ARM -->
+<tr>
+<td align="right">reserved</td>
+<td align="right"><code>184</code></td>
+<td>Reserved for future ARM use</td>
+</tr>
+<!-- 8 May 2009 for Hans-Christian Egtvedt (egtvedt@gmail.com) -->
+<!-- See http://www.atmel.com/AVR32 contact eric.weddington@atmel.com -->
+<tr>
+<td><code>EM_AVR32</code></td>
+<td align="right"><code>185</code></td>
+<td>Atmel Corporation 32-bit microprocessor family</td>
+</tr>
+<!-- 11 May 2009 for Robert Jamier (robert.jamier@st.com) with -->
+<!-- contact Dominique Jugnon (?? dominique.jugnon@st.com) -->
+<tr>
+<td><code>EM_STM8</code></td>
+<td align="right"><code>186</code></td>
+<td>STMicroeletronics STM8 8-bit microcontroller</td>
+</tr>
+<!-- 26 May 2009 for Chris Metcalf (cmetcalf@tilera.com) -->
+<tr>
+<td><code>EM_TILE64</code></td>
+<td align="right"><code>187</code></td>
+<td>Tilera TILE64 multicore architecture family</td>
+</tr>
+<!-- 26 May 2009 for Chris Metcalf (cmetcalf@tilera.com) -->
+<tr>
+<td><code>EM_TILEPRO</code></td>
+<td align="right"><code>188</code></td>
+<td>Tilera TILEPro multicore architecture family</td>
+</tr>
+<!-- 3 Aug 2009 for Michael Eager (eager@eagercon.com) and Xilinx Inc. -->
+<tr>
+<td><code>EM_MICROBLAZE</code></td>
+<td align="right"><code>189</code></td>
+<td>Xilinx MicroBlaze 32-bit RISC soft processor core</td>
+</tr>
+<!-- 20 Aug 2009 for Mike Murphy (mmurphy@nvidia.com) and NVIDIA -->
+<tr>
+<td><code>EM_CUDA</code></td>
+<td align="right"><code>190</code></td>
+<td>NVIDIA CUDA architecture</td>
+</tr>
+<!-- 3 November 2009 for Chris Metcalf (cmetcalf@tilera.com) -->
+<tr>
+<td><code>EM_TILEGX</code></td>
+<td align="right"><code>191</code></td>
+<td>Tilera TILE-Gx multicore architecture family</td>
+</tr>
+<!-- 22 June 2010 for Jack Carter (carterj@cloudshield.com) -->
+<tr>
+<td><code>EM_CLOUDSHIELD</code></td>
+<td align="right"><code>192</code></td>
+<td>CloudShield architecture family</td>
+</tr>
+<!-- 19 October 2010 for Dr. Ando Ki (adki@dynalith.com) -->
+<tr>
+<td><code>EM_COREA_1ST</code></td>
+<td align="right"><code>193</code></td>
+<td>KIPO-KAIST Core-A 1st generation processor family</td>
+</tr>
+<!-- 19 October 2010 for Dr. Ando Ki (adki@dynalith.com) -->
+<tr>
+<td><code>EM_COREA_2ND</code></td>
+<td align="right"><code>194</code></td>
+<td>KIPO-KAIST Core-A 2nd generation processor family</td>
+</tr>
+<!-- 24 February 2011 for Marcus Mauro (Marcus.Mauro@synopsys.com) -->
+<tr>
+<td><code>EM_ARC_COMPACT2</code></td>
+<td align="right"><code>195</code></td>
+<td>Synopsys ARCompact V2</td>
+</tr>
+<!-- 09 March 2011 for Kirk I. Hays (khays@hayshaus.com) -->
+<tr>
+<td><code>EM_OPEN8</code></td>
+<td align="right"><code>196</code></td>
+<td>Open8 8-bit RISC soft processor core</td>
+</tr>
+<!-- 04 April 2011 for Saori Nakamura (saori.nakamura.pv@renesas.com) -->
+<tr>
+<td><code>EM_RL78</code></td>
+<td align="right"><code>197</code></td>
+<td>Renesas RL78 family</td>
+</tr>
+<!-- 03 May 2011 for Dominic Cobley (dc4@broadcom.com) for Broadcom -->
+<tr>
+<td><code>EM_VIDEOCORE5</code></td>
+<td align="right"><code>198</code></td>
+<td>Broadcom VideoCore V processor</td>
+</tr>
+<!-- 08 July 2011 for Saori Nakamura (saori.nakamura.pv@renesas.com) -->
+<tr>
+<td><code>EM_78KOR</code></td>
+<td align="right"><code>199</code></td>
+<td>Renesas 78KOR family</td>
+</tr>
+<!-- 16 August 2011 for Dragos Badea (dragos.badea@freescale.com) -->
+<tr>
+<td><code>EM_56800EX</code></td>
+<td align="right"><code>200</code></td>
+<td>Freescale 56800EX Digital Signal Controller (DSC)</td>
+</tr>
+<!-- 03 October 2012 for Branko Drevensek (swresources@beyondsemi.com) -->
+<!--                                      (brankod@beyondsemi.com) -->
+<tr>
+<td><code>EM_BA1</code></td>
+<td align="right"><code>201</code></td>
+<td>Beyond BA1 CPU architecture</td>
+</tr>
+<!-- 03 October 2012 for Branko Drevensek (swresources@beyondsemi.com) -->
+<!--                                      (brankod@beyondsemi.com) -->
+<tr>
+<td><code>EM_BA2</code></td>
+<td align="right"><code>202</code></td>
+<td>Beyond BA2 CPU architecture</td>
+</tr>
+<!-- 16 October 2012 for Nick Bishop (nick@xmos.com) for XMOS -->
+<!--                                 (matt@xmos.com) -->
+<tr>
+<td><code>EM_XCORE</code></td>
+<td align="right"><code>203</code></td>
+<td>XMOS xCORE processor family</td>
+</tr>
+<!-- 15 December 2012 for Calum Wilkie (calum.wilkie@microchip.com) -->
+<tr>
+<td><code>EM_MCHP_PIC</code></td>
+<td align="right"><code>204</code></td>
+<td>Microchip 8-bit PIC(r) family</td>
+</tr>
+<!-- 22 May 2013 for H.J. Lu (hongjiu.lu@intel.com) -->
+<tr>
+<td><code>EM_INTEL205</code></td>
+<td align="right"><code>205</code></td>
+<td>Reserved by Intel</td>
+</tr>
+<tr>
+<td><code>EM_INTEL206</code></td>
+<td align="right"><code>206</code></td>
+<td>Reserved by Intel</td>
+</tr>
+<tr>
+<td><code>EM_INTEL207</code></td>
+<td align="right"><code>207</code></td>
+<td>Reserved by Intel</td>
+</tr>
+<tr>
+<td><code>EM_INTEL208</code></td>
+<td align="right"><code>208</code></td>
+<td>Reserved by Intel</td>
+</tr>
+<tr>
+<td><code>EM_INTEL209</code></td>
+<td align="right"><code>209</code></td>
+<td>Reserved by Intel</td>
+</tr>
+<!--03 June 2013 for Design Center KM211 - Paul Shamanaev (psh@km211.ru) -->
+<tr>
+</tr><tr>
+<td><code>EM_KM32</code></td>
+<td align="right"><code>210</code></td>
+<td>KM211 KM32 32-bit processor</td>
+</tr>
+<tr><td><code>EM_KMX32</code></td>
+<td align="right"><code>211</code></td>
+<td>KM211 KMX32 32-bit processor</td>
+</tr>
+<tr>
+<td><code>EM_KMX16</code></td>
+<td align="right"><code>212</code></td>
+<td>KM211 KMX16 16-bit processor</td>
+</tr>
+<tr>
+<td><code>EM_KMX8</code></td>
+<td align="right"><code>213</code></td>
+<td>KM211 KMX8 8-bit processor</td>
+</tr>
+<tr>
+<td><code>EM_KVARC</code></td>
+<td align="right"><code>214</code></td>
+<td>KM211 KVARC processor</td>
+</tr>
+<!--08 July 2013 for Paneve, LLC - Brad Walker (bwalker@paneve.com) -->
+<tr>
+<td><code>EM_CDP</code></td>
+<td align="right"><code>215</code></td>
+<td>Paneve CDP architecture family</td>
+</tr>
+<!--26 August 2013 for Cognitive Electronics - Glenn Weinberg (glenn@cognitive-electronics.com) -->
+<tr>
+<td><code>EM_COGE</code></td>
+<td align="right"><code>216</code></td>
+<td>Cognitive Smart Memory Processor</td>
+</tr>
+<!--30 August 2013 for iCelero, Inc - Christian Grössler  (chris@icelero.com)
+  --29 June 2015 chip title change - Christian Gr\366ssler  (christian.groessler@bluechipsys.com) -->
+<tr>
+<td><code>EM_COOL</code></td>
+<td align="right"><code>217</code></td>
+<td>Bluechip Systems CoolEngine</td>
+</tr>
+
+<!--22 January 2014 for Samsung Nanoradio Design Center - Johan Danielsson  (j.danielss@samsung.com) -->
+<tr>
+<td><code>EM_NORC</code></td>
+<td align="right"><code>218</code></td>
+<td>Nanoradio Optimized RISC</td>
+</tr>
+<!--17 June 2014 for CSR - Matthew Gardiner  (mg11 AT csr DOT com) -->
+<tr>
+<td><code>EM_CSR_KALIMBA </code></td>
+<td align="right"><code>219</code></td>
+<td>CSR Kalimba architecture family</td>
+</tr>
+<!--21 July 2014 for Cambridge Z88 Development Team - Gunther Strube (gstrub AT gmail DOT com) -->
+<tr>
+<td><code>EM_Z80 </code></td>
+<td align="right"><code>220</code></td>
+<td>Zilog Z80</td>
+</tr>
+<!--06 Nov  2014 for AdaCore - Tristen Gingold (gingold AT adacore DOT com) -->
+<tr>
+<td><code>EM_VISIUM </code></td>
+<td align="right"><code>221</code></td>
+<td>Controls and Data Services VISIUMcore processor</td>
+</tr>
+<!--21 Dec  2014 for FTDI Chip (Future Technology Devices Intl.)- James Bowman (james.bowman AT ftdichip DOT com) -->
+<tr>
+<td><code>EM_FT32 </code></td>
+<td align="right"><code>222</code></td>
+<td>FTDI Chip FT32 high performance 32-bit RISC architecture</td>
+</tr>
+<!--02 Jan  2015 for Moxie processor family -Anthony Green (green AT moxielogic DOT com) -->
+<tr>
+<td><code>EM_MOXIE</code></td>
+<td align="right"><code>223</code></td>
+<td>Moxie processor family</td>
+</tr>
+<!--09 May 2015 for AMD GPU architecture - Tony Tye (Tony.Tye AT amd DOT com) -->
+<tr>
+<td><code>EM_AMDGPU</code></td>
+<td align="right"><code>224</code></td>
+<td>AMD GPU architecture</td>
+</tr>
+<!--23 July 2015 - to accommodate giving # 243 to EM_RISCV -->
+<tr>
+<td><code> </code></td>
+<td align="right"><code>225 - 242</code></td>
+<td> </td>
+</tr>
+<!--23 July 2015 for RISC-V - Ed Maste (ed AT FreeBSD DOT org for riscv.org) -->
+<tr>
+<td><code>EM_RISCV</code></td>
+<td align="right"><code>243</code></td>
+<td>RISC-V</td>
+</tr>
+
+</tbody></table>
+</p><p>
+Other values are reserved and will be assigned to new machines 
+as necessary.
+Processor-specific ELF names use the machine name to distinguish them.
+For example, the flags mentioned below use the 
+prefix <code>EF_</code>;
+a flag named <code>WIDGET</code> for the <code>EM_XYZ</code>
+machine would be called <code>EF_XYZ_WIDGET</code>.
+</p><dt><code>e_version</code></dt>
+<dd>This member identifies the object file version. </dd>
+<p>
+<table border="" cellspacing="0">
+<tbody><tr>
+<th><b>Name</b></th>
+<th><b>Value</b></th>
+<th><b>Meaning</b></th>
+</tr>
+<tr>
+<td><code>EV_NONE</code></td>
+<td align="right"><code>0</code></td>
+<td>Invalid version</td>
+</tr>
+<tr>
+<td><code>EV_CURRENT</code></td>
+<td align="right"><code>1</code></td>
+<td>Current version</td>
+</tr>
+</tbody></table>
+</p><p>
+The value <code>1</code> signifies the original file format; 
+extensions will create new versions with higher numbers. 
+Although the value of <code>EV_CURRENT</code>
+is shown as <code>1</code> in the previous table, it will 
+change as necessary to reflect the current version number.
+</p><dt><code>e_entry</code></dt>
+<dd>This member gives the virtual address to which the 
+system first transfers
+control, thus starting the process. If the file has no associated entry
+point, this member holds zero. </dd>
+<dt><code>e_phoff</code></dt>
+<dd>This member holds the program header table's file offset in bytes.
+If the file has no program header table, this member holds zero. </dd>
+<dt><code>e_shoff</code></dt>
+<dd>This member holds the section header table's file offset in bytes.
+If the file has no section header table, this member holds zero. </dd>
+<dt><code>e_flags</code></dt>
+<dd>This member holds processor-specific flags associated with the file.
+Flag names take the form 
+<code>EF_</code><i>machine</i><b>_</b><i>flag</i>.  </dd>
+<dt><code>e_ehsize</code></dt>
+<dd>This member holds the ELF header's size in bytes. </dd>
+<dt><code>e_phentsize</code></dt>
+<dd>This member holds the size in bytes of one entry in the file's program
+header table; all entries are the same size. </dd>
+<dt><code>e_phnum</code></dt>
+<dd>This member holds the number of entries in the program header table.
+Thus the product of 
+<code>e_phentsize</code> and <code>e_phnum</code> gives the
+table's size in bytes. 
+If a file has no program header table, <code>e_phnum</code>
+holds the value zero. </dd>
+<dt><code>e_shentsize</code></dt>
+<dd>This member holds a section header's size in bytes. A section header
+is one entry in the section header table; all entries are the same size.
+</dd>
+<dt><code>e_shnum</code></dt>
+<a name="many_sections"></a>
+<dd>This member holds the number of entries in the section header table.
+Thus the product of <code>e_shentsize</code> and 
+<code>e_shnum</code> gives the
+section header table's size in bytes. 
+If a file has no section header table,
+<code>e_shnum</code> holds the value zero.
+<p>
+If the number of sections is greater than or equal to
+<code>SHN_LORESERVE</code> (<code>0xff00</code>), this member
+has the value zero and the actual number of section header table
+entries is contained in the <code>sh_size</code> field of
+the section header at index <code>0</code>.
+(Otherwise, the <code>sh_size</code> member of the initial entry 
+contains <code>0</code>.)
+</p></dd>
+<dt><code>e_shstrndx</code></dt>
+<dd>This member holds the section header table index of the 
+entry associated with the section name string table. 
+If the file has no section name string
+table, this member holds the value <code>SHN_UNDEF</code>. 
+See <a href="http://www.sco.com/developers/gabi/latest/ch4.sheader.html">``Sections''</a>
+and <a href="http://www.sco.com/developers/gabi/latest/ch4.strtab.html">``String Table''</a> below 
+for more information.
+<p>
+If the section name string table section index is greater than or equal to
+<code>SHN_LORESERVE</code> (<code>0xff00</code>), this member
+has the value <code>SHN_XINDEX</code> (<code>0xffff</code>) and the
+actual index of the section name string table section
+is contained in the <code>sh_link</code> field of
+the section header at index <code>0</code>.
+(Otherwise, the <code>sh_link</code> member of the initial entry 
+contains <code>0</code>.)
+</p></dd>
+</dl>
+<p><a name="elfid"></a>
+</p><h2>ELF Identification</h2>
+<p>
+As mentioned above, ELF provides an object file framework to support
+multiple processors, multiple data encodings, and multiple 
+classes of machines.  To support this object file family, 
+the initial bytes of the file specify
+how to interpret the file, independent of the processor on 
+which the inquiry is made and independent of the file's 
+remaining contents.
+</p><p>
+The initial bytes of an ELF header (and an object file) correspond to
+the <code>e_ident</code> member.
+</p><hr>
+<b>Figure 4-4: </b><code>e_ident[]</code> <b>Identification Indexes</b>
+<p>
+<table border="" cellspacing="0">
+<tbody><tr>
+<th><b>Name</b></th>
+<th><b>Value</b></th>
+<th><b>Purpose</b></th>
+</tr>
+<tr>
+<td><code>EI_MAG0</code></td>
+<td align="right"><code>0</code></td>
+<td>File identification</td>
+</tr>
+<tr>
+<td><code>EI_MAG1</code></td>
+<td align="right"><code>1</code></td>
+<td>File identification</td>
+</tr>
+<tr>
+<td><code>EI_MAG2</code></td>
+<td align="right"><code>2</code></td>
+<td>File identification</td>
+</tr>
+<tr>
+<td><code>EI_MAG3</code></td>
+<td align="right"><code>3</code></td>
+<td>File identification</td>
+</tr>
+<tr>
+<td><code>EI_CLASS</code></td>
+<td align="right"><code>4</code></td>
+<td>File class</td>
+</tr>
+<tr>
+<td><code>EI_DATA</code></td>
+<td align="right"><code>5</code></td>
+<td>Data encoding</td>
+</tr>
+<tr>
+<td><code>EI_VERSION</code></td>
+<td align="right"><code>6</code></td>
+<td>File version</td>
+</tr>
+<tr>
+<td><code>EI_OSABI</code></td>
+<td align="right"><code>7</code></td>
+<td>Operating system/ABI identification</td>
+</tr>
+<tr>
+<td><code>EI_ABIVERSION</code></td>
+<td align="right"><code>8</code></td>
+<td>ABI version</td>
+</tr>
+<tr>
+<td><code>EI_PAD</code></td>
+<td align="right"><code>9</code></td>
+<td>Start of padding bytes</td>
+</tr>
+<tr>
+<td><code>EI_NIDENT</code></td>
+<td align="right"><code>16</code></td>
+<td>Size of <code>e_ident[]</code></td>
+</tr>
+</tbody></table>
+</p><hr>
+<p>
+These indexes access bytes that hold the following values.
+</p><dl compact="">
+<dt><code>EI_MAG0</code>&nbsp;to&nbsp;<code>EI_MAG3</code></dt>
+<dd>A file's first 4 bytes hold a ``magic number,'' identifying the file
+as an ELF object file. </dd>
+<p>
+<table border="" cellspacing="0">
+<tbody><tr>
+<th><b>Name</b></th>
+<th><b>Value</b></th>
+<th><b>Position</b></th>
+</tr>
+<tr>
+<td><code>ELFMAG0</code></td>
+<td align="right"><code>0x7f</code></td>
+<td><code>e_ident[EI_MAG0]</code></td>
+</tr>
+<tr>
+<td><code>ELFMAG1</code></td>
+<td align="right"><code>'E'</code></td>
+<td><code>e_ident[EI_MAG1]</code></td>
+</tr>
+<tr>
+<td><code>ELFMAG2</code></td>
+<td align="right"><code>'L'</code></td>
+<td><code>e_ident[EI_MAG2]</code></td>
+</tr>
+<tr>
+<td><code>ELFMAG3</code></td>
+<td align="right"><code>'F'</code></td>
+<td><code>e_ident[EI_MAG3]</code></td>
+</tr>
+</tbody></table>
+</p><p>
+</p><dt><code>EI_CLASS</code></dt>
+<dd>The next byte, <code>e_ident[EI_CLASS]</code>, identifies the 
+file's class, or capacity. </dd>
+<p>
+<table border="" cellspacing="0">
+<tbody><tr>
+<th><b>Name</b></th>
+<th><b>Value</b></th>
+<th><b>Meaning</b></th>
+</tr>
+<tr>
+<td><code>ELFCLASSNONE</code></td>
+<td align="right"><code>0</code></td>
+<td>Invalid class</td>
+</tr>
+<tr>
+<td><code>ELFCLASS32</code></td>
+<td align="right"><code>1</code></td>
+<td>32-bit objects</td>
+</tr>
+<tr>
+<td><code>ELFCLASS64</code></td>
+<td align="right"><code>2</code></td>
+<td>64-bit objects</td>
+</tr>
+</tbody></table>
+</p><p>
+The file format is designed to be portable among machines of various
+sizes, without imposing the sizes of the largest machine on the 
+smallest.  The class of the file defines the basic types 
+used by the data structures
+of the object file container itself. The data contained in object file
+sections may follow a different programming model. If so, the processor
+supplement describes the model used.
+</p><p>
+Class <code>ELFCLASS32</code> supports machines with 
+32-bit architectures. It
+uses the basic types defined in the table 
+labeled ``32-Bit Data Types.''
+</p><p>
+Class <code>ELFCLASS64</code> supports machines with 64-bit 
+architectures.  It uses the basic types defined in the table 
+labeled ``64-Bit Data Types.''
+</p><p>
+Other classes will be defined as necessary, with different basic types
+and sizes for object file data.
+</p><dt><code>EI_DATA</code></dt>
+<dd>Byte <code>e_ident[EI_DATA]</code> specifies the
+encoding of both the data structures used by object file container
+and data contained in object file sections.
+The following encodings are currently defined.
+</dd>
+<p>
+<table border="" cellspacing="0">
+<tbody><tr>
+<th><b>Name</b></th>
+<th><b>Value</b></th>
+<th><b>Meaning</b></th>
+</tr>
+<tr>
+<td><code>ELFDATANONE</code></td>
+<td align="right"><code>0</code></td>
+<td>Invalid data encoding</td>
+</tr>
+<tr>
+<td><code>ELFDATA2LSB</code></td>
+<td align="right"><code>1</code></td>
+<td>See below</td>
+</tr>
+<tr>
+<td><code>ELFDATA2MSB</code></td>
+<td align="right"><code>2</code></td>
+<td>See below</td>
+</tr>
+</tbody></table>
+</p><p>
+Other values are reserved and will be assigned to new 
+encodings as necessary.
+</p><p>
+</p><hr><img src="./header_files/warning.gif" alt="NOTE:"> 
+Primarily for the convenience of code that looks at the ELF
+file at runtime, the ELF data structures are intended to have the
+same byte order as that of the running program.
+<hr>
+<dt><code>EI_VERSION</code></dt>
+<dd>Byte <code>e_ident[EI_VERSION]</code> specifies the 
+ELF header version
+number. Currently, this value must be <code>EV_CURRENT</code>, 
+as explained above for <code>e_version</code>. </dd>
+<p><a name="osabi"></a>
+</p><dt><code>EI_OSABI</code></dt>
+<dd>Byte <code>e_ident[EI_OSABI]</code> identifies the
+OS- or ABI-specific ELF extensions used by this file.
+Some fields in other ELF structures have flags and values
+that have operating system and/or ABI specific meanings;
+the interpretation of those fields is determined by the value of this byte.
+If the object file does not use any extensions,
+it is recommended that this byte be set to <code>0</code>.
+If the value for this byte is <code>64</code> through <code>255</code>,
+its meaning depends on the value of the <code>e_machine</code> header member.
+The ABI processor supplement for an architecture
+can define its own associated set of values for this byte in this range.
+If the processor supplement does not specify a set of values,
+one of the following values shall be used,
+where <code>0</code> can also be taken to mean <i>unspecified</i>.
+<p>
+<a name="generic_osabi_values"></a>
+<table border="" cellspacing="0">
+<tbody><tr>
+<th><b>Name</b></th>
+<th><b>Value</b></th>
+<th><b>Meaning</b></th>
+</tr>
+<tr>
+<td><code>ELFOSABI_NONE</code></td>
+<td align="right"><code>0</code></td>
+<td>No extensions or unspecified</td>
+</tr>
+<tr>
+<td><code>ELFOSABI_HPUX</code></td>
+<td align="right"><code>1</code></td>
+<td>Hewlett-Packard HP-UX</td>
+</tr>
+<tr>
+<td><code>ELFOSABI_NETBSD</code></td>
+<td align="right"><code>2</code></td>
+<td>NetBSD</td>
+</tr>
+<tr>
+<td><code>ELFOSABI_GNU</code></td>
+<td align="right"><code>3</code></td>
+<td>GNU</td>
+</tr>
+<tr>
+<td><code>ELFOSABI_LINUX <br>&nbsp;</code></td>
+<td align="right"><code>3<br>&nbsp;</code></td>
+<td>Linux <br>&nbsp;&nbsp; <i>historical  - alias for ELFOSABI_GNU</i></td>
+</tr>
+<!-- 4 reserved for IA32 GNU Mach/Hurd 
+	tentatively released July 03, 2011 -->
+<!-- 5 reserved for 86Open common IA32 ABI -->
+<tr>
+<td><code>ELFOSABI_SOLARIS</code></td>
+<td align="right"><code>6</code></td>
+<td>Sun Solaris</td>
+</tr>
+<tr>
+<td><code>ELFOSABI_AIX</code></td>
+<td align="right"><code>7</code></td>
+<td>AIX</td>
+</tr>
+<tr>
+<td><code>ELFOSABI_IRIX</code></td>
+<td align="right"><code>8</code></td>
+<td>IRIX</td>
+</tr>
+<tr>
+<td><code>ELFOSABI_FREEBSD</code></td>
+<td align="right"><code>9</code></td>
+<td>FreeBSD</td>
+</tr>
+<tr>
+<td><code>ELFOSABI_TRU64</code></td>
+<td align="right"><code>10</code></td>
+<td>Compaq TRU64 UNIX</td>
+</tr>
+<tr>
+<td><code>ELFOSABI_MODESTO</code></td>
+<td align="right"><code>11</code></td>
+<td>Novell Modesto</td>
+</tr>
+<tr>
+<td><code>ELFOSABI_OPENBSD</code></td>
+<td align="right"><code>12</code></td>
+<td>Open BSD</td>
+</tr>
+<!-- For Ron Brender (Ron.Brender@hp.com) 7 Jun 2002 -->
+<tr>
+<td><code>ELFOSABI_OPENVMS</code></td>
+<td align="right"><code>13</code></td>
+<td>Open VMS</td>
+</tr>
+<!-- For Cary Coutant (cary@cup.hp.com) 7 Jun 2002 -->
+<tr>
+<td><code>ELFOSABI_NSK</code></td>
+<td align="right"><code>14</code></td>
+<td>Hewlett-Packard Non-Stop Kernel</td>
+</tr>
+<!-- For Fabio Alemagna (falemagn@studenti.unina.it) 15 Jan 2003 -->
+<tr>
+<td><code>ELFOSABI_AROS</code></td>
+<td align="right"><code>15</code></td>
+<td>Amiga Research OS</td>
+</tr>
+<!-- For Sven Karlsson (Sven.Karlsson@sven.karlsson.name) 27 May 2009 -->
+<tr>
+<td><code>ELFOSABI_FENIXOS</code></td>
+<td align="right"><code>16</code></td>
+<td>The FenixOS highly scalable multi-core OS</td>
+</tr>
+<!-- For Ed Schouten (ed@nuxi.nl) 6 Mar 2015 -->
+<tr>
+<td><code>ELFOSABI_CLOUDABI</code></td>
+<td align="right"><code>17</code></td>
+<td>Nuxi CloudABI</td>
+</tr>
+<!-- For Richard Boylan (Richard.Bolan@stratus.com) and Herbue Robinson (Herbie.Robinson@stratus.com) 9 Apr 2015 -->
+<tr>
+<td><code>ELFOSABI_OPENVOS</code></td>
+<td align="right"><code>18</code></td>
+<td>Stratus Technologies OpenVOS</td>
+</tr>
+<tr>
+<td>&nbsp;</td>
+<td align="right"><code>64-255</code></td>
+<td>Architecture-specific value range</td>
+</tr>
+</tbody></table>
+</p></dd>
+<p><a name="abiversion"></a>
+</p><dt><code>EI_ABIVERSION</code></dt>
+<dd>Byte <code>e_ident[EI_ABIVERSION]</code> identifies the 
+version of the ABI to which the object is targeted.
+This field is used to distinguish among incompatible versions
+of an ABI.  The interpretation of this version number
+is dependent on the ABI identified by the <code>EI_OSABI</code>
+field.  If no values are specified for the <code>EI_OSABI</code>
+field by the processor supplement or no version values are
+specified for the ABI determined by a particular value of the
+<code>EI_OSABI</code> byte, the value <code>0</code> shall
+be used for the <code>EI_ABIVERSION</code> byte; it
+indicates <i>unspecified</i>.</dd>
+<p>
+</p><dt><code>EI_PAD</code></dt>
+<dd>This value marks the beginning of the unused bytes in 
+<code>e_ident</code>.  These bytes are reserved and set to zero; 
+programs that read object files
+should ignore them. The value of <code>EI_PAD</code> will 
+change in the future if currently unused bytes are given 
+meanings. </dd>
+</dl>
+<p>
+A file's data encoding specifies how to interpret the basic objects
+in a file. Class <code>ELFCLASS32</code> files use objects 
+that occupy 1, 2, and 4 bytes. Class <code>ELFCLASS64</code> files
+use objects that occupy 1, 2, 4, and 8 bytes. Under the defined
+encodings, objects are represented as shown below.
+</p><p>
+Encoding <code>ELFDATA2LSB</code> specifies 2's complement values,
+with the least significant byte occupying the lowest address. 
+</p><hr>
+<b>Figure 4-5: Data Encoding</b> <code>ELFDATA2LSB</code>, byte address zero on the left 
+<p>
+<table border="1" cellspacing="0" cellpadding="0">
+<tbody><tr>
+<td align="center" valign="center" width="48" height="24">01</td>
+</tr>
+</tbody><caption align="bottom">0x01</caption>
+</table>
+</p><p>
+<table border="1" cellspacing="0" cellpadding="0">
+<tbody><tr>
+<td align="center" valign="center" width="48" height="24">02</td>
+<td align="center" valign="center" width="48" height="24">01</td>
+</tr>
+</tbody><caption align="bottom">0x0102</caption>
+</table>
+</p><p>
+<table border="1" cellspacing="0" cellpadding="0">
+<tbody><tr>
+<td align="center" valign="center" width="48" height="24">04</td>
+<td align="center" valign="center" width="48" height="24">03</td>
+<td align="center" valign="center" width="48" height="24">02</td>
+<td align="center" valign="center" width="48" height="24">01</td>
+</tr>
+</tbody><caption align="bottom">0x01020304</caption>
+</table>
+</p><p>
+<table border="1" cellspacing="0" cellpadding="0">
+<tbody><tr>
+<td align="center" valign="center" width="48" height="24">08</td>
+<td align="center" valign="center" width="48" height="24">07</td>
+<td align="center" valign="center" width="48" height="24">06</td>
+<td align="center" valign="center" width="48" height="24">05</td>
+<td align="center" valign="center" width="48" height="24">04</td>
+<td align="center" valign="center" width="48" height="24">03</td>
+<td align="center" valign="center" width="48" height="24">02</td>
+<td align="center" valign="center" width="48" height="24">01</td>
+</tr>
+</tbody><caption align="bottom">0x0102030405060708</caption>
+</table>
+</p><hr>
+<p>
+Encoding <code>ELFDATA2MSB</code> specifies 2's complement values,
+with the most significant byte occupying the lowest address. 
+</p><hr>
+<b>Figure 4-6: Data Encoding</b> <code>ELFDATA2MSB</code>, byte address zero on the left 
+<p>
+<table border="1" cellspacing="0" cellpadding="0">
+<tbody><tr>
+<td align="center" valign="center" width="48" height="24">01</td>
+</tr>
+</tbody><caption align="bottom">0x01</caption>
+</table>
+</p><p>
+<table border="1" cellspacing="0" cellpadding="0">
+<tbody><tr>
+<td align="center" valign="center" width="48" height="24">01</td>
+<td align="center" valign="center" width="48" height="24">02</td>
+</tr>
+</tbody><caption align="bottom">0x0102</caption>
+</table>
+</p><p>
+<table border="1" cellspacing="0" cellpadding="0">
+<tbody><tr>
+<td align="center" valign="center" width="48" height="24">01</td>
+<td align="center" valign="center" width="48" height="24">02</td>
+<td align="center" valign="center" width="48" height="24">03</td>
+<td align="center" valign="center" width="48" height="24">04</td>
+</tr>
+</tbody><caption align="bottom">0x01020304</caption>
+</table>
+</p><p>
+<table border="1" cellspacing="0" cellpadding="0">
+<tbody><tr>
+<td align="center" valign="center" width="48" height="24">01</td>
+<td align="center" valign="center" width="48" height="24">02</td>
+<td align="center" valign="center" width="48" height="24">03</td>
+<td align="center" valign="center" width="48" height="24">04</td>
+<td align="center" valign="center" width="48" height="24">05</td>
+<td align="center" valign="center" width="48" height="24">06</td>
+<td align="center" valign="center" width="48" height="24">07</td>
+<td align="center" valign="center" width="48" height="24">08</td>
+</tr>
+</tbody><caption align="bottom">0x0102030405060708</caption>
+</table>
+</p><hr>
+<p>
+<a name="machine"></a></p>
+<h2>Machine Information (Processor-Specific)</h2>
+<p>
+</p><hr><img src="./header_files/warning.gif" alt="NOTE:"> 
+This section requires processor-specific information.
+The ABI supplement for the desired processor describes the details. 
+<hr>
+<a href="http://www.sco.com/developers/gabi/latest/ch4.intro.html"><img src="./header_files/previous.gif" alt="Previous"></a>
+<a href="http://www.sco.com/developers/gabi/latest/contents.html"><img src="./header_files/contents.gif" alt="Contents"></a>
+<a href="http://www.sco.com/developers/gabi/latest/ch4.sheader.html"><img src="./header_files/next.gif" alt="Next"></a>
+<hr>
+<i>
+<small>
+© 1997, 1998, 1999, 2000, 2001 The Santa Cruz Operation, Inc.  All rights reserved.
+© 2002 Caldera International.  All rights reserved.
+© 2003-2011 The SCO Group.  All rights reserved.
+© 2011-2015 Xinuos Inc.  All rights reserved.
+</small>
+</i>
+
+</body></html>
