@@ -115,6 +115,20 @@ let is_processor_specific_object_file_type_value v =
 
 (** ELF machine architectures *)
 
+(** RISC-V *)
+let elf_ma_riscv : natural = 243
+(** AMD GPU architecture *)
+let elf_ma_amdgpu : natural = 224
+(** Moxie processor family *)
+let elf_ma_moxie : natural = 223
+(** FTDI Chip FT32 high performance 32-bit RISC architecture *)
+let elf_ma_ft32 : natural = 222
+(** Controls and Data Services VISIUMcore processor *)
+let elf_ma_visium : natural = 221
+(** Zilog Z80 *)
+let elf_ma_z80 : natural = 220
+(** CSR Kalimba architecture family *)
+let elf_ma_kalimba : natural = 219
 (** Nanoradio optimised RISC *)
 let elf_ma_norc : natural = 218
 (** iCelero CoolEngine *)
@@ -556,6 +570,7 @@ let elf_ma_reserved159 : natural = 159
 
 (** [string_of_elf_machine_architecture m] produces a string representation of
   * the numeric encoding [m] of the ELF machine architecture.
+  * TODO: finish this .
   *)
 val string_of_elf_machine_architecture : natural -> string
 let {ocaml} string_of_elf_machine_architecture m =
@@ -779,6 +794,10 @@ let {ocaml} string_of_elf_osabi_version arch m =
 		"Amiga Research OS"
 	else if m = elf_osabi_fenixos then
 		"FenixOS highly-scalable multi-core OS"
+  else if m = elf_osabi_cloudabi then
+    "Nuxi CloudABI"
+  else if m = elf_osabi_openvos then
+    "Stratus technologies OpenVOS"
 	else if is_valid_architecture_defined_osabi_version m then
 	  arch m
 	else
