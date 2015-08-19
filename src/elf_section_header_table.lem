@@ -35,9 +35,8 @@ open import Elf_program_header_table
 
 (** Special section indices. *)
 
-(** [shn_undef]: marks an undefined, missing or irrelevant section reference.
-  *)
-let shn_undef : natural = 0
+(** See elf_header.lem for shn_undef *)
+
 (** [shn_loreserve]: this specifies the lower bound of the range of reserved
   * indices.
   *)
@@ -65,11 +64,9 @@ let shn_abs : natural = 65521 (* 0xfff1 *)
   * such as unallocated C external variables.
   *)
 let shn_common : natural = 65522 (* 0xfff2 *)
-(** [shn_xindex]: an escape value.  It indicates the actual section header index
-  * is too large to fit in the containing field and is located in another
-  * location (specific to the structure where it appears).
-  *)
-let shn_xindex : natural = 65535 (* 0xffff *)
+
+(** See elf_header.lem for shn_xindex. *)
+
 (** [shn_hireserve]: specifies the upper-bound of reserved values.
   *)
 let shn_hireserve : natural = 65535 (* 0xffff *)

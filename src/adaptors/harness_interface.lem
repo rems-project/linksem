@@ -1,5 +1,6 @@
 open import Basic_classes
 open import Bool
+open import Function
 open import Maybe
 open import Num
 open import String
@@ -100,7 +101,7 @@ let harness_string_of_elf32_file_header hdr =
   ; "  Class:" ^ "                             " ^ string_of_elf_file_class (get_elf32_file_class hdr)
   ; "  Data:" ^ "                              " ^ string_of_elf_data_encoding (get_elf32_data_encoding hdr)
   ; "  Version:" ^ "                           " ^ string_of_elf_version_number (get_elf32_version_number hdr)
-  ; "  OS/ABI:" ^ "                            " ^ string_of_elf_osabi_version (get_elf32_osabi hdr)
+  ; "  OS/ABI:" ^ "                            " ^ string_of_elf_osabi_version (const "Architecture defined") (get_elf32_osabi hdr)
   ; "  ABI Version:" ^ "                       " ^ show (get_elf32_abi_version hdr)
   ; "  Type:" ^ "                              " ^ string_of_elf_file_type default_os_specific_print default_proc_specific_print (natural_of_elf32_half hdr.elf32_type)
   ; "  Machine:" ^ "                           " ^ string_of_elf_machine_architecture (natural_of_elf32_half hdr.elf32_machine)
@@ -125,7 +126,7 @@ let harness_string_of_elf64_file_header hdr =
   ; "  Class:" ^ "                             " ^ string_of_elf_file_class (get_elf64_file_class hdr)
   ; "  Data:" ^ "                              " ^ string_of_elf_data_encoding (get_elf64_data_encoding hdr)
   ; "  Version:" ^ "                           " ^ string_of_elf_version_number (get_elf64_version_number hdr)
-  ; "  OS/ABI:" ^ "                            " ^ string_of_elf_osabi_version (get_elf64_osabi hdr)
+  ; "  OS/ABI:" ^ "                            " ^ string_of_elf_osabi_version (const "Architecture defined") (get_elf64_osabi hdr)
   ; "  ABI Version:" ^ "                       " ^ show (get_elf64_abi_version hdr)
   ; "  Type:" ^ "                              " ^ string_of_elf_file_type default_os_specific_print default_proc_specific_print (natural_of_elf64_half hdr.elf64_type)
   ; "  Machine:" ^ "                           " ^ string_of_elf_machine_architecture (natural_of_elf64_half hdr.elf64_machine)

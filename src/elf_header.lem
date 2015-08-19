@@ -31,6 +31,22 @@ open import Error
 open import Missing_pervasives
 open import Show
 
+(** Special section header table indices *)
+
+(** [shn_undef]: marks an undefined, missing or irrelevant section reference.
+  * Present here instead of in elf_section_header_table.lem because a calculation
+  * below requires this constant (i.e. forward reference in the ELF spec).
+  *)
+let shn_undef : natural = 0
+
+(** [shn_xindex]: an escape value.  It indicates the actual section header index
+  * is too large to fit in the containing field and is located in another
+  * location (specific to the structure where it appears). Present here instead
+  * of in elf_section_header_table.lem because a calculation below requires this
+  * constant (i.e. forward reference in the ELF spec).
+  *)
+let shn_xindex : natural = 65535 (* 0xffff *)
+
 (** ELF object file types.  Enumerates the ELF object file types specified in the
  *  System V ABI.  Values between [elf_ft_lo_os] and [elf_ft_hi_os] inclusive are
  *  reserved for operating system specific values typically defined in an
@@ -715,12 +731,22 @@ let elf_osabi_nsk : natural = 14
 let elf_osabi_aros : natural = 15
 (** FenixOS highly-scalable multi-core OS *)
 let elf_osabi_fenixos : natural = 16
+(** Nuxi CloudABI *)
+let elf_osabi_cloudabi : natural = 17
+(** Stratus technologies OpenVOS *)
+let elf_osabi_openvos : natural = 18
+
+(** Checks an architecture defined OSABI version is correct, i.e. in the range
+  * 64 to 255 inclusive.
+  *)
+let is_valid_architecture_defined_osabi_version (n : natural) =
+  n >= 64 && n <= 255
 
 (** [string_of_elf_osabi_version m] produces a string representation of the
   * numeric encoding [m] of the ELF OSABI version.
   *)
-val string_of_elf_osabi_version : natural -> string
-let {ocaml} string_of_elf_osabi_version m =
+val string_of_elf_osabi_version : (natural -> string) -> natural -> string
+let {ocaml} string_of_elf_osabi_version arch m =
 	if m = elf_osabi_none then
 		"UNIX - System V"
 	else if m = elf_osabi_netbsd then
@@ -753,14 +779,10 @@ let {ocaml} string_of_elf_osabi_version m =
 		"Amiga Research OS"
 	else if m = elf_osabi_fenixos then
 		"FenixOS highly-scalable multi-core OS"
+	else if is_valid_architecture_defined_osabi_version m then
+	  arch m
 	else
 		"Invalid OSABI version"
-
-(** Checks an architecture defined OSABI version is correct, i.e. in the range
-  * 64 to 255 inclusive.
-  *)
-let is_valid_architecture_defined_osabi_version (n : natural) =
-  n >= 64 && n <= 255
 
 (** ELF Header type *)
 
@@ -790,7 +812,8 @@ type elf32_header =
    |>
    
 val is_valid_elf32_header : elf32_header -> bool
-let is_valid_elf32_header = fun x -> List.take 4 x.elf32_ident = [elf_mn_mag0; elf_mn_mag1; elf_mn_mag2; elf_mn_mag3]
+let is_valid_elf32_header hdr =
+  List.take 4 hdr.elf32_ident = [elf_mn_mag0; elf_mn_mag1; elf_mn_mag2; elf_mn_mag3]
 
 val elf32_header_compare : elf32_header -> elf32_header -> Basic_classes.ordering
 let elf32_header_compare h1 h2 = 
@@ -837,7 +860,8 @@ type elf64_header =
    |>
 
 val is_valid_elf64_header : elf64_header -> bool
-let is_valid_elf64_header = fun x -> List.take 4 x.elf64_ident = [elf_mn_mag0; elf_mn_mag1; elf_mn_mag2; elf_mn_mag3]
+let is_valid_elf64_header hdr =
+  List.take 4 hdr.elf64_ident = [elf_mn_mag0; elf_mn_mag1; elf_mn_mag2; elf_mn_mag3]
 
 val elf64_header_compare : elf64_header -> elf64_header -> Basic_classes.ordering
 let elf64_header_compare h1 h2 = 
@@ -960,6 +984,14 @@ let get_elf64_version_number hdr =
     | Nothing    -> failwith "get_elf64_version_number: lookup in ident failed"
   end (* Partial: should never return Nothing *)
   
+val is_valid_elf32_version_number : elf32_header -> bool
+let is_valid_elf32_version_numer hdr =
+  get_elf32_version_number hdr = elf_ev_current
+
+val is_valid_elf64_version_number : elf64_header -> bool
+let is_valid_elf64_version_numer hdr =
+  get_elf64_version_number hdr = elf_ev_current
+  
 val get_elf32_abi_version : elf32_header -> natural
 let get_elf32_abi_version hdr =
   match List.index hdr.elf32_ident (unsafe_nat_of_natural elf_ii_abiversion) with
@@ -997,6 +1029,38 @@ let get_elf32_header_endianness hdr =
 val get_elf64_header_endianness : elf64_header -> endianness
 let get_elf64_header_endianness hdr =
   deduce_endianness (hdr.elf64_ident)
+  
+val has_elf32_header_associated_entry_point : elf32_header -> bool
+let has_elf32_header_associated_entry_point hdr =
+  natural_of_elf32_addr hdr.elf32_entry <> 0
+
+val has_elf64_header_associated_entry_point : elf64_header -> bool
+let has_elf64_header_associated_entry_point hdr =
+  natural_of_elf64_addr hdr.elf64_entry <> 0
+  
+val has_elf32_header_string_table : elf32_header -> bool
+let has_elf32_header_string_table hdr =
+  natural_of_elf32_half hdr.elf32_shstrndx <> shn_undef
+  
+val has_elf64_header_string_table : elf64_header -> bool
+let has_elf64_header_string_table hdr =
+  natural_of_elf64_half hdr.elf64_shstrndx <> shn_undef
+  
+val is_elf32_header_section_size_in_section_header_table : elf32_header -> bool
+let is_elf32_header_section_size_in_section_header_table hdr =
+  natural_of_elf32_half hdr.elf32_shnum = 0
+  
+val is_elf64_header_section_size_in_section_header_table : elf64_header -> bool
+let is_elf64_header_section_size_in_section_header_table hdr =
+  natural_of_elf64_half hdr.elf64_shnum = 0
+  
+val is_elf32_header_string_table_index_in_link : elf32_header -> bool
+let is_elf32_header_string_table_index_in_link hdr =
+  natural_of_elf32_half hdr.elf32_shstrndx = shn_xindex
+  
+val is_elf64_header_string_table_index_in_link : elf64_header -> bool
+let is_elf64_header_string_table_index_in_link hdr =
+  natural_of_elf64_half hdr.elf64_shstrndx = shn_xindex
 
 (** The [hdr_print_bundle] type is used to tidy up other type signatures.  Some of the
   * top-level string_of_ functions require six or more functions passed to them,

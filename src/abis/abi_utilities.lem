@@ -2,8 +2,10 @@ open import Num
 
 type integer_bit_width
   = I8        (** Signed 8 bit *)
+  | I12
   | U12       (** Unsigned 12 bit *)
   | Low14
+  | U15       (** Unsigned 15 bit *)
   | I15
   | I16       (** Signed 16 bit *)
   | Half16ds
@@ -25,9 +27,11 @@ val natural_of_integer_bit_width : integer_bit_width -> natural
 let natural_of_integer_bit_width i =
   match i with
     | I8       -> 8
+    | I12      -> 12
     | U12      -> 12
     | Low14    -> 14
     | I15      -> 15
+    | U15      -> 15
     | I16      -> 16
     | Half16ds -> 16
     | U16      -> 16
