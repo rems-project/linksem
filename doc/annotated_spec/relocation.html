@@ -2,6 +2,7 @@
 <!-- saved from url=(0056)http://www.sco.com/developers/gabi/latest/ch4.reloc.html -->
 <html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>Relocation</title></head><body><p>
 </p><h1>Relocation</h1><p>
+<font color="red">See Lem file elf_relocation.lem for all relevant definitions.</font>
 Relocation is the process of connecting symbolic references
 with symbolic definitions.
 For example, when a program calls a function, the associated call
@@ -40,6 +41,7 @@ typedef struct {
 } Elf64_Rela;
 </code>
 </pre>
+<font color="red">See record types elfXX_rel and elfXX_rel_a for XX=32,64 in elf_relocation.lem for implementations of the above types.</font>
 <hr>
 <dl compact="">
 <p></p><dt><code>r_offset</code></dt><dd>
@@ -75,6 +77,8 @@ respectively, to the entry's <code>r_info</code> member.
 	#define ELF64_R_TYPE(i)   ((i)&amp;0xffffffffL)
 	#define ELF64_R_INFO(s,t) (((s)&lt;&lt;32)+((t)&amp;0xffffffffL))
 </pre>
+<font color="red">See functions elfXX_relocation_r_sym and elfXX_relocation_r_type for XX=32,64 in elf_relocation.lem for implementations of the above macros.
+ELFXX_R_INFO is not needed as access to the relocation entry's info field can be used instead.</font>
 <hr>
 <p></p></dd><dt><code>r_addend</code></dt><dd>
 This member specifies a constant addend used to
