@@ -16,7 +16,20 @@ open import String_table
 
 open import Elf_relocation
 open import Elf_section_header_table
+open import Elf_program_header_table
 open import Elf_types_native_uint
+
+(** Validity checks *)
+
+val is_elf32_valid_program_header_table_for_dynamic_linking : elf32_program_header_table ->
+  bool
+let is_elf32_valid_program_header_table_for_dynamic_linking pht =
+  List.length (List.filter (fun x -> natural_of_elf32_word x.elf32_p_type = elf_pt_interp) pht) = 1
+  
+val is_elf64_valid_program_header_table_for_dynamic_linking : elf64_program_header_table ->
+  bool
+let is_elf64_valid_program_header_table_for_dynamic_linking pht =
+  List.length (List.filter (fun x -> natural_of_elf64_word x.elf64_p_type = elf_pt_interp) pht) = 1
 
 (** Dynamic section entry *)
 

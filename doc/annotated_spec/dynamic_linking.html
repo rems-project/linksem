@@ -2,11 +2,13 @@
 <!-- saved from url=(0058)http://www.sco.com/developers/gabi/latest/ch5.dynamic.html -->
 <html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>Dynamic Linking</title></head><body><p>
 </p><h1>Dynamic Linking</h1><p>
+<font color="red">See file elf_dynamic.lem for relevant definitions and types.</font>
 <a name="interpreter"></a>
 </p><h2>Program Interpreter</h2><p>
 An executable file that participates in
 dynamic linking shall have one
 <code>PT_INTERP</code> program header element.
+<font color="red">See functions is_elfXX_valid_program_header_table_for_dynamic_linking for XX=32,64 in elf_dynamic.lem for an implementation of this check.</font>
 During
 <code>exec</code>(BA_OS),
 the system retrieves a path name from the <code>PT_INTERP</code>
@@ -189,6 +191,7 @@ typedef struct {
 extern Elf64_Dyn	_DYNAMIC[];
 </code>
 </pre>
+<font color="red">The union types above are captured using Lem records elfXX_dyn for XX=32,64 using an auxiliary tagged union data structure dyn_union in elf_dynamic.lem.</font>
 <hr>
 <p>
 For each object with this type, <code>d_tag</code>
@@ -512,7 +515,10 @@ but is not required.
 </tbody></table>
 </p><p>
 * Signifies an entry that is at level 2.
-</p><hr>
+</p>
+<font color="red">The dynamic section tags above are captured as Lem constants dt_null through to dt_hiproc in elf_dynamic.lem.
+Their associated rules are captured using an auxiliary data structure tag_correspondence used by a function tag_correspondence_of_tag also in elf_dynamic.lem.</font>
+<hr>
 <dl compact="">
 <p></p><dt><code>DT_NULL</code></dt><dd>
 An entry with a <code>DT_NULL</code> tag marks the end of the
@@ -778,7 +784,9 @@ Tag values not appearing in the table are reserved.
 <td align="right"><code>0x10</code></td>
 </tr>
 </tbody></table>
-</p><hr>
+</p>
+<font color="red">DT_FLAGS values above are captured as Lem constants df_origin through to df_statis_tls in elf_dynamic.lem.</font>
+<hr>
 <dl compact="">
 <p></p><dt><code>DF_ORIGIN</code></dt><dd>
 This flag signifies that the object being loaded may make reference
@@ -1254,10 +1262,10 @@ must be executed before any termination functions of shared objects.
 <hr>
 <i>
 <small>
-© 1997, 1998, 1999, 2000, 2001 The Santa Cruz Operation, Inc.  All rights reserved.
-© 2002 Caldera International.  All rights reserved.
-© 2003-2010 The SCO Group.  All rights reserved.
-© 2011-2015 Xinuos Inc.  All rights reserved.
+\A9 1997, 1998, 1999, 2000, 2001 The Santa Cruz Operation, Inc.  All rights reserved.
+\A9 2002 Caldera International.  All rights reserved.
+\A9 2003-2010 The SCO Group.  All rights reserved.
+\A9 2011-2015 Xinuos Inc.  All rights reserved.
 </small>
 </i>
 
