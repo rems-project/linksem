@@ -4,12 +4,6 @@
   * derived from PHTs presented in this file and converts it into a more usable
   * format for processing.
   *
-  * TODO:
-  *    * Add utility functions for extracting more useful information, e.g. the
-  *      associated interpreter for dynamically linked files.
-  *    * Extract the TLS template from segments marked pt_tls.
-  *    * Extract notes from segments marked pt_note.
-  *
   * FIXME:
   * Bug in Lem as Lem codebase uses [int] type throughout where [BigInt.t]
   * is really needed, hence chokes on huge constants below, which is why they are

@@ -2,6 +2,7 @@
 <!-- saved from url=(0058)http://www.sco.com/developers/gabi/latest/ch5.pheader.html -->
 <html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>Program Header</title></head><body><p>
 </p><h1>Program Header</h1><p>
+<font color="red">See elf_program_header_table.lem for all relevant definitions and types.</font>
 An executable or shared object file's program header table
 is an array of structures, each describing a segment or
 other information the system needs to prepare the program for execution.
@@ -16,6 +17,7 @@ A file specifies its own program header size with the ELF header's
 See
 <a href="http://www.sco.com/developers/gabi/latest/ch4.eheader.html">``ELF Header''</a> in Chapter 4
 for more information.
+<font color="red">This calculation is defined in elf_header.lem in functions get_elfXX_program_header_table_size for XX=32,64.</font>
 </p><hr>
 <b>Figure 5-1: Program Header</b>
 <p>
@@ -43,6 +45,7 @@ typedef struct {
 } Elf64_Phdr;
 </code></pre><code>
 </code>
+<font color="red">The record types above are captured as Lem record types elfXX_program_header_table_entry for XX=32,64 in elf_program_header_table.lem.</font>
 <dl compact="">
 <p></p><dt><code>p_type</code></dt><dd>
 This member tells what kind of segment this array element
@@ -149,7 +152,9 @@ other values are reserved for future use.
 <td align="right"><code>0x7fffffff</code></td>
 </tr>
 </tbody></table>
-</p><hr>
+</p>
+<font color="red">Segment type flags above are captured as Lem constants elf_pt_null through to elf_pt_hiproc in elf_program_header_table.lem.</font>
+<hr>
 <dl compact="">
 <p></p><dt><code>PT_NULL</code></dt><dd>
 The array element is unused; other members' values are undefined.
@@ -310,7 +315,9 @@ it gives access permissions as specified in the <code>p_flags</code> member.
 <td>Unspecified</td>
 </tr>
 </tbody></table>
-</p><hr>
+</p>
+<font color="red">Segment permission bit flags above are captured as Lem constants elf_pf_x through to elf_pf_maskos in elf_program_header_table.lem.</font>
+<hr>
 All bits included in the <code>PF_MASKOS</code>
 mask are reserved for operating system-specific semantics.
 <p>
@@ -328,6 +335,7 @@ unless it is specified explicitly.
 The following table shows both the exact flag interpretation
 and the allowable flag interpretation. ABI-conforming systems may
 provide either.
+<font color="red">See functions exact_permissions_of_permission and allowable_permissions_of_permission for implementations of these rules in elf_program_header_table.lem.</font>
 </p><hr>
 <b>Figure 5-4: Segment Permissions</b>
 <p>
@@ -461,6 +469,7 @@ than <code>p_filesz</code>
 in the associated program header element.
 <a name="note_section"></a>
 </p><h2>Note Section</h2>
+<font color="red">See file elf_note.lem for all relevant definitions and types.</font>
 Sometimes a vendor or system builder needs to mark an
 object file with special information that
 other programs will check for conformance, compatibility, etc.
@@ -526,6 +535,8 @@ the type to recognize a descriptor.
 Types currently must be non-negative.
 The ABI does not define what descriptors mean.
 </dd></dl>
+<font color="red">The structures above are captured as Lem records elfXX_note for XX=32,64 in elf_note.lem.
+Name strings can be extracted from note sections using functions name_string_of_elfXX_note for XX=32,64.</font>
 <p>
 To illustrate, the following note segment holds two entries.
 </p><hr>
@@ -667,6 +678,7 @@ The portion of the TLS template that holds initialized data
 is the <i>TLS initialization image</i>.
 (The remaining portion of the TLS template
 is one or more sections of type <code>SHT_NOBITS</code>.)
+<font color="red">Sections comprising the TLS template can be obtained using functions obtain_elfXX_tls_template for XX=32,64 in elf_section_header_table.lem.</font>
 </p><hr>
 <a href="http://www.sco.com/developers/gabi/latest/ch5.intro.html"><img src="./program_header_files/previous.gif" alt="Previous"></a>
 <a href="http://www.sco.com/developers/gabi/latest/contents.html"><img src="./program_header_files/contents.gif" alt="Contents"></a>
@@ -674,10 +686,10 @@ is one or more sections of type <code>SHT_NOBITS</code>.)
 <hr>
 <i>
 <small>
-© 1997, 1998, 1999, 2000, 2001 The Santa Cruz Operation, Inc.  All rights reserved.
-© 2002 Caldera International.  All rights reserved.
-© 2003-2010 The SCO Group.  All rights reserved.
-© 2011-2014 Xinuos Inc.  All rights reserved.
+\A9 1997, 1998, 1999, 2000, 2001 The Santa Cruz Operation, Inc.  All rights reserved.
+\A9 2002 Caldera International.  All rights reserved.
+\A9 2003-2010 The SCO Group.  All rights reserved.
+\A9 2011-2014 Xinuos Inc.  All rights reserved.
 </small>
 </i>
 
