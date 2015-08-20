@@ -991,6 +991,46 @@ let obtain_elf64_tls_template sht =
   List.filter (fun ent ->
     let flags = natural_of_elf64_xword ent.elf64_sh_flags in  
       unsafe_natural_land flags shf_tls <> 0) sht
+      
+val obtain_elf32_hash_table : endianness -> elf32_section_header_table -> byte_sequence ->
+  error (elf32_word * elf32_word * list elf32_word * list elf32_word)
+let obtain_elf32_hash_table endian sht bs0 =
+  let filtered = List.filter (fun ent ->
+    natural_of_elf32_word ent.elf32_sh_type = sht_hash) sht
+  in
+    match filtered with
+      | []  -> fail "obtain_elf32_hash_table: no section header table entry of type sht_hash"
+      | [x] ->
+        let siz = natural_of_elf32_word x.elf32_sh_size in
+        let off = natural_of_elf32_off  x.elf32_sh_offset in
+        Byte_sequence.offset_and_cut siz off bs0 >>= fun rel ->
+        read_elf32_word endian rel >>= fun (nbucket, rel) ->
+        read_elf32_word endian rel >>= fun (nchain, rel) ->
+        Error.repeatM' (natural_of_elf32_word nbucket) rel (read_elf32_word endian) >>= fun (buckets, rel) ->
+        Error.repeatM' (natural_of_elf32_word nchain) rel (read_elf32_word endian) >>= fun (chain, _) ->
+        return (nbucket, nchain, buckets, chain)
+      | _   -> fail "obtain_elf32_hash_table: multiple section header table entries of type sht_hash"
+    end
+    
+val obtain_elf64_hash_table : endianness -> elf64_section_header_table -> byte_sequence ->
+  error (elf64_word * elf64_word * list elf64_word * list elf64_word)
+let obtain_elf64_hash_table endian sht bs0 =
+  let filtered = List.filter (fun ent ->
+    natural_of_elf64_word ent.elf64_sh_type = sht_hash) sht
+  in
+    match filtered with
+      | []  -> fail "obtain_elf64_hash_table: no section header table entry of type sht_hash"
+      | [x] ->
+        let siz = natural_of_elf64_xword x.elf64_sh_size in
+        let off = natural_of_elf64_off  x.elf64_sh_offset in
+        Byte_sequence.offset_and_cut siz off bs0 >>= fun rel ->
+        read_elf64_word endian rel >>= fun (nbucket, rel) ->
+        read_elf64_word endian rel >>= fun (nchain, rel) ->
+        Error.repeatM' (natural_of_elf64_word nbucket) rel (read_elf64_word endian) >>= fun (buckets, rel) ->
+        Error.repeatM' (natural_of_elf64_word nchain) rel (read_elf64_word endian) >>= fun (chain, _) ->
+        return (nbucket, nchain, buckets, chain)
+      | _   -> fail "obtain_elf64_hash_table: multiple section header table entries of type sht_hash"
+    end
 
 (** Special sections *)
 

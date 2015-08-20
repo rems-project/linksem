@@ -1061,7 +1061,11 @@ but they are not part of the specification.
 <tr><td align="center"><code>bucket[0]<br>. . .<br>bucket[nbucket-1]</code></td></tr>
 <tr><td align="center"><code>chain[0]<br>. . .<br>chain[nchain-1]</code></td></tr>
 </tbody></table>
-</p><hr>
+</p>
+<font color="red">See functions obtain_elfXX_hash_table for XX=32,64 in elf_section_header_table.lem for obtaining the buckets and chains of the hash table section.
+Currently the hash function below is not implemented.
+</font>
+<hr>
 <p>
 The <code>bucket</code> array contains <code>nbucket</code>
 entries, and the <code>chain</code> array contains <code>nchain</code>
