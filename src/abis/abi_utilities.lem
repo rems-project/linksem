@@ -49,13 +49,47 @@ let natural_of_integer_bit_width i =
     | I64X2    -> 128
   end
   
+type relocation_operator
+  = TPRel
+  | LTOff
+  | DTPMod
+  | DTPRel
+  | Page
+  | GDat
+  | G
+  | GLDM
+  | GTPRel
+  | GTLSDesc
+  | Delta
+  | LDM
+  | TLSDesc
+  | Indirect
+  | Lo
+  | Hi
+  | Ha
+  | Higher
+  | HigherA
+  | Highest
+  | HighestA
+  
+type relocation_operator2 =
+  | GTLSIdx
+  
+type relocation_operator_expression 'a
+  = Lift   of 'a
+  | Apply  of (relocation_operator * relocation_operator_expression 'a)
+  | Apply2 of (relocation_operator2 * relocation_operator_expression 'a * relocation_operator_expression 'a)
+  | Plus   of (relocation_operator_expression 'a * relocation_operator_expression 'a)
+  | Minus  of (relocation_operator_expression 'a * relocation_operator_expression 'a)
+  | RShift of (relocation_operator_expression 'a * natural)
+  
 (** Some relocations may fail, for example:
   * Page 58, Power ABI: relocation types whose Field column is marked with an
   * asterisk are subject to failure is the value computed does not fit in the
   * allocated bits.  [can_fail] type passes this information back to the caller
   * of the relocation application function.
   *)
-type can_fail
-  = CanFail       (** [CanFail] signals a potential failing relocation calculation *)
-  | CanFailOnTest (** For relocations that require an ad hoc test *)
-  | CannotFail    (** [CannotFail] states the relocation calculation cannot fail *)
+type can_fail 'a
+  = CanFail                       (** [CanFail] signals a potential failing relocation calculation when width constraints are invalidated *)
+  | CanFailOnTest of ('a -> bool) (** [CanFailOnTest p] signals a potentially failing relocation calculation when predicate [p] on the result of the calculation returns [false] *)
+  | CannotFail                    (** [CannotFail] states the relocation calculation cannot fail and bit-width constraints should be ignored *)

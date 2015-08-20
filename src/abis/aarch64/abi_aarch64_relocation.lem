@@ -426,45 +426,6 @@ let width_of_aarch64_relocation rel_type s =
     0
   else
     0 (* TODO *)
-    
-val mod_page : integer -> integer
-let mod_page x = x (** FIXME *)
-
-val mod_indirect : integer -> integer
-let mod_indirect x = x (** FIXME *)
-
-val mod_delta : integer -> integer
-let mod_delta x = x (** FIXME *)
-
-val mod_tlsdesc : integer -> integer
-let mod_tlsdesc x = x (** FIXME *)
-
-val mod_tprel : integer -> integer
-let mod_tprel x = x (** FIXME *)
-
-val mod_ldm : integer -> integer
-let mod_ldm x = x (** FIXME *)
-
-val mod_dtprel : integer -> integer
-let mod_dtprel x = x (** FIXME *)
-
-val mod_g : integer -> integer
-let mod_g x = x (** FIXME *)
-
-val mod_gtlsdesc : integer -> integer
-let mod_gtlsdesc x = x (** FIXME *)
-
-val mod_gtprel : integer -> integer
-let mod_gtprel x = x (** FIXME *)
-
-val mod_gldm : integer -> integer
-let mod_gldm x = x (** FIXME *)
-
-val mod_gtlsidx : integer -> integer -> integer
-let mod_gtlsidx x y = x (** FIXME *)
-
-val mod_gdat : integer -> integer
-let mod_gdat x = x (** FIXME *)
 
 (** TODO: unclear from ABI spec. whether overflow check on relocations is
   * supposed to cause relocation to fail if not satisfied or whether there is
@@ -472,7 +433,7 @@ let mod_gdat x = x (** FIXME *)
   *)
 val abi_aarch64_apply_relocation : elf64_relocation_a -> integer -> integer ->
   integer -> elf64_file ->
-    error (Map.map elf64_addr (integer * integer_bit_width * can_fail))
+    error (Map.map elf64_addr (relocation_operator_expression integer * integer_bit_width * can_fail integer))
 let abi_aarch64_apply_relocation rel s_val p_val got_val ef =
   if is_elf64_relocatable_file ef.elf64_file_header then
     let rel_type = elf64_relocation_r_type rel.elf64_ra_info in
@@ -485,395 +446,454 @@ let abi_aarch64_apply_relocation rel s_val p_val got_val ef =
         return Map.empty
       (** Signed 64 bit width, calculation: S + A *)
       else if rel_type = r_aarch64_abs64 then
-      	let result = s_val + a_val in
+      	let result = Lift (s_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I64, CannotFail))
       (** Signed 32 bit width, calculation: S + A *)
       else if rel_type = r_aarch64_abs32 then
-      	let result = s_val + a_val in
+      	let result = Lift (s_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I32, CanFail))
       (** Signed 16 bith width, calculation: S + A *)
       else if rel_type = r_aarch64_abs16 then
-      	let result = s_val + a_val in
+      	let result = Lift (s_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I16, CanFail))
       (** Signed 64 bit width, calculation: S + A - P *)
       else if rel_type = r_aarch64_prel64 then
-      	let result = (s_val + a_val) - p_val in
+      	let result = Lift ((s_val + a_val) - p_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I64, CannotFail))
       (** Signed 32 bit width, calculation: S + A - P *)
       else if rel_type = r_aarch64_prel32 then
-      	let result = (s_val + a_val) - p_val in
+      	let result = Lift ((s_val + a_val) - p_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I32, CanFail))
       (** Signed 16 bit width, calculation: S + A - P *)
       else if rel_type = r_aarch64_prel16 then
-      	let result = (s_val + a_val) - p_val in
+      	let result = Lift ((s_val + a_val) - p_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I16, CanFail))
       else if rel_type = r_aarch64_movw_uabs_g0 then
-      	let result = s_val + a_val in
+      	let result = Lift (s_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, U16, CanFail))
       else if rel_type = r_aarch64_movw_uabs_g0_nc then
-      	let result = s_val + a_val in
+      	let result = Lift (s_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, U16, CannotFail))
       else if rel_type = r_aarch64_movw_uabs_g1 then
-      	let result = s_val + a_val in
+      	let result = Lift (s_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, U32, CanFail))
       else if rel_type = r_aarch64_movw_uabs_g1_nc then
-      	let result = s_val + a_val in
+      	let result = Lift (s_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, U32, CannotFail))
       else if rel_type = r_aarch64_movw_uabs_g2 then
-      	let result = s_val + a_val in
+      	let result = Lift (s_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, U48, CanFail))
       else if rel_type = r_aarch64_movw_uabs_g2_nc then
-      	let result = s_val + a_val in
+      	let result = Lift (s_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, U48, CannotFail))
       else if rel_type = r_aarch64_movw_uabs_g3 then
-      	let result = s_val + a_val in
+      	let result = Lift (s_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, U64, CannotFail))
       else if rel_type = r_aarch64_movw_sabs_g0 then
-      	let result = s_val + a_val in
+      	let result = Lift (s_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I16, CanFail))
       else if rel_type = r_aarch64_movw_sabs_g1 then
-      	let result = s_val + a_val in
+      	let result = Lift (s_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I32, CanFail))
       else if rel_type = r_aarch64_movw_sabs_g2 then
-      	let result = s_val + a_val in
+      	let result = Lift (s_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I48, CanFail))
       else if rel_type = r_aarch64_ld_prel_lo19 then
-      	let result = (s_val + a_val) - p_val in
+      	let result = Lift ((s_val + a_val) - p_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I20, CanFail))
       else if rel_type = r_aarch64_adr_prel_lo21 then
-      	let result = (s_val + a_val) - p_val in
+      	let result = Lift ((s_val + a_val) - p_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I20, CanFail))
       else if rel_type = r_aarch64_adr_prel_pg_hi21 then
-      	let result = mod_page (s_val + a_val) - mod_page p_val in
+      	let result = Minus(Apply(Page, Lift (s_val + a_val)), Apply(Page, Lift p_val)) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I32, CanFail))
       else if rel_type = r_aarch64_adr_prel_pg_hi21_nc then
-      	let result = mod_page (s_val + a_val) - mod_page p_val in
+      	let result = Minus (Apply(Page, Lift (s_val + a_val)), Apply(Page, Lift p_val)) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I32, CannotFail))
       else if rel_type = r_aarch64_add_abs_lo12_nc then
-      	let result = s_val + a_val in
+      	let result = Lift (s_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I32, CannotFail))
       else if rel_type = r_aarch64_ldst8_abs_lo12_nc then
-      	let result = s_val + a_val in
+      	let result = Lift (s_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I32, CannotFail))
       else if rel_type = r_aarch64_ldst16_abs_lo12_nc then
-      	let result = s_val + a_val in
+      	let result = Lift (s_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I32, CannotFail))
       else if rel_type = r_aarch64_ldst32_abs_lo12_nc then
-      	let result = s_val + a_val in
+      	let result = Lift (s_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I32, CannotFail))
       else if rel_type = r_aarch64_ldst64_abs_lo12_nc then
-      	let result = s_val + a_val in
+      	let result = Lift (s_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I32, CannotFail))
       else if rel_type = r_aarch64_ldst128_abs_lo12_nc then
-      	let result = s_val + a_val in
+      	let result = Lift (s_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I32, CannotFail))
       else if rel_type = r_aarch64_tstbr14 then
-      	let result = (s_val + a_val) - p_val in
+      	let result = Lift ((s_val + a_val) - p_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I15, CanFail))
       else if rel_type = r_aarch64_condbr19 then
-      	let result = (s_val + a_val) - p_val in
+      	let result = Lift ((s_val + a_val) - p_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I20, CanFail))
       else if rel_type = r_aarch64_jump26 then
-      	let result = (s_val + a_val) - p_val in
+      	let result = Lift ((s_val + a_val) - p_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I27, CanFail))
       else if rel_type = r_aarch64_call26 then
-      	let result = (s_val + a_val) - p_val in
+      	let result = Lift ((s_val + a_val) - p_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I27, CanFail))
       else if rel_type = r_aarch64_movw_prel_g0 then
-      	let result = (s_val + a_val) - p_val in
+      	let result = Lift ((s_val + a_val) - p_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I16, CanFail))
       else if rel_type = r_aarch64_movw_prel_g0_nc then
-      	let result = (s_val + a_val) - p_val in
+      	let result = Lift ((s_val + a_val) - p_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I16, CannotFail))
       else if rel_type = r_aarch64_movw_prel_g1 then
-      	let result = (s_val + a_val) - p_val in
+      	let result = Lift ((s_val + a_val) - p_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I32, CanFail))
       else if rel_type = r_aarch64_movw_prel_g1_nc then
-      	let result = (s_val + a_val) - p_val in
+      	let result = Lift ((s_val + a_val) - p_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I32, CannotFail))
       else if rel_type = r_aarch64_movw_prel_g2 then
-      	let result = (s_val + a_val) - p_val in
+      	let result = Lift ((s_val + a_val) - p_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I48, CanFail))
       else if rel_type = r_aarch64_movw_prel_g2_nc then
-      	let result = (s_val + a_val) - p_val in
+      	let result = Lift ((s_val + a_val) - p_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I48, CannotFail))
       else if rel_type = r_aarch64_movw_prel_g3 then
-      	let result = (s_val + a_val) - p_val in
+      	let result = Lift ((s_val + a_val) - p_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I64, CannotFail))
       else if rel_type = r_aarch64_movw_gotoff_g0 then
-      	let result = mod_g (mod_gdat (s_val + a_val)) - got_val in
+      	let result = Minus (Apply(G, Apply(GDat, Lift (s_val + a_val))), Lift got_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I16, CanFail))
       else if rel_type = r_aarch64_movw_gotoff_g0_nc then
-      	let result = mod_g (mod_gdat (s_val + a_val)) - got_val in
+      	let result = Minus (Apply(G, Apply(GDat, Lift (s_val + a_val))), Lift got_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I16, CannotFail))
       else if rel_type = r_aarch64_movw_gotoff_g1 then
-      	let result = mod_g (mod_gdat (s_val + a_val)) - got_val in
+      	let result = Minus (Apply(G, Apply(GDat, Lift (s_val + a_val))), Lift got_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I32, CanFail))
       else if rel_type = r_aarch64_movw_gotoff_g1_nc then
-      	let result = mod_g (mod_gdat (s_val + a_val)) - got_val in
+      	let result = Minus (Apply(G, Apply(GDat, Lift (s_val + a_val))), Lift got_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I32, CannotFail))
       else if rel_type = r_aarch64_movw_gotoff_g2 then
-      	let result = mod_g (mod_gdat (s_val + a_val)) - got_val in
+      	let result = Minus (Apply(G, Apply(GDat, Lift (s_val + a_val))), Lift got_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I48, CanFail))
       else if rel_type = r_aarch64_movw_gotoff_g2_nc then
-      	let result = mod_g (mod_gdat (s_val + a_val)) - got_val in
+      	let result = Minus (Apply(G, Apply(GDat, Lift (s_val + a_val))), Lift got_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I32, CannotFail))
       else if rel_type = r_aarch64_movw_gotoff_g3 then
-      	let result = mod_g (mod_gdat (s_val + a_val)) - got_val in
+      	let result = Minus (Apply(G, Apply(GDat, Lift (s_val + a_val))), Lift got_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I64, CannotFail))
       else if rel_type = r_aarch64_gotrel64 then
-      	let result = (s_val + a_val) - got_val in
+      	let result = Lift ((s_val + a_val) - got_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I64, CannotFail))
       else if rel_type = r_aarch64_gotrel32 then
-      	let result = (s_val + a_val) - got_val in
+      	let result = Lift ((s_val + a_val) - got_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I32, CanFail))
       else if rel_type = r_aarch64_got_ld_prel19 then
-      	let result = mod_g (mod_gdat (s_val + a_val)) - p_val in
+      	let result = Minus (Apply(G, Apply(GDat, Lift (s_val + a_val))), Lift p_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I20, CanFail))
       else if rel_type = r_aarch64_got_ld64_gotoff_lo15 then
-      	let result = mod_g (mod_gdat (s_val + a_val)) - got_val in
+      	let result = Minus (Apply(G, Apply(GDat, Lift (s_val + a_val))), Lift got_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, U15, CanFail))
       else if rel_type = r_aarch64_adr_got_page then
-      	let result = mod_page (mod_g (mod_gdat (s_val + a_val))) - mod_page p_val in
+      	let result = Minus (Apply(Page, Apply(G, Apply(GDat, Lift (s_val + a_val)))), Apply(Page, Lift p_val)) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I32, CanFail))
       else if rel_type = r_aarch64_ld64_got_lo12_nc then
         (** requires ad hoc check *)
-      	let result = mod_g (mod_gdat (s_val + a_val)) in
+      	let result = Apply(G, Apply(GDat, Lift (s_val + a_val))) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I20, CannotFail))
       else if rel_type = r_aarch64_ld64_gotpage_lo15 then
         (** requires ad hoc check *)
-      	let result = mod_g (mod_gdat (s_val + a_val)) - mod_page got_val in
+      	let result = Minus(Apply(G, Apply(GDat, Lift (s_val + a_val))), Apply(Page, Lift got_val)) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, U15, CanFail))
       else if rel_type = r_aarch64_tlsgd_adr_prel21 then
-      	let result = mod_g (mod_gtlsidx s_val a_val) - p_val  in
+      	let result = Minus(Apply(G, Apply2(GTLSIdx, Lift s_val, Lift a_val)), Lift p_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I20, CanFail))
       else if rel_type = r_aarch64_tlsgd_adr_page21 then
-      	let result = mod_page (mod_g (mod_gtlsidx s_val a_val)) - mod_page p_val  in
+      	let result = Minus(Apply(Page, Apply(G, Apply2(GTLSIdx, Lift s_val, Lift a_val))), Apply(Page, Lift p_val)) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I32, CanFail))
       else if rel_type = r_aarch64_tlsgd_add_lo12_nc then
-      	let result = mod_g (mod_gtlsidx s_val a_val) in
+      	let result = Apply(G, Apply2(GTLSIdx, Lift s_val, Lift a_val)) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I12, CannotFail))
       else if rel_type = r_aarch64_tlsgd_movw_g1 then
         (** requires ad hoc check *)
-      	let result = mod_g (mod_gtlsidx s_val a_val) - got_val in
+      	let result = Minus(Apply(G, Apply2(GTLSIdx, Lift s_val, Lift a_val)), Lift got_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I16, CannotFail))
       else if rel_type = r_aarch64_tlsgd_movw_g0_nc then
-      	let result = mod_g (mod_gtlsidx s_val a_val) - got_val in
+      	let result = Minus(Apply(G, Apply2 (GTLSIdx, Lift s_val, Lift a_val)), Lift got_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I16, CannotFail))
       else if rel_type = r_aarch64_tlsld_adr_prel21 then
-        fail "AARCH64_TLSLD_ADR_PREL21"
+        let result = Minus(Apply(G, Apply(GLDM, Lift s_val)), Lift p_val) in
+       	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I20, CanFail))
       else if rel_type = r_aarch64_tlsld_adr_page21 then
-        fail "AARCH64_TLSLD_ADR_PAGE21"
+        let result = Minus(Apply(G, Apply(GLDM, Lift s_val)), Apply(Page, Lift p_val)) in
+       	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I32, CanFail))
       else if rel_type = r_aarch64_tlsld_add_lo12_nc then
-        fail "AARCH64_TLSLD_ADD_LO12_NC"
+        let result = Apply(G, Apply(GLDM, Lift s_val)) in
+       	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I32, CannotFail))
       else if rel_type = r_aarch64_tlsld_movw_g1 then
-        fail "AARCH64_TLSLD_MOVW_G1"
+        let result = Minus(Apply(G, Apply(GLDM, Lift s_val)), Lift got_val) in
+       	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I15, CanFail))
       else if rel_type = r_aarch64_tlsld_movw_g0_nc then
-        fail "AARCH64_TLSLD_MOVW_G0_NC"
+        let result = Minus(Apply(G, Apply(GLDM, Lift s_val)), Lift got_val) in
+       	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I15, CannotFail))
       else if rel_type = r_aarch64_tlsld_ld_prel19 then
-        fail "AARCH64_TLSLD_LD_PREL19"
+        let result = Minus(Apply(G, Apply(GLDM, Lift s_val)), Lift p_val) in
+       	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I20, CanFail))
       else if rel_type = r_aarch64_tlsld_movw_dtprel_g2 then
-        fail "AARCH64_TLSLD_MOVW_DTPREL_G2"
+        let result = Apply(DTPRel, Lift(s_val + a_val)) in
+       	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I15, CanFail))
       else if rel_type = r_aarch64_tlsld_movw_dtprel_g1 then
-        fail "AARCH64_TLSLD_MOVW_DTPREL_G1"
+        let result = Apply(DTPRel, Lift(s_val + a_val)) in
+       	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I15, CanFail))
       else if rel_type = r_aarch64_tlsld_movw_dtprel_g1_nc then
-        fail "AARCH64_TLSLD_MOVW_DTPREL_G1_NC"
+        let result = Apply(DTPRel, Lift(s_val + a_val)) in
+       	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I15, CannotFail))
       else if rel_type = r_aarch64_tlsld_movw_dtprel_g0 then
-        fail "AARCH64_TLSLD_MOVW_DTPREL_G0"
+        let result = Apply(DTPRel, Lift(s_val + a_val)) in
+       	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I15, CanFail))
       else if rel_type = r_aarch64_tlsld_movw_dtprel_g0_nc then
-        fail "AARCH64_TLSLD_MOVW_DTPREL_G0_NC"
+        let result = Apply(DTPRel, Lift(s_val + a_val)) in
+       	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I15, CannotFail))
       else if rel_type = r_aarch64_tlsld_add_dtprel_hi12 then
-        fail "AARCH64_TLSLD_ADD_DTPREL_HI12"
+        let result = Apply(DTPRel, Lift(s_val + a_val)) in
+       	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U24, CanFail))
       else if rel_type = r_aarch64_tlsld_add_dtprel_lo12 then
-        fail "AARCH64_TLSLD_ADD_DTPREL_LO12"
+        let result = Apply(DTPRel, Lift(s_val + a_val)) in
+       	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U12, CanFail))
       else if rel_type = r_aarch64_tlsld_add_dtprel_lo12_nc then
-        fail "AARCH64_TLSLD_ADD_DTPREL_LO12_NC"
+        let result = Apply(DTPRel, Lift(s_val + a_val)) in
+       	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U12, CannotFail))
       else if rel_type = r_aarch64_tlsld_ldst8_dtprel_lo12 then
-        fail "AARCH64_TLSLD_LDST8_DTPREL_LO12"
+        let result = Apply(DTPRel, Lift(s_val + a_val)) in
+       	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U12, CanFail))
       else if rel_type = r_aarch64_tlsld_ldst8_dtprel_lo12_nc then
-        fail "AARCH64_TLSLD_LDST8_DTPREL_LO12_NC"
+        let result = Apply(DTPRel, Lift(s_val + a_val)) in
+       	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U12, CannotFail))
       else if rel_type = r_aarch64_tlsld_ldst16_dtprel_lo12 then
-        fail "AARCH64_TLSLD_LDST16_DTPREL_LO12"
+        let result = Apply(DTPRel, Lift(s_val + a_val)) in
+       	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U12, CanFail))
       else if rel_type = r_aarch64_tlsld_ldst16_dtprel_lo12_nc then
-        fail "AARCH64_TLSLD_LDST16_DTPREL_LO12_NC"
+        let result = Apply(DTPRel, Lift(s_val + a_val)) in
+       	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U12, CannotFail))
       else if rel_type = r_aarch64_tlsld_ldst32_dtprel_lo12 then
-        fail "AARCH64_TLSLD_LDST32_DTPREL_LO12"
+        let result = Apply(DTPRel, Lift(s_val + a_val)) in
+       	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U12, CanFail))
       else if rel_type = r_aarch64_tlsld_ldst32_dtprel_lo12_nc then
-        fail "AARCH64_TLSLD_LDST32_DTPREL_LO12_NC"
+        let result = Apply(DTPRel, Lift(s_val + a_val)) in
+       	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U12, CannotFail))
       else if rel_type = r_aarch64_tlsld_ldst64_dtprel_lo12 then
-        fail "AARCH64_TLSLD_LDST64_DPTREL_LO12"
+        let result = Apply(DTPRel, Lift(s_val + a_val)) in
+       	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U12, CanFail))
       else if rel_type = r_aarch64_tlsld_ldst64_dtprel_lo12_nc then
-        fail "AARCH64_TLSLD_LDST64_DTPREL_LO12_NC"
+        let result = Apply(DTPRel, Lift(s_val + a_val)) in
+       	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U12, CannotFail))
       else if rel_type = r_aarch64_tlsld_ldst128_dtprel_lo12 then
-        fail "AARCH64_TLSLD_LDST128_DTPREL_LO12"
+        let result = Apply(DTPRel, Lift(s_val + a_val)) in
+       	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U12, CanFail))
       else if rel_type = r_aarch64_tlsld_ldst128_dtprel_lo12_nc then
-        fail "AARCH64_TLSLD_LDST128_DTPREL_LO12_NC"
+        let result = Apply(DTPRel, Lift(s_val + a_val)) in
+       	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, U12, CannotFail))
       else if rel_type = r_aarch64_tlsie_movw_gottprel_g1 then
-        fail "AARCH64_TLSIE_MOVW_GOTTPREL_G1"
+        let result = Minus(Apply(G, Apply(GTPRel, Lift (s_val + a_val))), Lift got_val) in
+       	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I15, CanFail))
       else if rel_type = r_aarch64_tlsie_movw_gottprel_g0_nc then
-        fail "AARCH64_TLSIE_MOVW_GOTTPREL_G0_NC"
+        let result = Minus(Apply(G, Apply(GTPRel, Lift (s_val + a_val))), Lift got_val) in
+       	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I15, CannotFail))
       else if rel_type = r_aarch64_tlsie_movw_gottprel_page21 then
-        fail "AARCH64_TLSIE_MOVW_GOTTPREL_PAGE21"
+        let result = Minus(Apply(Page, Apply(G, Apply(GTPRel, Lift (s_val + a_val)))), Apply(Page, Lift p_val)) in
+       	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I32, CanFail))
       else if rel_type = r_aarch64_tlsie_movw_gottprel_lo12_nc then
-        fail "AARCH64_TLSIE_MOVW_GOTTPREL_LO12_NC"
+        (** requires ad hoc check *)
+        let result = Apply(G, Apply(GTPRel, Lift (s_val + a_val))) in
+       	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I8, CannotFail))
       else if rel_type = r_aarch64_tlsie_movw_gottprel_prel19 then
-        fail "AARCH64_TLSIE_MOVW_GOTTPREL_PREL19"
+        let result = Minus(Apply(G, Apply(GTPRel, Lift (s_val + a_val))), Lift p_val) in
+       	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I20, CanFail))
       else if rel_type = r_aarch64_tlsle_movw_tprel_g2 then
-      	let result = mod_tprel (s_val + a_val) in
+      	let result = Apply(TPRel, Lift (s_val + a_val)) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, U16, CanFail))
       else if rel_type = r_aarch64_tlsle_movw_tprel_g1 then
-      	let result = mod_tprel (s_val + a_val) in
+      	let result = Apply(TPRel, Lift (s_val + a_val)) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, U16, CanFail))
       else if rel_type = r_aarch64_tlsle_movw_tprel_g1_nc then
-      	let result = mod_tprel (s_val + a_val) in
+      	let result = Apply(TPRel, Lift (s_val + a_val)) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, U16, CannotFail))
       else if rel_type = r_aarch64_tlsle_movw_tprel_g0 then
-      	let result = mod_tprel (s_val + a_val) in
+      	let result = Apply(TPRel, Lift (s_val + a_val)) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, U16, CanFail))
       else if rel_type = r_aarch64_tlsle_movw_tprel_g0_nc then
-      	let result = mod_tprel (s_val + a_val) in
+      	let result = Apply(TPRel, Lift (s_val + a_val)) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, U16, CannotFail))
       else if rel_type = r_aarch64_add_tprel_hi12 then
-      	let result = mod_tprel (s_val + a_val) in
+      	let result = Apply(TPRel, Lift (s_val + a_val)) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, U24, CanFail))
       else if rel_type = r_aarch64_add_tprel_lo12 then
-      	let result = mod_tprel (s_val + a_val) in
+      	let result = Apply(TPRel, Lift (s_val + a_val)) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, U12, CanFail))
       else if rel_type = r_aarch64_add_tprel_lo12_nc then
-      	let result = mod_tprel (s_val + a_val) in
+      	let result = Apply(TPRel, Lift (s_val + a_val)) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, U12, CannotFail))
       else if rel_type = r_aarch64_ldst8_tprel_lo12 then
-      	let result = mod_tprel (s_val + a_val) in
+      	let result = Apply(TPRel, Lift (s_val + a_val)) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, U12, CanFail))
       else if rel_type = r_aarch64_ldst8_tprel_lo12_nc then
-      	let result = mod_tprel (s_val + a_val) in
+      	let result = Apply(TPRel, Lift (s_val + a_val)) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, U12, CannotFail))
       else if rel_type = r_aarch64_ldst16_tprel_lo12 then
-      	let result = mod_tprel (s_val + a_val) in
+      	let result = Apply(TPRel, Lift (s_val + a_val)) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, U12, CanFail))
       else if rel_type = r_aarch64_ldst16_tprel_lo12_nc then
-      	let result = mod_tprel (s_val + a_val) in
+      	let result = Apply(TPRel, Lift (s_val + a_val)) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, U12, CannotFail))
       else if rel_type = r_aarch64_ldst32_tprel_lo12 then
-      	let result = mod_tprel (s_val + a_val) in
+      	let result = Apply(TPRel, Lift (s_val + a_val)) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, U12, CanFail))
       else if rel_type = r_aarch64_ldst32_tprel_lo12_nc then
-      	let result = mod_tprel (s_val + a_val) in
+      	let result = Apply(TPRel, Lift (s_val + a_val)) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, U12, CannotFail))
       else if rel_type = r_aarch64_ldst64_tprel_lo12 then
-      	let result = mod_tprel (s_val + a_val) in
+      	let result = Apply(TPRel, Lift (s_val + a_val)) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, U12, CanFail))
       else if rel_type = r_aarch64_ldst64_tprel_lo12_nc then
-      	let result = mod_tprel (s_val + a_val) in
+      	let result = Apply(TPRel, Lift (s_val + a_val)) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, U12, CannotFail))
       else if rel_type = r_aarch64_ldst128_tprel_lo12 then
-      	let result = mod_tprel (s_val + a_val) in
+      	let result = Apply(TPRel, Lift (s_val + a_val)) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, U12, CanFail))
       else if rel_type = r_aarch64_ldst128_tprel_lo12_nc then
-      	let result = mod_tprel (s_val + a_val) in
+      	let result = Apply(TPRel, Lift (s_val + a_val)) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, U12, CannotFail))
       else if rel_type = r_aarch64_tlsdesc_ld_prel19 then
         (** requires ad hoc test *)
-      	let result = mod_g (mod_gtlsdesc (s_val + a_val)) - p_val in
+      	let result = Minus(Apply(G, Apply(GTLSDesc, Lift (s_val + a_val))), Lift p_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I20, CanFail))
       else if rel_type = r_aarch64_tlsdesc_adr_prel21 then
-      	let result = mod_g (mod_gtlsdesc (s_val + a_val)) - p_val in
+      	let result = Minus (Apply(G, Apply(GTLSDesc, Lift (s_val + a_val))), Lift p_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I20, CanFail))
       else if rel_type = r_aarch64_tlsdesc_adr_page21 then
-      	let result = mod_page (mod_g (mod_gtlsdesc (s_val + a_val))) - mod_page p_val in
+      	let result = Minus(Apply(Page, Apply(G, Apply(GTLSDesc, Lift(s_val + a_val)))), Apply(Page, Lift p_val)) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I32, CanFail))
       else if rel_type = r_aarch64_tlsdesc_ld64_lo12 then
         (** requires ad hoc test *)
-      	let result = mod_g (mod_gtlsdesc (s_val + a_val)) in
+      	let result = Apply(G, Apply(GTLSDesc, Lift (s_val + a_val))) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I20, CanFail))
       else if rel_type = r_aarch64_tlsdesc_add_lo12 then
-      	let result = mod_g (mod_gtlsdesc (s_val + a_val)) in
+      	let result = Apply(G, Apply(GTLSDesc, Lift (s_val + a_val))) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I32, CannotFail))
       else if rel_type = r_aarch64_tlsdesc_off_g1 then
-      	let result = mod_g (mod_gtlsdesc (s_val + a_val)) - got_val in
+      	let result = Minus(Apply(G, Apply(GTLSDesc, Lift (s_val + a_val))), Lift got_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I32, CanFail))
       else if rel_type = r_aarch64_tlsdesc_off_g0_nc then
-      	let result = mod_g (mod_gtlsdesc (s_val + a_val)) - got_val in
+      	let result = Minus(Apply(G, Apply(GTLSDesc, Lift (s_val + a_val))), Lift got_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I32, CannotFail))
       else if rel_type = r_aarch64_tlsdesc_ldr then
@@ -885,35 +905,35 @@ let abi_aarch64_apply_relocation rel s_val p_val got_val ef =
       else if rel_type = r_aarch64_copy then
         fail "AARCH64_COPY"
       else if rel_type = r_aarch64_glob_dat then
-      	let result = s_val + a_val in
+      	let result = Lift (s_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I64, CannotFail))
       else if rel_type = r_aarch64_jump_slot then
-      	let result = s_val + a_val in
+      	let result = Lift (s_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I64, CannotFail))
       else if rel_type = r_aarch64_relative then
-      	let result = mod_delta s_val + a_val in
+      	let result = Plus(Apply(Delta, Lift s_val), Lift a_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I64, CannotFail))
       else if rel_type = r_aarch64_tls_dtprel64 then
-      	let result = mod_dtprel (s_val + a_val) in
+      	let result = Apply(DTPRel, Lift (s_val + a_val)) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I64, CannotFail))
       else if rel_type = r_aarch64_tls_dtpmod64 then
-      	let result = mod_ldm s_val in
+      	let result = Apply(LDM, Lift s_val) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I64, CannotFail))
       else if rel_type = r_aarch64_tls_tprel64 then
-      	let result = mod_tprel (s_val + a_val) in
+      	let result = Apply(TPRel, Lift (s_val + a_val)) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I64, CannotFail))
       else if rel_type = r_aarch64_tlsdesc then
-      	let result = mod_tlsdesc (s_val + a_val) in
+      	let result = Apply(TLSDesc, Lift (s_val + a_val)) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I64, CannotFail))
       else if rel_type = r_aarch64_irelative then
-      	let result = mod_indirect ((mod_delta s_val) + a_val) in
+      	let result = Apply(Indirect, Plus (Apply(Delta, Lift s_val), Lift a_val)) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I64, CannotFail))
       else
