@@ -691,7 +691,7 @@ let is_elf64_addr_addralign_correct ent =
 val is_valid_elf32_section_header_table : elf32_section_header_table -> bool
 let is_valid_elf32_section_header_table tbl =
   match tbl with
-    | []    -> false
+    | []    -> true
     | x::xs ->
         natural_of_elf32_word x.elf32_sh_name = 0 &&
         natural_of_elf32_word x.elf32_sh_type = sht_null &&
@@ -702,6 +702,23 @@ let is_valid_elf32_section_header_table tbl =
         natural_of_elf32_word x.elf32_sh_addralign = 0 &&
         natural_of_elf32_word x.elf32_sh_entsize = 0 &&
         elf32_size_correct x tbl
+        (* XXX: more correctness criteria in time *)
+  end
+  
+val is_valid_elf64_section_header_table : elf64_section_header_table -> bool
+let is_valid_elf64_section_header_table tbl =
+  match tbl with
+    | []    -> true
+    | x::xs ->
+        natural_of_elf64_word x.elf64_sh_name = 0 &&
+        natural_of_elf64_word x.elf64_sh_type = sht_null &&
+        natural_of_elf64_xword x.elf64_sh_flags = 0 &&
+        natural_of_elf64_addr x.elf64_sh_addr = 0 &&
+        natural_of_elf64_off x.elf64_sh_offset = 0 &&
+        natural_of_elf64_word x.elf64_sh_info = 0 &&
+        natural_of_elf64_xword x.elf64_sh_addralign = 0 &&
+        natural_of_elf64_xword x.elf64_sh_entsize = 0 &&
+        elf64_size_correct x tbl
         (* XXX: more correctness criteria in time *)
   end
 
@@ -922,6 +939,46 @@ let grp_comdat   : natural = 1
   *)
 let grp_maskos   : natural = 267386880      (* 0x0ff00000 *)
 let grp_maskproc : natural = 4 * 1006632960 (* 0xf0000000 *)
+
+val obtain_elf32_section_group_indices : endianness -> elf32_section_header_table -> byte_sequence
+  -> error (list (natural * list elf32_word))
+let obtain_elf32_section_group_indices endian sht bs0 =
+  let filtered = List.filter (fun ent ->
+    natural_of_elf32_word ent.elf32_sh_type = sht_group) sht
+  in
+    mapM (fun grp ->
+      let off = natural_of_elf32_off grp.elf32_sh_offset in
+      let siz = natural_of_elf32_word grp.elf32_sh_size in
+      let cnt = siz div 4 (* size of elf32_word in bytes *) in
+      Byte_sequence.offset_and_cut off siz bs0 >>= fun rel ->
+      Error.repeatM' cnt rel (read_elf32_word endian) >>= fun (mems, _) ->
+      match mems with
+        | []    -> fail "obtain_elf32_section_group_indices: section group sections must consist of at least one elf32_word"
+        | x::xs ->
+          let flag = natural_of_elf32_word x in
+            return (flag, xs)
+      end
+    ) filtered
+    
+val obtain_elf64_section_group_indices : endianness -> elf64_section_header_table -> byte_sequence
+  -> error (list (natural * list elf64_word))
+let obtain_elf64_section_group_indices endian sht bs0 =
+  let filtered = List.filter (fun ent ->
+    natural_of_elf64_word ent.elf64_sh_type = sht_group) sht
+  in
+    mapM (fun grp ->
+      let off = natural_of_elf64_off grp.elf64_sh_offset in
+      let siz = natural_of_elf64_xword grp.elf64_sh_size in
+      let cnt = siz div 4 (* size of elf64_word in bytes *) in
+      Byte_sequence.offset_and_cut off siz bs0 >>= fun rel ->
+      Error.repeatM' cnt rel (read_elf64_word endian) >>= fun (mems, _) ->
+      match mems with
+        | []    -> fail "obtain_elf64_section_group_indices: section group sections must consist of at least one elf64_word"
+        | x::xs ->
+          let flag = natural_of_elf64_word x in
+            return (flag, xs)
+      end
+    ) filtered
 
 (** Special sections *)
 

@@ -552,7 +552,9 @@ This entry holds the following.
 <td>No entries</td>
 </tr>
 </tbody></table>
-</p><hr>
+</p>
+<font color="red">See function is_valid_elfXX_section_header_table for XX=32,64 for null section header correctness tests in elf_section_header.lem.</font>
+<hr>
 <p>
 A section header's <code>sh_flags</code>
 member holds 1-bit flags that describe the section's attributes.
@@ -618,7 +620,9 @@ other values are reserved.
 <td align="right"><code>0xf0000000</code></td>
 </tr>
 </tbody></table>
-</p><hr>
+</p>
+<font color="red">The section attribute flags above are captured as Lem constants shf_write through to shf_maskos in elf_section_header.lem.</font>
+<hr>
 <p>
 If a flag bit is set in <code>sh_flags</code>,
 the attribute is ``on'' for the section.
@@ -740,6 +744,7 @@ typedef struct {
 } Elf64_Chdr;
 </code>
 </p></pre>
+<font color="red">The compression header record types above are captured as Lem records elfXX_compression_header for XX=32,64 in elf_section_header.lem.</font>
 <hr>
 <p>
 </p><dl compact="">
@@ -797,7 +802,11 @@ compression algoritm employed, as shown in the following table.
 <td align="right"><code>0x7fffffff</code></td>
 </tr>
 </tbody></table>
-</p><hr>
+</p>
+<font color="red">The compression algorithm constants above are captured as Lem constants elfcompress_zlib through to elfcompress_hiproc in elf_section_header.lem.
+Currently no compression algorithm is implemented.
+</font>
+<hr>
 <p>
 </p><dl compact="">
 <p></p><dt><code>ELFCOMPRESS_ZLIB</code></dt><dd>
@@ -805,6 +814,7 @@ The section data is compressed with the ZLIB algoritm.  The compressed
 ZLIB data bytes begin with the byte immediately following the compression 
 header, and extend to the end of the section.  Additional documentation 
 for ZLIB may be found at <a href="http://zlib.net/">http://zlib.net</a>.
+<font color="red">Not implemented.</font>
 <p></p></dd><dt><code>ELFCOMPRESS_LOOS - ELFCOMPRESS_HIOS</code></dt><dd>
 Values in this inclusive range are reserved for operating system-specific 
 semantics.
@@ -960,6 +970,7 @@ for example.
 The section data of a <code>SHT_GROUP</code> section is an array
 of <code>Elf32_Word</code> entries.  The first entry is a flag word.
 The remaining entries are a sequence of section header indices.
+<font color="red">See functions obtain_elfXX_section_group_indices for XX=32,64 in elf_section_header_table.lem that extract section group indices from a section header with type SHT_GROUP along with the section group flag.</font>
 </p><p>
 The following flags are currently defined:
 </p><hr>
@@ -982,7 +993,9 @@ The following flags are currently defined:
 <td align="right"><code>0xf0000000</code></td>
 </tr>
 </tbody></table>
-</p><hr>
+</p>
+<font color="red">Section group flags above are captured as Lem constants grp_comdat through to grp_maskos in elf_section_header.lem.</font>
+<hr>
 <dl compact="">
 <p></p><dt><code>GRP_COMDAT</code></dt><dd>
 This is a COMDAT group.  It may duplicate another COMDAT group
@@ -1219,7 +1232,12 @@ and have the indicated types and attributes.
 <td><code>SHF_ALLOC+SHF_EXECINSTR</code> </td>
 </tr>
 </tbody></table>
-</p><hr>
+</p>
+<font color="red">The special sections above and their flags and attributes are captured as a finite map in elf_section_header.lem called elf_special_sections.
+We note that many of the flags and attributes in the above table are overriden by System V ABI processor supplements which supply their own tables of special sections, filling in missing parts of the elf_special_sections table.
+These processor specific tables should be given priority over the generic table above.
+</font>
+<hr>
 <p>
 </p><dl>
 <p></p><dt><code>.bss</code></dt><dd>
