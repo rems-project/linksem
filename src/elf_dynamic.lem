@@ -14,6 +14,8 @@ open import Error
 open import Show
 open import String_table
 
+open import Elf_file
+open import Elf_header
 open import Elf_relocation
 open import Elf_section_header_table
 open import Elf_program_header_table
@@ -390,10 +392,10 @@ let read_elf64_dyn endian bs0 os_additional_ranges os proc =
         end
     end
     
-val obtain_elf32_dynamic_section_contents : endianness -> byte_sequence ->
+val obtain_elf32_dynamic_section_contents' : endianness -> byte_sequence ->
   (natural -> bool) -> (natural -> error tag_correspondence) ->
   (natural -> error tag_correspondence) -> error (list elf32_dyn)
-let rec obtain_elf32_dynamic_section_contents endian bs0 os_additional_ranges os proc =
+let rec obtain_elf32_dynamic_section_contents' endian bs0 os_additional_ranges os proc =
   if Byte_sequence.length bs0 = 0 then
     return []
   else
@@ -401,13 +403,13 @@ let rec obtain_elf32_dynamic_section_contents endian bs0 os_additional_ranges os
     if integer_of_elf32_sword head.elf32_dyn_tag = integerFromNatural dt_null then (* DT_NULL marks end of array *)
       return [head]
     else
-    obtain_elf32_dynamic_section_contents endian bs0 os_additional_ranges os proc >>= fun tail ->
+    obtain_elf32_dynamic_section_contents' endian bs0 os_additional_ranges os proc >>= fun tail ->
     return (head::tail)
     
-val obtain_elf64_dynamic_section_contents : endianness -> byte_sequence ->
+val obtain_elf64_dynamic_section_contents' : endianness -> byte_sequence ->
   (natural -> bool) -> (natural -> error tag_correspondence) ->
   (natural -> error tag_correspondence) -> error (list elf64_dyn)
-let rec obtain_elf64_dynamic_section_contents endian bs0 os_additional_ranges os proc =
+let rec obtain_elf64_dynamic_section_contents' endian bs0 os_additional_ranges os proc =
   if Byte_sequence.length bs0 = 0 then
     return []
   else
@@ -415,8 +417,40 @@ let rec obtain_elf64_dynamic_section_contents endian bs0 os_additional_ranges os
     if integer_of_elf64_sxword head.elf64_dyn_tag = integerFromNatural dt_null then (* DT_NULL marks end of array *)
       return [head]
     else
-      obtain_elf64_dynamic_section_contents endian bs0 os_additional_ranges os proc >>= fun tail ->
+      obtain_elf64_dynamic_section_contents' endian bs0 os_additional_ranges os proc >>= fun tail ->
       return (head::tail)
+
+val obtain_elf32_dynamic_section_contents : elf32_file ->
+  (natural -> bool) -> (natural -> error tag_correspondence) ->
+  (natural -> error tag_correspondence) -> byte_sequence -> error (list elf32_dyn)
+let obtain_elf32_dynamic_section_contents f1 os_additional_ranges os proc bs0 =
+  let endian = get_elf32_header_endianness f1.elf32_file_header in
+  let sht = f1.elf32_file_section_header_table in
+    match List.filter (fun ent -> natural_of_elf32_word ent.elf32_sh_type = sht_dynamic) sht with
+      | [] -> fail "obtain_elf32_dynamic_section_contents: no SHT_DYNAMIC section header entries"
+      | [dyn] ->
+        let off = natural_of_elf32_off dyn.elf32_sh_offset in
+        let siz = natural_of_elf32_word dyn.elf32_sh_size in
+        Byte_sequence.offset_and_cut off siz bs0 >>= fun rel ->
+        obtain_elf32_dynamic_section_contents' endian rel os_additional_ranges os proc
+      | _ -> fail "obtain_elf32_dynamic_section_contents: multiple SHT_DYNAMIC section header entries"
+    end
+
+val obtain_elf64_dynamic_section_contents : elf64_file ->
+  (natural -> bool) -> (natural -> error tag_correspondence) ->
+  (natural -> error tag_correspondence) -> byte_sequence -> error (list elf64_dyn)
+let obtain_elf64_dynamic_section_contents f1 os_additional_ranges os proc bs0 =
+  let endian = get_elf64_header_endianness f1.elf64_file_header in
+  let sht = f1.elf64_file_section_header_table in
+    match List.filter (fun ent -> natural_of_elf64_word ent.elf64_sh_type = sht_dynamic) sht with
+      | [] -> fail "obtain_elf64_dynamic_section_contents: no SHT_DYNAMIC section header entries"
+      | [dyn] ->
+        let off = natural_of_elf64_off dyn.elf64_sh_offset in
+        let siz = natural_of_elf64_xword dyn.elf64_sh_size in
+        Byte_sequence.offset_and_cut off siz bs0 >>= fun rel ->
+        obtain_elf64_dynamic_section_contents' endian rel os_additional_ranges os proc
+      | _ -> fail "obtain_elf64_dynamic_section_contents: multiple SHT_DYNAMIC section header entries"
+    end
 
 (** DT Flags values *)
 

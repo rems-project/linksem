@@ -24,6 +24,7 @@ open import Elf_section_header_table
 open import Elf_symbol_table
 open import Elf_types_native_uint
 
+open import Gnu_ext_section_header_table
 open import Gnu_ext_section_to_segment_mapping
 open import Gnu_ext_symbol_versioning
 
@@ -665,8 +666,9 @@ let harness_string_of_elf64_relocs f1 os bs0 =
       end
     end
     
-val harness_string_of_elf32_symbol_table_entry : nat -> (natural -> string) -> (natural -> string) -> string_table -> elf32_symbol_table_entry -> string
-let harness_string_of_elf32_symbol_table_entry num os proc stbl ent =
+val harness_string_of_elf32_symbol_table_entry : nat -> (natural -> string) -> (natural -> string) -> gnu_ext_elf32_symbol_version_table ->
+  list gnu_ext_elf32_vernaux -> byte_sequence -> string_table -> elf32_symbol_table_entry -> string
+let harness_string_of_elf32_symbol_table_entry num os proc symver vernaux bs0 stbl ent =
   let vlu = unsafe_hex_string_of_natural 8 (natural_of_elf32_addr ent.elf32_st_value) in
   let siz = show (natural_of_elf32_word ent.elf32_st_size) in
   let siz_pad = 
@@ -719,6 +721,12 @@ let harness_string_of_elf32_symbol_table_entry num os proc stbl ent =
           | Success s -> s
         end
   in
+  let sym =
+    match obtain_gnu_ext_elf32_symbol_version_information num symver vernaux bs0 with
+      | Fail f   -> f
+      | Success s -> s
+    end
+  in
   let num =
     let temp = show num in
     let pad  = 3 - stringLength temp in
@@ -745,6 +753,7 @@ let harness_string_of_elf32_symbol_table_entry num os proc stbl ent =
     ; ndx_pad; ndx
     ; " "
     ; nm
+    ; sym
     ]
     
 val harness_string_of_elf32_syms' : endianness -> (natural -> string) -> (natural -> string) -> elf32_file -> elf32_section_header_table -> elf32_section_header_table -> string_table -> byte_sequence -> string
@@ -759,8 +768,10 @@ let harness_string_of_elf32_syms' endian os proc f1 filtered_sht sht shdr bs0 =
         Elf_symbol_table.read_elf32_symbol_table endian syms >>= fun sect ->
         Elf_file.get_elf32_string_table_by_index f1 lnk >>= fun strtab ->
         return (sect, ent, strtab, typ)
-    ) filtered_sht
-  >>=
+    ) filtered_sht >>= fun sects ->
+    obtain_gnu_ext_elf32_symbol_version_table f1 bs0 >>= fun symver ->
+    obtain_gnu_ext_elf32_verneed f1 bs0 >>= fun verneed ->
+    obtain_gnu_ext_elf32_vernaux endian verneed bs0 >>= fun vernaux ->
     mapM (fun (syms, ent, strtab, typ) ->
       let nm  = natural_of_elf32_word ent.elf32_sh_name in
       let len = show (List.length syms) in
@@ -768,9 +779,9 @@ let harness_string_of_elf32_syms' endian os proc f1 filtered_sht sht shdr bs0 =
       let hdr = "Symbol table '" ^ nm ^ "' contains " ^ len ^ " entries:\n" in
       let ttl = "   Num:    Value  Size Type    Bind   Vis      Ndx Name\n" in
       let body = concatS (intercalate "\n" (List.mapi (fun n ->
-        harness_string_of_elf32_symbol_table_entry n os proc strtab) syms))
+        harness_string_of_elf32_symbol_table_entry n os proc symver vernaux bs0 strtab) syms))
       in
-      return (hdr ^ ttl ^ body))
+      return (hdr ^ ttl ^ body)) sects
   in
     match rels with
       | Fail err -> err
@@ -982,15 +993,17 @@ let harness_string_of_elf32_dyn_entry dyn os_additional_tags typ stbl =
     ; vlu_pad; vlu
     ]
     
-val harness_string_of_elf32_dynamic_section' : endianness -> elf32_program_header_table_entry
-  -> elf32_section_header_table -> byte_sequence -> (natural -> bool) -> (natural -> error tag_correspondence) ->
+val harness_string_of_elf32_dynamic_section' : elf32_file -> elf32_program_header_table_entry ->
+    byte_sequence -> (natural -> bool) -> (natural -> error tag_correspondence) ->
     (natural -> error tag_correspondence) -> (natural -> string) -> string
-let harness_string_of_elf32_dynamic_section' endian dyn sht bs0 os_additional_ranges os proc os_print =
+let harness_string_of_elf32_dynamic_section' f1 dyn bs0 os_additional_ranges os proc os_print =
+  let endian = get_elf32_header_endianness f1.elf32_file_header in
+  let sht = f1.elf32_file_section_header_table in
   let off = natural_of_elf32_off dyn.elf32_p_offset in
   let siz = natural_of_elf32_word dyn.elf32_p_filesz in
   let res =
     Byte_sequence.offset_and_cut off siz bs0 >>= fun rel ->
-    obtain_elf32_dynamic_section_contents endian rel os_additional_ranges os proc >>= fun dyns ->
+    obtain_elf32_dynamic_section_contents f1 os_additional_ranges os proc bs0 >>= fun dyns ->
     get_string_table_of_elf32_dyn_section endian dyns sht bs0 >>= fun stbl ->
     return (List.map (fun x -> harness_string_of_elf32_dyn_entry x os_additional_ranges os_print stbl) dyns)
   in
@@ -1011,9 +1024,7 @@ val harness_string_of_elf32_dynamic_section : elf32_file -> byte_sequence ->
   (natural -> bool) -> (natural -> error tag_correspondence) ->
     (natural -> error tag_correspondence) -> (natural -> string) -> string
 let harness_string_of_elf32_dynamic_section f1 bs0 os_additional_ranges os proc os_print =
-  let endian = get_elf32_header_endianness f1.elf32_file_header in
   let pht = f1.elf32_file_program_header_table in
-  let sht = f1.elf32_file_section_header_table in
   let dyn =
     List.filter (fun x ->
       x.elf32_p_type = elf32_word_of_natural elf_pt_dynamic
@@ -1021,7 +1032,7 @@ let harness_string_of_elf32_dynamic_section f1 bs0 os_additional_ranges os proc 
   in
     match dyn with
       | []  -> "\nThere is no dynamic section in this file."
-      | [x] -> harness_string_of_elf32_dynamic_section' endian x sht bs0 os_additional_ranges os proc os_print
+      | [x] -> harness_string_of_elf32_dynamic_section' f1 x bs0 os_additional_ranges os proc os_print
       | _   -> "Multiple dynamic sections detected."
     end
     
@@ -1051,15 +1062,17 @@ let harness_string_of_elf64_dyn_entry dyn os_additional_ranges typ stbl =
     ; vlu_pad; vlu
     ]
     
-val harness_string_of_elf64_dynamic_section' : endianness -> elf64_program_header_table_entry
-  -> elf64_section_header_table -> byte_sequence -> (natural -> bool) -> (natural -> error tag_correspondence) ->
+val harness_string_of_elf64_dynamic_section' : elf64_file -> elf64_program_header_table_entry ->
+    byte_sequence -> (natural -> bool) -> (natural -> error tag_correspondence) ->
     (natural -> error tag_correspondence) -> (natural -> string) -> string
-let harness_string_of_elf64_dynamic_section' endian dyn sht bs0 os_additional_ranges os proc os_print =
+let harness_string_of_elf64_dynamic_section' f1 dyn bs0 os_additional_ranges os proc os_print =
+  let endian = get_elf64_header_endianness f1.elf64_file_header in
+  let sht = f1.elf64_file_section_header_table in
   let off = natural_of_elf64_off dyn.elf64_p_offset in
   let siz = natural_of_elf64_xword dyn.elf64_p_filesz in
   let res =
     Byte_sequence.offset_and_cut off siz bs0 >>= fun rel ->
-    obtain_elf64_dynamic_section_contents endian rel os_additional_ranges os proc >>= fun dyns ->
+    obtain_elf64_dynamic_section_contents f1 os_additional_ranges os proc bs0 >>= fun dyns ->
     get_string_table_of_elf64_dyn_section endian dyns sht bs0 >>= fun stbl ->
     return (List.map (fun x -> harness_string_of_elf64_dyn_entry x os_additional_ranges os_print stbl) dyns)
   in
@@ -1080,9 +1093,7 @@ val harness_string_of_elf64_dynamic_section : elf64_file -> byte_sequence ->
   (natural -> bool) -> (natural -> error tag_correspondence) ->
     (natural -> error tag_correspondence) -> (natural -> string) -> string
 let harness_string_of_elf64_dynamic_section f1 bs0 os_additional_ranges os proc os_print =
-  let endian = get_elf64_header_endianness f1.elf64_file_header in
   let pht = f1.elf64_file_program_header_table in
-  let sht = f1.elf64_file_section_header_table in
   let dyn =
     List.filter (fun x ->
       x.elf64_p_type = elf64_word_of_natural elf_pt_dynamic
@@ -1090,6 +1101,6 @@ let harness_string_of_elf64_dynamic_section f1 bs0 os_additional_ranges os proc 
   in
     match dyn with
       | []  -> "\nThere is no dynamic section in this file."
-      | [x] -> harness_string_of_elf64_dynamic_section' endian x sht bs0 os_additional_ranges os proc os_print
+      | [x] -> harness_string_of_elf64_dynamic_section' f1 x bs0 os_additional_ranges os proc os_print
       | _   -> "Multiple dynamic sections detected."
     end

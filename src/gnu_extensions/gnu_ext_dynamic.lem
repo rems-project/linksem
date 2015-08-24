@@ -88,14 +88,14 @@ let gnu_ext_tag_correspondence_of_tag0 m =
   else
     fail "gnu_ext_tag_correspondence_of_tag0: invalid dynamic tag"
 
-val gnu_ext_tag_correspondence_of_tag : natural -> (natural -> bool) -> (natural -> error tag_correspondence) -> error tag_correspondence
-let gnu_ext_tag_correspondence_of_tag m os_additional_ranges arch =
+val gnu_ext_tag_correspondence_of_tag : natural -> error tag_correspondence
+let gnu_ext_tag_correspondence_of_tag m =
   if m >= elf_dt_gnu_addrrnglo && m <= elf_dt_gnu_addrrnghi then
-    arch m
+    gnu_ext_tag_correspondence_of_tag0 m
   else if m >= elf_dt_gnu_valrnglo && m <= elf_dt_gnu_valrnghi then
     return C_Val
-  else if os_additional_ranges m then
-    arch m
+  else if gnu_ext_os_additional_ranges m then
+    gnu_ext_tag_correspondence_of_tag0 m
   else if m = elf_dt_gnu_verdefnum then
     return C_Val
   else if m = elf_dt_gnu_verdef then
