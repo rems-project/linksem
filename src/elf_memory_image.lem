@@ -222,7 +222,7 @@ let section_as_byte_pattern a endian s all_s all_bindings_by_ref_idx_scn_symind 
     in
     let bp = make_byte_pattern s_bytes expanded_r_ranges
     in
-    let _ = Missing_pervasives.errs ("Section name-number " ^ (show s.elf64_section_name) ^ " has byte-pattern of length " ^ (show (Missing_pervasives.length bp)) ^ "\n") in
+    (*let _ = Missing_pervasives.errs ("Section name-number " ^ (show s.elf64_section_name) ^ " has byte-pattern of length " ^ (show (Missing_pervasives.length bp)) ^ "\n") in*)
     bp
 
 val pattern_possible_starts_in_one_load_phdr : string -> list (maybe byte) -> elf64_interpreted_segment -> natural -> list natural
@@ -232,12 +232,12 @@ let pattern_possible_starts_in_one_load_phdr phdr_name pattern seg offset =
         Sequence(bytes) ->
             let ret = pattern_possible_starts_in_one_byte_sequence pattern bytes 0
             in  
-            let _ = Missing_pervasives.errs 
+            (*let _ = Missing_pervasives.errs 
                 ("Pattern of length " ^ (show (Missing_pervasives.length pattern)) 
                 ^ " (" ^ (show pattern) ^ ")"
                 ^ " matched bytes of phdr " ^ phdr_name
                 ^ " in " ^ (show (Missing_pervasives.length ret)) ^ " ways: "
-                ^ (if (Missing_pervasives.length ret) < 2000 then (show ret) else "(not shown)") ^ "\n") in
+                ^ (if (Missing_pervasives.length ret) < 2000 then (show ret) else "(not shown)") ^ "\n") in*)
             ret
     end
 
@@ -248,9 +248,9 @@ let pattern_possible_starts_in_load_phdrs pattern f =
     (* only PT_LOAD segments are relevant *)
     let load_segs = List.filter (fun seg -> seg.elf64_segment_type = elf_pt_load) f.elf64_file_interpreted_segments
     in
-    let _ = Missing_pervasives.errs ("Output file has " ^ (show (Missing_pervasives.length load_segs)) 
+    (*let _ = Missing_pervasives.errs ("Output file has " ^ (show (Missing_pervasives.length load_segs)) 
         ^ " PT_LOAD segments\n")
-    in
+    in*)
     let seg_name = fun seg -> hex_string_of_natural seg.elf64_segment_base
     in
     let get_starts = fun seg -> pattern_possible_starts_in_one_load_phdr (seg_name seg) pattern seg 0
@@ -329,9 +329,9 @@ val extract_satisfying_symbols : (elf64_symbol_table * string_table * natural) -
 let extract_satisfying_symbols symtab_triple pred =
     let (symtab, strtab, scnidx) = symtab_triple
     in
-    let _ = Missing_pervasives.errln ("extracting satisfying symbols from symtab index " ^ (show scnidx) ^ ", size "
+    (*let _ = Missing_pervasives.errln ("extracting satisfying symbols from symtab index " ^ (show scnidx) ^ ", size "
         ^ (show (length symtab)) )
-    in
+    in*)
     mapMaybei (fun symidx -> (fun ent ->
         (match (get_string_at (natural_of_elf64_word ent.elf64_st_name) strtab) with
             Success str ->
@@ -339,8 +339,8 @@ let extract_satisfying_symbols symtab_triple pred =
                 if (pred ent)
                 then Just(str, ent, scnidx, symidx)
                 else Nothing
-            | Fail s -> let _ = Missing_pervasives.errln ("couldn't get string from strtab of symtab with index " ^ (show scnidx)
-                ^ ": " ^ s) in 
+            | Fail s -> (*let _ = Missing_pervasives.errln ("couldn't get string from strtab of symtab with index " ^ (show scnidx)
+                ^ ": " ^ s) in *)
                 Nothing
         end)
         )) symtab
@@ -381,13 +381,13 @@ let extract_references_from_symtab_of_type t e =
                  ; ref_sym_idx = symidx
                  |>)) allsyms
     in 
-    let _ = Missing_pervasives.errs ("Extracted " ^ (show (length allsyms)) ^ " undefined references: "
+    (*let _ = Missing_pervasives.errs ("Extracted " ^ (show (length allsyms)) ^ " undefined references: "
         ^ (show (List.map (fun (str, _, scnidx, symidx) -> (str, scnidx, symidx)) allsyms)) ^ "\n")
 (*       ^ " (syminds "
         ^ (show (List.map (fun extracted -> extracted.ref_sym_idx) x)) ^ ", symnames "
         ^ (show (List.map (fun extracted -> extracted.ref_symname) x)) ^ ")") *)
     
-    in return extracted
+    in*) return extracted
     )) with Fail _ -> [] | Success x -> x end
 
 val extract_all_relocs : string -> elf64_file -> list (natural (* scn *) * natural (* rel idx *) * natural (* rel src scn *) * elf64_relocation_a)
@@ -396,16 +396,16 @@ let extract_all_relocs fname e =
         if isec.elf64_section_type = sht_rel then Just (i, isec) else Nothing
     )) e.elf64_file_interpreted_sections
     in
-    let _ = Missing_pervasives.errln ("File " ^ fname ^ " has " ^ (show (length all_rel_sections)) ^ 
+    (*let _ = Missing_pervasives.errln ("File " ^ fname ^ " has " ^ (show (length all_rel_sections)) ^ 
         " rel sections (indices " ^ (show (List.map (fun (scn, _) -> scn) all_rel_sections)) ^ ")")
-    in
+    in*)
     let (all_rela_sections : list (natural * elf64_interpreted_section)) = mapMaybei (fun i -> (fun isec -> 
         if isec.elf64_section_type = sht_rela then Just (i, isec) else Nothing
     )) e.elf64_file_interpreted_sections 
     in
-    let _ = Missing_pervasives.errln ("File " ^ fname ^ " has " ^ (show (length all_rela_sections)) ^ 
+    (*let _ = Missing_pervasives.errln ("File " ^ fname ^ " has " ^ (show (length all_rela_sections)) ^ 
         " rela sections (indices " ^ (show (List.map (fun (scn, _) -> scn) all_rela_sections)) ^ ")")
-    in
+    in*)
     let rel_to_rela = fun rel -> <|
          elf64_ra_offset = rel.elf64_r_offset
        ; elf64_ra_info   = rel.elf64_r_info
@@ -421,9 +421,9 @@ let extract_all_relocs fname e =
         match read_elf64_relocation_section   isec.elf64_section_size endian isec.elf64_section_body
         with
             Success (relocs, _) -> 
-                let _ = Missing_pervasives.errln ("Rel section with index " ^ (show scn) ^ " has " ^ (show (length relocs)) ^ 
+                (*let _ = Missing_pervasives.errln ("Rel section with index " ^ (show scn) ^ " has " ^ (show (length relocs)) ^ 
                     " entries")
-                in
+                in*)
                 mapMaybei (fun idx -> (fun rel -> Just (scn, idx, isec.elf64_section_info, rel_to_rela rel))) relocs
             | Fail _ -> []
         end) all_rel_sections
@@ -432,9 +432,9 @@ let extract_all_relocs fname e =
         match read_elf64_relocation_a_section isec.elf64_section_size endian isec.elf64_section_body
         with
             Success (relocs, _) -> 
-            let _ = Missing_pervasives.errln ("Rela section with index " ^ (show scn) ^ " has " ^ (show (length relocs)) ^ 
+            (*let _ = Missing_pervasives.errln ("Rela section with index " ^ (show scn) ^ " has " ^ (show (length relocs)) ^ 
                 " entries")
-            in
+            in*)
             mapMaybei (fun idx -> (fun rela -> Just (scn, idx, isec.elf64_section_info, rela))) relocs
             | Fail _ -> []
         end) all_rela_sections
@@ -460,8 +460,8 @@ let extract_all_relocs_as_symbol_references fname e
     let (all_extracted_symtabs_by_scnidx : (Map.map natural (list (string * elf64_symbol_table_entry * natural (* scnidx *) * natural (* symidx *)))))
      = List.foldl (fun acc -> (fun (scnidx, triple) -> Map.insert scnidx (extract_all_symbols triple) acc)) Map.empty all_symtab_triples_by_scnidx
     in
-    let _ = Missing_pervasives.errln ("All extracted symtabs by scnidx: " ^ (show (Set_extra.toList (Map.toSet all_extracted_symtabs_by_scnidx))))
-    in
+    (*let _ = Missing_pervasives.errln ("All extracted symtabs by scnidx: " ^ (show (Set_extra.toList (Map.toSet all_extracted_symtabs_by_scnidx))))
+    in*)
     let ref_for_relocation_a_in_section_index = fun rel_scn_idx -> (fun rel_idx -> (fun rela -> 
         let rela_isec = match index rel_scn_idx e.elf64_file_interpreted_sections with
             Just x -> x
@@ -484,15 +484,15 @@ let extract_all_relocs_as_symbol_references fname e
                          ; ref_sym_scn = symtab_idx
                          ; ref_sym_idx = sym_idx
                          |>
-                    | Nothing -> failwith ("reloc at index " ^ (show rel_idx) ^ " references symbol (index " ^ (show sym_idx) ^ 
-                        ") that does not exist: symtab (index " ^ (show symtab_idx) ^ ") has " ^ (show (length quads)) ^ " entries")
+                    | Nothing -> failwith "reloc references symbol that does not exist" (*("reloc at index " ^ (show rel_idx) ^ " references symbol (index " ^ (show sym_idx) ^ 
+                        ") that does not exist: symtab (index " ^ (show symtab_idx) ^ ") has " ^ (show (length quads)) ^ " entries")*)
                 end
         end
     ))
     in
-    let _ = Missing_pervasives.errs ("Extracted " ^ (show (length all_relocs)) ^ " reloc references (rel_scn, rel_idx, src_scn): "
+    (*let _ = Missing_pervasives.errs ("Extracted " ^ (show (length all_relocs)) ^ " reloc references (rel_scn, rel_idx, src_scn): "
         ^ (show (List.map (fun (rel_scn, rel_idx, srcscn, rela) -> (rel_scn, rel_idx, srcscn)) all_relocs)) ^ "\n")
-    in
+    in*)
     List.map (fun (scn, idx, srcscn, rela) -> <|
           ref = (* NOTE that a reference is not necessarily to an undefined symbol! *) ref_for_relocation_a_in_section_index scn idx rela
         ; maybe_reloc = Just 

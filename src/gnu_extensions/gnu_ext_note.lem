@@ -128,9 +128,13 @@ let gnu_ext_check_elf64_abi_note_tag_section endian sht sect_hdr_tbl bs0 =
           false
     end
     
+(** XXX: marked as OCaml only as need to extract a string from integers.
+  * TODO: implement some string parsing functions in Isabelle/HOL so things like
+  * this can be extracted.
+  *)
 val gnu_ext_extract_elf32_earliest_compatible_kernel : endianness -> elf32_section_header_table ->
   string_table -> byte_sequence -> error string
-let gnu_ext_extract_elf32_earliest_compatible_kernel endian sht sect_hdr_tbl bs0 =
+let {ocaml} gnu_ext_extract_elf32_earliest_compatible_kernel endian sht sect_hdr_tbl bs0 =
   let abi_note_sects =
     List.filter (fun x ->
       if natural_of_elf32_word x.elf32_sh_type = sht_note then
@@ -182,9 +186,10 @@ let gnu_ext_extract_elf32_earliest_compatible_kernel endian sht sect_hdr_tbl bs0
       | _      -> fail "gnu_ext_extract_elf32_earliest_compatible_kernel: more than one .note.ABI-tag section present"
     end
     
+(** XXX: see note above about Isabelle/HOL and string parsing. *)
 val gnu_ext_extract_elf64_earliest_compatible_kernel : endianness -> elf64_section_header_table ->
   string_table -> byte_sequence -> error string
-let gnu_ext_extract_elf64_earliest_compatible_kernel endian sht sect_hdr_tbl bs0 =
+let {ocaml} gnu_ext_extract_elf64_earliest_compatible_kernel endian sht sect_hdr_tbl bs0 =
   let abi_note_sects =
     List.filter (fun x ->
       if natural_of_elf64_word x.elf64_sh_type = sht_note then

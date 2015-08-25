@@ -72,14 +72,15 @@ declare {isabelle} rename function concat = concat_string_table
 val get_string_at : natural -> string_table -> error string
 let get_string_at index tbl =
   match Missing_pervasives.string_suffix index (get_base_string tbl) with
-    | Nothing     -> Fail ("get_string_at: invalid index (" ^ (show index) ^ ") into string")
+    | Nothing     -> Fail "get_string_at: index out of range"
     | Just suffix ->
       let delim = get_delimiting_character tbl in
       match string_index_of delim suffix with
-        Just(idx) -> match string_prefix idx suffix with
-            Just(s) -> Success s
-            | Nothing -> Fail ("get_string_at: impossible: index (" ^ (show idx) ^ ")")
-            end
+        | Just idx ->
+          match string_prefix idx suffix with
+            | Just s  -> Success s
+            | Nothing -> Fail "get_string_at: index out of range"
+          end
         | Nothing -> Success suffix
       end
   end

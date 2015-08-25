@@ -338,7 +338,7 @@ let tag_correspondence_of_tag tag os_additional_ranges os proc =
   else if os_additional_ranges tag then
     os tag
   else
-    fail ("tag_correspondence_of_tag: invalid dynamic section tag: " ^ show tag)
+    fail "tag_correspondence_of_tag: invalid dynamic section tag"
     
 val read_elf32_dyn : endianness -> byte_sequence -> (natural -> bool) -> (natural -> error tag_correspondence) ->
   (natural -> error tag_correspondence) -> error (elf32_dyn * byte_sequence)

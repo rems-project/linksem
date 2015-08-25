@@ -24,7 +24,7 @@ type executable_process_image
   | ELF_Class_64 of elf64_executable_process_image
 
 val populate : string -> error executable_process_image
-let populate fname =
+let {ocaml} populate fname =
   (* Acquire the data from the file... *)
   Byte_sequence.acquire fname >>= fun bs0 ->
   (* Read the magic number and the flags in the header... *)
@@ -54,7 +54,7 @@ let populate fname =
     end
 
 val obtain_global_symbol_init_info : string -> error global_symbol_init_info
-let obtain_global_symbol_init_info fname =
+let {ocaml} obtain_global_symbol_init_info fname =
   (* Acquire the data from the file... *)
   Byte_sequence.acquire fname >>= fun bs0 ->
   (* Read the magic number and the flags in the header... *)
@@ -84,7 +84,7 @@ let obtain_global_symbol_init_info fname =
     end
 
 val populate_and_obtain_global_symbol_init_info : string -> error (executable_process_image * global_symbol_init_info)
-let populate_and_obtain_global_symbol_init_info fname =
+let {ocaml} populate_and_obtain_global_symbol_init_info fname =
   (* Acquire the data from the file... *)
   Byte_sequence.acquire fname >>= fun bs0 ->
   (* Read the magic number and the flags in the header... *)

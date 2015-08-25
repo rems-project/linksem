@@ -238,7 +238,8 @@ declare ocaml target_rep function elf64_addr_minus = `Uint64.sub`
 
 val elf64_addr_rshift : elf64_addr -> nat -> elf64_addr
 
-declare ocaml target_rep function elf64_addr_rshift = `Uint64.shift_right`
+declare ocaml    target_rep function elf64_addr_rshift = `Uint64.shift_right`
+declare isabelle target_rep function elf64_addr_rshift = `Elf_Types_Local.uint64_rshift`
 
 val elf64_addr_lshift : elf64_addr -> nat -> elf64_addr
 
@@ -246,7 +247,8 @@ declare ocaml target_rep function elf64_addr_lshift = `Uint64.shift_left`
 
 val elf64_addr_land : elf64_addr -> elf64_addr -> elf64_addr
 
-declare ocaml target_rep function elf64_addr_land = `Uint64.logand`
+declare ocaml    target_rep function elf64_addr_land = `Uint64.logand`
+declare isabelle target_rep function elf64_addr_land = `Elf_Types_Local.uint64_land`
 
 instance (Eq elf64_addr)
   let (=) = equal_elf64_addr
@@ -355,7 +357,8 @@ declare isabelle target_rep function natural_of_elf64_half = `unat`
 
 val elf64_half_of_natural : natural -> elf64_half
 
-declare ocaml target_rep function elf64_half_of_natural m = `Uint32.of_int32` (`Nat_big_num.to_int32` m)
+declare ocaml    target_rep function elf64_half_of_natural m = `Uint32.of_int32` (`Nat_big_num.to_int32` m)
+declare isabelle target_rep function elf64_half_of_natural = `Elf_Types_Local.uint32_of_nat`
 
 val equal_elf64_half : elf64_half -> elf64_half -> bool
 
@@ -823,11 +826,13 @@ let read_elf64_xword endian bs0 =
 
 val elf64_xword_rshift : elf64_xword -> nat -> elf64_xword
 
-declare ocaml target_rep function elf64_xword_rshift = `Uint64.shift_right`
+declare ocaml    target_rep function elf64_xword_rshift = `Uint64.shift_right`
+declare isabelle target_rep function elf64_xword_rshift = `Elf_Types_Local.uint64_rshift`
 
 val elf64_xword_land : elf64_xword -> elf64_xword -> elf64_xword
 
-declare ocaml target_rep function elf64_xword_land = `Uint64.logand`
+declare ocaml    target_rep function elf64_xword_land = `Uint64.logand`
+declare isabelle target_rep function elf64_xword_land = `Elf_Types_Local.uint64_land`
 
 val elf64_xword_of_natural : natural -> elf64_xword
 

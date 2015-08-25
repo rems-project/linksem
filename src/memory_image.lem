@@ -362,7 +362,7 @@ let rec relax_byte_pattern_revacc revacc bytes cares =
           [] -> reverse revacc
         | b :: bs -> match cares with 
                 care :: more -> relax_byte_pattern_revacc ((if not care then Nothing else b) :: revacc) bs more
-              | _ -> failwith ("relax_byte_pattern: unequal length (no more cares with " ^ (show (Missing_pervasives.length (b :: bs))) ^ " bytes left)")
+              | _ -> failwith ("relax_byte_pattern: unequal length")
               end
     end
     

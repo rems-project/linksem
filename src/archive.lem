@@ -79,11 +79,11 @@ let rec accum_archive_contents accum extended_filenames whole_seq_length whole_s
           else
             (naturalFromNat hdr.size) + 1
         in
-        let _ = Missing_pervasives.errln ("amount_to_drop is " ^ (show amount_to_drop)) in
-        let chunk = (Sequence(take hdr.size next_bs))
+        (*let _ = Missing_pervasives.errln ("amount_to_drop is " ^ (show amount_to_drop)) in*)
+        let chunk = (Sequence(List.take hdr.size next_bs))
         in
-        let _ = Missing_pervasives.errs ("Processing archive header named " ^ hdr.name)
-        in
+        (*let _ = Missing_pervasives.errs ("Processing archive header named " ^ hdr.name)
+        in*)
         let (new_accum, (new_extended_filenames : maybe string)) =
           match toCharList hdr.name with
             |[#'/'; #' '; #' '; #' '; #' '; #' '; #' '; #' '; #' '; #' '; #' '; #' '; #' '; #' '; #' '; #' ']
@@ -97,7 +97,7 @@ let rec accum_archive_contents accum extended_filenames whole_seq_length whole_s
                         let table_suffix = match string_suffix index s with Just x -> x | Nothing -> "" end in
                         let index = match string_index_of #'/' table_suffix with Just x -> x | Nothing -> (naturalFromNat (stringLength table_suffix)) end in 
                         let ext_name = match string_prefix index table_suffix with Just x -> x | Nothing -> "" end in
-                        let _ = Missing_pervasives.errln ("Got ext_name " ^ ext_name) in
+                        (*let _ = Missing_pervasives.errln ("Got ext_name " ^ ext_name) in*)
                         (((ext_name, chunk) :: accum), extended_filenames)
                 end
             | _  ->     (((hdr.name, chunk) :: accum), extended_filenames)

@@ -113,9 +113,9 @@ let unique_tag_matching tag img =
     match Multimap.lookupBy tagEquiv tag img.by_tag with
         [] -> failwith "no tag match found"
         | [(t, r)] -> t
-        | x -> failwith ("more than one tag match (ranges: " ^ 
+        | x -> failwith ("more than one tag match") (*(ranges: " ^ 
             (show (List.map (fun (t, r) -> r) x))
-            ^  ") when asserted unique")
+            ^  ") when asserted unique")*)
     end
     
 val tagged_ranges_matching_tag : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature => range_tag 'abifeature -> annotated_memory_image 'abifeature -> list (range_tag 'abifeature * maybe element_range)

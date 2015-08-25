@@ -1265,10 +1265,7 @@ let read_elf64_header bs =
                      elf64_phnum = phnum; elf64_shentsize = shentsize;
                      elf64_shnum = shnum; elf64_shstrndx = shstrndx |>, bs)
         else
-          fail ("read_elf64_header: not a 64-bit ELF file (ident: "
-            ^ (show (List.map (fun n -> byte_of_natural (natural_of_unsigned_char n)) ident)) 
-            ^ ")"
-            )
+          fail "read_elf64_header: not a 64-bit ELF file"
     end
 
 val is_elf32_header_class_correct : elf32_header -> bool
