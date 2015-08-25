@@ -22,7 +22,7 @@ let id x = x
 type byte
 
 declare ocaml    target_rep type byte = `char`
-declare isabelle target_rep type byte = `8` `word`
+declare isabelle target_rep type byte = `Elf_Types_Local.byte`
 val natural_of_byte : byte -> natural
 
 declare ocaml    target_rep function natural_of_byte x = `Nat_big_num.of_int` (`Char.code` x)
@@ -355,7 +355,7 @@ let ~{ocaml} length xs = List.foldl (fun y _ -> 1 + y) 0 xs
 let {ocaml} length xs = naturalFromNat (nat_length xs)
 
 val take : forall 'a. natural -> list 'a -> list 'a
-let rec {ocaml} take m xs =
+let rec take m xs =
   match xs with
     | []    -> []
     | x::xs ->
