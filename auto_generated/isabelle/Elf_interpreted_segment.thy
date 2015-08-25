@@ -4,14 +4,14 @@ theory "Elf_interpreted_segment"
 
 imports 
  	 Main
+	 "Lem_num" 
 	 "Lem_basic_classes" 
 	 "Lem_bool" 
-	 "Lem_num" 
 	 "Lem_string" 
-	 "Elf_types" 
-	 "Byte_sequence" 
-	 "Missing_pervasives" 
 	 "Show" 
+	 "Missing_pervasives" 
+	 "Byte_sequence" 
+	 "Elf_types_native_uint" 
 
 begin 
 
@@ -20,7 +20,7 @@ begin
 (*open import Num*)
 (*open import String*)
 
-(*open import Elf_types*)
+(*open import Elf_types_native_uint*)
 
 (*open import Byte_sequence*)
 (*open import Missing_pervasives*)
@@ -68,6 +68,39 @@ record elf64_interpreted_segment =
    
  elf64_segment_flags ::" (bool * bool * bool)" (** READ, WRITE, EXECUTE flags. *)
    
+
+   
+definition compare_elf64_interpreted_segment  :: " elf64_interpreted_segment \<Rightarrow> elf64_interpreted_segment \<Rightarrow> Lem_basic_classes.ordering "  where 
+     " compare_elf64_interpreted_segment s1 s2 = (    
+ (tripleCompare compare_byte_sequence (Lem_list.lexicographicCompareBy (genericCompare (op<) (op=))) (Lem_list.lexicographicCompareBy (genericCompare (op<) (op=))) 
+    ((elf64_segment_body   s1), [(elf64_segment_type   s1)  ,(elf64_segment_size  
+s1)  ,(elf64_segment_memsz  
+s1) ,(elf64_segment_base  
+s1)  ,(elf64_segment_paddr  
+s1) ,(elf64_segment_align  
+s1) ,(elf64_segment_offset  
+s1)],  ((let (f1, f2, f3) = ((elf64_segment_flags   s1)) in List.map natural_of_bool [f1, f2, f3])))
+((elf64_segment_body   s2), [(elf64_segment_type   s2)  ,(elf64_segment_size  
+s2)  ,(elf64_segment_memsz  
+s2) ,(elf64_segment_base  
+s2)  ,(elf64_segment_paddr  
+s2) ,(elf64_segment_align  
+s2) ,(elf64_segment_offset  
+s2)], ((let (f1, f2, f3) = ((elf64_segment_flags   s2)) in List.map natural_of_bool [f1, f2, f3])))))"
+
+
+definition instance_Basic_classes_Ord_Elf_interpreted_segment_elf64_interpreted_segment_dict  :: "(elf64_interpreted_segment)Ord_class "  where 
+     " instance_Basic_classes_Ord_Elf_interpreted_segment_elf64_interpreted_segment_dict = ((|
+
+  compare_method = compare_elf64_interpreted_segment,
+
+  isLess_method = (\<lambda> f1 .  (\<lambda> f2 .  (compare_elf64_interpreted_segment f1 f2 = LT))),
+
+  isLessEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (let result = (compare_elf64_interpreted_segment f1 f2) in (result = LT) \<or> (result = EQ)))),
+
+  isGreater_method = (\<lambda> f1 .  (\<lambda> f2 .  (compare_elf64_interpreted_segment f1 f2 = GT))),
+
+  isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (let result = (compare_elf64_interpreted_segment f1 f2) in (result = GT) \<or> (result = EQ))))|) )"
 
 
 type_synonym elf32_interpreted_segments =" elf32_interpreted_segment list "

@@ -4,12 +4,15 @@ theory "Missing_pervasives"
 
 imports 
  	 Main
+	 "Lem_num" 
+	 "Lem_list" 
 	 "Lem_basic_classes" 
 	 "Lem_bool" 
-	 "Lem_list" 
 	 "Lem_maybe" 
-	 "Lem_num" 
 	 "Lem_string" 
+	 "Lem_assert_extra" 
+	 "Show" 
+	 "Lem_sorting" 
 	 "$ISABELLE_HOME/src/HOL/Word/Word" 
 	 "Elf_Types_Local" 
 
@@ -21,13 +24,129 @@ begin
 (*open import Maybe*)
 (*open import Num*)
 (*open import String*)
+(*open import Assert_extra*)
+(*open import Show*)
+(*open import Sorting*)
 
 (*open import {isabelle} `$ISABELLE_HOME/src/HOL/Word/Word`*)
 (*open import {isabelle} `Elf_Types_Local`*)
 
+(*val naturalZero : natural*)
+definition naturalZero  :: " nat "  where 
+     " naturalZero = (( 0 :: nat))"
+
+
+(*val id : forall 'a. 'a -> 'a*)
+definition id0  :: " 'a \<Rightarrow> 'a "  where 
+     " id0 x = ( x )"
+
+
 (*type byte*)
+(*val natural_of_byte : byte -> natural*)
+
+definition compare_byte  :: " word 8 \<Rightarrow> word 8 \<Rightarrow> ordering "  where 
+     " compare_byte b1 b2 = ( (genericCompare (op<) (op=) (unat b1) (unat b2)))"
+
+
+definition instance_Basic_classes_Ord_Missing_pervasives_byte_dict  :: "( word 8)Ord_class "  where 
+     " instance_Basic_classes_Ord_Missing_pervasives_byte_dict = ((|
+
+  compare_method = compare_byte,
+
+  isLess_method = (\<lambda> f1 .  (\<lambda> f2 .  (compare_byte f1 f2 = LT))),
+
+  isLessEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (let result = (compare_byte f1 f2) in (result = LT) \<or> (result = EQ)))),
+
+  isGreater_method = (\<lambda> f1 .  (\<lambda> f2 .  (compare_byte f1 f2 = GT))),
+
+  isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (let result = (compare_byte f1 f2) in (result = GT) \<or> (result =  EQ))))|) )"
+
 
 (*val char_of_byte : byte -> char*)
+
+(* Define how to print a byte in hex *)
+(*val hex_char_of_nibble : natural -> char*)
+definition hex_char_of_nibble  :: " nat \<Rightarrow> char "  where 
+     " hex_char_of_nibble n = ( 
+  if(n = ( 0 :: nat)) then (CHR ''0'') else
+    (
+    if(n = ( 1 :: nat)) then (CHR ''1'') else
+      (
+      if(n = ( 2 :: nat)) then (CHR ''2'') else
+        (
+        if(n = ( 3 :: nat)) then (CHR ''3'') else
+          (
+          if(n = ( 4 :: nat)) then (CHR ''4'') else
+            (
+            if(n = ( 5 :: nat)) then (CHR ''5'') else
+              (
+              if(n = ( 6 :: nat)) then (CHR ''6'') else
+                (
+                if(n = ( 7 :: nat)) then (CHR ''7'') else
+                  (
+                  if(n = ( 8 :: nat)) then (CHR ''8'') else
+                    (
+                    if(n = ( 9 :: nat)) then (CHR ''9'') else
+                      (
+                      if(n = ( 10 :: nat)) then (CHR ''a'') else
+                        (
+                        if(n = ( 11 :: nat)) then (CHR ''b'') else
+                          (
+                          if(n = ( 12 :: nat)) then (CHR ''c'') else
+                            (
+                            if(n = ( 13 :: nat)) then (CHR ''d'') else
+                              (
+                              if(n = ( 14 :: nat)) then (CHR ''e'') else
+                                (
+                                if(n = ( 15 :: nat)) then (CHR ''f'') else
+                                  undefined))))))))))))))) )"
+
+
+definition hex_string_of_byte  :: " word 8 \<Rightarrow> string "  where 
+     " hex_string_of_byte b = ( 
+    [ hex_char_of_nibble ((unat b) div( 16 :: nat))
+             , hex_char_of_nibble ((unat b) mod( 16 :: nat))])"
+
+
+(*val natural_of_decimal_digit : char -> maybe natural*)
+fun natural_of_decimal_digit  :: " char \<Rightarrow>(nat)option "  where 
+     " natural_of_decimal_digit (CHR ''0'') = ( Some(( 0 :: nat)))"
+|" natural_of_decimal_digit (CHR ''1'') = ( Some(( 1 :: nat)))"
+|" natural_of_decimal_digit (CHR ''2'') = ( Some(( 2 :: nat)))"
+|" natural_of_decimal_digit (CHR ''3'') = ( Some(( 3 :: nat)))"
+|" natural_of_decimal_digit (CHR ''4'') = ( Some(( 4 :: nat)))"
+|" natural_of_decimal_digit (CHR ''5'') = ( Some(( 5 :: nat)))"
+|" natural_of_decimal_digit (CHR ''6'') = ( Some(( 6 :: nat)))"
+|" natural_of_decimal_digit (CHR ''7'') = ( Some(( 7 :: nat)))"
+|" natural_of_decimal_digit (CHR ''8'') = ( Some(( 8 :: nat)))"
+|" natural_of_decimal_digit (CHR ''9'') = ( Some(( 9 :: nat)))"
+|" natural_of_decimal_digit _ = ( None )" 
+declare natural_of_decimal_digit.simps [simp del]
+
+
+(*val natural_of_decimal_string_helper : natural -> list char -> natural*)
+function (sequential,domintros)  natural_of_decimal_string_helper  :: " nat \<Rightarrow>(char)list \<Rightarrow> nat "  where 
+     " natural_of_decimal_string_helper acc1 ([]) = ( acc1 )"
+|" natural_of_decimal_string_helper acc1 (c # cs) = ( (case  natural_of_decimal_digit c of
+            Some dig => natural_of_decimal_string_helper ((( 10 :: nat) * acc1) + dig) cs
+            | None => acc1
+        ))" 
+by pat_completeness auto
+
+
+(*val natural_of_decimal_string : string -> natural*)
+definition natural_of_decimal_string  :: " string \<Rightarrow> nat "  where 
+     " natural_of_decimal_string s = ( 
+    natural_of_decimal_string_helper(( 0 :: nat)) ( s))"
+
+
+(*val hex_string_of_natural : natural -> string*)
+function (sequential,domintros)  hex_string_of_natural  :: " nat \<Rightarrow> string "  where 
+     " hex_string_of_natural n = ( 
+    if n \<le>( 16 :: nat) then  [hex_char_of_nibble n]
+    else (hex_string_of_natural (n div( 16 :: nat))) @ ([hex_char_of_nibble (n mod( 16 :: nat))]))" 
+by pat_completeness auto
+
 
 (*val natural_of_bool : bool -> natural*)
 fun natural_of_bool  :: " bool \<Rightarrow> nat "  where 
@@ -35,6 +154,12 @@ fun natural_of_bool  :: " bool \<Rightarrow> nat "  where
 |" natural_of_bool False = (( 0 :: nat))" 
 declare natural_of_bool.simps [simp del]
 
+
+(*val unsafe_nat_of_natural : natural -> nat*)
+
+(*val unsafe_int_of_natural   : natural -> int*)
+
+(*val byte_of_natural : natural -> byte*)
 
 (*type ordering
   = Equal
@@ -63,6 +188,10 @@ function (sequential,domintros)  intercalate  :: " 'a \<Rightarrow> 'a list \<Ri
 by pat_completeness auto
 
 
+(** [string_of_list l] produces a string representation of list [l].
+  *)
+(*val string_of_list : forall 'a. Show 'a => list 'a -> string*)
+
 (** [mapMaybei f xs] maps a function expecting an index (the position in the list
   * [xs] that it is currently viewing) and producing a [maybe] type across a list.
   * Elements that produce [Nothing] under [f] are discarded in the output, whilst
@@ -86,13 +215,92 @@ definition mapMaybei  :: "(nat \<Rightarrow> 'a \<Rightarrow> 'b option)\<Righta
   mapMaybei' f(( 0 :: nat)) xs )"
 
 
+(** [partitionii is xs] returns a pair of lists: firstly those elements in [xs] that are
+    at indices in [is], and secondly the remaining elements. 
+    It preserves the order of elements in xs. *)
+(*val partitionii' : forall 'a. natural -> list natural -> list 'a 
+    -> list (natural * 'a) (* accumulates the 'in' partition *)
+    -> list (natural * 'a) (* accumulates the 'out' partition *)
+    -> (list (natural * 'a) * list (natural * 'a))*)
+function (sequential,domintros)  partitionii'  :: " nat \<Rightarrow>(nat)list \<Rightarrow> 'a list \<Rightarrow>(nat*'a)list \<Rightarrow>(nat*'a)list \<Rightarrow>(nat*'a)list*(nat*'a)list "  where 
+     " partitionii' (offset :: nat) ([]) xs reverse_accum reverse_accum_compl = ( (List.rev reverse_accum, List.rev reverse_accum_compl))"
+|" partitionii' (offset :: nat) (i # more_is) xs reverse_accum reverse_accum_compl = ( 
+            (let (length_to_split_off :: nat) = ( (i - offset))
+            in
+            (let (left, right) = (split_at length_to_split_off xs) in
+            (let left_indices :: nat list = (genlist 
+                (\<lambda> j .  ( j) + offset)
+                (List.length left)) 
+            in
+            (let left_with_indices = (List.zip left_indices left) in
+            (* left begins at offset, right begins at offset + i *)
+            (case  right of 
+                [] => (* We got to the end of the list before the target index. *) 
+                    (List.rev reverse_accum, 
+                     ((List.rev reverse_accum_compl) @ left_with_indices))
+                | x # more_xs => 
+                    (* x is at index i by definition, so more_xs starts with index i + 1 *)
+                    partitionii' (i+( 1 :: nat)) more_is more_xs ((i, x) # reverse_accum) 
+                        (((List.rev left_with_indices) @ reverse_accum_compl))
+            ))))))" 
+by pat_completeness auto
+
+
+(*val filteri : forall 'a. list natural -> list 'a -> list 'a*)
+definition filteri  :: "(nat)list \<Rightarrow> 'a list \<Rightarrow> 'a list "  where 
+     " filteri is1 xs = ( 
+    (let sorted_is = (sort_by (op \<le>) is1) in
+    (let (accum, accum_compl) = (partitionii'(( 0 :: nat)) sorted_is xs [] [])
+    in 
+    (let (just_indices, just_items) = (list_unzip accum)
+    in 
+    just_items))))"
+
+
+(*val filterii : forall 'a. list natural -> list 'a -> list (natural * 'a)*)
+definition filterii  :: "(nat)list \<Rightarrow> 'a list \<Rightarrow>(nat*'a)list "  where 
+     " filterii is1 xs = ( 
+    (let sorted_is = (sort_by (op \<le>) is1) in
+    (let (accum, accum_compl) = (partitionii'(( 0 :: nat)) sorted_is xs [] [])
+    in 
+    accum)))"
+
+
+(*val partitioni : forall 'a. list natural -> list 'a -> (list 'a * list 'a)*)
+definition partitioni  :: "(nat)list \<Rightarrow> 'a list \<Rightarrow> 'a list*'a list "  where 
+     " partitioni is1 xs = ( 
+    (let sorted_is = (sort_by (op \<le>) is1) in
+    (let (accum, accum_compl) = (partitionii'(( 0 :: nat)) sorted_is xs [] [])
+    in
+    (let (just_indices, just_items) = (list_unzip accum)
+    in
+    (let (just_indices_compl, just_items_compl) = (list_unzip accum_compl)
+    in
+    (just_items, just_items_compl))))))"
+
+
+(*val partitionii : forall 'a. list natural -> list 'a -> (list (natural * 'a) * list (natural * 'a))*)
+definition partitionii  :: "(nat)list \<Rightarrow> 'a list \<Rightarrow>(nat*'a)list*(nat*'a)list "  where 
+     " partitionii is1 xs = ( 
+    (let sorted_is = (sort_by (op \<le>) is1) in
+    partitionii'(( 0 :: nat)) sorted_is xs [] []))"
+
+
+(** [unzip3 ls] takes a list of triples and returns a triple of lists. *)
+(*val unzip3: forall 'a 'b 'c. list ('a * 'b * 'c) -> (list 'a * list 'b * list 'c)*)
+fun  unzip3  :: "('a*'b*'c)list \<Rightarrow> 'a list*'b list*'c list "  where 
+     " unzip3 ([]) = ( ([], [], []))"
+|" unzip3 ((x, y, z) # xyzs) = ( (let (xs, ys, zs) = (unzip3 xyzs) in ((x # xs), (y # ys), (z # zs))))" 
+declare unzip3.simps [simp del]
+
+
 (** [unlines xs] concatenates a list of strings [xs], placing each entry
   * on a new line.
   *)
 (*val unlines : list string -> string*)
 definition unlines  :: "(string)list \<Rightarrow> string "  where 
      " unlines xs = (
-  List.foldr (op@) (intercalate ([(Char Nibble0 NibbleA)]) xs) (''''))"
+  List.foldl (op@) ('''') (intercalate ([(Char Nibble0 NibbleA)]) xs))"
 
 
 (** [bracket xs] concatenates a list of strings [xs], separating each entry with a
@@ -101,27 +309,195 @@ definition unlines  :: "(string)list \<Rightarrow> string "  where
 (*val bracket : list string -> string*)
 definition bracket  :: "(string)list \<Rightarrow> string "  where 
      " bracket xs = (
-  (''('') @ (List.foldr (op@) (intercalate ('' '') xs) ('''') @ ('')'')))"
+  (''('') @ (List.foldl (op@) ('''') (intercalate ('' '') xs) @ ('')'')))"
 
+
+(** [null_byte] is the null character a a byte. *)
+(*val null_byte : byte*)
 
 (** [null_char] is the null character. *)
-(*val null_char : byte*)
+(*val null_char : char*)
+
+(** [println s] prints [s] to stdout, adding a trailing newline. *)
+(* val println : string -> unit *)
+(* declare ocaml target_rep function println = `print_endline` *)
+
+(** [prints s] prints [s] to stdout, without adding a trailing newline. *)
+(* val prints : string -> unit *)
+(* declare ocaml target_rep function prints = `print_string` *)
+
+(** [errln s] prints [s] to stderr, adding a trailing newline. *)
+(*val errln : string -> unit*)
+
+(** [errs s] prints [s] to stderr, without adding a trailing newline. *)
+(*val errs : string -> unit*)
+
+(** [outln s] prints [s] to stdout, adding a trailing newline. *)
+(*val outln : string -> unit*)
+
+(** [outs s] prints [s] to stdout, without adding a trailing newline. *)
+(*val outs : string -> unit*)
 
 (** [split_string_on_char s c] splits a string [s] into a list of substrings
   * on character [c], otherwise returning the singleton list containing [s]
   * if [c] is not found in [s].
+  * 
+  * NOTE: quirkily, this doesn't discard separators (e.g. because NUL characters 
+  * are significant when indexing into string tables). FIXME: given this, is this 
+  * function really reusable? I suspect not.
   *)
 (*val split_string_on_char : string -> char -> list string*)
-
-(** [print s] prints [s] to stdout. *)
-(*val print : string -> unit*)
-
+    
 (** [string_of_nat m] produces a string representation of natural number [m]. *)
 (*val string_of_nat : nat -> string*)
 
-(** [string_suffix i s] chops [i] characters off [s], returning a new string.
+(** [string_suffix i s] returns all but the first [i] characters of [s].
   * Fails if the index is negative, or beyond the end of the string.
   *)
 (*val string_suffix : natural -> string -> maybe string*)
 
-(*val index : forall 'a. natural -> list 'a -> maybe 'a*)end
+(** [string_prefix i s] returns the first [i] characters of [s].
+  * Fails if the index is negative, or beyond the end of the string.
+  *)
+  
+(*val length : forall 'a. list 'a -> natural*)
+(*let ~{ocaml} length xs = List.foldl (fun y _ -> (Instance_Num_NumAdd_Num_natural.+) 1 y) 0 xs*)
+
+(*val take : forall 'a. natural -> list 'a -> list 'a*)
+function (sequential,domintros)  take  :: " nat \<Rightarrow> 'a list \<Rightarrow> 'a list "  where 
+     " take m ([]) = ( [])"
+|" take m (x # xs) = (
+      if m =( 0 :: nat) then
+        x # xs
+      else
+        x # take (m -( 1 :: nat)) xs )" 
+by pat_completeness auto
+
+  
+(*val string_prefix : natural -> string -> maybe string*)
+definition string_prefix  :: " nat \<Rightarrow> string \<Rightarrow>(string)option "  where 
+     " string_prefix m s = (
+  (let cs = ( s) in
+    if m > List.length cs then
+      None
+    else
+      Some ((take m cs))))"
+
+(* FIXME: isabelle *)
+
+(** [string_index_of c s] returns [Just(i)] where [i] is the index of the first 
+  * occurrence if [c] in [s], if it exists, otherwise returns [Nothing]. *)
+
+(*val string_index_of' : char -> list char -> natural -> maybe natural*)
+function (sequential,domintros)  string_index_of'  :: " char \<Rightarrow>(char)list \<Rightarrow> nat \<Rightarrow>(nat)option "  where 
+     " string_index_of' e ([]) idx = ( None )"
+|" string_index_of' e (s # ss) idx = (
+      if s = e then
+        Some idx
+      else
+        string_index_of' e ss (( 1 :: nat) + idx))" 
+by pat_completeness auto
+
+  
+(*val string_index_of : char -> string -> maybe natural*)
+definition string_index_of  :: " char \<Rightarrow> string \<Rightarrow>(nat)option "  where 
+     " string_index_of e s = ( string_index_of' e ( s)(( 0 :: nat)))"
+
+(* FIXME: isabelle *)
+
+(*val index : forall 'a. natural -> list 'a -> maybe 'a*)
+
+(*val find_index_helper : forall 'a. natural -> ('a -> bool) -> list 'a -> maybe natural*)
+function (sequential,domintros)  find_index_helper  :: " nat \<Rightarrow>('a \<Rightarrow> bool)\<Rightarrow> 'a list \<Rightarrow>(nat)option "  where 
+     " find_index_helper count1 p ([]) = ( None )"
+|" find_index_helper count1 p (y # ys) = (
+			if p y then
+				Some count1
+			else
+				find_index_helper (count1 +( 1 :: nat)) p ys )" 
+by pat_completeness auto
+
+
+(*val find_index : forall 'a. ('a -> bool) -> list 'a -> maybe natural*)
+definition find_index  :: "('a \<Rightarrow> bool)\<Rightarrow> 'a list \<Rightarrow>(nat)option "  where 
+     " find_index p xs = ( find_index_helper(( 0 :: nat)) p xs )"
+
+
+(*val nat_length : forall 'a. list 'a -> nat*)
+
+(*val argv : list string*)
+
+(*val replicate_revacc : forall 'a. list 'a -> natural -> 'a -> list 'a*)
+function (sequential,domintros)  replicate_revacc  :: " 'a list \<Rightarrow> nat \<Rightarrow> 'a \<Rightarrow> 'a list "  where 
+     " replicate_revacc revacc 0 e = ( List.rev revacc )"
+|" replicate_revacc revacc m e = ( replicate_revacc (e # revacc) (m -( 1 :: nat)) e )" 
+by pat_completeness auto
+
+
+(*val replicate : forall 'a. natural -> 'a -> list 'a*)
+(*let rec replicate len e =
+	replicate_revacc [] len e*)
+
+(* We want a tail-recursive append. reverse_append l1 l2 appends l2 to the
+ * reverse of l1. So we get [l1-backwards] [l2]. So just reverse l1. *)
+(*val list_append : forall 'a. list 'a -> list 'a -> list 'a*)
+definition list_append  :: " 'a list \<Rightarrow> 'a list \<Rightarrow> 'a list "  where 
+     " list_append l1 l2 = (
+    ((List.rev (List.rev l1)) @ l2))"
+
+
+(*val list_concat : forall 'a. list (list 'a) -> list 'a*) 
+definition list_concat  :: "('a list)list \<Rightarrow> 'a list "  where 
+     " list_concat ll = ( List.foldl list_append [] ll )"
+
+
+(*val list_concat_map : forall 'a 'b. ('a -> list 'b) -> list 'a -> list 'b*)
+definition list_concat_map  :: "('a \<Rightarrow> 'b list)\<Rightarrow> 'a list \<Rightarrow> 'b list "  where 
+     " list_concat_map f l = ( 
+    list_concat (List.map f l))"
+
+
+(*val list_reverse_concat_map_helper : forall 'a 'b. ('a -> list 'b) -> list 'b -> list 'a -> list 'b*)
+function (sequential,domintros)  list_reverse_concat_map_helper  :: "('a \<Rightarrow> 'b list)\<Rightarrow> 'b list \<Rightarrow> 'a list \<Rightarrow> 'b list "  where 
+     " list_reverse_concat_map_helper f acc1 ll = ( 
+    (let lcons = (\<lambda> l .  (\<lambda> i .  i # l))
+    in
+    (case  ll of
+        []      => acc1
+      | item # items => 
+            (* item is a thing that maps to a list. it needn't be a list yet *)
+            (let mapped_list = (f item)
+            in 
+            (* let _ = Missing_pervasives.errln (Map function gave us a list of  ^ (show (List.length mapped_list)) ^  items) in *)
+            list_reverse_concat_map_helper f (List.foldl lcons acc1 (f item)) items)
+    )))" 
+by pat_completeness auto
+
+
+(*val list_reverse_concat_map : forall 'a 'b. ('a -> list 'b) -> list 'a -> list 'b*)
+definition list_reverse_concat_map  :: "('a \<Rightarrow> 'b list)\<Rightarrow> 'a list \<Rightarrow> 'b list "  where 
+     " list_reverse_concat_map f ll = ( list_reverse_concat_map_helper f [] ll )"
+
+
+(*val list_take_with_accum : forall 'a. nat -> list 'a -> list 'a -> list 'a*)
+function (sequential,domintros)  list_take_with_accum  :: " nat \<Rightarrow> 'a list \<Rightarrow> 'a list \<Rightarrow> 'a list "  where 
+     " list_take_with_accum n reverse_acc l = (
+  (*  let _ = Missing_pervasives.errs (Taking a byte; have accumulated  ^ (show (List.length acc) ^  so farn))
+   in *)
+   (case  n of
+        0 => List.rev reverse_acc
+      | _ => (case  l of
+            [] => failwith (''list_take_with_accum: not enough elements'')
+            | x # xs => list_take_with_accum (n-( 1 :: nat)) (x # reverse_acc) xs
+        )
+    ))" 
+by pat_completeness auto
+
+
+(*val unsafe_string_take : natural -> string -> string*)
+definition unsafe_string_take  :: " nat \<Rightarrow> string \<Rightarrow> string "  where 
+     " unsafe_string_take m str = (
+  (let m = (id m) in 
+    (List.take m ( str))))"
+
+end

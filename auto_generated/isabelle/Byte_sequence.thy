@@ -4,14 +4,15 @@ theory "Byte_sequence"
 
 imports 
  	 Main
+	 "Lem_num" 
+	 "Lem_list" 
 	 "Lem_basic_classes" 
 	 "Lem_bool" 
-	 "Lem_list" 
-	 "Lem_num" 
 	 "Lem_string" 
-	 "Error" 
-	 "Missing_pervasives" 
+	 "Lem_assert_extra" 
 	 "Show" 
+	 "Missing_pervasives" 
+	 "Error" 
 
 begin 
 
@@ -20,13 +21,38 @@ begin
 (*open import List*)
 (*open import Num*)
 (*open import String*)
+(*open import Assert_extra*)
 
 (*open import Error*)
 (*open import Missing_pervasives*)
 (*open import Show*)
 
 datatype byte_sequence =
-  Sequence "  8 word list "
+  Sequence "  word 8 list "
+
+(*val byte_list_of_byte_sequence : byte_sequence -> list byte*)
+fun byte_list_of_byte_sequence  :: " byte_sequence \<Rightarrow>( word 8)list "  where 
+     " byte_list_of_byte_sequence (Sequence xs) = ( xs )" 
+declare byte_list_of_byte_sequence.simps [simp del]
+
+
+definition compare_byte_sequence  :: " byte_sequence \<Rightarrow> byte_sequence \<Rightarrow> Lem_basic_classes.ordering "  where 
+     " compare_byte_sequence s1 s2 = ( (lexicographicCompareBy compare_byte (byte_list_of_byte_sequence s1) (byte_list_of_byte_sequence s2)))"
+
+
+definition instance_Basic_classes_Ord_Byte_sequence_byte_sequence_dict  :: "(byte_sequence)Ord_class "  where 
+     " instance_Basic_classes_Ord_Byte_sequence_byte_sequence_dict = ((|
+
+  compare_method = compare_byte_sequence,
+
+  isLess_method = (\<lambda> f1 .  (\<lambda> f2 .  (compare_byte_sequence f1 f2 = LT))),
+
+  isLessEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (let result = (compare_byte_sequence f1 f2) in (result = LT) \<or> (result = EQ)))),
+
+  isGreater_method = (\<lambda> f1 .  (\<lambda> f2 .  (compare_byte_sequence f1 f2 = GT))),
+
+  isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (let result = (compare_byte_sequence f1 f2) in (result = GT) \<or> (result = EQ))))|) )"
+
 
 (*val acquire_byte_list : string -> error (list byte)*)
 
@@ -42,14 +68,14 @@ definition empty  :: " byte_sequence "  where
 
 
 (*val read_char : byte_sequence -> error (byte * byte_sequence)*)
-fun read_char  :: " byte_sequence \<Rightarrow>( 8 word*byte_sequence)error "  where 
+fun read_char  :: " byte_sequence \<Rightarrow>( word 8*byte_sequence)error "  where 
      " read_char (Sequence([])) = ( error_fail (''read_char: sequence is empty''))"
 |" read_char (Sequence(x # xs)) = ( error_return (x, Sequence xs))" 
 declare read_char.simps [simp del]
 
 
 (*val repeat : natural -> byte -> list byte*)
-function (sequential,domintros)  repeat  :: " nat \<Rightarrow> 8 word \<Rightarrow>( 8 word)list "  where 
+function (sequential,domintros)  repeat  :: " nat \<Rightarrow> word 8 \<Rightarrow>( word 8)list "  where 
      " repeat count1 c = (
   (case  count1 of
       0 => []
@@ -57,27 +83,26 @@ function (sequential,domintros)  repeat  :: " nat \<Rightarrow> 8 word \<Rightar
   ))" 
 by pat_completeness auto
 
-termination by lexicographic_order
-
 
 (*val create : natural -> byte -> byte_sequence*)
-definition create  :: " nat \<Rightarrow> 8 word \<Rightarrow> byte_sequence "  where 
+definition create  :: " nat \<Rightarrow> word 8 \<Rightarrow> byte_sequence "  where 
      " create count1 c = (
   Sequence (repeat count1 c))"
 
 
 (*val zeros : natural -> byte_sequence*)
 definition zeros  :: " nat \<Rightarrow> byte_sequence "  where 
-     " zeros m = ( create m (0 :: 8 word))"
+     " zeros m = (
+  create m (0 :: 8 word))"
 
 
 (*val length : byte_sequence -> natural*)
-fun length  :: " byte_sequence \<Rightarrow> nat "  where 
-     " length (Sequence ts) = (
-  List.foldr (\<lambda> x y .  y +( 1 :: nat)) ts (( 0 :: nat)))" 
-declare length.simps [simp del]
+fun length0  :: " byte_sequence \<Rightarrow> nat "  where 
+     " length0 (Sequence ts) = (
+   (List.length ts))" 
+declare length0.simps [simp del]
 
-;;
+
 
 (*val concat : list byte_sequence -> byte_sequence*)
 function (sequential,domintros)  concat_byte_sequence  :: "(byte_sequence)list \<Rightarrow> byte_sequence "  where 
@@ -88,10 +113,19 @@ function (sequential,domintros)  concat_byte_sequence  :: "(byte_sequence)list \
       ))" 
 by pat_completeness auto
 
-termination by lexicographic_order
+
+(*val zero_pad_to_length : natural -> byte_sequence -> byte_sequence*)
+definition zero_pad_to_length  :: " nat \<Rightarrow> byte_sequence \<Rightarrow> byte_sequence "  where 
+     " zero_pad_to_length len bs = ( 
+  (let curlen = (length0 bs) in 
+    if curlen \<ge> len then
+      bs
+    else
+      concat_byte_sequence [bs , (zeros (len - curlen))]))"
+
 
 (*val from_byte_lists : list (list byte) -> byte_sequence*)
-definition from_byte_lists  :: "(( 8 word)list)list \<Rightarrow> byte_sequence "  where 
+definition from_byte_lists  :: "(( word 8)list)list \<Rightarrow> byte_sequence "  where 
      " from_byte_lists ts = (
   Sequence (List.concat ts))"
 
@@ -120,44 +154,48 @@ declare string_of_byte_sequence.simps [simp del]
 (*val dropbytes : natural -> byte_sequence -> error byte_sequence*)
 function (sequential,domintros)  dropbytes  :: " nat \<Rightarrow> byte_sequence \<Rightarrow>(byte_sequence)error "  where 
      " dropbytes count1 (Sequence ts) = (
-  (case  count1 of
-      0 => error_return (Sequence ts)
-    | m =>
-      (case  ts of
-          []    =>
-          error_fail (''dropbytes: cannot drop more bytes than are contained in sequence'')
-        | x # xs =>
-          dropbytes (count1 -( 1 :: nat)) (Sequence xs)
-      )
-  ))" 
+  if count1 = Missing_pervasives.naturalZero then
+    error_return (Sequence ts)
+  else
+    (case  ts of
+        []    => error_fail (''dropbytes: cannot drop more bytes than are contained in sequence'')
+      | x # xs => dropbytes (count1 -( 1 :: nat)) (Sequence xs)
+    ))" 
 by pat_completeness auto
 
-termination by lexicographic_order
+
+(*val takebytes_r_with_length: nat -> natural -> byte_sequence -> error byte_sequence*)
+fun  takebytes_r_with_length  :: " nat \<Rightarrow> nat \<Rightarrow> byte_sequence \<Rightarrow>(byte_sequence)error "  where 
+     " takebytes_r_with_length count1 ts_length (Sequence ts) = ( 
+  if ts_length \<ge> ( count1) then 
+    error_return (Sequence (list_take_with_accum count1 [] ts))
+  else
+    error_fail (''takebytes: cannot take more bytes than are contained in sequence''))" 
+declare takebytes_r_with_length.simps [simp del]
 
 
 (*val takebytes : natural -> byte_sequence -> error byte_sequence*)
-function (sequential,domintros)  takebytes  :: " nat \<Rightarrow> byte_sequence \<Rightarrow>(byte_sequence)error "  where 
+fun takebytes  :: " nat \<Rightarrow> byte_sequence \<Rightarrow>(byte_sequence)error "  where 
      " takebytes count1 (Sequence ts) = (
-  (case  count1 of
-      0 => error_return (Sequence [])
-    | m =>
-      (case  ts of
-          [] =>
-          error_fail (''takebytes: cannot take more bytes than are contained in sequence'')
-        | x # xs =>
-          takebytes (count1 -( 1 :: nat)) (Sequence xs) >>= (\<lambda> tail . 
-          (case  tail of
-              Sequence t => error_return (Sequence (x # t))
-          ))
-      )
-  ))" 
-by pat_completeness auto
+  (* let _ = Missing_pervasives.errs (Trying to take  ^ (show count) ^  bytes from sequence of  ^ (show (List.length ts)) ^ n) in *)
+  (let result = (takebytes_r_with_length (id count1) (List.length ts) (Sequence ts)) in 
+  (*let _ = Missing_pervasives.errs (Succeededn) in *)
+    result))" 
+declare takebytes.simps [simp del]
 
-termination by lexicographic_order
+
+(*val takebytes_with_length : natural -> natural -> byte_sequence -> error byte_sequence*)
+fun takebytes_with_length  :: " nat \<Rightarrow> nat \<Rightarrow> byte_sequence \<Rightarrow>(byte_sequence)error "  where 
+     " takebytes_with_length count1 ts_length (Sequence ts) = (
+  (* let _ = Missing_pervasives.errs (Trying to take  ^ (show count) ^  bytes from sequence of  ^ (show (List.length ts)) ^ n) in *)
+  (let result = (takebytes_r_with_length (id count1) ts_length (Sequence ts)) in 
+  (*let _ = Missing_pervasives.errs (Succeededn) in *)
+    result))" 
+declare takebytes_with_length.simps [simp del]
 
 
 (*val read_2_bytes_le : byte_sequence -> error ((byte * byte) * byte_sequence)*)
-definition read_2_bytes_le  :: " byte_sequence \<Rightarrow>(( 8 word* 8 word)*byte_sequence)error "  where 
+definition read_2_bytes_le  :: " byte_sequence \<Rightarrow>(( word 8* word 8)*byte_sequence)error "  where 
      " read_2_bytes_le bs0 = (
   read_char bs0 >>= (\<lambda> (b0, bs1) . 
   read_char bs1 >>= (\<lambda> (b1, bs2) . 
@@ -165,7 +203,7 @@ definition read_2_bytes_le  :: " byte_sequence \<Rightarrow>(( 8 word* 8 word)*b
 
 
 (*val read_2_bytes_be : byte_sequence -> error ((byte * byte) * byte_sequence)*)
-definition read_2_bytes_be  :: " byte_sequence \<Rightarrow>(( 8 word* 8 word)*byte_sequence)error "  where 
+definition read_2_bytes_be  :: " byte_sequence \<Rightarrow>(( word 8* word 8)*byte_sequence)error "  where 
      " read_2_bytes_be bs0 = (
   read_char bs0 >>= (\<lambda> (b0, bs1) . 
   read_char bs1 >>= (\<lambda> (b1, bs2) . 
@@ -173,7 +211,7 @@ definition read_2_bytes_be  :: " byte_sequence \<Rightarrow>(( 8 word* 8 word)*b
 
 
 (*val read_4_bytes_le : byte_sequence -> error ((byte * byte * byte * byte) * byte_sequence)*)
-definition read_4_bytes_le  :: " byte_sequence \<Rightarrow>(( 8 word* 8 word* 8 word* 8 word)*byte_sequence)error "  where 
+definition read_4_bytes_le  :: " byte_sequence \<Rightarrow>(( word 8* word 8* word 8* word 8)*byte_sequence)error "  where 
      " read_4_bytes_le bs0 = (
   read_char bs0 >>= (\<lambda> (b0, bs1) . 
   read_char bs1 >>= (\<lambda> (b1, bs2) . 
@@ -183,7 +221,7 @@ definition read_4_bytes_le  :: " byte_sequence \<Rightarrow>(( 8 word* 8 word* 8
 
 
 (*val read_4_bytes_be : byte_sequence -> error ((byte * byte * byte * byte) * byte_sequence)*)
-definition read_4_bytes_be  :: " byte_sequence \<Rightarrow>(( 8 word* 8 word* 8 word* 8 word)*byte_sequence)error "  where 
+definition read_4_bytes_be  :: " byte_sequence \<Rightarrow>(( word 8* word 8* word 8* word 8)*byte_sequence)error "  where 
      " read_4_bytes_be bs0 = (
   read_char bs0 >>= (\<lambda> (b0, bs1) . 
   read_char bs1 >>= (\<lambda> (b1, bs2) . 
@@ -193,7 +231,7 @@ definition read_4_bytes_be  :: " byte_sequence \<Rightarrow>(( 8 word* 8 word* 8
 
 
 (*val read_8_bytes_le : byte_sequence -> error ((byte * byte * byte * byte * byte * byte * byte * byte) * byte_sequence)*)
-definition read_8_bytes_le  :: " byte_sequence \<Rightarrow>(( 8 word* 8 word* 8 word* 8 word* 8 word* 8 word* 8 word* 8 word)*byte_sequence)error "  where 
+definition read_8_bytes_le  :: " byte_sequence \<Rightarrow>(( word 8* word 8* word 8* word 8* word 8* word 8* word 8* word 8)*byte_sequence)error "  where 
      " read_8_bytes_le bs0 = (
   read_char bs0 >>= (\<lambda> (b0, bs1) . 
   read_char bs1 >>= (\<lambda> (b1, bs2) . 
@@ -207,7 +245,7 @@ definition read_8_bytes_le  :: " byte_sequence \<Rightarrow>(( 8 word* 8 word* 8
 
 
 (*val read_8_bytes_be : byte_sequence -> error ((byte * byte * byte * byte * byte * byte * byte * byte) * byte_sequence)*)
-definition read_8_bytes_be  :: " byte_sequence \<Rightarrow>(( 8 word* 8 word* 8 word* 8 word* 8 word* 8 word* 8 word* 8 word)*byte_sequence)error "  where 
+definition read_8_bytes_be  :: " byte_sequence \<Rightarrow>(( word 8* word 8* word 8* word 8* word 8* word 8* word 8* word 8)*byte_sequence)error "  where 
      " read_8_bytes_be bs0 = (
   read_char bs0 >>= (\<lambda> (b0, bs1) . 
   read_char bs1 >>= (\<lambda> (b1, bs2) . 
@@ -221,9 +259,17 @@ definition read_8_bytes_be  :: " byte_sequence \<Rightarrow>(( 8 word* 8 word* 8
 
 
 (*val partition : natural -> byte_sequence -> error (byte_sequence * byte_sequence)*)
-definition partition  :: " nat \<Rightarrow> byte_sequence \<Rightarrow>(byte_sequence*byte_sequence)error "  where 
-     " partition idx bs0 = (
+definition partition0  :: " nat \<Rightarrow> byte_sequence \<Rightarrow>(byte_sequence*byte_sequence)error "  where 
+     " partition0 idx bs0 = (
   takebytes idx bs0 >>= (\<lambda> l . 
+  dropbytes idx bs0 >>= (\<lambda> r . 
+  error_return (l, r))))"
+
+
+(*val partition_with_length : natural -> natural -> byte_sequence -> error (byte_sequence * byte_sequence)*)
+definition partition_with_length  :: " nat \<Rightarrow> nat \<Rightarrow> byte_sequence \<Rightarrow>(byte_sequence*byte_sequence)error "  where 
+     " partition_with_length idx bs0_length bs0 = (
+  takebytes_with_length idx bs0_length bs0 >>= (\<lambda> l . 
   dropbytes idx bs0 >>= (\<lambda> r . 
   error_return (l, r))))"
 
@@ -234,4 +280,5 @@ definition offset_and_cut  :: " nat \<Rightarrow> nat \<Rightarrow> byte_sequenc
   dropbytes off bs0 >>= (\<lambda> bs1 . 
   takebytes cut1 bs1 >>= (\<lambda> res . 
   error_return res)))"
+
 end

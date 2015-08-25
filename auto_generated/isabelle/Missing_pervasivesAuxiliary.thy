@@ -4,12 +4,15 @@ theory "Missing_pervasivesAuxiliary"
 
 imports 
  	 Main "~~/src/HOL/Library/Code_Target_Numeral"
+	 "Lem_num" 
+	 "Lem_list" 
 	 "Lem_basic_classes" 
 	 "Lem_bool" 
-	 "Lem_list" 
 	 "Lem_maybe" 
-	 "Lem_num" 
 	 "Lem_string" 
+	 "Lem_assert_extra" 
+	 "Show" 
+	 "Lem_sorting" 
 	 "$ISABELLE_HOME/src/HOL/Word/Word" 
 	 "Elf_Types_Local" 
 	 "Missing_pervasives" 
@@ -23,9 +26,45 @@ begin
 (*                                                  *)
 (****************************************************)
 
+termination natural_of_decimal_string_helper by lexicographic_order
+
+termination hex_string_of_natural by lexicographic_order
+
 termination intercalate by lexicographic_order
 
 termination mapMaybei' by lexicographic_order
+
+termination partitionii' by lexicographic_order
+
+termination take by lexicographic_order
+
+termination string_index_of' by lexicographic_order
+
+termination find_index_helper by lexicographic_order
+
+termination replicate_revacc by lexicographic_order
+
+termination list_reverse_concat_map_helper by lexicographic_order
+
+termination list_take_with_accum by lexicographic_order
+
+
+(****************************************************)
+(*                                                  *)
+(* Lemmata                                          *)
+(*                                                  *)
+(****************************************************)
+
+lemma length_def_lemma:
+" ((\<forall> xs.
+   List.foldl (\<lambda> y _ . ( 1 :: nat) + y) (( 0 :: nat)) xs =
+     List.length xs)) "
+(* Theorem: length_def_lemma*)(* try *) by auto
+
+lemma replicate_def_lemma:
+" ((\<forall> len. \<forall> e.
+   replicate_revacc [] len e = List.replicate len e)) "
+(* Theorem: replicate_def_lemma*)(* try *) by auto
 
 
 

@@ -14,7 +14,6 @@ begin
   *)
 
 (*open import String*)
-
 (*open import Show*)
 
 (** Type [endianness] describes the endianness of an ELF file.  This is deduced from
@@ -36,4 +35,5 @@ definition default_endianness  :: " endianness "  where
 (** [string_of_endianness e] produces a string representation of the [endianness] value
   * [e].
   *)
-(*val string_of_endianness : endianness -> string*)end
+(*val string_of_endianness : endianness -> string*)
+end

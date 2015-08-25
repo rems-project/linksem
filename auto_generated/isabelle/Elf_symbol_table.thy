@@ -4,22 +4,28 @@ theory "Elf_symbol_table"
 
 imports 
  	 Main
+	 "Lem_num" 
+	 "Lem_list" 
+	 "Lem_set" 
 	 "Lem_basic_classes" 
 	 "Lem_bool" 
-	 "Lem_list" 
 	 "Lem_maybe" 
-	 "Lem_num" 
 	 "Lem_string" 
-	 "Lem_tuple" 
-	 "Byte_sequence" 
-	 "Error" 
-	 "Missing_pervasives" 
 	 "Show" 
-	 "Elf_types" 
+	 "Missing_pervasives" 
+	 "Error" 
+	 "Byte_sequence" 
 	 "Endianness" 
+	 "Elf_types_native_uint" 
+	 "Lem_tuple" 
+	 "Elf_header" 
 	 "String_table" 
 
 begin 
+
+(** [elf_symbol_table] provides types, functions and other definitions for
+  * working with ELF symbol tables.
+  *)
 
 (*open import Basic_classes*)
 (*open import Bool*)
@@ -28,13 +34,15 @@ begin
 (*open import Num*)
 (*open import String*)
 (*open import Tuple*)
+(*import Set*)
 
 (*open import Byte_sequence*)
 (*open import Error*)
 (*open import Missing_pervasives*)
 (*open import Show*)
 
-(*open import Elf_types*)
+(*open import Elf_header*)
+(*open import Elf_types_native_uint*)
 (*open import Endianness*)
 (*open import String_table*)
 
@@ -46,21 +54,37 @@ definition stn_undef  :: " nat "  where
 
 (** Symbol binding *)
 
+(** Local symbols are not visible outside of the object file containing their
+  * definition.
+  *)
 definition stb_local  :: " nat "  where 
      " stb_local = (( 0 :: nat))"
 
+
+(** Global symbols are visible to all object files being combined.
+  *)
 definition stb_global  :: " nat "  where 
      " stb_global = (( 1 :: nat))"
 
+
+(** Weak symbols resemble global symbols but their definitions have lower
+  * precedence.
+  *)
 definition stb_weak  :: " nat "  where 
      " stb_weak = (( 2 :: nat))"
 
+
+(** Values in the following range have reserved OS specific semantics.
+  *)
 definition stb_loos  :: " nat "  where 
      " stb_loos = (( 10 :: nat))"
 
 definition stb_hios  :: " nat "  where 
      " stb_hios = (( 12 :: nat))"
 
+
+(** Values in the following range have reserved processor specific semantics.
+  *)
 definition stb_loproc  :: " nat "  where 
      " stb_loproc = (( 13 :: nat))"
 
@@ -68,52 +92,70 @@ definition stb_hiproc  :: " nat "  where
      " stb_hiproc = (( 15 :: nat))"
 
 
-(*val string_of_symbol_binding : nat -> (nat -> string) -> (nat -> string) -> string*)
-definition string_of_symbol_binding  :: " nat \<Rightarrow>(nat \<Rightarrow> string)\<Rightarrow>(nat \<Rightarrow> string)\<Rightarrow> string "  where 
-     " string_of_symbol_binding m os proc = (
-  if m = stb_local then
-    (''STB_LOCAL'')
-  else if m = stb_global then
-    (''STB_GLOBAL'')
-  else if m = stb_weak then
-    (''STB_WEAK'')
-  else if (m \<ge> stb_loos) \<and> (m \<le> stb_hios) then
-    os m
-  else if (m \<ge> stb_loproc) \<and> (m \<le> stb_hiproc) then
-    proc m
-  else
-    (''Invalid symbol binding''))"
-
+(** string_of_symbol_binding b os proc] produces a string representation of
+  * binding [m] using printing functions [os] and [proc] for OS- and processor-
+  * specific values respectively.
+  * OCaml specific definition.
+  *)
+(*val string_of_symbol_binding : natural -> (natural -> string) -> (natural -> string) -> string*)
 
 (** Symbol types *)
 
+(** The symbol's type is not specified.
+  *)
 definition stt_notype  :: " nat "  where 
      " stt_notype = (( 0 :: nat))"
 
+
+(** The symbol is associated with a data object such as a variable.
+  *)
 definition stt_object  :: " nat "  where 
      " stt_object = (( 1 :: nat))"
 
+
+(** The symbol is associated with a function or other executable code.
+  *)
 definition stt_func  :: " nat "  where 
      " stt_func = (( 2 :: nat))"
 
+
+(** The symbol is associated with a section.
+  *)
 definition stt_section  :: " nat "  where 
      " stt_section = (( 3 :: nat))"
 
+
+(** Conventionally the symbol's value gives the name of the source file associated
+  * with the object file.
+  *)
 definition stt_file  :: " nat "  where 
      " stt_file = (( 4 :: nat))"
 
+
+(** The symbol is an uninitialised common block.
+  *)
 definition stt_common  :: " nat "  where 
      " stt_common = (( 5 :: nat))"
 
+
+(** The symbol specified a Thread Local Storage (TLS) entity.
+  *)
 definition stt_tls  :: " nat "  where 
      " stt_tls = (( 6 :: nat))"
 
+
+(** Values in the following range are reserved solely for OS-specific semantics.
+  *)
 definition stt_loos  :: " nat "  where 
      " stt_loos = (( 10 :: nat))"
 
 definition stt_hios  :: " nat "  where 
      " stt_hios = (( 12 :: nat))"
 
+
+(** Values in the following range are reserved solely for processor-specific
+  * semantics.
+  *)
 definition stt_loproc  :: " nat "  where 
      " stt_loproc = (( 13 :: nat))"
 
@@ -121,23 +163,27 @@ definition stt_hiproc  :: " nat "  where
      " stt_hiproc = (( 15 :: nat))"
 
 
+(** [string_of_symbol_type sym os proc] produces a string representation of
+  * symbol type [m] using [os] and [proc] to pretty-print values reserved for
+  * OS- and processor-specific functionality.
+  *)
 (*val string_of_symbol_type : natural -> (natural -> string) -> (natural -> string) -> string*)
 definition string_of_symbol_type  :: " nat \<Rightarrow>(nat \<Rightarrow> string)\<Rightarrow>(nat \<Rightarrow> string)\<Rightarrow> string "  where 
      " string_of_symbol_type m os proc = (
   if m = stt_notype then
-    (''STT_NOTYPE'')
+    (''NOTYPE'')
   else if m = stt_object then
-    (''STT_OBJECT'')
+    (''OBJECT'')
   else if m = stt_func then
-    (''STT_FUNC'')
+    (''FUNC'')
   else if m = stt_section then
-    (''STT_SECTION'')
+    (''SECTION'')
   else if m = stt_file then
-    (''STT_FILE'')
+    (''FILE'')
   else if m = stt_common then
-    (''STT_COMMON'')
+    (''COMMON'')
   else if m = stt_tls then
-    (''STT_TLS'')
+    (''TLS'')
   else if (m \<ge> stt_loos) \<and> (m \<le> stt_hios) then
     os m
   else if (m \<ge> stt_loproc) \<and> (m \<le> stt_hiproc) then
@@ -148,97 +194,259 @@ definition string_of_symbol_type  :: " nat \<Rightarrow>(nat \<Rightarrow> strin
 
 (** Symbol visibility *)
 
+(** The visibility of the symbol is as specified by the symbol's binding type.
+  *)
 definition stv_default  :: " nat "  where 
      " stv_default = (( 0 :: nat))"
 
+
+(** The meaning of this visibility may be defined by processor supplements to
+  * further constrain hidden symbols.
+  *)
 definition stv_internal  :: " nat "  where 
      " stv_internal = (( 1 :: nat))"
 
+
+(** The symbol's name is not visible in other components.
+  *)
 definition stv_hidden  :: " nat "  where 
      " stv_hidden = (( 2 :: nat))"
 
+
+(** The symbol is visible in other components but not pre-emptable.  That is,
+  * references to the symbol in the same component resolve to this symbol even
+  * if other symbols of the same name in other components would normally be
+  * resolved to instead if we followed the normal rules of symbol resolution.
+  *)
 definition stv_protected  :: " nat "  where 
      " stv_protected = (( 3 :: nat))"
 
 
+(** [string_of_symbol_visibility m] produces a string representation of symbol
+  * visibility [m].
+  *)
 (*val string_of_symbol_visibility : natural -> string*)
 definition string_of_symbol_visibility  :: " nat \<Rightarrow> string "  where 
      " string_of_symbol_visibility m = (
   if m = stv_default then
-    (''STV_DEFAULT'')
+    (''DEFAULT'')
   else if m = stv_internal then
-    (''STV_INTERNAL'')
+    (''INTERNAL'')
   else if m = stv_hidden then
-    (''STV_HIDDEN'')
+    (''HIDDEN'')
   else if m = stv_protected then
-    (''STV_PROTECTED'')
+    (''PROTECTED'')
   else
     (''Invalid symbol visibility''))"
 
 
-(** ELF32 symbol table type *)
+(** Symbol table entry type *)
 
 record elf32_symbol_table_entry =
   
- elf32_st_name  ::" uint32 "
+ elf32_st_name  ::" uint32 "     (** Index into the object file's string table *)
    
- elf32_st_value ::" uint32 "
+ elf32_st_value ::" uint32 "     (** Gives the value of the associated symbol *)
    
- elf32_st_size  ::" uint32 "
+ elf32_st_size  ::" uint32 "     (** Size of the associated symbol *)
    
- elf32_st_info  ::" Elf_Types_Local.unsigned_char "
+ elf32_st_info  ::" Elf_Types_Local.unsigned_char "  (** Specifies the symbol's type and binding attributes *)
    
- elf32_st_other ::" Elf_Types_Local.unsigned_char "
+ elf32_st_other ::" Elf_Types_Local.unsigned_char "  (** Currently specifies the symbol's visibility *)
    
- elf32_st_shndx ::" uint16 "
+ elf32_st_shndx ::" uint16 "     (** Section header index symbol is defined with respect to *)
    
 
+
+definition elf32_symbol_table_entry_compare  :: " elf32_symbol_table_entry \<Rightarrow> elf32_symbol_table_entry \<Rightarrow> Lem_basic_classes.ordering "  where 
+     " elf32_symbol_table_entry_compare ent1 ent2 = (    
+ (sextupleCompare (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) (unat(elf32_st_name   ent1), unat(elf32_st_value   ent1), 
+        unat(elf32_st_size   ent1), unat(elf32_st_info   ent1), 
+        unat(elf32_st_other   ent1), unat(elf32_st_shndx   ent1))
+       (unat(elf32_st_name   ent2), unat(elf32_st_value   ent2), 
+        unat(elf32_st_size   ent2), unat(elf32_st_info   ent2), 
+        unat(elf32_st_other   ent2), unat(elf32_st_shndx   ent2))))"
+
+
+definition instance_Basic_classes_Ord_Elf_symbol_table_elf32_symbol_table_entry_dict  :: "(elf32_symbol_table_entry)Ord_class "  where 
+     " instance_Basic_classes_Ord_Elf_symbol_table_elf32_symbol_table_entry_dict = ((|
+
+  compare_method = elf32_symbol_table_entry_compare,
+
+  isLess_method = (\<lambda> f1 .  (\<lambda> f2 .  (elf32_symbol_table_entry_compare f1 f2 = LT))),
+
+  isLessEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (elf32_symbol_table_entry_compare f1 f2) ({LT, EQ}))),
+
+  isGreater_method = (\<lambda> f1 .  (\<lambda> f2 .  (elf32_symbol_table_entry_compare f1 f2 = GT))),
+
+  isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (elf32_symbol_table_entry_compare f1 f2) ({GT, EQ})))|) )"
+
+   
+record elf64_symbol_table_entry =
+  
+ elf64_st_name  ::" uint32 "     (** Index into the object file's string table *)
+   
+ elf64_st_info  ::" Elf_Types_Local.unsigned_char "  (** Specifies the symbol's type and binding attributes *)
+   
+ elf64_st_other ::" Elf_Types_Local.unsigned_char "  (** Currently specifies the symbol's visibility *)
+   
+ elf64_st_shndx ::" uint16 "     (** Section header index symbol is defined with respect to *)
+   
+ elf64_st_value ::" Elf_Types_Local.uint64 "     (** Gives the value of the associated symbol *)
+   
+ elf64_st_size  ::" uint64 "    (** Size of the associated symbol *)
+   
+
+
+definition elf64_symbol_table_entry_compare  :: " elf64_symbol_table_entry \<Rightarrow> elf64_symbol_table_entry \<Rightarrow> Lem_basic_classes.ordering "  where 
+     " elf64_symbol_table_entry_compare ent1 ent2 = (    
+ (sextupleCompare (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) (unat(elf64_st_name   ent1), unat(elf64_st_value   ent1), 
+        unat(elf64_st_size   ent1), unat(elf64_st_info   ent1), 
+        unat(elf64_st_other   ent1), unat(elf64_st_shndx   ent1))
+       (unat(elf64_st_name   ent2), unat(elf64_st_value   ent2), 
+        unat(elf64_st_size   ent2), unat(elf64_st_info   ent2), 
+        unat(elf64_st_other   ent2), unat(elf64_st_shndx   ent2))))"
+
+
+definition instance_Basic_classes_Ord_Elf_symbol_table_elf64_symbol_table_entry_dict  :: "(elf64_symbol_table_entry)Ord_class "  where 
+     " instance_Basic_classes_Ord_Elf_symbol_table_elf64_symbol_table_entry_dict = ((|
+
+  compare_method = elf64_symbol_table_entry_compare,
+
+  isLess_method = (\<lambda> f1 .  (\<lambda> f2 .  (elf64_symbol_table_entry_compare f1 f2 = LT))),
+
+  isLessEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (elf64_symbol_table_entry_compare f1 f2) ({LT, EQ}))),
+
+  isGreater_method = (\<lambda> f1 .  (\<lambda> f2 .  (elf64_symbol_table_entry_compare f1 f2 = GT))),
+
+  isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (elf64_symbol_table_entry_compare f1 f2) ({GT, EQ})))|) )"
+
+  
+type_synonym elf32_symbol_table =" elf32_symbol_table_entry
+  list "
+  
+type_synonym elf64_symbol_table =" elf64_symbol_table_entry
+  list "
 
 (** Extraction of symbol table data *)
 
 (* Functions below common to 32- and 64-bit! *)
 
+(** [get_symbol_binding u] extracts a symbol table entry's symbol binding.  [u]
+  * in this case is the [elfXX_st_info] field from a symbol table entry.
+  *)
 (*val get_symbol_binding : unsigned_char -> natural*)
 definition get_symbol_binding  :: " Elf_Types_Local.unsigned_char \<Rightarrow> nat "  where 
      " get_symbol_binding entry = (
   unat (Elf_Types_Local.unsigned_char_rshift entry(( 4 :: nat))))"
 
-
+  
+(** [get_symbol_type u] extracts a symbol table entry's symbol type.  [u]
+  * in this case is the [elfXX_st_info] field from a symbol table entry.
+  *)
 (*val get_symbol_type : unsigned_char -> natural*)
 definition get_symbol_type  :: " Elf_Types_Local.unsigned_char \<Rightarrow> nat "  where 
      " get_symbol_type entry = (
   unat (Elf_Types_Local.unsigned_char_land entry (Elf_Types_Local.unsigned_char_of_nat(( 15 :: nat)))))"
  (* 0xf *)
 
-(*val get_symbol_info : unsigned_char -> unsigned_char -> natural*)
-definition get_symbol_info  :: " Elf_Types_Local.unsigned_char \<Rightarrow> Elf_Types_Local.unsigned_char \<Rightarrow> nat "  where 
-     " get_symbol_info entry0 entry1 = (
-  unat (Elf_Types_Local.unsigned_char_plus
-    (Elf_Types_Local.unsigned_char_lshift entry0(( 4 :: nat))) (Elf_Types_Local.unsigned_char_land entry1
-      (Elf_Types_Local.unsigned_char_of_nat(( 15 :: nat))))))"
+(** [get_symbol_info u] extracts a symbol table entry's symbol info.  [u]
+  * in this case is the [elfXX_st_info] field from a symbol table entry.
+  *)
+(*val make_symbol_info : natural -> natural -> unsigned_char*)
+definition make_symbol_info  :: " nat \<Rightarrow> nat \<Rightarrow> Elf_Types_Local.unsigned_char "  where 
+     " make_symbol_info binding symtype = (
+  Elf_Types_Local.unsigned_char_plus
+    (Elf_Types_Local.unsigned_char_lshift (Elf_Types_Local.unsigned_char_of_nat binding)(( 4 :: nat)))
+    (Elf_Types_Local.unsigned_char_land (Elf_Types_Local.unsigned_char_of_nat symtype)
+      (Elf_Types_Local.unsigned_char_of_nat(( 15 :: nat)))))"
  (*0xf*)  
 
+(** [get_symbol_visibility u] extracts a symbol table entry's symbol visibility.  [u]
+  * in this case is the [elfXX_st_other] field from a symbol table entry.
+  *)
 (*val get_symbol_visibility : unsigned_char -> natural*)
 definition get_symbol_visibility  :: " Elf_Types_Local.unsigned_char \<Rightarrow> nat "  where 
-     " get_symbol_visibility entry = (
-  unat (Elf_Types_Local.unsigned_char_land entry (Elf_Types_Local.unsigned_char_of_nat(( 3 :: nat)))))"
+     " get_symbol_visibility info = (
+  unat (Elf_Types_Local.unsigned_char_land info (Elf_Types_Local.unsigned_char_of_nat(( 3 :: nat)))))"
  (* 0x3*)
+  
+(*val make_symbol_other : natural -> unsigned_char*)
+definition make_symbol_other  :: " nat \<Rightarrow> Elf_Types_Local.unsigned_char "  where 
+     " make_symbol_other visibility = (
+  Elf_Types_Local.unsigned_char_of_nat visibility )"
 
-type_synonym symtab_print_bundle =" (nat \<Rightarrow> string) * (nat \<Rightarrow> string)"
+  
+(*val is_elf32_shndx_too_large : elf32_symbol_table_entry -> bool*)
+definition is_elf32_shndx_too_large  :: " elf32_symbol_table_entry \<Rightarrow> bool "  where 
+     " is_elf32_shndx_too_large syment = (
+  unat(elf32_st_shndx   syment) = shn_xindex )"
+
+  
+(*val is_elf64_shndx_too_large : elf64_symbol_table_entry -> bool*)
+definition is_elf64_shndx_too_large  :: " elf64_symbol_table_entry \<Rightarrow> bool "  where 
+     " is_elf64_shndx_too_large syment = (
+  unat(elf64_st_shndx   syment) = shn_xindex )"
+
+
+(** NULL tests *)
+
+(** [is_elf32_null_entry ent] tests whether [ent] is a null symbol table entry,
+  * i.e. all fields set to [0].
+  *)
+(*val is_elf32_null_entry : elf32_symbol_table_entry -> bool*)
+definition is_elf32_null_entry  :: " elf32_symbol_table_entry \<Rightarrow> bool "  where 
+     " is_elf32_null_entry ent = (    
+ ((unat(elf32_st_name   ent)) =( 0 :: nat))
+    \<and> ((unat(elf32_st_value   ent) =( 0 :: nat))
+    \<and> ((unat(elf32_st_size   ent) =( 0 :: nat))
+    \<and> ((unat(elf32_st_info   ent) =( 0 :: nat))
+    \<and> ((unat(elf32_st_other   ent) =( 0 :: nat))
+    \<and> (unat(elf32_st_shndx   ent) =( 0 :: nat)))))))"
+
+    
+(** [is_elf64_null_entry ent] tests whether [ent] is a null symbol table entry,
+  * i.e. all fields set to [0].
+  *)
+(*val is_elf64_null_entry : elf64_symbol_table_entry -> bool*)
+definition is_elf64_null_entry  :: " elf64_symbol_table_entry \<Rightarrow> bool "  where 
+     " is_elf64_null_entry ent = (    
+ ((unat(elf64_st_name   ent)) =( 0 :: nat))
+    \<and> ((unat(elf64_st_value   ent) =( 0 :: nat))
+    \<and> ((unat(elf64_st_size   ent) =( 0 :: nat))
+    \<and> ((unat(elf64_st_info   ent) =( 0 :: nat))
+    \<and> ((unat(elf64_st_other   ent) =( 0 :: nat))
+    \<and> (unat(elf64_st_shndx   ent) =( 0 :: nat)))))))"
+
+
+(** Printing symbol table entries *)
+
+type_synonym symtab_print_bundle ="
+  (nat \<Rightarrow> string) * (nat \<Rightarrow> string)"
 
 (*val string_of_elf32_symbol_table_entry : elf32_symbol_table_entry -> string*)
-
-type_synonym elf32_symbol_table =" elf32_symbol_table_entry list "
+  
+(*val string_of_elf64_symbol_table_entry : elf64_symbol_table_entry -> string*)
 
 (*val string_of_elf32_symbol_table : elf32_symbol_table -> string*)
+  
+definition elf64_null_symbol_table_entry  :: " elf64_symbol_table_entry "  where 
+     " elf64_null_symbol_table_entry = (
+  (| elf64_st_name  = (Elf_Types_Local.uint32_of_nat(( 0 :: nat)))
+   , elf64_st_info  = (Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat)))
+   , elf64_st_other = (Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat)))
+   , elf64_st_shndx = (Elf_Types_Local.uint32_of_nat(( 0 :: nat)))
+   , elf64_st_value = (Elf_Types_Local.uint64_of_nat(( 0 :: nat)))
+   , elf64_st_size  = (of_int (int (( 0 :: nat))))
+   |) )"
 
-record 'a HasElf32SymbolTable_class=
 
-  get_elf32_symbol_table_method ::" 'a \<Rightarrow> elf32_symbol_table "
+(*val string_of_elf64_symbol_table : elf64_symbol_table -> string*)
 
+(** Reading in symbol table (entries) *)
 
-
-(*val read_elf32_symbol_table_entry : endianness -> byte_sequence -> error (elf32_symbol_table_entry * byte_sequence)*)
+(*val read_elf32_symbol_table_entry : endianness -> byte_sequence ->
+  error (elf32_symbol_table_entry * byte_sequence)*)
 definition read_elf32_symbol_table_entry  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(elf32_symbol_table_entry*byte_sequence)error "  where 
      " read_elf32_symbol_table_entry endian bs0 = (
   read_elf32_word endian bs0 >>= (\<lambda> (st_name, bs0) . 
@@ -251,50 +459,9 @@ definition read_elf32_symbol_table_entry  :: " endianness \<Rightarrow> byte_seq
                  elf32_st_size = st_size, elf32_st_info = st_info,
                  elf32_st_other = st_other, elf32_st_shndx = st_shndx |), bs0))))))))"
 
-
-(*val read_elf32_symbol_table : endianness -> byte_sequence -> error elf32_symbol_table*)
-function (sequential,domintros)  read_elf32_symbol_table  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>((elf32_symbol_table_entry)list)error "  where 
-     " read_elf32_symbol_table endian bs0 = (
-  if length bs0 =( 0 :: nat) then
-    error_return []
-  else
-    read_elf32_symbol_table_entry endian bs0 >>= (\<lambda> (head, bs0) . 
-    read_elf32_symbol_table endian bs0 >>= (\<lambda> tail . 
-    error_return (head # tail))))" 
-by pat_completeness auto
-
-
-(** ELF64 symbol table type *)
-
-record elf64_symbol_table_entry =
-  
- elf64_st_name  ::" uint32 "
-   
- elf64_st_info  ::" Elf_Types_Local.unsigned_char "
-   
- elf64_st_other ::" Elf_Types_Local.unsigned_char "
-   
- elf64_st_shndx ::" uint16 "
-   
- elf64_st_value ::" Elf_Types_Local.uint64 "
-   
- elf64_st_size  ::" uint64 "
-   
-
-
-(*val string_of_elf64_symbol_table_entry : elf64_symbol_table_entry -> string*)
-
-type_synonym elf64_symbol_table =" elf64_symbol_table_entry list "
-
-(*val string_of_elf64_symbol_table : elf64_symbol_table -> string*)
-
-record 'a HasElf64SymbolTable_class=
-
-  get_elf64_symbol_table_method ::" 'a \<Rightarrow> elf64_symbol_table "
-
-
-
-(*val read_elf64_symbol_table_entry : endianness -> byte_sequence -> error (elf64_symbol_table_entry * byte_sequence)*)
+                 
+(*val read_elf64_symbol_table_entry : endianness -> byte_sequence ->
+  error (elf64_symbol_table_entry * byte_sequence)*)
 definition read_elf64_symbol_table_entry  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(elf64_symbol_table_entry*byte_sequence)error "  where 
      " read_elf64_symbol_table_entry endian bs0 = (
   read_elf64_word endian bs0 >>= (\<lambda> (st_name, bs0) . 
@@ -308,10 +475,22 @@ definition read_elf64_symbol_table_entry  :: " endianness \<Rightarrow> byte_seq
                  elf64_st_value = st_value, elf64_st_size = st_size |), bs0))))))))"
 
 
+(*val read_elf32_symbol_table : endianness -> byte_sequence -> error elf32_symbol_table*)
+function (sequential,domintros)  read_elf32_symbol_table  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>((elf32_symbol_table_entry)list)error "  where 
+     " read_elf32_symbol_table endian bs0 = (
+  if Byte_sequence.length0 bs0 =( 0 :: nat) then
+    error_return []
+  else
+    read_elf32_symbol_table_entry endian bs0 >>= (\<lambda> (head, bs0) . 
+    read_elf32_symbol_table endian bs0 >>= (\<lambda> tail . 
+    error_return (head # tail))))" 
+by pat_completeness auto
+
+    
 (*val read_elf64_symbol_table : endianness -> byte_sequence -> error elf64_symbol_table*)
 function (sequential,domintros)  read_elf64_symbol_table  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>((elf64_symbol_table_entry)list)error "  where 
      " read_elf64_symbol_table endian bs0 = (
-  if length bs0 =( 0 :: nat) then
+  if Byte_sequence.length0 bs0 =( 0 :: nat) then
     error_return []
   else
     read_elf64_symbol_table_entry endian bs0 >>= (\<lambda> (head, bs0) . 
@@ -320,33 +499,37 @@ function (sequential,domintros)  read_elf64_symbol_table  :: " endianness \<Righ
 by pat_completeness auto
 
 
-(** Association map of symbol name, symbol type, symbol size, and symbol address.
+(** Association map of symbol name, symbol type, symbol size, symbol address
+  * and symbol binding.
   *)
 type_synonym symbol_address_map
-  =" (string * (nat * nat * nat)) list "
+  =" (string * (nat * nat * nat * nat)) list "
 
 (*val get_elf32_symbol_image_address : elf32_symbol_table -> string_table -> error symbol_address_map*)
-definition get_elf32_symbol_image_address  :: "(elf32_symbol_table_entry)list \<Rightarrow> string_table \<Rightarrow>((string*(nat*nat*nat))list)error "  where 
+definition get_elf32_symbol_image_address  :: "(elf32_symbol_table_entry)list \<Rightarrow> string_table \<Rightarrow>((string*(nat*nat*nat*nat))list)error "  where 
      " get_elf32_symbol_image_address symtab strtab = (
   mapM (\<lambda> entry . 
-    (let name = (unat(elf32_st_name   entry)) in
+    (let name1 = (unat(elf32_st_name   entry)) in
     (let addr = (unat(elf32_st_value   entry)) in
-    (let size1 = (unat(elf32_st_size   entry) *( 8 :: nat)) in
+    (let size2 = (unat(elf32_st_size   entry) *( 8 :: nat)) in
     (let typ1  = (get_symbol_type(elf32_st_info   entry)) in
-      String_table.get_string_at name strtab >>= (\<lambda> str . 
-      error_return (str, (typ1, size1, addr)))))))
+    (let bnd  = (get_symbol_binding(elf32_st_info   entry)) in
+      String_table.get_string_at name1 strtab >>= (\<lambda> str . 
+      error_return (str, (typ1, size2, addr, bnd))))))))
   ) symtab )"
 
 
 (*val get_elf64_symbol_image_address : elf64_symbol_table -> string_table -> error symbol_address_map*)
-definition get_elf64_symbol_image_address  :: "(elf64_symbol_table_entry)list \<Rightarrow> string_table \<Rightarrow>((string*(nat*nat*nat))list)error "  where 
+definition get_elf64_symbol_image_address  :: "(elf64_symbol_table_entry)list \<Rightarrow> string_table \<Rightarrow>((string*(nat*nat*nat*nat))list)error "  where 
      " get_elf64_symbol_image_address symtab strtab = (
   mapM (\<lambda> entry . 
-    (let name = (unat(elf64_st_name   entry)) in
+    (let name1 = (unat(elf64_st_name   entry)) in
     (let addr = (unat(elf64_st_value   entry)) in
-    (let size1 = (unat(elf64_st_size   entry)) in
+    (let size2 = (unat(elf64_st_size   entry)) in
     (let typ1  = (get_symbol_type(elf64_st_info   entry)) in
-      String_table.get_string_at name strtab >>= (\<lambda> str . 
-      error_return (str, (typ1, size1, addr)))))))
+    (let bnd  = (get_symbol_binding(elf64_st_info   entry)) in 
+      String_table.get_string_at name1 strtab >>= (\<lambda> str . 
+      error_return (str, (typ1, size2, addr, bnd))))))))
   ) symtab )"
+
 end

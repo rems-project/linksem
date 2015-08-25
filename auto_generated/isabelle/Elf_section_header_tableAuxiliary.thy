@@ -4,20 +4,23 @@ theory "Elf_section_header_tableAuxiliary"
 
 imports 
  	 Main "~~/src/HOL/Library/Code_Target_Numeral"
+	 "Lem_num" 
+	 "Lem_list" 
+	 "Lem_function" 
 	 "Lem_basic_classes" 
 	 "Lem_bool" 
-	 "Lem_function" 
-	 "Lem_list" 
 	 "Lem_maybe" 
-	 "Lem_num" 
 	 "Lem_string" 
-	 "Elf_types" 
-	 "Endianness" 
-	 "String_table" 
-	 "Byte_sequence" 
-	 "Error" 
-	 "Missing_pervasives" 
 	 "Show" 
+	 "Missing_pervasives" 
+	 "Error" 
+	 "Byte_sequence" 
+	 "Endianness" 
+	 "Elf_types_native_uint" 
+	 "Elf_header" 
+	 "String_table" 
+	 "Lem_map" 
+	 "Elf_program_header_table" 
 	 "Elf_section_header_table" 
 
 begin 
@@ -32,6 +35,10 @@ begin
 termination read_elf32_section_header_table' by lexicographic_order
 
 termination read_elf64_section_header_table' by lexicographic_order
+
+termination get_elf32_section_to_segment_mapping by lexicographic_order
+
+termination get_elf64_section_to_segment_mapping by lexicographic_order
 
 
 

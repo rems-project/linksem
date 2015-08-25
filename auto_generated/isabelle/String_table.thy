@@ -4,14 +4,15 @@ theory "String_table"
 
 imports 
  	 Main
-	 "Lem_basic_classes" 
-	 "Lem_list" 
-	 "Lem_maybe" 
 	 "Lem_num" 
+	 "Lem_list" 
+	 "Lem_basic_classes" 
+	 "Lem_maybe" 
 	 "Lem_string" 
-	 "Error" 
-	 "Missing_pervasives" 
 	 "Show" 
+	 "Missing_pervasives" 
+	 "Error" 
+	 "Byte_sequence" 
 
 begin 
 
@@ -20,6 +21,7 @@ begin
 (*open import Maybe*)
 (*open import Num*)
 (*open import String*)
+(*open import Byte_sequence*)
 
 (*open import Error*)
 (*open import Missing_pervasives*)
@@ -38,11 +40,18 @@ definition mk_string_table  :: " string \<Rightarrow> char \<Rightarrow> string_
   Strings (sep, base))"
 
 
+(** [string_table_of_byte_sequence seq] constructs a string table, using the NUL
+  * character as terminator, from a byte sequence. *)
+(*val string_table_of_byte_sequence : byte_sequence -> string_table*)
+definition string_table_of_byte_sequence  :: " byte_sequence \<Rightarrow> string_table "  where 
+     " string_table_of_byte_sequence seq = ( mk_string_table (string_of_byte_sequence seq) (0 :: 8 word))"
+
+
 (** [empty] is the empty string table with an arbitrary choice of delimiter.
   *)
 (*val empty : string_table*)
 definition empty0  :: " string_table "  where 
-     " empty0 = ( Strings (Elf_Types_Local.char_of_unsigned_char (0 :: 8 word), ('''')))"
+     " empty0 = ( Strings ((0 :: 8 word), ('''')))"
 
 
 (** [get_delimiating_character tbl] returns the delimiting character associated
@@ -78,25 +87,6 @@ fun concat_string_table  :: "(string_table)list \<Rightarrow>(string_table)error
 declare concat_string_table.simps [simp del]
 
 
-(** [get_strings tbl] obtains the strings stored in the table, separated using
-  * the designated separator as a delimiting character.
-  *)
-(*val get_strings : string_table -> list string*)
-fun get_strings  :: " string_table \<Rightarrow>(string)list "  where 
-     " get_strings (Strings (sep, base)) = (
-        Elf_Types_Local.split_string_on_char base sep )" 
-declare get_strings.simps [simp del]
-
-
-(** [size tbl] returns the number of strings separated by the designated
-  * separator in the string table [tbl].
-  *)
-(*val size : string_table -> nat*)
-definition size  :: " string_table \<Rightarrow> nat "  where 
-     " size tbl = (
-  List.length (get_strings tbl))"
-
-
 (** [get_string_at index tbl] returns the string starting at character [index]
   * from the start of the base string until the first occurrence of the delimiting
   * character.
@@ -105,25 +95,17 @@ definition size  :: " string_table \<Rightarrow> nat "  where
 definition get_string_at  :: " nat \<Rightarrow> string_table \<Rightarrow>(string)error "  where 
      " get_string_at index1 tbl = (
   (case  Elf_Types_Local.string_suffix index1 (get_base_string tbl) of
-      None     => Fail (''get_string_at: invalid index into string'')
+      None     => Fail (''get_string_at: index out of range'')
     | Some suffix =>
-        (let delim = (get_delimiting_character tbl) in
-        (let tbl   = (mk_string_table suffix delim) in
-          (case  get_strings tbl of
-              []    => Fail (''get_string_at: empty string returned'')
-            | x # xs => error_return x
-          )))
+      (let delim = (get_delimiting_character tbl) in
+      (case  string_index_of delim suffix of
+          Some idx =>
+          (case  string_prefix idx suffix of
+              Some s  => Success s
+            | None => Fail (''get_string_at: index out of range'')
+          )
+        | None => Success suffix
+      ))
   ))"
-
-
-record 'a HasElf32SectionHeaderStringTable_class=
-
-  get_elf32_section_header_string_table_method ::" 'a \<Rightarrow> string_table "
-
-
-
-record 'a HasElf64SectionHeaderStringTable_class=
-
-  get_elf64_section_header_string_table_method ::" 'a \<Rightarrow> string_table "
 
 end

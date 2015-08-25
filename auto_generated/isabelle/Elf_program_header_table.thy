@@ -4,21 +4,34 @@ theory "Elf_program_header_table"
 
 imports 
  	 Main
+	 "Lem_num" 
+	 "Lem_list" 
+	 "Lem_set" 
+	 "Lem_function" 
 	 "Lem_basic_classes" 
 	 "Lem_bool" 
-	 "Lem_function" 
-	 "Lem_list" 
 	 "Lem_maybe" 
-	 "Lem_num" 
 	 "Lem_string" 
-	 "Elf_types" 
-	 "Endianness" 
-	 "Byte_sequence" 
-	 "Error" 
-	 "Missing_pervasives" 
 	 "Show" 
+	 "Missing_pervasives" 
+	 "Error" 
+	 "Byte_sequence" 
+	 "Endianness" 
+	 "Elf_types_native_uint" 
 
 begin 
+
+(** [elf_program_header_table] contains type, functions and other definitions
+  * for working with program header tables and their entries and ELF segments.
+  * Related files are [elf_interpreted_segments] which extracts information
+  * derived from PHTs presented in this file and converts it into a more usable
+  * format for processing.
+  *
+  * FIXME:
+  * Bug in Lem as Lem codebase uses [int] type throughout where [BigInt.t]
+  * is really needed, hence chokes on huge constants below, which is why they are
+  * written in the way that they are.
+  *)
 
 (*open import Basic_classes*)
 (*open import Bool*)
@@ -27,8 +40,9 @@ begin
 (*open import Maybe*)
 (*open import Num*)
 (*open import String*)
+(*import Set*)
 
-(*open import Elf_types*)
+(*open import Elf_types_native_uint*)
 (*open import Endianness*)
 
 (*open import Byte_sequence*)
@@ -36,12 +50,7 @@ begin
 (*open import Missing_pervasives*)
 (*open import Show*)
 
-(** Segment types
-  *
-  * FIXME: Bug in Lem as Lem codebase uses [int] type throughout where [BigInt.t]
-  * is really needed, hence chokes on huge constants below, which is why they are
-  * written in the way that they are.
-  *)
+(** Segment types *)
 
 (** Unused array element.  All other members of the structure are undefined. *)
 definition elf_pt_null  :: " nat "  where 
@@ -100,7 +109,118 @@ definition elf_pt_hiproc  :: " nat "  where
   * the coding of an ELF segment type [st] using [os] and [proc] to render OS-
   * and processor-specific codings.
   *)
-(*val string_of_elf_segment_type : (natural -> string) -> (natural -> string) -> natural -> string*)
+(* XXX: is GNU stuff supposed to be hardcoded here? *)
+(*val string_of_segment_type : (natural -> string) -> (natural -> string) -> natural -> string*)
+		
+(** Segments permission flags *)
+
+(** Execute bit *)
+definition elf_pf_x  :: " nat "  where 
+     " elf_pf_x = (( 1 :: nat))"
+
+(** Write bit *)
+definition elf_pf_w  :: " nat "  where 
+     " elf_pf_w = (( 2 :: nat))"
+
+(** Read bit *)
+definition elf_pf_r  :: " nat "  where 
+     " elf_pf_r = (( 4 :: nat))"
+
+(** The following two bit ranges are reserved for OS- and processor-specific
+  * flags respectively.
+  *)
+definition elf_pf_maskos  :: " nat "  where 
+     " elf_pf_maskos = (( 267386880 :: nat))"
+      (* 0x0ff00000 *)
+definition elf_pf_maskproc  :: " nat "  where 
+     " elf_pf_maskproc = (( 4 :: nat) *( 1006632960 :: nat))"
+ (* 0xf0000000 *)
+
+(** [exact_permission_of_permission m]: ELF has two interpretations of a RWX-style
+  * permission bit [m], an exact permission and an allowable permission.  These
+  * permissions allow us to interpret a flag as an upper bound for behaviour and
+  * an ABI-compliant implementation can choose to interpret the flag [m] as either.
+  *
+  * In the exact interpretation, the upper bound is exactly the natural interpretation
+  * of the flag.  This is encoded in [exact_permission_of_permission], which is
+  * a glorified identity function, though included for completeness.
+  *)
+(*val exact_permissions_of_permission : natural -> error natural*)
+definition exact_permissions_of_permission  :: " nat \<Rightarrow>(nat)error "  where 
+     " exact_permissions_of_permission m = (
+  if m =( 0 :: nat) then
+    error_return(( 0 :: nat))
+  else if m = elf_pf_x then
+    error_return(( 1 :: nat))
+  else if m = elf_pf_w then
+    error_return(( 2 :: nat))
+  else if m = elf_pf_r then
+    error_return(( 4 :: nat))
+  else if m = (elf_pf_x + elf_pf_w) then
+    error_return(( 3 :: nat))
+  else if m = (elf_pf_x + elf_pf_r) then
+    error_return(( 5 :: nat))
+  else if m = (elf_pf_w + elf_pf_r) then
+    error_return(( 6 :: nat))
+  else if m = ((elf_pf_x + elf_pf_r) + elf_pf_w) then
+    error_return(( 7 :: nat))
+  else
+    error_fail (''exact_permission_of_permission: invalid permission flag''))"
+
+
+(** [allowable_permission_of_permission m]: ELF has two interpretations of a RWX-style
+  * permission bit [m], an exact permission and an allowable permission.  These
+  * permissions allow us to interpret a flag as an upper bound for behaviour and
+  * an ABI-compliant implementation can choose to interpret the flag [m] as either.
+  *
+  * In the allowable interpretation, the upper bound is more lax than the natural
+  * interpretation of the flag.
+  *)
+(*val allowable_permissions_of_permission : natural -> error natural*)
+definition allowable_permissions_of_permission  :: " nat \<Rightarrow>(nat)error "  where 
+     " allowable_permissions_of_permission m = (
+  if m =( 0 :: nat) then
+    error_return(( 0 :: nat))
+  else if m = elf_pf_x then
+    error_return(( 5 :: nat))
+  else if m = elf_pf_w then
+    error_return(( 7 :: nat))
+  else if m = elf_pf_r then
+    error_return(( 5 :: nat))
+  else if m = (elf_pf_x + elf_pf_w) then
+    error_return(( 7 :: nat))
+  else if m = (elf_pf_x + elf_pf_r) then
+    error_return(( 5 :: nat))
+  else if m = (elf_pf_w + elf_pf_r) then
+    error_return(( 7 :: nat))
+  else if m = ((elf_pf_x + elf_pf_r) + elf_pf_w) then
+    error_return(( 7 :: nat))
+  else
+    error_fail (''exact_permission_of_permission: invalid permission flag''))"
+
+    
+(*val string_of_elf_segment_permissions : natural -> string*)
+definition string_of_elf_segment_permissions  :: " nat \<Rightarrow> string "  where 
+     " string_of_elf_segment_permissions m = (
+  if m =( 0 :: nat) then
+    (''  '')
+  else if m = elf_pf_x then
+    (''  E'')
+  else if m = elf_pf_w then
+    ('' W '')
+  else if m = elf_pf_r then
+    (''R  '')
+  else if m = (elf_pf_x + elf_pf_w) then
+    ('' WE'')
+  else if m = (elf_pf_x + elf_pf_r) then
+    (''R E'')
+  else if m = (elf_pf_w + elf_pf_r) then
+    (''RW '')
+  else if m = ((elf_pf_x + elf_pf_r) + elf_pf_w) then
+    (''RWE'')
+  else
+    (''Invalid permisssion flag''))"
+
 
 (** Program header table entry type *)
 
@@ -128,6 +248,40 @@ record elf32_program_header_table_entry =
    
 
 
+definition compare_elf32_program_header_table_entry  :: " elf32_program_header_table_entry \<Rightarrow> elf32_program_header_table_entry \<Rightarrow> Lem_basic_classes.ordering "  where 
+     " compare_elf32_program_header_table_entry h1 h2 = (    
+ (lexicographicCompareBy (genericCompare (op<) (op=)) [unat(elf32_p_type   h1),
+    unat(elf32_p_offset   h1),
+    unat(elf32_p_vaddr   h1),
+    unat(elf32_p_paddr   h1),
+    unat(elf32_p_filesz   h1),
+    unat(elf32_p_memsz   h1), 
+    unat(elf32_p_flags   h1),
+    unat(elf32_p_align   h1)]
+    [unat(elf32_p_type   h2),
+    unat(elf32_p_offset   h2),
+    unat(elf32_p_vaddr   h2),
+    unat(elf32_p_paddr   h2),
+    unat(elf32_p_filesz   h2),
+    unat(elf32_p_memsz   h2), 
+    unat(elf32_p_flags   h2),
+    unat(elf32_p_align   h2)]))"
+
+
+definition instance_Basic_classes_Ord_Elf_program_header_table_elf32_program_header_table_entry_dict  :: "(elf32_program_header_table_entry)Ord_class "  where 
+     " instance_Basic_classes_Ord_Elf_program_header_table_elf32_program_header_table_entry_dict = ((|
+
+  compare_method = compare_elf32_program_header_table_entry,
+
+  isLess_method = (\<lambda> f1 .  (\<lambda> f2 .  (compare_elf32_program_header_table_entry f1 f2 = LT))),
+
+  isLessEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (compare_elf32_program_header_table_entry f1 f2) ({LT, EQ}))),
+
+  isGreater_method = (\<lambda> f1 .  (\<lambda> f2 .  (compare_elf32_program_header_table_entry f1 f2 = GT))),
+
+  isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (compare_elf32_program_header_table_entry f1 f2) ({GT, EQ})))|) )"
+
+
 (** Type [elf64_program_header_table_entry] encodes a program header table entry
   * for 64-bit platforms.  Each entry describes a segment in an executable or
   * shared object file.
@@ -150,6 +304,41 @@ record elf64_program_header_table_entry =
    
  elf64_p_align  ::" uint64 " (** Segment alignment memory for memory and file *)
    
+
+
+definition compare_elf64_program_header_table_entry  :: " elf64_program_header_table_entry \<Rightarrow> elf64_program_header_table_entry \<Rightarrow> Lem_basic_classes.ordering "  where 
+     " compare_elf64_program_header_table_entry h1 h2 = (    
+ (lexicographicCompareBy (genericCompare (op<) (op=)) [unat(elf64_p_type   h1),
+    unat(elf64_p_offset   h1),
+    unat(elf64_p_vaddr   h1),
+    unat(elf64_p_paddr   h1),
+    unat(elf64_p_filesz   h1),
+    unat(elf64_p_memsz   h1), 
+    unat(elf64_p_flags   h1),
+    unat(elf64_p_align   h1)]
+    [unat(elf64_p_type   h2),
+    unat(elf64_p_offset   h2),
+    unat(elf64_p_vaddr   h2),
+    unat(elf64_p_paddr   h2),
+    unat(elf64_p_filesz   h2),
+    unat(elf64_p_memsz   h2), 
+    unat(elf64_p_flags   h2),
+    unat(elf64_p_align   h2)]))"
+
+
+definition instance_Basic_classes_Ord_Elf_program_header_table_elf64_program_header_table_entry_dict  :: "(elf64_program_header_table_entry)Ord_class "  where 
+     " instance_Basic_classes_Ord_Elf_program_header_table_elf64_program_header_table_entry_dict = ((|
+
+  compare_method = compare_elf64_program_header_table_entry,
+
+  isLess_method = (\<lambda> f1 .  (\<lambda> f2 .  (compare_elf64_program_header_table_entry f1 f2 = LT))),
+
+  isLessEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (compare_elf64_program_header_table_entry f1 f2) ({LT, EQ}))),
+
+  isGreater_method = (\<lambda> f1 .  (\<lambda> f2 .  (compare_elf64_program_header_table_entry f1 f2 = GT))),
+
+  isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (compare_elf64_program_header_table_entry f1 f2) ({GT, EQ})))|) )"
+
 
   
 (** [string_of_elf32_program_header_table_entry os proc et] produces a string
@@ -176,6 +365,11 @@ record elf64_program_header_table_entry =
   *)
 (*val string_of_elf64_program_header_table_entry_default : elf64_program_header_table_entry -> string*)
 
+(** Parsing and blitting *)
+
+(** [bytes_of_elf32_program_header_table_entry ed ent] blits a 32-bit program
+  * header table entry [ent] into a byte sequence assuming endianness [ed].
+  *)
 (*val bytes_of_elf32_program_header_table_entry : endianness -> elf32_program_header_table_entry -> byte_sequence*)
 definition bytes_of_elf32_program_header_table_entry  :: " endianness \<Rightarrow> elf32_program_header_table_entry \<Rightarrow> byte_sequence "  where 
      " bytes_of_elf32_program_header_table_entry endian entry = (
@@ -190,12 +384,32 @@ definition bytes_of_elf32_program_header_table_entry  :: " endianness \<Rightarr
   , bytes_of_elf32_word endian(elf32_p_align   entry)
   ])"
 
+  
+(** [bytes_of_elf64_program_header_table_entry ed ent] blits a 64-bit program
+  * header table entry [ent] into a byte sequence assuming endianness [ed].
+  *)
+(*val bytes_of_elf64_program_header_table_entry : endianness -> elf64_program_header_table_entry -> byte_sequence*)
+definition bytes_of_elf64_program_header_table_entry  :: " endianness \<Rightarrow> elf64_program_header_table_entry \<Rightarrow> byte_sequence "  where 
+     " bytes_of_elf64_program_header_table_entry endian entry = (
+  Byte_sequence.from_byte_lists [
+    bytes_of_elf64_word  endian(elf64_p_type   entry)
+  , bytes_of_elf64_word  endian(elf64_p_flags   entry)
+  , bytes_of_elf64_off   endian(elf64_p_offset   entry)
+  , bytes_of_elf64_addr  endian(elf64_p_vaddr   entry)
+  , bytes_of_elf64_addr  endian(elf64_p_paddr   entry)
+  , bytes_of_elf64_xword endian(elf64_p_filesz   entry)
+  , bytes_of_elf64_xword endian(elf64_p_memsz   entry)
+  , bytes_of_elf64_xword endian(elf64_p_align   entry)
+  ])"
+
 
 (** [read_elf32_program_header_table_entry endian bs0] reads an ELF32 program header table
   * entry from byte sequence [bs0] assuming endianness [endian].  If [bs0] is larger
   * than necessary, the excess is returned from the function, too.
+  * Fails if the entry cannot be read.
   *)
-(*val read_elf32_program_header_table_entry : endianness -> byte_sequence -> error (elf32_program_header_table_entry * byte_sequence)*)
+(*val read_elf32_program_header_table_entry : endianness -> byte_sequence ->
+  error (elf32_program_header_table_entry * byte_sequence)*)
 definition read_elf32_program_header_table_entry  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(elf32_program_header_table_entry*byte_sequence)error "  where 
      " read_elf32_program_header_table_entry endian bs = (
 	read_elf32_word endian bs >>= (\<lambda> (typ1, bs) . 
@@ -212,22 +426,13 @@ definition read_elf32_program_header_table_entry  :: " endianness \<Rightarrow> 
                 elf32_p_flags = flags, elf32_p_align = align |), bs))))))))))"
 
 
-(*val bytes_of_elf64_program_header_table_entry : endianness -> elf64_program_header_table_entry -> byte_sequence*)
-definition bytes_of_elf64_program_header_table_entry  :: " endianness \<Rightarrow> elf64_program_header_table_entry \<Rightarrow> byte_sequence "  where 
-     " bytes_of_elf64_program_header_table_entry endian entry = (
-  Byte_sequence.from_byte_lists [
-    bytes_of_elf64_word  endian(elf64_p_type   entry)
-  , bytes_of_elf64_word  endian(elf64_p_flags   entry)
-  , bytes_of_elf64_off   endian(elf64_p_offset   entry)
-  , bytes_of_elf64_addr  endian(elf64_p_vaddr   entry)
-  , bytes_of_elf64_addr  endian(elf64_p_paddr   entry)
-  , bytes_of_elf64_xword endian(elf64_p_filesz   entry)
-  , bytes_of_elf64_xword endian(elf64_p_memsz   entry)
-  , bytes_of_elf64_xword endian(elf64_p_align   entry)
-  ])"
-
-
-(*val read_elf64_program_header_table_entry : endianness -> byte_sequence -> error (elf64_program_header_table_entry * byte_sequence)*)
+(** [read_elf64_program_header_table_entry endian bs0] reads an ELF64 program header table
+  * entry from byte sequence [bs0] assuming endianness [endian].  If [bs0] is larger
+  * than necessary, the excess is returned from the function, too.
+  * Fails if the entry cannot be read.
+  *)
+(*val read_elf64_program_header_table_entry : endianness -> byte_sequence ->
+  error (elf64_program_header_table_entry * byte_sequence)*)
 definition read_elf64_program_header_table_entry  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(elf64_program_header_table_entry*byte_sequence)error "  where 
      " read_elf64_program_header_table_entry endian bs = (
   read_elf64_word endian bs >>= (\<lambda> (typ1, bs) . 
@@ -253,12 +458,6 @@ definition read_elf64_program_header_table_entry  :: " endianness \<Rightarrow> 
 type_synonym elf32_program_header_table =" elf32_program_header_table_entry
   list "
 
-record 'a HasElf32ProgramHeaderTable_class=
-
-  get_elf32_program_header_table_method ::" 'a \<Rightarrow>  elf32_program_header_table option "
-
-
-
 (** Type [elf64_program_header_table] represents a program header table for 64-bit
   * ELF files.  A program header table is an array (implemented as a list, here)
   * of program header table entries.
@@ -266,15 +465,20 @@ record 'a HasElf32ProgramHeaderTable_class=
 type_synonym elf64_program_header_table =" elf64_program_header_table_entry
   list "
 
-record 'a HasElf64ProgramHeaderTable_class=
-
-  get_elf64_program_header_table_method ::" 'a \<Rightarrow>  elf64_program_header_table option "
-
-
-
+(** [bytes_of_elf32_program_header_table ed tbl] blits an ELF32 program header
+  * table into a byte sequence assuming endianness [ed].
+  *)
 definition bytes_of_elf32_program_header_table  :: " endianness \<Rightarrow>(elf32_program_header_table_entry)list \<Rightarrow> byte_sequence "  where 
      " bytes_of_elf32_program_header_table endian tbl = (
   Byte_sequence.concat_byte_sequence (List.map (bytes_of_elf32_program_header_table_entry endian) tbl))"
+
+
+(** [bytes_of_elf64_program_header_table ed tbl] blits an ELF64 program header
+  * table into a byte sequence assuming endianness [ed].
+  *)  
+definition bytes_of_elf64_program_header_table  :: " endianness \<Rightarrow>(elf64_program_header_table_entry)list \<Rightarrow> byte_sequence "  where 
+     " bytes_of_elf64_program_header_table endian tbl = (
+  Byte_sequence.concat_byte_sequence (List.map (bytes_of_elf64_program_header_table_entry endian) tbl))"
 
 
 (** [read_elf32_program_header_table' endian bs0] reads an ELF32 program header table from
@@ -284,17 +488,13 @@ definition bytes_of_elf32_program_header_table  :: " endianness \<Rightarrow>(el
   *)
 function (sequential,domintros)  read_elf32_program_header_table'  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>((elf32_program_header_table_entry)list)error "  where 
      " read_elf32_program_header_table' endian bs0 = (
-	if length bs0 =( 0 :: nat) then
+	if Byte_sequence.length0 bs0 =( 0 :: nat) then
   	error_return []
   else
   	read_elf32_program_header_table_entry endian bs0 >>= (\<lambda> (entry, bs1) . 
     read_elf32_program_header_table' endian bs1 >>= (\<lambda> tail . 
     error_return (entry # tail))))" 
 by pat_completeness auto
-
-definition bytes_of_elf64_program_header_table  :: " endianness \<Rightarrow>(elf64_program_header_table_entry)list \<Rightarrow> byte_sequence "  where 
-     " bytes_of_elf64_program_header_table endian tbl = (
-  Byte_sequence.concat_byte_sequence (List.map (bytes_of_elf64_program_header_table_entry endian) tbl))"
 
 
 (** [read_elf64_program_header_table' endian bs0] reads an ELF64 program header table from
@@ -304,7 +504,7 @@ definition bytes_of_elf64_program_header_table  :: " endianness \<Rightarrow>(el
   *)
 function (sequential,domintros)  read_elf64_program_header_table'  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>((elf64_program_header_table_entry)list)error "  where 
      " read_elf64_program_header_table' endian bs0 = (
-  if length bs0 =( 0 :: nat) then
+  if Byte_sequence.length0 bs0 =( 0 :: nat) then
     error_return []
   else
     read_elf64_program_header_table_entry endian bs0 >>= (\<lambda> (entry, bs1) . 
@@ -319,10 +519,11 @@ by pat_completeness auto
   * table multiplied by the fixed entry size.  Bitstring [bs0] may be larger than
   * necessary, in which case the excess is returned.
   *)
-(*val read_elf32_program_header_table : natural -> endianness -> byte_sequence -> error (elf32_program_header_table * byte_sequence)*)
+(*val read_elf32_program_header_table : natural -> endianness -> byte_sequence ->
+  error (elf32_program_header_table * byte_sequence)*)
 definition read_elf32_program_header_table  :: " nat \<Rightarrow> endianness \<Rightarrow> byte_sequence \<Rightarrow>((elf32_program_header_table_entry)list*byte_sequence)error "  where 
      " read_elf32_program_header_table table_size endian bs0 = (
-	partition table_size bs0 >>= (\<lambda> (eat, rest) . 
+	partition0 table_size bs0 >>= (\<lambda> (eat, rest) . 
 	read_elf32_program_header_table' endian eat >>= (\<lambda> table . 
 	error_return (table, rest))))"
 
@@ -333,10 +534,11 @@ definition read_elf32_program_header_table  :: " nat \<Rightarrow> endianness \<
   * table multiplied by the fixed entry size.  Bitstring [bs0] may be larger than
   * necessary, in which case the excess is returned.
   *)
-(*val read_elf64_program_header_table : natural -> endianness -> byte_sequence -> error (elf64_program_header_table * byte_sequence)*)
+(*val read_elf64_program_header_table : natural -> endianness -> byte_sequence ->
+  error (elf64_program_header_table * byte_sequence)*)
 definition read_elf64_program_header_table  :: " nat \<Rightarrow> endianness \<Rightarrow> byte_sequence \<Rightarrow>((elf64_program_header_table_entry)list*byte_sequence)error "  where 
      " read_elf64_program_header_table table_size endian bs0 = (
-  partition table_size bs0 >>= (\<lambda> (eat, rest) . 
+  partition0 table_size bs0 >>= (\<lambda> (eat, rest) . 
   read_elf64_program_header_table' endian eat >>= (\<lambda> table . 
   error_return (table, rest))))"
 
@@ -361,26 +563,73 @@ type_synonym pht_print_bundle =" (nat \<Rightarrow> string) * (nat \<Rightarrow>
   *)
 (*val string_of_elf64_program_header_table : pht_print_bundle -> elf64_program_header_table -> string*)
 
+(** Static/dynamic linkage *)
+
+(** [get_elf32_dynamic_linked pht] tests whether an ELF32 file is a dynamically
+  * linked object by traversing the program header table and attempting to find
+  * a header describing a segment with the name of an associated interpreter.
+  * Returns [true] if any such header is found, [false] --- indicating static
+  * linkage --- otherwise.
+  *)
 (*val get_elf32_dynamic_linked : elf32_program_header_table -> bool*)
 definition get_elf32_dynamic_linked  :: "(elf32_program_header_table_entry)list \<Rightarrow> bool "  where 
      " get_elf32_dynamic_linked pht = (
   ((\<exists> x \<in> (set pht).  (\<lambda> p .  unat(elf32_p_type   p) = elf_pt_interp) x)))"
 
 
-(*val get_elf32_static_linked : elf32_program_header_table -> bool*)
-definition get_elf32_static_linked  :: "(elf32_program_header_table_entry)list \<Rightarrow> bool "  where 
-     " get_elf32_static_linked pht = (
-  \<not> (get_elf32_dynamic_linked pht))"
-
-
+(** [get_elf64_dynamic_linked pht] tests whether an ELF64 file is a dynamically
+  * linked object by traversing the program header table and attempting to find
+  * a header describing a segment with the name of an associated interpreter.
+  * Returns [true] if any such header is found, [false] --- indicating static
+  * linkage --- otherwise.
+  *)
 (*val get_elf64_dynamic_linked : elf64_program_header_table -> bool*)
 definition get_elf64_dynamic_linked  :: "(elf64_program_header_table_entry)list \<Rightarrow> bool "  where 
      " get_elf64_dynamic_linked pht = (
   ((\<exists> x \<in> (set pht).  (\<lambda> p .  unat(elf64_p_type   p) = elf_pt_interp) x)))"
 
 
+(** [get_elf32_static_linked] is a utility function defined as the inverse
+  * of [get_elf32_dynamic_linked].
+  *)
+(*val get_elf32_static_linked : elf32_program_header_table -> bool*)
+definition get_elf32_static_linked  :: "(elf32_program_header_table_entry)list \<Rightarrow> bool "  where 
+     " get_elf32_static_linked pht = (
+  \<not> (get_elf32_dynamic_linked pht))"
+
+
+(** [get_elf64_static_linked] is a utility function defined as the inverse
+  * of [get_elf64_dynamic_linked].
+  *)
 (*val get_elf64_static_linked : elf64_program_header_table -> bool*)
 definition get_elf64_static_linked  :: "(elf64_program_header_table_entry)list \<Rightarrow> bool "  where 
      " get_elf64_static_linked pht = (
   \<not> (get_elf64_dynamic_linked pht))"
+
+  
+(*val get_elf32_requested_interpreter : elf32_program_header_table_entry ->
+  byte_sequence -> error string*)
+definition get_elf32_requested_interpreter  :: " elf32_program_header_table_entry \<Rightarrow> byte_sequence \<Rightarrow>(string)error "  where 
+     " get_elf32_requested_interpreter pent bs0 = (
+  if unat(elf32_p_type   pent) = elf_pt_interp then
+    (let off = (unat(elf32_p_offset    pent)) in
+    (let siz = (unat(elf32_p_filesz   pent)) in
+      Byte_sequence.offset_and_cut off (siz -( 1 :: nat)) bs0 >>= (\<lambda> cut1 . 
+      error_return (Byte_sequence.string_of_byte_sequence cut1))))
+  else
+    error_fail (''get_elf32_requested_interpreter: not an INTERP segment header''))"
+
+  
+(*val get_elf64_requested_interpreter : elf64_program_header_table_entry ->
+  byte_sequence -> error string*)
+definition get_elf64_requested_interpreter  :: " elf64_program_header_table_entry \<Rightarrow> byte_sequence \<Rightarrow>(string)error "  where 
+     " get_elf64_requested_interpreter pent bs0 = (
+  if unat(elf64_p_type   pent) = elf_pt_interp then
+    (let off = (unat(elf64_p_offset     pent)) in
+    (let siz = (unat(elf64_p_filesz   pent)) in
+      Byte_sequence.offset_and_cut off (siz -( 1 :: nat)) bs0 >>= (\<lambda> cut1 . 
+      error_return (Byte_sequence.string_of_byte_sequence cut1))))
+  else
+    error_fail (''get_elf64_requested_interpreter: not an INTERP segment header''))"
+
 end

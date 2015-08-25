@@ -4,46 +4,64 @@ theory "Elf_section_header_table"
 
 imports 
  	 Main
+	 "Lem_num" 
+	 "Lem_list" 
+	 "Lem_function" 
 	 "Lem_basic_classes" 
 	 "Lem_bool" 
-	 "Lem_function" 
-	 "Lem_list" 
 	 "Lem_maybe" 
-	 "Lem_num" 
 	 "Lem_string" 
-	 "Elf_types" 
-	 "Endianness" 
-	 "String_table" 
-	 "Byte_sequence" 
-	 "Error" 
-	 "Missing_pervasives" 
 	 "Show" 
+	 "Missing_pervasives" 
+	 "Error" 
+	 "Byte_sequence" 
+	 "Endianness" 
+	 "Elf_types_native_uint" 
+	 "Elf_header" 
+	 "String_table" 
+	 "Lem_map" 
+	 "Elf_program_header_table" 
 
 begin 
+
+(** [elf_section_header_table] provides types, functions and other definitions
+  * for working with section header tables and their entries.
+  *
+  * TODO:  All relevant definitions and types are now captured.  Some obvious
+  * 'helper' functions can still be written:
+  *
+  *   * Extract SHT indices of section groups.
+  *   * Finish the formalisation of the 'special sections' with their expected
+  *     types and attributes.  See the TODO comment above the
+  *     [construct_special_sections] function.
+  *   * Formalise the natural language invariants on section headers and the
+  *     section header table expressed in the SCO specification.
+  *)
 
 (*open import Basic_classes*)
 (*open import Bool*)
 (*open import Function*)
 (*open import List*)
+(*open import Map*)
 (*open import Maybe*)
 (*open import Num*)
 (*open import String*)
-
-(*open import Elf_types*)
-(*open import Endianness*)
-(*open import String_table*)
 
 (*open import Byte_sequence*)
 (*open import Error*)
 (*open import Missing_pervasives*)
 (*open import Show*)
 
+(*open import Endianness*)
+(*open import String_table*)
+
+(*open import Elf_header*)
+(*open import Elf_types_native_uint*)
+(*open import Elf_program_header_table*)
+
 (** Special section indices. *)
 
-(** [shn_undef]: marks an undefined, missing or irrelevant section reference.
-  *)
-definition shn_undef  :: " nat "  where 
-     " shn_undef = (( 0 :: nat))"
+(** See elf_header.lem for shn_undef *)
 
 (** [shn_loreserve]: this specifies the lower bound of the range of reserved
   * indices.
@@ -86,13 +104,9 @@ definition shn_abs  :: " nat "  where
 definition shn_common  :: " nat "  where 
      " shn_common = (( 65522 :: nat))"
  (* 0xfff2 *)
-(** [shn_xindex]: an escape value.  It indicates the actual section header index
-  * is too large to fit in the containing field and is located in another
-  * location (specific to the structure where it appears).
-  *)
-definition shn_xindex  :: " nat "  where 
-     " shn_xindex = (( 65535 :: nat))"
- (* 0xffff *)
+
+(** See elf_header.lem for shn_xindex. *)
+
 (** [shn_hireserve]: specifies the upper-bound of reserved values.
   *)
 definition shn_hireserve  :: " nat "  where 
@@ -201,6 +215,10 @@ definition sht_group  :: " nat "  where
 definition sht_symtab_shndx  :: " nat "  where 
      " sht_symtab_shndx = (( 18 :: nat))"
 
+
+(** The following ranges are reserved solely for OS-, processor- and user-
+  * specific semantics, respectively.
+  *)
 definition sht_loos  :: " nat "  where 
      " sht_loos = (((( 3 :: nat) *( 1024 :: nat)) *( 1024 :: nat)) *( 512 :: nat))"
  (* 1610612736 (* 0x60000000 *) *)
@@ -220,8 +238,186 @@ definition sht_hiuser  :: " nat "  where
      " sht_hiuser = ( (( 603979775 :: nat) *( 4 :: nat)) +( 3 :: nat))"
  (* 2415919103 (* 0x8fffffff *) *)
 
+(* XXX: is GNU stuff supposed to be hardcoded here? *)
 (*val string_of_section_type : (natural -> string) -> (natural -> string) ->
   (natural -> string) -> natural -> string*)
+
+(** Section flag numeric values. *)
+
+(** The section contains data that should be writable during program execution.
+  *)
+definition shf_write  :: " nat "  where 
+     " shf_write = (( 1 :: nat))"
+
+
+(** The section occupies memory during program execution.
+  *)
+definition shf_alloc  :: " nat "  where 
+     " shf_alloc = (( 2 :: nat))"
+
+
+(** The section contains executable instructions.
+  *)
+definition shf_execinstr  :: " nat "  where 
+     " shf_execinstr = (( 4 :: nat))"
+
+
+(** The data in the section may be merged to reduce duplication.  Each section
+  * is compared based on name, type and flags set with sections with identical
+  * values at run time being mergeable.
+  *)
+definition shf_merge  :: " nat "  where 
+     " shf_merge = (( 16 :: nat))"
+
+
+(** The section contains null-terminated character strings.
+  *)
+definition shf_strings  :: " nat "  where 
+     " shf_strings = (( 32 :: nat))"
+
+
+(** The [info] field of this section header contains a section header table
+  * index.
+  *)
+definition shf_info_link  :: " nat "  where 
+     " shf_info_link = (( 64 :: nat))"
+
+
+(** Adds special link ordering for link editors.
+  *)
+definition shf_link_order  :: " nat "  where 
+     " shf_link_order = (( 128 :: nat))"
+
+
+(** This section requires special OS-specific processing beyond the standard
+  * link rules.
+  *)
+definition shf_os_nonconforming  :: " nat "  where 
+     " shf_os_nonconforming = (( 256 :: nat))"
+
+
+(** This section is a member (potentially the only member) of a link group.
+  *)
+definition shf_group  :: " nat "  where 
+     " shf_group = (( 512 :: nat))"
+
+
+(** This section contains Thread Local Storage (TLS) meaning that each thread of
+  * execution has its own instance of this data.
+  *)
+definition shf_tls  :: " nat "  where 
+     " shf_tls = (( 1024 :: nat))"
+
+
+(** This section contains compressed data.  Compressed data may not be marked as
+  * allocatable.
+  *)
+definition shf_compressed  :: " nat "  where 
+     " shf_compressed = (( 2048 :: nat))"
+
+
+(** All bits included in these masks are reserved for OS and processor specific
+  * semantics respectively.
+  *)
+definition shf_mask_os  :: " nat "  where 
+     " shf_mask_os = (( 267386880 :: nat))"
+      (* 0x0ff00000 *)
+definition shf_mask_proc  :: " nat "  where 
+     " shf_mask_proc = (( 4 :: nat) *( 1006632960 :: nat))"
+ (* 0xf0000000 *)
+
+(* TODO: finish me!  Add as required. *)
+(*val string_of_section_flags : (natural -> string) -> (natural -> string) -> natural -> string*)
+
+(** Section compression. *)
+
+(** Type [elf32_compression_header] provides information about the compression and
+  * decompression of compressed sections.  All compressed sections on ELF32 begin
+  * with an [elf32_compression_header] entry.
+  *)
+record elf32_compression_header =
+  
+ elf32_chdr_type      ::" uint32 "  (** Specifies the compression algorithm *)
+   
+ elf32_chdr_size      ::" uint32 "  (** Size in bytes of the uncompressed data *)
+   
+ elf32_chdr_addralign ::" uint32 "  (** Specifies the required alignment of the uncompressed data *)
+   
+
+
+(** Type [elf64_compression_header] provides information about the compression and
+  * decompression of compressed sections.  All compressed sections on ELF64 begin
+  * with an [elf64_compression_header] entry.
+  *)   
+record elf64_compression_header =
+  
+ elf64_chdr_type      ::" uint32 "  (** Specified the compression algorithm *)
+   
+ elf64_chdr_reserved  ::" uint32 "
+   
+ elf64_chdr_size      ::" uint64 " (** Size in bytes of the uncompressed data *)
+   
+ elf64_chdr_addralign ::" uint64 " (** Specifies the required alignment of the uncompressed data *)
+   
+
+
+(** This section is compressed with the ZLIB algorithm.  The compressed data begins
+  * at the first byte immediately following the end of the compression header.
+  *)   
+definition elfcompress_zlib  :: " nat "  where 
+     " elfcompress_zlib = (( 1 :: nat))"
+
+
+(** Values in these ranges are reserved for OS-specific semantics.
+  *)
+definition elfcompress_loos  :: " nat "  where 
+     " elfcompress_loos = (( 4 :: nat) *( 402653184 :: nat))"
+       (* 0x60000000 *)
+definition elfcompress_hios  :: " nat "  where 
+     " elfcompress_hios = ( (( 2 :: nat) *( 939524095 :: nat)) +( 1 :: nat))"
+ (* 0x6fffffff *)
+
+(** Values in these ranges are reserved for processor-specific semantics.
+  *)
+definition elfcompress_loproc  :: " nat "  where 
+     " elfcompress_loproc = (( 4 :: nat) *( 469762048 :: nat))"
+        (* 0x70000000 *)
+definition elfcompress_hiproc  :: " nat "  where 
+     " elfcompress_hiproc = ( (( 2 :: nat) *( 1073741823 :: nat)) +( 1 :: nat))"
+ (* 0x7fffffff *)
+
+(** [read_elf32_compression_header ed bs0] reads an [elf32_compression_header]
+  * entry from byte sequence [bs0], interpreting [bs0] with endianness [ed].
+  * Also returns the suffix of [bs0] after reading in the compression header.
+  * Fails if the header cannot be read.
+  *)
+(*val read_elf32_compression_header : endianness -> byte_sequence ->
+  error (elf32_compression_header * byte_sequence)*)
+definition read_elf32_compression_header  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(elf32_compression_header*byte_sequence)error "  where 
+     " read_elf32_compression_header ed bs0 = (
+  read_elf32_word ed bs0 >>= (\<lambda> (typ1, bs1) . 
+  read_elf32_word ed bs1 >>= (\<lambda> (siz, bs2) . 
+  read_elf32_word ed bs2 >>= (\<lambda> (ali, bs3) . 
+  error_return ((| elf32_chdr_type = typ1, elf32_chdr_size = siz,
+    elf32_chdr_addralign = ali |), bs3)))))"
+
+
+(** [read_elf64_compression_header ed bs0] reads an [elf64_compression_header]
+  * entry from byte sequence [bs0], interpreting [bs0] with endianness [ed].
+  * Also returns the suffix of [bs0] after reading in the compression header.
+  * Fails if the header cannot be read.
+  *)
+(*val read_elf64_compression_header : endianness -> byte_sequence ->
+  error (elf64_compression_header * byte_sequence)*)
+definition read_elf64_compression_header  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(elf64_compression_header*byte_sequence)error "  where 
+     " read_elf64_compression_header ed bs0 = (
+  read_elf64_word ed bs0  >>= (\<lambda> (typ1, bs1) . 
+  read_elf64_word ed bs1  >>= (\<lambda> (res, bs2) . 
+  read_elf64_xword ed bs2 >>= (\<lambda> (siz, bs3) . 
+  read_elf64_xword ed bs3 >>= (\<lambda> (ali, bs4) . 
+  error_return ((| elf64_chdr_type = typ1, elf64_chdr_reserved = res,
+    elf64_chdr_size = siz, elf64_chdr_addralign = ali |), bs4))))))"
+
 
 (** Section header table entry type. *)
 
@@ -252,6 +448,45 @@ record elf32_section_header_table_entry =
  elf32_sh_entsize   ::" uint32 " (** Size of each entry in table, if section is one *)
    
 
+   
+definition compare_elf32_section_header_table_entry  :: " elf32_section_header_table_entry \<Rightarrow> elf32_section_header_table_entry \<Rightarrow> Lem_basic_classes.ordering "  where 
+     " compare_elf32_section_header_table_entry h1 h2 = (   
+ (lexicographicCompareBy (genericCompare (op<) (op=)) 
+    [unat(elf32_sh_name   h1),
+    unat(elf32_sh_type   h1), 
+    unat(elf32_sh_flags   h1),
+    unat(elf32_sh_addr   h1), 
+    unat(elf32_sh_offset   h1),
+    unat(elf32_sh_size   h1), 
+    unat(elf32_sh_link   h1), 
+    unat(elf32_sh_info   h1), 
+    unat(elf32_sh_addralign   h1), 
+    unat(elf32_sh_entsize   h1)]
+    [unat(elf32_sh_name   h2),
+    unat(elf32_sh_type   h2), 
+    unat(elf32_sh_flags   h2),
+    unat(elf32_sh_addr   h2), 
+    unat(elf32_sh_offset   h2),
+    unat(elf32_sh_size   h2), 
+    unat(elf32_sh_link   h2), 
+    unat(elf32_sh_info   h2), 
+    unat(elf32_sh_addralign   h2), 
+    unat(elf32_sh_entsize   h2)]))"
+
+
+definition instance_Basic_classes_Ord_Elf_section_header_table_elf32_section_header_table_entry_dict  :: "(elf32_section_header_table_entry)Ord_class "  where 
+     " instance_Basic_classes_Ord_Elf_section_header_table_elf32_section_header_table_entry_dict = ((|
+
+  compare_method = compare_elf32_section_header_table_entry,
+
+  isLess_method = (\<lambda> f1 .  (\<lambda> f2 .  (compare_elf32_section_header_table_entry f1 f2 = LT))),
+
+  isLessEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (compare_elf32_section_header_table_entry f1 f2) ({LT, EQ}))),
+
+  isGreater_method = (\<lambda> f1 .  (\<lambda> f2 .  (compare_elf32_section_header_table_entry f1 f2 = GT))),
+
+  isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (compare_elf32_section_header_table_entry f1 f2) ({GT, EQ})))|) )"
+
 
 (** [elf64_section_header_table_entry] is the type of entries in the section
   * header table in 64-bit ELF files.  Each entry in the table details a section
@@ -281,7 +516,67 @@ record elf64_section_header_table_entry =
    
 
 
-(*val bytes_of_elf32_section_header_table_entry : endianness -> elf32_section_header_table_entry -> byte_sequence*)
+definition compare_elf64_section_header_table_entry  :: " elf64_section_header_table_entry \<Rightarrow> elf64_section_header_table_entry \<Rightarrow> Lem_basic_classes.ordering "  where 
+     " compare_elf64_section_header_table_entry h1 h2 = (   
+ (lexicographicCompareBy (genericCompare (op<) (op=)) 
+    [unat(elf64_sh_name   h1),
+    unat(elf64_sh_type   h1), 
+    unat(elf64_sh_flags   h1),
+    unat(elf64_sh_addr   h1), 
+    unat(elf64_sh_offset   h1),
+    unat(elf64_sh_size   h1), 
+    unat(elf64_sh_link   h1), 
+    unat(elf64_sh_info   h1), 
+    unat(elf64_sh_addralign   h1), 
+    unat(elf64_sh_entsize   h1)]
+    [unat(elf64_sh_name   h2),
+    unat(elf64_sh_type   h2), 
+    unat(elf64_sh_flags   h2),
+    unat(elf64_sh_addr   h2), 
+    unat(elf64_sh_offset   h2),
+    unat(elf64_sh_size   h2), 
+    unat(elf64_sh_link   h2), 
+    unat(elf64_sh_info   h2), 
+    unat(elf64_sh_addralign   h2), 
+    unat(elf64_sh_entsize   h2)]))"
+
+
+definition instance_Basic_classes_Ord_Elf_section_header_table_elf64_section_header_table_entry_dict  :: "(elf64_section_header_table_entry)Ord_class "  where 
+     " instance_Basic_classes_Ord_Elf_section_header_table_elf64_section_header_table_entry_dict = ((|
+
+  compare_method = compare_elf64_section_header_table_entry,
+
+  isLess_method = (\<lambda> f1 .  (\<lambda> f2 .  (compare_elf64_section_header_table_entry f1 f2 = LT))),
+
+  isLessEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (compare_elf64_section_header_table_entry f1 f2) ({LT, EQ}))),
+
+  isGreater_method = (\<lambda> f1 .  (\<lambda> f2 .  (compare_elf64_section_header_table_entry f1 f2 = GT))),
+
+  isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (compare_elf64_section_header_table_entry f1 f2) ({GT, EQ})))|) )"
+
+(** Section header table type *)
+
+(** Type [elf32_section_header_table] represents a section header table for 32-bit
+  * ELF files.  A section header table is an array (implemented as a list, here)
+  * of section header table entries.
+  *)
+type_synonym elf32_section_header_table =" elf32_section_header_table_entry
+  list "
+
+(** Type [elf64_section_header_table] represents a section header table for 64-bit
+  * ELF files.  A section header table is an array (implemented as a list, here)
+  * of section header table entries.
+  *)
+type_synonym elf64_section_header_table =" elf64_section_header_table_entry
+  list "
+
+(** Parsing and blitting *)
+
+(** [bytes_of_elf32_section_header_table_entry ed ent] blits [ent] to a byte sequence
+  * assuming endianness [ed].
+  *)
+(*val bytes_of_elf32_section_header_table_entry : endianness ->
+  elf32_section_header_table_entry -> byte_sequence*)
 definition bytes_of_elf32_section_header_table_entry  :: " endianness \<Rightarrow> elf32_section_header_table_entry \<Rightarrow> byte_sequence "  where 
      " bytes_of_elf32_section_header_table_entry endian entry = (
   Byte_sequence.from_byte_lists [
@@ -298,7 +593,12 @@ definition bytes_of_elf32_section_header_table_entry  :: " endianness \<Rightarr
   ])"
 
 
-(*val read_elf32_section_header_table_entry : endianness -> byte_sequence -> error (elf32_section_header_table_entry * byte_sequence)*)
+(** [read_elf32_section_header_table_entry ed bs0] reads a section header table
+  * entry from [bs0] assuming endianness [ed].  Also returns the suffix of [bs0]
+  * after parsing.  Fails if the entry cannot be read.
+  *)
+(*val read_elf32_section_header_table_entry : endianness -> byte_sequence ->
+  error (elf32_section_header_table_entry * byte_sequence)*)
 definition read_elf32_section_header_table_entry  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(elf32_section_header_table_entry*byte_sequence)error "  where 
      " read_elf32_section_header_table_entry endian bs = (
 	read_elf32_word endian bs >>= (\<lambda> (sh_name, bs) . 
@@ -318,7 +618,11 @@ definition read_elf32_section_header_table_entry  :: " endianness \<Rightarrow> 
                 elf32_sh_addralign = sh_addralign, elf32_sh_entsize = sh_entsize |), bs))))))))))))"
 
 
-(*val bytes_of_elf64_section_header_table_entry : endianness -> elf64_section_header_table_entry -> byte_sequence*)
+(** [bytes_of_elf64_section_header_table_entry ed ent] blits [ent] to a byte sequence
+  * assuming endianness [ed].
+  *)
+(*val bytes_of_elf64_section_header_table_entry : endianness ->
+  elf64_section_header_table_entry -> byte_sequence*)
 definition bytes_of_elf64_section_header_table_entry  :: " endianness \<Rightarrow> elf64_section_header_table_entry \<Rightarrow> byte_sequence "  where 
      " bytes_of_elf64_section_header_table_entry endian entry = (
   Byte_sequence.from_byte_lists [
@@ -335,17 +639,22 @@ definition bytes_of_elf64_section_header_table_entry  :: " endianness \<Rightarr
   ])"
 
 
-(*val read_elf64_section_header_table_entry : endianness -> byte_sequence -> error (elf64_section_header_table_entry * byte_sequence)*)
+(** [read_elf64_section_header_table_entry ed bs0] reads a section header table
+  * entry from [bs0] assuming endianness [ed].  Also returns the suffix of [bs0]
+  * after parsing.  Fails if the entry cannot be read.
+  *)
+(*val read_elf64_section_header_table_entry : endianness -> byte_sequence ->
+  error (elf64_section_header_table_entry * byte_sequence)*)
 definition read_elf64_section_header_table_entry  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(elf64_section_header_table_entry*byte_sequence)error "  where 
      " read_elf64_section_header_table_entry endian bs = (
-  read_elf64_word endian bs >>= (\<lambda> (sh_name, bs) . 
-  read_elf64_word endian bs >>= (\<lambda> (sh_type, bs) . 
+  read_elf64_word endian bs  >>= (\<lambda> (sh_name, bs) . 
+  read_elf64_word endian bs  >>= (\<lambda> (sh_type, bs) . 
   read_elf64_xword endian bs >>= (\<lambda> (sh_flags, bs) . 
-  read_elf64_addr endian bs >>= (\<lambda> (sh_addr, bs) . 
-  read_elf64_off  endian bs >>= (\<lambda> (sh_offset, bs) . 
+  read_elf64_addr endian bs  >>= (\<lambda> (sh_addr, bs) . 
+  read_elf64_off  endian bs  >>= (\<lambda> (sh_offset, bs) . 
   read_elf64_xword endian bs >>= (\<lambda> (sh_size, bs) . 
-  read_elf64_word endian bs >>= (\<lambda> (sh_link, bs) . 
-  read_elf64_word endian bs >>= (\<lambda> (sh_info, bs) . 
+  read_elf64_word endian bs  >>= (\<lambda> (sh_link, bs) . 
+  read_elf64_word endian bs  >>= (\<lambda> (sh_info, bs) . 
   read_elf64_xword endian bs >>= (\<lambda> (sh_addralign, bs) . 
   read_elf64_xword endian bs >>= (\<lambda> (sh_entsize, bs) . 
     error_return ((| elf64_sh_name = sh_name, elf64_sh_type = sh_type,
@@ -355,63 +664,36 @@ definition read_elf64_section_header_table_entry  :: " endianness \<Rightarrow> 
                 elf64_sh_addralign = sh_addralign, elf64_sh_entsize = sh_entsize |), bs))))))))))))"
 
 
-(** The [sht_print_bundle] type is used to tidy up other type signatures.  Some of the
-  * top-level string_of_ functions require six or more functions passed to them,
-  * which quickly gets out of hand.  This type is used to reduce that complexity.
-  * The first component of the type is an OS specific print function, the second is
-  * a processor specific print function.
+(** [bytes_of_elf32_section_header_table ed tbl] blits section header table [tbl]
+  * to a byte sequence assuming endianness [ed].
   *)
-type_synonym sht_print_bundle =" (nat \<Rightarrow> string) * (nat \<Rightarrow> string) * (nat \<Rightarrow> string)"
-
-(*val string_of_elf32_section_header_table_entry : sht_print_bundle -> elf32_section_header_table_entry -> string*)
-
-(*val string_of_elf64_section_header_table_entry : sht_print_bundle -> elf64_section_header_table_entry -> string*)
-
-(*val string_of_elf32_section_header_table_entry' : sht_print_bundle -> string_table -> elf32_section_header_table_entry -> string*)
-
-(*val string_of_elf64_section_header_table_entry' : sht_print_bundle -> string_table -> elf64_section_header_table_entry -> string*)
-
-(*val string_of_elf32_section_header_table_entry_default : elf32_section_header_table_entry -> string*)
-
-(*val string_of_elf64_section_header_table_entry_default : elf64_section_header_table_entry -> string*)
-
-(** Section header table type. *)
-
-(** Type [elf32_section_header_table] represents a section header table for 32-bit
-  * ELF files.  A section header table is an array (implemented as a list, here)
-  * of section header table entries.
-  *)
-type_synonym elf32_section_header_table =" elf32_section_header_table_entry
-  list "
-
-record 'a HasElf32SectionHeaderTable_class=
-
-  get_elf32_section_header_table_method ::" 'a \<Rightarrow>  elf32_section_header_table option "
-
-
-
-(** Type [elf64_section_header_table] represents a section header table for 64-bit
-  * ELF files.  A section header table is an array (implemented as a list, here)
-  * of section header table entries.
-  *)
-type_synonym elf64_section_header_table =" elf64_section_header_table_entry
-  list "
-
-record 'a HasElf64SectionHeaderTable_class=
-
-  get_elf64_section_header_table_method ::" 'a \<Rightarrow>  elf64_section_header_table option "
-
-
-
-(*val bytes_of_elf32_section_header_table : endianness -> elf32_section_header_table -> byte_sequence*)
+(*val bytes_of_elf32_section_header_table : endianness ->
+  elf32_section_header_table -> byte_sequence*)
 definition bytes_of_elf32_section_header_table  :: " endianness \<Rightarrow>(elf32_section_header_table_entry)list \<Rightarrow> byte_sequence "  where 
      " bytes_of_elf32_section_header_table endian tbl = (
   Byte_sequence.concat_byte_sequence (List.map (bytes_of_elf32_section_header_table_entry endian) tbl))"
 
+  
+(** [bytes_of_elf64_section_header_table ed tbl] blits section header table [tbl]
+  * to a byte sequence assuming endianness [ed].
+  *)
+(*val bytes_of_elf64_section_header_table : endianness ->
+  elf64_section_header_table -> byte_sequence*)
+definition bytes_of_elf64_section_header_table  :: " endianness \<Rightarrow>(elf64_section_header_table_entry)list \<Rightarrow> byte_sequence "  where 
+     " bytes_of_elf64_section_header_table endian tbl = (
+  Byte_sequence.concat_byte_sequence (List.map (bytes_of_elf64_section_header_table_entry endian) tbl))"
 
+
+(** [read_elf32_section_header_table' ed bs0] parses an ELF32 section header table
+  * from byte sequence [bs0] assuming endianness [ed].  Assumes [bs0] is of the
+  * exact length required to parse the entire table.
+  * Fails if any of the section header table entries cannot be parsed.
+  *)
+(*val read_elf32_section_header_table' : endianness -> byte_sequence ->
+  error elf32_section_header_table*)
 function (sequential,domintros)  read_elf32_section_header_table'  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>((elf32_section_header_table_entry)list)error "  where 
      " read_elf32_section_header_table' endian bs0 = (
-  if length bs0 =( 0 :: nat) then
+  if Byte_sequence.length0 bs0 =( 0 :: nat) then
     error_return []
   else
     read_elf32_section_header_table_entry endian bs0 >>= (\<lambda> (entry, bs1) . 
@@ -419,25 +701,17 @@ function (sequential,domintros)  read_elf32_section_header_table'  :: " endianne
     error_return (entry # tail))))" 
 by pat_completeness auto
 
-
-(*val read_elf32_section_header_table : natural -> endianness -> byte_sequence -> error (elf32_section_header_table * byte_sequence)*)
-definition read_elf32_section_header_table  :: " nat \<Rightarrow> endianness \<Rightarrow> byte_sequence \<Rightarrow>((elf32_section_header_table_entry)list*byte_sequence)error "  where 
-     " read_elf32_section_header_table table_size endian bs0 = (
-  partition table_size bs0 >>= (\<lambda> (eat, rest) . 
-  read_elf32_section_header_table' endian eat >>= (\<lambda> entries . 
-  error_return (entries, rest))))"
-
-;;
-
-(*val bytes_of_elf64_section_header_table : endianness -> elf64_section_header_table -> byte_sequence*)
-definition bytes_of_elf64_section_header_table  :: " endianness \<Rightarrow>(elf64_section_header_table_entry)list \<Rightarrow> byte_sequence "  where 
-     " bytes_of_elf64_section_header_table endian tbl = (
-  Byte_sequence.concat_byte_sequence (List.map (bytes_of_elf64_section_header_table_entry endian) tbl))"
-
-
+    
+(** [read_elf64_section_header_table' ed bs0] parses an ELF64 section header table
+  * from byte sequence [bs0] assuming endianness [ed].  Assumes [bs0] is of the
+  * exact length required to parse the entire table.
+  * Fails if any of the section header table entries cannot be parsed.
+  *)
+(*val read_elf64_section_header_table' : endianness -> byte_sequence ->
+  error elf64_section_header_table*)
 function (sequential,domintros)  read_elf64_section_header_table'  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>((elf64_section_header_table_entry)list)error "  where 
      " read_elf64_section_header_table' endian bs0 = (
-  if length bs0 =( 0 :: nat) then
+  if Byte_sequence.length0 bs0 =( 0 :: nat) then
     error_return []
   else
     read_elf64_section_header_table_entry endian bs0 >>= (\<lambda> (entry, bs1) . 
@@ -446,16 +720,43 @@ function (sequential,domintros)  read_elf64_section_header_table'  :: " endianne
 by pat_completeness auto
 
 
-(*val read_elf64_section_header_table : natural -> endianness -> byte_sequence -> error (elf64_section_header_table * byte_sequence)*)
+(** [read_elf32_section_header_table sz ed bs0] parses an ELF32 section header
+  * table from a [sz] sized prefix of byte sequence [bs0] assuming endianness
+  * [ed].  The suffix of [bs0] remaining after parsing is also returned.
+  * Fails if any of the section header entries cannot be parsed or if [sz] is
+  * greater than the length of [bs0].
+  *)
+(*val read_elf32_section_header_table : natural -> endianness -> byte_sequence ->
+  error (elf32_section_header_table * byte_sequence)*)
+definition read_elf32_section_header_table  :: " nat \<Rightarrow> endianness \<Rightarrow> byte_sequence \<Rightarrow>((elf32_section_header_table_entry)list*byte_sequence)error "  where 
+     " read_elf32_section_header_table table_size endian bs0 = (
+  partition0 table_size bs0 >>= (\<lambda> (eat, rest) . 
+  read_elf32_section_header_table' endian eat >>= (\<lambda> entries . 
+  error_return (entries, rest))))"
+
+
+
+(** [read_elf64_section_header_table sz ed bs0] parses an ELF64 section header
+  * table from a [sz] sized prefix of byte sequence [bs0] assuming endianness
+  * [ed].  The suffix of [bs0] remaining after parsing is also returned.
+  * Fails if any of the section header entries cannot be parsed or if [sz] is
+  * greater than the length of [bs0].
+  *)
+(*val read_elf64_section_header_table : natural -> endianness -> byte_sequence ->
+  error (elf64_section_header_table * byte_sequence)*)
 definition read_elf64_section_header_table  :: " nat \<Rightarrow> endianness \<Rightarrow> byte_sequence \<Rightarrow>((elf64_section_header_table_entry)list*byte_sequence)error "  where 
      " read_elf64_section_header_table table_size endian bs0 = (
-  partition table_size bs0 >>= (\<lambda> (eat, rest) . 
+  partition0 table_size bs0 >>= (\<lambda> (eat, rest) . 
   read_elf64_section_header_table' endian eat >>= (\<lambda> entries . 
   error_return (entries, rest))))"
 
-;;
 
-(*val elf32_size_correct : elf32_section_header_table_entry -> elf32_section_header_table -> bool*)
+
+(** Correctness criteria *)
+
+(** TODO: what is going on here? *)
+(*val elf32_size_correct : elf32_section_header_table_entry ->
+  elf32_section_header_table -> bool*)
 definition elf32_size_correct  :: " elf32_section_header_table_entry \<Rightarrow>(elf32_section_header_table_entry)list \<Rightarrow> bool "  where 
      " elf32_size_correct hdr tbl = (
   (let m = (unat(elf32_sh_size   hdr)) in
@@ -464,13 +765,48 @@ definition elf32_size_correct  :: " elf32_section_header_table_entry \<Rightarro
     else
       m =  (List.length tbl)))"
 
-;;
+
+
+(** TODO: what is going on here? *)
+(*val elf64_size_correct : elf64_section_header_table_entry ->
+  elf64_section_header_table -> bool*)
+definition elf64_size_correct  :: " elf64_section_header_table_entry \<Rightarrow>(elf64_section_header_table_entry)list \<Rightarrow> bool "  where 
+     " elf64_size_correct hdr tbl = (
+  (let m = (unat(elf64_sh_size   hdr)) in
+    if m =( 0 :: nat) then
+      True
+    else
+      m =  (List.length tbl)))"
+
+
+
+(*val is_elf32_addr_addralign_correct : elf32_section_header_table_entry -> bool*)
+definition is_elf32_addr_addralign_correct  :: " elf32_section_header_table_entry \<Rightarrow> bool "  where 
+     " is_elf32_addr_addralign_correct ent = (
+  (let align = (unat(elf32_sh_addralign   ent)) in
+  (let addr  = (unat(elf32_sh_addr   ent)) in
+    if (addr mod align) =( 0 :: nat) then      
+(align =( 0 :: nat)) \<or> (align =( 1 :: nat)) (* TODO: or a power of two *)
+    else
+      False)))"
+
+    
+(*val is_elf64_addr_addralign_correct : elf64_section_header_table_entry -> bool*)
+definition is_elf64_addr_addralign_correct  :: " elf64_section_header_table_entry \<Rightarrow> bool "  where 
+     " is_elf64_addr_addralign_correct ent = (
+  (let align = (unat(elf64_sh_addralign   ent)) in
+  (let addr  = (unat(elf64_sh_addr   ent)) in
+    if (addr mod align) =( 0 :: nat) then      
+(align =( 0 :: nat)) \<or> (align =( 1 :: nat)) (* TODO: or a power of two *)
+    else
+      False)))"
+
 
 (*val is_valid_elf32_section_header_table : elf32_section_header_table -> bool*)
 definition is_valid_elf32_section_header_table  :: "(elf32_section_header_table_entry)list \<Rightarrow> bool "  where 
      " is_valid_elf32_section_header_table tbl = (
   (case  tbl of
-      []    => False
+      []    => True
     | x # xs =>        
 (unat(elf32_sh_name   x) =( 0 :: nat)) \<and>
         ((unat(elf32_sh_type   x) = sht_null) \<and>
@@ -484,11 +820,321 @@ definition is_valid_elf32_section_header_table  :: "(elf32_section_header_table_
         (* XXX: more correctness criteria in time *)
   ))"
 
+  
+(*val is_valid_elf64_section_header_table : elf64_section_header_table -> bool*)
+definition is_valid_elf64_section_header_table  :: "(elf64_section_header_table_entry)list \<Rightarrow> bool "  where 
+     " is_valid_elf64_section_header_table tbl = (
+  (case  tbl of
+      []    => True
+    | x # xs =>        
+(unat(elf64_sh_name   x) =( 0 :: nat)) \<and>
+        ((unat(elf64_sh_type   x) = sht_null) \<and>
+        ((unat(elf64_sh_flags   x) =( 0 :: nat)) \<and>
+        ((unat(elf64_sh_addr   x) =( 0 :: nat)) \<and>
+        ((unat(elf64_sh_offset   x) =( 0 :: nat)) \<and>
+        ((unat(elf64_sh_info   x) =( 0 :: nat)) \<and>
+        ((unat(elf64_sh_addralign   x) =( 0 :: nat)) \<and>
+        ((unat(elf64_sh_entsize   x) =( 0 :: nat)) \<and>
+        elf64_size_correct x tbl)))))))
+        (* XXX: more correctness criteria in time *)
+  ))"
 
-(*val string_of_elf32_section_header_table : sht_print_bundle -> elf32_section_header_table -> string*)
 
-(*val string_of_elf32_section_header_table' : sht_print_bundle -> string_table -> elf32_section_header_table -> string*)
+(** Pretty printing *)
 
-(*val string_of_elf64_section_header_table : sht_print_bundle -> elf64_section_header_table -> string*)
+(** The [sht_print_bundle] type is used to tidy up other type signatures.  Some of the
+  * top-level string_of_ functions require six or more functions passed to them,
+  * which quickly gets out of hand.  This type is used to reduce that complexity.
+  * The first component of the type is an OS specific print function, the second is
+  * a processor specific print function.
+  *)
+type_synonym sht_print_bundle ="
+  (nat \<Rightarrow> string) * (nat \<Rightarrow> string) * (nat \<Rightarrow> string)"
 
-(*val string_of_elf64_section_header_table' : sht_print_bundle -> string_table -> elf64_section_header_table -> string*)end
+(** [string_of_elf32_section_header_table_entry sht ent] produces a string
+  * representation of section header table entry [ent] using [sht], a
+  * [sht_print_bundle].
+  * OCaml specific definition.
+  *)
+(*val string_of_elf32_section_header_table_entry : sht_print_bundle ->
+  elf32_section_header_table_entry -> string*)
+
+(** [string_of_elf64_section_header_table_entry sht ent] produces a string
+  * representation of section header table entry [ent] using [sht], a
+  * [sht_print_bundle].
+  * OCaml specific definition.
+  *)
+(*val string_of_elf64_section_header_table_entry : sht_print_bundle ->
+  elf64_section_header_table_entry -> string*)
+
+(*val string_of_elf32_section_header_table_entry' : sht_print_bundle ->
+  string_table -> elf32_section_header_table_entry -> string*)
+
+(*val string_of_elf64_section_header_table_entry' : sht_print_bundle ->
+  string_table -> elf64_section_header_table_entry -> string*)
+
+(*val string_of_elf32_section_header_table_entry_default : elf32_section_header_table_entry -> string*)
+
+(*val string_of_elf64_section_header_table_entry_default : elf64_section_header_table_entry -> string*)
+
+(*val string_of_elf32_section_header_table : sht_print_bundle ->
+  elf32_section_header_table -> string*)
+
+(*val string_of_elf32_section_header_table_default : elf32_section_header_table ->
+  string*)
+
+(*val string_of_elf64_section_header_table : sht_print_bundle ->
+  elf64_section_header_table -> string*)
+  
+(*val string_of_elf64_section_header_table_default : elf64_section_header_table ->
+  string*)
+
+(*val string_of_elf32_section_header_table' : sht_print_bundle -> string_table ->
+  elf32_section_header_table -> string*)
+
+(*val string_of_elf64_section_header_table' : sht_print_bundle -> string_table ->
+  elf64_section_header_table -> string*)
+  
+(** Section to segment mappings *)
+
+(** [elf32_tbss_special shdr seg] implements the ELF_TBSS_SPECIAL macro from readelf:
+  *
+  * #define ELF_TBSS_SPECIAL(sec_hdr, segment)			
+  *   (((sec_hdr)->sh_flags & SHF_TLS) != 0				
+  *   && (sec_hdr)->sh_type == SHT_NOBITS				
+  *   && (segment)->p_type != PT_TLS)
+  *
+  * From readelf source code, file [internal.h].
+  *
+  *)
+(*val is_elf32_tbss_special : elf32_section_header_table_entry -> elf32_program_header_table_entry -> bool*)
+definition is_elf32_tbss_special  :: " elf32_section_header_table_entry \<Rightarrow> elf32_program_header_table_entry \<Rightarrow> bool "  where 
+     " is_elf32_tbss_special sec_hdr segment = ( \<not> ((Elf_Types_Local.uint32_land(elf32_sh_flags   sec_hdr) (Elf_Types_Local.uint32_of_nat shf_tls)) = (Elf_Types_Local.uint32_of_nat(( 0 :: nat)))) \<and>    
+(((unat(elf32_sh_type   sec_hdr)) = sht_nobits) \<and>
+    ( \<not> ((unat(elf32_p_type   segment)) = elf_pt_tls))))"
+
+    
+(** [elf64_tbss_special shdr seg] implements the ELF_TBSS_SPECIAL macro from readelf:
+  *
+  * #define ELF_TBSS_SPECIAL(sec_hdr, segment)			
+  *   (((sec_hdr)->sh_flags & SHF_TLS) != 0				
+  *   && (sec_hdr)->sh_type == SHT_NOBITS				
+  *   && (segment)->p_type != PT_TLS)
+  *
+  * From readelf source code, file [internal.h].
+  *
+  *)
+(*val is_elf64_tbss_special : elf64_section_header_table_entry -> elf64_program_header_table_entry -> bool*)
+definition is_elf64_tbss_special  :: " elf64_section_header_table_entry \<Rightarrow> elf64_program_header_table_entry \<Rightarrow> bool "  where 
+     " is_elf64_tbss_special sec_hdr segment = ( \<not> ((Elf_Types_Local.uint64_land(elf64_sh_flags   sec_hdr) (of_int (int shf_tls))) = (of_int (int (( 0 :: nat))))) \<and>    
+(((unat(elf64_sh_type   sec_hdr)) = sht_nobits) \<and>
+    ( \<not> ((unat(elf64_p_type   segment)) = elf_pt_tls))))"
+
+
+(*val get_elf32_section_to_segment_mapping : elf32_header -> elf32_section_header_table -> elf32_program_header_table_entry ->
+  (elf32_header -> elf32_section_header_table_entry -> elf32_program_header_table_entry -> bool) ->
+  string_table -> error (list string)*)
+function (sequential,domintros)  get_elf32_section_to_segment_mapping  :: " elf32_header \<Rightarrow>(elf32_section_header_table_entry)list \<Rightarrow> elf32_program_header_table_entry \<Rightarrow>(elf32_header \<Rightarrow> elf32_section_header_table_entry \<Rightarrow> elf32_program_header_table_entry \<Rightarrow> bool)\<Rightarrow> string_table \<Rightarrow>((string)list)error "  where 
+     " get_elf32_section_to_segment_mapping hdr ([]) pent isin stbl = ( error_return [])"
+|" get_elf32_section_to_segment_mapping hdr (x # xs) pent isin stbl = (
+      if is_elf32_tbss_special x pent then
+        get_elf32_section_to_segment_mapping hdr xs pent isin stbl
+      else if \<not> (isin hdr x pent) then
+        get_elf32_section_to_segment_mapping hdr xs pent isin stbl
+      else
+        (let nm = (unat(elf32_sh_name   x)) in
+          get_string_at nm stbl >>= (\<lambda> str . 
+          get_elf32_section_to_segment_mapping hdr xs pent isin stbl >>= (\<lambda> tl1 . 
+          error_return (str # tl1)))))" 
+by pat_completeness auto
+
+  
+(*val get_elf64_section_to_segment_mapping : elf64_header -> elf64_section_header_table -> elf64_program_header_table_entry ->
+  (elf64_header -> elf64_section_header_table_entry -> elf64_program_header_table_entry -> bool) ->
+  string_table -> error (list string)*)
+function (sequential,domintros)  get_elf64_section_to_segment_mapping  :: " elf64_header \<Rightarrow>(elf64_section_header_table_entry)list \<Rightarrow> elf64_program_header_table_entry \<Rightarrow>(elf64_header \<Rightarrow> elf64_section_header_table_entry \<Rightarrow> elf64_program_header_table_entry \<Rightarrow> bool)\<Rightarrow> string_table \<Rightarrow>((string)list)error "  where 
+     " get_elf64_section_to_segment_mapping hdr ([]) pent isin stbl = ( error_return [])"
+|" get_elf64_section_to_segment_mapping hdr (x # xs) pent isin stbl = (
+      if \<not> (isin hdr x pent) then
+        get_elf64_section_to_segment_mapping hdr xs pent isin stbl
+      else if is_elf64_tbss_special x pent then
+        get_elf64_section_to_segment_mapping hdr xs pent isin stbl
+      else
+        (let nm = (unat(elf64_sh_name   x)) in
+          get_string_at nm stbl >>= (\<lambda> str . 
+          get_elf64_section_to_segment_mapping hdr xs pent isin stbl >>= (\<lambda> tl1 . 
+          error_return (str # tl1)))))" 
+by pat_completeness auto
+
+  
+(** Section groups *)
+
+(** This is a COMDAT group and may duplicate other COMDAT groups in other object
+  * files.
+  *)
+definition grp_comdat  :: " nat "  where 
+     " grp_comdat = (( 1 :: nat))"
+
+
+(** Any bits in the following mask ranges are reserved exclusively for OS and
+  * processor specific semantics, respectively.
+  *)
+definition grp_maskos  :: " nat "  where 
+     " grp_maskos = (( 267386880 :: nat))"
+      (* 0x0ff00000 *)
+definition grp_maskproc  :: " nat "  where 
+     " grp_maskproc = (( 4 :: nat) *( 1006632960 :: nat))"
+ (* 0xf0000000 *)
+
+(*val obtain_elf32_section_group_indices : endianness -> elf32_section_header_table -> byte_sequence
+  -> error (list (natural * list elf32_word))*)
+definition obtain_elf32_section_group_indices  :: " endianness \<Rightarrow>(elf32_section_header_table_entry)list \<Rightarrow> byte_sequence \<Rightarrow>((nat*(uint32)list)list)error "  where 
+     " obtain_elf32_section_group_indices endian sht bs0 = (
+  (let filtered = (List.filter (\<lambda> ent . 
+    unat(elf32_sh_type   ent) = sht_group) sht)
+  in
+    mapM (\<lambda> grp . 
+      (let off = (unat(elf32_sh_offset   grp)) in
+      (let siz = (unat(elf32_sh_size   grp)) in
+      (let cnt = (siz div( 4 :: nat)) (* size of elf32_word in bytes *) in
+      Byte_sequence.offset_and_cut off siz bs0 >>= (\<lambda> rel . 
+      Error.repeatM' cnt rel (read_elf32_word endian) >>= (\<lambda> (mems, _) . 
+      (case  mems of
+          []    => error_fail (''obtain_elf32_section_group_indices: section group sections must consist of at least one elf32_word'')
+        | x # xs =>
+          (let flag = (unat x) in
+            error_return (flag, xs))
+      ))))))
+    ) filtered))"
+
+    
+(*val obtain_elf64_section_group_indices : endianness -> elf64_section_header_table -> byte_sequence
+  -> error (list (natural * list elf64_word))*)
+definition obtain_elf64_section_group_indices  :: " endianness \<Rightarrow>(elf64_section_header_table_entry)list \<Rightarrow> byte_sequence \<Rightarrow>((nat*(uint32)list)list)error "  where 
+     " obtain_elf64_section_group_indices endian sht bs0 = (
+  (let filtered = (List.filter (\<lambda> ent . 
+    unat(elf64_sh_type   ent) = sht_group) sht)
+  in
+    mapM (\<lambda> grp . 
+      (let off = (unat(elf64_sh_offset   grp)) in
+      (let siz = (unat(elf64_sh_size   grp)) in
+      (let cnt = (siz div( 4 :: nat)) (* size of elf64_word in bytes *) in
+      Byte_sequence.offset_and_cut off siz bs0 >>= (\<lambda> rel . 
+      Error.repeatM' cnt rel (read_elf64_word endian) >>= (\<lambda> (mems, _) . 
+      (case  mems of
+          []    => error_fail (''obtain_elf64_section_group_indices: section group sections must consist of at least one elf64_word'')
+        | x # xs =>
+          (let flag = (unat x) in
+            error_return (flag, xs))
+      ))))))
+    ) filtered))"
+
+    
+(*val obtain_elf32_tls_template : elf32_section_header_table -> elf32_section_header_table*)
+definition obtain_elf32_tls_template  :: "(elf32_section_header_table_entry)list \<Rightarrow>(elf32_section_header_table_entry)list "  where 
+     " obtain_elf32_tls_template sht = (
+  List.filter (\<lambda> ent . 
+    (let flags = (unat(elf32_sh_flags   ent)) in \<not> ((unsafe_natural_land flags shf_tls) =(( 0 :: nat))))) sht )"
+
+
+(*val obtain_elf64_tls_template : elf64_section_header_table -> elf64_section_header_table*)
+definition obtain_elf64_tls_template  :: "(elf64_section_header_table_entry)list \<Rightarrow>(elf64_section_header_table_entry)list "  where 
+     " obtain_elf64_tls_template sht = (
+  List.filter (\<lambda> ent . 
+    (let flags = (unat(elf64_sh_flags   ent)) in \<not> ((unsafe_natural_land flags shf_tls) =(( 0 :: nat))))) sht )"
+
+      
+(*val obtain_elf32_hash_table : endianness -> elf32_section_header_table -> byte_sequence ->
+  error (elf32_word * elf32_word * list elf32_word * list elf32_word)*)
+definition obtain_elf32_hash_table  :: " endianness \<Rightarrow>(elf32_section_header_table_entry)list \<Rightarrow> byte_sequence \<Rightarrow>(uint32*uint32*(uint32)list*(uint32)list)error "  where 
+     " obtain_elf32_hash_table endian sht bs0 = (
+  (let filtered = (List.filter (\<lambda> ent . 
+    unat(elf32_sh_type   ent) = sht_hash) sht)
+  in
+    (case  filtered of
+        []  => error_fail (''obtain_elf32_hash_table: no section header table entry of type sht_hash'')
+      | [x] =>
+        (let siz = (unat(elf32_sh_size   x)) in
+        (let off = (unat(elf32_sh_offset    x)) in
+        Byte_sequence.offset_and_cut siz off bs0 >>= (\<lambda> rel . 
+        read_elf32_word endian rel >>= (\<lambda> (nbucket, rel) . 
+        read_elf32_word endian rel >>= (\<lambda> (nchain, rel) . 
+        Error.repeatM' (unat nbucket) rel (read_elf32_word endian) >>= (\<lambda> (buckets, rel) . 
+        Error.repeatM' (unat nchain) rel (read_elf32_word endian) >>= (\<lambda> (chain, _) . 
+        error_return (nbucket, nchain, buckets, chain))))))))
+      | _   => error_fail (''obtain_elf32_hash_table: multiple section header table entries of type sht_hash'')
+    )))"
+
+    
+(*val obtain_elf64_hash_table : endianness -> elf64_section_header_table -> byte_sequence ->
+  error (elf64_word * elf64_word * list elf64_word * list elf64_word)*)
+definition obtain_elf64_hash_table  :: " endianness \<Rightarrow>(elf64_section_header_table_entry)list \<Rightarrow> byte_sequence \<Rightarrow>(uint32*uint32*(uint32)list*(uint32)list)error "  where 
+     " obtain_elf64_hash_table endian sht bs0 = (
+  (let filtered = (List.filter (\<lambda> ent . 
+    unat(elf64_sh_type   ent) = sht_hash) sht)
+  in
+    (case  filtered of
+        []  => error_fail (''obtain_elf64_hash_table: no section header table entry of type sht_hash'')
+      | [x] =>
+        (let siz = (unat(elf64_sh_size   x)) in
+        (let off = (unat(elf64_sh_offset    x)) in
+        Byte_sequence.offset_and_cut siz off bs0 >>= (\<lambda> rel . 
+        read_elf64_word endian rel >>= (\<lambda> (nbucket, rel) . 
+        read_elf64_word endian rel >>= (\<lambda> (nchain, rel) . 
+        Error.repeatM' (unat nbucket) rel (read_elf64_word endian) >>= (\<lambda> (buckets, rel) . 
+        Error.repeatM' (unat nchain) rel (read_elf64_word endian) >>= (\<lambda> (chain, _) . 
+        error_return (nbucket, nchain, buckets, chain))))))))
+      | _   => error_fail (''obtain_elf64_hash_table: multiple section header table entries of type sht_hash'')
+    )))"
+
+
+(** Special sections *)
+
+(** [construct_special_sections] contains a finite map from section name (as
+  * a string) to the expected attributes and flags expected of that section,
+  * as specified in the ELF specification.
+  *
+  * TODO: some of these entries are not fixed and change depending on the content
+  *       of the rest of the ELF file.  For example the entry for .symtab_shndx
+  *       has flags that depend on the flags of the corresponding symbol table
+  *       entry.  Entries of this type are currently commented out.  Fill them
+  *       in.
+  *)
+(*val elf_special_sections : Map.map string (natural * natural)*)
+definition elf_special_sections  :: "((string),(nat*nat))Map.map "  where 
+     " elf_special_sections = (
+    Map.map_of (List.rev [
+      ((''.bss''), (sht_nobits, (shf_alloc + shf_write)))
+    , ((''.comment''), (sht_progbits,( 0 :: nat)))
+    , ((''.data''), (sht_progbits, (shf_alloc + shf_write)))
+    , ((''.data1''), (sht_progbits, (shf_alloc + shf_write)))
+    , ((''.debug''), (sht_progbits,( 0 :: nat)))
+    (* ; (.dynamic, (sht_dynamic, ?)) *)
+    , ((''.dynstr''), (sht_strtab, shf_alloc))
+    , ((''.dynsym''), (sht_dynsym, shf_alloc))
+    , ((''.fini''), (sht_progbits, (shf_alloc + shf_execinstr)))
+    , ((''.fini_array''), (sht_fini_array, (shf_alloc + shf_write)))
+    (* ; (.got, (sht_progbits, ?)) *)
+    , ((''.hash''), (sht_hash, shf_alloc))
+    , ((''.init''), (sht_progbits, (shf_alloc + shf_execinstr)))
+    , ((''.init_array''), (sht_init_array, (shf_alloc + shf_write)))
+    (* ; (.interp, (sht_progbits, ?)) *)
+    , ((''.line''), (sht_progbits,( 0 :: nat)))
+    , ((''.note''), (sht_note,( 0 :: nat)))
+    (* ; (.plt, (sht_progbits, ?)) *)
+    , ((''.preinit_array''), (sht_preinit_array, (shf_alloc + shf_write)))
+    (* ; (.relname, (sht_rel, ?)) *)
+    (* ; (.relaname, (sht_rela, ?)) *)
+    , ((''.rodata''), (sht_progbits, shf_alloc))
+    , ((''.rodata1''), (sht_progbits, shf_alloc))
+    , ((''.shstrtab''), (sht_strtab,( 0 :: nat)))
+    (* ; (.strtab, (sht_strtab, ?)) *)
+    (* ; (.symtab, (sht_symtab, ?)) *)
+    (* ; (.symtab_shndx, (sht_symtab_shndx, ?)) *)
+    , ((''.tbss''), (sht_nobits, ((shf_alloc + shf_write) + shf_tls)))
+    , ((''.tdata''), (sht_progbits, ((shf_alloc + shf_write) + shf_tls)))
+    , ((''.tdata1''), (sht_progbits, ((shf_alloc + shf_write) + shf_tls)))
+    , ((''.text''), (sht_progbits, (shf_alloc + shf_execinstr)))
+    ]))"
+
+end

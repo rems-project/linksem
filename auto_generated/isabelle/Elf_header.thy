@@ -4,22 +4,36 @@ theory "Elf_header"
 
 imports 
  	 Main
+	 "Lem_num" 
+	 "Lem_list" 
+	 "Lem_set" 
+	 "Lem_function" 
 	 "Lem_basic_classes" 
 	 "Lem_bool" 
-	 "Lem_function" 
-	 "Lem_list" 
 	 "Lem_maybe" 
-	 "Lem_num" 
 	 "Lem_string" 
-	 "Default_printing" 
-	 "Endianness" 
-	 "Elf_types" 
-	 "Byte_sequence" 
-	 "Error" 
-	 "Missing_pervasives" 
+	 "Lem_assert_extra" 
 	 "Show" 
+	 "Missing_pervasives" 
+	 "Error" 
+	 "Byte_sequence" 
+	 "Endianness" 
+	 "Default_printing" 
+	 "Elf_types_native_uint" 
 
 begin 
+
+(** [elf_header] includes types, functions and other definitions for working with
+  * ELF headers.
+  *
+  * TODO: all relevant definitions and functions are now formalised, though
+  * invariants expressed in natural language in the SCO specification are not
+  * all formalised.
+  *
+  *  * Formalise all natural language header invariants from the SCO
+  *    specification.
+  *
+  *)
 
 (*open import Basic_classes*)
 (*open import Bool*)
@@ -28,16 +42,39 @@ begin
 (*open import Maybe*)
 (*open import Num*)
 (*open import String*)
+(*import Set*)
+
+(*open import Assert_extra*)
 
 (*open import Default_printing*)
 (*open import Endianness*)
 
-(*open import Elf_types*)
+(*open import Elf_types_native_uint*)
 
 (*open import Byte_sequence*)
 (*open import Error*)
 (*open import Missing_pervasives*)
 (*open import Show*)
+
+(** Special section header table indices *)
+
+(** [shn_undef]: marks an undefined, missing or irrelevant section reference.
+  * Present here instead of in elf_section_header_table.lem because a calculation
+  * below requires this constant (i.e. forward reference in the ELF spec).
+  *)
+definition shn_undef  :: " nat "  where 
+     " shn_undef = (( 0 :: nat))"
+
+
+(** [shn_xindex]: an escape value.  It indicates the actual section header index
+  * is too large to fit in the containing field and is located in another
+  * location (specific to the structure where it appears). Present here instead
+  * of in elf_section_header_table.lem because a calculation below requires this
+  * constant (i.e. forward reference in the ELF spec).
+  *)
+definition shn_xindex  :: " nat "  where 
+     " shn_xindex = (( 65535 :: nat))"
+ (* 0xffff *)
 
 (** ELF object file types.  Enumerates the ELF object file types specified in the
  *  System V ABI.  Values between [elf_ft_lo_os] and [elf_ft_hi_os] inclusive are
@@ -110,256 +147,918 @@ definition is_processor_specific_object_file_type_value  :: " nat \<Rightarrow> 
 (v \<ge>( 65280 :: nat)) \<and> (v \<le>( 65535 :: nat)))"
 
 
-(** ELF machine architectures (TODO: complete the conversion of the enumeration.) *)
+(** ELF machine architectures *)
 
-(** Intel 386 *)
+(** RISC-V *)
+definition elf_ma_riscv  :: " nat "  where 
+     " elf_ma_riscv = (( 243 :: nat))"
+
+(** AMD GPU architecture *)
+definition elf_ma_amdgpu  :: " nat "  where 
+     " elf_ma_amdgpu = (( 224 :: nat))"
+
+(** Moxie processor family *)
+definition elf_ma_moxie  :: " nat "  where 
+     " elf_ma_moxie = (( 223 :: nat))"
+
+(** FTDI Chip FT32 high performance 32-bit RISC architecture *)
+definition elf_ma_ft32  :: " nat "  where 
+     " elf_ma_ft32 = (( 222 :: nat))"
+
+(** Controls and Data Services VISIUMcore processor *)
+definition elf_ma_visium  :: " nat "  where 
+     " elf_ma_visium = (( 221 :: nat))"
+
+(** Zilog Z80 *)
+definition elf_ma_z80  :: " nat "  where 
+     " elf_ma_z80 = (( 220 :: nat))"
+
+(** CSR Kalimba architecture family *)
+definition elf_ma_kalimba  :: " nat "  where 
+     " elf_ma_kalimba = (( 219 :: nat))"
+
+(** Nanoradio optimised RISC *)
+definition elf_ma_norc  :: " nat "  where 
+     " elf_ma_norc = (( 218 :: nat))"
+
+(** iCelero CoolEngine *)
+definition elf_ma_cool  :: " nat "  where 
+     " elf_ma_cool = (( 217 :: nat))"
+
+(** Cognitive Smart Memory Processor *)
+definition elf_ma_coge  :: " nat "  where 
+     " elf_ma_coge = (( 216 :: nat))"
+
+(** Paneve CDP architecture family *)
+definition elf_ma_cdp  :: " nat "  where 
+     " elf_ma_cdp = (( 215 :: nat))"
+
+(** KM211 KVARC processor *)
+definition elf_ma_kvarc  :: " nat "  where 
+     " elf_ma_kvarc = (( 214 :: nat))"
+
+(** KM211 KMX8 8-bit processor *)
+definition elf_ma_kmx8  :: " nat "  where 
+     " elf_ma_kmx8 = (( 213 :: nat))"
+
+(** KM211 KMX16 16-bit processor *)
+definition elf_ma_kmx16  :: " nat "  where 
+     " elf_ma_kmx16 = (( 212 :: nat))"
+
+(** KM211 KMX32 32-bit processor *)
+definition elf_ma_kmx32  :: " nat "  where 
+     " elf_ma_kmx32 = (( 211 :: nat))"
+
+(** KM211 KM32 32-bit processor *)
+definition elf_ma_km32  :: " nat "  where 
+     " elf_ma_km32 = (( 210 :: nat))"
+
+(** Microchip 8-bit PIC(r) family *)
+definition elf_ma_mchp_pic  :: " nat "  where 
+     " elf_ma_mchp_pic = (( 204 :: nat))"
+
+(** XMOS xCORE processor family *)
+definition elf_ma_xcore  :: " nat "  where 
+     " elf_ma_xcore = (( 203 :: nat))"
+
+(** Beyond BA2 CPU architecture *)
+definition elf_ma_ba2  :: " nat "  where 
+     " elf_ma_ba2 = (( 202 :: nat))"
+
+(** Beyond BA1 CPU architecture *)  
+definition elf_ma_ba1  :: " nat "  where 
+     " elf_ma_ba1 = (( 201 :: nat))"
+
+(** Freescale 56800EX Digital Signal Controller (DSC) *)
+definition elf_ma_5600ex  :: " nat "  where 
+     " elf_ma_5600ex = (( 200 :: nat))"
+
+(** 199 Renesas 78KOR family *)
+definition elf_ma_78kor  :: " nat "  where 
+     " elf_ma_78kor = (( 199 :: nat))"
+
+(** Broadcom VideoCore V processor *)
+definition elf_ma_videocore5  :: " nat "  where 
+     " elf_ma_videocore5 = (( 198 :: nat))"
+
+(** Renesas RL78 family *)
+definition elf_ma_rl78  :: " nat "  where 
+     " elf_ma_rl78 = (( 197 :: nat))"
+
+(** Open8 8-bit RISC soft processing core *)
+definition elf_ma_open8  :: " nat "  where 
+     " elf_ma_open8 = (( 196 :: nat))"
+
+(** Synopsys ARCompact V2 *)
+definition elf_ma_arc_compact2  :: " nat "  where 
+     " elf_ma_arc_compact2 = (( 195 :: nat))"
+
+(** KIPO_KAIST Core-A 2nd generation processor family *)
+definition elf_ma_corea_2nd  :: " nat "  where 
+     " elf_ma_corea_2nd = (( 194 :: nat))"
+
+(** KIPO_KAIST Core-A 1st generation processor family *)
+definition elf_ma_corea_1st  :: " nat "  where 
+     " elf_ma_corea_1st = (( 193 :: nat))"
+
+(** CloudShield architecture family *)
+definition elf_ma_cloudshield  :: " nat "  where 
+     " elf_ma_cloudshield = (( 192 :: nat))"
+
+(** Infineon Technologies SLE9X core *)
+definition elf_ma_sle9x  :: " nat "  where 
+     " elf_ma_sle9x = (( 179 :: nat))"
+
+(** Intel L10M *)
+definition elf_ma_l10m  :: " nat "  where 
+     " elf_ma_l10m = (( 180 :: nat))"
+
+(** Intel K10M *)
+definition elf_ma_k10m  :: " nat "  where 
+     " elf_ma_k10m = (( 181 :: nat))"
+
+(** ARM 64-bit architecture (AARCH64) *)
+definition elf_ma_aarch64  :: " nat "  where 
+     " elf_ma_aarch64 = (( 183 :: nat))"
+
+(** Atmel Corporation 32-bit microprocessor family *)
+definition elf_ma_avr32  :: " nat "  where 
+     " elf_ma_avr32 = (( 185 :: nat))"
+
+(** STMicroelectronics STM8 8-bit microcontroller *)
+definition elf_ma_stm8  :: " nat "  where 
+     " elf_ma_stm8 = (( 186 :: nat))"
+
+(** Tilera TILE64 multicore architecture family *)
+definition elf_ma_tile64  :: " nat "  where 
+     " elf_ma_tile64 = (( 187 :: nat))"
+
+(** Tilera TILEPro multicore architecture family *)
+definition elf_ma_tilepro  :: " nat "  where 
+     " elf_ma_tilepro = (( 188 :: nat))"
+
+(** Xilinix MicroBlaze 32-bit RISC soft processor core *)
+definition elf_ma_microblaze  :: " nat "  where 
+     " elf_ma_microblaze = (( 189 :: nat))"
+
+(** NVIDIA CUDA architecture *)
+definition elf_ma_cuda  :: " nat "  where 
+     " elf_ma_cuda = (( 190 :: nat))"
+
+(** Tilera TILE-Gx multicore architecture family *)
+definition elf_ma_tilegx  :: " nat "  where 
+     " elf_ma_tilegx = (( 191 :: nat))"
+
+(** Cypress M8C microprocessor *)
+definition elf_ma_cypress  :: " nat "  where 
+     " elf_ma_cypress = (( 161 :: nat))"
+
+(** Renesas R32C series microprocessors *)
+definition elf_ma_r32c  :: " nat "  where 
+     " elf_ma_r32c = (( 162 :: nat))"
+
+(** NXP Semiconductors TriMedia architecture family *)
+definition elf_ma_trimedia  :: " nat "  where 
+     " elf_ma_trimedia = (( 163 :: nat))"
+
+(** QUALCOMM DSP6 processor *)
+definition elf_ma_qdsp6  :: " nat "  where 
+     " elf_ma_qdsp6 = (( 164 :: nat))"
+
+(** Intel 8051 and variants *)
+definition elf_ma_8051  :: " nat "  where 
+     " elf_ma_8051 = (( 165 :: nat))"
+
+(** STMicroelectronics STxP7x family of configurable and extensible RISC processors *)
+definition elf_ma_stxp7x  :: " nat "  where 
+     " elf_ma_stxp7x = (( 166 :: nat))"
+
+(** Andes Technology compact code size embedded RISC processor family *)
+definition elf_ma_nds32  :: " nat "  where 
+     " elf_ma_nds32 = (( 167 :: nat))"
+
+(** Cyan Technology eCOG1X family *)
+definition elf_ma_ecog1x  :: " nat "  where 
+     " elf_ma_ecog1x = (( 168 :: nat))"
+
+(** Dallas Semiconductor MAXQ30 Core Micro-controllers *)
+definition elf_ma_maxq30  :: " nat "  where 
+     " elf_ma_maxq30 = (( 169 :: nat))"
+
+(** New Japan Radio (NJR) 16-bit DSP Processor *)
+definition elf_ma_ximo16  :: " nat "  where 
+     " elf_ma_ximo16 = (( 170 :: nat))"
+
+(** M2000 Reconfigurable RISC Microprocessor *)
+definition elf_ma_manik  :: " nat "  where 
+     " elf_ma_manik = (( 171 :: nat))"
+
+(** Cray Inc. NV2 vector architecture *)
+definition elf_ma_craynv2  :: " nat "  where 
+     " elf_ma_craynv2 = (( 172 :: nat))"
+
+(** Renesas RX family *)
+definition elf_ma_rx  :: " nat "  where 
+     " elf_ma_rx = (( 173 :: nat))"
+
+(** Imagination Technologies META processor architecture *)
+definition elf_ma_metag  :: " nat "  where 
+     " elf_ma_metag = (( 174 :: nat))"
+
+(** MCST Elbrus general purpose hardware architecture *)
+definition elf_ma_mcst_elbrus  :: " nat "  where 
+     " elf_ma_mcst_elbrus = (( 175 :: nat))"
+
+(** Cyan Technology eCOG16 family *)
+definition elf_ma_ecog16  :: " nat "  where 
+     " elf_ma_ecog16 = (( 176 :: nat))"
+
+(** National Semiconductor CompactRISC CR16 16-bit microprocessor *)
+definition elf_ma_cr16  :: " nat "  where 
+     " elf_ma_cr16 = (( 177 :: nat))"
+
+(** Freescale Extended Time Processing Unit *)
+definition elf_ma_etpu  :: " nat "  where 
+     " elf_ma_etpu = (( 178 :: nat))"
+
+(** Altium TSK3000 core *)
+definition elf_ma_tsk3000  :: " nat "  where 
+     " elf_ma_tsk3000 = (( 131 :: nat))"
+
+(** Freescale RS08 embedded processor *)
+definition elf_ma_rs08  :: " nat "  where 
+     " elf_ma_rs08 = (( 132 :: nat))"
+
+(** Analog Devices SHARC family of 32-bit DSP processors *)
+definition elf_ma_sharc  :: " nat "  where 
+     " elf_ma_sharc = (( 133 :: nat))"
+
+(** Cyan Technology eCOG2 microprocessor *)
+definition elf_ma_ecog2  :: " nat "  where 
+     " elf_ma_ecog2 = (( 134 :: nat))"
+
+(** Sunplus S+core7 RISC processor *)
+definition elf_ma_ccore7  :: " nat "  where 
+     " elf_ma_ccore7 = (( 135 :: nat))"
+
+(** New Japan Radio (NJR) 24-bit DSP Processor *)
+definition elf_ma_dsp24  :: " nat "  where 
+     " elf_ma_dsp24 = (( 136 :: nat))"
+
+(** Broadcom VideoCore III processor *)
+definition elf_ma_videocore3  :: " nat "  where 
+     " elf_ma_videocore3 = (( 137 :: nat))"
+
+(** RISC processor for Lattice FPGA architecture *)
+definition elf_ma_latticemico32  :: " nat "  where 
+     " elf_ma_latticemico32 = (( 138 :: nat))"
+
+(** Seiko Epson C17 family *)
+definition elf_ma_c17  :: " nat "  where 
+     " elf_ma_c17 = (( 139 :: nat))"
+
+(** The Texas Instruments TMS320C6000 DSP family *)
+definition elf_ma_c6000  :: " nat "  where 
+     " elf_ma_c6000 = (( 140 :: nat))"
+
+(** The Texas Instruments TMS320C2000 DSP family *)
+definition elf_ma_c2000  :: " nat "  where 
+     " elf_ma_c2000 = (( 141 :: nat))"
+
+(** The Texas Instruments TMS320C55x DSP family *)
+definition elf_ma_c5500  :: " nat "  where 
+     " elf_ma_c5500 = (( 142 :: nat))"
+
+(** STMicroelectronics 64bit VLIW Data Signal Processor *)
+definition elf_ma_mmdsp_plus  :: " nat "  where 
+     " elf_ma_mmdsp_plus = (( 160 :: nat))"
+
+(** LSI Logic 16-bit DSP Processor *)
+definition elf_ma_zsp  :: " nat "  where 
+     " elf_ma_zsp = (( 79 :: nat))"
+
+(** Donald Knuth's educational 64-bit processor *)
+definition elf_ma_mmix  :: " nat "  where 
+     " elf_ma_mmix = (( 80 :: nat))"
+
+(** Harvard University machine-independent object files *)
+definition elf_ma_huany  :: " nat "  where 
+     " elf_ma_huany = (( 81 :: nat))"
+
+(** SiTera Prism *)
+definition elf_ma_prism  :: " nat "  where 
+     " elf_ma_prism = (( 82 :: nat))"
+
+(** Atmel AVR 8-bit microcontroller *)
+definition elf_ma_avr  :: " nat "  where 
+     " elf_ma_avr = (( 83 :: nat))"
+
+(** Fujitsu FR30 *)
+definition elf_ma_fr30  :: " nat "  where 
+     " elf_ma_fr30 = (( 84 :: nat))"
+
+(** Mitsubishi D10V *)
+definition elf_ma_d10v  :: " nat "  where 
+     " elf_ma_d10v = (( 85 :: nat))"
+
+(** Mitsubishi D30V *)
+definition elf_ma_d30v  :: " nat "  where 
+     " elf_ma_d30v = (( 86 :: nat))"
+
+(** NEC v850 *)
+definition elf_ma_v850  :: " nat "  where 
+     " elf_ma_v850 = (( 87 :: nat))"
+
+(** Mitsubishi M32R *)
+definition elf_ma_m32r  :: " nat "  where 
+     " elf_ma_m32r = (( 88 :: nat))"
+
+(** Matsushita MN10300 *)
+definition elf_ma_mn10300  :: " nat "  where 
+     " elf_ma_mn10300 = (( 89 :: nat))"
+
+(** Matsushita MN10200 *)
+definition elf_ma_mn10200  :: " nat "  where 
+     " elf_ma_mn10200 = (( 90 :: nat))"
+
+(** picoJava *)
+definition elf_ma_pj  :: " nat "  where 
+     " elf_ma_pj = (( 91 :: nat))"
+
+(** OpenRISC 32-bit embedded processor *)
+definition elf_ma_openrisc  :: " nat "  where 
+     " elf_ma_openrisc = (( 92 :: nat))"
+
+(** ARC International ARCompact processor (old spelling/synonym: ELF_MA_ARC_A5) *)
+definition elf_ma_arc_compact  :: " nat "  where 
+     " elf_ma_arc_compact = (( 93 :: nat))"
+
+(** Tensilica Xtensa Architecture *)
+definition elf_ma_xtensa  :: " nat "  where 
+     " elf_ma_xtensa = (( 94 :: nat))"
+
+(** Alphamosaic VideoCore processor *)
+definition elf_ma_videocore  :: " nat "  where 
+     " elf_ma_videocore = (( 95 :: nat))"
+
+(** Thompson Multimedia General Purpose Processor *)
+definition elf_ma_tmm_gpp  :: " nat "  where 
+     " elf_ma_tmm_gpp = (( 96 :: nat))"
+
+(** National Semiconductor 32000 series *)
+definition elf_ma_ns32k  :: " nat "  where 
+     " elf_ma_ns32k = (( 97 :: nat))"
+
+(** Tenor Network TPC processor *)
+definition elf_ma_tpc  :: " nat "  where 
+     " elf_ma_tpc = (( 98 :: nat))"
+
+(** Trebia SNP 1000 processor *)
+definition elf_ma_snp1k  :: " nat "  where 
+     " elf_ma_snp1k = (( 99 :: nat))"
+
+(** STMicroelectronics ST200 microcontroller *)
+definition elf_ma_st200  :: " nat "  where 
+     " elf_ma_st200 = (( 100 :: nat))"
+
+(** Ubicom IP2xxx microcontroller family *)
+definition elf_ma_ip2k  :: " nat "  where 
+     " elf_ma_ip2k = (( 101 :: nat))"
+
+(** MAX Processor *)
+definition elf_ma_max  :: " nat "  where 
+     " elf_ma_max = (( 102 :: nat))"
+
+(** National Semiconductor CompactRISC microprocessor *)
+definition elf_ma_cr  :: " nat "  where 
+     " elf_ma_cr = (( 103 :: nat))"
+
+(** Fujitsu F2MC16 *)
+definition elf_ma_f2mc16  :: " nat "  where 
+     " elf_ma_f2mc16 = (( 104 :: nat))"
+
+(** Texas Instruments embedded microcontroller msp430 *)
+definition elf_ma_msp430  :: " nat "  where 
+     " elf_ma_msp430 = (( 105 :: nat))"
+
+(** Analog Devices Blackfin (DSP) processor *)
+definition elf_ma_blackfin  :: " nat "  where 
+     " elf_ma_blackfin = (( 106 :: nat))"
+
+(** S1C33 Family of Seiko Epson processors *)
+definition elf_ma_se_c33  :: " nat "  where 
+     " elf_ma_se_c33 = (( 107 :: nat))"
+
+(** Sharp embedded microprocessor *)
+definition elf_ma_sep  :: " nat "  where 
+     " elf_ma_sep = (( 108 :: nat))"
+
+(** Arca RISC Microprocessor *)
+definition elf_ma_arca  :: " nat "  where 
+     " elf_ma_arca = (( 109 :: nat))"
+
+(** Microprocessor series from PKU-Unity Ltd. and MPRC of Peking University *)
+definition elf_ma_unicore  :: " nat "  where 
+     " elf_ma_unicore = (( 110 :: nat))"
+
+(** eXcess: 16/32/64-bit configurable embedded CPU *)
+definition elf_ma_excess  :: " nat "  where 
+     " elf_ma_excess = (( 111 :: nat))"
+
+(** Icera Semiconductor Inc. Deep Execution Processor *)
+definition elf_ma_dxp  :: " nat "  where 
+     " elf_ma_dxp = (( 112 :: nat))"
+
+(** Altera Nios II soft-core processor *)
+definition elf_ma_altera_nios2  :: " nat "  where 
+     " elf_ma_altera_nios2 = (( 113 :: nat))"
+
+(** National Semiconductor CompactRISC CRX microprocessor *)
+definition elf_ma_crx  :: " nat "  where 
+     " elf_ma_crx = (( 114 :: nat))"
+
+(** Motorola XGATE embedded processor *)
+definition elf_ma_xgate  :: " nat "  where 
+     " elf_ma_xgate = (( 115 :: nat))"
+
+(** Infineon C16x/XC16x processor *)
+definition elf_ma_c166  :: " nat "  where 
+     " elf_ma_c166 = (( 116 :: nat))"
+
+(** Renesas M16C series microprocessors *)
+definition elf_ma_m16c  :: " nat "  where 
+     " elf_ma_m16c = (( 117 :: nat))"
+
+(** Microchip Technology dsPIC30F Digital Signal Controller *)
+definition elf_ma_dspic30f  :: " nat "  where 
+     " elf_ma_dspic30f = (( 118 :: nat))"
+
+(** Freescale Communication Engine RISC core *)
+definition elf_ma_ce  :: " nat "  where 
+     " elf_ma_ce = (( 119 :: nat))"
+
+(** Renesas M32C series microprocessors *)
+definition elf_ma_m32c  :: " nat "  where 
+     " elf_ma_m32c = (( 120 :: nat))"
+
+(** No machine *)
+definition elf_ma_none  :: " nat "  where 
+     " elf_ma_none = (( 0 :: nat))"
+
+(** AT&T WE 32100 *)
+definition elf_ma_m32  :: " nat "  where 
+     " elf_ma_m32 = (( 1 :: nat))"
+
+(** SPARC *)
+definition elf_ma_sparc  :: " nat "  where 
+     " elf_ma_sparc = (( 2 :: nat))"
+
+(** Intel 80386 *)
 definition elf_ma_386  :: " nat "  where 
      " elf_ma_386 = (( 3 :: nat))"
 
-(** IBM PowerPC *)
+(** Motorola 68000 *)
+definition elf_ma_68k  :: " nat "  where 
+     " elf_ma_68k = (( 4 :: nat))"
+
+(** Motorola 88000 *)
+definition elf_ma_88k  :: " nat "  where 
+     " elf_ma_88k = (( 5 :: nat))"
+
+(** Intel 80860 *)
+definition elf_ma_860  :: " nat "  where 
+     " elf_ma_860 = (( 7 :: nat))"
+
+(** MIPS I Architecture *)
+definition elf_ma_mips  :: " nat "  where 
+     " elf_ma_mips = (( 8 :: nat))"
+
+(** IBM System/370 Processor *)
+definition elf_ma_s370  :: " nat "  where 
+     " elf_ma_s370 = (( 9 :: nat))"
+
+(** MIPS RS3000 Little-endian *)
+definition elf_ma_mips_rs3_le  :: " nat "  where 
+     " elf_ma_mips_rs3_le = (( 10 :: nat))"
+
+(** Hewlett-Packard PA-RISC *)
+definition elf_ma_parisc  :: " nat "  where 
+     " elf_ma_parisc = (( 15 :: nat))"
+
+(** Fujitsu VPP500 *)
+definition elf_ma_vpp500  :: " nat "  where 
+     " elf_ma_vpp500 = (( 17 :: nat))"
+
+(** Enhanced instruction set SPARC *)
+definition elf_ma_sparc32plus  :: " nat "  where 
+     " elf_ma_sparc32plus = (( 18 :: nat))"
+
+(** Intel 80960 *)
+definition elf_ma_960  :: " nat "  where 
+     " elf_ma_960 = (( 19 :: nat))"
+
+(** PowerPC *)
 definition elf_ma_ppc  :: " nat "  where 
      " elf_ma_ppc = (( 20 :: nat))"
 
-(** IBM PowerPC 64 *)
+(** 64-bit PowerPC *)
 definition elf_ma_ppc64  :: " nat "  where 
      " elf_ma_ppc64 = (( 21 :: nat))"
 
-(** AMD x86-64 *)
+(** IBM System/390 Processor *)
+definition elf_ma_s390  :: " nat "  where 
+     " elf_ma_s390 = (( 22 :: nat))"
+
+(** IBM SPU/SPC *)
+definition elf_ma_spu  :: " nat "  where 
+     " elf_ma_spu = (( 23 :: nat))"
+
+(** NEC V800 *)
+definition elf_ma_v800  :: " nat "  where 
+     " elf_ma_v800 = (( 36 :: nat))"
+
+(** Fujitsu FR20 *)
+definition elf_ma_fr20  :: " nat "  where 
+     " elf_ma_fr20 = (( 37 :: nat))"
+
+(** TRW RH-32 *)
+definition elf_ma_rh32  :: " nat "  where 
+     " elf_ma_rh32 = (( 38 :: nat))"
+
+(** Motorola RCE *)
+definition elf_ma_rce  :: " nat "  where 
+     " elf_ma_rce = (( 39 :: nat))"
+
+(** ARM 32-bit architecture (AARCH32) *)
+definition elf_ma_arm  :: " nat "  where 
+     " elf_ma_arm = (( 40 :: nat))"
+
+(** Digital Alpha *)
+definition elf_ma_alpha  :: " nat "  where 
+     " elf_ma_alpha = (( 41 :: nat))"
+
+(** Hitachi SH *)
+definition elf_ma_sh  :: " nat "  where 
+     " elf_ma_sh = (( 42 :: nat))"
+
+(** SPARC Version 9 *)
+definition elf_ma_sparcv9  :: " nat "  where 
+     " elf_ma_sparcv9 = (( 43 :: nat))"
+
+(** Siemens TriCore embedded processor *)
+definition elf_ma_tricore  :: " nat "  where 
+     " elf_ma_tricore = (( 44 :: nat))"
+
+(** Argonaut RISC Core, Argonaut Technologies Inc. *)
+definition elf_ma_arc  :: " nat "  where 
+     " elf_ma_arc = (( 45 :: nat))"
+
+(** Hitachi H8/300 *)
+definition elf_ma_h8_300  :: " nat "  where 
+     " elf_ma_h8_300 = (( 46 :: nat))"
+
+(** Hitachi H8/300H *)
+definition elf_ma_h8_300h  :: " nat "  where 
+     " elf_ma_h8_300h = (( 47 :: nat))"
+
+(** Hitachi H8S *)
+definition elf_ma_h8s  :: " nat "  where 
+     " elf_ma_h8s = (( 48 :: nat))"
+
+(** Hitachi H8/500 *)
+definition elf_ma_h8_500  :: " nat "  where 
+     " elf_ma_h8_500 = (( 49 :: nat))"
+
+(** Intel IA-64 processor architecture *)
+definition elf_ma_ia_64  :: " nat "  where 
+     " elf_ma_ia_64 = (( 50 :: nat))"
+
+(** Stanford MIPS-X *)
+definition elf_ma_mips_x  :: " nat "  where 
+     " elf_ma_mips_x = (( 51 :: nat))"
+
+(** Motorola ColdFire *)
+definition elf_ma_coldfire  :: " nat "  where 
+     " elf_ma_coldfire = (( 52 :: nat))"
+
+(** Motorola M68HC12 *)
+definition elf_ma_68hc12  :: " nat "  where 
+     " elf_ma_68hc12 = (( 53 :: nat))"
+
+(** Fujitsu MMA Multimedia Accelerator *)
+definition elf_ma_mma  :: " nat "  where 
+     " elf_ma_mma = (( 54 :: nat))"
+
+(** Siemens PCP *)
+definition elf_ma_pcp  :: " nat "  where 
+     " elf_ma_pcp = (( 55 :: nat))"
+
+(** Sony nCPU embedded RISC processor *)
+definition elf_ma_ncpu  :: " nat "  where 
+     " elf_ma_ncpu = (( 56 :: nat))"
+
+(** Denso NDR1 microprocessor *)
+definition elf_ma_ndr1  :: " nat "  where 
+     " elf_ma_ndr1 = (( 57 :: nat))"
+
+(** Motorola Star*Core processor *)
+definition elf_ma_starcore  :: " nat "  where 
+     " elf_ma_starcore = (( 58 :: nat))"
+
+(** Toyota ME16 processor *)
+definition elf_ma_me16  :: " nat "  where 
+     " elf_ma_me16 = (( 59 :: nat))"
+
+(** STMicroelectronics ST100 processor *)
+definition elf_ma_st100  :: " nat "  where 
+     " elf_ma_st100 = (( 60 :: nat))"
+
+(** Advanced Logic Corp. TinyJ embedded processor family *)
+definition elf_ma_tinyj  :: " nat "  where 
+     " elf_ma_tinyj = (( 61 :: nat))"
+
+(** AMD x86-64 architecture *)
 definition elf_ma_x86_64  :: " nat "  where 
      " elf_ma_x86_64 = (( 62 :: nat))"
+
+(** Sony DSP Processor *)
+definition elf_ma_pdsp  :: " nat "  where 
+     " elf_ma_pdsp = (( 63 :: nat))"
+
+(** Digital Equipment Corp. PDP-10 *)
+definition elf_ma_pdp10  :: " nat "  where 
+     " elf_ma_pdp10 = (( 64 :: nat))"
+
+(** Digital Equipment Corp. PDP-11 *)
+definition elf_ma_pdp11  :: " nat "  where 
+     " elf_ma_pdp11 = (( 65 :: nat))"
+
+(** Siemens FX66 microcontroller *)
+definition elf_ma_fx66  :: " nat "  where 
+     " elf_ma_fx66 = (( 66 :: nat))"
+
+(** STMicroelectronics ST9+ 8/16 bit microcontroller *)
+definition elf_ma_st9plus  :: " nat "  where 
+     " elf_ma_st9plus = (( 67 :: nat))"
+
+(** STMicroelectronics ST7 8-bit microcontroller *)
+definition elf_ma_st7  :: " nat "  where 
+     " elf_ma_st7 = (( 68 :: nat))"
+
+(** Motorola MC68HC16 Microcontroller *)
+definition elf_ma_68hc16  :: " nat "  where 
+     " elf_ma_68hc16 = (( 69 :: nat))"
+
+(** Motorola MC68HC11 Microcontroller *)
+definition elf_ma_68hc11  :: " nat "  where 
+     " elf_ma_68hc11 = (( 70 :: nat))"
+
+(** Motorola MC68HC08 Microcontroller *)
+definition elf_ma_68hc08  :: " nat "  where 
+     " elf_ma_68hc08 = (( 71 :: nat))"
+
+(** Motorola MC68HC05 Microcontroller *)
+definition elf_ma_68hc05  :: " nat "  where 
+     " elf_ma_68hc05 = (( 72 :: nat))"
+
+(** Silicon Graphics SVx *)
+definition elf_ma_svx  :: " nat "  where 
+     " elf_ma_svx = (( 73 :: nat))"
+
+(** STMicroelectronics ST19 8-bit microcontroller *)
+definition elf_ma_st19  :: " nat "  where 
+     " elf_ma_st19 = (( 74 :: nat))"
+
+(** Digital VAX *)
+definition elf_ma_vax  :: " nat "  where 
+     " elf_ma_vax = (( 75 :: nat))"
+
+(** Axis Communications 32-bit embedded processor *)
+definition elf_ma_cris  :: " nat "  where 
+     " elf_ma_cris = (( 76 :: nat))"
+
+(** Infineon Technologies 32-bit embedded processor *)
+definition elf_ma_javelin  :: " nat "  where 
+     " elf_ma_javelin = (( 77 :: nat))"
+
+(** Element 14 64-bit DSP Processor *)
+definition elf_ma_firepath  :: " nat "  where 
+     " elf_ma_firepath = (( 78 :: nat))"
+
+(** Reserved by Intel *)
+definition elf_ma_intel209  :: " nat "  where 
+     " elf_ma_intel209 = (( 209 :: nat))"
+
+(** Reserved by Intel *)
+definition elf_ma_intel208  :: " nat "  where 
+     " elf_ma_intel208 = (( 208 :: nat))"
+
+(** Reserved by Intel *)
+definition elf_ma_intel207  :: " nat "  where 
+     " elf_ma_intel207 = (( 207 :: nat))"
+
+(** Reserved by Intel *)
+definition elf_ma_intel206  :: " nat "  where 
+     " elf_ma_intel206 = (( 206 :: nat))"
+
+(** Reserved by Intel *)
+definition elf_ma_intel205  :: " nat "  where 
+     " elf_ma_intel205 = (( 205 :: nat))"
+
+(** Reserved by Intel *)
+definition elf_ma_intel182  :: " nat "  where 
+     " elf_ma_intel182 = (( 182 :: nat))"
+
+(** Reserved by ARM *)
+definition elf_ma_arm184  :: " nat "  where 
+     " elf_ma_arm184 = (( 184 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved6  :: " nat "  where 
+     " elf_ma_reserved6 = (( 6 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved11  :: " nat "  where 
+     " elf_ma_reserved11 = (( 11 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved12  :: " nat "  where 
+     " elf_ma_reserved12 = (( 12 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved13  :: " nat "  where 
+     " elf_ma_reserved13 = (( 13 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved14  :: " nat "  where 
+     " elf_ma_reserved14 = (( 14 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved16  :: " nat "  where 
+     " elf_ma_reserved16 = (( 16 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved24  :: " nat "  where 
+     " elf_ma_reserved24 = (( 24 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved25  :: " nat "  where 
+     " elf_ma_reserved25 = (( 25 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved26  :: " nat "  where 
+     " elf_ma_reserved26 = (( 26 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved27  :: " nat "  where 
+     " elf_ma_reserved27 = (( 27 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved28  :: " nat "  where 
+     " elf_ma_reserved28 = (( 28 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved29  :: " nat "  where 
+     " elf_ma_reserved29 = (( 29 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved30  :: " nat "  where 
+     " elf_ma_reserved30 = (( 30 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved31  :: " nat "  where 
+     " elf_ma_reserved31 = (( 31 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved32  :: " nat "  where 
+     " elf_ma_reserved32 = (( 32 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved33  :: " nat "  where 
+     " elf_ma_reserved33 = (( 33 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved34  :: " nat "  where 
+     " elf_ma_reserved34 = (( 34 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved35  :: " nat "  where 
+     " elf_ma_reserved35 = (( 35 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved121  :: " nat "  where 
+     " elf_ma_reserved121 = (( 121 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved122  :: " nat "  where 
+     " elf_ma_reserved122 = (( 122 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved123  :: " nat "  where 
+     " elf_ma_reserved123 = (( 123 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved124  :: " nat "  where 
+     " elf_ma_reserved124 = (( 124 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved125  :: " nat "  where 
+     " elf_ma_reserved125 = (( 125 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved126  :: " nat "  where 
+     " elf_ma_reserved126 = (( 126 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved127  :: " nat "  where 
+     " elf_ma_reserved127 = (( 127 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved128  :: " nat "  where 
+     " elf_ma_reserved128 = (( 128 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved129  :: " nat "  where 
+     " elf_ma_reserved129 = (( 129 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved130  :: " nat "  where 
+     " elf_ma_reserved130 = (( 130 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved143  :: " nat "  where 
+     " elf_ma_reserved143 = (( 143 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved144  :: " nat "  where 
+     " elf_ma_reserved144 = (( 144 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved145  :: " nat "  where 
+     " elf_ma_reserved145 = (( 145 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved146  :: " nat "  where 
+     " elf_ma_reserved146 = (( 146 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved147  :: " nat "  where 
+     " elf_ma_reserved147 = (( 147 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved148  :: " nat "  where 
+     " elf_ma_reserved148 = (( 148 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved149  :: " nat "  where 
+     " elf_ma_reserved149 = (( 149 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved150  :: " nat "  where 
+     " elf_ma_reserved150 = (( 150 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved151  :: " nat "  where 
+     " elf_ma_reserved151 = (( 151 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved152  :: " nat "  where 
+     " elf_ma_reserved152 = (( 152 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved153  :: " nat "  where 
+     " elf_ma_reserved153 = (( 153 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved154  :: " nat "  where 
+     " elf_ma_reserved154 = (( 154 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved155  :: " nat "  where 
+     " elf_ma_reserved155 = (( 155 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved156  :: " nat "  where 
+     " elf_ma_reserved156 = (( 156 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved157  :: " nat "  where 
+     " elf_ma_reserved157 = (( 157 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved158  :: " nat "  where 
+     " elf_ma_reserved158 = (( 158 :: nat))"
+
+(** Reserved for future use *)
+definition elf_ma_reserved159  :: " nat "  where 
+     " elf_ma_reserved159 = (( 159 :: nat))"
 
 
 (** [string_of_elf_machine_architecture m] produces a string representation of
   * the numeric encoding [m] of the ELF machine architecture.
+  * TODO: finish this .
   *)
 (*val string_of_elf_machine_architecture : natural -> string*)
-
-(* XXX: convert these into top-level definitions later...
-(** [elf_machine_architecture] enumerates all the supported machine architectures
-  * in the System V ABI.
-  *)
-type elf_machine_architecture
-  = ELF_MA_Norc          (* Nanoradio optimised RISC *)
-  | ELF_MA_Cool          (* iCelero CoolEngine *)
-  | ELF_MA_Coge          (* Cognitive Smart Memory Processor *)
-  | ELF_MA_CDP           (* Paneve CDP architecture family *)
-  | ELF_MA_KVARC         (* KM211 KVARC processor *)
-  | ELF_MA_KMX8          (* KM211 KMX8 8-bit processor *)
-  | ELF_MA_KMX16         (* KM211 KMX16 16-bit processor *)
-  | ELF_MA_KMX32         (* KM211 KMX32 32-bit processor *)
-  | ELF_MA_KM32          (* KM211 KM32 32-bit processor *)
-  | ELF_MA_MCHP_PIC      (* Microchip 8-bit PIC(r) family *)
-  | ELF_MA_XCORE         (* XMOS xCORE processor family *)
-  | ELF_MA_BA2           (* Beyond BA2 CPU architecture *)
-  | ELF_MA_BA1           (* Beyond BA1 CPU architecture *)  
-  | ELF_MA_5600EX        (* Freescale 56800EX Digital Signal Controller (DSC) *)
-  | ELF_MA_78KOR         (* 199 Renesas 78KOR family *)
-  | ELF_MA_VideoCore5    (* Broadcom VideoCore V processor *)
-  | ELF_MA_RL78          (* Renesas RL78 family *)
-  | ELF_MA_Open8         (* Open8 8-bit RISC soft processing core *)
-  | ELF_MA_ARC_Compact2  (* Synopsys ARCompact V2 *)
-  | ELF_MA_CoreA_2nd     (* KIPO_KAIST Core-A 2nd generation processor family *)
-  | ELF_MA_CoreA_1st     (* KIPO_KAIST Core-A 1st generation processor family *)
-  | ELF_MA_CloudShield   (* CloudShield architecture family *)
-  | ELF_MA_SLE9X         (* Infineon Technologies SLE9X core *)
-  | ELF_MA_L10M          (* Intel L10M *)
-  | ELF_MA_K10M          (* Intel K10M *)
-  | ELF_MA_AArch64       (* ARM 64-bit architecture (AARCH64) *)
-  | ELF_MA_AVR32         (* Atmel Corporation 32-bit microprocessor family *)
-  | ELF_MA_STM8          (* STMicroelectronics STM8 8-bit microcontroller *)
-  | ELF_MA_TILE64        (* Tilera TILE64 multicore architecture family *)
-  | ELF_MA_TILEPro       (* Tilera TILEPro multicore architecture family *)
-  | ELF_MA_MicroBlaze    (* Xilinix MicroBlaze 32-bit RISC soft processor core *)
-  | ELF_MA_CUDA          (* NVIDIA CUDA architecture *)
-  | ELF_MA_TILEGx        (* Tilera TILE-Gx multicore architecture family *)
-  | ELF_MA_Cypress       (* Cypress M8C microprocessor *)
-  | ELF_MA_R32C          (* Renesas R32C series microprocessors *)
-  | ELF_MA_TriMedia      (* NXP Semiconductors TriMedia architecture family *)
-  | ELF_MA_QDSP6         (* QUALCOMM DSP6 processor *)
-  | ELF_MA_8051          (* Intel 8051 and variants *)
-  | ELF_MA_STXP7X        (* STMicroelectronics STxP7x family of configurable and extensible RISC processors *)
-  | ELF_MA_NDS32         (* Andes Technology compact code size embedded RISC processor family *)
-  | ELF_MA_eCOG1X        (* Cyan Technology eCOG1X family *)
-  | ELF_MA_MAXQ30        (* Dallas Semiconductor MAXQ30 Core Micro-controllers *)
-  | ELF_MA_XIMO16        (* New Japan Radio (NJR) 16-bit DSP Processor *)
-  | ELF_MA_MANIK         (* M2000 Reconfigurable RISC Microprocessor *)
-  | ELF_MA_CrayNV2       (* Cray Inc. NV2 vector architecture *)
-  | ELF_MA_RX            (* Renesas RX family *)
-  | ELF_MA_METAG         (* Imagination Technologies META processor architecture *)
-  | ELF_MA_MCST_Elbrus   (* MCST Elbrus general purpose hardware architecture *)
-  | ELF_MA_eCOG16        (* Cyan Technology eCOG16 family *)
-  | ELF_MA_CR16          (* National Semiconductor CompactRISC CR16 16-bit microprocessor *)
-  | ELF_MA_ETPU          (* Freescale Extended Time Processing Unit *)
-  | ELF_MA_TSK3000       (* Altium TSK3000 core *)
-  | ELF_MA_RS08          (* Freescale RS08 embedded processor *)
-  | ELF_MA_SHARC         (* Analog Devices SHARC family of 32-bit DSP processors *)
-  | ELF_MA_eCOG2         (* Cyan Technology eCOG2 microprocessor *)
-  | ELF_MA_Score7        (* Sunplus S+core7 RISC processor *)
-  | ELF_MA_DSP24         (* New Japan Radio (NJR) 24-bit DSP Processor *)
-  | ELF_MA_VideoCore3    (* Broadcom VideoCore III processor *)
-  | ELF_MA_LatticeMICO32 (* RISC processor for Lattice FPGA architecture *)
-  | ELF_MA_C17           (* Seiko Epson C17 family *)
-  | ELF_MA_C6000         (* The Texas Instruments TMS320C6000 DSP family *)
-  | ELF_MA_C2000         (* The Texas Instruments TMS320C2000 DSP family *)
-  | ELF_MA_C5500         (* The Texas Instruments TMS320C55x DSP family *)
-  | ELF_MA_MMDSP_PLUS    (* STMicroelectronics 64bit VLIW Data Signal Processor *)
-  | ELF_MA_ZSP           (* LSI Logic 16-bit DSP Processor *)
-  | ELF_MA_MMIX          (* Donald Knuth's educational 64-bit processor *)
-  | ELF_MA_HUANY         (* Harvard University machine-independent object files *)
-  | ELF_MA_Prism         (* SiTera Prism *)
-  | ELF_MA_AVR           (* Atmel AVR 8-bit microcontroller *)
-  | ELF_MA_FR30          (* Fujitsu FR30 *)
-  | ELF_MA_D10V          (* Mitsubishi D10V *)
-  | ELF_MA_D30V          (* Mitsubishi D30V *)
-  | ELF_MA_v850          (* NEC v850 *)
-  | ELF_MA_M32R          (* Mitsubishi M32R *)
-  | ELF_MA_MN10300       (* Matsushita MN10300 *)
-  | ELF_MA_MN10200       (* Matsushita MN10200 *)
-  | ELF_MA_pJ            (* picoJava *)
-  | ELF_MA_OpenRISC      (* OpenRISC 32-bit embedded processor *)
-  | ELF_MA_ARC_Compact   (* ARC International ARCompact processor (old spelling/synonym: ELF_MA_ARC_A5) *)
-  | ELF_MA_Xtensa        (* Tensilica Xtensa Architecture *)
-  | ELF_MA_VideoCore     (* Alphamosaic VideoCore processor *)
-  | ELF_MA_TMM_GPP       (* Thompson Multimedia General Purpose Processor *)
-  | ELF_MA_NS32K         (* National Semiconductor 32000 series *)
-  | ELF_MA_TPC           (* Tenor Network TPC processor *)
-  | ELF_MA_SNP1K         (* Trebia SNP 1000 processor *)
-  | ELF_MA_ST200         (* STMicroelectronics ST200 microcontroller *)
-  | ELF_MA_IP2K          (* Ubicom IP2xxx microcontroller family *)
-  | ELF_MA_MAX           (* MAX Processor *)
-  | ELF_MA_CR            (* National Semiconductor CompactRISC microprocessor *)
-  | ELF_MA_F2MC16        (* Fujitsu F2MC16 *)
-  | ELF_MA_MSP430        (* Texas Instruments embedded microcontroller msp430 *)
-  | ELF_MA_Blackfin      (* Analog Devices Blackfin (DSP) processor *)
-  | ELF_MA_SE_C33        (* S1C33 Family of Seiko Epson processors *)
-  | ELF_MA_SEP           (* Sharp embedded microprocessor *)
-  | ELF_MA_Arca          (* Arca RISC Microprocessor *)
-  | ELF_MA_Unicore       (* Microprocessor series from PKU-Unity Ltd. and MPRC of Peking University *)
-  | ELF_MA_eXcess        (* eXcess: 16/32/64-bit configurable embedded CPU *)
-  | ELF_MA_DXP           (* Icera Semiconductor Inc. Deep Execution Processor *)
-  | ELF_MA_Altera_Nios2  (* Altera Nios II soft-core processor *)
-  | ELF_MA_CRX           (* National Semiconductor CompactRISC CRX microprocessor *)
-  | ELF_MA_XGATE         (* Motorola XGATE embedded processor *)
-  | ELF_MA_C166          (* Infineon C16x/XC16x processor *)
-  | ELF_MA_M16C          (* Renesas M16C series microprocessors *)
-  | ELF_MA_dsPIC30F      (* Microchip Technology dsPIC30F Digital Signal Controller *)
-  | ELF_MA_CE            (* Freescale Communication Engine RISC core *)
-  | ELF_MA_M32C          (* Renesas M32C series microprocessors *)
-  | ELF_MA_None          (* No machine *)
-  | ELF_MA_M32           (* AT&T WE 32100 *)
-  | ELF_MA_SPARC         (* SPARC *)
-  | ELF_MA_386           (* Intel 80386 *)
-  | ELF_MA_68K           (* Motorola 68000 *)
-  | ELF_MA_88K           (* Motorola 88000 *)
-  | ELF_MA_860           (* Intel 80860 *)
-  | ELF_MA_MIPS          (* MIPS I Architecture *)
-  | ELF_MA_S370          (* IBM System/370 Processor *)
-  | ELF_MA_MIPS_RS3_LE   (* MIPS RS3000 Little-endian *)
-  | ELF_MA_PARISC        (* Hewlett-Packard PA-RISC *)
-  | ELF_MA_VPP500        (* Fujitsu VPP500 *)
-  | ELF_MA_SPARC32PLUS   (* Enhanced instruction set SPARC *)
-  | ELF_MA_960           (* Intel 80960 *)
-  | ELF_MA_PPC           (* PowerPC *)
-  | ELF_MA_PPC64         (* 64-bit PowerPC *)
-  | ELF_MA_S390          (* IBM System/390 Processor *)
-  | ELF_MA_SPU           (* IBM SPU/SPC *)
-  | ELF_MA_V800          (* NEC V800 *)
-  | ELF_MA_FR20          (* Fujitsu FR20 *)
-  | ELF_MA_RH32          (* TRW RH-32 *)
-  | ELF_MA_RCE           (* Motorola RCE *)
-  | ELF_MA_ARM           (* ARM 32-bit architecture (AARCH32) *)
-  | ELF_MA_Alpha         (* Digital Alpha *)
-  | ELF_MA_SH            (* Hitachi SH *)
-  | ELF_MA_SPARCv9       (* SPARC Version 9 *)
-  | ELF_MA_TriCore       (* Siemens TriCore embedded processor *)
-  | ELF_MA_ARC           (* Argonaut RISC Core, Argonaut Technologies Inc. *)
-  | ELF_MA_H8_300        (* Hitachi H8/300 *)
-  | ELF_MA_H8_300H       (* Hitachi H8/300H *)
-  | ELF_MA_H8S           (* Hitachi H8S *)
-  | ELF_MA_H8_500        (* Hitachi H8/500 *)
-  | ELF_MA_IA_64         (* Intel IA-64 processor architecture *)
-  | ELF_MA_MIPS_X        (* Stanford MIPS-X *)
-  | ELF_MA_ColdFire      (* Motorola ColdFire *)
-  | ELF_MA_68HC12        (* Motorola M68HC12 *)
-  | ELF_MA_MMA           (* Fujitsu MMA Multimedia Accelerator *)
-  | ELF_MA_PCP           (* Siemens PCP *)
-  | ELF_MA_nCPU          (* Sony nCPU embedded RISC processor *)
-  | ELF_MA_NDR1          (* Denso NDR1 microprocessor *)
-  | ELF_MA_StarCore      (* Motorola Star*Core processor *)
-  | ELF_MA_ME16          (* Toyota ME16 processor *)
-  | ELF_MA_ST100         (* STMicroelectronics ST100 processor *)
-  | ELF_MA_TinyJ         (* Advanced Logic Corp. TinyJ embedded processor family *)
-  | ELF_MA_X86_64        (* AMD x86-64 architecture *)
-  | ELF_MA_PDSP          (* Sony DSP Processor *)
-  | ELF_MA_PDP10         (* Digital Equipment Corp. PDP-10 *)
-  | ELF_MA_PDP11         (* Digital Equipment Corp. PDP-11 *)
-  | ELF_MA_FX66          (* Siemens FX66 microcontroller *)
-  | ELF_MA_ST9Plus       (* STMicroelectronics ST9+ 8/16 bit microcontroller *)
-  | ELF_MA_ST7           (* STMicroelectronics ST7 8-bit microcontroller *)
-  | ELF_MA_68HC16        (* Motorola MC68HC16 Microcontroller *)
-  | ELF_MA_68HC11        (* Motorola MC68HC11 Microcontroller *)
-  | ELF_MA_68HC08        (* Motorola MC68HC08 Microcontroller *)
-  | ELF_MA_68HC05        (* Motorola MC68HC05 Microcontroller *)
-  | ELF_MA_SVx           (* Silicon Graphics SVx *)
-  | ELF_MA_ST19          (* STMicroelectronics ST19 8-bit microcontroller *)
-  | ELF_MA_VAX           (* Digital VAX *)
-  | ELF_MA_CRIS          (* Axis Communications 32-bit embedded processor *)
-  | ELF_MA_Javelin       (* Infineon Technologies 32-bit embedded processor *)
-  | ELF_MA_Firepath      (* Element 14 64-bit DSP Processor *)
-  | ELF_MA_Intel209      (* Reserved by Intel *)
-  | ELF_MA_Intel208      (* Reserved by Intel *)
-  | ELF_MA_Intel207      (* Reserved by Intel *)
-  | ELF_MA_Intel206      (* Reserved by Intel *)
-  | ELF_MA_Intel205      (* Reserved by Intel *)
-  | ELF_MA_Intel182      (* Reserved by Intel *)
-  | ELF_MA_ARM184        (* Reserved by ARM *)
-  | ELF_MA_Reserved6     (* Reserved for future use *)
-  | ELF_MA_Reserved11    (* Reserved for future use *)
-  | ELF_MA_Reserved12    (* Reserved for future use *)
-  | ELF_MA_Reserved13    (* Reserved for future use *)
-  | ELF_MA_Reserved14    (* Reserved for future use *)
-  | ELF_MA_Reserved16    (* Reserved for future use *)
-  | ELF_MA_Reserved24    (* Reserved for future use *)
-  | ELF_MA_Reserved25    (* Reserved for future use *)
-  | ELF_MA_Reserved26    (* Reserved for future use *)
-  | ELF_MA_Reserved27    (* Reserved for future use *)
-  | ELF_MA_Reserved28    (* Reserved for future use *)
-  | ELF_MA_Reserved29    (* Reserved for future use *)
-  | ELF_MA_Reserved30    (* Reserved for future use *)
-  | ELF_MA_Reserved31    (* Reserved for future use *)
-  | ELF_MA_Reserved32    (* Reserved for future use *)
-  | ELF_MA_Reserved33    (* Reserved for future use *)
-  | ELF_MA_Reserved34    (* Reserved for future use *)
-  | ELF_MA_Reserved35    (* Reserved for future use *)
-  | ELF_MA_Reserved121   (* Reserved for future use *)
-  | ELF_MA_Reserved122   (* Reserved for future use *)
-  | ELF_MA_Reserved123   (* Reserved for future use *)
-  | ELF_MA_Reserved124   (* Reserved for future use *)
-  | ELF_MA_Reserved125   (* Reserved for future use *)
-  | ELF_MA_Reserved126   (* Reserved for future use *)
-  | ELF_MA_Reserved127   (* Reserved for future use *)
-  | ELF_MA_Reserved128   (* Reserved for future use *)
-  | ELF_MA_Reserved129   (* Reserved for future use *)
-  | ELF_MA_Reserved130   (* Reserved for future use *)
-  | ELF_MA_Reserved143   (* Reserved for future use *)
-  | ELF_MA_Reserved144   (* Reserved for future use *)
-  | ELF_MA_Reserved145   (* Reserved for future use *)
-  | ELF_MA_Reserved146   (* Reserved for future use *)
-  | ELF_MA_Reserved147   (* Reserved for future use *)
-  | ELF_MA_Reserved148   (* Reserved for future use *)
-  | ELF_MA_Reserved149   (* Reserved for future use *)
-  | ELF_MA_Reserved150   (* Reserved for future use *)
-  | ELF_MA_Reserved151   (* Reserved for future use *)
-  | ELF_MA_Reserved152   (* Reserved for future use *)
-  | ELF_MA_Reserved153   (* Reserved for future use *)
-  | ELF_MA_Reserved154   (* Reserved for future use *)
-  | ELF_MA_Reserved155   (* Reserved for future use *)
-  | ELF_MA_Reserved156   (* Reserved for future use *)
-  | ELF_MA_Reserved157   (* Reserved for future use *)
-  | ELF_MA_Reserved158   (* Reserved for future use *)
-  | ELF_MA_Reserved159   (* Reserved for future use *)
-  | ELF_MA_ReservedExt of nat (* Reserved for future use *)
-*)
 
 (** ELF version numbers.  Denotes the ELF version number of an ELF file.  Current is
   * defined to have a value of 1 with the present specification.  Extensions
@@ -439,20 +1138,20 @@ definition elf_ii_nident  :: " nat "  where
   *)
 
 (** Position: e*_ident[elf_ii_mag0], 0x7f magic number *)
-definition elf_mn_mag0  :: " nat "  where 
-     " elf_mn_mag0 = (( 127 :: nat))"
+definition elf_mn_mag0  :: " Elf_Types_Local.unsigned_char "  where 
+     " elf_mn_mag0 = ( Elf_Types_Local.unsigned_char_of_nat(( 127 :: nat)))"
 
 (** Position: e*_ident[elf_ii_mag1], 'E' format identifier *)
-definition elf_mn_mag1  :: " nat "  where 
-     " elf_mn_mag1 = (( 69 :: nat))"
+definition elf_mn_mag1  :: " Elf_Types_Local.unsigned_char "  where 
+     " elf_mn_mag1 = ( Elf_Types_Local.unsigned_char_of_nat(( 69 :: nat)))"
 
 (** Position: e*_ident[elf_ii_mag2], 'L' format identifier *)
-definition elf_mn_mag2  :: " nat "  where 
-     " elf_mn_mag2 = (( 76 :: nat))"
+definition elf_mn_mag2  :: " Elf_Types_Local.unsigned_char "  where 
+     " elf_mn_mag2 = ( Elf_Types_Local.unsigned_char_of_nat(( 76 :: nat)))"
 
 (** Position: e*_ident[elf_ii_mag3], 'F' format identifier *)
-definition elf_mn_mag3  :: " nat "  where 
-     " elf_mn_mag3 = (( 70 :: nat))"
+definition elf_mn_mag3  :: " Elf_Types_Local.unsigned_char "  where 
+     " elf_mn_mag3 = ( Elf_Types_Local.unsigned_char_of_nat(( 70 :: nat)))"
 
 
 (** ELf file classes.  The file format is designed to be portable among machines
@@ -573,11 +1272,14 @@ definition elf_osabi_aros  :: " nat "  where
 definition elf_osabi_fenixos  :: " nat "  where 
      " elf_osabi_fenixos = (( 16 :: nat))"
 
+(** Nuxi CloudABI *)
+definition elf_osabi_cloudabi  :: " nat "  where 
+     " elf_osabi_cloudabi = (( 17 :: nat))"
 
-(** [string_of_elf_osabi_version m] produces a string representation of the
-  * numeric encoding [m] of the ELF OSABI version.
-  *)
-(*val string_of_elf_osabi_version : natural -> string*)
+(** Stratus technologies OpenVOS *)
+definition elf_osabi_openvos  :: " nat "  where 
+     " elf_osabi_openvos = (( 18 :: nat))"
+
 
 (** Checks an architecture defined OSABI version is correct, i.e. in the range
   * 64 to 255 inclusive.
@@ -587,12 +1289,17 @@ definition is_valid_architecture_defined_osabi_version  :: " nat \<Rightarrow> b
 (n \<ge>( 64 :: nat)) \<and> (n \<le>( 255 :: nat)))"
 
 
+(** [string_of_elf_osabi_version m] produces a string representation of the
+  * numeric encoding [m] of the ELF OSABI version.
+  *)
+(*val string_of_elf_osabi_version : (natural -> string) -> natural -> string*)
+
 (** ELF Header type *)
 
 (** [ei_nident] is the fixed length of the identification field in the
   * [elf32_ehdr] type.
   *)
-(*val ei_nident : nat*)
+(*val ei_nident : natural*)
 definition ei_nident  :: " nat "  where 
      " ei_nident = (( 16 :: nat))"
 
@@ -630,13 +1337,46 @@ record elf32_header =
  elf32_shstrndx ::" uint16 "         (** Section header table entry for section name string table *)
    
 
+   
+(*val is_valid_elf32_header : elf32_header -> bool*)
+definition is_valid_elf32_header  :: " elf32_header \<Rightarrow> bool "  where 
+     " is_valid_elf32_header hdr = (
+  List.take(( 4 :: nat))(elf32_ident   hdr) = [elf_mn_mag0, elf_mn_mag1, elf_mn_mag2, elf_mn_mag3])"
 
-record 'a HasElf32Header_class=
 
-  get_elf32_header_method ::" 'a \<Rightarrow> elf32_header "
+(*val elf32_header_compare : elf32_header -> elf32_header -> Basic_classes.ordering*)
+definition elf32_header_compare  :: " elf32_header \<Rightarrow> elf32_header \<Rightarrow> Lem_basic_classes.ordering "  where 
+     " elf32_header_compare h1 h2 = (    
+ (pairCompare (lexicographicCompareBy (genericCompare (op<) (op=))) (lexicographicCompareBy (genericCompare (op<) (op=))) (List.map unat(elf32_ident   h1), [unat(elf32_type   h1), 
+            unat(elf32_machine   h1) , unat(elf32_version   h1) , 
+            unat(elf32_entry   h1) , unat(elf32_phoff   h1) , unat(elf32_shoff   h1) , 
+            unat(elf32_flags   h1) , unat(elf32_ehsize   h1) , 
+            unat(elf32_phentsize   h1), unat(elf32_phnum   h1) , 
+            unat(elf32_shentsize   h1), unat(elf32_shnum   h1) , 
+            unat(elf32_shstrndx   h1)])
+     (List.map unat(elf32_ident   h2), [unat(elf32_type   h2), 
+            unat(elf32_machine   h2) , unat(elf32_version   h2) , 
+            unat(elf32_entry   h2) , unat(elf32_phoff   h2) , unat(elf32_shoff   h2) , 
+            unat(elf32_flags   h2) , unat(elf32_ehsize   h2) , 
+            unat(elf32_phentsize   h2), unat(elf32_phnum   h2) , 
+            unat(elf32_shentsize   h2), unat(elf32_shnum   h2) , 
+            unat(elf32_shstrndx   h2)])))"
 
 
+definition instance_Basic_classes_Ord_Elf_header_elf32_header_dict  :: "(elf32_header)Ord_class "  where 
+     " instance_Basic_classes_Ord_Elf_header_elf32_header_dict = ((|
 
+  compare_method = elf32_header_compare,
+
+  isLess_method = (\<lambda> f1 .  (\<lambda> f2 .  (elf32_header_compare f1 f2 = LT))),
+
+  isLessEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (elf32_header_compare f1 f2) ({LT, EQ}))),
+
+  isGreater_method = (\<lambda> f1 .  (\<lambda> f2 .  (elf32_header_compare f1 f2 = GT))),
+
+  isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (elf32_header_compare f1 f2) ({GT, EQ})))|) )"
+
+  
 (** [elf64_header] is the type of headers for 32-bit ELF files.
   *)
 record elf64_header =
@@ -671,10 +1411,43 @@ record elf64_header =
    
 
 
-record 'a HasElf64Header_class=
+(*val is_valid_elf64_header : elf64_header -> bool*)
+definition is_valid_elf64_header  :: " elf64_header \<Rightarrow> bool "  where 
+     " is_valid_elf64_header hdr = (
+  List.take(( 4 :: nat))(elf64_ident   hdr) = [elf_mn_mag0, elf_mn_mag1, elf_mn_mag2, elf_mn_mag3])"
 
-  get_elf64_header_method ::" 'a \<Rightarrow> elf64_header "
 
+(*val elf64_header_compare : elf64_header -> elf64_header -> Basic_classes.ordering*)
+definition elf64_header_compare  :: " elf64_header \<Rightarrow> elf64_header \<Rightarrow> Lem_basic_classes.ordering "  where 
+     " elf64_header_compare h1 h2 = (    
+ (pairCompare (lexicographicCompareBy (genericCompare (op<) (op=))) (lexicographicCompareBy (genericCompare (op<) (op=))) (List.map unat(elf64_ident   h1), [unat(elf64_type   h1), 
+            unat(elf64_machine   h1) , unat(elf64_version   h1) , 
+            unat(elf64_entry   h1) , unat(elf64_phoff   h1) , unat(elf64_shoff   h1) , 
+            unat(elf64_flags   h1) , unat(elf64_ehsize   h1) , 
+            unat(elf64_phentsize   h1), unat(elf64_phnum   h1) , 
+            unat(elf64_shentsize   h1), unat(elf64_shnum   h1) , 
+            unat(elf64_shstrndx   h1)])
+     (List.map unat(elf64_ident   h2), [unat(elf64_type   h2), 
+            unat(elf64_machine   h2) , unat(elf64_version   h2) , 
+            unat(elf64_entry   h2) , unat(elf64_phoff   h2) , unat(elf64_shoff   h2) , 
+            unat(elf64_flags   h2) , unat(elf64_ehsize   h2) , 
+            unat(elf64_phentsize   h2), unat(elf64_phnum   h2) , 
+            unat(elf64_shentsize   h2), unat(elf64_shnum   h2) , 
+            unat(elf64_shstrndx   h2)])))"
+
+
+definition instance_Basic_classes_Ord_Elf_header_elf64_header_dict  :: "(elf64_header)Ord_class "  where 
+     " instance_Basic_classes_Ord_Elf_header_elf64_header_dict = ((|
+
+  compare_method = elf64_header_compare,
+
+  isLess_method = (\<lambda> f1 .  (\<lambda> f2 .  (elf64_header_compare f1 f2 = LT))),
+
+  isLessEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (elf64_header_compare f1 f2) ({LT, EQ}))),
+
+  isGreater_method = (\<lambda> f1 .  (\<lambda> f2 .  (elf64_header_compare f1 f2 = GT))),
+
+  isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (elf64_header_compare f1 f2) ({GT, EQ})))|) )"
 
 
 (*val is_elf32_executable_file : elf32_header -> bool*)
@@ -742,6 +1515,7 @@ definition get_elf32_osabi  :: " elf32_header \<Rightarrow> nat "  where
      " get_elf32_osabi hdr = (
   (case  index(elf32_ident   hdr) (id elf_ii_osabi) of
       Some osabi => unat osabi
+    | None    => failwith (''get_elf32_osabi: lookup in ident failed'')
   ))"
  (* Partial: should never return Nothing *)
 
@@ -750,24 +1524,109 @@ definition get_elf64_osabi  :: " elf64_header \<Rightarrow> nat "  where
      " get_elf64_osabi hdr = (
   (case  index(elf64_ident   hdr) (id elf_ii_osabi) of
       Some osabi => unat osabi
+    | None    => failwith (''get_elf64_osabi: lookup in ident failed'')
+  ))"
+ (* Partial: should never return Nothing *)
+  
+(*val get_elf32_data_encoding : elf32_header -> natural*)
+definition get_elf32_data_encoding  :: " elf32_header \<Rightarrow> nat "  where 
+     " get_elf32_data_encoding hdr = (
+  (case  index(elf32_ident   hdr) (id elf_ii_data) of
+      Some data => unat data
+    | None    => failwith (''get_elf32_data_encoding: lookup in ident failed'')
   ))"
  (* Partial: should never return Nothing *)
 
+(*val get_elf64_data_encoding : elf64_header -> natural*)
+definition get_elf64_data_encoding  :: " elf64_header \<Rightarrow> nat "  where 
+     " get_elf64_data_encoding hdr = (
+  (case  index(elf64_ident   hdr) (id elf_ii_data) of
+      Some data => unat data
+    | None    => failwith (''get_elf64_data_encoding: lookup in ident failed'')
+  ))"
+ (* Partial: should never return Nothing *)
+  
+(*val get_elf32_file_class : elf32_header -> natural*)
+definition get_elf32_file_class  :: " elf32_header \<Rightarrow> nat "  where 
+     " get_elf32_file_class hdr = (
+  (case  index(elf32_ident   hdr) (id elf_ii_class) of
+      Some cls => unat cls
+    | None    => failwith (''get_elf32_file_class: lookup in ident failed'')
+  ))"
+ (* Partial: should never return Nothing *)
+
+(*val get_elf64_file_class : elf64_header -> natural*)
+definition get_elf64_file_class  :: " elf64_header \<Rightarrow> nat "  where 
+     " get_elf64_file_class hdr = (
+  (case  index(elf64_ident   hdr) (id elf_ii_class) of
+      Some cls => unat cls
+    | None    => failwith (''get_elf64_file_class: lookup in ident failed'')
+  ))"
+ (* Partial: should never return Nothing *)
+
+(*val get_elf32_version_number : elf32_header -> natural*)
+definition get_elf32_version_number  :: " elf32_header \<Rightarrow> nat "  where 
+     " get_elf32_version_number hdr = (
+  (case  index(elf32_ident   hdr) (id elf_ii_version) of
+      Some ver => unat ver
+    | None    => failwith (''get_elf32_version_number: lookup in ident failed'')
+  ))"
+ (* Partial: should never return Nothing *)
+
+(*val get_elf64_version_number : elf64_header -> natural*)
+definition get_elf64_version_number  :: " elf64_header \<Rightarrow> nat "  where 
+     " get_elf64_version_number hdr = (
+  (case  index(elf64_ident   hdr) (id elf_ii_version) of
+      Some ver => unat ver
+    | None    => failwith (''get_elf64_version_number: lookup in ident failed'')
+  ))"
+ (* Partial: should never return Nothing *)
+  
+(*val is_valid_elf32_version_number : elf32_header -> bool*)
+definition is_valid_elf32_version_numer  :: " elf32_header \<Rightarrow> bool "  where 
+     " is_valid_elf32_version_numer hdr = (
+  get_elf32_version_number hdr = elf_ev_current )"
+
+
+(*val is_valid_elf64_version_number : elf64_header -> bool*)
+definition is_valid_elf64_version_numer  :: " elf64_header \<Rightarrow> bool "  where 
+     " is_valid_elf64_version_numer hdr = (
+  get_elf64_version_number hdr = elf_ev_current )"
+
+  
+(*val get_elf32_abi_version : elf32_header -> natural*)
+definition get_elf32_abi_version  :: " elf32_header \<Rightarrow> nat "  where 
+     " get_elf32_abi_version hdr = (
+  (case  index(elf32_ident   hdr) (id elf_ii_abiversion) of
+      Some ver => unat ver
+    | None    => failwith (''get_elf32_abi_version: lookup in ident failed'')
+  ))"
+ (* Partial: should never return Nothing *)
+
+(*val get_elf64_abi_version : elf64_header -> natural*)
+definition get_elf64_abi_version  :: " elf64_header \<Rightarrow> nat "  where 
+     " get_elf64_abi_version hdr = (
+  (case  index(elf64_ident   hdr) (id elf_ii_abiversion) of
+      Some ver => unat ver
+    | None    => failwith (''get_elf64_abi_version: lookup in ident failed'')
+  ))"
+ (* Partial: should never return Nothing *)
+  
 (** [deduce_endian] deduces the endianness of an ELF file based on the ELF
   * header's magic number.
   *)
 (*val deduce_endianness : list unsigned_char -> endianness*)
 definition deduce_endianness  :: "(Elf_Types_Local.unsigned_char)list \<Rightarrow> endianness "  where 
-     " deduce_endianness id1 = (
-  (case  index id1(( 5 :: nat)) of
-      None => Little (* XXX: random default as read of magic number has failed! *)
+     " deduce_endianness id2 = (
+  (case  index id2(( 5 :: nat)) of
+      None => failwith (''deduce_endianness: read of magic number has failed'')
     | Some v  =>
       if unat v = elf_data_2lsb then
         Little
       else if unat v = elf_data_2msb then
         Big
       else
-        Little (* XXX: random default as value is not valid! *)
+        failwith (''deduce_endianness: value is not valid'')
   ))"
 
 
@@ -781,6 +1640,50 @@ definition get_elf32_header_endianness  :: " elf32_header \<Rightarrow> endianne
 definition get_elf64_header_endianness  :: " elf64_header \<Rightarrow> endianness "  where 
      " get_elf64_header_endianness hdr = (
   deduce_endianness ((elf64_ident   hdr)))"
+
+  
+(*val has_elf32_header_associated_entry_point : elf32_header -> bool*)
+definition has_elf32_header_associated_entry_point  :: " elf32_header \<Rightarrow> bool "  where 
+     " has_elf32_header_associated_entry_point hdr = ( \<not> ((unat(elf32_entry   hdr)) =(( 0 :: nat))))"
+
+
+(*val has_elf64_header_associated_entry_point : elf64_header -> bool*)
+definition has_elf64_header_associated_entry_point  :: " elf64_header \<Rightarrow> bool "  where 
+     " has_elf64_header_associated_entry_point hdr = ( \<not> ((unat(elf64_entry   hdr)) =(( 0 :: nat))))"
+
+  
+(*val has_elf32_header_string_table : elf32_header -> bool*)
+definition has_elf32_header_string_table  :: " elf32_header \<Rightarrow> bool "  where 
+     " has_elf32_header_string_table hdr = ( \<not> ((unat(elf32_shstrndx   hdr)) = shn_undef))"
+
+  
+(*val has_elf64_header_string_table : elf64_header -> bool*)
+definition has_elf64_header_string_table  :: " elf64_header \<Rightarrow> bool "  where 
+     " has_elf64_header_string_table hdr = ( \<not> ((unat(elf64_shstrndx   hdr)) = shn_undef))"
+
+  
+(*val is_elf32_header_section_size_in_section_header_table : elf32_header -> bool*)
+definition is_elf32_header_section_size_in_section_header_table  :: " elf32_header \<Rightarrow> bool "  where 
+     " is_elf32_header_section_size_in_section_header_table hdr = (
+  unat(elf32_shnum   hdr) =( 0 :: nat))"
+
+  
+(*val is_elf64_header_section_size_in_section_header_table : elf64_header -> bool*)
+definition is_elf64_header_section_size_in_section_header_table  :: " elf64_header \<Rightarrow> bool "  where 
+     " is_elf64_header_section_size_in_section_header_table hdr = (
+  unat(elf64_shnum   hdr) =( 0 :: nat))"
+
+  
+(*val is_elf32_header_string_table_index_in_link : elf32_header -> bool*)
+definition is_elf32_header_string_table_index_in_link  :: " elf32_header \<Rightarrow> bool "  where 
+     " is_elf32_header_string_table_index_in_link hdr = (
+  unat(elf32_shstrndx   hdr) = shn_xindex )"
+
+  
+(*val is_elf64_header_string_table_index_in_link : elf64_header -> bool*)
+definition is_elf64_header_string_table_index_in_link  :: " elf64_header \<Rightarrow> bool "  where 
+     " is_elf64_header_string_table_index_in_link hdr = (
+  unat(elf64_shstrndx   hdr) = shn_xindex )"
 
 
 (** The [hdr_print_bundle] type is used to tidy up other type signatures.  Some of the
@@ -798,6 +1701,13 @@ type_synonym hdr_print_bundle =" (nat \<Rightarrow> string) * (nat \<Rightarrow>
 (*val string_of_elf32_header_default : elf32_header -> string*)
 
 (*val string_of_elf64_header_default : elf64_header -> string*)
+
+(*val read_elf_ident : byte_sequence -> error (list unsigned_char * byte_sequence)*)
+definition read_elf_ident  :: " byte_sequence \<Rightarrow>((Elf_Types_Local.unsigned_char)list*byte_sequence)error " 
+ where 
+     " read_elf_ident bs
+ = ( repeatM' ei_nident bs (read_unsigned_char default_endianness))"
+
 
 (*val bytes_of_elf32_header : elf32_header -> byte_sequence*)
 definition bytes_of_elf32_header  :: " elf32_header \<Rightarrow> byte_sequence "  where 
@@ -820,25 +1730,49 @@ definition bytes_of_elf32_header  :: " elf32_header \<Rightarrow> byte_sequence 
     , bytes_of_elf32_half endian(elf32_shstrndx   hdr)
     ]))"
 
+    
+(*val is_elf32_header_padding_correct : elf32_header -> bool*)
+definition is_elf32_header_padding_correct  :: " elf32_header \<Rightarrow> bool "  where 
+     " is_elf32_header_padding_correct ehdr = (  
+(index(elf32_ident   ehdr)(( 9 :: nat))  = Some (Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat)))) \<and>
+  ((index(elf32_ident   ehdr)(( 10 :: nat)) = Some (Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat)))) \<and>
+  ((index(elf32_ident   ehdr)(( 11 :: nat)) = Some (Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat)))) \<and>
+  ((index(elf32_ident   ehdr)(( 12 :: nat)) = Some (Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat)))) \<and>
+  ((index(elf32_ident   ehdr)(( 13 :: nat)) = Some (Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat)))) \<and>
+  ((index(elf32_ident   ehdr)(( 14 :: nat)) = Some (Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat)))) \<and>  
+(index(elf32_ident   ehdr)(( 15 :: nat)) = Some (Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat))))))))))"
+
+
+(*val is_magic_number_correct : list unsigned_char -> bool*)
+definition is_magic_number_correct  :: "(Elf_Types_Local.unsigned_char)list \<Rightarrow> bool "  where 
+     " is_magic_number_correct ident = (  
+(index ident(( 0 :: nat)) = Some (Elf_Types_Local.unsigned_char_of_nat(( 127 :: nat)))) \<and>
+  ((index ident(( 1 :: nat)) = Some (Elf_Types_Local.unsigned_char_of_nat(( 69 :: nat))))  \<and>
+  ((index ident(( 2 :: nat)) = Some (Elf_Types_Local.unsigned_char_of_nat(( 76 :: nat))))  \<and>  
+(index ident(( 3 :: nat)) = Some (Elf_Types_Local.unsigned_char_of_nat(( 70 :: nat)))))))"
+
 
 (*val read_elf32_header : byte_sequence -> error (elf32_header * byte_sequence)*)
 definition read_elf32_header  :: " byte_sequence \<Rightarrow>(elf32_header*byte_sequence)error "  where 
      " read_elf32_header bs = (
-	repeatM' ei_nident bs (read_unsigned_char default_endianness) >>= (\<lambda> (ident, bs) . 
-  (let endian = (deduce_endianness ident) in
-	read_elf32_half endian bs >>= (\<lambda> (typ1, bs) . 
-	read_elf32_half endian bs >>= (\<lambda> (machine, bs) . 
-	read_elf32_word endian bs >>= (\<lambda> (version, bs) . 
-	read_elf32_addr endian bs >>= (\<lambda> (entry, bs) . 
-	read_elf32_off  endian bs >>= (\<lambda> (phoff, bs) . 
-	read_elf32_off  endian bs >>= (\<lambda> (shoff, bs) . 
-	read_elf32_word endian bs >>= (\<lambda> (flags, bs) . 
-	read_elf32_half endian bs >>= (\<lambda> (ehsize, bs) . 
-	read_elf32_half endian bs >>= (\<lambda> (phentsize, bs) . 
-	read_elf32_half endian bs >>= (\<lambda> (phnum, bs) . 
-	read_elf32_half endian bs >>= (\<lambda> (shentsize, bs) . 
-	read_elf32_half endian bs >>= (\<lambda> (shnum, bs) . 
-	read_elf32_half endian bs >>= (\<lambda> (shstrndx, bs) . 
+	read_elf_ident bs >>= (\<lambda> (ident, bs) . 
+	if \<not> (is_magic_number_correct ident) then
+	  error_fail (''read_elf32_header: magic number incorrect'')
+	else
+    (let endian = (deduce_endianness ident) in
+	  read_elf32_half endian bs >>= (\<lambda> (typ1, bs) . 
+	  read_elf32_half endian bs >>= (\<lambda> (machine, bs) . 
+	  read_elf32_word endian bs >>= (\<lambda> (version, bs) . 
+	  read_elf32_addr endian bs >>= (\<lambda> (entry, bs) . 
+	  read_elf32_off  endian bs >>= (\<lambda> (phoff, bs) . 
+	  read_elf32_off  endian bs >>= (\<lambda> (shoff, bs) . 
+	  read_elf32_word endian bs >>= (\<lambda> (flags, bs) . 
+	  read_elf32_half endian bs >>= (\<lambda> (ehsize, bs) . 
+	  read_elf32_half endian bs >>= (\<lambda> (phentsize, bs) . 
+	  read_elf32_half endian bs >>= (\<lambda> (phnum, bs) . 
+	  read_elf32_half endian bs >>= (\<lambda> (shentsize, bs) . 
+	  read_elf32_half endian bs >>= (\<lambda> (shnum, bs) . 
+	  read_elf32_half endian bs >>= (\<lambda> (shstrndx, bs) . 
     (case  index ident(( 4 :: nat)) of
         None => error_fail (''read_elf32_header: transcription of ELF identifier failed'')
       | Some c  =>
@@ -880,21 +1814,24 @@ definition bytes_of_elf64_header  :: " elf64_header \<Rightarrow> byte_sequence 
 (*val read_elf64_header : byte_sequence -> error (elf64_header * byte_sequence)*)
 definition read_elf64_header  :: " byte_sequence \<Rightarrow>(elf64_header*byte_sequence)error "  where 
      " read_elf64_header bs = (
-  repeatM' ei_nident bs (read_unsigned_char default_endianness) >>= (\<lambda> (ident, bs) . 
-  (let endian = (deduce_endianness ident) in
-  read_elf64_half endian bs >>= (\<lambda> (typ1, bs) . 
-  read_elf64_half endian bs >>= (\<lambda> (machine, bs) . 
-  read_elf64_word endian bs >>= (\<lambda> (version, bs) . 
-  read_elf64_addr endian bs >>= (\<lambda> (entry, bs) . 
-  read_elf64_off  endian bs >>= (\<lambda> (phoff, bs) . 
-  read_elf64_off  endian bs >>= (\<lambda> (shoff, bs) . 
-  read_elf64_word endian bs >>= (\<lambda> (flags, bs) . 
-  read_elf64_half endian bs >>= (\<lambda> (ehsize, bs) . 
-  read_elf64_half endian bs >>= (\<lambda> (phentsize, bs) . 
-  read_elf64_half endian bs >>= (\<lambda> (phnum, bs) . 
-  read_elf64_half endian bs >>= (\<lambda> (shentsize, bs) . 
-  read_elf64_half endian bs >>= (\<lambda> (shnum, bs) . 
-  read_elf64_half endian bs >>= (\<lambda> (shstrndx, bs) . 
+  read_elf_ident bs >>= (\<lambda> (ident, bs) . 
+  if \<not> (is_magic_number_correct ident) then
+    error_fail (''read_elf64_header: magic number incorrect'')
+  else
+    (let endian = (deduce_endianness ident) in
+    read_elf64_half endian bs >>= (\<lambda> (typ1, bs) . 
+    read_elf64_half endian bs >>= (\<lambda> (machine, bs) . 
+    read_elf64_word endian bs >>= (\<lambda> (version, bs) . 
+    read_elf64_addr endian bs >>= (\<lambda> (entry, bs) . 
+    read_elf64_off  endian bs >>= (\<lambda> (phoff, bs) . 
+    read_elf64_off  endian bs >>= (\<lambda> (shoff, bs) . 
+    read_elf64_word endian bs >>= (\<lambda> (flags, bs) . 
+    read_elf64_half endian bs >>= (\<lambda> (ehsize, bs) . 
+    read_elf64_half endian bs >>= (\<lambda> (phentsize, bs) . 
+    read_elf64_half endian bs >>= (\<lambda> (phnum, bs) . 
+    read_elf64_half endian bs >>= (\<lambda> (shentsize, bs) . 
+    read_elf64_half endian bs >>= (\<lambda> (shnum, bs) . 
+    read_elf64_half endian bs >>= (\<lambda> (shstrndx, bs) . 
     (case  index ident(( 4 :: nat)) of
         None => error_fail (''read_elf64_header: transcription of ELF identifier failed'')
       | Some c  =>
@@ -909,27 +1846,6 @@ definition read_elf64_header  :: " byte_sequence \<Rightarrow>(elf64_header*byte
         else
           error_fail (''read_elf64_header: not a 64-bit ELF file'')
     )))))))))))))))))"
-
-
-(*val is_elf32_header_padding_correct : elf32_header -> bool*)
-definition is_elf32_header_padding_correct  :: " elf32_header \<Rightarrow> bool "  where 
-     " is_elf32_header_padding_correct ehdr = (  
-(index(elf32_ident   ehdr)(( 9 :: nat))  = Some (Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat)))) \<and>
-  ((index(elf32_ident   ehdr)(( 10 :: nat)) = Some (Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat)))) \<and>
-  ((index(elf32_ident   ehdr)(( 11 :: nat)) = Some (Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat)))) \<and>
-  ((index(elf32_ident   ehdr)(( 12 :: nat)) = Some (Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat)))) \<and>
-  ((index(elf32_ident   ehdr)(( 13 :: nat)) = Some (Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat)))) \<and>
-  ((index(elf32_ident   ehdr)(( 14 :: nat)) = Some (Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat)))) \<and>  
-(index(elf32_ident   ehdr)(( 15 :: nat)) = Some (Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat))))))))))"
-
-
-(*val is_elf32_header_magic_number_correct : elf32_header -> bool*)
-definition is_elf32_header_magic_number_correct  :: " elf32_header \<Rightarrow> bool "  where 
-     " is_elf32_header_magic_number_correct ehdr = (  
-(index(elf32_ident   ehdr)(( 0 :: nat)) = Some (Elf_Types_Local.unsigned_char_of_nat(( 127 :: nat)))) \<and>
-  ((index(elf32_ident   ehdr)(( 1 :: nat)) = Some (Elf_Types_Local.unsigned_char_of_nat(( 69 :: nat))))  \<and>
-  ((index(elf32_ident   ehdr)(( 2 :: nat)) = Some (Elf_Types_Local.unsigned_char_of_nat(( 76 :: nat))))  \<and>  
-(index(elf32_ident   ehdr)(( 3 :: nat)) = Some (Elf_Types_Local.unsigned_char_of_nat(( 70 :: nat)))))))"
 
 
 (*val is_elf32_header_class_correct : elf32_header -> bool*)
@@ -951,8 +1867,8 @@ definition is_elf32_header_version_correct  :: " elf32_header \<Rightarrow> bool
 (*val is_elf32_header_valid : elf32_header -> bool*)
 definition is_elf32_header_valid  :: " elf32_header \<Rightarrow> bool "  where 
      " is_elf32_header_valid ehdr = (  
-(List.length(elf32_ident   ehdr) = ei_nident) \<and>  
-(is_elf32_header_magic_number_correct ehdr \<and>  
+( (List.length(elf32_ident   ehdr)) = ei_nident) \<and>  
+(is_magic_number_correct(elf32_ident   ehdr) \<and>  
 (is_elf32_header_padding_correct ehdr \<and>  
 (is_elf32_header_class_correct ehdr \<and>
   is_elf32_header_version_correct ehdr))))"

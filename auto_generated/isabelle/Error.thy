@@ -4,17 +4,20 @@ theory "Error"
 
 imports 
  	 Main
-	 "Lem_list" 
 	 "Lem_num" 
+	 "Lem_list" 
+	 "Lem_basic_classes" 
+	 "Lem_maybe" 
 	 "Lem_string" 
 	 "Show" 
 
 begin 
 
+(*open import Basic_classes*)
 (*open import List*)
+(*open import Maybe*)
 (*open import Num*)
 (*open import String*)
-
 (*open import Show*)
 
 (** [error] is a type used to represent potentially failing computations. [Success]
@@ -33,6 +36,13 @@ definition error_return  :: " 'a \<Rightarrow> 'a error "  where
      " error_return r = ( Success r )"
 
 
+(*val with_success : forall 'a 'b. error 'a -> 'b -> ('a -> 'b) -> 'b*)
+fun with_success  :: " 'a error \<Rightarrow> 'b \<Rightarrow>('a \<Rightarrow> 'b)\<Rightarrow> 'b "  where 
+     " with_success (Success s) fl suc = ( suc s )"
+|" with_success (Fail err) fl suc = ( fl )" 
+declare with_success.simps [simp del]
+
+
 (** [fail err] represents a failing computation, with error message [err].
   *)
 (*val fail : forall 'a. string -> error 'a*)
@@ -43,42 +53,54 @@ definition error_fail  :: " string \<Rightarrow> 'a error "  where
 (** [(>>=)] is the monadic binding function for [error].
   *)
 (*val >>= : forall 'a 'b. error 'a -> ('a -> error 'b) -> error 'b*)
-fun error_bind :: " 'a error \<Rightarrow>('a \<Rightarrow> 'b error)\<Rightarrow> 'b error "  ("_>>=_" [80,80]80) where 
-     "error_bind (Success s) f = ( f s )"
-|"error_bind (Fail err) f = ( Fail err )" 
-declare error_bind.simps [simp del]
+fun >>= :: " 'a error \<Rightarrow>('a \<Rightarrow> 'b error)\<Rightarrow> 'b error "  where 
+     " >>= (Success s) f = ( f s )"
+|" >>= (Fail err) f = ( Fail err )" 
+declare >>=.simps [simp del]
+
+	
+(** [as_maybe e] drops an [error] value into a [maybe] value, throwing away
+  * error information.
+  *)
+
+(*val as_maybe : forall 'a. error 'a -> maybe 'a*)
+fun as_maybe  :: " 'a error \<Rightarrow> 'a option "  where 
+     " as_maybe (Fail err) = ( None )"
+|" as_maybe (Success s) = ( Some s )" 
+declare as_maybe.simps [simp del]
 
 
 (** [repeatM count action] fails if [action] is a failing computation, or
   * successfully produces a list [count] elements long, where each element is
   * the value successfully returned by [action].
   *)
-(*val repeatM : forall 'a. nat -> error 'a -> error (list 'a)*)
+(*val repeatM : forall 'a. natural -> error 'a -> error (list 'a)*)
 function (sequential,domintros)  repeatM  :: " nat \<Rightarrow> 'a error \<Rightarrow>('a list)error "  where 
-     " repeatM 0 action = ( error_return [])"
-|" repeatM m action = (
-				action >>= (\<lambda> head . 
-				repeatM (m -( 1 :: nat)) action >>= (\<lambda> tail . 
-				error_return (head # tail))))" 
+     " repeatM count1 action = (
+  if count1 =( 0 :: nat) then
+    error_return []
+  else
+    action >>= (\<lambda> head . 
+    repeatM (count1 -( 1 :: nat)) action >>= (\<lambda> tail . 
+    error_return (head # tail))))" 
 by pat_completeness auto
-
-termination by lexicographic_order
 
 
 (** [repeatM' count seed action] is a variant of [repeatM] that acts like [repeatM]
   * apart from any successful result returns a tuple whose second component is [seed]
   * and whose first component is the same as would be returned by [repeatM].
   *)
-(*val repeatM' : forall 'a 'b. nat -> 'b -> ('b -> error ('a * 'b)) -> error ((list 'a) * 'b)*)
+(*val repeatM' : forall 'a 'b. natural -> 'b -> ('b -> error ('a * 'b)) -> error ((list 'a) * 'b)*)
 function (sequential,domintros)  repeatM'  :: " nat \<Rightarrow> 'b \<Rightarrow>('b \<Rightarrow>('a*'b)error)\<Rightarrow>('a list*'b)error "  where 
-     " repeatM' 0 seed action = ( error_return ([], seed))"
-|" repeatM' m seed action = (
-				action seed >>= (\<lambda> (head, seed) . 
-				repeatM' (m -( 1 :: nat)) seed action >>= (\<lambda> (tail, seed) . 
-				error_return ((head # tail), seed))))" 
+     " repeatM' count1 seed action = (
+  if count1 =( 0 :: nat) then
+    error_return ([], seed)
+  else
+    action seed >>= (\<lambda> (head, seed) . 
+    repeatM' (count1 -( 1 :: nat)) seed action >>= (\<lambda> (tail, seed) . 
+    error_return ((head # tail), seed))))" 
 by pat_completeness auto
 
-termination by lexicographic_order
 	
 (** [mapM f xs] maps [f] across [xs], failing if [f] fails on any element of [xs].
   *)
@@ -87,11 +109,10 @@ function (sequential,domintros)  mapM  :: "('a \<Rightarrow> 'b error)\<Rightarr
      " mapM f ([]) = ( error_return [])"
 |" mapM f (x # xs) = (
 				f x >>= (\<lambda> hd . 
-				mapM f xs >>= (\<lambda> tl . 
-				error_return (hd # tl))))" 
+				mapM f xs >>= (\<lambda> tl1 . 
+				error_return (hd # tl1))))" 
 by pat_completeness auto
 
-termination by lexicographic_order
 
 (*val foldM : forall 'a 'b. ('a -> 'b -> error 'a) -> 'a -> list 'b -> error 'a*)
 function (sequential,domintros)  foldM  :: "('a \<Rightarrow> 'b \<Rightarrow> 'a error)\<Rightarrow> 'a \<Rightarrow> 'b list \<Rightarrow> 'a error "  where 
@@ -99,8 +120,8 @@ function (sequential,domintros)  foldM  :: "('a \<Rightarrow> 'b \<Rightarrow> '
 |" foldM f e (x # xs) = ( f e x >>= (\<lambda> res .  foldM f res xs))" 
 by pat_completeness auto
 
-termination by lexicographic_order
 
 (** [string_of_error err] produces a string representation of [err].
   *)
-(*val string_of_error : forall 'a. Show 'a => error 'a -> string*)end
+(*val string_of_error : forall 'a. Show 'a => error 'a -> string*)
+end

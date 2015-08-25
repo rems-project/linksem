@@ -4,24 +4,24 @@ theory "Elf_file"
 
 imports 
  	 Main
+	 "Lem_num" 
+	 "Lem_list" 
 	 "Lem_basic_classes" 
 	 "Lem_bool" 
-	 "Lem_list" 
-	 "Lem_num" 
 	 "Lem_maybe" 
 	 "Lem_string" 
+	 "Show" 
+	 "Missing_pervasives" 
+	 "Error" 
+	 "Byte_sequence" 
+	 "Elf_types_native_uint" 
 	 "Elf_header" 
+	 "String_table" 
+	 "Elf_program_header_table" 
+	 "Elf_section_header_table" 
 	 "Elf_interpreted_section" 
 	 "Elf_interpreted_segment" 
-	 "Elf_types" 
-	 "Elf_section_header_table" 
 	 "Elf_symbol_table" 
-	 "Elf_program_header_table" 
-	 "String_table" 
-	 "Byte_sequence" 
-	 "Error" 
-	 "Missing_pervasives" 
-	 "Show" 
 
 begin 
 
@@ -35,7 +35,7 @@ begin
 (*open import Elf_header*)
 (*open import Elf_interpreted_section*)
 (*open import Elf_interpreted_segment*)
-(*open import Elf_types*)
+(*open import Elf_types_native_uint*)
 (*open import Elf_section_header_table*)
 (*open import Elf_symbol_table*)
 (*open import Elf_program_header_table*)
@@ -80,17 +80,17 @@ definition bytes_of_elf32_file  :: " elf32_file \<Rightarrow>(byte_sequence)erro
     List.length(elf32_file_interpreted_segments   ef) then
     if List.length(elf32_file_section_header_table   ef) =
       List.length(elf32_file_interpreted_sections   ef) then
-      (let segs_zip = (List.zip(elf32_file_program_header_table   ef)(elf32_file_interpreted_segments   ef)) in
+      (let segs_zip  = (List.zip(elf32_file_program_header_table   ef)(elf32_file_interpreted_segments   ef)) in
       (let sects_zip = (List.zip(elf32_file_section_header_table   ef)(elf32_file_interpreted_sections   ef)) in
       (let segs_layout =        
 (List.map (\<lambda> (seg, interp_seg) . 
           (unat(elf32_p_offset   seg),(elf32_segment_body   interp_seg))
-        ) segs_zip)
+        ) (List.filter (\<lambda> (x, _) .  \<not> ((elf32_p_filesz   x) = (Elf_Types_Local.uint32_of_nat(( 0 :: nat))))) segs_zip))
       in
       (let sects_layout =        
 (List.map (\<lambda> (sect1, interp_sect) . 
           (unat(elf32_sh_offset   sect1),(elf32_section_body   interp_sect))
-        ) sects_zip)
+        ) (List.filter (\<lambda> (x, _) .  \<not> ((elf32_sh_type   x) = (Elf_Types_Local.uint32_of_nat sht_nobits))) sects_zip))
       in
       (let pre_layout = ((([hdr_layout, pht_layout, sht_layout] @ sects_layout) @ segs_layout) @ bab_layout) in
       (let final_layout =        
@@ -104,18 +104,18 @@ definition bytes_of_elf32_file  :: " elf32_file \<Rightarrow>(byte_sequence)erro
             if point_to_add < current_offset then
               (let diff = (current_offset - point_to_add) in
                 (* Completely contained inside other segment *)
-                if Byte_sequence.length body < diff then
+                if Byte_sequence.length0 body < diff then
                   error_return (current_offset, so_far)
                 else
-                  Byte_sequence.partition diff body >>= (\<lambda> (_, cut1) . 
+                  Byte_sequence.partition0 diff body >>= (\<lambda> (_, cut1) . 
                   (let concat1 = (Byte_sequence.concat_byte_sequence [so_far, cut1]) in
-                  (let delta  = (current_offset + Byte_sequence.length cut1) in
+                  (let delta  = (current_offset + Byte_sequence.length0 cut1) in
                     error_return (delta, concat1)))))
             else
               (let diff   = (point_to_add - current_offset) in
               (let reps   = (Byte_sequence.create diff (0 :: 8 word)) in
               (let concat1 = (Byte_sequence.concat_byte_sequence [so_far, reps, body]) in
-              (let delta  = (point_to_add + Byte_sequence.length body) in
+              (let delta  = (point_to_add + Byte_sequence.length0 body) in
                 error_return (delta, concat1)))))))
         ) (( 0 :: nat), Byte_sequence.empty) final_layout)
       in
@@ -171,12 +171,12 @@ definition bytes_of_elf64_file  :: " elf64_file \<Rightarrow>(byte_sequence)erro
       (let segs_layout =        
 (List.map (\<lambda> (seg, interp_seg) . 
           (unat(elf64_p_offset   seg),(elf64_segment_body   interp_seg))
-        ) segs_zip)
+        ) (List.filter (\<lambda> (x, _) .  \<not> ((elf64_p_filesz   x) = (of_int (int (( 0 :: nat)))))) segs_zip))
       in
       (let sects_layout =        
 (List.map (\<lambda> (sect1, interp_sect) . 
           (unat(elf64_sh_offset   sect1),(elf64_section_body   interp_sect))
-        ) sects_zip)
+        ) (List.filter (\<lambda> (x, _) .  \<not> ((elf64_sh_type   x) = (Elf_Types_Local.uint32_of_nat sht_nobits))) sects_zip))
       in
       (let pre_layout = ((([hdr_layout, pht_layout, sht_layout] @ sects_layout) @ segs_layout) @ bab_layout) in
       (let final_layout =        
@@ -190,18 +190,18 @@ definition bytes_of_elf64_file  :: " elf64_file \<Rightarrow>(byte_sequence)erro
             if point_to_add < current_offset then
               (let diff = (current_offset - point_to_add) in
                 (* Completely contained inside other segment *)
-                if Byte_sequence.length body < diff then
+                if Byte_sequence.length0 body < diff then
                   error_return (current_offset, so_far)
                 else
-                  Byte_sequence.partition diff body >>= (\<lambda> (_, cut1) . 
+                  Byte_sequence.partition0 diff body >>= (\<lambda> (_, cut1) . 
                   (let concat1 = (Byte_sequence.concat_byte_sequence [so_far, cut1]) in
-                  (let delta  = (current_offset + Byte_sequence.length cut1) in
+                  (let delta  = (current_offset + Byte_sequence.length0 cut1) in
                     error_return (delta, concat1)))))
             else
               (let diff   = (point_to_add - current_offset) in
               (let reps   = (Byte_sequence.create diff (0 :: 8 word)) in
               (let concat1 = (Byte_sequence.concat_byte_sequence [so_far, reps, body]) in
-              (let delta  = (point_to_add + Byte_sequence.length body) in
+              (let delta  = (point_to_add + Byte_sequence.length0 body) in
                 error_return (delta, concat1)))))))
         ) (( 0 :: nat), Byte_sequence.empty) final_layout)
       in
@@ -221,7 +221,7 @@ definition obtain_elf32_program_header_table  :: " elf32_header \<Rightarrow> by
   (let pentry_size = (unat(elf32_phentsize   hdr)) in
   (let psize       = (pentries * pentry_size) in
     if psize =( 0 :: nat) then
-      error_fail (''obtain_elf32_program_header_table: mandatory program header table not present'')
+      error_return []
     else
       (let poffset = (unat(elf32_phoff   hdr)) in
       Byte_sequence.offset_and_cut poffset psize bs0 >>= (\<lambda> pexact . 
@@ -238,7 +238,7 @@ definition obtain_elf64_program_header_table  :: " elf64_header \<Rightarrow> by
   (let pentry_size = (unat(elf64_phentsize   hdr)) in
   (let psize       = (pentries * pentry_size) in
     if psize =( 0 :: nat) then
-      error_fail (''obtain_elf64_program_header_table: mandatory program header table not present'')
+      error_return []
     else
       (let poffset = (unat(elf64_phoff   hdr)) in
       Byte_sequence.offset_and_cut poffset psize bs0 >>= (\<lambda> pexact . 
@@ -280,25 +280,50 @@ definition obtain_elf64_section_header_table  :: " elf64_header \<Rightarrow> by
       read_elf64_section_header_table ssize endian sexact >>= (\<lambda> (sht, _) . 
       error_return sht))))))))"
 
+      
+(*val obtain_elf32_section_header_string_table : elf32_header -> elf32_section_header_table -> byte_sequence -> error string_table*)
+definition obtain_elf32_section_header_string_table  :: " elf32_header \<Rightarrow>(elf32_section_header_table_entry)list \<Rightarrow> byte_sequence \<Rightarrow>(string_table)error "  where 
+     " obtain_elf32_section_header_string_table hdr sht bs0 = (
+  (case  Elf_Types_Local.index sht (unat(elf32_shstrndx   hdr)) of 
+    None => error_fail (''no section header string table'')
+    | Some x => error_return x
+  ) >>= (\<lambda> sh . 
+  Byte_sequence.offset_and_cut (unat(elf32_sh_offset   sh)) (unat(elf32_sh_size   sh)) bs0 >>= (\<lambda> sexact . 
+  error_return (string_table_of_byte_sequence sexact))))"
+
+      
+(*val obtain_elf64_section_header_string_table : elf64_header -> elf64_section_header_table -> byte_sequence -> error string_table*)
+definition obtain_elf64_section_header_string_table  :: " elf64_header \<Rightarrow>(elf64_section_header_table_entry)list \<Rightarrow> byte_sequence \<Rightarrow>(string_table)error "  where 
+     " obtain_elf64_section_header_string_table hdr sht bs0 = (
+  (case  Elf_Types_Local.index sht (unat(elf64_shstrndx   hdr)) of 
+    None => error_fail (''no section header string table'')
+    | Some x => error_return x
+  ) >>= (\<lambda> sh . 
+  Byte_sequence.offset_and_cut (unat(elf64_sh_offset   sh)) (unat(elf64_sh_size   sh)) bs0 >>= (\<lambda> sexact . 
+  error_return (string_table_of_byte_sequence sexact))))"
+
 
 (*val obtain_elf32_interpreted_segments : elf32_program_header_table -> byte_sequence -> error elf32_interpreted_segments*)
 definition obtain_elf32_interpreted_segments  :: "(elf32_program_header_table_entry)list \<Rightarrow> byte_sequence \<Rightarrow>((elf32_interpreted_segment)list)error "  where 
      " obtain_elf32_interpreted_segments pht bdy = (
   mapM (\<lambda> ph . 
     (let offset   = (unat(elf32_p_offset   ph))  in
-    (let size1     = (unat(elf32_p_filesz   ph)) in
-    Byte_sequence.offset_and_cut offset size1 bdy >>= (\<lambda> relevant . 
+    (let size2     = (unat(elf32_p_filesz   ph)) in
+      (if size2 =( 0 :: nat) then
+         error_return Byte_sequence.empty
+       else
+         Byte_sequence.offset_and_cut offset size2 bdy) >>= (\<lambda> relevant . 
     (let vaddr    = (unat(elf32_p_vaddr   ph)) in
     (let paddr    = (unat(elf32_p_paddr   ph)) in
     (let memsz    = (unat(elf32_p_memsz   ph)) in
     (let typ1      = (unat(elf32_p_type   ph))  in
     (let align    = (unat(elf32_p_align   ph)) in
     (let flags    = (elf32_interpret_program_header_flags(elf32_p_flags   ph)) in
-      if memsz < size1 then
+      if memsz < size2 then
         error_fail (''obtain_elf32_interpreted_segments: memory size of segment cannot be less than file size'')
       else
         error_return  (| elf32_segment_body = relevant, elf32_segment_type = typ1,
- elf32_segment_size = size1, elf32_segment_memsz = memsz,
+ elf32_segment_size = size2, elf32_segment_memsz = memsz,
  elf32_segment_base = vaddr,
  elf32_segment_paddr = paddr, elf32_segment_align = align,
  elf32_segment_offset = offset, elf32_segment_flags = flags  |))))))))))
@@ -310,70 +335,85 @@ definition obtain_elf64_interpreted_segments  :: "(elf64_program_header_table_en
      " obtain_elf64_interpreted_segments pht bdy = (
   mapM (\<lambda> ph . 
     (let offset   = (unat(elf64_p_offset     ph))  in
-    (let size1     = (unat(elf64_p_filesz   ph)) in
-    Byte_sequence.offset_and_cut offset size1 bdy >>= (\<lambda> relevant . 
+    (let size2     = (unat(elf64_p_filesz   ph)) in
+      (if size2 =( 0 :: nat) then
+         error_return Byte_sequence.empty
+       else
+         Byte_sequence.offset_and_cut offset size2 bdy) >>= (\<lambda> relevant . 
     (let vaddr    = (unat(elf64_p_vaddr    ph)) in
     (let paddr    = (unat(elf64_p_paddr    ph)) in
     (let memsz    = (unat(elf64_p_memsz   ph)) in
     (let typ1      = (unat(elf64_p_type    ph))  in
     (let align    = (unat(elf64_p_align   ph)) in
     (let flags    = (elf64_interpret_program_header_flags(elf64_p_flags   ph)) in
-      if memsz < size1 then
+      if memsz < size2 then
         error_fail (''obtain_elf64_interpreted_segments: memory size of segment cannot be less than file size'')
       else
         error_return  (| elf64_segment_body = relevant, elf64_segment_type = typ1,
- elf64_segment_size = size1, elf64_segment_memsz = memsz,
+ elf64_segment_size = size2, elf64_segment_memsz = memsz,
  elf64_segment_base = vaddr, elf64_segment_paddr = paddr,
  elf64_segment_align = align,
  elf64_segment_offset = offset, elf64_segment_flags = flags  |))))))))))
     ) pht )"
 
 
-(*val obtain_elf32_interpreted_sections : elf32_section_header_table -> byte_sequence -> error elf32_interpreted_sections*)
-definition obtain_elf32_interpreted_sections  :: "(elf32_section_header_table_entry)list \<Rightarrow> byte_sequence \<Rightarrow>((elf32_interpreted_section)list)error "  where 
-     " obtain_elf32_interpreted_sections sht bs0 = (
+(*val obtain_elf32_interpreted_sections : string_table -> elf32_section_header_table -> byte_sequence -> error elf32_interpreted_sections*)
+definition obtain_elf32_interpreted_sections  :: " string_table \<Rightarrow>(elf32_section_header_table_entry)list \<Rightarrow> byte_sequence \<Rightarrow>((elf32_interpreted_section)list)error "  where 
+     " obtain_elf32_interpreted_sections shstrtab sht bs0 = (
   mapM (\<lambda> sh . 
     (let offset = (unat(elf32_sh_offset    sh)) in
-    (let size1   = (unat(elf32_sh_size   sh)) in
-    (let name   = (unat(elf32_sh_name   sh)) in
+    (let size2   = (unat(elf32_sh_size   sh)) in
+    (let name1   = (unat(elf32_sh_name   sh)) in
     (let typ1    = (unat(elf32_sh_type   sh)) in
+    (let filesz = (if typ1 = sht_nobits then( 0 :: nat) else size2) in
     (let flags  = (unat(elf32_sh_flags   sh)) in
     (let base   = (unat(elf32_sh_addr   sh)) in
     (let link   = (unat(elf32_sh_link   sh)) in
     (let info   = (unat(elf32_sh_info   sh)) in
     (let align  = (unat(elf32_sh_addralign   sh)) in
     (let entry_size = (unat(elf32_sh_entsize   sh)) in
-    Byte_sequence.offset_and_cut offset size1 bs0 >>= (\<lambda> relevant . 
-      error_return  (| elf32_section_name = name, elf32_section_type = typ1,
- elf32_section_flags = flags, elf32_section_base = base, elf32_section_offset = offset,
- elf32_section_size = size1,
+    (let name_string = ((case  (get_string_at name1 shstrtab) of Success n => n | Fail _ => ('''') )) in
+      (if filesz =( 0 :: nat) then
+        error_return Byte_sequence.empty
+      else
+        Byte_sequence.offset_and_cut offset filesz bs0) >>= (\<lambda> relevant . 
+      error_return  (| elf32_section_name = name1, elf32_section_type = typ1,
+ elf32_section_flags = flags, elf32_section_addr = base, elf32_section_offset = offset,
+ elf32_section_size = size2,
  elf32_section_link = link, elf32_section_info = info,
  elf32_section_align = align,
- elf32_section_entry_size = entry_size, elf32_section_body = relevant  |))))))))))))
+ elf32_section_entsize = entry_size, elf32_section_body = relevant,
+ elf32_section_name_as_string = name_string  |))))))))))))))
   ) sht )"
 
 
-(*val obtain_elf64_interpreted_sections : elf64_section_header_table -> byte_sequence -> error elf64_interpreted_sections*)
-definition obtain_elf64_interpreted_sections  :: "(elf64_section_header_table_entry)list \<Rightarrow> byte_sequence \<Rightarrow>((elf64_interpreted_section)list)error "  where 
-     " obtain_elf64_interpreted_sections sht bs0 = (
+(*val obtain_elf64_interpreted_sections : string_table -> elf64_section_header_table -> byte_sequence -> error elf64_interpreted_sections*)
+definition obtain_elf64_interpreted_sections  :: " string_table \<Rightarrow>(elf64_section_header_table_entry)list \<Rightarrow> byte_sequence \<Rightarrow>((elf64_interpreted_section)list)error "  where 
+     " obtain_elf64_interpreted_sections shstrtab sht bs0 = (
   mapM (\<lambda> sh . 
     (let offset = (unat(elf64_sh_offset     sh)) in
-    (let size1   = (unat(elf64_sh_size   sh)) in
-    (let name   = (unat(elf64_sh_name    sh)) in
+    (let size2   = (unat(elf64_sh_size   sh)) in
+    (let name1   = (unat(elf64_sh_name    sh)) in
     (let typ1    = (unat(elf64_sh_type    sh)) in
+    (let filesz = (if typ1 = sht_nobits then( 0 :: nat) else size2) in
     (let flags  = (unat(elf64_sh_flags   sh)) in
     (let base   = (unat(elf64_sh_addr    sh)) in
     (let link   = (unat(elf64_sh_link    sh)) in
     (let info   = (unat(elf64_sh_info    sh)) in
     (let align  = (unat(elf64_sh_addralign   sh)) in
     (let entry_size = (unat(elf64_sh_entsize   sh)) in
-    Byte_sequence.offset_and_cut offset size1 bs0 >>= (\<lambda> relevant . 
-      error_return  (| elf64_section_name = name, elf64_section_type = typ1,
- elf64_section_flags = flags, elf64_section_base = base, elf64_section_offset = offset,
- elf64_section_size = size1,
+    (let name_string = ((case  (get_string_at name1 shstrtab) of Success n => n | Fail _ => ('''') )) in 
+      (if filesz =( 0 :: nat) then
+        error_return Byte_sequence.empty
+      else
+        Byte_sequence.offset_and_cut offset filesz bs0) >>= (\<lambda> relevant . 
+      error_return  (| elf64_section_name = name1, elf64_section_type = typ1,
+ elf64_section_flags = flags, elf64_section_addr = base, elf64_section_offset = offset,
+ elf64_section_size = size2,
  elf64_section_link = link, elf64_section_info = info,
  elf64_section_align = align,
- elf64_section_entry_size = entry_size, elf64_section_body = relevant  |))))))))))))
+ elf64_section_entsize = entry_size, elf64_section_body = relevant,
+ elf64_section_name_as_string = name_string  |))))))))))))))
   ) sht )"
 
 
@@ -405,16 +445,16 @@ function (sequential,domintros)  compute_differences  :: " nat \<Rightarrow> nat
   else if start > max1 then
     error_fail (''compute_differences: passed maximum'')
   else
-    (let first = (find_first_not_in_range start ranges) in
-      if first \<ge> max1 then
+    (let first1 = (find_first_not_in_range start ranges) in
+      if first1 \<ge> max1 then
         error_return []
       else
-        (let last = (find_first_in_range first ranges) in
-          if last > max1 then
-            error_return [(first, max1)]
+        (let last1 = (find_first_in_range first1 ranges) in
+          if last1 > max1 then
+            error_return [(first1, max1)]
           else
-            compute_differences last max1 ranges >>= (\<lambda> tail . 
-            error_return ((first, last)# tail)))))" 
+            compute_differences last1 max1 ranges >>= (\<lambda> tail . 
+            error_return ((first1, last1)# tail)))))" 
 by pat_completeness auto
 
 
@@ -451,9 +491,9 @@ definition obtain_elf32_bits_and_bobs  :: " elf32_header \<Rightarrow>(elf32_pro
             natural_ordering off_x off_y
           ) pre_layout)
         in
-          compute_differences(( 0 :: nat)) (Byte_sequence.length bs0) layout >>= (\<lambda> diffs . 
+          compute_differences(( 0 :: nat)) (Byte_sequence.length0 bs0) layout >>= (\<lambda> diffs . 
             mapM (\<lambda> (start, len) . 
-              Byte_sequence.offset_and_cut start len bs0 >>= (\<lambda> rel . 
+              Byte_sequence.offset_and_cut start (len - start) bs0 >>= (\<lambda> rel . 
               error_return (start, rel))
             ) diffs))))))
       else
@@ -467,6 +507,7 @@ definition obtain_elf32_bits_and_bobs  :: " elf32_header \<Rightarrow>(elf32_pro
 definition obtain_elf64_bits_and_bobs  :: " elf64_header \<Rightarrow>(elf64_program_header_table_entry)list \<Rightarrow>(elf64_interpreted_segment)list \<Rightarrow>(elf64_section_header_table_entry)list \<Rightarrow>(elf64_interpreted_section)list \<Rightarrow> byte_sequence \<Rightarrow>((nat*byte_sequence)list)error "  where 
      " obtain_elf64_bits_and_bobs hdr segs interp_segs sects interp_sects bs0 = (
   (let hdr_off_len  = (( 0 :: nat), unat(elf64_ehsize   hdr)) in
+  
   (let pht_off      = (unat(elf64_phoff   hdr)) in
   (let pht_len      = (unat(elf64_phentsize   hdr) * unat(elf64_phnum   hdr)) in
   (let pht_off_len  = (pht_off, (pht_off + pht_len)) in
@@ -495,9 +536,9 @@ definition obtain_elf64_bits_and_bobs  :: " elf64_header \<Rightarrow>(elf64_pro
             natural_ordering off_x off_y
           ) pre_layout)
         in
-          compute_differences(( 0 :: nat)) (Byte_sequence.length bs0) layout >>= (\<lambda> diffs . 
-            mapM (\<lambda> (start, len) . 
-              Byte_sequence.offset_and_cut start len bs0 >>= (\<lambda> rel . 
+          compute_differences(( 0 :: nat)) (Byte_sequence.length0 bs0) layout >>= (\<lambda> diffs . 
+            mapM (\<lambda> (start, finish) . 
+              Byte_sequence.offset_and_cut start (finish - start) bs0 >>= (\<lambda> rel . 
               error_return (start, rel))
             ) diffs))))))
       else
@@ -512,15 +553,16 @@ definition read_elf32_file  :: " byte_sequence \<Rightarrow>(elf32_file)error " 
   read_elf32_header bs0 >>= (\<lambda> (hdr, bs1) . 
   obtain_elf32_program_header_table hdr bs0 >>= (\<lambda> pht  . 
   obtain_elf32_section_header_table hdr bs0 >>= (\<lambda> sht  . 
+  obtain_elf32_section_header_string_table hdr sht bs0 >>= (\<lambda> shstrtab . 
   obtain_elf32_interpreted_segments pht bs0 >>= (\<lambda> segs . 
-  obtain_elf32_interpreted_sections sht bs0 >>= (\<lambda> sects . 
+  obtain_elf32_interpreted_sections shstrtab sht bs0 >>= (\<lambda> sects . 
   obtain_elf32_bits_and_bobs hdr pht segs sht sects bs0 >>= (\<lambda> bits_and_bobs . 
   error_return (| elf32_file_header = hdr,
               elf32_file_program_header_table = pht,
               elf32_file_section_header_table = sht,
               elf32_file_interpreted_segments = segs,
               elf32_file_interpreted_sections = sects,
-              elf32_file_bits_and_bobs = bits_and_bobs |))))))))"
+              elf32_file_bits_and_bobs = bits_and_bobs |)))))))))"
 
 
 (*val read_elf64_file : byte_sequence -> error elf64_file*)
@@ -529,15 +571,16 @@ definition read_elf64_file  :: " byte_sequence \<Rightarrow>(elf64_file)error " 
   read_elf64_header bs0 >>= (\<lambda> (hdr, bs1) . 
   obtain_elf64_program_header_table hdr bs0 >>= (\<lambda> pht  . 
   obtain_elf64_section_header_table hdr bs0 >>= (\<lambda> sht  . 
+  obtain_elf64_section_header_string_table hdr sht bs0 >>= (\<lambda> shstrtab . 
   obtain_elf64_interpreted_segments pht bs0 >>= (\<lambda> segs . 
-  obtain_elf64_interpreted_sections sht bs0 >>= (\<lambda> sects . 
+  obtain_elf64_interpreted_sections shstrtab sht bs0 >>= (\<lambda> sects . 
   obtain_elf64_bits_and_bobs hdr pht segs sht sects bs0 >>= (\<lambda> bits_and_bobs . 
   error_return (| elf64_file_header = hdr,
               elf64_file_program_header_table = pht,
               elf64_file_section_header_table = sht,
               elf64_file_interpreted_segments = segs,
               elf64_file_interpreted_sections = sects,
-              elf64_file_bits_and_bobs = bits_and_bobs |))))))))"
+              elf64_file_bits_and_bobs = bits_and_bobs |)))))))))"
 
 
 (*val get_elf32_file_section_header_string_table : elf32_file -> error string_table*)
@@ -552,10 +595,10 @@ definition get_elf32_file_section_header_string_table  :: " elf32_file \<Rightar
         None => error_fail (''obtain_elf32_string_table: invalid offset into section header table'')
       | Some sect1 =>
           (let offset = (unat(elf32_sh_offset   sect1)) in
-          (let size1   = (unat(elf32_sh_size   sect1)) in
-          Byte_sequence.offset_and_cut offset size1 bs0 >>= (\<lambda> rel . 
+          (let size2   = (unat(elf32_sh_size   sect1)) in
+          Byte_sequence.offset_and_cut offset size2 bs0 >>= (\<lambda> rel . 
           (let strings  = (Byte_sequence.string_of_byte_sequence rel) in
-          error_return (String_table.mk_string_table strings (Elf_Types_Local.char_of_unsigned_char (0 :: 8 word)))))))
+          error_return (String_table.mk_string_table strings (0 :: 8 word))))))
     )))))))"
 
 
@@ -571,11 +614,67 @@ definition get_elf64_file_section_header_string_table  :: " elf64_file \<Rightar
         None => error_fail (''obtain_elf64_string_table: invalid offset into section header table'')
       | Some sect1 =>
           (let offset = (unat(elf64_sh_offset     sect1)) in
-          (let size1   = (unat(elf64_sh_size   sect1)) in
-          Byte_sequence.offset_and_cut offset size1 bs0 >>= (\<lambda> rel . 
+          (let size2   = (unat(elf64_sh_size   sect1)) in
+          Byte_sequence.offset_and_cut offset size2 bs0 >>= (\<lambda> rel . 
           (let strings  = (Byte_sequence.string_of_byte_sequence rel) in
-          error_return (String_table.mk_string_table strings (Elf_Types_Local.char_of_unsigned_char (0 :: 8 word)))))))
+          error_return (String_table.mk_string_table strings (0 :: 8 word))))))
     )))))))"
+
+    
+(*val find_elf32_symbols_by_symtab_idx : natural -> elf32_file -> error (elf32_symbol_table * string_table * natural)*)
+definition find_elf32_symbols_by_symtab_idx  :: " nat \<Rightarrow> elf32_file \<Rightarrow>((elf32_symbol_table_entry)list*string_table*nat)error "  where 
+     " find_elf32_symbols_by_symtab_idx sec_idx f = (
+    (case  index(elf32_file_interpreted_sections   f) ( sec_idx) of
+        None => error_fail (''impossible: interpreted section found but not indexable'')
+        | Some sec => error_return sec
+    ) >>= (\<lambda> sec .  
+    (case  index(elf32_file_interpreted_sections   f) ((elf32_section_link   sec)) of
+        None => error_fail (''no associated strtab'')
+        | Some strs => error_return strs
+    ) >>= (\<lambda> strs .  
+    (let strings = (Byte_sequence.string_of_byte_sequence(elf32_section_body   strs)) in
+    (let strtab = (String_table.mk_string_table strings (0 :: 8 word)) in
+    (let endian = (get_elf32_header_endianness(elf32_file_header   f)) in
+    read_elf32_symbol_table endian(elf32_section_body   sec) >>= (\<lambda> symtab . 
+    error_return (symtab, strtab, sec_idx))))))))"
+
+
+(*val find_elf32_symtab_by_type : natural -> elf32_file -> error (elf32_symbol_table * string_table * natural)*)
+definition find_elf32_symtab_by_type  :: " nat \<Rightarrow> elf32_file \<Rightarrow>(elf32_symbol_table*string_table*nat)error "  where 
+     " find_elf32_symtab_by_type t f = (
+    (let found_symtab_index = (find_index (\<lambda> sh . (elf32_section_type   sh) = t)(elf32_file_interpreted_sections   f)) in
+    (case  found_symtab_index of 
+        None => error_fail (''no such symtab'')
+        | Some sec_idx => error_return sec_idx
+    ) >>= (\<lambda> sec_idx .  find_elf32_symbols_by_symtab_idx sec_idx f)))"
+
+
+(*val find_elf64_symbols_by_symtab_idx : natural -> elf64_file -> error (elf64_symbol_table * string_table * natural)*)
+definition find_elf64_symbols_by_symtab_idx  :: " nat \<Rightarrow> elf64_file \<Rightarrow>((elf64_symbol_table_entry)list*string_table*nat)error "  where 
+     " find_elf64_symbols_by_symtab_idx sec_idx f = (
+    (case  index(elf64_file_interpreted_sections   f) ( sec_idx) of
+        None => error_fail (''impossible: interpreted section found but not indexable'')
+        | Some sec => error_return sec
+    ) >>= (\<lambda> sec .  
+    (case  index(elf64_file_interpreted_sections   f) ((elf64_section_link   sec)) of
+        None => error_fail (''no associated strtab'')
+        | Some strs => error_return strs
+    ) >>= (\<lambda> strs .  
+    (let strings = (Byte_sequence.string_of_byte_sequence(elf64_section_body   strs)) in
+    (let strtab = (String_table.mk_string_table strings (0 :: 8 word)) in
+    (let endian = (get_elf64_header_endianness(elf64_file_header   f)) in
+    read_elf64_symbol_table endian(elf64_section_body   sec) >>= (\<lambda> symtab . 
+    error_return (symtab, strtab, sec_idx))))))))"
+
+
+(*val find_elf64_symtab_by_type : natural -> elf64_file -> error (elf64_symbol_table * string_table * natural)*)
+definition find_elf64_symtab_by_type  :: " nat \<Rightarrow> elf64_file \<Rightarrow>(elf64_symbol_table*string_table*nat)error "  where 
+     " find_elf64_symtab_by_type t f = (
+    (let found_symtab_index = (find_index (\<lambda> sh . (elf64_section_type   sh) = t)(elf64_file_interpreted_sections   f)) in
+    (case  found_symtab_index of 
+        None => error_fail (''no such symtab'')
+        | Some sec_idx => error_return sec_idx
+    ) >>= (\<lambda> sec_idx .  find_elf64_symbols_by_symtab_idx sec_idx f)))"
 
 
 (*val get_elf32_file_symbol_string_table : elf32_file -> error string_table*)
@@ -596,10 +695,10 @@ definition get_elf32_file_symbol_string_table  :: " elf32_file \<Rightarrow>(str
     bytes_of_elf32_file f3 >>= (\<lambda> bs0 . 
     mapM (\<lambda> sect1 . 
       (let offset  = (unat(elf32_sh_offset    sect1)) in
-      (let size1    = (unat(elf32_sh_size   sect1)) in
-      Byte_sequence.offset_and_cut offset size1 bs0 >>= (\<lambda> bs1 . 
+      (let size2    = (unat(elf32_sh_size   sect1)) in
+      Byte_sequence.offset_and_cut offset size2 bs0 >>= (\<lambda> bs1 . 
       (let strings = (Byte_sequence.string_of_byte_sequence bs1) in
-      error_return (String_table.mk_string_table strings (Elf_Types_Local.char_of_unsigned_char (0 :: 8 word)))))))) strtabs
+      error_return (String_table.mk_string_table strings (0 :: 8 word))))))) strtabs
     >>= (\<lambda> strings . 
       String_table.concat_string_table strings)))))))"
 
@@ -622,10 +721,10 @@ definition get_elf64_file_symbol_string_table  :: " elf64_file \<Rightarrow>(str
     bytes_of_elf64_file f3 >>= (\<lambda> bs0 . 
     mapM (\<lambda> sect1 . 
       (let offset  = (unat(elf64_sh_offset     sect1)) in
-      (let size1    = (unat(elf64_sh_size   sect1)) in
-      Byte_sequence.offset_and_cut offset size1 bs0 >>= (\<lambda> bs1 . 
+      (let size2    = (unat(elf64_sh_size   sect1)) in
+      Byte_sequence.offset_and_cut offset size2 bs0 >>= (\<lambda> bs1 . 
       (let strings = (Byte_sequence.string_of_byte_sequence bs1) in
-      error_return (String_table.mk_string_table strings (Elf_Types_Local.char_of_unsigned_char (0 :: 8 word)))))))) strtabs
+      error_return (String_table.mk_string_table strings (0 :: 8 word))))))) strtabs
     >>= (\<lambda> strings . 
       String_table.concat_string_table strings)))))))"
 
@@ -645,9 +744,9 @@ definition get_elf32_file_symbol_table  :: " elf32_file \<Rightarrow>((elf32_sym
         [] => error_return []
       | [symtab] =>
         (let offset = (unat(elf32_sh_offset   symtab)) in
-        (let size1   = (unat(elf32_sh_size   symtab)) in
+        (let size2   = (unat(elf32_sh_size   symtab)) in
         bytes_of_elf32_file f3 >>= (\<lambda> bs0 . 
-        Byte_sequence.offset_and_cut offset size1 bs0 >>= (\<lambda> relevant . 
+        Byte_sequence.offset_and_cut offset size2 bs0 >>= (\<lambda> relevant . 
         read_elf32_symbol_table endian relevant))))
       | _ =>
         error_fail (''obtain_elf32_symbol_table: an ELF file may only have one symbol table of type SHT_SYMTAB'')
@@ -669,9 +768,9 @@ definition get_elf64_file_symbol_table  :: " elf64_file \<Rightarrow>((elf64_sym
         [] => error_return []
       | [symtab] =>
         (let offset = (unat(elf64_sh_offset     symtab)) in
-        (let size1   = (unat(elf64_sh_size   symtab)) in
+        (let size2   = (unat(elf64_sh_size   symtab)) in
         bytes_of_elf64_file f3 >>= (\<lambda> bs0 . 
-        Byte_sequence.offset_and_cut offset size1 bs0 >>= (\<lambda> relevant . 
+        Byte_sequence.offset_and_cut offset size2 bs0 >>= (\<lambda> relevant . 
         read_elf64_symbol_table endian relevant))))
       | _ =>
         error_fail (''obtain_elf64_symbol_table: an ELF file may only have one symbol table of type SHT_SYMTAB'')
@@ -693,9 +792,9 @@ definition get_elf32_file_dynamic_symbol_table  :: " elf32_file \<Rightarrow>((e
         [] => error_return []
       | [symtab] =>
         (let offset = (unat(elf32_sh_offset   symtab)) in
-        (let size1   = (unat(elf32_sh_size   symtab)) in
+        (let size2   = (unat(elf32_sh_size   symtab)) in
         bytes_of_elf32_file ef >>= (\<lambda> bs0 . 
-        Byte_sequence.offset_and_cut offset size1 bs0 >>= (\<lambda> relevant . 
+        Byte_sequence.offset_and_cut offset size2 bs0 >>= (\<lambda> relevant . 
         read_elf32_symbol_table endian relevant))))
       | _ =>
         error_fail (''obtain_elf32_dynamic_symbol_table: an ELF file may only have one symbol table of type SHT_DYNSYM'')
@@ -717,27 +816,86 @@ definition get_elf64_file_dynamic_symbol_table  :: " elf64_file \<Rightarrow>((e
         [] => error_return []
       | [symtab] =>
         (let offset = (unat(elf64_sh_offset     symtab)) in
-        (let size1   = (unat(elf64_sh_size   symtab)) in
+        (let size2   = (unat(elf64_sh_size   symtab)) in
         bytes_of_elf64_file ef >>= (\<lambda> bs0 . 
-        Byte_sequence.offset_and_cut offset size1 bs0 >>= (\<lambda> relevant . 
+        Byte_sequence.offset_and_cut offset size2 bs0 >>= (\<lambda> relevant . 
         read_elf64_symbol_table endian relevant))))
       | _ =>
         error_fail (''obtain_elf64_dynamic_symbol_table: an ELF file may only have one symbol table of type SHT_DYNSYM'')
     )))))))"
 
+    
+(*val get_elf32_symbol_table_by_index : elf32_file -> natural -> error elf32_symbol_table*)
+definition get_elf32_symbol_table_by_index  :: " elf32_file \<Rightarrow> nat \<Rightarrow>(elf32_symbol_table)error "  where 
+     " get_elf32_symbol_table_by_index ef link = (
+  (let hdr     = ((elf32_file_header   ef)) in
+  (let sht     = ((elf32_file_section_header_table   ef)) in
+  (let sects   = ((elf32_file_interpreted_sections   ef)) in
+  (let endian  = (get_elf32_header_endianness hdr) in
+    (case  index sects (id link) of
+        None  => error_fail (''get_elf32_symbol_table_by_index: invalid index'')
+      | Some sym =>
+        read_elf32_symbol_table endian(elf32_section_body   sym)
+    ))))))"
 
+    
+(*val get_elf32_string_table_by_index : elf32_file -> natural -> error string_table*)
+definition get_elf32_string_table_by_index  :: " elf32_file \<Rightarrow> nat \<Rightarrow>(string_table)error "  where 
+     " get_elf32_string_table_by_index ef link = (
+  (let hdr     = ((elf32_file_header   ef)) in
+  (let sht     = ((elf32_file_section_header_table   ef)) in
+  (let sects   = ((elf32_file_interpreted_sections   ef)) in
+    (case  index sects (id link) of
+        None  => error_fail (''get_elf32_string_table_by_index: invalid index'')
+      | Some sym => error_return (mk_string_table (Byte_sequence.string_of_byte_sequence(elf32_section_body   sym)) (0 :: 8 word))
+    )))))"
+
+    
+(*val get_elf64_symbol_table_by_index : elf64_file -> natural -> error elf64_symbol_table*)
+definition get_elf64_symbol_table_by_index  :: " elf64_file \<Rightarrow> nat \<Rightarrow>(elf64_symbol_table)error "  where 
+     " get_elf64_symbol_table_by_index ef link = (
+  (let hdr     = ((elf64_file_header   ef)) in
+  (let sht     = ((elf64_file_section_header_table   ef)) in
+  (let sects   = ((elf64_file_interpreted_sections   ef)) in
+  (let endian  = (get_elf64_header_endianness hdr) in
+    (case  index sects (id link) of
+        None  => error_fail (''get_elf64_symbol_table_by_index: invalid index'')
+      | Some sym =>
+        read_elf64_symbol_table endian(elf64_section_body   sym)
+    ))))))"
+
+    
+(*val get_elf64_string_table_by_index : elf64_file -> natural -> error string_table*)
+definition get_elf64_string_table_by_index  :: " elf64_file \<Rightarrow> nat \<Rightarrow>(string_table)error "  where 
+     " get_elf64_string_table_by_index ef link = (
+  (let hdr     = ((elf64_file_header   ef)) in
+  (let sht     = ((elf64_file_section_header_table   ef)) in
+  (let sects   = ((elf64_file_interpreted_sections   ef)) in
+    (case  index sects (id link) of
+        None  => error_fail (''get_elf64_string_table_by_index: invalid index'')
+      | Some sym => error_return (mk_string_table (Byte_sequence.string_of_byte_sequence(elf64_section_body   sym)) (0 :: 8 word))
+    )))))"
+
+
+datatype segment_provenance
+  = FromELF
+  | AutoGenerated
+
+(** Segments, entry point, machine type *)
 type_synonym elf32_executable_process_image ="
-  elf32_interpreted_segments * nat "
+  ( (elf32_interpreted_segment * segment_provenance)list * nat * nat)"
 
+(** Segments, entry point, machine type *)
 type_synonym elf64_executable_process_image ="
-  elf64_interpreted_segments * nat "
+  ( (elf64_interpreted_segment * segment_provenance)list * nat * nat)"
 
 (*val get_elf32_executable_image : elf32_file -> error elf32_executable_process_image*)
-definition get_elf32_executable_image  :: " elf32_file \<Rightarrow>((elf32_interpreted_segment)list*nat)error "  where 
+definition get_elf32_executable_image  :: " elf32_file \<Rightarrow>((elf32_interpreted_segment*segment_provenance)list*nat*nat)error "  where 
      " get_elf32_executable_image f3 = (
   if is_elf32_executable_file(elf32_file_header   f3) then
     (let entr = ((elf32_entry  (elf32_file_header   f3))) in
     (let segs = ((elf32_file_interpreted_segments   f3)) in
+    (let mach = ((elf32_machine  (elf32_file_header   f3))) in
       (case  List.filter (\<lambda> sg . (elf32_segment_type   sg) = elf_pt_load) segs of
           []    => error_fail (''get_elf32_executable_image: an executable ELF file must have at least one loadable segment'')
         | load  =>
@@ -745,7 +903,7 @@ definition get_elf32_executable_image  :: " elf32_file \<Rightarrow>((elf32_inte
               if(elf32_segment_memsz   sg) =( 0 :: nat) then
                 error_return []
               else if(elf32_segment_memsz   sg) =(elf32_segment_size   sg) then
-                error_return [sg]
+                error_return [(sg, FromELF)]
               else if(elf32_segment_size   sg) <(elf32_segment_memsz   sg) then
                 (* Cannot be negative due to check in constructing [segs]. *)
                 (let diff  = ((elf32_segment_memsz   sg) -(elf32_segment_size   sg)) in
@@ -760,21 +918,22 @@ definition get_elf32_executable_image  :: " elf32_file \<Rightarrow>((elf32_inte
    elf32_segment_align = align,
    elf32_segment_offset =(elf32_segment_offset   sg), elf32_segment_flags =(elf32_segment_flags   sg)  |))
                 in
-                  error_return [sg, seg]))))))
+                  error_return [(sg, FromELF), (seg, AutoGenerated)]))))))
               else
                 error_fail (''get_elf32_executable_image: invariant invalidated'')) load >>= (\<lambda> bs_base . 
-            error_return (List.concat bs_base, unat entr))
-      )))
+            error_return (List.concat bs_base, unat entr, unat mach))
+      ))))
   else
     error_fail (''get_elf32_executable_image: not an ELF executable file''))"
 
 
 (*val get_elf64_executable_image : elf64_file -> error elf64_executable_process_image*)
-definition get_elf64_executable_image  :: " elf64_file \<Rightarrow>((elf64_interpreted_segment)list*nat)error "  where 
+definition get_elf64_executable_image  :: " elf64_file \<Rightarrow>((elf64_interpreted_segment*segment_provenance)list*nat*nat)error "  where 
      " get_elf64_executable_image f3 = ( 
   if is_elf64_executable_file(elf64_file_header   f3) then
     (let entr = ((elf64_entry  (elf64_file_header   f3))) in
     (let segs = ((elf64_file_interpreted_segments   f3)) in
+    (let mach = ((elf64_machine  (elf64_file_header   f3))) in
       (case  List.filter (\<lambda> sg . (elf64_segment_type   sg) = elf_pt_load) segs of
           []    => error_fail (''get_elf64_executable_image: an executable ELF file must have at least one loadable segment'')
         | load  =>
@@ -782,7 +941,7 @@ definition get_elf64_executable_image  :: " elf64_file \<Rightarrow>((elf64_inte
               if(elf64_segment_memsz   sg) =( 0 :: nat) then
                 error_return []
               else if(elf64_segment_memsz   sg) =(elf64_segment_size   sg) then
-                error_return [sg]
+                error_return [(sg, FromELF)]
               else if(elf64_segment_size   sg) <(elf64_segment_memsz   sg) then
                 (* Cannot be negative due to check in constructing [segs]. *)
                 (let diff  = ((elf64_segment_memsz   sg) -(elf64_segment_size   sg)) in
@@ -797,20 +956,21 @@ definition get_elf64_executable_image  :: " elf64_file \<Rightarrow>((elf64_inte
    elf64_segment_align = align,
    elf64_segment_offset =(elf64_segment_offset   sg), elf64_segment_flags =(elf64_segment_flags   sg)  |))
                 in
-                  error_return [sg, seg]))))))
+                  error_return [(sg, FromELF), (seg, AutoGenerated)]))))))
               else
                 error_fail (''get_elf64_executable_image: invariant invalidated'')) load >>= (\<lambda> bs_base . 
-            error_return (List.concat bs_base, unat entr))
-      )))
+            error_return (List.concat bs_base, unat entr, unat mach))
+      ))))
   else
     error_fail (''elf64_get_executable_image: not an executable ELF file''))"
 
 
+(** Name, (type, size, addr, chunk of data if relevant, binding) *)
 type_synonym global_symbol_init_info
-  =" (string * (nat * nat * nat *  byte_sequence option)) list "
+  =" (string * (nat * nat * nat *  byte_sequence option * nat)) list "
 
 (*val get_elf32_file_global_symbol_init : elf32_file -> error global_symbol_init_info*)
-definition get_elf32_file_global_symbol_init  :: " elf32_file \<Rightarrow>((string*(nat*nat*nat*(byte_sequence)option))list)error "  where 
+definition get_elf32_file_global_symbol_init  :: " elf32_file \<Rightarrow>((string*(nat*nat*nat*(byte_sequence)option*nat))list)error "  where 
      " get_elf32_file_global_symbol_init f3 = (
   if is_elf32_executable_file(elf32_file_header   f3) then
     (let segs   = ((elf32_file_interpreted_segments   f3)) in
@@ -818,25 +978,25 @@ definition get_elf32_file_global_symbol_init  :: " elf32_file \<Rightarrow>((str
     get_elf32_file_symbol_table f3 >>= (\<lambda> symtab . 
     get_elf32_file_symbol_string_table f3 >>= (\<lambda> strtab . 
     Elf_symbol_table.get_elf32_symbol_image_address symtab strtab >>= (\<lambda> strs . 
-      (let mapped = (mapM (\<lambda> (symbol, (typ1, size1, addr)) . 
+      (let mapped = (mapM (\<lambda> (symbol, (typ1, size2, addr, bind)) . 
         if typ1 = Elf_symbol_table.stt_object then
-          get_elf32_executable_image f3 >>= (\<lambda> (img, entry) . 
+          get_elf32_executable_image f3 >>= (\<lambda> (img, entry, mach) . 
           (let chunks =            
-(List.filter (\<lambda> chunk .               
+(List.filter (\<lambda> (chunk, _) .               
 (addr \<ge>(elf32_segment_base   chunk)) \<and>
-                ((addr + size1) \<le> ((elf32_segment_base   chunk) +(elf32_segment_size   chunk)))
+                ((addr + size2) \<le> ((elf32_segment_base   chunk) +(elf32_segment_size   chunk)))
             ) img)
           in
             (case  chunks of
                 []    => error_fail (''get_elf32_global_symbol_init: global variable not present in executable image'')
-              | [x]   =>
+              | [(x, _)]   =>
                 (let rebase   = (addr -(elf32_segment_base   x)) in
-                Byte_sequence.offset_and_cut rebase size1(elf32_segment_body   x) >>= (\<lambda> relevant . 
-                  error_return (symbol, (typ1, size1, addr, Some relevant))))
+                Byte_sequence.offset_and_cut rebase size2(elf32_segment_body   x) >>= (\<lambda> relevant . 
+                  error_return (symbol, (typ1, size2, addr, Some relevant, bind))))
               | x # xs => error_fail (''get_elf32_global_symbol_init: invariant failed, global variable appears in multiple segments'')
             )))
         else
-          error_return (symbol, (typ1, size1, addr, None))) strs)
+          error_return (symbol, (typ1, size2, addr, None, bind))) strs)
       in
         mapped))))))
   else
@@ -844,7 +1004,7 @@ definition get_elf32_file_global_symbol_init  :: " elf32_file \<Rightarrow>((str
 
 
 (*val get_elf64_file_global_symbol_init : elf64_file -> error global_symbol_init_info*)
-definition get_elf64_file_global_symbol_init  :: " elf64_file \<Rightarrow>((string*(nat*nat*nat*(byte_sequence)option))list)error "  where 
+definition get_elf64_file_global_symbol_init  :: " elf64_file \<Rightarrow>((string*(nat*nat*nat*(byte_sequence)option*nat))list)error "  where 
      " get_elf64_file_global_symbol_init f3 = (
   if is_elf64_executable_file(elf64_file_header   f3) then
     (let segs   = ((elf64_file_interpreted_segments   f3)) in
@@ -852,25 +1012,25 @@ definition get_elf64_file_global_symbol_init  :: " elf64_file \<Rightarrow>((str
     get_elf64_file_symbol_table f3 >>= (\<lambda> symtab . 
     get_elf64_file_symbol_string_table f3 >>= (\<lambda> strtab . 
     Elf_symbol_table.get_elf64_symbol_image_address symtab strtab >>= (\<lambda> strs . 
-      (let mapped = (mapM (\<lambda> (symbol, (typ1, size1, addr)) . 
+      (let mapped = (mapM (\<lambda> (symbol, (typ1, size2, addr, bind)) . 
         if typ1 = Elf_symbol_table.stt_object then
-          get_elf64_executable_image f3 >>= (\<lambda> (img, entry) . 
+          get_elf64_executable_image f3 >>= (\<lambda> (img, entry, mach) . 
           (let chunks =            
-(List.filter (\<lambda> chunk .               
+(List.filter (\<lambda> (chunk, _) .               
 (addr \<ge>(elf64_segment_base   chunk)) \<and>
-                ((addr + size1) \<le> ((elf64_segment_base   chunk) +(elf64_segment_size   chunk)))
+                ((addr + size2) \<le> ((elf64_segment_base   chunk) +(elf64_segment_size   chunk)))
             ) img)
           in
             (case  chunks of
                 []    => error_fail (''get_elf64_global_symbol_init: global variable not present in executable image'')
-              | [x]   =>
+              | [(x, _)]   =>
                 (let rebase   = (addr -(elf64_segment_base   x)) in
-                Byte_sequence.offset_and_cut rebase size1(elf64_segment_body   x) >>= (\<lambda> relevant . 
-                  error_return (symbol, (typ1, size1, addr, Some relevant))))
+                Byte_sequence.offset_and_cut rebase size2(elf64_segment_body   x) >>= (\<lambda> relevant . 
+                  error_return (symbol, (typ1, size2, addr, Some relevant, bind))))
               | x # xs => error_fail (''get_elf64_global_symbol_init: invariant failed, global variable appears in multiple segments'')
             )))
         else
-          error_return (symbol, (typ1, size1, addr, None))) strs)
+          error_return (symbol, (typ1, size2, addr, None, bind))) strs)
       in
         mapped))))))
   else
@@ -879,4 +1039,16 @@ definition get_elf64_file_global_symbol_init  :: " elf64_file \<Rightarrow>((str
 
 (*val string_of_elf32_file : hdr_print_bundle -> pht_print_bundle -> sht_print_bundle -> elf32_file -> string*)
 
-(*val string_of_elf64_file : hdr_print_bundle -> pht_print_bundle -> sht_print_bundle -> elf64_file -> string*)end
+(*val string_of_elf64_file : hdr_print_bundle -> pht_print_bundle -> sht_print_bundle -> elf64_file -> string*)
+
+(*val flag_is_set : natural -> natural -> bool*)
+definition flag_is_set  :: " nat \<Rightarrow> nat \<Rightarrow> bool "  where 
+     " flag_is_set flag v = ( 
+    (* HACK: convert to elf64_xword first. Flags never live 
+     * in objects bigger than 64 bits. *)
+    Elf_Types_Local.uint64_land 
+            (of_int (int v)) 
+            (of_int (int flag))
+    = (of_int (int flag)))"
+
+end

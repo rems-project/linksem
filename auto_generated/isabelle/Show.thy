@@ -4,13 +4,12 @@ theory "Show"
 
 imports 
  	 Main
-	 "Lem_function" 
-	 "Lem_list" 
-	 "Lem_maybe" 
 	 "Lem_num" 
+	 "Lem_list" 
+	 "Lem_function" 
+	 "Lem_maybe" 
 	 "Lem_string" 
 	 "Lem_string_extra" 
-	 "Missing_pervasives" 
 
 begin 
 
@@ -24,8 +23,6 @@ begin
 (*open import Num*)
 (*open import String*)
 (*open import String_extra*)
-
-(*open import Missing_pervasives*)
 
 (*class (Show 'a)
   val {ocaml} show : 'a -> string
@@ -56,11 +53,13 @@ end*)
   *)
 (*val string_of_quad : forall 'a 'b 'c 'd. Show 'a, Show 'b, Show 'c, Show 'd => ('a * 'b * 'c * 'd) -> string*)
 
-(** [string_of_list l] produces a string representation of list [l].
-  *)
-(*val string_of_list : forall 'a. Show 'a => list 'a -> string*)
-
 (*val string_of_maybe : forall 'a. Show 'a => maybe 'a -> string*)
 
+(** [show_else s m] produces a string representation of maybe [m], using [s] 
+  * in the case [m] = Nothing. *)
+(*val show_else : forall 'a. Show 'a => string -> maybe 'a -> string*)
+
 (*val string_of_nat : nat -> string*)
+
+(*val string_of_integer : integer -> string*)
 end

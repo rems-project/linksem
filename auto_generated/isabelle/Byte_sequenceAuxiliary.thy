@@ -4,14 +4,15 @@ theory "Byte_sequenceAuxiliary"
 
 imports 
  	 Main "~~/src/HOL/Library/Code_Target_Numeral"
+	 "Lem_num" 
+	 "Lem_list" 
 	 "Lem_basic_classes" 
 	 "Lem_bool" 
-	 "Lem_list" 
-	 "Lem_num" 
 	 "Lem_string" 
-	 "Error" 
-	 "Missing_pervasives" 
+	 "Lem_assert_extra" 
 	 "Show" 
+	 "Missing_pervasives" 
+	 "Error" 
 	 "Byte_sequence" 
 
 begin 
@@ -28,8 +29,6 @@ termination repeat by lexicographic_order
 termination concat_byte_sequence by lexicographic_order
 
 termination dropbytes by lexicographic_order
-
-termination takebytes by lexicographic_order
 
 
 (****************************************************)
