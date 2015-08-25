@@ -2,6 +2,7 @@ theory
   Elf_Types_Local
 imports
   Main "$ISABELLE_HOME/src/HOL/Word/Word"
+  "../../../lem/isabelle-lib/Lem_basic_classes"
 begin
 
   section {* Unsigned character type *}
@@ -225,16 +226,11 @@ begin
 
   section {* Sorting *}
 
-  datatype ordering
-    = Less
-    | Equal
-    | Greater
-
   fun merge :: "('a \<Rightarrow> 'a \<Rightarrow> ordering) \<Rightarrow> 'a list \<Rightarrow> 'a list \<Rightarrow> 'a list" where
     "merge ord [] ys = ys"
   | "merge ord xs [] = xs"
   | "merge ord (x#xs) (y#ys) =
-       (if ord x y = Less then
+       (if ord x y = LT then
           x#merge ord xs (y#ys)
         else
           y#merge ord (x#xs) ys)"
@@ -249,8 +245,8 @@ begin
 
   definition ord_correct :: "('a \<Rightarrow> 'a \<Rightarrow> ordering) \<Rightarrow> bool" where
     "ord_correct ord \<equiv>
-       (\<forall>x y. ord x y = Equal \<longleftrightarrow> x = y) \<and>
-       (\<forall>x y z. ord x y = Less \<and> ord y z = Less \<longrightarrow> ord x z = Less)"
+       (\<forall>x y. ord x y = EQ \<longleftrightarrow> x = y) \<and>
+       (\<forall>x y z. ord x y = LT \<and> ord y z = LT \<longrightarrow> ord x z = LT)"
 
   lemma merge_elems:
     fixes x :: "'a" and xs ys :: "'a list" and ord :: "'a \<Rightarrow> 'a \<Rightarrow> ordering"
@@ -273,16 +269,16 @@ begin
     qed
   next
     fix ord x' xs y' ys
-    assume IHLeft: "(ord x' y' = Less \<Longrightarrow>
+    assume IHLeft: "(ord x' y' = LT \<Longrightarrow>
         x \<in> set xs \<union> set (y' # ys) \<longrightarrow> x \<in> set (merge ord xs (y' # ys)))"
-    assume IHRight: "(ord x' y' \<noteq> Less \<Longrightarrow>
+    assume IHRight: "(ord x' y' \<noteq> LT \<Longrightarrow>
         x \<in> set (x' # xs) \<union> set ys \<longrightarrow> x \<in> set (merge ord (x' # xs) ys))"
     show "x \<in> set (x' # xs) \<union> set (y' # ys) \<longrightarrow> x \<in> set (merge ord (x' # xs) (y' # ys))"
     proof
       assume S: "x \<in> set (x'#xs) \<union> set (y'#ys)"
       show "x \<in> set (merge ord (x'#xs) (y'#ys))"
-        proof(cases "ord x' y' = Less")
-          assume *: "ord x' y' = Less"
+        proof(cases "ord x' y' = LT")
+          assume *: "ord x' y' = LT"
           show ?thesis
             apply(simp add: * merge.simps)
             apply(rule UnE[OF S])
@@ -297,7 +293,7 @@ begin
             apply auto
         done
       next
-        assume *: "ord x' y' \<noteq> Less"
+        assume *: "ord x' y' \<noteq> LT"
         show ?thesis
           apply(simp add: merge.simps *)
           apply(rule UnE[OF S])
@@ -323,5 +319,5 @@ begin
   inductive ordered :: "('a \<Rightarrow> 'a \<Rightarrow> ordering) \<Rightarrow> 'a list \<Rightarrow> bool" where
     ordered_Nil [intro!]: "ordered ord []"
   | ordered_Singleton [intro!]: "ordered ord [x]"
-  | ordered_Cons [intro!]: "\<lbrakk> ord x y = Less; ordered ord (y#xs) \<rbrakk> \<Longrightarrow> ordered ord (x#y#xs)"
+  | ordered_Cons [intro!]: "\<lbrakk> ord x y = LT; ordered ord (y#xs) \<rbrakk> \<Longrightarrow> ordered ord (x#y#xs)"
 end
