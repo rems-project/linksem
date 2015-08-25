@@ -436,7 +436,7 @@ let delete_trailing_equals str =
     let cs = toCharList str
     in
     if [#'='] = drop ((List.length cs) - 1) cs
-        then Just (toString (take ((List.length cs) - 1) cs))
+        then Just (toString (List.take ((List.length cs) - 1) cs))
         else (* let _ = Missing_pervasives.errln ("No trailing equals: " ^ str)
             in *)
             Nothing
@@ -462,7 +462,7 @@ let equal_modulo_trailing_equals argstr argdef =
             in
             match following_equals with 
                 Just following -> (* okay; does the pre-equals part match? *)
-                    matched = toString (take ((stringLength argdef) - 1) (toCharList argstr))
+                    matched = toString (List.take ((stringLength argdef) - 1) (toCharList argstr))
                 | _ -> (* the argstr is allowed not to have a trailing equals *) argstr = matched
             end
         | Nothing -> (* no trailing equals *) argdef = argstr
@@ -501,7 +501,7 @@ let read_one_arg state args =
                 Just (alias, (aliases, (argspec_extras, argspec_regex), meaning, doc)) ->
                     (* Return a new state, by applying the argument's meaning. 
                      * We have to supply the option's argument strings to the meaning function. *)
-                    let argstrings = take (List.length argspec_extras) more
+                    let argstrings = List.take (List.length argspec_extras) more
                     in 
                     let regex_matches = match delete_trailing_equals some_arg with
                         Just prefix -> 

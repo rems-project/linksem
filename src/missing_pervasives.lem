@@ -130,22 +130,16 @@ val byte_of_natural : natural -> byte
 declare ocaml    target_rep function byte_of_natural x = `Char.chr` (`Nat_big_num.to_int` x)
 declare isabelle target_rep function byte_of_natural = `unat`
 
-type ordering
-  = Equal
-  | Less
-  | Greater
-
 declare ocaml    target_rep type ordering = `int`
-declare isabelle target_rep type ordering = `Elf_Types_Local.ordering`
 
 val natural_ordering : natural -> natural -> ordering
 let natural_ordering left right =
   if left = right then
-    Equal
+    EQ
   else if left < right then
-    Less
+    LT
   else
-    Greater
+    GT
 
 declare ocaml target_rep function natural_ordering = `Nat_big_num.compare`
 
@@ -353,11 +347,15 @@ declare isabelle target_rep function string_suffix = `Elf_Types_Local.string_suf
   * Fails if the index is negative, or beyond the end of the string.
   *)
   
+val nat_length : forall 'a. list 'a -> nat
+declare ocaml target_rep function nat_length = `List.length`
+  
 val length : forall 'a. list 'a -> natural
 let ~{ocaml} length xs = List.foldl (fun y _ -> 1 + y) 0 xs
+let {ocaml} length xs = naturalFromNat (nat_length xs)
 
 val take : forall 'a. natural -> list 'a -> list 'a
-let rec ~{ocaml} take m xs =
+let rec {ocaml} take m xs =
   match xs with
     | []    -> []
     | x::xs ->
@@ -396,7 +394,6 @@ val string_index_of : char -> string -> maybe natural
 let string_index_of e s = string_index_of' e (String.toCharList s) 0
 
 declare ocaml target_rep function string_index_of = `Ml_bindings.string_index_of`
-(* FIXME: isabelle *)
 
 val index : forall 'a. natural -> list 'a -> maybe 'a
 
@@ -416,11 +413,6 @@ let rec find_index_helper count p xs =
 
 val find_index : forall 'a. ('a -> bool) -> list 'a -> maybe natural
 let find_index p xs = find_index_helper 0 p xs
-
-val nat_length : forall 'a. list 'a -> nat
-declare ocaml target_rep function nat_length = `List.length`
-
-let {ocaml} length xs = naturalFromNat (nat_length xs)
 
 val argv : list string
 declare ocaml target_rep function argv = `Ml_bindings.argv_list`

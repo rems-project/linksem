@@ -50,9 +50,9 @@ LEM_ELF_SRC := byte_sequence.lem archive.lem \
 	string_table.lem \
 	elf_header.lem elf_symbol_table.lem elf_program_header_table.lem \
 	elf_section_header_table.lem \
-	elf_relocation.lem elf_dynamic.lem \
+	elf_relocation.lem \
 	elf_interpreted_segment.lem elf_interpreted_section.lem \
-	elf_note.lem elf_file.lem 
+	elf_note.lem elf_file.lem elf_dynamic.lem
 	
 LEM_ABI_SRC := memory_image.lem \
 	abis/abi_utilities.lem \
@@ -127,7 +127,7 @@ lem-all-ocaml: $(filter-out error.lem,$(LEM_UTIL_SRC)) $(LEM_ELF_SRC) $(LEM_GNU_
 
 .PHONY: isa-extraction
 isa-extraction:
-	$(LEM) -isa -only_changed_output \
+	$(LEM) -isa -only_changed_output -add_full_isa_lib_path \
 	$(LEM_MODEL_ISA_THY)
 	mv *.thy ../auto_generated/isabelle/
 
