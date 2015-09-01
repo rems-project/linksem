@@ -173,27 +173,6 @@ val sort_by : forall 'a. ('a -> 'a -> ordering) -> list 'a -> list 'a
 declare ocaml    target_rep function sort_by = `List.sort`
 declare isabelle target_rep function sort_by = `Elf_Types_Local.merge_sort`
 
-(** [intercalate sep xs] places [sep] between all elements of [xs]. *)
-val intercalate : forall 'a. 'a -> list 'a -> list 'a
-let rec intercalate sep xs =
-	match xs with
-		| []    -> []
-		| [x]   -> [x]
-		| x::xs -> x::sep::intercalate sep xs
-	end
-
-(** [string_of_list l] produces a string representation of list [l].
-  *)
-val string_of_list : forall 'a. Show 'a => list 'a -> string
-let {ocaml} string_of_list l =
-  let result = intercalate "," (List.map show l) in
-  let folded = foldl (^) "" result in
-    "[" ^ folded ^ "]"
-
-instance forall 'a. Show 'a => (Show (list 'a))
-	let show = string_of_list
-end
-
 (** [mapMaybei f xs] maps a function expecting an index (the position in the list
   * [xs] that it is currently viewing) and producing a [maybe] type across a list.
   * Elements that produce [Nothing] under [f] are discarded in the output, whilst
@@ -287,20 +266,6 @@ let rec unzip3 l = match l with
 end
 declare termination_argument unzip3 = automatic
 
-(** [unlines xs] concatenates a list of strings [xs], placing each entry
-  * on a new line.
-  *)
-val unlines : list string -> string
-let unlines xs =
-  foldl (^) "" (intercalate "\n" xs)
-
-(** [bracket xs] concatenates a list of strings [xs], separating each entry with a
-  * space, and bracketing the resulting string.
-  *)
-val bracket : list string -> string
-let bracket xs =
-  "(" ^ foldl (^) "" (intercalate " " xs) ^ ")"
-
 (** [null_byte] is the null character a a byte. *)
 val null_byte : byte
 
@@ -336,6 +301,48 @@ declare ocaml target_rep function outln = `print_endline`
 (** [outs s] prints [s] to stdout, without adding a trailing newline. *)
 val outs : string -> unit
 declare ocaml target_rep function outs = `print_string`
+
+(** [intercalate sep xs] places [sep] between all elements of [xs].
+  * Made tail recursive and unrolled slightly to improve performance on large
+  * lists.*)
+  
+val intercalate' : forall 'a. 'a -> list 'a -> list 'a -> list 'a
+let rec intercalate' sep xs accum =
+	match xs with
+		| []       -> List.reverse accum
+		| [x]      -> List.reverse accum ++ [x]
+		| [x; y]   -> List.reverse accum ++ [x; sep; y]
+		| x::y::xs -> intercalate' sep xs (sep::y::sep::x::accum)
+	end
+	
+val intercalate : forall 'a. 'a -> list 'a -> list 'a
+let intercalate sep xs = intercalate' sep xs []
+	
+(** [unlines xs] concatenates a list of strings [xs], placing each entry
+  * on a new line.
+  *)
+val unlines : list string -> string
+let unlines xs =
+  foldl (^) "" (intercalate "\n" xs)
+
+(** [bracket xs] concatenates a list of strings [xs], separating each entry with a
+  * space, and bracketing the resulting string.
+  *)
+val bracket : list string -> string
+let bracket xs =
+  "(" ^ foldl (^) "" (intercalate " " xs) ^ ")"
+	
+(** [string_of_list l] produces a string representation of list [l].
+  *)
+val string_of_list : forall 'a. Show 'a => list 'a -> string
+let {ocaml} string_of_list l =
+  let result = intercalate "," (List.map show l) in
+  let folded = foldl (^) "" result in
+    "[" ^ folded ^ "]"
+
+instance forall 'a. Show 'a => (Show (list 'a))
+	let show = string_of_list
+end
 
 (** [split_string_on_char s c] splits a string [s] into a list of substrings
   * on character [c], otherwise returning the singleton list containing [s]

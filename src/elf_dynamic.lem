@@ -227,7 +227,7 @@ let string_of_dynamic_tag tag os_additional_ranges os proc =
   else if tag = dt_jmprel then
     "JMPREL"
   else if tag = dt_bindnow then
-    "BINDNOW"
+    "BIND_NOW"
   else if tag = dt_init_array then
     "INIT_ARRAY"
   else if tag = dt_fini_array then
@@ -480,15 +480,15 @@ let df_static_tls : natural = 16 (* 0x10 *)
   *)
 val string_of_dt_flag : natural -> string
 let string_of_dt_flag flag =
-  if unsafe_natural_land flag df_origin <> 0 then
+  if unsafe_natural_land flag df_origin = 0 then
     "ORIGIN"
-  else if unsafe_natural_land flag df_symbolic <> 0 then
+  else if unsafe_natural_land flag df_bindnow = 0 then
+    "NOW"
+  else if unsafe_natural_land flag df_symbolic = 0 then
     "SYMBOLIC"
-  else if unsafe_natural_land flag df_textrel <> 0 then
+  else if unsafe_natural_land flag df_textrel = 0 then
     "TEXTREL"
-  else if unsafe_natural_land flag df_bindnow <> 0 then
-    "BIND_NOW"
-  else if unsafe_natural_land flag df_static_tls <> 0 then
+  else if unsafe_natural_land flag df_static_tls = 0 then
     "STATIC_TLS"
   else (* XXX: more as required *)
     "Invalid flag"
@@ -509,6 +509,8 @@ type dyn_value 'addr 'size
   | Size    of 'size
   | FName   of string
   | Path    of string
+  | RPath   of string
+  | RunPath of string
   | Library of string
   | Flags   of natural
   | Numeric of natural
@@ -589,8 +591,8 @@ let get_string_table_of_elf64_dyn_section endian dyns sht bs0 =
       | _        -> fail "get_string_table_of_elf64_dyn_section: multiple string table entries"
     end
     
-val get_value_of_elf32_dyn : elf32_dyn -> (natural -> bool) -> string_table -> error elf32_dyn_value
-let get_value_of_elf32_dyn dyn os_additional_ranges stab =
+val get_value_of_elf32_dyn : elf32_dyn -> (natural -> bool) -> (elf32_dyn -> error elf32_dyn_value) -> string_table -> error elf32_dyn_value
+let get_value_of_elf32_dyn dyn os_additional_ranges os stab =
   let tag = naturalFromInteger (integer_of_elf32_sword dyn.elf32_dyn_tag) in
     if tag = dt_null then
       return Null
@@ -704,7 +706,7 @@ let get_value_of_elf32_dyn dyn os_additional_ranges stab =
       end >>= fun off ->
         let off = natural_of_elf32_word off in
         String_table.get_string_at off stab >>= fun str ->
-        return (Path str)
+        return (RPath str)
     else if tag = dt_symbolic then
       return Ignored
     else if tag = dt_rel then
@@ -789,7 +791,7 @@ let get_value_of_elf32_dyn dyn os_additional_ranges stab =
       end >>= fun off ->
         let off = natural_of_elf32_word off in
         String_table.get_string_at off stab >>= fun str ->
-        return (Path str)
+        return (RunPath str)
     else if tag = dt_flags then
       match dyn.elf32_dyn_d_un with
         | D_Val v     -> return v
@@ -814,7 +816,7 @@ let get_value_of_elf32_dyn dyn os_additional_ranges stab =
       end >>= fun sz ->
       return (Size sz)
     else if os_additional_ranges tag then
-      fail "YYY"
+      os dyn
     else
       fail "get_value_of_elf32_dyn: unrecognised tag type"
       
@@ -933,7 +935,7 @@ let get_value_of_elf64_dyn dyn os_additional_ranges stab =
       end >>= fun off ->
         let off = natural_of_elf64_xword off in
         String_table.get_string_at off stab >>= fun str ->
-        return (Path str)
+        return (RPath str)
     else if tag = dt_symbolic then
       return Ignored
     else if tag = dt_rel then
@@ -1018,7 +1020,7 @@ let get_value_of_elf64_dyn dyn os_additional_ranges stab =
       end >>= fun off ->
         let off = natural_of_elf64_xword off in
         String_table.get_string_at off stab >>= fun str ->
-        return (Path str)
+        return (RunPath str)
     else if tag = dt_flags then
       match dyn.elf64_dyn_d_un with
         | D_Val v     -> return v
