@@ -392,7 +392,7 @@ let rec take m xs =
     | []    -> []
     | x::xs ->
       if m = 0 then
-        x::xs
+        []
       else
         x::take (m - 1) xs
   end
