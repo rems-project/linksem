@@ -44,7 +44,11 @@ let hex_string_of_big_int_pad16 i : string =
 
 let hex_string_of_big_int_no_padding i : string =
   let i0 = Nat_big_num.to_int64 i in
-    Printf.sprintf "%Lx" i0
+    if Int64.compare i0 Int64.zero < 0 then
+      let i0 = Int64.neg i0 in
+        Printf.sprintf "-%Lx" i0
+    else
+      Printf.sprintf "%Lx" i0
 ;;
 
 let bytes_of_int32 (i : Int32.t) = assert false

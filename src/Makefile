@@ -46,7 +46,7 @@ ALL_UTIL_ML := \
 # -- Show should be split up. For now, just split off the problematic byte stuff into Missing_pervasives.
 
 LEM_ELF_SRC := byte_sequence.lem archive.lem \
-	elf_types_native_uint.lem \
+	elf_types_native_uint.lem hex_printing.lem \
 	string_table.lem \
 	elf_header.lem elf_symbol_table.lem elf_program_header_table.lem \
 	elf_section_header_table.lem \

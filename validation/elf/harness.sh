@@ -1,7 +1,8 @@
 #!/bin/bash
 
 MAIN_ELF=../../src/main_elf.opt
-TEST_FILES=/usr/bin/
+TEST_FILES=/mnt/bimfs
+DIFF_TOOL=meld
 
 function perform_readelf_diff
 {
@@ -19,13 +20,11 @@ function perform_readelf_diff
     echo $(tput setaf 1)
     echo "TEST FAILED:"
     echo $(tput sgr0)
-    printf "\tFor ""${EXECUTABLE_NAME}""\n\n"
-    printf "Formal ELF model returned:\n\n"
-    echo $MAIN_ELF_RESULT
-    printf "\nWhereas readelf returned:\n\n"
-    echo $READELF_RESULT
-    printf "\nDIFF:\n"
-    echo $RESULT
+    printf "\tFor ""${EXECUTABLE_NAME}""\n"
+    printf "\tDiffs written on mainelf-output and oracle-output\n"
+    (echo "$READELF_RESULT") > oracle-output
+    (echo "$MAIN_ELF_RESULT") > mainelf-output
+    `$DIFF_TOOL mainelf-output oracle-output`
     exit -1
   fi
 }
@@ -45,13 +44,12 @@ function perform_hexdump_diff
     echo $(tput setaf 1)
     echo "TEST FAILED:"
     echo $(tput sgr0)
-    printf "\tFor ""${EXECUTABLE_NAME}""\n\n"
-    printf "Formal ELF model returned:\n\n"
-    echo $MAIN_ELF_RESULT
-    printf "\nWhereas readelf returned:\n\n"
-    echo $READELF_RESULT
-    printf "\nDIFF:\n"
-    echo $RESULT
+    printf "\tFor ""${EXECUTABLE_NAME}""\n"
+    printf "\tDiffs written on mainelf-output and oracle-output\n"
+    (echo "$HEXDUMP_RESULT") > oracle-output
+    (echo "$MAIN_ELF_RESULT") > mainelf-output
+    `$DIFF_TOOL mainelf-output oracle-output`
+    exit -1
   fi
 }
 
@@ -63,13 +61,21 @@ fi
 FLAG=$1
 
 for f in $(ls -rS $TEST_FILES); do
-  FTYPE=`file $TEST_FILES/$f | cut -f2 -d' '`
-  if [ $FTYPE == "ELF" ]; then
-    echo "testing: " $f
-    if [ $FLAG == "--in-out" ]; then
-      perform_hexdump_diff $TEST_FILES/$f
-    else
-      perform_readelf_diff $TEST_FILES/$f $FLAG
+  # These are ELF32 files present on the Power machine that we use for testing.
+  # We have not formalised the 32-bit Power ABI yet so they cause problems when
+  # automatically testing conformance for PowerPC64.
+  if [[ $f != "gdk-pixbuf-query-loaders-32" &&
+        $f != "pango-querymodules-32" &&
+        $f != "gtk-query-immodules-2.0-32" &&
+        $f != "strace32" ]]; then
+    FTYPE=`file $TEST_FILES/$f | cut -f2 -d' '`
+    if [ $FTYPE == "ELF" ]; then
+      echo "testing: " $f
+      if [ $FLAG == "--in-out" ]; then
+        perform_hexdump_diff $TEST_FILES/$f
+      else
+        perform_readelf_diff $TEST_FILES/$f $FLAG
+      fi
     fi
   fi
 done

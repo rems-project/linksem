@@ -9,6 +9,7 @@ open import Tuple
 open import Byte_sequence
 open import Default_printing
 open import Error
+open import Hex_printing
 open import Missing_pervasives
 open import Show
 open import Assert_extra
@@ -25,11 +26,15 @@ open import Elf_types_native_uint
 open import Harness_interface
 open import Sail_interface
 
+open import Abi_aarch64_relocation
+
 open import Abi_amd64_elf_header
 open import Abi_amd64_relocation
 open import Abi_amd64_serialisation
 
 open import Abi_x86_relocation
+
+open import Abi_power64_relocation
 
 open import Gnu_ext_dynamic
 open import Gnu_ext_program_header_table
@@ -50,50 +55,80 @@ let rec chunks (ss : list string) (accum : list (list string)) =
   match ss with
     | s1::s2::s3::s4::s5::s6::s7::s8::s9::s10::s11::s12::s13::s14::s15::s16::ss ->
         chunks ss ([s2^s1;s4^s3;s6^s5;s8^s7;s10^s9;s12^s11;s14^s13;s16^s15]::accum)
+    | s1::s2::s3::s4::s5::s6::s7::s8::s9::s10::s11::s12::s13::s14::s15::[] ->
+        let buff    = [s2^s1;s4^s3;s6^s5;s8^s7;s10^s9;s12^s11;s14^s13;"00"^s15] in
+          (List.reverse accum ++ [buff], 15)
     | s1::s2::s3::s4::s5::s6::s7::s8::s9::s10::s11::s12::s13::s14::ss ->
         let bits    = replicate 1 "    " in
         let fixed   = intercalate " " bits in
         let buff    = [s2^s1;s4^s3;s6^s5;s8^s7;s10^s9;s12^s11;s14^s13] ++ [concatS fixed] in
-          (List.reverse accum ++ [buff], 7)
-    | s1::s2::s3::s4::s5::s6::s7::s8::s9::s10::s11::s12::ss ->
+          (List.reverse accum ++ [buff], 14)
+    | s1::s2::s3::s4::s5::s6::s7::s8::s9::s10::s11::s12::s13::[] ->
+        let bits    = replicate 1 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = [s2^s1;s4^s3;s6^s5;s8^s7;s10^s9;s12^s11;"00"^s13] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 13)
+    | s1::s2::s3::s4::s5::s6::s7::s8::s9::s10::s11::s12::[] ->
         let bits    = replicate 2 "    " in
         let fixed   = intercalate " " bits in
         let buff    = [s2^s1;s4^s3;s6^s5;s8^s7;s10^s9;s12^s11] ++ [concatS fixed] in
-          (List.reverse accum ++ [buff], 6)
-    | s1::s2::s3::s4::s5::s6::s7::s8::s9::s10::ss ->
+          (List.reverse accum ++ [buff], 12)
+    | s1::s2::s3::s4::s5::s6::s7::s8::s9::s10::s11::[] ->
+        let bits    = replicate 2 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = [s2^s1;s4^s3;s6^s5;s8^s7;s10^s9;"00"^s11] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 11)
+    | s1::s2::s3::s4::s5::s6::s7::s8::s9::s10::[] ->
         let bits    = replicate 3 "    " in
         let fixed   = intercalate " " bits in
         let buff    = [s2^s1;s4^s3;s6^s5;s8^s7;s10^s9] ++ [concatS fixed] in
-          (List.reverse accum ++ [buff], 5)
-    | s1::s2::s3::s4::s5::s6::s7::s8::ss ->
+          (List.reverse accum ++ [buff], 10)
+    | s1::s2::s3::s4::s5::s6::s7::s8::s9::[] ->
+        let bits    = replicate 3 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = [s2^s1;s4^s3;s6^s5;s8^s7;"00"^s9] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 9)
+    | s1::s2::s3::s4::s5::s6::s7::s8::[] ->
         let bits    = replicate 4 "    " in
         let fixed   = intercalate " " bits in
         let buff    = [s2^s1;s4^s3;s6^s5;s8^s7] ++ [concatS fixed] in
-          (List.reverse accum ++ [buff], 4)
-    | s1::s2::s3::s4::s5::s6::ss ->
+          (List.reverse accum ++ [buff], 8)
+    | s1::s2::s3::s4::s5::s6::s7::[] ->
+        let bits    = replicate 4 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = [s2^s1;s4^s3;s6^s5;"00"^s7] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 7)
+    | s1::s2::s3::s4::s5::s6::[] ->
         let bits    = replicate 5 "    " in
         let fixed   = intercalate " " bits in
         let buff    = [s2^s1;s4^s3;s6^s5] ++ [concatS fixed] in
-          (List.reverse accum ++ [buff], 3)
-    | s1::s2::s3::s4::ss ->
+          (List.reverse accum ++ [buff], 6)
+    | s1::s2::s3::s4::s5::[] ->
+        let bits    = replicate 5 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = [s2^s1;s4^s3;"00"^s5] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 5)
+    | s1::s2::s3::s4::[] ->
         let bits    = replicate 6 "    " in
         let fixed   = intercalate " " bits in
         let buff    = [s2^s1;s4^s3] ++ [concatS fixed] in
-          (List.reverse accum ++ [buff], 2)
-    | s1::s2::ss ->
+          (List.reverse accum ++ [buff], 4)
+    | s1::s2::s3::[] ->
+        let bits    = replicate 6 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = [s2^s1;"00"^s3] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 3)
+    | s1::s2::[] ->
         let bits    = replicate 7 "    " in
         let fixed   = intercalate " " bits in
         let buff    = [s2^s1] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 2)
+    | s1::[] ->
+        let bits    = replicate 7 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = ["00"^s1] ++ [concatS fixed] in
           (List.reverse accum ++ [buff], 1)
-    | ss ->
-      let missing = naturalFromNat (16 - List.length ss) in
-        if missing = 16 then
-          (List.reverse accum, List.length ss)
-        else
-          let bits    = replicate missing "    " in
-          let fixed   = intercalate " " bits in
-          let buff    = ss ++ [concatS fixed] in
-            (List.reverse accum ++ [buff], List.length ss)
+    | [] -> (List.reverse accum, 0)
   end
   
 val provide_offsets : (list (list string) * nat) -> list (string * list string)
@@ -105,7 +140,7 @@ let provide_offsets (ss, ed) =
     if ed = 0 then
       [(unsafe_hex_string_of_natural 7 ((naturalFromNat (List.length ss)) * 16), [])]
     else
-      [(unsafe_hex_string_of_natural 7 (((naturalFromNat (List.length ss - 1)) * 16) + naturalFromNat (ed * 2)), [])]
+      [(unsafe_hex_string_of_natural 7 (((naturalFromNat (List.length ss - 1)) * 16) + naturalFromNat ed), [])]
 
 val create_chunks : byte_sequence -> list (string * list string)
 let create_chunks bs0 =
@@ -121,6 +156,19 @@ let print_chunk (off, ss) =
     | [] -> off
     | _  -> off ^ " " ^ concatS (intercalate " " ss)
   end
+    
+val obtain_abi_specific_string_of_reloc_type : natural -> (natural -> string)
+let obtain_abi_specific_string_of_reloc_type mach =
+  if mach = elf_ma_ppc64 then
+    string_of_ppc64_relocation_type
+  else if mach = elf_ma_386 then
+    string_of_x86_relocation_type
+  else if mach = elf_ma_aarch64 then
+    string_of_aarch64_relocation_type
+  else if mach = elf_ma_x86_64 then
+    string_of_amd64_relocation_type
+  else
+    const "Cannot deduce ABI"
     
 let _ =
   let res =
@@ -164,9 +212,10 @@ let _ =
                   stbl)
               else if flag = "--relocs" then
                 Elf_file.read_elf32_file bs0 >>= fun f1 ->
+                let print_reloc = obtain_abi_specific_string_of_reloc_type (natural_of_elf32_half f1.elf32_file_header.elf32_machine) in
                 return (Harness_interface.harness_string_of_elf32_relocs
                   f1
-                  string_of_x86_relocation_type (* XXX: generic way to obtain correct ABI needed *)
+                  print_reloc
                   bs0)
 (*            else if flag = "--symbols" then
                 Harness_interface.harness_string_of_elf32_syms
@@ -221,16 +270,17 @@ let _ =
                   f1.elf64_file_section_header_table
                   stbl
               else if flag = "--relocs" then
+                let print_reloc = obtain_abi_specific_string_of_reloc_type (natural_of_elf64_half f1.elf64_file_header.elf64_machine) in
                 Harness_interface.harness_string_of_elf64_relocs
                   f1
-                  string_of_amd64_relocation_type (* XXX: generic way to obtain correct ABI needed *)
+                  print_reloc
                   bs0
-              else if flag = "--symbols" then
+              (*else if flag = "--symbols" then
                 Harness_interface.harness_string_of_elf64_syms
                   f1
                   show
                   show
-                  bs0
+                  bs0*)
               else if flag = "--dynamic" then
                 Harness_interface.harness_string_of_elf64_dynamic_section
                   f1
