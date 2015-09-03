@@ -8,9 +8,13 @@ open import Bool
 open import Map
 open import Maybe
 open import Num
+open import String
+
+open import Hex_printing
 
 open import Error
 open import String_table
+open import Show
 
 open import Elf_section_header_table
 open import Elf_interpreted_section
@@ -42,6 +46,11 @@ let sht_gnu_verneed : natural = (2 * 939524095)     (* 0x6ffffffe *)
   *)
 let sht_gnu_versym  : natural = (2 * 939524095) + 1 (* 0x6fffffff *)
 
+(** [sht_gnu_liblist] appears to be undocumented but appears in PowerPC 64 ELF
+  * binaries in "the wild".
+  *)
+let sht_gnu_liblist : natural = (2 * 939524091) + 1 (* 0x6FFFFFF7 *)
+
 val string_of_gnu_ext_section_type : natural -> string
 let {ocaml} string_of_gnu_ext_section_type i =
   if i = sht_gnu_hash then
@@ -52,8 +61,14 @@ let {ocaml} string_of_gnu_ext_section_type i =
     "VERNEED"
   else if i = sht_gnu_versym then
     "VERSYM"
+  else if i = sht_gnu_liblist then
+    "GNU_LIBLIST"
+  else if i >= sht_loos && i <= sht_hios then
+    let diff = i - sht_loos in
+    let suff = unsafe_hex_string_of_natural 0 diff in
+      "LOOS+" ^ suff
   else
-    "Invalid GNU EXT section type"
+    "Invalid GNU EXT section type: " ^ show i
     
 (** [gnu_ext_additionall_special_sections] records additional section names that
   * map appear in GNU ELF binaries and their required associated types and
