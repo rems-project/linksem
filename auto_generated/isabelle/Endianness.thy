@@ -4,7 +4,7 @@ theory "Endianness"
 
 imports 
  	 Main
-	 "/home/dpm/Work/Programming/Cambridge/bitbucket/lem/isabelle-lib/Lem_string" 
+	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_string" 
 	 "Show" 
 
 begin 

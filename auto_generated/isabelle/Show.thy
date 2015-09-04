@@ -4,12 +4,12 @@ theory "Show"
 
 imports 
  	 Main
-	 "/home/dpm/Work/Programming/Cambridge/bitbucket/lem/isabelle-lib/Lem_num" 
-	 "/home/dpm/Work/Programming/Cambridge/bitbucket/lem/isabelle-lib/Lem_list" 
-	 "/home/dpm/Work/Programming/Cambridge/bitbucket/lem/isabelle-lib/Lem_function" 
-	 "/home/dpm/Work/Programming/Cambridge/bitbucket/lem/isabelle-lib/Lem_maybe" 
-	 "/home/dpm/Work/Programming/Cambridge/bitbucket/lem/isabelle-lib/Lem_string" 
-	 "/home/dpm/Work/Programming/Cambridge/bitbucket/lem/isabelle-lib/Lem_string_extra" 
+	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_num" 
+	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_list" 
+	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_function" 
+	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_maybe" 
+	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_string" 
+	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_string_extra" 
 
 begin 
 

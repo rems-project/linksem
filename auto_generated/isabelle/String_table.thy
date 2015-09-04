@@ -4,11 +4,11 @@ theory "String_table"
 
 imports 
  	 Main
-	 "/home/dpm/Work/Programming/Cambridge/bitbucket/lem/isabelle-lib/Lem_num" 
-	 "/home/dpm/Work/Programming/Cambridge/bitbucket/lem/isabelle-lib/Lem_list" 
-	 "/home/dpm/Work/Programming/Cambridge/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
-	 "/home/dpm/Work/Programming/Cambridge/bitbucket/lem/isabelle-lib/Lem_maybe" 
-	 "/home/dpm/Work/Programming/Cambridge/bitbucket/lem/isabelle-lib/Lem_string" 
+	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_num" 
+	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_list" 
+	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
+	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_maybe" 
+	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_string" 
 	 "Show" 
 	 "Missing_pervasives" 
 	 "Error" 

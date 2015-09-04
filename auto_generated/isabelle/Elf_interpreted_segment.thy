@@ -4,10 +4,10 @@ theory "Elf_interpreted_segment"
 
 imports 
  	 Main
-	 "/home/dpm/Work/Programming/Cambridge/bitbucket/lem/isabelle-lib/Lem_num" 
-	 "/home/dpm/Work/Programming/Cambridge/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
-	 "/home/dpm/Work/Programming/Cambridge/bitbucket/lem/isabelle-lib/Lem_bool" 
-	 "/home/dpm/Work/Programming/Cambridge/bitbucket/lem/isabelle-lib/Lem_string" 
+	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_num" 
+	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
+	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_bool" 
+	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_string" 
 	 "Show" 
 	 "Missing_pervasives" 
 	 "Byte_sequence" 

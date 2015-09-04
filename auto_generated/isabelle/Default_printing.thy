@@ -4,7 +4,7 @@ theory "Default_printing"
 
 imports 
  	 Main
-	 "/home/dpm/Work/Programming/Cambridge/bitbucket/lem/isabelle-lib/Lem_function" 
+	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_function" 
 
 begin 
 
