@@ -143,7 +143,10 @@ let resolve_one_reference_default a linkables defmap ref_idx_and_ref_and_linkabl
     let (ref_idx, ref, ref_linkable) = ref_idx_and_ref_and_linkable
     in
     (* Get the list of all definitions whose name matches. 
-     * Don't match empty names. *)
+     * Don't match empty names. 
+     * How should we handle common symbols here?
+     * A common symbol is a potential definition, so it goes in the def list.
+     *)
     let (defs_and_linkables_with_matching_name : list (natural * symbol_definition * linkable_item))
      = match Map.lookup ref.ref_symname defmap with
         Just (l : (list (natural * symbol_definition * linkable_item))) -> l
@@ -169,7 +172,7 @@ let resolve_one_reference_default a linkables defmap ref_idx_and_ref_and_linkabl
     let def_is_eligible = (fun (def_idx, def, def_linkable) -> 
         let ref_is_unnamed = (ref.ref_symname = "")
         in
-        let ref_is_to_defined_symbol = ((natural_of_elf64_half ref.ref_syment.elf64_st_shndx) <> stn_undef)
+        let ref_is_to_defined_or_common_symbol = ((natural_of_elf64_half ref.ref_syment.elf64_st_shndx) <> stn_undef)
         in
         let def_sym_is_ref_sym = (ref_idx = def_idx && ref.ref_sym_scn = def.def_sym_scn
             && ref.ref_sym_idx = def.def_sym_idx)
@@ -193,17 +196,18 @@ let resolve_one_reference_default a linkables defmap ref_idx_and_ref_and_linkabl
               Nothing -> false
             | Just def_gid -> 
                 match ref_coords with
-                  InArchive(_, _, _) :: InGroup(def_gid, _) :: [] -> true
-                | InGroup(def_gid, _) :: []                    -> true
+                  InArchive(_, _, _) :: InGroup(gid, _) :: [] -> gid = def_gid
+                | InGroup(gid, _) :: []                       -> gid = def_gid
                 | _ -> false
                 end
             end
         in
         (* but maybe same archive? *)
         (* DEBUGGING: print some stuff out if we care about this symbol. *)let _ = 
-            if ref_fname = "xlocale.o" && def.def_symname = "_nl_C_LC_IDENTIFICATION" then 
-                Missing_pervasives.errln ("saw xlocale.o referencing _nl_C_LC_IDENTIFICATION; coords are "
-                    ^ "def: " ^ (show def_coords) ^ ", ref: " ^ (show ref_coords))
+            if ref_fname = "backtrace.o" && def.def_symname = "_Unwind_GetCFA" then 
+                Missing_pervasives.errln ("saw backtrace.o referencing _Unwind_GetCFA; coords are "
+                    ^ "def: " ^ (show def_coords) ^ ", ref: " ^ (show ref_coords) ^ "; ref_is_in_group_with_def: " 
+                    ^ (show ref_is_in_group_with_def) ^ "; def_in_group: " ^ (show def_in_group))
             else ()
         in
         let ref_and_def_are_in_same_archive = match (def_coords, ref_coords) with
@@ -216,7 +220,7 @@ let resolve_one_reference_default a linkables defmap ref_idx_and_ref_and_linkabl
             | Nothing -> false
         end
         in
-        if ref_is_to_defined_symbol then def_sym_is_ref_sym
+        if ref_is_to_defined_or_common_symbol then def_sym_is_ref_sym
         else 
             if ref_is_unnamed then false
             else

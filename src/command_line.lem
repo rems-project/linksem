@@ -170,6 +170,29 @@ let add_input_file state s =
          ; stack = state.stack
          |>
 
+val start_group : command_state -> command_state
+let start_group state = <|
+           input_units = state.input_units
+         ; link_options = state.link_options
+         ; current_input_options = state.current_input_options
+         ; current_group = match state.current_group with
+                Nothing -> Just []
+                | _ -> failwith "cannot nest groups"
+            end
+         ; stack = state.stack
+         |>
+
+val end_group : command_state -> command_state
+let end_group state = <|
+           input_units = state.input_units ++ (match state.current_group with 
+                Just l -> [Group(l)]
+                | Nothing -> failwith "end group without start group"
+            end)
+         ; link_options = state.link_options
+         ; current_input_options = state.current_input_options
+         ; current_group = Nothing
+         ; stack = state.stack
+         |>
 type option_token = string
 type option_argspecs = list string * list string
 type option_argvals = list string * list string
@@ -361,8 +384,8 @@ let command_line_table = [
   (* (["-R" ,"--just-symbols"],                   (["FILE"], []),            fun _ -> (fun state -> state), "Just link symbols"), *) (* Handled above! *)
   (["-T"; "--script"],                            (["FILE"], []),            fun _ -> (fun state -> state), "Read linker script");
   (["-u"; "--undefined"],                         (["SYMBOL"], []),          fun _ -> (fun state -> state), "Start with undefined reference to SYMBOL");
-  (["-("; "--start-group"],                       ([], []),                  fun _ -> (fun state -> state), "Start a group");
-  (["-)"; "--end-group"],                         ([], []),                  fun _ -> (fun state -> state), "End a group");
+  (["-("; "--start-group"],                       ([], []),                  fun _ -> (fun state -> start_group state), "Start a group");
+  (["-)"; "--end-group"],                         ([], []),                  fun _ -> (fun state -> end_group state), "End a group");
   (["--defsym"],                                  (["SYMBOL=EXPRESSION"], []), fun _ -> (fun state -> state), "Define a symbol");
   (["-fini"],                                     (["SYMBOL"], []),          fun _ -> (fun state -> state), "Call SYMBOL at unload-time");
   (["-init"],                                     (["SYMBOL"], []),          fun _ -> (fun state -> state), "Call SYMBOL at load-time");

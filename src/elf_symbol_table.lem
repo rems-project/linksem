@@ -436,3 +436,9 @@ let get_elf64_symbol_image_address symtab strtab =
       String_table.get_string_at name strtab >>= fun str ->
       return (str, (typ, size, addr, bnd))
   ) symtab
+
+(* A more usable way to get the symbol type value. *)
+val get_elf32_symbol_type : elf32_symbol_table_entry -> natural
+let get_elf32_symbol_type syment = get_symbol_type syment.elf32_st_info
+val get_elf64_symbol_type : elf64_symbol_table_entry -> natural
+let get_elf64_symbol_type syment = get_symbol_type syment.elf64_st_info

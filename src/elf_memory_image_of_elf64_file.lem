@@ -49,18 +49,38 @@ let unique_name_for_section_from_index idx s f =
     let secname = s.elf64_section_name_as_string
     in if section_name_is_unique secname f then secname else gensym secname
 
+val unique_name_for_common_symbol_from_linkable_name : string -> elf64_symbol_table_entry -> string -> elf64_file -> string
+let unique_name_for_common_symbol_from_linkable_name fname syment symname f = 
+    (* FIXME: uniqueness? I suppose file names are unique. How to avoid overlapping with 
+     * section names? *)
+    fname ^ "_" ^ symname
+
 val elf_memory_image_of_elf64_file : forall 'abifeature. abi 'abifeature -> string -> elf64_file -> elf_memory_image
 let elf_memory_image_of_elf64_file a fname f = 
     (* Do we have program headers? This decides whether we choose a 
      * sectionwise or segmentwise view. *)
     match f.elf64_file_program_header_table with
-        [] ->   let section_names_and_elements = mapMaybei (fun i -> (fun isec -> 
+        [] ->   let extracted_symbols =  (extract_definitions_from_symtab_of_type sht_symtab f)
+                in 
+                let section_names_and_elements = mapMaybei (fun i -> (fun isec -> 
                    Just (unique_name_for_section_from_index i isec f, <|
                         startpos = Nothing
                       ; length = Just isec.elf64_section_size
                       ; contents = byte_pattern_of_byte_sequence isec.elf64_section_body
                     |>)
                 )) f.elf64_file_interpreted_sections
+                in
+                let common_symbol_names_and_elements = mapMaybei (fun i -> (fun isym -> 
+                    let symlen = natural_of_elf64_xword isym.def_syment.elf64_st_size
+                    in
+                    Just (unique_name_for_common_symbol_from_linkable_name fname isym.def_syment isym.def_symname f, <|
+                        startpos = Nothing
+                      ; length = Just symlen
+                      ; contents = Missing_pervasives.replicate symlen Nothing
+                    |>)
+                )) (List.filter (fun x -> get_elf64_symbol_type x.def_syment = stt_common) extracted_symbols)
+                in
+                let all_names_and_elements = section_names_and_elements ++ common_symbol_names_and_elements
                 in
                 (* -- annotations are reloc sites, symbol defs, ELF sections/segments/headers, PLT/GOT/...  *)
                 let (elf_sections : list (maybe element_range * elf_range_tag)) = mapMaybei (fun secidx -> (
@@ -75,19 +95,34 @@ let elf_memory_image_of_elf64_file a fname f =
                     (fun x -> 
                         let section_num = natural_of_elf64_half x.def_syment.elf64_st_shndx
                         in
-                        if      section_num = shn_abs    then
-                            (* what do we label? FIXME *) Nothing
-                        else if section_num = shn_common then (* FIXME *) Nothing
-                        else
-                            let (section_name, _) = match index section_num section_names_and_elements with
-                                Just x -> x
-                                | Nothing -> failwith ("symbol " ^ x.def_symname ^ " references nonexistent section")
-                            end
-                            in
-                            Just (Just(section_name, (natural_of_elf64_addr x.def_syment.elf64_st_value, natural_of_elf64_xword x.def_syment.elf64_st_size)), SymbolDef(x))
+                        let labelled_range = 
+                            if section_num = shn_abs then
+                                (* We have an annotation that doesn't apply to any range.
+                                 * That's all right -- that's why the range is a maybe. *)
+                                Nothing
+                            else if section_num = shn_common then 
+                                (* Each common symbol becomes its own elemenet (\approx section).
+                                 * We label *that element* with a (coextensive) symbol definition. *)
+                                 let element_name = unique_name_for_common_symbol_from_linkable_name fname x.def_syment x.def_symname f
+                                 in
+                                 Just(element_name, (0, natural_of_elf64_xword x.def_syment.elf64_st_size))
+                            else 
+                                let (section_name, _) = match index section_num section_names_and_elements with
+                                    Just x -> x
+                                    | Nothing -> failwith ("symbol " ^ x.def_symname ^ " references nonexistent section")
+                                end
+                                in
+                                Just(section_name, (natural_of_elf64_addr x.def_syment.elf64_st_value, natural_of_elf64_xword x.def_syment.elf64_st_size))
+                        in
+                        Just (labelled_range, SymbolDef(x))
                     )
                     (extract_definitions_from_symtab_of_type sht_symtab f)
                 in
+                (* FIXME: should a common symbol be a reference too? 
+                 * I prefer to think of common symbols as mergeable sections. 
+                 * Under this interpretation, there's no need for a reference. 
+                 * BUT the GC behaviour might be different! What happens if
+                 * a common symbol is not referenced? *)
                 let (symbol_refs : list (maybe element_range * elf_range_tag)) = mapMaybe
                     (fun (x : symbol_reference) -> 
                         Just (Nothing, SymbolRef(<| ref = x; maybe_reloc = Nothing |>))
@@ -175,7 +210,7 @@ let elf_memory_image_of_elf64_file a fname f =
                          ; contents = apply_content_relocations name element.contents
                          |>
                     )
-                  ) section_names_and_elements
+                  ) all_names_and_elements
                 in
                             (*
                             List.foldr (fun acc -> (fun  element.contents this_element_reloc_ranges
