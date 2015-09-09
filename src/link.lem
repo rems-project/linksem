@@ -45,11 +45,9 @@ end
 
 let all_sections_with_indices img = elf_memory_image_sections_with_indices img
 
-(*
 let all_common_symbols img = List.filter (fun def -> 
-    get_elf64_symbol_type def.def_syment = stt_common
+    natural_of_elf64_half def.def_syment.elf64_st_shndx = shn_common
 ) (elf_memory_image_defined_symbols img)
-*)
 
 val expand_sections : abi any_abi_feature -> Linkable_list.linkable_item -> list Linker_script.input_spec
 let expand_sections a item = match item with
@@ -65,8 +63,28 @@ let expand_sections a item = match item with
         ++
         (* One item per common symbol. FIXME: what about common symbols that have the same name? 
          * We need to explicitly instantiate common symbols somewhere, probably here. 
-         * This means dropping any that are unreferenced (does it?) and merging any multiply-defined. *)
-        [Common(fname, img, syment) | forall (syment MEM (* all_common_symbols img *) []) | true]
+         * This means dropping any that are unreferenced (does it?) and merging any multiply-defined.
+         * Actually, we deal with section merging at the same time as section concatenation, so during
+         * linker script processing. For discarding unused common symbols, I *think* that this has already
+         * been done by discarding unreferenced inputs.  *)
+        let common_symbols = all_common_symbols img
+        in
+        let pad_and_maybe_newline
+         = fun str -> let padlen = 20 - (naturalFromNat (stringLength str)) in
+              if padlen <= 1 then "\n                    " else toString (Missing_pervasives.replicate padlen #' ')
+        in
+        [Common(fname, img, def) | forall (def MEM common_symbols) | 
+            let _ = Missing_pervasives.outln (def.def_symname
+                ^ (pad_and_maybe_newline def.def_symname)
+                ^ (let hexstr = "0x" ^ (hex_string_of_natural (natural_of_elf64_xword def.def_syment.elf64_st_size))
+                  in
+                  hexstr ^ (pad_and_maybe_newline hexstr)
+                  )
+                ^ 
+                fname)
+            in
+            true
+        ]
     | _ -> failwith "non-reloc linkable not supported yet"
 end
 
@@ -140,6 +158,8 @@ let link script a options linkables =
         then Just (obj, inp, opts) 
         else Nothing
     )) linkables
+    in
+    let _ = Missing_pervasives.outln "Allocating common symbols\nCommon symbol       size              file\n"
     in
     let input_sections = Missing_pervasives.list_concat_map (expand_sections a) linkables_not_discarded
     in
