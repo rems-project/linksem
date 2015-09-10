@@ -93,6 +93,9 @@ let rec mapM f xs =
 				return (hd::tl)
 	end
 
+(** [foldM f e xs] performs a monadic right fold of [f] across [xs] using [e]
+  * as the base case.  Fails if any application of [f] fails.
+  *)
 val foldM : forall 'a 'b. ('a -> 'b -> error 'a) -> 'a -> list 'b -> error 'a
 let rec foldM f e xs =
   match xs with

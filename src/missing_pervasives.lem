@@ -305,7 +305,6 @@ declare ocaml target_rep function outs = `print_string`
 (** [intercalate sep xs] places [sep] between all elements of [xs].
   * Made tail recursive and unrolled slightly to improve performance on large
   * lists.*)
-  
 val intercalate' : forall 'a. 'a -> list 'a -> list 'a -> list 'a
 let rec intercalate' sep xs accum =
 	match xs with
@@ -374,10 +373,6 @@ val string_suffix : natural -> string -> maybe string
 
 declare ocaml target_rep function string_suffix = `Ml_bindings.string_suffix`
 declare isabelle target_rep function string_suffix = `Elf_Types_Local.string_suffix`
-
-(** [string_prefix i s] returns the first [i] characters of [s].
-  * Fails if the index is negative, or beyond the end of the string.
-  *)
   
 val nat_length : forall 'a. list 'a -> nat
 declare ocaml target_rep function nat_length = `List.length`
@@ -386,6 +381,9 @@ val length : forall 'a. list 'a -> natural
 let ~{ocaml} length xs = List.foldl (fun y _ -> 1 + y) 0 xs
 let {ocaml} length xs = naturalFromNat (nat_length xs)
 
+(** [take cnt xs] takes the first [cnt] elements of list [xs].  Returns a truncation
+  * if [cnt] is greater than the length of [xs].
+  *)
 val take : forall 'a. natural -> list 'a -> list 'a
 let rec take m xs =
   match xs with
@@ -397,6 +395,9 @@ let rec take m xs =
         x::take (m - 1) xs
   end
   
+(** [string_prefix i s] returns the first [i] characters of [s].
+  * Fails if the index is negative, or beyond the end of the string.
+  *)
 val string_prefix : natural -> string -> maybe string
 let string_prefix m s =
   let cs = String.toCharList s in
@@ -410,7 +411,6 @@ declare ocaml target_rep function string_prefix = `Ml_bindings.string_prefix`
 
 (** [string_index_of c s] returns [Just(i)] where [i] is the index of the first 
   * occurrence if [c] in [s], if it exists, otherwise returns [Nothing]. *)
-
 val string_index_of' : char -> list char -> natural -> maybe natural
 let rec string_index_of' e ss idx =
   match ss with

@@ -1,3 +1,8 @@
+(** Module [elf_interpreted_section] provides a record of "interpreted" sections,
+  * i.e. the data stored in the section header table converted to more amenable
+  * infinite precision types, and operation on those records.
+  *)
+
 open import Basic_classes
 open import Bool
 open import List
@@ -15,6 +20,9 @@ open import Elf_section_header_table
 open import Missing_pervasives
 open import Show
 
+(** [elf32_interpreted_section] exactly mirrors the structure of a section header
+  * table entry, barring the conversion of all fields to more amenable types.
+  *)
 type elf32_interpreted_section =
   <| elf32_section_name    : natural       (** Name of the section *)
    ; elf32_section_type    : natural       (** Type of the section *)
@@ -30,6 +38,9 @@ type elf32_interpreted_section =
    ; elf32_section_name_as_string : string (** Name of the section, as a string; "" for no name (name = 0) *)
    |>
    
+(** [elf32_interpreted_section_equal s1 s2] is an equality test on interpreted
+  * sections [s1] and [s2].
+  *)
 val elf32_interpreted_section_equal : elf32_interpreted_section -> elf32_interpreted_section -> bool
 let elf32_interpreted_section_equal x y =
     x.elf32_section_name = y.elf32_section_name &&
@@ -50,6 +61,9 @@ instance (Eq elf32_interpreted_section)
 	let (<>) x y = not (elf32_interpreted_section_equal x y)
 end
 
+(** [elf64_interpreted_section] exactly mirrors the structure of a section header
+  * table entry, barring the conversion of all fields to more amenable types.
+  *)
 type elf64_interpreted_section =
   <| elf64_section_name    : natural       (** Name of the section *)
    ; elf64_section_type    : natural       (** Type of the section *)
@@ -64,28 +78,35 @@ type elf64_interpreted_section =
    ; elf64_section_body    : byte_sequence (** Body of section *)
    ; elf64_section_name_as_string : string (** Name of the section, as a string; "" for no name (name = 0) *)
    |>
-   
+
+(** [compare_elf64_interpreted_section s1 s2] is an ordering comparison function
+  * on interpreted sections suitable for use in sets, finite maps and other
+  * ordered structures.
+  *)
+val compare_elf64_interpreted_section : elf64_interpreted_section -> elf64_interpreted_section ->
+  ordering
 let compare_elf64_interpreted_section s1 s2 = 
    compare 
     ([s1.elf64_section_name    ;
-s1.elf64_section_type    ;
-s1.elf64_section_flags   ;
-s1.elf64_section_addr    ;
-s1.elf64_section_offset  ;
-s1.elf64_section_size    ;
-s1.elf64_section_link    ;
-s1.elf64_section_info    ;
-s1.elf64_section_align   ;
-s1.elf64_section_entsize], s1.elf64_section_body) ([s2.elf64_section_name    ;
-s2.elf64_section_type    ;
-s2.elf64_section_flags   ;
-s2.elf64_section_addr    ;
-s2.elf64_section_offset  ;
-s2.elf64_section_size    ;
-s2.elf64_section_link    ;
-s2.elf64_section_info    ;
-s2.elf64_section_align   ;
-s2.elf64_section_entsize], s2.elf64_section_body)
+      s1.elf64_section_type    ;
+      s1.elf64_section_flags   ;
+      s1.elf64_section_addr    ;
+      s1.elf64_section_offset  ;
+      s1.elf64_section_size    ;
+      s1.elf64_section_link    ;
+      s1.elf64_section_info    ;
+      s1.elf64_section_align   ;
+      s1.elf64_section_entsize], s1.elf64_section_body)
+    ([s2.elf64_section_name    ;
+      s2.elf64_section_type    ;
+      s2.elf64_section_flags   ;
+      s2.elf64_section_addr    ;
+      s2.elf64_section_offset  ;
+      s2.elf64_section_size    ;
+      s2.elf64_section_link    ;
+      s2.elf64_section_info    ;
+      s2.elf64_section_align   ;
+      s2.elf64_section_entsize], s2.elf64_section_body)
 
 instance (Ord elf64_interpreted_section)
     let compare = compare_elf64_interpreted_section
@@ -95,7 +116,9 @@ instance (Ord elf64_interpreted_section)
     let (>=) = fun f1 -> (fun f2 -> Set.member (compare_elf64_interpreted_section f1 f2) {GT; EQ})
 end
 
-   
+(** [elf64_interpreted_section_equal s1 s2] is an equality test on interpreted
+  * sections [s1] and [s2].
+  *)
 val elf64_interpreted_section_equal : elf64_interpreted_section -> elf64_interpreted_section -> bool
 let elf64_interpreted_section_equal x y =
     x.elf64_section_name = y.elf64_section_name &&
@@ -111,6 +134,8 @@ let elf64_interpreted_section_equal x y =
     x.elf64_section_body = y.elf64_section_body &&
     x.elf64_section_name_as_string = y.elf64_section_name_as_string
 
+(** [null_elf32_interpreted_section] --- the null interpreted section.
+  *)
 val null_elf32_interpreted_section : elf32_interpreted_section
 let null_elf32_interpreted_section =
   <| elf32_section_name = 0
@@ -127,6 +152,8 @@ let null_elf32_interpreted_section =
    ; elf32_section_name_as_string = ""
    |>
 
+(** [null_elf64_interpreted_section] --- the null interpreted section.
+  *)
 val null_elf64_interpreted_section : elf64_interpreted_section
 let null_elf64_interpreted_section =
   <| elf64_section_name = 0
@@ -148,6 +175,10 @@ instance (Eq elf64_interpreted_section)
 	let (<>) x y = not (elf64_interpreted_section_equal x y)
 end
 
+(** [elf64_interpreted_section_matches_section_header sect ent] checks whether
+  * the interpreted section and the corresponding section header table entry
+  * match.
+  *)
 val elf64_interpreted_section_matches_section_header : 
     elf64_interpreted_section
         -> elf64_section_header_table_entry
@@ -174,6 +205,9 @@ let elf64_interpreted_section_matches_section_header i sh =
 type elf32_interpreted_sections = list elf32_interpreted_section
 type elf64_interpreted_sections = list elf64_interpreted_section
 
+(** [string_of_elf32_interpreted_section sect] returns a string-based representation
+  * of interpreted section, [sect].
+  *)
 val string_of_elf32_interpreted_section : elf32_interpreted_section -> string
 let {ocaml} string_of_elf32_interpreted_section is =
    unlines [
@@ -189,6 +223,9 @@ let {ocaml} string_of_elf32_interpreted_section is =
    ; "Entry size: " ^ show is.elf32_section_entsize
    ]
 
+(** [string_of_elf64_interpreted_section sect] returns a string-based representation
+  * of interpreted section, [sect].
+  *)
 val string_of_elf64_interpreted_section : elf64_interpreted_section -> string
 let {ocaml} string_of_elf64_interpreted_section is =
    unlines [
@@ -204,7 +241,13 @@ let {ocaml} string_of_elf64_interpreted_section is =
    ; "Entry size: " ^ show is.elf64_section_entsize
    ]
    
-    
+(** [is_valid_elf32_section_header_table_entry sect stab] checks whether a
+  * interpreted section conforms with the prescribed flags and types declared
+  * in the "special sections" table of the ELF specification.
+  * TODO: some of these entries in the table are overridden by ABI supplements.
+  * Make sure it is these that are passed in rather than the default table
+  * declared in the spec?
+  *)
 val is_valid_elf32_section_header_table_entry : elf32_interpreted_section ->
   string_table -> bool
 let is_valid_elf32_section_header_table_entry ent stbl =
@@ -218,11 +261,13 @@ let is_valid_elf32_section_header_table_entry ent stbl =
       end
   end
   
-val is_valid_elf32_section_header_table : list elf32_interpreted_section ->
-  string_table -> bool
-let is_valid_elf32_section_header_table ents stbl =
-  List.all (fun x -> is_valid_elf32_section_header_table_entry x stbl) ents
-  
+(** [is_valid_elf64_section_header_table_entry sect stab] checks whether a
+  * interpreted section conforms with the prescribed flags and types declared
+  * in the "special sections" table of the ELF specification.
+  * TODO: some of these entries in the table are overridden by ABI supplements.
+  * Make sure it is these that are passed in rather than the default table
+  * declared in the spec?
+  *)  
 val is_valid_elf64_section_header_table_entry : elf64_interpreted_section ->
   string_table -> bool
 let is_valid_elf64_section_header_table_entry ent stbl =
@@ -236,6 +281,17 @@ let is_valid_elf64_section_header_table_entry ent stbl =
       end
   end
   
+(** [is_valid_elf32_section_header_table sects] checks whether all entries in
+  * [sect] are valid.
+  *)
+val is_valid_elf32_section_header_table : list elf32_interpreted_section ->
+  string_table -> bool
+let is_valid_elf32_section_header_table ents stbl =
+  List.all (fun x -> is_valid_elf32_section_header_table_entry x stbl) ents
+  
+(** [is_valid_elf64_section_header_table sects] checks whether all entries in
+  * [sect] are valid.
+  *)
 val is_valid_elf64_section_header_table : list elf64_interpreted_section ->
   string_table -> bool
 let is_valid_elf64_section_header_table ents stbl =

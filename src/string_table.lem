@@ -1,3 +1,9 @@
+(** The [string_table] module implements string tables.  An ELF file may have
+  * multiple different string tables used for different purposes.  A string
+  * table is a string coupled with a delimiting character.  Strings may be indexed
+  * at any position, not necessarily on a delimiter boundary.
+  *)
+
 open import Basic_classes
 open import List
 open import Maybe
@@ -9,6 +15,9 @@ open import Error
 open import Missing_pervasives
 open import Show
 
+(** [string_table] type, represents a string table with a fixed delimiting
+  * character and underlying string.
+  *)
 type string_table
   = Strings of (char * string)
 

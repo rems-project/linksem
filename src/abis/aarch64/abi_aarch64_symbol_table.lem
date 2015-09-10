@@ -1,3 +1,7 @@
+(** [abi_aarch64_symbol_table], symbol table specific defintions for the AARCH64
+  * ABI.
+  *)
+
 open import Basic_classes
 open import Bool
 
@@ -8,7 +12,6 @@ open import Elf_types_native_uint
 
 (** Two types of weak symbol are defined in the AARCH64 ABI.  See Section 4.5.
   *)
-
 val is_aarch64_weak_reference : elf64_symbol_table_entry -> bool
 let is_aarch64_weak_reference ent =
   natural_of_elf64_half ent.elf64_st_shndx = shn_undef &&

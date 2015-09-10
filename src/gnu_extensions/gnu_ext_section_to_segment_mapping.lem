@@ -1,3 +1,9 @@
+(** [gnu_ext_section_to_segment_mapping] contains (GNU specific) functionality
+  * relating to calculating the section to segment mapping for an ELF file.  In
+  * particular, the test over whether a section is inside a segment is ABI
+  * specific.  This module provides that test.
+  *)
+
 open import Basic_classes
 open import Bool
 open import Num
@@ -12,8 +18,7 @@ open import Show
 
 open import Gnu_ext_program_header_table
 
-(**
-  * [elf32_section_in_segment sec_hdr segment] implements the
+(** [elf32_section_in_segment sec_hdr segment] implements the
   * ELF_SECTION_IN_SEGMENT1 macro from readelf.  Note the macro is always used
   * with [check_vma] and [strict] set to 1.
   *
@@ -247,7 +252,8 @@ let elf64_section_in_segment5 sec_hdr segment =
         (sec_adr > seg_vad &&
          sec_adr - seg_vad < seg_msz)))
 
-(** *)
+(** The final section in segment tests, bringing all the above together.
+  *)
 
 val elf32_section_in_segment : elf32_header -> elf32_section_header_table_entry -> elf32_program_header_table_entry -> bool
 let elf32_section_in_segment hdr sec_hdr segment =

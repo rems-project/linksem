@@ -163,7 +163,6 @@ let r_aarch64_irelative : natural = 1032
 (** [string_of_aarch64_relocation_type m] produces a string representation of the
   * relocation type [m].
   *)
-  
 val string_of_aarch64_relocation_type : natural -> string
 let {ocaml} string_of_aarch64_relocation_type rel_type =
   if rel_type = r_aarch64_none then
@@ -427,7 +426,11 @@ let width_of_aarch64_relocation rel_type s =
   else
     0 (* TODO *)
 
-(** TODO: unclear from ABI spec. whether overflow check on relocations is
+(** [abi_aarch64_apply_relocation rel s_val p_val got_val ef] produces an AST
+  * of the relocation calculation for relocation type [rel] using [s_val], [p_val],
+  * and [got_val] as primitive components.
+  *
+  * TODO: unclear from ABI spec. whether overflow check on relocations is
   * supposed to cause relocation to fail if not satisfied or whether there is
   * wrap-around.  Resolve.
   *)

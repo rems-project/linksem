@@ -1,3 +1,7 @@
+(** [gnu_ext_program_header_table] contains GNU extension specific functionality
+  * related to the program header table.
+  *)
+
 open import Basic_classes
 open import Num
 
@@ -14,6 +18,9 @@ let elf_pt_gnu_stack : natural = (4 * 421345620) + 1 (* 0x6474e551 *)
 (** Element specifies the location and size of exception handling information. *)
 let elf_pt_gnu_eh_frame : natural = 4 * 421345620    (* 0x6474e550 *)
 
+(** [string_of_gnu_ext_segment_type m] produces a string representation of
+  * GNU extension segment type [m].
+  *)
 val string_of_gnu_ext_segment_type : natural -> string
 let {ocaml} string_of_gnu_ext_segment_type pt =
   if pt = elf_pt_gnu_relro then

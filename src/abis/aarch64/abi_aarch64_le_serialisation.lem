@@ -1,3 +1,8 @@
+(** [abi_aarch64_le_serialisation], code for producing an AARCH64 conformant
+  * ELF binary file from executable (machine code) data.
+  * Used in ongoing experiments with CakeML.
+  *)
+
 open import Basic_classes
 open import List
 open import Maybe
@@ -52,6 +57,10 @@ let abi_aarch64_le_generate_elf_header entry phoff phnum =
      elf64_shstrndx  = elf64_half_of_natural shn_undef
   |>
 
+(** [elf64_pack_segment_flags bs] packages three boolean segment permission flags
+  * into a word value.
+  * TODO: move into elf_program_header_table?
+  *)
 val elf64_pack_segment_flags : (bool * bool * bool) -> elf64_word
 let elf64_pack_segment_flags (r, w, x) =
   let xflag = 1 * natural_of_bool x in
@@ -59,9 +68,16 @@ let elf64_pack_segment_flags (r, w, x) =
   let rflag = 4 * natural_of_bool r in
     elf64_word_of_natural (xflag + wflag + rflag)
 
+(** [elf64_header_size], size in bytes of an ELF64 header.
+  * TODO: move into elf_header?
+  *)
 val elf64_header_size : natural
 let elf64_header_size = 64
 
+(** [elf64_program_header_table_entry_size], size in bytes of an ELF64 program
+  * header table entry.
+  * TODO: more into elf_program_header_table?
+  *)
 val elf64_program_header_table_entry_size : natural
 let elf64_program_header_table_entry_size = 56
 

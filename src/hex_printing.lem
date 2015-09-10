@@ -1,3 +1,8 @@
+(** [hex_printing] is a utility module for converting natural numbers and integers
+  * into hex strings of various widths.  Split into a new module as both the
+  * validation code and the main program need this functionality.
+  *)
+
 open import Basic_classes
 open import List
 open import Num

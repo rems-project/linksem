@@ -1,3 +1,8 @@
+(** The [abis] module is the top-level module for all ABI related code, including
+  * some generic functionality that works across all ABIs, and a primitive attempt
+  * at abstracting over ABIs for purposes of linking.
+  *)
+
 open import Basic_classes
 open import Bool
 open import Num

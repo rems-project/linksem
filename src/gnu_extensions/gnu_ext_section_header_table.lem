@@ -37,20 +37,20 @@ let sht_gnu_hash    : natural = (2 * 939524091)     (* 0x6FFFFFF6 *)
 (** [sht_gnu_verdef] contains the symbol versions that are provided.
   *)
 let sht_gnu_verdef  : natural = (2 * 939524095) - 1 (* 0x6ffffffd *)
-
 (** [sht_gnu_verneed] contains the symbol versions that are required.
   *)
 let sht_gnu_verneed : natural = (2 * 939524095)     (* 0x6ffffffe *)
-
 (** [sht_gnu_versym] contains the symbol version table.
   *)
 let sht_gnu_versym  : natural = (2 * 939524095) + 1 (* 0x6fffffff *)
-
 (** [sht_gnu_liblist] appears to be undocumented but appears in PowerPC 64 ELF
   * binaries in "the wild".
   *)
 let sht_gnu_liblist : natural = (2 * 939524091) + 1 (* 0x6FFFFFF7 *)
 
+(** [string_of_gnu_ext_section_type m] produces a string based representation of
+  * GNU extension section type [m].
+  *)
 val string_of_gnu_ext_section_type : natural -> string
 let {ocaml} string_of_gnu_ext_section_type i =
   if i = sht_gnu_hash then
@@ -95,6 +95,10 @@ let gnu_ext_additional_special_sections =
   ; (".stabstr", (sht_strtab, 0))
   ]
   
+(** [is_valid_gnu_ext_elf32_section_header_table_entry scts stbl] checks whether
+  * sections [scts] conforms with the contents of the special sections table.
+  * Fails otherwise.
+  *)
 val is_valid_gnu_ext_elf32_section_header_table_entry : elf32_interpreted_section ->
   string_table -> bool
 let is_valid_gnu_ext_elf32_section_header_table_entry ent stbl =
@@ -109,11 +113,19 @@ let is_valid_gnu_ext_elf32_section_header_table_entry ent stbl =
       end
   end
   
+(** [is_valid_gnu_ext_elf32_section_header_table sht stbl] checks whether every
+  * member of the section header table [sht] conforms with the special sections
+  * table.
+  *)
 val is_valid_gnu_ext_elf32_section_header_table : list elf32_interpreted_section ->
   string_table -> bool
 let is_valid_gnu_ext_elf32_section_header_table ents stbl =
   List.all (fun x -> is_valid_gnu_ext_elf32_section_header_table_entry x stbl) ents
   
+(** [is_valid_gnu_ext_elf64_section_header_table_entry scts stbl] checks whether
+  * sections [scts] conforms with the contents of the special sections table.
+  * Fails otherwise.
+  *)
 val is_valid_gnu_ext_elf64_section_header_table_entry : elf64_interpreted_section ->
   string_table -> bool
 let is_valid_gnu_ext_elf64_section_header_table_entry ent stbl =
@@ -128,6 +140,10 @@ let is_valid_gnu_ext_elf64_section_header_table_entry ent stbl =
       end
   end
   
+(** [is_valid_gnu_ext_elf64_section_header_table sht stbl] checks whether every
+  * member of the section header table [sht] conforms with the special sections
+  * table.
+  *)
 val is_valid_gnu_ext_elf64_section_header_table : list elf64_interpreted_section ->
   string_table -> bool
 let is_valid_gnu_ext_elf64_section_header_table ents stbl =

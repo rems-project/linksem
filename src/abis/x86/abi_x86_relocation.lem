@@ -1,6 +1,12 @@
+(** [abi_x86_relocation] contains X86 ABI specific definitions relating to
+  * relocations.
+  *)
+
 open import Basic_classes
 open import Num
 open import String
+
+(** Relocation types. *)
 
 let r_386_none : natural = 0
 let r_386_32 : natural = 1
@@ -14,6 +20,9 @@ let r_386_relative : natural = 8
 let r_386_gotoff : natural = 9
 let r_386_gotpc : natural = 10
 
+(** [string_of_x86_relocation_type m] produces a string based representation of
+  * X86 ABI relocation type [m].
+  *)
 val string_of_x86_relocation_type : natural -> string
 let string_of_x86_relocation_type m =
   if m = r_386_none then

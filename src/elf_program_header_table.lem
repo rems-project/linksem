@@ -161,6 +161,10 @@ let allowable_permissions_of_permission m =
   else
     fail "exact_permission_of_permission: invalid permission flag"
     
+(** [string_of_elf_segment_permissions m] produces a string-based representation
+  * of an ELF segment's permission field.
+  * TODO: expand this as is needed by the validation tests.
+  *)
 val string_of_elf_segment_permissions : natural -> string
 let string_of_elf_segment_permissions m =
   if m = 0 then
@@ -199,6 +203,12 @@ type elf32_program_header_table_entry =
    ; elf32_p_align  : elf32_word (** Segment alignment memory for memory and file *)
    |>
 
+(** [compare_elf32_program_header_table_entry ent1 ent2] is an ordering-comparison
+  * function on program header table entries suitable for constructing sets,
+  * finite maps, and other ordered data types with.
+  *)
+val compare_elf32_program_header_table_entry : elf32_program_header_table_entry ->
+  elf32_program_header_table_entry -> ordering
 let compare_elf32_program_header_table_entry h1 h2 = 
     compare [natural_of_elf32_word h1.elf32_p_type;
     natural_of_elf32_off h1.elf32_p_offset;
@@ -240,6 +250,12 @@ type elf64_program_header_table_entry =
    ; elf64_p_align  : elf64_xword (** Segment alignment memory for memory and file *)
    |>
 
+(** [compare_elf64_program_header_table_entry ent1 ent2] is an ordering-comparison
+  * function on program header table entries suitable for constructing sets,
+  * finite maps, and other ordered data types with.
+  *)
+val compare_elf64_program_header_table_entry : elf64_program_header_table_entry ->
+  elf64_program_header_table_entry -> bool
 let compare_elf64_program_header_table_entry h1 h2 = 
     compare [natural_of_elf64_word h1.elf64_p_type;
     natural_of_elf64_off h1.elf64_p_offset;
@@ -545,6 +561,12 @@ val get_elf64_static_linked : elf64_program_header_table -> bool
 let get_elf64_static_linked pht =
   not (get_elf64_dynamic_linked pht)
   
+(** [get_elf32_requested_interpreter ent bs0] extracts the requested interpreter
+  * of a dynamically linkable ELF file from that file's program header table
+  * entry of type PT_INTERP, [ent].  Interpreter string is extracted from byte
+  * sequence [bs0].
+  * Fails if [ent] is not of type PT_INTERP, or if transcription otherwise fails.
+  *)
 val get_elf32_requested_interpreter : elf32_program_header_table_entry ->
   byte_sequence -> error string
 let get_elf32_requested_interpreter pent bs0 =
@@ -556,6 +578,12 @@ let get_elf32_requested_interpreter pent bs0 =
   else
     fail "get_elf32_requested_interpreter: not an INTERP segment header"
   
+(** [get_elf64_requested_interpreter ent bs0] extracts the requested interpreter
+  * of a dynamically linkable ELF file from that file's program header table
+  * entry of type PT_INTERP, [ent].  Interpreter string is extracted from byte
+  * sequence [bs0].
+  * Fails if [ent] is not of type PT_INTERP, or if transcription otherwise fails.
+  *)
 val get_elf64_requested_interpreter : elf64_program_header_table_entry ->
   byte_sequence -> error string
 let get_elf64_requested_interpreter pent bs0 =

@@ -1,6 +1,9 @@
 (** The [gnu_ext_symbol_versioning] defines constants, types and functions
   * relating to the GNU symbol versioning extensions (i.e. contents of
   * GNU_VERSYM sections).
+  *
+  * TODO: work out what is going on with symbol versioning.  The specification
+  * is completely opaque.
   *)
 
 open import Basic_classes

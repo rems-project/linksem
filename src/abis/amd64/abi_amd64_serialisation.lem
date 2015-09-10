@@ -1,3 +1,8 @@
+(** [abi_amd64_serialisation] contains code for producing an AMD64 conformant
+  * ELF file from executable (machine) code.
+  * Used in ongoing experiments with CakeML.
+  *)
+
 open import Basic_classes
 open import List
 open import Maybe

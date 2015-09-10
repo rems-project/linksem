@@ -75,6 +75,8 @@ instance forall 'a 'b 'c 'd. Show 'a, Show 'b, Show 'c, Show 'd => (Show ('a * '
   let show = string_of_quad
 end
 
+(** [string_of_maybe m] produces a string representation of maybe value [m].
+  *)
 val string_of_maybe : forall 'a. Show 'a => maybe 'a -> string
 let {ocaml} string_of_maybe m =
   match m with
@@ -95,6 +97,8 @@ let {ocaml} show_else subst m =
         | Nothing -> subst 
     end
 
+(** [string_of_nat m] produces a string representation of nat value [m].
+  *)
 val string_of_nat : nat -> string
 (* let rec {ocaml} string_of_nat m =
   match m with
@@ -113,7 +117,6 @@ instance (Show natural)
 end
 
 val string_of_integer : integer -> string
-
 declare ocaml target_rep function string_of_integer = `Nat_big_num.to_string`
 
 instance (Show integer)

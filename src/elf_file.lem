@@ -1,3 +1,8 @@
+(** Module [elf_file] packages all components of an ELF file up into a single
+  * record, provides I/O routines for this record, as well as other utility
+  * functions that operate on an entire ELF file.
+  *)
+
 open import Basic_classes
 open import Bool
 open import List
@@ -20,15 +25,25 @@ open import Error
 open import Missing_pervasives
 open import Show
 
+(** [elf32_file] record captures the internal structure of an ELF32 file.
+  * Invariant: length of the program header and section header tables should match
+  * the length of their interpreted counterparts, and the nth element of the
+  * (program/section) header table must correspond to the nth element of the
+  * interpreted (segments/sections), respectively.
+  *)
 type elf32_file =
-  <| elf32_file_header               : elf32_header
-   ; elf32_file_program_header_table : elf32_program_header_table
-   ; elf32_file_section_header_table : elf32_section_header_table
-   ; elf32_file_interpreted_segments : elf32_interpreted_segments
-   ; elf32_file_interpreted_sections : elf32_interpreted_sections
-   ; elf32_file_bits_and_bobs        : list (natural * byte_sequence)
+  <| elf32_file_header               : elf32_header                   (** The file header. *)
+   ; elf32_file_program_header_table : elf32_program_header_table     (** The program header table. *)
+   ; elf32_file_section_header_table : elf32_section_header_table     (** The section header table. *)
+   ; elf32_file_interpreted_segments : elf32_interpreted_segments     (** A more usable interpretation of the file's segments. *)
+   ; elf32_file_interpreted_sections : elf32_interpreted_sections     (** A more usable interpretation of the file's sections. *)
+   ; elf32_file_bits_and_bobs        : list (natural * byte_sequence) (** The uninterpreted "rubbish" that may appear in gaps in the binary file. *)
    |>
 
+(** [bytes_of_elf32_file f1] blits ELF file [f1] to a byte sequence, ready for
+  * writing to a binary file.  Fails if the invariant on [elf32_file] mentioned
+  * above is not respected.
+  *)
 val bytes_of_elf32_file : elf32_file -> error byte_sequence
 let bytes_of_elf32_file ef =
   let endian      = get_elf32_header_endianness ef.elf32_file_header in
@@ -91,21 +106,25 @@ let bytes_of_elf32_file ef =
   else
     fail "bytes_of_elf32_file: interpreted segments and program header table must have same length"
 
-(** Invariant:
-      * Program header table and interpreted segments are in correspondence:
-        * Length of two lists must be identical
-        * First element of PHT must describe first interpreted segment, second
-          element should describe second element, and so on.
-*)
+(** [elf64_file] record captures the internal structure of an ELF32 file.
+  * Invariant: length of the program header and section header tables should match
+  * the length of their interpreted counterparts, and the nth element of the
+  * (program/section) header table must correspond to the nth element of the
+  * interpreted (segments/sections), respectively.
+  *)
 type elf64_file =
-  <| elf64_file_header               : elf64_header
-   ; elf64_file_program_header_table : elf64_program_header_table
-   ; elf64_file_section_header_table : elf64_section_header_table
-   ; elf64_file_interpreted_segments : elf64_interpreted_segments
-   ; elf64_file_interpreted_sections : elf64_interpreted_sections
-   ; elf64_file_bits_and_bobs        : list (natural * byte_sequence)
+  <| elf64_file_header               : elf64_header                   (** The file header. *)
+   ; elf64_file_program_header_table : elf64_program_header_table     (** The program header table. *)
+   ; elf64_file_section_header_table : elf64_section_header_table     (** The section header table. *)
+   ; elf64_file_interpreted_segments : elf64_interpreted_segments     (** A more usable interpretation of the file's segments. *)
+   ; elf64_file_interpreted_sections : elf64_interpreted_sections     (** A more usable interpretation of the file's sections. *)
+   ; elf64_file_bits_and_bobs        : list (natural * byte_sequence) (** The uninterpreted "rubbish" that may appear in gaps in the binary file. *)
    |>
 
+(** [bytes_of_elf64_file f1] blits ELF file [f1] to a byte sequence, ready for
+  * writing to a binary file.  Fails if the invariant on [elf64_file] mentioned
+  * above is not respected.
+  *)
 val bytes_of_elf64_file : elf64_file -> error byte_sequence
 let bytes_of_elf64_file ef =
   let endian      = get_elf64_header_endianness ef.elf64_file_header in
@@ -168,7 +187,12 @@ let bytes_of_elf64_file ef =
   else
     fail "bytes_of_elf64_file: interpreted segments and program header table must have same length"
 
-val obtain_elf32_program_header_table : elf32_header -> byte_sequence -> error elf32_program_header_table
+(** [obtain_elf32_program_header_table hdr bs0] reads a file's program header table
+  * from byte sequence [bs0] using information gleaned from the file header [hdr].
+  * Fails if transcription fails.
+  *)
+val obtain_elf32_program_header_table : elf32_header -> byte_sequence
+  -> error elf32_program_header_table
 let obtain_elf32_program_header_table hdr bs0 =
   let endian      = get_elf32_header_endianness hdr in
   let pentries    = natural_of_elf32_half hdr.elf32_phnum     in
@@ -183,7 +207,12 @@ let obtain_elf32_program_header_table hdr bs0 =
       read_elf32_program_header_table psize endian pexact >>= fun (pht, _) ->
       return pht
 
-val obtain_elf64_program_header_table : elf64_header -> byte_sequence -> error elf64_program_header_table
+(** [obtain_elf64_program_header_table hdr bs0] reads a file's program header table
+  * from byte sequence [bs0] using information gleaned from the file header [hdr].
+  * Fails if transcription fails.
+  *)
+val obtain_elf64_program_header_table : elf64_header -> byte_sequence
+  -> error elf64_program_header_table
 let obtain_elf64_program_header_table hdr bs0 =
   let endian      = get_elf64_header_endianness hdr in
   let pentries    = natural_of_elf64_half hdr.elf64_phnum     in
@@ -198,7 +227,12 @@ let obtain_elf64_program_header_table hdr bs0 =
       read_elf64_program_header_table psize endian pexact >>= fun (pht, _) ->
       return pht
 
-val obtain_elf32_section_header_table : elf32_header -> byte_sequence -> error elf32_section_header_table
+(** [obtain_elf32_section_header_table hdr bs0] reads a file's section header table
+  * from byte sequence [bs0] using information gleaned from the file header [hdr].
+  * Fails if transcription fails.
+  *)
+val obtain_elf32_section_header_table : elf32_header -> byte_sequence
+  -> error elf32_section_header_table
 let obtain_elf32_section_header_table hdr bs0 =
   let endian      = get_elf32_header_endianness hdr in
   let sentries    = natural_of_elf32_half hdr.elf32_shnum in
@@ -213,6 +247,10 @@ let obtain_elf32_section_header_table hdr bs0 =
       read_elf32_section_header_table ssize endian sexact >>= fun (sht, _) ->
       return sht
 
+(** [obtain_elf64_section_header_table hdr bs0] reads a file's section header table
+  * from byte sequence [bs0] using information gleaned from the file header [hdr].
+  * Fails if transcription fails.
+  *)
 val obtain_elf64_section_header_table : elf64_header -> byte_sequence -> error elf64_section_header_table
 let obtain_elf64_section_header_table hdr bs0 =
   let endian      = get_elf64_header_endianness hdr in
@@ -228,7 +266,13 @@ let obtain_elf64_section_header_table hdr bs0 =
       read_elf64_section_header_table ssize endian sexact >>= fun (sht, _) ->
       return sht
       
-val obtain_elf32_section_header_string_table : elf32_header -> elf32_section_header_table -> byte_sequence -> error string_table
+(** [obtain_elf32_section_header_string_table hdr sht bs0] reads a file's section
+  * header string table from byte sequence [bs0] using information gleaned from
+  * the file header [hdr] and section header table [sht].
+  * Fails if transcription fails.
+  *)
+val obtain_elf32_section_header_string_table : elf32_header ->
+  elf32_section_header_table -> byte_sequence -> error string_table
 let obtain_elf32_section_header_string_table hdr sht bs0 =
   match index (natural_of_elf32_half hdr.elf32_shstrndx) sht with 
     Nothing -> fail "no section header string table"
@@ -237,7 +281,13 @@ let obtain_elf32_section_header_string_table hdr sht bs0 =
   Byte_sequence.offset_and_cut (natural_of_elf32_off sh.elf32_sh_offset) (natural_of_elf32_word sh.elf32_sh_size) bs0 >>= fun sexact ->
   return (string_table_of_byte_sequence sexact)
       
-val obtain_elf64_section_header_string_table : elf64_header -> elf64_section_header_table -> byte_sequence -> error string_table
+(** [obtain_elf64_section_header_string_table hdr sht bs0] reads a file's section
+  * header string table from byte sequence [bs0] using information gleaned from
+  * the file header [hdr] and section header table [sht].
+  * Fails if transcription fails.
+  *)
+val obtain_elf64_section_header_string_table : elf64_header ->
+  elf64_section_header_table -> byte_sequence -> error string_table
 let obtain_elf64_section_header_string_table hdr sht bs0 =
   match index (natural_of_elf64_half hdr.elf64_shstrndx) sht with 
     Nothing -> fail "no section header string table"
@@ -246,7 +296,13 @@ let obtain_elf64_section_header_string_table hdr sht bs0 =
   Byte_sequence.offset_and_cut (natural_of_elf64_off sh.elf64_sh_offset) (natural_of_elf64_xword sh.elf64_sh_size) bs0 >>= fun sexact ->
   return (string_table_of_byte_sequence sexact)
 
-val obtain_elf32_interpreted_segments : elf32_program_header_table -> byte_sequence -> error elf32_interpreted_segments
+(** [obtain_elf32_interpreted_segments pht bs0] generates the interpreted segments
+  * of an ELF file from the uninterpreted program header table entries in [pht],
+  * read from byte sequence [bs0].  Makes working with segments easier.
+  * May fail if transcription of any segment fails.
+  *)
+val obtain_elf32_interpreted_segments : elf32_program_header_table -> byte_sequence
+  -> error elf32_interpreted_segments
 let obtain_elf32_interpreted_segments pht bdy =
   mapM (fun ph ->
     let offset   = natural_of_elf32_off ph.elf32_p_offset  in
@@ -271,7 +327,13 @@ let obtain_elf32_interpreted_segments pht bdy =
                     elf32_segment_offset = offset |>
     ) pht
 
-val obtain_elf64_interpreted_segments : elf64_program_header_table -> byte_sequence -> error elf64_interpreted_segments
+(** [obtain_elf64_interpreted_segments pht bs0] generates the interpreted segments
+  * of an ELF file from the uninterpreted program header table entries in [pht],
+  * read from byte sequence [bs0].  Makes working with segments easier.
+  * May fail if transcription of any segment fails.
+  *)
+val obtain_elf64_interpreted_segments : elf64_program_header_table -> byte_sequence
+  -> error elf64_interpreted_segments
 let obtain_elf64_interpreted_segments pht bdy =
   mapM (fun ph ->
     let offset   = natural_of_elf64_off   ph.elf64_p_offset  in
@@ -296,7 +358,13 @@ let obtain_elf64_interpreted_segments pht bdy =
                     elf64_segment_offset = offset |>
     ) pht
 
-val obtain_elf32_interpreted_sections : string_table -> elf32_section_header_table -> byte_sequence -> error elf32_interpreted_sections
+(** [obtain_elf32_interpreted_section sht bs0] generates the interpreted sections
+  * of an ELF file from the uninterpreted section header table entries in [sht],
+  * read from byte sequence [bs0].  Makes working with sections easier.
+  * May fail if transcription of any section fails.
+  *)
+val obtain_elf32_interpreted_sections : string_table -> elf32_section_header_table
+  -> byte_sequence -> error elf32_interpreted_sections
 let obtain_elf32_interpreted_sections shstrtab sht bs0 =
   mapM (fun sh ->
     let offset = natural_of_elf32_off  sh.elf32_sh_offset in
@@ -324,7 +392,13 @@ let obtain_elf32_interpreted_sections shstrtab sht bs0 =
           elf32_section_name_as_string = name_string |>
   ) sht
 
-val obtain_elf64_interpreted_sections : string_table -> elf64_section_header_table -> byte_sequence -> error elf64_interpreted_sections
+(** [obtain_elf64_interpreted_section sht bs0] generates the interpreted sections
+  * of an ELF file from the uninterpreted section header table entries in [sht],
+  * read from byte sequence [bs0].  Makes working with sections easier.
+  * May fail if transcription of any section fails.
+  *)
+val obtain_elf64_interpreted_sections : string_table -> elf64_section_header_table
+  -> byte_sequence -> error elf64_interpreted_sections
 let obtain_elf64_interpreted_sections shstrtab sht bs0 =
   mapM (fun sh ->
     let offset = natural_of_elf64_off   sh.elf64_sh_offset in
@@ -352,6 +426,10 @@ let obtain_elf64_interpreted_sections shstrtab sht bs0 =
           elf64_section_name_as_string = name_string |>
   ) sht
 
+(** [find_first_not_in_range e rngs] for every pair (start, end) in [rngs], finds
+  * the first element, beginning counting from [e], that does not lie between
+  * a start and end value.
+  *)
 val find_first_not_in_range : natural -> list (natural * natural) -> natural
 let rec find_first_not_in_range start ranges =
   match List.filter (fun (x, y) -> start >= x && start <= y) ranges with
@@ -359,6 +437,10 @@ let rec find_first_not_in_range start ranges =
     | _  -> find_first_not_in_range (start + 1) ranges
   end
 
+(** [find_first_in_range e rngs] for every pair (start, end) in [rngs], finds
+  * the first element, beginning counting from [e], that lies between
+  * a start and end value.
+  *)
 val find_first_in_range : natural -> list (natural * natural) -> natural
 let rec find_first_in_range start ranges =
   match List.filter (fun (x, y) -> start >= x && start <= y) ranges with
@@ -366,6 +448,11 @@ let rec find_first_in_range start ranges =
     | _  -> start
   end
 
+(** [compute_differences start max ranges] is a utility function used for calculating
+  * "dead" spots in an ELF file not covered by any of the interpreted structure
+  * that nevertheless need recording in the bits_and_bobs field of each ELF record
+  * in order to maintain in-out roundtripping up to exact binary equivalence.
+  *)
 val compute_differences : natural -> natural -> list (natural * natural) -> error (list (natural * natural))
 let rec compute_differences start max ranges =
   if start = max then
@@ -384,6 +471,10 @@ let rec compute_differences start max ranges =
             compute_differences last max ranges >>= fun tail ->
             return ((first, last)::tail)
 
+(** [obtain_elf32_bits_and_bobs hdr pht segs sht sects bs0] identifies and records
+  * the "dead" spots of an ELF file not covered by any meaningful structure of the
+  * ELF file format.
+  *)
 val obtain_elf32_bits_and_bobs : elf32_header -> elf32_program_header_table -> elf32_interpreted_segments
   -> elf32_section_header_table -> elf32_interpreted_sections -> byte_sequence -> error (list (natural * byte_sequence))
 let obtain_elf32_bits_and_bobs hdr segs interp_segs sects interp_sects bs0 =
@@ -426,6 +517,10 @@ let obtain_elf32_bits_and_bobs hdr segs interp_segs sects interp_sects bs0 =
     else
       fail "obtain_elf32_bits_and_bobs: program header table and interpreted segments differ in length"
 
+(** [obtain_elf64_bits_and_bobs hdr pht segs sht sects bs0] identifies and records
+  * the "dead" spots of an ELF file not covered by any meaningful structure of the
+  * ELF file format.
+  *)
 val obtain_elf64_bits_and_bobs : elf64_header -> elf64_program_header_table -> elf64_interpreted_segments
   -> elf64_section_header_table -> elf64_interpreted_sections -> byte_sequence -> error (list (natural * byte_sequence))
 let obtain_elf64_bits_and_bobs hdr segs interp_segs sects interp_sects bs0 =
@@ -469,6 +564,9 @@ let obtain_elf64_bits_and_bobs hdr segs interp_segs sects interp_sects bs0 =
     else
       fail "obtain_elf64_bits_and_bobs: program header table and interpreted segments differ in length"
 
+(** [read_elf32_file bs0] reads an ELF32 file from byte sequence [bs0].  Fails if
+  * transcription fails.
+  *)
 val read_elf32_file : byte_sequence -> error elf32_file
 let read_elf32_file bs0 =
   read_elf32_header bs0 >>= fun (hdr, bs1) ->
@@ -485,6 +583,9 @@ let read_elf32_file bs0 =
               elf32_file_interpreted_sections = sects;
               elf32_file_bits_and_bobs = bits_and_bobs |>
 
+(** [read_elf64_file bs0] reads an ELF64 file from byte sequence [bs0].  Fails if
+  * transcription fails.
+  *)
 val read_elf64_file : byte_sequence -> error elf64_file
 let read_elf64_file bs0 =
   read_elf64_header bs0 >>= fun (hdr, bs1) ->
@@ -501,6 +602,10 @@ let read_elf64_file bs0 =
               elf64_file_interpreted_sections = sects;
               elf64_file_bits_and_bobs = bits_and_bobs |>
 
+(** [get_elf32_file_secton_header_string_table f1] returns the ELF file, [f1],
+  * section header string table.
+  * TODO: why is this not using obtain_elf32_section_header_string_table above?
+  *)
 val get_elf32_file_section_header_string_table : elf32_file -> error string_table
 let get_elf32_file_section_header_string_table f3 =
   let hdr  = f3.elf32_file_header in
@@ -518,6 +623,10 @@ let get_elf32_file_section_header_string_table f3 =
           return (String_table.mk_string_table strings Missing_pervasives.null_char)
     end
 
+(** [get_elf64_file_secton_header_string_table f1] returns the ELF file, [f1],
+  * section header string table.
+  * TODO: why is this not using obtain_elf64_section_header_string_table above?
+  *)
 val get_elf64_file_section_header_string_table : elf64_file -> error string_table
 let get_elf64_file_section_header_string_table f3 =
   let hdr  = f3.elf64_file_header in
@@ -583,6 +692,9 @@ let find_elf64_symtab_by_type t f =
         | Just sec_idx -> return sec_idx
     end >>= fun sec_idx -> find_elf64_symbols_by_symtab_idx sec_idx f
 
+(** [get_elf32_file_symbol_string_table f1] returns the ELF file [f1] symbol
+  * string table.  May fail.
+  *)
 val get_elf32_file_symbol_string_table : elf32_file -> error string_table
 let get_elf32_file_symbol_string_table f3 =
   let hdr     = f3.elf32_file_header in
@@ -607,6 +719,9 @@ let get_elf32_file_symbol_string_table f3 =
     >>= fun strings ->
       String_table.concat strings
 
+(** [get_elf64_file_symbol_string_table f1] returns the ELF file [f1] symbol
+  * string table.  May fail.
+  *)
 val get_elf64_file_symbol_string_table : elf64_file -> error string_table
 let get_elf64_file_symbol_string_table f3 =
   let hdr     = f3.elf64_file_header in
@@ -631,6 +746,9 @@ let get_elf64_file_symbol_string_table f3 =
     >>= fun strings ->
       String_table.concat strings
 
+(** [get_elf32_file_symbol_table f1] returns the ELF file [f1] symbol
+  * table.  May fail.
+  *)
 val get_elf32_file_symbol_table : elf32_file -> error elf32_symbol_table
 let get_elf32_file_symbol_table f3 =
   let hdr     = f3.elf32_file_header in
@@ -653,6 +771,9 @@ let get_elf32_file_symbol_table f3 =
         fail "obtain_elf32_symbol_table: an ELF file may only have one symbol table of type SHT_SYMTAB"
     end
 
+(** [get_elf64_file_symbol_table f1] returns the ELF file [f1] symbol
+  * table.  May fail.
+  *)
 val get_elf64_file_symbol_table : elf64_file -> error elf64_symbol_table
 let get_elf64_file_symbol_table f3 =
   let hdr     = f3.elf64_file_header in
@@ -675,6 +796,9 @@ let get_elf64_file_symbol_table f3 =
         fail "obtain_elf64_symbol_table: an ELF file may only have one symbol table of type SHT_SYMTAB"
     end
 
+(** [get_elf32_file_dynamic_symbol_table f1] returns the ELF file [f1] dynamic
+  * symbol table.  May fail.
+  *)
 val get_elf32_file_dynamic_symbol_table : elf32_file -> error elf32_symbol_table
 let get_elf32_file_dynamic_symbol_table ef =
   let hdr     = ef.elf32_file_header in
@@ -697,6 +821,9 @@ let get_elf32_file_dynamic_symbol_table ef =
         fail "obtain_elf32_dynamic_symbol_table: an ELF file may only have one symbol table of type SHT_DYNSYM"
     end
 
+(** [get_elf64_file_dynamic_symbol_table f1] returns the ELF file [f1] dynamic
+  * symbol table.  May fail.
+  *)
 val get_elf64_file_dynamic_symbol_table : elf64_file -> error elf64_symbol_table
 let get_elf64_file_dynamic_symbol_table ef =
   let hdr     = ef.elf64_file_header in
@@ -719,6 +846,10 @@ let get_elf64_file_dynamic_symbol_table ef =
         fail "obtain_elf64_dynamic_symbol_table: an ELF file may only have one symbol table of type SHT_DYNSYM"
     end
     
+(** [get_elf32_file_symbol_table_by_index f1 index] returns the ELF file [f1] 
+  * symbol table that is pointed to by the section header table entry at index
+  * [index].  May fail if index is out of range, or otherwise.
+  *)
 val get_elf32_symbol_table_by_index : elf32_file -> natural -> error elf32_symbol_table
 let get_elf32_symbol_table_by_index ef link =
   let hdr     = ef.elf32_file_header in
@@ -731,6 +862,10 @@ let get_elf32_symbol_table_by_index ef link =
         read_elf32_symbol_table endian sym.elf32_section_body
     end
     
+(** [get_elf32_file_string_table_by_index f1 index] returns the ELF file [f1] 
+  * string table that is pointed to by the section header table entry at index
+  * [index].  May fail if index is out of range, or otherwise.
+  *)
 val get_elf32_string_table_by_index : elf32_file -> natural -> error string_table
 let get_elf32_string_table_by_index ef link =
   let hdr     = ef.elf32_file_header in
@@ -741,6 +876,10 @@ let get_elf32_string_table_by_index ef link =
       | Just sym -> return (mk_string_table (Byte_sequence.string_of_byte_sequence sym.elf32_section_body) Missing_pervasives.null_char)
     end
     
+(** [get_elf64_file_symbol_table_by_index f1 index] returns the ELF file [f1] 
+  * symbol table that is pointed to by the section header table entry at index
+  * [index].  May fail if index is out of range, or otherwise.
+  *)
 val get_elf64_symbol_table_by_index : elf64_file -> natural -> error elf64_symbol_table
 let get_elf64_symbol_table_by_index ef link =
   let hdr     = ef.elf64_file_header in
@@ -753,6 +892,10 @@ let get_elf64_symbol_table_by_index ef link =
         read_elf64_symbol_table endian sym.elf64_section_body
     end
     
+(** [get_elf64_file_string_table_by_index f1 index] returns the ELF file [f1] 
+  * string table that is pointed to by the section header table entry at index
+  * [index].  May fail if index is out of range, or otherwise.
+  *)
 val get_elf64_string_table_by_index : elf64_file -> natural -> error string_table
 let get_elf64_string_table_by_index ef link =
   let hdr     = ef.elf64_file_header in
@@ -763,18 +906,35 @@ let get_elf64_string_table_by_index ef link =
       | Just sym -> return (mk_string_table (Byte_sequence.string_of_byte_sequence sym.elf64_section_body) Missing_pervasives.null_char)
     end
 
+(** [segment_provenance] records whether a segment that appears in an executable
+  * process image has been derived directly from an ELF file, or was automatically
+  * created when the image calculation process noticed a segment with a memory
+  * size greater than its file size.
+  * Really a PPCMemism and not strictly needed for the ELF model itself.
+  *)
 type segment_provenance
-  = FromELF
-  | AutoGenerated
+  = FromELF       (** Segment derived directly from the source ELF file. *)
+  | AutoGenerated (** Automatically generated during process extraction as memory size is greater than file size. *)
 
-(** Segments, entry point, machine type *)
+(** [elf32_executable_process_image] is a process image for ELF32 files.  Contains
+  * all that is necessary to load the executable components of an ELF32 file
+  * and begin execution.
+  * XXX: (segments, provenance), entry point, machine type
+  *)
 type elf32_executable_process_image =
   (list (elf32_interpreted_segment * segment_provenance) * natural * natural)
 
-(** Segments, entry point, machine type *)
+(** [elf64_executable_process_image] is a process image for ELF64 files.  Contains
+  * all that is necessary to load the executable components of an ELF64 file
+  * and begin execution.
+  * XXX: (segments, provenance), entry point, machine type
+  *)
 type elf64_executable_process_image =
   (list (elf64_interpreted_segment * segment_provenance) * natural * natural)
 
+(** [get_elf32_executable_image f1] extracts an executable process image from an
+  * executable ELF file.  May fail if extraction is impossible.
+  *)
 val get_elf32_executable_image : elf32_file -> error elf32_executable_process_image
 let get_elf32_executable_image f3 =
   if is_elf32_executable_file f3.elf32_file_header then
@@ -811,6 +971,9 @@ let get_elf32_executable_image f3 =
   else
     fail "get_elf32_executable_image: not an ELF executable file"
 
+(** [get_elf64_executable_image f1] extracts an executable process image from an
+  * executable ELF file.  May fail if extraction is impossible.
+  *)
 val get_elf64_executable_image : elf64_file -> error elf64_executable_process_image
 let get_elf64_executable_image f3 = 
   if is_elf64_executable_file f3.elf64_file_header then
@@ -847,10 +1010,17 @@ let get_elf64_executable_image f3 =
   else
     fail "elf64_get_executable_image: not an executable ELF file"
 
-(** Name, (type, size, addr, chunk of data if relevant, binding) *)
+(** [global_symbol_init_info] records the name, type, size, address, chunk
+  * of initialisation data (if relevant for that symbol), and binding, of every
+  * global symbol in an ELF file.
+  * Another PPCMemism.
+  *)
 type global_symbol_init_info
   = list (string * (natural * natural * natural * maybe byte_sequence * natural))
 
+(** [get_elf32_file_global_symbol_init f1] extracts the global symbol init info
+  * for ELF file [f1].  May fail.
+  *)
 val get_elf32_file_global_symbol_init : elf32_file -> error global_symbol_init_info
 let get_elf32_file_global_symbol_init f3 =
   if is_elf32_executable_file f3.elf32_file_header then
@@ -883,6 +1053,9 @@ let get_elf32_file_global_symbol_init f3 =
   else
     fail "get_elf32_file_global_symbol_init: not an executable ELF file"
 
+(** [get_elf64_file_global_symbol_init f1] extracts the global symbol init info
+  * for ELF file [f1].  May fail.
+  *)
 val get_elf64_file_global_symbol_init : elf64_file -> error global_symbol_init_info
 let get_elf64_file_global_symbol_init f3 =
   if is_elf64_executable_file f3.elf64_file_header then
@@ -915,6 +1088,10 @@ let get_elf64_file_global_symbol_init f3 =
   else
     fail "get_elf64_global_symbol_init: not an executable ELF file"
 
+(** [string_of_elf32_file hdr_bdl pht_bdl sht_bdl f1] produces a string-based
+  * representation of ELF file [f1] using ABI-specific print bundles [hdr_bdl],
+  * [pht_bdl] and [sht_bdl].
+  *)
 val string_of_elf32_file : hdr_print_bundle -> pht_print_bundle -> sht_print_bundle -> elf32_file -> string
 let {ocaml} string_of_elf32_file hdr_bdl pht_bdl sht_bdl f3 =
   match get_elf32_file_section_header_string_table f3 with
@@ -937,6 +1114,10 @@ let {ocaml} string_of_elf32_file hdr_bdl pht_bdl sht_bdl f3 =
       ]
   end
 
+(** [string_of_elf64_file hdr_bdl pht_bdl sht_bdl f1] produces a string-based
+  * representation of ELF file [f1] using ABI-specific print bundles [hdr_bdl],
+  * [pht_bdl] and [sht_bdl].
+  *)
 val string_of_elf64_file : hdr_print_bundle -> pht_print_bundle -> sht_print_bundle -> elf64_file -> string
 let {ocaml} string_of_elf64_file hdr_bdl pht_bdl sht_bdl f3 =
   match get_elf64_file_section_header_string_table f3 with
@@ -959,6 +1140,9 @@ let {ocaml} string_of_elf64_file hdr_bdl pht_bdl sht_bdl f3 =
       ]
   end
 
+(** [flag_is_set flag v] checks whether flag [flag] is set in [v].
+  * TODO: move elsewhere.  Check whether this is still being used.
+  *)
 val flag_is_set : natural -> natural -> bool
 let flag_is_set flag v = 
     (* HACK: convert to elf64_xword first. Flags never live 

@@ -1,13 +1,5 @@
 (** [elf_header] includes types, functions and other definitions for working with
   * ELF headers.
-  *
-  * TODO: all relevant definitions and functions are now formalised, though
-  * invariants expressed in natural language in the SCO specification are not
-  * all formalised.
-  *
-  *  * Formalise all natural language header invariants from the SCO
-  *    specification.
-  *
   *)
 
 open import Basic_classes
@@ -830,10 +822,47 @@ type elf32_header =
    ; elf32_shstrndx : elf32_half         (** Section header table entry for section name string table *)
    |>
    
+(** [elf64_header] is the type of headers for 64-bit ELF files.
+  *)
+type elf64_header =
+  <| elf64_ident    : list unsigned_char (** Identification field *)
+   ; elf64_type     : elf64_half         (** The object file type *)
+   ; elf64_machine  : elf64_half         (** Required machine architecture *)
+   ; elf64_version  : elf64_word         (** Object file version *)
+   ; elf64_entry    : elf64_addr         (** Virtual address for transfer of control *)
+   ; elf64_phoff    : elf64_off          (** Program header table offset in bytes *)
+   ; elf64_shoff    : elf64_off          (** Section header table offset in bytes *)
+   ; elf64_flags    : elf64_word         (** Processor-specific flags *)
+   ; elf64_ehsize   : elf64_half         (** ELF header size in bytes *)
+   ; elf64_phentsize: elf64_half         (** Program header table entry size in bytes *)
+   ; elf64_phnum    : elf64_half         (** Number of entries in program header table *)
+   ; elf64_shentsize: elf64_half         (** Section header table entry size in bytes *)
+   ; elf64_shnum    : elf64_half         (** Number of entries in section header table *)
+   ; elf64_shstrndx : elf64_half         (** Section header table entry for section name string table *)
+   |>
+   
+(** [is_valid_elf32_header hdr] checks whether header [hdr] is valid, i.e. has
+  * the correct magic numbers.
+  * TODO: this should be expanded, presumably, or merged with some of the other
+  * checks.
+  *)
 val is_valid_elf32_header : elf32_header -> bool
 let is_valid_elf32_header hdr =
   List.take 4 hdr.elf32_ident = [elf_mn_mag0; elf_mn_mag1; elf_mn_mag2; elf_mn_mag3]
+  
+(** [is_valid_elf64_header hdr] checks whether header [hdr] is valid, i.e. has
+  * the correct magic numbers.
+  * TODO: this should be expanded, presumably, or merged with some of the other
+  * checks.
+  *)
+val is_valid_elf64_header : elf64_header -> bool
+let is_valid_elf64_header hdr =
+  List.take 4 hdr.elf64_ident = [elf_mn_mag0; elf_mn_mag1; elf_mn_mag2; elf_mn_mag3]
 
+(** [elf32_header_compare hdr1 hdr2] is an ordering comparison function for
+  * ELF headers suitable for use in sets, finite maps and other ordered
+  * data types.
+  *)
 val elf32_header_compare : elf32_header -> elf32_header -> Basic_classes.ordering
 let elf32_header_compare h1 h2 = 
     compare (List.map natural_of_unsigned_char h1.elf32_ident, [natural_of_elf32_half h1.elf32_type; 
@@ -858,30 +887,11 @@ instance (Ord elf32_header)
     let (>) = fun f1 -> (fun f2 -> (elf32_header_compare f1 f2 = GT))
     let (>=) = fun f1 -> (fun f2 -> Set.member (elf32_header_compare f1 f2) {GT; EQ})
 end
-  
-(** [elf64_header] is the type of headers for 32-bit ELF files.
+
+(** [elf64_header_compare hdr1 hdr2] is an ordering comparison function for
+  * ELF headers suitable for use in sets, finite maps and other ordered
+  * data types.
   *)
-type elf64_header =
-  <| elf64_ident    : list unsigned_char (** Identification field *)
-   ; elf64_type     : elf64_half         (** The object file type *)
-   ; elf64_machine  : elf64_half         (** Required machine architecture *)
-   ; elf64_version  : elf64_word         (** Object file version *)
-   ; elf64_entry    : elf64_addr         (** Virtual address for transfer of control *)
-   ; elf64_phoff    : elf64_off          (** Program header table offset in bytes *)
-   ; elf64_shoff    : elf64_off          (** Section header table offset in bytes *)
-   ; elf64_flags    : elf64_word         (** Processor-specific flags *)
-   ; elf64_ehsize   : elf64_half         (** ELF header size in bytes *)
-   ; elf64_phentsize: elf64_half         (** Program header table entry size in bytes *)
-   ; elf64_phnum    : elf64_half         (** Number of entries in program header table *)
-   ; elf64_shentsize: elf64_half         (** Section header table entry size in bytes *)
-   ; elf64_shnum    : elf64_half         (** Number of entries in section header table *)
-   ; elf64_shstrndx : elf64_half         (** Section header table entry for section name string table *)
-   |>
-
-val is_valid_elf64_header : elf64_header -> bool
-let is_valid_elf64_header hdr =
-  List.take 4 hdr.elf64_ident = [elf_mn_mag0; elf_mn_mag1; elf_mn_mag2; elf_mn_mag3]
-
 val elf64_header_compare : elf64_header -> elf64_header -> Basic_classes.ordering
 let elf64_header_compare h1 h2 = 
     compare (List.map natural_of_unsigned_char h1.elf64_ident, [natural_of_elf64_half h1.elf64_type; 
@@ -907,46 +917,79 @@ instance (Ord elf64_header)
     let (>=) = fun f1 -> (fun f2 -> Set.member (elf64_header_compare f1 f2) {GT; EQ})
 end
 
+(** [is_elf32_executable_file hdr] checks whether the header [hdr] states if the
+  * ELF file is of executable type.
+  *)
 val is_elf32_executable_file : elf32_header -> bool
 let is_elf32_executable_file hdr =
   natural_of_elf32_half hdr.elf32_type = elf_ft_exec
 
+(** [is_elf64_executable_file hdr] checks whether the header [hdr] states if the
+  * ELF file is of executable type.
+  *)
 val is_elf64_executable_file : elf64_header -> bool
 let is_elf64_executable_file hdr =
   natural_of_elf64_half hdr.elf64_type = elf_ft_exec
 
+(** [is_elf32_shared_object_file hdr] checks whether the header [hdr] states if the
+  * ELF file is of shared object type.
+  *)
 val is_elf32_shared_object_file : elf32_header -> bool
 let is_elf32_shared_object_file hdr =
   natural_of_elf32_half hdr.elf32_type = elf_ft_dyn
 
+(** [is_elf64_shared_object_file hdr] checks whether the header [hdr] states if the
+  * ELF file is of shared object type.
+  *)
 val is_elf64_shared_object_file : elf64_header -> bool
 let is_elf64_shared_object_file hdr =
   natural_of_elf64_half hdr.elf64_type = elf_ft_dyn
 
+(** [is_elf32_relocatable_file hdr] checks whether the header [hdr] states if the
+  * ELF file is of relocatable type.
+  *)
 val is_elf32_relocatable_file : elf32_header -> bool
 let is_elf32_relocatable_file hdr =
   natural_of_elf32_half hdr.elf32_type = elf_ft_rel
 
+(** [is_elf64_relocatable_file hdr] checks whether the header [hdr] states if the
+  * ELF file is of relocatable type.
+  *)
 val is_elf64_relocatable_file : elf64_header -> bool
 let is_elf64_relocatable_file hdr =
   natural_of_elf64_half hdr.elf64_type = elf_ft_rel
 
+(** [is_elf32_linkable_file hdr] checks whether the header [hdr] states if the
+  * ELF file is of linkable (shared object or relocatable) type.
+  *)
 val is_elf32_linkable_file : elf32_header -> bool
 let is_elf32_linkable_file hdr =
   is_elf32_shared_object_file hdr || is_elf32_relocatable_file hdr
 
+(** [is_elf64_linkable_file hdr] checks whether the header [hdr] states if the
+  * ELF file is of linkable (shared object or relocatable) type.
+  *)
 val is_elf64_linkable_file : elf64_header -> bool
 let is_elf64_linkable_file hdr =
   is_elf64_shared_object_file hdr || is_elf64_relocatable_file hdr
 
+(** [get_elf32_machine_architecture hdr] returns the ELF file's declared machine
+  * architecture, extracting the information from header [hdr].
+  *)
 val get_elf32_machine_architecture : elf32_header -> natural
 let get_elf32_machine_architecture hdr =
   natural_of_elf32_half hdr.elf32_machine
 
+(** [get_elf64_machine_architecture hdr] returns the ELF file's declared machine
+  * architecture, extracting the information from header [hdr].
+  *)
 val get_elf64_machine_architecture : elf64_header -> natural
 let get_elf64_machine_architecture hdr =
   natural_of_elf64_half hdr.elf64_machine
 
+(** [get_elf32_osabi hdr] returns the ELF file's declared OS/ABI
+  * architecture, extracting the information from header [hdr].
+  *)
 val get_elf32_osabi : elf32_header -> natural
 let get_elf32_osabi hdr =
   match List.index hdr.elf32_ident (unsafe_nat_of_natural elf_ii_osabi) with
@@ -954,6 +997,9 @@ let get_elf32_osabi hdr =
     | Nothing    -> failwith "get_elf32_osabi: lookup in ident failed"
   end (* Partial: should never return Nothing *)
 
+(** [get_elf64_osabi hdr] returns the ELF file's declared OS/ABI
+  * architecture, extracting the information from header [hdr].
+  *)
 val get_elf64_osabi : elf64_header -> natural
 let get_elf64_osabi hdr =
   match List.index hdr.elf64_ident (unsafe_nat_of_natural elf_ii_osabi) with
@@ -961,6 +1007,9 @@ let get_elf64_osabi hdr =
     | Nothing    -> failwith "get_elf64_osabi: lookup in ident failed"
   end (* Partial: should never return Nothing *)
   
+(** [get_elf32_data_encoding hdr] returns the ELF file's declared data
+  * encoding, extracting the information from header [hdr].
+  *)
 val get_elf32_data_encoding : elf32_header -> natural
 let get_elf32_data_encoding hdr =
   match List.index hdr.elf32_ident (unsafe_nat_of_natural elf_ii_data) with
@@ -968,6 +1017,9 @@ let get_elf32_data_encoding hdr =
     | Nothing    -> failwith "get_elf32_data_encoding: lookup in ident failed"
   end (* Partial: should never return Nothing *)
 
+(** [get_elf64_data_encoding hdr] returns the ELF file's declared data
+  * encoding, extracting the information from header [hdr].
+  *)
 val get_elf64_data_encoding : elf64_header -> natural
 let get_elf64_data_encoding hdr =
   match List.index hdr.elf64_ident (unsafe_nat_of_natural elf_ii_data) with
@@ -975,6 +1027,9 @@ let get_elf64_data_encoding hdr =
     | Nothing    -> failwith "get_elf64_data_encoding: lookup in ident failed"
   end (* Partial: should never return Nothing *)
   
+(** [get_elf32_file_class hdr] returns the ELF file's declared file
+  * class, extracting the information from header [hdr].
+  *)
 val get_elf32_file_class : elf32_header -> natural
 let get_elf32_file_class hdr =
   match List.index hdr.elf32_ident (unsafe_nat_of_natural elf_ii_class) with
@@ -982,6 +1037,9 @@ let get_elf32_file_class hdr =
     | Nothing    -> failwith "get_elf32_file_class: lookup in ident failed"
   end (* Partial: should never return Nothing *)
 
+(** [get_elf64_file_class hdr] returns the ELF file's declared file
+  * class, extracting the information from header [hdr].
+  *)
 val get_elf64_file_class : elf64_header -> natural
 let get_elf64_file_class hdr =
   match List.index hdr.elf64_ident (unsafe_nat_of_natural elf_ii_class) with
@@ -989,6 +1047,9 @@ let get_elf64_file_class hdr =
     | Nothing    -> failwith "get_elf64_file_class: lookup in ident failed"
   end (* Partial: should never return Nothing *)
 
+(** [get_elf32_version_number hdr] returns the ELF file's declared version
+  * number, extracting the information from header [hdr].
+  *)
 val get_elf32_version_number : elf32_header -> natural
 let get_elf32_version_number hdr =
   match List.index hdr.elf32_ident (unsafe_nat_of_natural elf_ii_version) with
@@ -996,6 +1057,9 @@ let get_elf32_version_number hdr =
     | Nothing    -> failwith "get_elf32_version_number: lookup in ident failed"
   end (* Partial: should never return Nothing *)
 
+(** [get_elf64_version_number hdr] returns the ELF file's declared version
+  * number, extracting the information from header [hdr].
+  *)
 val get_elf64_version_number : elf64_header -> natural
 let get_elf64_version_number hdr =
   match List.index hdr.elf64_ident (unsafe_nat_of_natural elf_ii_version) with
@@ -1003,14 +1067,27 @@ let get_elf64_version_number hdr =
     | Nothing    -> failwith "get_elf64_version_number: lookup in ident failed"
   end (* Partial: should never return Nothing *)
   
+(** [is_valid_elf32_version_number hdr] checks whether an ELF file's declared
+  * version number matches the current, mandatory version number.
+  * TODO: this should be merged into [is_valid_elf32_header] to create a single
+  * correctness check.
+  *)
 val is_valid_elf32_version_number : elf32_header -> bool
 let is_valid_elf32_version_numer hdr =
   get_elf32_version_number hdr = elf_ev_current
 
+(** [is_valid_elf64_version_number hdr] checks whether an ELF file's declared
+  * version number matches the current, mandatory version number.
+  * TODO: this should be merged into [is_valid_elf64_header] to create a single
+  * correctness check.
+  *)
 val is_valid_elf64_version_number : elf64_header -> bool
 let is_valid_elf64_version_numer hdr =
   get_elf64_version_number hdr = elf_ev_current
   
+(** [get_elf32_abi_version hdr] returns the ELF file's declared ABI version
+  * number, extracting the information from header [hdr].
+  *)
 val get_elf32_abi_version : elf32_header -> natural
 let get_elf32_abi_version hdr =
   match List.index hdr.elf32_ident (unsafe_nat_of_natural elf_ii_abiversion) with
@@ -1018,6 +1095,9 @@ let get_elf32_abi_version hdr =
     | Nothing    -> failwith "get_elf32_abi_version: lookup in ident failed"
   end (* Partial: should never return Nothing *)
 
+(** [get_elf64_abi_version hdr] returns the ELF file's declared ABI version
+  * number, extracting the information from header [hdr].
+  *)
 val get_elf64_abi_version : elf64_header -> natural
 let get_elf64_abi_version hdr =
   match List.index hdr.elf64_ident (unsafe_nat_of_natural elf_ii_abiversion) with
@@ -1025,8 +1105,8 @@ let get_elf64_abi_version hdr =
     | Nothing    -> failwith "get_elf64_abi_version: lookup in ident failed"
   end (* Partial: should never return Nothing *)
   
-(** [deduce_endian] deduces the endianness of an ELF file based on the ELF
-  * header's magic number.
+(** [deduce_endianness uc] deduces the endianness of an ELF file based on the ELF
+  * header's magic number [uc].
   *)
 val deduce_endianness : list unsigned_char -> endianness
 let deduce_endianness id =
@@ -1041,42 +1121,78 @@ let deduce_endianness id =
         failwith "deduce_endianness: value is not valid"
   end
 
+(** [get_elf32_header_endianness hdr] returns the endianness of the ELF file
+  * as declared in its header, [hdr].
+  *)
 val get_elf32_header_endianness : elf32_header -> endianness
 let get_elf32_header_endianness hdr =
   deduce_endianness (hdr.elf32_ident)
 
+(** [get_elf64_header_endianness hdr] returns the endianness of the ELF file
+  * as declared in its header, [hdr].
+  *)
 val get_elf64_header_endianness : elf64_header -> endianness
 let get_elf64_header_endianness hdr =
   deduce_endianness (hdr.elf64_ident)
   
+(** [has_elf32_header_associated_entry_point hdr] checks whether the header
+  * [hdr] declares an entry point for the program.
+  *)
 val has_elf32_header_associated_entry_point : elf32_header -> bool
 let has_elf32_header_associated_entry_point hdr =
   natural_of_elf32_addr hdr.elf32_entry <> 0
 
+(** [has_elf64_header_associated_entry_point hdr] checks whether the header
+  * [hdr] declares an entry point for the program.
+  *)
 val has_elf64_header_associated_entry_point : elf64_header -> bool
 let has_elf64_header_associated_entry_point hdr =
   natural_of_elf64_addr hdr.elf64_entry <> 0
   
+(** [has_elf32_header_string_table hdr] checks whether the header
+  * [hdr] declares whether the program has a string table or not.
+  *)
 val has_elf32_header_string_table : elf32_header -> bool
 let has_elf32_header_string_table hdr =
   natural_of_elf32_half hdr.elf32_shstrndx <> shn_undef
   
+(** [has_elf64_header_string_table hdr] checks whether the header
+  * [hdr] declares whether the program has a string table or not.
+  *)
 val has_elf64_header_string_table : elf64_header -> bool
 let has_elf64_header_string_table hdr =
   natural_of_elf64_half hdr.elf64_shstrndx <> shn_undef
   
+(** [is_elf32_header_section_size_in_section_header_table hdr] checks whether the header
+  * [hdr] declares whether the section size is too large to fit in the header
+  * field and is instead stored in the section header table.
+  *)
 val is_elf32_header_section_size_in_section_header_table : elf32_header -> bool
 let is_elf32_header_section_size_in_section_header_table hdr =
   natural_of_elf32_half hdr.elf32_shnum = 0
   
+(** [is_elf64_header_section_size_in_section_header_table hdr] checks whether the header
+  * [hdr] declares whether the section size is too large to fit in the header
+  * field and is instead stored in the section header table.
+  *)
 val is_elf64_header_section_size_in_section_header_table : elf64_header -> bool
 let is_elf64_header_section_size_in_section_header_table hdr =
   natural_of_elf64_half hdr.elf64_shnum = 0
   
+(** [is_elf32_header_string_table_index_in_link hdr] checks whether the header
+  * [hdr] declares whether the string table index is too large to fit in the
+  * header's field and is instead stored in the link field of an entry in the
+  * section header table.
+  *)
 val is_elf32_header_string_table_index_in_link : elf32_header -> bool
 let is_elf32_header_string_table_index_in_link hdr =
   natural_of_elf32_half hdr.elf32_shstrndx = shn_xindex
   
+(** [is_elf64_header_string_table_index_in_link hdr] checks whether the header
+  * [hdr] declares whether the string table index is too large to fit in the
+  * header's field and is instead stored in the link field of an entry in the
+  * section header table.
+  *)
 val is_elf64_header_string_table_index_in_link : elf64_header -> bool
 let is_elf64_header_string_table_index_in_link hdr =
   natural_of_elf64_half hdr.elf64_shstrndx = shn_xindex
@@ -1089,6 +1205,9 @@ let is_elf64_header_string_table_index_in_link hdr =
   *)
 type hdr_print_bundle = (natural -> string) * (natural -> string)
 
+(** [string_of_elf32_header hdr_bdl hdr] returns a string-based representation
+  * of header [hdr] using the ABI-specific print bundle [hdr_bdl].
+  *)
 val string_of_elf32_header : hdr_print_bundle -> elf32_header -> string
 let {ocaml} string_of_elf32_header (os, proc) hdr =
 	unlines [
@@ -1103,6 +1222,9 @@ let {ocaml} string_of_elf32_header (os, proc) hdr =
   ; "\t" ^ "Entries in section header table: " ^ show hdr.elf32_shnum
 	]
 
+(** [string_of_elf64_header hdr_bdl hdr] returns a string-based representation
+  * of header [hdr] using the ABI-specific print bundle [hdr_bdl].
+  *)
 val string_of_elf64_header : hdr_print_bundle -> elf64_header -> string
 let {ocaml} string_of_elf64_header (os, proc) hdr =
   unlines [
@@ -1117,6 +1239,10 @@ let {ocaml} string_of_elf64_header (os, proc) hdr =
   ; "\t" ^ "Entries in section header table: " ^ show hdr.elf64_shnum
   ]
 
+(** The following are thin wrappers around the pretty-printing functions above
+  * using a default print bundle for the header.
+  *)
+  
 val string_of_elf32_header_default : elf32_header -> string
 let {ocaml} string_of_elf32_header_default =
 	string_of_elf32_header
@@ -1137,10 +1263,17 @@ instance (Show elf64_header)
   let show = string_of_elf64_header_default
 end
 
+(** [read_elf_ident bs0] reads the initial bytes of an ELF file from byte sequence
+  * [bs0], returning the remainder of the byte sequence too.
+  * Fails if transcription fails.
+  *)
 val read_elf_ident : byte_sequence -> error (list unsigned_char * byte_sequence)
 let read_elf_ident bs
  = repeatM' ei_nident bs (read_unsigned_char default_endianness)
 
+(** [bytes_of_elf32_header hdr] blits an ELF header [hdr] to a byte sequence,
+  * ready for transcription to a binary file.
+  *)
 val bytes_of_elf32_header : elf32_header -> byte_sequence
 let bytes_of_elf32_header hdr =
   let endian = deduce_endianness hdr.elf32_ident in
@@ -1161,6 +1294,29 @@ let bytes_of_elf32_header hdr =
     ; bytes_of_elf32_half endian hdr.elf32_shstrndx
     ]
     
+(** [bytes_of_elf64_header hdr] blits an ELF header [hdr] to a byte sequence,
+  * ready for transcription to a binary file.
+  *)
+val bytes_of_elf64_header : elf64_header -> byte_sequence
+let bytes_of_elf64_header hdr =
+  let endian = deduce_endianness hdr.elf64_ident in
+    Byte_sequence.from_byte_lists [
+      List.map bytes_of_unsigned_char hdr.elf64_ident
+    ; bytes_of_elf64_half endian hdr.elf64_type
+    ; bytes_of_elf64_half endian hdr.elf64_machine
+    ; bytes_of_elf64_word endian hdr.elf64_version
+    ; bytes_of_elf64_addr endian hdr.elf64_entry
+    ; bytes_of_elf64_off  endian hdr.elf64_phoff
+    ; bytes_of_elf64_off  endian hdr.elf64_shoff
+    ; bytes_of_elf64_word endian hdr.elf64_flags
+    ; bytes_of_elf64_half endian hdr.elf64_ehsize
+    ; bytes_of_elf64_half endian hdr.elf64_phentsize
+    ; bytes_of_elf64_half endian hdr.elf64_phnum
+    ; bytes_of_elf64_half endian hdr.elf64_shentsize
+    ; bytes_of_elf64_half endian hdr.elf64_shnum
+    ; bytes_of_elf64_half endian hdr.elf64_shstrndx
+    ]
+    
 val is_elf32_header_padding_correct : elf32_header -> bool
 let is_elf32_header_padding_correct ehdr =
   List.index ehdr.elf32_ident 9  = Just (unsigned_char_of_natural 0) &&
@@ -1178,6 +1334,9 @@ let is_magic_number_correct ident =
   List.index ident 2 = Just (unsigned_char_of_natural 76)  &&
   List.index ident 3 = Just (unsigned_char_of_natural 70)
 
+(** [read_elf32_header bs0] reads an ELF header from the byte sequence [bs0].
+  * Fails if transcription fails.
+  *)
 val read_elf32_header : byte_sequence -> error (elf32_header * byte_sequence)
 let read_elf32_header bs =
 	read_elf_ident bs >>= fun (ident, bs) ->
@@ -1213,26 +1372,9 @@ let read_elf32_header bs =
           fail "read_elf32_header: not a 32-bit ELF file"
     end
 
-val bytes_of_elf64_header : elf64_header -> byte_sequence
-let bytes_of_elf64_header hdr =
-  let endian = deduce_endianness hdr.elf64_ident in
-    Byte_sequence.from_byte_lists [
-      List.map bytes_of_unsigned_char hdr.elf64_ident
-    ; bytes_of_elf64_half endian hdr.elf64_type
-    ; bytes_of_elf64_half endian hdr.elf64_machine
-    ; bytes_of_elf64_word endian hdr.elf64_version
-    ; bytes_of_elf64_addr endian hdr.elf64_entry
-    ; bytes_of_elf64_off  endian hdr.elf64_phoff
-    ; bytes_of_elf64_off  endian hdr.elf64_shoff
-    ; bytes_of_elf64_word endian hdr.elf64_flags
-    ; bytes_of_elf64_half endian hdr.elf64_ehsize
-    ; bytes_of_elf64_half endian hdr.elf64_phentsize
-    ; bytes_of_elf64_half endian hdr.elf64_phnum
-    ; bytes_of_elf64_half endian hdr.elf64_shentsize
-    ; bytes_of_elf64_half endian hdr.elf64_shnum
-    ; bytes_of_elf64_half endian hdr.elf64_shstrndx
-    ]
-
+(** [read_elf64_header bs0] reads an ELF header from the byte sequence [bs0].
+  * Fails if transcription fails.
+  *)
 val read_elf64_header : byte_sequence -> error (elf64_header * byte_sequence)
 let read_elf64_header bs =
   read_elf_ident bs >>= fun (ident, bs) ->
@@ -1268,15 +1410,35 @@ let read_elf64_header bs =
           fail "read_elf64_header: not a 64-bit ELF file"
     end
 
+(** [is_elf32_header_class_correct hdr] checks whether the declared file class
+  * is correct.
+  *)
 val is_elf32_header_class_correct : elf32_header -> bool
 let is_elf32_header_class_correct ehdr =
   List.index ehdr.elf32_ident 4 = Just (unsigned_char_of_natural 1)
+  
+(** [is_elf64_header_class_correct hdr] checks whether the declared file class
+  * is correct.
+  *)
+val is_elf64_header_class_correct : elf64_header -> bool
+let is_elf64_header_class_correct ehdr =
+  List.index ehdr.elf64_ident 4 = Just (unsigned_char_of_natural 1)
 
+(** [is_elf32_header_version_correct hdr] checks whether the declared file version
+  * is correct.
+  *)
 val is_elf32_header_version_correct : elf32_header -> bool
 let is_elf32_header_version_correct ehdr =
   List.index ehdr.elf32_ident 6 = Just (unsigned_char_of_natural 1)
+  
+(** [is_elf64_header_version_correct hdr] checks whether the declared file version
+  * is correct.
+  *)
+val is_elf64_header_version_correct : elf64_header -> bool
+let is_elf64_header_version_correct ehdr =
+  List.index ehdr.elf64_ident 6 = Just (unsigned_char_of_natural 1)
 
-(** [is_valid_elf32_header] checks whether an [elf32_header] value is a valid 32-bit
+(** [is_elf32_header_valid] checks whether an [elf32_header] value is a valid 32-bit
   * ELF file header (i.e. [elf32_ident] is [ei_nident] entries long, and other
   * constraints on headers).
   *)

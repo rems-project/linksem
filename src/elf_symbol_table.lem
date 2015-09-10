@@ -180,6 +180,8 @@ let string_of_symbol_visibility m =
 
 (** Symbol table entry type *)
 
+(** [elf32_symbol_table_entry] is an entry in a symbol table.
+  *)
 type elf32_symbol_table_entry =
   <| elf32_st_name  : elf32_word     (** Index into the object file's string table *)
    ; elf32_st_value : elf32_addr     (** Gives the value of the associated symbol *)
@@ -189,6 +191,12 @@ type elf32_symbol_table_entry =
    ; elf32_st_shndx : elf32_half     (** Section header index symbol is defined with respect to *)
    |>
 
+(** [elf32_symbol_table_entry_compare ent1 ent2] is an ordering-comparison function
+  * for symbol table entries suitable for constructing sets, finite maps and other
+  * ordered data structures from.
+  *)
+val elf32_symbol_table_entry_compare : elf32_symbol_table_entry ->
+  elf32_symbol_table_entry -> ordering
 let elf32_symbol_table_entry_compare ent1 ent2 = 
     compare (natural_of_elf32_word ent1.elf32_st_name, natural_of_elf32_addr ent1.elf32_st_value, 
         natural_of_elf32_word ent1.elf32_st_size, natural_of_unsigned_char ent1.elf32_st_info, 
@@ -205,6 +213,8 @@ instance (Ord elf32_symbol_table_entry)
     let (>=) = fun f1 -> (fun f2 -> Set.member (elf32_symbol_table_entry_compare f1 f2) {GT; EQ})
 end
    
+(** [elf64_symbol_table_entry] is an entry in a symbol table.
+  *)
 type elf64_symbol_table_entry =
   <| elf64_st_name  : elf64_word     (** Index into the object file's string table *)
    ; elf64_st_info  : unsigned_char  (** Specifies the symbol's type and binding attributes *)
@@ -214,6 +224,12 @@ type elf64_symbol_table_entry =
    ; elf64_st_size  : elf64_xword    (** Size of the associated symbol *)
    |>
 
+(** [elf64_symbol_table_entry_compare ent1 ent2] is an ordering-comparison function
+  * for symbol table entries suitable for constructing sets, finite maps and other
+  * ordered data structures from.
+  *)
+val elf64_symbol_table_entry_compare : elf64_symbol_table_entry -> elf64_symbol_table_entry ->
+  ordering
 let elf64_symbol_table_entry_compare ent1 ent2 = 
     compare (natural_of_elf64_word ent1.elf64_st_name, natural_of_elf64_addr ent1.elf64_st_value, 
         natural_of_elf64_xword ent1.elf64_st_size, natural_of_unsigned_char ent1.elf64_st_info, 
@@ -271,14 +287,26 @@ val get_symbol_visibility : unsigned_char -> natural
 let get_symbol_visibility info =
   natural_of_unsigned_char (unsigned_char_land info (unsigned_char_of_natural 3)) (* 0x3*)
   
+(** [make_symbol_other m] converts a natural [m] to an unsigned char suitable
+  * for use in a symbol table entry's "other" field.
+  * XXX: WHY?
+  *)
 val make_symbol_other : natural -> unsigned_char
 let make_symbol_other visibility =
   unsigned_char_of_natural visibility
   
+(** [is_elf32_shndx_too_large ent] tests whether the symbol table entry's
+  * [shndx] field is equal to SHN_XINDEX, in which case the real value is stored
+  * elsewhere.
+  *)
 val is_elf32_shndx_too_large : elf32_symbol_table_entry -> bool
 let is_elf32_shndx_too_large syment =
   natural_of_elf32_half syment.elf32_st_shndx = shn_xindex
   
+(** [is_elf64_shndx_too_large ent] tests whether the symbol table entry's
+  * [shndx] field is equal to SHN_XINDEX, in which case the real value is stored
+  * elsewhere.
+  *)
 val is_elf64_shndx_too_large : elf64_symbol_table_entry -> bool
 let is_elf64_shndx_too_large syment =
   natural_of_elf64_half syment.elf64_st_shndx = shn_xindex
@@ -314,6 +342,9 @@ let is_elf64_null_entry ent =
 type symtab_print_bundle =
   (natural -> string) * (natural -> string)
 
+(** [string_of_elf32_symbol_table_entry ent] produces a string based representation
+  * of symbol table entry [ent].
+  *)
 val string_of_elf32_symbol_table_entry : elf32_symbol_table_entry -> string
 let {ocaml} string_of_elf32_symbol_table_entry entry =
   unlines [
@@ -325,6 +356,9 @@ let {ocaml} string_of_elf32_symbol_table_entry entry =
   ; "\t" ^ "Shndx: " ^ show entry.elf32_st_shndx
   ]
   
+(** [string_of_elf64_symbol_table_entry ent] produces a string based representation
+  * of symbol table entry [ent].
+  *)
 val string_of_elf64_symbol_table_entry : elf64_symbol_table_entry -> string
 let {ocaml} string_of_elf64_symbol_table_entry entry =
   unlines [
@@ -336,11 +370,18 @@ let {ocaml} string_of_elf64_symbol_table_entry entry =
   ; "\t" ^ "Size: "  ^ show entry.elf64_st_size
   ]
 
+(** [string_of_elf32_symbol_table stbl] produces a string based representation
+  * of symbol table [stbl].
+  *)
 val string_of_elf32_symbol_table : elf32_symbol_table -> string
 let {ocaml} string_of_elf32_symbol_table symtab =
   unlines (List.map string_of_elf32_symbol_table_entry symtab)
   
-let (elf64_null_symbol_table_entry : elf64_symbol_table_entry) =
+(** [elf64_null_symbol_table_entry] is the null symbol table entry, with all
+  * fields set to zero.
+  *)
+val elf64_null_symbol_table_entry : elf64_symbol_table_entry
+let elf64_null_symbol_table_entry =
   <| elf64_st_name  = elf64_word_of_natural 0
    ; elf64_st_info  = unsigned_char_of_natural 0
    ; elf64_st_other = unsigned_char_of_natural 0
@@ -363,6 +404,10 @@ end
 
 (** Reading in symbol table (entries) *)
 
+(** [read_elf32_symbol_table_entry endian bs0] reads an ELF symbol table entry
+  * record from byte sequence [bs0] assuming endianness [endian], returning the
+  * remainder of the byte sequence.  Fails if the byte sequence is not long enough.
+  *)
 val read_elf32_symbol_table_entry : endianness -> byte_sequence ->
   error (elf32_symbol_table_entry * byte_sequence)
 let read_elf32_symbol_table_entry endian bs0 =
@@ -375,7 +420,11 @@ let read_elf32_symbol_table_entry endian bs0 =
     return (<| elf32_st_name = st_name; elf32_st_value = st_value;
                  elf32_st_size = st_size; elf32_st_info = st_info;
                  elf32_st_other = st_other; elf32_st_shndx = st_shndx |>, bs0)
-                 
+          
+(** [read_elf64_symbol_table_entry endian bs0] reads an ELF symbol table entry
+  * record from byte sequence [bs0] assuming endianness [endian], returning the
+  * remainder of the byte sequence.  Fails if the byte sequence is not long enough.
+  *)       
 val read_elf64_symbol_table_entry : endianness -> byte_sequence ->
   error (elf64_symbol_table_entry * byte_sequence)
 let read_elf64_symbol_table_entry endian bs0 =
@@ -389,6 +438,10 @@ let read_elf64_symbol_table_entry endian bs0 =
                  elf64_st_other = st_other; elf64_st_shndx = st_shndx;
                  elf64_st_value = st_value; elf64_st_size = st_size |>, bs0)
 
+(** [read_elf32_symbol_table endian bs0] reads a symbol table from byte sequence
+  * [bs0] assuming endianness [endian].  Assumes [bs0]'s length modulo the size
+  * of a symbol table entry is 0.  Fails otherwise.
+  *)
 val read_elf32_symbol_table : endianness -> byte_sequence -> error elf32_symbol_table
 let rec read_elf32_symbol_table endian bs0 =
   if Byte_sequence.length bs0 = 0 then
@@ -398,6 +451,10 @@ let rec read_elf32_symbol_table endian bs0 =
     read_elf32_symbol_table endian bs0 >>= fun tail ->
     return (head::tail)
     
+(** [read_elf64_symbol_table endian bs0] reads a symbol table from byte sequence
+  * [bs0] assuming endianness [endian].  Assumes [bs0]'s length modulo the size
+  * of a symbol table entry is 0.  Fails otherwise.
+  *)
 val read_elf64_symbol_table : endianness -> byte_sequence -> error elf64_symbol_table
 let rec read_elf64_symbol_table endian bs0 =
   if Byte_sequence.length bs0 = 0 then
@@ -409,11 +466,17 @@ let rec read_elf64_symbol_table endian bs0 =
 
 (** Association map of symbol name, symbol type, symbol size, symbol address
   * and symbol binding.
+  * A PPCMemism.
   *)
 type symbol_address_map
   = list (string * (natural * natural * natural * natural))
 
-val get_elf32_symbol_image_address : elf32_symbol_table -> string_table -> error symbol_address_map
+(** [get_elf32_symbol_image_address symtab stbl] extracts the symbol address map
+  * from the symbol table [symtab] using the string table [stbl].
+  * A PPCMemism.
+  *)
+val get_elf32_symbol_image_address : elf32_symbol_table -> string_table ->
+  error symbol_address_map
 let get_elf32_symbol_image_address symtab strtab =
   mapM (fun entry ->
     let name = natural_of_elf32_word entry.elf32_st_name in
@@ -425,7 +488,12 @@ let get_elf32_symbol_image_address symtab strtab =
       return (str, (typ, size, addr, bnd))
   ) symtab
 
-val get_elf64_symbol_image_address : elf64_symbol_table -> string_table -> error symbol_address_map
+(** [get_elf64_symbol_image_address symtab stbl] extracts the symbol address map
+  * from the symbol table [symtab] using the string table [stbl].
+  * A PPCMemism.
+  *)
+val get_elf64_symbol_image_address : elf64_symbol_table -> string_table ->
+  error symbol_address_map
 let get_elf64_symbol_image_address symtab strtab =
   mapM (fun entry ->
     let name = natural_of_elf64_word entry.elf64_st_name in
@@ -437,8 +505,14 @@ let get_elf64_symbol_image_address symtab strtab =
       return (str, (typ, size, addr, bnd))
   ) symtab
 
-(* A more usable way to get the symbol type value. *)
+(** [get_el32_symbol_type ent] extracts the symbol type from symbol table entry
+  * [ent].
+  *)
 val get_elf32_symbol_type : elf32_symbol_table_entry -> natural
 let get_elf32_symbol_type syment = get_symbol_type syment.elf32_st_info
+
+(** [get_el64_symbol_type ent] extracts the symbol type from symbol table entry
+  * [ent].
+  *)
 val get_elf64_symbol_type : elf64_symbol_table_entry -> natural
 let get_elf64_symbol_type syment = get_symbol_type syment.elf64_st_info

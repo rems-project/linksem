@@ -1,3 +1,7 @@
+(** [abi_power64_elf_header], Power64 ABI specific definitions related to the 
+  * ELF file header.
+  *)
+
 open import Basic_classes
 open import Bool
 open import List

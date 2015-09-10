@@ -1,5 +1,13 @@
+(** [abi_utilities], generic utilities shared between all ABIs.
+  *)
+
 open import Num
 
+(** [integer_bit_width] records various bit widths for integral types, as used
+  * in relocation calculations. The names are taken directly from the processor
+  * supplements to keep the calculations as close as possible
+  * to the specification of relocations.
+  *)
 type integer_bit_width
   = I8        (** Signed 8 bit *)
   | I12
@@ -23,6 +31,9 @@ type integer_bit_width
   | U48       (** Unsigned 48 bit *)
   | U64       (** Unsigned 64 bit *)
   
+(** [natural_of_integer_bit_width i] computes the bit width of integer bit width
+  * [i].
+  *)
 val natural_of_integer_bit_width : integer_bit_width -> natural
 let natural_of_integer_bit_width i =
   match i with
@@ -49,6 +60,12 @@ let natural_of_integer_bit_width i =
     | I64X2    -> 128
   end
   
+(** [relocation_operator] records the operators used to calculate relocations by
+  * the various ABIs.  Each ABI will only use a subset of these, and they should
+  * be interpreted on a per-ABI basis.  As more ABIs are added, more operators
+  * will be needed, and therefore more constructors in this type will need to
+  * be added.  These are unary operators, operating on a single integral type.
+  *)
 type relocation_operator
   = TPRel
   | LTOff
@@ -72,16 +89,28 @@ type relocation_operator
   | Highest
   | HighestA
   
+(** [relocation_operator2] is a binary relocation operator, as detailed above.
+  *)
 type relocation_operator2 =
   | GTLSIdx
   
+(** [relocation_operator_expression] is an AST of expressions describing a relocation
+  * calculation.  An AST is used as it allows us to unify the treatment of relocation
+  * calculation: rather than passing in dozens of functions to the calculation function
+  * that perform the actual relocation, we can simply return a description (in the form
+  * of the AST below) of the calculation to be carried out and have it interpreted
+  * separately from the function that produces it.  The type parameter 'a is the
+  * type of base integral type.  This AST suffices for the relocation calculations we
+  * currently have implemented, but adding more ABIs may require that this type is
+  * expanded.
+  *)
 type relocation_operator_expression 'a
-  = Lift   of 'a
-  | Apply  of (relocation_operator * relocation_operator_expression 'a)
-  | Apply2 of (relocation_operator2 * relocation_operator_expression 'a * relocation_operator_expression 'a)
-  | Plus   of (relocation_operator_expression 'a * relocation_operator_expression 'a)
-  | Minus  of (relocation_operator_expression 'a * relocation_operator_expression 'a)
-  | RShift of (relocation_operator_expression 'a * natural)
+  = Lift   of 'a                                                                                             (** Lift a base type into an AST *)
+  | Apply  of (relocation_operator * relocation_operator_expression 'a)                                      (** Apply a unary operator to an expression *)
+  | Apply2 of (relocation_operator2 * relocation_operator_expression 'a * relocation_operator_expression 'a) (** Apply a binary operator to two expressions *)
+  | Plus   of (relocation_operator_expression 'a * relocation_operator_expression 'a)                        (** Add two expressions. *)
+  | Minus  of (relocation_operator_expression 'a * relocation_operator_expression 'a)                        (** Subtract two expressions. *)
+  | RShift of (relocation_operator_expression 'a * natural)                                                  (** Right shift the result of an expression [m] places. *)
   
 (** Some relocations may fail, for example:
   * Page 58, Power ABI: relocation types whose Field column is marked with an
