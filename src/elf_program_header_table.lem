@@ -255,7 +255,7 @@ type elf64_program_header_table_entry =
   * finite maps, and other ordered data types with.
   *)
 val compare_elf64_program_header_table_entry : elf64_program_header_table_entry ->
-  elf64_program_header_table_entry -> bool
+  elf64_program_header_table_entry -> ordering
 let compare_elf64_program_header_table_entry h1 h2 = 
     compare [natural_of_elf64_word h1.elf64_p_type;
     natural_of_elf64_off h1.elf64_p_offset;

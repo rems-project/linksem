@@ -1,7 +1,7 @@
 #!/bin/bash
 
 MAIN_ELF=../../src/main_elf.opt
-TEST_FILES=/mnt/bimfs
+TEST_FILES=/usr/lib
 DIFF_TOOL=meld
 
 function perform_readelf_diff

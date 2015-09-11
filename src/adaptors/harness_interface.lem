@@ -224,35 +224,43 @@ let {ocaml} harness_string_of_elf64_segment_section_mappings hdr pht sht stbl =
   
 val harness_string_of_elf32_program_headers : (natural -> string) -> (natural -> string) -> elf32_header -> elf32_program_header_table -> elf32_section_header_table -> string_table -> byte_sequence -> string
 let {ocaml} harness_string_of_elf32_program_headers os proc hdr pht sht stbl bs0 =
-  unlines [
-    ""
-  ; "Elf file type is " ^ string_of_elf_file_type default_os_specific_print default_proc_specific_print (natural_of_elf32_half hdr.elf32_type)
-  ; "Entry point " ^ "0x" ^ unsafe_hex_string_of_natural 1 (natural_of_elf32_addr hdr.elf32_entry)
-  ; "There are " ^ show (List.length pht) ^ " program headers, starting at offset " ^ show hdr.elf32_phoff
-  ; ""
-  ; "Program Headers:"
-  ; harness_string_of_elf32_pht os proc pht bs0
-  ; ""
-  ; " Section to Segment mapping:"
-  ; "  Segment Sections..."
-  ; harness_string_of_elf32_segment_section_mappings hdr pht sht stbl
-  ]
+  let pht_len = List.length pht in
+    if pht_len = 0 then
+      "There are no program headers in this file."
+    else
+      unlines [
+        ""
+      ; "Elf file type is " ^ string_of_elf_file_type default_os_specific_print default_proc_specific_print (natural_of_elf32_half hdr.elf32_type)
+      ; "Entry point " ^ "0x" ^ unsafe_hex_string_of_natural 1 (natural_of_elf32_addr hdr.elf32_entry)
+      ; "There are " ^ show (List.length pht) ^ " program headers, starting at offset " ^ show hdr.elf32_phoff
+      ; ""
+      ; "Program Headers:"
+      ; harness_string_of_elf32_pht os proc pht bs0
+      ; ""
+      ; " Section to Segment mapping:"
+      ; "  Segment Sections..."
+      ; harness_string_of_elf32_segment_section_mappings hdr pht sht stbl
+      ]
   
 val harness_string_of_elf64_program_headers : (natural -> string) -> (natural -> string) -> elf64_header -> elf64_program_header_table -> elf64_section_header_table -> string_table -> byte_sequence -> string
 let {ocaml} harness_string_of_elf64_program_headers os proc hdr pht sht stbl bs0 =
-  unlines [
-    ""
-  ; "Elf file type is " ^ string_of_elf_file_type default_os_specific_print default_proc_specific_print (natural_of_elf64_half hdr.elf64_type)
-  ; "Entry point " ^ "0x" ^ unsafe_hex_string_of_natural 1 (natural_of_elf64_addr hdr.elf64_entry)
-  ; "There are " ^ show (List.length pht) ^ " program headers, starting at offset " ^ show hdr.elf64_phoff
-  ; ""
-  ; "Program Headers:"
-  ; harness_string_of_elf64_pht os proc pht bs0
-  ; ""
-  ; " Section to Segment mapping:"
-  ; "  Segment Sections..."
-  ; harness_string_of_elf64_segment_section_mappings hdr pht sht stbl
-  ]
+  let pht_len = List.length pht in
+    if pht_len = 0 then
+      "There are no program headers in this file."
+    else
+      unlines [
+        ""
+      ; "Elf file type is " ^ string_of_elf_file_type default_os_specific_print default_proc_specific_print (natural_of_elf64_half hdr.elf64_type)
+      ; "Entry point " ^ "0x" ^ unsafe_hex_string_of_natural 1 (natural_of_elf64_addr hdr.elf64_entry)
+      ; "There are " ^ show (List.length pht) ^ " program headers, starting at offset " ^ show hdr.elf64_phoff
+      ; ""
+      ; "Program Headers:"
+      ; harness_string_of_elf64_pht os proc pht bs0
+      ; ""
+      ; " Section to Segment mapping:"
+      ; "  Segment Sections..."
+      ; harness_string_of_elf64_segment_section_mappings hdr pht sht stbl
+      ]
   
 val harness_sht32_flag_legend : string
 let {ocaml} harness_sht32_flag_legend =
