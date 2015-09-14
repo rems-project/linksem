@@ -316,7 +316,7 @@ let rec intercalate' sep xs accum =
 	
 val intercalate : forall 'a. 'a -> list 'a -> list 'a
 let intercalate sep xs = intercalate' sep xs []
-	
+
 (** [unlines xs] concatenates a list of strings [xs], placing each entry
   * on a new line.
   *)
@@ -510,3 +510,13 @@ val unsafe_string_take : natural -> string -> string
 let unsafe_string_take m str =
   let m = unsafe_nat_of_natural m in
     String.toString (List.take m (String.toCharList str))
+
+(** [pad_and_maybe_newline w s] pads string [s] to [w] characters, 
+  * unless [s] is of length [w - 1] or greater, in which case it is preceded by a newline.
+  * This style of formatting is used by the GNU linker in its link map output, so we
+  * reproduce it using this function. *)
+val pad_and_maybe_newline : natural -> string -> string
+let pad_and_maybe_newline width str = 
+    let padlen = width - (naturalFromNat (stringLength str)) in
+    (if padlen <= 1 then "\n" else "")
+     ^ (toString (replicate (if padlen <= 1 then width else padlen) #' '))

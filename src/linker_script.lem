@@ -115,11 +115,11 @@ type symbol_spec = (natural * unsigned_char * unsigned_char) (* size, info, othe
 type script_element =
   DefineSymbol of (symbol_def_policy * string * symbol_spec)
 | AdvanceAddress of (* address_expr -- WHY did I want this? *) (natural -> natural -> natural)
-| MarkAndAlignDataSegment of (natural * natural) (* maxpagesize, commonpagesize *)
+| MarkAndAlignDataSegment of (list output_section_spec -> (natural * natural)) (* maxpagesize, commonpagesize *)
 | MarkDataSegmentEnd
-| MarkDataSegmentRelroEnd of (natural * address_expr)
-| OutputSection of (output_guard * maybe (* address_expr *) natural * string * list script_element)
-| DiscardSection of input_selector 
+| MarkDataSegmentRelroEnd of ((list output_section_spec) -> (natural * (natural -> natural)))
+| OutputSection of (output_guard * (maybe (* address_expr *) (natural -> natural -> natural)) * string * list script_element)
+| DiscardInput of input_selector 
   (* Input queries can only occur within an output section. 
      Output sections may not nest within other output sections. 
      (Ideally we would use something like polymorphic variants to encode this.)
@@ -136,6 +136,16 @@ and
                   | ByAlignment
                   | ByAlignmentThenName
                   | ByInitPriority
+and 
+ output_section_composition_element = 
+    IncludeInputSection of (retain_policy * string (* file *) * natural (* shndx *) * elf64_interpreted_section * elf_memory_image)
+    | IncludeCommonSymbol of (retain_policy * string (* file *) * symbol_definition * elf_memory_image)
+    | Hole of natural (* size *)
+    | ProvideSymbol of (symbol_def_policy * string * symbol_spec)
+and 
+(* This mirrors the OutputSection constructor, except that the script elements have become
+ * output_section_composition_elements. *)
+ output_section_spec = (output_guard * maybe natural * string * (list output_section_composition_element))
 
 (* A linker control script is a function from inputs to output elements. 
  * We can define them in syntax (using an interpreter) 
@@ -166,7 +176,6 @@ let rec glob_match pat str =
         | ([], _) -> (* ran out of pattern *) false
         | (_, []) -> (* ran out of str *) false
     end
-
 
 val default_symbol_spec : symbol_spec
 let default_symbol_spec = (0, unsigned_char_of_natural 0, unsigned_char_of_natural 0)
@@ -202,6 +211,13 @@ let align_up addr align =
     let quot = addr / align
     in
     if quot * align = addr then addr else (quot + 1) * align
+
+val size_of_output_section_composition_element : output_section_composition_element -> natural
+let size_of_output_section_composition_element el = match el with
+    IncludeInputSection(rp, fname, shndx, isec, img) -> isec.elf64_section_size
+    | IncludeCommonSymbol(rp, fname, def, img) -> natural_of_elf64_xword def.def_syment.elf64_st_size
+    | Hole(sz) -> sz
+end
 
 (* DATA_SEGMENT_ALIGN is defined by two formulae 
  * (over pos and commonpagesize/maxpagesize)
@@ -251,6 +267,23 @@ let has_writability = fun writable -> (fun input_sec -> (
 
 val address_zero : natural -> natural -> natural
 let address_zero = fun pos -> (fun secs -> 0)
+
+val output_sec_composition_size : list output_section_composition_element -> natural
+let output_sec_composition_size comp = List.foldl (+) 0 (List.map size_of_output_section_composition_element comp)
+
+val sizeof : string -> list output_section_spec -> natural
+let sizeof secname secs = 
+    let allSizes = mapMaybe (fun (guard, maybe_addr, name, compos) -> 
+        if name = secname then
+            Just (output_sec_composition_size compos)
+        else Nothing
+    ) secs
+    in
+    match allSizes with
+        [sz] -> sz
+        | [] -> failwith ("error: sizeof applied to non-existent section name " ^ secname)
+        | _  -> failwith ("internal error: sizeof applied to section name with multiple definitions (" ^ secname ^ ")")
+    end
 
 val default_linker_control_script : abi any_abi_feature -> maybe natural -> maybe natural -> maybe natural -> natural -> linker_control_script
 let default_linker_control_script a user_text_segment_start user_data_segment_start user_rodata_segment_start elf_headers_size = 
@@ -595,7 +628,9 @@ SECTIONS
     ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
         fun s -> name_matches ".text" s || name_matches ".stub" s || name_matches ".text.*" s || name_matches ".gnu.linkonce.t.*" s))
     ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
-         (* .gnu.warning sections are handled specially by elf32.em.  *)
+         (* ".gnu.warning sections are handled specially by elf32.em."
+          * GAH. That means that what we specify here is not (completely) what 
+          * needs to happen with these sections. *)
         fun s -> name_matches ".gnu_warning" s))
     ])
   ; OutputSection(AlwaysOutput, Nothing, ".fini", [
@@ -618,7 +653,7 @@ SECTIONS
       (* BinRel(Eq, Constant( *)
     align_up addr (a.maxpagesize - (unsafe_natural_land (a.maxpagesize - addr) (a.maxpagesize - 1)))
     ))
-  ; MarkAndAlignDataSegment(a.maxpagesize, a.commonpagesize)
+  ; MarkAndAlignDataSegment(fun secs -> (a.maxpagesize, a.commonpagesize))
   ; OutputSection(OnlyIfRw, Nothing, ".eh_frame", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".eh_frame"))])
   ; OutputSection(OnlyIfRw, Nothing, ".gcc_except_table", [InputQuery(DefaultKeep, DefaultSort, 
     filter_and_concat (fun s -> name_matches ".gcc_except_table" s || name_matches ".gcc_except_table.*" s))])
@@ -634,78 +669,171 @@ SECTIONS
       ; InputQuery(KeepEvenWhenGC, DefaultSort, filter_and_concat (fun s -> name_matches ".preinit_array" s))
       ; DefineSymbol(ProvideIfUsed, "__preinit_array_end", default_symbol_spec)
     ])
+  ; OutputSection(AlwaysOutput, Nothing, ".init_array", [
+        DefineSymbol(ProvideIfUsed, "__init_array_start", default_symbol_spec)
+      ; InputQuery(KeepEvenWhenGC, ByInitPriority, filter_and_concat (fun s -> name_matches ".init_array.*" s))
+      ; InputQuery(KeepEvenWhenGC, ByInitPriority, filter_and_concat (fun s -> name_matches ".ctors.*" s))
+      ; InputQuery(KeepEvenWhenGC, ByInitPriority, filter_and_concat 
+            (fun s -> name_matches ".init_array" s
+            || (name_matches ".ctors" s && not (file_matches "*crtbegin.o" s || file_matches "*crtbegin?.o" s
+                 || file_matches "*crtend.o" s || file_matches "*crtend?.o " s)))
+            )
+      ; DefineSymbol(ProvideIfUsed, "__init_array_end", default_symbol_spec)
+    ])
+  ; OutputSection(AlwaysOutput, Nothing, ".fini_array", [
+        DefineSymbol(ProvideIfUsed, "__fini_array_start", default_symbol_spec)
+      ; InputQuery(KeepEvenWhenGC, ByInitPriority, filter_and_concat (fun s -> name_matches ".fini_array.*" s))
+      ; InputQuery(KeepEvenWhenGC, ByInitPriority, filter_and_concat (fun s -> name_matches ".dtors.*" s))
+      ; InputQuery(KeepEvenWhenGC, ByInitPriority, filter_and_concat 
+            (fun s -> name_matches ".fini_array" s
+            || (name_matches ".dtors" s && not (file_matches "*crtbegin.o" s || file_matches "*crtbegin?.o" s
+                 || file_matches "*crtend.o" s || file_matches "*crtend?.o " s)))
+            )
+      ; DefineSymbol(ProvideIfUsed, "__fini_array_end", default_symbol_spec)
+    ])
+   ; OutputSection(AlwaysOutput, Nothing, ".ctors", [
+        InputQuery(KeepEvenWhenGC, DefaultSort, filter_and_concat (fun s -> file_matches "*crtbegin.o" s && name_matches ".ctors" s))
+      ; InputQuery(KeepEvenWhenGC, DefaultSort, filter_and_concat (fun s -> file_matches "*crtbegin?.o" s && name_matches ".ctors" s))
+      ; InputQuery(KeepEvenWhenGC, DefaultSort, filter_and_concat 
+            (fun s -> not (file_matches "*crtend.o" s || file_matches "*crtend?.o" s) && name_matches ".ctors" s))
+      ; InputQuery(KeepEvenWhenGC, ByName, filter_and_concat (fun s -> name_matches ".ctors.*" s))
+      ; InputQuery(KeepEvenWhenGC, DefaultSort, filter_and_concat 
+        (fun s -> (file_matches "*crtend.o" s || file_matches "*crtend?.o" s) && name_matches ".ctors" s))
+        (* NOTE: this exclusion is implicit in the usual linker script, 
+         * because it won't match an input section more than once. We should
+         * just replicate this behaviour, since other parts of the script might rely on it
+         * less obviously. *)
+    ])
+   ; OutputSection(AlwaysOutput, Nothing, ".dtors", [
+        InputQuery(KeepEvenWhenGC, DefaultSort, filter_and_concat (fun s -> file_matches "*crtbegin.o" s && name_matches ".dtors" s))
+      ; InputQuery(KeepEvenWhenGC, DefaultSort, filter_and_concat (fun s -> file_matches "*crtbegin?.o" s && name_matches ".dtors" s))
+      ; InputQuery(KeepEvenWhenGC, DefaultSort, filter_and_concat 
+            (fun s -> not (file_matches "*crtend.o" s || file_matches "*crtend?.o" s) && name_matches ".dtors" s))
+      ; InputQuery(KeepEvenWhenGC, ByName, filter_and_concat (fun s -> name_matches ".dtors.*" s))
+      ; InputQuery(KeepEvenWhenGC, DefaultSort, filter_and_concat 
+        (fun s -> (file_matches "*crtend.o" s || file_matches "*crtend?.o" s) && name_matches ".dtors" s))
+    ])
+   ; OutputSection(AlwaysOutput, Nothing, ".jcr", [InputQuery(KeepEvenWhenGC, DefaultSort, filter_and_concat (name_matches ".jcr"))])
+   ; OutputSection(AlwaysOutput, Nothing, ".data.rel.ro", [
+        InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
+            fun s -> name_matches ".data.rel.ro.local*" s || name_matches ".gnu.linkonce.d.rel.ro.local.*" s
+        ));
+        InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
+            fun s -> name_matches ".data.rel.ro" s || name_matches ".data.rel.ro.*" s || name_matches ".gnu.linkonce.d.rel.ro.*" s
+        ))
+     ])
+    ; OutputSection(AlwaysOutput, Nothing, ".dynamic", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".dynamic"))])
+    ; OutputSection(AlwaysOutput, Nothing, ".got",     [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".got"))
+                               ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".igot"))
+                               ])
+    ; MarkDataSegmentRelroEnd(fun secs -> (if (sizeof ".got.plt" secs) >= 24 then 24 else 0, (fun pos -> pos)))
+    ; OutputSection(AlwaysOutput, Nothing, ".got.plt", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".got.plt"))
+                               ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".igot.plt"))
+     ])
+    ; OutputSection(AlwaysOutput, Nothing, ".data", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
+        fun s -> name_matches ".data" s || name_matches ".data.*" s || name_matches ".gnu.linkonce.d.*" s))
+        (* the script also has SORT(CONSTRUCTORS) here, but it has no effect for ELF (I think) *)
+        ])
+    ; OutputSection(AlwaysOutput, Nothing, ".data1", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".data1"))])
+    ; DefineSymbol(AlwaysDefine, "_edata", default_symbol_spec)
+    ; DefineSymbol(ProvideIfUsed, "edata", default_symbol_spec)
+    ; (* . = .;    <-- does this do anything? YES! It forces an output section to be emitted. 
+         Since it occurs *outside* any output section, 
+         it is assumed to start 
+       *) 
+      DefineSymbol(AlwaysDefine, "__bss_start", default_symbol_spec)
+    ; OutputSection(AlwaysOutput, Nothing, ".bss", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".dynbss"))
+                           ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
+                                fun s -> name_matches ".bss" s || name_matches ".bss.*" s || name_matches ".gnu.linkonce.b.*" s))
+                           ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat is_common)
+      ])
+    ; AdvanceAddress(fun pos -> (fun secs -> align_up (if pos = 0 then (64/8) else 1) pos))
+    ; OutputSection(AlwaysOutput, Nothing, ".lbss", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".dynlbss"))
+                            ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".dynlbss"))
+                            ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
+                                fun s -> name_matches ".lbss" s || name_matches ".lbss.*" s || name_matches ".gnu.linkonce.lb.*" s
+                                ))
+                            ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (is_large_common))
+      ])
+    ; AdvanceAddress(fun pos -> (fun secs -> align_up (64/8) pos))
+    ; AdvanceAddress(fun pos -> (fun secs -> segment_start "ldata-segment" pos))
+    ; OutputSection(AlwaysOutput, Just (fun pos -> fun secs -> align_up (a.maxpagesize + ((unsafe_natural_land pos a.maxpagesize) - 1)) pos), 
+         ".lrodata",
+         [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
+            fun s -> name_matches ".lrodata" s || name_matches ".lrodata.*" s || name_matches ".gnu.linkonce.lr.*" s
+            ))
+        ; AdvanceAddress(fun pos -> (fun secs -> (if pos <> 0 then 64 / 8 else 1)))
+        ])
+    ; AdvanceAddress(fun pos -> (fun secs -> align_up (64/8) pos))
+    ; DefineSymbol(AlwaysDefine, "_end", default_symbol_spec)
+    ; DefineSymbol(ProvideIfUsed, "end", default_symbol_spec)
+    ; MarkDataSegmentEnd
+    ; OutputSection(AlwaysOutput, Just address_zero, ".stab", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".stab"))])
+    ; OutputSection(AlwaysOutput, Just address_zero, ".stabstr", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".stabstr"))])
+    ; OutputSection(AlwaysOutput, Just address_zero, ".stab.excl", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".stab.excl"))])
+    ; OutputSection(AlwaysOutput, Just address_zero, ".stab.exclstr", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".stab.exclstr"))])
+    ; OutputSection(AlwaysOutput, Just address_zero, ".stab.index", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".stab.index"))])
+    ; OutputSection(AlwaysOutput, Just address_zero, ".stab.indexstr", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".stab.indexstr"))])
+    ; OutputSection(AlwaysOutput, Just address_zero, ".comment", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".comment"))])
+      (* DWARF debug sections.
+     Symbols in the DWARF debugging sections are relative to the beginning
+     of the section so we begin them at 0.  *)
+      (* DWARF 1 *)
+    ; OutputSection(AlwaysOutput, Just address_zero, ".debug", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug"))])
+    ; OutputSection(AlwaysOutput, Just address_zero, ".line", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".line"))])
+      (* GNU DWARF 1 extensions *)
+    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_srcinfo", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_srcinfo"))])
+    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_sfnames", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_sfname"))])
+      (* DWARF 1.1 and DWARF 2 *)
+    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_aranges", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_aranges"))])
+    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_pubnames", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_pubnames"))])
+      (* DWARF 2 *)
+    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_info", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
+        fun s -> name_matches ".debug_info" s || name_matches ".gnu.linkonce.wi.*" s))])
+    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_abbrev", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_abbrev"))])
+    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_line", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
+        fun s -> name_matches ".debug_line" s || name_matches ".debug_line.*" s || name_matches ".debug_line_end" s))])
+    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_frame", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_frame"))])
+    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_str", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_str"))])
+    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_loc", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_loc"))])
+    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_macinfo", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_macinfo"))])
+      (* SGI/MIPS DWARF 2 extensions *)
+    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_weaknames", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_weaknames"))])
+    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_funcnames", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_funcnames"))])
+    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_typenames", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_typenames"))])
+    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_varnames", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_varnames"))])
+      (* DWARF 3 *) 
+    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_pubtypes", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_pubtypes"))])
+    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_ranges", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_ranges"))])
+      (* DWARF Extension.  *) 
+    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_macro", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_macro"))])
+    ; OutputSection(AlwaysOutput, Just address_zero, ".gnu.attributes", [InputQuery(KeepEvenWhenGC, DefaultSort, filter_and_concat (name_matches ".gnu.attributes"))])
+    ; DiscardInput(filter_and_concat (fun s -> name_matches ".note.GNU-stack" s || name_matches ".gnu_debuglink" s || name_matches ".gnu.lto_*" s))
+    (* FIXME: orphan sections? This 
+       probably needs to go in the core linking logic,
+       not the script. *)
     ]
 
+(* Passes over the script: 
+ * 
+ * 1. assign input sections to output sections (or discard) and define symbols.
+ * 
+ * 2. compute def-use and optionally GC, removing unwanted sections and symbols
+ * 
+ * 3. build image, assigning addresses as we go. 
+ *)
 
-type output_section_composition_element = 
-    IncludeInputSection of (retain_policy * string (* file *) * natural (* shndx *) * elf64_interpreted_section * elf_memory_image)
-    | Hole of natural (* size *)
-
-(* This mirrors the OutputSection constructor, except that the script elements have become
- * output_section_composition_elements. *)
-type output_section_spec = (output_guard * maybe natural * string * (list output_section_composition_element))
-
-type link_algorithm_feature =
-    Discard
-    | Orphan
-    | IncludeInOutputSection of (string * natural) (* ordinal in list of composition elements *)
-    
-val accumulate_image : 
-    elf_memory_image -> 
-    list input_spec -> (* inputs *)
+val assign_inputs_to_output_sections : 
+    (list input_spec * list output_section_spec) ->  (* accumulator: list of discards, list of output compositions (these include symbols)  *)
+    list input_spec ->            (* remaining inputs *)
     maybe output_section_spec ->  (* cur_sec -- the current output section spec *)
-    maybe input_spec ->   (* last input section to be output -- might not have one *)
+    maybe input_spec ->           (* last input section to be output -- might not have one *)
     linker_control_script -> 
-    elf_memory_image
-let rec accumulate_image acc inputs cur_output_sec last_input_sec script = 
-    let (add_output_section_to_image : elf_memory_image -> output_section_spec -> elf_memory_image)
-     = fun acc_img -> 
-        (fun (_, addr, secname, comp) -> 
-            (* map out where we plumb in each section, accounting for their alignment *)
-            let (size, comp_offsets) = List.foldl (fun (next_free_off, off_list) -> (fun comp_el -> match comp_el with
-                  IncludeInputSection(retain_pol, fname, shndx, isec, img) -> 
-                        let aligned_start = align_up next_free_off isec.elf64_section_align
-                        in
-                        (aligned_start + isec.elf64_section_size, off_list ++ [aligned_start])
-                | Hole(sz) -> (next_free_off + sz, off_list ++ [next_free_off])
-            end
-            )) (0, []) comp
-            in
-            let concatenated_content = List.foldl (fun accum_pat -> (fun (comp_el, comp_offset) ->
-                let comp_el_pat = match comp_el with
-                    IncludeInputSection(retainpolicy, fname, shndx, isec, img) -> 
-                        (* We want to get the input section as a byte pattern *)
-                        let maybe_secname = elf_memory_image_element_coextensive_with_section shndx img 
-                        in
-                        match maybe_secname with
-                            Nothing -> failwith "impossible: no such section"
-                            | Just idstr -> match Map.lookup idstr img.elements with
-                                Just el -> el.contents
-                                | _     -> failwith "impossible: no such element"
-                            end
-                        end
-                    | Hole(sz) -> List.replicate (unsafe_nat_of_natural sz) Nothing
-                end
-                in
-                append_to_byte_pattern_at_offset comp_offset accum_pat comp_el_pat
-            )) [] (zip comp comp_offsets)
-            in
-            let concat_sec_el = <|
-                Memory_image.startpos = addr
-              ; Memory_image.length   = Just(size)
-              ; Memory_image.contents = concatenated_content
-            |>
-            in
-            (* make a new element in the image *)
-            <|
-                elements   = Map.insert secname concat_sec_el acc_img.elements
-                (* tag it as a section, and transfer any tags *)
-             ;  by_range   = acc_img.by_range (* FIXME *)
-             ;  by_tag     = acc_img.by_tag   (* FIXME *)
-             |>
-        )
-    in
-    let flush_output_sec output_sec img = match output_sec with
+    (list input_spec * list output_section_spec)     (* accumulated result *)
+let rec assign_inputs_to_output_sections acc inputs cur_output_sec last_input_sec script = 
+    let (discards, outputs) = acc in 
+    let flush_output_sec 
+     = fun output_sec -> match output_sec with
         Just (guard, addr, name, comp) -> 
             (* evaluate the guard *)
             if match guard with
@@ -714,33 +842,36 @@ let rec accumulate_image acc inputs cur_output_sec last_input_sec script =
                     IncludeInputSection(retainpol, fname, shndx, isec, img) -> 
                         (* is this section read-only? if it doesn't have shf_write, yes *)
                         0 = unsafe_natural_land isec.elf64_section_flags shf_write
-                    | Hole -> (* holes shouldn't prevent ONLY_IF_RO *) true
+                    | _ -> (* holes, common symbols and provided symbols shouldn't prevent ONLY_IF_RO *) true
                   end) comp
                 | OnlyIfRw -> List.all (fun comp_el -> match comp_el with
                     IncludeInputSection(retainpol, fname, shndx, isec, img) -> 
                         (* is this section read-only? if it doesn't have shf_write, yes *)
                         0 <> unsafe_natural_land isec.elf64_section_flags shf_write
-                    | Hole -> (* holes shouldn't prevent ONLY_IF_RO *) true
+                    | _ -> (* holes etc. shouldn't prevent ONLY_IF_RW *) true
                   end) comp
             end 
-            then add_output_section_to_image acc (guard, addr, name, comp)
-            else acc
-        | Nothing -> acc
+            then (* do it     *) (discards, (guard, addr, name, comp) :: outputs)
+            else (* ignore it *) acc
+        | Nothing -> (* for convenience, make this a no-op rather than error *)
+            (* failwith "internal error: flushing output section with no current output section" *)
+            acc
     end
     in
     match script with
-        [] -> flush_output_sec cur_output_sec acc
+        [] -> flush_output_sec cur_output_sec
         | element :: more_elements ->
             let do_nothing = (acc, cur_output_sec, last_input_sec) 
             in
-            let (new_acc, new_cur_output_sec, new_last_input_sec) = match element with
+            let (new_acc, new_cur_output_sec, new_last_input_sec)
+             = match element with
                 DefineSymbol(symdefpol, name, (symsize, syminfo, symother)) ->
                     (* Label the current section in the image 
                      * with a new symbol definition. If there isn't
                      * a current section, use the ABS section (what is that labelling?). *)
                     (* (Map.insert , , , ) *)
                     do_nothing
-                | AdvanceAddress(expr) -> 
+                | AdvanceAddress(advance_fn) ->
                      (* If we're inside a section, insert a hole, 
                       * else just update the logical address *)
                      match cur_output_sec with
@@ -749,29 +880,37 @@ let rec accumulate_image acc inputs cur_output_sec last_input_sec script =
                             (* (acc,  *)
                         | Just sec -> do_nothing
                      end
-                | MarkAndAlignDataSegment(maxpagesize, commonpagesize) -> 
+                | MarkAndAlignDataSegment(f (* maxpagesize, commonpagesize *)) -> 
                      (* The "data segment end" is a distinguished label, 
                       * so we can encode the whole thing into a conditional. *)
                      do_nothing
                 | MarkDataSegmentEnd -> do_nothing
-                | MarkDataSegmentRelroEnd(align, expr) -> do_nothing
+                | MarkDataSegmentRelroEnd(align_and_expr_fun) -> do_nothing
                 | OutputSection(outputguard, maybe_expr, name, sub_elements) -> 
                     (* If we have a current output section, finish it and add it to the image.
                      * Q. Where do guards ("ONLY_IF_RO" etc) get evaluated?
                      * A. Inside flush_output_sec. *)
-                    let acc_with_output_sec = flush_output_sec cur_output_sec acc 
+                    let acc_with_output_sec = flush_output_sec cur_output_sec
                     in
-                    let new_cur_output_sec = Just(outputguard, maybe_expr, name, [])
+                    let new_cur_output_sec = Just(outputguard, (* maybe_expr pos secs *) Nothing, name, [])
                     in
                     (* Recurse down the list of input queries. Note that 
                        output sections may not nest within other output sections. *)
-                    let new_acc = accumulate_image acc_with_output_sec inputs new_cur_output_sec last_input_sec sub_elements
+                    let final_acc
+                    = assign_inputs_to_output_sections acc inputs new_cur_output_sec last_input_sec sub_elements
+                    in
                     (* NOTE that this sub-accumulation will never add a new output section
                      * because output sections can't nest. *)
-                    in
                     (* FIXME: place any orphans. PROBLEM: linkers are allowed to differ in how they do this. *)
-                    (new_acc, cur_output_sec, last_input_sec) 
-                | DiscardSection(selector) -> do_nothing
+                    (final_acc, cur_output_sec, last_input_sec) 
+                | DiscardInput(selector) -> 
+                    let selected = selector inputs
+                    in
+                    let (discards, outputs) = acc in
+                    let _ = Missing_pervasives.errln ("Processing discard rule; selected " ^ (show (length selected))
+                        ^ " inputs.")
+                    in
+                    (([i | forall (i MEM selected) | true] ++ discards, outputs), cur_output_sec, last_input_sec)
                 | InputQuery(retainpol, sortpol, selector) -> 
                     (* Input queries can only occur within an output section. *)
                     match cur_output_sec with
@@ -793,19 +932,105 @@ let rec accumulate_image acc inputs cur_output_sec last_input_sec script =
                     end
             end
             in
-            accumulate_image (new_acc : elf_memory_image) (inputs : list input_spec) 
+            assign_inputs_to_output_sections new_acc (inputs : list input_spec)
                 (new_cur_output_sec : maybe output_section_spec)
                 (new_last_input_sec : maybe input_spec)
                 (more_elements : linker_control_script)
     end
 
-(* Now we need to write an interpreter for all that. *)
+val compute_def_use_and_gc : list output_section_spec -> list output_section_spec
+let compute_def_use_and_gc outputs = outputs
+
+val build_image : list output_section_spec -> elf_memory_image
+let build_image outputs = 
+    let (add_output_section : (natural * elf_memory_image) -> output_section_spec -> (natural * elf_memory_image))
+     = fun (pos, acc_img) ->
+        (fun (_, addr, secname, comp) -> 
+            let start_addr = match addr with 
+                Just a -> a (* already aligned, above *)
+                | Nothing -> pos
+            end
+            in
+            (* map out where we plumb in each section, accounting for their alignment *)
+            let (size, comp_addrs) = List.foldl (fun (next_free_off, off_list) -> (fun comp_el -> match comp_el with
+                  IncludeInputSection(retain_pol, fname, shndx, isec, img) -> 
+                        let aligned_start = align_up next_free_off isec.elf64_section_align
+                        in
+                        (aligned_start + isec.elf64_section_size, off_list ++ [aligned_start])
+                | IncludeCommonSymbol(retain_pol, fname, def, img) -> 
+                        let aligned_start = align_up next_free_off (natural_of_elf64_half def.def_syment.elf64_st_shndx)
+                        in
+                        (aligned_start + (natural_of_elf64_xword def.def_syment.elf64_st_size), off_list ++ [aligned_start])
+                | Hole(sz) -> (next_free_off + sz, off_list ++ [next_free_off])
+            end
+            )) (start_addr, []) comp
+            in
+            let concatenated_content = List.foldl (fun accum_pat -> (fun (comp_el, comp_addr) ->
+                let comp_el_pat = match comp_el with
+                    IncludeInputSection(retainpolicy, fname, shndx, isec, img) -> 
+                        (* We want to get the input section as a byte pattern *)
+                        let maybe_secname = elf_memory_image_element_coextensive_with_section shndx img 
+                        in
+                        match maybe_secname with
+                            Nothing -> failwith "impossible: no such section"
+                            | Just idstr -> match Map.lookup idstr img.elements with
+                                Just el -> el.contents
+                                | _     -> failwith "impossible: no such element"
+                            end
+                        end
+                    | Hole(sz) -> List.replicate (unsafe_nat_of_natural sz) Nothing
+                end
+                in
+                append_to_byte_pattern_at_offset (comp_addr - start_addr) accum_pat comp_el_pat
+            )) [] (zip comp comp_addrs)
+            in
+            let concat_sec_el = <|
+                Memory_image.startpos = Just(start_addr)
+              ; Memory_image.length   = Just(size)
+              ; Memory_image.contents = concatenated_content
+            |>
+            in
+            (* make a new element in the image *)
+            (start_addr + size, <|
+                elements   = Map.insert secname concat_sec_el acc_img.elements
+                (* tag it as a section, and transfer any tags *)
+             ;  by_range   = acc_img.by_range (* FIXME *)
+             ;  by_tag     = acc_img.by_tag   (* FIXME *)
+             |>)
+        )
+    in
+    let (_, img) = List.foldl add_output_section (0, empty_elf_memory_image) outputs
+    in
+    img
+
 val interpret_linker_control_script : 
-    linker_control_script 
+    linker_control_script
+    -> abi any_abi_feature
     -> list input_spec 
     -> elf_memory_image
-let interpret_linker_control_script script inputs = 
-    accumulate_image empty_elf_memory_image inputs Nothing Nothing script
+let interpret_linker_control_script script a inputs = 
+    let (discards, outputs) = assign_inputs_to_output_sections ([], []) inputs Nothing Nothing script
+    in 
+    (* Print the link map's "discarded input sections" output. *)
+    let _ = Missing_pervasives.outln "Discarded input sections\n"
+    in
+    let discard_line = fun i -> (match i with
+        InputSection(s) -> 
+            let lpadded_secname = " " ^ s.secname
+            in
+            lpadded_secname ^ (pad_and_maybe_newline 16 lpadded_secname) ^ "0x0000000000000000" (* FIXME *)
+            ^ "        0x" ^ (hex_string_of_natural s.isec.elf64_section_size) ^ " "
+            ^ s.fname ^ "\n"
+        | Common(symname, img, def) -> "" (* don't print discard lines for discarded commons *)
+    end)
+    in
+    let _ = Missing_pervasives.outs (List.foldl (fun str -> (fun input -> (str ^ (discard_line input)))) "" discards)
+    in
+    let outputs_after_gc = compute_def_use_and_gc outputs
+    in
+    let img = build_image outputs_after_gc
+    in
+    img
 
     (* What is the output of a linker script?
      * Recall that we need multiple passes:

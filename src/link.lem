@@ -54,7 +54,7 @@ let expand_sections a item = match item with
     (RelocELF(img), (fname, blob, origin), input_opts) -> 
         (* One item per input *user* section, i.e. not including relocs, strtab, etc. *)
         [InputSection(<| 
-            fname = fname 
+            fname = short_string_of_linkable_item item
         ;   img   = img
         ;   shndx = shndx
         ;   secname = section_name isec img
@@ -69,16 +69,12 @@ let expand_sections a item = match item with
          * been done by discarding unreferenced inputs.  *)
         let common_symbols = all_common_symbols img
         in
-        let pad_and_maybe_newline
-         = fun str -> let padlen = 20 - (naturalFromNat (stringLength str)) in
-              if padlen <= 1 then "\n                    " else toString (Missing_pervasives.replicate padlen #' ')
-        in
         [Common(fname, img, def) | forall (def MEM common_symbols) | 
             let _ = Missing_pervasives.outln (def.def_symname
-                ^ (pad_and_maybe_newline def.def_symname)
+                ^ (pad_and_maybe_newline 20 def.def_symname)
                 ^ (let hexstr = "0x" ^ (hex_string_of_natural (natural_of_elf64_xword def.def_syment.elf64_st_size))
                   in
-                  hexstr ^ (pad_and_maybe_newline hexstr)
+                  hexstr ^ (pad_and_maybe_newline 20 hexstr)
                   )
                 ^ 
                 fname)
@@ -163,6 +159,6 @@ let link script a options linkables =
     in
     let input_sections = Missing_pervasives.list_concat_map (expand_sections a) linkables_not_discarded
     in
-    let output_image = interpret_linker_control_script script input_sections 
+    let output_image = interpret_linker_control_script script a input_sections 
     in
     output_image
