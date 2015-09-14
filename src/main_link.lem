@@ -32,6 +32,7 @@ open import String_table
 open import Abi_amd64_elf_header
 open import Abi_amd64_serialisation
 open import Abis
+import Gnu_ext_abi
 
 open import Command_line
 open import Input_list
@@ -107,7 +108,9 @@ let _ =
     let guessed_abi = find (fun a -> a.is_valid_elf_header eout.elf64_file_header) all_abis
     in
     let a = match guessed_abi with
-      Just a -> a
+      Just a -> if get_elf64_osabi eout.elf64_file_header = elf_osabi_gnu 
+                    then Gnu_ext_abi.gnu_extend a 
+                    else a
       | Nothing -> failwith "output file does not conform to any known ABI"
     end
     in
