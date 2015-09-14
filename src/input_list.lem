@@ -66,6 +66,15 @@ instance (Show input_blob)
     let show = string_of_input_blob
 end
 
+val short_string_of_input_item : input_item -> string
+let short_string_of_input_item item = 
+    let (fname, blob, (u, origin)) = item
+    in
+    match origin with
+        InArchive(aid, aidx, aname) :: _ -> aname ^ "(" ^ fname ^ ")"
+        | _ -> fname
+    end
+
 (* About symbol resolution and "suppliers".
  * 
  * Groups change this.

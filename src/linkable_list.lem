@@ -42,18 +42,24 @@ type linkable_object = RelocELF of elf_memory_image    (* memory image without a
 
 val string_of_linkable_object : linkable_object -> string
 let string_of_linkable_object l = match l with
-    RelocELF(_) -> "a relocatable file (...)"
+    RelocELF(_)    -> "a relocatable file (...)"
     | SharedELF(_) -> "a shared library (...)"
     | ScriptAST(_) -> "a linker script (...)"
-end
-
-instance (Show linkable_object)
-    let show = string_of_linkable_object
 end
 
 (* We keep the original input item around, hence the filename and byte sequence
  * and options. *)
 type linkable_item = linkable_object * input_item * input_options
+
+val short_string_of_linkable_item : linkable_item -> string
+let short_string_of_linkable_item item = 
+    let (obj, inp, opts) = item
+    in
+    short_string_of_input_item inp
+
+instance (Show linkable_object)
+    let show = string_of_linkable_object
+end
 
 type linkable_list = list linkable_item
 
@@ -284,9 +290,9 @@ val resolve_all :
 let resolve_all linkables all_defs oracle refs = 
     List.map (fun (ref_idx, ref, ref_linkable) -> ((ref_idx, ref, ref_linkable), (oracle linkables all_defs (ref_idx, ref, ref_linkable)))) refs
 
-(* To accumulate which inputs are needed, we build a list of all symbol definitions 
- * in the linkable list, then  We work with a list of undefineds, starting with this in the 
- * forced-output objects. We then iterate. *)
+(* To accumulate which inputs are needed, we work with a list of undefineds, starting with those
+ * in the  forced-output objects. We then iteratively build a list of all needed symbol definitions,
+ * pulling in the objects that contain them, until we reach a fixed point. *)
 val resolve_undefs_in_one_object : 
     linkable_list
     -> Map.map string (list (natural * symbol_definition * linkable_item))                (* all definitions *)
