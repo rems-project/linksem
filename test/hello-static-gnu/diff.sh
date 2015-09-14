@@ -24,3 +24,8 @@ diff -u <( cat "$outfile" | \
 sed -n '/^Allocating common symbols/,/Discarded input sections/ p' | sort | cut -c1-38 ) \
 <( cat "$(dirname "$0")"/hello.map | \
 sed -n '/^Allocating common symbols/,/Discarded input sections/ p' | sort | cut -c1-38 )
+
+diff -u <( cat "$outfile" | \
+sed -n '/^Discarded input sections/,/Memory Configuration/ p' | sort ) \
+<( cat "$(dirname "$0")"/hello.map | \
+sed -n '/^Discarded input sections/,/Memory Configuration/ p' | sort )

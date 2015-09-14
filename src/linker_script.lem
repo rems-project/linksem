@@ -831,7 +831,7 @@ val assign_inputs_to_output_sections :
     linker_control_script -> 
     (list input_spec * list output_section_spec)     (* accumulated result *)
 let rec assign_inputs_to_output_sections acc inputs cur_output_sec last_input_sec script = 
-    let (discards, outputs) = acc in 
+    let (rev_discards, rev_outputs) = acc in 
     let flush_output_sec 
      = fun output_sec -> match output_sec with
         Just (guard, addr, name, comp) -> 
@@ -851,7 +851,7 @@ let rec assign_inputs_to_output_sections acc inputs cur_output_sec last_input_se
                     | _ -> (* holes etc. shouldn't prevent ONLY_IF_RW *) true
                   end) comp
             end 
-            then (* do it     *) (discards, (guard, addr, name, comp) :: outputs)
+            then (* do it     *) (rev_discards, (guard, addr, name, comp) :: rev_outputs)
             else (* ignore it *) acc
         | Nothing -> (* for convenience, make this a no-op rather than error *)
             (* failwith "internal error: flushing output section with no current output section" *)
@@ -906,11 +906,11 @@ let rec assign_inputs_to_output_sections acc inputs cur_output_sec last_input_se
                 | DiscardInput(selector) -> 
                     let selected = selector inputs
                     in
-                    let (discards, outputs) = acc in
+                    let (rev_discards, rev_outputs) = acc in
                     let _ = Missing_pervasives.errln ("Processing discard rule; selected " ^ (show (length selected))
                         ^ " inputs.")
                     in
-                    (([i | forall (i MEM selected) | true] ++ discards, outputs), cur_output_sec, last_input_sec)
+                    (((List.reverse [i | forall (i MEM selected) | true]) ++ rev_discards, rev_outputs), cur_output_sec, last_input_sec)
                 | InputQuery(retainpol, sortpol, selector) -> 
                     (* Input queries can only occur within an output section. *)
                     match cur_output_sec with
@@ -938,6 +938,8 @@ let rec assign_inputs_to_output_sections acc inputs cur_output_sec last_input_se
                 (more_elements : linker_control_script)
     end
 
+(* NOTE: this is also responsible for deleting any PROVIDEd symbols that 
+ * were not actually referenced. *)
 val compute_def_use_and_gc : list output_section_spec -> list output_section_spec
 let compute_def_use_and_gc outputs = outputs
 
@@ -1003,6 +1005,14 @@ let build_image outputs =
     in
     img
 
+let rec consecutive_commons rev_acc l = 
+    match l with
+    [] -> reverse rev_acc
+    | IncludeCommonSymbol(pol, fname, def, img) :: rest -> 
+        consecutive_commons ((pol, fname, def, img) :: rev_acc) rest
+    | _ -> reverse rev_acc
+end
+
 val interpret_linker_control_script : 
     linker_control_script
     -> abi any_abi_feature
@@ -1016,19 +1026,123 @@ let interpret_linker_control_script script a inputs =
     in
     let discard_line = fun i -> (match i with
         InputSection(s) -> 
-            let lpadded_secname = " " ^ s.secname
+            let lpadded_secname = (" " ^ s.secname)
             in
-            lpadded_secname ^ (pad_and_maybe_newline 16 lpadded_secname) ^ "0x0000000000000000" (* FIXME *)
+            lpadded_secname ^ (padding_and_maybe_newline 16 lpadded_secname) ^ "0x0000000000000000" (* FIXME *)
             ^ "        0x" ^ (hex_string_of_natural s.isec.elf64_section_size) ^ " "
             ^ s.fname ^ "\n"
         | Common(symname, img, def) -> "" (* don't print discard lines for discarded commons *)
     end)
     in
-    let _ = Missing_pervasives.outs (List.foldl (fun str -> (fun input -> (str ^ (discard_line input)))) "" discards)
+    let _ = Missing_pervasives.outs (List.foldl (fun str -> (fun input -> (str ^ (discard_line input)))) "" (reverse discards))
     in
     let outputs_after_gc = compute_def_use_and_gc outputs
     in
+    let _ = Missing_pervasives.outs "Memory Configuration\n\nName             Origin             Length             Attributes\n*default*        0x0000000000000000 0xffffffffffffffff\n\n"
+    in
+    let _ = Missing_pervasives.outln "Linker script and memory map\n"
+    in
+    (* FIXME: print LOAD and START_GROUP trace *)
     let img = build_image outputs_after_gc
+    in
+    (* The link map output for the section/address assignment basically mirrors our notion of 
+     * output section composition.  In the following:
+     
+                0x0000000000400000                PROVIDE (__executable_start, 0x400000)
+                0x0000000000400190                . = (0x400000 + SIZEOF_HEADERS)
+
+.interp
+ *(.interp)
+
+.note.ABI-tag   0x0000000000400190       0x20
+ .note.ABI-tag  0x0000000000400190       0x20 crt1.o
+
+.note.gnu.build-id
+                0x00000000004001b0       0x24
+ *(.note.gnu.build-id)
+ .note.gnu.build-id
+                0x00000000004001b0       0x24 crt1.o
+
+.hash
+ *(.hash)
+
+.gnu.hash
+ *(.gnu.hash)
+
+... we can see that 
+
+        - symbol provision, holes and output sections all get lines
+        
+        - each output section appears with its name left-aligned, and its address,
+             if any, appearing afterwards; if so, the section's total size also follows.
+        
+        - each input query is printed verbatim, e.g. "*(.note.gnu.build-id)"
+        
+        - underneath this, a line is printed for each input section that was included,
+             with its address and size. This can spill onto a second line in the usual way.
+        
+        - holes are shown as "*fill*"
+        
+        - provided symbols are shown as in the linker script source.
+        
+    PROBLEM: we don't have the script in source form, so we can't print the queries verbatim.
+    I should really annotate each query with its source form; when the script is parsed from source,
+    this can be inserted automatically. For the moment, what to do? I could annotate each script
+    element manually. For the moment, for diffing purposes, filter out lines with brackets.
+     
+     *)
+    let section_lines output_sec = 
+        let (guard, maybe_addr, name, compos) = output_sec
+        in
+        name ^ (padded_and_maybe_newline 16 name) ^ match maybe_addr with 
+            Just(addr) -> "0x" ^ (hex_string_of_natural addr) ^ "     0x" ^ 
+                (hex_string_of_natural (output_sec_composition_size compos))
+            | Nothing -> ""
+        end ^ "\n" ^ (
+            (* We need to compute a special header for all contiguous runs of COMMON symbols.
+             * This means we synthesise the header for each common symbol that is not preceded
+             * by another common symbol. But to compute the header, we need to collect the whole
+             * run of common symbols beginning at that point. *)
+            let common_range_starting_at = (fun (i : natural) -> 
+                if i < 1 then []
+                else match drop (natFromNatural (i - 1)) compos with
+                    IncludeCommonSymbol(pol1, fname1, def1, img1) :: IncludeCommonSymbol(pol2, fname2, def2, img2) :: rest -> []
+                    | _ :: IncludeCommonSymbol(pol, fname, def, img) :: rest -> 
+                        consecutive_commons [] (IncludeCommonSymbol(pol, fname, def, img) :: rest)
+                    | _ :: _ :: rest -> []
+                    | [_] -> failwith "impossible: singleton list"
+                    end
+            )
+            in
+            let common_range_header = fun fname -> (fun common_list -> 
+                let sz
+                 = foldl (+) 0 (List.map (fun (pol, fname, def, img) -> natural_of_elf64_xword def.def_syment.elf64_st_size) common_list)
+                in
+                ("COMMON", right_padded_to 10 (hex_string_of_natural sz), fname))
+            in
+            let line_quads = mapMaybe (fun comp_el -> 
+                match comp_el with
+                      IncludeInputSection(pol, fname, shndx, isec, img) -> 
+                        Just(isec.elf64_section_name_as_string, "0x" ^ (hex_string_of_natural isec.elf64_section_size), fname, fname)
+                    | IncludeCommonSymbol(pol, fname, def, img) -> 
+                        Just("                ", "", "    " ^ def.def_symname, fname)
+                    | Hole(sz) -> Just("*fill*", right_padded_to 10 (hex_string_of_natural sz), "", "")
+                    | ProvideSymbol(pol, name, spec) -> Nothing
+                end) compos
+            in
+            let line_from_triple = fun (secname, szstr, rhs) -> 
+                (right_padded_to 16 secname) ^ "0xdeadbeefdeadbeef" ^ (left_padded_to 10 szstr) ^ " " ^ rhs ^ "\n"
+            in
+            List.foldl (^) "" (mapi (fun i -> (fun (secname, strsz, rhs, fname) -> 
+                match common_range_starting_at (naturalFromNat i) with
+                    [] -> ""
+                    | l -> line_from_triple (common_range_header fname l)
+                end
+                ^ line_from_triple (" " ^ secname, left_padded_to 10 strsz, rhs)
+            )) line_quads)
+        )
+    in
+    let _ = Missing_pervasives.outs (List.foldl (fun str -> (fun output -> (str ^ (section_lines output)))) "" (reverse outputs))
     in
     img
 

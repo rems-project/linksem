@@ -130,7 +130,7 @@ let natural_of_decimal_string s =
 
 val hex_string_of_natural : natural -> string
 let rec hex_string_of_natural n = 
-    if n <= 16 then toString [hex_char_of_nibble n]
+    if n < 16 then toString [hex_char_of_nibble n]
     else (hex_string_of_natural (n / 16)) ^ (toString [hex_char_of_nibble (n mod 16)])
 
 val natural_of_bool : bool -> natural
@@ -511,12 +511,42 @@ let unsafe_string_take m str =
   let m = unsafe_nat_of_natural m in
     String.toString (List.take m (String.toCharList str))
 
-(** [pad_and_maybe_newline w s] pads string [s] to [w] characters, 
-  * unless [s] is of length [w - 1] or greater, in which case it is preceded by a newline.
+(** [padding_and_maybe_newline w s] creates enough spaces to pad string [s] to [w] characters, 
+  * unless [s] is of length [w - 1] or greater, in which case it generates [w] spaces preceded by a newline.
   * This style of formatting is used by the GNU linker in its link map output, so we
-  * reproduce it using this function. *)
-val pad_and_maybe_newline : natural -> string -> string
-let pad_and_maybe_newline width str = 
+  * reproduce it using this function. Note that string [s] does not appear in the
+  * output. *)
+val padding_and_maybe_newline : natural -> string -> string
+let padding_and_maybe_newline width str = 
     let padlen = width - (naturalFromNat (stringLength str)) in
     (if padlen <= 1 then "\n" else "")
      ^ (toString (replicate (if padlen <= 1 then width else padlen) #' '))
+     
+(** [padded_and_maybe_newline w s] pads string [s] to [w] characters, 
+  * unless [s] is of length [w - 1] or greater, in which case the padding consists of
+  * [w] spaces preceded by a newline.
+  * This style of formatting is used by the GNU linker in its link map output, so we
+  * reproduce it using this function. *)
+val padded_and_maybe_newline : natural -> string -> string
+let padded_and_maybe_newline width str = 
+    str ^ (padding_and_maybe_newline width str)
+
+(** [padding_to w s] creates enough spaces to pad string [s] to [w] characters, 
+  * or 0 characters if [s] is of length [w] or greater. Note that string [s] does not appear in the
+  * output. *)
+val padding_to : natural -> string -> string
+let padding_to width str = 
+    let padlen = width - (naturalFromNat (stringLength str)) in
+    if padlen <= 0 then "" else (toString (replicate padlen #' '))
+
+(** [left_padded_to w s] left-pads string [s] to [w] characters, 
+  * returning it unchanged if [s] is of length [w] or greater. *)
+val left_padded_to : natural -> string -> string
+let left_padded_to width str = 
+    (padding_to width str) ^ str
+    
+(** [right_padded_to w s] right-pads string [s] to [w] characters, 
+  * returning it unchanged if [s] is of length [w] or greater. *)
+val right_padded_to : natural -> string -> string
+let right_padded_to width str = 
+    str ^ (padding_to width str)

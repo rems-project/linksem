@@ -70,11 +70,10 @@ let expand_sections a item = match item with
         let common_symbols = all_common_symbols img
         in
         [Common(fname, img, def) | forall (def MEM common_symbols) | 
-            let _ = Missing_pervasives.outln (def.def_symname
-                ^ (pad_and_maybe_newline 20 def.def_symname)
+            let _ = Missing_pervasives.outln ((padded_and_maybe_newline 20 def.def_symname)
                 ^ (let hexstr = "0x" ^ (hex_string_of_natural (natural_of_elf64_xword def.def_syment.elf64_st_size))
                   in
-                  hexstr ^ (pad_and_maybe_newline 20 hexstr)
+                  padded_and_maybe_newline 20 hexstr
                   )
                 ^ 
                 fname)

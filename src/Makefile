@@ -78,6 +78,7 @@ LEM_ABI_SRC := memory_image.lem \
 	abis/amd64/abi_amd64.lem \
 	abis/x86/abi_x86_relocation.lem \
 	abis/power64/abi_power64_relocation.lem \
+	gnu_extensions/gnu_ext_abi.lem \
 	abis/abis.lem
 	
 LEM_GNU_SRC := gnu_extensions/gnu_ext_types_native_uint.lem \
@@ -86,8 +87,7 @@ LEM_GNU_SRC := gnu_extensions/gnu_ext_types_native_uint.lem \
 	gnu_extensions/gnu_ext_symbol_versioning.lem \
 	gnu_extensions/gnu_ext_program_header_table.lem \
 	gnu_extensions/gnu_ext_section_to_segment_mapping.lem \
-	gnu_extensions/gnu_ext_note.lem \
-    gnu_extensions/gnu_ext_abi.lem
+	gnu_extensions/gnu_ext_note.lem
 
 LEM_LINK_SRC := elf_memory_image.lem memory_image_orderings.lem elf_memory_image_of_elf64_file.lem command_line.lem input_list.lem linkable_list.lem linker_script.lem link.lem
 
