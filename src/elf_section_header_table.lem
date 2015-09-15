@@ -283,6 +283,10 @@ let {ocaml} string_of_section_flags os proc f =
     " M "
   else if f = shf_merge + shf_alloc then
     " AM"
+  else if f = shf_merge + shf_alloc + shf_strings then
+    "AMS"
+  else if f = shf_alloc + shf_execinstr + shf_group then
+    "AXG"
   else if f = shf_strings then
     "  S"
   else if f = shf_merge + shf_strings then

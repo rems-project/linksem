@@ -266,12 +266,12 @@ let string_of_dynamic_tag tag os_additional_ranges os proc =
     "PREINIT_ARRAY"
   else if tag = dt_preinit_arraysz then
     "PREINIT_ARRAYSZ"
+  else if tag >= dt_loproc && tag <= dt_hiproc then
+    proc tag
   else if tag >= dt_loos && tag <= dt_hios then
     os tag
   else if os_additional_ranges tag then
     os tag
-  else if tag >= dt_loproc && tag <= dt_hiproc then
-    proc tag
   else
     "Invalid dynamic section tag"
     
@@ -364,14 +364,14 @@ let tag_correspondence_of_tag tag os_additional_ranges os proc =
     return C_Ptr
   else if tag = dt_preinit_arraysz then
     return C_Val
-  else if tag >= dt_loos && tag <= dt_hios then
-    os tag
   else if tag >= dt_loproc && tag <= dt_hiproc then
     proc tag
+  else if tag >= dt_loos && tag <= dt_hios then
+    os tag
   else if os_additional_ranges tag then
     os tag
   else
-    fail "tag_correspondence_of_tag: invalid dynamic section tag"
+    fail ("tag_correspondence_of_tag: invalid dynamic section tag: " ^ show tag)
     
 (** [read_elf32_dyn endian bs0 os_additional_ranges os proc] reads an [elf32_dyn]
   * record from byte sequence [bs0], assuming endianness [endian].  As mentioned
@@ -571,7 +571,11 @@ let string_of_dt_flag flag =
     "TEXTREL"
   else if check_flag flag df_static_tls then
     "STATIC_TLS"
-  else
+  else if check_flag flag (df_bindnow + df_static_tls) then
+    "BIND_NOW STATIC_TLS"
+  else if check_flag flag (df_static_tls + df_symbolic) then
+    "SYMBOLIC STATIC_TLS"
+  else (* XXX: add more as needed *)
     "Invalid dynamic section flag"
     
 (** [rel_type] represents the two types of relocation records potentially present
@@ -598,19 +602,22 @@ let string_of_rel_type r =
   * and ELF64.
   *)
 type dyn_value 'addr 'size
-  = Address of 'addr     (** An address. *)
-  | Size    of 'size     (** A size (in bytes). *)
-  | FName   of string    (** A filename. *)
-  | Path    of string    (** A path to some directory. *)
-  | RPath   of string    (** A "run path". *)
-  | RunPath of string    (** A "run path". *)
-  | Library of string    (** A library path. *)
-  | Flags1  of natural   (** Flags. *)
-  | Flags   of natural   (** Flags. *)
-  | Numeric of natural   (** An uninterpreted numeric value. *)
-  | RelType of rel_type  (** A relocation entry type. *)
-  | Null                 (** A null (0) value. *)
-  | Ignored              (** An ignored value. *)
+  = Address   of 'addr    (** An address. *)
+  | Size      of 'size    (** A size (in bytes). *)
+  | FName     of string   (** A filename. *)
+  | SOName    of string   (** A shared object name. *)
+  | Path      of string   (** A path to some directory. *)
+  | RPath     of string   (** A "run path". *)
+  | RunPath   of string   (** A "run path". *)
+  | Library   of string   (** A library path. *)
+  | Flags1    of natural  (** Flags. *)
+  | Flags     of natural  (** Flags. *)
+  | Numeric   of natural  (** An uninterpreted numeric value. *)
+  | Checksum  of natural  (** A checksum value *)
+  | RelType   of rel_type (** A relocation entry type. *)
+  | Timestamp of natural  (** A timestamp value. *)
+  | Null                  (** A null (0) value. *)
+  | Ignored               (** An ignored value. *)
   
 (** [elf32_dyn_value] and [elf64_dyn_value] are specialisations of [dyn_value]
   * fixing the correct types for the ['addr] and ['size] type variables.
@@ -700,15 +707,17 @@ let get_string_table_of_elf64_dyn_section endian dyns sht bs0 =
       | _        -> fail "get_string_table_of_elf64_dyn_section: multiple string table entries"
     end
     
-(** [get_value_of_elf32_dyn dyn os_additional_ranges os stab] returns the value
+(** [get_value_of_elf32_dyn dyn os_additional_ranges os proc stab] returns the value
   * stored in a dynamic section entry [dyn], using [os_additional_ranges] and
   * [os] to decode ABI-reserved tags.  String table [stab] is used to correctly
   * decode library and run paths, etc.
   * May fail.
   *)
 val get_value_of_elf32_dyn : elf32_dyn -> (natural -> bool) ->
-  (elf32_dyn -> error elf32_dyn_value) -> string_table -> error elf32_dyn_value
-let get_value_of_elf32_dyn dyn os_additional_ranges os stab =
+  (elf32_dyn -> string_table -> error elf32_dyn_value) ->
+    (elf32_dyn -> string_table -> error elf32_dyn_value) ->
+    string_table -> error elf32_dyn_value
+let get_value_of_elf32_dyn dyn os_additional_ranges os proc stab =
   let tag = naturalFromInteger (integer_of_elf32_sword dyn.elf32_dyn_tag) in
     if tag = dt_null then
       return Null
@@ -813,7 +822,7 @@ let get_value_of_elf32_dyn dyn os_additional_ranges os stab =
       end >>= fun off ->
         let off = natural_of_elf32_word off in
         String_table.get_string_at off stab >>= fun str ->
-        return (FName str)
+        return (SOName str)
     else if tag = dt_rpath then
       match dyn.elf32_dyn_d_un with
         | D_Val v     -> return v
@@ -861,7 +870,7 @@ let get_value_of_elf32_dyn dyn os_additional_ranges os stab =
     else if tag = dt_debug then
       return Null
     else if tag = dt_textrel then
-      return Ignored
+      return Null
     else if tag = dt_jmprel then
       match dyn.elf32_dyn_d_un with
         | D_Val     v -> fail "get_value_of_elf32_dyn_entry: JMPREL must be a PTR"
@@ -931,20 +940,26 @@ let get_value_of_elf32_dyn dyn os_additional_ranges os stab =
         | D_Ignored i -> fail "get_value_of_elf32_dyn_entry: PREINIT_ARRAYSZ must be a VAL"
       end >>= fun sz ->
       return (Size sz)
+    else if tag >= dt_loproc && tag <= dt_hiproc then
+      proc dyn stab
+    else if tag >= dt_loos && tag <= dt_hios then
+      os dyn stab
     else if os_additional_ranges tag then
-      os dyn
+      os dyn stab
     else
       fail "get_value_of_elf32_dyn: unrecognised tag type"
       
-(** [get_value_of_elf64_dyn dyn os_additional_ranges os stab] returns the value
+(** [get_value_of_elf64_dyn dyn os_additional_ranges os proc stab] returns the value
   * stored in a dynamic section entry [dyn], using [os_additional_ranges] and
   * [os] to decode ABI-reserved tags.  String table [stab] is used to correctly
   * decode library and run paths, etc.
   * May fail.
   *)
 val get_value_of_elf64_dyn : elf64_dyn -> (natural -> bool) ->
-  (elf64_dyn -> error elf64_dyn_value) -> string_table -> error elf64_dyn_value
-let get_value_of_elf64_dyn dyn os_additional_ranges os_dyn stab =
+  (elf64_dyn -> string_table -> error elf64_dyn_value) ->
+    (elf64_dyn -> string_table -> error elf64_dyn_value) ->
+    string_table -> error elf64_dyn_value
+let get_value_of_elf64_dyn dyn os_additional_ranges os_dyn proc_dyn stab =
   let tag = naturalFromInteger (integer_of_elf64_sxword dyn.elf64_dyn_tag) in
     if tag = dt_null then
       return Null
@@ -1049,7 +1064,7 @@ let get_value_of_elf64_dyn dyn os_additional_ranges os_dyn stab =
       end >>= fun off ->
         let off = natural_of_elf64_xword off in
         String_table.get_string_at off stab >>= fun str ->
-        return (FName str)
+        return (SOName str)
     else if tag = dt_rpath then
       match dyn.elf64_dyn_d_un with
         | D_Val v     -> return v
@@ -1097,7 +1112,7 @@ let get_value_of_elf64_dyn dyn os_additional_ranges os_dyn stab =
     else if tag = dt_debug then
       return Null
     else if tag = dt_textrel then
-      return Ignored
+      return Null
     else if tag = dt_jmprel then
       match dyn.elf64_dyn_d_un with
         | D_Val     v -> fail "get_value_of_elf64_dyn_entry: JMPREL must be a PTR"
@@ -1167,7 +1182,11 @@ let get_value_of_elf64_dyn dyn os_additional_ranges os_dyn stab =
         | D_Ignored i -> fail "get_value_of_elf64_dyn_entry: PREINIT_ARRAYSZ must be a VAL"
       end >>= fun sz ->
       return (Size sz)
+    else if tag >= dt_loproc && tag <= dt_hiproc then
+      proc_dyn dyn stab
+    else if tag >= dt_loos && tag <= dt_hios then
+      os_dyn dyn stab
     else if os_additional_ranges tag then
-      os_dyn dyn
+      os_dyn dyn stab
     else
       fail "get_value_of_elf64_dyn: unrecognised tag type"
