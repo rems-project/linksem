@@ -154,7 +154,7 @@ let link script a options linkables =
         else Nothing
     )) linkables
     in
-    let _ = Missing_pervasives.outln "Allocating common symbols\nCommon symbol       size              file\n"
+    let _ = Missing_pervasives.outln "\nAllocating common symbols\nCommon symbol       size              file\n"
     in
     let input_sections = Missing_pervasives.list_concat_map (expand_sections a) linkables_not_discarded
     in

@@ -35,11 +35,11 @@ sed -n '/^Allocating common symbols/,/Discarded input sections/ p' | sort | cut 
 sed -n '/^Allocating common symbols/,/Discarded input sections/ p' | sort | cut -c1-38 )
 
 diff -u <( cat "$outfile" | \
-sed -n '/^Discarded input sections/,/Memory Configuration/ p' ) \
+sed -n '/^Discarded input sections/,/Memory Configuration/ p' | sort ) \
 <( cat "$(dirname "$0")"/"$basename".map | \
-sed -n '/^Discarded input sections/,/Memory Configuration/ p' )
+sed -n '/^Discarded input sections/,/Memory Configuration/ p' | sort )
 
 diff -u <( cat "$outfile" | \
-sed -n '/^\(Linker script and m\|M\)emory map/,/OUTPUT/ p' | sort ) \
-<( cat "$(dirname "$0")"/"$basename".map | \
-sed -n '/^\(Linker script and m\|M\)emory map/,/OUTPUT/ p' | sort )
+sed -n '/^\(Linker script and m\|M\)emory map/,/OUTPUT/ p' ) \
+<( cat "$(dirname "$0")"/"$basename".map | "$(dirname "$( readlink -f "$0" )" )"/bfd-filter.sh | \
+sed -n '/^\(Linker script and m\|M\)emory map/,/OUTPUT/ p' )

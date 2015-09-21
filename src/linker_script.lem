@@ -997,9 +997,10 @@ let rec build_image acc pos outputs_by_name script =
             let size = end_addr - start_addr
             in
             let _ = Missing_pervasives.outln (
-                (space_padded_and_maybe_newline 16 secname) ^ (if List.null comp then "" else
+                if List.null comp then secname else (
+                    ((space_padded_and_maybe_newline 16 secname) ^
                     ("0x" ^ (left_zero_padded_to 16 (hex_string_of_natural start_addr))) ^ 
-                    (left_space_padded_to 10 ("0x" ^ (hex_string_of_natural size)))
+                    (left_space_padded_to 10 ("0x" ^ (hex_string_of_natural size))))
                 )
             )
             in
@@ -1051,6 +1052,7 @@ let rec build_image acc pos outputs_by_name script =
               ; Memory_image.contents = concatenated_content
             |>
             in
+            let _ = Missing_pervasives.outln "" in
             (* make a new element in the image *)
             (start_addr + size, <|
                 elements   = Map.insert secname concat_sec_el acc_img.elements
@@ -1159,7 +1161,7 @@ let interpret_linker_control_script script a inputs =
         List.foldl insert_fun Map.empty outputs)
     in
     (* Print the link map's "discarded input sections" output. *)
-    let _ = Missing_pervasives.outln "Discarded input sections\n"
+    let _ = Missing_pervasives.outln "\nDiscarded input sections\n"
     in
     let discard_line = fun i -> (match i with
         InputSection(s) -> 
@@ -1175,9 +1177,9 @@ let interpret_linker_control_script script a inputs =
     in
     let outputs_by_name_after_gc = compute_def_use_and_gc outputs_by_name
     in
-    let _ = Missing_pervasives.outs "Memory Configuration\n\nName             Origin             Length             Attributes\n*default*        0x0000000000000000 0xffffffffffffffff\n\n"
+    let _ = Missing_pervasives.outs "\nMemory Configuration\n\nName             Origin             Length             Attributes\n*default*        0x0000000000000000 0xffffffffffffffff\n"
     in
-    let _ = Missing_pervasives.outln "Linker script and memory map\n"
+    let _ = Missing_pervasives.outln "\nLinker script and memory map\n"
     in
     (* FIXME: print LOAD and START_GROUP trace *)
     let (img, outputs_by_name_with_position) = build_image empty_elf_memory_image 0 outputs_by_name_after_gc script
