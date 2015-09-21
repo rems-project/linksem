@@ -3,9 +3,9 @@ DIRNAME := $(realpath .)
 BASENAME := $(shell basename "$(DIRNAME)" | sed 's/-.*//' )
 # $(warning BASENAME is $(BASENAME))
 
-OUTPUTS := $(BASENAME) $(BASENAME).map $(BASENAME).cmd $(BASENAME).repeat-cmd
+OUTPUTS := $(BASENAME) $(BASENAME).map $(BASENAME).cmd $(BASENAME).repeat-cmd $(BASENAME).collect-cmd $(BASENAME).env
 
-default: $(OUTPUTS)
+default: $(OUTPUTS) repeat
 
 LDFLAGS := -static
 
@@ -27,9 +27,9 @@ $(BASENAME).cmd $(BASENAME).map $(BASENAME): build-$(BASENAME)
 # Which compiler we need to use to drive the linker
 # depends on the source binary.
 ifeq ($(shell basename "$(DIRNAME)" | sed 's/.*c++.*/c++/'),c++)
-COMPILER := c++
+COMPILER := $(CXX)
 else
-COMPILER := cc
+COMPILER := $(CC)
 endif
 $(warning COMPILER is $(COMPILER))
 
@@ -74,4 +74,4 @@ $(BASENAME).repeat-cmd: $(BASENAME).collect-cmd $(BASENAME).env
 repeat: $(BASENAME).o $(BASENAME).repeat-cmd
 	eval $$( cat $(BASENAME).repeat-cmd )
 clean:
-	rm -f $(OUTPUTS)
+	rm -f $(OUTPUTS) *.o *.a
