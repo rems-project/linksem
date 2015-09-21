@@ -114,11 +114,11 @@ type symbol_spec = (natural * unsigned_char * unsigned_char) (* size, info, othe
 
 type script_element =
   DefineSymbol of (symbol_def_policy * string * symbol_spec)
-| AdvanceAddress of (* address_expr -- WHY did I want this? *) (natural -> natural -> natural)
-| MarkAndAlignDataSegment of (list output_section_spec -> (natural * natural)) (* maxpagesize, commonpagesize *)
+| AdvanceAddress of address_expr_fn
+| MarkAndAlignDataSegment of (natural * natural) (* maxpagesize, commonpagesize *)
 | MarkDataSegmentEnd
 | MarkDataSegmentRelroEnd of ((list output_section_spec) -> (natural * (natural -> natural)))
-| OutputSection of (output_guard * (maybe (* address_expr *) (natural -> natural -> natural)) * string * list script_element)
+| OutputSection of (output_guard * (maybe (* address_expr *) address_expr_fn) * string * list script_element)
 | DiscardInput of input_selector 
   (* Input queries can only occur within an output section. 
      Output sections may not nest within other output sections. 
@@ -146,6 +146,10 @@ and
 (* This mirrors the OutputSection constructor, except that the script elements have become
  * output_section_composition_elements. *)
  output_section_spec = (output_guard * maybe natural * string * (list output_section_composition_element))
+and
+ allocated_sections_map = Map.map string output_section_spec
+and
+ address_expr_fn = natural -> allocated_sections_map -> natural
 
 (* A linker control script is a function from inputs to output elements. 
  * We can define them in syntax (using an interpreter) 
@@ -265,7 +269,7 @@ let has_writability = fun writable -> (fun input_sec -> (
    
  *)
 
-val address_zero : natural -> natural -> natural
+val address_zero : address_expr_fn
 let address_zero = fun pos -> (fun secs -> 0)
 
 val output_sec_composition_size : list output_section_composition_element -> natural
@@ -653,7 +657,7 @@ SECTIONS
       (* BinRel(Eq, Constant( *)
     align_up addr (a.maxpagesize - (unsafe_natural_land (a.maxpagesize - addr) (a.maxpagesize - 1)))
     ))
-  ; MarkAndAlignDataSegment(fun secs -> (a.maxpagesize, a.commonpagesize))
+  ; MarkAndAlignDataSegment(a.maxpagesize, a.commonpagesize)
   ; OutputSection(OnlyIfRw, Nothing, ".eh_frame", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".eh_frame"))])
   ; OutputSection(OnlyIfRw, Nothing, ".gcc_except_table", [InputQuery(DefaultKeep, DefaultSort, 
     filter_and_concat (fun s -> name_matches ".gcc_except_table" s || name_matches ".gcc_except_table.*" s))])
@@ -880,7 +884,7 @@ let rec assign_inputs_to_output_sections acc inputs cur_output_sec last_input_se
                             (* (acc,  *)
                         | Just sec -> do_nothing
                      end
-                | MarkAndAlignDataSegment(f (* maxpagesize, commonpagesize *)) -> 
+                | MarkAndAlignDataSegment(maxpagesize, commonpagesize) -> 
                      (* The "data segment end" is a distinguished label, 
                       * so we can encode the whole thing into a conditional. *)
                      do_nothing
@@ -939,36 +943,68 @@ let rec assign_inputs_to_output_sections acc inputs cur_output_sec last_input_se
     end
 
 (* NOTE: this is also responsible for deleting any PROVIDEd symbols that 
- * were not actually referenced. *)
-val compute_def_use_and_gc : list output_section_spec -> list output_section_spec
-let compute_def_use_and_gc outputs = outputs
+ * were not actually referenced. BUT HOW, if we haven't built the image and 
+ * hence haven't added the symbols yet? Symbols affect reachability, so 
+ * we're going to have to figure this out. Really we want a memory image that
+ * does not yet have addresses assigned, but does have the symbols inserted. 
+ * BUT even that is not right, because we want to be able to remove some
+ * sections (GC them). So the section composition is not yet fixed. So we have 
+ * a problem.
+ *
+ * Note that the only symbols we have to remove are ones that were PROVIDEd 
+ * in our output composition. So doing the GC on output compositions seems
+ * sane. We can get the graph's edge list by inspecting the constituent memory
+ * images from which each output section composition element is drawn.
+ * Collecting sections and collecting symbols seems fair. Note that symbols
+ * can never be placed mid-section (I don't think?? they can use arbitrary
+ * expressions, but not that depend on whether an input section is included
+ * or not) so removing a section should never imply the removal of a symbol.
+ * 
+ * So that implies we need not yet build a memory image.
+ *)
+val compute_def_use_and_gc : Map.map string output_section_spec -> Map.map string output_section_spec
+let compute_def_use_and_gc outputs_by_name = outputs_by_name
 
-val build_image : list output_section_spec -> elf_memory_image
-let build_image outputs = 
-    let (add_output_section : (natural * elf_memory_image) -> output_section_spec -> (natural * elf_memory_image))
+val build_image : 
+    elf_memory_image ->          (* accumulator *)
+    natural ->                   (* location counter *)
+    Map.map string output_section_spec ->  (* outputs constructed earlier *)
+    linker_control_script -> 
+    (elf_memory_image * Map.map string output_section_spec)            (* accumulated result *)
+let rec build_image acc pos outputs_by_name script = 
+     let (add_output_section : (natural * elf_memory_image) -> output_section_spec -> (natural * elf_memory_image * output_section_spec))
      = fun (pos, acc_img) ->
-        (fun (_, addr, secname, comp) -> 
+        (fun (guard, addr, secname, comp) -> 
             let start_addr = match addr with 
                 Just a -> a (* already aligned, above *)
                 | Nothing -> pos
             end
             in
             (* map out where we plumb in each section, accounting for their alignment *)
-            let (size, comp_addrs) = List.foldl (fun (next_free_off, off_list) -> (fun comp_el -> match comp_el with
+            let (end_addr, comp_addrs) = List.foldl (fun (next_free_addr, addr_list) -> (fun comp_el -> match comp_el with
                   IncludeInputSection(retain_pol, fname, shndx, isec, img) -> 
-                        let aligned_start = align_up next_free_off isec.elf64_section_align
+                        let aligned_next_free = align_up next_free_addr isec.elf64_section_align
                         in
-                        (aligned_start + isec.elf64_section_size, off_list ++ [aligned_start])
+                        (aligned_next_free + isec.elf64_section_size, addr_list ++ [aligned_next_free])
                 | IncludeCommonSymbol(retain_pol, fname, def, img) -> 
-                        let aligned_start = align_up next_free_off (natural_of_elf64_half def.def_syment.elf64_st_shndx)
+                        let aligned_next_free = align_up next_free_addr (natural_of_elf64_half def.def_syment.elf64_st_shndx)
                         in
-                        (aligned_start + (natural_of_elf64_xword def.def_syment.elf64_st_size), off_list ++ [aligned_start])
-                | Hole(sz) -> (next_free_off + sz, off_list ++ [next_free_off])
+                        (aligned_next_free + (natural_of_elf64_xword def.def_syment.elf64_st_size), addr_list ++ [aligned_next_free])
+                | Hole(sz) -> (next_free_addr + sz, addr_list ++ [next_free_addr])
             end
             )) (start_addr, []) comp
             in
+            let size = end_addr - start_addr
+            in
+            let _ = Missing_pervasives.outln (
+                (space_padded_and_maybe_newline 16 secname) ^ (if List.null comp then "" else
+                    ("0x" ^ (left_zero_padded_to 16 (hex_string_of_natural start_addr))) ^ 
+                    (left_space_padded_to 10 ("0x" ^ (hex_string_of_natural size)))
+                )
+            )
+            in
             let concatenated_content = List.foldl (fun accum_pat -> (fun (comp_el, comp_addr) ->
-                let comp_el_pat = match comp_el with
+                let (comp_el_pat, namestr, addrstr, szstr, rhs) = match comp_el with
                     IncludeInputSection(retainpolicy, fname, shndx, isec, img) -> 
                         (* We want to get the input section as a byte pattern *)
                         let maybe_secname = elf_memory_image_element_coextensive_with_section shndx img 
@@ -976,12 +1012,35 @@ let build_image outputs =
                         match maybe_secname with
                             Nothing -> failwith "impossible: no such section"
                             | Just idstr -> match Map.lookup idstr img.elements with
-                                Just el -> el.contents
+                                Just el -> (el.contents, isec.elf64_section_name_as_string, 
+                                    hex_string_of_natural comp_addr, 
+                                    hex_string_of_natural isec.elf64_section_size,
+                                    fname)
                                 | _     -> failwith "impossible: no such element"
                             end
                         end
-                    | Hole(sz) -> List.replicate (unsafe_nat_of_natural sz) Nothing
+                    | IncludeCommonSymbol(retain_pol, fname, def, img) -> 
+                        (* We want to get the common symbol as a byte pattern *)
+                        let sz = natural_of_elf64_xword def.def_syment.elf64_st_size
+                        in
+                        let content = Missing_pervasives.replicate sz (Just(byte_of_natural 0))
+                        in
+                        (content, "COMMON", 
+                             hex_string_of_natural comp_addr, 
+                             hex_string_of_natural sz,
+                             fname)
+                    | Hole(sz) -> 
+                        let content = Missing_pervasives.replicate sz Nothing
+                        in 
+                        (content, "*fill*", 
+                             hex_string_of_natural comp_addr, 
+                             hex_string_of_natural sz,
+                             "")
                 end
+                in
+                let _ = Missing_pervasives.outln (
+                    (space_padded_and_maybe_newline 16 (" " ^ namestr)) ^ ("0x" ^ (left_zero_padded_to 16 addrstr)) ^ (left_space_padded_to 10 ("0x" ^ szstr)) ^ " " ^ rhs
+                )
                 in
                 append_to_byte_pattern_at_offset (comp_addr - start_addr) accum_pat comp_el_pat
             )) [] (zip comp comp_addrs)
@@ -998,12 +1057,85 @@ let build_image outputs =
                 (* tag it as a section, and transfer any tags *)
              ;  by_range   = acc_img.by_range (* FIXME *)
              ;  by_tag     = acc_img.by_tag   (* FIXME *)
-             |>)
+             |>,
+                (guard, Just(start_addr), secname, comp)
+             )
         )
     in
-    let (_, img) = List.foldl add_output_section (0, empty_elf_memory_image) outputs
-    in
-    img
+    match script with
+        [] -> (acc, outputs_by_name)
+        | element :: more_elements ->
+             let do_nothing = (acc, pos, outputs_by_name) in 
+             let (new_acc, new_pos, new_outputs_by_name) = 
+             match element with
+                DefineSymbol(symdefpol, name, (symsize, syminfo, symother)) -> do_nothing
+                | AdvanceAddress(advance_fn) -> 
+                    let new_pos = advance_fn pos outputs_by_name
+                    in
+                    (acc, new_pos, outputs_by_name)
+                    (* FIXME: the allocated sections map is the subset of the outputs_by_name map 
+                     * that has been allocated -- meaning *both* sized *and* placed. 
+                     * Since we're a multi-pass interpreter, we've sized everything already, but 
+                     * only a subset has been placed. So we need to weed out all elements from
+                     * outputs_by_name that don't correspond to a section in the accumulated image.
+                     * We should probably include the section's range_tag in the allocated_sections_map,
+                     * which would force us to do this, but at the moment neither of these is done. *)
+                | MarkAndAlignDataSegment(maxpagesize, commonpagesize) -> 
+                    (* GNU linker manual says:
+                    
+                    "DATA_SEGMENT_ALIGN(MAXPAGESIZE, COMMONPAGESIZE)
+                            is equivalent to either
+                           (ALIGN(MAXPAGESIZE) + (. & (MAXPAGESIZE - 1)))
+                      or
+                           (ALIGN(MAXPAGESIZE) + (. & (MAXPAGESIZE - COMMONPAGESIZE)))
+                      depending on whether the latter uses fewer COMMONPAGESIZE sized
+                      pages for the data segment (area between the result of this
+                      expression and `DATA_SEGMENT_END') than the former or not.  If the
+                      latter form is used, it means COMMONPAGESIZE bytes of runtime
+                      memory will be saved at the expense of up to COMMONPAGESIZE wasted
+                      bytes in the on-disk file."
+                      
+                        In other words, we're marking the beginning of the data segment
+                        by aligning our position upwards by an amount that 
+                        
+                        - guarantees we're on a new page
+                        
+                        - depends on where the data segment *ends* , trying 
+                          to avoid wasting too much space or memory.
+                          
+                        Note that intervening commands can do arbitrary things to the location
+                        counter, so we can't do any short-cut arithmetic based on section sizes;
+                        we actually have to run the layout procedure til we hit the end of the 
+                        data segment, and then see how we do. 
+                        
+                        We run this function *forward* with the first option on a subset
+                        of the script ending with the end of the data segment.
+                        We then see what comes back. 
+                    
+                     *)
+                    (* let num_pages_used *)
+                    do_nothing
+                | MarkDataSegmentEnd -> do_nothing
+                | MarkDataSegmentRelroEnd(align_and_expr_fun) -> do_nothing
+                | OutputSection(outputguard, maybe_expr, name, sub_elements) -> 
+                    (* Get the composition we computed earlier, and actually put it in
+                     * the image, assigning an address to it. *)
+                    let maybe_found = Map.lookup name outputs_by_name
+                    in
+                    let found = match maybe_found with
+                        Just f -> f
+                        | Nothing -> failwith "internal error: output section not found"
+                    end
+                    in
+                    let (new_pos, new_acc, replacement_output_sec) = add_output_section (pos, acc) found
+                    in
+                    (new_acc, new_pos, Map.insert name replacement_output_sec (Map.delete name outputs_by_name))
+                | DiscardInput(selector) -> do_nothing
+                | InputQuery(retainpol, sortpol, selector) -> do_nothing
+            end
+            in
+            build_image new_acc new_pos new_outputs_by_name more_elements
+    end
 
 let rec consecutive_commons rev_acc l = 
     match l with
@@ -1020,7 +1152,12 @@ val interpret_linker_control_script :
     -> elf_memory_image
 let interpret_linker_control_script script a inputs = 
     let (discards, outputs) = assign_inputs_to_output_sections ([], []) inputs Nothing Nothing script
-    in 
+    in
+    let outputs_by_name = 
+        (let insert_fun = fun m -> (fun (guard, maybe_addr, name, compos) -> Map.insert name (guard, maybe_addr, name, compos) m)
+        in
+        List.foldl insert_fun Map.empty outputs)
+    in
     (* Print the link map's "discarded input sections" output. *)
     let _ = Missing_pervasives.outln "Discarded input sections\n"
     in
@@ -1028,7 +1165,7 @@ let interpret_linker_control_script script a inputs =
         InputSection(s) -> 
             let lpadded_secname = (" " ^ s.secname)
             in
-            lpadded_secname ^ (padding_and_maybe_newline 16 lpadded_secname) ^ "0x0000000000000000" (* FIXME *)
+            lpadded_secname ^ (space_padding_and_maybe_newline 16 lpadded_secname) ^ "0x0000000000000000" (* FIXME *)
             ^ "        0x" ^ (hex_string_of_natural s.isec.elf64_section_size) ^ " "
             ^ s.fname ^ "\n"
         | Common(symname, img, def) -> "" (* don't print discard lines for discarded commons *)
@@ -1036,14 +1173,14 @@ let interpret_linker_control_script script a inputs =
     in
     let _ = Missing_pervasives.outs (List.foldl (fun str -> (fun input -> (str ^ (discard_line input)))) "" (reverse discards))
     in
-    let outputs_after_gc = compute_def_use_and_gc outputs
+    let outputs_by_name_after_gc = compute_def_use_and_gc outputs_by_name
     in
     let _ = Missing_pervasives.outs "Memory Configuration\n\nName             Origin             Length             Attributes\n*default*        0x0000000000000000 0xffffffffffffffff\n\n"
     in
     let _ = Missing_pervasives.outln "Linker script and memory map\n"
     in
     (* FIXME: print LOAD and START_GROUP trace *)
-    let img = build_image outputs_after_gc
+    let (img, outputs_by_name_with_position) = build_image empty_elf_memory_image 0 outputs_by_name_after_gc script
     in
     (* The link map output for the section/address assignment basically mirrors our notion of 
      * output section composition.  In the following:
@@ -1088,62 +1225,9 @@ let interpret_linker_control_script script a inputs =
     PROBLEM: we don't have the script in source form, so we can't print the queries verbatim.
     I should really annotate each query with its source form; when the script is parsed from source,
     this can be inserted automatically. For the moment, what to do? I could annotate each script
-    element manually. For the moment, for diffing purposes, filter out lines with brackets.
+    element manually. For the moment, for diffing purposes, filter out lines with asterisks.
      
      *)
-    let section_lines output_sec = 
-        let (guard, maybe_addr, name, compos) = output_sec
-        in
-        name ^ (padded_and_maybe_newline 16 name) ^ match maybe_addr with 
-            Just(addr) -> "0x" ^ (hex_string_of_natural addr) ^ "     0x" ^ 
-                (hex_string_of_natural (output_sec_composition_size compos))
-            | Nothing -> ""
-        end ^ "\n" ^ (
-            (* We need to compute a special header for all contiguous runs of COMMON symbols.
-             * This means we synthesise the header for each common symbol that is not preceded
-             * by another common symbol. But to compute the header, we need to collect the whole
-             * run of common symbols beginning at that point. *)
-            let common_range_starting_at = (fun (i : natural) -> 
-                if i < 1 then []
-                else match drop (natFromNatural (i - 1)) compos with
-                    IncludeCommonSymbol(pol1, fname1, def1, img1) :: IncludeCommonSymbol(pol2, fname2, def2, img2) :: rest -> []
-                    | _ :: IncludeCommonSymbol(pol, fname, def, img) :: rest -> 
-                        consecutive_commons [] (IncludeCommonSymbol(pol, fname, def, img) :: rest)
-                    | _ :: _ :: rest -> []
-                    | [_] -> failwith "impossible: singleton list"
-                    end
-            )
-            in
-            let common_range_header = fun fname -> (fun common_list -> 
-                let sz
-                 = foldl (+) 0 (List.map (fun (pol, fname, def, img) -> natural_of_elf64_xword def.def_syment.elf64_st_size) common_list)
-                in
-                ("COMMON", right_padded_to 10 (hex_string_of_natural sz), fname))
-            in
-            let line_quads = mapMaybe (fun comp_el -> 
-                match comp_el with
-                      IncludeInputSection(pol, fname, shndx, isec, img) -> 
-                        Just(isec.elf64_section_name_as_string, "0x" ^ (hex_string_of_natural isec.elf64_section_size), fname, fname)
-                    | IncludeCommonSymbol(pol, fname, def, img) -> 
-                        Just("                ", "", "    " ^ def.def_symname, fname)
-                    | Hole(sz) -> Just("*fill*", right_padded_to 10 (hex_string_of_natural sz), "", "")
-                    | ProvideSymbol(pol, name, spec) -> Nothing
-                end) compos
-            in
-            let line_from_triple = fun (secname, szstr, rhs) -> 
-                (right_padded_to 16 secname) ^ "0xdeadbeefdeadbeef" ^ (left_padded_to 10 szstr) ^ " " ^ rhs ^ "\n"
-            in
-            List.foldl (^) "" (mapi (fun i -> (fun (secname, strsz, rhs, fname) -> 
-                match common_range_starting_at (naturalFromNat i) with
-                    [] -> ""
-                    | l -> line_from_triple (common_range_header fname l)
-                end
-                ^ line_from_triple (" " ^ secname, left_padded_to 10 strsz, rhs)
-            )) line_quads)
-        )
-    in
-    let _ = Missing_pervasives.outs (List.foldl (fun str -> (fun output -> (str ^ (section_lines output)))) "" (reverse outputs))
-    in
     img
 
     (* What is the output of a linker script?

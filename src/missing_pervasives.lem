@@ -511,42 +511,79 @@ let unsafe_string_take m str =
   let m = unsafe_nat_of_natural m in
     String.toString (List.take m (String.toCharList str))
 
-(** [padding_and_maybe_newline w s] creates enough spaces to pad string [s] to [w] characters, 
-  * unless [s] is of length [w - 1] or greater, in which case it generates [w] spaces preceded by a newline.
+(** [padding_and_maybe_newline c w s] creates enough of char [c] to pad string [s] to [w] characters, 
+  * unless [s] is of length [w - 1] or greater, in which case it generates [w] copies preceded by a newline.
   * This style of formatting is used by the GNU linker in its link map output, so we
   * reproduce it using this function. Note that string [s] does not appear in the
   * output. *)
-val padding_and_maybe_newline : natural -> string -> string
-let padding_and_maybe_newline width str = 
+val padding_and_maybe_newline : char -> natural -> string -> string
+let padding_and_maybe_newline c width str = 
     let padlen = width - (naturalFromNat (stringLength str)) in
     (if padlen <= 1 then "\n" else "")
-     ^ (toString (replicate (if padlen <= 1 then width else padlen) #' '))
-     
-(** [padded_and_maybe_newline w s] pads string [s] to [w] characters, 
+     ^ (toString (replicate (if padlen <= 1 then width else padlen) c))
+
+(** [space_padding_and_maybe_newline w s] creates enoughspaces to pad string [s] to [w] characters, 
+  * unless [s] is of length [w - 1] or greater, in which case it generates [w] copies preceded by a newline.
+  * This style of formatting is used by the GNU linker in its link map output, so we
+  * reproduce it using this function. Note that string [s] does not appear in the
+  * output. *)
+val space_padding_and_maybe_newline : natural -> string -> string
+let space_padding_and_maybe_newline width str = 
+    padding_and_maybe_newline #' ' width str
+
+(** [padded_and_maybe_newline w s] pads string [s] to [w] characters, using char [c]
+  * unless [s] is of length [w - 1] or greater, in which case the padding consists of
+  * [w] copies of [c] preceded by a newline.
+  * This style of formatting is used by the GNU linker in its link map output, so we
+  * reproduce it using this function. *)
+val padded_and_maybe_newline : char -> natural -> string -> string
+let padded_and_maybe_newline c width str = 
+    str ^ (padding_and_maybe_newline c width str)
+
+(** [padding_to c w s] creates enough copies of [c] to pad string [s] to [w] characters, 
+  * or 0 characters if [s] is of length [w] or greater. Note that string [s] does not appear in the
+  * output. *)
+val padding_to : char -> natural -> string -> string
+let padding_to c width str = 
+    let padlen = width - (naturalFromNat (stringLength str)) in
+    if padlen <= 0 then "" else (toString (replicate padlen c))
+
+(** [left_padded_to c w s] left-pads string [s] to [w] characters using [c], 
+  * returning it unchanged if [s] is of length [w] or greater. *)
+val left_padded_to : char -> natural -> string -> string
+let left_padded_to c width str = 
+    (padding_to c width str) ^ str
+    
+(** [right_padded_to c w s] right-pads string [s] to [w] characters using [c], 
+  * returning it unchanged if [s] is of length [w] or greater. *)
+val right_padded_to : char -> natural -> string -> string
+let right_padded_to c width str = 
+    str ^ (padding_to c width str)
+
+(** [space_padded_and_maybe_newline w s] pads string [s] to [w] characters, using spaces,
   * unless [s] is of length [w - 1] or greater, in which case the padding consists of
   * [w] spaces preceded by a newline.
   * This style of formatting is used by the GNU linker in its link map output, so we
   * reproduce it using this function. *)
-val padded_and_maybe_newline : natural -> string -> string
-let padded_and_maybe_newline width str = 
-    str ^ (padding_and_maybe_newline width str)
+val space_padded_and_maybe_newline : natural -> string -> string
+let space_padded_and_maybe_newline width str = 
+    str ^ (padding_and_maybe_newline #' ' width str)
 
-(** [padding_to w s] creates enough spaces to pad string [s] to [w] characters, 
-  * or 0 characters if [s] is of length [w] or greater. Note that string [s] does not appear in the
-  * output. *)
-val padding_to : natural -> string -> string
-let padding_to width str = 
-    let padlen = width - (naturalFromNat (stringLength str)) in
-    if padlen <= 0 then "" else (toString (replicate padlen #' '))
-
-(** [left_padded_to w s] left-pads string [s] to [w] characters, 
+(** [left_space_padded_to w s] left-pads string [s] to [w] characters using spaces, 
   * returning it unchanged if [s] is of length [w] or greater. *)
-val left_padded_to : natural -> string -> string
-let left_padded_to width str = 
-    (padding_to width str) ^ str
+val left_space_padded_to : natural -> string -> string
+let left_space_padded_to width str = 
+    (padding_to #' ' width str) ^ str
     
-(** [right_padded_to w s] right-pads string [s] to [w] characters, 
+(** [right_space_padded_to w s] right-pads string [s] to [w] characters using spaces, 
   * returning it unchanged if [s] is of length [w] or greater. *)
-val right_padded_to : natural -> string -> string
-let right_padded_to width str = 
-    str ^ (padding_to width str)
+val right_space_padded_to : natural -> string -> string
+let right_space_padded_to width str = 
+    str ^ (padding_to #' ' width str)
+
+(** [left_zero_padded_to w s] left-pads string [s] to [w] characters using zeroes, 
+  * returning it unchanged if [s] is of length [w] or greater. *)
+val left_zero_padded_to : natural -> string -> string
+let left_zero_padded_to width str = 
+    (padding_to #'0' width str) ^ str
+ 
