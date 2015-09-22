@@ -14,10 +14,67 @@ open import Elf_file
 open import Elf_header
 open import Elf_interpreted_section
 open import Memory_image
+
 open import Abi_amd64
 open import Abi_amd64_relocation
+
 open import Abi_aarch64_le
 open import Abi_aarch64_relocation
+
+open import Abi_power64
+open import Abi_power64_relocation
+
+open import Abi_utilities
+
+(** Relocation operators and their validity on a given platform *)
+
+val is_valid_abi_aarch64_relocation_operator : relocation_operator -> bool
+let is_valid_abi_aarch64_relocation_operator op =
+  match op with
+    | Page -> true
+    | G -> true
+    | GDat -> true
+    | GLDM -> true
+    | DTPRel -> true
+    | GTPRel -> true
+    | TPRel -> true
+    | GTLSDesc -> true
+    | Delta -> true
+    | LDM -> true
+    | TLSDesc -> true
+    | Indirect -> true
+    | _ -> false
+  end
+  
+val is_valid_abi_aarch64_relocation_operator2 : relocation_operator2 -> bool
+let is_valid_abi_aarch64_relocation_operator2 op =
+  match op with
+    | GTLSIdx -> true
+  end
+
+val is_valid_abi_amd64_relocation_operator : relocation_operator -> bool
+let is_valid_abi_amd64_relocation_operator op =
+  match op with
+    | Indirect -> true
+    | _ -> false (* XXX: not sure about this? *)
+  end
+  
+val is_valid_abi_amd64_relocation_operator2 : relocation_operator2 -> bool
+let is_valid_abi_amd64_relocation_operator2 op =
+  match op with
+    | _ -> false
+  end
+
+val is_valid_abi_power64_relocation_operator : relocation_operator -> bool
+let is_valid_abi_power64_relocation_operator op = false (* TODO *)
+
+val is_valid_abi_power64_relocation_operator2 : relocation_operator2 -> bool
+let is_valid_abi_power64_relocation_operator2 op =
+  match op with
+    | _ -> false
+  end
+
+(** Misc. ABI related stuff *)
 
 type any_abi_feature = Amd64AbiFeature of amd64_abi_feature
                      | Aarch64LeAbiFeature of aarch64_le_abi_feature

@@ -1,7 +1,11 @@
 (** [abi_utilities], generic utilities shared between all ABIs.
   *)
 
+open import Map
+open import Maybe
 open import Num
+
+open import Error
 
 (** [integer_bit_width] records various bit widths for integral types, as used
   * in relocation calculations. The names are taken directly from the processor
@@ -94,6 +98,31 @@ type relocation_operator
 type relocation_operator2 =
   | GTLSIdx
   
+(** Generalising and abstracting over relocation calculations and their return
+  * types
+  *)
+  
+type val_map 'k 'v =
+  Map.map 'k 'v
+
+val lookupM : forall 'k 'v. MapKeyType 'k => 'k -> val_map 'k 'v -> error 'v
+let lookupM key val_map =
+  match Map.lookup key val_map with
+    | Nothing -> fail "lookupM: key not found in val_map"
+    | Just j  -> return j
+  end
+  
+(** Some relocations may fail, for example:
+  * Page 58, Power ABI: relocation types whose Field column is marked with an
+  * asterisk are subject to failure is the value computed does not fit in the
+  * allocated bits.  [can_fail] type passes this information back to the caller
+  * of the relocation application function.
+  *)
+type can_fail 'a
+  = CanFail                       (** [CanFail] signals a potential failing relocation calculation when width constraints are invalidated *)
+  | CanFailOnTest of ('a -> bool) (** [CanFailOnTest p] signals a potentially failing relocation calculation when predicate [p] on the result of the calculation returns [false] *)
+  | CannotFail                    (** [CannotFail] states the relocation calculation cannot fail and bit-width constraints should be ignored *)
+  
 (** [relocation_operator_expression] is an AST of expressions describing a relocation
   * calculation.  An AST is used as it allows us to unify the treatment of relocation
   * calculation: rather than passing in dozens of functions to the calculation function
@@ -112,13 +141,6 @@ type relocation_operator_expression 'a
   | Minus  of (relocation_operator_expression 'a * relocation_operator_expression 'a)                        (** Subtract two expressions. *)
   | RShift of (relocation_operator_expression 'a * natural)                                                  (** Right shift the result of an expression [m] places. *)
   
-(** Some relocations may fail, for example:
-  * Page 58, Power ABI: relocation types whose Field column is marked with an
-  * asterisk are subject to failure is the value computed does not fit in the
-  * allocated bits.  [can_fail] type passes this information back to the caller
-  * of the relocation application function.
-  *)
-type can_fail 'a
-  = CanFail                       (** [CanFail] signals a potential failing relocation calculation when width constraints are invalidated *)
-  | CanFailOnTest of ('a -> bool) (** [CanFailOnTest p] signals a potentially failing relocation calculation when predicate [p] on the result of the calculation returns [false] *)
-  | CannotFail                    (** [CannotFail] states the relocation calculation cannot fail and bit-width constraints should be ignored *)
+  type relocation_frame 'addr 'res =
+  | Copy
+  | NoCopy of (Map.map 'addr (relocation_operator_expression 'res * integer_bit_width * can_fail 'res))
