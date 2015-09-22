@@ -70,10 +70,10 @@ let expand_sections a item = match item with
         let common_symbols = all_common_symbols img
         in
         [Common(fname, img, def) | forall (def MEM common_symbols) | 
-            let _ = Missing_pervasives.outln ((padded_and_maybe_newline 20 def.def_symname)
+            let _ = Missing_pervasives.outln ((space_padded_and_maybe_newline 20 def.def_symname)
                 ^ (let hexstr = "0x" ^ (hex_string_of_natural (natural_of_elf64_xword def.def_syment.elf64_st_size))
                   in
-                  padded_and_maybe_newline 20 hexstr
+                  space_padded_and_maybe_newline 20 hexstr
                   )
                 ^ 
                 fname)
@@ -154,7 +154,7 @@ let link script a options linkables =
         else Nothing
     )) linkables
     in
-    let _ = Missing_pervasives.outln "Allocating common symbols\nCommon symbol       size              file\n"
+    let _ = Missing_pervasives.outln "\nAllocating common symbols\nCommon symbol       size              file\n"
     in
     let input_sections = Missing_pervasives.list_concat_map (expand_sections a) linkables_not_discarded
     in

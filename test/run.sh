@@ -8,12 +8,19 @@ EXT="${EXT:-.opt}"
 
 export OCAMLRUNPARAM=b
 
+get_basename () {
+ dir="$( dirname "$0" )"
+ echo "dir is $dir" 1>&2
+ basename "$( case "$dir" in (.) pwd ;; (*) echo "$dir" ;; esac)" | sed 's/-.*//'
+}
+
+basename="$(get_basename)"
+echo "basename is $basename" 1>&2
+
 outfile=`mktemp`
 echo "outfile is $outfile" 1>&2
 
-# diff -u <( cat "$outfile" | sort | cut -c1-36 ) <( cat ../test/hello-static-gnu/hello.map | sed -n '/^Archive member included/,/Allocating common symbols/ p' | sort | cut -c1-36 )
-
 cd "$(dirname "$0")" && \
 eval CAML_LD_LIBRARY_PATH=`pwd`/../../contrib/ocaml-uint/_build/lib:`pwd`/../../../lem/ocaml-lib/dependencies/zarith \
-exec $DEBUGGER $( cat hello.repeat-cmd | sed 's#ld#../../src/main_link${EXT}#' )
+exec $DEBUGGER $( cat ./"$basename".repeat-cmd | sed 's#ld#../../src/main_link${EXT}#' )
 

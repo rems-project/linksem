@@ -284,6 +284,9 @@ type abi 'abifeature = (* forall 'abifeature. *)
     ; minpagesize        : natural
     ; commonpagesize     : natural
     ; symbol_is_generated_by_linker : string -> bool
+    (*; link_inputs_tap    : 
+    ; link_output_sections_tap   : 
+    ; link_output_image_tap      : *)
     |>
 
 val range_contains : (natural * natural) -> (natural * natural) -> bool
