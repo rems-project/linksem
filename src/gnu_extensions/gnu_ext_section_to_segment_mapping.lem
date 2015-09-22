@@ -130,7 +130,7 @@ let elf64_section_in_segment1 sec_hdr segment =
 
 val elf32_section_in_segment2 : elf32_section_header_table_entry -> elf32_program_header_table_entry -> bool
 let elf32_section_in_segment2 sec_hdr segment =
-  not (not (elf32_section_flags sec_hdr shf_alloc) &&
+  not ((not (elf32_section_flags sec_hdr shf_alloc)) &&
        (elf32_segment_of_type segment elf_pt_load ||
         elf32_segment_of_type segment elf_pt_dynamic ||
         elf32_segment_of_type segment elf_pt_gnu_eh_frame ||
@@ -139,7 +139,7 @@ let elf32_section_in_segment2 sec_hdr segment =
 
 val elf64_section_in_segment2 : elf64_section_header_table_entry -> elf64_program_header_table_entry -> bool
 let elf64_section_in_segment2 sec_hdr segment =
-  not (not (elf64_section_flags sec_hdr shf_alloc) &&
+  not ((not (elf64_section_flags sec_hdr shf_alloc)) &&
        (elf64_segment_of_type segment elf_pt_load ||
         elf64_segment_of_type segment elf_pt_dynamic ||
         elf64_segment_of_type segment elf_pt_gnu_eh_frame ||

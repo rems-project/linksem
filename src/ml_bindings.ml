@@ -2,6 +2,18 @@ open Endianness
 open Error
 
 open Printf
+open Unix
+
+let string_of_unix_time (tm : Nat_big_num.num) =
+  let num  = Nat_big_num.to_int64 tm in
+  let tm   = Unix.gmtime (Int64.to_float num) in
+  let day  = tm.tm_mday in
+  let mon  = 1 + tm.tm_mon in
+  let year = 1900 + tm.tm_year in
+  let hour = tm.tm_hour in
+  let min  = tm.tm_min in
+  let sec  = tm.tm_sec in
+    Printf.sprintf "%i-%i-%iT%02i:%02i:%02i" year mon day hour min sec
 
 let hex_string_of_nat_pad2 i : string =
   Printf.sprintf "%02i" i

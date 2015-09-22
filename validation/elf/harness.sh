@@ -61,21 +61,17 @@ fi
 FLAG=$1
 
 for f in $(ls -rS $TEST_FILES); do
-  # These are ELF32 files present on the Power machine that we use for testing.
-  # We have not formalised the 32-bit Power ABI yet so they cause problems when
-  # automatically testing conformance for PowerPC64.
-  if [[ $f != "gdk-pixbuf-query-loaders-32" &&
-        $f != "pango-querymodules-32" &&
-        $f != "gtk-query-immodules-2.0-32" &&
-        $f != "strace32" ]]; then
-    FTYPE=`file $TEST_FILES/$f | cut -f2 -d' '`
-    if [ $FTYPE == "ELF" ]; then
-      echo "testing: " $f
-      if [ $FLAG == "--in-out" ]; then
-        perform_hexdump_diff $TEST_FILES/$f
-      else
-        perform_readelf_diff $TEST_FILES/$f $FLAG
-      fi
+  FTYPE0=`file $TEST_FILES/$f | cut -f2-3 -d' '`
+  FTYPE=""
+  for g in $FTYPE0; do
+    FTYPE+=${g};
+  done
+  if [ $FTYPE == "ELF32-bit" ]; then # change for 32-bit tests
+    echo "testing: " $f
+    if [ $FLAG == "--in-out" ]; then
+      perform_hexdump_diff $TEST_FILES/$f
+    else
+      perform_readelf_diff $TEST_FILES/$f $FLAG
     fi
   fi
 done

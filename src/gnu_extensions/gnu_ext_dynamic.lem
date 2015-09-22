@@ -5,8 +5,10 @@
 open import Basic_classes
 open import Bool
 open import Num
+open import String
 
 open import Error
+open import Show
 open import String_table
 
 open import Elf_dynamic
@@ -60,8 +62,10 @@ let elf_dt_gnu_versym     : natural = 939524088 * 2       (*0x6ffffff0*)
 
 (** Not present in the LSB but turns up in "real" ELF files... *)
 
-let elf_dt_gnu_hash    : natural = (939523962 * 2) + 1  (*0x6ffffef5*)
-let elf_dt_gnu_flags_1 : natural = (939524093 * 2) + 1  (*0x6ffffffb*)
+let elf_dt_gnu_hash      : natural = (939523962 * 2) + 1 (*0x6ffffef5*)
+let elf_dt_gnu_flags_1   : natural = (939524093 * 2) + 1 (*0x6ffffffb*)
+let elf_dt_gnu_checksum  : natural = (939523836 * 2)     (* 0x6FFFFDF8 *)
+let elf_dt_gnu_prelinked : natural = (2 * 939523834) + 1 (* 0x6FFFFDF5 *)
 
 (** Extended DT flags for FLAGS_1 dynamic section types.  Taken from GLibC source
   * as they appear to be completely unspecified!
@@ -84,7 +88,6 @@ let gnu_df_1_confalt    : natural = 8192  (*0x00002000*)
 let gnu_df_1_endfiltee  : natural = 16384 (*0x00004000*)
 let gnu_df_1_dispreldne : natural = 32768 (*0x00008000*)
 let gnu_df_1_disprelpnd : natural = 65536 (*0x00010000*)
-
 
 (** [gnu_string_of_dt_flag1 m] produces a string based representation of GNU
   * extensions flag_1 value [m].
@@ -127,8 +130,12 @@ let {ocaml} gnu_string_of_dt_flag_1 flag =
     "DISPRELDNE"
   else if check_flag flag gnu_df_1_disprelpnd then
     "DISPRELPND"
-  else
-    "Invalid GNU dynamic flag"
+  else if check_flag flag (gnu_df_1_nodelete + gnu_df_1_now) then
+    "NOW NODELETE"
+  else if check_flag flag (gnu_df_1_nodelete + gnu_df_1_initfirst) then
+    "NODELETE INITFIRST"
+  else (* XXX: add more as necessary *)
+    "Invalid GNU dynamic flag" ^ show flag
 
 (** [gnu_ext_os_additional_ranges m] checks whether dynamic section type [m]
   * lies within the ranges set aside for GNU specific functionality.
@@ -142,9 +149,13 @@ let gnu_ext_os_additional_ranges m =
     m = elf_dt_gnu_verneed ||
     m = elf_dt_gnu_verneednum ||
     m = elf_dt_gnu_versym ||
+    m = elf_dt_gnu_verdef ||
+    m = elf_dt_gnu_verdefnum ||
     m = elf_dt_gnu_flags_1 ||
     m = elf_dt_gnu_relcount ||
-    m = elf_dt_gnu_relacount
+    m = elf_dt_gnu_relacount ||
+    m = elf_dt_gnu_checksum ||
+    m = elf_dt_gnu_prelinked
 
 (** [gnu_ext_tag_correspondence_of_tag0 m] produces a tag correspondence for the
   * extended GNU-specific dynamic section types [m].  Used to provide the ABI
@@ -163,9 +174,17 @@ let gnu_ext_tag_correspondence_of_tag0 m =
     return C_Val
   else if m = elf_dt_gnu_verneed then
     return C_Ptr
+  else if m = elf_dt_gnu_verdef then
+    return C_Ptr
+  else if m = elf_dt_gnu_verdefnum then
+    return C_Val
   else if m = elf_dt_gnu_relcount then
     return C_Val
   else if m = elf_dt_gnu_relacount then
+    return C_Val
+  else if m = elf_dt_gnu_checksum then
+    return C_Val
+  else if m = elf_dt_gnu_prelinked then
     return C_Val
   else
     fail "gnu_ext_tag_correspondence_of_tag0: invalid dynamic tag"
@@ -180,15 +199,11 @@ let gnu_ext_tag_correspondence_of_tag0 m =
 val gnu_ext_tag_correspondence_of_tag : natural -> error tag_correspondence
 let gnu_ext_tag_correspondence_of_tag m =
   if m >= elf_dt_gnu_addrrnglo && m <= elf_dt_gnu_addrrnghi then
-    gnu_ext_tag_correspondence_of_tag0 m
+    return C_Ptr
   else if m >= elf_dt_gnu_valrnglo && m <= elf_dt_gnu_valrnghi then
     return C_Val
   else if gnu_ext_os_additional_ranges m then
     gnu_ext_tag_correspondence_of_tag0 m
-  else if m = elf_dt_gnu_verdefnum then
-    return C_Val
-  else if m = elf_dt_gnu_verdef then
-    return C_Ptr
   else if m = elf_dt_gnu_syminsz then
     return C_Val (** unsure *)
   else if m = elf_dt_gnu_syminfo then
@@ -204,7 +219,7 @@ let gnu_ext_tag_correspondence_of_tag m =
   else if m = elf_dt_gnu_auxiliary then
     return C_Val (** unsure *)
   else
-    fail "gnu_ext_tag_correspondence_of_tag: unrecognised GNU dynamic tag"
+    fail ("gnu_ext_tag_correspondence_of_tag: unrecognised GNU dynamic tag: " ^ show m)
     
 (** [gnu_ext_elf32_value_of_elf32_dyn0 dyn] extracts a dynamic value from the
   * dynamic section entry [dyn] under the assumption that its type is a GNU
@@ -212,8 +227,8 @@ let gnu_ext_tag_correspondence_of_tag m =
   * ABI-specific functionality expected of the corresponding functions in
   * elf_dynamic.lem.
   *)
-val gnu_ext_elf32_value_of_elf32_dyn0 : elf32_dyn -> error elf32_dyn_value
-let gnu_ext_elf32_value_of_elf32_dyn0 dyn =
+val gnu_ext_elf32_value_of_elf32_dyn0 : elf32_dyn -> string_table -> error elf32_dyn_value
+let gnu_ext_elf32_value_of_elf32_dyn0 dyn stbl =
   let tag = naturalFromInteger (integer_of_elf32_sword dyn.elf32_dyn_tag) in
     if tag = elf_dt_gnu_hash then
       match dyn.elf32_dyn_d_un with
@@ -236,6 +251,20 @@ let gnu_ext_elf32_value_of_elf32_dyn0 dyn =
         | D_Ignored i -> fail "gnu_ext_elf32_value_of_elf32_dyn: VERSYM must be a PTR"
       end >>= fun addr ->
       return (Address addr)
+    else if tag = elf_dt_gnu_verdef then
+      match dyn.elf32_dyn_d_un with
+        | D_Val     v -> fail "gnu_ext_elf32_value_of_elf32_dyn: VERDEF must be a PTR"
+        | D_Ptr     p -> return p
+        | D_Ignored i -> fail "gnu_ext_elf32_value_of_elf32_dyn: VERDEF must be a PTR"
+      end >>= fun addr ->
+      return (Address addr)
+    else if tag = elf_dt_gnu_verdefnum then
+      match dyn.elf32_dyn_d_un with
+        | D_Val     v -> return v
+        | D_Ptr     p -> fail "gnu_ext_elf32_value_of_elf32_dyn: VERDEFNUM must be a Val"
+        | D_Ignored i -> fail "gnu_ext_elf32_value_of_elf32_dyn: VERDEFNUM must be a Val"
+      end >>= fun sz ->
+      return (Numeric (natural_of_elf32_word sz))
     else if tag = elf_dt_gnu_verneednum then
       match dyn.elf32_dyn_d_un with
         | D_Val     v -> return v
@@ -264,6 +293,20 @@ let gnu_ext_elf32_value_of_elf32_dyn0 dyn =
         | D_Ignored i -> fail "gnu_ext_elf32_value_of_elf32_dyn: RELACOUNT must be a Val"
       end >>= fun sz ->
       return (Numeric (natural_of_elf32_word sz))
+    else if tag = elf_dt_gnu_checksum then
+      match dyn.elf32_dyn_d_un with
+        | D_Val     v -> return v
+        | D_Ptr     p -> fail "gnu_ext_elf32_value_of_elf32_dyn: CHECKSUM must be a Val"
+        | D_Ignored i -> fail "gnu_ext_elf32_value_of_elf32_dyn: CHECKSUM must be a Val"
+      end >>= fun sz ->
+      return (Checksum (natural_of_elf32_word sz))
+    else if tag = elf_dt_gnu_prelinked then
+      match dyn.elf32_dyn_d_un with
+        | D_Val     v -> return v
+        | D_Ptr     p -> fail "gnu_ext_elf32_value_of_elf32_dyn: GNU_PRELINKED must be a Val"
+        | D_Ignored i -> fail "gnu_ext_elf32_value_of_elf32_dyn: GNU_PRELINKED must be a Val"
+      end >>= fun off ->
+      return (Timestamp (natural_of_elf32_word off))
     else
       fail "gnu_ext_elf32_value_of_elf32_dyn0: unrecognised GNU dynamic tag"
       
@@ -273,8 +316,8 @@ let gnu_ext_elf32_value_of_elf32_dyn0 dyn =
   * ABI-specific functionality expected of the corresponding functions in
   * elf_dynamic.lem.
   *)
-val gnu_ext_elf64_value_of_elf64_dyn0 : elf64_dyn -> error elf64_dyn_value
-let gnu_ext_elf64_value_of_elf64_dyn0 dyn =
+val gnu_ext_elf64_value_of_elf64_dyn0 : elf64_dyn -> string_table -> error elf64_dyn_value
+let gnu_ext_elf64_value_of_elf64_dyn0 dyn stbl =
   let tag = naturalFromInteger (integer_of_elf64_sxword dyn.elf64_dyn_tag) in
     if tag = elf_dt_gnu_hash then
       match dyn.elf64_dyn_d_un with
@@ -297,6 +340,20 @@ let gnu_ext_elf64_value_of_elf64_dyn0 dyn =
         | D_Ignored i -> fail "gnu_ext_elf64_value_of_elf64_dyn: VERSYM must be a PTR"
       end >>= fun addr ->
       return (Address addr)
+    else if tag = elf_dt_gnu_verdef then
+      match dyn.elf64_dyn_d_un with
+        | D_Val     v -> fail "gnu_ext_elf64_value_of_elf64_dyn: VERDEF must be a PTR"
+        | D_Ptr     p -> return p
+        | D_Ignored i -> fail "gnu_ext_elf64_value_of_elf64_dyn: VERDEF must be a PTR"
+      end >>= fun addr ->
+      return (Address addr)
+    else if tag = elf_dt_gnu_verdefnum then
+      match dyn.elf64_dyn_d_un with
+        | D_Val     v -> return v
+        | D_Ptr     p -> fail "gnu_ext_elf32_value_of_elf64_dyn: VERDEFNUM must be a Val"
+        | D_Ignored i -> fail "gnu_ext_elf32_value_of_elf64_dyn: VERDEFNUM must be a Val"
+      end >>= fun sz ->
+      return (Numeric (natural_of_elf64_xword sz))
     else if tag = elf_dt_gnu_verneednum then
       match dyn.elf64_dyn_d_un with
         | D_Val     v -> return v
@@ -325,6 +382,20 @@ let gnu_ext_elf64_value_of_elf64_dyn0 dyn =
         | D_Ignored i -> fail "gnu_ext_elf64_value_of_elf64_dyn: RELACOUNT must be a Val"
       end >>= fun sz ->
       return (Numeric (natural_of_elf64_xword sz))
+    else if tag = elf_dt_gnu_checksum then
+      match dyn.elf64_dyn_d_un with
+        | D_Val     v -> return v
+        | D_Ptr     p -> fail "gnu_ext_elf64_value_of_elf64_dyn: CHECKSUM must be a Val"
+        | D_Ignored i -> fail "gnu_ext_elf64_value_of_elf64_dyn: CHECKSUM must be a Val"
+      end >>= fun sz ->
+      return (Checksum (natural_of_elf64_xword sz))
+    else if tag = elf_dt_gnu_prelinked then
+      match dyn.elf64_dyn_d_un with
+        | D_Val     v -> return v
+        | D_Ptr     p -> fail "gnu_ext_elf64_value_of_elf64_dyn: GNU_PRELINKED must be a Val"
+        | D_Ignored i -> fail "gnu_ext_elf64_value_of_elf64_dyn: GNU_PRELINKED must be a Val"
+      end >>= fun off ->
+      return (Timestamp (natural_of_elf64_xword off))
     else
       fail "gnu_ext_elf64_value_of_elf64_dyn0: unrecognised GNU dynamic tag"
       
@@ -337,29 +408,11 @@ let gnu_ext_elf64_value_of_elf64_dyn0 dyn =
   * ELF files that have been processed as part of validation.  Try and find some
   * files that do actually exhibit these.
   *)
-val gnu_ext_elf32_value_of_elf32_dyn : elf32_dyn -> error elf32_dyn_value
-let gnu_ext_elf32_value_of_elf32_dyn dyn =
+val gnu_ext_elf32_value_of_elf32_dyn : elf32_dyn -> string_table -> error elf32_dyn_value
+let gnu_ext_elf32_value_of_elf32_dyn dyn stbl =
   let tag = naturalFromInteger (integer_of_elf32_sword dyn.elf32_dyn_tag) in
-    if tag >= elf_dt_gnu_addrrnglo && tag <= elf_dt_gnu_addrrnghi then
-      gnu_ext_elf32_value_of_elf32_dyn0 dyn
-    else if tag >= elf_dt_gnu_valrnglo && tag <= elf_dt_gnu_valrnghi then
-      gnu_ext_elf32_value_of_elf32_dyn0 dyn
-    else if gnu_ext_os_additional_ranges tag then
-      gnu_ext_elf32_value_of_elf32_dyn0 dyn
-    else if tag = elf_dt_gnu_verdefnum then
-      match dyn.elf32_dyn_d_un with
-        | D_Val     v -> return v
-        | D_Ptr     p -> fail "gnu_ext_elf32_value_of_elf32_dyn: VERDEFNUM must be a Val"
-        | D_Ignored i -> fail "gnu_ext_elf32_value_of_elf32_dyn: VERDEFNUM must be a Val"
-      end >>= fun sz ->
-      return (Numeric (natural_of_elf32_word sz))
-    else if tag = elf_dt_gnu_verdef then
-      match dyn.elf32_dyn_d_un with
-        | D_Val     v -> fail "gnu_ext_elf32_value_of_elf32_dyn: VERDEF must be a PTR"
-        | D_Ptr     p -> return p
-        | D_Ignored i -> fail "gnu_ext_elf32_value_of_elf32_dyn: VERDEF must be a PTR"
-      end >>= fun addr ->
-      return (Address addr)
+    if gnu_ext_os_additional_ranges tag then (* this should cover valrngs and addrrngs *)
+      gnu_ext_elf32_value_of_elf32_dyn0 dyn stbl
     else if tag = elf_dt_gnu_syminsz then
       match dyn.elf32_dyn_d_un with
         | D_Val     v -> return v
@@ -391,29 +444,11 @@ let gnu_ext_elf32_value_of_elf32_dyn dyn =
   * ELF files that have been processed as part of validation.  Try and find some
   * files that do actually exhibit these.
   *)
-val gnu_ext_elf64_value_of_elf64_dyn : elf64_dyn -> error elf64_dyn_value
-let gnu_ext_elf64_value_of_elf64_dyn dyn =
+val gnu_ext_elf64_value_of_elf64_dyn : elf64_dyn -> string_table -> error elf64_dyn_value
+let gnu_ext_elf64_value_of_elf64_dyn dyn stbl =
   let tag = naturalFromInteger (integer_of_elf64_sxword dyn.elf64_dyn_tag) in
-    if tag >= elf_dt_gnu_addrrnglo && tag <= elf_dt_gnu_addrrnghi then
-      gnu_ext_elf64_value_of_elf64_dyn0 dyn
-    else if tag >= elf_dt_gnu_valrnglo && tag <= elf_dt_gnu_valrnghi then
-      gnu_ext_elf64_value_of_elf64_dyn0 dyn
-    else if gnu_ext_os_additional_ranges tag then
-      gnu_ext_elf64_value_of_elf64_dyn0 dyn
-    else if tag = elf_dt_gnu_verdefnum then
-      match dyn.elf64_dyn_d_un with
-        | D_Val     v -> return v
-        | D_Ptr     p -> fail "gnu_ext_elf64_value_of_elf64_dyn: VERDEFNUM must be a Val"
-        | D_Ignored i -> fail "gnu_ext_elf64_value_of_elf64_dyn: VERDEFNUM must be a Val"
-      end >>= fun sz ->
-      return (Numeric (natural_of_elf64_xword sz))
-    else if tag = elf_dt_gnu_verdef then
-      match dyn.elf64_dyn_d_un with
-        | D_Val     v -> fail "gnu_ext_elf64_value_of_elf64_dyn: VERDEF must be a PTR"
-        | D_Ptr     p -> return p
-        | D_Ignored i -> fail "gnu_ext_elf64_value_of_elf64_dyn: VERDEF must be a PTR"
-      end >>= fun addr ->
-      return (Address addr)
+    if gnu_ext_os_additional_ranges tag then (* this should cover valrngs and addrrngs *)
+      gnu_ext_elf64_value_of_elf64_dyn0 dyn stbl
     else if tag = elf_dt_gnu_syminsz then
       match dyn.elf64_dyn_d_un with
         | D_Val     v -> return v
@@ -455,6 +490,14 @@ let {ocaml} string_of_gnu_ext_dynamic_tag0 m =
     "RELCOUNT"
   else if m = elf_dt_gnu_relacount then
     "RELACOUNT"
+  else if m = elf_dt_gnu_verdefnum then
+    "VERDEFNUM"
+  else if m = elf_dt_gnu_verdef then
+    "VERDEF"
+  else if m = elf_dt_gnu_checksum then
+    "CHECKSUM"
+  else if m = elf_dt_gnu_prelinked then
+    "GNU_PRELINKED"
   else
     "Invalid dynamic tag"
     
@@ -469,10 +512,6 @@ let {ocaml} string_of_gnu_ext_dynamic_tag m =
     string_of_gnu_ext_dynamic_tag0 m
   else if gnu_ext_os_additional_ranges m then
     string_of_gnu_ext_dynamic_tag0 m
-  else if m = elf_dt_gnu_verdefnum then
-    "VERDEFNUM"
-  else if m = elf_dt_gnu_verdef then
-    "VERDEF"
   else if m = elf_dt_gnu_syminsz then
     "SYMINSZ"
   else if m = elf_dt_gnu_syminfo then

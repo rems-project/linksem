@@ -6,6 +6,8 @@ open import Basic_classes
 open import Num
 open import String
 
+open import Show
+
 (** Relocation types. *)
 
 let r_386_none : natural = 0
@@ -19,6 +21,13 @@ let r_386_jmp_slot : natural = 7
 let r_386_relative : natural = 8
 let r_386_gotoff : natural = 9
 let r_386_gotpc : natural = 10
+
+(** Found in the "wild" but not in the ABI docs: *)
+
+let r_386_tls_tpoff : natural = 14
+let r_386_tls_dtpmod32 : natural = 35
+let r_386_tls_dtpoff32 : natural = 36
+let r_386_irelative : natural = 42
 
 (** [string_of_x86_relocation_type m] produces a string based representation of
   * X86 ABI relocation type [m].
@@ -47,5 +56,13 @@ let string_of_x86_relocation_type m =
     "R_386_GOTOFF"
   else if m = r_386_gotpc then
     "R_386_GOTPC"
+  else if m = r_386_tls_tpoff then
+    "R_386_TLS_TPOFF"
+  else if m = r_386_tls_dtpmod32 then
+    "R_386_TLS_DTPMOD32"
+  else if m = r_386_tls_dtpoff32 then
+    "R_386_TLS_DTPOFF32"
+  else if m = r_386_irelative then
+    "R_386_IRELATIVE"
   else
-    "Invalid x86 relocation"
+    "Invalid x86 relocation: " ^ show m
