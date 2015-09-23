@@ -131,7 +131,7 @@ lem-all-ocaml: $(filter-out error.lem,$(LEM_UTIL_SRC)) $(LEM_ELF_SRC) $(LEM_GNU_
 isa-extraction:
 	$(LEM) -isa -only_changed_output -add_full_isa_lib_path \
 	$(LEM_MODEL_ISA_THY)
-	mv *.thy ../auto_generated/isabelle/
+	mv *.thy */*.thy */*/*.thy ../auto_generated/isabelle/
 
 clean:
 	rm -f $(filter-out error.ml,$(LEM_MODEL_ML))
