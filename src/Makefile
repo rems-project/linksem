@@ -95,8 +95,7 @@ LEM_LINK_SRC := elf_memory_image.lem memory_image_orderings.lem elf_memory_image
 # LEM_MODEL_ML includes all OCaml except for the main programs
 LEM_MODEL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_GNU_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC))
 
-LEM_MODEL_ISA_THY := $(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_GNU_SRC) $(LEM_ABI_SRC) # $(LEM_LINK_SRC)
-
+LEM_MODEL_ISA_THY := $(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_GNU_SRC) $(LEM_ABI_SRC) import_everything.lem # $(LEM_LINK_SRC)
 OCAML_LIB_OBJS := unix.cma nums.cma zarith.cma batteries.cma nat_num.cmo big_int_impl.cmo nat_big_num.cmo uint.cma
 LEM_OCAML_OBJS := lem.cmo lem_basic_classes.cmo lem_function.cmo lem_list.cmo lem_num.cmo lem_sorting.cmo \
     xstring.cmo pset.cmo pmap.cmo lem_maybe.cmo lem_map.cmo lem_set.cmo lem_string_extra.cmo
@@ -131,7 +130,9 @@ lem-all-ocaml: $(filter-out error.lem,$(LEM_UTIL_SRC)) $(LEM_ELF_SRC) $(LEM_GNU_
 isa-extraction:
 	$(LEM) -isa -only_changed_output -add_full_isa_lib_path \
 	$(LEM_MODEL_ISA_THY)
-	mv *.thy */*.thy */*/*.thy ../auto_generated/isabelle/
+	mv *.thy ../auto_generated/isabelle/
+	mv */*.thy ../auto_generated/isabelle/
+	mv */*/*.thy ../auto_generated/isabelle/
 
 clean:
 	rm -f $(filter-out error.ml,$(LEM_MODEL_ML))
