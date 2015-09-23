@@ -438,7 +438,7 @@ val harness_string_of_elf32_reloc_entry : (natural -> string) -> elf32_section_h
 let {ocaml} harness_string_of_elf32_reloc_entry os sht symtab stbl sechdr_stbl rel =
   let off  = natural_of_elf32_addr rel.elf32_r_offset in
   let inf  = natural_of_elf32_word rel.elf32_r_info in
-  let typ  = os (elf32_relocation_r_type rel.elf32_r_info) in
+  let typ  = Missing_pervasives.unsafe_string_take 22 (os (elf32_relocation_r_type rel.elf32_r_info)) in
   let typs =
     let len = naturalFromNat (22 - String.stringLength typ) in
       concatS (replicate len " ")
@@ -514,7 +514,7 @@ let {ocaml} harness_string_of_elf64_reloc_a_entry os symtab sht stbl sechdr_stbl
   let off    = natural_of_elf64_addr  rel.elf64_ra_offset in
   let inf    = natural_of_elf64_xword rel.elf64_ra_info in
   let add    = integer_of_elf64_sxword rel.elf64_ra_addend in
-  let typ    = os (elf64_relocation_r_type rel.elf64_ra_info) in
+  let typ    = Missing_pervasives.unsafe_string_take 22 (os (elf64_relocation_r_type rel.elf64_ra_info)) in
   let typs   =
     let len = naturalFromNat (22 - String.stringLength typ) in
       concatS (replicate len " ")
@@ -992,14 +992,14 @@ let {ocaml} string_of_elf64_dyn_value dyn =
     (fun a -> "0x" ^ unsafe_hex_string_of_natural 0 (natural_of_elf64_addr a))
     (fun s -> show s ^ " (bytes)")
     
-val harness_string_of_elf32_dyn_entry : elf32_dyn -> (natural -> bool) -> (natural -> string) ->
+val harness_string_of_elf32_dyn_entry : bool -> elf32_dyn -> (natural -> bool) -> (natural -> string) ->
   (elf32_dyn -> string_table -> error elf32_dyn_value) ->
     (elf32_dyn -> string_table -> error elf32_dyn_value) -> string_table -> string
-let {ocaml} harness_string_of_elf32_dyn_entry dyn os_additional_tags typ os_dyn proc_dyn stbl =
+let {ocaml} harness_string_of_elf32_dyn_entry shared_object dyn os_additional_tags typ os_dyn proc_dyn stbl =
   let tag = unsafe_hex_string_of_natural 8 (naturalFromInteger (integer_of_elf32_sword dyn.elf32_dyn_tag)) in
   let typ = "(" ^ typ (naturalFromInteger (integer_of_elf32_sword dyn.elf32_dyn_tag)) ^ ")" in
   let vlu =
-    match get_value_of_elf32_dyn dyn os_additional_tags os_dyn proc_dyn stbl with
+    match get_value_of_elf32_dyn shared_object dyn os_additional_tags os_dyn proc_dyn stbl with
       | Fail    f -> f
       | Success v -> string_of_elf32_dyn_value v
     end
@@ -1030,11 +1030,12 @@ let {ocaml} harness_string_of_elf32_dynamic_section' f1 dyn bs0 os_additional_ra
   let sht = f1.elf32_file_section_header_table in
   let off = natural_of_elf32_off dyn.elf32_p_offset in
   let siz = natural_of_elf32_word dyn.elf32_p_filesz in
+  let shared_object = is_elf32_shared_object_file f1.elf32_file_header in
   let res =
     Byte_sequence.offset_and_cut off siz bs0 >>= fun rel ->
     obtain_elf32_dynamic_section_contents f1 os_additional_ranges os proc bs0 >>= fun dyns ->
     get_string_table_of_elf32_dyn_section endian dyns sht bs0 >>= fun stbl ->
-    return (List.map (fun x -> harness_string_of_elf32_dyn_entry x os_additional_ranges os_print os_dyn proc_dyn stbl) dyns)
+    return (List.map (fun x -> harness_string_of_elf32_dyn_entry shared_object x os_additional_ranges os_print os_dyn proc_dyn stbl) dyns)
   in
     match res with
       | Fail    f -> f
@@ -1061,20 +1062,27 @@ let {ocaml} harness_string_of_elf32_dynamic_section f1 bs0 os_additional_ranges 
       x.elf32_p_type = elf32_word_of_natural elf_pt_dynamic
     ) pht
   in
+  let print_msg = is_elf32_shared_object_file f1.elf32_file_header ||
+    is_elf32_executable_file f1.elf32_file_header
+  in
     match dyn with
-      | []  -> ""
+      | []  ->
+        if print_msg then
+          "\nThere is no dynamic section in this file."
+        else
+          ""
       | [x] -> harness_string_of_elf32_dynamic_section' f1 x bs0 os_additional_ranges os proc os_print os_dyn proc_dyn
       | _   -> "Multiple dynamic sections detected."
     end
     
-val harness_string_of_elf64_dyn_entry : elf64_dyn -> (natural -> bool) -> (natural -> string) ->
+val harness_string_of_elf64_dyn_entry : bool -> elf64_dyn -> (natural -> bool) -> (natural -> string) ->
   (elf64_dyn -> string_table -> error elf64_dyn_value) ->
     (elf64_dyn -> string_table -> error elf64_dyn_value) -> string_table -> string
-let {ocaml} harness_string_of_elf64_dyn_entry dyn os_additional_ranges typ os_dyn proc_dyn stbl =
+let {ocaml} harness_string_of_elf64_dyn_entry shared_object dyn os_additional_ranges typ os_dyn proc_dyn stbl =
   let tag = unsafe_hex_string_of_natural 16 (naturalFromInteger (integer_of_elf64_sxword dyn.elf64_dyn_tag)) in
   let typ = "(" ^ typ (naturalFromInteger (integer_of_elf64_sxword dyn.elf64_dyn_tag)) ^ ")" in
   let vlu =
-    match get_value_of_elf64_dyn dyn os_additional_ranges os_dyn proc_dyn stbl with
+    match get_value_of_elf64_dyn shared_object dyn os_additional_ranges os_dyn proc_dyn stbl with
       | Fail    f -> f
       | Success v -> string_of_elf64_dyn_value v
     end
@@ -1105,11 +1113,12 @@ let {ocaml} harness_string_of_elf64_dynamic_section' f1 dyn bs0 os_additional_ra
   let sht = f1.elf64_file_section_header_table in
   let off = natural_of_elf64_off dyn.elf64_p_offset in
   let siz = natural_of_elf64_xword dyn.elf64_p_filesz in
+  let shared_object = is_elf64_shared_object_file f1.elf64_file_header in
   let res =
     Byte_sequence.offset_and_cut off siz bs0 >>= fun rel ->
     obtain_elf64_dynamic_section_contents f1 os_additional_ranges os proc bs0 >>= fun dyns ->
     get_string_table_of_elf64_dyn_section endian dyns sht bs0 >>= fun stbl ->
-    return (List.map (fun x -> harness_string_of_elf64_dyn_entry x os_additional_ranges os_print os_dyn proc_dyn stbl) dyns)
+    return (List.map (fun x -> harness_string_of_elf64_dyn_entry shared_object x os_additional_ranges os_print os_dyn proc_dyn stbl) dyns)
   in
     match res with
       | Fail    f -> f
@@ -1131,13 +1140,20 @@ val harness_string_of_elf64_dynamic_section : elf64_file -> byte_sequence ->
         (elf64_dyn -> string_table -> error elf64_dyn_value) -> string
 let {ocaml} harness_string_of_elf64_dynamic_section f1 bs0 os_additional_ranges os proc os_print os_dyn proc_dyn =
   let pht = f1.elf64_file_program_header_table in
+  let print_msg = is_elf64_shared_object_file f1.elf64_file_header ||
+    is_elf64_executable_file f1.elf64_file_header
+  in
   let dyn =
     List.filter (fun x ->
       x.elf64_p_type = elf64_word_of_natural elf_pt_dynamic
     ) pht
   in
     match dyn with
-      | []  -> ""
+      | []  ->
+        if print_msg then
+          "\nThere is no dynamic section in this file."
+        else
+          ""
       | [x] -> harness_string_of_elf64_dynamic_section' f1 x bs0 os_additional_ranges os proc os_print os_dyn proc_dyn
       | _   -> "Multiple dynamic sections detected."
     end

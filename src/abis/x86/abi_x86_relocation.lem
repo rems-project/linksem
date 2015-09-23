@@ -65,4 +65,4 @@ let string_of_x86_relocation_type m =
   else if m = r_386_irelative then
     "R_386_IRELATIVE"
   else
-    "Invalid x86 relocation: " ^ show m
+    "Invalid x86 relocation"

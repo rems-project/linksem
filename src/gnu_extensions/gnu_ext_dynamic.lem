@@ -135,7 +135,7 @@ let {ocaml} gnu_string_of_dt_flag_1 flag =
   else if check_flag flag (gnu_df_1_nodelete + gnu_df_1_initfirst) then
     "NODELETE INITFIRST"
   else (* XXX: add more as necessary *)
-    "Invalid GNU dynamic flag" ^ show flag
+    "Invalid GNU dynamic flag"
 
 (** [gnu_ext_os_additional_ranges m] checks whether dynamic section type [m]
   * lies within the ranges set aside for GNU specific functionality.
@@ -219,7 +219,7 @@ let gnu_ext_tag_correspondence_of_tag m =
   else if m = elf_dt_gnu_auxiliary then
     return C_Val (** unsure *)
   else
-    fail ("gnu_ext_tag_correspondence_of_tag: unrecognised GNU dynamic tag: " ^ show m)
+    fail ("gnu_ext_tag_correspondence_of_tag: unrecognised GNU dynamic tag")
     
 (** [gnu_ext_elf32_value_of_elf32_dyn0 dyn] extracts a dynamic value from the
   * dynamic section entry [dyn] under the assumption that its type is a GNU
