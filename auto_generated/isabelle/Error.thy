@@ -4,11 +4,11 @@ theory "Error"
 
 imports 
  	 Main
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_num" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_list" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_maybe" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_string" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_num" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_list" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_maybe" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_string" 
 	 "Show" 
 
 begin 
@@ -53,9 +53,9 @@ definition error_fail  :: " string \<Rightarrow> 'a error "  where
 (** [(>>=)] is the monadic binding function for [error].
   *)
 (*val >>= : forall 'a 'b. error 'a -> ('a -> error 'b) -> error 'b*)
-fun error_bind :: " 'a error \<Rightarrow>('a \<Rightarrow> 'b error)\<Rightarrow> 'b error" ("_>>=_") where 
-     "error_bind (Success s) f = ( f s )"
-|"error_bind (Fail err) f = ( Fail err )" 
+fun error_bind :: " 'a error \<Rightarrow>('a \<Rightarrow> 'b error)\<Rightarrow> 'b error " ("_>>=_" [50,50]50) where 
+     " error_bind (Success s) f = ( f s )"
+|" error_bind (Fail err) f = ( Fail err )" 
 declare error_bind.simps [simp del]
 
 	
@@ -108,12 +108,15 @@ by pat_completeness auto
 function (sequential,domintros)  mapM  :: "('a \<Rightarrow> 'b error)\<Rightarrow> 'a list \<Rightarrow>('b list)error "  where 
      " mapM f ([]) = ( error_return [])"
 |" mapM f (x # xs) = (
-				f x >>= (\<lambda> hd . 
+				f x >>= (\<lambda> hd1 . 
 				mapM f xs >>= (\<lambda> tl1 . 
-				error_return (hd # tl1))))" 
+				error_return (hd1 # tl1))))" 
 by pat_completeness auto
 
 
+(** [foldM f e xs] performs a monadic right fold of [f] across [xs] using [e]
+  * as the base case.  Fails if any application of [f] fails.
+  *)
 (*val foldM : forall 'a 'b. ('a -> 'b -> error 'a) -> 'a -> list 'b -> error 'a*)
 function (sequential,domintros)  foldM  :: "('a \<Rightarrow> 'b \<Rightarrow> 'a error)\<Rightarrow> 'a \<Rightarrow> 'b list \<Rightarrow> 'a error "  where 
      " foldM f e ([]) = ( error_return e )"

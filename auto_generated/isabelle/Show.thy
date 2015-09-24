@@ -4,12 +4,12 @@ theory "Show"
 
 imports 
  	 Main
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_num" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_list" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_function" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_maybe" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_string" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_string_extra" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_num" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_list" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_function" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_maybe" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_string" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_string_extra" 
 
 begin 
 
@@ -53,12 +53,16 @@ end*)
   *)
 (*val string_of_quad : forall 'a 'b 'c 'd. Show 'a, Show 'b, Show 'c, Show 'd => ('a * 'b * 'c * 'd) -> string*)
 
+(** [string_of_maybe m] produces a string representation of maybe value [m].
+  *)
 (*val string_of_maybe : forall 'a. Show 'a => maybe 'a -> string*)
 
 (** [show_else s m] produces a string representation of maybe [m], using [s] 
   * in the case [m] = Nothing. *)
 (*val show_else : forall 'a. Show 'a => string -> maybe 'a -> string*)
 
+(** [string_of_nat m] produces a string representation of nat value [m].
+  *)
 (*val string_of_nat : nat -> string*)
 
 (*val string_of_integer : integer -> string*)

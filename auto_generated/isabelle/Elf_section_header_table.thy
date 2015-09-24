@@ -4,13 +4,13 @@ theory "Elf_section_header_table"
 
 imports 
  	 Main
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_num" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_list" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_function" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_bool" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_maybe" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_string" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_num" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_list" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_function" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_bool" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_maybe" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_string" 
 	 "Show" 
 	 "Missing_pervasives" 
 	 "Error" 
@@ -19,23 +19,13 @@ imports
 	 "Elf_types_native_uint" 
 	 "Elf_header" 
 	 "String_table" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_map" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_map" 
 	 "Elf_program_header_table" 
 
 begin 
 
 (** [elf_section_header_table] provides types, functions and other definitions
   * for working with section header tables and their entries.
-  *
-  * TODO:  All relevant definitions and types are now captured.  Some obvious
-  * 'helper' functions can still be written:
-  *
-  *   * Extract SHT indices of section groups.
-  *   * Finish the formalisation of the 'special sections' with their expected
-  *     types and attributes.  See the TODO comment above the
-  *     [construct_special_sections] function.
-  *   * Formalise the natural language invariants on section headers and the
-  *     section header table expressed in the SCO specification.
   *)
 
 (*open import Basic_classes*)
@@ -113,6 +103,9 @@ definition shn_hireserve  :: " nat "  where
      " shn_hireserve = (( 65535 :: nat))"
  (* 0xffff *)
 
+(** [string_of_special_section_index m] produces a string-based representation
+  * of a section header entry's special section index, [m].
+  *)
 (*val string_of_special_section_index : natural -> string*)
 
 (** Section types. *)
@@ -238,7 +231,11 @@ definition sht_hiuser  :: " nat "  where
      " sht_hiuser = ( (( 603979775 :: nat) *( 4 :: nat)) +( 3 :: nat))"
  (* 2415919103 (* 0x8fffffff *) *)
 
-(* XXX: is GNU stuff supposed to be hardcoded here? *)
+(** [string_of_section_type os proc user i] produces a string-based representation
+  * of section type [i].  Some section types are defined by ABI-specific supplements
+  * in reserved ranges, in which case the functions [os], [proc] and [user] are
+  * used to produce the string.
+  *)
 (*val string_of_section_type : (natural -> string) -> (natural -> string) ->
   (natural -> string) -> natural -> string*)
 
@@ -249,18 +246,15 @@ definition sht_hiuser  :: " nat "  where
 definition shf_write  :: " nat "  where 
      " shf_write = (( 1 :: nat))"
 
-
 (** The section occupies memory during program execution.
   *)
 definition shf_alloc  :: " nat "  where 
      " shf_alloc = (( 2 :: nat))"
 
-
 (** The section contains executable instructions.
   *)
 definition shf_execinstr  :: " nat "  where 
      " shf_execinstr = (( 4 :: nat))"
-
 
 (** The data in the section may be merged to reduce duplication.  Each section
   * is compared based on name, type and flags set with sections with identical
@@ -269,12 +263,10 @@ definition shf_execinstr  :: " nat "  where
 definition shf_merge  :: " nat "  where 
      " shf_merge = (( 16 :: nat))"
 
-
 (** The section contains null-terminated character strings.
   *)
 definition shf_strings  :: " nat "  where 
      " shf_strings = (( 32 :: nat))"
-
 
 (** The [info] field of this section header contains a section header table
   * index.
@@ -282,12 +274,10 @@ definition shf_strings  :: " nat "  where
 definition shf_info_link  :: " nat "  where 
      " shf_info_link = (( 64 :: nat))"
 
-
 (** Adds special link ordering for link editors.
   *)
 definition shf_link_order  :: " nat "  where 
      " shf_link_order = (( 128 :: nat))"
-
 
 (** This section requires special OS-specific processing beyond the standard
   * link rules.
@@ -295,12 +285,10 @@ definition shf_link_order  :: " nat "  where
 definition shf_os_nonconforming  :: " nat "  where 
      " shf_os_nonconforming = (( 256 :: nat))"
 
-
 (** This section is a member (potentially the only member) of a link group.
   *)
 definition shf_group  :: " nat "  where 
      " shf_group = (( 512 :: nat))"
-
 
 (** This section contains Thread Local Storage (TLS) meaning that each thread of
   * execution has its own instance of this data.
@@ -308,13 +296,11 @@ definition shf_group  :: " nat "  where
 definition shf_tls  :: " nat "  where 
      " shf_tls = (( 1024 :: nat))"
 
-
 (** This section contains compressed data.  Compressed data may not be marked as
   * allocatable.
   *)
 definition shf_compressed  :: " nat "  where 
      " shf_compressed = (( 2048 :: nat))"
-
 
 (** All bits included in these masks are reserved for OS and processor specific
   * semantics respectively.
@@ -326,8 +312,14 @@ definition shf_mask_proc  :: " nat "  where
      " shf_mask_proc = (( 4 :: nat) *( 1006632960 :: nat))"
  (* 0xf0000000 *)
 
-(* TODO: finish me!  Add as required. *)
-(*val string_of_section_flags : (natural -> string) -> (natural -> string) -> natural -> string*)
+(** [string_of_section_flags os proc f] produces a string based representation
+  * of section flag [f].  Some section flags are defined by the ABI and are in
+  * reserved ranges, in which case the flag string is produced by functions
+  * [os] and [proc].
+  * TODO: add more as validation tests require them.
+  *)
+(*val string_of_section_flags : (natural -> string) -> (natural -> string) ->
+  natural -> string*)
 
 (** Section compression. *)
 
@@ -353,7 +345,7 @@ record elf64_compression_header =
   
  elf64_chdr_type      ::" uint32 "  (** Specified the compression algorithm *)
    
- elf64_chdr_reserved  ::" uint32 "
+ elf64_chdr_reserved  ::" uint32 "  (** Reserved. *)
    
  elf64_chdr_size      ::" uint64 " (** Size in bytes of the uncompressed data *)
    
@@ -449,6 +441,12 @@ record elf32_section_header_table_entry =
    
 
    
+(** [compare_elf32_section_header_table_entry ent1 ent2] is an ordering comparison
+  * function on section header table entries suitable for use in constructing
+  * sets, finite maps and other ordered data types.
+  *)
+(*val compare_elf32_section_header_table_entry : elf32_section_header_table_entry ->
+  elf32_section_header_table_entry -> ordering*)
 definition compare_elf32_section_header_table_entry  :: " elf32_section_header_table_entry \<Rightarrow> elf32_section_header_table_entry \<Rightarrow> ordering "  where 
      " compare_elf32_section_header_table_entry h1 h2 = (   
  (lexicographicCompareBy (genericCompare (op<) (op=)) 
@@ -494,21 +492,21 @@ definition instance_Basic_classes_Ord_Elf_section_header_table_elf32_section_hea
   *) 
 record elf64_section_header_table_entry =
   
- elf64_sh_name      ::" uint32 " (** Name of the section *)
+ elf64_sh_name      ::" uint32 "  (** Name of the section *)
    
- elf64_sh_type      ::" uint32 " (** Type of the section and its semantics *)
+ elf64_sh_type      ::" uint32 "  (** Type of the section and its semantics *)
    
  elf64_sh_flags     ::" uint64 " (** Flags associated with the section *)
    
- elf64_sh_addr      ::" Elf_Types_Local.uint64 " (** Address of first byte of section in memory image *)
+ elf64_sh_addr      ::" Elf_Types_Local.uint64 "  (** Address of first byte of section in memory image *)
    
- elf64_sh_offset    ::" uint64 "  (** Offset from beginning of file of first byte of section *)
+ elf64_sh_offset    ::" uint64 "   (** Offset from beginning of file of first byte of section *)
    
  elf64_sh_size      ::" uint64 " (** Section size in bytes *)
    
- elf64_sh_link      ::" uint32 " (** Section header table index link *)
+ elf64_sh_link      ::" uint32 "  (** Section header table index link *)
    
- elf64_sh_info      ::" uint32 " (** Extra information, contents depends on type of section *)
+ elf64_sh_info      ::" uint32 "  (** Extra information, contents depends on type of section *)
    
  elf64_sh_addralign ::" uint64 " (** Alignment constraints for section *)
    
@@ -516,6 +514,12 @@ record elf64_section_header_table_entry =
    
 
 
+(** [compare_elf64_section_header_table_entry ent1 ent2] is an ordering comparison
+  * function on section header table entries suitable for use in constructing
+  * sets, finite maps and other ordered data types.
+  *)
+(*val compare_elf64_section_header_table_entry : elf64_section_header_table_entry ->
+  elf64_section_header_table_entry -> ordering*)
 definition compare_elf64_section_header_table_entry  :: " elf64_section_header_table_entry \<Rightarrow> elf64_section_header_table_entry \<Rightarrow> ordering "  where 
      " compare_elf64_section_header_table_entry h1 h2 = (   
  (lexicographicCompareBy (genericCompare (op<) (op=)) 
@@ -553,6 +557,7 @@ definition instance_Basic_classes_Ord_Elf_section_header_table_elf64_section_hea
   isGreater_method = (\<lambda> f1 .  (\<lambda> f2 .  (compare_elf64_section_header_table_entry f1 f2 = GT))),
 
   isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (compare_elf64_section_header_table_entry f1 f2) ({GT, EQ})))|) )"
+
 
 (** Section header table type *)
 
@@ -780,6 +785,10 @@ definition elf64_size_correct  :: " elf64_section_header_table_entry \<Rightarro
 
 
 
+(** [is_elf32_addr_addralign_correct ent] checks whether an internal address
+  * alignment constraint is met on section header table [ent].
+  * TODO: needs tweaking to add in power-of-two constraint, too.
+  *)
 (*val is_elf32_addr_addralign_correct : elf32_section_header_table_entry -> bool*)
 definition is_elf32_addr_addralign_correct  :: " elf32_section_header_table_entry \<Rightarrow> bool "  where 
      " is_elf32_addr_addralign_correct ent = (
@@ -791,6 +800,10 @@ definition is_elf32_addr_addralign_correct  :: " elf32_section_header_table_entr
       False)))"
 
     
+(** [is_elf64_addr_addralign_correct ent] checks whether an internal address
+  * alignment constraint is met on section header table [ent].
+  * TODO: needs tweaking to add in power-of-two constraint, too.
+  *)
 (*val is_elf64_addr_addralign_correct : elf64_section_header_table_entry -> bool*)
 definition is_elf64_addr_addralign_correct  :: " elf64_section_header_table_entry \<Rightarrow> bool "  where 
      " is_elf64_addr_addralign_correct ent = (
@@ -802,6 +815,9 @@ definition is_elf64_addr_addralign_correct  :: " elf64_section_header_table_entr
       False)))"
 
 
+(** [is_valid_elf32_section_header_table sht] checks whether all entries of
+  * section header table [sht] are valid.
+  *)
 (*val is_valid_elf32_section_header_table : elf32_section_header_table -> bool*)
 definition is_valid_elf32_section_header_table  :: "(elf32_section_header_table_entry)list \<Rightarrow> bool "  where 
      " is_valid_elf32_section_header_table tbl = (
@@ -821,6 +837,9 @@ definition is_valid_elf32_section_header_table  :: "(elf32_section_header_table_
   ))"
 
   
+(** [is_valid_elf64_section_header_table sht] checks whether all entries of
+  * section header table [sht] are valid.
+  *)
 (*val is_valid_elf64_section_header_table : elf64_section_header_table -> bool*)
 definition is_valid_elf64_section_header_table  :: "(elf64_section_header_table_entry)list \<Rightarrow> bool "  where 
      " is_valid_elf64_section_header_table tbl = (
@@ -867,12 +886,29 @@ type_synonym sht_print_bundle ="
 (*val string_of_elf64_section_header_table_entry : sht_print_bundle ->
   elf64_section_header_table_entry -> string*)
 
+(** [string_of_elf32_section_header_table_entry' sht stab ent] produces a string
+  * representation of section header table entry [ent] using [sht] and section
+  * header string table [stab] to print the name of the section header entry
+  * correctly.
+  * OCaml specific definition.
+  *)
 (*val string_of_elf32_section_header_table_entry' : sht_print_bundle ->
   string_table -> elf32_section_header_table_entry -> string*)
 
+(** [string_of_elf64_section_header_table_entry' sht stab ent] produces a string
+  * representation of section header table entry [ent] using [sht] and section
+  * header string table [stab] to print the name of the section header entry
+  * correctly.
+  * OCaml specific definition.
+  *)
 (*val string_of_elf64_section_header_table_entry' : sht_print_bundle ->
   string_table -> elf64_section_header_table_entry -> string*)
 
+(** The following defintions are default printing functions, with no ABI-specific
+  * functionality, in order to produce a [Show] instance for section header
+  * table entries.
+  *)
+  
 (*val string_of_elf32_section_header_table_entry_default : elf32_section_header_table_entry -> string*)
 
 (*val string_of_elf64_section_header_table_entry_default : elf64_section_header_table_entry -> string*)
@@ -931,6 +967,13 @@ definition is_elf64_tbss_special  :: " elf64_section_header_table_entry \<Righta
     ( \<not> ((unat(elf64_p_type   segment)) = elf_pt_tls))))"
 
 
+(** [get_elf32_section_to_segment_mapping hdr sht pht isin stbl] computes the
+  * section to segment mapping for an ELF file using information in the section
+  * header table [sht], program header table [pht] and file header [hdr].  A
+  * string table [stbl] is taken to produce the string output.  The test whether
+  * a section lies withing a segment is ABI specific, so [isin] is used to perform
+  * the test.
+  *)
 (*val get_elf32_section_to_segment_mapping : elf32_header -> elf32_section_header_table -> elf32_program_header_table_entry ->
   (elf32_header -> elf32_section_header_table_entry -> elf32_program_header_table_entry -> bool) ->
   string_table -> error (list string)*)
@@ -949,6 +992,13 @@ function (sequential,domintros)  get_elf32_section_to_segment_mapping  :: " elf3
 by pat_completeness auto
 
   
+(** [get_elf64_section_to_segment_mapping hdr sht pht isin stbl] computes the
+  * section to segment mapping for an ELF file using information in the section
+  * header table [sht], program header table [pht] and file header [hdr].  A
+  * string table [stbl] is taken to produce the string output.  The test whether
+  * a section lies withing a segment is ABI specific, so [isin] is used to perform
+  * the test.
+  *)
 (*val get_elf64_section_to_segment_mapping : elf64_header -> elf64_section_header_table -> elf64_program_header_table_entry ->
   (elf64_header -> elf64_section_header_table_entry -> elf64_program_header_table_entry -> bool) ->
   string_table -> error (list string)*)
@@ -986,6 +1036,9 @@ definition grp_maskproc  :: " nat "  where
      " grp_maskproc = (( 4 :: nat) *( 1006632960 :: nat))"
  (* 0xf0000000 *)
 
+(** [obtain_elf32_section_group_indices endian sht bs0] extracts all section header
+  * table indices of sections that are marked as being part of a section group.
+  *)
 (*val obtain_elf32_section_group_indices : endianness -> elf32_section_header_table -> byte_sequence
   -> error (list (natural * list elf32_word))*)
 definition obtain_elf32_section_group_indices  :: " endianness \<Rightarrow>(elf32_section_header_table_entry)list \<Rightarrow> byte_sequence \<Rightarrow>((nat*(uint32)list)list)error "  where 
@@ -1008,6 +1061,9 @@ definition obtain_elf32_section_group_indices  :: " endianness \<Rightarrow>(elf
     ) filtered))"
 
     
+(** [obtain_elf64_section_group_indices endian sht bs0] extracts all section header
+  * table indices of sections that are marked as being part of a section group.
+  *)
 (*val obtain_elf64_section_group_indices : endianness -> elf64_section_header_table -> byte_sequence
   -> error (list (natural * list elf64_word))*)
 definition obtain_elf64_section_group_indices  :: " endianness \<Rightarrow>(elf64_section_header_table_entry)list \<Rightarrow> byte_sequence \<Rightarrow>((nat*(uint32)list)list)error "  where 
@@ -1029,7 +1085,10 @@ definition obtain_elf64_section_group_indices  :: " endianness \<Rightarrow>(elf
       ))))))
     ) filtered))"
 
-    
+
+(** [obtain_elf32_tls_template sht] extracts the TLS template (i.e. all sections
+  * in section header table [sht] that have their TLS flag bit set).
+  *)
 (*val obtain_elf32_tls_template : elf32_section_header_table -> elf32_section_header_table*)
 definition obtain_elf32_tls_template  :: "(elf32_section_header_table_entry)list \<Rightarrow>(elf32_section_header_table_entry)list "  where 
      " obtain_elf32_tls_template sht = (
@@ -1037,6 +1096,9 @@ definition obtain_elf32_tls_template  :: "(elf32_section_header_table_entry)list
     (let flags = (unat(elf32_sh_flags   ent)) in \<not> ((unsafe_natural_land flags shf_tls) =(( 0 :: nat))))) sht )"
 
 
+(** [obtain_elf64_tls_template sht] extracts the TLS template (i.e. all sections
+  * in section header table [sht] that have their TLS flag bit set).
+  *)
 (*val obtain_elf64_tls_template : elf64_section_header_table -> elf64_section_header_table*)
 definition obtain_elf64_tls_template  :: "(elf64_section_header_table_entry)list \<Rightarrow>(elf64_section_header_table_entry)list "  where 
      " obtain_elf64_tls_template sht = (
@@ -1044,6 +1106,12 @@ definition obtain_elf64_tls_template  :: "(elf64_section_header_table_entry)list
     (let flags = (unat(elf64_sh_flags   ent)) in \<not> ((unsafe_natural_land flags shf_tls) =(( 0 :: nat))))) sht )"
 
       
+(** [obtain_elf32_hash_table endian sht bs0] extracts a hash table from an ELF file
+  * providing a section of type SHT_HASH exists in section header table [sht].
+  * Extraction is from byte sequence [bs0] assuming endianness [endian].  The
+  * return type represents the number of buckets, the number of chains, the buckets
+  * and finally the chains.
+  *)
 (*val obtain_elf32_hash_table : endianness -> elf32_section_header_table -> byte_sequence ->
   error (elf32_word * elf32_word * list elf32_word * list elf32_word)*)
 definition obtain_elf32_hash_table  :: " endianness \<Rightarrow>(elf32_section_header_table_entry)list \<Rightarrow> byte_sequence \<Rightarrow>(uint32*uint32*(uint32)list*(uint32)list)error "  where 
@@ -1066,6 +1134,12 @@ definition obtain_elf32_hash_table  :: " endianness \<Rightarrow>(elf32_section_
     )))"
 
     
+(** [obtain_elf64_hash_table endian sht bs0] extracts a hash table from an ELF file
+  * providing a section of type SHT_HASH exists in section header table [sht].
+  * Extraction is from byte sequence [bs0] assuming endianness [endian].  The
+  * return type represents the number of buckets, the number of chains, the buckets
+  * and finally the chains.
+  *)
 (*val obtain_elf64_hash_table : endianness -> elf64_section_header_table -> byte_sequence ->
   error (elf64_word * elf64_word * list elf64_word * list elf64_word)*)
 definition obtain_elf64_hash_table  :: " endianness \<Rightarrow>(elf64_section_header_table_entry)list \<Rightarrow> byte_sequence \<Rightarrow>(uint32*uint32*(uint32)list*(uint32)list)error "  where 
@@ -1093,12 +1167,7 @@ definition obtain_elf64_hash_table  :: " endianness \<Rightarrow>(elf64_section_
 (** [construct_special_sections] contains a finite map from section name (as
   * a string) to the expected attributes and flags expected of that section,
   * as specified in the ELF specification.
-  *
-  * TODO: some of these entries are not fixed and change depending on the content
-  *       of the rest of the ELF file.  For example the entry for .symtab_shndx
-  *       has flags that depend on the flags of the corresponding symbol table
-  *       entry.  Entries of this type are currently commented out.  Fill them
-  *       in.
+  * NOTE: some of these are overriden by the ABI.
   *)
 (*val elf_special_sections : Map.map string (natural * natural)*)
 definition elf_special_sections  :: "((string),(nat*nat))Map.map "  where 

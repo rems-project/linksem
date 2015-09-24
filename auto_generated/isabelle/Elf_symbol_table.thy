@@ -4,20 +4,20 @@ theory "Elf_symbol_table"
 
 imports 
  	 Main
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_num" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_list" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_set" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_bool" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_maybe" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_string" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_num" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_list" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_set" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_bool" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_maybe" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_string" 
 	 "Show" 
 	 "Missing_pervasives" 
 	 "Error" 
 	 "Byte_sequence" 
 	 "Endianness" 
 	 "Elf_types_native_uint" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_tuple" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_tuple" 
 	 "Elf_header" 
 	 "String_table" 
 
@@ -242,6 +242,8 @@ definition string_of_symbol_visibility  :: " nat \<Rightarrow> string "  where
 
 (** Symbol table entry type *)
 
+(** [elf32_symbol_table_entry] is an entry in a symbol table.
+  *)
 record elf32_symbol_table_entry =
   
  elf32_st_name  ::" uint32 "     (** Index into the object file's string table *)
@@ -258,6 +260,12 @@ record elf32_symbol_table_entry =
    
 
 
+(** [elf32_symbol_table_entry_compare ent1 ent2] is an ordering-comparison function
+  * for symbol table entries suitable for constructing sets, finite maps and other
+  * ordered data structures from.
+  *)
+(*val elf32_symbol_table_entry_compare : elf32_symbol_table_entry ->
+  elf32_symbol_table_entry -> ordering*)
 definition elf32_symbol_table_entry_compare  :: " elf32_symbol_table_entry \<Rightarrow> elf32_symbol_table_entry \<Rightarrow> ordering "  where 
      " elf32_symbol_table_entry_compare ent1 ent2 = (    
  (sextupleCompare (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) (unat(elf32_st_name   ent1), unat(elf32_st_value   ent1), 
@@ -282,6 +290,8 @@ definition instance_Basic_classes_Ord_Elf_symbol_table_elf32_symbol_table_entry_
   isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (elf32_symbol_table_entry_compare f1 f2) ({GT, EQ})))|) )"
 
    
+(** [elf64_symbol_table_entry] is an entry in a symbol table.
+  *)
 record elf64_symbol_table_entry =
   
  elf64_st_name  ::" uint32 "     (** Index into the object file's string table *)
@@ -298,6 +308,12 @@ record elf64_symbol_table_entry =
    
 
 
+(** [elf64_symbol_table_entry_compare ent1 ent2] is an ordering-comparison function
+  * for symbol table entries suitable for constructing sets, finite maps and other
+  * ordered data structures from.
+  *)
+(*val elf64_symbol_table_entry_compare : elf64_symbol_table_entry -> elf64_symbol_table_entry ->
+  ordering*)
 definition elf64_symbol_table_entry_compare  :: " elf64_symbol_table_entry \<Rightarrow> elf64_symbol_table_entry \<Rightarrow> ordering "  where 
      " elf64_symbol_table_entry_compare ent1 ent2 = (    
  (sextupleCompare (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) (unat(elf64_st_name   ent1), unat(elf64_st_value   ent1), 
@@ -371,18 +387,30 @@ definition get_symbol_visibility  :: " Elf_Types_Local.unsigned_char \<Rightarro
   unat (Elf_Types_Local.unsigned_char_land info (Elf_Types_Local.unsigned_char_of_nat(( 3 :: nat)))))"
  (* 0x3*)
   
+(** [make_symbol_other m] converts a natural [m] to an unsigned char suitable
+  * for use in a symbol table entry's other field.
+  * XXX: WHY?
+  *)
 (*val make_symbol_other : natural -> unsigned_char*)
 definition make_symbol_other  :: " nat \<Rightarrow> Elf_Types_Local.unsigned_char "  where 
      " make_symbol_other visibility = (
   Elf_Types_Local.unsigned_char_of_nat visibility )"
 
   
+(** [is_elf32_shndx_too_large ent] tests whether the symbol table entry's
+  * [shndx] field is equal to SHN_XINDEX, in which case the real value is stored
+  * elsewhere.
+  *)
 (*val is_elf32_shndx_too_large : elf32_symbol_table_entry -> bool*)
 definition is_elf32_shndx_too_large  :: " elf32_symbol_table_entry \<Rightarrow> bool "  where 
      " is_elf32_shndx_too_large syment = (
   unat(elf32_st_shndx   syment) = shn_xindex )"
 
   
+(** [is_elf64_shndx_too_large ent] tests whether the symbol table entry's
+  * [shndx] field is equal to SHN_XINDEX, in which case the real value is stored
+  * elsewhere.
+  *)
 (*val is_elf64_shndx_too_large : elf64_symbol_table_entry -> bool*)
 definition is_elf64_shndx_too_large  :: " elf64_symbol_table_entry \<Rightarrow> bool "  where 
      " is_elf64_shndx_too_large syment = (
@@ -424,18 +452,31 @@ definition is_elf64_null_entry  :: " elf64_symbol_table_entry \<Rightarrow> bool
 type_synonym symtab_print_bundle ="
   (nat \<Rightarrow> string) * (nat \<Rightarrow> string)"
 
+(** [string_of_elf32_symbol_table_entry ent] produces a string based representation
+  * of symbol table entry [ent].
+  *)
 (*val string_of_elf32_symbol_table_entry : elf32_symbol_table_entry -> string*)
   
+(** [string_of_elf64_symbol_table_entry ent] produces a string based representation
+  * of symbol table entry [ent].
+  *)
 (*val string_of_elf64_symbol_table_entry : elf64_symbol_table_entry -> string*)
 
+(** [string_of_elf32_symbol_table stbl] produces a string based representation
+  * of symbol table [stbl].
+  *)
 (*val string_of_elf32_symbol_table : elf32_symbol_table -> string*)
   
+(** [elf64_null_symbol_table_entry] is the null symbol table entry, with all
+  * fields set to zero.
+  *)
+(*val elf64_null_symbol_table_entry : elf64_symbol_table_entry*)
 definition elf64_null_symbol_table_entry  :: " elf64_symbol_table_entry "  where 
      " elf64_null_symbol_table_entry = (
   (| elf64_st_name  = (Elf_Types_Local.uint32_of_nat(( 0 :: nat)))
    , elf64_st_info  = (Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat)))
    , elf64_st_other = (Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat)))
-   , elf64_st_shndx = (Elf_Types_Local.uint32_of_nat(( 0 :: nat)))
+   , elf64_st_shndx = (Elf_Types_Local.uint16_of_nat(( 0 :: nat)))
    , elf64_st_value = (Elf_Types_Local.uint64_of_nat(( 0 :: nat)))
    , elf64_st_size  = (of_int (int (( 0 :: nat))))
    |) )"
@@ -445,6 +486,10 @@ definition elf64_null_symbol_table_entry  :: " elf64_symbol_table_entry "  where
 
 (** Reading in symbol table (entries) *)
 
+(** [read_elf32_symbol_table_entry endian bs0] reads an ELF symbol table entry
+  * record from byte sequence [bs0] assuming endianness [endian], returning the
+  * remainder of the byte sequence.  Fails if the byte sequence is not long enough.
+  *)
 (*val read_elf32_symbol_table_entry : endianness -> byte_sequence ->
   error (elf32_symbol_table_entry * byte_sequence)*)
 definition read_elf32_symbol_table_entry  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(elf32_symbol_table_entry*byte_sequence)error "  where 
@@ -459,7 +504,11 @@ definition read_elf32_symbol_table_entry  :: " endianness \<Rightarrow> byte_seq
                  elf32_st_size = st_size, elf32_st_info = st_info,
                  elf32_st_other = st_other, elf32_st_shndx = st_shndx |), bs0))))))))"
 
-                 
+          
+(** [read_elf64_symbol_table_entry endian bs0] reads an ELF symbol table entry
+  * record from byte sequence [bs0] assuming endianness [endian], returning the
+  * remainder of the byte sequence.  Fails if the byte sequence is not long enough.
+  *)       
 (*val read_elf64_symbol_table_entry : endianness -> byte_sequence ->
   error (elf64_symbol_table_entry * byte_sequence)*)
 definition read_elf64_symbol_table_entry  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(elf64_symbol_table_entry*byte_sequence)error "  where 
@@ -475,6 +524,10 @@ definition read_elf64_symbol_table_entry  :: " endianness \<Rightarrow> byte_seq
                  elf64_st_value = st_value, elf64_st_size = st_size |), bs0))))))))"
 
 
+(** [read_elf32_symbol_table endian bs0] reads a symbol table from byte sequence
+  * [bs0] assuming endianness [endian].  Assumes [bs0]'s length modulo the size
+  * of a symbol table entry is 0.  Fails otherwise.
+  *)
 (*val read_elf32_symbol_table : endianness -> byte_sequence -> error elf32_symbol_table*)
 function (sequential,domintros)  read_elf32_symbol_table  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>((elf32_symbol_table_entry)list)error "  where 
      " read_elf32_symbol_table endian bs0 = (
@@ -487,6 +540,10 @@ function (sequential,domintros)  read_elf32_symbol_table  :: " endianness \<Righ
 by pat_completeness auto
 
     
+(** [read_elf64_symbol_table endian bs0] reads a symbol table from byte sequence
+  * [bs0] assuming endianness [endian].  Assumes [bs0]'s length modulo the size
+  * of a symbol table entry is 0.  Fails otherwise.
+  *)
 (*val read_elf64_symbol_table : endianness -> byte_sequence -> error elf64_symbol_table*)
 function (sequential,domintros)  read_elf64_symbol_table  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>((elf64_symbol_table_entry)list)error "  where 
      " read_elf64_symbol_table endian bs0 = (
@@ -501,11 +558,17 @@ by pat_completeness auto
 
 (** Association map of symbol name, symbol type, symbol size, symbol address
   * and symbol binding.
+  * A PPCMemism.
   *)
 type_synonym symbol_address_map
   =" (string * (nat * nat * nat * nat)) list "
 
-(*val get_elf32_symbol_image_address : elf32_symbol_table -> string_table -> error symbol_address_map*)
+(** [get_elf32_symbol_image_address symtab stbl] extracts the symbol address map
+  * from the symbol table [symtab] using the string table [stbl].
+  * A PPCMemism.
+  *)
+(*val get_elf32_symbol_image_address : elf32_symbol_table -> string_table ->
+  error symbol_address_map*)
 definition get_elf32_symbol_image_address  :: "(elf32_symbol_table_entry)list \<Rightarrow> string_table \<Rightarrow>((string*(nat*nat*nat*nat))list)error "  where 
      " get_elf32_symbol_image_address symtab strtab = (
   mapM (\<lambda> entry . 
@@ -519,7 +582,12 @@ definition get_elf32_symbol_image_address  :: "(elf32_symbol_table_entry)list \<
   ) symtab )"
 
 
-(*val get_elf64_symbol_image_address : elf64_symbol_table -> string_table -> error symbol_address_map*)
+(** [get_elf64_symbol_image_address symtab stbl] extracts the symbol address map
+  * from the symbol table [symtab] using the string table [stbl].
+  * A PPCMemism.
+  *)
+(*val get_elf64_symbol_image_address : elf64_symbol_table -> string_table ->
+  error symbol_address_map*)
 definition get_elf64_symbol_image_address  :: "(elf64_symbol_table_entry)list \<Rightarrow> string_table \<Rightarrow>((string*(nat*nat*nat*nat))list)error "  where 
      " get_elf64_symbol_image_address symtab strtab = (
   mapM (\<lambda> entry . 
@@ -531,5 +599,21 @@ definition get_elf64_symbol_image_address  :: "(elf64_symbol_table_entry)list \<
       String_table.get_string_at name1 strtab >>= (\<lambda> str . 
       error_return (str, (typ1, size2, addr, bnd))))))))
   ) symtab )"
+
+
+(** [get_el32_symbol_type ent] extracts the symbol type from symbol table entry
+  * [ent].
+  *)
+(*val get_elf32_symbol_type : elf32_symbol_table_entry -> natural*)
+definition get_elf32_symbol_type  :: " elf32_symbol_table_entry \<Rightarrow> nat "  where 
+     " get_elf32_symbol_type syment = ( get_symbol_type(elf32_st_info   syment))"
+
+
+(** [get_el64_symbol_type ent] extracts the symbol type from symbol table entry
+  * [ent].
+  *)
+(*val get_elf64_symbol_type : elf64_symbol_table_entry -> natural*)
+definition get_elf64_symbol_type  :: " elf64_symbol_table_entry \<Rightarrow> nat "  where 
+     " get_elf64_symbol_type syment = ( get_symbol_type(elf64_st_info   syment))"
 
 end

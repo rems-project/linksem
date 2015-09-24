@@ -4,17 +4,23 @@ theory "String_table"
 
 imports 
  	 Main
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_num" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_list" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_maybe" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_string" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_num" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_list" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_maybe" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_string" 
 	 "Show" 
 	 "Missing_pervasives" 
 	 "Error" 
 	 "Byte_sequence" 
 
 begin 
+
+(** The [string_table] module implements string tables.  An ELF file may have
+  * multiple different string tables used for different purposes.  A string
+  * table is a string coupled with a delimiting character.  Strings may be indexed
+  * at any position, not necessarily on a delimiter boundary.
+  *)
 
 (*open import Basic_classes*)
 (*open import List*)
@@ -27,6 +33,9 @@ begin
 (*open import Missing_pervasives*)
 (*open import Show*)
 
+(** [string_table] type, represents a string table with a fixed delimiting
+  * character and underlying string.
+  *)
 datatype string_table
   = Strings " (char * string)"
 
@@ -44,14 +53,14 @@ definition mk_string_table  :: " string \<Rightarrow> char \<Rightarrow> string_
   * character as terminator, from a byte sequence. *)
 (*val string_table_of_byte_sequence : byte_sequence -> string_table*)
 definition string_table_of_byte_sequence  :: " byte_sequence \<Rightarrow> string_table "  where 
-     " string_table_of_byte_sequence seq = ( mk_string_table (string_of_byte_sequence seq) (0 :: 8 word))"
+     " string_table_of_byte_sequence seq = ( mk_string_table (string_of_byte_sequence seq) (String.char_of_nat 0))"
 
 
 (** [empty] is the empty string table with an arbitrary choice of delimiter.
   *)
 (*val empty : string_table*)
 definition empty0  :: " string_table "  where 
-     " empty0 = ( Strings ((0 :: 8 word), ('''')))"
+     " empty0 = ( Strings ((String.char_of_nat 0), ('''')))"
 
 
 (** [get_delimiating_character tbl] returns the delimiting character associated

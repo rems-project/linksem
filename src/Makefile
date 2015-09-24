@@ -25,7 +25,7 @@ $(error Please run `make' in $(REPOROOT)/contrib or set UINT)
 endif
 endif
 
-LEM_UTIL_SRC := default_printing.lem missing_pervasives.lem show.lem endianness.lem error.lem multimap.lem
+LEM_UTIL_SRC := default_printing.lem missing_pervasives.lem show.lem endianness.lem multimap.lem error.lem
 # Some of the utility code is directly in ML, some in Lem; order matters!
 # NOTE: LEM_UTIL_SRC and ALL_UTIL_ML need to be kept in sync manually.
 # GAH. doing a topsort manually is a sign of failure.
@@ -130,9 +130,10 @@ lem-all-ocaml: $(filter-out error.lem,$(LEM_UTIL_SRC)) $(LEM_ELF_SRC) $(LEM_GNU_
 isa-extraction:
 	$(LEM) -isa -only_changed_output -add_full_isa_lib_path \
 	$(LEM_MODEL_ISA_THY)
-	mv *.thy ../auto_generated/isabelle/
+	ls -1 *.thy | grep -v ^Error.thy | xargs -I{} mv {} ../auto_generated/isabelle/
 	mv */*.thy ../auto_generated/isabelle/
 	mv */*/*.thy ../auto_generated/isabelle/
+	cd ../auto_generated/isabelle && ./massage_isabelle_imports.sh
 
 clean:
 	rm -f $(filter-out error.ml,$(LEM_MODEL_ML))
@@ -142,6 +143,7 @@ clean:
 	rm -f *.cmi *.cmo *.cmx *.o
 	rm -f abis/*.cmi abis/*.cmo abis/*.cmx abis/*.o
 	rm -f abis/*/*.cmi abis/*/*.cmo abis/*/*.cmx abis/*/*.o
+	rm -f adaptors/*.cmi adaptors/*.cmo adaptors/*.cmx adaptors/*.o
 	rm -f gnu_extensions/*.cmi gnu_extensions/*.cmo gnu_extensions/*.cmx gnu_extensions/*.o
 	rm -f $(filter-out error.ml,$(patsubst %.lem,%.ml,$(LEM_UTIL_SRC))) $(patsubst %.lem,%Auxiliary.ml,$(LEM_UTIL_SRC))
 

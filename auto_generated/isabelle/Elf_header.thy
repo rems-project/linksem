@@ -4,35 +4,27 @@ theory "Elf_header"
 
 imports 
  	 Main
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_num" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_list" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_set" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_function" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_bool" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_maybe" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_string" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_assert_extra" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_num" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_list" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_set" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_function" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_bool" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_maybe" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_string" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_assert_extra" 
 	 "Show" 
 	 "Missing_pervasives" 
 	 "Error" 
 	 "Byte_sequence" 
 	 "Endianness" 
-	 "Default_printing" 
 	 "Elf_types_native_uint" 
+	 "Default_printing" 
 
 begin 
 
 (** [elf_header] includes types, functions and other definitions for working with
   * ELF headers.
-  *
-  * TODO: all relevant definitions and functions are now formalised, though
-  * invariants expressed in natural language in the SCO specification are not
-  * all formalised.
-  *
-  *  * Formalise all natural language header invariants from the SCO
-  *    specification.
-  *
   *)
 
 (*open import Basic_classes*)
@@ -1338,46 +1330,7 @@ record elf32_header =
    
 
    
-(*val is_valid_elf32_header : elf32_header -> bool*)
-definition is_valid_elf32_header  :: " elf32_header \<Rightarrow> bool "  where 
-     " is_valid_elf32_header hdr = (
-  List.take(( 4 :: nat))(elf32_ident   hdr) = [elf_mn_mag0, elf_mn_mag1, elf_mn_mag2, elf_mn_mag3])"
-
-
-(*val elf32_header_compare : elf32_header -> elf32_header -> Basic_classes.ordering*)
-definition elf32_header_compare  :: " elf32_header \<Rightarrow> elf32_header \<Rightarrow> ordering "  where 
-     " elf32_header_compare h1 h2 = (    
- (pairCompare (lexicographicCompareBy (genericCompare (op<) (op=))) (lexicographicCompareBy (genericCompare (op<) (op=))) (List.map unat(elf32_ident   h1), [unat(elf32_type   h1), 
-            unat(elf32_machine   h1) , unat(elf32_version   h1) , 
-            unat(elf32_entry   h1) , unat(elf32_phoff   h1) , unat(elf32_shoff   h1) , 
-            unat(elf32_flags   h1) , unat(elf32_ehsize   h1) , 
-            unat(elf32_phentsize   h1), unat(elf32_phnum   h1) , 
-            unat(elf32_shentsize   h1), unat(elf32_shnum   h1) , 
-            unat(elf32_shstrndx   h1)])
-     (List.map unat(elf32_ident   h2), [unat(elf32_type   h2), 
-            unat(elf32_machine   h2) , unat(elf32_version   h2) , 
-            unat(elf32_entry   h2) , unat(elf32_phoff   h2) , unat(elf32_shoff   h2) , 
-            unat(elf32_flags   h2) , unat(elf32_ehsize   h2) , 
-            unat(elf32_phentsize   h2), unat(elf32_phnum   h2) , 
-            unat(elf32_shentsize   h2), unat(elf32_shnum   h2) , 
-            unat(elf32_shstrndx   h2)])))"
-
-
-definition instance_Basic_classes_Ord_Elf_header_elf32_header_dict  :: "(elf32_header)Ord_class "  where 
-     " instance_Basic_classes_Ord_Elf_header_elf32_header_dict = ((|
-
-  compare_method = elf32_header_compare,
-
-  isLess_method = (\<lambda> f1 .  (\<lambda> f2 .  (elf32_header_compare f1 f2 = LT))),
-
-  isLessEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (elf32_header_compare f1 f2) ({LT, EQ}))),
-
-  isGreater_method = (\<lambda> f1 .  (\<lambda> f2 .  (elf32_header_compare f1 f2 = GT))),
-
-  isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (elf32_header_compare f1 f2) ({GT, EQ})))|) )"
-
-  
-(** [elf64_header] is the type of headers for 32-bit ELF files.
+(** [elf64_header] is the type of headers for 64-bit ELF files.
   *)
 record elf64_header =
   
@@ -1410,13 +1363,70 @@ record elf64_header =
  elf64_shstrndx ::" uint16 "         (** Section header table entry for section name string table *)
    
 
+   
+(** [is_valid_elf32_header hdr] checks whether header [hdr] is valid, i.e. has
+  * the correct magic numbers.
+  * TODO: this should be expanded, presumably, or merged with some of the other
+  * checks.
+  *)
+(*val is_valid_elf32_header : elf32_header -> bool*)
+definition is_valid_elf32_header  :: " elf32_header \<Rightarrow> bool "  where 
+     " is_valid_elf32_header hdr = (
+  List.take(( 4 :: nat))(elf32_ident   hdr) = [elf_mn_mag0, elf_mn_mag1, elf_mn_mag2, elf_mn_mag3])"
 
+  
+(** [is_valid_elf64_header hdr] checks whether header [hdr] is valid, i.e. has
+  * the correct magic numbers.
+  * TODO: this should be expanded, presumably, or merged with some of the other
+  * checks.
+  *)
 (*val is_valid_elf64_header : elf64_header -> bool*)
 definition is_valid_elf64_header  :: " elf64_header \<Rightarrow> bool "  where 
      " is_valid_elf64_header hdr = (
   List.take(( 4 :: nat))(elf64_ident   hdr) = [elf_mn_mag0, elf_mn_mag1, elf_mn_mag2, elf_mn_mag3])"
 
 
+(** [elf32_header_compare hdr1 hdr2] is an ordering comparison function for
+  * ELF headers suitable for use in sets, finite maps and other ordered
+  * data types.
+  *)
+(*val elf32_header_compare : elf32_header -> elf32_header -> Basic_classes.ordering*)
+definition elf32_header_compare  :: " elf32_header \<Rightarrow> elf32_header \<Rightarrow> ordering "  where 
+     " elf32_header_compare h1 h2 = (    
+ (pairCompare (lexicographicCompareBy (genericCompare (op<) (op=))) (lexicographicCompareBy (genericCompare (op<) (op=))) (List.map unat(elf32_ident   h1), [unat(elf32_type   h1), 
+            unat(elf32_machine   h1) , unat(elf32_version   h1) , 
+            unat(elf32_entry   h1) , unat(elf32_phoff   h1) , unat(elf32_shoff   h1) , 
+            unat(elf32_flags   h1) , unat(elf32_ehsize   h1) , 
+            unat(elf32_phentsize   h1), unat(elf32_phnum   h1) , 
+            unat(elf32_shentsize   h1), unat(elf32_shnum   h1) , 
+            unat(elf32_shstrndx   h1)])
+     (List.map unat(elf32_ident   h2), [unat(elf32_type   h2), 
+            unat(elf32_machine   h2) , unat(elf32_version   h2) , 
+            unat(elf32_entry   h2) , unat(elf32_phoff   h2) , unat(elf32_shoff   h2) , 
+            unat(elf32_flags   h2) , unat(elf32_ehsize   h2) , 
+            unat(elf32_phentsize   h2), unat(elf32_phnum   h2) , 
+            unat(elf32_shentsize   h2), unat(elf32_shnum   h2) , 
+            unat(elf32_shstrndx   h2)])))"
+
+
+definition instance_Basic_classes_Ord_Elf_header_elf32_header_dict  :: "(elf32_header)Ord_class "  where 
+     " instance_Basic_classes_Ord_Elf_header_elf32_header_dict = ((|
+
+  compare_method = elf32_header_compare,
+
+  isLess_method = (\<lambda> f1 .  (\<lambda> f2 .  (elf32_header_compare f1 f2 = LT))),
+
+  isLessEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (elf32_header_compare f1 f2) ({LT, EQ}))),
+
+  isGreater_method = (\<lambda> f1 .  (\<lambda> f2 .  (elf32_header_compare f1 f2 = GT))),
+
+  isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (elf32_header_compare f1 f2) ({GT, EQ})))|) )"
+
+
+(** [elf64_header_compare hdr1 hdr2] is an ordering comparison function for
+  * ELF headers suitable for use in sets, finite maps and other ordered
+  * data types.
+  *)
 (*val elf64_header_compare : elf64_header -> elf64_header -> Basic_classes.ordering*)
 definition elf64_header_compare  :: " elf64_header \<Rightarrow> elf64_header \<Rightarrow> ordering "  where 
      " elf64_header_compare h1 h2 = (    
@@ -1450,66 +1460,99 @@ definition instance_Basic_classes_Ord_Elf_header_elf64_header_dict  :: "(elf64_h
   isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (elf64_header_compare f1 f2) ({GT, EQ})))|) )"
 
 
+(** [is_elf32_executable_file hdr] checks whether the header [hdr] states if the
+  * ELF file is of executable type.
+  *)
 (*val is_elf32_executable_file : elf32_header -> bool*)
 definition is_elf32_executable_file  :: " elf32_header \<Rightarrow> bool "  where 
      " is_elf32_executable_file hdr = (
   unat(elf32_type   hdr) = elf_ft_exec )"
 
 
+(** [is_elf64_executable_file hdr] checks whether the header [hdr] states if the
+  * ELF file is of executable type.
+  *)
 (*val is_elf64_executable_file : elf64_header -> bool*)
 definition is_elf64_executable_file  :: " elf64_header \<Rightarrow> bool "  where 
      " is_elf64_executable_file hdr = (
   unat(elf64_type   hdr) = elf_ft_exec )"
 
 
+(** [is_elf32_shared_object_file hdr] checks whether the header [hdr] states if the
+  * ELF file is of shared object type.
+  *)
 (*val is_elf32_shared_object_file : elf32_header -> bool*)
 definition is_elf32_shared_object_file  :: " elf32_header \<Rightarrow> bool "  where 
      " is_elf32_shared_object_file hdr = (
   unat(elf32_type   hdr) = elf_ft_dyn )"
 
 
+(** [is_elf64_shared_object_file hdr] checks whether the header [hdr] states if the
+  * ELF file is of shared object type.
+  *)
 (*val is_elf64_shared_object_file : elf64_header -> bool*)
 definition is_elf64_shared_object_file  :: " elf64_header \<Rightarrow> bool "  where 
      " is_elf64_shared_object_file hdr = (
   unat(elf64_type   hdr) = elf_ft_dyn )"
 
 
+(** [is_elf32_relocatable_file hdr] checks whether the header [hdr] states if the
+  * ELF file is of relocatable type.
+  *)
 (*val is_elf32_relocatable_file : elf32_header -> bool*)
 definition is_elf32_relocatable_file  :: " elf32_header \<Rightarrow> bool "  where 
      " is_elf32_relocatable_file hdr = (
   unat(elf32_type   hdr) = elf_ft_rel )"
 
 
+(** [is_elf64_relocatable_file hdr] checks whether the header [hdr] states if the
+  * ELF file is of relocatable type.
+  *)
 (*val is_elf64_relocatable_file : elf64_header -> bool*)
 definition is_elf64_relocatable_file  :: " elf64_header \<Rightarrow> bool "  where 
      " is_elf64_relocatable_file hdr = (
   unat(elf64_type   hdr) = elf_ft_rel )"
 
 
+(** [is_elf32_linkable_file hdr] checks whether the header [hdr] states if the
+  * ELF file is of linkable (shared object or relocatable) type.
+  *)
 (*val is_elf32_linkable_file : elf32_header -> bool*)
 definition is_elf32_linkable_file  :: " elf32_header \<Rightarrow> bool "  where 
      " is_elf32_linkable_file hdr = (
   is_elf32_shared_object_file hdr \<or> is_elf32_relocatable_file hdr )"
 
 
+(** [is_elf64_linkable_file hdr] checks whether the header [hdr] states if the
+  * ELF file is of linkable (shared object or relocatable) type.
+  *)
 (*val is_elf64_linkable_file : elf64_header -> bool*)
 definition is_elf64_linkable_file  :: " elf64_header \<Rightarrow> bool "  where 
      " is_elf64_linkable_file hdr = (
   is_elf64_shared_object_file hdr \<or> is_elf64_relocatable_file hdr )"
 
 
+(** [get_elf32_machine_architecture hdr] returns the ELF file's declared machine
+  * architecture, extracting the information from header [hdr].
+  *)
 (*val get_elf32_machine_architecture : elf32_header -> natural*)
 definition get_elf32_machine_architecture  :: " elf32_header \<Rightarrow> nat "  where 
      " get_elf32_machine_architecture hdr = (
   unat(elf32_machine   hdr))"
 
 
+(** [get_elf64_machine_architecture hdr] returns the ELF file's declared machine
+  * architecture, extracting the information from header [hdr].
+  *)
 (*val get_elf64_machine_architecture : elf64_header -> natural*)
 definition get_elf64_machine_architecture  :: " elf64_header \<Rightarrow> nat "  where 
      " get_elf64_machine_architecture hdr = (
   unat(elf64_machine   hdr))"
 
 
+(** [get_elf32_osabi hdr] returns the ELF file's declared OS/ABI
+  * architecture, extracting the information from header [hdr].
+  *)
 (*val get_elf32_osabi : elf32_header -> natural*)
 definition get_elf32_osabi  :: " elf32_header \<Rightarrow> nat "  where 
      " get_elf32_osabi hdr = (
@@ -1519,6 +1562,9 @@ definition get_elf32_osabi  :: " elf32_header \<Rightarrow> nat "  where
   ))"
  (* Partial: should never return Nothing *)
 
+(** [get_elf64_osabi hdr] returns the ELF file's declared OS/ABI
+  * architecture, extracting the information from header [hdr].
+  *)
 (*val get_elf64_osabi : elf64_header -> natural*)
 definition get_elf64_osabi  :: " elf64_header \<Rightarrow> nat "  where 
      " get_elf64_osabi hdr = (
@@ -1528,6 +1574,9 @@ definition get_elf64_osabi  :: " elf64_header \<Rightarrow> nat "  where
   ))"
  (* Partial: should never return Nothing *)
   
+(** [get_elf32_data_encoding hdr] returns the ELF file's declared data
+  * encoding, extracting the information from header [hdr].
+  *)
 (*val get_elf32_data_encoding : elf32_header -> natural*)
 definition get_elf32_data_encoding  :: " elf32_header \<Rightarrow> nat "  where 
      " get_elf32_data_encoding hdr = (
@@ -1537,6 +1586,9 @@ definition get_elf32_data_encoding  :: " elf32_header \<Rightarrow> nat "  where
   ))"
  (* Partial: should never return Nothing *)
 
+(** [get_elf64_data_encoding hdr] returns the ELF file's declared data
+  * encoding, extracting the information from header [hdr].
+  *)
 (*val get_elf64_data_encoding : elf64_header -> natural*)
 definition get_elf64_data_encoding  :: " elf64_header \<Rightarrow> nat "  where 
      " get_elf64_data_encoding hdr = (
@@ -1546,6 +1598,9 @@ definition get_elf64_data_encoding  :: " elf64_header \<Rightarrow> nat "  where
   ))"
  (* Partial: should never return Nothing *)
   
+(** [get_elf32_file_class hdr] returns the ELF file's declared file
+  * class, extracting the information from header [hdr].
+  *)
 (*val get_elf32_file_class : elf32_header -> natural*)
 definition get_elf32_file_class  :: " elf32_header \<Rightarrow> nat "  where 
      " get_elf32_file_class hdr = (
@@ -1555,6 +1610,9 @@ definition get_elf32_file_class  :: " elf32_header \<Rightarrow> nat "  where
   ))"
  (* Partial: should never return Nothing *)
 
+(** [get_elf64_file_class hdr] returns the ELF file's declared file
+  * class, extracting the information from header [hdr].
+  *)
 (*val get_elf64_file_class : elf64_header -> natural*)
 definition get_elf64_file_class  :: " elf64_header \<Rightarrow> nat "  where 
      " get_elf64_file_class hdr = (
@@ -1564,6 +1622,9 @@ definition get_elf64_file_class  :: " elf64_header \<Rightarrow> nat "  where
   ))"
  (* Partial: should never return Nothing *)
 
+(** [get_elf32_version_number hdr] returns the ELF file's declared version
+  * number, extracting the information from header [hdr].
+  *)
 (*val get_elf32_version_number : elf32_header -> natural*)
 definition get_elf32_version_number  :: " elf32_header \<Rightarrow> nat "  where 
      " get_elf32_version_number hdr = (
@@ -1573,6 +1634,9 @@ definition get_elf32_version_number  :: " elf32_header \<Rightarrow> nat "  wher
   ))"
  (* Partial: should never return Nothing *)
 
+(** [get_elf64_version_number hdr] returns the ELF file's declared version
+  * number, extracting the information from header [hdr].
+  *)
 (*val get_elf64_version_number : elf64_header -> natural*)
 definition get_elf64_version_number  :: " elf64_header \<Rightarrow> nat "  where 
      " get_elf64_version_number hdr = (
@@ -1582,18 +1646,31 @@ definition get_elf64_version_number  :: " elf64_header \<Rightarrow> nat "  wher
   ))"
  (* Partial: should never return Nothing *)
   
+(** [is_valid_elf32_version_number hdr] checks whether an ELF file's declared
+  * version number matches the current, mandatory version number.
+  * TODO: this should be merged into [is_valid_elf32_header] to create a single
+  * correctness check.
+  *)
 (*val is_valid_elf32_version_number : elf32_header -> bool*)
 definition is_valid_elf32_version_numer  :: " elf32_header \<Rightarrow> bool "  where 
      " is_valid_elf32_version_numer hdr = (
   get_elf32_version_number hdr = elf_ev_current )"
 
 
+(** [is_valid_elf64_version_number hdr] checks whether an ELF file's declared
+  * version number matches the current, mandatory version number.
+  * TODO: this should be merged into [is_valid_elf64_header] to create a single
+  * correctness check.
+  *)
 (*val is_valid_elf64_version_number : elf64_header -> bool*)
 definition is_valid_elf64_version_numer  :: " elf64_header \<Rightarrow> bool "  where 
      " is_valid_elf64_version_numer hdr = (
   get_elf64_version_number hdr = elf_ev_current )"
 
   
+(** [get_elf32_abi_version hdr] returns the ELF file's declared ABI version
+  * number, extracting the information from header [hdr].
+  *)
 (*val get_elf32_abi_version : elf32_header -> natural*)
 definition get_elf32_abi_version  :: " elf32_header \<Rightarrow> nat "  where 
      " get_elf32_abi_version hdr = (
@@ -1603,6 +1680,9 @@ definition get_elf32_abi_version  :: " elf32_header \<Rightarrow> nat "  where
   ))"
  (* Partial: should never return Nothing *)
 
+(** [get_elf64_abi_version hdr] returns the ELF file's declared ABI version
+  * number, extracting the information from header [hdr].
+  *)
 (*val get_elf64_abi_version : elf64_header -> natural*)
 definition get_elf64_abi_version  :: " elf64_header \<Rightarrow> nat "  where 
      " get_elf64_abi_version hdr = (
@@ -1612,8 +1692,8 @@ definition get_elf64_abi_version  :: " elf64_header \<Rightarrow> nat "  where
   ))"
  (* Partial: should never return Nothing *)
   
-(** [deduce_endian] deduces the endianness of an ELF file based on the ELF
-  * header's magic number.
+(** [deduce_endianness uc] deduces the endianness of an ELF file based on the ELF
+  * header's magic number [uc].
   *)
 (*val deduce_endianness : list unsigned_char -> endianness*)
 definition deduce_endianness  :: "(Elf_Types_Local.unsigned_char)list \<Rightarrow> endianness "  where 
@@ -1630,56 +1710,92 @@ definition deduce_endianness  :: "(Elf_Types_Local.unsigned_char)list \<Rightarr
   ))"
 
 
+(** [get_elf32_header_endianness hdr] returns the endianness of the ELF file
+  * as declared in its header, [hdr].
+  *)
 (*val get_elf32_header_endianness : elf32_header -> endianness*)
 definition get_elf32_header_endianness  :: " elf32_header \<Rightarrow> endianness "  where 
      " get_elf32_header_endianness hdr = (
   deduce_endianness ((elf32_ident   hdr)))"
 
 
+(** [get_elf64_header_endianness hdr] returns the endianness of the ELF file
+  * as declared in its header, [hdr].
+  *)
 (*val get_elf64_header_endianness : elf64_header -> endianness*)
 definition get_elf64_header_endianness  :: " elf64_header \<Rightarrow> endianness "  where 
      " get_elf64_header_endianness hdr = (
   deduce_endianness ((elf64_ident   hdr)))"
 
   
+(** [has_elf32_header_associated_entry_point hdr] checks whether the header
+  * [hdr] declares an entry point for the program.
+  *)
 (*val has_elf32_header_associated_entry_point : elf32_header -> bool*)
 definition has_elf32_header_associated_entry_point  :: " elf32_header \<Rightarrow> bool "  where 
      " has_elf32_header_associated_entry_point hdr = ( \<not> ((unat(elf32_entry   hdr)) =(( 0 :: nat))))"
 
 
+(** [has_elf64_header_associated_entry_point hdr] checks whether the header
+  * [hdr] declares an entry point for the program.
+  *)
 (*val has_elf64_header_associated_entry_point : elf64_header -> bool*)
 definition has_elf64_header_associated_entry_point  :: " elf64_header \<Rightarrow> bool "  where 
      " has_elf64_header_associated_entry_point hdr = ( \<not> ((unat(elf64_entry   hdr)) =(( 0 :: nat))))"
 
   
+(** [has_elf32_header_string_table hdr] checks whether the header
+  * [hdr] declares whether the program has a string table or not.
+  *)
 (*val has_elf32_header_string_table : elf32_header -> bool*)
 definition has_elf32_header_string_table  :: " elf32_header \<Rightarrow> bool "  where 
      " has_elf32_header_string_table hdr = ( \<not> ((unat(elf32_shstrndx   hdr)) = shn_undef))"
 
   
+(** [has_elf64_header_string_table hdr] checks whether the header
+  * [hdr] declares whether the program has a string table or not.
+  *)
 (*val has_elf64_header_string_table : elf64_header -> bool*)
 definition has_elf64_header_string_table  :: " elf64_header \<Rightarrow> bool "  where 
      " has_elf64_header_string_table hdr = ( \<not> ((unat(elf64_shstrndx   hdr)) = shn_undef))"
 
   
+(** [is_elf32_header_section_size_in_section_header_table hdr] checks whether the header
+  * [hdr] declares whether the section size is too large to fit in the header
+  * field and is instead stored in the section header table.
+  *)
 (*val is_elf32_header_section_size_in_section_header_table : elf32_header -> bool*)
 definition is_elf32_header_section_size_in_section_header_table  :: " elf32_header \<Rightarrow> bool "  where 
      " is_elf32_header_section_size_in_section_header_table hdr = (
   unat(elf32_shnum   hdr) =( 0 :: nat))"
 
   
+(** [is_elf64_header_section_size_in_section_header_table hdr] checks whether the header
+  * [hdr] declares whether the section size is too large to fit in the header
+  * field and is instead stored in the section header table.
+  *)
 (*val is_elf64_header_section_size_in_section_header_table : elf64_header -> bool*)
 definition is_elf64_header_section_size_in_section_header_table  :: " elf64_header \<Rightarrow> bool "  where 
      " is_elf64_header_section_size_in_section_header_table hdr = (
   unat(elf64_shnum   hdr) =( 0 :: nat))"
 
   
+(** [is_elf32_header_string_table_index_in_link hdr] checks whether the header
+  * [hdr] declares whether the string table index is too large to fit in the
+  * header's field and is instead stored in the link field of an entry in the
+  * section header table.
+  *)
 (*val is_elf32_header_string_table_index_in_link : elf32_header -> bool*)
 definition is_elf32_header_string_table_index_in_link  :: " elf32_header \<Rightarrow> bool "  where 
      " is_elf32_header_string_table_index_in_link hdr = (
   unat(elf32_shstrndx   hdr) = shn_xindex )"
 
   
+(** [is_elf64_header_string_table_index_in_link hdr] checks whether the header
+  * [hdr] declares whether the string table index is too large to fit in the
+  * header's field and is instead stored in the link field of an entry in the
+  * section header table.
+  *)
 (*val is_elf64_header_string_table_index_in_link : elf64_header -> bool*)
 definition is_elf64_header_string_table_index_in_link  :: " elf64_header \<Rightarrow> bool "  where 
      " is_elf64_header_string_table_index_in_link hdr = (
@@ -1694,14 +1810,28 @@ definition is_elf64_header_string_table_index_in_link  :: " elf64_header \<Right
   *)
 type_synonym hdr_print_bundle =" (nat \<Rightarrow> string) * (nat \<Rightarrow> string)"
 
+(** [string_of_elf32_header hdr_bdl hdr] returns a string-based representation
+  * of header [hdr] using the ABI-specific print bundle [hdr_bdl].
+  *)
 (*val string_of_elf32_header : hdr_print_bundle -> elf32_header -> string*)
 
+(** [string_of_elf64_header hdr_bdl hdr] returns a string-based representation
+  * of header [hdr] using the ABI-specific print bundle [hdr_bdl].
+  *)
 (*val string_of_elf64_header : hdr_print_bundle -> elf64_header -> string*)
 
+(** The following are thin wrappers around the pretty-printing functions above
+  * using a default print bundle for the header.
+  *)
+  
 (*val string_of_elf32_header_default : elf32_header -> string*)
 
 (*val string_of_elf64_header_default : elf64_header -> string*)
 
+(** [read_elf_ident bs0] reads the initial bytes of an ELF file from byte sequence
+  * [bs0], returning the remainder of the byte sequence too.
+  * Fails if transcription fails.
+  *)
 (*val read_elf_ident : byte_sequence -> error (list unsigned_char * byte_sequence)*)
 definition read_elf_ident  :: " byte_sequence \<Rightarrow>((Elf_Types_Local.unsigned_char)list*byte_sequence)error " 
  where 
@@ -1709,6 +1839,9 @@ definition read_elf_ident  :: " byte_sequence \<Rightarrow>((Elf_Types_Local.uns
  = ( repeatM' ei_nident bs (read_unsigned_char default_endianness))"
 
 
+(** [bytes_of_elf32_header hdr] blits an ELF header [hdr] to a byte sequence,
+  * ready for transcription to a binary file.
+  *)
 (*val bytes_of_elf32_header : elf32_header -> byte_sequence*)
 definition bytes_of_elf32_header  :: " elf32_header \<Rightarrow> byte_sequence "  where 
      " bytes_of_elf32_header hdr = (
@@ -1728,6 +1861,31 @@ definition bytes_of_elf32_header  :: " elf32_header \<Rightarrow> byte_sequence 
     , bytes_of_elf32_half endian(elf32_shentsize   hdr)
     , bytes_of_elf32_half endian(elf32_shnum   hdr)
     , bytes_of_elf32_half endian(elf32_shstrndx   hdr)
+    ]))"
+
+    
+(** [bytes_of_elf64_header hdr] blits an ELF header [hdr] to a byte sequence,
+  * ready for transcription to a binary file.
+  *)
+(*val bytes_of_elf64_header : elf64_header -> byte_sequence*)
+definition bytes_of_elf64_header  :: " elf64_header \<Rightarrow> byte_sequence "  where 
+     " bytes_of_elf64_header hdr = (
+  (let endian = (deduce_endianness(elf64_ident   hdr)) in
+    Byte_sequence.from_byte_lists [
+      List.map id(elf64_ident   hdr)
+    , bytes_of_elf64_half endian(elf64_type   hdr)
+    , bytes_of_elf64_half endian(elf64_machine   hdr)
+    , bytes_of_elf64_word endian(elf64_version   hdr)
+    , bytes_of_elf64_addr endian(elf64_entry   hdr)
+    , bytes_of_elf64_off  endian(elf64_phoff   hdr)
+    , bytes_of_elf64_off  endian(elf64_shoff   hdr)
+    , bytes_of_elf64_word endian(elf64_flags   hdr)
+    , bytes_of_elf64_half endian(elf64_ehsize   hdr)
+    , bytes_of_elf64_half endian(elf64_phentsize   hdr)
+    , bytes_of_elf64_half endian(elf64_phnum   hdr)
+    , bytes_of_elf64_half endian(elf64_shentsize   hdr)
+    , bytes_of_elf64_half endian(elf64_shnum   hdr)
+    , bytes_of_elf64_half endian(elf64_shstrndx   hdr)
     ]))"
 
     
@@ -1752,6 +1910,9 @@ definition is_magic_number_correct  :: "(Elf_Types_Local.unsigned_char)list \<Ri
 (index ident(( 3 :: nat)) = Some (Elf_Types_Local.unsigned_char_of_nat(( 70 :: nat)))))))"
 
 
+(** [read_elf32_header bs0] reads an ELF header from the byte sequence [bs0].
+  * Fails if transcription fails.
+  *)
 (*val read_elf32_header : byte_sequence -> error (elf32_header * byte_sequence)*)
 definition read_elf32_header  :: " byte_sequence \<Rightarrow>(elf32_header*byte_sequence)error "  where 
      " read_elf32_header bs = (
@@ -1789,28 +1950,9 @@ definition read_elf32_header  :: " byte_sequence \<Rightarrow>(elf32_header*byte
     )))))))))))))))))"
 
 
-(*val bytes_of_elf64_header : elf64_header -> byte_sequence*)
-definition bytes_of_elf64_header  :: " elf64_header \<Rightarrow> byte_sequence "  where 
-     " bytes_of_elf64_header hdr = (
-  (let endian = (deduce_endianness(elf64_ident   hdr)) in
-    Byte_sequence.from_byte_lists [
-      List.map id(elf64_ident   hdr)
-    , bytes_of_elf64_half endian(elf64_type   hdr)
-    , bytes_of_elf64_half endian(elf64_machine   hdr)
-    , bytes_of_elf64_word endian(elf64_version   hdr)
-    , bytes_of_elf64_addr endian(elf64_entry   hdr)
-    , bytes_of_elf64_off  endian(elf64_phoff   hdr)
-    , bytes_of_elf64_off  endian(elf64_shoff   hdr)
-    , bytes_of_elf64_word endian(elf64_flags   hdr)
-    , bytes_of_elf64_half endian(elf64_ehsize   hdr)
-    , bytes_of_elf64_half endian(elf64_phentsize   hdr)
-    , bytes_of_elf64_half endian(elf64_phnum   hdr)
-    , bytes_of_elf64_half endian(elf64_shentsize   hdr)
-    , bytes_of_elf64_half endian(elf64_shnum   hdr)
-    , bytes_of_elf64_half endian(elf64_shstrndx   hdr)
-    ]))"
-
-
+(** [read_elf64_header bs0] reads an ELF header from the byte sequence [bs0].
+  * Fails if transcription fails.
+  *)
 (*val read_elf64_header : byte_sequence -> error (elf64_header * byte_sequence)*)
 definition read_elf64_header  :: " byte_sequence \<Rightarrow>(elf64_header*byte_sequence)error "  where 
      " read_elf64_header bs = (
@@ -1848,19 +1990,43 @@ definition read_elf64_header  :: " byte_sequence \<Rightarrow>(elf64_header*byte
     )))))))))))))))))"
 
 
+(** [is_elf32_header_class_correct hdr] checks whether the declared file class
+  * is correct.
+  *)
 (*val is_elf32_header_class_correct : elf32_header -> bool*)
 definition is_elf32_header_class_correct  :: " elf32_header \<Rightarrow> bool "  where 
      " is_elf32_header_class_correct ehdr = (
   index(elf32_ident   ehdr)(( 4 :: nat)) = Some (Elf_Types_Local.unsigned_char_of_nat(( 1 :: nat))))"
 
+  
+(** [is_elf64_header_class_correct hdr] checks whether the declared file class
+  * is correct.
+  *)
+(*val is_elf64_header_class_correct : elf64_header -> bool*)
+definition is_elf64_header_class_correct  :: " elf64_header \<Rightarrow> bool "  where 
+     " is_elf64_header_class_correct ehdr = (
+  index(elf64_ident   ehdr)(( 4 :: nat)) = Some (Elf_Types_Local.unsigned_char_of_nat(( 1 :: nat))))"
 
+
+(** [is_elf32_header_version_correct hdr] checks whether the declared file version
+  * is correct.
+  *)
 (*val is_elf32_header_version_correct : elf32_header -> bool*)
 definition is_elf32_header_version_correct  :: " elf32_header \<Rightarrow> bool "  where 
      " is_elf32_header_version_correct ehdr = (
   index(elf32_ident   ehdr)(( 6 :: nat)) = Some (Elf_Types_Local.unsigned_char_of_nat(( 1 :: nat))))"
 
+  
+(** [is_elf64_header_version_correct hdr] checks whether the declared file version
+  * is correct.
+  *)
+(*val is_elf64_header_version_correct : elf64_header -> bool*)
+definition is_elf64_header_version_correct  :: " elf64_header \<Rightarrow> bool "  where 
+     " is_elf64_header_version_correct ehdr = (
+  index(elf64_ident   ehdr)(( 6 :: nat)) = Some (Elf_Types_Local.unsigned_char_of_nat(( 1 :: nat))))"
 
-(** [is_valid_elf32_header] checks whether an [elf32_header] value is a valid 32-bit
+
+(** [is_elf32_header_valid] checks whether an [elf32_header] value is a valid 32-bit
   * ELF file header (i.e. [elf32_ident] is [ei_nident] entries long, and other
   * constraints on headers).
   *)

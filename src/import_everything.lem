@@ -29,9 +29,9 @@ open import Hex_printing
 (*open import Input_list
 open import Linkable_list
 open import Linker_script
-open import Link
+open import Link*)
 open import Memory_image
-open import Memory_image_orderings*)
+(*open import Memory_image_orderings*)
 open import Missing_pervasives
 (*open import Multimap*)
 open import Show

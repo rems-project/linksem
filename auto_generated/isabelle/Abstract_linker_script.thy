@@ -4,9 +4,9 @@ theory "Abstract_linker_script"
 
 imports 
  	 Main
-	 "/home/pes20/Programming/Cambridge/bitbucket/lem/isabelle-lib/Lem_num" 
-	 "/home/pes20/Programming/Cambridge/bitbucket/lem/isabelle-lib/Lem_list" 
-	 "/home/pes20/Programming/Cambridge/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_num" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_list" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
 
 begin 
 

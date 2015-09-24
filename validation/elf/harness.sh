@@ -1,7 +1,7 @@
 #!/bin/bash
 
 MAIN_ELF=../../src/main_elf.opt
-TEST_FILES=/usr/lib
+TEST_FILES=/home/dpm36/ELF/Android/lib64/
 DIFF_TOOL=meld
 
 function perform_readelf_diff

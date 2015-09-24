@@ -1,7 +1,7 @@
 theory
   Elf_Types_Local
 imports
-  Main "$ISABELLE_HOME/src/HOL/Word/Word"
+  Main "$ISABELLE_HOME/src////////HOL/Word/Word"
   "../../../lem/isabelle-lib/Lem_basic_classes"
 begin
 
