@@ -5,7 +5,7 @@ Definitions for L3 operations.
 *)
 
 theory L3_Theory
-imports "~~/Word/Word"
+imports "$ISABELLE_HOME/src/HOL/Word/Word"
 begin
 
 (* basic state Monad *)
