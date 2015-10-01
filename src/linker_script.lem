@@ -971,12 +971,6 @@ let rec assign_inputs_to_output_sections acc inputs cur_output_sec last_input_se
                                    | _ -> Nothing
                                 end) (selector inputs)
                             in
-                            (* Calculate the alignment of the section. This is the LCM of the current 
-                             * alignment and the input sections' alignments. 
-                             * FIXME: this unnecessarily recomputes stuff... just treat pre-padding as implicit
-                             * in IncludeInputSection and IncludeCommonSymbol. *)
-                            (*let new_output_sec_align = List.foldl lcm 0 (output_sec_align :: (List.map (fun (x, align) -> align) matchList))
-                            in*)
                             (* Add them to the current output spec *)
                             (acc, Just (output_guard, output_sec_addr, output_sec_name, 
                                 output_composition ++ 
@@ -1026,10 +1020,12 @@ let rec build_image acc pos outputs_by_name script =
      let (add_output_section : (natural * elf_memory_image) -> output_section_spec -> (natural * elf_memory_image * natural * output_section_spec))
      = fun (pos, acc_img) ->
         (fun (guard, addr, secname, comp) -> 
-            let start_addr = match addr with 
-                Just a -> a (* already aligned, above *)
+            let unaligned_start_addr = match addr with 
+                Just a -> a 
                 | Nothing -> pos
             end
+            in
+            let start_addr = align_up_to (alignof_output_section comp) unaligned_start_addr
             in
             let (end_addr, comp_addrs) = do_output_section_layout_starting_at_addr start_addr outputs_by_name comp
             in
