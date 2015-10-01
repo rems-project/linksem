@@ -1044,7 +1044,13 @@ let rec build_image acc pos outputs_by_name script =
             )
             in
             let (concatenated_content, final_addr) = List.foldl (fun (accum_pat, addr) -> (fun (comp_el, comp_addr) ->
-                let (sz, comp_el_pat, namestr, addrstr, szstr, rhs) = match comp_el with
+                let make_line = fun namestr -> (fun addrstr -> (fun szstr -> (fun rhs -> (
+                    (space_padded_and_maybe_newline 16 (" " ^ namestr)) ^ 
+                    ("0x" ^ (left_zero_padded_to 16 addrstr)) ^ " " ^ 
+                    (left_space_padded_to 10 ("0x" ^ szstr)) ^ " " ^ rhs
+                ))))
+                in
+                let (sz, comp_el_pat) = match comp_el with
                     IncludeInputSection(retainpolicy, fname, shndx, isec, img) -> 
                         (* We want to get the input section as a byte pattern *)
                         let maybe_secname = elf_memory_image_element_coextensive_with_section shndx img 
@@ -1052,10 +1058,51 @@ let rec build_image acc pos outputs_by_name script =
                         match maybe_secname with
                             Nothing -> failwith "impossible: no such section"
                             | Just idstr -> match Map.lookup idstr img.elements with
-                                Just el -> (isec.elf64_section_size, el.contents, isec.elf64_section_name_as_string, 
-                                    hex_string_of_natural comp_addr, 
-                                    hex_string_of_natural isec.elf64_section_size,
-                                    fname)
+                                Just el -> 
+                                    let _ = Missing_pervasives.outln (make_line isec.elf64_section_name_as_string
+                                        (hex_string_of_natural comp_addr) (hex_string_of_natural isec.elf64_section_size)
+                                        fname)
+                                    in
+                                    (* For each global symbol defined in the section, output a line. *)
+                                    let _ = Missing_pervasives.outs (List.foldl (^) "" (
+                                        let included_global_defs = [
+                                            def
+                                        |   forall ((maybeRange, def) MEM (elf_memory_image_defined_symbols_and_ranges img))
+                                        |   (* is it within the section we're outputting? *)
+                                            let sym_shndx = natural_of_elf64_half def.def_syment.elf64_st_shndx
+                                            in
+                                            (* filter out locals *)
+                                            (get_symbol_binding def.def_syment.elf64_st_info) <> stb_local
+                                            &&
+                                            (* filter out ones that don't overlap *)
+                                            match maybeRange with 
+                                                Just(elKey, (start, len)) -> 
+                                                    (* img and shndx came as a unit, so they're definitely 
+                                                     * talking about the same file *)
+                                                    shndx = sym_shndx
+                                                | Nothing -> 
+                                                    (* ABS symbols have this property *)
+                                                    if sym_shndx <> shn_abs then false
+                                                    else (
+                                                        let abs_address = natural_of_elf64_addr def.def_syment.elf64_st_value
+                                                        in 
+                                                        (* check it against our section *)
+                                                        let section_end_addr = addr + isec.elf64_section_size
+                                                        in
+                                                        abs_address >= addr
+                                                            && abs_address < section_end_addr
+                                                    )
+                                            end
+                                        ]
+                                        in
+                                        List.map (fun def -> (make_line ""
+                                                (hex_string_of_natural (comp_addr + (natural_of_elf64_addr def.def_syment.elf64_st_value)))
+                                                (hex_string_of_natural (natural_of_elf64_xword def.def_syment.elf64_st_size))
+                                                ("    " ^ def.def_symname)) ^ "\n"
+                                        ) included_global_defs
+                                    ))
+                                    in
+                                    (isec.elf64_section_size, el.contents)
                                 | _     -> failwith "impossible: no such element"
                             end
                         end
@@ -1064,11 +1111,11 @@ let rec build_image acc pos outputs_by_name script =
                         let sz = natural_of_elf64_xword def.def_syment.elf64_st_size
                         in
                         let content = Missing_pervasives.replicate sz (Just(byte_of_natural 0))
+                        in 
+                        let _ = Missing_pervasives.outln (make_line "COMMON" (hex_string_of_natural comp_addr)
+                             (hex_string_of_natural sz) fname)
                         in
-                        (sz, content, "COMMON", 
-                             hex_string_of_natural comp_addr, 
-                             hex_string_of_natural sz,
-                             fname)
+                        (sz, content)
                     | Hole(f) -> 
                         let next_addr = f addr outputs_by_name
                         in
@@ -1076,16 +1123,16 @@ let rec build_image acc pos outputs_by_name script =
                         in
                         let content = Missing_pervasives.replicate n Nothing
                         in 
-                        (next_addr - addr, content, "*fill*", 
-                             hex_string_of_natural comp_addr, 
-                             hex_string_of_natural n,
+                        let _ = Missing_pervasives.outln (make_line "*fill*" (hex_string_of_natural comp_addr)
+                             (hex_string_of_natural n)
                              "")
-                    | ProvideSymbol(pol, name, spec) -> (0, [], "PROVIDE(BLAH)", "BLAH", "BLAH", "")
+                        in
+                        (next_addr - addr, content) 
+                    | ProvideSymbol(pol, name, spec) -> 
+                        let _ = Missing_pervasives.outln (make_line "PROVIDE(BLAH)" "BLAH" "BLAH" "")
+                        in 
+                        (0, [])
                 end
-                in
-                let _ = Missing_pervasives.outln (
-                    (space_padded_and_maybe_newline 16 (" " ^ namestr)) ^ ("0x" ^ (left_zero_padded_to 16 addrstr)) ^ " " ^ (left_space_padded_to 10 ("0x" ^ szstr)) ^ " " ^ rhs
-                )
                 in
                 (append_to_byte_pattern_at_offset (comp_addr - start_addr) accum_pat comp_el_pat, comp_addr + sz)
             )) ([], start_addr) (zip comp comp_addrs)
@@ -1097,7 +1144,8 @@ let rec build_image acc pos outputs_by_name script =
             |>
             in
             let _ = Missing_pervasives.outln "" in
-            (* make a new element in the image *)
+            (* Make a new element in the image.
+             * FIXME: also transfer the metadata from input sections to output sections. *)
             (start_addr + size, <|
                 elements   = Map.insert secname concat_sec_el acc_img.elements
                 (* tag it as a section, and transfer any tags *)

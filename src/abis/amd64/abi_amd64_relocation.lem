@@ -10,12 +10,14 @@ open import String
 
 open import Error
 open import Missing_pervasives
+open import Assert_extra
 
 open import Elf_types_native_uint
 open import Elf_file
 open import Elf_header
 open import Elf_relocation
 open import Elf_symbol_table
+open import Memory_image
 
 open import Abi_utilities
 
@@ -132,42 +134,44 @@ let string_of_amd64_relocation_type rel_type =
 (** [width_of_x86_64_relocation m s] yields the width in bytes of the relocatable field, 
   * when resolving to a defined maybe symbol [s] (or Nothing, if weak).
   *)
-val width_of_x86_64_relocation : natural -> maybe elf64_symbol_table_entry -> natural
-let width_of_x86_64_relocation rel_type s =
-  if rel_type = r_x86_64_none then 0
-  else if rel_type = r_x86_64_64 then 8
-  else if rel_type = r_x86_64_pc32 then 4
-  else if rel_type = r_x86_64_got32 then 4
-  else if rel_type = r_x86_64_plt32 then 4
-  else if rel_type = r_x86_64_copy then match s with Nothing -> 0 | Just s -> natural_of_elf64_xword s.elf64_st_size end
-  else if rel_type = r_x86_64_glob_dat then match s with Nothing -> 0 | Just s -> natural_of_elf64_xword s.elf64_st_size end (* CHECK *)
-  else if rel_type = r_x86_64_jump_slot then 4 (* CHECK *)
-  else if rel_type = r_x86_64_relative then 8 (* CHECK *)
-  else if rel_type = r_x86_64_gotpcrel then 8 (* CHECK *)
-  else if rel_type = r_x86_64_32 then 4
-  else if rel_type = r_x86_64_32s then 4
-  else if rel_type = r_x86_64_16 then 2
-  else if rel_type = r_x86_64_pc16 then 2
-  else if rel_type = r_x86_64_8 then 1
-  else if rel_type = r_x86_64_pc8 then 1
-  else if rel_type = r_x86_64_dtpmod64 then 8 (* CHECK *)
-  else if rel_type = r_x86_64_dtpoff64 then 8 (* CHECK *)
-  else if rel_type = r_x86_64_tpoff64 then 8 (* CHECK *)
-  else if rel_type = r_x86_64_tlsgd then 8 (* CHECK *)
-  else if rel_type = r_x86_64_tlsld then 8 (* CHECK *)
-  else if rel_type = r_x86_64_dtpoff32 then 4 (* CHECK *)
-  else if rel_type = r_x86_64_gottpoff then 8 (* CHECK *)
-  else if rel_type = r_x86_64_tpoff32 then 4 (* CHECK *)
-  else if rel_type = r_x86_64_pc64 then 8
-  else if rel_type = r_x86_64_gotoff64 then 8
-  else if rel_type = r_x86_64_gotpc32 then 4
-  else if rel_type = r_x86_64_size32 then 4
-  else if rel_type = r_x86_64_size64 then 8
-  else if rel_type = r_x86_64_gotpc32_tlsdesc then 4 (* CHECK *)
-  else if rel_type = r_x86_64_tlsdesc_call then 4 (* CHECK *)
-  else if rel_type = r_x86_64_tlsdesc then 8 (* CHECK *)
-  else if rel_type = r_x86_64_irelative then 8 (* CHECK *)
-  else 0 (* invalid *)
+val amd64_reloc : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature =>
+    reloc_fn 'abifeature
+let amd64_reloc r = match (string_of_amd64_relocation_type r) with
+    | "R_X86_64_NONE" ->            (false, (fun img -> (fun rr -> (0, fun s -> fun a -> fun e -> e))))
+    | "R_X86_64_64" ->              (true,  (fun img -> (fun rr -> (8, fun s -> fun a -> fun e -> s + a))))
+    | "R_X86_64_PC32" ->            (false, (fun img -> (fun rr -> (4, fun s -> fun a -> fun e -> s + a - reloc_site_address img rr))))
+    | "R_X86_64_GOT32" ->           (false, (fun img -> (fun rr -> (4, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_PLT32" ->           (false, (fun img -> (fun rr -> (4, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_COPY" ->            (false, (fun img -> (fun rr -> (size_of_copy_reloc img rr, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_GLOB_DAT" ->        (false, (fun img -> (fun rr -> (size_of_def rr, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_JUMP_SLOT" ->       (false, (fun img -> (fun rr -> (4 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_RELATIVE" ->        (true,  (fun img -> (fun rr -> (8, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_GOTPCREL" ->        (false, (fun img -> (fun rr -> (8 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_32" ->              (true,  (fun img -> (fun rr -> (4, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_32S" ->             (true,  (fun img -> (fun rr -> (4, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_16" ->              (true,  (fun img -> (fun rr -> (2, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_PC16" ->            (false, (fun img -> (fun rr -> (2, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_8" ->               (true,  (fun img -> (fun rr -> (1, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_PC8" ->             (false, (fun img -> (fun rr -> (1, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_DTPMOD64" ->        (false, (fun img -> (fun rr -> (8 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_DTPOFF64" ->        (false, (fun img -> (fun rr -> (8 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_TPOFF64" ->         (false, (fun img -> (fun rr -> (8 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_TLSGD" ->           (false, (fun img -> (fun rr -> (8 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_TLSLD" ->           (false, (fun img -> (fun rr -> (8 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_DTPOFF32" ->        (false, (fun img -> (fun rr -> (4 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_GOTTPOFF" ->        (false, (fun img -> (fun rr -> (8 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_TPOFF32" ->         (false, (fun img -> (fun rr -> (4 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_PC64" ->            (false, (fun img -> (fun rr -> (8, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_GOTOFF64" ->        (false, (fun img -> (fun rr -> (8, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_GOTPC32" ->         (false, (fun img -> (fun rr -> (4, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_SIZE32" ->          (false, (fun img -> (fun rr -> (4, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_SIZE64" ->          (false, (fun img -> (fun rr -> (8, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_GOTPC32_TLSDESC" -> (false, (fun img -> (fun rr -> (4 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_TLSDESC_CALL" ->    (false, (fun img -> (fun rr -> (4 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_TLSDESC" ->         (false, (fun img -> (fun rr -> (8 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_IRELATIVE" ->       (true,  (fun img -> (fun rr -> (8 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | _ -> failwith "unrecognised relocation"
+end
 
 (** [integer_bit_width] represents potential integer bit-widths of interest to
   * the relocation machinery below.
@@ -211,7 +215,7 @@ val abi_amd64_apply_relocation : elf64_relocation_a -> integer -> integer ->
   error (Map.map elf64_addr (relocation_operator_expression integer * integer_bit_width * can_fail integer))
 let abi_amd64_apply_relocation rel b_val g_val got_val l_val p_val s_val z_val ef =
   if is_elf64_relocatable_file ef.elf64_file_header then
-    let rel_type = elf64_relocation_r_type rel.elf64_ra_info in
+    let rel_type = get_elf64_relocation_a_type rel in
     let a_val    = integer_of_elf64_sxword rel.elf64_ra_addend in
       (** No width, No calculation *)
       if rel_type = r_x86_64_none then
@@ -238,7 +242,7 @@ let abi_amd64_apply_relocation rel b_val g_val got_val l_val p_val s_val z_val e
       		return (Map.singleton addr (result, I32, CanFail))
     	(** No width, No calculation *)
 		  else if rel_type = r_x86_64_copy then
-		    fail "abi_amd64_apply_relocation: r_x86_64_copy not implemented"
+		    failwith "abi_amd64_apply_relocation: r_x86_64_copy not implemented"
 		  (** Width: 64 Calculation: S *)
 		  else if rel_type = r_x86_64_glob_dat then
       	let result = Lift s_val in
@@ -291,28 +295,28 @@ let abi_amd64_apply_relocation rel b_val g_val got_val l_val p_val s_val z_val e
       		return (Map.singleton addr (result, I8, CanFail))
       (** Width: 64 *)
 		  else if rel_type = r_x86_64_dtpmod64 then
-		    fail "abi_amd64_apply_relocation: r_x86_64_dtpmod64 not implemented"
+		    failwith "abi_amd64_apply_relocation: r_x86_64_dtpmod64 not implemented"
       (** Width: 64 *)
 		  else if rel_type = r_x86_64_dtpoff64 then
-		    fail "abi_amd64_apply_relocation: r_x86_64_dtpoff64 not implemented"
+		    failwith "abi_amd64_apply_relocation: r_x86_64_dtpoff64 not implemented"
       (** Width: 64 *)
 		  else if rel_type = r_x86_64_tpoff64 then
-		    fail "abi_amd64_apply_relocation: r_x86_64_tpoff64 not implemented"
+		    failwith "abi_amd64_apply_relocation: r_x86_64_tpoff64 not implemented"
       (** Width: 32 *)
 		  else if rel_type = r_x86_64_tlsgd then
-		    fail "abi_amd64_apply_relocation: r_x86_64_tlsgd not implemented"
+		    failwith "abi_amd64_apply_relocation: r_x86_64_tlsgd not implemented"
       (** Width: 32 *)
 		  else if rel_type = r_x86_64_tlsld then
-		    fail "abi_amd64_apply_relocation: r_x86_64_tlsld not implemented"
+		    failwith "abi_amd64_apply_relocation: r_x86_64_tlsld not implemented"
       (** Width: 32 *)
 		  else if rel_type = r_x86_64_dtpoff32 then
-		    fail "abi_amd64_apply_relocation: r_x86_64_dtpoff32 not implemented"
+		    failwith "abi_amd64_apply_relocation: r_x86_64_dtpoff32 not implemented"
       (** Width: 32 *)
 		  else if rel_type = r_x86_64_gottpoff then
-		    fail "abi_amd64_apply_relocation: r_x86_64_gottpoff not implemented"
+		    failwith "abi_amd64_apply_relocation: r_x86_64_gottpoff not implemented"
       (** Width: 32 *)
 		  else if rel_type = r_x86_64_tpoff32 then
-		    fail "abi_amd64_apply_relocation: r_x86_64_tpoff32 not implemented"
+		    failwith "abi_amd64_apply_relocation: r_x86_64_tpoff32 not implemented"
 		  (** Width: 64 Calculation: S + A - P *)
 		  else if rel_type = r_x86_64_pc64 then
       	let result = Lift ((s_val + a_val) - p_val) in
@@ -340,19 +344,19 @@ let abi_amd64_apply_relocation rel b_val g_val got_val l_val p_val s_val z_val e
       		return (Map.singleton addr (result, I64, CannotFail))
       (** Width: 32 *)
 		  else if rel_type = r_x86_64_gotpc32_tlsdesc then
-		    fail "abi_amd64_apply_relocation: r_x86_64_gotpc32_tlsdesc not implemented"
+		    failwith "abi_amd64_apply_relocation: r_x86_64_gotpc32_tlsdesc not implemented"
       (** No width *)
 		  else if rel_type = r_x86_64_tlsdesc_call then
-		    fail "abi_amd64_apply_relocation: r_x86_64_tlsdesc_call not implemented"
+		    failwith "abi_amd64_apply_relocation: r_x86_64_tlsdesc_call not implemented"
 		  (** Width: 64X2 *)
 		  else if rel_type = r_x86_64_tlsdesc then
-		    fail "abi_amd64_apply_relocation: r_x86_64_tlsdesc not implemented"
+		    failwith "abi_amd64_apply_relocation: r_x86_64_tlsdesc not implemented"
 		  (** Calculation: indirect(B + A) *)
 		  else if rel_type = r_x86_64_irelative then
 		    let result = Apply(Indirect, Lift(b_val + a_val)) in
 		    let addr   = rel.elf64_ra_offset in
 		      return (Map.singleton addr (result, I64, CannotFail))
 		  else
-		  	fail "abi_amd64_apply_relocation: invalid relocation type"
+		  	failwith "abi_amd64_apply_relocation: invalid relocation type"
   else
-  	fail "abi_amd64_apply_relocation: not a relocatable file"
+  	failwith "abi_amd64_apply_relocation: not a relocatable file"

@@ -24,7 +24,7 @@ open import Elf_symbol_table
 open import Elf_types_native_uint
 open import Elf_relocation
 open import Memory_image
-open import Abis
+(* open import Abis *)
 
 open import Missing_pervasives
 
@@ -36,6 +36,10 @@ let elfFileFeatureConstructorToNaturalList f = match f with
     | ElfProgramHeaderTable(_) -> [2]
     | ElfSection(_) -> [3]
     | ElfSegment(_) -> [4]
+end
+
+instance (ToNaturalList elf_file_feature)
+    let toNaturalList = elfFileFeatureConstructorToNaturalList
 end
 
 val elfFileFeatureCompare : elf_file_feature -> elf_file_feature -> Basic_classes.ordering
@@ -72,6 +76,10 @@ let tagConstructorToNaturalList t = match t with
     | SymbolRef(_) -> [3]
     | FileFeature(f) -> 4 :: (elfFileFeatureConstructorToNaturalList f)
     | AbiFeature(af) -> 5 :: (toNaturalList af)
+end
+
+instance forall 'abifeature. ToNaturalList 'abifeature => (ToNaturalList (range_tag 'abifeature))
+    let toNaturalList = tagConstructorToNaturalList
 end
 
 val tagEquiv : forall 'abifeature. ToNaturalList 'abifeature => range_tag 'abifeature -> range_tag 'abifeature -> bool

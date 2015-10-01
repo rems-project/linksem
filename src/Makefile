@@ -54,10 +54,11 @@ LEM_ELF_SRC := byte_sequence.lem archive.lem \
 	elf_interpreted_segment.lem elf_interpreted_section.lem \
 	elf_note.lem elf_file.lem elf_dynamic.lem
 	
-LEM_ABI_SRC := memory_image.lem \
+LEM_ABI_SRC := memory_image.lem memory_image_orderings.lem \
 	abis/abi_utilities.lem \
 	abis/power64/abi_power64.lem \
 	abis/power64/abi_power64_elf_header.lem \
+	abis/power64/abi_power64_dynamic.lem \
 	abis/power64/abi_power64_section_header_table.lem \
 	abis/aarch64/abi_aarch64_le_elf_header.lem \
 	abis/aarch64/abi_aarch64_symbol_table.lem \
@@ -89,7 +90,7 @@ LEM_GNU_SRC := gnu_extensions/gnu_ext_types_native_uint.lem \
 	gnu_extensions/gnu_ext_section_to_segment_mapping.lem \
 	gnu_extensions/gnu_ext_note.lem
 
-LEM_LINK_SRC := elf_memory_image.lem memory_image_orderings.lem elf_memory_image_of_elf64_file.lem command_line.lem input_list.lem linkable_list.lem linker_script.lem link.lem
+LEM_LINK_SRC := elf_memory_image.lem elf_memory_image_of_elf64_file.lem command_line.lem input_list.lem linkable_list.lem linker_script.lem link.lem
 
 # LEM_MODEL_ML includes all OCaml except for the main programs
 LEM_MODEL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_GNU_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC))

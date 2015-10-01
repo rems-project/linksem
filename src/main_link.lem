@@ -49,7 +49,7 @@ val images_equal_modulo_alignment : elf_memory_image -> elf_memory_image -> bool
 let images_equal_modulo_alignment img1 img2 =
     img1.by_tag = img2.by_tag (* FIXME: the "modulo alignment" part *)
 
-val correctly_linked : abi any_abi_feature -> linkable_list -> list string -> list link_option -> elf64_file -> bool
+val correctly_linked : abi any_abi_feature -> linkable_list -> list string -> set link_option -> elf64_file -> bool
 let correctly_linked a linkables names options eout = 
     let output_image = elf_memory_image_of_elf64_file a "(output file)" eout
     in
@@ -92,13 +92,10 @@ let _ =
     let _ = Missing_pervasives.errln ("Got " ^ (show (List.length input_items)) ^ " input items: {"
         ^ (List.foldl (^) "" (List.map (fun item -> (show item) ^ ",") input_items)) ^ "}")
     in
-    let output_file_options
-     = filter (fun el -> match el with OutputFilename(s) -> true | _ -> false end) link_options
-    in
-    let output_file = match output_file_options with
-        [] -> failwith "impossible: no output file specified, despite default value of `a.out'"
-        | [OutputFilename(s)] -> s
-        | _ -> failwith "error: cannot specify multiple output filenames"
+    let output_file = match Command_line.find_option_matching_tag (Command_line.OutputFilename("")) link_options with
+        Nothing -> "impossible: no output file specified, despite default value of `a.out'"
+        | Just (Command_line.OutputFilename(s)) -> s
+        | _ -> "impossible: bad output filename option returned"
     end
     in
     Byte_sequence.acquire output_file >>= fun out ->

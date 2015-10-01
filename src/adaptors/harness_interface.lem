@@ -438,12 +438,12 @@ val harness_string_of_elf32_reloc_entry : (natural -> string) -> elf32_section_h
 let {ocaml} harness_string_of_elf32_reloc_entry os sht symtab stbl sechdr_stbl rel =
   let off  = natural_of_elf32_addr rel.elf32_r_offset in
   let inf  = natural_of_elf32_word rel.elf32_r_info in
-  let typ  = os (elf32_relocation_r_type rel.elf32_r_info) in
+  let typ  = os (extract_elf32_relocation_r_type rel.elf32_r_info) in
   let typs =
     let len = naturalFromNat (22 - String.stringLength typ) in
       concatS (replicate len " ")
   in
-  let idx  = elf32_relocation_r_sym rel.elf32_r_info in
+  let idx  = extract_elf32_relocation_r_sym rel.elf32_r_info in
     match List.index symtab (unsafe_nat_of_natural idx) with
       | Nothing  -> "harness_string_of_elf32_reloc_entry: Nothing returned"
       | Just sym ->
@@ -514,12 +514,12 @@ let {ocaml} harness_string_of_elf64_reloc_a_entry os symtab sht stbl sechdr_stbl
   let off    = natural_of_elf64_addr  rel.elf64_ra_offset in
   let inf    = natural_of_elf64_xword rel.elf64_ra_info in
   let add    = integer_of_elf64_sxword rel.elf64_ra_addend in
-  let typ    = os (elf64_relocation_r_type rel.elf64_ra_info) in
+  let typ    = os (extract_elf64_relocation_r_type rel.elf64_ra_info) in
   let typs   =
     let len = naturalFromNat (22 - String.stringLength typ) in
       concatS (replicate len " ")
   in
-  let idx  = elf64_relocation_r_sym rel.elf64_ra_info in
+  let idx  = extract_elf64_relocation_r_sym rel.elf64_ra_info in
   let (nm, value, symtyp, secthdr)  =
     match List.index symtab (unsafe_nat_of_natural idx) with
       | Nothing  -> (stn_undef, 0, 0, 0)

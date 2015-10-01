@@ -6,6 +6,8 @@ open import Tuple
 open import Bool
 open import List
 open import List_extra
+import Set
+import Set_extra
 open import Sorting
 open import Num
 open import Maybe
@@ -48,25 +50,35 @@ type input_file_options = <| input_fmt : string
                            ; input_whole_archive : bool
                            ; input_as_needed : bool
                            |>
-                           
+
+type output_kind = Executable
+                 | SharedLibrary
+
 type link_option = OutputFilename of string
+                 | OutputKind of output_kind
                  | ForceCommonDefined of bool        (* -d, -dc, -dp *)
                  | Soname of string                  (* -soname *)
                  | EntryAddress of natural
                  | TextSegmentStart of natural
                  | RodataSegmentStart of natural
                  | LdataSegmentStart of natural
+                 | BindFunctionsEarly                (* -Bsymbolic-functions *)
+                 | BindNonFunctionsEarly              (* the remainder of -Bsymbolic *)
                  (* more here! *) 
 
 val tagEqual : link_option -> link_option -> bool
 let tagEqual opt1 opt2 = match (opt1, opt2) with
+    (* FIXME: Lem BUG here! says "duplicate binding" *)
     (OutputFilename(_), OutputFilename(_)) -> true
+    | (OutputKind(_), OutputKind(_)) -> true
     (* | (ForceCommonDefined, ForceCommonDefined) -> true *)
     | (Soname(_), Soname(_)) -> true
     (* | (EntryAddress, EntryAddress) -> true *)
     | (TextSegmentStart(_), TextSegmentStart(_)) -> true
     | (RodataSegmentStart(_), RodataSegmentStart(_)) -> true
     | (LdataSegmentStart(_), LdataSegmentStart(_)) -> true
+    (* | (BindFunctionsEarly, BindFunctionsEarly) -> true *)
+    (* | (BindNonFunctionsEarly, BindNonFunctionsEarly) -> true *)
     | _ -> false
 end
 
@@ -118,7 +130,7 @@ end
  * of seen input files, seen whole-link options, and input file options that will
  * apply to any input files we add subsequently. *)
 type command_state = <| input_units           : list input_unit
-                      ; link_options          : list link_option
+                      ; link_options          : set  link_option
                       ; current_input_options : input_file_options
                       ; current_group         : maybe (list input_file_and_options)
                       ; stack                 : list command_state
@@ -127,7 +139,7 @@ type command_state = <| input_units           : list input_unit
 (* This is the "default state" when we start reading input options *)
 val initial_state : command_state
 let initial_state = <| input_units = []
-                     ; link_options = [OutputFilename("a.out")]
+                     ; link_options = {OutputFilename("a.out"); OutputKind(Executable)}
                      ; current_input_options = <| input_fmt = "elf64-x86-64"   (* FIXME *)
                                                 ; input_libpath = ["/usr/lib"] (* FIXME: this probably isn't the right place to supply the default search path *)
                                                 ; input_link_sharedlibs = true
@@ -140,7 +152,7 @@ let initial_state = <| input_units = []
                      ; stack = []
                      |>
 
-type interpreted_command_line = list input_unit * list link_option
+type interpreted_command_line = list input_unit * set link_option
 
 val add_input_file : command_state -> string -> command_state
 let add_input_file state s = 
@@ -200,15 +212,15 @@ type option_argvals = list string * list string
 val set_or_replace_option : link_option -> command_state -> command_state
 let set_or_replace_option opt state = 
     <| input_units = state.input_units
-     ; link_options = (filter (fun existing -> existing <> opt) state.link_options) ++ [opt]
+     ; link_options = Set.insert opt (Set.filter (fun existing -> existing <> opt) state.link_options)
      ; current_input_options = state.current_input_options
      ; current_group = state.current_group
      ; stack = state.stack
      |>
 
-val find_option_matching_tag : link_option -> list link_option -> maybe link_option
+val find_option_matching_tag : link_option -> set link_option -> maybe link_option
 let rec find_option_matching_tag tag options = 
-    List.find (tagEqual tag) options
+    List.find (tagEqual tag) (Set_extra.toList options)
 
 val accumulate_hex_chars : natural -> list char -> natural
 let rec accumulate_hex_chars acc chars = match chars with
@@ -309,8 +321,8 @@ let command_line_table = [
   (["-x"; "--discard-all"],                       ([], []),            fun _ -> (fun state -> state), "Discard all local symbols");
   (["-X"; "--discard-locals"],                    ([], []),            fun _ -> (fun state -> state), "Discard temporary local symbols (default)");
   (["--discard-none"],                            ([], []),            fun _ -> (fun state -> state), "Don't discard any local symbols");
-  (["-Bsymbolic"],                                ([], []),            fun _ -> (fun state -> state), "Bind global references locally");
-  (["-Bsymbolic-functions"],                      ([], []),            fun _ -> (fun state -> state), "Bind global function references locally");
+  (["-Bsymbolic"],                                ([], []),            fun argvals -> (fun state -> set_or_replace_option BindFunctionsEarly (set_or_replace_option BindNonFunctionsEarly state)), "Bind global references locally");
+  (["-Bsymbolic-functions"],                      ([], []),            fun argvals -> set_or_replace_option (BindFunctionsEarly), "Bind global function references locally");
   (["--force-exe-suffix"],                        ([], []),            fun _ -> (fun state -> state), "Force generation of file with .exe suffix");
   (["--gc-sections"],                             ([], []),            fun _ -> (fun state -> state), "**srk: uncertain: can repeat?** Remove unused sections (on some targets)");
   (["--no-gc-sections"],                          ([], []),            fun _ -> (fun state -> state), "**srk: uncertain: can repeat?** Don't remove unused sections (default)");
@@ -327,7 +339,7 @@ let command_line_table = [
   (["--no-relax"],                                ([], []),            fun _ -> (fun state -> state), "Do not use relaxation techniques to reduce code size");
   (["--retain-symbols-file"],                     (["FILE"], []),      fun _ -> (fun state -> state), "Keep only symbols listed in FILE");
   (["-rpath"],                                    (["PATH"], []),      fun _ -> (fun state -> state), "Set runtime shared library search path");
-  (["-shared"; "-Bshareable"],                    ([], []),            fun _ -> (fun state -> state), "Create a shared library");
+  (["-shared"; "-Bshareable"],                    ([], []),            fun argvals -> set_or_replace_option (OutputKind(SharedLibrary)), "Create a shared library");
   (["-pie"; "--pic-executable"],                  ([], []),            fun _ -> (fun state -> state), "Create a position independent executable");
   (["--sort-common="],(* (ascending|descending) *)([], ["order"]),     fun _ -> (fun state -> state), "Sort common symbols by alignment [in specified order]");
   (["--sort-section="],(* (name|alignment) *)     ([], ["key"]),       fun _ -> (fun state -> state), "Sort sections by name or maximum alignment");

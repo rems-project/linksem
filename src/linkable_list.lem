@@ -311,30 +311,35 @@ let resolve_undefs_in_one_object linkables all_defs oracle idx =
     let (all_ref_tags, all_ref_ranges)
      = unzip (Multimap.lookupBy Memory_image_orderings.tagEquiv (SymbolRef(null_symbol_reference_and_reloc_site)) img.by_tag)
     in
-    (* Here we are extracting and binding each relocation site individually. 
-     * - There might be more than one relocation site 
-     * referencing the same symbol name, in a given object.
-     * - There might be an UND symbol which is not actually
-     * used by a relocation site, but is nevertheless in need of
-     * being resolved. That is encoded by Nothing as the reloc site.*)
-    let all_refs = List.map (fun tag -> match tag with
+    (* By using SymbolRef, we are extracting and binding each relocation site individually. 
+     * since there might be more than one relocation site referencing the same symbol name, 
+     * in a given object.
+     * 
+     * We are also binding SymbolRefs that have no relocation, which occur when there's
+     * an UND symbol which is not actually used by a relocation site, but is nevertheless 
+     * in need of being resolved.
+     * 
+     * We don't (for the moment) want to make different decisions for different reloc sites
+     * in the same object referencing the same symbol. So we dedup from a list to a set.
+     *)
+    let all_refs = Set.fromList (List.map (fun tag -> match tag with
         SymbolRef(r) -> r.ref
         | _ -> failwith "matched tag not a relocation site"
-    end) all_ref_tags
+    end) all_ref_tags)
     in
-    let reflist = [(idx, ref, item) | forall (ref MEM all_refs) | true]
+    let ref_triples = { (idx, ref, item) | forall (ref IN all_refs) | true }
     in
     let _ = Missing_pervasives.errln ("object " ^ (show item) ^ " has " ^ 
-        (show (List.length reflist)) ^ " reloc references (symname, sym_scn, sym_idx, st_shndx) (" ^ 
-        (show (List.map (fun x -> ("\"" ^ x.ref_symname ^ "\"", x.ref_sym_scn, x.ref_sym_idx, x.ref_syment.elf64_st_shndx)) all_refs)) ^ ")")
+        (show (Set.size ref_triples)) ^ " reloc references (symname, sym_scn, sym_idx, st_shndx) (" ^ 
+        (show (List.map (fun x -> ("\"" ^ x.ref_symname ^ "\"", x.ref_sym_scn, x.ref_sym_idx, natural_of_elf64_half x.ref_syment.elf64_st_shndx)) (Set_extra.toList all_refs))) ^ ")")
     in
-    let und_reflist = [(idx, ref, ref_item) | forall ((idx, ref, ref_item) MEM reflist) | natural_of_elf64_half ref.ref_syment.elf64_st_shndx = shn_undef]
+    let und_ref_triples = { (idx, ref, ref_item) | forall ((idx, ref, ref_item) IN ref_triples) | natural_of_elf64_half ref.ref_syment.elf64_st_shndx = shn_undef }
     in
     let _ = Missing_pervasives.errln ("... of which " ^
-        (show (List.length und_reflist)) ^ " are to undefined symbols: (symname, sym_scn, sym_idx, st_shndx) (" ^ 
-        (show (List.map (fun (idx, x, _) -> ("\"" ^ x.ref_symname ^ "\"", x.ref_sym_scn, x.ref_sym_idx, x.ref_syment.elf64_st_shndx)) und_reflist)) ^ ")")
+        (show (Set.size und_ref_triples)) ^ " are to undefined symbols: (symname, sym_scn, sym_idx, st_shndx) (" ^ 
+        (show (List.map (fun (idx, x, _) -> ("\"" ^ x.ref_symname ^ "\"", x.ref_sym_scn, x.ref_sym_idx, natural_of_elf64_half x.ref_syment.elf64_st_shndx)) (Set_extra.toList und_ref_triples))) ^ ")")
     in
-    resolve_all linkables all_defs oracle reflist
+    resolve_all linkables all_defs oracle (Set_extra.toList ref_triples)
 
 val accumulate_bindings : forall 'abifeature.
     abi 'abifeature

@@ -350,7 +350,7 @@ let abi_ppc64_apply_relocation rel s_val b_val p_val l_val g_val r_val m_val
           toc_val dtpmod_val tprel_val dtprel_val gottlsgd_val gottlsld_val
           gottprel_val gotdtprel_val ef =
   if is_elf64_relocatable_file ef.elf64_file_header then
-    let rel_type = elf64_relocation_r_type rel.elf64_ra_info in
+    let rel_type = extract_elf64_relocation_r_type rel.elf64_ra_info in
     let a_val    = integer_of_elf64_sxword rel.elf64_ra_addend in
       (** No width, no calculation *)
       if rel_type = r_ppc64_none then

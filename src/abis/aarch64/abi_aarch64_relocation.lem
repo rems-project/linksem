@@ -17,6 +17,7 @@ open import Elf_relocation
 open import Elf_symbol_table
 
 open import Abi_utilities
+open import Memory_image
 
 (** Relocations *)
 
@@ -416,16 +417,12 @@ let {ocaml} string_of_aarch64_relocation_type rel_type =
   else
     "Invalid AARCH64 relocation type"
 
-(** [width_of_aarch64_relocation m s] yields the width in bytes of the relocatable field, 
-  * when resolving to a defined maybe symbol [s] (or Nothing, if weak).
-  *)
-val width_of_aarch64_relocation : natural -> maybe elf64_symbol_table_entry -> natural
-let width_of_aarch64_relocation rel_type s =
-  if rel_type = r_aarch64_none then
-    0
-  else
-    0 (* TODO *)
-
+val aarch64_le_reloc : forall 'abifeature. reloc_fn 'abifeature
+let aarch64_le_reloc r = match (string_of_aarch64_relocation_type r) with
+    "AARCH64_NONE" -> (false, (fun img -> (fun rr -> (0, fun s -> fun a -> fun e -> e))))
+    | _ ->            (false, noop_reloc_apply)
+end
+    
 (** [abi_aarch64_apply_relocation rel s_val p_val got_val ef] produces an AST
   * of the relocation calculation for relocation type [rel] using [s_val], [p_val],
   * and [got_val] as primitive components.
@@ -439,7 +436,7 @@ val abi_aarch64_apply_relocation : elf64_relocation_a -> integer -> integer ->
     error (Map.map elf64_addr (relocation_operator_expression integer * integer_bit_width * can_fail integer))
 let abi_aarch64_apply_relocation rel s_val p_val got_val ef =
   if is_elf64_relocatable_file ef.elf64_file_header then
-    let rel_type = elf64_relocation_r_type rel.elf64_ra_info in
+    let rel_type = get_elf64_relocation_a_type rel in
     let a_val    = integer_of_elf64_sxword rel.elf64_ra_addend in
       (** No width, no calculation *)
       if rel_type = r_aarch64_none then

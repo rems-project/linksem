@@ -2,6 +2,17 @@
   *)
 
 open import Num
+open import Basic_classes
+open import Maybe
+open import String
+open import Error
+open import Assert_extra
+open import Missing_pervasives
+open import Elf_types_native_uint
+open import Elf_symbol_table
+open import Elf_relocation
+open import Memory_image
+open import Memory_image_orderings
 
 (** [integer_bit_width] records various bit widths for integral types, as used
   * in relocation calculations. The names are taken directly from the processor
@@ -122,3 +133,40 @@ type can_fail 'a
   = CanFail                       (** [CanFail] signals a potential failing relocation calculation when width constraints are invalidated *)
   | CanFailOnTest of ('a -> bool) (** [CanFailOnTest p] signals a potentially failing relocation calculation when predicate [p] on the result of the calculation returns [false] *)
   | CannotFail                    (** [CannotFail] states the relocation calculation cannot fail and bit-width constraints should be ignored *)
+
+val size_of_def : symbol_reference_and_reloc_site -> natural
+let size_of_def rr = natural_of_elf64_xword rr.ref.ref_syment.elf64_st_size
+
+val size_of_copy_reloc : forall 'abifeature. annotated_memory_image 'abifeature -> symbol_reference_and_reloc_site -> natural
+let size_of_copy_reloc img rr = 
+    (* it's the minimum of the two definition symbol sizes. FIXME: for now, just use the rr *)
+    size_of_def rr
+
+val reloc_site_address : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature => 
+    annotated_memory_image 'abifeature -> symbol_reference_and_reloc_site -> natural
+let reloc_site_address img rr = 
+    (* find the element range that's tagged with this reloc site *)
+    let found_kvs = Multimap.lookupBy (=) (SymbolRef(rr)) img.by_tag
+    in
+    match found_kvs with
+        [] -> failwith "impossible: reloc site not marked in memory image"
+        | [(_, maybe_range)] -> match maybe_range with 
+                Nothing -> failwith "impossible: reloc site has no element range"
+                | Just (el_name, el_range) -> 
+                    let element_addr = match Map.lookup el_name img.elements with
+                        Nothing -> failwith "impossible: non-existent element"
+                        | Just el -> match el.startpos with
+                            Nothing -> failwith "error: resolving relocation site address before address has been assigned"
+                            | Just addr -> addr
+                        end
+                    end
+                    in
+                    let site_offset = (* match rr.maybe_reloc with 
+                        Just reloc -> natural_of_elf64_addr reloc.ref_relent.elf64_ra_offset
+                        | Nothing -> failwith "symbol reference with range but no reloc site"
+                    end*) (let (start, _) = el_range in start)
+                    in
+                    element_addr + site_offset
+            end
+        | _ -> failwith "error: more than one reloc marked at the same site"
+    end

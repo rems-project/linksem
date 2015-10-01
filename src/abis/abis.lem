@@ -22,6 +22,39 @@ open import Abi_aarch64_relocation
 type any_abi_feature = Amd64AbiFeature of amd64_abi_feature
                      | Aarch64LeAbiFeature of aarch64_le_abi_feature
 
+val anyAbiFeatureToNaturalList : any_abi_feature -> list natural
+let anyAbiFeatureToNaturalList f = match f with
+    Amd64AbiFeature(af) -> 0 :: (toNaturalList af)
+    | Aarch64LeAbiFeature(af) -> 1 :: (toNaturalList af)
+end
+
+instance (ToNaturalList any_abi_feature)
+    let toNaturalList = anyAbiFeatureToNaturalList
+end
+
+val anyAbiFeatureCompare : any_abi_feature -> any_abi_feature -> Basic_classes.ordering
+let anyAbiFeatureCompare f1 f2 = 
+    match (anyAbiFeatureToNaturalList f1, anyAbiFeatureToNaturalList f2) with
+        ([], []) -> failwith "impossible: any-ABI feature has empty natural list (case 0)"
+    |   (_, [])  -> failwith "impossible: any-ABI feature has empty natural list (case 1)"
+    |   ([], _)  -> failwith "impossible: any-ABI feature has empty natural list (case 2)"
+    |   ((hd1 :: tl1), (hd2 :: tl2)) -> 
+            if hd1 < hd2 then LT else if hd1 > hd2 then GT else
+                match (f1, f2) with
+                    (Amd64AbiFeature(af1), Amd64AbiFeature(af2)) -> compare af1 af2
+                   |(Aarch64LeAbiFeature(af1), Aarch64LeAbiFeature(af2)) -> compare af1 af2
+                   | _ -> failwith "impossible: tag constructors not equal but natural list heads were equal"
+                end
+    end
+
+instance (Ord any_abi_feature)
+    let compare = anyAbiFeatureCompare
+    let (<) = fun f1 -> (fun f2 -> (anyAbiFeatureCompare f1 f2 = LT))
+    let (<=) = fun f1 -> (fun f2 -> Set.member (anyAbiFeatureCompare f1 f2) {LT; EQ})
+    let (>) = fun f1 -> (fun f2 -> (anyAbiFeatureCompare f1 f2 = GT))
+    let (>=) = fun f1 -> (fun f2 -> Set.member (anyAbiFeatureCompare f1 f2) {GT; EQ})
+end
+
 (* null_abi captures ABI details common to all ELF-based, System V-based systems. *)
 val null_abi : abi any_abi_feature 
 let (null_abi : abi any_abi_feature) = <|
@@ -38,7 +71,7 @@ let (null_abi : abi any_abi_feature) = <|
 val sysv_amd64_std_abi : abi any_abi_feature
 let sysv_amd64_std_abi = 
    <| is_valid_elf_header = header_is_amd64
-    ; reloc = fun r -> (width_of_x86_64_relocation r, fun _ -> Nothing)
+    ; reloc = amd64_reloc
     ; section_is_special = section_is_special
     ; section_is_large = (fun s -> (fun f -> flag_is_set shf_x86_64_large s.elf64_section_flags))
     ; maxpagesize = 65536
@@ -50,7 +83,7 @@ let sysv_amd64_std_abi =
 val sysv_aarch64_le_std_abi : abi any_abi_feature
 let sysv_aarch64_le_std_abi = 
    <| is_valid_elf_header = header_is_aarch64_le
-    ; reloc = fun r -> (width_of_aarch64_relocation r, fun _ -> Nothing)
+    ; reloc = aarch64_le_reloc
     ; section_is_special = section_is_special
     ; section_is_large = (fun _ -> (fun _ -> false))
     ; maxpagesize = null_abi.maxpagesize
@@ -62,44 +95,3 @@ let sysv_aarch64_le_std_abi =
 val all_abis : list (abi any_abi_feature)
 let all_abis = [sysv_amd64_std_abi; sysv_aarch64_le_std_abi; null_abi]
 
-(*
-val amd64AbiFeatureConstructorToNaturalList : amd64_abi_feature -> list natural
-val aarch64AbiFeatureConstructorToNaturalList : aarch64_le_abi_feature -> list natural
-*)
-
-val anyAbiFeatureConstructorToNaturalList : any_abi_feature -> list natural
-let anyAbiFeatureConstructorToNaturalList af = match af with
-    Amd64AbiFeature(aaf) -> 0 :: (amd64AbiFeatureConstructorToNaturalList aaf)
-    | Aarch64LeAbiFeature(aaf) -> 1 :: (aarch64LeAbiFeatureConstructorToNaturalList aaf)
-end
-
-let anyAbiFeatureCompare f1 f2 = 
-    match ((anyAbiFeatureConstructorToNaturalList f1), (anyAbiFeatureConstructorToNaturalList f2)) with
-        ([], []) -> failwith "impossible: elf file feature has empty natural list (case 0)"
-    |   (_, [])  -> failwith "impossible: elf file feature has empty natural list (case 1)"
-    |   ([], _)  -> failwith "impossible: elf file feature has empty natural list (case 2)"
-    |   ((hd1 :: tl1), (hd2 :: tl2)) -> 
-            if hd1 < hd2 then LT else if hd1 > hd2 then GT else
-                match (f1, f2) with
-                    (Amd64AbiFeature(x1), Amd64AbiFeature(x2)) -> compare x1 x2
-                    | (Aarch64LeAbiFeature(x1), Aarch64LeAbiFeature(x2)) -> compare x1 x2
-                    | _ -> failwith "impossible: tag constructors not equal but natural list heads were equal"
-                end
-    end
-
-instance (Ord any_abi_feature)
-    let compare = anyAbiFeatureCompare
-    let (<) = fun f1 -> (fun f2 -> (anyAbiFeatureCompare f1 f2 = LT))
-    let (<=) = fun f1 -> (fun f2 -> Set.member (anyAbiFeatureCompare f1 f2) {LT; EQ})
-    let (>) = fun f1 -> (fun f2 -> (anyAbiFeatureCompare f1 f2 = GT))
-    let (>=) = fun f1 -> (fun f2 -> Set.member (anyAbiFeatureCompare f1 f2) {GT; EQ})
-end
-
-let anyAbiFeatureToNaturalList af = match af with 
-    Amd64AbiFeature(aaf) -> amd64AbiFeatureConstructorToNaturalList aaf
-    |  Aarch64LeAbiFeature(aaf) -> aarch64LeAbiFeatureConstructorToNaturalList aaf
-end
-
-instance (ToNaturalList any_abi_feature)
-    let toNaturalList = anyAbiFeatureToNaturalList
-end

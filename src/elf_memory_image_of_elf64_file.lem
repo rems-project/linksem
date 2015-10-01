@@ -145,18 +145,21 @@ let elf_memory_image_of_elf64_file a fname f =
                             | Nothing -> failwith "relocs came from nonexistent section"
                         end
                         in
-                        let (szfun, applyfn) = a.reloc (elf64_relocation_r_type rel.ref_relent.elf64_ra_info)
+                        let (_, applyfn) = a.reloc (get_elf64_relocation_a_type rel.ref_relent)
                         in
-                        let sz = szfun Nothing (* FIXME: for copy relocs, the size depends on the *definition*.
+                        let (width, calcfn) = applyfn (get_empty_memory_image ()) x
+                         (* GAH. We don't have an image. 
+                            If we pass an empty memory image, will we fail? Need to make it work *)
+                        in
+                          (* FIXME: for copy relocs, the size depends on the *definition*.
                              AHA! a copy reloc always *has* a symbol definition locally; it just gets its *value*
                              from the shared object's definition.
                              In other words, a copy reloc always references a defined symbol, and the amount
                              copied is the minimum of that symbol's size and the overridden (copied-from .so)'s 
                              symbol's size. *)
-                        in
                         let (offset : elf64_addr) = rel.ref_relent.elf64_ra_offset
                         in 
-                        ((section_name, (natural_of_elf64_addr offset, sz)), SymbolRef(x))
+                        ((section_name, (natural_of_elf64_addr offset, width)), SymbolRef(x))
                     )
                     (extract_all_relocs_as_symbol_references fname f)
                 in
@@ -323,7 +326,8 @@ let elf_memory_image_element_coextensive_with_section idx img =
     match matches with
         [] -> Nothing
         | [x] -> Just x
-        | _ -> failwith ("impossible: more than one ELF section coextensive with section " ^ (show idx))
+        | xs -> failwith ("impossible: more than one ELF section coextensive with section " ^ (show idx) ^ ", names: "
+            ^ (show xs))
     end
 
 
@@ -398,6 +402,14 @@ let elf_memory_image_symbol_def_ranges img =
 val name_of_symbol_def : symbol_definition -> string
 let name_of_symbol_def sym = sym.def_symname
 
+val elf_memory_image_defined_symbols_and_ranges : elf_memory_image -> list ((maybe element_range) * symbol_definition)
+let elf_memory_image_defined_symbols_and_ranges img = 
+    List.mapMaybe (fun (tag, maybeRange) -> 
+        match tag with
+            SymbolDef(ent) -> Just (maybeRange, ent)
+            | _ -> failwith "impossible: non-symbol def in list of symbol defs"
+        end) (tagged_ranges_matching_tag (SymbolDef(null_symbol_definition)) img)
+
 val elf_memory_image_defined_symbols : elf_memory_image -> list symbol_definition
 let elf_memory_image_defined_symbols img = 
     let ((all_symbol_tags, all_symbol_ranges) : (list elf_range_tag * list (maybe element_range)))
@@ -446,12 +458,13 @@ let elf_memory_image_unique_symbol_with_name name img =
 
 val name_of_elf_section : elf64_interpreted_section -> elf_memory_image -> maybe string
 let name_of_elf_section sec img = 
-   let shstrndx = natural_of_elf64_half ((elf_memory_image_header img).elf64_shstrndx)
+   (* let shstrndx = natural_of_elf64_half ((elf_memory_image_header img).elf64_shstrndx)
    in
    match elf_memory_image_section_by_index shstrndx img with
         Nothing -> Nothing
         | Just shstrtab -> name_of_elf_interpreted_section sec shstrtab
-  end
+  end *)
+   Just sec.elf64_section_name_as_string
 
 val name_of_elf_element : elf_file_feature -> elf_memory_image -> maybe string
 let name_of_elf_element feature img = 

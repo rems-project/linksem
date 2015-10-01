@@ -7,6 +7,7 @@ open import List
 open import Sorting
 open import Map
 open import Set
+open import Set_extra
 open import Multimap
 open import Num
 open import Maybe
@@ -122,7 +123,7 @@ type elf_file_feature =
 
 type symbol_reference
  = <| ref_symname : string                  (* symbol name *)
-    ; ref_syment : elf64_symbol_table_entry (* undefined (referencing) symbol *)
+    ; ref_syment : elf64_symbol_table_entry (* likely-undefined (referencing) symbol *)
     ; ref_sym_scn : natural                 (* symtab section idx *) 
     ; ref_sym_idx : natural                 (* index into symbol table *)
     |>
@@ -249,14 +250,18 @@ type annotated_memory_image 'abifeature = <|
     ; by_tag           : multimap (range_tag 'abifeature) (maybe element_range)
 |>
 
+val get_empty_memory_image : forall 'abifeature. unit -> annotated_memory_image 'abifeature
+let get_empty_memory_image = fun _ -> <| 
+      elements = Map.empty
+    ; by_range = Set.empty
+    ; by_tag   = Set.empty
+|>
+
 (* Basic ELFy and ABI-y things. *)
 (* FIXME: shouldn't really be here, but need to be in some low-lying module, and 
  * keeping out of elf_* for now to avoid duplication into elf64_, elf32_. *)
 let elf_section_is_special s f = s.elf64_section_type <> sht_progbits
                      && s.elf64_section_type <> sht_nobits
-
-val noop_reloc : forall 'abifeature. natural -> ((maybe elf64_symbol_table_entry -> natural) * (annotated_memory_image 'abifeature -> maybe natural))
-let noop_reloc r = (fun r_type -> 8, fun sym_val -> Nothing)
 
 (* This record collects things that ABIs may or must define. 
  * 
@@ -269,15 +274,73 @@ let noop_reloc r = (fun r_type -> 8, fun sym_val -> Nothing)
  *)
 type null_abi_feature = unit
 
+(* The reloc calculation is complicated, so we split up the big function
+ * type into smaller ones. *)
+
+(* Q. Do we want "existing", or is it a kind of addend? 
+ * A. We do want it -- modelling both separately is necessary, 
+ * because we model relocations bytewise, but some arches
+ * do bitfield relocations (think ARM). *)
+type reloc_calculate_fn    = natural -> natural -> natural -> natural (* symaddr -> addend -> existing -> relocated *)
+
+type reloc_apply_fn 'abifeature = 
+                                (* elf memory image: the context in which the relocation is being applied *)
+                                annotated_memory_image 'abifeature ->
+                                (* Typically there are two symbol table entries involved in a relocation.
+                                 * One is the reference, and is usually undefined.
+                                 * The other is the definition, and is defined (else absent, when we use 0).
+                                 * However, sometimes the reference is itself a defined symbol.
+                                 * Almost always, if so, *that* symbol *is* "the definition".
+                                 * However, copy relocs are an exception.
+                                 * 
+                                 * In the case of copy relocations being fixed up by the dynamic
+                                 * linker, the dynamic linker must figure out which definition to
+                                 * copy from. This can't be as simple as "the first definition in
+                                 * link order", because *our* copy of that symbol is a definition
+                                 * (typically in bss). It could be as simple as "the first *after us*
+                                 * in link order". FIXME: find the glibc code that does this.
+                                 * 
+                                 * Can we dig this stuff out of the memory image? If we pass the address
+                                 * being relocated, we can find the tags. But I don't want to pass
+                                 * the symbol address until the very end. It seems better to pass the symbol
+                                 * name, since that's the key that the dynamic linker uses to look for
+                                 * other definitions.
+                                 * 
+                                 * Do we want to pass a whole symbol_reference? This has not only the
+                                 * symbol name but also syment, scn and idx. The syment is usually UND, 
+                                 * but *could* be defined (and is for copy relocs). The scn and idx are
+                                 * not relevant, but it seems cleaner to pass the whole thing anyway.
+                                 *)
+                                symbol_reference_and_reloc_site -> 
+                                (* Should we pass a symbol_definition too? Implicitly, we pass part of it
+                                 * by passing the symaddr argument (below). I'd prefer not to depend on
+                                 * others -- relocation calculations should look like "mostly address 
+                                 * arithmetic", i.e. only the weird ones do something else. *)
+                                (* How wide, in bytes, is the relocated field? this may depend on img 
+                                 * and on the wider image (copy relocs), so it's returned *by* the reloc function. *)
+                                (natural (* width *) * reloc_calculate_fn)
+
+(* Some kinds of relocation necessarily give us back a R_*_RELATIVE reloc.
+ * We don't record this explicitly. Instead, the "bool" is a flag recording whether
+ * the field represents an absolute address.
+ * Similarly, some relocations can "fail" according to their ABI manuals.
+ * This just means that the result can't be represented in the field width.
+ * We detect this when actually applying the reloc in the memory image content
+ * (done elsewhere). *)
+type reloc_fn 'abifeature = natural -> (bool * reloc_apply_fn 'abifeature)
+
+val noop_reloc_calculate : natural -> natural -> natural -> natural
+let noop_reloc_calculate symaddr addend existing = existing
+
+val noop_reloc_apply : forall 'abifeature. reloc_apply_fn 'abifeature
+let noop_reloc_apply img ref = (0, noop_reloc_calculate)
+
+val noop_reloc : forall 'abifeature. natural -> (bool (* result is absolute addr *) * reloc_apply_fn 'abifeature)
+let noop_reloc k = (false, noop_reloc_apply)
+
 type abi 'abifeature = (* forall 'abifeature. *)
-   <| is_valid_elf_header : elf64_header -> bool
-                        (* doesn't this generalise outrageously? is_valid_elf_file? *)
-    (* Do we want "existing", or is it a kind of addend? 
-     * We do want it -- modelling both separately is necessary, 
-     * because we model relocations bytewise, but some arches
-     * do bitfield relocations (think ARM). *)
-    ; reloc              : natural -> ((maybe elf64_symbol_table_entry -> natural) * (annotated_memory_image 'abifeature -> maybe natural))
-                        (* number  ->  width   * (symaddr -> addend  -> existing-> relocated) *)
+   <| is_valid_elf_header : elf64_header -> bool (* doesn't this generalise outrageously? is_valid_elf_file? *)
+    ; reloc              : reloc_fn 'abifeature
     ; section_is_special : elf64_interpreted_section -> annotated_memory_image 'abifeature -> bool
     ; section_is_large   : elf64_interpreted_section -> annotated_memory_image 'abifeature -> bool
     ; maxpagesize        : natural
@@ -431,6 +494,31 @@ let rec accum_pattern_possible_starts_in_one_byte_sequence pattern pattern_len s
                            (if matched_here then offset :: accum else accum)
             end
     end
+
+let swap_pairs s = { (v, k) | forall ((k, v) IN s) | true }
+
+let by_range_from_by_tag = swap_pairs
+
+let by_tag_from_by_range = swap_pairs
+
+val filter_elements : forall 'abifeature. ((string * memory_image_element) -> bool) -> 
+    annotated_memory_image 'abifeature -> annotated_memory_image 'abifeature
+let filter_elements pred img = 
+    let new_elements = Map.fromList [(n, r) | forall ((n, r) MEM (Set_extra.toList (toSet img.elements))) | 
+        let result = pred (n, r) in 
+        if not result then let _ = Missing_pervasives.outln ("Discarding element named " ^ n) in result else result]
+    in
+    let new_by_range =  Set.filter (fun (maybe_range, tag) -> match maybe_range with
+            Nothing -> true
+            | Just (el_name, el_range) -> el_name IN domain new_elements
+        end) img.by_range
+    in
+    let new_by_tag = { (v, k) | forall ((k, v) IN new_by_range) | true }
+    in
+    <| elements = new_elements
+     ; by_range = new_by_range
+     ; by_tag   = new_by_tag
+     |>
 
 val pattern_possible_starts_in_one_byte_sequence : list (maybe byte) -> list byte -> natural -> list natural
 let pattern_possible_starts_in_one_byte_sequence pattern seq offset =
