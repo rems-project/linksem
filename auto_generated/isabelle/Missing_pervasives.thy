@@ -4,15 +4,15 @@ theory "Missing_pervasives"
 
 imports 
  	 Main
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_num" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_list" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_bool" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_maybe" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_string" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_assert_extra" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_num" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_list" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_bool" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_maybe" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_string" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_assert_extra" 
 	 "Show" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_sorting" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_sorting" 
 	 "$ISABELLE_HOME/src/HOL/Word/Word" 
 	 "Elf_Types_Local" 
 
@@ -156,7 +156,7 @@ definition natural_of_decimal_string  :: " string \<Rightarrow> nat "  where
 (*val hex_string_of_natural : natural -> string*)
 function (sequential,domintros)  hex_string_of_natural  :: " nat \<Rightarrow> string "  where 
      " hex_string_of_natural n = ( 
-    if n \<le>( 16 :: nat) then  [hex_char_of_nibble n]
+    if n <( 16 :: nat) then  [hex_char_of_nibble n]
     else (hex_string_of_natural (n div( 16 :: nat))) @ ([hex_char_of_nibble (n mod( 16 :: nat))]))" 
 by pat_completeness auto
 
@@ -186,19 +186,6 @@ definition natural_ordering  :: " nat \<Rightarrow> nat \<Rightarrow> ordering "
 
 
 (*val sort_by : forall 'a. ('a -> 'a -> ordering) -> list 'a -> list 'a*)
-
-(** [intercalate sep xs] places [sep] between all elements of [xs]. *)
-(*val intercalate : forall 'a. 'a -> list 'a -> list 'a*)
-function (sequential,domintros)  intercalate  :: " 'a \<Rightarrow> 'a list \<Rightarrow> 'a list "  where 
-     " intercalate sep ([]) = ( [])"
-|" intercalate sep ([x]) = ( [x])"
-|" intercalate sep (x # xs) = ( x #(sep # intercalate sep xs))" 
-by pat_completeness auto
-
-
-(** [string_of_list l] produces a string representation of list [l].
-  *)
-(*val string_of_list : forall 'a. Show 'a => list 'a -> string*)
 
 (** [mapMaybei f xs] maps a function expecting an index (the position in the list
   * [xs] that it is currently viewing) and producing a [maybe] type across a list.
@@ -302,24 +289,6 @@ fun  unzip3  :: "('a*'b*'c)list \<Rightarrow> 'a list*'b list*'c list "  where
 declare unzip3.simps [simp del]
 
 
-(** [unlines xs] concatenates a list of strings [xs], placing each entry
-  * on a new line.
-  *)
-(*val unlines : list string -> string*)
-definition unlines  :: "(string)list \<Rightarrow> string "  where 
-     " unlines xs = (
-  List.foldl (op@) ('''') (intercalate ([(Char Nibble0 NibbleA)]) xs))"
-
-
-(** [bracket xs] concatenates a list of strings [xs], separating each entry with a
-  * space, and bracketing the resulting string.
-  *)
-(*val bracket : list string -> string*)
-definition bracket  :: "(string)list \<Rightarrow> string "  where 
-     " bracket xs = (
-  (''('') @ (List.foldl (op@) ('''') (intercalate ('' '') xs) @ ('')'')))"
-
-
 (** [null_byte] is the null character a a byte. *)
 (*val null_byte : byte*)
 
@@ -346,6 +315,45 @@ definition bracket  :: "(string)list \<Rightarrow> string "  where
 (** [outs s] prints [s] to stdout, without adding a trailing newline. *)
 (*val outs : string -> unit*)
 
+(** [intercalate sep xs] places [sep] between all elements of [xs].
+  * Made tail recursive and unrolled slightly to improve performance on large
+  * lists.*)
+(*val intercalate' : forall 'a. 'a -> list 'a -> list 'a -> list 'a*)
+function (sequential,domintros)  intercalate'  :: " 'a \<Rightarrow> 'a list \<Rightarrow> 'a list \<Rightarrow> 'a list "  where 
+     " intercalate' sep ([]) accum = ( List.rev accum )"
+|" intercalate' sep ([x]) accum = ( List.rev accum @ [x])"
+|" intercalate' sep ([x, y]) accum = ( List.rev accum @ [x, sep, y])"
+|" intercalate' sep (x # y # xs) accum = ( intercalate' sep xs (sep #(y #(sep #(x # accum)))))" 
+by pat_completeness auto
+
+	
+(*val intercalate : forall 'a. 'a -> list 'a -> list 'a*)
+definition intercalate  :: " 'a \<Rightarrow> 'a list \<Rightarrow> 'a list "  where 
+     " intercalate sep xs = ( intercalate' sep xs [])"
+
+
+(** [unlines xs] concatenates a list of strings [xs], placing each entry
+  * on a new line.
+  *)
+(*val unlines : list string -> string*)
+definition unlines  :: "(string)list \<Rightarrow> string "  where 
+     " unlines xs = (
+  List.foldl (op@) ('''') (intercalate ([(Char Nibble0 NibbleA)]) xs))"
+
+
+(** [bracket xs] concatenates a list of strings [xs], separating each entry with a
+  * space, and bracketing the resulting string.
+  *)
+(*val bracket : list string -> string*)
+definition bracket  :: "(string)list \<Rightarrow> string "  where 
+     " bracket xs = (
+  (''('') @ (List.foldl (op@) ('''') (intercalate ('' '') xs) @ ('')'')))"
+
+	
+(** [string_of_list l] produces a string representation of list [l].
+  *)
+(*val string_of_list : forall 'a. Show 'a => list 'a -> string*)
+
 (** [split_string_on_char s c] splits a string [s] into a list of substrings
   * on character [c], otherwise returning the singleton list containing [s]
   * if [c] is not found in [s].
@@ -363,27 +371,29 @@ definition bracket  :: "(string)list \<Rightarrow> string "  where
   * Fails if the index is negative, or beyond the end of the string.
   *)
 (*val string_suffix : natural -> string -> maybe string*)
-
-(** [string_prefix i s] returns the first [i] characters of [s].
-  * Fails if the index is negative, or beyond the end of the string.
-  *)
   
 (*val nat_length : forall 'a. list 'a -> nat*)
   
 (*val length : forall 'a. list 'a -> natural*)
 (*let ~{ocaml} length xs = List.foldl (fun y _ -> (Instance_Num_NumAdd_Num_natural.+) 1 y) 0 xs*)
 
+(** [take cnt xs] takes the first [cnt] elements of list [xs].  Returns a truncation
+  * if [cnt] is greater than the length of [xs].
+  *)
 (*val take : forall 'a. natural -> list 'a -> list 'a*)
 function (sequential,domintros)  take  :: " nat \<Rightarrow> 'a list \<Rightarrow> 'a list "  where 
      " take m ([]) = ( [])"
 |" take m (x # xs) = (
       if m =( 0 :: nat) then
-        x # xs
+        []
       else
         x # take (m -( 1 :: nat)) xs )" 
 by pat_completeness auto
 
   
+(** [string_prefix i s] returns the first [i] characters of [s].
+  * Fails if the index is negative, or beyond the end of the string.
+  *)
 (*val string_prefix : natural -> string -> maybe string*)
 definition string_prefix  :: " nat \<Rightarrow> string \<Rightarrow>(string)option "  where 
      " string_prefix m s = (
@@ -397,7 +407,6 @@ definition string_prefix  :: " nat \<Rightarrow> string \<Rightarrow>(string)opt
 
 (** [string_index_of c s] returns [Just(i)] where [i] is the index of the first 
   * occurrence if [c] in [s], if it exists, otherwise returns [Nothing]. *)
-
 (*val string_index_of' : char -> list char -> natural -> maybe natural*)
 function (sequential,domintros)  string_index_of'  :: " char \<Rightarrow>(char)list \<Rightarrow> nat \<Rightarrow>(nat)option "  where 
      " string_index_of' e ([]) idx = ( None )"
@@ -507,4 +516,101 @@ definition unsafe_string_take  :: " nat \<Rightarrow> string \<Rightarrow> strin
   (let m = (id m) in 
     (List.take m ( str))))"
 
+
+(** [padding_and_maybe_newline c w s] creates enough of char [c] to pad string [s] to [w] characters, 
+  * unless [s] is of length [w - 1] or greater, in which case it generates [w] copies preceded by a newline.
+  * This style of formatting is used by the GNU linker in its link map output, so we
+  * reproduce it using this function. Note that string [s] does not appear in the
+  * output. *)
+(*val padding_and_maybe_newline : char -> natural -> string -> string*)
+definition padding_and_maybe_newline  :: " char \<Rightarrow> nat \<Rightarrow> string \<Rightarrow> string "  where 
+     " padding_and_maybe_newline c width str = ( 
+    (let padlen = (width - ( (List.length str))) in
+    (if padlen \<le>( 1 :: nat) then ([(Char Nibble0 NibbleA)]) else (''''))
+     @ ((List.replicate (if padlen \<le>( 1 :: nat) then width else padlen) c))))"
+
+
+(** [space_padding_and_maybe_newline w s] creates enoughspaces to pad string [s] to [w] characters, 
+  * unless [s] is of length [w - 1] or greater, in which case it generates [w] copies preceded by a newline.
+  * This style of formatting is used by the GNU linker in its link map output, so we
+  * reproduce it using this function. Note that string [s] does not appear in the
+  * output. *)
+(*val space_padding_and_maybe_newline : natural -> string -> string*)
+definition space_padding_and_maybe_newline  :: " nat \<Rightarrow> string \<Rightarrow> string "  where 
+     " space_padding_and_maybe_newline width str = ( 
+    padding_and_maybe_newline (CHR '' '') width str )"
+
+
+(** [padded_and_maybe_newline w s] pads string [s] to [w] characters, using char [c]
+  * unless [s] is of length [w - 1] or greater, in which case the padding consists of
+  * [w] copies of [c] preceded by a newline.
+  * This style of formatting is used by the GNU linker in its link map output, so we
+  * reproduce it using this function. *)
+(*val padded_and_maybe_newline : char -> natural -> string -> string*)
+definition padded_and_maybe_newline  :: " char \<Rightarrow> nat \<Rightarrow> string \<Rightarrow> string "  where 
+     " padded_and_maybe_newline c width str = ( 
+    str @ (padding_and_maybe_newline c width str))"
+
+
+(** [padding_to c w s] creates enough copies of [c] to pad string [s] to [w] characters, 
+  * or 0 characters if [s] is of length [w] or greater. Note that string [s] does not appear in the
+  * output. *)
+(*val padding_to : char -> natural -> string -> string*)
+definition padding_to  :: " char \<Rightarrow> nat \<Rightarrow> string \<Rightarrow> string "  where 
+     " padding_to c width str = ( 
+    (let padlen = (width - ( (List.length str))) in
+    if padlen \<le>( 0 :: nat) then ('''') else ((List.replicate padlen c))))"
+
+
+(** [left_padded_to c w s] left-pads string [s] to [w] characters using [c], 
+  * returning it unchanged if [s] is of length [w] or greater. *)
+(*val left_padded_to : char -> natural -> string -> string*)
+definition left_padded_to  :: " char \<Rightarrow> nat \<Rightarrow> string \<Rightarrow> string "  where 
+     " left_padded_to c width str = ( 
+    (padding_to c width str) @ str )"
+
+    
+(** [right_padded_to c w s] right-pads string [s] to [w] characters using [c], 
+  * returning it unchanged if [s] is of length [w] or greater. *)
+(*val right_padded_to : char -> natural -> string -> string*)
+definition right_padded_to  :: " char \<Rightarrow> nat \<Rightarrow> string \<Rightarrow> string "  where 
+     " right_padded_to c width str = ( 
+    str @ (padding_to c width str))"
+
+
+(** [space_padded_and_maybe_newline w s] pads string [s] to [w] characters, using spaces,
+  * unless [s] is of length [w - 1] or greater, in which case the padding consists of
+  * [w] spaces preceded by a newline.
+  * This style of formatting is used by the GNU linker in its link map output, so we
+  * reproduce it using this function. *)
+(*val space_padded_and_maybe_newline : natural -> string -> string*)
+definition space_padded_and_maybe_newline  :: " nat \<Rightarrow> string \<Rightarrow> string "  where 
+     " space_padded_and_maybe_newline width str = ( 
+    str @ (padding_and_maybe_newline (CHR '' '') width str))"
+
+
+(** [left_space_padded_to w s] left-pads string [s] to [w] characters using spaces, 
+  * returning it unchanged if [s] is of length [w] or greater. *)
+(*val left_space_padded_to : natural -> string -> string*)
+definition left_space_padded_to  :: " nat \<Rightarrow> string \<Rightarrow> string "  where 
+     " left_space_padded_to width str = ( 
+    (padding_to (CHR '' '') width str) @ str )"
+
+    
+(** [right_space_padded_to w s] right-pads string [s] to [w] characters using spaces, 
+  * returning it unchanged if [s] is of length [w] or greater. *)
+(*val right_space_padded_to : natural -> string -> string*)
+definition right_space_padded_to  :: " nat \<Rightarrow> string \<Rightarrow> string "  where 
+     " right_space_padded_to width str = ( 
+    str @ (padding_to (CHR '' '') width str))"
+
+
+(** [left_zero_padded_to w s] left-pads string [s] to [w] characters using zeroes, 
+  * returning it unchanged if [s] is of length [w] or greater. *)
+(*val left_zero_padded_to : natural -> string -> string*)
+definition left_zero_padded_to  :: " nat \<Rightarrow> string \<Rightarrow> string "  where 
+     " left_zero_padded_to width str = ( 
+    (padding_to (CHR ''0'') width str) @ str )"
+
+ 
 end

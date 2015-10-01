@@ -173,20 +173,11 @@ let amd64_reloc r = match (string_of_amd64_relocation_type r) with
     | _ -> failwith "unrecognised relocation"
 end
 
-(** [integer_bit_width] represents potential integer bit-widths of interest to
-  * the relocation machinery below.
-  *)
-type integer_bit_width
-  = I8
-  | I16
-  | I32
-  | I64
-  | I64X2 (** For use with the R_X86_64_TLSDESC relocation *)
-
-(** [abi_amd64_apply_relocation rel b_val g_val got_val l_val p_val s_val z_val ef]
+(** [abi_amd64_apply_relocation rel val_map ef]
   * calculates the effect of a relocation of type [rel] using relevant addresses,
-  * offsets and fields represented by [b_va], [g_val], [got_val], [l_val], [p_val],
-  * [s_val] and [z_val], which are:
+  * offsets and fields represented by [b_val], [g_val], [got_val], [l_val], [p_val],
+  * [s_val] and [z_val], stored in [val_map] with "B", "G", and so on as string
+  * keys, which are:
   *
   *    - B  : Base address at which a shared-object has been loaded into memory
   *           during execution.
@@ -204,95 +195,113 @@ type integer_bit_width
   * More details of the above can be found in the AMD64 ABI document's chapter
   * on relocations.
   *
-  * The [abi_amd64_apply_relocation] function returns a finite map of addresses
-  * being relocated and their computed integer value.  A tag describing the
-  * bitwidth of this integer is also included as many relocations feature the
-  * same calculation but differ in how wide the result should be truncated or
-  * extended.
+  * The [abi_amd64_apply_relocation] function returns a relocation frame, either
+  * indicating that the relocation is a copy relocation, or that some calculation
+  * must be carried out at a certain location.  See the comment above the
+  * [relocation_frame] type in [Abi_utilities.lem] for more details.
   *)
-val abi_amd64_apply_relocation : elf64_relocation_a -> integer -> integer ->
-  integer -> integer -> integer -> integer -> integer -> elf64_file ->
-  error (Map.map elf64_addr (relocation_operator_expression integer * integer_bit_width * can_fail integer))
-let abi_amd64_apply_relocation rel b_val g_val got_val l_val p_val s_val z_val ef =
+val abi_amd64_apply_relocation : elf64_relocation_a -> val_map string integer -> elf64_file
+  -> error (relocation_frame elf64_addr integer)
+let abi_amd64_apply_relocation rel val_map ef =
   if is_elf64_relocatable_file ef.elf64_file_header then
     let rel_type = get_elf64_relocation_a_type rel in
     let a_val    = integer_of_elf64_sxword rel.elf64_ra_addend in
       (** No width, No calculation *)
       if rel_type = r_x86_64_none then
-        return Map.empty
+        return (NoCopy (Map.empty))
       (** Width: 64 Calculation: S + A *)
       else if rel_type = r_x86_64_64 then
+        lookupM "S" val_map >>= fun s_val ->
       	let result = Lift (s_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
-      		return (Map.singleton addr (result, I64, CannotFail))
+      		return (NoCopy (Map.singleton addr (result, I64, CannotFail)))
       (** Width: 32 Calculation: S + A - P *)
       else if rel_type = r_x86_64_pc32 then
+        lookupM "S" val_map >>= fun s_val ->
+        lookupM "P" val_map >>= fun p_val ->
       	let result = Lift ((s_val + a_val) - p_val) in
       	let addr   = rel.elf64_ra_offset in
-      		return (Map.singleton addr (result, I32, CanFail))
+      		return (NoCopy (Map.singleton addr (result, I32, CanFail)))
       (** Width: 32 Calculation: G + A *)
   		else if rel_type = r_x86_64_got32 then
+  		  lookupM "G" val_map >>= fun g_val ->
       	let result = Lift (g_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
-      		return (Map.singleton addr (result, I32, CanFail))
+      		return (NoCopy (Map.singleton addr (result, I32, CanFail)))
       (** Width: 32 Calculation: L + A - P *)
   		else if rel_type = r_x86_64_plt32 then
+  		  lookupM "L" val_map >>= fun l_val ->
+  		  lookupM "P" val_map >>= fun p_val ->
   		  let result = Lift ((l_val + a_val) - p_val) in
       	let addr   = rel.elf64_ra_offset in
-      		return (Map.singleton addr (result, I32, CanFail))
+      		return (NoCopy (Map.singleton addr (result, I32, CanFail)))
     	(** No width, No calculation *)
 		  else if rel_type = r_x86_64_copy then
-		    failwith "abi_amd64_apply_relocation: r_x86_64_copy not implemented"
+		    return Copy
 		  (** Width: 64 Calculation: S *)
 		  else if rel_type = r_x86_64_glob_dat then
+        lookupM "S" val_map >>= fun s_val ->
       	let result = Lift s_val in
       	let addr   = rel.elf64_ra_offset in
-      		return (Map.singleton addr (result, I64, CannotFail))
+      		return (NoCopy (Map.singleton addr (result, I64, CannotFail)))
 		  (** Width: 64 Calculation: S *)
 		  else if rel_type = r_x86_64_jump_slot then
+        lookupM "S" val_map >>= fun s_val ->
       	let result = Lift s_val in
       	let addr   = rel.elf64_ra_offset in
-      		return (Map.singleton addr (result, I64, CannotFail))
+      		return (NoCopy (Map.singleton addr (result, I64, CannotFail)))
 		  (** Width: 64 Calculation: B + A *)
 		  else if rel_type = r_x86_64_relative then
+        lookupM "B" val_map >>= fun b_val ->
       	let result = Lift (b_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
-      		return (Map.singleton addr (result, I64, CannotFail))
+      		return (NoCopy (Map.singleton addr (result, I64, CannotFail)))
 		  (** Width: 32 Calculation: G + GOT + A - P *)
 		  else if rel_type = r_x86_64_gotpcrel then
+        lookupM "G" val_map >>= fun g_val ->
+        lookupM "GOT" val_map >>= fun got_val ->
+        lookupM "P" val_map >>= fun p_val ->
       	let result = Lift ((g_val + got_val + a_val) - p_val) in
       	let addr   = rel.elf64_ra_offset in
-      		return (Map.singleton addr (result, I32, CanFail))
+      		return (NoCopy (Map.singleton addr (result, I32, CanFail)))
 		  (** Width: 32 Calculation: S + A *)
 		  else if rel_type = r_x86_64_32 then
+        lookupM "S" val_map >>= fun s_val ->
       	let result = Lift (s_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
-      		return (Map.singleton addr (result, I32, CanFail))
+      		return (NoCopy (Map.singleton addr (result, I32, CanFail)))
 		  (** Width: 32 Calculation: S + A *)
 		  else if rel_type = r_x86_64_32s then
+        lookupM "S" val_map >>= fun s_val ->
       	let result = Lift (s_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
-      		return (Map.singleton addr (result, I32, CanFail))
+      		return (NoCopy (Map.singleton addr (result, I32, CanFail)))
 		  (** Width: 16 Calculation: S + A *)
 		  else if rel_type = r_x86_64_16 then
+        lookupM "S" val_map >>= fun s_val ->
       	let result = Lift (s_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
-      		return (Map.singleton addr (result, I16, CanFail))
+      		return (NoCopy (Map.singleton addr (result, I16, CanFail)))
 		  (** Width: 16 Calculation: S + A - P *)
 		  else if rel_type = r_x86_64_pc16 then
+        lookupM "S" val_map >>= fun s_val ->
+        lookupM "P" val_map >>= fun p_val ->
       	let result = Lift ((s_val + a_val) - p_val) in
       	let addr   = rel.elf64_ra_offset in
-      		return (Map.singleton addr (result, I16, CanFail))
+      		return (NoCopy (Map.singleton addr (result, I16, CanFail)))
 		  (** Width: 8 Calculation: S + A *)
 		  else if rel_type = r_x86_64_8 then
+        lookupM "S" val_map >>= fun s_val ->
       	let result = Lift (s_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
-      		return (Map.singleton addr (result, I8, CanFail))
+      		return (NoCopy (Map.singleton addr (result, I8, CanFail)))
       (** Width 8: Calculation: S + A - P *)
 		  else if rel_type = r_x86_64_pc8 then
+        lookupM "S" val_map >>= fun s_val ->
+        lookupM "P" val_map >>= fun p_val ->
       	let result = Lift ((s_val + a_val) - p_val) in
       	let addr   = rel.elf64_ra_offset in
-      		return (Map.singleton addr (result, I8, CanFail))
+      		return (NoCopy (Map.singleton addr (result, I8, CanFail)))
       (** Width: 64 *)
 		  else if rel_type = r_x86_64_dtpmod64 then
 		    failwith "abi_amd64_apply_relocation: r_x86_64_dtpmod64 not implemented"
@@ -319,29 +328,37 @@ let abi_amd64_apply_relocation rel b_val g_val got_val l_val p_val s_val z_val e
 		    failwith "abi_amd64_apply_relocation: r_x86_64_tpoff32 not implemented"
 		  (** Width: 64 Calculation: S + A - P *)
 		  else if rel_type = r_x86_64_pc64 then
+        lookupM "S" val_map >>= fun s_val ->
+        lookupM "P" val_map >>= fun p_val ->
       	let result = Lift ((s_val + a_val) - p_val) in
       	let addr   = rel.elf64_ra_offset in
-      		return (Map.singleton addr (result, I64, CannotFail))
+      		return (NoCopy (Map.singleton addr (result, I64, CannotFail)))
 		  (** Width: 64 Calculation: S + A - GOT *)
 		  else if rel_type = r_x86_64_gotoff64 then
+        lookupM "S" val_map >>= fun s_val ->
+        lookupM "GOT" val_map >>= fun got_val ->
       	let result = Lift ((s_val + a_val) - got_val) in
       	let addr   = rel.elf64_ra_offset in
-      		return (Map.singleton addr (result, I64, CannotFail))
+      		return (NoCopy (Map.singleton addr (result, I64, CannotFail)))
 		  (** Width: 32 Calculation: GOT + A - P *)
 		  else if rel_type = r_x86_64_gotpc32 then
+        lookupM "GOT" val_map >>= fun got_val ->
+        lookupM "P" val_map >>= fun p_val ->
       	let result = Lift ((got_val + a_val) - p_val) in
       	let addr   = rel.elf64_ra_offset in
-      		return (Map.singleton addr (result, I32, CanFail))
+      		return (NoCopy (Map.singleton addr (result, I32, CanFail)))
 		  (** Width: 32 Calculation: Z + A *)
 		  else if rel_type = r_x86_64_size32 then
+        lookupM "Z" val_map >>= fun z_val ->
       	let result = Lift (z_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
-      		return (Map.singleton addr (result, I32, CanFail))
+      		return (NoCopy (Map.singleton addr (result, I32, CanFail)))
 		  (** Width: 64 Calculation: Z + A *)
 		  else if rel_type = r_x86_64_size64 then
+        lookupM "Z" val_map >>= fun z_val ->
       	let result = Lift (z_val + a_val) in
       	let addr   = rel.elf64_ra_offset in
-      		return (Map.singleton addr (result, I64, CannotFail))
+      		return (NoCopy (Map.singleton addr (result, I64, CannotFail)))
       (** Width: 32 *)
 		  else if rel_type = r_x86_64_gotpc32_tlsdesc then
 		    failwith "abi_amd64_apply_relocation: r_x86_64_gotpc32_tlsdesc not implemented"
@@ -353,9 +370,10 @@ let abi_amd64_apply_relocation rel b_val g_val got_val l_val p_val s_val z_val e
 		    failwith "abi_amd64_apply_relocation: r_x86_64_tlsdesc not implemented"
 		  (** Calculation: indirect(B + A) *)
 		  else if rel_type = r_x86_64_irelative then
+        lookupM "B" val_map >>= fun b_val ->
 		    let result = Apply(Indirect, Lift(b_val + a_val)) in
 		    let addr   = rel.elf64_ra_offset in
-		      return (Map.singleton addr (result, I64, CannotFail))
+		      return (NoCopy (Map.singleton addr (result, I64, CannotFail)))
 		  else
 		  	failwith "abi_amd64_apply_relocation: invalid relocation type"
   else

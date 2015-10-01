@@ -4,10 +4,10 @@ theory "Elf_note"
 
 imports 
  	 Main
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_num" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_list" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_string" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_num" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_list" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_string" 
 	 "Show" 
 	 "Missing_pervasives" 
 	 "Error" 
@@ -18,6 +18,11 @@ imports
 	 "Elf_section_header_table" 
 
 begin 
+
+(** [elf_note] contains data types and functions for interpreting the .note
+  * section/segment of an ELF file, and extracting information from that
+  * section/segment.
+  *)
 
 (*open import Basic_classes*)
 (*open import List*)
@@ -34,34 +39,42 @@ begin
 (*open import Elf_section_header_table*)
 (*open import Elf_types_native_uint*)
 
+(** [elf32_note] represents the contents of a .note section or segment.
+  *)
 record elf32_note =
   
- elf32_note_namesz ::" uint32 "
+ elf32_note_namesz ::" uint32 " (** The size of the name field. *)
    
- elf32_note_descsz ::" uint32 "
+ elf32_note_descsz ::" uint32 " (** The size of the description field. *)
    
- elf32_note_type   ::" uint32 "
+ elf32_note_type   ::" uint32 " (** The type of the note. *)
    
- elf32_note_name   ::" Elf_Types_Local.byte list "
+ elf32_note_name   ::" Elf_Types_Local.byte list "  (** The list of bytes (of length indicated above) corresponding to the name string. *)
    
- elf32_note_desc   ::" Elf_Types_Local.byte list "
+ elf32_note_desc   ::" Elf_Types_Local.byte list "  (** The list of bytes (of length indicated above) corresponding to the desc string. *)
    
 
    
+(** [elf64_note] represents the contents of a .note section or segment.
+  *)
 record elf64_note =
   
- elf64_note_namesz ::" uint64 "
+ elf64_note_namesz ::" uint64 " (** The size of the name field. *)
    
- elf64_note_descsz ::" uint64 "
+ elf64_note_descsz ::" uint64 " (** The size of the description field. *)
    
- elf64_note_type   ::" uint64 "
+ elf64_note_type   ::" uint64 " (** The type of the note. *)
    
- elf64_note_name   ::" Elf_Types_Local.byte list "
+ elf64_note_name   ::" Elf_Types_Local.byte list "   (** The list of bytes (of length indicated above) corresponding to the name string. *)
    
- elf64_note_desc   ::" Elf_Types_Local.byte list "
+ elf64_note_desc   ::" Elf_Types_Local.byte list "   (** The list of bytes (of length indicated above) corresponding to the desc string. *)
    
 
    
+(** [read_elf32_note endian bs0] transcribes an ELF note section from byte
+  * sequence [bs0] assuming endianness [endian].  May fail if transcription fails
+  * (i.e. if the byte sequence is not sufficiently long).
+  *)
 (*val read_elf32_note : endianness -> byte_sequence -> error (elf32_note * byte_sequence)*)
 definition read_elf32_note  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(elf32_note*byte_sequence)error "  where 
      " read_elf32_note endian bs0 = (
@@ -75,6 +88,10 @@ definition read_elf32_note  :: " endianness \<Rightarrow> byte_sequence \<Righta
       bs0)))))))"
 
       
+(** [read_elf64_note endian bs0] transcribes an ELF note section from byte
+  * sequence [bs0] assuming endianness [endian].  May fail if transcription fails
+  * (i.e. if the byte sequence is not sufficiently long).
+  *)
 (*val read_elf64_note : endianness -> byte_sequence -> error (elf64_note * byte_sequence)*)
 definition read_elf64_note  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(elf64_note*byte_sequence)error "  where 
      " read_elf64_note endian bs0 = (
@@ -88,6 +105,11 @@ definition read_elf64_note  :: " endianness \<Rightarrow> byte_sequence \<Righta
       bs0)))))))"
 
       
+(** [obtain_elf32_note_sections endian sht bs0] returns all note sections present
+  * in an ELF file, as indicated by the file's section header table [sht], reading
+  * them from byte sequence [bs0] assuming endianness [endian].  May fail if
+  * transcription of a note section fails.
+  *)
 (*val obtain_elf32_note_sections : endianness -> elf32_section_header_table ->
   byte_sequence -> error (list elf32_note)*)
 definition obtain_elf32_note_sections  :: " endianness \<Rightarrow>(elf32_section_header_table_entry)list \<Rightarrow> byte_sequence \<Rightarrow>((elf32_note)list)error "  where 
@@ -106,6 +128,11 @@ definition obtain_elf32_note_sections  :: " endianness \<Rightarrow>(elf32_secti
     ) note_sects))"
 
     
+(** [obtain_elf64_note_sections endian sht bs0] returns all note sections present
+  * in an ELF file, as indicated by the file's section header table [sht], reading
+  * them from byte sequence [bs0] assuming endianness [endian].  May fail if
+  * transcription of a note section fails.
+  *)
 (*val obtain_elf64_note_sections : endianness -> elf64_section_header_table ->
   byte_sequence -> error (list elf64_note)*)
 definition obtain_elf64_note_sections  :: " endianness \<Rightarrow>(elf64_section_header_table_entry)list \<Rightarrow> byte_sequence \<Rightarrow>((elf64_note)list)error "  where 
@@ -124,6 +151,11 @@ definition obtain_elf64_note_sections  :: " endianness \<Rightarrow>(elf64_secti
     ) note_sects))"
 
     
+(** [obtain_elf32_note_segments endian pht bs0] returns all note segments present
+  * in an ELF file, as indicated by the file's program header table [pht], reading
+  * them from byte sequence [bs0] assuming endianness [endian].  May fail if
+  * transcription of a note section fails.
+  *)
 (*val obtain_elf32_note_segments : endianness -> elf32_program_header_table ->
   byte_sequence -> error (list elf32_note)*)
 definition obtain_elf32_note_segments  :: " endianness \<Rightarrow>(elf32_program_header_table_entry)list \<Rightarrow> byte_sequence \<Rightarrow>((elf32_note)list)error "  where 
@@ -142,6 +174,11 @@ definition obtain_elf32_note_segments  :: " endianness \<Rightarrow>(elf32_progr
     ) note_segs))"
 
     
+(** [obtain_elf64_note_segments endian pht bs0] returns all note segments present
+  * in an ELF file, as indicated by the file's program header table [pht], reading
+  * them from byte sequence [bs0] assuming endianness [endian].  May fail if
+  * transcription of a note section fails.
+  *)
 (*val obtain_elf64_note_segments : endianness -> elf64_program_header_table ->
   byte_sequence -> error (list elf64_note)*)
 definition obtain_elf64_note_segments  :: " endianness \<Rightarrow>(elf64_program_header_table_entry)list \<Rightarrow> byte_sequence \<Rightarrow>((elf64_note)list)error "  where 
@@ -160,6 +197,12 @@ definition obtain_elf64_note_segments  :: " endianness \<Rightarrow>(elf64_progr
     ) note_segs))"
 
     
+(** [obtain_elf32_note_section_and_segments endian pht sht bs0] returns all note
+  * sections and segments present in an ELF file, as indicated by the file's
+  * program header table [pht] and section header table [sht], reading
+  * them from byte sequence [bs0] assuming endianness [endian].  May fail if
+  * transcription of a note section or segment fails.
+  *)
 (*val obtain_elf32_note_section_and_segments : endianness -> elf32_program_header_table ->
   elf32_section_header_table -> byte_sequence -> error (list elf32_note)*)
 definition obtain_elf32_note_section_and_segments  :: " endianness \<Rightarrow>(elf32_program_header_table_entry)list \<Rightarrow>(elf32_section_header_table_entry)list \<Rightarrow> byte_sequence \<Rightarrow>((elf32_note)list)error "  where 
@@ -169,6 +212,12 @@ definition obtain_elf32_note_section_and_segments  :: " endianness \<Rightarrow>
   error_return (pht_notes @ sht_notes))))"
 
   
+(** [obtain_elf64_note_section_and_segments endian pht sht bs0] returns all note
+  * sections and segments present in an ELF file, as indicated by the file's
+  * program header table [pht] and section header table [sht], reading
+  * them from byte sequence [bs0] assuming endianness [endian].  May fail if
+  * transcription of a note section or segment fails.
+  *)
 (*val obtain_elf64_note_section_and_segments : endianness -> elf64_program_header_table ->
   elf64_section_header_table -> byte_sequence -> error (list elf64_note)*)
 definition obtain_elf64_note_section_and_segments  :: " endianness \<Rightarrow>(elf64_program_header_table_entry)list \<Rightarrow>(elf64_section_header_table_entry)list \<Rightarrow> byte_sequence \<Rightarrow>((elf64_note)list)error "  where 
@@ -178,13 +227,19 @@ definition obtain_elf64_note_section_and_segments  :: " endianness \<Rightarrow>
   error_return (pht_notes @ sht_notes))))"
 
     
+(** [name_string_of_elf32_note note] extracts the name string of an ELF note
+  * section, interpreting the section's uninterpreted name field as a string.
+  *)
 (*val name_string_of_elf32_note : elf32_note -> string*)
 definition name_string_of_elf32_note  :: " elf32_note \<Rightarrow> string "  where 
      " name_string_of_elf32_note note1 = (
   (let bs0   = (Byte_sequence.from_byte_lists [(elf32_note_name   note1)]) in
     Byte_sequence.string_of_byte_sequence bs0))"
 
-    
+  
+(** [name_string_of_elf64_note note] extracts the name string of an ELF note
+  * section, interpreting the section's uninterpreted name field as a string.
+  *)  
 (*val name_string_of_elf64_note : elf64_note -> string*)
 definition name_string_of_elf64_note  :: " elf64_note \<Rightarrow> string "  where 
      " name_string_of_elf64_note note1 = (

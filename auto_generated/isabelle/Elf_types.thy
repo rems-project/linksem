@@ -13,7 +13,7 @@ imports
 	 "Error" 
 	 "Missing_pervasives" 
 	 "Show" 
-	 "$ISABELLE_HOME/src/HOL/Word/Word" 
+	 "$ISABELLE_HOME/src////////HOL/Word/Word" 
 	 "Elf_Types_Local" 
 
 begin 
@@ -30,7 +30,7 @@ begin
 (*open import Missing_pervasives*)
 (*open import Show*)
 
-(*open import {isabelle} `$ISABELLE_HOME/src/HOL/Word/Word`*)
+(*open import {isabelle} `$ISABELLE_HOME/src////////HOL/Word/Word`*)
 (*open import {isabelle} `Elf_Types_Local`*)
 
 (** unsigned char type and bindings *)

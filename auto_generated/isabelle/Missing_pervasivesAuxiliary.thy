@@ -4,15 +4,15 @@ theory "Missing_pervasivesAuxiliary"
 
 imports 
  	 Main "~~/src/HOL/Library/Code_Target_Numeral"
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_num" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_list" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_bool" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_maybe" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_string" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_assert_extra" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_num" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_list" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_bool" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_maybe" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_string" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_assert_extra" 
 	 "Show" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_sorting" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_sorting" 
 	 "$ISABELLE_HOME/src/HOL/Word/Word" 
 	 "Elf_Types_Local" 
 	 "Missing_pervasives" 
@@ -30,11 +30,11 @@ termination natural_of_decimal_string_helper by lexicographic_order
 
 termination hex_string_of_natural by lexicographic_order
 
-termination intercalate by lexicographic_order
-
 termination mapMaybei' by lexicographic_order
 
 termination partitionii' by lexicographic_order
+
+termination intercalate' by lexicographic_order
 
 termination take by lexicographic_order
 

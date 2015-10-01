@@ -4,23 +4,23 @@ theory "Memory_image"
 
 imports 
  	 Main
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_num" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_list" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_set" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_function" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_bool" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_maybe" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_string" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_assert_extra" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_num" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_list" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_set" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_function" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_bool" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_maybe" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_string" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_assert_extra" 
 	 "Show" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_sorting" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_sorting" 
 	 "Missing_pervasives" 
 	 "Byte_sequence" 
 	 "Elf_types_native_uint" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_tuple" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_tuple" 
 	 "Elf_header" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_map" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_map" 
 	 "Elf_program_header_table" 
 	 "Elf_section_header_table" 
 	 "Elf_interpreted_section" 
@@ -390,6 +390,9 @@ record 'abifeature abi = (* forall 'abifeature. *)
  commonpagesize     ::" nat "
     
  symbol_is_generated_by_linker ::" string \<Rightarrow> bool "
+    (*; link_inputs_tap    : 
+    ; link_output_sections_tap   : 
+    ; link_output_image_tap      : *)
     
 
 
@@ -446,13 +449,13 @@ function (sequential,domintros)  expand_sorted_ranges  :: "(nat*nat)list \<Right
                 , min length  ^ (show min_length) ^ ))
             in *)
             List.replicate pad_length True)))"
-|" expand_sorted_ranges ((base, len) # more) min_length accum = ( 
+|" expand_sorted_ranges ((base, len) # more1) min_length accum = ( 
             (* pad the accum so that it reaches up to base *)
             (let up_to_base = (List.replicate (base - (List.length accum)) True)
             in
             (let up_to_end_of_range = (up_to_base @ (List.replicate len False))
             in
-            expand_sorted_ranges more min_length (accum @ up_to_end_of_range))))" 
+            expand_sorted_ranges more1 min_length (accum @ up_to_end_of_range))))" 
 by pat_completeness auto
 
 
@@ -467,7 +470,7 @@ declare expand_unsorted_ranges.simps [simp del]
 function (sequential,domintros)  make_byte_pattern_revacc  :: "((Elf_Types_Local.byte)option)list \<Rightarrow>(Elf_Types_Local.byte)list \<Rightarrow>(bool)list \<Rightarrow>((Elf_Types_Local.byte)option)list "  where 
      " make_byte_pattern_revacc revacc ([]) cares = ( List.rev revacc )"
 |" make_byte_pattern_revacc revacc (b # bs) cares = ( (case  cares of 
-                care # more => make_byte_pattern_revacc ((if \<not> care then None else Some b) # revacc) bs more
+                care # more1 => make_byte_pattern_revacc ((if \<not> care then None else Some b) # revacc) bs more1
               | _ => failwith (''make_byte_pattern: unequal length'')
               ))" 
 by pat_completeness auto
@@ -484,7 +487,7 @@ declare make_byte_pattern.simps [simp del]
 function (sequential,domintros)  relax_byte_pattern_revacc  :: "((Elf_Types_Local.byte)option)list \<Rightarrow>((Elf_Types_Local.byte)option)list \<Rightarrow>(bool)list \<Rightarrow>((Elf_Types_Local.byte)option)list "  where 
      " relax_byte_pattern_revacc revacc ([]) cares = ( List.rev revacc )"
 |" relax_byte_pattern_revacc revacc (b # bs) cares = ( (case  cares of 
-                care # more => relax_byte_pattern_revacc ((if \<not> care then None else b) # revacc) bs more
+                care # more1 => relax_byte_pattern_revacc ((if \<not> care then None else b) # revacc) bs more1
               | _ => failwith ((''relax_byte_pattern: unequal length''))
               ))" 
 by pat_completeness auto
@@ -507,11 +510,11 @@ declare byte_option_matches_byte.simps [simp del]
 (*val byte_list_matches_pattern : list (maybe byte) -> list byte -> bool*)
 function (sequential,domintros)  byte_list_matches_pattern  :: "((Elf_Types_Local.byte)option)list \<Rightarrow>(Elf_Types_Local.byte)list \<Rightarrow> bool "  where 
      " byte_list_matches_pattern ([]) bytes = ( True )"
-|" byte_list_matches_pattern (optbyte # more) bytes = ( (case  bytes of 
+|" byte_list_matches_pattern (optbyte # more1) bytes = ( (case  bytes of 
                 [] => False
                 | abyte # morebytes => 
                     byte_option_matches_byte optbyte abyte 
-                 \<and> byte_list_matches_pattern more morebytes
+                 \<and> byte_list_matches_pattern more1 morebytes
             ))" 
 by pat_completeness auto
 

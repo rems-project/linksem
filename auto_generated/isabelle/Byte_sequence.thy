@@ -4,17 +4,21 @@ theory "Byte_sequence"
 
 imports 
  	 Main
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_num" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_list" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_bool" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_string" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_assert_extra" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_num" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_list" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_bool" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_string" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_assert_extra" 
 	 "Show" 
 	 "Missing_pervasives" 
 	 "Error" 
 
 begin 
+
+(** [byte_sequence.lem], a list of bytes used for ELF I/O and other basic tasks
+  * in the ELF model.
+  *)
 
 (*open import Basic_classes*)
 (*open import Bool*)
@@ -27,17 +31,29 @@ begin
 (*open import Missing_pervasives*)
 (*open import Show*)
 
+(** A [byte_sequence], [bs], denotes a consecutive list of bytes.  Can be read
+  * from or written to a binary file.  Most basic type in the ELF formalisation.
+  *)
 datatype byte_sequence =
   Sequence " Elf_Types_Local.byte list "
 
+(** [byte_list_of_byte_sequence bs] obtains the underlying list of bytes of the
+  * byte sequence [bs].
+  *)
 (*val byte_list_of_byte_sequence : byte_sequence -> list byte*)
 fun byte_list_of_byte_sequence  :: " byte_sequence \<Rightarrow>(Elf_Types_Local.byte)list "  where 
      " byte_list_of_byte_sequence (Sequence xs) = ( xs )" 
 declare byte_list_of_byte_sequence.simps [simp del]
 
 
+(** [compare_byte_sequence bs1 bs2] is an ordering comparison function for byte
+  * sequences, suitable for constructing sets, maps and other ordered types
+  * with.
+  *)
+(*val compare_byte_sequence : byte_sequence -> byte_sequence -> ordering*)
 definition compare_byte_sequence  :: " byte_sequence \<Rightarrow> byte_sequence \<Rightarrow> ordering "  where 
-     " compare_byte_sequence s1 s2 = ( (lexicographicCompareBy compare_byte (byte_list_of_byte_sequence s1) (byte_list_of_byte_sequence s2)))"
+     " compare_byte_sequence s1 s2 = (  
+(lexicographicCompareBy compare_byte (byte_list_of_byte_sequence s1) (byte_list_of_byte_sequence s2)))"
 
 
 definition instance_Basic_classes_Ord_Byte_sequence_byte_sequence_dict  :: "(byte_sequence)Ord_class "  where 
@@ -54,19 +70,40 @@ definition instance_Basic_classes_Ord_Byte_sequence_byte_sequence_dict  :: "(byt
   isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (let result = (compare_byte_sequence f1 f2) in (result = GT) \<or> (result = EQ))))|) )"
 
 
+(** [acquire_byte_list fname] exhaustively reads in a list of bytes from a file
+  * pointed to by filename [fname].  Fails if the file does not exist, or if the
+  * transcription otherwise fails.  Implemented as a primitive in OCaml.
+  *)
 (*val acquire_byte_list : string -> error (list byte)*)
 
+(** [acquire fname] exhaustively reads in a byte_sequence from a file pointed to
+  * by filename [fname].  Fails if the file does not exist, or if the transcription
+  * otherwise fails.
+  *)
 (*val acquire : string -> error byte_sequence*)
 
+(** [serialise_byte_list fname bs] writes a list of bytes, [bs], to a binary file
+  * pointed to by filename [fname].  Fails if the transcription fails.  Implemented
+  * as a primitive in OCaml.
+  *)
 (*val serialise_byte_list : string -> list byte -> error unit*)
 
+(** [serialise fname bs0] writes a byte sequence, [bs0], to a binary file pointed
+  * to by filename [fname].  Fails if the transcription fails.
+  *)
 (*val serialise : string -> byte_sequence -> error unit*)
 
+(** [empty], the empty byte sequence.
+  *)
 (*val empty : byte_sequence*)
 definition empty  :: " byte_sequence "  where 
      " empty = ( Sequence [])"
 
 
+(** [read_char bs0] reads a single byte from byte sequence [bs0] and returns the
+  * remainder of the byte sequence.  Fails if [bs0] is empty.
+  * TODO: rename to read_byte, probably.
+  *)
 (*val read_char : byte_sequence -> error (byte * byte_sequence)*)
 fun read_char  :: " byte_sequence \<Rightarrow>(Elf_Types_Local.byte*byte_sequence)error "  where 
      " read_char (Sequence([])) = ( error_fail (''read_char: sequence is empty''))"
@@ -74,6 +111,9 @@ fun read_char  :: " byte_sequence \<Rightarrow>(Elf_Types_Local.byte*byte_sequen
 declare read_char.simps [simp del]
 
 
+(** [repeat cnt b] creates a list of length [cnt] containing only [b].
+  * TODO: move into missing_pervasives.lem.
+  *)
 (*val repeat : natural -> byte -> list byte*)
 function (sequential,domintros)  repeat  :: " nat \<Rightarrow> Elf_Types_Local.byte \<Rightarrow>(Elf_Types_Local.byte)list "  where 
      " repeat count1 c = (
@@ -84,18 +124,25 @@ function (sequential,domintros)  repeat  :: " nat \<Rightarrow> Elf_Types_Local.
 by pat_completeness auto
 
 
+(** [create cnt b] creates a byte sequence of length [cnt] containing only [b].
+  *)
 (*val create : natural -> byte -> byte_sequence*)
 definition create  :: " nat \<Rightarrow> Elf_Types_Local.byte \<Rightarrow> byte_sequence "  where 
      " create count1 c = (
   Sequence (repeat count1 c))"
 
 
+(** [zeros cnt] creates a byte sequence of length [cnt] containing only 0, the
+  * null byte.
+  *)
 (*val zeros : natural -> byte_sequence*)
 definition zeros  :: " nat \<Rightarrow> byte_sequence "  where 
      " zeros m = (
   create m (0 :: 8 word))"
 
 
+(** [length bs0] returns the length of [bs0].
+  *)
 (*val length : byte_sequence -> natural*)
 fun length0  :: " byte_sequence \<Rightarrow> nat "  where 
      " length0 (Sequence ts) = (
@@ -104,6 +151,9 @@ declare length0.simps [simp del]
 
 
 
+(** [concat bs] concatenates a list of byte sequences, [bs], into a single byte
+  * sequence, maintaining byte order across the sequences.
+  *)
 (*val concat : list byte_sequence -> byte_sequence*)
 function (sequential,domintros)  concat_byte_sequence  :: "(byte_sequence)list \<Rightarrow> byte_sequence "  where 
      " concat_byte_sequence ([]) = ( Sequence [])"
@@ -114,6 +164,10 @@ function (sequential,domintros)  concat_byte_sequence  :: "(byte_sequence)list \
 by pat_completeness auto
 
 
+(** [zero_pad_to_length len bs0] pads (on the right) consecutive zeros until the
+  * resulting byte sequence is [len] long.  Returns [bs0] if [bs0] is already of
+  * greater length than [len].
+  *)
 (*val zero_pad_to_length : natural -> byte_sequence -> byte_sequence*)
 definition zero_pad_to_length  :: " nat \<Rightarrow> byte_sequence \<Rightarrow> byte_sequence "  where 
      " zero_pad_to_length len bs = ( 
@@ -124,16 +178,30 @@ definition zero_pad_to_length  :: " nat \<Rightarrow> byte_sequence \<Rightarrow
       concat_byte_sequence [bs , (zeros (len - curlen))]))"
 
 
+(** [from_byte_lists bs] concatenates a list of bytes [bs] and creates a byte
+  * sequence from their contents.  Maintains byte order in [bs].
+  *)
 (*val from_byte_lists : list (list byte) -> byte_sequence*)
 definition from_byte_lists  :: "((Elf_Types_Local.byte)list)list \<Rightarrow> byte_sequence "  where 
      " from_byte_lists ts = (
   Sequence (List.concat ts))"
 
 
+(** [string_of_char_list cs] converts a list of characters into a string.
+  * Implemented as a primitive in OCaml.
+  *)
 (*val string_of_char_list : list char -> string*)
 
+(** [char_list_of_byte_list bs] converts byte list [bs] into a list of characters.
+  * Implemented as a primitive in OCaml and Isabelle.
+  * TODO: is this actually being used in the Isabelle backend?  All string functions
+  * should be factored out by target-specific definitions.
+  *)
 (*val char_list_of_byte_list : list byte -> list char*)
 
+(** [string_of_byte_sequence bs0] converts byte sequence [bs0] into a string
+  * representation.
+  *)
 (*val string_of_byte_sequence : byte_sequence -> string*)
 fun string_of_byte_sequence  :: " byte_sequence \<Rightarrow> string "  where 
      " string_of_byte_sequence (Sequence ts) = (
@@ -142,6 +210,8 @@ fun string_of_byte_sequence  :: " byte_sequence \<Rightarrow> string "  where
 declare string_of_byte_sequence.simps [simp del]
 
 
+(** [equal bs0 bs1] checks whether two byte sequences, [bs0] and [bs1], are equal.
+  *)
 (*val equal : byte_sequence -> byte_sequence -> bool*)
 (*let rec equal left right =
   match (left, right) with
@@ -151,6 +221,9 @@ declare string_of_byte_sequence.simps [simp del]
     | (_, _) -> false
   end*)
 
+(** [dropbytes cnt bs0] drops [cnt] bytes from byte sequence [bs0].  Fails if
+  * [cnt] is greater than the length of [bs0].
+  *)
 (*val dropbytes : natural -> byte_sequence -> error byte_sequence*)
 function (sequential,domintros)  dropbytes  :: " nat \<Rightarrow> byte_sequence \<Rightarrow>(byte_sequence)error "  where 
      " dropbytes count1 (Sequence ts) = (
@@ -177,9 +250,7 @@ declare takebytes_r_with_length.simps [simp del]
 (*val takebytes : natural -> byte_sequence -> error byte_sequence*)
 fun takebytes  :: " nat \<Rightarrow> byte_sequence \<Rightarrow>(byte_sequence)error "  where 
      " takebytes count1 (Sequence ts) = (
-  (* let _ = Missing_pervasives.errs (Trying to take  ^ (show count) ^  bytes from sequence of  ^ (show (List.length ts)) ^ n) in *)
   (let result = (takebytes_r_with_length (id count1) (List.length ts) (Sequence ts)) in 
-  (*let _ = Missing_pervasives.errs (Succeededn) in *)
     result))" 
 declare takebytes.simps [simp del]
 
@@ -194,6 +265,10 @@ fun takebytes_with_length  :: " nat \<Rightarrow> nat \<Rightarrow> byte_sequenc
 declare takebytes_with_length.simps [simp del]
 
 
+(** [read_2_bytes_le bs0] reads two bytes from [bs0], returning them in
+  * little-endian order, and returns the remainder of [bs0].  Fails if [bs0] has
+  * length less than 2.
+  *)
 (*val read_2_bytes_le : byte_sequence -> error ((byte * byte) * byte_sequence)*)
 definition read_2_bytes_le  :: " byte_sequence \<Rightarrow>((Elf_Types_Local.byte*Elf_Types_Local.byte)*byte_sequence)error "  where 
      " read_2_bytes_le bs0 = (
@@ -202,6 +277,10 @@ definition read_2_bytes_le  :: " byte_sequence \<Rightarrow>((Elf_Types_Local.by
   error_return ((b1, b0), bs2))))"
 
 
+(** [read_2_bytes_be bs0] reads two bytes from [bs0], returning them in
+  * big-endian order, and returns the remainder of [bs0].  Fails if [bs0] has
+  * length less than 2.
+  *)
 (*val read_2_bytes_be : byte_sequence -> error ((byte * byte) * byte_sequence)*)
 definition read_2_bytes_be  :: " byte_sequence \<Rightarrow>((Elf_Types_Local.byte*Elf_Types_Local.byte)*byte_sequence)error "  where 
      " read_2_bytes_be bs0 = (
@@ -210,6 +289,10 @@ definition read_2_bytes_be  :: " byte_sequence \<Rightarrow>((Elf_Types_Local.by
   error_return ((b0, b1), bs2))))"
 
 
+(** [read_4_bytes_le bs0] reads four bytes from [bs0], returning them in
+  * little-endian order, and returns the remainder of [bs0].  Fails if [bs0] has
+  * length less than 4.
+  *)
 (*val read_4_bytes_le : byte_sequence -> error ((byte * byte * byte * byte) * byte_sequence)*)
 definition read_4_bytes_le  :: " byte_sequence \<Rightarrow>((Elf_Types_Local.byte*Elf_Types_Local.byte*Elf_Types_Local.byte*Elf_Types_Local.byte)*byte_sequence)error "  where 
      " read_4_bytes_le bs0 = (
@@ -220,6 +303,10 @@ definition read_4_bytes_le  :: " byte_sequence \<Rightarrow>((Elf_Types_Local.by
   error_return ((b3, b2, b1, b0), bs4))))))"
 
 
+(** [read_4_bytes_be bs0] reads four bytes from [bs0], returning them in
+  * big-endian order, and returns the remainder of [bs0].  Fails if [bs0] has
+  * length less than 4.
+  *)
 (*val read_4_bytes_be : byte_sequence -> error ((byte * byte * byte * byte) * byte_sequence)*)
 definition read_4_bytes_be  :: " byte_sequence \<Rightarrow>((Elf_Types_Local.byte*Elf_Types_Local.byte*Elf_Types_Local.byte*Elf_Types_Local.byte)*byte_sequence)error "  where 
      " read_4_bytes_be bs0 = (
@@ -230,6 +317,10 @@ definition read_4_bytes_be  :: " byte_sequence \<Rightarrow>((Elf_Types_Local.by
   error_return ((b0, b1, b2, b3), bs4))))))"
 
 
+(** [read_8_bytes_le bs0] reads eight bytes from [bs0], returning them in
+  * little-endian order, and returns the remainder of [bs0].  Fails if [bs0] has
+  * length less than 8.
+  *)
 (*val read_8_bytes_le : byte_sequence -> error ((byte * byte * byte * byte * byte * byte * byte * byte) * byte_sequence)*)
 definition read_8_bytes_le  :: " byte_sequence \<Rightarrow>((Elf_Types_Local.byte*Elf_Types_Local.byte*Elf_Types_Local.byte*Elf_Types_Local.byte*Elf_Types_Local.byte*Elf_Types_Local.byte*Elf_Types_Local.byte*Elf_Types_Local.byte)*byte_sequence)error "  where 
      " read_8_bytes_le bs0 = (
@@ -244,6 +335,10 @@ definition read_8_bytes_le  :: " byte_sequence \<Rightarrow>((Elf_Types_Local.by
   error_return ((b7, b6, b5, b4, b3, b2, b1, b0), bs8))))))))))"
 
 
+(** [read_8_bytes_be bs0] reads eight bytes from [bs0], returning them in
+  * big-endian order, and returns the remainder of [bs0].  Fails if [bs0] has
+  * length less than 8.
+  *)
 (*val read_8_bytes_be : byte_sequence -> error ((byte * byte * byte * byte * byte * byte * byte * byte) * byte_sequence)*)
 definition read_8_bytes_be  :: " byte_sequence \<Rightarrow>((Elf_Types_Local.byte*Elf_Types_Local.byte*Elf_Types_Local.byte*Elf_Types_Local.byte*Elf_Types_Local.byte*Elf_Types_Local.byte*Elf_Types_Local.byte*Elf_Types_Local.byte)*byte_sequence)error "  where 
      " read_8_bytes_be bs0 = (
@@ -258,6 +353,9 @@ definition read_8_bytes_be  :: " byte_sequence \<Rightarrow>((Elf_Types_Local.by
   error_return ((b0, b1, b2, b3, b4, b5, b6, b7), bs8))))))))))"
 
 
+(** [partition pnt bs0] splits [bs0] into two parts at index [pnt].  Fails if
+  * [pnt] is greater than the length of [bs0].
+  *)
 (*val partition : natural -> byte_sequence -> error (byte_sequence * byte_sequence)*)
 definition partition0  :: " nat \<Rightarrow> byte_sequence \<Rightarrow>(byte_sequence*byte_sequence)error "  where 
      " partition0 idx bs0 = (
@@ -274,6 +372,11 @@ definition partition_with_length  :: " nat \<Rightarrow> nat \<Rightarrow> byte_
   error_return (l, r))))"
 
 
+(** [offset_and_cut off cut bs0] first cuts [off] bytes off [bs0], then cuts
+  * the resulting byte sequence to length [cut].  Fails if [off] is greater than
+  * the length of [bs0] and if [cut] is greater than the length of the intermediate
+  * byte sequence.
+  *)
 (*val offset_and_cut : natural -> natural -> byte_sequence -> error byte_sequence*)
 definition offset_and_cut  :: " nat \<Rightarrow> nat \<Rightarrow> byte_sequence \<Rightarrow>(byte_sequence)error "  where 
      " offset_and_cut off cut1 bs0 = (

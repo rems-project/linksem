@@ -276,7 +276,7 @@ declare isabelle target_rep function null_byte = `0` `::` `8` `word`
 val null_char : char
 let {ocaml} null_char = char_of_byte null_byte
 
-declare isabelle target_rep function null_char = `0` `::` `8` `word`
+declare isabelle target_rep function null_char = `String.char_of_nat` `0`
 
 (** [println s] prints [s] to stdout, adding a trailing newline. *)
 (* val println : string -> unit *)

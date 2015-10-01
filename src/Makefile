@@ -25,7 +25,7 @@ $(error Please run `make' in $(REPOROOT)/contrib or set UINT)
 endif
 endif
 
-LEM_UTIL_SRC := default_printing.lem missing_pervasives.lem show.lem endianness.lem error.lem multimap.lem
+LEM_UTIL_SRC := default_printing.lem missing_pervasives.lem show.lem endianness.lem multimap.lem error.lem
 # Some of the utility code is directly in ML, some in Lem; order matters!
 # NOTE: LEM_UTIL_SRC and ALL_UTIL_ML need to be kept in sync manually.
 # GAH. doing a topsort manually is a sign of failure.
@@ -60,6 +60,7 @@ LEM_ABI_SRC := memory_image.lem memory_image_orderings.lem \
 	abis/power64/abi_power64_elf_header.lem \
 	abis/power64/abi_power64_dynamic.lem \
 	abis/power64/abi_power64_section_header_table.lem \
+	abis/power64/abi_power64_dynamic.lem \
 	abis/aarch64/abi_aarch64_le_elf_header.lem \
 	abis/aarch64/abi_aarch64_symbol_table.lem \
 	abis/aarch64/abi_aarch64_section_header_table.lem \
@@ -95,8 +96,7 @@ LEM_LINK_SRC := elf_memory_image.lem elf_memory_image_of_elf64_file.lem command_
 # LEM_MODEL_ML includes all OCaml except for the main programs
 LEM_MODEL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_GNU_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC))
 
-LEM_MODEL_ISA_THY := $(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_GNU_SRC) $(LEM_ABI_SRC) # $(LEM_LINK_SRC)
-
+LEM_MODEL_TP_THY := $(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_GNU_SRC) $(LEM_ABI_SRC) import_everything.lem # $(LEM_LINK_SRC)
 OCAML_LIB_OBJS := unix.cma nums.cma zarith.cma batteries.cma nat_num.cmo big_int_impl.cmo nat_big_num.cmo uint.cma
 LEM_OCAML_OBJS := lem.cmo lem_basic_classes.cmo lem_function.cmo lem_list.cmo lem_num.cmo lem_sorting.cmo \
     xstring.cmo pset.cmo pmap.cmo lem_maybe.cmo lem_map.cmo lem_set.cmo lem_string_extra.cmo
@@ -130,8 +130,20 @@ lem-all-ocaml: $(filter-out error.lem,$(LEM_UTIL_SRC)) $(LEM_ELF_SRC) $(LEM_GNU_
 .PHONY: isa-extraction
 isa-extraction:
 	$(LEM) -isa -only_changed_output -add_full_isa_lib_path \
-	$(LEM_MODEL_ISA_THY)
-	mv *.thy ../auto_generated/isabelle/
+	$(LEM_MODEL_TP_THY)
+	ls -1 *.thy | grep -v ^Error.thy | xargs -I{} mv {} ../auto_generated/isabelle/
+	mv */*.thy ../auto_generated/isabelle/
+	mv */*/*.thy ../auto_generated/isabelle/
+	cd ../auto_generated/isabelle && ./massage_isabelle_imports.sh
+
+.PHONY: hol-extraction
+hol-extraction:
+	$(LEM) -hol -only_changed_output \
+	$(LEM_MODEL_TP_THY)
+	mv *. ../auto_generated/isabelle/
+	mv */*.thy ../auto_generated/isabelle/
+	mv */*/*.thy ../auto_generated/isabelle/
+	cd ../auto_generated/isabelle && ./massage_isabelle_imports.sh
 
 clean:
 	rm -f $(filter-out error.ml,$(LEM_MODEL_ML))
@@ -141,6 +153,7 @@ clean:
 	rm -f *.cmi *.cmo *.cmx *.o
 	rm -f abis/*.cmi abis/*.cmo abis/*.cmx abis/*.o
 	rm -f abis/*/*.cmi abis/*/*.cmo abis/*/*.cmx abis/*/*.o
+	rm -f adaptors/*.cmi adaptors/*.cmo adaptors/*.cmx adaptors/*.o
 	rm -f gnu_extensions/*.cmi gnu_extensions/*.cmo gnu_extensions/*.cmx gnu_extensions/*.o
 	rm -f $(filter-out error.ml,$(patsubst %.lem,%.ml,$(LEM_UTIL_SRC))) $(patsubst %.lem,%Auxiliary.ml,$(LEM_UTIL_SRC))
 

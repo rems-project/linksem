@@ -4,12 +4,12 @@ theory "Elf_interpreted_section"
 
 imports 
  	 Main
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_num" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_list" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_bool" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_maybe" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_string" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_num" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_list" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_bool" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_maybe" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_string" 
 	 "Show" 
 	 "Missing_pervasives" 
 	 "Error" 
@@ -19,6 +19,11 @@ imports
 	 "Elf_section_header_table" 
 
 begin 
+
+(** Module [elf_interpreted_section] provides a record of interpreted sections,
+  * i.e. the data stored in the section header table converted to more amenable
+  * infinite precision types, and operation on those records.
+  *)
 
 (*open import Basic_classes*)
 (*open import Bool*)
@@ -37,6 +42,9 @@ begin
 (*open import Missing_pervasives*)
 (*open import Show*)
 
+(** [elf32_interpreted_section] exactly mirrors the structure of a section header
+  * table entry, barring the conversion of all fields to more amenable types.
+  *)
 record elf32_interpreted_section =
   
  elf32_section_name    ::" nat "       (** Name of the section *)
@@ -65,6 +73,9 @@ record elf32_interpreted_section =
    
 
    
+(** [elf32_interpreted_section_equal s1 s2] is an equality test on interpreted
+  * sections [s1] and [s2].
+  *)
 (*val elf32_interpreted_section_equal : elf32_interpreted_section -> elf32_interpreted_section -> bool*)
 definition elf32_interpreted_section_equal  :: " elf32_interpreted_section \<Rightarrow> elf32_interpreted_section \<Rightarrow> bool "  where 
      " elf32_interpreted_section_equal x y = (    
@@ -82,6 +93,9 @@ definition elf32_interpreted_section_equal  :: " elf32_interpreted_section \<Rig
 ((elf32_section_name_as_string   x) =(elf32_section_name_as_string   y)))))))))))))"
 
 
+(** [elf64_interpreted_section] exactly mirrors the structure of a section header
+  * table entry, barring the conversion of all fields to more amenable types.
+  *)
 record elf64_interpreted_section =
   
  elf64_section_name    ::" nat "       (** Name of the section *)
@@ -109,29 +123,36 @@ record elf64_interpreted_section =
  elf64_section_name_as_string ::" string " (** Name of the section, as a string;  for no name (name = 0) *)
    
 
-   
+
+(** [compare_elf64_interpreted_section s1 s2] is an ordering comparison function
+  * on interpreted sections suitable for use in sets, finite maps and other
+  * ordered structures.
+  *)
+(*val compare_elf64_interpreted_section : elf64_interpreted_section -> elf64_interpreted_section ->
+  ordering*)
 definition compare_elf64_interpreted_section  :: " elf64_interpreted_section \<Rightarrow> elf64_interpreted_section \<Rightarrow> ordering "  where 
      " compare_elf64_interpreted_section s1 s2 = (   
  (pairCompare (lexicographicCompareBy (genericCompare (op<) (op=))) compare_byte_sequence 
     ([(elf64_section_name   s1)    ,(elf64_section_type  
-s1)    ,(elf64_section_flags  
-s1)   ,(elf64_section_addr  
-s1)    ,(elf64_section_offset  
-s1)  ,(elf64_section_size  
-s1)    ,(elf64_section_link  
-s1)    ,(elf64_section_info  
-s1)    ,(elf64_section_align  
-s1)   ,(elf64_section_entsize  
-s1)],(elf64_section_body   s1)) ([(elf64_section_name   s2)    ,(elf64_section_type  
-s2)    ,(elf64_section_flags  
-s2)   ,(elf64_section_addr  
-s2)    ,(elf64_section_offset  
-s2)  ,(elf64_section_size  
-s2)    ,(elf64_section_link  
-s2)    ,(elf64_section_info  
-s2)    ,(elf64_section_align  
-s2)   ,(elf64_section_entsize  
-s2)],(elf64_section_body   s2))))"
+      s1)    ,(elf64_section_flags  
+      s1)   ,(elf64_section_addr  
+      s1)    ,(elf64_section_offset  
+      s1)  ,(elf64_section_size  
+      s1)    ,(elf64_section_link  
+      s1)    ,(elf64_section_info  
+      s1)    ,(elf64_section_align  
+      s1)   ,(elf64_section_entsize  
+      s1)],(elf64_section_body   s1))
+    ([(elf64_section_name   s2)    ,(elf64_section_type  
+      s2)    ,(elf64_section_flags  
+      s2)   ,(elf64_section_addr  
+      s2)    ,(elf64_section_offset  
+      s2)  ,(elf64_section_size  
+      s2)    ,(elf64_section_link  
+      s2)    ,(elf64_section_info  
+      s2)    ,(elf64_section_align  
+      s2)   ,(elf64_section_entsize  
+      s2)],(elf64_section_body   s2))))"
 
 
 definition instance_Basic_classes_Ord_Elf_interpreted_section_elf64_interpreted_section_dict  :: "(elf64_interpreted_section)Ord_class "  where 
@@ -148,7 +169,9 @@ definition instance_Basic_classes_Ord_Elf_interpreted_section_elf64_interpreted_
   isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (compare_elf64_interpreted_section f1 f2) ({GT, EQ})))|) )"
 
 
-   
+(** [elf64_interpreted_section_equal s1 s2] is an equality test on interpreted
+  * sections [s1] and [s2].
+  *)
 (*val elf64_interpreted_section_equal : elf64_interpreted_section -> elf64_interpreted_section -> bool*)
 definition elf64_interpreted_section_equal  :: " elf64_interpreted_section \<Rightarrow> elf64_interpreted_section \<Rightarrow> bool "  where 
      " elf64_interpreted_section_equal x y = (    
@@ -166,6 +189,8 @@ definition elf64_interpreted_section_equal  :: " elf64_interpreted_section \<Rig
 ((elf64_section_name_as_string   x) =(elf64_section_name_as_string   y)))))))))))))"
 
 
+(** [null_elf32_interpreted_section] --- the null interpreted section.
+  *)
 (*val null_elf32_interpreted_section : elf32_interpreted_section*)
 definition null_elf32_interpreted_section  :: " elf32_interpreted_section "  where 
      " null_elf32_interpreted_section = (
@@ -184,6 +209,8 @@ definition null_elf32_interpreted_section  :: " elf32_interpreted_section "  whe
    |) )"
 
 
+(** [null_elf64_interpreted_section] --- the null interpreted section.
+  *)
 (*val null_elf64_interpreted_section : elf64_interpreted_section*)
 definition null_elf64_interpreted_section  :: " elf64_interpreted_section "  where 
      " null_elf64_interpreted_section = (
@@ -202,6 +229,10 @@ definition null_elf64_interpreted_section  :: " elf64_interpreted_section "  whe
    |) )"
 
 
+(** [elf64_interpreted_section_matches_section_header sect ent] checks whether
+  * the interpreted section and the corresponding section header table entry
+  * match.
+  *)
 (*val elf64_interpreted_section_matches_section_header : 
     elf64_interpreted_section
         -> elf64_section_header_table_entry
@@ -230,11 +261,23 @@ definition elf64_interpreted_section_matches_section_header  :: " elf64_interpre
 type_synonym elf32_interpreted_sections =" elf32_interpreted_section list "
 type_synonym elf64_interpreted_sections =" elf64_interpreted_section list "
 
+(** [string_of_elf32_interpreted_section sect] returns a string-based representation
+  * of interpreted section, [sect].
+  *)
 (*val string_of_elf32_interpreted_section : elf32_interpreted_section -> string*)
 
+(** [string_of_elf64_interpreted_section sect] returns a string-based representation
+  * of interpreted section, [sect].
+  *)
 (*val string_of_elf64_interpreted_section : elf64_interpreted_section -> string*)
    
-    
+(** [is_valid_elf32_section_header_table_entry sect stab] checks whether a
+  * interpreted section conforms with the prescribed flags and types declared
+  * in the special sections table of the ELF specification.
+  * TODO: some of these entries in the table are overridden by ABI supplements.
+  * Make sure it is these that are passed in rather than the default table
+  * declared in the spec?
+  *)
 (*val is_valid_elf32_section_header_table_entry : elf32_interpreted_section ->
   string_table -> bool*)
 definition is_valid_elf32_section_header_table_entry  :: " elf32_interpreted_section \<Rightarrow> string_table \<Rightarrow> bool "  where 
@@ -250,13 +293,13 @@ definition is_valid_elf32_section_header_table_entry  :: " elf32_interpreted_sec
   ))"
 
   
-(*val is_valid_elf32_section_header_table : list elf32_interpreted_section ->
-  string_table -> bool*)
-definition is_valid_elf32_section_header_table0  :: "(elf32_interpreted_section)list \<Rightarrow> string_table \<Rightarrow> bool "  where 
-     " is_valid_elf32_section_header_table0 ents stbl = (
-  ((\<forall> x \<in> (set ents).  (\<lambda> x .  is_valid_elf32_section_header_table_entry x stbl) x)))"
-
-  
+(** [is_valid_elf64_section_header_table_entry sect stab] checks whether a
+  * interpreted section conforms with the prescribed flags and types declared
+  * in the special sections table of the ELF specification.
+  * TODO: some of these entries in the table are overridden by ABI supplements.
+  * Make sure it is these that are passed in rather than the default table
+  * declared in the spec?
+  *)  
 (*val is_valid_elf64_section_header_table_entry : elf64_interpreted_section ->
   string_table -> bool*)
 definition is_valid_elf64_section_header_table_entry  :: " elf64_interpreted_section \<Rightarrow> string_table \<Rightarrow> bool "  where 
@@ -272,6 +315,19 @@ definition is_valid_elf64_section_header_table_entry  :: " elf64_interpreted_sec
   ))"
 
   
+(** [is_valid_elf32_section_header_table sects] checks whether all entries in
+  * [sect] are valid.
+  *)
+(*val is_valid_elf32_section_header_table : list elf32_interpreted_section ->
+  string_table -> bool*)
+definition is_valid_elf32_section_header_table0  :: "(elf32_interpreted_section)list \<Rightarrow> string_table \<Rightarrow> bool "  where 
+     " is_valid_elf32_section_header_table0 ents stbl = (
+  ((\<forall> x \<in> (set ents).  (\<lambda> x .  is_valid_elf32_section_header_table_entry x stbl) x)))"
+
+  
+(** [is_valid_elf64_section_header_table sects] checks whether all entries in
+  * [sect] are valid.
+  *)
 (*val is_valid_elf64_section_header_table : list elf64_interpreted_section ->
   string_table -> bool*)
 definition is_valid_elf64_section_header_table0  :: "(elf64_interpreted_section)list \<Rightarrow> string_table \<Rightarrow> bool "  where 

@@ -4,11 +4,11 @@ theory "Elf_dynamic"
 
 imports 
  	 Main
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_num" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_list" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_bool" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_string" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_num" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_list" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_bool" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_string" 
 	 "Show" 
 	 "Error" 
 	 "Byte_sequence" 
@@ -48,6 +48,12 @@ begin
 
 (** Validity checks *)
 
+(** [is_elf32_valid_program_header_table_for_dynamic_linking pht] checks whether
+  * a program header table [pht] is a valid program header table for an ELF file
+  * that will be potentially dynamically linked.  Returns true if there is exactly
+  * one segment header of type [elf_pt_interp], i.e. contains a string pointing
+  * to the requested dynamic interpreter.
+  *)
 (*val is_elf32_valid_program_header_table_for_dynamic_linking : elf32_program_header_table ->
   bool*)
 definition is_elf32_valid_program_header_table_for_dynamic_linking  :: "(elf32_program_header_table_entry)list \<Rightarrow> bool "  where 
@@ -55,6 +61,12 @@ definition is_elf32_valid_program_header_table_for_dynamic_linking  :: "(elf32_p
   List.length (List.filter (\<lambda> x .  unat(elf32_p_type   x) = elf_pt_interp) pht) =( 1 :: nat))"
 
   
+(** [is_elf64_valid_program_header_table_for_dynamic_linking pht] checks whether
+  * a program header table [pht] is a valid program header table for an ELF file
+  * that will be potentially dynamically linked.  Returns true if there is exactly
+  * one segment header of type [elf_pt_interp], i.e. contains a string pointing
+  * to the requested dynamic interpreter.
+  *)
 (*val is_elf64_valid_program_header_table_for_dynamic_linking : elf64_program_header_table ->
   bool*)
 definition is_elf64_valid_program_header_table_for_dynamic_linking  :: "(elf64_program_header_table_entry)list \<Rightarrow> bool "  where 
@@ -74,19 +86,27 @@ datatype( 'a, 'b) dyn_union
   | D_Ptr " 'b "
   | D_Ignored " byte_sequence "
   
+(** [elf32_dyn] captures the notion of an ELF32 dynamic section entry.
+  * Specialises the [dyn_union] type above to using [elf32_word] values and
+  * [elf32_addr] pointers.
+  *)
 record elf32_dyn =
   
- elf32_dyn_tag  ::" sint32 "
+ elf32_dyn_tag  ::" sint32 "                     (** The type of the entry. *)
    
- elf32_dyn_d_un ::" (uint32, uint32) dyn_union "
+ elf32_dyn_d_un ::" (uint32, uint32) dyn_union " (** The value of the entry, stored as a union. *)
    
 
    
+(** [elf64_dyn] captures the notion of an ELF32 dynamic section entry.
+  * Specialises the [dyn_union] type above to using [elf64_xword] values and
+  * [elf64_addr] pointers.
+  *)
 record elf64_dyn =
   
- elf64_dyn_tag  ::" sint64 "
+ elf64_dyn_tag  ::" sint64 "                     (** The type of the entry. *)
    
- elf64_dyn_d_un ::" (uint64, Elf_Types_Local.uint64) dyn_union "
+ elf64_dyn_d_un ::" (uint64, Elf_Types_Local.uint64) dyn_union " (** The value of the entry, stored as a union. *)
    
 
 
@@ -281,15 +301,17 @@ definition dt_hiproc  :: " nat "  where
      " dt_hiproc = ( (( 2 :: nat) *( 1073741823 :: nat)) +( 1 :: nat))"
  (* 0x7fffffff *)
 
-(** [string_of_dynamic_tag t os proc] produces a string-based representation of
+(** [string_of_dynamic_tag so t os proc] produces a string-based representation of
   * dynamic section tag [t].  For tag values between LO_OS and HI_OS [os] is
   * used to produce the resulting value.  For tag values between LO_PROC and
-  * HI_PROC [proc] is used to produce the resulting value.
+  * HI_PROC [proc] is used to produce the resulting value.  Boolean flag [so]
+  * indicates whether the flag in question is derived from a shared object file,
+  * which alters the printing of ENCODING and PRE_INITARRAY flags.
   *)
-(*val string_of_dynamic_tag : natural -> (natural -> bool) -> (natural -> string) -> (natural -> string)
+(*val string_of_dynamic_tag : bool -> natural -> (natural -> bool) -> (natural -> string) -> (natural -> string)
   -> string*)
-definition string_of_dynamic_tag  :: " nat \<Rightarrow>(nat \<Rightarrow> bool)\<Rightarrow>(nat \<Rightarrow> string)\<Rightarrow>(nat \<Rightarrow> string)\<Rightarrow> string "  where 
-     " string_of_dynamic_tag tag os_additional_ranges os proc = (
+definition string_of_dynamic_tag  :: " bool \<Rightarrow> nat \<Rightarrow>(nat \<Rightarrow> bool)\<Rightarrow>(nat \<Rightarrow> string)\<Rightarrow>(nat \<Rightarrow> string)\<Rightarrow> string "  where 
+     " string_of_dynamic_tag shared_object tag os_additional_ranges os proc = (
   if tag = dt_null then
     (''NULL'')
   else if tag = dt_needed then
@@ -339,7 +361,7 @@ definition string_of_dynamic_tag  :: " nat \<Rightarrow>(nat \<Rightarrow> bool)
   else if tag = dt_jmprel then
     (''JMPREL'')
   else if tag = dt_bindnow then
-    (''BINDNOW'')
+    (''BIND_NOW'')
   else if tag = dt_init_array then
     (''INIT_ARRAY'')
   else if tag = dt_fini_array then
@@ -353,30 +375,44 @@ definition string_of_dynamic_tag  :: " nat \<Rightarrow>(nat \<Rightarrow> bool)
   else if tag = dt_flags then
     (''FLAGS'')
   else if tag = dt_encoding then
-    (''ENCODING'')
-  else if tag = dt_preinit_array then
-    (''PREINIT_ARRAY'')
+    if \<not> shared_object then
+      (''ENCODING'')
+    else
+      (''PREINIT_ARRAY'')
   else if tag = dt_preinit_arraysz then
     (''PREINIT_ARRAYSZ'')
+  else if (tag \<ge> dt_loproc) \<and> (tag \<le> dt_hiproc) then
+    proc tag
   else if (tag \<ge> dt_loos) \<and> (tag \<le> dt_hios) then
     os tag
   else if os_additional_ranges tag then
     os tag
-  else if (tag \<ge> dt_loproc) \<and> (tag \<le> dt_hiproc) then
-    proc tag
   else
     (''Invalid dynamic section tag''))"
 
     
+(** [tag_correspondence] is a type used to emulate the functionality of a C-union
+  * in Lem.  The type records whether the union should be interpreted as a value,
+  * a pointer, or a do not care value.  An accompanying function will map a
+  * dynamic section tag to a [tag_correspondence], so that transcription functions
+  * know how to properly use the [dyn_union] value in a dynamic section entry.
+  *)
 datatype tag_correspondence
-  = C_Val
-  | C_Ptr
-  | C_Ignored
+  = C_Val     (** [dyn_union] should be interpreted as a value. *)
+  | C_Ptr     (** [dyn_union] should be interpreted as a pointer. *)
+  | C_Ignored (** [dyn_union] is irrelevant, so we do not care. *)
   
-(*val tag_correspondence_of_tag : natural -> (natural -> bool) -> (natural -> error tag_correspondence) ->
+(** [tag_correspondence_of_tag tag os_additional_ranges os proc] produces a
+  * [tag_correspondence] value for a given dynamic tag, [tag].  Some tag values
+  * are reserved for interpretation by the OS or processor supplement (i.e. the
+  * ABI).  We therefore also take in a predicate, [os_additional_ranges], that
+  * recognises when a tag is special for a given ABI, and a means of interpreting
+  * that tag, using [os] and [proc] functions.
+  *)
+(*val tag_correspondence_of_tag : bool -> natural -> (natural -> bool) -> (natural -> error tag_correspondence) ->
   (natural -> error tag_correspondence) -> error tag_correspondence*)
-definition tag_correspondence_of_tag  :: " nat \<Rightarrow>(nat \<Rightarrow> bool)\<Rightarrow>(nat \<Rightarrow>(tag_correspondence)error)\<Rightarrow>(nat \<Rightarrow>(tag_correspondence)error)\<Rightarrow>(tag_correspondence)error "  where 
-     " tag_correspondence_of_tag tag os_additional_ranges os proc = (
+definition tag_correspondence_of_tag  :: " bool \<Rightarrow> nat \<Rightarrow>(nat \<Rightarrow> bool)\<Rightarrow>(nat \<Rightarrow>(tag_correspondence)error)\<Rightarrow>(nat \<Rightarrow>(tag_correspondence)error)\<Rightarrow>(tag_correspondence)error "  where 
+     " tag_correspondence_of_tag shared_object tag os_additional_ranges os proc = (
   if tag = dt_null then
     error_return C_Ignored
   else if tag = dt_needed then
@@ -440,28 +476,36 @@ definition tag_correspondence_of_tag  :: " nat \<Rightarrow>(nat \<Rightarrow> b
   else if tag = dt_flags then
     error_return C_Val
   else if tag = dt_encoding then
-    error_return C_Ignored
-  else if tag = dt_preinit_array then
-    error_return C_Ptr
+    if \<not> shared_object then
+      error_return C_Ignored
+    else
+      error_return C_Ptr
   else if tag = dt_preinit_arraysz then
     error_return C_Val
-  else if (tag \<ge> dt_loos) \<and> (tag \<le> dt_hios) then
-    os tag
   else if (tag \<ge> dt_loproc) \<and> (tag \<le> dt_hiproc) then
     proc tag
+  else if (tag \<ge> dt_loos) \<and> (tag \<le> dt_hios) then
+    os tag
   else if os_additional_ranges tag then
     os tag
   else
-    error_fail (''tag_correspondence_of_tag: invalid dynamic section tag''))"
+    error_fail ((''tag_correspondence_of_tag: invalid dynamic section tag'')))"
 
     
-(*val read_elf32_dyn : endianness -> byte_sequence -> (natural -> bool) -> (natural -> error tag_correspondence) ->
+(** [read_elf32_dyn endian bs0 so os_additional_ranges os proc] reads an [elf32_dyn]
+  * record from byte sequence [bs0], assuming endianness [endian].  As mentioned
+  * above some ABIs reserve additional tag values for their own purposes.  These
+  * are recognised by the predicate [os_additional_ranges] and interpreted by
+  * the functions [os] and [proc].  Fails if the transcription of the record from
+  * [bs0] fails, or if [os] or [proc] fail.
+  *)
+(*val read_elf32_dyn : endianness -> byte_sequence -> bool -> (natural -> bool) -> (natural -> error tag_correspondence) ->
   (natural -> error tag_correspondence) -> error (elf32_dyn * byte_sequence)*)
-definition read_elf32_dyn  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(nat \<Rightarrow> bool)\<Rightarrow>(nat \<Rightarrow>(tag_correspondence)error)\<Rightarrow>(nat \<Rightarrow>(tag_correspondence)error)\<Rightarrow>(elf32_dyn*byte_sequence)error "  where 
-     " read_elf32_dyn endian bs0 os_additional_ranges os proc = (
+definition read_elf32_dyn  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow> bool \<Rightarrow>(nat \<Rightarrow> bool)\<Rightarrow>(nat \<Rightarrow>(tag_correspondence)error)\<Rightarrow>(nat \<Rightarrow>(tag_correspondence)error)\<Rightarrow>(elf32_dyn*byte_sequence)error "  where 
+     " read_elf32_dyn endian bs0 shared_object os_additional_ranges os proc = (
   read_elf32_sword endian bs0 >>= (\<lambda> (tag0, bs1) . 
   (let tag = (nat (abs (sint tag0))) in
-  tag_correspondence_of_tag tag os_additional_ranges os proc >>= (\<lambda> corr . 
+  tag_correspondence_of_tag shared_object tag os_additional_ranges os proc >>= (\<lambda> corr . 
     (case  corr of
         C_Ptr =>
         read_elf32_addr endian bs1 >>= (\<lambda> (ptr, bs2) . 
@@ -483,13 +527,21 @@ definition read_elf32_dyn  :: " endianness \<Rightarrow> byte_sequence \<Rightar
     )))))"
 
     
-(*val read_elf64_dyn : endianness -> byte_sequence -> (natural -> bool) -> (natural -> error tag_correspondence) ->
-  (natural -> error tag_correspondence) -> error (elf64_dyn * byte_sequence)*)
-definition read_elf64_dyn  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(nat \<Rightarrow> bool)\<Rightarrow>(nat \<Rightarrow>(tag_correspondence)error)\<Rightarrow>(nat \<Rightarrow>(tag_correspondence)error)\<Rightarrow>(elf64_dyn*byte_sequence)error "  where 
-     " read_elf64_dyn endian bs0 os_additional_ranges os proc = (
+(** [read_elf64_dyn endian bs0 os_additional_ranges os proc] reads an [elf64_dyn]
+  * record from byte sequence [bs0], assuming endianness [endian].  As mentioned
+  * above some ABIs reserve additional tag values for their own purposes.  These
+  * are recognised by the predicate [os_additional_ranges] and interpreted by
+  * the functions [os] and [proc].  Fails if the transcription of the record from
+  * [bs0] fails, or if [os] or [proc] fail.
+  *)
+(*val read_elf64_dyn : endianness -> byte_sequence -> bool -> (natural -> bool) ->
+  (natural -> error tag_correspondence) -> (natural -> error tag_correspondence) ->
+    error (elf64_dyn * byte_sequence)*)
+definition read_elf64_dyn  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow> bool \<Rightarrow>(nat \<Rightarrow> bool)\<Rightarrow>(nat \<Rightarrow>(tag_correspondence)error)\<Rightarrow>(nat \<Rightarrow>(tag_correspondence)error)\<Rightarrow>(elf64_dyn*byte_sequence)error "  where 
+     " read_elf64_dyn endian bs0 shared_object os_additional_ranges os proc = (
   read_elf64_sxword endian bs0 >>= (\<lambda> (tag0, bs1) . 
   (let tag = (nat (abs (sint tag0))) in
-  tag_correspondence_of_tag tag os_additional_ranges os proc >>= (\<lambda> corr . 
+  tag_correspondence_of_tag shared_object tag os_additional_ranges os proc >>= (\<lambda> corr . 
     (case  corr of
         C_Ptr =>
         read_elf64_addr endian bs1 >>= (\<lambda> (ptr, bs2) . 
@@ -511,40 +563,59 @@ definition read_elf64_dyn  :: " endianness \<Rightarrow> byte_sequence \<Rightar
     )))))"
 
     
+(** [obtain_elf32_dynamic_section_contents' endian bs0 os_additional_ranges os
+  * proc] exhaustively reads in [elf32_dyn] values from byte sequence [bs0],
+  * interpreting ABI-specific dynamic tags with [os_additional_ranges], [os], and
+  * [proc] as mentioned above.  Fails if [bs0]'s length modulo the size of an
+  * [elf32_dyn] entry is not 0.
+  *)
 (*val obtain_elf32_dynamic_section_contents' : endianness -> byte_sequence ->
-  (natural -> bool) -> (natural -> error tag_correspondence) ->
+  bool -> (natural -> bool) -> (natural -> error tag_correspondence) ->
   (natural -> error tag_correspondence) -> error (list elf32_dyn)*)
-function (sequential,domintros)  obtain_elf32_dynamic_section_contents'  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(nat \<Rightarrow> bool)\<Rightarrow>(nat \<Rightarrow>(tag_correspondence)error)\<Rightarrow>(nat \<Rightarrow>(tag_correspondence)error)\<Rightarrow>((elf32_dyn)list)error "  where 
-     " obtain_elf32_dynamic_section_contents' endian bs0 os_additional_ranges os proc = (
+function (sequential,domintros)  obtain_elf32_dynamic_section_contents'  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow> bool \<Rightarrow>(nat \<Rightarrow> bool)\<Rightarrow>(nat \<Rightarrow>(tag_correspondence)error)\<Rightarrow>(nat \<Rightarrow>(tag_correspondence)error)\<Rightarrow>((elf32_dyn)list)error "  where 
+     " obtain_elf32_dynamic_section_contents' endian bs0 shared_object os_additional_ranges os proc = (
   if Byte_sequence.length0 bs0 =( 0 :: nat) then
     error_return []
   else
-    read_elf32_dyn endian bs0 os_additional_ranges os proc >>= (\<lambda> (head, bs0) . 
+    read_elf32_dyn endian bs0 shared_object os_additional_ranges os proc >>= (\<lambda> (head, bs0) . 
     if sint(elf32_dyn_tag   head) = int dt_null then (* DT_NULL marks end of array *)
       error_return [head]
     else
-    obtain_elf32_dynamic_section_contents' endian bs0 os_additional_ranges os proc >>= (\<lambda> tail . 
+    obtain_elf32_dynamic_section_contents' endian bs0 shared_object os_additional_ranges os proc >>= (\<lambda> tail . 
     error_return (head # tail))))" 
 by pat_completeness auto
 
     
+(** [obtain_elf64_dynamic_section_contents' endian bs0 os_additional_ranges os
+  * proc] exhaustively reads in [elf64_dyn] values from byte sequence [bs0],
+  * interpreting ABI-specific dynamic tags with [os_additional_ranges], [os], and
+  * [proc] as mentioned above.  Fails if [bs0]'s length modulo the size of an
+  * [elf64_dyn] entry is not 0.
+  *)
 (*val obtain_elf64_dynamic_section_contents' : endianness -> byte_sequence ->
-  (natural -> bool) -> (natural -> error tag_correspondence) ->
+  bool -> (natural -> bool) -> (natural -> error tag_correspondence) ->
   (natural -> error tag_correspondence) -> error (list elf64_dyn)*)
-function (sequential,domintros)  obtain_elf64_dynamic_section_contents'  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(nat \<Rightarrow> bool)\<Rightarrow>(nat \<Rightarrow>(tag_correspondence)error)\<Rightarrow>(nat \<Rightarrow>(tag_correspondence)error)\<Rightarrow>((elf64_dyn)list)error "  where 
-     " obtain_elf64_dynamic_section_contents' endian bs0 os_additional_ranges os proc = (
+function (sequential,domintros)  obtain_elf64_dynamic_section_contents'  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow> bool \<Rightarrow>(nat \<Rightarrow> bool)\<Rightarrow>(nat \<Rightarrow>(tag_correspondence)error)\<Rightarrow>(nat \<Rightarrow>(tag_correspondence)error)\<Rightarrow>((elf64_dyn)list)error "  where 
+     " obtain_elf64_dynamic_section_contents' endian bs0 shared_object os_additional_ranges os proc = (
   if Byte_sequence.length0 bs0 =( 0 :: nat) then
     error_return []
   else
-    read_elf64_dyn endian bs0 os_additional_ranges os proc >>= (\<lambda> (head, bs0) . 
+    read_elf64_dyn endian bs0 shared_object os_additional_ranges os proc >>= (\<lambda> (head, bs0) . 
     if sint(elf64_dyn_tag   head) = int dt_null then (* DT_NULL marks end of array *)
       error_return [head]
     else
-      obtain_elf64_dynamic_section_contents' endian bs0 os_additional_ranges os proc >>= (\<lambda> tail . 
+      obtain_elf64_dynamic_section_contents' endian bs0 shared_object os_additional_ranges os proc >>= (\<lambda> tail . 
       error_return (head # tail))))" 
 by pat_completeness auto
 
 
+(** [obtain_elf32_dynamic_section_contents' f1 os_additional_ranges os
+  * proc bs0] exhaustively reads in [elf32_dyn] values from byte sequence [bs0],
+  * obtaining endianness and the section header table from [elf32_file] f1,
+  * interpreting ABI-specific dynamic tags with [os_additional_ranges], [os], and
+  * [proc] as mentioned above.  Fails if [bs0]'s length modulo the size of an
+  * [elf32_dyn] entry is not 0.
+  *)
 (*val obtain_elf32_dynamic_section_contents : elf32_file ->
   (natural -> bool) -> (natural -> error tag_correspondence) ->
   (natural -> error tag_correspondence) -> byte_sequence -> error (list elf32_dyn)*)
@@ -552,17 +623,25 @@ definition obtain_elf32_dynamic_section_contents  :: " elf32_file \<Rightarrow>(
      " obtain_elf32_dynamic_section_contents f1 os_additional_ranges os proc bs0 = (
   (let endian = (get_elf32_header_endianness(elf32_file_header   f1)) in
   (let sht = ((elf32_file_section_header_table   f1)) in
+  (let shared_object = (is_elf32_shared_object_file(elf32_file_header   f1)) in
     (case  List.filter (\<lambda> ent .  unat(elf32_sh_type   ent) = sht_dynamic) sht of
         [] => error_fail (''obtain_elf32_dynamic_section_contents: no SHT_DYNAMIC section header entries'')
       | [dyn] =>
         (let off = (unat(elf32_sh_offset   dyn)) in
         (let siz = (unat(elf32_sh_size   dyn)) in
         Byte_sequence.offset_and_cut off siz bs0 >>= (\<lambda> rel . 
-        obtain_elf32_dynamic_section_contents' endian rel os_additional_ranges os proc)))
+        obtain_elf32_dynamic_section_contents' endian rel shared_object os_additional_ranges os proc)))
       | _ => error_fail (''obtain_elf32_dynamic_section_contents: multiple SHT_DYNAMIC section header entries'')
-    ))))"
+    )))))"
 
 
+(** [obtain_elf64_dynamic_section_contents' f1 os_additional_ranges os
+  * proc bs0] exhaustively reads in [elf64_dyn] values from byte sequence [bs0],
+  * obtaining endianness and the section header table from [elf64_file] f1,
+  * interpreting ABI-specific dynamic tags with [os_additional_ranges], [os], and
+  * [proc] as mentioned above.  Fails if [bs0]'s length modulo the size of an
+  * [elf64_dyn] entry is not 0.
+  *)
 (*val obtain_elf64_dynamic_section_contents : elf64_file ->
   (natural -> bool) -> (natural -> error tag_correspondence) ->
   (natural -> error tag_correspondence) -> byte_sequence -> error (list elf64_dyn)*)
@@ -570,15 +649,16 @@ definition obtain_elf64_dynamic_section_contents  :: " elf64_file \<Rightarrow>(
      " obtain_elf64_dynamic_section_contents f1 os_additional_ranges os proc bs0 = (
   (let endian = (get_elf64_header_endianness(elf64_file_header   f1)) in
   (let sht = ((elf64_file_section_header_table   f1)) in
+  (let shared_object = (is_elf64_shared_object_file(elf64_file_header   f1)) in
     (case  List.filter (\<lambda> ent .  unat(elf64_sh_type   ent) = sht_dynamic) sht of
         [] => error_fail (''obtain_elf64_dynamic_section_contents: no SHT_DYNAMIC section header entries'')
       | [dyn] =>
         (let off = (unat(elf64_sh_offset   dyn)) in
         (let siz = (unat(elf64_sh_size   dyn)) in
         Byte_sequence.offset_and_cut off siz bs0 >>= (\<lambda> rel . 
-        obtain_elf64_dynamic_section_contents' endian rel os_additional_ranges os proc)))
+        obtain_elf64_dynamic_section_contents' endian rel shared_object os_additional_ranges os proc)))
       | _ => error_fail (''obtain_elf64_dynamic_section_contents: multiple SHT_DYNAMIC section header entries'')
-    ))))"
+    )))))"
 
 
 (** DT Flags values *)
@@ -614,30 +694,50 @@ definition df_static_tls  :: " nat "  where
      " df_static_tls = (( 16 :: nat))"
  (* 0x10 *)
 
+(** [check_flag] is a utility function for testing whether a flag is set.
+  * TODO: so simple it is probably unneccessary now.
+  *)
+(*val check_flag : natural -> natural -> bool*)
+definition check_flag  :: " nat \<Rightarrow> nat \<Rightarrow> bool "  where 
+     " check_flag m pos = ( (m = pos))"
+
+
 (** [string_of_dt_flag f] produces a string-based representation of dynamic
   * section flag [f].
   *)
 (*val string_of_dt_flag : natural -> string*)
 definition string_of_dt_flag  :: " nat \<Rightarrow> string "  where 
      " string_of_dt_flag flag = (
-  if \<not> ((unsafe_natural_land flag df_origin) =(( 0 :: nat))) then
+  if check_flag flag(( 0 :: nat)) then
+    (''None'')
+  else if check_flag flag df_origin then
     (''ORIGIN'')
-  else if \<not> ((unsafe_natural_land flag df_symbolic) =(( 0 :: nat))) then
-    (''SYMBOLIC'')
-  else if \<not> ((unsafe_natural_land flag df_textrel) =(( 0 :: nat))) then
-    (''TEXTREL'')
-  else if \<not> ((unsafe_natural_land flag df_bindnow) =(( 0 :: nat))) then
+  else if check_flag flag df_bindnow then
     (''BIND_NOW'')
-  else if \<not> ((unsafe_natural_land flag df_static_tls) =(( 0 :: nat))) then
+  else if check_flag flag df_symbolic then
+    (''SYMBOLIC'')
+  else if check_flag flag df_textrel then
+    (''TEXTREL'')
+  else if check_flag flag df_static_tls then
     (''STATIC_TLS'')
-  else (* XXX: more as required *)
-    (''Invalid flag''))"
+  else if check_flag flag (df_bindnow + df_static_tls) then
+    (''BIND_NOW STATIC_TLS'')
+  else if check_flag flag (df_static_tls + df_symbolic) then
+    (''SYMBOLIC STATIC_TLS'')
+  else (* XXX: add more as needed *)
+    (''Invalid dynamic section flag''))"
 
     
+(** [rel_type] represents the two types of relocation records potentially present
+  * in an ELF file: relocation, and relocation with addends.
+  *)
 datatype rel_type
-  = Rel
-  | RelA
+  = Rel  (** Plain relocation type. *)
+  | RelA (** Relocation with addends type. *)
   
+(** [string_of_rel_type r] produces a string-based representation of [rel_type],
+  * [r].
+  *)
 (*val string_of_rel_type : rel_type -> string*)
 fun string_of_rel_type  :: " rel_type \<Rightarrow> string "  where 
      " string_of_rel_type Rel = ( (''REL''))"
@@ -645,23 +745,44 @@ fun string_of_rel_type  :: " rel_type \<Rightarrow> string "  where
 declare string_of_rel_type.simps [simp del]
 
     
+(** Type [dyn_value] represents the value of an ELF dynamic section entry.  Values
+  * can represent various different types of objects (e.g. paths to libraries, or
+  * flags, or sizes of other entries in a file), and this type collates them all.
+  * Parameterised over two type variables so the type can be shared between ELF32
+  * and ELF64.
+  *)
 datatype( 'addr, 'size) dyn_value
-  = Address " 'addr "
-  | Size    " 'size "
-  | FName   " string "
-  | Path    " string "
-  | Library " string "
-  | Flags   " nat "
-  | Numeric " nat "
-  | RelType " rel_type "
-  | Null
-  | Ignored
+  = Address   " 'addr "    (** An address. *)
+  | Size      " 'size "    (** A size (in bytes). *)
+  | FName     " string "   (** A filename. *)
+  | SOName    " string "   (** A shared object name. *)
+  | Path      " string "   (** A path to some directory. *)
+  | RPath     " string "   (** A run path. *)
+  | RunPath   " string "   (** A run path. *)
+  | Library   " string "   (** A library path. *)
+  | Flags1    " nat "  (** Flags. *)
+  | Flags     " nat "  (** Flags. *)
+  | Numeric   " nat "  (** An uninterpreted numeric value. *)
+  | Checksum  " nat "  (** A checksum value *)
+  | RelType   " rel_type " (** A relocation entry type. *)
+  | Timestamp " nat "  (** A timestamp value. *)
+  | Null                  (** A null (0) value. *)
+  | Ignored               (** An ignored value. *)
   
+(** [elf32_dyn_value] and [elf64_dyn_value] are specialisations of [dyn_value]
+  * fixing the correct types for the ['addr] and ['size] type variables.
+  *)
 type_synonym elf32_dyn_value =" (uint32, uint32) dyn_value "
 type_synonym elf64_dyn_value =" (Elf_Types_Local.uint64, uint64) dyn_value "
 
-(*val get_string_table_of_elf32_dyn_section : endianness -> list elf32_dyn -> elf32_section_header_table -> byte_sequence ->
-  error string_table*)
+(** [get_string_table_of_elf32_dyn_section endian dyns sht bs0] searches through
+  * dynamic section entries [dyns] looking for one pointing to a string table, looks
+  * up the corresponding section header [sht] pointed to by that dynamic
+  * section entry, finds the section in [bs0] and decodes a string table from that
+  * section assuming endianness [endian].  May fail.
+  *)
+(*val get_string_table_of_elf32_dyn_section : endianness -> list elf32_dyn ->
+  elf32_section_header_table -> byte_sequence -> error string_table*)
 definition get_string_table_of_elf32_dyn_section  :: " endianness \<Rightarrow>(elf32_dyn)list \<Rightarrow>(elf32_section_header_table_entry)list \<Rightarrow> byte_sequence \<Rightarrow>(string_table)error "  where 
      " get_string_table_of_elf32_dyn_section endian dyns sht bs0 = (
   (let strtabs =    
@@ -687,7 +808,7 @@ definition get_string_table_of_elf32_dyn_section  :: " endianness \<Rightarrow>(
                   (let siz = (unat(elf32_sh_size   s)) in
                   Byte_sequence.offset_and_cut off siz bs0 >>= (\<lambda> rel . 
                   (let strings  = (Byte_sequence.string_of_byte_sequence rel) in
-                  error_return (String_table.mk_string_table strings ((0 :: 8 word)))))))
+                  error_return (String_table.mk_string_table strings ((String.char_of_nat 0)))))))
                 | _   => error_fail (''get_string_table_of_elf32_dyn_section: multiple section entries with same address as STRTAB'')
               ))
           | D_Ignored i => error_fail (''get_string_table_of_elf32_dyn_section: STRTAB must be a PTR'')
@@ -697,8 +818,14 @@ definition get_string_table_of_elf32_dyn_section  :: " endianness \<Rightarrow>(
     )))"
 
     
-(*val get_string_table_of_elf64_dyn_section : endianness -> list elf64_dyn -> elf64_section_header_table -> byte_sequence ->
-  error string_table*)
+(** [get_string_table_of_elf64_dyn_section endian dyns sht bs0] searches through
+  * dynamic section entries [dyns] looking for one pointing to a string table, looks
+  * up the corresponding section header [sht] pointed to by that dynamic
+  * section entry, finds the section in [bs0] and decodes a string table from that
+  * section assuming endianness [endian].  May fail.
+  *)
+(*val get_string_table_of_elf64_dyn_section : endianness -> list elf64_dyn ->
+  elf64_section_header_table -> byte_sequence -> error string_table*)
 definition get_string_table_of_elf64_dyn_section  :: " endianness \<Rightarrow>(elf64_dyn)list \<Rightarrow>(elf64_section_header_table_entry)list \<Rightarrow> byte_sequence \<Rightarrow>(string_table)error "  where 
      " get_string_table_of_elf64_dyn_section endian dyns sht bs0 = (
   (let strtabs =    
@@ -724,7 +851,7 @@ definition get_string_table_of_elf64_dyn_section  :: " endianness \<Rightarrow>(
                   (let siz = (unat(elf64_sh_size   s)) in
                   Byte_sequence.offset_and_cut off siz bs0 >>= (\<lambda> rel . 
                   (let strings  = (Byte_sequence.string_of_byte_sequence rel) in
-                  error_return (String_table.mk_string_table strings (0 :: 8 word))))))
+                  error_return (String_table.mk_string_table strings (String.char_of_nat 0))))))
                 | _   => error_fail (''get_string_table_of_elf64_dyn_section: multiple section entries with same address as STRTAB'')
               ))
           | D_Ignored i => error_fail (''get_string_table_of_elf64_dyn_section: STRTAB must be a PTR'')
@@ -734,9 +861,18 @@ definition get_string_table_of_elf64_dyn_section  :: " endianness \<Rightarrow>(
     )))"
 
     
-(*val get_value_of_elf32_dyn : elf32_dyn -> (natural -> bool) -> string_table -> error elf32_dyn_value*)
-definition get_value_of_elf32_dyn  :: " elf32_dyn \<Rightarrow>(nat \<Rightarrow> bool)\<Rightarrow> string_table \<Rightarrow>(((uint32),(uint32))dyn_value)error "  where 
-     " get_value_of_elf32_dyn dyn os_additional_ranges stab = (
+(** [get_value_of_elf32_dyn so dyn os_additional_ranges os proc stab] returns the value
+  * stored in a dynamic section entry [dyn], using [os_additional_ranges] and
+  * [os] to decode ABI-reserved tags.  String table [stab] is used to correctly
+  * decode library and run paths, etc.
+  * May fail.
+  *)
+(*val get_value_of_elf32_dyn : bool -> elf32_dyn -> (natural -> bool) ->
+  (elf32_dyn -> string_table -> error elf32_dyn_value) ->
+    (elf32_dyn -> string_table -> error elf32_dyn_value) ->
+    string_table -> error elf32_dyn_value*)
+definition get_value_of_elf32_dyn  :: " bool \<Rightarrow> elf32_dyn \<Rightarrow>(nat \<Rightarrow> bool)\<Rightarrow>(elf32_dyn \<Rightarrow> string_table \<Rightarrow>(((uint32),(uint32))dyn_value)error)\<Rightarrow>(elf32_dyn \<Rightarrow> string_table \<Rightarrow>(((uint32),(uint32))dyn_value)error)\<Rightarrow> string_table \<Rightarrow>(((uint32),(uint32))dyn_value)error "  where 
+     " get_value_of_elf32_dyn shared_object dyn os_additional_ranges os proc stab = (
   (let tag = (nat (abs (sint(elf32_dyn_tag   dyn)))) in
     if tag = dt_null then
       error_return Null
@@ -841,7 +977,7 @@ definition get_value_of_elf32_dyn  :: " elf32_dyn \<Rightarrow>(nat \<Rightarrow
       ) >>= (\<lambda> off . 
         (let off = (unat off) in
         String_table.get_string_at off stab >>= (\<lambda> str . 
-        error_return (FName str))))
+        error_return (SOName str))))
     else if tag = dt_rpath then
       (case (elf32_dyn_d_un   dyn) of
           D_Val v     => error_return v
@@ -850,9 +986,9 @@ definition get_value_of_elf32_dyn  :: " elf32_dyn \<Rightarrow>(nat \<Rightarrow
       ) >>= (\<lambda> off . 
         (let off = (unat off) in
         String_table.get_string_at off stab >>= (\<lambda> str . 
-        error_return (Path str))))
+        error_return (RPath str))))
     else if tag = dt_symbolic then
-      error_return Ignored
+      error_return Null
     else if tag = dt_rel then
       (case (elf32_dyn_d_un   dyn) of
           D_Val     v => error_fail (''get_value_of_elf32_dyn_entry: REL must be a PTR'')
@@ -889,7 +1025,7 @@ definition get_value_of_elf32_dyn  :: " elf32_dyn \<Rightarrow>(nat \<Rightarrow
     else if tag = dt_debug then
       error_return Null
     else if tag = dt_textrel then
-      error_return Ignored
+      error_return Null
     else if tag = dt_jmprel then
       (case (elf32_dyn_d_un   dyn) of
           D_Val     v => error_fail (''get_value_of_elf32_dyn_entry: JMPREL must be a PTR'')
@@ -935,7 +1071,7 @@ definition get_value_of_elf32_dyn  :: " elf32_dyn \<Rightarrow>(nat \<Rightarrow
       ) >>= (\<lambda> off . 
         (let off = (unat off) in
         String_table.get_string_at off stab >>= (\<lambda> str . 
-        error_return (Path str))))
+        error_return (RunPath str))))
     else if tag = dt_flags then
       (case (elf32_dyn_d_un   dyn) of
           D_Val v     => error_return v
@@ -944,30 +1080,44 @@ definition get_value_of_elf32_dyn  :: " elf32_dyn \<Rightarrow>(nat \<Rightarrow
       ) >>= (\<lambda> flags . 
         error_return (Flags (unat flags)))
     else if tag = dt_encoding then
-      error_fail (''ENCODING'')
-    else if tag = dt_preinit_array then
-      (case (elf32_dyn_d_un   dyn) of
-          D_Val     v => error_fail (''get_value_of_elf32_dyn_entry: PREINIT_ARRAY must be a PTR'')
-        | D_Ptr     p => error_return p
-        | D_Ignored i => error_fail (''get_value_of_elf32_dyn_entry: PREINIT_ARRAY must be a PTR'')
-      ) >>= (\<lambda> ptr . 
-      error_return (Address ptr))
+      if \<not> shared_object then
+        error_return Ignored
+      else
+        (case (elf32_dyn_d_un   dyn) of
+            D_Val     v => error_fail (''get_value_of_elf32_dyn_entry: PREINIT_ARRAY must be a PTR'')
+          | D_Ptr     p => error_return p
+          | D_Ignored i => error_fail (''get_value_of_elf32_dyn_entry: PREINIT_ARRAY must be a PTR'')
+        ) >>= (\<lambda> ptr . 
+        error_return (Address ptr))
     else if tag = dt_preinit_arraysz then
       (case (elf32_dyn_d_un   dyn) of
           D_Val     v => error_return v
         | D_Ptr     p => error_fail (''get_value_of_elf32_dyn_entry: PREINIT_ARRAYSZ must be a VAL'')
         | D_Ignored i => error_fail (''get_value_of_elf32_dyn_entry: PREINIT_ARRAYSZ must be a VAL'')
       ) >>= (\<lambda> sz . 
-      error_return (Size sz))
+      error_return (Checksum (unat sz))) (** XXX: bug in readelf does not print this as a size! *)
+    else if (tag \<ge> dt_loproc) \<and> (tag \<le> dt_hiproc) then
+      proc dyn stab
+    else if (tag \<ge> dt_loos) \<and> (tag \<le> dt_hios) then
+      os dyn stab
     else if os_additional_ranges tag then
-      error_fail (''YYY'')
+      os dyn stab
     else
       error_fail (''get_value_of_elf32_dyn: unrecognised tag type'')))"
 
       
-(*val get_value_of_elf64_dyn : elf64_dyn -> (natural -> bool) -> string_table -> error elf64_dyn_value*)
-definition get_value_of_elf64_dyn  :: " elf64_dyn \<Rightarrow>(nat \<Rightarrow> bool)\<Rightarrow> string_table \<Rightarrow>(((Elf_Types_Local.uint64),(uint64))dyn_value)error "  where 
-     " get_value_of_elf64_dyn dyn os_additional_ranges stab = (
+(** [get_value_of_elf64_dyn dyn os_additional_ranges os proc stab] returns the value
+  * stored in a dynamic section entry [dyn], using [os_additional_ranges] and
+  * [os] to decode ABI-reserved tags.  String table [stab] is used to correctly
+  * decode library and run paths, etc.
+  * May fail.
+  *)
+(*val get_value_of_elf64_dyn : bool -> elf64_dyn -> (natural -> bool) ->
+  (elf64_dyn -> string_table -> error elf64_dyn_value) ->
+    (elf64_dyn -> string_table -> error elf64_dyn_value) ->
+    string_table -> error elf64_dyn_value*)
+definition get_value_of_elf64_dyn  :: " bool \<Rightarrow> elf64_dyn \<Rightarrow>(nat \<Rightarrow> bool)\<Rightarrow>(elf64_dyn \<Rightarrow> string_table \<Rightarrow>(((Elf_Types_Local.uint64),(uint64))dyn_value)error)\<Rightarrow>(elf64_dyn \<Rightarrow> string_table \<Rightarrow>(((Elf_Types_Local.uint64),(uint64))dyn_value)error)\<Rightarrow> string_table \<Rightarrow>(((Elf_Types_Local.uint64),(uint64))dyn_value)error "  where 
+     " get_value_of_elf64_dyn shared_object dyn os_additional_ranges os_dyn proc_dyn stab = (
   (let tag = (nat (abs (sint(elf64_dyn_tag   dyn)))) in
     if tag = dt_null then
       error_return Null
@@ -1072,7 +1222,7 @@ definition get_value_of_elf64_dyn  :: " elf64_dyn \<Rightarrow>(nat \<Rightarrow
       ) >>= (\<lambda> off . 
         (let off = (unat off) in
         String_table.get_string_at off stab >>= (\<lambda> str . 
-        error_return (FName str))))
+        error_return (SOName str))))
     else if tag = dt_rpath then
       (case (elf64_dyn_d_un   dyn) of
           D_Val v     => error_return v
@@ -1081,9 +1231,9 @@ definition get_value_of_elf64_dyn  :: " elf64_dyn \<Rightarrow>(nat \<Rightarrow
       ) >>= (\<lambda> off . 
         (let off = (unat off) in
         String_table.get_string_at off stab >>= (\<lambda> str . 
-        error_return (Path str))))
+        error_return (RPath str))))
     else if tag = dt_symbolic then
-      error_return Ignored
+      error_return Null
     else if tag = dt_rel then
       (case (elf64_dyn_d_un   dyn) of
           D_Val     v => error_fail (''get_value_of_elf64_dyn_entry: REL must be a PTR'')
@@ -1120,7 +1270,7 @@ definition get_value_of_elf64_dyn  :: " elf64_dyn \<Rightarrow>(nat \<Rightarrow
     else if tag = dt_debug then
       error_return Null
     else if tag = dt_textrel then
-      error_return Ignored
+      error_return Null
     else if tag = dt_jmprel then
       (case (elf64_dyn_d_un   dyn) of
           D_Val     v => error_fail (''get_value_of_elf64_dyn_entry: JMPREL must be a PTR'')
@@ -1166,7 +1316,7 @@ definition get_value_of_elf64_dyn  :: " elf64_dyn \<Rightarrow>(nat \<Rightarrow
       ) >>= (\<lambda> off . 
         (let off = (unat off) in
         String_table.get_string_at off stab >>= (\<lambda> str . 
-        error_return (Path str))))
+        error_return (RunPath str))))
     else if tag = dt_flags then
       (case (elf64_dyn_d_un   dyn) of
           D_Val v     => error_return v
@@ -1175,23 +1325,28 @@ definition get_value_of_elf64_dyn  :: " elf64_dyn \<Rightarrow>(nat \<Rightarrow
       ) >>= (\<lambda> flags . 
         error_return (Flags (unat flags)))
     else if tag = dt_encoding then
-      error_fail (''ENCODING'')
-    else if tag = dt_preinit_array then
-      (case (elf64_dyn_d_un   dyn) of
-          D_Val     v => error_fail (''get_value_of_elf64_dyn_entry: PREINIT_ARRAY must be a PTR'')
-        | D_Ptr     p => error_return p
-        | D_Ignored i => error_fail (''get_value_of_elf64_dyn_entry: PREINIT_ARRAY must be a PTR'')
-      ) >>= (\<lambda> ptr . 
-      error_return (Address ptr))
+      if \<not> shared_object then
+        error_return Ignored
+      else
+        (case (elf64_dyn_d_un   dyn) of
+            D_Val     v => error_fail (''get_value_of_elf64_dyn_entry: PREINIT_ARRAY must be a PTR'')
+          | D_Ptr     p => error_return p
+          | D_Ignored i => error_fail (''get_value_of_elf64_dyn_entry: PREINIT_ARRAY must be a PTR'')
+        ) >>= (\<lambda> ptr . 
+        error_return (Address ptr))
     else if tag = dt_preinit_arraysz then
       (case (elf64_dyn_d_un   dyn) of
           D_Val     v => error_return v
         | D_Ptr     p => error_fail (''get_value_of_elf64_dyn_entry: PREINIT_ARRAYSZ must be a VAL'')
         | D_Ignored i => error_fail (''get_value_of_elf64_dyn_entry: PREINIT_ARRAYSZ must be a VAL'')
       ) >>= (\<lambda> sz . 
-      error_return (Size sz))
+      error_return (Checksum (unat sz))) (** XXX: bug in readelf does not print this as a size! *)
+    else if (tag \<ge> dt_loproc) \<and> (tag \<le> dt_hiproc) then
+      proc_dyn dyn stab
+    else if (tag \<ge> dt_loos) \<and> (tag \<le> dt_hios) then
+      os_dyn dyn stab
     else if os_additional_ranges tag then
-      error_fail (''YYY'')
+      os_dyn dyn stab
     else
       error_fail (''get_value_of_elf64_dyn: unrecognised tag type'')))"
 

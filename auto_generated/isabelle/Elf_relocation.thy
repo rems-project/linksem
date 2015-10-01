@@ -4,11 +4,11 @@ theory "Elf_relocation"
 
 imports 
  	 Main
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_num" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_list" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_set" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_string" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_num" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_list" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_set" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_string" 
 	 "Show" 
 	 "Missing_pervasives" 
 	 "Error" 
@@ -20,9 +20,6 @@ begin
 
 (** [elf_relocation] formalises types, functions and other definitions for working
   * with ELF relocation and relocation with addend entries.
-  *
-  * TODO:
-  *     * Formalise the ELF32_R_INFO and ELF64_R_INFO macros.
   *)
 
 (*open import Basic_classes*)
@@ -42,6 +39,8 @@ begin
 
 (** ELF relocation records *)
 
+(** [elf32_relocation] is a simple relocation record (without addend).
+  *)
 record elf32_relocation =
   
  elf32_r_offset ::" uint32 " (** Address at which to relocate *)
@@ -50,6 +49,8 @@ record elf32_relocation =
    
 
 
+(** [elf32_relocation_a] is a relocation record with addend.
+  *)
 record elf32_relocation_a =
   
  elf32_ra_offset ::" uint32 "  (** Address at which to relocate *)
@@ -60,6 +61,8 @@ record elf32_relocation_a =
    
 
 
+(** [elf64_relocation] is a simple relocation record (without addend).
+  *)
 record elf64_relocation =
   
  elf64_r_offset ::" Elf_Types_Local.uint64 "  (** Address at which to relocate *)
@@ -68,6 +71,8 @@ record elf64_relocation =
    
 
 
+(** [elf64_relocation_a] is a relocation record with addend.
+  *)
 record elf64_relocation_a =
   
  elf64_ra_offset ::" Elf_Types_Local.uint64 "   (** Address at which to relocate *)
@@ -78,8 +83,14 @@ record elf64_relocation_a =
    
 
 
-(* We exclusively use elf64_relocation_a in range tags, regardless of what file/reloc 
- * the info came from, so only this one needs an Ord instance. *)
+(** [elf64_relocation_a_compare r1 r2] is an ordering comparison function for
+  * relocation with addend records suitable for constructing sets, finite map
+  * and other ordered data structures.
+  * NB: we exclusively use elf64_relocation_a in range tags, regardless of what
+  * file/reloc  the info came from, so only this one needs an Ord instance.
+  *)
+(*val elf64_relocation_a_compare : elf64_relocation_a -> elf64_relocation_a ->
+  ordering*)
 definition elf64_relocation_a_compare  :: " elf64_relocation_a \<Rightarrow> elf64_relocation_a \<Rightarrow> ordering "  where 
      " elf64_relocation_a_compare ent1 ent2 = (    
  (tripleCompare (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) (unat(elf64_ra_offset   ent1), unat(elf64_ra_info   ent1),

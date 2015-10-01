@@ -4,14 +4,14 @@ theory "Elf_program_header_table"
 
 imports 
  	 Main
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_num" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_list" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_set" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_function" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_bool" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_maybe" 
-	 "/home/pes20/bitbucket/lem/isabelle-lib/Lem_string" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_num" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_list" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_set" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_function" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_bool" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_maybe" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_string" 
 	 "Show" 
 	 "Missing_pervasives" 
 	 "Error" 
@@ -199,6 +199,10 @@ definition allowable_permissions_of_permission  :: " nat \<Rightarrow>(nat)error
     error_fail (''exact_permission_of_permission: invalid permission flag''))"
 
     
+(** [string_of_elf_segment_permissions m] produces a string-based representation
+  * of an ELF segment's permission field.
+  * TODO: expand this as is needed by the validation tests.
+  *)
 (*val string_of_elf_segment_permissions : natural -> string*)
 definition string_of_elf_segment_permissions  :: " nat \<Rightarrow> string "  where 
      " string_of_elf_segment_permissions m = (
@@ -248,6 +252,12 @@ record elf32_program_header_table_entry =
    
 
 
+(** [compare_elf32_program_header_table_entry ent1 ent2] is an ordering-comparison
+  * function on program header table entries suitable for constructing sets,
+  * finite maps, and other ordered data types with.
+  *)
+(*val compare_elf32_program_header_table_entry : elf32_program_header_table_entry ->
+  elf32_program_header_table_entry -> ordering*)
 definition compare_elf32_program_header_table_entry  :: " elf32_program_header_table_entry \<Rightarrow> elf32_program_header_table_entry \<Rightarrow> ordering "  where 
      " compare_elf32_program_header_table_entry h1 h2 = (    
  (lexicographicCompareBy (genericCompare (op<) (op=)) [unat(elf32_p_type   h1),
@@ -306,6 +316,12 @@ record elf64_program_header_table_entry =
    
 
 
+(** [compare_elf64_program_header_table_entry ent1 ent2] is an ordering-comparison
+  * function on program header table entries suitable for constructing sets,
+  * finite maps, and other ordered data types with.
+  *)
+(*val compare_elf64_program_header_table_entry : elf64_program_header_table_entry ->
+  elf64_program_header_table_entry -> ordering*)
 definition compare_elf64_program_header_table_entry  :: " elf64_program_header_table_entry \<Rightarrow> elf64_program_header_table_entry \<Rightarrow> ordering "  where 
      " compare_elf64_program_header_table_entry h1 h2 = (    
  (lexicographicCompareBy (genericCompare (op<) (op=)) [unat(elf64_p_type   h1),
@@ -402,6 +418,7 @@ definition bytes_of_elf64_program_header_table_entry  :: " endianness \<Rightarr
   , bytes_of_elf64_xword endian(elf64_p_align   entry)
   ])"
 
+
 (** [read_elf32_program_header_table_entry endian bs0] reads an ELF32 program header table
   * entry from byte sequence [bs0] assuming endianness [endian].  If [bs0] is larger
   * than necessary, the excess is returned from the function, too.
@@ -424,8 +441,7 @@ definition read_elf32_program_header_table_entry  :: " endianness \<Rightarrow> 
                 elf32_p_filesz = filesz, elf32_p_memsz = memsz,
                 elf32_p_flags = flags, elf32_p_align = align |), bs))))))))))"
 
-(*
-thm foo
+
 (** [read_elf64_program_header_table_entry endian bs0] reads an ELF64 program header table
   * entry from byte sequence [bs0] assuming endianness [endian].  If [bs0] is larger
   * than necessary, the excess is returned from the function, too.
@@ -607,6 +623,12 @@ definition get_elf64_static_linked  :: "(elf64_program_header_table_entry)list \
   \<not> (get_elf64_dynamic_linked pht))"
 
   
+(** [get_elf32_requested_interpreter ent bs0] extracts the requested interpreter
+  * of a dynamically linkable ELF file from that file's program header table
+  * entry of type PT_INTERP, [ent].  Interpreter string is extracted from byte
+  * sequence [bs0].
+  * Fails if [ent] is not of type PT_INTERP, or if transcription otherwise fails.
+  *)
 (*val get_elf32_requested_interpreter : elf32_program_header_table_entry ->
   byte_sequence -> error string*)
 definition get_elf32_requested_interpreter  :: " elf32_program_header_table_entry \<Rightarrow> byte_sequence \<Rightarrow>(string)error "  where 
@@ -620,6 +642,12 @@ definition get_elf32_requested_interpreter  :: " elf32_program_header_table_entr
     error_fail (''get_elf32_requested_interpreter: not an INTERP segment header''))"
 
   
+(** [get_elf64_requested_interpreter ent bs0] extracts the requested interpreter
+  * of a dynamically linkable ELF file from that file's program header table
+  * entry of type PT_INTERP, [ent].  Interpreter string is extracted from byte
+  * sequence [bs0].
+  * Fails if [ent] is not of type PT_INTERP, or if transcription otherwise fails.
+  *)
 (*val get_elf64_requested_interpreter : elf64_program_header_table_entry ->
   byte_sequence -> error string*)
 definition get_elf64_requested_interpreter  :: " elf64_program_header_table_entry \<Rightarrow> byte_sequence \<Rightarrow>(string)error "  where 
@@ -631,5 +659,5 @@ definition get_elf64_requested_interpreter  :: " elf64_program_header_table_entr
       error_return (Byte_sequence.string_of_byte_sequence cut1))))
   else
     error_fail (''get_elf64_requested_interpreter: not an INTERP segment header''))"
-*)
+
 end

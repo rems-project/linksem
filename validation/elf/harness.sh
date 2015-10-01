@@ -1,7 +1,7 @@
 #!/bin/bash
 
 MAIN_ELF=../../src/main_elf.opt
-TEST_FILES=/usr/lib
+TEST_FILES=/home/dpm36/ELF/Android/lib64/
 DIFF_TOOL=meld
 
 function perform_readelf_diff
@@ -32,7 +32,7 @@ function perform_readelf_diff
 function perform_hexdump_diff
 {
   EXECUTABLE_NAME=$1
-  HEXDUMP_RESULT=`hexdump --no-squeezing $EXECUTABLE_NAME`
+  HEXDUMP_RESULT=`hexdump -v $EXECUTABLE_NAME`
   MAIN_ELF_RESULT=`$MAIN_ELF --in-out $EXECUTABLE_NAME`
   RESULT=`diff <(echo "$MAIN_ELF_RESULT") <(echo "$HEXDUMP_RESULT")`
   if [ $? -eq 0 ]; then
@@ -66,7 +66,7 @@ for f in $(ls -rS $TEST_FILES); do
   for g in $FTYPE0; do
     FTYPE+=${g};
   done
-  if [ $FTYPE == "ELF32-bit" ]; then # change for 32-bit tests
+  if [ $FTYPE == "ELF64-bit" ]; then # change for 32-bit tests
     echo "testing: " $f
     if [ $FLAG == "--in-out" ]; then
       perform_hexdump_diff $TEST_FILES/$f
