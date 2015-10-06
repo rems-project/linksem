@@ -63,7 +63,10 @@ let elf_memory_image_of_elf64_file a fname f =
         [] ->   let extracted_symbols =  (extract_definitions_from_symtab_of_type sht_symtab f)
                 in 
                 let section_names_and_elements = mapMaybei (fun i -> (fun isec -> 
-                   Just (unique_name_for_section_from_index i isec f, <|
+                    (* In principle, we can have unnamed sections. But 
+                     * don't add the dummy initial SHT entry. *)
+                    if isec = null_elf64_interpreted_section then Nothing
+                    else Just (unique_name_for_section_from_index i isec f, <|
                         startpos = Nothing
                       ; length = Just isec.elf64_section_size
                       ; contents = byte_pattern_of_byte_sequence isec.elf64_section_body
