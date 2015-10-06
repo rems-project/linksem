@@ -47,7 +47,8 @@ open import Elf_types_native_uint
  * *within* some ELF memory image. *)
 
 type input_section_rec = <| 
-    fname : string
+    idx   : natural    (* linkable idx *)
+;   fname : string
 ;   img   : elf_memory_image
 ;   shndx : natural
 ;   secname: string
@@ -55,7 +56,7 @@ type input_section_rec = <|
 |>
 
 type input_spec
- = Common of (string * elf_memory_image * symbol_definition) (* string is symbol name -- must be a COMMON symbol *)
+ = Common of (natural * string * elf_memory_image * symbol_definition) (* string is symbol name -- must be a COMMON symbol *)
  | InputSection of input_section_rec
 
 (* A control script defines
@@ -129,8 +130,8 @@ and
  retain_policy = DefaultKeep
                     | KeepEvenWhenGC
 and
- sort_policy = DefaultSort (* Use command line sort option, else input order *)
-                  | InputOrder (* Always use input order *)
+ sort_policy = DefaultSort (* Use command line sort option, else "seen" order *)
+                  | SeenOrder (* Always use "seen" order *)
                   | ByName
                   | ByNameThenAlignment
                   | ByAlignment
@@ -210,6 +211,37 @@ let file_matches pat input =
         | _ -> false
     end
 
+let compareInputSpecByNameThenAlignment i1 i2 = 
+    let toPair = fun is -> (match is with
+         Common(idx, fname, img, def) -> ("COMMON" (* FIXME: is this right? *), natural_of_elf64_addr def.def_syment.elf64_st_value)
+         | InputSection(isrec) -> (isrec.isec.elf64_section_name_as_string, isrec.isec.elf64_section_align)
+    end)
+    in compare (toPair i1) (toPair i2)
+
+let compareInputSpecByAlignment i1 i2 = 
+    let toNatural = fun is -> (match is with
+         Common(idx, fname, img, def) -> natural_of_elf64_addr def.def_syment.elf64_st_value
+         | InputSection(isrec) -> isrec.isec.elf64_section_align
+    end)
+    in compare (toNatural i1) (toNatural i2)
+
+let compareInputSpecByName i1 i2 = 
+    let toString = fun is -> (match is with
+         Common(idx, fname, img, def) -> "COMMON"
+         | InputSection(isrec) -> isrec.isec.elf64_section_name_as_string
+    end)
+    in compare (toString i1) (toString i2)
+
+let compareInputSpecByAlignmentThenName i1 i2 =
+    let toPair = fun is -> (match is with
+         Common(idx, fname, img, def) -> (natural_of_elf64_addr def.def_syment.elf64_st_value, 
+            "COMMON" (* FIXME: is this right? *))
+         | InputSection(isrec) -> (isrec.isec.elf64_section_align, isrec.isec.elf64_section_name_as_string)
+    end)
+    in compare (toPair i1) (toPair i2)
+
+let compareInputSpecByInitPriority i1 i2 = EQ (* FIXME *)
+
 val align_up_to : natural -> natural -> natural
 let align_up_to align addr = 
     let quot = addr / align
@@ -243,7 +275,7 @@ end
 
 let has_writability = fun writable -> (fun input_sec -> (
     match input_sec with
-        Common(_, _, _)
+        Common(_, _, _, _)
             -> (* all common symbols are potentially writable *) true
         | InputSection(inp)
             -> let (flags : natural) = match elf_memory_image_section_by_index inp.shndx inp.img with 
@@ -347,7 +379,7 @@ let default_linker_control_script a user_text_segment_start user_data_segment_st
     end
     in
     let is_large_common = (fun isec -> match isec with 
-    Common(fname, img, def)
+    Common(idx, fname, img, def)
          -> let referenced_sec
              = match elf_memory_image_section_by_index (natural_of_elf64_half def.def_syment.elf64_st_shndx) img with
                 Just s -> s
@@ -359,7 +391,7 @@ let default_linker_control_script a user_text_segment_start user_data_segment_st
     end)
     in
     let is_common = (fun isec -> match isec with 
-        Common(fname, _, _) -> not (is_large_common isec)
+        Common(idx, fname, _, _) -> not (is_large_common isec)
          | _ -> false
     end)
     in
@@ -657,7 +689,7 @@ SECTIONS
     ; DefineSymbol(ProvideIfUsed, "__rela_iplt_end", (0, make_symbol_info stb_local stt_notype (* FIXME *), make_symbol_other stv_hidden))
     ])
   ; OutputSection(AlwaysOutput, Nothing, ".init", [
-      InputQuery(KeepEvenWhenGC, InputOrder, filter_and_concat (name_matches ".init"))
+      InputQuery(KeepEvenWhenGC, SeenOrder, filter_and_concat (name_matches ".init"))
     ])
   ; OutputSection(AlwaysOutput, Nothing, ".plt", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".plt"))
                          ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".iplt"))
@@ -682,7 +714,7 @@ SECTIONS
         fun s -> name_matches ".gnu_warning" s))
     ])
   ; OutputSection(AlwaysOutput, Nothing, ".fini", [
-      InputQuery(KeepEvenWhenGC, InputOrder, filter_and_concat (name_matches ".fini"))
+      InputQuery(KeepEvenWhenGC, SeenOrder, filter_and_concat (name_matches ".fini"))
     ])
   ; DefineSymbol(ProvideIfUsed, "__etext", default_symbol_spec)
   ; DefineSymbol(ProvideIfUsed, "_etext", default_symbol_spec)
@@ -876,9 +908,10 @@ val assign_inputs_to_output_sections :
     list input_spec ->            (* remaining inputs *)
     maybe output_section_spec ->  (* cur_sec -- the current output section spec *)
     maybe input_spec ->           (* last input section to be output -- might not have one *)
+    (input_spec -> input_spec -> Basic_classes.ordering) ->
     linker_control_script -> 
     (list input_spec * list output_section_spec)     (* accumulated result *)
-let rec assign_inputs_to_output_sections acc inputs cur_output_sec last_input_sec script = 
+let rec assign_inputs_to_output_sections acc inputs cur_output_sec last_input_sec seen_ordering script = 
     let (rev_discards, rev_outputs) = acc in 
     let flush_output_sec 
      = fun output_sec -> match output_sec with
@@ -945,7 +978,7 @@ let rec assign_inputs_to_output_sections acc inputs cur_output_sec last_input_se
                     (* Recurse down the list of input queries. Note that 
                        output sections may not nest within other output sections. *)
                     let final_acc
-                    = assign_inputs_to_output_sections acc inputs new_cur_output_sec last_input_sec sub_elements
+                    = assign_inputs_to_output_sections acc inputs new_cur_output_sec last_input_sec seen_ordering sub_elements
                     in
                     (* NOTE that this sub-accumulation will never add a new output section
                      * because output sections can't nest. *)
@@ -964,14 +997,30 @@ let rec assign_inputs_to_output_sections acc inputs cur_output_sec last_input_se
                     match cur_output_sec with
                         Nothing -> failwith "linker script error: input query without output section"
                         | Just (output_guard, output_sec_addr, output_sec_name, output_composition) ->
+                            (* Add them to the current output spec. We have to be careful about ordering:
+                             * according to the GNU ld manual (and observed behaviour), by default
+                             * "the linker will place files and sections matched by wildcards in the order
+                             * in which they are seen during the link". For .o files on the command line,
+                             * this means the command line order. But for members of archives, it means
+                             * the order in which they were "pulled in" during input enumeration. We 
+                             * actually don't compute this here; it is passed in from our caller in link.lem. *)
+                            let sortfun = match sortpol with
+                                DefaultSort -> Sorting.sortByOrd seen_ordering (* FIXME: pay attention to command line *)
+                                | SeenOrder -> Sorting.sortByOrd seen_ordering
+                                | ByName -> Sorting.sortByOrd compareInputSpecByName
+                                | ByNameThenAlignment -> Sorting.sortByOrd compareInputSpecByNameThenAlignment
+                                | ByAlignment -> Sorting.sortByOrd compareInputSpecByAlignment
+                                | ByAlignmentThenName -> Sorting.sortByOrd compareInputSpecByAlignmentThenName
+                                | ByInitPriority -> Sorting.sortByOrd compareInputSpecByInitPriority
+                            end
+                            in
                             (* Search input memory images for matching sections. *)
                             let (matchList : list input_section_rec) = mapMaybe (fun inp -> 
                                 match inp with
                                     InputSection(x) -> Just x
                                    | _ -> Nothing
-                                end) (selector inputs)
+                                end) (sortfun (selector inputs))
                             in
-                            (* Add them to the current output spec *)
                             (acc, Just (output_guard, output_sec_addr, output_sec_name, 
                                 output_composition ++ 
                                 [IncludeInputSection(retainpol, input_sec.fname, input_sec.shndx, input_sec.isec, input_sec.img)
@@ -983,6 +1032,7 @@ let rec assign_inputs_to_output_sections acc inputs cur_output_sec last_input_se
             assign_inputs_to_output_sections new_acc (inputs : list input_spec)
                 (new_cur_output_sec : maybe output_section_spec)
                 (new_last_input_sec : maybe input_spec)
+                seen_ordering
                 (more_elements : linker_control_script)
     end
 
@@ -1239,10 +1289,11 @@ end
 val interpret_linker_control_script : 
     linker_control_script
     -> abi any_abi_feature
-    -> list input_spec 
+    -> list input_spec
+    -> (input_spec -> input_spec -> ordering)
     -> elf_memory_image
-let interpret_linker_control_script script a inputs = 
-    let (discards, outputs) = assign_inputs_to_output_sections ([], []) inputs Nothing Nothing script
+let interpret_linker_control_script script a inputs seen_ordering = 
+    let (discards, outputs) = assign_inputs_to_output_sections ([], []) inputs Nothing Nothing seen_ordering script
     in
     let outputs_by_name = 
         (let insert_fun = fun m -> (fun (guard, maybe_addr, name, compos) -> Map.insert name (guard, maybe_addr, name, compos) m)
@@ -1259,7 +1310,7 @@ let interpret_linker_control_script script a inputs =
             lpadded_secname ^ (space_padding_and_maybe_newline 16 lpadded_secname) ^ "0x0000000000000000" (* FIXME *)
             ^ "        0x" ^ (hex_string_of_natural s.isec.elf64_section_size) ^ " "
             ^ s.fname ^ "\n"
-        | Common(symname, img, def) -> "" (* don't print discard lines for discarded commons *)
+        | Common(idx, symname, img, def) -> "" (* don't print discard lines for discarded commons *)
     end)
     in
     let _ = Missing_pervasives.outs (List.foldl (fun str -> (fun input -> (str ^ (discard_line input)))) "" (reverse discards))

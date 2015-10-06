@@ -361,7 +361,8 @@ let expand_sections a options bindings_by_name linkable_idx item = match item wi
          * So FIXME: to support this, we need a way to re-add them, probably when we 
          * generate meta-output like .symtab etc.. *)
         [InputSection(<| 
-            fname = short_string_of_linkable_item item
+            idx   = linkable_idx
+        ;   fname = short_string_of_linkable_item item
         ;   img   = stripped_img_with_reloc_sections
         ;   shndx = shndx
         ;   secname = section_name isec stripped_img_with_reloc_sections
@@ -377,7 +378,7 @@ let expand_sections a options bindings_by_name linkable_idx item = match item wi
          * been done by discarding unreferenced inputs.  *)
         let common_symbols = all_common_symbols stripped_img_with_reloc_sections
         in
-        [Common(fname, stripped_img_with_reloc_sections, def) | forall (def MEM common_symbols) | 
+        [Common(linkable_idx, fname, stripped_img_with_reloc_sections, def) | forall (def MEM common_symbols) | 
             let _ = Missing_pervasives.outln ((space_padded_and_maybe_newline 20 def.def_symname)
                 ^ (let hexstr = "0x" ^ (hex_string_of_natural (natural_of_elf64_xword def.def_syment.elf64_st_size))
                   in
@@ -404,7 +405,8 @@ let link script a options linkables =
     let defmap =  all_definitions_by_name linkables
     in
     let (accumulated_bindings : list ((natural * symbol_reference * linkable_item) * maybe (natural * symbol_definition * linkable_item)))
-     = accumulate_bindings a linkables defmap {} initial_included_indices [] 
+     = (* accumulate_bindings_bf a linkables defmap {} initial_included_indices []  *)
+          accumulate_bindings_objectwise_df a linkables defmap [] {} initial_included_indices
     in
     (* Keep a map whose keys are referenced objects, and whose values are 
      * *some* (diagnostic purposes only) reference to that linkable. *)
@@ -419,7 +421,7 @@ let link script a options linkables =
         end
     )) (Map.empty : Map.map natural (symbol_reference * linkable_item)) accumulated_bindings
     in
-    (* Print something similar to GNU ld's linker map output, about include archive members. *)
+    (* Print something similar to GNU ld's linker map output, about included archive members. *)
     let _ = Missing_pervasives.outln "Archive member included to satisfy reference by file (symbol)\n" in
     let linkables_not_discarded = mapMaybei (fun i -> (fun (obj, inp, opts) -> 
         let referenced_object_map_entry = Map.lookup i referenced_object_indices_and_reasons
@@ -432,7 +434,7 @@ let link script a options linkables =
                 (* Did it come from an archive? *)
                 let (name, _, (inp_unit, coordlist)) = inp in
                 match coordlist with
-                    InArchive(aid, aidx, aname) :: _ ->
+                    InArchive(aid, aidx, aname, _) :: _ ->
                         (* yes, from an archive, so print a line *)
                         let (ref_sym, (ref_obj, (ref_name, ref_blob, ref_origin), ref_opts)) = match referenced_object_map_entry with
                             Just(x, y) -> (x, y)
@@ -450,7 +452,7 @@ let link script a options linkables =
                         Missing_pervasives.outln (
                             lhs_name ^ spacing ^ 
                             (match ref_origin with
-                                (_, InArchive(bid, bidx, bname) :: _) -> bname ^ "(" ^ ref_name ^ ")"
+                                (_, InArchive(bid, bidx, bname, _) :: _) -> bname ^ "(" ^ ref_name ^ ")"
                                 | _ -> ref_name
                             end)
                             ^ " (" ^ ref_sym.ref_symname ^ ")"
@@ -479,6 +481,76 @@ let link script a options linkables =
     in
     let input_sections = Missing_pervasives.list_concat_map (fun (idx, linkable) -> expand_sections a options bindings_by_name idx linkable) linkables_not_discarded
     in
-    let output_image = interpret_linker_control_script script a input_sections 
+    let seen_ordering = fun is1 -> (fun is2 -> (
+        let toNaturalList = fun is -> (
+            (* We're mapping the item to a list of naturals that determine a 
+             * lexicographic order. The list has a fixed depth:
+             * 
+             * [within-commandline, within-group, within-archive, section-or-symbol]
+             * 
+             * For .o files on the command line, we use the command line order. This
+             * is the first level in the hierarchy.
+             *  
+             * For .a files with --whole-archive, we want to do the same. Do this
+             * by using archive position as the second level of the hierarchy, *if*
+             * the item is marked as force_output.
+             *
+             * For other archives, "order seen" means something different: it's
+             * the order in which they were "pulled in" during input enumeration. Another
+             * way to say this is that they're ordered by the first binding that was
+             * made to them. We map these to numbers starting from the size of the archive,
+             * i.e. so that "force_output" makes an element appear sooner. In practice
+             * we won't get a mixture of force_output and non- in the same archive,
+             * so each archive will use only one of the two orderings.
+             * 
+             * How do sections order relative to common symbols? Again, in practice it
+             * doesn't matter because no input query will get a mixture of the two.
+             * For symbols, we start the numbering from the number of sections in the file,
+             * so symbols always appear later in the sortd order.
+             *)
+            let (linkable_idx, section_or_symbol_idx) = match is with
+                Common(idx, fname, img, def) -> (idx, 
+                    (let (_, l) = (elf_memory_image_section_ranges img) in length l) + def.def_sym_idx)
+                | InputSection(isrec) -> (isrec.idx, isrec.shndx)
+            end
+            in
+            match List.index linkables (unsafe_nat_of_natural linkable_idx) with
+                Nothing -> failwith "impossible: linker input not in linkables list"
+                | Just (obj, (fname, blob, (inp_unit, coords)), options) -> 
+                    let (our_cid, our_gid, our_aid, maybe_archive_size) = match coords with
+                      InArchive(aid, aidx, _, asize) :: InGroup(gid, gidx) :: [InCommandLine(cid)] -> (cid, gid, aid, Just asize)
+                    | InArchive(aid, aidx, _, asize) :: [InCommandLine(cid)]                       -> (cid, 0, aid,   Just asize)
+                    | InGroup(gid, gidx) :: [InCommandLine(cid)]                                   -> (cid, gid, 0,   Nothing)
+                    | [InCommandLine(cid)]                                                         -> (cid, 0, 0,     Nothing)
+                    | _ -> failwith "internal error: impossible coordinates"
+                    end
+                    in
+                    let aid_to_use = if options.item_force_output then our_aid
+                    else (* how many elements does the archive have? *)
+                        let archive_size = match maybe_archive_size with
+                            Nothing -> failwith "impossible: archive with no size"
+                            | Just a -> a
+                        end
+                        in archive_size + 
+                        (* search the bindings: we want the index of the first binding
+                           that refers to this object.
+                         *)
+                        match List.findIndex (fun ((b_ref_idx, b_ref, b_ref_item), b_maybe_def) -> match b_maybe_def with
+                            Just (b_def_idx, b_def, b_def_item) -> b_def_idx = linkable_idx
+                            | _ -> false
+                        end) accumulated_bindings with
+                            Just n -> naturalFromNat n
+                            | Nothing -> failwith "impossible: non-force-output object does not contain any bound-to defs"
+                        end
+                    in
+                    (* do we care about group idx? probably not. *)
+                    [our_cid; aid_to_use; section_or_symbol_idx]
+            end
+        )
+        in
+        compare (toNaturalList is1) (toNaturalList is2)
+    ))
+    in
+    let output_image = interpret_linker_control_script script a input_sections seen_ordering
     in
     output_image

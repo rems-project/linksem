@@ -188,10 +188,10 @@ let resolve_one_reference_default a linkables defmap ref_idx_and_ref_and_linkabl
         let (def_u, def_coords) = def_origin
         in
         let (def_in_group, def_in_archive) = match def_coords with
-              InArchive(aid, aidx, _) :: InGroup(gid, gidx) :: [] -> (Just gid, Just aid)
-            | InArchive(aid, aidx, _) :: []                       -> (Nothing, Just aid)
-            | InGroup(gid, gidx) :: []                            -> (Just gid, Nothing)
-            | []                                                  -> (Nothing, Nothing)
+              InArchive(aid, aidx, _, _) :: InGroup(gid, gidx) :: [_] -> (Just gid, Just aid)
+            | InArchive(aid, aidx, _, _) :: [_]                       -> (Nothing, Just aid)
+            | InGroup(gid, gidx) :: [_]                              -> (Just gid, Nothing)
+            | [_]                                                    -> (Nothing, Nothing)
             | _ -> failwith "internal error: didn't understand origin coordinates of definition"
         end
         in
@@ -202,8 +202,8 @@ let resolve_one_reference_default a linkables defmap ref_idx_and_ref_and_linkabl
               Nothing -> false
             | Just def_gid -> 
                 match ref_coords with
-                  InArchive(_, _, _) :: InGroup(gid, _) :: [] -> gid = def_gid
-                | InGroup(gid, _) :: []                       -> gid = def_gid
+                  InArchive(_, _, _, _) :: InGroup(gid, _) :: [_] -> gid = def_gid
+                | InGroup(gid, _) :: [_]                       -> gid = def_gid
                 | _ -> false
                 end
             end
@@ -217,7 +217,7 @@ let resolve_one_reference_default a linkables defmap ref_idx_and_ref_and_linkabl
             else ()
         in
         let ref_and_def_are_in_same_archive = match (def_coords, ref_coords) with
-            (InArchive(x1, _, _) :: _, InArchive(x2, _, _) :: _) -> x1 = x2
+            (InArchive(x1, _, _, _) :: _, InArchive(x2, _, _, _) :: _) -> x1 = x2
             | _ -> false
         end
         in
@@ -341,7 +341,7 @@ let resolve_undefs_in_one_object linkables all_defs oracle idx =
     in
     resolve_all linkables all_defs oracle (Set_extra.toList ref_triples)
 
-val accumulate_bindings : forall 'abifeature.
+val accumulate_bindings_bf : forall 'abifeature.
     abi 'abifeature
     -> linkable_list
     -> Map.map string (list (natural * symbol_definition * linkable_item))                (* all definitions *)
@@ -349,7 +349,7 @@ val accumulate_bindings : forall 'abifeature.
     -> list natural                                       (* ordered list of inputs to bind next *)
     -> list ((natural * symbol_reference * linkable_item) * maybe (natural * symbol_definition * linkable_item))  (* bindings made so far *)
     -> list ((natural * symbol_reference * linkable_item) * maybe (natural * symbol_definition * linkable_item))  (* all accumulated bindings bindings *)
-let rec accumulate_bindings a linkables all_defs fully_bound to_bind bindings_accum =
+let rec accumulate_bindings_bf a linkables all_defs fully_bound to_bind bindings_accum =
     (* This is like foldl, except that each stage
      * can add stuff to the work list *)
     match to_bind with 
@@ -390,9 +390,9 @@ let rec accumulate_bindings a linkables all_defs fully_bound to_bind bindings_ac
                 else
                     "Including additional linkables "
                     ^ (show (List.mapMaybe (fun i -> List.index linkables (natFromNatural i)) new_l_idx_list))
-                )
+                    )
             in
-            accumulate_bindings
+            accumulate_bindings_bf
                 a
                 linkables
                 all_defs
@@ -400,3 +400,83 @@ let rec accumulate_bindings a linkables all_defs fully_bound to_bind bindings_ac
                 (more_idx ++ new_l_idx_list)
                 (bindings_accum ++ new_bindings)
     end
+
+(* We need a generalised kind of depth-first search in which there are multiple start points. 
+ * Also, we always work one object at a time, not one edge at a time; when we pull in an object,
+ * we resolve *all* the references therein.
+ *)
+val accumulate_bindings_objectwise_df : forall 'abifeature.
+    abi 'abifeature
+    -> linkable_list
+    -> Map.map string (list (natural * symbol_definition * linkable_item))                (* all definitions *)
+
+    -> list ((natural * symbol_reference * linkable_item) * maybe (natural * symbol_definition * linkable_item))  (* bindings made so far *)
+    -> set natural                                        (* inputs fully-bound so far -- these are "black" *)
+    -> list natural                                       (* inputs scheduled for binding -- these include 
+                                                             any "grey" (in-progress) nodes *and*
+                                                             any nodes that we have committed to exploring 
+                                                             (the "start nodes").
+                                                             Because we're depth-first, we prepend our adjacent
+                                                             nodes to this list, making them grey, then we 
+                                                             recurse by taking from the head. We must always
+                                                             filter out the prepended nodes from the existing list, 
+                                                             to ensure we don't reeurse infinitely. *)
+    -> list ((natural * symbol_reference * linkable_item) * maybe (natural * symbol_definition * linkable_item))  (* all accumulated bindings bindings *)
+let rec accumulate_bindings_objectwise_df a linkables all_defs bindings_accum blacks greys =
+    match greys with 
+        [] -> bindings_accum (* termination *)
+        | l_idx :: more_idx ->
+            (* Get the new bindings for this object *)
+            let new_bindings = resolve_undefs_in_one_object
+                linkables
+                all_defs
+                (resolve_one_reference_default a)
+                l_idx
+            in 
+            (* We pull in the whole object at a time ("objectwise"), so by definition,
+             * we have created bindings for everything in this object; it's now black. *)
+            let new_fully_bound = Set.insert l_idx blacks
+            in
+            (* Which of the new bindings are to objects 
+             * not yet fully bound or not yet in the to-bind list? *)
+            let new_bindings_def_idx = list_concat_map (fun (ref, maybe_def_and_idx_and_linkable) -> 
+                match maybe_def_and_idx_and_linkable with 
+                    Just (def_idx, def, def_linkable) -> [def_idx]
+                    | Nothing -> []
+                end
+            ) new_bindings 
+            in
+            let new_bindings_def_idx_set = Set.fromList new_bindings_def_idx
+            in
+            (* this is the "black or grey" set. *)
+            let included_linkables_idx = blacks union (Set.fromList greys)
+            in
+            (* these are the white ones that we're adjacent to *)
+            let new_l_idx = new_bindings_def_idx_set \ included_linkables_idx
+            in
+            let new_l_idx_list = Set_extra.toList new_l_idx
+            in
+            (* What is the new grey-alike list? (This is the list we tail-recurse down.)
+             * It's
+             * - the existing grey-alike list
+             * - with any new (were-white) objects prepended
+             * - ... and filtered to *remove* these from the existing list (avoid duplication).
+             *)
+            let new_grey_list = new_l_idx_list ++ (List.filter (fun x -> not (x IN new_l_idx)) more_idx)
+            in
+            (* whether or not we've not uncovered any new white nodes, we tail-recurse  *)
+            let _ = (if List.null new_l_idx_list then
+                Missing_pervasives.errln ("Fully bound references in  " ^ (show (List.index linkables (natFromNatural l_idx)))
+                    ^ " using only already-included linkables (" 
+                    ^ (show (List.map (fun i -> List.index linkables (natFromNatural i)) (Set_extra.toList included_linkables_idx)))
+                ) else Missing_pervasives.errln ("Including additional linkables "
+            ^ (show (List.mapMaybe (fun i -> List.index linkables (natFromNatural i)) new_l_idx_list))))
+            in
+            accumulate_bindings_objectwise_df
+                a
+                linkables
+                all_defs
+                (bindings_accum ++ new_bindings)
+                (new_fully_bound : set natural)
+                (new_grey_list : list natural)
+   end

@@ -38,13 +38,15 @@ type input_blob =  Reloc of byte_sequence
 (* We remember where the input item came from on the command line,
  * using "coordinates" identifying the index in the higher-up list
  * followed by the index within that item. *)
-type origin_coord = InArchive of (natural * natural * string) (* archive-id, pos-within-archive, archive-name *)
+type origin_coord = InArchive of (natural * natural * string * natural) (* archive-id, pos-within-archive, archive-name, archive-member-count *)
                   | InGroup of (natural * natural)   (* group-id, pos-within-group *)
+                  | InCommandLine of natural
 
 val string_of_origin_coord : origin_coord -> string
 let string_of_origin_coord c = match c with
-    InArchive(aid, aidx, aname) -> "at position " ^ (show aidx) ^ " within archive " ^ aname ^ " (at position " ^ (show aid) ^ ")"
+    InArchive(aid, aidx, aname, _) -> "at position " ^ (show aidx) ^ " within archive " ^ aname ^ " (at position " ^ (show aid) ^ ")"
     | InGroup(gid, gidx) -> "at position " ^ (show gidx) ^ " within group at position " ^ (show gid)
+    | InCommandLine(cid) -> "(command line)"
 end
 
 instance (Show origin_coord)
@@ -71,7 +73,7 @@ let short_string_of_input_item item =
     let (fname, blob, (u, origin)) = item
     in
     match origin with
-        InArchive(aid, aidx, aname) :: _ -> aname ^ "(" ^ fname ^ ")"
+        InArchive(aid, aidx, aname, _) :: _ -> aname ^ "(" ^ fname ^ ")"
         | _ -> fname
     end
 
@@ -203,7 +205,7 @@ let open_file_and_expand toplevel_fname u fpos =
                                             end
                                         end
                                         in
-                                        Just (trimmed_inner_fname, Reloc(seq), (u, [InArchive(fpos, i, toplevel_fname)]))
+                                        Just (trimmed_inner_fname, Reloc(seq), (u, [InArchive(fpos, i, toplevel_fname, length pairs)]))
                                     )) pairs
                                 else let (names, seqs) = unzip not_elf in 
                                     failwith ("archive with unsupported contents (" ^ (show names) ^ ")")
@@ -264,12 +266,12 @@ let rec elaborate_input_helper input_pos inputs acc =
                         Filename(str)
                             -> elaborate_input_helper (input_pos + 1) more_inputs 
                                 (acc ++ (make_input_items_and_options
-                                    (open_file_and_expand str input input_pos) options []))
+                                    (open_file_and_expand str input input_pos) options [InCommandLine(input_pos)]))
                         | Libname(str) 
                             -> elaborate_input_helper (input_pos + 1) more_inputs 
                                 (acc ++ (make_input_items_and_options 
                                     (open_file_and_expand (find_one_library_filename options str) input input_pos)
-                                        options []))
+                                        options [InCommandLine(input_pos)]))
                         end
                 | Group(specs_and_options) ->
                     (* Every member of a group is either a filename or a libname.
@@ -290,7 +292,7 @@ let rec elaborate_input_helper input_pos inputs acc =
                     let to_add
                      = mapMaybei (fun index_in_group -> (fun (file_list, options) -> (
                         Just(
-                            make_input_items_and_options file_list options [InGroup(input_pos, index_in_group)]
+                            make_input_items_and_options file_list options [InGroup(input_pos, index_in_group); InCommandLine(input_pos)]
                         )))) group_with_file_lists
                     in
                     elaborate_input_helper (input_pos + 1) more_inputs (acc ++ (List.concat to_add))
