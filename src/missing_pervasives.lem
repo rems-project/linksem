@@ -23,10 +23,12 @@ type byte
 
 declare ocaml    target_rep type byte = `char`
 declare isabelle target_rep type byte = `Elf_Types_Local.byte`
+declare hol      target_rep type byte = `8` `word`
 val natural_of_byte : byte -> natural
 
 declare ocaml    target_rep function natural_of_byte x = `Nat_big_num.of_int` (`Char.code` x)
 declare isabelle target_rep function natural_of_byte = `unat`
+declare hol      target_rep function natural_of_byte = `w2n`
 
 let compare_byte b1 b2 = compare (natural_of_byte b1) (natural_of_byte b2)
 
@@ -42,6 +44,7 @@ val char_of_byte : byte -> char
 
 declare ocaml    target_rep function char_of_byte x = ``x
 declare isabelle target_rep function char_of_byte = `Elf_Types_Local.char_of_unsigned_char`
+declare hol      target_rep function char_of_byte = `CHR` `o` `w2n`
 
 (* Define how to print a byte in hex *)
 val hex_char_of_nibble : natural -> char
@@ -144,16 +147,19 @@ val unsafe_nat_of_natural : natural -> nat
 
 declare ocaml    target_rep function unsafe_nat_of_natural = `Nat_big_num.to_int`
 declare isabelle target_rep function unsafe_nat_of_natural = `id`
+declare hol      target_rep function unsafe_nat_of_natural = `id`
 
 val unsafe_int_of_natural   : natural -> int
 
 declare ocaml    target_rep function unsafe_int_of_natural = `Nat_big_num.to_int`
 declare isabelle target_rep function unsafe_int_of_natural = `int`
+declare hol      target_rep function unsafe_int_of_natural x = `&` x
 
 val byte_of_natural : natural -> byte
 
 declare ocaml    target_rep function byte_of_natural x = `Char.chr` (`Nat_big_num.to_int` x)
 declare isabelle target_rep function byte_of_natural = `unat`
+declare hol      target_rep function byte_of_natural = `n2w` `:` `num` `->` `8` `word`
 
 declare ocaml    target_rep type ordering = `int`
 
@@ -168,7 +174,28 @@ let natural_ordering left right =
 
 declare ocaml target_rep function natural_ordering = `Nat_big_num.compare`
 
+val merge_by : forall 'a. ('a -> 'a -> ordering) -> list 'a -> list 'a -> list 'a
+let rec merge_by comp xs ys =
+  match (xs, ys) with
+    | ([], ys)      -> ys
+    | (xs, [])     -> xs
+    | (x::xs, y::ys) ->
+      if comp x y = LT then
+        x::(merge_by comp xs (y::ys))
+      else
+        y::(merge_by comp (x::xs) ys)
+  end
+
 val sort_by : forall 'a. ('a -> 'a -> ordering) -> list 'a -> list 'a
+let rec sort_by comp xs =
+  match xs with
+    | [] -> []
+    | [x] -> [x]
+    | xs ->
+      let ls = List.take (List.length xs div 2) xs in
+      let rs = List.drop (List.length xs div 2) xs in
+        merge_by comp (sort_by comp ls) (sort_by comp rs)
+  end
 
 declare ocaml    target_rep function sort_by = `List.sort`
 declare isabelle target_rep function sort_by = `Elf_Types_Local.merge_sort`
@@ -271,12 +298,14 @@ val null_byte : byte
 
 declare ocaml    target_rep function null_byte = `'\000'`
 declare isabelle target_rep function null_byte = `0` `::` `8` `word`
+declare hol      target_rep function null_byte = `0w` `:` `8` `word`
 
 (** [null_char] is the null character. *)
 val null_char : char
 let {ocaml} null_char = char_of_byte null_byte
 
 declare isabelle target_rep function null_char = `String.char_of_nat` `0`
+declare hol      target_rep function null_char = `CHR` `0`
 
 (** [println s] prints [s] to stdout, adding a trailing newline. *)
 (* val println : string -> unit *)
@@ -371,8 +400,9 @@ declare ocaml target_rep function string_of_nat = `string_of_int`
   *)
 val string_suffix : natural -> string -> maybe string
 
-declare ocaml target_rep function string_suffix = `Ml_bindings.string_suffix`
+declare ocaml    target_rep function string_suffix = `Ml_bindings.string_suffix`
 declare isabelle target_rep function string_suffix = `Elf_Types_Local.string_suffix`
+declare hol      target_rep function string_suffix = `ARB` (* XXX: add custom binding *)
   
 val nat_length : forall 'a. list 'a -> nat
 declare ocaml target_rep function nat_length = `List.length`
@@ -428,6 +458,15 @@ let string_index_of e s = string_index_of' e (String.toCharList s) 0
 declare ocaml target_rep function string_index_of = `Ml_bindings.string_index_of`
 
 val index : forall 'a. natural -> list 'a -> maybe 'a
+let rec index m xs =
+  match xs with
+    | []    -> Nothing
+    | x::xs ->
+        if m = 0 then
+          Just x
+        else
+          index (m - 1) xs
+  end
 
 declare ocaml    target_rep function index      = `Ml_bindings.list_index_big_int`
 declare isabelle target_rep function index i xs = `Elf_Types_Local.index` xs i

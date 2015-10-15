@@ -139,10 +139,9 @@ isa-extraction:
 hol-extraction:
 	$(LEM) -hol -only_changed_output \
 	$(LEM_MODEL_TP_THY)
-	mv *. ../auto_generated/isabelle/
-	mv */*.thy ../auto_generated/isabelle/
-	mv */*/*.thy ../auto_generated/isabelle/
-	cd ../auto_generated/isabelle && ./massage_isabelle_imports.sh
+	mv *Script.sml ../auto_generated/hol-kananaskis-10/
+	mv */*Script.sml ../auto_generated/hol-kananaskis-10/
+	mv */*/*Script.sml ../auto_generated/hol-kananaskis-10/
 
 clean:
 	rm -f $(filter-out error.ml,$(LEM_MODEL_ML))

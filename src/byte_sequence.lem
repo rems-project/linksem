@@ -171,7 +171,8 @@ declare ocaml target_rep function string_of_char_list = `Byte_sequence_wrapper.s
 val char_list_of_byte_list : list byte -> list char
 
 declare ocaml    target_rep function char_list_of_byte_list = ``
-declare isabelle target_rep function char_list_of_byte_list xs = `List.map` `undefined` xs
+declare isabelle target_rep function char_list_of_byte_list xs = `List.map` `Elf_Types_Local.char_of_unsigned_char` xs
+declare hol      target_rep function char_list_of_byte_list = `MAP` (`CHR` `o` `w2n`)
 
 (** [string_of_byte_sequence bs0] converts byte sequence [bs0] into a string
   * representation.
