@@ -28,7 +28,7 @@ val _ = new_theory "byte_sequence"
   *)
 val _ = Hol_datatype `
  byte_sequence =
-  Sequence of  word 8 list`;
+  Sequence of (8 word) list`;
 
 
 (** [byte_list_of_byte_sequence bs] obtains the underlying list of bytes of the
