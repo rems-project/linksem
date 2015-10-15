@@ -1,0 +1,122 @@
+
+\subsection{Looseness}
+
+The basic operation of a linker is to concatenate inputs 
+into a new, combined output. 
+This sounds deterministic, and indeed, linking is deterministic in simple cases.
+For example, a link job controlled by a well-defined linker script
+and whose input consists only of simple freestanding object files
+will be deterministic
+unless it contains common symbols, 
+orphan sections, section groups, mergeable sections or other features,
+if the linker is required to insert padding.
+In practice, nearly all link jobs have one or other of these properties.
+
+\paragraph{Output ordering}
+Archive members are ordered in ``the order in which they are seen during the link''.
+This means the order is determined by the linker's algorithm for
+traversing the dependency graph. 
+For efficiency, 
+and to implement the rules for binding to archive members as a side-effect, 
+this is typically neither a depth- nor breadth-first traversal of references,
+but a traversal of \emph{definitions} in linker command-line order
+combined with limited back-tracking 
+(re-scanning from the start of the current archive whenever a new archive
+member is included).
+Of course, alternative implementations are possible, 
+so this ordering may only be specified loosely.
+
+\paragraph{Section padding amount}
+Alignment constraints may be imposed 
+in two ways: when input sections are appended to an output section, 
+each with its own alignment; 
+and when one output section is ended and another begins.
+Both cause padding bytes to be inserted. 
+In the former case, the linker chooses the greatest alignment of all input sections
+that make up the output section.
+In the latter case, the linker inserts padding before beginning a fresh output section.
+In general, extra padding will still work, but 
+we prefer to tighten the spec 
+by requiring that the minimum amount be the only allowable amount.
+Unfortunately, we have seen cases where the \textsf{gold} linker inserts
+superfluous padding, e.g.\ starting at a 16-byte-aligned address
+and adding a whole 16 bytes of padding
+before the next section of 16-byte alignment.
+It is unclear whether this is a bug; 
+we believe so (and have filed GNU binutils bug ).
+
+\paragraph{Section padding contents}
+It is not specified what byte values a linker may generate
+to pad a section.
+In practice, linkers use zeroes for data and either zeroes or nop-sequences for code.
+Nop-sequences have the advantage that control can flow between abutting sections
+even in the presence of padding; 
+it is not uncommon to invoke this behaviour, 
+for example 
+the GNU toolchain's process initialization and finalization logic 
+is split between \textsf{crti.o} and \textsf{crtn.o},
+and control flows across the section boundary.
+Inserting null bytes between these sections would generate a bad link.
+(Fragmenting a single instruction across section boundaries
+is also conceivable, and would be broken by any kind of padding, 
+although we have never seen it.)
+
+% However, sequences containing multi-byte instructions may affect program semantics
+% on ISAs with variable-length instruction encodings, 
+% if the program can be caused to jump into the middle of the sequence,
+% in which case they are no longer a nop.
+% It is important that any such sequence \emph{starting at any byte}
+% has either fall-through or trap semantics
+% according to the host ISA.
+
+\paragraph{Segment padding amount} 
+The GNU linker features an optimisation
+that tries to optimise disk-memory trade-offs.
+It seems reasonable to specify that 
+wasteful padding should not be inserted, but 
+
+
+\paragraph{Common symbol placement}
+Linker scripts control all common symbols at once.
+Some ABIs also define ``large common''.
+Control of the ordering of individual common symbols
+is not provided.
+Link order is the obvious choice, but cannot be assumed: FIXME do we really see this (I think so)?
+
+\paragraph{``Link once'' or section group selection}
+Like common symbols, 
+sections that are members of section groups compose differently
+from ordinary linker inputs:
+there can be only one instance in the output, no matter how many times
+a section group is repeated in the input.
+
+\paragraph{Linker script}
+It is permissible for a linker not to accept control scripts.
+In this case, its behaviour is much more hard-coded,
+and much more subject to arbitrary variation.
+The \textsf{gold} linker does not accept control scripts, 
+but its hard-coded behaviour tries to emulate the default control scripts of the GNU linker
+(which are themselves programmatically generated at build time).
+It is hard to argue that the GNU linker's script is definitive; 
+in practice, a linker not accepting a linker script
+adheres to looser criteria equating to ``any sensible script''.
+In general, the minimum sensible 
+behaviour is to preserve (rather than discard) allocatable sections, 
+preserve and transform ABI-defined metadata to retain consistency with the output data,
+and abstain from inserting arbitrary additional information
+except in ABI-prescribed sections (which should be non-allocatable).  (CHECK for exceptions to either of these.)
+Of course, custom linker scripts can deviate from these sensible defaults,
+so they are not a requirement imposed on all linkers per se.
+
+\paragraph{Orphan section placement}
+Sections not matched by the linker script can be placed anywhere
+having suitable flags.
+
+\paragraph{Section merging}
+``SHF\_MERGE is an optional flag indicating a possible optimization. The link-editor is allowed to perform the optimization, or to ignore the optimization. 
+(from the Oracle guide; in Sys V docs?)
+
+\paragraph{Relaxation}
+Linkers do know a little about instruction encoding, and are allowed
+to use this knowledge to optimise output sections
+for size and/or execution speed.
