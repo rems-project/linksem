@@ -418,10 +418,11 @@ let {ocaml} string_of_aarch64_relocation_type rel_type =
     "Invalid AARCH64 relocation type"
 
 val aarch64_le_reloc : forall 'abifeature. reloc_fn 'abifeature
-let aarch64_le_reloc r = match (string_of_aarch64_relocation_type r) with
-    "AARCH64_NONE" -> (false, (fun img -> (fun rr -> (0, fun s -> fun a -> fun e -> e))))
-    | _ ->            (false, noop_reloc_apply)
-end
+let aarch64_le_reloc r =
+  if r = r_aarch64_none then
+    (false, (fun img -> (fun rr -> (0, fun s -> fun a -> fun e -> e))))
+  else
+    (false, noop_reloc_apply)
     
 (** [abi_aarch64_apply_relocation rel s_val p_val got_val ef] produces an AST
   * of the relocation calculation for relocation type [rel] using [s_val], [p_val],

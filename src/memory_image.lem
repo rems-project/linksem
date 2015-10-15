@@ -506,7 +506,7 @@ val filter_elements : forall 'abifeature. ((string * memory_image_element) -> bo
 let filter_elements pred img = 
     let new_elements = Map.fromList [(n, r) | forall ((n, r) MEM (Set_extra.toList (toSet img.elements))) | 
         let result = pred (n, r) in 
-        if not result then let _ = Missing_pervasives.outln ("Discarding element named " ^ n) in result else result]
+        if not result then (*let _ = Missing_pervasives.outln ("Discarding element named " ^ n) in*) result else result]
     in
     let new_by_range =  Set.filter (fun (maybe_range, tag) -> match maybe_range with
             Nothing -> true
