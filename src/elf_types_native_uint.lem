@@ -56,6 +56,15 @@ declare ocaml    target_rep function unsigned_char_land = `Uint32.logand`
 declare isabelle target_rep function unsigned_char_land = `Elf_Types_Local.unsigned_char_land`
 declare hol      target_rep function unsigned_char_land = `word_and`
 
+(** [unsigned_char_lor uc0 uc1] bitwise OR two unsigned chars, [uc0] and [uc1]
+  * together.
+  *)
+val unsigned_char_lor   : unsigned_char -> unsigned_char -> unsigned_char
+
+declare ocaml    target_rep function unsigned_char_lor = `Uint32.logor`
+declare isabelle target_rep function unsigned_char_lor = `Elf_Types_Local.unsigned_char_lor`
+declare hol      target_rep function unsigned_char_lor = `word_or`
+
 (** [unsigned_char_lshift uc n] performs a left bitshift of [n] places on unsigned
   * char [uc].
   *)
@@ -271,6 +280,12 @@ val elf64_addr_land : elf64_addr -> elf64_addr -> elf64_addr
 declare ocaml    target_rep function elf64_addr_land = `Uint64.logand`
 declare isabelle target_rep function elf64_addr_land = `Elf_Types_Local.uint64_land`
 declare hol      target_rep function elf64_addr_land = `word_and`
+
+val elf64_addr_lor : elf64_addr -> elf64_addr -> elf64_addr
+
+declare ocaml    target_rep function elf64_addr_lor = `Uint64.logor`
+declare isabelle target_rep function elf64_addr_lor = `Elf_Types_Local.uint64_lor`
+declare hol      target_rep function elf64_addr_lor = `word_or`
 
 instance (Eq elf64_addr)
   let (=) = equal_elf64_addr
@@ -894,11 +909,23 @@ declare ocaml    target_rep function elf64_xword_rshift = `Uint64.shift_right`
 declare isabelle target_rep function elf64_xword_rshift = `Elf_Types_Local.uint64_rshift`
 declare hol      target_rep function elf64_xword_rshift = `word_lsr`
 
+val elf64_xword_lshift : elf64_xword -> nat -> elf64_xword
+
+declare ocaml    target_rep function elf64_xword_lshift = `Uint64.shift_left`
+declare isabelle target_rep function elf64_xword_lshift = `Elf_Types_Local.uint64_lshift`
+declare hol      target_rep function elf64_xword_lshift = `word_lsl`
+
 val elf64_xword_land : elf64_xword -> elf64_xword -> elf64_xword
 
 declare ocaml    target_rep function elf64_xword_land = `Uint64.logand`
 declare isabelle target_rep function elf64_xword_land = `Elf_Types_Local.uint64_land`
 declare hol      target_rep function elf64_xword_land = `word_and`
+
+val elf64_xword_lor : elf64_xword -> elf64_xword -> elf64_xword
+
+declare ocaml    target_rep function elf64_xword_lor = `Uint64.logor`
+declare isabelle target_rep function elf64_xword_lor = `Elf_Types_Local.uint64_lor`
+declare hol      target_rep function elf64_xword_lor = `word_or`
 
 val elf64_xword_of_natural : natural -> elf64_xword
 

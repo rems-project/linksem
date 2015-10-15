@@ -94,6 +94,20 @@ let get_string_at index tbl =
       end
   end
 
+val find_string : string -> string_table -> maybe natural
+let find_string s t = 
+    match t with
+        Strings(delim, base) -> Missing_pervasives.find_substring (s ^ toString [delim]) base
+    end
+
+val insert_string : string -> string_table -> (natural * string_table)
+let insert_string s t = 
+    match find_string s t with
+        Nothing -> match t with
+            Strings(delim, base) -> (1 + naturalFromNat (stringLength base), Strings(delim, base ^ (toString [delim]) ^ s))
+            end
+        | Just pos -> (pos, t)
+    end
 instance (Show string_table)
   let show tbl = toString (List.map (fun c -> if c = #'\000' then #'\n' else c) (toCharList (get_base_string tbl)))
 end

@@ -64,6 +64,10 @@ end
 type linkable_list = list linkable_item
 
 type symbol_resolution_oracle = linkable_list -> nat -> string -> list nat
+type binding      = (natural * symbol_reference * linkable_item) * maybe (natural * symbol_definition * linkable_item)
+type binding_list = list binding
+type binding_map  = Map.map string (list (natural * binding))
+
 
 let image_of_linkable_item item = match item with
     (RelocELF(image), _, _) -> image
@@ -480,3 +484,28 @@ let rec accumulate_bindings_objectwise_df a linkables all_defs bindings_accum bl
                 (new_fully_bound : set natural)
                 (new_grey_list : list natural)
    end
+
+(* Rather than recursively expanding the link by searching for definitions of undefs, 
+ * the GNU linker works by recursing/looping along the list of *linkables*, testing whether
+ * any of the defs satisfies a currently-undef'd thing. On adding a new undef'd thing, 
+ * we re-search only from the current archive, not from the beginning (i.e. the 
+ * "def_is_leftmore or def_in_same_archive" logic).
+ *
+ * Why is this not the same as depth-first? One example is if we pull in a new object
+ * which happens to have two undefs: one satisfied by the *first* element in the current archive,
+ * and one satisfied by the last. 
+ * 
+ * In the GNU algorithm, we'll pull in the first archive element immediately afterwards, because
+ * we'll re-traverse the archive and find it's needed.
+ * 
+ * In the depth-first algorithm, it depends entirely on the ordering of the new bindings, i.e.
+ * the symtab ordering of the two undefs. If the later-in-archive def was bound *first*, we'll
+ * recurse down *that* object's dependencies first.
+ * 
+ * So if we sort the new grey list
+ * so that bindings formed in order of *current archive def pos*,
+ * will we get the same behaviour?
+ * We can't really do this, because we have no "current archive".
+ * 
+ * Need to rewrite the algorithm to fold along the list of linkables.
+ *)

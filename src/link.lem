@@ -40,11 +40,6 @@ open import Elf_memory_image
 open import Elf_memory_image_of_elf64_file
 open import Linker_script
 
-(* FIXME: move these to linkable_list.lem *)
-type binding      = (natural * symbol_reference * linkable_item) * maybe (natural * symbol_definition * linkable_item)
-type binding_list = list binding
-type binding_map  = Map.map string binding_list
-
 let section_name isec img = match name_of_elf_section isec img with
     Just x -> x
     | Nothing -> ""
@@ -200,7 +195,7 @@ let decide_fate_of_relocs linkable_idx a options bindings_by_name item img =
                         let b = match maybe_found_bs with
                             Nothing -> failwith "impossible: list of bindings does not include symbol reference (map empty)"
                                 (* FIXME: could this actually be an "undefined symbol" link error perhaps? *)
-                            | Just bs -> match List.filter (fun ((b_ref_idx, b_ref, b_ref_item), b_maybe_def) -> 
+                            | Just bis_and_bs -> match List.filter (fun (b_idx, ((b_ref_idx, b_ref, b_ref_item), b_maybe_def)) -> 
                                 if b_ref_idx = linkable_idx && b_ref = r.ref then 
                                 let _ = Missing_pervasives.outln ("saw ref from linkable idx " ^ (show linkable_idx) 
                                     ^ ", ref sym scn " ^ (show r.ref.ref_sym_scn) ^ ", ref sym idx "^ (show r.ref.ref_sym_idx) 
@@ -214,9 +209,9 @@ let decide_fate_of_relocs linkable_idx a options bindings_by_name item img =
                                     )
                                 )
                                 in true
-                                else false) bs with
+                                else false) bis_and_bs with
                                       [] -> failwith "impossible: list of bindings does not include symbol reference (filtered list empty)"
-                                    | [x] -> x
+                                    | [(bi, b)] -> b
                                     | _ ->  failwith ("impossible: list of bindings binds reference to symbol `"
                                         ^ r.ref.ref_symname ^ "' more than one way (filtered list has >1 element)")
                                  end
@@ -404,7 +399,7 @@ let link script a options linkables =
     in
     let defmap =  all_definitions_by_name linkables
     in
-    let (accumulated_bindings : list ((natural * symbol_reference * linkable_item) * maybe (natural * symbol_definition * linkable_item)))
+    let (accumulated_bindings : list binding)
      = (* accumulate_bindings_bf a linkables defmap {} initial_included_indices []  *)
           accumulate_bindings_objectwise_df a linkables defmap [] {} initial_included_indices
     in
@@ -472,12 +467,12 @@ let link script a options linkables =
      * in linking. For each reloc, we need to decide whether to apply it or not. For those not applied,
      * we include it in a synthesised section that participates in linking. An ABI tap here also 
      * synthesises things like (in the GNU case) the .plt section hanging off the first input object. *)
-    let (bindings_by_name : Map.map string (list binding)) = 
-        List.foldl (fun m -> fun ((ref_idx, ref, ref_item), maybe_def) -> match Map.lookup ref.ref_symname m with
-            Nothing            -> Map.insert ref.ref_symname [((ref_idx, ref, ref_item), maybe_def)] m
-            | Just (b :: more) -> Map.insert ref.ref_symname (((ref_idx, ref, ref_item), maybe_def) :: b :: more) m
+    let (bindings_by_name : Map.map string (list (natural * binding))) = 
+        List.foldl (fun m -> fun (b_idx, ((ref_idx, ref, ref_item), maybe_def)) -> match Map.lookup ref.ref_symname m with
+            Nothing                  -> Map.insert ref.ref_symname [ (b_idx, ((ref_idx, ref, ref_item), maybe_def)) ] m
+            | Just ((bi, b) :: more) -> Map.insert ref.ref_symname  ((b_idx, ((ref_idx, ref, ref_item), maybe_def)) :: (bi, b) :: more) m
             | _ -> failwith "impossible: found empty list in map lacking empties by construction"
-        end) Map.empty accumulated_bindings
+        end) Map.empty (List.mapi (fun i -> fun b -> (naturalFromNat i, b)) accumulated_bindings)
     in
     let input_sections = Missing_pervasives.list_concat_map (fun (idx, linkable) -> expand_sections a options bindings_by_name idx linkable) linkables_not_discarded
     in
@@ -551,6 +546,16 @@ let link script a options linkables =
         compare (toNaturalList is1) (toNaturalList is2)
     ))
     in
-    let output_image = interpret_linker_control_script script a input_sections seen_ordering
+    let get_binding_for_ref = (fun symref -> (fun fname -> 
+        let name_matches = match Map.lookup symref.ref_symname bindings_by_name with Just x -> x | Nothing -> [] end
+        in
+        match List.filter (fun (bi, ((r_idx, r, r_item), m_d)) -> r = symref) name_matches with
+            [(b_idx, b)] -> (b_idx, b)
+            | [] -> failwith "no binding found"
+            | _  -> failwith "ambiguous binding found"
+        end
+    ))
+    in
+    let output_image = interpret_linker_control_script script a input_sections seen_ordering get_binding_for_ref
     in
     output_image

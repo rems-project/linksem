@@ -137,6 +137,11 @@ let string_index_of (c: char) (s : string) = try Some(Nat_big_num.of_int (String
     with Not_found -> None
 ;;
 
+let find_substring (sub: string) (s : string) = 
+    try Some(Nat_big_num.of_int (Str.search_forward (Str.regexp_string sub) s 0))
+    with Not_found -> None
+;;
+
 let rec list_index_big_int index xs =
   match xs with
     | []    -> None

@@ -33,38 +33,166 @@ open import Memory_image
 open import Memory_image_orderings
 
 open import Elf_memory_image
+open import Elf_memory_image_of_elf64_file
 
-val section_name_is_unique : string -> elf64_file -> bool
-let section_name_is_unique name f =
-    match mapMaybe (fun sec -> 
-        if name = sec.elf64_section_name_as_string then Just sec else Nothing
-    ) f.elf64_file_interpreted_sections
-    with
-        [_] -> true
-        | _ -> false
-    end
+(* Things the caller should do first: *)
+(* - create segment annotations *)
+(* - create .dynamic-equivalent metadata (but not the section) *)
+(* - concretise symbolic elements? actually they pass a function to do this. *)
 
-val create_unique_name_for_section_from_index : natural -> elf64_interpreted_section -> elf64_file -> string
-let create_unique_name_for_section_from_index idx s f =
-    let secname = s.elf64_section_name_as_string
-    in if section_name_is_unique secname f then secname else gensym secname
+type make_concrete_fn = Memory_image.element -> Memory_image.element
 
-val create_unique_name_for_common_symbol_from_linkable_name : string -> elf64_symbol_table_entry -> string -> elf64_file -> string
-let create_unique_name_for_common_symbol_from_linkable_name fname syment symname f = 
-    (* FIXME: uniqueness? I suppose file names are unique. How to avoid overlapping with 
-     * section names? *)
-    fname ^ "_" ^ symname
+(* Things we do, at the caller's direction:*)
+(* - create SHT *)
+(* - create symtabs, strtabs, symbol hash tables (the ABI helps us) *)
+(* - create shstrtab (if we're creating a SHT) *)
+(* - actually create the dynamic section (and its PHDR) *)
+(* - create any other PHDRs (the ABI tells us, mostly) and PT_PHDR (the user tells us) *)
+
+val elf64_file_of_elf_memory_image : forall 'abifeature. abi 'abifeature -> make_concrete_fn -> string -> elf_memory_image -> elf64_file
+let elf64_file_of_elf_memory_image a make_concrete fname img = 
+    (* Generate an ELF header, (optionally) SHT and (optionally) PHT, 
+     * based on metadata in the image.
+     * 
+     * How do we decide what kind of ELF file to generate?     see whether we have segment annotations?
+                        what architecture/osabi to give?       the ABI tells us
+                        
+     *)
+    let (section_tags, section_ranges) = elf_memory_image_section_ranges img
+    in
+    let basic_shstrtab = List.foldl (fun table -> fun tag -> 
+        match tag with FileFeature(ElfSection(idx, isec)) ->
+            String_table.insert isec.elf64_section_name_as_string table
+        end
+    ) String_table.empty section_tags
+    in
+    List.foldl (fun table -> fun str -> 
+        String_table.insert str table
+    ) basic_shstrtab [".shstrtab", ".symtab", ".strtab"]
+    in
+        (* what do we generate? 
+         * .eh_frame? no, *should* come from the script
+         * .got, .got.plt? HMM. These should have been created,
+         * as ABI features, by the time we get here.
+         * .comment -- maybe
+         * .shstrtab -- YES
+         * .symtab -- YES
+         * .strtab -- YES.
+         * 
+         * Do we generate them as elements in the image, or just
+         * use them to write the ELF file? The latter.
+         *)
+    let symtab = 
+        (* Get all the symbols *)
+        null_elf64_symbol_table_entry :: [
+            
+        ]
+    in
+    let strtab = String_table.
+    in
+    let element_section_tag_pairs_sorted_by_address = 
+    in
+    let phoff = 64
+    in
+    let phdrs = a.make_phdrs img
+    in
+    let phnum = length phdrs
+    in
+    (* How does the GNU BFD output a statically linked executable? 
+     * First the ELF header,
+     * then program headers,
+     * then sections in order of address:
+     *      .interp,                 these are all allocatable sections! with addresses!
+     * then .note.ABI-tag, 
+     * then .note.gnu.build-id,
+     * then .gnu.hash,
+     * then .dynsym,
+     * then .dynstr,
+     * then .gnu.version,
+     * then .gnu.version_r,
+     * then ...
+     * 
+     * ... and so on ...
+     * 
+     * then .gnu.debuglink (the only non-allocatable section)
+     * then .shstrtab, then SHT. 
+     * 
+     * So how can we calculate the offset of the SHT?  We have to place
+     * all the other sections first. 
+     *)
+    let filesz = fun el -> fun isec -> 
+        (* How can we distinguish progbits from nobits? 
+         * A section can be nobits if its representation
+         * is all zero or don't-care. But in practice we
+         * don't make a section nobits unless its name is .bss. *)
+        if (* is_all_zeroes_or_dont_care *) true &&
+            isec.elf64_section_name_as_string = ".bss" then 0
+            else match el.maybe_len with
+                Nothing -> failwith "error: concrete section element has no length"
+                | Just len -> len
+            end
+    in
+    let (last_off, section_file_offsets) = List.foldl (fun ((off, offs_so_far), (el, isec)) -> 
+        (* where can we place this in the file?
+         * it's the next offset that's congruent to the section addr, 
+         * modulo the biggest page size. *)
+        let start_off =  match el.maybe_addr with
+            Just a -> let this_remainder = off mod a.maxpagesize
+                in
+                let target_remainder = a mod a.maxpagesize
+                in
+                off + (if target_remainder >= this_remainder then (target_remainder - this_remainder)
+                       else (target_remainder + a.maxpagesize + this_remainder))
+            | Nothing -> 
+                (* It has no assigned address. That's okay if it's not allocatable. 
+                 * If it's not allocatable, it has no alignment. *)
+                if flag_is_set shf_alloc isec.elf64_section_flags then failwith "allocatable seciton with no address"
+                else pos
+        in
+        let end_off = start_off + filesz el isec
+        in 
+        (end_off, offs_so_far ++ [start_off])
+    ) (phoff + (phnum * 56)) element_section_tag_pairs_sorted_by_address
+    in
+    let last_off = (match index ((length section_file_offsets) - 1) section_file_offsets with
+        Just offs -> offs
+        | Nothing -> failwith "impossible: not enough section offsets assigned"
+    end) + (match (index ((length section_file_offsets) - 1) section_tags).maybe_length with
+        Just len -> len
+        | Nothing -> failwith "error: last section has no length"
+    )
+    in
+    let shstrndx = 1 + length section_tags
+    in
+    let shoff = align_up last_off 64
+    in
+    <| elf64_file_header               = a.make_elf_header entry shoff phoff phnum shnum shstrndx
+     ; elf64_file_program_header_table = phdrs
+     ; elf64_file_section_header_table = null_elf64_section_header :: (mapMaybei (fun idx -> fun (el, isec) -> 
+          <| elf32_sh_name      = 
+           ; elf32_sh_type      =
+           ; elf32_sh_flags     =
+           ; elf32_sh_addr      =
+           ; elf32_sh_offset    = index idx section_file_offsets
+           ; elf32_sh_size      =  el isec
+           ; elf32_sh_link      =
+           ; elf32_sh_info      =
+           ; elf32_sh_addralign =
+           ; elf32_sh_entsize   =
+           |>
+     )) section_tags
+     ; elf64_file_interpreted_segments = [
+     
+     
+        ]
+     ; elf64_file_interpreted_sections = [
+     
+        ]
+     ; elf64_file_bits_and_bobs        = []
+     |>
+     
+     
     
-val get_unique_name_for_common_symbol_from_linkable_name : string -> elf64_symbol_table_entry -> string -> string
-let get_unique_name_for_common_symbol_from_linkable_name fname syment symname = 
-    (* FIXME: uniqueness? I suppose file names are unique. How to avoid overlapping with 
-     * section names? *)
-    fname ^ "_" ^ symname
-
-val elf_memory_image_of_elf64_file : forall 'abifeature. abi 'abifeature -> string -> elf64_file -> elf_memory_image
-let elf_memory_image_of_elf64_file a fname f = 
-    (* Do we have program headers? This decides whether we choose a 
-     * sectionwise or segmentwise view. *)
     match f.elf64_file_program_header_table with
         [] ->   let extracted_symbols =  (extract_definitions_from_symtab_of_type sht_symtab f)
                 in 
@@ -72,7 +200,7 @@ let elf_memory_image_of_elf64_file a fname f =
                     (* In principle, we can have unnamed sections. But 
                      * don't add the dummy initial SHT entry. *)
                     if isec = null_elf64_interpreted_section then Nothing
-                    else Just (create_unique_name_for_section_from_index i isec f, <|
+                    else Just (unique_name_for_section_from_index i isec f, <|
                         startpos = Nothing
                       ; length = Just isec.elf64_section_size
                       ; contents = byte_pattern_of_byte_sequence isec.elf64_section_body
@@ -86,7 +214,7 @@ let elf_memory_image_of_elf64_file a fname f =
                 let common_symbol_names_and_elements = mapMaybei (fun i -> (fun isym -> 
                     let symlen = natural_of_elf64_xword isym.def_syment.elf64_st_size
                     in
-                    Just (get_unique_name_for_common_symbol_from_linkable_name fname isym.def_syment isym.def_symname, <|
+                    Just (unique_name_for_common_symbol_from_linkable_name fname isym.def_syment isym.def_symname f, <|
                         startpos = Nothing
                       ; length = Just symlen
                       ; contents = Missing_pervasives.replicate symlen Nothing
@@ -116,8 +244,7 @@ let elf_memory_image_of_elf64_file a fname f =
                             else if section_num = shn_common then 
                                 (* Each common symbol becomes its own elemenet (\approx section).
                                  * We label *that element* with a (coextensive) symbol definition. *)
-                                 let element_name = get_unique_name_for_common_symbol_from_linkable_name 
-                                    fname x.def_syment x.def_symname
+                                 let element_name = unique_name_for_common_symbol_from_linkable_name fname x.def_syment x.def_symname f
                                  in
                                  Just(element_name, (0, natural_of_elf64_xword x.def_syment.elf64_st_size))
                             else 
@@ -465,28 +592,3 @@ let elf_memory_image_unique_symbol_with_name name img =
     end
 *)
 
-
-val name_of_elf_section : elf64_interpreted_section -> elf_memory_image -> maybe string
-let name_of_elf_section sec img = 
-   (* let shstrndx = natural_of_elf64_half ((elf_memory_image_header img).elf64_shstrndx)
-   in
-   match elf_memory_image_section_by_index shstrndx img with
-        Nothing -> Nothing
-        | Just shstrtab -> name_of_elf_interpreted_section sec shstrtab
-  end *)
-   Just sec.elf64_section_name_as_string
-
-val name_of_elf_element : elf_file_feature -> elf_memory_image -> maybe string
-let name_of_elf_element feature img = 
-    match feature with
-        ElfSection(_, sec) -> name_of_elf_section sec img
-        | _ -> Nothing (* FIXME *) 
-    end
-
-val get_unique_name_for_section_from_index : natural -> elf64_interpreted_section -> elf_memory_image -> string
-let get_unique_name_for_section_from_index idx s img =
-    (* Don't call gensym just to retrieve the name *)
-    match elf_memory_image_element_coextensive_with_section idx img with
-        Just n -> n
-        | Nothing -> failwith "section does not have an element name"
-    end

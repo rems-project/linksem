@@ -25,6 +25,7 @@ open import Abi_power64
 open import Abi_power64_relocation
 
 open import Abi_utilities
+open import Elf_types_native_uint
 
 (** Relocation operators and their validity on a given platform *)
 
@@ -112,10 +113,41 @@ instance (Ord any_abi_feature)
     let (>=) = fun f1 -> (fun f2 -> Set.member (anyAbiFeatureCompare f1 f2) {GT; EQ})
 end
 
-(* null_abi captures ABI details common to all ELF-based, System V-based systems. *)
+let make_elf64_header data osabi abiv ma t entry shoff phoff phnum shnum shstrndx =
+      <| elf64_ident    = [elf_mn_mag0; elf_mn_mag1; elf_mn_mag2; elf_mn_mag3; 
+                           unsigned_char_of_natural elf_class_64; 
+                           unsigned_char_of_natural data;
+                           unsigned_char_of_natural elf_ev_current;
+                           unsigned_char_of_natural osabi;
+                           unsigned_char_of_natural abiv;
+                           unsigned_char_of_natural 0;
+                           unsigned_char_of_natural 0;
+                           unsigned_char_of_natural 0;
+                           unsigned_char_of_natural 0;
+                           unsigned_char_of_natural 0;
+                           unsigned_char_of_natural 0;
+                           unsigned_char_of_natural 0]
+       ; elf64_type     = elf64_half_of_natural t
+       ; elf64_machine  = elf64_half_of_natural ma
+       ; elf64_version  = elf64_word_of_natural elf_ev_current
+       ; elf64_entry    = elf64_addr_of_natural 0
+       ; elf64_phoff    = elf64_off_of_natural phoff
+       ; elf64_shoff    = elf64_off_of_natural shoff
+       ; elf64_flags    = elf64_word_of_natural 0
+       ; elf64_ehsize   = elf64_half_of_natural 64
+       ; elf64_phentsize= elf64_half_of_natural 56
+       ; elf64_phnum    = elf64_half_of_natural phnum
+       ; elf64_shentsize= elf64_half_of_natural 64
+       ; elf64_shnum    = elf64_half_of_natural shnum
+       ; elf64_shstrndx = elf64_half_of_natural shstrndx
+       |>
+
+(* null_abi captures ABI details common to all ELF-based, System V-based systems.
+ * HACK: for now, specialise to 64-bit ABIs. *)
 val null_abi : abi any_abi_feature 
 let (null_abi : abi any_abi_feature) = <|
       is_valid_elf_header = is_valid_elf64_header
+    ; make_elf_header = make_elf64_header elf_data_2lsb elf_osabi_none 0 elf_ma_none
     ; reloc = noop_reloc
     ; section_is_special = elf_section_is_special
     ; section_is_large = (fun s -> (fun f -> false))
@@ -128,6 +160,7 @@ let (null_abi : abi any_abi_feature) = <|
 val sysv_amd64_std_abi : abi any_abi_feature
 let sysv_amd64_std_abi = 
    <| is_valid_elf_header = header_is_amd64
+    ; make_elf_header = make_elf64_header elf_data_2lsb elf_osabi_none 0 elf_ma_x86_64
     ; reloc = amd64_reloc
     ; section_is_special = section_is_special
     ; section_is_large = (fun s -> (fun f -> flag_is_set shf_x86_64_large s.elf64_section_flags))
@@ -140,6 +173,7 @@ let sysv_amd64_std_abi =
 val sysv_aarch64_le_std_abi : abi any_abi_feature
 let sysv_aarch64_le_std_abi = 
    <| is_valid_elf_header = header_is_aarch64_le
+    ; make_elf_header = make_elf64_header elf_data_2lsb elf_osabi_none 0 elf_ma_aarch64
     ; reloc = aarch64_le_reloc
     ; section_is_special = section_is_special
     ; section_is_large = (fun _ -> (fun _ -> false))

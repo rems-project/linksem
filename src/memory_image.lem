@@ -340,6 +340,8 @@ let noop_reloc k = (false, noop_reloc_apply)
 
 type abi 'abifeature = (* forall 'abifeature. *)
    <| is_valid_elf_header : elf64_header -> bool (* doesn't this generalise outrageously? is_valid_elf_file? *)
+    ; make_elf_header    : natural -> natural -> natural -> natural -> natural -> natural -> natural -> elf64_header
+                           (* t entry shoff phoff phnum shnum shstrndx *)
     ; reloc              : reloc_fn 'abifeature
     ; section_is_special : elf64_interpreted_section -> annotated_memory_image 'abifeature -> bool
     ; section_is_large   : elf64_interpreted_section -> annotated_memory_image 'abifeature -> bool

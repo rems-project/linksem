@@ -390,7 +390,11 @@ assert {ocaml} split_string_null : (let afterSplit = split_string_on_char (toStr
     let _ = errln ("split string is " ^ (show afterSplit))
     in
     afterSplit = [""; "s"; "t"])
-    
+
+(* [find_substring sub s] returns the index at which *)
+val find_substring : string -> string -> maybe natural
+declare ocaml target_rep function find_substring = `Ml_bindings.find_substring`
+
 (** [string_of_nat m] produces a string representation of natural number [m]. *)
 val string_of_nat : nat -> string
 declare ocaml target_rep function string_of_nat = `string_of_int`

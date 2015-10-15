@@ -8,6 +8,7 @@ open import Sorting
 open import Num
 open import Maybe
 open import Assert_extra
+open import Set
 import Map
 
 open import Byte_sequence
@@ -23,10 +24,12 @@ open import Elf_interpreted_section
 open import Abis
 open import Command_line
 open import Input_list
+open import Linkable_list
 open import Memory_image
 open import Elf_memory_image (* HMM -- ideally we'd be ELF-agnostic in this file. 
      But Abstract_abi is now merged into Elf_memory_image, so never mind. *)
 open import Elf_memory_image_of_elf64_file
+open import Elf_relocation
 open import Elf_symbol_table
 open import Elf_section_header_table
 open import Elf_types_native_uint
@@ -188,7 +191,7 @@ let default_symbol_spec = (0, unsigned_char_of_natural 0, unsigned_char_of_natur
 (* These Lem functions replicate linker script functions or builtin behaviours. *)
 
 val only_sections : input_selector 
-let only_sections inputs = mapMaybe
+let only_sections inputs = List.mapMaybe
     (fun i -> match i with 
       | InputSection(_) -> Just(i)
       | _ -> Nothing
@@ -1015,7 +1018,7 @@ let rec assign_inputs_to_output_sections acc inputs cur_output_sec last_input_se
                             end
                             in
                             (* Search input memory images for matching sections. *)
-                            let (matchList : list input_section_rec) = mapMaybe (fun inp -> 
+                            let (matchList : list input_section_rec) = List.mapMaybe (fun inp -> 
                                 match inp with
                                     InputSection(x) -> Just x
                                    | _ -> Nothing
@@ -1064,11 +1067,12 @@ val build_image :
     elf_memory_image ->          (* accumulator *)
     natural ->                   (* location counter *)
     allocated_sections_map ->  (* outputs constructed earlier *)
+    (symbol_reference -> string -> (natural * binding)) -> (* get_binding_for_ref function *)
     linker_control_script -> 
     (elf_memory_image * allocated_sections_map)            (* accumulated result *)
-let rec build_image acc pos outputs_by_name script = 
-     let (add_output_section : (natural * elf_memory_image) -> output_section_spec -> (natural * elf_memory_image * natural * output_section_spec))
-     = fun (pos, acc_img) ->
+let rec build_image acc pos outputs_by_name get_binding_for_ref script = 
+     let (add_output_section : (natural * natural * elf_memory_image) -> output_section_spec -> (natural * elf_memory_image * natural * output_section_spec))
+     = fun (scn_idx, pos, acc_img) ->
         (fun (guard, addr, secname, comp) -> 
             let unaligned_start_addr = match addr with 
                 Just a -> a 
@@ -1089,15 +1093,15 @@ let rec build_image acc pos outputs_by_name script =
                 )
             )
             in
-            let (concatenated_content, final_addr) = List.foldl (fun (accum_pat, addr) -> (fun (comp_el, comp_addr) ->
+            let (concatenated_content, final_addr, new_range_tag_pairs) = List.foldl (fun (accum_pat, addr, accum_meta) -> (fun (comp_el, comp_addr) ->
                 let make_line = fun namestr -> (fun addrstr -> (fun szstr -> (fun rhs -> (
                     (space_padded_and_maybe_newline 16 (" " ^ namestr)) ^ 
                     ("0x" ^ (left_zero_padded_to 16 addrstr)) ^ " " ^ 
                     (left_space_padded_to 10 ("0x" ^ szstr)) ^ " " ^ rhs
                 ))))
                 in
-                let (sz, comp_el_pat) = match comp_el with
-                    IncludeInputSection(retainpolicy, fname, shndx, isec, img) -> 
+                let (sz, comp_el_pat, this_el_meta) = match comp_el with
+                    | IncludeInputSection(retainpolicy, fname, shndx, isec, img) -> 
                         (* We want to get the input section as a byte pattern *)
                         let maybe_secname = elf_memory_image_element_coextensive_with_section shndx img 
                         in
@@ -1109,38 +1113,44 @@ let rec build_image acc pos outputs_by_name script =
                                         (hex_string_of_natural comp_addr) (hex_string_of_natural isec.elf64_section_size)
                                         fname)
                                     in
+                                    let ranges_and_tags = Set_extra.toList img.by_range
+                                    in
+                                    let included_defs = [
+                                        def
+                                    |   forall ((maybeRange, def) MEM (elf_memory_image_defined_symbols_and_ranges img))
+                                    |   (* is it within the section we're outputting? *)
+                                        let sym_shndx = natural_of_elf64_half def.def_syment.elf64_st_shndx
+                                        in
+                                        (* filter out ones that don't overlap *)
+                                        match maybeRange with 
+                                            Just(elKey, (start, len)) -> 
+                                                (* img and shndx came as a unit, so they're definitely 
+                                                 * talking about the same file *)
+                                                shndx = sym_shndx
+                                            | Nothing -> 
+                                                (* ABS symbols have this property *)
+                                                if sym_shndx <> shn_abs then false
+                                                else (
+                                                    let abs_address = natural_of_elf64_addr def.def_syment.elf64_st_value
+                                                    in 
+                                                    (* check it against our section *)
+                                                    let section_end_addr = addr + isec.elf64_section_size
+                                                    in
+                                                    abs_address >= addr
+                                                        && abs_address < section_end_addr
+                                                )
+                                        end
+                                    ]
+                                    in
+                                    let included_global_defs = [
+                                        def | forall (def MEM included_defs) | 
+                                            (* filter out locals *)
+                                            get_symbol_binding def.def_syment.elf64_st_info <> stb_local
+                                    ]
+                                    in
+                                    (* What symbol defs are being included? *)
                                     (* For each global symbol defined in the section, output a line. *)
                                     let _ = Missing_pervasives.outs (List.foldl (^) "" (
-                                        let included_global_defs = [
-                                            def
-                                        |   forall ((maybeRange, def) MEM (elf_memory_image_defined_symbols_and_ranges img))
-                                        |   (* is it within the section we're outputting? *)
-                                            let sym_shndx = natural_of_elf64_half def.def_syment.elf64_st_shndx
-                                            in
-                                            (* filter out locals *)
-                                            (get_symbol_binding def.def_syment.elf64_st_info) <> stb_local
-                                            &&
-                                            (* filter out ones that don't overlap *)
-                                            match maybeRange with 
-                                                Just(elKey, (start, len)) -> 
-                                                    (* img and shndx came as a unit, so they're definitely 
-                                                     * talking about the same file *)
-                                                    shndx = sym_shndx
-                                                | Nothing -> 
-                                                    (* ABS symbols have this property *)
-                                                    if sym_shndx <> shn_abs then false
-                                                    else (
-                                                        let abs_address = natural_of_elf64_addr def.def_syment.elf64_st_value
-                                                        in 
-                                                        (* check it against our section *)
-                                                        let section_end_addr = addr + isec.elf64_section_size
-                                                        in
-                                                        abs_address >= addr
-                                                            && abs_address < section_end_addr
-                                                    )
-                                            end
-                                        ]
-                                        in
                                         List.map (fun def -> (make_line ""
                                                 (hex_string_of_natural (comp_addr + (natural_of_elf64_addr def.def_syment.elf64_st_value)))
                                                 (hex_string_of_natural (natural_of_elf64_xword def.def_syment.elf64_st_size))
@@ -1148,20 +1158,133 @@ let rec build_image acc pos outputs_by_name script =
                                         ) included_global_defs
                                     ))
                                     in
-                                    (isec.elf64_section_size, el.contents)
-                                | _     -> failwith "impossible: no such element"
-                            end
-                        end
+                                    
+                                    
+                                    
+                                    let (new_ranges_and_tags : set ((Maybe.maybe Memory_image.element_range) *
+      (Memory_image.range_tag Abis.any_abi_feature))) = Set.mapMaybe (fun (maybe_range, tag) -> 
+                                        (* How do we update existing metadata? In general,
+                                         * we get a new range *)
+                                        let new_range = match maybe_range with
+                                            Nothing -> Nothing
+                                            | Just(el_name, (start, len)) -> 
+                                                Just(get_unique_name_for_section_from_index shndx isec img, 
+                                                        (start + (addr - start_addr),
+                                                        len))
+                                        end
+                                        in
+                                        match tag with
+                                            (* If it's a section, we discard it.
+                                             * We will add a new section record at the end. (FIXME)  *)
+                                            | FileFeature(ElfSection(idx, isec)) -> Nothing
+                                            (* If it's a symbol def, we propagate it.
+                                             * There's no need to update the syment,
+                                             * even its section idx, because the 
+                                             * element name and range cover that. 
+                                             * FIXME: this is a bit nasty. Perhaps we 
+                                             * should replace syment with a minimal structure
+                                             * that avoids duplication. Same for isecs. *)
+                                            | SymbolDef(def) -> Just(new_range, SymbolDef(def))
+                                            (* If it's a symbol ref with no reloc site, we discard it? *)
+                                            | SymbolRef(r) -> 
+                                                let (bi, b) = get_binding_for_ref r.ref fname 
+                                                in
+                                                let ((ref_idx, ref, ref_linkable), maybe_def) = b
+                                                in
+                                                match r.maybe_reloc with
+                                                    Nothing -> Nothing
+                                                    (* If it's a reloc site, we need to somehow point it
+                                                     * at the *definition* that it was bound to. YES. 
+                                                     * reloc_sites are 
+                                                     
+                                                     type reloc_site = <|
+                                                      ref_relent  : elf64_relocation_a 
+                                                    ; ref_rel_scn : natural  --the relocation section idx
+                                                    ; ref_rel_idx : natural  --the index of the relocation rec
+                                                    ; ref_src_scn : natural  --the section *from which* the reference logically comes
+                                                    |>
+                                                    
+                                                    type elfNN_relocation_a =
+                                                      <| elfNN_ra_offset : elf32_addr  --Address at which to relocate
+                                                       ; elfNN_ra_info   : elf32_word  --Symbol table index/type of relocation to apply
+                                                       ; elfNN_ra_addend : elf32_sword --Addend used to compute value to be stored
+                                                       |>
+                                                    
+                                                     * ... of which ref_src_scn, ref_rel_idx, 
+                                                     * ref_rel_scn and elfNN_ra_offset can be ignored.
+                                                     * 
+                                                     * What *is* important is that we somehow point at
+                                                     * the symbol definition (or perhaps *un*definition,
+                                                     * if we're generating a shared library) that it
+                                                     * refers to. 
+                                                     *
+                                                     * For that, we update ra_info use the 1 + binding_idx,
+                                                     * i.e. consider that there is a fresh symbol table
+                                                     * and that it has a distinct entry for each binding.
+                                                     * 
+                                                     * FIXME: we also need to account for 
+                                                     * reloc decisions -- MakePIC etc.
+                                                     *)
+                                                    | Just(rs) -> Just(new_range, SymbolRef(
+                                                        <| ref =   <|
+                                                                      ref_symname = match maybe_def with Just (_, def, _) -> def.def_symname | Nothing -> "" end
+                                                                    ; ref_syment  = match maybe_def with Just (_, def, _) -> def.def_syment  | Nothing -> 
+                                                                          (* We need an "absolute zero" symbol *)
+                                                                          <| elf64_st_name   = elf64_word_of_natural 0
+                                                                           ; elf64_st_info   = unsigned_char_of_natural 0
+                                                                           ; elf64_st_other  = unsigned_char_of_natural 0
+                                                                           ; elf64_st_shndx  = elf64_half_of_natural shn_abs
+                                                                           ; elf64_st_value  = elf64_addr_of_natural 0
+                                                                           ; elf64_st_size   = elf64_xword_of_natural 0
+                                                                           |> end
+                                                                    ; ref_sym_scn = 0
+                                                                    ; ref_sym_idx = match maybe_def with Just _ -> 1+bi | Nothing -> 0 end
+                                                                    |>
+                                                         ; maybe_reloc = Just <|
+                                                              ref_relent  = <| 
+                                                                 elf64_ra_offset = elf64_addr_of_natural 0 (* ignored *)
+                                                               ; elf64_ra_info   = (elf64_xword_lor 
+                                                                    (elf64_xword_of_natural (get_elf64_relocation_a_type rs.ref_relent))
+                                                                    (elf64_xword_lshift
+                                                                        (elf64_xword_of_natural (1+bi)) 
+                                                                        32
+                                                                    )
+                                                                  )
+                                                               ; elf64_ra_addend = rs.ref_relent.elf64_ra_addend
+                                                              |>
+                                                            ; ref_rel_scn = 0
+                                                            ; ref_rel_idx = 0
+                                                            ; ref_src_scn = 0
+                                                            |>
+                                                         |>
+                                                    ))
+                                                end (* match maybe_reloc *)
+                                            end (* match tag *) 
+                                        ) (Set.fromList ranges_and_tags) (* end mapMaybe fn *)
+                                    in
+                                    
+                                    
+                                    
+                                    
+                                    
+                                    
+                                    
+                                    (isec.elf64_section_size, el.contents, (* new_ranges_and_tags *) {})
+                         | _     -> failwith "impossible: no such element"
+                       end (* match Map.lookup idstr img.elements *)
+                    end (* match maybe_secname *)
                     | IncludeCommonSymbol(retain_pol, fname, def, img) -> 
                         (* We want to get the common symbol as a byte pattern *)
                         let sz = natural_of_elf64_xword def.def_syment.elf64_st_size
                         in
+                        let elName = get_unique_name_for_common_symbol_from_linkable_name fname def.def_syment def.def_symname
+                        in 
                         let content = Missing_pervasives.replicate sz (Just(byte_of_natural 0))
                         in 
                         let _ = Missing_pervasives.outln (make_line "COMMON" (hex_string_of_natural comp_addr)
                              (hex_string_of_natural sz) fname)
                         in
-                        (sz, content)
+                        (sz, content, {(Just(elName, (0, sz)), SymbolDef(def))})
                     | Hole(f) -> 
                         let next_addr = f addr outputs_by_name
                         in
@@ -1173,15 +1296,33 @@ let rec build_image acc pos outputs_by_name script =
                              (hex_string_of_natural n)
                              "")
                         in
-                        (next_addr - addr, content) 
+                        (next_addr - addr, content, {}) 
                     | ProvideSymbol(pol, name, spec) -> 
                         let _ = Missing_pervasives.outln (make_line "PROVIDE(BLAH)" "BLAH" "BLAH" "")
                         in 
-                        (0, [])
+                        (0, [], {(Just(secname, ((pos - start_addr), 0)), SymbolDef(<|
+                                def_symname = name
+                                ; def_syment = <| (* FIXME *)
+                                     elf64_st_name  = elf64_word_of_natural 0
+                                   ; elf64_st_info  = unsigned_char_of_natural 0(* unsigned_char  --Specifies the symbol's type and binding attributes *)
+                                   ; elf64_st_other = unsigned_char_of_natural 0(* unsigned_char  --Currently specifies the symbol's visibility *)
+                                   ; elf64_st_shndx = elf64_half_of_natural 0 (* elf64_half     -- Section header index symbol is defined with respect to *)
+                                   ; elf64_st_value = elf64_addr_of_natural 0 (* elf64_addr     -- Gives the value of the associated symbol *)
+                                   ; elf64_st_size  = elf64_xword_of_natural 0 (* : elf64_xword    -- Size of the associated symbol *)
+                                   |>
+                                ; def_sym_scn = 0
+                                ; def_sym_idx = 0
+                            |>))})
                 end
                 in
-                (append_to_byte_pattern_at_offset (comp_addr - start_addr) accum_pat comp_el_pat, comp_addr + sz)
-            )) ([], start_addr) (zip comp comp_addrs)
+                let new_content = append_to_byte_pattern_at_offset (comp_addr - start_addr) accum_pat comp_el_pat
+                in
+                let new_addr = comp_addr + sz
+                in
+                let new_meta = accum_meta union this_el_meta
+                in
+                (new_content, new_addr, new_meta)
+            )) ([], start_addr, {}) (zip comp comp_addrs)
             in
             let concat_sec_el = <|
                 Memory_image.startpos = Just(start_addr)
@@ -1192,11 +1333,13 @@ let rec build_image acc pos outputs_by_name script =
             let _ = Missing_pervasives.outln "" in
             (* Make a new element in the image.
              * FIXME: also transfer the metadata from input sections to output sections. *)
+            let new_by_range = List.foldl (fun m -> fun (maybe_range, tag) -> Set.insert (maybe_range, tag) m) acc_img.by_range (Set_extra.toList new_range_tag_pairs)
+            in
             (start_addr + size, <|
                 elements   = Map.insert secname concat_sec_el acc_img.elements
                 (* tag it as a section, and transfer any tags *)
-             ;  by_range   = acc_img.by_range (* FIXME *)
-             ;  by_tag     = acc_img.by_tag   (* FIXME *)
+             ;  by_range   = new_by_range
+             ;  by_tag     = by_tag_from_by_range new_by_range
              |>,
                 size,
                 (guard, Just(start_addr), secname, comp)
@@ -1268,14 +1411,17 @@ let rec build_image acc pos outputs_by_name script =
                         | Nothing -> failwith "internal error: output section not found"
                     end
                     in
-                    let (new_pos, new_acc, sec_sz, replacement_output_sec) = add_output_section (pos, acc) found
+                    let next_free_section_idx = 1 + naturalFromNat (Map.size outputs_by_name)
+                    in
+                    let (new_pos, new_acc, sec_sz, replacement_output_sec)
+                     = add_output_section (next_free_section_idx, pos, acc) found
                     in
                     (new_acc, new_pos, Map.insert name replacement_output_sec (Map.delete name outputs_by_name))
                 | DiscardInput(selector) -> do_nothing
                 | InputQuery(retainpol, sortpol, selector) -> do_nothing
             end
             in
-            build_image new_acc new_pos new_outputs_by_name more_elements
+            build_image new_acc new_pos new_outputs_by_name get_binding_for_ref more_elements
     end
 
 let rec consecutive_commons rev_acc l = 
@@ -1291,8 +1437,9 @@ val interpret_linker_control_script :
     -> abi any_abi_feature
     -> list input_spec
     -> (input_spec -> input_spec -> ordering)
+    -> (symbol_reference -> string -> (natural * binding))  (* get_binding_for_ref *)
     -> elf_memory_image
-let interpret_linker_control_script script a inputs seen_ordering = 
+let interpret_linker_control_script script a inputs seen_ordering get_binding_for_ref = 
     let (discards, outputs) = assign_inputs_to_output_sections ([], []) inputs Nothing Nothing seen_ordering script
     in
     let outputs_by_name = 
@@ -1322,7 +1469,8 @@ let interpret_linker_control_script script a inputs seen_ordering =
     let _ = Missing_pervasives.outln "\nLinker script and memory map\n"
     in
     (* FIXME: print LOAD and START_GROUP trace *)
-    let (img, outputs_by_name_with_position) = build_image empty_elf_memory_image 0 outputs_by_name_after_gc script
+    let (img, outputs_by_name_with_position)
+     = build_image empty_elf_memory_image 0 outputs_by_name_after_gc get_binding_for_ref script
     in
     (* The link map output for the section/address assignment basically mirrors our notion of 
      * output section composition.  In the following:
