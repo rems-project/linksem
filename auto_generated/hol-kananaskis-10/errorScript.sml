@@ -51,14 +51,16 @@ val _ = Define `
 
 (** [(>>=)] is the monadic binding function for [error].
   *)
-(*val >>= : forall 'a 'b. error 'a -> ('a -> error 'b) -> error 'b*)
+(*val error_bind : forall 'a 'b. error 'a -> ('a -> error 'b) -> error 'b*)
 val _ = Define `
- (>>= x f =	
+ (error_bind x f =	
 ((case x of
 		  Success s => f s
 		| Fail err  => Fail err
 	)))`;
 
+val _ = set_fixity ">>=" (Infixl 500);
+val _ = overload_on (">>=", ``error_bind``);
 	
 (** [as_maybe e] drops an [error] value into a [maybe] value, throwing away
   * error information.
