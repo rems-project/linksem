@@ -105,6 +105,50 @@ definition is_valid_abi_power64_relocation_operator2  :: " relocation_operator2 
 datatype any_abi_feature = Amd64AbiFeature " amd64_abi_feature "
                      | Aarch64LeAbiFeature " aarch64_le_abi_feature "
 
+(*val anyAbiFeatureToNaturalList : any_abi_feature -> list natural*)
+fun anyAbiFeatureToNaturalList  :: " any_abi_feature \<Rightarrow>(nat)list "  where 
+     " anyAbiFeatureToNaturalList (Amd64AbiFeature(af)) = (( 0 :: nat) # (amd64AbiFeatureConstructorToNaturalList af))"
+|" anyAbiFeatureToNaturalList (Aarch64LeAbiFeature(af)) = (( 1 :: nat) # (aarch64LeAbiFeatureConstructorToNaturalList af))" 
+declare anyAbiFeatureToNaturalList.simps [simp del]
+
+
+definition instance_Memory_image_ToNaturalList_Abis_any_abi_feature_dict  :: "(any_abi_feature)ToNaturalList_class "  where 
+     " instance_Memory_image_ToNaturalList_Abis_any_abi_feature_dict = ((|
+
+  toNaturalList_method = anyAbiFeatureToNaturalList |) )"
+
+
+(*val anyAbiFeatureCompare : any_abi_feature -> any_abi_feature -> Basic_classes.ordering*)
+definition anyAbiFeatureCompare  :: " any_abi_feature \<Rightarrow> any_abi_feature \<Rightarrow> ordering "  where 
+     " anyAbiFeatureCompare f1 f2 = ( 
+    (case  (anyAbiFeatureToNaturalList f1, anyAbiFeatureToNaturalList f2) of
+        ([], []) => failwith (''impossible: any-ABI feature has empty natural list (case 0)'')
+    |   (_, [])  => failwith (''impossible: any-ABI feature has empty natural list (case 1)'')
+    |   ([], _)  => failwith (''impossible: any-ABI feature has empty natural list (case 2)'')
+    |   ((hd1 # tl1), (hd2 # tl2)) => 
+            if hd1 < hd2 then LT else if hd1 > hd2 then GT else
+                (case  (f1, f2) of
+                    (Amd64AbiFeature(af1), Amd64AbiFeature(af2)) => Abi_amd64.abiFeatureCompare0 af1 af2
+                   |(Aarch64LeAbiFeature(af1), Aarch64LeAbiFeature(af2)) => abiFeatureCompare af1 af2
+                   | _ => failwith (''impossible: tag constructors not equal but natural list heads were equal'')
+                )
+    ))"
+
+
+definition instance_Basic_classes_Ord_Abis_any_abi_feature_dict  :: "(any_abi_feature)Ord_class "  where 
+     " instance_Basic_classes_Ord_Abis_any_abi_feature_dict = ((|
+
+  compare_method = anyAbiFeatureCompare,
+
+  isLess_method = (\<lambda> f1 .  (\<lambda> f2 .  (anyAbiFeatureCompare f1 f2 = LT))),
+
+  isLessEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (anyAbiFeatureCompare f1 f2) ({LT, EQ}))),
+
+  isGreater_method = (\<lambda> f1 .  (\<lambda> f2 .  (anyAbiFeatureCompare f1 f2 = GT))),
+
+  isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (anyAbiFeatureCompare f1 f2) ({GT, EQ})))|) )"
+
+
 (* null_abi captures ABI details common to all ELF-based, System V-based systems. *)
 (*val null_abi : abi any_abi_feature*) 
 definition null_abi  :: "(any_abi_feature)abi "  where 
@@ -124,7 +168,8 @@ definition null_abi  :: "(any_abi_feature)abi "  where
 definition sysv_amd64_std_abi  :: "(any_abi_feature)abi "  where 
      " sysv_amd64_std_abi = ( 
    (| is_valid_elf_header = header_is_amd64
-    , reloc = (\<lambda> r .  (width_of_x86_64_relocation r, (\<lambda> _ .  None)))
+    , reloc = (amd64_reloc instance_Basic_classes_Ord_Abis_any_abi_feature_dict
+    instance_Memory_image_ToNaturalList_Abis_any_abi_feature_dict)
     , section_is_special = section_is_special0
     , section_is_large = (\<lambda> s .  (\<lambda> f .  flag_is_set shf_x86_64_large(elf64_section_flags   s)))
     , maxpagesize =(( 65536 :: nat))
@@ -138,7 +183,7 @@ definition sysv_amd64_std_abi  :: "(any_abi_feature)abi "  where
 definition sysv_aarch64_le_std_abi  :: "(any_abi_feature)abi "  where 
      " sysv_aarch64_le_std_abi = ( 
    (| is_valid_elf_header = header_is_aarch64_le
-    , reloc = (\<lambda> r .  (width_of_aarch64_relocation r, (\<lambda> _ .  None)))
+    , reloc = aarch64_le_reloc
     , section_is_special = section_is_special0
     , section_is_large = (\<lambda> _ .  (\<lambda> _ .  False))
     , maxpagesize =(maxpagesize   null_abi)
@@ -152,58 +197,5 @@ definition sysv_aarch64_le_std_abi  :: "(any_abi_feature)abi "  where
 definition all_abis  :: "((any_abi_feature)abi)list "  where 
      " all_abis = ( [sysv_amd64_std_abi, sysv_aarch64_le_std_abi, null_abi])"
 
-
-(*
-val amd64AbiFeatureConstructorToNaturalList : amd64_abi_feature -> list natural
-val aarch64AbiFeatureConstructorToNaturalList : aarch64_le_abi_feature -> list natural
-*)
-
-(*val anyAbiFeatureConstructorToNaturalList : any_abi_feature -> list natural*)
-fun anyAbiFeatureConstructorToNaturalList  :: " any_abi_feature \<Rightarrow>(nat)list "  where 
-     " anyAbiFeatureConstructorToNaturalList (Amd64AbiFeature(aaf)) = (( 0 :: nat) # (amd64AbiFeatureConstructorToNaturalList aaf))"
-|" anyAbiFeatureConstructorToNaturalList (Aarch64LeAbiFeature(aaf)) = (( 1 :: nat) # (aarch64LeAbiFeatureConstructorToNaturalList aaf))" 
-declare anyAbiFeatureConstructorToNaturalList.simps [simp del]
-
-
-definition anyAbiFeatureCompare  :: " any_abi_feature \<Rightarrow> any_abi_feature \<Rightarrow> ordering "  where 
-     " anyAbiFeatureCompare f1 f2 = ( 
-    (case  ((anyAbiFeatureConstructorToNaturalList f1), (anyAbiFeatureConstructorToNaturalList f2)) of
-        ([], []) => failwith (''impossible: elf file feature has empty natural list (case 0)'')
-    |   (_, [])  => failwith (''impossible: elf file feature has empty natural list (case 1)'')
-    |   ([], _)  => failwith (''impossible: elf file feature has empty natural list (case 2)'')
-    |   ((hd1 # tl1), (hd2 # tl2)) => 
-            if hd1 < hd2 then LT else if hd1 > hd2 then GT else
-                (case  (f1, f2) of
-                    (Amd64AbiFeature(x1), Amd64AbiFeature(x2)) => Abi_amd64.abiFeatureCompare0 x1 x2
-                    | (Aarch64LeAbiFeature(x1), Aarch64LeAbiFeature(x2)) => abiFeatureCompare x1 x2
-                    | _ => failwith (''impossible: tag constructors not equal but natural list heads were equal'')
-                )
-    ))"
-
-
-definition instance_Basic_classes_Ord_Abis_any_abi_feature_dict  :: "(any_abi_feature)Ord_class "  where 
-     " instance_Basic_classes_Ord_Abis_any_abi_feature_dict = ((|
-
-  compare_method = anyAbiFeatureCompare,
-
-  isLess_method = (\<lambda> f1 .  (\<lambda> f2 .  (anyAbiFeatureCompare f1 f2 = LT))),
-
-  isLessEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (anyAbiFeatureCompare f1 f2) ({LT, EQ}))),
-
-  isGreater_method = (\<lambda> f1 .  (\<lambda> f2 .  (anyAbiFeatureCompare f1 f2 = GT))),
-
-  isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (anyAbiFeatureCompare f1 f2) ({GT, EQ})))|) )"
-
-
-fun anyAbiFeatureToNaturalList  :: " any_abi_feature \<Rightarrow>(nat)list "  where 
-     " anyAbiFeatureToNaturalList (Amd64AbiFeature(aaf)) = ( amd64AbiFeatureConstructorToNaturalList aaf )"
-|" anyAbiFeatureToNaturalList (Aarch64LeAbiFeature(aaf)) = ( aarch64LeAbiFeatureConstructorToNaturalList aaf )" 
-declare anyAbiFeatureToNaturalList.simps [simp del]
-
-
-definition instance_Memory_image_ToNaturalList_Abis_any_abi_feature_dict  :: "(any_abi_feature)ToNaturalList_class "  where 
-     " instance_Memory_image_ToNaturalList_Abis_any_abi_feature_dict = ((|
-
-  toNaturalList_method = anyAbiFeatureToNaturalList |) )"
 
 end

@@ -5,9 +5,18 @@ theory "Abi_utilities"
 imports 
  	 Main
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_num" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_maybe" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_string" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_assert_extra" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Missing_pervasives" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Error" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Elf_types_native_uint" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_map" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Elf_symbol_table" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Elf_relocation" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Memory_image" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Memory_image_orderings" 
 
 begin 
 
@@ -17,6 +26,17 @@ begin
 (*open import Map*)
 (*open import Maybe*)
 (*open import Num*)
+(*open import Basic_classes*)
+(*open import Maybe*)
+(*open import String*)
+(*open import Error*)
+(*open import Assert_extra*)
+(*open import Missing_pervasives*)
+(*open import Elf_types_native_uint*)
+(*open import Elf_symbol_table*)
+(*open import Elf_relocation*)
+(*open import Memory_image*)
+(*open import Memory_image_orderings*)
 
 (*open import Error*)
 
@@ -159,4 +179,55 @@ datatype 'a relocation_operator_expression
   datatype( 'addr, 'res) relocation_frame =
     Copy
   | NoCopy " ( ('addr, ( 'res relocation_operator_expression * integer_bit_width * 'res can_fail))Map.map)"
+
+(*val size_of_def : symbol_reference_and_reloc_site -> natural*)
+definition size_of_def  :: " symbol_reference_and_reloc_site \<Rightarrow> nat "  where 
+     " size_of_def rr = ( unat(elf64_st_size  (ref_syment  (ref   rr))))"
+
+
+(*val size_of_copy_reloc : forall 'abifeature. annotated_memory_image 'abifeature -> symbol_reference_and_reloc_site -> natural*)
+definition size_of_copy_reloc  :: " 'abifeature annotated_memory_image \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> nat "  where 
+     " size_of_copy_reloc img rr = ( 
+    (* it's the minimum of the two definition symbol sizes. FIXME: for now, just use the rr *)
+    size_of_def rr )"
+
+
+(*val reloc_site_address : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature => 
+    annotated_memory_image 'abifeature -> symbol_reference_and_reloc_site -> natural*)
+definition reloc_site_address  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature ToNaturalList_class \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> nat "  where 
+     " reloc_site_address dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature img rr = ( 
+    (* find the element range that's tagged with this reloc site *)
+    (let found_kvs = (Multimap.lookupBy0 
+  (instance_Basic_classes_Ord_Memory_image_range_tag_dict
+     dict_Basic_classes_Ord_abifeature
+     dict_Memory_image_ToNaturalList_abifeature) (instance_Basic_classes_Ord_Maybe_maybe_dict
+   (instance_Basic_classes_Ord_tup2_dict
+      Lem_string_extra.instance_Basic_classes_Ord_string_dict
+      (instance_Basic_classes_Ord_tup2_dict
+         instance_Basic_classes_Ord_Num_natural_dict
+         instance_Basic_classes_Ord_Num_natural_dict))) (op=) (SymbolRef(rr))(by_tag   img))
+    in
+    (case  found_kvs of
+        [] => failwith (''impossible: reloc site not marked in memory image'')
+        | [(_, maybe_range)] => (case  maybe_range of 
+                None => failwith (''impossible: reloc site has no element range'')
+                | Some (el_name, el_range) => 
+                    (let element_addr = ((case  (elements   img) el_name of
+                        None => failwith (''impossible: non-existent element'')
+                        | Some el => (case (startpos   el) of
+                            None => failwith (''error: resolving relocation site address before address has been assigned'')
+                            | Some addr => addr
+                        )
+                    ))
+                    in
+                    (let site_offset = (* match rr.maybe_reloc with 
+                        Just reloc -> natural_of_elf64_addr reloc.ref_relent.elf64_ra_offset
+                        | Nothing -> failwith symbol reference with range but no reloc site
+                    end*) ((let (start, _) = el_range in start))
+                    in
+                    element_addr + site_offset))
+            )
+        | _ => failwith (''error: more than one reloc marked at the same site'')
+    )))"
+
 end

@@ -15,6 +15,7 @@ imports
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_assert_extra" 
 	 "Show" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_sorting" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_set_extra" 
 	 "Missing_pervasives" 
 	 "Byte_sequence" 
 	 "Elf_types_native_uint" 

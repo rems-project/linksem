@@ -15,6 +15,7 @@ imports
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_assert_extra" 
 	 "Show" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_sorting" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_set_extra" 
 	 "Missing_pervasives" 
 	 "Byte_sequence" 
 	 "Elf_types_native_uint" 
@@ -41,6 +42,7 @@ begin
 (*open import Sorting*)
 (*open import Map*)
 (*open import Set*)
+(*open import Set_extra*)
 (*open import Multimap*)
 (*open import Num*)
 (*open import Maybe*)
@@ -162,7 +164,7 @@ record symbol_reference
  = 
  ref_symname ::" string "                  (* symbol name *)
     
- ref_syment ::" elf64_symbol_table_entry " (* undefined (referencing) symbol *)
+ ref_syment ::" elf64_symbol_table_entry " (* likely-undefined (referencing) symbol *)
     
  ref_sym_scn ::" nat "                 (* symtab section idx *) 
     
@@ -343,17 +345,21 @@ record 'abifeature annotated_memory_image =
 
 
 
+(*val get_empty_memory_image : forall 'abifeature. unit -> annotated_memory_image 'abifeature*)
+definition get_empty_memory_image  :: " unit \<Rightarrow> 'abifeature annotated_memory_image "  where 
+     " get_empty_memory_image = ( \<lambda> _ .  (| 
+      elements = Map.empty
+    , by_range = {}
+    , by_tag   = {}
+|) )"
+
+
 (* Basic ELFy and ABI-y things. *)
 (* FIXME: shouldn't really be here, but need to be in some low-lying module, and 
  * keeping out of elf_* for now to avoid duplication into elf64_, elf32_. *)
 definition elf_section_is_special  :: " elf64_interpreted_section \<Rightarrow> 'a \<Rightarrow> bool "  where 
      " elf_section_is_special s f = ( \<not> ((elf64_section_type   s) = sht_progbits)
                      \<and> \<not> ((elf64_section_type   s) = sht_nobits))"
-
-
-(*val noop_reloc : forall 'abifeature. natural -> ((maybe elf64_symbol_table_entry -> natural) * (annotated_memory_image 'abifeature -> maybe natural))*)
-definition noop_reloc  :: " nat \<Rightarrow>((elf64_symbol_table_entry)option \<Rightarrow> nat)*('abifeature annotated_memory_image \<Rightarrow>(nat)option)"  where 
-     " noop_reloc r = ( ((\<lambda> r_type . ( 8 :: nat)), (\<lambda> sym_val .  None)))"
 
 
 (* This record collects things that ABIs may or must define. 
@@ -367,17 +373,81 @@ definition noop_reloc  :: " nat \<Rightarrow>((elf64_symbol_table_entry)option \
  *)
 type_synonym null_abi_feature =" unit "
 
+(* The reloc calculation is complicated, so we split up the big function
+ * type into smaller ones. *)
+
+(* Q. Do we want existing, or is it a kind of addend? 
+ * A. We do want it -- modelling both separately is necessary, 
+ * because we model relocations bytewise, but some arches
+ * do bitfield relocations (think ARM). *)
+type_synonym reloc_calculate_fn    =" nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat " (* symaddr -> addend -> existing -> relocated *)
+
+type_synonym 'abifeature reloc_apply_fn =" 'abifeature 
+                                (* elf memory image: the context in which the relocation is being applied *)
+                                annotated_memory_image \<Rightarrow>
+                                (* Typically there are two symbol table entries involved in a relocation.
+                                 * One is the reference, and is usually undefined.
+                                 * The other is the definition, and is defined (else absent, when we use 0).
+                                 * However, sometimes the reference is itself a defined symbol.
+                                 * Almost always, if so, *that* symbol *is* the definition.
+                                 * However, copy relocs are an exception.
+                                 * 
+                                 * In the case of copy relocations being fixed up by the dynamic
+                                 * linker, the dynamic linker must figure out which definition to
+                                 * copy from. This can't be as simple as the first definition in
+                                 * link order, because *our* copy of that symbol is a definition
+                                 * (typically in bss). It could be as simple as the first *after us*
+                                 * in link order. FIXME: find the glibc code that does this.
+                                 * 
+                                 * Can we dig this stuff out of the memory image? If we pass the address
+                                 * being relocated, we can find the tags. But I don't want to pass
+                                 * the symbol address until the very end. It seems better to pass the symbol
+                                 * name, since that's the key that the dynamic linker uses to look for
+                                 * other definitions.
+                                 * 
+                                 * Do we want to pass a whole symbol_reference? This has not only the
+                                 * symbol name but also syment, scn and idx. The syment is usually UND, 
+                                 * but *could* be defined (and is for copy relocs). The scn and idx are
+                                 * not relevant, but it seems cleaner to pass the whole thing anyway.
+                                 *)
+                                symbol_reference_and_reloc_site \<Rightarrow> 
+                                (* Should we pass a symbol_definition too? Implicitly, we pass part of it
+                                 * by passing the symaddr argument (below). I'd prefer not to depend on
+                                 * others -- relocation calculations should look like mostly address 
+                                 * arithmetic, i.e. only the weird ones do something else. *)
+                                (* How wide, in bytes, is the relocated field? this may depend on img 
+                                 * and on the wider image (copy relocs), so it's returned *by* the reloc function. *)
+                                (nat (* width *) * reloc_calculate_fn)"
+
+(* Some kinds of relocation necessarily give us back a R_*_RELATIVE reloc.
+ * We don't record this explicitly. Instead, the bool is a flag recording whether
+ * the field represents an absolute address.
+ * Similarly, some relocations can fail according to their ABI manuals.
+ * This just means that the result can't be represented in the field width.
+ * We detect this when actually applying the reloc in the memory image content
+ * (done elsewhere). *)
+type_synonym 'abifeature reloc_fn =" nat \<Rightarrow> (bool * 'abifeature reloc_apply_fn)"
+
+(*val noop_reloc_calculate : natural -> natural -> natural -> natural*)
+definition noop_reloc_calculate  :: " nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat "  where 
+     " noop_reloc_calculate symaddr addend existing = ( existing )"
+
+
+(*val noop_reloc_apply : forall 'abifeature. reloc_apply_fn 'abifeature*)
+definition noop_reloc_apply  :: " 'abifeature annotated_memory_image \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> nat*(nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat)"  where 
+     " noop_reloc_apply img ref1 = ( (( 0 :: nat), noop_reloc_calculate))"
+
+
+(*val noop_reloc : forall 'abifeature. natural -> (bool (* result is absolute addr *) * reloc_apply_fn 'abifeature)*)
+definition noop_reloc  :: " nat \<Rightarrow> bool*('abifeature annotated_memory_image \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> nat*reloc_calculate_fn)"  where 
+     " noop_reloc k = ( (False, noop_reloc_apply))"
+
+
 record 'abifeature abi = (* forall 'abifeature. *)
    
- is_valid_elf_header ::" elf64_header \<Rightarrow> bool "
-                        (* doesn't this generalise outrageously? is_valid_elf_file? *)
-    (* Do we want existing, or is it a kind of addend? 
-     * We do want it -- modelling both separately is necessary, 
-     * because we model relocations bytewise, but some arches
-     * do bitfield relocations (think ARM). *)
+ is_valid_elf_header ::" elf64_header \<Rightarrow> bool " (* doesn't this generalise outrageously? is_valid_elf_file? *)
     
- reloc              ::" nat \<Rightarrow> (( elf64_symbol_table_entry option \<Rightarrow> nat) * ( 'abifeature annotated_memory_image \<Rightarrow>  nat option))"
-                        (* number  ->  width   * (symaddr -> addend  -> existing-> relocated) *)
+ reloc              ::" 'abifeature reloc_fn "
     
  section_is_special ::" elf64_interpreted_section \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> bool "
     
@@ -562,6 +632,49 @@ function (sequential,domintros)  accum_pattern_possible_starts_in_one_byte_seque
             )
     ))" 
 by pat_completeness auto
+
+
+definition swap_pairs  :: "('b*'a)set \<Rightarrow>('a*'b)set "  where 
+     " swap_pairs s = (
+  Set.image (\<lambda> (k, v) .  (v, k))
+    (set_filter (\<lambda> (k, v) .  True) s) )"
+
+
+definition by_range_from_by_tag  :: "('a*'b)set \<Rightarrow>('b*'a)set "  where 
+     " by_range_from_by_tag = ( swap_pairs )"
+
+
+definition by_tag_from_by_range  :: "('a*'b)set \<Rightarrow>('b*'a)set "  where 
+     " by_tag_from_by_range = ( swap_pairs )"
+
+
+(*val filter_elements : forall 'abifeature. ((string * memory_image_element) -> bool) -> 
+    annotated_memory_image 'abifeature -> annotated_memory_image 'abifeature*)
+definition filter_elements  :: "(string*memory_image_element \<Rightarrow> bool)\<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> 'abifeature annotated_memory_image "  where 
+     " filter_elements pred img = ( 
+    (let new_elements = (Map.map_of (List.rev ((let x2 = 
+  ([]) in  List.foldr
+   (\<lambda>(n, r) x2 . 
+    if
+    (let result = (pred (n, r)) in
+    if \<not> result then
+      (*let _ = Missing_pervasives.outln (Discarding element named  ^ n) in*) result
+    else result) then (n, r) # x2 else x2)
+   (list_of_set (map_to_set (elements   img))) x2))))
+    in
+    (let new_by_range =  (set_filter (\<lambda> (maybe_range, tag) .  (case  maybe_range of
+            None => True
+            | Some (el_name, el_range) => el_name \<in> Map.dom new_elements
+        ))(by_range   img))
+    in
+    (let new_by_tag =
+  (Set.image (\<lambda> (k, v) .  (v, k))
+     (set_filter (\<lambda> (k, v) .  True) new_by_range))
+    in
+    (| elements = new_elements
+     , by_range = new_by_range
+     , by_tag   = new_by_tag
+     |)))))"
 
 
 (*val pattern_possible_starts_in_one_byte_sequence : list (maybe byte) -> list byte -> natural -> list natural*)

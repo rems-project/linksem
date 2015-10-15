@@ -115,45 +115,96 @@ definition instance_Basic_classes_Ord_Elf_relocation_elf64_relocation_a_dict  ::
 
 (** Extracting useful information *)
 
-(** [elf32_relocation_r_sym w] computes the symbol table index associated with
+(** [extract_elf32_relocation_r_sym w] computes the symbol table index associated with
   * an ELF32 relocation(a) entry.
   * [w] here is the [r_info] member of the [elf32_relocation(a)] type.
   *)
-(*val elf32_relocation_r_sym : elf32_word -> natural*)
-definition elf32_relocation_r_sym  :: " uint32 \<Rightarrow> nat "  where 
-     " elf32_relocation_r_sym w = (
+(*val extract_elf32_relocation_r_sym : elf32_word -> natural*)
+definition extract_elf32_relocation_r_sym  :: " uint32 \<Rightarrow> nat "  where 
+     " extract_elf32_relocation_r_sym w = (
   unat (Elf_Types_Local.uint32_rshift w(( 8 :: nat))))"
 
 
-(** [elf64_relocation_r_sym w] computes the symbol table index associated with
+(** [extract_elf64_relocation_r_sym w] computes the symbol table index associated with
   * an ELF64 relocation(a) entry.
   * [w] here is the [r_info] member of the [elf64_relocation(a)] type.
   *)
-(*val elf64_relocation_r_sym : elf64_xword -> natural*)
-definition elf64_relocation_r_sym  :: " uint64 \<Rightarrow> nat "  where 
-     " elf64_relocation_r_sym w = (
+(*val extract_elf64_relocation_r_sym : elf64_xword -> natural*)
+definition extract_elf64_relocation_r_sym  :: " uint64 \<Rightarrow> nat "  where 
+     " extract_elf64_relocation_r_sym w = (
   unat (Elf_Types_Local.uint64_rshift w(( 32 :: nat))))"
 
 
-(** [elf32_relocation_r_type w] computes the symbol type associated with an ELF32
+(** [extract_elf32_relocation_r_type w] computes the symbol type associated with an ELF32
   * relocation(a) entry.
   * [w] here is the [r_info] member of the [elf32_relocation(a)] type.
   *)
-(*val elf32_relocation_r_type : elf32_word -> natural*)
-definition elf32_relocation_r_type  :: " uint32 \<Rightarrow> nat "  where 
-     " elf32_relocation_r_type w = (
+(*val extract_elf32_relocation_r_type : elf32_word -> natural*)
+definition extract_elf32_relocation_r_type  :: " uint32 \<Rightarrow> nat "  where 
+     " extract_elf32_relocation_r_type w = (
   (unat w) mod( 256 :: nat))"
 
 
-(** [elf64_relocation_r_type w] computes the symbol type associated with an ELF64
+(** [extract_elf64_relocation_r_type w] computes the symbol type associated with an ELF64
   * relocation(a) entry.
   * [w] here is the [r_info] member of the [elf64_relocation(a)] type.
   *)
-(*val elf64_relocation_r_type : elf64_xword -> natural*)
-definition elf64_relocation_r_type  :: " uint64 \<Rightarrow> nat "  where 
-     " elf64_relocation_r_type w = (
+(*val extract_elf64_relocation_r_type : elf64_xword -> natural*)
+definition extract_elf64_relocation_r_type  :: " uint64 \<Rightarrow> nat "  where 
+     " extract_elf64_relocation_r_type w = (
   (let magic = ((( 65536 :: nat) *( 65536 :: nat)) -( 1 :: nat)) in (* 0xffffffffL *)
     unat (Elf_Types_Local.uint64_land w (of_int (int magic)))))"
+
+    
+(* Accessors *) 
+
+(*val get_elf32_relocation_r_sym : elf32_relocation -> natural*)
+definition get_elf32_relocation_r_sym  :: " elf32_relocation \<Rightarrow> nat "  where 
+     " get_elf32_relocation_r_sym r = (
+  extract_elf32_relocation_r_sym(elf32_r_info   r))"
+
+
+(*val get_elf32_relocation_a_sym :  elf32_relocation_a -> natural*)
+definition get_elf32_relocation_a_sym  :: " elf32_relocation_a \<Rightarrow> nat "   where 
+     " get_elf32_relocation_a_sym r  = (
+  extract_elf32_relocation_r_sym(elf32_ra_info   r))"
+  
+
+(*val get_elf64_relocation_sym : elf64_relocation -> natural*)
+definition get_elf64_relocation_sym  :: " elf64_relocation \<Rightarrow> nat "  where 
+     " get_elf64_relocation_sym r = (
+  extract_elf64_relocation_r_sym(elf64_r_info   r))"
+  
+  
+(*val get_elf64_relocation_a_sym :  elf64_relocation_a -> natural*)
+definition get_elf64_relocation_a_sym  :: " elf64_relocation_a \<Rightarrow> nat "   where 
+     " get_elf64_relocation_a_sym r  = (
+  extract_elf64_relocation_r_sym(elf64_ra_info   r))"
+  
+
+(*val get_elf32_relocation_type : elf32_relocation -> natural*)
+definition get_elf32_relocation_type  :: " elf32_relocation \<Rightarrow> nat "  where 
+     " get_elf32_relocation_type r = (
+  extract_elf32_relocation_r_type(elf32_r_info   r))"
+
+
+(*val get_elf32_relocation_a_type  : elf32_relocation_a -> natural*)
+definition get_elf32_relocation_a_type  :: " elf32_relocation_a \<Rightarrow> nat "  where 
+     " get_elf32_relocation_a_type  r = (
+  extract_elf32_relocation_r_type(elf32_ra_info   r))"
+  
+
+(*val get_elf64_relocation_type : elf64_relocation -> natural*)
+definition get_elf64_relocation_type  :: " elf64_relocation \<Rightarrow> nat "  where 
+     " get_elf64_relocation_type r = (
+  extract_elf64_relocation_r_type(elf64_r_info   r))"
+  
+
+(*val get_elf64_relocation_a_type  : elf64_relocation_a -> natural*)
+definition get_elf64_relocation_a_type  :: " elf64_relocation_a \<Rightarrow> nat "  where 
+     " get_elf64_relocation_a_type  r = (
+  extract_elf64_relocation_r_type(elf64_ra_info   r))"
+  
 
     
 (** Reading relocation entries *)

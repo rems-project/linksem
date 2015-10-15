@@ -583,7 +583,7 @@ definition abi_ppc64_apply_relocation  :: " elf64_relocation_a \<Rightarrow> int
           toc_val dtpmod_val tprel_val dtprel_val gottlsgd_val gottlsld_val
           gottprel_val gotdtprel_val ef = (
   if is_elf64_relocatable_file(elf64_file_header   ef) then
-    (let rel_type = (elf64_relocation_r_type(elf64_ra_info   rel)) in
+    (let rel_type = (extract_elf64_relocation_r_type(elf64_ra_info   rel)) in
     (let a_val    = (sint(elf64_ra_addend   rel)) in
       (** No width, no calculation *)
       if rel_type = r_ppc64_none then

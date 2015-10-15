@@ -15,6 +15,7 @@ imports
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Elf_symbol_table" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Elf_file" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Elf_relocation" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Memory_image" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Abi_utilities" 
 
 begin 
@@ -38,6 +39,7 @@ begin
 (*open import Elf_symbol_table*)
 
 (*open import Abi_utilities*)
+(*open import Memory_image*)
 
 (** Relocations *)
 
@@ -434,16 +436,15 @@ definition r_aarch64_irelative  :: " nat "  where
   *)
 (*val string_of_aarch64_relocation_type : natural -> string*)
 
-(** [width_of_aarch64_relocation m s] yields the width in bytes of the relocatable field, 
-  * when resolving to a defined maybe symbol [s] (or Nothing, if weak).
-  *)
-(*val width_of_aarch64_relocation : natural -> maybe elf64_symbol_table_entry -> natural*)
-definition width_of_aarch64_relocation  :: " nat \<Rightarrow>(elf64_symbol_table_entry)option \<Rightarrow> nat "  where 
-     " width_of_aarch64_relocation rel_type s = (
-  if rel_type = r_aarch64_none then( 0 :: nat)
-  else( 0 :: nat))"
- (* TODO *)
+(*val aarch64_le_reloc : forall 'abifeature. reloc_fn 'abifeature*)
+definition aarch64_le_reloc  :: " nat \<Rightarrow> bool*('abifeature annotated_memory_image \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> nat*(nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat))"  where 
+     " aarch64_le_reloc r = (
+  if r = r_aarch64_none then
+    (False, (\<lambda> img .  (\<lambda> rr .  (( 0 :: nat), (\<lambda> s .  \<lambda> a .  \<lambda> e .  e)))))
+  else
+    (False, noop_reloc_apply))"
 
+    
 (** [abi_aarch64_apply_relocation rel s_val p_val got_val ef] produces an AST
   * of the relocation calculation for relocation type [rel] using [s_val], [p_val],
   * and [got_val] as primitive components.
@@ -458,7 +459,7 @@ definition width_of_aarch64_relocation  :: " nat \<Rightarrow>(elf64_symbol_tabl
 definition abi_aarch64_apply_relocation  :: " elf64_relocation_a \<Rightarrow> int \<Rightarrow> int \<Rightarrow> int \<Rightarrow> elf64_file \<Rightarrow>(((Elf_Types_Local.uint64),((int)relocation_operator_expression*integer_bit_width*(int)can_fail))Map.map)error "  where 
      " abi_aarch64_apply_relocation rel s_val p_val got_val ef = (
   if is_elf64_relocatable_file(elf64_file_header   ef) then
-    (let rel_type = (elf64_relocation_r_type(elf64_ra_info   rel)) in
+    (let rel_type = (get_elf64_relocation_a_type rel) in
     (let a_val    = (sint(elf64_ra_addend   rel)) in
       (** No width, no calculation *)
       if rel_type = r_aarch64_none then

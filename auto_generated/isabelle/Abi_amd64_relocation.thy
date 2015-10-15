@@ -8,6 +8,7 @@ imports
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_maybe" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_string" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_assert_extra" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Missing_pervasives" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Error" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Elf_types_native_uint" 
@@ -16,6 +17,7 @@ imports
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Elf_symbol_table" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Elf_file" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Elf_relocation" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Memory_image" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Abi_utilities" 
 
 begin 
@@ -32,12 +34,14 @@ begin
 
 (*open import Error*)
 (*open import Missing_pervasives*)
+(*open import Assert_extra*)
 
 (*open import Elf_types_native_uint*)
 (*open import Elf_file*)
 (*open import Elf_header*)
 (*open import Elf_relocation*)
 (*open import Elf_symbol_table*)
+(*open import Memory_image*)
 
 (*open import Abi_utilities*)
 
@@ -222,44 +226,285 @@ definition string_of_amd64_relocation_type  :: " nat \<Rightarrow> string "  whe
 (** [width_of_x86_64_relocation m s] yields the width in bytes of the relocatable field, 
   * when resolving to a defined maybe symbol [s] (or Nothing, if weak).
   *)
-(*val width_of_x86_64_relocation : natural -> maybe elf64_symbol_table_entry -> natural*)
-definition width_of_x86_64_relocation  :: " nat \<Rightarrow>(elf64_symbol_table_entry)option \<Rightarrow> nat "  where 
-     " width_of_x86_64_relocation rel_type s = (
-  if rel_type = r_x86_64_none then( 0 :: nat)
-  else if rel_type = r_x86_64_64 then( 8 :: nat)
-  else if rel_type = r_x86_64_pc32 then( 4 :: nat)
-  else if rel_type = r_x86_64_got32 then( 4 :: nat)
-  else if rel_type = r_x86_64_plt32 then( 4 :: nat)
-  else if rel_type = r_x86_64_copy then (case  s of None =>( 0 :: nat) | Some s => unat(elf64_st_size   s) )
-  else if rel_type = r_x86_64_glob_dat then (case  s of None =>( 0 :: nat) | Some s => unat(elf64_st_size   s) ) (* CHECK *)
-  else if rel_type = r_x86_64_jump_slot then( 4 :: nat) (* CHECK *)
-  else if rel_type = r_x86_64_relative then( 8 :: nat) (* CHECK *)
-  else if rel_type = r_x86_64_gotpcrel then( 8 :: nat) (* CHECK *)
-  else if rel_type = r_x86_64_32 then( 4 :: nat)
-  else if rel_type = r_x86_64_32s then( 4 :: nat)
-  else if rel_type = r_x86_64_16 then( 2 :: nat)
-  else if rel_type = r_x86_64_pc16 then( 2 :: nat)
-  else if rel_type = r_x86_64_8 then( 1 :: nat)
-  else if rel_type = r_x86_64_pc8 then( 1 :: nat)
-  else if rel_type = r_x86_64_dtpmod64 then( 8 :: nat) (* CHECK *)
-  else if rel_type = r_x86_64_dtpoff64 then( 8 :: nat) (* CHECK *)
-  else if rel_type = r_x86_64_tpoff64 then( 8 :: nat) (* CHECK *)
-  else if rel_type = r_x86_64_tlsgd then( 8 :: nat) (* CHECK *)
-  else if rel_type = r_x86_64_tlsld then( 8 :: nat) (* CHECK *)
-  else if rel_type = r_x86_64_dtpoff32 then( 4 :: nat) (* CHECK *)
-  else if rel_type = r_x86_64_gottpoff then( 8 :: nat) (* CHECK *)
-  else if rel_type = r_x86_64_tpoff32 then( 4 :: nat) (* CHECK *)
-  else if rel_type = r_x86_64_pc64 then( 8 :: nat)
-  else if rel_type = r_x86_64_gotoff64 then( 8 :: nat)
-  else if rel_type = r_x86_64_gotpc32 then( 4 :: nat)
-  else if rel_type = r_x86_64_size32 then( 4 :: nat)
-  else if rel_type = r_x86_64_size64 then( 8 :: nat)
-  else if rel_type = r_x86_64_gotpc32_tlsdesc then( 4 :: nat) (* CHECK *)
-  else if rel_type = r_x86_64_tlsdesc_call then( 4 :: nat) (* CHECK *)
-  else if rel_type = r_x86_64_tlsdesc then( 8 :: nat) (* CHECK *)
-  else if rel_type = r_x86_64_irelative then( 8 :: nat) (* CHECK *)
-  else( 0 :: nat))"
- (* invalid *)
+(*val amd64_reloc : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature =>
+    reloc_fn 'abifeature*)
+definition amd64_reloc  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature ToNaturalList_class \<Rightarrow> nat \<Rightarrow> bool*('abifeature annotated_memory_image \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> nat*(nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat))"  where 
+     " amd64_reloc dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature r = ( 
+  if((string_of_amd64_relocation_type r) = (''R_X86_64_NONE'')) then
+    (False, (\<lambda> img .  (\<lambda> rr .  (( 0 :: nat), (\<lambda> s .  \<lambda> a .  \<lambda> e .  e)))))
+  else
+    (
+    if((string_of_amd64_relocation_type r) = (''R_X86_64_64'')) then
+      (True, (\<lambda> img .  (\<lambda> rr .  (( 8 :: nat), (\<lambda> s .  \<lambda> a .  \<lambda> e .  
+                                                               s + a)))))
+    else
+      (
+      if((string_of_amd64_relocation_type r) = (''R_X86_64_PC32'')) then
+        (False, (\<lambda> img .  (\<lambda> rr .  (( 4 :: nat), (\<lambda> s .  \<lambda> a .  \<lambda> e .  
+                                                                  (s + a) -
+                                                                    reloc_site_address
+                                                                    dict_Basic_classes_Ord_abifeature
+                                                                    dict_Memory_image_ToNaturalList_abifeature
+                                                                    img 
+                                                                    rr)))))
+      else
+        (
+        if((string_of_amd64_relocation_type r) = (''R_X86_64_GOT32'')) then
+          (False, (\<lambda> img .  (\<lambda> rr .  (( 4 :: nat), (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) ))))
+        else
+          (
+          if((string_of_amd64_relocation_type r) = (''R_X86_64_PLT32'')) then
+            (False, (\<lambda> img .  (\<lambda> rr .  (( 4 :: nat), 
+                                                       (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) ))))
+          else
+            (
+            if((string_of_amd64_relocation_type r) = (''R_X86_64_COPY'')) then
+              (False, (\<lambda> img .  (\<lambda> rr .  (size_of_copy_reloc
+                                                            img rr, (
+                                                                    \<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) ))))
+            else
+              (
+              if((string_of_amd64_relocation_type r) =
+                   (''R_X86_64_GLOB_DAT'')) then
+                (False, (\<lambda> img .  (\<lambda> rr .  (size_of_def rr, 
+                                                           (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) ))))
+              else
+                (
+                if((string_of_amd64_relocation_type r) =
+                     (''R_X86_64_JUMP_SLOT'')) then
+                  (False, (\<lambda> img .  (\<lambda> rr .  (( 4 :: nat) (* CHECK *) , 
+                                                             (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) ))))
+                else
+                  (
+                  if((string_of_amd64_relocation_type r) =
+                       (''R_X86_64_RELATIVE'')) then
+                    (True, (\<lambda> img .  (\<lambda> rr .  (( 8 :: nat), 
+                                                              (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) ))))
+                  else
+                    (
+                    if((string_of_amd64_relocation_type r) =
+                         (''R_X86_64_GOTPCREL'')) then
+                      (False, (\<lambda> img .  (\<lambda> rr .  (( 8 :: nat) (* CHECK *) , 
+                                                                 (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) ))))
+                    else
+                      (
+                      if((string_of_amd64_relocation_type r) =
+                           (''R_X86_64_32'')) then
+                        (True, (\<lambda> img .  (\<lambda> rr .  (( 4 :: nat), 
+                                                                  (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) ))))
+                      else
+                        (
+                        if((string_of_amd64_relocation_type r) =
+                             (''R_X86_64_32S'')) then
+                          (True, (\<lambda> img .  (\<lambda> rr .  (
+                                                                    (
+                                                                     4 :: nat), 
+                                                                    (
+                                                                    \<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) ))))
+                        else
+                          (
+                          if((string_of_amd64_relocation_type r) =
+                               (''R_X86_64_16'')) then
+                            (True, (\<lambda> img .  (\<lambda> rr .  
+                                                      (( 2 :: nat), (
+                                                                    \<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) ))))
+                          else
+                            (
+                            if((string_of_amd64_relocation_type r) =
+                                 (''R_X86_64_PC16'')) then
+                              (False, (\<lambda> img .  (\<lambda> rr .  
+                                                         (( 2 :: nat), 
+                                                         (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) ))))
+                            else
+                              (
+                              if((string_of_amd64_relocation_type r) =
+                                   (''R_X86_64_8'')) then
+                                (True, (\<lambda> img .  (\<lambda> rr .  
+                                                          (( 1 :: nat), 
+                                                          (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) ))))
+                              else
+                                (
+                                if((string_of_amd64_relocation_type r) =
+                                     (''R_X86_64_PC8'')) then
+                                  (False, (\<lambda> img .  (\<lambda> rr .  
+                                                             (( 1 :: nat), 
+                                                             (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) ))))
+                                else
+                                  (
+                                  if((string_of_amd64_relocation_type r) =
+                                       (''R_X86_64_DTPMOD64'')) then
+                                    (False, (\<lambda> img .  (\<lambda> rr .  
+                                                               (( 8 :: nat) (* CHECK *) , 
+                                                               (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) ))))
+                                  else
+                                    (
+                                    if((string_of_amd64_relocation_type r) =
+                                         (''R_X86_64_DTPOFF64'')) then
+                                      (False, (\<lambda> img .  (\<lambda> rr .  
+                                                                 (( 8 :: nat) (* CHECK *) , 
+                                                                 (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) ))))
+                                    else
+                                      (
+                                      if((string_of_amd64_relocation_type r)
+                                           = (''R_X86_64_TPOFF64'')) then
+                                        (False, (\<lambda> img .  (\<lambda> rr .  
+                                                                   ((
+                                                                     8 :: nat) (* CHECK *) , 
+                                                                   (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) ))))
+                                      else
+                                        (
+                                        if((string_of_amd64_relocation_type r)
+                                             = (''R_X86_64_TLSGD'')) then
+                                          (False, (\<lambda> img .  (
+                                                                    \<lambda> rr .  
+                                                                    (
+                                                                    (
+                                                                     8 :: nat) (* CHECK *) , 
+                                                                    (
+                                                                    \<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) ))))
+                                        else
+                                          (
+                                          if((string_of_amd64_relocation_type
+                                                r) = (''R_X86_64_TLSLD'')) then
+                                            (False, (\<lambda> img .  
+                                                     (\<lambda> rr .  
+                                                      (( 8 :: nat) (* CHECK *) , 
+                                                      (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) ))))
+                                          else
+                                            (
+                                            if((string_of_amd64_relocation_type
+                                                  r) =
+                                                 (''R_X86_64_DTPOFF32'')) then
+                                              (False, (\<lambda> img .  
+                                                       (\<lambda> rr .  
+                                                        (( 4 :: nat) (* CHECK *) , 
+                                                        (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) ))))
+                                            else
+                                              (
+                                              if((string_of_amd64_relocation_type
+                                                    r) =
+                                                   (''R_X86_64_GOTTPOFF'')) then
+                                                (False, (\<lambda> img .  
+                                                         (\<lambda> rr .  
+                                                          (( 8 :: nat) (* CHECK *) , 
+                                                          (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) ))))
+                                              else
+                                                (
+                                                if((string_of_amd64_relocation_type
+                                                      r) =
+                                                     (''R_X86_64_TPOFF32'')) then
+                                                  (False, (\<lambda> img .  
+                                                           (\<lambda> rr .  
+                                                            (( 4 :: nat) (* CHECK *) , 
+                                                            (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) ))))
+                                                else
+                                                  (
+                                                  if((string_of_amd64_relocation_type
+                                                        r) =
+                                                       (''R_X86_64_PC64'')) then
+                                                    (False, (\<lambda> img .  
+                                                             (\<lambda> rr .  
+                                                              (( 8 :: nat), 
+                                                              (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) ))))
+                                                  else
+                                                    (
+                                                    if((string_of_amd64_relocation_type
+                                                          r) =
+                                                         (''R_X86_64_GOTOFF64'')) then
+                                                      (False, (\<lambda> img .  
+                                                               (\<lambda> rr .  
+                                                                (( 8 :: nat), 
+                                                                (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) ))))
+                                                    else
+                                                      (
+                                                      if((string_of_amd64_relocation_type
+                                                            r) =
+                                                           (''R_X86_64_GOTPC32'')) then
+                                                        (False, (\<lambda> img .  
+                                                                 (\<lambda> rr .  
+                                                                  (( 4 :: nat), 
+                                                                  (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) ))))
+                                                      else
+                                                        (
+                                                        if((string_of_amd64_relocation_type
+                                                              r) =
+                                                             (''R_X86_64_SIZE32'')) then
+                                                          (False, (\<lambda> img .  
+                                                                   (\<lambda> rr .  
+                                                                    (
+                                                                    (
+                                                                     4 :: nat), 
+                                                                    (
+                                                                    \<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) ))))
+                                                        else
+                                                          (
+                                                          if((string_of_amd64_relocation_type
+                                                                r) =
+                                                               (''R_X86_64_SIZE64'')) then
+                                                            (False, (
+                                                                    \<lambda> img .  
+                                                                    (
+                                                                    \<lambda> rr .  
+                                                                    (
+                                                                    (
+                                                                     8 :: nat), 
+                                                                    (
+                                                                    \<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) ))))
+                                                          else
+                                                            (
+                                                            if((string_of_amd64_relocation_type
+                                                                  r) =
+                                                                 (''R_X86_64_GOTPC32_TLSDESC'')) then
+                                                              (False, 
+                                                              (\<lambda> img .  
+                                                               (\<lambda> rr .  
+                                                                (( 4 :: nat) (* CHECK *) , 
+                                                                (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) ))))
+                                                            else
+                                                              (
+                                                              if((string_of_amd64_relocation_type
+                                                                    r) =
+                                                                   (''R_X86_64_TLSDESC_CALL'')) then
+                                                                (False, 
+                                                                (\<lambda> img .  
+                                                                 (\<lambda> rr .  
+                                                                  (( 4 :: nat) (* CHECK *) , 
+                                                                  (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) ))))
+                                                              else
+                                                                (
+                                                                if((string_of_amd64_relocation_type
+                                                                    r) =
+                                                                    (''R_X86_64_TLSDESC'')) then
+                                                                  (False, 
+                                                                  (\<lambda> img .  
+                                                                   (\<lambda> rr .  
+                                                                    (
+                                                                    (
+                                                                     8 :: nat) (* CHECK *) , 
+                                                                    (
+                                                                    \<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) ))))
+                                                                else
+                                                                  (
+                                                                  if(
+                                                                    (
+                                                                    string_of_amd64_relocation_type
+                                                                    r) =
+                                                                    (''R_X86_64_IRELATIVE'')) then
+                                                                    (True, 
+                                                                    (
+                                                                    \<lambda> img .  
+                                                                    (
+                                                                    \<lambda> rr .  
+                                                                    (
+                                                                    (
+                                                                     8 :: nat) (* CHECK *) , 
+                                                                    (
+                                                                    \<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) ))))
+                                                                  else
+                                                                    (
+                                                                    failwith
+                                                                    (''unrecognised relocation'')))))))))))))))))))))))))))))))))) )"
+
 
 (** [abi_amd64_apply_relocation rel val_map ef]
   * calculates the effect of a relocation of type [rel] using relevant addresses,
@@ -293,7 +538,7 @@ definition width_of_x86_64_relocation  :: " nat \<Rightarrow>(elf64_symbol_table
 definition abi_amd64_apply_relocation  :: " elf64_relocation_a \<Rightarrow>((string),(int))Map.map \<Rightarrow> elf64_file \<Rightarrow>(((Elf_Types_Local.uint64),(int))relocation_frame)error "  where 
      " abi_amd64_apply_relocation rel val_map ef = (
   if is_elf64_relocatable_file(elf64_file_header   ef) then
-    (let rel_type = (elf64_relocation_r_type(elf64_ra_info   rel)) in
+    (let rel_type = (get_elf64_relocation_a_type rel) in
     (let a_val    = (sint(elf64_ra_addend   rel)) in
       (** No width, No calculation *)
       if rel_type = r_x86_64_none then
@@ -393,28 +638,28 @@ definition abi_amd64_apply_relocation  :: " elf64_relocation_a \<Rightarrow>((st
       		error_return (NoCopy (map_update addr (result, I8, CanFail) Map.empty))))))
       (** Width: 64 *)
 		  else if rel_type = r_x86_64_dtpmod64 then
-		    error_fail (''abi_amd64_apply_relocation: r_x86_64_dtpmod64 not implemented'')
+		    failwith (''abi_amd64_apply_relocation: r_x86_64_dtpmod64 not implemented'')
       (** Width: 64 *)
 		  else if rel_type = r_x86_64_dtpoff64 then
-		    error_fail (''abi_amd64_apply_relocation: r_x86_64_dtpoff64 not implemented'')
+		    failwith (''abi_amd64_apply_relocation: r_x86_64_dtpoff64 not implemented'')
       (** Width: 64 *)
 		  else if rel_type = r_x86_64_tpoff64 then
-		    error_fail (''abi_amd64_apply_relocation: r_x86_64_tpoff64 not implemented'')
+		    failwith (''abi_amd64_apply_relocation: r_x86_64_tpoff64 not implemented'')
       (** Width: 32 *)
 		  else if rel_type = r_x86_64_tlsgd then
-		    error_fail (''abi_amd64_apply_relocation: r_x86_64_tlsgd not implemented'')
+		    failwith (''abi_amd64_apply_relocation: r_x86_64_tlsgd not implemented'')
       (** Width: 32 *)
 		  else if rel_type = r_x86_64_tlsld then
-		    error_fail (''abi_amd64_apply_relocation: r_x86_64_tlsld not implemented'')
+		    failwith (''abi_amd64_apply_relocation: r_x86_64_tlsld not implemented'')
       (** Width: 32 *)
 		  else if rel_type = r_x86_64_dtpoff32 then
-		    error_fail (''abi_amd64_apply_relocation: r_x86_64_dtpoff32 not implemented'')
+		    failwith (''abi_amd64_apply_relocation: r_x86_64_dtpoff32 not implemented'')
       (** Width: 32 *)
 		  else if rel_type = r_x86_64_gottpoff then
-		    error_fail (''abi_amd64_apply_relocation: r_x86_64_gottpoff not implemented'')
+		    failwith (''abi_amd64_apply_relocation: r_x86_64_gottpoff not implemented'')
       (** Width: 32 *)
 		  else if rel_type = r_x86_64_tpoff32 then
-		    error_fail (''abi_amd64_apply_relocation: r_x86_64_tpoff32 not implemented'')
+		    failwith (''abi_amd64_apply_relocation: r_x86_64_tpoff32 not implemented'')
 		  (** Width: 64 Calculation: S + A - P *)
 		  else if rel_type = r_x86_64_pc64 then
         lookupM (''S'') val_map >>= (\<lambda> s_val . 
@@ -450,13 +695,13 @@ definition abi_amd64_apply_relocation  :: " elf64_relocation_a \<Rightarrow>((st
       		error_return (NoCopy (map_update addr (result, I64, CannotFail) Map.empty)))))
       (** Width: 32 *)
 		  else if rel_type = r_x86_64_gotpc32_tlsdesc then
-		    error_fail (''abi_amd64_apply_relocation: r_x86_64_gotpc32_tlsdesc not implemented'')
+		    failwith (''abi_amd64_apply_relocation: r_x86_64_gotpc32_tlsdesc not implemented'')
       (** No width *)
 		  else if rel_type = r_x86_64_tlsdesc_call then
-		    error_fail (''abi_amd64_apply_relocation: r_x86_64_tlsdesc_call not implemented'')
+		    failwith (''abi_amd64_apply_relocation: r_x86_64_tlsdesc_call not implemented'')
 		  (** Width: 64X2 *)
 		  else if rel_type = r_x86_64_tlsdesc then
-		    error_fail (''abi_amd64_apply_relocation: r_x86_64_tlsdesc not implemented'')
+		    failwith (''abi_amd64_apply_relocation: r_x86_64_tlsdesc not implemented'')
 		  (** Calculation: indirect(B + A) *)
 		  else if rel_type = r_x86_64_irelative then
         lookupM (''B'') val_map >>= (\<lambda> b_val . 
@@ -464,8 +709,8 @@ definition abi_amd64_apply_relocation  :: " elf64_relocation_a \<Rightarrow>((st
 		    (let addr   = ((elf64_ra_offset   rel)) in
 		      error_return (NoCopy (map_update addr (result, I64, CannotFail) Map.empty)))))
 		  else
-		  	error_fail (''abi_amd64_apply_relocation: invalid relocation type'')))
+		  	failwith (''abi_amd64_apply_relocation: invalid relocation type'')))
   else
-  	error_fail (''abi_amd64_apply_relocation: not a relocatable file''))"
+  	failwith (''abi_amd64_apply_relocation: not a relocatable file''))"
 
 end
