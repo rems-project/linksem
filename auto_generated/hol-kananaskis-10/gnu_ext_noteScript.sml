@@ -39,7 +39,7 @@ val _ = new_theory "gnu_ext_note"
  (group_elf32_words endian xs =  
 ((case xs of
       []                 => return []
-    | x1::x2::x3::x4::xs =>
+    | x1  ::  x2  ::  x3  ::  x4  ::  xs =>
       let bs0 = (byte_sequence$from_byte_lists [[x1;x2;x3;x4]]) in
       read_elf32_word   endian bs0 >>= 
   (\p .  (case (p ) of
@@ -56,7 +56,7 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
  (group_elf64_words endian xs =  
 ((case xs of
       []                 => return []
-    | x1::x2::x3::x4::xs =>
+    | x1  ::  x2  ::  x3  ::  x4  ::  xs =>
       let bs0 = (byte_sequence$from_byte_lists [[x1;x2;x3;x4]]) in
       read_elf64_word   endian bs0 >>= 
   (\p .  (case (p ) of

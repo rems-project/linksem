@@ -63,7 +63,7 @@ val _ = Define `
         ([], []) => failwith "impossible: elf file feature has empty natural list (case 0)"
     |   (_, [])  => failwith "impossible: elf file feature has empty natural list (case 1)"
     |   ([], _)  => failwith "impossible: elf file feature has empty natural list (case 2)"
-    |   ((hd1 :: tl1), (hd2 :: tl2)) => 
+    |   ((hd1  ::  tl1), (hd2  ::  tl2)) => 
             if hd1 < hd2 then LT else if hd1 > hd2 then GT else
                 (case (f1, f2) of
                     (ElfHeader(x1), ElfHeader(x2)) => elf64_header_compare x1 x2
@@ -127,7 +127,7 @@ val _ = Define `
         ([], []) => failwith "impossible: tag has empty natural list (case 0)"
     |   (_, [])  => failwith "impossible: tag has empty natural list (case 1)"
     |   ([], _)  => failwith "impossible: tag has empty natural list (case 2)"
-    |   ((hd1 :: tl1), (hd2 :: tl2)) => 
+    |   ((hd1  ::  tl1), (hd2  ::  tl2)) => 
             if hd1 < hd2 then LT else if hd1 > hd2 then GT else
                 (case (k1, k2) of
                     (ImageBase, ImageBase) => EQ

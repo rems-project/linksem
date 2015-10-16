@@ -51,7 +51,7 @@ val _ = Define `
 
 (** [(>>=)] is the monadic binding function for [error].
   *)
-(*val error_bind : forall 'a 'b. error 'a -> ('a -> error 'b) -> error 'b*)
+(*val >>= : forall 'a 'b. error 'a -> ('a -> error 'b) -> error 'b*)
 val _ = Define `
  (error_bind x f =	
 ((case x of

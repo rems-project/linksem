@@ -39,7 +39,7 @@ val _ = new_theory "memory_image"
 
 (* Now we can define memory images *)
 
-val _ = type_abbrev( "byte_pattern_element" , ``:   word 8 option``);
+val _ = type_abbrev( "byte_pattern_element" , ``:  word8 option``);
 val _ = type_abbrev( "byte_pattern" , ``: byte_pattern_element list``);
 
 (* An element might have an address/offset, and it has some contents. *)
@@ -417,6 +417,8 @@ val _ = Define `
 val _ = Hol_datatype `
 (*  'abifeature *) abi = (* forall 'abifeature. *)
    <| is_valid_elf_header : elf64_header -> bool (* doesn't this generalise outrageously? is_valid_elf_file? *)
+    ; make_elf_header    : num -> num -> num -> num -> num -> num -> num -> elf64_header
+                           (* t entry shoff phoff phnum shnum shstrndx *)
     ; reloc              : 'abifeature reloc_fn
     ; section_is_special : elf64_interpreted_section -> 'abifeature annotated_memory_image -> bool
     ; section_is_large   : elf64_interpreted_section -> 'abifeature annotated_memory_image -> bool
@@ -483,7 +485,7 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
                 ", min length " ^ (show min_length) ^ ")")
             in *)
             missing_pervasives$replicate pad_length T)
-     |  (base, len) :: more => 
+     |  (base, len)  ::  more => 
             (* pad the accum so that it reaches up to base *)
             let up_to_base = (missing_pervasives$replicate (base - (missing_pervasives$length accum)) T)
             in
@@ -505,8 +507,8 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
  (make_byte_pattern_revacc revacc bytes cares =    
  ((case bytes of
           [] => REVERSE revacc
-        | b :: bs => (case cares of 
-                care :: more => make_byte_pattern_revacc ((if ~ care then NONE else SOME b) :: revacc) bs more
+        | b  ::  bs => (case cares of 
+                care  ::  more => make_byte_pattern_revacc ((if ~ care then NONE else SOME b) :: revacc) bs more
               | _ => failwith "make_byte_pattern: unequal length"
               )
     )))`;
@@ -524,8 +526,8 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
  (relax_byte_pattern_revacc revacc bytes cares =    
  ((case bytes of
           [] => REVERSE revacc
-        | b :: bs => (case cares of 
-                care :: more => relax_byte_pattern_revacc ((if ~ care then NONE else b) :: revacc) bs more
+        | b  ::  bs => (case cares of 
+                care  ::  more => relax_byte_pattern_revacc ((if ~ care then NONE else b) :: revacc) bs more
               | _ => failwith ("relax_byte_pattern: unequal length")
               )
     )))`;
@@ -552,9 +554,9 @@ val _ = Define `
  (byte_list_matches_pattern pattern bytes =    
  ((case pattern of 
         [] => T
-        | optbyte :: more => (case bytes of 
+        | optbyte  ::  more => (case bytes of 
                 [] => F
-                | abyte :: morebytes => 
+                | abyte  ::  morebytes => 
                     byte_option_matches_byte optbyte abyte 
                  /\ byte_list_matches_pattern more morebytes
             )
@@ -579,11 +581,11 @@ val _ = Define `
     in *)(case pattern of
         [] => (* let _ = Missing_pervasives.errs ("terminating with hit (empty pattern)\n") in *)
             offset :: accum
-        | bpe :: more_bpes => (* nonempty, so check for nonempty seq *)
+        | bpe  ::  more_bpes => (* nonempty, so check for nonempty seq *)
             (case seq of 
                 [] => (*let _ = Missing_pervasives.errs ("terminating with miss (empty pattern)\n") 
                     in *) accum (* ran out of bytes in the sequence, so no match *)
-                | byte :: more_bytes => let matched_this_byte =                            
+                | byte  ::  more_bytes => let matched_this_byte =                            
  (byte_option_matches_byte bpe byte)
                        in
                        (* let _ = Missing_pervasives.errs ("Byte " ^ (show byte) ^ " matched " ^ (show byte_pattern) ^ "? " ^ (show matched_this_byte) ^ "; ") 

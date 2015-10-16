@@ -132,7 +132,7 @@ val _ = Define `
  (natural_of_decimal_string_helper acc chars =    
 ((case chars of 
         [] => acc
-        | c :: cs => (case natural_of_decimal_digit c of
+        | c  ::  cs => (case natural_of_decimal_digit c of
             SOME dig => natural_of_decimal_string_helper (( 10 * acc) + dig) cs
             | NONE => acc
         )
@@ -186,7 +186,7 @@ val _ = Define `
 ((case (xs, ys) of
       ([], ys)      => ys
     | (xs, [])     => xs
-    | (x::xs, y::ys) =>
+    | (x  ::  xs, y  ::  ys) =>
       if comp x y = LT then
         x::(merge_by comp xs (y::ys))
       else
@@ -219,7 +219,7 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
  (mapMaybei' f idx xs =  
 ((case xs of
     []    => []
-  | x::xs =>
+  | x  ::  xs =>
       (case f idx x of
         NONE => mapMaybei' f ( 1 + idx) xs
       | SOME e  => e :: mapMaybei' f ( 1 + idx) xs
@@ -247,7 +247,7 @@ val _ = Define `
 ( 
     (* offset o means "xs begins at index o, as reckoned by the indices in sorted_is" *)(case sorted_is of
         [] => (REVERSE reverse_accum, REVERSE reverse_accum_compl)
-        | i :: more_is => 
+        | i  ::  more_is => 
             let (length_to_split_off : num) = ( (i - offset))
             in
             let (left, right) = (TAKE length_to_split_off xs, DROP length_to_split_off xs) in
@@ -261,7 +261,7 @@ val _ = Define `
                 [] => (* We got to the end of the list before the target index. *) 
                     (REVERSE reverse_accum, 
                      REV reverse_accum_compl left_with_indices)
-                | x :: more_xs => 
+                | x  ::  more_xs => 
                     (* x is at index i by definition, so more_xs starts with index i + 1 *)
                     partitionii' (i+ 1) more_is more_xs ((i, x) :: reverse_accum) 
                         (REV left_with_indices reverse_accum_compl)
@@ -315,7 +315,7 @@ val _ = Define `
  val _ = Define `
  (unzip3 l = ((case l of
     [] => ([], [], [])
-  | (x, y, z) :: xyzs => let (xs, ys, zs) = (unzip3 xyzs) in ((x :: xs), (y :: ys), (z :: zs))
+  | (x, y, z)  ::  xyzs => let (xs, ys, zs) = (unzip3 xyzs) in ((x :: xs), (y :: ys), (z :: zs))
 )))`;
 
 
@@ -355,7 +355,7 @@ val _ = Define `
 		  []       => REVERSE accum
 		| [x]      => REVERSE accum ++ [x]
 		| [x; y]   => REVERSE accum ++ [x; sep; y]
-		| x::y::xs => intercalate' sep xs (sep::(y::(sep::(x::accum))))
+		| x  ::  y  ::  xs => intercalate' sep xs (sep::(y::(sep::(x::accum))))
 	)))`;
 
 val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn intercalate'_defn;
@@ -396,7 +396,10 @@ val _ = Define `
   * function really reusable? I suspect not.
   *)
 (*val split_string_on_char : string -> char -> list string*)
-    
+
+(* [find_substring sub s] returns the index at which *)
+(*val find_substring : string -> string -> maybe natural*)
+
 (** [string_of_nat m] produces a string representation of natural number [m]. *)
 (*val string_of_nat : nat -> string*)
 
@@ -421,7 +424,7 @@ val _ = Define `
  (take m xs =  
 ((case xs of
       []    => []
-    | x::xs =>
+    | x  ::  xs =>
       if m = 0 then
         []
       else
@@ -451,7 +454,7 @@ val _ = Define `
  (string_index_of' e ss idx =  
 ((case ss of
       []    => NONE
-    | s::ss =>
+    | s  ::  ss =>
       if s = e then
         SOME idx
       else
@@ -470,7 +473,7 @@ val _ = Define `
  (index m xs =  
 ((case xs of
       []    => NONE
-    | x::xs =>
+    | x  ::  xs =>
         if m = 0 then
           SOME x
         else
@@ -484,7 +487,7 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
  (find_index_helper count1 p xs =	
 ((case xs of
 		  []    => NONE
-		| y::ys =>
+		| y  ::  ys =>
 			if p y then
 				SOME count1
 			else
@@ -542,7 +545,7 @@ val _ = Define `
     in
     (case ll of
         []      => acc
-      | item :: items => 
+      | item  ::  items => 
             (* item is a thing that maps to a list. it needn't be a list yet *)
             let mapped_list = (f item)
             in 
@@ -566,7 +569,7 @@ val _ = Define `
         0 => REVERSE reverse_acc
       | _ => (case l of
             [] => failwith "list_take_with_accum: not enough elements"
-            | x :: xs => list_take_with_accum (n -  1) (x :: reverse_acc) xs
+            | x  ::  xs => list_take_with_accum (n -  1) (x :: reverse_acc) xs
         )
     )))`;
 

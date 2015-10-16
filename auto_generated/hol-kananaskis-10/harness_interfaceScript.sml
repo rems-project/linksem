@@ -45,7 +45,7 @@ val _ = new_theory "harness_interface"
  (concatS' ss accum =  
 ((case ss of
       []    => accum
-    | s::ss => concatS' ss (STRCAT accum s)
+    | s  ::  ss => concatS' ss (STRCAT accum s)
   )))`;
 
 val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn concatS'_defn;

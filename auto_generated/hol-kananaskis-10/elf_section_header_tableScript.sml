@@ -313,9 +313,9 @@ val _ = Define `
   *)
 val _ = Hol_datatype `
  elf32_compression_header =
-  <| elf32_chdr_type      :  word 32  (** Specifies the compression algorithm *)
-   ; elf32_chdr_size      :  word 32  (** Size in bytes of the uncompressed data *)
-   ; elf32_chdr_addralign :  word 32  (** Specifies the required alignment of the uncompressed data *)
+  <| elf32_chdr_type      : word32  (** Specifies the compression algorithm *)
+   ; elf32_chdr_size      : word32  (** Size in bytes of the uncompressed data *)
+   ; elf32_chdr_addralign : word32  (** Specifies the required alignment of the uncompressed data *)
    |>`;
 
 
@@ -325,10 +325,10 @@ val _ = Hol_datatype `
   *)   
 val _ = Hol_datatype `
  elf64_compression_header =
-  <| elf64_chdr_type      :  word 32  (** Specified the compression algorithm *)
-   ; elf64_chdr_reserved  :  word 32  (** Reserved. *)
-   ; elf64_chdr_size      : elf64_xword (** Size in bytes of the uncompressed data *)
-   ; elf64_chdr_addralign : elf64_xword (** Specifies the required alignment of the uncompressed data *)
+  <| elf64_chdr_type      : word32  (** Specified the compression algorithm *)
+   ; elf64_chdr_reserved  : word32  (** Reserved. *)
+   ; elf64_chdr_size      : word64 (** Size in bytes of the uncompressed data *)
+   ; elf64_chdr_addralign : word64 (** Specifies the required alignment of the uncompressed data *)
    |>`;
 
 
@@ -398,16 +398,16 @@ val _ = Define `
   *) 
 val _ = Hol_datatype `
  elf32_section_header_table_entry =
-  <| elf32_sh_name      :  word 32 (** Name of the section *)
-   ; elf32_sh_type      :  word 32 (** Type of the section and its semantics *)
-   ; elf32_sh_flags     :  word 32 (** Flags associated with the section *)
-   ; elf32_sh_addr      :  addr 32 (** Address of first byte of section in memory image *)
-   ; elf32_sh_offset    :  word 32  (** Offset from beginning of file of first byte of section *)
-   ; elf32_sh_size      :  word 32 (** Section size in bytes *)
-   ; elf32_sh_link      :  word 32 (** Section header table index link *)
-   ; elf32_sh_info      :  word 32 (** Extra information, contents depends on type of section *)
-   ; elf32_sh_addralign :  word 32 (** Alignment constraints for section *)
-   ; elf32_sh_entsize   :  word 32 (** Size of each entry in table, if section is one *)
+  <| elf32_sh_name      : word32 (** Name of the section *)
+   ; elf32_sh_type      : word32 (** Type of the section and its semantics *)
+   ; elf32_sh_flags     : word32 (** Flags associated with the section *)
+   ; elf32_sh_addr      : word32 (** Address of first byte of section in memory image *)
+   ; elf32_sh_offset    : word32  (** Offset from beginning of file of first byte of section *)
+   ; elf32_sh_size      : word32 (** Section size in bytes *)
+   ; elf32_sh_link      : word32 (** Section header table index link *)
+   ; elf32_sh_info      : word32 (** Extra information, contents depends on type of section *)
+   ; elf32_sh_addralign : word32 (** Alignment constraints for section *)
+   ; elf32_sh_entsize   : word32 (** Size of each entry in table, if section is one *)
    |>`;
 
    
@@ -462,16 +462,16 @@ val _ = Define `
   *) 
 val _ = Hol_datatype `
  elf64_section_header_table_entry =
-  <| elf64_sh_name      :  word 32  (** Name of the section *)
-   ; elf64_sh_type      :  word 32  (** Type of the section and its semantics *)
-   ; elf64_sh_flags     : elf64_xword (** Flags associated with the section *)
-   ; elf64_sh_addr      :  word 64  (** Address of first byte of section in memory image *)
-   ; elf64_sh_offset    :  word 64   (** Offset from beginning of file of first byte of section *)
-   ; elf64_sh_size      : elf64_xword (** Section size in bytes *)
-   ; elf64_sh_link      :  word 32  (** Section header table index link *)
-   ; elf64_sh_info      :  word 32  (** Extra information, contents depends on type of section *)
-   ; elf64_sh_addralign : elf64_xword (** Alignment constraints for section *)
-   ; elf64_sh_entsize   : elf64_xword (** Size of each entry in table, if section is one *)
+  <| elf64_sh_name      : word32  (** Name of the section *)
+   ; elf64_sh_type      : word32  (** Type of the section and its semantics *)
+   ; elf64_sh_flags     : word64 (** Flags associated with the section *)
+   ; elf64_sh_addr      : word64  (** Address of first byte of section in memory image *)
+   ; elf64_sh_offset    : word64   (** Offset from beginning of file of first byte of section *)
+   ; elf64_sh_size      : word64 (** Section size in bytes *)
+   ; elf64_sh_link      : word32  (** Section header table index link *)
+   ; elf64_sh_info      : word32  (** Extra information, contents depends on type of section *)
+   ; elf64_sh_addralign : word64 (** Alignment constraints for section *)
+   ; elf64_sh_entsize   : word64 (** Size of each entry in table, if section is one *)
    |>`;
 
 
@@ -784,7 +784,7 @@ val _ = Define `
  (is_valid_elf32_section_header_table tbl =  
 ((case tbl of
       []    => T
-    | x::xs =>        
+    | x  ::  xs =>        
 (w2n x.elf32_sh_name = 0) /\        
 (w2n x.elf32_sh_type = sht_null) /\        
 (w2n x.elf32_sh_flags = 0) /\        
@@ -806,7 +806,7 @@ val _ = Define `
  (is_valid_elf64_section_header_table tbl =  
 ((case tbl of
       []    => T
-    | x::xs =>        
+    | x  ::  xs =>        
 (w2n x.elf64_sh_name = 0) /\        
 (w2n x.elf64_sh_type = sht_null) /\        
 (w2n x.elf64_sh_flags = 0) /\        
@@ -828,8 +828,7 @@ val _ = Define `
   * The first component of the type is an OS specific print function, the second is
   * a processor specific print function.
   *)
-val _ = type_abbrev( "sht_print_bundle" , ``:
-  (num -> string) # (num -> string) # (num -> string)``);
+val _ = type_abbrev( "sht_print_bundle" , ``:(num -> string) # (num -> string) # (num -> string)``);
 
 (** [string_of_elf32_section_header_table_entry sht ent] produces a string
   * representation of section header table entry [ent] using [sht], a
@@ -906,7 +905,7 @@ val _ = type_abbrev( "sht_print_bundle" , ``:
   *)
 (*val is_elf32_tbss_special : elf32_section_header_table_entry -> elf32_program_header_table_entry -> bool*)
 val _ = Define `
- (is_elf32_tbss_special sec_hdr segment = (~ ((word_and sec_hdr.elf32_sh_flags (n2w shf_tls)) = (n2w( 0))) /\
+ (is_elf32_tbss_special sec_hdr segment = (~ ((word_and sec_hdr.elf32_sh_flags ((n2w : num -> 32 word) shf_tls)) = ((n2w : num -> 32 word)( 0))) /\
     ((w2n sec_hdr.elf32_sh_type) = sht_nobits) /\
     ( ~ ((w2n segment.elf32_p_type) = elf_pt_tls))))`;
 
@@ -923,7 +922,7 @@ val _ = Define `
   *)
 (*val is_elf64_tbss_special : elf64_section_header_table_entry -> elf64_program_header_table_entry -> bool*)
 val _ = Define `
- (is_elf64_tbss_special sec_hdr segment = (~ ((word_and sec_hdr.elf64_sh_flags (n2w shf_tls)) = (n2w( 0))) /\
+ (is_elf64_tbss_special sec_hdr segment = (~ ((word_and sec_hdr.elf64_sh_flags ((n2w : num -> 64 word) shf_tls)) = ((n2w : num -> 64 word)( 0))) /\
     ((w2n sec_hdr.elf64_sh_type) = sht_nobits) /\
     ( ~ ((w2n segment.elf64_p_type) = elf_pt_tls))))`;
 
@@ -942,7 +941,7 @@ val _ = Define `
  (get_elf32_section_to_segment_mapping hdr sects pent isin stbl =  
 ((case sects of
       []    => return []
-    | x::xs =>
+    | x  ::  xs =>
       if is_elf32_tbss_special x pent then
         get_elf32_section_to_segment_mapping hdr xs pent isin stbl
       else if ~ (isin hdr x pent) then
@@ -970,7 +969,7 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
  (get_elf64_section_to_segment_mapping hdr sects pent isin stbl =  
 ((case sects of
       []    => return []
-    | x::xs =>
+    | x  ::  xs =>
       if ~ (isin hdr x pent) then
         get_elf64_section_to_segment_mapping hdr xs pent isin stbl
       else if is_elf64_tbss_special x pent then
@@ -1024,7 +1023,7 @@ val _ = Define `
          (case mems of
                [] => fail0
                        "obtain_elf32_section_group_indices: section group sections must consist of at least one elf32_word"
-           | x::xs =>
+           | x  ::  xs =>
          let flag = (w2n x) in return (flag, xs)
          )
          )))
@@ -1052,7 +1051,7 @@ val _ = Define `
          (case mems of
                [] => fail0
                        "obtain_elf64_section_group_indices: section group sections must consist of at least one elf64_word"
-           | x::xs =>
+           | x  ::  xs =>
          let flag = (w2n x) in return (flag, xs)
          )
          )))

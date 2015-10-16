@@ -79,13 +79,17 @@ val _ = Define `
 (MAP (\ (seg, interp_seg) . 
           (w2n seg.elf32_p_offset, interp_seg.elf32_segment_body)
         ) (FILTER (\p .  
-  (case (p ) of ( (x, _) ) => ~ (x.elf32_p_filesz = (n2w ( 0))) )) segs_zip))
+  (case (p ) of
+      ( (x, _) ) => ~ (x.elf32_p_filesz = ((n2w : num -> 32 word) ( 0)))
+  )) segs_zip))
       in
       let sects_layout =        
 (MAP (\ (sect, interp_sect) . 
           (w2n sect.elf32_sh_offset, interp_sect.elf32_section_body)
         ) (FILTER (\p .  
-  (case (p ) of ( (x, _) ) => ~ (x.elf32_sh_type = (n2w sht_nobits)) )) sects_zip))
+  (case (p ) of
+      ( (x, _) ) => ~ (x.elf32_sh_type = ((n2w : num -> 32 word) sht_nobits))
+  )) sects_zip))
       in
       let pre_layout = ((([hdr_layout; pht_layout; sht_layout] ++ sects_layout) ++ segs_layout) ++ bab_layout) in
       let final_layout =        
@@ -171,13 +175,17 @@ val _ = Define `
 (MAP (\ (seg, interp_seg) . 
           (w2n seg.elf64_p_offset, interp_seg.elf64_segment_body)
         ) (FILTER (\p .  
-  (case (p ) of ( (x, _) ) => ~ (x.elf64_p_filesz = (n2w ( 0))) )) segs_zip))
+  (case (p ) of
+      ( (x, _) ) => ~ (x.elf64_p_filesz = ((n2w : num -> 64 word) ( 0)))
+  )) segs_zip))
       in
       let sects_layout =        
 (MAP (\ (sect, interp_sect) . 
           (w2n sect.elf64_sh_offset, interp_sect.elf64_section_body)
         ) (FILTER (\p .  
-  (case (p ) of ( (x, _) ) => ~ (x.elf64_sh_type = (n2w sht_nobits)) )) sects_zip))
+  (case (p ) of
+      ( (x, _) ) => ~ (x.elf64_sh_type = ((n2w : num -> 32 word) sht_nobits))
+  )) sects_zip))
       in
       let pre_layout = ((([hdr_layout; pht_layout; sht_layout] ++ sects_layout) ++ segs_layout) ++ bab_layout) in
       let final_layout =        
@@ -351,22 +359,22 @@ val _ = Define `
  (obtain_elf32_interpreted_segments pht bdy =  
 (mapM (\ ph . 
     let offset   = (w2n ph.elf32_p_offset)  in
-    let size     = (w2n ph.elf32_p_filesz) in
-      (if size = 0 then
+    let size1     = (w2n ph.elf32_p_filesz) in
+      (if size1 = 0 then
          return byte_sequence$empty
        else
-         byte_sequence$offset_and_cut offset size bdy) >>= (\ relevant . 
+         byte_sequence$offset_and_cut offset size1 bdy) >>= (\ relevant . 
     let vaddr    = (w2n ph.elf32_p_vaddr) in
     let paddr    = (w2n ph.elf32_p_paddr) in
     let memsz    = (w2n ph.elf32_p_memsz) in
     let typ      = (w2n ph.elf32_p_type)  in
     let align    = (w2n ph.elf32_p_align) in
     let flags    = (elf32_interpret_program_header_flags ph.elf32_p_flags) in
-      if memsz < size then
+      if memsz < size1 then
         fail0 "obtain_elf32_interpreted_segments: memory size of segment cannot be less than file size"
       else
         return <| elf32_segment_body := relevant; elf32_segment_type := typ;
-                    elf32_segment_size := size; elf32_segment_memsz := memsz;
+                    elf32_segment_size := size1; elf32_segment_memsz := memsz;
                     elf32_segment_base  := vaddr; elf32_segment_flags := flags;
                     elf32_segment_paddr := paddr; elf32_segment_align := align;
                     elf32_segment_offset := offset |>)
@@ -384,22 +392,22 @@ val _ = Define `
  (obtain_elf64_interpreted_segments pht bdy =  
 (mapM (\ ph . 
     let offset   = (w2n   ph.elf64_p_offset)  in
-    let size     = (w2n ph.elf64_p_filesz) in
-      (if size = 0 then
+    let size1     = (w2n ph.elf64_p_filesz) in
+      (if size1 = 0 then
          return byte_sequence$empty
        else
-         byte_sequence$offset_and_cut offset size bdy) >>= (\ relevant . 
+         byte_sequence$offset_and_cut offset size1 bdy) >>= (\ relevant . 
     let vaddr    = (w2n  ph.elf64_p_vaddr) in
     let paddr    = (w2n  ph.elf64_p_paddr) in
     let memsz    = (w2n ph.elf64_p_memsz) in
     let typ      = (w2n  ph.elf64_p_type)  in
     let align    = (w2n ph.elf64_p_align) in
     let flags    = (elf64_interpret_program_header_flags ph.elf64_p_flags) in
-      if memsz < size then
+      if memsz < size1 then
         fail0 "obtain_elf64_interpreted_segments: memory size of segment cannot be less than file size"
       else
         return <| elf64_segment_body := relevant; elf64_segment_type := typ;
-                    elf64_segment_size := size; elf64_segment_memsz := memsz;
+                    elf64_segment_size := size1; elf64_segment_memsz := memsz;
                     elf64_segment_base  := vaddr; elf64_segment_flags := flags;
                     elf64_segment_align := align; elf64_segment_paddr := paddr;
                     elf64_segment_offset := offset |>)
@@ -417,10 +425,10 @@ val _ = Define `
  (obtain_elf32_interpreted_sections shstrtab sht bs0 =  
 (mapM (\ sh . 
     let offset = (w2n  sh.elf32_sh_offset) in
-    let size   = (w2n sh.elf32_sh_size) in
+    let size1   = (w2n sh.elf32_sh_size) in
     let name   = (w2n sh.elf32_sh_name) in
     let typ    = (w2n sh.elf32_sh_type) in
-    let filesz = (if typ = sht_nobits then  0 else size) in
+    let filesz = (if typ = sht_nobits then  0 else size1) in
     let flags  = (w2n sh.elf32_sh_flags) in
     let base   = (w2n sh.elf32_sh_addr) in
     let link   = (w2n sh.elf32_sh_link) in
@@ -433,7 +441,7 @@ val _ = Define `
       else
         byte_sequence$offset_and_cut offset filesz bs0) >>= (\ relevant . 
       return <| elf32_section_name := name; elf32_section_type := typ;
-          elf32_section_size := size; elf32_section_offset := offset;
+          elf32_section_size := size1; elf32_section_offset := offset;
           elf32_section_flags := flags; elf32_section_addr := base;
           elf32_section_link := link; elf32_section_info := info;
           elf32_section_align := align; elf32_section_body := relevant;
@@ -453,10 +461,10 @@ val _ = Define `
  (obtain_elf64_interpreted_sections shstrtab sht bs0 =  
 (mapM (\ sh . 
     let offset = (w2n   sh.elf64_sh_offset) in
-    let size   = (w2n sh.elf64_sh_size) in
+    let size1   = (w2n sh.elf64_sh_size) in
     let name   = (w2n  sh.elf64_sh_name) in
     let typ    = (w2n  sh.elf64_sh_type) in
-    let filesz = (if typ = sht_nobits then  0 else size) in
+    let filesz = (if typ = sht_nobits then  0 else size1) in
     let flags  = (w2n sh.elf64_sh_flags) in
     let base   = (w2n  sh.elf64_sh_addr) in
     let link   = (w2n  sh.elf64_sh_link) in
@@ -469,7 +477,7 @@ val _ = Define `
       else
         byte_sequence$offset_and_cut offset filesz bs0) >>= (\ relevant . 
       return <| elf64_section_name := name; elf64_section_type := typ;
-          elf64_section_size := size; elf64_section_offset := offset;
+          elf64_section_size := size1; elf64_section_offset := offset;
           elf64_section_flags := flags; elf64_section_addr := base;
           elf64_section_link := link; elf64_section_info := info;
           elf64_section_align := align; elf64_section_body := relevant;
@@ -691,8 +699,8 @@ val _ = Define `
         NONE => fail0 "obtain_elf32_string_table: invalid offset into section header table"
       | SOME sect =>
           let offset = (w2n sect.elf32_sh_offset) in
-          let size   = (w2n sect.elf32_sh_size) in
-          byte_sequence$offset_and_cut offset size bs0 >>= (\ rel . 
+          let size1   = (w2n sect.elf32_sh_size) in
+          byte_sequence$offset_and_cut offset size1 bs0 >>= (\ rel . 
           let strings  = (byte_sequence$string_of_byte_sequence rel) in
           return (string_table$mk_string_table strings (CHR 0)))
     ))))`;
@@ -714,8 +722,8 @@ val _ = Define `
         NONE => fail0 "obtain_elf64_string_table: invalid offset into section header table"
       | SOME sect =>
           let offset = (w2n   sect.elf64_sh_offset) in
-          let size   = (w2n sect.elf64_sh_size) in
-          byte_sequence$offset_and_cut offset size bs0 >>= (\ rel . 
+          let size1   = (w2n sect.elf64_sh_size) in
+          byte_sequence$offset_and_cut offset size1 bs0 >>= (\ rel . 
           let strings  = (byte_sequence$string_of_byte_sequence rel) in
           return (string_table$mk_string_table strings (CHR 0)))
     ))))`;
@@ -798,8 +806,8 @@ val _ = Define `
     bytes_of_elf32_file f3 >>= (\ bs0 . 
     mapM (\ sect . 
       let offset  = (w2n  sect.elf32_sh_offset) in
-      let size    = (w2n sect.elf32_sh_size) in
-      byte_sequence$offset_and_cut offset size bs0 >>= (\ bs1 . 
+      let size1    = (w2n sect.elf32_sh_size) in
+      byte_sequence$offset_and_cut offset size1 bs0 >>= (\ bs1 . 
       let strings = (byte_sequence$string_of_byte_sequence bs1) in
       return (string_table$mk_string_table strings (CHR 0)))) strtabs
     >>= (\ strings . 
@@ -827,8 +835,8 @@ val _ = Define `
     bytes_of_elf64_file f3 >>= (\ bs0 . 
     mapM (\ sect . 
       let offset  = (w2n   sect.elf64_sh_offset) in
-      let size    = (w2n sect.elf64_sh_size) in
-      byte_sequence$offset_and_cut offset size bs0 >>= (\ bs1 . 
+      let size1    = (w2n sect.elf64_sh_size) in
+      byte_sequence$offset_and_cut offset size1 bs0 >>= (\ bs1 . 
       let strings = (byte_sequence$string_of_byte_sequence bs1) in
       return (string_table$mk_string_table strings (CHR 0)))) strtabs
     >>= (\ strings . 
@@ -853,9 +861,9 @@ val _ = Define `
         [] => return []
       | [symtab] =>
         let offset = (w2n symtab.elf32_sh_offset) in
-        let size   = (w2n symtab.elf32_sh_size) in
+        let size1   = (w2n symtab.elf32_sh_size) in
         bytes_of_elf32_file f3 >>= (\ bs0 . 
-        byte_sequence$offset_and_cut offset size bs0 >>= (\ relevant . 
+        byte_sequence$offset_and_cut offset size1 bs0 >>= (\ relevant . 
         read_elf32_symbol_table endian relevant))
       | _ =>
         fail0 "obtain_elf32_symbol_table: an ELF file may only have one symbol table of type SHT_SYMTAB"
@@ -880,9 +888,9 @@ val _ = Define `
         [] => return []
       | [symtab] =>
         let offset = (w2n   symtab.elf64_sh_offset) in
-        let size   = (w2n symtab.elf64_sh_size) in
+        let size1   = (w2n symtab.elf64_sh_size) in
         bytes_of_elf64_file f3 >>= (\ bs0 . 
-        byte_sequence$offset_and_cut offset size bs0 >>= (\ relevant . 
+        byte_sequence$offset_and_cut offset size1 bs0 >>= (\ relevant . 
         read_elf64_symbol_table endian relevant))
       | _ =>
         fail0 "obtain_elf64_symbol_table: an ELF file may only have one symbol table of type SHT_SYMTAB"
@@ -907,9 +915,9 @@ val _ = Define `
         [] => return []
       | [symtab] =>
         let offset = (w2n symtab.elf32_sh_offset) in
-        let size   = (w2n symtab.elf32_sh_size) in
+        let size1   = (w2n symtab.elf32_sh_size) in
         bytes_of_elf32_file ef >>= (\ bs0 . 
-        byte_sequence$offset_and_cut offset size bs0 >>= (\ relevant . 
+        byte_sequence$offset_and_cut offset size1 bs0 >>= (\ relevant . 
         read_elf32_symbol_table endian relevant))
       | _ =>
         fail0 "obtain_elf32_dynamic_symbol_table: an ELF file may only have one symbol table of type SHT_DYNSYM"
@@ -934,9 +942,9 @@ val _ = Define `
         [] => return []
       | [symtab] =>
         let offset = (w2n   symtab.elf64_sh_offset) in
-        let size   = (w2n symtab.elf64_sh_size) in
+        let size1   = (w2n symtab.elf64_sh_size) in
         bytes_of_elf64_file ef >>= (\ bs0 . 
-        byte_sequence$offset_and_cut offset size bs0 >>= (\ relevant . 
+        byte_sequence$offset_and_cut offset size1 bs0 >>= (\ relevant . 
         read_elf64_symbol_table endian relevant))
       | _ =>
         fail0 "obtain_elf64_dynamic_symbol_table: an ELF file may only have one symbol table of type SHT_DYNSYM"
@@ -1028,16 +1036,14 @@ val _ = Hol_datatype `
   * and begin execution.
   * XXX: (segments, provenance), entry point, machine type
   *)
-val _ = type_abbrev( "elf32_executable_process_image" , ``:
-  ( (elf32_interpreted_segment # segment_provenance)list # num # num)``);
+val _ = type_abbrev( "elf32_executable_process_image" , ``:( (elf32_interpreted_segment # segment_provenance)list # num # num)``);
 
 (** [elf64_executable_process_image] is a process image for ELF64 files.  Contains
   * all that is necessary to load the executable components of an ELF64 file
   * and begin execution.
   * XXX: (segments, provenance), entry point, machine type
   *)
-val _ = type_abbrev( "elf64_executable_process_image" , ``:
-  ( (elf64_interpreted_segment # segment_provenance)list # num # num)``);
+val _ = type_abbrev( "elf64_executable_process_image" , ``:( (elf64_interpreted_segment # segment_provenance)list # num # num)``);
 
 (** [get_elf32_executable_image f1] extracts an executable process image from an
   * executable ELF file.  May fail if extraction is impossible.
@@ -1141,14 +1147,14 @@ val _ = Define `
     get_elf32_file_symbol_table f3 >>= (\ symtab . 
     get_elf32_file_symbol_string_table f3 >>= (\ strtab . 
     elf_symbol_table$get_elf32_symbol_image_address symtab strtab >>= (\ strs . 
-      let mapped = (mapM (\ (symbol, (typ, size, addr, bind)) . 
+      let mapped = (mapM (\ (symbol, (typ, size1, addr, bind)) . 
         if typ = elf_symbol_table$stt_object then
           get_elf32_executable_image f3 >>= (\ (img, entry, mach) . 
           let chunks =            
 (FILTER (\p .  (case (p ) of
      ( (chunk, _) ) =>
  (addr >= chunk.elf32_segment_base) /\
-   ((addr + size) <= (chunk.elf32_segment_base + chunk.elf32_segment_size))
+   ((addr + size1) <= (chunk.elf32_segment_base + chunk.elf32_segment_size))
  )
             ) img)
           in
@@ -1156,12 +1162,12 @@ val _ = Define `
                 []    => fail0 "get_elf32_global_symbol_init: global variable not present in executable image"
               | [(x, _)]   =>
                 let rebase   = (addr - x.elf32_segment_base) in
-                byte_sequence$offset_and_cut rebase size x.elf32_segment_body >>= (\ relevant . 
-                  return (symbol, (typ, size, addr, SOME relevant, bind)))
-              | x::xs => fail0 "get_elf32_global_symbol_init: invariant failed, global variable appears in multiple segments"
+                byte_sequence$offset_and_cut rebase size1 x.elf32_segment_body >>= (\ relevant . 
+                  return (symbol, (typ, size1, addr, SOME relevant, bind)))
+              | x  ::  xs => fail0 "get_elf32_global_symbol_init: invariant failed, global variable appears in multiple segments"
             ))
         else
-          return (symbol, (typ, size, addr, NONE, bind))) strs)
+          return (symbol, (typ, size1, addr, NONE, bind))) strs)
       in
         mapped))))
   else
@@ -1180,14 +1186,14 @@ val _ = Define `
     get_elf64_file_symbol_table f3 >>= (\ symtab . 
     get_elf64_file_symbol_string_table f3 >>= (\ strtab . 
     elf_symbol_table$get_elf64_symbol_image_address symtab strtab >>= (\ strs . 
-      let mapped = (mapM (\ (symbol, (typ, size, addr, bind)) . 
+      let mapped = (mapM (\ (symbol, (typ, size1, addr, bind)) . 
         if typ = elf_symbol_table$stt_object then
           get_elf64_executable_image f3 >>= (\ (img, entry, mach) . 
           let chunks =            
 (FILTER (\p .  (case (p ) of
      ( (chunk, _) ) =>
  (addr >= chunk.elf64_segment_base) /\
-   ((addr + size) <= (chunk.elf64_segment_base + chunk.elf64_segment_size))
+   ((addr + size1) <= (chunk.elf64_segment_base + chunk.elf64_segment_size))
  )
             ) img)
           in
@@ -1195,12 +1201,12 @@ val _ = Define `
                 []    => fail0 "get_elf64_global_symbol_init: global variable not present in executable image"
               | [(x, _)]   =>
                 let rebase   = (addr - x.elf64_segment_base) in
-                byte_sequence$offset_and_cut rebase size x.elf64_segment_body >>= (\ relevant . 
-                  return (symbol, (typ, size, addr, SOME relevant, bind)))
-              | x::xs => fail0 "get_elf64_global_symbol_init: invariant failed, global variable appears in multiple segments"
+                byte_sequence$offset_and_cut rebase size1 x.elf64_segment_body >>= (\ relevant . 
+                  return (symbol, (typ, size1, addr, SOME relevant, bind)))
+              | x  ::  xs => fail0 "get_elf64_global_symbol_init: invariant failed, global variable appears in multiple segments"
             ))
         else
-          return (symbol, (typ, size, addr, NONE, bind))) strs)
+          return (symbol, (typ, size1, addr, NONE, bind))) strs)
       in
         mapped))))
   else
@@ -1228,9 +1234,9 @@ val _ = Define `
 ( 
     (* HACK: convert to elf64_xword first. Flags never live 
      * in objects bigger than 64 bits. *)word_and 
-            (n2w v) 
-            (n2w flag)
-    = (n2w flag)))`;
+            ((n2w : num -> 64 word) v) 
+            ((n2w : num -> 64 word) flag)
+    = ((n2w : num -> 64 word) flag)))`;
 
 val _ = export_theory()
 

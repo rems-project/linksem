@@ -28,7 +28,7 @@ val _ = Hol_datatype `
    ; uid       : num
    ; gid       : num
    ; mode      : num
-   ; size      : num (* 1GB should be enough *)
+   ; size0      : num (* 1GB should be enough *)
    |>`;
 
 
@@ -59,11 +59,11 @@ val _ = Define `
         offset_and_cut( 34)( 6)  header >>= (\ gid_str .  
         offset_and_cut( 40)( 8)  header >>= (\ mode_str .  
         offset_and_cut( 48)( 10) header >>= (\ size_str .  
-        let size = (natural_of_decimal_string (string_of_byte_sequence0 size_str)) in 
+        let size1 = (natural_of_decimal_string (string_of_byte_sequence0 size_str)) in 
                 (* let _ = Missing_pervasives.errln (": yes, size " ^ (show size)) in *)
         return (<| name := (string_of_byte_sequence0 name); timestamp := ( 0 : num) (* FIXME *);
           uid :=( 0) (* FIXME *) ; gid :=( 0) (* FIXME *) ; mode :=( 0) (* FIXME *);
-            size := (id size) (* FIXME *) |>, (seq_length - header_length), rest)))))))))
+            size0 := (id size1) (* FIXME *) |>, (seq_length - header_length), rest)))))))))
     )))`;
 
 
@@ -93,13 +93,13 @@ val _ = Define `
         Sequence next_bs =>
         (* let _ = Missing_pervasives.errln ("yes; next_bs has length " ^ (show (List.length next_bs))) in *)
         let amount_to_drop =          
-(if (hdr.size MOD  2) = 0 then
-            ( hdr.size)
+(if (hdr.size0 MOD  2) = 0 then
+            ( hdr.size0)
           else
-            ( hdr.size) + 1)
+            ( hdr.size0) + 1)
         in
         (*let _ = Missing_pervasives.errln ("amount_to_drop is " ^ (show amount_to_drop)) in*)
-        let chunk = (Sequence(TAKE hdr.size next_bs))
+        let chunk = (Sequence(TAKE hdr.size0 next_bs))
         in
         (*let _ = Missing_pervasives.errs ("Processing archive header named " ^ hdr.name)
         in*)
@@ -107,8 +107,8 @@ val _ = Define `
 ((case EXPLODE hdr.name of
              [#"/"; #" "; #" "; #" "; #" "; #" "; #" "; #" "; #" "; #" "; #" "; #" "; #" "; #" "; #" "; #" "]
                  => (* SystemV symbol lookup table; we skip this *) (accum, extended_filenames)
-            | #"/"::#"/" :: rest => (* extended filenames chunk *)  (accum, SOME(string_of_byte_sequence0 chunk))
-            | #"/"::rest         => (* filename is extended *)
+            | #"/" :: #"/"  ::  rest => (* extended filenames chunk *)  (accum, SOME(string_of_byte_sequence0 chunk))
+            | #"/" ::  rest         => (* filename is extended *)
                 let index = (natural_of_decimal_string (IMPLODE rest)) in
                 (case extended_filenames of 
                     NONE => failwith "corrupt archive: reference to non-existent extended filenames"
