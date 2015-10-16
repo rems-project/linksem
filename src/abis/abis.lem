@@ -167,7 +167,8 @@ let sysv_amd64_std_abi =
     ; maxpagesize = 65536
     ; minpagesize = 4096
     ; commonpagesize = 4096
-    ; symbol_is_generated_by_linker = null_abi.symbol_is_generated_by_linker
+      (* XXX: DPM, changed from explicit reference to null_abi field due to problems in HOL4. *)
+    ; symbol_is_generated_by_linker = (fun symname -> symname = "_GLOBAL_OFFSET_TABLE_")
     |>
 
 val sysv_aarch64_le_std_abi : abi any_abi_feature
@@ -180,7 +181,7 @@ let sysv_aarch64_le_std_abi =
     ; maxpagesize = null_abi.maxpagesize
     ; minpagesize = null_abi.minpagesize
     ; commonpagesize = null_abi.commonpagesize
-    ; symbol_is_generated_by_linker = null_abi.symbol_is_generated_by_linker
+    ; symbol_is_generated_by_linker = (fun symname -> symname = "_GLOBAL_OFFSET_TABLE_")
     |>
 
 val all_abis : list (abi any_abi_feature)

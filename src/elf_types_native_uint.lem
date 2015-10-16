@@ -14,13 +14,15 @@ open import Show
 open import {isabelle} `$ISABELLE_HOME/src/HOL/Word/Word`
 open import {isabelle} `Elf_Types_Local`
 
+open import {hol} `integer_wordLib`
+
 (** unsigned char type and bindings *)
 
 type unsigned_char
 
 declare ocaml    target_rep type unsigned_char = `Uint32.uint32`
 declare isabelle target_rep type unsigned_char = `Elf_Types_Local.unsigned_char`
-declare hol      target_rep type unsigned_char = `8` `word`
+declare hol      target_rep type unsigned_char = `word8`
 
 (** [string_of_unsigned_char uc] provides a string representation of unsigned
   * char [uc] (in base 10).
@@ -45,7 +47,7 @@ val unsigned_char_of_natural : natural -> unsigned_char
 
 declare ocaml    target_rep function unsigned_char_of_natural m = `Uint32.of_int32` (`Nat_big_num.to_int32` m)
 declare isabelle target_rep function unsigned_char_of_natural = `Elf_Types_Local.unsigned_char_of_nat`
-declare hol      target_rep function unsigned_char_of_natural = `n2w`
+declare hol      target_rep function unsigned_char_of_natural = (`n2w` `:` `num` `->` `8` `word`)
 
 (** [unsigned_char_land uc0 uc1] bitwise ANDs two unsigned chars, [uc0] and [uc1]
   * together.
@@ -138,7 +140,7 @@ type elf32_addr
 
 declare ocaml    target_rep type elf32_addr = `Uint32.uint32`
 declare isabelle target_rep type elf32_addr = `uint32`
-declare hol      target_rep type elf32_addr = `32` `addr`
+declare hol      target_rep type elf32_addr = `word32`
 
 val string_of_elf32_addr : elf32_addr -> string
 
@@ -203,7 +205,7 @@ type elf64_addr
 
 declare ocaml    target_rep type elf64_addr = `Uint64.uint64`
 declare isabelle target_rep type elf64_addr = `Elf_Types_Local.uint64`
-declare hol      target_rep type elf64_addr = `64` `word`
+declare hol      target_rep type elf64_addr = `word64`
 
 val string_of_elf64_addr : elf64_addr -> string
 
@@ -219,7 +221,7 @@ val elf64_addr_of_natural : natural -> elf64_addr
 
 declare ocaml    target_rep function elf64_addr_of_natural m = `Uint64.of_int64` (`Nat_big_num.to_int64` m)
 declare isabelle target_rep function elf64_addr_of_natural = `Elf_Types_Local.uint64_of_nat`
-declare hol      target_rep function elf64_addr_of_natural = `n2w`
+declare hol      target_rep function elf64_addr_of_natural = (`n2w` `:` `num` `->` `64` `word`)
 
 val elf64_addr_of_oct : byte -> byte -> byte -> byte -> byte -> byte -> byte -> byte -> elf64_addr
 
@@ -305,7 +307,7 @@ type elf32_half
 
 declare ocaml    target_rep type elf32_half = `Uint32.uint32`
 declare isabelle target_rep type elf32_half = `uint16`
-declare hol      target_rep type elf32_half = `16` `word`
+declare hol      target_rep type elf32_half = `word16`
 
 val string_of_elf32_half : elf32_half -> string
 
@@ -370,7 +372,7 @@ type elf64_half
 
 declare ocaml    target_rep type elf64_half = `Uint32.uint32`
 declare isabelle target_rep type elf64_half = `uint16`
-declare hol      target_rep type elf64_half = `16` `word`
+declare hol      target_rep type elf64_half = `word16`
 
 val string_of_elf64_half : elf64_half -> string
 
@@ -403,7 +405,7 @@ val elf64_half_of_natural : natural -> elf64_half
 
 declare ocaml    target_rep function elf64_half_of_natural m = `Uint32.of_int32` (`Nat_big_num.to_int32` m)
 declare isabelle target_rep function elf64_half_of_natural = `Elf_Types_Local.uint16_of_nat`
-declare hol      target_rep function elf64_half_of_natural = `n2w`
+declare hol      target_rep function elf64_half_of_natural = (`n2w` `:` `num` `->` `16` `word`)
 
 val equal_elf64_half : elf64_half -> elf64_half -> bool
 
@@ -454,7 +456,7 @@ type elf32_off
 
 declare ocaml    target_rep type elf32_off = `Uint32.uint32`
 declare isabelle target_rep type elf32_off = `uint32`
-declare hol      target_rep type elf32_off = `32` `word`
+declare hol      target_rep type elf32_off = `word32`
 
 val string_of_elf32_off : elf32_off -> string
 
@@ -519,7 +521,7 @@ type elf64_off
 
 declare ocaml    target_rep type elf64_off = `Uint64.uint64`
 declare isabelle target_rep type elf64_off = `uint64`
-declare hol      target_rep type elf64_off = `64` `word`
+declare hol      target_rep type elf64_off = `word64`
 
 val string_of_elf64_off : elf64_off -> string
 
@@ -535,7 +537,7 @@ val elf64_off_of_natural : natural -> elf64_off
 
 declare ocaml    target_rep function elf64_off_of_natural m = `Uint64.of_int64` (`Nat_big_num.to_int64` m)
 declare isabelle target_rep function elf64_off_of_natural = `Elf_Types_Local.uint64_of_nat`
-declare hol      target_rep function elf64_off_of_natural = `n2w`
+declare hol      target_rep function elf64_off_of_natural = (`n2w` `:` `num` `->` `64` `word`)
 
 val elf64_off_of_oct : byte -> byte -> byte -> byte -> byte -> byte -> byte -> byte -> elf64_off
 
@@ -593,7 +595,7 @@ type elf32_word
 
 declare ocaml    target_rep type elf32_word = `Uint32.uint32`
 declare isabelle target_rep type elf32_word = `uint32`
-declare hol      target_rep type elf32_word = `32` `word`
+declare hol      target_rep type elf32_word = `word32`
 
 val string_of_elf32_word : elf32_word -> string
 
@@ -609,7 +611,7 @@ val elf32_word_of_natural : natural -> elf32_word
 
 declare ocaml    target_rep function elf32_word_of_natural m = `Uint32.of_int32` (`Nat_big_num.to_int32` m)
 declare isabelle target_rep function elf32_word_of_natural = `Elf_Types_Local.uint32_of_nat`
-declare hol      target_rep function elf32_word_of_natural = `n2w`
+declare hol      target_rep function elf32_word_of_natural = (`n2w` `:` `num` `->` `32` `word`)
 
 val elf32_word_land : elf32_word -> elf32_word -> elf32_word
 
@@ -680,7 +682,7 @@ type elf64_word
 
 declare ocaml    target_rep type elf64_word = `Uint32.uint32`
 declare isabelle target_rep type elf64_word = `uint32`
-declare hol      target_rep type elf64_word = `32` `word`
+declare hol      target_rep type elf64_word = `word32`
 
 val string_of_elf64_word : elf64_word -> string
 
@@ -696,7 +698,7 @@ val elf64_word_of_natural : natural -> elf64_word
 
 declare ocaml    target_rep function elf64_word_of_natural m = `Uint32.of_int32` (`Nat_big_num.to_int32` m)
 declare isabelle target_rep function elf64_word_of_natural = `Elf_Types_Local.uint32_of_nat`
-declare hol      target_rep function elf64_word_of_natural = `n2w`
+declare hol      target_rep function elf64_word_of_natural = (`n2w` `:` `num` `->` `32` `word`)
 
 val elf64_word_land : elf64_word -> elf64_word -> elf64_word
 
@@ -760,7 +762,7 @@ type elf32_sword
 
 declare ocaml    target_rep type elf32_sword = `Int32.t`
 declare isabelle target_rep type elf32_sword = `sint32`
-declare hol      target_rep type elf32_sword = `32` `word`
+declare hol      target_rep type elf32_sword = `word32`
 
 val string_of_elf32_sword : elf32_sword -> string
 
@@ -816,7 +818,7 @@ type elf64_sword
 
 declare ocaml    target_rep type elf64_sword = `Int32.t`
 declare isabelle target_rep type elf64_sword = `sint32`
-declare hol      target_rep type elf64_sword = `32` `word`
+declare hol      target_rep type elf64_sword = `word32`
 
 val string_of_elf64_sword : elf64_sword -> string
 
@@ -874,7 +876,7 @@ type elf64_xword
 
 declare ocaml    target_rep type elf64_xword = `Uint64.uint64`
 declare isabelle target_rep type elf64_xword = `uint64`
-declare isabelle target_rep type elf64_xword = `64` `word`
+declare hol      target_rep type elf64_xword = `word64`
 
 val string_of_elf64_xword : elf64_xword -> string
 
@@ -931,7 +933,7 @@ val elf64_xword_of_natural : natural -> elf64_xword
 
 declare ocaml    target_rep function elf64_xword_of_natural m = `Uint64.of_int64` (`Nat_big_num.to_int64` m)
 declare isabelle target_rep function elf64_xword_of_natural m = `of_int` (`int` m)
-declare hol      target_rep function elf64_xword_of_natural = `n2w`
+declare hol      target_rep function elf64_xword_of_natural = (`n2w` `:` `num` `->` `64` `word`)
 
 val equal_elf64_xword : elf64_xword -> elf64_xword -> bool
 
@@ -971,7 +973,7 @@ type elf64_sxword
 
 declare ocaml    target_rep type elf64_sxword = `Int64.t`
 declare isabelle target_rep type elf64_sxword = `sint64`
-declare hol      target_rep type elf64_sxword = `64` `word`
+declare hol      target_rep type elf64_sxword = `word64`
 
 val string_of_elf64_sxword : elf64_sxword -> string
 
