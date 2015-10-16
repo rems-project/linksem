@@ -546,15 +546,15 @@ let link script a options linkables =
         compare (toNaturalList is1) (toNaturalList is2)
     ))
     in
-    let get_binding_for_ref = (fun symref -> (fun fname -> 
+    let get_binding_for_ref = (fun symref -> (fun linkable_idx -> (fun fname -> 
         let name_matches = match Map.lookup symref.ref_symname bindings_by_name with Just x -> x | Nothing -> [] end
         in
-        match List.filter (fun (bi, ((r_idx, r, r_item), m_d)) -> r = symref) name_matches with
+        match List.filter (fun (bi, ((r_idx, r, r_item), m_d)) -> r_idx = linkable_idx && r = symref) name_matches with
             [(b_idx, b)] -> (b_idx, b)
             | [] -> failwith "no binding found"
-            | _  -> failwith "ambiguous binding found"
+            | _  -> failwith ("ambiguous binding found for symbol `" ^ symref.ref_symname ^ "' in file " ^ fname)
         end
-    ))
+    )))
     in
     let output_image = interpret_linker_control_script script a input_sections seen_ordering get_binding_for_ref
     in

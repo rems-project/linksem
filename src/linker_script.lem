@@ -142,7 +142,7 @@ and
                   | ByInitPriority
 and 
  output_section_composition_element = 
-    IncludeInputSection of (retain_policy * string (* file *) * natural (* shndx *) * elf64_interpreted_section * elf_memory_image)
+    IncludeInputSection of (retain_policy * string (* file *) * natural (* linkable_idx *) * natural (* shndx *) * elf64_interpreted_section * elf_memory_image)
     | IncludeCommonSymbol of (retain_policy * string (* file *) * symbol_definition * elf_memory_image)
     | Hole of address_expr_fn (* compute the next addr to continue layout at *)
     | ProvideSymbol of (symbol_def_policy * string * symbol_spec)
@@ -251,15 +251,6 @@ let align_up_to align addr =
     in
     if quot * align = addr then addr else (quot + 1) * align
 
-(*
-val size_of_output_section_composition_element : output_section_composition_element -> natural -> natural
-let size_of_output_section_composition_element el cur_addr = match el with
-    IncludeInputSection(rp, fname, shndx, isec, img) -> isec.elf64_section_size
-    | IncludeCommonSymbol(rp, fname, def, img) -> natural_of_elf64_xword def.def_syment.elf64_st_size
-    | Hole(addr_fun) -> align_up_to cur_addr align
-end
-*)
-
 (* DATA_SEGMENT_ALIGN is defined by two formulae 
  * (over pos and commonpagesize/maxpagesize)
  * "... depending on whether the latter uses fewer COMMONPAGESIZE sized
@@ -317,7 +308,7 @@ val do_output_section_layout_starting_at_addr : natural -> allocated_sections_ma
 let do_output_section_layout_starting_at_addr   start_addr secs comps = 
     (* map out where we plumb in each section, accounting for their alignment *)
     List.foldl (fun (next_free_addr, addr_list) -> (fun comp_el -> match comp_el with
-          IncludeInputSection(retain_pol, fname, shndx, isec, img) -> 
+          IncludeInputSection(retain_pol, fname, linkable_idx, shndx, isec, img) -> 
                 let aligned_next_free = align_up_to isec.elf64_section_align next_free_addr
                 in
                 (aligned_next_free + isec.elf64_section_size, addr_list ++ [aligned_next_free])
@@ -357,7 +348,7 @@ let lcm a b =
 val alignof_output_section_composition_element : output_section_composition_element -> natural
 let alignof_output_section_composition_element comp = 
     match comp with
-        IncludeInputSection(_, _, _, isec, _) -> isec.elf64_section_align
+        IncludeInputSection(_, _, _, _, isec, _) -> isec.elf64_section_align
         | IncludeCommonSymbol(_, _, def, _) -> natural_of_elf64_half def.def_syment.elf64_st_shndx
         | _ -> 1 (* CHECK *)
     end
@@ -923,13 +914,13 @@ let rec assign_inputs_to_output_sections acc inputs cur_output_sec last_input_se
             if match guard with
                 Always -> true
                 | OnlyIfRo -> List.all (fun comp_el -> match comp_el with
-                    IncludeInputSection(retainpol, fname, shndx, isec, img) -> 
+                    IncludeInputSection(retainpol, fname, linkable_idx, shndx, isec, img) -> 
                         (* is this section read-only? if it doesn't have shf_write, yes *)
                         0 = unsafe_natural_land isec.elf64_section_flags shf_write
                     | _ -> (* holes, common symbols and provided symbols shouldn't prevent ONLY_IF_RO *) true
                   end) comp
                 | OnlyIfRw -> List.all (fun comp_el -> match comp_el with
-                    IncludeInputSection(retainpol, fname, shndx, isec, img) -> 
+                    IncludeInputSection(retainpol, fname, linkable_idx, shndx, isec, img) -> 
                         (* is this section read-only? if it doesn't have shf_write, yes *)
                         0 <> unsafe_natural_land isec.elf64_section_flags shf_write
                     | _ -> (* holes etc. shouldn't prevent ONLY_IF_RW *) true
@@ -1026,7 +1017,7 @@ let rec assign_inputs_to_output_sections acc inputs cur_output_sec last_input_se
                             in
                             (acc, Just (output_guard, output_sec_addr, output_sec_name, 
                                 output_composition ++ 
-                                [IncludeInputSection(retainpol, input_sec.fname, input_sec.shndx, input_sec.isec, input_sec.img)
+                                [IncludeInputSection(retainpol, input_sec.fname, input_sec.idx, input_sec.shndx, input_sec.isec, input_sec.img)
                                      | forall (input_sec MEM matchList) | true]),
                             last_input_sec)
                     end
@@ -1067,7 +1058,7 @@ val build_image :
     elf_memory_image ->          (* accumulator *)
     natural ->                   (* location counter *)
     allocated_sections_map ->  (* outputs constructed earlier *)
-    (symbol_reference -> string -> (natural * binding)) -> (* get_binding_for_ref function *)
+    (symbol_reference -> natural -> string -> (natural * binding)) -> (* get_binding_for_ref function *)
     linker_control_script -> 
     (elf_memory_image * allocated_sections_map)            (* accumulated result *)
 let rec build_image acc pos outputs_by_name get_binding_for_ref script = 
@@ -1101,7 +1092,7 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
                 ))))
                 in
                 let (sz, comp_el_pat, this_el_meta) = match comp_el with
-                    | IncludeInputSection(retainpolicy, fname, shndx, isec, img) -> 
+                    | IncludeInputSection(retainpolicy, fname, linkable_idx, shndx, isec, img) -> 
                         (* We want to get the input section as a byte pattern *)
                         let maybe_secname = elf_memory_image_element_coextensive_with_section shndx img 
                         in
@@ -1158,11 +1149,8 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
                                         ) included_global_defs
                                     ))
                                     in
-                                    
-                                    
-                                    
-                                    let (new_ranges_and_tags : set ((Maybe.maybe Memory_image.element_range) *
-      (Memory_image.range_tag Abis.any_abi_feature))) = Set.mapMaybe (fun (maybe_range, tag) -> 
+                                    let (new_ranges_and_tags : set ((maybe element_range) * (range_tag any_abi_feature)))
+                                     = Set.mapMaybe (fun (maybe_range, tag) -> 
                                         (* How do we update existing metadata? In general,
                                          * we get a new range *)
                                         let new_range = match maybe_range with
@@ -1187,7 +1175,7 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
                                             | SymbolDef(def) -> Just(new_range, SymbolDef(def))
                                             (* If it's a symbol ref with no reloc site, we discard it? *)
                                             | SymbolRef(r) -> 
-                                                let (bi, b) = get_binding_for_ref r.ref fname 
+                                                let (bi, b) = get_binding_for_ref r.ref linkable_idx fname 
                                                 in
                                                 let ((ref_idx, ref, ref_linkable), maybe_def) = b
                                                 in
@@ -1424,6 +1412,7 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
             build_image new_acc new_pos new_outputs_by_name get_binding_for_ref more_elements
     end
 
+(*
 let rec consecutive_commons rev_acc l = 
     match l with
     [] -> reverse rev_acc
@@ -1431,13 +1420,14 @@ let rec consecutive_commons rev_acc l =
         consecutive_commons ((pol, fname, def, img) :: rev_acc) rest
     | _ -> reverse rev_acc
 end
+*)
 
 val interpret_linker_control_script : 
     linker_control_script
     -> abi any_abi_feature
     -> list input_spec
     -> (input_spec -> input_spec -> ordering)
-    -> (symbol_reference -> string -> (natural * binding))  (* get_binding_for_ref *)
+    -> (symbol_reference -> natural -> string -> (natural * binding))  (* get_binding_for_ref *)
     -> elf_memory_image
 let interpret_linker_control_script script a inputs seen_ordering get_binding_for_ref = 
     let (discards, outputs) = assign_inputs_to_output_sections ([], []) inputs Nothing Nothing seen_ordering script
