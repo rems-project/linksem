@@ -178,9 +178,9 @@ let sysv_aarch64_le_std_abi =
     ; reloc = aarch64_le_reloc
     ; section_is_special = section_is_special
     ; section_is_large = (fun _ -> (fun _ -> false))
-    ; maxpagesize = null_abi.maxpagesize
-    ; minpagesize = null_abi.minpagesize
-    ; commonpagesize = null_abi.commonpagesize
+    ; maxpagesize = 2 * 256 * 4096 (* 2MB; bit of a guess, based on gdb and prelink code *)
+    ; minpagesize = 1024 (* bit of a guess again *)
+    ; commonpagesize = 4096
     ; symbol_is_generated_by_linker = (fun symname -> symname = "_GLOBAL_OFFSET_TABLE_")
     |>
 
