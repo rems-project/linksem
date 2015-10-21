@@ -92,19 +92,38 @@ let rec accum_archive_contents accum extended_filenames whole_seq_length whole_s
               (* SystemV symbol lookup table; we skip this *) (accum, extended_filenames)
             else
               match name with
-                | #'/'::#'/' :: rest -> (* extended filenames chunk *)  (accum, Just(string_of_byte_sequence chunk))
-                | #'/'::rest         -> (* filename is extended *)
-                   let index = natural_of_decimal_string (toString rest) in
-                     match extended_filenames with 
-                       | Nothing -> failwith "corrupt archive: reference to non-existent extended filenames"
-                       | Just s -> 
-                           let table_suffix = match string_suffix index s with Just x -> x | Nothing -> "" end in
-                           let index = match string_index_of #'/' table_suffix with Just x -> x | Nothing -> (naturalFromNat (stringLength table_suffix)) end in 
-                           let ext_name = match string_prefix index table_suffix with Just x -> x | Nothing -> "" end in
-                           (*let _ = Missing_pervasives.errln ("Got ext_name " ^ ext_name) in*)
-                             (((ext_name, chunk) :: accum), extended_filenames)
-                     end
-                | _  ->     (((hdr.name, chunk) :: accum), extended_filenames)
+                | x::xs ->
+                  if x = #'/' then
+                    match xs with
+                      | y::ys ->
+                        if y = #'/' then
+                          (accum, Just (string_of_byte_sequence chunk))
+                        else
+                          let index = natural_of_decimal_string (toString xs) in
+                            match extended_filenames with 
+                              | Nothing -> failwith "corrupt archive: reference to non-existent extended filenames"
+                              | Just s -> 
+                                let table_suffix = match string_suffix index s with Just x -> x | Nothing -> "" end in
+                                let index = match string_index_of #'/' table_suffix with Just x -> x | Nothing -> (naturalFromNat (stringLength table_suffix)) end in 
+                                let ext_name = match string_prefix index table_suffix with Just x -> x | Nothing -> "" end in
+                                  (*let _ = Missing_pervasives.errln ("Got ext_name " ^ ext_name) in*)
+                                  (((ext_name, chunk) :: accum), extended_filenames)
+                           end
+                      | [] ->
+                        let index = natural_of_decimal_string (toString xs) in
+                          match extended_filenames with 
+                            | Nothing -> failwith "corrupt archive: reference to non-existent extended filenames"
+                            | Just s -> 
+                              let table_suffix = match string_suffix index s with Just x -> x | Nothing -> "" end in
+                              let index = match string_index_of #'/' table_suffix with Just x -> x | Nothing -> (naturalFromNat (stringLength table_suffix)) end in 
+                              let ext_name = match string_prefix index table_suffix with Just x -> x | Nothing -> "" end in
+                                (*let _ = Missing_pervasives.errln ("Got ext_name " ^ ext_name) in*)
+                                (((ext_name, chunk) :: accum), extended_filenames)
+                         end
+                    end
+                  else
+                    (((hdr.name, chunk) :: accum), extended_filenames)
+                | [] -> (((hdr.name, chunk) :: accum), extended_filenames)
               end
         in
           match (Byte_sequence.dropbytes amount_to_drop seq) with
