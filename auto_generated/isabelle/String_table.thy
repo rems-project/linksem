@@ -117,4 +117,21 @@ definition get_string_at  :: " nat \<Rightarrow> string_table \<Rightarrow>(stri
       ))
   ))"
 
+
+(*val find_string : string -> string_table -> maybe natural*)
+fun find_string  :: " string \<Rightarrow> string_table \<Rightarrow>(nat)option "  where 
+     " find_string s (Strings(delim, base)) = ( undefined (s @ [delim]) base )" 
+declare find_string.simps [simp del]
+
+
+(*val insert_string : string -> string_table -> (natural * string_table)*)
+definition insert_string  :: " string \<Rightarrow> string_table \<Rightarrow> nat*string_table "  where 
+     " insert_string s t = ( 
+    (case  find_string s t of
+        None => (case  t of
+            Strings(delim, base) => ((( 1 :: nat) +  (List.length base)), Strings(delim, (base @ (([delim]) @ s))))
+            )
+        | Some pos => (pos, t)
+    ))"
+
 end

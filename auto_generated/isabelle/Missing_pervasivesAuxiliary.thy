@@ -30,6 +30,8 @@ termination natural_of_decimal_string_helper by lexicographic_order
 
 termination hex_string_of_natural by lexicographic_order
 
+termination merge_by by lexicographic_order
+
 termination mapMaybei' by lexicographic_order
 
 termination partitionii' by lexicographic_order
@@ -55,11 +57,34 @@ termination list_take_with_accum by lexicographic_order
 (*                                                  *)
 (****************************************************)
 
+lemma sort_by_def_lemma:
+" ((\<forall> comp. \<forall> xs.
+   (case  xs of
+         [] => []
+     | [x] => [x]
+     | xs =>
+   (let ls = (List.take (List.length xs div ( 2 :: nat)) xs) in
+   (let rs = (List.drop (List.length xs div ( 2 :: nat)) xs) in
+   merge_by comp (Elf_Types_Local.merge_sort comp ls)
+     (Elf_Types_Local.merge_sort comp rs)))
+   ) = Elf_Types_Local.merge_sort comp xs)) "
+(* Theorem: sort_by_def_lemma*)(* try *) by auto
+
 lemma length_def_lemma:
 " ((\<forall> xs.
    List.foldl (\<lambda> y _ . ( 1 :: nat) + y) (( 0 :: nat)) xs =
      List.length xs)) "
 (* Theorem: length_def_lemma*)(* try *) by auto
+
+lemma index_def_lemma:
+" ((\<forall> xs. \<forall> m.
+   (case  xs of
+         [] => None
+     | x # xs =>
+   if m = ( 0 :: nat) then Some x else
+     Elf_Types_Local.index xs (m - ( 1 :: nat))
+   ) = Elf_Types_Local.index xs m)) "
+(* Theorem: index_def_lemma*)(* try *) by auto
 
 lemma replicate_def_lemma:
 " ((\<forall> len. \<forall> e.

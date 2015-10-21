@@ -447,6 +447,9 @@ record 'abifeature abi = (* forall 'abifeature. *)
    
  is_valid_elf_header ::" elf64_header \<Rightarrow> bool " (* doesn't this generalise outrageously? is_valid_elf_file? *)
     
+ make_elf_header    ::" nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> elf64_header "
+                           (* t entry shoff phoff phnum shnum shstrndx *)
+    
  reloc              ::" 'abifeature reloc_fn "
     
  section_is_special ::" elf64_interpreted_section \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> bool "

@@ -10,6 +10,7 @@ imports
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_bool" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_maybe" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_assert_extra" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Elf_types_native_uint" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Elf_header" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Elf_interpreted_section" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Elf_file" 
@@ -51,6 +52,7 @@ begin
 (*open import Abi_power64_relocation*)
 
 (*open import Abi_utilities*)
+(*open import Elf_types_native_uint*)
 
 (** Relocation operators and their validity on a given platform *)
 
@@ -149,11 +151,44 @@ definition instance_Basic_classes_Ord_Abis_any_abi_feature_dict  :: "(any_abi_fe
   isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (anyAbiFeatureCompare f1 f2) ({GT, EQ})))|) )"
 
 
-(* null_abi captures ABI details common to all ELF-based, System V-based systems. *)
+definition make_elf64_header  :: " nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> 'a \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> elf64_header "  where 
+     " make_elf64_header data osabi abiv ma t entry shoff phoff phnum shnum shstrndx = (
+      (| elf64_ident    = [elf_mn_mag0, elf_mn_mag1, elf_mn_mag2, elf_mn_mag3, 
+                           Elf_Types_Local.unsigned_char_of_nat elf_class_64, 
+                           Elf_Types_Local.unsigned_char_of_nat data,
+                           Elf_Types_Local.unsigned_char_of_nat elf_ev_current,
+                           Elf_Types_Local.unsigned_char_of_nat osabi,
+                           Elf_Types_Local.unsigned_char_of_nat abiv,
+                           Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat)),
+                           Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat)),
+                           Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat)),
+                           Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat)),
+                           Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat)),
+                           Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat)),
+                           Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat))]
+       , elf64_type     = (Elf_Types_Local.uint16_of_nat t)
+       , elf64_machine  = (Elf_Types_Local.uint16_of_nat ma)
+       , elf64_version  = (Elf_Types_Local.uint32_of_nat elf_ev_current)
+       , elf64_entry    = (Elf_Types_Local.uint64_of_nat(( 0 :: nat)))
+       , elf64_phoff    = (Elf_Types_Local.uint64_of_nat phoff)
+       , elf64_shoff    = (Elf_Types_Local.uint64_of_nat shoff)
+       , elf64_flags    = (Elf_Types_Local.uint32_of_nat(( 0 :: nat)))
+       , elf64_ehsize   = (Elf_Types_Local.uint16_of_nat(( 64 :: nat)))
+       , elf64_phentsize= (Elf_Types_Local.uint16_of_nat(( 56 :: nat)))
+       , elf64_phnum    = (Elf_Types_Local.uint16_of_nat phnum)
+       , elf64_shentsize= (Elf_Types_Local.uint16_of_nat(( 64 :: nat)))
+       , elf64_shnum    = (Elf_Types_Local.uint16_of_nat shnum)
+       , elf64_shstrndx = (Elf_Types_Local.uint16_of_nat shstrndx)
+       |) )"
+
+
+(* null_abi captures ABI details common to all ELF-based, System V-based systems.
+ * HACK: for now, specialise to 64-bit ABIs. *)
 (*val null_abi : abi any_abi_feature*) 
 definition null_abi  :: "(any_abi_feature)abi "  where 
      " null_abi = ( (|
       is_valid_elf_header = is_valid_elf64_header
+    , make_elf_header = (make_elf64_header elf_data_2lsb elf_osabi_none(( 0 :: nat)) elf_ma_none)
     , reloc = noop_reloc
     , section_is_special = elf_section_is_special
     , section_is_large = (\<lambda> s .  (\<lambda> f .  False))
@@ -168,6 +203,7 @@ definition null_abi  :: "(any_abi_feature)abi "  where
 definition sysv_amd64_std_abi  :: "(any_abi_feature)abi "  where 
      " sysv_amd64_std_abi = ( 
    (| is_valid_elf_header = header_is_amd64
+    , make_elf_header = (make_elf64_header elf_data_2lsb elf_osabi_none(( 0 :: nat)) elf_ma_x86_64)
     , reloc = (amd64_reloc instance_Basic_classes_Ord_Abis_any_abi_feature_dict
     instance_Memory_image_ToNaturalList_Abis_any_abi_feature_dict)
     , section_is_special = section_is_special0
@@ -175,7 +211,8 @@ definition sysv_amd64_std_abi  :: "(any_abi_feature)abi "  where
     , maxpagesize =(( 65536 :: nat))
     , minpagesize =(( 4096 :: nat))
     , commonpagesize =(( 4096 :: nat))
-    , symbol_is_generated_by_linker =(symbol_is_generated_by_linker   null_abi)
+      (* XXX: DPM, changed from explicit reference to null_abi field due to problems in HOL4. *)
+    , symbol_is_generated_by_linker = (\<lambda> symname .  symname = (''_GLOBAL_OFFSET_TABLE_''))
     |) )"
 
 
@@ -183,13 +220,14 @@ definition sysv_amd64_std_abi  :: "(any_abi_feature)abi "  where
 definition sysv_aarch64_le_std_abi  :: "(any_abi_feature)abi "  where 
      " sysv_aarch64_le_std_abi = ( 
    (| is_valid_elf_header = header_is_aarch64_le
+    , make_elf_header = (make_elf64_header elf_data_2lsb elf_osabi_none(( 0 :: nat)) elf_ma_aarch64)
     , reloc = aarch64_le_reloc
     , section_is_special = section_is_special0
     , section_is_large = (\<lambda> _ .  (\<lambda> _ .  False))
-    , maxpagesize =(maxpagesize   null_abi)
-    , minpagesize =(minpagesize   null_abi)
-    , commonpagesize =(commonpagesize   null_abi)
-    , symbol_is_generated_by_linker =(symbol_is_generated_by_linker   null_abi)
+    , maxpagesize =((( 2 :: nat) *( 256 :: nat)) *( 4096 :: nat)) (* 2MB; bit of a guess, based on gdb and prelink code *)
+    , minpagesize =(( 1024 :: nat)) (* bit of a guess again *)
+    , commonpagesize =(( 4096 :: nat))
+    , symbol_is_generated_by_linker = (\<lambda> symname .  symname = (''_GLOBAL_OFFSET_TABLE_''))
     |) )"
 
 

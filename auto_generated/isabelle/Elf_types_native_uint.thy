@@ -35,6 +35,8 @@ begin
 (*open import {isabelle} `$ISABELLE_HOME/src/HOL/Word/Word`*)
 (*open import {isabelle} `Elf_Types_Local`*)
 
+(*open import {hol} `integer_wordLib`*)
+
 (** unsigned char type and bindings *)
 
 (*type unsigned_char*)
@@ -58,6 +60,11 @@ begin
   * together.
   *)
 (*val unsigned_char_land   : unsigned_char -> unsigned_char -> unsigned_char*)
+
+(** [unsigned_char_lor uc0 uc1] bitwise OR two unsigned chars, [uc0] and [uc1]
+  * together.
+  *)
+(*val unsigned_char_lor   : unsigned_char -> unsigned_char -> unsigned_char*)
 
 (** [unsigned_char_lshift uc n] performs a left bitshift of [n] places on unsigned
   * char [uc].
@@ -108,7 +115,7 @@ definition read_unsigned_char  :: " endianness \<Rightarrow> byte_sequence \<Rig
 
 (*val natural_of_elf32_addr : elf32_addr -> natural*)
 
-(*val elf32_addr_of_quad : byte -> byte -> byte -> byte -> elf32_addr*)
+(*val elf32_addr_of_quad : byte -> byte -> byte -> byte -> elf32_addr*) (* TODO: add custom binding *)
 
 (*val read_elf32_addr : endianness -> byte_sequence -> error (elf32_addr * byte_sequence)*)
 fun read_elf32_addr  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(uint32*byte_sequence)error "  where 
@@ -123,7 +130,7 @@ declare read_elf32_addr.simps [simp del]
 
 (*val equal_elf32_addr : elf32_addr -> elf32_addr -> bool*)
 
-(*val quad_of_elf32_addr : elf32_addr -> (byte * byte * byte * byte)*)
+(*val quad_of_elf32_addr : elf32_addr -> (byte * byte * byte * byte)*) (* TODO: add custom binding *)
 
 (*val bytes_of_elf32_addr : endianness -> elf32_addr -> list byte*)
 fun bytes_of_elf32_addr  :: " endianness \<Rightarrow> uint32 \<Rightarrow>(Elf_Types_Local.byte)list "  where 
@@ -161,7 +168,7 @@ declare read_elf64_addr.simps [simp del]
 
 (*val equal_elf64_addr : elf64_addr -> elf64_addr -> bool*)
 
-(*val oct_of_elf64_addr : elf64_addr -> (byte * byte * byte * byte * byte * byte * byte * byte)*)
+(*val oct_of_elf64_addr : elf64_addr -> (byte * byte * byte * byte * byte * byte * byte * byte)*) (* TODO *)
 
 (*val bytes_of_elf64_addr : endianness -> elf64_addr -> list byte*)
 fun bytes_of_elf64_addr  :: " endianness \<Rightarrow> Elf_Types_Local.uint64 \<Rightarrow>(Elf_Types_Local.byte)list "  where 
@@ -181,6 +188,8 @@ declare bytes_of_elf64_addr.simps [simp del]
 (*val elf64_addr_lshift : elf64_addr -> nat -> elf64_addr*)
 
 (*val elf64_addr_land : elf64_addr -> elf64_addr -> elf64_addr*)
+
+(*val elf64_addr_lor : elf64_addr -> elf64_addr -> elf64_addr*)
 
 (** ELF half word type:
   * 2 byte unsigned type on 32-bit architectures.
@@ -529,7 +538,11 @@ declare read_elf64_xword.simps [simp del]
 
 (*val elf64_xword_rshift : elf64_xword -> nat -> elf64_xword*)
 
+(*val elf64_xword_lshift : elf64_xword -> nat -> elf64_xword*)
+
 (*val elf64_xword_land : elf64_xword -> elf64_xword -> elf64_xword*)
+
+(*val elf64_xword_lor : elf64_xword -> elf64_xword -> elf64_xword*)
 
 (*val elf64_xword_of_natural : natural -> elf64_xword*)
 
