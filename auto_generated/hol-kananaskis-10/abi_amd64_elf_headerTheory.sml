@@ -13,11 +13,11 @@ struct
   in end;
   val _ = Theory.link_parents
           ("abi_amd64_elf_header",
-          Arbnum.fromString "1445006233",
-          Arbnum.fromString "553459")
+          Arbnum.fromString "1445346493",
+          Arbnum.fromString "117772")
           [("elf_header",
-           Arbnum.fromString "1445005786",
-           Arbnum.fromString "58642")];
+           Arbnum.fromString "1445345935",
+           Arbnum.fromString "766165")];
   val _ = Theory.incorporate_types "abi_amd64_elf_header" [];
 
   val idvector = 

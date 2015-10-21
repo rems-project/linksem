@@ -13,11 +13,11 @@ struct
   in end;
   val _ = Theory.link_parents
           ("memory_image_orderings",
-          Arbnum.fromString "1445006091",
-          Arbnum.fromString "624523")
+          Arbnum.fromString "1445346291",
+          Arbnum.fromString "61854")
           [("memory_image",
-           Arbnum.fromString "1445006061",
-           Arbnum.fromString "377515")];
+           Arbnum.fromString "1445346243",
+           Arbnum.fromString "688958")];
   val _ = Theory.incorporate_types "memory_image_orderings" [];
 
   val idvector = 

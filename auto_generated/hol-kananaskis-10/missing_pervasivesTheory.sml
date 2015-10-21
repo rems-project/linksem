@@ -13,11 +13,11 @@ struct
   in end;
   val _ = Theory.link_parents
           ("missing_pervasives",
-          Arbnum.fromString "1445005736",
-          Arbnum.fromString "484272")
+          Arbnum.fromString "1445345863",
+          Arbnum.fromString "394757")
           [("show",
-           Arbnum.fromString "1445005719",
-           Arbnum.fromString "601226"),
+           Arbnum.fromString "1445345838",
+           Arbnum.fromString "419158"),
            ("lem_sorting",
            Arbnum.fromString "1445005567",
            Arbnum.fromString "464624")];

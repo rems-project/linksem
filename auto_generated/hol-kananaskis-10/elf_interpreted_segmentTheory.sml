@@ -13,11 +13,11 @@ struct
   in end;
   val _ = Theory.link_parents
           ("elf_interpreted_segment",
-          Arbnum.fromString "1445005964",
-          Arbnum.fromString "357665")
+          Arbnum.fromString "1445346126",
+          Arbnum.fromString "649931")
           [("elf_types_native_uint",
-           Arbnum.fromString "1445005773",
-           Arbnum.fromString "604959")];
+           Arbnum.fromString "1445345916",
+           Arbnum.fromString "991129")];
   val _ = Theory.incorporate_types "elf_interpreted_segment"
        [("elf64_interpreted_segment", 0),
         ("elf32_interpreted_segment", 0)];

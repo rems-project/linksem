@@ -13,14 +13,14 @@ struct
   in end;
   val _ = Theory.link_parents
           ("elf_dynamic",
-          Arbnum.fromString "1445006354",
-          Arbnum.fromString "390338")
+          Arbnum.fromString "1445346656",
+          Arbnum.fromString "289522")
           [("elf_relocation",
-           Arbnum.fromString "1445006041",
-           Arbnum.fromString "739325"),
+           Arbnum.fromString "1445346217",
+           Arbnum.fromString "464985"),
            ("elf_file",
-           Arbnum.fromString "1445006016",
-           Arbnum.fromString "958170")];
+           Arbnum.fromString "1445346182",
+           Arbnum.fromString "856027")];
   val _ = Theory.incorporate_types "elf_dynamic"
        [("tag_correspondence", 0), ("rel_type", 0), ("elf64_dyn", 0),
         ("elf32_dyn", 0), ("dyn_value", 2), ("dyn_union", 2)];

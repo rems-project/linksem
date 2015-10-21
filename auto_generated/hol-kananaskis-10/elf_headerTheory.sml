@@ -14,17 +14,17 @@ struct
   in end;
   val _ = Theory.link_parents
           ("elf_header",
-          Arbnum.fromString "1445005786",
-          Arbnum.fromString "58642")
+          Arbnum.fromString "1445345935",
+          Arbnum.fromString "766165")
           [("lem_set",
            Arbnum.fromString "1445005525",
            Arbnum.fromString "352564"),
            ("elf_types_native_uint",
-           Arbnum.fromString "1445005773",
-           Arbnum.fromString "604959"),
+           Arbnum.fromString "1445345916",
+           Arbnum.fromString "991129"),
            ("default_printing",
-           Arbnum.fromString "1445005753",
-           Arbnum.fromString "884667")];
+           Arbnum.fromString "1445345889",
+           Arbnum.fromString "988195")];
   val _ = Theory.incorporate_types "elf_header"
        [("elf64_header", 0), ("elf32_header", 0)];
 

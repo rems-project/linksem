@@ -14,17 +14,17 @@ struct
   in end;
   val _ = Theory.link_parents
           ("elf_file",
-          Arbnum.fromString "1445006016",
-          Arbnum.fromString "958170")
+          Arbnum.fromString "1445346182",
+          Arbnum.fromString "856027")
           [("elf_symbol_table",
-           Arbnum.fromString "1445005997",
-           Arbnum.fromString "333299"),
+           Arbnum.fromString "1445346153",
+           Arbnum.fromString "766665"),
            ("elf_interpreted_segment",
-           Arbnum.fromString "1445005964",
-           Arbnum.fromString "357665"),
+           Arbnum.fromString "1445346126",
+           Arbnum.fromString "649931"),
            ("elf_interpreted_section",
-           Arbnum.fromString "1445005951",
-           Arbnum.fromString "723637")];
+           Arbnum.fromString "1445346108",
+           Arbnum.fromString "821627")];
   val _ = Theory.incorporate_types "elf_file"
        [("segment_provenance", 0), ("elf64_file", 0), ("elf32_file", 0)];
 

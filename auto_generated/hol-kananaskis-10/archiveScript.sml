@@ -83,7 +83,6 @@ val _ = Define `
           fail0 "read_archive_global_header: not an archive"
     )))`;
 
-
 (*val accum_archive_contents : (list (string * byte_sequence)) -> maybe string -> natural -> byte_sequence -> error (list (string * byte_sequence))*)
  val accum_archive_contents_defn = Hol_defn "accum_archive_contents" `
  (accum_archive_contents accum extended_filenames whole_seq_length whole_seq =  
@@ -98,29 +97,34 @@ val _ = Define `
           else
             ( hdr.size0) + 1)
         in
+        if amount_to_drop = 0 then
+          fail0 "accum_archive_contents: amount to drop from byte sequence is 0"
+        else
         (*let _ = Missing_pervasives.errln ("amount_to_drop is " ^ (show amount_to_drop)) in*)
         let chunk = (Sequence(TAKE hdr.size0 next_bs))
         in
         (*let _ = Missing_pervasives.errs ("Processing archive header named " ^ hdr.name)
         in*)
         let (new_accum, (new_extended_filenames :  string option)) =          
-((case EXPLODE hdr.name of
-             [#"/"; #" "; #" "; #" "; #" "; #" "; #" "; #" "; #" "; #" "; #" "; #" "; #" "; #" "; #" "; #" "]
-                 => (* SystemV symbol lookup table; we skip this *) (accum, extended_filenames)
-            | #"/" :: #"/"  ::  rest => (* extended filenames chunk *)  (accum, SOME(string_of_byte_sequence0 chunk))
-            | #"/" ::  rest         => (* filename is extended *)
-                let index = (natural_of_decimal_string (IMPLODE rest)) in
-                (case extended_filenames of 
-                    NONE => failwith "corrupt archive: reference to non-existent extended filenames"
-                |   SOME s => 
-                        let table_suffix = ((case ARB index s of SOME x => x | NONE => "" )) in
-                        let index = ((case string_index_of #"/" table_suffix of SOME x => x | NONE => ( (STRLEN table_suffix)) )) in 
-                        let ext_name = ((case string_prefix index table_suffix of SOME x => x | NONE => "" )) in
-                        (*let _ = Missing_pervasives.errln ("Got ext_name " ^ ext_name) in*)
-                        (((ext_name, chunk) :: accum), extended_filenames)
-                )
-            | _  =>     (((hdr.name, chunk) :: accum), extended_filenames)
-          ))
+(let name = (EXPLODE hdr.name) in
+            if name = [#"/"; #" "; #" "; #" "; #" "; #" "; #" "; #" "; #" "; #" "; #" "; #" "; #" "; #" "; #" "; #" "] then
+              (* SystemV symbol lookup table; we skip this *) (accum, extended_filenames)
+            else
+              (case name of
+                  #"/" :: #"/"  ::  rest => (* extended filenames chunk *)  (accum, SOME(string_of_byte_sequence0 chunk))
+                | #"/" ::  rest         => (* filename is extended *)
+                   let index = (natural_of_decimal_string (IMPLODE rest)) in
+                     (case extended_filenames of 
+                         NONE => failwith "corrupt archive: reference to non-existent extended filenames"
+                       | SOME s => 
+                           let table_suffix = ((case ARB index s of SOME x => x | NONE => "" )) in
+                           let index = ((case string_index_of #"/" table_suffix of SOME x => x | NONE => ( (STRLEN table_suffix)) )) in 
+                           let ext_name = ((case string_prefix index table_suffix of SOME x => x | NONE => "" )) in
+                           (*let _ = Missing_pervasives.errln ("Got ext_name " ^ ext_name) in*)
+                             (((ext_name, chunk) :: accum), extended_filenames)
+                     )
+                | _  =>     (((hdr.name, chunk) :: accum), extended_filenames)
+              ))
         in
           error$with_success (byte_sequence$dropbytes amount_to_drop seq) (return accum) (\ new_seq . 
             accum_archive_contents new_accum new_extended_filenames (seq_length - amount_to_drop) new_seq)
@@ -140,4 +144,3 @@ val _ = Define `
     ))))`;
 
 val _ = export_theory()
-

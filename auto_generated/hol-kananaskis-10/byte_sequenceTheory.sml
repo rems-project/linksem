@@ -13,14 +13,14 @@ struct
   in end;
   val _ = Theory.link_parents
           ("byte_sequence",
-          Arbnum.fromString "1445005750",
-          Arbnum.fromString "389538")
+          Arbnum.fromString "1445345884",
+          Arbnum.fromString "895224")
           [("missing_pervasives",
-           Arbnum.fromString "1445005736",
-           Arbnum.fromString "484272"),
+           Arbnum.fromString "1445345863",
+           Arbnum.fromString "394757"),
            ("error",
-           Arbnum.fromString "1445005727",
-           Arbnum.fromString "463510")];
+           Arbnum.fromString "1445345851",
+           Arbnum.fromString "664208")];
   val _ = Theory.incorporate_types "byte_sequence" [("byte_sequence", 0)];
 
   val idvector = 

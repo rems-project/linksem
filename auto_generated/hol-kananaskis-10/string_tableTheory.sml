@@ -13,11 +13,11 @@ struct
   in end;
   val _ = Theory.link_parents
           ("string_table",
-          Arbnum.fromString "1445005826",
-          Arbnum.fromString "929708")
+          Arbnum.fromString "1445346001",
+          Arbnum.fromString "213329")
           [("byte_sequence",
-           Arbnum.fromString "1445005750",
-           Arbnum.fromString "389538")];
+           Arbnum.fromString "1445345884",
+           Arbnum.fromString "895224")];
   val _ = Theory.incorporate_types "string_table" [("string_table", 0)];
 
   val idvector = 

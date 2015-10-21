@@ -13,14 +13,14 @@ struct
   in end;
   val _ = Theory.link_parents
           ("abi_aarch64_symbol_table",
-          Arbnum.fromString "1445006222",
-          Arbnum.fromString "724182")
+          Arbnum.fromString "1445346479",
+          Arbnum.fromString "108427")
           [("elf_symbol_table",
-           Arbnum.fromString "1445005997",
-           Arbnum.fromString "333299"),
+           Arbnum.fromString "1445346153",
+           Arbnum.fromString "766665"),
            ("elf_section_header_table",
-           Arbnum.fromString "1445005927",
-           Arbnum.fromString "758341")];
+           Arbnum.fromString "1445346072",
+           Arbnum.fromString "814165")];
   val _ = Theory.incorporate_types "abi_aarch64_symbol_table" [];
 
   val idvector = 

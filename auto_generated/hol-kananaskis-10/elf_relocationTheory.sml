@@ -13,14 +13,14 @@ struct
   in end;
   val _ = Theory.link_parents
           ("elf_relocation",
-          Arbnum.fromString "1445006041",
-          Arbnum.fromString "739325")
+          Arbnum.fromString "1445346217",
+          Arbnum.fromString "464985")
           [("lem_set",
            Arbnum.fromString "1445005525",
            Arbnum.fromString "352564"),
            ("elf_types_native_uint",
-           Arbnum.fromString "1445005773",
-           Arbnum.fromString "604959")];
+           Arbnum.fromString "1445345916",
+           Arbnum.fromString "991129")];
   val _ = Theory.incorporate_types "elf_relocation"
        [("elf64_relocation_a", 0), ("elf64_relocation", 0),
         ("elf32_relocation_a", 0), ("elf32_relocation", 0)];

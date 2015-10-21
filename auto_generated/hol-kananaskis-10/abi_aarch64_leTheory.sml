@@ -13,14 +13,14 @@ struct
   in end;
   val _ = Theory.link_parents
           ("abi_aarch64_le",
-          Arbnum.fromString "1445006177",
-          Arbnum.fromString "723483")
+          Arbnum.fromString "1445346416",
+          Arbnum.fromString "780498")
           [("abi_aarch64_relocation",
-           Arbnum.fromString "1445006145",
-           Arbnum.fromString "116635"),
+           Arbnum.fromString "1445346367",
+           Arbnum.fromString "809272"),
            ("abi_aarch64_le_elf_header",
-           Arbnum.fromString "1445006124",
-           Arbnum.fromString "818322")];
+           Arbnum.fromString "1445346337",
+           Arbnum.fromString "775422")];
   val _ = Theory.incorporate_types "abi_aarch64_le"
        [("aarch64_le_abi_feature", 0)];
 

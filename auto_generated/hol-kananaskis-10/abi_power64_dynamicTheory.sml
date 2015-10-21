@@ -13,11 +13,11 @@ struct
   in end;
   val _ = Theory.link_parents
           ("abi_power64_dynamic",
-          Arbnum.fromString "1445006380",
-          Arbnum.fromString "674031")
+          Arbnum.fromString "1445346693",
+          Arbnum.fromString "907884")
           [("elf_dynamic",
-           Arbnum.fromString "1445006354",
-           Arbnum.fromString "390338")];
+           Arbnum.fromString "1445346656",
+           Arbnum.fromString "289522")];
   val _ = Theory.incorporate_types "abi_power64_dynamic" [];
 
   val idvector = 

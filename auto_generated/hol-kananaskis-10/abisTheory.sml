@@ -14,20 +14,20 @@ struct
   in end;
   val _ = Theory.link_parents
           ("abis",
-          Arbnum.fromString "1445006464",
-          Arbnum.fromString "783045")
+          Arbnum.fromString "1445346807",
+          Arbnum.fromString "511205")
           [("abi_power64_relocation",
-           Arbnum.fromString "1445006411",
-           Arbnum.fromString "830038"),
+           Arbnum.fromString "1445346734",
+           Arbnum.fromString "500868"),
            ("abi_power64",
-           Arbnum.fromString "1445006338",
-           Arbnum.fromString "884666"),
+           Arbnum.fromString "1445346635",
+           Arbnum.fromString "316317"),
            ("abi_amd64",
-           Arbnum.fromString "1445006277",
-           Arbnum.fromString "911206"),
+           Arbnum.fromString "1445346554",
+           Arbnum.fromString "624458"),
            ("abi_aarch64_le",
-           Arbnum.fromString "1445006177",
-           Arbnum.fromString "723483")];
+           Arbnum.fromString "1445346416",
+           Arbnum.fromString "780498")];
   val _ = Theory.incorporate_types "abis" [("any_abi_feature", 0)];
 
   val idvector = 

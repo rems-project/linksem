@@ -13,11 +13,11 @@ struct
   in end;
   val _ = Theory.link_parents
           ("abi_x86_relocation",
-          Arbnum.fromString "1445006443",
-          Arbnum.fromString "995732")
+          Arbnum.fromString "1445346778",
+          Arbnum.fromString "40452")
           [("show",
-           Arbnum.fromString "1445005719",
-           Arbnum.fromString "601226")];
+           Arbnum.fromString "1445345838",
+           Arbnum.fromString "419158")];
   val _ = Theory.incorporate_types "abi_x86_relocation" [];
 
   val idvector = 

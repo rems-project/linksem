@@ -13,11 +13,11 @@ struct
   in end;
   val _ = Theory.link_parents
           ("elf_interpreted_section",
-          Arbnum.fromString "1445005951",
-          Arbnum.fromString "723637")
+          Arbnum.fromString "1445346108",
+          Arbnum.fromString "821627")
           [("elf_section_header_table",
-           Arbnum.fromString "1445005927",
-           Arbnum.fromString "758341")];
+           Arbnum.fromString "1445346072",
+           Arbnum.fromString "814165")];
   val _ = Theory.incorporate_types "elf_interpreted_section"
        [("elf64_interpreted_section", 0),
         ("elf32_interpreted_section", 0)];

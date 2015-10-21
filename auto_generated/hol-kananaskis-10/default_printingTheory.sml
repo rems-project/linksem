@@ -13,8 +13,8 @@ struct
   in end;
   val _ = Theory.link_parents
           ("default_printing",
-          Arbnum.fromString "1445005753",
-          Arbnum.fromString "884667")
+          Arbnum.fromString "1445345889",
+          Arbnum.fromString "988195")
           [("lem_function",
            Arbnum.fromString "1444993246",
            Arbnum.fromString "682607")];
