@@ -390,6 +390,19 @@ type elf32_section_header_table_entry =
    ; elf32_sh_entsize   : elf32_word (** Size of each entry in table, if section is one *)
    |>
    
+let (elf32_null_section_header : elf32_section_header_table_entry) =
+  <| elf32_sh_name      = elf32_word_of_natural 0
+   ; elf32_sh_type      = elf32_word_of_natural 0
+   ; elf32_sh_flags     = elf32_word_of_natural 0
+   ; elf32_sh_addr      = elf32_addr_of_natural 0
+   ; elf32_sh_offset    = elf32_off_of_natural 0 
+   ; elf32_sh_size      = elf32_word_of_natural 0
+   ; elf32_sh_link      = elf32_word_of_natural 0
+   ; elf32_sh_info      = elf32_word_of_natural 0
+   ; elf32_sh_addralign = elf32_word_of_natural 0
+   ; elf32_sh_entsize   = elf32_word_of_natural 0
+   |>
+   
 (** [compare_elf32_section_header_table_entry ent1 ent2] is an ordering comparison
   * function on section header table entries suitable for use in constructing
   * sets, finite maps and other ordered data types.
@@ -442,6 +455,19 @@ type elf64_section_header_table_entry =
    ; elf64_sh_info      : elf64_word  (** Extra information, contents depends on type of section *)
    ; elf64_sh_addralign : elf64_xword (** Alignment constraints for section *)
    ; elf64_sh_entsize   : elf64_xword (** Size of each entry in table, if section is one *)
+   |>
+   
+let (elf64_null_section_header : elf64_section_header_table_entry) =
+  <| elf64_sh_name      = elf64_word_of_natural 0 
+   ; elf64_sh_type      = elf64_word_of_natural 0 
+   ; elf64_sh_flags     = elf64_xword_of_natural 0
+   ; elf64_sh_addr      = elf64_addr_of_natural 0 
+   ; elf64_sh_offset    = elf64_off_of_natural 0  
+   ; elf64_sh_size      = elf64_xword_of_natural 0
+   ; elf64_sh_link      = elf64_word_of_natural 0 
+   ; elf64_sh_info      = elf64_word_of_natural 0 
+   ; elf64_sh_addralign = elf64_xword_of_natural 0
+   ; elf64_sh_entsize   = elf64_xword_of_natural 0
    |>
 
 (** [compare_elf64_section_header_table_entry ent1 ent2] is an ordering comparison

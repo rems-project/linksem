@@ -60,36 +60,6 @@ let (empty_elf_memory_image : elf_memory_image) = <|
 
 type elf_range_tag = range_tag any_abi_feature
 
-let null_symbol_reference = <|
-    ref_symname = ""
-    ; ref_syment = elf64_null_symbol_table_entry
-    ; ref_sym_scn = 0
-    ; ref_sym_idx = 0
-|>
-
-let null_elf_relocation_a =
-  <| elf64_ra_offset = elf64_addr_of_natural 0  
-   ; elf64_ra_info   = elf64_xword_of_natural 0 
-   ; elf64_ra_addend = elf64_sxword_of_integer 0
-   |>
-
-let null_symbol_reference_and_reloc_site = <|
-      ref = null_symbol_reference
-    ; maybe_reloc = 
-        Just   <| ref_relent = null_elf_relocation_a
-                ; ref_rel_scn = 0
-                ; ref_rel_idx = 0
-                ; ref_src_scn = 0
-                |>
-    |>
-
-let null_symbol_definition = <|
-    def_symname = ""
-    ; def_syment = elf64_null_symbol_table_entry
-    ; def_sym_scn = 0
-    ; def_sym_idx = 0
-|>
-
 let null_section_header_table = ElfSectionHeaderTable([])
 let null_program_header_table = ElfProgramHeaderTable([])
 let null_elf_header = <| 

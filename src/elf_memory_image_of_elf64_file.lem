@@ -399,6 +399,9 @@ let elf_memory_image_unique_section_with_name name img =
     end
 *)
 
+(* FIXME: delete these symbol functions, because Memory_image_orderings
+ * has generic ones. *)
+
 val elf_memory_image_symbol_def_ranges : elf_memory_image -> (list elf_range_tag * list (maybe element_range))
 let elf_memory_image_symbol_def_ranges img = 
     (* find all element ranges labelled as ELF symbols *)

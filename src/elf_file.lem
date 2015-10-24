@@ -137,16 +137,16 @@ let bytes_of_elf64_file ef =
   let pht_layout  = (pht_off, pht_bytes) in
   let sht_layout  = (sht_off, sht_bytes) in
   let bab_layout  = ef.elf64_file_bits_and_bobs in
-  if List.length ef.elf64_file_program_header_table =
-    List.length ef.elf64_file_interpreted_segments then
+  if (* List.length ef.elf64_file_program_header_table =
+    List.length ef.elf64_file_interpreted_segments *) true then
     if List.length ef.elf64_file_section_header_table =
       List.length ef.elf64_file_interpreted_sections then
       let segs_zip  = List.zip ef.elf64_file_program_header_table ef.elf64_file_interpreted_segments in
       let sects_zip = List.zip ef.elf64_file_section_header_table ef.elf64_file_interpreted_sections in
-      let segs_layout =
+      let segs_layout = [] (*
         List.map (fun (seg, interp_seg) ->
           (natural_of_elf64_off seg.elf64_p_offset, interp_seg.elf64_segment_body)
-        ) (List.filter (fun (x, _) -> x.elf64_p_filesz <> elf64_xword_of_natural 0) segs_zip)
+        ) (List.filter (fun (x, _) -> x.elf64_p_filesz <> elf64_xword_of_natural 0) segs_zip) *)
       in
       let sects_layout =
         List.map (fun (sect, interp_sect) ->

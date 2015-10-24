@@ -6,10 +6,9 @@ into a new, combined output.
 This sounds deterministic, and indeed, linking is deterministic in simple cases.
 For example, a link job controlled by a well-defined linker script
 and whose input consists only of simple freestanding object files
-will be deterministic
-unless it contains common symbols, 
-orphan sections, section groups, mergeable sections or other features,
-if the linker is required to insert padding.
+will be deterministic---unless it contains common symbols, 
+orphan sections, section groups, mergeable sections or similar features,
+or if the linker is required to insert padding.
 In practice, nearly all link jobs have one or other of these properties.
 
 \paragraph{Output ordering}

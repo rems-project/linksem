@@ -558,4 +558,29 @@ let link script a options linkables =
     in
     let output_image = interpret_linker_control_script script a input_sections seen_ordering get_binding_for_ref
     in
-    output_image
+    (* This image has 
+     * - addresses assigned 
+     * - relocations *not* applied
+     * - no entry point
+     * - some ABI features not generated? HMM.
+           -- don't consider output features, like symtabs, yet;
+           -- other ABI features have to be generated before the linker script runs (dyn relocs, GOT, PLT?)
+           -- ... so we might be okay for now.
+     *)
+    let (maybe_entry_point_address : maybe natural) = 
+        match Command_line.find_option_matching_tag (Command_line.EntryAddress(0)) options with
+            Nothing -> a.guess_entry_point output_image
+            | Just(Command_line.EntryAddress(x)) -> Just x
+        end
+    in
+    match maybe_entry_point_address with
+        Just addr -> 
+            match address_to_element_and_offset addr output_image with
+                Just (el_name, el_offset) -> 
+                    tag_image (EntryPoint) el_name el_offset 0 output_image
+                | Nothing -> 
+                    (* HMM. entry point symbol has no address at present. *)
+                    failwith "error: entry point does not have assigned address"
+            end
+        | Nothing -> output_image
+    end

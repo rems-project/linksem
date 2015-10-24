@@ -79,4 +79,7 @@ let gnu_extend a =
     ; minpagesize         = a.minpagesize
     ; commonpagesize      = a.commonpagesize
     ; symbol_is_generated_by_linker = a.symbol_is_generated_by_linker
+    ; make_phdrs          = a.make_phdrs (* FIXME: also make the GNU phdrs! *)
+    ; max_phnum           = 3 + a.max_phnum (* FIXME: GNU_RELRO, GNU_STACK; what else? *)
+    ; guess_entry_point   = a.guess_entry_point
     |>

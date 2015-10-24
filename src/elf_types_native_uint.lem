@@ -150,6 +150,12 @@ declare ocaml    target_rep function natural_of_elf32_addr a = `Nat_big_num.of_i
 declare isabelle target_rep function natural_of_elf32_addr = `unat`
 declare hol      target_rep function natural_of_elf32_addr = `w2n`
 
+val elf32_addr_of_natural : natural -> elf32_addr
+
+declare ocaml    target_rep function elf32_addr_of_natural m = `Uint32.of_int32` (`Nat_big_num.to_int32` m)
+declare isabelle target_rep function elf32_addr_of_natural = `Elf_Types_Local.uint32_of_nat`
+declare hol      target_rep function elf32_addr_of_natural = `n2w`
+
 val elf32_addr_of_quad : byte -> byte -> byte -> byte -> elf32_addr
 
 declare ocaml    target_rep function elf32_addr_of_quad = `Uint32_wrapper.of_quad_native`
@@ -465,6 +471,12 @@ val natural_of_elf32_off : elf32_off -> natural
 declare ocaml    target_rep function natural_of_elf32_off a = `Nat_big_num.of_int32` (`Uint32.to_int32` a)
 declare isabelle target_rep function natural_of_elf32_off = `unat`
 declare hol      target_rep function natural_of_elf32_off = `w2n`
+
+val elf32_off_of_natural : natural -> elf32_off
+
+declare ocaml    target_rep function elf32_off_of_natural m = `Uint32.of_int32` (`Nat_big_num.to_int32` m)
+declare isabelle target_rep function elf32_off_of_natural = `Elf_Types_Local.uint32_of_nat`
+declare hol      target_rep function elf32_off_of_natural = `n2w`
 
 val elf32_off_of_quad : byte -> byte -> byte -> byte -> elf32_off
 
@@ -1029,4 +1041,9 @@ end
 val unsafe_natural_land : natural -> natural -> natural
 let unsafe_natural_land arg1 arg2 = natural_of_elf64_xword (
     elf64_xword_land (elf64_xword_of_natural arg1) (elf64_xword_of_natural arg2)
+)
+
+val unsafe_natural_lor : natural -> natural -> natural
+let unsafe_natural_lor arg1 arg2 = natural_of_elf64_xword (
+    elf64_xword_lor (elf64_xword_of_natural arg1) (elf64_xword_of_natural arg2)
 )

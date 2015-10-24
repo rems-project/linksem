@@ -245,12 +245,6 @@ let compareInputSpecByAlignmentThenName i1 i2 =
 
 let compareInputSpecByInitPriority i1 i2 = EQ (* FIXME *)
 
-val align_up_to : natural -> natural -> natural
-let align_up_to align addr = 
-    let quot = addr / align
-    in
-    if quot * align = addr then addr else (quot + 1) * align
-
 (* DATA_SEGMENT_ALIGN is defined by two formulae 
  * (over pos and commonpagesize/maxpagesize)
  * "... depending on whether the latter uses fewer COMMONPAGESIZE sized
@@ -336,14 +330,6 @@ let sizeof secname secs =
         end
         | Nothing -> failwith ("error: sizeof applied to non-existent section name " ^ secname)
     end
-
-val gcd : natural -> natural -> natural
-let rec gcd a b = 
-    if b = 0 then a else gcd b (a mod b)
-
-val lcm : natural -> natural -> natural
-let lcm a b = 
-    (a * b) / (gcd a b)
 
 val alignof_output_section_composition_element : output_section_composition_element -> natural
 let alignof_output_section_composition_element comp = 
@@ -1250,14 +1236,7 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
                                             end (* match tag *) 
                                         ) (Set.fromList ranges_and_tags) (* end mapMaybe fn *)
                                     in
-                                    
-                                    
-                                    
-                                    
-                                    
-                                    
-                                    
-                                    (isec.elf64_section_size, el.contents, (* new_ranges_and_tags *) {})
+                                    (isec.elf64_section_size, el.contents, new_ranges_and_tags)
                          | _     -> failwith "impossible: no such element"
                        end (* match Map.lookup idstr img.elements *)
                     end (* match maybe_secname *)
@@ -1292,11 +1271,11 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
                                 def_symname = name
                                 ; def_syment = <| (* FIXME *)
                                      elf64_st_name  = elf64_word_of_natural 0
-                                   ; elf64_st_info  = unsigned_char_of_natural 0(* unsigned_char  --Specifies the symbol's type and binding attributes *)
-                                   ; elf64_st_other = unsigned_char_of_natural 0(* unsigned_char  --Currently specifies the symbol's visibility *)
-                                   ; elf64_st_shndx = elf64_half_of_natural 0 (* elf64_half     -- Section header index symbol is defined with respect to *)
-                                   ; elf64_st_value = elf64_addr_of_natural 0 (* elf64_addr     -- Gives the value of the associated symbol *)
-                                   ; elf64_st_size  = elf64_xword_of_natural 0 (* : elf64_xword    -- Size of the associated symbol *)
+                                   ; elf64_st_info  = unsigned_char_of_natural 0 (* unsigned_char  --Specifies the symbol's type and binding attributes *)
+                                   ; elf64_st_other = unsigned_char_of_natural 0 (* unsigned_char  --Currently specifies the symbol's visibility *)
+                                   ; elf64_st_shndx = elf64_half_of_natural 0    (* elf64_half     -- Section header index symbol is defined with respect to *)
+                                   ; elf64_st_value = elf64_addr_of_natural 0    (* elf64_addr     -- Gives the value of the associated symbol *)
+                                   ; elf64_st_size  = elf64_xword_of_natural 0   (* : elf64_xword    -- Size of the associated symbol *)
                                    |>
                                 ; def_sym_scn = 0
                                 ; def_sym_idx = 0
@@ -1307,7 +1286,23 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
                 in
                 let new_addr = comp_addr + sz
                 in
-                let new_meta = accum_meta union this_el_meta
+                let new_meta = (accum_meta union this_el_meta) union {
+                    (Just(secname, (0, sz)), FileFeature(ElfSection(scn_idx, 
+                              <| elf64_section_name = 0 (* ignored *)
+                               ; elf64_section_type = 0 (* FIXME *)
+                               ; elf64_section_flags = 0 (* FIXME *)
+                               ; elf64_section_addr = 0 (* ignored *)
+                               ; elf64_section_offset = 0 (* ignored *)
+                               ; elf64_section_size = 0 (* ignored *)
+                               ; elf64_section_link = 0 (* HMM *)
+                               ; elf64_section_info = 0 (* HMM *)
+                               ; elf64_section_align = 0  (* FIXME *)
+                               ; elf64_section_entsize = 0 (* HMM *)
+                               ; elf64_section_body = Byte_sequence.empty (* ignored *)
+                               ; elf64_section_name_as_string = secname   (* ignored *)
+                               |>
+                        )))
+                }
                 in
                 (new_content, new_addr, new_meta)
             )) ([], start_addr, {}) (zip comp comp_addrs)
@@ -1509,51 +1504,3 @@ let interpret_linker_control_script script a inputs seen_ordering get_binding_fo
      
      *)
     img
-
-    (* What is the output of a linker script?
-     * Recall that we need multiple passes:
-     * 
-     * 1. enumerate output sections
-                       + their constituent input sections
-                              + the *input* sections' attributes (keep; others?)
-                       + symbols defined in the script, with attributes (hidden, provide-or-...)
-              
-              ** we haven't yet calculated addresses
-              ** ... because some input sections might go away on GC
-              ** in this step, what do we *eliminate* from the input language?
-                     -- input queries, I suppose
-                     -- sorting (we can put sections in order)
-                     
-            memory image interpretation:
-            - label all input sections/commons with 
-                  output section name   (or "orphan" or "discard")
-            - instantiate all output sections in the output memory image
-                  with vague address (a fresh symbolic value) and vague length
-            - symbolify address assignments/advancements in the script
-                  --- this labelling is a key part of the link map!
-                  --- what do we label? ideally don't want to label input sections
-                          -- the start of output sections *only*
-                          -- holes in input sections
-            - 
-
-     * 2. optionally do GC; erase now-unneeded input sections & attributes
-     * 
-     * 3. place orphans?
-     * 
-     * 4. fix address assignments (including data segment alignment)
-     * 
-     * This function just does the first one. It creates the output memory image
-     * and labels it with all the information that is directly embodied in the script.
-     * We can do this by recursing down the script, accumulating the image as we go.
-     *)
-
-(* 
-val place_orphans :                  elf_memory_image 'abifeature -> elf_memory_image 'abifeature
-val section_gc :                     elf_memory_image 'abifeature -> elf_memory_image 'abifeature
-val concretise_addresses :           elf_memory_image 'abifeature -> elf_memory_image 'abifeature
-val remove_algorithm_features  :     elf_memory_image 'abifeature -> elf_memory_image 'abifeature
-val generate_missing_abi_features :  elf_memory_image 'abifeature -> elf_memory_image 'abifeature
-val generate_missing_file_features : elf_memory_image 'abifeature -> elf_memory_image 'abifeature
-val remove_non_output_features :     elf_memory_image 'abifeature -> elf_memory_image 'abifeature
-val to_elf_file :                    elf_memory_image 'abifeature -> elf64_file
-*)
