@@ -53,12 +53,39 @@ begin
 (*open import Elf_symbol_table*)
 (*open import Elf_types_native_uint*)
 (*open import Elf_relocation*)
+(*open import Elf_types_native_uint*)
 (*open import Memory_image*)
 
 (*val gnu_extend: forall 'abifeature. abi 'abifeature -> abi 'abifeature*)
 definition gnu_extend  :: " 'abifeature abi \<Rightarrow> 'abifeature abi "  where 
      " gnu_extend a = ( 
    (| is_valid_elf_header =(is_valid_elf_header   a)
+    , make_elf_header     =            
+( (*  t -> entry -> shoff -> phoff -> phnum -> shnum -> shstrndx -> hdr *)\<lambda> t .  \<lambda> entry .  \<lambda> shoff .  \<lambda> phoff .  \<lambda> phnum .  \<lambda> shnum .  \<lambda> shstrndx . 
+            (let unmod = ((make_elf_header   a) t entry shoff phoff phnum shnum shstrndx)
+            in
+              (| elf64_ident    = (case (elf64_ident   unmod) of 
+                i0 # i1 # i2 # i3  # i4  # i5  # i6  # 
+                _  # _  # i9 # i10 # i11 # i12 # i13 # i14 # i15 # []
+                    => [i0, i1, i2, i3, i4, i5, i6,
+                        Elf_Types_Local.unsigned_char_of_nat elf_osabi_gnu,
+                        Elf_Types_Local.unsigned_char_of_nat(( 1 :: nat)),
+                        i9, i10, i11, i12, i13, i14, i15]
+                )
+               , elf64_type     = (Elf_Types_Local.uint16_of_nat t)
+               , elf64_machine  =(elf64_machine   unmod)
+               , elf64_version  =(elf64_version   unmod)
+               , elf64_entry    =(elf64_entry   unmod)
+               , elf64_phoff    = (Elf_Types_Local.uint64_of_nat phoff)
+               , elf64_shoff    = (Elf_Types_Local.uint64_of_nat shoff)
+               , elf64_flags    =(elf64_flags   unmod)
+               , elf64_ehsize   =(elf64_ehsize   unmod)
+               , elf64_phentsize=(elf64_phentsize   unmod)
+               , elf64_phnum    = (Elf_Types_Local.uint16_of_nat phnum)
+               , elf64_shentsize=(elf64_shentsize   unmod)
+               , elf64_shnum    = (Elf_Types_Local.uint16_of_nat shnum)
+               , elf64_shstrndx = (Elf_Types_Local.uint16_of_nat shstrndx)
+               |)))
     , reloc               =(reloc   a)
     , section_is_special  = (\<lambda> isec .  (\<lambda> img .  ((section_is_special  
                                 a) isec img

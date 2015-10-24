@@ -32,11 +32,11 @@ val _ = new_theory "elf_note"
   *)
 val _ = Hol_datatype `
  elf32_note =
-  <| elf32_note_namesz :  word 32 (** The size of the name field. *)
-   ; elf32_note_descsz :  word 32 (** The size of the description field. *)
-   ; elf32_note_type   :  word 32 (** The type of the note. *)
-   ; elf32_note_name   :  word 8 list  (** The list of bytes (of length indicated above) corresponding to the name string. *)
-   ; elf32_note_desc   :  word 8 list  (** The list of bytes (of length indicated above) corresponding to the desc string. *)
+  <| elf32_note_namesz : word32 (** The size of the name field. *)
+   ; elf32_note_descsz : word32 (** The size of the description field. *)
+   ; elf32_note_type   : word32 (** The type of the note. *)
+   ; elf32_note_name   : word8 list  (** The list of bytes (of length indicated above) corresponding to the name string. *)
+   ; elf32_note_desc   : word8 list  (** The list of bytes (of length indicated above) corresponding to the desc string. *)
    |>`;
 
    
@@ -44,11 +44,11 @@ val _ = Hol_datatype `
   *)
 val _ = Hol_datatype `
  elf64_note =
-  <| elf64_note_namesz : elf64_xword (** The size of the name field. *)
-   ; elf64_note_descsz : elf64_xword (** The size of the description field. *)
-   ; elf64_note_type   : elf64_xword (** The type of the note. *)
-   ; elf64_note_name   :  word 8 list   (** The list of bytes (of length indicated above) corresponding to the name string. *)
-   ; elf64_note_desc   :  word 8 list   (** The list of bytes (of length indicated above) corresponding to the desc string. *)
+  <| elf64_note_namesz : word64 (** The size of the name field. *)
+   ; elf64_note_descsz : word64 (** The size of the description field. *)
+   ; elf64_note_type   : word64 (** The type of the note. *)
+   ; elf64_note_name   : word8 list   (** The list of bytes (of length indicated above) corresponding to the name string. *)
+   ; elf64_note_desc   : word8 list   (** The list of bytes (of length indicated above) corresponding to the desc string. *)
    |>`;
 
    
@@ -97,13 +97,13 @@ val _ = Define `
  (obtain_elf32_note_sections endian sht bs0 =  
 (let note_sects =    
 (FILTER (\ x . 
-      x.elf32_sh_type = n2w sht_note
+      x.elf32_sh_type = (n2w : num -> 32 word) sht_note
     ) sht)
   in
     mapM (\ x . 
       let offset = (w2n x.elf32_sh_offset) in
-      let size   = (w2n x.elf32_sh_size) in
-      byte_sequence$offset_and_cut offset size bs0 >>= (\ rel . 
+      let size1   = (w2n x.elf32_sh_size) in
+      byte_sequence$offset_and_cut offset size1 bs0 >>= (\ rel . 
       read_elf32_note endian rel >>= 
   (\p .  (case (p ) of ( (note, _) ) => return note )))
     ) note_sects))`;
@@ -120,13 +120,13 @@ val _ = Define `
  (obtain_elf64_note_sections endian sht bs0 =  
 (let note_sects =    
 (FILTER (\ x . 
-      x.elf64_sh_type = n2w sht_note
+      x.elf64_sh_type = (n2w : num -> 32 word) sht_note
     ) sht)
   in
     mapM (\ x . 
       let offset = (w2n x.elf64_sh_offset) in
-      let size   = (w2n x.elf64_sh_size) in
-      byte_sequence$offset_and_cut offset size bs0 >>= (\ rel . 
+      let size1   = (w2n x.elf64_sh_size) in
+      byte_sequence$offset_and_cut offset size1 bs0 >>= (\ rel . 
       read_elf64_note endian rel >>= 
   (\p .  (case (p ) of ( (note, _) ) => return note )))
     ) note_sects))`;
@@ -143,13 +143,13 @@ val _ = Define `
  (obtain_elf32_note_segments endian pht bs0 =  
 (let note_segs =    
 (FILTER (\ x . 
-      x.elf32_p_type = n2w elf_pt_note
+      x.elf32_p_type = (n2w : num -> 32 word) elf_pt_note
     ) pht)
   in
     mapM (\ x . 
       let offset = (w2n x.elf32_p_offset) in
-      let size   = (w2n x.elf32_p_filesz) in
-      byte_sequence$offset_and_cut offset size bs0 >>= (\ rel . 
+      let size1   = (w2n x.elf32_p_filesz) in
+      byte_sequence$offset_and_cut offset size1 bs0 >>= (\ rel . 
       read_elf32_note endian rel >>= 
   (\p .  (case (p ) of ( (note, _) ) => return note )))
     ) note_segs))`;
@@ -166,13 +166,13 @@ val _ = Define `
  (obtain_elf64_note_segments endian pht bs0 =  
 (let note_segs =    
 (FILTER (\ x . 
-      x.elf64_p_type = n2w elf_pt_note
+      x.elf64_p_type = (n2w : num -> 32 word) elf_pt_note
     ) pht)
   in
     mapM (\ x . 
       let offset = (w2n x.elf64_p_offset) in
-      let size   = (w2n x.elf64_p_filesz) in
-      byte_sequence$offset_and_cut offset size bs0 >>= (\ rel . 
+      let size1   = (w2n x.elf64_p_filesz) in
+      byte_sequence$offset_and_cut offset size1 bs0 >>= (\ rel . 
       read_elf64_note endian rel >>= 
   (\p .  (case (p ) of ( (note, _) ) => return note )))
     ) note_segs))`;

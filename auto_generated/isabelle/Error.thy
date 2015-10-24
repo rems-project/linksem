@@ -31,12 +31,12 @@ datatype 'a error
 (** [return] is the monadic lifting function for [error], representing a successful
   * computation.
   *)
-(*val return : forall 'a. 'a -> error 'a*)
+(*val return : forall 'a. 'a BBB -> error 'a BBB FFF*)
 definition error_return  :: " 'a \<Rightarrow> 'a error "  where 
      " error_return r = ( Success r )"
 
 
-(*val with_success : forall 'a 'b. error 'a -> 'b -> ('a -> 'b) -> 'b*)
+(*val with_success : forall 'a 'b. error 'a BBB FFF -> 'b BBB -> ('a BBB -> 'b BBB) -> 'b BBB*)
 fun with_success  :: " 'a error \<Rightarrow> 'b \<Rightarrow>('a \<Rightarrow> 'b)\<Rightarrow> 'b "  where 
      " with_success (Success s) fl suc = ( suc s )"
 |" with_success (Fail err) fl suc = ( fl )" 
@@ -45,14 +45,14 @@ declare with_success.simps [simp del]
 
 (** [fail err] represents a failing computation, with error message [err].
   *)
-(*val fail : forall 'a. string -> error 'a*)
+(*val fail : forall 'a. string FFF -> error 'a BBB FFF*)
 definition error_fail  :: " string \<Rightarrow> 'a error "  where 
      " error_fail err = ( Fail err )"
 
 
 (** [(>>=)] is the monadic binding function for [error].
   *)
-(*val >>= : forall 'a 'b. error 'a -> ('a -> error 'b) -> error 'b*)
+(*val >>= : forall 'a 'b. error 'a BBB FFF -> ('a BBB -> error 'b BBB FFF) -> error 'b BBB FFF*)
 fun error_bind :: " 'a error \<Rightarrow>('a \<Rightarrow> 'b error)\<Rightarrow> 'b error " ("_>>=_" [50,50]50) where 
      " error_bind (Success s) f = ( f s )"
 |" error_bind (Fail err) f = ( Fail err )" 
@@ -63,7 +63,7 @@ declare error_bind.simps [simp del]
   * error information.
   *)
 
-(*val as_maybe : forall 'a. error 'a -> maybe 'a*)
+(*val as_maybe : forall 'a. error 'a BBB FFF -> maybe 'a BBB FFF*)
 fun as_maybe  :: " 'a error \<Rightarrow> 'a option "  where 
      " as_maybe (Fail err) = ( None )"
 |" as_maybe (Success s) = ( Some s )" 
@@ -74,7 +74,7 @@ declare as_maybe.simps [simp del]
   * successfully produces a list [count] elements long, where each element is
   * the value successfully returned by [action].
   *)
-(*val repeatM : forall 'a. natural -> error 'a -> error (list 'a)*)
+(*val repeatM : forall 'a. natural FFF -> error 'a BBB FFF -> error (list 'a BBB FFF)FFF*)
 function (sequential,domintros)  repeatM  :: " nat \<Rightarrow> 'a error \<Rightarrow>('a list)error "  where 
      " repeatM count1 action = (
   if count1 =( 0 :: nat) then
@@ -90,8 +90,8 @@ by pat_completeness auto
   * apart from any successful result returns a tuple whose second component is [seed]
   * and whose first component is the same as would be returned by [repeatM].
   *)
-(*val repeatM' : forall 'a 'b. natural -> 'b -> ('b -> error ('a * 'b)) -> error ((list 'a) * 'b)*)
-function (sequential,domintros)  repeatM'  :: " nat \<Rightarrow> 'b \<Rightarrow>('b \<Rightarrow>('a*'b)error)\<Rightarrow>('a list*'b)error "  where 
+(*val repeatM' : forall 'a 'b. natural FFF -> 'b BBB -> ('b BBB -> error ('a BBB * 'b BBB DDD)FFF) -> error ((list 'a BBB FFF) * 'b BBB DDD)FFF*)
+function (sequential,domintros)  repeatM'  :: " nat \<Rightarrow> 'b \<Rightarrow>('b \<Rightarrow>('a *'b)error)\<Rightarrow>('a list*'b)error "  where 
      " repeatM' count1 seed action = (
   if count1 =( 0 :: nat) then
     error_return ([], seed)
@@ -104,7 +104,7 @@ by pat_completeness auto
 	
 (** [mapM f xs] maps [f] across [xs], failing if [f] fails on any element of [xs].
   *)
-(*val mapM : forall 'a 'b. ('a -> error 'b) -> list 'a -> error (list 'b)*)
+(*val mapM : forall 'a 'b. ('a BBB -> error 'b BBB FFF) -> list 'a BBB FFF -> error (list 'b BBB FFF)FFF*)
 function (sequential,domintros)  mapM  :: "('a \<Rightarrow> 'b error)\<Rightarrow> 'a list \<Rightarrow>('b list)error "  where 
      " mapM f ([]) = ( error_return [])"
 |" mapM f (x # xs) = (
@@ -117,8 +117,8 @@ by pat_completeness auto
 (** [foldM f e xs] performs a monadic right fold of [f] across [xs] using [e]
   * as the base case.  Fails if any application of [f] fails.
   *)
-(*val foldM : forall 'a 'b. ('a -> 'b -> error 'a) -> 'a -> list 'b -> error 'a*)
-function (sequential,domintros)  foldM  :: "('a \<Rightarrow> 'b \<Rightarrow> 'a error)\<Rightarrow> 'a \<Rightarrow> 'b list \<Rightarrow> 'a error "  where 
+(*val foldM : forall 'a 'b. ('a BBB -> 'b BBB -> error 'a BBB FFF) -> 'a BBB -> list 'b BBB FFF -> error 'a BBB FFF*)
+function (sequential,domintros)  foldM  :: "('a \<Rightarrow> 'b \<Rightarrow> 'a error)\<Rightarrow> 'a  \<Rightarrow> 'b list \<Rightarrow> 'a error "  where 
      " foldM f e ([]) = ( error_return e )"
 |" foldM f e (x # xs) = ( f e x >>= (\<lambda> res .  foldM f res xs))" 
 by pat_completeness auto
@@ -126,5 +126,5 @@ by pat_completeness auto
 
 (** [string_of_error err] produces a string representation of [err].
   *)
-(*val string_of_error : forall 'a. Show 'a => error 'a -> string*)
+(*val string_of_error : forall 'a. Show 'a => error 'a BBB FFF -> string FFF*)
 end

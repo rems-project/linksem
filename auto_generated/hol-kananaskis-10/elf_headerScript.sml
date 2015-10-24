@@ -1116,19 +1116,19 @@ val _ = Define `
 
 (** Position: e*_ident[elf_ii_mag0], 0x7f magic number *)
 val _ = Define `
- (elf_mn_mag0 :  word 8 = (n2w( 127)))`;
+ (elf_mn_mag0 : word8 = ((n2w : num -> 8 word)( 127)))`;
 
 (** Position: e*_ident[elf_ii_mag1], 'E' format identifier *)
 val _ = Define `
- (elf_mn_mag1 :  word 8 = (n2w( 69)))`;
+ (elf_mn_mag1 : word8 = ((n2w : num -> 8 word)( 69)))`;
 
 (** Position: e*_ident[elf_ii_mag2], 'L' format identifier *)
 val _ = Define `
- (elf_mn_mag2 :  word 8 = (n2w( 76)))`;
+ (elf_mn_mag2 : word8 = ((n2w : num -> 8 word)( 76)))`;
 
 (** Position: e*_ident[elf_ii_mag3], 'F' format identifier *)
 val _ = Define `
- (elf_mn_mag3 :  word 8 = (n2w( 70)))`;
+ (elf_mn_mag3 : word8 = ((n2w : num -> 8 word)( 70)))`;
 
 
 (** ELf file classes.  The file format is designed to be portable among machines
@@ -1285,20 +1285,20 @@ val _ = Define `
   *)
 val _ = Hol_datatype `
  elf32_header =
-  <| elf32_ident    :  word 8 list (** Identification field *)
-   ; elf32_type     :  word 16         (** The object file type *)
-   ; elf32_machine  :  word 16         (** Required machine architecture *)
-   ; elf32_version  :  word 32         (** Object file version *)
-   ; elf32_entry    :  addr 32         (** Virtual address for transfer of control *)
-   ; elf32_phoff    :  word 32          (** Program header table offset in bytes *)
-   ; elf32_shoff    :  word 32          (** Section header table offset in bytes *)
-   ; elf32_flags    :  word 32         (** Processor-specific flags *)
-   ; elf32_ehsize   :  word 16         (** ELF header size in bytes *)
-   ; elf32_phentsize:  word 16         (** Program header table entry size in bytes *)
-   ; elf32_phnum    :  word 16         (** Number of entries in program header table *)
-   ; elf32_shentsize:  word 16         (** Section header table entry size in bytes *)
-   ; elf32_shnum    :  word 16         (** Number of entries in section header table *)
-   ; elf32_shstrndx :  word 16         (** Section header table entry for section name string table *)
+  <| elf32_ident    : word8 list (** Identification field *)
+   ; elf32_type     : word16         (** The object file type *)
+   ; elf32_machine  : word16         (** Required machine architecture *)
+   ; elf32_version  : word32         (** Object file version *)
+   ; elf32_entry    : word32         (** Virtual address for transfer of control *)
+   ; elf32_phoff    : word32          (** Program header table offset in bytes *)
+   ; elf32_shoff    : word32          (** Section header table offset in bytes *)
+   ; elf32_flags    : word32         (** Processor-specific flags *)
+   ; elf32_ehsize   : word16         (** ELF header size in bytes *)
+   ; elf32_phentsize: word16         (** Program header table entry size in bytes *)
+   ; elf32_phnum    : word16         (** Number of entries in program header table *)
+   ; elf32_shentsize: word16         (** Section header table entry size in bytes *)
+   ; elf32_shnum    : word16         (** Number of entries in section header table *)
+   ; elf32_shstrndx : word16         (** Section header table entry for section name string table *)
    |>`;
 
    
@@ -1306,20 +1306,20 @@ val _ = Hol_datatype `
   *)
 val _ = Hol_datatype `
  elf64_header =
-  <| elf64_ident    :  word 8 list (** Identification field *)
-   ; elf64_type     :  word 16         (** The object file type *)
-   ; elf64_machine  :  word 16         (** Required machine architecture *)
-   ; elf64_version  :  word 32         (** Object file version *)
-   ; elf64_entry    :  word 64         (** Virtual address for transfer of control *)
-   ; elf64_phoff    :  word 64          (** Program header table offset in bytes *)
-   ; elf64_shoff    :  word 64          (** Section header table offset in bytes *)
-   ; elf64_flags    :  word 32         (** Processor-specific flags *)
-   ; elf64_ehsize   :  word 16         (** ELF header size in bytes *)
-   ; elf64_phentsize:  word 16         (** Program header table entry size in bytes *)
-   ; elf64_phnum    :  word 16         (** Number of entries in program header table *)
-   ; elf64_shentsize:  word 16         (** Section header table entry size in bytes *)
-   ; elf64_shnum    :  word 16         (** Number of entries in section header table *)
-   ; elf64_shstrndx :  word 16         (** Section header table entry for section name string table *)
+  <| elf64_ident    : word8 list (** Identification field *)
+   ; elf64_type     : word16         (** The object file type *)
+   ; elf64_machine  : word16         (** Required machine architecture *)
+   ; elf64_version  : word32         (** Object file version *)
+   ; elf64_entry    : word64         (** Virtual address for transfer of control *)
+   ; elf64_phoff    : word64          (** Program header table offset in bytes *)
+   ; elf64_shoff    : word64          (** Section header table offset in bytes *)
+   ; elf64_flags    : word32         (** Processor-specific flags *)
+   ; elf64_ehsize   : word16         (** ELF header size in bytes *)
+   ; elf64_phentsize: word16         (** Program header table entry size in bytes *)
+   ; elf64_phnum    : word16         (** Number of entries in program header table *)
+   ; elf64_shentsize: word16         (** Section header table entry size in bytes *)
+   ; elf64_shnum    : word16         (** Number of entries in section header table *)
+   ; elf64_shstrndx : word16         (** Section header table entry for section name string table *)
    |>`;
 
    
@@ -1850,22 +1850,22 @@ val _ = Define `
 (*val is_elf32_header_padding_correct : elf32_header -> bool*)
 val _ = Define `
  (is_elf32_header_padding_correct ehdr =
-  ((lem_list$list_index ehdr.elf32_ident( 9)  = SOME (n2w( 0))) /\  
-(lem_list$list_index ehdr.elf32_ident( 10) = SOME (n2w( 0))) /\  
-(lem_list$list_index ehdr.elf32_ident( 11) = SOME (n2w( 0))) /\  
-(lem_list$list_index ehdr.elf32_ident( 12) = SOME (n2w( 0))) /\  
-(lem_list$list_index ehdr.elf32_ident( 13) = SOME (n2w( 0))) /\  
-(lem_list$list_index ehdr.elf32_ident( 14) = SOME (n2w( 0))) /\  
-(lem_list$list_index ehdr.elf32_ident( 15) = SOME (n2w( 0)))))`;
+  ((lem_list$list_index ehdr.elf32_ident( 9)  = SOME ((n2w : num -> 8 word)( 0))) /\  
+(lem_list$list_index ehdr.elf32_ident( 10) = SOME ((n2w : num -> 8 word)( 0))) /\  
+(lem_list$list_index ehdr.elf32_ident( 11) = SOME ((n2w : num -> 8 word)( 0))) /\  
+(lem_list$list_index ehdr.elf32_ident( 12) = SOME ((n2w : num -> 8 word)( 0))) /\  
+(lem_list$list_index ehdr.elf32_ident( 13) = SOME ((n2w : num -> 8 word)( 0))) /\  
+(lem_list$list_index ehdr.elf32_ident( 14) = SOME ((n2w : num -> 8 word)( 0))) /\  
+(lem_list$list_index ehdr.elf32_ident( 15) = SOME ((n2w : num -> 8 word)( 0)))))`;
 
 
 (*val is_magic_number_correct : list unsigned_char -> bool*)
 val _ = Define `
  (is_magic_number_correct ident =
-  ((lem_list$list_index ident( 0) = SOME (n2w( 127))) /\  
-(lem_list$list_index ident( 1) = SOME (n2w( 69)))  /\  
-(lem_list$list_index ident( 2) = SOME (n2w( 76)))  /\  
-(lem_list$list_index ident( 3) = SOME (n2w( 70)))))`;
+  ((lem_list$list_index ident( 0) = SOME ((n2w : num -> 8 word)( 127))) /\  
+(lem_list$list_index ident( 1) = SOME ((n2w : num -> 8 word)( 69)))  /\  
+(lem_list$list_index ident( 2) = SOME ((n2w : num -> 8 word)( 76)))  /\  
+(lem_list$list_index ident( 3) = SOME ((n2w : num -> 8 word)( 70)))))`;
 
 
 (** [read_elf32_header bs0] reads an ELF header from the byte sequence [bs0].
@@ -1954,7 +1954,7 @@ val _ = Define `
 (*val is_elf32_header_class_correct : elf32_header -> bool*)
 val _ = Define `
  (is_elf32_header_class_correct ehdr =  
-(lem_list$list_index ehdr.elf32_ident( 4) = SOME (n2w( 1))))`;
+(lem_list$list_index ehdr.elf32_ident( 4) = SOME ((n2w : num -> 8 word)( 1))))`;
 
   
 (** [is_elf64_header_class_correct hdr] checks whether the declared file class
@@ -1963,7 +1963,7 @@ val _ = Define `
 (*val is_elf64_header_class_correct : elf64_header -> bool*)
 val _ = Define `
  (is_elf64_header_class_correct ehdr =  
-(lem_list$list_index ehdr.elf64_ident( 4) = SOME (n2w( 1))))`;
+(lem_list$list_index ehdr.elf64_ident( 4) = SOME ((n2w : num -> 8 word)( 1))))`;
 
 
 (** [is_elf32_header_version_correct hdr] checks whether the declared file version
@@ -1972,7 +1972,7 @@ val _ = Define `
 (*val is_elf32_header_version_correct : elf32_header -> bool*)
 val _ = Define `
  (is_elf32_header_version_correct ehdr =  
-(lem_list$list_index ehdr.elf32_ident( 6) = SOME (n2w( 1))))`;
+(lem_list$list_index ehdr.elf32_ident( 6) = SOME ((n2w : num -> 8 word)( 1))))`;
 
   
 (** [is_elf64_header_version_correct hdr] checks whether the declared file version
@@ -1981,7 +1981,7 @@ val _ = Define `
 (*val is_elf64_header_version_correct : elf64_header -> bool*)
 val _ = Define `
  (is_elf64_header_version_correct ehdr =  
-(lem_list$list_index ehdr.elf64_ident( 6) = SOME (n2w( 1))))`;
+(lem_list$list_index ehdr.elf64_ident( 6) = SOME ((n2w : num -> 8 word)( 1))))`;
 
 
 (** [is_elf32_header_valid] checks whether an [elf32_header] value is a valid 32-bit

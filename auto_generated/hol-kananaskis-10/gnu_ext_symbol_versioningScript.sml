@@ -43,10 +43,10 @@ val _ = new_theory "gnu_ext_symbol_versioning"
 (** [gnu_ext_elf32_symbol_version_table] is an array (linked list, here) of
   * [elf32_half] entries.
   *)
-val _ = type_abbrev( "gnu_ext_elf32_symbol_version_table" , ``:  word 16
+val _ = type_abbrev( "gnu_ext_elf32_symbol_version_table" , ``: word16
   list``);
   
-val _ = type_abbrev( "gnu_ext_elf64_symbol_version_table" , ``:  word 16
+val _ = type_abbrev( "gnu_ext_elf64_symbol_version_table" , ``: word16
   list``);
 
 (*val obtain_gnu_ext_elf32_symbol_version_table : elf32_file -> byte_sequence -> error gnu_ext_elf32_symbol_version_table*)
@@ -55,7 +55,7 @@ val _ = Define `
 (let sht = (f1.elf32_file_section_header_table) in
   let endian = (get_elf32_header_endianness f1.elf32_file_header) in
   let vers = (FILTER (\ ent . 
-    ent.elf32_sh_type = n2w sht_gnu_versym
+    ent.elf32_sh_type = (n2w : num -> 32 word) sht_gnu_versym
   ) sht)
   in
     (case vers of
@@ -81,7 +81,7 @@ val _ = Define `
       return []
     else
       let vers = (FILTER (\ ent . 
-          ent.elf64_sh_type = n2w sht_gnu_versym
+          ent.elf64_sh_type = (n2w : num -> 32 word) sht_gnu_versym
         ) sht)
       in
         (case vers of
@@ -98,25 +98,25 @@ val _ = Define `
   
 val _ = Hol_datatype `
  gnu_ext_elf32_verdef =
-  <| gnu_ext_elf32_vd_version :  word 16
-   ; gnu_ext_elf32_vd_flags   :  word 16
-   ; gnu_ext_elf32_vd_ndx     :  word 16
-   ; gnu_ext_elf32_vd_cnt     :  word 16
-   ; gnu_ext_elf32_vd_hash    :  word 32
-   ; gnu_ext_elf32_vd_aux     :  word 32
-   ; gnu_ext_elf32_vd_next    :  word 32
+  <| gnu_ext_elf32_vd_version : word16
+   ; gnu_ext_elf32_vd_flags   : word16
+   ; gnu_ext_elf32_vd_ndx     : word16
+   ; gnu_ext_elf32_vd_cnt     : word16
+   ; gnu_ext_elf32_vd_hash    : word32
+   ; gnu_ext_elf32_vd_aux     : word32
+   ; gnu_ext_elf32_vd_next    : word32
    |>`;
 
    
 val _ = Hol_datatype `
  gnu_ext_elf64_verdef =
-  <| gnu_ext_elf64_vd_version :  word 16
-   ; gnu_ext_elf64_vd_flags   :  word 16
-   ; gnu_ext_elf64_vd_ndx     :  word 16
-   ; gnu_ext_elf64_vd_cnt     :  word 16
-   ; gnu_ext_elf64_vd_hash    :  word 32
-   ; gnu_ext_elf64_vd_aux     :  word 32
-   ; gnu_ext_elf64_vd_next    :  word 32
+  <| gnu_ext_elf64_vd_version : word16
+   ; gnu_ext_elf64_vd_flags   : word16
+   ; gnu_ext_elf64_vd_ndx     : word16
+   ; gnu_ext_elf64_vd_cnt     : word16
+   ; gnu_ext_elf64_vd_hash    : word32
+   ; gnu_ext_elf64_vd_aux     : word32
+   ; gnu_ext_elf64_vd_next    : word32
    |>`;
 
    
@@ -200,7 +200,7 @@ val _ = Define `
 (let endian = (get_elf32_header_endianness f1.elf32_file_header) in
   let sht = (f1.elf32_file_section_header_table) in
   let verdefs = (FILTER (\ ent . 
-    ent.elf32_sh_type = n2w sht_gnu_verdef) sht)
+    ent.elf32_sh_type = (n2w : num -> 32 word) sht_gnu_verdef) sht)
   in
     (case verdefs of
         []  => return [] (* XXX? *)
@@ -215,7 +215,7 @@ val _ = Define `
 val _ = Define `
  (obtain_gnu_ext_elf64_verdef endian sht bs0 =  
 (let verdefs = (FILTER (\ ent . 
-    ent.elf64_sh_type = n2w sht_gnu_verdef) sht)
+    ent.elf64_sh_type = (n2w : num -> 32 word) sht_gnu_verdef) sht)
   in
     (case verdefs of
         []  => return [] (* XXX? *)
@@ -228,15 +228,15 @@ val _ = Define `
    
 val _ = Hol_datatype `
  gnu_ext_elf32_veraux =
-  <| gnu_ext_elf32_vda_name :  word 32
-   ; gnu_ext_elf32_vda_next :  word 32
+  <| gnu_ext_elf32_vda_name : word32
+   ; gnu_ext_elf32_vda_next : word32
    |>`;
 
    
 val _ = Hol_datatype `
  gnu_ext_elf64_veraux =
-  <| gnu_ext_elf64_vda_name :  word 32
-   ; gnu_ext_elf64_vda_next :  word 32
+  <| gnu_ext_elf64_vda_name : word32
+   ; gnu_ext_elf64_vda_next : word32
    |>`;
 
    
@@ -271,7 +271,7 @@ val _ = Define `
  (obtain_gnu_ext_elf32_veraux endian verdefs bs0 =  
 ((case verdefs of
       []    => return []
-    | x::xs =>
+    | x  ::  xs =>
       let off = (w2n x.gnu_ext_elf32_vd_aux) in
       byte_sequence$offset_and_cut off gnu_ext_elf32_veraux_size bs0 >>= (\ vd . 
       read_gnu_ext_elf32_veraux endian bs0 >>= 
@@ -289,7 +289,7 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
  (obtain_gnu_ext_elf64_veraux endian verdefs bs0 =  
 ((case verdefs of
       []    => return []
-    | x::xs =>
+    | x  ::  xs =>
       let off = (w2n x.gnu_ext_elf64_vd_aux) in
       byte_sequence$offset_and_cut off gnu_ext_elf64_veraux_size bs0 >>= (\ vd . 
       read_gnu_ext_elf64_veraux endian bs0 >>= 
@@ -304,21 +304,21 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
    
 val _ = Hol_datatype `
  gnu_ext_elf32_verneed =
-  <| gnu_ext_elf32_vn_version :  word 16
-   ; gnu_ext_elf32_vn_cnt     :  word 16
-   ; gnu_ext_elf32_vn_file    :  word 32
-   ; gnu_ext_elf32_vn_aux     :  word 32
-   ; gnu_ext_elf32_vn_next    :  word 32
+  <| gnu_ext_elf32_vn_version : word16
+   ; gnu_ext_elf32_vn_cnt     : word16
+   ; gnu_ext_elf32_vn_file    : word32
+   ; gnu_ext_elf32_vn_aux     : word32
+   ; gnu_ext_elf32_vn_next    : word32
    |>`;
 
    
 val _ = Hol_datatype `
  gnu_ext_elf64_verneed =
-  <| gnu_ext_elf64_vn_version :  word 16
-   ; gnu_ext_elf64_vn_cnt     :  word 16
-   ; gnu_ext_elf64_vn_file    :  word 32
-   ; gnu_ext_elf64_vn_aux     :  word 32
-   ; gnu_ext_elf64_vn_next    :  word 32
+  <| gnu_ext_elf64_vn_version : word16
+   ; gnu_ext_elf64_vn_cnt     : word16
+   ; gnu_ext_elf64_vn_file    : word32
+   ; gnu_ext_elf64_vn_aux     : word32
+   ; gnu_ext_elf64_vn_next    : word32
    |>`;
 
    
@@ -406,7 +406,7 @@ let obtain_gnu_ext_elf32_verneed f1 bs0 =
 val _ = Define `
  (obtain_gnu_ext_elf64_verneed endian sht bs0 =  
 (let verneeds = (FILTER (\ ent . 
-    ent.elf64_sh_type = n2w sht_gnu_verneed) sht)
+    ent.elf64_sh_type = (n2w : num -> 32 word) sht_gnu_verneed) sht)
   in
     (case verneeds of
         []  => return [] (* XXX? *)
@@ -419,21 +419,21 @@ val _ = Define `
    
 val _ = Hol_datatype `
  gnu_ext_elf32_vernaux =
-  <| gnu_ext_elf32_vna_hash  :  word 32
-   ; gnu_ext_elf32_vna_flags :  word 16
-   ; gnu_ext_elf32_vna_other :  word 16
-   ; gnu_ext_elf32_vna_name  :  word 32
-   ; gnu_ext_elf32_vna_next  :  word 32
+  <| gnu_ext_elf32_vna_hash  : word32
+   ; gnu_ext_elf32_vna_flags : word16
+   ; gnu_ext_elf32_vna_other : word16
+   ; gnu_ext_elf32_vna_name  : word32
+   ; gnu_ext_elf32_vna_next  : word32
    |>`;
 
    
 val _ = Hol_datatype `
  gnu_ext_elf64_vernaux =
-  <| gnu_ext_elf64_vna_hash  :  word 32
-   ; gnu_ext_elf64_vna_flags :  word 16
-   ; gnu_ext_elf64_vna_other :  word 16
-   ; gnu_ext_elf64_vna_name  :  word 32
-   ; gnu_ext_elf64_vna_next  :  word 32
+  <| gnu_ext_elf64_vna_hash  : word32
+   ; gnu_ext_elf64_vna_flags : word16
+   ; gnu_ext_elf64_vna_other : word16
+   ; gnu_ext_elf64_vna_name  : word32
+   ; gnu_ext_elf64_vna_next  : word32
    |>`;
 
    
@@ -500,7 +500,7 @@ val _ = Define `
 (let endian = (get_elf32_header_endianness f1.elf32_file_header) in
   let sht = (f1.elf32_file_section_header_table) in
   obtain_elf32_dynamic_section_contents f1 gnu_ext_os_additional_ranges gnu_ext_tag_correspondence_of_tag gnu_ext_tag_correspondence_of_tag bs0 >>= (\ dyn . 
-    (case FILTER (\ ent .  ent.elf32_sh_type = n2w sht_gnu_verneed) sht of
+    (case FILTER (\ ent .  ent.elf32_sh_type = (n2w : num -> 32 word) sht_gnu_verneed) sht of
         [] => fail0 "obtain_gnu_ext_elf32_verneed: no section header entry of type SHT_VERNEED"
       | [verneed] =>
         let off = (w2n verneed.elf32_sh_offset) in
@@ -533,7 +533,7 @@ val _ = Define `
  (obtain_gnu_ext_elf64_vernaux endian verneed bs0 =  
 ((case verneed of
       []    => return []
-    | x::xs =>
+    | x  ::  xs =>
       let off = (w2n x.gnu_ext_elf64_vn_aux) in
       byte_sequence$offset_and_cut off gnu_ext_elf64_vernaux_size bs0 >>= (\ vn . 
       read_gnu_ext_elf64_vernaux endian vn >>= 

@@ -185,7 +185,28 @@ definition natural_ordering  :: " nat \<Rightarrow> nat \<Rightarrow> ordering "
     GT )"
 
 
+(*val merge_by : forall 'a. ('a -> 'a -> ordering) -> list 'a -> list 'a -> list 'a*)
+function (sequential,domintros)  merge_by  :: "('a \<Rightarrow> 'a \<Rightarrow> ordering)\<Rightarrow> 'a list \<Rightarrow> 'a list \<Rightarrow> 'a list "  where 
+     " merge_by comp ([]) ys = ( ys )"
+|" merge_by comp xs ([]) = ( xs )"
+|" merge_by comp (x # xs) (y # ys) = (
+      if comp x y = LT then
+        x #(merge_by comp xs (y # ys))
+      else
+        y #(merge_by comp (x # xs) ys))" 
+by pat_completeness auto
+
+
 (*val sort_by : forall 'a. ('a -> 'a -> ordering) -> list 'a -> list 'a*)
+(*let rec sort_by comp xs =
+  match xs with
+    | [] -> []
+    | [x] -> [x]
+    | xs ->
+      let ls = List.take (Instance_Num_NumIntegerDivision_nat.div List.length xs 2) xs in
+      let rs = List.drop (Instance_Num_NumIntegerDivision_nat.div List.length xs 2) xs in
+        merge_by comp (sort_by comp ls) (sort_by comp rs)
+  end*)
 
 (** [mapMaybei f xs] maps a function expecting an index (the position in the list
   * [xs] that it is currently viewing) and producing a [maybe] type across a list.
@@ -363,14 +384,17 @@ definition bracket  :: "(string)list \<Rightarrow> string "  where
   * function really reusable? I suspect not.
   *)
 (*val split_string_on_char : string -> char -> list string*)
-    
+
+(* [find_substring sub s] returns the index at which *)
+(*val find_substring : string -> string -> maybe natural*)
+
 (** [string_of_nat m] produces a string representation of natural number [m]. *)
 (*val string_of_nat : nat -> string*)
 
 (** [string_suffix i s] returns all but the first [i] characters of [s].
   * Fails if the index is negative, or beyond the end of the string.
   *)
-(*val string_suffix : natural -> string -> maybe string*)
+(*val string_suffix : natural -> string -> maybe string*) (* XXX: add custom binding *)
   
 (*val nat_length : forall 'a. list 'a -> nat*)
   
@@ -424,6 +448,15 @@ definition string_index_of  :: " char \<Rightarrow> string \<Rightarrow>(nat)opt
 
 
 (*val index : forall 'a. natural -> list 'a -> maybe 'a*)
+(*let rec index m xs =
+  match xs with
+    | []    -> Nothing
+    | x::xs ->
+        if (Instance_Basic_classes_Eq_Num_natural.=) m 0 then
+          Just x
+        else
+          index ((Instance_Num_NumMinus_Num_natural.-) m 1) xs
+  end*)
 
 (*val find_index_helper : forall 'a. natural -> ('a -> bool) -> list 'a -> maybe natural*)
 function (sequential,domintros)  find_index_helper  :: " nat \<Rightarrow>('a \<Rightarrow> bool)\<Rightarrow> 'a list \<Rightarrow>(nat)option "  where 

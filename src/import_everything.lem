@@ -5,10 +5,10 @@
   *      tested with Isabelle.
   *)
 
-(*open import Abstract_linker_script
+(*open import Abstract_linker_script*)
 open import Archive
 open import Byte_sequence
-open import Command_line *)
+open import Command_line
 open import Default_printing
 open import Elf_dynamic
 open import Elf_file

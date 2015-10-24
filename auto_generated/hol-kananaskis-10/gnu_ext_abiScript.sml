@@ -31,12 +31,39 @@ val _ = new_theory "gnu_ext_abi"
 (*open import Elf_symbol_table*)
 (*open import Elf_types_native_uint*)
 (*open import Elf_relocation*)
+(*open import Elf_types_native_uint*)
 (*open import Memory_image*)
 
 (*val gnu_extend: forall 'abifeature. abi 'abifeature -> abi 'abifeature*)
 val _ = Define `
  (gnu_extend a =   
  (<| is_valid_elf_header := a.is_valid_elf_header
+    ; make_elf_header     :=            
+( (*  t -> entry -> shoff -> phoff -> phnum -> shnum -> shstrndx -> hdr *)\ t .  \ entry .  \ shoff .  \ phoff .  \ phnum .  \ shnum .  \ shstrndx . 
+            let unmod = (a.make_elf_header t entry shoff phoff phnum shnum shstrndx)
+            in
+              <| elf64_ident    := (case unmod.elf64_ident of 
+                i0  ::  i1  ::  i2  ::  i3   ::  i4   ::  i5   ::  i6   ::  
+                _   ::  _   ::  i9  ::  i10  ::  i11  ::  i12  ::  i13  ::  i14  ::  i15  ::  []
+                    => [i0; i1; i2; i3; i4; i5; i6;
+                        (n2w : num -> 8 word) elf_osabi_gnu;
+                        (n2w : num -> 8 word)( 1);
+                        i9; i10; i11; i12; i13; i14; i15]
+                )
+               ; elf64_type     := ((n2w : num -> 16 word) t)
+               ; elf64_machine  := unmod.elf64_machine
+               ; elf64_version  := unmod.elf64_version
+               ; elf64_entry    := unmod.elf64_entry
+               ; elf64_phoff    := ((n2w : num -> 64 word) phoff)
+               ; elf64_shoff    := ((n2w : num -> 64 word) shoff)
+               ; elf64_flags    := unmod.elf64_flags
+               ; elf64_ehsize   := unmod.elf64_ehsize
+               ; elf64_phentsize:= unmod.elf64_phentsize
+               ; elf64_phnum    := ((n2w : num -> 16 word) phnum)
+               ; elf64_shentsize:= unmod.elf64_shentsize
+               ; elf64_shnum    := ((n2w : num -> 16 word) shnum)
+               ; elf64_shstrndx := ((n2w : num -> 16 word) shstrndx)
+               |>)
     ; reloc               := a.reloc
     ; section_is_special  := (\ isec .  (\ img .  (
                                 a.section_is_special isec img

@@ -55,13 +55,11 @@ fun string_of_byte_sequence0  :: " byte_sequence \<Rightarrow> string "  where
      " string_of_byte_sequence0 (Sequence bs) = ( (List.map Elf_Types_Local.char_of_unsigned_char bs))" 
 declare string_of_byte_sequence0.simps [simp del]
 
-
 (*val read_archive_entry_header : natural -> byte_sequence -> error (archive_entry_header * natural * byte_sequence)*)
 definition read_archive_entry_header  :: " nat \<Rightarrow> byte_sequence \<Rightarrow>(archive_entry_header*nat*byte_sequence)error "  where 
      " read_archive_entry_header seq_length seq = (
-  (let magic_bytes = ([unat(( 96 :: nat)) (* 0x60 *), unat(( 10 :: nat)) (* 0x0a *)]) in
-    (case  seq of
-        Sequence bs =>
+  (let magic_bytes = ([unat ((96 :: 16 word)) (* 0x60 *), unat(( 10 :: 16 word)) (* 0x0a *)]) in
+    (
         (let header_length =(( 60 :: nat)) in
         (* let _ = Missing_pervasives.errs (Archive entry header?  ^ (show (take 16 bs)) ^ ? ) in *)
         partition_with_length header_length seq_length seq >>= (\<lambda> (header1, rest) .  
@@ -99,7 +97,9 @@ declare read_archive_global_header.simps [simp del]
 function (sequential,domintros)  accum_archive_contents  :: "(string*byte_sequence)list \<Rightarrow>(string)option \<Rightarrow> nat \<Rightarrow> byte_sequence \<Rightarrow>((string*byte_sequence)list)error "  where 
      " accum_archive_contents accum extended_filenames whole_seq_length whole_seq = ( 
   (* let _ = Missing_pervasives.errs Can read a header?  in *)
-  Error.with_success (read_archive_entry_header whole_seq_length whole_seq) (error_return accum) (\<lambda> (hdr, (seq_length :: nat), seq) . 
+  (case read_archive_entry_header whole_seq_length whole_seq of
+    Fail _ \<Rightarrow> (error_return accum)
+  | Success (hdr, (seq_length :: nat), seq) \<Rightarrow> 
     (case  seq of
         Sequence next_bs =>
         (* let _ = Missing_pervasives.errln (yes; next_bs has length  ^ (show (List.length next_bs))) in *)
@@ -109,35 +109,160 @@ function (sequential,domintros)  accum_archive_contents  :: "(string*byte_sequen
           else
             ((size0   hdr)) +( 1 :: nat))
         in
+        if amount_to_drop =( 0 :: nat) then
+          error_fail (''accum_archive_contents: amount to drop from byte sequence is 0'')
+        else
         (*let _ = Missing_pervasives.errln (amount_to_drop is  ^ (show amount_to_drop)) in*)
         (let chunk = (Sequence(List.take(size0   hdr) next_bs))
         in
         (*let _ = Missing_pervasives.errs (Processing archive header named  ^ hdr.name)
         in*)
         (let (new_accum, (new_extended_filenames ::  string option)) =          
-((case  (name   hdr) of
-             [(CHR ''/''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' '')]
-                 => (* SystemV symbol lookup table; we skip this *) (accum, extended_filenames)
-            | (CHR ''/'') # (CHR ''/'') # rest => (* extended filenames chunk *)  (accum, Some(string_of_byte_sequence0 chunk))
-            | (CHR ''/'') # rest         => (* filename is extended *)
-                (let index1 = (natural_of_decimal_string ( rest)) in
-                (case  extended_filenames of 
-                    None => failwith (''corrupt archive: reference to non-existent extended filenames'')
-                |   Some s => 
-                        (let table_suffix = ((case  Elf_Types_Local.string_suffix index1 s of Some x => x | None => ('''') )) in
-                        (let index1 = ((case  string_index_of (CHR ''/'') table_suffix of Some x => x | None => ( (List.length table_suffix)) )) in 
-                        (let ext_name = ((case  string_prefix index1 table_suffix of Some x => x | None => ('''') )) in
-                        (*let _ = Missing_pervasives.errln (Got ext_name  ^ ext_name) in*)
-                        (((ext_name, chunk) # accum), extended_filenames))))
-                ))
-            | _  =>     ((((name   hdr), chunk) # accum), extended_filenames)
-          ))
+((let name1 = ((name   hdr)) in
+            if name1 = [(CHR ''/''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' '')] then
+              (* SystemV symbol lookup table; we skip this *) (accum, extended_filenames)
+            else
+              (case name1 of
+                [] \<Rightarrow> ((((name hdr), chunk) # accum), extended_filenames)
+              | x#xs \<Rightarrow>
+                  if x = CHR ''/'' then
+                    (case xs of
+                      [] \<Rightarrow>
+                   (let index1 = (natural_of_decimal_string ( xs)) in
+                     (case  extended_filenames of 
+                         None => failwith (''corrupt archive: reference to non-existent extended filenames'')
+                       | Some s => 
+                           (let table_suffix = ((case  Elf_Types_Local.string_suffix index1 s of Some x => x | None => ('''') )) in
+                           (let index1 = ((case  string_index_of (CHR ''/'') table_suffix of Some x => x | None => ( (List.length table_suffix)) )) in 
+                           (let ext_name = ((case  string_prefix index1 table_suffix of Some x => x | None => ('''') )) in
+                           (*let _ = Missing_pervasives.errln (Got ext_name  ^ ext_name) in*)
+                             (((ext_name, chunk) # accum), extended_filenames))))
+                     ))
+                    | y#ys \<Rightarrow>
+                      if y = CHR ''/'' then
+                        (* extended filenames chunk *) (accum, Some(string_of_byte_sequence0 chunk))
+                      else
+                                           (let index1 = (natural_of_decimal_string ( ys)) in
+                     (case  extended_filenames of 
+                         None => failwith (''corrupt archive: reference to non-existent extended filenames'')
+                       | Some s => 
+                           (let table_suffix = ((case  Elf_Types_Local.string_suffix index1 s of Some x => x | None => ('''') )) in
+                           (let index1 = ((case  string_index_of (CHR ''/'') table_suffix of Some x => x | None => ( (List.length table_suffix)) )) in 
+                           (let ext_name = ((case  string_prefix index1 table_suffix of Some x => x | None => ('''') )) in
+                           (*let _ = Missing_pervasives.errln (Got ext_name  ^ ext_name) in*)
+                             (((ext_name, chunk) # accum), extended_filenames))))
+                     )))
+                  else
+                    ((((name   hdr), chunk) # accum), extended_filenames))))
         in
-          Error.with_success (Byte_sequence.dropbytes amount_to_drop seq) (error_return accum) (\<lambda> new_seq . 
-            accum_archive_contents new_accum new_extended_filenames (seq_length - amount_to_drop) new_seq))))
+          (case (Byte_sequence.dropbytes amount_to_drop seq) of
+            Fail _ \<Rightarrow> (error_return accum)
+          | Success new_seq \<Rightarrow> accum_archive_contents new_accum new_extended_filenames (seq_length - amount_to_drop) new_seq))))
     )))" 
 by pat_completeness auto
 
+lemma offset_and_cut_length [simp]:
+  assumes "offset_and_cut off len bs0 = Success bs1"
+  shows "length0 bs1 = len"
+sorry
+
+lemma partition_with_length_length [simp]:
+  assumes "partition_with_length off len bs0 = Success (bs1, bs2)"
+  shows "length0 bs1 = off \<and> length0 bs2 = len"
+sorry
+
+lemma read_archive_entry_header_length [simp]:
+  assumes "read_archive_entry_header len bs = Success (hdr, sz, bs1)"
+  shows "Byte_sequence.length0 bs1 < Byte_sequence.length0 bs"
+using assms unfolding read_archive_entry_header_def
+  sorry
+
+lemma dropbytes_length:
+  fixes len :: "nat" and bs bs1 :: "byte_sequence"
+  assumes "0 < len" and "dropbytes len bs = Success bs1"
+  shows "length0 bs1 < length0 bs"
+sorry
+
+lemma lt_technical1:
+  fixes q :: nat
+  assumes "0 < q"
+  shows "0 < 2 * q"
+using assms by auto
+
+lemma lt_technical2:
+  fixes m :: nat
+  shows "0 < Suc m"
+by auto
+
+termination accum_archive_contents
+  apply(relation "measure (\<lambda>(_,_,_,l). Byte_sequence.length0 l)")
+  apply auto
+  apply(case_tac "read_archive_entry_header whole_seq_length whole_seq", simp)
+  apply(case_tac x1, simp)
+  apply(erule conjE)+
+  apply(clarify)
+  apply(auto simp only: Let_def)
+  apply(case_tac "name a = ''/               ''", simp)
+  apply(erule conjE)+
+  apply clarify
+  apply(case_tac "size0 a mod 2 = 0")
+  apply simp
+  apply(frule read_archive_entry_header_length)
+  apply(frule dropbytes_length, assumption)
+  apply auto
+  apply(frule read_archive_entry_header_length)
+  apply(frule lt_technical1)
+  apply(frule dropbytes_length, assumption)
+  apply linarith
+  apply(subgoal_tac "0 < Suc (size0 a)")
+  apply(frule dropbytes_length, assumption)
+  apply(frule read_archive_entry_header_length)
+  apply linarith
+  apply simp
+  apply(case_tac "name a", simp)
+  apply(erule conjE)+
+  apply(case_tac "size0 a mod 2", simp)
+  apply(frule dropbytes_length, assumption)
+  apply(frule read_archive_entry_header_length)
+  apply linarith
+  apply simp
+  apply(subgoal_tac "0 < Suc (size0 a)")
+  apply(frule dropbytes_length, assumption)
+  apply(frule read_archive_entry_header_length)
+  apply linarith
+  apply simp
+  apply(case_tac "size0 a mod 2", simp)
+  apply(case_tac "ab = CHR ''/''", simp)
+  apply(case_tac "list", simp)
+  apply(case_tac "extended_filenames", simp)
+  apply(frule dropbytes_length, assumption)
+  apply(frule read_archive_entry_header_length)
+  apply linarith
+  apply simp
+  apply(frule dropbytes_length, assumption)
+  apply(frule read_archive_entry_header_length)
+  apply linarith
+  apply(frule dropbytes_length, assumption)
+  apply(frule read_archive_entry_header_length)
+  apply linarith
+  apply(frule dropbytes_length, assumption)
+  apply(frule read_archive_entry_header_length)
+  apply linarith
+  apply simp
+  apply(subgoal_tac "0 < Suc (size0 a)")
+  apply(frule dropbytes_length, assumption)
+  apply(frule read_archive_entry_header_length)
+  apply linarith
+  apply simp
+done
+
+termination dropbytes
+  apply(relation "measure (\<lambda>(m, l). Byte_sequence.length0 l)")
+  apply auto
+  apply(simp add: naturalZero_def)
+  apply(simp add: length0.simps)
+done
+  
 
 (*val read_archive : byte_sequence -> error (list (string * byte_sequence))*)
 definition read_archive  :: " byte_sequence \<Rightarrow>((string*byte_sequence)list)error "  where 

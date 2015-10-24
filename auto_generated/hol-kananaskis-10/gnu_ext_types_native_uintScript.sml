@@ -18,6 +18,6 @@ val _ = new_theory "gnu_ext_types_native_uint"
 (** LSB section 9.2.1.1: in addition to SCO ELF spec types GNU defines an
   * additional 1-byte integral type.
   *)
-val _ = type_abbrev( "gnu_ext_byte" , ``:  word 8``);
+val _ = type_abbrev( "gnu_ext_byte" , ``: word8``);
 val _ = export_theory()
 

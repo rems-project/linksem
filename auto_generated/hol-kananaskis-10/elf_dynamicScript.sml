@@ -79,8 +79,8 @@ val _ = Hol_datatype `
   *)
 val _ = Hol_datatype `
  elf32_dyn =
-  <| elf32_dyn_tag  :  word 32                     (** The type of the entry. *)
-   ; elf32_dyn_d_un : ( word 32,  addr 32) dyn_union (** The value of the entry, stored as a union. *)
+  <| elf32_dyn_tag  : word32                     (** The type of the entry. *)
+   ; elf32_dyn_d_un : (word32, word32) dyn_union (** The value of the entry, stored as a union. *)
    |>`;
 
    
@@ -90,8 +90,8 @@ val _ = Hol_datatype `
   *)
 val _ = Hol_datatype `
  elf64_dyn =
-  <| elf64_dyn_tag  :  word 64                     (** The type of the entry. *)
-   ; elf64_dyn_d_un : (elf64_xword,  word 64) dyn_union (** The value of the entry, stored as a union. *)
+  <| elf64_dyn_tag  : word64                     (** The type of the entry. *)
+   ; elf64_dyn_d_un : (word64, word64) dyn_union (** The value of the entry, stored as a union. *)
    |>`;
 
 
@@ -765,8 +765,8 @@ val _ = Hol_datatype `
 (** [elf32_dyn_value] and [elf64_dyn_value] are specialisations of [dyn_value]
   * fixing the correct types for the ['addr] and ['size] type variables.
   *)
-val _ = type_abbrev( "elf32_dyn_value" , ``: ( addr 32,  word 32) dyn_value``);
-val _ = type_abbrev( "elf64_dyn_value" , ``: ( word 64, elf64_xword) dyn_value``);
+val _ = type_abbrev( "elf32_dyn_value" , ``: (word32, word32) dyn_value``);
+val _ = type_abbrev( "elf64_dyn_value" , ``: (word64, word64) dyn_value``);
 
 (** [get_string_table_of_elf32_dyn_section endian dyns sht bs0] searches through
   * dynamic section entries [dyns] looking for one pointing to a string table, looks
@@ -791,7 +791,7 @@ val _ = Define `
             let sect =              
 (FILTER (\ s .                 
 (s.elf32_sh_addr = p) /\                  
-(s.elf32_sh_type = n2w sht_strtab)
+(s.elf32_sh_type = (n2w : num -> 32 word) sht_strtab)
               ) sht)
             in
               (case sect of
@@ -834,7 +834,7 @@ val _ = Define `
             let sect =              
 (FILTER (\ s .                 
 (s.elf64_sh_addr = p) /\                  
-(s.elf64_sh_type = n2w sht_strtab)
+(s.elf64_sh_type = (n2w : num -> 32 word) sht_strtab)
               ) sht)
             in
               (case sect of

@@ -221,14 +221,14 @@ val _ = Define `
   *)
 val _ = Hol_datatype `
  elf32_program_header_table_entry =
-  <| elf32_p_type   :  word 32 (** Type of the segment *)
-   ; elf32_p_offset :  word 32  (** Offset from beginning of file for segment *)
-   ; elf32_p_vaddr  :  addr 32 (** Virtual address for segment in memory *)
-   ; elf32_p_paddr  :  addr 32 (** Physical address for segment *)
-   ; elf32_p_filesz :  word 32 (** Size of segment in file, in bytes *)
-   ; elf32_p_memsz  :  word 32 (** Size of segment in memory image, in bytes *)
-   ; elf32_p_flags  :  word 32 (** Segment flags *)
-   ; elf32_p_align  :  word 32 (** Segment alignment memory for memory and file *)
+  <| elf32_p_type   : word32 (** Type of the segment *)
+   ; elf32_p_offset : word32  (** Offset from beginning of file for segment *)
+   ; elf32_p_vaddr  : word32 (** Virtual address for segment in memory *)
+   ; elf32_p_paddr  : word32 (** Physical address for segment *)
+   ; elf32_p_filesz : word32 (** Size of segment in file, in bytes *)
+   ; elf32_p_memsz  : word32 (** Size of segment in memory image, in bytes *)
+   ; elf32_p_flags  : word32 (** Segment flags *)
+   ; elf32_p_align  : word32 (** Segment alignment memory for memory and file *)
    |>`;
 
 
@@ -278,14 +278,14 @@ val _ = Define `
   *)
 val _ = Hol_datatype `
  elf64_program_header_table_entry =
-  <| elf64_p_type   :  word 32  (** Type of the segment *)
-   ; elf64_p_flags  :  word 32  (** Segment flags *)
-   ; elf64_p_offset :  word 64   (** Offset from beginning of file for segment *)
-   ; elf64_p_vaddr  :  word 64  (** Virtual address for segment in memory *)
-   ; elf64_p_paddr  :  word 64  (** Physical address for segment *)
-   ; elf64_p_filesz : elf64_xword (** Size of segment in file, in bytes *)
-   ; elf64_p_memsz  : elf64_xword (** Size of segment in memory image, in bytes *)
-   ; elf64_p_align  : elf64_xword (** Segment alignment memory for memory and file *)
+  <| elf64_p_type   : word32  (** Type of the segment *)
+   ; elf64_p_flags  : word32  (** Segment flags *)
+   ; elf64_p_offset : word64   (** Offset from beginning of file for segment *)
+   ; elf64_p_vaddr  : word64  (** Virtual address for segment in memory *)
+   ; elf64_p_paddr  : word64  (** Physical address for segment *)
+   ; elf64_p_filesz : word64 (** Size of segment in file, in bytes *)
+   ; elf64_p_memsz  : word64 (** Size of segment in memory image, in bytes *)
+   ; elf64_p_align  : word64 (** Segment alignment memory for memory and file *)
    |>`;
 
 

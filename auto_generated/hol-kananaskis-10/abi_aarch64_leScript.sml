@@ -49,7 +49,7 @@ val _ = Define `
 val _ = Define `
  (header_is_aarch64_le h =    
  (is_valid_elf64_header h
-    /\ (lem_list$list_index h.elf64_ident (id elf_ii_data) = SOME (n2w elf_data_2lsb))
+    /\ (lem_list$list_index h.elf64_ident (id elf_ii_data) = SOME ((n2w : num -> 8 word) elf_data_2lsb))
     /\ is_valid_abi_aarch64_le_machine_architecture (w2n h.elf64_machine)
     /\ is_valid_abi_aarch64_le_magic_number h.elf64_ident))`;
 
@@ -73,7 +73,7 @@ val _ = Define `
         ([], []) => failwith "impossible: ABI feature has empty natural list (case 0)"
     |   (_, [])  => failwith "impossible: ABI feature has empty natural list (case 1)"
     |   ([], _)  => failwith "impossible: ABI feature has empty natural list (case 2)"
-    |   ((hd1 :: tl1), (hd2 :: tl2)) => 
+    |   ((hd1  ::  tl1), (hd2  ::  tl2)) => 
             if hd1 < hd2 then LT else if hd1 > hd2 then GT else
                 (case (f1, f2) of
                     (GOT, GOT) => EQ

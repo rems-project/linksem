@@ -86,7 +86,7 @@ val _ = Define `
  (concat1 xs =  
 ((case xs of
       []    => return empty0
-    | x::xs =>
+    | x  ::  xs =>
       let delim = (get_delimiting_character x) in
         if (EVERY (\ x .  get_delimiting_character x = delim) (x::xs)) then
           let base = (FOLDR STRCAT "" (MAP get_base_string (x::xs))) in
@@ -116,6 +116,25 @@ val _ = Define `
         | NONE => Success suffix
       )
   )))`;
+
+
+(*val find_string : string -> string_table -> maybe natural*)
+val _ = Define `
+ (find_string s t =    
+ ((case t of
+        Strings(delim, base) => ARB ( STRCAT s (IMPLODE [delim])) base
+    )))`;
+
+
+(*val insert_string : string -> string_table -> (natural * string_table)*)
+val _ = Define `
+ (insert_string s t =    
+ ((case find_string s t of
+        NONE => (case t of
+            Strings(delim, base) => (( 1 +  (STRLEN base)), Strings(delim,  STRCAT base  (STRCAT(IMPLODE [delim]) s)))
+            )
+        | SOME pos => (pos, t)
+    )))`;
 
 val _ = export_theory()
 

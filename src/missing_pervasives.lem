@@ -23,7 +23,7 @@ type byte
 
 declare ocaml    target_rep type byte = `char`
 declare isabelle target_rep type byte = `Elf_Types_Local.byte`
-declare hol      target_rep type byte = `8` `word`
+declare hol      target_rep type byte = `word8`
 val natural_of_byte : byte -> natural
 
 declare ocaml    target_rep function natural_of_byte x = `Nat_big_num.of_int` (`Char.code` x)
@@ -393,7 +393,9 @@ assert {ocaml} split_string_null : (let afterSplit = split_string_on_char (toStr
 
 (* [find_substring sub s] returns the index at which *)
 val find_substring : string -> string -> maybe natural
-declare ocaml target_rep function find_substring = `Ml_bindings.find_substring`
+declare ocaml    target_rep function find_substring = `Ml_bindings.find_substring`
+declare hol      target_rep function find_substring = `ARB`
+declare isabelle target_rep function find_substring = `undefined`
 
 (** [string_of_nat m] produces a string representation of natural number [m]. *)
 val string_of_nat : nat -> string

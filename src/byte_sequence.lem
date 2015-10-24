@@ -17,7 +17,7 @@ open import Show
   * from or written to a binary file.  Most basic type in the ELF formalisation.
   *)
 type byte_sequence =
-  Sequence of list byte
+  Sequence of (list byte)
 
 (** [byte_list_of_byte_sequence bs] obtains the underlying list of bytes of the
   * byte sequence [bs].

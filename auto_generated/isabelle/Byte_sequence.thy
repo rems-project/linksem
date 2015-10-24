@@ -35,7 +35,7 @@ begin
   * from or written to a binary file.  Most basic type in the ELF formalisation.
   *)
 datatype byte_sequence =
-  Sequence " Elf_Types_Local.byte list "
+  Sequence " ( Elf_Types_Local.byte list)"
 
 (** [byte_list_of_byte_sequence bs] obtains the underlying list of bytes of the
   * byte sequence [bs].
@@ -205,7 +205,7 @@ definition from_byte_lists  :: "((Elf_Types_Local.byte)list)list \<Rightarrow> b
 (*val string_of_byte_sequence : byte_sequence -> string*)
 fun string_of_byte_sequence  :: " byte_sequence \<Rightarrow> string "  where 
      " string_of_byte_sequence (Sequence ts) = (
-  (let cs = (List.map undefined ts) in 
+  (let cs = (List.map Elf_Types_Local.char_of_unsigned_char ts) in 
     cs))" 
 declare string_of_byte_sequence.simps [simp del]
 

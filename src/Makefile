@@ -139,7 +139,7 @@ isa-extraction:
 hol-extraction:
 	$(LEM) -hol -only_changed_output \
 	$(LEM_MODEL_TP_THY)
-	mv *Script.sml ../auto_generated/hol-kananaskis-10/
+	ls -1 *.sml | grep -v ^errorScript.sml | xargs -I{} mv {} ../auto_generated/hol-kananaskis-10/
 	mv */*Script.sml ../auto_generated/hol-kananaskis-10/
 	mv */*/*Script.sml ../auto_generated/hol-kananaskis-10/
 

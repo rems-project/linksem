@@ -231,12 +231,12 @@ val _ = Define `
   *)
 val _ = Hol_datatype `
  elf32_symbol_table_entry =
-  <| elf32_st_name  :  word 32     (** Index into the object file's string table *)
-   ; elf32_st_value :  addr 32     (** Gives the value of the associated symbol *)
-   ; elf32_st_size  :  word 32     (** Size of the associated symbol *)
-   ; elf32_st_info  :  word 8  (** Specifies the symbol's type and binding attributes *)
-   ; elf32_st_other :  word 8  (** Currently specifies the symbol's visibility *)
-   ; elf32_st_shndx :  word 16     (** Section header index symbol is defined with respect to *)
+  <| elf32_st_name  : word32     (** Index into the object file's string table *)
+   ; elf32_st_value : word32     (** Gives the value of the associated symbol *)
+   ; elf32_st_size  : word32     (** Size of the associated symbol *)
+   ; elf32_st_info  : word8  (** Specifies the symbol's type and binding attributes *)
+   ; elf32_st_other : word8  (** Currently specifies the symbol's visibility *)
+   ; elf32_st_shndx : word16     (** Section header index symbol is defined with respect to *)
    |>`;
 
 
@@ -274,12 +274,12 @@ val _ = Define `
   *)
 val _ = Hol_datatype `
  elf64_symbol_table_entry =
-  <| elf64_st_name  :  word 32     (** Index into the object file's string table *)
-   ; elf64_st_info  :  word 8  (** Specifies the symbol's type and binding attributes *)
-   ; elf64_st_other :  word 8  (** Currently specifies the symbol's visibility *)
-   ; elf64_st_shndx :  word 16     (** Section header index symbol is defined with respect to *)
-   ; elf64_st_value :  word 64     (** Gives the value of the associated symbol *)
-   ; elf64_st_size  : elf64_xword    (** Size of the associated symbol *)
+  <| elf64_st_name  : word32     (** Index into the object file's string table *)
+   ; elf64_st_info  : word8  (** Specifies the symbol's type and binding attributes *)
+   ; elf64_st_other : word8  (** Currently specifies the symbol's visibility *)
+   ; elf64_st_shndx : word16     (** Section header index symbol is defined with respect to *)
+   ; elf64_st_value : word64     (** Gives the value of the associated symbol *)
+   ; elf64_st_size  : word64    (** Size of the associated symbol *)
    |>`;
 
 
@@ -338,7 +338,7 @@ val _ = Define `
 (*val get_symbol_type : unsigned_char -> natural*)
 val _ = Define `
  (get_symbol_type entry =  
-(w2n (word_and entry (n2w( 15)))))`;
+(w2n (word_and entry ((n2w : num -> 8 word)( 15)))))`;
  (* 0xf *)
 
 (** [get_symbol_info u] extracts a symbol table entry's symbol info.  [u]
@@ -348,9 +348,9 @@ val _ = Define `
 val _ = Define `
  (make_symbol_info binding symtype =  
 (word_add
-    (word_lsl (n2w binding)( 4))
-    (word_and (n2w symtype)
-      (n2w( 15)))))`;
+    (word_lsl ((n2w : num -> 8 word) binding)( 4))
+    (word_and ((n2w : num -> 8 word) symtype)
+      ((n2w : num -> 8 word)( 15)))))`;
  (*0xf*)  
 
 (** [get_symbol_visibility u] extracts a symbol table entry's symbol visibility.  [u]
@@ -359,7 +359,7 @@ val _ = Define `
 (*val get_symbol_visibility : unsigned_char -> natural*)
 val _ = Define `
  (get_symbol_visibility info =  
-(w2n (word_and info (n2w( 3)))))`;
+(w2n (word_and info ((n2w : num -> 8 word)( 3)))))`;
  (* 0x3*)
   
 (** [make_symbol_other m] converts a natural [m] to an unsigned char suitable
@@ -369,7 +369,7 @@ val _ = Define `
 (*val make_symbol_other : natural -> unsigned_char*)
 val _ = Define `
  (make_symbol_other visibility =  
-(n2w visibility))`;
+((n2w : num -> 8 word) visibility))`;
 
   
 (** [is_elf32_shndx_too_large ent] tests whether the symbol table entry's
@@ -424,8 +424,7 @@ val _ = Define `
 
 (** Printing symbol table entries *)
 
-val _ = type_abbrev( "symtab_print_bundle" , ``:
-  (num -> string) # (num -> string)``);
+val _ = type_abbrev( "symtab_print_bundle" , ``:(num -> string) # (num -> string)``);
 
 (** [string_of_elf32_symbol_table_entry ent] produces a string based representation
   * of symbol table entry [ent].
@@ -448,12 +447,12 @@ val _ = type_abbrev( "symtab_print_bundle" , ``:
 (*val elf64_null_symbol_table_entry : elf64_symbol_table_entry*)
 val _ = Define `
  (elf64_null_symbol_table_entry =  
-(<| elf64_st_name  := (n2w( 0))
-   ; elf64_st_info  := (n2w( 0))
-   ; elf64_st_other := (n2w( 0))
-   ; elf64_st_shndx := (n2w( 0))
-   ; elf64_st_value := (n2w( 0))
-   ; elf64_st_size  := (n2w( 0))
+(<| elf64_st_name  := ((n2w : num -> 32 word)( 0))
+   ; elf64_st_info  := ((n2w : num -> 8 word)( 0))
+   ; elf64_st_other := ((n2w : num -> 8 word)( 0))
+   ; elf64_st_shndx := ((n2w : num -> 16 word)( 0))
+   ; elf64_st_value := ((n2w : num -> 64 word)( 0))
+   ; elf64_st_size  := ((n2w : num -> 64 word)( 0))
    |>))`;
 
 
@@ -549,11 +548,11 @@ val _ = Define `
 (mapM (\ entry . 
     let name = (w2n entry.elf32_st_name) in
     let addr = (w2n entry.elf32_st_value) in
-    let size = (w2n entry.elf32_st_size * 8) in
+    let size1 = (w2n entry.elf32_st_size * 8) in
     let typ  = (get_symbol_type entry.elf32_st_info) in
     let bnd  = (get_symbol_binding entry.elf32_st_info) in
       string_table$get_string_at name strtab >>= (\ str . 
-      return (str, (typ, size, addr, bnd)))
+      return (str, (typ, size1, addr, bnd)))
   ) symtab))`;
 
 
@@ -568,11 +567,11 @@ val _ = Define `
 (mapM (\ entry . 
     let name = (w2n entry.elf64_st_name) in
     let addr = (w2n entry.elf64_st_value) in
-    let size = (w2n entry.elf64_st_size) in
+    let size1 = (w2n entry.elf64_st_size) in
     let typ  = (get_symbol_type entry.elf64_st_info) in
     let bnd  = (get_symbol_binding entry.elf64_st_info) in 
       string_table$get_string_at name strtab >>= (\ str . 
-      return (str, (typ, size, addr, bnd)))
+      return (str, (typ, size1, addr, bnd)))
   ) symtab))`;
 
 

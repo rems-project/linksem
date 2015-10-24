@@ -40,8 +40,8 @@ val _ = Define `
   let filtered = (FILTER (
       \ seg . 
         let base = (seg.elf64_segment_base) in
-        let size = (seg.elf64_segment_memsz) in          
-(base <= entry) /\ (entry <= (base + size))
+        let size1 = (seg.elf64_segment_memsz) in          
+(base <= entry) /\ (entry <= (base + size1))
       ) segs)
   in
     (case filtered of

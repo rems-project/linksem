@@ -28,7 +28,7 @@ val _ = new_theory "byte_sequence"
   *)
 val _ = Hol_datatype `
  byte_sequence =
-  Sequence of (8 word) list`;
+  Sequence of ( word8 list)`;
 
 
 (** [byte_list_of_byte_sequence bs] obtains the underlying list of bytes of the
@@ -105,7 +105,7 @@ val _ = Define `
  (read_char (Sequence ts) =  
 ((case ts of
       []    => fail0 "read_char: sequence is empty"
-    | x::xs => return (x, Sequence xs)
+    | x  ::  xs => return (x, Sequence xs)
   )))`;
 
 
@@ -156,7 +156,7 @@ val _ = Define `
  (concat0 ts =  
 ((case ts of
       []                 => Sequence []
-    | ((Sequence x)::xs) =>
+    | ((Sequence x) ::  xs) =>
       (case concat0 xs of
           Sequence tail => Sequence (x ++ tail)
       )
@@ -216,7 +216,7 @@ val _ = Define `
  (equal left right =  
 ((case (left, right) of
       (Sequence [], Sequence []) => T
-    | (Sequence (x::xs), Sequence (y::ys)) =>        
+    | (Sequence (x  ::  xs), Sequence (y  ::  ys)) =>        
 (x = y) /\ equal (Sequence xs) (Sequence ys)
     | (_, _) => F
   )))`;
@@ -234,7 +234,7 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
   else
     (case ts of
         []    => fail0 "dropbytes: cannot drop more bytes than are contained in sequence"
-      | x::xs => dropbytes (count1 -  1) (Sequence xs)
+      | x  ::  xs => dropbytes (count1 -  1) (Sequence xs)
     )))`;
 
 val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn dropbytes_defn;

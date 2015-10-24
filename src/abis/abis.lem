@@ -291,7 +291,8 @@ let sysv_amd64_std_abi =
     ; maxpagesize = 65536
     ; minpagesize = 4096
     ; commonpagesize = 4096
-    ; symbol_is_generated_by_linker = null_abi.symbol_is_generated_by_linker
+      (* XXX: DPM, changed from explicit reference to null_abi field due to problems in HOL4. *)
+    ; symbol_is_generated_by_linker = (fun symname -> symname = "_GLOBAL_OFFSET_TABLE_")
     ; make_phdrs = make_default_phdrs
     ; max_phnum = 5
     ; guess_entry_point = find_start_symbol_address
@@ -304,10 +305,10 @@ let sysv_aarch64_le_std_abi =
     ; reloc = aarch64_le_reloc
     ; section_is_special = section_is_special
     ; section_is_large = (fun _ -> (fun _ -> false))
-    ; maxpagesize = null_abi.maxpagesize
-    ; minpagesize = null_abi.minpagesize
-    ; commonpagesize = null_abi.commonpagesize
-    ; symbol_is_generated_by_linker = null_abi.symbol_is_generated_by_linker
+    ; maxpagesize = 2 * 256 * 4096 (* 2MB; bit of a guess, based on gdb and prelink code *)
+    ; minpagesize = 1024 (* bit of a guess again *)
+    ; commonpagesize = 4096
+    ; symbol_is_generated_by_linker = (fun symname -> symname = "_GLOBAL_OFFSET_TABLE_")
     ; make_phdrs = make_default_phdrs
     ; max_phnum = 5
     ; guess_entry_point = find_start_symbol_address
