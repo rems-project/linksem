@@ -1090,33 +1090,49 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
                                         (hex_string_of_natural comp_addr) (hex_string_of_natural isec.elf64_section_size)
                                         fname)
                                     in
-                                    let ranges_and_tags = Set_extra.toList img.by_range
+                                    let range_or_sym_is_in_this_sec = (fun maybe_range -> (fun tag ->
+                                        (* is it within the section we're outputting? 
+                                         * first we needs its element name. *)
+                                        let section_el_name = get_unique_name_for_section_from_index shndx isec img
+                                        in
+                                        (* filter out ones that don't overlap *)
+                                        match maybe_range with 
+                                            Just(el_name, (start, len)) -> 
+                                                (* img and shndx came as a unit, so they're definitely 
+                                                 * talking about the same file *)
+                                                (* shndx = sym_shndx *)
+                                                section_el_name = el_name
+                                            | Nothing -> 
+                                                (* ABS symbols have this property *)
+                                                match tag with
+                                                    SymbolDef(def) -> 
+                                                        let sym_shndx = natural_of_elf64_half def.def_syment.elf64_st_shndx
+                                                        in
+                                                        if sym_shndx <> shn_abs then false
+                                                        else (
+                                                            let abs_address = natural_of_elf64_addr def.def_syment.elf64_st_value
+                                                            in 
+                                                            (* check it against our section *)
+                                                            let section_end_addr = addr + isec.elf64_section_size
+                                                            in
+                                                            abs_address >= addr
+                                                                && abs_address < section_end_addr
+                                                        )
+                                                    | _ -> false
+                                                end
+                                        end
+                                    ))
+                                    in
+                                    let ranges_and_tags = [
+                                        (maybe_range, tag) | 
+                                        forall ((maybe_range, tag) MEM (Set_extra.toList img.by_range)) |
+                                        range_or_sym_is_in_this_sec maybe_range tag
+                                    ]
                                     in
                                     let included_defs = [
                                         def
-                                    |   forall ((maybeRange, def) MEM (elf_memory_image_defined_symbols_and_ranges img))
-                                    |   (* is it within the section we're outputting? *)
-                                        let sym_shndx = natural_of_elf64_half def.def_syment.elf64_st_shndx
-                                        in
-                                        (* filter out ones that don't overlap *)
-                                        match maybeRange with 
-                                            Just(elKey, (start, len)) -> 
-                                                (* img and shndx came as a unit, so they're definitely 
-                                                 * talking about the same file *)
-                                                shndx = sym_shndx
-                                            | Nothing -> 
-                                                (* ABS symbols have this property *)
-                                                if sym_shndx <> shn_abs then false
-                                                else (
-                                                    let abs_address = natural_of_elf64_addr def.def_syment.elf64_st_value
-                                                    in 
-                                                    (* check it against our section *)
-                                                    let section_end_addr = addr + isec.elf64_section_size
-                                                    in
-                                                    abs_address >= addr
-                                                        && abs_address < section_end_addr
-                                                )
-                                        end
+                                    |   forall ((maybe_range, def) MEM (elf_memory_image_defined_symbols_and_ranges img))
+                                    |   range_or_sym_is_in_this_sec maybe_range (SymbolDef(def))
                                     ]
                                     in
                                     let included_global_defs = [
@@ -1138,11 +1154,14 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
                                     let (new_ranges_and_tags : set ((maybe element_range) * (range_tag any_abi_feature)))
                                      = Set.mapMaybe (fun (maybe_range, tag) -> 
                                         (* How do we update existing metadata? In general,
-                                         * we get a new range *)
+                                         * we get a new range. *)
                                         let new_range = match maybe_range with
                                             Nothing -> Nothing
                                             | Just(el_name, (start, len)) -> 
-                                                Just(get_unique_name_for_section_from_index shndx isec img, 
+                                                Just(secname (* FIXME: pass this through a section-to-element gensym. 
+                                                                We can just (for now) define output element names
+                                                                to equal the section names, since we have no unnamed
+                                                                output sections and no output common symbols. *), 
                                                         (start + (addr - start_addr),
                                                         len))
                                         end
@@ -1158,9 +1177,18 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
                                              * FIXME: this is a bit nasty. Perhaps we 
                                              * should replace syment with a minimal structure
                                              * that avoids duplication. Same for isecs. *)
-                                            | SymbolDef(def) -> Just(new_range, SymbolDef(def))
+                                            | SymbolDef(def) -> 
+                                                let _ = if def.def_symname = "_start" then errln ("Saw def of _start, "
+                                                    ^ "in section " ^ isec.elf64_section_name_as_string ^ " of linkable " ^ (show linkable_idx)
+                                                    ^ ", destined for output section `" ^ secname ^ "'")
+                                                 else ()
+                                                in Just(new_range, SymbolDef(def))
                                             (* If it's a symbol ref with no reloc site, we discard it? *)
                                             | SymbolRef(r) -> 
+                                                let _ = if r.ref.ref_symname = "_start" then errln ("Saw ref to _start, " 
+                                                    ^ "in section " ^ isec.elf64_section_name_as_string ^ " of linkable " ^ (show linkable_idx))
+                                                else ()
+                                                in 
                                                 let (bi, b) = get_binding_for_ref r.ref linkable_idx fname 
                                                 in
                                                 let ((ref_idx, ref, ref_linkable), maybe_def) = b

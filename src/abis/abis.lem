@@ -248,7 +248,7 @@ let find_start_symbol_address img =
             match maybe_range with
                 Just (el_name, (el_off, len)) -> 
                     match Map.lookup el_name img.elements with
-                        Nothing -> failwith "_start symbol defined in nonexistent element"
+                        Nothing -> failwith ("_start symbol defined in nonexistent element `" ^ el_name ^ "'")
                         | Just el_rec -> 
                             match el_rec.startpos with
                                 Nothing -> let _ = Missing_pervasives.errln "warning: saw `_start' in element with no assigned address" in Nothing

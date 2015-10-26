@@ -487,7 +487,7 @@ let name_of_elf_element feature img =
     end
 
 val get_unique_name_for_section_from_index : natural -> elf64_interpreted_section -> elf_memory_image -> string
-let get_unique_name_for_section_from_index idx s img =
+let get_unique_name_for_section_from_index idx isec img =
     (* Don't call gensym just to retrieve the name *)
     match elf_memory_image_element_coextensive_with_section idx img with
         Just n -> n

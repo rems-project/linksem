@@ -91,7 +91,7 @@ let _ =
     let (input_items, item_options) = unzip items_and_options
     in
     let _ = Missing_pervasives.errln ("Got " ^ (show (List.length input_items)) ^ " input items: {"
-        ^ (List.foldl (^) "" (List.map (fun item -> (show item) ^ ",") input_items)) ^ "}")
+        ^ (List.foldl (^) "" (List.map (fun item -> (show item) ^ ",\n") input_items)) ^ "}")
     in
     let output_filename = match Command_line.find_option_matching_tag (Command_line.OutputFilename("")) link_options with
         Nothing -> "impossible: no output file specified, despite default value of `a.out'"
@@ -133,7 +133,7 @@ let _ =
                 Byte_sequence.serialise our_output_filename bytes
             with
                 Success _ -> true
-                | Fail _ -> let _ = outln "error writing output" in true
+                | Fail s -> let _ = outln ("error writing output: " ^ s) in true
             end
     end
     in
