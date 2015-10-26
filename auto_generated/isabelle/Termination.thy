@@ -1,9 +1,134 @@
 theory Termination imports Main Import_everything begin
 
+termination takebytes
+  apply lexicographic_order
+done
+
+termination dropbytes
+  apply(relation "measure (\<lambda>(l,_). l)")
+  apply(auto simp add: naturalZero_def)
+done
+
+declare [[show_types]]
+
+lemma dropbytes_length:
+  fixes len :: "nat" and bs bs1 :: "byte_sequence"
+  assumes "0 < len" and "dropbytes len bs = Success bs1"
+  shows "length0 bs1 < length0 bs"
+using assms proof(induct len arbitrary: bs)
+  fix bs :: "byte_sequence"
+  assume "0 < (0::nat)" thus "length0 bs1 < length0 bs" by simp
+next
+  fix len :: "nat" and bs :: "byte_sequence"
+  assume IH: "(\<And>bs :: byte_sequence. (0::nat) < len \<Longrightarrow> dropbytes len bs = Success bs1 \<Longrightarrow> length0 bs1 < length0 bs)" and
+    *: "0 < Suc len" and **: "dropbytes (Suc len) bs = Success bs1"
+  show "length0 bs1 < length0 bs"
+  proof(cases bs)
+    fix xs :: "byte list"
+    assume ***: "bs = Sequence xs"
+    show "length0 bs1 < length0 bs"
+    proof(cases xs)
+      assume ****: "xs = []"
+      hence "dropbytes (Suc len) bs = dropbytes (Suc len) (Sequence [])"
+        using ** *** by simp
+      hence "dropbytes (Suc len) bs = error_fail ''dropbytes: cannot drop more bytes than are contained in sequence''"
+        using dropbytes.simps assms naturalZero_def by simp
+      hence "error_fail ''dropbytes: cannot drop more bytes than are contained in sequence'' = Success bs1"
+        using assms *** **** ** by simp
+      hence "Fail ''dropbytes: cannot drop more bytes than are contained in sequence'' = Success bs1"
+        using error_fail_def by metis
+      thus "length0 bs1 < length0 bs"
+        by simp
+    next
+      fix y :: "byte" and ys :: "byte list"
+      assume ****: "xs = y#ys"
+      hence "dropbytes (Suc len) bs = dropbytes (Suc len) (Sequence (y#ys))"
+        using ** *** by simp
+      hence "dropbytes (Suc len) bs = dropbytes len (Sequence ys)"
+        using dropbytes.simps assms naturalZero_def by simp
+      hence *****: "dropbytes len (Sequence ys) = Success bs1"
+        using ** by simp
+      show "length0 bs1 < length0 bs"
+        apply(rule IH[where bs=bs])
+
+termination list_take_with_accum
+  apply lexicographic_order
+done
+
+lemma list_take_with_accum_length [simp]:
+  fixes len :: "nat" and xs accum :: "'a list"
+  assumes "len < length xs"
+  shows "length (list_take_with_accum len accum xs) = len + length accum"
+using assms proof(induction len arbitrary: accum xs)
+  fix xs :: "'a list" and accum :: "'a list"
+  assume "0 < length xs"
+  thus "length (list_take_with_accum 0 accum xs) = 0 + length accum" by auto
+next
+  fix len :: "nat" and accum :: "'a list" and xs :: "'a list"
+  assume IH: "(\<And>accum xs :: 'a list. len < length xs \<Longrightarrow> length (list_take_with_accum len accum xs) = len + length accum)"
+    and *: "Suc len < length xs"
+  show "length (list_take_with_accum (Suc len) accum xs) = Suc len + length accum"
+  proof(cases xs)
+    assume "xs = []"
+    thus ?thesis using * by auto
+  next
+    fix y :: "'a" and ys :: "'a list"
+    assume **: "xs = y#ys"
+    hence ***: "len < length ys"
+      using * by simp
+    have "length (list_take_with_accum (Suc len) accum xs) = length (list_take_with_accum (Suc len) accum (y#ys))"
+      using ** by auto
+    moreover have "... = length (list_take_with_accum len (y#accum) ys)"
+      by auto
+    moreover have "... = len + length (y#accum)"
+      using IH *** by simp
+    ultimately show "length (list_take_with_accum (Suc len) accum xs) = Suc len + length accum"
+      by auto
+  qed
+qed
+
+lemma takebytes_r_with_length_inversion [simp]:
+  assumes "takebytes_r_with_length cnt len bs0 = Success bs1"
+  shows "len < length0 bs0"
+sorry
+
+lemma takebytes_r_with_length_length [simp]:
+  assumes "takebytes_r_with_length cnt len bs0 = Success bs1"
+  shows "length0 bs1 < length0 bs0"
+using assms proof(cases bs0)
+  fix xs :: "byte list"
+  assume "bs0 = Sequence xs"
+  hence "takebytes_r_with_length cnt len bs0 = takebytes_r_with_length cnt len (Sequence xs)"
+    by auto
+  hence "takebytes_r_with_length cnt len (Sequence xs) = Success bs1"
+    using assms by auto
+  hence *: "(if cnt \<le> len then error_return (Sequence (list_take_with_accum cnt [] xs)) else error_fail ''takebytes: cannot take more bytes than are contained in sequence'') = Success bs1"
+    using takebytes_r_with_length.simps by auto
+  show "length0 bs1 < length0 bs0"
+  proof(cases "cnt \<le> len")
+    assume "cnt \<le> len"
+    hence "error_return (Sequence (list_take_with_accum cnt [] xs)) = Success bs1"
+      using * by simp
+    hence "Sequence (list_take_with_accum cnt [] xs) = bs1"
+      by (simp add: error_return_def)
+    hence "length0 bs1 = cnt"
+      using length0.simps list_take_with_accum_length
+
+lemma takebytes_length:
+  fixes len :: "nat" and bs bs1 :: "byte_sequence"
+  assumes "takebytes len bs = Success bs1"
+  shows "length0 bs1 = len"
+using assms
+  apply(case_tac bs, simp)
+
 lemma offset_and_cut_length [simp]:
   assumes "offset_and_cut off len bs0 = Success bs1"
   shows "length0 bs1 = len"
-sorry
+using assms unfolding offset_and_cut_def
+  apply(case_tac "dropbytes off bs0", simp_all add: error_bind.simps)
+  apply(case_tac "takebytes len x1", simp_all add: error_bind.simps error_return_def)
+  apply(rule takebytes_length, assumption)
+done
 
 lemma partition_with_length_length [simp]:
   assumes "partition_with_length off len bs0 = Success (bs1, bs2)"
@@ -15,12 +140,6 @@ lemma read_archive_entry_header_length [simp]:
   shows "Byte_sequence.length0 bs1 < Byte_sequence.length0 bs"
 using assms unfolding read_archive_entry_header_def
   sorry
-
-lemma dropbytes_length:
-  fixes len :: "nat" and bs bs1 :: "byte_sequence"
-  assumes "0 < len" and "dropbytes len bs = Success bs1"
-  shows "length0 bs1 < length0 bs"
-sorry
 
 lemma chooseAndSplit_card1 [simp]:
   assumes "chooseAndSplit dict s = Some (x, y)"
@@ -43,11 +162,16 @@ lemma lt_technical2:
   shows "0 < Suc m"
 by auto
 
-lemma error_bind_cong [fundef_cong]:
+lemma error_bind_cong1 [fundef_cong]:
   assumes "map_error f1 s1 = map_error f2 s2"
   shows "error_bind s1 f1 = error_bind s2 f2"
 using assms
   by(cases s1; cases s2) (auto simp add: error_bind.simps)
+
+lemma error_bind_cong2 [fundef_cong]:
+  assumes "f1 = f2" and "s1 = s2"
+  shows "error_bind f1 s1 = error_bind f2 s2"
+using assms by simp
 
 lemma set_error_return [simp]:
   shows "set_error (error_return x) = {x}"
@@ -103,13 +227,10 @@ termination concat_byte_sequence
   apply lexicographic_order
 done
 
-termination dropbytes
-  apply(relation "measure (\<lambda>(l,_). l)")
-  apply(auto simp add: naturalZero_def)
-done
-
 termination obtain_elf32_dynamic_section_contents'
-  sorry
+thm obtain_elf32_dynamic_section_contents'.psimps
+  apply(relation "measure (\<lambda>(_, b, _, _, _, _). length0 b)")
+  apply simp
 
 termination obtain_elf64_dynamic_section_contents'
   sorry
@@ -278,10 +399,6 @@ termination replicate_revacc
 done
 
 termination list_reverse_concat_map_helper
-  apply lexicographic_order
-done
-
-termination list_take_with_accum
   apply lexicographic_order
 done
 
