@@ -43,7 +43,7 @@ lemma lt_technical2:
   shows "0 < Suc m"
 by auto
 
-lemma error_bind_cong [fundef_cong, simp]:
+lemma error_bind_cong [fundef_cong]:
   assumes "map_error f1 s1 = map_error f2 s2"
   shows "error_bind s1 f1 = error_bind s2 f2"
 using assms
@@ -63,10 +63,36 @@ lemma read_elf32_dyn_cong [fundef_cong]:
   shows "read_elf32_dyn endian0 bs0 shared_object0 os_additional_ranges0 os0 proc0 = read_elf32_dyn endian1 bs1 shared_object1 os_additional_ranges1 os1 proc1"
 using assms by simp
 
+lemma find_first_not_in_range_cong [fundef_cong]:
+  assumes "start1 = start2" and "ranges1 = ranges2"
+  shows "find_first_not_in_range start1 ranges1 = find_first_not_in_range start2 ranges2"
+using assms by simp
+
+lemma find_first_in_range_cong [fundef_cong]:
+  assumes "start1 = start2" and "ranges1 = ranges2"
+  shows "find_first_in_range start1 ranges1 = find_first_in_range start2 ranges2"
+using assms by simp
+
 section {* Termination *}
 
 termination accum_archive_contents
-  sorry
+  thm accum_archive_contents.psimps
+  apply(relation "measure (\<lambda>(_,_,_,b). length0 b)")
+  apply auto
+  apply(case_tac "size0 a mod 2", simp_all add: Let_def)
+  apply(case_tac "name a = ''/               ''", simp_all)
+  apply(frule read_archive_entry_header_length)
+  apply(frule dropbytes_length, assumption)
+  apply linarith
+  apply(frule read_archive_entry_header_length)
+  apply(frule dropbytes_length, assumption)
+  apply linarith
+  apply(frule read_archive_entry_header_length)
+  apply(subgoal_tac "0 < Suc (size0 a)")
+  apply(frule dropbytes_length, assumption)
+  apply linarith
+  apply auto
+done
 
 termination repeat
   apply(relation "measure (\<lambda>(l,_). l)")
@@ -95,6 +121,7 @@ termination find_first_in_range
   sorry
 
 termination compute_differences
+  apply(relation "measure (\<lambda>(s, m, _). m - s)")
   sorry
 
 termination read_elf32_program_header_table'
