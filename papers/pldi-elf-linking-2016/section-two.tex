@@ -42,6 +42,13 @@ how toolchains should be specified and what services they might provide.
 % intended merely to provide separate compilation semantics, 
 % therefore not addressing the features on which many real codebases rely.
 
+
+\ps{somewhere early on we should explain the basic use cases of
+  linkers (making statically linked executables, archives, shared
+  libraries, etc., etc.), their inputs and outputs (incl. what ELF
+  files are), the relationship
+  to loading, etc.}
+
 \subsection{Linker mechanisms and linker-speak}
 
 \ps{somehow we should be clear which of these we cover (or cover
@@ -54,6 +61,14 @@ object file features.
 These collected notations can be thought of as a separate programming language
 in which part of every compiled system is expressed.
 We call this language ``linker-speak''.
+\ps{the above is just a touch vague - we don't give the reader a
+  clearly delimited collection of things that comprise
+  linker-speak. The section below is (probably correctly) organised by
+  use-cases, not by linker-speak features.  Maybe make each paragraph
+  call out the kind of linker-speak mechanisms it involves?  Or a
+  separate section that is organised by mechanism??}
+\ps{On a related note, none of these talk linker script explicitly, or
+  focus on the expressiveness of the linker-speak mechanisms}
 In this paper we focus on the linker-speak of System~V-derived Unix environments,
 including GNU/Linux and all modern BSD variants.
 Windows and Mac OS (Darwin) environments exhibit broadly similar feature sets,
@@ -857,6 +872,11 @@ work. Argh.
 \subsection{Consequences}
 
 Our survey has motivated several different needs.
+\ps{not really ``conseqences'' or ``needs''}
+
+\ps{structurally distinguish between those we address in this paper (the
+  first two?) and the future work we enable (all the rest?)}
+
 
 \paragraph{Intermediate abstractions for linking}
 Language semantics are often described 
