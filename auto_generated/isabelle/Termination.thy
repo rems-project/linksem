@@ -269,6 +269,58 @@ using assms
   apply linarith
 done
 
+lemma read_8_bytes_be_length:
+  assumes "read_8_bytes_be bs0 = Success (bytes, bs1)"
+  shows "length0 bs1 < length0 bs0"
+using assms
+  apply(case_tac bs0, simp)
+  apply(simp only: read_8_bytes_be_def)
+  apply(case_tac "read_char (Sequence x)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac "read_char b", simp_all add: error_bind.simps)
+  apply(case_tac x1a, simp)
+  apply(case_tac "read_char ba", simp_all add: error_bind.simps)
+  apply(case_tac x1b, simp)
+  apply(case_tac "read_char bb", simp_all add: error_bind.simps)
+  apply(case_tac x1c, simp)
+  apply(case_tac "read_char bc", simp_all add: error_bind.simps)
+  apply(case_tac x1d, simp)
+  apply(case_tac "read_char bd", simp_all add: error_bind.simps)
+  apply(case_tac x1e, simp)
+  apply(case_tac "read_char be", simp_all add: error_bind.simps)
+  apply(case_tac x1f, simp)
+  apply(case_tac "read_char bf", simp_all add: error_bind.simps)
+  apply(case_tac x1g, simp add: error_return_def)
+  apply(drule read_char_length)+
+  apply linarith
+done
+
+lemma read_8_bytes_le_length:
+  assumes "read_8_bytes_le bs0 = Success (bytes, bs1)"
+  shows "length0 bs1 < length0 bs0"
+using assms
+  apply(case_tac bs0, simp)
+  apply(simp only: read_8_bytes_le_def)
+  apply(case_tac "read_char (Sequence x)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac "read_char b", simp_all add: error_bind.simps)
+  apply(case_tac x1a, simp)
+  apply(case_tac "read_char ba", simp_all add: error_bind.simps)
+  apply(case_tac x1b, simp)
+  apply(case_tac "read_char bb", simp_all add: error_bind.simps)
+  apply(case_tac x1c, simp)
+  apply(case_tac "read_char bc", simp_all add: error_bind.simps)
+  apply(case_tac x1d, simp)
+  apply(case_tac "read_char bd", simp_all add: error_bind.simps)
+  apply(case_tac x1e, simp)
+  apply(case_tac "read_char be", simp_all add: error_bind.simps)
+  apply(case_tac x1f, simp)
+  apply(case_tac "read_char bf", simp_all add: error_bind.simps)
+  apply(case_tac x1g, simp add: error_return_def)
+  apply(drule read_char_length)+
+  apply linarith
+done
+
 lemma read_elf32_sword_length:
   assumes "read_elf32_sword endian bs0 = Success (wrd, bs1)"
   shows "length0 bs1 < length0 bs0"
@@ -428,42 +480,106 @@ done
 lemma read_elf64_word_length:
   assumes "read_elf64_word endian bs0 = Success (wrd, bs1)"
   shows "length0 bs1 < length0 bs0"
-sorry
+using assms
+  apply(case_tac bs0, simp)
+  apply(case_tac endian, simp_all add: read_elf64_word.simps)
+  apply(case_tac "read_4_bytes_be (Sequence x)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac a, simp add: error_return_def)
+  apply(drule read_4_bytes_be_length, assumption)
+  apply(case_tac "read_4_bytes_le (Sequence x)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac a, simp add: error_return_def)
+  apply(drule read_4_bytes_le_length, assumption)
+done
 
 lemma read_elf64_xword_length:
   assumes "read_elf64_xword endian bs0 = Success (wrd, bs1)"
   shows "length0 bs1 < length0 bs0"
-sorry
+using assms
+  apply(case_tac bs0, simp)
+  apply(case_tac endian, simp_all add: read_elf64_xword.simps)
+  apply(case_tac "read_8_bytes_be (Sequence x)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac a, simp)
+  apply(case_tac g, simp add: error_return_def)
+  apply(drule read_8_bytes_be_length, assumption)
+  apply(case_tac "read_8_bytes_le (Sequence x)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac a, simp)
+  apply(case_tac g, simp add: error_return_def)
+  apply(drule read_8_bytes_le_length, assumption)
+done
 
 lemma read_elf64_sxword_length:
   assumes "read_elf64_sxword endian bs0 = Success (wrd, bs1)"
   shows "length0 bs1 < length0 bs0"
-sorry
+using assms
+  apply(case_tac bs0, simp)
+  apply(case_tac endian, simp_all add: read_elf64_sxword.simps)
+  apply(case_tac "read_8_bytes_be (Sequence x)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac a, simp)
+  apply(case_tac g, simp add: error_return_def)
+  apply(drule read_8_bytes_be_length, assumption)
+  apply(case_tac "read_8_bytes_le (Sequence x)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac a, simp)
+  apply(case_tac g, simp add: error_return_def)
+  apply(drule read_8_bytes_le_length, assumption)
+done
 
 lemma read_elf64_addr_length:
   assumes "read_elf64_addr endian bs0 = Success (wrd, bs1)"
   shows "length0 bs1 < length0 bs0"
-sorry
+using assms
+  apply(case_tac bs0, simp)
+  apply(case_tac endian, simp_all add: read_elf64_addr.simps)
+  apply(case_tac "read_8_bytes_be (Sequence x)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac a, simp)
+  apply(case_tac g, simp add: error_return_def)
+  apply(drule read_8_bytes_be_length, assumption)
+  apply(case_tac "read_8_bytes_le (Sequence x)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac a, simp)
+  apply(case_tac g, simp add: error_return_def)
+  apply(drule read_8_bytes_le_length, assumption)
+done
 
 lemma read_elf64_off_length:
   assumes "read_elf64_off endian bs0 = Success (wrd, bs1)"
   shows "length0 bs1 < length0 bs0"
-sorry
+using assms
+  apply(case_tac bs0, simp)
+  apply(case_tac endian, simp_all add: read_elf64_off.simps)
+  apply(case_tac "read_8_bytes_be (Sequence x)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac a, simp)
+  apply(case_tac g, simp add: error_return_def)
+  apply(drule read_8_bytes_be_length, assumption)
+  apply(case_tac "read_8_bytes_le (Sequence x)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac a, simp)
+  apply(case_tac g, simp add: error_return_def)
+  apply(drule read_8_bytes_le_length, assumption)
+done
 
 lemma read_elf64_half_length:
   assumes "read_elf64_half endian bs0 = Success (wrd, bs1)"
   shows "length0 bs1 < length0 bs0"
-sorry
-
-lemma read_8_bytes_be_length:
-  assumes "read_8_bytes_be b = Success (bytes, bs0)"
-  shows "length0 bs0 < length0 b"
-sorry
-
-lemma read_8_bytes_le_length:
-  assumes "read_8_bytes_le b = Success (bytes, bs0)"
-  shows "length0 bs0 < length0 b"
-sorry
+using assms
+  apply(case_tac bs0, simp)
+  apply(case_tac endian, simp_all add: read_elf64_half.simps)
+  apply(case_tac "read_2_bytes_be (Sequence x)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac a, simp add: error_return_def)
+  apply(drule read_2_bytes_be_length, assumption)
+  apply(case_tac "read_2_bytes_le (Sequence x)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac a, simp add: error_return_def)
+  apply(drule read_2_bytes_le_length, assumption)
+done
 
 termination obtain_elf64_dynamic_section_contents'
   apply(relation "measure (\<lambda>(_, b, _, _, _, _). length0 b)")
@@ -880,32 +996,32 @@ done
 
 termination findLowestEquiv
   apply(relation "measure (\<lambda>(_,_,_,_,_,s,_). Finite_Set.card s)")
-  apply safe
-  apply(frule chooseAndSplit_card1)
   apply simp
-  apply(frule chooseAndSplit_card1)
-  apply simp
-  apply(frule chooseAndSplit_card1)
-  apply simp
-  apply(frule chooseAndSplit_card1)
-  apply simp
-  apply(frule chooseAndSplit_card2)
-  apply simp
+  apply(case_tac x2, simp)
+  apply(drule chooseAndSplit_card1, assumption)
+  apply(case_tac x2, simp)
+  apply(drule chooseAndSplit_card1, assumption)
+  apply(case_tac x2, simp)
+  apply(drule chooseAndSplit_card1, assumption)
+  apply(case_tac x2, simp)
+  apply(drule chooseAndSplit_card1, assumption)
+  apply(case_tac x2, simp)
+  apply(drule chooseAndSplit_card2, assumption)
 done
 
 termination findHighestEquiv
   apply(relation "measure (\<lambda>(_,_,_,_,_,s,_). Finite_Set.card s)")
-  apply safe
-  apply(frule chooseAndSplit_card1)
   apply simp
-  apply(frule chooseAndSplit_card1)
-  apply simp
-  apply(frule chooseAndSplit_card1)
-  apply simp
-  apply(frule chooseAndSplit_card1)
-  apply simp
-  apply(frule chooseAndSplit_card2)
-  apply simp
+  apply(case_tac x2, simp)
+  apply(drule chooseAndSplit_card2, assumption)
+  apply(case_tac x2, simp)
+  apply(drule chooseAndSplit_card2, assumption)
+  apply(case_tac x2, simp)
+  apply(drule chooseAndSplit_card2, assumption)
+  apply(case_tac x2, simp)
+  apply(drule chooseAndSplit_card2, assumption)
+  apply(case_tac x2, simp)
+  apply(drule chooseAndSplit_card1, assumption)
 done
 
 end
