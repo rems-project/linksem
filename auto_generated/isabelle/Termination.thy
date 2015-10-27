@@ -367,10 +367,32 @@ termination read_elf64_program_header_table'
 done
 
 termination read_elf32_relocation_section'
-  sorry
+  apply(relation "measure (\<lambda>(_, b). length0 b)")
+  apply simp
+  apply(case_tac bs0, simp)
+  apply(simp only: read_elf32_relocation_def)
+  apply(case_tac "read_elf32_addr endian (Sequence xa)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac "read_elf32_word endian b", simp_all add: error_bind.simps)
+  apply(case_tac x1a, simp)
+  apply(drule read_elf32_addr_length)
+  apply(drule read_elf32_word_length)
+  apply linarith
+done
 
 termination read_elf64_relocation_section'
-  sorry
+  apply(relation "measure (\<lambda>(_, b). length0 b)")
+  apply simp
+  apply(case_tac bs0, simp)
+  apply(simp only: read_elf64_relocation_def)
+  apply(case_tac "read_elf64_addr endian (Sequence xa)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac "read_elf64_xword endian b", simp_all add: error_bind.simps)
+  apply(case_tac x1a, simp)
+  apply(drule read_elf64_addr_length)
+  apply(drule read_elf64_xword_length)
+  apply linarith
+done
 
 termination read_elf32_relocation_a_section'
   sorry
