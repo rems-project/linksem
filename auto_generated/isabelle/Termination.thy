@@ -177,6 +177,11 @@ lemma read_elf32_addr_length:
   shows "length0 bs1 < length0 bs0"
 sorry
 
+lemma read_elf32_off_length:
+  assumes "read_elf32_off endian bs0 = Success (wrd, bs1)"
+  shows "length0 bs1 < length0 bs0"
+sorry
+
 lemma read_4_bytes_be_length:
   assumes "read_4_bytes_be bs0 = Success (bytes, bs1)"
   shows "length0 bs1 < length0 bs0"
@@ -223,6 +228,11 @@ termination obtain_elf32_dynamic_section_contents'
   apply linarith
 done
 
+lemma read_elf64_word_length:
+  assumes "read_elf64_word endian bs0 = Success (wrd, bs1)"
+  shows "length0 bs1 < length0 bs0"
+sorry
+
 lemma read_elf64_xword_length:
   assumes "read_elf64_xword endian bs0 = Success (wrd, bs1)"
   shows "length0 bs1 < length0 bs0"
@@ -235,6 +245,11 @@ sorry
 
 lemma read_elf64_addr_length:
   assumes "read_elf64_addr endian bs0 = Success (wrd, bs1)"
+  shows "length0 bs1 < length0 bs0"
+sorry
+
+lemma read_elf64_off_length:
+  assumes "read_elf64_off endian bs0 = Success (wrd, bs1)"
   shows "length0 bs1 < length0 bs0"
 sorry
 
@@ -297,10 +312,59 @@ termination compute_differences
   sorry
 
 termination read_elf32_program_header_table'
-  sorry
+  apply(relation "measure (\<lambda>(_, b). length0 b)")
+  apply simp
+  apply(case_tac bs0, simp)
+  apply(simp only: read_elf32_program_header_table_entry_def)
+  apply(case_tac "read_elf32_word endian (Sequence xa)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac "read_elf32_off endian b", simp_all add: error_bind.simps)
+  apply(case_tac x1a, simp)
+  apply(case_tac "read_elf32_addr endian ba", simp_all add: error_bind.simps)
+  apply(case_tac x1b, simp)
+  apply(case_tac "read_elf32_addr endian bb", simp_all add: error_bind.simps)
+  apply(case_tac x1c, simp)
+  apply(case_tac "read_elf32_word endian bc", simp_all add: error_bind.simps)
+  apply(case_tac x1d, simp)
+  apply(case_tac "read_elf32_word endian bd", simp_all add: error_bind.simps)
+  apply(case_tac x1e, simp)
+  apply(case_tac "read_elf32_word endian be", simp_all add: error_bind.simps)
+  apply(case_tac x1f, simp)
+  apply(case_tac "read_elf32_word endian bf", simp_all add: error_bind.simps)
+  apply(case_tac x1g, simp)
+  apply(drule read_elf32_word_length)+
+  apply(drule read_elf32_addr_length)+
+  apply(drule read_elf32_off_length)
+  apply linarith
+done
 
 termination read_elf64_program_header_table'
-  sorry
+  apply(relation "measure (\<lambda>(_, b). length0 b)")
+  apply simp
+  apply(case_tac bs0, simp)
+  apply(simp only: read_elf64_program_header_table_entry_def)
+  apply(case_tac "read_elf64_word endian (Sequence xa)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac "read_elf64_word endian b", simp_all add: error_bind.simps)
+  apply(case_tac x1a, simp)
+  apply(case_tac "read_elf64_off endian ba", simp_all add: error_bind.simps)
+  apply(case_tac x1b, simp)
+  apply(case_tac "read_elf64_addr endian bb", simp_all add: error_bind.simps)
+  apply(case_tac x1c, simp)
+  apply(case_tac "read_elf64_addr endian bc", simp_all add: error_bind.simps)
+  apply(case_tac x1d, simp)
+  apply(case_tac "read_elf64_xword endian bd", simp_all add: error_bind.simps)
+  apply(case_tac x1e, simp)
+  apply(case_tac "read_elf64_xword endian be", simp_all add: error_bind.simps)
+  apply(case_tac x1f, simp)
+  apply(case_tac "read_elf64_xword endian bf", simp_all add: error_bind.simps)
+  apply(case_tac x1g, simp)
+  apply(drule read_elf64_word_length)+
+  apply(drule read_elf64_xword_length)+
+  apply(drule read_elf64_addr_length)+
+  apply(drule read_elf64_off_length)
+  apply linarith
+done
 
 termination read_elf32_relocation_section'
   sorry
