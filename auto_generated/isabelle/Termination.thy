@@ -182,6 +182,11 @@ lemma read_elf32_off_length:
   shows "length0 bs1 < length0 bs0"
 sorry
 
+lemma read_elf32_half_length:
+  assumes "read_elf32_half endian bs0 = Success (wrd, bs1)"
+  shows "length0 bs1 < length0 bs0"
+sorry
+
 lemma read_4_bytes_be_length:
   assumes "read_4_bytes_be bs0 = Success (bytes, bs1)"
   shows "length0 bs1 < length0 bs0"
@@ -189,6 +194,11 @@ sorry
 
 lemma read_4_bytes_le_length:
   assumes "read_4_bytes_le bs0 = Success (bytes, bs1)"
+  shows "length0 bs1 < length0 bs0"
+sorry
+
+lemma read_unsigned_char_length:
+  assumes "read_unsigned_char end bs0 = Success (bytes, bs1)"
   shows "length0 bs1 < length0 bs0"
 sorry
 
@@ -250,6 +260,11 @@ sorry
 
 lemma read_elf64_off_length:
   assumes "read_elf64_off endian bs0 = Success (wrd, bs1)"
+  shows "length0 bs1 < length0 bs0"
+sorry
+
+lemma read_elf64_half_length:
+  assumes "read_elf64_half endian bs0 = Success (wrd, bs1)"
   shows "length0 bs1 < length0 bs0"
 sorry
 
@@ -492,16 +507,61 @@ termination read_elf64_section_header_table'
 done
 
 termination get_elf32_section_to_segment_mapping
-  sorry
+  apply lexicographic_order
+done
 
 termination get_elf64_section_to_segment_mapping
-  sorry
+  apply lexicographic_order
+done
 
 termination read_elf32_symbol_table
-  sorry
+  apply(relation "measure (\<lambda>(_, b). length0 b)")
+  apply simp
+  apply(case_tac bs0, simp)
+  apply(simp only: read_elf32_symbol_table_entry_def)
+  apply(case_tac "read_elf32_word endian (Sequence xa)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac "read_elf32_addr endian b", simp_all add: error_bind.simps)
+  apply(case_tac x1a, simp)
+  apply(case_tac "read_elf32_word endian ba", simp_all add: error_bind.simps)
+  apply(case_tac x1b, simp)
+  apply(case_tac "read_unsigned_char endian bb", simp_all add: error_bind.simps)
+  apply(case_tac x1c, simp)
+  apply(case_tac "read_unsigned_char endian bc", simp_all add: error_bind.simps)
+  apply(case_tac x1d, simp)
+  apply(case_tac "read_elf32_half endian bd", simp_all add: error_bind.simps)
+  apply(case_tac x1e, simp)
+  apply(drule read_elf32_word_length)+
+  apply(drule read_elf32_addr_length)+
+  apply(drule read_unsigned_char_length)+
+  apply(drule read_elf32_half_length)+
+  apply linarith
+done
 
 termination read_elf64_symbol_table
-  sorry
+  apply(relation "measure (\<lambda>(_, b). length0 b)")
+  apply simp
+  apply(case_tac bs0, simp)
+  apply(simp only: read_elf64_symbol_table_entry_def)
+  apply(case_tac "read_elf64_word endian (Sequence xa)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac "read_unsigned_char endian b", simp_all add: error_bind.simps)
+  apply(case_tac x1a, simp)
+  apply(case_tac "read_unsigned_char endian ba", simp_all add: error_bind.simps)
+  apply(case_tac x1b, simp)
+  apply(case_tac "read_elf64_half endian bb", simp_all add: error_bind.simps)
+  apply(case_tac x1c, simp)
+  apply(case_tac "read_elf64_addr endian bc", simp_all add: error_bind.simps)
+  apply(case_tac x1d, simp)
+  apply(case_tac "read_elf64_xword endian bd", simp_all add: error_bind.simps)
+  apply(case_tac x1e, simp)
+  apply(drule read_elf64_word_length)+
+  apply(drule read_elf64_xword_length)+
+  apply(drule read_elf64_addr_length)+
+  apply(drule read_unsigned_char_length)+
+  apply(drule read_elf64_half_length)+
+  apply linarith
+done
 
 termination repeatM
   apply lexicographic_order
