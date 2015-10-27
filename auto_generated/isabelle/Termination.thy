@@ -110,9 +110,17 @@ using assms unfolding read_archive_entry_header_def
   sorry (* XXX: definition needs changing *)
 
 lemma set_split_union:
-  assumes "set_split e s = (x, y)"
+  assumes "split dict e s = (x, y)"
   shows "s = x \<union> { e } \<union> y"
-sorry
+using assms unfolding split_def
+  apply(rule Product_Type.Pair_inject)
+  apply clarify
+  sorry
+
+lemma set_choose_member:
+  assumes "s \<noteq> {}"
+  shows "set_choose s \<in> s"
+using assms by auto
 
 lemma chooseAndSplit_card1:
   assumes "chooseAndSplit dict s = Some (x, y)"
@@ -120,6 +128,10 @@ lemma chooseAndSplit_card1:
 using assms
   apply(simp only: chooseAndSplit_def)
   apply(case_tac "s = {}", simp_all)
+  apply(simp only: Let_def)
+  apply(case_tac "split dict (set_choose s) s", simp)
+  apply(drule set_split_union)
+  sorry
 
 lemma chooseAndSplit_card2:
   assumes "chooseAndSplit dict s = Some (x, y, z)"
@@ -183,45 +195,199 @@ termination concat_byte_sequence
   apply lexicographic_order
 done
 
-lemma read_elf32_sword_length:
-  assumes "read_elf32_sword endian bs0 = Success (wrd, bs1)"
+lemma read_char_length:
+  assumes "read_char bs0 = Success (c, bs1)"
   shows "length0 bs1 < length0 bs0"
-sorry
+using assms
+  apply(case_tac bs0, simp)
+  apply(case_tac x, simp)
+  apply(simp_all add: read_char.simps error_fail_def error_return_def)
+  apply(auto simp add: length0.simps)
+done
 
-lemma read_elf32_word_length:
-  assumes "read_elf32_word endian bs0 = Success (wrd, bs1)"
+lemma read_2_bytes_be_length:
+  assumes "read_2_bytes_be bs0 = Success (bytes, bs1)"
   shows "length0 bs1 < length0 bs0"
-sorry
+using assms
+  apply(case_tac bs0, simp)
+  apply(simp only: read_2_bytes_be_def)
+  apply(case_tac "read_char (Sequence x)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac "read_char b", simp_all add: error_bind.simps)
+  apply(case_tac x1a, simp add: error_return_def)
+  apply(drule read_char_length)+
+  apply linarith
+done
 
-lemma read_elf32_addr_length:
-  assumes "read_elf32_addr endian bs0 = Success (wrd, bs1)"
+lemma read_2_bytes_le_length:
+  assumes "read_2_bytes_le bs0 = Success (bytes, bs1)"
   shows "length0 bs1 < length0 bs0"
-sorry
-
-lemma read_elf32_off_length:
-  assumes "read_elf32_off endian bs0 = Success (wrd, bs1)"
-  shows "length0 bs1 < length0 bs0"
-sorry
-
-lemma read_elf32_half_length:
-  assumes "read_elf32_half endian bs0 = Success (wrd, bs1)"
-  shows "length0 bs1 < length0 bs0"
-sorry
+using assms
+  apply(case_tac bs0, simp)
+  apply(simp only: read_2_bytes_le_def)
+  apply(case_tac "read_char (Sequence x)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac "read_char b", simp_all add: error_bind.simps)
+  apply(case_tac x1a, simp add: error_return_def)
+  apply(drule read_char_length)+
+  apply linarith
+done
 
 lemma read_4_bytes_be_length:
   assumes "read_4_bytes_be bs0 = Success (bytes, bs1)"
   shows "length0 bs1 < length0 bs0"
-sorry
+using assms
+  apply(case_tac bs0, simp)
+  apply(simp only: read_4_bytes_be_def)
+  apply(case_tac "read_char (Sequence x)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac "read_char b", simp_all add: error_bind.simps)
+  apply(case_tac x1a, simp)
+  apply(case_tac "read_char ba", simp_all add: error_bind.simps)
+  apply(case_tac x1b, simp)
+  apply(case_tac "read_char bb", simp_all add: error_bind.simps)
+  apply(case_tac x1c, simp add: error_return_def)
+  apply(drule read_char_length)+
+  apply linarith
+done
 
 lemma read_4_bytes_le_length:
   assumes "read_4_bytes_le bs0 = Success (bytes, bs1)"
   shows "length0 bs1 < length0 bs0"
-sorry
+using assms
+  apply(case_tac bs0, simp)
+  apply(simp only: read_4_bytes_le_def)
+  apply(case_tac "read_char (Sequence x)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac "read_char b", simp_all add: error_bind.simps)
+  apply(case_tac x1a, simp)
+  apply(case_tac "read_char ba", simp_all add: error_bind.simps)
+  apply(case_tac x1b, simp)
+  apply(case_tac "read_char bb", simp_all add: error_bind.simps)
+  apply(case_tac x1c, simp add: error_return_def)
+  apply(drule read_char_length)+
+  apply linarith
+done
+
+lemma read_elf32_sword_length:
+  assumes "read_elf32_sword endian bs0 = Success (wrd, bs1)"
+  shows "length0 bs1 < length0 bs0"
+using assms
+  apply(case_tac bs0, simp)
+  apply(case_tac endian, simp_all)
+  apply(simp_all only: read_elf32_sword.simps)
+  apply(case_tac "read_4_bytes_be (Sequence x)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac a, simp)
+  apply(simp add: error_return_def)
+  apply(drule read_4_bytes_be_length)
+  apply linarith
+  apply(case_tac "read_4_bytes_le (Sequence x)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac a, simp)
+  apply(simp add: error_return_def)
+  apply(drule read_4_bytes_le_length)
+  apply linarith
+done
+
+lemma read_elf32_word_length:
+  assumes "read_elf32_word endian bs0 = Success (wrd, bs1)"
+  shows "length0 bs1 < length0 bs0"
+using assms
+  apply(case_tac bs0, simp)
+  apply(case_tac endian, simp)
+  apply(simp only: read_elf32_word.simps)
+  apply(case_tac "read_4_bytes_be (Sequence x)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac a, simp)
+  apply(simp add: error_return_def)
+  apply(drule read_4_bytes_be_length)
+  apply assumption
+  apply(simp only: read_elf32_word.simps)
+  apply(case_tac "read_4_bytes_le (Sequence x)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac a, simp)
+  apply(simp add: error_return_def)
+  apply(drule read_4_bytes_le_length)
+  apply assumption
+done
+
+lemma read_elf32_addr_length:
+  assumes "read_elf32_addr endian bs0 = Success (wrd, bs1)"
+  shows "length0 bs1 < length0 bs0"
+using assms
+  apply(case_tac bs0, simp)
+  apply(case_tac endian, simp)
+  apply(simp only: read_elf32_addr.simps)
+  apply(case_tac "read_4_bytes_be (Sequence x)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac a, simp)
+  apply(simp add: error_return_def)
+  apply(drule read_4_bytes_be_length)
+  apply assumption
+  apply(simp only: read_elf32_addr.simps)
+  apply(case_tac "read_4_bytes_le (Sequence x)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac a, simp)
+  apply(simp add: error_return_def)
+  apply(drule read_4_bytes_le_length)
+  apply assumption
+done
+
+lemma read_elf32_off_length:
+  assumes "read_elf32_off endian bs0 = Success (wrd, bs1)"
+  shows "length0 bs1 < length0 bs0"
+using assms
+  apply(case_tac bs0, simp)
+  apply(case_tac endian, simp)
+  apply(simp only: read_elf32_off.simps)
+  apply(case_tac "read_4_bytes_be (Sequence x)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac a, simp)
+  apply(simp add: error_return_def)
+  apply(drule read_4_bytes_be_length)
+  apply assumption
+  apply(simp only: read_elf32_off.simps)
+  apply(case_tac "read_4_bytes_le (Sequence x)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac a, simp)
+  apply(simp add: error_return_def)
+  apply(drule read_4_bytes_le_length)
+  apply assumption
+done
+
+lemma read_elf32_half_length:
+  assumes "read_elf32_half endian bs0 = Success (wrd, bs1)"
+  shows "length0 bs1 < length0 bs0"
+using assms
+  apply(case_tac bs0, simp)
+  apply(case_tac endian, simp)
+  apply(simp only: read_elf32_half.simps)
+  apply(case_tac "read_2_bytes_be (Sequence x)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac a, simp)
+  apply(simp add: error_return_def)
+  apply(drule read_2_bytes_be_length)
+  apply assumption
+  apply(simp only: read_elf32_half.simps)
+  apply(case_tac "read_2_bytes_le (Sequence x)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac a, simp)
+  apply(simp add: error_return_def)
+  apply(drule read_2_bytes_le_length)
+  apply assumption
+done
 
 lemma read_unsigned_char_length:
   assumes "read_unsigned_char end bs0 = Success (bytes, bs1)"
   shows "length0 bs1 < length0 bs0"
-sorry
+using assms
+  apply(case_tac bs0, simp)
+  apply(simp only: read_unsigned_char_def)
+  apply(case_tac "read_char (Sequence x)", simp_all add: error_bind.simps error_return_def)
+  apply(drule read_char_length)
+  apply assumption
+done
 
 termination obtain_elf32_dynamic_section_contents'
   apply(relation "measure (\<lambda>(_, b, _, _, _, _). length0 b)")
