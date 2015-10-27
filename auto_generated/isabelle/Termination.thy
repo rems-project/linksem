@@ -9,18 +9,47 @@ termination dropbytes
   apply(auto simp add: naturalZero_def)
 done
 
-lemma dropbytes_length_inversion:
-  assumes "dropbytes len bs0 = Success bs1"
-  shows "len < length0 bs0"
-sorry
+lemma byte_sequence_induct:
+  fixes P :: "byte_sequence \<Rightarrow> bool"
+  assumes "P (Sequence [])" and "\<And>x xs. P (Sequence xs) \<Longrightarrow> P (Sequence (x#xs))"
+  shows "P bs"
+  apply(case_tac bs, simp)
+  apply(induct_tac x)
+  apply(rule assms(1))
+  apply(rule assms(2))
+  apply assumption
+done
 
 lemma dropbytes_length:
   fixes len :: "nat" and bs bs1 :: "byte_sequence"
   assumes "0 < len" and "dropbytes len bs = Success bs1"
   shows "length0 bs1 < length0 bs" (is ?thesis)
-using assms
-sorry
-  
+using assms proof(induction arbitrary: len rule: byte_sequence_induct)
+  fix len :: "nat"
+  assume "dropbytes len (Sequence []) = Success bs1" and "0 < len"
+  hence "error_fail ''dropbytes: cannot drop more bytes than are contained in sequence'' = Success bs1"
+    using dropbytes.simps naturalZero_def `0 < len` by simp
+  thus "length0 bs1 < length0 (Sequence [])"
+    using error_fail_def error.simps by metis
+next
+  fix x :: "byte" and xs :: "byte list" and len :: "nat"
+  assume IH: "(\<And>len. 0 < len \<Longrightarrow> dropbytes len (Sequence xs) = Success bs1 \<Longrightarrow> length0 bs1 < length0 (Sequence xs))"
+    and "dropbytes len (Sequence (x # xs)) = Success bs1" and "0 < len"
+  show "length0 bs1 < length0 (Sequence (x # xs))"
+  proof(cases len)
+    assume "len = 0"
+    thus "length0 bs1 < length0 (Sequence (x # xs))"
+      using `0 < len` by simp
+  next
+    fix l :: "nat"
+    assume "len = Suc l"
+    hence "dropbytes (Suc l) (Sequence (x#xs)) = Success bs1"
+      using `dropbytes len (Sequence (x#xs)) = Success bs1` by simp
+    hence "dropbytes (Suc l - 1) (Sequence xs) = Success bs1"
+      using `len = Suc l` naturalZero_def dropbytes.simps by simp
+    hence *: "dropbytes l (Sequence xs) = Success bs1"
+      by auto
+
 termination list_take_with_accum
   apply lexicographic_order
 done
@@ -123,7 +152,7 @@ lemma set_choose_member:
 using assms by auto
 
 lemma chooseAndSplit_card1:
-  assumes "chooseAndSplit dict s = Some (x, y)"
+  assumes "finite s" and "chooseAndSplit dict s = Some (x, y)"
   shows "card x < card s"
 using assms
   apply(simp only: chooseAndSplit_def)
