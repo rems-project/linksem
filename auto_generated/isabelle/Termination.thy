@@ -395,16 +395,101 @@ termination read_elf64_relocation_section'
 done
 
 termination read_elf32_relocation_a_section'
-  sorry
+  apply(relation "measure (\<lambda>(_, b). length0 b)")
+  apply simp
+  apply(case_tac bs0, simp)
+  apply(simp only: read_elf32_relocation_a_def)
+  apply(case_tac "read_elf32_addr endian (Sequence xa)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac "read_elf32_word endian b", simp_all add: error_bind.simps)
+  apply(case_tac x1a, simp)
+  apply(case_tac "read_elf32_sword endian ba", simp_all add: error_bind.simps)
+  apply(case_tac x1b, simp)
+  apply(drule read_elf32_addr_length)
+  apply(drule read_elf32_word_length)
+  apply(drule read_elf32_sword_length)
+  apply linarith
+done
 
 termination read_elf64_relocation_a_section'
-  sorry
+  apply(relation "measure (\<lambda>(_, b). length0 b)")
+  apply simp
+  apply(case_tac bs0, simp)
+  apply(simp only: read_elf64_relocation_a_def)
+  apply(case_tac "read_elf64_addr endian (Sequence xa)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac "read_elf64_xword endian b", simp_all add: error_bind.simps)
+  apply(case_tac x1a, simp)
+  apply(case_tac "read_elf64_sxword endian ba", simp_all add: error_bind.simps)
+  apply(case_tac x1b, simp)
+  apply(drule read_elf64_addr_length)
+  apply(drule read_elf64_xword_length)
+  apply(drule read_elf64_sxword_length)
+  apply linarith
+done
 
 termination read_elf32_section_header_table'
-  sorry
+  apply(relation "measure (\<lambda>(_, b). length0 b)")
+  apply simp
+  apply(case_tac bs0, simp)
+  apply(simp only: read_elf32_section_header_table_entry_def)
+  apply(case_tac "read_elf32_word endian (Sequence xa)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac "read_elf32_word endian b", simp_all add: error_bind.simps)
+  apply(case_tac x1a, simp)
+  apply(case_tac "read_elf32_word endian ba", simp_all add: error_bind.simps)
+  apply(case_tac x1b, simp)
+  apply(case_tac "read_elf32_addr endian bb", simp_all add: error_bind.simps)
+  apply(case_tac x1c, simp)
+  apply(case_tac "read_elf32_off endian bc", simp_all add: error_bind.simps)
+  apply(case_tac x1d, simp)
+  apply(case_tac "read_elf32_word endian bd", simp_all add: error_bind.simps)
+  apply(case_tac x1e, simp)
+  apply(case_tac "read_elf32_word endian be", simp_all add: error_bind.simps)
+  apply(case_tac x1f, simp)
+  apply(case_tac "read_elf32_word endian bf", simp_all add: error_bind.simps)
+  apply(case_tac x1g, simp)
+  apply(case_tac "read_elf32_word endian bg", simp_all add: error_bind.simps)
+  apply(case_tac x1h, simp)
+  apply(case_tac "read_elf32_word endian bh", simp_all add: error_bind.simps)
+  apply(case_tac x1i, simp)
+  apply(drule read_elf32_word_length)+
+  apply(drule read_elf32_addr_length)+
+  apply(drule read_elf32_off_length)+
+  apply linarith
+done
 
 termination read_elf64_section_header_table'
-  sorry
+  apply(relation "measure (\<lambda>(_, b). length0 b)")
+  apply simp
+  apply(case_tac bs0, simp)
+  apply(simp only: read_elf64_section_header_table_entry_def)
+  apply(case_tac "read_elf64_word endian (Sequence xa)", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac "read_elf64_word endian b", simp_all add: error_bind.simps)
+  apply(case_tac x1a, simp)
+  apply(case_tac "read_elf64_xword endian ba", simp_all add: error_bind.simps)
+  apply(case_tac x1b, simp)
+  apply(case_tac "read_elf64_addr endian bb", simp_all add: error_bind.simps)
+  apply(case_tac x1c, simp)
+  apply(case_tac "read_elf64_off endian bc", simp_all add: error_bind.simps)
+  apply(case_tac x1d, simp)
+  apply(case_tac "read_elf64_xword endian bd", simp_all add: error_bind.simps)
+  apply(case_tac x1e, simp)
+  apply(case_tac "read_elf64_word endian be", simp_all add: error_bind.simps)
+  apply(case_tac x1f, simp)
+  apply(case_tac "read_elf64_word endian bf", simp_all add: error_bind.simps)
+  apply(case_tac x1g, simp)
+  apply(case_tac "read_elf64_xword endian bg", simp_all add: error_bind.simps)
+  apply(case_tac x1h, simp)
+  apply(case_tac "read_elf64_xword endian bh", simp_all add: error_bind.simps)
+  apply(case_tac x1i, simp)
+  apply(drule read_elf64_word_length)+
+  apply(drule read_elf64_addr_length)+
+  apply(drule read_elf64_xword_length)+
+  apply(drule read_elf64_off_length)+
+  apply linarith
+done
 
 termination get_elf32_section_to_segment_mapping
   sorry
