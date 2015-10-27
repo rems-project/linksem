@@ -93,12 +93,33 @@ lemma read_archive_entry_header_length:
   assumes "read_archive_entry_header len bs = Success (hdr, sz, bs1)"
   shows "Byte_sequence.length0 bs1 < Byte_sequence.length0 bs"
 using assms unfolding read_archive_entry_header_def
-  sorry
+  apply(simp only: Let_def)
+  apply(case_tac "partition_with_length 60 len bs", simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac "offset_and_cut 58 2 a", simp_all add: error_bind.simps)
+  apply(case_tac "offset_and_cut 0 16 a", simp_all add: error_bind.simps)
+  apply(case_tac "offset_and_cut 16 12 a", simp_all add: error_bind.simps)
+  apply(case_tac "offset_and_cut 28 6 a", simp_all add: error_bind.simps)
+  apply(case_tac "offset_and_cut 34 6 a", simp_all add: error_bind.simps)
+  apply(case_tac "offset_and_cut 40 8 a", simp_all add: error_bind.simps)
+  apply(case_tac "offset_and_cut 48 10 a", simp_all add: error_bind.simps)
+  apply(simp add: error_return_def)
+  apply(drule offset_and_cut_length)+
+  apply(drule partition_with_length_length)
+  apply(erule conjE)+
+  sorry (* XXX: definition needs changing *)
+
+lemma set_split_union:
+  assumes "set_split e s = (x, y)"
+  shows "s = x \<union> { e } \<union> y"
+sorry
 
 lemma chooseAndSplit_card1:
   assumes "chooseAndSplit dict s = Some (x, y)"
   shows "card x < card s"
-sorry
+using assms
+  apply(simp only: chooseAndSplit_def)
+  apply(case_tac "s = {}", simp_all)
 
 lemma chooseAndSplit_card2:
   assumes "chooseAndSplit dict s = Some (x, y, z)"
@@ -588,24 +609,31 @@ termination group_elf64_words
 done
 
 termination read_gnu_ext_elf32_verdefs
+(* XXX: not terminating *)
   sorry
 
 termination read_gnu_ext_elf64_verdefs
+(* XXX: see above? *)
   sorry
 
 termination obtain_gnu_ext_elf32_veraux
-  sorry
+  apply lexicographic_order
+done
 
 termination obtain_gnu_ext_elf64_veraux
-  sorry
+  apply lexicographic_order
+done
 
 termination read_gnu_ext_elf32_verneeds
+(* XXX: not terminating *)
   sorry
 
 termination read_gnu_ext_elf64_verneeds
+(* XXX: not terminating *)
   sorry
 
 termination read_gnu_ext_elf32_vernauxs
+(* XXX: not terminating *)
   sorry
 
 termination obtain_gnu_ext_elf64_vernaux (* XXX: why the discrepancy with the function above? *)
