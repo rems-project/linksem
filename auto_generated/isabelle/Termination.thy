@@ -9,53 +9,23 @@ termination dropbytes
   apply(auto simp add: naturalZero_def)
 done
 
-declare [[show_types]]
+lemma dropbytes_length_inversion:
+  assumes "dropbytes len bs0 = Success bs1"
+  shows "len < length0 bs0"
+sorry
 
 lemma dropbytes_length:
   fixes len :: "nat" and bs bs1 :: "byte_sequence"
   assumes "0 < len" and "dropbytes len bs = Success bs1"
-  shows "length0 bs1 < length0 bs"
-using assms proof(induct len arbitrary: bs)
-  fix bs :: "byte_sequence"
-  assume "0 < (0::nat)" thus "length0 bs1 < length0 bs" by simp
-next
-  fix len :: "nat" and bs :: "byte_sequence"
-  assume IH: "(\<And>bs :: byte_sequence. (0::nat) < len \<Longrightarrow> dropbytes len bs = Success bs1 \<Longrightarrow> length0 bs1 < length0 bs)" and
-    *: "0 < Suc len" and **: "dropbytes (Suc len) bs = Success bs1"
-  show "length0 bs1 < length0 bs"
-  proof(cases bs)
-    fix xs :: "byte list"
-    assume ***: "bs = Sequence xs"
-    show "length0 bs1 < length0 bs"
-    proof(cases xs)
-      assume ****: "xs = []"
-      hence "dropbytes (Suc len) bs = dropbytes (Suc len) (Sequence [])"
-        using ** *** by simp
-      hence "dropbytes (Suc len) bs = error_fail ''dropbytes: cannot drop more bytes than are contained in sequence''"
-        using dropbytes.simps assms naturalZero_def by simp
-      hence "error_fail ''dropbytes: cannot drop more bytes than are contained in sequence'' = Success bs1"
-        using assms *** **** ** by simp
-      hence "Fail ''dropbytes: cannot drop more bytes than are contained in sequence'' = Success bs1"
-        using error_fail_def by metis
-      thus "length0 bs1 < length0 bs"
-        by simp
-    next
-      fix y :: "byte" and ys :: "byte list"
-      assume ****: "xs = y#ys"
-      hence "dropbytes (Suc len) bs = dropbytes (Suc len) (Sequence (y#ys))"
-        using ** *** by simp
-      hence "dropbytes (Suc len) bs = dropbytes len (Sequence ys)"
-        using dropbytes.simps assms naturalZero_def by simp
-      hence *****: "dropbytes len (Sequence ys) = Success bs1"
-        using ** by simp
-      show "length0 bs1 < length0 bs"
-        apply(rule IH[where bs=bs])
-
+  shows "length0 bs1 < length0 bs" (is ?thesis)
+using assms
+sorry
+  
 termination list_take_with_accum
   apply lexicographic_order
 done
 
-lemma list_take_with_accum_length [simp]:
+lemma list_take_with_accum_length:
   fixes len :: "nat" and xs accum :: "'a list"
   assumes "len < length xs"
   shows "length (list_take_with_accum len accum xs) = len + length accum"
@@ -87,41 +57,25 @@ next
   qed
 qed
 
-lemma takebytes_r_with_length_inversion [simp]:
+lemma takebytes_r_with_length_inversion:
   assumes "takebytes_r_with_length cnt len bs0 = Success bs1"
   shows "len < length0 bs0"
 sorry
 
-lemma takebytes_r_with_length_length [simp]:
+lemma takebytes_r_with_length_length:
   assumes "takebytes_r_with_length cnt len bs0 = Success bs1"
   shows "length0 bs1 < length0 bs0"
-using assms proof(cases bs0)
-  fix xs :: "byte list"
-  assume "bs0 = Sequence xs"
-  hence "takebytes_r_with_length cnt len bs0 = takebytes_r_with_length cnt len (Sequence xs)"
-    by auto
-  hence "takebytes_r_with_length cnt len (Sequence xs) = Success bs1"
-    using assms by auto
-  hence *: "(if cnt \<le> len then error_return (Sequence (list_take_with_accum cnt [] xs)) else error_fail ''takebytes: cannot take more bytes than are contained in sequence'') = Success bs1"
-    using takebytes_r_with_length.simps by auto
-  show "length0 bs1 < length0 bs0"
-  proof(cases "cnt \<le> len")
-    assume "cnt \<le> len"
-    hence "error_return (Sequence (list_take_with_accum cnt [] xs)) = Success bs1"
-      using * by simp
-    hence "Sequence (list_take_with_accum cnt [] xs) = bs1"
-      by (simp add: error_return_def)
-    hence "length0 bs1 = cnt"
-      using length0.simps list_take_with_accum_length
+using assms
+  sorry
 
 lemma takebytes_length:
   fixes len :: "nat" and bs bs1 :: "byte_sequence"
   assumes "takebytes len bs = Success bs1"
   shows "length0 bs1 = len"
 using assms
-  apply(case_tac bs, simp)
+sorry
 
-lemma offset_and_cut_length [simp]:
+lemma offset_and_cut_length:
   assumes "offset_and_cut off len bs0 = Success bs1"
   shows "length0 bs1 = len"
 using assms unfolding offset_and_cut_def
@@ -130,26 +84,27 @@ using assms unfolding offset_and_cut_def
   apply(rule takebytes_length, assumption)
 done
 
-lemma partition_with_length_length [simp]:
+lemma partition_with_length_length:
   assumes "partition_with_length off len bs0 = Success (bs1, bs2)"
   shows "length0 bs1 = off \<and> length0 bs2 = len"
 sorry
 
-lemma read_archive_entry_header_length [simp]:
+lemma read_archive_entry_header_length:
   assumes "read_archive_entry_header len bs = Success (hdr, sz, bs1)"
   shows "Byte_sequence.length0 bs1 < Byte_sequence.length0 bs"
 using assms unfolding read_archive_entry_header_def
   sorry
 
-lemma chooseAndSplit_card1 [simp]:
+lemma chooseAndSplit_card1:
   assumes "chooseAndSplit dict s = Some (x, y)"
   shows "card x < card s"
 sorry
 
-lemma chooseAndSplit_card2 [simp]:
+lemma chooseAndSplit_card2:
   assumes "chooseAndSplit dict s = Some (x, y, z)"
   shows "card z < card s"
-sorry
+using assms unfolding chooseAndSplit_def
+  sorry
 
 lemma lt_technical1:
   fixes q :: nat
@@ -161,25 +116,6 @@ lemma lt_technical2:
   fixes m :: nat
   shows "0 < Suc m"
 by auto
-
-lemma error_bind_cong1 [fundef_cong]:
-  assumes "map_error f1 s1 = map_error f2 s2"
-  shows "error_bind s1 f1 = error_bind s2 f2"
-using assms
-  by(cases s1; cases s2) (auto simp add: error_bind.simps)
-
-lemma error_bind_cong2 [fundef_cong]:
-  assumes "f1 = f2" and "s1 = s2"
-  shows "error_bind f1 s1 = error_bind f2 s2"
-using assms by simp
-
-lemma set_error_return [simp]:
-  shows "set_error (error_return x) = {x}"
-by(auto simp add: error_return_def)
-
-lemma set_error_fail [simp]:
-  shows "set_error (error_fail msg) = {}"
-by(auto simp add: error_fail_def)
 
 lemma read_elf32_dyn_cong [fundef_cong]:
   assumes "endian0 = endian1" and "bs0 = bs1" and "shared_object0 = shared_object1" and "os_additional_ranges0 = os_additional_ranges1"
@@ -200,18 +136,17 @@ using assms by simp
 section {* Termination *}
 
 termination accum_archive_contents
-  thm accum_archive_contents.psimps
   apply(relation "measure (\<lambda>(_,_,_,b). length0 b)")
-  apply auto
-  apply(case_tac "size0 a mod 2", simp_all add: Let_def)
-  apply(case_tac "name a = ''/               ''", simp_all)
+  apply simp
+  apply(case_tac x1, simp)
   apply(frule read_archive_entry_header_length)
+  apply(case_tac "size0 a mod 2", simp add: Let_def)
+  apply(case_tac "name a = ''/               ''", simp)
   apply(frule dropbytes_length, assumption)
   apply linarith
-  apply(frule read_archive_entry_header_length)
   apply(frule dropbytes_length, assumption)
   apply linarith
-  apply(frule read_archive_entry_header_length)
+  apply simp
   apply(subgoal_tac "0 < Suc (size0 a)")
   apply(frule dropbytes_length, assumption)
   apply linarith
@@ -227,13 +162,129 @@ termination concat_byte_sequence
   apply lexicographic_order
 done
 
+lemma read_elf32_sword_length:
+  assumes "read_elf32_sword endian bs0 = Success (wrd, bs1)"
+  shows "length0 bs1 < length0 bs0"
+sorry
+
+lemma read_elf32_word_length:
+  assumes "read_elf32_word endian bs0 = Success (wrd, bs1)"
+  shows "length0 bs1 < length0 bs0"
+sorry
+
+lemma read_elf32_addr_length:
+  assumes "read_elf32_addr endian bs0 = Success (wrd, bs1)"
+  shows "length0 bs1 < length0 bs0"
+sorry
+
+lemma read_4_bytes_be_length:
+  assumes "read_4_bytes_be bs0 = Success (bytes, bs1)"
+  shows "length0 bs1 < length0 bs0"
+sorry
+
+lemma read_4_bytes_le_length:
+  assumes "read_4_bytes_le bs0 = Success (bytes, bs1)"
+  shows "length0 bs1 < length0 bs0"
+sorry
+
 termination obtain_elf32_dynamic_section_contents'
-thm obtain_elf32_dynamic_section_contents'.psimps
   apply(relation "measure (\<lambda>(_, b, _, _, _, _). length0 b)")
+  apply simp+
+  apply(case_tac bs0)
   apply simp
+  apply(simp only: read_elf32_dyn_def Let_def)
+  apply(case_tac "read_elf32_sword endian (Sequence xa)")
+  apply(simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac "tag_correspondence_of_tag shared_object (nat \<bar>sint a\<bar>) os_additional_ranges os proc", simp_all add: error_bind.simps)
+  apply(case_tac x1a, simp_all)
+  apply(case_tac "read_elf32_word endian b", simp_all add: error_bind.simps)
+  apply(case_tac x1b, simp)
+  apply(drule read_elf32_sword_length)
+  apply(drule read_elf32_word_length)
+  apply linarith
+  apply(case_tac "read_elf32_addr endian b", simp_all add: error_bind.simps)
+  apply(case_tac x1b, simp)
+  apply(drule read_elf32_sword_length)
+  apply(drule read_elf32_addr_length)
+  apply linarith
+  apply(case_tac endian, simp_all)
+  apply(case_tac "read_4_bytes_be b", simp_all add: error_bind.simps)
+  apply(case_tac x1b, simp)
+  apply(case_tac aa, simp)
+  apply(drule read_elf32_sword_length)
+  apply(drule read_4_bytes_be_length)
+  apply linarith
+  apply(case_tac "read_4_bytes_le b", simp_all add: error_bind.simps)
+  apply(case_tac x1b, simp)
+  apply(case_tac aa, simp)
+  apply(drule read_elf32_sword_length)
+  apply(drule read_4_bytes_le_length)
+  apply linarith
+done
+
+lemma read_elf64_xword_length:
+  assumes "read_elf64_xword endian bs0 = Success (wrd, bs1)"
+  shows "length0 bs1 < length0 bs0"
+sorry
+
+lemma read_elf64_sxword_length:
+  assumes "read_elf64_sxword endian bs0 = Success (wrd, bs1)"
+  shows "length0 bs1 < length0 bs0"
+sorry
+
+lemma read_elf64_addr_length:
+  assumes "read_elf64_addr endian bs0 = Success (wrd, bs1)"
+  shows "length0 bs1 < length0 bs0"
+sorry
+
+lemma read_8_bytes_be_length:
+  assumes "read_8_bytes_be b = Success (bytes, bs0)"
+  shows "length0 bs0 < length0 b"
+sorry
+
+lemma read_8_bytes_le_length:
+  assumes "read_8_bytes_le b = Success (bytes, bs0)"
+  shows "length0 bs0 < length0 b"
+sorry
 
 termination obtain_elf64_dynamic_section_contents'
-  sorry
+  apply(relation "measure (\<lambda>(_, b, _, _, _, _). length0 b)")
+  apply simp+
+  apply(case_tac bs0)
+  apply simp
+  apply(simp only: read_elf64_dyn_def Let_def)
+  apply(case_tac "read_elf64_sxword endian (Sequence xa)")
+  apply(simp_all add: error_bind.simps)
+  apply(case_tac x1, simp)
+  apply(case_tac "tag_correspondence_of_tag shared_object (nat \<bar>sint a\<bar>) os_additional_ranges os proc", simp_all add: error_bind.simps)
+  apply(case_tac x1a, simp_all)
+  apply(case_tac "read_elf64_xword endian b", simp_all add: error_bind.simps)
+  apply(case_tac x1b, simp)
+  apply(drule read_elf64_xword_length)
+  apply(drule read_elf64_sxword_length)
+  apply linarith
+  apply(case_tac "read_elf64_addr endian b", simp_all add: error_bind.simps)
+  apply(case_tac x1b, simp)
+  apply(drule read_elf64_sxword_length)
+  apply(drule read_elf64_addr_length)
+  apply linarith
+  apply(case_tac endian, simp_all)
+  apply(case_tac "read_8_bytes_be b", simp_all add: error_bind.simps)
+  apply(case_tac x1b, simp)
+  apply(case_tac aa, simp)
+  apply(case_tac g, simp)
+  apply(drule read_elf64_sxword_length)
+  apply(drule read_8_bytes_be_length)
+  apply linarith
+  apply(case_tac "read_8_bytes_le b", simp_all add: error_bind.simps)
+  apply(case_tac x1b, simp)
+  apply(case_tac aa, simp)
+  apply(case_tac g, simp)
+  apply(drule read_elf64_sxword_length)
+  apply(drule read_8_bytes_le_length)
+  apply linarith
+done
 
 termination find_first_not_in_range
   sorry
