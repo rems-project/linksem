@@ -9,46 +9,77 @@ termination dropbytes
   apply(auto simp add: naturalZero_def)
 done
 
-lemma byte_sequence_induct:
-  fixes P :: "byte_sequence \<Rightarrow> bool"
-  assumes "P (Sequence [])" and "\<And>x xs. P (Sequence xs) \<Longrightarrow> P (Sequence (x#xs))"
-  shows "P bs"
-  apply(case_tac bs, simp)
-  apply(induct_tac x)
-  apply(rule assms(1))
-  apply(rule assms(2))
-  apply assumption
-done
-
 lemma dropbytes_length:
   fixes len :: "nat" and bs bs1 :: "byte_sequence"
-  assumes "0 < len" and "dropbytes len bs = Success bs1"
-  shows "length0 bs1 < length0 bs" (is ?thesis)
-using assms proof(induction arbitrary: len rule: byte_sequence_induct)
-  fix len :: "nat"
-  assume "dropbytes len (Sequence []) = Success bs1" and "0 < len"
-  hence "error_fail ''dropbytes: cannot drop more bytes than are contained in sequence'' = Success bs1"
-    using dropbytes.simps naturalZero_def `0 < len` by simp
-  thus "length0 bs1 < length0 (Sequence [])"
-    using error_fail_def error.simps by metis
-next
-  fix x :: "byte" and xs :: "byte list" and len :: "nat"
-  assume IH: "(\<And>len. 0 < len \<Longrightarrow> dropbytes len (Sequence xs) = Success bs1 \<Longrightarrow> length0 bs1 < length0 (Sequence xs))"
-    and "dropbytes len (Sequence (x # xs)) = Success bs1" and "0 < len"
-  show "length0 bs1 < length0 (Sequence (x # xs))"
-  proof(cases len)
-    assume "len = 0"
-    thus "length0 bs1 < length0 (Sequence (x # xs))"
-      using `0 < len` by simp
+  assumes "dropbytes len bs = Success bs1"
+  shows "len + length0 bs1 = length0 bs"
+using assms proof(cases bs, clarify)
+  fix xs :: "byte list"
+  assume "dropbytes len (Sequence xs) = Success bs1"
+  thus "len + length0 bs1 = length0 (Sequence xs)"
+  proof(induction xs arbitrary: len)
+    fix len :: "nat"
+    assume "dropbytes len (Sequence []) = Success bs1"
+    thus "len + length0 bs1 = length0 (Sequence [])"
+    proof(cases len)
+      assume "len = 0"
+      hence "Success bs1 = dropbytes 0 (Sequence [])"
+        using `dropbytes len (Sequence []) = Success bs1` by auto
+      moreover have "... = error_return (Sequence [])"
+        using dropbytes.simps naturalZero_def by auto
+      moreover have "... = Success (Sequence [])"
+        using error_return_def by metis
+      ultimately have "bs1 = Sequence []"
+        by auto
+      thus "len + length0 bs1 = length0 (Sequence [])"
+        using length0.simps `len = 0` by auto
+    next
+      fix l :: "nat"
+      assume "len = Suc l"
+      hence "dropbytes len (Sequence []) = dropbytes (Suc l) (Sequence [])"
+        by auto
+      moreover have "... = error_fail ''dropbytes: cannot drop more bytes than are contained in sequence''"
+        using naturalZero_def dropbytes.simps by auto
+      moreover have "... = Fail ''dropbytes: cannot drop more bytes than are contained in sequence''"
+        using error_fail_def by auto
+      ultimately have "... = Success bs1"
+        using `dropbytes len (Sequence []) = Success bs1` by metis
+      thus "len + length0 bs1 = length0 (Sequence [])"
+        by auto
+    qed
   next
-    fix l :: "nat"
-    assume "len = Suc l"
-    hence "dropbytes (Suc l) (Sequence (x#xs)) = Success bs1"
-      using `dropbytes len (Sequence (x#xs)) = Success bs1` by simp
-    hence "dropbytes (Suc l - 1) (Sequence xs) = Success bs1"
-      using `len = Suc l` naturalZero_def dropbytes.simps by simp
-    hence *: "dropbytes l (Sequence xs) = Success bs1"
-      by auto
+    fix x :: "byte" and xs :: "byte list" and len :: "nat"
+    assume IH: "(\<And>len. dropbytes len (Sequence xs) = Success bs1 \<Longrightarrow> len + length0 bs1 = length0 (Sequence xs))"
+      and "dropbytes len (Sequence (x # xs)) = Success bs1"
+    thus "len + length0 bs1 = length0 (Sequence (x # xs))"
+    proof(cases len)
+      assume "len = 0"
+      hence "Success bs1 = dropbytes 0 (Sequence (x # xs))"
+        using `dropbytes len (Sequence (x#xs)) = Success bs1` by auto
+      moreover have "... = error_return (Sequence (x#xs))"
+        using naturalZero_def by auto
+      moreover have "... = Success (Sequence (x#xs))"
+        using error_return_def by metis
+      ultimately have "bs1 = Sequence (x#xs)"
+        by auto
+      thus "len + length0 bs1 = length0 (Sequence (x # xs))"
+        using `len = 0` by auto
+    next
+      fix l :: "nat"
+      assume "len = Suc l"
+      hence "Success bs1 = dropbytes (Suc l) (Sequence (x#xs))"
+        using `dropbytes len (Sequence (x#xs)) = Success bs1` by auto
+      moreover have "... = dropbytes l (Sequence xs)"
+        using naturalZero_def by auto
+      ultimately have "dropbytes l (Sequence xs) = Success bs1"
+        by auto
+      hence "l + length0 bs1 = length0 (Sequence xs)"
+        using IH by simp
+      thus "len + length0 bs1 = length0 (Sequence (x # xs))"
+        using `len = Suc l` length0.simps by auto
+    qed
+  qed
+qed
 
 termination list_take_with_accum
   apply lexicographic_order
@@ -204,13 +235,13 @@ termination accum_archive_contents
   apply(frule read_archive_entry_header_length)
   apply(case_tac "size0 a mod 2", simp add: Let_def)
   apply(case_tac "name a = ''/               ''", simp)
-  apply(frule dropbytes_length, assumption)
+  apply(frule dropbytes_length)
   apply linarith
-  apply(frule dropbytes_length, assumption)
+  apply(frule dropbytes_length)
   apply linarith
   apply simp
   apply(subgoal_tac "0 < Suc (size0 a)")
-  apply(frule dropbytes_length, assumption)
+  apply(frule dropbytes_length)
   apply linarith
   apply auto
 done
