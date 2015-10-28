@@ -87,16 +87,15 @@ done
 
 lemma list_take_with_accum_length:
   fixes len :: "nat" and xs accum :: "'a list"
-  assumes "len < length xs"
+  assumes "len \<le> length xs"
   shows "length (list_take_with_accum len accum xs) = len + length accum"
 using assms proof(induction len arbitrary: accum xs)
   fix xs :: "'a list" and accum :: "'a list"
-  assume "0 < length xs"
-  thus "length (list_take_with_accum 0 accum xs) = 0 + length accum" by auto
+  show "length (list_take_with_accum 0 accum xs) = 0 + length accum" by auto
 next
   fix len :: "nat" and accum :: "'a list" and xs :: "'a list"
-  assume IH: "(\<And>accum xs :: 'a list. len < length xs \<Longrightarrow> length (list_take_with_accum len accum xs) = len + length accum)"
-    and *: "Suc len < length xs"
+  assume IH: "(\<And>accum xs :: 'a list. len \<le> length xs \<Longrightarrow> length (list_take_with_accum len accum xs) = len + length accum)"
+    and *: "Suc len \<le> length xs"
   show "length (list_take_with_accum (Suc len) accum xs) = Suc len + length accum"
   proof(cases xs)
     assume "xs = []"
@@ -104,7 +103,7 @@ next
   next
     fix y :: "'a" and ys :: "'a list"
     assume **: "xs = y#ys"
-    hence ***: "len < length ys"
+    hence ***: "len \<le> length ys"
       using * by simp
     have "length (list_take_with_accum (Suc len) accum xs) = length (list_take_with_accum (Suc len) accum (y#ys))"
       using ** by auto
@@ -117,23 +116,54 @@ next
   qed
 qed
 
-lemma takebytes_r_with_length_inversion:
-  assumes "takebytes_r_with_length cnt len bs0 = Success bs1"
-  shows "len < length0 bs0"
-sorry
-
 lemma takebytes_r_with_length_length:
-  assumes "takebytes_r_with_length cnt len bs0 = Success bs1"
-  shows "length0 bs1 < length0 bs0"
-using assms
-  sorry
+  assumes "len = length0 bs" and "takebytes_r_with_length cnt len bs = Success bs1"
+  shows "length0 bs1 = cnt"
+using assms proof(cases bs, clarify)
+  fix xs :: "byte list"
+  assume "takebytes_r_with_length cnt (length0 (Sequence xs)) (Sequence xs) = Success bs1"
+  thus "length0 bs1 = cnt"
+  proof(cases "cnt \<le> length0 (Sequence xs)")
+    assume "cnt \<le> length0 (Sequence xs)"
+    have "Success bs1 = takebytes_r_with_length cnt (length0 (Sequence xs)) (Sequence xs)"
+      using `takebytes_r_with_length cnt (length0 (Sequence xs)) (Sequence xs) = Success bs1` by auto
+    moreover have "... = error_return (Sequence (list_take_with_accum cnt [] xs))"
+      using `cnt \<le> length0 (Sequence xs)` takebytes_r_with_length.simps by simp
+    moreover have "... = Success (Sequence (list_take_with_accum cnt [] xs))"
+      using error_return_def by metis
+    ultimately have "bs1 = Sequence (list_take_with_accum cnt [] xs)"
+      using error.simps by metis
+    hence "length0 bs1 = length0 (Sequence (list_take_with_accum cnt [] xs))"
+      by auto
+    thus "length0 bs1 = cnt"
+      using list_take_with_accum_length length0.simps `cnt \<le> length0 (Sequence xs)` by force
+  next
+    assume "\<not> cnt \<le> length0 (Sequence xs)"
+    have "Success bs1 = takebytes_r_with_length cnt (length0 (Sequence xs)) (Sequence xs)"
+      using `takebytes_r_with_length cnt (length0 (Sequence xs)) (Sequence xs) = Success bs1` by auto
+    moreover have "... = error_fail ''takebytes: cannot take more bytes than are contained in sequence''"
+      using takebytes_r_with_length.simps `\<not>cnt \<le> length0 (Sequence xs)` by auto
+    moreover have "... = Fail ''takebytes: cannot take more bytes than are contained in sequence''"
+      using error_fail_def by metis
+    ultimately have "Success bs1 = Fail ''takebytes: cannot take more bytes than are contained in sequence''"
+      by auto
+    thus "length0 bs1 = cnt"
+      using error.simps by simp
+  qed
+qed
 
 lemma takebytes_length:
   fixes len :: "nat" and bs bs1 :: "byte_sequence"
   assumes "takebytes len bs = Success bs1"
   shows "length0 bs1 = len"
 using assms
-sorry
+  apply(case_tac bs, clarify)
+  apply(simp only: takebytes.simps)
+  apply(simp only: Let_def)
+  apply(rule_tac len="length x" and bs="Sequence x" in takebytes_r_with_length_length)
+  apply(simp only: length0.simps)
+  apply auto
+done
 
 lemma offset_and_cut_length:
   assumes "offset_and_cut off len bs0 = Success bs1"
@@ -183,15 +213,10 @@ lemma set_choose_member:
 using assms by auto
 
 lemma chooseAndSplit_card1:
-  assumes "finite s" and "chooseAndSplit dict s = Some (x, y)"
+  assumes "chooseAndSplit dict s = Some (x, y)"
   shows "card x < card s"
 using assms
-  apply(simp only: chooseAndSplit_def)
-  apply(case_tac "s = {}", simp_all)
-  apply(simp only: Let_def)
-  apply(case_tac "split dict (set_choose s) s", simp)
-  apply(drule set_split_union)
-  sorry
+sorry
 
 lemma chooseAndSplit_card2:
   assumes "chooseAndSplit dict s = Some (x, y, z)"
