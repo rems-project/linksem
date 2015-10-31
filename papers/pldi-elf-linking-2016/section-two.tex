@@ -1,7 +1,8 @@
 \section{Understanding linking}
 
 Linking is used to implement separate compilation 
-of languages including C, \Cplusplus{}, Fortran, Ada, Objective-C, and others.
+of languages including C, \Cplusplus{}, Fortran, Ada, Objective-C, and
+many others.
 If linking were only about separate compilation, it would have a natural specification
 in terms of these languages' source program semantics.
 Previous formal models of linking~\cite{cardelli-program-1997, glew-type-safe-1999}
@@ -10,12 +11,14 @@ seeking to provide a formal basis for separate compilation with verified safety 
 Similarly, the CompCert verified C compiler~\cite{leroy-formal-2009} 
 omits any linker per se, instead 
 directly implementing its own private C-language separate compilation mechanism.
+\ps{ref also Gil et al.'s upcoming popl paper}
 
 However, linking is not simply a matter of separate compilation.
 Systems code and application code alike 
 use linker features to achieve effects that are \emph{unrelated to} separate compilation,
 which mostly \emph{cannot be expressed} in the relevant source language(s), 
-and which, in some cases, \emph{actively break} the semantics of the source language.
+and which, in some cases, \emph{actively break} the \ps{naive?
+  obvious?} semantics of the source language.
 In this section we survey these features,
 consider how they are (or aren't) currently specified, 
 and consider the consequences for 
@@ -39,7 +42,18 @@ how toolchains should be specified and what services they might provide.
 % intended merely to provide separate compilation semantics, 
 % therefore not addressing the features on which many real codebases rely.
 
+
+\ps{somewhere early on we should explain the basic use cases of
+  linkers (making statically linked executables, archives, shared
+  libraries, etc., etc.), their inputs and outputs (incl. what ELF
+  files are), the relationship
+  to loading, etc.}
+
 \subsection{Linker mechanisms and linker-speak}
+
+\ps{somehow we should be clear which of these we cover (or cover
+  partially) in our work (or, variously, in our static-structure and
+  hello-world-linker work). Maybe annotating each paragraph Y/part/N?}
 
 Linker features are invoked by one or more notations, 
 such as command-line arguments, linker scripts, assembler directives and 
@@ -47,6 +61,14 @@ object file features.
 These collected notations can be thought of as a separate programming language
 in which part of every compiled system is expressed.
 We call this language ``linker-speak''.
+\ps{the above is just a touch vague - we don't give the reader a
+  clearly delimited collection of things that comprise
+  linker-speak. The section below is (probably correctly) organised by
+  use-cases, not by linker-speak features.  Maybe make each paragraph
+  call out the kind of linker-speak mechanisms it involves?  Or a
+  separate section that is organised by mechanism??}
+\ps{On a related note, none of these talk linker script explicitly, or
+  focus on the expressiveness of the linker-speak mechanisms}
 In this paper we focus on the linker-speak of System~V-derived Unix environments,
 including GNU/Linux and all modern BSD variants.
 Windows and Mac OS (Darwin) environments exhibit broadly similar feature sets,
@@ -142,6 +164,7 @@ and/or to be ordered relative to one another.
 For example, on the PA-RISC architecture, Linux uses the following 
 linker script to enforce a particular relative ordering of page table data.
 FIXME: show the preprocessed version, if it's simpler / more snippable.
+\ps{say why Linux wants/needs to do this?}
 
 {\scriptsize\begin{lstlisting}[language=C,columns=flexible,basicstyle=\sffamily]
 /* gcc doesn't actually guarantee that global objects will
@@ -182,10 +205,17 @@ Hiding implementation details is often achieved using linker features.
 Source-language encapsulation features,
 such as C's top-level \textsf{static} modifier, 
 map directly to linker features, such as ELF's local symbols.
+\ps{perhaps explain more concretely how that ELF mechanism supports
+a language-level visibility restriction?   And this is the most basic
+thing that other language-level module systems support?}
+\ps{is this visibility control uniformly of global variables and of
+  code pointers?  presumably not of anything else (e.g.~type names, as
+  they're just not present?  (visibility of dwarf info??))}
 However, linkers expose at least three other encapsulation facilities
 that are \emph{not} supported in this way: (1) ELF symbol visibility attributes,
 allow encapsulation at the granularity of dynamically-linked binaries, 
 coarser than a single compilation unit; 
+\ps{needs to be more concrete to explain to those who don't already know?}
 (2) archives,
 since inclusion in an archive restricts an object's visibility 
 to other modules in the link;
@@ -211,18 +241,22 @@ Link-time mechanisms may be used to substitute one definition for another.
 For example, the link semantics of archives allow a C program
 to supply its own \textsf{malloc.o} while still linking with 
 the remainder of the C library archive (\textsf{libc.a}).
+\ps{example real use case of that?}
 % The \textsf{malloc.o} definitions substitute for those in the library.
 Outside of archives, multiple definitions are generally not allowed,
 but a linker option (such as \textsf{-z~muldefs}) can relax this, 
 causing earlier definitions to take precedence over later ones.
 Multiple definitions may also occur if all but zero or one is marked ``weak'';
 an ordinary ``strong'' definition, of which there can be at most one, always takes precedence.
+\ps{again, a compelling real use case would help?  All these might end up making
+  the whole too long, but we can fix that later}
 
 \paragraph{Load-time substitution (``overriding'')}
 Substitution is often used during dynamic linking using the \textsf{LD\_PRELOAD}
 feature. This environment variable can be used to supply replacement
 definitions, analogous to the \textsf{malloc} example, but for dynamically bound references.
-This can create surprises, since calls apparently targeting a dynamic object 
+This can create surprises\ps{what follows doesn't exactly say
+  that. Instead ``Care is needed when using this''?}, since calls apparently targeting a dynamic object 
 (such as \textsf{libc.so}) might actually been bound statically
 (such as \textsf{stat()} in the GNU C library; 
 the GNU \textsf{libc.so} is actually a linker script 
@@ -236,7 +270,8 @@ GROUP ( /lib/x86_64-linux-gnu/libc.so.6
 \end{lstlisting}}
 
 Linker options also affect load-time substitutability, by 
-binding references earlier than would otherwise happen (notably \textsf{-Bsymbolic}).
+binding references earlier than would otherwise happen (notably
+\textsf{-Bsymbolic}\ps{have to say what that is}).
 The point of our opening example, which appears to show a def-use edge
 from one function to another in the same file, is that this edge may be subject
 to load-time substitution.
@@ -246,6 +281,7 @@ dynamic linking substitutes at the granularity of symbols
 (a single definition may be substituted),
 batch linking substitutes at the granularity of input objects
 (only whole compilation units are substituted).
+\ps{is this something that mixin module systems can typically do? not sure...}
 
 \paragraph{Interposition}
 Interposition can be thought of as substitution where the prior definition
@@ -256,6 +292,7 @@ at batch link time, the \textsf{--wrap} option exposes a wrapped symbol
 with the prefix \textsf{\_\_real\_}. 
 At load time, the interposed-on symbol can be looked up programmatically with its unmodified name 
 (using \textsf{dlsym()}).
+\ps{give a clue when one or the other is desirable?}
 The bindings semantics of \textsf{--wrap} are particularly complex
 because they depend on how the compiler/assembler has mapped source-level definitions and references
 onto linker-level sections, symbols and relocation records.
@@ -263,6 +300,9 @@ This can be influenced by compiler/assembler options,
 source-level attributes, internal implementation decisions, and so on.
 For example, compiling with \textsf{-ffunction-sections} results in exposing
 more bindings to \textsf{--wrap}.
+
+\ps{do we need to talk somewhere about the relationship between
+  source-language names and ELF-file symbols?}
 
 % options linker options, 
 %compiler/assembler options, and compiler/assembler internals.
@@ -365,11 +405,16 @@ and is exploited by some user-level libraries \citep{kell_dynamic_2015}.
 
 % dchisnall bug: RTLD_LOCAL can break this
 
+
+\ps{slightly related: is there some linker mechanism for making copies
+  of a bunch of functions \emph{together with their local state}?}
+
 \paragraph{Aliases}
 In standard C, a function has exactly one name. 
 At link time, however, the same range of bytes may have multiple symbol names, 
 each denoting the same address but with different metadata.
 Compilers typically expose this functionality using attributes.
+\ps{some examples and what they do?}
 Although their semantics are far less well defined than the core language,
 the use of attributes is often crucial to programs' meaning.
 % This means that two pointers to a differently-named functions
@@ -559,7 +604,7 @@ communicating with profiling and debugging tools;
 configuration for the deployment environment 
 (setting library paths, the loader or ``interpreter'' path, and similar); 
 optimisations for code size 
-(\textsf{--gc-sections} allows the linker to do prune unreferenced input 
+(\textsf{--gc-sections} allows the linker to prune unreferenced input 
 at finer-than-default granularity)
 and for speed.
 Modern toolchains implement a selection of link-time optimisations, 
@@ -696,7 +741,10 @@ specifying them somewhere, and ensuring that compilers adhere to them.
 \subsection{Where's the specification?}
 
 It seems natural that a formal specification of linker-speak
-could be useful: as a reference document, a reference implementation, a test oracle, 
+could be useful: 
+\ps{we can say this more strongly - maybe it belongs in the intro, in
+  any case}
+as a reference document, a reference implementation, a test oracle, 
 and a basis for automated reasoning (either about user programs or 
 for the creation of verified toolchains).
 
@@ -799,6 +847,10 @@ work. Argh.
 
 \end{description}
 
+
+\ps{somewhere we should describe the linkers in widespread use and
+  their current status?}
+
 % \begin{itemize}
 % 
 % \item the System~V linker's command-line interface and its various extensions,
@@ -820,6 +872,11 @@ work. Argh.
 \subsection{Consequences}
 
 Our survey has motivated several different needs.
+\ps{not really ``conseqences'' or ``needs''}
+
+\ps{structurally distinguish between those we address in this paper (the
+  first two?) and the future work we enable (all the rest?)}
+
 
 \paragraph{Intermediate abstractions for linking}
 Language semantics are often described 

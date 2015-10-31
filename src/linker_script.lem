@@ -1051,6 +1051,8 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
      let (add_output_section : (natural * natural * elf_memory_image) -> output_section_spec -> (natural * elf_memory_image * natural * output_section_spec))
      = fun (scn_idx, pos, acc_img) ->
         (fun (guard, addr, secname, comp) -> 
+            let _ = errln ("Computing composition of output section `" ^ secname ^ "' from " ^ (show (length comp)) ^ " elements")
+            in
             let unaligned_start_addr = match addr with 
                 Just a -> a 
                 | Nothing -> pos
@@ -1071,6 +1073,8 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
             )
             in
             let (concatenated_content, final_addr, new_range_tag_pairs) = List.foldl (fun (accum_pat, addr, accum_meta) -> (fun (comp_el, comp_addr) ->
+                let _ = errln ("Adding an element to composition of output section `" ^ secname ^ "'")
+                in
                 let make_line = fun namestr -> (fun addrstr -> (fun szstr -> (fun rhs -> (
                     (space_padded_and_maybe_newline 16 (" " ^ namestr)) ^ 
                     ("0x" ^ (left_zero_padded_to 16 addrstr)) ^ " " ^ 
@@ -1308,29 +1312,13 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
                                 ; def_sym_scn = 0
                                 ; def_sym_idx = 0
                             |>))})
-                end
+                end (* match comp_el_pat *)
                 in
                 let new_content = append_to_byte_pattern_at_offset (comp_addr - start_addr) accum_pat comp_el_pat
                 in
                 let new_addr = comp_addr + sz
                 in
-                let new_meta = (accum_meta union this_el_meta) union {
-                    (Just(secname, (0, sz)), FileFeature(ElfSection(scn_idx, 
-                              <| elf64_section_name = 0 (* ignored *)
-                               ; elf64_section_type = 0 (* FIXME *)
-                               ; elf64_section_flags = 0 (* FIXME *)
-                               ; elf64_section_addr = 0 (* ignored *)
-                               ; elf64_section_offset = 0 (* ignored *)
-                               ; elf64_section_size = 0 (* ignored *)
-                               ; elf64_section_link = 0 (* HMM *)
-                               ; elf64_section_info = 0 (* HMM *)
-                               ; elf64_section_align = 0  (* FIXME *)
-                               ; elf64_section_entsize = 0 (* HMM *)
-                               ; elf64_section_body = Byte_sequence.empty (* ignored *)
-                               ; elf64_section_name_as_string = secname   (* ignored *)
-                               |>
-                        )))
-                }
+                let new_meta = accum_meta union this_el_meta
                 in
                 (new_content, new_addr, new_meta)
             )) ([], start_addr, {}) (zip comp comp_addrs)
@@ -1344,18 +1332,58 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
             let _ = Missing_pervasives.outln "" in
             (* Make a new element in the image.
              * FIXME: also transfer the metadata from input sections to output sections. *)
-            let new_by_range = List.foldl (fun m -> fun (maybe_range, tag) -> Set.insert (maybe_range, tag) m) acc_img.by_range (Set_extra.toList new_range_tag_pairs)
+            let new_by_range_list = 
+            (Just(secname, (0, size)), FileFeature(ElfSection(scn_idx, 
+                      <| elf64_section_name = 0 (* ignored *)
+                       ; elf64_section_type = 0 (* FIXME *)
+                       ; elf64_section_flags = shf_alloc (* FIXME: others *)
+                       ; elf64_section_addr = 0 (* ignored -- covered by element *)
+                       ; elf64_section_offset = 0 (* ignored -- will be replaced when file offsets are assigned *)
+                       ; elf64_section_size = 0 (* ignored *)
+                       ; elf64_section_link = 0 (* HMM *)
+                       ; elf64_section_info = 0 (* HMM *)
+                       ; elf64_section_align = 0  (* FIXME *)
+                       ; elf64_section_entsize = 0 (* HMM *)
+                       ; elf64_section_body = Byte_sequence.empty (* ignored *)
+                       ; elf64_section_name_as_string = secname   (* ignored *)
+                       |>
+                ))) :: Set_extra.toList new_range_tag_pairs
             in
-            (start_addr + size, <|
-                elements   = Map.insert secname concat_sec_el acc_img.elements
-                (* tag it as a section, and transfer any tags *)
-             ;  by_range   = new_by_range
-             ;  by_tag     = by_tag_from_by_range new_by_range
-             |>,
-                size,
-                (guard, Just(start_addr), secname, comp)
-             )
-        )
+            let _ = errln ("Metadata for new section " ^ secname ^ " consists of " ^ (show (length new_by_range_list)) ^ " tags.")
+            in
+            let new_by_range = List.foldl (fun m -> fun (maybe_range, tag) -> 
+                let new_s = Set.insert (maybe_range, tag) m
+                in
+                let _ = errln ("Inserting an element into by_range; before: " ^ (show (Set.size m)) ^ "; after: " ^ (show (Set.size new_s)))
+                in
+                new_s
+            ) acc_img.by_range new_by_range_list
+            in
+            let new_by_tag = by_tag_from_by_range new_by_range
+            in
+            let _ = 
+                let section_tags_bare = List.filter (fun (maybe_range, tag) -> 
+                    match tag with 
+                        | FileFeature(ElfSection(idx, isec)) -> true
+                        | _ -> false
+                    end) (Set_extra.toList new_by_range)
+                in
+                errln ("Total metadata now includes " ^ (show (length section_tags_bare)) ^ " sections; are by_range and "
+                    ^ "by_tag consistent? " ^ (show (new_by_tag = by_tag_from_by_range new_by_range)))
+            in
+            (* this expression is the return value of add_output_section *)
+            (
+                (* new_pos *) start_addr + size, 
+                (* new_acc *) <|
+                            elements   = Map.insert secname concat_sec_el acc_img.elements
+                            (* tag it as a section, and transfer any tags *)
+                         ;  by_range   = let _ = errln ("Returning from add_output_section a by_range with " ^ (show (Set.size new_by_range))) in new_by_range
+                         ;  by_tag     = new_by_tag
+                         |>,
+                (* sec_sz *) size,
+                (* replacement_output_sec *) (guard, Just(start_addr), secname, comp)
+            )
+        ) (* end add_output_section *)
     in
     match script with
         [] -> (acc, outputs_by_name)
@@ -1424,14 +1452,50 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
                     in
                     let next_free_section_idx = 1 + naturalFromNat (Map.size outputs_by_name)
                     in
+                    let count_sections_in_image = fun img -> (
+                        let (section_tags, section_ranges) = elf_memory_image_section_ranges img
+                        in
+                        let section_tags_bare = List.map (fun tag -> 
+                            match tag with 
+                                | FileFeature(ElfSection(idx, isec)) -> true
+                                | _ -> false
+                            end) section_tags
+                        in
+                        length section_tags_bare
+                    )
+                    in
+                    let _ = errln ("Before adding output section, we have " ^ (show (count_sections_in_image acc))
+                        ^ " sections.")
+                    in
                     let (new_pos, new_acc, sec_sz, replacement_output_sec)
                      = add_output_section (next_free_section_idx, pos, acc) found
+                    in
+                    let _ = errln ("Received from add_output_section a by_range with " ^ (show (Set.size new_acc.by_range))
+                        ^ " metadata records of which " ^ (show (Set.size {
+                            (r, t)
+                            | forall ((r, t) IN new_acc.by_range)
+                            | match t with FileFeature(ElfSection(x)) -> true | _ -> false end
+                        }
+                        )) ^ " are ELF sections; one more time: " ^ (show (Set.size {
+                            (t, r)
+                            | forall ((t, r) IN new_acc.by_tag)
+                            | match t with FileFeature(ElfSection(x)) -> true | _ -> false end
+                        }
+                        )) ^ "; count_sections_in_image says " ^ (show (
+                            (* length (Memory_image_orderings.tagged_ranges_matching_tag (FileFeature(ElfSection(0, null_elf64_interpreted_section))) new_acc) *)
+                            length (Multimap.lookupBy Memory_image_orderings.tagEquiv (FileFeature(ElfSection(0, null_elf64_interpreted_section))) new_acc.by_tag)
+                            )) 
+                        )
+                    in
+                    let _ = errln ("After adding output section, we have " ^ (show (count_sections_in_image new_acc))
+                        ^ " sections.")
                     in
                     (new_acc, new_pos, Map.insert name replacement_output_sec (Map.delete name outputs_by_name))
                 | DiscardInput(selector) -> do_nothing
                 | InputQuery(retainpol, sortpol, selector) -> do_nothing
             end
             in
+            (* recurse *)
             build_image new_acc new_pos new_outputs_by_name get_binding_for_ref more_elements
     end
 
@@ -1484,6 +1548,19 @@ let interpret_linker_control_script script a inputs seen_ordering get_binding_fo
     (* FIXME: print LOAD and START_GROUP trace *)
     let (img, outputs_by_name_with_position)
      = build_image empty_elf_memory_image 0 outputs_by_name_after_gc get_binding_for_ref script
+    in
+    let _ = errln ("Final image has " ^ (show (Map.size img.elements)) ^ " elements and " 
+        ^ (show (Set.size img.by_tag)) ^ " metadata tags, of which " ^ (
+            let (section_tags, section_ranges) = elf_memory_image_section_ranges img
+            in
+            let section_tags_bare = List.map (fun tag -> 
+                match tag with 
+                    | FileFeature(ElfSection(idx, isec)) -> (idx, isec)
+                    | _ -> failwith "not section tag"
+                end) section_tags
+            in
+            show (length section_tags_bare)
+        ) ^ " are sections.")
     in
     (* The link map output for the section/address assignment basically mirrors our notion of 
      * output section composition.  In the following:

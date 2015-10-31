@@ -32,6 +32,7 @@ LEM_UTIL_SRC := default_printing.lem missing_pervasives.lem show.lem endianness.
 ALL_UTIL_ML := \
 	uint64_wrapper.ml uint32_wrapper.ml \
 	show.ml endianness.ml error.ml ml_bindings.ml missing_pervasives.ml multimap.ml \
+	multimapAuxiliary.ml \
 	default_printing.ml \
 	byte_sequence_wrapper.ml \
 	# missing_pervasivesAuxiliary.ml

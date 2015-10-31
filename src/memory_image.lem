@@ -247,7 +247,7 @@ type element_range = string * range
 
 type annotated_memory_image 'abifeature = <|
       elements         : memory_image 
-    ; by_range         : multimap (maybe element_range) (range_tag 'abifeature)
+    ; by_range         : set ((maybe element_range) * (range_tag 'abifeature))
     ; by_tag           : multimap (range_tag 'abifeature) (maybe element_range)
 |>
 

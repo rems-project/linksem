@@ -119,6 +119,8 @@ let elf64_file_of_elf_memory_image a make_concrete fname img =
         ))) 
     (zip section_tags_bare section_ranges)
     in
+    let _ = errln ("Building an ELF file from " ^ (show (length element_section_tag_pairs_sorted_by_address)) ^ " sections")
+    in
     let sorted_sections_and_indices = List.map (fun ((idx, isec), (el, range)) -> (idx, isec))
         element_section_tag_pairs_sorted_by_address
     in
