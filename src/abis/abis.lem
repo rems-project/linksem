@@ -251,15 +251,15 @@ let find_start_symbol_address img =
                         Nothing -> failwith "_start symbol defined in nonexistent element"
                         | Just el_rec -> 
                             match el_rec.startpos with
-                                Nothing -> let _ = Missing_pervasives.errln "warning: saw `_start' in element with no assigned address" in Nothing
+                                Nothing -> (*let _ = Missing_pervasives.errln "warning: saw `_start' in element with no assigned address" in *)Nothing
                                 | Just x -> (* success! *) Just (x + el_off)
                             end
                     end
-                | _ -> let _ = Missing_pervasives.errln "warning: `_start' symbol with no range" in Nothing
+                | _ -> (*let _ = Missing_pervasives.errln "warning: `_start' symbol with no range" in*) Nothing
             end
         | [] -> (* no _start symbol *) Nothing
-        | _ -> let _ = Missing_pervasives.errln ("warning: saw multiple `_start' symbols: " ^
-            (let (ranges, defs) = unzip all_entry_points in show ranges)) in Nothing
+        | _ -> (*let _ = Missing_pervasives.errln ("warning: saw multiple `_start' symbols: " ^
+            (let (ranges, defs) = unzip all_entry_points in show ranges)) in *)Nothing
     end
 
 

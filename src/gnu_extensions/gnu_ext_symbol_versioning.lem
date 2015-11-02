@@ -449,7 +449,19 @@ let obtain_gnu_ext_elf32_verneed_and_vernaux f1 bs0 =
         end
       | _  -> fail "obtain_gnu_ext_elf32_verneed: multiple section header entries of type SHT_VERNEED"
     end
-  
+
+val obtain_gnu_ext_elf32_vernaux : endianness -> list gnu_ext_elf32_verneed -> byte_sequence -> error (list gnu_ext_elf32_vernaux)
+let rec obtain_gnu_ext_elf32_vernaux endian verneed bs0 =
+  match verneed with
+    | []    -> return []
+    | x::xs ->
+      let off = natural_of_elf32_word x.gnu_ext_elf32_vn_aux in
+      Byte_sequence.offset_and_cut off gnu_ext_elf32_vernaux_size bs0 >>= fun vn ->
+      read_gnu_ext_elf32_vernaux endian vn >>= fun (vernaux, _) ->
+      obtain_gnu_ext_elf32_vernaux endian xs bs0 >>= fun tail ->
+      return (vernaux::tail)
+  end
+
 val obtain_gnu_ext_elf64_vernaux : endianness -> list gnu_ext_elf64_verneed -> byte_sequence -> error (list gnu_ext_elf64_vernaux)
 let rec obtain_gnu_ext_elf64_vernaux endian verneed bs0 =
   match verneed with
@@ -460,11 +472,4 @@ let rec obtain_gnu_ext_elf64_vernaux endian verneed bs0 =
       read_gnu_ext_elf64_vernaux endian vn >>= fun (vernaux, _) ->
       obtain_gnu_ext_elf64_vernaux endian xs bs0 >>= fun tail ->
       return (vernaux::tail)
-  end
-  
-val obtain_gnu_ext_elf32_symbol_version_information : nat -> gnu_ext_elf32_symbol_version_table -> list (gnu_ext_elf32_verneed * list gnu_ext_elf32_vernaux) -> byte_sequence -> error string
-let obtain_gnu_ext_elf32_symbol_version_information index versym vernaux bs0 =
-  match List.index (List.zip versym vernaux) index with
-    | Nothing -> fail "obtain_gnu_ext_elf32_symbol_version_information: index outside range"
-    | Just (versym, vernaux) -> return ""
   end
