@@ -13,8 +13,8 @@ struct
   in end;
   val _ = Theory.link_parents
           ("byte_sequence",
-          Arbnum.fromString "1445345884",
-          Arbnum.fromString "895224")
+          Arbnum.fromString "1445438726",
+          Arbnum.fromString "742620")
           [("missing_pervasives",
            Arbnum.fromString "1445345863",
            Arbnum.fromString "394757"),

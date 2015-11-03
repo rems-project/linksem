@@ -284,8 +284,8 @@ definition is_valid_elf32_section_header_table_entry  :: " elf32_interpreted_sec
      " is_valid_elf32_section_header_table_entry ent stbl = (
   (case  String_table.get_string_at(elf32_section_name   ent) stbl of
       Fail    f    => False
-    | Success name1 =>
-      (case   elf_special_sections name1 of
+    | Success name2 =>
+      (case   elf_special_sections name2 of
           None           => False (* ??? *)
         | Some (typ1, flags) =>            
 (typ1 =(elf32_section_type   ent)) \<and> (flags =(elf32_section_flags   ent))
@@ -306,8 +306,8 @@ definition is_valid_elf64_section_header_table_entry  :: " elf64_interpreted_sec
      " is_valid_elf64_section_header_table_entry ent stbl = (
   (case  String_table.get_string_at(elf64_section_name   ent) stbl of
       Fail    f    => False
-    | Success name1 =>
-      (case   elf_special_sections name1 of
+    | Success name2 =>
+      (case   elf_special_sections name2 of
           None           => False (* ??? *)
         | Some (typ1, flags) =>            
 (typ1 =(elf64_section_type   ent)) \<and> (flags =(elf64_section_flags   ent))

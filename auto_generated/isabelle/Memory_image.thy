@@ -29,6 +29,7 @@ imports
 	 "Elf_symbol_table" 
 	 "Elf_file" 
 	 "Elf_relocation" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_map_extra" 
 	 "Multimap" 
 
 begin 
@@ -41,6 +42,7 @@ begin
 (*open import List*)
 (*open import Sorting*)
 (*open import Map*)
+(*import Map_extra*)
 (*open import Set*)
 (*open import Set_extra*)
 (*open import Multimap*)
@@ -68,13 +70,13 @@ type_synonym byte_pattern_element ="  Elf_Types_Local.byte option "
 type_synonym byte_pattern =" byte_pattern_element list "
 
 (* An element might have an address/offset, and it has some contents. *)
-record memory_image_element = 
+record element = 
  startpos ::"  nat option " 
-                             
+                
  length1   ::"  nat option "
-                             
+                
  contents ::" byte_pattern "
-                             
+                
 
 
 (* HMM -- ideally I want to fold these into the memory image notion
@@ -128,7 +130,7 @@ let cond_expr expr1 expr2 expr3 = (Or((And(expr1, expr2)), (And((Not(expr1)), ex
  * we make the identities strings. The string contents are arbitrary,
  * and only their equality is relevant, but choosing friendly names
  * like ELF header is good practice.*)
-type_synonym memory_image =" (string, memory_image_element) Map.map "
+type_synonym memory_image =" (string, element) Map.map "
 (* An element of an ELF image, in the linking phase, is either a section,
  * the ELF header, the section header table or the program header table.
  * 
@@ -467,6 +469,56 @@ record 'abifeature abi = (* forall 'abifeature. *)
     ; link_output_sections_tap   : 
     ; link_output_image_tap      : *)
     
+ make_phdrs         ::" 'abifeature abi \<Rightarrow> nat (* file type *) \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> (nat * elf64_interpreted_section) list \<Rightarrow> elf64_program_header_table_entry list "
+    
+ max_phnum          ::" nat "
+    
+ guess_entry_point  ::" 'abifeature annotated_memory_image \<Rightarrow>  nat option "
+    
+
+
+(*val align_up_to : natural -> natural -> natural*)
+definition align_up_to  :: " nat \<Rightarrow> nat \<Rightarrow> nat "  where 
+     " align_up_to align addr = ( 
+    (let quot = (addr div align)
+    in
+    if (quot * align) = addr then addr else (quot +( 1 :: nat)) * align))"
+
+
+(*val round_down_to : natural -> natural -> natural*)
+definition round_down_to  :: " nat \<Rightarrow> nat \<Rightarrow> nat "  where 
+     " round_down_to align addr = ( 
+    (let quot = (addr div align)
+    in
+    quot * align))"
+
+
+(*val gcd : natural -> natural -> natural*)
+function (sequential,domintros)  gcd  :: " nat \<Rightarrow> nat \<Rightarrow> nat "  where 
+     " gcd a b = ( 
+    if b =( 0 :: nat) then a else gcd b (a mod b))" 
+by pat_completeness auto
+
+
+(*val lcm : natural -> natural -> natural*)
+definition lcm  :: " nat \<Rightarrow> nat \<Rightarrow> nat "  where 
+     " lcm a b = ( 
+    (a * b) div (gcd a b))"
+
+
+(*val address_of_range : forall 'abifeature. element_range -> annotated_memory_image 'abifeature -> natural*)
+definition address_of_range  :: " string*(nat*nat)\<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> nat "  where 
+     " address_of_range el_range img = ( 
+    (let (el_name, (start, len)) = el_range
+    in
+    (case  (elements   img) el_name of
+        Some el =>
+            (case (startpos   el) of
+                Some addr => addr + start
+                | None => failwith (''address_of_range called for element with no address'')
+            )
+        | None => failwith (''address_of_range called on nonexistent element'')
+    )))"
 
 
 (*val range_contains : (natural * natural) -> (natural * natural) -> bool*)
@@ -651,9 +703,9 @@ definition by_tag_from_by_range  :: "('a*'b)set \<Rightarrow>('b*'a)set "  where
      " by_tag_from_by_range = ( swap_pairs )"
 
 
-(*val filter_elements : forall 'abifeature. ((string * memory_image_element) -> bool) -> 
+(*val filter_elements : forall 'abifeature. ((string * element) -> bool) -> 
     annotated_memory_image 'abifeature -> annotated_memory_image 'abifeature*)
-definition filter_elements  :: "(string*memory_image_element \<Rightarrow> bool)\<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> 'abifeature annotated_memory_image "  where 
+definition filter_elements  :: "(string*element \<Rightarrow> bool)\<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> 'abifeature annotated_memory_image "  where 
      " filter_elements pred img = ( 
     (let new_elements = (Map.map_of (List.rev ((let x2 = 
   ([]) in  List.foldr
@@ -680,6 +732,89 @@ definition filter_elements  :: "(string*memory_image_element \<Rightarrow> bool)
      |)))))"
 
 
+(*val tag_image : forall 'abifeature. range_tag 'abifeature -> string -> natural -> natural -> annotated_memory_image 'abifeature
+    ->  annotated_memory_image 'abifeature*)
+definition tag_image  :: " 'abifeature range_tag \<Rightarrow> string \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> 'abifeature annotated_memory_image "  where 
+     " tag_image t el_name el_offset tag_len img = ( 
+    (let (k, v) = (Some (el_name, (el_offset, tag_len)), t)
+    in
+    (let new_by_range = (Set.insert (k, v)(by_range   img))
+    in
+    (let new_by_tag = (Set.insert (v, k)(by_tag   img))
+    in
+    (| elements =(elements   img)
+     , by_range = new_by_range
+     , by_tag   = new_by_tag
+     |)))))"
+
+
+(*val address_to_element_and_offset : forall 'abifeature. natural -> annotated_memory_image 'abifeature -> maybe (string * natural)*)
+definition address_to_element_and_offset  :: " nat \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>(string*nat)option "  where 
+     " address_to_element_and_offset addr img = ( 
+    (* Find the element with the highest address <= addr *)
+    (let (maybe_highest_le ::  (nat * string * element)option)
+     = (List.foldl (\<lambda> maybe_current_max_le .  (\<lambda> (el_name, el_rec) . 
+        (case  (maybe_current_max_le,(startpos   el_rec)) of
+            (None, None) => None
+            | (None, Some pos) => if pos \<le> addr then Some (pos, el_name, el_rec) else None
+            | (Some (cur, el_name, el_rec), None) => maybe_current_max_le
+            | (Some (cur, el_name, el_rec), Some pos) => if (pos \<le> addr) \<and> (pos > cur) then Some (pos, el_name, el_rec) else maybe_current_max_le
+        )
+    )) None (list_to_set (LemExtraDefs.map_to_set m)))
+    in
+    (case  maybe_highest_le of
+        Some (el_def_startpos, el_name, el_rec) =>
+            (* final sanity check: is the length definite, and if so, does the
+             * element span far enough? *)
+            (case (length1   el_rec) of
+                Some l => if (el_def_startpos + l) \<le> addr then Some (el_name, (addr - el_def_startpos)) else None
+                | None => None
+            )
+        | None => 
+            (* no elements with a low enough assigned address, so nothing *)
+            None
+    )))"
+
+
+definition null_symbol_reference  :: " symbol_reference "  where 
+     " null_symbol_reference = ( (|
+    ref_symname = ('''')
+    , ref_syment = elf64_null_symbol_table_entry
+    , ref_sym_scn =(( 0 :: nat))
+    , ref_sym_idx =(( 0 :: nat))
+|) )"
+
+
+definition null_elf_relocation_a  :: " elf64_relocation_a "  where 
+     " null_elf_relocation_a = (
+  (| elf64_ra_offset = (Elf_Types_Local.uint64_of_nat(( 0 :: nat)))  
+   , elf64_ra_info   = (of_int (int (( 0 :: nat)))) 
+   , elf64_ra_addend = (of_int(( 0 :: int)))
+   |) )"
+
+
+
+definition null_symbol_reference_and_reloc_site  :: " symbol_reference_and_reloc_site "  where 
+     " null_symbol_reference_and_reloc_site = ( (|
+      ref = null_symbol_reference
+    , maybe_reloc =        
+ (Some   (| ref_relent = null_elf_relocation_a
+                , ref_rel_scn =(( 0 :: nat))
+                , ref_rel_idx =(( 0 :: nat))
+                , ref_src_scn =(( 0 :: nat))
+                |))
+    |) )"
+
+
+definition null_symbol_definition  :: " symbol_definition "  where 
+     " null_symbol_definition = ( (|
+    def_symname = ('''')
+    , def_syment = elf64_null_symbol_table_entry
+    , def_sym_scn =(( 0 :: nat))
+    , def_sym_idx =(( 0 :: nat))
+|) )"
+
+    
 (*val pattern_possible_starts_in_one_byte_sequence : list (maybe byte) -> list byte -> natural -> list natural*)
 definition pattern_possible_starts_in_one_byte_sequence  :: "((Elf_Types_Local.byte)option)list \<Rightarrow>(Elf_Types_Local.byte)list \<Rightarrow> nat \<Rightarrow>(nat)list "  where 
      " pattern_possible_starts_in_one_byte_sequence pattern seq offset = (

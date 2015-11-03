@@ -26,7 +26,7 @@ begin
 (*                                                  *)
 (****************************************************)
 
-termination accum_archive_contents by lexicographic_order
+termination accum_archive_contents0 by lexicographic_order
 
 
 

@@ -121,8 +121,8 @@ definition is_valid_gnu_ext_elf32_section_header_table_entry  :: " elf32_interpr
      " is_valid_gnu_ext_elf32_section_header_table_entry ent stbl = (
   (case  String_table.get_string_at(elf32_section_name   ent) stbl of
       Fail    f    => False
-    | Success name1 =>
-      (case   gnu_ext_additional_special_sections name1 of
+    | Success name2 =>
+      (case   gnu_ext_additional_special_sections name2 of
           None           =>
             is_valid_elf32_section_header_table_entry ent stbl
         | Some (typ1, flags) =>            
@@ -152,8 +152,8 @@ definition is_valid_gnu_ext_elf64_section_header_table_entry  :: " elf64_interpr
      " is_valid_gnu_ext_elf64_section_header_table_entry ent stbl = (
   (case  String_table.get_string_at(elf64_section_name   ent) stbl of
       Fail    f    => False
-    | Success name1 =>
-      (case   gnu_ext_additional_special_sections name1 of
+    | Success name2 =>
+      (case   gnu_ext_additional_special_sections name2 of
           None           =>
             is_valid_elf64_section_header_table_entry ent stbl
         | Some (typ1, flags) =>            

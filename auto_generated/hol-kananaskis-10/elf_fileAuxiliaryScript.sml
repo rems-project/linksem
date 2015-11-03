@@ -20,7 +20,7 @@ val _ = new_theory "elf_fileAuxiliary"
 (* val gst = Defn.tgoal_no_defn (find_first_not_in_range_def, find_first_not_in_range_ind) *)
 val (find_first_not_in_range_rw, find_first_not_in_range_ind_rw) =
   Defn.tprove_no_defn ((find_first_not_in_range_def, find_first_not_in_range_ind),
-    (* the termination proof *)
+    cheat
   )
 val find_first_not_in_range_rw = save_thm ("find_first_not_in_range_rw", find_first_not_in_range_rw);
 val find_first_not_in_range_ind_rw = save_thm ("find_first_not_in_range_ind_rw", find_first_not_in_range_ind_rw);
@@ -29,7 +29,7 @@ val find_first_not_in_range_ind_rw = save_thm ("find_first_not_in_range_ind_rw",
 (* val gst = Defn.tgoal_no_defn (find_first_in_range_def, find_first_in_range_ind) *)
 val (find_first_in_range_rw, find_first_in_range_ind_rw) =
   Defn.tprove_no_defn ((find_first_in_range_def, find_first_in_range_ind),
-    (* the termination proof *)
+    cheat
   )
 val find_first_in_range_rw = save_thm ("find_first_in_range_rw", find_first_in_range_rw);
 val find_first_in_range_ind_rw = save_thm ("find_first_in_range_ind_rw", find_first_in_range_ind_rw);
@@ -38,7 +38,7 @@ val find_first_in_range_ind_rw = save_thm ("find_first_in_range_ind_rw", find_fi
 (* val gst = Defn.tgoal_no_defn (compute_differences_def, compute_differences_ind) *)
 val (compute_differences_rw, compute_differences_ind_rw) =
   Defn.tprove_no_defn ((compute_differences_def, compute_differences_ind),
-    (* the termination proof *)
+    cheat
   )
 val compute_differences_rw = save_thm ("compute_differences_rw", compute_differences_rw);
 val compute_differences_ind_rw = save_thm ("compute_differences_ind_rw", compute_differences_ind_rw);

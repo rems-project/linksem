@@ -27,6 +27,7 @@ imports
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Elf_file" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Elf_relocation" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Memory_image" 
+"/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Abis" 
 
 begin 
 
@@ -112,6 +113,9 @@ definition gnu_extend  :: " 'abifeature abi \<Rightarrow> 'abifeature abi "  whe
     , minpagesize         =(minpagesize   a)
     , commonpagesize      =(commonpagesize   a)
     , symbol_is_generated_by_linker =(symbol_is_generated_by_linker   a)
+    , make_phdrs          =(make_phdrs   a) (* FIXME: also make the GNU phdrs! *)
+    , max_phnum           =(( 3 :: nat) +(max_phnum   a)) (* FIXME: GNU_RELRO, GNU_STACK; what else? *)
+    , guess_entry_point   =(guess_entry_point   a)
     |) )"
 
 end

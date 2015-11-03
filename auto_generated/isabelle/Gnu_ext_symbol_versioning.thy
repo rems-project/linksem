@@ -548,7 +548,19 @@ definition obtain_gnu_ext_elf32_verneed_and_vernaux  :: " elf32_file \<Rightarro
       | _  => error_fail (''obtain_gnu_ext_elf32_verneed: multiple section header entries of type SHT_VERNEED'')
     )))))"
 
-  
+
+(*val obtain_gnu_ext_elf32_vernaux : endianness -> list gnu_ext_elf32_verneed -> byte_sequence -> error (list gnu_ext_elf32_vernaux)*)
+function (sequential,domintros)  obtain_gnu_ext_elf32_vernaux  :: " endianness \<Rightarrow>(gnu_ext_elf32_verneed)list \<Rightarrow> byte_sequence \<Rightarrow>((gnu_ext_elf32_vernaux)list)error "  where 
+     " obtain_gnu_ext_elf32_vernaux endian ([]) bs0 = ( error_return [])"
+|" obtain_gnu_ext_elf32_vernaux endian (x # xs) bs0 = (
+      (let off = (unat(gnu_ext_elf32_vn_aux   x)) in
+      Byte_sequence.offset_and_cut off gnu_ext_elf32_vernaux_size bs0 >>= (\<lambda> vn . 
+      read_gnu_ext_elf32_vernaux endian vn >>= (\<lambda> (vernaux, _) . 
+      obtain_gnu_ext_elf32_vernaux endian xs bs0 >>= (\<lambda> tail . 
+      error_return (vernaux # tail))))))" 
+by pat_completeness auto
+
+
 (*val obtain_gnu_ext_elf64_vernaux : endianness -> list gnu_ext_elf64_verneed -> byte_sequence -> error (list gnu_ext_elf64_vernaux)*)
 function (sequential,domintros)  obtain_gnu_ext_elf64_vernaux  :: " endianness \<Rightarrow>(gnu_ext_elf64_verneed)list \<Rightarrow> byte_sequence \<Rightarrow>((gnu_ext_elf64_vernaux)list)error "  where 
      " obtain_gnu_ext_elf64_vernaux endian ([]) bs0 = ( error_return [])"
@@ -559,14 +571,5 @@ function (sequential,domintros)  obtain_gnu_ext_elf64_vernaux  :: " endianness \
       obtain_gnu_ext_elf64_vernaux endian xs bs0 >>= (\<lambda> tail . 
       error_return (vernaux # tail))))))" 
 by pat_completeness auto
-
-  
-(*val obtain_gnu_ext_elf32_symbol_version_information : nat -> gnu_ext_elf32_symbol_version_table -> list (gnu_ext_elf32_verneed * list gnu_ext_elf32_vernaux) -> byte_sequence -> error string*)
-definition obtain_gnu_ext_elf32_symbol_version_information  :: " nat \<Rightarrow>(uint16)list \<Rightarrow>(gnu_ext_elf32_verneed*(gnu_ext_elf32_vernaux)list)list \<Rightarrow> byte_sequence \<Rightarrow>(string)error "  where 
-     " obtain_gnu_ext_elf32_symbol_version_information index1 versym vernaux bs0 = (
-  (case  index (List.zip versym vernaux) index1 of
-      None => error_fail (''obtain_gnu_ext_elf32_symbol_version_information: index outside range'')
-    | Some (versym, vernaux) => error_return ('''')
-  ))"
 
 end

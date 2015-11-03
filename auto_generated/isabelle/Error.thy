@@ -127,4 +127,17 @@ by pat_completeness auto
 (** [string_of_error err] produces a string representation of [err].
   *)
 (*val string_of_error : forall 'a. Show 'a => error 'a BBB FFF -> string FFF*)
+
+lemma error_bind_cong [fundef_cong]:
+  "(map_error f x = map_error f' x') \<Longrightarrow> error_bind x f = error_bind x' f'"
+  by (cases x; cases x') (simp_all add: error_bind.simps)
+
+lemma set_error_fail [simp]:
+  shows "set_error (error_fail msg) = {}"
+by (simp add: error_fail_def)
+
+lemma set_error_return [simp]:
+  shows "set_error (error_return x) = {x}"
+by (simp add: error_return_def)
+
 end

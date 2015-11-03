@@ -254,4 +254,47 @@ definition unique_tag_matching_at_range_exact  :: " 'abifeature Ord_class \<Righ
         | _ => failwith (''multiple range/tag match when asserted unique'')
     ))))"
 
+
+(*val symbol_def_ranges : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature => annotated_memory_image 'abifeature -> (list (range_tag 'abifeature) * list (maybe element_range))*)
+definition symbol_def_ranges  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature ToNaturalList_class \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>('abifeature range_tag)list*((element_range)option)list "  where 
+     " symbol_def_ranges dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature img = ( 
+    (* find all element ranges labelled as ELF symbols *)
+    (let (tags, maybe_ranges) = (list_unzip (
+        tagged_ranges_matching_tag 
+  dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature (SymbolDef(null_symbol_definition)) img
+    ))
+    in
+    (* some symbols, specifically ABS symbols, needn't label a range. *)
+    (tags, maybe_ranges)))"
+
+
+(*val name_of_symbol_def : symbol_definition -> string*)
+definition name_of_symbol_def  :: " symbol_definition \<Rightarrow> string "  where 
+     " name_of_symbol_def sym1 = ((def_symname   sym1))"
+
+
+(*val defined_symbols_and_ranges : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature => annotated_memory_image 'abifeature -> list ((maybe element_range) * symbol_definition)*)
+definition defined_symbols_and_ranges  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature ToNaturalList_class \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>((element_range)option*symbol_definition)list "  where 
+     " defined_symbols_and_ranges dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature img = ( 
+    Lem_list.mapMaybe (\<lambda> (tag, maybeRange) .  
+        (case  tag of
+            SymbolDef(ent) => Some (maybeRange, ent)
+            | _ => failwith (''impossible: non-symbol def in list of symbol defs'')
+        )) (tagged_ranges_matching_tag 
+  dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature (SymbolDef(null_symbol_definition)) img))"
+
+
+(*val defined_symbols : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature =>  annotated_memory_image 'abifeature -> list symbol_definition*)
+definition defined_symbols  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature ToNaturalList_class \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>(symbol_definition)list "  where 
+     " defined_symbols dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature img = ( 
+    (let ((all_symbol_tags, all_symbol_ranges) :: ( ( 'abifeature range_tag)list * ( element_range option) list))
+     = (symbol_def_ranges 
+  dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature img)
+    in
+    Lem_list.mapMaybe (\<lambda> tag .  
+        (case  tag of
+            SymbolDef(ent) => Some ent
+            | _ => failwith (''impossible: non-symbol def in list of symbol defs'')
+        )) all_symbol_tags))"
+
 end

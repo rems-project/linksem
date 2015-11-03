@@ -81,10 +81,10 @@ definition read_elf32_note  :: " endianness \<Rightarrow> byte_sequence \<Righta
   read_elf32_word endian bs0 >>= (\<lambda> (namesz, bs0) . 
   read_elf32_word endian bs0 >>= (\<lambda> (descsz, bs0) . 
   read_elf32_word endian bs0 >>= (\<lambda> (typ1, bs0) . 
-  repeatM' (unat namesz) bs0 read_char >>= (\<lambda> (name1, bs0) . 
+  repeatM' (unat namesz) bs0 read_char >>= (\<lambda> (name2, bs0) . 
   repeatM' (unat descsz) bs0 read_char >>= (\<lambda> (desc, bs0) . 
   error_return ((| elf32_note_namesz = namesz, elf32_note_descsz = descsz,
-    elf32_note_type = typ1, elf32_note_name = name1, elf32_note_desc = desc |),
+    elf32_note_type = typ1, elf32_note_name = name2, elf32_note_desc = desc |),
       bs0)))))))"
 
       
@@ -98,10 +98,10 @@ definition read_elf64_note  :: " endianness \<Rightarrow> byte_sequence \<Righta
   read_elf64_xword endian bs0 >>= (\<lambda> (namesz, bs0) . 
   read_elf64_xword endian bs0 >>= (\<lambda> (descsz, bs0) . 
   read_elf64_xword endian bs0 >>= (\<lambda> (typ1, bs0) . 
-  repeatM' (unat namesz) bs0 read_char >>= (\<lambda> (name1, bs0) . 
+  repeatM' (unat namesz) bs0 read_char >>= (\<lambda> (name2, bs0) . 
   repeatM' (unat descsz) bs0 read_char >>= (\<lambda> (desc, bs0) . 
   error_return ((| elf64_note_namesz = namesz, elf64_note_descsz = descsz,
-    elf64_note_type = typ1, elf64_note_name = name1, elf64_note_desc = desc |),
+    elf64_note_type = typ1, elf64_note_name = name2, elf64_note_desc = desc |),
       bs0)))))))"
 
       
@@ -121,8 +121,8 @@ definition obtain_elf32_note_sections  :: " endianness \<Rightarrow>(elf32_secti
   in
     mapM (\<lambda> x . 
       (let offset = (unat(elf32_sh_offset   x)) in
-      (let size2   = (unat(elf32_sh_size   x)) in
-      Byte_sequence.offset_and_cut offset size2 bs0 >>= (\<lambda> rel . 
+      (let size3   = (unat(elf32_sh_size   x)) in
+      Byte_sequence.offset_and_cut offset size3 bs0 >>= (\<lambda> rel . 
       read_elf32_note endian rel >>= (\<lambda> (note1, _) . 
       error_return note1))))
     ) note_sects))"
@@ -144,8 +144,8 @@ definition obtain_elf64_note_sections  :: " endianness \<Rightarrow>(elf64_secti
   in
     mapM (\<lambda> x . 
       (let offset = (unat(elf64_sh_offset   x)) in
-      (let size2   = (unat(elf64_sh_size   x)) in
-      Byte_sequence.offset_and_cut offset size2 bs0 >>= (\<lambda> rel . 
+      (let size3   = (unat(elf64_sh_size   x)) in
+      Byte_sequence.offset_and_cut offset size3 bs0 >>= (\<lambda> rel . 
       read_elf64_note endian rel >>= (\<lambda> (note1, _) . 
       error_return note1))))
     ) note_sects))"
@@ -167,8 +167,8 @@ definition obtain_elf32_note_segments  :: " endianness \<Rightarrow>(elf32_progr
   in
     mapM (\<lambda> x . 
       (let offset = (unat(elf32_p_offset   x)) in
-      (let size2   = (unat(elf32_p_filesz   x)) in
-      Byte_sequence.offset_and_cut offset size2 bs0 >>= (\<lambda> rel . 
+      (let size3   = (unat(elf32_p_filesz   x)) in
+      Byte_sequence.offset_and_cut offset size3 bs0 >>= (\<lambda> rel . 
       read_elf32_note endian rel >>= (\<lambda> (note1, _) . 
       error_return note1))))
     ) note_segs))"
@@ -190,8 +190,8 @@ definition obtain_elf64_note_segments  :: " endianness \<Rightarrow>(elf64_progr
   in
     mapM (\<lambda> x . 
       (let offset = (unat(elf64_p_offset   x)) in
-      (let size2   = (unat(elf64_p_filesz   x)) in
-      Byte_sequence.offset_and_cut offset size2 bs0 >>= (\<lambda> rel . 
+      (let size3   = (unat(elf64_p_filesz   x)) in
+      Byte_sequence.offset_and_cut offset size3 bs0 >>= (\<lambda> rel . 
       read_elf64_note endian rel >>= (\<lambda> (note1, _) . 
       error_return note1))))
     ) note_segs))"

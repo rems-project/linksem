@@ -441,6 +441,21 @@ record elf32_section_header_table_entry =
    
 
    
+definition elf32_null_section_header  :: " elf32_section_header_table_entry "  where 
+     " elf32_null_section_header = (
+  (| elf32_sh_name      = (Elf_Types_Local.uint32_of_nat(( 0 :: nat)))
+   , elf32_sh_type      = (Elf_Types_Local.uint32_of_nat(( 0 :: nat)))
+   , elf32_sh_flags     = (Elf_Types_Local.uint32_of_nat(( 0 :: nat)))
+   , elf32_sh_addr      = (Elf_Types_Local.uint32_of_nat(( 0 :: nat)))
+   , elf32_sh_offset    = (Elf_Types_Local.uint32_of_nat(( 0 :: nat))) 
+   , elf32_sh_size      = (Elf_Types_Local.uint32_of_nat(( 0 :: nat)))
+   , elf32_sh_link      = (Elf_Types_Local.uint32_of_nat(( 0 :: nat)))
+   , elf32_sh_info      = (Elf_Types_Local.uint32_of_nat(( 0 :: nat)))
+   , elf32_sh_addralign = (Elf_Types_Local.uint32_of_nat(( 0 :: nat)))
+   , elf32_sh_entsize   = (Elf_Types_Local.uint32_of_nat(( 0 :: nat)))
+   |) )"
+
+   
 (** [compare_elf32_section_header_table_entry ent1 ent2] is an ordering comparison
   * function on section header table entries suitable for use in constructing
   * sets, finite maps and other ordered data types.
@@ -512,6 +527,21 @@ record elf64_section_header_table_entry =
    
  elf64_sh_entsize   ::" uint64 " (** Size of each entry in table, if section is one *)
    
+
+   
+definition elf64_null_section_header  :: " elf64_section_header_table_entry "  where 
+     " elf64_null_section_header = (
+  (| elf64_sh_name      = (Elf_Types_Local.uint32_of_nat(( 0 :: nat))) 
+   , elf64_sh_type      = (Elf_Types_Local.uint32_of_nat(( 0 :: nat))) 
+   , elf64_sh_flags     = (of_int (int (( 0 :: nat))))
+   , elf64_sh_addr      = (Elf_Types_Local.uint64_of_nat(( 0 :: nat))) 
+   , elf64_sh_offset    = (Elf_Types_Local.uint64_of_nat(( 0 :: nat)))  
+   , elf64_sh_size      = (of_int (int (( 0 :: nat))))
+   , elf64_sh_link      = (Elf_Types_Local.uint32_of_nat(( 0 :: nat))) 
+   , elf64_sh_info      = (Elf_Types_Local.uint32_of_nat(( 0 :: nat))) 
+   , elf64_sh_addralign = (of_int (int (( 0 :: nat))))
+   , elf64_sh_entsize   = (of_int (int (( 0 :: nat))))
+   |) )"
 
 
 (** [compare_elf64_section_header_table_entry ent1 ent2] is an ordering comparison

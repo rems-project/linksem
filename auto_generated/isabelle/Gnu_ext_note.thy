@@ -84,7 +84,7 @@ definition gnu_ext_check_elf32_abi_note_tag_section  :: " endianness \<Rightarro
       if unat(elf32_sh_type   x) = sht_note then
         (let nm = (unat(elf32_sh_name   x)) in
           (case  String_table.get_string_at nm sect_hdr_tbl of
-              Success name1 => name1 = (''.note.ABI-tag'')
+              Success name2 => name2 = (''.note.ABI-tag'')
             | Fail _       => False
           ))
       else
@@ -134,7 +134,7 @@ definition gnu_ext_check_elf64_abi_note_tag_section  :: " endianness \<Rightarro
       if unat(elf64_sh_type   x) = sht_note then
         (let nm = (unat(elf64_sh_name   x)) in
           (case  String_table.get_string_at nm sect_hdr_tbl of
-              Success name1 => name1 = (''.note.ABI-tag'')
+              Success name2 => name2 = (''.note.ABI-tag'')
             | Fail _       => False
           ))
       else

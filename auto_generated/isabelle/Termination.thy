@@ -720,8 +720,107 @@ termination obtain_elf64_dynamic_section_contents'
   apply linarith
 done
 
+fun (in linorder) merge :: "'a list \<Rightarrow> 'a list \<Rightarrow> 'a list" where
+  "merge [] ys = ys" |
+  "merge xs [] = xs" |
+  "merge (x#xs) (y#ys) =
+     (if x \<le> y then
+       x#merge xs (y#ys)
+     else
+       y#merge (x#xs) ys)"
+
+fun (in linorder) sort :: "'a list \<Rightarrow> 'a list" where
+  "sort []  = []" |
+  "sort [x] = [x]" |
+  "sort xs  =
+     (let len = List.length xs div 2 in
+      let lft = List.take len xs in
+      let rgt = List.drop len xs in
+        merge (sort lft) (sort rgt))"
+
+inductive (in linorder) sorted :: "'a list \<Rightarrow> bool" where
+  sorted_empty [intro!]: "sorted []" |
+  sorted_singleton [intro!]: "sorted [x]" |
+  sorted_step [intro!]: "\<lbrakk> sorted (x#xs); y \<le> x \<rbrakk> \<Longrightarrow> sorted (y#x#xs)"
+
+declare [[show_types]]
+
+lemma list_induct':
+  assumes "P []" and "\<And>x. P [x]"
+    and "\<And>x y xs. P (x#xs) \<Longrightarrow> P (y#x#xs)"
+  shows "P xs"
+using assms
+  apply(induct_tac xs)
+  apply(rule assms(1))
+  apply(case_tac list, clarify)
+  apply(rule assms(2))
+  apply clarify
+  apply(rule assms(3))
+  apply assumption
+done
+
+instantiation prod :: (linorder, linorder)linorder begin
+
+  fun less_eq_prod :: "'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rightarrow> bool" where
+    "less_eq_prod (l1, r1) (l2, r2) =
+       (if l1 < l2 then
+          True
+        else if l1 = l2 then
+          r1 \<le> r2
+        else
+          False)"
+
+  fun less_prod :: "'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rightarrow> bool" where
+    "less_prod (l1, r1) (l2, r2) =
+       (if l1 < l2 then
+          True
+        else if l1 = l2 then
+          r1 < r2
+        else
+          False)"
+
+  instance proof
+    fix x y :: "'a \<times> 'b"
+    show "(x < y) = (x \<le> y \<and> \<not> y \<le> x)"
+      apply(case_tac x; case_tac y, clarify)
+      apply auto
+    done
+  next
+    fix x :: "'a \<times> 'b"
+    show "x \<le> x"
+      apply(case_tac x, clarify)
+      apply auto
+    done
+  next
+    fix x y z :: "'a \<times> 'b"
+    assume "x \<le> y" and "y \<le> z"
+    thus "x \<le> z"
+      apply(case_tac x; case_tac y; case_tac z, simp)
+      apply(metis less_not_sym less_trans order.trans)
+    done
+  next
+    fix x y :: "'a \<times> 'b"
+    assume "x \<le> y" and "y \<le> x"
+    thus "x = y"
+      apply(case_tac x; case_tac y; simp)
+      apply(metis antisym not_less_iff_gr_or_eq)
+    done
+  next
+    fix x y :: "'a \<times> 'b"
+    show "x \<le> y \<or> y \<le> x"
+      apply(case_tac x; case_tac y; clarify)
+      apply(fastforce simp add: neq_iff)
+    done
+  qed
+end
+
 termination find_first_not_in_range
-  sorry
+  apply(relation "measure (\<lambda>(s, r). s - Max (collapse r))")
+  apply simp
+  apply(case_tac ranges, simp_all)
+  apply(case_tac a, simp_all)
+  apply(case_tac "aa \<le> start \<and> start \<le> b", simp_all)
+  apply auto
 
 termination find_first_in_range
   sorry

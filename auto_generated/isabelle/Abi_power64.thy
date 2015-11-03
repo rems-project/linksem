@@ -51,8 +51,8 @@ definition abi_power64_compute_program_entry_point  :: "(elf64_interpreted_segme
   (let filtered = (List.filter (
       \<lambda> seg . 
         (let base = ((elf64_segment_base   seg)) in
-        (let size2 = ((elf64_segment_memsz   seg)) in          
-(base \<le> entry) \<and> (entry \<le> (base + size2))))
+        (let size3 = ((elf64_segment_memsz   seg)) in          
+(base \<le> entry) \<and> (entry \<le> (base + size3))))
       ) segs)
   in
     (case  filtered of

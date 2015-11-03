@@ -58,16 +58,16 @@ termination list_take_with_accum by lexicographic_order
 (****************************************************)
 
 lemma sort_by_def_lemma:
-" ((\<forall> comp. \<forall> xs.
+" ((\<forall> comp0. \<forall> xs.
    (case  xs of
          [] => []
      | [x] => [x]
      | xs =>
    (let ls = (List.take (List.length xs div ( 2 :: nat)) xs) in
    (let rs = (List.drop (List.length xs div ( 2 :: nat)) xs) in
-   merge_by comp (Elf_Types_Local.merge_sort comp ls)
-     (Elf_Types_Local.merge_sort comp rs)))
-   ) = Elf_Types_Local.merge_sort comp xs)) "
+   merge_by comp0 (Elf_Types_Local.merge_sort comp0 ls)
+     (Elf_Types_Local.merge_sort comp0 rs)))
+   ) = Elf_Types_Local.merge_sort comp0 xs)) "
 (* Theorem: sort_by_def_lemma*)(* try *) by auto
 
 lemma length_def_lemma:

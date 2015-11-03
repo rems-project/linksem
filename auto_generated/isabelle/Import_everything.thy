@@ -7,6 +7,7 @@ imports
 	 "Show" 
 	 "Missing_pervasives" 
 	 "Error" 
+	 "Byte_sequence" 
 	 "Endianness" 
 	 "Elf_types_native_uint" 
 	 "Default_printing" 
@@ -55,7 +56,7 @@ imports
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Abi_power64_elf_header" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Abi_power64_section_header_table" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Abi_x86_relocation" 
-  "Archive"
+
 begin 
 
 (** [import_everything] imports all Lem files for convenience when testing the
@@ -65,10 +66,10 @@ begin
   *      tested with Isabelle.
   *)
 
-(*open import Abstract_linker_script
-open import Archive
-open import Byte_sequence
-open import Command_line *)
+(*open import Abstract_linker_script*)
+(*open import Archive*)
+(*open import Byte_sequence*)
+(*open import Command_line *)
 (*open import Default_printing*)
 (*open import Elf_dynamic*)
 (*open import Elf_file*)

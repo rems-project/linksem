@@ -12,6 +12,9 @@ open import Show
 open import Missing_pervasives
 
 open import Byte_sequence
+
+open import Abis
+
 open import Elf_file
 open import Elf_header
 open import Elf_interpreted_segment

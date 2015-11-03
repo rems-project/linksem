@@ -20,7 +20,7 @@ val _ = new_theory "gnu_ext_noteAuxiliary"
 (* val gst = Defn.tgoal_no_defn (group_elf32_words_def, group_elf32_words_ind) *)
 val (group_elf32_words_rw, group_elf32_words_ind_rw) =
   Defn.tprove_no_defn ((group_elf32_words_def, group_elf32_words_ind),
-    (* the termination proof *)
+    cheat
   )
 val group_elf32_words_rw = save_thm ("group_elf32_words_rw", group_elf32_words_rw);
 val group_elf32_words_ind_rw = save_thm ("group_elf32_words_ind_rw", group_elf32_words_ind_rw);
@@ -29,7 +29,7 @@ val group_elf32_words_ind_rw = save_thm ("group_elf32_words_ind_rw", group_elf32
 (* val gst = Defn.tgoal_no_defn (group_elf64_words_def, group_elf64_words_ind) *)
 val (group_elf64_words_rw, group_elf64_words_ind_rw) =
   Defn.tprove_no_defn ((group_elf64_words_def, group_elf64_words_ind),
-    (* the termination proof *)
+    cheat
   )
 val group_elf64_words_rw = save_thm ("group_elf64_words_rw", group_elf64_words_rw);
 val group_elf64_words_ind_rw = save_thm ("group_elf64_words_ind_rw", group_elf64_words_ind_rw);
