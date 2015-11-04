@@ -15,8 +15,73 @@ fun compute_label_offsets :: "nat \<Rightarrow> labelled_program \<Rightarrow> (
   "compute_label_offsets start ((Some l, i)#xs) =
      Map.map_add (\<lambda>x. if x = l then Some start else None) (compute_label_offsets (Suc start) xs)"
 
-fun concretise_instruction :: "Labelled_X64.instruction \<Rightarrow> (string \<rightharpoonup> nat) \<Rightarrow> X64.instruction" where
-  "concretise_instruction i mapping = undefined"
+(*
+datatype Zrm =
+    Zl string
+  | Zm "((2 word \<times> Zreg) option) \<times> Zbase \<times> 64 word"
+  | Zr Zreg
+*)
+
+fun labelled_x64_reg_to_x64_reg :: "Labelled_X64.Zreg \<Rightarrow> Zreg" where
+  "labelled_x64_reg_to_x64_reg Labelled_X64.RAX = RAX" |
+  "labelled_x64_reg_to_x64_reg Labelled_X64.RCX = RCX" |
+  "labelled_x64_reg_to_x64_reg Labelled_X64.RDX = RDX" |
+  "labelled_x64_reg_to_x64_reg Labelled_X64.RBX = RBX" |
+  "labelled_x64_reg_to_x64_reg Labelled_X64.RSP = RSP" |
+  "labelled_x64_reg_to_x64_reg Labelled_X64.RBP = RBP" |
+  "labelled_x64_reg_to_x64_reg Labelled_X64.RSI = RSI" |
+  "labelled_x64_reg_to_x64_reg Labelled_X64.RDI = RDI" |
+  "labelled_x64_reg_to_x64_reg Labelled_X64.zR8 = zR8" |
+  "labelled_x64_reg_to_x64_reg Labelled_X64.zR9 = zR9" |
+  "labelled_x64_reg_to_x64_reg Labelled_X64.zR10 = zR10" |
+  "labelled_x64_reg_to_x64_reg Labelled_X64.zR11 = zR11" |
+  "labelled_x64_reg_to_x64_reg Labelled_X64.zR12 = zR12" |
+  "labelled_x64_reg_to_x64_reg Labelled_X64.zR13 = zR13" |
+  "labelled_x64_reg_to_x64_reg Labelled_X64.zR14 = zR14" |
+  "labelled_x64_reg_to_x64_reg Labelled_X64.zR15 = zR15"
+
+fun labelled_x64_base_to_x64_base :: "Labelled_X64.Zbase \<Rightarrow> X64.Zbase" where
+  "labelled_x64_base_to_x64_base Labelled_X64.ZnoBase = ZnoBase" |
+  "labelled_x64_base_to_x64_base (Labelled_X64.ZregBase reg) = ZregBase (labelled_x64_reg_to_x64_reg reg)" |
+  "labelled_x64_base_to_x64_base Labelled_X64.ZripBase = ZripBase"
+
+fun labelled_x64_mem_to_x64_mem :: "((2 word \<times> Labelled_X64.Zreg) option \<times> Labelled_X64.Zbase \<times> 64 word) \<Rightarrow> (2 word \<times> Zreg) option \<times> Zbase \<times> 64 word" where
+  "labelled_x64_mem_to_x64_mem (None, base, wrd) = (None, labelled_x64_base_to_x64_base base, wrd)" |
+  "labelled_x64_mem_to_x64_mem (Some (two, reg), base, wrd) = (Some (two, labelled_x64_reg_to_x64_reg reg), labelled_x64_base_to_x64_base base, wrd)"
+
+fun concretise_rm :: "Labelled_X64.Zrm \<Rightarrow> nat \<Rightarrow> (string \<rightharpoonup> nat) \<Rightarrow> Zrm" where
+  "concretise_rm (Labelled_X64.Zl label) current_pos mapping =
+     (case mapping label of
+        None \<Rightarrow> undefined
+      | Some off \<Rightarrow>
+          if off < current_pos then
+            undefined
+          else
+            undefined)" |
+  "concretise_rm (Labelled_X64.Zm mem)   current_pos mapping = Zm (labelled_x64_mem_to_x64_mem mem)" |
+  "concretise_rm (Labelled_X64.Zr reg)   current_pos mapping = Zr (labelled_x64_reg_to_x64_reg reg)"
+
+fun concretise_instruction :: "Labelled_X64.instruction \<Rightarrow> nat \<Rightarrow> (string \<rightharpoonup> nat) \<Rightarrow> X64.instruction" where
+  "concretise_instruction (Labelled_X64.Zbinop (binop, sz, dest_src)) current_pos mapping = undefined" |
+  "concretise_instruction (Labelled_X64.Zcall imm_rm) current_pos mapping = undefined" |
+  "concretise_instruction (Labelled_X64.Zcmpxchg (sz, rm, reg)) current_pos mapping = undefined" |
+  "concretise_instruction (Labelled_X64.Zdiv (sz, rm)) current_pos mapping = undefined" |
+  "concretise_instruction (Labelled_X64.Zjcc (cond, wrd)) current_pos mapping = undefined" |
+  "concretise_instruction (Labelled_X64.Zjmp rm) current_pos mapping = undefined" |
+  "concretise_instruction (Labelled_X64.Zlea (sz, dest_src)) current_pos mapping = undefined" |
+  "concretise_instruction (Labelled_X64.Zleave) current_pos mapping = undefined" |
+  "concretise_instruction (Labelled_X64.Zloop (cond, wrd)) current_pos mapping = undefined" |
+  "concretise_instruction (Labelled_X64.Zmonop (monop, sz, rm)) current_pos mapping = undefined" |
+  "concretise_instruction (Labelled_X64.Zmov (cond, sz, dest_src)) current_pos mapping = undefined" |
+  "concretise_instruction (Labelled_X64.Zmovsx (sz, dest_src, sz')) current_pos mapping = undefined" |
+  "concretise_instruction (Labelled_X64.Zmovzx (sz, dest_src, sz')) current_pos mapping = undefined" |
+  "concretise_instruction (Labelled_X64.Zmul (sz, rm)) current_pos mapping = undefined" |
+  "concretise_instruction (Labelled_X64.Znop) current_pos mapping = undefined" |
+  "concretise_instruction (Labelled_X64.Zpop rm) current_pos mapping = undefined" |
+  "concretise_instruction (Labelled_X64.Zpush imm_rm) current_pos mapping = undefined" |
+  "concretise_instruction (Labelled_X64.Zret wrd) current_pos mapping = undefined" |
+  "concretise_instruction (Labelled_X64.Zxadd (sz, rm, reg)) current_pos mapping = undefined" |
+  "concretise_instruction (Labelled_X64.Zxchg (sz, rm, reg)) current_pos mapping = undefined"
 
 fun assemble' :: "labelled_program \<Rightarrow> (string \<rightharpoonup> nat) \<Rightarrow> program" where
   "assemble' [] mapping = []" |
