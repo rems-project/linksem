@@ -136,35 +136,42 @@ fun concretise_dest_src :: "Labelled_X64.Zdest_src \<Rightarrow> nat \<Rightarro
   "concretise_dest_src (Labelled_X64.Zrm_r (rm, reg)) current_pos mapping =
      Zrm_r (concretise_rm rm Destination current_pos mapping, labelled_x64_reg_to_x64_reg reg)"
 
-fun concretise_instruction :: "Labelled_X64.instruction \<Rightarrow> nat \<Rightarrow> (string \<rightharpoonup> nat) \<Rightarrow> X64.instruction" where
+fun concretise_instruction :: "Labelled_X64.instruction \<Rightarrow> nat \<Rightarrow> (string \<rightharpoonup> nat) \<Rightarrow> X64.instruction list" where
   "concretise_instruction (Labelled_X64.Zbinop (binop, sz, dest_src)) current_pos mapping =
-     Zbinop (labelled_x64_binop_to_x64_binop binop, labelled_x64_zsize_to_x64_zsize sz, concretise_dest_src dest_src current_pos mapping)" |
-  "concretise_instruction (Labelled_X64.Zcall imm_rm) current_pos mapping = undefined" |
+     [Zbinop (labelled_x64_binop_to_x64_binop binop, labelled_x64_zsize_to_x64_zsize sz, concretise_dest_src dest_src current_pos mapping)]" |
+  "concretise_instruction (Labelled_X64.Zcall (Labelled_X64.Zimm wrd)) current_pos mapping =
+     [Zcall (Zimm wrd)]" |
+  "concretise_instruction (Labelled_X64.Zcall (Labelled_X64.Zrm (Labelled_X64.Zl label))) current_pos mapping =
+     (case mapping label of
+        None \<Rightarrow> undefined
+      | Some v \<Rightarrow> [Zcall (Zimm (of_nat v))])" |
+  "concretise_instruction (Labelled_X64.Zcall (Labelled_X64.Zrm (Labelled_X64.Zm mem))) current_pos mapping =
+     [Zcall (Zrm (Zm (labelled_x64_mem_to_x64_mem mem)))]" |
+  "concretise_instruction (Labelled_X64.Zcall (Labelled_X64.Zrm (Labelled_X64.Zr reg))) current_pos mapping =
+     [Zcall (Zrm (Zr (labelled_x64_reg_to_x64_reg reg)))]" |
   "concretise_instruction (Labelled_X64.Zcmpxchg (sz, rm, reg)) current_pos mapping = undefined" |
   "concretise_instruction (Labelled_X64.Zdiv (sz, rm)) current_pos mapping = undefined" |
   "concretise_instruction (Labelled_X64.Zjcc (cond, wrd)) current_pos mapping =
-     Zjcc (labelled_x64_cond_to_x64_cond cond, wrd)" |
+     [Zjcc (labelled_x64_cond_to_x64_cond cond, wrd)]" |
   "concretise_instruction (Labelled_X64.Zjmp rm) current_pos mapping = undefined" |
   "concretise_instruction (Labelled_X64.Zlea (sz, dest_src)) current_pos mapping =
-     Zlea (labelled_x64_zsize_to_x64_zsize sz, concretise_dest_src dest_src current_pos mapping)" |
+     [Zlea (labelled_x64_zsize_to_x64_zsize sz, concretise_dest_src dest_src current_pos mapping)]" |
   "concretise_instruction (Labelled_X64.Zleave) current_pos mapping =
-     Zleave" |
-  "concretise_instruction (Labelled_X64.Zloop (cond, wrd)) current_pos mapping =
-     Zloop (labelled_x64_cond_to_x64_cond cond, wrd)" |
+     [Zleave]" |
+  "concretise_instruction (Labelled_X64.Zloop (cond, wrd)) current_pos mapping = undefined" |
   "concretise_instruction (Labelled_X64.Zmonop (monop, sz, rm)) current_pos mapping = undefined" |
-  "concretise_instruction (Labelled_X64.Zmov (cond, sz, dest_src)) current_pos mapping =
-    Zmov (labelled_x64_cond_to_x64_cond cond, labelled_x64_zsize_to_x64_zsize sz, concretise_dest_src dest_src current_pos mapping)" |
+  "concretise_instruction (Labelled_X64.Zmov (cond, sz, dest_src)) current_pos mapping = undefined" |
   "concretise_instruction (Labelled_X64.Zmovsx (sz, dest_src, sz')) current_pos mapping =
-    Zmovsx (labelled_x64_zsize_to_x64_zsize sz, concretise_dest_src dest_src current_pos mapping, labelled_x64_zsize_to_x64_zsize sz')" |
+     [Zmovsx (labelled_x64_zsize_to_x64_zsize sz, concretise_dest_src dest_src current_pos mapping, labelled_x64_zsize_to_x64_zsize sz')]" |
   "concretise_instruction (Labelled_X64.Zmovzx (sz, dest_src, sz')) current_pos mapping =
-    Zmovzx (labelled_x64_zsize_to_x64_zsize sz, concretise_dest_src dest_src current_pos mapping, labelled_x64_zsize_to_x64_zsize sz')" |
+     [Zmovzx (labelled_x64_zsize_to_x64_zsize sz, concretise_dest_src dest_src current_pos mapping, labelled_x64_zsize_to_x64_zsize sz')]" |
   "concretise_instruction (Labelled_X64.Zmul (sz, rm)) current_pos mapping = undefined" |
   "concretise_instruction (Labelled_X64.Znop) current_pos mapping =
-     Znop" |
+     [Znop]" |
   "concretise_instruction (Labelled_X64.Zpop rm) current_pos mapping = undefined" |
   "concretise_instruction (Labelled_X64.Zpush imm_rm) current_pos mapping = undefined" |
   "concretise_instruction (Labelled_X64.Zret wrd) current_pos mapping =
-     Zret wrd" |
+     [Zret wrd]" |
   "concretise_instruction (Labelled_X64.Zxadd (sz, rm, reg)) current_pos mapping = undefined" |
   "concretise_instruction (Labelled_X64.Zxchg (sz, rm, reg)) current_pos mapping = undefined"
 
