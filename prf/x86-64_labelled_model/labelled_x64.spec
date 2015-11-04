@@ -10,7 +10,7 @@ val () = HolExport.sigDocs false;
 val () = HolExport.spec ("x64.spec", "x64");
 
 val () = IsabelleExport.monadicExport true
-val () = IsabelleExport.spec ("labelled_x64.spec", "../../isabelle/Labelled_X64")
+val () = IsabelleExport.spec ("labelled_x64.spec", "Labelled_X64")
 
 -}
 
