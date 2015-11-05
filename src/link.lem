@@ -6,7 +6,7 @@ open import Bool
 open import List
 open import Sorting
 open import Map
-import Set
+open import Set
 import Set_extra
 open import Num
 open import Maybe
@@ -29,6 +29,7 @@ open import Elf_types_native_uint
 open import Elf_relocation
 
 open import Abis
+open import Abi_amd64_relocation (* HACK -- remove me *)
 
 open import Input_list
 open import Linkable_list
@@ -69,9 +70,6 @@ let all_common_symbols img = List.filter (fun def ->
  *      WHAT do we do in these cases? Apply what we can and generate a R_*_RELATIVE?
  *      Yes, that's where R_*_RELATIVE come from, since they don't appear in .o inputs.
  *)
-type reloc_decision = Leave
-                    | Apply
-                    | MakePIC
 
 val def_is_in_reloc : linkable_item -> bool
 let def_is_in_reloc def_item = match def_item with
@@ -80,9 +78,37 @@ let def_is_in_reloc def_item = match def_item with
     | _ -> false
 end
 
-val decide_fate_of_relocs : natural -> abi any_abi_feature -> set Command_line.link_option -> 
-    binding_map -> linkable_item -> elf_memory_image -> list (reloc_site * binding * reloc_decision)
-let decide_fate_of_relocs linkable_idx a options bindings_by_name item img = 
+let retrieve_binding_for_ref r r_linkable_idx item bindings_by_name = 
+    let maybe_found_bs = Map.lookup r.ref.ref_symname bindings_by_name
+    in 
+    match maybe_found_bs with
+        Nothing -> failwith "impossible: list of bindings does not include symbol reference (map empty)"
+            (* FIXME: could this actually be an "undefined symbol" link error perhaps? *)
+        | Just bis_and_bs -> match List.filter (fun (b_idx, ((b_ref_idx, b_ref, b_ref_item), b_maybe_def)) -> 
+            if b_ref_idx = r_linkable_idx && b_ref = r.ref then 
+            let _ = Missing_pervasives.outln ("saw ref from linkable idx " ^ (show r_linkable_idx) 
+                ^ ", ref sym scn " ^ (show r.ref.ref_sym_scn) ^ ", ref sym idx "^ (show r.ref.ref_sym_idx) 
+                ^ ", item " ^ (show item) ^ "; binding to " ^ (
+                    match b_maybe_def with
+                        Just (def_idx, def, def_item) -> "linkable idx " ^ (show def_idx) ^ 
+                            ", def sym scn " ^ (show def.def_sym_scn) ^ ", def sym idx " ^ 
+                            (show def.def_sym_idx)
+                      | Nothing -> "no definition"
+                    end
+                )
+            )
+            in true
+            else false) bis_and_bs with
+                  [] -> failwith "impossible: list of bindings does not include symbol reference (filtered list empty)"
+                | [(bi, b)] -> b
+                | _ ->  failwith ("impossible: list of bindings binds reference to symbol `"
+                    ^ r.ref.ref_symname ^ "' more than one way (filtered list has >1 element)")
+            end
+    end
+
+val mark_fate_of_relocs : natural -> abi any_abi_feature -> set Command_line.link_option -> 
+    binding_map -> linkable_item -> elf_memory_image -> (list (reloc_site * binding * reloc_decision) * elf_memory_image)
+let mark_fate_of_relocs linkable_idx a options bindings_by_name item img = 
     (* Our image already models relocation sites. For each relocation *record*,
      * we use our bindings to make a decision about whether to apply it or not.
      * 
@@ -92,7 +118,7 @@ let decide_fate_of_relocs linkable_idx a options bindings_by_name item img =
      * And it matches the ordinary rel sections, e.g. .rela.text and so on.
      * So if "-q" is active, the applied relocs need to be injected back in *after* the script
      * has run.
-     * So we need both to materialize some relocs into the script *and* save some for later. 
+     * So we need both to materialize some relocs into the script inputs, *and* save some for later. 
      * 
      * Can we just use memory image metadata as the "saved for later" case? YES, I think so.
      * What do we do with metadata that is now being materialized?
@@ -104,74 +130,69 @@ let decide_fate_of_relocs linkable_idx a options bindings_by_name item img =
     let building_shared_library = Set.member (Command_line.OutputKind(Command_line.SharedLibrary)) options in
     let bind_functions_early = Set.member Command_line.BindFunctionsEarly options in
     let bind_non_functions_early = Set.member Command_line.BindNonFunctionsEarly options in
-    let all_relocs = List.filter (fun (tag, maybe_range) -> match tag with SymbolRef(r) -> 
-        match r.maybe_reloc with 
-            Just reloc -> true
-            | Nothing -> false
-        end
-    end) (tagged_ranges_matching_tag (SymbolRef(null_symbol_reference_and_reloc_site)) img)
-    in
-    List.map (fun (tag, maybe_range) -> 
-        (* decision: do we want to
-         *  - apply it?   if so, do we need a consequent relocation (e.g. R_*_RELATIVE) in the output?
-         *  - PICify it, but leave it interposable?    
-         *  - is "PICified, non-interposable" a thing? I don't think so, because non-interposable bindings are 
-                     either intra-object *or* necessarily need load-time relocation to account for load addresses.
-                     In fact ELF can't express "non-interposable inter-object bindings" because we can't name
-                     specific objects when binding symbols.
-         *  - leave it alone, i.e. "relocate at load time"?
-         * 
-         * Some useful questions: is the binding final? 
-         * The GNU linker *never* leaves text relocs alone when generating shared libs; it always PICifies them.
-         * It can leave them alone when generating executables, though.
-         * This is an approximation; load-time text relocation can make sense for shared libs.
-         *     (but it's dangerous because PC32 relocs might overflow)
-         *)
-        let (binding_is_final : set Command_line.link_option -> binding -> bool)
-         = fun options -> (fun ((ref_idx, ref, ref_item), maybe_def) -> 
-            match maybe_def with 
-                (* Weak bindings to 0 are final (though libcrunch wishes they weren't!). *)
-                Nothing -> true
-                | Just (def_idx, def, def_item) ->
-                    (* Bindings to non-global symbols are final. *)
-                    get_symbol_binding def.def_syment.elf64_st_info = stb_local
-                    ||
-                    (* Bindings to hidden- or protected- or internal-visibility globals 
-                     *    are final. *)
-                    Set.member (get_symbol_visibility def.def_syment.elf64_st_info) { stv_hidden; stv_protected; stv_internal }
-                    ||
-                    (* Bindings to global symbols are non-final
-                     *    *unless* 
-                     *      1. the symbol definition is [going to end up] in the executable
-                     *      2. we're -Bsymbolic, outputting a shared object,
-                     *           and the symbol definition is [going to end up] within the same shared object
-                     *      3. we're -Bsymbolic-functions, outputting a shared object,
-                     *           and the symbol definition has STT_FUNC and is [going to end up] within the same shared object
-                     *
-                     * ... where "going to end up in an X" means "we're building an X and def is in a RelocELF rather than a SharedELF".
-                     *)
-                    (* 1. *)
-                    (building_executable && def_is_in_reloc def_item) ||
-                    (* 2 and 3. *)
-                    (building_shared_library && def_is_in_reloc def_item && 
-                        (  ((get_symbol_type def.def_syment.elf64_st_info) = stt_func  && bind_functions_early)
-                        || ((get_symbol_type def.def_syment.elf64_st_info) <> stt_func && bind_non_functions_early)
-                        )
-                    )
-                    (* FIXME: does it matter if the binding is intra-object or inter-object?
-                     * We don't get inter-object bindings much to non-{default global}s. How much? *)
-            end)
+    let (new_by_tag, rev_decisions) = List.foldl (fun (acc_by_tag, rev_acc_decisions) -> (fun (tag, maybe_range) -> 
+        let pass_through = (Set.insert (tag, maybe_range) acc_by_tag, rev_acc_decisions)
         in
-        let (reloc_is_absolute : reloc_site -> bool) = fun rs -> 
-            let kind = get_elf64_relocation_a_type rs.ref_relent in 
-            let (is_abs, _) = a.reloc kind in
-            is_abs
-        in
-        match tag with
+        match tag with 
             SymbolRef(r) -> 
                 match r.maybe_reloc with 
-                      Nothing -> failwith "impossible: non-reloc symbol ref should have been filtered out"
-                    | Just reloc ->
+                    Just reloc -> 
+                        (* decision: do we want to
+                         *  - apply it?   if so, do we need a consequent relocation (e.g. R_*_RELATIVE) in the output?
+                         *  - PICify it, but leave it interposable?    
+                         *  - is "PICified, non-interposable" a thing? I don't think so, because non-interposable bindings are 
+                                     either intra-object *or* necessarily need load-time relocation to account for load addresses.
+                                     In fact ELF can't express "non-interposable inter-object bindings" because we can't name
+                                     specific objects when binding symbols.
+                         *  - leave it alone, i.e. "relocate at load time"?
+                         * 
+                         * Some useful questions: is the binding final? 
+                         * The GNU linker *never* leaves text relocs alone when generating shared libs; 
+                         * it always PICifies them.
+                         * It can leave them alone when generating executables, though.
+                         * This is an approximation; load-time text relocation can make sense for shared libs.
+                         *     (but it's dangerous because PC32 relocs might overflow)
+                         *)
+                        let (binding_is_final : set Command_line.link_option -> binding -> bool)
+                         = fun options -> (fun ((ref_idx, ref, ref_item), maybe_def) -> 
+                            match maybe_def with 
+                                (* Weak bindings to 0 are final (though libcrunch wishes they weren't!). *)
+                                Nothing -> true
+                                | Just (def_idx, def, def_item) ->
+                                    (* Bindings to non-global symbols are final. *)
+                                    get_symbol_binding def.def_syment.elf64_st_info = stb_local
+                                    ||
+                                    (* Bindings to hidden- or protected- or internal-visibility globals 
+                                     *    are final. *)
+                                    Set.member (get_symbol_visibility def.def_syment.elf64_st_info) { stv_hidden; stv_protected; stv_internal }
+                                    ||
+                                    (* Bindings to global symbols are non-final
+                                     *    *unless* 
+                                     *      1. the symbol definition is [going to end up] in the executable
+                                     *      2. we're -Bsymbolic, outputting a shared object,
+                                     *           and the symbol definition is [going to end up] within the same shared object
+                                     *      3. we're -Bsymbolic-functions, outputting a shared object,
+                                     *           and the symbol definition has STT_FUNC and is [going to end up] within the same shared object
+                                     *
+                                     * ... where "going to end up in an X" means "we're building an X and def is in a RelocELF rather than a SharedELF".
+                                     *)
+                                    (* 1. *)
+                                    (building_executable && def_is_in_reloc def_item) ||
+                                    (* 2 and 3. *)
+                                    (building_shared_library && def_is_in_reloc def_item && 
+                                        (  ((get_symbol_type def.def_syment.elf64_st_info) = stt_func  && bind_functions_early)
+                                        || ((get_symbol_type def.def_syment.elf64_st_info) <> stt_func && bind_non_functions_early)
+                                        )
+                                    )
+                                    (* FIXME: does it matter if the binding is intra-object or inter-object?
+                                     * We don't get inter-object bindings much to non-{default global}s. How much? *)
+                            end)
+                        in
+                        let (reloc_is_absolute : reloc_site -> bool) = fun rs -> 
+                            let kind = get_elf64_relocation_a_type rs.ref_relent in 
+                            let (is_abs, _) = a.reloc kind in
+                            is_abs
+                        in
                         (* What's our decision for this reloc? leave, apply, MakePIC? 
                          * In fact we return both a decision and a maybe-function to create
                          * the consequent reloc. 
@@ -183,32 +204,7 @@ let decide_fate_of_relocs linkable_idx a options bindings_by_name item img =
                                it's not PIC because that address needs load-time fixup.
                                So actually it's "is absolute address" again.
                          *)
-                        let maybe_found_bs = Map.lookup r.ref.ref_symname bindings_by_name
-                        in 
-                        let b = match maybe_found_bs with
-                            Nothing -> failwith "impossible: list of bindings does not include symbol reference (map empty)"
-                                (* FIXME: could this actually be an "undefined symbol" link error perhaps? *)
-                            | Just bis_and_bs -> match List.filter (fun (b_idx, ((b_ref_idx, b_ref, b_ref_item), b_maybe_def)) -> 
-                                if b_ref_idx = linkable_idx && b_ref = r.ref then 
-                                let _ = Missing_pervasives.outln ("saw ref from linkable idx " ^ (show linkable_idx) 
-                                    ^ ", ref sym scn " ^ (show r.ref.ref_sym_scn) ^ ", ref sym idx "^ (show r.ref.ref_sym_idx) 
-                                    ^ ", item " ^ (show item) ^ "; binding to " ^ (
-                                        match b_maybe_def with
-                                            Just (def_idx, def, def_item) -> "linkable idx " ^ (show def_idx) ^ 
-                                                ", def sym scn " ^ (show def.def_sym_scn) ^ ", def sym idx " ^ 
-                                                (show def.def_sym_idx)
-                                          | Nothing -> "no definition"
-                                        end
-                                    )
-                                )
-                                in true
-                                else false) bis_and_bs with
-                                      [] -> failwith "impossible: list of bindings does not include symbol reference (filtered list empty)"
-                                    | [(bi, b)] -> b
-                                    | _ ->  failwith ("impossible: list of bindings binds reference to symbol `"
-                                        ^ r.ref.ref_symname ^ "' more than one way (filtered list has >1 element)")
-                                 end
-                        end
+                        let b = retrieve_binding_for_ref r linkable_idx item bindings_by_name
                         in
                         let ((ref_idx, _, ref_item), maybe_def) = b
                         in
@@ -217,11 +213,33 @@ let decide_fate_of_relocs linkable_idx a options bindings_by_name item img =
                             | Nothing -> false (* i.e. the "definition", 0, can be "linked in" *)
                         end
                         in
+                        let decide = fun decision -> (
+                            Set.insert (SymbolRef(<|
+                                ref           = r.ref
+                                ; maybe_reloc = r.maybe_reloc
+                                ; maybe_def_bound_to = Just (decision, 
+                                    match maybe_def with
+                                        Just(def_idx, def, def_item) -> 
+                                                Just <|
+                                                        def_symname = def.def_symname
+                                                      ; def_syment  = def.def_syment
+                                                      ; def_sym_scn = def.def_sym_scn
+                                                      ; def_sym_idx = def.def_sym_idx
+                                                      ; def_linkable_idx = def_idx
+                                                      |>
+                                        | Nothing -> Nothing
+                                    end
+                                    )
+                                |>
+                            ), maybe_range) acc_by_tag,
+                            (reloc, b, decision) :: rev_acc_decisions)
+                        in
                         if (building_executable && defined_in_shared_lib)
-                        || (building_shared_library && (reloc_is_absolute reloc)) then (reloc, b, Leave)
+                        || (building_shared_library && (reloc_is_absolute reloc)) 
+                        then decide LeaveReloc
                         else
                         (* In what circumstances do we apply the reloc? If it's a final binding. *)
-                        if binding_is_final options b then (reloc, b, Apply)
+                        if binding_is_final options b then decide ApplyReloc
                         (* In what circumstances do we MakePIC? If it's a non-absolute relocatable field
                          *     and we're building a shared library. 
                          * 
@@ -247,22 +265,30 @@ let decide_fate_of_relocs linkable_idx a options bindings_by_name item img =
                          * we don't apply the reloc. We'll be removing the reloc. But we *do* need to create 
                          * extra stuff later (PLT, GOT).
                          *)
-                        else if building_shared_library then (reloc, b, MakePIC)
+                        else if building_shared_library then decide MakePIC
                         (* The above are non-exclusive and non-exhaustive. Often, more than one option is available,
                          * ABIs / practice makes an arbitrary choice. For example, final bindings
                          * within a library could be realised the PIC way, but aren't (it'd create a 
                          * pointless indirection). *)
                         else failwith "didn't know what to do with relocation"
+                    | Nothing -> 
+                        (* symbol ref with no reloc *)
+                        pass_through
                 end
-        |   _ -> failwith "impossible: got non-SymbolRef tag"
+        |   _ -> pass_through
         end
-    ) all_relocs
+    )) ({}, []) (Set_extra.toList img.by_tag)
+    in
+    (List.reverse rev_decisions, <| elements = img.elements
+      ; by_tag = new_by_tag
+      ; by_range = by_range_from_by_tag new_by_tag 
+      |>)
 
 val strip_metadata_sections : list (reloc_site * binding * reloc_decision) -> abi any_abi_feature -> elf_memory_image -> elf_memory_image
 let strip_metadata_sections reloc_decisions a img = 
     let (section_tags, section_ranges) = elf_memory_image_section_ranges img
     in
-    let rel_sections = mapMaybe (fun (range_tag, (el_name, el_range)) -> 
+    let rel_sections = List.mapMaybe (fun (range_tag, (el_name, el_range)) -> 
         match range_tag with
             FileFeature(ElfSection(idx, isec)) -> 
                 if Set.member isec.elf64_section_type { sht_rel; sht_rela }
@@ -272,7 +298,7 @@ let strip_metadata_sections reloc_decisions a img =
         end
     ) (zip section_tags section_ranges)
     in
-    let discarded_sections_with_element_name = mapMaybe (fun (range_tag, (el_name, el_range)) -> 
+    let discarded_sections_with_element_name = List.mapMaybe (fun (range_tag, (el_name, el_range)) -> 
         match range_tag with
             FileFeature(ElfSection(idx, isec)) -> 
                 if a.section_is_special isec img (* discard reloc sections, and we'll re-add them *)
@@ -290,7 +316,7 @@ let strip_metadata_sections reloc_decisions a img =
             | (* is it from this section? *)
               reloc.ref_rel_scn = idx
               (* are we retaining it? *)
-              && decision = Leave]
+              && decision = LeaveReloc]
         in (length retained_relocs_from_this_section) * isec.elf64_section_entsize
     )
     in
@@ -348,14 +374,14 @@ let expand_sections a options bindings_by_name linkable_idx item = match item wi
                 ()
             ) () (elf_memory_image_sections_with_indices img)
         in
-        let reloc_decisions = decide_fate_of_relocs linkable_idx a options bindings_by_name item img
+        let (reloc_decisions, marked_img) = mark_fate_of_relocs linkable_idx a options bindings_by_name item img
         in 
         (* Now we have a decision for each reloc: Leave, Apply, MakePIC. Which ones
          * do we materialize? Only the Leave ones, for now. For each relocation that
          * we Leave, we figure out its originating section and create a lookalike
          * in the memory image. We'll need to create .plt and .rela.plt later (FIXME).
          *)
-        let stripped_img_with_reloc_sections = strip_metadata_sections reloc_decisions a img
+        let stripped_img_with_reloc_sections = strip_metadata_sections reloc_decisions a marked_img
         in
         (* Now we have a whole new image! It differs from the old one in that 
          * - non-special sections have been stripped
@@ -416,6 +442,103 @@ let expand_sections a options bindings_by_name linkable_idx item = match item wi
         
     | _ -> failwith "non-reloc linkable not supported yet"
 end
+
+val extract_natural_field : natural -> Memory_image.element -> natural -> natural
+let extract_natural_field width element offset = 
+    (* Read n bytes from the contents *)
+    let maybe_bytes = take width (drop offset element.contents)
+    in
+    let bytes = List.map (fun mb -> match mb with Nothing -> byte_of_natural 0 | Just mb -> mb end) maybe_bytes
+    in
+    (* FIXME: do we want little- or big-endian? *)
+    List.foldl (fun acc -> fun next_byte ->
+        acc * 256 + (natural_of_byte next_byte)
+    ) (0 : natural) bytes
+
+val natural_to_le_byte_list : natural -> list byte
+let rec natural_to_le_byte_list n = 
+    (byte_of_natural (n mod 256)) :: (let d = n/256 in if d = 0 then [] else natural_to_le_byte_list (n / 256))
+
+val write_natural_field : natural -> natural -> Memory_image.element -> natural -> Memory_image.element
+let write_natural_field new_field_value width element offset = 
+    let pre_bytes = take offset element.contents
+    in
+    let post_bytes = drop (offset + width) element.contents
+    in
+    (* FIXME: avoid hard-coding little-endian *)
+    let field_bytes = natural_to_le_byte_list new_field_value
+    in
+    if length field_bytes > width then failwith "internal error: relocation output unrepresentable"
+    else
+    <|
+        contents = pre_bytes ++ [Just b | forall (b MEM field_bytes) | true]
+            ++ (replicate (width - (length field_bytes)) (Just (byte_of_natural 0))) ++ post_bytes
+        ; startpos = element.startpos
+        ; length = element.length
+     |>
+
+val relocate_output_image : abi any_abi_feature -> map string (list (natural * binding)) -> elf_memory_image -> elf_memory_image
+let relocate_output_image a bindings_by_name img = 
+    let relocs = Multimap.lookupBy Memory_image_orderings.tagEquiv (SymbolRef(null_symbol_reference_and_reloc_site))
+        img.by_tag
+    in
+    let apply_reloc = fun img -> fun (el_name, start, len) -> fun symref_and_reloc_site -> fun symaddr -> (
+        let reloc_site = match symref_and_reloc_site.maybe_reloc with
+            Nothing -> failwith "impossible: no reloc site during relocation"
+            | Just r -> r
+        end
+        in
+        let (field_is_absolute_addr, applyfn) = a.reloc (get_elf64_relocation_a_type reloc_site.ref_relent)
+        in
+        let element = match Map.lookup el_name img.elements with
+            Nothing -> failwith "impossible: reloc site in nonexistent section"
+            | Just e -> e
+        end
+        in
+        let site_address = match element.startpos with
+            Just addr -> addr + start
+            | Nothing -> failwith "error: relocation in section with no address"
+        end
+        in
+        let (width, calculate) = applyfn img site_address symref_and_reloc_site
+        in
+        let existing_field = extract_natural_field width element start
+        in
+        let addend = integer_of_elf64_sxword reloc_site.ref_relent.elf64_ra_addend
+        in
+        let new_field_value = calculate symaddr addend existing_field
+        in
+        let new_element = write_natural_field new_field_value width element start
+        in
+        <|
+            elements = Map.insert el_name new_element (Map.delete el_name img.elements)
+         ;  by_tag   = img.by_tag \ {(SymbolRef(symref_and_reloc_site), Just(el_name, (start, len)))}
+         ;  by_range = img.by_range \ {(Just(el_name, (start, len)), SymbolRef(symref_and_reloc_site))}
+         |>
+    )
+    in
+    let relocated_img = List.foldl (fun acc_img -> (fun (tag, maybe_range) ->
+        match tag with 
+            SymbolRef(x) -> match x.maybe_reloc with
+                Just rs -> 
+                    match maybe_range with
+                        Nothing -> failwith "impossible: reloc site with no range"
+                        | Just (el_name, (start, len)) -> 
+                            let _ = errln ("During relocation, saw a reloc site in element " ^ el_name ^ ", offset 0x" ^
+                                (hex_string_of_natural start) ^ ", length 0x" ^ (hex_string_of_natural len) ^ 
+                                ", reloc type " ^ (* a. *) Abi_amd64_relocation.string_of_amd64_relocation_type (get_elf64_relocation_a_type rs.ref_relent))
+                            in
+                            let symaddr = 0 (* FIXME *)
+                            in
+                            apply_reloc acc_img (el_name, start, len) x symaddr
+                    end
+                | Nothing -> (* okay, do nothing *) acc_img
+                end
+            | _ -> failwith "impossible: not a symbol ref"
+        end
+    )) img relocs
+    in
+    relocated_img
 
 val link : linker_control_script -> abi any_abi_feature -> set Command_line.link_option -> linkable_list -> elf_memory_image
 let link script a options linkables = 
@@ -584,7 +707,7 @@ let link script a options linkables =
         end
     )))
     in
-    let output_image = interpret_linker_control_script script a input_sections seen_ordering get_binding_for_ref
+    let unrelocated_output_image = interpret_linker_control_script script a input_sections seen_ordering get_binding_for_ref
     in
     (* This image has 
      * - addresses assigned 
@@ -595,6 +718,30 @@ let link script a options linkables =
            -- other ABI features have to be generated before the linker script runs (dyn relocs, GOT, PLT?)
            -- ... so we might be okay for now.
      *)
+    let remaining_relocs = Multimap.lookupBy Memory_image_orderings.tagEquiv (SymbolRef(null_symbol_reference_and_reloc_site))
+        unrelocated_output_image.by_tag
+    in
+    let _ = List.foldl (fun _ -> (fun (tag, maybe_range) ->
+        let _ = match tag with 
+            SymbolRef(x) -> match x.maybe_reloc with
+                Just rs -> 
+                    match maybe_range with
+                        Nothing -> failwith "impossible: reloc site with no range"
+                        | Just (el_name, (start, len)) -> 
+                            errln ("After linking, saw a reloc site in element " ^ el_name ^ ", offset 0x" ^
+                                (hex_string_of_natural start) ^ ", length 0x" ^ (hex_string_of_natural len) ^ 
+                                ", reloc type " ^ (* a. *) Abi_amd64_relocation.string_of_amd64_relocation_type (get_elf64_relocation_a_type rs.ref_relent))
+                    end
+                | Nothing -> (* okay, do nothing *) ()
+                end
+            | _ -> failwith "impossible: not a symbol ref"
+        end
+        in
+        ()
+    )) () remaining_relocs
+    in
+    let output_image = relocate_output_image a bindings_by_name unrelocated_output_image
+    in
     let (maybe_entry_point_address : maybe natural) = 
         match Command_line.find_option_matching_tag (Command_line.EntryAddress(0)) options with
             Nothing -> a.guess_entry_point output_image

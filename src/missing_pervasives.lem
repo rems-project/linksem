@@ -437,6 +437,20 @@ let rec take m xs =
         x::take (m - 1) xs
   end
   
+(** [drop cnt xs] returns all but the first [cnt] elements of list [xs].  Returns an empty list
+  * if [cnt] is greater than the length of [xs].
+  *)
+val drop : forall 'a. natural -> list 'a -> list 'a
+let rec drop m xs =
+  match xs with
+    | []    -> []
+    | x::xs ->
+      if m = 0 then
+        x::xs
+      else
+        drop (m - 1) xs
+  end
+  
 (** [string_prefix i s] returns the first [i] characters of [s].
   * Fails if the index is negative, or beyond the end of the string.
   *)

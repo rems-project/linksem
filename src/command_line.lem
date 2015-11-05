@@ -470,8 +470,8 @@ val delete_trailing_equals: string -> maybe string
 let delete_trailing_equals str = 
     let cs = toCharList str
     in
-    if [#'='] = drop ((List.length cs) - 1) cs
-        then Just (toString (List.take ((List.length cs) - 1) cs))
+    if [#'='] = drop ((length cs) - 1) cs
+        then Just (toString ((take ((length cs) - 1) cs)))
         else (* let _ = Missing_pervasives.errln ("No trailing equals: " ^ str)
             in *)
             Nothing
@@ -549,7 +549,7 @@ let read_one_arg state args =
                     in 
                     let new_state = meaning (argstrings, regex_matches) state
                     in
-                    (new_state, drop (List.length argspec_extras) more)
+                    (new_state, drop (length argspec_extras) more)
                 | Nothing -> 
                     (* If we didn't match any args, we ought to be an input file. *)
                     (add_input_file state some_arg, more)

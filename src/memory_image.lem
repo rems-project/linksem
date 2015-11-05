@@ -91,6 +91,11 @@ let cond_expr expr1 expr2 expr3 = (Or((And(expr1, expr2)), (And((Not(expr1)), ex
  * and only their equality is relevant, but choosing friendly names
  * like "ELF header" is good practice.*)
 type memory_image = Map.map string element
+
+type range = natural * natural (* start, length *)
+
+type element_range = string * range
+
 (* An "element" of an ELF image, in the linking phase, is either a section,
  * the ELF header, the section header table or the program header table.
  * 
@@ -121,6 +126,26 @@ type elf_file_feature =
     | ElfProgramHeaderTable of elf64_program_header_table
     | ElfSection of (natural * elf64_interpreted_section) (* SHT idx *)
     | ElfSegment of (natural * elf64_interpreted_segment) (* PHT idx *)
+
+type symbol_definition
+ = <| def_symname : string
+    ; def_syment : elf64_symbol_table_entry (* definition's symtab entry *)
+    ; def_sym_scn : natural                 (* symtab section index, to disamiguate dynsym *)
+    ; def_sym_idx : natural                 (* index of symbol into the symtab *)
+    ; def_linkable_idx : natural            (* used to propagate origin linkable information to linked image *)
+    |>
+
+let symDefCompare x1 x2 =
+        compare (x1.def_symname, x1.def_syment, x1.def_sym_scn, x1.def_sym_idx)
+                (x2.def_symname, x2.def_syment, x2.def_sym_scn, x2.def_sym_idx)
+
+instance (Ord symbol_definition)
+    let compare = symDefCompare
+    let (<) = fun f1 -> (fun f2 -> (symDefCompare f1 f2 = LT))
+    let (<=) = fun f1 -> (fun f2 -> Set.member (symDefCompare f1 f2) {LT; EQ})
+    let (>) = fun f1 -> (fun f2 -> (symDefCompare f1 f2 = GT))
+    let (>=) = fun f1 -> (fun f2 -> Set.member (symDefCompare f1 f2) {GT; EQ})
+end
 
 type symbol_reference
  = <| ref_symname : string                  (* symbol name *)
@@ -159,10 +184,15 @@ instance (Ord reloc_site)
     let (>) = fun f1 -> (fun f2 -> (relocSiteCompare f1 f2 = GT))
     let (>=) = fun f1 -> (fun f2 -> Set.member (relocSiteCompare f1 f2) {GT; EQ})
 end
+    
+type reloc_decision = LeaveReloc
+                    | ApplyReloc
+                    | MakePIC
 
 type symbol_reference_and_reloc_site = <|
       ref         : symbol_reference
     ; maybe_reloc : maybe reloc_site
+    ; maybe_def_bound_to : maybe (reloc_decision * maybe symbol_definition)
     |>
 
 let symRefAndRelocSiteCompare x1 x2 =
@@ -175,25 +205,6 @@ instance (Ord symbol_reference_and_reloc_site)
     let (<=) = fun f1 -> (fun f2 -> Set.member (symRefAndRelocSiteCompare f1 f2) {LT; EQ})
     let (>) = fun f1 -> (fun f2 -> (symRefAndRelocSiteCompare f1 f2 = GT))
     let (>=) = fun f1 -> (fun f2 -> Set.member (symRefAndRelocSiteCompare f1 f2) {GT; EQ})
-end
-
-type symbol_definition
- = <| def_symname : string
-    ; def_syment : elf64_symbol_table_entry (* definition's symtab entry *)
-    ; def_sym_scn : natural                 (* symtab section index, to disamiguate dynsym *)
-    ; def_sym_idx : natural                 (* index of symbol into the symtab *)
-    |>
-
-let symDefCompare x1 x2 =
-        compare (x1.def_symname, x1.def_syment, x1.def_sym_scn, x1.def_sym_idx)
-                (x2.def_symname, x2.def_syment, x2.def_sym_scn, x2.def_sym_idx)
-
-instance (Ord symbol_definition)
-    let compare = symDefCompare
-    let (<) = fun f1 -> (fun f2 -> (symDefCompare f1 f2 = LT))
-    let (<=) = fun f1 -> (fun f2 -> Set.member (symDefCompare f1 f2) {LT; EQ})
-    let (>) = fun f1 -> (fun f2 -> (symDefCompare f1 f2 = GT))
-    let (>=) = fun f1 -> (fun f2 -> Set.member (symDefCompare f1 f2) {GT; EQ})
 end
 
 class (ToNaturalList 'a)
@@ -241,9 +252,6 @@ type range_tag 'abifeature = (*  forall 'abifeature . *)
                | FileFeature of elf_file_feature (* file feature other than symdef and reloc *)
                | AbiFeature of 'abifeature
 
-type range = natural * natural (* start, length *)
-
-type element_range = string * range
 
 type annotated_memory_image 'abifeature = <|
       elements         : memory_image 
@@ -282,11 +290,13 @@ type null_abi_feature = unit
  * A. We do want it -- modelling both separately is necessary, 
  * because we model relocations bytewise, but some arches
  * do bitfield relocations (think ARM). *)
-type reloc_calculate_fn    = natural -> natural -> natural -> natural (* symaddr -> addend -> existing -> relocated *)
+type reloc_calculate_fn    = natural -> integer -> natural -> natural (* symaddr -> addend -> existing -> relocated *)
 
 type reloc_apply_fn 'abifeature = 
                                 (* elf memory image: the context in which the relocation is being applied *)
                                 annotated_memory_image 'abifeature ->
+                               (* the site address *)
+                                natural ->
                                 (* Typically there are two symbol table entries involved in a relocation.
                                  * One is the reference, and is usually undefined.
                                  * The other is the definition, and is defined (else absent, when we use 0).
@@ -317,7 +327,7 @@ type reloc_apply_fn 'abifeature =
                                  * by passing the symaddr argument (below). I'd prefer not to depend on
                                  * others -- relocation calculations should look like "mostly address 
                                  * arithmetic", i.e. only the weird ones do something else. *)
-                                (* How wide, in bytes, is the relocated field? this may depend on img 
+                                 (* How wide, in bytes, is the relocated field? this may depend on img 
                                  * and on the wider image (copy relocs), so it's returned *by* the reloc function. *)
                                 (natural (* width *) * reloc_calculate_fn)
 
@@ -330,11 +340,11 @@ type reloc_apply_fn 'abifeature =
  * (done elsewhere). *)
 type reloc_fn 'abifeature = natural -> (bool * reloc_apply_fn 'abifeature)
 
-val noop_reloc_calculate : natural -> natural -> natural -> natural
+val noop_reloc_calculate : natural -> integer -> natural -> natural
 let noop_reloc_calculate symaddr addend existing = existing
 
 val noop_reloc_apply : forall 'abifeature. reloc_apply_fn 'abifeature
-let noop_reloc_apply img ref = (0, noop_reloc_calculate)
+let noop_reloc_apply img site_addr ref = (0, noop_reloc_calculate)
 
 val noop_reloc : forall 'abifeature. natural -> (bool (* result is absolute addr *) * reloc_apply_fn 'abifeature)
 let noop_reloc k = (false, noop_reloc_apply)
@@ -669,6 +679,7 @@ let null_symbol_reference_and_reloc_site = <|
                 ; ref_rel_idx = 0
                 ; ref_src_scn = 0
                 |>
+    ; maybe_def_bound_to = Nothing
     |>
 
 let null_symbol_definition = <|
@@ -676,6 +687,7 @@ let null_symbol_definition = <|
     ; def_syment = elf64_null_symbol_table_entry
     ; def_sym_scn = 0
     ; def_sym_idx = 0
+    ; def_linkable_idx = 0
 |>
     
 val pattern_possible_starts_in_one_byte_sequence : list (maybe byte) -> list byte -> natural -> list natural

@@ -155,7 +155,7 @@ let elf_memory_image_of_elf64_file a fname f =
                  * a common symbol is not referenced? *)
                 let (symbol_refs : list (maybe element_range * elf_range_tag)) = mapMaybe
                     (fun (x : symbol_reference) -> 
-                        Just (Nothing, SymbolRef(<| ref = x; maybe_reloc = Nothing |>))
+                        Just (Nothing, SymbolRef(<| ref = x; maybe_reloc = Nothing; maybe_def_bound_to = Nothing |>))
                     )
                     (extract_references_from_symtab_of_type sht_symtab f)
                 in
@@ -173,7 +173,7 @@ let elf_memory_image_of_elf64_file a fname f =
                         in
                         let (_, applyfn) = a.reloc (get_elf64_relocation_a_type rel.ref_relent)
                         in
-                        let (width, calcfn) = applyfn (get_empty_memory_image ()) x
+                        let (width, calcfn) = applyfn (get_empty_memory_image ()) 0 x
                          (* GAH. We don't have an image. 
                             If we pass an empty memory image, will we fail? Need to make it work *)
                         in

@@ -171,6 +171,7 @@ let extract_definitions_from_symtab_of_type t e =
                  ; def_syment = ent
                  ; def_sym_scn = scnidx
                  ; def_sym_idx = symidx
+                 ; def_linkable_idx = 0
                  |>)) allsyms
         in return extracted
     )) with Fail _ -> [] | Success x -> x end
@@ -309,4 +310,5 @@ let extract_all_relocs_as_symbol_references fname e
             ; ref_rel_idx = idx
             ; ref_src_scn = srcscn (* what section does the reference come from? it's the 'info' link of the rel section header *)
             |>
+        ; maybe_def_bound_to = Nothing
         |>) all_relocs

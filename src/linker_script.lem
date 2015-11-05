@@ -143,7 +143,7 @@ and
 and 
  output_section_composition_element = 
     IncludeInputSection of (retain_policy * string (* file *) * natural (* linkable_idx *) * natural (* shndx *) * elf64_interpreted_section * elf_memory_image)
-    | IncludeCommonSymbol of (retain_policy * string (* file *) * symbol_definition * elf_memory_image)
+    | IncludeCommonSymbol of (retain_policy * string (* file *) * natural (* linkable_idx *) * symbol_definition * elf_memory_image)
     | Hole of address_expr_fn (* compute the next addr to continue layout at *)
     | ProvideSymbol of (symbol_def_policy * string * symbol_spec)
 and 
@@ -307,7 +307,7 @@ let do_output_section_layout_starting_at_addr   start_addr secs comps =
                 let aligned_next_free = align_up_to isec.elf64_section_align next_free_addr
                 in
                 (aligned_next_free + isec.elf64_section_size, addr_list ++ [aligned_next_free])
-        | IncludeCommonSymbol(retain_pol, fname, def, img) -> 
+        | IncludeCommonSymbol(retain_pol, fname, linkable_idx, def, img) -> 
                 let aligned_next_free = align_up_to (natural_of_elf64_half def.def_syment.elf64_st_shndx) next_free_addr
                 in
                 (aligned_next_free + (natural_of_elf64_xword def.def_syment.elf64_st_size), addr_list ++ [aligned_next_free])
@@ -336,7 +336,7 @@ val alignof_output_section_composition_element : output_section_composition_elem
 let alignof_output_section_composition_element comp = 
     match comp with
         IncludeInputSection(_, _, _, _, isec, _) -> isec.elf64_section_align
-        | IncludeCommonSymbol(_, _, def, _) -> natural_of_elf64_half def.def_syment.elf64_st_shndx
+        | IncludeCommonSymbol(_, _, _, def, _) -> natural_of_elf64_half def.def_syment.elf64_st_shndx
         | _ -> 1 (* CHECK *)
     end
 
@@ -1260,7 +1260,13 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
                                                     ^ "in section " ^ isec.elf64_section_name_as_string ^ " of linkable " ^ (show linkable_idx)
                                                     ^ ", destined for output section `" ^ secname ^ "'")
                                                  else ()
-                                                in Just(new_range, SymbolDef(def))
+                                                in Just(new_range, SymbolDef(<|
+                                                  def_symname = def.def_symname
+                                                ; def_syment = def.def_syment
+                                                ; def_sym_scn = def.def_sym_scn
+                                                ; def_sym_idx = def.def_sym_scn
+                                                ; def_linkable_idx = linkable_idx
+                                                |>))
                                             (* If it's a symbol ref with no reloc site, we discard it? *)
                                             | SymbolRef(r) -> 
                                                 let _ = if r.ref.ref_symname = "_start" then errln ("Saw ref to _start, " 
@@ -1336,6 +1342,7 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
                                                             ; ref_rel_idx = 0
                                                             ; ref_src_scn = 0
                                                             |>
+                                                         ; maybe_def_bound_to = Nothing
                                                          |>
                                                     ))
                                                 end (* match maybe_reloc *)
@@ -1350,7 +1357,7 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
                          | _     -> failwith "impossible: no such element"
                        end (* match Map.lookup idstr img.elements *)
                     end (* match maybe_secname *)
-                    | IncludeCommonSymbol(retain_pol, fname, def, img) -> 
+                    | IncludeCommonSymbol(retain_pol, fname, linkable_idx, def, img) -> 
                         (* We want to get the common symbol as a byte pattern *)
                         let sz = natural_of_elf64_xword def.def_syment.elf64_st_size
                         in
@@ -1361,7 +1368,13 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
                         let _ = Missing_pervasives.outln (make_line "COMMON" (hex_string_of_natural comp_addr)
                              (hex_string_of_natural sz) fname)
                         in
-                        (sz, content, {(Just(elName, (0, sz)), SymbolDef(def))})
+                        (sz, content, {(Just(elName, (0, sz)), SymbolDef(<|
+                              def_symname = def.def_symname
+                            ; def_syment = def.def_syment
+                            ; def_sym_scn = def.def_sym_scn
+                            ; def_sym_idx = def.def_sym_scn
+                            ; def_linkable_idx = linkable_idx
+                        |>))})
                     | Hole(f) -> 
                         let next_addr = f addr outputs_by_name
                         in
@@ -1389,6 +1402,9 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
                                    |>
                                 ; def_sym_scn = 0
                                 ; def_sym_idx = 0
+                                ; def_linkable_idx = 0 (* FIXME: should not get mapped to the first input object,
+                                           although GNU ld does analogous things in some cases.
+                                           Give the linker script its own linkable_idx! *)
                             |>))})
                 end (* match comp_el_pat *)
                 in
@@ -1421,7 +1437,7 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
                                 match comp_el with 
                                     IncludeInputSection(retain_pol, fname, linkable_idx, shndx, isec, img) -> 
                                         isec.elf64_section_type = sht_nobits
-                                    | IncludeCommonSymbol(retain_pol, fname, def, img) -> true
+                                    | IncludeCommonSymbol(retain_pol, fname, linkable_idx, def, img) -> true
                                     | _ -> (* padding and symdefs can be nobits *) true
                                 end) comp
                             in
@@ -1431,7 +1447,7 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
                                 match comp_el with 
                                     IncludeInputSection(retain_pol, fname, linkable_idx, shndx, isec, img) -> 
                                         flag_is_set shf_write isec.elf64_section_flags
-                                    | IncludeCommonSymbol(retain_pol, fname, def, img) -> 
+                                    | IncludeCommonSymbol(retain_pol, fname, linkable_idx, def, img) -> 
                                         (* assume common symbols are writable *) true
                                     | _ -> (* padding and symdefs do not make a section writable *) false
                                 end) comp
@@ -1440,7 +1456,7 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
                                 match comp_el with 
                                     IncludeInputSection(retain_pol, fname, linkable_idx, shndx, isec, img) -> 
                                         flag_is_set shf_execinstr isec.elf64_section_flags
-                                    | IncludeCommonSymbol(retain_pol, fname, def, img) -> 
+                                    | IncludeCommonSymbol(retain_pol, fname, linkable_idx, def, img) -> 
                                         (* assume common symbols are not executable, since they're zeroed *) false
                                     | _ -> (* padding and symdefs do not make a section executable -- HMM *) false
                                 end) comp
@@ -1449,7 +1465,7 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
                                 match comp_el with 
                                     IncludeInputSection(retain_pol, fname, linkable_idx, shndx, isec, img) -> 
                                         flag_is_set shf_alloc isec.elf64_section_flags
-                                    | IncludeCommonSymbol(retain_pol, fname, def, img) -> 
+                                    | IncludeCommonSymbol(retain_pol, fname, linkable_idx, def, img) -> 
                                         (* common symbols are allocatable *) true
                                     | ProvideSymbol(pol, name, spec) -> 
                                         (* symbols make a section allocatable? HMM *) true

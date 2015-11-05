@@ -420,7 +420,7 @@ let {ocaml} string_of_aarch64_relocation_type rel_type =
 val aarch64_le_reloc : forall 'abifeature. reloc_fn 'abifeature
 let aarch64_le_reloc r =
   if r = r_aarch64_none then
-    (false, (fun img -> (fun rr -> (0, fun s -> fun a -> fun e -> e))))
+    (false, (fun img -> (fun site_addr -> (fun rr -> (0, fun s -> fun a -> fun e -> e)))))
   else
     (false, noop_reloc_apply)
     
