@@ -187,13 +187,13 @@ definition natural_ordering  :: " nat \<Rightarrow> nat \<Rightarrow> ordering "
 
 (*val merge_by : forall 'a. ('a -> 'a -> ordering) -> list 'a -> list 'a -> list 'a*)
 function (sequential,domintros)  merge_by  :: "('a \<Rightarrow> 'a \<Rightarrow> ordering)\<Rightarrow> 'a list \<Rightarrow> 'a list \<Rightarrow> 'a list "  where 
-     " merge_by cmp ([]) ys = ( ys )"
-|" merge_by cmp xs ([]) = ( xs )"
-|" merge_by cmp (x # xs) (y # ys) = (
-      if cmp x y = LT then
-        x #(merge_by cmp xs (y # ys))
+     " merge_by comp1 ([]) ys = ( ys )"
+|" merge_by comp1 xs ([]) = ( xs )"
+|" merge_by comp1 (x # xs) (y # ys) = (
+      if comp1 x y = LT then
+        x #(merge_by comp1 xs (y # ys))
       else
-        y #(merge_by cmp (x # xs) ys))" 
+        y #(merge_by comp1 (x # xs) ys))" 
 by pat_completeness auto
 
 

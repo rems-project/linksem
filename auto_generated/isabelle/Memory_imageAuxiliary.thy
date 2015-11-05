@@ -29,6 +29,7 @@ imports
 	 "Elf_symbol_table" 
 	 "Elf_file" 
 	 "Elf_relocation" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_map_extra" 
 	 "Multimap" 
 	 "Memory_image" 
 
@@ -40,6 +41,8 @@ begin
 (* Termination Proofs                               *)
 (*                                                  *)
 (****************************************************)
+
+termination gcd by lexicographic_order
 
 termination nat_range by lexicographic_order
 

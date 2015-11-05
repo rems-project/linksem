@@ -13,11 +13,11 @@ struct
   in end;
   val _ = Theory.link_parents
           ("abi_utilities",
-          Arbnum.fromString "1445346318",
-          Arbnum.fromString "937123")
+          Arbnum.fromString "1445438975",
+          Arbnum.fromString "524862")
           [("memory_image_orderings",
-           Arbnum.fromString "1445346291",
-           Arbnum.fromString "61854")];
+           Arbnum.fromString "1445438955",
+           Arbnum.fromString "493782")];
   val _ = Theory.incorporate_types "abi_utilities"
        [("relocation_operator_expression", 1), ("relocation_operator2", 0),
         ("relocation_operator", 0), ("relocation_frame", 2),

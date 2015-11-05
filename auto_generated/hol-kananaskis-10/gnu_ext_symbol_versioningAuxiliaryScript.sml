@@ -20,7 +20,7 @@ val _ = new_theory "gnu_ext_symbol_versioningAuxiliary"
 (* val gst = Defn.tgoal_no_defn (read_gnu_ext_elf32_verdefs_def, read_gnu_ext_elf32_verdefs_ind) *)
 val (read_gnu_ext_elf32_verdefs_rw, read_gnu_ext_elf32_verdefs_ind_rw) =
   Defn.tprove_no_defn ((read_gnu_ext_elf32_verdefs_def, read_gnu_ext_elf32_verdefs_ind),
-    (* the termination proof *)
+    cheat
   )
 val read_gnu_ext_elf32_verdefs_rw = save_thm ("read_gnu_ext_elf32_verdefs_rw", read_gnu_ext_elf32_verdefs_rw);
 val read_gnu_ext_elf32_verdefs_ind_rw = save_thm ("read_gnu_ext_elf32_verdefs_ind_rw", read_gnu_ext_elf32_verdefs_ind_rw);
@@ -29,7 +29,7 @@ val read_gnu_ext_elf32_verdefs_ind_rw = save_thm ("read_gnu_ext_elf32_verdefs_in
 (* val gst = Defn.tgoal_no_defn (read_gnu_ext_elf64_verdefs_def, read_gnu_ext_elf64_verdefs_ind) *)
 val (read_gnu_ext_elf64_verdefs_rw, read_gnu_ext_elf64_verdefs_ind_rw) =
   Defn.tprove_no_defn ((read_gnu_ext_elf64_verdefs_def, read_gnu_ext_elf64_verdefs_ind),
-    (* the termination proof *)
+    cheat
   )
 val read_gnu_ext_elf64_verdefs_rw = save_thm ("read_gnu_ext_elf64_verdefs_rw", read_gnu_ext_elf64_verdefs_rw);
 val read_gnu_ext_elf64_verdefs_ind_rw = save_thm ("read_gnu_ext_elf64_verdefs_ind_rw", read_gnu_ext_elf64_verdefs_ind_rw);
@@ -38,7 +38,7 @@ val read_gnu_ext_elf64_verdefs_ind_rw = save_thm ("read_gnu_ext_elf64_verdefs_in
 (* val gst = Defn.tgoal_no_defn (obtain_gnu_ext_elf32_veraux_def, obtain_gnu_ext_elf32_veraux_ind) *)
 val (obtain_gnu_ext_elf32_veraux_rw, obtain_gnu_ext_elf32_veraux_ind_rw) =
   Defn.tprove_no_defn ((obtain_gnu_ext_elf32_veraux_def, obtain_gnu_ext_elf32_veraux_ind),
-    (* the termination proof *)
+    cheat
   )
 val obtain_gnu_ext_elf32_veraux_rw = save_thm ("obtain_gnu_ext_elf32_veraux_rw", obtain_gnu_ext_elf32_veraux_rw);
 val obtain_gnu_ext_elf32_veraux_ind_rw = save_thm ("obtain_gnu_ext_elf32_veraux_ind_rw", obtain_gnu_ext_elf32_veraux_ind_rw);
@@ -47,7 +47,7 @@ val obtain_gnu_ext_elf32_veraux_ind_rw = save_thm ("obtain_gnu_ext_elf32_veraux_
 (* val gst = Defn.tgoal_no_defn (obtain_gnu_ext_elf64_veraux_def, obtain_gnu_ext_elf64_veraux_ind) *)
 val (obtain_gnu_ext_elf64_veraux_rw, obtain_gnu_ext_elf64_veraux_ind_rw) =
   Defn.tprove_no_defn ((obtain_gnu_ext_elf64_veraux_def, obtain_gnu_ext_elf64_veraux_ind),
-    (* the termination proof *)
+    cheat
   )
 val obtain_gnu_ext_elf64_veraux_rw = save_thm ("obtain_gnu_ext_elf64_veraux_rw", obtain_gnu_ext_elf64_veraux_rw);
 val obtain_gnu_ext_elf64_veraux_ind_rw = save_thm ("obtain_gnu_ext_elf64_veraux_ind_rw", obtain_gnu_ext_elf64_veraux_ind_rw);
@@ -56,7 +56,7 @@ val obtain_gnu_ext_elf64_veraux_ind_rw = save_thm ("obtain_gnu_ext_elf64_veraux_
 (* val gst = Defn.tgoal_no_defn (read_gnu_ext_elf32_verneeds_def, read_gnu_ext_elf32_verneeds_ind) *)
 val (read_gnu_ext_elf32_verneeds_rw, read_gnu_ext_elf32_verneeds_ind_rw) =
   Defn.tprove_no_defn ((read_gnu_ext_elf32_verneeds_def, read_gnu_ext_elf32_verneeds_ind),
-    (* the termination proof *)
+    cheat
   )
 val read_gnu_ext_elf32_verneeds_rw = save_thm ("read_gnu_ext_elf32_verneeds_rw", read_gnu_ext_elf32_verneeds_rw);
 val read_gnu_ext_elf32_verneeds_ind_rw = save_thm ("read_gnu_ext_elf32_verneeds_ind_rw", read_gnu_ext_elf32_verneeds_ind_rw);
@@ -65,7 +65,7 @@ val read_gnu_ext_elf32_verneeds_ind_rw = save_thm ("read_gnu_ext_elf32_verneeds_
 (* val gst = Defn.tgoal_no_defn (read_gnu_ext_elf64_verneeds_def, read_gnu_ext_elf64_verneeds_ind) *)
 val (read_gnu_ext_elf64_verneeds_rw, read_gnu_ext_elf64_verneeds_ind_rw) =
   Defn.tprove_no_defn ((read_gnu_ext_elf64_verneeds_def, read_gnu_ext_elf64_verneeds_ind),
-    (* the termination proof *)
+    cheat
   )
 val read_gnu_ext_elf64_verneeds_rw = save_thm ("read_gnu_ext_elf64_verneeds_rw", read_gnu_ext_elf64_verneeds_rw);
 val read_gnu_ext_elf64_verneeds_ind_rw = save_thm ("read_gnu_ext_elf64_verneeds_ind_rw", read_gnu_ext_elf64_verneeds_ind_rw);
@@ -74,7 +74,7 @@ val read_gnu_ext_elf64_verneeds_ind_rw = save_thm ("read_gnu_ext_elf64_verneeds_
 (* val gst = Defn.tgoal_no_defn (read_gnu_ext_elf32_vernauxs_def, read_gnu_ext_elf32_vernauxs_ind) *)
 val (read_gnu_ext_elf32_vernauxs_rw, read_gnu_ext_elf32_vernauxs_ind_rw) =
   Defn.tprove_no_defn ((read_gnu_ext_elf32_vernauxs_def, read_gnu_ext_elf32_vernauxs_ind),
-    (* the termination proof *)
+    cheat
   )
 val read_gnu_ext_elf32_vernauxs_rw = save_thm ("read_gnu_ext_elf32_vernauxs_rw", read_gnu_ext_elf32_vernauxs_rw);
 val read_gnu_ext_elf32_vernauxs_ind_rw = save_thm ("read_gnu_ext_elf32_vernauxs_ind_rw", read_gnu_ext_elf32_vernauxs_ind_rw);
@@ -83,7 +83,7 @@ val read_gnu_ext_elf32_vernauxs_ind_rw = save_thm ("read_gnu_ext_elf32_vernauxs_
 (* val gst = Defn.tgoal_no_defn (obtain_gnu_ext_elf64_vernaux_def, obtain_gnu_ext_elf64_vernaux_ind) *)
 val (obtain_gnu_ext_elf64_vernaux_rw, obtain_gnu_ext_elf64_vernaux_ind_rw) =
   Defn.tprove_no_defn ((obtain_gnu_ext_elf64_vernaux_def, obtain_gnu_ext_elf64_vernaux_ind),
-    (* the termination proof *)
+    cheat
   )
 val obtain_gnu_ext_elf64_vernaux_rw = save_thm ("obtain_gnu_ext_elf64_vernaux_rw", obtain_gnu_ext_elf64_vernaux_rw);
 val obtain_gnu_ext_elf64_vernaux_ind_rw = save_thm ("obtain_gnu_ext_elf64_vernaux_ind_rw", obtain_gnu_ext_elf64_vernaux_ind_rw);

@@ -13,14 +13,14 @@ struct
   in end;
   val _ = Theory.link_parents
           ("abi_amd64_serialisation",
-          Arbnum.fromString "1445346606",
-          Arbnum.fromString "430809")
+          Arbnum.fromString "1445439161",
+          Arbnum.fromString "261289")
           [("memory_image",
-           Arbnum.fromString "1445346243",
-           Arbnum.fromString "688958"),
+           Arbnum.fromString "1445438925",
+           Arbnum.fromString "21925"),
            ("abi_amd64_elf_header",
-           Arbnum.fromString "1445346493",
-           Arbnum.fromString "117772")];
+           Arbnum.fromString "1445439084",
+           Arbnum.fromString "180517")];
   val _ = Theory.incorporate_types "abi_amd64_serialisation" [];
 
   val idvector = 

@@ -67,7 +67,7 @@ val _ = lem_assertion "lookup_oneprev" ``lookupBy0
 (* val gst = Defn.tgoal_no_defn (findLowestEquiv_def, findLowestEquiv_ind) *)
 val (findLowestEquiv_rw, findLowestEquiv_ind_rw) =
   Defn.tprove_no_defn ((findLowestEquiv_def, findLowestEquiv_ind),
-    (* the termination proof *)
+    cheat
   )
 val findLowestEquiv_rw = save_thm ("findLowestEquiv_rw", findLowestEquiv_rw);
 val findLowestEquiv_ind_rw = save_thm ("findLowestEquiv_ind_rw", findLowestEquiv_ind_rw);
@@ -76,7 +76,7 @@ val findLowestEquiv_ind_rw = save_thm ("findLowestEquiv_ind_rw", findLowestEquiv
 (* val gst = Defn.tgoal_no_defn (findHighestEquiv_def, findHighestEquiv_ind) *)
 val (findHighestEquiv_rw, findHighestEquiv_ind_rw) =
   Defn.tprove_no_defn ((findHighestEquiv_def, findHighestEquiv_ind),
-    (* the termination proof *)
+    cheat
   )
 val findHighestEquiv_rw = save_thm ("findHighestEquiv_rw", findHighestEquiv_rw);
 val findHighestEquiv_ind_rw = save_thm ("findHighestEquiv_ind_rw", findHighestEquiv_ind_rw);

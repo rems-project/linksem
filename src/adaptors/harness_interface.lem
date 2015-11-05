@@ -738,12 +738,7 @@ let {ocaml} harness_string_of_elf32_symbol_table_entry num os proc symver vernee
           | Success s -> s
         end
   in
-  let sym =
-    match obtain_gnu_ext_elf32_symbol_version_information num symver verneed_auxs bs0 with
-      | Fail f   -> f
-      | Success s -> s
-    end
-  in
+  let sym = "" in
   let num =
     let temp = show num in
     let pad  = 3 - stringLength temp in

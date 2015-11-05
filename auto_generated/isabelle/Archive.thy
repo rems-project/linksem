@@ -161,14 +161,6 @@ function (sequential,domintros)  accum_archive_contents  :: "(string*byte_sequen
     )))" 
 by pat_completeness auto
 
-termination dropbytes
-  apply(relation "measure (\<lambda>(m, l). Byte_sequence.length0 l)")
-  apply auto
-  apply(simp add: naturalZero_def)
-  apply(simp add: length0.simps)
-done
-  
-
 (*val read_archive : byte_sequence -> error (list (string * byte_sequence))*)
 definition read_archive  :: " byte_sequence \<Rightarrow>((string*byte_sequence)list)error "  where 
      " read_archive bs = ( 

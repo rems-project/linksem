@@ -104,7 +104,7 @@ type input_unit = File of input_file_and_options
                 | Group of list (input_file_and_options)   (* NOT recursive *)
 
 val string_of_input_unit : input_unit -> string
-let string_of_input_unit u = 
+let {ocaml} string_of_input_unit u = 
     match u with
         File(spec, opts) -> 
             "single " ^ (show spec)
@@ -580,7 +580,7 @@ let rec cook_argv acc args =
     end
 
 val command_line : unit -> interpreted_command_line
-let command_line = fun _ -> (
+let {ocaml} command_line = fun _ -> (
     let cooked_argv = cook_argv [] (tail argv)
     in
     (* Now we use our fold-alike. *)

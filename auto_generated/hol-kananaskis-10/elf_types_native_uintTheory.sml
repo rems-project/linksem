@@ -13,8 +13,8 @@ struct
   in end;
   val _ = Theory.link_parents
           ("elf_types_native_uint",
-          Arbnum.fromString "1445345916",
-          Arbnum.fromString "991129")
+          Arbnum.fromString "1445438741",
+          Arbnum.fromString "175496")
           [("integer_word",
            Arbnum.fromString "1444913690",
            Arbnum.fromString "968203"),
@@ -22,8 +22,8 @@ struct
            Arbnum.fromString "1445345900",
            Arbnum.fromString "903755"),
            ("byte_sequence",
-           Arbnum.fromString "1445345884",
-           Arbnum.fromString "895224")];
+           Arbnum.fromString "1445438726",
+           Arbnum.fromString "742620")];
   val _ = Theory.incorporate_types "elf_types_native_uint" [];
 
   val idvector = 

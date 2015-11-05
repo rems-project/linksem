@@ -20,7 +20,7 @@ val _ = new_theory "elf_program_header_tableAuxiliary"
 (* val gst = Defn.tgoal_no_defn (read_elf32_program_header_table'_def, read_elf32_program_header_table'_ind) *)
 val (read_elf32_program_header_table'_rw, read_elf32_program_header_table'_ind_rw) =
   Defn.tprove_no_defn ((read_elf32_program_header_table'_def, read_elf32_program_header_table'_ind),
-    (* the termination proof *)
+    cheat
   )
 val read_elf32_program_header_table'_rw = save_thm ("read_elf32_program_header_table'_rw", read_elf32_program_header_table'_rw);
 val read_elf32_program_header_table'_ind_rw = save_thm ("read_elf32_program_header_table'_ind_rw", read_elf32_program_header_table'_ind_rw);
@@ -29,7 +29,7 @@ val read_elf32_program_header_table'_ind_rw = save_thm ("read_elf32_program_head
 (* val gst = Defn.tgoal_no_defn (read_elf64_program_header_table'_def, read_elf64_program_header_table'_ind) *)
 val (read_elf64_program_header_table'_rw, read_elf64_program_header_table'_ind_rw) =
   Defn.tprove_no_defn ((read_elf64_program_header_table'_def, read_elf64_program_header_table'_ind),
-    (* the termination proof *)
+    cheat
   )
 val read_elf64_program_header_table'_rw = save_thm ("read_elf64_program_header_table'_rw", read_elf64_program_header_table'_rw);
 val read_elf64_program_header_table'_ind_rw = save_thm ("read_elf64_program_header_table'_ind_rw", read_elf64_program_header_table'_ind_rw);

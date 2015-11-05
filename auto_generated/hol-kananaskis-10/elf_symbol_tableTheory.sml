@@ -13,14 +13,14 @@ struct
   in end;
   val _ = Theory.link_parents
           ("elf_symbol_table",
-          Arbnum.fromString "1445346153",
-          Arbnum.fromString "766665")
+          Arbnum.fromString "1445438870",
+          Arbnum.fromString "16827")
           [("string_table",
-           Arbnum.fromString "1445346001",
-           Arbnum.fromString "213329"),
+           Arbnum.fromString "1445438794",
+           Arbnum.fromString "925999"),
            ("elf_header",
-           Arbnum.fromString "1445345935",
-           Arbnum.fromString "766165")];
+           Arbnum.fromString "1445438753",
+           Arbnum.fromString "972064")];
   val _ = Theory.incorporate_types "elf_symbol_table"
        [("elf64_symbol_table_entry", 0), ("elf32_symbol_table_entry", 0)];
 

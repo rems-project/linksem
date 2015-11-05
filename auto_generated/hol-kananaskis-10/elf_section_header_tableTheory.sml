@@ -14,20 +14,20 @@ struct
   in end;
   val _ = Theory.link_parents
           ("elf_section_header_table",
-          Arbnum.fromString "1445346072",
-          Arbnum.fromString "814165")
+          Arbnum.fromString "1445438821",
+          Arbnum.fromString "375061")
           [("string_table",
-           Arbnum.fromString "1445346001",
-           Arbnum.fromString "213329"),
+           Arbnum.fromString "1445438794",
+           Arbnum.fromString "925999"),
            ("lem_map",
            Arbnum.fromString "1445005533",
            Arbnum.fromString "833263"),
            ("elf_program_header_table",
-           Arbnum.fromString "1445346037",
-           Arbnum.fromString "651703"),
+           Arbnum.fromString "1445438804",
+           Arbnum.fromString "927331"),
            ("elf_header",
-           Arbnum.fromString "1445345935",
-           Arbnum.fromString "766165")];
+           Arbnum.fromString "1445438753",
+           Arbnum.fromString "972064")];
   val _ = Theory.incorporate_types "elf_section_header_table"
        [("elf64_section_header_table_entry", 0),
         ("elf64_compression_header", 0),

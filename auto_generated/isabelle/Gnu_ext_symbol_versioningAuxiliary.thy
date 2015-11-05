@@ -48,6 +48,8 @@ termination read_gnu_ext_elf64_verneeds by lexicographic_order
 
 termination read_gnu_ext_elf32_vernauxs by lexicographic_order
 
+termination obtain_gnu_ext_elf32_vernaux by lexicographic_order
+
 termination obtain_gnu_ext_elf64_vernaux by lexicographic_order
 
 

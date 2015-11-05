@@ -572,13 +572,13 @@ type_synonym symbol_address_map
 definition get_elf32_symbol_image_address  :: "(elf32_symbol_table_entry)list \<Rightarrow> string_table \<Rightarrow>((string*(nat*nat*nat*nat))list)error "  where 
      " get_elf32_symbol_image_address symtab strtab = (
   mapM (\<lambda> entry . 
-    (let name1 = (unat(elf32_st_name   entry)) in
+    (let name2 = (unat(elf32_st_name   entry)) in
     (let addr = (unat(elf32_st_value   entry)) in
-    (let size2 = (unat(elf32_st_size   entry) *( 8 :: nat)) in
+    (let size3 = (unat(elf32_st_size   entry) *( 8 :: nat)) in
     (let typ1  = (get_symbol_type(elf32_st_info   entry)) in
     (let bnd  = (get_symbol_binding(elf32_st_info   entry)) in
-      String_table.get_string_at name1 strtab >>= (\<lambda> str . 
-      error_return (str, (typ1, size2, addr, bnd))))))))
+      String_table.get_string_at name2 strtab >>= (\<lambda> str . 
+      error_return (str, (typ1, size3, addr, bnd))))))))
   ) symtab )"
 
 
@@ -591,13 +591,13 @@ definition get_elf32_symbol_image_address  :: "(elf32_symbol_table_entry)list \<
 definition get_elf64_symbol_image_address  :: "(elf64_symbol_table_entry)list \<Rightarrow> string_table \<Rightarrow>((string*(nat*nat*nat*nat))list)error "  where 
      " get_elf64_symbol_image_address symtab strtab = (
   mapM (\<lambda> entry . 
-    (let name1 = (unat(elf64_st_name   entry)) in
+    (let name2 = (unat(elf64_st_name   entry)) in
     (let addr = (unat(elf64_st_value   entry)) in
-    (let size2 = (unat(elf64_st_size   entry)) in
+    (let size3 = (unat(elf64_st_size   entry)) in
     (let typ1  = (get_symbol_type(elf64_st_info   entry)) in
     (let bnd  = (get_symbol_binding(elf64_st_info   entry)) in 
-      String_table.get_string_at name1 strtab >>= (\<lambda> str . 
-      error_return (str, (typ1, size2, addr, bnd))))))))
+      String_table.get_string_at name2 strtab >>= (\<lambda> str . 
+      error_return (str, (typ1, size3, addr, bnd))))))))
   ) symtab )"
 
 

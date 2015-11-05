@@ -96,7 +96,7 @@ LEM_LINK_SRC := elf_memory_image.lem elf_memory_image_of_elf64_file.lem command_
 # LEM_MODEL_ML includes all OCaml except for the main programs
 LEM_MODEL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_GNU_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC))
 
-LEM_MODEL_TP_THY := $(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_GNU_SRC) $(LEM_ABI_SRC) import_everything.lem # $(LEM_LINK_SRC)
+LEM_MODEL_TP_THY := $(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_GNU_SRC) $(LEM_ABI_SRC) archive.lem command_line.lem import_everything.lem # $(LEM_LINK_SRC)
 OCAML_LIB_OBJS := unix.cma str.cma nums.cma zarith.cma batteries.cma nat_num.cmo big_int_impl.cmo nat_big_num.cmo uint.cma
 LEM_OCAML_OBJS := lem.cmo lem_basic_classes.cmo lem_function.cmo lem_list.cmo lem_num.cmo lem_sorting.cmo \
     xstring.cmo pset.cmo pmap.cmo lem_maybe.cmo lem_map.cmo lem_set.cmo lem_string_extra.cmo

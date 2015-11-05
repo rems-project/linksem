@@ -115,6 +115,8 @@ definition read_unsigned_char  :: " endianness \<Rightarrow> byte_sequence \<Rig
 
 (*val natural_of_elf32_addr : elf32_addr -> natural*)
 
+(*val elf32_addr_of_natural : natural -> elf32_addr*)
+
 (*val elf32_addr_of_quad : byte -> byte -> byte -> byte -> elf32_addr*) (* TODO: add custom binding *)
 
 (*val read_elf32_addr : endianness -> byte_sequence -> error (elf32_addr * byte_sequence)*)
@@ -288,6 +290,8 @@ end
 (*val string_of_elf32_off : elf32_off -> string*)
 
 (*val natural_of_elf32_off : elf32_off -> natural*)
+
+(*val elf32_off_of_natural : natural -> elf32_off*)
 
 (*val elf32_off_of_quad : byte -> byte -> byte -> byte -> elf32_off*)
 
@@ -603,6 +607,13 @@ declare bytes_of_elf64_sxword.simps [simp del]
 definition unsafe_natural_land  :: " nat \<Rightarrow> nat \<Rightarrow> nat "  where 
      " unsafe_natural_land arg1 arg2 = ( unat (
     Elf_Types_Local.uint64_land (of_int (int arg1)) (of_int (int arg2))
+))"
+
+
+(*val unsafe_natural_lor : natural -> natural -> natural*)
+definition unsafe_natural_lor  :: " nat \<Rightarrow> nat \<Rightarrow> nat "  where 
+     " unsafe_natural_lor arg1 arg2 = ( unat (
+    Elf_Types_Local.uint64_lor (of_int (int arg1)) (of_int (int arg2))
 ))"
 
 end

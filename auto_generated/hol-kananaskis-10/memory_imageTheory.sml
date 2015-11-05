@@ -13,17 +13,17 @@ struct
   in end;
   val _ = Theory.link_parents
           ("memory_image",
-          Arbnum.fromString "1445346243",
-          Arbnum.fromString "688958")
+          Arbnum.fromString "1445438925",
+          Arbnum.fromString "21925")
           [("multimap",
            Arbnum.fromString "1445346206",
            Arbnum.fromString "55115"),
            ("elf_relocation",
-           Arbnum.fromString "1445346217",
-           Arbnum.fromString "464985"),
+           Arbnum.fromString "1445438905",
+           Arbnum.fromString "579934"),
            ("elf_file",
-           Arbnum.fromString "1445346182",
-           Arbnum.fromString "856027")];
+           Arbnum.fromString "1445438889",
+           Arbnum.fromString "721405")];
   val _ = Theory.incorporate_types "memory_image"
        [("symbol_reference_and_reloc_site", 0), ("symbol_reference", 0),
         ("symbol_definition", 0), ("reloc_site", 0), ("range_tag", 1),
