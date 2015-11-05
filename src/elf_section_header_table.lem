@@ -1075,7 +1075,7 @@ val obtain_elf32_tls_template : elf32_section_header_table -> elf32_section_head
 let obtain_elf32_tls_template sht =
   List.filter (fun ent ->
     let flags = natural_of_elf32_word ent.elf32_sh_flags in  
-      unsafe_natural_land flags shf_tls <> 0) sht
+      natural_land flags shf_tls <> 0) sht
 
 (** [obtain_elf64_tls_template sht] extracts the TLS template (i.e. all sections
   * in section header table [sht] that have their TLS flag bit set).
@@ -1084,7 +1084,7 @@ val obtain_elf64_tls_template : elf64_section_header_table -> elf64_section_head
 let obtain_elf64_tls_template sht =
   List.filter (fun ent ->
     let flags = natural_of_elf64_xword ent.elf64_sh_flags in  
-      unsafe_natural_land flags shf_tls <> 0) sht
+      natural_land flags shf_tls <> 0) sht
       
 (** [obtain_elf32_hash_table endian sht bs0] extracts a hash table from an ELF file
   * providing a section of type SHT_HASH exists in section header table [sht].

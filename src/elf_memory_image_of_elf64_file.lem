@@ -67,12 +67,27 @@ let elf_memory_image_of_elf64_file a fname f =
      * sectionwise or segmentwise view. *)
     match f.elf64_file_program_header_table with
         [] ->   let extracted_symbols =  (extract_definitions_from_symtab_of_type sht_symtab f)
-                in 
+                in
+                let interpreted_sections_without_null = match f.elf64_file_interpreted_sections with
+                    [] -> failwith "impossible: empty list of interpreted sections"
+                    | null_entry :: more -> more
+                end
+                in
                 let section_names_and_elements = mapMaybei (fun i -> (fun isec -> 
                     (* In principle, we can have unnamed sections. But 
-                     * don't add the dummy initial SHT entry. *)
-                    if isec = null_elf64_interpreted_section then Nothing
-                    else Just (create_unique_name_for_section_from_index i isec f, <|
+                     * don't add the dummy initial SHT entry. This is *not* in the 
+                     * list of interpreted sections. *)
+                    if isec = null_elf64_interpreted_section then
+                        (if i = 0 then Nothing else failwith "internal error: null interpreted section not at index 0")
+                    else 
+                        if i = 0 then failwith "internal error: non-null interpreted section at index 0"
+                        else
+                        let created_name = create_unique_name_for_section_from_index i isec f
+                        in
+                        let _ = errln ("In file " ^ fname ^ " created element name " ^ created_name ^ " for section idx " ^ (show i) ^ ", name " ^ 
+                            isec.elf64_section_name_as_string)
+                        in
+                        Just (created_name, <|
                         startpos = Nothing
                       ; length = Just isec.elf64_section_size
                       ; contents = byte_pattern_of_byte_sequence isec.elf64_section_body
@@ -95,14 +110,15 @@ let elf_memory_image_of_elf64_file a fname f =
                 in
                 let all_names_and_elements = section_names_and_elements ++ common_symbol_names_and_elements
                 in
-                (* -- annotations are reloc sites, symbol defs, ELF sections/segments/headers, PLT/GOT/...  *)
-                let (elf_sections : list (maybe element_range * elf_range_tag)) = mapMaybei (fun secidx -> (
+                (* -- annotations are reloc sites, symbol defs, ELF sections/segments/headers, PLT/GOT/...
+                 * Since we stripped the null SHT entry, mapMaybei would ideally index from one. We add one.  *)
+                let (elf_sections : list (maybe element_range * elf_range_tag)) = mapMaybei (fun secidx_minus_one -> (
                     (fun (isec, (secname, _)) -> 
                         let (r : maybe element_range) = (Just(secname, (0, isec.elf64_section_size)))
                         in
-                        Just (r, FileFeature(ElfSection(secidx, isec)))
+                        Just (r, FileFeature(ElfSection(secidx_minus_one + 1, isec)))
                     )))
-                    (zip f.elf64_file_interpreted_sections section_names_and_elements)
+                    (zip interpreted_sections_without_null section_names_and_elements)
                 in
                 let (symbol_defs : list (maybe element_range * elf_range_tag)) = mapMaybe
                     (fun x -> 
@@ -121,7 +137,7 @@ let elf_memory_image_of_elf64_file a fname f =
                                  in
                                  Just(element_name, (0, natural_of_elf64_xword x.def_syment.elf64_st_size))
                             else 
-                                let (section_name, _) = match index section_num section_names_and_elements with
+                                let (section_name, _) = match index (section_num - 1) section_names_and_elements with
                                     Just x -> x
                                     | Nothing -> failwith ("symbol " ^ x.def_symname ^ " references nonexistent section")
                                 end
@@ -150,7 +166,7 @@ let elf_memory_image_of_elf64_file a fname f =
                             | Nothing -> failwith "impossible: reloc site has no reloc"
                         end
                         in
-                        let (section_name, _) = match index (rel.ref_src_scn) section_names_and_elements with
+                        let (section_name, _) = match index (rel.ref_src_scn - 1) section_names_and_elements with
                             Just y -> y
                             | Nothing -> failwith "relocs came from nonexistent section"
                         end
@@ -224,7 +240,16 @@ let elf_memory_image_of_elf64_file a fname f =
                         <|
                            startpos = element.startpos
                          ; length   = element.length
-                         ; contents = apply_content_relocations name element.contents
+                         ; contents = 
+                            let _ = errln ("Reloc-relaxing section " ^ name ^ " in file " ^ fname ^ ": before, first 20 bytes: " ^
+                                (show (take 20 element.contents)))
+                            in
+                            let relaxed = apply_content_relocations name element.contents
+                            in
+                            let _ = errln ("After, first 20 bytes: " ^  (show (take 20 relaxed)))
+                            in
+                            relaxed
+
                          |>
                     )
                   ) all_names_and_elements

@@ -82,4 +82,6 @@ let gnu_extend a =
     ; make_phdrs          = a.make_phdrs (* FIXME: also make the GNU phdrs! *)
     ; max_phnum           = 3 + a.max_phnum (* FIXME: GNU_RELRO, GNU_STACK; what else? *)
     ; guess_entry_point   = a.guess_entry_point
+    ; pad_data            = a.pad_data
+    ; pad_code            = a.pad_code
     |>

@@ -40,13 +40,6 @@ open import Elf_memory_image
 open import Elf_memory_image_of_elf64_file
 open import Linker_script
 
-let section_name isec img = match name_of_elf_section isec img with
-    Just x -> x
-    | Nothing -> ""
-end
-
-let all_sections_with_indices img = elf_memory_image_sections_with_indices img
-
 let all_common_symbols img = List.filter (fun def -> 
     natural_of_elf64_half def.def_syment.elf64_st_shndx = shn_common
 ) (elf_memory_image_defined_symbols img)
@@ -337,6 +330,24 @@ let strip_metadata_sections reloc_decisions a img =
 val expand_sections : abi any_abi_feature -> set Command_line.link_option -> binding_map -> natural -> Linkable_list.linkable_item -> list Linker_script.input_spec
 let expand_sections a options bindings_by_name linkable_idx item = match item with
     (RelocELF(img), (fname, blob, origin), input_opts) -> 
+        let _ = List.foldl (fun _ -> fun (isec, shndx) ->  
+            let _ = errln ("For file " ^ fname ^ " before stripping, saw section idx " ^ (show shndx) ^ 
+                " with name " ^ isec.elf64_section_name_as_string ^ ", first 20 bytes: " ^ (show (take 20 (
+                    (let maybe_elname = elf_memory_image_element_coextensive_with_section shndx img
+                     in
+                     match maybe_elname with
+                        Nothing -> failwith "impossible: no such section"
+                        | Just idstr -> 
+                            match Map.lookup idstr img.elements with
+                                Just el -> el.contents
+                                | Nothing -> failwith "no such element"
+                            end
+                    end
+                    )))))
+                in
+                ()
+            ) () (elf_memory_image_sections_with_indices img)
+        in
         let reloc_decisions = decide_fate_of_relocs linkable_idx a options bindings_by_name item img
         in 
         (* Now we have a decision for each reloc: Leave, Apply, MakePIC. Which ones
@@ -355,14 +366,31 @@ let expand_sections a options bindings_by_name linkable_idx item = match item wi
          * pulls all .rela.* sections into .rela.dyn, whereas these ones *don't* go in there.
          * So FIXME: to support this, we need a way to re-add them, probably when we 
          * generate meta-output like .symtab etc.. *)
-        [InputSection(<| 
+        [
+            let short_name = short_string_of_linkable_item item
+            in
+            let _ = errln ("For file " ^ short_name ^ " after stripping, saw section idx " ^ (show shndx) ^ 
+                " with name " ^ isec.elf64_section_name_as_string ^ ", first 20 bytes: " ^ (show (take 20 (
+                    (let maybe_elname = elf_memory_image_element_coextensive_with_section shndx stripped_img_with_reloc_sections
+                     in
+                     match maybe_elname with
+                        Nothing -> failwith "impossible: no such section"
+                        | Just idstr -> 
+                            match Map.lookup idstr stripped_img_with_reloc_sections.elements with
+                                Just el -> el.contents
+                                | Nothing -> failwith "no such element"
+                            end
+                    end
+                    )))))
+            in
+        InputSection(<| 
             idx   = linkable_idx
-        ;   fname = short_string_of_linkable_item item
+        ;   fname = short_name
         ;   img   = stripped_img_with_reloc_sections
         ;   shndx = shndx
-        ;   secname = section_name isec stripped_img_with_reloc_sections
+        ;   secname = isec.elf64_section_name_as_string
         ;   isec = isec
-         |>) | forall ((isec, shndx) MEM all_sections_with_indices stripped_img_with_reloc_sections) | true (* not (a.section_is_special isec img *)
+         |>) | forall ((isec, shndx) MEM elf_memory_image_sections_with_indices stripped_img_with_reloc_sections) | true (* not (a.section_is_special isec img *)
         ]
         ++ (
         (* One item per common symbol. FIXME: what about common symbols that have the same name? 
@@ -580,7 +608,10 @@ let link script a options linkables =
                     tag_image (EntryPoint) el_name el_offset 0 output_image
                 | Nothing -> 
                     (* HMM. entry point symbol has no address at present. *)
-                    failwith "error: entry point does not have assigned address"
+                    failwith ("error: entry point address 0x" ^ (hex_string_of_natural addr) ^ " does not correspond to any element position")
             end
-        | Nothing -> output_image
+        | Nothing -> 
+            let _ = errln "Warning: not tagging entry point in output image"
+            in 
+            output_image
     end

@@ -37,7 +37,7 @@ let string_table_of_byte_sequence seq = mk_string_table (string_of_byte_sequence
 (** [empty] is the empty string table with an arbitrary choice of delimiter.
   *)
 val empty : string_table
-let empty = Strings (null_char, "")
+let empty = Strings (null_char, toString [null_char])
 
 (** [get_delimiating_character tbl] returns the delimiting character associated
   * with the string table [tbl], used to split the strings.
@@ -55,6 +55,11 @@ let get_base_string tbl =
   match tbl with
     | Strings (sep, base) -> base
   end
+
+(** [size tbl] returns the size in bytes of the string table [tbl].
+  *)
+val size : string_table -> natural
+let size tbl = naturalFromNat (stringLength (get_base_string tbl))
 
 (** [concat xs] concatenates several string tables into one providing they all
   * have the same delimiting character.
@@ -104,7 +109,7 @@ val insert_string : string -> string_table -> (natural * string_table)
 let insert_string s t = 
     match find_string s t with
         Nothing -> match t with
-            Strings(delim, base) -> (1 + naturalFromNat (stringLength base), Strings(delim, base ^ (toString [delim]) ^ s))
+            Strings(delim, base) -> (1 + naturalFromNat (stringLength base), Strings(delim, base ^ s ^ (toString [delim])))
             end
         | Just pos -> (pos, t)
     end

@@ -420,7 +420,19 @@ let read_elf32_symbol_table_entry endian bs0 =
     return (<| elf32_st_name = st_name; elf32_st_value = st_value;
                  elf32_st_size = st_size; elf32_st_info = st_info;
                  elf32_st_other = st_other; elf32_st_shndx = st_shndx |>, bs0)
-          
+
+val bytes_of_elf32_symbol_table_entry : endianness ->
+  elf32_symbol_table_entry -> byte_sequence
+let bytes_of_elf32_symbol_table_entry endian entry =
+  Byte_sequence.from_byte_lists [
+    bytes_of_elf32_word endian entry.elf32_st_name
+  ; bytes_of_elf32_addr endian entry.elf32_st_value
+  ; bytes_of_elf32_word endian entry.elf32_st_size
+  ; bytes_of_unsigned_char entry.elf32_st_info
+  ; bytes_of_unsigned_char entry.elf32_st_other
+  ; bytes_of_elf32_half endian entry.elf32_st_shndx
+  ]
+
 (** [read_elf64_symbol_table_entry endian bs0] reads an ELF symbol table entry
   * record from byte sequence [bs0] assuming endianness [endian], returning the
   * remainder of the byte sequence.  Fails if the byte sequence is not long enough.
@@ -437,6 +449,18 @@ let read_elf64_symbol_table_entry endian bs0 =
     return (<| elf64_st_name = st_name; elf64_st_info = st_info;
                  elf64_st_other = st_other; elf64_st_shndx = st_shndx;
                  elf64_st_value = st_value; elf64_st_size = st_size |>, bs0)
+
+val bytes_of_elf64_symbol_table_entry : endianness ->
+  elf64_symbol_table_entry -> byte_sequence
+let bytes_of_elf64_symbol_table_entry endian entry =
+  Byte_sequence.from_byte_lists [
+    bytes_of_elf64_word endian entry.elf64_st_name
+  ; bytes_of_unsigned_char entry.elf64_st_info
+  ; bytes_of_unsigned_char entry.elf64_st_other
+  ; bytes_of_elf64_half endian entry.elf64_st_shndx
+  ; bytes_of_elf64_addr  endian entry.elf64_st_value
+  ; bytes_of_elf64_xword endian entry.elf64_st_size
+  ]
 
 (** [read_elf32_symbol_table endian bs0] reads a symbol table from byte sequence
   * [bs0] assuming endianness [endian].  Assumes [bs0]'s length modulo the size

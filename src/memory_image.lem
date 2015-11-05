@@ -356,6 +356,8 @@ type abi 'abifeature = (* forall 'abifeature. *)
     ; make_phdrs         : abi 'abifeature -> natural (* file type *) -> annotated_memory_image 'abifeature -> list (natural * elf64_interpreted_section) -> list elf64_program_header_table_entry
     ; max_phnum          : natural
     ; guess_entry_point  : annotated_memory_image 'abifeature -> maybe natural
+    ; pad_data           : natural -> list byte
+    ; pad_code           : natural -> list byte
     |>
 
 val align_up_to : natural -> natural -> natural
@@ -370,12 +372,35 @@ let round_down_to align addr =
     in
     quot * align
 
+val uint32_max : natural
+let uint32_max = (2 ** 32) - 1
+
+val uint64_max : natural
+let uint64_max =
+    (* HACK around Lem's inability to parse 18446744073709551615: 
+     * the square of uint32_max is 
+     *       (2**32 - 1) (2**32 - 1)
+     * i.e.   2**64 - 2**32 - 2**32 + 1
+     * So
+     * 2**64 - 1 =  uint32_max * uint32_max  + 2**32 + 2**32 - 2
+     *)
+    uint32_max * uint32_max - 2 + (2**33)
+    (* 18446744073709551615 *) (* i.e. 0x ffff ffff ffff ffff *)
+    (* HMM. This still overflows int64 *)
+
+(* The 2's complement of a value, at 64-bit width *)
+val compl64 : natural -> natural
+let compl64 v =
+    1 + (natural_lxor v uint64_max)
+
 val gcd : natural -> natural -> natural
 let rec gcd a b = 
     if b = 0 then a else gcd b (a mod b)
 
 val lcm : natural -> natural -> natural
 let lcm a b = 
+    (* let _ = errln ("lcm of " ^ (show a) ^ " and " ^ (show b) ^ "?")
+    in *)
     (a * b) / (gcd a b)
 
 val address_of_range : forall 'abifeature. element_range -> annotated_memory_image 'abifeature -> natural
@@ -474,6 +499,23 @@ let rec relax_byte_pattern_revacc revacc bytes cares =
 val relax_byte_pattern : list (maybe byte) -> list bool -> list (maybe byte)
 let rec relax_byte_pattern bytes cares = 
     relax_byte_pattern_revacc [] bytes cares
+
+type pad_fn = natural -> list byte
+
+val concretise_byte_pattern : list byte -> natural -> list (maybe byte) -> pad_fn -> list byte
+let rec concretise_byte_pattern rev_acc acc_pad bs pad = 
+    match bs with
+        [] -> 
+            let padding_bytes = if acc_pad > 0 then pad acc_pad else []
+            in List.reverse ((List.reverse padding_bytes) ++ rev_acc)
+        | Just(b) :: more -> 
+            (* flush accumulated padding *)
+            let padding_bytes = if acc_pad > 0 then pad acc_pad else []
+            in
+            concretise_byte_pattern (b :: ((List.reverse padding_bytes) ++ rev_acc)) 0 more pad
+        | Nothing :: more -> 
+            concretise_byte_pattern rev_acc (acc_pad+1) more pad
+    end
 
 val byte_option_matches_byte : maybe byte -> byte -> bool
 let byte_option_matches_byte optb b =
@@ -578,6 +620,9 @@ let address_to_element_and_offset addr img =
     (* Find the element with the highest address <= addr *)
     let (maybe_highest_le : maybe (natural * string * element))
      = List.foldl (fun maybe_current_max_le -> (fun (el_name, el_rec) ->
+        (* let _ = errln ("Saw element named `" ^ el_name ^ " with startpos " ^ (
+            match el_rec.startpos with Just addr -> ("0x" ^ (hex_string_of_natural addr)) | Nothing -> "(none)" end))
+        in *)
         match (maybe_current_max_le, el_rec.startpos) with
             (Nothing, Nothing) -> Nothing
             | (Nothing, Just pos) -> if pos <= addr then Just (pos, el_name, el_rec) else Nothing
@@ -591,8 +636,11 @@ let address_to_element_and_offset addr img =
             (* final sanity check: is the length definite, and if so, does the
              * element span far enough? *)
             match el_rec.length with
-                Just l -> if el_def_startpos + l <= addr then Just (el_name, addr - el_def_startpos) else Nothing
-                | Nothing -> Nothing
+                Just l -> if el_def_startpos + l >= addr 
+                    then Just (el_name, addr - el_def_startpos) 
+                    else 
+                        let _ = errln ("Discounting " ^ el_name ^ " because length is too short") in Nothing
+                | Nothing -> let _ = errln ("Gave up because element has unknown length") in Nothing
             end
         | Nothing -> 
             (* no elements with a low enough assigned address, so nothing *)

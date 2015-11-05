@@ -1278,7 +1278,7 @@ val bytes_of_elf32_header : elf32_header -> byte_sequence
 let bytes_of_elf32_header hdr =
   let endian = deduce_endianness hdr.elf32_ident in
     Byte_sequence.from_byte_lists [
-      List.map bytes_of_unsigned_char hdr.elf32_ident
+      List.map byte_of_unsigned_char hdr.elf32_ident
     ; bytes_of_elf32_half endian hdr.elf32_type
     ; bytes_of_elf32_half endian hdr.elf32_machine
     ; bytes_of_elf32_word endian hdr.elf32_version
@@ -1301,7 +1301,7 @@ val bytes_of_elf64_header : elf64_header -> byte_sequence
 let bytes_of_elf64_header hdr =
   let endian = deduce_endianness hdr.elf64_ident in
     Byte_sequence.from_byte_lists [
-      List.map bytes_of_unsigned_char hdr.elf64_ident
+      List.map byte_of_unsigned_char hdr.elf64_ident
     ; bytes_of_elf64_half endian hdr.elf64_type
     ; bytes_of_elf64_half endian hdr.elf64_machine
     ; bytes_of_elf64_word endian hdr.elf64_version

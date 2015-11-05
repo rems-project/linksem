@@ -131,11 +131,8 @@ let string_of_amd64_relocation_type rel_type =
   else
     "Invalid X86_64 relocation"
 
-(** [width_of_x86_64_relocation m s] yields the width in bytes of the relocatable field, 
-  * when resolving to a defined maybe symbol [s] (or Nothing, if weak).
-  *)
-val amd64_reloc : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature =>
-    reloc_fn 'abifeature
+(** [amd64_reloc r] yields a function that applies relocations of type [r]. *)
+val amd64_reloc : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature => reloc_fn 'abifeature
 let amd64_reloc r = match (string_of_amd64_relocation_type r) with
     | "R_X86_64_NONE" ->            (false, (fun img -> (fun rr -> (0, fun s -> fun a -> fun e -> e))))
     | "R_X86_64_64" ->              (true,  (fun img -> (fun rr -> (8, fun s -> fun a -> fun e -> s + a))))

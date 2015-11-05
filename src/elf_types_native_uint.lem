@@ -112,11 +112,14 @@ let read_unsigned_char endian bs0 =
   Byte_sequence.read_char bs0 >>= fun (u1, bs1) ->
   return (unsigned_char_of_byte u1, bs1)
 
-val bytes_of_unsigned_char : unsigned_char -> byte
+val byte_of_unsigned_char : unsigned_char -> byte
 
-declare ocaml    target_rep function bytes_of_unsigned_char u = `Char.chr` (`Uint32.to_int` u)
-declare isabelle target_rep function bytes_of_unsigned_char = `id`
-declare hol      target_rep function bytes_of_unsigned_char = `id`
+declare ocaml    target_rep function byte_of_unsigned_char u = `Char.chr` (`Uint32.to_int` u)
+declare isabelle target_rep function byte_of_unsigned_char = `id`
+declare hol      target_rep function byte_of_unsigned_char = `id`
+
+val bytes_of_unsigned_char : unsigned_char -> list byte
+let bytes_of_unsigned_char u = [byte_of_unsigned_char u]
 
 val equal_unsigned_char  : unsigned_char -> unsigned_char -> bool
 
@@ -941,6 +944,12 @@ declare ocaml    target_rep function elf64_xword_lor = `Uint64.logor`
 declare isabelle target_rep function elf64_xword_lor = `Elf_Types_Local.uint64_lor`
 declare hol      target_rep function elf64_xword_lor = `word_or`
 
+val elf64_xword_lxor : elf64_xword -> elf64_xword -> elf64_xword
+
+declare ocaml    target_rep function elf64_xword_lxor = `Uint64.logxor`
+declare isabelle target_rep function elf64_xword_lxor = `Elf_Types_Local.uint64_xor`
+declare hol      target_rep function elf64_xword_lxor = `word_xor`
+
 val elf64_xword_of_natural : natural -> elf64_xword
 
 declare ocaml    target_rep function elf64_xword_of_natural m = `Uint64.of_int64` (`Nat_big_num.to_int64` m)
@@ -1040,12 +1049,11 @@ instance (Show elf64_sxword)
   let show = string_of_elf64_sxword
 end
 
-val unsafe_natural_land : natural -> natural -> natural
-let unsafe_natural_land arg1 arg2 = natural_of_elf64_xword (
-    elf64_xword_land (elf64_xword_of_natural arg1) (elf64_xword_of_natural arg2)
-)
+val natural_land : natural -> natural -> natural
+declare ocaml    target_rep function natural_land = `Nat_big_num.bitwise_and`
 
-val unsafe_natural_lor : natural -> natural -> natural
-let unsafe_natural_lor arg1 arg2 = natural_of_elf64_xword (
-    elf64_xword_lor (elf64_xword_of_natural arg1) (elf64_xword_of_natural arg2)
-)
+val natural_lor : natural -> natural -> natural
+declare ocaml    target_rep function natural_lor = `Nat_big_num.bitwise_or`
+
+val natural_lxor : natural -> natural -> natural
+declare ocaml    target_rep function natural_lxor = `Nat_big_num.bitwise_xor`

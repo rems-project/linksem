@@ -12,6 +12,7 @@ open import String
 open import Show
 open import Assert_extra
 open import Error
+open import Missing_pervasives
 
 open import Elf_file
 open import Elf_header
@@ -135,7 +136,7 @@ let make_elf64_header data osabi abiv ma t entry shoff phoff phnum shnum shstrnd
        ; elf64_type     = elf64_half_of_natural t
        ; elf64_machine  = elf64_half_of_natural ma
        ; elf64_version  = elf64_word_of_natural elf_ev_current
-       ; elf64_entry    = elf64_addr_of_natural 0
+       ; elf64_entry    = elf64_addr_of_natural entry
        ; elf64_phoff    = elf64_off_of_natural phoff
        ; elf64_shoff    = elf64_off_of_natural shoff
        ; elf64_flags    = elf64_word_of_natural 0
@@ -149,18 +150,42 @@ let make_elf64_header data osabi abiv ma t entry shoff phoff phnum shnum shstrnd
 
 val make_load_phdrs : forall 'abifeature. abi 'abifeature -> annotated_memory_image 'abifeature -> list (natural * elf64_interpreted_section) -> list elf64_program_header_table_entry
 let make_load_phdrs a img section_pairs_bare_sorted_by_address = 
-    let (phdr_flags_from_section_flags : natural -> natural) = fun section_flags -> 
-        unsafe_natural_lor elf_pf_r (unsafe_natural_lor 
-            (if flag_is_set section_flags shf_write then elf_pf_w else 0)
-            (if flag_is_set section_flags shf_execinstr then elf_pf_x else 0))
+    let (phdr_flags_from_section_flags : natural -> string -> natural) = fun section_flags -> fun sec_name ->
+        let flags = natural_lor elf_pf_r (natural_lor 
+            (if flag_is_set shf_write section_flags then elf_pf_w else 0)
+            (if flag_is_set shf_execinstr section_flags then elf_pf_x else 0))
+        in
+        let _ = errln ("Phdr flags of section " ^ sec_name ^ "(ELF section flags 0x " ^ 
+            (hex_string_of_natural section_flags) ^ ") are 0x" ^ (hex_string_of_natural flags))
+        in
+        flags
     in
     let maybe_extend_phdr = fun phdr -> fun isec -> ( 
         let new_p_type = natural_of_elf64_word phdr.elf64_p_type
         in
-        let new_p_flags = phdr_flags_from_section_flags isec.elf64_section_flags 
+        let section_flags = phdr_flags_from_section_flags isec.elf64_section_flags isec.elf64_section_name_as_string
         in
-        if new_p_flags <> natural_of_elf64_word phdr.elf64_p_flags then Nothing
-        else
+        let can_combine_flags = fun flagsets -> 
+            (* The GNU linker happily adds a .rodata section to a RX segment,
+             * but not to a RW segment. So the only clear rule is: if any is writable,
+             * all must be writable. *)
+            let is_writable = fun flags -> natural_land flags elf_pf_w = elf_pf_w
+            in
+            let flagslist = Set_extra.toList flagsets
+            in
+            let union_flags = List.foldl natural_lor 0 flagslist
+            in
+            if List.any is_writable flagslist
+            then
+                if List.all is_writable flagslist then Just union_flags
+                else Nothing
+            else
+                Just union_flags
+        in
+        let maybe_extended = can_combine_flags { section_flags; natural_of_elf64_word phdr.elf64_p_flags }
+        in
+        if maybe_extended = Nothing then let _ = errln "flag mismatch" in Nothing
+        else let new_p_flags = match maybe_extended with Just flags -> flags | _ -> failwith "impossible" end in
         let new_p_offset = natural_of_elf64_off phdr.elf64_p_offset
         in
         let new_p_vaddr = natural_of_elf64_addr phdr.elf64_p_vaddr
@@ -170,7 +195,7 @@ let make_load_phdrs a img section_pairs_bare_sorted_by_address =
          * minus the existing file start offset of the phdr. 
          * Check that the new section begins after the old offset+filesz. *)
         if isec.elf64_section_offset < (natural_of_elf64_off phdr.elf64_p_offset) + (natural_of_elf64_xword phdr.elf64_p_filesz)
-        then Nothing (* ("offset went backwards") *)
+        then let _ = errln "offset went backwards" in Nothing
         else 
         let new_p_filesz = isec.elf64_section_offset + (if isec.elf64_section_type = sht_progbits then isec.elf64_section_size else 0)
         - natural_of_elf64_off phdr.elf64_p_offset
@@ -179,11 +204,13 @@ let make_load_phdrs a img section_pairs_bare_sorted_by_address =
          * minus the existing start vaddr of the phdr. 
          * Check that the new section begins after the old vaddr+memsz. *)
         if isec.elf64_section_addr < (natural_of_elf64_addr phdr.elf64_p_vaddr) + (natural_of_elf64_xword phdr.elf64_p_memsz)
-        then Nothing (* ("vaddr went backwards") *)
+        then let _ = errln "vaddr went backwards" in Nothing
         else 
         let new_p_memsz = isec.elf64_section_addr + isec.elf64_section_size - natural_of_elf64_addr phdr.elf64_p_vaddr
         in
-        let new_p_align =  lcm (natural_of_elf64_xword phdr.elf64_p_align) isec.elf64_section_align
+        let (one_if_zero : natural -> natural) = fun n -> if n = 0 then 1 else n
+        in
+        let new_p_align =  lcm (one_if_zero (natural_of_elf64_xword phdr.elf64_p_align)) (one_if_zero isec.elf64_section_align)
         in
         Just
           <| elf64_p_type   = elf64_word_of_natural new_p_type
@@ -199,13 +226,13 @@ let make_load_phdrs a img section_pairs_bare_sorted_by_address =
     in
     let new_phdr = fun isec -> 
       <| elf64_p_type   = elf64_word_of_natural elf_pt_load (** Type of the segment *)
-       ; elf64_p_flags  = elf64_word_of_natural (phdr_flags_from_section_flags isec.elf64_section_flags) (** Segment flags *)
-       ; elf64_p_offset = elf64_off_of_natural (round_down_to a.maxpagesize isec.elf64_section_offset) (** Offset from beginning of file for segment *)
-       ; elf64_p_vaddr  = elf64_addr_of_natural (round_down_to a.maxpagesize isec.elf64_section_addr)  (** Virtual address for segment in memory *)
+       ; elf64_p_flags  = elf64_word_of_natural (phdr_flags_from_section_flags isec.elf64_section_flags isec.elf64_section_name_as_string) (** Segment flags *)
+       ; elf64_p_offset = elf64_off_of_natural (round_down_to a.commonpagesize isec.elf64_section_offset) (** Offset from beginning of file for segment *)
+       ; elf64_p_vaddr  = elf64_addr_of_natural (round_down_to a.commonpagesize isec.elf64_section_addr) (** Virtual address for segment in memory *)
        ; elf64_p_paddr  = elf64_addr_of_natural 0 (** Physical address for segment *)
        ; elf64_p_filesz = elf64_xword_of_natural (if isec.elf64_section_type = sht_nobits then 0 else isec.elf64_section_size) (** Size of segment in file, in bytes *)
        ; elf64_p_memsz  = elf64_xword_of_natural isec.elf64_section_size (** Size of segment in memory image, in bytes *)
-       ; elf64_p_align  = elf64_xword_of_natural isec.elf64_section_align (** Segment alignment memory for memory and file *)
+       ; elf64_p_align  = elf64_xword_of_natural (* isec.elf64_section_align *) a.maxpagesize (** Segment alignment memory for memory and file *)
        |>
     in
     (* accumulate sections into the phdr *)
@@ -213,15 +240,22 @@ let make_load_phdrs a img section_pairs_bare_sorted_by_address =
         (* Do we have a current phdr? *)
         match accum_phdr_list with
             [] -> (* no, so make one *)
+                let _ = errln ("Starting the first LOAD phdr for section " ^ isec.elf64_section_name_as_string)
+                in
                 [new_phdr isec]
             | current_phdr :: more -> 
                 (* can we extend it with the current section? *)
                 match maybe_extend_phdr current_phdr isec with
-                    Nothing -> (new_phdr isec) :: current_phdr :: more
+                    Nothing -> 
+                        let _ = errln ("Starting new LOAD phdr for section " ^ isec.elf64_section_name_as_string)
+                        in
+                        (new_phdr isec) :: current_phdr :: more
                     | Just phdr -> phdr :: more
                 end
         end
-    ))) [] section_pairs_bare_sorted_by_address
+    ))) [] (List.filter (fun (idx, isec) -> flag_is_set shf_alloc isec.elf64_section_flags) section_pairs_bare_sorted_by_address)
+    in
+    let _ = errln "Successfully made phdrs"
     in
     List.reverse rev_list
     
@@ -262,6 +296,11 @@ let find_start_symbol_address img =
             (let (ranges, defs) = unzip all_entry_points in show ranges)) in Nothing
     end
 
+val pad_zeroes : natural -> list byte
+let pad_zeroes n = replicate n (byte_of_natural 0)
+
+val pad_0x90 : natural -> list byte
+let pad_0x90 n = replicate n (byte_of_natural (9 * 16))
 
 (* null_abi captures ABI details common to all ELF-based, System V-based systems.
  * HACK: for now, specialise to 64-bit ABIs. *)
@@ -279,6 +318,8 @@ let (null_abi : abi any_abi_feature) = <|
     ; make_phdrs = make_default_phdrs
     ; max_phnum = 2
     ; guess_entry_point = find_start_symbol_address
+    ; pad_data = pad_zeroes
+    ; pad_code = pad_zeroes
     |>
 
 val sysv_amd64_std_abi : abi any_abi_feature
@@ -294,8 +335,10 @@ let sysv_amd64_std_abi =
       (* XXX: DPM, changed from explicit reference to null_abi field due to problems in HOL4. *)
     ; symbol_is_generated_by_linker = (fun symname -> symname = "_GLOBAL_OFFSET_TABLE_")
     ; make_phdrs = make_default_phdrs
-    ; max_phnum = 5
+    ; max_phnum = 4
     ; guess_entry_point = find_start_symbol_address
+    ; pad_data = pad_zeroes
+    ; pad_code = pad_0x90
     |>
 
 val sysv_aarch64_le_std_abi : abi any_abi_feature
@@ -312,6 +355,8 @@ let sysv_aarch64_le_std_abi =
     ; make_phdrs = make_default_phdrs
     ; max_phnum = 5
     ; guess_entry_point = find_start_symbol_address
+    ; pad_data = pad_zeroes
+    ; pad_code = pad_zeroes
     |>
 
 val all_abis : list (abi any_abi_feature)

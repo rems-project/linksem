@@ -151,7 +151,7 @@ and
  * output_section_composition_elements, and we might store the size here. *)
  output_section_spec = (output_guard * maybe natural * string * (list output_section_composition_element))
 and
- allocated_sections_map = Map.map string output_section_spec
+ allocated_sections_map = Map.map string (output_section_spec (* OutputSection element idx *) * natural)
 and
  address_expr_fn = natural -> allocated_sections_map -> natural
 
@@ -159,6 +159,7 @@ and
  * We can define them in syntax (using an interpreter) 
  * or in Lem directly (as functions). *)
 type linker_control_script = list script_element
+type labelled_linker_control_script = list (script_element * natural)
 
 val all_suffixes : list char -> list (list char)
 let rec all_suffixes chars =
@@ -324,7 +325,7 @@ let output_sec_composition_size_given_start_addr   start_addr secs comp =
 val sizeof : string -> allocated_sections_map -> natural
 let sizeof secname secs = 
     match Map.lookup secname secs with
-        Just(_, maybe_addr, _, comp) -> match maybe_addr with
+        Just((_, maybe_addr, _, comp), _) -> match maybe_addr with
             Just addr -> output_sec_composition_size_given_start_addr addr secs comp
             | Nothing -> failwith ("error: sizeof applied to section without defined start address")
         end
@@ -710,10 +711,36 @@ SECTIONS
   ; OutputSection(OnlyIfRo, Nothing, ".exception_ranges", [InputQuery(DefaultKeep, DefaultSort, 
     filter_and_concat (fun s -> name_matches ".exception_ranges" s || name_matches ".exception_ranges*" s))])
   ; AdvanceAddress(fun addr -> (fun _ -> 
-      (* BinRel(Eq, Constant( *)
-    align_up_to (a.maxpagesize - (unsafe_natural_land (a.maxpagesize - addr) (a.maxpagesize - 1))) addr
+    (* (align_up_to a.maxpagesize addr) - (natural_land (a.maxpagesize - addr) (a.maxpagesize - 1)) *)
+    (*
+    FIXME: understand the intention of this assignment.
+    Evaluating a simple example of this (from true-static-uClibc)
+
+    (ALIGN (0x200000) - ((0x200000 - .) & 0x1fffff))
+
+    starting from 0x00000000004017dc
+    means 
+    0x600000 - ((0x200000 - 0x4017dc) & 0x1fffff)
+    i.e. 
+    0x600000 - (((-0x2017dc)) & 0x1fffff)
+    i.e.
+    0x600000 - (     -0x2017dc   
+                    & 0x1fffff )
+
+    which really does come to (according to bash) 0x4017dc
+    i.e. we subtract 0x1fe824 from 0x600000
+    and end up back where we started.
+
+    What does ANDing a negative number mean?
+    It doesn't seem to work for us.
+    Well, to take the negation we flip every bit and add one.
+    So if we don't want to do a subtraction that might go negative, 
+    we can instead add the complement.    
+    *)
+        (align_up_to a.maxpagesize addr) - (natural_land (a.maxpagesize + compl64 addr) (a.maxpagesize - 1))
     ))
-  ; MarkAndAlignDataSegment(a.maxpagesize, a.commonpagesize)
+  ; MarkAndAlignDataSegment((* a.maxpagesize *) 2 * 1024 * 1024 (* <-- for some reason binutils assumes 2MB max page size,
+    even if ABI says smaller *), a.commonpagesize)
   ; OutputSection(OnlyIfRw, Nothing, ".eh_frame", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".eh_frame"))])
   ; OutputSection(OnlyIfRw, Nothing, ".gcc_except_table", [InputQuery(DefaultKeep, DefaultSort, 
     filter_and_concat (fun s -> name_matches ".gcc_except_table" s || name_matches ".gcc_except_table.*" s))])
@@ -817,7 +844,7 @@ SECTIONS
       ])
     ; AdvanceAddress(fun pos -> (fun secs -> align_up_to (64/8) pos))
     ; AdvanceAddress(fun pos -> (fun secs -> segment_start "ldata-segment" pos))
-    ; OutputSection(AlwaysOutput, Just (fun pos -> fun secs -> align_up_to (a.maxpagesize + ((unsafe_natural_land pos a.maxpagesize) - 1)) pos), 
+    ; OutputSection(AlwaysOutput, Just (fun pos -> fun secs -> align_up_to (a.maxpagesize + ((natural_land pos a.maxpagesize) - 1)) pos), 
          ".lrodata",
          [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
             fun s -> name_matches ".lrodata" s || name_matches ".lrodata.*" s || name_matches ".gnu.linkonce.lr.*" s
@@ -874,6 +901,29 @@ SECTIONS
        not the script. *)
     ]
 
+let interpret_guard guard comp name = 
+     match guard with
+        Always -> true
+        | OnlyIfRo -> 
+            let v = List.all (fun comp_el -> match comp_el with
+                IncludeInputSection(retainpol, fname, linkable_idx, shndx, isec, img) -> 
+                    (* is this section read-only? if it doesn't have shf_write, yes *)
+                    0 = natural_land isec.elf64_section_flags shf_write
+                | _ -> (* holes, common symbols and provided symbols shouldn't prevent ONLY_IF_RO *) true
+               end) comp
+            in let _ = errln ("only_if_ro evaluated " ^ (show v) ^ " for output section " ^ name)
+            in v
+        | OnlyIfRw -> 
+            let v = List.all (fun comp_el -> match comp_el with
+                IncludeInputSection(retainpol, fname, linkable_idx, shndx, isec, img) -> 
+                    (* is this section read-only? if it doesn't have shf_write, yes *)
+                    0 <> natural_land isec.elf64_section_flags shf_write
+                | _ -> (* holes etc. shouldn't prevent ONLY_IF_RW *) true
+              end) comp
+            in let _ = errln ("only_if_rw evaluated " ^ (show v) ^ " for output section " ^ name)
+            in v
+    end
+
 (* Passes over the script: 
  * 
  * 1. assign input sections to output sections (or discard) and define symbols.
@@ -881,38 +931,37 @@ SECTIONS
  * 2. compute def-use and optionally GC, removing unwanted sections and symbols
  * 
  * 3. build image, assigning addresses as we go. 
+ * 
+ * Some passes require matching/retrieving what a previous pass on the same node did.
+ * So we give each script element a natural "idx" label.
  *)
+val label_script_aux : natural -> linker_control_script -> labelled_linker_control_script
+let label_script_aux start script = 
+    mapi (fun i -> fun el -> (el, (start + naturalFromNat i))) script
+
+val label_script : linker_control_script -> labelled_linker_control_script
+let label_script script = label_script_aux 0 script
 
 val assign_inputs_to_output_sections : 
-    (list input_spec * list output_section_spec) ->  (* accumulator: list of discards, list of output compositions (these include symbols)  *)
+    (list input_spec * list (output_section_spec * natural)) ->  (* accumulator: list of discards, list of output compositions (these include symbols)  *)
     list input_spec ->            (* remaining inputs *)
-    maybe output_section_spec ->  (* cur_sec -- the current output section spec *)
+    maybe (output_section_spec * natural) ->  (* cur_sec -- the current output section spec and its OutputSection script item idx *)
     maybe input_spec ->           (* last input section to be output -- might not have one *)
     (input_spec -> input_spec -> Basic_classes.ordering) ->
-    linker_control_script -> 
-    (list input_spec * list output_section_spec)     (* accumulated result *)
+    labelled_linker_control_script -> 
+    (list input_spec * list (output_section_spec * natural))     (* accumulated result *)
 let rec assign_inputs_to_output_sections acc inputs cur_output_sec last_input_sec seen_ordering script = 
     let (rev_discards, rev_outputs) = acc in 
     let flush_output_sec 
-     = fun output_sec -> match output_sec with
-        Just (guard, addr, name, comp) -> 
+     = fun maybe_output_sec_and_idx -> match maybe_output_sec_and_idx with
+        Just ((guard, addr, name, comp), script_idx) -> 
+            let _ = errln ("Guardedly flushing output section named " ^ name ^ " with " ^ (
+                match addr with Nothing -> "no address yet" | Just a -> "address 0x" ^ (hex_string_of_natural a) end
+            ))
+            in
             (* evaluate the guard *)
-            if match guard with
-                Always -> true
-                | OnlyIfRo -> List.all (fun comp_el -> match comp_el with
-                    IncludeInputSection(retainpol, fname, linkable_idx, shndx, isec, img) -> 
-                        (* is this section read-only? if it doesn't have shf_write, yes *)
-                        0 = unsafe_natural_land isec.elf64_section_flags shf_write
-                    | _ -> (* holes, common symbols and provided symbols shouldn't prevent ONLY_IF_RO *) true
-                  end) comp
-                | OnlyIfRw -> List.all (fun comp_el -> match comp_el with
-                    IncludeInputSection(retainpol, fname, linkable_idx, shndx, isec, img) -> 
-                        (* is this section read-only? if it doesn't have shf_write, yes *)
-                        0 <> unsafe_natural_land isec.elf64_section_flags shf_write
-                    | _ -> (* holes etc. shouldn't prevent ONLY_IF_RW *) true
-                  end) comp
-            end 
-            then (* do it     *) (rev_discards, (guard, addr, name, comp) :: rev_outputs)
+            if interpret_guard guard comp name
+            then (* do it     *) (rev_discards, ((guard, addr, name, comp), script_idx) :: rev_outputs)
             else (* ignore it *) acc
         | Nothing -> (* for convenience, make this a no-op rather than error *)
             (* failwith "internal error: flushing output section with no current output section" *)
@@ -921,7 +970,7 @@ let rec assign_inputs_to_output_sections acc inputs cur_output_sec last_input_se
     in
     match script with
         [] -> flush_output_sec cur_output_sec
-        | element :: more_elements ->
+        | (element, idx) :: more_elements_and_idx ->
             let do_nothing = (acc, cur_output_sec, last_input_sec) 
             in
             let (new_acc, new_cur_output_sec, new_last_input_sec)
@@ -939,7 +988,7 @@ let rec assign_inputs_to_output_sections acc inputs cur_output_sec last_input_se
                         Nothing -> do_nothing
                             (* This assignment is setting a new LMA. *)
                             (* (acc,  *)
-                        | Just sec -> do_nothing
+                        | Just (sec, idx) -> do_nothing
                      end
                 | MarkAndAlignDataSegment(maxpagesize, commonpagesize) -> 
                      (* The "data segment end" is a distinguished label, 
@@ -951,19 +1000,20 @@ let rec assign_inputs_to_output_sections acc inputs cur_output_sec last_input_se
                     (* If we have a current output section, finish it and add it to the image.
                      * Q. Where do guards ("ONLY_IF_RO" etc) get evaluated?
                      * A. Inside flush_output_sec. *)
-                    let acc_with_output_sec = flush_output_sec cur_output_sec
+                    let acc_with_output_sec = flush_output_sec (cur_output_sec : maybe (output_section_spec * natural))
                     in
-                    let new_cur_output_sec = Just(outputguard, (* maybe_expr pos secs *) Nothing, name, [])
+                    let new_cur_output_sec = Just( (outputguard, (* maybe_expr pos secs *) Nothing, name, []), idx)
                     in
-                    (* Recurse down the list of input queries. Note that 
-                       output sections may not nest within other output sections. *)
+                    (* Recurse down the list of input queries, assigning them to this output sec
+                     * Note that output sections may not nest within other output sections. 
+                     * At the end of the list of sub_elements, we will flush the section we built up. *)
                     let final_acc
-                    = assign_inputs_to_output_sections acc inputs new_cur_output_sec last_input_sec seen_ordering sub_elements
+                    = assign_inputs_to_output_sections acc inputs new_cur_output_sec last_input_sec seen_ordering (label_script sub_elements)
                     in
                     (* NOTE that this sub-accumulation will never add a new output section
                      * because output sections can't nest. *)
                     (* FIXME: place any orphans. PROBLEM: linkers are allowed to differ in how they do this. *)
-                    (final_acc, cur_output_sec, last_input_sec) 
+                    (final_acc, (* cur_output_sec*) Nothing, last_input_sec) 
                 | DiscardInput(selector) -> 
                     let selected = selector inputs
                     in
@@ -976,7 +1026,7 @@ let rec assign_inputs_to_output_sections acc inputs cur_output_sec last_input_se
                     (* Input queries can only occur within an output section. *)
                     match cur_output_sec with
                         Nothing -> failwith "linker script error: input query without output section"
-                        | Just (output_guard, output_sec_addr, output_sec_name, output_composition) ->
+                        | Just ((output_guard, output_sec_addr, output_sec_name, output_composition), output_script_idx) ->
                             (* Add them to the current output spec. We have to be careful about ordering:
                              * according to the GNU ld manual (and observed behaviour), by default
                              * "the linker will place files and sections matched by wildcards in the order
@@ -997,23 +1047,43 @@ let rec assign_inputs_to_output_sections acc inputs cur_output_sec last_input_se
                             (* Search input memory images for matching sections. *)
                             let (matchList : list input_section_rec) = List.mapMaybe (fun inp -> 
                                 match inp with
-                                    InputSection(x) -> Just x
+                                    InputSection(x) -> 
+                                        let _ = errln ("Matched an input section named " ^ x.isec.elf64_section_name_as_string ^ 
+                                            " in a file " ^ x.fname ^ " with first 20 bytes " ^ (show (take 20 
+                                                (let maybe_elname = elf_memory_image_element_coextensive_with_section x.shndx x.img 
+                                                 in
+                                                 match maybe_elname with
+                                                    Nothing -> failwith "impossible: no such section"
+                                                    | Just idstr -> 
+                                                        match Map.lookup idstr x.img.elements with
+                                                            Just el -> el.contents
+                                                            | Nothing -> failwith "no such element"
+                                                        end
+                                                end
+                                                ))))
+                                            in
+                                            Just x
                                    | _ -> Nothing
                                 end) (sortfun (selector inputs))
                             in
-                            (acc, Just (output_guard, output_sec_addr, output_sec_name, 
-                                output_composition ++ 
-                                [IncludeInputSection(retainpol, input_sec.fname, input_sec.idx, input_sec.shndx, input_sec.isec, input_sec.img)
-                                     | forall (input_sec MEM matchList) | true]),
-                            last_input_sec)
+                            (acc, 
+                             Just (
+                                (output_guard, output_sec_addr, output_sec_name, 
+                                    output_composition ++ 
+                                     [IncludeInputSection(retainpol, input_sec.fname, input_sec.idx, input_sec.shndx, input_sec.isec, input_sec.img)
+                                     | forall (input_sec MEM matchList) | true
+                                     ]
+                                ), output_script_idx), 
+                             last_input_sec
+                            )
                     end
             end
             in
             assign_inputs_to_output_sections new_acc (inputs : list input_spec)
-                (new_cur_output_sec : maybe output_section_spec)
+                (new_cur_output_sec : maybe (output_section_spec * natural))
                 (new_last_input_sec : maybe input_spec)
                 seen_ordering
-                (more_elements : linker_control_script)
+                (more_elements_and_idx : labelled_linker_control_script)
     end
 
 (* NOTE: this is also responsible for deleting any PROVIDEd symbols that 
@@ -1037,7 +1107,7 @@ let rec assign_inputs_to_output_sections acc inputs cur_output_sec last_input_se
  * So that implies we need not yet build a memory image.
  *)
 val compute_def_use_and_gc : allocated_sections_map -> allocated_sections_map
-let compute_def_use_and_gc outputs_by_name = outputs_by_name
+let compute_def_use_and_gc outputs_by_name = outputs_by_name (* FIXME: implement GC *)
 
 
 val build_image : 
@@ -1045,16 +1115,16 @@ val build_image :
     natural ->                   (* location counter *)
     allocated_sections_map ->  (* outputs constructed earlier *)
     (symbol_reference -> natural -> string -> (natural * binding)) -> (* get_binding_for_ref function *)
-    linker_control_script -> 
+    labelled_linker_control_script -> 
     (elf_memory_image * allocated_sections_map)            (* accumulated result *)
 let rec build_image acc pos outputs_by_name get_binding_for_ref script = 
      let (add_output_section : (natural * natural * elf_memory_image) -> output_section_spec -> (natural * elf_memory_image * natural * output_section_spec))
      = fun (scn_idx, pos, acc_img) ->
         (fun (guard, addr, secname, comp) -> 
-            let _ = errln ("Computing composition of output section `" ^ secname ^ "' from " ^ (show (length comp)) ^ " elements")
-            in
+            (* let _ = errln ("Computing composition of output section `" ^ secname ^ "' from " ^ (show (length comp)) ^ " elements")
+            in *)
             let unaligned_start_addr = match addr with 
-                Just a -> a 
+                Just a -> failwith ("internal error: section " ^ secname ^ ": did not expect address to be assigned yet")
                 | Nothing -> pos
             end
             in
@@ -1073,8 +1143,8 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
             )
             in
             let (concatenated_content, final_addr, new_range_tag_pairs) = List.foldl (fun (accum_pat, addr, accum_meta) -> (fun (comp_el, comp_addr) ->
-                let _ = errln ("Adding an element to composition of output section `" ^ secname ^ "'")
-                in
+                (* let _ = errln ("Adding an element to composition of output section `" ^ secname ^ "'")
+                in *)
                 let make_line = fun namestr -> (fun addrstr -> (fun szstr -> (fun rhs -> (
                     (space_padded_and_maybe_newline 16 (" " ^ namestr)) ^ 
                     ("0x" ^ (left_zero_padded_to 16 addrstr)) ^ " " ^ 
@@ -1088,7 +1158,11 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
                         in
                         match maybe_secname with
                             Nothing -> failwith "impossible: no such section"
-                            | Just idstr -> match Map.lookup idstr img.elements with
+                            | Just idstr -> 
+                                let _ = errln ("Found element named " ^ idstr ^ " coextensive with section named " ^ 
+                                    isec.elf64_section_name_as_string ^ " in file " ^ fname)
+                                in
+                                match Map.lookup idstr img.elements with
                                 Just el -> 
                                     let _ = Missing_pervasives.outln (make_line isec.elf64_section_name_as_string
                                         (hex_string_of_natural comp_addr) (hex_string_of_natural isec.elf64_section_size)
@@ -1268,7 +1342,11 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
                                             end (* match tag *) 
                                         ) (Set.fromList ranges_and_tags) (* end mapMaybe fn *)
                                     in
-                                    (isec.elf64_section_size, el.contents, new_ranges_and_tags)
+                                    (isec.elf64_section_size, 
+                                        let _ = errln ("Saw first 20 bytes of section " ^ isec.elf64_section_name_as_string ^
+                                            " from " ^ fname ^ " as " ^ (show (take 20 el.contents)))
+                                        in
+                                        el.contents, new_ranges_and_tags)
                          | _     -> failwith "impossible: no such element"
                        end (* match Map.lookup idstr img.elements *)
                     end (* match maybe_secname *)
@@ -1314,6 +1392,9 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
                             |>))})
                 end (* match comp_el_pat *)
                 in
+                let _ = errln ("Appending byte pattern to section " ^ secname ^ ", first 20 bytes: " ^ 
+                    (show (take 20 comp_el_pat)))
+                in
                 let new_content = append_to_byte_pattern_at_offset (comp_addr - start_addr) accum_pat comp_el_pat
                 in
                 let new_addr = comp_addr + sz
@@ -1330,32 +1411,76 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
             |>
             in
             let _ = Missing_pervasives.outln "" in
-            (* Make a new element in the image.
-             * FIXME: also transfer the metadata from input sections to output sections. *)
+            (* Make a new element in the image, also transferring metadata from input elements 
+             * as appropriate. *)
             let new_by_range_list = 
             (Just(secname, (0, size)), FileFeature(ElfSection(scn_idx, 
                       <| elf64_section_name = 0 (* ignored *)
-                       ; elf64_section_type = 0 (* FIXME *)
-                       ; elf64_section_flags = shf_alloc (* FIXME: others *)
+                       ; elf64_section_type = (* are we composed entirely of nobits sections and common symbols? *)
+                            let all_nobits = List.all (fun comp_el -> 
+                                match comp_el with 
+                                    IncludeInputSection(retain_pol, fname, linkable_idx, shndx, isec, img) -> 
+                                        isec.elf64_section_type = sht_nobits
+                                    | IncludeCommonSymbol(retain_pol, fname, def, img) -> true
+                                    | _ -> (* padding and symdefs can be nobits *) true
+                                end) comp
+                            in
+                            if all_nobits then sht_nobits else sht_progbits
+                       ; elf64_section_flags = (* is any of our constituents writable? if so, include shf_write *) 
+                            let writable = List.any (fun comp_el -> 
+                                match comp_el with 
+                                    IncludeInputSection(retain_pol, fname, linkable_idx, shndx, isec, img) -> 
+                                        flag_is_set shf_write isec.elf64_section_flags
+                                    | IncludeCommonSymbol(retain_pol, fname, def, img) -> 
+                                        (* assume common symbols are writable *) true
+                                    | _ -> (* padding and symdefs do not make a section writable *) false
+                                end) comp
+                            in
+                            let executable = List.any (fun comp_el -> 
+                                match comp_el with 
+                                    IncludeInputSection(retain_pol, fname, linkable_idx, shndx, isec, img) -> 
+                                        flag_is_set shf_execinstr isec.elf64_section_flags
+                                    | IncludeCommonSymbol(retain_pol, fname, def, img) -> 
+                                        (* assume common symbols are not executable, since they're zeroed *) false
+                                    | _ -> (* padding and symdefs do not make a section executable -- HMM *) false
+                                end) comp
+                            in
+                            let alloc = List.any (fun comp_el -> 
+                                match comp_el with 
+                                    IncludeInputSection(retain_pol, fname, linkable_idx, shndx, isec, img) -> 
+                                        flag_is_set shf_alloc isec.elf64_section_flags
+                                    | IncludeCommonSymbol(retain_pol, fname, def, img) -> 
+                                        (* common symbols are allocatable *) true
+                                    | ProvideSymbol(pol, name, spec) -> 
+                                        (* symbols make a section allocatable? HMM *) true
+                                    | _ -> (* padding does not make a section allocatable *) false
+                                end) comp
+                            in
+                            natural_lor
+                                (if executable then shf_execinstr else 0)
+                                (natural_lor 
+                                    (if writable then shf_write else 0)
+                                    (if alloc then    shf_alloc else 0)
+                                )
                        ; elf64_section_addr = 0 (* ignored -- covered by element *)
                        ; elf64_section_offset = 0 (* ignored -- will be replaced when file offsets are assigned *)
                        ; elf64_section_size = 0 (* ignored *)
                        ; elf64_section_link = 0 (* HMM *)
                        ; elf64_section_info = 0 (* HMM *)
-                       ; elf64_section_align = 0  (* FIXME *)
+                       ; elf64_section_align = alignof_output_section comp
                        ; elf64_section_entsize = 0 (* HMM *)
                        ; elf64_section_body = Byte_sequence.empty (* ignored *)
                        ; elf64_section_name_as_string = secname   (* ignored *)
                        |>
                 ))) :: Set_extra.toList new_range_tag_pairs
             in
-            let _ = errln ("Metadata for new section " ^ secname ^ " consists of " ^ (show (length new_by_range_list)) ^ " tags.")
-            in
+            (* let _ = errln ("Metadata for new section " ^ secname ^ " consists of " ^ (show (length new_by_range_list)) ^ " tags.")
+            in *)
             let new_by_range = List.foldl (fun m -> fun (maybe_range, tag) -> 
                 let new_s = Set.insert (maybe_range, tag) m
                 in
-                let _ = errln ("Inserting an element into by_range; before: " ^ (show (Set.size m)) ^ "; after: " ^ (show (Set.size new_s)))
-                in
+                (* let _ = errln ("Inserting an element into by_range; before: " ^ (show (Set.size m)) ^ "; after: " ^ (show (Set.size new_s)))
+                in *)
                 new_s
             ) acc_img.by_range new_by_range_list
             in
@@ -1368,8 +1493,8 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
                         | _ -> false
                     end) (Set_extra.toList new_by_range)
                 in
-                errln ("Total metadata now includes " ^ (show (length section_tags_bare)) ^ " sections; are by_range and "
-                    ^ "by_tag consistent? " ^ (show (new_by_tag = by_tag_from_by_range new_by_range)))
+                (* errln ("Total metadata now includes " ^ (show (length section_tags_bare)) ^ " sections; are by_range and "
+                    ^ "by_tag consistent? " ^ (show (new_by_tag = by_tag_from_by_range new_by_range))) *) ()
             in
             (* this expression is the return value of add_output_section *)
             (
@@ -1377,7 +1502,8 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
                 (* new_acc *) <|
                             elements   = Map.insert secname concat_sec_el acc_img.elements
                             (* tag it as a section, and transfer any tags *)
-                         ;  by_range   = let _ = errln ("Returning from add_output_section a by_range with " ^ (show (Set.size new_by_range))) in new_by_range
+                         ;  by_range   = (* let _ = errln ("Returning from add_output_section a by_range with " ^ 
+                                (show (Set.size new_by_range))) in *) new_by_range
                          ;  by_tag     = new_by_tag
                          |>,
                 (* sec_sz *) size,
@@ -1387,7 +1513,7 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
     in
     match script with
         [] -> (acc, outputs_by_name)
-        | element :: more_elements ->
+        | (element, el_idx) :: more_elements_and_idx ->
              let do_nothing = (acc, pos, outputs_by_name) in 
              let (new_acc, new_pos, new_outputs_by_name) = 
              match element with
@@ -1421,11 +1547,110 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
                         In other words, we're marking the beginning of the data segment
                         by aligning our position upwards by an amount that 
                         
-                        - guarantees we're on a new page
+                        - guarantees we're on a new page...
                         
-                        - depends on where the data segment *ends* , trying 
-                          to avoid wasting too much space or memory.
-                          
+                        - ... but (option 1) at an address that's congruent, modulo the max page size
+                                  (e.g. for 64kB maxpage, 4kB commonpage, we AND with 0xffff)
+                        
+                        - ... (option 2) at an offset that's at the commonpagesize boundary
+                                  immediately preceding the lowest congruent address
+                                  (e.g. for 64kB maxpage, 4kB commonpage, we AND with 0xf000,
+                                  so if we're at pos 0x1234, we bump up to 0x11000).
+                                  
+                                  FIXME:
+                                  
+                                  The GNU linker seems to bump up to 0x12000 here, not 0x11000.
+                                  Specifically, 
+                                  
+                                    DATA_SEGMENT_ALIGN (0x200000, 0x1000)
+                                    
+                                    bumps 0x4017dc up to 0x602000.
+                                    
+                                  This is indeed better, because it allows the next section
+                                  to be output without a big gap in the file.
+                                  
+                                  LOAD           0x0000000000000000 0x0000000000400000 0x0000000000400000
+                                                 0x00000000000017dc 0x00000000000017dc  R E    200000
+                                  LOAD           0x0000000000002000 0x0000000000602000 0x0000000000602000
+                                                 0x0000000000000120 0x0000000000000ce8  RW     200000
+                                  
+                                  ... whereas if the second LOAD began at address 0x601000,
+                                  the file offset of its first section would have to be 0x11000.
+                                  
+                                  So what *should* the formula be?
+                                  It needs to calculate the next address which
+                                  
+                                  - is a commonpagesize boundary;
+                                  
+                                  - is minimally >= the current address, modulo the commonpagesize
+                                  
+                                  - is minimally >= the current address, modulo the maxpagesize.
+                                  
+                                  The AND operation gives us something that is minimally *below*
+                                  the commonpagesize boundary. I think we need to add COMMONPAGESIZE.
+                                  
+                                  The code does this (in ldexp.c around line 478 as of binutils 2.25):
+                                  
+                                        expld.result.value = align_n (expld.dot, maxpage);
+                                        /* omit relro phase */
+                                        if (expld.dataseg.phase == exp_dataseg_adjust)
+                                        {
+                                          if (commonpage < maxpage)
+                                            expld.result.value += ((expld.dot + commonpage - 1)
+                                                                   & (maxpage - commonpage));
+                                        }
+                                        else 
+                                        {
+                                          expld.result.value += expld.dot & (maxpage - 1);
+                                        
+                                  Which amounts to:
+                                       
+                                       1. first, align up to maxpage. So for our example, we're now 0x10000.
+                                          or for our real example, we're now 0x600000
+                                       
+                                          THEN since the first phase (expld_dataseg_none) 
+                                          hits the final "else" case,
+                                          we immediately restore the modulus of the address,
+                                          giving 0x60188c.
+                                           or 0x6019ac  the second time around (FIXME: why two?)
+                                       
+                                       2. next, on the relevant phase (pass) of the script interpreter,
+                                          i.e. OPTION 2
+                                          if commonpage < maxpage,
+                                          bump up the *non-maxpage-aligned non-modulo-restored* address
+                                          by 
+                                              (. + commonpage - 1)  &  (maxpage - commonpage)
+                                            
+                                          i.e. for our example earlier
+                                              (0x01234 + 0x1000 - 1) &  (0xf000)
+                                              = 
+                                               0x02233               &   0xf000
+                                              =
+                                               0x02000
+                                               
+                                         i.e. for our real example
+                                              (0x4019ac + 0x1000 - 1) &  (0x1ff000)
+                                              = 
+                                               0x4019ac + 0x1000 - 1) &   0x1ff000
+                                              =
+                                               0x002000
+                                               
+                                        3. OPTION 1 is implemented by the trailing "else {"
+                                           -- it restores the modulus.
+                                           
+                                  So the problem with our original logic (below) was that 
+                                  it did what the manual says, not what the code does.
+                                  Specifically, the code for option 2 does
+                                  
+                                    (. + commonpagesize - 1) & (maxpagesize - commonpagesize)
+                                    
+                                    and NOT simply
+                                    
+                                    . & (maxpagesize - commonpagesize).
+                                    
+                                  FIXME: report this bug.
+                                  
+                        
                         Note that intervening commands can do arbitrary things to the location
                         counter, so we can't do any short-cut arithmetic based on section sizes;
                         we actually have to run the layout procedure til we hit the end of the 
@@ -1437,7 +1662,101 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
                     
                      *)
                     (* let num_pages_used *)
-                    do_nothing
+                    let _ = errln ("Option 1 congruence add-in from pos 0x" ^ (hex_string_of_natural pos) ^ ", maxpagesize 0x" ^ 
+                        (hex_string_of_natural maxpagesize) ^ " is 0x" ^ (hex_string_of_natural (natural_land pos (maxpagesize - 1))))
+                    in
+                    let option1 = align_up_to maxpagesize pos + (natural_land pos (maxpagesize - 1))
+                    in
+                    let _ = errln ("Mark/align data segment: option 1 is to bump pos to 0x" ^ (hex_string_of_natural option1))
+                    in
+                    let option2 = align_up_to maxpagesize pos + (natural_land (pos + commonpagesize - 1) (maxpagesize - commonpagesize))
+                    in
+                    let _ = errln ("Mark/align data segment: option 2 is to bump pos to 0x" ^ (hex_string_of_natural option2))
+                    in
+                    let data_segment_endpos = (fun startpos -> 
+                        (* run forward from here until MarkDataSegmentEnd, 
+                         * accumulating the actually-made outputs by name and their sizes *)
+                        let (endpos, _) = List.foldl (fun (curpos, seen_end) -> fun (new_script_item, new_script_item_idx) -> 
+                            (* let _ = errln ("Folding at pos 0x" ^ (hex_string_of_natural curpos))
+                            in *)
+                            if seen_end 
+                            then (curpos, true)
+                            else let (newpos, new_seen) = match new_script_item with 
+                                | MarkDataSegmentEnd -> 
+                                    (* let _ = errln "data segment end"
+                                    in *)
+                                    (* break the loop early here *)
+                                    (curpos, true)
+                                | OutputSection(outputguard, maybe_expr, name, sub_elements) -> 
+                                    (* let _ = errln ("output section " ^ name)
+                                    in *)
+                                    let maybe_found = Map.lookup name outputs_by_name
+                                    in
+                                    let ((guard, addr, secname, comp), seen_script_el_idx) = match maybe_found with
+                                        Just (f, seen_script_el_idx) -> (f, seen_script_el_idx)
+                                        | Nothing -> failwith "internal error: output section not found"
+                                    end
+                                    in
+                                    (* Sometimes a given output section name, say .eh_frame, can come from multiple 
+                                     * script elements with disjoint guard conditions (only_if_ro and only_if_rw, say). 
+                                     * Only one of them will actually be selected when the guard is being evaluated.
+                                     * So when we "replay" the sections' output here, we want to skip the ones whose
+                                     * guards were false. The way we implement this is to store the originating script
+                                     * element idx in the allocated_output_sections map. We can test that against our 
+                                     * current script element_idx here *)
+                                    let replay_output = (seen_script_el_idx = el_idx)
+                                    in
+                                    if replay_output
+                                    then (
+                                        let unaligned_start_addr = curpos
+                                        in
+                                        let start_addr = align_up_to (alignof_output_section comp) unaligned_start_addr
+                                        in
+                                        let (end_addr, comp_addrs) = do_output_section_layout_starting_at_addr start_addr outputs_by_name comp
+                                        in
+                                        let size = end_addr - start_addr
+                                        in
+                                        (end_addr, (* seen_end *) false)
+                                    )
+                                    else (curpos, (* seen_end *) false)
+                                | AdvanceAddress(advance_fn) -> 
+                                    (* let _ = errln "Advance address"
+                                    in *)
+                                    let new_pos = advance_fn curpos outputs_by_name
+                                    in
+                                    (new_pos, false)
+                                | _ -> (curpos, seen_end)
+                            end
+                            in
+                            if newpos < curpos then failwith "went backwards" else (newpos, new_seen)
+                        ) (startpos, false) more_elements_and_idx
+                        in endpos
+                    )
+                    in
+                    let endpos_option1 = data_segment_endpos option1
+                    in
+                    let endpos_option2 = data_segment_endpos option2
+                    in
+                    let _ = errln ("Mark/align data segment: option 1 gives an endpos of 0x" ^ (hex_string_of_natural endpos_option1))
+                    in
+                    let _ = errln ("Mark/align data segment: option 2 gives an endpos of 0x" ^ (hex_string_of_natural endpos_option2))
+                    in
+                    let npages = (fun startpos -> (fun endpos ->
+                        ((align_up_to  commonpagesize endpos) - 
+                        (round_down_to commonpagesize startpos)) / commonpagesize
+                    ))
+                    in
+                    let npages_option1 = npages option1 endpos_option1
+                    in
+                    let npages_option2 = npages option2 endpos_option1
+                    in
+                    let _ = errln ("Mark/align data segment: option 1 uses " ^ (show npages_option1) ^ " COMMONPAGESIZE-sized pages")
+                    in
+                    let _ = errln ("Mark/align data segment: option 2 uses " ^ (show npages_option2) ^ " COMMONPAGESIZE-sized pages")
+                    in
+                    if npages_option1 < npages_option2 
+                    then let _ = errln "Choosing option 1" in (acc, option1, outputs_by_name)
+                    else let _ = errln "Choosing option 2" in (acc, option2, outputs_by_name)
                 | MarkDataSegmentEnd -> do_nothing
                 | MarkDataSegmentRelroEnd(fun_from_secs_to_something) -> do_nothing
                 | OutputSection(outputguard, maybe_expr, name, sub_elements) -> 
@@ -1445,10 +1764,12 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
                      * the image, assigning an address to it. *)
                     let maybe_found = Map.lookup name outputs_by_name
                     in
-                    let found = match maybe_found with
-                        Just f -> f
+                    let (found, seen_script_el_idx) = match maybe_found with
+                        Just (f, saved_idx) -> (f, saved_idx)
                         | Nothing -> failwith "internal error: output section not found"
                     end
+                    in
+                    let (guard, addr, secname, comp) = found
                     in
                     let next_free_section_idx = 1 + naturalFromNat (Map.size outputs_by_name)
                     in
@@ -1464,39 +1785,51 @@ let rec build_image acc pos outputs_by_name get_binding_for_ref script =
                         length section_tags_bare
                     )
                     in
-                    let _ = errln ("Before adding output section, we have " ^ (show (count_sections_in_image acc))
-                        ^ " sections.")
+                    (* Do we actually want to add an output section? Skip empty sections. 
+                     * FIXME: actually heed the proper ld semantics for empty sections (e.g. ". = ." will
+                     * force output). *)
+                    (* See note in MarkDataSegmentEnd case about script element idx. Short version:
+                     * multiple output section stanzas, for a given section name, may be in the script,
+                     * but only one was activated by the section composition pass. Ignore the others. *)
+                    let do_output = (seen_script_el_idx = el_idx) && (length comp) > 0
                     in
-                    let (new_pos, new_acc, sec_sz, replacement_output_sec)
-                     = add_output_section (next_free_section_idx, pos, acc) found
-                    in
-                    let _ = errln ("Received from add_output_section a by_range with " ^ (show (Set.size new_acc.by_range))
-                        ^ " metadata records of which " ^ (show (Set.size {
-                            (r, t)
-                            | forall ((r, t) IN new_acc.by_range)
-                            | match t with FileFeature(ElfSection(x)) -> true | _ -> false end
-                        }
-                        )) ^ " are ELF sections; one more time: " ^ (show (Set.size {
-                            (t, r)
-                            | forall ((t, r) IN new_acc.by_tag)
-                            | match t with FileFeature(ElfSection(x)) -> true | _ -> false end
-                        }
-                        )) ^ "; count_sections_in_image says " ^ (show (
-                            (* length (Memory_image_orderings.tagged_ranges_matching_tag (FileFeature(ElfSection(0, null_elf64_interpreted_section))) new_acc) *)
-                            length (Multimap.lookupBy Memory_image_orderings.tagEquiv (FileFeature(ElfSection(0, null_elf64_interpreted_section))) new_acc.by_tag)
-                            )) 
-                        )
-                    in
-                    let _ = errln ("After adding output section, we have " ^ (show (count_sections_in_image new_acc))
-                        ^ " sections.")
-                    in
-                    (new_acc, new_pos, Map.insert name replacement_output_sec (Map.delete name outputs_by_name))
+                    if do_output
+                    then (
+                        (* let _ = errln ("Before adding output section, we have " ^ (show (count_sections_in_image acc))
+                            ^ " sections.")
+                        in *)
+                        let _ = errln ("At pos 0x" ^ (hex_string_of_natural pos) ^ ", adding output section " ^ name)
+                        in
+                        let (new_pos, new_acc, sec_sz, replacement_output_sec)
+                         = add_output_section (next_free_section_idx, pos, acc) found
+                        in
+                        (* let _ = errln ("Received from add_output_section a by_range with " ^ (show (Set.size new_acc.by_range))
+                            ^ " metadata records of which " ^ (show (Set.size {
+                                (r, t)
+                                | forall ((r, t) IN new_acc.by_range)
+                                | match t with FileFeature(ElfSection(x)) -> true | _ -> false end
+                            }
+                            )) ^ " are ELF sections; one more time: " ^ (show (Set.size {
+                                (t, r)
+                                | forall ((t, r) IN new_acc.by_tag)
+                                | match t with FileFeature(ElfSection(x)) -> true | _ -> false end
+                            }
+                            )) ^ "; count_sections_in_image says " ^ (show (
+                                length (Multimap.lookupBy Memory_image_orderings.tagEquiv (FileFeature(ElfSection(0, null_elf64_interpreted_section))) new_acc.by_tag)
+                                )) 
+                            )
+                        in *)
+                        (* let _ = errln ("After adding output section, we have " ^ (show (count_sections_in_image new_acc))
+                            ^ " sections.")
+                        in *)
+                        (new_acc, new_pos, Map.insert name (replacement_output_sec, el_idx) (Map.delete name outputs_by_name))
+                    ) else (acc, pos, outputs_by_name)
                 | DiscardInput(selector) -> do_nothing
                 | InputQuery(retainpol, sortpol, selector) -> do_nothing
             end
             in
             (* recurse *)
-            build_image new_acc new_pos new_outputs_by_name get_binding_for_ref more_elements
+            build_image new_acc new_pos new_outputs_by_name get_binding_for_ref more_elements_and_idx
     end
 
 (*
@@ -1517,10 +1850,12 @@ val interpret_linker_control_script :
     -> (symbol_reference -> natural -> string -> (natural * binding))  (* get_binding_for_ref *)
     -> elf_memory_image
 let interpret_linker_control_script script a inputs seen_ordering get_binding_for_ref = 
-    let (discards, outputs) = assign_inputs_to_output_sections ([], []) inputs Nothing Nothing seen_ordering script
+    let labelled_script = label_script script
+    in
+    let (discards, outputs) = assign_inputs_to_output_sections ([], []) inputs Nothing Nothing seen_ordering labelled_script
     in
     let outputs_by_name = 
-        (let insert_fun = fun m -> (fun (guard, maybe_addr, name, compos) -> Map.insert name (guard, maybe_addr, name, compos) m)
+        (let insert_fun = fun m -> (fun ((guard, maybe_addr, name, compos), script_idx) -> Map.insert name ((guard, maybe_addr, name, compos), script_idx) m)
         in
         List.foldl insert_fun Map.empty outputs)
     in
@@ -1547,7 +1882,7 @@ let interpret_linker_control_script script a inputs seen_ordering get_binding_fo
     in
     (* FIXME: print LOAD and START_GROUP trace *)
     let (img, outputs_by_name_with_position)
-     = build_image empty_elf_memory_image 0 outputs_by_name_after_gc get_binding_for_ref script
+     = build_image empty_elf_memory_image 0 outputs_by_name_after_gc get_binding_for_ref labelled_script
     in
     let _ = errln ("Final image has " ^ (show (Map.size img.elements)) ^ " elements and " 
         ^ (show (Set.size img.by_tag)) ^ " metadata tags, of which " ^ (

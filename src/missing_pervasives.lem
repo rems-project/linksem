@@ -46,6 +46,12 @@ declare ocaml    target_rep function char_of_byte x = ``x
 declare isabelle target_rep function char_of_byte = `Elf_Types_Local.char_of_unsigned_char`
 declare hol      target_rep function char_of_byte = `CHR` `o` `w2n`
 
+val byte_of_char : char -> byte
+
+declare ocaml    target_rep function byte_of_char x = ``x
+declare isabelle target_rep function byte_of_char = `Elf_Types_Local.unsigned_char_of_char`
+(* FIXME: declare hol      target_rep function char_of_byte = `CHR` `o` `w2n` *)
+
 (* Define how to print a byte in hex *)
 val hex_char_of_nibble : natural -> char
 let hex_char_of_nibble n =
