@@ -148,8 +148,8 @@ let make_elf64_header data osabi abiv ma t entry shoff phoff phnum shnum shstrnd
        ; elf64_shstrndx = elf64_half_of_natural shstrndx
        |>
 
-val make_load_phdrs : forall 'abifeature. abi 'abifeature -> annotated_memory_image 'abifeature -> list (natural * elf64_interpreted_section) -> list elf64_program_header_table_entry
-let make_load_phdrs a img section_pairs_bare_sorted_by_address = 
+val make_load_phdrs : forall 'abifeature. natural -> natural -> annotated_memory_image 'abifeature -> list (natural * elf64_interpreted_section) -> list elf64_program_header_table_entry
+let make_load_phdrs max_page_sz common_page_sz img section_pairs_bare_sorted_by_address = 
     let (phdr_flags_from_section_flags : natural -> string -> natural) = fun section_flags -> fun sec_name ->
         let flags = natural_lor elf_pf_r (natural_lor 
             (if flag_is_set shf_write section_flags then elf_pf_w else 0)
@@ -227,12 +227,12 @@ let make_load_phdrs a img section_pairs_bare_sorted_by_address =
     let new_phdr = fun isec -> 
       <| elf64_p_type   = elf64_word_of_natural elf_pt_load (** Type of the segment *)
        ; elf64_p_flags  = elf64_word_of_natural (phdr_flags_from_section_flags isec.elf64_section_flags isec.elf64_section_name_as_string) (** Segment flags *)
-       ; elf64_p_offset = elf64_off_of_natural (round_down_to a.commonpagesize isec.elf64_section_offset) (** Offset from beginning of file for segment *)
-       ; elf64_p_vaddr  = elf64_addr_of_natural (round_down_to a.commonpagesize isec.elf64_section_addr) (** Virtual address for segment in memory *)
+       ; elf64_p_offset = elf64_off_of_natural (round_down_to common_page_sz isec.elf64_section_offset) (** Offset from beginning of file for segment *)
+       ; elf64_p_vaddr  = elf64_addr_of_natural (round_down_to common_page_sz isec.elf64_section_addr) (** Virtual address for segment in memory *)
        ; elf64_p_paddr  = elf64_addr_of_natural 0 (** Physical address for segment *)
        ; elf64_p_filesz = elf64_xword_of_natural (if isec.elf64_section_type = sht_nobits then 0 else isec.elf64_section_size) (** Size of segment in file, in bytes *)
        ; elf64_p_memsz  = elf64_xword_of_natural isec.elf64_section_size (** Size of segment in memory image, in bytes *)
-       ; elf64_p_align  = elf64_xword_of_natural (* isec.elf64_section_align *) a.maxpagesize (** Segment alignment memory for memory and file *)
+       ; elf64_p_align  = elf64_xword_of_natural (* isec.elf64_section_align *) max_page_sz (** Segment alignment memory for memory and file *)
        |>
     in
     (* accumulate sections into the phdr *)
@@ -259,10 +259,10 @@ let make_load_phdrs a img section_pairs_bare_sorted_by_address =
     in*)
     List.reverse rev_list
     
-val make_default_phdrs : forall 'abifeature. abi 'abifeature -> natural (* file type *) -> annotated_memory_image 'abifeature -> list (natural * elf64_interpreted_section) -> list elf64_program_header_table_entry
-let make_default_phdrs a t img section_pairs_bare_sorted_by_address = 
+val make_default_phdrs : forall 'abifeature. natural -> natural -> natural (* file type *) -> annotated_memory_image 'abifeature -> list (natural * elf64_interpreted_section) -> list elf64_program_header_table_entry
+let make_default_phdrs maxpagesize commonpagesize t img section_pairs_bare_sorted_by_address = 
     (* FIXME: do the shared object and dyn. exec. stuff too *)
-    make_load_phdrs a img section_pairs_bare_sorted_by_address
+    make_load_phdrs maxpagesize commonpagesize img section_pairs_bare_sorted_by_address
 
 val find_start_symbol_address : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature => annotated_memory_image 'abifeature -> maybe natural
 let find_start_symbol_address img = 
