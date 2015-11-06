@@ -27,6 +27,7 @@ let meta = [(Just (".text", (1, 4)), SymbolRef(<|
     ; ref_sym_scn = 0
     ; ref_sym_idx = 0
     |>
+    ; maybe_def_bound_to = Nothing
     ; maybe_reloc = Just(
       <|
             ref_relent  = 
