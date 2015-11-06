@@ -155,9 +155,9 @@ let make_load_phdrs a img section_pairs_bare_sorted_by_address =
             (if flag_is_set shf_write section_flags then elf_pf_w else 0)
             (if flag_is_set shf_execinstr section_flags then elf_pf_x else 0))
         in
-        let _ = errln ("Phdr flags of section " ^ sec_name ^ "(ELF section flags 0x " ^ 
+        (*let _ = errln ("Phdr flags of section " ^ sec_name ^ "(ELF section flags 0x " ^ 
             (hex_string_of_natural section_flags) ^ ") are 0x" ^ (hex_string_of_natural flags))
-        in
+        in*)
         flags
     in
     let maybe_extend_phdr = fun phdr -> fun isec -> ( 
@@ -184,7 +184,7 @@ let make_load_phdrs a img section_pairs_bare_sorted_by_address =
         in
         let maybe_extended = can_combine_flags { section_flags; natural_of_elf64_word phdr.elf64_p_flags }
         in
-        if maybe_extended = Nothing then let _ = errln "flag mismatch" in Nothing
+        if maybe_extended = Nothing then (*let _ = errln "flag mismatch" in*) Nothing
         else let new_p_flags = match maybe_extended with Just flags -> flags | _ -> failwith "impossible" end in
         let new_p_offset = natural_of_elf64_off phdr.elf64_p_offset
         in
@@ -195,7 +195,7 @@ let make_load_phdrs a img section_pairs_bare_sorted_by_address =
          * minus the existing file start offset of the phdr. 
          * Check that the new section begins after the old offset+filesz. *)
         if isec.elf64_section_offset < (natural_of_elf64_off phdr.elf64_p_offset) + (natural_of_elf64_xword phdr.elf64_p_filesz)
-        then let _ = errln "offset went backwards" in Nothing
+        then (*let _ = errln "offset went backwards" in*) Nothing
         else 
         let new_p_filesz = isec.elf64_section_offset + (if isec.elf64_section_type = sht_progbits then isec.elf64_section_size else 0)
         - natural_of_elf64_off phdr.elf64_p_offset
@@ -204,7 +204,7 @@ let make_load_phdrs a img section_pairs_bare_sorted_by_address =
          * minus the existing start vaddr of the phdr. 
          * Check that the new section begins after the old vaddr+memsz. *)
         if isec.elf64_section_addr < (natural_of_elf64_addr phdr.elf64_p_vaddr) + (natural_of_elf64_xword phdr.elf64_p_memsz)
-        then let _ = errln "vaddr went backwards" in Nothing
+        then (*let _ = errln "vaddr went backwards" in*) Nothing
         else 
         let new_p_memsz = isec.elf64_section_addr + isec.elf64_section_size - natural_of_elf64_addr phdr.elf64_p_vaddr
         in
@@ -240,23 +240,23 @@ let make_load_phdrs a img section_pairs_bare_sorted_by_address =
         (* Do we have a current phdr? *)
         match accum_phdr_list with
             [] -> (* no, so make one *)
-                let _ = errln ("Starting the first LOAD phdr for section " ^ isec.elf64_section_name_as_string)
-                in
+                (*let _ = errln ("Starting the first LOAD phdr for section " ^ isec.elf64_section_name_as_string)
+                in*)
                 [new_phdr isec]
             | current_phdr :: more -> 
                 (* can we extend it with the current section? *)
                 match maybe_extend_phdr current_phdr isec with
                     Nothing -> 
-                        let _ = errln ("Starting new LOAD phdr for section " ^ isec.elf64_section_name_as_string)
-                        in
+                        (*let _ = errln ("Starting new LOAD phdr for section " ^ isec.elf64_section_name_as_string)
+                        in*)
                         (new_phdr isec) :: current_phdr :: more
                     | Just phdr -> phdr :: more
                 end
         end
     ))) [] (List.filter (fun (idx, isec) -> flag_is_set shf_alloc isec.elf64_section_flags) section_pairs_bare_sorted_by_address)
     in
-    let _ = errln "Successfully made phdrs"
-    in
+    (*let _ = errln "Successfully made phdrs"
+    in*)
     List.reverse rev_list
     
 val make_default_phdrs : forall 'abifeature. abi 'abifeature -> natural (* file type *) -> annotated_memory_image 'abifeature -> list (natural * elf64_interpreted_section) -> list elf64_program_header_table_entry
