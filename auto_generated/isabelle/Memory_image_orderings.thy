@@ -190,7 +190,7 @@ definition instance_Basic_classes_Ord_Memory_image_range_tag_dict  :: " 'abifeat
 
 (*val unique_tag_matching : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature => range_tag 'abifeature -> annotated_memory_image 'abifeature -> range_tag 'abifeature*)
 definition unique_tag_matching  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature ToNaturalList_class \<Rightarrow> 'abifeature range_tag \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> 'abifeature range_tag "  where 
-     " unique_tag_matching dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature tag img = ( 
+     " unique_tag_matching dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature tag img1 = ( 
     (case  Multimap.lookupBy0 
   (instance_Basic_classes_Ord_Memory_image_range_tag_dict
      dict_Basic_classes_Ord_abifeature
@@ -199,7 +199,7 @@ definition unique_tag_matching  :: " 'abifeature Ord_class \<Rightarrow> 'abifea
       Lem_string_extra.instance_Basic_classes_Ord_string_dict
       (instance_Basic_classes_Ord_tup2_dict
          instance_Basic_classes_Ord_Num_natural_dict
-         instance_Basic_classes_Ord_Num_natural_dict)))  (tagEquiv dict_Memory_image_ToNaturalList_abifeature) tag(by_tag   img) of
+         instance_Basic_classes_Ord_Num_natural_dict)))  (tagEquiv dict_Memory_image_ToNaturalList_abifeature) tag(by_tag   img1) of
         [] => failwith (''no tag match found'')
         | [(t, r)] => t
         | x => failwith ((''more than one tag match'')) (* (ranges:  ^ 
@@ -210,7 +210,7 @@ definition unique_tag_matching  :: " 'abifeature Ord_class \<Rightarrow> 'abifea
     
 (*val tagged_ranges_matching_tag : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature => range_tag 'abifeature -> annotated_memory_image 'abifeature -> list (range_tag 'abifeature * maybe element_range)*)
 definition tagged_ranges_matching_tag  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature ToNaturalList_class \<Rightarrow> 'abifeature range_tag \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>('abifeature range_tag*(element_range)option)list "  where 
-     " tagged_ranges_matching_tag dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature tag img = ( 
+     " tagged_ranges_matching_tag dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature tag img1 = ( 
     Multimap.lookupBy0 
   (instance_Basic_classes_Ord_Memory_image_range_tag_dict
      dict_Basic_classes_Ord_abifeature
@@ -219,7 +219,7 @@ definition tagged_ranges_matching_tag  :: " 'abifeature Ord_class \<Rightarrow> 
       Lem_string_extra.instance_Basic_classes_Ord_string_dict
       (instance_Basic_classes_Ord_tup2_dict
          instance_Basic_classes_Ord_Num_natural_dict
-         instance_Basic_classes_Ord_Num_natural_dict)))  (tagEquiv dict_Memory_image_ToNaturalList_abifeature) tag(by_tag   img))"
+         instance_Basic_classes_Ord_Num_natural_dict)))  (tagEquiv dict_Memory_image_ToNaturalList_abifeature) tag(by_tag   img1))"
 
 
 (*val element_range_compare : element_range -> element_range -> Basic_classes.ordering*)
@@ -233,7 +233,7 @@ definition element_range_compare  :: " string*(nat*nat) \<Rightarrow> string*(na
     -> annotated_memory_image 'abifeature
     -> range_tag 'abifeature*)
 definition unique_tag_matching_at_range_exact  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature ToNaturalList_class \<Rightarrow>(element_range)option \<Rightarrow> 'abifeature range_tag \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> 'abifeature range_tag "  where 
-     " unique_tag_matching_at_range_exact dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature r tag img = ( 
+     " unique_tag_matching_at_range_exact dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature r tag img1 = ( 
     (* 1. find tags a unique range labelled as ELF section header table. *)
     (let (_, (allRangeMatches :: ( 'abifeature range_tag) list)) = (list_unzip (Multimap.lookupBy0 
   (instance_Basic_classes_Ord_Maybe_maybe_dict
@@ -243,7 +243,7 @@ definition unique_tag_matching_at_range_exact  :: " 'abifeature Ord_class \<Righ
            instance_Basic_classes_Ord_Num_natural_dict
            instance_Basic_classes_Ord_Num_natural_dict))) (instance_Basic_classes_Ord_Memory_image_range_tag_dict
    dict_Basic_classes_Ord_abifeature
-   dict_Memory_image_ToNaturalList_abifeature) (op=) r(by_range   img)))
+   dict_Memory_image_ToNaturalList_abifeature) (op=) r(by_range   img1)))
     in
     (let (tagAlsoMatches :: ( 'abifeature range_tag) list) = (List.filter (\<lambda> x .  tagEquiv 
   dict_Memory_image_ToNaturalList_abifeature x tag) allRangeMatches)
@@ -257,11 +257,11 @@ definition unique_tag_matching_at_range_exact  :: " 'abifeature Ord_class \<Righ
 
 (*val symbol_def_ranges : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature => annotated_memory_image 'abifeature -> (list (range_tag 'abifeature) * list (maybe element_range))*)
 definition symbol_def_ranges  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature ToNaturalList_class \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>('abifeature range_tag)list*((element_range)option)list "  where 
-     " symbol_def_ranges dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature img = ( 
+     " symbol_def_ranges dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature img1 = ( 
     (* find all element ranges labelled as ELF symbols *)
     (let (tags, maybe_ranges) = (list_unzip (
         tagged_ranges_matching_tag 
-  dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature (SymbolDef(null_symbol_definition)) img
+  dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature (SymbolDef(null_symbol_definition)) img1
     ))
     in
     (* some symbols, specifically ABS symbols, needn't label a range. *)
@@ -275,21 +275,21 @@ definition name_of_symbol_def  :: " symbol_definition \<Rightarrow> string "  wh
 
 (*val defined_symbols_and_ranges : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature => annotated_memory_image 'abifeature -> list ((maybe element_range) * symbol_definition)*)
 definition defined_symbols_and_ranges  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature ToNaturalList_class \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>((element_range)option*symbol_definition)list "  where 
-     " defined_symbols_and_ranges dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature img = ( 
+     " defined_symbols_and_ranges dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature img1 = ( 
     Lem_list.mapMaybe (\<lambda> (tag, maybeRange) .  
         (case  tag of
             SymbolDef(ent) => Some (maybeRange, ent)
             | _ => failwith (''impossible: non-symbol def in list of symbol defs'')
         )) (tagged_ranges_matching_tag 
-  dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature (SymbolDef(null_symbol_definition)) img))"
+  dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature (SymbolDef(null_symbol_definition)) img1))"
 
 
 (*val defined_symbols : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature =>  annotated_memory_image 'abifeature -> list symbol_definition*)
 definition defined_symbols  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature ToNaturalList_class \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>(symbol_definition)list "  where 
-     " defined_symbols dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature img = ( 
+     " defined_symbols dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature img1 = ( 
     (let ((all_symbol_tags, all_symbol_ranges) :: ( ( 'abifeature range_tag)list * ( element_range option) list))
      = (symbol_def_ranges 
-  dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature img)
+  dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature img1)
     in
     Lem_list.mapMaybe (\<lambda> tag .  
         (case  tag of

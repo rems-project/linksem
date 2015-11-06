@@ -194,7 +194,7 @@ definition make_elf64_header  :: " nat \<Rightarrow> nat \<Rightarrow> nat \<Rig
 
 (*val make_load_phdrs : forall 'abifeature. abi 'abifeature -> annotated_memory_image 'abifeature -> list (natural * elf64_interpreted_section) -> list elf64_program_header_table_entry*)
 definition make_load_phdrs  :: " 'abifeature abi \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>(nat*elf64_interpreted_section)list \<Rightarrow>(elf64_program_header_table_entry)list "  where 
-     " make_load_phdrs a img section_pairs_bare_sorted_by_address = ( 
+     " make_load_phdrs a img1 section_pairs_bare_sorted_by_address = ( 
     (let (phdr_flags_from_section_flags :: nat \<Rightarrow> nat) = (\<lambda> section_flags .  
         unsafe_natural_lor elf_pf_r (unsafe_natural_lor 
             (if flag_is_set section_flags shf_write then elf_pf_w else( 0 :: nat))
@@ -274,17 +274,17 @@ definition make_load_phdrs  :: " 'abifeature abi \<Rightarrow> 'abifeature annot
     
 (*val make_default_phdrs : forall 'abifeature. abi 'abifeature -> natural (* file type *) -> annotated_memory_image 'abifeature -> list (natural * elf64_interpreted_section) -> list elf64_program_header_table_entry*)
 definition make_default_phdrs  :: " 'abifeature abi \<Rightarrow> nat \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>(nat*elf64_interpreted_section)list \<Rightarrow>(elf64_program_header_table_entry)list "  where 
-     " make_default_phdrs a t img section_pairs_bare_sorted_by_address = ( 
+     " make_default_phdrs a t img1 section_pairs_bare_sorted_by_address = ( 
     (* FIXME: do the shared object and dyn. exec. stuff too *)
-    make_load_phdrs a img section_pairs_bare_sorted_by_address )"
+    make_load_phdrs a img1 section_pairs_bare_sorted_by_address )"
 
 
 (*val find_start_symbol_address : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature => annotated_memory_image 'abifeature -> maybe natural*)
 definition find_start_symbol_address  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature ToNaturalList_class \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>(nat)option "  where 
-     " find_start_symbol_address dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature img = ( 
+     " find_start_symbol_address dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature img1 = ( 
     (* Do we have a symbol called _start? *)
     (let all_defs = (Memory_image_orderings.defined_symbols_and_ranges 
-  dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature img)
+  dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature img1)
     in
     (let get_entry_point = (\<lambda> (maybe_range, symbol_def) .  
         if(def_symname   symbol_def) = (''_start'')
@@ -298,7 +298,7 @@ definition find_start_symbol_address  :: " 'abifeature Ord_class \<Rightarrow> '
         [(maybe_range, symbol_def)] =>
             (case  maybe_range of
                 Some (el_name, (el_off, len)) => 
-                    (case  (elements   img) el_name of
+                    (case  (elements   img1) el_name of
                         None => failwith (''_start symbol defined in nonexistent element'')
                         | Some el_rec => 
                             (case (startpos   el_rec) of

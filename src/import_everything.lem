@@ -70,3 +70,5 @@ open import Abi_power64
 open import Abi_power64_relocation
 open import Abi_power64_section_header_table
 open import Abi_x86_relocation
+
+open import Test_image
