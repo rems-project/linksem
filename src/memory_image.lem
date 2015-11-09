@@ -207,31 +207,6 @@ instance (Ord symbol_reference_and_reloc_site)
     let (>=) = fun f1 -> (fun f2 -> Set.member (symRefAndRelocSiteCompare f1 f2) {GT; EQ})
 end
 
-class (ToNaturalList 'a)
-    val toNaturalList : 'a -> list natural
-end
-
-(* In order to store tags in a set, we need a total ordering
- * to be defined on them.
- * 
- * But also, in order to look up entries 
- * by tag constructor *alone* (e.g. ImageBase, EntryPoint, etc.)
- * we need a looser version of the same ordering.
- * 
- * So we factor it into a few stages.
- * 
- * - map tag constructors to integers. We'll use this to define the 
- * equivalence classes. Since we want to do queries of the form
- *
- *     FileFeature(ElfSection(_))
- *
- * to get all sections, say, we actually map to a *list* of integers,
- * where each constructor contributes one element to the list.
- * Since lists are lexicographically ordered, we get a total ordering
- * just as good as if we'd used only naturals.
- *)
-
-
 (* We can also annotate arbitrary ranges of bytes within an element
  * with arbitrary metadata. 
  * 
@@ -252,6 +227,9 @@ type range_tag 'abifeature = (*  forall 'abifeature . *)
                | FileFeature of elf_file_feature (* file feature other than symdef and reloc *)
                | AbiFeature of 'abifeature
 
+class (AbiFeatureTagEquiv 'a)
+    val abiFeatureTagEquiv : 'a -> 'a -> bool
+end
 
 type annotated_memory_image 'abifeature = <|
       elements         : memory_image 

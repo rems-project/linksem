@@ -42,25 +42,21 @@ let header_is_aarch64_le h =
     
 type aarch64_le_abi_feature = GOT | PLT (* placeholder / FIXME *)
 
-val aarch64LeAbiFeatureConstructorToNaturalList : aarch64_le_abi_feature -> list natural
-let aarch64LeAbiFeatureConstructorToNaturalList af = match af with
-    GOT -> [0]
-    | PLT -> [1]
-end
-
 val abiFeatureCompare : aarch64_le_abi_feature -> aarch64_le_abi_feature -> Basic_classes.ordering
 let abiFeatureCompare f1 f2 = 
-    match (aarch64LeAbiFeatureConstructorToNaturalList f1, aarch64LeAbiFeatureConstructorToNaturalList f2) with
-        ([], []) -> failwith "impossible: ABI feature has empty natural list (case 0)"
-    |   (_, [])  -> failwith "impossible: ABI feature has empty natural list (case 1)"
-    |   ([], _)  -> failwith "impossible: ABI feature has empty natural list (case 2)"
-    |   ((hd1 :: tl1), (hd2 :: tl2)) -> 
-            if hd1 < hd2 then LT else if hd1 > hd2 then GT else
-                match (f1, f2) with
-                    (GOT, GOT) -> EQ
-                    | (PLT, PLT) -> EQ
-                    | _ -> failwith "impossible: tag constructors not equal but natural list heads were equal"
-                end
+    match (f1, f2) with
+        (GOT, GOT) -> EQ
+        | (GOT, PLT) -> LT
+        | (PLT, PLT) -> EQ
+        | (PLT, GOT) -> GT
+    end
+
+val abiFeatureTagEq : aarch64_le_abi_feature -> aarch64_le_abi_feature -> bool
+let abiFeatureTagEq f1 f2 = 
+    match (f1, f2) with
+        (GOT, GOT) -> true
+        | (PLT, PLT) -> true
+        | (_, _) -> false
     end
 
 instance (Ord aarch64_le_abi_feature)
@@ -71,8 +67,8 @@ instance (Ord aarch64_le_abi_feature)
     let (>=) = fun f1 -> (fun f2 -> Set.member (abiFeatureCompare f1 f2) {GT; EQ})
 end
 
-instance (ToNaturalList aarch64_le_abi_feature)
-    let toNaturalList = aarch64LeAbiFeatureConstructorToNaturalList
+instance (AbiFeatureTagEquiv aarch64_le_abi_feature)
+    let abiFeatureTagEquiv = abiFeatureTagEq
 end
 
 val section_is_special : forall 'abifeature. elf64_interpreted_section -> annotated_memory_image 'abifeature -> bool

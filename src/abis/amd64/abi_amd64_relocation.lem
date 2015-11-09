@@ -132,7 +132,7 @@ let string_of_amd64_relocation_type rel_type =
     "Invalid X86_64 relocation"
 
 (** [amd64_reloc r] yields a function that applies relocations of type [r]. *)
-val amd64_reloc : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature => reloc_fn 'abifeature
+val amd64_reloc : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature => reloc_fn 'abifeature
 let amd64_reloc r = 
     let n2i = integerFromNatural in 
     let i2n = naturalFromInteger in 

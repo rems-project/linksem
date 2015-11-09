@@ -28,36 +28,42 @@ open import Memory_image
 
 open import Missing_pervasives
 
-
-val elfFileFeatureConstructorToNaturalList : elf_file_feature -> list natural
-let elfFileFeatureConstructorToNaturalList f = match f with
-    ElfHeader(_) -> [0]
-    | ElfSectionHeaderTable(_) -> [1]
-    | ElfProgramHeaderTable(_) -> [2]
-    | ElfSection(_) -> [3]
-    | ElfSegment(_) -> [4]
-end
-
-instance (ToNaturalList elf_file_feature)
-    let toNaturalList = elfFileFeatureConstructorToNaturalList
-end
-
 val elfFileFeatureCompare : elf_file_feature -> elf_file_feature -> Basic_classes.ordering
 let elfFileFeatureCompare f1 f2 = 
-    match (elfFileFeatureConstructorToNaturalList f1, elfFileFeatureConstructorToNaturalList f2) with
-        ([], []) -> failwith "impossible: elf file feature has empty natural list (case 0)"
-    |   (_, [])  -> failwith "impossible: elf file feature has empty natural list (case 1)"
-    |   ([], _)  -> failwith "impossible: elf file feature has empty natural list (case 2)"
-    |   ((hd1 :: tl1), (hd2 :: tl2)) -> 
-            if hd1 < hd2 then LT else if hd1 > hd2 then GT else
-                match (f1, f2) with
-                    (ElfHeader(x1), ElfHeader(x2)) -> compare x1 x2
-                    | (ElfSectionHeaderTable(x1), ElfSectionHeaderTable(x2)) -> compare x1 x2
-                    | (ElfProgramHeaderTable(x1), ElfProgramHeaderTable(x2)) -> compare x1 x2
-                    | (ElfSection(x1), ElfSection(x2)) -> compare x1 x2
-                    | (ElfSegment(x1), ElfSegment(x2)) -> compare x1 x2
-                    | _ -> failwith "impossible: tag constructors not equal but natural list heads were equal"
-                end
+    (* order is: *)
+    match (f1, f2) with
+        (ElfHeader(x1), ElfHeader(x2)) -> (* equal tags, so ... *) compare x1 x2
+      | (ElfHeader(x1), _) -> LT
+      | (ElfSectionHeaderTable(x1), ElfHeader(x2)) -> GT
+      | (ElfSectionHeaderTable(x1), ElfSectionHeaderTable(x2)) -> (* equal tags, so ... *) compare x1 x2
+      | (ElfSectionHeaderTable(x1), _) -> LT
+      | (ElfProgramHeaderTable(x1), ElfHeader(x2)) -> GT
+      | (ElfProgramHeaderTable(x1), ElfSectionHeaderTable(x2)) -> GT
+      | (ElfProgramHeaderTable(x1), ElfProgramHeaderTable(x2)) -> compare x1 x2
+      | (ElfProgramHeaderTable(x1), _) -> LT
+      | (ElfSection(x1), ElfHeader(x2)) -> GT
+      | (ElfSection(x1), ElfSectionHeaderTable(x2)) -> GT
+      | (ElfSection(x1), ElfProgramHeaderTable(x2)) -> GT
+      | (ElfSection(x1), ElfSection(x2)) -> compare x1 x2
+      | (ElfSection(x1), _) -> LT
+      | (ElfSegment(x1), ElfHeader(x2)) -> GT
+      | (ElfSegment(x1), ElfSectionHeaderTable(x2)) -> GT
+      | (ElfSegment(x1), ElfProgramHeaderTable(x2)) -> GT
+      | (ElfSegment(x1), ElfSection(x2)) -> GT
+      | (ElfSegment(x1), ElfSegment(x2)) -> compare x1 x2
+      | (ElfSegment(x1), _) -> LT
+    end
+
+val elfFileFeatureTagEquiv : elf_file_feature -> elf_file_feature -> bool
+let elfFileFeatureTagEquiv f1 f2 = 
+    (* order is: *)
+    match (f1, f2) with
+        (ElfHeader(x1), ElfHeader(x2)) -> (* equal tags, so ... *) true
+      | (ElfSectionHeaderTable(x1), ElfSectionHeaderTable(x2)) -> true
+      | (ElfProgramHeaderTable(x1), ElfProgramHeaderTable(x2)) -> true
+      | (ElfSection(x1), ElfSection(x2)) -> true
+      | (ElfSegment(x1), ElfSegment(x2)) -> true
+      | (_, _) -> false
     end
 
 instance (Ord elf_file_feature)
@@ -68,55 +74,63 @@ instance (Ord elf_file_feature)
     let (>=) = fun f1 -> (fun f2 -> Set.member (elfFileFeatureCompare f1 f2) {GT; EQ})
 end
 
-val tagConstructorToNaturalList : forall 'abifeature. ToNaturalList 'abifeature => range_tag 'abifeature -> list natural
-let tagConstructorToNaturalList t = match t with 
-    ImageBase -> [0]
-    | EntryPoint -> [1]
-    | SymbolDef(_) -> [2]
-    | SymbolRef(_) -> [3]
-    | FileFeature(f) -> 4 :: (elfFileFeatureConstructorToNaturalList f)
-    | AbiFeature(af) -> 5 :: (toNaturalList af)
-end
-
-instance forall 'abifeature. ToNaturalList 'abifeature => (ToNaturalList (range_tag 'abifeature))
-    let toNaturalList = tagConstructorToNaturalList
-end
-
-val tagEquiv : forall 'abifeature. ToNaturalList 'abifeature => range_tag 'abifeature -> range_tag 'abifeature -> bool
-let tagEquiv k1 k2 = 
-    EQ = (List.lexicographicCompare (tagConstructorToNaturalList k1) (tagConstructorToNaturalList k2))
-
-val tagCompare : forall 'abifeature. ToNaturalList 'abifeature, Ord 'abifeature => range_tag 'abifeature -> range_tag 'abifeature -> Basic_classes.ordering
+val tagCompare : forall 'abifeature. Ord 'abifeature =>
+    range_tag 'abifeature -> range_tag 'abifeature -> Basic_classes.ordering
 let tagCompare k1 k2 = 
-    match ((tagConstructorToNaturalList k1), (tagConstructorToNaturalList k2)) with
-        ([], []) -> failwith "impossible: tag has empty natural list (case 0)"
-    |   (_, [])  -> failwith "impossible: tag has empty natural list (case 1)"
-    |   ([], _)  -> failwith "impossible: tag has empty natural list (case 2)"
-    |   ((hd1 :: tl1), (hd2 :: tl2)) -> 
-            if hd1 < hd2 then LT else if hd1 > hd2 then GT else
-                match (k1, k2) with
-                    (ImageBase, ImageBase) -> EQ
-                    | (EntryPoint, EntryPoint) -> EQ
-                    | (SymbolDef(x1), SymbolDef(x2)) -> compare x1 x2
-                    | (SymbolRef(x1), SymbolRef(x2)) -> compare x1 x2
-                    | (FileFeature(x1), FileFeature(x2)) -> compare x1 x2
-                    | (AbiFeature(x1), AbiFeature(x2)) -> compare x1 x2
-                    | _ -> failwith "impossible: tag constructors not equal but natural list heads were equal"
-                end
+    match (k1, k2) with
+        (ImageBase, ImageBase) -> EQ
+        | (ImageBase, _) -> LT
+        | (EntryPoint, ImageBase) -> GT
+        | (EntryPoint, EntryPoint) -> EQ
+        | (EntryPoint, _) -> LT
+        | (SymbolDef(_), ImageBase) -> GT
+        | (SymbolDef(_), EntryPoint) -> GT
+        | (SymbolDef(x1), SymbolDef(x2)) -> compare x1 x2
+        | (SymbolDef(_), _) -> LT
+        | (SymbolRef(_), ImageBase) -> GT
+        | (SymbolRef(_), EntryPoint) -> GT
+        | (SymbolRef(_), SymbolDef(_)) -> GT
+        | (SymbolRef(x1), SymbolRef(x2)) -> compare x1 x2
+        | (SymbolRef(_), _) -> LT
+        | (FileFeature(_), ImageBase) -> GT
+        | (FileFeature(_), EntryPoint) -> GT
+        | (FileFeature(_), SymbolDef(_)) -> GT
+        | (FileFeature(_), SymbolRef(_)) -> GT
+        | (FileFeature(x1), FileFeature(x2)) -> compare x1 x2
+        | (FileFeature(_), _) -> LT
+        | (AbiFeature(_), ImageBase) -> GT
+        | (AbiFeature(_), EntryPoint) -> GT
+        | (AbiFeature(_), SymbolDef(_)) -> GT
+        | (AbiFeature(_), SymbolRef(_)) -> GT
+        | (AbiFeature(_), FileFeature(_)) -> GT
+        | (AbiFeature(x1), AbiFeature(x2)) -> compare x1 x2
+        | (AbiFeature(_), _) -> LT
     end
 
-instance forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature => (Ord range_tag 'abifeature)
+instance forall 'abifeature. Ord 'abifeature => (Ord range_tag 'abifeature)
     let compare = tagCompare
     let (<) = fun tag1 -> (fun tag2 -> (tagCompare tag1 tag2 = LT))
     let (<=) = fun tag1 -> (fun tag2 -> Set.member (tagCompare tag1 tag2) {LT; EQ})
     let (>) = fun tag1 -> (fun tag2 -> (tagCompare tag1 tag2 = GT))
     let (>=) = fun tag1 -> (fun tag2 -> Set.member (tagCompare tag1 tag2) {GT; EQ})
 end
+    
+val tagEquiv : forall 'abifeature. AbiFeatureTagEquiv 'abifeature => range_tag 'abifeature -> range_tag 'abifeature -> bool
+let tagEquiv k1 k2 = 
+    match (k1, k2) with
+        (ImageBase, ImageBase) -> true
+        | (EntryPoint, EntryPoint) -> true
+        | (SymbolDef(x1), SymbolDef(x2)) -> true
+        | (SymbolRef(_), SymbolRef(_)) -> true
+        | (FileFeature(x1), FileFeature(x2)) -> elfFileFeatureTagEquiv x1 x2
+        | (AbiFeature(x1), AbiFeature(x2)) -> abiFeatureTagEquiv x1 x2
+        | (_, _) -> false
+    end
 
 (* ------- end of Ord / compare / ConstructorToNaturalList functions *)
 
 
-val unique_tag_matching : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature => range_tag 'abifeature -> annotated_memory_image 'abifeature -> range_tag 'abifeature
+val unique_tag_matching : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature => range_tag 'abifeature -> annotated_memory_image 'abifeature -> range_tag 'abifeature
 let unique_tag_matching tag img = 
     match Multimap.lookupBy tagEquiv tag img.by_tag with
         [] -> failwith "no tag match found"
@@ -126,14 +140,14 @@ let unique_tag_matching tag img =
             ^  ") when asserted unique")" *)
     end
     
-val tagged_ranges_matching_tag : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature => range_tag 'abifeature -> annotated_memory_image 'abifeature -> list (range_tag 'abifeature * maybe element_range)
+val tagged_ranges_matching_tag : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature => range_tag 'abifeature -> annotated_memory_image 'abifeature -> list (range_tag 'abifeature * maybe element_range)
 let tagged_ranges_matching_tag tag img = 
     Multimap.lookupBy tagEquiv tag img.by_tag
 
 val element_range_compare : element_range -> element_range -> Basic_classes.ordering
 let element_range_compare = pairCompare compare compare
 
-val unique_tag_matching_at_range_exact : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature =>
+val unique_tag_matching_at_range_exact : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature =>
     maybe element_range
     -> range_tag 'abifeature
     -> annotated_memory_image 'abifeature
@@ -150,7 +164,7 @@ let unique_tag_matching_at_range_exact r tag img =
         | _ -> failwith "multiple range/tag match when asserted unique"
     end
 
-val symbol_def_ranges : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature => annotated_memory_image 'abifeature -> (list (range_tag 'abifeature) * list (maybe element_range))
+val symbol_def_ranges : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature => annotated_memory_image 'abifeature -> (list (range_tag 'abifeature) * list (maybe element_range))
 let symbol_def_ranges img = 
     (* find all element ranges labelled as ELF symbols *)
     let (tags, maybe_ranges) = unzip (
@@ -163,7 +177,7 @@ let symbol_def_ranges img =
 val name_of_symbol_def : symbol_definition -> string
 let name_of_symbol_def sym = sym.def_symname
 
-val defined_symbols_and_ranges : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature => annotated_memory_image 'abifeature -> list ((maybe element_range) * symbol_definition)
+val defined_symbols_and_ranges : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature => annotated_memory_image 'abifeature -> list ((maybe element_range) * symbol_definition)
 let defined_symbols_and_ranges img = 
     List.mapMaybe (fun (tag, maybeRange) -> 
         match tag with
@@ -171,7 +185,7 @@ let defined_symbols_and_ranges img =
             | _ -> failwith "impossible: non-symbol def in list of symbol defs"
         end) (tagged_ranges_matching_tag (SymbolDef(null_symbol_definition)) img)
 
-val defined_symbols : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature =>  annotated_memory_image 'abifeature -> list symbol_definition
+val defined_symbols : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature =>  annotated_memory_image 'abifeature -> list symbol_definition
 let defined_symbols img = 
     let ((all_symbol_tags, all_symbol_ranges) : (list (range_tag 'abifeature) * list (maybe element_range)))
      = symbol_def_ranges img

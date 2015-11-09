@@ -47,26 +47,26 @@ type amd64_abi_feature =
     GOT 
     | PLT (* placeholder / FIXME *)
     
-val amd64AbiFeatureConstructorToNaturalList : amd64_abi_feature -> list natural
-let amd64AbiFeatureConstructorToNaturalList af = match af with
-    GOT -> [0]
-    | PLT -> [1]
-end
-
 val abiFeatureCompare : amd64_abi_feature -> amd64_abi_feature -> Basic_classes.ordering
 let abiFeatureCompare f1 f2 = 
-    match (amd64AbiFeatureConstructorToNaturalList f1, amd64AbiFeatureConstructorToNaturalList f2) with
-        ([], []) -> failwith "impossible: ABI feature has empty natural list (case 0)"
-    |   (_, [])  -> failwith "impossible: ABI feature has empty natural list (case 1)"
-    |   ([], _)  -> failwith "impossible: ABI feature has empty natural list (case 2)"
-    |   ((hd1 :: tl1), (hd2 :: tl2)) -> 
-            if hd1 < hd2 then LT else if hd1 > hd2 then GT else
-                match (f1, f2) with
-                    (GOT, GOT) -> EQ
-                    | (PLT, PLT) -> EQ
-                    | _ -> failwith "impossible: tag constructors not equal but natural list heads were equal"
-                end
+    match (f1, f2) with
+        (GOT, GOT) -> EQ
+        | (GOT, PLT) -> LT
+        | (PLT, PLT) -> EQ
+        | (PLT, GOT) -> GT
     end
+
+val abiFeatureTagEq : amd64_abi_feature -> amd64_abi_feature -> bool
+let abiFeatureTagEq f1 f2 =
+    match (f1, f2) with
+        (GOT, GOT) -> true
+        | (PLT, PLT) -> true
+        | (_, _) -> false
+    end
+
+instance (AbiFeatureTagEquiv amd64_abi_feature)
+    let abiFeatureTagEquiv = abiFeatureTagEq
+end
 
 instance (Ord amd64_abi_feature)
     let compare = abiFeatureCompare
@@ -74,10 +74,6 @@ instance (Ord amd64_abi_feature)
     let (<=) = fun f1 -> (fun f2 -> Set.member (abiFeatureCompare f1 f2) {LT; EQ})
     let (>) = fun f1 -> (fun f2 -> (abiFeatureCompare f1 f2 = GT))
     let (>=) = fun f1 -> (fun f2 -> Set.member (abiFeatureCompare f1 f2) {GT; EQ})
-end
-
-instance (ToNaturalList amd64_abi_feature)
-    let toNaturalList = amd64AbiFeatureConstructorToNaturalList
 end
 
 val section_is_special : forall 'abifeature. elf64_interpreted_section -> annotated_memory_image 'abifeature -> bool

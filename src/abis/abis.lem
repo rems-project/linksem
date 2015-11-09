@@ -86,29 +86,22 @@ let is_valid_abi_power64_relocation_operator2 op =
 type any_abi_feature = Amd64AbiFeature of amd64_abi_feature
                      | Aarch64LeAbiFeature of aarch64_le_abi_feature
 
-val anyAbiFeatureToNaturalList : any_abi_feature -> list natural
-let anyAbiFeatureToNaturalList f = match f with
-    Amd64AbiFeature(af) -> 0 :: (toNaturalList af)
-    | Aarch64LeAbiFeature(af) -> 1 :: (toNaturalList af)
-end
-
-instance (ToNaturalList any_abi_feature)
-    let toNaturalList = anyAbiFeatureToNaturalList
-end
-
 val anyAbiFeatureCompare : any_abi_feature -> any_abi_feature -> Basic_classes.ordering
 let anyAbiFeatureCompare f1 f2 = 
-    match (anyAbiFeatureToNaturalList f1, anyAbiFeatureToNaturalList f2) with
-        ([], []) -> failwith "impossible: any-ABI feature has empty natural list (case 0)"
-    |   (_, [])  -> failwith "impossible: any-ABI feature has empty natural list (case 1)"
-    |   ([], _)  -> failwith "impossible: any-ABI feature has empty natural list (case 2)"
-    |   ((hd1 :: tl1), (hd2 :: tl2)) -> 
-            if hd1 < hd2 then LT else if hd1 > hd2 then GT else
-                match (f1, f2) with
-                    (Amd64AbiFeature(af1), Amd64AbiFeature(af2)) -> compare af1 af2
-                   |(Aarch64LeAbiFeature(af1), Aarch64LeAbiFeature(af2)) -> compare af1 af2
-                   | _ -> failwith "impossible: tag constructors not equal but natural list heads were equal"
-                end
+    match (f1, f2) with
+        (Amd64AbiFeature(af1), Amd64AbiFeature(af2)) -> compare af1 af2
+       |(Amd64AbiFeature(_), _) -> LT
+       |(Aarch64LeAbiFeature(af1), Amd64AbiFeature(af2)) -> GT
+       |(Aarch64LeAbiFeature(af1), Aarch64LeAbiFeature(af2)) -> compare af1 af2
+    end
+
+val anyAbiFeatureTagEquiv : any_abi_feature -> any_abi_feature -> bool
+let anyAbiFeatureTagEquiv f1 f2 = 
+    match (f1, f2) with
+        (Amd64AbiFeature(af1), Amd64AbiFeature(af2)) -> abiFeatureTagEquiv af1 af2
+       |(Amd64AbiFeature(_), _) -> false
+       |(Aarch64LeAbiFeature(af1), Amd64AbiFeature(af2)) -> false
+       |(Aarch64LeAbiFeature(af1), Aarch64LeAbiFeature(af2)) -> abiFeatureTagEquiv af1 af2
     end
 
 instance (Ord any_abi_feature)
@@ -117,6 +110,10 @@ instance (Ord any_abi_feature)
     let (<=) = fun f1 -> (fun f2 -> Set.member (anyAbiFeatureCompare f1 f2) {LT; EQ})
     let (>) = fun f1 -> (fun f2 -> (anyAbiFeatureCompare f1 f2 = GT))
     let (>=) = fun f1 -> (fun f2 -> Set.member (anyAbiFeatureCompare f1 f2) {GT; EQ})
+end
+
+instance (AbiFeatureTagEquiv any_abi_feature)
+    let abiFeatureTagEquiv = anyAbiFeatureTagEquiv
 end
 
 let make_elf64_header data osabi abiv ma t entry shoff phoff phnum shnum shstrndx =
@@ -264,7 +261,7 @@ let make_default_phdrs maxpagesize commonpagesize t img section_pairs_bare_sorte
     (* FIXME: do the shared object and dyn. exec. stuff too *)
     make_load_phdrs maxpagesize commonpagesize img section_pairs_bare_sorted_by_address
 
-val find_start_symbol_address : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature => annotated_memory_image 'abifeature -> maybe natural
+val find_start_symbol_address : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature => annotated_memory_image 'abifeature -> maybe natural
 let find_start_symbol_address img = 
     (* Do we have a symbol called "_start"? *)
     let all_defs = Memory_image_orderings.defined_symbols_and_ranges img

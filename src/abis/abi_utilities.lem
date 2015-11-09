@@ -164,7 +164,7 @@ let size_of_copy_reloc img rr =
     (* it's the minimum of the two definition symbol sizes. FIXME: for now, just use the rr *)
     size_of_def rr
 
-val reloc_site_address : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature => 
+val reloc_site_address : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature => 
     annotated_memory_image 'abifeature -> symbol_reference_and_reloc_site -> natural
 let reloc_site_address img rr = 
     (* find the element range that's tagged with this reloc site *)
