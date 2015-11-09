@@ -15,9 +15,9 @@ open import Elf_types_native_uint
 val is_aarch64_weak_reference : elf64_symbol_table_entry -> bool
 let is_aarch64_weak_reference ent =
   natural_of_elf64_half ent.elf64_st_shndx = shn_undef &&
-    get_symbol_binding ent.elf64_st_info = stb_weak
+    get_elf64_symbol_binding ent = stb_weak
 
 val is_aarch64_weak_definition : elf64_symbol_table_entry -> bool
 let is_aarch64_weak_definition ent =
   natural_of_elf64_half ent.elf64_st_shndx <> shn_undef &&
-    get_symbol_binding ent.elf64_st_info = stb_weak
+    get_elf64_symbol_binding ent = stb_weak

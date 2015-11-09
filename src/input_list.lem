@@ -34,6 +34,7 @@ open import Elf_header
 type input_blob =  Reloc of byte_sequence
                  | Shared of byte_sequence
                  | Script of byte_sequence
+                 | ControlScript
 
 (* We remember where the input item came from on the command line,
  * using "coordinates" identifying the index in the higher-up list
@@ -41,12 +42,14 @@ type input_blob =  Reloc of byte_sequence
 type origin_coord = InArchive of (natural * natural * string * natural) (* archive-id, pos-within-archive, archive-name, archive-member-count *)
                   | InGroup of (natural * natural)   (* group-id, pos-within-group *)
                   | InCommandLine of natural
+                  | Builtin
 
 val string_of_origin_coord : origin_coord -> string
 let string_of_origin_coord c = match c with
     InArchive(aid, aidx, aname, _) -> "at position " ^ (show aidx) ^ " within archive " ^ aname ^ " (at position " ^ (show aid) ^ ")"
     | InGroup(gid, gidx) -> "at position " ^ (show gidx) ^ " within group at position " ^ (show gid)
     | InCommandLine(cid) -> "(command line)"
+    | Builtin -> "(built-in)"
 end
 
 instance (Show origin_coord)
@@ -62,6 +65,7 @@ let string_of_input_blob item = match item with
     Reloc(seq) -> "relocatable file (" ^ (show (Byte_sequence.length seq)) ^ " bytes)"
   | Shared(seq) -> "shared object (" ^ (show (Byte_sequence.length seq)) ^ " bytes)"
   | Script(seq) -> "script (" ^ (show (Byte_sequence.length seq)) ^ " bytes)"
+  | ControlScript -> "the linker control script"
 end
 
 instance (Show input_blob)

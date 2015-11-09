@@ -656,6 +656,17 @@ let address_to_element_and_offset addr img =
             (* no elements with a low enough assigned address, so nothing *)
             Nothing
     end
+    
+val element_and_offset_to_address : forall 'abifeature. (string * natural) -> annotated_memory_image 'abifeature -> maybe natural
+let element_and_offset_to_address (el_name, el_off) img = 
+    match Map.lookup el_name img.elements with
+        Just el -> match el.startpos with
+                        Just addr -> Just (addr + el_off)
+                        | Nothing -> Nothing
+                   end
+        | Nothing -> failwith "error: nonexistent element"
+    end
+                
 
 let null_symbol_reference = <|
     ref_symname = ""

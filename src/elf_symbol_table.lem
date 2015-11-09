@@ -256,18 +256,18 @@ type elf64_symbol_table =
 
 (* Functions below common to 32- and 64-bit! *)
 
-(** [get_symbol_binding u] extracts a symbol table entry's symbol binding.  [u]
+(** [extract_symbol_binding u] extracts a symbol table entry's symbol binding.  [u]
   * in this case is the [elfXX_st_info] field from a symbol table entry.
   *)
-val get_symbol_binding : unsigned_char -> natural
-let get_symbol_binding entry =
+val extract_symbol_binding : unsigned_char -> natural
+let extract_symbol_binding entry =
   natural_of_unsigned_char (unsigned_char_rshift entry 4)
   
-(** [get_symbol_type u] extracts a symbol table entry's symbol type.  [u]
+(** [extract_symbol_type u] extracts a symbol table entry's symbol type.  [u]
   * in this case is the [elfXX_st_info] field from a symbol table entry.
   *)
-val get_symbol_type : unsigned_char -> natural
-let get_symbol_type entry =
+val extract_symbol_type : unsigned_char -> natural
+let extract_symbol_type entry =
   natural_of_unsigned_char (unsigned_char_land entry (unsigned_char_of_natural 15)) (* 0xf *)
 
 (** [get_symbol_info u] extracts a symbol table entry's symbol info.  [u]
@@ -506,8 +506,8 @@ let get_elf32_symbol_image_address symtab strtab =
     let name = natural_of_elf32_word entry.elf32_st_name in
     let addr = natural_of_elf32_addr entry.elf32_st_value in
     let size = natural_of_elf32_word entry.elf32_st_size * 8 in
-    let typ  = get_symbol_type entry.elf32_st_info in
-    let bnd  = get_symbol_binding entry.elf32_st_info in
+    let typ  = extract_symbol_type entry.elf32_st_info in
+    let bnd  = extract_symbol_binding entry.elf32_st_info in
       String_table.get_string_at name strtab >>= fun str ->
       return (str, (typ, size, addr, bnd))
   ) symtab
@@ -523,8 +523,8 @@ let get_elf64_symbol_image_address symtab strtab =
     let name = natural_of_elf64_word entry.elf64_st_name in
     let addr = natural_of_elf64_addr entry.elf64_st_value in
     let size = natural_of_elf64_xword entry.elf64_st_size in
-    let typ  = get_symbol_type entry.elf64_st_info in
-    let bnd  = get_symbol_binding entry.elf64_st_info in 
+    let typ  = extract_symbol_type entry.elf64_st_info in
+    let bnd  = extract_symbol_binding entry.elf64_st_info in 
       String_table.get_string_at name strtab >>= fun str ->
       return (str, (typ, size, addr, bnd))
   ) symtab
@@ -533,10 +533,22 @@ let get_elf64_symbol_image_address symtab strtab =
   * [ent].
   *)
 val get_elf32_symbol_type : elf32_symbol_table_entry -> natural
-let get_elf32_symbol_type syment = get_symbol_type syment.elf32_st_info
+let get_elf32_symbol_type syment = extract_symbol_type syment.elf32_st_info
 
 (** [get_el64_symbol_type ent] extracts the symbol type from symbol table entry
   * [ent].
   *)
 val get_elf64_symbol_type : elf64_symbol_table_entry -> natural
-let get_elf64_symbol_type syment = get_symbol_type syment.elf64_st_info
+let get_elf64_symbol_type syment = extract_symbol_type syment.elf64_st_info
+
+(** [get_el32_symbol_binding ent] extracts the symbol binding from symbol table entry
+  * [ent].
+  *)
+val get_elf32_symbol_binding : elf32_symbol_table_entry -> natural
+let get_elf32_symbol_binding syment = extract_symbol_binding syment.elf32_st_info
+
+(** [get_el64_symbol_binding ent] extracts the symbol binding from symbol table entry
+  * [ent].
+  *)
+val get_elf64_symbol_binding : elf64_symbol_table_entry -> natural
+let get_elf64_symbol_binding syment = extract_symbol_binding syment.elf64_st_info

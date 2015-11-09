@@ -39,12 +39,14 @@ type script = byte_sequence (* FIXME *)
 type linkable_object = RelocELF of elf_memory_image    (* memory image without address assignments *)
                      | SharedELF of elf_memory_image   (* memory image with address assignments *)
                      | ScriptAST of script       (* FIXME: should be elaborated away *)
+                     | ControlScriptDefs
 
 val string_of_linkable_object : linkable_object -> string
 let string_of_linkable_object l = match l with
     RelocELF(_)    -> "a relocatable file (...)"
     | SharedELF(_) -> "a shared library (...)"
     | ScriptAST(_) -> "a linker script (...)"
+    | ControlScriptDefs -> "the control script"
 end
 
 (* We keep the original input item around, hence the filename and byte sequence
@@ -177,7 +179,7 @@ let resolve_one_reference_default a linkables defmap ref_idx_and_ref_and_linkabl
      *)
     let (ref_obj, (ref_fname, ref_blob, (ref_u, ref_coords)), ref_options) = ref_linkable
     in
-    let ref_is_weak = (get_symbol_binding ref.ref_syment.elf64_st_info) = stb_weak
+    let ref_is_weak = (get_elf64_symbol_binding ref.ref_syment) = stb_weak
     in
     let def_is_eligible = (fun (def_idx, def, def_linkable) -> 
         let ref_is_unnamed = (ref.ref_symname = "")

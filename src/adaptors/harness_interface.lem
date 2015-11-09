@@ -451,7 +451,7 @@ let {ocaml} harness_string_of_elf32_reloc_entry os sht symtab stbl sechdr_stbl r
           match List.index symtab (unsafe_nat_of_natural idx) with
             | Nothing  -> (stn_undef, 0, 0, 0)
             | Just sym -> (natural_of_elf32_word sym.elf32_st_name,
-                natural_of_elf32_addr sym.elf32_st_value, get_symbol_type sym.elf32_st_info,
+                natural_of_elf32_addr sym.elf32_st_value, get_elf32_symbol_type sym,
                   natural_of_elf32_half sym.elf32_st_shndx)
           end
         in
@@ -524,7 +524,7 @@ let {ocaml} harness_string_of_elf64_reloc_a_entry os symtab sht stbl sechdr_stbl
     match List.index symtab (unsafe_nat_of_natural idx) with
       | Nothing  -> (stn_undef, 0, 0, 0)
       | Just sym -> (natural_of_elf64_word sym.elf64_st_name,
-        natural_of_elf64_addr sym.elf64_st_value, get_symbol_type sym.elf64_st_info,
+        natural_of_elf64_addr sym.elf64_st_value, get_elf64_symbol_type sym,
           natural_of_elf64_half sym.elf64_st_shndx)
     end
   in
@@ -695,8 +695,8 @@ let {ocaml} harness_string_of_elf32_symbol_table_entry num os proc symver vernee
     else
       concatS (replicate (naturalFromNat pad) " ")
   in
-  let typ = string_of_symbol_type (get_symbol_type ent.elf32_st_info) os proc in
-  let bnd = string_of_symbol_binding (get_symbol_binding ent.elf32_st_info) os proc in
+  let typ = string_of_symbol_type (get_elf32_symbol_type ent) os proc in
+  let bnd = string_of_symbol_binding (get_elf32_symbol_binding ent) os proc in
   let bnd_pad =
     let pad  = 6 - stringLength typ in
     if pad = 0 then
@@ -829,8 +829,8 @@ let {ocaml} harness_string_of_elf64_symbol_table_entry num os proc stbl ent =
     else
       concatS (replicate (naturalFromNat pad) " ")
   in
-  let typ = string_of_symbol_type (get_symbol_type ent.elf64_st_info) os proc in
-  let bnd = string_of_symbol_binding (get_symbol_binding ent.elf64_st_info) os proc in
+  let typ = string_of_symbol_type (get_elf64_symbol_type ent) os proc in
+  let bnd = string_of_symbol_binding (get_elf64_symbol_binding ent) os proc in
   let bnd_pad =
     let pad  = 8 - stringLength typ in
     if pad = 0 then

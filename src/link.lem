@@ -160,7 +160,7 @@ let mark_fate_of_relocs linkable_idx a options bindings_by_name item img =
                                 Nothing -> true
                                 | Just (def_idx, def, def_item) ->
                                     (* Bindings to non-global symbols are final. *)
-                                    get_symbol_binding def.def_syment.elf64_st_info = stb_local
+                                    get_elf64_symbol_binding def.def_syment = stb_local
                                     ||
                                     (* Bindings to hidden- or protected- or internal-visibility globals 
                                      *    are final. *)
@@ -180,8 +180,8 @@ let mark_fate_of_relocs linkable_idx a options bindings_by_name item img =
                                     (building_executable && def_is_in_reloc def_item) ||
                                     (* 2 and 3. *)
                                     (building_shared_library && def_is_in_reloc def_item && 
-                                        (  ((get_symbol_type def.def_syment.elf64_st_info) = stt_func  && bind_functions_early)
-                                        || ((get_symbol_type def.def_syment.elf64_st_info) <> stt_func && bind_non_functions_early)
+                                        (  ((get_elf64_symbol_type def.def_syment) = stt_func  && bind_functions_early)
+                                        || ((get_elf64_symbol_type def.def_syment) <> stt_func && bind_non_functions_early)
                                         )
                                     )
                                     (* FIXME: does it matter if the binding is intra-object or inter-object?
@@ -214,18 +214,29 @@ let mark_fate_of_relocs linkable_idx a options bindings_by_name item img =
                         end
                         in
                         let decide = fun decision -> (
+                            let _ = errln ("Decided to " ^ match decision with
+                                LeaveReloc -> "leave"
+                                | ApplyReloc -> "apply"
+                                | MakePIC -> "PICify"
+                            end ^ " relocation in linkable " ^ (show ref_item) ^ "'s image, bound to " ^ 
+                            match maybe_def with
+                                Just(def_idx, def, def_item) -> "a definition called `" ^ def.def_symname ^ "' in linkable " ^
+                                    (show def_item)
+                                | Nothing -> "no definition"
+                            end
+                            )
+                            in
                             Set.insert (SymbolRef(<|
                                 ref           = r.ref
                                 ; maybe_reloc = r.maybe_reloc
                                 ; maybe_def_bound_to = Just (decision, 
                                     match maybe_def with
                                         Just(def_idx, def, def_item) -> 
-                                                Just <|
-                                                        def_symname = def.def_symname
+                                                Just <| def_symname = def.def_symname
                                                       ; def_syment  = def.def_syment
                                                       ; def_sym_scn = def.def_sym_scn
                                                       ; def_sym_idx = def.def_sym_idx
-                                                      ; def_linkable_idx = def_idx
+                                                      ; def_linkable_idx = def_idx 
                                                       |>
                                         | Nothing -> Nothing
                                     end
@@ -482,6 +493,24 @@ let relocate_output_image a bindings_by_name img =
     let relocs = Multimap.lookupBy Memory_image_orderings.tagEquiv (SymbolRef(null_symbol_reference_and_reloc_site))
         img.by_tag
     in
+    
+    let _ = errln ("For __fini_array_end (in relocate_output_image), we have " ^ 
+        (let all_bs = match Map.lookup "__fini_array_end" bindings_by_name with
+            Just l -> l
+            | Nothing -> []
+        end
+        in
+        ((show (length all_bs)) ^ 
+        " bindings, of which " ^ 
+        (show (length (List.filter (fun (bi, ((ref_idx, ref, ref_item), maybe_def)) -> 
+            match maybe_def with
+                Just _ -> true
+                | _ -> false
+            end
+        ) all_bs))) ^ " have defs")))
+    in
+    
+    
     let apply_reloc = fun img -> fun (el_name, start, len) -> fun symref_and_reloc_site -> fun symaddr -> (
         let reloc_site = match symref_and_reloc_site.maybe_reloc with
             Nothing -> failwith "impossible: no reloc site during relocation"
@@ -504,9 +533,15 @@ let relocate_output_image a bindings_by_name img =
         in
         let existing_field = extract_natural_field width element start
         in
+        let _ = errln ("Existing field has value 0x" ^ (hex_string_of_natural existing_field))
+        in
+        let _ = errln ("Symaddr has value 0x" ^ (hex_string_of_natural symaddr))
+        in
         let addend = integer_of_elf64_sxword reloc_site.ref_relent.elf64_ra_addend
         in
         let new_field_value = calculate symaddr addend existing_field
+        in
+        let _ = errln ("Calculated new field value 0x" ^ (hex_string_of_natural new_field_value))
         in
         let new_element = write_natural_field new_field_value width element start
         in
@@ -526,9 +561,58 @@ let relocate_output_image a bindings_by_name img =
                         | Just (el_name, (start, len)) -> 
                             let _ = errln ("During relocation, saw a reloc site in element " ^ el_name ^ ", offset 0x" ^
                                 (hex_string_of_natural start) ^ ", length 0x" ^ (hex_string_of_natural len) ^ 
-                                ", reloc type " ^ (* a. *) Abi_amd64_relocation.string_of_amd64_relocation_type (get_elf64_relocation_a_type rs.ref_relent))
+                                ", reloc type " ^ (* a. *) Abi_amd64_relocation.string_of_amd64_relocation_type (get_elf64_relocation_a_type rs.ref_relent) ^ 
+                                ", symbol name `" ^ x.ref.ref_symname ^ "'")
                             in
-                            let symaddr = 0 (* FIXME *)
+                            let symaddr = match x.maybe_def_bound_to with
+                                Just(ApplyReloc, Just(bound_def)) ->
+                                    (* Find the bound def *)
+                                    let ranges_and_defs = elf_memory_image_defined_symbols_and_ranges img
+                                    in 
+                                    let _ = errln ("Searching for the bound-to symbol, which came from linkable idx " ^ 
+                                        (show bound_def.def_linkable_idx) ^ ", section " ^ 
+                                        (show bound_def.def_syment.elf64_st_shndx))
+                                    in
+                                    match List.filter (fun (some_range, some_def) -> 
+                                        if some_def.def_symname = bound_def.def_symname 
+                                        && some_def.def_linkable_idx = bound_def.def_linkable_idx then
+                                            let _ = errln ("Found one in the same linkable: syment is " ^
+                                                (show some_def.def_syment))
+                                            in some_def = bound_def
+                                        else some_def = bound_def
+                                    ) ranges_and_defs with
+                                        [] -> failwith "internal error: bound-to symbol not defined"
+                                        | (r, d) :: more -> match r with
+                                            Just(el_name, (start, len)) -> 
+                                                let v = match element_and_offset_to_address (el_name, start) img with
+                                                    Just a -> a
+                                                    | Nothing -> failwith "internal error: could not get address for symbol"
+                                                end
+                                                in
+                                                match more with 
+                                                    [] -> v
+                                                    | _ -> let _ = errln ("FIXME: internal error: more than one def range equalling bound def " ^
+                                                        "in section " ^ el_name)
+                                                        in v
+                                                end
+                                            | Nothing -> failwith "internal error: defined symbol without range"
+                                            end
+                                    end
+                                | Nothing -> failwith "no def found for bound-to symbol"
+                                | Just(ApplyReloc, Nothing) -> 
+                                    let _ = errln "No definition, so we think this is a weak reference; giving it value 0."
+                                    in
+                                    (* CHECK: does the syment say it's weak? *)
+                                    if get_elf64_symbol_binding x.ref.ref_syment <> stb_weak then
+                                        let _ = errln "Actually not weak! bailing"
+                                        in
+                                        failwith "not a weak reference, but no binding"
+                                    else 
+                                    (* Weak symbol. *) 0
+                                | Just(LeaveReloc, _) -> 
+                                    (* We shouldn't be seeing this, given that we're applying the reloc Right Now. *)
+                                    failwith "internal error: applying reloc that is not to be applied"
+                            end
                             in
                             apply_reloc acc_img (el_name, start, len) x symaddr
                     end
@@ -547,6 +631,8 @@ let link script a options linkables =
         then Just i
         else Nothing
     )) linkables
+    in
+    let linker_script_linkable_idx = length linkables
     in
     let defmap =  all_definitions_by_name linkables
     in
@@ -618,14 +704,14 @@ let link script a options linkables =
      * in linking. For each reloc, we need to decide whether to apply it or not. For those not applied,
      * we include it in a synthesised section that participates in linking. An ABI tap here also 
      * synthesises things like (in the GNU case) the .plt section hanging off the first input object. *)
-    let (bindings_by_name : Map.map string (list (natural * binding))) = 
+    let (initial_bindings_by_name : Map.map string (list (natural * binding))) = 
         List.foldl (fun m -> fun (b_idx, ((ref_idx, ref, ref_item), maybe_def)) -> match Map.lookup ref.ref_symname m with
             Nothing                  -> Map.insert ref.ref_symname [ (b_idx, ((ref_idx, ref, ref_item), maybe_def)) ] m
             | Just ((bi, b) :: more) -> Map.insert ref.ref_symname  ((b_idx, ((ref_idx, ref, ref_item), maybe_def)) :: (bi, b) :: more) m
             | _ -> failwith "impossible: found empty list in map lacking empties by construction"
         end) Map.empty (List.mapi (fun i -> fun b -> (naturalFromNat i, b)) accumulated_bindings)
     in
-    let input_sections = Missing_pervasives.list_concat_map (fun (idx, linkable) -> expand_sections a options bindings_by_name idx linkable) linkables_not_discarded
+    let input_sections = Missing_pervasives.list_concat_map (fun (idx, linkable) -> expand_sections a options initial_bindings_by_name idx linkable) linkables_not_discarded
     in
     let seen_ordering = fun is1 -> (fun is2 -> (
         let toNaturalList = fun is -> (
@@ -697,6 +783,7 @@ let link script a options linkables =
         compare (toNaturalList is1) (toNaturalList is2)
     ))
     in
+    (*
     let get_binding_for_ref = (fun symref -> (fun linkable_idx -> (fun fname -> 
         let name_matches = match Map.lookup symref.ref_symname bindings_by_name with Just x -> x | Nothing -> [] end
         in
@@ -707,13 +794,15 @@ let link script a options linkables =
         end
     )))
     in
-    let unrelocated_output_image = interpret_linker_control_script script a input_sections seen_ordering get_binding_for_ref
+    *)
+    let (unrelocated_output_image, bindings_by_name)
+     = interpret_linker_control_script script linker_script_linkable_idx a input_sections seen_ordering default_place_orphans initial_bindings_by_name
     in
     (* This image has 
      * - addresses assigned 
      * - relocations *not* applied
      * - no entry point
-     * - some ABI features not generated? HMM.
+     * - some ABI features not generated? GOT, certainly. HMM.
            -- don't consider output features, like symtabs, yet;
            -- other ABI features have to be generated before the linker script runs (dyn relocs, GOT, PLT?)
            -- ... so we might be okay for now.
@@ -728,9 +817,9 @@ let link script a options linkables =
                     match maybe_range with
                         Nothing -> failwith "impossible: reloc site with no range"
                         | Just (el_name, (start, len)) -> 
-                            errln ("After linking, saw a reloc site in element " ^ el_name ^ ", offset 0x" ^
+                            () (* errln ("After linking, saw a reloc site in element " ^ el_name ^ ", offset 0x" ^
                                 (hex_string_of_natural start) ^ ", length 0x" ^ (hex_string_of_natural len) ^ 
-                                ", reloc type " ^ (* a. *) Abi_amd64_relocation.string_of_amd64_relocation_type (get_elf64_relocation_a_type rs.ref_relent))
+                                ", reloc type " ^ Abi_amd64_relocation.string_of_amd64_relocation_type (get_elf64_relocation_a_type rs.ref_relent)) *)
                     end
                 | Nothing -> (* okay, do nothing *) ()
                 end

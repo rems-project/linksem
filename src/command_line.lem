@@ -102,6 +102,7 @@ end
 type input_file_and_options = input_file_spec * input_file_options
 type input_unit = File of input_file_and_options
                 | Group of list (input_file_and_options)   (* NOT recursive *)
+                | BuiltinControlScript (* for uniformity when processing script defs *)
 
 val string_of_input_unit : input_unit -> string
 let {ocaml} string_of_input_unit u = 
@@ -110,6 +111,7 @@ let {ocaml} string_of_input_unit u =
             "single " ^ (show spec)
        | Group(spec_opt_list) -> 
             "group: [" ^ (show (List.map (fun (spec, opts) -> spec) spec_opt_list)) ^ "]"
+       | BuiltinControlScript -> "(built-in control script)"
     end
 
 instance (Show input_unit)

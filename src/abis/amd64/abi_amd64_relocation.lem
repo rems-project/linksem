@@ -136,6 +136,18 @@ val amd64_reloc : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature
 let amd64_reloc r = 
     let n2i = integerFromNatural in 
     let i2n = naturalFromInteger in 
+    let i2n_signed = fun width -> fun i -> (
+        if i >= 0 then 
+            if i >= 2 ** (width-1) then failwith "overflow"
+            else naturalFromInteger i
+        else 
+            (* We manually encode the 2's complement of the negated value *)
+            let negated = naturalFromInteger (0 - i) in 
+            let xormask = (2 ** width - 1) in
+            let compl = 1 + natural_lxor negated xormask
+            in compl
+    )
+    in
     match (string_of_amd64_relocation_type r) with
     | "R_X86_64_NONE" ->            (false, fun img -> (fun site_addr -> (fun rr -> (0, fun s -> fun a -> fun e -> e))))
     | "R_X86_64_64" ->              (true,  fun img -> (fun site_addr -> (fun rr -> (8, fun s -> fun a -> fun e -> i2n (n2i s + a)))))
@@ -147,8 +159,8 @@ let amd64_reloc r =
     | "R_X86_64_JUMP_SLOT" ->       (false, fun img -> (fun site_addr -> (fun rr -> (4 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
     | "R_X86_64_RELATIVE" ->        (true,  fun img -> (fun site_addr -> (fun rr -> (8, fun s -> fun a -> fun e -> e (* FIXME *)))))
     | "R_X86_64_GOTPCREL" ->        (false, fun img -> (fun site_addr -> (fun rr -> (8 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
-    | "R_X86_64_32" ->              (true,  fun img -> (fun site_addr -> (fun rr -> (4, fun s -> fun a -> fun e -> e (* FIXME *)))))
-    | "R_X86_64_32S" ->             (true,  fun img -> (fun site_addr -> (fun rr -> (4, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_32" ->              (true,  fun img -> (fun site_addr -> (fun rr -> (4, fun s -> fun a -> fun e -> i2n (n2i s + a)))))
+    | "R_X86_64_32S" ->             (true,  fun img -> (fun site_addr -> (fun rr -> (4, fun s -> fun a -> fun e -> i2n_signed 32 (n2i s + a)))))
     | "R_X86_64_16" ->              (true,  fun img -> (fun site_addr -> (fun rr -> (2, fun s -> fun a -> fun e -> e (* FIXME *)))))
     | "R_X86_64_PC16" ->            (false, fun img -> (fun site_addr -> (fun rr -> (2, fun s -> fun a -> fun e -> e (* FIXME *)))))
     | "R_X86_64_8" ->               (true,  fun img -> (fun site_addr -> (fun rr -> (1, fun s -> fun a -> fun e -> e (* FIXME *)))))
