@@ -437,10 +437,10 @@ definition r_aarch64_irelative  :: " nat "  where
 (*val string_of_aarch64_relocation_type : natural -> string*)
 
 (*val aarch64_le_reloc : forall 'abifeature. reloc_fn 'abifeature*)
-definition aarch64_le_reloc  :: " nat \<Rightarrow> bool*('abifeature annotated_memory_image \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> nat*(nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat))"  where 
+definition aarch64_le_reloc  :: " nat \<Rightarrow> bool*('abifeature annotated_memory_image \<Rightarrow> nat \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> nat*(nat \<Rightarrow> int \<Rightarrow> nat \<Rightarrow> nat))"  where 
      " aarch64_le_reloc r = (
   if r = r_aarch64_none then
-    (False, (\<lambda> img1 .  (\<lambda> rr .  (( 0 :: nat), (\<lambda> s .  \<lambda> a .  \<lambda> e .  e)))))
+    (False, (\<lambda> img1 .  (\<lambda> site_addr .  (\<lambda> rr .  (( 0 :: nat), (\<lambda> s .  \<lambda> a .  \<lambda> e .  e))))))
   else
     (False, noop_reloc_apply))"
 

@@ -131,6 +131,11 @@ let cond_expr expr1 expr2 expr3 = (Or((And(expr1, expr2)), (And((Not(expr1)), ex
  * and only their equality is relevant, but choosing friendly names
  * like ELF header is good practice.*)
 type_synonym memory_image =" (string, element) Map.map "
+
+type_synonym range =" nat * nat " (* start, length *)
+
+type_synonym element_range =" string * range "
+
 (* An element of an ELF image, in the linking phase, is either a section,
  * the ELF header, the section header table or the program header table.
  * 
@@ -161,6 +166,40 @@ datatype elf_file_feature =
     | ElfProgramHeaderTable " elf64_program_header_table "
     | ElfSection " (nat * elf64_interpreted_section)" (* SHT idx *)
     | ElfSegment " (nat * elf64_interpreted_segment)" (* PHT idx *)
+
+record symbol_definition
+ = 
+ def_symname ::" string "
+    
+ def_syment ::" elf64_symbol_table_entry " (* definition's symtab entry *)
+    
+ def_sym_scn ::" nat "                 (* symtab section index, to disamiguate dynsym *)
+    
+ def_sym_idx ::" nat "                 (* index of symbol into the symtab *)
+    
+ def_linkable_idx ::" nat "            (* used to propagate origin linkable information to linked image *)
+    
+
+
+definition symDefCompare  :: " symbol_definition \<Rightarrow> symbol_definition \<Rightarrow> ordering "  where 
+     " symDefCompare x1 x2 = (        
+(quadrupleCompare (\<lambda> x y. EQ) elf64_symbol_table_entry_compare (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) ((def_symname   x1),(def_syment   x1),(def_sym_scn   x1),(def_sym_idx   x1))
+                ((def_symname   x2),(def_syment   x2),(def_sym_scn   x2),(def_sym_idx   x2))))"
+
+
+definition instance_Basic_classes_Ord_Memory_image_symbol_definition_dict  :: "(symbol_definition)Ord_class "  where 
+     " instance_Basic_classes_Ord_Memory_image_symbol_definition_dict = ((|
+
+  compare_method = symDefCompare,
+
+  isLess_method = (\<lambda> f1 .  (\<lambda> f2 .  (symDefCompare f1 f2 = LT))),
+
+  isLessEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (symDefCompare f1 f2) ({LT, EQ}))),
+
+  isGreater_method = (\<lambda> f1 .  (\<lambda> f2 .  (symDefCompare f1 f2 = GT))),
+
+  isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (symDefCompare f1 f2) ({GT, EQ})))|) )"
+
 
 record symbol_reference
  = 
@@ -225,12 +264,18 @@ definition instance_Basic_classes_Ord_Memory_image_reloc_site_dict  :: "(reloc_s
 
   isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (relocSiteCompare f1 f2) ({GT, EQ})))|) )"
 
+    
+datatype reloc_decision = LeaveReloc
+                    | ApplyReloc
+                    | MakePIC
 
 record symbol_reference_and_reloc_site = 
 
       ref         ::" symbol_reference "
     
  maybe_reloc ::"  reloc_site option "
+    
+ maybe_def_bound_to ::"  (reloc_decision *  symbol_definition option)option "
     
 
 
@@ -252,38 +297,6 @@ definition instance_Basic_classes_Ord_Memory_image_symbol_reference_and_reloc_si
   isGreater_method = (\<lambda> f1 .  (\<lambda> f2 .  (symRefAndRelocSiteCompare f1 f2 = GT))),
 
   isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (symRefAndRelocSiteCompare f1 f2) ({GT, EQ})))|) )"
-
-
-record symbol_definition
- = 
- def_symname ::" string "
-    
- def_syment ::" elf64_symbol_table_entry " (* definition's symtab entry *)
-    
- def_sym_scn ::" nat "                 (* symtab section index, to disamiguate dynsym *)
-    
- def_sym_idx ::" nat "                 (* index of symbol into the symtab *)
-    
-
-
-definition symDefCompare  :: " symbol_definition \<Rightarrow> symbol_definition \<Rightarrow> ordering "  where 
-     " symDefCompare x1 x2 = (        
-(quadrupleCompare (\<lambda> x y. EQ) elf64_symbol_table_entry_compare (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) ((def_symname   x1),(def_syment   x1),(def_sym_scn   x1),(def_sym_idx   x1))
-                ((def_symname   x2),(def_syment   x2),(def_sym_scn   x2),(def_sym_idx   x2))))"
-
-
-definition instance_Basic_classes_Ord_Memory_image_symbol_definition_dict  :: "(symbol_definition)Ord_class "  where 
-     " instance_Basic_classes_Ord_Memory_image_symbol_definition_dict = ((|
-
-  compare_method = symDefCompare,
-
-  isLess_method = (\<lambda> f1 .  (\<lambda> f2 .  (symDefCompare f1 f2 = LT))),
-
-  isLessEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (symDefCompare f1 f2) ({LT, EQ}))),
-
-  isGreater_method = (\<lambda> f1 .  (\<lambda> f2 .  (symDefCompare f1 f2 = GT))),
-
-  isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (symDefCompare f1 f2) ({GT, EQ})))|) )"
 
 
 record 'a ToNaturalList_class=
@@ -333,15 +346,12 @@ datatype 'abifeature range_tag = (*  forall 'abifeature . *)
                | FileFeature " elf_file_feature " (* file feature other than symdef and reloc *)
                | AbiFeature " 'abifeature "
 
-type_synonym range =" nat * nat " (* start, length *)
-
-type_synonym element_range =" string * range "
 
 record 'abifeature annotated_memory_image = 
 
       elements         ::" memory_image " 
     
- by_range         ::" (( element_range option), ( 'abifeature range_tag)) multimap "
+ by_range         ::" (( element_range option) * ( 'abifeature range_tag)) set "
     
  by_tag           ::" (( 'abifeature range_tag), ( element_range option)) multimap "
 
@@ -382,11 +392,13 @@ type_synonym null_abi_feature =" unit "
  * A. We do want it -- modelling both separately is necessary, 
  * because we model relocations bytewise, but some arches
  * do bitfield relocations (think ARM). *)
-type_synonym reloc_calculate_fn    =" nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat " (* symaddr -> addend -> existing -> relocated *)
+type_synonym reloc_calculate_fn    =" nat \<Rightarrow> int \<Rightarrow> nat \<Rightarrow> nat " (* symaddr -> addend -> existing -> relocated *)
 
 type_synonym 'abifeature reloc_apply_fn =" 'abifeature 
                                 (* elf memory image: the context in which the relocation is being applied *)
                                 annotated_memory_image \<Rightarrow>
+                               (* the site address *)
+                                nat \<Rightarrow>
                                 (* Typically there are two symbol table entries involved in a relocation.
                                  * One is the reference, and is usually undefined.
                                  * The other is the definition, and is defined (else absent, when we use 0).
@@ -417,7 +429,7 @@ type_synonym 'abifeature reloc_apply_fn =" 'abifeature
                                  * by passing the symaddr argument (below). I'd prefer not to depend on
                                  * others -- relocation calculations should look like mostly address 
                                  * arithmetic, i.e. only the weird ones do something else. *)
-                                (* How wide, in bytes, is the relocated field? this may depend on img 
+                                 (* How wide, in bytes, is the relocated field? this may depend on img 
                                  * and on the wider image (copy relocs), so it's returned *by* the reloc function. *)
                                 (nat (* width *) * reloc_calculate_fn)"
 
@@ -430,18 +442,18 @@ type_synonym 'abifeature reloc_apply_fn =" 'abifeature
  * (done elsewhere). *)
 type_synonym 'abifeature reloc_fn =" nat \<Rightarrow> (bool * 'abifeature reloc_apply_fn)"
 
-(*val noop_reloc_calculate : natural -> natural -> natural -> natural*)
-definition noop_reloc_calculate  :: " nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat "  where 
+(*val noop_reloc_calculate : natural -> integer -> natural -> natural*)
+definition noop_reloc_calculate  :: " nat \<Rightarrow> int \<Rightarrow> nat \<Rightarrow> nat "  where 
      " noop_reloc_calculate symaddr addend existing = ( existing )"
 
 
 (*val noop_reloc_apply : forall 'abifeature. reloc_apply_fn 'abifeature*)
-definition noop_reloc_apply  :: " 'abifeature annotated_memory_image \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> nat*(nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat)"  where 
-     " noop_reloc_apply img1 ref1 = ( (( 0 :: nat), noop_reloc_calculate))"
+definition noop_reloc_apply  :: " 'abifeature annotated_memory_image \<Rightarrow> nat \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> nat*(nat \<Rightarrow> int \<Rightarrow> nat \<Rightarrow> nat)"  where 
+     " noop_reloc_apply img1 site_addr ref1 = ( (( 0 :: nat), noop_reloc_calculate))"
 
 
 (*val noop_reloc : forall 'abifeature. natural -> (bool (* result is absolute addr *) * reloc_apply_fn 'abifeature)*)
-definition noop_reloc  :: " nat \<Rightarrow> bool*('abifeature annotated_memory_image \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> nat*reloc_calculate_fn)"  where 
+definition noop_reloc  :: " nat \<Rightarrow> bool*('abifeature annotated_memory_image \<Rightarrow> nat \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> nat*reloc_calculate_fn)"  where 
      " noop_reloc k = ( (False, noop_reloc_apply))"
 
 
@@ -475,6 +487,10 @@ record 'abifeature abi = (* forall 'abifeature. *)
     
  guess_entry_point  ::" 'abifeature annotated_memory_image \<Rightarrow>  nat option "
     
+ pad_data           ::" nat \<Rightarrow> Elf_Types_Local.byte list "
+    
+ pad_code           ::" nat \<Rightarrow> Elf_Types_Local.byte list "
+    
 
 
 (*val align_up_to : natural -> natural -> natural*)
@@ -493,6 +509,32 @@ definition round_down_to  :: " nat \<Rightarrow> nat \<Rightarrow> nat "  where
     quot * align))"
 
 
+(*val uint32_max : natural*)
+definition uint32_max  :: " nat "  where 
+     " uint32_max = ( (( 2 :: nat) ^( 32 :: nat)) -( 1 :: nat))"
+
+
+(*val uint64_max : natural*)
+definition uint64_max  :: " nat "  where 
+     " uint64_max = (
+    ((
+    (* HACK around Lem's inability to parse 18446744073709551615: 
+     * the square of uint32_max is 
+     *       (2**32 - 1) (2**32 - 1)
+     * i.e.   2**64 - 2**32 - 2**32 + 1
+     * So
+     * 2**64 - 1 =  uint32_max * uint32_max  + 2**32 + 2**32 - 2
+     *)uint32_max * uint32_max) -( 2 :: nat)) + (( 2 :: nat)^( 33 :: nat)))"
+
+    (* 18446744073709551615 *) (* i.e. 0x ffff ffff ffff ffff *)
+    (* HMM. This still overflows int64 *)
+
+(* The 2's complement of a value, at 64-bit width *)
+(*val compl64 : natural -> natural*)
+definition compl64  :: " nat \<Rightarrow> nat "  where 
+     " compl64 v = (( 1 :: nat) + (natural_lxor v uint64_max))"
+
+
 (*val gcd : natural -> natural -> natural*)
 function (sequential,domintros)  gcd  :: " nat \<Rightarrow> nat \<Rightarrow> nat "  where 
      " gcd a b = ( 
@@ -503,6 +545,8 @@ by pat_completeness auto
 (*val lcm : natural -> natural -> natural*)
 definition lcm  :: " nat \<Rightarrow> nat \<Rightarrow> nat "  where 
      " lcm a b = ( 
+    (* let _ = errln (lcm of  ^ (show a) ^  and  ^ (show b) ^ ?)
+    in *)
     (a * b) div (gcd a b))"
 
 
@@ -623,6 +667,23 @@ fun  relax_byte_pattern  :: "((Elf_Types_Local.byte)option)list \<Rightarrow>(bo
      " relax_byte_pattern bytes cares = ( 
     relax_byte_pattern_revacc [] bytes cares )" 
 declare relax_byte_pattern.simps [simp del]
+
+
+type_synonym pad_fn =" nat \<Rightarrow> Elf_Types_Local.byte list "
+
+(*val concretise_byte_pattern : list byte -> natural -> list (maybe byte) -> pad_fn -> list byte*)
+function (sequential,domintros)  concretise_byte_pattern  :: "(Elf_Types_Local.byte)list \<Rightarrow> nat \<Rightarrow>((Elf_Types_Local.byte)option)list \<Rightarrow>(nat \<Rightarrow>(Elf_Types_Local.byte)list)\<Rightarrow>(Elf_Types_Local.byte)list "  where 
+     " concretise_byte_pattern rev_acc acc_pad ([]) pad = ( 
+            (let padding_bytes = (if acc_pad >( 0 :: nat) then pad acc_pad else [])
+            in List.rev ((List.rev padding_bytes) @ rev_acc)))"
+|" concretise_byte_pattern rev_acc acc_pad (Some(b) # more1) pad = ( 
+            (* flush accumulated padding *)
+            (let padding_bytes = (if acc_pad >( 0 :: nat) then pad acc_pad else [])
+            in
+            concretise_byte_pattern (b # ((List.rev padding_bytes) @ rev_acc))(( 0 :: nat)) more1 pad))"
+|" concretise_byte_pattern rev_acc acc_pad (None # more1) pad = ( 
+            concretise_byte_pattern rev_acc (acc_pad+( 1 :: nat)) more1 pad )" 
+by pat_completeness auto
 
 
 (*val byte_option_matches_byte : maybe byte -> byte -> bool*)
@@ -754,6 +815,9 @@ definition address_to_element_and_offset  :: " nat \<Rightarrow> 'abifeature ann
     (* Find the element with the highest address <= addr *)
     (let (maybe_highest_le ::  (nat * string * element)option)
      = (List.foldl (\<lambda> maybe_current_max_le .  (\<lambda> (el_name, el_rec) . 
+        (* let _ = errln (Saw element named ` ^ el_name ^  with startpos  ^ (
+            match el_rec.startpos with Just addr -> (0x ^ (hex_string_of_natural addr)) | Nothing -> (none) end))
+        in *)
         (case  (maybe_current_max_le,(startpos   el_rec)) of
             (None, None) => None
             | (None, Some pos) => if pos \<le> addr then Some (pos, el_name, el_rec) else None
@@ -767,8 +831,11 @@ definition address_to_element_and_offset  :: " nat \<Rightarrow> 'abifeature ann
             (* final sanity check: is the length definite, and if so, does the
              * element span far enough? *)
             (case (length1   el_rec) of
-                Some l => if (el_def_startpos + l) \<le> addr then Some (el_name, (addr - el_def_startpos)) else None
-                | None => None
+                Some l => if (el_def_startpos + l) \<ge> addr 
+                    then Some (el_name, (addr - el_def_startpos)) 
+                    else 
+                        (*let _ = errln (Discounting  ^ el_name ^  because length is too short) in*) None
+                | None => (*let _ = errln (Gave up because element has unknown length) in*) None
             )
         | None => 
             (* no elements with a low enough assigned address, so nothing *)
@@ -803,6 +870,7 @@ definition null_symbol_reference_and_reloc_site  :: " symbol_reference_and_reloc
                 , ref_rel_idx =(( 0 :: nat))
                 , ref_src_scn =(( 0 :: nat))
                 |))
+    , maybe_def_bound_to = None
     |) )"
 
 
@@ -812,6 +880,7 @@ definition null_symbol_definition  :: " symbol_definition "  where
     , def_syment = elf64_null_symbol_table_entry
     , def_sym_scn =(( 0 :: nat))
     , def_sym_idx =(( 0 :: nat))
+    , def_linkable_idx =(( 0 :: nat))
 |) )"
 
     

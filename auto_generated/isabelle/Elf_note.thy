@@ -121,8 +121,8 @@ definition obtain_elf32_note_sections  :: " endianness \<Rightarrow>(elf32_secti
   in
     mapM (\<lambda> x . 
       (let offset = (unat(elf32_sh_offset   x)) in
-      (let size3   = (unat(elf32_sh_size   x)) in
-      Byte_sequence.offset_and_cut offset size3 bs0 >>= (\<lambda> rel . 
+      (let size4   = (unat(elf32_sh_size   x)) in
+      Byte_sequence.offset_and_cut offset size4 bs0 >>= (\<lambda> rel . 
       read_elf32_note endian rel >>= (\<lambda> (note1, _) . 
       error_return note1))))
     ) note_sects))"
@@ -144,8 +144,8 @@ definition obtain_elf64_note_sections  :: " endianness \<Rightarrow>(elf64_secti
   in
     mapM (\<lambda> x . 
       (let offset = (unat(elf64_sh_offset   x)) in
-      (let size3   = (unat(elf64_sh_size   x)) in
-      Byte_sequence.offset_and_cut offset size3 bs0 >>= (\<lambda> rel . 
+      (let size4   = (unat(elf64_sh_size   x)) in
+      Byte_sequence.offset_and_cut offset size4 bs0 >>= (\<lambda> rel . 
       read_elf64_note endian rel >>= (\<lambda> (note1, _) . 
       error_return note1))))
     ) note_sects))"
@@ -167,8 +167,8 @@ definition obtain_elf32_note_segments  :: " endianness \<Rightarrow>(elf32_progr
   in
     mapM (\<lambda> x . 
       (let offset = (unat(elf32_p_offset   x)) in
-      (let size3   = (unat(elf32_p_filesz   x)) in
-      Byte_sequence.offset_and_cut offset size3 bs0 >>= (\<lambda> rel . 
+      (let size4   = (unat(elf32_p_filesz   x)) in
+      Byte_sequence.offset_and_cut offset size4 bs0 >>= (\<lambda> rel . 
       read_elf32_note endian rel >>= (\<lambda> (note1, _) . 
       error_return note1))))
     ) note_segs))"
@@ -190,8 +190,8 @@ definition obtain_elf64_note_segments  :: " endianness \<Rightarrow>(elf64_progr
   in
     mapM (\<lambda> x . 
       (let offset = (unat(elf64_p_offset   x)) in
-      (let size3   = (unat(elf64_p_filesz   x)) in
-      Byte_sequence.offset_and_cut offset size3 bs0 >>= (\<lambda> rel . 
+      (let size4   = (unat(elf64_p_filesz   x)) in
+      Byte_sequence.offset_and_cut offset size4 bs0 >>= (\<lambda> rel . 
       read_elf64_note endian rel >>= (\<lambda> (note1, _) . 
       error_return note1))))
     ) note_segs))"

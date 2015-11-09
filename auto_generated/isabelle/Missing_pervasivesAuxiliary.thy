@@ -40,6 +40,8 @@ termination intercalate' by lexicographic_order
 
 termination take by lexicographic_order
 
+termination drop by lexicographic_order
+
 termination string_index_of' by lexicographic_order
 
 termination find_index_helper by lexicographic_order

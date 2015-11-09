@@ -52,6 +52,8 @@ termination make_byte_pattern_revacc by lexicographic_order
 
 termination relax_byte_pattern_revacc by lexicographic_order
 
+termination concretise_byte_pattern by lexicographic_order
+
 termination byte_list_matches_pattern by lexicographic_order
 
 termination accum_pattern_possible_starts_in_one_byte_sequence by lexicographic_order

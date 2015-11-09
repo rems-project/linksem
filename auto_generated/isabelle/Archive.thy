@@ -43,7 +43,7 @@ record archive_entry_header =
    
  mode0      ::" nat "
    
- size1      ::" nat " (* 1GB should be enough *)
+ size2      ::" nat " (* 1GB should be enough *)
    
 
 
@@ -70,11 +70,11 @@ definition read_archive_entry_header0  :: " nat \<Rightarrow> byte_sequence \<Ri
         offset_and_cut(( 34 :: nat))(( 6 :: nat))  header1 >>= (\<lambda> gid_str .  
         offset_and_cut(( 40 :: nat))(( 8 :: nat))  header1 >>= (\<lambda> mode_str .  
         offset_and_cut(( 48 :: nat))(( 10 :: nat)) header1 >>= (\<lambda> size_str .  
-        (let size3 = (natural_of_decimal_string (string_of_byte_sequence1 size_str)) in 
+        (let size4 = (natural_of_decimal_string (string_of_byte_sequence1 size_str)) in 
                 (* let _ = Missing_pervasives.errln (: yes, size  ^ (show size)) in *)
         error_return ((| name0 = (string_of_byte_sequence1 name2), timestamp0 = (( 0 :: nat) :: nat) (* FIXME *),
           uid0 =(( 0 :: nat)) (* FIXME *) , gid0 =(( 0 :: nat)) (* FIXME *) , mode0 =(( 0 :: nat)) (* FIXME *),
-            size1 = (id size3) (* FIXME *) |), (seq_length - header_length), rest)))))))))))))"
+            size2 = (id size4) (* FIXME *) |), (seq_length - header_length), rest)))))))))))))"
 
 
 (*val read_archive_global_header : byte_sequence -> error (archive_global_header * byte_sequence)*)
@@ -85,7 +85,7 @@ fun read_archive_global_header0  :: " byte_sequence \<Rightarrow>((char)list*byt
       (let chars = (List.map Elf_Types_Local.char_of_unsigned_char (take(( 8 :: nat)) bs)) in 
         if  chars = ([(CHR ''!''), (CHR ''<''), (CHR ''a''), (CHR ''r''), (CHR ''c''), (CHR ''h''), (CHR ''>''), (Char Nibble0 NibbleA)]) then
           (* let _ = Missing_pervasives.errln : yes in *)
-          error_return (chars, Sequence(List.drop(( 8 :: nat)) bs))
+          error_return (chars, Sequence(drop(( 8 :: nat)) bs))
         else
           (* let _ = Missing_pervasives.errln : no in *)
           error_fail (''read_archive_global_header: not an archive'')))" 
@@ -103,16 +103,16 @@ function (sequential,domintros)  accum_archive_contents0  :: "(string*byte_seque
         Sequence next_bs =>
         (* let _ = Missing_pervasives.errln (yes; next_bs has length  ^ (show (List.length next_bs))) in *)
         (let amount_to_drop =          
-(if ((size1   hdr) mod( 2 :: nat)) =( 0 :: nat) then
-            ((size1   hdr))
+(if ((size2   hdr) mod( 2 :: nat)) =( 0 :: nat) then
+            ((size2   hdr))
           else
-            ((size1   hdr)) +( 1 :: nat))
+            ((size2   hdr)) +( 1 :: nat))
         in
         if amount_to_drop =( 0 :: nat) then
           error_fail (''accum_archive_contents: amount to drop from byte sequence is 0'')
         else
         (*let _ = Missing_pervasives.errln (amount_to_drop is  ^ (show amount_to_drop)) in*)
-        (let chunk = (Sequence(List.take(size1   hdr) next_bs))
+        (let chunk = (Sequence(List.take(size2   hdr) next_bs))
         in
         (*let _ = Missing_pervasives.errs (Processing archive header named  ^ hdr.name)
         in*)

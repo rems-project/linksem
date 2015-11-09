@@ -100,7 +100,12 @@ definition read_unsigned_char  :: " endianness \<Rightarrow> byte_sequence \<Rig
   error_return (id u1, bs1)))"
 
 
-(*val bytes_of_unsigned_char : unsigned_char -> byte*)
+(*val byte_of_unsigned_char : unsigned_char -> byte*)
+
+(*val bytes_of_unsigned_char : unsigned_char -> list byte*)
+definition bytes_of_unsigned_char  :: " Elf_Types_Local.unsigned_char \<Rightarrow>(Elf_Types_Local.byte)list "  where 
+     " bytes_of_unsigned_char u = ( [id u])"
+
 
 (*val equal_unsigned_char  : unsigned_char -> unsigned_char -> bool*)
 
@@ -548,6 +553,8 @@ declare read_elf64_xword.simps [simp del]
 
 (*val elf64_xword_lor : elf64_xword -> elf64_xword -> elf64_xword*)
 
+(*val elf64_xword_lxor : elf64_xword -> elf64_xword -> elf64_xword*)
+
 (*val elf64_xword_of_natural : natural -> elf64_xword*)
 
 (*val equal_elf64_xword : elf64_xword -> elf64_xword -> bool*)
@@ -603,17 +610,24 @@ fun bytes_of_elf64_sxword  :: " endianness \<Rightarrow> sint64 \<Rightarrow>(El
 declare bytes_of_elf64_sxword.simps [simp del]
 
 
-(*val unsafe_natural_land : natural -> natural -> natural*)
-definition unsafe_natural_land  :: " nat \<Rightarrow> nat \<Rightarrow> nat "  where 
-     " unsafe_natural_land arg1 arg2 = ( unat (
-    Elf_Types_Local.uint64_land (of_int (int arg1)) (of_int (int arg2))
-))"
+(*val natural_land : natural -> natural -> natural*)
+definition natural_land  :: " nat \<Rightarrow> nat \<Rightarrow> nat "  where 
+     " natural_land m n = (
+  (* For Isabelle backend...*)
+  unat (Elf_Types_Local.uint64_land (of_int (int m)) (of_int (int n))))"
 
 
-(*val unsafe_natural_lor : natural -> natural -> natural*)
-definition unsafe_natural_lor  :: " nat \<Rightarrow> nat \<Rightarrow> nat "  where 
-     " unsafe_natural_lor arg1 arg2 = ( unat (
-    Elf_Types_Local.uint64_lor (of_int (int arg1)) (of_int (int arg2))
-))"
+(*val natural_lor : natural -> natural -> natural*)
+definition natural_lor  :: " nat \<Rightarrow> nat \<Rightarrow> nat "  where 
+     " natural_lor m n = (
+  (* For Isabelle backend...*)
+  unat (Elf_Types_Local.uint64_lor (of_int (int m)) (of_int (int n))))"
+
+
+(*val natural_lxor : natural -> natural -> natural*)
+definition natural_lxor  :: " nat \<Rightarrow> nat \<Rightarrow> nat "  where 
+     " natural_lxor m n = (
+  (* For Isabelle backend...*)
+  unat (Elf_Types_Local.uint64_xor (of_int (int m)) (of_int (int n))))"
 
 end
