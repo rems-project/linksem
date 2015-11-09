@@ -1050,10 +1050,19 @@ instance (Show elf64_sxword)
 end
 
 val natural_land : natural -> natural -> natural
+let natural_land m n =
+  (* For Isabelle backend...*)
+  natural_of_elf64_xword (elf64_xword_land (elf64_xword_of_natural m) (elf64_xword_of_natural n))
 declare ocaml    target_rep function natural_land = `Nat_big_num.bitwise_and`
 
 val natural_lor : natural -> natural -> natural
+let natural_lor m n =
+  (* For Isabelle backend...*)
+  natural_of_elf64_xword (elf64_xword_lor (elf64_xword_of_natural m) (elf64_xword_of_natural n))
 declare ocaml    target_rep function natural_lor = `Nat_big_num.bitwise_or`
 
 val natural_lxor : natural -> natural -> natural
+let natural_lxor m n =
+  (* For Isabelle backend...*)
+  natural_of_elf64_xword (elf64_xword_lxor (elf64_xword_of_natural m) (elf64_xword_of_natural n))
 declare ocaml    target_rep function natural_lxor = `Nat_big_num.bitwise_xor`

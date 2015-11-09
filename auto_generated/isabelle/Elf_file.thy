@@ -1150,12 +1150,12 @@ definition get_elf32_file_global_symbol_init  :: " elf32_file \<Rightarrow>((str
     Elf_symbol_table.get_elf32_symbol_image_address symtab strtab >>= (\<lambda> strs . 
       (let mapped = (mapM (\<lambda> (symbol, (typ1, size3, addr, bind)) . 
         if typ1 = Elf_symbol_table.stt_object then
-          get_elf32_executable_image f3 >>= (\<lambda> (img, entry, mach) . 
+          get_elf32_executable_image f3 >>= (\<lambda> (img1, entry, mach) . 
           (let chunks =            
 (List.filter (\<lambda> (chunk, _) .               
 (addr \<ge>(elf32_segment_base   chunk)) \<and>
                 ((addr + size3) \<le> ((elf32_segment_base   chunk) +(elf32_segment_size   chunk)))
-            ) img)
+            ) img1)
           in
             (case  chunks of
                 []    => error_fail (''get_elf32_global_symbol_init: global variable not present in executable image'')
@@ -1187,12 +1187,12 @@ definition get_elf64_file_global_symbol_init  :: " elf64_file \<Rightarrow>((str
     Elf_symbol_table.get_elf64_symbol_image_address symtab strtab >>= (\<lambda> strs . 
       (let mapped = (mapM (\<lambda> (symbol, (typ1, size3, addr, bind)) . 
         if typ1 = Elf_symbol_table.stt_object then
-          get_elf64_executable_image f3 >>= (\<lambda> (img, entry, mach) . 
+          get_elf64_executable_image f3 >>= (\<lambda> (img1, entry, mach) . 
           (let chunks =            
 (List.filter (\<lambda> (chunk, _) .               
 (addr \<ge>(elf64_segment_base   chunk)) \<and>
                 ((addr + size3) \<le> ((elf64_segment_base   chunk) +(elf64_segment_size   chunk)))
-            ) img)
+            ) img1)
           in
             (case  chunks of
                 []    => error_fail (''get_elf64_global_symbol_init: global variable not present in executable image'')

@@ -437,7 +437,7 @@ definition noop_reloc_calculate  :: " nat \<Rightarrow> nat \<Rightarrow> nat \<
 
 (*val noop_reloc_apply : forall 'abifeature. reloc_apply_fn 'abifeature*)
 definition noop_reloc_apply  :: " 'abifeature annotated_memory_image \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> nat*(nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat)"  where 
-     " noop_reloc_apply img ref1 = ( (( 0 :: nat), noop_reloc_calculate))"
+     " noop_reloc_apply img1 ref1 = ( (( 0 :: nat), noop_reloc_calculate))"
 
 
 (*val noop_reloc : forall 'abifeature. natural -> (bool (* result is absolute addr *) * reloc_apply_fn 'abifeature)*)
@@ -508,10 +508,10 @@ definition lcm  :: " nat \<Rightarrow> nat \<Rightarrow> nat "  where
 
 (*val address_of_range : forall 'abifeature. element_range -> annotated_memory_image 'abifeature -> natural*)
 definition address_of_range  :: " string*(nat*nat)\<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> nat "  where 
-     " address_of_range el_range img = ( 
+     " address_of_range el_range img1 = ( 
     (let (el_name, (start, len)) = el_range
     in
-    (case  (elements   img) el_name of
+    (case  (elements   img1) el_name of
         Some el =>
             (case (startpos   el) of
                 Some addr => addr + start
@@ -706,7 +706,7 @@ definition by_tag_from_by_range  :: "('a*'b)set \<Rightarrow>('b*'a)set "  where
 (*val filter_elements : forall 'abifeature. ((string * element) -> bool) -> 
     annotated_memory_image 'abifeature -> annotated_memory_image 'abifeature*)
 definition filter_elements  :: "(string*element \<Rightarrow> bool)\<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> 'abifeature annotated_memory_image "  where 
-     " filter_elements pred img = ( 
+     " filter_elements pred img1 = ( 
     (let new_elements = (Map.map_of (List.rev ((let x2 = 
   ([]) in  List.foldr
    (\<lambda>(n, r) x2 . 
@@ -715,12 +715,12 @@ definition filter_elements  :: "(string*element \<Rightarrow> bool)\<Rightarrow>
     if \<not> result then
       (*let _ = Missing_pervasives.outln (Discarding element named  ^ n) in*) result
     else result) then (n, r) # x2 else x2)
-   (list_of_set (map_to_set (elements   img))) x2))))
+   (list_of_set (map_to_set (elements   img1))) x2))))
     in
     (let new_by_range =  (set_filter (\<lambda> (maybe_range, tag) .  (case  maybe_range of
             None => True
             | Some (el_name, el_range) => el_name \<in> Map.dom new_elements
-        ))(by_range   img))
+        ))(by_range   img1))
     in
     (let new_by_tag =
   (Set.image (\<lambda> (k, v) .  (v, k))
@@ -735,14 +735,14 @@ definition filter_elements  :: "(string*element \<Rightarrow> bool)\<Rightarrow>
 (*val tag_image : forall 'abifeature. range_tag 'abifeature -> string -> natural -> natural -> annotated_memory_image 'abifeature
     ->  annotated_memory_image 'abifeature*)
 definition tag_image  :: " 'abifeature range_tag \<Rightarrow> string \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> 'abifeature annotated_memory_image "  where 
-     " tag_image t el_name el_offset tag_len img = ( 
+     " tag_image t el_name el_offset tag_len img1 = ( 
     (let (k, v) = (Some (el_name, (el_offset, tag_len)), t)
     in
-    (let new_by_range = (Set.insert (k, v)(by_range   img))
+    (let new_by_range = (Set.insert (k, v)(by_range   img1))
     in
-    (let new_by_tag = (Set.insert (v, k)(by_tag   img))
+    (let new_by_tag = (Set.insert (v, k)(by_tag   img1))
     in
-    (| elements =(elements   img)
+    (| elements =(elements   img1)
      , by_range = new_by_range
      , by_tag   = new_by_tag
      |)))))"
@@ -750,7 +750,7 @@ definition tag_image  :: " 'abifeature range_tag \<Rightarrow> string \<Rightarr
 
 (*val address_to_element_and_offset : forall 'abifeature. natural -> annotated_memory_image 'abifeature -> maybe (string * natural)*)
 definition address_to_element_and_offset  :: " nat \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>(string*nat)option "  where 
-     " address_to_element_and_offset addr img = ( 
+     " address_to_element_and_offset addr img1 = ( 
     (* Find the element with the highest address <= addr *)
     (let (maybe_highest_le ::  (nat * string * element)option)
      = (List.foldl (\<lambda> maybe_current_max_le .  (\<lambda> (el_name, el_rec) . 

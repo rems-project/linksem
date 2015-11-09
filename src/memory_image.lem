@@ -363,7 +363,7 @@ type abi 'abifeature = (* forall 'abifeature. *)
     (*; link_inputs_tap    : 
     ; link_output_sections_tap   : 
     ; link_output_image_tap      : *)
-    ; make_phdrs         : abi 'abifeature -> natural (* file type *) -> annotated_memory_image 'abifeature -> list (natural * elf64_interpreted_section) -> list elf64_program_header_table_entry
+    ; make_phdrs         : natural -> natural -> natural (* file type *) -> annotated_memory_image 'abifeature -> list (natural * elf64_interpreted_section) -> list elf64_program_header_table_entry
     ; max_phnum          : natural
     ; guess_entry_point  : annotated_memory_image 'abifeature -> maybe natural
     ; pad_data           : natural -> list byte
@@ -649,8 +649,8 @@ let address_to_element_and_offset addr img =
                 Just l -> if el_def_startpos + l >= addr 
                     then Just (el_name, addr - el_def_startpos) 
                     else 
-                        let _ = errln ("Discounting " ^ el_name ^ " because length is too short") in Nothing
-                | Nothing -> let _ = errln ("Gave up because element has unknown length") in Nothing
+                        (*let _ = errln ("Discounting " ^ el_name ^ " because length is too short") in*) Nothing
+                | Nothing -> (*let _ = errln ("Gave up because element has unknown length") in*) Nothing
             end
         | Nothing -> 
             (* no elements with a low enough assigned address, so nothing *)

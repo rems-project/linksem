@@ -1,0 +1,55 @@
+open import List
+open import Map
+open import Maybe
+open import Set
+
+open import Elf_relocation
+open import Elf_header
+open import Elf_symbol_table
+open import Elf_types_native_uint
+
+open import Abi_amd64_relocation
+
+open import Elf_memory_image
+open import Memory_image
+
+val meta : list ((maybe element_range) * elf_range_tag)
+let meta = [(Just (".text", (1, 4)), SymbolRef(<|
+    ref = <| ref_symname = "test"                  (* symbol name *)
+    ; ref_syment =
+          <| elf64_st_name  = elf64_word_of_natural 0
+           ; elf64_st_info  = unsigned_char_of_natural 0
+           ; elf64_st_other = unsigned_char_of_natural 0
+           ; elf64_st_shndx = elf64_half_of_natural shn_undef
+           ; elf64_st_value = elf64_addr_of_natural 0
+           ; elf64_st_size  = elf64_xword_of_natural 0
+           |>
+    ; ref_sym_scn = 0
+    ; ref_sym_idx = 0
+    |>
+    ; maybe_def_bound_to = Nothing
+    ; maybe_reloc = Just(
+      <|
+            ref_relent  = 
+                <| elf64_ra_offset = elf64_addr_of_natural 0
+                 ; elf64_ra_info   = elf64_xword_of_natural r_x86_64_pc32
+                 ; elf64_ra_addend = elf64_sxword_of_integer 0
+                 |>
+          ; ref_rel_scn = 0
+          ; ref_rel_idx = 0
+          ; ref_src_scn = 0
+       |>
+    )
+  |>))]
+
+
+let img instr_bytes = <|
+  elements = Map.fromList [(".text", <|
+     startpos = Nothing
+   ; length = Just 16
+   ; contents = List.map (fun x -> Just x) instr_bytes
+  |>)]
+; by_range = Set.fromList meta
+; by_tag = by_tag_from_by_range (Set.fromList meta)
+|> 
+  

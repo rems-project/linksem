@@ -343,7 +343,7 @@ let elf64_file_of_elf_memory_image a make_concrete fname img =
            |>)
         ]
     in
-    let phdrs = a.make_phdrs a elf_ft_exec img sorted_sections_with_offsets_and_indices
+    let phdrs = a.make_phdrs a.maxpagesize a.commonpagesize elf_ft_exec img sorted_sections_with_offsets_and_indices
     in
     <| elf64_file_header               = <| (* fix up hdr with the precise phnum *)
          elf64_ident = hdr.elf64_ident

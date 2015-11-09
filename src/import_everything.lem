@@ -15,8 +15,8 @@ open import Elf_file
 open import Elf_header
 open import Elf_interpreted_section
 open import Elf_interpreted_segment
-(*open import Elf_memory_image
-open import Elf_memory_image_of_elf64_file*)
+open import Elf_memory_image
+(*open import Elf_memory_image_of_elf64_file*)
 open import Elf_note
 open import Elf_program_header_table
 open import Elf_relocation
@@ -70,3 +70,5 @@ open import Abi_power64
 open import Abi_power64_relocation
 open import Abi_power64_section_header_table
 open import Abi_x86_relocation
+
+open import Test_image

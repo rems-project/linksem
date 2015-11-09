@@ -27,7 +27,7 @@ imports
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Elf_file" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Elf_relocation" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Memory_image" 
-"/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Abis" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Abis" 
 
 begin 
 
@@ -45,6 +45,9 @@ begin
 (*open import Missing_pervasives*)
 
 (*open import Byte_sequence*)
+
+(*open import Abis*)
+
 (*open import Elf_file*)
 (*open import Elf_header*)
 (*open import Elf_interpreted_segment*)
@@ -88,8 +91,8 @@ definition gnu_extend  :: " 'abifeature abi \<Rightarrow> 'abifeature abi "  whe
                , elf64_shstrndx = (Elf_Types_Local.uint16_of_nat shstrndx)
                |)))
     , reloc               =(reloc   a)
-    , section_is_special  = (\<lambda> isec .  (\<lambda> img .  ((section_is_special  
-                                a) isec img
+    , section_is_special  = (\<lambda> isec .  (\<lambda> img1 .  ((section_is_special  
+                                a) isec img1
                                 \<or> (Missing_pervasives.string_prefix ( (List.length (''.gnu.warning'')))(elf64_section_name_as_string   isec)
                                  = Some((''.gnu.warning'')))
         (* FIXME: This is a slight abuse. The GNU linker's treatment of 
