@@ -60,7 +60,7 @@ definition string_table_of_byte_sequence  :: " byte_sequence \<Rightarrow> strin
   *)
 (*val empty : string_table*)
 definition empty0  :: " string_table "  where 
-     " empty0 = ( Strings ((String.char_of_nat 0), ('''')))"
+     " empty0 = ( Strings ((String.char_of_nat 0), [(String.char_of_nat 0)]))"
 
 
 (** [get_delimiating_character tbl] returns the delimiting character associated
@@ -78,6 +78,13 @@ declare get_delimiting_character.simps [simp del]
 fun get_base_string  :: " string_table \<Rightarrow> string "  where 
      " get_base_string (Strings (sep, base)) = ( base )" 
 declare get_base_string.simps [simp del]
+
+
+(** [size tbl] returns the size in bytes of the string table [tbl].
+  *)
+(*val size : string_table -> natural*)
+definition size1  :: " string_table \<Rightarrow> nat "  where 
+     " size1 tbl = (  (List.length (get_base_string tbl)))"
 
 
 (** [concat xs] concatenates several string tables into one providing they all
@@ -129,7 +136,7 @@ definition insert_string  :: " string \<Rightarrow> string_table \<Rightarrow> n
      " insert_string s t = ( 
     (case  find_string s t of
         None => (case  t of
-            Strings(delim, base) => ((( 1 :: nat) +  (List.length base)), Strings(delim, (base @ (([delim]) @ s))))
+            Strings(delim, base) => ((( 1 :: nat) +  (List.length base)), Strings(delim, (base @ (s @ ([delim])))))
             )
         | Some pos => (pos, t)
     ))"

@@ -12,6 +12,7 @@ imports
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_string" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_assert_extra" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Show" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Missing_pervasives" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Error" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Elf_types_native_uint" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Elf_header" 
@@ -44,6 +45,7 @@ begin
 (*open import Show*)
 (*open import Assert_extra*)
 (*open import Error*)
+(*open import Missing_pervasives*)
 
 (*open import Elf_file*)
 (*open import Elf_header*)
@@ -161,7 +163,7 @@ definition instance_Basic_classes_Ord_Abis_any_abi_feature_dict  :: "(any_abi_fe
   isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (anyAbiFeatureCompare f1 f2) ({GT, EQ})))|) )"
 
 
-definition make_elf64_header  :: " nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> 'a \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> elf64_header "  where 
+definition make_elf64_header  :: " nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> elf64_header "  where 
      " make_elf64_header data osabi abiv ma t entry shoff phoff phnum shnum shstrndx = (
       (| elf64_ident    = [elf_mn_mag0, elf_mn_mag1, elf_mn_mag2, elf_mn_mag3, 
                            Elf_Types_Local.unsigned_char_of_nat elf_class_64, 
@@ -179,7 +181,7 @@ definition make_elf64_header  :: " nat \<Rightarrow> nat \<Rightarrow> nat \<Rig
        , elf64_type     = (Elf_Types_Local.uint16_of_nat t)
        , elf64_machine  = (Elf_Types_Local.uint16_of_nat ma)
        , elf64_version  = (Elf_Types_Local.uint32_of_nat elf_ev_current)
-       , elf64_entry    = (Elf_Types_Local.uint64_of_nat(( 0 :: nat)))
+       , elf64_entry    = (Elf_Types_Local.uint64_of_nat entry)
        , elf64_phoff    = (Elf_Types_Local.uint64_of_nat phoff)
        , elf64_shoff    = (Elf_Types_Local.uint64_of_nat shoff)
        , elf64_flags    = (Elf_Types_Local.uint32_of_nat(( 0 :: nat)))
@@ -195,18 +197,42 @@ definition make_elf64_header  :: " nat \<Rightarrow> nat \<Rightarrow> nat \<Rig
 (*val make_load_phdrs : forall 'abifeature. abi 'abifeature -> annotated_memory_image 'abifeature -> list (natural * elf64_interpreted_section) -> list elf64_program_header_table_entry*)
 definition make_load_phdrs  :: " 'abifeature abi \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>(nat*elf64_interpreted_section)list \<Rightarrow>(elf64_program_header_table_entry)list "  where 
      " make_load_phdrs a img1 section_pairs_bare_sorted_by_address = ( 
-    (let (phdr_flags_from_section_flags :: nat \<Rightarrow> nat) = (\<lambda> section_flags .  
-        unsafe_natural_lor elf_pf_r (unsafe_natural_lor 
-            (if flag_is_set section_flags shf_write then elf_pf_w else( 0 :: nat))
-            (if flag_is_set section_flags shf_execinstr then elf_pf_x else( 0 :: nat))))
+    (let (phdr_flags_from_section_flags :: nat \<Rightarrow> string \<Rightarrow> nat) = (\<lambda> section_flags .  \<lambda> sec_name . 
+        (let flags = (natural_lor elf_pf_r (natural_lor 
+            (if flag_is_set shf_write section_flags then elf_pf_w else( 0 :: nat))
+            (if flag_is_set shf_execinstr section_flags then elf_pf_x else( 0 :: nat))))
+        in
+        (*let _ = errln (Phdr flags of section  ^ sec_name ^ (ELF section flags 0x  ^ 
+            (hex_string_of_natural section_flags) ^ ) are 0x ^ (hex_string_of_natural flags))
+        in*)
+        flags))
     in
     (let maybe_extend_phdr = (\<lambda> phdr .  \<lambda> isec .  ( 
         (let new_p_type = (unat(elf64_p_type   phdr))
         in
-        (let new_p_flags = (phdr_flags_from_section_flags(elf64_section_flags   isec)) 
+        (let section_flags = (phdr_flags_from_section_flags(elf64_section_flags   isec)(elf64_section_name_as_string   isec))
         in
-        if \<not> (new_p_flags = (unat(elf64_p_flags   phdr))) then None
-        else
+        (let can_combine_flags = (\<lambda> flagsets .  
+            (* The GNU linker happily adds a .rodata section to a RX segment,
+             * but not to a RW segment. So the only clear rule is: if any is writable,
+             * all must be writable. *)
+            (let is_writable = (\<lambda> flags .  natural_land flags elf_pf_w = elf_pf_w)
+            in
+            (let flagslist = (list_of_set flagsets)
+            in
+            (let union_flags = (List.foldl natural_lor(( 0 :: nat)) flagslist)
+            in
+            if ((\<exists> x \<in> (set flagslist).  is_writable x))
+            then
+                if ((\<forall> x \<in> (set flagslist).  is_writable x)) then Some union_flags
+                else None
+            else
+                Some union_flags))))
+        in
+        (let maybe_extended = (can_combine_flags { section_flags, unat(elf64_p_flags   phdr) })
+        in
+        if maybe_extended = None then (*let _ = errln flag mismatch in*) None
+        else (let new_p_flags = ((case  maybe_extended of Some flags => flags | _ => failwith (''impossible'') )) in
         (let new_p_offset = (unat(elf64_p_offset   phdr))
         in
         (let new_p_vaddr = (unat(elf64_p_vaddr   phdr))
@@ -216,7 +242,7 @@ definition make_load_phdrs  :: " 'abifeature abi \<Rightarrow> 'abifeature annot
          * minus the existing file start offset of the phdr. 
          * Check that the new section begins after the old offset+filesz. *)
         if(elf64_section_offset   isec) < ((unat(elf64_p_offset   phdr)) + (unat(elf64_p_filesz   phdr)))
-        then None (* (offset went backwards) *)
+        then (*let _ = errln offset went backwards in*) None
         else 
         (let new_p_filesz = (((elf64_section_offset   isec) + (if(elf64_section_type   isec) = sht_progbits then(elf64_section_size   isec) else( 0 :: nat)))
         - unat(elf64_p_offset   phdr))
@@ -225,11 +251,13 @@ definition make_load_phdrs  :: " 'abifeature abi \<Rightarrow> 'abifeature annot
          * minus the existing start vaddr of the phdr. 
          * Check that the new section begins after the old vaddr+memsz. *)
         if(elf64_section_addr   isec) < ((unat(elf64_p_vaddr   phdr)) + (unat(elf64_p_memsz   phdr)))
-        then None (* (vaddr went backwards) *)
+        then (*let _ = errln vaddr went backwards in*) None
         else 
         (let new_p_memsz = (((elf64_section_addr   isec) +(elf64_section_size   isec)) - unat(elf64_p_vaddr   phdr))
         in
-        (let new_p_align =  (lcm (unat(elf64_p_align   phdr))(elf64_section_align   isec))
+        (let (one_if_zero :: nat \<Rightarrow> nat) = (\<lambda> n .  if n =( 0 :: nat) then( 1 :: nat) else n)
+        in
+        (let new_p_align =  (lcm (one_if_zero (unat(elf64_p_align   phdr))) (one_if_zero(elf64_section_align   isec)))
         in
         Some
           (| elf64_p_type   = (Elf_Types_Local.uint32_of_nat new_p_type)
@@ -240,18 +268,18 @@ definition make_load_phdrs  :: " 'abifeature abi \<Rightarrow> 'abifeature annot
            , elf64_p_filesz = (of_int (int new_p_filesz))
            , elf64_p_memsz  = (of_int (int new_p_memsz))
            , elf64_p_align  = (of_int (int new_p_align))
-           |)))))))))
+           |)))))))))))))
     ))
     in
     (let new_phdr = (\<lambda> isec .  
       (| elf64_p_type   = (Elf_Types_Local.uint32_of_nat elf_pt_load) (** Type of the segment *)
-       , elf64_p_flags  = (Elf_Types_Local.uint32_of_nat (phdr_flags_from_section_flags(elf64_section_flags   isec))) (** Segment flags *)
-       , elf64_p_offset = (Elf_Types_Local.uint64_of_nat (round_down_to(maxpagesize   a)(elf64_section_offset   isec))) (** Offset from beginning of file for segment *)
-       , elf64_p_vaddr  = (Elf_Types_Local.uint64_of_nat (round_down_to(maxpagesize   a)(elf64_section_addr   isec)))  (** Virtual address for segment in memory *)
+       , elf64_p_flags  = (Elf_Types_Local.uint32_of_nat (phdr_flags_from_section_flags(elf64_section_flags   isec)(elf64_section_name_as_string   isec))) (** Segment flags *)
+       , elf64_p_offset = (Elf_Types_Local.uint64_of_nat (round_down_to(commonpagesize   a)(elf64_section_offset   isec))) (** Offset from beginning of file for segment *)
+       , elf64_p_vaddr  = (Elf_Types_Local.uint64_of_nat (round_down_to(commonpagesize   a)(elf64_section_addr   isec))) (** Virtual address for segment in memory *)
        , elf64_p_paddr  = (Elf_Types_Local.uint64_of_nat(( 0 :: nat))) (** Physical address for segment *)
        , elf64_p_filesz = (of_int (int (if(elf64_section_type   isec) = sht_nobits then( 0 :: nat) else(elf64_section_size   isec)))) (** Size of segment in file, in bytes *)
        , elf64_p_memsz  = (of_int (int(elf64_section_size   isec))) (** Size of segment in memory image, in bytes *)
-       , elf64_p_align  = (of_int (int(elf64_section_align   isec))) (** Segment alignment memory for memory and file *)
+       , elf64_p_align  = (of_int (int(maxpagesize    (* isec.elf64_section_align *)a))) (** Segment alignment memory for memory and file *)
        |))
     in
     (* accumulate sections into the phdr *)
@@ -259,16 +287,23 @@ definition make_load_phdrs  :: " 'abifeature abi \<Rightarrow> 'abifeature annot
         (* Do we have a current phdr? *)
         (case  accum_phdr_list of
             [] => (* no, so make one *)
+                (*let _ = errln (Starting the first LOAD phdr for section  ^ isec.elf64_section_name_as_string)
+                in*)
                 [new_phdr isec]
             | current_phdr # more1 => 
                 (* can we extend it with the current section? *)
                 (case  maybe_extend_phdr current_phdr isec of
-                    None => (new_phdr isec) # (current_phdr # more1)
+                    None => 
+                        (*let _ = errln (Starting new LOAD phdr for section  ^ isec.elf64_section_name_as_string)
+                        in*)
+                        (new_phdr isec) # (current_phdr # more1)
                     | Some phdr => phdr # more1
                 )
         )
-    ))) [] section_pairs_bare_sorted_by_address)
+    ))) [] (List.filter (\<lambda> (idx, isec) .  flag_is_set shf_alloc(elf64_section_flags   isec)) section_pairs_bare_sorted_by_address))
     in
+    (*let _ = errln Successfully made phdrs
+    in*)
     List.rev rev_list)))))"
 
     
@@ -299,7 +334,7 @@ definition find_start_symbol_address  :: " 'abifeature Ord_class \<Rightarrow> '
             (case  maybe_range of
                 Some (el_name, (el_off, len)) => 
                     (case  (elements   img1) el_name of
-                        None => failwith (''_start symbol defined in nonexistent element'')
+                        None => failwith (([(CHR ''_''), (CHR ''s''), (CHR ''t''), (CHR ''a''), (CHR ''r''), (CHR ''t''), (CHR '' ''), (CHR ''s''), (CHR ''y''), (CHR ''m''), (CHR ''b''), (CHR ''o''), (CHR ''l''), (CHR '' ''), (CHR ''d''), (CHR ''e''), (CHR ''f''), (CHR ''i''), (CHR ''n''), (CHR ''e''), (CHR ''d''), (CHR '' ''), (CHR ''i''), (CHR ''n''), (CHR '' ''), (CHR ''n''), (CHR ''o''), (CHR ''n''), (CHR ''e''), (CHR ''x''), (CHR ''i''), (CHR ''s''), (CHR ''t''), (CHR ''e''), (CHR ''n''), (CHR ''t''), (CHR '' ''), (CHR ''e''), (CHR ''l''), (CHR ''e''), (CHR ''m''), (CHR ''e''), (CHR ''n''), (CHR ''t''), (CHR '' ''), (Char Nibble6 Nibble0)]) @ (el_name @ ([(Char Nibble2 Nibble7)])))
                         | Some el_rec => 
                             (case (startpos   el_rec) of
                                 None => (*let _ = Missing_pervasives.errln warning: saw `_start' in element with no assigned address in *)None
@@ -313,6 +348,15 @@ definition find_start_symbol_address  :: " 'abifeature Ord_class \<Rightarrow> '
             (let (ranges, defs) = unzip all_entry_points in show ranges)) in *)None
     )))))"
 
+
+(*val pad_zeroes : natural -> list byte*)
+definition pad_zeroes  :: " nat \<Rightarrow>(Elf_Types_Local.byte)list "  where 
+     " pad_zeroes n = ( List.replicate n (unat(( 0 :: nat))))"
+
+
+(*val pad_0x90 : natural -> list byte*)
+definition pad_0x90  :: " nat \<Rightarrow>(Elf_Types_Local.byte)list "  where 
+     " pad_0x90 n = ( List.replicate n (unat (( 9 :: nat) *( 16 :: nat))))"
 
 
 (* null_abi captures ABI details common to all ELF-based, System V-based systems.
@@ -335,6 +379,8 @@ definition null_abi  :: "(any_abi_feature)abi "  where
   (find_start_symbol_address
      instance_Basic_classes_Ord_Abis_any_abi_feature_dict
      instance_Memory_image_ToNaturalList_Abis_any_abi_feature_dict)
+    , pad_data = pad_zeroes
+    , pad_code = pad_zeroes
     |) )"
 
 
@@ -353,11 +399,13 @@ definition sysv_amd64_std_abi  :: "(any_abi_feature)abi "  where
       (* XXX: DPM, changed from explicit reference to null_abi field due to problems in HOL4. *)
     , symbol_is_generated_by_linker = (\<lambda> symname .  symname = (''_GLOBAL_OFFSET_TABLE_''))
     , make_phdrs = make_default_phdrs
-    , max_phnum =(( 5 :: nat))
+    , max_phnum =(( 4 :: nat))
     , guess_entry_point = 
   (find_start_symbol_address
      instance_Basic_classes_Ord_Abis_any_abi_feature_dict
      instance_Memory_image_ToNaturalList_Abis_any_abi_feature_dict)
+    , pad_data = pad_zeroes
+    , pad_code = pad_0x90
     |) )"
 
 
@@ -379,6 +427,8 @@ definition sysv_aarch64_le_std_abi  :: "(any_abi_feature)abi "  where
   (find_start_symbol_address
      instance_Basic_classes_Ord_Abis_any_abi_feature_dict
      instance_Memory_image_ToNaturalList_Abis_any_abi_feature_dict)
+    , pad_data = pad_zeroes
+    , pad_code = pad_zeroes
     |) )"
 
 

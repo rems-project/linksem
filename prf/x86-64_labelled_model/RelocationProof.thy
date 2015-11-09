@@ -136,6 +136,8 @@ fun concretise_dest_src :: "Labelled_X64.Zdest_src \<Rightarrow> nat \<Rightarro
   "concretise_dest_src (Labelled_X64.Zrm_r (rm, reg)) current_pos mapping =
      Zrm_r (concretise_rm rm Destination current_pos mapping, labelled_x64_reg_to_x64_reg reg)"
 
+find_consts name: "AND"
+
 fun concretise_instruction :: "Labelled_X64.instruction \<Rightarrow> nat \<Rightarrow> (string \<rightharpoonup> nat) \<Rightarrow> X64.instruction list" where
   "concretise_instruction (Labelled_X64.Zbinop (binop, sz, dest_src)) current_pos mapping =
      [Zbinop (labelled_x64_binop_to_x64_binop binop, labelled_x64_zsize_to_x64_zsize sz, concretise_dest_src dest_src current_pos mapping)]" |

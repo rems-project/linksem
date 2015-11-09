@@ -1123,7 +1123,7 @@ definition obtain_elf64_section_group_indices  :: " endianness \<Rightarrow>(elf
 definition obtain_elf32_tls_template  :: "(elf32_section_header_table_entry)list \<Rightarrow>(elf32_section_header_table_entry)list "  where 
      " obtain_elf32_tls_template sht = (
   List.filter (\<lambda> ent . 
-    (let flags = (unat(elf32_sh_flags   ent)) in \<not> ((unsafe_natural_land flags shf_tls) =(( 0 :: nat))))) sht )"
+    (let flags = (unat(elf32_sh_flags   ent)) in \<not> ((natural_land flags shf_tls) =(( 0 :: nat))))) sht )"
 
 
 (** [obtain_elf64_tls_template sht] extracts the TLS template (i.e. all sections
@@ -1133,7 +1133,7 @@ definition obtain_elf32_tls_template  :: "(elf32_section_header_table_entry)list
 definition obtain_elf64_tls_template  :: "(elf64_section_header_table_entry)list \<Rightarrow>(elf64_section_header_table_entry)list "  where 
      " obtain_elf64_tls_template sht = (
   List.filter (\<lambda> ent . 
-    (let flags = (unat(elf64_sh_flags   ent)) in \<not> ((unsafe_natural_land flags shf_tls) =(( 0 :: nat))))) sht )"
+    (let flags = (unat(elf64_sh_flags   ent)) in \<not> ((natural_land flags shf_tls) =(( 0 :: nat))))) sht )"
 
       
 (** [obtain_elf32_hash_table endian sht bs0] extracts a hash table from an ELF file

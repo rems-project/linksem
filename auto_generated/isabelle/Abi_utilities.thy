@@ -227,7 +227,7 @@ definition reloc_site_address  :: " 'abifeature Ord_class \<Rightarrow> 'abifeat
                     in
                     element_addr + site_offset))
             )
-        | _ => failwith (''error: more than one reloc marked at the same site'')
+        | _ => failwith (''error: more than one address with identical relocation record'')
     )))"
 
 end

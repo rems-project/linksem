@@ -119,6 +119,8 @@ definition gnu_extend  :: " 'abifeature abi \<Rightarrow> 'abifeature abi "  whe
     , make_phdrs          =(make_phdrs   a) (* FIXME: also make the GNU phdrs! *)
     , max_phnum           =(( 3 :: nat) +(max_phnum   a)) (* FIXME: GNU_RELRO, GNU_STACK; what else? *)
     , guess_entry_point   =(guess_entry_point   a)
+    , pad_data            =(pad_data   a)
+    , pad_code            =(pad_code   a)
     |) )"
 
 end

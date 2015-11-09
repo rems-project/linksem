@@ -28,40 +28,73 @@ begin
 (****************************************************)
 
 lemma lowest_simple:
-" findLowestEquiv instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv(( 4 :: nat)) (op<) ({ (( 1 :: nat),( 0 :: nat)), (( 2 :: nat),( 0 :: nat)), (( 3 :: nat),( 0 :: nat)), (( 4 :: nat),( 0 :: nat)), (( 5 :: nat),( 0 :: nat)), (( 6 :: nat),( 0 :: nat)) } :: (nat * nat) set) None = Some (( 3 :: nat),( 0 :: nat))"
+" findLowestKVWithKEquivTo 
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(( 4 :: nat)) testEquiv 
+({ (( 1 :: nat),( 0 :: nat)), (( 2 :: nat),( 0 :: nat)), (( 3 :: nat),( 0 :: nat)), (( 4 :: nat),( 0 :: nat)), (( 5 :: nat),( 0 :: nat)), (( 6 :: nat),( 0 :: nat)) } :: (nat * nat) set) None = Some (( 3 :: nat),( 0 :: nat))"
+by eval
+
+lemma lowest_kv:
+" findLowestKVWithKEquivTo 
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(( 4 :: nat)) testEquiv 
+({ (( 1 :: nat),( 0 :: nat)), (( 2 :: nat),( 0 :: nat)), (( 3 :: nat),( 0 :: nat)), (( 3 :: nat),( 1 :: nat)), (( 4 :: nat),( 0 :: nat)), (( 5 :: nat),( 0 :: nat)), (( 6 :: nat),( 0 :: nat)) } :: (nat * nat) set) None = Some (( 3 :: nat),( 0 :: nat))"
 by eval
 
 lemma lowest_empty:
-" findLowestEquiv instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv(( 4 :: nat)) (op<) ({} :: (nat * nat) set) None = None "
+" findLowestKVWithKEquivTo 
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(( 4 :: nat)) testEquiv
+({} :: (nat * nat) set) None = None "
 by eval
 
 lemma lowest_onepast:
-" findLowestEquiv instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv(( 4 :: nat)) (op<) ({ (( 6 :: nat),( 0 :: nat)) } :: (nat * nat) set) None = None "
+" findLowestKVWithKEquivTo 
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(( 4 :: nat)) testEquiv
+({ (( 6 :: nat),( 0 :: nat)) } :: (nat * nat) set) None = None "
 by eval
 
 lemma lowest_oneprev:
-" findLowestEquiv instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv(( 4 :: nat)) (op<) ({ (( 2 :: nat),( 0 :: nat)) } :: (nat * nat) set) None = None "
+" findLowestKVWithKEquivTo 
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(( 4 :: nat)) testEquiv 
+({ (( 2 :: nat),( 0 :: nat)) } :: (nat * nat) set) None = None "
 by eval
 
 lemma highest_simple:
-" findHighestEquiv instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv(( 4 :: nat)) (op>) ({ (( 1 :: nat),( 0 :: nat)), (( 2 :: nat),( 0 :: nat)), (( 3 :: nat),( 0 :: nat)), (( 4 :: nat),( 0 :: nat)), (( 5 :: nat),( 0 :: nat)), (( 6 :: nat),( 0 :: nat)) } :: (nat * nat) set) None = Some (( 5 :: nat),( 0 :: nat))"
+" findHighestKVWithKEquivTo 
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(( 4 :: nat)) testEquiv
+({ (( 1 :: nat),( 0 :: nat)), (( 2 :: nat),( 0 :: nat)), (( 3 :: nat),( 0 :: nat)), (( 4 :: nat),( 0 :: nat)), (( 5 :: nat),( 0 :: nat)), (( 6 :: nat),( 0 :: nat)) } :: (nat * nat) set) None = Some (( 5 :: nat),( 0 :: nat))"
+by eval
+
+lemma highest_kv:
+" findHighestKVWithKEquivTo 
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(( 4 :: nat)) testEquiv
+({ (( 1 :: nat),( 0 :: nat)), (( 2 :: nat),( 0 :: nat)), (( 3 :: nat),( 0 :: nat)), (( 4 :: nat),( 0 :: nat)), (( 5 :: nat),( 0 :: nat)), (( 5 :: nat),( 1 :: nat)), (( 6 :: nat),( 0 :: nat)) } :: (nat * nat) set) None = Some (( 5 :: nat),( 1 :: nat))"
 by eval
 
 lemma highest_empty:
-" findHighestEquiv instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv(( 4 :: nat)) (op>) ({} :: (nat * nat) set) None = None "
+" findHighestKVWithKEquivTo 
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(( 4 :: nat)) testEquiv
+({} :: (nat * nat) set) None = None "
 by eval
 
 lemma highest_onepast:
-" findHighestEquiv instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv(( 4 :: nat)) (op>) ({ (( 6 :: nat),( 0 :: nat)) } :: (nat * nat) set) None = None "
+" findHighestKVWithKEquivTo 
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(( 4 :: nat)) testEquiv 
+({ (( 6 :: nat),( 0 :: nat)) } :: (nat * nat) set) None = None "
 by eval
 
 lemma highest_oneprev:
-" findHighestEquiv instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv(( 4 :: nat)) (op>) ({ (( 2 :: nat),( 0 :: nat)) } :: (nat * nat) set) None = None "
+" findHighestKVWithKEquivTo 
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(( 4 :: nat)) testEquiv
+({ (( 2 :: nat),( 0 :: nat)) } :: (nat * nat) set) None = None "
 by eval
 
 lemma lookup_simple :
 " lookupBy0 instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv(( 4 :: nat)) ({ (( 1 :: nat),( 0 :: nat)), (( 2 :: nat),( 0 :: nat)), (( 3 :: nat),( 0 :: nat)), (( 4 :: nat),( 0 :: nat)), (( 5 :: nat),( 0 :: nat)), (( 6 :: nat),( 0 :: nat)) } :: (nat * nat) set)
 = ([(( 3 :: nat),( 0 :: nat)), (( 4 :: nat),( 0 :: nat)), (( 5 :: nat),( 0 :: nat))] :: (nat * nat) list)"
+by eval
+
+lemma lookup_kv :
+" lookupBy0 instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv(( 4 :: nat)) ({ (( 1 :: nat),( 0 :: nat)), (( 2 :: nat),( 0 :: nat)), (( 3 :: nat),( 0 :: nat)), (( 4 :: nat),( 0 :: nat)), (( 4 :: nat),( 1 :: nat)), (( 5 :: nat),( 0 :: nat)), (( 6 :: nat),( 0 :: nat)) } :: (nat * nat) set)
+= ([(( 3 :: nat),( 0 :: nat)), (( 4 :: nat),( 0 :: nat)), (( 4 :: nat),( 1 :: nat)), (( 5 :: nat),( 0 :: nat))] :: (nat * nat) list)"
 by eval
 
 lemma lookup_empty:
@@ -87,9 +120,9 @@ by eval
 (*                                                  *)
 (****************************************************)
 
-termination findLowestEquiv by lexicographic_order
+termination findLowestKVWithKEquivTo by lexicographic_order
 
-termination findHighestEquiv by lexicographic_order
+termination findHighestKVWithKEquivTo by lexicographic_order
 
 
 

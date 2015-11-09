@@ -504,7 +504,21 @@ definition read_elf32_symbol_table_entry  :: " endianness \<Rightarrow> byte_seq
                  elf32_st_size = st_size, elf32_st_info = st_info,
                  elf32_st_other = st_other, elf32_st_shndx = st_shndx |), bs0))))))))"
 
-          
+
+(*val bytes_of_elf32_symbol_table_entry : endianness ->
+  elf32_symbol_table_entry -> byte_sequence*)
+definition bytes_of_elf32_symbol_table_entry  :: " endianness \<Rightarrow> elf32_symbol_table_entry \<Rightarrow> byte_sequence "  where 
+     " bytes_of_elf32_symbol_table_entry endian entry = (
+  Byte_sequence.from_byte_lists [
+    bytes_of_elf32_word endian(elf32_st_name   entry)
+  , bytes_of_elf32_addr endian(elf32_st_value   entry)
+  , bytes_of_elf32_word endian(elf32_st_size   entry)
+  , bytes_of_unsigned_char(elf32_st_info   entry)
+  , bytes_of_unsigned_char(elf32_st_other   entry)
+  , bytes_of_elf32_half endian(elf32_st_shndx   entry)
+  ])"
+
+
 (** [read_elf64_symbol_table_entry endian bs0] reads an ELF symbol table entry
   * record from byte sequence [bs0] assuming endianness [endian], returning the
   * remainder of the byte sequence.  Fails if the byte sequence is not long enough.
@@ -522,6 +536,20 @@ definition read_elf64_symbol_table_entry  :: " endianness \<Rightarrow> byte_seq
     error_return ((| elf64_st_name = st_name, elf64_st_info = st_info,
                  elf64_st_other = st_other, elf64_st_shndx = st_shndx,
                  elf64_st_value = st_value, elf64_st_size = st_size |), bs0))))))))"
+
+
+(*val bytes_of_elf64_symbol_table_entry : endianness ->
+  elf64_symbol_table_entry -> byte_sequence*)
+definition bytes_of_elf64_symbol_table_entry  :: " endianness \<Rightarrow> elf64_symbol_table_entry \<Rightarrow> byte_sequence "  where 
+     " bytes_of_elf64_symbol_table_entry endian entry = (
+  Byte_sequence.from_byte_lists [
+    bytes_of_elf64_word endian(elf64_st_name   entry)
+  , bytes_of_unsigned_char(elf64_st_info   entry)
+  , bytes_of_unsigned_char(elf64_st_other   entry)
+  , bytes_of_elf64_half endian(elf64_st_shndx   entry)
+  , bytes_of_elf64_addr  endian(elf64_st_value   entry)
+  , bytes_of_elf64_xword endian(elf64_st_size   entry)
+  ])"
 
 
 (** [read_elf32_symbol_table endian bs0] reads a symbol table from byte sequence
@@ -574,11 +602,11 @@ definition get_elf32_symbol_image_address  :: "(elf32_symbol_table_entry)list \<
   mapM (\<lambda> entry . 
     (let name2 = (unat(elf32_st_name   entry)) in
     (let addr = (unat(elf32_st_value   entry)) in
-    (let size3 = (unat(elf32_st_size   entry) *( 8 :: nat)) in
+    (let size4 = (unat(elf32_st_size   entry) *( 8 :: nat)) in
     (let typ1  = (get_symbol_type(elf32_st_info   entry)) in
     (let bnd  = (get_symbol_binding(elf32_st_info   entry)) in
       String_table.get_string_at name2 strtab >>= (\<lambda> str . 
-      error_return (str, (typ1, size3, addr, bnd))))))))
+      error_return (str, (typ1, size4, addr, bnd))))))))
   ) symtab )"
 
 
@@ -593,11 +621,11 @@ definition get_elf64_symbol_image_address  :: "(elf64_symbol_table_entry)list \<
   mapM (\<lambda> entry . 
     (let name2 = (unat(elf64_st_name   entry)) in
     (let addr = (unat(elf64_st_value   entry)) in
-    (let size3 = (unat(elf64_st_size   entry)) in
+    (let size4 = (unat(elf64_st_size   entry)) in
     (let typ1  = (get_symbol_type(elf64_st_info   entry)) in
     (let bnd  = (get_symbol_binding(elf64_st_info   entry)) in 
       String_table.get_string_at name2 strtab >>= (\<lambda> str . 
-      error_return (str, (typ1, size3, addr, bnd))))))))
+      error_return (str, (typ1, size4, addr, bnd))))))))
   ) symtab )"
 
 

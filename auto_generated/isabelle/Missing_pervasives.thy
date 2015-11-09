@@ -64,6 +64,9 @@ definition instance_Basic_classes_Ord_Missing_pervasives_byte_dict  :: "(Elf_Typ
 
 (*val char_of_byte : byte -> char*)
 
+(*val byte_of_char : char -> byte*)
+(* FIXME: declare hol      target_rep function char_of_byte = `CHR` `o` `w2n` *)
+
 (* Define how to print a byte in hex *)
 (*val hex_char_of_nibble : natural -> char*)
 definition hex_char_of_nibble  :: " nat \<Rightarrow> char "  where 
@@ -412,6 +415,20 @@ function (sequential,domintros)  take  :: " nat \<Rightarrow> 'a list \<Rightarr
         []
       else
         x # take (m -( 1 :: nat)) xs )" 
+by pat_completeness auto
+
+  
+(** [drop cnt xs] returns all but the first [cnt] elements of list [xs].  Returns an empty list
+  * if [cnt] is greater than the length of [xs].
+  *)
+(*val drop : forall 'a. natural -> list 'a -> list 'a*)
+function (sequential,domintros)  drop  :: " nat \<Rightarrow> 'a list \<Rightarrow> 'a list "  where 
+     " drop m ([]) = ( [])"
+|" drop m (x # xs) = (
+      if m =( 0 :: nat) then
+        x # xs
+      else
+        drop (m -( 1 :: nat)) xs )" 
 by pat_completeness auto
 
   

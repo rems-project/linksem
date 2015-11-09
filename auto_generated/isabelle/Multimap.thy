@@ -87,16 +87,15 @@ val mappingCount : forall 'k 'v. key_equiv 'k -> multimap 'k 'v -> natural
 val any : forall 'k 'v. ('k -> 'v -> bool) -> multimap 'k 'v -> bool 
 val all : forall 'k 'v. ('k -> 'v -> bool) -> multimap 'k 'v -> bool 
 *)
-(*val findLowestEquiv : forall 'k 'v. 
+(*val findLowestKVWithKEquivTo : forall 'k 'v. 
     Ord 'k, Ord 'v, SetType 'k, SetType 'v =>
-        key_equiv 'k 
-        -> 'k 
-        -> ('k -> 'k -> bool) 
+        'k 
+        -> key_equiv 'k 
         -> multimap 'k 'v 
         -> maybe ('k * 'v) 
         -> maybe ('k * 'v)*)
-function (sequential,domintros)  findLowestEquiv  :: " 'k Ord_class \<Rightarrow> 'v Ord_class \<Rightarrow>('k \<Rightarrow> 'k \<Rightarrow> bool)\<Rightarrow> 'k \<Rightarrow>('k \<Rightarrow> 'k \<Rightarrow> bool)\<Rightarrow>('k*'v)set \<Rightarrow>('k*'v)option \<Rightarrow>('k*'v)option "  where 
-     " findLowestEquiv dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v equiv1 k lessThan1 subSet maybeBest = ( 
+function (sequential,domintros)  findLowestKVWithKEquivTo  :: " 'k Ord_class \<Rightarrow> 'v Ord_class \<Rightarrow> 'k \<Rightarrow>('k \<Rightarrow> 'k \<Rightarrow> bool)\<Rightarrow>('k*'v)set \<Rightarrow>('k*'v)option \<Rightarrow>('k*'v)option "  where 
+     " findLowestKVWithKEquivTo dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v k equiv1 subSet maybeBest = ( 
     (case  Lem_set_extra.chooseAndSplit 
   (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
      dict_Basic_classes_Ord_v) subSet of
@@ -109,35 +108,26 @@ function (sequential,domintros)  findLowestEquiv  :: " 'k Ord_class \<Rightarrow
                 (let (bestK, bestV) = ((case  maybeBest of
                     None => (chosenK, chosenV)
                     | Some(currentBestK, currentBestV) => 
-                        if lessThan1 chosenK currentBestK 
+                        if pairLess 
+  dict_Basic_classes_Ord_v dict_Basic_classes_Ord_k (chosenK, chosenV) (currentBestK, currentBestV)
                             then (chosenK, chosenV)
                             else (currentBestK, currentBestV)
                 ))
                 in
                 (* recurse down lower subSet; best is whichever is lower *)
-                (let foundLowerBest = (findLowestEquiv 
-  dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v equiv1 k lessThan1 lower (Some(bestK, bestV)))
-                in
-                (case  foundLowerBest of 
-                    None => (* chosen is the best we can do *) Some(bestK, bestV)
-                  | Some(foundLowerK, foundLowerV) => 
-                        if lessThan1 chosenK foundLowerK
-                        then findLowestEquiv 
-  dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v equiv1 k lessThan1 lower (Some(chosenK, chosenV))
-                        else findLowestEquiv 
-  dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v equiv1 k lessThan1 lower foundLowerBest
-                )))
+                findLowestKVWithKEquivTo 
+  dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v k equiv1 lower (Some(bestK, bestV)))
             else
                 (* k is not equiv to chosen; do we need to look lower or higher? *)
-                if lessThan1 k chosenK
+                if (isLess_method   dict_Basic_classes_Ord_k) k chosenK
                 then
                     (* k is lower, so look lower for equivs-to-k *)
-                    findLowestEquiv 
-  dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v equiv1 k lessThan1 lower maybeBest
+                    findLowestKVWithKEquivTo 
+  dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v k equiv1 lower maybeBest
                 else
                     (* k is higher *)
-                    findLowestEquiv 
-  dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v equiv1 k lessThan1 higher maybeBest
+                    findLowestKVWithKEquivTo 
+  dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v k equiv1 higher maybeBest
     ))" 
 by pat_completeness auto
 
@@ -153,16 +143,15 @@ definition testEquiv  :: " nat \<Rightarrow> nat \<Rightarrow> bool "  where
 (* Note we can't just use findLowestEquiv with inverted relations, because 
  * chooseAndSplit returns us (lower, chosen, higher) and we need to swap
  * around how we consume that. *)
-(*val findHighestEquiv : forall 'k 'v. 
+(*val findHighestKVWithKEquivTo : forall 'k 'v. 
     Ord 'k, Ord 'v, SetType 'k, SetType 'v =>
-        key_equiv 'k 
-        -> 'k 
-        -> ('k -> 'k -> bool) 
+        'k 
+        -> key_equiv 'k 
         -> multimap 'k 'v 
         -> maybe ('k * 'v) 
         -> maybe ('k * 'v)*)
-function (sequential,domintros)  findHighestEquiv  :: " 'k Ord_class \<Rightarrow> 'v Ord_class \<Rightarrow>('k \<Rightarrow> 'k \<Rightarrow> bool)\<Rightarrow> 'k \<Rightarrow>('k \<Rightarrow> 'k \<Rightarrow> bool)\<Rightarrow>('k*'v)set \<Rightarrow>('k*'v)option \<Rightarrow>('k*'v)option "  where 
-     " findHighestEquiv dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v equiv1 k greaterThan1 subSet maybeBest = ( 
+function (sequential,domintros)  findHighestKVWithKEquivTo  :: " 'k Ord_class \<Rightarrow> 'v Ord_class \<Rightarrow> 'k \<Rightarrow>('k \<Rightarrow> 'k \<Rightarrow> bool)\<Rightarrow>('k*'v)set \<Rightarrow>('k*'v)option \<Rightarrow>('k*'v)option "  where 
+     " findHighestKVWithKEquivTo dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v k equiv1 subSet maybeBest = ( 
     (case  Lem_set_extra.chooseAndSplit 
   (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
      dict_Basic_classes_Ord_v) subSet of
@@ -175,35 +164,27 @@ function (sequential,domintros)  findHighestEquiv  :: " 'k Ord_class \<Rightarro
                 (let (bestK, bestV) = ((case  maybeBest of
                     None => (chosenK, chosenV)
                     | Some(currentBestK, currentBestV) => 
-                        if greaterThan1 chosenK currentBestK 
+                        if pairGreater 
+  dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v (chosenK, chosenV) (currentBestK, currentBestV)
                             then (chosenK, chosenV)
                             else (currentBestK, currentBestV)
                 ))
                 in
-                (* recurse down higher subSet; best is whichever is higher *)
-                (let foundHigherBest = (findHighestEquiv 
-  dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v equiv1 k greaterThan1 higher (Some(bestK, bestV)))
-                in
-                (case  foundHigherBest of 
-                    None => (* chosen is the best we can do *) Some(bestK, bestV)
-                  | Some(foundHigherK, foundHigherV) => 
-                        if greaterThan1 chosenK foundHigherK
-                        then findHighestEquiv 
-  dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v equiv1 k greaterThan1 higher (Some(chosenK, chosenV))
-                        else findHighestEquiv 
-  dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v equiv1 k greaterThan1 higher foundHigherBest
-                )))
+                (* recurse down higher-than-chosen subSet; best is whichever is higher *)
+                findHighestKVWithKEquivTo 
+  dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v k equiv1 higher (Some(bestK, bestV)))
             else
-                (* k is not equiv to chosen; do we need to look lower or higher? *)
-                if greaterThan1 k chosenK
+                (* k is not equiv to chosen; do we need to look lower or higher? 
+                 * NOTE: the pairs in the set must be lexicographically ordered! *)
+                if (isGreater_method   dict_Basic_classes_Ord_k) k chosenK
                 then
                     (* k is higher than chosen, so look higher for equivs-to-k *)
-                    findHighestEquiv 
-  dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v equiv1 k greaterThan1 higher maybeBest
+                    findHighestKVWithKEquivTo 
+  dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v k equiv1 higher maybeBest
                 else
                     (* k is lower than chosen, so look lower *)
-                    findHighestEquiv 
-  dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v equiv1 k greaterThan1 lower maybeBest
+                    findHighestKVWithKEquivTo 
+  dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v k equiv1 lower maybeBest
     ))" 
 by pat_completeness auto
 
@@ -216,15 +197,15 @@ definition lookupBy0  :: " 'k Ord_class \<Rightarrow> 'v Ord_class \<Rightarrow>
      " lookupBy0 dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v equiv1 k m = ( 
     (* Find the lowest and highest elements equiv to k. 
      * We do this using chooseAndSplit recursively. *)
-    (case  findLowestEquiv 
-  dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v equiv1 k (isLess_method   dict_Basic_classes_Ord_k) m None of
+    (case  findLowestKVWithKEquivTo 
+  dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v k equiv1 m None of
         None => []
         | Some lowestEquiv => 
             (let (highestEquiv :: ('k * 'v)) =                
 ( 
                 (* We can't just invert the relation on the set, because
-                 * the whole set is ordered *)(case  findHighestEquiv 
-  dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v equiv1 k (isGreater_method   dict_Basic_classes_Ord_k) m None of
+                 * the whole set is ordered *)(case  findHighestKVWithKEquivTo 
+  dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v k equiv1 m None of
                     None => failwith (''impossible: lowest equiv but no highest equiv'')
                     | Some highestEquiv => highestEquiv
                 ))
@@ -237,11 +218,26 @@ definition lookupBy0  :: " 'k Ord_class \<Rightarrow> 'v Ord_class \<Rightarrow>
         (let (wanted, tooHigh) = (Lem_set.split 
   (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
      dict_Basic_classes_Ord_v) highestEquiv highEnough)
-        in
-        (lowestEquiv # (list_of_set wanted)) @ (
+        in        
+(
+        (* NOTE that lowestEquiv is a single element; we want to include 
+         * *all those equiv to it*, which may be non-equal. FIXME: use splitMember,
+         * although that needs fixing in Lem (plus an optimised OCaml version). *)(list_of_set 
+  (set_filter
+     (\<lambda> s .  (EQ =
+                        (pairCompare
+                           (compare_method   dict_Basic_classes_Ord_k)
+                           (compare_method   dict_Basic_classes_Ord_v) 
+                         s lowestEquiv))) m)) @ (list_of_set wanted)) @ (
             (* don't include the lowest and highest twice, if they're the same *)
             if pairLess 
-  dict_Basic_classes_Ord_v dict_Basic_classes_Ord_k lowestEquiv highestEquiv then [highestEquiv] else []
+  dict_Basic_classes_Ord_v dict_Basic_classes_Ord_k lowestEquiv highestEquiv then (list_of_set 
+  (set_filter
+     (\<lambda> s .  (EQ =
+                        (pairCompare
+                           (compare_method   dict_Basic_classes_Ord_k)
+                           (compare_method   dict_Basic_classes_Ord_v) 
+                         s highestEquiv))) m)) else []
         ))))
     ))"
 
