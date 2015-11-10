@@ -642,7 +642,7 @@ let element_and_offset_to_address (el_name, el_off) img =
                         Just addr -> Just (addr + el_off)
                         | Nothing -> Nothing
                    end
-        | Nothing -> failwith "error: nonexistent element"
+        | Nothing -> failwith ("error: nonexistent element: " ^ el_name)
     end
                 
 

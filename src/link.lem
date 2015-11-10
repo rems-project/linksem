@@ -438,6 +438,8 @@ let expand_sections a options bindings_by_name linkable_idx item = match item wi
          * been done by discarding unreferenced inputs.  *)
         let common_symbols = all_common_symbols stripped_img_with_reloc_sections
         in
+        let _ = errln ("Expanding " ^ (show (length common_symbols)) ^ " common symbols")
+        in
         [Common(linkable_idx, fname, stripped_img_with_reloc_sections, def) | forall (def MEM common_symbols) | 
             let _ = Missing_pervasives.outln ((space_padded_and_maybe_newline 20 def.def_symname)
                 ^ (let hexstr = "0x" ^ (hex_string_of_natural (natural_of_elf64_xword def.def_syment.elf64_st_size))
@@ -494,8 +496,8 @@ let relocate_output_image a bindings_by_name img =
         img.by_tag
     in
     
-    let _ = errln ("For __fini_array_end (in relocate_output_image), we have " ^ 
-        (let all_bs = match Map.lookup "__fini_array_end" bindings_by_name with
+    let _ = errln ("For __libc_multiple_threads (in relocate_output_image), we have " ^ 
+        (let all_bs = match Map.lookup "__libc_multiple_threads" bindings_by_name with
             Just l -> l
             | Nothing -> []
         end
@@ -571,7 +573,9 @@ let relocate_output_image a bindings_by_name img =
                                     in 
                                     let _ = errln ("Searching for the bound-to symbol, which came from linkable idx " ^ 
                                         (show bound_def.def_linkable_idx) ^ ", section " ^ 
-                                        (show bound_def.def_syment.elf64_st_shndx))
+                                        (show bound_def.def_syment.elf64_st_shndx) ^ 
+                                        ", symtab shndx " ^ (show bound_def.def_sym_scn) ^ 
+                                        ", symind " ^ (show bound_def.def_sym_idx))
                                     in
                                     match List.filter (fun (some_range, some_def) -> 
                                         if some_def.def_symname = bound_def.def_symname 

@@ -198,8 +198,8 @@ let only_sections inputs = List.mapMaybe
       | _ -> Nothing
     end) inputs
 
-val filter_and_concat : (input_spec -> bool) -> input_selector (* a.k.a. (list input_spec) -> list elf64_interpreted_section *)
-let filter_and_concat p inputs = List.filter p (only_sections inputs)
+val filter_and_concat : (input_spec -> bool) -> input_selector (* a.k.a. list input_spec -> list input_spec *)
+let filter_and_concat p inputs = List.filter p inputs
 
 val name_matches : string -> input_spec -> bool
 let name_matches pat input =
@@ -359,20 +359,12 @@ let default_linker_control_script a user_text_segment_start user_data_segment_st
         end
     end
     in
-    let is_large_common = (fun isec -> match isec with 
-    Common(idx, fname, img, def)
-         -> let referenced_sec
-             = match elf_memory_image_section_by_index (natural_of_elf64_half def.def_syment.elf64_st_shndx) img with
-                Just s -> s
-                | Nothing -> failwith "impossible: symbol references invalid section index"
-            end
-            in 
-            a.section_is_large referenced_sec img
-    | _ -> false
-    end)
+    let is_large_common = (fun inp -> (* FIXME: treat large commons separately *) false
+    )
     in
     let is_common = (fun isec -> match isec with 
-        Common(idx, fname, _, _) -> not (is_large_common isec)
+        Common(idx, fname, img, def) -> let _ = errln ("Common or large-common symbol: " ^ def.def_symname) in 
+             not (is_large_common isec)
          | _ -> false
     end)
     in
@@ -832,7 +824,19 @@ SECTIONS
     ; OutputSection(AlwaysOutput, Nothing, ".bss", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".dynbss"))
                            ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
                                 fun s -> name_matches ".bss" s || name_matches ".bss.*" s || name_matches ".gnu.linkonce.b.*" s))
-                           ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat is_common)
+                           ; InputQuery(DefaultKeep, DefaultSort, fun inputlist -> 
+                                let _ = errln "Looking for commons" in 
+                                let result = filter_and_concat is_common inputlist
+                                in
+                                let _ = errln ("Got " ^ (show (length (result))) ^ " commons; sanity check: input list contains " ^
+                                    (show (length inputlist)) ^ " of which " ^
+                                    (show (length (List.filter (fun inp -> match inp with
+                                        Common _ -> true
+                                        | _ -> false
+                                    end) inputlist))) ^ " are commons."
+                                ) 
+                                in result
+                            )
       ])
     ; AdvanceAddress(fun pos -> (fun secs -> align_up_to (if pos = 0 then (64/8) else 1) pos))
     ; OutputSection(AlwaysOutput, Nothing, ".lbss", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".dynlbss"))
@@ -1055,7 +1059,9 @@ let rec assign_inputs_to_output_sections acc inputs cur_output_sec last_input_se
                             end
                             in
                             (* Search input memory images for matching sections. *)
-                            let (matchList : list input_section_rec) = List.mapMaybe (fun inp -> 
+                            let sorted_selected_inputs = sortfun (selector inputs)
+                            in
+                            let (sectionMatchList : list input_section_rec) = List.mapMaybe (fun inp -> 
                                 match inp with
                                     InputSection(x) -> 
                                         let _ = errln ("Matched an input section named " ^ x.isec.elf64_section_name_as_string ^ 
@@ -1074,15 +1080,22 @@ let rec assign_inputs_to_output_sections acc inputs cur_output_sec last_input_se
                                             in
                                             Just x
                                    | _ -> Nothing
-                                end) (sortfun (selector inputs))
+                                end) sorted_selected_inputs
                             in
+                            let commonMatchList = List.mapMaybe (fun inp -> 
+                                match inp with
+                                   | Common(idx, fname, img, def) -> Just(idx, fname, img, def)
+                                   | _ -> Nothing
+                                end) sorted_selected_inputs
+                            in
+                            
                             (acc, 
                              Just (
                                 (output_guard, output_sec_addr, output_sec_name, 
                                     output_composition ++ 
                                      [IncludeInputSection(retainpol, (* input_sec.fname, input_sec.idx, input_sec.shndx, input_sec.isec, input_sec.img *) input_sec)
-                                     | forall (input_sec MEM matchList) | true
-                                     ]
+                                     | forall (input_sec MEM sectionMatchList) | true
+                                     ] ++ [IncludeCommonSymbol(DefaultKeep, fname, idx, def, img) | forall ((idx, fname, img, def) MEM commonMatchList) | true]
                                 ), output_script_idx), 
                              last_input_sec
                             )
@@ -1541,21 +1554,21 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                        end (* match Map.lookup idstr img.elements *)
                     end (* match maybe_secname *)
                     | IncludeCommonSymbol(retain_pol, fname, linkable_idx, def, img) -> 
+                        let _ = errln ("Including common symbol called `" ^ def.def_symname ^ "'")
+                        in
                         (* We want to get the common symbol as a byte pattern *)
                         let sz = natural_of_elf64_xword def.def_syment.elf64_st_size
                         in
-                        let elName = get_unique_name_for_common_symbol_from_linkable_name fname def.def_syment def.def_symname
-                        in 
                         let content = Missing_pervasives.replicate sz (Just(byte_of_natural 0))
                         in 
                         let _ = Missing_pervasives.outln (make_line "COMMON" (hex_string_of_natural comp_addr)
                              (hex_string_of_natural sz) fname)
                         in
-                        (sz, content, {(Just(elName, (0, sz)), SymbolDef(<|
+                        (sz, content, {(Just(secname, (0, sz)), SymbolDef(<|
                               def_symname = def.def_symname
                             ; def_syment = def.def_syment
                             ; def_sym_scn = def.def_sym_scn
-                            ; def_sym_idx = def.def_sym_scn
+                            ; def_sym_idx = def.def_sym_idx
                             ; def_linkable_idx = linkable_idx
                         |>))})
                     | Hole(f) -> 
@@ -2283,7 +2296,7 @@ let interpret_linker_control_script script linker_script_linkable_idx a inputs s
             lpadded_secname ^ (space_padding_and_maybe_newline 16 lpadded_secname) ^ "0x0000000000000000" (* FIXME *)
             ^ "        0x" ^ (hex_string_of_natural s.isec.elf64_section_size) ^ " "
             ^ s.fname ^ "\n"
-        | Common(idx, symname, img, def) -> "" (* don't print discard lines for discarded commons *)
+        | Common(idx, fname, img, def) -> "" (* don't print discard lines for discarded commons *)
     end)
     in
     let _ = Missing_pervasives.outs (List.foldl (fun str -> (fun input -> (str ^ (discard_line input)))) "" (reverse discards))
