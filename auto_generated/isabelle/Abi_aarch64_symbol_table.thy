@@ -31,12 +31,12 @@ begin
 definition is_aarch64_weak_reference  :: " elf64_symbol_table_entry \<Rightarrow> bool "  where 
      " is_aarch64_weak_reference ent = (  
 (unat(elf64_st_shndx   ent) = shn_undef) \<and>    
-(get_symbol_binding(elf64_st_info   ent) = stb_weak))"
+(get_elf64_symbol_binding ent = stb_weak))"
 
 
 (*val is_aarch64_weak_definition : elf64_symbol_table_entry -> bool*)
 definition is_aarch64_weak_definition  :: " elf64_symbol_table_entry \<Rightarrow> bool "  where 
      " is_aarch64_weak_definition ent = ( \<not> ((unat(elf64_st_shndx   ent)) = shn_undef) \<and>    
-(get_symbol_binding(elf64_st_info   ent) = stb_weak))"
+(get_elf64_symbol_binding ent = stb_weak))"
 
 end

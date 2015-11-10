@@ -188,9 +188,7 @@ let defined_symbols_and_ranges img =
 
 val defined_symbols : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature =>  annotated_memory_image 'abifeature -> list symbol_definition
 let defined_symbols img = 
-    let ((all_symbol_tags, all_symbol_ranges) : (list (range_tag 'abifeature) * list (maybe element_range)))
-     = symbol_def_ranges img
-    in
+    let (all_symbol_tags, all_symbol_ranges) = symbol_def_ranges img in
     List.mapMaybe (fun tag -> 
         match tag with
             SymbolDef(ent) -> Just ent

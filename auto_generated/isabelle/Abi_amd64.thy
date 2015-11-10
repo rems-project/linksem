@@ -20,6 +20,7 @@ imports
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Elf_interpreted_segment" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Elf_file" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Memory_image" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Abi_classes" 
 	 "Abi_amd64_elf_header" 
 	 "Abi_amd64_relocation" 
 
@@ -47,6 +48,8 @@ begin
 (*open import Endianness*)
 (*open import Memory_image*)
 (* open import Elf_memory_image *)
+
+(*open import Abi_classes*)
 (*open import Abi_amd64_relocation*)
 (*open import Abi_amd64_elf_header*)
 
@@ -80,28 +83,27 @@ datatype amd64_abi_feature =
     GOT0 
     | PLT0 (* placeholder / FIXME *)
     
-(*val amd64AbiFeatureConstructorToNaturalList : amd64_abi_feature -> list natural*)
-fun amd64AbiFeatureConstructorToNaturalList  :: " amd64_abi_feature \<Rightarrow>(nat)list "  where 
-     " amd64AbiFeatureConstructorToNaturalList GOT0 = ( [( 0 :: nat)])"
-|" amd64AbiFeatureConstructorToNaturalList PLT0 = ( [( 1 :: nat)])" 
-declare amd64AbiFeatureConstructorToNaturalList.simps [simp del]
-
-
 (*val abiFeatureCompare : amd64_abi_feature -> amd64_abi_feature -> Basic_classes.ordering*)
-definition abiFeatureCompare0  :: " amd64_abi_feature \<Rightarrow> amd64_abi_feature \<Rightarrow> ordering "  where 
-     " abiFeatureCompare0 f1 f2 = ( 
-    (case  (amd64AbiFeatureConstructorToNaturalList f1, amd64AbiFeatureConstructorToNaturalList f2) of
-        ([], []) => failwith (''impossible: ABI feature has empty natural list (case 0)'')
-    |   (_, [])  => failwith (''impossible: ABI feature has empty natural list (case 1)'')
-    |   ([], _)  => failwith (''impossible: ABI feature has empty natural list (case 2)'')
-    |   ((hd1 # tl1), (hd2 # tl2)) => 
-            if hd1 < hd2 then LT else if hd1 > hd2 then GT else
-                (case  (f1, f2) of
-                    (GOT0, GOT0) => EQ
-                    | (PLT0, PLT0) => EQ
-                    | _ => failwith (''impossible: tag constructors not equal but natural list heads were equal'')
-                )
-    ))"
+fun abiFeatureCompare0  :: " amd64_abi_feature \<Rightarrow> amd64_abi_feature \<Rightarrow> ordering "  where 
+     " abiFeatureCompare0 GOT0 GOT0 = ( EQ )"
+|" abiFeatureCompare0 GOT0 PLT0 = ( LT )"
+|" abiFeatureCompare0 PLT0 PLT0 = ( EQ )"
+|" abiFeatureCompare0 PLT0 GOT0 = ( GT )" 
+declare abiFeatureCompare0.simps [simp del]
+
+
+(*val abiFeatureTagEq : amd64_abi_feature -> amd64_abi_feature -> bool*)
+fun abiFeatureTagEq0  :: " amd64_abi_feature \<Rightarrow> amd64_abi_feature \<Rightarrow> bool "  where 
+     " abiFeatureTagEq0 GOT0 GOT0 = ( True )"
+|" abiFeatureTagEq0 PLT0 PLT0 = ( True )"
+|" abiFeatureTagEq0 _ _ = ( False )" 
+declare abiFeatureTagEq0.simps [simp del]
+
+
+definition instance_Abi_classes_AbiFeatureTagEquiv_Abi_amd64_amd64_abi_feature_dict  :: "(amd64_abi_feature)AbiFeatureTagEquiv_class "  where 
+     " instance_Abi_classes_AbiFeatureTagEquiv_Abi_amd64_amd64_abi_feature_dict = ((|
+
+  abiFeatureTagEquiv_method = abiFeatureTagEq0 |) )"
 
 
 definition instance_Basic_classes_Ord_Abi_amd64_amd64_abi_feature_dict  :: "(amd64_abi_feature)Ord_class "  where 
@@ -116,12 +118,6 @@ definition instance_Basic_classes_Ord_Abi_amd64_amd64_abi_feature_dict  :: "(amd
   isGreater_method = (\<lambda> f1 .  (\<lambda> f2 .  (abiFeatureCompare0 f1 f2 = GT))),
 
   isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (abiFeatureCompare0 f1 f2) ({GT, EQ})))|) )"
-
-
-definition instance_Memory_image_ToNaturalList_Abi_amd64_amd64_abi_feature_dict  :: "(amd64_abi_feature)ToNaturalList_class "  where 
-     " instance_Memory_image_ToNaturalList_Abi_amd64_amd64_abi_feature_dict = ((|
-
-  toNaturalList_method = amd64AbiFeatureConstructorToNaturalList |) )"
 
 
 (*val section_is_special : forall 'abifeature. elf64_interpreted_section -> annotated_memory_image 'abifeature -> bool*)

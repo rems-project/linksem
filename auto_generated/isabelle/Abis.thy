@@ -21,6 +21,7 @@ imports
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Elf_interpreted_section" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Elf_file" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Memory_image" 
+	 "Abi_classes" 
 	 "Abi_utilities" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Abi_aarch64_relocation" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Abi_amd64_relocation" 
@@ -63,6 +64,7 @@ begin
 (*open import Abi_power64*)
 (*open import Abi_power64_relocation*)
 
+(*open import Abi_classes*)
 (*open import Abi_utilities*)
 (*open import Elf_types_native_uint*)
 
@@ -119,34 +121,22 @@ definition is_valid_abi_power64_relocation_operator2  :: " relocation_operator2 
 datatype any_abi_feature = Amd64AbiFeature " amd64_abi_feature "
                      | Aarch64LeAbiFeature " aarch64_le_abi_feature "
 
-(*val anyAbiFeatureToNaturalList : any_abi_feature -> list natural*)
-fun anyAbiFeatureToNaturalList  :: " any_abi_feature \<Rightarrow>(nat)list "  where 
-     " anyAbiFeatureToNaturalList (Amd64AbiFeature(af)) = (( 0 :: nat) # (amd64AbiFeatureConstructorToNaturalList af))"
-|" anyAbiFeatureToNaturalList (Aarch64LeAbiFeature(af)) = (( 1 :: nat) # (aarch64LeAbiFeatureConstructorToNaturalList af))" 
-declare anyAbiFeatureToNaturalList.simps [simp del]
-
-
-definition instance_Memory_image_ToNaturalList_Abis_any_abi_feature_dict  :: "(any_abi_feature)ToNaturalList_class "  where 
-     " instance_Memory_image_ToNaturalList_Abis_any_abi_feature_dict = ((|
-
-  toNaturalList_method = anyAbiFeatureToNaturalList |) )"
-
-
 (*val anyAbiFeatureCompare : any_abi_feature -> any_abi_feature -> Basic_classes.ordering*)
-definition anyAbiFeatureCompare  :: " any_abi_feature \<Rightarrow> any_abi_feature \<Rightarrow> ordering "  where 
-     " anyAbiFeatureCompare f1 f2 = ( 
-    (case  (anyAbiFeatureToNaturalList f1, anyAbiFeatureToNaturalList f2) of
-        ([], []) => failwith (''impossible: any-ABI feature has empty natural list (case 0)'')
-    |   (_, [])  => failwith (''impossible: any-ABI feature has empty natural list (case 1)'')
-    |   ([], _)  => failwith (''impossible: any-ABI feature has empty natural list (case 2)'')
-    |   ((hd1 # tl1), (hd2 # tl2)) => 
-            if hd1 < hd2 then LT else if hd1 > hd2 then GT else
-                (case  (f1, f2) of
-                    (Amd64AbiFeature(af1), Amd64AbiFeature(af2)) => Abi_amd64.abiFeatureCompare0 af1 af2
-                   |(Aarch64LeAbiFeature(af1), Aarch64LeAbiFeature(af2)) => abiFeatureCompare af1 af2
-                   | _ => failwith (''impossible: tag constructors not equal but natural list heads were equal'')
-                )
-    ))"
+fun anyAbiFeatureCompare  :: " any_abi_feature \<Rightarrow> any_abi_feature \<Rightarrow> ordering "  where 
+     " anyAbiFeatureCompare (Amd64AbiFeature(af1)) (Amd64AbiFeature(af2)) = ( Abi_amd64.abiFeatureCompare0 af1 af2 )"
+|" anyAbiFeatureCompare (Amd64AbiFeature(_)) _ = ( LT )"
+|" anyAbiFeatureCompare (Aarch64LeAbiFeature(af1)) (Amd64AbiFeature(af2)) = ( GT )"
+|" anyAbiFeatureCompare (Aarch64LeAbiFeature(af1)) (Aarch64LeAbiFeature(af2)) = ( abiFeatureCompare af1 af2 )" 
+declare anyAbiFeatureCompare.simps [simp del]
+
+
+(*val anyAbiFeatureTagEquiv : any_abi_feature -> any_abi_feature -> bool*)
+fun anyAbiFeatureTagEquiv  :: " any_abi_feature \<Rightarrow> any_abi_feature \<Rightarrow> bool "  where 
+     " anyAbiFeatureTagEquiv (Amd64AbiFeature(af1)) (Amd64AbiFeature(af2)) = ( Abi_amd64.abiFeatureTagEq0 af1 af2 )"
+|" anyAbiFeatureTagEquiv (Amd64AbiFeature(_)) _ = ( False )"
+|" anyAbiFeatureTagEquiv (Aarch64LeAbiFeature(af1)) (Amd64AbiFeature(af2)) = ( False )"
+|" anyAbiFeatureTagEquiv (Aarch64LeAbiFeature(af1)) (Aarch64LeAbiFeature(af2)) = ( abiFeatureTagEq af1 af2 )" 
+declare anyAbiFeatureTagEquiv.simps [simp del]
 
 
 definition instance_Basic_classes_Ord_Abis_any_abi_feature_dict  :: "(any_abi_feature)Ord_class "  where 
@@ -161,6 +151,12 @@ definition instance_Basic_classes_Ord_Abis_any_abi_feature_dict  :: "(any_abi_fe
   isGreater_method = (\<lambda> f1 .  (\<lambda> f2 .  (anyAbiFeatureCompare f1 f2 = GT))),
 
   isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (anyAbiFeatureCompare f1 f2) ({GT, EQ})))|) )"
+
+
+definition instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict  :: "(any_abi_feature)AbiFeatureTagEquiv_class "  where 
+     " instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict = ((|
+
+  abiFeatureTagEquiv_method = anyAbiFeatureTagEquiv |) )"
 
 
 definition make_elf64_header  :: " nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> elf64_header "  where 
@@ -193,10 +189,9 @@ definition make_elf64_header  :: " nat \<Rightarrow> nat \<Rightarrow> nat \<Rig
        , elf64_shstrndx = (Elf_Types_Local.uint16_of_nat shstrndx)
        |) )"
 
-
-(*val make_load_phdrs : forall 'abifeature. abi 'abifeature -> annotated_memory_image 'abifeature -> list (natural * elf64_interpreted_section) -> list elf64_program_header_table_entry*)
-definition make_load_phdrs  :: " 'abifeature abi \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>(nat*elf64_interpreted_section)list \<Rightarrow>(elf64_program_header_table_entry)list "  where 
-     " make_load_phdrs a img1 section_pairs_bare_sorted_by_address = ( 
+(*val make_load_phdrs : forall 'abifeature. natural -> natural -> annotated_memory_image 'abifeature -> list (natural * elf64_interpreted_section) -> list elf64_program_header_table_entry*)
+definition make_load_phdrs  :: " nat \<Rightarrow> nat \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>(nat*elf64_interpreted_section)list \<Rightarrow>(elf64_program_header_table_entry)list "  where 
+     " make_load_phdrs max_page_sz common_page_sz img1 section_pairs_bare_sorted_by_address = ( 
     (let (phdr_flags_from_section_flags :: nat \<Rightarrow> string \<Rightarrow> nat) = (\<lambda> section_flags .  \<lambda> sec_name . 
         (let flags = (natural_lor elf_pf_r (natural_lor 
             (if flag_is_set shf_write section_flags then elf_pf_w else( 0 :: nat))
@@ -257,7 +252,7 @@ definition make_load_phdrs  :: " 'abifeature abi \<Rightarrow> 'abifeature annot
         in
         (let (one_if_zero :: nat \<Rightarrow> nat) = (\<lambda> n .  if n =( 0 :: nat) then( 1 :: nat) else n)
         in
-        (let new_p_align =  (lcm (one_if_zero (unat(elf64_p_align   phdr))) (one_if_zero(elf64_section_align   isec)))
+        (let new_p_align =  (lcm0 (one_if_zero (unat(elf64_p_align   phdr))) (one_if_zero(elf64_section_align   isec)))
         in
         Some
           (| elf64_p_type   = (Elf_Types_Local.uint32_of_nat new_p_type)
@@ -274,12 +269,12 @@ definition make_load_phdrs  :: " 'abifeature abi \<Rightarrow> 'abifeature annot
     (let new_phdr = (\<lambda> isec .  
       (| elf64_p_type   = (Elf_Types_Local.uint32_of_nat elf_pt_load) (** Type of the segment *)
        , elf64_p_flags  = (Elf_Types_Local.uint32_of_nat (phdr_flags_from_section_flags(elf64_section_flags   isec)(elf64_section_name_as_string   isec))) (** Segment flags *)
-       , elf64_p_offset = (Elf_Types_Local.uint64_of_nat (round_down_to(commonpagesize   a)(elf64_section_offset   isec))) (** Offset from beginning of file for segment *)
-       , elf64_p_vaddr  = (Elf_Types_Local.uint64_of_nat (round_down_to(commonpagesize   a)(elf64_section_addr   isec))) (** Virtual address for segment in memory *)
+       , elf64_p_offset = (Elf_Types_Local.uint64_of_nat (round_down_to0 common_page_sz(elf64_section_offset   isec))) (** Offset from beginning of file for segment *)
+       , elf64_p_vaddr  = (Elf_Types_Local.uint64_of_nat (round_down_to0 common_page_sz(elf64_section_addr   isec))) (** Virtual address for segment in memory *)
        , elf64_p_paddr  = (Elf_Types_Local.uint64_of_nat(( 0 :: nat))) (** Physical address for segment *)
        , elf64_p_filesz = (of_int (int (if(elf64_section_type   isec) = sht_nobits then( 0 :: nat) else(elf64_section_size   isec)))) (** Size of segment in file, in bytes *)
        , elf64_p_memsz  = (of_int (int(elf64_section_size   isec))) (** Size of segment in memory image, in bytes *)
-       , elf64_p_align  = (of_int (int(maxpagesize    (* isec.elf64_section_align *)a))) (** Segment alignment memory for memory and file *)
+       , elf64_p_align  = (of_int (int  (* isec.elf64_section_align *)max_page_sz)) (** Segment alignment memory for memory and file *)
        |))
     in
     (* accumulate sections into the phdr *)
@@ -307,19 +302,19 @@ definition make_load_phdrs  :: " 'abifeature abi \<Rightarrow> 'abifeature annot
     List.rev rev_list)))))"
 
     
-(*val make_default_phdrs : forall 'abifeature. abi 'abifeature -> natural (* file type *) -> annotated_memory_image 'abifeature -> list (natural * elf64_interpreted_section) -> list elf64_program_header_table_entry*)
-definition make_default_phdrs  :: " 'abifeature abi \<Rightarrow> nat \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>(nat*elf64_interpreted_section)list \<Rightarrow>(elf64_program_header_table_entry)list "  where 
-     " make_default_phdrs a t img1 section_pairs_bare_sorted_by_address = ( 
+(*val make_default_phdrs : forall 'abifeature. natural -> natural -> natural (* file type *) -> annotated_memory_image 'abifeature -> list (natural * elf64_interpreted_section) -> list elf64_program_header_table_entry*)
+definition make_default_phdrs  :: " nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>(nat*elf64_interpreted_section)list \<Rightarrow>(elf64_program_header_table_entry)list "  where 
+     " make_default_phdrs maxpagesize2 commonpagesize2 t img1 section_pairs_bare_sorted_by_address = ( 
     (* FIXME: do the shared object and dyn. exec. stuff too *)
-    make_load_phdrs a img1 section_pairs_bare_sorted_by_address )"
+    make_load_phdrs maxpagesize2 commonpagesize2 img1 section_pairs_bare_sorted_by_address )"
 
 
-(*val find_start_symbol_address : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature => annotated_memory_image 'abifeature -> maybe natural*)
-definition find_start_symbol_address  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature ToNaturalList_class \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>(nat)option "  where 
-     " find_start_symbol_address dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature img1 = ( 
+(*val find_start_symbol_address : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature => annotated_memory_image 'abifeature -> maybe natural*)
+definition find_start_symbol_address  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature AbiFeatureTagEquiv_class \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>(nat)option "  where 
+     " find_start_symbol_address dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature img1 = ( 
     (* Do we have a symbol called _start? *)
-    (let all_defs = (Memory_image_orderings.defined_symbols_and_ranges 
-  dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature img1)
+    (let all_defs = (Memory_image_orderings.defined_symbols_and_ranges0 
+  dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature img1)
     in
     (let get_entry_point = (\<lambda> (maybe_range, symbol_def) .  
         if(def_symname   symbol_def) = (''_start'')
@@ -347,7 +342,6 @@ definition find_start_symbol_address  :: " 'abifeature Ord_class \<Rightarrow> '
         | _ => (*let _ = Missing_pervasives.errln (warning: saw multiple `_start' symbols:  ^
             (let (ranges, defs) = unzip all_entry_points in show ranges)) in *)None
     )))))"
-
 
 (*val pad_zeroes : natural -> list byte*)
 definition pad_zeroes  :: " nat \<Rightarrow>(Elf_Types_Local.byte)list "  where 
@@ -378,7 +372,7 @@ definition null_abi  :: "(any_abi_feature)abi "  where
     , guess_entry_point = 
   (find_start_symbol_address
      instance_Basic_classes_Ord_Abis_any_abi_feature_dict
-     instance_Memory_image_ToNaturalList_Abis_any_abi_feature_dict)
+     instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict)
     , pad_data = pad_zeroes
     , pad_code = pad_zeroes
     |) )"
@@ -390,7 +384,7 @@ definition sysv_amd64_std_abi  :: "(any_abi_feature)abi "  where
    (| is_valid_elf_header = header_is_amd64
     , make_elf_header = (make_elf64_header elf_data_2lsb elf_osabi_none(( 0 :: nat)) elf_ma_x86_64)
     , reloc = (amd64_reloc instance_Basic_classes_Ord_Abis_any_abi_feature_dict
-    instance_Memory_image_ToNaturalList_Abis_any_abi_feature_dict)
+    instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict)
     , section_is_special = section_is_special0
     , section_is_large = (\<lambda> s .  (\<lambda> f .  flag_is_set shf_x86_64_large(elf64_section_flags   s)))
     , maxpagesize =(( 65536 :: nat))
@@ -403,7 +397,7 @@ definition sysv_amd64_std_abi  :: "(any_abi_feature)abi "  where
     , guess_entry_point = 
   (find_start_symbol_address
      instance_Basic_classes_Ord_Abis_any_abi_feature_dict
-     instance_Memory_image_ToNaturalList_Abis_any_abi_feature_dict)
+     instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict)
     , pad_data = pad_zeroes
     , pad_code = pad_0x90
     |) )"
@@ -426,7 +420,7 @@ definition sysv_aarch64_le_std_abi  :: "(any_abi_feature)abi "  where
     , guess_entry_point = 
   (find_start_symbol_address
      instance_Basic_classes_Ord_Abis_any_abi_feature_dict
-     instance_Memory_image_ToNaturalList_Abis_any_abi_feature_dict)
+     instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict)
     , pad_data = pad_zeroes
     , pad_code = pad_zeroes
     |) )"

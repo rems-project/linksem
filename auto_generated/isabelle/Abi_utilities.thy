@@ -16,6 +16,7 @@ imports
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Elf_symbol_table" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Elf_relocation" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Memory_image" 
+	 "Abi_classes" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Memory_image_orderings" 
 
 begin 
@@ -31,12 +32,15 @@ begin
 (*open import String*)
 (*open import Error*)
 (*open import Assert_extra*)
+
+(*open import Abi_classes*)
 (*open import Missing_pervasives*)
 (*open import Elf_types_native_uint*)
 (*open import Elf_symbol_table*)
 (*open import Elf_relocation*)
 (*open import Memory_image*)
 (*open import Memory_image_orderings*)
+
 
 (*open import Error*)
 
@@ -176,13 +180,16 @@ datatype 'a relocation_operator_expression
   | Minus  " ( 'a relocation_operator_expression * 'a relocation_operator_expression)"                        (** Subtract two expressions. *)
   | RShift " ( 'a relocation_operator_expression * nat)"                                                  (** Right shift the result of an expression [m] places. *)
   
-  datatype( 'addr, 'res) relocation_frame =
+datatype( 'addr, 'res) relocation_frame =
     Copy
   | NoCopy " ( ('addr, ( 'res relocation_operator_expression * integer_bit_width * 'res can_fail))Map.map)"
 
 (*val size_of_def : symbol_reference_and_reloc_site -> natural*)
 definition size_of_def  :: " symbol_reference_and_reloc_site \<Rightarrow> nat "  where 
-     " size_of_def rr = ( unat(elf64_st_size  (ref_syment  (ref   rr))))"
+     " size_of_def rr = (
+  (let rf = ((ref0   rr)) in
+  (let sm = ((ref_syment0   rf)) in
+    unat(elf64_st_size   sm))))"
 
 
 (*val size_of_copy_reloc : forall 'abifeature. annotated_memory_image 'abifeature -> symbol_reference_and_reloc_site -> natural*)
@@ -192,15 +199,13 @@ definition size_of_copy_reloc  :: " 'abifeature annotated_memory_image \<Rightar
     size_of_def rr )"
 
 
-(*val reloc_site_address : forall 'abifeature. Ord 'abifeature, ToNaturalList 'abifeature => 
+(*val reloc_site_address : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature => 
     annotated_memory_image 'abifeature -> symbol_reference_and_reloc_site -> natural*)
-definition reloc_site_address  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature ToNaturalList_class \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> nat "  where 
-     " reloc_site_address dict_Basic_classes_Ord_abifeature dict_Memory_image_ToNaturalList_abifeature img1 rr = ( 
+definition reloc_site_address  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature AbiFeatureTagEquiv_class \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> nat "  where 
+     " reloc_site_address dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature img1 rr = ( 
     (* find the element range that's tagged with this reloc site *)
     (let found_kvs = (Multimap.lookupBy0 
-  (instance_Basic_classes_Ord_Memory_image_range_tag_dict
-     dict_Basic_classes_Ord_abifeature
-     dict_Memory_image_ToNaturalList_abifeature) (instance_Basic_classes_Ord_Maybe_maybe_dict
+  instance_Basic_classes_Ord_Memory_image_range_tag_dict0 (instance_Basic_classes_Ord_Maybe_maybe_dict
    (instance_Basic_classes_Ord_tup2_dict
       Lem_string_extra.instance_Basic_classes_Ord_string_dict
       (instance_Basic_classes_Ord_tup2_dict

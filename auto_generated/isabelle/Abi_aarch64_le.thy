@@ -19,6 +19,7 @@ imports
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Elf_interpreted_segment" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Elf_file" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Memory_image" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Abi_classes" 
 	 "Abi_aarch64_le_elf_header" 
 	 "Abi_aarch64_relocation" 
 
@@ -44,6 +45,7 @@ begin
 
 (*open import Endianness*)
 (* open import Elf_memory_image *)
+(*open import Abi_classes*)
 (*open import Memory_image*)
 (*open import Abi_aarch64_relocation*)
 (*open import Abi_aarch64_le_elf_header*)
@@ -72,28 +74,21 @@ definition header_is_aarch64_le  :: " elf64_header \<Rightarrow> bool "  where
     
 datatype aarch64_le_abi_feature = GOT | PLT (* placeholder / FIXME *)
 
-(*val aarch64LeAbiFeatureConstructorToNaturalList : aarch64_le_abi_feature -> list natural*)
-fun aarch64LeAbiFeatureConstructorToNaturalList  :: " aarch64_le_abi_feature \<Rightarrow>(nat)list "  where 
-     " aarch64LeAbiFeatureConstructorToNaturalList GOT = ( [( 0 :: nat)])"
-|" aarch64LeAbiFeatureConstructorToNaturalList PLT = ( [( 1 :: nat)])" 
-declare aarch64LeAbiFeatureConstructorToNaturalList.simps [simp del]
-
-
 (*val abiFeatureCompare : aarch64_le_abi_feature -> aarch64_le_abi_feature -> Basic_classes.ordering*)
-definition abiFeatureCompare  :: " aarch64_le_abi_feature \<Rightarrow> aarch64_le_abi_feature \<Rightarrow> ordering "  where 
-     " abiFeatureCompare f1 f2 = ( 
-    (case  (aarch64LeAbiFeatureConstructorToNaturalList f1, aarch64LeAbiFeatureConstructorToNaturalList f2) of
-        ([], []) => failwith (''impossible: ABI feature has empty natural list (case 0)'')
-    |   (_, [])  => failwith (''impossible: ABI feature has empty natural list (case 1)'')
-    |   ([], _)  => failwith (''impossible: ABI feature has empty natural list (case 2)'')
-    |   ((hd1 # tl1), (hd2 # tl2)) => 
-            if hd1 < hd2 then LT else if hd1 > hd2 then GT else
-                (case  (f1, f2) of
-                    (GOT, GOT) => EQ
-                    | (PLT, PLT) => EQ
-                    | _ => failwith (''impossible: tag constructors not equal but natural list heads were equal'')
-                )
-    ))"
+fun abiFeatureCompare  :: " aarch64_le_abi_feature \<Rightarrow> aarch64_le_abi_feature \<Rightarrow> ordering "  where 
+     " abiFeatureCompare GOT GOT = ( EQ )"
+|" abiFeatureCompare GOT PLT = ( LT )"
+|" abiFeatureCompare PLT PLT = ( EQ )"
+|" abiFeatureCompare PLT GOT = ( GT )" 
+declare abiFeatureCompare.simps [simp del]
+
+
+(*val abiFeatureTagEq : aarch64_le_abi_feature -> aarch64_le_abi_feature -> bool*)
+fun abiFeatureTagEq  :: " aarch64_le_abi_feature \<Rightarrow> aarch64_le_abi_feature \<Rightarrow> bool "  where 
+     " abiFeatureTagEq GOT GOT = ( True )"
+|" abiFeatureTagEq PLT PLT = ( True )"
+|" abiFeatureTagEq _ _ = ( False )" 
+declare abiFeatureTagEq.simps [simp del]
 
 
 definition instance_Basic_classes_Ord_Abi_aarch64_le_aarch64_le_abi_feature_dict  :: "(aarch64_le_abi_feature)Ord_class "  where 
@@ -110,10 +105,10 @@ definition instance_Basic_classes_Ord_Abi_aarch64_le_aarch64_le_abi_feature_dict
   isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (abiFeatureCompare f1 f2) ({GT, EQ})))|) )"
 
 
-definition instance_Memory_image_ToNaturalList_Abi_aarch64_le_aarch64_le_abi_feature_dict  :: "(aarch64_le_abi_feature)ToNaturalList_class "  where 
-     " instance_Memory_image_ToNaturalList_Abi_aarch64_le_aarch64_le_abi_feature_dict = ((|
+definition instance_Abi_classes_AbiFeatureTagEquiv_Abi_aarch64_le_aarch64_le_abi_feature_dict  :: "(aarch64_le_abi_feature)AbiFeatureTagEquiv_class "  where 
+     " instance_Abi_classes_AbiFeatureTagEquiv_Abi_aarch64_le_aarch64_le_abi_feature_dict = ((|
 
-  toNaturalList_method = aarch64LeAbiFeatureConstructorToNaturalList |) )"
+  abiFeatureTagEquiv_method = abiFeatureTagEq |) )"
 
 
 (*val section_is_special : forall 'abifeature. elf64_interpreted_section -> annotated_memory_image 'abifeature -> bool*)
