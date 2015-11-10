@@ -59,7 +59,7 @@ declare string_of_byte_sequence1.simps [simp del]
 (*val read_archive_entry_header : natural -> byte_sequence -> error (archive_entry_header * natural * byte_sequence)*)
 definition read_archive_entry_header0  :: " nat \<Rightarrow> byte_sequence \<Rightarrow>(archive_entry_header*nat*byte_sequence)error "  where 
      " read_archive_entry_header0 seq_length seq = (
-  (let magic_bytes = ([unat(( 96 :: nat)) (* 0x60 *), unat(( 10 :: nat)) (* 0x0a *)]) in
+  (let magic_bytes = ([(of_nat (( 96 :: nat)) :: byte) (* 0x60 *), (of_nat (( 10 :: nat)) :: byte) (* 0x0a *)]) in
         (let header_length =(( 60 :: nat)) in
         (* let _ = Missing_pervasives.errs (Archive entry header?  ^ (show (take 16 bs)) ^ ? ) in *)
         partition_with_length header_length seq_length seq >>= (\<lambda> (header1, rest) .  

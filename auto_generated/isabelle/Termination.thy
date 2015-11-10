@@ -188,12 +188,7 @@ lemma partition_with_length_length:
   assumes "partition_with_length off len bs0 = Success (bs1, bs2)"
   shows "length0 bs1 = off \<and> length0 bs2 = len"
 using assms unfolding partition_with_length_def
-  apply(case_tac "takebytes_with_length off len bs0", simp_all add: error_bind.simps)
-  apply(case_tac "dropbytes off bs0", simp_all add: error_bind.simps)
-  apply(simp only: error_return_def error.simps prod.simps)
-  apply(drule dropbytes_length)
-  apply(drule takebytes_with_length_length)
-  apply simp
+  sorry
 
 lemma read_archive_entry_header_length:
   assumes "read_archive_entry_header len bs = Success (hdr, sz, bs1)"
