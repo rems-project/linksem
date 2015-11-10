@@ -442,7 +442,7 @@ definition aarch64_le_reloc  :: " nat \<Rightarrow> bool*('abifeature annotated_
   if r = r_aarch64_none then
     (False, (\<lambda> img1 .  (\<lambda> site_addr .  (\<lambda> rr .  (( 0 :: nat), (\<lambda> s .  \<lambda> a .  \<lambda> e .  e))))))
   else
-    (False, noop_reloc_apply))"
+    (False, noop_reloc_apply0))"
 
     
 (** [abi_aarch64_apply_relocation rel s_val p_val got_val ef] produces an AST

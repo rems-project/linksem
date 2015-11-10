@@ -31,6 +31,7 @@ imports
 	 "Elf_relocation" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_map_extra" 
 	 "Multimap" 
+	 "GCD" 
 
 begin 
 
@@ -63,6 +64,8 @@ begin
 (*open import Elf_relocation*)
 
 (*open import Missing_pervasives*)
+
+(*open import {isabelle} `GCD`*)
 
 (* Now we can define memory images *)
 
@@ -508,19 +511,14 @@ definition compl640  :: " nat \<Rightarrow> nat "  where
 
 
 (*val gcd : natural -> natural -> natural*)
-function (sequential,domintros)  gcd0  :: " nat \<Rightarrow> nat \<Rightarrow> nat "  where 
-     " gcd0 a b = ( 
-    if b =( 0 :: nat) then a else gcd0 b (a mod b))" 
-by pat_completeness auto
-
+(*let rec gcd a b = 
+    if (Instance_Basic_classes_Eq_Num_natural.=) b 0 then a else gcd b ((Instance_Num_NumRemainder_Num_natural.mod) a b)*)
 
 (*val lcm : natural -> natural -> natural*)
-definition lcm0  :: " nat \<Rightarrow> nat \<Rightarrow> nat "  where 
-     " lcm0 a b = ( 
+(*let lcm a b = 
     (* let _ = errln (lcm of  ^ (show a) ^  and  ^ (show b) ^ ?)
     in *)
-    (a * b) div (gcd0 a b))"
-
+    (Instance_Num_NumDivision_Num_natural./) (( Instance_Num_NumMult_Num_natural.* ) a b) (gcd a b)*)
 
 (*val address_of_range : forall 'abifeature. element_range -> annotated_memory_image 'abifeature -> natural*)
 definition address_of_range0  :: " string*(nat*nat)\<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> nat "  where 

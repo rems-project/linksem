@@ -124,6 +124,9 @@ begin
   definition uint64_lor :: "uint64 \<Rightarrow> uint64 \<Rightarrow> uint64" where
     "uint64_lor left right \<equiv> bitOR left right"
 
+  definition uint64_lxor :: "uint64 \<Rightarrow> uint64 \<Rightarrow> uint64" where
+    "uint64_lxor left right \<equiv> bitXOR left right"
+
   definition uint64_plus :: "uint64 \<Rightarrow> uint64 \<Rightarrow> uint64" where
     "uint64_plus left right \<equiv> of_int (uint left + uint right)"
 

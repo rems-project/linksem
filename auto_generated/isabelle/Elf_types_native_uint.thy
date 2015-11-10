@@ -628,6 +628,6 @@ definition natural_lor  :: " nat \<Rightarrow> nat \<Rightarrow> nat "  where
 definition natural_lxor  :: " nat \<Rightarrow> nat \<Rightarrow> nat "  where 
      " natural_lxor m n = (
   (* For Isabelle backend...*)
-  unat (Elf_Types_Local.uint64_xor (of_int (int m)) (of_int (int n))))"
+  unat (Elf_Types_Local.uint64_lxor (of_int (int m)) (of_int (int n))))"
 
 end

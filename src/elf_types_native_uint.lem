@@ -947,7 +947,7 @@ declare hol      target_rep function elf64_xword_lor = `word_or`
 val elf64_xword_lxor : elf64_xword -> elf64_xword -> elf64_xword
 
 declare ocaml    target_rep function elf64_xword_lxor = `Uint64.logxor`
-declare isabelle target_rep function elf64_xword_lxor = `Elf_Types_Local.uint64_xor`
+declare isabelle target_rep function elf64_xword_lxor = `Elf_Types_Local.uint64_lxor`
 declare hol      target_rep function elf64_xword_lxor = `word_xor`
 
 val elf64_xword_of_natural : natural -> elf64_xword

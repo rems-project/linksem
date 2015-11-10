@@ -28,6 +28,8 @@ open import Elf_relocation
 
 open import Missing_pervasives
 
+open import {isabelle} `GCD`
+
 (* Now we can define memory images *)
 
 type byte_pattern_element = maybe byte
@@ -380,12 +382,14 @@ let compl64 v =
 val gcd : natural -> natural -> natural
 let rec gcd a b = 
     if b = 0 then a else gcd b (a mod b)
+declare isabelle target_rep function gcd = `GCD.gcd`
 
 val lcm : natural -> natural -> natural
 let lcm a b = 
     (* let _ = errln ("lcm of " ^ (show a) ^ " and " ^ (show b) ^ "?")
     in *)
     (a * b) / (gcd a b)
+declare isabelle target_rep function lcm = `GCD.lcm`
 
 val address_of_range : forall 'abifeature. element_range -> annotated_memory_image 'abifeature -> natural
 let address_of_range el_range img = 
