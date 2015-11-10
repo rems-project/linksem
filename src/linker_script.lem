@@ -1256,8 +1256,8 @@ val build_image :
     natural -> (* linker_script_linkable_idx *)
     (elf_memory_image * allocated_sections_map)            (* accumulated result *)
 let rec build_image acc pos outputs_by_name bindings_by_name script linker_script_linkable_idx = 
-     let (add_output_section : (natural * natural * elf_memory_image) -> output_section_spec -> (natural * elf_memory_image * natural * output_section_spec))
-     = fun (scn_idx, pos, acc_img) ->
+     let (add_output_section : (natural * elf_memory_image) -> output_section_spec -> (natural * elf_memory_image * natural * output_section_spec))
+     = fun ((*scn_idx, *)pos, acc_img) ->
         (fun (guard, addr, secname, comp) -> 
             (* let _ = errln ("Computing composition of output section `" ^ secname ^ "' from " ^ (show (length comp)) ^ " elements")
             in *)
@@ -1326,15 +1326,16 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                                                 (* ABS symbols have this property *)
                                                 match tag with
                                                     SymbolDef(def) -> 
+                                                        (* don't match section symbols, or we'll be inundated *)
                                                         let sym_shndx = natural_of_elf64_half def.def_syment.elf64_st_shndx
                                                         in
-                                                        if sym_shndx <> shn_abs then false
+                                                        if sym_shndx <> shn_abs || (get_elf64_symbol_type def.def_syment <> stt_section) then false
                                                         else (
                                                             let abs_address = natural_of_elf64_addr def.def_syment.elf64_st_value
                                                             in 
                                                             (* check it against our section *)
                                                             let section_end_addr = addr + irec.isec.elf64_section_size
-                                                            in
+                                                            in  
                                                             abs_address >= addr
                                                                 && abs_address < section_end_addr
                                                                 (* FIXME: argument that this should be <=, i.e. can mark end addr *)
@@ -1671,7 +1672,7 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
             (* Make a new element in the image, also transferring metadata from input elements 
              * as appropriate. *)
             let new_by_range_list = 
-            (Just(secname, (0, size)), FileFeature(ElfSection(scn_idx, 
+            (Just(secname, (0, size)), FileFeature(ElfSection((* We don't yet konw where this'll come in the output file, so ...  *) (* scn_idx *) 0, 
                       <| elf64_section_name = 0 (* ignored *)
                        ; elf64_section_type = output_section_type comp 
                        ; elf64_section_flags = output_section_flags comp
@@ -1683,7 +1684,7 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                        ; elf64_section_align = alignof_output_section comp
                        ; elf64_section_entsize = 0 (* HMM *)
                        ; elf64_section_body = Byte_sequence.empty (* ignored *)
-                       ; elf64_section_name_as_string = secname   (* ignored *)
+                       ; elf64_section_name_as_string = secname (* can't rely on this being ignored *)
                        |>
                 ))) :: Set_extra.toList new_range_tag_pairs
             in
@@ -1986,8 +1987,8 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                     in
                     let (guard, addr, secname, comp) = found
                     in
-                    let next_free_section_idx = 1 + naturalFromNat (Map.size outputs_by_name)
-                    in
+                    (* let next_free_section_idx = 1 + naturalFromNat (Map.size outputs_by_name)
+                    in *)
                     let count_sections_in_image = fun img -> (
                         let (section_tags, section_ranges) = elf_memory_image_section_ranges img
                         in
@@ -2016,7 +2017,7 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                         let _ = errln ("At pos 0x" ^ (hex_string_of_natural pos) ^ ", adding output section " ^ name)
                         in
                         let (new_pos, new_acc, sec_sz, replacement_output_sec)
-                         = add_output_section (next_free_section_idx, pos, acc) found
+                         = add_output_section ((* next_free_section_idx, *) pos, acc) found
                         in
                         (* let _ = errln ("Received from add_output_section a by_range with " ^ (show (Set.size new_acc.by_range))
                             ^ " metadata records of which " ^ (show (Set.size {

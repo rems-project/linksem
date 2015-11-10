@@ -107,12 +107,17 @@ let find_string s t =
 
 val insert_string : string -> string_table -> (natural * string_table)
 let insert_string s t = 
-    match find_string s t with
+    let _ = errln ("Inserting string `" ^ s ^ "' into a string table") in
+    let (inserted_idx, new_strtab) = match find_string s t with
         Nothing -> match t with
-            Strings(delim, base) -> (1 + naturalFromNat (stringLength base), Strings(delim, base ^ s ^ (toString [delim])))
+            Strings(delim, base) -> (naturalFromNat (stringLength base), Strings(delim, base ^ s ^ (toString [delim])))
             end
         | Just pos -> (pos, t)
     end
+    in
+    let _ = errln ("Inserted string at idx " ^ (show inserted_idx) ^ ", see: " ^ (show (find_string s new_strtab)))
+    in
+    (inserted_idx, new_strtab)
 instance (Show string_table)
   let show tbl = toString (List.map (fun c -> if c = #'\000' then #'\n' else c) (toCharList (get_base_string tbl)))
 end

@@ -146,7 +146,7 @@ let make_elf64_header data osabi abiv ma t entry shoff phoff phnum shnum shstrnd
        ; elf64_shstrndx = elf64_half_of_natural shstrndx
        |>
 
-val make_load_phdrs : forall 'abifeature. natural -> natural -> annotated_memory_image 'abifeature -> list (natural * elf64_interpreted_section) -> list elf64_program_header_table_entry
+val make_load_phdrs : forall 'abifeature. natural -> natural -> annotated_memory_image 'abifeature -> list elf64_interpreted_section -> list elf64_program_header_table_entry
 let make_load_phdrs max_page_sz common_page_sz img section_pairs_bare_sorted_by_address = 
     let (phdr_flags_from_section_flags : natural -> string -> natural) = fun section_flags -> fun sec_name ->
         let flags = natural_lor elf_pf_r (natural_lor 
@@ -237,7 +237,7 @@ let make_load_phdrs max_page_sz common_page_sz img section_pairs_bare_sorted_by_
        |>
     in
     (* accumulate sections into the phdr *)
-    let rev_list = List.foldl (fun accum_phdr_list -> (fun (idx, isec) -> (
+    let rev_list = List.foldl (fun accum_phdr_list -> (fun isec -> (
         (* Do we have a current phdr? *)
         match accum_phdr_list with
             [] -> (* no, so make one *)
@@ -254,14 +254,14 @@ let make_load_phdrs max_page_sz common_page_sz img section_pairs_bare_sorted_by_
                     | Just phdr -> phdr :: more
                 end
         end
-    ))) [] (List.filter (fun (idx, isec) -> flag_is_set shf_alloc isec.elf64_section_flags
+    ))) [] (List.filter (fun isec -> flag_is_set shf_alloc isec.elf64_section_flags
         && not (flag_is_set shf_tls isec.elf64_section_flags)) section_pairs_bare_sorted_by_address)
     in
     (*let _ = errln "Successfully made phdrs"
     in*)
     List.reverse rev_list
     
-val make_default_phdrs : forall 'abifeature. natural -> natural -> natural (* file type *) -> annotated_memory_image 'abifeature -> list (natural * elf64_interpreted_section) -> list elf64_program_header_table_entry
+val make_default_phdrs : forall 'abifeature. natural -> natural -> natural (* file type *) -> annotated_memory_image 'abifeature -> list elf64_interpreted_section -> list elf64_program_header_table_entry
 let make_default_phdrs maxpagesize commonpagesize t img section_pairs_bare_sorted_by_address = 
     (* FIXME: do the shared object and dyn. exec. stuff too *)
     make_load_phdrs maxpagesize commonpagesize img section_pairs_bare_sorted_by_address
