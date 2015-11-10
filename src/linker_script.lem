@@ -308,7 +308,7 @@ let do_output_section_layout_starting_at_addr   start_addr secs comps =
                 in
                 (aligned_next_free + irec.isec.elf64_section_size, addr_list ++ [aligned_next_free])
         | IncludeCommonSymbol(retain_pol, fname, linkable_idx, def, img) -> 
-                let aligned_next_free = align_up_to (natural_of_elf64_half def.def_syment.elf64_st_shndx) next_free_addr
+                let aligned_next_free = align_up_to (natural_of_elf64_addr def.def_syment.elf64_st_value) next_free_addr
                 in
                 (aligned_next_free + (natural_of_elf64_xword def.def_syment.elf64_st_size), addr_list ++ [aligned_next_free])
         | Hole(f) -> (f next_free_addr secs, addr_list ++ [next_free_addr])
@@ -336,7 +336,7 @@ val alignof_output_section_composition_element : output_section_composition_elem
 let alignof_output_section_composition_element comp = 
     match comp with
         IncludeInputSection(_, irec) -> irec.isec.elf64_section_align
-        | IncludeCommonSymbol(_, _, _, def, _) -> natural_of_elf64_half def.def_syment.elf64_st_shndx
+        | IncludeCommonSymbol(_, _, _, def, _) -> natural_of_elf64_addr def.def_syment.elf64_st_value
         | _ -> 1 (* CHECK *)
     end
 
@@ -1174,11 +1174,61 @@ let output_section_flags comp =
             | _ -> (* padding does not make a section allocatable *) false
         end) comp
     in
+    let is_thread_local_yesnomaybe = (fun comp_el -> 
+        match comp_el with 
+            IncludeInputSection(retain_pol, (* fname, linkable_idx, shndx, isec, img *) irec) -> 
+                Just(flag_is_set shf_tls irec.isec.elf64_section_flags)
+            | IncludeCommonSymbol(retain_pol, fname, linkable_idx, def, img) -> 
+                (* FIXME: support tcommon *) Just(false)
+            | ProvideSymbol(pol, name, spec) -> 
+                (* linker script symbols shouldn't be defined here, unless they can be declared thread-local (FIXME: can they?) *)
+                Just false
+            | _ -> (* padding does not make a section thread-local, or non-. *) Nothing
+        end
+    )
+    in
+    let thread_local = (
+        (* Is any element positively thread-local? *)
+        let v = List.foldl (fun acc_ynm -> fun comp_el -> 
+            let new_ynm = is_thread_local_yesnomaybe comp_el
+            in
+            match (acc_ynm, new_ynm) with
+                (Nothing, Nothing) -> Nothing
+                | (Nothing, Just x) -> Just x
+                | (Just x, Nothing) -> Just x
+                | (Just true, Just false) -> Just true
+                | (Just true, Just true) -> Just true
+                | (Just false, Just false) -> Just false
+                | (Just true, Just false) -> Just true
+            end) Nothing comp
+        in
+        if v = Just(true) && not (Just(true) = (* are *all* either don't-care or positively thread-local? *)
+            (List.foldl (fun acc_ynm -> fun comp_el -> 
+            let new_ynm = is_thread_local_yesnomaybe comp_el
+            in
+            match (acc_ynm, new_ynm) with
+                (Nothing, Nothing) -> Nothing
+                | (Nothing, Just x) -> Just x
+                | (Just x, Nothing) -> Just x
+                | (Just true, Just false) -> Just false
+                | (Just true, Just true) -> Just true
+                | (Just false, Just false) -> Just false
+                | (Just true, Just false) -> Just false
+            end) Nothing comp)) then failwith "error: section mixes thread-local and non-thread-local inputs"
+        else match v with
+            Nothing -> false
+            | Just x -> x
+        end
+    )
+    in
     natural_lor
-        (if executable then shf_execinstr else 0)
-        (natural_lor 
-            (if writable then shf_write else 0)
-            (if alloc then    shf_alloc else 0)
+        (if thread_local then shf_tls else 0)
+        (natural_lor
+            (if executable then shf_execinstr else 0)
+            (natural_lor 
+                (if writable then shf_write else 0)
+                (if alloc then    shf_alloc else 0)
+            )
         )
 
 let symbol_def_for_provide_symbol name size info other linker_script_linkable_idx = 
@@ -1216,7 +1266,11 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                 | Nothing -> pos
             end
             in
-            let start_addr = align_up_to (alignof_output_section comp) unaligned_start_addr
+            let align = alignof_output_section comp
+            in
+            let _ = errln ("Aligning section " ^ secname ^ " up to a " ^ (show align) ^ "-byte address boundary")
+            in
+            let start_addr = align_up_to align unaligned_start_addr
             in
             let (end_addr, comp_addrs) = do_output_section_layout_starting_at_addr start_addr outputs_by_name comp
             in
