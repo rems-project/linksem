@@ -164,7 +164,7 @@ declare hol      target_rep function unsafe_int_of_natural x = `&` x
 val byte_of_natural : natural -> byte
 
 declare ocaml    target_rep function byte_of_natural x = `Char.chr` (`Nat_big_num.to_int` x)
-declare isabelle target_rep function byte_of_natural = `of_nat`
+declare isabelle target_rep function byte_of_natural m = (`of_nat` m `::` `byte`)
 declare hol      target_rep function byte_of_natural = `n2w` `:` `num` `->` `8` `word`
 
 declare ocaml    target_rep type ordering = `int`

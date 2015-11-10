@@ -821,7 +821,7 @@ fun element_and_offset_to_address0  :: " string*nat \<Rightarrow> 'abifeature an
                         Some addr => Some (addr + el_off)
                         | None => None
                    )
-        | None => failwith (''error: nonexistent element'')
+        | None => failwith ((''error: nonexistent element: '') @ el_name)
     ))" 
 declare element_and_offset_to_address0.simps [simp del]
 

@@ -436,6 +436,8 @@ let rec find_first_not_in_range start ranges =
     | [] -> start
     | _  -> find_first_not_in_range (start + 1) ranges
   end
+(* XXX: to sidestep termination horror in Isabelle --- the following is not executable! *)
+declare isabelle target_rep function find_first_not_in_range = `Elf_Types_Local.find_first_not_in_range`
 
 (** [find_first_in_range e rngs] for every pair (start, end) in [rngs], finds
   * the first element, beginning counting from [e], that lies between
@@ -447,6 +449,8 @@ let rec find_first_in_range start ranges =
     | [] -> find_first_in_range (start + 1) ranges
     | _  -> start
   end
+(* XXX: to sidestep termination horror in Isabelle --- the following is not executable! *)
+declare isabelle target_rep function find_first_in_range = `Elf_Types_Local.find_first_in_range`
 
 (** [compute_differences start max ranges] is a utility function used for calculating
   * "dead" spots in an ELF file not covered by any of the interpreted structure
@@ -470,6 +474,7 @@ let rec compute_differences start max ranges =
           else
             compute_differences last max ranges >>= fun tail ->
             return ((first, last)::tail)
+declare isabelle target_rep function compute_differences = `Elf_Types_Local.compute_differences`
 
 (** [obtain_elf32_bits_and_bobs hdr pht segs sht sects bs0] identifies and records
   * the "dead" spots of an ELF file not covered by any meaningful structure of the

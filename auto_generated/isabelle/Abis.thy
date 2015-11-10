@@ -314,7 +314,7 @@ definition make_default_phdrs  :: " nat \<Rightarrow> nat \<Rightarrow> nat \<Ri
 definition find_start_symbol_address  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature AbiFeatureTagEquiv_class \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>(nat)option "  where 
      " find_start_symbol_address dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature img1 = ( 
     (* Do we have a symbol called _start? *)
-    (let all_defs = (Memory_image_orderings.defined_symbols_and_ranges0
+    (let all_defs = (Memory_image_orderings.defined_symbols_and_ranges0 
   dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature img1)
     in
     (let get_entry_point = (\<lambda> (maybe_range, symbol_def) .  
@@ -347,12 +347,12 @@ definition find_start_symbol_address  :: " 'abifeature Ord_class \<Rightarrow> '
 
 (*val pad_zeroes : natural -> list byte*)
 definition pad_zeroes  :: " nat \<Rightarrow>(Elf_Types_Local.byte)list "  where 
-     " pad_zeroes n = ( List.replicate n (of_nat (( 0 :: nat))))"
+     " pad_zeroes n = ( List.replicate n ((of_nat (( 0 :: nat)) :: byte)))"
 
 
 (*val pad_0x90 : natural -> list byte*)
 definition pad_0x90  :: " nat \<Rightarrow>(Elf_Types_Local.byte)list "  where 
-     " pad_0x90 n = ( List.replicate n (of_nat (( 9 :: nat) *( 16 :: nat))))"
+     " pad_0x90 n = ( List.replicate n ((of_nat (( 9 :: nat) *( 16 :: nat)) :: byte)))"
 
 
 (* null_abi captures ABI details common to all ELF-based, System V-based systems.
@@ -411,7 +411,7 @@ definition sysv_aarch64_le_std_abi  :: "(any_abi_feature)abi "  where
    (| is_valid_elf_header0 = header_is_aarch64_le
     , make_elf_header0 = (make_elf64_header elf_data_2lsb elf_osabi_none(( 0 :: nat)) elf_ma_aarch64)
     , reloc0 = aarch64_le_reloc
-    , section_is_special2 = section_is_special1
+    , section_is_special2 = section_is_special0
     , section_is_large0 = (\<lambda> _ .  (\<lambda> _ .  False))
     , maxpagesize0 =((( 2 :: nat) *( 256 :: nat)) *( 4096 :: nat)) (* 2MB; bit of a guess, based on gdb and prelink code *)
     , minpagesize0 =(( 1024 :: nat)) (* bit of a guess again *)

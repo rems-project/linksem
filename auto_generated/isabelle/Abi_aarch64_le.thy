@@ -114,6 +114,6 @@ definition instance_Abi_classes_AbiFeatureTagEquiv_Abi_aarch64_le_aarch64_le_abi
 (*val section_is_special : forall 'abifeature. elf64_interpreted_section -> annotated_memory_image 'abifeature -> bool*)
 definition section_is_special0  :: " elf64_interpreted_section \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> bool "  where 
      " section_is_special0 s f = ( 
-    elf_section_is_special s f \<or> (* FIXME *) False )"
+    elf_section_is_special0 s f \<or> (* FIXME *) False )"
 
 end

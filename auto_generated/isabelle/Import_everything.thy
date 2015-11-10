@@ -26,6 +26,7 @@ imports
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Gnu_ext_section_header_table" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Gnu_ext_program_header_table" 
 	 "Elf_note" 
+	 "Multimap" 
 	 "Memory_image" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Abi_classes" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Abi_aarch64_le_elf_header" 
@@ -41,6 +42,7 @@ imports
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Abi_power64_relocation" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Abis" 
 	 "Elf_memory_image" 
+	 "Archive" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Harness_interface" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Sail_interface" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Gnu_ext_abi" 
@@ -58,8 +60,7 @@ imports
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Abi_power64_elf_header" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Abi_power64_section_header_table" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Abi_x86_relocation" 
-	 "Test_image" 
-
+	 "Test_image"
 begin 
 
 (** [import_everything] imports all Lem files for convenience when testing the
@@ -72,7 +73,7 @@ begin
 (*open import Abstract_linker_script*)
 (*open import Archive*)
 (*open import Byte_sequence*)
-(*open import Command_line *)
+(*open import Command_line*)
 (*open import Default_printing*)
 (*open import Elf_dynamic*)
 (*open import Elf_file*)

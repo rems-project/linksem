@@ -66,6 +66,10 @@ let read_archive_global_header seq =
 val accum_archive_contents : (list (string * byte_sequence)) -> maybe string -> natural -> byte_sequence -> error (list (string * byte_sequence))
 let rec accum_archive_contents accum extended_filenames whole_seq_length whole_seq = 
   (* let _ = Missing_pervasives.errs "Can read a header? " in *)
+  if Byte_sequence.length whole_seq <> whole_seq_length then
+    Assert_extra.fail (* invariant: whole_seq_length always equal to length of whole_seq, so the length is only
+      computed one.  This "fail" needed for Isabelle termination proofs... *)
+  else
   match (read_archive_entry_header whole_seq_length whole_seq) with
     | Fail _ -> return accum
     | Success (hdr, (seq_length : natural), seq) ->

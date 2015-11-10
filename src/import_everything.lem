@@ -6,9 +6,9 @@
   *)
 
 (*open import Abstract_linker_script*)
-(*open import Archive*)
+open import Archive
 open import Byte_sequence
-(*open import Command_line *)
+(*open import Command_line*)
 open import Default_printing
 open import Elf_dynamic
 open import Elf_file
@@ -33,7 +33,7 @@ open import Link*)
 open import Memory_image
 (*open import Memory_image_orderings*)
 open import Missing_pervasives
-(*open import Multimap*)
+open import Multimap
 open import Show
 open import String_table
 

@@ -185,42 +185,42 @@ using assms
 done
 
 lemma partition_with_length_length:
-  assumes "partition_with_length off len bs0 = Success (bs1, bs2)"
-  shows "length0 bs1 = off \<and> length0 bs2 = len"
+  assumes "len = length0 bs0" and "partition_with_length off len bs0 = Success (bs1, bs2)"
+  shows "length0 bs1 = off \<and> length0 bs2 + off = length0 bs0"
 using assms unfolding partition_with_length_def
-  apply(case_tac "takebytes_with_length off len bs0", simp_all add: error_bind.simps)
-  apply(case_tac "dropbytes off bs0", simp_all add: error_bind.simps)
-  apply(simp only: error_return_def error.simps prod.simps)
+  apply(case_tac "takebytes_with_length off len bs0", simp only: error_bind.simps)
+  apply(case_tac "dropbytes off bs0", simp only: error_bind.simps)
+  apply(drule takebytes_with_length_length, assumption)
   apply(drule dropbytes_length)
-  apply(drule takebytes_with_length_length)
-  apply simp
+  apply(simp_all add: error_bind.simps)
+  apply(auto simp add: error_return_def)
+done
 
-lemma read_archive_entry_header_length:
-  assumes "read_archive_entry_header len bs = Success (hdr, sz, bs1)"
+lemma read_archive_entry_header0_length:
+  assumes "len = length0 bs" and "read_archive_entry_header0 len bs = Success (hdr, sz, bs1)"
   shows "Byte_sequence.length0 bs1 < Byte_sequence.length0 bs"
-using assms unfolding read_archive_entry_header_def
+using assms unfolding read_archive_entry_header0_def
   apply(simp only: Let_def)
-  apply(case_tac "partition_with_length 60 len bs", simp_all add: error_bind.simps)
+  apply(case_tac "partition_with_length 60 len bs", simp only: error_bind.simps)
   apply(case_tac x1, simp)
-  apply(case_tac "offset_and_cut 58 2 a", simp_all add: error_bind.simps)
-  apply(case_tac "offset_and_cut 0 16 a", simp_all add: error_bind.simps)
-  apply(case_tac "offset_and_cut 16 12 a", simp_all add: error_bind.simps)
-  apply(case_tac "offset_and_cut 28 6 a", simp_all add: error_bind.simps)
-  apply(case_tac "offset_and_cut 34 6 a", simp_all add: error_bind.simps)
-  apply(case_tac "offset_and_cut 40 8 a", simp_all add: error_bind.simps)
-  apply(case_tac "offset_and_cut 48 10 a", simp_all add: error_bind.simps)
-  apply(simp add: error_return_def)
+  apply(case_tac "offset_and_cut 58 2 a", simp only: error_bind.simps)
+  apply(case_tac "offset_and_cut 0 16 a", simp only: error_bind.simps)
+  apply(case_tac "offset_and_cut 16 12 a", simp only: error_bind.simps)
+  apply(case_tac "offset_and_cut 28 6 a", simp only: error_bind.simps)
+  apply(case_tac "offset_and_cut 34 6 a", simp only: error_bind.simps)
+  apply(case_tac "offset_and_cut 40 8 a", simp only: error_bind.simps)
+  apply(case_tac "offset_and_cut 48 10 a", simp only: error_bind.simps)
+  apply(simp_all add: error_bind.simps)
+  apply(subgoal_tac "partition_with_length 60 len bs = Success (a, b)")
+  apply(drule partition_with_length_length, assumption)
   apply(drule offset_and_cut_length)+
-  apply(drule partition_with_length_length)
-  apply(erule conjE)+
-  sorry (* XXX: definition needs changing *)
+  apply(simp_all add: error_return_def)
+done
 
 lemma set_split_union:
   assumes "split dict e s = (x, y)"
   shows "s = x \<union> { e } \<union> y"
-using assms unfolding split_def
-  apply(rule Product_Type.Pair_inject)
-  apply clarify
+using assms(1)
   sorry
 
 lemma set_choose_member:
@@ -269,22 +269,35 @@ using assms by simp
 
 section {* Termination *}
 
-termination accum_archive_contents
+termination accum_archive_contents0
   apply(relation "measure (\<lambda>(_,_,_,b). length0 b)")
   apply simp
-  apply(case_tac x1, simp)
-  apply(frule read_archive_entry_header_length)
-  apply(case_tac "size0 a mod 2", simp add: Let_def)
-  apply(case_tac "name a = ''/               ''", simp)
-  apply(frule dropbytes_length)
-  apply linarith
-  apply(frule dropbytes_length)
+  apply(case_tac x1, simp add: Let_def)
+  apply(case_tac "name0 a = ''/               ''", simp_all)
+  apply(case_tac "size2 a mod 2 = 0", simp_all)
+  apply(subgoal_tac "read_archive_entry_header0 whole_seq_length whole_seq = Success (a, b, c)")
+  apply(drule read_archive_entry_header0_length, assumption)
+  apply(drule dropbytes_length)
   apply linarith
   apply simp
-  apply(subgoal_tac "0 < Suc (size0 a)")
-  apply(frule dropbytes_length)
+  apply(subgoal_tac "0 < Suc (size2 a)")
+  apply(drule dropbytes_length)
+  apply(subgoal_tac "read_archive_entry_header0 whole_seq_length whole_seq = Success (a, b, c)")
+  apply(drule read_archive_entry_header0_length, assumption)
   apply linarith
-  apply auto
+  apply simp_all
+  apply(case_tac "size2 a mod 2 = 0", simp_all)
+  apply(drule dropbytes_length)
+  apply(subgoal_tac "read_archive_entry_header0 whole_seq_length whole_seq = Success (a, b, c)")
+  apply(drule read_archive_entry_header0_length, assumption)
+  apply linarith
+  apply simp_all
+  apply(subgoal_tac "0 < Suc (size2 a)")
+  apply(drule dropbytes_length)
+  apply(subgoal_tac "read_archive_entry_header0 whole_seq_length whole_seq = Success (a, b, c)")
+  apply(drule read_archive_entry_header0_length, assumption)
+  apply linarith
+  apply simp_all
 done
 
 termination repeat
@@ -720,107 +733,11 @@ termination obtain_elf64_dynamic_section_contents'
   apply linarith
 done
 
-fun (in linorder) merge :: "'a list \<Rightarrow> 'a list \<Rightarrow> 'a list" where
-  "merge [] ys = ys" |
-  "merge xs [] = xs" |
-  "merge (x#xs) (y#ys) =
-     (if x \<le> y then
-       x#merge xs (y#ys)
-     else
-       y#merge (x#xs) ys)"
-
-fun (in linorder) sort :: "'a list \<Rightarrow> 'a list" where
-  "sort []  = []" |
-  "sort [x] = [x]" |
-  "sort xs  =
-     (let len = List.length xs div 2 in
-      let lft = List.take len xs in
-      let rgt = List.drop len xs in
-        merge (sort lft) (sort rgt))"
-
-inductive (in linorder) sorted :: "'a list \<Rightarrow> bool" where
-  sorted_empty [intro!]: "sorted []" |
-  sorted_singleton [intro!]: "sorted [x]" |
-  sorted_step [intro!]: "\<lbrakk> sorted (x#xs); y \<le> x \<rbrakk> \<Longrightarrow> sorted (y#x#xs)"
-
-declare [[show_types]]
-
-lemma list_induct':
-  assumes "P []" and "\<And>x. P [x]"
-    and "\<And>x y xs. P (x#xs) \<Longrightarrow> P (y#x#xs)"
-  shows "P xs"
-using assms
-  apply(induct_tac xs)
-  apply(rule assms(1))
-  apply(case_tac list, clarify)
-  apply(rule assms(2))
-  apply clarify
-  apply(rule assms(3))
-  apply assumption
-done
-
-instantiation prod :: (linorder, linorder)linorder begin
-
-  fun less_eq_prod :: "'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rightarrow> bool" where
-    "less_eq_prod (l1, r1) (l2, r2) =
-       (if l1 < l2 then
-          True
-        else if l1 = l2 then
-          r1 \<le> r2
-        else
-          False)"
-
-  fun less_prod :: "'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rightarrow> bool" where
-    "less_prod (l1, r1) (l2, r2) =
-       (if l1 < l2 then
-          True
-        else if l1 = l2 then
-          r1 < r2
-        else
-          False)"
-
-  instance proof
-    fix x y :: "'a \<times> 'b"
-    show "(x < y) = (x \<le> y \<and> \<not> y \<le> x)"
-      apply(case_tac x; case_tac y, clarify)
-      apply auto
-    done
-  next
-    fix x :: "'a \<times> 'b"
-    show "x \<le> x"
-      apply(case_tac x, clarify)
-      apply auto
-    done
-  next
-    fix x y z :: "'a \<times> 'b"
-    assume "x \<le> y" and "y \<le> z"
-    thus "x \<le> z"
-      apply(case_tac x; case_tac y; case_tac z, simp)
-      apply(metis less_not_sym less_trans order.trans)
-    done
-  next
-    fix x y :: "'a \<times> 'b"
-    assume "x \<le> y" and "y \<le> x"
-    thus "x = y"
-      apply(case_tac x; case_tac y; simp)
-      apply(metis antisym not_less_iff_gr_or_eq)
-    done
-  next
-    fix x y :: "'a \<times> 'b"
-    show "x \<le> y \<or> y \<le> x"
-      apply(case_tac x; case_tac y; clarify)
-      apply(fastforce simp add: neq_iff)
-    done
-  qed
-end
-
 termination find_first_not_in_range
-  apply(relation "measure (\<lambda>(s, r). s - Max (collapse r))")
+  apply(relation "measure (\<lambda>(s, xs). s)")
   apply simp
-  apply(case_tac ranges, simp_all)
-  apply(case_tac a, simp_all)
-  apply(case_tac "aa \<le> start \<and> start \<le> b", simp_all)
-  apply auto
+  apply(case_tac "List.filter (\<lambda>(x, y). start \<ge> x \<and> start \<le> y) ranges", simp)
+  sorry
 
 termination find_first_in_range
   sorry
@@ -1126,27 +1043,27 @@ termination concatS'
   apply lexicographic_order
 done
 
-termination nat_range
+termination nat_range0
   apply lexicographic_order
 done
 
-termination expand_sorted_ranges
+termination expand_sorted_ranges0
   apply lexicographic_order
 done
 
-termination make_byte_pattern_revacc
+termination make_byte_pattern_revacc0
   apply lexicographic_order
 done
 
-termination relax_byte_pattern_revacc
+termination relax_byte_pattern_revacc0
   apply lexicographic_order
 done
 
-termination byte_list_matches_pattern
+termination byte_list_matches_pattern0
   apply lexicographic_order
 done
 
-termination accum_pattern_possible_starts_in_one_byte_sequence
+termination accum_pattern_possible_starts_in_one_byte_sequence0
   apply lexicographic_order
 done
 
@@ -1194,13 +1111,9 @@ termination list_reverse_concat_map_helper
   apply lexicographic_order
 done
 
-termination findLowestEquiv
-  apply(relation "measure (\<lambda>(_,_,_,_,_,s,_). Finite_Set.card s)")
+termination findLowestKVWithKEquivTo
+  apply(relation "measure (\<lambda>(_,_,_,_,s,_). Finite_Set.card s)")
   apply simp
-  apply(case_tac x2, simp)
-  apply(drule chooseAndSplit_card1, assumption)
-  apply(case_tac x2, simp)
-  apply(drule chooseAndSplit_card1, assumption)
   apply(case_tac x2, simp)
   apply(drule chooseAndSplit_card1, assumption)
   apply(case_tac x2, simp)
@@ -1209,13 +1122,9 @@ termination findLowestEquiv
   apply(drule chooseAndSplit_card2, assumption)
 done
 
-termination findHighestEquiv
-  apply(relation "measure (\<lambda>(_,_,_,_,_,s,_). Finite_Set.card s)")
+termination findHighestKVWithKEquivTo
+  apply(relation "measure (\<lambda>(_,_,_,_,s,_). Finite_Set.card s)")
   apply simp
-  apply(case_tac x2, simp)
-  apply(drule chooseAndSplit_card2, assumption)
-  apply(case_tac x2, simp)
-  apply(drule chooseAndSplit_card2, assumption)
   apply(case_tac x2, simp)
   apply(drule chooseAndSplit_card2, assumption)
   apply(case_tac x2, simp)
