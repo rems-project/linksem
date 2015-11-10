@@ -31,6 +31,7 @@ imports
 	 "Elf_relocation" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_map_extra" 
 	 "Multimap" 
+	 "GCD" 
 	 "Memory_image" 
 
 begin 
@@ -41,8 +42,6 @@ begin
 (* Termination Proofs                               *)
 (*                                                  *)
 (****************************************************)
-
-termination gcd0 by lexicographic_order
 
 termination nat_range0 by lexicographic_order
 
@@ -57,6 +56,26 @@ termination concretise_byte_pattern0 by lexicographic_order
 termination byte_list_matches_pattern0 by lexicographic_order
 
 termination accum_pattern_possible_starts_in_one_byte_sequence0 by lexicographic_order
+
+
+(****************************************************)
+(*                                                  *)
+(* Lemmata                                          *)
+(*                                                  *)
+(****************************************************)
+
+lemma gcd_def_lemma:
+" ((\<forall> a. \<forall> b.
+   (if b = ( 0 :: nat) then a else GCD.gcd b (a mod b)) = GCD.gcd a b)) "
+(* Theorem: gcd_def_lemma*)(* try *) by auto
+
+lemma lcm_def_lemma:
+" ((\<forall> a. \<forall> b.
+   (
+   (* let _ = errln (lcm of  ^ (show a) ^  and  ^ (show b) ^ ?)
+    in *) (
+   a * b) div (GCD.gcd a b)) = GCD.lcm a b)) "
+(* Theorem: lcm_def_lemma*)(* try *) by auto
 
 
 

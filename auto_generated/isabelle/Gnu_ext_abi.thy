@@ -63,10 +63,10 @@ begin
 (*val gnu_extend: forall 'abifeature. abi 'abifeature -> abi 'abifeature*)
 definition gnu_extend  :: " 'abifeature abi \<Rightarrow> 'abifeature abi "  where 
      " gnu_extend a = ( 
-   (| is_valid_elf_header =(is_valid_elf_header   a)
-    , make_elf_header     =            
+   (| is_valid_elf_header0 =(is_valid_elf_header0   a)
+    , make_elf_header0     =            
 ( (*  t -> entry -> shoff -> phoff -> phnum -> shnum -> shstrndx -> hdr *)\<lambda> t .  \<lambda> entry .  \<lambda> shoff .  \<lambda> phoff .  \<lambda> phnum .  \<lambda> shnum .  \<lambda> shstrndx . 
-            (let unmod = ((make_elf_header   a) t entry shoff phoff phnum shnum shstrndx)
+            (let unmod = ((make_elf_header0   a) t entry shoff phoff phnum shnum shstrndx)
             in
               (| elf64_ident    = (case (elf64_ident   unmod) of 
                 i0 # i1 # i2 # i3  # i4  # i5  # i6  # 
@@ -90,8 +90,8 @@ definition gnu_extend  :: " 'abifeature abi \<Rightarrow> 'abifeature abi "  whe
                , elf64_shnum    = (Elf_Types_Local.uint16_of_nat shnum)
                , elf64_shstrndx = (Elf_Types_Local.uint16_of_nat shstrndx)
                |)))
-    , reloc               =(reloc   a)
-    , section_is_special  = (\<lambda> isec .  (\<lambda> img1 .  ((section_is_special  
+    , reloc0               =(reloc0   a)
+    , section_is_special2  = (\<lambda> isec .  (\<lambda> img1 .  ((section_is_special2  
                                 a) isec img1
                                 \<or> (Missing_pervasives.string_prefix ( (List.length (''.gnu.warning'')))(elf64_section_name_as_string   isec)
                                  = Some((''.gnu.warning'')))
@@ -111,16 +111,16 @@ definition gnu_extend  :: " 'abifeature abi \<Rightarrow> 'abifeature abi "  whe
          * is *not* GNU contains a .gnu.warning.* section? That would be a fair
          * test about whether looking at the input ABI is worth doing. *)
                             )))
-    , section_is_large    =(section_is_large   a)
-    , maxpagesize         =(maxpagesize   a)
-    , minpagesize         =(minpagesize   a)
-    , commonpagesize      =(commonpagesize   a)
-    , symbol_is_generated_by_linker =(symbol_is_generated_by_linker   a)
-    , make_phdrs          =(make_phdrs   a) (* FIXME: also make the GNU phdrs! *)
-    , max_phnum           =(( 3 :: nat) +(max_phnum   a)) (* FIXME: GNU_RELRO, GNU_STACK; what else? *)
-    , guess_entry_point   =(guess_entry_point   a)
-    , pad_data            =(pad_data   a)
-    , pad_code            =(pad_code   a)
+    , section_is_large0    =(section_is_large0   a)
+    , maxpagesize0        =(maxpagesize0   a)
+    , minpagesize0         =(minpagesize0   a)
+    , commonpagesize0      =(commonpagesize0   a)
+    , symbol_is_generated_by_linker0 =(symbol_is_generated_by_linker0   a)
+    , make_phdrs0          =(make_phdrs0   a) (* FIXME: also make the GNU phdrs! *)
+    , max_phnum0           =(( 3 :: nat) +(max_phnum0   a)) (* FIXME: GNU_RELRO, GNU_STACK; what else? *)
+    , guess_entry_point0   =(guess_entry_point0   a)
+    , pad_data0            =(pad_data0   a)
+    , pad_code0            =(pad_code0   a)
     |) )"
 
 end

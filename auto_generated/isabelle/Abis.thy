@@ -189,6 +189,7 @@ definition make_elf64_header  :: " nat \<Rightarrow> nat \<Rightarrow> nat \<Rig
        , elf64_shstrndx = (Elf_Types_Local.uint16_of_nat shstrndx)
        |) )"
 
+
 (*val make_load_phdrs : forall 'abifeature. natural -> natural -> annotated_memory_image 'abifeature -> list (natural * elf64_interpreted_section) -> list elf64_program_header_table_entry*)
 definition make_load_phdrs  :: " nat \<Rightarrow> nat \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>(nat*elf64_interpreted_section)list \<Rightarrow>(elf64_program_header_table_entry)list "  where 
      " make_load_phdrs max_page_sz common_page_sz img1 section_pairs_bare_sorted_by_address = ( 
@@ -252,7 +253,7 @@ definition make_load_phdrs  :: " nat \<Rightarrow> nat \<Rightarrow> 'abifeature
         in
         (let (one_if_zero :: nat \<Rightarrow> nat) = (\<lambda> n .  if n =( 0 :: nat) then( 1 :: nat) else n)
         in
-        (let new_p_align =  (lcm0 (one_if_zero (unat(elf64_p_align   phdr))) (one_if_zero(elf64_section_align   isec)))
+        (let new_p_align =  (GCD.lcm (one_if_zero (unat(elf64_p_align   phdr))) (one_if_zero(elf64_section_align   isec)))
         in
         Some
           (| elf64_p_type   = (Elf_Types_Local.uint32_of_nat new_p_type)
@@ -313,11 +314,11 @@ definition make_default_phdrs  :: " nat \<Rightarrow> nat \<Rightarrow> nat \<Ri
 definition find_start_symbol_address  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature AbiFeatureTagEquiv_class \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>(nat)option "  where 
      " find_start_symbol_address dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature img1 = ( 
     (* Do we have a symbol called _start? *)
-    (let all_defs = (Memory_image_orderings.defined_symbols_and_ranges0 
+    (let all_defs = (Memory_image_orderings.defined_symbols_and_ranges0
   dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature img1)
     in
     (let get_entry_point = (\<lambda> (maybe_range, symbol_def) .  
-        if(def_symname   symbol_def) = (''_start'')
+        if(def_symname0   symbol_def) = (''_start'')
         then Some (maybe_range, symbol_def) 
         else None
     )
@@ -328,10 +329,10 @@ definition find_start_symbol_address  :: " 'abifeature Ord_class \<Rightarrow> '
         [(maybe_range, symbol_def)] =>
             (case  maybe_range of
                 Some (el_name, (el_off, len)) => 
-                    (case  (elements   img1) el_name of
+                    (case  (elements0   img1) el_name of
                         None => failwith (([(CHR ''_''), (CHR ''s''), (CHR ''t''), (CHR ''a''), (CHR ''r''), (CHR ''t''), (CHR '' ''), (CHR ''s''), (CHR ''y''), (CHR ''m''), (CHR ''b''), (CHR ''o''), (CHR ''l''), (CHR '' ''), (CHR ''d''), (CHR ''e''), (CHR ''f''), (CHR ''i''), (CHR ''n''), (CHR ''e''), (CHR ''d''), (CHR '' ''), (CHR ''i''), (CHR ''n''), (CHR '' ''), (CHR ''n''), (CHR ''o''), (CHR ''n''), (CHR ''e''), (CHR ''x''), (CHR ''i''), (CHR ''s''), (CHR ''t''), (CHR ''e''), (CHR ''n''), (CHR ''t''), (CHR '' ''), (CHR ''e''), (CHR ''l''), (CHR ''e''), (CHR ''m''), (CHR ''e''), (CHR ''n''), (CHR ''t''), (CHR '' ''), (Char Nibble6 Nibble0)]) @ (el_name @ ([(Char Nibble2 Nibble7)])))
                         | Some el_rec => 
-                            (case (startpos   el_rec) of
+                            (case (startpos0   el_rec) of
                                 None => (*let _ = Missing_pervasives.errln warning: saw `_start' in element with no assigned address in *)None
                                 | Some x => (* success! *) Some (x + el_off)
                             )
@@ -343,14 +344,15 @@ definition find_start_symbol_address  :: " 'abifeature Ord_class \<Rightarrow> '
             (let (ranges, defs) = unzip all_entry_points in show ranges)) in *)None
     )))))"
 
+
 (*val pad_zeroes : natural -> list byte*)
 definition pad_zeroes  :: " nat \<Rightarrow>(Elf_Types_Local.byte)list "  where 
-     " pad_zeroes n = ( List.replicate n (unat(( 0 :: nat))))"
+     " pad_zeroes n = ( List.replicate n (of_nat (( 0 :: nat))))"
 
 
 (*val pad_0x90 : natural -> list byte*)
 definition pad_0x90  :: " nat \<Rightarrow>(Elf_Types_Local.byte)list "  where 
-     " pad_0x90 n = ( List.replicate n (unat (( 9 :: nat) *( 16 :: nat))))"
+     " pad_0x90 n = ( List.replicate n (of_nat (( 9 :: nat) *( 16 :: nat))))"
 
 
 (* null_abi captures ABI details common to all ELF-based, System V-based systems.
@@ -358,71 +360,71 @@ definition pad_0x90  :: " nat \<Rightarrow>(Elf_Types_Local.byte)list "  where
 (*val null_abi : abi any_abi_feature*) 
 definition null_abi  :: "(any_abi_feature)abi "  where 
      " null_abi = ( (|
-      is_valid_elf_header = is_valid_elf64_header
-    , make_elf_header = (make_elf64_header elf_data_2lsb elf_osabi_none(( 0 :: nat)) elf_ma_none)
-    , reloc = noop_reloc
-    , section_is_special = elf_section_is_special
-    , section_is_large = (\<lambda> s .  (\<lambda> f .  False))
-    , maxpagesize =((( 2 :: nat) *( 256 :: nat)) *( 4096 :: nat)) (* 2MB; bit of a guess, based on gdb and prelink code *)
-    , minpagesize =(( 1024 :: nat)) (* bit of a guess again *)
-    , commonpagesize =(( 4096 :: nat))
-    , symbol_is_generated_by_linker = (\<lambda> symname .  symname = (''_GLOBAL_OFFSET_TABLE_''))
-    , make_phdrs = make_default_phdrs
-    , max_phnum =(( 2 :: nat))
-    , guess_entry_point = 
+      is_valid_elf_header0 = is_valid_elf64_header
+    , make_elf_header0 = (make_elf64_header elf_data_2lsb elf_osabi_none(( 0 :: nat)) elf_ma_none)
+    , reloc0 = noop_reloc0
+    , section_is_special2 = elf_section_is_special0
+    , section_is_large0 = (\<lambda> s .  (\<lambda> f .  False))
+    , maxpagesize0 =((( 2 :: nat) *( 256 :: nat)) *( 4096 :: nat)) (* 2MB; bit of a guess, based on gdb and prelink code *)
+    , minpagesize0 =(( 1024 :: nat)) (* bit of a guess again *)
+    , commonpagesize0 =(( 4096 :: nat))
+    , symbol_is_generated_by_linker0 = (\<lambda> symname .  symname = (''_GLOBAL_OFFSET_TABLE_''))
+    , make_phdrs0 = make_default_phdrs
+    , max_phnum0 =(( 2 :: nat))
+    , guess_entry_point0 = 
   (find_start_symbol_address
      instance_Basic_classes_Ord_Abis_any_abi_feature_dict
      instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict)
-    , pad_data = pad_zeroes
-    , pad_code = pad_zeroes
+    , pad_data0 = pad_zeroes
+    , pad_code0 = pad_zeroes
     |) )"
 
 
 (*val sysv_amd64_std_abi : abi any_abi_feature*)
 definition sysv_amd64_std_abi  :: "(any_abi_feature)abi "  where 
      " sysv_amd64_std_abi = ( 
-   (| is_valid_elf_header = header_is_amd64
-    , make_elf_header = (make_elf64_header elf_data_2lsb elf_osabi_none(( 0 :: nat)) elf_ma_x86_64)
-    , reloc = (amd64_reloc instance_Basic_classes_Ord_Abis_any_abi_feature_dict
+   (| is_valid_elf_header0 = header_is_amd64
+    , make_elf_header0 = (make_elf64_header elf_data_2lsb elf_osabi_none(( 0 :: nat)) elf_ma_x86_64)
+    , reloc0 = (amd64_reloc instance_Basic_classes_Ord_Abis_any_abi_feature_dict
     instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict)
-    , section_is_special = section_is_special0
-    , section_is_large = (\<lambda> s .  (\<lambda> f .  flag_is_set shf_x86_64_large(elf64_section_flags   s)))
-    , maxpagesize =(( 65536 :: nat))
-    , minpagesize =(( 4096 :: nat))
-    , commonpagesize =(( 4096 :: nat))
+    , section_is_special2 = section_is_special0
+    , section_is_large0 = (\<lambda> s .  (\<lambda> f .  flag_is_set shf_x86_64_large(elf64_section_flags   s)))
+    , maxpagesize0 =(( 65536 :: nat))
+    , minpagesize0 =(( 4096 :: nat))
+    , commonpagesize0 =(( 4096 :: nat))
       (* XXX: DPM, changed from explicit reference to null_abi field due to problems in HOL4. *)
-    , symbol_is_generated_by_linker = (\<lambda> symname .  symname = (''_GLOBAL_OFFSET_TABLE_''))
-    , make_phdrs = make_default_phdrs
-    , max_phnum =(( 4 :: nat))
-    , guess_entry_point = 
+    , symbol_is_generated_by_linker0 = (\<lambda> symname .  symname = (''_GLOBAL_OFFSET_TABLE_''))
+    , make_phdrs0 = make_default_phdrs
+    , max_phnum0 =(( 4 :: nat))
+    , guess_entry_point0 = 
   (find_start_symbol_address
      instance_Basic_classes_Ord_Abis_any_abi_feature_dict
      instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict)
-    , pad_data = pad_zeroes
-    , pad_code = pad_0x90
+    , pad_data0 = pad_zeroes
+    , pad_code0 = pad_0x90
     |) )"
 
 
 (*val sysv_aarch64_le_std_abi : abi any_abi_feature*)
 definition sysv_aarch64_le_std_abi  :: "(any_abi_feature)abi "  where 
      " sysv_aarch64_le_std_abi = ( 
-   (| is_valid_elf_header = header_is_aarch64_le
-    , make_elf_header = (make_elf64_header elf_data_2lsb elf_osabi_none(( 0 :: nat)) elf_ma_aarch64)
-    , reloc = aarch64_le_reloc
-    , section_is_special = section_is_special0
-    , section_is_large = (\<lambda> _ .  (\<lambda> _ .  False))
-    , maxpagesize =((( 2 :: nat) *( 256 :: nat)) *( 4096 :: nat)) (* 2MB; bit of a guess, based on gdb and prelink code *)
-    , minpagesize =(( 1024 :: nat)) (* bit of a guess again *)
-    , commonpagesize =(( 4096 :: nat))
-    , symbol_is_generated_by_linker = (\<lambda> symname .  symname = (''_GLOBAL_OFFSET_TABLE_''))
-    , make_phdrs = make_default_phdrs
-    , max_phnum =(( 5 :: nat))
-    , guess_entry_point = 
+   (| is_valid_elf_header0 = header_is_aarch64_le
+    , make_elf_header0 = (make_elf64_header elf_data_2lsb elf_osabi_none(( 0 :: nat)) elf_ma_aarch64)
+    , reloc0 = aarch64_le_reloc
+    , section_is_special2 = section_is_special1
+    , section_is_large0 = (\<lambda> _ .  (\<lambda> _ .  False))
+    , maxpagesize0 =((( 2 :: nat) *( 256 :: nat)) *( 4096 :: nat)) (* 2MB; bit of a guess, based on gdb and prelink code *)
+    , minpagesize0 =(( 1024 :: nat)) (* bit of a guess again *)
+    , commonpagesize0 =(( 4096 :: nat))
+    , symbol_is_generated_by_linker0 = (\<lambda> symname .  symname = (''_GLOBAL_OFFSET_TABLE_''))
+    , make_phdrs0 = make_default_phdrs
+    , max_phnum0 =(( 5 :: nat))
+    , guess_entry_point0 = 
   (find_start_symbol_address
      instance_Basic_classes_Ord_Abis_any_abi_feature_dict
      instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict)
-    , pad_data = pad_zeroes
-    , pad_code = pad_zeroes
+    , pad_data0 = pad_zeroes
+    , pad_code0 = pad_zeroes
     |) )"
 
 

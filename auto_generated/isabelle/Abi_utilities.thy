@@ -210,16 +210,16 @@ definition reloc_site_address  :: " 'abifeature Ord_class \<Rightarrow> 'abifeat
       Lem_string_extra.instance_Basic_classes_Ord_string_dict
       (instance_Basic_classes_Ord_tup2_dict
          instance_Basic_classes_Ord_Num_natural_dict
-         instance_Basic_classes_Ord_Num_natural_dict))) (op=) (SymbolRef(rr))(by_tag   img1))
+         instance_Basic_classes_Ord_Num_natural_dict))) (op=) (SymbolRef0(rr))(by_tag0  img1))
     in
     (case  found_kvs of
         [] => failwith (''impossible: reloc site not marked in memory image'')
         | [(_, maybe_range)] => (case  maybe_range of 
                 None => failwith (''impossible: reloc site has no element range'')
                 | Some (el_name, el_range) => 
-                    (let element_addr = ((case  (elements   img1) el_name of
+                    (let element_addr = ((case  (elements0   img1) el_name of
                         None => failwith (''impossible: non-existent element'')
-                        | Some el => (case (startpos   el) of
+                        | Some el => (case (startpos0   el) of
                             None => failwith (''error: resolving relocation site address before address has been assigned'')
                             | Some addr => addr
                         )
