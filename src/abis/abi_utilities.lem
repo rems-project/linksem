@@ -9,12 +9,15 @@ open import Maybe
 open import String
 open import Error
 open import Assert_extra
+
+open import Abi_classes
 open import Missing_pervasives
 open import Elf_types_native_uint
 open import Elf_symbol_table
 open import Elf_relocation
 open import Memory_image
 open import Memory_image_orderings
+
 
 open import Error
 

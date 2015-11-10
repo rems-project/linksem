@@ -19,6 +19,7 @@ open import Elf_relocation
 open import Elf_symbol_table
 open import Memory_image
 
+open import Abi_classes
 open import Abi_utilities
 
 (** x86-64 relocation types. *)

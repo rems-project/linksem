@@ -30,6 +30,7 @@ open import Abi_aarch64_relocation
 open import Abi_power64
 open import Abi_power64_relocation
 
+open import Abi_classes
 open import Abi_utilities
 open import Elf_types_native_uint
 
