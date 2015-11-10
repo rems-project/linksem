@@ -323,4 +323,80 @@ begin
     ordered_Nil [intro!]: "ordered ord []"
   | ordered_Singleton [intro!]: "ordered ord [x]"
   | ordered_Cons [intro!]: "\<lbrakk> ord x y = LT; ordered ord (y#xs) \<rbrakk> \<Longrightarrow> ordered ord (x#y#xs)"
+
+  fun not_in_range :: "nat \<Rightarrow> (nat \<times> nat) \<Rightarrow> bool" where
+    "not_in_range e (x, y) = (e < x \<or> y < e)"
+
+  fun in_range :: "nat \<Rightarrow> (nat \<times> nat) \<Rightarrow> bool" where
+    "in_range e (x, y) = (e \<le> x \<and> e \<le> y)"
+
+  definition find_first_not_in_range :: "nat \<Rightarrow> (nat \<times> nat) list \<Rightarrow> nat" where
+    "find_first_not_in_range start ranges \<equiv>
+       THE x.
+         start \<le> x \<and>
+         (\<forall>rs \<in> set ranges. not_in_range x rs) \<and>
+         (\<forall>y. (\<forall>rs \<in> set ranges. not_in_range y rs) \<longrightarrow> x \<le> y)"
+
+  definition find_first_in_range :: "nat \<Rightarrow> (nat \<times> nat) list \<Rightarrow> nat" where
+    "find_first_in_range start ranges \<equiv>
+       THE x.
+         start \<le> x \<and>
+         (\<forall>rs \<in> set ranges. in_range x rs) \<and>
+         (\<forall>y. (\<forall>rs \<in> set ranges. in_range y rs) \<longrightarrow> x \<le> y)"
+
+  fun covers :: "nat \<times> nat \<Rightarrow> nat \<times> nat \<Rightarrow> bool" where
+    "covers (x1, y1) (x2, y2) = (x1 \<le> x2 \<and> y1 \<le> y2)"
+
+  instantiation prod :: (linorder,linorder)linorder begin
+
+    fun less_eq_prod :: "'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rightarrow> bool" where
+      "less_eq_prod (x1,y1) (x2,y2) =
+         (if x1 < x2 then
+           True
+         else if x1 = x2 then
+           y1 \<le> y2
+         else
+           False)"
+
+    fun less_prod :: "'a \<times> 'b \<Rightarrow> 'a \<times> 'b \<Rightarrow> bool" where
+      "less_prod (x1,y1) (x2,y2) =
+         (if x1 < x2 then
+           True
+         else if x1 = x2 then
+           y1 < y2
+         else
+           False)"
+
+    instance proof
+      fix x y :: "'a \<times> 'b"
+      show "x < y = (x \<le> y \<and> \<not> y \<le> x)"
+        apply(cases x; cases y)
+        apply auto
+      done
+    next
+      fix x :: "'a \<times> 'b"
+      show "x \<le> x"
+        apply(cases x)
+        apply auto
+      done
+    next
+      fix x y z :: "'a \<times> 'b"
+      assume "x \<le> y" and "y \<le> z"
+      thus "x \<le> z"
+        by (smt less_eq_prod.elims(2) less_eq_prod.simps less_trans order.trans)
+    next
+      fix x y :: "'a \<times> 'b"
+      assume "x \<le> y" and "y \<le> x"
+      thus "x = y"
+        by (smt antisym less_asym less_eq_prod.elims(2) less_eq_prod.simps)
+    next
+      fix x y :: "'a \<times> 'b"
+      show "x \<le> y \<or> y \<le> x"
+        by (smt le_cases less_eq_prod.elims(3) less_eq_prod.simps less_linear)
+    qed
+  end
+
+  definition compute_differences :: "nat \<Rightarrow> nat \<Rightarrow> (nat \<times> nat) list \<Rightarrow> (nat \<times> nat) list" where
+    "compute_differences start end ranges \<equiv> sorted_list_of_set { (x, y). \<forall>x. \<forall>y. start \<le> x \<and> x < y \<and> y \<le> end \<and> (\<not> (\<exists>r \<in> set ranges. covers (x, y) r)) }"
+
 end

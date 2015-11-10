@@ -220,9 +220,7 @@ done
 lemma set_split_union:
   assumes "split dict e s = (x, y)"
   shows "s = x \<union> { e } \<union> y"
-using assms unfolding split_def
-  apply(rule Product_Type.Pair_inject)
-  apply clarify
+using assms(1)
   sorry
 
 lemma set_choose_member:
@@ -736,6 +734,9 @@ termination obtain_elf64_dynamic_section_contents'
 done
 
 termination find_first_not_in_range
+  apply(relation "measure (\<lambda>(s, xs). s)")
+  apply simp
+  apply(case_tac "List.filter (\<lambda>(x, y). start \<ge> x \<and> start \<le> y) ranges", simp)
   sorry
 
 termination find_first_in_range
