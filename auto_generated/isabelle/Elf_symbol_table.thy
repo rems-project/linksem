@@ -348,21 +348,21 @@ type_synonym elf64_symbol_table =" elf64_symbol_table_entry
 
 (* Functions below common to 32- and 64-bit! *)
 
-(** [get_symbol_binding u] extracts a symbol table entry's symbol binding.  [u]
+(** [extract_symbol_binding u] extracts a symbol table entry's symbol binding.  [u]
   * in this case is the [elfXX_st_info] field from a symbol table entry.
   *)
-(*val get_symbol_binding : unsigned_char -> natural*)
-definition get_symbol_binding  :: " Elf_Types_Local.unsigned_char \<Rightarrow> nat "  where 
-     " get_symbol_binding entry = (
+(*val extract_symbol_binding : unsigned_char -> natural*)
+definition extract_symbol_binding  :: " Elf_Types_Local.unsigned_char \<Rightarrow> nat "  where 
+     " extract_symbol_binding entry = (
   unat (Elf_Types_Local.unsigned_char_rshift entry(( 4 :: nat))))"
 
   
-(** [get_symbol_type u] extracts a symbol table entry's symbol type.  [u]
+(** [extract_symbol_type u] extracts a symbol table entry's symbol type.  [u]
   * in this case is the [elfXX_st_info] field from a symbol table entry.
   *)
-(*val get_symbol_type : unsigned_char -> natural*)
-definition get_symbol_type  :: " Elf_Types_Local.unsigned_char \<Rightarrow> nat "  where 
-     " get_symbol_type entry = (
+(*val extract_symbol_type : unsigned_char -> natural*)
+definition extract_symbol_type  :: " Elf_Types_Local.unsigned_char \<Rightarrow> nat "  where 
+     " extract_symbol_type entry = (
   unat (Elf_Types_Local.unsigned_char_land entry (Elf_Types_Local.unsigned_char_of_nat(( 15 :: nat)))))"
  (* 0xf *)
 
@@ -603,8 +603,8 @@ definition get_elf32_symbol_image_address  :: "(elf32_symbol_table_entry)list \<
     (let name2 = (unat(elf32_st_name   entry)) in
     (let addr = (unat(elf32_st_value   entry)) in
     (let size4 = (unat(elf32_st_size   entry) *( 8 :: nat)) in
-    (let typ1  = (get_symbol_type(elf32_st_info   entry)) in
-    (let bnd  = (get_symbol_binding(elf32_st_info   entry)) in
+    (let typ1  = (extract_symbol_type(elf32_st_info   entry)) in
+    (let bnd  = (extract_symbol_binding(elf32_st_info   entry)) in
       String_table.get_string_at name2 strtab >>= (\<lambda> str . 
       error_return (str, (typ1, size4, addr, bnd))))))))
   ) symtab )"
@@ -622,8 +622,8 @@ definition get_elf64_symbol_image_address  :: "(elf64_symbol_table_entry)list \<
     (let name2 = (unat(elf64_st_name   entry)) in
     (let addr = (unat(elf64_st_value   entry)) in
     (let size4 = (unat(elf64_st_size   entry)) in
-    (let typ1  = (get_symbol_type(elf64_st_info   entry)) in
-    (let bnd  = (get_symbol_binding(elf64_st_info   entry)) in 
+    (let typ1  = (extract_symbol_type(elf64_st_info   entry)) in
+    (let bnd  = (extract_symbol_binding(elf64_st_info   entry)) in 
       String_table.get_string_at name2 strtab >>= (\<lambda> str . 
       error_return (str, (typ1, size4, addr, bnd))))))))
   ) symtab )"
@@ -634,7 +634,7 @@ definition get_elf64_symbol_image_address  :: "(elf64_symbol_table_entry)list \<
   *)
 (*val get_elf32_symbol_type : elf32_symbol_table_entry -> natural*)
 definition get_elf32_symbol_type  :: " elf32_symbol_table_entry \<Rightarrow> nat "  where 
-     " get_elf32_symbol_type syment = ( get_symbol_type(elf32_st_info   syment))"
+     " get_elf32_symbol_type syment = ( extract_symbol_type(elf32_st_info   syment))"
 
 
 (** [get_el64_symbol_type ent] extracts the symbol type from symbol table entry
@@ -642,6 +642,22 @@ definition get_elf32_symbol_type  :: " elf32_symbol_table_entry \<Rightarrow> na
   *)
 (*val get_elf64_symbol_type : elf64_symbol_table_entry -> natural*)
 definition get_elf64_symbol_type  :: " elf64_symbol_table_entry \<Rightarrow> nat "  where 
-     " get_elf64_symbol_type syment = ( get_symbol_type(elf64_st_info   syment))"
+     " get_elf64_symbol_type syment = ( extract_symbol_type(elf64_st_info   syment))"
+
+
+(** [get_el32_symbol_binding ent] extracts the symbol binding from symbol table entry
+  * [ent].
+  *)
+(*val get_elf32_symbol_binding : elf32_symbol_table_entry -> natural*)
+definition get_elf32_symbol_binding  :: " elf32_symbol_table_entry \<Rightarrow> nat "  where 
+     " get_elf32_symbol_binding syment = ( extract_symbol_binding(elf32_st_info   syment))"
+
+
+(** [get_el64_symbol_binding ent] extracts the symbol binding from symbol table entry
+  * [ent].
+  *)
+(*val get_elf64_symbol_binding : elf64_symbol_table_entry -> natural*)
+definition get_elf64_symbol_binding  :: " elf64_symbol_table_entry \<Rightarrow> nat "  where 
+     " get_elf64_symbol_binding syment = ( extract_symbol_binding(elf64_st_info   syment))"
 
 end

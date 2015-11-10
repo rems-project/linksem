@@ -24,6 +24,7 @@ open import Elf_symbol_table
 open import Elf_types_native_uint
 open import Elf_relocation
 open import Memory_image
+open import Abi_classes
 (* open import Abis *)
 
 open import Missing_pervasives
@@ -114,7 +115,7 @@ instance forall 'abifeature. Ord 'abifeature => (Ord range_tag 'abifeature)
     let (>) = fun tag1 -> (fun tag2 -> (tagCompare tag1 tag2 = GT))
     let (>=) = fun tag1 -> (fun tag2 -> Set.member (tagCompare tag1 tag2) {GT; EQ})
 end
-    
+
 val tagEquiv : forall 'abifeature. AbiFeatureTagEquiv 'abifeature => range_tag 'abifeature -> range_tag 'abifeature -> bool
 let tagEquiv k1 k2 = 
     match (k1, k2) with
@@ -187,9 +188,7 @@ let defined_symbols_and_ranges img =
 
 val defined_symbols : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature =>  annotated_memory_image 'abifeature -> list symbol_definition
 let defined_symbols img = 
-    let ((all_symbol_tags, all_symbol_ranges) : (list (range_tag 'abifeature) * list (maybe element_range)))
-     = symbol_def_ranges img
-    in
+    let (all_symbol_tags, all_symbol_ranges) = symbol_def_ranges img in
     List.mapMaybe (fun tag -> 
         match tag with
             SymbolDef(ent) -> Just ent

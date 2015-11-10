@@ -55,7 +55,7 @@ LEM_ELF_SRC := byte_sequence.lem archive.lem \
 	elf_interpreted_segment.lem elf_interpreted_section.lem \
 	elf_note.lem elf_file.lem elf_dynamic.lem
 	
-LEM_ABI_SRC := memory_image.lem memory_image_orderings.lem \
+LEM_ABI_SRC := abis/abi_classes.lem memory_image.lem memory_image_orderings.lem \
 	abis/abi_utilities.lem \
 	abis/power64/abi_power64.lem \
 	abis/power64/abi_power64_elf_header.lem \

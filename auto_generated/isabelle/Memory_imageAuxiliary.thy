@@ -42,21 +42,21 @@ begin
 (*                                                  *)
 (****************************************************)
 
-termination gcd by lexicographic_order
+termination gcd0 by lexicographic_order
 
-termination nat_range by lexicographic_order
+termination nat_range0 by lexicographic_order
 
-termination expand_sorted_ranges by lexicographic_order
+termination expand_sorted_ranges0 by lexicographic_order
 
-termination make_byte_pattern_revacc by lexicographic_order
+termination make_byte_pattern_revacc0 by lexicographic_order
 
-termination relax_byte_pattern_revacc by lexicographic_order
+termination relax_byte_pattern_revacc0 by lexicographic_order
 
-termination concretise_byte_pattern by lexicographic_order
+termination concretise_byte_pattern0 by lexicographic_order
 
-termination byte_list_matches_pattern by lexicographic_order
+termination byte_list_matches_pattern0 by lexicographic_order
 
-termination accum_pattern_possible_starts_in_one_byte_sequence by lexicographic_order
+termination accum_pattern_possible_starts_in_one_byte_sequence0 by lexicographic_order
 
 
 

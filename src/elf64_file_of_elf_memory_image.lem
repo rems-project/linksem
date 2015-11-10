@@ -116,19 +116,26 @@ let elf64_file_of_elf_memory_image a make_concrete fname img =
             | true
         ]
     in
+    (* If the same address starts >1 section, all but one of those sections
+     * must have size zero. These need to come *first* to avoid screwing up
+     * the offset calculation. So also sort by size, so that the zero-sizers
+     * come first. *)
     let element_section_tag_pairs_sorted_by_address = (* List.stable_sort *) Sorting.sortByOrd
         (fun ((idx1, isec1), (el1, range1)) -> (fun ((idx2, isec2), (el2, range2)) -> (
-            let addr1 = match Map.lookup el1 img.elements with
-                Just(e) -> e.startpos
+            let (addr1, sz1) = match Map.lookup el1 img.elements with
+                Just(e) -> 
+                    let _ = errln ("Size of element " ^ el1 ^ " is " ^ (show e.length))
+                    in
+                    (e.startpos, e.length)
                 | Nothing -> failwith "internal error: element does not exist"
             end
             in 
-            let addr2 = match Map.lookup el2 img.elements with
-                Just(e) -> e.startpos
+            let (addr2, sz2) = match Map.lookup el2 img.elements with
+                Just(e) -> (e.startpos, e.length)
                 | Nothing -> failwith "internal error: element does not exist"
             end
             in
-            compare addr1 addr2
+            compare (addr1, sz1) (addr2, sz2)
         )))
     (zip section_tags_bare section_ranges)
     in

@@ -20,6 +20,8 @@ open import Elf_interpreted_section
 open import Endianness
 open import Memory_image
 (* open import Elf_memory_image *)
+
+open import Abi_classes
 open import Abi_amd64_relocation
 open import Abi_amd64_elf_header
 

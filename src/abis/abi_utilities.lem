@@ -9,12 +9,15 @@ open import Maybe
 open import String
 open import Error
 open import Assert_extra
+
+open import Abi_classes
 open import Missing_pervasives
 open import Elf_types_native_uint
 open import Elf_symbol_table
 open import Elf_relocation
 open import Memory_image
 open import Memory_image_orderings
+
 
 open import Error
 
@@ -152,12 +155,15 @@ type relocation_operator_expression 'a
   | Minus  of (relocation_operator_expression 'a * relocation_operator_expression 'a)                        (** Subtract two expressions. *)
   | RShift of (relocation_operator_expression 'a * natural)                                                  (** Right shift the result of an expression [m] places. *)
   
-  type relocation_frame 'addr 'res =
+type relocation_frame 'addr 'res =
   | Copy
   | NoCopy of (Map.map 'addr (relocation_operator_expression 'res * integer_bit_width * can_fail 'res))
 
 val size_of_def : symbol_reference_and_reloc_site -> natural
-let size_of_def rr = natural_of_elf64_xword rr.ref.ref_syment.elf64_st_size
+let size_of_def rr =
+  let rf = rr.ref in
+  let sm = rf.ref_syment in
+    natural_of_elf64_xword sm.elf64_st_size
 
 val size_of_copy_reloc : forall 'abifeature. annotated_memory_image 'abifeature -> symbol_reference_and_reloc_site -> natural
 let size_of_copy_reloc img rr = 

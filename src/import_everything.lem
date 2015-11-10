@@ -37,6 +37,7 @@ open import Missing_pervasives
 open import Show
 open import String_table
 
+open import Abi_classes
 open import Abis
 open import Abi_utilities
 open import Harness_interface
