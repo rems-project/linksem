@@ -73,5 +73,9 @@ $(BASENAME).repeat-cmd: $(BASENAME).collect-cmd $(BASENAME).env
 .PHONY: repeat
 repeat: $(BASENAME).o $(BASENAME).repeat-cmd
 	eval $$( cat $(BASENAME).repeat-cmd )
+
+.PHONY: repeat
+$(BASENAME).with-relocs: $(BASENAME).o $(BASENAME).repeat-cmd
+	eval $$( cat $(BASENAME).repeat-cmd | sed 's/^ld/ld -q/' | sed 's#-o $(BASENAME)#-o $@#' )
 clean:
 	rm -f $(OUTPUTS) *.o *.a
