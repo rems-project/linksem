@@ -222,7 +222,8 @@ lemma disjE3:
   by blast
 
 lemma set_split_union:
-  assumes "\<And>x y. isGreater_method dict x y \<Longrightarrow> \<not> isLess_method dict x y"
+  assumes "\<And>x y. isGreater_method dict x y \<Longrightarrow> isLess_method dict y x"
+      and "\<And>x y. isLess_method dict x y \<Longrightarrow> isGreater_method dict y x"
       and "\<And>x y. isGreater_method dict x y \<or> isLess_method dict x y \<or> x = y"
       and "split dict e s = (x, y)"
   shows "s = x \<union> { e } \<union> y"
@@ -240,12 +241,24 @@ proof -
       thus "z \<in> x \<union> {e} \<union> y"
       proof(rule disjE3)
         assume "isGreater_method dict z e"
+        hence "isLess_method dict e z"
+          using assms(1) by simp
+        hence "z \<in> { x\<in>s. isLess_method dict e x }"
+          using assms(1) `z \<in> s` by simp
+        hence "z \<in> { x\<in>s. isGreater_method dict e x } \<union> {e} \<union> { x\<in>s. isLess_method dict e x }"
+          by simp
         thus "z \<in> x \<union> {e} \<union> y"
-        sorry
+          using `split dict e s = (x, y)` `z \<in> s` `isLess_method dict e z` split_def Pair_inject mem_Collect_eq UnI2 by smt
       next
         assume "isLess_method dict z e"
+        hence "isGreater_method dict e z"
+          using assms(2) by simp
+        hence "z \<in> { x\<in>s. isGreater_method dict e x }"
+          using assms(1) `z \<in> s` by simp
+        hence "z \<in> { x\<in>s. isGreater_method dict e x } \<union> {e} \<union> { x\<in>s. isLess_method dict e x }"
+          by simp
         thus "z \<in> x \<union> {e} \<union> y"
-        sorry
+          using `split dict e s = (x, y)` `z \<in> s` `isGreater_method dict e z` split_def Pair_inject mem_Collect_eq UnI1 by smt
       next
         assume "z = e"
         thus "z \<in> x \<union> {e} \<union> y"
