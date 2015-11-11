@@ -95,7 +95,14 @@ val all : forall 'k 'v. ('k -> 'v -> bool) -> multimap 'k 'v -> bool
         -> maybe ('k * 'v) 
         -> maybe ('k * 'v)*)
 function (sequential,domintros)  findLowestKVWithKEquivTo  :: " 'k Ord_class \<Rightarrow> 'v Ord_class \<Rightarrow> 'k \<Rightarrow>('k \<Rightarrow> 'k \<Rightarrow> bool)\<Rightarrow>('k*'v)set \<Rightarrow>('k*'v)option \<Rightarrow>('k*'v)option "  where 
-     " findLowestKVWithKEquivTo dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v k equiv1 subSet maybeBest = ( 
+     " findLowestKVWithKEquivTo dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v k equiv1 subSet maybeBest = (
+    if \<not> finite subSet then
+      undefined
+    else if \<not> (well_behaved_lem_ordering (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
+     dict_Basic_classes_Ord_v)) (isLess_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
+     dict_Basic_classes_Ord_v))) then
+     undefined
+   else
     (case  Lem_set_extra.chooseAndSplit 
   (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
      dict_Basic_classes_Ord_v) subSet of
@@ -129,7 +136,13 @@ function (sequential,domintros)  findLowestKVWithKEquivTo  :: " 'k Ord_class \<R
                     findLowestKVWithKEquivTo 
   dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v k equiv1 higher maybeBest
     ))" 
-by pat_completeness auto
+apply pat_completeness
+apply(case_tac "finite subSet")
+apply(case_tac "(well_behaved_lem_ordering (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
+     dict_Basic_classes_Ord_v)) (isLess_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
+     dict_Basic_classes_Ord_v)))")
+apply auto
+done
 
 
 (*val testEquiv : natural -> natural -> bool*)
@@ -151,7 +164,14 @@ definition testEquiv  :: " nat \<Rightarrow> nat \<Rightarrow> bool "  where
         -> maybe ('k * 'v) 
         -> maybe ('k * 'v)*)
 function (sequential,domintros)  findHighestKVWithKEquivTo  :: " 'k Ord_class \<Rightarrow> 'v Ord_class \<Rightarrow> 'k \<Rightarrow>('k \<Rightarrow> 'k \<Rightarrow> bool)\<Rightarrow>('k*'v)set \<Rightarrow>('k*'v)option \<Rightarrow>('k*'v)option "  where 
-     " findHighestKVWithKEquivTo dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v k equiv1 subSet maybeBest = ( 
+     " findHighestKVWithKEquivTo dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v k equiv1 subSet maybeBest = (
+    if \<not> finite subSet then
+      undefined
+    else if \<not> (well_behaved_lem_ordering (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
+     dict_Basic_classes_Ord_v)) (isLess_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
+     dict_Basic_classes_Ord_v))) then
+     undefined
+   else
     (case  Lem_set_extra.chooseAndSplit 
   (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
      dict_Basic_classes_Ord_v) subSet of
@@ -185,8 +205,14 @@ function (sequential,domintros)  findHighestKVWithKEquivTo  :: " 'k Ord_class \<
                     (* k is lower than chosen, so look lower *)
                     findHighestKVWithKEquivTo 
   dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v k equiv1 lower maybeBest
-    ))" 
-by pat_completeness auto
+    ))"
+apply pat_completeness
+apply(case_tac "finite subSet")
+apply(case_tac "(well_behaved_lem_ordering (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
+     dict_Basic_classes_Ord_v)) (isLess_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
+     dict_Basic_classes_Ord_v)))")
+apply auto
+done
 
 
 (* get the list of all pairs with key equiv to k. *)

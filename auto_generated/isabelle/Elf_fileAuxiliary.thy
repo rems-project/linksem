@@ -29,15 +29,46 @@ begin
 
 (****************************************************)
 (*                                                  *)
-(* Termination Proofs                               *)
+(* Lemmata                                          *)
 (*                                                  *)
 (****************************************************)
 
-termination find_first_not_in_range by lexicographic_order
+lemma find_first_not_in_range_def_lemma:
+" ((\<forall> start. \<forall> ranges.
+   (case  List.filter
+            (\<lambda> (x, y) .  (start \<ge> x) \<and> (start \<le> y))
+            ranges of
+         [] => start
+     | _ => Elf_Types_Local.find_first_not_in_range (start + ( 1 :: nat))
+              ranges
+   ) = Elf_Types_Local.find_first_not_in_range start ranges)) "
+(* Theorem: find_first_not_in_range_def_lemma*)(* try *) by auto
 
-termination find_first_in_range by lexicographic_order
+lemma find_first_in_range_def_lemma:
+" ((\<forall> start. \<forall> ranges.
+   (case  List.filter
+            (\<lambda> (x, y) .  (start \<ge> x) \<and> (start \<le> y))
+            ranges of
+         [] => Elf_Types_Local.find_first_in_range (start + ( 1 :: nat))
+                 ranges
+     | _ => start
+   ) = Elf_Types_Local.find_first_in_range start ranges)) "
+(* Theorem: find_first_in_range_def_lemma*)(* try *) by auto
 
-termination compute_differences by lexicographic_order
+lemma compute_differences_def_lemma:
+" ((\<forall> start. \<forall> ranges. \<forall> max0.
+   (
+   if start = max0 then error_return [] else
+     if start > max0 then
+       error_fail (''compute_differences: passed maximum'') else
+       (let first1 = (Elf_Types_Local.find_first_not_in_range start ranges) in
+       if first1 \<ge> max0 then error_return [] else
+         (let last1 = (Elf_Types_Local.find_first_in_range first1 ranges) in
+         if last1 > max0 then error_return [(first1, max0)] else
+           Elf_Types_Local.compute_differences last1 max0 ranges >>=
+             (\<lambda> tail .  error_return ((first1, last1) # tail))))) =
+     Elf_Types_Local.compute_differences start max0 ranges)) "
+(* Theorem: compute_differences_def_lemma*)(* try *) by auto
 
 
 

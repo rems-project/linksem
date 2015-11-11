@@ -456,7 +456,7 @@ record 'abifeature abi = (* forall 'abifeature. *)
     ; link_output_sections_tap   : 
     ; link_output_image_tap      : *)
     
- make_phdrs0         ::" nat \<Rightarrow> nat \<Rightarrow> nat (* file type *) \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> (nat * elf64_interpreted_section) list \<Rightarrow> elf64_program_header_table_entry list "
+ make_phdrs0         ::" nat \<Rightarrow> nat \<Rightarrow> nat (* file type *) \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> elf64_interpreted_section list \<Rightarrow> elf64_program_header_table_entry list "
     
  max_phnum0          ::" nat "
     

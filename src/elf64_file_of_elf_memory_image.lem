@@ -237,8 +237,8 @@ let elf64_file_of_elf_memory_image a make_concrete fname img =
                          elf64_st_name  = match String_table.find_string d.def_symname strtab with
                             Just idx -> let v = elf64_word_of_natural idx
                                         in
-                                        let _ = errln ("strtab: found `" ^ d.def_symname ^ "' at index " ^ (show v))
-                                        in
+                                        (* let _ = errln ("strtab: found `" ^ d.def_symname ^ "' at index " ^ (show v))
+                                        in *)
                                         v
                             | Nothing -> failwith "impossible: symbol name not in strtab we just created"
                             end

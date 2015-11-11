@@ -217,11 +217,147 @@ using assms unfolding read_archive_entry_header0_def
   apply(simp_all add: error_return_def)
 done
 
-lemma set_split_union:
-  assumes "split dict e s = (x, y)"
+lemma disjE3:
+  shows "\<lbrakk> P \<or> Q \<or> R; P \<Longrightarrow> S; Q \<Longrightarrow> S; R \<Longrightarrow> S \<rbrakk> \<Longrightarrow> S"
+  by blast
+
+lemma set_split_union1:
+  assumes "well_behaved_lem_ordering (isGreater_method dict) (isLess_method dict)"
+      and "split dict e s = (x, y)"
+      and "e \<in> s"
   shows "s = x \<union> { e } \<union> y"
-using assms(1)
-  sorry
+using assms
+proof -
+  show "s = x \<union> {e} \<union> y"
+  proof
+    show "s \<subseteq> x \<union> {e} \<union> y"
+    proof
+      fix z :: "'a"
+      assume "z \<in> s"
+      have "isGreater_method dict z e \<or> isLess_method dict z e \<or> z = e"
+        using lem_ordering_tri assms by auto
+      thus "z \<in> x \<union> {e} \<union> y"
+      proof(rule disjE3)
+        assume "isGreater_method dict z e"
+        hence "isLess_method dict e z"
+          using assms(1) by simp
+        hence "z \<in> { x\<in>s. isLess_method dict e x }"
+          using assms(1) `z \<in> s` by simp
+        hence "z \<in> { x\<in>s. isGreater_method dict e x } \<union> {e} \<union> { x\<in>s. isLess_method dict e x }"
+          by simp
+        thus "z \<in> x \<union> {e} \<union> y"
+          using `split dict e s = (x, y)` `z \<in> s` `isLess_method dict e z` split_def Pair_inject mem_Collect_eq UnI2 by smt
+      next
+        assume "isLess_method dict z e"
+        hence "isGreater_method dict e z"
+          using lem_ordering_lt assms by simp
+        hence "z \<in> { x\<in>s. isGreater_method dict e x }"
+          using assms(1) `z \<in> s` by simp
+        hence "z \<in> { x\<in>s. isGreater_method dict e x } \<union> {e} \<union> { x\<in>s. isLess_method dict e x }"
+          by simp
+        thus "z \<in> x \<union> {e} \<union> y"
+          using `split dict e s = (x, y)` `z \<in> s` `isGreater_method dict e z` split_def Pair_inject mem_Collect_eq UnI1 by smt
+      next
+        assume "z = e"
+        thus "z \<in> x \<union> {e} \<union> y"
+          by auto
+      qed
+    qed
+  next
+    show "x \<union> {e} \<union> y \<subseteq> s"
+    proof
+      fix z :: "'a"
+      assume "z \<in> x \<union> {e} \<union> y"
+      hence "z \<in> x \<or> z \<in> {e} \<or> z \<in> y"
+        by auto
+      thus "z \<in> s"
+      proof(rule disjE3)
+        assume "z \<in> x"
+        hence "z \<in> { x\<in>s. isGreater_method dict e x }"
+          using split_def `split dict e s = (x, y)` by(simp add: Lem_set.split_def)
+        thus "z \<in> s"
+          by simp
+      next
+        assume "z \<in> y"
+        hence "z \<in> { x\<in>s. isLess_method dict e x }"
+          using split_def `split dict e s = (x, y)` by(simp add: Lem_set.split_def)
+        thus "z \<in> s"
+          by simp
+      next
+        assume "z \<in> {e}"
+        hence "z = e"
+          by auto
+        thus "z \<in> s"
+          using `e \<in> s` by auto
+      qed
+    qed
+  qed
+qed
+
+lemma set_split_union2:
+  assumes "well_behaved_lem_ordering (isGreater_method dict) (isLess_method dict)"
+      and "split dict e s = (x, y)"
+      and "e \<notin> s"
+  shows "s = x \<union> y"
+using assms
+proof -
+  show "s = x \<union> y"
+  proof
+    show "s \<subseteq> x \<union> y"
+    proof
+      fix z :: "'a"
+      assume "z \<in> s"
+      have "isGreater_method dict z e \<or> isLess_method dict z e \<or> z = e"
+        using lem_ordering_tri assms by auto
+      hence "isGreater_method dict z e \<or> isLess_method dict z e"
+        using `e \<notin> s` `z \<in> s` by auto
+      thus "z \<in> x \<union> y"
+      proof(rule disjE)
+        assume "isGreater_method dict z e"
+        hence "isLess_method dict e z"
+          using assms(1) by simp
+        hence "z \<in> { x\<in>s. isLess_method dict e x }"
+          using assms(1) `z \<in> s` by simp
+        hence "z \<in> { x\<in>s. isGreater_method dict e x } \<union> { x\<in>s. isLess_method dict e x }"
+          by simp
+        thus "z \<in> x \<union> y"
+          using `split dict e s = (x, y)` `z \<in> s` `isLess_method dict e z` split_def Pair_inject mem_Collect_eq UnI2 by smt
+      next
+        assume "isLess_method dict z e"
+        hence "isGreater_method dict e z"
+          using lem_ordering_lt assms by simp
+        hence "z \<in> { x\<in>s. isGreater_method dict e x }"
+          using assms(1) `z \<in> s` by simp
+        hence "z \<in> { x\<in>s. isGreater_method dict e x } \<union> { x\<in>s. isLess_method dict e x }"
+          by simp
+        thus "z \<in> x \<union> y"
+          using `split dict e s = (x, y)` `z \<in> s` `isGreater_method dict e z` split_def Pair_inject mem_Collect_eq UnI1 by smt
+      qed
+    qed
+  next
+    show "x \<union> y \<subseteq> s"
+    proof
+      fix z :: "'a"
+      assume "z \<in> x \<union> y"
+      hence "z \<in> x \<or> z \<in> y"
+        by auto
+      thus "z \<in> s"
+      proof(rule disjE)
+        assume "z \<in> x"
+        hence "z \<in> { x\<in>s. isGreater_method dict e x }"
+          using split_def `split dict e s = (x, y)` by(simp add: Lem_set.split_def)
+        thus "z \<in> s"
+          by simp
+      next
+        assume "z \<in> y"
+        hence "z \<in> { x\<in>s. isLess_method dict e x }"
+          using split_def `split dict e s = (x, y)` by(simp add: Lem_set.split_def)
+        thus "z \<in> s"
+          by simp
+      qed
+    qed
+  qed
+qed
 
 lemma set_choose_member:
   assumes "s \<noteq> {}"
@@ -229,16 +365,102 @@ lemma set_choose_member:
 using assms by auto
 
 lemma chooseAndSplit_card1:
-  assumes "chooseAndSplit dict s = Some (x, y)"
+  assumes "well_behaved_lem_ordering (isGreater_method dict) (isLess_method dict)"
+      and "finite s"
+      and "chooseAndSplit dict s = Some (x, e, y)"
   shows "card x < card s"
-using assms
-sorry
+using assms proof -
+  assume "chooseAndSplit dict s = Some (x, e, y)"
+  hence *: "(if s = {} then None else let element = set_choose s ; (lt, gt) = Lem_set.split dict element s in Some (lt, element, gt)) = Some (x, e, y)"
+    using chooseAndSplit_def by metis
+  thus "card x < card s"
+  proof(cases "s = {}")
+    assume "s = {}"
+    hence "None = Some (x, e, y)"
+      using * by simp
+    thus "card x < card s"
+      by simp
+  next
+    assume "s \<noteq> {}"
+    hence **: "(let element  = set_choose s in
+           let (lt, gt) = split dict element s in
+             Some (lt, element, gt)) = Some (x, e, y)"
+      using * by simp
+    hence "split dict (set_choose s) s = (x, y)" and "e = set_choose s"
+      proof -
+        have "Some ({a \<in> s. isGreater_method dict (set_choose s) a}, set_choose s, {a \<in> s. isLess_method dict (set_choose s) a}) = (case Lem_set.split dict (set_choose s) s of (A, Aa) \<Rightarrow> Some (A, set_choose s, Aa))"
+          by (simp add: Lem_set.split_def)
+        hence "Some ({a \<in> s. isGreater_method dict (set_choose s) a}, set_choose s, {a \<in> s. isLess_method dict (set_choose s) a}) = Some (x, e, y)"
+          by (metis `(let element = set_choose s; (lt, gt) = Lem_set.split dict element s in Some (lt, element, gt)) = Some (x, e, y)`)
+        hence "{a \<in> s. isGreater_method dict (set_choose s) a} = x \<and> {a \<in> s. isLess_method dict (set_choose s) a} = y"
+          by fastforce
+        thus "Lem_set.split dict (set_choose s) s = (x,y)"
+          by (simp add: Lem_set.split_def)
+      next
+        show "e = set_choose s"
+          using * ** split_def Pair_inject old.prod.case option.inject by smt
+      qed
+    also have "set_choose s \<in> s"
+      using set_choose_member `s \<noteq> {}` by simp
+    have **: "\<And>x y. x = y \<Longrightarrow> \<not> isGreater_method dict x y"
+      using assms by simp
+    hence "s = x \<union> {set_choose s} \<union> y"
+      using set_split_union1[OF assms(1) `split dict (set_choose s) s = (x,y)` `set_choose s \<in> s`] by simp
+    hence "x \<subset> s"
+      using `set_choose s \<in> s` assms by (metis (mono_tags, lifting) CollectD Lem_set.split_def ** calculation(1) prod.sel(1) psubsetI sup_assoc sup_ge1)
+    thus "card x < card s"
+      using `finite s` psubset_card_mono by auto
+  qed
+qed
 
 lemma chooseAndSplit_card2:
-  assumes "chooseAndSplit dict s = Some (x, y, z)"
-  shows "card z < card s"
-using assms unfolding chooseAndSplit_def
-  sorry
+  assumes "well_behaved_lem_ordering (isGreater_method dict) (isLess_method dict)"
+      and "finite s"
+      and "chooseAndSplit dict s = Some (x, e, y)"
+  shows "card y < card s"
+using assms proof -
+  assume "chooseAndSplit dict s = Some (x, e, y)"
+  hence *: "(if s = {} then None else let element = set_choose s ; (lt, gt) = Lem_set.split dict element s in Some (lt, element, gt)) = Some (x, e, y)"
+    using chooseAndSplit_def by metis
+  thus "card y < card s"
+  proof(cases "s = {}")
+    assume "s = {}"
+    hence "None = Some (x, e, y)"
+      using * by simp
+    thus "card y < card s"
+      by simp
+  next
+    assume "s \<noteq> {}"
+    hence **: "(let element  = set_choose s in
+           let (lt, gt) = split dict element s in
+             Some (lt, element, gt)) = Some (x, e, y)"
+      using * by simp
+    hence "split dict (set_choose s) s = (x, y)" and "e = set_choose s"
+      proof -
+        have "Some ({a \<in> s. isGreater_method dict (set_choose s) a}, set_choose s, {a \<in> s. isLess_method dict (set_choose s) a}) = (case Lem_set.split dict (set_choose s) s of (A, Aa) \<Rightarrow> Some (A, set_choose s, Aa))"
+          by (simp add: Lem_set.split_def)
+        hence "Some ({a \<in> s. isGreater_method dict (set_choose s) a}, set_choose s, {a \<in> s. isLess_method dict (set_choose s) a}) = Some (x, e, y)"
+          by (metis `(let element = set_choose s; (lt, gt) = Lem_set.split dict element s in Some (lt, element, gt)) = Some (x, e, y)`)
+        hence "{a \<in> s. isGreater_method dict (set_choose s) a} = x \<and> {a \<in> s. isLess_method dict (set_choose s) a} = y"
+          by fastforce
+        thus "Lem_set.split dict (set_choose s) s = (x,y)"
+          by (simp add: Lem_set.split_def)
+      next
+        show "e = set_choose s"
+          using * ** split_def Pair_inject old.prod.case option.inject by smt
+      qed
+    also have "set_choose s \<in> s"
+      using set_choose_member `s \<noteq> {}` by simp
+    have **: "\<And>x y. x = y \<Longrightarrow> \<not> isLess_method dict x y"
+      using assms by simp
+    hence "s = x \<union> {set_choose s} \<union> y"
+      using set_split_union1[OF assms(1) `split dict (set_choose s) s = (x,y)` `set_choose s \<in> s`] by simp
+    hence "y \<subset> s"
+      using `set_choose s \<in> s` by (metis (no_types, lifting) CollectD Lem_set.split_def Pair_inject ** calculation(1) sup.right_idem sup.strict_order_iff)
+    thus "card y < card s"
+      using `finite s` psubset_card_mono by auto
+  qed
+qed
 
 lemma lt_technical1:
   fixes q :: nat
@@ -275,29 +497,22 @@ termination accum_archive_contents0
   apply(case_tac x1, simp add: Let_def)
   apply(case_tac "name0 a = ''/               ''", simp_all)
   apply(case_tac "size2 a mod 2 = 0", simp_all)
-  apply(subgoal_tac "read_archive_entry_header0 whole_seq_length whole_seq = Success (a, b, c)")
+  apply(subgoal_tac "whole_seq_length = length0 whole_seq")
   apply(drule read_archive_entry_header0_length, assumption)
   apply(drule dropbytes_length)
   apply linarith
   apply simp
   apply(subgoal_tac "0 < Suc (size2 a)")
   apply(drule dropbytes_length)
-  apply(subgoal_tac "read_archive_entry_header0 whole_seq_length whole_seq = Success (a, b, c)")
+  apply(subgoal_tac "whole_seq_length = length0 whole_seq")
   apply(drule read_archive_entry_header0_length, assumption)
   apply linarith
   apply simp_all
-  apply(case_tac "size2 a mod 2 = 0", simp_all)
+  apply(subgoal_tac "whole_seq_length = length0 whole_seq")
   apply(drule dropbytes_length)
-  apply(subgoal_tac "read_archive_entry_header0 whole_seq_length whole_seq = Success (a, b, c)")
   apply(drule read_archive_entry_header0_length, assumption)
   apply linarith
-  apply simp_all
-  apply(subgoal_tac "0 < Suc (size2 a)")
-  apply(drule dropbytes_length)
-  apply(subgoal_tac "read_archive_entry_header0 whole_seq_length whole_seq = Success (a, b, c)")
-  apply(drule read_archive_entry_header0_length, assumption)
-  apply linarith
-  apply simp_all
+  apply simp
 done
 
 termination repeat
@@ -733,19 +948,6 @@ termination obtain_elf64_dynamic_section_contents'
   apply linarith
 done
 
-termination find_first_not_in_range
-  apply(relation "measure (\<lambda>(s, xs). s)")
-  apply simp
-  apply(case_tac "List.filter (\<lambda>(x, y). start \<ge> x \<and> start \<le> y) ranges", simp)
-  sorry
-
-termination find_first_in_range
-  sorry
-
-termination compute_differences
-  apply(relation "measure (\<lambda>(s, m, _). m - s)")
-  sorry
-
 termination read_elf32_program_header_table'
   apply(relation "measure (\<lambda>(_, b). length0 b)")
   apply simp
@@ -1007,38 +1209,6 @@ termination group_elf64_words
   apply lexicographic_order
 done
 
-termination read_gnu_ext_elf32_verdefs
-(* XXX: not terminating *)
-  sorry
-
-termination read_gnu_ext_elf64_verdefs
-(* XXX: see above? *)
-  sorry
-
-termination obtain_gnu_ext_elf32_veraux
-  apply lexicographic_order
-done
-
-termination obtain_gnu_ext_elf64_veraux
-  apply lexicographic_order
-done
-
-termination read_gnu_ext_elf32_verneeds
-(* XXX: not terminating *)
-  sorry
-
-termination read_gnu_ext_elf64_verneeds
-(* XXX: not terminating *)
-  sorry
-
-termination read_gnu_ext_elf32_vernauxs
-(* XXX: not terminating *)
-  sorry
-
-termination obtain_gnu_ext_elf64_vernaux (* XXX: why the discrepancy with the function above? *)
-  apply lexicographic_order
-done
-
 termination concatS'
   apply lexicographic_order
 done
@@ -1113,24 +1283,26 @@ done
 
 termination findLowestKVWithKEquivTo
   apply(relation "measure (\<lambda>(_,_,_,_,s,_). Finite_Set.card s)")
-  apply simp
-  apply(case_tac x2, simp)
+  apply(simp_all del: well_behaved_lem_ordering.simps)
+  apply(case_tac x2, simp del: well_behaved_lem_ordering.simps)
   apply(drule chooseAndSplit_card1, assumption)
-  apply(case_tac x2, simp)
+  apply(case_tac x2, simp, assumption)
   apply(drule chooseAndSplit_card1, assumption)
-  apply(case_tac x2, simp)
-  apply(drule chooseAndSplit_card2, assumption)
+  apply(case_tac x2, simp, assumption)
+  apply(case_tac x2, simp del: well_behaved_lem_ordering.simps)
+  apply(drule chooseAndSplit_card2, assumption, assumption, assumption)
 done
 
 termination findHighestKVWithKEquivTo
   apply(relation "measure (\<lambda>(_,_,_,_,s,_). Finite_Set.card s)")
-  apply simp
-  apply(case_tac x2, simp)
+  apply(simp_all del: well_behaved_lem_ordering.simps)
+  apply(case_tac x2, simp del: well_behaved_lem_ordering.simps)
   apply(drule chooseAndSplit_card2, assumption)
-  apply(case_tac x2, simp)
+  apply(case_tac x2, simp, assumption)
   apply(drule chooseAndSplit_card2, assumption)
-  apply(case_tac x2, simp)
-  apply(drule chooseAndSplit_card1, assumption)
+  apply(case_tac x2, simp, assumption)
+  apply(case_tac x2, simp del: well_behaved_lem_ordering.simps)
+  apply(drule chooseAndSplit_card1, assumption, assumption, assumption)
 done
 
 end

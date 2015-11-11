@@ -96,6 +96,10 @@ declare read_archive_global_header0.simps [simp del]
 function (sequential,domintros)  accum_archive_contents0  :: "(string*byte_sequence)list \<Rightarrow>(string)option \<Rightarrow> nat \<Rightarrow> byte_sequence \<Rightarrow>((string*byte_sequence)list)error "  where 
      " accum_archive_contents0 accum extended_filenames whole_seq_length whole_seq = ( 
   (* let _ = Missing_pervasives.errs Can read a header?  in *)
+  if \<not> ((Byte_sequence.length0 whole_seq) = whole_seq_length) then
+    Lem_assert_extra.fail (* invariant: whole_seq_length always equal to length of whole_seq, so the length is only
+      computed one.  This fail needed for Isabelle termination proofs... *)
+  else
   (case  (read_archive_entry_header0 whole_seq_length whole_seq) of
       Fail _ => error_return accum
     | Success (hdr, (seq_length :: nat), seq) =>

@@ -3,6 +3,7 @@ theory
 imports
   Main "$ISABELLE_HOME/src////////HOL/Word/Word"
   "../../../lem/isabelle-lib/Lem_basic_classes"
+  "Error"
 begin
 
   section {* Unsigned character type *}
@@ -396,7 +397,35 @@ begin
     qed
   end
 
-  definition compute_differences :: "nat \<Rightarrow> nat \<Rightarrow> (nat \<times> nat) list \<Rightarrow> (nat \<times> nat) list" where
-    "compute_differences start end ranges \<equiv> sorted_list_of_set { (x, y). \<forall>x. \<forall>y. start \<le> x \<and> x < y \<and> y \<le> end \<and> (\<not> (\<exists>r \<in> set ranges. covers (x, y) r)) }"
+  definition compute_differences :: "nat \<Rightarrow> nat \<Rightarrow> (nat \<times> nat) list \<Rightarrow> ((nat \<times> nat) list) error" where
+    "compute_differences start end ranges \<equiv> error_return (sorted_list_of_set { (x, y). \<forall>x. \<forall>y. start \<le> x \<and> x < y \<and> y \<le> end \<and> (\<not> (\<exists>r \<in> set ranges. covers (x, y) r)) })"
+
+  fun well_behaved_lem_ordering :: "('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> bool" where
+    "well_behaved_lem_ordering lt gt =
+     ((\<forall>x y. gt x y \<longrightarrow> lt y x) \<and>
+      (\<forall>x y. lt x y \<longrightarrow> gt y x) \<and>
+      (\<forall>x y. gt x y \<or> lt x y \<or> x = y) \<and>
+      (\<forall>x y. x = y \<longrightarrow> \<not> lt x y) \<and>
+      (\<forall>x y. x = y \<longrightarrow> \<not> gt x y))"
+
+  lemma lem_ordering_tri:
+    assumes "well_behaved_lem_ordering lt gt"
+    shows "gt x y \<or> lt x y \<or> x = y"
+  using assms by auto
+  
+  lemma lem_ordering_gt:
+    assumes "well_behaved_lem_ordering lt gt"
+    shows "gt x y \<Longrightarrow> lt y x"
+  using assms by auto
+
+  lemma lem_ordering_lt:
+    assumes "well_behaved_lem_ordering lt gt"
+    shows "lt x y \<Longrightarrow> gt y x"
+  using assms by auto
+
+  lemma lem_ordering_not_gt:
+    assumes "well_behaved_lem_ordering lt gt"
+    shows "x = y \<Longrightarrow> \<not> gt x y"
+  using assms by auto
 
 end

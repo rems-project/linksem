@@ -127,8 +127,8 @@ definition concatS  :: "(string)list \<Rightarrow> string "  where
     
 (*val harness_string_of_elf64_relocs : elf64_file -> (natural -> string) -> byte_sequence -> string*)
     
-(*val harness_string_of_elf32_symbol_table_entry : nat -> (natural -> string) -> (natural -> string) -> gnu_ext_elf32_symbol_version_table ->
-  list (gnu_ext_elf32_verneed * list gnu_ext_elf32_vernaux) -> byte_sequence -> string_table -> elf32_symbol_table_entry -> string*)
+(*val harness_string_of_elf32_symbol_table_entry : nat -> (natural -> string) ->
+  (natural -> string) -> byte_sequence -> string_table -> elf32_symbol_table_entry -> string*)
     
 (*val harness_string_of_elf32_syms' : endianness -> (natural -> string) -> (natural -> string) -> elf32_file -> elf32_section_header_table -> elf32_section_header_table -> string_table -> byte_sequence -> string*)
     

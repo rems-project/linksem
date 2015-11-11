@@ -496,28 +496,22 @@ definition obtain_elf64_interpreted_sections  :: " string_table \<Rightarrow>(el
   * a start and end value.
   *)
 (*val find_first_not_in_range : natural -> list (natural * natural) -> natural*)
-function (sequential,domintros)  find_first_not_in_range  :: " nat \<Rightarrow>(nat*nat)list \<Rightarrow> nat "  where 
-     " find_first_not_in_range start ranges = (
-  (case  List.filter (\<lambda> (x, y) .  (start \<ge> x) \<and> (start \<le> y)) ranges of
-      [] => start
-    | _  => find_first_not_in_range (start +( 1 :: nat)) ranges
-  ))" 
-by pat_completeness auto
-
+(*let rec find_first_not_in_range start ranges =
+  match List.filter (fun (x, y) -> (Instance_Basic_classes_Ord_Num_natural.>=) start x && (Instance_Basic_classes_Ord_Num_natural.<=) start y) ranges with
+    | [] -> start
+    | _  -> find_first_not_in_range ((Instance_Num_NumAdd_Num_natural.+) start 1) ranges
+  end*)
 
 (** [find_first_in_range e rngs] for every pair (start, end) in [rngs], finds
   * the first element, beginning counting from [e], that lies between
   * a start and end value.
   *)
 (*val find_first_in_range : natural -> list (natural * natural) -> natural*)
-function (sequential,domintros)  find_first_in_range  :: " nat \<Rightarrow>(nat*nat)list \<Rightarrow> nat "  where 
-     " find_first_in_range start ranges = (
-  (case  List.filter (\<lambda> (x, y) .  (start \<ge> x) \<and> (start \<le> y)) ranges of
-      [] => find_first_in_range (start +( 1 :: nat)) ranges
-    | _  => start
-  ))" 
-by pat_completeness auto
-
+(*let rec find_first_in_range start ranges =
+  match List.filter (fun (x, y) -> (Instance_Basic_classes_Ord_Num_natural.>=) start x && (Instance_Basic_classes_Ord_Num_natural.<=) start y) ranges with
+    | [] -> find_first_in_range ((Instance_Num_NumAdd_Num_natural.+) start 1) ranges
+    | _  -> start
+  end*)
 
 (** [compute_differences start max ranges] is a utility function used for calculating
   * dead spots in an ELF file not covered by any of the interpreted structure
@@ -525,25 +519,22 @@ by pat_completeness auto
   * in order to maintain in-out roundtripping up to exact binary equivalence.
   *)
 (*val compute_differences : natural -> natural -> list (natural * natural) -> error (list (natural * natural))*)
-function (sequential,domintros)  compute_differences  :: " nat \<Rightarrow> nat \<Rightarrow>(nat*nat)list \<Rightarrow>((nat*nat)list)error "  where 
-     " compute_differences start max1 ranges = (
-  if start = max1 then
-    error_return []
-  else if start > max1 then
-    error_fail (''compute_differences: passed maximum'')
+(*let rec compute_differences start max ranges =
+  if (Instance_Basic_classes_Eq_Num_natural.=) start max then
+    return []
+  else if (Instance_Basic_classes_Ord_Num_natural.>) start max then
+    fail compute_differences: passed maximum
   else
-    (let first1 = (find_first_not_in_range start ranges) in
-      if first1 \<ge> max1 then
-        error_return []
+    let first1 = find_first_not_in_range start ranges in
+      if (Instance_Basic_classes_Ord_Num_natural.>=) first1 max then
+        return []
       else
-        (let last1 = (find_first_in_range first1 ranges) in
-          if last1 > max1 then
-            error_return [(first1, max1)]
+        let last1 = find_first_in_range first1 ranges in
+          if (Instance_Basic_classes_Ord_Num_natural.>) last1 max then
+            return [(first1, max)]
           else
-            compute_differences last1 max1 ranges >>= (\<lambda> tail . 
-            error_return ((first1, last1)# tail)))))" 
-by pat_completeness auto
-
+             tail := compute_differences last1 max ranges;
+            return ((first1, last1)::tail)*)
 
 (** [obtain_elf32_bits_and_bobs hdr pht segs sht sects bs0] identifies and records
   * the dead spots of an ELF file not covered by any meaningful structure of the
@@ -582,7 +573,7 @@ definition obtain_elf32_bits_and_bobs  :: " elf32_header \<Rightarrow>(elf32_pro
             natural_ordering off_x off_y
           ) pre_layout)
         in
-          compute_differences(( 0 :: nat)) (Byte_sequence.length0 bs0) layout >>= (\<lambda> diffs . 
+          Elf_Types_Local.compute_differences(( 0 :: nat)) (Byte_sequence.length0 bs0) layout >>= (\<lambda> diffs . 
             mapM (\<lambda> (start, len) . 
               Byte_sequence.offset_and_cut start (len - start) bs0 >>= (\<lambda> rel . 
               error_return (start, rel))
@@ -631,7 +622,7 @@ definition obtain_elf64_bits_and_bobs  :: " elf64_header \<Rightarrow>(elf64_pro
             natural_ordering off_x off_y
           ) pre_layout)
         in
-          compute_differences(( 0 :: nat)) (Byte_sequence.length0 bs0) layout >>= (\<lambda> diffs . 
+          Elf_Types_Local.compute_differences(( 0 :: nat)) (Byte_sequence.length0 bs0) layout >>= (\<lambda> diffs . 
             mapM (\<lambda> (start, finish) . 
               Byte_sequence.offset_and_cut start (finish - start) bs0 >>= (\<lambda> rel . 
               error_return (start, rel))
