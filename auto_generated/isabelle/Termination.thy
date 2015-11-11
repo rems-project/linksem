@@ -380,19 +380,101 @@ lemma chooseAndSplit_card1:
       and "\<And>x y. isGreater_method dict x y \<or> isLess_method dict x y \<or> x = y"
       and "\<And>x y. x = y \<Longrightarrow> \<not> isLess_method dict x y"
       and "\<And>x y. x = y \<Longrightarrow> \<not> isGreater_method dict x y"
+      and "finite s"
       and "chooseAndSplit dict s = Some (x, e, y)"
   shows "card x < card s"
 using assms proof -
   assume "chooseAndSplit dict s = Some (x, e, y)"
-  hence "(if s = {} then None else let element = set_choose s ; (lt, gt) = Lem_set.split dict element s in Some (lt, element, gt)) = Some (x, e, y)"
+  hence *: "(if s = {} then None else let element = set_choose s ; (lt, gt) = Lem_set.split dict element s in Some (lt, element, gt)) = Some (x, e, y)"
     using chooseAndSplit_def by metis
-  
+  thus "card x < card s"
+  proof(cases "s = {}")
+    assume "s = {}"
+    hence "None = Some (x, e, y)"
+      using * by simp
+    thus "card x < card s"
+      by simp
+  next
+    assume "s \<noteq> {}"
+    hence **: "(let element  = set_choose s in
+           let (lt, gt) = split dict element s in
+             Some (lt, element, gt)) = Some (x, e, y)"
+      using * by simp
+    hence "split dict (set_choose s) s = (x, y)" and "e = set_choose s"
+      proof -
+        have "Some ({a \<in> s. isGreater_method dict (set_choose s) a}, set_choose s, {a \<in> s. isLess_method dict (set_choose s) a}) = (case Lem_set.split dict (set_choose s) s of (A, Aa) \<Rightarrow> Some (A, set_choose s, Aa))"
+          by (simp add: Lem_set.split_def)
+        hence "Some ({a \<in> s. isGreater_method dict (set_choose s) a}, set_choose s, {a \<in> s. isLess_method dict (set_choose s) a}) = Some (x, e, y)"
+          by (metis `(let element = set_choose s; (lt, gt) = Lem_set.split dict element s in Some (lt, element, gt)) = Some (x, e, y)`)
+        hence "{a \<in> s. isGreater_method dict (set_choose s) a} = x \<and> {a \<in> s. isLess_method dict (set_choose s) a} = y"
+          by fastforce
+        thus "Lem_set.split dict (set_choose s) s = (x,y)"
+          by (simp add: Lem_set.split_def)
+      next
+        show "e = set_choose s"
+          using * ** split_def Pair_inject old.prod.case option.inject by smt
+      qed
+    also have "set_choose s \<in> s"
+      using set_choose_member `s \<noteq> {}` by simp
+    hence "s = x \<union> {set_choose s} \<union> y"
+      using set_split_union1[OF assms(1) assms(2) assms(3) assms(4) assms(5) `split dict (set_choose s) s = (x,y)` `set_choose s \<in> s`] by simp
+    hence "x \<subset> s"
+      using `set_choose s \<in> s` by (metis (mono_tags, lifting) CollectD Lem_set.split_def assms(5) calculation(1) prod.sel(1) psubsetI sup_assoc sup_ge1)
+    thus "card x < card s"
+      using `finite s` psubset_card_mono by auto
+  qed
+qed
 
 lemma chooseAndSplit_card2:
-  assumes "chooseAndSplit dict s = Some (x, y, z)"
-  shows "card z < card s"
-using assms unfolding chooseAndSplit_def
-  sorry
+  assumes "\<And>x y. isGreater_method dict x y \<Longrightarrow> isLess_method dict y x"
+      and "\<And>x y. isLess_method dict x y \<Longrightarrow> isGreater_method dict y x"
+      and "\<And>x y. isGreater_method dict x y \<or> isLess_method dict x y \<or> x = y"
+      and "\<And>x y. x = y \<Longrightarrow> \<not> isLess_method dict x y"
+      and "\<And>x y. x = y \<Longrightarrow> \<not> isGreater_method dict x y"
+      and "finite s"
+      and "chooseAndSplit dict s = Some (x, e, y)"
+  shows "card y < card s"
+using assms proof -
+  assume "chooseAndSplit dict s = Some (x, e, y)"
+  hence *: "(if s = {} then None else let element = set_choose s ; (lt, gt) = Lem_set.split dict element s in Some (lt, element, gt)) = Some (x, e, y)"
+    using chooseAndSplit_def by metis
+  thus "card y < card s"
+  proof(cases "s = {}")
+    assume "s = {}"
+    hence "None = Some (x, e, y)"
+      using * by simp
+    thus "card y < card s"
+      by simp
+  next
+    assume "s \<noteq> {}"
+    hence **: "(let element  = set_choose s in
+           let (lt, gt) = split dict element s in
+             Some (lt, element, gt)) = Some (x, e, y)"
+      using * by simp
+    hence "split dict (set_choose s) s = (x, y)" and "e = set_choose s"
+      proof -
+        have "Some ({a \<in> s. isGreater_method dict (set_choose s) a}, set_choose s, {a \<in> s. isLess_method dict (set_choose s) a}) = (case Lem_set.split dict (set_choose s) s of (A, Aa) \<Rightarrow> Some (A, set_choose s, Aa))"
+          by (simp add: Lem_set.split_def)
+        hence "Some ({a \<in> s. isGreater_method dict (set_choose s) a}, set_choose s, {a \<in> s. isLess_method dict (set_choose s) a}) = Some (x, e, y)"
+          by (metis `(let element = set_choose s; (lt, gt) = Lem_set.split dict element s in Some (lt, element, gt)) = Some (x, e, y)`)
+        hence "{a \<in> s. isGreater_method dict (set_choose s) a} = x \<and> {a \<in> s. isLess_method dict (set_choose s) a} = y"
+          by fastforce
+        thus "Lem_set.split dict (set_choose s) s = (x,y)"
+          by (simp add: Lem_set.split_def)
+      next
+        show "e = set_choose s"
+          using * ** split_def Pair_inject old.prod.case option.inject by smt
+      qed
+    also have "set_choose s \<in> s"
+      using set_choose_member `s \<noteq> {}` by simp
+    hence "s = x \<union> {set_choose s} \<union> y"
+      using set_split_union1[OF assms(1) assms(2) assms(3) assms(4) assms(5) `split dict (set_choose s) s = (x,y)` `set_choose s \<in> s`] by simp
+    hence "y \<subset> s"
+      using `set_choose s \<in> s` by (metis (no_types, lifting) CollectD Lem_set.split_def Pair_inject assms(4) calculation(1) sup.right_idem sup.strict_order_iff)
+    thus "card y < card s"
+      using `finite s` psubset_card_mono by auto
+  qed
+qed
 
 lemma lt_technical1:
   fixes q :: nat
