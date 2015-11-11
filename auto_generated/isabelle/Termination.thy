@@ -221,11 +221,14 @@ lemma disjE3:
   shows "\<lbrakk> P \<or> Q \<or> R; P \<Longrightarrow> S; Q \<Longrightarrow> S; R \<Longrightarrow> S \<rbrakk> \<Longrightarrow> S"
   by blast
 
-lemma set_split_union:
+lemma set_split_union1:
   assumes "\<And>x y. isGreater_method dict x y \<Longrightarrow> isLess_method dict y x"
       and "\<And>x y. isLess_method dict x y \<Longrightarrow> isGreater_method dict y x"
       and "\<And>x y. isGreater_method dict x y \<or> isLess_method dict x y \<or> x = y"
+      and "\<And>x y. x = y \<Longrightarrow> \<not> isLess_method dict x y"
+      and "\<And>x y. x = y \<Longrightarrow> \<not> isGreater_method dict x y"
       and "split dict e s = (x, y)"
+      and "e \<in> s"
   shows "s = x \<union> { e } \<union> y"
 using assms
 proof -
@@ -275,16 +278,92 @@ proof -
       thus "z \<in> s"
       proof(rule disjE3)
         assume "z \<in> x"
+        hence "z \<in> { x\<in>s. isGreater_method dict e x }"
+          using split_def `split dict e s = (x, y)` by(simp add: Lem_set.split_def)
         thus "z \<in> s"
-        sorry
+          by simp
       next
         assume "z \<in> y"
+        hence "z \<in> { x\<in>s. isLess_method dict e x }"
+          using split_def `split dict e s = (x, y)` by(simp add: Lem_set.split_def)
         thus "z \<in> s"
-        sorry
+          by simp
       next
         assume "z \<in> {e}"
+        hence "z = e"
+          by auto
         thus "z \<in> s"
-        sorry
+          using `e \<in> s` by auto
+      qed
+    qed
+  qed
+qed
+
+lemma set_split_union2:
+  assumes "\<And>x y. isGreater_method dict x y \<Longrightarrow> isLess_method dict y x"
+      and "\<And>x y. isLess_method dict x y \<Longrightarrow> isGreater_method dict y x"
+      and "\<And>x y. isGreater_method dict x y \<or> isLess_method dict x y \<or> x = y"
+      and "\<And>x y. x = y \<Longrightarrow> \<not> isLess_method dict x y"
+      and "\<And>x y. x = y \<Longrightarrow> \<not> isGreater_method dict x y"
+      and "split dict e s = (x, y)"
+      and "e \<notin> s"
+  shows "s = x \<union> y"
+using assms
+proof -
+  assume TRI: "\<And>x y. isGreater_method dict x y \<or> isLess_method dict x y \<or> x = y"
+  show "s = x \<union> y"
+  proof
+    show "s \<subseteq> x \<union> y"
+    proof
+      fix z :: "'a"
+      assume "z \<in> s"
+      have "isGreater_method dict z e \<or> isLess_method dict z e \<or> z = e"
+        using TRI by auto
+      hence "isGreater_method dict z e \<or> isLess_method dict z e"
+        using `e \<notin> s` `z \<in> s` by auto
+      thus "z \<in> x \<union> y"
+      proof(rule disjE)
+        assume "isGreater_method dict z e"
+        hence "isLess_method dict e z"
+          using assms(1) by simp
+        hence "z \<in> { x\<in>s. isLess_method dict e x }"
+          using assms(1) `z \<in> s` by simp
+        hence "z \<in> { x\<in>s. isGreater_method dict e x } \<union> { x\<in>s. isLess_method dict e x }"
+          by simp
+        thus "z \<in> x \<union> y"
+          using `split dict e s = (x, y)` `z \<in> s` `isLess_method dict e z` split_def Pair_inject mem_Collect_eq UnI2 by smt
+      next
+        assume "isLess_method dict z e"
+        hence "isGreater_method dict e z"
+          using assms(2) by simp
+        hence "z \<in> { x\<in>s. isGreater_method dict e x }"
+          using assms(1) `z \<in> s` by simp
+        hence "z \<in> { x\<in>s. isGreater_method dict e x } \<union> { x\<in>s. isLess_method dict e x }"
+          by simp
+        thus "z \<in> x \<union> y"
+          using `split dict e s = (x, y)` `z \<in> s` `isGreater_method dict e z` split_def Pair_inject mem_Collect_eq UnI1 by smt
+      qed
+    qed
+  next
+    show "x \<union> y \<subseteq> s"
+    proof
+      fix z :: "'a"
+      assume "z \<in> x \<union> y"
+      hence "z \<in> x \<or> z \<in> y"
+        by auto
+      thus "z \<in> s"
+      proof(rule disjE)
+        assume "z \<in> x"
+        hence "z \<in> { x\<in>s. isGreater_method dict e x }"
+          using split_def `split dict e s = (x, y)` by(simp add: Lem_set.split_def)
+        thus "z \<in> s"
+          by simp
+      next
+        assume "z \<in> y"
+        hence "z \<in> { x\<in>s. isLess_method dict e x }"
+          using split_def `split dict e s = (x, y)` by(simp add: Lem_set.split_def)
+        thus "z \<in> s"
+          by simp
       qed
     qed
   qed
