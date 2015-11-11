@@ -683,9 +683,9 @@ let {ocaml} harness_string_of_elf64_relocs f1 os bs0 =
       end
     end
     
-val harness_string_of_elf32_symbol_table_entry : nat -> (natural -> string) -> (natural -> string) -> gnu_ext_elf32_symbol_version_table ->
-  list (gnu_ext_elf32_verneed * list gnu_ext_elf32_vernaux) -> byte_sequence -> string_table -> elf32_symbol_table_entry -> string
-let {ocaml} harness_string_of_elf32_symbol_table_entry num os proc symver verneed_auxs bs0 stbl ent =
+val harness_string_of_elf32_symbol_table_entry : nat -> (natural -> string) ->
+  (natural -> string) -> byte_sequence -> string_table -> elf32_symbol_table_entry -> string
+let {ocaml} harness_string_of_elf32_symbol_table_entry num os proc bs0 stbl ent =
   let vlu = unsafe_hex_string_of_natural 8 (natural_of_elf32_addr ent.elf32_st_value) in
   let siz = show (natural_of_elf32_word ent.elf32_st_size) in
   let siz_pad = 
@@ -781,8 +781,6 @@ let {ocaml} harness_string_of_elf32_syms' endian os proc f1 filtered_sht sht shd
         Elf_file.get_elf32_string_table_by_index f1 lnk >>= fun strtab ->
         return (sect, ent, strtab, typ)
     ) filtered_sht >>= fun sects ->
-    obtain_gnu_ext_elf32_symbol_version_table f1 bs0 >>= fun symver ->
-    obtain_gnu_ext_elf32_verneed_and_vernaux f1 bs0 >>= fun verneed_auxs ->
     mapM (fun (syms, ent, strtab, typ) ->
       let nm  = natural_of_elf32_word ent.elf32_sh_name in
       let len = show (List.length syms) in
@@ -790,7 +788,7 @@ let {ocaml} harness_string_of_elf32_syms' endian os proc f1 filtered_sht sht shd
       let hdr = "Symbol table '" ^ nm ^ "' contains " ^ len ^ " entries:\n" in
       let ttl = "   Num:    Value  Size Type    Bind   Vis      Ndx Name\n" in
       let body = concatS (intercalate "\n" (List.mapi (fun n ->
-        harness_string_of_elf32_symbol_table_entry n os proc symver verneed_auxs bs0 strtab) syms))
+        harness_string_of_elf32_symbol_table_entry n os proc bs0 strtab) syms))
       in
       return (hdr ^ ttl ^ body)) sects
   in
