@@ -67,6 +67,8 @@ let elf64_file_of_elf_memory_image a make_concrete fname img =
             | _ -> failwith "not section tag"
         end) section_tags
     in
+    let section_tags_bare_noidx = List.map (fun (idx, isec) -> isec) section_tags_bare
+    in
     let basic_shstrtab = List.foldl (fun table -> (fun str -> 
         let (_, t) = String_table.insert_string str table in t
     )) String_table.empty [".shstrtab"; ".symtab"; ".strtab"]
@@ -77,6 +79,10 @@ let elf64_file_of_elf_memory_image a make_concrete fname img =
             ^ (show (String_table.size t)))
         in *) t
     ) basic_shstrtab section_tags_bare
+    in
+    let phoff = 64
+    in
+    let max_phnum = (* length phdrs *) a.max_phnum
     in
         (* what do we generate? 
          * .eh_frame? no, *should* come from the script
@@ -99,29 +105,18 @@ let elf64_file_of_elf_memory_image a make_concrete fname img =
         end
     ) symbol_tags
     in
+    let _ = errln ("All symbol names: " ^ (show all_sym_names))
+    in
     let strtab = List.foldl (fun table -> fun str -> 
         let (_, t) = String_table.insert_string str table in t
     ) String_table.empty all_sym_names
-    in
-    let symtab = 
-        (* Get all the symbols *)
-        elf64_null_symbol_table_entry :: [
-            match tag with 
-                SymbolDef(d) -> d.def_syment
-                    (* CHECK: can we expect these to be these usable, the way we generated them?  *)
-                (* FIXME: do we ever get symbolrefs? *)
-                | _ -> failwith "not a symbol tag, in symbol_tags"
-            end
-            | forall (tag MEM symbol_tags)
-            | true
-        ]
     in
     (* If the same address starts >1 section, all but one of those sections
      * must have size zero. These need to come *first* to avoid screwing up
      * the offset calculation. So also sort by size, so that the zero-sizers
      * come first. *)
     let element_section_tag_pairs_sorted_by_address = (* List.stable_sort *) Sorting.sortByOrd
-        (fun ((idx1, isec1), (el1, range1)) -> (fun ((idx2, isec2), (el2, range2)) -> (
+        (fun (isec1, (el1, range1)) -> (fun (isec2, (el2, range2)) -> (
             let (addr1, sz1) = match Map.lookup el1 img.elements with
                 Just(e) -> 
                     let _ = errln ("Size of element " ^ el1 ^ " is " ^ (show e.length))
@@ -137,47 +132,11 @@ let elf64_file_of_elf_memory_image a make_concrete fname img =
             in
             compare (addr1, sz1) (addr2, sz2)
         )))
-    (zip section_tags_bare section_ranges)
+    (zip section_tags_bare_noidx section_ranges)
     in
-    let _ = errln ("Building an ELF file from " ^ (show (length element_section_tag_pairs_sorted_by_address)) ^ " sections")
-    in
-    let sorted_sections_and_indices = List.map (fun ((idx, isec), (el, range)) -> (idx, isec))
+    let sorted_sections = List.map (fun (isec, (el, range)) -> isec)
         element_section_tag_pairs_sorted_by_address
     in
-    let phoff = 64
-    in
-    (* PROBLEM: 
-     * sections' offset assignments depend on phnum.
-     * BUT
-     * phnum depends on sections' offset assignments!
-     * How do we break this cycle?
-     * We can get an upper bound on the number of phdrs, then 
-     * fill them in later.
-     *)
-    let max_phnum = (* length phdrs *) a.max_phnum
-    in
-    (* How does the GNU BFD output a statically linked executable? 
-     * First the ELF header,
-     * then program headers,
-     * then sections in order of address:
-     *      .interp,                 these are all allocatable sections! with addresses!
-     * then .note.ABI-tag, 
-     * then .note.gnu.build-id,
-     * then .gnu.hash,
-     * then .dynsym,
-     * then .dynstr,
-     * then .gnu.version,
-     * then .gnu.version_r,
-     * then ...
-     * 
-     * ... and so on ...
-     * 
-     * then .gnu.debuglink (the only non-allocatable section)
-     * then .shstrtab, then SHT. 
-     * 
-     * So how can we calculate the offset of the SHT?  We have to place
-     * all the other sections first. 
-     *)
     let filesz = (fun el -> fun isec -> 
         (* How can we distinguish progbits from nobits? 
          * A section can be nobits if its representation
@@ -195,7 +154,7 @@ let elf64_file_of_elf_memory_image a make_concrete fname img =
         sz
     )
     in
-    let (last_off, section_file_offsets) = List.foldl (fun (current_off, offs_so_far) -> (fun ((idx, isec), (el_name, el_range)) -> 
+    let (last_off, section_file_offsets) = List.foldl (fun (current_off, offs_so_far) -> (fun (isec, (el_name, el_range)) -> 
         (* where can we place this in the file?
          * it's the next offset that's congruent to the section addr, 
          * modulo the biggest page size. *)
@@ -233,41 +192,7 @@ let elf64_file_of_elf_memory_image a make_concrete fname img =
         (end_off, offs_so_far ++ [start_off])
     )) ((phoff + (max_phnum * 56)), []) element_section_tag_pairs_sorted_by_address
     in
-    let shstrndx = 1 + length section_tags
-    in
-    let shstroff = last_off
-    in
-    let shstrsz = String_table.size shstrtab
-    in
-    let symoff = align_up_to 8 (shstroff + shstrsz)
-    in
-    let symsz = 24 * length symtab
-    in
-    let stroff = symoff + symsz
-    in
-    let strsz = String_table.size strtab
-    in
-    let shoff = align_up_to 64 (stroff + strsz)
-    in
-    let shnum = 4 + length sorted_sections_and_indices (* null, shstrtab, symtab, strtab *)
-    in
-    let (entry : natural) = match Multimap.lookupBy Memory_image_orderings.tagEquiv (EntryPoint) img.by_tag with
-        [(_, maybe_el_range)] ->
-            match maybe_el_range with
-                Just (el_name, (start, len)) -> 
-                    address_of_range (el_name, (start, len)) img
-                | Nothing -> failwith "entry point defined without a range"
-            end
-       | [] -> failwith "no entry point defined"
-       | _ -> failwith "multiple entry points defined"
-    end
-    in
-    let hdr = a.make_elf_header elf_ft_exec entry shoff phoff max_phnum shnum shstrndx
-    in
-    let endian = if index elf_ii_data hdr.elf64_ident = Just(unsigned_char_of_natural elf_data_2lsb) then Little else Big
-    in
-    let sorted_sections_with_offsets_and_indices = [
-          (idx, 
+    let user_sections_sorted_with_offsets = [
           let el = match Map.lookup el_name img.elements with
             Just x -> x
             | Nothing -> failwith "internal error: section not found"
@@ -293,10 +218,127 @@ let elf64_file_of_elf_memory_image a make_concrete fname img =
                 Sequence(concretise_byte_pattern [] 0 (make_concrete el).contents pad_fn)
            ; elf64_section_name_as_string = isec.elf64_section_name_as_string
            |>
-          )
-        | forall ((off, ((idx, isec), (el_name, el_range))) MEM (zip section_file_offsets element_section_tag_pairs_sorted_by_address))
-        | true] ++ [
-          (length sorted_sections_and_indices,
+        | forall ((off, (isec, (el_name, el_range))) MEM (zip section_file_offsets element_section_tag_pairs_sorted_by_address))
+        | true
+    ]    
+    in
+    let symtab = 
+        (* Get all the symbols *)
+        elf64_null_symbol_table_entry :: [
+                let (el_name, (start, len)) = match maybe_range with 
+                    Just(el_name, (start, len)) -> (el_name, (start, len)) 
+                    | Nothing -> failwith "impossible: symbol with no range"
+                end
+                in 
+                match tag with 
+                    SymbolDef(d) -> 
+                    (* CHECK: can we expect these to be these usable, the way we generated them?  *)
+                      <|
+                         elf64_st_name  = match String_table.find_string d.def_symname strtab with
+                            Just idx -> let v = elf64_word_of_natural idx
+                                        in
+                                        let _ = errln ("strtab: found `" ^ d.def_symname ^ "' at index " ^ (show v))
+                                        in
+                                        v
+                            | Nothing -> failwith "impossible: symbol name not in strtab we just created"
+                            end
+                       ; elf64_st_info  = d.def_syment.elf64_st_info     (* type, binding, visibility *)
+                       ; elf64_st_other = d.def_syment.elf64_st_other
+                       ; elf64_st_shndx = elf64_half_of_natural ( (* what's the section index of this element? *)
+                                let maybe_found = mapMaybei
+                                    (fun i -> fun isec -> if isec.elf64_section_name_as_string = el_name then Just i else Nothing) 
+                                    sorted_sections
+                                in
+                                match maybe_found with
+                                    [i] -> 1 + i
+                                    | [] -> (* HMM *) let _ = errln ("Couldn't compute section index of symbol " ^ d.def_symname)
+                                        in 0
+                                    | _ -> failwith ("internal error: multiple sections named " ^ el_name)
+                                end
+                            )
+                       ; elf64_st_value = elf64_addr_of_natural (start + match Map.lookup el_name img.elements with
+                                    Just x -> match x.startpos with
+                                        Just addr -> addr
+                                        | Nothing -> failwith "internal error: symbol defined in section with no address"
+                                        end
+                                    | Nothing -> failwith "internal error: section (of symbol) not found"
+                                    end)
+                       ; elf64_st_size  = elf64_xword_of_natural len
+                       |>
+
+                    (* FIXME: do we ever get symbolrefs? *)
+                | _ -> failwith "not a symbol tag, in symbol_tags"
+            end
+            | forall ((maybe_range, tag) MEM (zip symbol_ranges symbol_tags))
+            | true
+        ]
+    in
+    let _ = errln ("Building an ELF file from " ^ (show (length element_section_tag_pairs_sorted_by_address)) ^ " sections")
+    in
+    (* PROBLEM: 
+     * sections' offset assignments depend on phnum.
+     * BUT
+     * phnum depends on sections' offset assignments!
+     * How do we break this cycle?
+     * We can get an upper bound on the number of phdrs, then 
+     * fill them in later.
+     *)
+    (* How does the GNU BFD output a statically linked executable? 
+     * First the ELF header,
+     * then program headers,
+     * then sections in order of address:
+     *      .interp,                 these are all allocatable sections! with addresses!
+     * then .note.ABI-tag, 
+     * then .note.gnu.build-id,
+     * then .gnu.hash,
+     * then .dynsym,
+     * then .dynstr,
+     * then .gnu.version,
+     * then .gnu.version_r,
+     * then ...
+     * 
+     * ... and so on ...
+     * 
+     * then .gnu.debuglink (the only non-allocatable section)
+     * then .shstrtab, then SHT. 
+     * 
+     * So how can we calculate the offset of the SHT?  We have to place
+     * all the other sections first. 
+     *)
+    let shstrndx = 1 + length section_tags
+    in
+    let shstroff = last_off
+    in
+    let shstrsz = String_table.size shstrtab
+    in
+    let symoff = align_up_to 8 (shstroff + shstrsz)
+    in
+    let symsz = 24 * length symtab
+    in
+    let stroff = symoff + symsz
+    in
+    let strsz = String_table.size strtab
+    in
+    let shoff = align_up_to 64 (stroff + strsz)
+    in
+    let shnum = 4 + length sorted_sections (* null, shstrtab, symtab, strtab *)
+    in
+    let (entry : natural) = match Multimap.lookupBy Memory_image_orderings.tagEquiv (EntryPoint) img.by_tag with
+        [(_, maybe_el_range)] ->
+            match maybe_el_range with
+                Just (el_name, (start, len)) -> 
+                    address_of_range (el_name, (start, len)) img
+                | Nothing -> failwith "entry point defined without a range"
+            end
+       | [] -> failwith "no entry point defined"
+       | _ -> failwith "multiple entry points defined"
+    end
+    in
+    let hdr = a.make_elf_header elf_ft_exec entry shoff phoff max_phnum shnum shstrndx
+    in
+    let endian = if index elf_ii_data hdr.elf64_ident = Just(unsigned_char_of_natural elf_data_2lsb) then Little else Big
+    in
+    let all_sections_sorted_with_offsets = user_sections_sorted_with_offsets ++ [
           <| elf64_section_name = match String_table.find_string ".shstrtab" shstrtab with
                                     Just n -> n
                                     | Nothing -> failwith "internal error: `.shstrtab' not in shstrtab"
@@ -312,8 +354,7 @@ let elf64_file_of_elf_memory_image a make_concrete fname img =
            ; elf64_section_entsize = 0
            ; elf64_section_body = Sequence(List.map byte_of_char (toCharList (String_table.get_base_string shstrtab)))
            ; elf64_section_name_as_string = ".shstrtab"
-           |>);
-          (1 + length sorted_sections_and_indices, 
+           |>;
           <| elf64_section_name      = match String_table.find_string ".symtab" shstrtab with
                                     Just n -> n
                                     | Nothing -> failwith "internal error: `.symtab' not in shstrtab"
@@ -323,15 +364,14 @@ let elf64_file_of_elf_memory_image a make_concrete fname img =
            ; elf64_section_addr      = 0
            ; elf64_section_offset    = symoff
            ; elf64_section_size      = symsz
-           ; elf64_section_link      = 0
+           ; elf64_section_link      = 1 + (length user_sections_sorted_with_offsets) + 2
            ; elf64_section_info      = 0
            ; elf64_section_align = 8
            ; elf64_section_entsize   = 24
            ; elf64_section_body = Byte_sequence.concat (List.map (bytes_of_elf64_symbol_table_entry endian) symtab)
            ; elf64_section_name_as_string = ".symtab"
-           |>); 
+           |>; 
           (* strtab *)
-          (2 + length sorted_sections_and_indices, 
           <| elf64_section_name      = match String_table.find_string ".strtab" shstrtab with
                                     Just n -> n
                                     | Nothing -> failwith "internal error: `.strtab' not in shstrtab"
@@ -345,12 +385,12 @@ let elf64_file_of_elf_memory_image a make_concrete fname img =
            ; elf64_section_info      = 0
            ; elf64_section_align = 1
            ; elf64_section_entsize   = 0
-           ; elf64_section_body = Sequence(List.map byte_of_char (toCharList (String_table.get_base_string shstrtab)))
+           ; elf64_section_body = Sequence(List.map byte_of_char (toCharList (String_table.get_base_string strtab)))
            ; elf64_section_name_as_string = ".strtab"
-           |>)
+           |>
         ]
     in
-    let phdrs = a.make_phdrs a.maxpagesize a.commonpagesize elf_ft_exec img sorted_sections_with_offsets_and_indices
+    let phdrs = a.make_phdrs a.maxpagesize a.commonpagesize elf_ft_exec img all_sections_sorted_with_offsets
     in
     <| elf64_file_header               = <| (* fix up hdr with the precise phnum *)
          elf64_ident = hdr.elf64_ident
@@ -369,7 +409,7 @@ let elf64_file_of_elf_memory_image a make_concrete fname img =
        ; elf64_shstrndx = hdr.elf64_shstrndx
         |>
      ; elf64_file_program_header_table = phdrs
-     ; elf64_file_section_header_table = elf64_null_section_header :: ((List.mapi (fun i -> fun (idx, isec) -> 
+     ; elf64_file_section_header_table = elf64_null_section_header :: ((List.mapi (fun i -> fun isec -> 
           <| elf64_sh_name      = let s = isec.elf64_section_name_as_string in
                                 match String_table.find_string s shstrtab with
                                     Just n -> elf64_word_of_natural n
@@ -385,13 +425,12 @@ let elf64_file_of_elf_memory_image a make_concrete fname img =
            ; elf64_sh_addralign = elf64_xword_of_natural isec.elf64_section_align
            ; elf64_sh_entsize   = elf64_xword_of_natural isec.elf64_section_entsize
            |>
-     )) (* (zip section_tags_bare section_file_offsets) *) sorted_sections_with_offsets_and_indices)
+     )) (* (zip section_tags_bare section_file_offsets) *) all_sections_sorted_with_offsets)
      ; elf64_file_interpreted_segments = [
             (* do we need to build this? I have HACKed elf_file so that we don't; 
                we assume that all the relevant payload is in the section bodies, 
                as it should be. *)
         ]
-     ; elf64_file_interpreted_sections = null_elf64_interpreted_section :: (List.mapi (fun i -> (fun (idx, isec) -> isec
-     )) (* (zip section_tags_bare section_file_offsets) *) sorted_sections_with_offsets_and_indices)
+     ; elf64_file_interpreted_sections = null_elf64_interpreted_section :: all_sections_sorted_with_offsets
      ; elf64_file_bits_and_bobs        = []
      |>
