@@ -344,6 +344,7 @@ type abi 'abifeature = (* forall 'abifeature. *)
     ; guess_entry_point  : annotated_memory_image 'abifeature -> maybe natural
     ; pad_data           : natural -> list byte
     ; pad_code           : natural -> list byte
+    ; generate_support   : (* list (list reloc_site_resolution) ->  *)list (annotated_memory_image 'abifeature) -> annotated_memory_image 'abifeature
     |>
 
 val align_up_to : natural -> natural -> natural
@@ -614,8 +615,8 @@ let address_to_element_and_offset addr img =
         match (maybe_current_max_le, el_rec.startpos) with
             (Nothing, Nothing) -> Nothing
             | (Nothing, Just pos) -> if pos <= addr then Just (pos, el_name, el_rec) else Nothing
-            | (Just (cur, el_name, el_rec), Nothing) -> maybe_current_max_le
-            | (Just (cur, el_name, el_rec), Just pos) -> if pos <= addr && pos > cur then Just (pos, el_name, el_rec) else maybe_current_max_le
+            | (Just (cur, cur_el_name, cur_el_rec), Nothing) -> maybe_current_max_le
+            | (Just (cur, cur_el_name, cur_el_rec), Just pos) -> if pos <= addr && pos > cur then Just (pos, el_name, el_rec) else maybe_current_max_le
         end
     )) Nothing (Map_extra.toList img.elements)
     in

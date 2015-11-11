@@ -106,8 +106,10 @@ let retrieve_binding_for_ref r r_linkable_idx item bindings_by_name =
             end
     end
 
+type reloc_site_resolution = reloc_site * binding * reloc_decision
+
 val mark_fate_of_relocs : natural -> abi any_abi_feature -> set Command_line.link_option -> 
-    binding_map -> linkable_item -> elf_memory_image -> (list (reloc_site * binding * reloc_decision) * elf_memory_image)
+    binding_map -> linkable_item -> elf_memory_image -> ((list reloc_site_resolution) * elf_memory_image)
 let mark_fate_of_relocs linkable_idx a options bindings_by_name item img = 
     (* Our image already models relocation sites. For each relocation *record*,
      * we use our bindings to make a decision about whether to apply it or not.
@@ -362,10 +364,10 @@ let strip_metadata_sections reloc_decisions a img =
      ;  by_tag   = new_by_tag
      ;  by_range = by_range_from_by_tag new_by_tag
      |>
-    
+     
 
-val expand_sections : abi any_abi_feature -> set Command_line.link_option -> binding_map -> natural -> Linkable_list.linkable_item -> list Linker_script.input_spec
-let expand_sections a options bindings_by_name linkable_idx item = match item with
+let expand_sections_for_one_image a options bindings_by_name linkable_idx item = 
+    match item with
     (RelocELF(img), (fname, blob, origin), input_opts) -> 
         let _ = List.foldl (fun _ -> fun (isec, shndx) ->  
             let _ = errln ("For file " ^ fname ^ " before stripping, saw section idx " ^ (show shndx) ^ 
@@ -385,7 +387,7 @@ let expand_sections a options bindings_by_name linkable_idx item = match item wi
                 ()
             ) () (elf_memory_image_sections_with_indices img)
         in
-        let (reloc_decisions, marked_img) = mark_fate_of_relocs linkable_idx a options bindings_by_name item img
+        let ((reloc_decisions : list (reloc_site * binding * reloc_decision)), marked_img) = mark_fate_of_relocs linkable_idx a options bindings_by_name item img
         in 
         (* Now we have a decision for each reloc: Leave, Apply, MakePIC. Which ones
          * do we materialize? Only the Leave ones, for now. For each relocation that
@@ -403,6 +405,7 @@ let expand_sections a options bindings_by_name linkable_idx item = match item wi
          * pulls all .rela.* sections into .rela.dyn, whereas these ones *don't* go in there.
          * So FIXME: to support this, we need a way to re-add them, probably when we 
          * generate meta-output like .symtab etc.. *)
+        let inputs = 
         [
             let short_name = short_string_of_linkable_item item
             in
@@ -452,9 +455,45 @@ let expand_sections a options bindings_by_name linkable_idx item = match item wi
             true
         ]
         )
-        
+        in (reloc_decisions, stripped_img_with_reloc_sections, inputs)
     | _ -> failwith "non-reloc linkable not supported yet"
 end
+
+type reloc_resolution = reloc_site * binding * reloc_decision
+
+val default_merge_generated : elf_memory_image -> list (list Linker_script.input_spec) -> list (list Linker_script.input_spec)
+let default_merge_generated generated_img input_spec_lists = 
+    (* We expand the sections in the generated image and hang them off
+     * the first linkable item. *)
+    (* FIXME *) input_spec_lists
+
+val expand_sections_for_all_inputs : abi any_abi_feature -> set Command_line.link_option -> binding_map ->
+    (elf_memory_image -> list (list Linker_script.input_spec) -> list (list Linker_script.input_spec)) (* merge_generated *) -> 
+    list (natural * Linkable_list.linkable_item) -> 
+    list (list reloc_resolution * elf_memory_image * list Linker_script.input_spec)
+let expand_sections_for_all_inputs a options bindings_by_name merge_generated idx_and_linkables = 
+    let (expanded_reloc_lists, expanded_imgs, linker_script_input_lists) = unzip3 (List.map (fun (idx, linkable) -> 
+        expand_sections_for_one_image a options bindings_by_name idx linkable) idx_and_linkables)
+    in
+    (* We pass the collection of linkable images and reloc decision lists 
+     * to an ABI tap function. 
+     * 
+     * This returns us a new *image* containing all the elements. Logically
+     * this is another participant in the link, which we could expand separately.
+     * A personality function takes care of actually merging it back into the 
+     * linker script inputs... in the case of the GNU linker, this means pretending
+     * the generated stuff came from the first input object.
+     *)
+    let generated_img = a.generate_support (* expanded_relocs *) expanded_imgs
+    in
+    (* We need to return a 
+     * 
+     *    list (list reloc_decision * elf_memory_image * list Linker_script.input_spec)
+     *
+     * i.e. one item for every input image. *)
+    let (final_input_spec_lists : list (list Linker_script.input_spec)) = merge_generated generated_img linker_script_input_lists
+    in
+    zip3 expanded_reloc_lists expanded_imgs final_input_spec_lists
 
 val extract_natural_field : natural -> Memory_image.element -> natural -> natural
 let extract_natural_field width element offset = 
@@ -511,8 +550,6 @@ let relocate_output_image a bindings_by_name img =
             end
         ) all_bs))) ^ " have defs")))
     in
-    
-    
     let apply_reloc = fun img -> fun (el_name, start, len) -> fun symref_and_reloc_site -> fun symaddr -> (
         let reloc_site = match symref_and_reloc_site.maybe_reloc with
             Nothing -> failwith "impossible: no reloc site during relocation"
@@ -706,8 +743,14 @@ let link script a options linkables =
     in
     (* We have to do a pass over relocations quite early. This is because relocs *do* participate 
      * in linking. For each reloc, we need to decide whether to apply it or not. For those not applied,
-     * we include it in a synthesised section that participates in linking. An ABI tap here also 
-     * synthesises things like (in the GNU case) the .plt section hanging off the first input object. *)
+     * we include it in a synthesised section that participates in linking. 
+     * 
+     * Similarly, the GOT needs to participate in linking, so that it gets assigned an address 
+     * at the appropriate place (as determined by the script). So we have to generate the GOT 
+     * *before* running the linker script. The GNU linker hangs the whole GOT and PLT content 
+     * off the first input object (usually crt1.o). In general, expand_sections calls an ABI tap 
+     * which synthesises all the necessary things, like (in the GNU case) the .got and .plt sections 
+     * hanging off the first input object. *)
     let (initial_bindings_by_name : Map.map string (list (natural * binding))) = 
         List.foldl (fun m -> fun (b_idx, ((ref_idx, ref, ref_item), maybe_def)) -> match Map.lookup ref.ref_symname m with
             Nothing                  -> Map.insert ref.ref_symname [ (b_idx, ((ref_idx, ref, ref_item), maybe_def)) ] m
@@ -715,7 +758,12 @@ let link script a options linkables =
             | _ -> failwith "impossible: found empty list in map lacking empties by construction"
         end) Map.empty (List.mapi (fun i -> fun b -> (naturalFromNat i, b)) accumulated_bindings)
     in
-    let input_sections = Missing_pervasives.list_concat_map (fun (idx, linkable) -> expand_sections a options initial_bindings_by_name idx linkable) linkables_not_discarded
+    let (expanded_triples : list (list reloc_resolution * elf_memory_image * list Linker_script.input_spec))
+     = expand_sections_for_all_inputs a options initial_bindings_by_name default_merge_generated linkables_not_discarded
+    in
+    let (reloc_resolutions, imgs, input_lists) = unzip3 expanded_triples
+    in
+    let input_sections = list_concat input_lists
     in
     let seen_ordering = fun is1 -> (fun is2 -> (
         let toNaturalList = fun is -> (
@@ -845,6 +893,8 @@ let link script a options linkables =
         Just addr -> 
             match address_to_element_and_offset addr output_image with
                 Just (el_name, el_offset) -> 
+                    let _ = errln ("Tagging element " ^ el_name ^ " as containing entry point at offset 0x" ^ (hex_string_of_natural el_offset))
+                    in
                     tag_image (EntryPoint) el_name el_offset 0 output_image
                 | Nothing -> 
                     (* HMM. entry point symbol has no address at present. *)

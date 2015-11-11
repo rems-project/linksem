@@ -8,6 +8,8 @@ open import Bool
 open import Num
 open import Maybe
 open import List
+open import Set
+open import Map
 open import String
 open import Show
 open import Assert_extra
@@ -17,6 +19,8 @@ open import Missing_pervasives
 open import Elf_file
 open import Elf_header
 open import Elf_interpreted_section
+open import Elf_relocation
+open import Elf_symbol_table
 open import Elf_program_header_table
 open import Elf_section_header_table
 open import Memory_image
@@ -322,7 +326,93 @@ let (null_abi : abi any_abi_feature) = <|
     ; guess_entry_point = find_start_symbol_address
     ; pad_data = pad_zeroes
     ; pad_code = pad_zeroes
+    ; generate_support = (* fun _ -> *) fun _ -> get_empty_memory_image ()
     |>
+
+(* *)
+val amd64_generate_support : (* list (list reloc_site_resolution) -> *) list (annotated_memory_image any_abi_feature) -> annotated_memory_image any_abi_feature
+let amd64_generate_support (* reloc_resolution_lists *) input_imgs = 
+    (* We generate a basic GOT. At the moment we can only describe the GOT
+     * contents abstractly, not as its binary content, because addresses
+     * have not yet been fixed. 
+     * 
+     * To do this, we create a set of Abi_amd64.GOTEntry records, one for
+     * each distinct symbol that is referenced by one or more GOT-based relocations.
+     * To enumerate these, we look at all the symbol refs in the image.
+     *)
+    let tags_and_ranges_by_image = List.mapi (fun i -> fun img ->
+        (i, Multimap.lookupBy Memory_image_orderings.tagEquiv (SymbolRef(null_symbol_reference_and_reloc_site)) img.by_tag)
+    ) input_imgs
+    in
+    let refs_via_got = list_concat_map (fun (i, tags_and_ranges) -> List.mapMaybe (fun (tag, maybe_range) -> match tag with
+         SymbolRef(rr) -> 
+            (* Is this ref a relocation we're going to apply, and does it reference the GOT? *)
+            match (rr.maybe_reloc, rr.maybe_def_bound_to) with
+                (Nothing, _) -> Nothing
+                | (Just r, Just(ApplyReloc, maybe_def)) ->
+                    if (get_elf64_relocation_a_type r.ref_relent IN {
+                        r_x86_64_got32; r_x86_64_gotpcrel; r_x86_64_gottpoff; r_x86_64_gotoff64; r_x86_64_gotpc32; r_x86_64_gotpc32_tlsdesc
+                    }) then Just (i, rr.ref.ref_symname, (maybe_range, rr)) else Nothing
+                | (Just r, Just(MakePIC, maybe_def)) -> failwith "FIXME: PIC support please"
+            end
+         | _ -> failwith "impossible: reloc site tag is not a SymbolRef"
+    end) tags_and_ranges) tags_and_ranges_by_image
+    in
+    let (idxs, symnames, items) = unzip3 refs_via_got
+    in
+    (* We now have our list of symbols. How many distinct symbols? *)
+    let by_symname = List.foldl (fun acc -> fun (idx, symname, item) -> Map.insert symname (match Map.lookup symname acc with 
+            Nothing -> [item]
+            | Just l -> item :: l
+        end) acc) Map.empty refs_via_got
+    in
+    let nentries = naturalFromNat (Map.size by_symname)
+    in
+    let entrysize = 8
+    in
+    let new_by_range = {
+        (Just(".got", (0, nentries * entrysize)), AbiFeature(Amd64AbiFeature(Abi_amd64.GOT(zip symnames items))))
+    ;   (Just(".got", (0, nentries * entrysize)), FileFeature(ElfSection(1, 
+          <| elf64_section_name = 0 (* ignored *)
+           ; elf64_section_type = sht_progbits
+           ; elf64_section_flags = natural_lor shf_write shf_alloc
+           ; elf64_section_addr = 0 (* ignored -- covered by element *)
+           ; elf64_section_offset = 0 (* ignored -- will be replaced when file offsets are assigned *)
+           ; elf64_section_size = 0 (* ignored *)
+           ; elf64_section_link = 0
+           ; elf64_section_info = 0
+           ; elf64_section_align = 8
+           ; elf64_section_entsize = 8
+           ; elf64_section_body = Byte_sequence.empty (* ignored *)
+           ; elf64_section_name_as_string = ".got"
+           |>
+        )))
+    ;   (* FIXME: _GLOBAL_OFFSET_TABLE_ generally doesn't mark the *start* of the GOT; 
+         * it's some distance in. *)
+        (Just(".got", (0, nentries * entrysize)), SymbolDef(<|
+              def_symname = "_GLOBAL_OFFSET_TABLE_"
+            ; def_syment =    <| elf64_st_name  = elf64_word_of_natural 0 (* ignored *)
+                               ; elf64_st_info  = unsigned_char_of_natural 0 (* FIXME *)
+                               ; elf64_st_other = unsigned_char_of_natural 0 (* FIXME *)
+                               ; elf64_st_shndx = elf64_half_of_natural 0
+                               ; elf64_st_value = elf64_addr_of_natural 0 (* ignored *)
+                               ; elf64_st_size  = elf64_xword_of_natural (nentries * entrysize)
+                               |>
+            ; def_sym_scn = 0
+            ; def_sym_idx = 0
+            ; def_linkable_idx = 0
+            |>))
+    }
+    in
+    <|
+         elements = Map.insert ".got" <|
+                    startpos = Nothing
+               ;    length = Just (nentries * entrysize)
+               ;    contents = []
+               |> Map.empty
+     ;   by_tag = by_tag_from_by_range new_by_range
+     ;   by_range = new_by_range
+     |>
 
 val sysv_amd64_std_abi : abi any_abi_feature
 let sysv_amd64_std_abi = 
@@ -341,6 +431,7 @@ let sysv_amd64_std_abi =
     ; guess_entry_point = find_start_symbol_address
     ; pad_data = pad_zeroes
     ; pad_code = pad_0x90
+    ; generate_support = amd64_generate_support
     |>
 
 val sysv_aarch64_le_std_abi : abi any_abi_feature
@@ -359,6 +450,7 @@ let sysv_aarch64_le_std_abi =
     ; guess_entry_point = find_start_symbol_address
     ; pad_data = pad_zeroes
     ; pad_code = pad_zeroes
+    ; generate_support = (* fun _ -> *) fun _ -> get_empty_memory_image ()
     |>
 
 val all_abis : list (abi any_abi_feature)

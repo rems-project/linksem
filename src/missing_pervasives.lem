@@ -299,6 +299,14 @@ let rec unzip3 l = match l with
 end
 declare termination_argument unzip3 = automatic
 
+(** [zip3 ls] takes a triple of lists and returns a list of triples. *)
+val zip3: forall 'a 'b 'c. list 'a -> list 'b -> list 'c -> list ('a * 'b * 'c)
+let rec zip3 alist blist clist = match (alist, blist, clist) with
+  | ([], [], []) -> []
+  | (x :: morex, y :: morey, z :: morez) -> let more_xyz = zip3 morex morey morez in (x, y, z) :: more_xyz
+end
+declare termination_argument unzip3 = automatic
+
 (** [null_byte] is the null character a a byte. *)
 val null_byte : byte
 

@@ -46,22 +46,22 @@ let header_is_amd64 h =
 let shf_x86_64_large : natural = (256 * 1048576) (* 0x10000000 a.k.a. 2^28 *)
 
 type amd64_abi_feature = 
-    GOT 
+    GOT of  (list (string * ((maybe element_range) * symbol_reference_and_reloc_site)))
     | PLT (* placeholder / FIXME *)
     
 val abiFeatureCompare : amd64_abi_feature -> amd64_abi_feature -> Basic_classes.ordering
 let abiFeatureCompare f1 f2 = 
     match (f1, f2) with
-        (GOT, GOT) -> EQ
-        | (GOT, PLT) -> LT
+        (GOT(_), GOT(_)) -> EQ
+        | (GOT(_), PLT) -> LT
         | (PLT, PLT) -> EQ
-        | (PLT, GOT) -> GT
+        | (PLT, GOT(_)) -> GT
     end
 
 val abiFeatureTagEq : amd64_abi_feature -> amd64_abi_feature -> bool
 let abiFeatureTagEq f1 f2 =
     match (f1, f2) with
-        (GOT, GOT) -> true
+        (GOT(_), GOT(_)) -> true
         | (PLT, PLT) -> true
         | (_, _) -> false
     end
