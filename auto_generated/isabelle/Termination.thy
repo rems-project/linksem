@@ -375,10 +375,18 @@ lemma set_choose_member:
 using assms by auto
 
 lemma chooseAndSplit_card1:
-  assumes "chooseAndSplit dict s = Some (x, y)"
+  assumes "\<And>x y. isGreater_method dict x y \<Longrightarrow> isLess_method dict y x"
+      and "\<And>x y. isLess_method dict x y \<Longrightarrow> isGreater_method dict y x"
+      and "\<And>x y. isGreater_method dict x y \<or> isLess_method dict x y \<or> x = y"
+      and "\<And>x y. x = y \<Longrightarrow> \<not> isLess_method dict x y"
+      and "\<And>x y. x = y \<Longrightarrow> \<not> isGreater_method dict x y"
+      and "chooseAndSplit dict s = Some (x, e, y)"
   shows "card x < card s"
-using assms
-sorry
+using assms proof -
+  assume "chooseAndSplit dict s = Some (x, e, y)"
+  hence "(if s = {} then None else let element = set_choose s ; (lt, gt) = Lem_set.split dict element s in Some (lt, element, gt)) = Some (x, e, y)"
+    using chooseAndSplit_def by metis
+  
 
 lemma chooseAndSplit_card2:
   assumes "chooseAndSplit dict s = Some (x, y, z)"
