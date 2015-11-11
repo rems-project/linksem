@@ -1322,24 +1322,26 @@ done
 
 termination findLowestKVWithKEquivTo
   apply(relation "measure (\<lambda>(_,_,_,_,s,_). Finite_Set.card s)")
-  apply simp
-  apply(case_tac x2, simp)
+  apply(simp_all del: well_behaved_lem_ordering.simps)
+  apply(case_tac x2, simp del: well_behaved_lem_ordering.simps)
   apply(drule chooseAndSplit_card1, assumption)
-  apply(case_tac x2, simp)
+  apply(case_tac x2, simp, assumption)
   apply(drule chooseAndSplit_card1, assumption)
-  apply(case_tac x2, simp)
-  apply(drule chooseAndSplit_card2, assumption)
+  apply(case_tac x2, simp, assumption)
+  apply(case_tac x2, simp del: well_behaved_lem_ordering.simps)
+  apply(drule chooseAndSplit_card2, assumption, assumption, assumption)
 done
 
 termination findHighestKVWithKEquivTo
   apply(relation "measure (\<lambda>(_,_,_,_,s,_). Finite_Set.card s)")
-  apply simp
-  apply(case_tac x2, simp)
+  apply(simp_all del: well_behaved_lem_ordering.simps)
+  apply(case_tac x2, simp del: well_behaved_lem_ordering.simps)
   apply(drule chooseAndSplit_card2, assumption)
-  apply(case_tac x2, simp)
+  apply(case_tac x2, simp, assumption)
   apply(drule chooseAndSplit_card2, assumption)
-  apply(case_tac x2, simp)
-  apply(drule chooseAndSplit_card1, assumption)
+  apply(case_tac x2, simp, assumption)
+  apply(case_tac x2, simp del: well_behaved_lem_ordering.simps)
+  apply(drule chooseAndSplit_card1, assumption, assumption, assumption)
 done
 
 end
