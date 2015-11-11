@@ -101,8 +101,8 @@ function (sequential,domintros)  findLowestKVWithKEquivTo  :: " 'k Ord_class \<R
     else if \<not> (well_behaved_lem_ordering (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
      dict_Basic_classes_Ord_v)) (isLess_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
      dict_Basic_classes_Ord_v))) then
-      undefined
-    else
+     undefined
+   else
     (case  Lem_set_extra.chooseAndSplit 
   (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
      dict_Basic_classes_Ord_v) subSet of
@@ -135,13 +135,15 @@ function (sequential,domintros)  findLowestKVWithKEquivTo  :: " 'k Ord_class \<R
                     (* k is higher *)
                     findLowestKVWithKEquivTo 
   dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v k equiv1 higher maybeBest
-    ))"
+    ))" 
 apply pat_completeness
-apply(case_tac "finite subSet"; case_tac "(well_behaved_lem_ordering (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
+apply(case_tac "finite subSet")
+apply(case_tac "(well_behaved_lem_ordering (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
      dict_Basic_classes_Ord_v)) (isLess_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
      dict_Basic_classes_Ord_v)))")
 apply auto
 done
+
 
 (*val testEquiv : natural -> natural -> bool*)
 definition testEquiv  :: " nat \<Rightarrow> nat \<Rightarrow> bool "  where 
@@ -168,8 +170,8 @@ function (sequential,domintros)  findHighestKVWithKEquivTo  :: " 'k Ord_class \<
     else if \<not> (well_behaved_lem_ordering (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
      dict_Basic_classes_Ord_v)) (isLess_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
      dict_Basic_classes_Ord_v))) then
-      undefined
-    else
+     undefined
+   else
     (case  Lem_set_extra.chooseAndSplit 
   (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
      dict_Basic_classes_Ord_v) subSet of
@@ -203,13 +205,15 @@ function (sequential,domintros)  findHighestKVWithKEquivTo  :: " 'k Ord_class \<
                     (* k is lower than chosen, so look lower *)
                     findHighestKVWithKEquivTo 
   dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v k equiv1 lower maybeBest
-    ))" 
+    ))"
 apply pat_completeness
-apply(case_tac "finite subSet"; case_tac "(well_behaved_lem_ordering (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
+apply(case_tac "finite subSet")
+apply(case_tac "(well_behaved_lem_ordering (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
      dict_Basic_classes_Ord_v)) (isLess_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
      dict_Basic_classes_Ord_v)))")
 apply auto
 done
+
 
 (* get the list of all pairs with key equiv to k. *)
 (*val lookupBy : forall 'k 'v. 

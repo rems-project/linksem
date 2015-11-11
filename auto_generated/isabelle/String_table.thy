@@ -134,11 +134,16 @@ declare find_string.simps [simp del]
 (*val insert_string : string -> string_table -> (natural * string_table)*)
 definition insert_string  :: " string \<Rightarrow> string_table \<Rightarrow> nat*string_table "  where 
      " insert_string s t = ( 
-    (case  find_string s t of
+    (*let _ = errln (Inserting string ` ^ s ^ ' into a string table) in*)
+    (let (inserted_idx, new_strtab) = ((case  find_string s t of
         None => (case  t of
-            Strings(delim, base) => ((( 1 :: nat) +  (List.length base)), Strings(delim, (base @ (s @ ([delim])))))
+            Strings(delim, base) => ( (List.length base), Strings(delim, (base @ (s @ ([delim])))))
             )
         | Some pos => (pos, t)
-    ))"
+    ))
+    in
+    (*let _ = errln (Inserted string at idx  ^ (show inserted_idx) ^ , see:  ^ (show (find_string s new_strtab)))
+    in*)
+    (inserted_idx, new_strtab)))"
 
 end

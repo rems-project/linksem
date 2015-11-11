@@ -497,29 +497,22 @@ termination accum_archive_contents0
   apply(case_tac x1, simp add: Let_def)
   apply(case_tac "name0 a = ''/               ''", simp_all)
   apply(case_tac "size2 a mod 2 = 0", simp_all)
-  apply(subgoal_tac "read_archive_entry_header0 whole_seq_length whole_seq = Success (a, b, c)")
+  apply(subgoal_tac "whole_seq_length = length0 whole_seq")
   apply(drule read_archive_entry_header0_length, assumption)
   apply(drule dropbytes_length)
   apply linarith
   apply simp
   apply(subgoal_tac "0 < Suc (size2 a)")
   apply(drule dropbytes_length)
-  apply(subgoal_tac "read_archive_entry_header0 whole_seq_length whole_seq = Success (a, b, c)")
+  apply(subgoal_tac "whole_seq_length = length0 whole_seq")
   apply(drule read_archive_entry_header0_length, assumption)
   apply linarith
   apply simp_all
-  apply(case_tac "size2 a mod 2 = 0", simp_all)
+  apply(subgoal_tac "whole_seq_length = length0 whole_seq")
   apply(drule dropbytes_length)
-  apply(subgoal_tac "read_archive_entry_header0 whole_seq_length whole_seq = Success (a, b, c)")
   apply(drule read_archive_entry_header0_length, assumption)
   apply linarith
-  apply simp_all
-  apply(subgoal_tac "0 < Suc (size2 a)")
-  apply(drule dropbytes_length)
-  apply(subgoal_tac "read_archive_entry_header0 whole_seq_length whole_seq = Success (a, b, c)")
-  apply(drule read_archive_entry_header0_length, assumption)
-  apply linarith
-  apply simp_all
+  apply simp
 done
 
 termination repeat
@@ -1213,38 +1206,6 @@ termination group_elf32_words
 done
 
 termination group_elf64_words
-  apply lexicographic_order
-done
-
-termination read_gnu_ext_elf32_verdefs
-(* XXX: not terminating *)
-  sorry
-
-termination read_gnu_ext_elf64_verdefs
-(* XXX: see above? *)
-  sorry
-
-termination obtain_gnu_ext_elf32_veraux
-  apply lexicographic_order
-done
-
-termination obtain_gnu_ext_elf64_veraux
-  apply lexicographic_order
-done
-
-termination read_gnu_ext_elf32_verneeds
-(* XXX: not terminating *)
-  sorry
-
-termination read_gnu_ext_elf64_verneeds
-(* XXX: not terminating *)
-  sorry
-
-termination read_gnu_ext_elf32_vernauxs
-(* XXX: not terminating *)
-  sorry
-
-termination obtain_gnu_ext_elf64_vernaux (* XXX: why the discrepancy with the function above? *)
   apply lexicographic_order
 done
 

@@ -113,7 +113,7 @@ definition gnu_extend  :: " 'abifeature abi \<Rightarrow> 'abifeature abi "  whe
                             )))
     , section_is_large0    =(section_is_large0   a)
     , maxpagesize0         =(maxpagesize0   a)
-    , minpagesize0         =(minpagesize0  a)
+    , minpagesize0         =(minpagesize0   a)
     , commonpagesize0      =(commonpagesize0   a)
     , symbol_is_generated_by_linker0 =(symbol_is_generated_by_linker0   a)
     , make_phdrs0          =(make_phdrs0   a) (* FIXME: also make the GNU phdrs! *)

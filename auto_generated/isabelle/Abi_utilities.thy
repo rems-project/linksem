@@ -203,9 +203,7 @@ definition size_of_copy_reloc  :: " 'abifeature annotated_memory_image \<Rightar
 definition reloc_site_address  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature AbiFeatureTagEquiv_class \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> nat "  where 
      " reloc_site_address dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature img1 rr = ( 
     (* find the element range that's tagged with this reloc site *)
-    (let found_kvs = (Multimap.lookupBy0 
-  (instance_Basic_classes_Ord_Memory_image_range_tag_dict1 dict_Basic_classes_Ord_abifeature)  (instance_Basic_classes_Ord_Maybe_maybe_dict
-   (instance_Basic_classes_Ord_tup2_dict
+    (let found_kvs = (Multimap.lookupBy0 (instance_Basic_classes_Ord_Memory_image_range_tag_dict1 dict_Basic_classes_Ord_abifeature) (instance_Basic_classes_Ord_Maybe_maybe_dict (instance_Basic_classes_Ord_tup2_dict
       Lem_string_extra.instance_Basic_classes_Ord_string_dict
       (instance_Basic_classes_Ord_tup2_dict
          instance_Basic_classes_Ord_Num_natural_dict

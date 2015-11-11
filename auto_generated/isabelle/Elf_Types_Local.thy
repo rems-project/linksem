@@ -3,6 +3,7 @@ theory
 imports
   Main "$ISABELLE_HOME/src////////HOL/Word/Word"
   "../../../lem/isabelle-lib/Lem_basic_classes"
+  "Error"
 begin
 
   section {* Unsigned character type *}
@@ -396,8 +397,8 @@ begin
     qed
   end
 
-  definition compute_differences :: "nat \<Rightarrow> nat \<Rightarrow> (nat \<times> nat) list \<Rightarrow> (nat \<times> nat) list" where
-    "compute_differences start end ranges \<equiv> sorted_list_of_set { (x, y). \<forall>x. \<forall>y. start \<le> x \<and> x < y \<and> y \<le> end \<and> (\<not> (\<exists>r \<in> set ranges. covers (x, y) r)) }"
+  definition compute_differences :: "nat \<Rightarrow> nat \<Rightarrow> (nat \<times> nat) list \<Rightarrow> ((nat \<times> nat) list) error" where
+    "compute_differences start end ranges \<equiv> error_return (sorted_list_of_set { (x, y). \<forall>x. \<forall>y. start \<le> x \<and> x < y \<and> y \<le> end \<and> (\<not> (\<exists>r \<in> set ranges. covers (x, y) r)) })"
 
   fun well_behaved_lem_ordering :: "('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> bool" where
     "well_behaved_lem_ordering lt gt =
