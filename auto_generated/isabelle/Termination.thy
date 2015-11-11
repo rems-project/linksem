@@ -217,11 +217,65 @@ using assms unfolding read_archive_entry_header0_def
   apply(simp_all add: error_return_def)
 done
 
+lemma disjE3:
+  shows "\<lbrakk> P \<or> Q \<or> R; P \<Longrightarrow> S; Q \<Longrightarrow> S; R \<Longrightarrow> S \<rbrakk> \<Longrightarrow> S"
+  by blast
+
 lemma set_split_union:
-  assumes "split dict e s = (x, y)"
+  assumes "\<And>x y. isGreater_method dict x y \<Longrightarrow> \<not> isLess_method dict x y"
+      and "\<And>x y. isGreater_method dict x y \<or> isLess_method dict x y \<or> x = y"
+      and "split dict e s = (x, y)"
   shows "s = x \<union> { e } \<union> y"
-using assms(1)
-  sorry
+using assms
+proof -
+  assume TRI: "\<And>x y. isGreater_method dict x y \<or> isLess_method dict x y \<or> x = y"
+  show "s = x \<union> {e} \<union> y"
+  proof
+    show "s \<subseteq> x \<union> {e} \<union> y"
+    proof
+      fix z :: "'a"
+      assume "z \<in> s"
+      have "isGreater_method dict z e \<or> isLess_method dict z e \<or> z = e"
+        using TRI by auto
+      thus "z \<in> x \<union> {e} \<union> y"
+      proof(rule disjE3)
+        assume "isGreater_method dict z e"
+        thus "z \<in> x \<union> {e} \<union> y"
+        sorry
+      next
+        assume "isLess_method dict z e"
+        thus "z \<in> x \<union> {e} \<union> y"
+        sorry
+      next
+        assume "z = e"
+        thus "z \<in> x \<union> {e} \<union> y"
+          by auto
+      qed
+    qed
+  next
+    show "x \<union> {e} \<union> y \<subseteq> s"
+    proof
+      fix z :: "'a"
+      assume "z \<in> x \<union> {e} \<union> y"
+      hence "z \<in> x \<or> z \<in> {e} \<or> z \<in> y"
+        by auto
+      thus "z \<in> s"
+      proof(rule disjE3)
+        assume "z \<in> x"
+        thus "z \<in> s"
+        sorry
+      next
+        assume "z \<in> y"
+        thus "z \<in> s"
+        sorry
+      next
+        assume "z \<in> {e}"
+        thus "z \<in> s"
+        sorry
+      qed
+    qed
+  qed
+qed
 
 lemma set_choose_member:
   assumes "s \<noteq> {}"
@@ -732,19 +786,6 @@ termination obtain_elf64_dynamic_section_contents'
   apply(drule read_8_bytes_le_length)
   apply linarith
 done
-
-termination find_first_not_in_range
-  apply(relation "measure (\<lambda>(s, xs). s)")
-  apply simp
-  apply(case_tac "List.filter (\<lambda>(x, y). start \<ge> x \<and> start \<le> y) ranges", simp)
-  sorry
-
-termination find_first_in_range
-  sorry
-
-termination compute_differences
-  apply(relation "measure (\<lambda>(s, m, _). m - s)")
-  sorry
 
 termination read_elf32_program_header_table'
   apply(relation "measure (\<lambda>(_, b). length0 b)")
