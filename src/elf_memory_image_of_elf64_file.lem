@@ -84,9 +84,9 @@ let elf_memory_image_of_elf64_file a fname f =
                         else
                         let created_name = create_unique_name_for_section_from_index i isec f
                         in
-                        let _ = errln ("In file " ^ fname ^ " created element name " ^ created_name ^ " for section idx " ^ (show i) ^ ", name " ^ 
+                        (*let _ = errln ("In file " ^ fname ^ " created element name " ^ created_name ^ " for section idx " ^ (show i) ^ ", name " ^ 
                             isec.elf64_section_name_as_string)
-                        in
+                        in*)
                         Just (created_name, <|
                         startpos = Nothing
                       ; length = Just isec.elf64_section_size
@@ -96,8 +96,8 @@ let elf_memory_image_of_elf64_file a fname f =
                 in
                 let common_symbols = (List.filter (fun x -> natural_of_elf64_half (x.def_syment.elf64_st_shndx) = shn_common) extracted_symbols)
                 in
-                let _ = Missing_pervasives.errln ("Found " ^ (show (length common_symbols)) ^ " common symbols in file " ^ fname)
-                in
+                (*let _ = Missing_pervasives.errln ("Found " ^ (show (length common_symbols)) ^ " common symbols in file " ^ fname)
+                in*)
                 let common_symbol_names_and_elements = mapMaybei (fun i -> (fun isym -> 
                     let symlen = natural_of_elf64_xword isym.def_syment.elf64_st_size
                     in
@@ -191,7 +191,7 @@ let elf_memory_image_of_elf64_file a fname f =
                 in
                 let all_reloc_pairs = List.map (fun (el_range, r_tag) -> (Just el_range, r_tag)) all_reloc_sites
                 in
-                let reloc_as_triple = fun (_, x) -> (match x with
+                let reloc_as_triple = fun ((_ : Memory_image.range_tag bool), (x : Memory_image.range_tag bool)) -> (match x with
                             SymbolRef(r) -> match r.maybe_reloc with
                                 Just rel -> (rel.ref_rel_scn, rel.ref_rel_idx, rel.ref_src_scn)
                                 | Nothing -> failwith "impossible: "
@@ -199,26 +199,26 @@ let elf_memory_image_of_elf64_file a fname f =
                             | _ -> failwith "unexpected tag"
                         end)
                 in
-                let _ = Missing_pervasives.errln ("Extracted " ^ (show (length all_reloc_sites)) ^ " reloc site tags from "
+                (*let _ = Missing_pervasives.errln ("Extracted " ^ (show (length all_reloc_sites)) ^ " reloc site tags from "
                     ^ "file " ^ fname ^ ": " ^ (show (List.map reloc_as_triple all_reloc_sites)))
-                in
+                in*)
                 let retrieved_reloc_sites = Multimap.lookupBy Memory_image_orderings.tagEquiv
                     (SymbolRef(null_symbol_reference_and_reloc_site)) 
-                    (let (fst, snd) = unzip all_reloc_sites in Set.fromList (zip snd fst))
+                    (let ((fst : list (string * Memory_image.range)), (snd : list (Memory_image.range_tag Abis.any_abi_feature))) = unzip all_reloc_sites in Set.fromList (zip snd fst))
                 in
-                let _ = Missing_pervasives.errln ("Re-reading: retrieved " ^ (show (length retrieved_reloc_sites)) ^ " reloc site tags from "
+                (*let _ = Missing_pervasives.errln ("Re-reading: retrieved " ^ (show (length retrieved_reloc_sites)) ^ " reloc site tags from "
                     ^ "file " ^ fname ^ ": " ^ (show (List.map reloc_as_triple (let (fst, snd) = unzip retrieved_reloc_sites in zip snd fst))))
-                in
+                in*)
                 let elf_header = [(Just("header", (0, natural_of_elf64_half f.elf64_file_header.elf64_ehsize)), FileFeature(ElfHeader(f.elf64_file_header)))]
                 in
-                let _ = Missing_pervasives.errln ("ELF header contributes " ^ (show (List.length elf_header)) ^ " annotations.")
-                in
+                (*let _ = Missing_pervasives.errln ("ELF header contributes " ^ (show (List.length elf_header)) ^ " annotations.")
+                in*)
                 let all_annotations_list = all_reloc_pairs ++ symbol_refs ++ symbol_defs ++ elf_sections ++ elf_header
                 in
                 let all_annotations_length = List.length all_annotations_list
                 in
-                let _ = Missing_pervasives.errln ("total annotations: " ^ (show all_annotations_length))
-                in
+                (*let _ = Missing_pervasives.errln ("total annotations: " ^ (show all_annotations_length))
+                in*)
                 let all_annotations = Set.fromList all_annotations_list
                 in
                 let (apply_content_relocations : string -> byte_pattern -> byte_pattern) = (fun (name : string) -> (fun content -> 
@@ -241,13 +241,13 @@ let elf_memory_image_of_elf64_file a fname f =
                            startpos = element.startpos
                          ; length   = element.length
                          ; contents = 
-                            let _ = errln ("Reloc-relaxing section " ^ name ^ " in file " ^ fname ^ ": before, first 20 bytes: " ^
+                            (*let _ = errln ("Reloc-relaxing section " ^ name ^ " in file " ^ fname ^ ": before, first 20 bytes: " ^
                                 (show (take 20 element.contents)))
-                            in
+                            in*)
                             let relaxed = apply_content_relocations name element.contents
                             in
-                            let _ = errln ("After, first 20 bytes: " ^  (show (take 20 relaxed)))
-                            in
+                            (*let _ = errln ("After, first 20 bytes: " ^  (show (take 20 relaxed)))
+                            in*)
                             relaxed
 
                          |>
@@ -275,7 +275,7 @@ let elf_memory_image_of_elf64_file a fname f =
                          -- annotations by *)
                   |>
       | pht -> let segment_names_and_images = mapMaybei (fun i -> (fun seg -> 
-                    Just(gensym (show seg.elf64_segment_base) ^ "_" ^ (show seg.elf64_segment_type), 
+                    Just(gensym (hex_string_of_natural seg.elf64_segment_base) ^ "_" ^ (hex_string_of_natural seg.elf64_segment_type), 
                     <|
                         startpos = Just seg.elf64_segment_base
                       ; length = Just seg.elf64_segment_memsz
@@ -345,7 +345,7 @@ let elf_memory_image_section_by_index idx img =
     match matches with
         [] -> Nothing
         | [x] -> Just x
-        | x -> failwith ("impossible: more than one ELF section with same index (" ^ (show idx) ^ ")")
+        | x -> failwith ("impossible: more than one ELF section with same index" (*"(" ^ (show idx) ^ ")"*))
     end
 
 val elf_memory_image_element_coextensive_with_section : natural -> elf_memory_image -> maybe string
@@ -361,8 +361,8 @@ let elf_memory_image_element_coextensive_with_section idx img =
     match matches with
         [] -> Nothing
         | [x] -> Just x
-        | xs -> failwith ("impossible: more than one ELF section coextensive with section " ^ (show idx) ^ ", names: "
-            ^ (show xs))
+        | xs -> failwith ("impossible: more than one ELF section coextensive with section" (*^ (show idx) ^ ", names: "
+            ^ (show xs)*))
     end
 
 

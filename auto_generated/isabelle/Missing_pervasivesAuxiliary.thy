@@ -36,6 +36,8 @@ termination mapMaybei' by lexicographic_order
 
 termination partitionii' by lexicographic_order
 
+termination zip3 by lexicographic_order
+
 termination intercalate' by lexicographic_order
 
 termination take by lexicographic_order

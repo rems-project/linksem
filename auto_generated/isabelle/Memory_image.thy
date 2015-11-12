@@ -424,7 +424,7 @@ definition noop_reloc_calculate0  :: " nat \<Rightarrow> int \<Rightarrow> nat \
 
 (*val noop_reloc_apply : forall 'abifeature. reloc_apply_fn 'abifeature*)
 definition noop_reloc_apply0  :: " 'abifeature annotated_memory_image \<Rightarrow> nat \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> nat*(nat \<Rightarrow> int \<Rightarrow> nat \<Rightarrow> nat)"  where 
-     " noop_reloc_apply0 img1 site_addr ref2 = ( (( 0 :: nat), noop_reloc_calculate0))"
+     " noop_reloc_apply0 img2 site_addr ref2 = ( (( 0 :: nat), noop_reloc_calculate0))"
 
 
 (*val noop_reloc : forall 'abifeature. natural -> (bool (* result is absolute addr *) * reloc_apply_fn 'abifeature)*)
@@ -465,6 +465,8 @@ record 'abifeature abi = (* forall 'abifeature. *)
  pad_data0           ::" nat \<Rightarrow> Elf_Types_Local.byte list "
     
  pad_code0           ::" nat \<Rightarrow> Elf_Types_Local.byte list "
+    
+ generate_support0   ::" ( 'abifeature annotated_memory_image) (* list (list reloc_site_resolution) ->  *)list \<Rightarrow> 'abifeature annotated_memory_image "
     
 
 
@@ -522,10 +524,10 @@ definition compl640  :: " nat \<Rightarrow> nat "  where
 
 (*val address_of_range : forall 'abifeature. element_range -> annotated_memory_image 'abifeature -> natural*)
 definition address_of_range0  :: " string*(nat*nat)\<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> nat "  where 
-     " address_of_range0 el_range img1 = ( 
+     " address_of_range0 el_range img2 = ( 
     (let (el_name, (start, len)) = el_range
     in
-    (case  (elements0   img1) el_name of
+    (case  (elements0   img2) el_name of
         Some el =>
             (case (startpos0   el) of
                 Some addr => addr + start
@@ -737,7 +739,7 @@ definition by_tag_from_by_range0  :: "('a*'b)set \<Rightarrow>('b*'a)set "  wher
 (*val filter_elements : forall 'abifeature. ((string * element) -> bool) -> 
     annotated_memory_image 'abifeature -> annotated_memory_image 'abifeature*)
 definition filter_elements0  :: "(string*element \<Rightarrow> bool)\<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> 'abifeature annotated_memory_image "  where 
-     " filter_elements0 pred img1 = ( 
+     " filter_elements0 pred img2 = ( 
     (let new_elements = (Map.map_of (List.rev ((let x2 = 
   ([]) in  List.foldr
    (\<lambda>(n, r) x2 . 
@@ -746,12 +748,12 @@ definition filter_elements0  :: "(string*element \<Rightarrow> bool)\<Rightarrow
     if \<not> result then
       (*let _ = Missing_pervasives.outln (Discarding element named  ^ n) in*) result
     else result) then (n, r) # x2 else x2)
-   (list_of_set (map_to_set (elements0   img1))) x2))))
+   (list_of_set (map_to_set (elements0   img2))) x2))))
     in
     (let new_by_range =  (set_filter (\<lambda> (maybe_range, tag) .  (case  maybe_range of
             None => True
             | Some (el_name, el_range) => el_name \<in> Map.dom new_elements
-        ))(by_range0   img1))
+        ))(by_range0   img2))
     in
     (let new_by_tag =
   (Set.image (\<lambda> (k, v) .  (v, k))
@@ -766,14 +768,14 @@ definition filter_elements0  :: "(string*element \<Rightarrow> bool)\<Rightarrow
 (*val tag_image : forall 'abifeature. range_tag 'abifeature -> string -> natural -> natural -> annotated_memory_image 'abifeature
     ->  annotated_memory_image 'abifeature*)
 definition tag_image0  :: " 'abifeature range_tag \<Rightarrow> string \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> 'abifeature annotated_memory_image "  where 
-     " tag_image0 t el_name el_offset tag_len img1 = ( 
+     " tag_image0 t el_name el_offset tag_len img2 = ( 
     (let (k, v) = (Some (el_name, (el_offset, tag_len)), t)
     in
-    (let new_by_range = (Set.insert (k, v)(by_range0   img1))
+    (let new_by_range = (Set.insert (k, v)(by_range0   img2))
     in
-    (let new_by_tag = (Set.insert (v, k)(by_tag0   img1))
+    (let new_by_tag = (Set.insert (v, k)(by_tag0   img2))
     in
-    (| elements0 =(elements0   img1)
+    (| elements0 =(elements0   img2)
      , by_range0 = new_by_range
      , by_tag0   = new_by_tag
      |)))))"
@@ -781,7 +783,7 @@ definition tag_image0  :: " 'abifeature range_tag \<Rightarrow> string \<Rightar
 
 (*val address_to_element_and_offset : forall 'abifeature. natural -> annotated_memory_image 'abifeature -> maybe (string * natural)*)
 definition address_to_element_and_offset0  :: " nat \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>(string*nat)option "  where 
-     " address_to_element_and_offset0 addr img1 = ( 
+     " address_to_element_and_offset0 addr img2 = ( 
     (* Find the element with the highest address <= addr *)
     (let (maybe_highest_le ::  (nat * string * element)option)
      = (List.foldl (\<lambda> maybe_current_max_le .  (\<lambda> (el_name, el_rec) . 
@@ -791,8 +793,8 @@ definition address_to_element_and_offset0  :: " nat \<Rightarrow> 'abifeature an
         (case  (maybe_current_max_le,(startpos0   el_rec)) of
             (None, None) => None
             | (None, Some pos) => if pos \<le> addr then Some (pos, el_name, el_rec) else None
-            | (Some (cur, el_name, el_rec), None) => maybe_current_max_le
-            | (Some (cur, el_name, el_rec), Some pos) => if (pos \<le> addr) \<and> (pos > cur) then Some (pos, el_name, el_rec) else maybe_current_max_le
+            | (Some (cur, cur_el_name, cur_el_rec), None) => maybe_current_max_le
+            | (Some (cur, cur_el_name, cur_el_rec), Some pos) => if (pos \<le> addr) \<and> (pos > cur) then Some (pos, el_name, el_rec) else maybe_current_max_le
         )
     )) None (list_to_set (LemExtraDefs.map_to_set m)))
     in
@@ -815,8 +817,8 @@ definition address_to_element_and_offset0  :: " nat \<Rightarrow> 'abifeature an
     
 (*val element_and_offset_to_address : forall 'abifeature. (string * natural) -> annotated_memory_image 'abifeature -> maybe natural*)
 fun element_and_offset_to_address0  :: " string*nat \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>(nat)option "  where 
-     " element_and_offset_to_address0 (el_name, el_off) img1 = ( 
-    (case  (elements0   img1) el_name of
+     " element_and_offset_to_address0 (el_name, el_off) img2 = ( 
+    (case  (elements0   img2) el_name of
         Some el => (case (startpos0   el) of
                         Some addr => Some (addr + el_off)
                         | None => None

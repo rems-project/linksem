@@ -436,7 +436,7 @@ definition obtain_elf32_interpreted_sections  :: " string_table \<Rightarrow>(el
     (let filesz = (if typ1 = sht_nobits then( 0 :: nat) else size4) in
     (let flags  = (unat(elf32_sh_flags   sh)) in
     (let base   = (unat(elf32_sh_addr   sh)) in
-    (let link   = (unat(elf32_sh_link   sh)) in
+    (let link1   = (unat(elf32_sh_link   sh)) in
     (let info   = (unat(elf32_sh_info   sh)) in
     (let align  = (unat(elf32_sh_addralign   sh)) in
     (let entry_size = (unat(elf32_sh_entsize   sh)) in
@@ -448,7 +448,7 @@ definition obtain_elf32_interpreted_sections  :: " string_table \<Rightarrow>(el
       error_return  (| elf32_section_name = name2, elf32_section_type = typ1,
  elf32_section_flags = flags, elf32_section_addr = base, elf32_section_offset = offset,
  elf32_section_size = size4,
- elf32_section_link = link, elf32_section_info = info,
+ elf32_section_link = link1, elf32_section_info = info,
  elf32_section_align = align,
  elf32_section_entsize = entry_size, elf32_section_body = relevant,
  elf32_section_name_as_string = name_string  |))))))))))))))
@@ -472,7 +472,7 @@ definition obtain_elf64_interpreted_sections  :: " string_table \<Rightarrow>(el
     (let filesz = (if typ1 = sht_nobits then( 0 :: nat) else size4) in
     (let flags  = (unat(elf64_sh_flags   sh)) in
     (let base   = (unat(elf64_sh_addr    sh)) in
-    (let link   = (unat(elf64_sh_link    sh)) in
+    (let link1   = (unat(elf64_sh_link    sh)) in
     (let info   = (unat(elf64_sh_info    sh)) in
     (let align  = (unat(elf64_sh_addralign   sh)) in
     (let entry_size = (unat(elf64_sh_entsize   sh)) in
@@ -484,7 +484,7 @@ definition obtain_elf64_interpreted_sections  :: " string_table \<Rightarrow>(el
       error_return  (| elf64_section_name = name2, elf64_section_type = typ1,
  elf64_section_flags = flags, elf64_section_addr = base, elf64_section_offset = offset,
  elf64_section_size = size4,
- elf64_section_link = link, elf64_section_info = info,
+ elf64_section_link = link1, elf64_section_info = info,
  elf64_section_align = align,
  elf64_section_entsize = entry_size, elf64_section_body = relevant,
  elf64_section_name_as_string = name_string  |))))))))))))))
@@ -685,9 +685,9 @@ definition get_elf32_file_section_header_string_table  :: " elf32_file \<Rightar
   (let hdr  = ((elf32_file_header   f3)) in
   (let sht  = ((elf32_file_section_header_table   f3)) in
   (let segs = ((elf32_file_interpreted_segments   f3)) in
-  (let idx  = (unat(elf32_shstrndx   hdr)) in
+  (let idx1  = (unat(elf32_shstrndx   hdr)) in
   bytes_of_elf32_file f3 >>= (\<lambda> bs0 . 
-    (case  Elf_Types_Local.index sht idx of
+    (case  Elf_Types_Local.index sht idx1 of
         None => error_fail (''obtain_elf32_string_table: invalid offset into section header table'')
       | Some sect1 =>
           (let offset = (unat(elf32_sh_offset   sect1)) in
@@ -708,9 +708,9 @@ definition get_elf64_file_section_header_string_table  :: " elf64_file \<Rightar
   (let hdr  = ((elf64_file_header   f3)) in
   (let sht  = ((elf64_file_section_header_table   f3)) in
   (let segs = ((elf64_file_interpreted_segments   f3)) in
-  (let idx  = (unat(elf64_shstrndx   hdr)) in
+  (let idx1  = (unat(elf64_shstrndx   hdr)) in
   bytes_of_elf64_file f3 >>= (\<lambda> bs0 . 
-    (case  Elf_Types_Local.index sht idx of
+    (case  Elf_Types_Local.index sht idx1 of
         None => error_fail (''obtain_elf64_string_table: invalid offset into section header table'')
       | Some sect1 =>
           (let offset = (unat(elf64_sh_offset     sect1)) in
@@ -949,12 +949,12 @@ definition get_elf64_file_dynamic_symbol_table  :: " elf64_file \<Rightarrow>((e
   *)
 (*val get_elf32_symbol_table_by_index : elf32_file -> natural -> error elf32_symbol_table*)
 definition get_elf32_symbol_table_by_index  :: " elf32_file \<Rightarrow> nat \<Rightarrow>(elf32_symbol_table)error "  where 
-     " get_elf32_symbol_table_by_index ef link = (
+     " get_elf32_symbol_table_by_index ef link1 = (
   (let hdr     = ((elf32_file_header   ef)) in
   (let sht     = ((elf32_file_section_header_table   ef)) in
   (let sects   = ((elf32_file_interpreted_sections   ef)) in
   (let endian  = (get_elf32_header_endianness hdr) in
-    (case  index sects (id link) of
+    (case  index sects (id link1) of
         None  => error_fail (''get_elf32_symbol_table_by_index: invalid index'')
       | Some sym1 =>
         read_elf32_symbol_table endian(elf32_section_body   sym1)
@@ -967,11 +967,11 @@ definition get_elf32_symbol_table_by_index  :: " elf32_file \<Rightarrow> nat \<
   *)
 (*val get_elf32_string_table_by_index : elf32_file -> natural -> error string_table*)
 definition get_elf32_string_table_by_index  :: " elf32_file \<Rightarrow> nat \<Rightarrow>(string_table)error "  where 
-     " get_elf32_string_table_by_index ef link = (
+     " get_elf32_string_table_by_index ef link1 = (
   (let hdr     = ((elf32_file_header   ef)) in
   (let sht     = ((elf32_file_section_header_table   ef)) in
   (let sects   = ((elf32_file_interpreted_sections   ef)) in
-    (case  index sects (id link) of
+    (case  index sects (id link1) of
         None  => error_fail (''get_elf32_string_table_by_index: invalid index'')
       | Some sym1 => error_return (mk_string_table (Byte_sequence.string_of_byte_sequence(elf32_section_body   sym1)) (String.char_of_nat 0))
     )))))"
@@ -983,12 +983,12 @@ definition get_elf32_string_table_by_index  :: " elf32_file \<Rightarrow> nat \<
   *)
 (*val get_elf64_symbol_table_by_index : elf64_file -> natural -> error elf64_symbol_table*)
 definition get_elf64_symbol_table_by_index  :: " elf64_file \<Rightarrow> nat \<Rightarrow>(elf64_symbol_table)error "  where 
-     " get_elf64_symbol_table_by_index ef link = (
+     " get_elf64_symbol_table_by_index ef link1 = (
   (let hdr     = ((elf64_file_header   ef)) in
   (let sht     = ((elf64_file_section_header_table   ef)) in
   (let sects   = ((elf64_file_interpreted_sections   ef)) in
   (let endian  = (get_elf64_header_endianness hdr) in
-    (case  index sects (id link) of
+    (case  index sects (id link1) of
         None  => error_fail (''get_elf64_symbol_table_by_index: invalid index'')
       | Some sym1 =>
         read_elf64_symbol_table endian(elf64_section_body   sym1)
@@ -1001,11 +1001,11 @@ definition get_elf64_symbol_table_by_index  :: " elf64_file \<Rightarrow> nat \<
   *)
 (*val get_elf64_string_table_by_index : elf64_file -> natural -> error string_table*)
 definition get_elf64_string_table_by_index  :: " elf64_file \<Rightarrow> nat \<Rightarrow>(string_table)error "  where 
-     " get_elf64_string_table_by_index ef link = (
+     " get_elf64_string_table_by_index ef link1 = (
   (let hdr     = ((elf64_file_header   ef)) in
   (let sht     = ((elf64_file_section_header_table   ef)) in
   (let sects   = ((elf64_file_interpreted_sections   ef)) in
-    (case  index sects (id link) of
+    (case  index sects (id link1) of
         None  => error_fail (''get_elf64_string_table_by_index: invalid index'')
       | Some sym1 => error_return (mk_string_table (Byte_sequence.string_of_byte_sequence(elf64_section_body   sym1)) (String.char_of_nat 0))
     )))))"
@@ -1141,12 +1141,12 @@ definition get_elf32_file_global_symbol_init  :: " elf32_file \<Rightarrow>((str
     Elf_symbol_table.get_elf32_symbol_image_address symtab strtab >>= (\<lambda> strs . 
       (let mapped = (mapM (\<lambda> (symbol, (typ1, size4, addr, bind)) . 
         if typ1 = Elf_symbol_table.stt_object then
-          get_elf32_executable_image f3 >>= (\<lambda> (img1, entry, mach) . 
+          get_elf32_executable_image f3 >>= (\<lambda> (img2, entry, mach) . 
           (let chunks =            
 (List.filter (\<lambda> (chunk, _) .               
 (addr \<ge>(elf32_segment_base   chunk)) \<and>
                 ((addr + size4) \<le> ((elf32_segment_base   chunk) +(elf32_segment_size   chunk)))
-            ) img1)
+            ) img2)
           in
             (case  chunks of
                 []    => error_fail (''get_elf32_global_symbol_init: global variable not present in executable image'')
@@ -1178,12 +1178,12 @@ definition get_elf64_file_global_symbol_init  :: " elf64_file \<Rightarrow>((str
     Elf_symbol_table.get_elf64_symbol_image_address symtab strtab >>= (\<lambda> strs . 
       (let mapped = (mapM (\<lambda> (symbol, (typ1, size4, addr, bind)) . 
         if typ1 = Elf_symbol_table.stt_object then
-          get_elf64_executable_image f3 >>= (\<lambda> (img1, entry, mach) . 
+          get_elf64_executable_image f3 >>= (\<lambda> (img2, entry, mach) . 
           (let chunks =            
 (List.filter (\<lambda> (chunk, _) .               
 (addr \<ge>(elf64_segment_base   chunk)) \<and>
                 ((addr + size4) \<le> ((elf64_segment_base   chunk) +(elf64_segment_size   chunk)))
-            ) img1)
+            ) img2)
           in
             (case  chunks of
                 []    => error_fail (''get_elf64_global_symbol_init: global variable not present in executable image'')

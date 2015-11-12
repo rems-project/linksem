@@ -115,8 +115,8 @@ definition get_string_at  :: " nat \<Rightarrow> string_table \<Rightarrow>(stri
     | Some suffix =>
       (let delim = (get_delimiting_character tbl) in
       (case  string_index_of delim suffix of
-          Some idx =>
-          (case  string_prefix idx suffix of
+          Some idx1 =>
+          (case  string_prefix idx1 suffix of
               Some s  => Success s
             | None => Fail (''get_string_at: index out of range'')
           )

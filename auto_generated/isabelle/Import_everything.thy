@@ -42,7 +42,13 @@ imports
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Abi_power64_relocation" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Abis" 
 	 "Elf_memory_image" 
+	 "Command_line" 
+	 "Input_list" 
+	 "Linkable_list" 
+	 "Link" 
 	 "Archive" 
+	 "Elf_memory_image_of_elf64_file" 
+	 "Linker_script" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Harness_interface" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Sail_interface" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Gnu_ext_abi" 
@@ -92,10 +98,10 @@ begin
 (*open import Endianness*)
 (*open import Error*)
 (*open import Hex_printing*)
-(*open import Input_list
-open import Linkable_list
-open import Linker_script
-open import Link*)
+(*open import Input_list*)
+(*open import Linkable_list*)
+(*open import Linker_script*)
+(*open import Link*)
 (*open import Memory_image*)
 (*open import Memory_image_orderings*)
 (*open import Missing_pervasives*)
