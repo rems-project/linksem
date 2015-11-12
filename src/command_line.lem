@@ -50,6 +50,17 @@ type input_file_options = <| input_fmt : string
                            ; input_whole_archive : bool
                            ; input_as_needed : bool
                            |>
+   
+val null_input_file_options : input_file_options
+let null_input_file_options = 
+                      <| input_fmt = ""
+                       ; input_libpath = []
+                       ; input_link_sharedlibs = false
+                       ; input_check_sections = false
+                       ; input_copy_dt_needed = false
+                       ; input_whole_archive = false
+                       ; input_as_needed = false
+                       |>
 
 type output_kind = Executable
                  | SharedLibrary
@@ -135,12 +146,11 @@ type command_state = <| input_units           : list input_unit
                       ; link_options          : set  link_option
                       ; current_input_options : input_file_options
                       ; current_group         : maybe (list input_file_and_options)
-                      ; stack                 : list command_state
                       |>
                       
 (* This is the "default state" when we start reading input options *)
-val initial_state : command_state
-let initial_state = <| input_units = []
+val initial_state : list command_state (* the stack *)
+let initial_state = [<| input_units = []
                      ; link_options = {OutputFilename("a.out"); OutputKind(Executable)}
                      ; current_input_options = <| input_fmt = "elf64-x86-64"   (* FIXME *)
                                                 ; input_libpath = ["/usr/lib"] (* FIXME: this probably isn't the right place to supply the default search path *)
@@ -151,13 +161,12 @@ let initial_state = <| input_units = []
                                                 ; input_as_needed = true (* FIXME *)
                                                 |>
                      ; current_group = Nothing
-                     ; stack = []
-                     |>
+                     |>]
 
 type interpreted_command_line = list input_unit * set link_option
 
-val add_input_file : command_state -> string -> command_state
-let add_input_file state s = 
+val add_input_file : list command_state -> string -> list command_state
+let add_input_file (state :: more) s = 
     let chars = toCharList s 
     in
     let spec = match chars with 
@@ -172,8 +181,7 @@ let add_input_file state s =
          ; link_options = state.link_options
          ; current_input_options = state.current_input_options
          ; current_group = state.current_group
-         ; stack = state.stack
-         |>
+         |> :: more
     else 
         <| input_units = state.input_units
          ; link_options = state.link_options
@@ -181,11 +189,10 @@ let add_input_file state s =
          ; current_group = let toAppend = [(spec, state.current_input_options)] in 
             match state.current_group with Just l -> Just(l ++ toAppend) | Nothing -> Just(toAppend) 
             end
-         ; stack = state.stack
-         |>
+         |> :: more
 
-val start_group : command_state -> command_state
-let start_group state = <|
+val start_group : list command_state -> list command_state
+let start_group (state :: more) = <|
            input_units = state.input_units
          ; link_options = state.link_options
          ; current_input_options = state.current_input_options
@@ -193,11 +200,10 @@ let start_group state = <|
                 Nothing -> Just []
                 | _ -> failwith "cannot nest groups"
             end
-         ; stack = state.stack
-         |>
+         |> :: more
 
-val end_group : command_state -> command_state
-let end_group state = <|
+val end_group : list command_state -> list command_state
+let end_group (state :: more) = <|
            input_units = state.input_units ++ (match state.current_group with 
                 Just l -> [Group(l)]
                 | Nothing -> failwith "end group without start group"
@@ -205,20 +211,23 @@ let end_group state = <|
          ; link_options = state.link_options
          ; current_input_options = state.current_input_options
          ; current_group = Nothing
-         ; stack = state.stack
-         |>
+         |> :: more
+
 type option_token = string
 type option_argspecs = list string * list string
 type option_argvals = list string * list string
 
-val set_or_replace_option : link_option -> command_state -> command_state
-let set_or_replace_option opt state = 
-    <| input_units = state.input_units
-     ; link_options = Set.insert opt (Set.filter (fun existing -> existing <> opt) state.link_options)
-     ; current_input_options = state.current_input_options
-     ; current_group = state.current_group
-     ; stack = state.stack
-     |>
+val set_or_replace_option : link_option -> list command_state -> list command_state
+let set_or_replace_option opt state_list = 
+    match state_list with
+        [] -> failwith "error: no state"
+        | state :: more -> 
+            <| input_units = state.input_units
+             ; link_options = Set.insert opt (Set.filter (fun existing -> existing <> opt) state.link_options)
+             ; current_input_options = state.current_input_options
+             ; current_group = state.current_group
+             |> :: more
+    end
 
 val find_option_matching_tag : link_option -> set link_option -> maybe link_option
 let rec find_option_matching_tag tag options = 
@@ -268,7 +277,7 @@ let parse_address s = match toCharList s with
     | chars -> accumulate_dec_chars 0 chars
 end
 
-type option_def = (list option_token) * option_argspecs * (option_argvals -> command_state -> command_state) * string
+type option_def = (list option_token) * option_argspecs * (option_argvals -> list command_state -> list command_state) * string
 
 (* the table is a list of: ... options    and their arg names ... and the option's meaning as a function... and a help string *)
 val command_line_table : list option_def
@@ -527,11 +536,11 @@ let rec matching_arg_and_alias arg options = match options with
  * Now we define an "interpreted command line" that includes 
  * some useful structure. *)
 
-val read_one_arg : command_state -> list string -> (command_state * list string)
-let read_one_arg state args =
+val read_one_arg : list command_state -> list string -> (list command_state * list string)
+let read_one_arg state_stack args =
     (* Get the first string and look it up in our table. *)
     match args with
-        [] -> (state, [])
+        [] -> (state_stack, [])
     |   some_arg :: more -> match (matching_arg_and_alias some_arg command_line_table) with
             (* We need to handle argdefs that have trailing equals. This means 
              * an extra arg might follow the equals. We need some helper functions. *)
@@ -549,12 +558,12 @@ let read_one_arg state args =
                         | Nothing -> []
                     end
                     in 
-                    let new_state = meaning (argstrings, regex_matches) state
+                    let new_state_stack = meaning (argstrings, regex_matches) state_stack
                     in
-                    (new_state, drop (length argspec_extras) more)
+                    (new_state_stack, drop (length argspec_extras) more)
                 | Nothing -> 
                     (* If we didn't match any args, we ought to be an input file. *)
-                    (add_input_file state some_arg, more)
+                    (add_input_file state_stack some_arg, more)
             end
     end
 
@@ -586,6 +595,8 @@ let {ocaml} command_line = fun _ -> (
     let cooked_argv = cook_argv [] (tail argv)
     in
     (* Now we use our fold-alike. *)
-    let state = foldl_suffix read_one_arg initial_state cooked_argv
-    in (state.input_units, state.link_options)
+    match foldl_suffix read_one_arg initial_state cooked_argv with
+        state :: rest_of_stack -> (state.input_units, state.link_options)
+        | _ -> failwith "no command state left"
+    end
 )
