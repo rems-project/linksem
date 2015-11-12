@@ -100,6 +100,14 @@ type input_options =  <| item_fmt : string
                                                  false for .so with --as-needed *)
                        |>
 
+val null_input_options : input_options
+let null_input_options = 
+                      <| item_fmt = ""
+                       ; item_check_sections = false
+                       ; item_copy_dt_needed = false
+                       ; item_force_output = true
+                       |>
+
 val string_of_input_options : input_options -> string
 let string_of_input_options opts = "(some options)"
 

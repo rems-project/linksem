@@ -327,6 +327,7 @@ let (null_abi : abi any_abi_feature) = <|
     ; pad_data = pad_zeroes
     ; pad_code = pad_zeroes
     ; generate_support = (* fun _ -> *) fun _ -> get_empty_memory_image ()
+    ; concretise_support = fun img -> img
     |>
 
 (* *)
@@ -378,7 +379,7 @@ let amd64_generate_support (* reloc_resolution_lists *) input_imgs =
            ; elf64_section_flags = natural_lor shf_write shf_alloc
            ; elf64_section_addr = 0 (* ignored -- covered by element *)
            ; elf64_section_offset = 0 (* ignored -- will be replaced when file offsets are assigned *)
-           ; elf64_section_size = 0 (* ignored *)
+           ; elf64_section_size = nentries * entrysize (* ignored *)
            ; elf64_section_link = 0
            ; elf64_section_info = 0
            ; elf64_section_align = 8
@@ -388,24 +389,23 @@ let amd64_generate_support (* reloc_resolution_lists *) input_imgs =
            |>
         )))
     ;   (* FIXME: _GLOBAL_OFFSET_TABLE_ generally doesn't mark the *start* of the GOT; 
-         * it's some distance in. *)
+         * it's some distance in. What about .got.plt? *)
         (Just(".got", (0, nentries * entrysize)), SymbolDef(<|
               def_symname = "_GLOBAL_OFFSET_TABLE_"
             ; def_syment =    <| elf64_st_name  = elf64_word_of_natural 0 (* ignored *)
                                ; elf64_st_info  = unsigned_char_of_natural 0 (* FIXME *)
                                ; elf64_st_other = unsigned_char_of_natural 0 (* FIXME *)
-                               ; elf64_st_shndx = elf64_half_of_natural 0
+                               ; elf64_st_shndx = elf64_half_of_natural 1
                                ; elf64_st_value = elf64_addr_of_natural 0 (* ignored *)
-                               ; elf64_st_size  = elf64_xword_of_natural (nentries * entrysize)
+                               ; elf64_st_size  = elf64_xword_of_natural (nentries * entrysize) (* FIXME: start later, smaller size? zero size? *)
                                |>
-            ; def_sym_scn = 0
-            ; def_sym_idx = 0
+            ; def_sym_scn = 1
+            ; def_sym_idx = 1
             ; def_linkable_idx = 0
             |>))
     }
     in
-    <|
-         elements = Map.insert ".got" <|
+    <|  elements = Map.insert ".got" <|
                     startpos = Nothing
                ;    length = Just (nentries * entrysize)
                ;    contents = []
@@ -413,6 +413,22 @@ let amd64_generate_support (* reloc_resolution_lists *) input_imgs =
      ;   by_tag = by_tag_from_by_range new_by_range
      ;   by_range = new_by_range
      |>
+
+val amd64_concretise_support : annotated_memory_image any_abi_feature -> annotated_memory_image any_abi_feature
+let amd64_concretise_support img = 
+    (* Fill in the GOT contents. *)
+    match Map.lookup ".got" img.elements with
+        Nothing -> (* got no GOT? okay... *) img
+        | Just got -> 
+            (* Find the GOT tag. *)
+            let tags_and_ranges = Multimap.lookupBy Memory_image_orderings.tagEquiv (AbiFeature(Amd64AbiFeature(Abi_amd64.GOT([])))) img.by_tag
+            in
+            match tags_and_ranges with
+                [] -> failwith "error: GOT element but no ABI feature GOT tag"
+                | [(AbiFeature(Amd64AbiFeature(Abi_amd64.GOT(l))), Just(el_name, (start, len)))] -> img (* FIXME *)
+                | _ -> failwith "bad or multiple GOT tags"
+            end
+    end
 
 val sysv_amd64_std_abi : abi any_abi_feature
 let sysv_amd64_std_abi = 
@@ -432,6 +448,7 @@ let sysv_amd64_std_abi =
     ; pad_data = pad_zeroes
     ; pad_code = pad_0x90
     ; generate_support = amd64_generate_support
+    ; concretise_support = amd64_concretise_support
     |>
 
 val sysv_aarch64_le_std_abi : abi any_abi_feature
@@ -451,6 +468,7 @@ let sysv_aarch64_le_std_abi =
     ; pad_data = pad_zeroes
     ; pad_code = pad_zeroes
     ; generate_support = (* fun _ -> *) fun _ -> get_empty_memory_image ()
+    ; concretise_support = fun img -> img
     |>
 
 val all_abis : list (abi any_abi_feature)

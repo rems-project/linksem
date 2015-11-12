@@ -354,7 +354,41 @@ let elf_memory_image_element_coextensive_with_section idx img =
     let (allSectionTags, allSectionElementRanges) = elf_memory_image_section_ranges img 
     in
     let matches = mapMaybei (fun i -> (fun (tag, (elName, (rangeStart, rangeLen))) -> match tag with
-         FileFeature(ElfSection(itsIdx, s)) -> if itsIdx = idx && rangeStart = 0 && rangeLen = s.elf64_section_size then Just elName else Nothing
+         FileFeature(ElfSection(itsIdx, s)) -> 
+            let el_rec = match Map.lookup elName img.elements with
+                Just x -> x
+                | Nothing -> failwith "impossible: element not found"
+            end
+            in
+            let size_matches = 
+                (* HMM. This is complicated. Generally we like to ignore 
+                 * isec fields that are superseded by memory_image fields, 
+                 * here the element length. But we want to catch the case
+                 * where there's an inconsistency, and we *might* want to allow the
+                 * case where the element length is still vague (Nothing). *)
+                let range_len_matches_sec = (rangeLen = s.elf64_section_size)
+                in
+                let sec_matches_element_len = (Just(s.elf64_section_size) = el_rec.length)
+                in
+                let range_len_matches_element_len = (Just(rangeLen) = el_rec.length)
+                in
+                (* If any pair are unequal, then warn. *)
+                let _ = 
+                if (range_len_matches_sec <> sec_matches_element_len
+                 || sec_matches_element_len <> range_len_matches_element_len
+                 || range_len_matches_sec <> range_len_matches_element_len)
+                then errln ("Warning: section lengths do not agree: " ^ s.elf64_section_name_as_string)
+                else ()
+                in
+                range_len_matches_element_len
+            in
+            if itsIdx = idx && rangeStart = 0 
+                && size_matches
+            then
+            (* *)
+            (* Sanity check: does the *)
+            Just elName
+            else Nothing
         | _ -> failwith "impossible"
     end)) (zip allSectionTags allSectionElementRanges)
     in

@@ -91,27 +91,10 @@ let img instr_bytes =
         ; by_tag = by_tag_from_by_range (Set.fromList meta)
      |> 
     in 
-    let inp_file_options =
-                      <| input_fmt = ""
-                       ; input_libpath = []
-                       ; input_link_sharedlibs = false
-                       ; input_check_sections = false
-                       ; input_copy_dt_needed = false
-                       ; input_whole_archive = false
-                       ; input_as_needed = false
-                       |>
-    in
-    let inp_options = <|
-                         item_fmt = ""
-                       ; item_check_sections = false
-                       ; item_copy_dt_needed = false
-                       ; item_force_output = true
-                       |>
-    in
     let ref_input_item
-     = ("test.o", Reloc(Sequence([])), ((File(Filename("blah"), inp_file_options)), [InCommandLine(0)]))
+     = ("test.o", Reloc(Sequence([])), ((File(Filename("blah"), Command_line.null_input_file_options)), [InCommandLine(0)]))
     in 
-    let ref_linkable_item = (RelocELF(initial_img), ref_input_item, inp_options)
+    let ref_linkable_item = (RelocELF(initial_img), ref_input_item, Input_list.null_input_options)
     in
     let bindings_by_name = Map.fromList [
         ("test", [(0, ((0, ref_rec, ref_linkable_item), Just(0, def_rec, ref_linkable_item)))])

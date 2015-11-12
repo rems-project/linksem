@@ -88,4 +88,5 @@ let gnu_extend a =
     ; pad_data            = a.pad_data
     ; pad_code            = a.pad_code
     ; generate_support    = a.generate_support
+    ; concretise_support  = a.concretise_support
     |>

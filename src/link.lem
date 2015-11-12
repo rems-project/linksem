@@ -11,6 +11,8 @@ import Set_extra
 open import Num
 open import Maybe
 open import Assert_extra
+import Command_line
+import Input_list
 
 open import Byte_sequence
 open import Default_printing
@@ -375,7 +377,7 @@ let expand_sections_for_one_image a options bindings_by_name linkable_idx item =
                     (let maybe_elname = elf_memory_image_element_coextensive_with_section shndx img
                      in
                      match maybe_elname with
-                        Nothing -> failwith "impossible: no such section"
+                        Nothing -> failwith ("impossible: no such section (" ^ (show shndx) ^ ") in image of " ^ fname)
                         | Just idstr -> 
                             match Map.lookup idstr img.elements with
                                 Just el -> el.contents
@@ -414,7 +416,7 @@ let expand_sections_for_one_image a options bindings_by_name linkable_idx item =
                     (let maybe_elname = elf_memory_image_element_coextensive_with_section shndx stripped_img_with_reloc_sections
                      in
                      match maybe_elname with
-                        Nothing -> failwith "impossible: no such section"
+                        Nothing -> failwith ("impossible: no such section (matching " ^ (show shndx) ^ ")")
                         | Just idstr -> 
                             match Map.lookup idstr stripped_img_with_reloc_sections.elements with
                                 Just el -> el.contents
@@ -461,14 +463,28 @@ end
 
 type reloc_resolution = reloc_site * binding * reloc_decision
 
-val default_merge_generated : elf_memory_image -> list (list Linker_script.input_spec) -> list (list Linker_script.input_spec)
-let default_merge_generated generated_img input_spec_lists = 
+val default_merge_generated : abi any_abi_feature -> elf_memory_image -> list (list Linker_script.input_spec) -> list (list Linker_script.input_spec)
+let default_merge_generated a generated_img input_spec_lists = 
     (* We expand the sections in the generated image and hang them off
-     * the first linkable item. *)
-    (* FIXME *) input_spec_lists
+     * the first linkable item. *) 
+    let _ = errln ("Generated image has " ^ (show (Map.size generated_img.elements)) ^ " elements and " ^ (show (Set.size (generated_img.by_tag))) ^ 
+        " metadata elements (sanity: " ^ (show (Set.size (generated_img.by_range))) ^ ")")
+    in
+    let dummy_input_item = ("(no file)", Input_list.Reloc(Sequence([])), ((Command_line.File(Command_line.Filename("(no file)"), Command_line.null_input_file_options)), [InCommandLine(0)]))
+    in 
+    let dummy_linkable_item = (RelocELF(generated_img), dummy_input_item, Input_list.null_input_options)
+    in
+    let (_, _, generated_inputs) = expand_sections_for_one_image a {} Map.empty 0 dummy_linkable_item
+    in
+    (* okay, hang them off the first one *)
+    match input_spec_lists with
+        [] -> failwith "link job empty"
+        | first_input_list :: more_input_lists -> (first_input_list ++ generated_inputs) :: more_input_lists
+    end
+    (* input_spec_lists *)
 
 val expand_sections_for_all_inputs : abi any_abi_feature -> set Command_line.link_option -> binding_map ->
-    (elf_memory_image -> list (list Linker_script.input_spec) -> list (list Linker_script.input_spec)) (* merge_generated *) -> 
+    (abi any_abi_feature -> elf_memory_image -> list (list Linker_script.input_spec) -> list (list Linker_script.input_spec)) (* merge_generated *) -> 
     list (natural * Linkable_list.linkable_item) -> 
     list (list reloc_resolution * elf_memory_image * list Linker_script.input_spec)
 let expand_sections_for_all_inputs a options bindings_by_name merge_generated idx_and_linkables = 
@@ -491,7 +507,7 @@ let expand_sections_for_all_inputs a options bindings_by_name merge_generated id
      *    list (list reloc_decision * elf_memory_image * list Linker_script.input_spec)
      *
      * i.e. one item for every input image. *)
-    let (final_input_spec_lists : list (list Linker_script.input_spec)) = merge_generated generated_img linker_script_input_lists
+    let (final_input_spec_lists : list (list Linker_script.input_spec)) = merge_generated a generated_img linker_script_input_lists
     in
     zip3 expanded_reloc_lists expanded_imgs final_input_spec_lists
 
@@ -881,7 +897,10 @@ let link script a options linkables =
         ()
     )) () remaining_relocs
     in
-    let output_image = relocate_output_image a bindings_by_name unrelocated_output_image
+    (* Before we relocate, we concretise any ABI features that we've linked in. *)
+    let unrelocated_concrete_output_image = a.concretise_support unrelocated_output_image
+    in
+    let output_image = relocate_output_image a bindings_by_name unrelocated_concrete_output_image
     in
     let (maybe_entry_point_address : maybe natural) = 
         match Command_line.find_option_matching_tag (Command_line.EntryAddress(0)) options with

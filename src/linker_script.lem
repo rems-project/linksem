@@ -269,7 +269,7 @@ let has_writability = fun writable -> (fun input_sec -> (
         | InputSection(inp)
             -> let (flags : natural) = match elf_memory_image_section_by_index inp.shndx inp.img with 
                           Just x -> x.elf64_section_flags
-                        | Nothing -> failwith "impossible: no such section"
+                        | Nothing -> failwith ("impossible: no such section (index " ^ (show inp.shndx) ^ ")")
                      end
                 in 
                 flag_is_set shf_write flags
@@ -1069,7 +1069,7 @@ let rec assign_inputs_to_output_sections acc inputs cur_output_sec last_input_se
                                                 (let maybe_elname = elf_memory_image_element_coextensive_with_section x.shndx x.img 
                                                  in
                                                  match maybe_elname with
-                                                    Nothing -> failwith "impossible: no such section"
+                                                    Nothing -> failwith ("impossible: no such element (matching shndx " ^ (show x.shndx) ^ ")")
                                                     | Just idstr -> 
                                                         match Map.lookup idstr x.img.elements with
                                                             Just el -> el.contents
@@ -1299,7 +1299,7 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                         let maybe_secname = elf_memory_image_element_coextensive_with_section irec.shndx irec.img 
                         in
                         match maybe_secname with
-                            Nothing -> failwith "impossible: no such section"
+                            Nothing -> failwith ("impossible: no such section (matching irec.shndx " ^ (show irec.shndx) ^ ")")
                             | Just idstr -> 
                                 let _ = errln ("Found element named " ^ idstr ^ " coextensive with section named " ^ 
                                     irec.isec.elf64_section_name_as_string ^ " in file " ^ irec.fname)
@@ -1411,6 +1411,7 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                                                 ; def_sym_idx = def.def_sym_idx
                                                 ; def_linkable_idx = irec.idx
                                                 |>))
+                                            | AbiFeature(x) -> Just(new_range, AbiFeature(x))
                                             (* If it's a symbol ref with no reloc site, we discard it? *)
                                             | SymbolRef(r) -> 
                                                 let _ = if r.ref.ref_symname = "_start" then errln ("Saw ref to _start, " 
