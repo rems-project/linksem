@@ -8,7 +8,7 @@
 (*open import Abstract_linker_script*)
 open import Archive
 open import Byte_sequence
-(*open import Command_line*)
+open import Command_line
 open import Default_printing
 open import Elf_dynamic
 open import Elf_file
@@ -16,7 +16,7 @@ open import Elf_header
 open import Elf_interpreted_section
 open import Elf_interpreted_segment
 open import Elf_memory_image
-(*open import Elf_memory_image_of_elf64_file*)
+open import Elf_memory_image_of_elf64_file
 open import Elf_note
 open import Elf_program_header_table
 open import Elf_relocation
@@ -26,10 +26,10 @@ open import Elf_types_native_uint
 open import Endianness
 open import Error
 open import Hex_printing
-(*open import Input_list
+open import Input_list
 open import Linkable_list
 open import Linker_script
-open import Link*)
+open import Link
 open import Memory_image
 (*open import Memory_image_orderings*)
 open import Missing_pervasives

@@ -363,7 +363,7 @@ let default_linker_control_script a user_text_segment_start user_data_segment_st
     )
     in
     let is_common = (fun isec -> match isec with 
-        Common(idx, fname, img, def) -> let _ = errln ("Common or large-common symbol: " ^ def.def_symname) in 
+        Common(idx, fname, img, def) -> (*let _ = errln ("Common or large-common symbol: " ^ def.def_symname) in *)
              not (is_large_common isec)
          | _ -> false
     end)
@@ -825,17 +825,17 @@ SECTIONS
                            ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
                                 fun s -> name_matches ".bss" s || name_matches ".bss.*" s || name_matches ".gnu.linkonce.b.*" s))
                            ; InputQuery(DefaultKeep, DefaultSort, fun inputlist -> 
-                                let _ = errln "Looking for commons" in 
+                                (*let _ = errln "Looking for commons" in *)
                                 let result = filter_and_concat is_common inputlist
                                 in
-                                let _ = errln ("Got " ^ (show (length (result))) ^ " commons; sanity check: input list contains " ^
+                                (*let _ = errln ("Got " ^ (show (length (result))) ^ " commons; sanity check: input list contains " ^
                                     (show (length inputlist)) ^ " of which " ^
                                     (show (length (List.filter (fun inp -> match inp with
                                         Common _ -> true
                                         | _ -> false
                                     end) inputlist))) ^ " are commons."
                                 ) 
-                                in result
+                                in*) result
                             )
       ])
     ; AdvanceAddress(fun pos -> (fun secs -> align_up_to (if pos = 0 then (64/8) else 1) pos))
@@ -915,8 +915,8 @@ let interpret_guard guard comp name =
                     0 = natural_land irec.isec.elf64_section_flags shf_write
                 | _ -> (* holes, common symbols and provided symbols shouldn't prevent ONLY_IF_RO *) true
                end) comp
-            in let _ = errln ("only_if_ro evaluated " ^ (show v) ^ " for output section " ^ name)
-            in v
+            in (*let _ = errln ("only_if_ro evaluated " ^ (show v) ^ " for output section " ^ name)
+            in*) v
         | OnlyIfRw -> 
             let v = List.all (fun comp_el -> match comp_el with
                 IncludeInputSection(retainpol, (* fname, linkable_idx, shndx, isec, img *) irec) -> 
@@ -924,8 +924,8 @@ let interpret_guard guard comp name =
                     0 <> natural_land irec.isec.elf64_section_flags shf_write
                 | _ -> (* holes etc. shouldn't prevent ONLY_IF_RW *) true
               end) comp
-            in let _ = errln ("only_if_rw evaluated " ^ (show v) ^ " for output section " ^ name)
-            in v
+            in (*let _ = errln ("only_if_rw evaluated " ^ (show v) ^ " for output section " ^ name)
+            in *)v
     end
 
 (* Passes over the script: 
@@ -961,10 +961,10 @@ let rec assign_inputs_to_output_sections acc inputs cur_output_sec last_input_se
     let flush_output_sec 
      = fun maybe_output_sec_and_idx -> match maybe_output_sec_and_idx with
         Just ((guard, addr, name, comp), script_idx) -> 
-            let _ = errln ("Guardedly flushing output section named " ^ name ^ " with " ^ (
+            (*let _ = errln ("Guardedly flushing output section named " ^ name ^ " with " ^ (
                 match addr with Nothing -> "no address yet" | Just a -> "address 0x" ^ (hex_string_of_natural a) end
             ))
-            in
+            in*)
             (* evaluate the guard *)
             if interpret_guard guard comp name
             then (* do it     *) (rev_discards, ((guard, addr, name, comp), script_idx) :: rev_outputs)
@@ -987,7 +987,7 @@ let rec assign_inputs_to_output_sections acc inputs cur_output_sec last_input_se
                      * a current section, use the ABS section (what is that labelling?). *)
                     (acc,
                      match cur_output_sec with
-                        Nothing -> let _ = errln "FIXME: ABS symbol defs not yet supported" in cur_output_sec
+                        Nothing -> (*let _ = errln "FIXME: ABS symbol defs not yet supported" in*) cur_output_sec
                         | Just ((guard, maybe_addr, secname, comp), output_script_idx) ->
                             Just ((guard, maybe_addr, secname, 
                                 comp ++ [ProvideSymbol(symdefpol, name, (symsize, syminfo, symother))]
@@ -1032,9 +1032,9 @@ let rec assign_inputs_to_output_sections acc inputs cur_output_sec last_input_se
                     let selected = selector inputs
                     in
                     let (rev_discards, rev_outputs) = acc in
-                    let _ = Missing_pervasives.errln ("Processing discard rule; selected " ^ (show (length selected))
+                    (*let _ = Missing_pervasives.errln ("Processing discard rule; selected " ^ (show (length selected))
                         ^ " inputs.")
-                    in
+                    in*)
                     (((List.reverse [i | forall (i MEM selected) | true]) ++ rev_discards, rev_outputs), cur_output_sec, last_input_sec)
                 | InputQuery(retainpol, sortpol, selector) -> 
                     (* Input queries can only occur within an output section. *)
@@ -1064,7 +1064,7 @@ let rec assign_inputs_to_output_sections acc inputs cur_output_sec last_input_se
                             let (sectionMatchList : list input_section_rec) = List.mapMaybe (fun inp -> 
                                 match inp with
                                     InputSection(x) -> 
-                                        let _ = errln ("Matched an input section named " ^ x.isec.elf64_section_name_as_string ^ 
+                                        (*let _ = errln ("Matched an input section named " ^ x.isec.elf64_section_name_as_string ^ 
                                             " in a file " ^ x.fname ^ " with first 20 bytes " ^ (show (take 20 
                                                 (let maybe_elname = elf_memory_image_element_coextensive_with_section x.shndx x.img 
                                                  in
@@ -1077,7 +1077,7 @@ let rec assign_inputs_to_output_sections acc inputs cur_output_sec last_input_se
                                                         end
                                                 end
                                                 ))))
-                                            in
+                                            in*)
                                             Just x
                                    | _ -> Nothing
                                 end) sorted_selected_inputs
@@ -1233,7 +1233,7 @@ let output_section_flags comp =
 
 let symbol_def_for_provide_symbol name size info other linker_script_linkable_idx = 
     <|
-        def_symname = let _ = errln ("Linker script is defining symbol called `" ^ name ^ "'") in name
+        def_symname = (*let _ = errln ("Linker script is defining symbol called `" ^ name ^ "'") in*) name
         ; def_syment = <|
              elf64_st_name  = elf64_word_of_natural 0 (* ignored *)
            ; elf64_st_info  = info
@@ -1268,22 +1268,22 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
             in
             let align = alignof_output_section comp
             in
-            let _ = errln ("Aligning section " ^ secname ^ " up to a " ^ (show align) ^ "-byte address boundary")
-            in
+            (*let _ = errln ("Aligning section " ^ secname ^ " up to a " ^ (show align) ^ "-byte address boundary")
+            in*)
             let start_addr = align_up_to align unaligned_start_addr
             in
             let (end_addr, comp_addrs) = do_output_section_layout_starting_at_addr start_addr outputs_by_name comp
             in
             let size = end_addr - start_addr
             in
-            let _ = Missing_pervasives.outln (
+            (*let _ = Missing_pervasives.outln (
                 if List.null comp then secname else (
                     ((space_padded_and_maybe_newline 16 secname) ^
                     ("0x" ^ (left_zero_padded_to 16 (hex_string_of_natural start_addr))) ^ " " ^
                     (left_space_padded_to 10 ("0x" ^ (hex_string_of_natural size))))
                 )
             )
-            in
+            in*)
             let (concatenated_content, final_addr, new_range_tag_pairs) = List.foldl (fun (accum_pat, addr, accum_meta) -> (fun (comp_el, comp_addr) ->
                 (* let _ = errln ("Adding an element to composition of output section `" ^ secname ^ "'")
                 in *)
@@ -1301,15 +1301,15 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                         match maybe_secname with
                             Nothing -> failwith ("impossible: no such section (matching irec.shndx " ^ (show irec.shndx) ^ ")")
                             | Just idstr -> 
-                                let _ = errln ("Found element named " ^ idstr ^ " coextensive with section named " ^ 
+                                (*let _ = errln ("Found element named " ^ idstr ^ " coextensive with section named " ^ 
                                     irec.isec.elf64_section_name_as_string ^ " in file " ^ irec.fname)
-                                in
+                                in*)
                                 match Map.lookup idstr irec.img.elements with
                                 Just el -> 
-                                    let _ = Missing_pervasives.outln (make_line irec.isec.elf64_section_name_as_string
+                                    (*let _ = Missing_pervasives.outln (make_line irec.isec.elf64_section_name_as_string
                                         (hex_string_of_natural comp_addr) (hex_string_of_natural irec.isec.elf64_section_size)
                                         irec.fname)
-                                    in
+                                    in*)
                                     let range_or_sym_is_in_this_sec = (fun maybe_range -> (fun tag ->
                                         (* is it within the section we're outputting? 
                                          * first we needs its element name. *)
@@ -1365,14 +1365,14 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                                     in
                                     (* What symbol defs are being included? *)
                                     (* For each global symbol defined in the section, output a line. *)
-                                    let _ = Missing_pervasives.outs (List.foldl (^) "" (
+                                    (*let _ = Missing_pervasives.outs (List.foldl (^) "" (
                                         List.map (fun def -> (make_line ""
                                                 (hex_string_of_natural (comp_addr + (natural_of_elf64_addr def.def_syment.elf64_st_value)))
                                                 (hex_string_of_natural (natural_of_elf64_xword def.def_syment.elf64_st_size))
                                                 ("    " ^ def.def_symname)) ^ "\n"
                                         ) included_global_defs
                                     ))
-                                    in
+                                    in*)
                                     let (new_ranges_and_tags : set ((maybe element_range) * (range_tag any_abi_feature)))
                                      = Set.mapMaybe (fun (maybe_range, tag) -> 
                                         (* How do we update existing metadata? In general,
@@ -1400,11 +1400,11 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                                              * should replace syment with a minimal structure
                                              * that avoids duplication. Same for isecs. *)
                                             | SymbolDef(def) -> 
-                                                let _ = if def.def_symname = "_start" then errln ("Saw def of _start, "
+                                                (*let _ = if def.def_symname = "_start" then errln ("Saw def of _start, "
                                                     ^ "in section " ^ irec.isec.elf64_section_name_as_string ^ " of linkable " ^ (show irec.idx)
                                                     ^ ", destined for output section `" ^ irec.secname ^ "'")
                                                  else ()
-                                                in Just(new_range, SymbolDef(<|
+                                                in*) Just(new_range, SymbolDef(<|
                                                   def_symname = def.def_symname
                                                 ; def_syment = def.def_syment
                                                 ; def_sym_scn = def.def_sym_scn
@@ -1414,10 +1414,10 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                                             | AbiFeature(x) -> Just(new_range, AbiFeature(x))
                                             (* If it's a symbol ref with no reloc site, we discard it? *)
                                             | SymbolRef(r) -> 
-                                                let _ = if r.ref.ref_symname = "_start" then errln ("Saw ref to _start, " 
+                                                (*let _ = if r.ref.ref_symname = "_start" then errln ("Saw ref to _start, " 
                                                     ^ "in section " ^ irec.isec.elf64_section_name_as_string ^ " of linkable " ^ (show irec.idx))
                                                 else ()
-                                                in 
+                                                in*) 
                                                 let get_binding_for_ref = (fun symref -> (fun linkable_idx -> (fun fname -> 
                                                     let name_matches = match Map.lookup symref.ref_symname bindings_by_name with Just x -> x | Nothing -> [] end
                                                     in
@@ -1515,10 +1515,10 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                                                             let (possible_bindings : list (natural * binding))
                                                              = match Map.lookup ref.ref_symname bindings_by_name with
                                                                 Just l -> if ref.ref_symname = "__fini_array_end" then 
-                                                                    let _ = errln ("Found " ^ (show (length l)) ^ " bindings for __fini_array_end, of which " ^
+                                                                    (*let _ = errln ("Found " ^ (show (length l)) ^ " bindings for __fini_array_end, of which " ^
                                                                         (show (length (List.filter (fun (bi, (r, maybe_d)) -> maybe_d <> Nothing) l))) ^ 
                                                                         " are with definition")
-                                                                        in l 
+                                                                        in*) l 
                                                                         else l
                                                                 | Nothing -> []
                                                             end
@@ -1546,7 +1546,7 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                                                                         end
                                                                     ) possible_bindings
                                                                     in
-                                                                    let _ = errln ("For a ref to `" ^ ref.ref_symname ^ 
+                                                                    (*let _ = errln ("For a ref to `" ^ ref.ref_symname ^ 
                                                                             "', possibles list is: " ^ (
                                                                                 List.foldl (fun x -> fun y -> x ^ ", " ^ y) "" (List.map (fun (bi, ((_, _, _), maybe_d)) -> 
                                                                                     match maybe_d with
@@ -1558,7 +1558,7 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                                                                                     end
                                                                                 ) matching_possibles)
                                                                             ))
-                                                                    in
+                                                                    in*)
                                                                     let new_bound_to = match matching_possibles with
                                                                         [] -> Just(ApplyReloc, Nothing)
                                                                         | [(bi, ((rl, r, ri), maybe_d))] -> 
@@ -1577,9 +1577,9 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                                                                     end
                                                                     in
                                                                     if new_bound_to <> r.maybe_def_bound_to then
-                                                                        let _ = errln ("Changed binding for reference to `" ^ ref.ref_symname ^ 
+                                                                        (*let _ = errln ("Changed binding for reference to `" ^ ref.ref_symname ^ 
                                                                             "' in linkable " ^ (show irec.idx))
-                                                                        in
+                                                                        in*)
                                                                         new_bound_to
                                                                     else if new_bound_to = Nothing then failwith "really need a decision by now"
                                                                         else new_bound_to
@@ -1602,24 +1602,24 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                                         ) (Set.fromList ranges_and_tags) (* end mapMaybe fn *)
                                     in
                                     (irec.isec.elf64_section_size, 
-                                        let _ = errln ("Saw first 20 bytes of section " ^ irec.isec.elf64_section_name_as_string ^
+                                        (*let _ = errln ("Saw first 20 bytes of section " ^ irec.isec.elf64_section_name_as_string ^
                                             " from " ^ irec.fname ^ " as " ^ (show (take 20 el.contents)))
-                                        in
+                                        in*)
                                         el.contents, new_ranges_and_tags)
                          | _     -> failwith "impossible: no such element"
                        end (* match Map.lookup idstr img.elements *)
                     end (* match maybe_secname *)
                     | IncludeCommonSymbol(retain_pol, fname, linkable_idx, def, img) -> 
-                        let _ = errln ("Including common symbol called `" ^ def.def_symname ^ "'")
-                        in
+                        (*let _ = errln ("Including common symbol called `" ^ def.def_symname ^ "'")
+                        in*)
                         (* We want to get the common symbol as a byte pattern *)
                         let sz = natural_of_elf64_xword def.def_syment.elf64_st_size
                         in
                         let content = Missing_pervasives.replicate sz (Just(byte_of_natural 0))
                         in 
-                        let _ = Missing_pervasives.outln (make_line "COMMON" (hex_string_of_natural comp_addr)
+                        (*let _ = Missing_pervasives.outln (make_line "COMMON" (hex_string_of_natural comp_addr)
                              (hex_string_of_natural sz) fname)
-                        in
+                        in*)
                         (sz, content, {(Just(secname, (0, sz)), SymbolDef(<|
                               def_symname = def.def_symname
                             ; def_syment = def.def_syment
@@ -1634,16 +1634,16 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                         in
                         let content = Missing_pervasives.replicate n Nothing
                         in 
-                        let _ = Missing_pervasives.outln (make_line "*fill*" (hex_string_of_natural comp_addr)
+                        (*let _ = Missing_pervasives.outln (make_line "*fill*" (hex_string_of_natural comp_addr)
                              (hex_string_of_natural n)
                              "")
-                        in
+                        in*)
                         (next_addr - addr, content, {}) 
                     | ProvideSymbol(pol, name, (size, info, other)) -> 
                         let symaddr = pos (* FIXME: support others *)
                         in
-                        let _ = Missing_pervasives.outln (make_line "" (hex_string_of_natural symaddr) "" ("PROVIDE (" ^ name ^ ", .)"))
-                        in 
+                        (*let _ = Missing_pervasives.outln (make_line "" (hex_string_of_natural symaddr) "" ("PROVIDE (" ^ name ^ ", .)"))
+                        in*) 
                         ((* sz *) 0, (* comp_el_pat *) [],  (* this_el_meta *) {(
                             Just(secname, ((pos - start_addr), 0)), 
                             SymbolDef(symbol_def_for_provide_symbol name size info other linker_script_linkable_idx)
@@ -1651,9 +1651,9 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                         )
                 end (* match comp_el_pat *)
                 in
-                let _ = errln ("Appending byte pattern to section " ^ secname ^ ", first 20 bytes: " ^ 
+                (*let _ = errln ("Appending byte pattern to section " ^ secname ^ ", first 20 bytes: " ^ 
                     (show (take 20 comp_el_pat)))
-                in
+                in*)
                 let new_content = append_to_byte_pattern_at_offset (comp_addr - start_addr) accum_pat comp_el_pat
                 in
                 let new_addr = comp_addr + sz
@@ -1669,7 +1669,7 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
               ; Memory_image.contents = concatenated_content
             |>
             in
-            let _ = Missing_pervasives.outln "" in
+            (*let _ = Missing_pervasives.outln "" in*)
             (* Make a new element in the image, also transferring metadata from input elements 
              * as appropriate. *)
             let new_by_range_list = 
@@ -1879,17 +1879,17 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                     
                      *)
                     (* let num_pages_used *)
-                    let _ = errln ("Option 1 congruence add-in from pos 0x" ^ (hex_string_of_natural pos) ^ ", maxpagesize 0x" ^ 
+                    (*let _ = errln ("Option 1 congruence add-in from pos 0x" ^ (hex_string_of_natural pos) ^ ", maxpagesize 0x" ^ 
                         (hex_string_of_natural maxpagesize) ^ " is 0x" ^ (hex_string_of_natural (natural_land pos (maxpagesize - 1))))
-                    in
+                    in*)
                     let option1 = align_up_to maxpagesize pos + (natural_land pos (maxpagesize - 1))
                     in
-                    let _ = errln ("Mark/align data segment: option 1 is to bump pos to 0x" ^ (hex_string_of_natural option1))
-                    in
+                    (*let _ = errln ("Mark/align data segment: option 1 is to bump pos to 0x" ^ (hex_string_of_natural option1))
+                    in*)
                     let option2 = align_up_to maxpagesize pos + (natural_land (pos + commonpagesize - 1) (maxpagesize - commonpagesize))
                     in
-                    let _ = errln ("Mark/align data segment: option 2 is to bump pos to 0x" ^ (hex_string_of_natural option2))
-                    in
+                    (*let _ = errln ("Mark/align data segment: option 2 is to bump pos to 0x" ^ (hex_string_of_natural option2))
+                    in*)
                     let data_segment_endpos = (fun startpos -> 
                         (* run forward from here until MarkDataSegmentEnd, 
                          * accumulating the actually-made outputs by name and their sizes *)
@@ -1954,10 +1954,10 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                     in
                     let endpos_option2 = data_segment_endpos option2
                     in
-                    let _ = errln ("Mark/align data segment: option 1 gives an endpos of 0x" ^ (hex_string_of_natural endpos_option1))
-                    in
-                    let _ = errln ("Mark/align data segment: option 2 gives an endpos of 0x" ^ (hex_string_of_natural endpos_option2))
-                    in
+                    (*let _ = errln ("Mark/align data segment: option 1 gives an endpos of 0x" ^ (hex_string_of_natural endpos_option1))
+                    in*)
+                    (*let _ = errln ("Mark/align data segment: option 2 gives an endpos of 0x" ^ (hex_string_of_natural endpos_option2))
+                    in*)
                     let npages = (fun startpos -> (fun endpos ->
                         ((align_up_to  commonpagesize endpos) - 
                         (round_down_to commonpagesize startpos)) / commonpagesize
@@ -1967,13 +1967,13 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                     in
                     let npages_option2 = npages option2 endpos_option1
                     in
-                    let _ = errln ("Mark/align data segment: option 1 uses " ^ (show npages_option1) ^ " COMMONPAGESIZE-sized pages")
-                    in
-                    let _ = errln ("Mark/align data segment: option 2 uses " ^ (show npages_option2) ^ " COMMONPAGESIZE-sized pages")
-                    in
+                    (*let _ = errln ("Mark/align data segment: option 1 uses " ^ (show npages_option1) ^ " COMMONPAGESIZE-sized pages")
+                    in*)
+                    (*let _ = errln ("Mark/align data segment: option 2 uses " ^ (show npages_option2) ^ " COMMONPAGESIZE-sized pages")
+                    in*)
                     if npages_option1 < npages_option2 
-                    then let _ = errln "Choosing option 1" in (acc, option1, outputs_by_name)
-                    else let _ = errln "Choosing option 2" in (acc, option2, outputs_by_name)
+                    then (*let _ = errln "Choosing option 1" in*) (acc, option1, outputs_by_name)
+                    else (*let _ = errln "Choosing option 2" in*) (acc, option2, outputs_by_name)
                 | MarkDataSegmentEnd -> do_nothing
                 | MarkDataSegmentRelroEnd(fun_from_secs_to_something) -> do_nothing
                 | OutputSection(outputguard, maybe_expr, name, sub_elements) -> 
@@ -2015,8 +2015,8 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                         (* let _ = errln ("Before adding output section, we have " ^ (show (count_sections_in_image acc))
                             ^ " sections.")
                         in *)
-                        let _ = errln ("At pos 0x" ^ (hex_string_of_natural pos) ^ ", adding output section " ^ name)
-                        in
+                        (*let _ = errln ("At pos 0x" ^ (hex_string_of_natural pos) ^ ", adding output section " ^ name)
+                        in*)
                         let (new_pos, new_acc, sec_sz, replacement_output_sec)
                          = add_output_section ((* next_free_section_idx, *) pos, acc) found
                         in
@@ -2155,9 +2155,9 @@ let default_place_orphans (discards, outputs) inputs =
      in
      let (orphans : list input_spec) = List.filter (fun inp -> match inp with 
              InputSection(irec) -> let v = not (irec IN output_irecs)
-                                   in let _ = if v then errln ("Saw an orphan input section: " ^ 
+                                   in (*let _ = if v then errln ("Saw an orphan input section: " ^ 
                                     irec.secname ^ " in " ^ irec.fname) else ()
-                                   in v
+                                   in*) v
              | _ -> false
      end) inputs
      in
@@ -2219,8 +2219,8 @@ let default_place_orphans (discards, outputs) inputs =
                     ) outputs
                 )
             | Nothing -> 
-                    let _ = errln ("Warning: discarding orphan section")
-                    in
+                    (*let _ = errln ("Warning: discarding orphan section")
+                    in*)
                     (discards ++ [input], outputs)
          end
      )
@@ -2255,8 +2255,8 @@ let interpret_linker_control_script script linker_script_linkable_idx a inputs s
             List.foldl (fun inner_acc -> fun comp_el -> (
                 match comp_el with
                     ProvideSymbol(pol, name, (size, info, other)) -> 
-                        let _ = errln ("Linker script defining symbol `" ^ name ^ "'")
-                        in
+                        (*let _ = errln ("Linker script defining symbol `" ^ name ^ "'")
+                        in*)
                         let def = symbol_def_for_provide_symbol name size info other linker_script_linkable_idx
                         in
                         let v = match Map.lookup name inner_acc with
@@ -2275,8 +2275,8 @@ let interpret_linker_control_script script linker_script_linkable_idx a inputs s
             List.map (fun (b_idx, b_initial) ->
                 let ((iref_idx, iref, iref_item), maybe_idef) = b_initial
                 in
-                let _ = errln ("Looking for linker script defs of symbol `" ^ iref.ref_symname ^ "'")
-                in
+                (*let _ = errln ("Looking for linker script defs of symbol `" ^ iref.ref_symname ^ "'")
+                in*)
                 let possible_script_defs = match Map.lookup iref.ref_symname script_defs_by_name with
                     Just l -> l
                     | Nothing -> []
@@ -2299,21 +2299,21 @@ let interpret_linker_control_script script linker_script_linkable_idx a inputs s
                 in
                 (* If the binding has no def, we always use the def we have. 
                  * If the binding has a def, we use our def only if the policy is AlwaysDefine. *)
-                let _ = errs ("Do we override binding " ^ (show b_idx) ^ ", symbol named `" ^ 
+                (*let _ = errs ("Do we override binding " ^ (show b_idx) ^ ", symbol named `" ^ 
                     iref.ref_symname ^ "'? ")
-                in
+                in*)
                 let new_b = match (maybe_idef, possible_script_defs) with
-                    | (_, []) -> let _ = errln "no" in ((iref_idx, iref, iref_item), maybe_idef)
-                    | (_, [(def, AlwaysDefine)]) -> let _ = errln "yes" in
+                    | (_, []) -> (*let _ = errln "no" in*) ((iref_idx, iref, iref_item), maybe_idef)
+                    | (_, [(def, AlwaysDefine)]) -> (*let _ = errln "yes" in*)
                         ((iref_idx, iref, iref_item), 
                         Just (linker_script_linkable_idx, def, control_script_linkable_item))
-                    | (Just existing_def, ([(def, ProvideIfUsed)])) -> let _ = errln "no" in
+                    | (Just existing_def, ([(def, ProvideIfUsed)])) -> (*let _ = errln "no" in*)
                         ((iref_idx, iref, iref_item), 
                         Just existing_def)
-                    | (Nothing, [(def, ProvideIfUsed)]) -> let _ = errln "yes" in
+                    | (Nothing, [(def, ProvideIfUsed)]) -> (*let _ = errln "yes" in*)
                         ((iref_idx, iref, iref_item), 
                         Just (linker_script_linkable_idx, def, control_script_linkable_item))
-                    | (_, pair1 :: pair2 :: more) -> let _ = errln "error" in
+                    | (_, pair1 :: pair2 :: more) -> (*let _ = errln "error" in*)
                         failwith "ambiguous symbol binding in linker control script"
                 end
                 in
@@ -2322,7 +2322,7 @@ let interpret_linker_control_script script linker_script_linkable_idx a inputs s
         ) initial_bindings_by_name
     )
     in
-    let _ = errln ("For __fini_array_end, we have " ^ 
+    (*let _ = errln ("For __fini_array_end, we have " ^ 
         (let all_bs = match Map.lookup "__fini_array_end" bindings_by_name with
             Just l -> l
             | Nothing -> []
@@ -2336,15 +2336,15 @@ let interpret_linker_control_script script linker_script_linkable_idx a inputs s
                 | _ -> false
             end
         ) all_bs))) ^ " have defs")))
-    in
+    in*)
     let outputs_by_name = 
         (let insert_fun = fun m -> (fun ((guard, maybe_addr, name, compos), script_idx) -> Map.insert name ((guard, maybe_addr, name, compos), script_idx) m)
         in
         List.foldl insert_fun Map.empty outputs)
     in
     (* Print the link map's "discarded input sections" output. *)
-    let _ = Missing_pervasives.outln "\nDiscarded input sections\n"
-    in
+    (*let _ = Missing_pervasives.outln "\nDiscarded input sections\n"
+    in*)
     let discard_line = fun i -> (match i with
         InputSection(s) -> 
             let lpadded_secname = (" " ^ s.secname)
@@ -2355,19 +2355,19 @@ let interpret_linker_control_script script linker_script_linkable_idx a inputs s
         | Common(idx, fname, img, def) -> "" (* don't print discard lines for discarded commons *)
     end)
     in
-    let _ = Missing_pervasives.outs (List.foldl (fun str -> (fun input -> (str ^ (discard_line input)))) "" (reverse discards))
-    in
+    (*let _ = Missing_pervasives.outs (List.foldl (fun str -> (fun input -> (str ^ (discard_line input)))) "" (reverse discards))
+    in*)
     let outputs_by_name_after_gc = compute_def_use_and_gc outputs_by_name
     in
-    let _ = Missing_pervasives.outs "\nMemory Configuration\n\nName             Origin             Length             Attributes\n*default*        0x0000000000000000 0xffffffffffffffff\n"
-    in
-    let _ = Missing_pervasives.outln "\nLinker script and memory map\n"
-    in
+    (*let _ = Missing_pervasives.outs "\nMemory Configuration\n\nName             Origin             Length             Attributes\n*default*        0x0000000000000000 0xffffffffffffffff\n"
+    in*)
+    (*let _ = Missing_pervasives.outln "\nLinker script and memory map\n"
+    in*)
     (* FIXME: print LOAD and START_GROUP trace *)
     let (img, outputs_by_name_with_position)
      = build_image empty_elf_memory_image 0 outputs_by_name_after_gc bindings_by_name labelled_script linker_script_linkable_idx
     in
-    let _ = errln ("Final image has " ^ (show (Map.size img.elements)) ^ " elements and " 
+    (*let _ = errln ("Final image has " ^ (show (Map.size img.elements)) ^ " elements and " 
         ^ (show (Set.size img.by_tag)) ^ " metadata tags, of which " ^ (
             let (section_tags, section_ranges) = elf_memory_image_section_ranges img
             in
@@ -2379,7 +2379,7 @@ let interpret_linker_control_script script linker_script_linkable_idx a inputs s
             in
             show (length section_tags_bare)
         ) ^ " are sections.")
-    in
+    in*)
     (* The link map output for the section/address assignment basically mirrors our notion of 
      * output section composition.  In the following:
      

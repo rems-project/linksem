@@ -81,14 +81,14 @@ val linkable_item_of_input_item_and_options : forall 'abifeature. abi 'abifeatur
 let linkable_item_of_input_item_and_options a it opts = 
     match (match it with
         (fname, Reloc(seq), origin) -> 
-            let _ = Missing_pervasives.errln ("Considering relocatable file " ^ fname) in
+            (*let _ = Missing_pervasives.errln ("Considering relocatable file " ^ fname) in*)
             Elf_file.read_elf64_file seq >>= fun e ->
             return (RelocELF(elf_memory_image_of_elf64_file a fname e), it, opts)
         | (fname, Shared(seq), origin) -> 
-            let _ = Missing_pervasives.errln ("Skipping shared object " ^ fname) in 
+            (*let _ = Missing_pervasives.errln ("Skipping shared object " ^ fname) in *)
             fail "unsupported input item"
         | (fname, Script(seq), origin) -> 
-            let _ = Missing_pervasives.errln ("Skipping linker script " ^ fname) in
+            (*let _ = Missing_pervasives.errln ("Skipping linker script " ^ fname) in*)
             fail "unsupported input item"
         end)
     with
@@ -97,7 +97,7 @@ let linkable_item_of_input_item_and_options a it opts =
     end
 
 val string_of_linkable : linkable_item -> string
-let string_of_linkable l = match l with 
+let {ocaml} string_of_linkable l = match l with 
     (_, item, _) -> show item
 end
 
@@ -217,9 +217,10 @@ let resolve_one_reference_default a linkables defmap ref_idx_and_ref_and_linkabl
         (* but maybe same archive? *)
         (* DEBUGGING: print some stuff out if we care about this symbol. *)let _ = 
             if ref_fname = "backtrace.o" && def.def_symname = "_Unwind_GetCFA" then 
-                Missing_pervasives.errln ("saw backtrace.o referencing _Unwind_GetCFA; coords are "
+                (*Missing_pervasives.errln ("saw backtrace.o referencing _Unwind_GetCFA; coords are "
                     ^ "def: " ^ (show def_coords) ^ ", ref: " ^ (show ref_coords) ^ "; ref_is_in_group_with_def: " 
-                    ^ (show ref_is_in_group_with_def) ^ "; def_in_group: " ^ (show def_in_group))
+                    ^ (show ref_is_in_group_with_def) ^ "; def_in_group: " ^ (show def_in_group))*)
+              ()
             else ()
         in
         let ref_and_def_are_in_same_archive = match (def_coords, ref_coords) with
@@ -263,7 +264,7 @@ let resolve_one_reference_default a linkables defmap ref_idx_and_ref_and_linkabl
             end
     end
     in 
-    let refstr = "`" 
+    (*let refstr = "`" 
                 ^ ref.ref_symname ^ "' (" ^ 
                 (if (natural_of_elf64_half ref.ref_syment.elf64_st_shndx) = shn_undef then "UND" else "defined") ^ 
                 " symbol at index " ^ (show ref.ref_sym_idx) ^ " in symtab "
@@ -271,15 +272,15 @@ let resolve_one_reference_default a linkables defmap ref_idx_and_ref_and_linkabl
                 ^ ")"
     in
     let _ = Missing_pervasives.errs ("Bound a reference from " ^ refstr ^ " to ")
-    in
+    in*)
     match (maybe_target_def_idx, maybe_target_def, maybe_target_def_linkable) with
         (Just target_def_idx, Just target_def, Just target_def_linkable) ->
-            let _ = Missing_pervasives.errln (" a definition in "^ (show (target_def_linkable)))
-            in
+            (*let _ = Missing_pervasives.errln (" a definition in "^ (show (target_def_linkable)))
+            in*)
             Just(target_def_idx, target_def, target_def_linkable)
     |  (Nothing, Nothing, Nothing) -> 
-            let _ = Missing_pervasives.errln " no definition"
-            in
+            (*let _ = Missing_pervasives.errln " no definition"
+            in*)
             if ref_is_weak (* || a.symbol_is_generated_by_linker ref.ref_symname *) then Nothing 
             else (* failwith ("undefined symbol: " ^ refstr) *) Nothing
             (* FIXME: do a check, *after* the linker script has been interpreted, 
@@ -335,16 +336,16 @@ let resolve_undefs_in_one_object linkables all_defs oracle idx =
     in
     let ref_triples = { (idx, ref, item) | forall (ref IN all_refs) | true }
     in
-    let _ = Missing_pervasives.errln ("object " ^ (show item) ^ " has " ^ 
+    (*let _ = Missing_pervasives.errln ("object " ^ (show item) ^ " has " ^ 
         (show (Set.size ref_triples)) ^ " reloc references (symname, sym_scn, sym_idx, st_shndx) (" ^ 
         (show (List.map (fun x -> ("\"" ^ x.ref_symname ^ "\"", x.ref_sym_scn, x.ref_sym_idx, natural_of_elf64_half x.ref_syment.elf64_st_shndx)) (Set_extra.toList all_refs))) ^ ")")
-    in
+    in*)
     let und_ref_triples = { (idx, ref, ref_item) | forall ((idx, ref, ref_item) IN ref_triples) | natural_of_elf64_half ref.ref_syment.elf64_st_shndx = shn_undef }
     in
-    let _ = Missing_pervasives.errln ("... of which " ^
+    (*let _ = Missing_pervasives.errln ("... of which " ^
         (show (Set.size und_ref_triples)) ^ " are to undefined symbols: (symname, sym_scn, sym_idx, st_shndx) (" ^ 
         (show (List.map (fun (idx, x, _) -> ("\"" ^ x.ref_symname ^ "\"", x.ref_sym_scn, x.ref_sym_idx, natural_of_elf64_half x.ref_syment.elf64_st_shndx)) (Set_extra.toList und_ref_triples))) ^ ")")
-    in
+    in*)
     resolve_all linkables all_defs oracle (Set_extra.toList ref_triples)
 
 val accumulate_bindings_bf : forall 'abifeature.
@@ -387,7 +388,7 @@ let rec accumulate_bindings_bf a linkables all_defs fully_bound to_bind bindings
             in
             let new_l_idx_list = Set_extra.toList new_l_idx
             in
-            let _ = Missing_pervasives.errln (
+            (*let _ = Missing_pervasives.errln (
                 if List.null new_l_idx_list 
                 then
                     "Fully bound references in  " ^ (show (List.index linkables (natFromNatural l_idx)))
@@ -397,7 +398,7 @@ let rec accumulate_bindings_bf a linkables all_defs fully_bound to_bind bindings
                     "Including additional linkables "
                     ^ (show (List.mapMaybe (fun i -> List.index linkables (natFromNatural i)) new_l_idx_list))
                     )
-            in
+            in*)
             accumulate_bindings_bf
                 a
                 linkables
@@ -471,13 +472,13 @@ let rec accumulate_bindings_objectwise_df a linkables all_defs bindings_accum bl
             let new_grey_list = new_l_idx_list ++ (List.filter (fun x -> not (x IN new_l_idx)) more_idx)
             in
             (* whether or not we've not uncovered any new white nodes, we tail-recurse  *)
-            let _ = (if List.null new_l_idx_list then
+            (*let _ = (if List.null new_l_idx_list then
                 Missing_pervasives.errln ("Fully bound references in  " ^ (show (List.index linkables (natFromNatural l_idx)))
                     ^ " using only already-included linkables (" 
                     ^ (show (List.map (fun i -> List.index linkables (natFromNatural i)) (Set_extra.toList included_linkables_idx)))
                 ) else Missing_pervasives.errln ("Including additional linkables "
             ^ (show (List.mapMaybe (fun i -> List.index linkables (natFromNatural i)) new_l_idx_list))))
-            in
+            in*)
             accumulate_bindings_objectwise_df
                 a
                 linkables

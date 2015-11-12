@@ -218,11 +218,11 @@ by pat_completeness auto
   *)
 (*val mapMaybei' : forall 'a 'b. (natural -> 'a -> maybe 'b) -> natural -> list 'a -> list 'b*)
 function (sequential,domintros)  mapMaybei'  :: "(nat \<Rightarrow> 'a \<Rightarrow> 'b option)\<Rightarrow> nat \<Rightarrow> 'a list \<Rightarrow> 'b list "  where 
-     " mapMaybei' f idx ([]) = ( [])"
-|" mapMaybei' f idx (x # xs) = (
-      (case  f idx x of
-        None => mapMaybei' f (( 1 :: nat) + idx) xs
-      | Some e  => e # mapMaybei' f (( 1 :: nat) + idx) xs
+     " mapMaybei' f idx1 ([]) = ( [])"
+|" mapMaybei' f idx1 (x # xs) = (
+      (case  f idx1 x of
+        None => mapMaybei' f (( 1 :: nat) + idx1) xs
+      | Some e  => e # mapMaybei' f (( 1 :: nat) + idx1) xs
       ))" 
 by pat_completeness auto
 
@@ -311,6 +311,14 @@ fun  unzip3  :: "('a*'b*'c)list \<Rightarrow> 'a list*'b list*'c list "  where
      " unzip3 ([]) = ( ([], [], []))"
 |" unzip3 ((x, y, z) # xyzs) = ( (let (xs, ys, zs) = (unzip3 xyzs) in ((x # xs), (y # ys), (z # zs))))" 
 declare unzip3.simps [simp del]
+
+
+(** [zip3 ls] takes a triple of lists and returns a list of triples. *)
+(*val zip3: forall 'a 'b 'c. list 'a -> list 'b -> list 'c -> list ('a * 'b * 'c)*)
+function (sequential,domintros)  zip3  :: " 'a list \<Rightarrow> 'b list \<Rightarrow> 'c list \<Rightarrow>('a*'b*'c)list "  where 
+     " zip3 ([]) ([]) ([]) = ( [])"
+|" zip3 (x # morex) (y # morey) (z # morez) = ( (let more_xyz = (zip3 morex morey morez) in (x, y, z) # more_xyz))" 
+by pat_completeness auto
 
 
 (** [null_byte] is the null character a a byte. *)
@@ -450,12 +458,12 @@ definition string_prefix  :: " nat \<Rightarrow> string \<Rightarrow>(string)opt
   * occurrence if [c] in [s], if it exists, otherwise returns [Nothing]. *)
 (*val string_index_of' : char -> list char -> natural -> maybe natural*)
 function (sequential,domintros)  string_index_of'  :: " char \<Rightarrow>(char)list \<Rightarrow> nat \<Rightarrow>(nat)option "  where 
-     " string_index_of' e ([]) idx = ( None )"
-|" string_index_of' e (s # ss) idx = (
+     " string_index_of' e ([]) idx1 = ( None )"
+|" string_index_of' e (s # ss) idx1 = (
       if s = e then
-        Some idx
+        Some idx1
       else
-        string_index_of' e ss (( 1 :: nat) + idx))" 
+        string_index_of' e ss (( 1 :: nat) + idx1))" 
 by pat_completeness auto
 
   

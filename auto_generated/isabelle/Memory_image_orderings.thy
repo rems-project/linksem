@@ -184,7 +184,7 @@ declare tagEquiv0.simps [simp del]
 
 (*val unique_tag_matching : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature => range_tag 'abifeature -> annotated_memory_image 'abifeature -> range_tag 'abifeature*)
 definition unique_tag_matching0  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature AbiFeatureTagEquiv_class \<Rightarrow> 'abifeature range_tag \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> 'abifeature range_tag "  where 
-     " unique_tag_matching0 dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature tag img1 = ( 
+     " unique_tag_matching0 dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature tag img2 = ( 
     (case  Multimap.lookupBy0 
   (instance_Basic_classes_Ord_Memory_image_range_tag_dict1
      dict_Basic_classes_Ord_abifeature) (instance_Basic_classes_Ord_Maybe_maybe_dict
@@ -192,7 +192,7 @@ definition unique_tag_matching0  :: " 'abifeature Ord_class \<Rightarrow> 'abife
       Lem_string_extra.instance_Basic_classes_Ord_string_dict
       (instance_Basic_classes_Ord_tup2_dict
          instance_Basic_classes_Ord_Num_natural_dict
-         instance_Basic_classes_Ord_Num_natural_dict)))  (tagEquiv0 dict_Abi_classes_AbiFeatureTagEquiv_abifeature) tag(by_tag0   img1) of
+         instance_Basic_classes_Ord_Num_natural_dict)))  (tagEquiv0 dict_Abi_classes_AbiFeatureTagEquiv_abifeature) tag(by_tag0   img2) of
         [] => failwith (''no tag match found'')
         | [(t, r)] => t
         | x => failwith ((''more than one tag match'')) (* (ranges:  ^ 
@@ -203,7 +203,7 @@ definition unique_tag_matching0  :: " 'abifeature Ord_class \<Rightarrow> 'abife
     
 (*val tagged_ranges_matching_tag : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature => range_tag 'abifeature -> annotated_memory_image 'abifeature -> list (range_tag 'abifeature * maybe element_range)*)
 definition tagged_ranges_matching_tag0  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature AbiFeatureTagEquiv_class \<Rightarrow> 'abifeature range_tag \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>('abifeature range_tag*(element_range)option)list "  where 
-     " tagged_ranges_matching_tag0 dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature tag img1 = ( 
+     " tagged_ranges_matching_tag0 dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature tag img2 = ( 
     Multimap.lookupBy0 
   (instance_Basic_classes_Ord_Memory_image_range_tag_dict1
      dict_Basic_classes_Ord_abifeature) (instance_Basic_classes_Ord_Maybe_maybe_dict
@@ -211,7 +211,7 @@ definition tagged_ranges_matching_tag0  :: " 'abifeature Ord_class \<Rightarrow>
       Lem_string_extra.instance_Basic_classes_Ord_string_dict
       (instance_Basic_classes_Ord_tup2_dict
          instance_Basic_classes_Ord_Num_natural_dict
-         instance_Basic_classes_Ord_Num_natural_dict)))  (tagEquiv0 dict_Abi_classes_AbiFeatureTagEquiv_abifeature) tag(by_tag0   img1))"
+         instance_Basic_classes_Ord_Num_natural_dict)))  (tagEquiv0 dict_Abi_classes_AbiFeatureTagEquiv_abifeature) tag(by_tag0   img2))"
 
 
 (*val element_range_compare : element_range -> element_range -> Basic_classes.ordering*)
@@ -225,7 +225,7 @@ definition element_range_compare0  :: " string*(nat*nat) \<Rightarrow> string*(n
     -> annotated_memory_image 'abifeature
     -> range_tag 'abifeature*)
 definition unique_tag_matching_at_range_exact0  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature AbiFeatureTagEquiv_class \<Rightarrow>(element_range)option \<Rightarrow> 'abifeature range_tag \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> 'abifeature range_tag "  where 
-     " unique_tag_matching_at_range_exact0 dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature r tag img1 = ( 
+     " unique_tag_matching_at_range_exact0 dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature r tag img2 = ( 
     (* 1. find tags a unique range labelled as ELF section header table. *)
     (let (_, (allRangeMatches :: ( 'abifeature range_tag) list)) = (list_unzip (Multimap.lookupBy0 
   (instance_Basic_classes_Ord_Maybe_maybe_dict
@@ -234,7 +234,7 @@ definition unique_tag_matching_at_range_exact0  :: " 'abifeature Ord_class \<Rig
         (instance_Basic_classes_Ord_tup2_dict
            instance_Basic_classes_Ord_Num_natural_dict
            instance_Basic_classes_Ord_Num_natural_dict))) (instance_Basic_classes_Ord_Memory_image_range_tag_dict1
-   dict_Basic_classes_Ord_abifeature) (op=) r(by_range0   img1)))
+   dict_Basic_classes_Ord_abifeature) (op=) r(by_range0   img2)))
     in
     (let (tagAlsoMatches :: ( 'abifeature range_tag) list) = (List.filter (\<lambda> x .  tagEquiv0 
   dict_Abi_classes_AbiFeatureTagEquiv_abifeature x tag) allRangeMatches)
@@ -248,11 +248,11 @@ definition unique_tag_matching_at_range_exact0  :: " 'abifeature Ord_class \<Rig
 
 (*val symbol_def_ranges : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature => annotated_memory_image 'abifeature -> (list (range_tag 'abifeature) * list (maybe element_range))*)
 definition symbol_def_ranges0  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature AbiFeatureTagEquiv_class \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>('abifeature range_tag)list*((element_range)option)list "  where 
-     " symbol_def_ranges0 dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature img1 = ( 
+     " symbol_def_ranges0 dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature img2 = ( 
     (* find all element ranges labelled as ELF symbols *)
     (let (tags, maybe_ranges) = (list_unzip (
         tagged_ranges_matching_tag0 
-  dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature (SymbolDef0(null_symbol_definition0)) img1
+  dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature (SymbolDef0(null_symbol_definition0)) img2
     ))
     in
     (* some symbols, specifically ABS symbols, needn't label a range. *)
@@ -266,20 +266,20 @@ definition name_of_symbol_def0  :: " symbol_definition \<Rightarrow> string "  w
 
 (*val defined_symbols_and_ranges : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature => annotated_memory_image 'abifeature -> list ((maybe element_range) * symbol_definition)*)
 definition defined_symbols_and_ranges0  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature AbiFeatureTagEquiv_class \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>((element_range)option*symbol_definition)list "  where 
-     " defined_symbols_and_ranges0 dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature img1 = ( 
+     " defined_symbols_and_ranges0 dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature img2 = ( 
     Lem_list.mapMaybe (\<lambda> (tag, maybeRange) .  
         (case  tag of
             SymbolDef0(ent) => Some (maybeRange, ent)
             | _ => failwith (''impossible: non-symbol def in list of symbol defs'')
         )) (tagged_ranges_matching_tag0 
-  dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature (SymbolDef0(null_symbol_definition0)) img1))"
+  dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature (SymbolDef0(null_symbol_definition0)) img2))"
 
 
 (*val defined_symbols : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature =>  annotated_memory_image 'abifeature -> list symbol_definition*)
 definition defined_symbols0  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature AbiFeatureTagEquiv_class \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>(symbol_definition)list "  where 
-     " defined_symbols0 dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature img1 = ( 
+     " defined_symbols0 dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature img2 = ( 
     (let (all_symbol_tags, all_symbol_ranges) = (symbol_def_ranges0 
-  dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature img1) in
+  dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature img2) in
     Lem_list.mapMaybe (\<lambda> tag .  
         (case  tag of
             SymbolDef0(ent) => Some ent

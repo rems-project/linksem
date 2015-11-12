@@ -358,17 +358,17 @@ definition read_8_bytes_be  :: " byte_sequence \<Rightarrow>((Elf_Types_Local.by
   *)
 (*val partition : natural -> byte_sequence -> error (byte_sequence * byte_sequence)*)
 definition partition0  :: " nat \<Rightarrow> byte_sequence \<Rightarrow>(byte_sequence*byte_sequence)error "  where 
-     " partition0 idx bs0 = (
-  takebytes idx bs0 >>= (\<lambda> l . 
-  dropbytes idx bs0 >>= (\<lambda> r . 
+     " partition0 idx1 bs0 = (
+  takebytes idx1 bs0 >>= (\<lambda> l . 
+  dropbytes idx1 bs0 >>= (\<lambda> r . 
   error_return (l, r))))"
 
 
 (*val partition_with_length : natural -> natural -> byte_sequence -> error (byte_sequence * byte_sequence)*)
 definition partition_with_length  :: " nat \<Rightarrow> nat \<Rightarrow> byte_sequence \<Rightarrow>(byte_sequence*byte_sequence)error "  where 
-     " partition_with_length idx bs0_length bs0 = (
-  takebytes_with_length idx bs0_length bs0 >>= (\<lambda> l . 
-  dropbytes idx bs0 >>= (\<lambda> r . 
+     " partition_with_length idx1 bs0_length bs0 = (
+  takebytes_with_length idx1 bs0_length bs0 >>= (\<lambda> l . 
+  dropbytes idx1 bs0 >>= (\<lambda> r . 
   error_return (l, r))))"
 
 

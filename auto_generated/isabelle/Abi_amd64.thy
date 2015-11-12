@@ -80,21 +80,21 @@ definition shf_x86_64_large  :: " nat "  where
  (* 0x10000000 a.k.a. 2^28 *)
 
 datatype amd64_abi_feature = 
-    GOT0 
+    GOT0 "  ( (string * (( element_range option) * symbol_reference_and_reloc_site))list)"
     | PLT0 (* placeholder / FIXME *)
     
 (*val abiFeatureCompare : amd64_abi_feature -> amd64_abi_feature -> Basic_classes.ordering*)
 fun abiFeatureCompare0  :: " amd64_abi_feature \<Rightarrow> amd64_abi_feature \<Rightarrow> ordering "  where 
-     " abiFeatureCompare0 GOT0 GOT0 = ( EQ )"
-|" abiFeatureCompare0 GOT0 PLT0 = ( LT )"
+     " abiFeatureCompare0 (GOT0(_)) (GOT0(_)) = ( EQ )"
+|" abiFeatureCompare0 (GOT0(_)) PLT0 = ( LT )"
 |" abiFeatureCompare0 PLT0 PLT0 = ( EQ )"
-|" abiFeatureCompare0 PLT0 GOT0 = ( GT )" 
+|" abiFeatureCompare0 PLT0 (GOT0(_)) = ( GT )" 
 declare abiFeatureCompare0.simps [simp del]
 
 
 (*val abiFeatureTagEq : amd64_abi_feature -> amd64_abi_feature -> bool*)
 fun abiFeatureTagEq0  :: " amd64_abi_feature \<Rightarrow> amd64_abi_feature \<Rightarrow> bool "  where 
-     " abiFeatureTagEq0 GOT0 GOT0 = ( True )"
+     " abiFeatureTagEq0 (GOT0(_)) (GOT0(_)) = ( True )"
 |" abiFeatureTagEq0 PLT0 PLT0 = ( True )"
 |" abiFeatureTagEq0 _ _ = ( False )" 
 declare abiFeatureTagEq0.simps [simp del]
@@ -122,8 +122,8 @@ definition instance_Basic_classes_Ord_Abi_amd64_amd64_abi_feature_dict  :: "(amd
 
 (*val section_is_special : forall 'abifeature. elf64_interpreted_section -> annotated_memory_image 'abifeature -> bool*)
 definition section_is_special1  :: " elf64_interpreted_section \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> bool "  where 
-     " section_is_special1 s img1 = ( 
-    elf_section_is_special0 s img1 \<or>  
+     " section_is_special1 s img2 = ( 
+    elf_section_is_special s img2 \<or>  
   ( (* HACK needed because SHT_X86_64_UNWIND is often not used *)
     if((elf64_section_name_as_string   s) = (''.eh_frame'')) then True else
       False) )"

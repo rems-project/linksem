@@ -105,8 +105,8 @@ let elf64_file_of_elf_memory_image a make_concrete fname img =
         end
     ) symbol_tags
     in
-    let _ = errln ("All symbol names: " ^ (show all_sym_names))
-    in
+    (*let _ = errln ("All symbol names: " ^ (show all_sym_names))
+    in*)
     let strtab = List.foldl (fun table -> fun str -> 
         let (_, t) = String_table.insert_string str table in t
     ) String_table.empty all_sym_names
@@ -119,8 +119,8 @@ let elf64_file_of_elf_memory_image a make_concrete fname img =
         (fun (isec1, (el1, range1)) -> (fun (isec2, (el2, range2)) -> (
             let (addr1, sz1) = match Map.lookup el1 img.elements with
                 Just(e) -> 
-                    let _ = errln ("Size of element " ^ el1 ^ " is " ^ (show e.length))
-                    in
+                    (*let _ = errln ("Size of element " ^ el1 ^ " is " ^ (show e.length))
+                    in*)
                     (e.startpos, e.length)
                 | Nothing -> failwith "internal error: element does not exist"
             end
@@ -273,8 +273,8 @@ let elf64_file_of_elf_memory_image a make_concrete fname img =
             | true
         ]
     in
-    let _ = errln ("Building an ELF file from " ^ (show (length element_section_tag_pairs_sorted_by_address)) ^ " sections")
-    in
+    (*let _ = errln ("Building an ELF file from" ^ (show (length element_section_tag_pairs_sorted_by_address)) ^ " sections")
+    in*)
     (* PROBLEM: 
      * sections' offset assignments depend on phnum.
      * BUT
