@@ -412,7 +412,7 @@ val elf_memory_image_sections_with_indices : elf_memory_image -> list (elf64_int
 let elf_memory_image_sections_with_indices img = 
     (* We have to get all sections and their names,
      * because section names need not be unique. *)
-    let ((all_section_tags, all_section_ranges) : (list elf_range_tag * list element_range))
+    let ((all_section_tags : list elf_range_tag), (all_section_ranges : list element_range))
      = elf_memory_image_section_ranges img
     in
     List.map (fun tag -> 
@@ -484,7 +484,7 @@ let elf_memory_image_defined_symbols_and_ranges img =
 
 val elf_memory_image_defined_symbols : elf_memory_image -> list symbol_definition
 let elf_memory_image_defined_symbols img = 
-    let ((all_symbol_tags, all_symbol_ranges) : (list elf_range_tag * list (maybe element_range)))
+    let ((all_symbol_tags : list elf_range_tag), (all_symbol_ranges : list (maybe element_range)))
      = elf_memory_image_symbol_def_ranges img
     in
     List.mapMaybe (fun tag -> 
