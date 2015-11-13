@@ -373,13 +373,13 @@ let elf_memory_image_element_coextensive_with_section idx img =
                 let range_len_matches_element_len = (Just(rangeLen) = el_rec.length)
                 in
                 (* If any pair are unequal, then warn. *)
-                let _ = 
+                (*let _ = 
                 if (range_len_matches_sec <> sec_matches_element_len
                  || sec_matches_element_len <> range_len_matches_element_len
                  || range_len_matches_sec <> range_len_matches_element_len)
                 then errln ("Warning: section lengths do not agree: " ^ s.elf64_section_name_as_string)
                 else ()
-                in
+                in*)
                 range_len_matches_element_len
             in
             if itsIdx = idx && rangeStart = 0 

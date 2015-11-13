@@ -122,8 +122,8 @@ definition instance_Basic_classes_Ord_Abi_amd64_amd64_abi_feature_dict  :: "(amd
 
 (*val section_is_special : forall 'abifeature. elf64_interpreted_section -> annotated_memory_image 'abifeature -> bool*)
 definition section_is_special1  :: " elf64_interpreted_section \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> bool "  where 
-     " section_is_special1 s img2 = ( 
-    elf_section_is_special s img2 \<or>  
+     " section_is_special1 s img3 = ( 
+    elf_section_is_special s img3 \<or>  
   ( (* HACK needed because SHT_X86_64_UNWIND is often not used *)
     if((elf64_section_name_as_string   s) = (''.eh_frame'')) then True else
       False) )"

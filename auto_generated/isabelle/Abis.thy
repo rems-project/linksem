@@ -200,7 +200,7 @@ definition make_elf64_header  :: " nat \<Rightarrow> nat \<Rightarrow> nat \<Rig
 
 (*val make_load_phdrs : forall 'abifeature. natural -> natural -> annotated_memory_image 'abifeature -> list elf64_interpreted_section -> list elf64_program_header_table_entry*)
 definition make_load_phdrs  :: " nat \<Rightarrow> nat \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>(elf64_interpreted_section)list \<Rightarrow>(elf64_program_header_table_entry)list "  where 
-     " make_load_phdrs max_page_sz common_page_sz img2 section_pairs_bare_sorted_by_address = ( 
+     " make_load_phdrs max_page_sz common_page_sz img3 section_pairs_bare_sorted_by_address = ( 
     (let (phdr_flags_from_section_flags :: nat \<Rightarrow> string \<Rightarrow> nat) = (\<lambda> section_flags .  \<lambda> sec_name . 
         (let flags = (natural_lor elf_pf_r (natural_lor 
             (if flag_is_set shf_write section_flags then elf_pf_w else( 0 :: nat))
@@ -317,17 +317,17 @@ definition make_load_phdrs  :: " nat \<Rightarrow> nat \<Rightarrow> 'abifeature
     
 (*val make_default_phdrs : forall 'abifeature. natural -> natural -> natural (* file type *) -> annotated_memory_image 'abifeature -> list elf64_interpreted_section -> list elf64_program_header_table_entry*)
 definition make_default_phdrs  :: " nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>(elf64_interpreted_section)list \<Rightarrow>(elf64_program_header_table_entry)list "  where 
-     " make_default_phdrs maxpagesize2 commonpagesize2 t img2 section_pairs_bare_sorted_by_address = ( 
+     " make_default_phdrs maxpagesize1 commonpagesize1 t img3 section_pairs_bare_sorted_by_address = ( 
     (* FIXME: do the shared object and dyn. exec. stuff too *)
-    make_load_phdrs maxpagesize2 commonpagesize2 img2 section_pairs_bare_sorted_by_address )"
+    make_load_phdrs maxpagesize1 commonpagesize1 img3 section_pairs_bare_sorted_by_address )"
 
 
 (*val find_start_symbol_address : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature => annotated_memory_image 'abifeature -> maybe natural*)
 definition find_start_symbol_address  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature AbiFeatureTagEquiv_class \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>(nat)option "  where 
-     " find_start_symbol_address dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature img2 = ( 
+     " find_start_symbol_address dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature img3 = ( 
     (* Do we have a symbol called _start? *)
     (let all_defs = (Memory_image_orderings.defined_symbols_and_ranges 
-  dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature img2)
+  dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature img3)
     in
     (let get_entry_point = (\<lambda> (maybe_range, symbol_def) .  
         if(def_symname   symbol_def) = (''_start'')
@@ -341,7 +341,7 @@ definition find_start_symbol_address  :: " 'abifeature Ord_class \<Rightarrow> '
         [(maybe_range, symbol_def)] =>
             (case  maybe_range of
                 Some (el_name, (el_off, len)) => 
-                    (case  (elements   img2) el_name of
+                    (case  (elements   img3) el_name of
                         None => failwith (([(CHR ''_''), (CHR ''s''), (CHR ''t''), (CHR ''a''), (CHR ''r''), (CHR ''t''), (CHR '' ''), (CHR ''s''), (CHR ''y''), (CHR ''m''), (CHR ''b''), (CHR ''o''), (CHR ''l''), (CHR '' ''), (CHR ''d''), (CHR ''e''), (CHR ''f''), (CHR ''i''), (CHR ''n''), (CHR ''e''), (CHR ''d''), (CHR '' ''), (CHR ''i''), (CHR ''n''), (CHR '' ''), (CHR ''n''), (CHR ''o''), (CHR ''n''), (CHR ''e''), (CHR ''x''), (CHR ''i''), (CHR ''s''), (CHR ''t''), (CHR ''e''), (CHR ''n''), (CHR ''t''), (CHR '' ''), (CHR ''e''), (CHR ''l''), (CHR ''e''), (CHR ''m''), (CHR ''e''), (CHR ''n''), (CHR ''t''), (CHR '' ''), (Char Nibble6 Nibble0)]) @ (el_name @ ([(Char Nibble2 Nibble7)])))
                         | Some el_rec => 
                             (case (startpos   el_rec) of
@@ -390,6 +390,7 @@ definition null_abi  :: "(any_abi_feature)abi "  where
     , pad_data = pad_zeroes
     , pad_code = pad_zeroes
     , generate_support = ( (* fun _ -> *)\<lambda> _ .  get_empty_memory_image () )
+    , concretise_support = (\<lambda> img3 .  img3)
     |) )"
 
 
@@ -405,15 +406,16 @@ definition amd64_generate_support  :: "((any_abi_feature)annotated_memory_image)
      * each distinct symbol that is referenced by one or more GOT-based relocations.
      * To enumerate these, we look at all the symbol refs in the image.
      *)
-    (let tags_and_ranges_by_image = (Lem_list.mapi (\<lambda> i .  \<lambda> img2 . 
+    (let tags_and_ranges_by_image = (Lem_list.mapi (\<lambda> i .  \<lambda> img3 . 
         (i, Multimap.lookupBy0 
-  Memory_image_orderings.instance_Basic_classes_Ord_Memory_image_range_tag_dict0 (instance_Basic_classes_Ord_Maybe_maybe_dict
+  (Memory_image_orderings.instance_Basic_classes_Ord_Memory_image_range_tag_dict
+     instance_Basic_classes_Ord_Abis_any_abi_feature_dict) (instance_Basic_classes_Ord_Maybe_maybe_dict
    (instance_Basic_classes_Ord_tup2_dict
       Lem_string_extra.instance_Basic_classes_Ord_string_dict
       (instance_Basic_classes_Ord_tup2_dict
          instance_Basic_classes_Ord_Num_natural_dict
          instance_Basic_classes_Ord_Num_natural_dict)))  (Memory_image_orderings.tagEquiv
-    instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict) (SymbolRef(null_symbol_reference_and_reloc_site))(by_tag   img2))
+    instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict) (SymbolRef(null_symbol_reference_and_reloc_site))(by_tag   img3))
     ) input_imgs)
     in
     (let refs_via_got = (list_concat_map (\<lambda> (i, tags_and_ranges) .  Lem_list.mapMaybe (\<lambda> (tag, maybe_range) .  (case  tag of
@@ -450,7 +452,7 @@ definition amd64_generate_support  :: "((any_abi_feature)annotated_memory_image)
            , elf64_section_flags = (natural_lor shf_write shf_alloc)
            , elf64_section_addr =(( 0 :: nat)) (* ignored -- covered by element *)
            , elf64_section_offset =(( 0 :: nat)) (* ignored -- will be replaced when file offsets are assigned *)
-           , elf64_section_size =(( 0 :: nat)) (* ignored *)
+           , elf64_section_size = (nentries * entrysize) (* ignored *)
            , elf64_section_link =(( 0 :: nat))
            , elf64_section_info =(( 0 :: nat))
            , elf64_section_align =(( 8 :: nat))
@@ -460,31 +462,56 @@ definition amd64_generate_support  :: "((any_abi_feature)annotated_memory_image)
            |)
         )))
     ,   (* FIXME: _GLOBAL_OFFSET_TABLE_ generally doesn't mark the *start* of the GOT; 
-         * it's some distance in. *)
+         * it's some distance in. What about .got.plt? *)
         (Some((''.got''), (( 0 :: nat), (nentries * entrysize))), SymbolDef((|
               def_symname = (''_GLOBAL_OFFSET_TABLE_'')
             , def_syment =    (| elf64_st_name  = (Elf_Types_Local.uint32_of_nat(( 0 :: nat))) (* ignored *)
                                , elf64_st_info  = (Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat))) (* FIXME *)
                                , elf64_st_other = (Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat))) (* FIXME *)
-                               , elf64_st_shndx = (Elf_Types_Local.uint16_of_nat(( 0 :: nat)))
+                               , elf64_st_shndx = (Elf_Types_Local.uint16_of_nat(( 1 :: nat)))
                                , elf64_st_value = (Elf_Types_Local.uint64_of_nat(( 0 :: nat))) (* ignored *)
-                               , elf64_st_size  = (of_int (int (nentries * entrysize)))
+                               , elf64_st_size  = (of_int (int (nentries * entrysize))) (* FIXME: start later, smaller size? zero size? *)
                                |)
-            , def_sym_scn =(( 0 :: nat))
-            , def_sym_idx =(( 0 :: nat))
+            , def_sym_scn =(( 1 :: nat))
+            , def_sym_idx =(( 1 :: nat))
             , def_linkable_idx =(( 0 :: nat))
             |)))
     })
     in
-    (|
-         elements = (map_update (''.got'') (|
+    (|  elements = (map_update (''.got'') (|
                     startpos = None
                ,    length1 = (Some (nentries * entrysize))
                ,    contents = []
                |) Map.empty)
-     ,   by_tag = (by_tag_from_by_range new_by_range)
-     ,   by_range = new_by_range
+     ,   by_range = new_by_range,   by_tag = (by_tag_from_by_range new_by_range)
+      
      |)))))))))"
+
+
+(*val amd64_concretise_support : annotated_memory_image any_abi_feature -> annotated_memory_image any_abi_feature*)
+definition amd64_concretise_support  :: "(any_abi_feature)annotated_memory_image \<Rightarrow>(any_abi_feature)annotated_memory_image "  where 
+     " amd64_concretise_support img3 = ( 
+    (* Fill in the GOT contents. *)
+    (case  (elements   img3) (''.got'') of
+        None => (* got no GOT? okay... *) img3
+        | Some got => 
+            (* Find the GOT tag. *)
+            (let tags_and_ranges = (Multimap.lookupBy0 
+  (Memory_image_orderings.instance_Basic_classes_Ord_Memory_image_range_tag_dict
+     instance_Basic_classes_Ord_Abis_any_abi_feature_dict) (instance_Basic_classes_Ord_Maybe_maybe_dict
+   (instance_Basic_classes_Ord_tup2_dict
+      Lem_string_extra.instance_Basic_classes_Ord_string_dict
+      (instance_Basic_classes_Ord_tup2_dict
+         instance_Basic_classes_Ord_Num_natural_dict
+         instance_Basic_classes_Ord_Num_natural_dict)))  (Memory_image_orderings.tagEquiv
+    instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict) (AbiFeature(Amd64AbiFeature(Abi_amd64.GOT0([]))))(by_tag   img3))
+            in
+            (case  tags_and_ranges of
+                [] => failwith (''error: GOT element but no ABI feature GOT tag'')
+                | [(AbiFeature(Amd64AbiFeature(Abi_amd64.GOT0(l))), Some(el_name, (start, len)))] => img3 (* FIXME *)
+                | _ => failwith (''bad or multiple GOT tags'')
+            ))
+    ))"
 
 
 (*val sysv_amd64_std_abi : abi any_abi_feature*)
@@ -510,6 +537,7 @@ definition sysv_amd64_std_abi  :: "(any_abi_feature)abi "  where
     , pad_data = pad_zeroes
     , pad_code = pad_0x90
     , generate_support = amd64_generate_support
+    , concretise_support = amd64_concretise_support
     |) )"
 
 
@@ -534,6 +562,7 @@ definition sysv_aarch64_le_std_abi  :: "(any_abi_feature)abi "  where
     , pad_data = pad_zeroes
     , pad_code = pad_zeroes
     , generate_support = ( (* fun _ -> *)\<lambda> _ .  get_empty_memory_image () )
+    , concretise_support = (\<lambda> img3 .  img3)
     |) )"
 
 

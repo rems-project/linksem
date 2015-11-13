@@ -149,8 +149,8 @@ let elf64_file_of_elf_memory_image a make_concrete fname img =
                 | Just len -> len
             end
         in
-        let _ = errln ("Filesz of " ^ isec.elf64_section_name_as_string ^ " is 0x" ^ (hex_string_of_natural sz))
-        in
+        (*let _ = errln ("Filesz of " ^ isec.elf64_section_name_as_string ^ " is 0x" ^ (hex_string_of_natural sz))
+        in*)
         sz
     )
     in
@@ -174,11 +174,11 @@ let elf64_file_of_elf_memory_image a make_concrete fname img =
                     else (a.maxpagesize + target_remainder - this_remainder)
                 )
                 in
-                let _ = errln ("For section " ^ isec.elf64_section_name_as_string ^ ", bumping offset by " ^ 
+                (*let _ = errln ("For section " ^ isec.elf64_section_name_as_string ^ ", bumping offset by " ^ 
                     (hex_string_of_natural bump) ^ "(remainder " ^ (hex_string_of_natural this_remainder) ^ 
                     ", target remainder " ^ (hex_string_of_natural target_remainder) ^ ") to 0x" ^ 
                     (hex_string_of_natural (current_off + bump)))
-                in
+                in*)
                 current_off + bump
             | Nothing -> 
                 (* It has no assigned address. That's okay if it's not allocatable. 
@@ -203,9 +203,9 @@ let elf64_file_of_elf_memory_image a make_concrete fname img =
            ; elf64_section_flags = isec.elf64_section_flags
            ; elf64_section_addr = match el.startpos with Just addr -> addr | Nothing -> 0 end
            ; elf64_section_offset = 
-                let _ = errln ("Assigning offset 0x" ^ (hex_string_of_natural off) ^ " to section " ^ 
+                (*let _ = errln ("Assigning offset 0x" ^ (hex_string_of_natural off) ^ " to section " ^ 
                     isec.elf64_section_name_as_string)
-                in
+                in*)
                 off
            ; elf64_section_size = match el.length with Just len -> len | Nothing -> length el.contents end
            ; elf64_section_link = isec.elf64_section_link
@@ -251,8 +251,8 @@ let elf64_file_of_elf_memory_image a make_concrete fname img =
                                 in
                                 match maybe_found with
                                     [i] -> 1 + i
-                                    | [] -> (* HMM *) let _ = errln ("Couldn't compute section index of symbol " ^ d.def_symname)
-                                        in 0
+                                    | [] -> (* HMM *) (*let _ = errln ("Couldn't compute section index of symbol " ^ d.def_symname)
+                                        in*) 0
                                     | _ -> failwith ("internal error: multiple sections named " ^ el_name)
                                 end
                             )

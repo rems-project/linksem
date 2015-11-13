@@ -269,7 +269,7 @@ let has_writability = fun writable -> (fun input_sec -> (
         | InputSection(inp)
             -> let (flags : natural) = match elf_memory_image_section_by_index inp.shndx inp.img with 
                           Just x -> x.elf64_section_flags
-                        | Nothing -> failwith ("impossible: no such section (index " ^ (show inp.shndx) ^ ")")
+                        | Nothing -> failwith ("impossible: no such section" (*(index " ^ (show inp.shndx) ^ ")""*))
                      end
                 in 
                 flag_is_set shf_write flags
@@ -1299,7 +1299,7 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                         let maybe_secname = elf_memory_image_element_coextensive_with_section irec.shndx irec.img 
                         in
                         match maybe_secname with
-                            Nothing -> failwith ("impossible: no such section (matching irec.shndx " ^ (show irec.shndx) ^ ")")
+                            Nothing -> failwith ("impossible: no such section" (*(matching irec.shndx " ^ (show irec.shndx) ^ ")""*))
                             | Just idstr -> 
                                 (*let _ = errln ("Found element named " ^ idstr ^ " coextensive with section named " ^ 
                                     irec.isec.elf64_section_name_as_string ^ " in file " ^ irec.fname)

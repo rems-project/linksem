@@ -440,7 +440,7 @@ definition r_aarch64_irelative  :: " nat "  where
 definition aarch64_le_reloc  :: " nat \<Rightarrow> bool*('abifeature annotated_memory_image \<Rightarrow> nat \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> nat*(nat \<Rightarrow> int \<Rightarrow> nat \<Rightarrow> nat))"  where 
      " aarch64_le_reloc r = (
   if r = r_aarch64_none then
-    (False, (\<lambda> img2 .  (\<lambda> site_addr .  (\<lambda> rr .  (( 0 :: nat), (\<lambda> s .  \<lambda> a .  \<lambda> e .  e))))))
+    (False, (\<lambda> img3 .  (\<lambda> site_addr .  (\<lambda> rr .  (( 0 :: nat), (\<lambda> s .  \<lambda> a .  \<lambda> e .  e))))))
   else
     (False, noop_reloc_apply))"
 

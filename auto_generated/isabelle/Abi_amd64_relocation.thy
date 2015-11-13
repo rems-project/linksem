@@ -243,20 +243,20 @@ definition amd64_reloc  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature Abi
             in compl)))
     ))
     in  if((string_of_amd64_relocation_type r) = (''R_X86_64_NONE'')) then
-   (False, (\<lambda> img2 .  (\<lambda> site_addr .  (\<lambda> rr .  
+   (False, (\<lambda> img3 .  (\<lambda> site_addr .  (\<lambda> rr .  
                                                        (( 0 :: nat), 
                                                        (\<lambda> s .  \<lambda> a .  \<lambda> e .  e))))))
  else
    (
    if((string_of_amd64_relocation_type r) = (''R_X86_64_64'')) then
-     (True, (\<lambda> img2 .  (\<lambda> site_addr .  (\<lambda> rr .  
+     (True, (\<lambda> img3 .  (\<lambda> site_addr .  (\<lambda> rr .  
                                                         (( 8 :: nat), 
                                                         (\<lambda> s .  \<lambda> a .  \<lambda> e .  
                                                          i2n (n2i s + a)))))))
    else
      (
      if((string_of_amd64_relocation_type r) = (''R_X86_64_PC32'')) then
-       (False, (\<lambda> img2 .  (\<lambda> site_addr .  (\<lambda> rr .  
+       (False, (\<lambda> img3 .  (\<lambda> site_addr .  (\<lambda> rr .  
                                                            (( 4 :: nat), 
                                                            (\<lambda> s .  \<lambda> a .  \<lambda> e .  
                                                             (i2n
@@ -265,27 +265,27 @@ definition amd64_reloc  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature Abi
      else
        (
        if((string_of_amd64_relocation_type r) = (''R_X86_64_GOT32'')) then
-         (False, (\<lambda> img2 .  (\<lambda> site_addr .  (\<lambda> rr .  
+         (False, (\<lambda> img3 .  (\<lambda> site_addr .  (\<lambda> rr .  
                                                              (( 4 :: nat), 
                                                              (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
        else
          (
          if((string_of_amd64_relocation_type r) = (''R_X86_64_PLT32'')) then
-           (False, (\<lambda> img2 .  (\<lambda> site_addr .  (\<lambda> rr .  
+           (False, (\<lambda> img3 .  (\<lambda> site_addr .  (\<lambda> rr .  
                                                                (( 4 :: nat), 
                                                                (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
          else
            (
            if((string_of_amd64_relocation_type r) = (''R_X86_64_COPY'')) then
-             (False, (\<lambda> img2 .  (\<lambda> site_addr .  (\<lambda> rr .  
+             (False, (\<lambda> img3 .  (\<lambda> site_addr .  (\<lambda> rr .  
                                                                  (size_of_copy_reloc
-                                                                    img2 
+                                                                    img3 
                                                                   rr, 
                                                                  (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
            else
              (
              if((string_of_amd64_relocation_type r) = (''R_X86_64_GLOB_DAT'')) then
-               (False, (\<lambda> img2 .  (\<lambda> site_addr .  (\<lambda> rr .  
+               (False, (\<lambda> img3 .  (\<lambda> site_addr .  (\<lambda> rr .  
                                                                    (size_of_def
                                                                     rr, 
                                                                    (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
@@ -293,7 +293,7 @@ definition amd64_reloc  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature Abi
                (
                if((string_of_amd64_relocation_type r) =
                     (''R_X86_64_JUMP_SLOT'')) then
-                 (False, (\<lambda> img2 .  (\<lambda> site_addr .  (
+                 (False, (\<lambda> img3 .  (\<lambda> site_addr .  (
                                                                     \<lambda> rr .  
                                                                     (
                                                                     (
@@ -304,21 +304,21 @@ definition amd64_reloc  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature Abi
                  (
                  if((string_of_amd64_relocation_type r) =
                       (''R_X86_64_RELATIVE'')) then
-                   (True, (\<lambda> img2 .  (\<lambda> site_addr .  
+                   (True, (\<lambda> img3 .  (\<lambda> site_addr .  
                                               (\<lambda> rr .  (( 8 :: nat), 
                                                                (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
                  else
                    (
                    if((string_of_amd64_relocation_type r) =
                         (''R_X86_64_GOTPCREL'')) then
-                     (False, (\<lambda> img2 .  (\<lambda> site_addr .  
+                     (False, (\<lambda> img3 .  (\<lambda> site_addr .  
                                                  (\<lambda> rr .  (( 8 :: nat) (* CHECK *) , 
                                                                   (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
                    else
                      (
                      if((string_of_amd64_relocation_type r) =
                           (''R_X86_64_32'')) then
-                       (True, (\<lambda> img2 .  (\<lambda> site_addr .  
+                       (True, (\<lambda> img3 .  (\<lambda> site_addr .  
                                                   (\<lambda> rr .  ((
                                                                      4 :: nat), 
                                                                    (\<lambda> s .  \<lambda> a .  \<lambda> e .  
@@ -330,7 +330,7 @@ definition amd64_reloc  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature Abi
                        (
                        if((string_of_amd64_relocation_type r) =
                             (''R_X86_64_32S'')) then
-                         (True, (\<lambda> img2 .  (\<lambda> site_addr .  
+                         (True, (\<lambda> img3 .  (\<lambda> site_addr .  
                                                     (\<lambda> rr .  
                                                      (( 4 :: nat), (\<lambda> s .  \<lambda> a .  \<lambda> e .  
                                                                     i2n_signed
@@ -344,7 +344,7 @@ definition amd64_reloc  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature Abi
                          (
                          if((string_of_amd64_relocation_type r) =
                               (''R_X86_64_16'')) then
-                           (True, (\<lambda> img2 .  (\<lambda> site_addr .  
+                           (True, (\<lambda> img3 .  (\<lambda> site_addr .  
                                                       (\<lambda> rr .  
                                                        (( 2 :: nat), 
                                                        (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
@@ -352,7 +352,7 @@ definition amd64_reloc  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature Abi
                            (
                            if((string_of_amd64_relocation_type r) =
                                 (''R_X86_64_PC16'')) then
-                             (False, (\<lambda> img2 .  (\<lambda> site_addr .  
+                             (False, (\<lambda> img3 .  (\<lambda> site_addr .  
                                                          (\<lambda> rr .  
                                                           (( 2 :: nat), 
                                                           (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
@@ -360,7 +360,7 @@ definition amd64_reloc  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature Abi
                              (
                              if((string_of_amd64_relocation_type r) =
                                   (''R_X86_64_8'')) then
-                               (True, (\<lambda> img2 .  (\<lambda> site_addr .  
+                               (True, (\<lambda> img3 .  (\<lambda> site_addr .  
                                                           (\<lambda> rr .  
                                                            (( 1 :: nat), 
                                                            (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
@@ -368,7 +368,7 @@ definition amd64_reloc  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature Abi
                                (
                                if((string_of_amd64_relocation_type r) =
                                     (''R_X86_64_PC8'')) then
-                                 (False, (\<lambda> img2 .  (\<lambda> site_addr .  
+                                 (False, (\<lambda> img3 .  (\<lambda> site_addr .  
                                                              (\<lambda> rr .  
                                                               (( 1 :: nat), 
                                                               (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
@@ -376,7 +376,7 @@ definition amd64_reloc  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature Abi
                                  (
                                  if((string_of_amd64_relocation_type r) =
                                       (''R_X86_64_DTPMOD64'')) then
-                                   (False, (\<lambda> img2 .  (\<lambda> site_addr .  
+                                   (False, (\<lambda> img3 .  (\<lambda> site_addr .  
                                                                (\<lambda> rr .  
                                                                 (( 8 :: nat) (* CHECK *) , 
                                                                 (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
@@ -384,7 +384,7 @@ definition amd64_reloc  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature Abi
                                    (
                                    if((string_of_amd64_relocation_type r) =
                                         (''R_X86_64_DTPOFF64'')) then
-                                     (False, (\<lambda> img2 .  (\<lambda> site_addr .  
+                                     (False, (\<lambda> img3 .  (\<lambda> site_addr .  
                                                                  (\<lambda> rr .  
                                                                   (( 8 :: nat) (* CHECK *) , 
                                                                   (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
@@ -392,7 +392,7 @@ definition amd64_reloc  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature Abi
                                      (
                                      if((string_of_amd64_relocation_type r) =
                                           (''R_X86_64_TPOFF64'')) then
-                                       (False, (\<lambda> img2 .  (\<lambda> site_addr .  
+                                       (False, (\<lambda> img3 .  (\<lambda> site_addr .  
                                                                    (\<lambda> rr .  
                                                                     (
                                                                     (
@@ -403,7 +403,7 @@ definition amd64_reloc  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature Abi
                                        (
                                        if((string_of_amd64_relocation_type r)
                                             = (''R_X86_64_TLSGD'')) then
-                                         (False, (\<lambda> img2 .  (
+                                         (False, (\<lambda> img3 .  (
                                                                     \<lambda> site_addr .  
                                                                     (
                                                                     \<lambda> rr .  
@@ -416,7 +416,7 @@ definition amd64_reloc  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature Abi
                                          (
                                          if((string_of_amd64_relocation_type
                                                r) = (''R_X86_64_TLSLD'')) then
-                                           (False, (\<lambda> img2 .  
+                                           (False, (\<lambda> img3 .  
                                                     (\<lambda> site_addr .  
                                                      (\<lambda> rr .  
                                                       (( 8 :: nat) (* CHECK *) , 
@@ -425,7 +425,7 @@ definition amd64_reloc  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature Abi
                                            (
                                            if((string_of_amd64_relocation_type
                                                  r) = (''R_X86_64_DTPOFF32'')) then
-                                             (False, (\<lambda> img2 .  
+                                             (False, (\<lambda> img3 .  
                                                       (\<lambda> site_addr .  
                                                        (\<lambda> rr .  
                                                         (( 4 :: nat) (* CHECK *) , 
@@ -435,7 +435,7 @@ definition amd64_reloc  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature Abi
                                              if((string_of_amd64_relocation_type
                                                    r) =
                                                   (''R_X86_64_GOTTPOFF'')) then
-                                               (False, (\<lambda> img2 .  
+                                               (False, (\<lambda> img3 .  
                                                         (\<lambda> site_addr .  
                                                          (\<lambda> rr .  
                                                           (( 8 :: nat) (* CHECK *) , 
@@ -445,7 +445,7 @@ definition amd64_reloc  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature Abi
                                                if((string_of_amd64_relocation_type
                                                      r) =
                                                     (''R_X86_64_TPOFF32'')) then
-                                                 (False, (\<lambda> img2 .  
+                                                 (False, (\<lambda> img3 .  
                                                           (\<lambda> site_addr .  
                                                            (\<lambda> rr .  
                                                             (( 4 :: nat) (* CHECK *) , 
@@ -455,7 +455,7 @@ definition amd64_reloc  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature Abi
                                                  if((string_of_amd64_relocation_type
                                                        r) =
                                                       (''R_X86_64_PC64'')) then
-                                                   (False, (\<lambda> img2 .  
+                                                   (False, (\<lambda> img3 .  
                                                             (\<lambda> site_addr .  
                                                              (\<lambda> rr .  
                                                               (( 8 :: nat), 
@@ -465,7 +465,7 @@ definition amd64_reloc  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature Abi
                                                    if((string_of_amd64_relocation_type
                                                          r) =
                                                         (''R_X86_64_GOTOFF64'')) then
-                                                     (False, (\<lambda> img2 .  
+                                                     (False, (\<lambda> img3 .  
                                                               (\<lambda> site_addr .  
                                                                (\<lambda> rr .  
                                                                 (( 8 :: nat), 
@@ -475,7 +475,7 @@ definition amd64_reloc  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature Abi
                                                      if((string_of_amd64_relocation_type
                                                            r) =
                                                           (''R_X86_64_GOTPC32'')) then
-                                                       (False, (\<lambda> img2 .  
+                                                       (False, (\<lambda> img3 .  
                                                                 (\<lambda> site_addr .  
                                                                  (\<lambda> rr .  
                                                                   (( 4 :: nat), 
@@ -485,7 +485,7 @@ definition amd64_reloc  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature Abi
                                                        if((string_of_amd64_relocation_type
                                                              r) =
                                                             (''R_X86_64_SIZE32'')) then
-                                                         (False, (\<lambda> img2 .  
+                                                         (False, (\<lambda> img3 .  
                                                                   (\<lambda> site_addr .  
                                                                    (\<lambda> rr .  
                                                                     (
@@ -498,7 +498,7 @@ definition amd64_reloc  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature Abi
                                                          if((string_of_amd64_relocation_type
                                                                r) =
                                                               (''R_X86_64_SIZE64'')) then
-                                                           (False, (\<lambda> img2 .  
+                                                           (False, (\<lambda> img3 .  
                                                                     (
                                                                     \<lambda> site_addr .  
                                                                     (
@@ -514,7 +514,7 @@ definition amd64_reloc  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature Abi
                                                                  r) =
                                                                 (''R_X86_64_GOTPC32_TLSDESC'')) then
                                                              (False, 
-                                                             (\<lambda> img2 .  
+                                                             (\<lambda> img3 .  
                                                               (\<lambda> site_addr .  
                                                                (\<lambda> rr .  
                                                                 (( 4 :: nat) (* CHECK *) , 
@@ -525,7 +525,7 @@ definition amd64_reloc  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature Abi
                                                                    r) =
                                                                   (''R_X86_64_TLSDESC_CALL'')) then
                                                                (False, 
-                                                               (\<lambda> img2 .  
+                                                               (\<lambda> img3 .  
                                                                 (\<lambda> site_addr .  
                                                                  (\<lambda> rr .  
                                                                   (( 4 :: nat) (* CHECK *) , 
@@ -536,7 +536,7 @@ definition amd64_reloc  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature Abi
                                                                     r) =
                                                                     (''R_X86_64_TLSDESC'')) then
                                                                  (False, 
-                                                                 (\<lambda> img2 .  
+                                                                 (\<lambda> img3 .  
                                                                   (\<lambda> site_addr .  
                                                                    (\<lambda> rr .  
                                                                     (
@@ -551,7 +551,7 @@ definition amd64_reloc  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature Abi
                                                                     r) =
                                                                     (''R_X86_64_IRELATIVE'')) then
                                                                    (True, 
-                                                                   (\<lambda> img2 .  
+                                                                   (\<lambda> img3 .  
                                                                     (
                                                                     \<lambda> site_addr .  
                                                                     (

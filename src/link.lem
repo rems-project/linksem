@@ -467,9 +467,9 @@ val default_merge_generated : abi any_abi_feature -> elf_memory_image -> list (l
 let default_merge_generated a generated_img input_spec_lists = 
     (* We expand the sections in the generated image and hang them off
      * the first linkable item. *) 
-    let _ = errln ("Generated image has " ^ (show (Map.size generated_img.elements)) ^ " elements and " ^ (show (Set.size (generated_img.by_tag))) ^ 
+    (*let _ = errln ("Generated image has " ^ (show (Map.size generated_img.elements)) ^ " elements and " ^ (show (Set.size (generated_img.by_tag))) ^ 
         " metadata elements (sanity: " ^ (show (Set.size (generated_img.by_range))) ^ ")")
-    in
+    in*)
     let dummy_input_item = ("(no file)", Input_list.Reloc(Sequence([])), ((Command_line.File(Command_line.Filename("(no file)"), Command_line.null_input_file_options)), [InCommandLine(0)]))
     in 
     let dummy_linkable_item = (RelocELF(generated_img), dummy_input_item, Input_list.null_input_options)

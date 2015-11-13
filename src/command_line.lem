@@ -233,43 +233,91 @@ val find_option_matching_tag : link_option -> set link_option -> maybe link_opti
 let rec find_option_matching_tag tag options = 
     List.find (tagEqual tag) (Set_extra.toList options)
 
+val extract_hex_addend : char -> maybe natural
+let extract_hex_addend x =
+  if x = #'0' then
+    Just 0
+  else if x = #'1' then
+    Just 1
+  else if x = #'2' then
+    Just 2
+  else if x = #'3' then
+    Just 3
+  else if x = #'4' then
+    Just 4
+  else if x = #'5' then
+    Just 5
+  else if x = #'6' then
+    Just 6
+  else if x = #'7' then
+    Just 7
+  else if x = #'8' then
+    Just 8
+  else if x = #'9' then
+    Just 9
+  else if x = #'a' then
+    Just 10
+  else if x = #'b' then
+    Just 11
+  else if x = #'c' then
+    Just 12
+  else if x = #'d' then
+    Just 13
+  else if x = #'e' then
+    Just 14
+  else if x = #'f' then
+    Just 15
+  else
+    Nothing
+
 val accumulate_hex_chars : natural -> list char -> natural
-let rec accumulate_hex_chars acc chars = match chars with
-    [] -> acc
-    | #'0' :: rest -> accumulate_hex_chars (acc * 16) rest
-    | #'1' :: rest -> accumulate_hex_chars (acc * 16 + 1) rest
-    | #'2' :: rest -> accumulate_hex_chars (acc * 16 + 2) rest
-    | #'3' :: rest -> accumulate_hex_chars (acc * 16 + 3) rest
-    | #'4' :: rest -> accumulate_hex_chars (acc * 16 + 4) rest
-    | #'5' :: rest -> accumulate_hex_chars (acc * 16 + 5) rest
-    | #'6' :: rest -> accumulate_hex_chars (acc * 16 + 6) rest
-    | #'7' :: rest -> accumulate_hex_chars (acc * 16 + 7) rest
-    | #'8' :: rest -> accumulate_hex_chars (acc * 16 + 8) rest
-    | #'9' :: rest -> accumulate_hex_chars (acc * 16 + 9) rest
-    | #'a' :: rest -> accumulate_hex_chars (acc * 16 + 10) rest
-    | #'b' :: rest -> accumulate_hex_chars (acc * 16 + 11) rest
-    | #'c' :: rest -> accumulate_hex_chars (acc * 16 + 12) rest
-    | #'d' :: rest -> accumulate_hex_chars (acc * 16 + 13) rest
-    | #'e' :: rest -> accumulate_hex_chars (acc * 16 + 14) rest
-    | #'f' :: rest -> accumulate_hex_chars (acc * 16 + 15) rest
-    | _ -> acc
-end
+let rec accumulate_hex_chars acc chars =
+  match chars with
+    | [] -> acc
+    | x::xs ->
+      match extract_hex_addend x with
+        | Nothing     -> acc
+        | Just addend ->
+            accumulate_hex_chars (acc * 16 + addend) xs
+      end
+  end
+
+val extract_dec_addend : char -> maybe natural
+let extract_dec_addend x =
+  if x = #'0' then
+    Just 0
+  else if x = #'1' then
+    Just 1
+  else if x = #'2' then
+    Just 2
+  else if x = #'3' then
+    Just 3
+  else if x = #'4' then
+    Just 4
+  else if x = #'5' then
+    Just 5
+  else if x = #'6' then
+    Just 6
+  else if x = #'7' then
+    Just 7
+  else if x = #'8' then
+    Just 8
+  else if x = #'9' then
+    Just 9
+  else
+    Nothing
 
 val accumulate_dec_chars : natural -> list char -> natural
-let rec accumulate_dec_chars acc chars = match chars with
-    [] -> acc
-    | #'0' :: rest -> accumulate_hex_chars (acc * 10) rest
-    | #'1' :: rest -> accumulate_hex_chars (acc * 10 + 1) rest
-    | #'2' :: rest -> accumulate_hex_chars (acc * 10 + 2) rest
-    | #'3' :: rest -> accumulate_hex_chars (acc * 10 + 3) rest
-    | #'4' :: rest -> accumulate_hex_chars (acc * 10 + 4) rest
-    | #'5' :: rest -> accumulate_hex_chars (acc * 10 + 5) rest
-    | #'6' :: rest -> accumulate_hex_chars (acc * 10 + 6) rest
-    | #'7' :: rest -> accumulate_hex_chars (acc * 10 + 7) rest
-    | #'8' :: rest -> accumulate_hex_chars (acc * 10 + 8) rest
-    | #'9' :: rest -> accumulate_hex_chars (acc * 10 + 9) rest
-    | _ -> acc
-end
+let rec accumulate_dec_chars acc chars =
+  match chars with
+    | [] -> acc
+    | x::xs ->
+      match extract_dec_addend x with
+        | Nothing     -> acc
+        | Just addend ->
+            accumulate_hex_chars (acc * 16 + addend) xs
+      end
+  end
 
 val parse_address : string -> natural
 let parse_address s = match toCharList s with

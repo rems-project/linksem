@@ -91,8 +91,8 @@ definition gnu_extend  :: " 'abifeature abi \<Rightarrow> 'abifeature abi "  whe
                , elf64_shstrndx = (Elf_Types_Local.uint16_of_nat shstrndx)
                |)))
     , reloc               =(reloc   a)
-    , section_is_special  = (\<lambda> isec1 .  (\<lambda> img2 .  ((section_is_special  
-                                a) isec1 img2
+    , section_is_special  = (\<lambda> isec1 .  (\<lambda> img3 .  ((section_is_special  
+                                a) isec1 img3
                                 \<or> (Missing_pervasives.string_prefix ( (List.length (''.gnu.warning'')))(elf64_section_name_as_string   isec1)
                                  = Some((''.gnu.warning'')))
         (* FIXME: This is a slight abuse. The GNU linker's treatment of 
@@ -122,6 +122,7 @@ definition gnu_extend  :: " 'abifeature abi \<Rightarrow> 'abifeature abi "  whe
     , pad_data            =(pad_data   a)
     , pad_code            =(pad_code   a)
     , generate_support    =(generate_support   a)
+    , concretise_support  =(concretise_support   a)
     |) )"
 
 end

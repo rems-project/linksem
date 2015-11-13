@@ -33,17 +33,17 @@ begin
 
 record archive_entry_header =
   
- name0      ::" string "
+ name      ::" string "
    
- timestamp0 ::" nat "
+ timestamp ::" nat "
    
- uid0       ::" nat "
+ uid       ::" nat "
    
- gid0       ::" nat "
+ gid       ::" nat "
    
- mode0      ::" nat "
+ mode      ::" nat "
    
- size2      ::" nat " (* 1GB should be enough *)
+ size0      ::" nat " (* 1GB should be enough *)
    
 
 
@@ -51,35 +51,35 @@ type_synonym archive_global_header =" char
   list "
 
 (*val string_of_byte_sequence : byte_sequence -> string*)
-fun string_of_byte_sequence1  :: " byte_sequence \<Rightarrow> string "  where 
-     " string_of_byte_sequence1 (Sequence bs) = ( (List.map Elf_Types_Local.char_of_unsigned_char bs))" 
-declare string_of_byte_sequence1.simps [simp del]
+fun string_of_byte_sequence0  :: " byte_sequence \<Rightarrow> string "  where 
+     " string_of_byte_sequence0 (Sequence bs) = ( (List.map Elf_Types_Local.char_of_unsigned_char bs))" 
+declare string_of_byte_sequence0.simps [simp del]
 
 
 (*val read_archive_entry_header : natural -> byte_sequence -> error (archive_entry_header * natural * byte_sequence)*)
-definition read_archive_entry_header0  :: " nat \<Rightarrow> byte_sequence \<Rightarrow>(archive_entry_header*nat*byte_sequence)error "  where 
-     " read_archive_entry_header0 seq_length seq = (
+definition read_archive_entry_header  :: " nat \<Rightarrow> byte_sequence \<Rightarrow>(archive_entry_header*nat*byte_sequence)error "  where 
+     " read_archive_entry_header seq_length seq = (
   (let magic_bytes = ([(of_nat (( 96 :: nat)) :: byte) (* 0x60 *), (of_nat (( 10 :: nat)) :: byte) (* 0x0a *)]) in
         (let header_length =(( 60 :: nat)) in
         (* let _ = Missing_pervasives.errs (Archive entry header?  ^ (show (take 16 bs)) ^ ? ) in *)
         partition_with_length header_length seq_length seq >>= (\<lambda> (header1, rest) .  
         offset_and_cut(( 58 :: nat))(( 2 :: nat)) header1 >>= (\<lambda> magic .  
-        offset_and_cut(( 0 :: nat))(( 16 :: nat)) header1 >>= (\<lambda> name2 .  
+        offset_and_cut(( 0 :: nat))(( 16 :: nat)) header1 >>= (\<lambda> name1 .  
         offset_and_cut(( 16 :: nat))(( 12 :: nat)) header1 >>= (\<lambda> timestamp_str .  
         offset_and_cut(( 28 :: nat))(( 6 :: nat))  header1 >>= (\<lambda> uid_str .  
         offset_and_cut(( 34 :: nat))(( 6 :: nat))  header1 >>= (\<lambda> gid_str .  
         offset_and_cut(( 40 :: nat))(( 8 :: nat))  header1 >>= (\<lambda> mode_str .  
         offset_and_cut(( 48 :: nat))(( 10 :: nat)) header1 >>= (\<lambda> size_str .  
-        (let size4 = (natural_of_decimal_string (string_of_byte_sequence1 size_str)) in 
+        (let size3 = (natural_of_decimal_string (string_of_byte_sequence0 size_str)) in 
                 (* let _ = Missing_pervasives.errln (: yes, size  ^ (show size)) in *)
-        error_return ((| name0 = (string_of_byte_sequence1 name2), timestamp0 = (( 0 :: nat) :: nat) (* FIXME *),
-          uid0 =(( 0 :: nat)) (* FIXME *) , gid0 =(( 0 :: nat)) (* FIXME *) , mode0 =(( 0 :: nat)) (* FIXME *),
-            size2 = (id size4) (* FIXME *) |), (seq_length - header_length), rest)))))))))))))"
+        error_return ((| name = (string_of_byte_sequence0 name1), timestamp = (( 0 :: nat) :: nat) (* FIXME *),
+          uid =(( 0 :: nat)) (* FIXME *) , gid =(( 0 :: nat)) (* FIXME *) , mode =(( 0 :: nat)) (* FIXME *),
+            size0 = (id size3) (* FIXME *) |), (seq_length - header_length), rest)))))))))))))"
 
 
 (*val read_archive_global_header : byte_sequence -> error (archive_global_header * byte_sequence)*)
-fun read_archive_global_header0  :: " byte_sequence \<Rightarrow>((char)list*byte_sequence)error "  where 
-     " read_archive_global_header0 (Sequence bs) = (
+fun read_archive_global_header  :: " byte_sequence \<Rightarrow>((char)list*byte_sequence)error "  where 
+     " read_archive_global_header (Sequence bs) = (
             (* let _ = Missing_pervasives.errs (Archive?  ^ (show (take 16 bs)) ^ ? )
             in*)
       (let chars = (List.map Elf_Types_Local.char_of_unsigned_char (take(( 8 :: nat)) bs)) in 
@@ -89,49 +89,49 @@ fun read_archive_global_header0  :: " byte_sequence \<Rightarrow>((char)list*byt
         else
           (* let _ = Missing_pervasives.errln : no in *)
           error_fail (''read_archive_global_header: not an archive'')))" 
-declare read_archive_global_header0.simps [simp del]
+declare read_archive_global_header.simps [simp del]
 
 
 (*val accum_archive_contents : (list (string * byte_sequence)) -> maybe string -> natural -> byte_sequence -> error (list (string * byte_sequence))*)
-function (sequential,domintros)  accum_archive_contents0  :: "(string*byte_sequence)list \<Rightarrow>(string)option \<Rightarrow> nat \<Rightarrow> byte_sequence \<Rightarrow>((string*byte_sequence)list)error "  where 
-     " accum_archive_contents0 accum extended_filenames whole_seq_length whole_seq = ( 
+function (sequential,domintros)  accum_archive_contents  :: "(string*byte_sequence)list \<Rightarrow>(string)option \<Rightarrow> nat \<Rightarrow> byte_sequence \<Rightarrow>((string*byte_sequence)list)error "  where 
+     " accum_archive_contents accum extended_filenames whole_seq_length whole_seq = ( 
   (* let _ = Missing_pervasives.errs Can read a header?  in *)
   if \<not> ((Byte_sequence.length0 whole_seq) = whole_seq_length) then
     Lem_assert_extra.fail (* invariant: whole_seq_length always equal to length of whole_seq, so the length is only
       computed one.  This fail needed for Isabelle termination proofs... *)
   else
-  (case  (read_archive_entry_header0 whole_seq_length whole_seq) of
+  (case  (read_archive_entry_header whole_seq_length whole_seq) of
       Fail _ => error_return accum
     | Success (hdr, (seq_length :: nat), seq) =>
     (case  seq of
         Sequence next_bs =>
         (* let _ = Missing_pervasives.errln (yes; next_bs has length  ^ (show (List.length next_bs))) in *)
         (let amount_to_drop =          
-(if ((size2   hdr) mod( 2 :: nat)) =( 0 :: nat) then
-            ((size2   hdr))
+(if ((size0   hdr) mod( 2 :: nat)) =( 0 :: nat) then
+            ((size0   hdr))
           else
-            ((size2   hdr)) +( 1 :: nat))
+            ((size0   hdr)) +( 1 :: nat))
         in
         if amount_to_drop =( 0 :: nat) then
           error_fail (''accum_archive_contents: amount to drop from byte sequence is 0'')
         else
         (*let _ = Missing_pervasives.errln (amount_to_drop is  ^ (show amount_to_drop)) in*)
-        (let chunk = (Sequence(List.take(size2   hdr) next_bs))
+        (let chunk = (Sequence(List.take(size0   hdr) next_bs))
         in
         (*let _ = Missing_pervasives.errs (Processing archive header named  ^ hdr.name)
         in*)
         (let (new_accum, (new_extended_filenames ::  string option)) =          
-((let name2 = ((name0   hdr)) in
-            if name2 = [(CHR ''/''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' '')] then
+((let name1 = ((name   hdr)) in
+            if name1 = [(CHR ''/''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' ''), (CHR '' '')] then
               (* SystemV symbol lookup table; we skip this *) (accum, extended_filenames)
             else
-              (case  name2 of
+              (case  name1 of
                   x # xs =>
                   if x = (CHR ''/'') then
                     (case  xs of
                         y # ys =>
                         if y = (CHR ''/'') then
-                          (accum, Some (string_of_byte_sequence1 chunk))
+                          (accum, Some (string_of_byte_sequence0 chunk))
                         else
                           (let index1 = (natural_of_decimal_string ( xs)) in
                             (case  extended_filenames of 
@@ -156,14 +156,14 @@ function (sequential,domintros)  accum_archive_contents0  :: "(string*byte_seque
                          ))
                     )
                   else
-                    ((((name0   hdr), chunk) # accum), extended_filenames)
-                | [] => ((((name0   hdr), chunk) # accum), extended_filenames)
+                    ((((name   hdr), chunk) # accum), extended_filenames)
+                | [] => ((((name   hdr), chunk) # accum), extended_filenames)
               )))
         in
           (case  (Byte_sequence.dropbytes amount_to_drop seq) of
               Fail _ => error_return accum
             | Success new_seq =>
-              accum_archive_contents0 new_accum new_extended_filenames (seq_length - amount_to_drop) new_seq
+              accum_archive_contents new_accum new_extended_filenames (seq_length - amount_to_drop) new_seq
           ))))
     )
   ))" 
@@ -171,10 +171,10 @@ by pat_completeness auto
 
 
 (*val read_archive : byte_sequence -> error (list (string * byte_sequence))*)
-definition read_archive0  :: " byte_sequence \<Rightarrow>((string*byte_sequence)list)error "  where 
-     " read_archive0 bs = ( 
-    read_archive_global_header0 bs >>= (\<lambda> (hdr, seq) .  
-    (let result = (accum_archive_contents0 [] None (Byte_sequence.length0 seq) seq)  in 
+definition read_archive  :: " byte_sequence \<Rightarrow>((string*byte_sequence)list)error "  where 
+     " read_archive bs = ( 
+    read_archive_global_header bs >>= (\<lambda> (hdr, seq) .  
+    (let result = (accum_archive_contents [] None (Byte_sequence.length0 seq) seq)  in 
     (* let _ = Missing_pervasives.errln Finished reading archive in *)
     (case  result of
         Success r => Success (List.rev r)

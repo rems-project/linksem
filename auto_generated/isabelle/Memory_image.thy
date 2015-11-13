@@ -74,11 +74,11 @@ type_synonym byte_pattern =" byte_pattern_element list "
 
 (* An element might have an address/offset, and it has some contents. *)
 record element = 
- startpos0 ::"  nat option " 
+ startpos ::"  nat option " 
                 
- length2   ::"  nat option "
+ length1   ::"  nat option "
                 
- contents0 ::" byte_pattern "
+ contents ::" byte_pattern "
                 
 
 
@@ -94,35 +94,35 @@ type address_expr = natural -> allocated_symbols_map -> natural
    ... we model it as expressions in terms of CursorPosition. HMM.
 *) 
 
-datatype expr_operand = Var1 " string "
-                   | CursorPosition0          (* only valid in certain expressions... HMM *)
-                   | Constant0 " nat "
-                   | UnOp0 " (expr_unary_operation * expr_operand)"
-                   | BinOp0 " (expr_binary_operation * expr_operand * expr_operand)"
+datatype expr_operand = Var " string "
+                   | CursorPosition          (* only valid in certain expressions... HMM *)
+                   | Constant " nat "
+                   | UnOp " (expr_unary_operation * expr_operand)"
+                   | BinOp " (expr_binary_operation * expr_operand * expr_operand)"
 and
-expr_unary_operation = Neg0 " expr_operand "
-                           | BitwiseInverse0 " expr_operand "
+expr_unary_operation = Neg " expr_operand "
+                           | BitwiseInverse " expr_operand "
 and 
-expr_binary_operation = Add0 " (expr_operand * expr_operand)"
-                           | Sub0 " (expr_operand * expr_operand)"
-                           | BitwiseAnd0 " (expr_operand * expr_operand)"
-                           | BitwiseOr0 " (expr_operand * expr_operand)"
+expr_binary_operation = Add " (expr_operand * expr_operand)"
+                           | Sub " (expr_operand * expr_operand)"
+                           | BitwiseAnd " (expr_operand * expr_operand)"
+                           | BitwiseOr " (expr_operand * expr_operand)"
 
 datatype expr_binary_relation = 
-    Lt1
-    | Lte0
-    | Gt0
-    | Gte0
-    | Eq1
-    | Neq0
+    Lt
+    | Lte
+    | Gt
+    | Gte
+    | Eq
+    | Neq
 
 datatype expr = 
-    False1
-    | True1
-    | Not0 " expr "
-    | And1 " (expr * expr)"
-    | Or1 " (expr * expr)"
-    | BinRel0 " (expr_binary_relation * expr_operand)"  (* LH operand is the expr's value *)
+    False0
+    | True0
+    | Not " expr "
+    | And " (expr * expr)"
+    | Or " (expr * expr)"
+    | BinRel " (expr_binary_relation * expr_operand)"  (* LH operand is the expr's value *)
 
 (*
 val cond_expr : expr -> expr -> expr -> expr
@@ -164,142 +164,142 @@ type_synonym element_range =" string * range "
 
 (* ELF file features with which we can label ranges of the memory image. *)
 datatype elf_file_feature = 
-    ElfHeader0 " elf64_header "
-    | ElfSectionHeaderTable0 " elf64_section_header_table " (* do we want to expand these? *)
-    | ElfProgramHeaderTable0 " elf64_program_header_table "
-    | ElfSection0 " (nat * elf64_interpreted_section)" (* SHT idx *)
-    | ElfSegment0 " (nat * elf64_interpreted_segment)" (* PHT idx *)
+    ElfHeader " elf64_header "
+    | ElfSectionHeaderTable " elf64_section_header_table " (* do we want to expand these? *)
+    | ElfProgramHeaderTable " elf64_program_header_table "
+    | ElfSection " (nat * elf64_interpreted_section)" (* SHT idx *)
+    | ElfSegment " (nat * elf64_interpreted_segment)" (* PHT idx *)
 
 record symbol_definition
  = 
- def_symname0 ::" string "
+ def_symname ::" string "
     
- def_syment0 ::" elf64_symbol_table_entry " (* definition's symtab entry *)
+ def_syment ::" elf64_symbol_table_entry " (* definition's symtab entry *)
     
- def_sym_scn0 ::" nat "                 (* symtab section index, to disamiguate dynsym *)
+ def_sym_scn ::" nat "                 (* symtab section index, to disamiguate dynsym *)
     
- def_sym_idx0 ::" nat "                 (* index of symbol into the symtab *)
+ def_sym_idx ::" nat "                 (* index of symbol into the symtab *)
     
- def_linkable_idx0 ::" nat "            (* used to propagate origin linkable information to linked image *)
+ def_linkable_idx ::" nat "            (* used to propagate origin linkable information to linked image *)
     
 
 
-definition symDefCompare0  :: " symbol_definition \<Rightarrow> symbol_definition \<Rightarrow> ordering "  where 
-     " symDefCompare0 x1 x2 = (        
-(quadrupleCompare (\<lambda> x y. EQ) elf64_symbol_table_entry_compare (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) ((def_symname0   x1),(def_syment0   x1),(def_sym_scn0   x1),(def_sym_idx0   x1))
-                ((def_symname0   x2),(def_syment0   x2),(def_sym_scn0   x2),(def_sym_idx0   x2))))"
+definition symDefCompare  :: " symbol_definition \<Rightarrow> symbol_definition \<Rightarrow> ordering "  where 
+     " symDefCompare x1 x2 = (        
+(quadrupleCompare (\<lambda> x y. EQ) elf64_symbol_table_entry_compare (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) ((def_symname   x1),(def_syment   x1),(def_sym_scn   x1),(def_sym_idx   x1))
+                ((def_symname   x2),(def_syment   x2),(def_sym_scn   x2),(def_sym_idx   x2))))"
 
 
-definition instance_Basic_classes_Ord_Memory_image_symbol_definition_dict0  :: "(symbol_definition)Ord_class "  where 
-     " instance_Basic_classes_Ord_Memory_image_symbol_definition_dict0 = ((|
+definition instance_Basic_classes_Ord_Memory_image_symbol_definition_dict  :: "(symbol_definition)Ord_class "  where 
+     " instance_Basic_classes_Ord_Memory_image_symbol_definition_dict = ((|
 
-  compare_method = symDefCompare0,
+  compare_method = symDefCompare,
 
-  isLess_method = (\<lambda> f1 .  (\<lambda> f2 .  (symDefCompare0 f1 f2 = LT))),
+  isLess_method = (\<lambda> f1 .  (\<lambda> f2 .  (symDefCompare f1 f2 = LT))),
 
-  isLessEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (symDefCompare0 f1 f2) ({LT, EQ}))),
+  isLessEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (symDefCompare f1 f2) ({LT, EQ}))),
 
-  isGreater_method = (\<lambda> f1 .  (\<lambda> f2 .  (symDefCompare0 f1 f2 = GT))),
+  isGreater_method = (\<lambda> f1 .  (\<lambda> f2 .  (symDefCompare f1 f2 = GT))),
 
-  isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (symDefCompare0 f1 f2) ({GT, EQ})))|) )"
+  isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (symDefCompare f1 f2) ({GT, EQ})))|) )"
 
 
 record symbol_reference
  = 
- ref_symname0 ::" string "                  (* symbol name *)
+ ref_symname ::" string "                  (* symbol name *)
     
- ref_syment0 ::" elf64_symbol_table_entry " (* likely-undefined (referencing) symbol *)
+ ref_syment ::" elf64_symbol_table_entry " (* likely-undefined (referencing) symbol *)
     
- ref_sym_scn0 ::" nat "                 (* symtab section idx *) 
+ ref_sym_scn ::" nat "                 (* symtab section idx *) 
     
- ref_sym_idx0 ::" nat "                 (* index into symbol table *)
+ ref_sym_idx ::" nat "                 (* index into symbol table *)
     
 
 
-definition symRefCompare0  :: " symbol_reference \<Rightarrow> symbol_reference \<Rightarrow> ordering "  where 
-     " symRefCompare0 x1 x2 = (        
-(quadrupleCompare (\<lambda> x y. EQ) elf64_symbol_table_entry_compare (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) ((ref_symname0   x1),(ref_syment0   x1),(ref_sym_scn0   x1),(ref_sym_idx0   x1))
-                ((ref_symname0   x2),(ref_syment0   x2),(ref_sym_scn0   x2),(ref_sym_idx0   x2))))"
+definition symRefCompare  :: " symbol_reference \<Rightarrow> symbol_reference \<Rightarrow> ordering "  where 
+     " symRefCompare x1 x2 = (        
+(quadrupleCompare (\<lambda> x y. EQ) elf64_symbol_table_entry_compare (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) ((ref_symname   x1),(ref_syment   x1),(ref_sym_scn   x1),(ref_sym_idx   x1))
+                ((ref_symname   x2),(ref_syment   x2),(ref_sym_scn   x2),(ref_sym_idx   x2))))"
 
                 
-definition instance_Basic_classes_Ord_Memory_image_symbol_reference_dict0  :: "(symbol_reference)Ord_class "  where 
-     " instance_Basic_classes_Ord_Memory_image_symbol_reference_dict0 = ((|
+definition instance_Basic_classes_Ord_Memory_image_symbol_reference_dict  :: "(symbol_reference)Ord_class "  where 
+     " instance_Basic_classes_Ord_Memory_image_symbol_reference_dict = ((|
 
-  compare_method = symRefCompare0,
+  compare_method = symRefCompare,
 
-  isLess_method = (\<lambda> f1 .  (\<lambda> f2 .  (symRefCompare0 f1 f2 = LT))),
+  isLess_method = (\<lambda> f1 .  (\<lambda> f2 .  (symRefCompare f1 f2 = LT))),
 
-  isLessEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (symRefCompare0 f1 f2) ({LT, EQ}))),
+  isLessEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (symRefCompare f1 f2) ({LT, EQ}))),
 
-  isGreater_method = (\<lambda> f1 .  (\<lambda> f2 .  (symRefCompare0 f1 f2 = GT))),
+  isGreater_method = (\<lambda> f1 .  (\<lambda> f2 .  (symRefCompare f1 f2 = GT))),
 
-  isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (symRefCompare0 f1 f2) ({GT, EQ})))|) )"
+  isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (symRefCompare f1 f2) ({GT, EQ})))|) )"
 
 
 record reloc_site = 
 
-      ref_relent0  ::" elf64_relocation_a " 
+      ref_relent  ::" elf64_relocation_a " 
     
- ref_rel_scn0 ::" nat "  (* the relocation section idx *)
+ ref_rel_scn ::" nat "  (* the relocation section idx *)
     
- ref_rel_idx0 ::" nat "  (* the index of the relocation rec *)
+ ref_rel_idx ::" nat "  (* the index of the relocation rec *)
     
- ref_src_scn0 ::" nat "  (* the section *from which* the reference logically comes *)
+ ref_src_scn ::" nat "  (* the section *from which* the reference logically comes *)
 
 
 
-definition relocSiteCompare0  :: " reloc_site \<Rightarrow> reloc_site \<Rightarrow> ordering "  where 
-     " relocSiteCompare0 x1 x2 = (        
-(tripleCompare elf64_relocation_a_compare (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) ((ref_relent0   x1),(ref_rel_idx0   x1),(ref_src_scn0   x1))
-                ((ref_relent0   x2),(ref_rel_idx0   x2),(ref_src_scn0   x2))))"
+definition relocSiteCompare  :: " reloc_site \<Rightarrow> reloc_site \<Rightarrow> ordering "  where 
+     " relocSiteCompare x1 x2 = (        
+(tripleCompare elf64_relocation_a_compare (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) ((ref_relent   x1),(ref_rel_idx   x1),(ref_src_scn   x1))
+                ((ref_relent   x2),(ref_rel_idx   x2),(ref_src_scn   x2))))"
 
                 
-definition instance_Basic_classes_Ord_Memory_image_reloc_site_dict0  :: "(reloc_site)Ord_class "  where 
-     " instance_Basic_classes_Ord_Memory_image_reloc_site_dict0 = ((|
+definition instance_Basic_classes_Ord_Memory_image_reloc_site_dict  :: "(reloc_site)Ord_class "  where 
+     " instance_Basic_classes_Ord_Memory_image_reloc_site_dict = ((|
 
-  compare_method = relocSiteCompare0,
+  compare_method = relocSiteCompare,
 
-  isLess_method = (\<lambda> f1 .  (\<lambda> f2 .  (relocSiteCompare0 f1 f2 = LT))),
+  isLess_method = (\<lambda> f1 .  (\<lambda> f2 .  (relocSiteCompare f1 f2 = LT))),
 
-  isLessEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (relocSiteCompare0 f1 f2) ({LT, EQ}))),
+  isLessEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (relocSiteCompare f1 f2) ({LT, EQ}))),
 
-  isGreater_method = (\<lambda> f1 .  (\<lambda> f2 .  (relocSiteCompare0 f1 f2 = GT))),
+  isGreater_method = (\<lambda> f1 .  (\<lambda> f2 .  (relocSiteCompare f1 f2 = GT))),
 
-  isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (relocSiteCompare0 f1 f2) ({GT, EQ})))|) )"
+  isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (relocSiteCompare f1 f2) ({GT, EQ})))|) )"
 
     
-datatype reloc_decision = LeaveReloc0
-                    | ApplyReloc0
-                    | MakePIC0
+datatype reloc_decision = LeaveReloc
+                    | ApplyReloc
+                    | MakePIC
 
 record symbol_reference_and_reloc_site = 
 
-      ref0         ::" symbol_reference "
+      ref         ::" symbol_reference "
     
- maybe_reloc0 ::"  reloc_site option "
+ maybe_reloc ::"  reloc_site option "
     
- maybe_def_bound_to0 ::"  (reloc_decision *  symbol_definition option)option "
+ maybe_def_bound_to ::"  (reloc_decision *  symbol_definition option)option "
     
 
 
-definition symRefAndRelocSiteCompare0  :: " symbol_reference_and_reloc_site \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> ordering "  where 
-     " symRefAndRelocSiteCompare0 x1 x2 = (        
-(pairCompare symRefCompare0 (maybeCompare relocSiteCompare0) ((ref0   x1),(maybe_reloc0   x1))
-                ((ref0   x2),(maybe_reloc0   x2))))"
+definition symRefAndRelocSiteCompare  :: " symbol_reference_and_reloc_site \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> ordering "  where 
+     " symRefAndRelocSiteCompare x1 x2 = (        
+(pairCompare symRefCompare (maybeCompare relocSiteCompare) ((ref   x1),(maybe_reloc   x1))
+                ((ref   x2),(maybe_reloc   x2))))"
 
 
-definition instance_Basic_classes_Ord_Memory_image_symbol_reference_and_reloc_site_dict0  :: "(symbol_reference_and_reloc_site)Ord_class "  where 
-     " instance_Basic_classes_Ord_Memory_image_symbol_reference_and_reloc_site_dict0 = ((|
+definition instance_Basic_classes_Ord_Memory_image_symbol_reference_and_reloc_site_dict  :: "(symbol_reference_and_reloc_site)Ord_class "  where 
+     " instance_Basic_classes_Ord_Memory_image_symbol_reference_and_reloc_site_dict = ((|
 
-  compare_method = symRefAndRelocSiteCompare0,
+  compare_method = symRefAndRelocSiteCompare,
 
-  isLess_method = (\<lambda> f1 .  (\<lambda> f2 .  (symRefAndRelocSiteCompare0 f1 f2 = LT))),
+  isLess_method = (\<lambda> f1 .  (\<lambda> f2 .  (symRefAndRelocSiteCompare f1 f2 = LT))),
 
-  isLessEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (symRefAndRelocSiteCompare0 f1 f2) ({LT, EQ}))),
+  isLessEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (symRefAndRelocSiteCompare f1 f2) ({LT, EQ}))),
 
-  isGreater_method = (\<lambda> f1 .  (\<lambda> f2 .  (symRefAndRelocSiteCompare0 f1 f2 = GT))),
+  isGreater_method = (\<lambda> f1 .  (\<lambda> f2 .  (symRefAndRelocSiteCompare f1 f2 = GT))),
 
-  isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (symRefAndRelocSiteCompare0 f1 f2) ({GT, EQ})))|) )"
+  isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (symRefAndRelocSiteCompare f1 f2) ({GT, EQ})))|) )"
 
 
 (* We can also annotate arbitrary ranges of bytes within an element
@@ -315,37 +315,37 @@ definition instance_Basic_classes_Ord_Memory_image_symbol_reference_and_reloc_si
  * every distinct ELF thing, which is no good. Can we define a mapping
  * from an umbrella ELF type to the relevant types in each case? *)
 datatype 'abifeature range_tag = (*  forall 'abifeature . *)
-                 ImageBase0
-               | EntryPoint0
-               | SymbolDef0 " symbol_definition "
-               | SymbolRef0 " symbol_reference_and_reloc_site "
-               | FileFeature0 " elf_file_feature " (* file feature other than symdef and reloc *)
-               | AbiFeature0 " 'abifeature "
+                 ImageBase
+               | EntryPoint
+               | SymbolDef " symbol_definition "
+               | SymbolRef " symbol_reference_and_reloc_site "
+               | FileFeature " elf_file_feature " (* file feature other than symdef and reloc *)
+               | AbiFeature " 'abifeature "
 
 record 'abifeature annotated_memory_image = 
 
-      elements0         ::" memory_image " 
+      elements         ::" memory_image " 
     
- by_range0         ::" (( element_range option) * ( 'abifeature range_tag)) set "
+ by_range         ::" (( element_range option) * ( 'abifeature range_tag)) set "
     
- by_tag0           ::" (( 'abifeature range_tag), ( element_range option)) multimap "
+ by_tag           ::" (( 'abifeature range_tag), ( element_range option)) multimap "
 
 
 
 (*val get_empty_memory_image : forall 'abifeature. unit -> annotated_memory_image 'abifeature*)
-definition get_empty_memory_image0  :: " unit \<Rightarrow> 'abifeature annotated_memory_image "  where 
-     " get_empty_memory_image0 = ( \<lambda> _ .  (| 
-      elements0 = Map.empty
-    , by_range0 = {}
-    , by_tag0   = {}
+definition get_empty_memory_image  :: " unit \<Rightarrow> 'abifeature annotated_memory_image "  where 
+     " get_empty_memory_image = ( \<lambda> _ .  (| 
+      elements = Map.empty
+    , by_range = {}
+    , by_tag   = {}
 |) )"
 
 
 (* Basic ELFy and ABI-y things. *)
 (* FIXME: shouldn't really be here, but need to be in some low-lying module, and 
  * keeping out of elf_* for now to avoid duplication into elf64_, elf32_. *)
-definition elf_section_is_special0  :: " elf64_interpreted_section \<Rightarrow> 'a \<Rightarrow> bool "  where 
-     " elf_section_is_special0 s f = ( \<not> ((elf64_section_type   s) = sht_progbits)
+definition elf_section_is_special  :: " elf64_interpreted_section \<Rightarrow> 'a \<Rightarrow> bool "  where 
+     " elf_section_is_special s f = ( \<not> ((elf64_section_type   s) = sht_progbits)
                      \<and> \<not> ((elf64_section_type   s) = sht_nobits))"
 
 
@@ -418,82 +418,84 @@ type_synonym 'abifeature reloc_apply_fn =" 'abifeature
 type_synonym 'abifeature reloc_fn =" nat \<Rightarrow> (bool * 'abifeature reloc_apply_fn)"
 
 (*val noop_reloc_calculate : natural -> integer -> natural -> natural*)
-definition noop_reloc_calculate0  :: " nat \<Rightarrow> int \<Rightarrow> nat \<Rightarrow> nat "  where 
-     " noop_reloc_calculate0 symaddr addend existing = ( existing )"
+definition noop_reloc_calculate  :: " nat \<Rightarrow> int \<Rightarrow> nat \<Rightarrow> nat "  where 
+     " noop_reloc_calculate symaddr addend existing = ( existing )"
 
 
 (*val noop_reloc_apply : forall 'abifeature. reloc_apply_fn 'abifeature*)
-definition noop_reloc_apply0  :: " 'abifeature annotated_memory_image \<Rightarrow> nat \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> nat*(nat \<Rightarrow> int \<Rightarrow> nat \<Rightarrow> nat)"  where 
-     " noop_reloc_apply0 img2 site_addr ref2 = ( (( 0 :: nat), noop_reloc_calculate0))"
+definition noop_reloc_apply  :: " 'abifeature annotated_memory_image \<Rightarrow> nat \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> nat*(nat \<Rightarrow> int \<Rightarrow> nat \<Rightarrow> nat)"  where 
+     " noop_reloc_apply img3 site_addr ref1 = ( (( 0 :: nat), noop_reloc_calculate))"
 
 
 (*val noop_reloc : forall 'abifeature. natural -> (bool (* result is absolute addr *) * reloc_apply_fn 'abifeature)*)
-definition noop_reloc0  :: " nat \<Rightarrow> bool*('abifeature annotated_memory_image \<Rightarrow> nat \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> nat*reloc_calculate_fn)"  where 
-     " noop_reloc0 k = ( (False, noop_reloc_apply0))"
+definition noop_reloc  :: " nat \<Rightarrow> bool*('abifeature annotated_memory_image \<Rightarrow> nat \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> nat*reloc_calculate_fn)"  where 
+     " noop_reloc k = ( (False, noop_reloc_apply))"
 
 
 record 'abifeature abi = (* forall 'abifeature. *)
    
- is_valid_elf_header0 ::" elf64_header \<Rightarrow> bool " (* doesn't this generalise outrageously? is_valid_elf_file? *)
+ is_valid_elf_header ::" elf64_header \<Rightarrow> bool " (* doesn't this generalise outrageously? is_valid_elf_file? *)
     
- make_elf_header0    ::" nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> elf64_header "
+ make_elf_header    ::" nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> elf64_header "
                            (* t entry shoff phoff phnum shnum shstrndx *)
     
- reloc0              ::" 'abifeature reloc_fn "
+ reloc              ::" 'abifeature reloc_fn "
     
- section_is_special2 ::" elf64_interpreted_section \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> bool "
+ section_is_special ::" elf64_interpreted_section \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> bool "
     
- section_is_large0   ::" elf64_interpreted_section \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> bool "
+ section_is_large   ::" elf64_interpreted_section \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> bool "
     
- maxpagesize0        ::" nat "
+ maxpagesize        ::" nat "
     
- minpagesize0        ::" nat "
+ minpagesize        ::" nat "
     
- commonpagesize0     ::" nat "
+ commonpagesize     ::" nat "
     
- symbol_is_generated_by_linker0 ::" string \<Rightarrow> bool "
+ symbol_is_generated_by_linker ::" string \<Rightarrow> bool "
     (*; link_inputs_tap    : 
     ; link_output_sections_tap   : 
     ; link_output_image_tap      : *)
     
- make_phdrs0         ::" nat \<Rightarrow> nat \<Rightarrow> nat (* file type *) \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> elf64_interpreted_section list \<Rightarrow> elf64_program_header_table_entry list "
+ make_phdrs         ::" nat \<Rightarrow> nat \<Rightarrow> nat (* file type *) \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> elf64_interpreted_section list \<Rightarrow> elf64_program_header_table_entry list "
     
- max_phnum0          ::" nat "
+ max_phnum          ::" nat "
     
- guess_entry_point0  ::" 'abifeature annotated_memory_image \<Rightarrow>  nat option "
+ guess_entry_point  ::" 'abifeature annotated_memory_image \<Rightarrow>  nat option "
     
- pad_data0           ::" nat \<Rightarrow> Elf_Types_Local.byte list "
+ pad_data           ::" nat \<Rightarrow> Elf_Types_Local.byte list "
     
- pad_code0           ::" nat \<Rightarrow> Elf_Types_Local.byte list "
+ pad_code           ::" nat \<Rightarrow> Elf_Types_Local.byte list "
     
- generate_support0   ::" ( 'abifeature annotated_memory_image) (* list (list reloc_site_resolution) ->  *)list \<Rightarrow> 'abifeature annotated_memory_image "
+ generate_support   ::" ( 'abifeature annotated_memory_image) (* list (list reloc_site_resolution) ->  *)list \<Rightarrow> 'abifeature annotated_memory_image "
+    
+ concretise_support ::" 'abifeature annotated_memory_image \<Rightarrow> 'abifeature annotated_memory_image "
     
 
 
 (*val align_up_to : natural -> natural -> natural*)
-definition align_up_to0  :: " nat \<Rightarrow> nat \<Rightarrow> nat "  where 
-     " align_up_to0 align addr = ( 
+definition align_up_to  :: " nat \<Rightarrow> nat \<Rightarrow> nat "  where 
+     " align_up_to align addr = ( 
     (let quot = (addr div align)
     in
     if (quot * align) = addr then addr else (quot +( 1 :: nat)) * align))"
 
 
 (*val round_down_to : natural -> natural -> natural*)
-definition round_down_to0  :: " nat \<Rightarrow> nat \<Rightarrow> nat "  where 
-     " round_down_to0 align addr = ( 
+definition round_down_to  :: " nat \<Rightarrow> nat \<Rightarrow> nat "  where 
+     " round_down_to align addr = ( 
     (let quot = (addr div align)
     in
     quot * align))"
 
 
 (*val uint32_max : natural*)
-definition uint32_max0  :: " nat "  where 
-     " uint32_max0 = ( (( 2 :: nat) ^( 32 :: nat)) -( 1 :: nat))"
+definition uint32_max  :: " nat "  where 
+     " uint32_max = ( (( 2 :: nat) ^( 32 :: nat)) -( 1 :: nat))"
 
 
 (*val uint64_max : natural*)
-definition uint64_max0  :: " nat "  where 
-     " uint64_max0 = (
+definition uint64_max  :: " nat "  where 
+     " uint64_max = (
     ((
     (* HACK around Lem's inability to parse 18446744073709551615: 
      * the square of uint32_max is 
@@ -501,15 +503,15 @@ definition uint64_max0  :: " nat "  where
      * i.e.   2**64 - 2**32 - 2**32 + 1
      * So
      * 2**64 - 1 =  uint32_max * uint32_max  + 2**32 + 2**32 - 2
-     *)uint32_max0 * uint32_max0) -( 2 :: nat)) + (( 2 :: nat)^( 33 :: nat)))"
+     *)uint32_max * uint32_max) -( 2 :: nat)) + (( 2 :: nat)^( 33 :: nat)))"
 
     (* 18446744073709551615 *) (* i.e. 0x ffff ffff ffff ffff *)
     (* HMM. This still overflows int64 *)
 
 (* The 2's complement of a value, at 64-bit width *)
 (*val compl64 : natural -> natural*)
-definition compl640  :: " nat \<Rightarrow> nat "  where 
-     " compl640 v = (( 1 :: nat) + (natural_lxor v uint64_max0))"
+definition compl64  :: " nat \<Rightarrow> nat "  where 
+     " compl64 v = (( 1 :: nat) + (natural_lxor v uint64_max))"
 
 
 (*val gcd : natural -> natural -> natural*)
@@ -523,13 +525,13 @@ definition compl640  :: " nat \<Rightarrow> nat "  where
     (Instance_Num_NumDivision_Num_natural./) (( Instance_Num_NumMult_Num_natural.* ) a b) (gcd a b)*)
 
 (*val address_of_range : forall 'abifeature. element_range -> annotated_memory_image 'abifeature -> natural*)
-definition address_of_range0  :: " string*(nat*nat)\<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> nat "  where 
-     " address_of_range0 el_range img2 = ( 
+definition address_of_range  :: " string*(nat*nat)\<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> nat "  where 
+     " address_of_range el_range img3 = ( 
     (let (el_name, (start, len)) = el_range
     in
-    (case  (elements0   img2) el_name of
+    (case  (elements   img3) el_name of
         Some el =>
-            (case (startpos0   el) of
+            (case (startpos   el) of
                 Some addr => addr + start
                 | None => failwith (''address_of_range called for element with no address'')
             )
@@ -538,41 +540,41 @@ definition address_of_range0  :: " string*(nat*nat)\<Rightarrow> 'abifeature ann
 
 
 (*val range_contains : (natural * natural) -> (natural * natural) -> bool*)
-fun range_contains0  :: " nat*nat \<Rightarrow> nat*nat \<Rightarrow> bool "  where 
-     " range_contains0 (r1begin, r1len) (r2begin, r2len) = (    
+fun range_contains  :: " nat*nat \<Rightarrow> nat*nat \<Rightarrow> bool "  where 
+     " range_contains (r1begin, r1len) (r2begin, r2len) = (    
 ( 
     (* r1 is at least as big as r2 *)r2begin \<ge> r1begin) \<and> ((r2begin + r2len) \<le> (r1begin + r1len)))" 
-declare range_contains0.simps [simp del]
+declare range_contains.simps [simp del]
 
 
 (*val range_overlaps : (natural * natural) -> (natural * natural) -> bool*)
-fun range_overlaps0  :: " nat*nat \<Rightarrow> nat*nat \<Rightarrow> bool "  where 
-     " range_overlaps0 (r1begin, r1len) (r2begin, r2len) = (
+fun range_overlaps  :: " nat*nat \<Rightarrow> nat*nat \<Rightarrow> bool "  where 
+     " range_overlaps (r1begin, r1len) (r2begin, r2len) = (
     ((r1begin < (r2begin + r2len)) \<and> ((r1begin + r1len) > r2begin))
      \<or> ((r2begin < (r1begin + r1len)) \<and> ((r2begin + r2len) > r1begin)))" 
-declare range_overlaps0.simps [simp del]
+declare range_overlaps.simps [simp del]
 
     
 (*val is_partition : list (natural * natural) -> list (natural * natural) -> bool*)
-definition is_partition0  :: "(nat*nat)list \<Rightarrow>(nat*nat)list \<Rightarrow> bool "  where 
-     " is_partition0 rs ranges = ( 
+definition is_partition  :: "(nat*nat)list \<Rightarrow>(nat*nat)list \<Rightarrow> bool "  where 
+     " is_partition rs ranges = ( 
     (* 1. each element of the first list falls entirely within some element
      * from the second list. *)
     (let r_is_contained_by_some_range
-     = (\<lambda> r .  List.foldl (op \<or>) False (List.map (\<lambda> range .  range_contains0 range r) ranges))
+     = (\<lambda> r .  List.foldl (op \<or>) False (List.map (\<lambda> range .  range_contains range r) ranges))
     in
     ((\<forall> x \<in> (set rs).  (\<lambda> r .  r_is_contained_by_some_range r) x))
     \<and>
     (* 2. elements of the first list do not overlap *)
-    ((\<forall> x \<in> (set rs).  (\<lambda> r .  ((\<forall> x \<in> (set rs).  (\<lambda> r2 .  (r = (* should be ==? *) r2) \<or> (\<not> (range_overlaps0 r r2))) x))) x))))"
+    ((\<forall> x \<in> (set rs).  (\<lambda> r .  ((\<forall> x \<in> (set rs).  (\<lambda> r2 .  (r = (* should be ==? *) r2) \<or> (\<not> (range_overlaps r r2))) x))) x))))"
 
 
 (*val     nat_range : natural -> natural -> list natural*)
-function (sequential,domintros)  nat_range0  :: " nat \<Rightarrow> nat \<Rightarrow>(nat)list "  where 
-     " nat_range0 base len = (
+function (sequential,domintros)  nat_range  :: " nat \<Rightarrow> nat \<Rightarrow>(nat)list "  where 
+     " nat_range base len = (
     (case  len of 
         0 => []
-    |   _ => base # (nat_range0 (base +( 1 :: nat)) (len -( 1 :: nat)))
+    |   _ => base # (nat_range (base +( 1 :: nat)) (len -( 1 :: nat)))
     ))" 
 by pat_completeness auto
 
@@ -580,8 +582,8 @@ by pat_completeness auto
 (* Expand a sorted list of ranges into a list of bool, where the list contains
  * true if its index is included in one or more ranges, else false. *)
 (*val expand_sorted_ranges : list (natural * natural) -> natural -> list bool -> list bool*)
-function (sequential,domintros)  expand_sorted_ranges0  :: "(nat*nat)list \<Rightarrow> nat \<Rightarrow>(bool)list \<Rightarrow>(bool)list "  where 
-     " expand_sorted_ranges0 ([]) min_length accum = ( accum @ (
+function (sequential,domintros)  expand_sorted_ranges  :: "(nat*nat)list \<Rightarrow> nat \<Rightarrow>(bool)list \<Rightarrow>(bool)list "  where 
+     " expand_sorted_ranges ([]) min_length accum = ( accum @ (
             (let pad_length = (max(( 0 :: nat)) (min_length - (List.length accum)))
             in
             (* let _ = Missing_pervasives.errln (
@@ -590,96 +592,96 @@ function (sequential,domintros)  expand_sorted_ranges0  :: "(nat*nat)list \<Righ
                 , min length  ^ (show min_length) ^ ))
             in *)
             List.replicate pad_length True)))"
-|" expand_sorted_ranges0 ((base, len) # more1) min_length accum = ( 
+|" expand_sorted_ranges ((base, len) # more1) min_length accum = ( 
             (* pad the accum so that it reaches up to base *)
             (let up_to_base = (List.replicate (base - (List.length accum)) True)
             in
             (let up_to_end_of_range = (up_to_base @ (List.replicate len False))
             in
-            expand_sorted_ranges0 more1 min_length (accum @ up_to_end_of_range))))" 
+            expand_sorted_ranges more1 min_length (accum @ up_to_end_of_range))))" 
 by pat_completeness auto
 
 
 (*val expand_unsorted_ranges : list (natural * natural) -> natural -> list bool -> list bool*)
-fun  expand_unsorted_ranges0  :: "(nat*nat)list \<Rightarrow> nat \<Rightarrow>(bool)list \<Rightarrow>(bool)list "  where 
-     " expand_unsorted_ranges0 unsorted_ranges min_length accum = (
-    expand_sorted_ranges0 (sort_by (\<lambda> (base1, len1) .  (\<lambda> (base2, len2) .  base1 < base2)) unsorted_ranges) min_length accum )" 
-declare expand_unsorted_ranges0.simps [simp del]
+fun  expand_unsorted_ranges  :: "(nat*nat)list \<Rightarrow> nat \<Rightarrow>(bool)list \<Rightarrow>(bool)list "  where 
+     " expand_unsorted_ranges unsorted_ranges min_length accum = (
+    expand_sorted_ranges (sort_by (\<lambda> (base1, len1) .  (\<lambda> (base2, len2) .  base1 < base2)) unsorted_ranges) min_length accum )" 
+declare expand_unsorted_ranges.simps [simp del]
 
 
 (*val make_byte_pattern_revacc : list (maybe byte) -> list byte -> list bool -> list (maybe byte)*)
-function (sequential,domintros)  make_byte_pattern_revacc0  :: "((Elf_Types_Local.byte)option)list \<Rightarrow>(Elf_Types_Local.byte)list \<Rightarrow>(bool)list \<Rightarrow>((Elf_Types_Local.byte)option)list "  where 
-     " make_byte_pattern_revacc0 revacc ([]) cares = ( List.rev revacc )"
-|" make_byte_pattern_revacc0 revacc (b # bs) cares = ( (case  cares of 
-                care # more1 => make_byte_pattern_revacc0 ((if \<not> care then None else Some b) # revacc) bs more1
+function (sequential,domintros)  make_byte_pattern_revacc  :: "((Elf_Types_Local.byte)option)list \<Rightarrow>(Elf_Types_Local.byte)list \<Rightarrow>(bool)list \<Rightarrow>((Elf_Types_Local.byte)option)list "  where 
+     " make_byte_pattern_revacc revacc ([]) cares = ( List.rev revacc )"
+|" make_byte_pattern_revacc revacc (b # bs) cares = ( (case  cares of 
+                care # more1 => make_byte_pattern_revacc ((if \<not> care then None else Some b) # revacc) bs more1
               | _ => failwith (''make_byte_pattern: unequal length'')
               ))" 
 by pat_completeness auto
 
 
 (*val make_byte_pattern : list byte -> list bool -> list (maybe byte)*)
-fun  make_byte_pattern0  :: "(Elf_Types_Local.byte)list \<Rightarrow>(bool)list \<Rightarrow>((Elf_Types_Local.byte)option)list "  where 
-     " make_byte_pattern0 bytes cares = ( 
-    make_byte_pattern_revacc0 [] bytes cares )" 
-declare make_byte_pattern0.simps [simp del]
+fun  make_byte_pattern  :: "(Elf_Types_Local.byte)list \<Rightarrow>(bool)list \<Rightarrow>((Elf_Types_Local.byte)option)list "  where 
+     " make_byte_pattern bytes cares = ( 
+    make_byte_pattern_revacc [] bytes cares )" 
+declare make_byte_pattern.simps [simp del]
 
 
 (*val relax_byte_pattern_revacc : list (maybe byte) -> list (maybe byte) -> list bool -> list (maybe byte)*)
-function (sequential,domintros)  relax_byte_pattern_revacc0  :: "((Elf_Types_Local.byte)option)list \<Rightarrow>((Elf_Types_Local.byte)option)list \<Rightarrow>(bool)list \<Rightarrow>((Elf_Types_Local.byte)option)list "  where 
-     " relax_byte_pattern_revacc0 revacc ([]) cares = ( List.rev revacc )"
-|" relax_byte_pattern_revacc0 revacc (b # bs) cares = ( (case  cares of 
-                care # more1 => relax_byte_pattern_revacc0 ((if \<not> care then None else b) # revacc) bs more1
+function (sequential,domintros)  relax_byte_pattern_revacc  :: "((Elf_Types_Local.byte)option)list \<Rightarrow>((Elf_Types_Local.byte)option)list \<Rightarrow>(bool)list \<Rightarrow>((Elf_Types_Local.byte)option)list "  where 
+     " relax_byte_pattern_revacc revacc ([]) cares = ( List.rev revacc )"
+|" relax_byte_pattern_revacc revacc (b # bs) cares = ( (case  cares of 
+                care # more1 => relax_byte_pattern_revacc ((if \<not> care then None else b) # revacc) bs more1
               | _ => failwith ((''relax_byte_pattern: unequal length''))
               ))" 
 by pat_completeness auto
 
     
 (*val relax_byte_pattern : list (maybe byte) -> list bool -> list (maybe byte)*)
-fun  relax_byte_pattern0  :: "((Elf_Types_Local.byte)option)list \<Rightarrow>(bool)list \<Rightarrow>((Elf_Types_Local.byte)option)list "  where 
-     " relax_byte_pattern0 bytes cares = ( 
-    relax_byte_pattern_revacc0 [] bytes cares )" 
-declare relax_byte_pattern0.simps [simp del]
+fun  relax_byte_pattern  :: "((Elf_Types_Local.byte)option)list \<Rightarrow>(bool)list \<Rightarrow>((Elf_Types_Local.byte)option)list "  where 
+     " relax_byte_pattern bytes cares = ( 
+    relax_byte_pattern_revacc [] bytes cares )" 
+declare relax_byte_pattern.simps [simp del]
 
 
 type_synonym pad_fn =" nat \<Rightarrow> Elf_Types_Local.byte list "
 
 (*val concretise_byte_pattern : list byte -> natural -> list (maybe byte) -> pad_fn -> list byte*)
-function (sequential,domintros)  concretise_byte_pattern0  :: "(Elf_Types_Local.byte)list \<Rightarrow> nat \<Rightarrow>((Elf_Types_Local.byte)option)list \<Rightarrow>(nat \<Rightarrow>(Elf_Types_Local.byte)list)\<Rightarrow>(Elf_Types_Local.byte)list "  where 
-     " concretise_byte_pattern0 rev_acc acc_pad ([]) pad = ( 
+function (sequential,domintros)  concretise_byte_pattern  :: "(Elf_Types_Local.byte)list \<Rightarrow> nat \<Rightarrow>((Elf_Types_Local.byte)option)list \<Rightarrow>(nat \<Rightarrow>(Elf_Types_Local.byte)list)\<Rightarrow>(Elf_Types_Local.byte)list "  where 
+     " concretise_byte_pattern rev_acc acc_pad ([]) pad = ( 
             (let padding_bytes = (if acc_pad >( 0 :: nat) then pad acc_pad else [])
             in List.rev ((List.rev padding_bytes) @ rev_acc)))"
-|" concretise_byte_pattern0 rev_acc acc_pad (Some(b) # more1) pad = ( 
+|" concretise_byte_pattern rev_acc acc_pad (Some(b) # more1) pad = ( 
             (* flush accumulated padding *)
             (let padding_bytes = (if acc_pad >( 0 :: nat) then pad acc_pad else [])
             in
-            concretise_byte_pattern0 (b # ((List.rev padding_bytes) @ rev_acc))(( 0 :: nat)) more1 pad))"
-|" concretise_byte_pattern0 rev_acc acc_pad (None # more1) pad = ( 
-            concretise_byte_pattern0 rev_acc (acc_pad+( 1 :: nat)) more1 pad )" 
+            concretise_byte_pattern (b # ((List.rev padding_bytes) @ rev_acc))(( 0 :: nat)) more1 pad))"
+|" concretise_byte_pattern rev_acc acc_pad (None # more1) pad = ( 
+            concretise_byte_pattern rev_acc (acc_pad+( 1 :: nat)) more1 pad )" 
 by pat_completeness auto
 
 
 (*val byte_option_matches_byte : maybe byte -> byte -> bool*)
-fun byte_option_matches_byte0  :: "(Elf_Types_Local.byte)option \<Rightarrow> Elf_Types_Local.byte \<Rightarrow> bool "  where 
-     " byte_option_matches_byte0 None b = ( True )"
-|" byte_option_matches_byte0 (Some some) b = ( some = b )" 
-declare byte_option_matches_byte0.simps [simp del]
+fun byte_option_matches_byte  :: "(Elf_Types_Local.byte)option \<Rightarrow> Elf_Types_Local.byte \<Rightarrow> bool "  where 
+     " byte_option_matches_byte None b = ( True )"
+|" byte_option_matches_byte (Some some) b = ( some = b )" 
+declare byte_option_matches_byte.simps [simp del]
 
 
 (*val byte_list_matches_pattern : list (maybe byte) -> list byte -> bool*)
-function (sequential,domintros)  byte_list_matches_pattern0  :: "((Elf_Types_Local.byte)option)list \<Rightarrow>(Elf_Types_Local.byte)list \<Rightarrow> bool "  where 
-     " byte_list_matches_pattern0 ([]) bytes = ( True )"
-|" byte_list_matches_pattern0 (optbyte # more1) bytes = ( (case  bytes of 
+function (sequential,domintros)  byte_list_matches_pattern  :: "((Elf_Types_Local.byte)option)list \<Rightarrow>(Elf_Types_Local.byte)list \<Rightarrow> bool "  where 
+     " byte_list_matches_pattern ([]) bytes = ( True )"
+|" byte_list_matches_pattern (optbyte # more1) bytes = ( (case  bytes of 
                 [] => False
                 | abyte # morebytes => 
-                    byte_option_matches_byte0 optbyte abyte 
-                 \<and> byte_list_matches_pattern0 more1 morebytes
+                    byte_option_matches_byte optbyte abyte 
+                 \<and> byte_list_matches_pattern more1 morebytes
             ))" 
 by pat_completeness auto
 
 
 (*val append_to_byte_pattern_at_offset : natural -> list (maybe byte) -> list (maybe byte) -> list (maybe byte)*)
-definition append_to_byte_pattern_at_offset0  :: " nat \<Rightarrow>((Elf_Types_Local.byte)option)list \<Rightarrow>((Elf_Types_Local.byte)option)list \<Rightarrow>((Elf_Types_Local.byte)option)list "  where 
-     " append_to_byte_pattern_at_offset0 offset pat1 pat2 = (
+definition append_to_byte_pattern_at_offset  :: " nat \<Rightarrow>((Elf_Types_Local.byte)option)list \<Rightarrow>((Elf_Types_Local.byte)option)list \<Rightarrow>((Elf_Types_Local.byte)option)list "  where 
+     " append_to_byte_pattern_at_offset offset pat1 pat2 = (
     (let pad_length = (offset - List.length pat1)
     in
     if pad_length <( 0 :: nat) then failwith ([(CHR ''c''), (CHR ''a''), (CHR ''n''), (Char Nibble2 Nibble7), (CHR ''t''), (CHR '' ''), (CHR ''a''), (CHR ''p''), (CHR ''p''), (CHR ''e''), (CHR ''n''), (CHR ''d''), (CHR '' ''), (CHR ''a''), (CHR ''t''), (CHR '' ''), (CHR ''o''), (CHR ''f''), (CHR ''f''), (CHR ''s''), (CHR ''e''), (CHR ''t''), (CHR '' ''), (CHR ''a''), (CHR ''l''), (CHR ''r''), (CHR ''e''), (CHR ''a''), (CHR ''d''), (CHR ''y''), (CHR '' ''), (CHR ''u''), (CHR ''s''), (CHR ''e''), (CHR ''d'')])
@@ -687,8 +689,8 @@ definition append_to_byte_pattern_at_offset0  :: " nat \<Rightarrow>((Elf_Types_
 
 
 (*val accum_pattern_possible_starts_in_one_byte_sequence : list (maybe byte) -> nat -> list byte -> nat -> natural -> list natural -> list natural*)
-function (sequential,domintros)  accum_pattern_possible_starts_in_one_byte_sequence0  :: "((Elf_Types_Local.byte)option)list \<Rightarrow> nat \<Rightarrow>(Elf_Types_Local.byte)list \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow>(nat)list \<Rightarrow>(nat)list "  where 
-     " accum_pattern_possible_starts_in_one_byte_sequence0 pattern pattern_len seq seq_len offset accum = (
+function (sequential,domintros)  accum_pattern_possible_starts_in_one_byte_sequence  :: "((Elf_Types_Local.byte)option)list \<Rightarrow> nat \<Rightarrow>(Elf_Types_Local.byte)list \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow>(nat)list \<Rightarrow>(nat)list "  where 
+     " accum_pattern_possible_starts_in_one_byte_sequence pattern pattern_len seq seq_len offset accum = (
     (* let _ = Missing_pervasives.errs (At offset  ^ (show offset) ^ ... )
     in *)
     (case  pattern of
@@ -699,7 +701,7 @@ function (sequential,domintros)  accum_pattern_possible_starts_in_one_byte_seque
                 [] => (*let _ = Missing_pervasives.errs (terminating with miss (empty pattern)n) 
                     in *) accum (* ran out of bytes in the sequence, so no match *)
                 | byte # more_bytes => (let matched_this_byte =                            
- (byte_option_matches_byte0 bpe byte)
+ (byte_option_matches_byte bpe byte)
                        in
                        (* let _ = Missing_pervasives.errs (Byte  ^ (show byte) ^  matched  ^ (show byte_pattern) ^ ?  ^ (show matched_this_byte) ^ ; ) 
                        in *)
@@ -708,11 +710,11 @@ function (sequential,domintros)  accum_pattern_possible_starts_in_one_byte_seque
                        (* let _ = Missing_pervasives.errs (enough bytes remaining ( ^ (show seq_len) ^ ) to match rest of pattern ( ^ (show pattern_len) ^ )?  ^ (show sequence_long_enough) ^ ; ) 
                        in *)
                        (let matched_here = (matched_this_byte \<and> (sequence_long_enough \<and>
-                        byte_list_matches_pattern0 more_bpes more_bytes))
+                        byte_list_matches_pattern more_bpes more_bytes))
                        in
                        (* let _ = Missing_pervasives.errs (matched pattern anchored here?  ^ (show matched_this_byte) ^ n) 
                        in *)
-                       accum_pattern_possible_starts_in_one_byte_sequence0 
+                       accum_pattern_possible_starts_in_one_byte_sequence 
                            pattern pattern_len 
                            more_bytes (seq_len -( 1 :: nat)) 
                            (offset +( 1 :: nat)) 
@@ -722,24 +724,24 @@ function (sequential,domintros)  accum_pattern_possible_starts_in_one_byte_seque
 by pat_completeness auto
 
 
-definition swap_pairs0  :: "('b*'a)set \<Rightarrow>('a*'b)set "  where 
-     " swap_pairs0 s = (
+definition swap_pairs  :: "('b*'a)set \<Rightarrow>('a*'b)set "  where 
+     " swap_pairs s = (
   Set.image (\<lambda> (k, v) .  (v, k))
     (set_filter (\<lambda> (k, v) .  True) s) )"
 
 
-definition by_range_from_by_tag0  :: "('a*'b)set \<Rightarrow>('b*'a)set "  where 
-     " by_range_from_by_tag0 = ( swap_pairs0 )"
+definition by_range_from_by_tag  :: "('a*'b)set \<Rightarrow>('b*'a)set "  where 
+     " by_range_from_by_tag = ( swap_pairs )"
 
 
-definition by_tag_from_by_range0  :: "('a*'b)set \<Rightarrow>('b*'a)set "  where 
-     " by_tag_from_by_range0 = ( swap_pairs0 )"
+definition by_tag_from_by_range  :: "('a*'b)set \<Rightarrow>('b*'a)set "  where 
+     " by_tag_from_by_range = ( swap_pairs )"
 
 
 (*val filter_elements : forall 'abifeature. ((string * element) -> bool) -> 
     annotated_memory_image 'abifeature -> annotated_memory_image 'abifeature*)
-definition filter_elements0  :: "(string*element \<Rightarrow> bool)\<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> 'abifeature annotated_memory_image "  where 
-     " filter_elements0 pred img2 = ( 
+definition filter_elements  :: "(string*element \<Rightarrow> bool)\<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> 'abifeature annotated_memory_image "  where 
+     " filter_elements pred img3 = ( 
     (let new_elements = (Map.map_of (List.rev ((let x2 = 
   ([]) in  List.foldr
    (\<lambda>(n, r) x2 . 
@@ -748,49 +750,49 @@ definition filter_elements0  :: "(string*element \<Rightarrow> bool)\<Rightarrow
     if \<not> result then
       (*let _ = Missing_pervasives.outln (Discarding element named  ^ n) in*) result
     else result) then (n, r) # x2 else x2)
-   (list_of_set (map_to_set (elements0   img2))) x2))))
+   (list_of_set (map_to_set (elements   img3))) x2))))
     in
     (let new_by_range =  (set_filter (\<lambda> (maybe_range, tag) .  (case  maybe_range of
             None => True
             | Some (el_name, el_range) => el_name \<in> Map.dom new_elements
-        ))(by_range0   img2))
+        ))(by_range   img3))
     in
     (let new_by_tag =
   (Set.image (\<lambda> (k, v) .  (v, k))
      (set_filter (\<lambda> (k, v) .  True) new_by_range))
     in
-    (| elements0 = new_elements
-     , by_range0 = new_by_range
-     , by_tag0   = new_by_tag
+    (| elements = new_elements
+     , by_range = new_by_range
+     , by_tag   = new_by_tag
      |)))))"
 
 
 (*val tag_image : forall 'abifeature. range_tag 'abifeature -> string -> natural -> natural -> annotated_memory_image 'abifeature
     ->  annotated_memory_image 'abifeature*)
-definition tag_image0  :: " 'abifeature range_tag \<Rightarrow> string \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> 'abifeature annotated_memory_image "  where 
-     " tag_image0 t el_name el_offset tag_len img2 = ( 
+definition tag_image  :: " 'abifeature range_tag \<Rightarrow> string \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> 'abifeature annotated_memory_image "  where 
+     " tag_image t el_name el_offset tag_len img3 = ( 
     (let (k, v) = (Some (el_name, (el_offset, tag_len)), t)
     in
-    (let new_by_range = (Set.insert (k, v)(by_range0   img2))
+    (let new_by_range = (Set.insert (k, v)(by_range   img3))
     in
-    (let new_by_tag = (Set.insert (v, k)(by_tag0   img2))
+    (let new_by_tag = (Set.insert (v, k)(by_tag   img3))
     in
-    (| elements0 =(elements0   img2)
-     , by_range0 = new_by_range
-     , by_tag0   = new_by_tag
+    (| elements =(elements   img3)
+     , by_range = new_by_range
+     , by_tag   = new_by_tag
      |)))))"
 
 
 (*val address_to_element_and_offset : forall 'abifeature. natural -> annotated_memory_image 'abifeature -> maybe (string * natural)*)
-definition address_to_element_and_offset0  :: " nat \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>(string*nat)option "  where 
-     " address_to_element_and_offset0 addr img2 = ( 
+definition address_to_element_and_offset  :: " nat \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>(string*nat)option "  where 
+     " address_to_element_and_offset addr img3 = ( 
     (* Find the element with the highest address <= addr *)
     (let (maybe_highest_le ::  (nat * string * element)option)
      = (List.foldl (\<lambda> maybe_current_max_le .  (\<lambda> (el_name, el_rec) . 
         (* let _ = errln (Saw element named ` ^ el_name ^  with startpos  ^ (
             match el_rec.startpos with Just addr -> (0x ^ (hex_string_of_natural addr)) | Nothing -> (none) end))
         in *)
-        (case  (maybe_current_max_le,(startpos0   el_rec)) of
+        (case  (maybe_current_max_le,(startpos   el_rec)) of
             (None, None) => None
             | (None, Some pos) => if pos \<le> addr then Some (pos, el_name, el_rec) else None
             | (Some (cur, cur_el_name, cur_el_rec), None) => maybe_current_max_le
@@ -802,7 +804,7 @@ definition address_to_element_and_offset0  :: " nat \<Rightarrow> 'abifeature an
         Some (el_def_startpos, el_name, el_rec) =>
             (* final sanity check: is the length definite, and if so, does the
              * element span far enough? *)
-            (case (length2   el_rec) of
+            (case (length1   el_rec) of
                 Some l => if (el_def_startpos + l) \<ge> addr 
                     then Some (el_name, (addr - el_def_startpos)) 
                     else 
@@ -816,30 +818,30 @@ definition address_to_element_and_offset0  :: " nat \<Rightarrow> 'abifeature an
 
     
 (*val element_and_offset_to_address : forall 'abifeature. (string * natural) -> annotated_memory_image 'abifeature -> maybe natural*)
-fun element_and_offset_to_address0  :: " string*nat \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>(nat)option "  where 
-     " element_and_offset_to_address0 (el_name, el_off) img2 = ( 
-    (case  (elements0   img2) el_name of
-        Some el => (case (startpos0   el) of
+fun element_and_offset_to_address  :: " string*nat \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>(nat)option "  where 
+     " element_and_offset_to_address (el_name, el_off) img3 = ( 
+    (case  (elements   img3) el_name of
+        Some el => (case (startpos   el) of
                         Some addr => Some (addr + el_off)
                         | None => None
                    )
         | None => failwith ((''error: nonexistent element: '') @ el_name)
     ))" 
-declare element_and_offset_to_address0.simps [simp del]
+declare element_and_offset_to_address.simps [simp del]
 
                 
 
-definition null_symbol_reference0  :: " symbol_reference "  where 
-     " null_symbol_reference0 = ( (|
-    ref_symname0 = ('''')
-    , ref_syment0 = elf64_null_symbol_table_entry
-    , ref_sym_scn0 =(( 0 :: nat))
-    , ref_sym_idx0 =(( 0 :: nat))
+definition null_symbol_reference  :: " symbol_reference "  where 
+     " null_symbol_reference = ( (|
+    ref_symname = ('''')
+    , ref_syment = elf64_null_symbol_table_entry
+    , ref_sym_scn =(( 0 :: nat))
+    , ref_sym_idx =(( 0 :: nat))
 |) )"
 
 
-definition null_elf_relocation_a0  :: " elf64_relocation_a "  where 
-     " null_elf_relocation_a0 = (
+definition null_elf_relocation_a  :: " elf64_relocation_a "  where 
+     " null_elf_relocation_a = (
   (| elf64_ra_offset = (Elf_Types_Local.uint64_of_nat(( 0 :: nat)))  
    , elf64_ra_info   = (of_int (int (( 0 :: nat)))) 
    , elf64_ra_addend = (of_int(( 0 :: int)))
@@ -847,47 +849,47 @@ definition null_elf_relocation_a0  :: " elf64_relocation_a "  where
 
 
 
-definition null_symbol_reference_and_reloc_site0  :: " symbol_reference_and_reloc_site "  where 
-     " null_symbol_reference_and_reloc_site0 = ( (|
-      ref0 = null_symbol_reference0
-    , maybe_reloc0 =        
- (Some   (| ref_relent0 = null_elf_relocation_a0
-                , ref_rel_scn0 =(( 0 :: nat))
-                , ref_rel_idx0 =(( 0 :: nat))
-                , ref_src_scn0 =(( 0 :: nat))
+definition null_symbol_reference_and_reloc_site  :: " symbol_reference_and_reloc_site "  where 
+     " null_symbol_reference_and_reloc_site = ( (|
+      ref = null_symbol_reference
+    , maybe_reloc =        
+ (Some   (| ref_relent = null_elf_relocation_a
+                , ref_rel_scn =(( 0 :: nat))
+                , ref_rel_idx =(( 0 :: nat))
+                , ref_src_scn =(( 0 :: nat))
                 |))
-    , maybe_def_bound_to0 = None
+    , maybe_def_bound_to = None
     |) )"
 
 
-definition null_symbol_definition0  :: " symbol_definition "  where 
-     " null_symbol_definition0 = ( (|
-    def_symname0 = ('''')
-    , def_syment0 = elf64_null_symbol_table_entry
-    , def_sym_scn0 =(( 0 :: nat))
-    , def_sym_idx0 =(( 0 :: nat))
-    , def_linkable_idx0 =(( 0 :: nat))
+definition null_symbol_definition  :: " symbol_definition "  where 
+     " null_symbol_definition = ( (|
+    def_symname = ('''')
+    , def_syment = elf64_null_symbol_table_entry
+    , def_sym_scn =(( 0 :: nat))
+    , def_sym_idx =(( 0 :: nat))
+    , def_linkable_idx =(( 0 :: nat))
 |) )"
 
     
 (*val pattern_possible_starts_in_one_byte_sequence : list (maybe byte) -> list byte -> natural -> list natural*)
-definition pattern_possible_starts_in_one_byte_sequence0  :: "((Elf_Types_Local.byte)option)list \<Rightarrow>(Elf_Types_Local.byte)list \<Rightarrow> nat \<Rightarrow>(nat)list "  where 
-     " pattern_possible_starts_in_one_byte_sequence0 pattern seq offset = (
+definition pattern_possible_starts_in_one_byte_sequence  :: "((Elf_Types_Local.byte)option)list \<Rightarrow>(Elf_Types_Local.byte)list \<Rightarrow> nat \<Rightarrow>(nat)list "  where 
+     " pattern_possible_starts_in_one_byte_sequence pattern seq offset = (
     (* let _ = Missing_pervasives.errs (Looking for matches of  ^
         (show (List.length pattern)) ^ -byte pattern in  ^ (show (List.length seq)) ^ -byte regionn)
     in *)
-    accum_pattern_possible_starts_in_one_byte_sequence0 pattern (List.length pattern) seq (List.length seq) offset [])"
+    accum_pattern_possible_starts_in_one_byte_sequence pattern (List.length pattern) seq (List.length seq) offset [])"
 
 
 (*val byte_pattern_of_byte_sequence : byte_sequence -> list (maybe byte)*)
-fun byte_pattern_of_byte_sequence0  :: " byte_sequence \<Rightarrow>((Elf_Types_Local.byte)option)list "  where 
-     " byte_pattern_of_byte_sequence0 (Sequence(bs)) = ( List.map (\<lambda> b .  Some b) bs )" 
-declare byte_pattern_of_byte_sequence0.simps [simp del]
+fun byte_pattern_of_byte_sequence  :: " byte_sequence \<Rightarrow>((Elf_Types_Local.byte)option)list "  where 
+     " byte_pattern_of_byte_sequence (Sequence(bs)) = ( List.map (\<lambda> b .  Some b) bs )" 
+declare byte_pattern_of_byte_sequence.simps [simp del]
 
 
 (*val compute_virtual_address_adjustment : natural -> natural -> natural -> natural*)
-definition compute_virtual_address_adjustment0  :: " nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat "  where 
-     " compute_virtual_address_adjustment0 max_page_size offset vaddr = (
+definition compute_virtual_address_adjustment  :: " nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat "  where 
+     " compute_virtual_address_adjustment max_page_size offset vaddr = (
   (vaddr - offset) mod max_page_size )"
 
 end

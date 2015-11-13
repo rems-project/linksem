@@ -194,7 +194,7 @@ definition size_of_def  :: " symbol_reference_and_reloc_site \<Rightarrow> nat "
 
 (*val size_of_copy_reloc : forall 'abifeature. annotated_memory_image 'abifeature -> symbol_reference_and_reloc_site -> natural*)
 definition size_of_copy_reloc  :: " 'abifeature annotated_memory_image \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> nat "  where 
-     " size_of_copy_reloc img2 rr = ( 
+     " size_of_copy_reloc img3 rr = ( 
     (* it's the minimum of the two definition symbol sizes. FIXME: for now, just use the rr *)
     size_of_def rr )"
 
@@ -202,22 +202,23 @@ definition size_of_copy_reloc  :: " 'abifeature annotated_memory_image \<Rightar
 (*val reloc_site_address : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature => 
     annotated_memory_image 'abifeature -> symbol_reference_and_reloc_site -> natural*)
 definition reloc_site_address  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature AbiFeatureTagEquiv_class \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> nat "  where 
-     " reloc_site_address dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature img2 rr = ( 
+     " reloc_site_address dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature img3 rr = ( 
     (* find the element range that's tagged with this reloc site *)
     (let found_kvs = (Multimap.lookupBy0 
-  instance_Basic_classes_Ord_Memory_image_range_tag_dict0 (instance_Basic_classes_Ord_Maybe_maybe_dict
+  (instance_Basic_classes_Ord_Memory_image_range_tag_dict
+     dict_Basic_classes_Ord_abifeature) (instance_Basic_classes_Ord_Maybe_maybe_dict
    (instance_Basic_classes_Ord_tup2_dict
       Lem_string_extra.instance_Basic_classes_Ord_string_dict
       (instance_Basic_classes_Ord_tup2_dict
          instance_Basic_classes_Ord_Num_natural_dict
-         instance_Basic_classes_Ord_Num_natural_dict))) (op=) (SymbolRef(rr))(by_tag   img2))
+         instance_Basic_classes_Ord_Num_natural_dict))) (op=) (SymbolRef(rr))(by_tag   img3))
     in
     (case  found_kvs of
         [] => failwith (''impossible: reloc site not marked in memory image'')
         | [(_, maybe_range)] => (case  maybe_range of 
                 None => failwith (''impossible: reloc site has no element range'')
                 | Some (el_name, el_range) => 
-                    (let element_addr = ((case  (elements   img2) el_name of
+                    (let element_addr = ((case  (elements   img3) el_name of
                         None => failwith (''impossible: non-existent element'')
                         | Some el => (case (startpos   el) of
                             None => failwith (''error: resolving relocation site address before address has been assigned'')
