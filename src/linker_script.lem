@@ -116,12 +116,42 @@ type output_guard = AlwaysOutput
                   
 type symbol_spec = (natural * unsigned_char * unsigned_char) (* size, info, other *)
 
+type retain_policy
+  = DefaultKeep
+  | KeepEvenWhenGC
+
+type output_section_composition_element
+  = IncludeInputSection of (retain_policy * input_section_rec)
+  | IncludeCommonSymbol of (retain_policy * string (* file *) * natural (* linkable_idx *) * symbol_definition * elf_memory_image)
+  (*| Hole of address_expr_fn (* compute the next addr to continue layout at *)*)
+  | ProvideSymbol of (symbol_def_policy * string * symbol_spec)
+
+type sort_policy
+  = DefaultSort (* Use command line sort option, else "seen" order *)
+  | SeenOrder (* Always use "seen" order *)
+  | ByName
+  | ByNameThenAlignment
+  | ByAlignment
+  | ByAlignmentThenName
+  | ByInitPriority
+
+(* This mirrors the OutputSection constructor, except that the script elements have become
+ * output_section_composition_elements, and we might store the size here. *)
+type output_section_spec =
+  OutputSectionSpec of (output_guard * maybe natural * string * (list output_section_composition_element))
+
+type allocated_sections_map =
+  Map.map string (output_section_spec (* OutputSection element idx *) * natural)
+
+type address_expr_fn
+  = AddressExprFn of (natural -> allocated_sections_map -> natural)
+
 type script_element =
   DefineSymbol of (symbol_def_policy * string * symbol_spec)
 | AdvanceAddress of address_expr_fn
 | MarkAndAlignDataSegment of (natural * natural) (* maxpagesize, commonpagesize *)
 | MarkDataSegmentEnd
-| MarkDataSegmentRelroEnd of (allocated_sections_map -> (natural * (natural -> natural)))
+| MarkDataSegmentRelroEnd (*of (allocated_sections_map -> (natural * (natural -> natural))) DPM: commented out because of positivity constrains in Isabelle *)
 | OutputSection of (output_guard * (maybe (* address_expr *) address_expr_fn) * string * list script_element)
 | DiscardInput of input_selector 
   (* Input queries can only occur within an output section. 
@@ -129,33 +159,6 @@ type script_element =
      (Ideally we would use something like polymorphic variants to encode this.)
    *)
 | InputQuery of (retain_policy * sort_policy * input_selector)
-and 
- retain_policy = DefaultKeep
-                    | KeepEvenWhenGC
-and
- sort_policy = DefaultSort (* Use command line sort option, else "seen" order *)
-                  | SeenOrder (* Always use "seen" order *)
-                  | ByName
-                  | ByNameThenAlignment
-                  | ByAlignment
-                  | ByAlignmentThenName
-                  | ByInitPriority
-and 
- output_section_composition_element = 
-    IncludeInputSection of (retain_policy * input_section_rec)
-    | IncludeCommonSymbol of (retain_policy * string (* file *) * natural (* linkable_idx *) * symbol_definition * elf_memory_image)
-    | Hole of address_expr_fn (* compute the next addr to continue layout at *)
-    | ProvideSymbol of (symbol_def_policy * string * symbol_spec)
-
-and 
-(* This mirrors the OutputSection constructor, except that the script elements have become
- * output_section_composition_elements, and we might store the size here. *)
- output_section_spec = OutputSectionSpec of (output_guard * maybe natural * string * (list output_section_composition_element))
-
-and
- allocated_sections_map = AllocatedSectionsMap of (Map.map string (output_section_spec (* OutputSection element idx *) * natural))
-
-and address_expr_fn = AddressExprFn of (natural -> allocated_sections_map -> natural)
 
 (* A linker control script is a function from inputs to output elements. 
  * We can define them in syntax (using an interpreter) 
@@ -302,7 +305,7 @@ val output_sec_composition_size : list output_section_composition_element -> nat
 let output_sec_composition_size comp = List.foldl (+) 0 (List.map size_of_output_section_composition_element comp)
 *)
 val do_output_section_layout_starting_at_addr : natural -> allocated_sections_map -> list output_section_composition_element -> (natural * list natural)
-let do_output_section_layout_starting_at_addr   start_addr secs comps = 
+let do_output_section_layout_starting_at_addr start_addr secs comps = 
     (* map out where we plumb in each section, accounting for their alignment *)
     List.foldl (fun (next_free_addr, addr_list) -> (fun comp_el -> match comp_el with
           IncludeInputSection(retain_pol, irec (* fname, linkable_idx, shndx, isec, img *)) -> 
@@ -313,7 +316,7 @@ let do_output_section_layout_starting_at_addr   start_addr secs comps =
                 let aligned_next_free = align_up_to (natural_of_elf64_addr def.def_syment.elf64_st_value) next_free_addr
                 in
                 (aligned_next_free + (natural_of_elf64_xword def.def_syment.elf64_st_size), addr_list ++ [aligned_next_free])
-        | Hole(AddressExprFn f) -> (f next_free_addr secs, addr_list ++ [next_free_addr])
+        (*| Hole(AddressExprFn f) -> (f next_free_addr secs, addr_list ++ [next_free_addr])*)
         | ProvideSymbol(pol, name, spec) -> (next_free_addr, addr_list ++ [next_free_addr])
     end
     )) (start_addr, []) comps
@@ -325,10 +328,10 @@ let output_sec_composition_size_given_start_addr   start_addr secs comp =
     end_addr - start_addr
 
 val sizeof : string -> allocated_sections_map -> natural
-let sizeof secname (AllocatedSectionsMap secs) = 
+let sizeof secname secs = 
     match Map.lookup secname secs with
         Just(OutputSectionSpec (_, maybe_addr, _, comp), _) -> match maybe_addr with
-            Just addr -> output_sec_composition_size_given_start_addr addr (AllocatedSectionsMap secs) comp
+            Just addr -> output_sec_composition_size_given_start_addr addr secs comp
             | Nothing -> failwith ("error: sizeof applied to section without defined start address")
         end
         | Nothing -> failwith ("error: sizeof applied to non-existent section name " ^ secname)
@@ -807,7 +810,7 @@ SECTIONS
     ; OutputSection(AlwaysOutput, Nothing, ".got",     [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".got"))
                                ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".igot"))
                                ])
-    ; MarkDataSegmentRelroEnd(fun secs -> (if (sizeof ".got.plt" secs) >= 24 then 24 else 0, (fun pos -> pos)))
+    ; MarkDataSegmentRelroEnd (*(fun secs -> (if (sizeof ".got.plt" secs) >= 24 then 24 else 0, (fun pos -> pos)))*)
     ; OutputSection(AlwaysOutput, Nothing, ".got.plt", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".got.plt"))
                                ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".igot.plt"))
      ])
@@ -1010,7 +1013,7 @@ let rec assign_inputs_to_output_sections acc inputs (cur_output_sec : maybe (out
                       * so we can encode the whole thing into a conditional. *)
                      do_nothing
                 | MarkDataSegmentEnd -> do_nothing
-                | MarkDataSegmentRelroEnd(fun_from_secs_to_something) -> do_nothing
+                | MarkDataSegmentRelroEnd(*(fun_from_secs_to_something)*) -> do_nothing
                 | OutputSection(outputguard, maybe_expr, name, sub_elements) -> 
                     (* If we have a current output section, finish it and add it to the image.
                      * Q. Where do guards ("ONLY_IF_RO" etc) get evaluated?
@@ -1256,7 +1259,7 @@ val build_image :
     labelled_linker_control_script -> 
     natural -> (* linker_script_linkable_idx *)
     (elf_memory_image * allocated_sections_map)            (* accumulated result *)
-let rec build_image acc pos (AllocatedSectionsMap outputs_by_name) bindings_by_name script linker_script_linkable_idx = 
+let rec build_image acc pos outputs_by_name bindings_by_name script linker_script_linkable_idx = 
      let (add_output_section : (natural * elf_memory_image) -> output_section_spec -> (natural * elf_memory_image * natural * output_section_spec))
      = fun ((*scn_idx, *)pos, acc_img) ->
         (fun (OutputSectionSpec (guard, addr, secname, comp)) -> 
@@ -1273,7 +1276,7 @@ let rec build_image acc pos (AllocatedSectionsMap outputs_by_name) bindings_by_n
             in*)
             let start_addr = align_up_to align unaligned_start_addr
             in
-            let (end_addr, comp_addrs) = do_output_section_layout_starting_at_addr start_addr (AllocatedSectionsMap outputs_by_name) comp
+            let (end_addr, comp_addrs) = do_output_section_layout_starting_at_addr start_addr outputs_by_name comp
             in
             let size = end_addr - start_addr
             in
@@ -1628,7 +1631,7 @@ let rec build_image acc pos (AllocatedSectionsMap outputs_by_name) bindings_by_n
                             ; def_sym_idx = def.def_sym_idx
                             ; def_linkable_idx = linkable_idx
                         |>))})
-                    | Hole(AddressExprFn f) -> 
+(*                    | Hole(AddressExprFn f) -> 
                         let next_addr = f addr (AllocatedSectionsMap outputs_by_name)
                         in
                         let n = next_addr - addr
@@ -1639,7 +1642,7 @@ let rec build_image acc pos (AllocatedSectionsMap outputs_by_name) bindings_by_n
                              (hex_string_of_natural n)
                              "")
                         in*)
-                        (next_addr - addr, content, {}) 
+                        (next_addr - addr, content, {}) *)
                     | ProvideSymbol(pol, name, (size, info, other)) -> 
                         let symaddr = pos (* FIXME: support others *)
                         in
@@ -1728,18 +1731,18 @@ let rec build_image acc pos (AllocatedSectionsMap outputs_by_name) bindings_by_n
         ) (* end add_output_section *)
     in
     match script with
-        [] -> (acc, AllocatedSectionsMap outputs_by_name)
+        [] -> (acc, outputs_by_name)
         | (element, el_idx) :: more_elements_and_idx ->
-             let do_nothing = (acc, pos, AllocatedSectionsMap outputs_by_name) in 
-             let (new_acc, new_pos, (AllocatedSectionsMap new_outputs_by_name)) = 
+             let do_nothing = (acc, pos, outputs_by_name) in 
+             let (new_acc, new_pos, new_outputs_by_name) = 
              match element with
                 DefineSymbol(symdefpol, name, (symsize, syminfo, symother)) -> 
                     (* We've already added this to the output composition. *)
                     do_nothing
                 | AdvanceAddress(AddressExprFn advance_fn) -> 
-                    let new_pos = advance_fn pos (AllocatedSectionsMap outputs_by_name)
+                    let new_pos = advance_fn pos outputs_by_name
                     in
-                    (acc, new_pos, AllocatedSectionsMap outputs_by_name)
+                    (acc, new_pos, outputs_by_name)
                     (* FIXME: the allocated sections map is the subset of the outputs_by_name map 
                      * that has been allocated -- meaning *both* sized *and* placed. 
                      * Since we're a multi-pass interpreter, we've sized everything already, but 
@@ -1930,7 +1933,7 @@ let rec build_image acc pos (AllocatedSectionsMap outputs_by_name) bindings_by_n
                                         in
                                         let start_addr = align_up_to (alignof_output_section comp) unaligned_start_addr
                                         in
-                                        let (end_addr, comp_addrs) = do_output_section_layout_starting_at_addr start_addr (AllocatedSectionsMap outputs_by_name) comp
+                                        let (end_addr, comp_addrs) = do_output_section_layout_starting_at_addr start_addr outputs_by_name comp
                                         in
                                         let size = end_addr - start_addr
                                         in
@@ -1940,7 +1943,7 @@ let rec build_image acc pos (AllocatedSectionsMap outputs_by_name) bindings_by_n
                                 | AdvanceAddress(AddressExprFn advance_fn) -> 
                                     (* let _ = errln "Advance address"
                                     in *)
-                                    let new_pos = advance_fn curpos (AllocatedSectionsMap outputs_by_name)
+                                    let new_pos = advance_fn curpos outputs_by_name
                                     in
                                     (new_pos, false)
                                 | _ -> (curpos, seen_end)
@@ -1973,10 +1976,10 @@ let rec build_image acc pos (AllocatedSectionsMap outputs_by_name) bindings_by_n
                     (*let _ = errln ("Mark/align data segment: option 2 uses " ^ (show npages_option2) ^ " COMMONPAGESIZE-sized pages")
                     in*)
                     if npages_option1 < npages_option2 
-                    then (*let _ = errln "Choosing option 1" in*) (acc, option1, AllocatedSectionsMap outputs_by_name)
-                    else (*let _ = errln "Choosing option 2" in*) (acc, option2, AllocatedSectionsMap outputs_by_name)
+                    then (*let _ = errln "Choosing option 1" in*) (acc, option1, outputs_by_name)
+                    else (*let _ = errln "Choosing option 2" in*) (acc, option2, outputs_by_name)
                 | MarkDataSegmentEnd -> do_nothing
-                | MarkDataSegmentRelroEnd(fun_from_secs_to_something) -> do_nothing
+                | MarkDataSegmentRelroEnd(*(fun_from_secs_to_something)*) -> do_nothing
                 | OutputSection(outputguard, maybe_expr, name, sub_elements) -> 
                     (* Get the composition we computed earlier, and actually put it in
                      * the image, assigning an address to it. *)
@@ -2040,14 +2043,14 @@ let rec build_image acc pos (AllocatedSectionsMap outputs_by_name) bindings_by_n
                         (* let _ = errln ("After adding output section, we have " ^ (show (count_sections_in_image new_acc))
                             ^ " sections.")
                         in *)
-                        (new_acc, new_pos, AllocatedSectionsMap (Map.insert name (replacement_output_sec, el_idx) (Map.delete name outputs_by_name)))
-                    ) else (acc, pos, AllocatedSectionsMap outputs_by_name)
+                        (new_acc, new_pos, (Map.insert name (replacement_output_sec, el_idx) (Map.delete name outputs_by_name)))
+                    ) else (acc, pos, outputs_by_name)
                 | DiscardInput(selector) -> do_nothing
                 | InputQuery(retainpol, sortpol, selector) -> do_nothing
             end
             in
             (* recurse *)
-            build_image new_acc new_pos (AllocatedSectionsMap new_outputs_by_name) bindings_by_name more_elements_and_idx linker_script_linkable_idx
+            build_image new_acc new_pos new_outputs_by_name bindings_by_name more_elements_and_idx linker_script_linkable_idx
     end
 
 (*
@@ -2358,7 +2361,7 @@ let interpret_linker_control_script script linker_script_linkable_idx a inputs s
     in
     (*let _ = Missing_pervasives.outs (List.foldl (fun str -> (fun input -> (str ^ (discard_line input)))) "" (reverse discards))
     in*)
-    let outputs_by_name_after_gc = compute_def_use_and_gc (AllocatedSectionsMap outputs_by_name)
+    let outputs_by_name_after_gc = compute_def_use_and_gc outputs_by_name
     in
     (*let _ = Missing_pervasives.outs "\nMemory Configuration\n\nName             Origin             Length             Attributes\n*default*        0x0000000000000000 0xffffffffffffffff\n"
     in*)
