@@ -344,7 +344,7 @@ type abi 'abifeature = (* forall 'abifeature. *)
     ; guess_entry_point  : annotated_memory_image 'abifeature -> maybe natural
     ; pad_data           : natural -> list byte
     ; pad_code           : natural -> list byte
-    ; generate_support   : (* list (list reloc_site_resolution) ->  *)list (annotated_memory_image 'abifeature) -> annotated_memory_image 'abifeature
+    ; generate_support   : (* list (list reloc_site_resolution) ->  *)list (string * annotated_memory_image 'abifeature) -> annotated_memory_image 'abifeature
     ; concretise_support : annotated_memory_image 'abifeature -> annotated_memory_image 'abifeature
     |>
 
@@ -646,7 +646,6 @@ let element_and_offset_to_address (el_name, el_off) img =
                    end
         | Nothing -> failwith ("error: nonexistent element: " ^ el_name)
     end
-                
 
 let null_symbol_reference = <|
     ref_symname = ""
@@ -696,3 +695,40 @@ end
 val compute_virtual_address_adjustment : natural -> natural -> natural -> natural
 let compute_virtual_address_adjustment max_page_size offset vaddr =
   (vaddr - offset) mod max_page_size
+
+
+
+
+val extract_natural_field : natural -> element -> natural -> natural
+let extract_natural_field width element offset = 
+    (* Read n bytes from the contents *)
+    let maybe_bytes = take width (drop offset element.contents)
+    in
+    let bytes = List.map (fun mb -> match mb with Nothing -> byte_of_natural 0 | Just mb -> mb end) maybe_bytes
+    in
+    (* FIXME: do we want little- or big-endian? *)
+    List.foldl (fun acc -> fun next_byte ->
+        acc * 256 + (natural_of_byte next_byte)
+    ) (0 : natural) bytes
+
+val natural_to_le_byte_list : natural -> list byte
+let rec natural_to_le_byte_list n = 
+    (byte_of_natural (n mod 256)) :: (let d = n/256 in if d = 0 then [] else natural_to_le_byte_list (n / 256))
+
+val write_natural_field : natural -> natural -> element -> natural -> element
+let write_natural_field new_field_value width element offset = 
+    let pre_bytes = take offset element.contents
+    in
+    let post_bytes = drop (offset + width) element.contents
+    in
+    (* FIXME: avoid hard-coding little-endian *)
+    let field_bytes = natural_to_le_byte_list new_field_value
+    in
+    if length field_bytes > width then failwith "internal error: relocation output unrepresentable"
+    else
+    <|
+        contents = pre_bytes ++ [Just b | forall (b MEM field_bytes) | true]
+            ++ (replicate (width - (length field_bytes)) (Just (byte_of_natural 0))) ++ post_bytes
+        ; startpos = element.startpos
+        ; length = element.length
+     |>

@@ -185,6 +185,37 @@ let defined_symbols_and_ranges img =
             SymbolDef(ent) -> Just (maybeRange, ent)
             | _ -> failwith "impossible: non-symbol def in list of symbol defs"
         end) (tagged_ranges_matching_tag (SymbolDef(null_symbol_definition)) img)
+    
+val make_ranges_definite : list (maybe element_range) -> list element_range
+let make_ranges_definite rs = 
+    List.map (fun (maybeR : maybe element_range) -> match maybeR with
+            Just r -> r
+            | Nothing -> failwith "impossible: range not definite, but asserted to be"
+        end) rs
+
+val find_defs_matching : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature => symbol_definition -> annotated_memory_image 'abifeature -> list (element_range * symbol_definition)
+let find_defs_matching bound_def img = 
+    let (ranges_and_defs : list (maybe element_range * symbol_definition)) = defined_symbols_and_ranges img
+    in 
+    (*let _ = errln ("Searching for the bound-to symbol, which came from linkable idx " ^ 
+        (show bound_def.def_linkable_idx) ^ ", section " ^ 
+        (show bound_def.def_syment.elf64_st_shndx) ^ 
+        ", symtab shndx " ^ (show bound_def.def_sym_scn) ^ 
+        ", symind " ^ (show bound_def.def_sym_idx))
+    in*)
+    List.mapMaybe (fun (maybe_some_range, some_def) -> 
+        match maybe_some_range with
+            Nothing -> failwith "symbol definition not over a definite range"
+            | Just some_range ->
+                if some_def.def_symname = bound_def.def_symname 
+                && some_def.def_linkable_idx = bound_def.def_linkable_idx then
+                    (*let _ = errln ("Found one in the same linkable: syment is " ^
+                        (show some_def.def_syment))
+                    in*) if some_def = bound_def then Just(some_range, some_def) else Nothing
+                else if some_def = bound_def then Just(some_range, some_def) else Nothing
+       end
+    ) ranges_and_defs
+
 
 val defined_symbols : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature =>  annotated_memory_image 'abifeature -> list symbol_definition
 let defined_symbols img = 

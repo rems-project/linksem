@@ -59,6 +59,9 @@ Inserting null bytes between these sections would generate a bad link.
 (Fragmenting a single instruction across section boundaries
 is also conceivable, and would be broken by any kind of padding, 
 although we have never seen it.)
+For an \textit{n}-byte nop-sequence, 
+many choices of instruction may be available, 
+depending on the lengths of available nop instructions.
 
 % However, sequences containing multi-byte instructions may affect program semantics
 % on ISAs with variable-length instruction encodings, 
@@ -73,7 +76,8 @@ The GNU linker features an optimisation
 that tries to optimise disk-memory trade-offs.
 It seems reasonable to specify that 
 wasteful padding should not be inserted, but 
-
+no single trade-off is always appropriate.
+LINK to binutils bug.
 
 \paragraph{Common symbol placement}
 Linker scripts control all common symbols at once.
@@ -115,7 +119,17 @@ having suitable flags.
 ``SHF\_MERGE is an optional flag indicating a possible optimization. The link-editor is allowed to perform the optimization, or to ignore the optimization. 
 (from the Oracle guide; in Sys V docs?)
 
+\paragraph{Linker-generated structures}
+GOT, PLT and other run-time structures
+
 \paragraph{Relaxation}
-Linkers do know a little about instruction encoding, and are allowed
-to use this knowledge to optimise output sections
-for size and/or execution speed.
+Conceptually, linkers do not know about instruction encodings.
+Relocations describe how to fix up input files' contents at the byte level,
+without reference to what fixed-up instructions mean.
+However, for optimisation purposes, most linkers do in fact
+know a little about instruction encoding.
+They use this knowledge to optimise output sections
+for size and/or execution speed, by ``relaxing'' contents
+at reference points (choosing a shorter calling sequence, say) 
+and section boundaries (overlapping leading and trailing padding in exception
+handling information, say).

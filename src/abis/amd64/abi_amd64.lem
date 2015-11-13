@@ -46,7 +46,7 @@ let header_is_amd64 h =
 let shf_x86_64_large : natural = (256 * 1048576) (* 0x10000000 a.k.a. 2^28 *)
 
 type amd64_abi_feature = 
-    GOT of  (list (string * ((maybe element_range) * symbol_reference_and_reloc_site)))
+    GOT of  (list (string * (maybe symbol_definition)))
     | PLT (* placeholder / FIXME *)
     
 val abiFeatureCompare : amd64_abi_feature -> amd64_abi_feature -> Basic_classes.ordering

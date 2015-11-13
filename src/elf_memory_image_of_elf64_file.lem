@@ -315,13 +315,6 @@ let elf_memory_image_sht img =
         FileFeature(ElfSectionHeaderTable(x)) -> Just x
         | _ -> Nothing
     end
-    
-val make_ranges_definite : list (maybe element_range) -> list element_range
-let make_ranges_definite rs = 
-    List.map (fun (maybeR : maybe element_range) -> match maybeR with
-            Just r -> r
-            | Nothing -> failwith "impossible: range not definite, but asserted to be"
-        end) rs
 
 val elf_memory_image_section_ranges : elf_memory_image -> (list elf_range_tag * list element_range)
 let elf_memory_image_section_ranges img = 
@@ -476,11 +469,7 @@ let name_of_symbol_def sym = sym.def_symname
 
 val elf_memory_image_defined_symbols_and_ranges : elf_memory_image -> list ((maybe element_range) * symbol_definition)
 let elf_memory_image_defined_symbols_and_ranges img = 
-    List.mapMaybe (fun (tag, maybeRange) -> 
-        match tag with
-            SymbolDef(ent) -> Just (maybeRange, ent)
-            | _ -> failwith "impossible: non-symbol def in list of symbol defs"
-        end) (tagged_ranges_matching_tag (SymbolDef(null_symbol_definition)) img)
+    Memory_image_orderings.defined_symbols_and_ranges img
 
 val elf_memory_image_defined_symbols : elf_memory_image -> list symbol_definition
 let elf_memory_image_defined_symbols img = 
