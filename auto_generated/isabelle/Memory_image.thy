@@ -798,7 +798,7 @@ definition address_to_element_and_offset  :: " nat \<Rightarrow> 'abifeature ann
             | (Some (cur, cur_el_name, cur_el_rec), None) => maybe_current_max_le
             | (Some (cur, cur_el_name, cur_el_rec), Some pos) => if (pos \<le> addr) \<and> (pos > cur) then Some (pos, el_name, el_rec) else maybe_current_max_le
         )
-    )) None (list_to_set (LemExtraDefs.map_to_set m)))
+    )) None (list_of_set (LemExtraDefs.map_to_set (elements img3))))
     in
     (case  maybe_highest_le of
         Some (el_def_startpos, el_name, el_rec) =>

@@ -197,9 +197,9 @@ using assms unfolding partition_with_length_def
 done
 
 lemma read_archive_entry_header0_length:
-  assumes "len = length0 bs" and "read_archive_entry_header0 len bs = Success (hdr, sz, bs1)"
+  assumes "len = length0 bs" and "read_archive_entry_header len bs = Success (hdr, sz, bs1)"
   shows "Byte_sequence.length0 bs1 < Byte_sequence.length0 bs"
-using assms unfolding read_archive_entry_header0_def
+using assms unfolding read_archive_entry_header_def
   apply(simp only: Let_def)
   apply(case_tac "partition_with_length 60 len bs", simp only: error_bind.simps)
   apply(case_tac x1, simp)
@@ -491,18 +491,18 @@ using assms by simp
 
 section {* Termination *}
 
-termination accum_archive_contents0
+termination accum_archive_contents
   apply(relation "measure (\<lambda>(_,_,_,b). length0 b)")
   apply simp
   apply(case_tac x1, simp add: Let_def)
-  apply(case_tac "name0 a = ''/               ''", simp_all)
-  apply(case_tac "size2 a mod 2 = 0", simp_all)
+  apply(case_tac "name a = ''/               ''", simp_all)
+  apply(case_tac "size0 a mod 2 = 0", simp_all)
   apply(subgoal_tac "whole_seq_length = length0 whole_seq")
   apply(drule read_archive_entry_header0_length, assumption)
   apply(drule dropbytes_length)
   apply linarith
   apply simp
-  apply(subgoal_tac "0 < Suc (size2 a)")
+  apply(subgoal_tac "0 < Suc (size0 a)")
   apply(drule dropbytes_length)
   apply(subgoal_tac "whole_seq_length = length0 whole_seq")
   apply(drule read_archive_entry_header0_length, assumption)
@@ -1213,27 +1213,27 @@ termination concatS'
   apply lexicographic_order
 done
 
-termination nat_range0
+termination nat_range
   apply lexicographic_order
 done
 
-termination expand_sorted_ranges0
+termination expand_sorted_ranges
   apply lexicographic_order
 done
 
-termination make_byte_pattern_revacc0
+termination make_byte_pattern_revacc
   apply lexicographic_order
 done
 
-termination relax_byte_pattern_revacc0
+termination relax_byte_pattern_revacc
   apply lexicographic_order
 done
 
-termination byte_list_matches_pattern0
+termination byte_list_matches_pattern
   apply lexicographic_order
 done
 
-termination accum_pattern_possible_starts_in_one_byte_sequence0
+termination accum_pattern_possible_starts_in_one_byte_sequence
   apply lexicographic_order
 done
 
@@ -1303,6 +1303,34 @@ termination findHighestKVWithKEquivTo
   apply(case_tac x2, simp, assumption)
   apply(case_tac x2, simp del: well_behaved_lem_ordering.simps)
   apply(drule chooseAndSplit_card1, assumption, assumption, assumption)
+done
+
+termination accumulate_hex_chars
+  apply lexicographic_order
+done
+
+termination build_image
+  apply lexicographic_order
+done
+
+termination cook_argv
+  apply lexicographic_order
+done
+
+termination glob_match
+  apply lexicographic_order
+done
+
+termination natural_to_le_byte_list
+  apply lexicographic_order
+done
+
+termination concretise_byte_pattern
+  apply lexicographic_order
+done
+
+termination zip3
+  apply lexicographic_order
 done
 
 end
