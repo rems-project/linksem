@@ -158,7 +158,7 @@ definition elf64_file_of_elf_memory_image  :: "(any_abi_feature)abi \<Rightarrow
      * must have size zero. These need to come *first* to avoid screwing up
      * the offset calculation. So also sort by size, so that the zero-sizers
      * come first. *)
-    (let element_section_tag_pairs_sorted_by_address = ( (* List.stable_sort *)Elf_Types_Local.merge_sort_ord
+    (let element_section_tag_pairs_sorted_by_address = ( (* List.stable_sort *)Elf_Types_Local.merge_sort
         (\<lambda> (isec1, (el1, range1)) .  (\<lambda> (isec2, (el2, range2)) .  (
             (let (addr1, sz1) = ((case  (elements   img3) el1 of
                 Some(e) => 
@@ -498,11 +498,7 @@ definition elf64_file_of_elf_memory_image  :: "(any_abi_feature)abi \<Rightarrow
            , elf64_sh_entsize   = (of_int (int(elf64_section_entsize   isec1)))
            |)
      )) (* (zip section_tags_bare section_file_offsets) *) all_sections_sorted_with_offsets))
-     , elf64_file_interpreted_segments = [
-            (* do we need to build this? I have HACKed elf_file so that we don't; 
-               we assume that all the relevant payload is in the section bodies, 
-               as it should be. *)
-        ]
+     , elf64_file_interpreted_segments = []
      , elf64_file_interpreted_sections = (null_elf64_interpreted_section # all_sections_sorted_with_offsets)
      , elf64_file_bits_and_bobs        = []
      |))))))))))))))))))))))))))))))))"

@@ -25,6 +25,6 @@ definition program :: "8 word list" where
     ])"
 
 definition relocation_image :: "Abis.any_abi_feature annotated_memory_image" where
-  "relocation_image \<equiv> img program"
+  "relocation_image \<equiv> img1 program"
 
 end

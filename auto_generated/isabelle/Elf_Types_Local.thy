@@ -17,6 +17,9 @@ begin
   definition unsigned_char_of_nat :: "nat \<Rightarrow> unsigned_char" where
     "unsigned_char_of_nat n \<equiv> of_int (int n)"
 
+  definition unsigned_char_of_char :: "char \<Rightarrow> unsigned_char" where
+    "unsigned_char_of_char c \<equiv> unsigned_char_of_nat (String.nat_of_char c)"
+
   definition unsigned_char_land :: "unsigned_char \<Rightarrow> unsigned_char \<Rightarrow> unsigned_char" where
     "unsigned_char_land left right \<equiv> bitAND left right"
 
