@@ -40,13 +40,6 @@ fun run_program :: "instruction list \<Rightarrow> X64_state \<Rightarrow> X64_s
      (let (_, \<sigma>') = Run x \<sigma> in
        run_program xs \<sigma>')"
 
-(* record X64_state =
-  EFLAGS :: "Zeflags \<Rightarrow> (bool option)"
-  MEM :: "64 word \<Rightarrow> 8 word"
-  REG :: "Zreg \<Rightarrow> 64 word"
-  RIP :: "64 word"
-  exception :: exception *)
-
 fun X64_memory_of_elf64_interpreted_segments :: "elf64_interpreted_segment list \<Rightarrow> 64 word \<Rightarrow> 8 word" where
   "X64_memory_of_elf64_interpreted_segments segs addr =
      (case (filter (\<lambda>x. elf64_segment_base x \<le> unat addr \<and> elf64_segment_base x + elf64_segment_size x \<le> unat addr) segs) of
@@ -67,13 +60,33 @@ definition load_image :: "elf64_interpreted_segment list \<Rightarrow> nat \<Rig
      , MEM = X64_memory_of_elf64_interpreted_segments segs
      , REG = \<lambda>x. (0 :: 64 word)
      , RIP = of_nat entry_point
-     , exception = NoException \<rparr>"
+     , exception = NoException
+     \<rparr>"
 
 fun execute_two_steps :: "X64_state \<Rightarrow> X64_state" where
-  "execute_two_steps \<sigma> = undefined"
+  "execute_two_steps \<sigma> =
+     (let (fetched, \<sigma>') = x64_fetch \<sigma> in
+      let decoded = x64_decode fetched in
+       (case decoded of
+         Zfull_inst (pre, instr, suf) \<Rightarrow>
+           (let (_, \<sigma>'') = Run instr \<sigma>' in
+            let (fetched, \<sigma>''') = x64_fetch \<sigma>'' in
+            let decoded = x64_decode fetched in
+              (case decoded of
+                Zfull_inst (pre, instr, suf) \<Rightarrow>
+                let (_, \<sigma>'''') = Run instr \<sigma>''' in
+                  \<sigma>''''
+              | _ \<Rightarrow> undefined))
+       | _ \<Rightarrow> undefined))"
 
 definition initial_state :: "X64_state" where
-  "initial_state \<equiv> undefined"
+  "initial_state \<equiv>
+    \<lparr> EFLAGS = \<lambda>x. None
+    , MEM = \<lambda>addr. 0
+    , REG = \<lambda>x. 0
+    , RIP = 0
+    , exception = NoException
+    \<rparr>"
 
 (* Theorem statement is something like:
  *
