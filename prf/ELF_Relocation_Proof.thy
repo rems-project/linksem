@@ -88,6 +88,10 @@ definition initial_state :: "X64_state" where
     , exception = NoException
     \<rparr>"
 
+lemma let_ext:
+  shows "let (x, y) = z in q x y = q (fst z) (snd z)"
+by (cases z, auto)
+
 (* Theorem statement is something like:
  *
  * let ef = elf64_file_of_memory_image relocation_image in
@@ -104,6 +108,8 @@ theorem at_least_some_relocations_relocate:
       and "final_fixed_state = run_program fixed_program initial_state"
       and "final_relocatable_state = execute_two_steps rstate"
     shows "REG final_fixed_state = REG final_relocatable_state" (* XXX: probably want to say something about the contents of memory here, too! *)
-using assms
+using assms(1)
+  apply(simp only: relocation_image_def img1_def relocatable_program_def sysv_amd64_std_abi_def Let_def)
+  apply(rule back_subst[OF let_ext])
 
 end
