@@ -48,7 +48,18 @@ fun run_program :: "instruction list \<Rightarrow> X64_state \<Rightarrow> X64_s
   exception :: exception *)
 
 fun X64_memory_of_elf64_interpreted_segments :: "elf64_interpreted_segment list \<Rightarrow> 64 word \<Rightarrow> 8 word" where
-  "X64_memory_of_elf64_interpreted_segments segs addr = undefined"
+  "X64_memory_of_elf64_interpreted_segments segs addr =
+     (case (filter (\<lambda>x. elf64_segment_base x \<le> unat addr \<and> elf64_segment_base x + elf64_segment_size x \<le> unat addr) segs) of
+       [] \<Rightarrow> undefined
+     | [x] \<Rightarrow>
+       if elf64_segment_type x = elf_pt_load then
+         let off = unat addr - elf64_segment_base x in
+         (case elf64_segment_body x of
+            Sequence s \<Rightarrow>
+              List.nth s (elf64_segment_base x - unat addr))
+       else
+         undefined
+     | x#xs \<Rightarrow> undefined)"
 
 definition load_image :: "elf64_interpreted_segment list \<Rightarrow> nat \<Rightarrow> X64_state" where
   "load_image segs entry_point \<equiv>
