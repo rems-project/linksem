@@ -40,8 +40,14 @@ fun run_program :: "instruction list \<Rightarrow> X64_state \<Rightarrow> X64_s
      (let (_, \<sigma>') = Run x \<sigma> in
        run_program xs \<sigma>')"
 
-fun load_image :: "8 word list \<Rightarrow> X64_state" where
-  "load_image instrs = undefined"
+fun load_image :: "elf64_interpreted_segment list \<Rightarrow> nat \<Rightarrow> X64_state" where
+  "load_image segments entry_point = undefined"
+
+fun execute_two_steps :: "X64_state \<Rightarrow> X64_state" where
+  "execute_two_steps \<sigma> = undefined"
+
+definition initial_state :: "X64_state" where
+  "initial_state \<equiv> undefined"
 
 (* Theorem statement is something like:
  *
@@ -50,5 +56,14 @@ fun load_image :: "8 word list \<Rightarrow> X64_state" where
  * let \<sigma>0 = load_image im in
  *   run_program fixed_program empty_state \<simeq> execute_two_steps \<sigma>0
  *)
+theorem at_least_some_relocations_relocate:
+    fixes ef :: elf64_file and segs_and_provenance :: "(elf64_interpreted_segment \<times> segment_provenance) list" and entry :: "nat"
+            and rstate :: "X64_state"
+  assumes "ef = elf64_file_of_elf_memory_image sysv_amd64_std_abi id ''at_least_some_relocations_relocate.out'' relocation_image"
+      and "Success (segs_and_provenance, entry, elf_ma_x86_64) = get_elf64_executable_image ef"
+      and "rstate = load_image (List.map fst segs_and_provenance) entry"
+      and "final_fixed_state = run_program fixed_program initial_state"
+      and "final_relocatable_state = execute_two_steps rstate"
+    shows "REG final_fixed_state = REG final_relocatable_state" (* XXX: probably want to say something about the contents of memory here, too! *)
 
 end
