@@ -19,8 +19,7 @@ definition mov_constant_from_mem :: "64 word \<Rightarrow> instruction" where
 
 definition fixed_program :: "instruction list" where
   "fixed_program \<equiv>
-    [
-      mov_constant_to_mem (5 :: 64 word) (100 :: 64 word)
+    [ mov_constant_to_mem (5 :: 64 word) (100 :: 64 word)
     , mov_constant_from_mem (100 :: 64 word)
     ]"
 
