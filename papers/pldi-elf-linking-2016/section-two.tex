@@ -21,6 +21,7 @@ and consider the consequences for
 how toolchains should be specified and what services they might provide.
 %motivate a different approach to specifying linking.
 
+
 % For example, Cardelli formalised a system of ``linksets'' 
 % in which ``separate compilability'' could be formally stated and checked,
 % modelling linking as a property-preserving merge operation,
@@ -39,45 +40,235 @@ how toolchains should be specified and what services they might provide.
 % therefore not addressing the features on which many real codebases rely.
 
 
-\ps{somewhere early on we should explain the basic use cases of
-  linkers (making statically linked executables, archives, shared
-  libraries, etc., etc.), their inputs and outputs (incl. what ELF
-  files are), the relationship
-  to loading, etc.}
+\subsection{Linking basics}
 
-\subsection{Linker mechanisms and linker-speak}
-
-\ps{somehow we should be clear which of these we cover (or cover
-  partially) in our work (or, variously, in our static-structure and
-  hello-world-linker work). Maybe annotating each paragraph Y/part/N?}
-
-Linker features are invoked by one or more notations, 
-such as command-line arguments, linker scripts, assembler directives and 
-object file features.
-These collected notations can be thought of as a separate programming language
-in which part of every compiled system is expressed.
-We call this language ``linker-speak''.
-\ps{the above is just a touch vague - we don't give the reader a
-  clearly delimited collection of things that comprise
-  linker-speak. The section below is (probably correctly) organised by
-  use-cases, not by linker-speak features.  Maybe make each paragraph
-  call out the kind of linker-speak mechanisms it involves?  Or a
-  separate section that is organised by mechanism??}
-\ps{On a related note, none of these talk linker script explicitly, or
-  focus on the expressiveness of the linker-speak mechanisms}
 In this paper we focus on the linker-speak of System~V-derived Unix environments,
 including GNU/Linux and all modern BSD variants.
 Windows and Mac OS (Darwin) environments exhibit broadly similar feature sets,
 but the System~V environment's is generally a superset.
-In the following, any linker options or script syntax
-refer to that accepted by the GNU BFD linker (still the 
-default on both GNU/Linux and BSD environments)
-which was based on the AT\&T System~V linker.
+
 Following \citet{gingell_1987_shared}, we say ``batch linker''
 to mean the \textsf{ld} tool run at build time, and 
 ``dynamic linker'' to refer to the \textsf{ld.so} dynamic linker running
 at load time.
 
+A batch linker takes multiple modules of \emph{relocatable object code} 
+as input (in the form of \textsf{.o} files, or groups thereof bundled into 
+\textsf{.a} ``archive'' files).
+It produces a single ``linked'' binary as output.
+Linked binaries are usually executables, and embody the input modules.
+The main work of the linker is to organise the input modules' content
+in a single logical memory image, 
+and to turn symbolic references (encoded as metadata in the input files), 
+into concrete bindings encoded as bit-patterns in the output binary.
+
+Object code consists of \emph{sections}, \emph{symbols} and \emph{relocations}.
+Sections are chunks of bytes, treated as indivisible units
+by the linker: they may be combined or rearranged, but not broken apart. 
+Symbols give names to particular ranges of a section, 
+corresponding to source-level definitions
+(functions or global variables, say).\footnote{ELF symbol names
+are arbitrary sequences of non-zero bytes, so can encode 
+essentially any source-language identifier verbatim. However, 
+most language implementations generate a lexically narrower set of symbols,
+according to the lexemes accepted as symbols by the assembler.
+This explains why name-mangling schemes are used by \Cplusplus{} compilers: 
+\Cplusplus{} punctuation such as `\textsf{::}' is not assembler-friendly. C identifiers 
+need not be mangled, by design.} 
+Some symbols are instead \emph{undefined},
+meaning they give a name to a definition which does not exist 
+in that object file. 
+Rather, it exists in a different object file that is to be linked in.
+References to symbols are encoded as \emph{relocation records}, sometimes called 
+``fixups'': they describe how 
+the section's bytes must be fixed up to point to the intended referent.
+Each relocation record specifies a ``type'' of relocation, corresponding to 
+different instruction encodings and pointer encodings.
+Even if a symbol is defined locally in a given object file, 
+references to it might still require relocation.
+This is because the symbol's address is not yet bound.
+For example, a pointer called \textsf{p} 
+initialized to point to a specific global variable \textsf{x}
+will appear in object code as
+(1) a word-sized portion of some section (probably called \textsf{\.data});
+(2) a defined symbol called \textsf{p} marking that range within the section; 
+(3) a relocation record marking that range as pointing to \textsf{x},
+whose address is not yet known.
+The symbol \textsf{x} also exists in the object file; it 
+may be either a defined or undefined symbol, 
+depending on whether it was defined in the originating compilation unit.
+In either case, its address is not decided until during linking, so 
+\textsf{p}'s relocation record remains essential.
+Making a concrete binding is called \emph{applying relocations}, 
+betraying its intertwinedness with the process of assigning memory addresses,
+and the metadata describing references are called \emph{relocation records}.
+The actual bytes of \textsf{p} will be filled with an arbitrary value,
+typically zero; only during relocation will they be filled in.
+
+%These bit-patterns are either the address fields of encoded machine instructions (in code), 
+%or pointer representations (in data).
+
+Having composed a memory image out of its inputs, 
+and applied relocations, 
+the linker finally outputs a serialised form of this memory image
+into the output binary.
+If the output binary is completely self-contained, we say it is ``statically linked''. 
+Alternatively, modern batch linkers also allow 
+some dependencies to be deferred until a later \emph{dynamic linking} step at load time.
+In these cases, the linker's input also includes dynamically-linkable libraries.
+These are \emph{not} embodied in the output; rather,
+at link time they serve as a proxy identifying which libraries will be available at load time.
+Any references to them are deferred until load-time binding,
+are left unrelocated and output as metadata in the executable.
+Shared libraries themselves are also produced by the same batch linker.
+
+Internally there are few differences
+between a dynamically-linked executable and a dynamically-linkable shared library.
+The principal difference is that the shared library may not 
+embed any absolute memory addresses, since it may be loaded
+at any address, whereas executables are always loaded from 
+address zero.\footnote{Modern linkers can also produce executables
+with this property, called ``PIE'' for position-independent executable.}
+
+Loading is the process of actually 
+constructing the memory image that the linker 
+represented in the output binary in serialised form.
+A modern Unix operating system typically contains two loaders: 
+one in user-space used for dynamic linking,
+and one in the kernel, used for statically linked binaries
+and to load the dynamic loader itself.
+
+Dynamically linked binaries, whether executable or library, 
+differ from statically linked ones
+in that they include metadata used by the dynamic linker
+to apply the remaining relocations.
+The other key difference is that 
+shared libraries, in order for their memory to be physically 
+shared at run time across multiple processes, 
+are usually crafted so that their text does not need any relocation at all.
+Rather, code-to-code and code-to-data references are indirected 
+via more compact \emph{non-}shared support structures 
+(respectively the GOT, or global offset table, and PLT, or procedure linkage table).
+This allows multiple processes to simultaneously map the same unmodified text segment 
+at different load addresses.
+(Some non-Unix systems avoid the need for position-independent libary code by pre-registering 
+certain address ranges, to be used by all processes; Windows DLLs use this scheme.)
+
+\subsection{Linkers and module systems}
+
+A typical programming language ``module system'' provides mechanisms 
+dealing in both abstract and concrete modules. 
+A module may be abstract in several ways: 
+referring to other modules and/or their definitions;
+by hiding its internal names from other modules;
+by hiding other internal information (e.g.\ representation types) from other modules;
+by being parameterised by other modules (a functor) 
+     or of definitions they must supply (e.g.\ types they define).
+Modules are named definitions,
+and ensembles are formed by naming modules, instantiating their parameters,
+and (in the case of generative modules) instantiating the modules themselves.
+
+By contrast, linking is almost entirely concrete.
+Linker modules, namely files, 
+are abstract in only two ways: by referring to other modules,
+and by hiding certain named definitions from other modules.
+Linker modules themselves are not named definitions for most purposes.\footnote{The 
+two exceptions are: diagnostic purposes---since linkers will use 
+module filenames to report problems to the user---and memory layout purposes,
+since linker scripts are allowed to select input files by name.
+Unmatched input files' sections are still included in the link, however, so
+this mechanism only allows their placement to be varied, and does not affect
+how symbols are resolved.}
+The programmer has no direct control of which module gets wired to which other.
+Rather, bindings are formed entirely according to symbol names,
+without regard to the name of the module (file) supplying them or requiring them.
+Linkers have no notion of module parameterisation, nor of module instantiation.
+The linker is responsible only for creating the concrete ``wiring'', or binding topology, 
+of the output binary, but not for instantiating
+Its role in ``programming in the large'' is essentially that 
+of module interconnection \citet{deremer_programming_1975}.
+FIXME: cite Knit (Reid et al) also.
+
+% \begin{itemize}
+% 
+% \item abstraction by 
+% \item abstraction by parameterisation of units of code (often type-parameterisation; 
+%       module-parameterisation, in the case of functors);
+% 
+% \item concretion by parameter-instantiation;
+% 
+% \item concretion by 
+% 
+% \item concretion by binding
+% \item concretion of abstract modules into specialised instances;
+% 
+% \item creation of ensembles by binding together abstract \emph{or} concrete modules.
+% 
+% \end{itemize}
+% 
+% Linking relates only the first and last of these.
+% It is entirely concrete; it does not instantiate, abstract or specialise.
+% Rather, the linker's caller (whether user or compiler) is assumed to have done these already.
+% 
+% Linking does, however, involve hiding of names---since its primary mechanism
+% is using name-matching to bind together ensembles of concrete modules.
+
+
+\subsection{Linker-speak}
+
+Linker-speak consists of a collection of notations,
+which collectively can be thought of as a separate programming language
+in which part of every compiled system is expressed.
+We call this language ``linker-speak''.
+We survey various examples shortly; in brief, the notations
+break down as follows.
+
+\begin{description}
+
+\item[Command-line arguments] ---supplied when invoking the linker.
+
+\item[Linker scripts] ---written in the linker's script language. 
+Scripts come in two flavours: \emph{control scripts}, 
+of which there is exactly one in any link job,
+and ``implicit'' scripts. 
+Implicit scripts are supplied on the command line as if they were object files, 
+and are written in a small subset of the linker script language.
+Typically they are used to create simple proxy-like object files, defining symbols
+and/or sections in a textual rather than binary notation.
+
+\item[Object file features] ---largely meaning symbols, sections, relocations and their
+attributes affecting link semantics. Many of these attributes 
+have corresponding forms in assemblers (``directives'' or pseudo-ops) 
+and compilers (attributes) allowing the programmer
+to control the object file that is output.
+
+\item[Object file usage conventions] As a rule, 
+section names are formally meaningless to the linker.
+However, ABIs often attach meaning to specific section names,
+require the presence of certain named sections, and so on.
+(Additionally, some linker features flout this rule by attaching meaning to section names.)
+
+\end{description}
+
+\sk{Responding to PS ``we should be clear which of these we cover''---we cover all 
+of them partially; the middle two more than the outer two.}
+
+Our work provides a formal specification
+of large subsets of all of these notations, with particular emphasis on
+the second and third.
+Specifically, we focus on the linker-speak of the AT\&T System~V linker
+and its descendents. 
+In the following, any linker options or script syntax
+refer to that accepted by the GNU BFD linker
+(still the 
+default on both GNU/Linux and BSD environments)
+which was based on the AT\&T System~V linker.
+\ps{The section below is (probably correctly) organised by
+  use-cases, not by linker-speak features.  Maybe make each paragraph
+  call out the kind of linker-speak mechanisms it involves?  Or a
+  separate section that is organised by mechanism??}
+\ps{On a related note, none of these talk linker script explicitly, or
+  focus on the expressiveness of the linker-speak mechanisms}
 
 % Sound reasoning about code in any one language
 % must account for the changes or relaxations that possible link-time effects might allow.
@@ -147,8 +338,6 @@ at load time.
 % compiler-specific attribtes or other extensions.
 
 \paragraph{Basic linker operation}
-FIXME: introduce sections, symbols, relocations.
-Correspondence to source-level features (definitions, names, references).
 
 \paragraph{Memory placement}
 Systems code often needs to reside at particular places in memory.
@@ -159,8 +348,9 @@ while the linker script allows sections to be assigned to addresses,
 and/or to be ordered relative to one another.
 For example, on the PA-RISC architecture, Linux uses the following 
 linker script to enforce a particular relative ordering of page table data.
+A struct in C cannot be used here, because the definitions must be addressable
+symbolically from assembly language as well as from C code.
 FIXME: show the preprocessed version, if it's simpler / more snippable.
-\ps{say why Linux wants/needs to do this?}
 
 {\scriptsize\begin{lstlisting}[language=C,columns=flexible,basicstyle=\sffamily]
 /* gcc doesn't actually guarantee that global objects will
@@ -201,16 +391,28 @@ Hiding implementation details is often achieved using linker features.
 Source-language encapsulation features,
 such as C's top-level \textsf{static} modifier, 
 map directly to linker features, such as ELF's local symbols.
-\ps{perhaps explain more concretely how that ELF mechanism supports
-a language-level visibility restriction?   And this is the most basic
-thing that other language-level module systems support?}
+In this way, intra-module references can still be fixed up by the linker,
+in terms of local symbols, but those symbols 
+will not be used to form cross-module bindings---encoding the range of top-level
+visibility semantics expressible in languages like C, Pascal, Fortran etc..
 \ps{is this visibility control uniformly of global variables and of
   code pointers?  presumably not of anything else (e.g.~type names, as
   they're just not present?  (visibility of dwarf info??))}
+\sk{ITYM ``code'' not ``code pointers''. But yes, it is uniform. 
+There's no separate way in ELF to say ``this is a type''; 
+you just have to say it's data.
+It then becomes an encoding issue, layered on top of ELF: 
+whether ``types'' come out as symbols depends on the language implementation.
+Type names do have linkage in \Cplusplus{} iff they have virtual member functions, 
+because they correspond to compiler-generated data and code. 
+In ordinary C they don't come out at all, because the compiler erases them.
+In a liballocs-extended C toolchain, they do, because we retain them at run time.
+DWARF info does not take the form of ELF symbols, so no. 
+But STABS debug info does, so yes! etc.}
 However, linkers expose at least three other encapsulation facilities
 that are \emph{not} supported in this way: (1) ELF symbol visibility attributes,
-allow encapsulation at the granularity of dynamically-linked binaries, 
-coarser than a single compilation unit; 
+allow similar name-visibility control but at the coarser granularity of 
+dynamically-linked binaries (instead of single object files);
 \ps{needs to be more concrete to explain to those who don't already know?}
 (2) archives,
 since inclusion in an archive restricts an object's visibility 
@@ -237,26 +439,34 @@ Link-time mechanisms may be used to substitute one definition for another.
 For example, the link semantics of archives allow a C program
 to supply its own \textsf{malloc.o} while still linking with 
 the remainder of the C library archive (\textsf{libc.a}).
-\ps{example real use case of that?}
+For example, a common performance optimisation is to supply a 
+\textsf{malloc()} implementation tailored to the program's allocation behaviour; 
+build-time substitution makes is possible to use the remainder of \textsf{libc.a} 
+without explicitly creating a copy lacking \textsf{malloc.o} or similar.
 % The \textsf{malloc.o} definitions substitute for those in the library.
 Outside of archives, multiple definitions are generally not allowed,
 but a linker option (such as \textsf{-z~muldefs}) can relax this, 
 causing earlier definitions to take precedence over later ones.
 Multiple definitions may also occur if all but zero or one is marked ``weak'';
 an ordinary ``strong'' definition, of which there can be at most one, always takes precedence.
-\ps{again, a compelling real use case would help?  All these might end up making
-  the whole too long, but we can fix that later}
+(We'll see example uses of this shortly, when discussing 
+``optionality'' and ``topology alternatives''.)
 
 \paragraph{Load-time substitution (``overriding'')}
 Substitution is often used during dynamic linking using the \textsf{LD\_PRELOAD}
 feature. This environment variable can be used to supply replacement
 definitions, analogous to the \textsf{malloc} example, but for dynamically bound references.
-This can create surprises\ps{what follows doesn't exactly say
-  that. Instead ``Care is needed when using this''?}, since calls apparently targeting a dynamic object 
-(such as \textsf{libc.so}) might actually been bound statically
+This can create unwanted dependency on change-prone binary-level details\ps{what follows doesn't exactly say
+  that. Instead ``Care is needed when using this''?}\sk{``Care'' is too weak: 
+there's no way to robustly use this feature without fixing
+the binary-level details of your C library; e.g.\ it can easily break on libc upgrades.}, 
+since calls apparently targeting a dynamic object 
+(such as \textsf{libc.so}) might actually have been bound statically
+in some libraries or versions thereof
 (such as \textsf{stat()} in the GNU C library; 
 the GNU \textsf{libc.so} is actually a linker script 
 statically importing certain definitions).
+In these cases, dynamic interposition will fail.
 
 {\scriptsize\begin{lstlisting}[language=plain,basicstyle=\sffamily,columns=flexible]
 OUTPUT_FORMAT(elf64-x86-64)
@@ -265,19 +475,26 @@ GROUP ( /lib/x86_64-linux-gnu/libc.so.6
   AS_NEEDED ( /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 ) )
 \end{lstlisting}}
 
-Linker options also affect load-time substitutability, by 
-binding references earlier than would otherwise happen (notably
-\textsf{-Bsymbolic}\ps{have to say what that is}).
-The point of our opening example, which appears to show a def-use edge
-from one function to another in the same file, is that this edge may be subject
-to load-time substitution.
-Interestingly, build-time substitution would \emph{not} allow 
-this edge to be broken---whereas 
-dynamic linking substitutes at the granularity of symbols
+Linker options can be invoked to bind references earlier than would otherwise happen;
+This can avoid indirection, hence improve performance; \textsf{-Bsymbolic} 
+provides this feature when generating System~V shared libraries.
+But this also removes load-time substitutability.
+Our opening example, which appears to show a def-use edge
+from one function to another in the same file, 
+was showing that this edge may be subject to substitution.
+Dynamic linking substitutes at the granularity of symbols
 (a single definition may be substituted),
-batch linking substitutes at the granularity of input objects
-(only whole compilation units are substituted).
+whereas batch linking substitutes at the granularity of input objects
+(only whole compilation units are substituted),
+meaning that if our example were in a single source file, it typically
+would be substitutable at load time but not at batch link time.
 \ps{is this something that mixin module systems can typically do? not sure...}
+\sk{Mixins are more about interposition-as-extension, i.e. the next paragraph,
+than about pure substitution.
+But the latter is a degenerate case of the former---don't use the mixed-in definition!---so
+I'd say so.}
+However, finer-grained link-time mechanisms could 
+also break this edge, because substitution is a degenerate case of \emph{interposition}.
 
 \paragraph{Interposition}
 Interposition can be thought of as substitution where the prior definition
@@ -289,6 +506,7 @@ with the prefix \textsf{\_\_real\_}.
 At load time, the interposed-on symbol can be looked up programmatically with its unmodified name 
 (using \textsf{dlsym()}).
 \ps{give a clue when one or the other is desirable?}
+The latter is often used to dynamically 
 The bindings semantics of \textsf{--wrap} are particularly complex
 because they depend on how the compiler/assembler has mapped source-level definitions and references
 onto linker-level sections, symbols and relocation records.
@@ -297,8 +515,17 @@ source-level attributes, internal implementation decisions, and so on.
 For example, compiling with \textsf{-ffunction-sections} results in exposing
 more bindings to \textsf{--wrap}.
 
+However, finer-grain interposition can also be used to achieve substitution.
+Whether or not build-time substitution can affect this binding
+is entirely dependent on the compiler: typically the reference
+would be encoded by a single defined symbol and a single relocation record, 
+``pre-bound'', hence not substitutable.
+However, it si completely valid ELF to instead encode it as a pair of like-named symbols, 
+one defined and one undefined, in which case link-time substitution could be performed.
+
 \ps{do we need to talk somewhere about the relationship between
   source-language names and ELF-file symbols?}
+\sk{Added a footnote some way above. It feels like overkill though.}
 
 % options linker options, 
 %compiler/assembler options, and compiler/assembler internals.
@@ -404,15 +631,22 @@ and is exploited by some user-level libraries \citep{kell_dynamic_2015}.
 
 \ps{slightly related: is there some linker mechanism for making copies
   of a bunch of functions \emph{together with their local state}?}
+\sk{In short, no. Am guessing ``local state'' means associated static-storage variables? 
+In general, linkers turn 1 input item into 0 or 1 copies in the output, never more.
+If you want this, it's your job to copy the input files yourself, then link all the copies.
+And you probably then have to rename the symbols yourself, too. 
+Tools like objcopy are used for this.}
 
 \paragraph{Aliases}
 In standard C, a function has exactly one name. 
 At link time, however, the same range of bytes may have multiple symbol names, 
 each denoting the same address but with different metadata.
 Compilers typically expose this functionality using attributes.
-\ps{some examples and what they do?}
-Although their semantics are far less well defined than the core language,
-the use of attributes is often crucial to programs' meaning.
+For example, a function \textsf{f} can be marked with the attributes \textsf{alias("g")}
+meaning it also has the linker name \textsf{g}.
+(We'll see a practical use case for this shortly, in ``topology alternatives''.)
+Compiler attributes often encode details crucial to a program's intended meaning,
+but their semantics are in effect defined only in terms of linker features.
 % This means that two pointers to a differently-named functions
 % may still compare equal.
 We encountered a bug in the CIL~\cite{necula-cil-2002} C translator, which mis-compiles the \textsf{alias} attribute
@@ -466,12 +700,13 @@ extern __typeof (__fprintf) _IO_fprintf __attribute__ ((weak,
 
 The effect of the two aliases is that
 local code which wants to be sure of calling the local definition
-(perhaps because it consumes private state, or just to avoid the penalty 
+(perhaps because it consumes private state, or just to avoid the overhead 
 of calling to an object further away) 
 can use the name \textsf{\_\_fprintf}.
 The standard name \textsf{fprintf} is also provided;
-if a substitute is provided by the user, this will not affect
-local calls to \textsf{\_\_fprintf}.
+if a substitute is provided by the user 
+(much like the \textsf{malloc} substitution we considered earlier),
+this will not affect local calls to \textsf{\_\_fprintf}.
 Similarly, the alias \textsf{\_IO\_fprintf} is defined
 for the benefit of the \textsf{libio} subsystem: 
 depending on the build,

@@ -34,18 +34,19 @@ Both cause padding bytes to be inserted.
 In the former case, the linker chooses the greatest alignment of all input sections
 that make up the output section.
 In the latter case, the linker inserts padding before beginning a fresh output section.
-In general, extra padding will still work, but 
-we prefer to tighten the spec 
-by requiring that the minimum amount be the only allowable amount.
+In general, superfluous padding is not an error, but 
+is wasteful.
+Our specification outlaws this waste, 
+by taking the view that the minimum amount be the only allowable amount.
 Unfortunately, we have seen cases where the \textsf{gold} linker inserts
 superfluous padding, e.g.\ starting at a 16-byte-aligned address
 and adding a whole 16 bytes of padding
 before the next section of 16-byte alignment.
 It is unclear whether this is a bug; 
-we believe so (and have filed GNU binutils bug ).
+we believe so (and have filed GNU binutils bug 18979 (FIXME: remove for blind review)).
 
 \paragraph{Section padding contents}
-It is not specified what byte values a linker may generate
+It is not specified what byte values a linker may use
 to pad a section.
 In practice, linkers use zeroes for data and either zeroes or nop-sequences for code.
 Nop-sequences have the advantage that control can flow between abutting sections
@@ -77,7 +78,7 @@ that tries to optimise disk-memory trade-offs.
 It seems reasonable to specify that 
 wasteful padding should not be inserted, but 
 no single trade-off is always appropriate.
-LINK to binutils bug.
+LINK to binutils bug 19203 (REMOVE for blind review).
 
 \paragraph{Common symbol placement}
 Linker scripts control all common symbols at once.
@@ -133,3 +134,29 @@ for size and/or execution speed, by ``relaxing'' contents
 at reference points (choosing a shorter calling sequence, say) 
 and section boundaries (overlapping leading and trailing padding in exception
 handling information, say).
+
+\paragraph{Phase paradoxes} A linker makes multiple passes over its inputs.
+Sometimes, feature interactions induce circular dependencies between
+these passes, which linkers resolve in arbitrary and generally undocumented ways.
+One example is input enumeration: to identify which archive members
+to include in a link, the linker searches archives for definitions
+of the symbols required by other input objects.
+However, later phases might completely obviate the need for those definitions, 
+since the linker script might provide a replacement definition.
+THe effect is transitive: archive members pulled in to satisfy some deep
+(transitive) dependency might actually turn out superfluous.
+Whether they are removed from the link is an undocumented detail; 
+in all linkers we know of, they are not.
+However, linker phases could be restructured so that they are never pulled in at all.
+Another example is in linker-generated structures like the global offset table (GOT). 
+The memory placement of the GOT is controllable in the linker script,
+meaning it must be sized when the script's interpreter runs. 
+The same definition-obviation behaviour might remove all via-GOT references
+to a given symbol, hence obviating the need for its slot, meaning the size
+should be recomputed after script processing, and addresses re-assigned.
+This re-execution need not converge to a fixed point, since linker script behaviour
+may depend on section sizes.
+(FIXME: I thik it might also create a via-GOT reference
+to a previously non-GOTted symbol, which would make life interesting.
+Not yet sure if linker scripts can set up such a reference though.)
+
