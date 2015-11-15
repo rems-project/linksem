@@ -7,11 +7,8 @@ If linking were only about separate compilation, it would have a natural specifi
 in terms of these languages' source program semantics.
 Previous formal models of linking~\cite{cardelli-program-1997, glew-type-safe-1999, machkasova-calculus-2000, wells-equational-2000, fagorzi-calculus-2007}
 have worked on this basis, 
-seeking to provide a formal basis for separate compilation with verified safety properties.
-Similarly, the CompCert verified C compiler~\cite{leroy-formal-2009} 
-omits any linker per se, instead 
-directly implementing its own private C-language separate compilation mechanism.
-\ps{ref also Gil et al.'s upcoming popl paper}
+seeking to provide a formal basis for separate compilation with verified safety properties, as has
+previous research on linking in the context of verified compilation~\cite{stewart-compositional-2015, kang-lightweight-2015}.
 
 However, linking is not simply a matter of separate compilation.
 Systems code and application code alike 
