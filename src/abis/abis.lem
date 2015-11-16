@@ -359,8 +359,8 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
                     if (get_elf64_relocation_a_type r.ref_relent IN {
                         r_x86_64_got32; r_x86_64_gotpcrel; (* r_x86_64_gottpoff; *) r_x86_64_gotoff64; r_x86_64_gotpc32 (* ; r_x86_64_gotpc32_tlsdesc *)
                     }) then 
-                        let _ = errln ("Saw a via-GOT symbol reference: " ^ rr.ref.ref_symname ^ " coming from linkable " ^ (show i) ^ " (" ^ 
-                            fname ^ "), logically from section " ^ (show r.ref_src_scn)) in 
+                        (*let _ = errln ("Saw a via-GOT symbol reference: " ^ rr.ref.ref_symname ^ " coming from linkable " ^ (show i) ^ " (" ^ 
+                            fname ^ "), logically from section " ^ (show r.ref_src_scn)) in *)
                         Just (rr.ref.ref_symname, maybe_def) else Nothing
                 | (Just r, Just(MakePIC, maybe_def)) -> failwith "FIXME: PIC support please"
             end
@@ -369,8 +369,8 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
     in
     let (symnames, maybe_defs) = unzip refs_via_got
     in
-    let _ = errln ("GOT includes defs with names: " ^ (show (Set_extra.toList (Set.fromList symnames))))
-    in
+    (*let _ = errln ("GOT includes defs with names: " ^ (show (Set_extra.toList (Set.fromList symnames))))
+    in*)
     let pairs_set = Set.fromList refs_via_got
     in
     let defs_set = Set.fromList maybe_defs
@@ -465,10 +465,10 @@ let amd64_concretise_support img =
                                     match element_and_offset_to_address (def_el_name, def_start) img with
                                         Nothing -> failwith ("no address for definition offset in element " ^ def_el_name)
                                         | Just addr -> 
-                                            let _ = errln ("GOT slot for symbol `" ^ symname ^ 
+                                            (*let _ = errln ("GOT slot for symbol `" ^ symname ^ 
                                                 "' created pointing to address 0x" ^ (hex_string_of_natural addr) ^ 
                                                 " (offset 0x" ^ (hex_string_of_natural def_start) ^ " in element " ^ def_el_name ^ ")")
-                                            in
+                                            in*)
                                             addr
                                     end
                                 | _ -> failwith ("multiple matching definitions for GOT entry named " ^ symname)

@@ -29,6 +29,7 @@ val natural_of_byte : byte -> natural
 declare ocaml    target_rep function natural_of_byte x = `Nat_big_num.of_int` (`Char.code` x)
 declare isabelle target_rep function natural_of_byte = `unat`
 declare hol      target_rep function natural_of_byte = `w2n`
+declare coq      target_rep function natural_of_byte = `natural_of_byte`
 
 let compare_byte b1 b2 = compare (natural_of_byte b1) (natural_of_byte b2)
 
@@ -45,11 +46,13 @@ val char_of_byte : byte -> char
 declare ocaml    target_rep function char_of_byte x = ``x
 declare isabelle target_rep function char_of_byte = `Elf_Types_Local.char_of_unsigned_char`
 declare hol      target_rep function char_of_byte = `CHR` `o` `w2n`
+declare coq      target_rep function char_of_byte = `char_of_byte`
 
 val byte_of_char : char -> byte
 
 declare ocaml    target_rep function byte_of_char x = ``x
 declare isabelle target_rep function byte_of_char = `Elf_Types_Local.unsigned_char_of_char`
+declare coq      target_rep function byte_of_char = `byte_of_char`
 (* FIXME: declare hol      target_rep function char_of_byte = `CHR` `o` `w2n` *)
 
 (* Define how to print a byte in hex *)
@@ -154,18 +157,21 @@ val unsafe_nat_of_natural : natural -> nat
 declare ocaml    target_rep function unsafe_nat_of_natural = `Nat_big_num.to_int`
 declare isabelle target_rep function unsafe_nat_of_natural = `id`
 declare hol      target_rep function unsafe_nat_of_natural = `id`
+declare coq      target_rep function unsafe_nat_of_natural = `id`
 
 val unsafe_int_of_natural   : natural -> int
 
 declare ocaml    target_rep function unsafe_int_of_natural = `Nat_big_num.to_int`
 declare isabelle target_rep function unsafe_int_of_natural = `int`
 declare hol      target_rep function unsafe_int_of_natural x = `&` x
+declare coq      target_rep function unsafe_int_of_natural = `int_of_nat`
 
 val byte_of_natural : natural -> byte
 
 declare ocaml    target_rep function byte_of_natural x = `Char.chr` (`Nat_big_num.to_int` x)
 declare isabelle target_rep function byte_of_natural m = (`of_nat` m `::` `byte`)
 declare hol      target_rep function byte_of_natural = `n2w` `:` `num` `->` `8` `word`
+declare coq      target_rep function byte_of_natural = `byte_of_nat`
 
 declare ocaml    target_rep type ordering = `int`
 
@@ -313,6 +319,7 @@ val null_byte : byte
 declare ocaml    target_rep function null_byte = `'\000'`
 declare isabelle target_rep function null_byte = `0` `::` `8` `word`
 declare hol      target_rep function null_byte = `0w` `:` `8` `word`
+declare coq      target_rep function null_byte = `null_byte`
 
 (** [null_char] is the null character. *)
 val null_char : char
@@ -320,6 +327,7 @@ let {ocaml} null_char = char_of_byte null_byte
 
 declare isabelle target_rep function null_char = `String.char_of_nat` `0`
 declare hol      target_rep function null_char = `CHR` `0`
+declare coq      target_rep function null_char = `null_char`
 
 (** [println s] prints [s] to stdout, adding a trailing newline. *)
 (* val println : string -> unit *)
@@ -396,8 +404,9 @@ end
   *)
 val split_string_on_char : string -> char -> list string
 
-declare ocaml target_rep function split_string_on_char = `Ml_bindings.split_string_on_char`
+declare ocaml    target_rep function split_string_on_char = `Ml_bindings.split_string_on_char`
 declare isabelle target_rep function split_string_on_char = `Elf_Types_Local.split_string_on_char`
+declare coq      target_rep function split_string_on_char = `split_string_on_char`
 
 assert {ocaml} split_string_null : (let afterSplit = split_string_on_char (toString ([null_char; #'s'; null_char; #'t']: list char)) null_char
     in 
@@ -410,6 +419,7 @@ val find_substring : string -> string -> maybe natural
 declare ocaml    target_rep function find_substring = `Ml_bindings.find_substring`
 declare hol      target_rep function find_substring = `ARB`
 declare isabelle target_rep function find_substring = `undefined`
+declare coq      target_rep function find_substring = `find_substring`
 
 (** [string_of_nat m] produces a string representation of natural number [m]. *)
 val string_of_nat : nat -> string
@@ -423,6 +433,7 @@ val string_suffix : natural -> string -> maybe string
 declare ocaml    target_rep function string_suffix = `Ml_bindings.string_suffix`
 declare isabelle target_rep function string_suffix = `Elf_Types_Local.string_suffix`
 declare hol      target_rep function string_suffix = `ARB` (* XXX: add custom binding *)
+declare coq      target_rep function string_suffix = `string_suffix`
   
 val nat_length : forall 'a. list 'a -> nat
 declare ocaml target_rep function nat_length = `List.length`
