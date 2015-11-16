@@ -1,7 +1,7 @@
 int f(void);
 
-int main(void) __attribute__((noreturn));
-int main(void)
+int _start(void) __attribute__((noreturn));
+int _start(void)
 {
 	int ret = f();
 	__asm__ volatile ("      movq $60, %%rax          # exit \n\

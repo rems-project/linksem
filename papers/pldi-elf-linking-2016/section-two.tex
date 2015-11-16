@@ -225,9 +225,10 @@ break down as follows.
 
 \begin{description}
 
-\item[Command-line arguments] ---supplied when invoking the linker.
+\item[Arguments] ---these are command-line options supplied when invoking the linker.
+In the case of dynamic linking, environment variables serve the analogous purpose.
 
-\item[Linker scripts] ---written in the linker's script language. 
+\item[Scripts] ---most batch linkers embed a script language, used pervasively.
 Scripts come in two flavours: \emph{control scripts}, 
 of which there is exactly one in any link job,
 and ``implicit'' scripts. 
@@ -236,17 +237,19 @@ and are written in a small subset of the linker script language.
 Typically they are used to create simple proxy-like object files, defining symbols
 and/or sections in a textual rather than binary notation.
 
-\item[Object file features] ---largely meaning symbols, sections, relocations and their
-attributes affecting link semantics. Many of these attributes 
-have corresponding forms in assemblers (``directives'' or pseudo-ops) 
-and compilers (attributes) allowing the programmer
-to control the object file that is output.
+\item[Metadata] ---object files contain symbols, sections, relocation records
+and other metadata, on which link semantics crucially depend. Many of these 
+object file features have corresponding forms in assemblers (``directives'' or pseudo-ops) and compilers (attributes) allowing the programmer
+to control the metadata in the assembled or compiled object file.
 
-\item[Object file usage conventions] As a rule, 
-section names are formally meaningless to the linker.
-However, ABIs often attach meaning to specific section names,
+\item[Conventions] ---applications of linking attach specific meaning to 
+specific ways of using symbols, sections and other linker features, even though, 
+as a rule, these are formally meaningless to the linker.
+For example, ABIs often attach meaning to specific section or symbol names,
 require the presence of certain named sections, and so on.
-(Additionally, some linker features flout this rule by attaching meaning to section names.)
+(Additionally, a few linker features flout the rule, by attaching meaning to section names.)
+
+% orphan placement is the big example
 
 \end{description}
 
@@ -337,8 +340,6 @@ which was based on the AT\&T System~V linker.
 % and source code which invokes linker features using inline assembly directives, 
 % compiler-specific attribtes or other extensions.
 
-\paragraph{Basic linker operation}
-
 \paragraph{Memory placement}
 Systems code often needs to reside at particular places in memory.
 For example, typical Unix kernels occupy the higher portion of the address space.
@@ -411,9 +412,8 @@ DWARF info does not take the form of ELF symbols, so no.
 But STABS debug info does, so yes! etc.}
 However, linkers expose at least three other encapsulation facilities
 that are \emph{not} supported in this way: (1) ELF symbol visibility attributes,
-allow similar name-visibility control but at the coarser granularity of 
+allowing names to be scoped at the coarser granularity of 
 dynamically-linked binaries (instead of single object files);
-\ps{needs to be more concrete to explain to those who don't already know?}
 (2) archives,
 since inclusion in an archive restricts an object's visibility 
 to other modules in the link;
@@ -459,14 +459,14 @@ definitions, analogous to the \textsf{malloc} example, but for dynamically bound
 This can create unwanted dependency on change-prone binary-level details\ps{what follows doesn't exactly say
   that. Instead ``Care is needed when using this''?}\sk{``Care'' is too weak: 
 there's no way to robustly use this feature without fixing
-the binary-level details of your C library; e.g.\ it can easily break on libc upgrades.}, 
-since calls apparently targeting a dynamic object 
-(such as \textsf{libc.so}) might actually have been bound statically
-in some libraries or versions thereof
-(such as \textsf{stat()} in the GNU C library; 
-the GNU \textsf{libc.so} is actually a linker script 
-statically importing certain definitions).
-In these cases, dynamic interposition will fail.
+the binary-level details of your C library; e.g.\ it can easily break on libc upgrades.
+I have strengthened it a bit.}, 
+since the split between what is statically linked and what is dynamically linked
+is an implementation detail of the library.
+If it changes, dynamic substitutions may suddenly fail.
+For example, \textsf{stat()} in the GNU C library is statically linked even when
+dynamic-linking the remainder of the library. This is achieved by having \textsf{libc.so} be the following linker script rather than a shared library.
+As a result, dynamic substitution of \textsf{stat()} is not possible.
 
 {\scriptsize\begin{lstlisting}[language=plain,basicstyle=\sffamily,columns=flexible]
 OUTPUT_FORMAT(elf64-x86-64)
@@ -477,7 +477,7 @@ GROUP ( /lib/x86_64-linux-gnu/libc.so.6
 
 Linker options can be invoked to bind references earlier than would otherwise happen;
 This can avoid indirection, hence improve performance; \textsf{-Bsymbolic} 
-provides this feature when generating System~V shared libraries.
+requests this when generating System~V shared libraries.
 But this also removes load-time substitutability.
 Our opening example, which appears to show a def-use edge
 from one function to another in the same file, 
@@ -502,26 +502,27 @@ is re-used by the substituted one---typically for instrumentation.
 (FIXME: say something about infinite regress, here or at the fprintf example?)
 Different mechanisms allow this:
 at batch link time, the \textsf{--wrap} option exposes a wrapped symbol
-with the prefix \textsf{\_\_real\_}. 
-At load time, the interposed-on symbol can be looked up programmatically with its unmodified name 
-(using \textsf{dlsym()}).
-\ps{give a clue when one or the other is desirable?}
-The latter is often used to dynamically 
-The bindings semantics of \textsf{--wrap} are particularly complex
-because they depend on how the compiler/assembler has mapped source-level definitions and references
-onto linker-level sections, symbols and relocation records.
+with the prefix \textsf{\_\_real\_}.
+For example, a program linking in its own \textsf{malloc} 
+could be linked with \textsf{--wrap} \textsf{malloc} to profile memory allocations.
+The link-time bindings semantics of \textsf{--wrap} are particularly complex because they depend on how the compiler/assembler has mapped source-level definitions and references onto linker-level sections, symbols and relocation records.
 This can be influenced by compiler/assembler options, 
 source-level attributes, internal implementation decisions, and so on.
-For example, compiling with \textsf{-ffunction-sections} results in exposing
-more bindings to \textsf{--wrap}.
+For example, when using \textsf{gcc}, compiling with \textsf{-ffunction-sections} results in exposing more bindings to \textsf{--wrap}.\sk{I'm being a bit fast-and-loose here... not really true as stated currently.}
+At load time, \textsf{LD\_PRELOAD} can be used for interposition by dynamically looking up the definition that is being substituted for (using \textsf{dlsym()}), and delegating to it. A program dynamically linking against \textsf{malloc} would need to use this trick for its allocation profiler. 
 
-However, finer-grain interposition can also be used to achieve substitution.
-Whether or not build-time substitution can affect this binding
-is entirely dependent on the compiler: typically the reference
-would be encoded by a single defined symbol and a single relocation record, 
-``pre-bound'', hence not substitutable.
-However, it si completely valid ELF to instead encode it as a pair of like-named symbols, 
-one defined and one undefined, in which case link-time substitution could be performed.
+% The latter allows a single binary to be run with or without a particular instrumentation or modification---a trick exploited by 
+% instrumentation tools (like early versions of Valgrind), 
+% run-time extensions (\textsf{socksify}, \textsf{fakeroot}, \textsf{flcow}),
+% compatibility wrappers and the like.
+% Meanwhile, 
+
+% Whether or not build-time substitution can affect this binding
+% is entirely dependent on the compiler: typically the reference
+% would be encoded by a single defined symbol and a single relocation record, 
+% ``pre-bound'', hence not substitutable.
+% However, it is completely valid ELF to instead encode it as a pair of like-named symbols, 
+% one defined and one undefined, in which case link-time substitution could be performed.
 
 \ps{do we need to talk somewhere about the relationship between
   source-language names and ELF-file symbols?}
@@ -624,7 +625,7 @@ This facility for enforcing link-time uniqueness
 is a general mechanism, allowing the 
 the useful optimisation of tunring pointer equality to be used instead of value equality 
 (of immutable objects),
-and is exploited by some user-level libraries \citep{kell_dynamic_2015}.
+and is exploited by some user-level libraries \citep{kell_towards_2015}.
 
 % dchisnall bug: RTLD_LOCAL can break this
 
@@ -635,7 +636,9 @@ and is exploited by some user-level libraries \citep{kell_dynamic_2015}.
 In general, linkers turn 1 input item into 0 or 1 copies in the output, never more.
 If you want this, it's your job to copy the input files yourself, then link all the copies.
 And you probably then have to rename the symbols yourself, too. 
-Tools like objcopy are used for this.}
+Tools like objcopy are used for this.
+This is covered in the ``module system'' text.
+}
 
 \paragraph{Aliases}
 In standard C, a function has exactly one name. 
@@ -653,8 +656,8 @@ We encountered a bug in the CIL~\cite{necula-cil-2002} C translator, which mis-c
 (offered by GNU and Sun/Oracle compilers)
 by duplicating the function body in a separate definition.
 Although C does not define aliasing, 
-it has a clear meaning at the linker level,
-even though no widely-read document happens to specify it.
+it has a clear meaning at the linker level: for any given definition, all aliases should have the same address.
+No widely-read document happens to specify it.
 
 %   let rt, formals, isva, _ = splitFunctionType vtype in
 %   if isva then E.s (error "%a: alias unsupported with varargs."
@@ -765,8 +768,7 @@ other dynamic analyses, diagnostic pretty-printing
 and so on.
 Dynamic linkers offer a richer interface 
 in terms of \textsf{dlsym()} (name-to-address) and \textsf{dladdr()} (address-to-name) functions.
-Some systems code 
-relies on the ability to introspect its own structure,
+Some systems code relies on the ability to introspect its own structure,
 often during initialization.
 %acquiring reference at link time 
 %where being passed a reference at run time is not possible or not efficient.

@@ -135,27 +135,31 @@ at reference points (choosing a shorter calling sequence, say)
 and section boundaries (overlapping leading and trailing padding in exception
 handling information, say).
 
-\paragraph{Phase paradoxes} A linker makes multiple passes over its inputs.
-Sometimes, feature interactions induce circular dependencies between
-these passes, which linkers resolve in arbitrary and generally undocumented ways.
+\paragraph{Phase anomalies} 
+A linker necessarily makes multiple passes over its inputs.
+Passes include enumerating inputs, calculating output section layout, 
+calculating addresses, applying relocations, and so on.
+Some linker features interact in ways which induce circular dependencies between
+these passes. 
+Linkers resolve these in arbitrary and often undocumented ways.
 One example is input enumeration: to identify which archive members
 to include in a link, the linker searches archives for definitions
 of the symbols required by other input objects.
-However, later phases might completely obviate the need for those definitions, 
-since the linker script might provide a replacement definition.
-THe effect is transitive: archive members pulled in to satisfy some deep
-(transitive) dependency might actually turn out superfluous.
+However, the linker script might subsequently provide its own definition
+for such a symbol, obviating the need for definitions that were (perhaps transitively) pulled in.
 Whether they are removed from the link is an undocumented detail; 
-in all linkers we know of, they are not.
+in all linkers we know of, they are not. (FIXME: check this.)
 However, linker phases could be restructured so that they are never pulled in at all.
 Another example is in linker-generated structures like the global offset table (GOT). 
 The memory placement of the GOT is controllable in the linker script,
 meaning it must be sized when the script's interpreter runs. 
 The same definition-obviation behaviour might remove all via-GOT references
 to a given symbol, hence obviating the need for its slot, meaning the size
-should be recomputed after script processing, and addresses re-assigned.
-This re-execution need not converge to a fixed point, since linker script behaviour
-may depend on section sizes.
+should be recomputed after script processing, meaning the address-assignment phase
+should be re-run. 
+Again, real linkers do not do this recomputation.
+If they did, it need not converge to a fixed point, since linker script behaviour
+may depend on section sizes and hence create an oscillation.
 (FIXME: I thik it might also create a via-GOT reference
 to a previously non-GOTted symbol, which would make life interesting.
 Not yet sure if linker scripts can set up such a reference though.)
