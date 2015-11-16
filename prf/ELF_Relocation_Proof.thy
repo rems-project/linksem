@@ -98,6 +98,77 @@ by (cases z, auto)
  * let \<sigma>0 = load_image im in
  *   run_program fixed_program empty_state \<simeq> execute_two_steps \<sigma>0
  *)
+
+lemma silly_map_lemma1:
+  shows "List.concat (map encode [mov_constant_to_mem 5 0, mov_constant_from_mem 0]) =
+    [72, 199, 4, 37, 0, 0, 0, 0, 5, 0, 0, 0, 72, 139, 4, 37, 0, 0, 0, 0]"
+sorry
+
+lemma silly_map_lemma2:
+  shows "map Some [72, 199, 4, 37, 0, 0, 0, 0, 5, 0, 0, 0, 72, 139, 4, 37, 0, 0, 0, 0] =
+    [Some 72, Some 199, Some 4, Some 37, Some 0, Some 0, Some 0, Some 0, Some 5, Some 0, Some 0,
+       Some 0, Some 72, Some 139, Some 4, Some 37, Some 0, Some 0, Some 0, Some 0]"
+by auto
+
+lemma silly_rev_lemma1:
+  shows "rev [(''.text'', \<lparr>startpos = Some 4194304, length1 = Some 16,
+           contents = [Some 72, Some 199, Some 4, Some 37, Some 0, Some 0, Some 0, Some 0, Some 5, Some 0, Some 0, Some 0, Some 72, Some 139,
+             Some 4, Some 37, Some 0, Some 0, Some 0, Some 0]\<rparr>),
+           (''.data'', \<lparr>startpos = Some 4194320, length1 = Some 8, contents = map Some (replicate 8 (of_nat 42))\<rparr>)] =
+  [(''.data'', \<lparr>startpos = Some 4194320, length1 = Some 8, contents = map Some (replicate 8 (of_nat 42))\<rparr>),
+   (''.text'', \<lparr>startpos = Some 4194304, length1 = Some 16,
+           contents = [Some 72, Some 199, Some 4, Some 37, Some 0, Some 0, Some 0, Some 0, Some 5, Some 0, Some 0, Some 0, Some 72, Some 139,
+             Some 4, Some 37, Some 0, Some 0, Some 0, Some 0]\<rparr>)]"
+by simp
+
+lemma silly_rev_lemma2:
+  shows "rev [(''test'', [(0, (0, ref_rec0, ref_linkable_item), Some (0, def_rec0, ref_linkable_item))])]
+    = [(''test'', [(0, (0, ref_rec0, ref_linkable_item), Some (0, def_rec0, ref_linkable_item))])]"
+by auto
+
+lemma silly_map_of_lemma1:
+  shows "map_of [(''.data'', \<lparr>startpos = Some 4194320, length1 = Some 8, contents = map Some (replicate 8 (of_nat 42))\<rparr>),
+                                                          (''.text'',
+                                                           \<lparr>startpos = Some 4194304, length1 = Some 16,
+                                                              contents = [Some 72, Some 199, Some 4, Some 37, Some 0, Some 0, Some 0, Some 0, Some 5, Some 0, Some 0, Some 0, Some 72, Some 139,
+                                                                          Some 4, Some 37, Some 0, Some 0, Some 0, Some 0]\<rparr>)]
+    = (\<lambda>x. if x = ''.data'' then 
+        Some \<lparr>startpos = Some 4194320, length1 = Some 8, contents = map Some (replicate 8 (of_nat 42))\<rparr>
+     else if x = ''.text'' then
+       Some \<lparr>startpos = Some 4194304, length1 = Some 16,
+                                                              contents = [Some 72, Some 199, Some 4, Some 37, Some 0, Some 0, Some 0, Some 0, Some 5, Some 0, Some 0, Some 0, Some 72, Some 139,
+                                                                          Some 4, Some 37, Some 0, Some 0, Some 0, Some 0]\<rparr>
+     else
+       None)"
+by auto
+
+lemma silly_map_of_lemma2:
+  shows "map_of [(''test'', [(0, (0, ref_rec0, ref_linkable_item), Some (0, def_rec0, ref_linkable_item))])] =
+    (\<lambda>x. if x = ''test'' then Some [(0, (0, ref_rec0, ref_linkable_item), Some (0, def_rec0, ref_linkable_item))] else None)"
+by auto
+
+lemma silly_let_lemma:
+  shows "let initial_img =
+                                      \<lparr>elements = \<lambda>x. if x = ''.data'' then Some \<lparr>startpos = Some 4194320, length1 = Some 8, contents = map Some (replicate 8 (of_nat 42))\<rparr>
+                                                      else if x = ''.text''
+                                                           then Some \<lparr>startpos = Some 4194304, length1 = Some 16,
+                                                                        contents = [Some 72, Some 199, Some 4, Some 37, Some 0, Some 0, Some 0, Some 0, Some 5, Some 0, Some 0, Some 0, Some 72,
+                                                                                    Some 139, Some 4, Some 37, Some 0, Some 0, Some 0, Some 0]\<rparr>
+                                                           else None,
+                                         by_range = set meta0, by_tag = by_tag_from_by_range (set meta0)\<rparr>;
+                                    ref_input_item = (''test.o'', Reloc (Sequence []), File (Filename ''blah'', null_input_file_options), [InCommandLine 0]);
+                                    ref_linkable_item = (RelocELF initial_img, ref_input_item, null_input_options);
+                                    bindings_by_name = \<lambda>x. if x = ''test'' then Some [(0, (0, ref_rec0, ref_linkable_item), Some (0, def_rec0, ref_linkable_item))] else None
+                                in relocate_output_image sysv_amd64_std_abi bindings_by_name initial_img
+  = relocate_output_image sysv_amd64_std_abi (\<lambda>x. if x = ''test'' then Some [(0, (0, ref_rec0, (RelocELF initial_img, (''test.o'', Reloc (Sequence []), File (Filename ''blah'', null_input_file_options), [InCommandLine 0]), null_input_options)), Some (0, def_rec0, (RelocELF initial_img, (''test.o'', Reloc (Sequence []), File (Filename ''blah'', null_input_file_options), [InCommandLine 0]), null_input_options)))] else None) \<lparr>elements = \<lambda>x. if x = ''.data'' then Some \<lparr>startpos = Some 4194320, length1 = Some 8, contents = map Some (replicate 8 (of_nat 42))\<rparr>
+                                                      else if x = ''.text''
+                                                           then Some \<lparr>startpos = Some 4194304, length1 = Some 16,
+                                                                        contents = [Some 72, Some 199, Some 4, Some 37, Some 0, Some 0, Some 0, Some 0, Some 5, Some 0, Some 0, Some 0, Some 72,
+                                                                                    Some 139, Some 4, Some 37, Some 0, Some 0, Some 0, Some 0]\<rparr>
+                                                           else None,
+                                         by_range = set meta0, by_tag = by_tag_from_by_range (set meta0)\<rparr>"
+by auto
+
 theorem at_least_some_relocations_relocate:
     fixes ef :: elf64_file and segs_and_provenance :: "(elf64_interpreted_segment \<times> segment_provenance) list" and entry :: "nat"
             and rstate final_fixed_state final_relocatable_state :: "X64_state"
@@ -108,7 +179,18 @@ theorem at_least_some_relocations_relocate:
       and "final_relocatable_state = execute_two_steps rstate"
     shows "REG final_fixed_state = REG final_relocatable_state" (* XXX: probably want to say something about the contents of memory here, too! *)
 using assms(1)
-  apply(simp only: relocation_image_def img1_def relocatable_program_def sysv_amd64_std_abi_def Let_def)
-  apply(rule back_subst[OF let_ext])
+  apply(simp only: elf64_file_of_elf_memory_image_def)
+  apply(simp only: elf_memory_image_section_ranges_def)
+  apply(simp only: tagged_ranges_matching_tag_def)
+  apply(simp only: relocation_image_def)
+  apply(simp only: relocatable_program_def)
+  apply(simp only: if_True)
+  apply(simp only: silly_map_lemma1)
+  apply(simp only: img1_def)
+  apply(simp only: silly_map_lemma2)
+  apply(simp only: silly_rev_lemma1)
+  apply(simp only: silly_map_of_lemma1)
+  apply(simp only: silly_rev_lemma2)
+  apply(simp only: silly_map_of_lemma2)
 
 end
