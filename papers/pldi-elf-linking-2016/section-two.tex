@@ -475,7 +475,7 @@ GROUP ( /lib/x86_64-linux-gnu/libc.so.6
   AS_NEEDED ( /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 ) )
 \end{lstlisting}}
 
-Linker options can be invoked to bind references earlier than would otherwise happen;
+Linker options can be invoked to bind references earlier than would otherwise happen.
 This can avoid indirection, hence improve performance; \textsf{-Bsymbolic} 
 requests this when generating System~V shared libraries.
 But this also removes load-time substitutability.
