@@ -30,9 +30,6 @@ Require Export lem_num.
 Require Import lem_string.
 Require Export lem_string.
 
-Require Import lem_string_extra.
-Require Export lem_string_extra.
-
 (* 
 
 Class Show (a: Type): Type := {
