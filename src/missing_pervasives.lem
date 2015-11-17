@@ -10,6 +10,7 @@ open import Sorting
 
 open import {isabelle} `$ISABELLE_HOME/src/HOL/Word/Word`
 open import {isabelle} `Elf_Types_Local`
+open import {coq} `elf_types_local`
 
 val naturalZero : natural
 let naturalZero = 0
