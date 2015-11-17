@@ -92,8 +92,8 @@ Definition bytes_of_unsigned_char  (u : unsigned_char )  : list (elf_types_local
 (* [?]: removed top-level value definition. *)
 
 Instance x42_Eq : Eq unsigned_char := {
-   isEqual  :=  unsigned_char_eq;
-   isInequal   l  r :=  negb (unsigned_char_eq l r)
+   isEqual  :=  unsigned_char_equal;
+   isInequal   l  r :=  negb (unsigned_char_equal l r)
 }.
 
 (* 
@@ -150,8 +150,8 @@ Definition bytes_of_elf32_addr  (endian : endianness ) (w : elf32_addr )  : list
   end.
 
 Instance x40_Eq : Eq elf32_addr := {
-   isEqual  :=  unsigned_elf32_addr;
-   isInequal   l  r :=  negb (unsigned_elf32_addr l r)
+   isEqual  :=  elf32_addr_equal;
+   isInequal   l  r :=  negb (elf32_addr_equal l r)
 }.
 
 (* 
@@ -773,9 +773,9 @@ Definition read_elf64_sxword  (endian : endianness ) (bs0 : byte_sequence )  : e
 
 Definition bytes_of_elf64_sxword  (endian : endianness ) (w : elf64_sxword )  : list (elf_types_local.byte ):= 
   match ( endian) with 
-    | Little => match ( elf64_sxword w) with (b0,  b1,  b2,  b3,  b4,  b5,  b6,  b7) =>
+    | Little => match (oct_of_elf64_sxword w) with (b0,  b1,  b2,  b3,  b4,  b5,  b6,  b7) =>
    [b0; b1; b2; b3; b4; b5; b6; b7] end
-    | Big    => match ( elf64_sxword w) with (b0,  b1,  b2,  b3,  b4,  b5,  b6,  b7) =>
+    | Big    => match (oct_of_elf64_sxword w) with (b0,  b1,  b2,  b3,  b4,  b5,  b6,  b7) =>
    [b7; b6; b5; b4; b3; b2; b1; b0] end
   end.
 (* 
