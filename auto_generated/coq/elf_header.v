@@ -82,7 +82,7 @@ Definition shn_undef    :  nat :=  0.
   * of in elf_section_header_table.lem because a calculation below requires this
   * constant (i.e. forward reference in the ELF spec).
   *)
-Definition shn_xindex    :  nat :=  65535. (* 0xffff *)
+Definition shn_xindex    :  nat :=  S (S(16383 + 16383) + S(16383 + 16383)). (* 0xffff *)
 
 (** ELF object file types.  Enumerates the ELF object file types specified in the
  *  System V ABI.  Values between [elf_ft_lo_os] and [elf_ft_hi_os] inclusive are
@@ -104,23 +104,23 @@ Definition elf_ft_dyn    :  nat :=  3.
 (** Core file *)
 Definition elf_ft_core    :  nat :=  4.
 (** Operating-system specific *)
-Definition elf_ft_lo_os    :  nat :=  65024. (* 0xfe00 *)
+Definition elf_ft_lo_os    :  nat :=  (16256 + 16256 + 16256 + 16256). (* 0xfe00 *)
 (** Operating-system specific *)
-Definition elf_ft_hi_os    :  nat :=  65279. (* 0xfeff *)
+Definition elf_ft_hi_os    :  nat :=  S(S(16319 + 16319) + S(16319 + 16319)). (* 0xfeff *)
 (** Processor specific *)
-Definition elf_ft_lo_proc    :  nat :=  65280. (* 0xff00 *)
+Definition elf_ft_lo_proc    :  nat :=  16320 + 16320 + 16320 + 16320. (* 0xff00 *)
 (** Processor specific *)
-Definition elf_ft_hi_proc    :  nat :=  65535.
+Definition elf_ft_hi_proc    :  nat := S (S(16383 + 16383) + S(16383 + 16383)).
 (* [?]: removed value specification. *)
 
 (* [?]: removed value specification. *)
 
 Definition is_operating_system_specific_object_file_type_value  (v : nat )  : bool :=  nat_gteb
-  v( 65024) && nat_lteb v( 65279).
+  v elf_ft_lo_os && nat_lteb v elf_ft_hi_os.
 (* [?]: removed value specification. *)
 
 Definition is_processor_specific_object_file_type_value  (v : nat )  : bool :=  nat_gteb
-  v( 65280) && nat_lteb v( 65535).
+  v elf_ft_lo_proc && nat_lteb v elf_ft_hi_proc.
 
 (** ELF machine architectures *)
 
@@ -750,7 +750,6 @@ Notation "{[ r 'with' 'elf32_phnum' := e ]}" := ({| elf32_phnum := e; elf32_iden
 Notation "{[ r 'with' 'elf32_shentsize' := e ]}" := ({| elf32_shentsize := e; elf32_ident := elf32_ident r; elf32_type := elf32_type r; elf32_machine := elf32_machine r; elf32_version := elf32_version r; elf32_entry := elf32_entry r; elf32_phoff := elf32_phoff r; elf32_shoff := elf32_shoff r; elf32_flags := elf32_flags r; elf32_ehsize := elf32_ehsize r; elf32_phentsize := elf32_phentsize r; elf32_phnum := elf32_phnum r; elf32_shnum := elf32_shnum r; elf32_shstrndx := elf32_shstrndx r |}).
 Notation "{[ r 'with' 'elf32_shnum' := e ]}" := ({| elf32_shnum := e; elf32_ident := elf32_ident r; elf32_type := elf32_type r; elf32_machine := elf32_machine r; elf32_version := elf32_version r; elf32_entry := elf32_entry r; elf32_phoff := elf32_phoff r; elf32_shoff := elf32_shoff r; elf32_flags := elf32_flags r; elf32_ehsize := elf32_ehsize r; elf32_phentsize := elf32_phentsize r; elf32_phnum := elf32_phnum r; elf32_shentsize := elf32_shentsize r; elf32_shstrndx := elf32_shstrndx r |}).
 Notation "{[ r 'with' 'elf32_shstrndx' := e ]}" := ({| elf32_shstrndx := e; elf32_ident := elf32_ident r; elf32_type := elf32_type r; elf32_machine := elf32_machine r; elf32_version := elf32_version r; elf32_entry := elf32_entry r; elf32_phoff := elf32_phoff r; elf32_shoff := elf32_shoff r; elf32_flags := elf32_flags r; elf32_ehsize := elf32_ehsize r; elf32_phentsize := elf32_phentsize r; elf32_phnum := elf32_phnum r; elf32_shentsize := elf32_shentsize r; elf32_shnum := elf32_shnum r |}).
-Definition elf32_header_default: elf32_header  := {| elf32_ident := DAEMON; elf32_type := elf32_half_default; elf32_machine := elf32_half_default; elf32_version := elf32_word_default; elf32_entry := elf32_addr_default; elf32_phoff := elf32_off_default; elf32_shoff := elf32_off_default; elf32_flags := elf32_word_default; elf32_ehsize := elf32_half_default; elf32_phentsize := elf32_half_default; elf32_phnum := elf32_half_default; elf32_shentsize := elf32_half_default; elf32_shnum := elf32_half_default; elf32_shstrndx := elf32_half_default |}.
    
 (** [elf64_header] is the type of headers for 64-bit ELF files.
   *)
@@ -784,14 +783,13 @@ Notation "{[ r 'with' 'elf64_phnum' := e ]}" := ({| elf64_phnum := e; elf64_iden
 Notation "{[ r 'with' 'elf64_shentsize' := e ]}" := ({| elf64_shentsize := e; elf64_ident := elf64_ident r; elf64_type := elf64_type r; elf64_machine := elf64_machine r; elf64_version := elf64_version r; elf64_entry := elf64_entry r; elf64_phoff := elf64_phoff r; elf64_shoff := elf64_shoff r; elf64_flags := elf64_flags r; elf64_ehsize := elf64_ehsize r; elf64_phentsize := elf64_phentsize r; elf64_phnum := elf64_phnum r; elf64_shnum := elf64_shnum r; elf64_shstrndx := elf64_shstrndx r |}).
 Notation "{[ r 'with' 'elf64_shnum' := e ]}" := ({| elf64_shnum := e; elf64_ident := elf64_ident r; elf64_type := elf64_type r; elf64_machine := elf64_machine r; elf64_version := elf64_version r; elf64_entry := elf64_entry r; elf64_phoff := elf64_phoff r; elf64_shoff := elf64_shoff r; elf64_flags := elf64_flags r; elf64_ehsize := elf64_ehsize r; elf64_phentsize := elf64_phentsize r; elf64_phnum := elf64_phnum r; elf64_shentsize := elf64_shentsize r; elf64_shstrndx := elf64_shstrndx r |}).
 Notation "{[ r 'with' 'elf64_shstrndx' := e ]}" := ({| elf64_shstrndx := e; elf64_ident := elf64_ident r; elf64_type := elf64_type r; elf64_machine := elf64_machine r; elf64_version := elf64_version r; elf64_entry := elf64_entry r; elf64_phoff := elf64_phoff r; elf64_shoff := elf64_shoff r; elf64_flags := elf64_flags r; elf64_ehsize := elf64_ehsize r; elf64_phentsize := elf64_phentsize r; elf64_phnum := elf64_phnum r; elf64_shentsize := elf64_shentsize r; elf64_shnum := elf64_shnum r |}).
-Definition elf64_header_default: elf64_header  := {| elf64_ident := DAEMON; elf64_type := elf64_half_default; elf64_machine := elf64_half_default; elf64_version := elf64_word_default; elf64_entry := elf64_addr_default; elf64_phoff := elf64_off_default; elf64_shoff := elf64_off_default; elf64_flags := elf64_word_default; elf64_ehsize := elf64_half_default; elf64_phentsize := elf64_half_default; elf64_phnum := elf64_half_default; elf64_shentsize := elf64_half_default; elf64_shnum := elf64_half_default; elf64_shstrndx := elf64_half_default |}.
 (* [?]: removed value specification. *)
 
-Definition is_valid_elf32_header  (hdr : elf32_header )  : bool :=  (list_equal_by unsigned_char_eq  
+Definition is_valid_elf32_header  (hdr : elf32_header )  : bool :=  (list_equal_by unsigned_char_equal  
 (lem_list.take( 4)(elf32_ident hdr)) [elf_mn_mag0; elf_mn_mag1; elf_mn_mag2; elf_mn_mag3]).
 (* [?]: removed value specification. *)
 
-Definition is_valid_elf64_header  (hdr : elf64_header )  : bool :=  (list_equal_by unsigned_char_eq  
+Definition is_valid_elf64_header  (hdr : elf64_header )  : bool :=  (list_equal_by unsigned_char_equal  
 (lem_list.take( 4)(elf64_ident hdr)) [elf_mn_mag0; elf_mn_mag1; elf_mn_mag2; elf_mn_mag3]).
 (* [?]: removed value specification. *)
 
@@ -979,11 +977,11 @@ Definition deduce_endianness  (id1 : list (unsigned_char ))  : endianness :=
 (* [?]: removed value specification. *)
 
 Definition get_elf32_header_endianness  (hdr : elf32_header )  : endianness := 
-  deduce_endianness ((elf32_identhdr)).
+  deduce_endianness ((elf32_ident hdr)).
 (* [?]: removed value specification. *)
 
 Definition get_elf64_header_endianness  (hdr : elf64_header )  : endianness := 
-  deduce_endianness ((elf64_identhdr)).
+  deduce_endianness ((elf64_ident hdr)).
 (* [?]: removed value specification. *)
 
 Definition has_elf32_header_associated_entry_point  (hdr : elf32_header )  : bool :=  negb (beq_nat (nat_of_elf32_addr(elf32_entry hdr))( 0)).
@@ -1087,20 +1085,20 @@ Definition bytes_of_elf64_header  (hdr : elf64_header )  : byte_sequence :=
     .
 (* [?]: removed value specification. *)
 
-Definition is_elf32_header_padding_correct  (ehdr : elf32_header )  : bool :=   (maybeEqualBy unsigned_char_eq  
-(lem_list.index(elf32_ident ehdr)( 9)) (Some (unsigned_char_of_nat( 0)))) && ((maybeEqualBy unsigned_char_eq  
-(lem_list.index(elf32_ident ehdr)( 10)) (Some (unsigned_char_of_nat( 0)))) && ((maybeEqualBy unsigned_char_eq  
-(lem_list.index(elf32_ident ehdr)( 11)) (Some (unsigned_char_of_nat( 0)))) && ((maybeEqualBy unsigned_char_eq  
-(lem_list.index(elf32_ident ehdr)( 12)) (Some (unsigned_char_of_nat( 0)))) && ((maybeEqualBy unsigned_char_eq  
-(lem_list.index(elf32_ident ehdr)( 13)) (Some (unsigned_char_of_nat( 0)))) && ((maybeEqualBy unsigned_char_eq  
-(lem_list.index(elf32_ident ehdr)( 14)) (Some (unsigned_char_of_nat( 0)))) && (maybeEqualBy unsigned_char_eq  
+Definition is_elf32_header_padding_correct  (ehdr : elf32_header )  : bool :=   (maybeEqualBy unsigned_char_equal  
+(lem_list.index(elf32_ident ehdr)( 9)) (Some (unsigned_char_of_nat( 0)))) && ((maybeEqualBy unsigned_char_equal  
+(lem_list.index(elf32_ident ehdr)( 10)) (Some (unsigned_char_of_nat( 0)))) && ((maybeEqualBy unsigned_char_equal  
+(lem_list.index(elf32_ident ehdr)( 11)) (Some (unsigned_char_of_nat( 0)))) && ((maybeEqualBy unsigned_char_equal  
+(lem_list.index(elf32_ident ehdr)( 12)) (Some (unsigned_char_of_nat( 0)))) && ((maybeEqualBy unsigned_char_equal  
+(lem_list.index(elf32_ident ehdr)( 13)) (Some (unsigned_char_of_nat( 0)))) && ((maybeEqualBy unsigned_char_equal  
+(lem_list.index(elf32_ident ehdr)( 14)) (Some (unsigned_char_of_nat( 0)))) && (maybeEqualBy unsigned_char_equal  
 (lem_list.index(elf32_ident ehdr)( 15)) (Some (unsigned_char_of_nat( 0))))))))).
 (* [?]: removed value specification. *)
 
-Definition is_magic_number_correct  (ident : list (unsigned_char ))  : bool :=  (maybeEqualBy unsigned_char_eq  
-(lem_list.index ident( 0)) (Some (unsigned_char_of_nat( 127)))) && ((maybeEqualBy unsigned_char_eq  
-(lem_list.index ident( 1)) (Some (unsigned_char_of_nat( 69))))  && ((maybeEqualBy unsigned_char_eq  
-(lem_list.index ident( 2)) (Some (unsigned_char_of_nat( 76))))  && (maybeEqualBy unsigned_char_eq  
+Definition is_magic_number_correct  (ident : list (unsigned_char ))  : bool :=  (maybeEqualBy unsigned_char_equal  
+(lem_list.index ident( 0)) (Some (unsigned_char_of_nat( 127)))) && ((maybeEqualBy unsigned_char_equal  
+(lem_list.index ident( 1)) (Some (unsigned_char_of_nat( 69))))  && ((maybeEqualBy unsigned_char_equal  
+(lem_list.index ident( 2)) (Some (unsigned_char_of_nat( 76))))  && (maybeEqualBy unsigned_char_equal  
 (lem_list.index ident( 3)) (Some (unsigned_char_of_nat( 70)))))).
 (* [?]: removed value specification. *)
 
@@ -1276,19 +1274,19 @@ Definition read_elf64_header  (bs : byte_sequence )  : error ((elf64_header *byt
                                      end) end) end) end) end) end) end).
 (* [?]: removed value specification. *)
 
-Definition is_elf32_header_class_correct  (ehdr : elf32_header )  : bool :=  (maybeEqualBy unsigned_char_eq  
+Definition is_elf32_header_class_correct  (ehdr : elf32_header )  : bool :=  (maybeEqualBy unsigned_char_equal  
 (lem_list.index(elf32_ident ehdr)( 4)) (Some (unsigned_char_of_nat( 1)))).
 (* [?]: removed value specification. *)
 
-Definition is_elf64_header_class_correct  (ehdr : elf64_header )  : bool :=  (maybeEqualBy unsigned_char_eq  
+Definition is_elf64_header_class_correct  (ehdr : elf64_header )  : bool :=  (maybeEqualBy unsigned_char_equal  
 (lem_list.index(elf64_ident ehdr)( 4)) (Some (unsigned_char_of_nat( 1)))).
 (* [?]: removed value specification. *)
 
-Definition is_elf32_header_version_correct  (ehdr : elf32_header )  : bool :=  (maybeEqualBy unsigned_char_eq  
+Definition is_elf32_header_version_correct  (ehdr : elf32_header )  : bool :=  (maybeEqualBy unsigned_char_equal  
 (lem_list.index(elf32_ident ehdr)( 6)) (Some (unsigned_char_of_nat( 1)))).
 (* [?]: removed value specification. *)
 
-Definition is_elf64_header_version_correct  (ehdr : elf64_header )  : bool :=  (maybeEqualBy unsigned_char_eq  
+Definition is_elf64_header_version_correct  (ehdr : elf64_header )  : bool :=  (maybeEqualBy unsigned_char_equal  
 (lem_list.index(elf64_ident ehdr)( 6)) (Some (unsigned_char_of_nat( 1)))).
 (* [?]: removed value specification. *)
 
