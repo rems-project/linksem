@@ -25,5 +25,5 @@ Require Export elf_types_native_uint.
 (** LSB section 9.2.1.1: in addition to SCO ELF spec types GNU defines an
   * additional 1-byte integral type.
   *)
-Definition gnu_ext_byte : Type :=  byte .
+Definition gnu_ext_byte : Type :=  elf_types_local.byte .
 Definition gnu_ext_byte_default: gnu_ext_byte  := byte_default.

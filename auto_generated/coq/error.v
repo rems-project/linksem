@@ -35,12 +35,11 @@ Require Export show.
   * with [err] as the reason.
   *)
 Inductive error (a : Type) : Type :=
-	 Success:  a -> error a
-	| Fail:  string  -> error a.
-Definition error_default{a: Type} : error a := Success DAEMON.
+  | Success:  a -> error a
+  | Fail:  string  -> error a.
 (* [?]: removed value specification. *)
 
-Definition return0 {a : Type}  (r : a)  : error a:=  Success r.
+Definition return0 {a : Type} (r : a)  : error a:=  Success a r.
 (* [?]: removed value specification. *)
 
 Definition with_success {a b : Type}  (err : error a) (fl : b) (suc : a -> b)  : b:= 
@@ -50,14 +49,16 @@ Definition with_success {a b : Type}  (err : error a) (fl : b) (suc : a -> b)  :
   end.
 (* [?]: removed value specification. *)
 
-Definition fail0 {a : Type}  (err : string )  : error a:=  Fail err.
+Definition fail0 {a : Type}  (err : string )  : error a:=  Fail a err.
 (* [?]: removed value specification. *)
 
-Definition >>= {a b : Type}  (x : error a) (f : a -> error b)  : error b:= 
+Definition bind {a b : Type}  (x : error a) (f : a -> error b)  : error b:= 
 	match ( x) with 
 		| Success s => f s
-		| Fail err  => Fail err
+		| Fail err  => Fail b err
 	end.
+
+Notation "f >>= x" := (bind f x) (at level 50).
 (* [?]: removed value specification. *)
 
 Definition as_maybe {a : Type}  (e : error a)  : option a := 
@@ -67,26 +68,26 @@ Definition as_maybe {a : Type}  (e : error a)  : option a :=
   end.
 (* [?]: removed value specification. *)
 
-Program Fixpoint repeatM {a : Type}  (count : nat ) (action : error a)  : error (list a):= 
-  if beq_nat count( 0) then
-    return0 []
-  else
-    action >>= (fun (head1 : a) =>
-    repeatM ( Coq.Init.Peano.minus count( 1)) action >>= (fun (tail1 : list a) =>
-    return0 (head1::tail1))).
+Program Fixpoint repeatM {a : Type}  (count : nat ) (action : error a) {measure count} : error (list a) := 
+  match count with
+    | 0   => return0 []
+    | S m =>
+        action >>= fun head1 =>
+        repeatM m action >>= fun tail1 =>
+        return0 (head1::tail1)
+  end.
 (* [?]: removed value specification. *)
 
 Program Fixpoint repeatM' {a b : Type}  (count : nat ) (seed : b) (action : b -> error ((a*b) % type))  : error ((list a*b) % type):= 
-  if beq_nat count( 0) then
-    return0 ([], seed)
-  else
-    action seed >>= (fun (p : (a*b) % type) =>
-    match ( (p) ) with ( (head1,  seed)) =>
-      repeatM' ( Coq.Init.Peano.minus count ( 1)) seed action >>=
-      (fun (p : (list a*b) % type) =>
-         match ( (p) ) with ( (tail1,  seed)) =>
-           return0 ((head1 :: tail1), seed) end) end).
-(* [?]: removed value specification. *)
+  match count with
+    | 0 => return0 ([], seed)
+    | S m =>
+      action seed >>= fun hs =>
+      let (head1, seed) := hs in
+      repeatM' m seed action >>= fun ts =>
+      let (tail1, seed) := ts in
+      return0 ((head1::tail1), seed)
+  end.
 
 Program Fixpoint mapM {a b : Type}  (f : a -> error b) (xs : list a)  : error (list b):= 
 	match ( xs) with 

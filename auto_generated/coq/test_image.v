@@ -118,15 +118,15 @@ Definition meta0   : list ((option ((string *((nat *nat ) % type)) % type) *rang
 .
 
 
-Definition img1  (instr_bytes : list (byte ))  : annotated_memory_image (abis.any_abi_feature ):=  
+Definition img1  (instr_bytes : list (elf_types_local.byte ))  : annotated_memory_image (abis.any_abi_feature ):=  
     let initial_img := 
      {|elements := (lem_map.fromList [(".text", {|startpos := (Some( 4194304))
            ;length1 := (Some( 16))
-           ;contents := (List.map (fun (x : byte ) => Some x) instr_bytes)
+           ;contents := (List.map (fun (x : elf_types_local.byte ) => Some x) instr_bytes)
           |});
           (".data", {|startpos := (Some( 4194320))
            ;length1 := (Some( 8))
-           ;contents := (List.map (fun (x : byte ) => Some x) (lem_list.replicate( 8) (byte_of_nat( 42))))
+           ;contents := (List.map (fun (x : elf_types_local.byte ) => Some x) (lem_list.replicate( 8) (byte_of_nat( 42))))
           |})]
           )
         ;by_range := (set_from_list_by (lem_basic_classes.pairCompare (maybeCompare (lem_basic_classes.pairCompare (fun (x : string ) (y : string )=>EQ) (lem_basic_classes.pairCompare (lem_basic_classes.genericCompare nat_ltb beq_nat) (lem_basic_classes.genericCompare nat_ltb beq_nat)))) (fun (x : range_tag (abis.any_abi_feature )) (y : range_tag (abis.any_abi_feature ))=>EQ)) meta0)

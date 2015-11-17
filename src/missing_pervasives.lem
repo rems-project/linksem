@@ -10,6 +10,7 @@ open import Sorting
 
 open import {isabelle} `$ISABELLE_HOME/src/HOL/Word/Word`
 open import {isabelle} `Elf_Types_Local`
+open import {coq} `elf_types_local`
 
 val naturalZero : natural
 let naturalZero = 0
@@ -24,12 +25,13 @@ type byte
 declare ocaml    target_rep type byte = `char`
 declare isabelle target_rep type byte = `Elf_Types_Local.byte`
 declare hol      target_rep type byte = `word8`
+declare coq      target_rep type byte = `elf_types_local.byte`
 val natural_of_byte : byte -> natural
 
 declare ocaml    target_rep function natural_of_byte x = `Nat_big_num.of_int` (`Char.code` x)
 declare isabelle target_rep function natural_of_byte = `unat`
 declare hol      target_rep function natural_of_byte = `w2n`
-declare coq      target_rep function natural_of_byte = `natural_of_byte`
+declare coq      target_rep function natural_of_byte = `nat_of_byte`
 
 let compare_byte b1 b2 = compare (natural_of_byte b1) (natural_of_byte b2)
 

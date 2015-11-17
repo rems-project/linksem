@@ -422,14 +422,14 @@ Definition read_elf32_dyn  (endian : endianness ) (bs0 : byte_sequence ) (shared
              end) | C_Ignored =>
           match ( endian) with | Big =>
             read_4_bytes_be bs1 >>=
-            (fun (p : (((missing_pervasives.byte *missing_pervasives.byte *missing_pervasives.byte *missing_pervasives.byte ) % type)*byte_sequence ) % type) =>
+            (fun (p : (((elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type) =>
                match ( (p) ) with ( ((b1,  b2,  b3,  b4),  bs2)) =>
                  let cut := byte_sequence.from_byte_lists [[b1; b2; b3; b4]] in
                return0
                  ({|elf32_dyn_tag := tag0 ;elf32_dyn_d_un := (D_Ignored cut) |}, bs2)
                end) | Little =>
             read_4_bytes_le bs1 >>=
-            (fun (p : (((missing_pervasives.byte *missing_pervasives.byte *missing_pervasives.byte *missing_pervasives.byte ) % type)*byte_sequence ) % type) =>
+            (fun (p : (((elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type) =>
                match ( (p) ) with ( ((b1,  b2,  b3,  b4),  bs2)) =>
                  let cut := byte_sequence.from_byte_lists [[b1; b2; b3; b4]] in
                return0
@@ -460,7 +460,7 @@ Definition read_elf64_dyn  (endian : endianness ) (bs0 : byte_sequence ) (shared
              end) | C_Ignored =>
           match ( endian) with | Big =>
             read_8_bytes_be bs1 >>=
-            (fun (p : (((missing_pervasives.byte *missing_pervasives.byte *missing_pervasives.byte *missing_pervasives.byte *missing_pervasives.byte *missing_pervasives.byte *missing_pervasives.byte *missing_pervasives.byte ) % type)*byte_sequence ) % type) =>
+            (fun (p : (((elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type) =>
                match ( (p) ) with
                    ( ((b1,  b2,  b3,  b4,  b5,  b6,  b7,  b8),  bs2)) =>
                  let cut := byte_sequence.from_byte_lists
@@ -469,7 +469,7 @@ Definition read_elf64_dyn  (endian : endianness ) (bs0 : byte_sequence ) (shared
                  ({|elf64_dyn_tag := tag0 ;elf64_dyn_d_un := (D_Ignored cut) |}, bs2)
                end) | Little =>
             read_8_bytes_le bs1 >>=
-            (fun (p : (((missing_pervasives.byte *missing_pervasives.byte *missing_pervasives.byte *missing_pervasives.byte *missing_pervasives.byte *missing_pervasives.byte *missing_pervasives.byte *missing_pervasives.byte ) % type)*byte_sequence ) % type) =>
+            (fun (p : (((elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type) =>
                match ( (p) ) with
                    ( ((b1,  b2,  b3,  b4,  b5,  b6,  b7,  b8),  bs2)) =>
                  let cut := byte_sequence.from_byte_lists

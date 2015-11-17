@@ -136,9 +136,9 @@ let default_simplify_reloc rs b rd options =
             in
             if replacement <> Nothing 
             then
-                let _ = errln ("Simplifying a via-GOT symbol reference: " ^ ref.ref_symname ^ " coming from linkable " ^ (show ref_idx) ^ 
+                (*let _ = errln ("Simplifying a via-GOT symbol reference: " ^ ref.ref_symname ^ " coming from linkable " ^ (show ref_idx) ^ 
                     ", logically from section " ^ (show rs.ref_src_scn)) 
-                in 
+                in*) 
                 ApplyReloc(replacement)
             else
                 (* FIXME: also simplify PLT ones. *)
@@ -620,11 +620,11 @@ let relocate_output_image a bindings_by_name img =
                     match maybe_range with
                         Nothing -> failwith "impossible: reloc site with no range"
                         | Just (el_name, (start, len)) -> 
-                            let _ = errln ("During relocation, saw a reloc site in element " ^ el_name ^ ", offset 0x" ^
+                            (*let _ = errln ("During relocation, saw a reloc site in element " ^ el_name ^ ", offset 0x" ^
                                 (hex_string_of_natural start) ^ ", length 0x" ^ (hex_string_of_natural len) ^ 
                                 ", reloc type " ^ (* a. *) Abi_amd64_relocation.string_of_amd64_relocation_type (get_elf64_relocation_a_type rs.ref_relent) ^ 
                                 ", symbol name `" ^ x.ref.ref_symname ^ "'")
-                            in
+                            in*)
                             let symaddr = match x.maybe_def_bound_to with
                                 Just(ApplyReloc(_), Just(bound_def)) ->
                                     match find_defs_matching bound_def img with
@@ -637,15 +637,15 @@ let relocate_output_image a bindings_by_name img =
                                             in
                                             match more with 
                                                 [] -> v
-                                                | _ -> let _ = errln ("FIXME: internal error: more than one def range equalling bound def " ^
+                                                | _ -> (*let _ = errln ("FIXME: internal error: more than one def range equalling bound def " ^
                                                     "in section " ^ el_name)
-                                                    in v
+                                                    in*) v
                                             end
                                     end
                                 | Nothing -> failwith "no def found for bound-to symbol"
                                 | Just(ApplyReloc(_), Nothing) -> 
-                                    let _ = errln "No definition, so we think this is a weak reference; giving it value 0."
-                                    in
+                                    (*let _ = errln "No definition, so we think this is a weak reference; giving it value 0."
+                                    in*)
                                     (* CHECK: does the syment say it's weak? *)
                                     if get_elf64_symbol_binding x.ref.ref_syment <> stb_weak then
                                         (*let _ = errln "Actually not weak! bailing"
@@ -658,8 +658,8 @@ let relocate_output_image a bindings_by_name img =
                                     failwith "internal error: applying reloc that is not to be applied"
                             end
                             in
-                            let _ = errln ("Got symaddr: 0x" ^ (hex_string_of_natural symaddr))
-                            in
+                            (*let _ = errln ("Got symaddr: 0x" ^ (hex_string_of_natural symaddr))
+                            in*)
                             apply_reloc acc_img (el_name, start, len) x symaddr
                     end
                 | Nothing -> (* okay, do nothing *) acc_img

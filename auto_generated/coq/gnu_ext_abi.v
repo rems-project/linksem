@@ -177,7 +177,7 @@ Definition gnu_extend {abifeature : Type}  (a : abi abifeature)  : abi abifeatur
     ;commonpagesize      :=(commonpagesize a)
     ;symbol_is_generated_by_linker :=(symbol_is_generated_by_linker a)
     ;make_phdrs          :=(make_phdrs a) (* FIXME: also make the GNU phdrs! *)
-    ;max_phnum           := (Coq.Init.Peano.plus( 3)(max_phnum a)) (* FIXME: GNU_RELRO, GNU_STACK; what else? *)
+    ;max_phnum           := (Coq.Init.Peano.plus( 2)(max_phnum a)) (* FIXME: GNU_RELRO, GNU_STACK; what else? *)
     ;guess_entry_point   :=(guess_entry_point a)
     ;pad_data            :=(pad_data a)
     ;pad_code            :=(pad_code a)

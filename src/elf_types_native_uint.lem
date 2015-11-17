@@ -134,7 +134,7 @@ let bytes_of_unsigned_char u = [byte_of_unsigned_char u]
 val equal_unsigned_char  : unsigned_char -> unsigned_char -> bool
 
 let inline {isabelle; ocaml; hol} equal_unsigned_char = unsafe_structural_equality
-declare coq target_rep function equal_unsigned_char = `unsigned_char_eq`
+declare coq target_rep function equal_unsigned_char = `unsigned_char_equal`
 
 instance (Eq unsigned_char)
   let (=) = equal_unsigned_char
@@ -196,7 +196,7 @@ let read_elf32_addr endian bs0 =
 val equal_elf32_addr : elf32_addr -> elf32_addr -> bool
 
 let inline {isabelle; ocaml; hol} equal_elf32_addr = unsafe_structural_equality
-declare coq target_rep function equal_elf32_addr = `unsigned_elf32_addr`
+declare coq target_rep function equal_elf32_addr = `elf32_addr_equal`
 
 val quad_of_elf32_addr : elf32_addr -> (byte * byte * byte * byte)
 
@@ -1121,7 +1121,7 @@ val oct_of_elf64_sxword : elf64_sxword -> (byte * byte * byte * byte * byte * by
 declare ocaml    target_rep function oct_of_elf64_sxword = `Ml_bindings.bytes_of_int64`
 declare isabelle target_rep function oct_of_elf64_sxword = `Elf_Types_Local.oct_of_sint64`
 declare hol      target_rep function oct_of_elf64_sxword = `ARB`
-declare coq      target_rep function oct_of_elf64_sxword = `elf64_sxword`
+declare coq      target_rep function oct_of_elf64_sxword = `oct_of_elf64_sxword`
 
 val bytes_of_elf64_sxword : endianness -> elf64_sxword -> list byte
 let bytes_of_elf64_sxword endian w =

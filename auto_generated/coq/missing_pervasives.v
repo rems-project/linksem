@@ -41,21 +41,25 @@ Require Export lem_sorting.
 
 
 
+Require Import elf_types_local.
+Require Export elf_types_local.
+
 (* [?]: removed value specification. *)
 
 Definition naturalZero   : nat :=  0.
 (* [?]: removed value specification. *)
 
 Definition id {a : Type}  (x : a)  : a:=  x.
+(* 
 
 Inductive byte : Type := .
-Definition byte_default: byte  := DAEMON.
+Definition byte_default: byte  := DAEMON. *)
 (* [?]: removed value specification. *)
 
 
-Definition compare_byte  (b1 : byte ) (b2 : byte )  : ordering :=  (genericCompare nat_ltb beq_nat (natural_of_byte b1) (natural_of_byte b2)).
+Definition compare_byte  (b1 : elf_types_local.byte ) (b2 : elf_types_local.byte )  : ordering :=  (genericCompare nat_ltb beq_nat (nat_of_byte b1) (nat_of_byte b2)).
 
-Instance x12_Ord : Ord byte := {
+Instance x12_Ord : Ord elf_types_local.byte := {
      compare  :=  compare_byte;
      isLess  :=  fun  f1 => (fun  f2 => ( (ordering_equal (compare_byte f1 f2) LT)));
      isLessEqual  :=  fun  f1 => (fun  f2 => let result := compare_byte f1 f2 in (ordering_equal result LT) || (ordering_equal result EQ));
@@ -69,73 +73,75 @@ Instance x12_Ord : Ord byte := {
 
 (* [?]: removed value specification. *)
 
+Local Open Scope char_scope.
+
 Definition hex_char_of_nibble  (n : nat )  : ascii := 
   if beq_nat n( 0) then
-    0
+    "0"
   else if beq_nat n( 1) then
-    1
+    "1"
   else if beq_nat n( 2) then
-    2
+    "2"
   else if beq_nat n( 3) then
-    3
+    "3"
   else if beq_nat n( 4) then
-    4
+    "4"
   else if beq_nat n( 5) then
-    5
+    "5"
   else if beq_nat n( 6) then
-    6
+    "6"
   else if beq_nat n( 7) then
-    7
+    "7"
   else if beq_nat n( 8) then
-    8
+    "8"
   else if beq_nat n( 9) then
-    9
+    "9"
   else if beq_nat n( 10) then
-    a
+    "a"
   else if beq_nat n( 11) then
-    b
+    "b"
   else if beq_nat n( 12) then
-    c
+    "c"
   else if beq_nat n( 13) then
-    d
+    "d"
   else if beq_nat n( 14) then
-    e
+    "e"
   else if beq_nat n( 15) then
-    f
+    "f"
    else
      fail.
 
-Definition hex_string_of_byte  (b : byte )  : string :=  
-    string_from_char_list [ hex_char_of_nibble ( Coq.Numbers.Natural.Peano.NPeano.div(natural_of_byte b)( 16))
-             ; hex_char_of_nibble ( Coq.Numbers.Natural.Peano.NPeano.modulo(natural_of_byte b)( 16))].
+Definition hex_string_of_byte  (b : elf_types_local.byte )  : string :=  
+    string_from_char_list [ hex_char_of_nibble ( Coq.Numbers.Natural.Peano.NPeano.div(nat_of_byte b)( 16))
+             ; hex_char_of_nibble ( Coq.Numbers.Natural.Peano.NPeano.modulo(nat_of_byte b)( 16))].
 (* 
 
-Instance x11_Show : Show byte := {
+Instance x11_Show : Show elf_types_local.byte := {
      show  :=  hex_string_of_byte
 }.
  *)
 (* [?]: removed value specification. *)
 
 Definition natural_of_decimal_digit  (c : ascii )  : option (nat ) := 
-  if (char_equal c 0) then
+  if (char_equal c "0") then
     Some( 0)
-  else if (char_equal c 1) then
+  else if (char_equal c "1") then
     Some( 1)
-  else if (char_equal c 2) then
+  else if (char_equal c "2") then
     Some( 2)
-  else if (char_equal c 3) then
+  else if (char_equal c "3") then
     Some( 3)
-  else if (char_equal c 4) then
+  else if (char_equal c "4") then
     Some( 4)
-  else if (char_equal c 5) then
+  else if (char_equal c "5") then
     Some( 5)
-  else if (char_equal c 6) then
+  else if (char_equal c "6") then
     Some( 6)
-  else if (char_equal c 7) then
+  else if (char_equal c "7") then
     Some( 7)
-  else if (char_equal c 8) then
+  else if (char_equal c "8") then
     Some( 8)
-  else if (char_equal c 9) then
+  else if (char_equal c "9") then
     Some( 9)
   else
     None.
@@ -155,9 +161,35 @@ Definition natural_of_decimal_string  (s : string )  : nat :=
     natural_of_decimal_string_helper( 0) (string_to_char_list s).
 (* [?]: removed value specification. *)
 
-Program Fixpoint hex_string_of_natural  (n : nat )  : string :=  
-    if nat_ltb n( 16) then string_from_char_list [hex_char_of_nibble n]
-    else  String.append(hex_string_of_natural ( Coq.Numbers.Natural.Peano.NPeano.div n( 16))) (string_from_char_list [hex_char_of_nibble ( Coq.Numbers.Natural.Peano.NPeano.modulo n( 16))]).
+Lemma lt_mult_plus:
+  forall m n o,
+    0 < n ->
+    0 <= o ->
+    m < (n * m) + o.
+Admitted (* XXX: come back and address this. *).
+
+Program Fixpoint hex_string_of_natural (n : nat) {measure n} : string :=  
+    if nat_ltb n 16 then
+      string_from_char_list [hex_char_of_nibble n]
+    else
+      String.append (hex_string_of_natural (Coq.Numbers.Natural.Peano.NPeano.div n 16)) (string_from_char_list [hex_char_of_nibble (Coq.Numbers.Natural.Peano.NPeano.modulo n 16)]).
+Next Obligation.
+  generalize (divmod_spec n 15 0 15).
+  case (divmod n 15 0 15).
+  cut (15 <= 15).
+  intro trivial.
+  intro n0. intro n1.
+  intro H. generalize (H trivial).
+  rewrite (mult_0_r 16).
+  rewrite <- (plus_n_O n).
+  rewrite (minus_diag 15).
+  rewrite <- (plus_n_O n).
+  clear H. intro H. destruct H.
+  rewrite H.
+  change (n0 < 16 * n0 + (15 - n1)).
+  apply lt_mult_plus.
+  auto with arith. auto with arith. auto with arith.
+Qed.
 (* [?]: removed value specification. *)
 
 Definition natural_of_bool  (b : bool )  : nat := 
@@ -182,7 +214,7 @@ Definition natural_ordering  (left : nat ) (right : nat )  : ordering :=
     GT.
 (* [?]: removed value specification. *)
 
-Program Fixpoint merge_by {a : Type}  (comp : a -> a -> ordering ) (xs : list a) (ys : list a)  : list a:= 
+Program Fixpoint merge_by {a : Type}  (comp : a -> a -> ordering ) (xs : list a) (ys : list a) {measure (List.length xs + List.length ys)} : list a:= 
   match ( (xs, ys)) with 
     | ([],  ys)      => ys
     | (xs,  [])     => xs
@@ -192,9 +224,61 @@ Program Fixpoint merge_by {a : Type}  (comp : a -> a -> ordering ) (xs : list a)
       else
         y::(merge_by comp (x::xs) ys)
   end.
+Next Obligation.
+  change (S (List.length xs0 + List.length ys0) < S (List.length xs0) + S (List.length ys0)).
+  rewrite <- plus_n_Sm.
+  auto with arith.
+Qed.
 (* [?]: removed value specification. *)
 
-Program Fixpoint sort_by {a : Type}  (comp : a -> a -> ordering ) (xs : list a)  : list a:= 
+Lemma splitAt_length:
+  forall {A : Type},
+  forall (m : nat),
+  forall (xs : list A),
+    List.length (fst (splitAt m xs)) = m /\
+    List.length (snd (splitAt m xs)) = List.length xs - m.
+Admitted.
+
+Lemma take_length:
+  forall {A : Type},
+  forall (m : nat),
+  forall (xs : list A),
+    List.length (take m xs) = m.
+Proof.
+  intros.
+  apply (splitAt_length m xs).
+Qed.
+
+Lemma drop_length:
+  forall {A : Type},
+  forall (m : nat),
+  forall (xs : list A),
+    List.length (drop m xs) = List.length xs - m.
+Proof.
+  intros.
+  apply (splitAt_length m xs).
+Qed.
+
+Lemma lt_minus:
+  forall m o,
+    0 < o ->
+    0 < m ->
+    m - o < m.
+Admitted (* XXX: come back and address this.*).
+
+Lemma lt_S:
+  forall m n,
+    S m = 2 * n ->
+    n <> 0.
+Admitted (* XXX: come back and address this. *).
+
+Lemma lt_1_split:
+  forall m,
+    m <= 1 ->
+    m = 0 \/ m = 1.
+Admitted (* XXX: come back and address this. *).
+
+Program Fixpoint sort_by {a : Type}  (comp : a -> a -> ordering ) (xs : list a) {measure (List.length xs)} : list a:= 
   match ( xs) with 
     | [] => []
     | [x] => [x]
@@ -203,6 +287,29 @@ Program Fixpoint sort_by {a : Type}  (comp : a -> a -> ordering ) (xs : list a) 
       let rs  := lem_list.drop ( Coq.Numbers.Natural.Peano.NPeano.div(List.length xs)( 2)) xs in
         merge_by comp (sort_by comp ls) (sort_by comp rs)
   end.
+Next Obligation.
+  rewrite take_length.
+  generalize (divmod_spec (List.length xs) 1 0 1).
+  case (divmod (List.length xs) 1 0 1).
+  cut (1 <= 1).
+  intro trivial.
+  intro n0. intro n1.
+  intro G. generalize (G trivial).
+  rewrite (mult_0_r 2).
+  rewrite <- (plus_n_O (List.length xs)).
+  rewrite (minus_diag 1).
+  rewrite <- (plus_n_O (List.length xs)).
+  clear G. intro G. destruct G.
+  rewrite H1.
+  change (n0 < 2 * n0 + (1 - n1)).
+  apply lt_mult_plus.
+  auto with arith. auto with arith. auto with arith.
+Qed.
+Next Obligation.
+Admitted.
+Next Obligation.
+  split. intro x. discriminate. discriminate.
+Qed.
 (* [?]: removed value specification. *)
 
 Program Fixpoint mapMaybei' {a b : Type}  (f : nat  -> a -> option b ) (idx1 : nat ) (xs : list a)  : list b:= 
@@ -224,24 +331,23 @@ Definition mapMaybei {a b : Type}  (f : nat  -> a -> option b ) (xs : list a)  :
 Program Fixpoint partitionii' {a : Type}   (offset : nat ) (sorted_is : list (nat )) (xs : list a) (reverse_accum : list ((nat *a) % type)) (reverse_accum_compl : list ((nat *a) % type))  : (list ((nat *a) % type)*list ((nat *a) % type)) % type:=  
     (* offset o means "xs begins at index o, as reckoned by the indices in sorted_is" *)
     match ( sorted_is) with 
-        [] => (List.rev reverse_accum, List.rev reverse_accum_compl)
-        | i :: more_is => 
-            let length_to_split_off := ( ( Coq.Init.Peano.minus i offset))
-            in match ( lem_list.splitAt length_to_split_off xs) with (left,  right) =>
-   let left_indices : list  nat  := lem_list.genlist
-                                      (fun (j : nat ) =>
-                                         Coq.Init.Peano.plus ( j) offset)
-                                      (List.length left) in
- let left_with_indices  := zip left_indices left in
- (* left begins at offset, right begins at offset + i *) match ( right) with
-     [] => (* We got to the end of the list before the target index. *)
- (List.rev reverse_accum,
- lem_list.reverseAppend reverse_accum_compl left_with_indices)
-   | x :: more_xs =>
-   (* x is at index i by definition, so more_xs starts with index i + 1 *)
-   partitionii' (Coq.Init.Peano.plus i ( 1)) more_is more_xs
-     ((i, x) :: reverse_accum)
-     (lem_list.reverseAppend left_with_indices reverse_accum_compl) end end
+      | [] => (List.rev reverse_accum, List.rev reverse_accum_compl)
+      | i::more_is => 
+        let length_to_split_off := i - offset in
+        match (lem_list.splitAt length_to_split_off xs) with
+          | (lft, rgt) =>
+          let left_indices      := lem_list.genlist (fun (j : nat ) => Coq.Init.Peano.plus j offset) (List.length lft) in
+          let left_with_indices := zip left_indices lft in
+            match rgt with
+              | [] => (* We got to the end of the list before the target index. *)
+                  (List.rev reverse_accum, lem_list.reverseAppend reverse_accum_compl left_with_indices)
+              | x::more_xs =>
+                 (* x is at index i by definition, so more_xs starts with index i + 1 *)
+                 partitionii' (Coq.Init.Peano.plus i ( 1)) more_is more_xs
+                   ((i, x) :: reverse_accum)
+                   (lem_list.reverseAppend left_with_indices reverse_accum_compl)
+            end
+        end
     end.
 (* [?]: removed value specification. *)
 
@@ -280,18 +386,14 @@ Program Fixpoint unzip3 {a b c : Type}  (l : list ((a*b*c) % type))  : (list a*l
 end.
 (* [?]: removed value specification. *)
 
-Program Fixpoint zip3 {a b c : Type}  (alist : list a) (blist : list b) (clist : list c)  : list ((a*b*c) % type):=  
+Program Fixpoint zip3 {a b c : Type} (alist : list a) (blist : list b) (clist : list c)
+    (prf1: List.length alist = List.length blist) (prf2: List.length blist = List.length clist) : list ((a*b*c) % type):=  
   match ( (alist, blist, clist)) with | ([],  [],  []) => []
-    | (x :: morex,  y :: morey,  z :: morez) =>
-    let more_xyz  := zip3 morex morey morez in (x, y, z) :: more_xyz
-    | ([], [],  _:: _) =>
-    DAEMON (* Incomplete Pattern at File \"missing_pervasives.lem\", line 310, character 34 to line 313, character 3 *)
-    | ([],  _:: _,  _) =>
-    DAEMON (* Incomplete Pattern at File \"missing_pervasives.lem\", line 310, character 34 to line 313, character 3 *)
-    | ( _:: _, [],  _) =>
-    DAEMON (* Incomplete Pattern at File \"missing_pervasives.lem\", line 310, character 34 to line 313, character 3 *)
-    | ( _:: _,  _:: _, []) =>
-    DAEMON (* Incomplete Pattern at File \"missing_pervasives.lem\", line 310, character 34 to line 313, character 3 *)
+    | (x :: morex,  y :: morey,  z :: morez) => let more_xyz := zip3 morex morey morez _ _ in (x, y, z) :: more_xyz
+    | ([], [],  _:: _)     => _
+    | ([],  _:: _,  _)     => _
+    | ( _:: _, [],  _)     => _
+    | ( _:: _,  _:: _, []) => _
   end.
 (* [?]: removed value specification. *)
 
@@ -307,25 +409,32 @@ Program Fixpoint zip3 {a b c : Type}  (alist : list a) (blist : list b) (clist :
 
 (* [?]: removed value specification. *)
 
-Program Fixpoint intercalate' {a : Type}  (sep : a) (xs : list a) (accum : list a)  : list a:= 
+Program Fixpoint intercalate' {a : Type}  (sep : a) (xs : list a) (accum : list a) {measure (List.length xs)} : list a:= 
 	match ( xs) with 
 		| []       => List.rev accum
 		| [x]      =>  (@ List.app _)(List.rev accum) [x]
 		| [x;  y]   =>  (@ List.app _)(List.rev accum) [x; sep; y]
 		| x::y::xs => intercalate' sep xs (sep::(y::(sep::(x::accum))))
 	end.
+Next Obligation.
+  case xs0. auto. auto with arith.
+  intros. auto with arith.
+Qed.
 (* [?]: removed value specification. *)
 
 Definition intercalate {a : Type}  (sep : a) (xs : list a)  : list a:=  intercalate' sep xs [].
 (* [?]: removed value specification. *)
 
-Definition unlines  (xs : list (string ))  : string := 
-  List.fold_left String.append (intercalate "
-" xs) "".
+Definition unlines  (xs : list (string)) : string := 
+  List.fold_left String.append (intercalate (String """" EmptyString) xs) (String """" EmptyString).
 (* [?]: removed value specification. *)
 
 Definition bracket  (xs : list (string ))  : string := 
-   String.append"("  (String.append(List.fold_left String.append (intercalate " " xs) "") ")").
+   String.append "(" 
+    (String.append
+      (List.fold_left String.append
+        (intercalate (String " " EmptyString) xs)
+         (String """" EmptyString)) ")").
 (* [?]: removed value specification. *)
 
 (* 
@@ -346,7 +455,8 @@ Instance x10_Show{a: Type} `{Show a}: Show (list  a):= {
 
 (* [?]: removed value specification. *)
 
-Definition length {a : Type}  (xs : list a)  : nat :=  List.fold_left (fun (y : nat )  _ : a => Coq.Init.Peano.plus( 1) y) xs ( 0).
+Definition length {a : Type} (xs : list a) : nat := 
+  List.fold_left (fun (y : nat) (_ : a) => S y) xs 0.
 (* [?]: removed value specification. *)
 
 Program Fixpoint take0 {a : Type}  (m : nat ) (xs : list a)  : list a:= 
@@ -483,8 +593,8 @@ Definition padding_and_maybe_newline  (c : ascii ) (width : nat ) (str : string 
 " else "") (string_from_char_list (replicate0 (if nat_lteb padlen( 1) then width else padlen) c)).
 (* [?]: removed value specification. *)
 
-Definition space_padding_and_maybe_newline  (width : nat ) (str : string )  : string :=  
-    padding_and_maybe_newline   width str.
+Definition space_padding_and_maybe_newline (width : nat) (str : string) : string :=  
+    padding_and_maybe_newline " " width str.
 (* [?]: removed value specification. *)
 
 Definition padded_and_maybe_newline  (c : ascii ) (width : nat ) (str : string )  : string :=  
@@ -493,7 +603,7 @@ Definition padded_and_maybe_newline  (c : ascii ) (width : nat ) (str : string )
 
 Definition padding_to  (c : ascii ) (width : nat ) (str : string )  : string :=  
     let padlen := Coq.Init.Peano.minus width ( (String.length str)) in
-    if nat_lteb padlen( 0) then "" else (string_from_char_list (replicate0 padlen c)).
+    if nat_lteb padlen( 0) then (String """" EmptyString) else (string_from_char_list (replicate0 padlen c)).
 (* [?]: removed value specification. *)
 
 Definition left_padded_to  (c : ascii ) (width : nat ) (str : string )  : string :=  
@@ -505,17 +615,17 @@ Definition right_padded_to  (c : ascii ) (width : nat ) (str : string )  : strin
 (* [?]: removed value specification. *)
 
 Definition space_padded_and_maybe_newline  (width : nat ) (str : string )  : string :=  
-     String.append str (padding_and_maybe_newline   width str).
+     String.append str (padding_and_maybe_newline " " width str).
 (* [?]: removed value specification. *)
 
 Definition left_space_padded_to  (width : nat ) (str : string )  : string :=  
-     String.append(padding_to   width str) str.
+     String.append(padding_to " " width str) str.
 (* [?]: removed value specification. *)
 
 Definition right_space_padded_to  (width : nat ) (str : string )  : string :=  
-     String.append str (padding_to   width str).
+     String.append str (padding_to " " width str).
 (* [?]: removed value specification. *)
 
 Definition left_zero_padded_to  (width : nat ) (str : string )  : string :=  
-     String.append(padding_to 0 width str) str.
+     String.append (padding_to " " width str) str.
  

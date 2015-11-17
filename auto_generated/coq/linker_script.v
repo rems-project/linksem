@@ -191,7 +191,7 @@ Inductive symbol_def_policy : Type :=  AlwaysDefine: symbol_def_policy
 Definition symbol_def_policy_default: symbol_def_policy  := AlwaysDefine.
 
 Definition input_selector : Type :=   list  input_spec  ->  list  input_spec .
-Definition input_selector_default: input_selector  := (fun (x136 :  list  input_spec ) => DAEMON).
+Definition input_selector_default: input_selector  := (fun (x137 :  list  input_spec ) => DAEMON).
 
 Definition address_expr : Type :=  memory_image.expr .
 Definition address_expr_default: address_expr  := expr_default.
@@ -238,7 +238,7 @@ Definition allocated_sections_map_default: allocated_sections_map  := DAEMON.
 
 Inductive address_expr_fn : Type :=
    AddressExprFn:  (nat  ->  allocated_sections_map  ->  nat ) -> address_expr_fn .
-Definition address_expr_fn_default: address_expr_fn  := AddressExprFn (fun (x134 : nat ) => (fun (x135 :  allocated_sections_map ) => nat_default)).
+Definition address_expr_fn_default: address_expr_fn  := AddressExprFn (fun (x135 : nat ) => (fun (x136 :  allocated_sections_map ) => nat_default)).
 
 Inductive script_element : Type := 
   DefineSymbol:  ((symbol_def_policy  * string  * symbol_spec ) % type) -> script_element 
@@ -1306,7 +1306,7 @@ Program Fixpoint build_image  (acc : annotated_memory_image (any_abi_feature )) 
             )
             in*)
         match ( List.fold_left
-                  (fun (p : (list (option (byte ) )*nat *set ((option ((string *((nat *nat ) % type)) % type) *range_tag (any_abi_feature )) % type)) % type) =>
+                  (fun (p : (list (option (elf_types_local.byte ) )*nat *set ((option ((string *((nat *nat ) % type)) % type) *range_tag (any_abi_feature )) % type)) % type) =>
                      match ( (p) ) with ( (accum_pat,  addr,  accum_meta)) =>
                        (fun (p : (output_section_composition_element *nat ) % type) =>
                           match ( (p) ) with ( (comp_el,  comp_addr)) =>
@@ -1717,7 +1717,9 @@ Program Fixpoint build_image  (acc : annotated_memory_image (any_abi_feature )) 
                                                                   match ( matching_possibles) with
                                                                     [] =>
                                                                     Some
-                                                                    (ApplyReloc, None)
+                                                                    (
+                                                                    ApplyReloc
+                                                                    (None), None)
                                                                     | [(bi,  ((rl,  r,  ri),  maybe_d))] =>
                                                                     Some
                                                                     (decision,
