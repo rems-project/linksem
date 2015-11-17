@@ -121,7 +121,7 @@ Require Export abis.
 (* - concretise symbolic elements? actually they pass a function to do this. *)
 
 Definition make_concrete_fn : Type :=  memory_image.element  ->  memory_image.element .
-Definition make_concrete_fn_default: make_concrete_fn  := (fun (x137 :  memory_image.element ) => element_default).
+Definition make_concrete_fn_default: make_concrete_fn  := (fun (x142 :  memory_image.element ) => element_default).
 (* [?]: removed value specification. *)
 
 Definition elf64_file_of_elf_memory_image  (a : abi (any_abi_feature )) (make_concrete : element  -> element ) (fname1 : string ) (img3 : annotated_memory_image (any_abi_feature ))  : elf64_file :=  

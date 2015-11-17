@@ -25,6 +25,7 @@ type byte
 declare ocaml    target_rep type byte = `char`
 declare isabelle target_rep type byte = `Elf_Types_Local.byte`
 declare hol      target_rep type byte = `word8`
+declare coq      target_rep type byte = `elf_types_local.byte`
 val natural_of_byte : byte -> natural
 
 declare ocaml    target_rep function natural_of_byte x = `Nat_big_num.of_int` (`Char.code` x)

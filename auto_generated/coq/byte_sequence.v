@@ -43,16 +43,19 @@ Require Export missing_pervasives.
 Require Import show.
 Require Export show.
 
+Require Import elf_types_local.
+Require Export elf_types_local.
+
 
 (** A [byte_sequence], [bs], denotes a consecutive list of bytes.  Can be read
   * from or written to a binary file.  Most basic type in the ELF formalisation.
   *)
 Inductive byte_sequence : Type := 
-  Sequence:  (list  byte ) -> byte_sequence .
+  Sequence:  (list  elf_types_local.byte ) -> byte_sequence .
 Definition byte_sequence_default: byte_sequence  := Sequence DAEMON.
 (* [?]: removed value specification. *)
 
-Definition byte_list_of_byte_sequence  (bs0 : byte_sequence )  : list (byte ):= 
+Definition byte_list_of_byte_sequence  (bs0 : byte_sequence )  : list (elf_types_local.byte ):= 
   match ( bs0) with 
     | Sequence xs => xs
   end.
@@ -82,20 +85,20 @@ Instance x19_Ord : Ord byte_sequence := {
 Definition empty   : byte_sequence :=  Sequence [].
 (* [?]: removed value specification. *)
 
-Definition read_char  (b : byte_sequence )  : error ((byte *byte_sequence ) % type):= 
+Definition read_char  (b : byte_sequence )  : error ((elf_types_local.byte *byte_sequence ) % type):= 
   match ( (b)) with (( Sequence ts)) =>
     match ( ts) with | [] => fail0 "read_char: sequence is empty" | x::xs =>
       return0 (x, Sequence xs) end end.
 (* [?]: removed value specification. *)
 
-Program Fixpoint repeat  (count : nat ) (c : byte )  : list (byte ):= 
+Program Fixpoint repeat  (count : nat ) (c : elf_types_local.byte )  : list (elf_types_local.byte ):= 
   match ( count) with 
     | 0 => []
-    | m => c::repeat ( Coq.Init.Peano.minus count( 1)) c
+    | S m => c::repeat m c
   end.
 (* [?]: removed value specification. *)
 
-Definition create  (count : nat ) (c : byte )  : byte_sequence := 
+Definition create  (count : nat ) (c : elf_types_local.byte )  : byte_sequence := 
   Sequence (repeat count c).
 (* [?]: removed value specification. *)
 
@@ -126,7 +129,7 @@ Definition zero_pad_to_length  (len : nat ) (bs : byte_sequence )  : byte_sequen
       concat1 [bs ; (zeros ( Coq.Init.Peano.minus len curlen))].
 (* [?]: removed value specification. *)
 
-Definition from_byte_lists  (ts : list (list (byte )))  : byte_sequence := 
+Definition from_byte_lists  (ts : list (list (elf_types_local.byte )))  : byte_sequence := 
   Sequence (lem_list.concat ts).
 (* [?]: removed value specification. *)
 
@@ -139,16 +142,26 @@ Definition string_of_byte_sequence  (b : byte_sequence )  : string :=
     let cs := char_list_of_byte_list ts in string_from_char_list cs end.
 (* [?]: removed value specification. *)
 
-Program Fixpoint equal  (left : byte_sequence ) (right : byte_sequence )  : bool := 
+Program Fixpoint equal (left : byte_sequence ) (right : byte_sequence) {measure ((length0 left) + (length0 right))} : bool := 
   match ( (left, right)) with 
     | (Sequence [],  Sequence []) => true
     | (Sequence( x::xs),  Sequence( y::ys)) => classical_boolean_equivalence
         x y && equal (Sequence xs) (Sequence ys)
     | (_,  _) => false
   end.
+Next Obligation.
+  change (List.length xs + List.length ys < S (List.length xs) + S (List.length ys)).
+  omega.
+Qed.
+Next Obligation.
+  split. discriminate. discriminate.
+Qed.
+Next Obligation.
+  split. discriminate. discriminate.
+Qed.
 (* [?]: removed value specification. *)
 
-Program Fixpoint dropbytes  (count : nat ) (b : byte_sequence )  : error (byte_sequence ):= 
+Program Fixpoint dropbytes  (count : nat ) (b : byte_sequence ) {measure (length0 b)} : error (byte_sequence ):= 
   match ( (count,b)) with ( count, ( Sequence ts)) =>
     if beq_nat count missing_pervasives.naturalZero then
       return0 (Sequence ts) else
@@ -181,104 +194,104 @@ Definition takebytes_with_length  (count : nat ) (ts_length : nat ) (b : byte_se
   (*let _ = Missing_pervasives.errs ("Succeeded\n") in *) result end.
 (* [?]: removed value specification. *)
 
-Definition read_2_bytes_le  (bs0 : byte_sequence )  : error ((((byte *byte ) % type)*byte_sequence ) % type):= 
-  read_char bs0 >>= (fun (p : (byte *byte_sequence ) % type) =>
+Definition read_2_bytes_le  (bs0 : byte_sequence )  : error ((((elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type):= 
+  read_char bs0 >>= (fun (p : (elf_types_local.byte *byte_sequence ) % type) =>
     match ( (p) ) with ( (b0,  bs1)) =>
       read_char bs1 >>=
-      (fun (p : (byte *byte_sequence ) % type) =>
+      (fun (p : (elf_types_local.byte *byte_sequence ) % type) =>
          match ( (p) ) with ( (b1,  bs2)) => return0 ((b1, b0), bs2) end) end).
 (* [?]: removed value specification. *)
 
-Definition read_2_bytes_be  (bs0 : byte_sequence )  : error ((((byte *byte ) % type)*byte_sequence ) % type):= 
-  read_char bs0 >>= (fun (p : (byte *byte_sequence ) % type) =>
+Definition read_2_bytes_be  (bs0 : byte_sequence )  : error ((((elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type):= 
+  read_char bs0 >>= (fun (p : (elf_types_local.byte *byte_sequence ) % type) =>
     match ( (p) ) with ( (b0,  bs1)) =>
       read_char bs1 >>=
-      (fun (p : (byte *byte_sequence ) % type) =>
+      (fun (p : (elf_types_local.byte *byte_sequence ) % type) =>
          match ( (p) ) with ( (b1,  bs2)) => return0 ((b0, b1), bs2) end) end).
 (* [?]: removed value specification. *)
 
-Definition read_4_bytes_le  (bs0 : byte_sequence )  : error ((((byte *byte *byte *byte ) % type)*byte_sequence ) % type):= 
-  read_char bs0 >>= (fun (p : (byte *byte_sequence ) % type) =>
+Definition read_4_bytes_le  (bs0 : byte_sequence )  : error ((((elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type):= 
+  read_char bs0 >>= (fun (p : (elf_types_local.byte *byte_sequence ) % type) =>
     match ( (p) ) with ( (b0,  bs1)) =>
       read_char bs1 >>=
-      (fun (p : (byte *byte_sequence ) % type) =>
+      (fun (p : (elf_types_local.byte *byte_sequence ) % type) =>
          match ( (p) ) with ( (b1,  bs2)) =>
            read_char bs2 >>=
-           (fun (p : (byte *byte_sequence ) % type) =>
+           (fun (p : (elf_types_local.byte *byte_sequence ) % type) =>
               match ( (p) ) with ( (b2,  bs3)) =>
                 read_char bs3 >>=
-                (fun (p : (byte *byte_sequence ) % type) =>
+                (fun (p : (elf_types_local.byte *byte_sequence ) % type) =>
                    match ( (p) ) with ( (b3,  bs4)) =>
                      return0 ((b3, b2, b1, b0), bs4) end) end) end) end).
 (* [?]: removed value specification. *)
 
-Definition read_4_bytes_be  (bs0 : byte_sequence )  : error ((((byte *byte *byte *byte ) % type)*byte_sequence ) % type):= 
-  read_char bs0 >>= (fun (p : (byte *byte_sequence ) % type) =>
+Definition read_4_bytes_be  (bs0 : byte_sequence )  : error ((((elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type):= 
+  read_char bs0 >>= (fun (p : (elf_types_local.byte *byte_sequence ) % type) =>
     match ( (p) ) with ( (b0,  bs1)) =>
       read_char bs1 >>=
-      (fun (p : (byte *byte_sequence ) % type) =>
+      (fun (p : (elf_types_local.byte *byte_sequence ) % type) =>
          match ( (p) ) with ( (b1,  bs2)) =>
            read_char bs2 >>=
-           (fun (p : (byte *byte_sequence ) % type) =>
+           (fun (p : (elf_types_local.byte *byte_sequence ) % type) =>
               match ( (p) ) with ( (b2,  bs3)) =>
                 read_char bs3 >>=
-                (fun (p : (byte *byte_sequence ) % type) =>
+                (fun (p : (elf_types_local.byte *byte_sequence ) % type) =>
                    match ( (p) ) with ( (b3,  bs4)) =>
                      return0 ((b0, b1, b2, b3), bs4) end) end) end) end).
 (* [?]: removed value specification. *)
 
-Definition read_8_bytes_le  (bs0 : byte_sequence )  : error ((((byte *byte *byte *byte *byte *byte *byte *byte ) % type)*byte_sequence ) % type):= 
-  read_char bs0 >>= (fun (p : (byte *byte_sequence ) % type) =>
+Definition read_8_bytes_le  (bs0 : byte_sequence )  : error ((((elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type):= 
+  read_char bs0 >>= (fun (p : (elf_types_local.byte *byte_sequence ) % type) =>
     match ( (p) ) with ( (b0,  bs1)) =>
       read_char bs1 >>=
-      (fun (p : (byte *byte_sequence ) % type) =>
+      (fun (p : (elf_types_local.byte *byte_sequence ) % type) =>
          match ( (p) ) with ( (b1,  bs2)) =>
            read_char bs2 >>=
-           (fun (p : (byte *byte_sequence ) % type) =>
+           (fun (p : (elf_types_local.byte *byte_sequence ) % type) =>
               match ( (p) ) with ( (b2,  bs3)) =>
                 read_char bs3 >>=
-                (fun (p : (byte *byte_sequence ) % type) =>
+                (fun (p : (elf_types_local.byte *byte_sequence ) % type) =>
                    match ( (p) ) with ( (b3,  bs4)) =>
                      read_char bs4 >>=
-                     (fun (p : (byte *byte_sequence ) % type) =>
+                     (fun (p : (elf_types_local.byte *byte_sequence ) % type) =>
                         match ( (p) ) with ( (b4,  bs5)) =>
                           read_char bs5 >>=
-                          (fun (p : (byte *byte_sequence ) % type) =>
+                          (fun (p : (elf_types_local.byte *byte_sequence ) % type) =>
                              match ( (p) ) with ( (b5,  bs6)) =>
                                read_char bs6 >>=
-                               (fun (p : (byte *byte_sequence ) % type) =>
+                               (fun (p : (elf_types_local.byte *byte_sequence ) % type) =>
                                   match ( (p) ) with ( (b6,  bs7)) =>
                                     read_char bs7 >>=
-                                    (fun (p : (byte *byte_sequence ) % type) =>
+                                    (fun (p : (elf_types_local.byte *byte_sequence ) % type) =>
                                        match ( (p) ) with ( (b7,  bs8)) =>
                                          return0
                                            ((b7, b6, b5, b4, b3, b2, b1, b0), bs8)
                                        end) end) end) end) end) end) end) end).
 (* [?]: removed value specification. *)
 
-Definition read_8_bytes_be  (bs0 : byte_sequence )  : error ((((byte *byte *byte *byte *byte *byte *byte *byte ) % type)*byte_sequence ) % type):= 
-  read_char bs0 >>= (fun (p : (byte *byte_sequence ) % type) =>
+Definition read_8_bytes_be  (bs0 : byte_sequence )  : error ((((elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type):= 
+  read_char bs0 >>= (fun (p : (elf_types_local.byte *byte_sequence ) % type) =>
     match ( (p) ) with ( (b0,  bs1)) =>
       read_char bs1 >>=
-      (fun (p : (byte *byte_sequence ) % type) =>
+      (fun (p : (elf_types_local.byte *byte_sequence ) % type) =>
          match ( (p) ) with ( (b1,  bs2)) =>
            read_char bs2 >>=
-           (fun (p : (byte *byte_sequence ) % type) =>
+           (fun (p : (elf_types_local.byte *byte_sequence ) % type) =>
               match ( (p) ) with ( (b2,  bs3)) =>
                 read_char bs3 >>=
-                (fun (p : (byte *byte_sequence ) % type) =>
+                (fun (p : (elf_types_local.byte *byte_sequence ) % type) =>
                    match ( (p) ) with ( (b3,  bs4)) =>
                      read_char bs4 >>=
-                     (fun (p : (byte *byte_sequence ) % type) =>
+                     (fun (p : (elf_types_local.byte *byte_sequence ) % type) =>
                         match ( (p) ) with ( (b4,  bs5)) =>
                           read_char bs5 >>=
-                          (fun (p : (byte *byte_sequence ) % type) =>
+                          (fun (p : (elf_types_local.byte *byte_sequence ) % type) =>
                              match ( (p) ) with ( (b5,  bs6)) =>
                                read_char bs6 >>=
-                               (fun (p : (byte *byte_sequence ) % type) =>
+                               (fun (p : (elf_types_local.byte *byte_sequence ) % type) =>
                                   match ( (p) ) with ( (b6,  bs7)) =>
                                     read_char bs7 >>=
-                                    (fun (p : (byte *byte_sequence ) % type) =>
+                                    (fun (p : (elf_types_local.byte *byte_sequence ) % type) =>
                                        match ( (p) ) with ( (b7,  bs8)) =>
                                          return0
                                            ((b0, b1, b2, b3, b4, b5, b6, b7), bs8)
@@ -309,7 +322,7 @@ Instance x18_Show : Show byte_sequence := {
  *)
 
 Instance x17_Eq : Eq byte_sequence := {
-   isEqual  :=  equal;
+   isEqual  := equal;
    isInequal   l  r :=  negb (equal l r)
 }.
 

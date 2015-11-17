@@ -99,7 +99,7 @@ Require Export missing_pervasives.
 
 (* Now we can define memory images *)
 
-Definition byte_pattern_element : Type :=  option  byte  .
+Definition byte_pattern_element : Type :=  option  elf_types_local.byte  .
 Definition byte_pattern_element_default: byte_pattern_element  := DAEMON.
 Definition byte_pattern : Type :=  list  byte_pattern_element .
 Definition byte_pattern_default: byte_pattern  := DAEMON.
@@ -296,9 +296,10 @@ Instance x106_Ord : Ord reloc_site := {
 
     
 Inductive reloc_decision : Type :=  LeaveReloc: reloc_decision 
-                    | ApplyReloc: reloc_decision 
-                    | MakePIC: reloc_decision .
+                    | ApplyReloc:  option  ((nat  * symbol_reference  * reloc_site ) % type)  -> reloc_decision  (* change before apply *)
+                    | ChangeRelocTo:  ((nat  * symbol_reference  * reloc_site ) % type) -> reloc_decision .
 Definition reloc_decision_default: reloc_decision  := LeaveReloc.
+                    (* | MakePIC    -- is now a kind of ChangeRelocTo *)
 
 Record symbol_reference_and_reloc_site : Type := {
       ref         : symbol_reference 
@@ -494,8 +495,8 @@ Record abi (abifeature: Type) : Type := (* forall 'abifeature. *)
     ; make_phdrs         : nat  ->  nat  ->  nat  -> (* file type *)  annotated_memory_image  abifeature ->  list  elf64_interpreted_section  ->  list  elf64_program_header_table_entry 
     ; max_phnum          : nat 
     ; guess_entry_point  : annotated_memory_image  abifeature ->  option  nat  
-    ; pad_data           : nat  ->  list  byte 
-    ; pad_code           : nat  ->  list  byte 
+    ; pad_data           : nat  ->  list  elf_types_local.byte 
+    ; pad_code           : nat  ->  list  elf_types_local.byte 
     ; generate_support   : (* list (list reloc_site_resolution) ->  *)list  ((string  * annotated_memory_image  abifeature) % type) ->  annotated_memory_image  abifeature
     ; concretise_support : annotated_memory_image  abifeature ->  annotated_memory_image  abifeature
     }.
@@ -628,7 +629,7 @@ Definition expand_unsorted_ranges  (unsorted_ranges : list ((nat *nat ) % type))
          match ( (p) ) with ( (base2,  len2)) => nat_ltb base1 base2 end) end) unsorted_ranges) min_length accum.
 (* [?]: removed value specification. *)
 
-Program Fixpoint make_byte_pattern_revacc  (revacc : list (option (byte ) )) (bytes : list (byte )) (cares : list (bool ))  : list (option (byte ) ):=  
+Program Fixpoint make_byte_pattern_revacc  (revacc : list (option (elf_types_local.byte ) )) (bytes : list (elf_types_local.byte )) (cares : list (bool ))  : list (option (elf_types_local.byte ) ):=  
     match ( bytes) with 
           [] => List.rev revacc
         | b :: bs => match ( cares) with  
@@ -638,11 +639,11 @@ Program Fixpoint make_byte_pattern_revacc  (revacc : list (option (byte ) )) (by
     end.
 (* [?]: removed value specification. *)
 
-Definition make_byte_pattern  (bytes : list (byte )) (cares : list (bool ))  : list (option (byte ) ):=  
+Definition make_byte_pattern  (bytes : list (elf_types_local.byte )) (cares : list (bool ))  : list (option (elf_types_local.byte ) ):=  
     make_byte_pattern_revacc [] bytes cares.
 (* [?]: removed value specification. *)
 
-Program Fixpoint relax_byte_pattern_revacc  (revacc : list (option (byte ) )) (bytes : list (option (byte ) )) (cares : list (bool ))  : list (option (byte ) ):=  
+Program Fixpoint relax_byte_pattern_revacc  (revacc : list (option (elf_types_local.byte ) )) (bytes : list (option (elf_types_local.byte ) )) (cares : list (bool ))  : list (option (elf_types_local.byte ) ):=  
     match ( bytes) with 
           [] => List.rev revacc
         | b :: bs => match ( cares) with  
@@ -652,14 +653,14 @@ Program Fixpoint relax_byte_pattern_revacc  (revacc : list (option (byte ) )) (b
     end.
 (* [?]: removed value specification. *)
 
-Definition relax_byte_pattern  (bytes : list (option (byte ) )) (cares : list (bool ))  : list (option (byte ) ):=  
+Definition relax_byte_pattern  (bytes : list (option (elf_types_local.byte ) )) (cares : list (bool ))  : list (option (elf_types_local.byte ) ):=  
     relax_byte_pattern_revacc [] bytes cares.
 
-Definition pad_fn : Type :=  nat  ->  list  byte .
+Definition pad_fn : Type :=  nat  ->  list  elf_types_local.byte .
 Definition pad_fn_default: pad_fn  := (fun (x74 :  nat ) => DAEMON).
 (* [?]: removed value specification. *)
 
-Program Fixpoint concretise_byte_pattern  (rev_acc : list (byte )) (acc_pad : nat ) (bs : list (option (byte ) )) (pad : nat  -> list (byte ))  : list (byte ):=  
+Program Fixpoint concretise_byte_pattern  (rev_acc : list (elf_types_local.byte )) (acc_pad : nat ) (bs : list (option (elf_types_local.byte ) )) (pad : nat  -> list (elf_types_local.byte ))  : list (elf_types_local.byte ):=  
     match ( bs) with 
         [] => 
             let padding_bytes := if nat_gtb acc_pad( 0) then pad acc_pad else []
@@ -674,14 +675,14 @@ Program Fixpoint concretise_byte_pattern  (rev_acc : list (byte )) (acc_pad : na
     end.
 (* [?]: removed value specification. *)
 
-Definition byte_option_matches_byte  (optb : option (byte ) ) (b : byte )  : bool := 
+Definition byte_option_matches_byte  (optb : option (elf_types_local.byte ) ) (b : elf_types_local.byte )  : bool := 
     match ( optb) with  
             None => true 
         |   Some some => classical_boolean_equivalence some b 
     end.
 (* [?]: removed value specification. *)
 
-Program Fixpoint byte_list_matches_pattern  (pattern : list (option (byte ) )) (bytes : list (byte ))  : bool :=  
+Program Fixpoint byte_list_matches_pattern  (pattern : list (option (elf_types_local.byte ) )) (bytes : list (elf_types_local.byte ))  : bool :=  
     match ( pattern) with  
         [] => true
         | optbyte :: more => match ( bytes) with  
@@ -693,14 +694,14 @@ Program Fixpoint byte_list_matches_pattern  (pattern : list (option (byte ) )) (
     end.
 (* [?]: removed value specification. *)
 
-Definition append_to_byte_pattern_at_offset  (offset : nat ) (pat1 : list (option (byte ) )) (pat2 : list (option (byte ) ))  : list (option (byte ) ):= 
+Definition append_to_byte_pattern_at_offset  (offset : nat ) (pat1 : list (option (elf_types_local.byte ) )) (pat2 : list (option (elf_types_local.byte ) ))  : list (option (elf_types_local.byte ) ):= 
     let pad_length := Coq.Init.Peano.minus offset (missing_pervasives.length pat1)
     in
     if nat_ltb pad_length( 0) then DAEMON
     else  (@ List.app _) ((@ List.app _)pat1 (lem_list.replicate (id pad_length) None)) pat2.
 (* [?]: removed value specification. *)
 
-Program Fixpoint accum_pattern_possible_starts_in_one_byte_sequence  (pattern : list (option (byte ) )) (pattern_len : nat ) (seq : list (byte )) (seq_len : nat ) (offset : nat ) (accum : list (nat ))  : list (nat ):= 
+Program Fixpoint accum_pattern_possible_starts_in_one_byte_sequence  (pattern : list (option (elf_types_local.byte ) )) (pattern_len : nat ) (seq : list (elf_types_local.byte )) (seq_len : nat ) (offset : nat ) (accum : list (nat ))  : list (nat ):= 
     (* let _ = Missing_pervasives.errs ("At offset " ^ (show offset) ^ "... ")
     in *)
     match ( pattern) with 
@@ -858,15 +859,15 @@ Definition null_symbol_definition   : symbol_definition :=  {|def_symname := ""
 |}.
 (* [?]: removed value specification. *)
 
-Definition pattern_possible_starts_in_one_byte_sequence  (pattern : list (option (byte ) )) (seq : list (byte )) (offset : nat )  : list (nat ):= 
+Definition pattern_possible_starts_in_one_byte_sequence  (pattern : list (option (elf_types_local.byte ) )) (seq : list (elf_types_local.byte )) (offset : nat )  : list (nat ):= 
     (* let _ = Missing_pervasives.errs ("Looking for matches of " ^
         (show (List.length pattern)) ^ "-byte pattern in " ^ (show (List.length seq)) ^ "-byte region\n")
     in *)
     accum_pattern_possible_starts_in_one_byte_sequence pattern (List.length pattern) seq (List.length seq) offset [].
 (* [?]: removed value specification. *)
 
-Definition byte_pattern_of_byte_sequence  (seq : byte_sequence )  : list (option (byte ) ):=  match ( seq) with 
-    Sequence(bs) => List.map (fun (b : byte ) => Some b) bs
+Definition byte_pattern_of_byte_sequence  (seq : byte_sequence )  : list (option (elf_types_local.byte ) ):=  match ( seq) with 
+    Sequence(bs) => List.map (fun (b : elf_types_local.byte ) => Some b) bs
 end.
 (* [?]: removed value specification. *)
 
@@ -878,15 +879,15 @@ Definition extract_natural_field  (width : nat ) (element1 : element ) (offset :
     (* Read n bytes from the contents *)
     let maybe_bytes := take0 width (drop0 offset(contents element1))
     in
-    let bytes := List.map (fun (mb : option (byte ) ) => match ( mb) with  None => byte_of_nat( 0) | Some mb => mb end) maybe_bytes
+    let bytes := List.map (fun (mb : option (elf_types_local.byte ) ) => match ( mb) with  None => byte_of_nat( 0) | Some mb => mb end) maybe_bytes
     in
     (* FIXME: do we want little- or big-endian? *)
-    List.fold_left (fun (acc : nat ) => fun (next_byte : byte ) => Coq.Init.Peano.plus (Coq.Init.Peano.mult
-        acc( 256)) (natural_of_byte next_byte)
+    List.fold_left (fun (acc : nat ) => fun (next_byte : elf_types_local.byte ) => Coq.Init.Peano.plus (Coq.Init.Peano.mult
+        acc( 256)) (nat_of_byte next_byte)
     ) bytes ( 0 :  nat ).
 (* [?]: removed value specification. *)
 
-Program Fixpoint natural_to_le_byte_list  (n : nat )  : list (byte ):=  
+Program Fixpoint natural_to_le_byte_list  (n : nat )  : list (elf_types_local.byte ):=  
     (byte_of_nat ( Coq.Numbers.Natural.Peano.NPeano.modulo n( 256))) :: (let d :=Coq.Numbers.Natural.Peano.NPeano.div n( 256) in if beq_nat d( 0) then [] else natural_to_le_byte_list ( Coq.Numbers.Natural.Peano.NPeano.div n( 256))).
 (* [?]: removed value specification. *)
 
@@ -903,7 +904,7 @@ Definition write_natural_field  (new_field_value : nat ) (width : nat ) (element
     {|contents :=  ((@ List.app _)            
 ((@ List.app _) ((@ List.app _)pre_bytes (let x2 := [] in 
   List.fold_right
-    (fun (b : byte ) (x2 : list (option (byte ) )) =>
+    (fun (b : elf_types_local.byte ) (x2 : list (option (elf_types_local.byte ) )) =>
        if true then Some b :: x2 else x2) x2 field_bytes)) (replicate0 ( Coq.Init.Peano.minus width (length field_bytes)) (Some (byte_of_nat( 0))))) post_bytes)
         ;startpos :=(startpos element1)
         ;length1 :=(length1 element1)

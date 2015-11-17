@@ -138,7 +138,7 @@ Definition short_string_of_linkable_item  (item : (linkable_object *((string *in
   match ( item) with (obj,  inp,  opts) => short_string_of_input_item inp end.
 (* 
 
-Instance x133_Show : Show linkable_object := {
+Instance x134_Show : Show linkable_object := {
      show  :=  string_of_linkable_object
 }.
  *)
@@ -147,7 +147,7 @@ Definition linkable_list : Type :=  list  linkable_item .
 Definition linkable_list_default: linkable_list  := DAEMON.
 
 Definition symbol_resolution_oracle : Type :=  linkable_list  ->  nat  ->  string  ->  list  nat .
-Definition symbol_resolution_oracle_default: symbol_resolution_oracle  := (fun (x130 :  linkable_list ) => (fun (x131 :  nat ) => (fun (x132 :  string ) => DAEMON))).
+Definition symbol_resolution_oracle_default: symbol_resolution_oracle  := (fun (x131 :  linkable_list ) => (fun (x132 :  nat ) => (fun (x133 :  string ) => DAEMON))).
 Definition binding : Type :=      ( ((nat  * symbol_reference  * linkable_item ) % type) * option  ((nat  * symbol_definition  * linkable_item ) % type) ) % type.
 Definition binding_default: binding  := ((nat_default, symbol_reference_default, linkable_item_default), DAEMON).
 Definition binding_list : Type :=  list  binding .
@@ -226,8 +226,8 @@ Definition binding_oracle : Type :=
      fmap  string   (list  ((nat  * symbol_definition  * linkable_item ) % type)) ->
      ((nat  * symbol_reference  * linkable_item ) % type) ->
      option  ((nat  * symbol_definition  * linkable_item ) % type) .
-Definition binding_oracle_default: binding_oracle  := (fun (x127 :  
-    linkable_list ) => (fun (x128 :  fmap  string   (list  ((nat  * symbol_definition  * linkable_item ) % type))) => (fun (x129 :  ((nat  * symbol_reference  * linkable_item ) % type)) => DAEMON))).
+Definition binding_oracle_default: binding_oracle  := (fun (x128 :  
+    linkable_list ) => (fun (x129 :  fmap  string   (list  ((nat  * symbol_definition  * linkable_item ) % type))) => (fun (x130 :  ((nat  * symbol_reference  * linkable_item ) % type)) => DAEMON))).
 (* [?]: removed value specification. *)
 
 Definition resolve_one_reference_default {abifeature : Type}  (a : abi abifeature) (linkables : list (linkable_item )) (defmap : fmap (string ) (list ((nat *symbol_definition *linkable_item ) % type))) (ref_idx_and_ref_and_linkable : (nat *symbol_reference *((linkable_object *((string *input_blob *((command_line.input_unit *list (origin_coord )) % type)) % type)*input_options ) % type)) % type)  : option ((nat *symbol_definition *((linkable_object *((string *input_blob *((command_line.input_unit *list (origin_coord )) % type)) % type)*input_options ) % type)) % type) :=  

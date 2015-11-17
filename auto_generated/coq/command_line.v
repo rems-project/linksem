@@ -91,7 +91,7 @@ Definition string_of_input_file_spec  (spec : input_file_spec )  : string :=
     end.
 (* 
 
-Instance x121_Show : Show input_file_spec := {
+Instance x122_Show : Show input_file_spec := {
      show  :=  string_of_input_file_spec
 }.
  *)
@@ -159,7 +159,7 @@ end.
 (* To allow filtering out a previous setting for a given option, we define
  * an equality relation that is true if options are of the same constructor.
  * Seems like a bit of a HACK. *)
-Instance x120_Eq : Eq link_option := {
+Instance x121_Eq : Eq link_option := {
      isEqual  :=  fun  opt1 => 
         (fun  opt2 => 
             match ( (opt1, opt2)) with  
@@ -193,7 +193,7 @@ Definition input_unit_default: input_unit  := File input_file_and_options_defaul
 
 (* 
 
-Instance x119_Show : Show input_unit := {
+Instance x120_Show : Show input_unit := {
      show  :=  string_of_input_unit
 }.
  *)
@@ -413,7 +413,7 @@ Definition parse_address  (s : string )  : nat :=  match ( string_to_char_list s
 end.
 
 Definition option_def : Type := ( (list  option_token ) * option_argspecs  * (option_argvals  ->  list  command_state  ->  list  command_state ) * string ) % type.
-Definition option_def_default: option_def  := (DAEMON, option_argspecs_default, (fun (x117 : option_argvals ) => (fun (x118 :  list  command_state ) => DAEMON)), string_default).
+Definition option_def_default: option_def  := (DAEMON, option_argspecs_default, (fun (x118 : option_argvals ) => (fun (x119 :  list  command_state ) => DAEMON)), string_default).
 (* [?]: removed value specification. *)
 
 Definition command_line_table   : list ((list (string )*((list (string )*list (string )) % type)*((list (string )*list (string )) % type -> list (command_state ) -> list (command_state ))*string ) % type):=  [

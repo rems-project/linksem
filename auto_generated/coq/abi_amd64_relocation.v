@@ -175,59 +175,6 @@ Definition string_of_amd64_relocation_type  (rel_type1 : nat )  : string :=
     "Invalid X86_64 relocation".
 (* [?]: removed value specification. *)
 
-Definition amd64_reloc {abifeature : Type} `{Ord abifeature} `{AbiFeatureTagEquiv abifeature}  (r : nat )  : (bool *(annotated_memory_image abifeature -> nat  -> symbol_reference_and_reloc_site  -> (nat *(nat  -> Z  -> nat  -> nat )) % type)) % type:=  
-    let n2i := (fun (n : nat )=>(Zpred (Zpos (P_of_succ_nat n)))) in 
-    let i2n := Zabs_nat in 
-    let i2n_signed := fun (width : nat ) => fun (i : Z ) => (
-        if int_gteb i((Zpred (Zpos (P_of_succ_nat 0)))) then 
-            if int_gteb i (Coq.ZArith.Zpower.Zpower_nat((Zpred (Zpos (P_of_succ_nat 2)))) (Coq.Init.Peano.minus width( 1))) then DAEMON
-            else Zabs_nat i
-        else 
-            (* We manually encode the 2's complement of the negated value *)
-            let negated := Zabs_nat ( Coq.ZArith.BinInt.Zminus((Zpred (Zpos (P_of_succ_nat 0)))) i) in 
-            let xormask := ( Coq.Init.Peano.minus (nat_power( 2) width)( 1)) in
-            let compl := Coq.Init.Peano.plus( 1) (nat_lxor negated xormask)
-            in compl
-    )
-    in
-    match ( (string_of_amd64_relocation_type r)) with 
-    | "R_X86_64_NONE" =>            (false, (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => ( 0, (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => e))))))
-    | "R_X86_64_64" =>              (true,  (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => ( 8, (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => i2n ( Coq.ZArith.BinInt.Zplus(n2i s) a)))))))
-    | "R_X86_64_PC32" =>            (false, (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => ( 4, (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => Coq.Init.Peano.minus (i2n ( Coq.ZArith.BinInt.Zplus(n2i s) a)) site_addr))))))
-    | "R_X86_64_GOT32" =>           (false, (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => ( 4, (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => e)) (* FIXME *)))))
-    | "R_X86_64_PLT32" =>           (false, (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => ( 4, (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => e)) (* FIXME *)))))
-    | "R_X86_64_COPY" =>            (false, (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => (size_of_copy_reloc img3 rr, (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => e)) (* FIXME *)))))
-    | "R_X86_64_GLOB_DAT" =>        (false, (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => (size_of_def rr, (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => e)) (* FIXME *)))))
-    | "R_X86_64_JUMP_SLOT" =>       (false, (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => ( 4 (* CHECK *), (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => e)) (* FIXME *)))))
-    | "R_X86_64_RELATIVE" =>        (true,  (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => ( 8, (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => e)) (* FIXME *)))))
-    | "R_X86_64_GOTPCREL" =>        (false, (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => ( 8 (* CHECK *), (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => e)) (* FIXME *)))))
-    | "R_X86_64_32" =>              (true,  (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => ( 4, (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => i2n ( Coq.ZArith.BinInt.Zplus(n2i s) a)))))))
-    | "R_X86_64_32S" =>             (true,  (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => ( 4, (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => i2n_signed( 32) ( Coq.ZArith.BinInt.Zplus(n2i s) a)))))))
-    | "R_X86_64_16" =>              (true,  (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => ( 2, (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => e)) (* FIXME *)))))
-    | "R_X86_64_PC16" =>            (false, (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => ( 2, (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => e)) (* FIXME *)))))
-    | "R_X86_64_8" =>               (true,  (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => ( 1, (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => e)) (* FIXME *)))))
-    | "R_X86_64_PC8" =>             (false, (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => ( 1, (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => e)) (* FIXME *)))))
-    | "R_X86_64_DTPMOD64" =>        (false, (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => ( 8 (* CHECK *), (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => e)) (* FIXME *)))))
-    | "R_X86_64_DTPOFF64" =>        (false, (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => ( 8 (* CHECK *), (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => e)) (* FIXME *)))))
-    | "R_X86_64_TPOFF64" =>         (false, (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => ( 8 (* CHECK *), (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => e)) (* FIXME *)))))
-    | "R_X86_64_TLSGD" =>           (false, (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => ( 8 (* CHECK *), (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => e)) (* FIXME *)))))
-    | "R_X86_64_TLSLD" =>           (false, (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => ( 8 (* CHECK *), (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => e)) (* FIXME *)))))
-    | "R_X86_64_DTPOFF32" =>        (false, (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => ( 4 (* CHECK *), (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => e)) (* FIXME *)))))
-    | "R_X86_64_GOTTPOFF" =>        (false, (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => ( 8 (* CHECK *), (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => e)) (* FIXME *)))))
-    | "R_X86_64_TPOFF32" =>         (false, (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => ( 4 (* CHECK *), (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => e)) (* FIXME *)))))
-    | "R_X86_64_PC64" =>            (false, (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => ( 8, (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => e)) (* FIXME *)))))
-    | "R_X86_64_GOTOFF64" =>        (false, (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => ( 8, (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => e)) (* FIXME *)))))
-    | "R_X86_64_GOTPC32" =>         (false, (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => ( 4, (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => e)) (* FIXME *)))))
-    | "R_X86_64_SIZE32" =>          (false, (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => ( 4, (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => e)) (* FIXME *)))))
-    | "R_X86_64_SIZE64" =>          (false, (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => ( 8, (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => e)) (* FIXME *)))))
-    | "R_X86_64_GOTPC32_TLSDESC" => (false, (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => ( 4 (* CHECK *), (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => e)) (* FIXME *)))))
-    | "R_X86_64_TLSDESC_CALL" =>    (false, (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => ( 4 (* CHECK *), (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => e)) (* FIXME *)))))
-    | "R_X86_64_TLSDESC" =>         (false, (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => ( 8 (* CHECK *), (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => e)) (* FIXME *)))))
-    | "R_X86_64_IRELATIVE" =>       (true,  (fun (img3 : annotated_memory_image abifeature) => (fun (site_addr : nat ) => (fun (rr : symbol_reference_and_reloc_site ) => ( 8 (* CHECK *), (fun (s : nat ) => fun (a : Z ) => fun (e : nat ) => e)) (* FIXME *)))))
-    | _ => DAEMON
-end.
-(* [?]: removed value specification. *)
-
 Definition abi_amd64_apply_relocation  (rel : elf64_relocation_a ) (val_map1 : fmap (string ) (Z )) (ef : elf64_file )  : error (relocation_frame (elf64_addr ) (Z )):= 
   if is_elf64_relocatable_file(elf64_file_header ef) then
     let rel_type1 := get_elf64_relocation_a_type rel in

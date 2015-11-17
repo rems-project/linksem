@@ -69,7 +69,7 @@ Definition abi_power64_compute_program_entry_point  (segs : list (elf64_interpre
         let rebase := Coq.Init.Peano.minus entry(elf64_segment_base x) in
         byte_sequence.offset_and_cut rebase( 8)(elf64_segment_body x) >>= (fun (bytes : byte_sequence ) =>
         byte_sequence.read_8_bytes_le bytes >>= 
-  (fun (p : (((byte *byte *byte *byte *byte *byte *byte *byte ) % type)*byte_sequence ) % type) =>
+  (fun (p : (((elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type) =>
      match ( (p) ) with ( (bytes,  _)) =>
        match ( bytes) with (b1, b2, b3, b4, b5, b6, b7, b8) =>
          return0 (elf64_addr_of_oct b1 b2 b3 b4 b5 b6 b7 b8) end end))

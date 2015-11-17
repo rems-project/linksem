@@ -106,7 +106,7 @@ Definition origin_coord_default: origin_coord  := InArchive (nat_default, nat_de
 
 (* 
 
-Instance x126_Show : Show origin_coord := {
+Instance x127_Show : Show origin_coord := {
      show  :=  string_of_origin_coord
 }.
  *)
@@ -120,7 +120,7 @@ Definition input_item_default: input_item  := (string_default, input_blob_defaul
 
 (* 
 
-Instance x125_Show : Show input_blob := {
+Instance x126_Show : Show input_blob := {
      show  :=  string_of_input_blob
 }.
  *)
@@ -142,7 +142,7 @@ Definition short_string_of_input_item  (item : (string *input_blob *((input_unit
  *)
 
 Definition can_supply_function : Type :=  list  input_item  ->  nat  ->  list  bool .
-Definition can_supply_function_default: can_supply_function  := (fun (x123 :  list  input_item ) => (fun (x124 :  nat ) => DAEMON)).
+Definition can_supply_function_default: can_supply_function  := (fun (x124 :  list  input_item ) => (fun (x125 :  nat ) => DAEMON)).
 
 Record input_options : Type :=  { item_fmt : string 
                        ; item_check_sections : bool 
@@ -168,7 +168,7 @@ Definition null_input_options   : input_options :=
 
 (* 
 
-Instance x122_Show : Show input_options := {
+Instance x123_Show : Show input_options := {
      show  :=  string_of_input_options
 }.
  *)

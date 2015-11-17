@@ -73,20 +73,20 @@ Definition unsigned_char_default: unsigned_char  := DAEMON. *)
 (* [?]: removed value specification. *)
 
 
-Definition natural_of_byte  (b : byte )
+Definition natural_of_byte  (b : elf_types_local.byte )
      : nat :=  nat_of_unsigned_char (unsigned_char_of_byte b).
 (* [?]: removed value specification. *)
 
 Definition read_unsigned_char  (endian : endianness ) (bs0 : byte_sequence )  : error ((unsigned_char *byte_sequence ) % type):= 
   byte_sequence.read_char bs0 >>= 
-  (fun (p : (byte *byte_sequence ) % type) =>
+  (fun (p : (elf_types_local.byte *byte_sequence ) % type) =>
      match ( (p) ) with ( (u1,  bs1)) =>
        return0 (unsigned_char_of_byte u1, bs1) end).
 (* [?]: removed value specification. *)
 
 (* [?]: removed value specification. *)
 
-Definition bytes_of_unsigned_char  (u : unsigned_char )  : list (byte ):=  [byte_of_unsigned_char u].
+Definition bytes_of_unsigned_char  (u : unsigned_char )  : list (elf_types_local.byte ):=  [byte_of_unsigned_char u].
 (* [?]: removed value specification. *)
 
 (* [?]: removed top-level value definition. *)
@@ -125,12 +125,12 @@ Definition read_elf32_addr  (endian : endianness ) (bs0 : byte_sequence )  : err
   match ( endian) with 
     | Little =>
       byte_sequence.read_4_bytes_le bs0 >>= 
-  (fun (p : (((byte *byte *byte *byte ) % type)*byte_sequence ) % type) =>
+  (fun (p : (((elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type) =>
      match ( (p) ) with ( ((b1,  b2,  b3,  b4),  bs1)) =>
        return0 (elf32_addr_of_quad b4 b3 b2 b1, bs1) end)
     | Big    =>
       byte_sequence.read_4_bytes_be bs0 >>= 
-  (fun (p : (((byte *byte *byte *byte ) % type)*byte_sequence ) % type) =>
+  (fun (p : (((elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type) =>
      match ( (p) ) with ( ((b1,  b2,  b3,  b4),  bs1)) =>
        return0 (elf32_addr_of_quad b4 b3 b2 b1, bs1) end)
   end.
@@ -141,7 +141,7 @@ Definition read_elf32_addr  (endian : endianness ) (bs0 : byte_sequence )  : err
 
 (* [?]: removed value specification. *)
 
-Definition bytes_of_elf32_addr  (endian : endianness ) (w : elf32_addr )  : list (byte ):= 
+Definition bytes_of_elf32_addr  (endian : endianness ) (w : elf32_addr )  : list (elf_types_local.byte ):= 
   match ( endian) with 
     | Little => match ( quad_of_elf32_addr w) with (b0,  b1,  b2,  b3) => [b0; b1; b2; b3]
  end
@@ -180,12 +180,12 @@ Definition read_elf64_addr  (endian : endianness ) (bs0 : byte_sequence )  : err
   match ( endian) with 
     | Little =>
       byte_sequence.read_8_bytes_le bs0 >>= 
-  (fun (p : (((byte *byte *byte *byte *byte *byte *byte *byte ) % type)*byte_sequence ) % type) =>
+  (fun (p : (((elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type) =>
      match ( (p) ) with ( ((b1,  b2,  b3,  b4,  b5,  b6,  b7,  b8),  bs1)) =>
        return0 (elf64_addr_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1) end)
     | Big    =>
       byte_sequence.read_8_bytes_be bs0 >>= 
-  (fun (p : (((byte *byte *byte *byte *byte *byte *byte *byte ) % type)*byte_sequence ) % type) =>
+  (fun (p : (((elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type) =>
      match ( (p) ) with ( ((b1,  b2,  b3,  b4,  b5,  b6,  b7,  b8),  bs1)) =>
        return0 (elf64_addr_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1) end)
   end.
@@ -196,7 +196,7 @@ Definition read_elf64_addr  (endian : endianness ) (bs0 : byte_sequence )  : err
 
 (* [?]: removed value specification. *)
 
-Definition bytes_of_elf64_addr  (endian : endianness ) (w : elf64_addr )  : list (byte ):= 
+Definition bytes_of_elf64_addr  (endian : endianness ) (w : elf64_addr )  : list (elf_types_local.byte ):= 
   match ( endian) with 
     | Little => match ( oct_of_elf64_addr w) with (b0,  b1,  b2,  b3,  b4,  b5,  b6,  b7) =>
    [b0; b1; b2; b3; b4; b5; b6; b7] end
@@ -244,12 +244,12 @@ Definition read_elf32_half  (endian : endianness ) (bs0 : byte_sequence )  : err
   match ( endian) with 
     | Little =>
       byte_sequence.read_2_bytes_le bs0 >>= 
-  (fun (p : (((byte *byte ) % type)*byte_sequence ) % type) =>
+  (fun (p : (((elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type) =>
      match ( (p) ) with ( ((b1,  b2),  bs1)) =>
        return0 (elf32_half_of_dual b2 b1, bs1) end)
     | Big    =>
       byte_sequence.read_2_bytes_be bs0 >>= 
-  (fun (p : (((byte *byte ) % type)*byte_sequence ) % type) =>
+  (fun (p : (((elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type) =>
      match ( (p) ) with ( ((b1,  b2),  bs1)) =>
        return0 (elf32_half_of_dual b2 b1, bs1) end)
   end.
@@ -262,7 +262,7 @@ Definition read_elf32_half  (endian : endianness ) (bs0 : byte_sequence )  : err
 
 (* [?]: removed value specification. *)
 
-Definition bytes_of_elf32_half  (endian : endianness ) (h : elf32_half )  : list (byte ):= 
+Definition bytes_of_elf32_half  (endian : endianness ) (h : elf32_half )  : list (elf_types_local.byte ):= 
   match ( endian) with 
     | Little => match ( dual_of_elf32_half h) with (b0,  b1) => [b0; b1] end
     | Big    => match ( dual_of_elf32_half h) with (b0,  b1) => [b1; b0] end
@@ -295,12 +295,12 @@ Definition read_elf64_half  (endian : endianness ) (bs0 : byte_sequence )  : err
   match ( endian) with 
     | Big =>
       byte_sequence.read_2_bytes_be bs0 >>= 
-  (fun (p : (((byte *byte ) % type)*byte_sequence ) % type) =>
+  (fun (p : (((elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type) =>
      match ( (p) ) with ( ((b1,  b2),  bs1)) =>
        return0 (elf64_half_of_dual b2 b1, bs1) end)
     | Little =>
       byte_sequence.read_2_bytes_le bs0 >>= 
-  (fun (p : (((byte *byte ) % type)*byte_sequence ) % type) =>
+  (fun (p : (((elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type) =>
      match ( (p) ) with ( ((b1,  b2),  bs1)) =>
        return0 (elf64_half_of_dual b2 b1, bs1) end)
   end.
@@ -315,7 +315,7 @@ Definition read_elf64_half  (endian : endianness ) (bs0 : byte_sequence )  : err
 
 (* [?]: removed value specification. *)
 
-Definition bytes_of_elf64_half  (endian : endianness ) (w : elf64_half )  : list (byte ):= 
+Definition bytes_of_elf64_half  (endian : endianness ) (w : elf64_half )  : list (elf_types_local.byte ):= 
   match ( endian) with 
     | Big => match ( dual_of_elf64_half w) with (b0,  b1) => [b1; b0] end
     | Little    => match ( dual_of_elf64_half w) with (b0,  b1) => [b0; b1] end
@@ -365,12 +365,12 @@ Definition read_elf32_off  (endian : endianness ) (bs0 : byte_sequence )  : erro
   match ( endian) with 
     | Little =>
       byte_sequence.read_4_bytes_le bs0 >>= 
-  (fun (p : (((byte *byte *byte *byte ) % type)*byte_sequence ) % type) =>
+  (fun (p : (((elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type) =>
      match ( (p) ) with ( ((b1,  b2,  b3,  b4),  bs1)) =>
        return0 (elf32_off_of_quad b4 b3 b2 b1, bs1) end)
     | Big    =>
       byte_sequence.read_4_bytes_be bs0 >>= 
-  (fun (p : (((byte *byte *byte *byte ) % type)*byte_sequence ) % type) =>
+  (fun (p : (((elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type) =>
      match ( (p) ) with ( ((b1,  b2,  b3,  b4),  bs1)) =>
        return0 (elf32_off_of_quad b4 b3 b2 b1, bs1) end)
   end.
@@ -381,7 +381,7 @@ Definition read_elf32_off  (endian : endianness ) (bs0 : byte_sequence )  : erro
 
 (* [?]: removed value specification. *)
 
-Definition bytes_of_elf32_off  (endian : endianness ) (w : elf32_off )  : list (byte ):= 
+Definition bytes_of_elf32_off  (endian : endianness ) (w : elf32_off )  : list (elf_types_local.byte ):= 
   match ( endian) with 
     | Little => match ( quad_of_elf32_off w) with (b0,  b1,  b2,  b3) => [b0; b1; b2; b3]
  end
@@ -420,12 +420,12 @@ Definition read_elf64_off  (endian : endianness ) (bs0 : byte_sequence )  : erro
   match ( endian) with 
     | Little =>
       byte_sequence.read_8_bytes_le bs0 >>= 
-  (fun (p : (((byte *byte *byte *byte *byte *byte *byte *byte ) % type)*byte_sequence ) % type) =>
+  (fun (p : (((elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type) =>
      match ( (p) ) with ( ((b1,  b2,  b3,  b4,  b5,  b6,  b7,  b8),  bs1)) =>
        return0 (elf64_off_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1) end)
     | Big    =>
       byte_sequence.read_8_bytes_be bs0 >>= 
-  (fun (p : (((byte *byte *byte *byte *byte *byte *byte *byte ) % type)*byte_sequence ) % type) =>
+  (fun (p : (((elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type) =>
      match ( (p) ) with ( ((b1,  b2,  b3,  b4,  b5,  b6,  b7,  b8),  bs1)) =>
        return0 (elf64_off_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1) end)
   end.
@@ -436,7 +436,7 @@ Definition read_elf64_off  (endian : endianness ) (bs0 : byte_sequence )  : erro
 
 (* [?]: removed value specification. *)
 
-Definition bytes_of_elf64_off  (endian : endianness ) (w : elf64_off )  : list (byte ):= 
+Definition bytes_of_elf64_off  (endian : endianness ) (w : elf64_off )  : list (elf_types_local.byte ):= 
   match ( endian) with 
     | Little => match ( oct_of_elf64_off w) with (b0,  b1,  b2,  b3,  b4,  b5,  b6,  b7) =>
    [b0; b1; b2; b3; b4; b5; b6; b7] end
@@ -482,12 +482,12 @@ Definition read_elf32_word  (endian : endianness ) (bs0 : byte_sequence )  : err
   match ( endian) with 
     | Little =>
       byte_sequence.read_4_bytes_le bs0 >>= 
-  (fun (p : (((byte *byte *byte *byte ) % type)*byte_sequence ) % type) =>
+  (fun (p : (((elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type) =>
      match ( (p) ) with ( ((b1,  b2,  b3,  b4),  bs1)) =>
        return0 (elf32_word_of_quad b4 b3 b2 b1, bs1) end)
     | Big    =>
       byte_sequence.read_4_bytes_be bs0 >>= 
-  (fun (p : (((byte *byte *byte *byte ) % type)*byte_sequence ) % type) =>
+  (fun (p : (((elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type) =>
      match ( (p) ) with ( ((b1,  b2,  b3,  b4),  bs1)) =>
        return0 (elf32_word_of_quad b4 b3 b2 b1, bs1) end)
   end.
@@ -500,7 +500,7 @@ Definition read_elf32_word  (endian : endianness ) (bs0 : byte_sequence )  : err
 
 (* [?]: removed value specification. *)
 
-Definition bytes_of_elf32_word  (endian : endianness ) (w : elf32_word )  : list (byte ):= 
+Definition bytes_of_elf32_word  (endian : endianness ) (w : elf32_word )  : list (elf_types_local.byte ):= 
   match ( endian) with 
     | Little => match ( quad_of_elf32_word w) with (b0,  b1,  b2,  b3) => [b0; b1; b2; b3]
  end
@@ -541,12 +541,12 @@ Definition read_elf64_word  (endian : endianness ) (bs0 : byte_sequence )  : err
   match ( endian) with 
     | Little =>
       byte_sequence.read_4_bytes_le bs0 >>= 
-  (fun (p : (((byte *byte *byte *byte ) % type)*byte_sequence ) % type) =>
+  (fun (p : (((elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type) =>
      match ( (p) ) with ( ((b1,  b2,  b3,  b4),  bs1)) =>
        return0 (elf64_word_of_quad b4 b3 b2 b1, bs1) end)
     | Big    =>
       byte_sequence.read_4_bytes_be bs0 >>= 
-  (fun (p : (((byte *byte *byte *byte ) % type)*byte_sequence ) % type) =>
+  (fun (p : (((elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type) =>
      match ( (p) ) with ( ((b1,  b2,  b3,  b4),  bs1)) =>
        return0 (elf64_word_of_quad b4 b3 b2 b1, bs1) end)
   end.
@@ -557,7 +557,7 @@ Definition read_elf64_word  (endian : endianness ) (bs0 : byte_sequence )  : err
 
 (* [?]: removed value specification. *)
 
-Definition bytes_of_elf64_word  (endian : endianness ) (w : elf64_word )  : list (byte ):= 
+Definition bytes_of_elf64_word  (endian : endianness ) (w : elf64_word )  : list (elf_types_local.byte ):= 
   match ( endian) with 
     | Little => match ( quad_of_elf64_word w) with (b0,  b1,  b2,  b3) => [b0; b1; b2; b3]
  end
@@ -597,12 +597,12 @@ Definition read_elf32_sword  (endian : endianness ) (bs0 : byte_sequence )  : er
   match ( endian) with 
     | Little =>
       byte_sequence.read_4_bytes_le bs0 >>= 
-  (fun (p : (((byte *byte *byte *byte ) % type)*byte_sequence ) % type) =>
+  (fun (p : (((elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type) =>
      match ( (p) ) with ( ((b1,  b2,  b3,  b4),  bs1)) =>
        return0 (elf32_sword_of_quad b4 b3 b2 b1, bs1) end)
     | Big    =>
       byte_sequence.read_4_bytes_be bs0 >>= 
-  (fun (p : (((byte *byte *byte *byte ) % type)*byte_sequence ) % type) =>
+  (fun (p : (((elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type) =>
      match ( (p) ) with ( ((b1,  b2,  b3,  b4),  bs1)) =>
        return0 (elf32_sword_of_quad b4 b3 b2 b1, bs1) end)
   end.
@@ -610,7 +610,7 @@ Definition read_elf32_sword  (endian : endianness ) (bs0 : byte_sequence )  : er
 
 (* [?]: removed value specification. *)
 
-Definition bytes_of_elf32_sword  (endian : endianness ) (w : elf32_sword )  : list (byte ):= 
+Definition bytes_of_elf32_sword  (endian : endianness ) (w : elf32_sword )  : list (elf_types_local.byte ):= 
   match ( endian) with 
     | Little => match ( quad_of_elf32_sword w) with (b0,  b1,  b2,  b3) => [b0; b1; b2; b3]
  end
@@ -641,12 +641,12 @@ Definition read_elf64_sword  (endian : endianness ) (bs0 : byte_sequence )  : er
   match ( endian) with 
     | Little =>
       byte_sequence.read_4_bytes_le bs0 >>= 
-  (fun (p : (((byte *byte *byte *byte ) % type)*byte_sequence ) % type) =>
+  (fun (p : (((elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type) =>
      match ( (p) ) with ( ((b1,  b2,  b3,  b4),  bs1)) =>
        return0 (elf64_sword_of_quad b4 b3 b2 b1, bs1) end)
     | Big    =>
       byte_sequence.read_4_bytes_be bs0 >>= 
-  (fun (p : (((byte *byte *byte *byte ) % type)*byte_sequence ) % type) =>
+  (fun (p : (((elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type) =>
      match ( (p) ) with ( ((b1,  b2,  b3,  b4),  bs1)) =>
        return0 (elf64_sword_of_quad b4 b3 b2 b1, bs1) end)
   end.
@@ -654,7 +654,7 @@ Definition read_elf64_sword  (endian : endianness ) (bs0 : byte_sequence )  : er
 
 (* [?]: removed value specification. *)
 
-Definition bytes_of_elf64_sword  (endian : endianness ) (w : elf64_sword )  : list (byte ):= 
+Definition bytes_of_elf64_sword  (endian : endianness ) (w : elf64_sword )  : list (elf_types_local.byte ):= 
   match ( endian) with 
     | Little => match ( quad_of_elf64_sword w) with (b0,  b1,  b2,  b3) => [b0; b1; b2; b3]
  end
@@ -687,12 +687,12 @@ Definition read_elf64_xword  (endian : endianness ) (bs0 : byte_sequence )  : er
   match ( endian) with 
     | Little =>
       byte_sequence.read_8_bytes_le bs0 >>= 
-  (fun (p : (((byte *byte *byte *byte *byte *byte *byte *byte ) % type)*byte_sequence ) % type) =>
+  (fun (p : (((elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type) =>
      match ( (p) ) with ( ((b1,  b2,  b3,  b4,  b5,  b6,  b7,  b8),  bs1)) =>
        return0 (elf64_xword_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1) end)
     | Big    =>
       byte_sequence.read_8_bytes_be bs0 >>= 
-  (fun (p : (((byte *byte *byte *byte *byte *byte *byte *byte ) % type)*byte_sequence ) % type) =>
+  (fun (p : (((elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type) =>
      match ( (p) ) with ( ((b1,  b2,  b3,  b4,  b5,  b6,  b7,  b8),  bs1)) =>
        return0 (elf64_xword_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1) end)
   end.
@@ -715,7 +715,7 @@ Definition read_elf64_xword  (endian : endianness ) (bs0 : byte_sequence )  : er
 
 (* [?]: removed value specification. *)
 
-Definition bytes_of_elf64_xword  (endian : endianness ) (x : elf64_xword )  : list (byte ):= 
+Definition bytes_of_elf64_xword  (endian : endianness ) (x : elf64_xword )  : list (elf_types_local.byte ):= 
   match ( endian) with 
     | Little => match ( oct_of_elf64_xword x) with
      (b0,  b1,  b2,  b3,  b4,  b5,  b6,  b7) =>
@@ -758,12 +758,12 @@ Definition read_elf64_sxword  (endian : endianness ) (bs0 : byte_sequence )  : e
   match ( endian) with 
     | Little =>
       byte_sequence.read_8_bytes_le bs0 >>= 
-  (fun (p : (((byte *byte *byte *byte *byte *byte *byte *byte ) % type)*byte_sequence ) % type) =>
+  (fun (p : (((elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type) =>
      match ( (p) ) with ( ((b1,  b2,  b3,  b4,  b5,  b6,  b7,  b8),  bs1)) =>
        return0 (elf64_sxword_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1) end)
     | Big    =>
       byte_sequence.read_8_bytes_be bs0 >>= 
-  (fun (p : (((byte *byte *byte *byte *byte *byte *byte *byte ) % type)*byte_sequence ) % type) =>
+  (fun (p : (((elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte *elf_types_local.byte ) % type)*byte_sequence ) % type) =>
      match ( (p) ) with ( ((b1,  b2,  b3,  b4,  b5,  b6,  b7,  b8),  bs1)) =>
        return0 (elf64_sxword_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1) end)
   end.
@@ -771,7 +771,7 @@ Definition read_elf64_sxword  (endian : endianness ) (bs0 : byte_sequence )  : e
 
 (* [?]: removed value specification. *)
 
-Definition bytes_of_elf64_sxword  (endian : endianness ) (w : elf64_sxword )  : list (byte ):= 
+Definition bytes_of_elf64_sxword  (endian : endianness ) (w : elf64_sxword )  : list (elf_types_local.byte ):= 
   match ( endian) with 
     | Little => match ( elf64_sxword w) with (b0,  b1,  b2,  b3,  b4,  b5,  b6,  b7) =>
    [b0; b1; b2; b3; b4; b5; b6; b7] end

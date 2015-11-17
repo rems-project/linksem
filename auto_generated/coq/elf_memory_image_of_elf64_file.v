@@ -306,7 +306,7 @@ Definition elf_memory_image_of_elf64_file {abifeature : Type}  (a : abi abifeatu
                 in*)
                 let all_annotations := (set_from_list_by (pairCompare (maybeCompare (pairCompare (fun (x : string ) (y : string )=>EQ) (pairCompare (genericCompare nat_ltb beq_nat) (genericCompare nat_ltb beq_nat)))) (fun (x : range_tag (abis.any_abi_feature )) (y : range_tag (abis.any_abi_feature ))=>EQ)) all_annotations_list)
                 in
-                let apply_content_relocations := (fun  (name1 : string ) => (fun (content : list (option (byte ) )) => 
+                let apply_content_relocations := (fun  (name1 : string ) => (fun (content : list (option (elf_types_local.byte ) )) => 
                     let this_element_reloc_sites := List.filter (
   fun (p : (((string *((nat *nat ) % type)) % type)*range_tag (abis.any_abi_feature )) % type) =>
     match ( (p) ) with ( ((n,  range1),  _)) => (string_equal name1 n) end) all_reloc_sites

@@ -1,4 +1,11 @@
+Require Import Ascii.
+
 Axiom byte : Type.
+
+Axiom null_byte : byte.
+Axiom nat_of_byte : byte -> nat.
+Axiom byte_of_nat : nat -> byte.
+Axiom char_list_of_byte_list : list byte -> list ascii.
 
 Axiom unsigned_char : Type.
 

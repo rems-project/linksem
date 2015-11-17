@@ -61,8 +61,8 @@ Record elf32_note : Type :=
   { elf32_note_namesz : elf32_word  (** The size of the name field. *)
    ; elf32_note_descsz : elf32_word  (** The size of the description field. *)
    ; elf32_note_type   : elf32_word  (** The type of the note. *)
-   ; elf32_note_name   : list  byte   (** The list of bytes (of length indicated above) corresponding to the name string. *)
-   ; elf32_note_desc   : list  byte   (** The list of bytes (of length indicated above) corresponding to the desc string. *)
+   ; elf32_note_name   : list  elf_types_local.byte   (** The list of bytes (of length indicated above) corresponding to the name string. *)
+   ; elf32_note_desc   : list  elf_types_local.byte   (** The list of bytes (of length indicated above) corresponding to the desc string. *)
    }.
 Notation "{[ r 'with' 'elf32_note_namesz' := e ]}" := ({| elf32_note_namesz := e; elf32_note_descsz := elf32_note_descsz r; elf32_note_type := elf32_note_type r; elf32_note_name := elf32_note_name r; elf32_note_desc := elf32_note_desc r |}).
 Notation "{[ r 'with' 'elf32_note_descsz' := e ]}" := ({| elf32_note_descsz := e; elf32_note_namesz := elf32_note_namesz r; elf32_note_type := elf32_note_type r; elf32_note_name := elf32_note_name r; elf32_note_desc := elf32_note_desc r |}).
@@ -77,8 +77,8 @@ Record elf64_note : Type :=
   { elf64_note_namesz : elf64_xword  (** The size of the name field. *)
    ; elf64_note_descsz : elf64_xword  (** The size of the description field. *)
    ; elf64_note_type   : elf64_xword  (** The type of the note. *)
-   ; elf64_note_name   : list  byte    (** The list of bytes (of length indicated above) corresponding to the name string. *)
-   ; elf64_note_desc   : list  byte    (** The list of bytes (of length indicated above) corresponding to the desc string. *)
+   ; elf64_note_name   : list  elf_types_local.byte    (** The list of bytes (of length indicated above) corresponding to the name string. *)
+   ; elf64_note_desc   : list  elf_types_local.byte    (** The list of bytes (of length indicated above) corresponding to the desc string. *)
    }.
 Notation "{[ r 'with' 'elf64_note_namesz' := e ]}" := ({| elf64_note_namesz := e; elf64_note_descsz := elf64_note_descsz r; elf64_note_type := elf64_note_type r; elf64_note_name := elf64_note_name r; elf64_note_desc := elf64_note_desc r |}).
 Notation "{[ r 'with' 'elf64_note_descsz' := e ]}" := ({| elf64_note_descsz := e; elf64_note_namesz := elf64_note_namesz r; elf64_note_type := elf64_note_type r; elf64_note_name := elf64_note_name r; elf64_note_desc := elf64_note_desc r |}).
@@ -99,10 +99,10 @@ Definition read_elf32_note  (endian : endianness ) (bs0 : byte_sequence )  : err
             (fun (p : (elf32_word *byte_sequence ) % type) =>
                match ( (p) ) with ( (typ,  bs0)) =>
                  repeatM' (nat_of_elf32_word namesz) bs0 read_char >>=
-                 (fun (p : (list (byte )*byte_sequence ) % type) =>
+                 (fun (p : (list (elf_types_local.byte )*byte_sequence ) % type) =>
                     match ( (p) ) with ( (name1,  bs0)) =>
                       repeatM' (nat_of_elf32_word descsz) bs0 read_char >>=
-                      (fun (p : (list (byte )*byte_sequence ) % type) =>
+                      (fun (p : (list (elf_types_local.byte )*byte_sequence ) % type) =>
                          match ( (p) ) with ( (desc,  bs0)) =>
                            return0
                              ({|elf32_note_namesz := namesz;elf32_note_descsz := descsz;elf32_note_type := typ;elf32_note_name := name1;elf32_note_desc := desc |},
@@ -120,10 +120,10 @@ Definition read_elf64_note  (endian : endianness ) (bs0 : byte_sequence )  : err
             (fun (p : (elf64_xword *byte_sequence ) % type) =>
                match ( (p) ) with ( (typ,  bs0)) =>
                  repeatM' (nat_of_elf64_xword namesz) bs0 read_char >>=
-                 (fun (p : (list (byte )*byte_sequence ) % type) =>
+                 (fun (p : (list (elf_types_local.byte )*byte_sequence ) % type) =>
                     match ( (p) ) with ( (name1,  bs0)) =>
                       repeatM' (nat_of_elf64_xword descsz) bs0 read_char >>=
-                      (fun (p : (list (byte )*byte_sequence ) % type) =>
+                      (fun (p : (list (elf_types_local.byte )*byte_sequence ) % type) =>
                          match ( (p) ) with ( (desc,  bs0)) =>
                            return0
                              ({|elf64_note_namesz := namesz;elf64_note_descsz := descsz;elf64_note_type := typ;elf64_note_name := name1;elf64_note_desc := desc |},

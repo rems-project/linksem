@@ -178,9 +178,41 @@ Definition retrieve_binding_for_ref {a b c d e : Type} `{Eq b}  (r : symbol_refe
 
 Definition reloc_site_resolution : Type := ( reloc_site  * binding  * reloc_decision ) % type.
 Definition reloc_site_resolution_default: reloc_site_resolution  := (reloc_site_default, binding_default, reloc_decision_default).
+
+Definition reloc_simplify_fn : Type :=  reloc_site  ->  binding  ->  reloc_decision  ->  set  command_line.link_option  ->  reloc_decision .
+Definition reloc_simplify_fn_default: reloc_simplify_fn  := (fun (x138 :  reloc_site ) => (fun (x139 :  binding ) => (fun (x140 :  reloc_decision ) => (fun (x141 :  set  command_line.link_option ) => reloc_decision_default)))).
 (* [?]: removed value specification. *)
 
-Definition mark_fate_of_relocs  (linkable_idx : nat ) (a : abi (any_abi_feature )) (options : set (command_line.link_option )) (bindings_by_name : fmap (string ) (list ((nat *((((nat *symbol_reference *((linkable_object *input_item *input_options ) % type)) % type)*option ((nat *symbol_definition *((linkable_object *input_item *input_options ) % type)) % type) ) % type)) % type))) (item : (linkable_object *input_item *input_options ) % type) (img3 : annotated_memory_image (any_abi_feature ))  : (list ((reloc_site *((((nat *symbol_reference *((linkable_object *input_item *input_options ) % type)) % type)*option ((nat *symbol_definition *((linkable_object *input_item *input_options ) % type)) % type) ) % type)*reloc_decision ) % type)*annotated_memory_image (any_abi_feature )) % type:=  
+Definition default_simplify_reloc  (rs : reloc_site ) (b : (((nat *symbol_reference *((linkable_object *input_item *input_options ) % type)) % type)*option ((nat *symbol_definition *linkable_item ) % type) ) % type) (rd : reloc_decision ) (options : set (command_line.link_option ))  : reloc_decision :=  
+    (* If we're building a static executable, simplify PIC-style relocs 
+     * so that they bind directly. *)
+    let building_executable := (set_member_by (fun (x : command_line.link_option ) (y : command_line.link_option )=>EQ) (command_line.OutputKind(command_line.Executable)) options) in
+    let linking_statically := (* for the moment *) true in 
+  match ( b) with ((ref_idx,  ref1,  ref_item),  maybe_def) =>
+    if building_executable && linking_statically then
+      match ( rd) with ApplyReloc(None) =>
+        (* Okay -- simplify non-TLS via-GOT ones.
+             * ARGH. We can't just turn a via-GOT access into a not-via-GOT access.
+             * We need to change the addressing mode to be less indirect by one level.
+             * This means rewriting the instruction (from mov to lea, say).
+             * GNU ld does this even with --no-relax. *)
+      let replacement := (*  match Abi_amd64_relocation.string_of_amd64_relocation_type (get_elf64_relocation_a_type rs.ref_relent) with
+                "r_x86_64_got32"        -> 
+                | "r_x86_64_gotpcrel"   -> 
+                | "r_x86_64_gotoff64"   -> 
+                | "r_x86_64_gotpc32"    -> 
+                | _ -> Nothing
+            end *) None
+      in
+      if negb ((maybeEqualBy tripleEqual replacement None)) then
+        (*let _ = errln ("Simplifying a via-GOT symbol reference: " ^ ref.ref_symname ^ " coming from linkable " ^ (show ref_idx) ^ 
+                    ", logically from section " ^ (show rs.ref_src_scn)) 
+                in*)
+        ApplyReloc (replacement) else (* FIXME: also simplify PLT ones. *) rd
+        | _ => rd end else rd end.
+(* [?]: removed value specification. *)
+
+Definition mark_fate_of_relocs  (linkable_idx : nat ) (a : abi (any_abi_feature )) (simplify_reloc : reloc_site  -> binding  -> reloc_decision  -> set (command_line.link_option ) -> reloc_decision ) (options : set (command_line.link_option )) (bindings_by_name : fmap (string ) (list ((nat *((((nat *symbol_reference *((linkable_object *input_item *input_options ) % type)) % type)*option ((nat *symbol_definition *((linkable_object *input_item *input_options ) % type)) % type) ) % type)) % type))) (item : (linkable_object *input_item *input_options ) % type) (img3 : annotated_memory_image (any_abi_feature ))  : (list ((reloc_site *((((nat *symbol_reference *((linkable_object *input_item *input_options ) % type)) % type)*option ((nat *symbol_definition *((linkable_object *input_item *input_options ) % type)) % type) ) % type)*reloc_decision ) % type)*annotated_memory_image (any_abi_feature )) % type:=  
     (* Our image already models relocation sites. For each relocation *record*,
      * we use our bindings to make a decision about whether to apply it or not.
      * 
@@ -309,8 +341,8 @@ Definition mark_fate_of_relocs  (linkable_idx : nat ) (a : abi (any_abi_feature 
                       let decide := fun (decision : reloc_decision ) => (
                                       (*let _ = errln ("Decided to " ^ match decision with
                                 LeaveReloc -> "leave"
-                                | ApplyReloc -> "apply"
-                                | MakePIC -> "PICify"
+                                | ApplyReloc(_) -> "apply"
+                                | ChangeTo(_) -> "change somehow (maybe PICify?)"
                             end ^ " relocation in linkable " ^ (show ref_item) ^ "'s image, bound to " ^ 
                             match maybe_def with
                                 Just(def_idx, def, def_item) -> "a definition called `" ^ def.def_symname ^ "' in linkable " ^
@@ -344,7 +376,8 @@ Definition mark_fate_of_relocs  (linkable_idx : nat ) (a : abi (any_abi_feature 
                           (reloc_is_absolute reloc1)) then decide LeaveReloc
                       else
                         (* In what circumstances do we apply the reloc? If it's a final binding. *)
-                        if binding_is_final options b then decide ApplyReloc
+                        if binding_is_final options b then
+                          decide (ApplyReloc (None))
                         (* In what circumstances do we MakePIC? If it's a non-absolute relocatable field
                          *     and we're building a shared library. 
                          * 
@@ -359,6 +392,7 @@ Definition mark_fate_of_relocs  (linkable_idx : nat ) (a : abi (any_abi_feature 
                          * The initial reloc is removed! Since PLT means removing relocs from code
                          * and reproducing their effect using a PLT.
                          * That's why we need this special MakePIC behaviour.
+                         * Actually, generalise to a ChangeRelocTo.
                          * 
                          * What about data?
                          * Suppose I have a shared library containing a read-only pointer to <environ>.
@@ -371,7 +405,10 @@ Definition mark_fate_of_relocs  (linkable_idx : nat ) (a : abi (any_abi_feature 
                          * extra stuff later (PLT, GOT).
                          *)
                         else
-                          if building_shared_library then decide MakePIC
+                          if building_shared_library then
+                            decide
+                              (* MakePIC *) (ChangeRelocTo
+                                               ( 0,(ref r), reloc1)) (* FIXME *)
                           (* The above are non-exclusive and non-exhaustive. Often, more than one option is available,
                          * ABIs / practice makes an arbitrary choice. For example, final bindings
                          * within a library could be realised the PIC way, but aren't (it'd create a 
@@ -415,23 +452,23 @@ Definition strip_metadata_sections  (reloc_decisions : list ((reloc_site *((((na
                                                            (el_name, range_tag1)
                                                        else None
                                                        | ImageBase =>
-                                                       DAEMON (* Incomplete Pattern at File \"link.lem\", line 317, character 9 to line 321, character 11 *)
+                                                       DAEMON (* Incomplete Pattern at File \"link.lem\", line 355, character 9 to line 359, character 11 *)
                                                        | EntryPoint =>
-                                                       DAEMON (* Incomplete Pattern at File \"link.lem\", line 317, character 9 to line 321, character 11 *)
+                                                       DAEMON (* Incomplete Pattern at File \"link.lem\", line 355, character 9 to line 359, character 11 *)
                                                        | SymbolDef _ =>
-                                                       DAEMON (* Incomplete Pattern at File \"link.lem\", line 317, character 9 to line 321, character 11 *)
+                                                       DAEMON (* Incomplete Pattern at File \"link.lem\", line 355, character 9 to line 359, character 11 *)
                                                        | SymbolRef _ =>
-                                                       DAEMON (* Incomplete Pattern at File \"link.lem\", line 317, character 9 to line 321, character 11 *)
+                                                       DAEMON (* Incomplete Pattern at File \"link.lem\", line 355, character 9 to line 359, character 11 *)
                                                        | FileFeature(ElfHeader _) =>
-                                                       DAEMON (* Incomplete Pattern at File \"link.lem\", line 317, character 9 to line 321, character 11 *)
+                                                       DAEMON (* Incomplete Pattern at File \"link.lem\", line 355, character 9 to line 359, character 11 *)
                                                        | FileFeature(ElfSectionHeaderTable _) =>
-                                                       DAEMON (* Incomplete Pattern at File \"link.lem\", line 317, character 9 to line 321, character 11 *)
+                                                       DAEMON (* Incomplete Pattern at File \"link.lem\", line 355, character 9 to line 359, character 11 *)
                                                        | FileFeature(ElfProgramHeaderTable _) =>
-                                                       DAEMON (* Incomplete Pattern at File \"link.lem\", line 317, character 9 to line 321, character 11 *)
+                                                       DAEMON (* Incomplete Pattern at File \"link.lem\", line 355, character 9 to line 359, character 11 *)
                                                        | FileFeature(ElfSegment _) =>
-                                                       DAEMON (* Incomplete Pattern at File \"link.lem\", line 317, character 9 to line 321, character 11 *)
+                                                       DAEMON (* Incomplete Pattern at File \"link.lem\", line 355, character 9 to line 359, character 11 *)
                                                        | AbiFeature _ =>
-                                                       DAEMON (* Incomplete Pattern at File \"link.lem\", line 317, character 9 to line 321, character 11 *)
+                                                       DAEMON (* Incomplete Pattern at File \"link.lem\", line 355, character 9 to line 359, character 11 *)
                                                      end end )
                                                 (zip section_tags
                                                    section_ranges) in
@@ -554,8 +591,9 @@ Definition expand_sections_for_one_image  (a : abi (any_abi_feature )) (options 
                 ()
             ) () (elf_memory_image_sections_with_indices img)
         in*)
-  match ( mark_fate_of_relocs linkable_idx a options bindings_by_name 
-          item img3) with (reloc_decisions,  marked_img) =>
+  match ( mark_fate_of_relocs linkable_idx a default_simplify_reloc options
+            bindings_by_name item img3) with
+      (reloc_decisions,  marked_img) =>
     (* Now we have a decision for each reloc: Leave, Apply, MakePIC. Which ones
          * do we materialize? Only the Leave ones, for now. For each relocation that
          * we Leave, we figure out its originating section and create a lookalike
@@ -792,7 +830,7 @@ Definition relocate_output_image  (a : abi (any_abi_feature )) (bindings_by_name
                                 ", symbol name `" ^ x.ref.ref_symname ^ "'")
                             in*)
           let symaddr := match ((maybe_def_bound_to x)) with
-                             Some(ApplyReloc,  Some(bound_def)) =>
+                             Some(ApplyReloc(_),  Some(bound_def)) =>
                            match ( find_defs_matching bound_def img3) with
                                [] => DAEMON
                              | ((el_name,  (start,  len)),  d) :: more =>
@@ -804,7 +842,7 @@ Definition relocate_output_image  (a : abi (any_abi_feature )) (bindings_by_name
                                                     "in section " ^ el_name)
                                                     in*) v
                            end end | None => DAEMON
-                           | Some(ApplyReloc,  None) =>
+                           | Some(ApplyReloc(_),  None) =>
                            (*let _ = errln "No definition, so we think this is a weak reference; giving it value 0."
                                     in*)
                            (* CHECK: does the syment say it's weak? *)
@@ -817,9 +855,11 @@ Definition relocate_output_image  (a : abi (any_abi_feature )) (bindings_by_name
                              DAEMON else  (* Weak symbol. *) 0
                            | Some(LeaveReloc,  _) =>
                            (* We shouldn't be seeing this, given that we're applying the reloc Right Now. *)
-                           DAEMON | Some(MakePIC,  _) =>
-                           nat_default (* Incomplete Pattern at File \"link.lem\", line 590, character 43 to line 621, character 31 *)
+                           DAEMON | Some(ChangeRelocTo _,  _) =>
+                           nat_default (* Incomplete Pattern at File \"link.lem\", line 628, character 43 to line 659, character 31 *)
                          end in
+          (*let _ = errln ("Got symaddr: 0x" ^ (hex_string_of_natural symaddr))
+                            in*)
           apply_reloc acc_img (el_name, start, len) x symaddr end | None =>
           (* okay, do nothing *) acc_img end | _ => DAEMON end end
     )) relocs img3
@@ -1100,23 +1140,23 @@ Definition link  (script1 : list (script_element )) (a : abi (any_abi_feature ))
            (command_line.EntryAddress ( 0)) options) with None =>
    (guess_entry_point a) output_image | Some(command_line.EntryAddress(x)) =>
    Some x | Some(command_line.OutputFilename _) =>
-   DAEMON (* Incomplete Pattern at File \"link.lem\", line 855, character 9 to line 858, character 11 *)
+   DAEMON (* Incomplete Pattern at File \"link.lem\", line 895, character 9 to line 898, character 11 *)
    | Some(command_line.OutputKind _) =>
-   DAEMON (* Incomplete Pattern at File \"link.lem\", line 855, character 9 to line 858, character 11 *)
+   DAEMON (* Incomplete Pattern at File \"link.lem\", line 895, character 9 to line 898, character 11 *)
    | Some(command_line.ForceCommonDefined _) =>
-   DAEMON (* Incomplete Pattern at File \"link.lem\", line 855, character 9 to line 858, character 11 *)
+   DAEMON (* Incomplete Pattern at File \"link.lem\", line 895, character 9 to line 898, character 11 *)
    | Some(command_line.Soname _) =>
-   DAEMON (* Incomplete Pattern at File \"link.lem\", line 855, character 9 to line 858, character 11 *)
+   DAEMON (* Incomplete Pattern at File \"link.lem\", line 895, character 9 to line 898, character 11 *)
    | Some(command_line.TextSegmentStart _) =>
-   DAEMON (* Incomplete Pattern at File \"link.lem\", line 855, character 9 to line 858, character 11 *)
+   DAEMON (* Incomplete Pattern at File \"link.lem\", line 895, character 9 to line 898, character 11 *)
    | Some(command_line.RodataSegmentStart _) =>
-   DAEMON (* Incomplete Pattern at File \"link.lem\", line 855, character 9 to line 858, character 11 *)
+   DAEMON (* Incomplete Pattern at File \"link.lem\", line 895, character 9 to line 898, character 11 *)
    | Some(command_line.LdataSegmentStart _) =>
-   DAEMON (* Incomplete Pattern at File \"link.lem\", line 855, character 9 to line 858, character 11 *)
+   DAEMON (* Incomplete Pattern at File \"link.lem\", line 895, character 9 to line 898, character 11 *)
    | Some command_line.BindFunctionsEarly =>
-   DAEMON (* Incomplete Pattern at File \"link.lem\", line 855, character 9 to line 858, character 11 *)
+   DAEMON (* Incomplete Pattern at File \"link.lem\", line 895, character 9 to line 898, character 11 *)
    | Some command_line.BindNonFunctionsEarly =>
-   DAEMON (* Incomplete Pattern at File \"link.lem\", line 855, character 9 to line 858, character 11 *)
+   DAEMON (* Incomplete Pattern at File \"link.lem\", line 895, character 9 to line 898, character 11 *)
  end in
  match ( maybe_entry_point_address) with Some addr =>
    match ( address_to_element_and_offset addr output_image) with
