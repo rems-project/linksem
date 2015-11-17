@@ -290,7 +290,7 @@ let tls_extend a =
         let rev_list = List.foldl (fun accum_phdr_list -> (fun isec -> (
         match accum_phdr_list with
             [] ->
-                let _ = errln "Making a new TLS program header" in 
+                (*let _ = errln "Making a new TLS program header" in *)
                 [make_new_phdr isec elf_pt_tls maxpagesize commonpagesize]
             | current_phdr :: more -> 
                 match maybe_extend_phdr current_phdr isec tls_can_combine_flags with
@@ -552,7 +552,7 @@ let amd64_concretise_support img =
 
 val amd64_got_slot_idx : annotated_memory_image any_abi_feature -> symbol_reference_and_reloc_site -> natural
 let amd64_got_slot_idx img rr = 
-    let _ = errln ("Looking up GOT slot for symbol " ^ rr.ref.ref_symname) in
+    (*let _ = errln ("Looking up GOT slot for symbol " ^ rr.ref.ref_symname) in*)
     match Map.lookup ".got" img.elements with
         Nothing -> (* got no GOT? okay... *) failwith "got no GOT"
         | Just got_el -> 
