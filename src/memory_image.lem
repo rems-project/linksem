@@ -188,8 +188,9 @@ instance (Ord reloc_site)
 end
     
 type reloc_decision = LeaveReloc
-                    | ApplyReloc
-                    | MakePIC
+                    | ApplyReloc of maybe (natural * symbol_reference * reloc_site) (* change before apply *)
+                    | ChangeRelocTo of (natural * symbol_reference * reloc_site)
+                    (* | MakePIC    -- is now a kind of ChangeRelocTo *)
 
 type symbol_reference_and_reloc_site = <|
       ref         : symbol_reference

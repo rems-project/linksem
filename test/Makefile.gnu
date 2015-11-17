@@ -12,6 +12,9 @@ LDFLAGS := -static
 # Avoid LTO/plugin cruft in our link commands, for now.
 LDFLAGS += -fno-lto
 
+# Avoid relaxation, for now. ARGH: this seems not to prevent all instruction rewriting.
+LDFLAGS += -Wl,--no-relax
+
 # Cancel built-in rules -- why?
 %: %.c
 %: %.cc

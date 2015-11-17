@@ -107,8 +107,8 @@ let _ =
     in
     let a = match guessed_abi with
       Just a -> if get_elf64_osabi eout.elf64_file_header = elf_osabi_gnu 
-                    then let _ = Missing_pervasives.errln "Using GNU-extended ABI" in Gnu_ext_abi.gnu_extend a 
-                    else a
+                    then let _ = Missing_pervasives.errln "Using GNU-extended ABI" in Gnu_ext_abi.gnu_extend (Abis.tls_extend a) 
+                    else (Abis.tls_extend a)
       | Nothing -> failwith "output file does not conform to any known ABI"
     end
     in

@@ -149,97 +149,107 @@ let make_elf64_header data osabi abiv ma t entry shoff phoff phnum shnum shstrnd
        ; elf64_shnum    = elf64_half_of_natural shnum
        ; elf64_shstrndx = elf64_half_of_natural shstrndx
        |>
+       
+val phdr_flags_from_section_flags : natural -> string -> natural
+let phdr_flags_from_section_flags section_flags sec_name =
+    let flags = natural_lor elf_pf_r (natural_lor 
+        (if flag_is_set shf_write section_flags then elf_pf_w else 0)
+        (if flag_is_set shf_execinstr section_flags then elf_pf_x else 0))
+    in
+    (*let _ = errln ("Phdr flags of section " ^ sec_name ^ "(ELF section flags 0x " ^ 
+        (hex_string_of_natural section_flags) ^ ") are 0x" ^ (hex_string_of_natural flags))
+    in*)
+    flags
 
-val make_load_phdrs : forall 'abifeature. natural -> natural -> annotated_memory_image 'abifeature -> list elf64_interpreted_section -> list elf64_program_header_table_entry
-let make_load_phdrs max_page_sz common_page_sz img section_pairs_bare_sorted_by_address = 
-    let (phdr_flags_from_section_flags : natural -> string -> natural) = fun section_flags -> fun sec_name ->
-        let flags = natural_lor elf_pf_r (natural_lor 
-            (if flag_is_set shf_write section_flags then elf_pf_w else 0)
-            (if flag_is_set shf_execinstr section_flags then elf_pf_x else 0))
-        in
-        (*let _ = errln ("Phdr flags of section " ^ sec_name ^ "(ELF section flags 0x " ^ 
-            (hex_string_of_natural section_flags) ^ ") are 0x" ^ (hex_string_of_natural flags))
-        in*)
-        flags
+val phdr_is_writable : natural -> bool
+let phdr_is_writable flags =
+    (natural_land flags elf_pf_w) = elf_pf_w
+
+type can_combine_flags_fn = set natural -> maybe natural
+
+(* FIXME: lift this to a personality function of the GNU linker? 
+ * Not sure really... need to try some other linkers. *)
+val load_can_combine_flags : can_combine_flags_fn
+let load_can_combine_flags flagsets = 
+    (* The GNU linker happily adds a .rodata section to a RX segment,
+     * but not to a RW segment. So the only clear rule is: if any is writable,
+     * all must be writable. *)
+    let flagslist = Set_extra.toList flagsets
     in
-    let maybe_extend_phdr = fun phdr -> fun isec -> ( 
-        let new_p_type = natural_of_elf64_word phdr.elf64_p_type
-        in
-        let this_section_phdr_flags = phdr_flags_from_section_flags isec.elf64_section_flags isec.elf64_section_name_as_string
-        in
-        let can_combine_flags = fun flagsets -> 
-            (* The GNU linker happily adds a .rodata section to a RX segment,
-             * but not to a RW segment. So the only clear rule is: if any is writable,
-             * all must be writable. *)
-            let is_writable = fun flags -> natural_land flags elf_pf_w = elf_pf_w
-            in
-            let flagslist = Set_extra.toList flagsets
-            in
-            let union_flags = List.foldl natural_lor 0 flagslist
-            in
-            if List.any is_writable flagslist
-            then
-                if List.all is_writable flagslist then Just union_flags
-                else Nothing
-            else
-                Just union_flags
-        in
-        let maybe_extended_flags = can_combine_flags { this_section_phdr_flags; natural_of_elf64_word phdr.elf64_p_flags }
-        in
-        if maybe_extended_flags = Nothing then (*let _ = errln "flag mismatch" in*) Nothing
-        else let new_p_flags = match maybe_extended_flags with Just flags -> flags | _ -> failwith "impossible" end
-        in
-        (* The new filesz is the file end offset of this section,
-         * minus the existing file start offset of the phdr. 
-         * Check that the new section begins after the old offset+filesz. *)
-        if isec.elf64_section_offset < (natural_of_elf64_off phdr.elf64_p_offset) + (natural_of_elf64_xword phdr.elf64_p_filesz)
-        then (*let _ = errln "offset went backwards" in*) Nothing
-        else 
-        let new_p_filesz = natural_of_elf64_xword phdr.elf64_p_filesz + (if isec.elf64_section_type = sht_progbits then isec.elf64_section_size else 0)
-        in 
-        (* The new memsz is the virtual address end address of this section,
-         * minus the existing start vaddr of the phdr. 
-         * Check that the new section begins after the old vaddr+memsz. *)
-        if isec.elf64_section_addr < (natural_of_elf64_addr phdr.elf64_p_vaddr) + (natural_of_elf64_xword phdr.elf64_p_memsz)
-        then (*let _ = errln "vaddr went backwards" in*) Nothing
-        else 
-        let new_p_memsz = natural_of_elf64_xword phdr.elf64_p_memsz + isec.elf64_section_size
-        in
-        let (one_if_zero : natural -> natural) = fun n -> if n = 0 then 1 else n
-        in
-        let new_p_align =  lcm (one_if_zero (natural_of_elf64_xword phdr.elf64_p_align)) (one_if_zero isec.elf64_section_align)
-        in
-        Just
-          <| elf64_p_type   = elf64_word_of_natural new_p_type
-           ; elf64_p_flags  = elf64_word_of_natural new_p_flags
-           ; elf64_p_offset = phdr.elf64_p_offset
-           ; elf64_p_vaddr  = phdr.elf64_p_vaddr
-           ; elf64_p_paddr  = phdr.elf64_p_paddr
-           ; elf64_p_filesz = elf64_xword_of_natural new_p_filesz
-           ; elf64_p_memsz  = elf64_xword_of_natural new_p_memsz
-           ; elf64_p_align  = elf64_xword_of_natural new_p_align
-           |>
-    )
+    let union_flags = List.foldl natural_lor 0 flagslist
     in
-    let rounded_down_offset = fun isec -> round_down_to common_page_sz isec.elf64_section_offset
+    if List.any phdr_is_writable flagslist
+    then
+        if List.all phdr_is_writable flagslist then Just union_flags
+        else Nothing
+    else
+        Just union_flags
+        
+val tls_can_combine_flags : can_combine_flags_fn
+let tls_can_combine_flags flagsets = Just (List.foldl natural_lor 0 (Set_extra.toList flagsets))
+
+let maybe_extend_phdr phdr isec can_combine_flags =
+    let new_p_type = natural_of_elf64_word phdr.elf64_p_type
+    in
+    let this_section_phdr_flags = phdr_flags_from_section_flags isec.elf64_section_flags isec.elf64_section_name_as_string
+    in
+    let maybe_extended_flags = can_combine_flags { this_section_phdr_flags; natural_of_elf64_word phdr.elf64_p_flags }
+    in
+    if maybe_extended_flags = Nothing then (*let _ = errln "flag mismatch" in*) Nothing
+    else let new_p_flags = match maybe_extended_flags with Just flags -> flags | _ -> failwith "impossible" end
+    in
+    (* The new filesz is the file end offset of this section,
+     * minus the existing file start offset of the phdr. 
+     * Check that the new section begins after the old offset+filesz. *)
+    if isec.elf64_section_offset < (natural_of_elf64_off phdr.elf64_p_offset) + (natural_of_elf64_xword phdr.elf64_p_filesz)
+    then (*let _ = errln "offset went backwards" in*) Nothing
+    else 
+    let new_p_filesz = natural_of_elf64_xword phdr.elf64_p_filesz + (if isec.elf64_section_type = sht_progbits then isec.elf64_section_size else 0)
+    in 
+    (* The new memsz is the virtual address end address of this section,
+     * minus the existing start vaddr of the phdr. 
+     * Check that the new section begins after the old vaddr+memsz. *)
+    if isec.elf64_section_addr < (natural_of_elf64_addr phdr.elf64_p_vaddr) + (natural_of_elf64_xword phdr.elf64_p_memsz)
+    then (*let _ = errln "vaddr went backwards" in*) Nothing
+    else 
+    let new_p_memsz = natural_of_elf64_xword phdr.elf64_p_memsz + isec.elf64_section_size
+    in
+    let (one_if_zero : natural -> natural) = fun n -> if n = 0 then 1 else n
+    in
+    let new_p_align =  lcm (one_if_zero (natural_of_elf64_xword phdr.elf64_p_align)) (one_if_zero isec.elf64_section_align)
+    in
+    Just
+      <| elf64_p_type   = elf64_word_of_natural new_p_type
+       ; elf64_p_flags  = elf64_word_of_natural new_p_flags
+       ; elf64_p_offset = phdr.elf64_p_offset
+       ; elf64_p_vaddr  = phdr.elf64_p_vaddr
+       ; elf64_p_paddr  = phdr.elf64_p_paddr
+       ; elf64_p_filesz = elf64_xword_of_natural new_p_filesz
+       ; elf64_p_memsz  = elf64_xword_of_natural new_p_memsz
+       ; elf64_p_align  = elf64_xword_of_natural new_p_align
+       |>
+
+let make_new_phdr isec t maxpagesize commonpagesize =
+    let rounded_down_offset = fun isec -> round_down_to commonpagesize isec.elf64_section_offset
     in
     let offset_round_down_amount = fun isec -> isec.elf64_section_offset - (rounded_down_offset isec)
     in
-    let rounded_down_vaddr = fun isec -> round_down_to common_page_sz isec.elf64_section_addr
+    let rounded_down_vaddr = fun isec -> round_down_to commonpagesize isec.elf64_section_addr
     in
     let vaddr_round_down_amount = fun isec -> isec.elf64_section_addr - (rounded_down_vaddr isec)
     in
-    let new_phdr = fun isec -> 
-      <| elf64_p_type   = elf64_word_of_natural elf_pt_load (** Type of the segment *)
-       ; elf64_p_flags  = elf64_word_of_natural (phdr_flags_from_section_flags isec.elf64_section_flags isec.elf64_section_name_as_string) (** Segment flags *)
-       ; elf64_p_offset = elf64_off_of_natural (rounded_down_offset isec) (** Offset from beginning of file for segment *)
-       ; elf64_p_vaddr  = elf64_addr_of_natural (rounded_down_vaddr isec) (** Virtual address for segment in memory *)
-       ; elf64_p_paddr  = elf64_addr_of_natural 0 (** Physical address for segment *)
-       ; elf64_p_filesz = elf64_xword_of_natural (if isec.elf64_section_type = sht_nobits then 0 else isec.elf64_section_size + (offset_round_down_amount isec)) (** Size of segment in file, in bytes *)
-       ; elf64_p_memsz  = elf64_xword_of_natural (isec.elf64_section_size + (vaddr_round_down_amount isec)) (** Size of segment in memory image, in bytes *)
-       ; elf64_p_align  = elf64_xword_of_natural (* isec.elf64_section_align *) max_page_sz (** Segment alignment memory for memory and file *)
-       |>
-    in
+  <| elf64_p_type   = elf64_word_of_natural t (** Type of the segment *)
+   ; elf64_p_flags  = elf64_word_of_natural (phdr_flags_from_section_flags isec.elf64_section_flags isec.elf64_section_name_as_string) (** Segment flags *)
+   ; elf64_p_offset = elf64_off_of_natural (rounded_down_offset isec) (** Offset from beginning of file for segment *)
+   ; elf64_p_vaddr  = elf64_addr_of_natural (rounded_down_vaddr isec) (** Virtual address for segment in memory *)
+   ; elf64_p_paddr  = elf64_addr_of_natural 0 (** Physical address for segment *)
+   ; elf64_p_filesz = elf64_xword_of_natural (if isec.elf64_section_type = sht_nobits then 0 else isec.elf64_section_size + (offset_round_down_amount isec)) (** Size of segment in file, in bytes *)
+   ; elf64_p_memsz  = elf64_xword_of_natural (isec.elf64_section_size + (vaddr_round_down_amount isec)) (** Size of segment in memory image, in bytes *)
+   ; elf64_p_align  = elf64_xword_of_natural (* isec.elf64_section_align *) maxpagesize (** Segment alignment memory for memory and file *)
+   |>
+
+val make_load_phdrs : forall 'abifeature. natural -> natural -> annotated_memory_image 'abifeature -> list elf64_interpreted_section -> list elf64_program_header_table_entry
+let make_load_phdrs maxpagesize commonpagesize img section_pairs_bare_sorted_by_address = 
     (* accumulate sections into the phdr *)
     let rev_list = List.foldl (fun accum_phdr_list -> (fun isec -> (
         (* Do we have a current phdr? *)
@@ -247,14 +257,14 @@ let make_load_phdrs max_page_sz common_page_sz img section_pairs_bare_sorted_by_
             [] -> (* no, so make one *)
                 (*let _ = errln ("Starting the first LOAD phdr for section " ^ isec.elf64_section_name_as_string)
                 in*)
-                [new_phdr isec]
+                [make_new_phdr isec elf_pt_load maxpagesize commonpagesize]
             | current_phdr :: more -> 
                 (* can we extend it with the current section? *)
-                match maybe_extend_phdr current_phdr isec with
+                match maybe_extend_phdr current_phdr isec load_can_combine_flags with
                     Nothing -> 
                         (*let _ = errln ("Starting new LOAD phdr for section " ^ isec.elf64_section_name_as_string)
                         in*)
-                        (new_phdr isec) :: current_phdr :: more
+                        (make_new_phdr isec elf_pt_load maxpagesize commonpagesize) :: current_phdr :: more
                     | Just phdr -> phdr :: more
                 end
         end
@@ -264,6 +274,43 @@ let make_load_phdrs max_page_sz common_page_sz img section_pairs_bare_sorted_by_
     (*let _ = errln "Successfully made phdrs"
     in*)
     List.reverse rev_list
+
+val tls_extend: forall 'abifeature. abi 'abifeature -> abi 'abifeature
+let tls_extend a = 
+   <| is_valid_elf_header = a.is_valid_elf_header
+    ; make_elf_header     = a.make_elf_header
+    ; reloc               = a.reloc
+    ; section_is_special  = a.section_is_special
+    ; section_is_large    = a.section_is_large
+    ; maxpagesize         = a.maxpagesize
+    ; minpagesize         = a.minpagesize
+    ; commonpagesize      = a.commonpagesize
+    ; symbol_is_generated_by_linker = a.symbol_is_generated_by_linker
+    ; make_phdrs          = fun maxpagesize -> fun commonpagesize -> fun file_type -> fun img -> fun section_pairs_bare_sorted_by_address -> (
+        let rev_list = List.foldl (fun accum_phdr_list -> (fun isec -> (
+        match accum_phdr_list with
+            [] ->
+                let _ = errln "Making a new TLS program header" in 
+                [make_new_phdr isec elf_pt_tls maxpagesize commonpagesize]
+            | current_phdr :: more -> 
+                match maybe_extend_phdr current_phdr isec tls_can_combine_flags with
+                    Nothing -> 
+                        (make_new_phdr isec elf_pt_tls maxpagesize commonpagesize) :: current_phdr :: more
+                    | Just phdr -> phdr :: more
+                end
+        end
+        ))) [] (List.filter (fun isec -> flag_is_set shf_alloc isec.elf64_section_flags
+            && flag_is_set shf_tls isec.elf64_section_flags) section_pairs_bare_sorted_by_address)
+        in
+        (a.make_phdrs maxpagesize commonpagesize file_type img section_pairs_bare_sorted_by_address) ++ (List.reverse rev_list)
+    )
+    ; max_phnum           = 1 + a.max_phnum
+    ; guess_entry_point   = a.guess_entry_point
+    ; pad_data            = a.pad_data
+    ; pad_code            = a.pad_code
+    ; generate_support    = a.generate_support
+    ; concretise_support  = a.concretise_support
+    |>
     
 val make_default_phdrs : forall 'abifeature. natural -> natural -> natural (* file type *) -> annotated_memory_image 'abifeature -> list elf64_interpreted_section -> list elf64_program_header_table_entry
 let make_default_phdrs maxpagesize commonpagesize t img section_pairs_bare_sorted_by_address = 
@@ -355,7 +402,7 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
             (* Is this ref a relocation we're going to apply, and does it reference the GOT? *)
             match (rr.maybe_reloc, rr.maybe_def_bound_to) with
                 (Nothing, _) -> Nothing
-                | (Just r, Just(ApplyReloc, maybe_def)) ->
+                | (Just r, Just(ApplyReloc(_), maybe_def)) ->
                     if (get_elf64_relocation_a_type r.ref_relent IN {
                         r_x86_64_got32; r_x86_64_gotpcrel; (* r_x86_64_gottpoff; *) r_x86_64_gotoff64; r_x86_64_gotpc32 (* ; r_x86_64_gotpc32_tlsdesc *)
                     }) then 
@@ -398,7 +445,7 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
     let entrysize = 8
     in
     let new_by_range = {
-        (Just(".got", (0, nentries * entrysize)), AbiFeature(Amd64AbiFeature(Abi_amd64.GOT(refs_via_got))))
+        (Just(".got", (0, nentries * entrysize)), AbiFeature(Amd64AbiFeature(Abi_amd64.GOT(Set_extra.toList (Set.fromList refs_via_got)))))
     ;   (Just(".got", (0, nentries * entrysize)), FileFeature(ElfSection(1, 
           <| elf64_section_name = 0 (* ignored *)
            ; elf64_section_type = sht_progbits
@@ -464,12 +511,12 @@ let amd64_concretise_support img =
                                 | [((def_el_name, (def_start, def_len)), d)] -> 
                                     match element_and_offset_to_address (def_el_name, def_start) img with
                                         Nothing -> failwith ("no address for definition offset in element " ^ def_el_name)
-                                        | Just addr -> 
+                                        | Just x -> 
                                             let _ = errln ("GOT slot for symbol `" ^ symname ^ 
-                                                "' created pointing to address 0x" ^ (hex_string_of_natural addr) ^ 
+                                                "' created pointing to address 0x" ^ (hex_string_of_natural x) ^ 
                                                 " (offset 0x" ^ (hex_string_of_natural def_start) ^ " in element " ^ def_el_name ^ ")")
                                             in
-                                            addr
+                                            x
                                     end
                                 | _ -> failwith ("multiple matching definitions for GOT entry named " ^ symname)
                                 end
@@ -502,6 +549,111 @@ let amd64_concretise_support img =
                 | _ -> failwith "bad or multiple GOT tags"
             end
     end
+
+val amd64_got_slot_idx : annotated_memory_image any_abi_feature -> symbol_reference_and_reloc_site -> natural
+let amd64_got_slot_idx img rr = 
+    let _ = errln ("Looking up GOT slot for symbol " ^ rr.ref.ref_symname) in
+    match Map.lookup ".got" img.elements with
+        Nothing -> (* got no GOT? okay... *) failwith "got no GOT"
+        | Just got_el -> 
+            (* Find the GOT tag. *)
+            let tags_and_ranges = Multimap.lookupBy Memory_image_orderings.tagEquiv (AbiFeature(Amd64AbiFeature(Abi_amd64.GOT([])))) img.by_tag
+            in
+            match tags_and_ranges with
+                [] -> failwith "error: GOT element but no ABI feature GOT tag"
+                | [(AbiFeature(Amd64AbiFeature(Abi_amd64.GOT(l))), Just(got_el_name, (got_start_off, got_len)))] -> 
+                    (* Find the slot corresponding to rr, if we have one. *)
+                    let got_addr = match got_el.startpos with Just addr -> addr | Nothing -> failwith "GOT has no addr at reloc time" end
+                    in
+                    match rr.maybe_def_bound_to with
+                        Just (_, Just(d)) -> 
+                            match List.findIndex (fun (symname, maybe_def) -> Just(d) = maybe_def) l with
+                                Just idx -> naturalFromNat idx
+                             |  Nothing -> failwith ("no GOT slot for reloc against `" ^ rr.ref.ref_symname ^ "'")
+                            end
+                        | Just(_, Nothing) -> (* HACK: look for the weak symname. Really want more (ref-based) labelling. *)
+                            match List.findIndex (fun (symname, _) -> symname = rr.ref.ref_symname) l with
+                                Just idx -> naturalFromNat idx
+                             |  Nothing -> failwith ("no GOT slot for reloc against undefined symbol `" ^ rr.ref.ref_symname ^ "'")
+                            end
+                        | _ -> failwith "GOT: unbound def"
+                    end
+                | _ -> failwith "got bad GOT"
+            end
+    end
+
+val amd64_got_slot_addr : annotated_memory_image any_abi_feature -> symbol_reference_and_reloc_site -> natural
+let amd64_got_slot_addr img rr = 
+    match Map.lookup ".got" img.elements with
+        Nothing -> (* got no GOT? okay... *) failwith "got no GOT"
+        | Just got_el -> 
+            (* Find the GOT tag. *)
+            let tags_and_ranges = Multimap.lookupBy Memory_image_orderings.tagEquiv (AbiFeature(Amd64AbiFeature(Abi_amd64.GOT([])))) img.by_tag
+            in
+            match tags_and_ranges with
+                [] -> failwith "error: GOT element but no ABI feature GOT tag"
+                | [(AbiFeature(Amd64AbiFeature(Abi_amd64.GOT(l))), Just(got_el_name, (got_start_off, got_len)))] -> 
+                    (* Find the slot corresponding to rr, if we have one. *)
+                    let got_addr = match got_el.startpos with Just addr -> addr | Nothing -> failwith "GOT has no addr at reloc time" end
+                    in
+                    8 * amd64_got_slot_idx img rr + got_addr
+                | _ -> failwith "got bad GOT"
+            end
+    end
+
+(** [amd64_reloc r] yields a function that applies relocations of type [r]. *)
+val amd64_reloc : reloc_fn any_abi_feature
+let amd64_reloc r = 
+    let n2i = integerFromNatural in 
+    let i2n = naturalFromInteger in 
+    let (i2n_signed : nat -> integer -> natural) = fun width -> fun i -> (
+        if i >= 0 then 
+            if i >= 2 ** (width-1) then failwith "overflow"
+            else naturalFromInteger i
+        else 
+            (* We manually encode the 2's complement of the negated value *)
+            let negated = naturalFromInteger (0 - i) in 
+            let (xormask : natural) = (2 ** width - 1) in
+            let compl = 1 + natural_lxor negated xormask
+            in compl
+    )
+    in
+    match (string_of_amd64_relocation_type r) with
+    | "R_X86_64_NONE" ->            (false, fun img -> (fun site_addr -> (fun rr -> (0, fun s -> fun a -> fun e -> e))))
+    | "R_X86_64_64" ->              (true,  fun img -> (fun site_addr -> (fun rr -> (8, fun s -> fun a -> fun e -> i2n (n2i s + a)))))
+    | "R_X86_64_PC32" ->            (false, fun img -> (fun site_addr -> (fun rr -> (4, fun s -> fun a -> fun e -> (i2n ((n2i s) + a)) - site_addr))))
+    | "R_X86_64_GOT32" ->           (false, fun img -> (fun site_addr -> (fun rr -> (4, fun s -> fun a -> fun e -> i2n_signed 32 ((n2i (amd64_got_slot_idx img rr)) + a)))))
+    | "R_X86_64_PLT32" ->           (false, fun img -> (fun site_addr -> (fun rr -> (4, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_COPY" ->            (false, fun img -> (fun site_addr -> (fun rr -> (size_of_copy_reloc img rr, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_GLOB_DAT" ->        (false, fun img -> (fun site_addr -> (fun rr -> (size_of_def rr, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_JUMP_SLOT" ->       (false, fun img -> (fun site_addr -> (fun rr -> (4 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_RELATIVE" ->        (true,  fun img -> (fun site_addr -> (fun rr -> (8, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_GOTPCREL" ->        (false, fun img -> (fun site_addr -> (fun rr -> (4, fun s -> fun a -> fun e -> i2n_signed 32 ((n2i (amd64_got_slot_addr img rr)) + a - (n2i site_addr)) ))) )
+    | "R_X86_64_32" ->              (true,  fun img -> (fun site_addr -> (fun rr -> (4, fun s -> fun a -> fun e -> i2n (n2i s + a)))))
+    | "R_X86_64_32S" ->             (true,  fun img -> (fun site_addr -> (fun rr -> (4, fun s -> fun a -> fun e -> i2n_signed 32 ((n2i s) + a)))))
+    | "R_X86_64_16" ->              (true,  fun img -> (fun site_addr -> (fun rr -> (2, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_PC16" ->            (false, fun img -> (fun site_addr -> (fun rr -> (2, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_8" ->               (true,  fun img -> (fun site_addr -> (fun rr -> (1, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_PC8" ->             (false, fun img -> (fun site_addr -> (fun rr -> (1, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_DTPMOD64" ->        (false, fun img -> (fun site_addr -> (fun rr -> (8 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_DTPOFF64" ->        (false, fun img -> (fun site_addr -> (fun rr -> (8 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_TPOFF64" ->         (false, fun img -> (fun site_addr -> (fun rr -> (8 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_TLSGD" ->           (false, fun img -> (fun site_addr -> (fun rr -> (8 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_TLSLD" ->           (false, fun img -> (fun site_addr -> (fun rr -> (8 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_DTPOFF32" ->        (false, fun img -> (fun site_addr -> (fun rr -> (4 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_GOTTPOFF" ->        (false, fun img -> (fun site_addr -> (fun rr -> (4, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_TPOFF32" ->         (false, fun img -> (fun site_addr -> (fun rr -> (4 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_PC64" ->            (false, fun img -> (fun site_addr -> (fun rr -> (8, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_GOTOFF64" ->        (false, fun img -> (fun site_addr -> (fun rr -> (8, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_GOTPC32" ->         (false, fun img -> (fun site_addr -> (fun rr -> (4, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_SIZE32" ->          (false, fun img -> (fun site_addr -> (fun rr -> (4, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_SIZE64" ->          (false, fun img -> (fun site_addr -> (fun rr -> (8, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_GOTPC32_TLSDESC" -> (false, fun img -> (fun site_addr -> (fun rr -> (4 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_TLSDESC_CALL" ->    (false, fun img -> (fun site_addr -> (fun rr -> (4 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_TLSDESC" ->         (false, fun img -> (fun site_addr -> (fun rr -> (8 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_IRELATIVE" ->       (true,  fun img -> (fun site_addr -> (fun rr -> (8 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | _ -> failwith "unrecognised relocation"
+end
 
 val sysv_amd64_std_abi : abi any_abi_feature
 let sysv_amd64_std_abi = 
