@@ -144,6 +144,14 @@ hol-extraction:
 	mv */*Script.sml ../auto_generated/hol-kananaskis-10/
 	mv */*/*Script.sml ../auto_generated/hol-kananaskis-10/
 
+.PHONY: coq-extraction
+coq-extraction:
+	$(LEM) -coq -only_changed_output -add_full_isa_lib_path \
+	$(LEM_MODEL_TP_THY)
+	mv *.v ../auto_generated/coq/
+	mv */*.v ../auto_generated/coq/
+	mv */*/*.v ../auto_generated/coq/
+
 clean:
 	rm -f $(filter-out error.ml,$(LEM_MODEL_ML))
 	rm -f main_elf.ml main_link.ml
