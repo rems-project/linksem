@@ -16,8 +16,10 @@ Segments are loaded by the operating system in order to create an executable pro
 
 A skeleton outline of the ELF file format is provided in the System V ABI~\cite{elf-sco-model}, and using this specification enough structure is defined to properly parse-and-blit ELF files to and from disk.
 However, to interpret the contents of a file more detail is needed, and therefore architecture-specific supplements to the core specification are provided for each microprocessor family.
-In some cases, these supplementary documents may provide extra section and segment types, extra flags, or other bits of structure to an ELF file specific to that platform (for example, the AARCH64 ABI supplement adds the \texttt{AARCH64\_BUILD\_ATTRIBUTES} section type, describing sections that contain unspecified compiler build attributes).
-In other cases, these supplementary documents may override the core-ELF specification, for example in the interpretation of the ELF header field, \texttt{e\_entry}, defined in the ELF specification as the program's entry point, but overidden in the AARCH64 ABI to point to a location in the body of the ELF file that contains the entry point.
+In some cases, these supplementary documents may provide extra section and segment types, extra flags, or other bits of structure to an ELF file specific to that platform.
+For example, the AARCH64 ABI supplement adds the \texttt{AARCH64\_BUILD\_ATTRIBUTES} section type, describing sections that contain unspecified compiler build attributes.
+In other cases, these supplementary documents may override the core-ELF specification.
+For example, the AARCH64 supplement overrides the interpretation of the ELF header field \texttt{e\_entry}, ostensibly the entry point for the program, but overridden to point to a location in the body of the file containing the entry point on AARCH64 platforms.
 In yet other cases, the core-ELF specification remains entirely silent on the contents and functioning of certain structural components of an ELF file.
 One key example of this is the interpretation of relocation records, which are tied to specific instruction encodings and therefore wholly ABI-specific, varying markedly from one ABI to another, and their semantics are therefore entirely delegated to the architecture-specific supplement for the platform in question.
 
@@ -29,7 +31,7 @@ Many more, however, are either documented only informally in mailing list messag
 
 To capture enough of the structure of ELF files executed `in the wild', the core specification along with microprocessor-specific and operating-specific supplementary material must all be formally specified.
 We note here, however, that in practice there is no clean separation of the latter two sets of supplementary material.
-For example, the AMD64 ABI explicitly makes reference to sections of type \texttt{STT\_GNU\_IFUNC}, a \texttt{GNU} extension, for example (see Section 4.2 of~\cite{amd64-abi}).
+For example, the AMD64 ABI explicitly makes reference to function-symbols of type \texttt{STT\_GNU\_IFUNC}, a \texttt{GNU}-specific extension, for example (see Section 4.2 of~\cite{amd64-abi}).
 
 \subsection{The Lem language}
 \label{subsect.rigorous.lem.specification}
