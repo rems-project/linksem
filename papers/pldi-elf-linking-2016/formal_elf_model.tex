@@ -83,9 +83,7 @@ We validated this property using an automated \texttt{diff} tool comparing the o
 Both properties mentioned above were validated on the AARCH64, AMD64, IA32 and Power64 microarchitectures.
 For the latter three architectures we validated against the contents of \texttt{usr/bin} and \texttt{usr/lib} on typical Linux distributions.
 For the AARCH64 we validated our model against the contents of \texttt{system/bin} and \texttt{system/lib} of an LG Android~5.1.1 mobile phone.
-On AARCH64, AMD64, IA32 and Power64 we tested against 576, 1650, 3222, and 1606 binaries, respectively.
-
-\dm{run the elf counter script on the remaining platforms above}
+On AARCH64, AMD64, IA32 and Power64 we tested against 576, 1650, 3222, and 1606 binaries, respectively---7054 in total.
 
 Validating the model against binaries found `in the wild' on real machines revealed many sources of incompleteness in the various specification documents that describe ELF files.
 For example, constructions relating to the ELF prelinker, such as the dynamic section type \texttt{DT\_GNU\_PRELINKED} are found in a large number of deployed ELF binaries.
