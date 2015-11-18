@@ -49,7 +49,8 @@ The expression language combines pure functional programming features (functions
 Our Lem ELF model provides types corresponding to the structure of an ELF file on disk with functions for parsing and blitting these structural elements to-and-from lists of bytes.
 In addition, more abstract, derived types are defined which make working with, and manipulating the contents of an ELF file easier.
 
-Atop this base model, functions are provided for extracting useful information from the Lem types, for example, the extraction of a containment mapping from sections to segments from an ELF file.
+Atop this base model, functions are provided for extracting useful information from the Lem types.
+For example, functions are provided for the extraction of a containment mapping from sections to segments from an ELF file, or the decoding of the section header string table.
 \texttt{GNU}-specific and platform ABI-specific formalisation is kept separate from the main body of the formalisation.
 When functions working on generic ELF files require \texttt{GNU}- or ABI-specific functionality, the function is made higher-order with a function argument handling the ABI or \texttt{GNU}-specific logic.
 
@@ -64,17 +65,24 @@ We note that the creation of an executable process image requires ABI-specific l
 \subsection{Validation}
 \label{subsect.elf.validation}
 
-We have validated our ELF model using \texttt{readelf} and \texttt{hexdump} as trusted external oracles.
-These programs are freely available open source tools.
+When formalising any widely-used file format we are faced with a choice: do we formalise the format as the specification \emph{seems} to be written, or do we formalise the format as implementors have interpreted that specification?
+In our formalisation we chose the latter, as then our model is compatible with existing mainstream systems.
+Then, in order to ensure that our model is a faithful implementation of ELF as it is commonly understood, we validated the model against a wide-range of ELF executable and linkable binaries on multiple machine architectures.
+Validation was conducted using two widely-deployed and mature \texttt{GNU} tools---\texttt{hexdump} and \texttt{readelf}---as trusted oracles.
 
-Our model was validated in two ways.
-In one validation pass, we verified a `roundtripping' property of parsing and subsequently blitting an ELF file from-and-to a binary file.
-The property was verified by comparing the output of a lightweight tool written atop the formal ELF model (also written in Lem) against the output of \texttt{hexdump}, comparing using a \texttt{diff} tool.
-In the second validation pass, we verified the transcription of the ELF header, program- and section-header tables, dynamic section, relocation sections and symbol tables was correct.
-These were verified by comparing the output of a tool that emulated a subset of \texttt{readelf}'s functionality against the output of \texttt{readelf} itself, again using an automated \texttt{diff} tool.
+To test the parsing and decoding of the core structure of the ELF model, a \texttt{readelf}-like program was written atop the model.
+Using an automated \texttt{diff} tool, the output of the real \texttt{readelf} was compared with the output of our clone.
+This process tested the parsing and decoding of the file-header, section header table, program header table, dynamic section, relocation sections, and symbol tables, in addition to the various string tables contained within an ELF file, necessary to properly pretty-print the contents of the aforementioned structural elements.
 
-For AMD64, IA32 and Power64 microprocessors validation was carried out on the contents of \texttt{usr/lib}, \texttt{usr/lib64} and \texttt{usr/bin} on typical Linux desktop computers.
-For AARCH64, ELF binaries were extracted from an Android phone and validated against \texttt{readelf} in the same manner.
+In addition, a `roundtripping' property of the parsing and blitting functions was verified.
+This ensured that parsing an existing ELF binary into our Lem types and then immediately blitting these types to binary data preserved byte-for-byte compatibility with the original binary file, a property which ensures that parsing and blitting are behaving as they should.
+There is a slight complication here in that an ELF file may contain gaps between its structural elements which contain meaningless binary data.
+This `dead' data must be explicitly tracked during parsing, and placed back in the correct position in a file when blitting, to ensure that the byte-for-byte compatibility condition holds.
+We validated this property using an automated \texttt{diff} tool comparing the output of a lightweight shim written atop the ELF model against the output of \texttt{hexdump}.
+
+Both properties mentioned above were validated on the AARCH64, AMD64, IA32 and Power64 microarchitectures.
+For the latter three architectures we validated against the contents of \texttt{usr/bin} and \texttt{usr/lib} on typical Linux distributions.
+For the AARCH64 we validated our model against the contents of \texttt{usr/bin} and \texttt{usr/lib} of a Samsung Android mobile phone.
 
 Validating the model against binaries found `in the wild' on real machines revealed many sources of incompleteness in the various specification documents that describe ELF files.
 For example, constructions relating to the ELF prelinker, such as the dynamic section type \texttt{DT\_GNU\_PRELINKED}, and which are found in a large number of deployed ELF binaries, are not mentioned in any specification document and mentioned only in passing in mailing list messages (see e.g.~\cite{jelinek-prelinker-2001}).
