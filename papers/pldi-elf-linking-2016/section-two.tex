@@ -20,72 +20,9 @@ and consider the consequences for
 how toolchains should be specified and what services they might provide.
 %motivate a different approach to specifying linking.
 
-\subsection{Linkers and module systems}
-
-A typical programming language ``module system'' provides mechanisms 
-dealing in both abstract and concrete modules. 
-A module may be abstract in several ways: 
-referring to other modules and/or their definitions;
-by hiding its internal names from other modules;
-by hiding other internal information (e.g.\ representation types) from other modules;
-by being parameterised by other modules (a functor) 
-     or of definitions they must supply (e.g.\ types they define).
-Modules are named definitions,
-and ensembles are formed by naming modules, instantiating their parameters,
-and (in the case of generative modules) instantiating the modules themselves.
-
-By contrast, linking is almost entirely concrete.
-Linker modules, namely files, 
-are abstract in only two ways: by referring to other modules,
-and by hiding certain named definitions from other modules.
-Linker modules themselves are not named definitions for most purposes.\footnote{The 
-two exceptions are: diagnostic purposes---since linkers will use 
-module filenames to report problems to the user---and memory layout purposes,
-since linker scripts are allowed to select input files by name.
-Unmatched input files' sections are still included in the link, however, so
-this mechanism only allows their placement to be varied, and does not affect
-how symbols are resolved.}
-The programmer has no direct control of which module gets wired to which other.
-Rather, bindings are formed entirely according to symbol names,
-without regard to the name of the module (file) supplying them or requiring them.
-Linkers have no notion of module parameterisation, nor of module instantiation.
-The linker is responsible only for creating the concrete ``wiring'', or binding topology, 
-of the output binary, but not for instantiating
-Its role in ``programming in the large'' is essentially that 
-of module interconnection \citet{deremer_programming_1975}.
-FIXME: cite Knit (Reid et al) also.
-
-% \begin{itemize}
-% 
-% \item abstraction by 
-% \item abstraction by parameterisation of units of code (often type-parameterisation; 
-%       module-parameterisation, in the case of functors);
-% 
-% \item concretion by parameter-instantiation;
-% 
-% \item concretion by 
-% 
-% \item concretion by binding
-% \item concretion of abstract modules into specialised instances;
-% 
-% \item creation of ensembles by binding together abstract \emph{or} concrete modules.
-% 
-% \end{itemize}
-% 
-% Linking relates only the first and last of these.
-% It is entirely concrete; it does not instantiate, abstract or specialise.
-% Rather, the linker's caller (whether user or compiler) is assumed to have done these already.
-% 
-% Linking does, however, involve hiding of names---since its primary mechanism
-% is using name-matching to bind together ensembles of concrete modules.
-
-
-\subsection{Linker-speak}
-
 Linker-speak consists of a collection of notations,
 which collectively can be thought of as a separate programming language
 in which part of every compiled system is expressed.
-We call this language ``linker-speak''.
 We survey various examples shortly; in brief, the notations
 break down as follows.
 
@@ -108,19 +45,9 @@ and other metadata, on which link semantics crucially depend. Many of these
 object file features have corresponding forms in assemblers (``directives'' or pseudo-ops) and compilers (attributes) allowing the programmer
 to control the metadata in the assembled or compiled object file.
 
-\item[Conventions] ---applications of linking attach specific meaning to 
-specific ways of using symbols, sections and other linker features, even though, 
-as a rule, these are formally meaningless to the linker.
-For example, ABIs often attach meaning to specific section or symbol names,
-require the presence of certain named sections, and so on.
-(Additionally, a few linker features flout the rule, by attaching meaning to section names.)
-
 % orphan placement is the big example
 
 \end{description}
-
-\sk{Responding to PS ``we should be clear which of these we cover''---we cover all 
-of them partially; the middle two more than the outer two.}
 
 Our work provides a formal specification
 of large subsets of all of these notations, with particular emphasis on
@@ -739,7 +666,14 @@ into the input files and having the linker invoke compiler middle- or back-end p
 % 
 % spatial locality optimisation
 
-\subsection{Higher-layer conventions and policy} 
+% \subsection{Higher-layer conventions and policy} 
+
+% Besides linker-speak, it is important to note that linking relies on \emph{conventions}. 
+% The linker is formally oblivious to these, but correct use of the linker relies on 
+% adherence to them. 
+% For example, ABIs often attach meaning to specific section or symbol names,
+% require the presence of certain named sections, and so on.
+% Additionally, a few linker features flout the rule, by attaching meaning to section names.
 
 Users of linkers must understand not only linker-speak, but also 
 how both compilers and libraries use the linker features.
