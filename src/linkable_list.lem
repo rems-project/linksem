@@ -255,8 +255,17 @@ let resolve_one_reference_default a linkables defmap ref_idx_and_ref_and_linkabl
         [] -> (Nothing, Nothing, Nothing)
         | [(def_idx, def, def_linkable)] -> (Just def_idx, Just def, Just def_linkable)
         | (d_idx, d, d_l) :: more_pairs -> 
-            (* Break ties by which definition appeared first in the left-to-right order. *)
-            let sorted = sortBy (fun (d_idx1, d1, d_l1) -> (fun (d_idx2, d2, d_l2) -> d_idx1 < d_idx2)) eligible_defs
+            (* Break ties by
+             * - putting defs in relocs (or --defsym or linker script, a.k.a. command line) ahead of defs in archives;
+             * - else whichever definition appeared first in the left-to-right order. 
+             *)(_, (_, _, (_, d_l1_coords)), _)
+            let sorted = sortBy (fun (d_idx1, d1, (_, (_, _, (_, d_l1_coords)), _)) -> (fun (d_idx2, d2, (_, (_, _, (_, d_l2_coords)), _)) -> 
+                match (d_l1_coords, d_l2_coords) with
+                      (InCommandLine(_) :: _, InCommandLine(_) :: _) -> d_idx1 < d_idx2
+                    | (InCommandLine(_) :: _, _)                     -> (* command-line wins *) true
+                    | (_,                     InCommandLine(_) :: _) -> (* command-line wins *) false
+                    | (_, _) -> d_idx1 < d_idx2
+                end)) eligible_defs
             in
             match sorted with 
                 (first_d_idx, first_d, first_d_l) :: _ -> (Just first_d_idx, Just first_d, Just first_d_l)

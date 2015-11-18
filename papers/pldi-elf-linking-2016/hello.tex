@@ -1,45 +1,204 @@
-\section{Linking \texttt{hello}}
+\subsection{Linking \texttt{hello}}
+\label{sec:hello}
 
-For programming languages, a ``hello, world!'' program is among the simplest possible.
+In the C programming language, a ``hello, world!'' program is among the simplest possible.
 However, for a linker, such a simple program amounts to a very complex job,
-since it links with the C library---usually the most complex library on the system,
+since it links with the C library---often the most complex library on the system,
 in terms of the linker features it exercises.
 
-In this section we outline what happens when a hello-world ,
+In this section we outline what happens when a hello-world C program, compiled with \textsf{gcc},
+is linked against uClibc\footnote{\url{http://uclibc.org/}}, 
+a fully-featured C library slightly simpler than the system-default GNU C library.
+% At each point we describe the relevant features of our formalisation
 
-a substantial C library slightly simpler than the system-default GNU C library.
+\paragraph{Parse command line}
+This stage is responsible for identifying input files and link options.
+The command for linking a hello-world program, slightly simplified to omit directory names, 
+is as follows.
 
-At each point we describe the relevant features of our formalisation
+\begin{lstlisting}[language=plain,basicstyle=\footnotesize\sffamily]
+ld -m elf_x86_64 -static -o hello crt1.o crti.o crtbeginT.o hello.o \
+   --start-group -lgcc -lc --end-group crtend.o crtn.o 
+\end{lstlisting}
 
-parse command line -- 
+Options beginning \textsf{-lX} say ``look up library \textsf{libX} on the library search path'', 
+and denote input files; they resolve to files \textsf{libgcc.a} and \textsf{libc.a}.
+Only \textsf{hello.o} came from compiling the program;
+the other object files have been supplied by the compiler (\textsf{libgcc.a}, \textsf{crt\{1,i,n\}.o})
+and the C library (\textsf{libc.a}, \textsf{crt\{beginT,end\}.o}).
+Other options are modifiers to the link; some apply to the whole link 
+(like \textsf{-m~elf\_x86\_64}, selecting x86-64 output)
+whereas others affect only the input files that follow them, or until negated 
+(here \textsf{--start-group} and \textsf{--end-group}).\footnote{Confusingly, \textsf{-static} is 
+also of this kind: if any \textsf{-lX} options preceded it, they might be linked dynamically, meaning the output
+would \emph{not} be statically linked.}
+``Groups'' of archives affect symbol resolution: within a group,
+symbols may be resolved cyclically, whereas outside a group, 
+references from archives only bind to objects appearing earlier in command-line order.\footnote{This
+behaviour dates from a time when unnecessarily scanning archives would create
+noticeable link-time slowdowns.}
+Many modifiers cancel preceding ones or the relevant defaults 
+(such as \textsf{-Ttext} which sets the output text section address), 
+but others add content every time they are invoked
+(such as \textsf{--defsym}, which defines a new symbol).
 
-parse command line. enumerate inputs, their options, and global link options -- 
-    by processing the command line. different options can be invoked
-    for different inputs.
-    global link options
+The command line formalisation is structured as an interpreter, whose state 
+is the collection of input files together with two sets of active modifiers: one for subsequent 
+input files, one for the whole link.
+It is parameterised by a large list of option definitions, 
+each incorporating the option syntax and also its semantics as a function from state to state.
+The table (see Fig.~\ref{fig:command-line} resembles the linker's \textsf{--help} text, expanded
+with semantics for each option.
+Arguments not matching any list entry are treated as input files, cloning the current per-input-file options state.
+Complex options such as \textsf{--push-state} necessitate that a state include both a current value and a stack of previously saved values.
 
-enumerate objects -- each input item might include multiple objects, 
-     might be an object file or linker script, etc.
-     ... elaborate away the archive structure, but retain enough information to resolve symbols
+\begin{figure*}
+\begin{lstlisting}[language=plain,basicstyle=\scriptsize\sffamily]
+let command_line_table = [
+  (["-o"; "--output"],       (["FILE"], []), fun args -> set_or_replace_opt (OutputFilename(head (fst args))), "Set output file name");
+  (["-Bsymbolic-functions"], ([], []),       fun args -> set_or_replace_opt (BindFunctionsEarly), "Bind global function references locally");
+  (["-Ttext-segment"],       (["ADDR"], []), fun args -> set_or_replace_opt (TextSegmentStart(parse_addr (head (fst args)))), "Set address of text segment");
+  (["-("; "--start-group"],  ([], []),       fun _ ->   (fun state -> start_group state), "Start a group");
+  (["-)"; "--end-group"],    ([], []),       fun _ ->   (fun state -> end_group state), "End a group");
+  (* ... *)
+]
+\end{lstlisting}
+\caption{Excerpt from the specification of GNU linker command-line options}
+\label{fig:command-line}
+\end{figure*}
 
-resolve symbols -- rules depend on where inputs came from, e.g. archives are different, 
-    groups have an effect, etc..
+\paragraph{Enumerate objects} 
+Although only eight files appear in the command, the two archives contain a total of 891 objects, so 
+a total of 897 object files are input to the link.
+The linker must now resolve symbol references between these objects.
+The semantics of symbol resolution are complex, since 
+it matters whether an object file came from an archive, and, if so, 
+whether the referencing object appeared to the left or right of that archive on the command line.
+A map of all definitions is constructed, grouped by name.
+Then the semantics is factored into an ``eligibility function'' answering whether a given
+reference can bind to a given definition, and an 
+ordering on eligible definitions such that
+the first eligible definition is the intended referent.
+The ordering is based on command-line order, but also accounts for the semantics of 
+substitution: definitions in relocatable files take precedence over archives, hence 
+providing the semantics necessary for the \textsf{malloc.o} substitution example \S\ref{sec:substitution}.
+Once all symbol references are resolved, any unreferenced objects can be excluded.
+In our case, this leaves 61 objects in the link.
 
-discard unreferenced objects -- using symbol reference as a dependency graph, 
-      selecting only those needed in the link
+% these amount to Having collected a set of input files, the options applying to each,
+% and the global link options, 
+% we inspect the input files to reveal their structure.
+% Each input file might be an object file, an archive or a linker script
+% (or, with dynamic linking support, a shared object).
+% The semantics of symbol resolution is different in each case,
+% so even after enumerating the contents of an archive, we must remember
+% which symbol-resolution behaviour is associated with it.
+% In practice, for error reporting, we remember all details of the originating archive.
+%     let def_is_eligible = (fun (def_idx, def, def_linkable) -> 
+%         let ref_is_unnamed = (ref.ref_symname = "")
+%         in
+%         let ref_is_to_defined_or_common_symbol = ((natural_of_elf64_half ref.ref_syment.elf64_st_shndx) <> stn_undef)
+%         in
+%         let def_sym_is_ref_sym = (ref_idx = def_idx && ref.ref_sym_scn = def.def_sym_scn
+%             && ref.ref_sym_idx = def.def_sym_idx)
+%         in
+%         let (def_obj, (def_fname, def_blob, def_origin), def_options) = def_linkable
+%         in
+%         let (def_u, def_coords) = def_origin
+%         in
+%         let (def_in_group, def_in_archive) = match def_coords with
+%               InArchive(aid, aidx, _, _) :: InGroup(gid, gidx) :: [_] -> (Just gid, Just aid)
+%             | InArchive(aid, aidx, _, _) :: [_]                       -> (Nothing, Just aid)
+%             | InGroup(gid, gidx) :: [_]                              -> (Just gid, Nothing)
+%             | [_]                                                    -> (Nothing, Nothing)
+%             | _ -> failwith "internal error: didn't understand origin coordinates of definition"
+%         end
+%         in
+%         let ref_is_leftmore = ref_idx <= def_idx
+%         in
+%         (* For simplicity we include the case of "same archive" in "in group with". *)
+%         let ref_is_in_group_with_def = match def_in_group with 
+%               Nothing -> false
+%             | Just def_gid -> 
+%                 match ref_coords with
+%                   InArchive(_, _, _, _) :: InGroup(gid, _) :: [_] -> gid = def_gid
+%                 | InGroup(gid, _) :: [_]                       -> gid = def_gid
+%                 | _ -> false
+%                 end
+%             end
+%         in
+%         (* but maybe same archive? *)
+%         let ref_and_def_are_in_same_archive = match (def_coords, ref_coords) with
+%             (InArchive(x1, _, _, _) :: _, InArchive(x2, _, _, _) :: _) -> x1 = x2
+%             | _ -> false
+%         end
+%         in
+%         let def_is_in_archive = match def_in_archive with
+%             Just _ -> true
+%             | Nothing -> false
+%         end
+%         in
+%         if ref_is_to_defined_or_common_symbol then def_sym_is_ref_sym
+%         else 
+%             if ref_is_unnamed then false
+%             else
+%                 if def_is_in_archive
+%                 then
+%                     (not ref_is_weak) 
+%                     && (
+%                            ref_is_leftmore
+%                         || ref_and_def_are_in_same_archive
+%                         || ref_is_in_group_with_def
+%                     )
+%                 else 
+%                     true
+%     )
 
-generate support data -- dynamic relocations, GOT / PLT etc.. must happen *before* linker script, 
-       so that script can control where they get placed
+\paragraph{Optimise}   -- simplify relocs etc.. 
+This is where we diverge from GNU currently, because of mov-to-lea optimisation.
+ 
 
-   -- optimise! simplify relocs etc..
+\paragraph{Generate support structures}
+The linker is responsible for generating the support structures used by different code models.
+In most ABIs, these include the GOT (global offset table; a table of pointers) and PLT 
+(procedure linkage table; a table of trampolines).
+These are used for indirect addressing, when code compiled with narrow addressing modes
+must reach definitions which might be located far away.
+The linker remains oblivious to the particulars of the models;
+it simply generates the GOT and PLT according to the relocations in the input.
+In order to allow these structures to be placed in memory by the linker script, 
 
-compose output sections -- a pass over the linker script, 
-      also generating symbol definitions etc. (PHASE issue)
+%(These relocations implicitly embody a code model, since under a different code model,
+%the compiler would have selected different instructions with different relocations.)
+However, the linker's address assignment proceeds purely according to the linker script, 
+again without reference to any particular code model.
+For example, to generate a GOT, the linker simply generates one entry 
+or each distinct symbol definition that is used in a GOT-based relocation
+(although it is the input code's code model that determines which references these are).\footnote{Mismatch of code models happens when input code uses addressing modes which cannot reach far enough 
+to point to the addresses assigned by the linker.
+In such cases, the linker's relocation calculations overflow, the overflow is detected
+and the link is aborted.
+This is most common when the linker is deferring bindings until dynamic link time: 
+any deferred binding must be assumed to be potentially located far away,
+so 32-bit addressing are not wide enough unless indirected via the GOT or PLT.
+On seeing a reference not relocated this way, 
+the linker aborts with the infamous ``recompile with \textsf{-fPIC}'' message.}
 
-(optional) discard unreferenced sections
 
-assign addresses -- another pass over the linker script
+Note that dynamic relocations, GOT / PLT etc.. must be reified *before* linker script runs, 
+so that the script can control where they get placed.
+This is a nasty hack in GNU (magic sections appear on the first input file), 
+and generally the treatment of this is a kind of looseness (CHECK that it's mentioned
+in the main list).
 
-apply relocations -- now that addresses have been assigned, 
+\paragraph{Compose output sections} ---a pass over the linker script, 
+      also generating symbol definitions etc. (mention PHASE issue)
 
-generate output
+% (optional) discard unreferenced sections
+
+\paragraph{Assign addresses} ---another pass over the linker script.
+We can't do it at the same time as the previous pass, because\ldots{}
+
+\paragraph{Apply relocations} ---now that addresses have been assigned, 
+
+\paragraph{Generate output} ---use a standard recipe to compute an output ELF file 

@@ -712,6 +712,11 @@ the code may be shared across multiple processes at different mapping addresses.
 whether the code's \emph{semantics} depend on its load address; 
 position-independent code is perfectly well able to 
 introspect its own load address, or more generally, to branch on pointers.}
+Although the linker is oblivious to the details of these models, 
+it is responsible for generating certain support structures they require,
+based on the relocations present in the input.
+Section~\ref{sec:hello} explains this in more detail.
+
 
 % \paragraph{Code models}
 % 
