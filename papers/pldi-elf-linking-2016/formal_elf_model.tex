@@ -41,22 +41,25 @@ Lem provides a lightweight language of (polymorphic) definitions, types and pure
 Lem typechecks definitions and then, subject to constraint, export them to executable OCaml code, proof assistant theories for HOL4~\cite{slind-brief-2008}, Isabelle/HOL~\cite{wenzel-isabelle-2008} and Coq~\cite{bertot-short-2008}, or typeset HTML and LaTeX.
 
 The Lem type system and libraries include bounded and unbounded integers and naturals, tuples, records, function types, sets, dictionaries, and user-defined types with top-level polymorphism.
-The expression language combines pure unctional programming features (functions, pattern matching, and so on) with simple higher-order logic, including bounded quantification and set comprehensions.
+The expression language combines pure functional programming features (functions, pattern matching, and so on) with simple higher-order logic, including bounded quantification and set comprehensions.
 
 \subsection{A Lem model of ELF}
 \label{subsect.lem.model.of.elf}
 
-Our formal model of ELF is written in the Lem specification language.
-The model consists of Lem types corresponding to structural components of the ELF file (for both ELF32 and ELF64) as it appears on disk, with functions for parsing and blitting.
+Our Lem ELF model provides types corresponding to the structure of an ELF file on disk with functions for parsing and blitting these structural elements to-and-from lists of bytes.
+In addition, more abstract, derived types are defined which make working with, and manipulating the contents of an ELF file easier.
 
 Atop this base model, functions are provided for extracting useful information from the Lem types, for example, the extraction of a containment mapping from sections to segments from an ELF file.
-The formal ELF model has previously been used in the \texttt{ppcmem2} tool~\cite{gray-integrated-2015} to transcribe static ELF binaries and set up an initial machine state for the emulator.
-
 \texttt{GNU}-specific and platform ABI-specific formalisation is kept separate from the main body of the formalisation.
-When functions working on generic ELF files require \texttt{GNU}- or ABI-specific functionality, the functions are made higher-order with the e.g. ABI-specific code passed in as an argument.
+When functions working on generic ELF files require \texttt{GNU}- or ABI-specific functionality, the function is made higher-order with a function argument handling the ABI or \texttt{GNU}-specific logic.
 
 The formalisation of the core ELF specification consists of around 9,500 lines of commented Lem code.
 Around an additional 2000 lines of Lem code formalise \texttt{GNU} extensions, whilst another 4,000 lines of Lem formalise various aspects of the AARCH64, AMD64, IA32 and Power64 platform ABIs.
+
+The formal ELF model is currently in use in the \texttt{ppcmem2} tool~\cite{gray-integrated-2015}, a tool for exploring the architectural envelope of weak-memory behaviour on the Power64 platform.
+Statically-compiled ELF binaries are parsed and decoded using an OCaml extraction of the Lem model.
+An executable process image is then extracted from the binary and used to set up an initial machine state for the \texttt{ppcmem2} emulator.
+We note that the creation of an executable process image requires ABI-specific logic (in e.g. identifying the entry point of the program).
 
 \subsection{Validation}
 \label{subsect.elf.validation}
