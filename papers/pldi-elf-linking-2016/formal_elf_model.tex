@@ -58,7 +58,7 @@ Around an additional 2000 lines of Lem code formalise \texttt{GNU} extensions, w
 
 The formal ELF model is currently in use in the \texttt{ppcmem2} tool~\cite{gray-integrated-2015}, a tool for exploring the architectural envelope of weak-memory behaviour on the Power64 platform.
 Statically-compiled ELF binaries are parsed and decoded using an OCaml extraction of the Lem model.
-An executable process image is then extracted from the binary and used to set up an initial machine state for the \texttt{ppcmem2} emulator.
+An executable process image is then extracted from the binary, along with the initial values of global variables appearing in the program, and is used to generate an initial machine state for the \texttt{ppcmem2} emulator.
 We note that the creation of an executable process image requires ABI-specific logic (in e.g. identifying the entry point of the program).
 
 \subsection{Validation}
