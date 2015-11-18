@@ -341,19 +341,23 @@ declare coq      target_rep function null_char = `null_char`
 
 (** [errln s] prints [s] to stderr, adding a trailing newline. *)
 val errln : string -> unit
-declare ocaml target_rep function errln = `prerr_endline`
+declare ocaml    target_rep function errln = `prerr_endline`
+declare isabelle target_rep function errln x = `()`
 
 (** [errs s] prints [s] to stderr, without adding a trailing newline. *)
 val errs : string -> unit
-declare ocaml target_rep function errs = `prerr_string`
+declare ocaml    target_rep function errs   = `prerr_string`
+declare isabelle target_rep function errs x = `()`
 
 (** [outln s] prints [s] to stdout, adding a trailing newline. *)
 val outln : string -> unit
-declare ocaml target_rep function outln = `print_endline`
+declare ocaml    target_rep function outln = `print_endline`
+declare isabelle target_rep function outln x = `()`
 
 (** [outs s] prints [s] to stdout, without adding a trailing newline. *)
 val outs : string -> unit
-declare ocaml target_rep function outs = `print_string`
+declare ocaml    target_rep function outs   = `print_string`
+declare isabelle target_rep function outs x = `()`
 
 (** [intercalate sep xs] places [sep] between all elements of [xs].
   * Made tail recursive and unrolled slightly to improve performance on large
