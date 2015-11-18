@@ -1,0 +1,84 @@
+\section{The ELF formalisation}
+\label{sect.elf.formalisation}
+
+\subsection{The ELF file format}
+\label{subsect.elf.file.format}
+
+The Executable and Linkable (ELF) file format~\cite{elf-sco-model} is the \emph{de facto} standard format for executable and linkable files on Linux.
+An ELF file provides one of two views: the \emph{executable view}, wherein the file is broken up into \emph{segments} indexed by a program header table, or the linkable view, wherein the file is broken up into \emph{sections} indexed by a section header table.
+The locations of the program and section header tables within the file are stored in a file header at the beginning of the file.
+Segments are loaded by the operating system in order to create an executable process image, whilst sections are merged and otherwise manipulated by a linker to create new segments or sections.
+
+The core-ELF specification describes the skeleton outline of an ELF file.
+To properly interpret the contents of a file, supplements to the core specification are provided for each microprocessor family.
+In some cases, these supplementary documents may provide extra section and segment types, extra flags, or other bits of structure to an ELF file specific to that platform (for example, the AARCH64 ABI supplement adds the \texttt{AARCH64\_BUILD\_ATTRIBUTES} section type, describing sections that contain unspecified compiler build attributes).
+In other cases, these supplementary documents may override the core-ELF specification, for example in the interpretation of the ELF header field, \texttt{e\_entry}, defined in the ELF specification as the program's entry point, but overidden in the AARCH64 ABI to point to a location in the body of the ELF file that contains the entry point.
+In yet other cases, the core-ELF specification remains entirely silent on the contents and functioning of certain structural components of an ELF file.
+One key example of this is the interpretation of relocation records, which are tied to instruction encoding and wholly ABI-specific, varying markedly from one ABI to another.
+
+Operating system-specific flags, section and segment types that are not mentioned in the core-ELF specification may also be recognised.
+Many Linux ELF binaries contain \texttt{GNU} extensions, for example the presence of a segment of type \texttt{PT\_GNU\_EH\_FRAME} containing exception handling information, or a section of type \texttt{STT\_GNU\_VERSION} containing versioning information.
+Some of these extensions are collated in a document called the \emph{Linux Standard Base} (`LSB')~\cite{linux-standard-base}, but many are either documented only informally in mailing list messages, or not documented at all.
+
+To capture enough of the structure of ELF files executed `in the wild', the core specification along with microprocessor-specific and operating-specific supplementary material must all be formalised.
+In particular, there is no clean separation of the latter two sets of supplementary material: the AMD64 ABI explicitly makes reference to sections of type \texttt{STT\_GNU\_IFUNC}, for example (see Section 4.2 of~\cite{amd64-abi}).
+
+\subsection{The Lem language}
+\label{subsect.rigorous.lem.specification}
+
+We use the Lem specification language~\cite{mulligan-lem-2014} to specify our model of the ELF file format and linking.
+Lem provides a lightweight language of (polymorphic) definitions, types and pure functions that can be seen both as mathematical definitions and pure functional programs.
+Lem typechecks definitions and then, subject to constraint, export them to executable OCaml code, proof assistant theories for HOL4~\cite{slind-brief-2008}, Isabelle/HOL~\cite{wenzel-isabelle-2008} and Coq~\cite{bertot-short-2008}, or typeset HTML and LaTeX.
+
+The Lem type system and libraries include bounded and unbounded integers and naturals, tuples, records, function types, sets, dictionaries, and user-defined types with top-level polymorphism.
+The expression language combines pure unctional programming features (functions, pattern matching, and so on) with simple higher-order logic, including bounded quantification and set comprehensions.
+
+\subsection{A Lem model of ELF}
+\label{subsect.lem.model.of.elf}
+
+Our formal model of ELF is written in the Lem specification language.
+The model consists of Lem types corresponding to structural components of the ELF file (for both ELF32 and ELF64) as it appears on disk, with functions for parsing and blitting.
+
+Atop this base model, functions are provided for extracting useful information from the Lem types, for example, the extraction of a containment mapping from sections to segments from an ELF file.
+The formal ELF model has previously been used in the \texttt{ppcmem2} tool~\cite{gray-integrated-2015} to transcribe static ELF binaries and set up an initial machine state for the emulator.
+
+\texttt{GNU}-specific and platform ABI-specific formalisation is kept separate from the main body of the formalisation.
+When functions working on generic ELF files require \texttt{GNU}- or ABI-specific functionality, the functions are made higher-order with the e.g. ABI-specific code passed in as an argument.
+
+The formalisation of the core ELF specification consists of around 9,500 lines of commented Lem code.
+Around an additional 2000 lines of Lem code formalise \texttt{GNU} extensions, whilst another 4,000 lines of Lem formalise various aspects of the AARCH64, AMD64, IA32 and Power64 platform ABIs.
+
+\subsection{Validation}
+\label{subsect.elf.validation}
+
+We have validated our ELF model using \texttt{readelf} and \texttt{hexdump} as trusted external oracles.
+These programs are freely available open source tools.
+
+Our model was validated in two ways.
+In one validation pass, we verified a `roundtripping' property of parsing and subsequently blitting an ELF file from-and-to a binary file.
+The property was verified by comparing the output of a lightweight tool written atop the formal ELF model (also written in Lem) against the output of \texttt{hexdump}, comparing using a \texttt{diff} tool.
+In the second validation pass, we verified the transcription of the ELF header, program- and section-header tables, dynamic section, relocation sections and symbol tables was correct.
+These were verified by comparing the output of a tool that emulated a subset of \texttt{readelf}'s functionality against the output of \texttt{readelf} itself, again using an automated \texttt{diff} tool.
+
+For AMD64, IA32 and Power64 microprocessors validation was carried out on the contents of \texttt{usr/lib}, \texttt{usr/lib64} and \texttt{usr/bin} on typical Linux desktop computers.
+For AARCH64, ELF binaries were extracted from an Android phone and validated against \texttt{readelf} in the same manner.
+
+Validating the model against binaries found `in the wild' on real machines revealed many sources of incompleteness in the various specification documents that describe ELF files.
+For example, constructions relating to the ELF prelinker, such as the dynamic section type \texttt{DT\_GNU\_PRELINKED}, and which are found in a large number of deployed ELF binaries, are not mentioned in any specification document and mentioned only in passing in mailing list messages (see e.g.~\cite{jelinek-prelinker-2001}).
+
+\subsection{Theorem prover output}
+\label{subsect.theorem.prover.output}
+
+As mentioned, one of our aims in formalising the ELF format and the specifics of various platform ABIs is to create a validated set of definitions for software verification purposes.
+The production of executable binaries from, and incorporation of realistic linking mechanisms into, verified compilers is a natural next step for those aiming to improve the trustworthiness of the compilation process.
+Currently, both the CompCert and CakeML verified compilers depend on the platform hostchain for the final production of an executable binary.
+Incorporating a trusted linker into their compilation process, and producing executable binaries directly, would remove this dependency on the platform hostchain.
+
+Further, just as the CompCert project has acted as a nexus for work in the area of verified compilation, we see potential for our work to serve an analogous purpose in the area of verified linking.
+For example, link-time optimisations were first implemented in the 4.5 release of the GCC compiler, and in recent years the implementation, expansion and improvement of these optimisations has been a significant area of activity for the GCC compiler team.
+However, to date, no link-time optimisations have been formally proven correct in the context of verified compiler projects.
+In part, this can be explained by the lack of a formal model of realistic linking to be able to even state and prove correct these types of optimisation.
+
+To remedy this situation we have extracted Isabelle/HOL theory files from our Lem source model, corresponding to around 33,500 lines of commented Isabelle source.
+Approximately 1,500 lines of handwritten termination proofs for recursive functions, and various lemmas needed for the completion of the termination lemmas, are also supplied, demonstrating at least in principle that our definitions can be used for effective proof in theorem provers.
+HOL4 and Coq extractions of the the Lem source model are also planned.
