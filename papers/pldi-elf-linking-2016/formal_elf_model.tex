@@ -1,27 +1,35 @@
 \section{The ELF formalisation}
 \label{sect.elf.formalisation}
 
-\subsection{The ELF file format}
-\label{subsect.elf.file.format}
+\subsection{What is an ELF file?}
+\label{subsect.what.is.an.elf.file}
 
-The Executable and Linkable (ELF) file format~\cite{elf-sco-model} is the \emph{de facto} standard format for executable and linkable files on Linux.
-An ELF file provides one of two views: the \emph{executable view}, wherein the file is broken up into \emph{segments} indexed by a program header table, or the linkable view, wherein the file is broken up into \emph{sections} indexed by a section header table.
+\dm{move into section 2 when ready}
+
+The Executable and Linkable (ELF) file format~\cite{elf-sco-model} is a format for storing programs or their fragments on-disk, created as a result of compiling and linking.
+A flexible format not tied specifically to any one machine architecture, ELF is now the \emph{de facto} standard format for executable and linkable files on Linux, various flavours of BSD, and embedded devices ranging from mobile phones to games consoles.
+
+Unlike older formats ELF merges the file format of executable and linkable files together into a unified format.
+As a result, any given ELF file may provide one of two views: the \emph{executable view}, wherein the file is broken up into \emph{segments} indexed by a program header table, or the linkable view, wherein the file is broken up into \emph{sections} indexed by a section header table.
 The locations of the program and section header tables within the file are stored in a file header at the beginning of the file.
 Segments are loaded by the operating system in order to create an executable process image, whilst sections are merged and otherwise manipulated by a linker to create new segments or sections.
 
-The core-ELF specification describes the skeleton outline of an ELF file.
-To properly interpret the contents of a file, supplements to the core specification are provided for each microprocessor family.
+A skeleton outline of the ELF file format is provided in the System V ABI~\cite{elf-sco-model}, and using this specification enough structure is defined to properly parse-and-blit ELF files to and from disk.
+However, to interpret the contents of a file more detail is needed, and therefore architecture-specific supplements to the core specification are provided for each microprocessor family.
 In some cases, these supplementary documents may provide extra section and segment types, extra flags, or other bits of structure to an ELF file specific to that platform (for example, the AARCH64 ABI supplement adds the \texttt{AARCH64\_BUILD\_ATTRIBUTES} section type, describing sections that contain unspecified compiler build attributes).
 In other cases, these supplementary documents may override the core-ELF specification, for example in the interpretation of the ELF header field, \texttt{e\_entry}, defined in the ELF specification as the program's entry point, but overidden in the AARCH64 ABI to point to a location in the body of the ELF file that contains the entry point.
 In yet other cases, the core-ELF specification remains entirely silent on the contents and functioning of certain structural components of an ELF file.
-One key example of this is the interpretation of relocation records, which are tied to instruction encoding and wholly ABI-specific, varying markedly from one ABI to another.
+One key example of this is the interpretation of relocation records, which are tied to specific instruction encodings and therefore wholly ABI-specific, varying markedly from one ABI to another, and their semantics are therefore entirely delegated to the architecture-specific supplement for the platform in question.
 
-Operating system-specific flags, section and segment types that are not mentioned in the core-ELF specification may also be recognised.
-Many Linux ELF binaries contain \texttt{GNU} extensions, for example the presence of a segment of type \texttt{PT\_GNU\_EH\_FRAME} containing exception handling information, or a section of type \texttt{STT\_GNU\_VERSION} containing versioning information.
-Some of these extensions are collated in a document called the \emph{Linux Standard Base} (`LSB')~\cite{linux-standard-base}, but many are either documented only informally in mailing list messages, or not documented at all.
+In addition operating systems may augment the format with their own extensions, specifying additional flags, section and segment types, and other structural elements.
+For example, many Linux ELF binaries contain \texttt{GNU} extensions.
+These augment the standard ELF file format, as for example, with the presence of a segment of type \texttt{PT\_GNU\_EH\_FRAME} containing exception handling information, or a section of type \texttt{STT\_GNU\_VERSION} containing versioning information.
+Some of these extensions are collated in a document called the \emph{Linux Standard Base} (`LSB')~\cite{linux-standard-base}.
+Many more, however, are either documented only informally in mailing list messages, or not documented at all.
 
-To capture enough of the structure of ELF files executed `in the wild', the core specification along with microprocessor-specific and operating-specific supplementary material must all be formalised.
-In particular, there is no clean separation of the latter two sets of supplementary material: the AMD64 ABI explicitly makes reference to sections of type \texttt{STT\_GNU\_IFUNC}, for example (see Section 4.2 of~\cite{amd64-abi}).
+To capture enough of the structure of ELF files executed `in the wild', the core specification along with microprocessor-specific and operating-specific supplementary material must all be formally specified.
+We note here, however, that in practice there is no clean separation of the latter two sets of supplementary material.
+For example, the AMD64 ABI explicitly makes reference to sections of type \texttt{STT\_GNU\_IFUNC}, a \texttt{GNU} extension, for example (see Section 4.2 of~\cite{amd64-abi}).
 
 \subsection{The Lem language}
 \label{subsect.rigorous.lem.specification}
