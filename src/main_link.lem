@@ -58,11 +58,9 @@ let correctly_linked a linkables names options eout =
         (* user_text_segment_start *) (match Command_line.find_option_matching_tag (TextSegmentStart(0)) options with Just(TextSegmentStart(addr)) -> Just addr | _ -> Nothing end)
         (* user_data_segment_start *) Nothing
         (* user_rodata_segment_start *) (match Command_line.find_option_matching_tag (RodataSegmentStart(0)) options with Just(RodataSegmentStart(addr)) -> Just addr | _ -> Nothing end)
-        (* elf_headers_size *) (* HACK: take these from the output file. *)
+        (* elf_headers_size *)
             (
-                (natural_of_elf64_half eout.elf64_file_header.elf64_ehsize) + 
-                ((natural_of_elf64_half eout.elf64_file_header.elf64_phnum) 
-                * (natural_of_elf64_half eout.elf64_file_header.elf64_phentsize))
+                (* ELF header size *) 64 + a.max_phnum * 56 (* size of one phdr *)
             )
     in
     let linked_image = link script a options linkables
@@ -106,7 +104,10 @@ let _ =
     let guessed_abi = find (fun a -> a.is_valid_elf_header eout.elf64_file_header) all_abis
     in
     let a = match guessed_abi with
-      Just a -> if get_elf64_osabi eout.elf64_file_header = elf_osabi_gnu 
+      Just a -> if (* get_elf64_osabi eout.elf64_file_header = elf_osabi_gnu *) true
+                    (* The GNU linker does not set the ABI to "GNU", but happily uses GNU extensions.
+                     * FIXME: delegate to a personality function here
+                     *)
                     then let _ = Missing_pervasives.errln "Using GNU-extended ABI" in Gnu_ext_abi.gnu_extend (Abis.tls_extend a) 
                     else (Abis.tls_extend a)
       | Nothing -> failwith "output file does not conform to any known ABI"

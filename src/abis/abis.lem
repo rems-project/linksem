@@ -668,7 +668,7 @@ let sysv_amd64_std_abi =
       (* XXX: DPM, changed from explicit reference to null_abi field due to problems in HOL4. *)
     ; symbol_is_generated_by_linker = (fun symname -> symname = "_GLOBAL_OFFSET_TABLE_")
     ; make_phdrs = make_default_phdrs
-    ; max_phnum = 4
+    ; max_phnum = 2 (* incremented by extensions *)
     ; guess_entry_point = find_start_symbol_address
     ; pad_data = pad_zeroes
     ; pad_code = pad_0x90
@@ -688,7 +688,7 @@ let sysv_aarch64_le_std_abi =
     ; commonpagesize = 4096
     ; symbol_is_generated_by_linker = (fun symname -> symname = "_GLOBAL_OFFSET_TABLE_")
     ; make_phdrs = make_default_phdrs
-    ; max_phnum = 5
+    ; max_phnum = 2 (* incremented by extensions *)
     ; guess_entry_point = find_start_symbol_address
     ; pad_data = pad_zeroes
     ; pad_code = pad_zeroes
