@@ -83,7 +83,7 @@ We validated this property using an automated \texttt{diff} tool comparing the o
 Both properties mentioned above were validated on the AARCH64, AMD64, IA32 and Power64 microarchitectures.
 For the latter three architectures we validated against the contents of \texttt{usr/bin} and \texttt{usr/lib} on typical Linux distributions.
 For the AARCH64 we validated our model against the contents of \texttt{usr/bin} and \texttt{usr/lib} of an LG Android~5.1.1 mobile phone.
-On AARCH64, AMD64, IA32 and Power64 we tested against XXX, 1650, XXX, and XXX binaries, respectively.
+On AARCH64, AMD64, IA32 and Power64 we tested against 576, 1650, XXX, and 1606 binaries, respectively.
 
 \dm{run the elf counter script on the remaining platforms above}
 
@@ -106,4 +106,4 @@ In part, this can be explained by the lack of a formal model of realistic linkin
 
 To remedy this situation we have extracted Isabelle/HOL theory files from our Lem source model, corresponding to around 33,500 lines of commented Isabelle source.
 Approximately 1,500 lines of handwritten termination proofs for recursive functions, and various lemmas needed for the completion of the termination lemmas, are also supplied, demonstrating at least in principle that our definitions can be used for effective proof in theorem provers.
-HOL4 and Coq extractions of the the Lem source model are also planned.
+HOL4 and Coq extractions of the the Lem source model will also be made available.
