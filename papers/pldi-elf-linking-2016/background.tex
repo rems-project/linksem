@@ -138,6 +138,15 @@ one in the kernel, used for statically linked binaries, and one in user-space us
 % (Some non-Unix systems avoid the need for position-independent libary code by pre-registering 
 % certain address ranges, to be used by all processes; Windows DLLs use this scheme.)
 
+\subsection{Linkers and module systems}
+
+The relationship between linker features and programming language features is complex.
+Many languages are said to have a ``module system'', having certain features corresponding to a linker's.
+Although we mostly save discussion of this correspondence for later (\S\ref{sec:discussion})
+it is worth remarking that while a typical module system provides mechanisms dealing in both abstract and concrete modules, linking is entirely concrete.
+Linkers have no notion of module instantiation, nor of parameterisation; they focus only on the interconnection of concrete modules.
+As we will see, this still encompasses a surprising variety of features, many of which have no analogue in languages' module systems.
+
 \subsection{Starting point}
 
 Our work's starting point presents a challenge missing from many formalisation efforts:
@@ -155,39 +164,3 @@ and per-architecture \emph{ABI supplements} fill in certain architecture-specifi
 details.
 However, in practice, cross-cutting ABI extensions sit alongside these documents, covering features such as symbol versioning, thread-local storage, and so on.
 Overlaps between these documents create inconsistencies, often meaning implementers must resort to mimicking a pre-existing implementation.
-
-\subsection{Linkers and module systems}
-
-A typical programming language ``module system'' provides mechanisms 
-dealing in both abstract and concrete modules. 
-A module may be abstract in several ways: 
-referring to other modules and/or their definitions;
-by hiding its internal names from other modules;
-by hiding other internal information (e.g.\ representation types) from other modules;
-by being parameterised by other modules (a functor) 
-     or of definitions they must supply (e.g.\ types they define).
-Modules are named definitions,
-and ensembles are formed by naming modules, instantiating their parameters,
-and (in the case of generative modules) instantiating the modules themselves.
-
-By contrast, linking is almost entirely concrete.
-Linker modules, namely files, 
-are abstract in only two ways: by referring to other modules,
-and by hiding certain named definitions from other modules.
-Linker modules themselves are not named definitions for most purposes.\footnote{The 
-two exceptions are: diagnostic purposes---since linkers will use 
-module filenames to report problems to the user---and memory layout purposes,
-since linker scripts are allowed to select input files by name.
-Unmatched input files' sections are still included in the link, however, so
-this mechanism only allows their placement to be varied, and does not affect
-how symbols are resolved.}
-The programmer has no direct control of which module gets wired to which other.
-Rather, bindings are formed entirely according to symbol names,
-without regard to the name of the module (file) supplying them or requiring them.
-Linkers have no notion of module parameterisation, nor of module instantiation.
-The linker is responsible only for creating the concrete ``wiring'', or binding topology, 
-of the output binary, but not for instantiating
-Its role in ``programming in the large'' is essentially that 
-of module interconnection \citet{deremer_programming_1975}.
-FIXME: cite Knit (Reid et al) also.
-
