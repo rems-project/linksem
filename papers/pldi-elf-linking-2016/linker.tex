@@ -1,0 +1,51 @@
+\section{Linker-checker}
+
+is both a linker and a link checker.
+
+It is invoked the same way as the GNU linker, supporting the same command-line options.
+
+However, its output file (named with \textsf{-o}, or else \textsf{a.out}) may already exist.
+If invoked with an existing output file,
+it checks equivalence of the memory image it generates
+with the memory image embodied by the output file.
+FIXME: also do post-load check: start the program up in a ptrace'd state 
+and compare each word of the image.
+
+Currently the equivalence function is ``equality modulo don't-cares'': the 
+memory image is allowed to make certain content (such as padding) as arbitrary.
+However, other details, all the way down to address assignment 
+
+a reference implementation optimised for readability
+and portability
+
+EXAMPLES of the liftable-out portions of the spec 
+e.g.\ detailing symbol binding.
+
+a test oracle.
+
+a basis for reasoning? WHAT can we argue here?
+
+
+To allow per-linker divergences, 
+the linker is factored to invoke 
+linker ``personality functions'' corresponding to 
+the loosenesses identified earlier (\S\ref{sec:looseness})
+
+\begin{itemize}
+
+\item seen ordering
+
+\item placing orphans
+
+\item simplifying relocations
+
+\item concretising padding etc.
+
+\item concretising support features (order etc.)
+
+\item ELF headers, program headers etc.
+
+\end{itemize}
+
+
+

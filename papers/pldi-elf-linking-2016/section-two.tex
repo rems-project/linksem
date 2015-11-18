@@ -1,5 +1,4 @@
 \section{Understanding linking}
-
 Linking is used to implement separate compilation 
 of languages including C, \Cplusplus{}, Fortran, Ada, Objective-C, and
 many others.
@@ -20,139 +19,6 @@ consider how they are (or aren't) currently specified,
 and consider the consequences for 
 how toolchains should be specified and what services they might provide.
 %motivate a different approach to specifying linking.
-
-
-% For example, Cardelli formalised a system of ``linksets'' 
-% in which ``separate compilability'' could be formally stated and checked,
-% modelling linking as a property-preserving merge operation,
-% and assuming a source-level interface formalism including notions of signature and type checking.
-% 
-% Although such work can be valuable in new language and toolchain designs, 
-% it does not suffice for modelling existing code.
-% 
-% Currently we are aware of no formal semantics for any substantial fragment of linker-speak,
-% making only informal reasoning possible.
-% 
-% Existing approaches to formally verified toolchains 
-% have effectively replaced the linker
-% with a minimal language-specific linker
-% intended merely to provide separate compilation semantics, 
-% therefore not addressing the features on which many real codebases rely.
-
-
-\subsection{Linking basics}
-
-In this paper we focus on the linker-speak of System~V-derived Unix environments,
-including GNU/Linux and all modern BSD variants.
-Windows and Mac OS (Darwin) environments exhibit broadly similar feature sets,
-but the System~V environment's is generally a superset.
-
-Following \citet{gingell_1987_shared}, we say ``batch linker''
-to mean the \textsf{ld} tool run at build time, and 
-``dynamic linker'' to refer to the \textsf{ld.so} dynamic linker running
-at load time.
-
-A batch linker takes multiple modules of \emph{relocatable object code} 
-as input (in the form of \textsf{.o} files, or groups thereof bundled into 
-\textsf{.a} ``archive'' files).
-It produces a single ``linked'' binary as output.
-Linked binaries are usually executables, and embody the input modules.
-The main work of the linker is to organise the input modules' content
-in a single logical memory image, 
-and to turn symbolic references (encoded as metadata in the input files), 
-into concrete bindings encoded as bit-patterns in the output binary.
-
-Object code consists of \emph{sections}, \emph{symbols} and \emph{relocations}.
-Sections are chunks of bytes, treated as indivisible units
-by the linker: they may be combined or rearranged, but not broken apart. 
-Symbols give names to particular ranges of a section, 
-corresponding to source-level definitions
-(functions or global variables, say).\footnote{ELF symbol names
-are arbitrary sequences of non-zero bytes, so can encode 
-essentially any source-language identifier verbatim. However, 
-most language implementations generate a lexically narrower set of symbols,
-according to the lexemes accepted as symbols by the assembler.
-This explains why name-mangling schemes are used by \Cplusplus{} compilers: 
-\Cplusplus{} punctuation such as `\textsf{::}' is not assembler-friendly. C identifiers 
-need not be mangled, by design.} 
-Some symbols are instead \emph{undefined},
-meaning they give a name to a definition which does not exist 
-in that object file. 
-Rather, it exists in a different object file that is to be linked in.
-References to symbols are encoded as \emph{relocation records}, sometimes called 
-``fixups'': they describe how 
-the section's bytes must be fixed up to point to the intended referent.
-Each relocation record specifies a ``type'' of relocation, corresponding to 
-different instruction encodings and pointer encodings.
-Even if a symbol is defined locally in a given object file, 
-references to it might still require relocation.
-This is because the symbol's address is not yet bound.
-For example, a pointer called \textsf{p} 
-initialized to point to a specific global variable \textsf{x}
-will appear in object code as
-(1) a word-sized portion of some section (probably called \textsf{\.data});
-(2) a defined symbol called \textsf{p} marking that range within the section; 
-(3) a relocation record marking that range as pointing to \textsf{x},
-whose address is not yet known.
-The symbol \textsf{x} also exists in the object file; it 
-may be either a defined or undefined symbol, 
-depending on whether it was defined in the originating compilation unit.
-In either case, its address is not decided until during linking, so 
-\textsf{p}'s relocation record remains essential.
-Making a concrete binding is called \emph{applying relocations}, 
-betraying its intertwinedness with the process of assigning memory addresses,
-and the metadata describing references are called \emph{relocation records}.
-The actual bytes of \textsf{p} will be filled with an arbitrary value,
-typically zero; only during relocation will they be filled in.
-
-%These bit-patterns are either the address fields of encoded machine instructions (in code), 
-%or pointer representations (in data).
-
-Having composed a memory image out of its inputs, 
-and applied relocations, 
-the linker finally outputs a serialised form of this memory image
-into the output binary.
-If the output binary is completely self-contained, we say it is ``statically linked''. 
-Alternatively, modern batch linkers also allow 
-some dependencies to be deferred until a later \emph{dynamic linking} step at load time.
-In these cases, the linker's input also includes dynamically-linkable libraries.
-These are \emph{not} embodied in the output; rather,
-at link time they serve as a proxy identifying which libraries will be available at load time.
-Any references to them are deferred until load-time binding,
-are left unrelocated and output as metadata in the executable.
-Shared libraries themselves are also produced by the same batch linker.
-
-Internally there are few differences
-between a dynamically-linked executable and a dynamically-linkable shared library.
-The principal difference is that the shared library may not 
-embed any absolute memory addresses, since it may be loaded
-at any address, whereas executables are always loaded from 
-address zero.\footnote{Modern linkers can also produce executables
-with this property, called ``PIE'' for position-independent executable.}
-
-Loading is the process of actually 
-constructing the memory image that the linker 
-represented in the output binary in serialised form.
-A modern Unix operating system typically contains two loaders: 
-one in user-space used for dynamic linking,
-and one in the kernel, used for statically linked binaries
-and to load the dynamic loader itself.
-
-Dynamically linked binaries, whether executable or library, 
-differ from statically linked ones
-in that they include metadata used by the dynamic linker
-to apply the remaining relocations.
-The other key difference is that 
-shared libraries, in order for their memory to be physically 
-shared at run time across multiple processes, 
-are usually crafted so that their text does not need any relocation at all.
-Rather, code-to-code and code-to-data references are indirected 
-via more compact \emph{non-}shared support structures 
-(respectively the GOT, or global offset table, and PLT, or procedure linkage table).
-This allows multiple processes to simultaneously map the same unmodified text segment 
-at different load addresses.
-(Some non-Unix systems avoid the need for position-independent libary code by pre-registering 
-certain address ranges, to be used by all processes; Windows DLLs use this scheme.)
 
 \subsection{Linkers and module systems}
 
@@ -873,10 +739,41 @@ into the input files and having the linker invoke compiler middle- or back-end p
 % 
 % spatial locality optimisation
 
-\paragraph{Compiler-level policy} 
-Compilers' use of linker mechanisms is constrained and informed
-by efficiency and interoperability concerns. 
-\emph{Code models}, conventions about 
+\subsection{Higher-layer conventions and policy} 
+
+Users of linkers must understand not only linker-speak, but also 
+how both compilers and libraries use the linker features.
+Various conventions exist for this, which the linker neither knows nor enforces.
+
+\paragraph{Compilation conventions} 
+Specific languages often define per-platform ABI conventions to
+allow different implementations to interoperate.
+We call this \emph{federated compilation}, as a strictly stronger 
+requirement than separate compilation.
+ABI conventions include data representations, calling conventions and the like; they also 
+partially specify a mapping from the language features down to linker features,
+and include specification of the allowed code models.
+Usually the ABI supplement defines these conventions for C,
+and separate documents build on these for other languages (notably \Cplusplus{}), 
+often in cross-architecture ways.
+The linker is oblivious to these conventions per se; 
+its behaviour can be specified independently of them. 
+However, adequately specifying the entire toolchain entails
+specifying them somewhere, and ensuring that compilers adhere to them.
+% A linker would be a good place to check ABI conformance of input binaries.
+
+\paragraph{Name mangling}
+ELF symbol names
+are arbitrary sequences of non-zero bytes, so can encode 
+essentially any source-language identifier verbatim. However, 
+most language implementations generate a lexically narrower set of symbols,
+according to the lexemes accepted as symbols by the assembler.
+Unlike C identifiers, which by design need not be mangled, 
+\Cplusplus{} definitions' names include punctuation such as `\textsf{::}', 
+which is not assembler-friendly,
+explaining why name-mangling schemes are used by \Cplusplus{} compilers: 
+
+\paragraph{Code models} These are conventions about 
 how near or far a given definition might lie from a reference to it, 
 are crucial to compilers in choosing the most efficient addressing mode
 during instruction selection, and are standardised for compiler interoperability reasons.
@@ -889,21 +786,6 @@ the code may be shared across multiple processes at different mapping addresses.
 whether the code's \emph{semantics} depend on its load address; 
 position-independent code is perfectly well able to 
 introspect its own load address, or more generally, to branch on pointers.}
-Finally, specific languages often define per-platform ABI conventions to
-allow different implementations to interoperate.
-We call this \emph{federated compilation}, as a strictly stronger 
-requirement than separate compilation.
-ABI conventions include data representations, calling conventions and the like; they also 
-partially specify a mapping from the language features down to linker features,
-and include specification of the allowed code models.
-Usually a ``platform ABI'' defines these conventions for C,
-and separate documents build on these for other languages (notably \Cplusplus{}), 
-often in cross-architecture ways.
-The linker is oblivious to these conventions per se; 
-its behaviour can be specified independently of them. 
-However, adequately specifying the entire toolchain entails
-specifying them somewhere, and ensuring that compilers adhere to them.
-% A linker would be a good place to check ABI conformance of input binaries.
 
 % \paragraph{Code models}
 % 
@@ -970,117 +852,6 @@ specifying them somewhere, and ensuring that compilers adhere to them.
 
 % After all that, what have we motivated?
 
-
-\subsection{Where's the specification?}
-
-It seems natural that a formal specification of linker-speak
-could be useful: 
-\ps{we can say this more strongly - maybe it belongs in the intro, in
-  any case}
-as a reference document, a reference implementation, a test oracle, 
-and a basis for automated reasoning (either about user programs or 
-for the creation of verified toolchains).
-
-Usually, a key input to the production of a formal specification is an informal one.
-Unlike most programming languages, no ``standard'' definition of linker-speak has ever been undertaken.
-Linker behaviour varies by  vendor, by architecture, by ABI and by operating system.
-Even fixing these, no one document holds all, or even most, of the relevant information.
-
-Currently, for each variant, the definitive specifications,
-(to the extent that they exist)
-lie in a various disparate sources, 
-a mixture of informal prose documents, 
-an even more informal mailing list posts, 
-or sometimes pure implementation.
-
-% The combination of linker, 
-% architecture details, 
-% basic ABI conventions, 
-% and various
-% platform-specific and/or 
-% de-facto extensions (TLS, \Cplusplus{} conventions, ...)
-% ensures that the intended 
-% behaviour of linker-speak is spread across
-% multiple documents
-% which need not be mutually consistent.
-
-In our case of System~V-derived linker-speak, 
-relevant source documents include the following.
-
-\begin{description}
-
-\item[SVR4 Interface Description]
-The AT\&T System~V (R4) Interface Description, volume 3, includes the manual
-page for the System~V linker (p346). 
-Much of the contents of this volume were superseded by POSIX, 
-but POSIX deliberately omits any mention of either a 
-batch linker or dynamic linker as separate entities. 
-It specifies a C compiler command-line interface, 
-and a similar interface for Fortran 77,
-and says in both cases that 
-``the system conceptually consists of a compiler and link editor''.
-
-\item[Programmer's Guide] Earlier editions of the System~V's Programmer's Guide, volume 5 (Languages and Support Tools), 
-includes a detailed, informative description of how compiler and linker interact,
-how the linker operates, and a description of the linker script language.
-However, this text was removed from R4's edition of the Guide, 
-coincident with the introduction of the ELF format.
-The linker detail is replaced with a detailed description of the ELF format itself, 
-and of dynamic linking, but \emph{without} details of the linker script language
-or the operation of batch linking (beyond the scant details in the manual page).\footnote{Appendix B 
-does include one new detail: a ``Mapfile'' syntax which offers a simplified subset 
-of linker script features, essentially controlling ELF program headers. 
-To our knowledge,  modern linkers do not support this language.
-This is not to be confused with ``link maps'' output \emph{from} 
-linkers, including AT\&T's System~V linker.}
-
-\item[Linker manuals] Successive linkers, notably the GNU linker, offer detailed manuals
-and aim to offer backward compatibility with the System~V linker,
-so are logical successors, albeit not very normative, 
-to the System~V linker description removed for R4.
-
-\item[ABI Specification] These ELF-related sections of the System~V Programmer's Guide, 
-along with various other extracts from the System~V Interface Description,
-have been continually revised and released separately
-in a document called the System V Application Binary Interface \cite{elf-sco-model}.
-This specifies extensions to the ELF format, and alludes to aspects of linker behaviour
-without attempting to specify it.
-
-\item[ABI Supplements] Per-architecture \emph{ABI supplements} fill in architecture-specific
-details. These include vital details about 
-what constraints a link job's input and output objects 
-must obey, what structures a batch linker must generate
-and what structures a dynamic linker must maintain.
-(They also include many higher-level conventions, such as calling conventions
-and data representation, which are not directly visible to a linker, but 
-which are essential to federated compilation.)
-
-\item[Cross-cutting ABI documents] GNU extensions to the System~V ABIs, for all
-architectures, are described in the Linux Standard Base (REF). Thread-local storage
-extensions, common to multiple vendors, are described in a succession of documents by Sun,
-Red Hat, and latterly independent author (Drepper) (REF again).
-Aspects of what was originally an IA64-specific \Cplusplus{} ABI document (REF)
-have been adopted in much broader contexts concerning stack walking
-and exception handling implementations (REF).
-
-\item[Implementation] No document adequately describes certain aspects of linking.
-In others, multiple documents describe them in partial, overlapping ways.
-In either case, recourse to an implementation is usually necessary.
-The following quotation (from a recent GCC mailing list post by Matthijs van Duin)
-is typical of this state of affairs.
-
-{\footnotesize\begin{quotation}
-I'd finally like to take a moment to say this was hell to figure
-out.... this shit is really documented nowhere properly since it
-appears to be a magic blend of ARM EABI and IA64 C++ ABI (meaning
-neither documentation quite applies) and I had to plow through the
-innards of libgcc and libsupc++ to figure out how things *actually*
-work. Argh.
-\end{quotation}}
-
-\end{description}
-
-
 \ps{somewhere we should describe the linkers in widespread use and
   their current status?}
 
@@ -1102,141 +873,3 @@ work. Argh.
 % \end{itemize}
 
 
-\subsection{Consequences}
-
-Our survey has motivated several different needs.
-\ps{not really ``conseqences'' or ``needs''}
-
-\ps{structurally distinguish between those we address in this paper (the
-  first two?) and the future work we enable (all the rest?)}
-
-
-\paragraph{Intermediate abstractions for linking}
-Language semantics are often described 
-using some abstract machine interpreters, 
-transition systems, rewrite rules, trace validators, and so on.
-What intermediate abstractions are useful for describing 
-linker features?
-
-\paragraph{Specification of linking}
-What should a linker do?
-Tackling this question cracks open 
-a large subset of the issues we have discussed: 
-the semantics of individual linker mechanisms, 
-the linker's input and output formats,
-the syntax and semantics of linker-speak
-in all its various forms, 
-and the per-ABI structures that must be maintained
-by both batch linkers and dynamic linkers.
-
-\paragraph{Specification of higher-level ABI conventions}
-Higher-level conventions on which federated compilation relies, 
-such as calling conventions and data representation,
-are separable from linking, but 
-are an essential part of a full specificaction of any linking-enabled toolchain.
-
-% - federated compilation stuff: ABI compliance specs
-
-\paragraph{Relating source languages to linker abstractions} 
-Language implementers need ways to state their assumptions and guarantees
-about how they map the source language to linker mechanisms,
-and what they require of the linking environment.
-This could potentially allow accurate source-level reasoning about 
-linker-supplied definitions (like the introspective \textsf{end} symbols, say) 
-and linker-invoked features (such as visibility attributes, aliases, etc.).
-% 
-% some way for source-level reasoning to account also for link context
-%      (by only reasoning about binaries? hmm)
-%      "Programs making use of linker-supplied definitions 
-%       may assume they exist, and with certain semantics, 
-%       to which source-only analyses are oblivious."
-% 
-% - some way for source lang implementers to state how they map language
-%         features onto linker features,
-%         and also what they assume about that environment;
-
-\paragraph{Program analyses accounting for linker-speak}
-Precise reasoning about composed programs cannot be done entirely at source level; 
-linker mechanisms' semantics must be taken into account.
-This might motivate several approaches: 
-mapping source-level properties down to a
-machine-level reasoning substrate (like that of~\cite{balakrishnan-wysinwyx-2010}),
-or performing intermediate-language reasoning
-in a fully linking-enabled context (like the recent LLVM project work
-to embed LLVM IR into native object files--REF).
-
-\paragraph{User-facing improvements}
-Given the potential for link-time interference between user-supplied
-and toolchain-required link behaviour (as with our \textsf{-fvisibility} example), 
-we would like better ways to factor linker, compiler and library functionality
-that avoid these unwanted iteractions.
-In general, much of the user-facing complexity of linking
-can be argued as unnecessary.
-Many of the linker-speak incantations we surveyed 
-are implementing simple properties, but are onerous to state. 
-Link errors (such as the infamous ``recompile with -fPIC'' when building shared libraries),
-and linker behaviour generally, have a habit of mystifying programmers,
-even experienced language implementers.\footnote{Two 
-anecdotes in this space include GHC bug 8935,
-in which GHC developers grappled with surprising but completely standard
-and explainable semantics of \textsf{dlsym()} in shared libraries, 
-or OCaml Mantis issue 6462 which incorrectly blames a program corruption bug on a lack of 
-renaming or namespacing in the linker.
-In fact, the dynamic linker does allow like-named symbols to be defined in multiple 
-distinct objects, and this is frequently exploited.}
-Weighty documents full of intricate user advice, like Drepper's guide to shared libraries, 
-suggest a suboptimal contract between user and toolchain.
-Having the user instead merely state high-level policy-like requirements, 
-and having a smarter toolchain figure out how to perform the link,
-would be far preferable.
-
-
-% Linkers (and linking-related compiler features) are hard to use,
-% and even harder to use optimally.
-% 
-% Code models are one example
-% 
-% Drepper's shared library document is another
-% 
-% (my ``policy list'' is the killer document)
-
-
-
-The remainder of this paper describes our work on tackling the first
-two of these requirements:
-a suitable intermediate abstraction for linking,
-and its use in specifying the core linker mechanisms
-and related ABI details. Specifically, we describe:
-
-\begin{itemize}
-
-\item a formal specification of the ELF file format;
-
-\item an intermediate representation
-       that losslessly abstracts away from ELF 
-       to \emph{symbolic partial memory images}, 
-       an intermediate representation 
-       which captures the operations internal to a linker;
-
-\item an executable specification of a batch linker in terms of our memory image abstraction, 
-        capturing the looseness inherent in linking
-        and packaged as a post-link validation tool
-        (optionally capable of creating output, 
-         or enumerating all possible outputs);
-
-\item a formal spec of the ELF extensions adopted by popular toolchains, 
-        notably Solaris and GNU;
-
-\item  a semantic definition of ABI-specific structural definitions,
-       including how they refine the file format
-       and how they construct ABI-specific features during a link.
-
-\end{itemize}
-
-We validate these specifications 
-by a series of experiments 
-illustrating that 
-they cover 
-a large sample of real binaries across several architectures (AARCH64, Power64, AMD64, and x86-32)
-and incorporating several ABI extensions (GNU? TLS? CHECK),
-and that that our notion of link correctness agrees with observable ground truth.

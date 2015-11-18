@@ -1,0 +1,96 @@
+\section{Introduction}
+
+Real programs consist of binary instructions, and data, executing on a machine.
+How these binaries are \emph{linked} has a crucial influence on their semantics.
+Unlike compilation, the linking process remains largely invisible and poorly understood 
+by programmers and semanticists alike.
+Consider the familiar \textsf{malloc()} and \textsf{calloc()} functions in C.
+Fig.~\ref{fig:glibc-malloc} is abstracted from the GNU C library's code for these two functions.
+What does this code do?
+``Obviously'', it implements the two functions using a third, internal helper function \textsf{\_int\_malloc()}.
+What are the two functions called? 
+Do they always call the helper as defined in the file?
+What other definitions does the file export?
+What happens if the user supplies their own \textsf{malloc}, as many programs do?
+
+A source-language semantics simply cannot answer these questions correctly. 
+%---or if it does so, it does so wrongly.
+C has no notion of aliases, but the code depends on these for defining \textsf{malloc}.
+Linker features also control name binding and symbol visibility---in fact there is no guarantee that the \textsf{\_int\_malloc()} calls will land within this file.
+Many tools and libraries rely on the ability to replace or interpose on bindings.
+%, or that calls to \textsf{malloc()} elsewhere in the same librarywill actually bind to this \textsf{malloc()}.
+This isn't a fringe issue: a large fraction of real codebases rely on linker features to realise their intended semantics---especially codebases lower in the stack. 
+A typical Unix system's kernel (e.g.\ Linux) and core libraries (e.g.\ \textsf{glibc}) make considerable use of such features.
+%, while many program binaries do likewise.
+To say anything about the correctness of these binaries requires a notion of correct linking; 
+traditional source-level analyses (e.g.~\cite{hoare-axiomatic-1969, reynolds-separation-2002}) are not sufficient.
+%, unless or until they have been augmented to account for linking.
+
+\begin{figure}[t]
+\begin{lstlisting}[language=C,basicstyle=\footnotesize\sffamily,columns=flexible]
+void* _int_malloc(mstate av, size_t bytes)
+{ /* ... */ }
+void* __libc_malloc(size_t bytes)
+{   // ...
+    void *mem = _int_malloc(av, sz);
+    // ...
+}
+void* __libc_calloc(size_t bytes)
+{   // ...
+    void *mem = _int_malloc(av, sz);
+    // ...
+}
+strong_alias (__libc_malloc, __malloc) 
+strong_alias (__libc_malloc, malloc)
+strong_alias (__libc_calloc, __calloc) 
+weak_alias (__libc_calloc, calloc)
+\end{lstlisting}
+\caption{Outline of the GNU C library's \textsf{malloc} and \textsf{calloc}}
+\label{fig:glibc-malloc}
+\end{figure}
+
+We can re-phrase this by saying that much software is not merely written in a programming language like C, or even Haskell (linked by the system linker), but also in `linker speak'---the languages by which the linker is invoked and controlled.
+There are many such languages: the linker command-line, metadata contained within object files, assembler and compiler directives that generate it, and in fact an entire script language used exclusively by the linker.
+
+Linker-speak is currently specified haphazardly or not at all.
+As a result it is often used incorrectly or without developer understanding, often in unportable or fragile ways.
+Linkers are seldom well-tested, and for many purposes, the implementation is its own oracle: unlucky developers grappling with corner-case behaviour must simply work with (or around) the linker's observed behaviour.
+Both users and implementers lack any recourse to a reference, standard or specification. 
+The challenge of verified toolchains makes these problems even more acute: existing
+approaches to verified compilation sidestep the problem of linking, rather than addressing it.
+Instead of idealising linking away, to truly account for linking must involve accurate modelling of a large, usable subset of its features.
+
+In this paper, we describe the first detailed, accurate formal semantics for linking. 
+Our semantics covers a large and fraction of contemporary Unix linker features, and tightly models the behaviour of widely-used existing linkers on realistic link jobs.
+Our research contributions are as follows.
+
+\begin{verytightitemize}
+\item
+We review and clarify the roles played by linking and loading in mainstream systems, emphasising
+how linkers are not merely concerned with separate compilation, but rather that ``linker-speak'' has real semantic effects.
+Linkers complement and supplement programming languages, offering features such as memory layout, versioning and interposition that are not exposed by programming languages and arguably ought not to be.
+
+\item As a foundation for the semantics of linking on modern Unix platforms, we describe a complete, validated  model of the Executable and Linkable (ELF) binary format as it is really used---derived from the System~V ABI specification~\cite{elf-sco-model}, extended by four platform ABIs for popular commodity microprocessor families, and additionally incorporating various extensions, notably the widely-used GNU extensions. 
+To our knowledge this is the first formal model of a realistic and widely-used linking and executable format, and the first formal elucidation of components of the platform ABI.
+
+\item Using this model, we describe an executable specification of static linking of ELF binaries.
+This includes the link-time semantics for the plethora of ELF features, 
+together with the linker command line and the embedded linker script language
+that controls linker operation.
+Our specification can be used in many modes: 
+as a link-checker validating existing linker output; 
+as an actual linker producing working output; 
+and as a readable reference implementation capturing the semantics of ELF features; 
+and for export to proof assistants.
+For the purposes of this paper, it does \emph{not} cover dynamic linking.
+\end{verytightitemize}
+
+We intend this paper to interest at least four distinct groups.
+The first are developers of new or existing linkers, who may use our model as a trusted external test oracle, both for link correctness and some aspects of ABI compliance.
+The second are authors of certified compilers (e.g.~\cite{amadio-certified-2014, kumar-cake-2014, leroy-formal-2009, sevcik-compcert-2013}) interested in producing ABI-compliant linkable ELF binaries, or extending their source languages with elements of linker-speak. 
+The third are designers of source-level program logics built atop the formal guarantees programming language standards and certified compilers provide~\cite{appel-program-2014}.
+As our opening example showed, linking is able not only to refine but to override source-level semantics, so source-level reasoning alone is not sound unless augmented with knowledge of linker features---that our semantics can provide.
+The fourth are researchers seeking to improve languages and toolchains, particularly for systems code: we argue such work must somehow accommodate the various roles of linker-speak, whether by embracing it as it currently exists, or by replacing it.
+
+% \subsection{Context}
+% \label{subsect.context}

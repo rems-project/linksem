@@ -1,0 +1,45 @@
+\section{Linking \texttt{hello}}
+
+For programming languages, a ``hello, world!'' program is among the simplest possible.
+However, for a linker, such a simple program amounts to a very complex job,
+since it links with the C library---usually the most complex library on the system,
+in terms of the linker features it exercises.
+
+In this section we outline what happens when a hello-world ,
+
+a substantial C library slightly simpler than the system-default GNU C library.
+
+At each point we describe the relevant features of our formalisation
+
+parse command line -- 
+
+parse command line. enumerate inputs, their options, and global link options -- 
+    by processing the command line. different options can be invoked
+    for different inputs.
+    global link options
+
+enumerate objects -- each input item might include multiple objects, 
+     might be an object file or linker script, etc.
+     ... elaborate away the archive structure, but retain enough information to resolve symbols
+
+resolve symbols -- rules depend on where inputs came from, e.g. archives are different, 
+    groups have an effect, etc..
+
+discard unreferenced objects -- using symbol reference as a dependency graph, 
+      selecting only those needed in the link
+
+generate support data -- dynamic relocations, GOT / PLT etc.. must happen *before* linker script, 
+       so that script can control where they get placed
+
+   -- optimise! simplify relocs etc..
+
+compose output sections -- a pass over the linker script, 
+      also generating symbol definitions etc. (PHASE issue)
+
+(optional) discard unreferenced sections
+
+assign addresses -- another pass over the linker script
+
+apply relocations -- now that addresses have been assigned, 
+
+generate output
