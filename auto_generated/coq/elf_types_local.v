@@ -6,6 +6,7 @@ Local Open Scope Z_scope.
 Axiom byte : Type.
 
 Axiom null_byte : byte.
+Axiom null_char : ascii.
 Axiom nat_of_byte : byte -> nat.
 Axiom byte_of_nat : nat -> byte.
 Axiom char_list_of_byte_list : list byte -> list ascii.

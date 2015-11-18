@@ -169,6 +169,18 @@ lemma silly_let_lemma:
                                          by_range = set meta0, by_tag = by_tag_from_by_range (set meta0)\<rparr>"
 by auto
 
+definition relocation_test :: "bool error" where
+  "relocation_test \<equiv>
+     (let ef = elf64_file_of_elf_memory_image sysv_amd64_std_abi id ''at_least_some_relocations_relocate.out'' relocation_image in
+      get_elf64_executable_image ef >>= (\<lambda>(segs_and_provenance, entry, machine).
+        if \<not> (machine = elf_ma_x86_64) then
+          Fail ''machine type incorrect''
+        else
+          let rstate = load_image (List.map fst segs_and_provenance) entry in
+          let final_fixed_state = run_program fixed_program initial_state in
+          let final_relocatable_state = execute_two_steps rstate in
+            return (REG final_fixed_state = REG final_relocatable_state)))"
+
 theorem at_least_some_relocations_relocate:
     fixes ef :: elf64_file and segs_and_provenance :: "(elf64_interpreted_segment \<times> segment_provenance) list" and entry :: "nat"
             and rstate final_fixed_state final_relocatable_state :: "X64_state"

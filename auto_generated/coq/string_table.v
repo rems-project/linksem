@@ -51,7 +51,6 @@ Require Export show.
   *)
 Inductive string_table : Type :=
    Strings:  ((ascii  * string ) % type) -> string_table .
-Definition string_table_default: string_table  := Strings (ascii_default, string_default).
 (* [?]: removed value specification. *)
 
 Definition mk_string_table  (base : string ) (sep : ascii )  : string_table := 
