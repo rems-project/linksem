@@ -44,7 +44,7 @@ consisting mostly of rules such as
 saying that the output \textsf{.data} section should consist of the concatenation of 
 all input files' sections with name \textsf{.data} or matching wildcard \textsf{.data.*}.
 The language also includes arithmetic and some forms of conditional (but no recursion or unbounded looping).
-The default control script is built-in, but the user may supply their own.
+The user may supply their own script, overriding the built-in default.
 Link jobs may also include extra ``implicit'' scripts, 
 supplied on the command line as if they were object files.
 These are written in a small subset of the same command language, and are typically 
@@ -65,8 +65,8 @@ Specifically, we focus on the linker-speak of the AT\&T System~V linker
 and its descendents. 
 In the following, any linker options or script syntax
 refer to that accepted by the GNU BFD linker
-(still the default on both GNU/Linux and BSD environments)
-which was based on the AT\&T System~V linker.
+(still the default on both GNU/Linux and BSD environments, and 
+based on the AT\&T System~V linker).
 
 % \ps{The section below is (probably correctly) organised by
 %   use-cases, not by linker-speak features.  Maybe make each paragraph
@@ -185,7 +185,7 @@ Memory placement is not expressible in source languages,
 but code often depends on it---for example, kernels recognise their own addresses
 by testing whether they encode a negative signed value.
 Control of memory placement is also used for optimisation, 
-to improve spatial locality \citep{orr_dynamic_1994}.
+to improve spatial locality \citep{orr_fast_1993}.
 
 % Could "cite" Glek's demand paging init reordering blog post here
 
@@ -222,7 +222,7 @@ which definitions are available for binding or interposition by the dynamic link
 In addition to the linker command line, 
 compiler options (such as \textsf{gcc}'s \textsf{-fvisibility=hidden})
 can hide more definitions by default, lessening a library's dynamic linking overheads
-(Drepper~\citet{drepper} advises using it as a matter of course).
+(\citet{drepper_how_2011} advises using it as a matter of course).
 Unfortunatel \textsf{-fvisibility=hidden} breaks the source semantics of \Cplusplus{} code 
 if it throws exceptions out of the library.\footnote{This is documented at \url{https://gcc.gnu.org/wiki/Visibility}
 as of 2015$/$11$/$19.}
