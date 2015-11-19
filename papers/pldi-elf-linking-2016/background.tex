@@ -1,5 +1,30 @@
 \section{Background}
 
+\subsection{ELF file format}
+The Executable and Linkable (ELF) file format~\cite{elf-sco-model} is a format for storing programs or their fragments on-disk, created as a result of compiling and linking.
+A flexible format not tied specifically to any one machine architecture, ELF is now the \emph{de facto} standard format for executable and linkable files on Linux, various flavours of BSD, and embedded devices ranging from mobile phones to games consoles.
+Unlike older formats, ELF merges the file format of executable and linkable files together into a unified format.
+
+A skeleton outline of the ELF file format is provided in the System V ABI~\cite{elf-sco-model}, and using this specification enough structure is defined to properly parse-and-blit ELF files to and from disk.
+However, to interpret the contents of a file more detail is needed, and therefore architecture-specific supplements to the core specification are provided for each microprocessor family.
+These supplementary documents may complement, override, or fill in detail entirely missing from the core ELF specification.
+%In some cases, these supplementary documents may provide extra section and segment types, extra flags, or other bits of structure to an ELF file specific to that platform.
+%For example, the AARCH64 ABI supplement adds the \texttt{AARCH64\_BUILD\_ATTRIBUTES} section type, describing sections that contain unspecified compiler build attributes.
+%In other cases, these supplementary documents may override the core-ELF specification.
+%For example, the AARCH64 supplement overrides the interpretation of the ELF header field \texttt{e\_entry}, ostensibly the entry point for the program, but overridden to point to a location in the body of the file containing the entry point on AARCH64 platforms.
+%In yet other cases, the core-ELF specification remains entirely silent on the contents and functioning of certain structural components of an ELF file.
+%One key example of this is the interpretation of relocation records, which are tied to specific instruction encodings and therefore wholly ABI-specific, varying markedly from one ABI to another, and their semantics are therefore entirely delegated to the architecture-specific supplement for the platform in question.
+
+Operating systems may also augment the format with their own extensions, specifying new file components that they may interpret or expect. %specifying additional flags, section and segment types, and other structural elements.
+For example, many Linux ELF binaries contain \texttt{GNU} extensions.
+%These augment the standard ELF file format, as for example, with the presence of a segment of type \texttt{PT\_GNU\_EH\_FRAME} containing exception handling information, or a section of type \texttt{STT\_GNU\_VERSION} containing versioning information.
+Some of these extensions are collated in a document called the \emph{Linux Standard Base} (`LSB')~\cite{linux-standard-base}.
+Many more, however, are either documented informally in mailing list messages, or not documented at all.
+
+To capture enough of the structure of ELF files executed `in the wild', the core specification along with microprocessor-specific and operating-specific supplementary material must all be taken into account.
+We note here, however, that in practice there is no clean separation of the latter two sets of supplementary material.
+For example, the AMD64 ABI explicitly makes reference to \texttt{GNU}-specific extensions, for example (see Section 4.2 of~\cite{amd64-abi}).
+
 % For example, Cardelli formalised a system of ``linksets'' 
 % in which ``separate compilability'' could be formally stated and checked,
 % modelling linking as a property-preserving merge operation,
@@ -17,8 +42,10 @@
 % intended merely to provide separate compilation semantics, 
 % therefore not addressing the features on which many real codebases rely.
 
+\subsection{Linking}
+
 In this paper we focus on linking in System~V-derived Unix environments,
-including GNU/Linux and all modern BSD variants.
+including GNU/Linux and all modern BSD variants (hence the use of ELF).
 Windows and Mac OS (Darwin) environments exhibit broadly similar feature sets,
 but the System~V environment's is generally a superset.
 Following \citet{gingell_shared_1987}, we refer to the Unix linker command \textsf{ld}
@@ -145,20 +172,14 @@ it is worth remarking that while a typical module system provides mechanisms dea
 Linkers have no notion of module instantiation, nor of parameterisation; they focus only on the interconnection of concrete modules.
 As we will see, this still encompasses a surprising variety of features, many of which have no analogue in languages' module systems.
 
-% \subsection{Starting point}
-
-Our work's starting point presents a challenge missing from many formalisation efforts:
-no ``standard'' exists.
-Unix linking has even become \emph{less} well specified over time.
+The disparate and spotty specification of linking poses a challenge.
+Ironically, Unix linking has become \emph{less} well specified over time.
 System~V Unix's documentation included a detailed description of the linker,
 but this was removed when the ELF format was introduced (revision~4), 
 leaving only a manual page.
-POSIX \citep{} omits even this, instead saying that its C and Fortran compilers 
+The POSIX Standard~\citep{ieee_standard_1988} even omits this, instead stating that its C and Fortran compilers 
 ``conceptually consist of a compiler and link editor''.
 Although successive linkers, notably the GNU linker, offer detailed manuals, 
 these are hardly normative.
-The System~V ABI document \citep{} does describe the ELF format itself,
-and per-architecture \emph{ABI supplements} fill in certain architecture-specific
-details.
-However, in practice, cross-cutting ABI extensions sit alongside these documents, covering features such as symbol versioning, thread-local storage, and so on.
-Overlaps between these documents create inconsistencies, often meaning implementers must resort to mimicking a pre-existing implementation.
+
+% \subsection{Starting point}
