@@ -239,7 +239,9 @@ let resolve_one_reference_default a linkables defmap ref_idx_and_ref_and_linkabl
             else
                 if def_is_in_archive
                 then
-                    (not ref_is_weak) 
+                    (* Weak references *can* be resolved to archive members...
+                     * if the reference itself is also in the archive. *)
+                    ((not ref_is_weak) || ref_and_def_are_in_same_archive)
                     && (
                            ref_is_leftmore
                         || ref_and_def_are_in_same_archive
@@ -273,7 +275,7 @@ let resolve_one_reference_default a linkables defmap ref_idx_and_ref_and_linkabl
             end
     end
     in 
-    (*let refstr = "`" 
+    let refstr = "`" 
                 ^ ref.ref_symname ^ "' (" ^ 
                 (if (natural_of_elf64_half ref.ref_syment.elf64_st_shndx) = shn_undef then "UND" else "defined") ^ 
                 " symbol at index " ^ (show ref.ref_sym_idx) ^ " in symtab "
@@ -281,15 +283,15 @@ let resolve_one_reference_default a linkables defmap ref_idx_and_ref_and_linkabl
                 ^ ")"
     in
     let _ = Missing_pervasives.errs ("Bound a reference from " ^ refstr ^ " to ")
-    in*)
+    in
     match (maybe_target_def_idx, maybe_target_def, maybe_target_def_linkable) with
         (Just target_def_idx, Just target_def, Just target_def_linkable) ->
-            (*let _ = Missing_pervasives.errln (" a definition in "^ (show (target_def_linkable)))
-            in*)
+            let _ = Missing_pervasives.errln (" a definition in "^ (show (target_def_linkable)))
+            in
             Just(target_def_idx, target_def, target_def_linkable)
     |  (Nothing, Nothing, Nothing) -> 
-            (*let _ = Missing_pervasives.errln " no definition"
-            in*)
+            let _ = Missing_pervasives.errln " no definition"
+            in
             if ref_is_weak (* || a.symbol_is_generated_by_linker ref.ref_symname *) then Nothing 
             else (* failwith ("undefined symbol: " ^ refstr) *) Nothing
             (* FIXME: do a check, *after* the linker script has been interpreted, 
