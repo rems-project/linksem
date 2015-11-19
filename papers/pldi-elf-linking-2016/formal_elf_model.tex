@@ -1,65 +1,63 @@
 \section{The ELF formalisation}
 \label{sect.elf.formalisation}
 
-\subsection{What is an ELF file?}
-\label{subsect.what.is.an.elf.file}
+% dpm: scavenge material from here for Section 2
+%\subsection{What is an ELF file?}
+%\label{subsect.what.is.an.elf.file}
 
-\dm{move into section 2 when ready}
+%The Executable and Linkable (ELF) file format~\cite{elf-sco-model} is a format for storing programs or their fragments on-disk, created as a result of compiling and linking.
+%A flexible format not tied specifically to any one machine architecture, ELF is now the \emph{de facto} standard format for executable and linkable files on Linux, various flavours of BSD, and embedded devices ranging from mobile phones to games consoles.
 
-The Executable and Linkable (ELF) file format~\cite{elf-sco-model} is a format for storing programs or their fragments on-disk, created as a result of compiling and linking.
-A flexible format not tied specifically to any one machine architecture, ELF is now the \emph{de facto} standard format for executable and linkable files on Linux, various flavours of BSD, and embedded devices ranging from mobile phones to games consoles.
+%Unlike older formats ELF merges the file format of executable and linkable files together into a unified format.
+%As a result, any given ELF file may provide one of two views: the \emph{executable view}, wherein the file is broken up into \emph{segments} indexed by a program header table, or the linkable view, wherein the file is broken up into \emph{sections} indexed by a section header table.
+%The locations of the program and section header tables within the file are stored in a file header at the beginning of the file.
+%Segments are loaded by the operating system in order to create an executable process image, whilst sections are merged and otherwise manipulated by a linker to create new segments or sections.
 
-Unlike older formats ELF merges the file format of executable and linkable files together into a unified format.
-As a result, any given ELF file may provide one of two views: the \emph{executable view}, wherein the file is broken up into \emph{segments} indexed by a program header table, or the linkable view, wherein the file is broken up into \emph{sections} indexed by a section header table.
-The locations of the program and section header tables within the file are stored in a file header at the beginning of the file.
-Segments are loaded by the operating system in order to create an executable process image, whilst sections are merged and otherwise manipulated by a linker to create new segments or sections.
+%A skeleton outline of the ELF file format is provided in the System V ABI~\cite{elf-sco-model}, and using this specification enough structure is defined to properly parse-and-blit ELF files to and from disk.
+%However, to interpret the contents of a file more detail is needed, and therefore architecture-specific supplements to the core specification are provided for each microprocessor family.
+%In some cases, these supplementary documents may provide extra section and segment types, extra flags, or other bits of structure to an ELF file specific to that platform.
+%For example, the AARCH64 ABI supplement adds the \texttt{AARCH64\_BUILD\_ATTRIBUTES} section type, describing sections that contain unspecified compiler build attributes.
+%In other cases, these supplementary documents may override the core-ELF specification.
+%For example, the AARCH64 supplement overrides the interpretation of the ELF header field \texttt{e\_entry}, ostensibly the entry point for the program, but overridden to point to a location in the body of the file containing the entry point on AARCH64 platforms.
+%In yet other cases, the core-ELF specification remains entirely silent on the contents and functioning of certain structural components of an ELF file.
+%One key example of this is the interpretation of relocation records, which are tied to specific instruction encodings and therefore wholly ABI-specific, varying markedly from one ABI to another, and their semantics are therefore entirely delegated to the architecture-specific supplement for the platform in question.
 
-A skeleton outline of the ELF file format is provided in the System V ABI~\cite{elf-sco-model}, and using this specification enough structure is defined to properly parse-and-blit ELF files to and from disk.
-However, to interpret the contents of a file more detail is needed, and therefore architecture-specific supplements to the core specification are provided for each microprocessor family.
-In some cases, these supplementary documents may provide extra section and segment types, extra flags, or other bits of structure to an ELF file specific to that platform.
-For example, the AARCH64 ABI supplement adds the \texttt{AARCH64\_BUILD\_ATTRIBUTES} section type, describing sections that contain unspecified compiler build attributes.
-In other cases, these supplementary documents may override the core-ELF specification.
-For example, the AARCH64 supplement overrides the interpretation of the ELF header field \texttt{e\_entry}, ostensibly the entry point for the program, but overridden to point to a location in the body of the file containing the entry point on AARCH64 platforms.
-In yet other cases, the core-ELF specification remains entirely silent on the contents and functioning of certain structural components of an ELF file.
-One key example of this is the interpretation of relocation records, which are tied to specific instruction encodings and therefore wholly ABI-specific, varying markedly from one ABI to another, and their semantics are therefore entirely delegated to the architecture-specific supplement for the platform in question.
+%In addition operating systems may augment the format with their own extensions, specifying additional flags, section and segment types, and other structural elements.
+%For example, many Linux ELF binaries contain \texttt{GNU} extensions.
+%These augment the standard ELF file format, as for example, with the presence of a segment of type \texttt{PT\_GNU\_EH\_FRAME} containing exception handling information, or a section of type \texttt{STT\_GNU\_VERSION} containing versioning information.
+%Some of these extensions are collated in a document called the \emph{Linux Standard Base} (`LSB')~\cite{linux-standard-base}.
+%Many more, however, are either documented only informally in mailing list messages, or not documented at all.
 
-In addition operating systems may augment the format with their own extensions, specifying additional flags, section and segment types, and other structural elements.
-For example, many Linux ELF binaries contain \texttt{GNU} extensions.
-These augment the standard ELF file format, as for example, with the presence of a segment of type \texttt{PT\_GNU\_EH\_FRAME} containing exception handling information, or a section of type \texttt{STT\_GNU\_VERSION} containing versioning information.
-Some of these extensions are collated in a document called the \emph{Linux Standard Base} (`LSB')~\cite{linux-standard-base}.
-Many more, however, are either documented only informally in mailing list messages, or not documented at all.
+%To capture enough of the structure of ELF files executed `in the wild', the core specification along with microprocessor-specific and operating-specific supplementary material must all be formally specified.
+%We note here, however, that in practice there is no clean separation of the latter two sets of supplementary material.
+%For example, the AMD64 ABI explicitly makes reference to function-symbols of type \texttt{STT\_GNU\_IFUNC}, a \texttt{GNU}-specific extension, for example (see Section 4.2 of~\cite{amd64-abi}).
 
-To capture enough of the structure of ELF files executed `in the wild', the core specification along with microprocessor-specific and operating-specific supplementary material must all be formally specified.
-We note here, however, that in practice there is no clean separation of the latter two sets of supplementary material.
-For example, the AMD64 ABI explicitly makes reference to function-symbols of type \texttt{STT\_GNU\_IFUNC}, a \texttt{GNU}-specific extension, for example (see Section 4.2 of~\cite{amd64-abi}).
+% dpm: not needed now due to Lem being briefly introduced in the introduction
+%\subsection{The Lem language}
+%\label{subsect.rigorous.lem.specification}
 
-\subsection{The Lem language}
-\label{subsect.rigorous.lem.specification}
+%We use the Lem specification language~\cite{mulligan-lem-2014} to specify our model of the ELF file format and linking.
+%Lem provides a lightweight language of (polymorphic) definitions, types and pure functions that can be seen both as mathematical definitions and pure functional programs.
+%Lem typechecks definitions and then, subject to constraint, export them to executable OCaml code, proof assistant theories for HOL4~\cite{slind-brief-2008}, Isabelle/HOL~\cite{wenzel-isabelle-2008} and Coq~\cite{bertot-short-2008}, or typeset HTML and LaTeX.
 
-We use the Lem specification language~\cite{mulligan-lem-2014} to specify our model of the ELF file format and linking.
-Lem provides a lightweight language of (polymorphic) definitions, types and pure functions that can be seen both as mathematical definitions and pure functional programs.
-Lem typechecks definitions and then, subject to constraint, export them to executable OCaml code, proof assistant theories for HOL4~\cite{slind-brief-2008}, Isabelle/HOL~\cite{wenzel-isabelle-2008} and Coq~\cite{bertot-short-2008}, or typeset HTML and LaTeX.
-
-The Lem type system and libraries include bounded and unbounded integers and naturals, tuples, records, function types, sets, dictionaries, and user-defined types with top-level polymorphism.
-The expression language combines pure functional programming features (functions, pattern matching, and so on) with simple higher-order logic, including bounded quantification and set comprehensions.
+%The Lem type system and libraries include bounded and unbounded integers and naturals, tuples, records, function types, sets, dictionaries, and user-defined types with top-level polymorphism.
+%The expression language combines pure functional programming features (functions, pattern matching, and so on) with simple higher-order logic, including bounded quantification and set comprehensions.
 
 \subsection{A Lem model of ELF}
 \label{subsect.lem.model.of.elf}
 
-Our Lem ELF model provides types corresponding to the structure of an ELF file on disk with functions for parsing and blitting these structural elements to-and-from lists of bytes.
+Our model of ELF provides types describing the structure of an ELF file on disk.
 In addition, more abstract, derived types are defined which make working with, and manipulating the contents of an ELF file easier.
+Functions for parsing and blitting to lists of bytes are provided.
 
-Atop this base model, functions are provided for extracting useful information from the Lem types.
-For example, functions are provided for the extraction of a containment mapping from sections to segments from an ELF file, or the decoding of the section header string table.
-\texttt{GNU}-specific and platform ABI-specific formalisation is kept separate from the main body of the formalisation.
-When functions working on generic ELF files require \texttt{GNU}- or ABI-specific functionality, the function is made higher-order with a function argument handling the ABI or \texttt{GNU}-specific logic.
+Functions for interpreting the structural elements of a file are provided.
+For example, functions are provided for the decoding of the section header string table.
+Platform-specific logic is kept separate from the main body of the formalisation via the use of higher-order functions, with ABI- or \texttt{GNU}-specific logic handled by function arguments.
 
-The formalisation of the core ELF specification consists of around 9,500 lines of commented Lem code.
-Around an additional 2000 lines of Lem code formalise \texttt{GNU} extensions, whilst another 4,000 lines of Lem formalise various aspects of the AARCH64, AMD64, IA32 and Power64 platform ABIs.
+In total the formalisation of ELF consists of 9,500 lines of commented Lem code, with approximately an additional 2000 lines for the \texttt{GNU} extensions and another 4,000 lines for the AARCH64, AMD64, IA32 and Power64 platform ABIs.
 
-The formal ELF model is currently in use in the \texttt{ppcmem2} tool~\cite{gray-integrated-2015}, a tool for exploring the architectural envelope of weak-memory behaviour on the Power64 platform.
-Statically-compiled ELF binaries are parsed and decoded using an OCaml extraction of the Lem model.
-An executable process image is then extracted from the binary, along with the initial values of global variables appearing in the program, and is used to generate an initial machine state for the \texttt{ppcmem2} emulator.
+The formal ELF model is currently in use in the \texttt{ppcmem2} tool~\cite{gray-integrated-2015}, a tool for exploring weak-memory behaviour on Power64.
+The model is used to extract an executable process image from binaries, along with the initial values of global variabes, to generate and initial machine state for the emulator.
 We note that the creation of an executable process image requires ABI-specific logic (in e.g. identifying the entry point of the program).
 
 \subsection{Validation}

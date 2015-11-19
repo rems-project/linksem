@@ -1,15 +1,25 @@
+open import Basic_classes
 open import List
 open import Map
 open import Maybe
 open import Set
 open import Missing_pervasives
 
+open import Assert_extra
+
+open import Error
+open import Elf64_file_of_elf_memory_image
+
 open import Elf_relocation
 open import Elf_header
+open import Elf_file
+open import Elf_interpreted_segment
+open import Elf_program_header_table
 open import Elf_symbol_table
 open import Elf_types_native_uint
 
 open import Abi_amd64_relocation
+open import Abis
 
 open import Elf_memory_image
 open import Memory_image
@@ -19,6 +29,8 @@ open import Input_list
 open import Linkable_list
 open import Byte_sequence
 open import Link
+
+open import Show
 
 let ref_rec = <| ref_symname = "test"                  (* symbol name *)
                ; ref_syment =
@@ -101,3 +113,22 @@ let img instr_bytes =
     ]
     in
     relocate_output_image Abis.sysv_amd64_std_abi bindings_by_name initial_img
+
+let compute_relocated_bytes () =
+  let res =
+    let relocatable_program =
+      List.map byte_of_natural [72; 199; 4; 37; 0; 0; 0; 0; 5; 0; 0; 0; 72; 139; 4; 37; 0; 0; 0; 0]
+    in
+      let ef = elf64_file_of_elf_memory_image sysv_amd64_std_abi id "at_least_some_relocations_relocate.out" (img relocatable_program) in
+      get_elf64_executable_image ef >>= fun (segs_and_provenance, entry, mach) ->
+        if mach = elf_ma_x86_64 then
+          let filtered = List.filter (fun x -> x.elf64_segment_type = elf_pt_load) (List.map (fun (x, y) -> x) segs_and_provenance) in
+          let filtered = List.map Byte_sequence.byte_list_of_byte_sequence (List.map (fun x -> x.elf64_segment_body) filtered) in
+          let _ = List.map (fun x -> outln (show x)) filtered in
+            return ()
+        else
+          failwith "wrong machine type returned"
+  in match res with
+    | Success s -> outln "success"
+    | Fail e -> errln e
+  end
