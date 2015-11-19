@@ -80,7 +80,7 @@ There is a slight complication here in that an ELF file may contain gaps between
 This `dead' data must be explicitly tracked during parsing, and placed back in the correct position in a file when blitting, to ensure that the byte-for-byte compatibility condition holds.
 We validated this property using an automated \texttt{diff} tool comparing the output of a lightweight shim written atop the ELF model against the output of \texttt{hexdump}.
 
-Both properties mentioned above were validated on the AARCH64, AMD64, IA32 and Power64 microarchitectures.
+Both properties mentioned above were validated on the AARCH64, AMD64, IA32 and Power64 architectures.
 For the latter three architectures we validated against the contents of \texttt{usr/bin} and \texttt{usr/lib} on typical Linux distributions.
 For the AARCH64 we validated our model against the contents of \texttt{system/bin} and \texttt{system/lib} of an LG Android~5.1.1 mobile phone.
 On AARCH64, AMD64, IA32 and Power64 we tested against 576, 1650, 3222, and 1606 binaries, respectively---7054 in total.

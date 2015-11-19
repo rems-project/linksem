@@ -24,7 +24,7 @@ including GNU/Linux and all modern BSD variants.
 Windows and Mac OS (Darwin) environments exhibit broadly similar feature sets,
 but the System~V environment's is generally a superset.
 Following \citet{gingell_1987_shared}, we refer to the Unix linker command \textsf{ld}
-as the \emph{batch linker}..
+as the \emph{batch linker}.
 
 %, and 
 %``dynamic linker'' to refer to the \textsf{ld.so} dynamic linker running
@@ -52,7 +52,7 @@ Symbols give names to particular positions within a section,
 usually reflecting the source-level definition they represent.
 
 In an input file, a symbol may be recorded as \emph{undefined}.
-This means it names to a definition which does not exist in that object file, but is referenced by it.
+This means it names a definition which does not exist in that object file, but is referenced by it.
 References are represented by \emph{relocation records}, sometimes called 
 ``fixups'': they record that a range of bytes within some section must be fixed up 
 to point to the intended referent, denoted by a symbol.
@@ -153,7 +153,7 @@ Our work's starting point presents a challenge missing from many formalisation e
 no ``standard'' exists.
 Unix linking has even become \emph{less} well specified over time.
 System~V Unix's documentation included a detailed description of the linker,
-but this was removed the moment the ELF format was introduced (revision~4), 
+but this was removed when the ELF format was introduced (revision~4), 
 leaving only a manual page.
 POSIX \citep{} omits even this, instead saying that its C and Fortran compilers 
 ``conceptually consist of a compiler and link editor''.

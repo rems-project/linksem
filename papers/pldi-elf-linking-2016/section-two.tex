@@ -11,11 +11,11 @@ previous research on linking in the context of verified compilation~\cite{stewar
 
 However, linking is not simply a matter of separate compilation.
 Systems code and application code alike 
-use linker features to achieve effects that are \emph{unrelated to} separate compilation,
-which mostly \emph{cannot be expressed} in the relevant source language(s), 
-and which, in some cases, \emph{actively break} the na\"ive semantics of the source language.
+use linker features to achieve effects that are unrelated to separate compilation,
+which mostly cannot be expressed in the relevant source language(s), 
+and which, in some cases, actively break the na\"ive semantics of the source language.
 In this section we survey these features,
-consider how they are (or aren't) currently specified, 
+consider how they are (or are not) currently specified, 
 and consider the consequences for 
 how toolchains should be specified and what services they might provide.
 %motivate a different approach to specifying linking.
@@ -58,12 +58,12 @@ refer to that accepted by the GNU BFD linker
 (still the default on both GNU/Linux and BSD environments)
 which was based on the AT\&T System~V linker.
 
-\ps{The section below is (probably correctly) organised by
-  use-cases, not by linker-speak features.  Maybe make each paragraph
-  call out the kind of linker-speak mechanisms it involves?  Or a
-  separate section that is organised by mechanism??}
-\ps{On a related note, none of these talk linker script explicitly, or
-  focus on the expressiveness of the linker-speak mechanisms}
+% \ps{The section below is (probably correctly) organised by
+%   use-cases, not by linker-speak features.  Maybe make each paragraph
+%   call out the kind of linker-speak mechanisms it involves?  Or a
+%   separate section that is organised by mechanism??}
+% \ps{On a related note, none of these talk linker script explicitly, or
+%   focus on the expressiveness of the linker-speak mechanisms}
 
 % Sound reasoning about code in any one language
 % must account for the changes or relaxations that possible link-time effects might allow.
@@ -132,7 +132,7 @@ which was based on the AT\&T System~V linker.
 % and source code which invokes linker features using inline assembly directives, 
 % compiler-specific attribtes or other extensions.
 
-\subsection{Linker effects}
+\subsection{Linker use-cases}
 
 \paragraph{Memory placement}
 Systems code often needs to reside at particular places in memory.
@@ -188,20 +188,20 @@ map directly to linker features, such as ELF's local symbols.
 In this way, intra-module references are fixed up by the linker, in terms of local symbols, 
 but those symbols are not used to form cross-module bindings.
 This captures the range of top-level visibility semantics in C, Pascal, Fortran etc..
-\ps{is this visibility control uniformly of global variables and of
-  code pointers?  presumably not of anything else (e.g.~type names, as
-  they're just not present?  (visibility of dwarf info??))}
-\sk{ITYM ``code'' not ``code pointers''. But yes, it is uniform. 
-There's no separate way in ELF to say ``this is a type''; 
-you just have to say it's data.
-It then becomes an encoding issue, layered on top of ELF: 
-whether ``types'' come out as symbols depends on the language implementation.
-Type names do have linkage in \Cplusplus{} iff they have virtual member functions, 
-because they correspond to compiler-generated data and code. 
-In ordinary C they don't come out at all, because the compiler erases them.
-In a liballocs-extended C toolchain, they do, because we retain them at run time.
-DWARF info does not take the form of ELF symbols, so no. 
-But STABS debug info does, so yes! etc.}
+% \ps{is this visibility control uniformly of global variables and of
+%   code pointers?  presumably not of anything else (e.g.~type names, as
+%   they're just not present?  (visibility of dwarf info??))}
+% \sk{ITYM ``code'' not ``code pointers''. But yes, it is uniform. 
+% There's no separate way in ELF to say ``this is a type''; 
+% you just have to say it's data.
+% It then becomes an encoding issue, layered on top of ELF: 
+% whether ``types'' come out as symbols depends on the language implementation.
+% Type names do have linkage in \Cplusplus{} iff they have virtual member functions, 
+% because they correspond to compiler-generated data and code. 
+% In ordinary C they don't come out at all, because the compiler erases them.
+% In a liballocs-extended C toolchain, they do, because we retain them at run time.
+% DWARF info does not take the form of ELF symbols, so no. 
+% But STABS debug info does, so yes! etc.}
 However, linkers expose at least three other encapsulation facilities
 that are \emph{not} supported in this way: (1) ELF symbol visibility attributes,
 allowing names to be scoped at the coarser granularity of 
@@ -236,7 +236,7 @@ Indeed, it is a common performance optimisation: to supply a
 \textsf{malloc()} implementation tailored to the program's allocation behaviour.
 % substituting for whatever is in the standard library archive (say \textsf{libc.a}).
 Multiple definitions in \textsf{\.o} files are generally not allowed, but archives
-explicitly allow substitution: if the user supplies their own \textsf{malloc.o} and also links in \textsf{libc.a}, the former's definitions taking precedence over any those in the archive.
+explicitly allow substitution: if the user supplies their own \textsf{malloc.o} and also links in \textsf{libc.a}, the former's definitions take precedence over any those in the archive.
 % without explicitly creating a copy lacking \textsf{malloc.o} or similar.
 % The \textsf{malloc.o} definitions substitute for those in the library.
 A linker option (such as \textsf{-z~muldefs}) can relax the multiple-definition rule for 
@@ -248,7 +248,9 @@ an ordinary (strong) definition takes precedence, but otherwise the first weak d
 
 \paragraph{Load-time substitution (``overriding'')}
 Dynamic linkers offer another substitution feature: \textsf{LD\_PRELOAD}. 
-This environment variable can supply a named library, such that \emph{all} its definitions take precedence over those in all other libraries (but not over the executable!). 
+This environment variable can supply a named library, such that
+\emph{all} its definitions take precedence over those in all other
+libraries (but not over those in the executable!). 
 For example, it can be used to supply a new \textsf{malloc} at load time, which will be used ahead of the \textsf{malloc} in \textsf{libc.so}, but \emph{not} ahead of any \textsf{malloc()} in the executable.
 As a substitution mechanism, using \textsf{LD\_PRELOAD} requires brittle assumptions about how the rest of the program is linked (e.g.\ here that it dynamically links against \textsf{malloc()}).
 This is brittle because in general, the split between what is statically linked and what is dynamically linked is an implementation detail of the library. 
@@ -410,15 +412,15 @@ and is exploited by some user-level libraries \citep{kell_towards_2015}.
 % dchisnall bug: RTLD_LOCAL can break this
 
 
-\ps{slightly related: is there some linker mechanism for making copies
-  of a bunch of functions \emph{together with their local state}?}
-\sk{In short, no. Am guessing ``local state'' means associated static-storage variables? 
-In general, linkers turn 1 input item into 0 or 1 copies in the output, never more.
-If you want this, it's your job to copy the input files yourself, then link all the copies.
-And you probably then have to rename the symbols yourself, too. 
-Tools like objcopy are used for this.
-This is covered in the ``module system'' text.
-}
+% \ps{slightly related: is there some linker mechanism for making copies
+%   of a bunch of functions \emph{together with their local state}?}
+% \sk{In short, no. Am guessing ``local state'' means associated static-storage variables? 
+% In general, linkers turn 1 input item into 0 or 1 copies in the output, never more.
+% If you want this, it's your job to copy the input files yourself, then link all the copies.
+% And you probably then have to rename the symbols yourself, too. 
+% Tools like objcopy are used for this.
+% This is covered in the ``module system'' text.
+% }
 
 \paragraph{Aliases}
 In most programming languages, a definition has exactly one name. 
@@ -678,7 +680,7 @@ Some specific aspects are as follows.
 worth mentioning these because if we don't, people will ask why not.}
 
 \paragraph{Code and data conventions} 
-partially specify a mapping from the language features down to linker features,
+These partially specify a mapping from the language features down to linker features,
 and include specification of the allowed code models.
 Usually the ABI supplement defines these conventions for C,
 and separate documents build on these for other languages (notably \Cplusplus{}), 
