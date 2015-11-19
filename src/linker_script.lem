@@ -961,13 +961,15 @@ type input_output_assignment = (list input_spec * list (output_section_spec * na
 
 val assign_inputs_to_output_sections : 
     input_output_assignment ->  (* accumulator: list of discards, list of output compositions (these include symbols)  *)
+    set (natural * natural) ->  (* used sections *)
+    set (natural * natural * natural) -> (* used commons *)
     list input_spec ->            (* remaining inputs *)
     maybe (output_section_spec * natural) ->  (* cur_sec -- the current output section spec and its OutputSection script item idx *)
     maybe input_spec ->           (* last input section to be output -- might not have one *)
     (input_spec -> input_spec -> Basic_classes.ordering) (* "seen ordering" *) ->
     labelled_linker_control_script -> 
     input_output_assignment     (* accumulated result *)
-let rec assign_inputs_to_output_sections acc inputs (cur_output_sec : maybe (output_section_spec * natural)) last_input_sec seen_ordering script = 
+let rec assign_inputs_to_output_sections acc used_sections used_commons inputs (cur_output_sec : maybe (output_section_spec * natural)) last_input_sec seen_ordering script = 
     let (rev_discards, rev_outputs) = acc in 
     let flush_output_sec 
      = fun maybe_output_sec_and_idx -> match (maybe_output_sec_and_idx : maybe (output_section_spec * natural)) with
@@ -988,15 +990,17 @@ let rec assign_inputs_to_output_sections acc inputs (cur_output_sec : maybe (out
     match script with
         [] ->  flush_output_sec cur_output_sec
         | (element, idx) :: more_elements_and_idx ->
-            let do_nothing = (acc, cur_output_sec, last_input_sec) 
+            let do_nothing = (acc, used_sections, used_commons, cur_output_sec, last_input_sec) 
             in
-            let (new_acc, (new_cur_output_sec : maybe (output_section_spec * natural)), new_last_input_sec)
+            let (new_acc, new_used_sections, new_used_commons, (new_cur_output_sec : maybe (output_section_spec * natural)), new_last_input_sec)
              = match element with
                 DefineSymbol(symdefpol, name, (symsize, syminfo, symother)) ->
                     (* Label the current section in the image 
                      * with a new symbol definition. If there isn't
                      * a current section, use the ABS section (what is that labelling?). *)
                     (acc,
+                     used_sections,
+                     used_commons,
                      match (cur_output_sec : maybe (output_section_spec * natural)) with
                         Nothing -> (*let _ = errln "FIXME: ABS symbol defs not yet supported" in*) Nothing
                         | Just ((OutputSectionSpec (guard, maybe_addr, secname, comp)), output_script_idx) ->
@@ -1033,11 +1037,11 @@ let rec assign_inputs_to_output_sections acc inputs (cur_output_sec : maybe (out
                      * At the end of the list of sub_elements, we will flush the section we built up. 
                      *)
                     let final_acc
-                    = assign_inputs_to_output_sections acc inputs new_cur_output_sec last_input_sec seen_ordering (label_script sub_elements)
+                    = assign_inputs_to_output_sections acc used_sections used_commons inputs new_cur_output_sec last_input_sec seen_ordering (label_script sub_elements)
                     in
                     (* NOTE that this sub-accumulation will never add a new output section
                      * because output sections can't nest. *)
-                    (final_acc, (* cur_output_sec *) Nothing, last_input_sec) 
+                    (final_acc, used_sections, used_commons, (* cur_output_sec *) Nothing, last_input_sec) 
                 | DiscardInput(selector) -> 
                     let selected = selector inputs
                     in
@@ -1045,7 +1049,7 @@ let rec assign_inputs_to_output_sections acc inputs (cur_output_sec : maybe (out
                     (*let _ = Missing_pervasives.errln ("Processing discard rule; selected " ^ (show (length selected))
                         ^ " inputs.")
                     in*)
-                    (((List.reverse [i | forall (i MEM selected) | true]) ++ rev_discards, rev_outputs), cur_output_sec, last_input_sec)
+                    (((List.reverse [i | forall (i MEM selected) | true]) ++ rev_discards, rev_outputs), used_sections, used_commons, cur_output_sec, last_input_sec)
                 | InputQuery(retainpol, sortpol, selector) -> 
                     (* Input queries can only occur within an output section. *)
                     match cur_output_sec with
@@ -1068,8 +1072,15 @@ let rec assign_inputs_to_output_sections acc inputs (cur_output_sec : maybe (out
                                 | ByInitPriority -> Sorting.sortByOrd compareInputSpecByInitPriority
                             end
                             in
+                            let selected = selector inputs
+                            in
+                            let selected_deduplicated = List.filter (fun inp -> match inp with
+                                InputSection(irec) -> not ((irec.idx, irec.shndx) IN used_sections)
+                                | Common(idx, fname, img, def) -> not ((idx, def.def_sym_scn, def.def_sym_idx) IN used_commons)
+                            end) selected
+                            in
                             (* Search input memory images for matching sections. *)
-                            let sorted_selected_inputs = sortfun (selector inputs)
+                            let sorted_selected_inputs = sortfun selected_deduplicated
                             in
                             let (sectionMatchList : list input_section_rec) = List.mapMaybe (fun inp -> 
                                 match inp with
@@ -1100,13 +1111,14 @@ let rec assign_inputs_to_output_sections acc inputs (cur_output_sec : maybe (out
                             in
                             
                             (acc, 
+                             used_sections union { (irec.idx, irec.shndx) | forall (irec MEM sectionMatchList) | true },
+                             used_commons  union { (idx, def.def_sym_scn, def.def_sym_idx) | forall ((idx, fname, img, def) MEM commonMatchList) | true },
                              Just (
                                 (OutputSectionSpec(output_guard, output_sec_addr, output_sec_name, 
                                     output_composition ++ 
                                      [IncludeInputSection(retainpol, (* input_sec.fname, input_sec.idx, input_sec.shndx, input_sec.isec, input_sec.img *) input_sec)
                                      | forall (input_sec MEM sectionMatchList) 
-                                     | (* HMM: don't include the same section from the same file twice *)
-                                        true
+                                     | true
                                      ] ++ [IncludeCommonSymbol(DefaultKeep, fname, idx, def, img) | forall ((idx, fname, img, def) MEM commonMatchList) | true]
                                 )), output_script_idx), 
                              last_input_sec
@@ -1114,7 +1126,8 @@ let rec assign_inputs_to_output_sections acc inputs (cur_output_sec : maybe (out
                     end
             end
             in
-            assign_inputs_to_output_sections new_acc (inputs : list input_spec)
+            assign_inputs_to_output_sections new_acc new_used_sections new_used_commons 
+                (inputs : list input_spec)
                 (new_cur_output_sec)
                 (new_last_input_sec : maybe input_spec)
                 seen_ordering
@@ -2259,7 +2272,7 @@ let interpret_linker_control_script script linker_script_linkable_idx a inputs s
     let labelled_script = label_script script
     in
     let (discards_before_orphans, outputs_before_orphans)
-     = assign_inputs_to_output_sections ([], []) inputs Nothing Nothing seen_ordering labelled_script
+     = assign_inputs_to_output_sections ([], []) {} {} inputs Nothing Nothing seen_ordering labelled_script
     in
     (* place orphans *)
     let (discards, outputs) = place_orphans (discards_before_orphans, outputs_before_orphans) inputs
