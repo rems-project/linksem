@@ -2,11 +2,12 @@
 \label{sec:hello}
 
 In the C programming language, a ``hello, world!'' program is among the simplest possible.
-However, for a linker, such a simple program amounts to a very complex job,
+However, for a linker, such a simple program amounts to a complex job,
 since it links with the C library---often the most complex library on the system,
 in terms of the linker features it exercises.
 
-In this section we outline what happens when a hello-world C program, compiled with \textsf{gcc},
+In this section we outline what happens when a hello-world C program, compiled with \textsf{gcc} 
+for the x86-64 architecture,
 is linked against uClibc\footnote{\url{http://uclibc.org/}}, 
 a fully-featured C library slightly simpler than the system-default GNU C library.
 % At each point we describe the relevant features of our formalisation
@@ -16,9 +17,9 @@ This stage is responsible for identifying input files and link options.
 The command for linking a hello-world program, slightly simplified to omit directory names, 
 is as follows.
 
-\begin{lstlisting}[language=plain,basicstyle=\footnotesize\sffamily]
-ld -m elf_x86_64 -static -o hello crt1.o crti.o crtbeginT.o hello.o \
-   --start-group -lgcc -lc --end-group crtend.o crtn.o 
+\begin{lstlisting}[language=plain,basicstyle=\footnotesize\ttfamily]
+ld -m elf_x86_64 -static -o hello crt1.o crti.o crtbeginT.o \
+   hello.o --start-group -lgcc -lc --end-group crtend.o crtn.o 
 \end{lstlisting}
 
 Options beginning \textsf{-lX} say ``look up library \textsf{libX} on the library search path'', 
@@ -40,17 +41,16 @@ noticeable link-time slowdowns.}
 Many modifiers cancel preceding ones or the relevant defaults 
 (such as \textsf{-Ttext} which sets the output text section address), 
 but others add content every time they are invoked
-(such as \textsf{--defsym}, which defines a new symbol).
+(such as \textsf{--defsym~name=expr}, which defines a new symbol).
 
 The command line formalisation is structured as an interpreter, whose state 
-is the collection of input files together with two sets of active modifiers: one for subsequent 
-input files, one for the whole link.
+is the collection of input files together with the currently active modifiers.
 It is parameterised by a large list of option definitions, 
 each incorporating the option syntax and also its semantics as a function from state to state.
-The table (see Fig.~\ref{fig:command-line} resembles the linker's \textsf{--help} text, expanded
+The table (see Fig.~\ref{fig:command-line}) resembles the linker's \textsf{--help} text, expanded
 with semantics for each option.
-Arguments not matching any list entry are treated as input files, cloning the current per-input-file options state.
-Complex options such as \textsf{--push-state} necessitate that a state include both a current value and a stack of previously saved values.
+Arguments not matching any list entry are treated as input files, cloning the current per-input-file modifiers.
+Complex options such as \textsf{--push-state} exist, requiring that a state include both a current value and a stack of previously saved values.
 
 \begin{figure*}
 \begin{lstlisting}[language=plain,basicstyle=\scriptsize\sffamily]
@@ -67,21 +67,19 @@ let command_line_table = [
 \label{fig:command-line}
 \end{figure*}
 
-\paragraph{Enumerate objects} 
-Although only eight files appear in the command, the two archives contain a total of 891 objects, so 
-a total of 897 object files are input to the link.
-The linker must now resolve symbol references between these objects.
+\paragraph{Resolve symbols to objects} 
+Although only eight files appear in the command, the two archives contain a total of 891 objects.
+To discard those that are unneeded, the linker next resolves symbol references between all 897 objects.
 The semantics of symbol resolution are complex, since 
 it matters whether an object file came from an archive, and, if so, 
 whether the referencing object appeared to the left or right of that archive on the command line.
-A map of all definitions is constructed, grouped by name.
-Then the semantics is factored into an ``eligibility function'' answering whether a given
+Our semantics is factored into an ``eligibility predicate'' answering whether a given
 reference can bind to a given definition, and an 
 ordering on eligible definitions such that
 the first eligible definition is the intended referent.
 The ordering is based on command-line order, but also accounts for the semantics of 
 substitution: definitions in relocatable files take precedence over archives, hence 
-providing the semantics necessary for the \textsf{malloc.o} substitution example \S\ref{sec:substitution}.
+providing the semantics necessary for the \textsf{malloc.o} substitution example (\S\ref{sec:substitution}).
 Once all symbol references are resolved, any unreferenced objects can be excluded.
 In our case, this leaves 61 objects in the link.
 
@@ -154,9 +152,6 @@ In our case, this leaves 61 objects in the link.
 %                     true
 %     )
 
-\paragraph{Optimise}   -- simplify relocs etc.. 
-This is where we diverge from GNU currently, because of mov-to-lea optimisation.
- 
 
 \paragraph{Generate support structures}
 The linker is responsible for generating the support structures used by different code models.
@@ -173,32 +168,102 @@ In order to allow these structures to be placed in memory by the linker script,
 However, the linker's address assignment proceeds purely according to the linker script, 
 again without reference to any particular code model.
 For example, to generate a GOT, the linker simply generates one entry 
-or each distinct symbol definition that is used in a GOT-based relocation
-(although it is the input code's code model that determines which references these are).\footnote{Mismatch of code models happens when input code uses addressing modes which cannot reach far enough 
+for each distinct symbol definition that is used in a GOT-based relocation.
+(although it is the input code's code model that determines which references these are).\footnote{Mismatch 
+of code models happens when input code uses addressing modes which cannot reach far enough 
 to point to the addresses assigned by the linker.
 In such cases, the linker's relocation calculations overflow, the overflow is detected
 and the link is aborted.
 This is most common when the linker is deferring bindings until dynamic link time: 
 any deferred binding must be assumed to be potentially located far away,
-so 32-bit addressing are not wide enough unless indirected via the GOT or PLT.
+so 32-bit addressing are not wide enough unless indirected via a local GOT or PLT.
 On seeing a reference not relocated this way, 
 the linker aborts with the infamous ``recompile with \textsf{-fPIC}'' message.}
 
+Although support structures logically support the output of the link, 
+they must be generated early, \emph{before} the linker script runs, 
+because the linker script expects control over where they get placed.
+This is dealt with in ad-hoc ways; for example, the GNU linker
+pretends that these structures reside in the first input object on the command line.
+% This is a nasty hack in GNU (magic sections appear on the first input file), 
+Since our \textsf{libc.a} uses thread-local storage (TLS) ABI extensions,
+and our input objects make use of it (for \textsf{errno}, which is set by \textsf{printf()}),
+many of the GOT slots we generate are used to support run-time machinery for thread-local storage,
+and we must also support TLS relocations (below).
 
-Note that dynamic relocations, GOT / PLT etc.. must be reified *before* linker script runs, 
-so that the script can control where they get placed.
-This is a nasty hack in GNU (magic sections appear on the first input file), 
-and generally the treatment of this is a kind of looseness (CHECK that it's mentioned
-in the main list).
+\paragraph{Optimise relocations and instructions} 
+Immediately before generating these support structures, 
+many linkers apply optimisations the relocations and, in some cases,
+to the instructions that use them.
+For example, in our \textsf{hello} link, 
+to avoid use of the GOT when static-linking, the GNU linker will turn 
+the following \textsf{mov}, which loads an address from the GOT
 
-\paragraph{Compose output sections} ---a pass over the linker script, 
-      also generating symbol definitions etc. (mention PHASE issue)
+\begin{lstlisting}[basicstyle=\footnotesize\ttfamily,columns=fixed,language=plain]
+48 8b 05 00 00 00 00      mov    0x0(%rip),%rax
+         `---------' to be relocated: 
+                     R_X86_64_GOTPCREL   __libc_stack_end-0x4
+\end{lstlisting}
+
+into the following \textsf{lea} which calculates it directly.
+
+\begin{lstlisting}[basicstyle=\footnotesize\ttfamily,columns=fixed,language=plain]
+48 8d 05 3d 1e 20 00      lea    0x201e3d(%rip),%rax
+         `---------' applied relocation:
+                     R_X86_64_PC32       __libc_stack_end-0x4
+\end{lstlisting}
+
+The ABI documentation includes a list of other ``standard'' optimisations that may be applied. 
+A linker is free to use them or not.\footnote{\ldots{} the newer \textsf{gold} linker 
+does not currently apply them.}
+Our model currently lacks knowledge of the instruction set architecture, so does not capture these optimisations.
+Since the GNU linker does not currently provide any way to disable these optimisations
+(even when supplying options intended to disable optimisations).
+we diverge from it here: our GOT will contain more slots,
+subsequent address assignments will be skewed,
+and more instructions will indirect via the GOT.
+% (We can, however, generate working output.)
+
+\paragraph{Compose output sections} The main pass over the linker control script
+assigns input sections to output sections.
+The default linker script is 226 lines long,
+and our formalisation of it is roughly the same length in our Lem-embedded notation.
+It also generates symbol definitions, .
+Definitions made here can \emph{substitute} (\S\ref{sec:substitution}) for definitions 
+in the input files. (This means that the reachability calculation
+used to discard unwanted inputs was not definitive: it may have included
+some objects that are no longer needed, since the relevant bindings were altered .
+script execution.)
+Composition is mostly concatenation, but some sections are marked as mergeable.
+Most commonly these are sections containing strings, signified by an additional section flag.
+Again, it is up to the linker whether or not sections are merged.
+FIXME: hmm, we don't merge yet.
 
 % (optional) discard unreferenced sections
+\paragraph{Garbage collection} To provide a finer-grained 
+removal of unwanted input, and to compensate for the problem that, as we noted,
+the initial reachability calculation is subject to invalidation, 
+the command line may request an additional garbage collection pass (\textsf{--gc-sections}).
+This also entails delaying address assignment, to avoid allocating addresses for sections
+that will be collected.
+Normally \textsf{--gc-sections} is not used, and we currently do not model it.
 
-\paragraph{Assign addresses} ---another pass over the linker script.
-We can't do it at the same time as the previous pass, because\ldots{}
+\paragraph{Assign addresses to symbols} Another pass over the linker script now
+assigns addresses to output sections. 
+Addresses can be computed explicitly in the script using arithmetic, and can depend on the size
+and address of any section placed earlier in the script. 
+By default, addresses are computed using a location counter
+that is automatically incremented, rounded up to account for the section alignment specified in the input files.
 
-\paragraph{Apply relocations} ---now that addresses have been assigned, 
+\paragraph{Apply relocations} Once addresses have been assigned, relocations can be applied.
+This is actually where linking happens. 
+265 relocations of six different kinds (\texttt{32}, \texttt{32S}, \texttt{GOTPCREL}, 
+\texttt{GOTTPOFF}, \texttt{PC32}, \texttt{PLT32}).
+Of these, \texttt{GOTTPOFF} is a thread-local relocation.
 
-\paragraph{Generate output} ---use a standard recipe to compute an output ELF file 
+\paragraph{Generate output} Finally, we have a relocated memory image.
+We can compare this against the input \textsf{hello} object; this comparison fails
+because the GNU linker has altered some instructions (and generated a smaller-than-expected GOT).
+Our image nevertheless otherwise corresponds very closely to the GNU linker output; 
+it can be serialised straightforwardly into an output ELF file and executed with identical
+semantics.

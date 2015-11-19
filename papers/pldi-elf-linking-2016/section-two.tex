@@ -34,9 +34,19 @@ break down as follows.
 In the case of dynamic linking, environment variables serve the analogous purpose.
 
 \item[Scripts] ---most batch linkers embed a script language, used pervasively.
-Although most programmers rarely see linker scripts, every link job is controlled by a unique ``control'' script.
+Although programmers rarely see it, every link job is controlled by a unique ``control'' script,
+consisting mostly of rules such as 
+
+\begin{lstlisting}[language=plain,basicstyle=\footnotesize\sffamily]
+  .data :  { *(.data .data.*) }
+\end{lstlisting}
+
+saying that the output \textsf{.data} section should consist of the concatenation of 
+all input files' sections with name \textsf{.data} or matching wildcard \textsf{.data.*}.
+The language also includes arithmetic and some forms of conditional (but no recursion or unbounded looping).
 The default control script is built-in, but the user may supply their own.
-Link jobs may also include extra ``implicit'' scripts, supplied on the command line as if they were object files.
+Link jobs may also include extra ``implicit'' scripts, 
+supplied on the command line as if they were object files.
 These are written in a small subset of the same command language, and are typically 
 defining symbols and/or sections in a textual rather than binary notation, effectively
 as ``proxy'' object files.
@@ -132,7 +142,7 @@ which was based on the AT\&T System~V linker.
 % and source code which invokes linker features using inline assembly directives, 
 % compiler-specific attribtes or other extensions.
 
-\subsection{Linker use-cases}
+\subsection{Linker-speak use-cases}
 
 \paragraph{Memory placement}
 Systems code often needs to reside at particular places in memory.
@@ -145,16 +155,15 @@ For example, on the PA-RISC architecture, Linux uses the following
 linker script to enforce a particular relative ordering of page table data.
 C structure layout cannot be used, because the definitions must be addressable
 symbolically from assembly as well as from C.
+In C they are declared with section attributes\ldots{}
 % FIXME: show the preprocessed version, if it's simpler / more snippable.
 
 {\scriptsize\begin{lstlisting}[language=C,columns=flexible,basicstyle=\sffamily]
-/* gcc doesn't actually guarantee that global objects will
- *  be laid out in memory in the same order as the order of 
- * declaration, so put these in different sections and use
- * the linker script to order them. */
 pmd_t pmd0[PTRS_PER_PMD] __attribute__ ((
     __section__ (".data..vm0.pmd"), aligned(PAGE_SIZE)));
 \end{lstlisting}}
+
+\ldots{} and the sections are then placed appropriately by the linker script.
 
 {\scriptsize\begin{lstlisting}[language=C,columns=flexible,basicstyle=\sffamily]
 /* Put page table entries (swapper_pg_dir) as the first thing 
@@ -172,12 +181,11 @@ pmd_t pmd0[PTRS_PER_PMD] __attribute__ ((
         }
 \end{lstlisting}}
 
-Even though memory placement is not expressible in source languages, 
-code often depends on it---for example, kernels recognise their own addresses
+Memory placement is not expressible in source languages, 
+but code often depends on it---for example, kernels recognise their own addresses
 by testing whether they encode a negative signed value.
-Control of memory placement is useful not only semantically, 
-but as an optimisation, such as 
-reordering inputs to improve spatial locality \citep{orr_dynamic_1994}.
+Control of memory placement is also used for optimisation, 
+to improve spatial locality \citep{orr_dynamic_1994}.
 
 % Could "cite" Glek's demand paging init reordering blog post here
 
@@ -209,24 +217,23 @@ dynamically-linked binaries (instead of single object files);
 (2) archives,
 since inclusion in an archive restricts an object's visibility 
 to other modules in the link;
-(3) dynamic export control (\textsf{--export-dynamic}), which limits 
+(3) dynamic export control (\textsf{--export-dynamic}), which determines 
 which definitions are available for binding or interposition by the dynamic linker.
 In addition to the linker command line, 
 compiler options (such as \textsf{gcc}'s \textsf{-fvisibility=hidden})
-can allow hiding more definitions,
-which can lessen a library's dynamic linking overheads
+can hide more definitions by default, lessening a library's dynamic linking overheads
 (Drepper~\citet{drepper} advises using it as a matter of course).
-Unfortunately this need not be safe in general: \textsf{-fvisibility=hidden}
-breaks the source semantics of \Cplusplus{} code if it throws exceptions 
-out of the library (REFERENCE).
+Unfortunatel \textsf{-fvisibility=hidden} breaks the source semantics of \Cplusplus{} code 
+if it throws exceptions out of the library.\footnote{This is documented at \url{https://gcc.gnu.org/wiki/Visibility}
+as of 2015$/$11$/$19.}
 In general, linker features operate neither wholly above nor wholly below the language level; 
 their use may affect both user code and language implementation internals.
-Therefore, at present, using them correctly requires developers to understand both.
+At present, using them correctly requires developers to understand both.
 % so pushes additional complexity onto the user.
 
 % encapsulation (namespace management, in-archive versus not; DSO visibility; export-dynamic)
 
-\paragraph{Build-time substitution}
+\paragraph{Build-time substitution}\label{sec:substitution}
 Link-time mechanisms may be used to substitute one definition for another.
 ELF linking is designed expressly to allow this.
 For example, the semantics of archives are such that a C program
@@ -248,12 +255,12 @@ an ordinary (strong) definition takes precedence, but otherwise the first weak d
 
 \paragraph{Load-time substitution (``overriding'')}
 Dynamic linkers offer another substitution feature: \textsf{LD\_PRELOAD}. 
-This environment variable can supply a named library, such that
-\emph{all} its definitions take precedence over those in all other
-libraries (but not over those in the executable!). 
+This environment variable can supply a named library, 
+whose definitions take precedence over those in all other
+libraries (but not those in the executable). 
 For example, it can be used to supply a new \textsf{malloc} at load time, which will be used ahead of the \textsf{malloc} in \textsf{libc.so}, but \emph{not} ahead of any \textsf{malloc()} in the executable.
-As a substitution mechanism, using \textsf{LD\_PRELOAD} requires brittle assumptions about how the rest of the program is linked (e.g.\ here that it dynamically links against \textsf{malloc()}).
-This is brittle because in general, the split between what is statically linked and what is dynamically linked is an implementation detail of the library. 
+Using \textsf{LD\_PRELOAD} requires brittle assumptions about how the rest of the program is linked (e.g.\ here that it dynamically links against \textsf{malloc()}), whereas 
+in general, the split between what is statically linked and what is dynamically linked is an implementation detail of the library. 
 Even if the program appears to be linked dynamically against a libary, say \textsf{libc.so}, that library's developer retains the option to link certain content statically.
 The GNU C library's \textsf{libc.so} exploits this to link its \textsf{stat()} implementation statically (essentially to work around possible changes to the \textsf{stat} structure layout).
 This is achieved by having \textsf{libc.so} be the following linker script rather than a shared library.
@@ -287,14 +294,14 @@ GROUP ( /lib/x86_64-linux-gnu/libc.so.6
 \paragraph{Interposition}
 Interposition can be thought of as substitution where the prior definition
 is re-used by the substituted one---typically for instrumentation.
-At load time, \textsf{LD\_PRELOAD} can be used for interposition: instead of providing a substitute implementation, the preloaded code can delegate to the original implementation by looking it up using \textsf{dlsym()}. 
+\textsf{LD\_PRELOAD} can be used for load-time interposition: the preloaded instrumentation can delegate to the original implementation by looking it up using \textsf{dlsym()}. 
 An allocation profiler for programs dynamically linking against \textsf{malloc} could use this technique.\footnote{Using this for \textsf{malloc()} is particularly tricky because a typical \textsf{dlsym()} implementation itself calls \textsf{malloc()}, setting up infinite regress.}
 However, a program batch-linking its own \textsf{malloc.o} would require a different mechanism: the linker's \textsf{--wrap} option. 
 Linking with \textsf{--wrap~malloc} redirects \textsf{malloc} to \textsf{\_\_wrap\_malloc}, which may call \textsf{\_\_real\_malloc} to reach the original definition.
 The semantics of \textsf{--wrap} are subtle: it affects only references to \emph{undefined symbols}.
 This means references \emph{within the defining file} (say, a call from \textsf{calloc()} to \textsf{malloc()}) are typically \emph{not} caught. 
 In reality, this depends on the compiler (which is free to generate a distinct undefined symbol for the reference, if it chooses).\footnote{We
-are not aware of any compiler or assembler that does this, but in our experience, a hand-crafted ELF file with symbols split in this fashion is processed correctly.}
+are not aware of any compiler or assembler that does this, but experiments confirm that a hand-crafted ELF file with symbols split in this fashion is treated correctly.}
 In general, the user-facing semantics of features like \textsf{--wrap} depend on how the compiler/assembler has mapped source-level definitions and references onto linker-level sections, symbols and relocation records---itself perhaps a function of compiler/assembler options, source-level attributes, internal implementation decisions, and so on.
 
 %For example, when using \textsf{gcc}, compiling with \textsf{-ffunction-sections} results in %exposing more bindings to \textsf{--wrap}.\sk{I'm being a bit fast-and-loose here... not really %true as stated currently.}
@@ -676,8 +683,10 @@ allow different implementations to interoperate.
 We call this \emph{federated compilation}, as a strictly stronger 
 requirement than separate compilation.
 Some specific aspects are as follows.
-\sk{Seems missing an explanation of why we care. Mainly we don't, but
-worth mentioning these because if we don't, people will ask why not.}
+Although a specification of linking \textit{per se} needn't concern itself with these
+(they are matters for the compiler rather than the linker), 
+they are similarly neglected, so the same arguments apply.
+%motivate their specification.
 
 \paragraph{Code and data conventions} 
 These partially specify a mapping from the language features down to linker features,
@@ -692,8 +701,8 @@ specifying them somewhere, and ensuring that compilers adhere to them.
 % A linker would be a good place to check ABI conformance of input binaries.
 
 \paragraph{Name mangling}
-ELF symbol names are arbitrary sequences of non-zero bytes, so can encode 
-essentially any source-language identifier verbatim. However, 
+ELF symbol names are arbitrary sequences of non-zero bytes, so can include 
+essentially any source-language identifier. However, 
 most language implementations generate a lexically narrower set of symbols,
 according to the lexemes accepted as symbols by the assembler.
 Unlike C identifiers, which by design need not be mangled, 
@@ -703,14 +712,13 @@ explaining why name-mangling schemes are used by \Cplusplus{} compilers:
 
 \paragraph{Code models} These are conventions about 
 how near or far a given definition might lie from a reference to it, 
-are crucial to compilers in choosing the most efficient addressing mode
-during instruction selection, and are standardised for compiler interoperability reasons.
+and are used by compilers in choosing the most efficient allowable addressing mode
+during instruction selection.
 Mismatched code models cause link errors, caused by overflow in a relocated field 
-(a referencing instruction unable to encode the address or distance to its referent).
-Code models also define ways to achieve \emph{position independence} of shared library
-code---meaning the code does not need to be syntactically
-fixed up to operate at different addresses. If so, 
-the code may be shared across multiple processes at different mapping addresses.\footnote{It says nothing about
+(a referencing instruction unable to reach its referent).
+Code models also define ways to achieve \emph{position independence} of shared libraries---
+meaning the code can run at any address without fixup,
+entailing it may be shared across multiple processes at different mapping addresses.\footnote{It says nothing about
 whether the code's \emph{semantics} depend on its load address; 
 position-independent code is perfectly well able to 
 introspect its own load address, or more generally, to branch on pointers.}
@@ -718,7 +726,6 @@ Although the linker is oblivious to the details of these models,
 it is responsible for generating certain support structures they require,
 based on the relocations present in the input.
 Section~\ref{sec:hello} explains this in more detail.
-
 
 % \paragraph{Code models}
 % 

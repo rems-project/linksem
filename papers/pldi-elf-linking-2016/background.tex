@@ -39,9 +39,9 @@ A batch linker takes multiple modules of \emph{relocatable object code}
 as input (in the form of \textsf{.o} files, or groups of them bundled as \textsf{.a} ``archive'' files).
 It produces a single ``linked'' binary as output.
 Linked binaries are usually executables, and embody the input modules.
-The main work of the linker is to resolve symbolic references 
-(encoded as metadata in the input files), 
-into concrete bindings encoded as bit-patterns in the output binary,
+The main work of the linker is to select and combine the necessary inputs, 
+concretise symbolic references between them (encoded as metadata in the input files), 
+into bit-patterns in the output binary,
 and to organise the input modules' content
 in a single logical memory image.
 

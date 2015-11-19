@@ -46,6 +46,9 @@ before the next section of 16-byte alignment.
 It is unclear whether this is a bug; 
 we believe so (and have filed GNU binutils bug 18979 (FIXME: remove for blind review)).
 
+\paragraph{Optimisation of relocations and instructions}
+FIXME: described in hello section.
+
 \paragraph{Section padding contents}
 It is not specified what byte values a linker may use
 to pad a section.
@@ -122,7 +125,7 @@ having suitable flags.
 (from the Oracle guide; in Sys V docs?)
 
 \paragraph{Linker-generated structures}
-GOT, PLT and other run-time structures
+GOT, PLT and other run-time structures + which input object (if any) they are attributed to
 
 \paragraph{Relaxation}
 Conceptually, linkers do not know about instruction encodings.

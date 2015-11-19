@@ -11,7 +11,7 @@ is both a linker and a link checker.
 
 It is designed around the abstraction of \emph{memory images} and associated \emph{annotation} metadata.
 Linking is expressed as a transformation of memory images.
-Each input ELF file is transformed into a collection of elements, mostly mirroring \emph{sections},
+Each input ELF file is transformed into a collection of elements, mostly mirroring ELF sections,
 and a collection of metadata \emph{tags}, mostly mirroring ELF metadata such as 
 symbols, relocations, and section properties.
 At the end of the linking process, a single memory image is assembled,
@@ -19,24 +19,19 @@ which is transformed back into an ELF file, with its elements
 forming the content and its metadata tags used to generate the symbol table, section headers
 and so on.
 
-The link checker is invoked the same way as the emulated linker, supporting the same command-line options.
-However, its output file (named with \textsf{-o}, or else \textsf{a.out}) may already exist.
-If invoked with an existing output file,
-it works by building an output memory image and checking consistency with the image
+The link checker is invoked the same way as the emulated linker, supporting the same command-line options,
+but with an output file (named with \textsf{-o}) that already exists.
+The checker builds an output memory image---effectively performing its own link---checks consistency with the image
 embodied by the actual output file.
 (FIXME: also do post-load check: start the program up in a ptrace'd state 
 and compare each word of the image?)
 Currently the consistency check is a very tight equivalence, down to address assignments and bytewise content
-(modulo a certain quantity of ``don't-care'' content, which can capture padding bytes).
-
-This is not inappropriate, since the very simplest link jobs are entirely deterministic, 
-affording no looseness.
+(modulo any bytes marked as ``don't-care'' in the image, such as padding).
+This is not inappropriate, since the very simplest link jobs are entirely deterministic.
 We discuss which linker features introduce looseness in \S\ref{sec:looseness}.
-
-Note that this comparison is not sensitive to how the output file was rendered into ELF.
-For example, the ordering of ELF symbols or section headers is not significant, since 
-the comparison is done on the embodied memory image, i.e.\ the image the loader
-would construct on loading the file---not the ELF metadata.
+The comparison also abstracts away from issues of how the output file was rendered into ELF: 
+it compares only the embodied memory imag. 
+Details such as the ordering of ELF symbols or section headers are not significant.
 
 The notion of memory images generalises to \emph{symbolic} memory images, in which 
 each memory image element's address and content may be expressed in terms of 
@@ -50,7 +45,6 @@ To accommodate concrete variation among linkers, loose behaviour is factored int
 a family of ``personality functions'', allowing different linkers' choices to be 
 captured independently of the core logic. 
 At present, only the GNU linker personality is substantially developed.
-
 
 %a reference implementation optimised for readability
 %\and portability
