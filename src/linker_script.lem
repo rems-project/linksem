@@ -193,6 +193,8 @@ let rec glob_match pat str =
 
 val default_symbol_spec : symbol_spec
 let default_symbol_spec = (0, unsigned_char_of_natural 0, unsigned_char_of_natural 0)
+val hidden_symbol_spec : symbol_spec
+let hidden_symbol_spec = (0, unsigned_char_of_natural 0, unsigned_char_of_natural stv_hidden)
 
 (* These Lem functions replicate linker script functions or builtin behaviours. *)
 
@@ -910,8 +912,7 @@ SECTIONS
     ; OutputSection(AlwaysOutput, Just address_zero, ".debug_macro", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_macro"))])
     ; OutputSection(AlwaysOutput, Just address_zero, ".gnu.attributes", [InputQuery(KeepEvenWhenGC, DefaultSort, filter_and_concat (name_matches ".gnu.attributes"))])
     ; DiscardInput(filter_and_concat (fun s -> name_matches ".note.GNU-stack" s || name_matches ".gnu_debuglink" s || name_matches ".gnu.lto_*" s))
-    (* FIXME: orphan sections? This 
-       probably needs to go in the core linking logic,
+    (* NOTE: orphan sections are dealt with in the core linking logic,
        not the script. *)
     ]
 

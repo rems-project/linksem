@@ -191,11 +191,11 @@ to improve spatial locality \citep{orr_fast_1993}.
 
 \paragraph{Encapsulation}
 Hiding implementation details is often achieved using linker features. 
-Source-language encapsulation features, such as C's top-level \textsf{static} modifier, 
+Source-language encapsulation features, such as C's \textsf{static} modifier, 
 map directly to linker features, such as ELF's local symbols.
-In this way, intra-module references are fixed up by the linker, in terms of local symbols, 
-but those symbols are not used to form cross-module bindings.
-This captures the range of top-level visibility semantics in C, Pascal, Fortran etc..
+% In this way, intra-module references are fixed up by the linker, in terms of local symbols, 
+% but those symbols are not used to form cross-module bindings.
+% This captures the range of top-level visibility semantics in C, Pascal, Fortran etc..
 % \ps{is this visibility control uniformly of global variables and of
 %   code pointers?  presumably not of anything else (e.g.~type names, as
 %   they're just not present?  (visibility of dwarf info??))}
@@ -223,7 +223,7 @@ In addition to the linker command line,
 compiler options (such as \textsf{gcc}'s \textsf{-fvisibility=hidden})
 can hide more definitions by default, lessening a library's dynamic linking overheads
 (\citet{drepper_how_2011} advises using it as a matter of course).
-Unfortunatel \textsf{-fvisibility=hidden} breaks the source semantics of \Cplusplus{} code 
+Unfortunately \textsf{-fvisibility=hidden} breaks the source semantics of \Cplusplus{} code 
 if it throws exceptions out of the library.\footnote{This is documented at \url{https://gcc.gnu.org/wiki/Visibility}
 as of 2015$/$11$/$19.}
 In general, linker features operate neither wholly above nor wholly below the language level; 
@@ -299,9 +299,11 @@ An allocation profiler for programs dynamically linking against \textsf{malloc} 
 However, a program batch-linking its own \textsf{malloc.o} would require a different mechanism: the linker's \textsf{--wrap} option. 
 Linking with \textsf{--wrap~malloc} redirects \textsf{malloc} to \textsf{\_\_wrap\_malloc}, which may call \textsf{\_\_real\_malloc} to reach the original definition.
 The semantics of \textsf{--wrap} are subtle: it affects only references to \emph{undefined symbols}.
-This means references \emph{within the defining file} (say, a call from \textsf{calloc()} to \textsf{malloc()}) are typically \emph{not} caught. 
-In reality, this depends on the compiler (which is free to generate a distinct undefined symbol for the reference, if it chooses).\footnote{We
-are not aware of any compiler or assembler that does this, but experiments confirm that a hand-crafted ELF file with symbols split in this fashion is treated correctly.}
+This means references \emph{within the defining file} (say, a call from \textsf{calloc()} to \textsf{malloc()}) are \emph{not} redirected
+(although strictly this depends on the compiler, which is free to separate the definition
+from the reference, if it chooses).
+%\footnote{We
+%are not aware of any compiler or assembler that does this, but experiments confirm that a %hand-crafted ELF file with symbols split in this fashion is treated correctly.}
 In general, the user-facing semantics of features like \textsf{--wrap} depend on how the compiler/assembler has mapped source-level definitions and references onto linker-level sections, symbols and relocation records---itself perhaps a function of compiler/assembler options, source-level attributes, internal implementation decisions, and so on.
 
 %For example, when using \textsf{gcc}, compiling with \textsf{-ffunction-sections} results in %exposing more bindings to \textsf{--wrap}.\sk{I'm being a bit fast-and-loose here... not really %true as stated currently.}
@@ -409,12 +411,16 @@ implementing this becomes difficult because the
 out-of-line code is repeated in multiple compiler outputs.
 This is solved by using linker features 
 to deduplicate these multiple copies, ensuring a unique definition.
-Recent ELF standards call this feature \emph{section groups},
-although it is sometimes called ``link once'' (after an earlier GNU extension) or
-``COMDAT'' (after the equivalent Windows linker feature).
-Link-time uniqueness is a generally useful mechanism, allowing the 
+Modern ELF versions support this using \emph{section groups}\footnote{\ldots{} although it is sometimes called ``link once'', after an earlier GNU extension, or
+``COMDAT'' after the equivalent Windows linker feature.}; 
+sections are grouped by a tag string, and all but one of the group is discarded.
+Link-time uniqueness is a useful mechanism, allowing the 
 the optimisation of replacing value equality (of immutable objects) with pointer equality,
 and is exploited by some user-level libraries \citep{kell_towards_2015}.
+%\footnote{Compilers
+%do not generally expose section groups to the user, although in a 
+%sometimes-seen hack, \textsf{gcc}'s \textsf{section} attribute
+%allows the relevant assembly tokens to be injected.}
 
 % dchisnall bug: RTLD_LOCAL can break this
 
@@ -435,14 +441,14 @@ At link time, however, the same range of bytes may have multiple symbol names,
 each denoting the same address but with different metadata.
 Compilers typically expose this functionality using attributes.
 In our opening example, the same function has names \textsf{malloc} and \textsf{\_\_libc\_malloc},
-thanks to the \textsf{strong\_alias} macros expanding to the attribute \textsf{alias("malloc")}.
+thanks to the \textsf{strong\_alias} macros expanding to \textsf{alias("malloc")}.
 (We will elaborate on this use of aliases shortly, in ``topology alternatives''.)
-Compiler attributes often encode details crucial to a program's intended meaning,
+Attributes often encode details crucial to a program's intended meaning,
 but without a rigorous specification of linker features, are prone to miscompilation.
 % This means that two pointers to a differently-named functions
 % may still compare equal.
-We encountered a bug in the CIL~\cite{necula-cil-2002} C translator, which implements the \textsf{alias} attribute incorrectly, by duplicating the function body in a separate definition,
-violating the intended property that all aliases should have the same address.
+We encountered a bug in the CIL~\cite{necula-cil-2002} C translator, which implements the \textsf{alias} attribute incorrectly by duplicating the function body in a separate definition,
+violating the intended property that all aliases have the same address.
 CIL cannot compile a working \textsf{glibc} for this reason (among others).
 %Although C does not define aliasing, 
 %it has a clear meaning at the linker level: for any given definition,
@@ -562,27 +568,31 @@ often during initialization.
 %acquiring reference at link time 
 %where being passed a reference at run time is not possible or not efficient.
 The GNU C library's static-linking initializers 
-use specially placed symbols to initialize a table (the procedure linkage table; see \S\ref{sec:})
+use specially placed symbols to initialize a table 
+%(the procedure linkage table; see \S\ref{sec:plt}) 
 at start-up.
 For similar reasons, the Linux kernel 
-makes use of a GNU linker extension in which \emph{any}
-section whose name could be a C identifier (here \textsf{\_\_ksymtab})
-is given \textsf{\_\_start\_}- and \textsf{\_\_stop\_}-prefixed
+makes use of a GNU linker extension in which 
+% \emph{any}
+certain sections 
+% section whose name could be a C identifier (here \textsf{\_\_ksymtab})
+are automatically given 
+%\textsf{\_\_start\_}- and \textsf{\_\_stop\_}-prefixed
 marker symbols.
-Meanwhile, any typical (SunOS-style) dynamic linker, despite being written in C,
-must first \emph{introspectively relocate its own data and text}, 
-meaning its code may use only PC- and stack-relative addressing
-until the pointers and absolute jumps in its own image
-have been fixed up.
-%\footnote{This makes its behaviour completely undefined
-%as far as the C standard is concerned, yet dynamic linkers 
-%are seldom implemented in any other language.}
-Its (batch) linker script defines a special symbol, typically \textsf{\_begin}, 
-that it (the dynamic linker) uses to determine its own load address.
-Although all these codebases are superficially 
-programs written in C, reasoning about them
-without semantic knowledge of linking features 
-is at best imprecise and at worst unsound.
+% Meanwhile, any typical (SunOS-style) dynamic linker, despite being written in C,
+% must first \emph{introspectively relocate its own data and text}, 
+% meaning its code may use only PC- and stack-relative addressing
+% until the pointers and absolute jumps in its own image
+% have been fixed up.
+% %\footnote{This makes its behaviour completely undefined
+% %as far as the C standard is concerned, yet dynamic linkers 
+% %are seldom implemented in any other language.}
+% Its (batch) linker script defines a special symbol, typically \textsf{\_begin}, 
+% that it (the dynamic linker) uses to determine its own load address.
+% Although all these codebases are superficially 
+% programs written in C, reasoning about them
+% without semantic knowledge of linking features 
+% is at best imprecise and at worst unsound.
 
 % is impossible Programs making use of linker-supplied definitions 
 % may assume they exist, and with certain semantics, 
@@ -599,23 +609,25 @@ is at best imprecise and at worst unsound.
 % se definitions, even though source semantics say they shouldn't exist
 
 \paragraph{Versioning} 
-Shared libraries must allow old clients to be executed against a newer
-library binary.
+Shared libraries must allow old clients to be executed against a newer library binary.
 To prevent interface changes from breaking old clients, 
 modern dynamic linkers support symbol versioning---allowing
 multiple versions of an interface to be exposed by a single
 backward-compatible binary.
-It follows that source code wanting to supply ``a definition''
-for \textsf{fopen} now must be able to supply several.
-Programmers achieve this using assembler directives, 
-rather than language extensions.
-(Interestingly, linking \emph{multiple versions of a library} independently
-in the same process is effectively unsupported by ELF dynamic linking.)
-%unless their symbol namespaces are completely disjoint;
-%the multiple versions must be packaged into a single object with version metadata.
-Versioning interacts with introspection: symbol names
+The linker script language and assembler pseudo-operations have extensions
+to support versioning, while 
+versioning interacts with introspection: symbol names
 are no longer enough to identify a unique definition,
 so to avoid ambiguity, symbol versions must be supplied (using the \textsf{dlvsym()} call).
+% 
+% It follows that source code wanting to supply ``a definition''
+% for \textsf{fopen} now must be able to supply several.
+% Programmers achieve this using assembler directives, 
+% rather than language extensions.
+% (Interestingly, linking \emph{multiple versions of a library} independently
+% in the same process is effectively unsupported by ELF dynamic linking.)
+% %unless their symbol namespaces are completely disjoint;
+% %the multiple versions must be packaged into a single object with version metadata.
 
 % \paragraph{Other linker features}
 % Linker-speak has various other roles.
@@ -675,48 +687,53 @@ so to avoid ambiguity, symbol versions must be supplied (using the \textsf{dlvsy
 
 \subsection{Higher-layer conventions}
 
-Users of linkers must understand not only linker-speak, but also 
-how both compilers and libraries use the linker features to common ends.
-Various conventions exist for this, which the linker neither knows nor enforces.
+Compilers and libraries use the linker features to achieve common ends
+by adopting common conventions.
 Specific languages often define per-platform ABI conventions to
-allow different implementations to interoperate.
+allow different implementations to interoperate.:
 We call this \emph{federated compilation}, as a strictly stronger 
 requirement than separate compilation.
-Some specific aspects are as follows.
-Although a specification of linking \textit{per se} needn't concern itself with these
-(they are matters for the compiler rather than the linker), 
-they are similarly neglected, so the same arguments apply.
+The linker neither knows nor enforces these conventions, so 
+a specification of linking \textit{per se} needn't concern itself with them.
+%se
+%(they are matters for the compiler rather than the linker), 
+However, the same arguments motivate a formal specification for them much as for linker-speak.
+%they are similarly neglected, so the same arguments apply.
 %motivate their specification.
+Some specific aspects are as follows.
 
-\paragraph{Code and data conventions} 
-These partially specify a mapping from the language features down to linker features,
-and include specification of the allowed code models.
-Usually the ABI supplement defines these conventions for C,
-and separate documents build on these for other languages (notably \Cplusplus{}), 
-often in cross-architecture ways.
-The linker is oblivious to these conventions per se; 
-its behaviour can be specified independently of them. 
-However, adequately specifying the entire toolchain entails
-specifying them somewhere, and ensuring that compilers adhere to them.
-% A linker would be a good place to check ABI conformance of input binaries.
+\paragraph{Code and data conventions}
+ABIs specify calling conventions and some aspects of data representation 
+typically in terms of he C language.
+This includes representations for integers and pointers.
+A \Cplusplus{} ABI specifies how this must be extended for \Cplusplus{}.
+% These partially specify a mapping from the language features down to linker features,
+% and include specification of the allowed code models.
+% Usually the ABI supplement defines these conventions for C,
+% and separate documents build on these for other languages (notably \Cplusplus{}), 
+% often in cross-architecture ways.
+% The linker is oblivious to these conventions per se; 
+% its behaviour can be specified independently of them. 
+% However, adequately specifying the entire toolchain entails
+% specifying them somewhere, and ensuring that compilers adhere to them.
+% % A linker would be a good place to check ABI conformance of input binaries.
 
 \paragraph{Name mangling}
 ELF symbol names are arbitrary sequences of non-zero bytes, so can include 
-essentially any source-language identifier. However, 
-most language implementations generate a lexically narrower set of symbols,
-according to the lexemes accepted as symbols by the assembler.
-Unlike C identifiers, which by design need not be mangled, 
-\Cplusplus{} definitions' names include punctuation such as `\textsf{::}', 
+any source-language identifier. However, 
+most language implementations restrict symbols
+to the narrower set of names accepted by the assembler.
+C identifiers fall within this set by desig, but 
+\Cplusplus{} names include punctuation such as `\textsf{::}', 
 which is not assembler-friendly,
-explaining why name-mangling schemes are used by \Cplusplus{} compilers: 
+explaining why \Cplusplus{} ABIs define a name-mangling scheme.
 
-\paragraph{Code models} These are conventions about 
-how near or far a given definition might lie from a reference to it, 
-and are used by compilers in choosing the most efficient allowable addressing mode
-during instruction selection.
+\paragraph{Code models}\label{sec:code-models} Code models are conventions about 
+how near or far a given definition might lie from a reference to it.
+Compilers allow a code model to be specified on the command line, and uses it to choose among the allowable addressing modes during instruction selection.
 Mismatched code models cause link errors, caused by overflow in a relocated field 
 (a referencing instruction unable to reach its referent).
-Code models also define ways to achieve \emph{position independence} of shared libraries---
+Code models also define mechanisms to achieve \emph{position independence} of shared libraries---
 meaning the code can run at any address without fixup,
 entailing it may be shared across multiple processes at different mapping addresses.\footnote{It says nothing about
 whether the code's \emph{semantics} depend on its load address; 

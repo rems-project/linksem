@@ -25,8 +25,8 @@ ld -m elf_x86_64 -static -o hello crt1.o crti.o crtbeginT.o \
 Options beginning \textsf{-lX} say ``look up library \textsf{libX} on the library search path'', 
 and denote input files; they resolve to files \textsf{libgcc.a} and \textsf{libc.a}.
 Only \textsf{hello.o} came from compiling the program;
-the other object files have been supplied by the compiler (\textsf{libgcc.a}, \textsf{crt\{1,i,n\}.o})
-and the C library (\textsf{libc.a}, \textsf{crt\{beginT,end\}.o}).
+the other files have been supplied by the compiler (\textsf{libgcc.a}, \textsf{crt\{1,i,n\}.o})
+and C library (\textsf{libc.a}, \textsf{crt\{beginT,end\}.o}).
 Other options are modifiers to the link; some apply to the whole link 
 (like \textsf{-m~elf\_x86\_64}, selecting x86-64 output)
 whereas others affect only the input files that follow them, or until negated 
@@ -159,17 +159,16 @@ In most ABIs, these include the GOT (global offset table; a table of pointers) a
 (procedure linkage table; a table of trampolines).
 These are used for indirect addressing, when code compiled with narrow addressing modes
 must reach definitions which might be located far away.
+Although in principle they exist only to serve position-independent code models (\S\ref{sec:code-models}), 
+various orthogonal features have been specified so as to use them 
+(notably thread-local storage and GNU \textsf{IRELATIVE} relocations)  
+so even non-position-independent code requires them.
 The linker remains oblivious to the particulars of the models;
-it simply generates the GOT and PLT according to the relocations in the input.
-In order to allow these structures to be placed in memory by the linker script, 
-
+but must generate the GOT and PLT according to the relocations in the input.
 %(These relocations implicitly embody a code model, since under a different code model,
 %the compiler would have selected different instructions with different relocations.)
-However, the linker's address assignment proceeds purely according to the linker script, 
-again without reference to any particular code model.
-For example, to generate a GOT, the linker simply generates one entry 
-for each distinct symbol definition that is used in a GOT-based relocation.
-(although it is the input code's code model that determines which references these are).\footnote{Mismatch 
+For example, it generates a GOT consisting of one entry 
+for each distinct symbol definition that is used in a GOT-based relocation.\footnote{Mismatch 
 of code models happens when input code uses addressing modes which cannot reach far enough 
 to point to the addresses assigned by the linker.
 In such cases, the linker's relocation calculations overflow, the overflow is detected
@@ -179,8 +178,8 @@ any deferred binding must be assumed to be potentially located far away,
 so 32-bit addressing are not wide enough unless indirected via a local GOT or PLT.
 On seeing a reference not relocated this way, 
 the linker aborts with the infamous ``recompile with \textsf{-fPIC}'' message.}
-
-Although support structures logically support the output of the link, 
+% (although it is the input code's code model that determines which references these are).
+A final complication is that although support structures are a function of the overall link contents,
 they must be generated early, \emph{before} the linker script runs, 
 because the linker script expects control over where they get placed.
 This is dealt with in ad-hoc ways; for example, the GNU linker
@@ -226,18 +225,41 @@ and more instructions will indirect via the GOT.
 
 \paragraph{Compose output sections} The main pass over the linker control script
 assigns input sections to output sections.
-The default linker script is 226 lines long,
-and our formalisation of it is roughly the same length in our Lem-embedded notation.
-It also generates symbol definitions, .
-Definitions made here can \emph{substitute} (\S\ref{sec:substitution}) for definitions 
+The default linker script is 226 lines long.
+Our formalisation defines the linker script language's abstract syntax in Lem,
+using Lem for arithmetic and pattern-matching logic.
+For example, a fragment of the original linker script
+
+\begin{lstlisting}[basicstyle=\scriptsize\sffamily,language=plain]
+.preinit_array     :
+{
+    PROVIDE_HIDDEN (__preinit_array_start = .);
+    KEEP ( *(.preinit_array))
+    PROVIDE_HIDDEN (__preinit_array_end = .);
+}
+\end{lstlisting}
+  
+is rendered as 
+
+\begin{lstlisting}[basicstyle=\scriptsize\sffamily,language=plain]
+OutputSection(AlwaysOutput, Nothing, ".preinit_array", [
+    DefineSymbol(IfUsed, "__preinit_array_start", hidden_sym_spec)
+  ; InputQuery(KeepEvenWhenGC, DefaultSort, filter_and_concat (
+        fun s -> name_matches ".preinit_array" s))
+  ; DefineSymbol(IfUsed, "__preinit_array_end", hidden_sym_spec)
+])
+\end{lstlisting}
+
+Section composition is mostly concatenation, but ELF section flags can mark sections as mergeable.
+
+Most commonly these are sections containing strings, signified by an additional section flag.
+Again, it is up to the linker whether or not sections are merged.
+FIXME: hmm, we don't merge yet.
+Symbol definitions made in the script can \emph{substitute} (\S\ref{sec:substitution}) for definitions 
 in the input files. (This means that the reachability calculation
 used to discard unwanted inputs was not definitive: it may have included
 some objects that are no longer needed, since the relevant bindings were altered .
 script execution.)
-Composition is mostly concatenation, but some sections are marked as mergeable.
-Most commonly these are sections containing strings, signified by an additional section flag.
-Again, it is up to the linker whether or not sections are merged.
-FIXME: hmm, we don't merge yet.
 
 % (optional) discard unreferenced sections
 \paragraph{Garbage collection} To provide a finer-grained 
