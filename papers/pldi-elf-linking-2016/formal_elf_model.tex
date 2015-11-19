@@ -73,16 +73,8 @@ For example, constructions relating to the ELF prelinker, such as the dynamic se
 \subsection{Theorem prover output}
 \label{subsect.theorem.prover.output}
 
-As mentioned, one of our aims in formalising the ELF format and the specifics of various platform ABIs is to create a validated set of definitions for software verification purposes.
-The production of executable binaries from, and incorporation of realistic linking mechanisms into, verified compilers is a natural next step for those aiming to improve the trustworthiness of the compilation process.
-Currently, both the CompCert and CakeML verified compilers depend on the platform hostchain for the final production of an executable binary.
-Incorporating a trusted linker into their compilation process, and producing executable binaries directly, would remove this dependency on the platform hostchain.
-
-Further, just as the CompCert project has acted as a nexus for work in the area of verified compilation, we see potential for our work to serve an analogous purpose in the area of verified linking.
-For example, link-time optimisations were first implemented in the 4.5 release of the GCC compiler, and in recent years the implementation, expansion and improvement of these optimisations has been a significant area of activity for the GCC compiler team.
-However, to date, no link-time optimisations have been formally proven correct in the context of verified compiler projects.
-In part, this can be explained by the lack of a formal model of realistic linking to be able to even state and prove correct these types of optimisation.
-
-To remedy this situation we have extracted Isabelle/HOL theory files from our Lem source model, corresponding to around 33,500 lines of commented Isabelle source.
-Approximately 1,500 lines of handwritten termination proofs for recursive functions, and various lemmas needed for the completion of the termination lemmas, are also supplied, demonstrating at least in principle that our definitions can be used for effective proof in theorem provers.
+One of our aims with this work is to create a comprehensive, validated set of definitions suitable for software verification purposes, serving as a foundation for further work in the area.
+Toward this end we have extracted Isabelle/HOL theory files from our Lem source model, corresponding to around 33~500 lines of commented Isabelle source.
+Approximately 1~500 lines of handwritten termination proofs for recursive functions, and various lemmas needed for the completion of the termination lemmas, are also supplied.
+With these we have demonstrated that, at least in principle, our definitions can be used for effective proof in theorem provers, though as is always the case these definitions may require modification when used for more significant proofs.
 HOL4 and Coq extractions of the the Lem source model will also be made available.
