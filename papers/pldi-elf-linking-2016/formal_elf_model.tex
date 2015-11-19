@@ -1,4 +1,4 @@
-\section{The ELF formalisation}
+\section{The model: ELF}
 \label{sect.elf.formalisation}
 
 % dpm: scavenge material from here for Section 2
@@ -43,9 +43,6 @@
 %The Lem type system and libraries include bounded and unbounded integers and naturals, tuples, records, function types, sets, dictionaries, and user-defined types with top-level polymorphism.
 %The expression language combines pure functional programming features (functions, pattern matching, and so on) with simple higher-order logic, including bounded quantification and set comprehensions.
 
-\subsection{A Lem model of ELF}
-\label{subsect.lem.model.of.elf}
-
 Our ELF model provides types describing the concrete structure of an ELF file on disk along with more abstract types for ease of manipulation of a file's contents.
 Functions for parsing and blitting files to lists of bytes and for interpreting the structural elements of a file are provided.
 For example, functions are provided for the decoding of the section header string table, or producing a containment mapping of sections in segments.
@@ -70,11 +67,15 @@ This requires the tracking of `dead' data in between the structural elements of 
 Validating the model against binaries found `in the wild' on real machines revealed many sources of incompleteness in the various source specification documents.
 For example, constructions relating to the ELF prelinker, such as the dynamic section type \texttt{DT\_GNU\_PRELINKED} are found in a large number of deployed ELF binaries, yet are not mentioned in any specification document, being mentioned only in passing in mailing list messages (see e.g.~\cite{jelinek-prelinker-2001}), and prior to validation were unknown to us.
 
-\subsection{Theorem prover output}
-\label{subsect.theorem.prover.output}
-
 One of our aims with this work is to create a comprehensive, validated set of definitions suitable for software verification purposes, serving as a foundation for further work in the area.
-Toward this end we have extracted Isabelle/HOL theory files from our Lem source model, corresponding to around 33~500 lines of commented Isabelle source.
-Approximately 1~500 lines of handwritten termination proofs for recursive functions, and various lemmas needed for the completion of the termination lemmas, are also supplied.
-With these we have demonstrated that, at least in principle, our definitions can be used for effective proof in theorem provers, though as is always the case these definitions may require modification when used for more significant proofs.
-HOL4 and Coq extractions of the the Lem source model will also be made available.
+Toward this end we have extracted Isabelle/HOL theory files from our Lem source model, and provided hand-written termination proofs for recursive functions and various other lemmas.
+HOL4 and Coq theories are in preparation.
+The extraction to Isabelle/HOL and subsequent proofs revealed some bugs in the model that were not revealed by validation.
+
+%\subsection{Theorem prover output}
+%\label{subsect.theorem.prover.output}
+
+%, corresponding to around 33~500 lines of commented Isabelle source.
+%Approximately 1~500 lines of handwritten termination proofs for recursive functions, and various lemmas needed for the completion of the termination lemmas, are also supplied.
+%With these we have demonstrated that, at least in principle, our definitions can be used for effective proof in theorem provers, though as is always the case these definitions may require modification when used for more significant proofs.
+%HOL4 and Coq extractions of the the Lem source model will also be made available.
