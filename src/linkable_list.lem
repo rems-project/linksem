@@ -258,7 +258,7 @@ let resolve_one_reference_default a linkables defmap ref_idx_and_ref_and_linkabl
             (* Break ties by
              * - putting defs in relocs (or --defsym or linker script, a.k.a. command line) ahead of defs in archives;
              * - else whichever definition appeared first in the left-to-right order. 
-             *)(_, (_, _, (_, d_l1_coords)), _)
+             *)
             let sorted = sortBy (fun (d_idx1, d1, (_, (_, _, (_, d_l1_coords)), _)) -> (fun (d_idx2, d2, (_, (_, _, (_, d_l2_coords)), _)) -> 
                 match (d_l1_coords, d_l2_coords) with
                       (InCommandLine(_) :: _, InCommandLine(_) :: _) -> d_idx1 < d_idx2

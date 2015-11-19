@@ -45,32 +45,34 @@ let header_is_amd64 h =
 
 let shf_x86_64_large : natural = (256 * 1048576) (* 0x10000000 a.k.a. 2^28 *)
 
-type amd64_abi_feature = 
+type plt_entry_address_fn 'abifeature = natural (* offset in PLT? *) -> annotated_memory_image 'abifeature (* img *) -> natural (* addr *)
+
+type amd64_abi_feature 'abifeature = 
     GOT of  (list (string * (maybe symbol_definition)))
-    | PLT (* placeholder / FIXME *)
+    | PLT of (list (string * (maybe symbol_definition) * plt_entry_address_fn 'abifeature))
     
-val abiFeatureCompare : amd64_abi_feature -> amd64_abi_feature -> Basic_classes.ordering
+val abiFeatureCompare : forall 'abifeature. amd64_abi_feature 'abifeature -> amd64_abi_feature 'abifeature -> Basic_classes.ordering
 let abiFeatureCompare f1 f2 = 
     match (f1, f2) with
         (GOT(_), GOT(_)) -> EQ
-        | (GOT(_), PLT) -> LT
-        | (PLT, PLT) -> EQ
-        | (PLT, GOT(_)) -> GT
+        | (GOT(_), PLT(_)) -> LT
+        | (PLT(_), PLT(_)) -> EQ
+        | (PLT(_), GOT(_)) -> GT
     end
 
-val abiFeatureTagEq : amd64_abi_feature -> amd64_abi_feature -> bool
+val abiFeatureTagEq : forall 'abifeature. amd64_abi_feature 'abifeature -> amd64_abi_feature 'abifeature -> bool
 let abiFeatureTagEq f1 f2 =
     match (f1, f2) with
         (GOT(_), GOT(_)) -> true
-        | (PLT, PLT) -> true
+        | (PLT(_), PLT(_)) -> true
         | (_, _) -> false
     end
 
-instance (AbiFeatureTagEquiv amd64_abi_feature)
+instance forall 'abifeature. (AbiFeatureTagEquiv amd64_abi_feature 'abifeature)
     let abiFeatureTagEquiv = abiFeatureTagEq
 end
 
-instance (Ord amd64_abi_feature)
+instance forall 'abifeature. (Ord amd64_abi_feature 'abifeature)
     let compare = abiFeatureCompare
     let (<) = fun f1 -> (fun f2 -> (abiFeatureCompare f1 f2 = LT))
     let (<=) = fun f1 -> (fun f2 -> Set.member (abiFeatureCompare f1 f2) {LT; EQ})

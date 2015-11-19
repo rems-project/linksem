@@ -88,7 +88,7 @@ let is_valid_abi_power64_relocation_operator2 op =
 
 (** Misc. ABI related stuff *)
 
-type any_abi_feature = Amd64AbiFeature of amd64_abi_feature
+type any_abi_feature = Amd64AbiFeature of amd64_abi_feature any_abi_feature
                      | Aarch64LeAbiFeature of aarch64_le_abi_feature
 
 val anyAbiFeatureCompare : any_abi_feature -> any_abi_feature -> Basic_classes.ordering
@@ -416,11 +416,11 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
     in
     let (symnames, maybe_defs) = unzip refs_via_got
     in
-    (*let _ = errln ("GOT includes defs with names: " ^ (show (Set_extra.toList (Set.fromList symnames))))
-    in*)
-    let pairs_set = Set.fromList refs_via_got
+    let _ = errln ("GOT includes defs with names: " ^ (show (Set_extra.toList (Set.fromList symnames))))
     in
-    let defs_set = Set.fromList maybe_defs
+    let got_pairs_set = Set.fromList refs_via_got
+    in
+    let got_defs_set = Set.fromList maybe_defs
     in
     (* Quirk: what if we have the same def appearing under two different symnames?
      * This shouldn't happen, at present. 
@@ -440,37 +440,99 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
             | Just l -> item :: l
         end) acc) {} refs_via_got
     in *)
-    let nentries = naturalFromNat (Set.size pairs_set)
+    let got_nentries = naturalFromNat (Set.size got_pairs_set)
     in
-    let entrysize = 8
+    let got_entrysize = 8
+    in
+    (* We also need a PLT... sort of. We need a way to resolve via-PLT relocs. 
+     * But we might do so without actually creating a (non-zero-length) PLT. 
+     * Again, this is to accommodate the sorts of optimisations the GNU linker does. *)
+    let refs_via_plt = list_concat_map (fun (i, fname, tags_and_ranges) -> List.mapMaybe (fun (tag, maybe_range) -> match tag with
+         SymbolRef(rr) -> 
+            (* Is this ref a relocation we're going to apply, and does it reference the GOT? *)
+            match (rr.maybe_reloc, rr.maybe_def_bound_to) with
+                (Nothing, _) -> Nothing
+                | (Just r, Just(ApplyReloc(_), maybe_def)) ->
+                    if (get_elf64_relocation_a_type r.ref_relent IN {
+                        r_x86_64_plt32
+                    }) then 
+                        let _ = errln ("Saw a via-PLT symbol reference: " ^ rr.ref.ref_symname ^ " coming from linkable " ^ (show i) ^ " (" ^ 
+                            fname ^ "), logically from section " ^ (show r.ref_src_scn)) in
+                        Just (rr.ref.ref_symname, maybe_def) else Nothing
+                | (Just r, Just(MakePIC, maybe_def)) -> failwith "FIXME: PIC support please"
+            end
+         | _ -> failwith "impossible: reloc site tag is not a SymbolRef"
+    end) tags_and_ranges) tags_and_ranges_by_image
     in
     let new_by_range = {
-        (Just(".got", (0, nentries * entrysize)), AbiFeature(Amd64AbiFeature(Abi_amd64.GOT(Set_extra.toList (Set.fromList refs_via_got)))))
-    ;   (Just(".got", (0, nentries * entrysize)), FileFeature(ElfSection(1, 
+        (Just(".got", (0, got_nentries * got_entrysize)), AbiFeature(Amd64AbiFeature(Abi_amd64.GOT(Set_extra.toList (Set.fromList refs_via_got)))))
+     ;  (Just(".plt", (0, 0)), AbiFeature(Amd64AbiFeature(Abi_amd64.PLT(
+                 List.map (fun (symname, maybe_def) ->
+                    (* We want to label the PLT entry with a function that yields the actual symbol address. *)
+                    (symname, maybe_def, ((fun offs -> fun img ->
+                        match maybe_def with 
+                            Nothing -> 0
+                            | Just sd -> 
+                                match Memory_image_orderings.find_defs_matching sd img with
+                                    [] -> failwith ("no matching definitions for PLT entry named " ^ symname)
+                                    | [((def_el_name, (def_start, def_len)), d)] -> 
+                                        match element_and_offset_to_address (def_el_name, def_start) img with
+                                            Nothing -> failwith ("PLT: no address for definition offset in element " ^ def_el_name)
+                                            | Just x -> 
+                                                let _ = errln ("PLT slot for symbol `" ^ symname ^ 
+                                                    "' calculated at (non-PLT) address 0x" ^ (hex_string_of_natural x) ^ 
+                                                    " (offset 0x" ^ (hex_string_of_natural def_start) ^ " in element " ^ def_el_name ^ ")")
+                                                in
+                                                x
+                                        end
+                                    | _ -> failwith ("multiple matching definitions for PLT entry named " ^ symname)
+                                end
+                        end
+                    ) : plt_entry_address_fn any_abi_feature))
+                )
+                (Set_extra.toList (Set.fromList refs_via_plt))
+            ))) 
+        )
+    ;   (Just(".got", (0, got_nentries * got_entrysize)), FileFeature(ElfSection(1, 
           <| elf64_section_name = 0 (* ignored *)
            ; elf64_section_type = sht_progbits
            ; elf64_section_flags = natural_lor shf_write shf_alloc
            ; elf64_section_addr = 0 (* ignored -- covered by element *)
            ; elf64_section_offset = 0 (* ignored -- will be replaced when file offsets are assigned *)
-           ; elf64_section_size = nentries * entrysize (* ignored *)
+           ; elf64_section_size = got_nentries * got_entrysize (* ignored *)
            ; elf64_section_link = 0
            ; elf64_section_info = 0
            ; elf64_section_align = 8
-           ; elf64_section_entsize = 8
+           ; elf64_section_entsize = got_entrysize
            ; elf64_section_body = Byte_sequence.empty (* ignored *)
            ; elf64_section_name_as_string = ".got"
            |>
         )))
+    ;   (Just(".plt", (0, 0)), FileFeature(ElfSection(2, 
+          <| elf64_section_name = 0 (* ignored *)
+           ; elf64_section_type = sht_progbits
+           ; elf64_section_flags = shf_alloc
+           ; elf64_section_addr = 0 (* ignored -- covered by element *)
+           ; elf64_section_offset = 0 (* ignored -- will be replaced when file offsets are assigned *)
+           ; elf64_section_size = 0 (* ignored *)
+           ; elf64_section_link = 0
+           ; elf64_section_info = 0
+           ; elf64_section_align = 8
+           ; elf64_section_entsize = 16
+           ; elf64_section_body = Byte_sequence.empty (* ignored *)
+           ; elf64_section_name_as_string = ".plt"
+           |>
+        )))
     ;   (* FIXME: _GLOBAL_OFFSET_TABLE_ generally doesn't mark the *start* of the GOT; 
          * it's some distance in. What about .got.plt? *)
-        (Just(".got", (0, nentries * entrysize)), SymbolDef(<|
+        (Just(".got", (0, got_nentries * got_entrysize)), SymbolDef(<|
               def_symname = "_GLOBAL_OFFSET_TABLE_"
             ; def_syment =    <| elf64_st_name  = elf64_word_of_natural 0 (* ignored *)
                                ; elf64_st_info  = unsigned_char_of_natural 0 (* FIXME *)
                                ; elf64_st_other = unsigned_char_of_natural 0 (* FIXME *)
                                ; elf64_st_shndx = elf64_half_of_natural 1
                                ; elf64_st_value = elf64_addr_of_natural 0 (* ignored *)
-                               ; elf64_st_size  = elf64_xword_of_natural (nentries * entrysize) (* FIXME: start later, smaller size? zero size? *)
+                               ; elf64_st_size  = elf64_xword_of_natural (got_nentries * got_entrysize) (* FIXME: start later, smaller size? zero size? *)
                                |>
             ; def_sym_scn = 1
             ; def_sym_idx = 1
@@ -480,9 +542,14 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
     in
     <|  elements = Map.insert ".got" <|
                     startpos = Nothing
-               ;    length = Just (nentries * entrysize)
+               ;    length = Just (got_nentries * got_entrysize)
+               ;    contents = []
+               |> (Map.insert ".plt" <|
+                    startpos = Nothing
+               ;    length = Just 0
                ;    contents = []
                |> Map.empty
+               )
      ;   by_tag = by_tag_from_by_range new_by_range
      ;   by_range = new_by_range
      |>
@@ -601,6 +668,34 @@ let amd64_got_slot_addr img rr =
             end
     end
 
+val amd64_plt_slot_addr : annotated_memory_image any_abi_feature -> symbol_reference_and_reloc_site -> natural
+let amd64_plt_slot_addr img rr = 
+    match Map.lookup ".plt" img.elements with
+        Nothing -> (* got no PLT? okay... *) failwith "got no PLT"
+        | Just plt_el -> 
+            (* Find the PLT tag. *)
+            let tags_and_ranges = Multimap.lookupBy Memory_image_orderings.tagEquiv (AbiFeature(Amd64AbiFeature(Abi_amd64.PLT([])))) img.by_tag
+            in
+            match tags_and_ranges with
+                [] -> failwith "error: PLT element but no ABI feature PLT tag"
+                | [(AbiFeature(Amd64AbiFeature(Abi_amd64.PLT(l))), Just(plt_el_name, (plt_start_off, plt_len)))] -> 
+                    let plt_addr = match plt_el.startpos with Just addr -> addr | Nothing -> failwith "PLT has no addr at reloc time" end
+                    in
+                    (* Find the slot corresponding to rr, if we have one. *)
+                    match rr.maybe_def_bound_to with
+                        Just (_, Just(d)) -> 
+                            match List.mapMaybe (fun (symname, maybe_def, fn) -> if Just(d) = maybe_def then Just fn else Nothing) l with
+                                [fn] -> fn plt_addr img 
+                                | [] -> failwith ("internal error: no PLT entry for reloc against `" ^ rr.ref.ref_symname ^ "'")
+                                | _ ->  failwith ("internal error: multiple PLT entries for reloc against `" ^ rr.ref.ref_symname ^ "'")
+                            end
+                        | Just(_, Nothing) -> (* weak, so 0 *) 0
+                        | _ -> failwith "PLT: unbound def"
+                    end
+                | _ -> failwith "got bad PLT"
+            end
+    end
+
 (** [amd64_reloc r] yields a function that applies relocations of type [r]. *)
 val amd64_reloc : reloc_fn any_abi_feature
 let amd64_reloc r = 
@@ -623,7 +718,7 @@ let amd64_reloc r =
     | "R_X86_64_64" ->              (true,  fun img -> (fun site_addr -> (fun rr -> (8, fun s -> fun a -> fun e -> i2n (n2i s + a)))))
     | "R_X86_64_PC32" ->            (false, fun img -> (fun site_addr -> (fun rr -> (4, fun s -> fun a -> fun e -> (i2n ((n2i s) + a)) - site_addr))))
     | "R_X86_64_GOT32" ->           (false, fun img -> (fun site_addr -> (fun rr -> (4, fun s -> fun a -> fun e -> i2n_signed 32 ((n2i (amd64_got_slot_idx img rr)) + a)))))
-    | "R_X86_64_PLT32" ->           (false, fun img -> (fun site_addr -> (fun rr -> (4, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_PLT32" ->           (false, fun img -> (fun site_addr -> (fun rr -> (4, fun s -> fun a -> fun e -> i2n_signed 32 ((n2i (amd64_plt_slot_addr img rr)) + a - (n2i site_addr)) ))) )
     | "R_X86_64_COPY" ->            (false, fun img -> (fun site_addr -> (fun rr -> (size_of_copy_reloc img rr, fun s -> fun a -> fun e -> e (* FIXME *)))))
     | "R_X86_64_GLOB_DAT" ->        (false, fun img -> (fun site_addr -> (fun rr -> (size_of_def rr, fun s -> fun a -> fun e -> e (* FIXME *)))))
     | "R_X86_64_JUMP_SLOT" ->       (false, fun img -> (fun site_addr -> (fun rr -> (4 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
