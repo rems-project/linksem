@@ -57,29 +57,18 @@ The formal ELF model is currently in use in the \texttt{ppcmem2} tool~\cite{gray
 \subsection{Validation}
 \label{subsect.elf.validation}
 
-When formalising any widely-used file format we are faced with a choice: do we formalise the format as the specification \emph{seems} to be written, or do we formalise the format as implementors have interpreted that specification?
-In our formalisation we chose the latter, as then our model is compatible with existing mainstream systems.
-Then, in order to ensure that our model is a faithful implementation of ELF as it is commonly understood, we validated the model against a wide-range of ELF executable and linkable binaries on multiple machine architectures.
-Validation was conducted using two widely-deployed and mature \texttt{GNU} tools---\texttt{hexdump} and \texttt{readelf}---as trusted oracles.
+We validated our model against a wide-range of ELF executable and linkable binaries on multiple machine architectures.
+Validation was conducted using two widely-deployed and mature \texttt{GNU} tools---\texttt{hexdump} and \texttt{readelf}---as trusted oracles against a set of validation binaries.
+On AARCH64, AMD64, IA32 and Power64 we tested against 576, 1650, 3222, and 1606 binaries, respectively---7054 in total, obtained from \texttt{/usr/bin} and \texttt{/usr/lib} on typical Linux distributions for the latter three platforms, and the contents of \texttt{/system/bin} and \texttt{/system/lib} of an Android~5.1.1 smartphone for ARM.
 
-To test the parsing and decoding of the core structure of the ELF model, a \texttt{readelf}-like program was written atop the model.
-Using an automated \texttt{diff} tool, the output of the real \texttt{readelf} was compared with the output of our clone.
-This process tested the parsing and decoding of the file-header, section header table, program header table, dynamic section, relocation sections, and symbol tables, in addition to the various string tables contained within an ELF file, necessary to properly pretty-print the contents of the aforementioned structural elements.
+Using our model we wrote a tool that emulated a subset of \texttt{readelf}'s functionality.
+Using an automated \texttt{diff} tool, the output of the real \texttt{readelf} was compared with the output of our tool on the validation binaries, testing the parsing and decoding of the file-header, section header table, program header table, dynamic section, relocation sections, and symbol and string tables.
 
-In addition, a `roundtripping' property of the parsing and blitting functions was verified.
-This ensured that parsing an existing ELF binary into our Lem types and then immediately blitting these types to binary data preserved byte-for-byte compatibility with the original binary file, a property which ensures that parsing and blitting are behaving as they should.
-There is a slight complication here in that an ELF file may contain gaps between its structural elements which contain meaningless binary data.
-This `dead' data must be explicitly tracked during parsing, and placed back in the correct position in a file when blitting, to ensure that the byte-for-byte compatibility condition holds.
-We validated this property using an automated \texttt{diff} tool comparing the output of a lightweight shim written atop the ELF model against the output of \texttt{hexdump}.
+Using \texttt{hexdump}, a `roundtripping' property of the parsing and blitting functions was also validated, ensuring that parsing and then immediately blitting a binary preserved byte-for-byte compatibility with the original file.
+This requires the tracking of `dead' data in between the structural elements of a file to ensure that the byte-for-byte condition holds.
 
-Both properties mentioned above were validated on the AARCH64, AMD64, IA32 and Power64 architectures.
-For the latter three architectures we validated against the contents of \texttt{usr/bin} and \texttt{usr/lib} on typical Linux distributions.
-For the AARCH64 we validated our model against the contents of \texttt{system/bin} and \texttt{system/lib} of an LG Android~5.1.1 mobile phone.
-On AARCH64, AMD64, IA32 and Power64 we tested against 576, 1650, 3222, and 1606 binaries, respectively---7054 in total.
-
-Validating the model against binaries found `in the wild' on real machines revealed many sources of incompleteness in the various specification documents that describe ELF files.
-For example, constructions relating to the ELF prelinker, such as the dynamic section type \texttt{DT\_GNU\_PRELINKED} are found in a large number of deployed ELF binaries.
-However, these are not mentioned in any specification document, being mentioned only in passing in mailing list messages (see e.g.~\cite{jelinek-prelinker-2001}), and prior to validation were unknown to us.
+Validating the model against binaries found `in the wild' on real machines revealed many sources of incompleteness in the various source specification documents.
+For example, constructions relating to the ELF prelinker, such as the dynamic section type \texttt{DT\_GNU\_PRELINKED} are found in a large number of deployed ELF binaries, yet are not mentioned in any specification document, being mentioned only in passing in mailing list messages (see e.g.~\cite{jelinek-prelinker-2001}), and prior to validation were unknown to us.
 
 \subsection{Theorem prover output}
 \label{subsect.theorem.prover.output}
