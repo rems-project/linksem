@@ -406,8 +406,8 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
                     if (get_elf64_relocation_a_type r.ref_relent IN {
                         r_x86_64_got32; r_x86_64_gotpcrel; (* r_x86_64_gottpoff; *) r_x86_64_gotoff64; r_x86_64_gotpc32 (* ; r_x86_64_gotpc32_tlsdesc *)
                     }) then 
-                        (*let _ = errln ("Saw a via-GOT symbol reference: " ^ rr.ref.ref_symname ^ " coming from linkable " ^ (show i) ^ " (" ^ 
-                            fname ^ "), logically from section " ^ (show r.ref_src_scn)) in *)
+                        let _ = errln ("Saw a via-GOT symbol reference: to `" ^ rr.ref.ref_symname ^ "' coming from linkable " ^ (show i) ^ " (" ^ 
+                            fname ^ "), logically from section " ^ (show r.ref_src_scn)) in 
                         Just (rr.ref.ref_symname, maybe_def) else Nothing
                 | (Just r, Just(MakePIC, maybe_def)) -> failwith "FIXME: PIC support please"
             end
@@ -456,9 +456,14 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
                     if (get_elf64_relocation_a_type r.ref_relent IN {
                         r_x86_64_plt32
                     }) then 
-                        let _ = errln ("Saw a via-PLT symbol reference: " ^ rr.ref.ref_symname ^ " coming from linkable " ^ (show i) ^ " (" ^ 
-                            fname ^ "), logically from section " ^ (show r.ref_src_scn)) in
-                        Just (rr.ref.ref_symname, maybe_def) else Nothing
+                        let _ = errln ("Saw a via-PLT symbol reference: to `" ^ rr.ref.ref_symname ^ "' coming from linkable " ^ (show i) ^ " (" ^ 
+                            fname ^ "), relent idx " ^ (show r.ref_rel_idx) ^ " logically from section " ^ (show r.ref_src_scn) ^ 
+                            match maybe_def with Just _ -> ", with definition" | Nothing -> ", not bound to anything" end
+                            ) in
+                        Just (rr.ref.ref_symname, maybe_def) 
+                        else
+                            (* not a PLT ref *)
+                            Nothing
                 | (Just r, Just(MakePIC, maybe_def)) -> failwith "FIXME: PIC support please"
             end
          | _ -> failwith "impossible: reloc site tag is not a SymbolRef"
@@ -710,13 +715,15 @@ let amd64_reloc r =
             let negated = naturalFromInteger (0 - i) in 
             let (xormask : natural) = (2 ** width - 1) in
             let compl = 1 + natural_lxor negated xormask
+            in
+            let _ = errln ("Signed value " ^ (show i) ^ " is 2's-compl'd to 0x" ^ (hex_string_of_natural compl))
             in compl
     )
     in
     match (string_of_amd64_relocation_type r) with
     | "R_X86_64_NONE" ->            (false, fun img -> (fun site_addr -> (fun rr -> (0, fun s -> fun a -> fun e -> e))))
     | "R_X86_64_64" ->              (true,  fun img -> (fun site_addr -> (fun rr -> (8, fun s -> fun a -> fun e -> i2n (n2i s + a)))))
-    | "R_X86_64_PC32" ->            (false, fun img -> (fun site_addr -> (fun rr -> (4, fun s -> fun a -> fun e -> (i2n ((n2i s) + a)) - site_addr))))
+    | "R_X86_64_PC32" ->            (false, fun img -> (fun site_addr -> (fun rr -> (4, fun s -> fun a -> fun e -> i2n_signed 32 (((n2i s) + a) - (n2i site_addr))))))
     | "R_X86_64_GOT32" ->           (false, fun img -> (fun site_addr -> (fun rr -> (4, fun s -> fun a -> fun e -> i2n_signed 32 ((n2i (amd64_got_slot_idx img rr)) + a)))))
     | "R_X86_64_PLT32" ->           (false, fun img -> (fun site_addr -> (fun rr -> (4, fun s -> fun a -> fun e -> i2n_signed 32 ((n2i (amd64_plt_slot_addr img rr)) + a - (n2i site_addr)) ))) )
     | "R_X86_64_COPY" ->            (false, fun img -> (fun site_addr -> (fun rr -> (size_of_copy_reloc img rr, fun s -> fun a -> fun e -> e (* FIXME *)))))
@@ -736,7 +743,7 @@ let amd64_reloc r =
     | "R_X86_64_TLSGD" ->           (false, fun img -> (fun site_addr -> (fun rr -> (8 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
     | "R_X86_64_TLSLD" ->           (false, fun img -> (fun site_addr -> (fun rr -> (8 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
     | "R_X86_64_DTPOFF32" ->        (false, fun img -> (fun site_addr -> (fun rr -> (4 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
-    | "R_X86_64_GOTTPOFF" ->        (false, fun img -> (fun site_addr -> (fun rr -> (4, fun s -> fun a -> fun e -> e (* FIXME *)))))
+    | "R_X86_64_GOTTPOFF" ->        (false, fun img -> (fun site_addr -> (fun rr -> (4, fun s -> fun a -> fun e -> i2n_signed 32 (0-8) (* FIXME *)))))
     | "R_X86_64_TPOFF32" ->         (false, fun img -> (fun site_addr -> (fun rr -> (4 (* CHECK *), fun s -> fun a -> fun e -> e (* FIXME *)))))
     | "R_X86_64_PC64" ->            (false, fun img -> (fun site_addr -> (fun rr -> (8, fun s -> fun a -> fun e -> e (* FIXME *)))))
     | "R_X86_64_GOTOFF64" ->        (false, fun img -> (fun site_addr -> (fun rr -> (8, fun s -> fun a -> fun e -> e (* FIXME *)))))

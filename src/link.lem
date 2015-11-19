@@ -255,10 +255,10 @@ let mark_fate_of_relocs linkable_idx a simplify_reloc options bindings_by_name i
                         end
                         in
                         let decide = fun decision -> (
-                            (*let _ = errln ("Decided to " ^ match decision with
+                            let _ = errln ("Decided to " ^ match decision with
                                 LeaveReloc -> "leave"
-                                | ApplyReloc(_) -> "apply"
-                                | ChangeTo(_) -> "change somehow (maybe PICify?)"
+                                | ApplyReloc(Nothing) -> "apply unchanged"
+                                | ApplyReloc(Just _) -> "apply changed somehow (maybe PICify?)"
                             end ^ " relocation in linkable " ^ (show ref_item) ^ "'s image, bound to " ^ 
                             match maybe_def with
                                 Just(def_idx, def, def_item) -> "a definition called `" ^ def.def_symname ^ "' in linkable " ^
@@ -266,7 +266,7 @@ let mark_fate_of_relocs linkable_idx a simplify_reloc options bindings_by_name i
                                 | Nothing -> "no definition"
                             end
                             )
-                            in*)
+                            in
                             Set.insert (SymbolRef(<|
                                 ref           = r.ref
                                 ; maybe_reloc = r.maybe_reloc
@@ -594,16 +594,16 @@ let relocate_output_image a bindings_by_name img =
         in
         let existing_field = extract_natural_field width element start
         in
-        (*let _ = errln ("Existing field has value 0x" ^ (hex_string_of_natural existing_field))
-        in*)
-        (*let _ = errln ("Symaddr has value 0x" ^ (hex_string_of_natural symaddr))
-        in*)
+        let _ = errln ("Existing field has value 0x" ^ (hex_string_of_natural existing_field))
+        in
+        let _ = errln ("Symaddr has value 0x" ^ (hex_string_of_natural symaddr))
+        in
         let addend = integer_of_elf64_sxword reloc_site.ref_relent.elf64_ra_addend
         in
         let new_field_value = calculate symaddr addend existing_field
         in
-        (*let _ = errln ("Calculated new field value 0x" ^ (hex_string_of_natural new_field_value))
-        in*)
+        let _ = errln ("Calculated new field value 0x" ^ (hex_string_of_natural new_field_value))
+        in
         let new_element = write_natural_field new_field_value width element start
         in
         <|
@@ -620,11 +620,11 @@ let relocate_output_image a bindings_by_name img =
                     match maybe_range with
                         Nothing -> failwith "impossible: reloc site with no range"
                         | Just (el_name, (start, len)) -> 
-                            (*let _ = errln ("During relocation, saw a reloc site in element " ^ el_name ^ ", offset 0x" ^
+                            let _ = errln ("During relocation, saw a reloc site in element " ^ el_name ^ ", offset 0x" ^
                                 (hex_string_of_natural start) ^ ", length 0x" ^ (hex_string_of_natural len) ^ 
                                 ", reloc type " ^ (* a. *) Abi_amd64_relocation.string_of_amd64_relocation_type (get_elf64_relocation_a_type rs.ref_relent) ^ 
                                 ", symbol name `" ^ x.ref.ref_symname ^ "'")
-                            in*)
+                            in
                             let symaddr = match x.maybe_def_bound_to with
                                 Just(ApplyReloc(_), Just(bound_def)) ->
                                     match find_defs_matching bound_def img with
@@ -637,15 +637,15 @@ let relocate_output_image a bindings_by_name img =
                                             in
                                             match more with 
                                                 [] -> v
-                                                | _ -> (*let _ = errln ("FIXME: internal error: more than one def range equalling bound def " ^
+                                                | _ -> let _ = errln ("FIXME: internal error: more than one def range equalling bound def " ^
                                                     "in section " ^ el_name)
-                                                    in*) v
+                                                    in v
                                             end
                                     end
                                 | Nothing -> failwith "no def found for bound-to symbol"
                                 | Just(ApplyReloc(_), Nothing) -> 
-                                    (*let _ = errln "No definition, so we think this is a weak reference; giving it value 0."
-                                    in*)
+                                    let _ = errln "No definition, so we think this is a weak reference; giving it value 0."
+                                    in
                                     (* CHECK: does the syment say it's weak? *)
                                     if get_elf64_symbol_binding x.ref.ref_syment <> stb_weak then
                                         (*let _ = errln "Actually not weak! bailing"
