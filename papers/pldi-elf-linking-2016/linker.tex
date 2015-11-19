@@ -11,13 +11,15 @@ is both a linker and a link checker.
 
 It is designed around the abstraction of \emph{memory images} and associated \emph{annotation} metadata.
 Linking is expressed as a transformation of memory images.
-Each input ELF file is transformed into a collection of elements, mostly mirroring ELF sections,
-and a collection of metadata \emph{tags}, mostly mirroring ELF metadata such as 
-symbols, relocations, and section properties.
+Each input ELF file is represented abstractly as a partial memory image, consisting of 
+collection of elements, mostly mirroring ELF sections.
+Byte ranges within elements are labelled with metadata \emph{tags}, 
+mostly mirroring ELF metadata such as symbols, relocations, and section properties.
 At the end of the linking process, a single memory image is assembled,
-which is transformed back into an ELF file, with its elements
-forming the content and its metadata tags used to generate the symbol table, section headers
-and so on.
+which is transformed back into an ELF file.
+%, with its elements
+%forming the content and its metadata tags used to generate the symbol table, section headers
+%and so on.
 
 The link checker is invoked the same way as the emulated linker, supporting the same command-line options,
 but with an output file (named with \textsf{-o}) that already exists.
