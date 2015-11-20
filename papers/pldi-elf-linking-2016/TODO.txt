@@ -1,0 +1,32 @@
+abstract
+
+fix up the intro claims
+
+5.2 second para:  make clear that this is what happens when linking
+hello.c with our spec (following what happens in reality), and for
+each we describe the relevant parts of our formal model. 
+
+
+where does the explicit linker impl vs linker spec discussion belong?
+
+
+supplementary material?
+
+
+fold 6.2 Module systems into the 6.1 text after Cardelli  (and bump
+6.1 to 6)
+
+
+bump 7.1 to 7
+
+orient the 7 opening (currently "Several avenues for further work in
+this area are apparent. We now discuss them") to the fact that this
+work enables a bunch of other important and interesting things
+
+and squish 7 down
+
+
+
+a bunch of local polish
+(including use of citations as nouns, which many americans are
+allergic to)
