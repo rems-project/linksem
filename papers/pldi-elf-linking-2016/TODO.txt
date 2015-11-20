@@ -11,6 +11,7 @@ where does the explicit linker impl vs linker spec discussion belong?
 
 
 supplementary material?
+     make non-personally-identifiable
 
 
 fold 6.2 Module systems into the 6.1 text after Cardelli  (and bump
