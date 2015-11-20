@@ -1,0 +1,24 @@
+(** [abi_aarch64_section_header_table], AARCH64 ABI specific definitions related
+  * to the section header table.
+  *)
+
+open import Basic_classes
+open import Num
+
+(** AARCH64 specific section types *)
+
+(** Contains build attributes.  What these are is not specified, and compilers
+  * are free to insert their own proprietary information in this section.  See
+  * Section 4.3.
+  *)
+let sht_aarch64_attributes : natural = (939524097 * 2) + 1 (* 0x70000003 *)
+
+(** [string_of_aarch64_section_type m] produces a string based representation of
+  * AARCH64 section type [m].
+  *)
+val string_of_aarch64_section_type : natural -> string
+let {ocaml} string_of_aarch64_section_type m =
+  if m = sht_aarch64_attributes then
+    ".ARM.attributes"
+  else
+    "Unrecognised section type"

@@ -1,0 +1,134 @@
+open import Basic_classes
+open import List
+open import Map
+open import Maybe
+open import Set
+open import Missing_pervasives
+
+open import Assert_extra
+
+open import Error
+open import Elf64_file_of_elf_memory_image
+
+open import Elf_relocation
+open import Elf_header
+open import Elf_file
+open import Elf_interpreted_segment
+open import Elf_program_header_table
+open import Elf_symbol_table
+open import Elf_types_native_uint
+
+open import Abi_amd64_relocation
+open import Abis
+
+open import Elf_memory_image
+open import Memory_image
+
+open import Command_line
+open import Input_list
+open import Linkable_list
+open import Byte_sequence
+open import Link
+
+open import Show
+
+let ref_rec = <| ref_symname = "test"                  (* symbol name *)
+               ; ref_syment =
+                  <| elf64_st_name  = elf64_word_of_natural 0
+                   ; elf64_st_info  = unsigned_char_of_natural 0
+                   ; elf64_st_other = unsigned_char_of_natural 0
+                   ; elf64_st_shndx = elf64_half_of_natural shn_undef
+                   ; elf64_st_value = elf64_addr_of_natural 0
+                   ; elf64_st_size  = elf64_xword_of_natural 0
+                   |>
+               ; ref_sym_scn = 0
+               ; ref_sym_idx = 0
+               |>
+
+(* the record representing the symbol reference and relocation site *)
+let (ref_and_reloc_rec : symbol_reference_and_reloc_site) =
+ <|
+    ref = ref_rec
+    ; maybe_def_bound_to = Nothing
+    ; maybe_reloc = Just(
+      <|
+            ref_relent  = 
+                <| elf64_ra_offset = elf64_addr_of_natural 0
+                 ; elf64_ra_info   = elf64_xword_of_natural r_x86_64_pc32
+                 ; elf64_ra_addend = elf64_sxword_of_integer 0
+                 |>
+          ; ref_rel_scn = 0
+          ; ref_rel_idx = 0
+          ; ref_src_scn = 0
+       |>
+    )
+  |>
+
+let def_rec = 
+   <| def_symname = "test"
+    ; def_syment =    <| elf64_st_name  = elf64_word_of_natural 0
+                       ; elf64_st_info  = unsigned_char_of_natural 0
+                       ; elf64_st_other = unsigned_char_of_natural 0
+                       ; elf64_st_shndx = elf64_half_of_natural shn_undef
+                       ; elf64_st_value = elf64_addr_of_natural 0
+                       ; elf64_st_size  = elf64_xword_of_natural 0
+                       |>
+    ; def_sym_scn = 0
+    ; def_sym_idx = 1
+    ; def_linkable_idx = 0
+    |>
+
+val meta : list ((maybe element_range) * elf_range_tag)
+let meta = [
+        (Just (".text", (1, 4)), SymbolRef(ref_and_reloc_rec))
+    ;   (Just (".data", (0, 8)), SymbolDef(def_rec))
+]
+
+
+let img instr_bytes = 
+    let initial_img = 
+     <|
+        elements = Map.fromList [(".text", <|
+             startpos = Just 4194304
+           ; length = Just 16
+           ; contents = List.map (fun x -> Just x) instr_bytes
+          |>);
+          (".data", <|
+             startpos = Just 4194320
+           ; length = Just 8
+           ; contents = List.map (fun x -> Just x) (List.replicate 8 (byte_of_natural 42))
+          |>)
+          ]
+        ; by_range = Set.fromList meta
+        ; by_tag = by_tag_from_by_range (Set.fromList meta)
+     |> 
+    in 
+    let ref_input_item
+     = ("test.o", Reloc(Sequence([])), ((File(Filename("blah"), Command_line.null_input_file_options)), [InCommandLine(0)]))
+    in 
+    let ref_linkable_item = (RelocELF(initial_img), ref_input_item, Input_list.null_input_options)
+    in
+    let bindings_by_name = Map.fromList [
+        ("test", [(0, ((0, ref_rec, ref_linkable_item), Just(0, def_rec, ref_linkable_item)))])
+    ]
+    in
+    relocate_output_image Abis.sysv_amd64_std_abi bindings_by_name initial_img
+
+let compute_relocated_bytes () =
+  let res =
+    let relocatable_program =
+      List.map byte_of_natural [72; 199; 4; 37; 0; 0; 0; 0; 5; 0; 0; 0; 72; 139; 4; 37; 0; 0; 0; 0]
+    in
+      let ef = elf64_file_of_elf_memory_image sysv_amd64_std_abi id "at_least_some_relocations_relocate.out" (img relocatable_program) in
+      get_elf64_executable_image ef >>= fun (segs_and_provenance, entry, mach) ->
+        if mach = elf_ma_x86_64 then
+          let filtered = List.filter (fun x -> x.elf64_segment_type = elf_pt_load) (List.map (fun (x, y) -> x) segs_and_provenance) in
+          let filtered = List.map Byte_sequence.byte_list_of_byte_sequence (List.map (fun x -> x.elf64_segment_body) filtered) in
+          let _ = List.map (fun x -> outln (show x)) filtered in
+            return ()
+        else
+          failwith "wrong machine type returned"
+  in match res with
+    | Success s -> outln "success"
+    | Fail e -> errln e
+  end

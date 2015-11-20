@@ -1,0 +1,200 @@
+(** [abi_utilities], generic utilities shared between all ABIs.
+  *)
+
+open import Map
+open import Maybe
+open import Num
+open import Basic_classes
+open import Maybe
+open import String
+open import Error
+open import Assert_extra
+
+open import Abi_classes
+open import Missing_pervasives
+open import Elf_types_native_uint
+open import Elf_symbol_table
+open import Elf_relocation
+open import Memory_image
+open import Memory_image_orderings
+
+
+open import Error
+
+(** [integer_bit_width] records various bit widths for integral types, as used
+  * in relocation calculations. The names are taken directly from the processor
+  * supplements to keep the calculations as close as possible
+  * to the specification of relocations.
+  *)
+type integer_bit_width
+  = I8        (** Signed 8 bit *)
+  | I12
+  | U12       (** Unsigned 12 bit *)
+  | Low14
+  | U15       (** Unsigned 15 bit *)
+  | I15
+  | I16       (** Signed 16 bit *)
+  | Half16ds
+  | I20       (** Signed 20 bit *)
+  | Low24
+  | I27
+  | Word30
+  | I32       (** Signed 32 bit *)
+  | I48       (** Signed 48 bit *)
+  | I64       (** Signed 64 bit *)
+  | I64X2     (** Signed 128 bit *)
+  | U16       (** Unsigned 16 bit *)
+  | U24       (** Unsigned 24 bit *)
+  | U32       (** Unsigned 32 bit *)
+  | U48       (** Unsigned 48 bit *)
+  | U64       (** Unsigned 64 bit *)
+  
+(** [natural_of_integer_bit_width i] computes the bit width of integer bit width
+  * [i].
+  *)
+val natural_of_integer_bit_width : integer_bit_width -> natural
+let natural_of_integer_bit_width i =
+  match i with
+    | I8       -> 8
+    | I12      -> 12
+    | U12      -> 12
+    | Low14    -> 14
+    | I15      -> 15
+    | U15      -> 15
+    | I16      -> 16
+    | Half16ds -> 16
+    | U16      -> 16
+    | I20      -> 20
+    | Low24    -> 24
+    | U24      -> 24
+    | I27      -> 27
+    | Word30   -> 30
+    | I32      -> 32
+    | U32      -> 32
+    | I48      -> 48
+    | U48      -> 48
+    | I64      -> 64
+    | U64      -> 64
+    | I64X2    -> 128
+  end
+  
+(** [relocation_operator] records the operators used to calculate relocations by
+  * the various ABIs.  Each ABI will only use a subset of these, and they should
+  * be interpreted on a per-ABI basis.  As more ABIs are added, more operators
+  * will be needed, and therefore more constructors in this type will need to
+  * be added.  These are unary operators, operating on a single integral type.
+  *)
+type relocation_operator
+  = TPRel
+  | LTOff
+  | DTPMod
+  | DTPRel
+  | Page
+  | GDat
+  | G
+  | GLDM
+  | GTPRel
+  | GTLSDesc
+  | Delta
+  | LDM
+  | TLSDesc
+  | Indirect
+  | Lo
+  | Hi
+  | Ha
+  | Higher
+  | HigherA
+  | Highest
+  | HighestA
+  
+(** [relocation_operator2] is a binary relocation operator, as detailed above.
+  *)
+type relocation_operator2 =
+  | GTLSIdx
+  
+(** Generalising and abstracting over relocation calculations and their return
+  * types
+  *)
+  
+type val_map 'k 'v =
+  Map.map 'k 'v
+
+val lookupM : forall 'k 'v. MapKeyType 'k => 'k -> val_map 'k 'v -> error 'v
+let lookupM key val_map =
+  match Map.lookup key val_map with
+    | Nothing -> fail "lookupM: key not found in val_map"
+    | Just j  -> return j
+  end
+  
+(** Some relocations may fail, for example:
+  * Page 58, Power ABI: relocation types whose Field column is marked with an
+  * asterisk are subject to failure is the value computed does not fit in the
+  * allocated bits.  [can_fail] type passes this information back to the caller
+  * of the relocation application function.
+  *)
+type can_fail 'a
+  = CanFail                       (** [CanFail] signals a potential failing relocation calculation when width constraints are invalidated *)
+  | CanFailOnTest of ('a -> bool) (** [CanFailOnTest p] signals a potentially failing relocation calculation when predicate [p] on the result of the calculation returns [false] *)
+  | CannotFail                    (** [CannotFail] states the relocation calculation cannot fail and bit-width constraints should be ignored *)
+  
+(** [relocation_operator_expression] is an AST of expressions describing a relocation
+  * calculation.  An AST is used as it allows us to unify the treatment of relocation
+  * calculation: rather than passing in dozens of functions to the calculation function
+  * that perform the actual relocation, we can simply return a description (in the form
+  * of the AST below) of the calculation to be carried out and have it interpreted
+  * separately from the function that produces it.  The type parameter 'a is the
+  * type of base integral type.  This AST suffices for the relocation calculations we
+  * currently have implemented, but adding more ABIs may require that this type is
+  * expanded.
+  *)
+type relocation_operator_expression 'a
+  = Lift   of 'a                                                                                             (** Lift a base type into an AST *)
+  | Apply  of (relocation_operator * relocation_operator_expression 'a)                                      (** Apply a unary operator to an expression *)
+  | Apply2 of (relocation_operator2 * relocation_operator_expression 'a * relocation_operator_expression 'a) (** Apply a binary operator to two expressions *)
+  | Plus   of (relocation_operator_expression 'a * relocation_operator_expression 'a)                        (** Add two expressions. *)
+  | Minus  of (relocation_operator_expression 'a * relocation_operator_expression 'a)                        (** Subtract two expressions. *)
+  | RShift of (relocation_operator_expression 'a * natural)                                                  (** Right shift the result of an expression [m] places. *)
+  
+type relocation_frame 'addr 'res =
+  | Copy
+  | NoCopy of (Map.map 'addr (relocation_operator_expression 'res * integer_bit_width * can_fail 'res))
+
+val size_of_def : symbol_reference_and_reloc_site -> natural
+let size_of_def rr =
+  let rf = rr.ref in
+  let sm = rf.ref_syment in
+    natural_of_elf64_xword sm.elf64_st_size
+
+val size_of_copy_reloc : forall 'abifeature. annotated_memory_image 'abifeature -> symbol_reference_and_reloc_site -> natural
+let size_of_copy_reloc img rr = 
+    (* it's the minimum of the two definition symbol sizes. FIXME: for now, just use the rr *)
+    size_of_def rr
+
+val reloc_site_address : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature => 
+    annotated_memory_image 'abifeature -> symbol_reference_and_reloc_site -> natural
+let reloc_site_address img rr = 
+    (* find the element range that's tagged with this reloc site *)
+    let found_kvs = Multimap.lookupBy (=) (SymbolRef(rr)) img.by_tag
+    in
+    match found_kvs with
+        [] -> failwith "impossible: reloc site not marked in memory image"
+        | [(_, maybe_range)] -> match maybe_range with 
+                Nothing -> failwith "impossible: reloc site has no element range"
+                | Just (el_name, el_range) -> 
+                    let element_addr = match Map.lookup el_name img.elements with
+                        Nothing -> failwith "impossible: non-existent element"
+                        | Just el -> match el.startpos with
+                            Nothing -> failwith "error: resolving relocation site address before address has been assigned"
+                            | Just addr -> addr
+                        end
+                    end
+                    in
+                    let site_offset = (* match rr.maybe_reloc with 
+                        Just reloc -> natural_of_elf64_addr reloc.ref_relent.elf64_ra_offset
+                        | Nothing -> failwith "symbol reference with range but no reloc site"
+                    end*) (let (start, _) = el_range in start)
+                    in
+                    element_addr + site_offset
+            end
+        | _ -> failwith "error: more than one address with identical relocation record"
+    end

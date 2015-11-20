@@ -1,0 +1,832 @@
+(** [abi_power64_relocation] contains types and definitions specific to
+  * relocations in the Power64 ABI
+  *)
+
+open import Basic_classes
+open import Map
+open import Maybe
+open import Num
+open import String
+
+open import Error
+open import Missing_pervasives
+
+open import Elf_types_native_uint
+open import Elf_file
+open import Elf_header
+open import Elf_relocation
+open import Elf_symbol_table
+
+open import Abi_utilities
+
+(** Power64 relocation types *)
+
+let r_ppc64_none : natural = 0
+let r_ppc64_addr32 : natural = 1
+let r_ppc64_addr24 : natural = 2
+let r_ppc64_addr16 : natural = 3
+let r_ppc64_addr16_lo : natural = 4
+let r_ppc64_addr16_hi : natural = 5
+let r_ppc64_addr16_ha : natural = 6
+let r_ppc64_addr14 : natural = 7
+let r_ppc64_addr14_brtaken : natural = 8
+let r_ppc64_addr14_brntaken : natural = 9
+let r_ppc64_rel24 : natural = 10
+let r_ppc64_rel14 : natural = 11
+let r_ppc64_rel14_brtaken : natural = 12
+let r_ppc64_rel14_brntaken : natural = 13
+let r_ppc64_got16 : natural = 14
+let r_ppc64_got16_lo : natural = 15
+let r_ppc64_got16_hi : natural = 16
+let r_ppc64_got16_ha : natural = 17
+let r_ppc64_copy : natural = 19
+let r_ppc64_glob_dat : natural = 20
+let r_ppc64_jmp_slot : natural = 21
+let r_ppc64_relative : natural = 22
+let r_ppc64_uaddr32 : natural = 24
+let r_ppc64_uaddr16 : natural = 25
+let r_ppc64_rel32 : natural = 26
+let r_ppc64_plt32 : natural = 27
+let r_ppc64_pltrel32 : natural = 28
+let r_ppc64_plt16_lo : natural = 29
+let r_ppc64_plt16_hi : natural = 30
+let r_ppc64_plt16_ha : natural = 31
+let r_ppc64_sectoff : natural = 33
+let r_ppc64_sectoff_lo : natural = 34
+let r_ppc64_sectoff_hi : natural = 35
+let r_ppc64_sectoff_ha : natural = 36
+let r_ppc64_addr30 : natural = 37
+let r_ppc64_addr64 : natural = 38
+let r_ppc64_addr16_higher : natural = 39
+let r_ppc64_addr16_highera : natural = 40
+let r_ppc64_addr16_highest : natural = 41
+let r_ppc64_addr16_highesta : natural = 42
+let r_ppc64_uaddr64 : natural = 43
+let r_ppc64_rel64 : natural = 44
+let r_ppc64_plt64 : natural = 45
+let r_ppc64_pltrel64 : natural = 46
+let r_ppc64_toc16 : natural = 47
+let r_ppc64_toc16_lo : natural = 48
+let r_ppc64_toc16_hi : natural = 49
+let r_ppc64_toc16_ha : natural = 50
+let r_ppc64_toc : natural = 51
+let r_ppc64_pltgot16 : natural = 52
+let r_ppc64_pltgot16_lo : natural = 53
+let r_ppc64_pltgot16_hi : natural = 54
+let r_ppc64_pltgot16_ha : natural = 55
+let r_ppc64_addr16_ds : natural = 56
+let r_ppc64_addr16_lo_ds : natural = 57
+let r_ppc64_got16_ds : natural = 58
+let r_ppc64_got16_lo_ds : natural = 59
+let r_ppc64_plt16_lo_ds : natural = 60
+let r_ppc64_sectoff_ds : natural = 61
+let r_ppc64_sectoff_lo_ds : natural = 62
+let r_ppc64_toc16_ds : natural = 63
+let r_ppc64_toc16_lo_ds : natural = 64
+let r_ppc64_pltgot16_ds : natural = 65
+let r_ppc64_pltgot16_lo_ds : natural = 66
+let r_ppc64_tls : natural = 67
+let r_ppc64_dtpmod64 : natural = 68
+let r_ppc64_tprel16 : natural = 69
+let r_ppc64_tprel16_lo : natural = 60
+let r_ppc64_tprel16_hi : natural = 71
+let r_ppc64_tprel16_ha : natural = 72
+let r_ppc64_tprel64 : natural = 73
+let r_ppc64_dtprel16 : natural = 74
+let r_ppc64_dtprel16_lo : natural = 75
+let r_ppc64_dtprel16_hi : natural = 76
+let r_ppc64_dtprel16_ha : natural = 77
+let r_ppc64_dtprel64 : natural = 78
+let r_ppc64_got_tlsgd16 : natural = 79
+let r_ppc64_got_tlsgd16_lo : natural = 80
+let r_ppc64_got_tlsgd16_hi : natural = 81
+let r_ppc64_got_tlsgd16_ha : natural = 82
+let r_ppc64_got_tlsld16 : natural = 83
+let r_ppc64_got_tlsld16_lo : natural = 84
+let r_ppc64_got_tlsld16_hi : natural = 85
+let r_ppc64_got_tlsld16_ha : natural = 86
+let r_ppc64_got_tprel16_ds : natural = 87
+let r_ppc64_got_tprel16_lo_ds : natural = 88
+let r_ppc64_got_tprel16_hi : natural = 89
+let r_ppc64_got_tprel16_ha : natural = 90
+let r_ppc64_got_dtprel16_ds : natural = 91
+let r_ppc64_got_dtprel16_lo_ds : natural = 92
+let r_ppc64_got_dtprel16_hi : natural = 93
+let r_ppc64_got_dtprel16_ha : natural = 94
+let r_ppc64_tprel16_ds : natural = 95
+let r_ppc64_tprel16_lo_ds : natural = 96
+let r_ppc64_tprel16_higher : natural = 97
+let r_ppc64_tprel16_highera : natural = 98
+let r_ppc64_tprel16_highest : natural = 99
+let r_ppc64_tprel16_highesta : natural = 100
+let r_ppc64_dtprel16_ds : natural = 101
+let r_ppc64_dtprel16_lo_ds : natural = 102
+let r_ppc64_dtprel16_higher : natural = 103
+let r_ppc64_dtprel16_highera : natural = 104
+let r_ppc64_dtprel16_highest : natural = 105
+let r_ppc64_dtprel16_highesta : natural = 106
+
+(** [string_of_ppc64_relocation_type rel_type] produces a string representation
+  * of relocation type [rel_type].
+  *)
+val string_of_ppc64_relocation_type : natural -> string
+let string_of_ppc64_relocation_type rel_type =
+  if rel_type = r_ppc64_none then
+    "R_PPC64_NONE"
+  else if rel_type = r_ppc64_addr32 then
+  	"R_PPC64_ADDR32"
+  else if rel_type = r_ppc64_addr24 then
+    "R_PPC64_ADDR24"
+	else if rel_type = r_ppc64_addr16 then
+	  "R_PPC64_ADDR16"
+  else if rel_type = r_ppc64_addr16_lo then
+    "R_PPC64_ADDR16_LO"
+  else if rel_type = r_ppc64_addr16_hi then
+    "R_PPC64_ADDR16_HI"
+  else if rel_type = r_ppc64_addr16_ha then
+    "R_PPC64_ADDR16_HA"
+  else if rel_type = r_ppc64_addr14 then
+    "R_PPC64_ADDR14"
+  else if rel_type = r_ppc64_addr14_brtaken then
+    "R_PPC64_ADDR14_BRTAKEN"
+  else if rel_type = r_ppc64_addr14_brntaken then
+    "R_PPC64_ADDR14_BRNTAKEN"
+  else if rel_type = r_ppc64_rel24 then
+    "R_PPC64_REL24"
+  else if rel_type = r_ppc64_rel14 then
+    "R_PPC64_REL14"
+  else if rel_type = r_ppc64_rel14_brtaken then
+    "R_PPC64_REL14_BRTAKEN"
+  else if rel_type = r_ppc64_rel14_brntaken then
+    "R_PPC64_REL14_BRNTAKEN"
+  else if rel_type = r_ppc64_got16 then
+    "R_PPC64_GOT16"
+  else if rel_type = r_ppc64_got16_lo then
+    "R_PPC64_GOT16_LO"
+  else if rel_type = r_ppc64_got16_hi then
+    "R_PPC64_GOT16_HI"
+  else if rel_type = r_ppc64_got16_ha then
+    "R_PPC64_GOT16_HA"
+  else if rel_type = r_ppc64_copy then
+    "R_PPC64_COPY"
+  else if rel_type = r_ppc64_glob_dat then
+    "R_PPC64_GLOB_DAT"
+  else if rel_type = r_ppc64_jmp_slot then
+    "R_PPC64_JMP_SLOT"
+  else if rel_type = r_ppc64_relative then
+    "R_PPC64_RELATIVE"
+  else if rel_type = r_ppc64_uaddr32 then
+    "R_PPC64_UADDR32"
+  else if rel_type = r_ppc64_uaddr16 then
+    "R_PPC64_UADDR16"
+  else if rel_type = r_ppc64_rel32 then
+    "R_PPC64_REL32"
+  else if rel_type = r_ppc64_plt32 then
+    "R_PPC64_PLT32"
+  else if rel_type = r_ppc64_pltrel32 then
+    "R_PPC64_PLTREL32"
+  else if rel_type = r_ppc64_plt16_lo then
+    "R_PPC64_PLT16_LO"
+  else if rel_type = r_ppc64_plt16_hi then
+    "R_PPC64_PLT16_HI"
+  else if rel_type = r_ppc64_plt16_ha then
+    "R_PPC64_PLT16_HA"
+  else if rel_type = r_ppc64_sectoff then
+    "R_PPC64_SECTOFF"
+  else if rel_type = r_ppc64_sectoff_lo then
+    "R_PPC64_SECTOFF_LO"
+  else if rel_type = r_ppc64_sectoff_hi then
+    "R_PPC64_SECTOFF_HI"
+  else if rel_type = r_ppc64_sectoff_ha then
+    "R_PPC64_SECTOFF_HA"
+  else if rel_type = r_ppc64_addr30 then
+    "R_PPC64_ADDR30"
+  else if rel_type = r_ppc64_addr64 then
+    "R_PPC64_ADDR64"
+  else if rel_type = r_ppc64_addr16_higher then
+    "R_PPC64_ADDR16_HIGHER"
+  else if rel_type = r_ppc64_addr16_highera then
+    "R_PPC64_ADDR16_HIGHERA"
+  else if rel_type = r_ppc64_addr16_highest then
+    "R_PPC64_ADDR16_HIGHEST"
+  else if rel_type = r_ppc64_addr16_highesta then
+    "R_PPC64_ADDR16_HIGHESTA"
+  else if rel_type = r_ppc64_uaddr64 then
+    "R_PPC64_UADDR64"
+  else if rel_type = r_ppc64_rel64 then
+    "R_PPC64_REL64"
+  else if rel_type = r_ppc64_plt64 then
+    "R_PPC64_PLT64"
+  else if rel_type = r_ppc64_pltrel64 then
+    "R_PPC64_PLTREL64"
+  else if rel_type = r_ppc64_toc16 then
+    "R_PPC64_TOC16"
+  else if rel_type = r_ppc64_toc16_lo then
+    "R_PPC64_TOC16_LO"
+  else if rel_type = r_ppc64_toc16_hi then
+    "R_PPC64_TOC16_HI"
+  else if rel_type = r_ppc64_toc16_ha then
+    "R_PPC64_TOC16_HA"
+  else if rel_type = r_ppc64_toc then
+    "R_PPC64_TOC"
+  else if rel_type = r_ppc64_pltgot16 then
+    "R_PPC64_PLTGOT16"
+  else if rel_type = r_ppc64_pltgot16_lo then
+    "R_PPC64_PLTGOT16_LO"
+  else if rel_type = r_ppc64_pltgot16_hi then
+    "R_PPC64_PLTGOT16_HI"
+  else if rel_type = r_ppc64_pltgot16_ha then
+    "R_PPC64_PLTGOT16_HA"
+  else if rel_type = r_ppc64_addr16_ds then
+    "R_PPC64_ADDR16_DS"
+  else if rel_type = r_ppc64_addr16_lo_ds then
+    "R_PPC64_ADDR16_DS"
+  else if rel_type = r_ppc64_got16_ds then
+    "R_PPC64_GOT16_DS"
+  else if rel_type = r_ppc64_got16_lo_ds then
+    "R_PPC64_GOT16_LO_DS"
+  else if rel_type = r_ppc64_plt16_lo_ds then
+    "R_PPC64_PLT16_LO_DS"
+  else if rel_type = r_ppc64_sectoff_ds then
+    "R_PPC64_SECTOFF_DS"
+  else if rel_type = r_ppc64_sectoff_lo_ds then
+    "R_PPC64_SECTOFF_LO_DS"
+  else if rel_type = r_ppc64_toc16_ds then
+    "R_PPC64_TOC16_DS"
+  else if rel_type = r_ppc64_toc16_lo_ds then
+    "R_PPC64_TOC16_LO_DS"
+  else if rel_type = r_ppc64_pltgot16_ds then
+    "R_PPC64_PLTGOT16_DS"
+  else if rel_type = r_ppc64_pltgot16_lo_ds then
+    "R_PPC64_PLTGOT16_LO_DS"
+  else if rel_type = r_ppc64_tls then
+    "R_PPC64_TLS"
+  else if rel_type = r_ppc64_dtpmod64 then
+    "R_PPC64_DTPMOD64"
+  else if rel_type = r_ppc64_tprel16 then
+    "R_PPC64_TPREL16"
+  else if rel_type = r_ppc64_tprel16_lo then
+    "R_PPC64_TPREL16_LO"
+  else if rel_type = r_ppc64_tprel16_hi then
+    "R_PPC64_TPREL16_HI"
+  else if rel_type = r_ppc64_tprel16_ha then
+    "R_PPC64_TPREL16_HA"
+  else if rel_type = r_ppc64_tprel64 then
+    "R_PPC64_TPREL64"
+  else if rel_type = r_ppc64_dtprel16 then
+    "R_PPC64_DTPREL16"
+  else if rel_type = r_ppc64_dtprel16_lo then
+    "R_PPC64_DTPREL16_LO"
+  else if rel_type = r_ppc64_dtprel16_hi then
+    "R_PPC64_DTPREL16_HI"
+  else if rel_type = r_ppc64_dtprel16_ha then
+    "R_PPC64_DTPREL16_HA"
+  else if rel_type = r_ppc64_dtprel64 then
+    "R_PPC64_DTPREL64"
+  else if rel_type = r_ppc64_got_tlsgd16 then
+    "R_PPC64_GOT_TLSGD16"
+  else if rel_type = r_ppc64_got_tlsgd16_lo then
+    "R_PPC64_GOT_TLSGD16_LO"
+  else if rel_type = r_ppc64_got_tlsgd16_hi then
+    "R_PPC64_GOT_TLSGD16_HI"
+  else if rel_type = r_ppc64_got_tlsgd16_ha then
+    "R_PPC64_GOT_TLSGD16_HA"
+  else if rel_type = r_ppc64_got_tlsld16 then
+    "R_PPC64_GOT_TLSLD16"
+  else if rel_type = r_ppc64_got_tlsld16_lo then
+    "R_PPC64_GOT_TLSLD16_LO"
+  else if rel_type = r_ppc64_got_tlsld16_hi then
+    "R_PPC64_GOT_TLSLD16_HI"
+  else if rel_type = r_ppc64_got_tlsld16_ha then
+    "R_PPC64_GOT_TLSLD16_HA"
+  else if rel_type = r_ppc64_got_tprel16_ds then
+    "R_PPC64_GOT_TPREL16_DS"
+  else if rel_type = r_ppc64_got_tprel16_lo_ds then
+    "R_PPC64_GOT_TPREL16_LO_DS"
+  else if rel_type = r_ppc64_got_tprel16_hi then
+    "R_PPC64_GOT_TPREL16_HI"
+  else if rel_type = r_ppc64_got_tprel16_ha then
+    "R_PPC64_GOT_TPREL16_HA"
+  else if rel_type = r_ppc64_got_dtprel16_ds then
+    "R_PPC64_GOT_DTPREL16_DS"
+  else if rel_type = r_ppc64_got_dtprel16_lo_ds then
+    "R_PPC64_GOT_DTPREL16_LO_DS"
+  else if rel_type = r_ppc64_got_dtprel16_hi then
+    "R_PPC64_GOT_DTPREL16_HI"
+  else if rel_type = r_ppc64_got_dtprel16_ha then
+    "R_PPC64_GOT_DTPREL16_HA"
+  else if rel_type = r_ppc64_tprel16_ds then
+    "R_PPC64_TPREL16_DS"
+  else if rel_type = r_ppc64_tprel16_lo_ds then
+    "R_PPC64_TPREL16_LO_DS"
+  else if rel_type = r_ppc64_tprel16_higher then
+    "R_PPC64_TPREL16_HIGHER"
+  else if rel_type = r_ppc64_tprel16_highera then
+    "R_PPC64_TPREL16_HIGHERA"
+  else if rel_type = r_ppc64_tprel16_highest then
+    "R_PPC64_TPREL16_HIGHEST"
+  else if rel_type = r_ppc64_tprel16_highesta then
+    "R_PPC64_TPREL16_HIGHESTA"
+  else if rel_type = r_ppc64_dtprel16_ds then
+    "R_PPC64_DTPREL16_DS"
+  else if rel_type = r_ppc64_dtprel16_lo_ds then
+    "R_PPC64_DTPREL16_LO_DS"
+  else if rel_type = r_ppc64_dtprel16_higher then
+    "R_PPC64_DTPREL16_HIGHER"
+  else if rel_type = r_ppc64_dtprel16_highera then
+    "R_PPC64_DTPREL16_HIGHERA"
+  else if rel_type = r_ppc64_dtprel16_highest then
+    "R_PPC64_DTPREL16_HIGHEST"
+  else if rel_type = r_ppc64_dtprel16_highesta then
+    "R_PPC64_DTPREL16_HIGHESTA"
+  else
+    "Invalid Power64 relocation type"
+
+val abi_ppc64_apply_relocation : elf64_relocation_a -> integer -> integer ->
+  integer -> integer -> integer -> integer -> integer -> integer -> integer ->
+    integer -> integer -> integer -> integer -> integer -> integer -> elf64_file ->
+      error (Map.map elf64_addr (relocation_operator_expression integer * integer_bit_width * can_fail integer))
+let abi_ppc64_apply_relocation rel s_val b_val p_val l_val g_val r_val m_val
+          toc_val dtpmod_val tprel_val dtprel_val gottlsgd_val gottlsld_val
+          gottprel_val gotdtprel_val ef =
+  if is_elf64_relocatable_file ef.elf64_file_header then
+    let rel_type = extract_elf64_relocation_r_type rel.elf64_ra_info in
+    let a_val    = integer_of_elf64_sxword rel.elf64_ra_addend in
+      (** No width, no calculation *)
+      if rel_type = r_ppc64_none then
+        return Map.empty
+      (** Width: 32 Calculation: S + A *)
+      else if rel_type = r_ppc64_addr32 then
+      	let result = Lift (s_val + a_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I32, CanFail))
+      (** Width: Low24 Calculation: (S + A) >> 2 *)
+      else if rel_type = r_ppc64_addr24 then
+        let result = RShift (Lift(s_val + a_val), 2) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Low24, CanFail))
+      (** Width: Half16 Calculation: S + A *)
+    	else if rel_type = r_ppc64_addr16 then
+        let result = Lift (s_val + a_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CanFail))
+      (** Width: Half16 Calculation: #lo(S + A) *)
+      else if rel_type = r_ppc64_addr16_lo then
+        let result = Apply(Lo, Lift (s_val + a_val)) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      (** Width: Half16 Calculation: #hi(S + A) *)
+      else if rel_type = r_ppc64_addr16_hi then
+        let result = Apply(Hi, Lift (s_val + a_val)) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      (** Width: Half16 Calculation: #ha(S + A) *)
+      else if rel_type = r_ppc64_addr16_ha then
+        let result = Apply(Ha, Lift (s_val + a_val)) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      (** Width: Low14 Calculation: (S + A) >> 2 *)
+      else if rel_type = r_ppc64_addr14 then
+        let result = RShift(Lift(s_val + a_val), 2) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Low14, CanFail))
+      (** Width: Low14 Calculation: (S + A) >> 2 *)
+      else if rel_type = r_ppc64_addr14_brtaken then
+        let result = RShift(Lift(s_val + a_val), 2) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Low14, CanFail))
+      (** Width: Low14 Calculation: (S + A) >> 2 *)
+      else if rel_type = r_ppc64_addr14_brntaken then
+        let result = RShift(Lift(s_val + a_val), 2) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Low14, CanFail))
+      (** Width: Low24 Calculation: ((S + A) - P) >> 2 *)
+      else if rel_type = r_ppc64_rel24 then
+        let result = RShift(Lift ((s_val + a_val) - p_val), 2) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Low24, CanFail))
+      (** Width: Low14 Calculation: ((S + A) - P) >> 2 *)
+      else if rel_type = r_ppc64_rel14 then
+        let result = RShift(Lift ((s_val + a_val) - p_val), 2) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Low14, CanFail))
+      (** Width: Low14 Calculation: ((S + A) - P) >> 2 *)
+      else if rel_type = r_ppc64_rel14_brtaken then
+        let result = RShift(Lift ((s_val + a_val) - p_val), 2) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Low14, CanFail))
+      (** Width: Low14 Calculation: ((S + A) - P) >> 2 *)
+      else if rel_type = r_ppc64_rel14_brntaken then
+        let result = RShift(Lift ((s_val + a_val) - p_val), 2) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Low14, CanFail))
+      (** Width: Half16 Calculation: G *)
+      else if rel_type = r_ppc64_got16 then
+        let result = Lift g_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CanFail))
+      (** Width: Half16 Calculation: #lo(G) *)
+      else if rel_type = r_ppc64_got16_lo then
+        let result = Apply(Lo, Lift g_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      (** Width: Half16 Calculation: #hi(G) *)
+      else if rel_type = r_ppc64_got16_hi then
+        let result = Apply(Hi, Lift g_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      (** Width: Half16 Calculation: #ha(G) *)
+      else if rel_type = r_ppc64_got16_ha then
+        let result = Apply(Ha, Lift g_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      (** No width, no calculation *)
+      else if rel_type = r_ppc64_copy then
+        fail "abi_ppc64_apply_relocation: r_ppc64_copy not implemented"
+      (** Width I64, Calculation: S + A *)
+      else if rel_type = r_ppc64_glob_dat then
+        let result = Lift(s_val + a_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I64, CannotFail))
+      (** No width, dynamic link calculation *)
+      else if rel_type = r_ppc64_jmp_slot then
+        fail "abi_ppc64_apply_relocation: r_ppc64_jmp_slot not implemented"
+      (** Width I64, Calculation: B + A *)
+      else if rel_type = r_ppc64_relative then
+        let result = Lift(b_val + a_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I64, CannotFail))
+      (** Width: I32 Calculation: S + A *)
+      else if rel_type = r_ppc64_uaddr32 then
+        let result = Lift(s_val + a_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I32, CanFail))
+      (** Width: Half16 Calculation: S + A *)
+      else if rel_type = r_ppc64_uaddr16 then
+        let result = Lift(s_val + a_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CanFail))
+      (** Width: I32 Calculation: (S + A) - P *)
+      else if rel_type = r_ppc64_rel32 then
+        let result = Lift ((s_val + a_val) - p_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I32, CanFail))
+      (** Width: I32 Calculation: L *)
+      else if rel_type = r_ppc64_plt32 then
+        let result = Lift l_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I32, CanFail))
+      (** Width: I32 Calculation: L - P *)
+      else if rel_type = r_ppc64_pltrel32 then
+        let result = Lift (l_val - p_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I32, CanFail))
+      (** Width: Half16 Calculation: #lo(L) *)
+      else if rel_type = r_ppc64_plt16_lo then
+        let result = Apply(Lo, Lift l_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      (** Width: Half16 Calculation: #hi(L) *)
+      else if rel_type = r_ppc64_plt16_hi then
+        let result = Apply(Hi, Lift l_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      (** Width: Half16 Calculation: #ha(L) *)
+      else if rel_type = r_ppc64_plt16_ha then
+        let result = Apply(Ha, Lift l_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      (** Width: Half16 Calculation: R + A *)
+      else if rel_type = r_ppc64_sectoff then
+        let result = Lift(r_val + a_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CanFail))
+      (** Width: Half16 Calculation: #lo(R + A) *)
+      else if rel_type = r_ppc64_sectoff_lo then
+        let result = Apply(Lo, Lift (r_val + a_val)) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      (** Width: Half16 Calculation: #hi(R + A) *)
+      else if rel_type = r_ppc64_sectoff_hi then
+        let result = Apply(Hi, Lift (r_val + a_val)) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      (** Width: Half16 Calculation: #ha(R + A) *)
+      else if rel_type = r_ppc64_sectoff_ha then
+        let result = Apply(Ha, Lift (r_val + a_val)) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      (** Width: Word30 Calculation: ((S + A) - P) >> 2 *)
+      else if rel_type = r_ppc64_addr30 then
+        let result = RShift(Lift ((s_val + a_val) - p_val), 2) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Word30, CannotFail))
+      (** Width: I64 Calculation: S + A *)
+      else if rel_type = r_ppc64_addr64 then
+        let result = Lift(s_val + a_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I64, CannotFail))
+      (** Width: Half16 Calculation: #higher(S + A) *)
+      else if rel_type = r_ppc64_addr16_higher then
+        let result = Apply(Higher, Lift (s_val + a_val)) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      (** Width: Half16 Calculation: #highera(S + A) *)
+      else if rel_type = r_ppc64_addr16_highera then
+        let result = Apply(HigherA, Lift (s_val + a_val)) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      (** Width: Half16 Calculation: #highest(S + A) *)
+      else if rel_type = r_ppc64_addr16_highest then
+        let result = Apply(Highest, Lift (s_val + a_val)) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      (** Width: Half16 Calculation: #highesta(S + A) *)
+      else if rel_type = r_ppc64_addr16_highesta then
+        let result = Apply(HighestA, Lift(s_val + a_val)) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      (** Width: I64 Calculation: S + A *)
+      else if rel_type = r_ppc64_uaddr64 then
+        let result = Lift(s_val + a_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I64, CannotFail))
+      (** Width: I64 Calculation: (S + A) - P *)
+      else if rel_type = r_ppc64_rel64 then
+        let result = Lift ((s_val + a_val) - p_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I64, CannotFail))
+      (** Width: I64 Calculation: L *)
+      else if rel_type = r_ppc64_plt64 then
+      	let result = Lift l_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I64, CannotFail))
+      (** Width: I64 Calculation: L - P *)
+      else if rel_type = r_ppc64_pltrel64 then
+      	let result = Lift(l_val - p_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I64, CannotFail))
+      (** Width: Half16 Calculation: (S + A) - TOC *)
+      else if rel_type = r_ppc64_toc16 then
+      	let result = Lift ((s_val + a_val) - toc_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CanFail))
+      (** Width: Half16 Calculation: #lo((S + A) - TOC) *)
+      else if rel_type = r_ppc64_toc16_lo then
+      	let result = Apply (Lo, Lift ((s_val + a_val) - toc_val)) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CanFail))
+      (** Width: Half16 Calculation: #hi((S + A) - TOC) *)
+      else if rel_type = r_ppc64_toc16_hi then
+      	let result = Apply(Hi, Lift ((s_val + a_val) - toc_val)) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CanFail))
+      (** Width: Half16 Calculation: #ha((S + A) - TOC) *)
+      else if rel_type = r_ppc64_toc16_ha then
+      	let result = Apply(Ha, Lift ((s_val + a_val) - toc_val)) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CanFail))
+      (** Width: I64 Calculation: .TOC *)
+      else if rel_type = r_ppc64_toc then
+      	let result = Lift toc_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I64, CannotFail))
+      (** Width: Half16 Calculation: M *)
+      else if rel_type = r_ppc64_pltgot16 then
+      	let result = Lift m_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CanFail))
+      (** Width: Half16 Calculation: #lo(M) *)
+      else if rel_type = r_ppc64_pltgot16_lo then
+      	let result = Apply(Lo, Lift m_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      (** Width: Half16 Calculation: #hi(M) *)
+      else if rel_type = r_ppc64_pltgot16_hi then
+      	let result = Apply(Hi, Lift m_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      (** Width: Half16 Calculation: #ha(M) *)
+      else if rel_type = r_ppc64_pltgot16_ha then
+      	let result = Apply(Ha, Lift m_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      (** Width: Half16ds Calculation: (S + A) >> 2 *)
+      else if rel_type = r_ppc64_addr16_ds then
+      	let result = RShift(Lift (s_val + a_val), 2) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Half16ds, CanFail))
+      (** Width: Half16ds Calculation: #lo((S + A) >> 2) *)    
+      else if rel_type = r_ppc64_addr16_lo_ds then
+      	let result = Apply(Lo, RShift(Lift (s_val + a_val), 2)) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Half16ds, CannotFail))
+      (** Width: Half16ds Calculation: G >> 2 *)
+      else if rel_type = r_ppc64_got16_ds then
+      	let result = RShift(Lift g_val, 2) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Half16ds, CanFail))
+      (** Width: Half16ds Calculation: #lo(G) >> 2 *)
+      else if rel_type = r_ppc64_got16_lo_ds then
+      	let result = RShift(Apply(Lo, Lift g_val), 2) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Half16ds, CannotFail))
+      (** Width: Half16ds Calculation: #lo(L) >> 2 *)
+      else if rel_type = r_ppc64_plt16_lo_ds then
+      	let result = RShift (Apply(Lo, Lift l_val), 2) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Half16ds, CannotFail))
+      (** Width: Half16ds Calculation: (R + A) >> 2 *)
+      else if rel_type = r_ppc64_sectoff_ds then
+      	let result = RShift (Lift (r_val + a_val), 2) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Half16ds, CanFail))
+      (** Width: Half16ds Calculation: #lo(R + A) >> 2 *)
+      else if rel_type = r_ppc64_sectoff_lo_ds then
+      	let result = RShift(Apply(Lo, Lift (r_val + a_val)), 2) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Half16ds, CannotFail))
+      (** Width: Half16ds Calculation: ((S + A) - TOC) >> 2 *)
+      else if rel_type = r_ppc64_toc16_ds then
+      	let result = RShift (Lift ((s_val + a_val) - toc_val), 2) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Half16ds, CanFail))
+      (** Width: Half16ds Calculation: #lo((S + A) - TOC) >> 2 *)
+      else if rel_type = r_ppc64_toc16_lo_ds then
+      	let result = RShift (Apply(Lo, Lift ((s_val + a_val) - toc_val)), 2) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Half16ds, CannotFail))
+      (** Width: Half16ds Calculation: M >> 2 *)
+      else if rel_type = r_ppc64_pltgot16_ds then
+      	let result = RShift(Lift m_val, 2) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Half16ds, CanFail))
+      (** Width: Half16ds Calculation: #lo(M) >> 2 *)
+      else if rel_type = r_ppc64_pltgot16_lo_ds then
+      	let result = RShift (Apply(Lo, Lift m_val), 2) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Half16ds, CannotFail))
+      (** No width, no calculation *)
+      else if rel_type = r_ppc64_tls then
+        fail "abi_ppc64_apply_relocation: r_ppc64_tls not implemented"
+      (** Width I64 Calculation: @dtpmod *)
+      else if rel_type = r_ppc64_dtpmod64 then
+      	let result = Lift dtpmod_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I64, CannotFail))
+      else if rel_type = r_ppc64_tprel16 then
+      	let result = Lift tprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CanFail))
+      else if rel_type = r_ppc64_tprel16_lo then
+        let result = Apply(Lo, Lift tprel_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      else if rel_type = r_ppc64_tprel16_hi then
+      	let result = Apply(Hi, Lift tprel_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      else if rel_type = r_ppc64_tprel16_ha then
+      	let result = Apply(Ha, Lift tprel_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      else if rel_type = r_ppc64_tprel64 then
+      	let result = Lift tprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I64, CannotFail))
+      else if rel_type = r_ppc64_dtprel16 then
+      	let result = Lift dtprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CanFail))
+      else if rel_type = r_ppc64_dtprel16_lo then
+      	let result = Apply(Lo, Lift dtprel_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      else if rel_type = r_ppc64_dtprel16_hi then
+      	let result = Apply(Hi, Lift dtprel_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      else if rel_type = r_ppc64_dtprel16_ha then
+      	let result = Apply(Ha, Lift dtprel_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      else if rel_type = r_ppc64_dtprel64 then
+      	let result = Lift dtprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I64, CannotFail))
+      else if rel_type = r_ppc64_got_tlsgd16 then
+      	let result = Lift gottlsgd_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CanFail))
+      else if rel_type = r_ppc64_got_tlsgd16_lo then
+      	let result = Apply(Lo, Lift gottlsgd_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      else if rel_type = r_ppc64_got_tlsgd16_hi then
+      	let result = Apply(Hi, Lift gottlsgd_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      else if rel_type = r_ppc64_got_tlsgd16_ha then
+      	let result = Apply(Ha, Lift gottlsgd_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      else if rel_type = r_ppc64_got_tlsld16 then
+      	let result = Lift gottlsgd_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CanFail))
+      else if rel_type = r_ppc64_got_tlsld16_lo then
+      	let result = Apply(Lo, Lift gottlsgd_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      else if rel_type = r_ppc64_got_tlsld16_hi then
+      	let result = Apply(Hi, Lift gottlsgd_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      else if rel_type = r_ppc64_got_tlsld16_ha then
+      	let result = Apply(Ha, Lift gottlsgd_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      else if rel_type = r_ppc64_got_tprel16_ds then
+      	let result = Lift gottprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Half16ds, CanFail))
+      else if rel_type = r_ppc64_got_tprel16_lo_ds then
+      	let result = Apply(Lo, Lift gottprel_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Half16ds, CannotFail))
+      else if rel_type = r_ppc64_got_tprel16_hi then
+      	let result = Apply(Hi, Lift gottprel_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      else if rel_type = r_ppc64_got_tprel16_ha then
+      	let result = Apply(Ha, Lift gottprel_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      else if rel_type = r_ppc64_got_dtprel16_ds then
+      	let result = Lift gotdtprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Half16ds, CanFail))
+      else if rel_type = r_ppc64_got_dtprel16_lo_ds then
+      	let result = Apply(Lo, Lift gotdtprel_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Half16ds, CannotFail))
+      else if rel_type = r_ppc64_got_dtprel16_hi then
+      	let result = Apply(Hi, Lift gotdtprel_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      else if rel_type = r_ppc64_got_dtprel16_ha then
+      	let result = Apply(Ha, Lift gotdtprel_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      else if rel_type = r_ppc64_tprel16_ds then
+      	let result = Lift tprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Half16ds, CanFail))
+      else if rel_type = r_ppc64_tprel16_lo_ds then
+      	let result = Apply(Lo, Lift tprel_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Half16ds, CannotFail))
+      else if rel_type = r_ppc64_tprel16_higher then
+      	let result = Apply(Higher, Lift tprel_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      else if rel_type = r_ppc64_tprel16_highera then
+      	let result = Apply(HigherA, Lift tprel_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      else if rel_type = r_ppc64_tprel16_highest then
+      	let result = Apply(Highest, Lift tprel_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      else if rel_type = r_ppc64_tprel16_highesta then
+      	let result = Apply(HighestA, Lift tprel_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      else if rel_type = r_ppc64_dtprel16_ds then
+      	let result = Lift dtprel_val in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Half16ds, CanFail))
+      else if rel_type = r_ppc64_dtprel16_lo_ds then
+      	let result = Apply(Lo, Lift dtprel_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, Half16ds, CannotFail))
+      else if rel_type = r_ppc64_dtprel16_higher then
+      	let result = Apply(Higher, Lift dtprel_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      else if rel_type = r_ppc64_dtprel16_highera then
+      	let result = Apply(HigherA, Lift dtprel_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      else if rel_type = r_ppc64_dtprel16_highest then
+      	let result = Apply(Highest, Lift dtprel_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      else if rel_type = r_ppc64_dtprel16_highesta then
+      	let result = Apply(HighestA, Lift dtprel_val) in
+      	let addr   = rel.elf64_ra_offset in
+      	return (Map.singleton addr (result, I16, CannotFail))
+      else
+        fail "abi_ppc64_apply_relocation: unrecognised relocation type"  
+  else
+  	fail "abi_ppc64_apply_relocation: not a relocatable file"

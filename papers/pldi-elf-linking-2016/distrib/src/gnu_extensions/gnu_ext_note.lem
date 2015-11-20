@@ -1,0 +1,267 @@
+(** [gnu_ext_note] contains GNU extension specific definitions relating to the
+  * .note section/segment of an ELF file.
+  *)
+
+open import Basic_classes
+open import Bool
+open import List
+open import Maybe
+open import String
+
+open import Byte_sequence
+open import Endianness
+open import Error
+open import Missing_pervasives
+open import String_table
+
+open import Elf_note
+open import Elf_section_header_table
+open import Elf_types_native_uint
+
+open import Gnu_ext_section_header_table
+
+(** The following two functions are utility functions to convert a list of bytes
+  * into words, ready for further processing into strings.
+  *)
+  
+val group_elf32_words : endianness -> list byte -> error (list elf32_word)
+let rec group_elf32_words endian xs =
+  match xs with
+    | []                 -> return []
+    | x1::x2::x3::x4::xs ->
+      let bs0 = Byte_sequence.from_byte_lists [[x1;x2;x3;x4]] in
+      read_elf32_word   endian bs0 >>= fun (w, _) ->
+      group_elf32_words endian xs  >>= fun ws ->
+      return (w::ws)
+    | xs                 -> fail "group_elf32_words: the impossible happened"
+  end
+  
+val group_elf64_words : endianness -> list byte -> error (list elf64_word)
+let rec group_elf64_words endian xs =
+  match xs with
+    | []                 -> return []
+    | x1::x2::x3::x4::xs ->
+      let bs0 = Byte_sequence.from_byte_lists [[x1;x2;x3;x4]] in
+      read_elf64_word   endian bs0 >>= fun (w, _) ->
+      group_elf64_words endian xs  >>= fun ws ->
+      return (w::ws)
+    | xs                 -> fail "group_elf64_words: the impossible happened"
+  end
+
+(** [gnu_ext_check_elf32_abi_note_tag_section endain sht stbl bs0] checks the
+  * .note.ABI-tag section of an ELF file to ensure conformance with the GNU
+  * extensions.  The string in this note should contain the string "GNU".
+  *)
+val gnu_ext_check_elf32_abi_note_tag_section : endianness -> elf32_section_header_table ->
+  string_table -> byte_sequence -> bool
+let gnu_ext_check_elf32_abi_note_tag_section endian sht sect_hdr_tbl bs0 =
+  let abi_note_sects =
+    List.filter (fun x ->
+      if natural_of_elf32_word x.elf32_sh_type = sht_note then
+        let nm = natural_of_elf32_word x.elf32_sh_name in
+          match String_table.get_string_at nm sect_hdr_tbl with
+            | Success name -> name = ".note.ABI-tag"
+            | Fail _       -> false
+          end
+      else
+        false
+    ) sht
+  in
+    match abi_note_sects with
+      | [note] ->
+        let off = natural_of_elf32_off note.elf32_sh_offset in
+        let siz = natural_of_elf32_word note.elf32_sh_size in
+        let abi_tag =
+          Byte_sequence.offset_and_cut off siz bs0 >>= fun rel ->
+          Elf_note.read_elf32_note endian rel >>= fun (abi_tag, _) ->
+          return abi_tag
+        in
+          match abi_tag with
+            | Fail _          -> false
+            | Success abi_tag ->
+              let str = name_string_of_elf32_note abi_tag in
+                if str = "GNU\000" then
+                  if natural_of_elf32_word abi_tag.elf32_note_descsz >= 16 then
+                    let take = List.take 16 abi_tag.elf32_note_desc in
+                      if List.length take < 16 then
+                        false
+                      else
+                        true
+                  else
+                    false
+                else
+                  false
+          end
+      | _      ->
+          false
+    end
+
+(** [gnu_ext_check_elf64_abi_note_tag_section endain sht stbl bs0] checks the
+  * .note.ABI-tag section of an ELF file to ensure conformance with the GNU
+  * extensions.  The string in this note should contain the string "GNU".
+  *)
+val gnu_ext_check_elf64_abi_note_tag_section : endianness -> elf64_section_header_table ->
+  string_table -> byte_sequence -> bool
+let gnu_ext_check_elf64_abi_note_tag_section endian sht sect_hdr_tbl bs0 =
+  let abi_note_sects =
+    List.filter (fun x ->
+      if natural_of_elf64_word x.elf64_sh_type = sht_note then
+        let nm = natural_of_elf64_word x.elf64_sh_name in
+          match String_table.get_string_at nm sect_hdr_tbl with
+            | Success name -> name = ".note.ABI-tag"
+            | Fail _       -> false
+          end
+      else
+        false
+    ) sht
+  in
+    match abi_note_sects with
+      | [note] ->
+        let off = natural_of_elf64_off note.elf64_sh_offset in
+        let siz = natural_of_elf64_xword note.elf64_sh_size in
+        let abi_tag =
+          Byte_sequence.offset_and_cut off siz bs0 >>= fun rel ->
+          Elf_note.read_elf64_note endian rel >>= fun (abi_tag, _) ->
+          return abi_tag
+        in
+          match abi_tag with
+            | Fail _          -> false
+            | Success abi_tag ->
+              let str = name_string_of_elf64_note abi_tag in
+                if str = "GNU\000" then
+                  if natural_of_elf64_xword abi_tag.elf64_note_descsz >= 16 then
+                    let take = List.take 16 abi_tag.elf64_note_desc in
+                      if List.length take < 16 then
+                        false
+                      else
+                        true
+                  else
+                    false
+                else
+                  false
+          end
+      | _      ->
+          false
+    end
+    
+(** [gnu_ext_extract_elf32_earliest_compatible_kernel end sht stab bs0] extracts
+  * the earliest compatible Linux kernel with the given ELF file from its section
+  * header table [sht], and string table [stbl], assuming endianness [endian].
+  * NB: marked as OCaml only as need to extract a string from integers.
+  * TODO: implement some string parsing functions in Isabelle/HOL so things like
+  * this can be extracted.
+  *)
+val gnu_ext_extract_elf32_earliest_compatible_kernel : endianness -> elf32_section_header_table ->
+  string_table -> byte_sequence -> error string
+let {ocaml} gnu_ext_extract_elf32_earliest_compatible_kernel endian sht sect_hdr_tbl bs0 =
+  let abi_note_sects =
+    List.filter (fun x ->
+      if natural_of_elf32_word x.elf32_sh_type = sht_note then
+        let nm = natural_of_elf32_word x.elf32_sh_name in
+          match String_table.get_string_at nm sect_hdr_tbl with
+            | Success name -> name = ".note.ABI-tag"
+            | Fail _       -> false
+          end
+      else
+        false
+    ) sht
+  in
+    match abi_note_sects with
+      | [note] ->
+        let off = natural_of_elf32_off note.elf32_sh_offset in
+        let siz = natural_of_elf32_word note.elf32_sh_size in
+        let abi_tag =
+          Byte_sequence.offset_and_cut off siz bs0 >>= fun rel ->
+          Elf_note.read_elf32_note endian rel >>= fun (abi_tag, _) ->
+          return abi_tag
+        in
+          match abi_tag with
+            | Fail _          -> fail "gnu_ext_extract_elf32_earliest_compatible_kernel: parsing of NOTE section failed"
+            | Success abi_tag ->
+              let str = name_string_of_elf32_note abi_tag in
+                if str = "GNU\000" then
+                  if natural_of_elf32_word abi_tag.elf32_note_descsz >= 16 then
+                    let take = List.take 16 abi_tag.elf32_note_desc in
+                      if List.length take < 16 then
+                        fail "gnu_ext_extract_elf32_earliest_compatible_kernel: the impossible happened"
+                      else
+                        match group_elf32_words endian take with
+                          | Fail err   -> fail "gnu_ext_extract_elf32_earliest_compatible_kernel: word grouping failed"
+                          | Success ss ->
+                            match ss with
+                              | c1::c2::c3::cs ->
+                                let c1 = string_of_elf32_word c1 in
+                                let c2 = string_of_elf32_word c2 in
+                                let c3 = string_of_elf32_word c3 in
+                                  return (List.foldr (^) "" (intercalate "." [c1;c2;c3]))
+                              | _              -> fail "gnu_ext_extract_elf32_earliest_compatible_kernel: kernel version must have three components"
+                            end
+                        end
+                  else
+                    fail "gnu_ext_extract_elf32_earliest_compatible_kernel: .note.ABI-tag description size not required length"
+                else
+                  fail "gnu_ext_extract_elf32_earliest_compatible_kernel: required GNU string not present"
+          end
+      | _      -> fail "gnu_ext_extract_elf32_earliest_compatible_kernel: more than one .note.ABI-tag section present"
+    end
+    
+(** [gnu_ext_extract_elf64_earliest_compatible_kernel end sht stab bs0] extracts
+  * the earliest compatible Linux kernel with the given ELF file from its section
+  * header table [sht], and string table [stbl], assuming endianness [endian].
+  * NB: marked as OCaml only as need to extract a string from integers.
+  * TODO: implement some string parsing functions in Isabelle/HOL so things like
+  * this can be extracted.
+  *)
+val gnu_ext_extract_elf64_earliest_compatible_kernel : endianness -> elf64_section_header_table ->
+  string_table -> byte_sequence -> error string
+let {ocaml} gnu_ext_extract_elf64_earliest_compatible_kernel endian sht sect_hdr_tbl bs0 =
+  let abi_note_sects =
+    List.filter (fun x ->
+      if natural_of_elf64_word x.elf64_sh_type = sht_note then
+        let nm = natural_of_elf64_word x.elf64_sh_name in
+          match String_table.get_string_at nm sect_hdr_tbl with
+            | Success name -> name = ".note.ABI-tag"
+            | Fail _       -> false
+          end
+      else
+        false
+    ) sht
+  in
+    match abi_note_sects with
+      | [note] ->
+        let off = natural_of_elf64_off note.elf64_sh_offset in
+        let siz = natural_of_elf64_xword note.elf64_sh_size in
+        let abi_tag =
+          Byte_sequence.offset_and_cut off siz bs0 >>= fun rel ->
+          Elf_note.read_elf64_note endian rel >>= fun (abi_tag, _) ->
+          return abi_tag
+        in
+          match abi_tag with
+            | Fail _          -> fail "gnu_ext_extract_elf64_earliest_compatible_kernel: parsing of NOTE section failed"
+            | Success abi_tag ->
+              let str = name_string_of_elf64_note abi_tag in
+                if str = "GNU\000" then
+                  if natural_of_elf64_xword abi_tag.elf64_note_descsz >= 16 then
+                    let take = List.take 16 abi_tag.elf64_note_desc in
+                      if List.length take < 16 then
+                        fail "gnu_ext_extract_elf64_earliest_compatible_kernel: the impossible happened"
+                      else
+                        match group_elf64_words endian take with
+                          | Fail err   -> fail "gnu_ext_extract_elf64_earliest_compatible_kernel: word grouping failed"
+                          | Success ss ->
+                            match ss with
+                              | c1::c2::c3::cs ->
+                                let c1 = string_of_elf64_word c1 in
+                                let c2 = string_of_elf64_word c2 in
+                                let c3 = string_of_elf64_word c3 in
+                                  return (List.foldr (^) "" (intercalate "." [c1;c2;c3]))
+                              | _              -> fail "gnu_ext_extract_elf64_earliest_compatible_kernel: kernel version must have three components"
+                            end
+                        end
+                  else
+                    fail "gnu_ext_extract_elf64_earliest_compatible_kernel: .note.ABI-tag description size not required length"
+                else
+                  fail "gnu_ext_extract_elf64_earliest_compatible_kernel: required GNU string not present"
+          end
+      | _      -> fail "gnu_ext_extract_elf64_earliest_compatible_kernel: more than one .note.ABI-tag section present"
+    end

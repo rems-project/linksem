@@ -1,0 +1,50 @@
+(** [abi_amd64_section_header_table] module contains section header table
+  * specific definitions for the AMD64 ABI.
+  *)
+
+open import Basic_classes
+open import Map
+open import Num
+
+open import Elf_section_header_table
+
+(** AMD64 specific flags.  See Section 4.2.1. *)
+
+let shf_abi_amd64_large : natural = 67108864 * 4 (* 0x10000000 *)
+
+(** AMD64 specific section types.  See Section 4.2.2 *)
+
+let sht_abi_amd64_unwind : natural = (939524096 * 2) + 1 (* 0x70000001 *)
+
+(** [string_of_abi_amd64_section_type m] produces a string based representation
+  * of AMD64 section type [m].
+  *)
+val string_of_abi_amd64_section_type : natural -> string
+let {ocaml} string_of_abi_amd64_section_type m =
+  if m = sht_abi_amd64_unwind then
+    "X86_64_UNWIND"
+  else
+    "Invalid AMD64 section type"
+    
+(** Special sections *)
+
+val abi_amd64_special_sections : Map.map string (natural * natural)
+let abi_amg64_special_sections =
+  Map.fromList [
+    (".got", (sht_progbits, shf_alloc + shf_write))
+  ; (".plt", (sht_progbits, shf_alloc + shf_execinstr))
+  ; (".eh_frame", (sht_abi_amd64_unwind, shf_alloc))
+  ]
+  
+val abi_amd64_special_sections_large_code_model : Map.map string (natural * natural)
+let abi_amd64_special_sections_large_code_model =
+  Map.fromList [
+    (".lbss", (sht_nobits, shf_alloc + shf_write + shf_abi_amd64_large))
+  ; (".ldata", (sht_progbits, shf_alloc + shf_write + shf_abi_amd64_large))
+  ; (".ldata1", (sht_progbits, shf_alloc + shf_write + shf_abi_amd64_large))
+  ; (".lgot", (sht_progbits, shf_alloc + shf_write + shf_abi_amd64_large))
+  ; (".lplt", (sht_progbits, shf_alloc + shf_execinstr + shf_abi_amd64_large))
+  ; (".lrodata", (sht_progbits, shf_alloc + shf_abi_amd64_large))
+  ; (".lrodata1", (sht_progbits, shf_alloc + shf_abi_amd64_large))
+  ; (".ltext", (sht_progbits, shf_alloc + shf_execinstr + shf_abi_amd64_large))
+  ]

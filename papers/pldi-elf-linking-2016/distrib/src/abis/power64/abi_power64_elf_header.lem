@@ -1,0 +1,47 @@
+(** [abi_power64_elf_header], Power64 ABI specific definitions related to the 
+  * ELF file header.
+  *)
+
+open import Basic_classes
+open import Bool
+open import List
+open import Maybe
+open import Missing_pervasives
+
+open import Elf_header
+open import Elf_types_native_uint
+
+open import Endianness
+
+(** [is_valid_abi_power64_machine_architecture m] checks whether the ELF header's
+  * machine architecture is valid according to the ABI-specific specification.
+  * Machine architecture must be Power64 (Section 4.1).
+  *)
+val is_valid_abi_power64_machine_architecture : nat -> bool
+let is_valid_abi_power64_machine_architecture m =
+  m = unsafe_nat_of_natural elf_ma_ppc64
+
+(** [is_valid_abi_power64_magic_number magic] checks whether the ELF header's
+  * magic number is valid according to the ABI-specific specification.
+  * File class must be 64-bit (Section 4.1)
+  * Data encoding must be little or big endian and must match the data encoding
+  * of the file. (Section 4.1)
+  *)
+val is_valid_abi_power64_magic_number : list unsigned_char -> endianness -> bool
+let is_valid_abi_power64_magic_number magic endian =
+  match List.index magic (unsafe_nat_of_natural elf_ii_class) with
+    | Nothing  -> false
+    | Just cls ->
+      match List.index magic (unsafe_nat_of_natural elf_ii_data) with
+        | Nothing -> false
+        | Just ed ->
+          match endian with
+            | Little ->
+                (natural_of_unsigned_char cls = elf_class_64) &&
+                  (natural_of_unsigned_char ed = elf_data_2lsb)
+            | Big    ->
+                (natural_of_unsigned_char cls = elf_class_64) &&
+                  (natural_of_unsigned_char ed = elf_data_2msb)
+          end
+      end
+  end

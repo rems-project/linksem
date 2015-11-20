@@ -1,0 +1,149 @@
+open import Basic_classes
+open import Bool
+open import List
+open import Num
+open import Maybe
+open import String
+open import Show
+open import Assert_extra
+
+open import Missing_pervasives
+open import Byte_sequence
+open import Error
+
+type archive_entry_header =
+  <| name      : string
+   ; timestamp : natural
+   ; uid       : nat
+   ; gid       : nat
+   ; mode      : nat
+   ; size      : nat (* 1GB should be enough *)
+   |>
+
+type archive_global_header =
+  list char
+
+val string_of_byte_sequence : byte_sequence -> string
+let string_of_byte_sequence seq =
+  match seq with
+    | Sequence bs -> toString (List.map char_of_byte bs)
+  end
+
+val read_archive_entry_header : natural -> byte_sequence -> error (archive_entry_header * natural * byte_sequence)
+let read_archive_entry_header seq_length seq =
+  let magic_bytes = [byte_of_natural 96 (* 0x60 *); byte_of_natural 10 (* 0x0a *)] in
+        let header_length = 60 in
+        (* let _ = Missing_pervasives.errs ("Archive entry header? " ^ (show (take 16 bs)) ^ "? ") in *)
+        partition_with_length header_length seq_length seq >>= fun (header, rest) -> 
+        offset_and_cut 58 2 header >>= fun magic -> 
+        offset_and_cut 0  16 header >>= fun name -> 
+        offset_and_cut 16 12 header >>= fun timestamp_str -> 
+        offset_and_cut 28 6  header >>= fun uid_str -> 
+        offset_and_cut 34 6  header >>= fun gid_str -> 
+        offset_and_cut 40 8  header >>= fun mode_str -> 
+        offset_and_cut 48 10 header >>= fun size_str -> 
+        let size = natural_of_decimal_string (string_of_byte_sequence size_str) in 
+                (* let _ = Missing_pervasives.errln (": yes, size " ^ (show size)) in *)
+        return (<| name = string_of_byte_sequence name; timestamp = (0 : natural) (* FIXME *);
+          uid = 0 (* FIXME *) ; gid = 0 (* FIXME *) ; mode = 0 (* FIXME *);
+            size = unsafe_nat_of_natural size (* FIXME *) |>, seq_length - header_length, rest)
+
+val read_archive_global_header : byte_sequence -> error (archive_global_header * byte_sequence)
+let read_archive_global_header seq =
+  match seq with
+    | Sequence bs ->
+            (* let _ = Missing_pervasives.errs ("Archive? " ^ (show (take 16 bs)) ^ "? ")
+            in*)
+      let chars = List.map char_of_byte (take 8 bs) in 
+        if toString chars = "!<arch>\n" then
+          (* let _ = Missing_pervasives.errln ": yes" in *)
+          return (chars, Sequence(drop 8 bs))
+        else
+          (* let _ = Missing_pervasives.errln ": no" in *)
+          fail "read_archive_global_header: not an archive"
+    end
+
+val accum_archive_contents : (list (string * byte_sequence)) -> maybe string -> natural -> byte_sequence -> error (list (string * byte_sequence))
+let rec accum_archive_contents accum extended_filenames whole_seq_length whole_seq = 
+  (* let _ = Missing_pervasives.errs "Can read a header? " in *)
+  if Byte_sequence.length whole_seq <> whole_seq_length then
+    Assert_extra.fail (* invariant: whole_seq_length always equal to length of whole_seq, so the length is only
+      computed one.  This "fail" needed for Isabelle termination proofs... *)
+  else
+  match (read_archive_entry_header whole_seq_length whole_seq) with
+    | Fail _ -> return accum
+    | Success (hdr, (seq_length : natural), seq) ->
+    match seq with
+      | Sequence next_bs ->
+        (* let _ = Missing_pervasives.errln ("yes; next_bs has length " ^ (show (List.length next_bs))) in *)
+        let amount_to_drop =
+          if hdr.size mod 2 = 0 then
+            (naturalFromNat hdr.size)
+          else
+            (naturalFromNat hdr.size) + 1
+        in
+        if amount_to_drop = 0 then
+          fail "accum_archive_contents: amount to drop from byte sequence is 0"
+        else
+        (*let _ = Missing_pervasives.errln ("amount_to_drop is " ^ (show amount_to_drop)) in*)
+        let chunk = (Sequence(List.take hdr.size next_bs))
+        in
+        (*let _ = Missing_pervasives.errs ("Processing archive header named " ^ hdr.name)
+        in*)
+        let (new_accum, (new_extended_filenames : maybe string)) =
+          let name = toCharList hdr.name in
+            if name = [#'/'; #' '; #' '; #' '; #' '; #' '; #' '; #' '; #' '; #' '; #' '; #' '; #' '; #' '; #' '; #' '] then
+              (* SystemV symbol lookup table; we skip this *) (accum, extended_filenames)
+            else
+              match name with
+                | x::xs ->
+                  if x = #'/' then
+                    match xs with
+                      | y::ys ->
+                        if y = #'/' then
+                          (accum, Just (string_of_byte_sequence chunk))
+                        else
+                          let index = natural_of_decimal_string (toString xs) in
+                            match extended_filenames with 
+                              | Nothing -> failwith "corrupt archive: reference to non-existent extended filenames"
+                              | Just s -> 
+                                let table_suffix = match string_suffix index s with Just x -> x | Nothing -> "" end in
+                                let index = match string_index_of #'/' table_suffix with Just x -> x | Nothing -> (naturalFromNat (stringLength table_suffix)) end in 
+                                let ext_name = match string_prefix index table_suffix with Just x -> x | Nothing -> "" end in
+                                  (*let _ = Missing_pervasives.errln ("Got ext_name " ^ ext_name) in*)
+                                  (((ext_name, chunk) :: accum), extended_filenames)
+                           end
+                      | [] ->
+                        let index = natural_of_decimal_string (toString xs) in
+                          match extended_filenames with 
+                            | Nothing -> failwith "corrupt archive: reference to non-existent extended filenames"
+                            | Just s -> 
+                              let table_suffix = match string_suffix index s with Just x -> x | Nothing -> "" end in
+                              let index = match string_index_of #'/' table_suffix with Just x -> x | Nothing -> (naturalFromNat (stringLength table_suffix)) end in 
+                              let ext_name = match string_prefix index table_suffix with Just x -> x | Nothing -> "" end in
+                                (*let _ = Missing_pervasives.errln ("Got ext_name " ^ ext_name) in*)
+                                (((ext_name, chunk) :: accum), extended_filenames)
+                         end
+                    end
+                  else
+                    (((hdr.name, chunk) :: accum), extended_filenames)
+                | [] -> (((hdr.name, chunk) :: accum), extended_filenames)
+              end
+        in
+          match (Byte_sequence.dropbytes amount_to_drop seq) with
+            | Fail _ -> return accum
+            | Success new_seq ->
+              accum_archive_contents new_accum new_extended_filenames (seq_length - amount_to_drop) new_seq
+          end
+    end
+  end
+
+val read_archive : byte_sequence -> error (list (string * byte_sequence))
+let read_archive bs = 
+    read_archive_global_header bs >>= fun (hdr, seq) -> 
+    let result = accum_archive_contents [] Nothing (Byte_sequence.length seq) seq  in 
+    (* let _ = Missing_pervasives.errln "Finished reading archive" in *)
+    match result with
+        Success r -> Success (List.reverse r)
+        | Fail x -> Fail x
+    end

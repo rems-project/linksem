@@ -1,0 +1,68 @@
+(** [abi_x86_relocation] contains X86 ABI specific definitions relating to
+  * relocations.
+  *)
+
+open import Basic_classes
+open import Num
+open import String
+
+open import Show
+
+(** Relocation types. *)
+
+let r_386_none : natural = 0
+let r_386_32 : natural = 1
+let r_386_pc32 : natural = 2
+let r_386_got32 : natural = 3
+let r_386_plt32 : natural = 4
+let r_386_copy : natural = 5
+let r_386_glob_dat : natural = 6
+let r_386_jmp_slot : natural = 7
+let r_386_relative : natural = 8
+let r_386_gotoff : natural = 9
+let r_386_gotpc : natural = 10
+
+(** Found in the "wild" but not in the ABI docs: *)
+
+let r_386_tls_tpoff : natural = 14
+let r_386_tls_dtpmod32 : natural = 35
+let r_386_tls_dtpoff32 : natural = 36
+let r_386_irelative : natural = 42
+
+(** [string_of_x86_relocation_type m] produces a string based representation of
+  * X86 ABI relocation type [m].
+  *)
+val string_of_x86_relocation_type : natural -> string
+let string_of_x86_relocation_type m =
+  if m = r_386_none then
+    "R_386_NONE"
+  else if m = r_386_32 then
+    "R_386_32"
+  else if m = r_386_pc32 then
+    "R_386_PC32"
+  else if m = r_386_got32 then
+    "R_386_GOT32"
+  else if m = r_386_plt32 then
+    "R_386_PLT32"
+  else if m = r_386_copy then
+    "R_386_COPY"
+  else if m = r_386_glob_dat then
+    "R_386_GLOB_DAT"
+  else if m = r_386_jmp_slot then
+    "R_386_JUMP_SLOT"
+  else if m = r_386_relative then
+    "R_386_RELATIVE"
+  else if m = r_386_gotoff then
+    "R_386_GOTOFF"
+  else if m = r_386_gotpc then
+    "R_386_GOTPC"
+  else if m = r_386_tls_tpoff then
+    "R_386_TLS_TPOFF"
+  else if m = r_386_tls_dtpmod32 then
+    "R_386_TLS_DTPMOD32"
+  else if m = r_386_tls_dtpoff32 then
+    "R_386_TLS_DTPOFF32"
+  else if m = r_386_irelative then
+    "R_386_IRELATIVE"
+  else
+    "Invalid x86 relocation"
