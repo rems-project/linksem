@@ -77,6 +77,10 @@ wc: $(BASENAME).tex $(filter $(wildcard *.tex),$(basename_included_files))
 		eps2eps "$${tmpfile}" "$$target"; \
 	done
 
+
+install: pldi-elf-linking-2016.pdf
+	cp pldi-elf-linking-2016.pdf ~/public_html/Stuff
+
 # TODO: can replace with rule like the one for page%.epsi?
 %-page1.ps %-page2.ps: %.ps
 	gs -sDEVICE=psrgb -sOutputFile="$*-page%d.ps" -dNOPAUSE -dBATCH "$<"
