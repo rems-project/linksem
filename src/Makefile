@@ -78,6 +78,13 @@ LEM_ABI_SRC := abis/abi_classes.lem memory_image.lem memory_image_orderings.lem 
 	abis/amd64/abi_amd64_section_header_table.lem \
 	abis/amd64/abi_amd64_symbol_table.lem \
 	abis/amd64/abi_amd64.lem \
+	abis/mips64/abi_mips64_elf_header.lem \
+	abis/mips64/abi_mips64_serialisation.lem \
+	abis/mips64/abi_mips64_relocation.lem \
+	abis/mips64/abi_mips64_program_header_table.lem \
+	abis/mips64/abi_mips64_section_header_table.lem \
+	abis/mips64/abi_mips64_symbol_table.lem \
+	abis/mips64/abi_mips64.lem \
 	abis/x86/abi_x86_relocation.lem \
 	abis/power64/abi_power64_relocation.lem \
 	abis/abis.lem \
@@ -170,7 +177,7 @@ main_elf main_link main_elf.opt main_link.opt scratch: OCAMLFLAGS += -I $(BATTER
 -I $(UINT) \
 $(OCAML_LEM_INCLUDES) \
 -I adaptors \
--I abis -I abis/amd64 -I abis/power64 -I abis/aarch64 -I abis/x86 -I gnu_extensions \
+-I abis -I abis/amd64 -I abis/power64 -I abis/aarch64 -I abis/x86 -I abis/mips64 -I gnu_extensions \
 -g
 
 main_elf main_link main_elf.opt main_link.opt scratch scratch.opt: OCAMLFIND_PACKAGES := #-package batteries -package uint
