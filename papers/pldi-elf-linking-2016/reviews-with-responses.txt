@@ -1,27 +1,56 @@
-important:
+We thank the reviewers for their helpful comments.  We first note that the
+reviewers collectively ask for three things that we feel each in their own right
+would be another (very interesting, non-trivial) paper:
 
-- have/will release model
+  1. Using the model to prove interesting theorems about the linking process,
+  2. Using "lesson learnt" from the specification process to talk sensibly about
+     how linking could be cleaned up, or made less ad-hoc,
+  3. Extending existing verified compilers such as CompCert to handle linking.
 
-- call for "clean" spec / simple "essence" is missing the point
-    -- can't just "fix the linker"
+We feel that the fact that we can even start talking sensibly about beginning
+work of this scope is itself a contribution of our paper, and this is what we
+meant when we wrote of "bringing linking into the formal discourse" and
+"enabling" other research.  Further, we note that there's only so much work that
+one can sensibly do within the confines of a single PLDI paper.
 
-- proving "interesting" theorems is beyond one paper's worth of work
+We address some important points:
 
-- summarising *is* a contribution (both to compiler people and PL
-researchers... witness idealisations/misunderstandings by both groups)
+  * We submitted the formal ELF model and its Isabelle/HOL extraction (anonymised)
+    with our paper as additional material.  We will of course make this model
+    freely available by making the Mercurial repository public before publication.
 
-- "We already knew that linking is messy." did we? at least, not why
-exactly -- see past theoretical work
+  * Calls for the creation of a "clean" specification, or the identification of
+    the "essence" of linking are missing the point of our paper, namely that there
+    is no clear "essence" of linking, and it's impossible to just fix the linker
+    as current exhibited behaviour is essentially a contract between hundreds of
+    disparate compilers and other tools that now rely on this behaviour in order
+    to work correctly.  Indeed, we wish to point out that if any new linker were
+    to be written today (by e.g. LLVM) they would also implement all current
+    features of existing ELF linkers like Gold and BFD in their entirety, warts
+    and all, in order to be useful.  So must we for our intended purposes.
 
-- termination proofs are done for linking functions too
+  * We believe that summarising the many roles and pitfalls associated with linking
+    is a contribution worthy of publication.  Indeed, looking at previous formal
+    treatments of linking, where the focus has been on modularisation and
+    separate compilation to the exclusion of anything else, it's clear that
+    there's a sizable group of people who are *not* aware of the full generality
+    or complexity of the linking process. Claims that we "already knew that
+    linking was messy" may be true for expert reviewers but are certainly not
+    universally true within the PL, compiler, and wider theory communities.
 
-- "hello, world" does exercise feature e.g. aliasing
-    + reason for avoiding glibc is not about nondeterminism
+  * Isabelle/HOL termination proofs are done for linking functions too.
 
-- proof is only *one* point of formalisation
+  * The "hello world!" program exercises many functions of linking, e.g. aliasing.
+    We wish to point out that though "hello world!" is arguably the simplest C
+    non-trivial program, linking it is not necessarily the simplest link job.
+    Further, we wish to stress that our avoiding glibc is not related to non-
+    determinism, but rather problems with handling of IRELATIVE.  Further, our
+    linker has been validated against both Gold and BFD, not just BFD alone.
 
-- not only BFD
-
+  * Proof is only one point of formalisation.  Another is communication at a
+    level of abstraction above C implementations.  Another is enabling of further
+    research (also not necessarily formal proof), as mentioned at the start of
+    this reply.
 
 > 
 > Review #3A		X	C
