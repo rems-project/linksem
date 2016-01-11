@@ -1,13 +1,13 @@
 We thank the reviewers for their helpful comments.  We first note that the
-reviewers collectively ask for three things that we feel each in their own right
-would be another (very interesting, non-trivial) paper:
+reviewers collectively ask for three things.
 
   1. Using the model to prove interesting theorems about the linking process,
   2. Using "lesson learnt" from the specification process to talk sensibly about
      how linking could be cleaned up, or made less ad-hoc,
   3. Extending existing verified compilers such as CompCert to handle linking.
 
-We feel that the fact that we can even start talking sensibly about beginning
+We feel each in their own right would be another (very interesting, non-trivial) paper:
+Meanwhile, the fact that we can even start talking sensibly about beginning
 work of this scope is itself a contribution of our paper, and this is what we
 meant when we wrote of "bringing linking into the formal discourse" and
 "enabling" other research.  Further, we note that there's only so much work that
@@ -593,12 +593,35 @@ effectively in the confines of a single PLDI paper.
 > level" code like OSs might need it, but I wouldn't call this a large
 > fraction of all codebases.
 
-(Stephen can respond)
+It is true that few codebases use non-default linker scripts. However, the other
+linker features mentioned in section 3 are much more commonly used. The "large
+fraction" of codebases includes most libraries, which have to grapple with
+symbol visibility (viz. Drepper's guide for library authors). Many libraries
+also deal with versioning. Additionally, it is fairly for large application
+codebases to ship with wrapper scripts that play tricks with LD_PRELOAD. Any C++
+codebase is dependent on link-time uniqueness handling. Use of weak references
+is relativey common even in ordinary "user" code that uses threads. Code
+featuring plug-in systems uses the dynamic linking API (dlopen() etc.). 
 
 > P. 1: Likewise, you say linker speak is used haphazardly and often
 > incorrectly -- what's your basis for this claim?
 
-(Stephen can respond)
+In the text, "haphazardly" refers to the *specification* of linker-speak, not
+its usage. We do say that linker-speak is often used "incorrectly or... in
+unportable or fragile ways". Section 3 already contains several anecdotes to
+this effect: we note how substitution via LD_PRELOAD is inherently unsound; how
+link-time interposition (with --wrap) fails to capture all references; how an
+often-recommended option (-fvisibility=hidden) breaks the source semantics of 
+C++. A further example is that clients of dlsym() are generally not robust to
+symbol versioning (for which the only robust interface, dlvsym(), is
+non-portable). Finally, in section (XX: was this edited out for length?) we
+noted misunderstandings of linker features among compiler implementers in the
+GHC and OCaml projects. 
+
+(Our point is largely that linker-speak is difficult to use robustly; not that
+the absolute frequency of erroneous usage is high relative to other programming
+practices.)
+
 
 > P. 1: The code example with "alias" annotations is interesting
 > motivation, showing how linker speak bubbles into the main
@@ -626,7 +649,9 @@ DPM TODO
 > memory ranges. Footnote 6 was also confusing: -IX options might be
 > linked symbolically? What does it mean to link an option?
 
-(Stephen can respond)
+The point here is that "options" of the form "-lX" actually denote libraries
+(e.g. -lc is mapped to /usr/lib/libc.a or similar). It is unfortunate that the
+typeface makes 'l' appear like 'I'.
 
 > P. 9 "Our formalisation defines the linker script language's abstract
 > syntax in Lem." What does this mean? Do you mean that you hand
