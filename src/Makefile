@@ -80,7 +80,6 @@ LEM_ABI_SRC := abis/abi_classes.lem memory_image.lem memory_image_orderings.lem 
 	abis/amd64/abi_amd64.lem \
 	abis/mips64/abi_mips64_elf_header.lem \
 	abis/mips64/abi_mips64_serialisation.lem \
-	abis/mips64/abi_mips64_relocation.lem \
 	abis/mips64/abi_mips64_program_header_table.lem \
 	abis/mips64/abi_mips64_section_header_table.lem \
 	abis/mips64/abi_mips64_symbol_table.lem \
@@ -89,6 +88,8 @@ LEM_ABI_SRC := abis/abi_classes.lem memory_image.lem memory_image_orderings.lem 
 	abis/power64/abi_power64_relocation.lem \
 	abis/abis.lem \
 	gnu_extensions/gnu_ext_abi.lem
+
+#	abis/mips64/abi_mips64_relocation.lem \
 	
 LEM_GNU_SRC := gnu_extensions/gnu_ext_types_native_uint.lem \
 	gnu_extensions/gnu_ext_section_header_table.lem \

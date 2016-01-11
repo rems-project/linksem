@@ -179,8 +179,8 @@ let obtain_abi_specific_string_of_reloc_type mach =
     string_of_aarch64_relocation_type
   else if mach = elf_ma_x86_64 then
     string_of_amd64_relocation_type
-  else if mach = elf_ma_mips then
-    string_of_mips64_relocation_type
+  (*else if mach = elf_ma_mips then
+    string_of_mips64_relocation_type*)
   else
     const "Cannot deduce ABI"
     

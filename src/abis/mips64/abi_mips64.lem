@@ -22,7 +22,7 @@ open import Memory_image
 (* open import Elf_memory_image *)
 
 open import Abi_classes
-open import Abi_mips64_relocation
+(*open import Abi_mips64_relocation*)
 open import Abi_mips64_elf_header
 
 (** [abi_mips64_compute_program_entry_point segs entry] computes the program
