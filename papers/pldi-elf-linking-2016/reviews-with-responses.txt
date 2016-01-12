@@ -38,9 +38,13 @@ We address some important points:
     linking was messy" may be true for expert reviewers but are certainly not
     universally true within the PL, compiler, and wider theory communities.
 
-  * Isabelle/HOL termination proofs are done for linking functions too.  Perhaps
-    surprisingly many of the top-level functions that perform the link itself
-    are not recursive and need no termination proofs at all (see link.lem).
+  * Since submission all functions involved in the linker are now proved
+    terminating.  At the time of submission one very large recursive function
+    was causing problems (assign_inputs_to_outputs in linker_script.lem) due
+    to a bug we reported on the Isabelle mailing list.  Since submission this
+    function has been rewritten by hand to avoid the exception that Isabelle was
+    throwing and proved terminating.  Now *all* recursive functions in the ELF
+    and linker formalisation are terminating.
 
   * The "hello world!" program exercises many functions of linking, e.g. aliasing.
     We wish to point out that though "hello world!" is arguably the simplest C
@@ -154,17 +158,22 @@ repeat: lots more work to make this happen
 > or the termination of linking as in "ld"? The latter would be a
 > somewhat more interesting result.
 
-They are both.  We prove both the termination of functions related to the "readelf"-
-like tool and to functions related to our linker.  Note, as mentioned at the
-start of this rebuttal, the majority of the complex functions that actually do
-the linking process (in link.lem and Link.thy) are *not* recursive and therefore
-are terminating by fiat.
+They are both, and we will rewrite this text to make this clear.  We prove both
+the termination of functions related to the "readelf"-like tool and to functions
+related to our linker.  Note, that a lot of the complex functions that actually
+do the linking process (in link.lem and Link.thy, and similar) are not recursive and
+therefore are terminating by fiat.
 
-Note, however, that in Link.thy one large (non-recursive) function is currently
-commented out in the Isabelle/HOL extraction.  For some reason, this definition
-causes Isabelle to issue an exception from somewhere deep within its definition
-package, a bug.  This was reported to the Isabelle mailing list in late 2015 and
-we are still waiting on a fix.
+We should point out, however, that in Linker_script.thy submitted with this paper
+one large recursive function is commented out in the Isabelle/HOL extraction, along
+with several other non-recursive functions that depend upon this.  For some reason,
+this definition causes Isabelle to issue an exception from somewhere deep within
+its definition package, a bug.  This was reported to the Isabelle mailing list in
+late 2015 and we are still waiting on a fix.  In the meantime, after submission,
+this function was rewritten by hand into a form that Isabelle will accept, and
+proved terminating, along with all functions that depend upon it.  As a result,
+all recursive functions, whether part of the ELF model or the linker itself, are
+now terminating in our local copy of the model.
 
 > The clearest example I understood from the paper about the behavior of
 > the linker breaking what should be C language guarantees is the
@@ -423,13 +432,20 @@ the definitions are like this.
 > big enough for any attempt at proving things via a proof assistant
 > being painful. Any remarks on that?
 
-The termination proofs in Isabelle/HOL were not especially onerous.  Their size
+The termination proofs in Isabelle/HOL were not especially onerous (modulo working
+around bugs in Isabelle itself, as mentioned above).  Their size
 is more a reflection of the size of the formalisation itself, which is quite large,
 consisting of a large number of separate definitions and functions that all must
 be proved to be terminating.  Note also that, as mentioned above, a lot of the
 complex functions that actually perform the link (in link.lem) are not recursive,
 and make use of higher-order functions like folds and filters, and therefore are
 terminating by fiat.
+
+The reviewer is correct in saying that proving anything non-trivial using this
+formalisation will be a significant amount of work (hence our comments at the
+start of the rebuttal), though given recent large formalisation projects (e.g.
+CompCert, seL4, CerCo, and so on) this is perhaps to be expected for any new
+formalisation project.
 
 > 2. What kinds of bugs did the extraction/proving in Isabelle/HOL find?
 > Why weren't they captured by testing? Were they different in nature?
@@ -458,8 +474,10 @@ prevents us from completing proofs of termination for recursive, monadic functio
 (A tentative fix by the HOL4 team was pushed but then reverted).  A Coq extraction
 is only planned at this stage, and is not yet anything concrete.  Note too that,
 as mentioned above, currently one very large definition in the Link.thy file is
-commented out for the Isabelle extraction as uncommenting it causes Isabelle to
-throw an exception from within its definition package
+commented out for the Isabelle extraction in the code that we submitted as
+additional material with the papers.  Locally, we have now fixed this problem by
+rewriting the function in question by hand and provided a termination proof, since
+submission.
 
 > 4. (Possibly related to the previous remark.) How easy is it for a
 > "verified" linker like the one proposed to be interfaced with a
@@ -615,7 +633,7 @@ It is true that few codebases use non-default linker scripts. However, the other
 linker features mentioned in section 3 are much more commonly used. The "large
 fraction" of codebases includes most libraries, which have to grapple with
 symbol visibility (viz. Drepper's guide for library authors). Many libraries
-also deal with versioning. Additionally, it is fairly for large application
+also deal with versioning. Additionally, it is fairly common for large application
 codebases to ship with wrapper scripts that play tricks with LD_PRELOAD. Any C++
 codebase is dependent on link-time uniqueness handling. Use of weak references
 is relativey common even in ordinary "user" code that uses threads. Code
@@ -661,7 +679,17 @@ lots of aliases in hello world! (in the libc)
 > equivalents whose output is diffed -- is this what you mean by
 > "testing?"
 
-DPM TODO
+We parsed binaries using an OCaml version of our Lem model, extracted by Lem
+itself, and wrote a tool around this code to mimic the output of readelf when
+passed flags like --section-headers, --file-header, --relocs, and so on, using
+information extracted from the parsed binaries by the Lem model.  We then mimicked
+the formatting and output of readelf's output and compared the output on ~7000
+binaries automatically using a script and a diff tool.
+
+We also separately used hexdump to compare the byte-for-byte output of our code
+when a binary was read in and then blitted back out, again using diff, to ensure
+that our parsing and blitting code was correct.
+
 > 
 > P. 8: I didn't follow the paragraph at the end of 5.1 on symbolic
 > memory ranges. Footnote 6 was also confusing: -IX options might be
@@ -790,16 +818,15 @@ certainly
 >    paid to different OS linker differences, esp. ELF vs. Microsoft
 >    with PE.
 
-We are careful not to proclaim ELF as *the* standard.  Rather, we claim that
-ELF is the de facto standard executable and linkable format on Linux and related
-operating systems (which it is).  Further, we acknowledge that Windows and
-MacOS each have their own executable and linkable formats in PE and Mach-O that
-whilst incompatible either have similar features to ELF or are subsumed by ELF's.
+We are careful not to proclaim ELF as *the* standard in Section 2.  Rather, we
+claim that ELF is the de facto standard executable and linkable format on GNU/Linux
+and BSD and related operating systems (which it is).  Further, we acknowledge
+that Windows and MacOS each have their own executable and linkable formats in
+PE and Mach-O that whilst incompatible either have broadly similar features to
+ELF.
 
 Certainly, we can envisage that similar work specifying PE, a.out, Mach-O, etc.
 linking is possible in analogy with this work.
-
-DPM TODO: add reference to paper here...
 
 >  - I wrote "Meh" next to bullet point one for contributions.  I find
 >    this sort of contribution underwhelming. It's great for a blog; why
