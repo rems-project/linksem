@@ -11,7 +11,7 @@ Meanwhile, the fact that we can even start talking sensibly about beginning
 work of this scope is itself a contribution of our paper, and this is what we
 meant when we wrote of "bringing linking into the formal discourse" and
 "enabling" other research.  Further, we note that there's only so much work that
-one can sensibly do within the confines of a single PLDI paper.
+one can do within the confines of a single PLDI paper.
 
 We address some important points:
 
@@ -41,7 +41,7 @@ We address some important points:
   * Since submission all functions involved in the linker are now proved
     terminating.  At the time of submission one very large recursive function
     was causing problems (assign_inputs_to_outputs in linker_script.lem) due
-    to a bug we reported on the Isabelle mailing list.  Since submission this
+    to a bug in Isabelle that we reported to the developers.  Since submission this
     function has been rewritten by hand to avoid the exception that Isabelle was
     throwing and proved terminating.  Now *all* recursive functions in the ELF
     and linker formalisation are terminating.
@@ -168,7 +168,7 @@ We should point out, however, that in Linker_script.thy submitted with this pape
 one large recursive function is commented out in the Isabelle/HOL extraction, along
 with several other non-recursive functions that depend upon this.  For some reason,
 this definition causes Isabelle to issue an exception from somewhere deep within
-its definition package, a bug.  This was reported to the Isabelle mailing list in
+its definition package: a bug.  This was reported to the Isabelle mailing list in
 late 2015 and we are still waiting on a fix.  In the meantime, after submission,
 this function was rewritten by hand into a form that Isabelle will accept, and
 proved terminating, along with all functions that depend upon it.  As a result,
@@ -202,7 +202,8 @@ experimented with proof using the model, including an incorrect byte
 ordering in the parsing function for 8 word wide types like elf64_xword that caused
 roundtripping of parsing and then blitting of values of this type to fail.  This
 would eventually have been identified by validation, especially our validation
-of the rountripping property using hexdump.
+of the rountripping property using hexdump, but was in fact identified within
+Isabelle itself.
 
 Some bugs that would not have been identified by validation include certain
 functions that did not terminate on all inputs, in the linker and in the ELF
@@ -360,8 +361,9 @@ does not appear to have been updated recently.
 
 The ELF model was updated to accommodate these features as they were found during
 validation.  Note, we therefore do not claim that our model is comprehensive ---
-validating against e.g. MIPS binaries may reveal yet more sources of incompleteness
-that will need to be added to the formal model on as-needed basis.
+validating against e.g. MIPS binaries, or even PowerPC binaries produced by an
+obscure compiler, may reveal yet more sources of incompleteness that will need to
+be added to the formal model on as-needed basis.
 
 Note, there were other cases where the ELF specification is not clear or ambiguous.
 One particular (but boring) example was a series of PowerPC64 binaries that
@@ -476,49 +478,15 @@ and make use of higher-order functions like folds and filters, and therefore are
 terminating by fiat.
 
 The reviewer is correct in saying that proving anything non-trivial using this
-formalisation will be a significant amount of work (hence our comments at the
-start of the rebuttal), though given recent large formalisation projects (e.g.
+formalisation will be a significant amount of work, hence our comments at the
+start of the rebuttal, though given recent large formalisation projects (e.g.
 CompCert, seL4, CerCo, and so on) this is perhaps to be expected for any new
 formalisation project.
 
 > 2. What kinds of bugs did the extraction/proving in Isabelle/HOL find?
 > Why weren't they captured by testing? Were they different in nature?
 
-First, I should clarify that Isabelle proofs and validation have been carried
-out concurrently, and it is not the case that work in Isabelle started only after
-validation was complete.  As a result, several very basic errors were in fact
-highlighted not by validation, but by preliminary work in Isabelle where we
-experimented with proof using the model, including an incorrect byte
-ordering in the parsing function for 8 word wide types like elf64_xword that caused
-roundtripping of parsing and then blitting of values of this type to fail.  This
-would eventually have been identified by validation, especially our validation
-of the rountripping property using hexdump.
-
-Some bugs that would not have been identified by validation include certain
-functions that did not terminate on all inputs, in the linker and in the ELF
-model, for example parsing functions relating to symbol versioning were originally
-not provably terminating on all inputs due to a silly error and this was only
-brought to light when we attempted to prove them so.  Bugs of this sort
-would only have been uncovered by validation if extremely lucky
-(and having a failing termination proof makes tracking down the cause of non-
-termination much easier than just observing a non-terminating program).
-
-Another recent bug in the specification uncovered by working with the model in
-Isabelle was a lack of padding in NOTE sections to align certain fields up to a
-64- or 32-bit boundary.  This was not uncovered during validation as the actual
-contents of NOTE sections were never systematically decoded during validation
-(readelf does not do this for --program-headers and --section-headers).
-
-Note also that bugs in ABI handling were uncovered by us using our model with
-external tools (i.e. ppcmem2).  Correct interpretation of the program entry point
-was only identified by trying to use our ELF code to read in ARM and PowerPC
-binaries and noting incorrect calculation of the program entry point on ARM vs.
-PowerPC.
-
-In short: Isabelle extraction was used relatively early and new versions of the
-model have continuously been extracted to Isabelle, proofs and definitions updated,
-and so on, and has played a role in validation of even basic definitions itself,
-as has trying to use our ELF model with other tools as a library.
+We have answered an identical question above.
 
 > 3. Why are the proofs also done in Coq/HOL4? Isn't one proof assistant
 > enough? Is this related to integration with CakeML or other formalized
@@ -540,12 +508,7 @@ HOL4 extraction consists of definitions only, as our model unearthed a fairly
 serious bug in the termination mechanism of HOL4 that is yet to be fixed but
 prevents us from completing proofs of termination for recursive, monadic functions.
 (A tentative fix by the HOL4 team was pushed but then reverted).  A Coq extraction
-is only planned at this stage, and is not yet anything concrete.  Note too that,
-as mentioned above, currently one very large definition in the Link.thy file is
-commented out for the Isabelle extraction in the code that we submitted as
-additional material with the papers.  Locally, we have now fixed this problem by
-rewriting the function in question by hand and provided a termination proof, since
-submission.
+is only planned at this stage, and is not yet anything concrete.
 
 > 4. (Possibly related to the previous remark.) How easy is it for a
 > "verified" linker like the one proposed to be interfaced with a
@@ -557,8 +520,8 @@ submission.
 This is another paper's worth of work (at least!) and at the moment we have no
 true idea of how hard this work would be (perhaps another PLDI paper? certainly
 not trivial).  Note that we have explicitly listed this---the extension of
-existing verified compilers like CompCert and CakeML, and is certainly something
-that we are interested in.
+existing verified compilers like CompCert and CakeML---as possible further work
+and is certainly something that we are interested in.
 
 > 5. Although the text is good, the reader is left with few technical
 > insights as to how to write such a model (apart from reading the
@@ -680,7 +643,7 @@ Further, proving anything remotely interesting about a model of this scale is
 another substantial paper's worth of work, at least.  We of course plan in the
 near future to start proving things using our model, and mention many ideas along
 these lines in our "future work" section, but there's limits in what can be done
-effectively in the confines of a single PLDI paper.
+effectively within the confines of a single PLDI paper.
 
 > In short, this is impressive work that will surely be useful. But I
 > don't see much value in this particular paper about it, just yet.
