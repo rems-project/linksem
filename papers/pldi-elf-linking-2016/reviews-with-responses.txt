@@ -1,62 +1,108 @@
 We thank the reviewers for their helpful comments.  We first note that the
 reviewers collectively ask for three things:
 
-  1. Using the model to prove interesting theorems about the linking process,
-  2. Using "lesson learnt" from the specification process to talk sensibly about
-     how linking could be cleaned up, or made less ad-hoc,
-  3. Extending existing verified compilers such as CompCert to handle linking.
+  1. Using the model to prove interesting theorems about the linking
+  process (A, D); 
+  2. Using "lessons learnt" from the specification process to
+  investigate how linking could be made less ad-hoc (B, D, E); and
+  3. Extending existing verified compilers such as CompCert to handle
+  linking (C).
 
-We feel each in their own right would be another (very interesting, non-trivial) paper.
-Meanwhile, the fact that we can even start talking sensibly about beginning
-work of this scope is itself a contribution of our paper, and this is what we
-meant when we wrote of "bringing linking into the formal discourse" and
-"enabling" other research.  Further, we note that there's only so much work that
-one can do within the confines of a single PLDI paper.
+Each of these would be another (very interesting, multi-person-year)
+project in its own right, and trying to combine any of them with the
+current work would take it beyond what can reasonably be explained in
+a single PLDI paper.  The fact that one can start seriously
+contemplating such work is itself a contribution of our current paper,
+and this is exactly what we meant when we wrote of "bringing linking
+into the formal discourse".
 
-We address some important points:
 
-  * We submitted the formal ELF model and its Isabelle/HOL extraction (anonymised)
-    with our paper as additional material.  We will of course make this model
-    freely available by making the Mercurial repository public before publication.
+To address some other important points:
 
-  * Calls for the creation of a "clean" specification, or the identification of
-    the "essence" of linking are missing the point of our paper, namely that there
-    is no clear "essence" of linking, and it's impossible to just fix the linker
-    as current exhibited behaviour is essentially a contract between hundreds of
-    disparate compilers and other tools that now rely on this behaviour in order
-    to work correctly.  Indeed, we wish to point out that if any new linker were
-    to be written today (by e.g. LLVM) they would also implement all current
-    features of existing ELF linkers like Gold and BFD in their entirety, warts
-    and all, in order to be useful.  So must we for our intended purposes.
+  * For E: our formal model is included as supplementary material, and
+    we intend to make it available under an open-source licence before
+    publication.
 
-  * We believe that summarising the many roles and pitfalls associated with linking
-    is a contribution worthy of publication.  Indeed, looking at previous formal
-    treatments of linking, where the focus has been on modularisation and
-    separate compilation to the exclusion of anything else, it's clear that
-    there's a sizable group of people who are *not* aware of the full generality
-    or complexity of the linking process. Claims that we "already knew that
-    linking was messy" may be true for expert reviewers but are certainly not
-    universally true within the PL, compiler, and wider theory communities.
+  * Reviewers B and D expected to see the "essence" of linking.  While
+    (we agree) it would be great if such a thing did exist, a clear
+    conclusion from our work is that it does not; instead, there are
+    many important use-cases for different aspects of linker-speak,
+    which are supported by many more-or-less ad hoc mechanisms.  The
+    behaviour of current linkers is essentially a contract between
+    hundreds of disparate compilers and other tools, that now rely on
+    this behaviour in order to work correctly, so it cannot simply be
+    "fixed" in isolation.  Instead, we have to understand all those
+    use-cases and mechanisms in depth before going forwards.
 
-  * Since submission all functions involved in the linker are now proved
-    terminating.  At the time of submission one very large recursive function
-    was causing problems (assign_inputs_to_outputs in linker_script.lem) due
-    to a bug in Isabelle that we reported to the developers.  Since submission this
-    function has been rewritten by hand to avoid the exception that Isabelle was
-    throwing and proved terminating.  Now *all* recursive functions in the ELF
-    and linker formalisation are terminating.
+    D writes "At the end of the paper, I had basically learned that
+    linking is an arcane activity perhaps in need of a re-think. I did
+    not have any larger insight than I did when I started."  As is
+    often the case, the devil is in the details.  If one wants to
+    pursue this ((2) above), our work provides a concise and precise
+    characterisation of many of the details that will have to be
+    addressed.
 
-  * The "hello world!" program exercises many functions of linking, e.g. aliasing.
-    We wish to point out that though "hello world!" is arguably the simplest C
-    non-trivial program, linking it is not necessarily the simplest link job.
+  * For A: *all* recursive functions, both in the ELF and linker
+    formalisation, have been proved terminating.  This already
+    establishes the basic usability of the model for proof.
+
+  * For A: while "hello world" is close to the simplest C
+    program, linking it exercises many aspects of linking. 
+
+  * Reviewers A and D suggest that the sole point of a formalisation
+    is to support proof, and question the relationship between a model
+    and an implementation in a restrictive language.  What we have is
+    a "model" in several important ways: (a) it is mathematically
+    precise, (b) it is written with clarity as the prime goal, and (c)
+    it explicitly addresses the various forms of loose specification
+    involved here rather than fixing on some implementation choice.
+    Supporting proof is only one possible goal among many of a
+    formalisation: we are equally concerned with providing a clear
+    specification, supporting discussion at a level of abstraction
+    above C implementations, and providing a test oracle.
+
+ 
+
+
+---------------- BITS --------------------
+
+Proof is only one point of formalisation.  Another is communication at a
+    level of abstraction above C implementations.  Another is enabling of further
+    research (also not necessarily formal proof), as mentioned at the start of
+    this reply.
+
+
+
     Further, we wish to stress that our avoiding glibc is not related to non-
     determinism, but rather problems with handling of IRELATIVE.  Further, our
     linker has been validated against both Gold and BFD, not just BFD alone.
 
-  * Proof is only one point of formalisation.  Another is communication at a
-    level of abstraction above C implementations.  Another is enabling of further
-    research (also not necessarily formal proof), as mentioned at the start of
-    this reply.
+
+
+    "we already knew that linking was messy" may be true for some expert
+    reviewers, but looking at previous formal treatments of linking,
+    where the focus has been on modularisation and separate
+    compilation to the exclusion of anything else, it's clear that
+    there's a sizable group of people who are *not* aware of the full
+    generality or complexity of the linking process. Claims that we
+    but are certainly not universally true within the PL, compiler,
+    and wider theory communities.
+
+
+
+    (At the time of submission one very large recursive function was
+    problematic due to a bug we reported on the Isabelle mailing list;
+    it has since been rewritten to avoid that Isabelle problem.)
+
+    Since submission all functions involved in the linker are now proved
+    terminating.  At the time of submission one very large recursive function
+    was causing problems (assign_inputs_to_outputs in linker_script.lem) due
+    to a bug in Isabelle that we reported to the developers.  Since submission this
+    function has been rewritten by hand to avoid the exception that Isabelle was
+    throwing and proved terminating.  
+
+------------------------------------------
+
 
 > 
 > Review #3A		X	C
