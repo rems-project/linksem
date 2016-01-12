@@ -320,7 +320,9 @@ as has trying to use our ELF model with other tools as a library.
 > archives that are read later, so libraries come after program object
 > files and lower-level libraries come after higher-level ones.
 
-(yes, my bad)
+Yes, good catch... this should say "archives can only be referenced by objects
+appearing to their left". (Note that archives themselves can potentially
+reference to the left *or* right.)
 
 > It's confusing that some parts of the paper seem to use "object" to
 > mean a piece of data in memory, whereas elsewhere it seems to be used
@@ -580,7 +582,14 @@ and is certainly something that we are interested in.
 > writing the ELF specification? Did the authors need any clever hacks
 > or principled programming to manage the specs of ELF and linking?
 
-(Stephen can write something... maybe not crucial though)
+We certainly ran into difficulties with the Lem language; our specification was
+the biggest Lem codebase yet, by some distance, and revealed several problems.
+For example, abstracting over 32- and 64-bit ELF details is not possible in Lem,
+so much code is duplicated and we effectively use the 64-bit definitions as our
+"internal representation" in many places. Limitations of Lem typeclasses and
+lack of support for cyclic references were also problems, necessitating
+hackarounds; we could easily add a brief discussion of these. Similarly, we
+could add more snippets of the "guts" of the spec, although space is lacking.
 
 > 6. The paper is not about modules at the level of the source at all;
 > it is about object code and its linking in a specific setting: ELF
@@ -589,9 +598,10 @@ and is certainly something that we are interested in.
 > complementary to it. Is this the case? Can this work be combined with
 > any of the related work?
 
-potentially yes, but each is a whole other piece of work (spec mapping
-source languages to linker abstractions, say; we say something about this
-in section XX)
+Certainly, formally specifying how source language implementations map down to
+linker-speak is worthwhile, as we noted in section 7. Doing so would be a
+complementary but separate (and large) piece of work, and would necessarily be
+specific to specific language implementations and/or ABIs.
 
 mention Kayvan's work (+ others' similar)?
 
@@ -708,13 +718,17 @@ effectively within the confines of a single PLDI paper.
 
 It is true that few codebases use non-default linker scripts. However, the other
 linker features mentioned in section 3 are much more commonly used. The "large
-fraction" of codebases includes most libraries, which have to grapple with
-symbol visibility (viz. Drepper's guide for library authors). Many libraries
-also deal with versioning. Additionally, it is fairly common for large application
-codebases to ship with wrapper scripts that play tricks with LD_PRELOAD. Any C++
-codebase is dependent on link-time uniqueness handling. Use of weak references
-is relativey common even in ordinary "user" code that uses threads. Code
-featuring plug-in systems uses the dynamic linking API (dlopen() etc.). 
+fraction" of codebases certainly includes most large libraries, which have to
+grapple with symbol visibility (viz. Drepper's guide for library authors) and
+often also with versioning. Besides libraries, it is not uncommon for large
+application codebases to ship with wrapper scripts that play tricks with
+LD_PRELOAD or LD_LIBRARY_PATH (e.g. Adobe Reader or Google Chrome both do thiss,
+off the top of our heads). Furthermore, any C++ codebase is dependent on
+link-time uniqueness handling. User-level pthreads applications fairly often
+make use of weak references. Code featuring plug-in systems uses the dynamic
+linking API (dlopen() etc.). And so on. Although no one feature is common,
+almost no large library, and few large applications, get away without using any
+of these features.
 
 > P. 1: Likewise, you say linker speak is used haphazardly and often
 > incorrectly -- what's your basis for this claim?
@@ -727,14 +741,9 @@ link-time interposition (with --wrap) fails to capture all references; how an
 often-recommended option (-fvisibility=hidden) breaks the source semantics of 
 C++. A further example is that clients of dlsym() are generally not robust to
 symbol versioning (for which the only robust interface, dlvsym(), is
-non-portable). Finally, in section (XX: was this edited out for length?) we
-noted misunderstandings of linker features among compiler implementers in the
-GHC and OCaml projects. 
-
-(Our point is largely that linker-speak is difficult to use robustly; not that
-the absolute frequency of erroneous usage is high relative to other programming
-practices.)
-
+non-portable). Our point is not that the absolute frequency of erroneous usage
+is high relative to other programming practices, but that linker-speak is very
+difficult to use robustly, hence worthy of machine-assisted reasoning about.
 
 > P. 1: The code example with "alias" annotations is interesting
 > motivation, showing how linker speak bubbles into the main
@@ -742,7 +751,11 @@ practices.)
 > your formal model; you instead focus on hello world. It would have
 > been nice to close the loop on this.
 
-lots of aliases in hello world! (in the libc)
+Linking a hello-world program involves *all* the C library code that we show in
+section 3 (or close equivalents). For example, many linker aliases (coming from
+libc) are processed when linking hello-world. We choose hello-world precisely
+because although it is a small/simple program, linking it is *not* at all a
+simple link job.
 
 > P. 2: I'm surprised that you have not cited Levine's "Linkers and
 > Loaders" book as a careful reference.
@@ -782,7 +795,7 @@ typeface makes 'l' appear like 'I'.
 > representation in the Lem model? Or, do you have a parser, and that
 > this is what it produced, in Lem syntax, for the default script?
 
-(the former)
+The former: for now, we hand-translate the script into our own representation.
 
 > P. 11: There's some grammatical issue in the sentence 'This makes a
 > linker's in "programming the large" comparable ...'
@@ -913,10 +926,12 @@ linking is possible in analogy with this work.
 >    it's a contribution of the discussion, but not really a
 >    contribution to science.
 
-(can't really agree; useful to argue? probably not)
-
-Many compiler people *don't* understand linkers: see section XX
-(GHC/OCaml).
+On the contrary, we believe that our conception of linking in terms of
+"linker-speak" is novel, and particularly valuable since it is *not* currently
+shared by compiler authors. We have anecdotal evidence that even many compiler
+developers have only a weak understanding of linking -- particularly in research
+communities. (Although we removed them for brevity and anonymity reasons, we can
+point to reported bugs in both the OCaml and GHC which illustrate this.)
 
 >  - 5.1 contrasts deterministic with non-deterministic.  However, I
 >    think you mean implementation-specific (the word looseness also
@@ -925,11 +940,17 @@ Many compiler people *don't* understand linkers: see section XX
 >    words, I would prefer not using the word non-deterministic; it
 >    seems to be the wrong word.
 
-Linkers are allowed to coin-flip (even though doing so would be perverse)
+In fact, a linker *would* be allowed to resolve looseness randomly, and this is
+not even a completely silly idea. For example, a hypothetical security-hardening
+linker might randomise the order of certain input objects in the link, to make
+address assignments less predictable. Our specification allows us uniformly to
+say what variation is and isn't allowed, whether between different linkers or
+between runs of the same linker.
 
 >  - S5.2 first says 891 objects, then 897 objects. I was confused.
 
-891 in archives, 897 overall
+This is correct; there are 891 objects in archives, and 6 named directly on the
+command line shown, giving 897 in total.
 
 >  - Intro: "Previous semantic work on linking..." you should have a
 >    citation to which previous work you are referring.
