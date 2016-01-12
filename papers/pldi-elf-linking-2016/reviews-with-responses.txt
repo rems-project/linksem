@@ -1,12 +1,12 @@
 We thank the reviewers for their helpful comments.  We first note that the
-reviewers collectively ask for three things.
+reviewers collectively ask for three things:
 
   1. Using the model to prove interesting theorems about the linking process,
   2. Using "lesson learnt" from the specification process to talk sensibly about
      how linking could be cleaned up, or made less ad-hoc,
   3. Extending existing verified compilers such as CompCert to handle linking.
 
-We feel each in their own right would be another (very interesting, non-trivial) paper:
+We feel each in their own right would be another (very interesting, non-trivial) paper.
 Meanwhile, the fact that we can even start talking sensibly about beginning
 work of this scope is itself a contribution of our paper, and this is what we
 meant when we wrote of "bringing linking into the formal discourse" and
@@ -38,7 +38,9 @@ We address some important points:
     linking was messy" may be true for expert reviewers but are certainly not
     universally true within the PL, compiler, and wider theory communities.
 
-  * Isabelle/HOL termination proofs are done for linking functions too.
+  * Isabelle/HOL termination proofs are done for linking functions too.  Perhaps
+    surprisingly many of the top-level functions that perform the link itself
+    are not recursive and need no termination proofs at all (see link.lem).
 
   * The "hello world!" program exercises many functions of linking, e.g. aliasing.
     We wish to point out that though "hello world!" is arguably the simplest C
@@ -153,7 +155,16 @@ repeat: lots more work to make this happen
 > somewhat more interesting result.
 
 They are both.  We prove both the termination of functions related to the "readelf"-
-like tool and to functions related to our linker.
+like tool and to functions related to our linker.  Note, as mentioned at the
+start of this rebuttal, the majority of the complex functions that actually do
+the linking process (in link.lem and Link.thy) are *not* recursive and therefore
+are terminating by fiat.
+
+Note, however, that in Link.thy one large (non-recursive) function is currently
+commented out in the Isabelle/HOL extraction.  For some reason, this definition
+causes Isabelle to issue an exception from somewhere deep within its definition
+package, a bug.  This was reported to the Isabelle mailing list in late 2015 and
+we are still waiting on a fix.
 
 > The clearest example I understood from the paper about the behavior of
 > the linker breaking what should be C language guarantees is the
@@ -305,7 +316,7 @@ extensions one may find in a typical ELF binary, such as GNU HASH, etc, though
 does not appear to have been updated recently.
 
 The ELF model was updated to accommodate these features as they were found during
-validation.  Note, we therefore do not claim that our model is comprehensize ---
+validation.  Note, we therefore do not claim that our model is comprehensive ---
 validating against e.g. MIPS binaries may reveal yet more sources of incompleteness
 that will need to be added to the formal model on as-needed basis.
 
@@ -315,7 +326,8 @@ contained a zero-sized segment whose offset was beyond the end of the file.  Try
 to read beyond the end of the list of bytes representing the file caused an exception
 when validating --- segment size must be checked first to ensure the segment in
 question has a strictly positive size before attempting to read it, yet this is
-not immediately apparent from the specification documents.
+not immediately apparent from the specification documents and it seemed implied
+that one could check for offset before size.
 
 > On a related note, this paper is very grounded in current
 > implementation details of linkers -- but that implementation may
@@ -414,7 +426,10 @@ the definitions are like this.
 The termination proofs in Isabelle/HOL were not especially onerous.  Their size
 is more a reflection of the size of the formalisation itself, which is quite large,
 consisting of a large number of separate definitions and functions that all must
-be proved to be terminating.
+be proved to be terminating.  Note also that, as mentioned above, a lot of the
+complex functions that actually perform the link (in link.lem) are not recursive,
+and make use of higher-order functions like folds and filters, and therefore are
+terminating by fiat.
 
 > 2. What kinds of bugs did the extraction/proving in Isabelle/HOL find?
 > Why weren't they captured by testing? Were they different in nature?
@@ -441,7 +456,10 @@ HOL4 extraction consists of definitions only, as our model unearthed a fairly
 serious bug in the termination mechanism of HOL4 that is yet to be fixed but
 prevents us from completing proofs of termination for recursive, monadic functions.
 (A tentative fix by the HOL4 team was pushed but then reverted).  A Coq extraction
-is only planned at this stage, and is not yet anything concrete.
+is only planned at this stage, and is not yet anything concrete.  Note too that,
+as mentioned above, currently one very large definition in the Link.thy file is
+commented out for the Isabelle extraction as uncommenting it causes Isabelle to
+throw an exception from within its definition package
 
 > 4. (Possibly related to the previous remark.) How easy is it for a
 > "verified" linker like the one proposed to be interfaced with a
