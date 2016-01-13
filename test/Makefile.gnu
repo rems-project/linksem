@@ -5,6 +5,8 @@ BASENAME := $(shell basename "$(DIRNAME)" | sed 's/-.*//' )
 
 OUTPUTS := $(BASENAME) $(BASENAME).map $(BASENAME).cmd $(BASENAME).repeat-cmd $(BASENAME).collect-cmd $(BASENAME).env
 
+OBJECTS ?= $(BASENAME).o
+
 default: $(OUTPUTS) repeat
 
 LDFLAGS := -static
@@ -20,7 +22,7 @@ LDFLAGS += -Wl,--no-relax
 %: %.cc
 %: %.o
 
-.SECONDARY: $(BASENAME).o
+.SECONDARY: $(OBJECTS)
 
 # We scrape the actual link command, 
 # then produce local copies of all the inputs
@@ -37,9 +39,9 @@ endif
 $(warning COMPILER is $(COMPILER))
 
 .PHONY: build-$(BASENAME)
-build-$(BASENAME): $(BASENAME).o
-	$(COMPILER) -save-temps         -o "$(BASENAME)" "$<" -Wl,-Map=$(BASENAME).map $(LDFLAGS) $(LDLIBS)
-	$(COMPILER) -save-temps -\#\#\# -o "$(BASENAME)" "$<" -Wl,-Map=$(BASENAME).map $(LDFLAGS) $(LDLIBS) 2>&1 | tee $(BASENAME).cmd
+build-$(BASENAME): $(OBJECTS)
+	$(COMPILER) -save-temps         -o "$(BASENAME)" $+ -Wl,-Map=$(BASENAME).map $(LDFLAGS) $(LDLIBS)
+	$(COMPILER) -save-temps -\#\#\# -o "$(BASENAME)" $+ -Wl,-Map=$(BASENAME).map $(LDFLAGS) $(LDLIBS) 2>&1 | tee $(BASENAME).cmd
 
 $(BASENAME).env: $(BASENAME).cmd
 	cat "$<" | grep '^[A-Z_]*=' | sed 's/^\([A-Z_]*=\)\(.*\)/\1"\2"/' > "$@"
@@ -74,11 +76,11 @@ $(BASENAME).repeat-cmd: $(BASENAME).collect-cmd $(BASENAME).env
 	done | tr '\n' ' ' > "$@"; echo >> "$@"
 
 .PHONY: repeat
-repeat: $(BASENAME).o $(BASENAME).repeat-cmd
+repeat: $(OBJECTS) $(BASENAME).repeat-cmd
 	eval $$( cat $(BASENAME).repeat-cmd )
 
 .PHONY: repeat
-$(BASENAME).with-relocs: $(BASENAME).o $(BASENAME).repeat-cmd
+$(BASENAME).with-relocs: $(OBJECTS) $(BASENAME).repeat-cmd
 	eval $$( cat $(BASENAME).repeat-cmd | sed 's/^ld/ld -q/' | sed 's#-o $(BASENAME)#-o $@#' )
 clean:
 	rm -f $(OUTPUTS) *.o *.a
