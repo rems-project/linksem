@@ -127,7 +127,13 @@ Specific replies to targetted questions and comments now follow.
 > - The model linker seems to yet scale only to small programs and a C
 > library that, while large, is not the standard Linux one
 
-(Stephen can perhaps provide anecdotes of doing better)
+This is true, although (as we noted above), our use of a "hello, world"
+example does not mean we can't process larger link jobs. As of the submission
+date, our spec could execute a successful link of bzip2 and similar-sized
+programs (bzip2 is 8000 raw lines of C, not including the C library it links
+with, for us uClibc). The apparent obstacles to larger link jobs are very
+minor (OCaml stack overflows from non-tail-recursive library functions, and
+generally unoptimised code). We discuss uClibc vs glibc below.
 
 > - No interesting theorems have yet been proved
 
@@ -157,7 +163,8 @@ can sensibly report (and do) within the confines of a single paper.
 > author(s) can prove some basic facts about it I think the value of the
 > formalization would be more clear.
 
-TODO repeat: lots more work to make this happen
+As we discussed at the top, the model can provide value in several ways, not
+only proof, all of which we fully intend to support.
 
 > I'd missed the distinction on a first reading, but on looking back,
 > the section structure seems to suggest that the termination proofs
@@ -348,7 +355,10 @@ reference to the left *or* right.)
 > reasonable model for linking in the future? How does this paper get us
 > there?
 
-TODO okay, but whole other paper
+As we discussed at the top, our finding (or insight) is that there is no
+simple essence, since linker-speak addresses real but disparate programmer
+requirements. Designing a less ad-hoc alternative could certainly be done,
+and would build on our work.
 
 > The paper refers to an ELF "model" and "formalization", but such a
 > formalization is neither contained in the paper nor (as far as I could
@@ -404,8 +414,9 @@ size.
 > change. How does that affect the results? Why formalize all the warts
 > in the linker instead of fixing some of them?
 
-TODO can't just "fix the linker" -- its behaviour is a contract shared between
-many compilers and linkers, so would have to "fix" all of them
+As noted at the top, linker behaviour is a contract shared between many
+compilers and linkers, all of which would need updating; working with
+existing warts avoids this.
 
 > Small notes:
 > * pg. 2: "broad range number of" ==> "broad range of"
@@ -851,9 +862,8 @@ The former: for now, we hand-translate the script into a Lem value.
 >    paper described many implementation-dependent and obscure features,
 >    but it wasn't clear that there could be a cleaner specification.
 
-TODO (as above; this wouldn't necessarily help anyone)
+Please see our answer at the top.
 
-> 
 > Commentary:
 > In a sense, this paper is trying to live in between two worlds.  On
 > the one hand, we have the implementation is the specification often
@@ -888,9 +898,7 @@ Again, our spec is more general than merely a spec of BFD.
 > look like".  I think quite a bit of the future work section could be
 > omitted. It's interesting to read, but I don't feel it adds scientific
 > weight to the paper.
-
-TODO (similar comments)
-
+>
 > Overall, I think this paper does a great job of bringing science to
 > some of the engineering/compiler internals process that adds to our
 > understanding. While I would have liked to see them go beyond the
@@ -900,7 +908,7 @@ TODO (similar comments)
 > be in one paper.
 
 Yes, these things are definitely interesting, although beyond one paper's
-worth of effort/content.
+worth of effort and content.
 
 > I hope the source is indeed released so others can benefit.  My score
 > is probably a 0.5 on the anticipation it will be made available.
