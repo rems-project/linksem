@@ -45,8 +45,12 @@ To address some other important points:
     formalisation, have been proved terminating.  This already
     establishes the basic usability of the model for proof.
 
-  * For A: while "hello world" is close to the simplest C
-    program, linking it exercises many aspects of linking. 
+  * For A and D: while "hello world" is close to the simplest C program,
+    it is far from a simple link job, since it necessarily includes a
+    whole C library. Linking it exercises most features mentioned in
+    section 3. In hindsight the text could more explicitly "close
+    the loop", but these examples are very much covered even by the 
+    hello-world link job (e.g. libc.a contains *many* aliased symbols).
 
   * Reviewers A and D suggest that the sole point of a formalisation
     is to support proof, and question the relationship between a model
@@ -59,6 +63,17 @@ To address some other important points:
     formalisation: we are equally concerned with providing a clear
     specification, supporting discussion at a level of abstraction
     above C implementations, and providing a test oracle.
+
+  * Reviewers D and E downplay the value of section 3 (enumerating
+    linker-speak's roles) respectively because this represents mere feature
+    creep, or because "compiler developers know these things". Unfortunately,
+    much linker complexity is grounded in real programmer requirements, not
+    feature creep; these requirements need to be expressed somehow. Meanwhile, we
+    have anecdotes (omitted from the submission mostly for anonymity) showing
+    many compiler developers have a very weak understanding of linking --
+    particularly in research circles (our anecdotes relate to OCaml, GHC and
+    Graal). Existing literature (e.g Levine) teaches how a linker works, not why
+    and how programmers use it.
 
 Specific replies to targetted questions and comments now follow.
 
@@ -185,7 +200,11 @@ model or the linker itself, are now terminating in our local copy of the model.
 > It wasn't clear to me which linker behavior could be the cause of
 > that.
 
-can point at the bit that refers back to it (substitution)
+Section 3.2 refers back to the opening malloc-based example throughout,
+including in the "Build-time substitution", "Load-time substitution",
+"Aliases" and "Topology alternatives" paragraphs. The first two of these
+explain mechanisms by which the given "_int_malloc" might be bypassed,
+while the latter two explain the purpose of the alias directives shown.
 
 > I would have been curious to hear a bit more about the further bugs in
 > the ELF specification that were revealed not by testing on 7k binaries
@@ -424,9 +443,7 @@ many compilers and linkers, so would have to "fix" all of them
 > compared byte-for-byte with the original binary, to check if they are
 > the same. Finally, extraction to Isabelle/HOL and proofs, found some
 > more bugs in the ELF model.
-
-(seems to ignore [other] actual contributions!)
-
+> 
 > The linking model is more difficult to validate: linker behavior
 > contains non-deterministic computations and cannot be fully captured
 > by the proposed model. This means that a standard C library cannot be
@@ -436,8 +453,11 @@ many compilers and linkers, so would have to "fix" all of them
 > against ld being that ld has further optimized some instructions and
 > the size of the GOT.
 
-non-det and glibc issues are orthogonal (missing IRELATIVE support is the
-main reason not to link with glibc right now)
+Our use of uClibc is purely to avoid a small number of GNU extensions that
+are not yet in our specification, notably IRELATIVE relocations. 
+
+The spec's incorporation of non-determinism (a.k.a. looseness), which is
+intentional, is unrelated to the current lack of glibc support.
 
 > The authors conclude with related work and some future directions.
 > 
@@ -634,6 +654,13 @@ alongside and interact with "real" existing code produced by other untrusted
 tools, hence the complete modelling of linker features is necessary.  As a
 result, we chose to model everything, arcana et al, as-is.
 
+Finally, as we covered at the top, on the "surprising and disturbing" point:
+one reason for our enumerating the features of linker-speak is to show that
+linker complexity is grounded in real programmer requirements which are not
+feature creep; the point of our enumerating them is to highlight that they
+are real, disparate requirements that are currently ignored (perhaps hence
+"surprising or disturbing" to someone finally learning about them).
+
 > Second, there is no substantial use of the artifact that is reported
 > in any detail, and hence the model's true purpose is not really
 > evaluated. There are many ways that one could have modeled
@@ -683,13 +710,13 @@ fraction" of codebases certainly includes most large libraries, which have to
 grapple with symbol visibility (viz. Drepper's guide for library authors) and
 often also with versioning. Besides libraries, it is not uncommon for large
 application codebases to ship with wrapper scripts that play tricks with
-LD_PRELOAD or LD_LIBRARY_PATH (e.g. Adobe Reader or Google Chrome both do thiss,
+LD_PRELOAD or LD_LIBRARY_PATH (e.g. Adobe Reader or Google Chrome both do this,
 off the top of our heads). Furthermore, any C++ codebase is dependent on
-link-time uniqueness handling. User-level pthreads applications fairly often
-make use of weak references. Code featuring plug-in systems uses the dynamic
-linking API (dlopen() etc.). And so on. Although no one feature is common,
-almost no large library, and few large applications, get away without using any
-of these features.
+link-time uniqueness handling. Threaded libraries fairly often make use of weak
+references (to test for the "single-threaded application" case). Code featuring
+plug-in systems uses the dynamic linking API (dlopen() etc.). And so on.
+Although no one feature is common, almost no large library, and few large
+applications, get away without using any of these features.
 
 > P. 1: Likewise, you say linker speak is used haphazardly and often
 > incorrectly -- what's your basis for this claim?
@@ -703,8 +730,9 @@ often-recommended option (-fvisibility=hidden) breaks the source semantics of
 C++. A further example is that clients of dlsym() are generally not robust to
 symbol versioning (for which the only robust interface, dlvsym(), is
 non-portable). Our point is not that the absolute frequency of erroneous usage
-is high relative to other programming practices, but that linker-speak is very
-difficult to use robustly, hence worthy of machine-assisted reasoning about.
+is high relative to ordinary PLs -- it's that linker-speak is, like many PLs,
+non-trivial to use robustly, hence equally worthy of machine-assisted reasoning
+about.
 
 > P. 1: The code example with "alias" annotations is interesting
 > motivation, showing how linker speak bubbles into the main
@@ -756,7 +784,7 @@ typeface makes 'l' appear like 'I'.
 > representation in the Lem model? Or, do you have a parser, and that
 > this is what it produced, in Lem syntax, for the default script?
 
-The former: for now, we hand-translate the script into our own representation.
+The former: for now, we hand-translate the script into a Lem value.
 
 > P. 11: There's some grammatical issue in the sentence 'This makes a
 > linker's in "programming the large" comparable ...'
@@ -826,17 +854,21 @@ The former: for now, we hand-translate the script into our own representation.
 > specific behavior that you already have competing definitions for, why
 > is the formalization important?
 
-hard to define "bug" once behaviour is commonplace.  Still want to
-capture looseness, i.e. "any legal implementation", not just specific. We
-also did comparisons with GNU gold (see section XX; reported a bug), i.e.
-not just BFD.
+It is worth reiterating that we're not formalising BFD per se, nor solely
+testing against it (as noted in 5.2 we already use the gold linker, which
+doesn't use BFD, and will able able to use the new llvm linker once it's more
+mature). ELF linking is more general than BFD behavior, and we aspire to
+capture all legal behaviors (as our discussion of looseness noted, \S 5.3).
+Of course, once a linker is widely-used, like the BFD-based linker, other
+linkers aim to be "bug-compatible", making the bug de facto "standard"
+behavior.
 
 > I found the authors did a good job describing the intricacies of
 > linking.  I ended up walking away with the impression "wow, that
 > sounds complex", but I wasn't sure how widely applicable outside
 > formally documenting BFD the results would be.
 
-again, not BFD.
+Again, our spec is more general than merely a spec of BFD.
 
 > I would love to see more text devoted to "what a clean linker would
 > look like".  I think quite a bit of the future work section could be
@@ -853,12 +885,13 @@ again, not BFD.
 > helps us reason about?), I think there is obvious limits to what can
 > be in one paper.
 
-yes, there are -- thank you
+Yes, these things are definitely interesting, although beyond one paper's
+worth of effort/content.
 
 > I hope the source is indeed released so others can benefit.  My score
 > is probably a 0.5 on the anticipation it will be made available.
 
-certainly
+Certainly, as we noted at the top, it will be.
 
 > Small things:
 > 
@@ -891,8 +924,9 @@ On the contrary, we believe that our conception of linking in terms of
 "linker-speak" is novel, and particularly valuable since it is *not* currently
 shared by compiler authors. We have anecdotal evidence that even many compiler
 developers have only a weak understanding of linking -- particularly in research
-communities. (Although we removed them for brevity and anonymity reasons, we can
-point to reported bugs in both the OCaml and GHC which illustrate this.)
+communities. (Although we removed mention of them for brevity and anonymity
+reasons, we can point to reported bugs in both the OCaml and GHC which
+illustrate this.)
 
 >  - 5.1 contrasts deterministic with non-deterministic.  However, I
 >    think you mean implementation-specific (the word looseness also
