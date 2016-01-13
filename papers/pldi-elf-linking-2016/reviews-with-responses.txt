@@ -89,12 +89,15 @@ Specific replies to targetted questions and comments now follow.
 > library that, while large, is not the standard Linux one
 
 This is true, although (as we noted above), our use of a "hello, world"
-example does not mean we can't process larger link jobs. As of the submission
-date, our spec could execute a successful link of bzip2 and similar-sized
-programs (bzip2 is 8000 raw lines of C, not including the C library it links
-with, for us uClibc). The apparent obstacles to larger link jobs are very
-minor (OCaml stack overflows from non-tail-recursive library functions, and
-generally unoptimised code). We discuss uClibc vs glibc below.
+example does not mean we can't process larger link jobs. As of the
+submission date, our spec could execute a successful link of bzip2 and
+similar-sized programs (bzip2 is 8000 raw lines of C, not including the
+C library it links with, for us uClibc). The apparent obstacles to
+larger link jobs are very minor (OCaml stack overflows from
+non-tail-recursive library functions, and generally unoptimised code).
+Our use of uClibc is purely to avoid a small number of GNU extensions
+that are not yet in our specification, notably IRELATIVE relocations. 
+
 
 > - No interesting theorems have yet been proved
 
@@ -104,11 +107,6 @@ believe that proving anything interesting about the model is at
 *least* another paper's worth of work, and there's a limit to what we
 can sensibly report (and do) within the confines of a single paper.
 
-> I found this paper fun and easy to read, and it serves well as a
-> survey of surprisingly-complex linker mechanisms and as a position
-> paper on why a more formal understanding of them would be worthwhile.
-> However the actual formalization work that I would have expected to be
-> the core of the paper feels preliminary and is not so impressive.
 > Modeling a linker without proving anything about it is basically just
 > reimplementing a linker using a restrictive programming language.  The
 > level of detail the paper gives about how it does this makes it sound
@@ -122,30 +120,24 @@ can sensibly report (and do) within the confines of a single paper.
 As we discussed at the top, the model can provide value in several ways, not
 only proof, all of which we fully intend to support.
 
-> I'd missed the distinction on a first reading, but on looking back,
-> the section structure seems to suggest that the termination proofs
-> apply only to the model of the ELF file format, and not to the model
-> linker. On the other hand the mention in the introduction does not
-> make this distinction, so I guess I'd say the paper is ambiguous. By
-> analogy, are the 1500 lines of handwritten termination proofs are
+> are the 1500 lines of handwritten termination proofs are
 > roughly proving the termination of ELF file parsing as in "readelf",
 > or the termination of linking as in "ld"? The latter would be a
 > somewhat more interesting result.
 
 They are doing both, and we will rewrite this text to make this clear.
 
-We should point out that in Linker_script.thy submitted with this
-paper one large recursive function is commented out in the
-Isabelle/HOL extraction, along with several other non-recursive
-functions that depend upon this.  For some reason, this definition
-causes Isabelle to issue an exception from somewhere deep within its
-definition package: a bug in Isabelle.  This was reported to the
-Isabelle mailing list in late 2015 and we are still waiting on a fix.
-In the meantime, after submission, this function was rewritten by hand
-into a form that Isabelle will accept, and proved terminating, along
-with all functions that depend upon it.  As a result, all recursive
-functions, whether part of the ELF model or the linker itself, are now
-proved terminating.
+We should mention that in Linker_script.thy submitted with this paper
+one large recursive function is commented out in the Isabelle/HOL
+extraction, along with several other non-recursive functions that depend
+upon this. This definition causes Isabelle to issue an exception from
+somewhere deep within its definition package: a bug in Isabelle.  This
+was reported to the Isabelle mailing list in late 2015 and we are still
+waiting on a fix. In the meantime, after submission, this function was
+rewritten by hand into a form that Isabelle will accept, and proved
+terminating, along with all functions that depend upon it.  As a result,
+all recursive functions, whether part of the ELF model or the linker
+itself, are now proved terminating.
 
 > The clearest example I understood from the paper about the behavior of
 > the linker breaking what should be C language guarantees is the
@@ -173,14 +165,13 @@ while the latter two explain the purpose of the alias directives shown.
 Isabelle proofs and validation have been carried out concurrently, and
 it is not the case that work in Isabelle started only after validation
 was complete.  As a result, several very basic errors were in fact
-highlighted not by testing-based validation, but by preliminary work in
-Isabelle where we experimented with proof using the model. These
-included an incorrect byte ordering in the parsing function for 8 word
-wide types like elf64_xword that caused roundtripping of parsing and
-then blitting of values of this type to fail.  This would eventually
-have been identified by validation, especially our validation of the
-rountripping property using hexdump, but was in fact identified within
-Isabelle itself.
+highlighted not by testing, but by preliminary work in Isabelle where we
+experimented with proof using the model. These included an incorrect
+byte ordering in the parsing function for 8 word wide types like
+elf64_xword that caused roundtripping of parsing and then blitting of
+values of this type to fail.  This would eventually have been identified
+by validation, especially our validation of the roundtripping property
+using hexdump, but was in fact identified within Isabelle itself.
 
 Some bugs that would not have been identified by validation include
 certain functions that did not terminate on all inputs, in the linker
@@ -270,13 +261,11 @@ discussion of model vs implementation in the main response.
 > to Isabelle/HOL?
 
 Most ELF binaries found "in the wild" contain section types, symbol
-types, relocation types, and so on that are not mentioned explicitly
-in any formal or semi-formal document.  Examples of this type include
-many GNU-specific extensions, especially those related to prelinking.
-These are not described in the Linux Standard Base document (LSB)
-which does partially describe many other GNU-specific extensions one
-may find in a typical ELF binary, such as GNU HASH, etc, though does
-not appear to have been updated recently.
+types, relocation types, and so on that are not mentioned explicitly in
+any formal or semi-formal document.  Examples include many GNU-specific
+extensions, especially those related to prelinking. These are not
+described in the Linux Standard Base document (LSB) which does partially
+describe most GNU extensions (GNU HASH, etc).
 
 The ELF model was updated to accommodate these features as they were
 found during validation.  Note, we therefore do not claim that our
@@ -285,16 +274,11 @@ even PowerPC binaries produced by an obscure compiler, may reveal yet
 more sources of incompleteness that will need to be added to the
 formal model on as-needed basis.
 
-Note, there were other cases where the ELF specification is not clear
-or ambiguous. One particular (but boring) example was a series of
-PowerPC64 binaries that contained a zero-sized segment whose offset
-was beyond the end of the file.  Trying to read beyond the end of the
-list of bytes representing the file caused an exception when
-validating --- segment size must be checked first to ensure the
-segment in question has a strictly positive size before attempting to
-read it, yet this is not immediately apparent from the specification
-documents and it seemed implied that one could check for offset before
-size.
+There were other cases where the ELF specification is unclear or
+ambiguous. One example was a series of PowerPC64 binaries that contained
+a zero-sized segment whose offset was beyond the end of the file, 
+causing an exception when validating -- a case not explicitly allowed
+in the specification documents.
 
 > On a related note, this paper is very grounded in current
 > implementation details of linkers -- but that implementation may
@@ -318,17 +302,11 @@ existing warts avoids this.
 > The linking model is more difficult to validate: linker behavior
 > contains non-deterministic computations and cannot be fully captured
 > by the proposed model. This means that a standard C library cannot be
-> currently linked using the model. However, the authors show that
-> hello-world.c can be compiled and successfully linked against the more
-> lightweight uclibc. The test mostly succeeds, the only difference
-> against ld being that ld has further optimized some instructions and
-> the size of the GOT.
+> currently linked using the model. 
 
-Our use of uClibc is purely to avoid a small number of GNU extensions that
-are not yet in our specification, notably IRELATIVE relocations. 
-
-The spec's incorporation of non-determinism (a.k.a. looseness), which is
-intentional, is unrelated to the current lack of glibc support.
+To clarify: the spec's incorporation of non-determinism (a.k.a.
+looseness), which is intentional, is unrelated to the current lack of
+glibc support.
 
 > This is a well-written paper that describes the experience in
 > formalizing ELF and its linking for the Linux platform. The actual
@@ -338,12 +316,11 @@ intentional, is unrelated to the current lack of glibc support.
 > implementation.
 
 This was a conscious choice on our part.  This type of modelling of
-real-world systems does not lead to neat, easily digestible
-definitions and specifications that fit nicely into a paper of this
-form, like e.g. typing rules of small calculi or toy programming
-languages.  As a result, we thought it better not to fill the paper
-with definitions and instead concentrate our effort on trying to
-highlight *why* the definitions are like they are.
+real-world systems does not lead to neat, easily digestible definitions
+that fit nicely into a paper of this form, like e.g. typing rules of
+small calculi or toy programming languages.  As a result, we thought it
+better not to fill the paper with definitions and instead concentrate
+our effort on highlighting *why* the definitions are like they are.
 
 > 1. How difficult are the termination proofs? The whole effort seems
 > big enough for any attempt at proving things via a proof assistant
@@ -370,15 +347,14 @@ We have answered an identical question above.
 > enough? Is this related to integration with CakeML or other formalized
 > compilers?
 
-Unfortunately, the people who would be amongst those most interested
-in a formal model of linking (i.e. the formal verification community)
-have not settled on a single theorem prover to rally around.  We have
-CompCert written in Coq, CakeML written in HOL4, seL4 written in
-Isabelle/HOL, and so on, and we envisage that our work will be at
-least interesting to people involved in all of these projects. As a
-result, to maximise the utility of our model, we decided to aim to
-extract our definitions to all theorem prover backends that the Lem
-tool supports. 
+Unfortunately, those perhaps most interested in a formal model of
+linking (i.e. the formal verification community) have not settled on a
+single theorem prover to rally around.  We have CompCert written in Coq,
+CakeML written in HOL4, seL4 written in Isabelle/HOL, and so on, and we
+envisage that our work will be at least interesting to people involved
+in all of these projects. As a result, to maximise the utility of our
+model, we decided to aim to extract our definitions to all theorem
+prover backends that the Lem tool supports. 
 
 The Isabelle/HOL extraction is the only extraction that at present
 includes both definitions and termination proofs for recursive
