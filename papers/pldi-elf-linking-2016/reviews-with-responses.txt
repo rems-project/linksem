@@ -16,7 +16,6 @@ contemplating such work is itself a contribution of our current paper,
 and this is exactly what we meant when we wrote of "bringing linking
 into the formal discourse".
 
-
 To address some other important points:
 
   * For E: our formal model is included as supplementary material, and
@@ -29,7 +28,7 @@ To address some other important points:
     many important use-cases for different aspects of linker-speak,
     which are supported by many more-or-less ad hoc mechanisms.  The
     behaviour of current linkers is essentially a contract between
-    hundreds of disparate compilers and other tools, that now rely on
+    hundreds of disparate compilers and other tools that now rely on
     this behaviour in order to work correctly, so it cannot simply be
     "fixed" in isolation.  Instead, we have to understand all those
     use-cases and mechanisms in depth before going forwards.
@@ -61,56 +60,8 @@ To address some other important points:
     specification, supporting discussion at a level of abstraction
     above C implementations, and providing a test oracle.
 
- 
+Specific replies to targetted questions and comments now follow.
 
-
----------------- BITS --------------------
-
-Proof is only one point of formalisation.  Another is communication at a
-    level of abstraction above C implementations.  Another is enabling of further
-    research (also not necessarily formal proof), as mentioned at the start of
-    this reply.
-
-
-
-    Further, we wish to stress that our avoiding glibc is not related to non-
-    determinism, but rather problems with handling of IRELATIVE.  Further, our
-    linker has been validated against both Gold and BFD, not just BFD alone.
-
-
-
-    "we already knew that linking was messy" may be true for some expert
-    reviewers, but looking at previous formal treatments of linking,
-    where the focus has been on modularisation and separate
-    compilation to the exclusion of anything else, it's clear that
-    there's a sizable group of people who are *not* aware of the full
-    generality or complexity of the linking process. Claims that we
-    but are certainly not universally true within the PL, compiler,
-    and wider theory communities.
-
-
-
-    (At the time of submission one very large recursive function was
-    problematic due to a bug we reported on the Isabelle mailing list;
-    it has since been rewritten to avoid that Isabelle problem.)
-
-    Since submission all functions involved in the linker are now proved
-    terminating.  At the time of submission one very large recursive function
-    was causing problems (assign_inputs_to_outputs in linker_script.lem) due
-    to a bug in Isabelle that we reported to the developers.  Since submission this
-    function has been rewritten by hand to avoid the exception that Isabelle was
-    throwing and proved terminating.  
-
-------------------------------------------
-
-
-> 
-> Review #3A		X	C
-> Review #3B		Y	B
-> Review #3C		X	B
-> Review #3D		X	D
-> Review #3E		X	A
-> 
 > ===========================================================================
 >                             PLDI '16 Review #3A
 > ---------------------------------------------------------------------------
@@ -167,10 +118,11 @@ Proof is only one point of formalisation.  Another is communication at a
 
 > - No interesting theorems have yet been proved
 
-Whilst this is true (modulo our comment below about proving termination of functions
-used to define the linker itself) we believe that proving anything interesting about
-the model is at *least* another paper's worth of work, and there's a limit to what
-we can sensibly report (and do) within the confines of a single paper.
+Whilst this is true (modulo our comment below about proving termination of
+functions used to define the linker itself) we believe that proving anything
+interesting about the model is at *least* another paper's worth of work, and
+there's a limit to what we can sensibly report (and do) within the confines of a
+single paper.
 
 > I found this paper fun and easy to read, and it serves well as a
 > survey of surprisingly-complex linker mechanisms and as a position
@@ -207,19 +159,19 @@ repeat: lots more work to make this happen
 They are both, and we will rewrite this text to make this clear.  We prove both
 the termination of functions related to the "readelf"-like tool and to functions
 related to our linker.  Note, that a lot of the complex functions that actually
-do the linking process (in link.lem and Link.thy, and similar) are not recursive and
-therefore are terminating by fiat.
+do the linking process (in link.lem and Link.thy, and similar) are not recursive
+and therefore are terminating by fiat.
 
-We should point out, however, that in Linker_script.thy submitted with this paper
-one large recursive function is commented out in the Isabelle/HOL extraction, along
-with several other non-recursive functions that depend upon this.  For some reason,
-this definition causes Isabelle to issue an exception from somewhere deep within
-its definition package: a bug.  This was reported to the Isabelle mailing list in
-late 2015 and we are still waiting on a fix.  In the meantime, after submission,
-this function was rewritten by hand into a form that Isabelle will accept, and
-proved terminating, along with all functions that depend upon it.  As a result,
-all recursive functions, whether part of the ELF model or the linker itself, are
-now terminating in our local copy of the model.
+We should point out, however, that in Linker_script.thy submitted with this
+paper one large recursive function is commented out in the Isabelle/HOL
+extraction, along with several other non-recursive functions that depend upon
+this.  For some reason, this definition causes Isabelle to issue an exception
+from somewhere deep within its definition package: a bug.  This was reported to
+the Isabelle mailing list in late 2015 and we are still waiting on a fix.  In
+the meantime, after submission, this function was rewritten by hand into a form
+that Isabelle will accept, and proved terminating, along with all functions that
+depend upon it.  As a result, all recursive functions, whether part of the ELF
+model or the linker itself, are now terminating in our local copy of the model.
 
 > The clearest example I understood from the paper about the behavior of
 > the linker breaking what should be C language guarantees is the
@@ -241,11 +193,11 @@ can point at the bit that refers back to it (substitution)
 > other lemmas".
 
 First, I should clarify that Isabelle proofs and validation have been carried
-out concurrently, and it is not the case that work in Isabelle started only after
-validation was complete.  As a result, several very basic errors were in fact
-highlighted not by validation, but by preliminary work in Isabelle where we
-experimented with proof using the model, including an incorrect byte
-ordering in the parsing function for 8 word wide types like elf64_xword that caused
+out concurrently, and it is not the case that work in Isabelle started only
+after validation was complete.  As a result, several very basic errors were in
+fact highlighted not by validation, but by preliminary work in Isabelle where we
+experimented with proof using the model, including an incorrect byte ordering in
+the parsing function for 8 word wide types like elf64_xword that caused
 roundtripping of parsing and then blitting of values of this type to fail.  This
 would eventually have been identified by validation, especially our validation
 of the rountripping property using hexdump, but was in fact identified within
@@ -253,9 +205,9 @@ Isabelle itself.
 
 Some bugs that would not have been identified by validation include certain
 functions that did not terminate on all inputs, in the linker and in the ELF
-model, for example parsing functions relating to symbol versioning were originally
-not provably terminating on all inputs due to a silly error and this was only
-brought to light when we attempted to prove them so.  Bugs of this sort
+model, for example parsing functions relating to symbol versioning were
+originally not provably terminating on all inputs due to a silly error and this
+was only brought to light when we attempted to prove them so.  Bugs of this sort
 would only have been uncovered by validation if extremely lucky
 (and having a failing termination proof makes tracking down the cause of non-
 termination much easier than just observing a non-terminating program).
@@ -264,18 +216,19 @@ Another recent bug in the specification uncovered by working with the model in
 Isabelle was a lack of padding in NOTE sections to align certain fields up to a
 64- or 32-bit boundary.  This was not uncovered during validation as the actual
 contents of NOTE sections were never systematically decoded during validation
-(readelf does not do this for --program-headers and --section-headers).
+(readelf does not do this for --program-headers, --section-headers, etc.).
 
 Note also that bugs in ABI handling were uncovered by us using our model with
-external tools (i.e. ppcmem2).  Correct interpretation of the program entry point
-was only identified by trying to use our ELF code to read in ARM and PowerPC
-binaries and noting incorrect calculation of the program entry point on ARM vs.
-PowerPC.
+external tools that used our model as a library.  Correct interpretation of the
+program entry point was only identified by trying to use our ELF code to read in
+ARM and PowerPC binaries and set up an executable memory image, noting incorrect
+calculation of the program entry point on ARM vs. PowerPC.
 
 In short: Isabelle extraction was used relatively early and new versions of the
-model have continuously been extracted to Isabelle, proofs and definitions updated,
-and so on, and has played a role in validation of even basic definitions itself,
-as has trying to use our ELF model with other tools as a library.
+model have continuously been extracted to Isabelle, proofs and definitions
+updated, and so on, and has played a role in validation of even basic
+definitions itself, as has trying to use our ELF model with other tools as a
+library.
 
 > I also feel like I should comment a bit on anonymization. The
 > author(s) removed identifying information in several places, but I
@@ -387,9 +340,9 @@ okay, but whole other paper
 > paper. A table or other organizational feature clearly listing what is
 > included in the model would help.
 
-By "model" we mean the Lem implementation of ELF and the linker, which we included
-as additional material in our submission, along with the extraction of an
-Isabelle/HOL version of this model.
+By "model" we mean the Lem implementation of ELF and the linker, which we
+included as additional material in our submission, along with the extraction of
+an Isabelle/HOL version of this model.
 
 > The evaluation (Section 4.1) discusses validating the model against 7k
 > binaries. What sources of incompleteness in source specification
@@ -401,26 +354,27 @@ Isabelle/HOL version of this model.
 
 Most ELF binaries found "in the wild" contain section types, symbol types,
 relocation types, and so on that are not mentioned explicitly in any formal or
-semi-formal document.  Examples of this type include many GNU-specific extensions,
-especially those related to prelinking.  These are not described in the Linux
-standard base document (LSB) which does partially describe many other GNU-specific
-extensions one may find in a typical ELF binary, such as GNU HASH, etc, though
-does not appear to have been updated recently.
+semi-formal document.  Examples of this type include many GNU-specific
+extensions, especially those related to prelinking.  These are not described in
+the Linux Standard Base document (LSB) which does partially describe many other
+GNU-specific extensions one may find in a typical ELF binary, such as GNU HASH,
+etc, though does not appear to have been updated recently.
 
-The ELF model was updated to accommodate these features as they were found during
-validation.  Note, we therefore do not claim that our model is comprehensive ---
-validating against e.g. MIPS binaries, or even PowerPC binaries produced by an
-obscure compiler, may reveal yet more sources of incompleteness that will need to
-be added to the formal model on as-needed basis.
+The ELF model was updated to accommodate these features as they were found
+during validation.  Note, we therefore do not claim that our model is
+comprehensive --- validating against e.g. MIPS binaries, or even PowerPC
+binaries produced by an obscure compiler, may reveal yet more sources of
+incompleteness that will need to be added to the formal model on as-needed
+basis.
 
-Note, there were other cases where the ELF specification is not clear or ambiguous.
-One particular (but boring) example was a series of PowerPC64 binaries that
-contained a zero-sized segment whose offset was beyond the end of the file.  Trying
-to read beyond the end of the list of bytes representing the file caused an exception
-when validating --- segment size must be checked first to ensure the segment in
-question has a strictly positive size before attempting to read it, yet this is
-not immediately apparent from the specification documents and it seemed implied
-that one could check for offset before size.
+Note, there were other cases where the ELF specification is not clear or
+ambiguous. One particular (but boring) example was a series of PowerPC64
+binaries that contained a zero-sized segment whose offset was beyond the end of
+the file.  Trying to read beyond the end of the list of bytes representing the
+file caused an exception when validating --- segment size must be checked first 
+to ensure the segment in question has a strictly positive size before attempting
+to read it, yet this is not immediately apparent from the specification
+documents and it seemed implied that one could check for offset before size.
 
 > On a related note, this paper is very grounded in current
 > implementation details of linkers -- but that implementation may
@@ -516,20 +470,20 @@ the definitions are like this.
 > big enough for any attempt at proving things via a proof assistant
 > being painful. Any remarks on that?
 
-The termination proofs in Isabelle/HOL were not especially onerous (modulo working
-around bugs in Isabelle itself, as mentioned above).  Their size
-is more a reflection of the size of the formalisation itself, which is quite large,
-consisting of a large number of separate definitions and functions that all must
-be proved to be terminating.  Note also that, as mentioned above, a lot of the
-complex functions that actually perform the link (in link.lem) are not recursive,
-and make use of higher-order functions like folds and filters, and therefore are
-terminating by fiat.
+The termination proofs in Isabelle/HOL were not especially onerous (modulo
+working around bugs in Isabelle itself, as mentioned above).  Their size
+is more a reflection of the size of the formalisation itself, which is quite
+large, consisting of a large number of separate definitions and functions that
+all must be proved to be terminating.  Note also that, as mentioned above, a lot
+of the complex functions that actually perform the link (in link.lem) are not
+recursive, and make use of higher-order functions like folds and filters, and
+therefore are terminating by fiat.
 
 The reviewer is correct in saying that proving anything non-trivial using this
 formalisation will be a significant amount of work, hence our comments at the
 start of the rebuttal, though given recent large formalisation projects (e.g.
 CompCert, seL4, CerCo, and so on) this is perhaps to be expected for any new
-formalisation project.
+(or interesting) contemporary formalisation project.
 
 > 2. What kinds of bugs did the extraction/proving in Isabelle/HOL find?
 > Why weren't they captured by testing? Were they different in nature?
@@ -544,19 +498,19 @@ Unfortunately, the people who would be amongst those most interested in a formal
 model of linking (i.e. the formal verification community) have not settled on a
 single theorem prover to rally around.  We have CompCert written in Coq, CakeML
 written in HOL4, seL4 written in Isabelle/HOL, and so on, and we envisage that
-our work will be at least interesting to people involved in all of these projects.
-As a result, to maximise the utility of our model, we decided to try to extract
-our definitions to all theorem prover backends that the Lem tool supports, or at
-least plan to.
+our work will be at least interesting to people involved in all of these
+projects. As a result, to maximise the utility of our model, we decided to try
+to extract our definitions to all theorem prover backends that the Lem tool
+supports, or at least plan to.
 
 Note, here: the Isabelle/HOL extraction is the only extraction at present that
 includes both definitions and termination proofs for recursive functions (hence
 the generation of simplification rules associated with those functions).  The
 HOL4 extraction consists of definitions only, as our model unearthed a fairly
 serious bug in the termination mechanism of HOL4 that is yet to be fixed but
-prevents us from completing proofs of termination for recursive, monadic functions.
-(A tentative fix by the HOL4 team was pushed but then reverted).  A Coq extraction
-is only planned at this stage, and is not yet anything concrete.
+prevents us from completing proofs of termination for recursive, monadic
+functions. (A tentative fix by the HOL4 team was pushed but then reverted).  A
+Coq extraction is only planned at this stage, and is not yet anything concrete.
 
 > 4. (Possibly related to the previous remark.) How easy is it for a
 > "verified" linker like the one proposed to be interfaced with a
@@ -668,11 +622,17 @@ mention Kayvan's work (+ others' similar)?
 > linking is an arcane activity perhaps in need of a re-think. I did not
 > have any larger insight than I did when I started.
 
-no simple "essence"; that's the point
+As mentioned at the start of this rebuttal one of the main lessons one can draw
+from this work is that there is no simple "essence" of linking, and indeed
+previous (theoretical) works that have worked on this basis only consider a
+small number of the tasks that linkers are actually used for in practice.
 
-verified compilation needs to work! to work with real, existing code,
-working with existing linker features is necessary. hence our choice to
-model the arcane stuff as-is
+Further, one very interesting line of future work is in interfacing our
+specification with existing verified compilers like CompCert and CakeML.  It
+would be highly advantageous if code produced by these compilers could work
+alongside and interact with "real" existing code produced by other untrusted
+tools, hence the complete modelling of linker features is necessary.  As a
+result, we chose to model everything, arcana et al, as-is.
 
 > Second, there is no substantial use of the artifact that is reported
 > in any detail, and hence the model's true purpose is not really
@@ -690,16 +650,17 @@ model the arcane stuff as-is
 
 We see formal proof as only one point of formalisation.  Another is the
 ability to precisely communicate with external engineers, companies (e.g. ARM),
-in a precise manner about complex mechanisms and artefacts at a level of abstraction
-above a C implementation.  We also see formalisation as a process that enables
-lots of other research (not necessarily formal proof) and helps clarify for the
-benefit of the rest of the community that which is being formalised.
+in a precise manner about complex mechanisms and artefacts at a level of
+abstraction above a C implementation.  We also see formalisation as a process
+that enables lots of other research (not necessarily formal proof) and helps
+clarify for the benefit of the rest of the community that which is being
+formalised.
 
 Further, proving anything remotely interesting about a model of this scale is
 another substantial paper's worth of work, at least.  We of course plan in the
-near future to start proving things using our model, and mention many ideas along
-these lines in our "future work" section, but there's limits in what can be done
-effectively within the confines of a single PLDI paper.
+near future to start proving things using our model, and mention many ideas
+along these lines in our "future work" section, but there's limits in what can
+be done effectively within the confines of a single PLDI paper.
 
 > In short, this is impressive work that will surely be useful. But I
 > don't see much value in this particular paper about it, just yet.
@@ -772,9 +733,9 @@ simple link job.
 We parsed binaries using an OCaml version of our Lem model, extracted by Lem
 itself, and wrote a tool around this code to mimic the output of readelf when
 passed flags like --section-headers, --file-header, --relocs, and so on, using
-information extracted from the parsed binaries by the Lem model.  We then mimicked
-the formatting and output of readelf's output and compared the output on ~7000
-binaries automatically using a script and a diff tool.
+information extracted from the parsed binaries by the Lem model.  We then
+mimicked the formatting and output of readelf's output and compared the output
+on ~7000 binaries automatically using a script and a diff tool.
 
 We also separately used hexdump to compare the byte-for-byte output of our code
 when a binary was read in and then blitted back out, again using diff, to ensure
@@ -909,11 +870,11 @@ certainly
 >    with PE.
 
 We are careful not to proclaim ELF as *the* standard in Section 2.  Rather, we
-claim that ELF is the de facto standard executable and linkable format on GNU/Linux
-and BSD and related operating systems (which it is).  Further, we acknowledge
-that Windows and MacOS each have their own executable and linkable formats in
-PE and Mach-O that whilst incompatible either have broadly similar features to
-ELF.
+claim that ELF is the de facto standard executable and linkable format on
+GNU/Linux and BSD and related operating systems (which it is).  Further, we
+acknowledge that Windows and MacOS each have their own executable and linkable
+formats in PE and Mach-O that whilst incompatible either have broadly similar
+features to ELF.
 
 Certainly, we can envisage that similar work specifying PE, a.out, Mach-O, etc.
 linking is possible in analogy with this work.
