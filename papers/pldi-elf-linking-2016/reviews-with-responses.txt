@@ -884,16 +884,14 @@ linker, which doesn't use BFD, and will be able to use the new llvm
 linker once it's more mature). ELF linking is more general than BFD
 behavior, and we aspire to capture all legal behaviors (as our
 discussion of looseness noted, \S 5.3).  Of course, once a linker is
-widely-used, like the BFD-based linker, other linkers aim to be
+widely-used, like the BFD-based GNU linker, other linkers aim to be
 "bug-compatible", making the bug de facto "standard" behavior.
 
 > I found the authors did a good job describing the intricacies of
 > linking.  I ended up walking away with the impression "wow, that
 > sounds complex", but I wasn't sure how widely applicable outside
 > formally documenting BFD the results would be.
-
-Again, our spec is more general than merely a spec of BFD.
-
+> 
 > I would love to see more text devoted to "what a clean linker would
 > look like".  I think quite a bit of the future work section could be
 > omitted. It's interesting to read, but I don't feel it adds scientific
@@ -942,13 +940,7 @@ Mach-O, etc.  linking is possible in analogy with this work.
 >    it's a contribution of the discussion, but not really a
 >    contribution to science.
 
-On the contrary, we believe that our conception of linking in terms of
-"linker-speak" is novel, and particularly valuable since it is *not*
-currently shared by compiler authors. We have anecdotal evidence that
-even many compiler developers have only a weak understanding of
-linking -- particularly in research communities. (Although we removed
-mention of them for brevity and anonymity reasons, we can point to
-reported bugs in both the OCaml and GHC which illustrate this.)
+Please see our response to this at the top.
 
 >  - 5.1 contrasts deterministic with non-deterministic.  However, I
 >    think you mean implementation-specific (the word looseness also
