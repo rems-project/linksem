@@ -92,12 +92,11 @@ This is true, although (as we noted above), our use of a "hello, world"
 example does not mean we can't process larger link jobs. As of the
 submission date, our spec could execute a successful link of bzip2 and
 similar-sized programs (bzip2 is 8000 raw lines of C, not including the
-C library it links with, for us uClibc). The apparent obstacles to
-larger link jobs are very minor (OCaml stack overflows from
-non-tail-recursive library functions, and generally unoptimised code).
-Our use of uClibc is purely to avoid a small number of GNU extensions
-that are not yet in our specification, notably IRELATIVE relocations. 
-
+C library it links with). The apparent obstacles to larger link jobs are
+very minor (OCaml stack overflows from non-tail-recursive library
+functions, and generally unoptimised code). Our use of uClibc is purely
+to avoid a small number of GNU extensions that are not yet in our
+specification, notably IRELATIVE relocations. 
 
 > - No interesting theorems have yet been proved
 
@@ -130,18 +129,12 @@ They are doing both, and we will rewrite this text to make this clear.
 We should mention that in Linker_script.thy submitted with this paper
 one large recursive function is commented out in the Isabelle/HOL
 extraction, along with several other non-recursive functions that depend
-upon this. This definition causes Isabelle to issue an exception from
-somewhere deep within its definition package: a bug in Isabelle.  This
-was reported to the Isabelle mailing list in late 2015 and we are still
-waiting on a fix. In the meantime, after submission, this function was
-rewritten by hand into a form that Isabelle will accept, and proved
-terminating, along with all functions that depend upon it.  As a result,
-all recursive functions, whether part of the ELF model or the linker
-itself, are now proved terminating.
+upon this. This definition provokes a bug in Isabelle, reported to the
+Isabelle mailing list in late 2015. We are still waiting on a fix. After
+submission, this function was rewritten by hand to work around the bug,
+and all remaining termination proofs completed.
 
-> The clearest example I understood from the paper about the behavior of
-> the linker breaking what should be C language guarantees is the
-> example of references to weak symbols being null. The case for the
+> The case for the
 > practical importance of the paper's work would be stronger, though, if
 > the paper could give a more pernicious example of linking causing
 > undesirable behavior, such as something silently incorrect, or clearly
@@ -162,16 +155,13 @@ while the latter two explain the purpose of the alias directives shown.
 > but by the Isabelle/HOL proof process for termination and "various
 > other lemmas".
 
-Isabelle proofs and validation have been carried out concurrently, and
-it is not the case that work in Isabelle started only after validation
-was complete.  As a result, several very basic errors were in fact
-highlighted not by testing, but by preliminary work in Isabelle where we
-experimented with proof using the model. These included an incorrect
-byte ordering in the parsing function for 8 word wide types like
-elf64_xword that caused roundtripping of parsing and then blitting of
-values of this type to fail.  This would eventually have been identified
-by validation, especially our validation of the roundtripping property
-using hexdump, but was in fact identified within Isabelle itself.
+Isabelle proofs and validation were carried out concurrently.  As a
+result, several very basic errors were in fact highlighted not by
+testing, but by preliminary work in Isabelle where we experimented with
+proof using the model. These included an incorrect byte ordering in the
+parsing function for 8-byte types like elf64_xword that caused
+roundtripping to fail.  This would eventually have been identified by
+validation, but was in fact identified within Isabelle itself.
 
 Some bugs that would not have been identified by validation include
 certain functions that did not terminate on all inputs, in the linker
@@ -190,13 +180,6 @@ during validation as the actual contents of NOTE sections were never
 systematically decoded during validation (readelf does not do this for
 --program-headers, --section-headers, etc.).
 
-Note also that bugs in ABI handling were uncovered by us using our
-model with external tools that used our model as a library.  Correct
-interpretation of the program entry point was only identified by
-trying to use our ELF code to read in ARM and PowerPC binaries and set
-up an executable memory image, noting incorrect calculation of the
-program entry point on ARM vs. PowerPC.
-
 In short: Isabelle extraction was used relatively early and new
 versions of the model have continuously been extracted to Isabelle,
 proofs and definitions updated, and so on, and has played a role in
@@ -204,12 +187,7 @@ validation of even basic definitions itself, as has trying to use our
 ELF model with other tools as a library.
 
 > "normally archives can only refer to objects appearing to their left":
-> did you mean "appearing to their right"? Or maybe the directionality
-> of "refer" is opposite from what I'm expecting? The running example
-> doesn't show this because the only archives are inside -( and -), but
-> I believe the rule is that undefined symbols are only satisfied by
-> archives that are read later, so libraries come after program object
-> files and lower-level libraries come after higher-level ones.
+> did you mean "appearing to their right"? 
 
 Yes, good catch... this should say "archives can only be referenced by objects
 appearing to their left". (Note that archives themselves can potentially
@@ -229,9 +207,7 @@ reference to the left *or* right.)
 > aspects can already be found in public documentation (although it is
 > nice to have them collated and summarized here).  What did we learn
 > from this whole exercise? We already knew that linking is messy. The
-> high-level vision is somewhat missing from this paper. What is a
-> reasonable model for linking in the future? How does this paper get us
-> there?
+> high-level vision is somewhat missing from this paper.
 
 As we discussed at the top, our finding (or insight) is that there is no
 simple essence, since linker-speak addresses real but disparate programmer
@@ -242,10 +218,7 @@ and would build on our work.
 > formalization is neither contained in the paper nor (as far as I could
 > tell) included as a reference. The "model" in this paper appears to be
 > just a description of the HOL implementation's phases, which mirrors a
-> real linker's phases. Furthermore, the obscure portions of linking
-> that are/are not included in the model are distributed throughout the
-> paper. A table or other organizational feature clearly listing what is
-> included in the model would help.
+> real linker's phases.
 
 By "model" we mean the Lem specification of ELF and the linker, which
 we included as additional material in our submission, along with the
@@ -268,11 +241,11 @@ described in the Linux Standard Base document (LSB) which does partially
 describe most GNU extensions (GNU HASH, etc).
 
 The ELF model was updated to accommodate these features as they were
-found during validation.  Note, we therefore do not claim that our
-model is comprehensive --- validating against e.g. MIPS binaries, or
-even PowerPC binaries produced by an obscure compiler, may reveal yet
-more sources of incompleteness that will need to be added to the
-formal model on as-needed basis.
+found during validation.  we therefore do not claim that our model is
+comprehensive --- validating against e.g. MIPS binaries, or even PowerPC
+binaries produced by an obscure compiler, may reveal yet more sources of
+incompleteness that will need to be added to the formal model on
+as-needed basis.
 
 There were other cases where the ELF specification is unclear or
 ambiguous. One example was a series of PowerPC64 binaries that contained
@@ -315,12 +288,12 @@ glibc support.
 > because of the current state of ELF linking semantics and
 > implementation.
 
-This was a conscious choice on our part.  This type of modelling of
-real-world systems does not lead to neat, easily digestible definitions
-that fit nicely into a paper of this form, like e.g. typing rules of
-small calculi or toy programming languages.  As a result, we thought it
-better not to fill the paper with definitions and instead concentrate
-our effort on highlighting *why* the definitions are like they are.
+This was a conscious choice.  This type of modelling of real-world
+systems does not lead to neat, easily digestible definitions that fit
+nicely into a paper of this form, like e.g. typing rules of small
+calculi or toy programming languages.  As a result, we thought it better
+not to fill the paper with definitions and instead concentrate our
+effort on highlighting *why* the definitions are like they are.
 
 > 1. How difficult are the termination proofs? The whole effort seems
 > big enough for any attempt at proving things via a proof assistant
@@ -347,24 +320,22 @@ We have answered an identical question above.
 > enough? Is this related to integration with CakeML or other formalized
 > compilers?
 
-Unfortunately, those perhaps most interested in a formal model of
-linking (i.e. the formal verification community) have not settled on a
-single theorem prover to rally around.  We have CompCert written in Coq,
-CakeML written in HOL4, seL4 written in Isabelle/HOL, and so on, and we
-envisage that our work will be at least interesting to people involved
-in all of these projects. As a result, to maximise the utility of our
-model, we decided to aim to extract our definitions to all theorem
-prover backends that the Lem tool supports. 
+Unfortunately, the community has not rallied around any single theorem
+prover.  We have CompCert written in Coq, CakeML written in HOL4, seL4
+written in Isabelle/HOL, and so on, and we envisage that our work will
+be at least interesting to people involved in all of these projects. To
+maximise the utility of our model, we decided to aim to extract our
+definitions to all backends that Lem supports. 
 
-The Isabelle/HOL extraction is the only extraction that at present
-includes both definitions and termination proofs for recursive
-functions (hence the generation of simplification rules associated
-with those functions).  The HOL4 extraction consists of definitions
-only, as our model unearthed a fairly serious bug in the termination
-mechanism of HOL4 that is yet to be fixed but prevents us from
-completing proofs of termination for recursive, monadic functions. (A
-tentative fix by the HOL4 team was pushed but then reverted).  A Coq
-extraction is only planned at this stage, and is not yet concrete.
+The Isabelle/HOL extraction is the only extraction that currently
+includes both definitions and termination proofs for recursive functions
+(hence the generation of simplification rules associated with those
+functions).  The HOL4 extraction consists of definitions only. We
+unearthed a fairly serious bug in the termination mechanism of HOL4 that
+is yet to be fixed but prevents us from completing proofs of termination
+for recursive, monadic functions. (A tentative fix by the HOL4 team was
+pushed but then reverted).  A Coq extraction is only planned at this
+stage, and is not yet concrete.
 
 > 4. (Possibly related to the previous remark.) How easy is it for a
 > "verified" linker like the one proposed to be interfaced with a
@@ -390,15 +361,13 @@ something that we are interested in.
 > or principled programming to manage the specs of ELF and linking?
 
 We certainly ran into difficulties with the Lem language; our
-specification was the biggest Lem codebase yet, by some distance, and
-revealed several problems.  For example, abstracting over 32- and
-64-bit ELF details is not possible in Lem, so much code is duplicated
-and we effectively use the 64-bit definitions as our "internal
-representation" in many places. Limitations of Lem typeclasses and
-lack of support for cyclic references were also problems,
-necessitating hackarounds; we could easily add a brief discussion of
-these. Similarly, we could add more snippets of the "guts" of the
-spec, although space is tight.
+specification was the biggest Lem codebase yet, by some distance.
+Abstracting over 32- and 64-bit ELF details is not possible in Lem, so
+much code is duplicated and we effectively use the 64-bit definitions as
+our "internal representation" in many places. Limitations of Lem
+typeclasses and lack of support for cyclic references also required
+hackarounds. We could easily add a brief discussion of these, and/or 
+more snippets of the "guts" of the spec (although space is tight).
 
 > 6. The paper is not about modules at the level of the source at all;
 > it is about object code and its linking in a specific setting: ELF
@@ -409,9 +378,7 @@ spec, although space is tight.
 
 Certainly, formally specifying how source language implementations map
 down to linker-speak is worthwhile, as we noted in section 7. Doing so
-would be a complementary but separate (and large) piece of work, and
-would necessarily be specific to specific language implementations
-and/or ABIs.
+would be a complementary but separate (and large) piece of work.
 
 > ===========================================================================
 >                             PLDI '16 Review #3D
@@ -450,21 +417,15 @@ produced by other untrusted tools, hence the complete modelling of
 linker features is necessary.  As a result, we chose to model
 everything, arcana and all, as-is.
 
-Finally, as we covered at the top, on the "surprising and disturbing"
-point: one reason for our enumeration of the features of linker-speak
-is to show that linker complexity is grounded in real programmer
-requirements which are not feature creep; the point of our enumerating
-them is to highlight that they are real, disparate requirements that
-are currently ignored.
+One reason for our enumerating the features of linker-speak is to show
+that linker complexity is grounded in real programmer requirements,
+*not* feature creep.
 
 > Second, there is no substantial use of the artifact that is reported
 > in any detail, and hence the model's true purpose is not really
-> evaluated. There are many ways that one could have modeled
-> linking. The authors made particular design choices. How do we know
-> that their design of the model is an effective one? Running it is not
-> enough to evaluate it. I could have rewritten ld in OCaml and run it
-> on a bunch of binaries; I don't think we'd call that worthy of a PLDI
-> paper. Instead, the whole point of a formal model is proving things
+> evaluated. 
+
+> Instead, the whole point of a formal model is proving things
 > with it. To show that the model truly facilitates proof, we have to
 > prove something. Poor design decisions might get in the way of
 > effective proofs. But no serious applicatiosn of the model have been
@@ -497,9 +458,7 @@ the confines of a single PLDI paper.
 > compilation. Programs that use libc rely on the wacky way that libc
 > has evolved with linking; but how many programs rely on non-obvious
 > linker features directly (e.g., require more than the "default
-> script")? I didn't see any argumentation about this; at best, "low
-> level" code like OSs might need it, but I wouldn't call this a large
-> fraction of all codebases.
+> script")?
 
 It is true that few codebases use non-default linker scripts. However,
 the other linker features mentioned in section 3 are much more
@@ -520,19 +479,15 @@ these features.
 > P. 1: Likewise, you say linker speak is used haphazardly and often
 > incorrectly -- what's your basis for this claim?
 
-In the text, "haphazardly" refers to the *specification* of
-linker-speak, not its usage. We do say that linker-speak is often used
-"incorrectly or... in unportable or fragile ways". Section 3 already
-contains several anecdotes to this effect: we note how substitution
-via LD_PRELOAD is inherently unsound; how link-time interposition
-(with --wrap) fails to capture all references; and how an
-often-recommended option (-fvisibility=hidden) breaks the source
-semantics of C++. A further example is that clients of dlsym() are
-generally not robust to symbol versioning (for which the only robust
-interface, dlvsym(), is non-portable). Our point is not that the
-absolute frequency of erroneous usage is high relative to ordinary PLs
--- it's that linker-speak is, like many PLs, non-trivial to use
-robustly, hence equally worthy of machine-assisted reasoning about.
+"Haphazardly" refers to the *specification* of linker-speak, not its
+usage. We do say that linker-speak is often used "incorrectly or... in
+unportable or fragile ways". Section 3 already contains several
+anecdotes to this effect: we note how substitution via LD_PRELOAD is
+inherently unsound; how link-time interposition (with --wrap) fails to
+capture all references; and how an often-recommended option
+(-fvisibility=hidden) breaks the source semantics of C++. A further
+example is that clients of dlsym() are generally not robust to symbol
+versioning.
 
 > P. 1: The code example with "alias" annotations is interesting
 > motivation, showing how linker speak bubbles into the main
@@ -551,10 +506,7 @@ program, linking it is *not at all* a simple link job.
 
 This was an oversight, though it's worth noting the book focusses on
 core linking mechanisms rather than how they are used.
- 
-> P. 5: "multiple defintions of ȯ files" --> "multiple definitions of .o
-> files"
-> 
+
 > P. 7: I found 4.1 hard to understand at first: Did you just use your
 > ELF model to parse a bunch of binaries? The first paragraph doesn't
 > say much; the next two describe the use of readelf and hexdump
