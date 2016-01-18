@@ -121,7 +121,7 @@ LEM_OCAML_OBJS_OPT := $(patsubst %.cma,%.cmxa,$(patsubst %.cmo,%.cmx,$(LEM_OCAML
 # Lem ABI code
 # Lem linking code
 
-default: lem-all-ocaml main_elf main_elf.opt main_link main_link.opt
+default: lem-all-ocaml linksem.cma linksem.cmxa main_elf main_elf.opt main_link main_link.opt
 
 ldgram.y.hacked: ldgram.y
 	cat "$<" | \
@@ -174,7 +174,7 @@ clean:
 
 ocaml: main_elf
 
-main_elf main_link main_elf.opt main_link.opt scratch: OCAMLFLAGS += -I $(BATTERIES) \
+main_elf main_link main_elf.opt main_link.opt scratch linksem.cma linksem.cmxa: OCAMLFLAGS += -I $(BATTERIES) \
 -I $(UINT) \
 $(OCAML_LEM_INCLUDES) \
 -I adaptors \
@@ -196,6 +196,27 @@ main_link main_link.opt: OCAML_LEM_SRC += $(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) 
 	$(patsubst %.lem,%.ml,$(LEM_GNU_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_LINK_SRC))
+
+linksem.cma: $(ALL_UTIL_ML) lem-all-ocaml
+	ocamlfind ocamlc $(OCAMLFLAGS) -a -o "$@" \
+	$(OCAML_LIB_OBJS) \
+	$(LEM_OCAML_OBJS) \
+	$(ALL_UTIL_ML) \
+	$(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
+	$(patsubst %.lem,%.ml,$(LEM_GNU_SRC)) \
+	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC)) \
+	$(patsubst %.lem,%.ml,$(LEM_LINK_SRC))
+
+linksem.cmxa: $(ALL_UTIL_ML) lem-all-ocaml
+	ocamlfind ocamlopt $(OCAMLFLAGS) -a -o "$@" \
+	$(filter-out %.cmxa,$(OCAML_LIB_OBJS_OPT)) \
+	$(LEM_OCAML_OBJS_OPT) \
+	$(ALL_UTIL_ML) \
+	$(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
+	$(patsubst %.lem,%.ml,$(LEM_GNU_SRC)) \
+	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC)) \
+	$(patsubst %.lem,%.ml,$(LEM_LINK_SRC))
+
 
 main_elf main_link scratch: %: %.ml $(ALL_UTIL_ML) lem-all-ocaml
 	ocamlfind ocamlc $(OCAMLFLAGS) -o "$@" -g \
