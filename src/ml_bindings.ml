@@ -100,21 +100,6 @@ let hex_string_of_int64 (e : Int64.t) : string =
     Printf.sprintf "0x%x" i
 ;;
 
-(** Misc. string operations. *)
-
-let split_string_on_char strings c =
-  let enum    = BatString.enum strings in
-  let groups  = BatEnum.group (fun char -> char <> c) enum in
-  (* Filter out the groups that correspond to the separator char 
-   * (each may have >=1 copies thereof). *)
-  (* FIXME: this filter "consumes" each l, so empty strings come out. Suggest 
-   * binning Batteries altogether -- we don't really need this function, since
-   * splitting string tables into strings is mostly pointless. *)
-  let filtered= BatList.filter (fun l -> match BatList.of_enum l with x :: _ when x = c -> false | _ -> true) (BatList.of_enum groups) in
-  let enums   = BatEnum.map BatString.of_enum (BatList.enum filtered) in
-    BatList.of_enum enums
-;;
-
 let string_suffix index str =
   if (* index < 0 *) Nat_big_num.less index (Nat_big_num.of_int 0) ||
      (* index > length str *) (Nat_big_num.greater index (Nat_big_num.of_int (String.length str))) then

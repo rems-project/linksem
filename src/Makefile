@@ -9,7 +9,6 @@ REPOROOT := $(dir $(THIS_MAKEFILE))/..
 LEMDIR ?= ../../lem
 LEM ?= $(LEMDIR)/lem
 CONTRIB ?= ../contrib
-BATTERIES ?= $(CONTRIB)/batteries/_build/src
 UINT ?= $(CONTRIB)/ocaml-uint/_build/lib
 
 OCAML_LEM_INCLUDES ?= -I $(LEMDIR)/ocaml-lib/ \
@@ -17,9 +16,6 @@ OCAML_LEM_INCLUDES ?= -I $(LEMDIR)/ocaml-lib/ \
 
 $(warning MAKECMDGOALS is $(MAKECMDGOALS))
 ifneq ($(MAKECMDGOALS),clean)
-ifeq ($(realpath $(BATTERIES)),)
-$(error Please run `make' in $(REPOROOT)/contrib or set BATTERIES)
-endif
 ifeq ($(realpath $(UINT)),)
 $(error Please run `make' in $(REPOROOT)/contrib or set UINT)
 endif
@@ -105,7 +101,7 @@ LEM_LINK_SRC := elf_memory_image.lem elf_memory_image_of_elf64_file.lem command_
 LEM_MODEL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_GNU_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC))
 
 LEM_MODEL_TP_THY := $(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_GNU_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC) test_image.lem import_everything.lem
-OCAML_LIB_OBJS := unix.cma str.cma nums.cma zarith.cma batteries.cma nat_num.cmo big_int_impl.cmo nat_big_num.cmo uint.cma
+OCAML_LIB_OBJS := unix.cma str.cma nums.cma zarith.cma nat_num.cmo big_int_impl.cmo nat_big_num.cmo uint.cma
 LEM_OCAML_OBJS := lem.cmo lem_basic_classes.cmo lem_function.cmo lem_list.cmo lem_num.cmo lem_sorting.cmo \
     xstring.cmo pset.cmo pmap.cmo lem_maybe.cmo lem_map.cmo lem_set.cmo lem_string_extra.cmo
 
@@ -174,7 +170,7 @@ clean:
 
 ocaml: main_elf
 
-main_elf main_link main_elf.opt main_link.opt scratch linksem.cma linksem.cmxa: OCAMLFLAGS += -I $(BATTERIES) \
+main_elf main_link main_elf.opt main_link.opt scratch linksem.cma linksem.cmxa: OCAMLFLAGS += \
 -I $(UINT) \
 $(OCAML_LEM_INCLUDES) \
 -I adaptors \
@@ -244,8 +240,6 @@ ocaml_with_ocamlbuild: lem-all-ocaml
   -lflags 'unix.cma str.cma nums.cma' \
   -cflags '-I $(UINT)' \
   -lflags '-I $(UINT) uint.cma' \
-  -cflags '-I $(BATTERIES)'   \
-  -lflags '-I $(BATTERIES) batteries.cma'   \
   -cflags -dllpath,$(UINT) \
   main_elf.byte 
 
@@ -254,7 +248,7 @@ clean_with_ocamlbuild:
 
 stacktrace:
 	export OCAMLRUNPARAM=b; \
-	ocamlfind ocamlc -package batteries -I $(LEMDIR)/ocaml-lib/_build/ unix.cma str.cma nums.cma nat_num.cmo lem.cmo lem_function.cmo lem_list.cmo -linkpkg -g missing_pervasives.ml show.ml endianness.ml error.ml ml_bindings.ml default_printing.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml string_table.ml elf_section_header_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file3.ml elf_executable_file5.ml elf_linking_file2.ml elf_linking_file3.ml elf_relocation.ml sail_interface.ml main_elf.ml
+	ocamlfind ocamlc -I $(LEMDIR)/ocaml-lib/_build/ unix.cma str.cma nums.cma nat_num.cmo lem.cmo lem_function.cmo lem_list.cmo -linkpkg -g missing_pervasives.ml show.ml endianness.ml error.ml ml_bindings.ml default_printing.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml string_table.ml elf_section_header_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file3.ml elf_executable_file5.ml elf_linking_file2.ml elf_linking_file3.ml elf_relocation.ml sail_interface.ml main_elf.ml
 
 oldall: lem-all-ocaml camlp4 ocaml
 
