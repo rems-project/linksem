@@ -205,8 +205,7 @@ linksem.cma: $(ALL_UTIL_ML) lem-all-ocaml
 
 linksem.cmxa: $(ALL_UTIL_ML) lem-all-ocaml
 	ocamlfind ocamlopt $(OCAMLFLAGS) -a -o "$@" \
-	$(filter-out %.cmxa,$(OCAML_LIB_OBJS_OPT)) \
-	$(LEM_OCAML_OBJS_OPT) \
+	-I $(sort $(dir $(patsubst %.cmx,%.cmi,$(LEM_OCAML_OBJS_OPT)))) \
 	$(ALL_UTIL_ML) \
 	$(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_GNU_SRC)) \
