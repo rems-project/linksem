@@ -138,3 +138,19 @@ let rec list_index_big_int index xs =
 ;;
 
 let argv_list = Array.to_list Sys.argv
+;;
+
+let nat_big_num_of_uint64 x = 
+    (* Nat_big_num can only be made from signed integers at present. 
+     * Workaround: make an int64, and if negative, add the high bit
+     * in the big-num domain. *)
+    let via_int64 = Uint64.to_int64 x
+    in
+    if Int64.compare via_int64 Int64.zero >= 0 then Nat_big_num.of_int64 via_int64
+    else
+        let two_to_63 = Uint64.shift_left (Uint64.of_int 1) 63 in
+        let lower_by_2_to_63 = Uint64.sub x two_to_63 in
+        (Nat_big_num.add 
+            (Nat_big_num.of_int64 (Uint64.to_int64 lower_by_2_to_63))
+            (Nat_big_num.shift_left (Nat_big_num.of_int 1) 63)
+        )

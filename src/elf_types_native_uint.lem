@@ -240,7 +240,7 @@ declare ocaml target_rep function string_of_elf64_addr = `Uint64.to_string`
 
 val natural_of_elf64_addr : elf64_addr -> natural
 
-declare ocaml    target_rep function natural_of_elf64_addr a = `Nat_big_num.of_int64` (`Uint64.to_int64` a)
+declare ocaml    target_rep function natural_of_elf64_addr a = `Ml_bindings.nat_big_num_of_uint64` a
 declare isabelle target_rep function natural_of_elf64_addr = `unat`
 declare hol      target_rep function natural_of_elf64_addr = `w2n`
 declare coq      target_rep function natural_of_elf64_addr = `nat_of_elf64_addr`
@@ -973,7 +973,7 @@ declare ocaml target_rep function string_of_elf64_xword = `Uint64.to_string`
 
 val natural_of_elf64_xword : elf64_xword -> natural
 
-declare ocaml    target_rep function natural_of_elf64_xword a = `Nat_big_num.of_int64` (`Uint64.to_int64` a)
+declare ocaml    target_rep function natural_of_elf64_xword a = `Ml_bindings.nat_big_num_of_uint64` a
 declare isabelle target_rep function natural_of_elf64_xword = `unat`
 declare hol      target_rep function natural_of_elf64_xword = `w2n`
 declare coq      target_rep function natural_of_elf64_xword = `nat_of_elf64_xword`
