@@ -766,7 +766,7 @@ definition relocate_output_image  :: "(any_abi_feature)abi \<Rightarrow>((string
     relocated_img))))"
 
 (* XXX: bug in Isabelle, see comments elsewhere...
-(*val link : linker_control_script -> abi any_abi_feature -> set Command_line.link_option -> linkable_list -> elf_memory_image*)
+val link : linker_control_script -> abi any_abi_feature -> set Command_line.link_option -> linkable_list -> elf_memory_image*)
 definition link  :: "(script_element)list \<Rightarrow>(any_abi_feature)abi \<Rightarrow>(Command_line.link_option)set \<Rightarrow>(linkable_object*(string*input_blob*input_origin)*input_options)list \<Rightarrow>(any_abi_feature)annotated_memory_image "  where 
      " link script a options linkables = ( 
     (let initial_included_indices = (mapMaybei (\<lambda> i .  (\<lambda> (obj, inp, (opts :: input_options)) .  
@@ -1017,6 +1017,6 @@ definition link  :: "(script_element)list \<Rightarrow>(any_abi_feature)abi \<Ri
             (*let _ = errln Warning: not tagging entry point in output image
             in*) 
             output_image
-    )))))))))))))))))))"*)
+    )))))))))))))))))))"
 
 end

@@ -23,7 +23,7 @@ open import Elf_interpreted_segment
   * AArch64 and AMD64, the entry point in the ELF header [entry] is the actual
   * program entry point.
   *)
-val abi_power64_compute_program_entry_point : list elf64_interpreted_segment -> elf64_addr -> error elf64_addr
+val abi_power64_compute_program_entry_point : list elf64_interpreted_segment -> elf64_addr -> error natural
 let abi_power64_compute_program_entry_point segs entry =
   let entry = natural_of_elf64_addr entry in
   let filtered = List.filter (
@@ -40,6 +40,6 @@ let abi_power64_compute_program_entry_point segs entry =
         Byte_sequence.offset_and_cut rebase 8 x.elf64_segment_body >>= fun bytes ->
         Byte_sequence.read_8_bytes_le bytes >>= fun (bytes, _) ->
         let (b1,b2,b3,b4,b5,b6,b7,b8) = bytes in
-        return (Elf_types_native_uint.elf64_addr_of_oct b1 b2 b3 b4 b5 b6 b7 b8)
+        return (natural_of_elf64_addr (Elf_types_native_uint.elf64_addr_of_oct b1 b2 b3 b4 b5 b6 b7 b8))
       | _   -> fail "abi_power64_compute_program_entry_point: multiple program segments contain the program entry point"
     end

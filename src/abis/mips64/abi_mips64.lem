@@ -32,9 +32,9 @@ open import Abi_mips64_elf_header
   * constituting the process image (passed in as [segs] here for a uniform
   * interface).
   *)
-val abi_mips64_compute_program_entry_point : list elf64_interpreted_segments -> elf64_addr -> error elf64_addr
+val abi_mips64_compute_program_entry_point : list elf64_interpreted_segments -> elf64_addr -> error natural
 let abi_mips64_compute_program_entry_point segs entry =
-	return entry
+	return (natural_of_elf64_addr entry)
 
 val header_is_mips64 : elf64_header -> bool
 let header_is_mips64 h =  

@@ -36,7 +36,7 @@ declare ocaml    target_rep function string_of_unsigned_char = `Uint32.to_string
   *)
 val natural_of_unsigned_char : unsigned_char -> natural
 
-declare ocaml    target_rep function natural_of_unsigned_char u = `Nat_big_num.of_int32` (`Uint32.to_int32` u)
+declare ocaml    target_rep function natural_of_unsigned_char u = `Nat_big_num.of_string` (`Uint32.to_string` u)
 declare isabelle target_rep function natural_of_unsigned_char = `unat`
 declare hol      target_rep function natural_of_unsigned_char = `w2n`
 declare coq      target_rep function natural_of_unsigned_char = `nat_of_unsigned_char`
@@ -47,7 +47,7 @@ declare coq      target_rep function natural_of_unsigned_char = `nat_of_unsigned
   *)
 val unsigned_char_of_natural : natural -> unsigned_char
 
-declare ocaml    target_rep function unsigned_char_of_natural m = `Uint32.of_int32` (`Nat_big_num.to_int32` m)
+declare ocaml    target_rep function unsigned_char_of_natural m = `Uint32.of_string` (`Nat_big_num.to_string` m)
 declare isabelle target_rep function unsigned_char_of_natural = `Elf_Types_Local.unsigned_char_of_nat`
 declare hol      target_rep function unsigned_char_of_natural = (`n2w` `:` `num` `->` `8` `word`)
 declare coq      target_rep function unsigned_char_of_natural = `unsigned_char_of_nat`
@@ -163,14 +163,14 @@ declare ocaml target_rep function string_of_elf32_addr = `Uint32.to_string`
 
 val natural_of_elf32_addr : elf32_addr -> natural
 
-declare ocaml    target_rep function natural_of_elf32_addr a = `Nat_big_num.of_int32` (`Uint32.to_int32` a)
+declare ocaml    target_rep function natural_of_elf32_addr a = `Nat_big_num.of_string` (`Uint32.to_string` a)
 declare isabelle target_rep function natural_of_elf32_addr = `unat`
 declare hol      target_rep function natural_of_elf32_addr = `w2n`
 declare coq      target_rep function natural_of_elf32_addr = `nat_of_elf32_addr`
 
 val elf32_addr_of_natural : natural -> elf32_addr
 
-declare ocaml    target_rep function elf32_addr_of_natural m = `Uint32.of_int32` (`Nat_big_num.to_int32` m)
+declare ocaml    target_rep function elf32_addr_of_natural m = `Uint32.of_string` (`Nat_big_num.to_string` m)
 declare isabelle target_rep function elf32_addr_of_natural = `Elf_Types_Local.uint32_of_nat`
 declare hol      target_rep function elf32_addr_of_natural = `n2w`
 declare coq      target_rep function elf32_addr_of_natural = `elf32_addr_of_nat`
@@ -240,14 +240,14 @@ declare ocaml target_rep function string_of_elf64_addr = `Uint64.to_string`
 
 val natural_of_elf64_addr : elf64_addr -> natural
 
-declare ocaml    target_rep function natural_of_elf64_addr a = `Nat_big_num.of_int64` (`Uint64.to_int64` a)
+declare ocaml    target_rep function natural_of_elf64_addr a = `Ml_bindings.nat_big_num_of_uint64` a
 declare isabelle target_rep function natural_of_elf64_addr = `unat`
 declare hol      target_rep function natural_of_elf64_addr = `w2n`
 declare coq      target_rep function natural_of_elf64_addr = `nat_of_elf64_addr`
 
 val elf64_addr_of_natural : natural -> elf64_addr
 
-declare ocaml    target_rep function elf64_addr_of_natural m = `Uint64.of_int64` (`Nat_big_num.to_int64` m)
+declare ocaml    target_rep function elf64_addr_of_natural m = `Uint64.of_string` (`Nat_big_num.to_string` m)
 declare isabelle target_rep function elf64_addr_of_natural = `Elf_Types_Local.uint64_of_nat`
 declare hol      target_rep function elf64_addr_of_natural = (`n2w` `:` `num` `->` `64` `word`)
 declare coq      target_rep function elf64_addr_of_natural = `elf64_addr_of_nat`
@@ -370,7 +370,7 @@ let read_elf32_half endian bs0 =
 
 val natural_of_elf32_half : elf32_half -> natural
 
-declare ocaml    target_rep function natural_of_elf32_half a = `Nat_big_num.of_int32` (`Uint32.to_int32` a)
+declare ocaml    target_rep function natural_of_elf32_half a = `Nat_big_num.of_string` (`Uint32.to_string` a)
 declare isabelle target_rep function natural_of_elf32_half = `unat`
 declare hol      target_rep function natural_of_elf32_half = `w2n`
 declare coq      target_rep function natural_of_elf32_half = `nat_of_elf32_half`
@@ -440,14 +440,14 @@ let read_elf64_half endian bs0 =
 
 val natural_of_elf64_half : elf64_half -> natural
 
-declare ocaml    target_rep function natural_of_elf64_half a = `Nat_big_num.of_int32` (`Uint32.to_int32` a)
+declare ocaml    target_rep function natural_of_elf64_half a = `Nat_big_num.of_string` (`Uint32.to_string` a)
 declare isabelle target_rep function natural_of_elf64_half = `unat`
 declare hol      target_rep function natural_of_elf64_half = `w2n`
 declare coq      target_rep function natural_of_elf64_half = `nat_of_elf64_half`
 
 val elf64_half_of_natural : natural -> elf64_half
 
-declare ocaml    target_rep function elf64_half_of_natural m = `Uint32.of_int32` (`Nat_big_num.to_int32` m)
+declare ocaml    target_rep function elf64_half_of_natural m = `Uint32.of_string` (`Nat_big_num.to_string` m)
 declare isabelle target_rep function elf64_half_of_natural = `Elf_Types_Local.uint16_of_nat`
 declare hol      target_rep function elf64_half_of_natural = (`n2w` `:` `num` `->` `16` `word`)
 declare coq      target_rep function elf64_half_of_natural = `elf64_half_of_nat`
@@ -512,14 +512,14 @@ declare ocaml target_rep function string_of_elf32_off = `Uint32.to_string`
 
 val natural_of_elf32_off : elf32_off -> natural
 
-declare ocaml    target_rep function natural_of_elf32_off a = `Nat_big_num.of_int32` (`Uint32.to_int32` a)
+declare ocaml    target_rep function natural_of_elf32_off a = `Nat_big_num.of_string` (`Uint32.to_string` a)
 declare isabelle target_rep function natural_of_elf32_off = `unat`
 declare hol      target_rep function natural_of_elf32_off = `w2n`
 declare coq      target_rep function natural_of_elf32_off = `nat_of_elf32_off`
 
 val elf32_off_of_natural : natural -> elf32_off
 
-declare ocaml    target_rep function elf32_off_of_natural m = `Uint32.of_int32` (`Nat_big_num.to_int32` m)
+declare ocaml    target_rep function elf32_off_of_natural m = `Uint32.of_string` (`Nat_big_num.to_string` m)
 declare isabelle target_rep function elf32_off_of_natural = `Elf_Types_Local.uint32_of_nat`
 declare hol      target_rep function elf32_off_of_natural = `n2w`
 declare coq      target_rep function elf32_off_of_natural = `elf32_off_of_nat`
@@ -589,14 +589,14 @@ declare ocaml target_rep function string_of_elf64_off = `Uint64.to_string`
 
 val natural_of_elf64_off : elf64_off -> natural
 
-declare ocaml    target_rep function natural_of_elf64_off a = `Nat_big_num.of_int64` (`Uint64.to_int64` a)
+declare ocaml    target_rep function natural_of_elf64_off a = `Nat_big_num.of_string` (`Uint64.to_string` a)
 declare isabelle target_rep function natural_of_elf64_off = `unat`
 declare hol      target_rep function natural_of_elf64_off = `w2n`
 declare coq      target_rep function natural_of_elf64_off = `nat_of_elf64_off`
 
 val elf64_off_of_natural : natural -> elf64_off
 
-declare ocaml    target_rep function elf64_off_of_natural m = `Uint64.of_int64` (`Nat_big_num.to_int64` m)
+declare ocaml    target_rep function elf64_off_of_natural m = `Uint64.of_string` (`Nat_big_num.to_string` m)
 declare isabelle target_rep function elf64_off_of_natural = `Elf_Types_Local.uint64_of_nat`
 declare hol      target_rep function elf64_off_of_natural = (`n2w` `:` `num` `->` `64` `word`)
 declare coq      target_rep function elf64_off_of_natural = `elf64_off_of_nat`
@@ -669,14 +669,14 @@ declare ocaml target_rep function string_of_elf32_word = `Uint32.to_string`
 
 val natural_of_elf32_word : elf32_word -> natural
 
-declare ocaml    target_rep function natural_of_elf32_word a = `Nat_big_num.of_int32` (`Uint32.to_int32` a)
+declare ocaml    target_rep function natural_of_elf32_word a = `Nat_big_num.of_string` (`Uint32.to_string` a)
 declare isabelle target_rep function natural_of_elf32_word = `unat`
 declare hol      target_rep function natural_of_elf32_word = `w2n`
 declare coq      target_rep function natural_of_elf32_word = `nat_of_elf32_word`
 
 val elf32_word_of_natural : natural -> elf32_word
 
-declare ocaml    target_rep function elf32_word_of_natural m = `Uint32.of_int32` (`Nat_big_num.to_int32` m)
+declare ocaml    target_rep function elf32_word_of_natural m = `Uint32.of_string` (`Nat_big_num.to_string` m)
 declare isabelle target_rep function elf32_word_of_natural = `Elf_Types_Local.uint32_of_nat`
 declare hol      target_rep function elf32_word_of_natural = (`n2w` `:` `num` `->` `32` `word`)
 declare coq      target_rep function elf32_word_of_natural = `elf32_word_of_nat`
@@ -764,14 +764,14 @@ declare ocaml target_rep function string_of_elf64_word = `Uint32.to_string`
 
 val natural_of_elf64_word : elf64_word -> natural
 
-declare ocaml    target_rep function natural_of_elf64_word a = `Nat_big_num.of_int32` (`Uint32.to_int32` a)
+declare ocaml    target_rep function natural_of_elf64_word a = `Nat_big_num.of_string` (`Uint32.to_string` a)
 declare isabelle target_rep function natural_of_elf64_word = `unat`
 declare hol      target_rep function natural_of_elf64_word = `w2n`
 declare coq      target_rep function natural_of_elf64_word = `nat_of_elf64_word`
 
 val elf64_word_of_natural : natural -> elf64_word
 
-declare ocaml    target_rep function elf64_word_of_natural m = `Uint32.of_int32` (`Nat_big_num.to_int32` m)
+declare ocaml    target_rep function elf64_word_of_natural m = `Uint32.of_string` (`Nat_big_num.to_string` m)
 declare isabelle target_rep function elf64_word_of_natural = `Elf_Types_Local.uint32_of_nat`
 declare hol      target_rep function elf64_word_of_natural = (`n2w` `:` `num` `->` `32` `word`)
 declare coq      target_rep function elf64_word_of_natural = `elf64_word_of_nat`
@@ -973,7 +973,7 @@ declare ocaml target_rep function string_of_elf64_xword = `Uint64.to_string`
 
 val natural_of_elf64_xword : elf64_xword -> natural
 
-declare ocaml    target_rep function natural_of_elf64_xword a = `Nat_big_num.of_int64` (`Uint64.to_int64` a)
+declare ocaml    target_rep function natural_of_elf64_xword a = `Ml_bindings.nat_big_num_of_uint64` a
 declare isabelle target_rep function natural_of_elf64_xword = `unat`
 declare hol      target_rep function natural_of_elf64_xword = `w2n`
 declare coq      target_rep function natural_of_elf64_xword = `nat_of_elf64_xword`
@@ -1033,7 +1033,7 @@ declare coq      target_rep function elf64_xword_lxor = `elf64_xword_lxor`
 
 val elf64_xword_of_natural : natural -> elf64_xword
 
-declare ocaml    target_rep function elf64_xword_of_natural m = `Uint64.of_int64` (`Nat_big_num.to_int64` m)
+declare ocaml    target_rep function elf64_xword_of_natural m = `Uint64.of_string` (`Nat_big_num.to_string` m)
 declare isabelle target_rep function elf64_xword_of_natural m = `of_int` (`int` m)
 declare hol      target_rep function elf64_xword_of_natural = (`n2w` `:` `num` `->` `64` `word`)
 declare coq      target_rep function elf64_xword_of_natural = `elf64_xword_of_nat`

@@ -1829,7 +1829,7 @@ function flush_output_sec :: "(output_section_spec \<times> nat) option \<Righta
     )"
 by pat_completeness auto
 
-(* XXX: bug in Isabelle here...
+(* DPM: hand rewrote this in Isabelle to stop Isabelle throwing an exception...*)
 (*val assign_inputs_to_output_sections : 
     input_output_assignment ->  (* accumulator: list of discards, list of output compositions (these include symbols)  *)
     list input_spec ->            (* remaining inputs *)
@@ -1838,152 +1838,230 @@ by pat_completeness auto
     (input_spec -> input_spec -> Basic_classes.ordering) (* seen ordering *) ->
     labelled_linker_control_script -> 
     input_output_assignment*)     (* accumulated result *)
-function assign_inputs_to_output_sections  :: "(input_spec)list*(output_section_spec*nat)list \<Rightarrow>(input_spec)list \<Rightarrow>(output_section_spec*nat)option \<Rightarrow>(input_spec)option \<Rightarrow>(input_spec \<Rightarrow> input_spec \<Rightarrow> ordering)\<Rightarrow>(script_element*nat)list \<Rightarrow>(input_spec)list*(output_section_spec*nat)list "  where 
-     " assign_inputs_to_output_sections acc1 inputs1 (cur_output_sec ::  (output_section_spec * nat)option) last_input_sec seen_ordering script = 
-    (let (rev_discards, rev_outputs) = acc1 in 
-    (case script of
-        [] =>  flush_output_sec cur_output_sec acc1
-        | (element, idx1) # more_elements_and_idx =>
-            (let do_nothing = (acc1, cur_output_sec, last_input_sec) 
-            in
-            (let (new_acc, (new_cur_output_sec ::  (output_section_spec * nat)option), new_last_input_sec)
-             = ((case  element of
-                DefineSymbol(symdefpol, name1, (symsize, syminfo, symother)) =>
-                    (* Label the current section in the image 
-                     * with a new symbol definition. If there isn't
-                     * a current section, use the ABS section (what is that labelling?). *)
-                    (acc1,
-                     (case  (cur_output_sec) of
-                        None => (*let _ = errln FIXME: ABS symbol defs not yet supported in*) None
-                        | Some ((OutputSectionSpec (guard, maybe_addr, secname1, comp1)), output_script_idx) =>
-                            Some ((OutputSectionSpec (guard, maybe_addr, secname1,                                
- (comp1 @ [ProvideSymbol(symdefpol, name1, (symsize, syminfo, symother))])))
-                             , output_script_idx)
-                    ),
-                    last_input_sec)
-                | AdvanceAddress(AddressExprFn advance_fn) =>
-                     (* If we're inside a section, insert a hole, 
-                      * else just update the logical address *)
-                     (case  cur_output_sec of
-                        None => do_nothing
-                            (* This assignment is setting a new LMA. *)
-                            (* (acc,  *)
-                        | Some (sec, idx1) => do_nothing
-                     )
-                | MarkAndAlignDataSegment(maxpagesize1, commonpagesize1) => 
-                     (* The data segment end is a distinguished label, 
-                      * so we can encode the whole thing into a conditional. *)
-                     do_nothing
-                | MarkDataSegmentEnd => do_nothing
-                | MarkDataSegmentRelroEnd(*(fun_from_secs_to_something)*) => do_nothing
-                | OutputSection(outputguard, maybe_expr, name1, sub_elements) => 
-                    (* If we have a current output section, finish it and add it to the image.
-                     * Q. Where do guards (ONLY_IF_RO etc) get evaluated?
-                     * A. Inside flush_output_sec. *)
-                    (let acc_with_output_sec = (flush_output_sec cur_output_sec acc1)
-                    in
-                    (let new_cur_output_sec = (Some((OutputSectionSpec(outputguard, (* maybe_expr pos secs *) None, name1, [])), idx1))
-                    in
-                    (* Recurse down the list of input queries, assigning them to this output sec
-                     * Note that output sections may not nest within other output sections. 
-                     * At the end of the list of sub_elements, we will flush the section we built up. 
-                     *)
-                    (let final_acc
-                    = (assign_inputs_to_output_sections acc1 inputs1 new_cur_output_sec last_input_sec seen_ordering (label_script sub_elements))
-                    in
-                    (* NOTE that this sub-accumulation will never add a new output section
-                     * because output sections can't nest. *)
-                    (final_acc, (* cur_output_sec *) None, last_input_sec)))) 
-                | DiscardInput(selector) => 
-                    (let selected = (selector inputs1)
-                    in
-                    (let (rev_discards, rev_outputs) = acc1 in
-                    (*let _ = Missing_pervasives.errln (Processing discard rule; selected  ^ (show (length selected))
-                        ^  inputs.)
-                    in*)
-                    ((((List.rev ((let x2 = 
-  ([]) in  List.foldr (\<lambda>i x2 .  if True then i # x2 else x2) selected x2))) @ rev_discards), rev_outputs), cur_output_sec, last_input_sec)))
-                | InputQuery(retainpol, sortpol, selector) => 
-                    (* Input queries can only occur within an output section. *)
-                    (case  cur_output_sec of
-                        None => failwith (''linker script error: input query without output section'')
-                        | Some ((OutputSectionSpec (output_guard, output_sec_addr, output_sec_name, output_composition)), output_script_idx) =>
-                            (* Add them to the current output spec. We have to be careful about ordering:
-                             * according to the GNU ld manual (and observed behaviour), by default
-                             * the linker will place files and sections matched by wildcards in the order
-                             * in which they are seen during the link. For .o files on the command line,
-                             * this means the command line order. But for members of archives, it means
-                             * the order in which they were pulled in during input enumeration. We 
-                             * actually don't compute this here; it is passed in from our caller in link.lem. *)
-                            (let sortfun = ((case  sortpol of
-                                DefaultSort => Elf_Types_Local.merge_sort seen_ordering (* FIXME: pay attention to command line *)
-                                | SeenOrder => Elf_Types_Local.merge_sort seen_ordering
-                                | ByName => Elf_Types_Local.merge_sort compareInputSpecByName
-                                | ByNameThenAlignment => Elf_Types_Local.merge_sort compareInputSpecByNameThenAlignment
-                                | ByAlignment => Elf_Types_Local.merge_sort compareInputSpecByAlignment
-                                | ByAlignmentThenName => Elf_Types_Local.merge_sort compareInputSpecByAlignmentThenName
-                                | ByInitPriority => Elf_Types_Local.merge_sort compareInputSpecByInitPriority
-                            ))
-                            in
-                            (* Search input memory images for matching sections. *)
-                            (let sorted_selected_inputs = (sortfun (selector inputs1))
-                            in
-                            (let (sectionMatchList :: input_section_rec list) = (Lem_list.mapMaybe (\<lambda> inp .  
-                                (case  inp of
-                                    InputSection(x) => 
-                                        (*let _ = errln (Matched an input section named  ^ x.isec.elf64_section_name_as_string ^ 
-                                             in a file  ^ x.fname ^  with first 20 bytes  ^ (show (take 20 
-                                                (let maybe_elname = elf_memory_image_element_coextensive_with_section x.shndx x.img 
-                                                 in
-                                                 match maybe_elname with
-                                                    Nothing -> failwith (impossible: no such element (matching shndx  ^ (show x.shndx) ^ ))
-                                                    | Just idstr -> 
-                                                        match Map.lookup idstr x.img.elements with
-                                                            Just el -> el.contents
-                                                            | Nothing -> failwith no such element
-                                                        end
-                                                end
-                                                ))))
-                                            in*)
-                                            Some x
-                                   | _ => None
-                                )) sorted_selected_inputs)
-                            in
-                            (let commonMatchList = (Lem_list.mapMaybe (\<lambda> inp .  
-                                (case  inp of
-                                     Common(idx1, fname1, img3, def1) => Some(idx1, fname1, img3, def1)
-                                   | _ => None
-                                )) sorted_selected_inputs)
-                            in
-                            
-                            (acc1, 
-                             Some (
-                                (OutputSectionSpec(output_guard, output_sec_addr, output_sec_name, 
-                                    ((output_composition @                                     
- ((let x2 = ([]) in  List.foldr
-   (\<lambda>input_sec x2 . 
-    if True then
-      IncludeInputSection
-        (retainpol, (* input_sec.fname, input_sec.idx, input_sec.shndx, input_sec.isec, input_sec.img *) input_sec)
-        # x2 else x2) sectionMatchList x2))) @ ((let x2 = ([]) in  List.foldr
-   (\<lambda>(idx1, fname1, img3, def1) x2 . 
-    if True then
-      IncludeCommonSymbol (DefaultKeep, fname1, idx1, def1, img3) # x2 else
-      x2) commonMatchList x2)))
-                                )), output_script_idx), 
-                             last_input_sec
-                            )))))
-                    )
-            ))
-            in
-            assign_inputs_to_output_sections new_acc inputs1
-                (new_cur_output_sec)
-                new_last_input_sec
-                seen_ordering
-                more_elements_and_idx))
-    ))"
+
+fun extract_output_sections :: "script_element list \<Rightarrow> _ set" where
+  "extract_output_sections (OutputSection (x, y, z, subelements)#xs) =
+     { (x, y, z, subelements) } \<union> extract_output_sections xs \<union> extract_output_sections subelements" |
+  "extract_output_sections _ = {}"
+
+(* XXX: duplication here to remove awkward double recursion that causes termination nightmares.  The following function
+ * differs from the one below in how OutputSection is handled.  Here, the invariant is maintained that the input list
+ * does not contain any occurrence of OutputSection.  This is checked in the second function when the first "recursive"
+ * call is made.
+ *)
+function assign_inputs_to_output_sections' :: "input_spec list * (output_section_spec * nat) list \<Rightarrow> input_spec list \<Rightarrow> (output_section_spec * nat) option \<Rightarrow> input_spec option \<Rightarrow> (input_spec \<Rightarrow> input_spec \<Rightarrow> ordering)\<Rightarrow>(script_element*nat)list \<Rightarrow>(input_spec)list*(output_section_spec*nat)list "  where 
+  "assign_inputs_to_output_sections' acc1 inputs1 cur_output_sec last_input_sec seen_ordering [] = flush_output_sec cur_output_sec acc1" |
+  "assign_inputs_to_output_sections' (rev_discards, rev_outputs) inputs1 None last_input_sec seen_ordering ((DefineSymbol(symdefpol, name1, (symsize, syminfo, symother)), idx1)#more_elements_and_idx) =
+      (let (new_acc, new_cur_output_sec, new_last_input_sec) = ((rev_discards, rev_outputs), None, last_input_sec) in
+        assign_inputs_to_output_sections' new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx)" |
+  "assign_inputs_to_output_sections' (rev_discards, rev_outputs) inputs1 (Some ((OutputSectionSpec (guard, maybe_addr, secname1, comp1)), output_script_idx)) last_input_sec seen_ordering ((DefineSymbol(symdefpol, name1, (symsize, syminfo, symother)), idx1)#more_elements_and_idx) =
+      (let (new_acc, new_cur_output_sec, new_last_input_sec) = ((rev_discards, rev_outputs), Some ((OutputSectionSpec (guard, maybe_addr, secname1, (comp1 @ [ProvideSymbol(symdefpol, name1, (symsize, syminfo, symother))]))), output_script_idx), last_input_sec) in
+        assign_inputs_to_output_sections' new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx)" |
+  "assign_inputs_to_output_sections' (rev_discards, rev_outputs) inputs1 cur_output_sec last_input_sec seen_ordering ((AdvanceAddress (AddressExprFn advance_fn), idx1)#more_elements_and_idx) =
+      (* XXX: DPM check this as the original version branched on cur_output_sec but did the same thing in both cases...*)
+      (let (new_acc, new_cur_output_sec, new_last_input_sec) = ((rev_discards, rev_outputs), cur_output_sec, last_input_sec) in
+         assign_inputs_to_output_sections' new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx)" |
+  "assign_inputs_to_output_sections' (rev_discards, rev_outputs) inputs1 cur_output_sec last_input_sec seen_ordering ((MarkAndAlignDataSegment(maxpagesize1, commonpagesize1), idx1)#more_elements_and_idx) =
+      (let (new_acc, new_cur_output_sec, new_last_input_sec) = ((rev_discards, rev_outputs), cur_output_sec, last_input_sec) in
+         assign_inputs_to_output_sections' new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx)" |
+  "assign_inputs_to_output_sections' (rev_discards, rev_outputs) inputs1 cur_output_sec last_input_sec seen_ordering ((MarkDataSegmentEnd, idx1)#more_elements_and_idx) =
+      (let (new_acc, new_cur_output_sec, new_last_input_sec) = ((rev_discards, rev_outputs), cur_output_sec, last_input_sec) in
+         assign_inputs_to_output_sections' new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx)" |
+  "assign_inputs_to_output_sections' (rev_discards, rev_outputs) inputs1 cur_output_sec last_input_sec seen_ordering ((MarkDataSegmentRelroEnd, idx1)#more_elements_and_idx) =
+      (let (new_acc, new_cur_output_sec, new_last_input_sec) = ((rev_discards, rev_outputs), cur_output_sec, last_input_sec) in
+         assign_inputs_to_output_sections' new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx)" |
+  "assign_inputs_to_output_sections' (rev_discards, rev_outputs) inputs1 cur_output_sec last_input_sec seen_ordering ((OutputSection (outputguard, maybe_expr, name1, sub_elements), idx1)#more_elements_and_idx) = undefined" |
+  "assign_inputs_to_output_sections' (rev_discards, rev_outputs) inputs1 cur_output_sec last_input_sec seen_ordering ((DiscardInput selector, idx1)#more_elements_and_idx) =
+     (let (new_acc, new_cur_output_sec, new_last_input_sec) =
+         ((((List.rev (List.foldr (op #) (selector inputs1) [])) @ rev_discards), rev_outputs), cur_output_sec, last_input_sec)
+      in
+        assign_inputs_to_output_sections' new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx)" |
+  "assign_inputs_to_output_sections' (rev_discards, rev_outputs) inputs1 None last_input_sec seen_ordering ((InputQuery (retainpol, sortpol, selector), idx1)#more_elements_and_idx) =
+     failwith (''linker script error: input query without output section'')" |
+  "assign_inputs_to_output_sections' (rev_discards, rev_outputs) inputs1 (Some ((OutputSectionSpec (output_guard, output_sec_addr, output_sec_name, output_composition)), output_script_idx)) last_input_sec seen_ordering ((InputQuery (retainpol, sortpol, selector), idx1)#more_elements_and_idx) =
+     (let (new_acc, new_cur_output_sec, new_last_input_sec) =
+     (let sortfun =
+        (case sortpol of
+           DefaultSort => Elf_Types_Local.merge_sort seen_ordering
+         | SeenOrder => Elf_Types_Local.merge_sort seen_ordering
+         | ByName => Elf_Types_Local.merge_sort compareInputSpecByName
+         | ByNameThenAlignment => Elf_Types_Local.merge_sort compareInputSpecByNameThenAlignment
+         | ByAlignment => Elf_Types_Local.merge_sort compareInputSpecByAlignment
+         | ByAlignmentThenName => Elf_Types_Local.merge_sort compareInputSpecByAlignmentThenName
+         | ByInitPriority => Elf_Types_Local.merge_sort compareInputSpecByInitPriority)
+      in
+      (let sorted_selected_inputs = sortfun (selector inputs1) in
+      (let sectionMatchList = (Lem_list.mapMaybe (\<lambda>inp. (case inp of InputSection x => Some x | _ => None)) sorted_selected_inputs) in
+      (let commonMatchList = (Lem_list.mapMaybe (\<lambda>inp. (case inp of Common (idx1, fname1, img3, def1) => Some (idx1, fname1, img3, def1) | _ => None)) sorted_selected_inputs) in
+         ((rev_discards, rev_outputs), Some ((OutputSectionSpec (output_guard, output_sec_addr, output_sec_name, ((output_composition @                                     
+            ((List.foldr (\<lambda>input_sec x2. IncludeInputSection (retainpol, input_sec) # x2) sectionMatchList []))) @
+              ((List.foldr (\<lambda>(idx1, fname1, img3, def1) x2. IncludeCommonSymbol (DefaultKeep, fname1, idx1, def1, img3) # x2) commonMatchList []))))), output_script_idx), last_input_sec)))))
+      in
+        assign_inputs_to_output_sections' new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx)"
 by pat_completeness auto
-*)
+
+function assign_inputs_to_output_sections :: "input_spec list * (output_section_spec * nat) list \<Rightarrow> input_spec list \<Rightarrow> (output_section_spec * nat) option \<Rightarrow> input_spec option \<Rightarrow> (input_spec \<Rightarrow> input_spec \<Rightarrow> ordering)\<Rightarrow>(script_element*nat)list \<Rightarrow>(input_spec)list*(output_section_spec*nat)list "  where 
+  "assign_inputs_to_output_sections acc1 inputs1 cur_output_sec last_input_sec seen_ordering [] = flush_output_sec cur_output_sec acc1" |
+  "assign_inputs_to_output_sections (rev_discards, rev_outputs) inputs1 None last_input_sec seen_ordering ((DefineSymbol(symdefpol, name1, (symsize, syminfo, symother)), idx1)#more_elements_and_idx) =
+      (let (new_acc, new_cur_output_sec, new_last_input_sec) = ((rev_discards, rev_outputs), None, last_input_sec) in
+        assign_inputs_to_output_sections new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx)" |
+  "assign_inputs_to_output_sections (rev_discards, rev_outputs) inputs1 (Some ((OutputSectionSpec (guard, maybe_addr, secname1, comp1)), output_script_idx)) last_input_sec seen_ordering ((DefineSymbol(symdefpol, name1, (symsize, syminfo, symother)), idx1)#more_elements_and_idx) =
+      (let (new_acc, new_cur_output_sec, new_last_input_sec) = ((rev_discards, rev_outputs), Some ((OutputSectionSpec (guard, maybe_addr, secname1, (comp1 @ [ProvideSymbol(symdefpol, name1, (symsize, syminfo, symother))]))), output_script_idx), last_input_sec) in
+        assign_inputs_to_output_sections new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx)" |
+  "assign_inputs_to_output_sections (rev_discards, rev_outputs) inputs1 cur_output_sec last_input_sec seen_ordering ((AdvanceAddress (AddressExprFn advance_fn), idx1)#more_elements_and_idx) =
+      (* XXX: DPM check this as the original version branched on cur_output_sec but did the same thing in both cases...*)
+      (let (new_acc, new_cur_output_sec, new_last_input_sec) = ((rev_discards, rev_outputs), cur_output_sec, last_input_sec) in
+         assign_inputs_to_output_sections new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx)" |
+  "assign_inputs_to_output_sections (rev_discards, rev_outputs) inputs1 cur_output_sec last_input_sec seen_ordering ((MarkAndAlignDataSegment(maxpagesize1, commonpagesize1), idx1)#more_elements_and_idx) =
+      (let (new_acc, new_cur_output_sec, new_last_input_sec) = ((rev_discards, rev_outputs), cur_output_sec, last_input_sec) in
+         assign_inputs_to_output_sections new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx)" |
+  "assign_inputs_to_output_sections (rev_discards, rev_outputs) inputs1 cur_output_sec last_input_sec seen_ordering ((MarkDataSegmentEnd, idx1)#more_elements_and_idx) =
+      (let (new_acc, new_cur_output_sec, new_last_input_sec) = ((rev_discards, rev_outputs), cur_output_sec, last_input_sec) in
+         assign_inputs_to_output_sections new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx)" |
+  "assign_inputs_to_output_sections (rev_discards, rev_outputs) inputs1 cur_output_sec last_input_sec seen_ordering ((MarkDataSegmentRelroEnd, idx1)#more_elements_and_idx) =
+      (let (new_acc, new_cur_output_sec, new_last_input_sec) = ((rev_discards, rev_outputs), cur_output_sec, last_input_sec) in
+         assign_inputs_to_output_sections new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx)" |
+  "assign_inputs_to_output_sections (rev_discards, rev_outputs) inputs1 cur_output_sec last_input_sec seen_ordering ((OutputSection (outputguard, maybe_expr, name1, sub_elements), idx1)#more_elements_and_idx) =
+     (if {} \<noteq> extract_output_sections sub_elements then
+       undefined
+     else
+       (let (new_acc, new_cur_output_sec, new_last_input_sec) =
+         (let acc_with_output_sec = flush_output_sec cur_output_sec (rev_discards, rev_outputs) in
+         (let new_cur_output_sec = Some ((OutputSectionSpec (outputguard, None, name1, [])), idx1) in
+         (let final_acc = assign_inputs_to_output_sections' (rev_discards, rev_outputs) inputs1 new_cur_output_sec last_input_sec seen_ordering (label_script sub_elements) in
+           (final_acc, None, last_input_sec))))
+       in
+         assign_inputs_to_output_sections new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx))" |
+  "assign_inputs_to_output_sections (rev_discards, rev_outputs) inputs1 cur_output_sec last_input_sec seen_ordering ((DiscardInput selector, idx1)#more_elements_and_idx) =
+     (let (new_acc, new_cur_output_sec, new_last_input_sec) =
+         ((((List.rev (List.foldr (op #) (selector inputs1) [])) @ rev_discards), rev_outputs), cur_output_sec, last_input_sec)
+      in
+        assign_inputs_to_output_sections new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx)" |
+  "assign_inputs_to_output_sections (rev_discards, rev_outputs) inputs1 None last_input_sec seen_ordering ((InputQuery (retainpol, sortpol, selector), idx1)#more_elements_and_idx) =
+     failwith (''linker script error: input query without output section'')" |
+  "assign_inputs_to_output_sections (rev_discards, rev_outputs) inputs1 (Some ((OutputSectionSpec (output_guard, output_sec_addr, output_sec_name, output_composition)), output_script_idx)) last_input_sec seen_ordering ((InputQuery (retainpol, sortpol, selector), idx1)#more_elements_and_idx) =
+     (let (new_acc, new_cur_output_sec, new_last_input_sec) =
+     (let sortfun =
+        (case sortpol of
+           DefaultSort => Elf_Types_Local.merge_sort seen_ordering
+         | SeenOrder => Elf_Types_Local.merge_sort seen_ordering
+         | ByName => Elf_Types_Local.merge_sort compareInputSpecByName
+         | ByNameThenAlignment => Elf_Types_Local.merge_sort compareInputSpecByNameThenAlignment
+         | ByAlignment => Elf_Types_Local.merge_sort compareInputSpecByAlignment
+         | ByAlignmentThenName => Elf_Types_Local.merge_sort compareInputSpecByAlignmentThenName
+         | ByInitPriority => Elf_Types_Local.merge_sort compareInputSpecByInitPriority)
+      in
+      (let sorted_selected_inputs = sortfun (selector inputs1) in
+      (let sectionMatchList = (Lem_list.mapMaybe (\<lambda>inp. (case inp of InputSection x => Some x | _ => None)) sorted_selected_inputs) in
+      (let commonMatchList = (Lem_list.mapMaybe (\<lambda>inp. (case inp of Common (idx1, fname1, img3, def1) => Some (idx1, fname1, img3, def1) | _ => None)) sorted_selected_inputs) in
+         ((rev_discards, rev_outputs), Some ((OutputSectionSpec (output_guard, output_sec_addr, output_sec_name, ((output_composition @                                     
+            ((List.foldr (\<lambda>input_sec x2. IncludeInputSection (retainpol, input_sec) # x2) sectionMatchList []))) @
+              ((List.foldr (\<lambda>(idx1, fname1, img3, def1) x2. IncludeCommonSymbol (DefaultKeep, fname1, idx1, def1, img3) # x2) commonMatchList []))))), output_script_idx), last_input_sec)))))
+      in
+        assign_inputs_to_output_sections new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx)"
+by pat_completeness auto
+
+(* XXX: dpm old version of the function
+    (((let do_nothing = ((rev_discards, rev_outputs), cur_output_sec, last_input_sec) in
+      (let xs =
+         ((case element of
+             DefineSymbol(symdefpol, name1, (symsize, syminfo, symother)) =>
+             (* Label the current section in the image 
+              * with a new symbol definition. If there isn't
+              * a current section, use the ABS section (what is that labelling?). *)
+             ((rev_discards, rev_outputs),
+                (case cur_output_sec of
+                   None => (*let _ = errln FIXME: ABS symbol defs not yet supported in*) None
+                 | Some ((OutputSectionSpec (guard, maybe_addr, secname1, comp1)), output_script_idx) => Some ((OutputSectionSpec (guard, maybe_addr, secname1, (comp1 @ [ProvideSymbol(symdefpol, name1, (symsize, syminfo, symother))]))), output_script_idx)), last_input_sec)
+           | AdvanceAddress (AddressExprFn advance_fn) =>
+               (* If we're inside a section, insert a hole, 
+                * else just update the logical address *)
+               (case cur_output_sec of
+                  None => do_nothing
+                  (* This assignment is setting a new LMA. *)
+                  (* (acc,) *)
+                | Some (sec, idx1) => do_nothing)
+           | MarkAndAlignDataSegment(maxpagesize1, commonpagesize1) => 
+             (* The data segment end is a distinguished label, 
+              * so we can encode the whole thing into a conditional. *)
+              do_nothing
+           | MarkDataSegmentEnd => do_nothing
+           | MarkDataSegmentRelroEnd(*(fun_from_secs_to_something)*) => do_nothing
+           | OutputSection(outputguard, maybe_expr, name1, sub_elements) => 
+             (* If we have a current output section, finish it and add it to the image.
+              * Q. Where do guards (ONLY_IF_RO etc) get evaluated?
+              * A. Inside flush_output_sec. *)
+              (let acc_with_output_sec = (flush_output_sec cur_output_sec (rev_discards, rev_outputs)) in
+              (let new_cur_output_sec = (Some ((OutputSectionSpec (outputguard, (* maybe_expr pos secs *) None, name1, [])), idx1)) in
+              (* Recurse down the list of input queries, assigning them to this output sec
+               * Note that output sections may not nest within other output sections. 
+               * At the end of the list of sub_elements, we will flush the section we built up. 
+               *)
+              (let final_acc = (assign_inputs_to_output_sections (rev_discards, rev_outputs) inputs1 new_cur_output_sec last_input_sec seen_ordering (label_script sub_elements)) in
+              (* NOTE that this sub-accumulation will never add a new output section
+               * because output sections can't nest. *)
+                (final_acc, (* cur_output_sec *) None, last_input_sec)))) 
+           | DiscardInput selector  => 
+             (let selected = selector inputs1 in
+             (*let _ = Missing_pervasives.errln (Processing discard rule; selected  ^ (show (length selected)) ^  inputs.) in*)
+              ((((List.rev ((let x2 = [] in
+                    List.foldr (\<lambda>i x2. i # x2) selected x2))) @ rev_discards), rev_outputs), cur_output_sec, last_input_sec))
+           | InputQuery (retainpol, sortpol, selector) => 
+             (* Input queries can only occur within an output section. *)
+             (case cur_output_sec of
+                None => failwith (''linker script error: input query without output section'')
+              | Some ((OutputSectionSpec (output_guard, output_sec_addr, output_sec_name, output_composition)), output_script_idx) =>
+                (* Add them to the current output spec. We have to be careful about ordering:
+                 * according to the GNU ld manual (and observed behaviour), by default
+                 * the linker will place files and sections matched by wildcards in the order
+                 * in which they are seen during the link. For .o files on the command line,
+                 * this means the command line order. But for members of archives, it means
+                 * the order in which they were pulled in during input enumeration. We 
+                 * actually don't compute this here; it is passed in from our caller in link.lem. *)
+                (let sortfun =
+                   ((case  sortpol of
+                      DefaultSort => Elf_Types_Local.merge_sort seen_ordering (* FIXME: pay attention to command line *)
+                    | SeenOrder => Elf_Types_Local.merge_sort seen_ordering
+                    | ByName => Elf_Types_Local.merge_sort compareInputSpecByName
+                    | ByNameThenAlignment => Elf_Types_Local.merge_sort compareInputSpecByNameThenAlignment
+                    | ByAlignment => Elf_Types_Local.merge_sort compareInputSpecByAlignment
+                    | ByAlignmentThenName => Elf_Types_Local.merge_sort compareInputSpecByAlignmentThenName
+                    | ByInitPriority => Elf_Types_Local.merge_sort compareInputSpecByInitPriority))
+                 in
+                 (* Search input memory images for matching sections. *)
+                 (let sorted_selected_inputs = (sortfun (selector inputs1)) in
+                 (let sectionMatchList =
+                    (Lem_list.mapMaybe (\<lambda>inp.  
+                       (case inp of
+                          InputSection x => 
+                          (*let _ = errln (Matched an input section named  ^ x.isec.elf64_section_name_as_string ^ 
+                               in a file  ^ x.fname ^  with first 20 bytes  ^ (show (take 20 
+                           (let maybe_elname = elf_memory_image_element_coextensive_with_section x.shndx x.img in
+                              match maybe_elname with
+                                Nothing -> failwith (impossible: no such element (matching shndx  ^ (show x.shndx) ^ ))
+                              | Just idstr -> 
+                                match Map.lookup idstr x.img.elements with
+                                  Just el -> el.contents
+                                | Nothing -> failwith no such element
+                                end
+                              end)))) in*)
+                           Some x
+                         | _ => None)) sorted_selected_inputs) in
+                  (let commonMatchList = (Lem_list.mapMaybe (\<lambda>inp.  
+                     (case inp of
+                        Common (idx1, fname1, img3, def1) => Some (idx1, fname1, img3, def1)
+                      | _ => None)) sorted_selected_inputs)
+                   in
+                     ((rev_discards, rev_outputs), Some ((OutputSectionSpec(output_guard, output_sec_addr, output_sec_name, ((output_composition @                                     
+                        ((let x2 = ([]) in List.foldr (\<lambda>input_sec x2.
+                            IncludeInputSection (retainpol, (* input_sec.fname, input_sec.idx, input_sec.shndx, input_sec.isec, input_sec.img *) input_sec) # x2) sectionMatchList x2))) @
+                        ((let x2 = ([]) in List.foldr (\<lambda>(idx1, fname1, img3, def1) x2. IncludeCommonSymbol (DefaultKeep, fname1, idx1, def1, img3) # x2) commonMatchList x2))))), output_script_idx), last_input_sec))))))))
+    in
+    let (new_acc, new_cur_output_sec, new_last_input_sec) = xs in
+    assign_inputs_to_output_sections undefined undefined undefined undefined undefined
+                (*assign_inputs_to_output_sections new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx*)))
+    ))"
+by pat_completeness auto*)
 
 (* NOTE: this is also responsible for deleting any PROVIDEd symbols that 
  * were not actually referenced. BUT HOW, if we haven't built the image and 
@@ -3572,7 +3650,6 @@ fun default_place_orphans  :: "(input_spec)list*(output_section_spec*nat)list \<
      List.foldl place_one_orphan (discards, outputs1) orphans))))" 
 declare default_place_orphans.simps [simp del]
  
-(* XXX: bug in Isabelle, see above...
 (*val interpret_linker_control_script : 
     linker_control_script
     -> natural (* linker_script_linkable_idx *)
@@ -3792,6 +3869,5 @@ definition interpret_linker_control_script  :: "(script_element)list \<Rightarro
      
      *)
     (img3, bindings_by_name))))))))))"
-*)
 
 end
