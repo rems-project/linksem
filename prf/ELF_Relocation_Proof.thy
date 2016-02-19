@@ -119,18 +119,6 @@ fun possible_addresses :: "nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow>
   "possible_addresses start (Suc cnt) addr =
      (addr = start \<or> possible_addresses (Suc start) cnt addr)"
 
-(* XXX: in library, somewhere?  find_theorems doesn't find it... *)
-lemma nat_lesseq_elim:
-  fixes m n :: nat
-  assumes "m \<le> n"
-  shows "m = n \<or> m < n"
-using assms by auto
-
-lemma possible_addresses_elim:
-  assumes "address_is_disjoint_from_text_and_within_data_section addr text_start data_start program_len data_len"
-  shows "possible_addresses data_start data_len addr"
-sorry
-
 text {* We now have our (rather silly) correctness property, which serves to demonstrate that our
 definitions are capable of supporting formal proof.  If we set the Isabelle execution mechanism up
 correctly we could just execute this to obtain our theorem, but we will use proof instead.  Creating
@@ -157,81 +145,20 @@ definition correctness_property :: "bool" where
 
 subsection {* Lemmas *}
 
-declare [[show_types]]
+(* XXX: in library, somewhere?  find_theorems doesn't find it, sigh... *)
+lemma nat_lesseq_elim:
+  fixes m n :: nat
+  assumes "m \<le> n"
+  shows "m = n \<or> m < n"
+using assms by auto
 
-(* XXX: ugly but necessary to control simplification below *)
-lemma possible_addresses_8_unfold:
-  fixes start addr :: nat
-  shows "possible_addresses start (8\<Colon>nat) addr = (addr = start \<or>
-         addr = Suc (start) \<or>
-         addr = Suc (Suc (start)) \<or>
-         addr = Suc (Suc (Suc (start))) \<or>
-         addr = Suc (Suc (Suc (Suc (start)))) \<or>
-         addr = Suc (Suc (Suc (Suc (Suc (start))))) \<or>
-         addr = Suc (Suc (Suc (Suc (Suc (Suc (start)))))) \<or>
-         addr = Suc (Suc (Suc (Suc (Suc (Suc (Suc (start))))))) \<or>
-         addr = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (start)))))))))"
+lemma possible_addresses_elim:
+  assumes "address_is_disjoint_from_text_and_within_data_section addr text_start data_start program_len data_len"
+  shows "possible_addresses data_start data_len addr"
 sorry
 
-lemma encode_fixed_program_compute:
-  fixes addr :: nat
-  shows "possible_addresses 4194324 8 addr \<Longrightarrow>
-    let field = (20 + (addr - 4194324)) in
-    map encode [
-      Zmov (Z_ALWAYS, Z64, Zrm_i (Zm (None, ZnoBase, of_nat addr), 5))
-    , Zmov (Z_ALWAYS, Z64, Zr_rm (RAX, Zm (None, ZnoBase, of_nat addr)))
-    ] =
-    [[72\<Colon>8 word, 199\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, of_nat field, 0\<Colon>8 word, 64\<Colon>8 word, 0\<Colon>8 word, 5\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word],
-     [72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, of_nat field, 0\<Colon>8 word, 64\<Colon>8 word, 0\<Colon>8 word]]"
-  apply(unfold possible_addresses_8_unfold)
-  apply(subgoal_tac "word_cat (0\<Colon>1 word) ((word_cat ((word_extract (3\<Colon>nat) (3\<Colon>nat) (0\<Colon>4 word))::1 word) (0\<Colon>2 word))::3 word) OR (8\<Colon>4 word) = (8::4 word)")
-  apply(erule disjE)
-    apply(simp only: list.map encode.simps Let_def)
-    apply(simp only: instruction.case split Zcond.case Zsize.case Zdest_src.case Zrm.case)
-    apply(simp only: Zreg_to_nat.simps Zreg.simps)
-    apply eval
-  apply(erule disjE)
-    apply(simp only: list.map encode.simps Let_def)
-    apply(simp only: instruction.case split Zcond.case Zsize.case Zdest_src.case Zrm.case)
-    apply(simp only: Zreg_to_nat.simps Zreg.simps)
-    apply eval
-  apply(erule disjE)
-    apply(simp only: list.map encode.simps Let_def)
-    apply(simp only: instruction.case split Zcond.case Zsize.case Zdest_src.case Zrm.case)
-    apply(simp only: Zreg_to_nat.simps Zreg.simps)
-    apply eval
-  apply(erule disjE)
-    apply(simp only: list.map encode.simps Let_def)
-    apply(simp only: instruction.case split Zcond.case Zsize.case Zdest_src.case Zrm.case)
-    apply(simp only: Zreg_to_nat.simps Zreg.simps)
-    apply eval
-  apply(erule disjE)
-    apply(simp only: list.map encode.simps Let_def)
-    apply(simp only: instruction.case split Zcond.case Zsize.case Zdest_src.case Zrm.case)
-    apply(simp only: Zreg_to_nat.simps Zreg.simps)
-    apply eval
-  apply(erule disjE)
-    apply(simp only: list.map encode.simps Let_def)
-    apply(simp only: instruction.case split Zcond.case Zsize.case Zdest_src.case Zrm.case)
-    apply(simp only: Zreg_to_nat.simps Zreg.simps)
-    apply eval
-  apply(erule disjE)
-    apply(simp only: list.map encode.simps Let_def)
-    apply(simp only: instruction.case split Zcond.case Zsize.case Zdest_src.case Zrm.case)
-    apply(simp only: Zreg_to_nat.simps Zreg.simps)
-    apply eval
-  apply(erule disjE)
-    apply(simp only: list.map encode.simps Let_def)
-    apply(simp only: instruction.case split Zcond.case Zsize.case Zdest_src.case Zrm.case)
-    apply(simp only: Zreg_to_nat.simps Zreg.simps)
-    apply eval
-    apply(simp only: list.map encode.simps Let_def)
-    apply(simp only: instruction.case split Zcond.case Zsize.case Zdest_src.case Zrm.case)
-    apply(simp only: Zreg_to_nat.simps Zreg.simps)
-    apply eval+
-done
-
-(* XXX: ugly, but necessary to control the simplifier below *)
+text {* The following is an ugly lemma that is necessary for controlling the unrolling of the for_loop
+function used in Anthony's model, otherwise the simplifier loops uncontrollably. *}
 lemma for_loop_19_unroll:
   fixes act :: "nat \<Rightarrow> 'a \<Rightarrow> (unit \<times> 'a)"
   shows "for_loop ((19::nat), 0, act) = (\<lambda>u. case act 19 u of
@@ -253,129 +180,165 @@ lemma for_loop_19_unroll:
   apply simp
 done
 
-lemma word_arith_technical1:
-  assumes "x < 2^64 - 4194304"
-  shows "(4194304\<Colon>64 word) + word_of_int (int (x\<Colon>nat)) = of_nat (4194304 + x)"
-sorry
-
-lemma word_arith_technical2:
-  assumes "x < 2^64 - 4194316"
-  shows "(4194316\<Colon>64 word) + word_of_int (int (x\<Colon>nat)) = of_nat (4194316 + x)"
-sorry
-
-lemma x64_fetch_fixed1:
-  shows "x64_fetch \<lparr>EFLAGS = Map.empty,
-                              MEM = build_fixed_program_memory (4194304\<Colon>nat)
-                                     [72\<Colon>8 word, 199\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, (20\<Colon>8 word) + of_nat (addr - (4194324\<Colon>nat)), 0\<Colon>8 word, 64\<Colon>8 word, 0\<Colon>8 word, 5\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word,
-                                      72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, (20\<Colon>8 word) + of_nat (addr - (4194324\<Colon>nat)), 0\<Colon>8 word, 64\<Colon>8 word, 0\<Colon>8 word],
-                              REG = \<lambda>x\<Colon>Zreg. 0\<Colon>64 word, RIP = 4194304\<Colon>64 word, exception = NoException\<rparr> =
-  ([72\<Colon>8 word, 199\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, (20\<Colon>8 word) + of_nat (addr - (4194324\<Colon>nat)), 0\<Colon>8 word, 64\<Colon>8 word, 0\<Colon>8 word, 5\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word,
-      37\<Colon>8 word, (20\<Colon>8 word) + of_nat (addr - (4194324\<Colon>nat)), 0\<Colon>8 word, 64\<Colon>8 word, 0\<Colon>8 word],
-     \<lparr>EFLAGS = Map.empty,
-        MEM = build_fixed_program_memory (4194304\<Colon>nat)
-               [72\<Colon>8 word, 199\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, (20\<Colon>8 word) + of_nat (addr - (4194324\<Colon>nat)), 0\<Colon>8 word, 64\<Colon>8 word, 0\<Colon>8 word, 5\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 72\<Colon>8 word, 139\<Colon>8 word,
-                4\<Colon>8 word, 37\<Colon>8 word, (20\<Colon>8 word) + of_nat (addr - (4194324\<Colon>nat)), 0\<Colon>8 word, 64\<Colon>8 word, 0\<Colon>8 word],
-        REG = \<lambda>x\<Colon>Zreg. 0\<Colon>64 word, RIP = 4194304\<Colon>64 word, exception = NoException\<rparr>)"
-  apply(simp only: x64_fetch.simps for_loop_19_unroll)
-  apply(simp only: split snd_def X64_state.simps fst_def)
-  apply(simp add: word_arith_technical1 build_fixed_program_memory_def)
+text {* Key lemma: if we fetch from a given state, then we are given a 20-element list back in return,
+read from the state's memory at RIP+offset for 0 \<le> offset < 20, with the original state returned as
+second component. *}
+lemma x64_fetch_RIP:
+  shows "x64_fetch \<sigma> =
+    ([MEM \<sigma> (RIP \<sigma>), MEM \<sigma> (RIP \<sigma> + 1), MEM \<sigma> (RIP \<sigma> + 2), MEM \<sigma> (RIP \<sigma> + 3),
+      MEM \<sigma> (RIP \<sigma> + 4), MEM \<sigma> (RIP \<sigma> + 5), MEM \<sigma> (RIP \<sigma> + 6), MEM \<sigma> (RIP \<sigma> + 7),
+      MEM \<sigma> (RIP \<sigma> + 8), MEM \<sigma> (RIP \<sigma> + 9), MEM \<sigma> (RIP \<sigma> + 10), MEM \<sigma> (RIP \<sigma> + 11),
+      MEM \<sigma> (RIP \<sigma> + 12), MEM \<sigma> (RIP \<sigma> + 13), MEM \<sigma> (RIP \<sigma> + 14), MEM \<sigma> (RIP \<sigma> + 15),
+      MEM \<sigma> (RIP \<sigma> + 16), MEM \<sigma> (RIP \<sigma> + 17), MEM \<sigma> (RIP \<sigma> + 18), MEM \<sigma> (RIP \<sigma> + 19)], \<sigma>)"
+  apply(simp only: x64_fetch.simps)
+  apply(simp only: for_loop_19_unroll snd_def fst_def split Let_def Word.word_of_nat)
+  apply simp
 done
 
-lemma x64_fetch_fixed2:
-  shows "x64_fetch \<lparr>EFLAGS = Map.empty,
-                              MEM = (build_fixed_program_memory (4194304\<Colon>nat)
-                                      [72\<Colon>8 word, 199\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, (20\<Colon>8 word) + of_nat (addr - (4194324\<Colon>nat)), 0\<Colon>8 word, 64\<Colon>8 word, 0\<Colon>8 word, 5\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word,
-                                       72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, (20\<Colon>8 word) + of_nat (addr - (4194324\<Colon>nat)), 0\<Colon>8 word, 64\<Colon>8 word, 0\<Colon>8 word])
-                                (of_nat addr := 5\<Colon>8 word, of_nat addr + (1\<Colon>64 word) := 0\<Colon>8 word, of_nat addr + (2\<Colon>64 word) := 0\<Colon>8 word, (3\<Colon>64 word) + of_nat addr := 0\<Colon>8 word,
-                                 of_nat addr + (4\<Colon>64 word) := 0\<Colon>8 word, (5\<Colon>64 word) + of_nat addr := 0\<Colon>8 word, (6\<Colon>64 word) + of_nat addr := 0\<Colon>8 word, (7\<Colon>64 word) + of_nat addr := 0\<Colon>8 word),
-                              REG = \<lambda>x\<Colon>Zreg. 0\<Colon>64 word, RIP = 4194316\<Colon>64 word, exception = NoException\<rparr> =
-    (yyyy,
-     \<lparr>EFLAGS = Map.empty,
-                              MEM = (build_fixed_program_memory (4194304\<Colon>nat)
-                                      [72\<Colon>8 word, 199\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, (20\<Colon>8 word) + of_nat (addr - (4194324\<Colon>nat)), 0\<Colon>8 word, 64\<Colon>8 word, 0\<Colon>8 word, 5\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word,
-                                       72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, (20\<Colon>8 word) + of_nat (addr - (4194324\<Colon>nat)), 0\<Colon>8 word, 64\<Colon>8 word, 0\<Colon>8 word])
-                                (of_nat addr := 5\<Colon>8 word, of_nat addr + (1\<Colon>64 word) := 0\<Colon>8 word, of_nat addr + (2\<Colon>64 word) := 0\<Colon>8 word, (3\<Colon>64 word) + of_nat addr := 0\<Colon>8 word,
-                                 of_nat addr + (4\<Colon>64 word) := 0\<Colon>8 word, (5\<Colon>64 word) + of_nat addr := 0\<Colon>8 word, (6\<Colon>64 word) + of_nat addr := 0\<Colon>8 word, (7\<Colon>64 word) + of_nat addr := 0\<Colon>8 word),
-                              REG = \<lambda>x\<Colon>Zreg. 0\<Colon>64 word, RIP = 4194316\<Colon>64 word, exception = NoException\<rparr>)"
-  apply(simp only: x64_fetch.simps for_loop_19_unroll)
-  apply(simp only: split snd_def fst_def X64_state.simps)
-  apply(simp add: word_arith_technical2 build_fixed_program_memory_def)
+text {* The following are technical lemmas that should hopefully be proved properly rather than with
+evaluation. *}
+lemma prefixGroup_72:
+  shows "prefixGroup 72 = 5"
+by eval (* XXX *)
 
-lemma x64_decode_fixed1:
-  fixes addr :: nat
-  shows "x64_decode
-           [72\<Colon>8 word, 199\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, (20\<Colon>8 word) + of_nat (addr - (4194324\<Colon>nat)), 0\<Colon>8 word, 64\<Colon>8 word, 0\<Colon>8 word, 5\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 72\<Colon>8 word, 139\<Colon>8 word,
-            4\<Colon>8 word, 37\<Colon>8 word, (20\<Colon>8 word) + of_nat (addr - (4194324\<Colon>nat)), 0\<Colon>8 word, 64\<Colon>8 word, 0\<Colon>8 word] =
-         Zfull_inst ([], Zmov (Z_ALWAYS, Z64, Zrm_i (Zm (None, ZnoBase, of_nat addr\<Colon>64 word), 5\<Colon>64 word)), [72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, (20\<Colon>8 word) + of_nat (addr - (4194324\<Colon>nat)), 0\<Colon>8 word, 64\<Colon>8 word, 0\<Colon>8 word])"
-sorry
+lemma to_bl_199:
+  shows "to_bl (199::8 word) = [True, True, False, False, False, True, True, True]"
+by eval (* XXX *)
 
-lemma x64_next_fixed1:
-  shows "x64_next \<lparr>EFLAGS = Map.empty,
-                                     MEM = build_fixed_program_memory (4194304\<Colon>nat)
-                                            [72\<Colon>8 word, 199\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, (20\<Colon>8 word) + of_nat (addr - (4194324\<Colon>nat)), 0\<Colon>8 word, 64\<Colon>8 word, 0\<Colon>8 word, 5\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word,
-                                             0\<Colon>8 word, 72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, (20\<Colon>8 word) + of_nat (addr - (4194324\<Colon>nat)), 0\<Colon>8 word, 64\<Colon>8 word, 0\<Colon>8 word],
-                                     REG = \<lambda>x\<Colon>Zreg. 0\<Colon>64 word, RIP = 4194304\<Colon>64 word, exception = NoException\<rparr> = ((), \<lparr>EFLAGS = Map.empty,
-            MEM = (build_fixed_program_memory (4194304\<Colon>nat)
-                    [72\<Colon>8 word, 199\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, (20\<Colon>8 word) + of_nat (addr - (4194324\<Colon>nat)), 0\<Colon>8 word, 64\<Colon>8 word, 0\<Colon>8 word, 5\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 72\<Colon>8 word,
-                     139\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, (20\<Colon>8 word) + of_nat (addr - (4194324\<Colon>nat)), 0\<Colon>8 word, 64\<Colon>8 word, 0\<Colon>8 word])
-              (of_nat addr := 5::8 word,
-               of_nat addr + (1\<Colon>64 word) := 0::8 word,
-               of_nat addr + (2\<Colon>64 word) := 0::8 word,
-               (3\<Colon>64 word) + of_nat addr := 0::8 word, of_nat addr + (4\<Colon>64 word) := 0\<Colon>8 word,
-               (5\<Colon>64 word) + of_nat addr := 0\<Colon>8 word, (6\<Colon>64 word) + of_nat addr := 0\<Colon>8 word, (7\<Colon>64 word) + of_nat addr := 0\<Colon>8 word),
-            REG = \<lambda>x\<Colon>Zreg. 0\<Colon>64 word, RIP = 4194316\<Colon>64 word, exception = NoException\<rparr>)"
-  apply(simp only: x64_next.simps)
-  apply(simp only: x64_fetch_fixed1 fst_def split)
-  apply(simp only: x64_decode_fixed1)
-  apply(simp only: Zinst.case split X64_state.simps)
-  apply simp (* XXX: true by eval *)
-sorry
+lemma to_bl_139:
+  shows "to_bl (139::8 word) = [True, False, False, False, True, False, True, True]"
+by eval (* XXX *)
 
-lemma x64_next_fixed2:
-  shows "x64_next \<lparr>EFLAGS = Map.empty,
-                      MEM = (build_fixed_program_memory (4194304\<Colon>nat)
-                              [72\<Colon>8 word, 199\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, (20\<Colon>8 word) + of_nat (addr - (4194324\<Colon>nat)), 0\<Colon>8 word, 64\<Colon>8 word, 0\<Colon>8 word, 5\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word,
-                               72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, (20\<Colon>8 word) + of_nat (addr - (4194324\<Colon>nat)), 0\<Colon>8 word, 64\<Colon>8 word, 0\<Colon>8 word])
-                        (of_nat addr := 5\<Colon>8 word, of_nat addr + (1\<Colon>64 word) := 0\<Colon>8 word, of_nat addr + (2\<Colon>64 word) := 0\<Colon>8 word, (3\<Colon>64 word) + of_nat addr := 0\<Colon>8 word,
-                         of_nat addr + (4\<Colon>64 word) := 0\<Colon>8 word, (5\<Colon>64 word) + of_nat addr := 0\<Colon>8 word, (6\<Colon>64 word) + of_nat addr := 0\<Colon>8 word, (7\<Colon>64 word) + of_nat addr := 0\<Colon>8 word),
-                      REG = \<lambda>x\<Colon>Zreg. 0\<Colon>64 word, RIP = 4194316\<Colon>64 word, exception = NoException\<rparr> = xxx"
-  apply(simp only: x64_next.simps)
+lemma to_bl_37:
+  shows "to_bl (37\<Colon>8 word) = [False, False, True, False, False, True, False, True]"
+by eval (* XXX *)
 
-lemma run_two_steps_fixed:
-  shows "(run_two_steps
-                      \<lparr>EFLAGS = Map.empty,
-                         MEM = build_fixed_program_memory (4194304\<Colon>nat)
-                                [72\<Colon>8 word, 199\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, (20\<Colon>8 word) + of_nat (addr - (4194324\<Colon>nat)), 0\<Colon>8 word, 64\<Colon>8 word, 0\<Colon>8 word, 5\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word,
-                                 72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, (20\<Colon>8 word) + of_nat (addr - (4194324\<Colon>nat)), 0\<Colon>8 word, 64\<Colon>8 word, 0\<Colon>8 word],
-                         REG = \<lambda>x\<Colon>Zreg. 0\<Colon>64 word, RIP = 4194304\<Colon>64 word, exception = NoException\<rparr>) = xxx"
-  apply(simp only: run_two_steps_def snd_def)
-  apply(simp only: x64_next_fixed1 split)
+lemma to_bl_4:
+  shows "to_bl (4\<Colon>8 word) = [False, False, False, False, False, True, False, False]"
+by eval (* XXX *)
 
-subsection {* The "big" theorem *}
+lemma of_bl_True:
+  shows "of_bl [True] = (1::1 word)"
+by eval
 
-text {* Finally, our correctness theorem which shows that our correctness property holds: *}
-theorem correctness_property_True:
+lemma of_bl_False_False:
+  shows "of_bl [False, False] = (0::2 word)"
+by eval (* XXX *)
+
+lemma word_extract_3_0_72:
+  shows "((word_extract 3 0 (72::8 word))::4 word) = (8::4 word)"
+by eval (* XXX *)
+
+lemma bang_bang_8_0:
+  shows "((8\<Colon>4 word) !! (0\<Colon>nat)) = False"
+by eval (* XXX *)
+
+lemma bang_bang_8_1:
+  shows "((8\<Colon>4 word) !! (1\<Colon>nat)) = False"
+by eval (* XXX *)
+
+lemma bang_bang_8_2:
+  shows "((8\<Colon>4 word) !! (2\<Colon>nat)) = False"
+by eval
+
+lemma bang_bang_8_3:
+  shows "((8\<Colon>4 word) !! (3\<Colon>nat)) = True"
+by eval (* XXX *)
+
+lemma nat_to_Zreg_RSP:
+  shows "nat_to_Zreg (nat (uint ((word_cat (0\<Colon>1 word) ((of_bl [True, False, False])::3 word))::4 word))) = RSP"
+by eval (* XXX *)
+
+lemma nat_to_Zreg_RBP:
+  shows "nat_to_Zreg (nat (uint ((word_cat (0\<Colon>1 word) ((of_bl [True, False, True])::3 word))::4 word))) = RBP"
+by eval (* XXX *)
+
+lemma nat_to_Zreg_RAX:
+  shows "nat_to_Zreg (nat (uint ((word_cat (0::1 word) ((of_bl [False, False, False])::3 word))::4 word))) = RAX"
+by eval (* XXX *)
+
+lemma x64_decode_Zmov_in:
+  assumes "ss = [72, 199, 4, 37] @ [a1, a2, a3, a4] @ [c1, c2, c3, c4] @ rest" and
+    "immediate32 (a1 # a2 # a3 # a4 # c1 # c2 # c3 # c4 # rest) = (addr, i)" and
+    "immediate32 i = (cnst, rest)"
+  shows "x64_decode ss = Zfull_inst ([], Zmov (Z_ALWAYS, Z64, Zrm_i (Zm (None, ZnoBase, addr), cnst)), rest)"
+using assms
+  apply(clarify)
+  apply(simp only: append.simps x64_decode.simps readPrefixes.simps)
+  apply(subst readPrefix.simps)
+  apply(simp only: list.case prefixGroup_72)
+  apply(simp only: Let_def refl if_True)
+  apply(subst if_weak_cong[where b="5=0" and c="False"])
+  apply simp
+  apply(simp only: option.case if_False split)
+  apply(subst if_weak_cong[where b="W (rec'REX (word_extract 3 0 72)) \<and> 102 \<in> set []" and c="False"])
+  apply simp
+  apply(simp only: if_False)
+  apply(subst if_weak_cong[where b="103 \<in> set []" and c="False"], simp)
+  apply(simp only: if_False list.case boolify'8.simps to_bl_199)
+  apply(simp only: split list.cases bool.case rec'REX.simps REX.defs)
+  apply(simp only: readOpcodeModRM.simps readModRM.simps list.case boolify'8.simps)
+  apply(simp only: to_bl_4 list.case split bool.case readSIB.simps REX.simps boolify'8.simps)
+  apply(simp only: to_bl_37 list.case split)
+  apply(simp only: word_extract_3_0_72 RexReg.simps bang_bang_8_0 bang_bang_8_1 bang_bang_8_3 if_False if_True)
+  apply(simp only: Let_def nat_to_Zreg_RBP refl if_True readSibDisplacement.simps simp_thms if_False)
+  apply(simp only: of_bl_False_False simp_thms if_True of_bl_True OpSize.simps)
+  apply(subst if_weak_cong[where b="(1\<Colon>1 word) = (0\<Colon>1 word)" and c="False"])
+  apply simp
+  apply(simp only: if_False)
+  apply(subst if_weak_cong[where b="(1\<Colon>1 word) = (0\<Colon>1 word)" and c="False"], simp)
+  apply(simp only: if_False nat_to_Zreg_RSP)
+  apply(subst if_weak_cong[where b="(0\<Colon>2 word) = (1\<Colon>2 word)" and c="False"], simp)
+  apply(simp only: if_False refl if_True bang_bang_8_2 split immediate.simps Zsize.case)
+  apply(subst if_weak_cong[where b="word_of_int (int (Zreg_to_nat (nat_to_Zreg (nat (uint (word_cat (0\<Colon>1 word) (of_bl [False, False, False]))))) mod (8\<Colon>nat))) = (0::3 word)" and c="True"])
+  apply eval
+  apply simp
+done
+
+lemma x64_decode_Zmov_out:
+  assumes "ss = [72, 139, 4, 37] @ [a1, a2, a3, a4] @ rest" and
+    "immediate32 (a1 # a2 # a3 # a4 # rest) = (addr, rest)"
+  shows "x64_decode ss = Zfull_inst ([], Zmov (Z_ALWAYS, Z64, Zr_rm (RAX, Zm (None, ZnoBase, addr))), rest)"
+using assms
+  apply(clarify)
+  apply(simp only: append.simps x64_decode.simps readPrefixes.simps)
+  apply(subst readPrefix.simps)
+  apply(simp only: list.case prefixGroup_72)
+  apply(simp only: Let_def refl if_True)
+  apply(subst if_weak_cong[where b="5=0" and c="False"])
+  apply simp
+  apply(simp only: option.case if_False split)
+  apply(subst if_weak_cong[where b="W (rec'REX (word_extract 3 0 72)) \<and> 102 \<in> set []" and c="False"])
+  apply simp
+  apply(simp only: if_False)
+  apply(subst if_weak_cong[where b="103 \<in> set []" and c="False"], simp)
+  apply(simp only: if_False list.case boolify'8.simps to_bl_199)
+  apply(simp only: split list.cases bool.case rec'REX.simps REX.defs)
+  apply(simp only: readOpcodeModRM.simps readModRM.simps list.case boolify'8.simps)
+  apply(simp only: to_bl_139 list.case split bool.case to_bl_4 readSIB.simps REX.simps boolify'8.simps)
+  apply(simp only: to_bl_37 list.case split)
+  apply(simp only: word_extract_3_0_72 RexReg.simps bang_bang_8_0 bang_bang_8_1 bang_bang_8_3 if_False if_True)
+  apply(simp only: Let_def nat_to_Zreg_RBP refl if_True readSibDisplacement.simps simp_thms if_False)
+  apply(simp only: of_bl_False_False simp_thms if_True of_bl_True OpSize.simps)
+  apply(subst if_weak_cong[where b="(0\<Colon>2 word) = (1\<Colon>2 word)" and c="False"], simp)
+  apply(simp only: if_False)
+  apply(subst if_weak_cong[where b="(1\<Colon>1 word) = (0\<Colon>1 word)" and c="False"], simp)
+  apply(simp only: if_False)
+  apply(simp only: nat_to_Zreg_RSP refl if_True split)
+  apply(subst if_weak_cong[where b="(1\<Colon>1 word) = (0\<Colon>1 word)" and c="False"], simp)
+  apply(simp only: if_False bang_bang_8_2 nat_to_Zreg_RAX)
+done
+
+theorem le_big_theorem_ooh_la_la:
   shows "correctness_property"
-  (* Unfold the lemma statement *)
-  apply(simp only: correctness_property_def)
-  apply(rule allI)
-  (* Start work on the fixed program *)
-  apply(simp only: fixed_program_def)
-  apply(simp only: mov_constant_to_mem_def mov_constant_from_mem_def)
+  apply(subst correctness_property_def)
+  apply(rule allI)+
   apply(simp only: Let_def)
+  apply(simp only: fixed_program_def Let_def list.map concat.simps append_Nil2)
   apply(rule impI)
-  apply safe
-  apply(frule possible_addresses_elim)
-  apply(drule encode_fixed_program_compute)
-  apply(simp only: Let_def)
-  apply clarify
-  apply(simp only: concat.simps append.simps)
-  apply(thin_tac "encode (Zmov (Z_ALWAYS, Z64, Zrm_i (Zm (None, ZnoBase, of_nat addr), 5\<Colon>64 word))) =
-       [72\<Colon>8 word, 199\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, of_nat ((20\<Colon>nat) + (addr - (4194324\<Colon>nat))), 0\<Colon>8 word, 64\<Colon>8 word, 0\<Colon>8 word, 5\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word]")
-  apply(thin_tac "encode (Zmov (Z_ALWAYS, Z64, Zr_rm (RAX, Zm (None, ZnoBase, of_nat addr)))) =
-       [72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, of_nat ((20\<Colon>nat) + (addr - (4194324\<Colon>nat))), 0\<Colon>8 word, 64\<Colon>8 word, 0\<Colon>8 word]")
   apply(simp only: load_fixed_program_instructions_def)
-thm build_fixed_program_memory_def
-  apply(simp add: build_fixed_program_memory_def)
+  apply(simp only: run_two_steps_def x64_next.simps fst_def snd_def)
+  apply(simp only: x64_fetch_RIP list.case split)
+  apply(subst x64_decode_Zmov_in) (* XXX: applying to wrong thing, here *)
 
 end
