@@ -65,11 +65,12 @@ definition X64_memory_of_memory_image :: "memory_image \<Rightarrow> (nat \<Righ
 text {* Produces an initial state for the X64 emulation out of a memory_image (which will be converted
 to a memory, per the definition above) and a fixed start address for the instruction pointer.  This
 start address must match the start addresses of the .text section specified in Test_image.thy). *}
-definition load_relocated_program_image :: "memory_image \<Rightarrow> nat \<Rightarrow> X64_state" where
-  "load_relocated_program_image i entry_point \<equiv>
-     \<lparr> EFLAGS = \<lambda>x. None (* XXX: or False? *)
+definition load_relocated_program_image :: "(Zeflags \<Rightarrow> bool option) \<Rightarrow> memory_image \<Rightarrow> (Zreg \<Rightarrow> 64 word)
+      \<Rightarrow> nat \<Rightarrow> X64_state" where
+  "load_relocated_program_image flags i reg entry_point \<equiv>
+     \<lparr> EFLAGS = flags
      , MEM = \<lambda>a. X64_memory_of_memory_image i (unat a)
-     , REG = \<lambda>x. (0 :: 64 word)
+     , REG = reg
      , RIP = of_nat entry_point
      , exception = NoException
      \<rparr>"
@@ -92,11 +93,12 @@ definition build_fixed_program_memory :: "nat \<Rightarrow> 8 word list \<Righta
 text {* Produces an initial state for the X64 emulation out of the encoded instructions of our fixed
 program above, and a fixed start address for the instruction pointer.  This start address must match
 the start address of the .text section specified in Test_image.thy. *}
-definition load_fixed_program_instructions :: "8 word list \<Rightarrow> nat \<Rightarrow> X64_state" where
-  "load_fixed_program_instructions p entry_point \<equiv>
-       \<lparr> EFLAGS = Map.empty (* XXX: or False? *)
+definition load_fixed_program_instructions :: "(Zeflags \<Rightarrow> bool option) \<Rightarrow> 8 word list \<Rightarrow>
+    (Zreg \<Rightarrow> 64 word) \<Rightarrow> nat \<Rightarrow> X64_state" where
+  "load_fixed_program_instructions flags p reg entry_point \<equiv>
+       \<lparr> EFLAGS = flags
        , MEM = build_fixed_program_memory entry_point p
-       , REG = \<lambda>x. (0 :: 64 word)
+       , REG = reg
        , RIP = of_nat entry_point
        , exception = NoException
        \<rparr>"
@@ -137,7 +139,7 @@ steps and demonstrate that the contents of their registers are the same after ex
 particular, both RAX registers will contain the immediate constant, 5. *}
 definition correctness_property :: "bool" where
   "correctness_property \<equiv>
-     \<forall>addr::nat.
+     \<forall>addr::nat. \<forall>flags :: Zeflags \<Rightarrow> bool option. \<forall>reg :: Zreg \<Rightarrow> 64 word.
        let fprogr  = fixed_program addr in
 
        let text_start   = 4194304 in (* Fixed in Test_image *)
@@ -145,13 +147,13 @@ definition correctness_property :: "bool" where
        let program_len  = List.length fprogr in
        let data_len     = 8 in      (* Fixed in Test_image *)
 
-       let fstate1 = load_fixed_program_instructions fprogr text_start in
+       let fstate1 = load_fixed_program_instructions flags fprogr reg text_start in
        let fstate2 = run_two_steps fstate1 in
-       let rstate1 = load_relocated_program_image (elements (relocation_image addr)) text_start in
+       let rstate1 = load_relocated_program_image flags (elements (relocation_image addr)) reg text_start in
        let rstate2 = run_two_steps rstate1 in
 
        address_is_disjoint_from_text_and_within_data_section addr text_start data_start program_len data_len \<longrightarrow>
-           REG fstate2 = REG rstate2 \<and> (REG rstate1) RAX = 5"
+           rstate2 = fstate2"
 
 subsection {* Lemmas *}
 
@@ -279,14 +281,6 @@ lemma x64_fetch_fixed1:
   apply(simp add: word_arith_technical1 build_fixed_program_memory_def)
 done
 
-value "x64_fetch \<lparr>EFLAGS = Map.empty,
-                              MEM = (build_fixed_program_memory (4194304\<Colon>nat)
-                                      [72\<Colon>8 word, 199\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, (21\<Colon>8 word), 0\<Colon>8 word, 64\<Colon>8 word, 0\<Colon>8 word, 5\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word,
-                                       72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, (21\<Colon>8 word), 0\<Colon>8 word, 64\<Colon>8 word, 0\<Colon>8 word])
-                                (0::64 word := 5\<Colon>8 word, (1\<Colon>64 word) := 0\<Colon>8 word, (2\<Colon>64 word) := 0\<Colon>8 word, (3\<Colon>64 word) := 0\<Colon>8 word,
-                                 (4\<Colon>64 word) := 0\<Colon>8 word, (5\<Colon>64 word) := 0\<Colon>8 word, (6\<Colon>64 word) := 0\<Colon>8 word, (7\<Colon>64 word) := 0\<Colon>8 word),
-                              REG = \<lambda>x\<Colon>Zreg. 0\<Colon>64 word, RIP = 4194316\<Colon>64 word, exception = NoException\<rparr>"
-
 lemma x64_fetch_fixed2:
   shows "x64_fetch \<lparr>EFLAGS = Map.empty,
                               MEM = (build_fixed_program_memory (4194304\<Colon>nat)
@@ -295,13 +289,13 @@ lemma x64_fetch_fixed2:
                                 (of_nat addr := 5\<Colon>8 word, of_nat addr + (1\<Colon>64 word) := 0\<Colon>8 word, of_nat addr + (2\<Colon>64 word) := 0\<Colon>8 word, (3\<Colon>64 word) + of_nat addr := 0\<Colon>8 word,
                                  of_nat addr + (4\<Colon>64 word) := 0\<Colon>8 word, (5\<Colon>64 word) + of_nat addr := 0\<Colon>8 word, (6\<Colon>64 word) + of_nat addr := 0\<Colon>8 word, (7\<Colon>64 word) + of_nat addr := 0\<Colon>8 word),
                               REG = \<lambda>x\<Colon>Zreg. 0\<Colon>64 word, RIP = 4194316\<Colon>64 word, exception = NoException\<rparr> =
-    ([72, 199, 4, 37, (20\<Colon>8 word) + of_nat (addr - (4194324\<Colon>nat)), 0, 64\<Colon>8 word, 0\<Colon>8 word, 5\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word,
-      37\<Colon>8 word, (20\<Colon>8 word) + of_nat (addr - (4194324\<Colon>nat)), 0\<Colon>8 word, 64\<Colon>8 word, 0\<Colon>8 word]@yy,
-     \<lparr>EFLAGS = Map.empty, MEM = (build_fixed_program_memory (4194304\<Colon>nat)
-                                      [72\<Colon>8 word, 199\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, (21\<Colon>8 word), 0\<Colon>8 word, 64\<Colon>8 word, 0\<Colon>8 word, 5\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word,
-                                       72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, (21\<Colon>8 word), 0\<Colon>8 word, 64\<Colon>8 word, 0\<Colon>8 word])
-                                (0::64 word := 5\<Colon>8 word, (1\<Colon>64 word) := 0\<Colon>8 word, (2\<Colon>64 word) := 0\<Colon>8 word, (3\<Colon>64 word) := 0\<Colon>8 word,
-                                 (4\<Colon>64 word) := 0\<Colon>8 word, (5\<Colon>64 word) := 0\<Colon>8 word, (6\<Colon>64 word) := 0\<Colon>8 word, (7\<Colon>64 word) := 0\<Colon>8 word),
+    (yyyy,
+     \<lparr>EFLAGS = Map.empty,
+                              MEM = (build_fixed_program_memory (4194304\<Colon>nat)
+                                      [72\<Colon>8 word, 199\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, (20\<Colon>8 word) + of_nat (addr - (4194324\<Colon>nat)), 0\<Colon>8 word, 64\<Colon>8 word, 0\<Colon>8 word, 5\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word,
+                                       72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, (20\<Colon>8 word) + of_nat (addr - (4194324\<Colon>nat)), 0\<Colon>8 word, 64\<Colon>8 word, 0\<Colon>8 word])
+                                (of_nat addr := 5\<Colon>8 word, of_nat addr + (1\<Colon>64 word) := 0\<Colon>8 word, of_nat addr + (2\<Colon>64 word) := 0\<Colon>8 word, (3\<Colon>64 word) + of_nat addr := 0\<Colon>8 word,
+                                 of_nat addr + (4\<Colon>64 word) := 0\<Colon>8 word, (5\<Colon>64 word) + of_nat addr := 0\<Colon>8 word, (6\<Colon>64 word) + of_nat addr := 0\<Colon>8 word, (7\<Colon>64 word) + of_nat addr := 0\<Colon>8 word),
                               REG = \<lambda>x\<Colon>Zreg. 0\<Colon>64 word, RIP = 4194316\<Colon>64 word, exception = NoException\<rparr>)"
   apply(simp only: x64_fetch.simps for_loop_19_unroll)
   apply(simp only: split snd_def fst_def X64_state.simps)
