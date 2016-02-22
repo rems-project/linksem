@@ -302,9 +302,74 @@ lemma word_of_int_of_int_0:
   shows "(word_of_int (int (0\<Colon>nat))::'a::len word) = (0::'a word)"
 by simp
 
-lemma word_cat_OR_8:
-  shows "word_cat (0\<Colon>1 word) ((word_cat ((word_extract (3\<Colon>nat) (3\<Colon>nat) (0::4 word))::1 word) (0\<Colon>2 word))::3 word) OR (8\<Colon>4 word) = (8::4 word)"
-by eval (* XXX *)
+lemma word_arith_technical:
+  assumes "m \<ge> 0"
+  shows "of_nat n + word_of_int (int m) = of_nat (n + m)"
+by (metis Abs_fnat_hom_add of_int_of_nat_eq word_of_int)
+
+lemma numeral_4_eq_4:
+  shows "(4::nat) = Suc (Suc (Suc (Suc 0)))"
+by simp
+
+lemma numeral_5_eq_5:
+  shows "(5::nat) = Suc (Suc (Suc (Suc (Suc 0))))"
+by simp
+
+lemma numeral_6_eq_6:
+  shows "(6::nat) = Suc (Suc (Suc (Suc (Suc (Suc 0)))))"
+by simp
+
+lemma numeral_7_eq_7:
+  shows "(7::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc 0))))))"
+by simp
+
+lemma numeral_8_eq_8:
+  shows "(8::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0)))))))"
+by simp
+
+lemma numeral_9_eq_9:
+  shows "(9::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0))))))))"
+by simp
+
+lemma numeral_10_eq_10:
+  shows "(10::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0)))))))))"
+by simp
+
+lemma numeral_11_eq_11:
+  shows "(11::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0))))))))))"
+by simp
+
+lemma numeral_12_eq_12:
+  shows "(12::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0)))))))))))"
+by simp
+
+lemma numeral_13_eq_13:
+  shows "(13::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0))))))))))))"
+by simp
+
+lemma numeral_14_eq_14:
+  shows "(14::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0)))))))))))))"
+by simp
+
+lemma numeral_15_eq_15:
+  shows "(15::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0))))))))))))))"
+by simp
+
+lemma numeral_16_eq_16:
+  shows "(16::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0)))))))))))))))"
+by simp
+
+lemma numeral_17_eq_17:
+  shows "(17::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0))))))))))))))))"
+by simp
+
+lemma numeral_18_eq_18:
+  shows "(18::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0)))))))))))))))))"
+by simp
+
+lemma numeral_19_eq_19:
+  shows "(19::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0))))))))))))))))))"
+by simp
 
 lemma x64_decode_Zmov_in:
   assumes "ss = [72, 199, 4, 37] @ [a1, a2, a3, a4] @ [c1, c2, c3, c4] @ rest" and
@@ -415,7 +480,7 @@ using assms
   apply(simp only: e_imm32.simps simp_thms if_True list.case split append.simps)
   apply(simp only: e_opsize.simps Zsize.case)
   apply(simp only: rex_prefix.simps Zreg_to_nat.simps Zreg.case word_of_int_of_int_0)
-  apply(simp only: word_cat_OR_8)
+  apply(simp only: word_cat_8)
   apply(subst if_weak_cong[where b="(8\<Colon>4 word) = (0\<Colon>4 word)" and c="False"], simp)
   apply(simp only: if_False Let_def split concat.simps append.simps list.simps)
   apply(simp only: simp_thms word_cat_4_8_72 OR_138_1 word_of_int_of_int_0 word_cat_4)
@@ -426,15 +491,115 @@ lemma build_fixed_program_memory_commute:
   shows "(build_fixed_program_memory addr bytes) (of_nat l) = bytes ! (l - addr)"
 sorry
 
-lemma x64_decode_fixed_technical:
-  assumes "(18446744071562067968::64 word) <=s ((of_nat addr)::64 word) \<and> ((of_nat addr)::64 word) <=s (2147483647::64 word)"
+declare [[show_types]]
+
+lemma of_nat_manipulate:
+  "(of_nat m) + (n::'a::len word) = of_nat (m + unat n)"
+by simp
+
+lemma rip_technical_12:
+  shows "(4194316\<Colon>64 word) = (((4194304::64 word) + ((of_nat 12)::64 word))::64 word)"
+by simp
+
+lemma word_cat_OR_8:
+  shows "(word_cat (0\<Colon>1 word) ((word_cat (0\<Colon>1 word) (0\<Colon>2 word))::3 word)::4 word) OR (8\<Colon>4 word) = (8::4 word)"
+by eval (* XXX *)
+
+lemma x64_decode_fixed_technical_1:
+  assumes "(18446744071562067968::64 word) <=s (addr::64 word) \<and> addr <=s (2147483647::64 word)" and
+    "word_extract 7 0 addr = a1" and "word_extract 15 8 addr = a2" and "word_extract 23 16 addr = a3"
+      and "word_extract 31 24 addr = a4"
   shows "x64_decode (fst (x64_fetch \<lparr>EFLAGS = flags,
-    MEM = build_fixed_program_memory 4194304 (encode (mov_constant_to_mem 5 (of_nat addr)) @ encode (mov_constant_from_mem (of_nat addr))),
-    REG = reg, RIP = of_nat 4194304, exception = NoException\<rparr>)) = Zfull_inst ([], Zmov (Z_ALWAYS, Z64, Zrm_i (Zm (None, ZnoBase, of_nat addr), 5)), [])"
+    MEM = build_fixed_program_memory 4194304 (encode (mov_constant_to_mem 5 addr) @ encode (mov_constant_from_mem addr)),
+    REG = reg, RIP = of_nat 4194304, exception = NoException\<rparr>)) = Zfull_inst ([], Zmov (Z_ALWAYS, Z64, Zrm_i (Zm (None, ZnoBase, addr), 5)), [72, 139, 4, 37, a1, a2, a3, a4])"
 using assms
-  apply(simp only: fst_def)
+  apply(simp only: x64_fetch_RIP X64_state.simps)
+  apply(simp only: fst_def split append.simps list.simps)
+  apply(rule x64_decode_Zmov_in)
+  apply(simp only: append.simps list.simps mov_constant_to_mem_def mov_constant_from_mem_def)
+  apply(intro conjI)
+  apply(subst encode_Zmov_out_concrete, assumption, (rule refl)+, subst encode_Zmov_in_concrete, assumption, (rule refl)+,
+    subst build_fixed_program_memory_commute, simp, simp only: append.simps,
+    simp only: diff_self_eq_0 diff_add_inverse, simp only: nth.simps nat.case)
+  apply(subst encode_Zmov_out_concrete, assumption, (rule refl)+, subst encode_Zmov_in_concrete, assumption, (rule refl)+,
+    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp only: append.simps,
+    simp only: diff_self_eq_0 diff_add_inverse, simp)
+  apply(subst encode_Zmov_out_concrete, assumption, (rule refl)+, subst encode_Zmov_in_concrete, assumption, (rule refl)+,
+    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp only: append.simps,
+    simp only: diff_self_eq_0 diff_add_inverse, simp)
+  apply(subst encode_Zmov_out_concrete, assumption, (rule refl)+, subst encode_Zmov_in_concrete, assumption, (rule refl)+,
+    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp only: append.simps,
+    simp only: diff_self_eq_0 diff_add_inverse, simp)
+  apply(subst encode_Zmov_out_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
+    subst encode_Zmov_in_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
+    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp only: append.simps,
+    simp only: diff_self_eq_0 diff_add_inverse, simp)
+  apply(subst encode_Zmov_out_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
+    subst encode_Zmov_in_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
+    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp only: append.simps,
+    simp only: diff_self_eq_0 diff_add_inverse, simp)
+  apply(subst encode_Zmov_out_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
+    subst encode_Zmov_in_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
+    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp only: append.simps,
+    simp only: diff_self_eq_0 diff_add_inverse, simp)
+  apply(rule conjI)
+  apply(rule impI, simp only: word_cat_OR_8, simp)
+  apply(rule impI, simp only: word_cat_OR_8)
+sorry
 
+lemma x64_decode_fixed_technical_2:
+  assumes "(18446744071562067968::64 word) <=s (addr::64 word) \<and> addr <=s (2147483647::64 word)" and
+    "word_extract 7 0 addr = a1" and "word_extract 15 8 addr = a2" and "word_extract 23 16 addr = a3"
+      and "word_extract 31 24 addr = a4"
+  shows "x64_decode
+                  (fst (x64_fetch (snd (write'EA (5\<Colon>64 word, Zea_m (Z64, addr))
+                                         \<lparr>EFLAGS = flags,
+                                            MEM = build_fixed_program_memory (4194304\<Colon>nat) (encode (mov_constant_to_mem (5\<Colon>64 word) addr) @ encode (mov_constant_from_mem addr)),
+                                            REG = reg,
+                                            RIP = of_nat (4194304\<Colon>nat) +
+                                                  word_of_int
+                                                   (int ((20\<Colon>nat) -
+                                                         length [72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, word_extract (7\<Colon>nat) (0\<Colon>nat) addr, word_extract (15\<Colon>nat) (8\<Colon>nat) addr,
+                                                                 word_extract (23\<Colon>nat) (16\<Colon>nat) addr, word_extract (31\<Colon>nat) (24\<Colon>nat) addr])),
+                                            exception = NoException\<rparr>)))) = Zfull_inst([], Zmov (Z_ALWAYS, Z64, Zr_rm (RAX, Zm (None, ZnoBase, addr))), [])"
+sorry
 
+lemma Run_Zmov_in_concrete:
+  shows "Run (Zmov (Z_ALWAYS, Z64, Zrm_i (Zm (None, ZnoBase, of_nat addr), 5\<Colon>64 word))) \<sigma> = write'EA (5\<Colon>64 word, Zea_m (Z64, of_nat addr)) \<sigma>"
+  apply(simp only: Run.simps instruction.case dfn'Zmov.simps read_cond.simps Zcond.simps)
+  apply(simp only: split Let_def if_True fst_def ea_Zsrc.simps Zdest_src.simps EA.simps Zea.simps)
+  apply(simp only: restrictSize.simps Zsize.simps ea_Zdest.simps Zdest_src.simps split)
+  apply(simp only: fst_def ea_Zrm.simps Zrm.case split ea_index.simps option.case)
+  apply(simp only: ea_base.simps Zbase.simps split add_0)
+done
+
+(*, assumption, (rule refl)+, subst encode_Zmov_in_concrete, assumption, (rule refl)+,
+    subst build_fixed_program_memory_commute, simp, simp only: append.simps,
+    simp only: diff_self_eq_0 diff_add_inverse, simp only: nth.simps nat.case, simp only: refl simp_thms)
+*)
+(*
+  apply(simp only: fst_def mov_constant_to_mem_def mov_constant_from_mem_def)
+  apply(subst encode_Zmov_in_concrete, assumption)
+  apply(rule refl)+
+  apply(subst encode_Zmov_out_concrete, assumption)
+  apply(rule refl)+
+  apply(simp only: append.simps)
+  apply(simp only: x64_fetch.simps for_loop_19_unroll snd_def fst_def split X64_state.simps)
+  apply(subst word_arith_technical, simp)+
+  apply(subst build_fixed_program_memory_commute, simp)+
+  apply(simp only: diff_add_inverse Let_def)
+  apply(simp only: One_nat_def numeral_2_eq_2 numeral_3_eq_3 numeral_4_eq_4 numeral_5_eq_5
+    numeral_6_eq_6 numeral_7_eq_7 numeral_8_eq_8 numeral_9_eq_9 numeral_10_eq_10 numeral_11_eq_11
+    numeral_12_eq_12 numeral_13_eq_13 numeral_14_eq_14 numeral_15_eq_15 numeral_16_eq_16 numeral_17_eq_17
+    numeral_18_eq_18 numeral_19_eq_19 nth.simps nat.case split)
+  apply(subst x64_decode_Zmov_in)
+  apply(simp only: list.simps append.simps)
+*)
+
+lemma size_lemma:
+  assumes "(4194324\<Colon>nat) \<le> addr" and "addr \<le> (4194324\<Colon>nat) + (8\<Colon>nat)"
+  shows "(18446744071562067968\<Colon>64 word) <=s of_nat addr \<and> of_nat addr <=s (2147483647\<Colon>64 word)"
+sorry (* XXX: obviously true *)
 
 theorem le_big_theorem_ooh_la_la:
   shows "correctness_property"
@@ -444,6 +609,13 @@ theorem le_big_theorem_ooh_la_la:
   apply(rule impI)
   apply(simp only: load_fixed_program_instructions_def)
   apply(simp only: run_two_steps_def x64_next.simps)
-  apply(simp only: x64_fetch_RIP list.case split X64_state.simps)
+  apply(subst x64_decode_fixed_technical_1, simp only: address_is_disjoint_from_text_and_within_data_section_def,
+    erule conjE, rule size_lemma, (erule conjE, assumption)+, (rule refl)+)+
+  apply(simp only: Zinst.case split X64_state.simps)
+  apply(simp only: Run_Zmov_in_concrete)
+  apply(subst x64_decode_fixed_technical_2, simp only: address_is_disjoint_from_text_and_within_data_section_def,
+    erule conjE, rule size_lemma, (erule conjE, assumption)+, (rule refl)+)+
+  apply(simp only: Zinst.case split)
+  
 
 end
