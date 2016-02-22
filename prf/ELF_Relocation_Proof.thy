@@ -197,6 +197,7 @@ done
 
 text {* The following are technical lemmas that should hopefully be proved properly rather than with
 evaluation. *}
+
 lemma prefixGroup_72:
   shows "prefixGroup 72 = 5"
 by eval (* XXX *)
@@ -255,6 +256,54 @@ by eval (* XXX *)
 
 lemma nat_to_Zreg_RAX:
   shows "nat_to_Zreg (nat (uint ((word_cat (0::1 word) ((of_bl [False, False, False])::3 word))::4 word))) = RAX"
+by eval (* XXX *)
+
+lemma signed_arith_lemma_5:
+  shows "18446744071562067968 <=s (5::64 word) \<and> (5::64 word) <=s 2147483647"
+by eval (* XXX *)
+
+lemma word_cat_8:
+  shows "word_cat (0\<Colon>1 word) ((word_cat ((word_extract (3\<Colon>nat) (3\<Colon>nat) (0\<Colon>4 word))::1 word) (0\<Colon>2 word))::3 word) OR (8\<Colon>4 word) = (8::4 word)"
+by eval (* XXX *)
+
+lemma word_cat_4_8_72:
+  shows "((word_cat (4\<Colon>4 word) (8\<Colon>4 word))::8 word) = (72::8 word)"
+by eval (* XXX *)
+
+lemma word_cat_4:
+  shows "((word_cat (0\<Colon>2 word) ((word_cat ((word_extract (2\<Colon>nat) (0\<Colon>nat) (0\<Colon>4 word))::3 word) (4\<Colon>3 word))::6 word))::8 word) = (4::8 word)"
+by eval (* XXX *)
+
+lemma word_extract_7_0_5:
+  shows "word_extract (7\<Colon>nat) (0\<Colon>nat) (5\<Colon>64 word) = (5::8 word)"
+by eval (* XXX *)
+
+lemma word_extract_15_8_5:
+  shows "word_extract (15\<Colon>nat) (8\<Colon>nat) (5\<Colon>64 word) = (0::8 word)"
+by eval (* XXX *)
+
+lemma word_extract_23_16_5:
+  shows "word_extract (23\<Colon>nat) (16\<Colon>nat) (5\<Colon>64 word) = (0::8 word)"
+by eval (* XXX *)
+
+lemma word_extract_31_24_5:
+  shows "word_extract (31\<Colon>nat) (24\<Colon>nat) (5\<Colon>64 word) = (0::8 word)"
+by eval (* XXX *)
+
+lemma OR_198_1:
+  shows "(((198\<Colon>8 word) OR (1\<Colon>8 word))::8 word) = (199::8 word)"
+by eval
+
+lemma OR_138_1:
+  shows "(138\<Colon>8 word) OR (1\<Colon>8 word) = (139\<Colon>8 word)"
+by eval
+
+lemma word_of_int_of_int_0:
+  shows "(word_of_int (int (0\<Colon>nat))::'a::len word) = (0::'a word)"
+by simp
+
+lemma word_cat_OR_8:
+  shows "word_cat (0\<Colon>1 word) ((word_cat ((word_extract (3\<Colon>nat) (3\<Colon>nat) (0::4 word))::1 word) (0\<Colon>2 word))::3 word) OR (8\<Colon>4 word) = (8::4 word)"
 by eval (* XXX *)
 
 lemma x64_decode_Zmov_in:
@@ -329,16 +378,72 @@ using assms
   apply(simp only: if_False bang_bang_8_2 nat_to_Zreg_RAX)
 done
 
+lemma encode_Zmov_in_concrete:
+  (* assumes "fst (immediate32 [a1, a2, a3, a4]) = addr" *)
+  assumes "(18446744071562067968::64 word) <=s addr \<and> addr <=s (2147483647::64 word)"
+    and "word_extract 7 0 addr = a1" and "word_extract 15 8 addr = a2" and "word_extract 23 16 addr = a3"
+    and "word_extract 31 24 addr = a4"
+  shows "encode (Zmov (Z_ALWAYS, Z64, Zrm_i (Zm (None, ZnoBase, addr), 5))) =
+    [72, 199, 4, 37, a1, a2, a3, a4, 5, 0, 0, 0]"
+using assms
+  apply(simp only: encode.simps instruction.case split Zcond.case Zsize.case)
+  apply(simp only: Zdest_src.case split Zrm.case)
+  apply(simp only: e_rm_imm.simps e_ModRM.simps Zrm.case split option.case)
+  apply(simp only: Zbase.case list.case split append.simps)
+  apply(simp only: e_opsize_imm.simps e_opsize.simps Zsize.case)
+  apply(subst if_weak_cong[where b="Z64 = Z64 \<and> True" and c="True"], simp)
+  apply(simp only: if_True Zsize.case Let_def split)
+  apply(simp only: e_imm32.simps signed_arith_lemma_5 simp_thms if_True list.case)
+  apply(simp only: option.case split concat.simps)
+  apply(simp only: rex_prefix.simps word_cat_8)
+  apply(subst if_weak_cong[where b="(8\<Colon>4 word) = (0\<Colon>4 word)" and c="False"], simp)
+  apply(simp only: if_False append.simps word_cat_4_8_72 OR_198_1 word_cat_4)
+  apply(simp only: list.simps refl simp_thms word_extract_7_0_5 word_extract_15_8_5)
+  apply(simp only: word_extract_23_16_5 simp_thms word_extract_31_24_5 append.simps list.simps)
+done
+
+lemma encode_Zmov_out_concrete:
+  assumes "(18446744071562067968::64 word) <=s addr \<and> addr <=s (2147483647::64 word)" and
+    "word_extract 7 0 addr = a1" and "word_extract 15 8 addr = a2" and "word_extract 23 16 addr = a3"
+      and "word_extract 31 24 addr = a4"
+  shows "encode (Zmov (Z_ALWAYS, Z64, Zr_rm (RAX, Zm (None, ZnoBase, addr)))) = [72, 139, 4, 37, a1, a2, a3, a4]"
+using assms
+  apply(simp only: encode.simps instruction.case split Zcond.case Zsize.case)
+  apply(simp only: Zdest_src.case split Zrm.case)
+  apply(simp only: e_rm_reg.simps e_gen_rm_reg.simps e_ModRM.simps)
+  apply(simp only: Zrm.case split option.case Zbase.case)
+  apply(simp only: e_imm32.simps simp_thms if_True list.case split append.simps)
+  apply(simp only: e_opsize.simps Zsize.case)
+  apply(simp only: rex_prefix.simps Zreg_to_nat.simps Zreg.case word_of_int_of_int_0)
+  apply(simp only: word_cat_OR_8)
+  apply(subst if_weak_cong[where b="(8\<Colon>4 word) = (0\<Colon>4 word)" and c="False"], simp)
+  apply(simp only: if_False Let_def split concat.simps append.simps list.simps)
+  apply(simp only: simp_thms word_cat_4_8_72 OR_138_1 word_of_int_of_int_0 word_cat_4)
+done
+
+lemma build_fixed_program_memory_commute:
+  assumes "addr \<le> l \<and> l \<le> addr + List.length bytes"
+  shows "(build_fixed_program_memory addr bytes) (of_nat l) = bytes ! (l - addr)"
+sorry
+
+lemma x64_decode_fixed_technical:
+  assumes "(18446744071562067968::64 word) <=s ((of_nat addr)::64 word) \<and> ((of_nat addr)::64 word) <=s (2147483647::64 word)"
+  shows "x64_decode (fst (x64_fetch \<lparr>EFLAGS = flags,
+    MEM = build_fixed_program_memory 4194304 (encode (mov_constant_to_mem 5 (of_nat addr)) @ encode (mov_constant_from_mem (of_nat addr))),
+    REG = reg, RIP = of_nat 4194304, exception = NoException\<rparr>)) = Zfull_inst ([], Zmov (Z_ALWAYS, Z64, Zrm_i (Zm (None, ZnoBase, of_nat addr), 5)), [])"
+using assms
+  apply(simp only: fst_def)
+
+
+
 theorem le_big_theorem_ooh_la_la:
   shows "correctness_property"
   apply(subst correctness_property_def)
   apply(rule allI)+
-  apply(simp only: Let_def)
   apply(simp only: fixed_program_def Let_def list.map concat.simps append_Nil2)
   apply(rule impI)
   apply(simp only: load_fixed_program_instructions_def)
-  apply(simp only: run_two_steps_def x64_next.simps fst_def snd_def)
-  apply(simp only: x64_fetch_RIP list.case split)
-  apply(subst x64_decode_Zmov_in) (* XXX: applying to wrong thing, here *)
+  apply(simp only: run_two_steps_def x64_next.simps)
+  apply(simp only: x64_fetch_RIP list.case split X64_state.simps)
 
 end
