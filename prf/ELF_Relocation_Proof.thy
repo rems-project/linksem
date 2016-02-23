@@ -464,7 +464,7 @@ using assms
   apply(subst if_weak_cong[where b="(8\<Colon>4 word) = (0\<Colon>4 word)" and c="False"], simp)
   apply(simp only: if_False append.simps word_cat_4_8_72 OR_198_1 word_cat_4)
   apply(simp only: list.simps refl simp_thms word_extract_7_0_5 word_extract_15_8_5)
-  apply(simp only: word_extract_23_16_5 simp_thms word_extract_31_24_5 append.simps list.simps), as t
+  apply(simp only: word_extract_23_16_5 simp_thms word_extract_31_24_5 append.simps list.simps)
 done
 
 lemma encode_Zmov_out_concrete:
@@ -490,8 +490,6 @@ lemma build_fixed_program_memory_commute:
   assumes "addr \<le> l \<and> l \<le> addr + List.length bytes"
   shows "(build_fixed_program_memory addr bytes) (of_nat l) = bytes ! (l - addr)"
 sorry
-
-declare [[show_types]]
 
 lemma of_nat_manipulate:
   "(of_nat m) + (n::'a::len word) = of_nat (m + unat n)"
@@ -564,6 +562,57 @@ lemma x64_decode_fixed_technical_2:
                                             exception = NoException\<rparr>)))) = Zfull_inst([], Zmov (Z_ALWAYS, Z64, Zr_rm (RAX, Zm (None, ZnoBase, addr))), [])"
 sorry
 
+lemma swap_pairs_technical:
+  shows "swap_pairs {(Some (''.text'', 1, 4), SymbolRef ref_and_reloc_rec0), (Some (''.data'', addr, 8), SymbolDef def_rec0)} =
+    {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))}"
+  apply(simp only: swap_pairs_def image_def)
+  apply auto
+done
+
+lemma lookupBy0_monstrosity:
+  shows "lookupBy0 (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+       (instance_Basic_classes_Ord_Maybe_maybe_dict
+         (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+           (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
+       (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict) (SymbolRef null_symbol_reference_and_reloc_site)
+       (by_tag \<lparr>elements = [''.text'' \<mapsto>
+                            \<lparr>startpos = Some (4194304\<Colon>nat), length1 = Some (20\<Colon>nat),
+                               contents = [Some (72\<Colon>8 word), Some (199\<Colon>8 word), Some (4\<Colon>8 word), Some (37\<Colon>8 word), Some (word_extract (7\<Colon>nat) (0\<Colon>nat) (0\<Colon>64 word)),
+                                           Some (word_extract (15\<Colon>nat) (8\<Colon>nat) (0\<Colon>64 word)), Some (word_extract (23\<Colon>nat) (16\<Colon>nat) (0\<Colon>64 word)), Some (word_extract (31\<Colon>nat) (24\<Colon>nat) (0\<Colon>64 word)),
+                                           Some (5\<Colon>8 word), Some (0\<Colon>8 word), Some (0\<Colon>8 word), Some (0\<Colon>8 word), Some (72\<Colon>8 word), Some (139\<Colon>8 word), Some (4\<Colon>8 word), Some (37\<Colon>8 word),
+                                           Some (word_extract (7\<Colon>nat) (0\<Colon>nat) (0\<Colon>64 word)), Some (word_extract (15\<Colon>nat) (8\<Colon>nat) (0\<Colon>64 word)), Some (word_extract (23\<Colon>nat) (16\<Colon>nat) (0\<Colon>64 word)),
+                                           Some (word_extract (31\<Colon>nat) (24\<Colon>nat) (0\<Colon>64 word))]\<rparr>,
+                            ''.data'' \<mapsto> \<lparr>startpos = Some (4194324\<Colon>nat), length1 = Some (8\<Colon>nat), contents = map Some (replicate (8\<Colon>nat) (of_nat (42\<Colon>nat)))\<rparr>],
+                  by_range = set (meta0 addr), by_tag = by_tag_from_by_range (set (meta0 addr))\<rparr>) = xxx"
+  apply(simp only: annotated_memory_image.simps by_tag_from_by_range_def meta0_def set_simps)
+  apply(simp only: swap_pairs_def)
+  apply clarsimp
+thm swap_pairs_def
+thm tagEquiv.simps
+
+lemma img1_concrete:
+  shows "img1 addr [72\<Colon>8 word, 199\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, word_extract (7\<Colon>nat) (0\<Colon>nat) (0\<Colon>64 word), word_extract (15\<Colon>nat) (8\<Colon>nat) (0\<Colon>64 word),
+                                word_extract (23\<Colon>nat) (16\<Colon>nat) (0\<Colon>64 word), word_extract (31\<Colon>nat) (24\<Colon>nat) (0\<Colon>64 word), 5\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word,
+                                37\<Colon>8 word, word_extract (7\<Colon>nat) (0\<Colon>nat) (0\<Colon>64 word), word_extract (15\<Colon>nat) (8\<Colon>nat) (0\<Colon>64 word), word_extract (23\<Colon>nat) (16\<Colon>nat) (0\<Colon>64 word),
+                                word_extract (31\<Colon>nat) (24\<Colon>nat) (0\<Colon>64 word)] = xxx"
+  apply(simp only: img1_def append.simps rev.simps list.map map_of.simps fst_def snd_def split)
+  apply(simp only: Let_def relocate_output_image_def)
+
+lemma x64_decode_relocated_technical_1:
+  shows "x64_decode (fst (x64_fetch (load_relocated_program_image flags (elements (relocation_image addr)) reg (4194304\<Colon>nat)))) = Zfull_inst (undefined, undefined, undefined)"
+  apply(simp only: x64_fetch_RIP fst_def X64_state.simps)
+  apply(simp only: fst_def split append.simps list.simps)
+  apply(subst x64_decode_Zmov_in)
+  apply(simp only: append.simps list.simps simp_thms relocation_image_def relocatable_program_def)
+  apply(simp only: concat.simps append_Nil2 mov_constant_to_mem_def mov_constant_from_mem_def)
+  apply(subst encode_Zmov_in_concrete)
+  apply eval (* XXX *)
+  apply(rule refl)+
+  apply(subst encode_Zmov_out_concrete)
+  apply eval (* XXX *)
+  apply(rule refl)+
+  apply(simp only: append.simps)
+
 lemma Run_fixed_Zmov_in_concrete:
   shows "Run (Zmov (Z_ALWAYS, Z64, Zrm_i (Zm (None, ZnoBase, of_nat addr), 5\<Colon>64 word))) \<sigma> = write'EA (5\<Colon>64 word, Zea_m (Z64, of_nat addr)) \<sigma>"
   apply(simp only: Run.simps instruction.case dfn'Zmov.simps read_cond.simps Zcond.simps)
@@ -586,8 +635,8 @@ definition fixed_map :: "8 word \<Rightarrow> 8 word \<Rightarrow> 8 word \<Righ
     | Some x \<Rightarrow> x"
 
 lemma build_fixed_program_memory_expand_concrete:
-  assumes "e_imm32 (of_nat addr) = [a1, a2, a3, a4]"
-  shows "build_fixed_program_memory (4194304\<Colon>nat) (encode (mov_constant_to_mem (5\<Colon>64 word) (of_nat addr)) @ encode (mov_constant_from_mem (of_nat addr))) =
+  assumes "e_imm32 addr = [a1, a2, a3, a4]"
+  shows "build_fixed_program_memory (4194304\<Colon>nat) (encode (mov_constant_to_mem (5\<Colon>64 word) addr) @ encode (mov_constant_from_mem addr)) =
     fixed_map a1 a2 a3 a4"
 using assms
   apply(simp only: mov_constant_to_mem_def mov_constant_from_mem_def encode.simps instruction.case)
@@ -613,17 +662,33 @@ using assms
   apply simp
 done
 
+lemma map_eqI:
+  assumes "\<forall>d \<in> dom m1 \<union> dom m2. m1 d = m2 d"
+  shows "m1 = m2"
+using assms by fastforce
+
+lemma map_upd_cong:
+  assumes "m1 = m2" and "x1 = x2" and "y1 = y2"
+  shows "m1(x1 := y1) = m2(x2 := y2)"
+using assms by simp
+
 lemma Run_fixed_Zmov_out_concrete:
-  shows "Run (Zmov (Z_ALWAYS, Z64, Zr_rm (RAX, Zm (None, ZnoBase, of_nat addr))))
-             (snd (write'EA (5\<Colon>64 word, Zea_m (Z64, of_nat addr))
-                    \<lparr>EFLAGS = flags, MEM = build_fixed_program_memory (4194304\<Colon>nat) (encode (mov_constant_to_mem (5\<Colon>64 word) (of_nat addr)) @ encode (mov_constant_from_mem (of_nat addr))),
+  assumes "e_imm32 addr = [a1, a2, a3, a4]"
+  shows "Run (Zmov (Z_ALWAYS, Z64, Zr_rm (RAX, Zm (None, ZnoBase, addr))))
+             (snd (write'EA (5\<Colon>64 word, Zea_m (Z64, addr))
+                    \<lparr>EFLAGS = flags, MEM = build_fixed_program_memory (4194304\<Colon>nat) (encode (mov_constant_to_mem (5\<Colon>64 word) addr) @ encode (mov_constant_from_mem addr)),
                        REG = reg,
                        RIP = of_nat (4194304\<Colon>nat) +
                              word_of_int
                               (int ((20\<Colon>nat) -
-                                    length [72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, word_extract (7\<Colon>nat) (0\<Colon>nat) (of_nat addr), word_extract (15\<Colon>nat) (8\<Colon>nat) (of_nat addr),
-                                            word_extract (23\<Colon>nat) (16\<Colon>nat) (of_nat addr), word_extract (31\<Colon>nat) (24\<Colon>nat) (of_nat addr)])),
-                       exception = NoException\<rparr>)) = ((), xxx)"
+                                    length [72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, word_extract (7\<Colon>nat) (0\<Colon>nat) addr, word_extract (15\<Colon>nat) (8\<Colon>nat) addr,
+                                            word_extract (23\<Colon>nat) (16\<Colon>nat) addr, word_extract (31\<Colon>nat) (24\<Colon>nat) addr])),
+                       exception = NoException\<rparr>)) = ((), \<lparr>EFLAGS = flags, MEM = (fixed_map a1 a2 a3 a4)
+                          (addr := 5, (1\<Colon>64 word) + addr := 0, (2\<Colon>64 word) + addr := 0, (3\<Colon>64 word) + addr := 0, (4\<Colon>64 word) + addr := 0,
+                          (5\<Colon>64 word) + addr := 0, (6\<Colon>64 word) + addr := 0, (7\<Colon>64 word) + addr := 0),
+       REG = reg(RAX := 5::64 word),
+       RIP = 4194316\<Colon>64 word, exception = NoException\<rparr>)"
+using assms
   apply(simp only: Run.simps instruction.case dfn'Zmov.simps read_cond.simps Zcond.simps)
   apply(simp only: split Let_def if_True fst_def ea_Zsrc.simps ea_Zrm.simps Zrm.case Zdest_src.simps)
   apply(simp only: EA.simps Zea.simps split Zsize.simps ea_index.simps option.case add_0)
@@ -631,30 +696,14 @@ lemma Run_fixed_Zmov_out_concrete:
   apply(simp only: fst_def snd_def write'EA.simps Zea.case split Zsize.simps Pair_eq refl simp_thms)
   apply(simp only: list.size write'mem64.simps snd_def write'mem32.simps write'mem16.simps write'mem8.simps)
   apply(simp only: split X64_state.simps mem64.simps mem32.simps mem16.simps mem8.simps fst_def)
-term Zea_r
-
-(*, assumption, (rule refl)+, subst encode_Zmov_in_concrete, assumption, (rule refl)+,
-    subst build_fixed_program_memory_commute, simp, simp only: append.simps,
-    simp only: diff_self_eq_0 diff_add_inverse, simp only: nth.simps nat.case, simp only: refl simp_thms)
-*)
-(*
-  apply(simp only: fst_def mov_constant_to_mem_def mov_constant_from_mem_def)
-  apply(subst encode_Zmov_in_concrete, assumption)
-  apply(rule refl)+
-  apply(subst encode_Zmov_out_concrete, assumption)
-  apply(rule refl)+
-  apply(simp only: append.simps)
-  apply(simp only: x64_fetch.simps for_loop_19_unroll snd_def fst_def split X64_state.simps)
-  apply(subst word_arith_technical, simp)+
-  apply(subst build_fixed_program_memory_commute, simp)+
-  apply(simp only: diff_add_inverse Let_def)
-  apply(simp only: One_nat_def numeral_2_eq_2 numeral_3_eq_3 numeral_4_eq_4 numeral_5_eq_5
-    numeral_6_eq_6 numeral_7_eq_7 numeral_8_eq_8 numeral_9_eq_9 numeral_10_eq_10 numeral_11_eq_11
-    numeral_12_eq_12 numeral_13_eq_13 numeral_14_eq_14 numeral_15_eq_15 numeral_16_eq_16 numeral_17_eq_17
-    numeral_18_eq_18 numeral_19_eq_19 nth.simps nat.case split)
-  apply(subst x64_decode_Zmov_in)
-  apply(simp only: list.simps append.simps)
-*)
+  apply(simp only: build_fixed_program_memory_expand_concrete)
+  apply(simp del: word_extract.simps X64_state.simps)
+  apply(rule conjI)
+  prefer 2 (* ooph! *)
+  apply(rule map_upd_cong[OF refl, OF refl], eval) (* XXX *)
+  apply(rule map_upd_cong)+
+  apply(rule refl | simp | eval)+
+done
 
 lemma size_lemma:
   assumes "(4194324\<Colon>nat) \<le> addr" and "addr \<le> (4194324\<Colon>nat) + (8\<Colon>nat)"
@@ -672,10 +721,23 @@ theorem le_big_theorem_ooh_la_la:
   apply(subst x64_decode_fixed_technical_1, simp only: address_is_disjoint_from_text_and_within_data_section_def,
     erule conjE, rule size_lemma, (erule conjE, assumption)+, (rule refl)+)+
   apply(simp only: Zinst.case split X64_state.simps)
-  apply(simp only: Run_Zmov_in_concrete)
+  apply(subst Run_fixed_Zmov_in_concrete)+
   apply(subst x64_decode_fixed_technical_2, simp only: address_is_disjoint_from_text_and_within_data_section_def,
     erule conjE, rule size_lemma, (erule conjE, assumption)+, (rule refl)+)+
   apply(simp only: Zinst.case split)
+(*
+(Run (Zmov (Z_ALWAYS, Z64, Zr_rm (RAX, Zm (None, ZnoBase, of_nat addr))))
+             (snd (write'EA (5\<Colon>64 word, Zea_m (Z64, of_nat addr))
+                    \<lparr>EFLAGS = flags, MEM = build_fixed_program_memory (4194304\<Colon>nat) (encode (mov_constant_to_mem (5\<Colon>64 word) (of_nat addr)) @ encode (mov_constant_from_mem (of_nat addr))),
+                       REG = reg,
+                       RIP = of_nat (4194304\<Colon>nat) +
+                             word_of_int
+                              (int ((20\<Colon>nat) -
+                                    length [72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, word_extract (7\<Colon>nat) (0\<Colon>nat) (of_nat addr), word_extract (15\<Colon>nat) (8\<Colon>nat) (of_nat addr),
+                                            word_extract (23\<Colon>nat) (16\<Colon>nat) (of_nat addr), word_extract (31\<Colon>nat) (24\<Colon>nat) (of_nat addr)])),
+                       exception = NoException\<rparr>)
+*)
+  apply(subst Run_fixed_Zmov_out_concrete)
   
 
 end
