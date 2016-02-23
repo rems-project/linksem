@@ -569,6 +569,59 @@ lemma swap_pairs_technical:
   apply auto
 done
 
+lemma set_choose_dichotomy:
+  shows "set_choose {x, y} = x \<or> set_choose {x, y} = y"
+unfolding set_choose_def by (metis (mono_tags) insert_iff singletonD someI)
+
+lemma split_concrete1:
+  shows "Lem_set.split
+           (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+             (instance_Basic_classes_Ord_Maybe_maybe_dict
+               (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                 (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))
+           (SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)) {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} = xxx"
+  apply(simp only: split_def)
+
+lemma chooseAndSplit_concrete:
+  shows "chooseAndSplit
+           (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+             (instance_Basic_classes_Ord_Maybe_maybe_dict
+               (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                 (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))
+           {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} = xxx"
+  apply(simp only: chooseAndSplit_def)
+  apply(subst if_weak_cong[where b="{(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} = {}" and c="False"])
+  apply simp
+  apply(simp only: if_False)
+  apply(rule disjE[OF set_choose_dichotomy[where x="(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))" and y="(SymbolDef def_rec0, Some (''.data'', addr, 8))"]])
+  apply(erule subst[OF sym])
+  apply(simp only: Let_def)
+
+
+lemma findLowestKVWithKEqualTo_concrete:
+  assumes "well_behaved_lem_ordering
+            (isGreater_method
+              (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+                (instance_Basic_classes_Ord_Maybe_maybe_dict
+                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                    (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))
+            (isLess_method
+              (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+                (instance_Basic_classes_Ord_Maybe_maybe_dict
+                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                    (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))"
+  shows "findLowestKVWithKEquivTo (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+           (instance_Basic_classes_Ord_Maybe_maybe_dict
+             (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+               (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
+           (SymbolRef null_symbol_reference_and_reloc_site) (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict)
+           {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} None = xxx"
+using assms
+  apply(subst findLowestKVWithKEquivTo.simps)
+  apply(subst if_weak_cong[where b="\<not> finite {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))}" and c="False"])
+  apply simp
+  apply(simp only: if_False simp_thms option.case)
+
 lemma lookupBy0_monstrosity:
   shows "lookupBy0 (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
        (instance_Basic_classes_Ord_Maybe_maybe_dict
@@ -585,8 +638,8 @@ lemma lookupBy0_monstrosity:
                             ''.data'' \<mapsto> \<lparr>startpos = Some (4194324\<Colon>nat), length1 = Some (8\<Colon>nat), contents = map Some (replicate (8\<Colon>nat) (of_nat (42\<Colon>nat)))\<rparr>],
                   by_range = set (meta0 addr), by_tag = by_tag_from_by_range (set (meta0 addr))\<rparr>) = xxx"
   apply(simp only: annotated_memory_image.simps by_tag_from_by_range_def meta0_def set_simps)
-  apply(simp only: swap_pairs_def)
-  apply clarsimp
+  apply(simp only: swap_pairs_technical)
+  apply(simp only: lookupBy0_def)
 thm swap_pairs_def
 thm tagEquiv.simps
 
