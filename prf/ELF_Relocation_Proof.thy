@@ -464,7 +464,7 @@ using assms
   apply(subst if_weak_cong[where b="(8\<Colon>4 word) = (0\<Colon>4 word)" and c="False"], simp)
   apply(simp only: if_False append.simps word_cat_4_8_72 OR_198_1 word_cat_4)
   apply(simp only: list.simps refl simp_thms word_extract_7_0_5 word_extract_15_8_5)
-  apply(simp only: word_extract_23_16_5 simp_thms word_extract_31_24_5 append.simps list.simps)
+  apply(simp only: word_extract_23_16_5 simp_thms word_extract_31_24_5 append.simps list.simps), as t
 done
 
 lemma encode_Zmov_out_concrete:
@@ -564,7 +564,7 @@ lemma x64_decode_fixed_technical_2:
                                             exception = NoException\<rparr>)))) = Zfull_inst([], Zmov (Z_ALWAYS, Z64, Zr_rm (RAX, Zm (None, ZnoBase, addr))), [])"
 sorry
 
-lemma Run_Zmov_in_concrete:
+lemma Run_fixed_Zmov_in_concrete:
   shows "Run (Zmov (Z_ALWAYS, Z64, Zrm_i (Zm (None, ZnoBase, of_nat addr), 5\<Colon>64 word))) \<sigma> = write'EA (5\<Colon>64 word, Zea_m (Z64, of_nat addr)) \<sigma>"
   apply(simp only: Run.simps instruction.case dfn'Zmov.simps read_cond.simps Zcond.simps)
   apply(simp only: split Let_def if_True fst_def ea_Zsrc.simps Zdest_src.simps EA.simps Zea.simps)
@@ -572,6 +572,66 @@ lemma Run_Zmov_in_concrete:
   apply(simp only: fst_def ea_Zrm.simps Zrm.case split ea_index.simps option.case)
   apply(simp only: ea_base.simps Zbase.simps split add_0)
 done
+
+definition fixed_map :: "8 word \<Rightarrow> 8 word \<Rightarrow> 8 word \<Rightarrow> 8 word \<Rightarrow> 64 word \<Rightarrow> 8 word" where
+  "fixed_map a1 a2 a3 a4 x \<equiv>
+     let fmap =
+       [4194323\<Colon>nat \<mapsto> a4, 4194322\<Colon>nat \<mapsto> a3, 4194321\<Colon>nat \<mapsto> a2, 4194320\<Colon>nat \<mapsto> a1,
+        4194319\<Colon>nat \<mapsto> 37\<Colon>8 word, 4194318\<Colon>nat \<mapsto> 4\<Colon>8 word, 4194317\<Colon>nat \<mapsto> 139\<Colon>8 word, 4194316\<Colon>nat \<mapsto> 72\<Colon>8 word,
+        4194315\<Colon>nat \<mapsto> 0\<Colon>8 word, 4194314\<Colon>nat \<mapsto> 0\<Colon>8 word, 4194313\<Colon>nat \<mapsto> 0\<Colon>8 word, 4194312\<Colon>nat \<mapsto> 5\<Colon>8 word,
+        4194311\<Colon>nat \<mapsto> a4, 4194310\<Colon>nat \<mapsto> a3, 4194309\<Colon>nat \<mapsto> a2, 4194308\<Colon>nat \<mapsto> a1, 4194307\<Colon>nat \<mapsto> 37\<Colon>8 word,
+        4194306\<Colon>nat \<mapsto> 4\<Colon>8 word, 4194305\<Colon>nat \<mapsto> 199\<Colon>8 word, 4194304\<Colon>nat \<mapsto> 72\<Colon>8 word]
+    in case fmap (unat x) of
+      None \<Rightarrow> 0
+    | Some x \<Rightarrow> x"
+
+lemma build_fixed_program_memory_expand_concrete:
+  assumes "e_imm32 (of_nat addr) = [a1, a2, a3, a4]"
+  shows "build_fixed_program_memory (4194304\<Colon>nat) (encode (mov_constant_to_mem (5\<Colon>64 word) (of_nat addr)) @ encode (mov_constant_from_mem (of_nat addr))) =
+    fixed_map a1 a2 a3 a4"
+using assms
+  apply(simp only: mov_constant_to_mem_def mov_constant_from_mem_def encode.simps instruction.case)
+  apply(simp only: split Zcond.case Zsize.case Zdest_src.case Zrm.case)
+  apply(simp only: e_rm_reg.simps e_gen_rm_reg.simps e_rm_imm.simps e_ModRM.simps Zrm.case split option.case Zbase.case)
+  apply(simp only: list.case split append.simps e_opsize_imm.simps e_rm_reg.simps e_gen_rm_reg.simps e_opsize.simps Zsize.case)
+  apply(simp only: simp_thms if_True Zsize.case concat.simps append.simps append_Nil2)
+  apply(simp only: rex_prefix.simps)
+  apply(subst if_weak_cong[where b="word_cat (0\<Colon>1 word) (word_cat (word_extract (3\<Colon>nat) (3\<Colon>nat) (0\<Colon>4 word)) (0\<Colon>2 word)) OR (8\<Colon>4 word) = (0\<Colon>4 word)" and c="False"])
+  apply eval (* XXX *)
+  apply(simp only: if_False e_imm32.simps)
+  apply(subst if_weak_cong[where b="(18446744071562067968\<Colon>64 word) <=s (5\<Colon>64 word) \<and> (5\<Colon>64 word) <=s (2147483647\<Colon>64 word)" and c="True"])
+  apply eval (* XXX *)
+  apply(simp only: if_True list.case split Let_def refl option.case)
+  apply(simp only: Zreg_to_nat.simps Zreg.case)
+  apply(subst if_weak_cong[where b="word_cat (0\<Colon>1 word) (word_cat (word_extract (3\<Colon>nat) (3\<Colon>nat) (word_of_int (int (0\<Colon>nat)))) (0\<Colon>2 word)) OR (8\<Colon>4 word) = (0\<Colon>4 word)" and c="False"])
+  apply eval (* XXX *)
+  apply(simp only: if_False append.simps word_extract_15_8_5 word_extract_31_24_5 word_extract_7_0_5 word_extract_23_16_5 OR_198_1)
+  apply(simp only: word_cat_8 word_of_int_of_int_0 OR_138_1 word_cat_4_8_72 word_cat_4)
+  apply(rule ext, subst build_fixed_program_memory_def)
+  apply(simp only: build_fixed_program_code_memory.simps map_of.simps fst_def snd_def nat.case split Let_def)
+  apply(simp only: fixed_map_def Let_def)
+  apply simp
+done
+
+lemma Run_fixed_Zmov_out_concrete:
+  shows "Run (Zmov (Z_ALWAYS, Z64, Zr_rm (RAX, Zm (None, ZnoBase, of_nat addr))))
+             (snd (write'EA (5\<Colon>64 word, Zea_m (Z64, of_nat addr))
+                    \<lparr>EFLAGS = flags, MEM = build_fixed_program_memory (4194304\<Colon>nat) (encode (mov_constant_to_mem (5\<Colon>64 word) (of_nat addr)) @ encode (mov_constant_from_mem (of_nat addr))),
+                       REG = reg,
+                       RIP = of_nat (4194304\<Colon>nat) +
+                             word_of_int
+                              (int ((20\<Colon>nat) -
+                                    length [72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, word_extract (7\<Colon>nat) (0\<Colon>nat) (of_nat addr), word_extract (15\<Colon>nat) (8\<Colon>nat) (of_nat addr),
+                                            word_extract (23\<Colon>nat) (16\<Colon>nat) (of_nat addr), word_extract (31\<Colon>nat) (24\<Colon>nat) (of_nat addr)])),
+                       exception = NoException\<rparr>)) = ((), xxx)"
+  apply(simp only: Run.simps instruction.case dfn'Zmov.simps read_cond.simps Zcond.simps)
+  apply(simp only: split Let_def if_True fst_def ea_Zsrc.simps ea_Zrm.simps Zrm.case Zdest_src.simps)
+  apply(simp only: EA.simps Zea.simps split Zsize.simps ea_index.simps option.case add_0)
+  apply(simp only: ea_base.simps Zbase.simps split add_0 ea_Zdest.simps Zdest_src.simps)
+  apply(simp only: fst_def snd_def write'EA.simps Zea.case split Zsize.simps Pair_eq refl simp_thms)
+  apply(simp only: list.size write'mem64.simps snd_def write'mem32.simps write'mem16.simps write'mem8.simps)
+  apply(simp only: split X64_state.simps mem64.simps mem32.simps mem16.simps mem8.simps fst_def)
+term Zea_r
 
 (*, assumption, (rule refl)+, subst encode_Zmov_in_concrete, assumption, (rule refl)+,
     subst build_fixed_program_memory_commute, simp, simp only: append.simps,
