@@ -573,14 +573,160 @@ lemma set_choose_dichotomy:
   shows "set_choose {x, y} = x \<or> set_choose {x, y} = y"
 unfolding set_choose_def by (metis (mono_tags) insert_iff singletonD someI)
 
+lemma genericCompare_refl:
+  fixes x :: "'a::order"
+  shows "genericCompare (op <) (op =) x x = EQ"
+using assms
+  apply(simp only: genericCompare_def)
+  apply simp
+done
+
+lemma pairCompare_refl:
+  assumes "\<forall>p. cmp1 p p = EQ" and "\<forall>q. cmp2 q q = EQ"
+  shows "pairCompare cmp1 cmp2 (p, q) (p, q) = EQ"
+using assms
+  apply(simp only: pairCompare.simps)
+  apply(erule allE[where x="p"])
+  apply simp
+done
+
+lemma tripleCompare_refl:
+  assumes "\<forall>p. cmp1 p p = EQ" and "\<forall>q. cmp2 q q = EQ" and "\<forall>r. cmp3 r r = EQ"
+  shows "tripleCompare cmp1 cmp2 cmp3 (p, q, r) (p, q, r) = EQ"
+using assms
+  apply(simp only: tripleCompare.simps)
+  apply(rule pairCompare_refl, simp)
+  apply(rule allI, case_tac q, clarify, rule pairCompare_refl, simp+)
+done
+
+lemma quadrupleCompare_refl:
+  assumes "\<forall>p. cmp1 p p = EQ" and "\<forall>q. cmp2 q q = EQ" and "\<forall>r. cmp3 r r = EQ" and "\<forall>s. cmp4 s s = EQ"
+  shows "quadrupleCompare cmp1 cmp2 cmp3 cmp4 (p, q, r, s) (p, q, r, s) = EQ"
+using assms
+  apply(simp only: quadrupleCompare.simps)
+  apply(rule pairCompare_refl, simp)
+  apply(rule allI, case_tac q, clarify, rule pairCompare_refl, simp+)
+  apply(rule allI, rule allI, rule pairCompare_refl, simp+)
+done
+
+lemma sextupleCompare_refl:
+  assumes "\<forall>p. cmp1 p p = EQ" and "\<forall>q. cmp2 q q = EQ" and "\<forall>r. cmp3 r r = EQ" and "\<forall>s. cmp4 s s = EQ"
+    and "\<forall>p. cmp5 p p = EQ" and "\<forall>p. cmp6 p p = EQ"
+  shows "sextupleCompare cmp1 cmp2 cmp3 cmp4 cmp5 cmp6 (x1, x2, x3, x4, x5, x6) (x1, x2, x3, x4, x5, x6) = EQ"
+using assms
+  apply(simp only: sextupleCompare.simps)
+  apply(rule pairCompare_refl, simp)
+  apply(rule allI, case_tac q, clarify, rule pairCompare_refl, simp)
+  apply(rule allI, case_tac q, clarify, rule pairCompare_refl, simp)
+  apply(rule allI, case_tac q, clarify, rule pairCompare_refl, simp)
+  apply(rule allI, case_tac q, clarify, rule pairCompare_refl, simp)
+  apply simp
+done
+
+lemma elf64_relocation_a_compare_refl:
+  shows "elf64_relocation_a_compare r r = EQ"
+  apply(simp only: elf64_relocation_a_compare_def)
+  apply(rule tripleCompare_refl)
+  apply(rule allI, rule genericCompare_refl)+
+done
+
+lemma relocSiteCompare_refl:
+  shows "relocSiteCompare r r = EQ"
+  apply(simp only: relocSiteCompare_def)
+  apply(rule tripleCompare_refl)
+  apply(rule allI, rule elf64_relocation_a_compare_refl)
+  apply(rule allI, rule genericCompare_refl)+
+done
+
+lemma elf64_symbol_table_entry_compare_refl:
+  shows "elf64_symbol_table_entry_compare e e = EQ"
+  apply(simp only: elf64_symbol_table_entry_compare_def)
+  apply(rule sextupleCompare_refl)
+  apply(rule allI, rule genericCompare_refl)+
+done
+
+lemma symRefCompare_refl:
+  shows "symRefCompare r r = EQ"
+  apply(simp only: symRefCompare_def)
+  apply(rule quadrupleCompare_refl) (* XXX: what is happening with the first comparison, here? *)
+  apply(simp)
+  apply(rule allI, rule elf64_symbol_table_entry_compare_refl)
+  apply(rule allI, rule genericCompare_refl)+
+done
+
+lemma symDefCompare_refl:
+  shows "symDefCompare d d = EQ"
+  apply(simp only: symDefCompare_def) (* XXX: what is going on with the first comparison, here? *)
+  apply(rule quadrupleCompare_refl)
+  apply simp
+  apply(rule allI, rule elf64_symbol_table_entry_compare_refl)
+  apply(rule allI, rule genericCompare_refl)+
+done
+
+lemma maybeCompare_refl:
+  assumes "\<forall>x. cmp x x = EQ"
+  shows "maybeCompare cmp m m = EQ"
+using assms
+  apply(case_tac m)
+  apply(simp only: maybeCompare.simps)+
+done
+
+lemma symRefAndRelocSiteCompare_refl:
+  shows "symRefAndRelocSiteCompare r r = EQ"
+  apply(simp only: symRefAndRelocSiteCompare_def)
+  apply(rule pairCompare_refl)
+  apply(rule allI, rule symRefCompare_refl)
+  apply(rule allI, rule maybeCompare_refl)
+  apply(rule allI, simp only: relocSiteCompare_refl)
+done
+
+lemma stringCompare_method_refl:
+  shows "stringCompare_method s s = EQ"
+  apply(simp only: stringCompare_method_def)
+  apply(simp add: ord.lexordp_eq_refl)
+done
+
+lemma maybeCompare_refl_concrete:
+  shows "(maybeCompare (pairCompare stringCompare_method (pairCompare (genericCompare op < op =) (genericCompare op < op =))) (Some (p, q::nat, r::nat)) (Some (p, q, r))) = EQ"
+  apply(rule maybeCompare_refl)
+  apply(rule allI)
+  apply(case_tac x, clarify)
+  apply(rule pairCompare_refl)
+  apply(rule allI, rule stringCompare_method_refl)
+  apply(rule allI, case_tac q, clarify, rule pairCompare_refl)
+  apply(rule allI, rule genericCompare_refl)+
+done
+
 lemma split_concrete1:
   shows "Lem_set.split
            (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
              (instance_Basic_classes_Ord_Maybe_maybe_dict
                (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))
-           (SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)) {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} = xxx"
-  apply(simp only: split_def)
+           (SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)) {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} =
+              ({(SymbolDef def_rec0, Some (''.data'', addr, 8))}, {})"
+    apply(simp only: split_def Pair_eq instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes_Ord_tup2_dict_def)
+    apply(simp only: instance_Basic_classes_Ord_string_dict_def instance_Basic_classes_Ord_Maybe_maybe_dict_def)
+    apply(simp only: instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def Ord_class.simps)
+    apply(simp only: pairLess.simps pairLessEq.simps pairGreater_def pairGreaterEq_def tagCompare.simps symRefAndRelocSiteCompare_def pairCompare.simps)
+    apply(auto simp only: set_choose_dichotomy pairLess.simps tagCompare.simps Ord_class.simps symRefAndRelocSiteCompare_refl)
+    apply(simp only: maybeCompare_refl_concrete ordering.simps)+
+done
+
+lemma split_concrete2:
+  shows "Lem_set.split
+           (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+             (instance_Basic_classes_Ord_Maybe_maybe_dict
+               (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                 (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))
+           (SymbolDef def_rec0, Some (''.data'', addr, 8)) {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} = ({}, {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))})"
+  apply(simp only: split_def Pair_eq instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes_Ord_tup2_dict_def)
+  apply(simp only: instance_Basic_classes_Ord_string_dict_def instance_Basic_classes_Ord_Maybe_maybe_dict_def)
+  apply(simp only: instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def Ord_class.simps)
+  apply(simp only: pairLess.simps pairLessEq.simps pairGreater_def pairGreaterEq_def tagCompare.simps symRefAndRelocSiteCompare_def pairCompare.simps)
+  apply(auto simp only: set_choose_dichotomy pairLess.simps tagCompare.simps Ord_class.simps symRefAndRelocSiteCompare_refl symDefCompare_refl)
+  apply(simp only: maybeCompare_refl_concrete, simp)+
+done
 
 lemma chooseAndSplit_concrete:
   shows "chooseAndSplit
@@ -588,7 +734,13 @@ lemma chooseAndSplit_concrete:
              (instance_Basic_classes_Ord_Maybe_maybe_dict
                (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))
-           {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} = xxx"
+           {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} = Some ({(SymbolDef def_rec0, Some (''.data'', addr, 8))}, (SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), {}) \<or>
+         chooseAndSplit
+           (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+             (instance_Basic_classes_Ord_Maybe_maybe_dict
+               (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                 (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))
+           {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} = Some ({}, (SymbolDef def_rec0, Some (''.data'', addr, 8)), {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))})"
   apply(simp only: chooseAndSplit_def)
   apply(subst if_weak_cong[where b="{(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} = {}" and c="False"])
   apply simp
@@ -596,7 +748,15 @@ lemma chooseAndSplit_concrete:
   apply(rule disjE[OF set_choose_dichotomy[where x="(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))" and y="(SymbolDef def_rec0, Some (''.data'', addr, 8))"]])
   apply(erule subst[OF sym])
   apply(simp only: Let_def)
+  apply(simp only: split_concrete1 split, simp)
+  apply(erule subst[OF sym])
+  apply(simp only: Let_def)
+  apply(simp only: split_concrete2 split, simp)
+done
 
+lemma tagEquiv_concrete:
+  shows "tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict (SymbolRef null_symbol_reference_and_reloc_site) (SymbolRef ref_and_reloc_rec0) = True"
+sorry (* XXX: true by eval *)
 
 lemma findLowestKVWithKEqualTo_concrete:
   assumes "well_behaved_lem_ordering
@@ -621,6 +781,9 @@ using assms
   apply(subst if_weak_cong[where b="\<not> finite {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))}" and c="False"])
   apply simp
   apply(simp only: if_False simp_thms option.case)
+  apply(rule disjE[OF chooseAndSplit_concrete[where addr="addr"]])
+  apply(erule subst[OF sym])
+  apply(simp only: option.case split)
 
 lemma lookupBy0_monstrosity:
   shows "lookupBy0 (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
