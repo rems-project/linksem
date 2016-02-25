@@ -1080,9 +1080,12 @@ lemma magic_number_manipulation:
 done
 
 lemma abi_amd64_reloc_2_concrete:
-  shows "amd64_reloc instance_Basic_classes_Ord_Abis_any_abi_feature_dict instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict 2 = xxx"
-
-xxxxxxxxxxxxxxxxxxxxxx
+  shows "amd64_reloc instance_Basic_classes_Ord_Abis_any_abi_feature_dict instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict 2 = (False, \<lambda>img3 site_addr rr. (4, \<lambda>s a e. nat \<bar>int s + a\<bar> - site_addr))"
+  apply(simp only: amd64_reloc_def)
+  apply(simp only: Let_def string_of_amd64_relocation_type_def)
+  apply(simp only: r_x86_64_none_def r_x86_64_64_def r_x86_64_pc32_def)
+  apply simp
+done
 
 lemma img1_concrete:
   shows "img1 addr [72\<Colon>8 word, 199\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, word_extract (7\<Colon>nat) (0\<Colon>nat) (0\<Colon>64 word), word_extract (15\<Colon>nat) (8\<Colon>nat) (0\<Colon>64 word),
