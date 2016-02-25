@@ -822,7 +822,9 @@ done
 lemma isLess_method_concrete:
   shows "isLess_method (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict) (SymbolRef null_symbol_reference_and_reloc_site)
          (SymbolDef def_rec0) = False"
-sorry (* XXX: true by eval *)
+  apply(simp only: instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def Ord_class.simps)
+  apply(simp only: tagCompare.simps ordering.simps)
+done
 
 lemma findLowestKVWithKEquivTo_concrete2:
   assumes "well_behaved_lem_ordering
@@ -888,7 +890,136 @@ using assms
   apply(simp only: findLowestKVWithKEquivTo_concrete2)
 done
 
+lemma findHighestKVWithKEquivTo_concrete1:
+  assumes "well_behaved_lem_ordering
+                 (isGreater_method
+                   (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+                     (instance_Basic_classes_Ord_Maybe_maybe_dict
+                       (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                         (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))
+                 (isLess_method
+                   (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+                     (instance_Basic_classes_Ord_Maybe_maybe_dict
+                       (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                         (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))"
+  shows "findHighestKVWithKEquivTo (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+     (instance_Basic_classes_Ord_Maybe_maybe_dict
+       (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+         (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
+     (SymbolRef null_symbol_reference_and_reloc_site) (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict) {} (Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))) = Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))"
+using assms
+  apply(subst findHighestKVWithKEquivTo.simps)
+  apply(subst if_weak_cong[where b="\<not> finite {}" and c="False"])
+  apply simp
+  apply(simp only: if_False simp_thms option.case)
+  apply(subst chooseAndSplit_empty)
+  apply(simp only: option.case)
+done
+
+lemma findHighestKVWithKEquivTo_concrete2:
+  assumes "well_behaved_lem_ordering
+                 (isGreater_method
+                   (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+                     (instance_Basic_classes_Ord_Maybe_maybe_dict
+                       (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                         (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))
+                 (isLess_method
+                   (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+                     (instance_Basic_classes_Ord_Maybe_maybe_dict
+                       (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                         (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))"
+  shows "findHighestKVWithKEquivTo (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+     (instance_Basic_classes_Ord_Maybe_maybe_dict
+       (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+         (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
+     (SymbolRef null_symbol_reference_and_reloc_site) (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict) {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))} None =
+    Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))"
+using assms
+  apply(subst findHighestKVWithKEquivTo.simps)
+  apply(subst if_weak_cong[where b="\<not> finite {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))}" and c="False"])
+  apply simp
+  apply(simp only: if_False simp_thms option.case)
+  apply(subst chooseAndSplit_singleton)
+  apply assumption
+  apply(simp only: option.case split tagEquiv_concrete_SymbolRef_SymbolRef if_True Let_def)
+  apply(rule findHighestKVWithKEquivTo_concrete1)
+  apply assumption
+done
+
+lemma isGreater_method_concrete:
+  shows "isGreater_method (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict) (SymbolRef null_symbol_reference_and_reloc_site)
+         (SymbolDef def_rec0) = True"
+  apply(simp only: instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def Ord_class.simps)
+  apply(simp only: tagCompare.simps refl)
+done
+
+lemma findHighestKVWithKEquivTo_concrete:
+  assumes "well_behaved_lem_ordering
+                 (isGreater_method
+                   (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+                     (instance_Basic_classes_Ord_Maybe_maybe_dict
+                       (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                         (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))
+                 (isLess_method
+                   (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+                     (instance_Basic_classes_Ord_Maybe_maybe_dict
+                       (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                         (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))"
+  shows "findHighestKVWithKEquivTo (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+                  (instance_Basic_classes_Ord_Maybe_maybe_dict
+                    (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                      (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
+                  (SymbolRef null_symbol_reference_and_reloc_site) (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict)
+                  {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} None = Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))"
+using assms
+  apply(subst findHighestKVWithKEquivTo.simps)
+  apply(subst if_weak_cong[where b="\<not> finite {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))}" and c="False"])
+  apply simp
+  apply(simp only: if_False simp_thms option.case)
+  apply(rule disjE[OF chooseAndSplit_concrete[where addr="addr"]])
+  apply(erule subst[OF sym])
+  apply(simp only: option.case split)
+  apply(subst tagEquiv_concrete_SymbolRef_SymbolRef)
+  apply(simp only: if_True Let_def split)
+  apply(simp only: findHighestKVWithKEquivTo_concrete1)
+  apply(erule subst[OF sym])
+  apply(simp only: option.case split tagEquiv_concrete_SymbolRef_SymbolDef if_False)
+  apply(simp only: isGreater_method_concrete if_True)
+  apply(simp only: findHighestKVWithKEquivTo_concrete2)
+done
+
+lemma split_concrete:
+  shows "Lem_set.split
+           (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+             (instance_Basic_classes_Ord_Maybe_maybe_dict
+               (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                 (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))
+           (SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)) {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} = ({(SymbolDef def_rec0, Some (''.data'', addr, 8))}, {})"
+sorry (* XXX: true by eval *)
+
+lemma split_empty:
+  shows "split dict s {} = ({}, {})"
+  apply(simp only: split_def)
+  apply simp
+done
+
+lemma set_comprehension_decompose_concrete:
+  shows "(\<forall>x y. (EQ = dict1 x y) \<longleftrightarrow> (x = y)) \<Longrightarrow> (\<forall>x y. (EQ = dict2 x y) \<longleftrightarrow> (x = y)) \<Longrightarrow> {x \<in> {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))}.
+                  EQ = pairCompare dict1 dict2 x (SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))} = {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))}"
+sorry
+
 lemma lookupBy0_monstrosity:
+  assumes "well_behaved_lem_ordering
+     (isGreater_method
+       (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+         (instance_Basic_classes_Ord_Maybe_maybe_dict
+           (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+             (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))
+     (isLess_method
+       (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+         (instance_Basic_classes_Ord_Maybe_maybe_dict
+           (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+             (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))"
   shows "lookupBy0 (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
        (instance_Basic_classes_Ord_Maybe_maybe_dict
          (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
@@ -902,12 +1033,26 @@ lemma lookupBy0_monstrosity:
                                            Some (word_extract (7\<Colon>nat) (0\<Colon>nat) (0\<Colon>64 word)), Some (word_extract (15\<Colon>nat) (8\<Colon>nat) (0\<Colon>64 word)), Some (word_extract (23\<Colon>nat) (16\<Colon>nat) (0\<Colon>64 word)),
                                            Some (word_extract (31\<Colon>nat) (24\<Colon>nat) (0\<Colon>64 word))]\<rparr>,
                             ''.data'' \<mapsto> \<lparr>startpos = Some (4194324\<Colon>nat), length1 = Some (8\<Colon>nat), contents = map Some (replicate (8\<Colon>nat) (of_nat (42\<Colon>nat)))\<rparr>],
-                  by_range = set (meta0 addr), by_tag = by_tag_from_by_range (set (meta0 addr))\<rparr>) = xxx"
+                  by_range = set (meta0 addr), by_tag = by_tag_from_by_range (set (meta0 addr))\<rparr>) = [(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))]"
+using assms
   apply(simp only: annotated_memory_image.simps by_tag_from_by_range_def meta0_def set_simps)
   apply(simp only: swap_pairs_technical)
   apply(simp only: lookupBy0_def)
-thm swap_pairs_def
-thm tagEquiv.simps
+  apply(subst findLowestKVWithKEqualTo_concrete, assumption)
+  apply(subst findHighestKVWithKEquivTo_concrete, assumption)
+  apply(simp only: option.case split_concrete Let_def split split_empty list_of_set_def list_of_set_set_def)
+  apply(subst if_weak_cong[where b="pairLess (instance_Basic_classes_Ord_Maybe_maybe_dict
+                   (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                     (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
+         (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict) (SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))
+         (SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))" and c="False"])
+  (* XXX: irreflexivity of our orders here *)
+  prefer 2 (* ! *)
+  apply(simp only: if_False append_Nil2)
+  apply(rule disjE[OF set_choose_dichotomy[where x="(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))" and y="(SymbolDef def_rec0, Some (''.data'', addr, 8))"]])
+  apply(erule subst[OF sym])
+  apply(subst set_comprehension_decompose_concrete)
+
 
 lemma img1_concrete:
   shows "img1 addr [72\<Colon>8 word, 199\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, word_extract (7\<Colon>nat) (0\<Colon>nat) (0\<Colon>64 word), word_extract (15\<Colon>nat) (8\<Colon>nat) (0\<Colon>64 word),
