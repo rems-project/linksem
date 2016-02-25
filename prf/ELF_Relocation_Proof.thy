@@ -1006,7 +1006,20 @@ done
 lemma set_comprehension_decompose_concrete:
   shows "(\<forall>x y. (EQ = dict1 x y) \<longleftrightarrow> (x = y)) \<Longrightarrow> (\<forall>x y. (EQ = dict2 x y) \<longleftrightarrow> (x = y)) \<Longrightarrow> {x \<in> {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))}.
                   EQ = pairCompare dict1 dict2 x (SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))} = {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))}"
-sorry
+sorry (* true but a pain in the arse *)
+
+lemma list_of_set_empty:
+  shows "list_of_set {} = []"
+by (meson finite.emptyI list_of_set(1) set_empty)
+
+lemma list_of_set_singleton:
+  shows "list_of_set {x} = [x]"
+  apply(simp only: list_of_set_def list_of_set_set_def set_choose_def)
+  apply(rule Hilbert_Choice.some_equality)
+  apply simp
+  apply(drule CollectD, erule conjE)
+  apply(metis distinct.simps(2) ex_in_conv insert_iff list.exhaust list.simps(15) set_empty)
+done
 
 lemma lookupBy0_monstrosity:
   assumes "well_behaved_lem_ordering
@@ -1040,7 +1053,7 @@ using assms
   apply(simp only: lookupBy0_def)
   apply(subst findLowestKVWithKEqualTo_concrete, assumption)
   apply(subst findHighestKVWithKEquivTo_concrete, assumption)
-  apply(simp only: option.case split_concrete Let_def split split_empty list_of_set_def list_of_set_set_def)
+  apply(simp only: option.case split_concrete Let_def split split_empty)
   apply(subst if_weak_cong[where b="pairLess (instance_Basic_classes_Ord_Maybe_maybe_dict
                    (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                      (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
@@ -1048,11 +1061,28 @@ using assms
          (SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))" and c="False"])
   (* XXX: irreflexivity of our orders here *)
   prefer 2 (* ! *)
-  apply(simp only: if_False append_Nil2)
+  apply(simp only: if_False append_Nil2 list_of_set_empty)
   apply(rule disjE[OF set_choose_dichotomy[where x="(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))" and y="(SymbolDef def_rec0, Some (''.data'', addr, 8))"]])
   apply(erule subst[OF sym])
   apply(subst set_comprehension_decompose_concrete)
+  prefer 3 (* ! *)
+  apply(rule list_of_set_singleton)
+  prefer 3 (* ! *)
+  apply(erule subst[OF sym])
+  apply(subst set_comprehension_decompose_concrete)
+  prefer 3 (* ! *)
+  apply(rule list_of_set_singleton)
+sorry (* requires some obviously true subgoals solving *)
 
+lemma magic_number_manipulation:
+  shows "(unat (uint64_land (of_int (int 2)) (of_int (int (65536 * 65536 - 1))))) = 2"
+  apply eval (* XXX *)
+done
+
+lemma abi_amd64_reloc_2_concrete:
+  shows "amd64_reloc instance_Basic_classes_Ord_Abis_any_abi_feature_dict instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict 2 = xxx"
+
+xxxxxxxxxxxxxxxxxxxxxx
 
 lemma img1_concrete:
   shows "img1 addr [72\<Colon>8 word, 199\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, word_extract (7\<Colon>nat) (0\<Colon>nat) (0\<Colon>64 word), word_extract (15\<Colon>nat) (8\<Colon>nat) (0\<Colon>64 word),
@@ -1061,6 +1091,16 @@ lemma img1_concrete:
                                 word_extract (31\<Colon>nat) (24\<Colon>nat) (0\<Colon>64 word)] = xxx"
   apply(simp only: img1_def append.simps rev.simps list.map map_of.simps fst_def snd_def split)
   apply(simp only: Let_def relocate_output_image_def)
+  apply(subst lookupBy0_monstrosity)
+  (* proof of wellbehavedness of the order... *)
+  prefer 2 (* ! *)
+  apply(simp only: foldl.simps range_tag.case split ref_and_reloc_rec0_def symbol_reference_and_reloc_site.simps)
+  apply(simp only: option.case split reloc_site.simps get_elf64_relocation_a_type_def)
+  apply(simp only: elf64_relocation_a.simps r_x86_64_pc32_def extract_elf64_relocation_r_type_def)
+  apply(simp only: annotated_memory_image.simps Let_def)
+  apply(subst magic_number_manipulation)
+  apply(simp only: sysv_amd64_std_abi_def abi.simps)
+
 
 lemma x64_decode_relocated_technical_1:
   shows "x64_decode (fst (x64_fetch (load_relocated_program_image flags (elements (relocation_image addr)) reg (4194304\<Colon>nat)))) = Zfull_inst (undefined, undefined, undefined)"
