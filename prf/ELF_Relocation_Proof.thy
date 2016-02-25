@@ -754,9 +754,104 @@ lemma chooseAndSplit_concrete:
   apply(simp only: split_concrete2 split, simp)
 done
 
-lemma tagEquiv_concrete:
+lemma split_singleton:
+  assumes "\<forall>x. \<not> (isGreater_method dict x x)" and "\<forall>x. \<not> (isLess_method dict x x)"
+  shows "split dict s {s} = ({}, {})"
+using assms
+  apply(simp only: split_def)
+  apply simp
+done
+
+lemma chooseAndSplit_singleton:
+  assumes "well_behaved_lem_ordering (isGreater_method dict) (isLess_method dict)"
+  shows "chooseAndSplit dict { s } = Some ({}, s, {})"
+using assms unfolding well_behaved_lem_ordering.simps
+  apply(simp only: chooseAndSplit_def)
+  apply(simp add: split_singleton)
+done
+
+lemma chooseAndSplit_empty:
+  shows "chooseAndSplit dict {} = None"
+  apply(simp only: chooseAndSplit_def)
+  apply simp
+done
+
+(* XXX: to control rewriting *)
+lemma tagEquiv_concrete_SymbolRef_SymbolRef:
   shows "tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict (SymbolRef null_symbol_reference_and_reloc_site) (SymbolRef ref_and_reloc_rec0) = True"
+  apply(simp add: tagEquiv.simps)
+done
+
+lemma tagEquiv_concrete_SymbolRef_SymbolDef:
+  shows "tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict (SymbolRef null_symbol_reference_and_reloc_site) (SymbolDef def_rec0) = False"
+  apply(simp add: tagEquiv.simps)
+done
+
+lemma findLowestKVWithKEqualTo_concrete1:
+  assumes "well_behaved_lem_ordering
+            (isGreater_method
+              (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+                (instance_Basic_classes_Ord_Maybe_maybe_dict
+                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                    (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))
+            (isLess_method
+              (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+                (instance_Basic_classes_Ord_Maybe_maybe_dict
+                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                    (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))"
+  shows "findLowestKVWithKEquivTo (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+     (instance_Basic_classes_Ord_Maybe_maybe_dict
+       (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+         (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
+     (SymbolRef null_symbol_reference_and_reloc_site) (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict) {(SymbolDef def_rec0, Some (''.data'', addr, 8))}
+     (Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))) =
+    Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))"
+using assms
+  apply(subst findLowestKVWithKEquivTo.simps)
+  apply(subst if_weak_cong[where b="\<not> finite {(SymbolDef def_rec0, Some (''.data'', addr, 8))}" and c="False"])
+  apply simp
+  apply(simp only: if_False simp_thms chooseAndSplit_singleton option.case split)
+  apply(simp only: tagEquiv_concrete_SymbolRef_SymbolDef if_False HOL.if_cancel)
+  apply(subst findLowestKVWithKEquivTo.simps)
+  apply(subst if_weak_cong[where b="\<not> finite {}" and c="False"])
+  apply simp
+  apply(simp only: if_False simp_thms chooseAndSplit_singleton option.case split)
+  apply(simp only: chooseAndSplit_empty option.case)
+done
+
+lemma isLess_method_concrete:
+  shows "isLess_method (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict) (SymbolRef null_symbol_reference_and_reloc_site)
+         (SymbolDef def_rec0) = False"
 sorry (* XXX: true by eval *)
+
+lemma findLowestKVWithKEquivTo_concrete2:
+  assumes "well_behaved_lem_ordering
+            (isGreater_method
+              (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+                (instance_Basic_classes_Ord_Maybe_maybe_dict
+                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                    (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))
+            (isLess_method
+              (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+                (instance_Basic_classes_Ord_Maybe_maybe_dict
+                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                    (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))"
+  shows "findLowestKVWithKEquivTo (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+     (instance_Basic_classes_Ord_Maybe_maybe_dict
+       (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+         (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
+     (SymbolRef null_symbol_reference_and_reloc_site) (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict) {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))} None = Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))"
+using assms
+  apply(subst findLowestKVWithKEquivTo.simps)
+  apply(subst if_weak_cong[where b="\<not> finite {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))}" and c="False"])
+  apply simp
+  apply(simp only: if_False simp_thms chooseAndSplit_singleton option.case split)
+  apply(simp only: tagEquiv_concrete_SymbolRef_SymbolRef if_True Let_def split)
+  apply(subst findLowestKVWithKEquivTo.simps)
+  apply(subst if_weak_cong[where b="\<not> finite {}" and c="False"])
+  apply simp
+  apply(simp only: if_False simp_thms chooseAndSplit_empty option.case)
+done
 
 lemma findLowestKVWithKEqualTo_concrete:
   assumes "well_behaved_lem_ordering
@@ -775,7 +870,7 @@ lemma findLowestKVWithKEqualTo_concrete:
              (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
            (SymbolRef null_symbol_reference_and_reloc_site) (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict)
-           {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} None = xxx"
+           {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} None = Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))"
 using assms
   apply(subst findLowestKVWithKEquivTo.simps)
   apply(subst if_weak_cong[where b="\<not> finite {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))}" and c="False"])
@@ -784,6 +879,14 @@ using assms
   apply(rule disjE[OF chooseAndSplit_concrete[where addr="addr"]])
   apply(erule subst[OF sym])
   apply(simp only: option.case split)
+  apply(subst tagEquiv_concrete_SymbolRef_SymbolRef)
+  apply(simp only: if_True Let_def split)
+  apply(simp only: findLowestKVWithKEqualTo_concrete1)
+  apply(erule subst[OF sym])
+  apply(simp only: option.case split tagEquiv_concrete_SymbolRef_SymbolDef if_False)
+  apply(simp only: isLess_method_concrete if_False)
+  apply(simp only: findLowestKVWithKEquivTo_concrete2)
+done
 
 lemma lookupBy0_monstrosity:
   shows "lookupBy0 (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
