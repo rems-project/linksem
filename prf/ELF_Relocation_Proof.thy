@@ -1247,6 +1247,34 @@ lemma abi_amd64_reloc_2_concrete:
   apply simp
 done
 
+lemma split_singleton_technical:
+  shows "Lem_set.split
+           (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+             (instance_Basic_classes_Ord_Maybe_maybe_dict
+               (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                 (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))
+           (SymbolDef def_rec0, Some (''.data'', addr, 8)) {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))} = ({}, {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))})"
+sorry (* XXX: true by eval *)
+
+lemma list_of_set_technical:
+  shows "list_of_set
+     {x \<in> {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))}.
+      EQ = pairCompare (compare_method (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict))
+            (compare_method
+              (instance_Basic_classes_Ord_Maybe_maybe_dict
+                (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))
+            x (SymbolDef def_rec0, Some (''.data'', addr, 8))} = [(SymbolDef def_rec0, Some (''.data'', addr, 8))]"
+sorry
+
+lemma pairLess_antisym_technical:
+  shows "pairLess (instance_Basic_classes_Ord_Maybe_maybe_dict
+                   (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                     (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
+         (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict) (SymbolDef def_rec0, Some (''.data'', addr, 8))
+         (SymbolDef def_rec0, Some (''.data'', addr, 8)) = False"
+sorry
+
 lemma taggedRanges_technical:
   assumes "well_behaved_lem_ordering
      (isGreater_method
@@ -1268,7 +1296,7 @@ lemma taggedRanges_technical:
                                                                     ''.data'' \<mapsto>
                                                                     \<lparr>startpos = Some 4194324, length1 = Some 8,
                                                                        contents = [Some 42, Some 42, Some 42, Some 42, Some 42, Some 42, Some 42, Some 42]\<rparr>],
-                                                          by_range = set (meta0 addr), by_tag = by_tag_from_by_range (set (meta0 addr))\<rparr>) = xxx"
+                                                          by_range = set (meta0 addr), by_tag = by_tag_from_by_range (set (meta0 addr))\<rparr>) = [(SymbolDef def_rec0, Some (''.data'', addr, 8))]"
 using assms
   apply(simp only: tagged_ranges_matching_tag_def annotated_memory_image.simps)
   apply(simp only: meta0_def list.set by_tag_from_by_range_def swap_pairs_technical)
@@ -1278,12 +1306,46 @@ using assms
   apply(simp only: option.case)
   apply(subst findHighestKVWithKEquivTo_concrete_null_symbol, assumption)
   apply(simp only: option.case split Let_def)
+  apply(subst split_concrete2)
+  apply(simp only: split)
+  apply(subst split_singleton_technical)
+  apply(simp only: split list_of_set_empty append_Nil2)
+  apply(subst list_of_set_technical)
+  apply(simp only: pairLess_antisym_technical if_False append_Nil2)
+done
+
+lemma element_and_offset_to_address_technical:
+  shows "element_and_offset_to_address (''.data'', addr)
+                                         \<lparr>elements = [''.text'' \<mapsto>
+                                                      \<lparr>startpos = Some 4194304, length1 = Some 20,
+                                                         contents = [Some 72, Some 199, Some 4, Some 37, Some (word_extract 7 0 0), Some (word_extract 15 8 0), Some (word_extract 23 16 0),
+                                                                     Some (word_extract 31 24 0), Some 5, Some 0, Some 0, Some 0, Some 72, Some 139, Some 4, Some 37, Some (word_extract 7 0 0),
+                                                                     Some (word_extract 15 8 0), Some (word_extract 23 16 0), Some (word_extract 31 24 0)]\<rparr>,
+                                                      ''.data'' \<mapsto> \<lparr>startpos = Some 4194324, length1 = Some 8, contents = map Some (replicate 8 (of_nat 42))\<rparr>],
+                                            by_range = set (meta0 addr), by_tag = by_tag_from_by_range (set (meta0 addr))\<rparr> = Some (4194324 + of_nat addr)"
+sorry (* XXX: true by eval *)
+
+lemma address_byte_length:
+  shows "length (natural_to_le_byte_list (4194324 + of_nat addr - 4194305)) = 3"
+sorry (* XXX need assumption about address here *)
 
 lemma img1_concrete:
+  assumes "well_behaved_lem_ordering
+     (isGreater_method
+       (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+         (instance_Basic_classes_Ord_Maybe_maybe_dict
+           (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+             (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))
+     (isLess_method
+       (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+         (instance_Basic_classes_Ord_Maybe_maybe_dict
+           (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+             (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))"
   shows "img1 addr [72\<Colon>8 word, 199\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, word_extract (7\<Colon>nat) (0\<Colon>nat) (0\<Colon>64 word), word_extract (15\<Colon>nat) (8\<Colon>nat) (0\<Colon>64 word),
                                 word_extract (23\<Colon>nat) (16\<Colon>nat) (0\<Colon>64 word), word_extract (31\<Colon>nat) (24\<Colon>nat) (0\<Colon>64 word), 5\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word,
                                 37\<Colon>8 word, word_extract (7\<Colon>nat) (0\<Colon>nat) (0\<Colon>64 word), word_extract (15\<Colon>nat) (8\<Colon>nat) (0\<Colon>64 word), word_extract (23\<Colon>nat) (16\<Colon>nat) (0\<Colon>64 word),
                                 word_extract (31\<Colon>nat) (24\<Colon>nat) (0\<Colon>64 word)] = xxx"
+using assms
   apply(simp only: img1_def append.simps rev.simps list.map map_of.simps fst_def snd_def split)
   apply(simp only: Let_def relocate_output_image_def)
   apply(subst lookupBy0_monstrosity)
@@ -1297,9 +1359,21 @@ lemma img1_concrete:
   apply(simp only: sysv_amd64_std_abi_def abi.simps)
   apply(subst abi_amd64_reloc_2_concrete)
   apply(simp only: split)
-  apply simp
+  apply(simp del: well_behaved_lem_ordering.simps)
   apply(simp only: write_natural_field_def element.simps Let_def)
   apply(simp only: elf_memory_image_defined_symbols_and_ranges_def)
+  apply(subst taggedRanges_technical, assumption)
+  apply(simp only: mapMaybe.simps split range_tag.case option.case list.case)
+  apply(subst List.list.case_cong_weak[where list="[(some_range, some_def)\<leftarrow>[(Some (''.data'', addr, 8), def_rec0)] . some_def = def_rec0]" and list'="[(Some (''.data'', addr, 8), def_rec0)]"])
+  apply simp
+  apply(simp only: list.case split option.case)
+  apply(subst element_and_offset_to_address_technical)
+  apply(simp only: option.case if_True)
+  apply(subst address_byte_length)
+  apply(subst if_weak_cong[where b="4<3" and c=False], simp)
+  apply(simp only: if_False)
+
+xxxxxxxxxxxxxxxxx
 
 
 lemma x64_decode_relocated_technical_1:
