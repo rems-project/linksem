@@ -61,6 +61,21 @@ definition ref_rec0  :: " symbol_reference "  where
                |) )"
 
 
+definition def_rec0  :: " symbol_definition "  where 
+     " def_rec0 = ( 
+   (| def_symname = (''test'')
+    , def_syment =    (| elf64_st_name  = (Elf_Types_Local.uint32_of_nat(( 0 :: nat)))
+                       , elf64_st_info  = (Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat)))
+                       , elf64_st_other = (Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat)))
+                       , elf64_st_shndx = (Elf_Types_Local.uint16_of_nat 1)
+                       , elf64_st_value = (Elf_Types_Local.uint64_of_nat(( 0 :: nat)))
+                       , elf64_st_size  = (of_int (int (( 0 :: nat))))
+                       |)
+    , def_sym_scn =(( 0 :: nat))
+    , def_sym_idx =(( 1 :: nat))
+    , def_linkable_idx =(( 0 :: nat))
+    |) )"
+
 (* the record representing the symbol reference and relocation site *)
 definition ref_and_reloc_rec0  :: " symbol_reference_and_reloc_site "  where 
      " ref_and_reloc_rec0 = (
@@ -77,31 +92,14 @@ definition ref_and_reloc_rec0  :: " symbol_reference_and_reloc_site "  where
           , ref_rel_idx =(( 0 :: nat))
           , ref_src_scn =(( 0 :: nat))
        |)
-    )), maybe_def_bound_to = None
+    )), maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)
      
   |) )"
-
-
-definition def_rec0  :: " symbol_definition "  where 
-     " def_rec0 = ( 
-   (| def_symname = (''test'')
-    , def_syment =    (| elf64_st_name  = (Elf_Types_Local.uint32_of_nat(( 0 :: nat)))
-                       , elf64_st_info  = (Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat)))
-                       , elf64_st_other = (Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat)))
-                       , elf64_st_shndx = (Elf_Types_Local.uint16_of_nat shn_undef)
-                       , elf64_st_value = (Elf_Types_Local.uint64_of_nat(( 0 :: nat)))
-                       , elf64_st_size  = (of_int (int (( 0 :: nat))))
-                       |)
-    , def_sym_scn =(( 0 :: nat))
-    , def_sym_idx =(( 1 :: nat))
-    , def_linkable_idx =(( 0 :: nat))
-    |) )"
-
 
 (*val meta : list ((maybe element_range) * elf_range_tag)*)
 definition meta0  :: "nat \<Rightarrow> ((string*(nat*nat))option*(Abis.any_abi_feature)range_tag)list "  where 
      " meta0 rel_addr = ( [
-        (Some ((''.text''), (( 1 :: nat),( 4 :: nat))), SymbolRef(ref_and_reloc_rec0))
+        (Some ((''.text''), (( 4 :: nat),( 8 :: nat))), SymbolRef(ref_and_reloc_rec0))
     ,   (Some ((''.data''), (( rel_addr :: nat),( 8 :: nat))), SymbolDef(def_rec0))
 ])"
 
