@@ -487,8 +487,9 @@ using assms
 done
 
 lemma build_fixed_program_memory_commute:
-  assumes "addr \<le> l \<and> l \<le> addr + List.length bytes"
+  assumes "addr \<le> l \<and> l \<le> addr + List.length bytes" and "bytes \<noteq> []"
   shows "(build_fixed_program_memory addr bytes) (of_nat l) = bytes ! (l - addr)"
+using assms
 sorry
 
 lemma of_nat_manipulate:
@@ -517,28 +518,27 @@ using assms
   apply(simp only: append.simps list.simps mov_constant_to_mem_def mov_constant_from_mem_def)
   apply(intro conjI)
   apply(subst encode_Zmov_out_concrete, assumption, (rule refl)+, subst encode_Zmov_in_concrete, assumption, (rule refl)+,
-    subst build_fixed_program_memory_commute, simp, simp only: append.simps,
-    simp only: diff_self_eq_0 diff_add_inverse, simp only: nth.simps nat.case)
+    subst build_fixed_program_memory_commute, simp, simp, simp only: append.simps, simp only: diff_self_eq_0 diff_add_inverse, simp only: nth.simps nat.case)
   apply(subst encode_Zmov_out_concrete, assumption, (rule refl)+, subst encode_Zmov_in_concrete, assumption, (rule refl)+,
-    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp only: append.simps,
+    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp, simp only: append.simps,
     simp only: diff_self_eq_0 diff_add_inverse, simp)
   apply(subst encode_Zmov_out_concrete, assumption, (rule refl)+, subst encode_Zmov_in_concrete, assumption, (rule refl)+,
-    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp only: append.simps,
+    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp, simp only: append.simps,
     simp only: diff_self_eq_0 diff_add_inverse, simp)
   apply(subst encode_Zmov_out_concrete, assumption, (rule refl)+, subst encode_Zmov_in_concrete, assumption, (rule refl)+,
-    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp only: append.simps,
+    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp, simp only: append.simps,
     simp only: diff_self_eq_0 diff_add_inverse, simp)
   apply(subst encode_Zmov_out_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
     subst encode_Zmov_in_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
-    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp only: append.simps,
+    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp, simp only: append.simps,
     simp only: diff_self_eq_0 diff_add_inverse, simp)
   apply(subst encode_Zmov_out_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
     subst encode_Zmov_in_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
-    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp only: append.simps,
+    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp, simp only: append.simps,
     simp only: diff_self_eq_0 diff_add_inverse, simp)
   apply(subst encode_Zmov_out_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
     subst encode_Zmov_in_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
-    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp only: append.simps,
+    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp, simp only: append.simps,
     simp only: diff_self_eq_0 diff_add_inverse, simp)
   apply(rule conjI)
   apply(rule impI, simp only: word_cat_OR_8, simp)
@@ -563,8 +563,8 @@ lemma x64_decode_fixed_technical_2:
 sorry
 
 lemma swap_pairs_technical:
-  shows "swap_pairs {(Some (''.text'', 1, 4), SymbolRef ref_and_reloc_rec0), (Some (''.data'', addr, 8), SymbolDef def_rec0)} =
-    {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))}"
+  shows "swap_pairs {(Some (''.text'', 4, 8), SymbolRef ref_and_reloc_rec0), (Some (''.data'', addr, 8), SymbolDef def_rec0)} =
+    {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), (SymbolDef def_rec0, Some (''.data'', addr, 8))}"
   apply(simp only: swap_pairs_def image_def)
   apply auto
 done
@@ -703,7 +703,7 @@ lemma split_concrete1:
              (instance_Basic_classes_Ord_Maybe_maybe_dict
                (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))
-           (SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)) {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} =
+           (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)) {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} =
               ({(SymbolDef def_rec0, Some (''.data'', addr, 8))}, {})"
     apply(simp only: split_def Pair_eq instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes_Ord_tup2_dict_def)
     apply(simp only: instance_Basic_classes_Ord_string_dict_def instance_Basic_classes_Ord_Maybe_maybe_dict_def)
@@ -719,7 +719,7 @@ lemma split_concrete2:
              (instance_Basic_classes_Ord_Maybe_maybe_dict
                (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))
-           (SymbolDef def_rec0, Some (''.data'', addr, 8)) {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} = ({}, {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))})"
+           (SymbolDef def_rec0, Some (''.data'', addr, 8)) {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} = ({}, {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))})"
   apply(simp only: split_def Pair_eq instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes_Ord_tup2_dict_def)
   apply(simp only: instance_Basic_classes_Ord_string_dict_def instance_Basic_classes_Ord_Maybe_maybe_dict_def)
   apply(simp only: instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def Ord_class.simps)
@@ -734,18 +734,18 @@ lemma chooseAndSplit_concrete:
              (instance_Basic_classes_Ord_Maybe_maybe_dict
                (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))
-           {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} = Some ({(SymbolDef def_rec0, Some (''.data'', addr, 8))}, (SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), {}) \<or>
+           {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} = Some ({(SymbolDef def_rec0, Some (''.data'', addr, 8))}, (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), {}) \<or>
          chooseAndSplit
            (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
              (instance_Basic_classes_Ord_Maybe_maybe_dict
                (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))
-           {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} = Some ({}, (SymbolDef def_rec0, Some (''.data'', addr, 8)), {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))})"
+           {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} = Some ({}, (SymbolDef def_rec0, Some (''.data'', addr, 8)), {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))})"
   apply(simp only: chooseAndSplit_def)
-  apply(subst if_weak_cong[where b="{(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} = {}" and c="False"])
+  apply(subst if_weak_cong[where b="{(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} = {}" and c="False"])
   apply simp
   apply(simp only: if_False)
-  apply(rule disjE[OF set_choose_dichotomy[where x="(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))" and y="(SymbolDef def_rec0, Some (''.data'', addr, 8))"]])
+  apply(rule disjE[OF set_choose_dichotomy[where x="(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))" and y="(SymbolDef def_rec0, Some (''.data'', addr, 8))"]])
   apply(erule subst[OF sym])
   apply(simp only: Let_def)
   apply(simp only: split_concrete1 split, simp)
@@ -814,8 +814,8 @@ lemma findLowestKVWithKEqualTo_concrete1_Some:
        (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
          (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
      (SymbolRef null_symbol_reference_and_reloc_site) (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict) {(SymbolDef def_rec0, Some (''.data'', addr, 8))}
-     (Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))) =
-    Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))"
+     (Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))) =
+    Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))"
 using assms
   apply(subst findLowestKVWithKEquivTo.simps)
   apply(subst if_weak_cong[where b="\<not> finite {(SymbolDef def_rec0, Some (''.data'', addr, 8))}" and c="False"])
@@ -915,10 +915,10 @@ lemma findLowestKVWithKEquivTo_concrete2:
      (instance_Basic_classes_Ord_Maybe_maybe_dict
        (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
          (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
-     (SymbolRef null_symbol_reference_and_reloc_site) (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict) {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))} None = Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))"
+     (SymbolRef null_symbol_reference_and_reloc_site) (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict) {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))} None = Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))"
 using assms
   apply(subst findLowestKVWithKEquivTo.simps)
-  apply(subst if_weak_cong[where b="\<not> finite {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))}" and c="False"])
+  apply(subst if_weak_cong[where b="\<not> finite {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))}" and c="False"])
   apply simp
   apply(simp only: if_False simp_thms chooseAndSplit_singleton option.case split)
   apply(simp only: tagEquiv_concrete_SymbolRef_SymbolRef if_True Let_def split)
@@ -945,10 +945,10 @@ lemma findLowestKVWithKEqualTo_concrete:
              (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
            (SymbolRef null_symbol_reference_and_reloc_site) (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict)
-           {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} None = Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))"
+           {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} None = Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))"
 using assms
   apply(subst findLowestKVWithKEquivTo.simps)
-  apply(subst if_weak_cong[where b="\<not> finite {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))}" and c="False"])
+  apply(subst if_weak_cong[where b="\<not> finite {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), (SymbolDef def_rec0, Some (''.data'', addr, 8))}" and c="False"])
   apply simp
   apply(simp only: if_False simp_thms option.case)
   apply(rule disjE[OF chooseAndSplit_concrete[where addr="addr"]])
@@ -980,10 +980,10 @@ lemma findLowestKVWithKEqualTo_concrete_null_symbol:
              (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
            (SymbolDef null_symbol_definition) (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict)
-           {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} None = Some (SymbolDef def_rec0, Some (''.data'', addr, 8))"
+           {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} None = Some (SymbolDef def_rec0, Some (''.data'', addr, 8))"
 using assms
   apply(subst findLowestKVWithKEquivTo.simps)
-  apply(subst if_weak_cong[where b="\<not> finite {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))}" and c="False"])
+  apply(subst if_weak_cong[where b="\<not> finite {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), (SymbolDef def_rec0, Some (''.data'', addr, 8))}" and c="False"])
   apply simp
   apply(simp only: simp_thms if_False)
   apply(rule disjE[OF chooseAndSplit_concrete[where addr="addr"]])
@@ -1014,7 +1014,7 @@ lemma findHighestKVWithKEquivTo_concrete1:
      (instance_Basic_classes_Ord_Maybe_maybe_dict
        (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
          (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
-     (SymbolRef null_symbol_reference_and_reloc_site) (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict) {} (Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))) = Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))"
+     (SymbolRef null_symbol_reference_and_reloc_site) (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict) {} (Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))) = Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))"
 using assms
   apply(subst findHighestKVWithKEquivTo.simps)
   apply(subst if_weak_cong[where b="\<not> finite {}" and c="False"])
@@ -1040,11 +1040,11 @@ lemma findHighestKVWithKEquivTo_concrete2:
      (instance_Basic_classes_Ord_Maybe_maybe_dict
        (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
          (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
-     (SymbolRef null_symbol_reference_and_reloc_site) (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict) {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))} None =
-    Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))"
+     (SymbolRef null_symbol_reference_and_reloc_site) (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict) {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))} None =
+    Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))"
 using assms
   apply(subst findHighestKVWithKEquivTo.simps)
-  apply(subst if_weak_cong[where b="\<not> finite {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))}" and c="False"])
+  apply(subst if_weak_cong[where b="\<not> finite {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))}" and c="False"])
   apply simp
   apply(simp only: if_False simp_thms option.case)
   apply(subst chooseAndSplit_singleton)
@@ -1086,10 +1086,10 @@ lemma findHighestKVWithKEquivTo_concrete:
                     (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                       (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
                   (SymbolRef null_symbol_reference_and_reloc_site) (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict)
-                  {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} None = Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))"
+                  {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} None = Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))"
 using assms
   apply(subst findHighestKVWithKEquivTo.simps)
-  apply(subst if_weak_cong[where b="\<not> finite {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))}" and c="False"])
+  apply(subst if_weak_cong[where b="\<not> finite {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), (SymbolDef def_rec0, Some (''.data'', addr, 8))}" and c="False"])
   apply simp
   apply(simp only: if_False simp_thms option.case)
   apply(rule disjE[OF chooseAndSplit_concrete[where addr="addr"]])
@@ -1121,10 +1121,10 @@ lemma findHighestKVWithKEquivTo_concrete_null_symbol:
                    (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                      (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
                  (SymbolDef null_symbol_definition) (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict)
-                 {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} None = Some (SymbolDef def_rec0, Some (''.data'', addr, 8))"
+                 {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} None = Some (SymbolDef def_rec0, Some (''.data'', addr, 8))"
 using assms
   apply(subst findHighestKVWithKEquivTo.simps)
-  apply(subst if_weak_cong[where b="\<not> finite {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))}" and c="False"])
+  apply(subst if_weak_cong[where b="\<not> finite {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), (SymbolDef def_rec0, Some (''.data'', addr, 8))}" and c="False"])
   apply simp
   apply(simp only: if_False simp_thms option.case)
   apply(rule disjE[OF chooseAndSplit_concrete[where addr="addr"]])
@@ -1145,7 +1145,7 @@ using assms
   apply(simp only: option.case split tagEquiv_concrete_SymbolDef_SymbolRef if_False isGreater_method_concrete_Def_Ref)
   apply(simp only: tagEquiv_concrete_SymbolDef_SymbolDef if_True split Let_def)
   apply(subst findHighestKVWithKEquivTo.simps)
-  apply(subst if_weak_cong[where b="\<not> finite {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))}" and c="False"])
+  apply(subst if_weak_cong[where b="\<not> finite {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))}" and c="False"])
   apply simp
   apply(simp only: if_False simp_thms chooseAndSplit_singleton option.case split)
   apply(simp only: tagEquiv_concrete_SymbolDef_SymbolRef if_False split Let_def)
@@ -1164,9 +1164,22 @@ lemma split_empty:
 done
 
 lemma set_comprehension_decompose_concrete:
-  shows "(\<forall>x y. (EQ = dict1 x y) \<longleftrightarrow> (x = y)) \<Longrightarrow> (\<forall>x y. (EQ = dict2 x y) \<longleftrightarrow> (x = y)) \<Longrightarrow> {x \<in> {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))}.
-                  EQ = pairCompare dict1 dict2 x (SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))} = {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))}"
-sorry (* true but a pain in the arse *)
+  shows "(\<forall>x y. (EQ = dict1 x y) \<longleftrightarrow> (x = y)) \<Longrightarrow> (\<forall>x y. (EQ = dict2 x y) \<longleftrightarrow> (x = y)) \<Longrightarrow> {x \<in> {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), (SymbolDef def_rec0, Some (''.data'', addr, 8))}.
+                  EQ = pairCompare dict1 dict2 x (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))} = {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))}"
+  apply(rule equalityI)
+  apply(rule subsetI)
+  apply(drule CollectD)
+  apply(erule conjE)
+  apply simp
+  apply(erule disjE, clarify+)
+  apply(simp only: pairCompare.simps)
+  apply(case_tac "dict1 (SymbolDef def_rec0) (SymbolRef ref_and_reloc_rec0)")
+  apply(auto)
+  apply(simp only: pairCompare.simps)
+  apply(case_tac "dict1 (SymbolRef ref_and_reloc_rec0) (SymbolRef ref_and_reloc_rec0)")
+  apply simp_all
+  apply(elim allE[where x="SymbolRef ref_and_reloc_rec0"], and "(18446744071562067968\<Colon>64 word) <=s addr \<and> addr <=s (2147483647\<Colon>64 word)"auto)+
+done
 
 lemma list_of_set_empty:
   shows "list_of_set {} = []"
@@ -1206,7 +1219,7 @@ lemma lookupBy0_monstrosity:
                                            Some (word_extract (7\<Colon>nat) (0\<Colon>nat) (0\<Colon>64 word)), Some (word_extract (15\<Colon>nat) (8\<Colon>nat) (0\<Colon>64 word)), Some (word_extract (23\<Colon>nat) (16\<Colon>nat) (0\<Colon>64 word)),
                                            Some (word_extract (31\<Colon>nat) (24\<Colon>nat) (0\<Colon>64 word))]\<rparr>,
                             ''.data'' \<mapsto> \<lparr>startpos = Some (4194324\<Colon>nat), length1 = Some (8\<Colon>nat), contents = map Some (replicate (8\<Colon>nat) (of_nat (42\<Colon>nat)))\<rparr>],
-                  by_range = set (meta0 addr), by_tag = by_tag_from_by_range (set (meta0 addr))\<rparr>) = [(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))]"
+                  by_range = set (meta0 addr), by_tag = by_tag_from_by_range (set (meta0 addr))\<rparr>) = [(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))]"
 using assms
   apply(simp only: annotated_memory_image.simps by_tag_from_by_range_def meta0_def set_simps)
   apply(simp only: swap_pairs_technical)
@@ -1217,12 +1230,12 @@ using assms
   apply(subst if_weak_cong[where b="pairLess (instance_Basic_classes_Ord_Maybe_maybe_dict
                    (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                      (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
-         (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict) (SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))
-         (SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))" and c="False"])
+         (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict) (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))
+         (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))" and c="False"])
   (* XXX: irreflexivity of our orders here *)
   prefer 2 (* ! *)
   apply(simp only: if_False append_Nil2 list_of_set_empty)
-  apply(rule disjE[OF set_choose_dichotomy[where x="(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))" and y="(SymbolDef def_rec0, Some (''.data'', addr, 8))"]])
+  apply(rule disjE[OF set_choose_dichotomy[where x="(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))" and y="(SymbolDef def_rec0, Some (''.data'', addr, 8))"]])
   apply(erule subst[OF sym])
   apply(subst set_comprehension_decompose_concrete)
   prefer 3 (* ! *)
@@ -1253,19 +1266,63 @@ lemma split_singleton_technical:
              (instance_Basic_classes_Ord_Maybe_maybe_dict
                (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))
-           (SymbolDef def_rec0, Some (''.data'', addr, 8)) {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))} = ({}, {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4))})"
-sorry (* XXX: true by eval *)
+           (SymbolDef def_rec0, Some (''.data'', addr, 8)) {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))} = ({}, {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))})"
+  apply(simp only: split_def Pair_eq)
+  apply(rule conjI)
+  apply(rule equalityI, rule subsetI)
+  apply(drule CollectD)
+  apply(erule conjE)
+  apply(simp)
+  apply(simp only: instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes_Ord_tup2_dict_def
+    instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def Ord_class.simps
+    instance_Basic_classes_Ord_Maybe_maybe_dict_def instance_Basic_classes_Ord_string_dict_def maybeCompare.simps tagCompare.simps pairCompare.simps
+    pairGreater_def pairLess.simps)
+  apply auto
+  apply(simp only: instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes_Ord_tup2_dict_def
+    instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def Ord_class.simps
+    instance_Basic_classes_Ord_Maybe_maybe_dict_def instance_Basic_classes_Ord_string_dict_def maybeCompare.simps tagCompare.simps pairCompare.simps
+    pairGreater_def pairLess.simps)
+  apply auto
+done
 
 lemma list_of_set_technical:
   shows "list_of_set
-     {x \<in> {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 1, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 8))}.
+     {x \<in> {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), (SymbolDef def_rec0, Some (''.data'', addr, 8))}.
       EQ = pairCompare (compare_method (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict))
             (compare_method
               (instance_Basic_classes_Ord_Maybe_maybe_dict
                 (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                   (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))
             x (SymbolDef def_rec0, Some (''.data'', addr, 8))} = [(SymbolDef def_rec0, Some (''.data'', addr, 8))]"
-sorry
+  apply(subgoal_tac "{x \<in> {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), (SymbolDef def_rec0, Some (''.data'', addr, 8))}.
+      EQ = pairCompare (compare_method (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict))
+            (compare_method
+              (instance_Basic_classes_Ord_Maybe_maybe_dict
+                (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))
+            x (SymbolDef def_rec0, Some (''.data'', addr, 8))} = {(SymbolDef def_rec0, Some (''.data'', addr, 8))}")
+  apply(simp add: list_of_set_singleton)
+  apply(rule equalityI, rule subsetI)
+  apply simp
+  apply(erule conjE)
+  apply(erule disjE, simp)
+  apply(simp only: instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes_Ord_tup2_dict_def
+    instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def Ord_class.simps
+    instance_Basic_classes_Ord_Maybe_maybe_dict_def instance_Basic_classes_Ord_string_dict_def maybeCompare.simps tagCompare.simps pairCompare.simps
+    pairGreater_def pairLess.simps ordering.case ordering.simps)
+  apply simp
+  apply(rule subsetI)
+  apply simp
+  apply(simp only: instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes_Ord_tup2_dict_def
+    instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def Ord_class.simps
+    instance_Basic_classes_Ord_Maybe_maybe_dict_def instance_Basic_classes_Ord_string_dict_def maybeCompare.simps tagCompare.simps pairCompare.simps
+    pairGreater_def pairLess.simps ordering.case ordering.simps)
+  apply(subst symDefCompare_refl)
+  apply(simp only: ordering.simps)
+  apply(subst stringCompare_method_refl)
+  apply(simp only: ordering.simps genericCompare_def)
+  apply auto
+done
 
 lemma pairLess_antisym_technical:
   shows "pairLess (instance_Basic_classes_Ord_Maybe_maybe_dict
@@ -1273,7 +1330,12 @@ lemma pairLess_antisym_technical:
                      (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
          (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict) (SymbolDef def_rec0, Some (''.data'', addr, 8))
          (SymbolDef def_rec0, Some (''.data'', addr, 8)) = False"
-sorry
+  apply(simp only: instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes_Ord_tup2_dict_def
+    instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def Ord_class.simps
+    instance_Basic_classes_Ord_Maybe_maybe_dict_def instance_Basic_classes_Ord_string_dict_def maybeCompare.simps tagCompare.simps pairCompare.simps
+    pairGreater_def pairLess.simps ordering.case ordering.simps)
+  apply(auto simp add: symDefCompare_refl stringCompare_method_refl genericCompare_def)
+done
 
 lemma taggedRanges_technical:
   assumes "well_behaved_lem_ordering
@@ -1323,11 +1385,19 @@ lemma element_and_offset_to_address_technical:
                                                                      Some (word_extract 15 8 0), Some (word_extract 23 16 0), Some (word_extract 31 24 0)]\<rparr>,
                                                       ''.data'' \<mapsto> \<lparr>startpos = Some 4194324, length1 = Some 8, contents = map Some (replicate 8 (of_nat 42))\<rparr>],
                                             by_range = set (meta0 addr), by_tag = by_tag_from_by_range (set (meta0 addr))\<rparr> = Some (4194324 + of_nat addr)"
-sorry (* XXX: true by eval *)
+  apply(simp only: element_and_offset_to_address.simps annotated_memory_image.simps)
+  apply simp
+done
 
-lemma address_byte_length:
-  shows "length (natural_to_le_byte_list (4194324 + of_nat addr - 4194305)) = 3"
-sorry (* XXX need assumption about address here *)
+lemma map_eqI:
+  assumes "\<forall>d \<in> dom m1 \<union> dom m2. m1 d = m2 d"
+  shows "m1 = m2"
+using assms by fastforce
+
+lemma map_upd_cong:
+  assumes "m1 = m2" and "x1 = x2" and "y1 = y2"
+  shows "m1(x1 := y1) = m2(x2 := y2)"
+using assms by simp
 
 lemma img1_concrete:
   assumes "well_behaved_lem_ordering
@@ -1341,16 +1411,29 @@ lemma img1_concrete:
          (instance_Basic_classes_Ord_Maybe_maybe_dict
            (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
              (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))"
+  and "natural_to_le_byte_list (16 + of_nat addr) = [b1, b2, b3]"
   shows "img1 addr [72\<Colon>8 word, 199\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, word_extract (7\<Colon>nat) (0\<Colon>nat) (0\<Colon>64 word), word_extract (15\<Colon>nat) (8\<Colon>nat) (0\<Colon>64 word),
                                 word_extract (23\<Colon>nat) (16\<Colon>nat) (0\<Colon>64 word), word_extract (31\<Colon>nat) (24\<Colon>nat) (0\<Colon>64 word), 5\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word,
                                 37\<Colon>8 word, word_extract (7\<Colon>nat) (0\<Colon>nat) (0\<Colon>64 word), word_extract (15\<Colon>nat) (8\<Colon>nat) (0\<Colon>64 word), word_extract (23\<Colon>nat) (16\<Colon>nat) (0\<Colon>64 word),
-                                word_extract (31\<Colon>nat) (24\<Colon>nat) (0\<Colon>64 word)] = xxx"
+                                word_extract (31\<Colon>nat) (24\<Colon>nat) (0\<Colon>64 word)] =
+         \<lparr>elements = [''.data'' \<mapsto> \<lparr>startpos = Some 4194324, length1 = Some 8, contents = [Some 42, Some 42, Some 42, Some 42, Some 42, Some 42, Some 42, Some 42]\<rparr>, ''.text'' \<mapsto>
+                 \<lparr>startpos = Some 4194304, length1 = Some 20,
+                    contents = [Some 72, Some 199, Some 4, Some 37, Some b1, Some b2, Some b3, Some 0, Some 5, Some 0, Some 0, Some 0, Some 72, Some 139, Some 4, Some 37, Some 0, Some 0, Some 0,
+                                Some 0]\<rparr>],
+       by_range = set (meta0 addr) -
+                  {(Some (''.text'', 4, 8),
+                    SymbolRef \<lparr>ref = ref_rec0,
+                                 maybe_reloc = Some \<lparr>ref_relent = \<lparr>elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 2, elf64_ra_addend = 0\<rparr>, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0\<rparr>,
+                                 maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)\<rparr>)},
+       by_tag = by_tag_from_by_range (set (meta0 addr)) -
+                {(SymbolRef \<lparr>ref = ref_rec0,
+                               maybe_reloc = Some \<lparr>ref_relent = \<lparr>elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 2, elf64_ra_addend = 0\<rparr>, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0\<rparr>,
+                               maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)\<rparr>,
+                  Some (''.text'', 4, 8))}\<rparr>"
 using assms
   apply(simp only: img1_def append.simps rev.simps list.map map_of.simps fst_def snd_def split)
   apply(simp only: Let_def relocate_output_image_def)
-  apply(subst lookupBy0_monstrosity)
-  (* proof of wellbehavedness of the order... *)
-  prefer 2 (* ! *)
+  apply(subst lookupBy0_monstrosity, assumption)
   apply(simp only: foldl.simps range_tag.case split ref_and_reloc_rec0_def symbol_reference_and_reloc_site.simps)
   apply(simp only: option.case split reloc_site.simps get_elf64_relocation_a_type_def)
   apply(simp only: elf64_relocation_a.simps r_x86_64_pc32_def extract_elf64_relocation_r_type_def)
@@ -1359,7 +1442,7 @@ using assms
   apply(simp only: sysv_amd64_std_abi_def abi.simps)
   apply(subst abi_amd64_reloc_2_concrete)
   apply(simp only: split)
-  apply(simp del: well_behaved_lem_ordering.simps)
+  apply(simp del: well_behaved_lem_ordering.simps natural_to_le_byte_list.simps)
   apply(simp only: write_natural_field_def element.simps Let_def)
   apply(simp only: elf_memory_image_defined_symbols_and_ranges_def)
   apply(subst taggedRanges_technical, assumption)
@@ -1369,27 +1452,95 @@ using assms
   apply(simp only: list.case split option.case)
   apply(subst element_and_offset_to_address_technical)
   apply(simp only: option.case if_True)
-  apply(subst address_byte_length)
-  apply(subst if_weak_cong[where b="4<3" and c=False], simp)
+  apply(subst arg_cong[where f="\<lambda>x. 4 < x" and x="length (natural_to_le_byte_list (4194324 + of_nat addr - 4194308))" and y="length (natural_to_le_byte_list (16 + of_nat addr))"], simp)
+  apply(subst if_weak_cong[where b="4 < length (natural_to_le_byte_list (16 + of_nat addr))" and c=False], simp)
   apply(simp only: if_False)
+  apply(simp only: taggedRanges_technical mapMaybe.simps split range_tag.case option.case)
+  apply(subst list.case_cong_weak[where list="[(some_range, some_def)\<leftarrow>[(Some (''.data'', addr, 8), def_rec0)] . some_def = def_rec0]" and list'="[(Some (''.data'', addr, 8), def_rec0)]"], simp)+
+  apply(simp only: list.case split option.case element_and_offset_to_address.simps annotated_memory_image.simps)
+  apply(subst option.case_cong_weak[where option="[''.text'' \<mapsto>
+                                                 \<lparr>startpos = Some 4194304, length1 = Some 20,
+                                                    contents = [Some 72, Some 199, Some 4, Some 37, Some (word_extract 7 0 0), Some (word_extract 15 8 0), Some (word_extract 23 16 0),
+                                                                Some (word_extract 31 24 0), Some 5, Some 0, Some 0, Some 0, Some 72, Some 139, Some 4, Some 37, Some (word_extract 7 0 0),
+                                                                Some (word_extract 15 8 0), Some (word_extract 23 16 0), Some (word_extract 31 24 0)]\<rparr>,
+                                                 ''.data'' \<mapsto> \<lparr>startpos = Some 4194324, length1 = Some 8, contents = map Some (replicate 8 (of_nat 42))\<rparr>]
+                                                 ''.data''" and option'="Some \<lparr>startpos = Some 4194324, length1 = Some 8, contents = map Some (replicate 8 (of_nat 42))\<rparr>"], simp)+
+  apply(simp only: option.case element.simps)
+  apply(subgoal_tac "natural_to_le_byte_list (4194324 + addr - 4194308) =and "(18446744071562067968\<Colon>64 word) <=s addr \<and> addr <=s (2147483647\<Colon>64 word)" natural_to_le_byte_list (16 + addr)")
+  apply(simp del: well_behaved_lem_ordering.simps natural_to_le_byte_list.simps)
+  apply simp
+done
 
-xxxxxxxxxxxxxxxxx
+declare [[show_types]]
 
+lemma X64_memory_of_memory_image_concrete:
+  assumes "z = (4194304 + x)"
+  shows "X64_memory_of_memory_image
+     [''.data'' \<mapsto> \<lparr>startpos = Some 4194324, length1 = Some 8, contents = [Some 42, Some 42, Some 42, Some 42, Some 42, Some 42, Some 42, Some 42]\<rparr>, ''.text'' \<mapsto>
+      \<lparr>startpos = Some 4194304, length1 = Some 20,
+         contents = [Some 72, Some 199, Some 4, Some 37, Some b1, Some b2, Some b3, Some 0, Some 5, Some 0, Some 0, Some 0, Some 72, Some 139, Some 4, Some 37, Some 0, Some 0, Some 0, Some 0]\<rparr>] z =
+         the ([Some 72, Some 199, Some 4, Some 37, Some b1, Some b2, Some b3, Some 0, Some 5, Some 0, Some 0, Some 0, Some 72, Some 139, Some 4, Some 37, Some 0, Some 0, Some 0, Some 0] ! x)"
+sorry
 
 lemma x64_decode_relocated_technical_1:
-  shows "x64_decode (fst (x64_fetch (load_relocated_program_image flags (elements (relocation_image addr)) reg (4194304\<Colon>nat)))) = Zfull_inst (undefined, undefined, undefined)"
+  assumes "well_behaved_lem_ordering
+     (isGreater_method
+       (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+         (instance_Basic_classes_Ord_Maybe_maybe_dict
+           (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+             (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))
+     (isLess_method
+       (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+         (instance_Basic_classes_Ord_Maybe_maybe_dict
+           (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+             (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))"
+  assumes "natural_to_le_byte_list (16 + of_nat addr) = [b1, b2, b3]"
+  shows "x64_decode (fst (x64_fetch (load_relocated_program_image flags (elements (relocation_image addr)) reg (4194304\<Colon>nat)))) =
+  Zfull_inst ([], Zmov (Z_ALWAYS, (Z64, Zrm_i (Zm (None, (ZnoBase, scast ((word_cat (0\<Colon>8 word) ((word_cat b3 ((word_cat b2 b1)::16 word))::24 word))::32 word)::64 word)), 5::64 word))), [72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word])"
+using assms
   apply(simp only: x64_fetch_RIP fst_def X64_state.simps)
   apply(simp only: fst_def split append.simps list.simps)
   apply(subst x64_decode_Zmov_in)
   apply(simp only: append.simps list.simps simp_thms relocation_image_def relocatable_program_def)
   apply(simp only: concat.simps append_Nil2 mov_constant_to_mem_def mov_constant_from_mem_def)
-  apply(subst encode_Zmov_in_concrete)
-  apply eval (* XXX *)
-  apply(rule refl)+
-  apply(subst encode_Zmov_out_concrete)
-  apply eval (* XXX *)
-  apply(rule refl)+
+  apply(subst encode_Zmov_in_concrete, eval, (rule refl)+)+
+  apply(subst encode_Zmov_out_concrete, eval, (rule refl)+)+
   apply(simp only: append.simps)
+  apply(subst img1_concrete, assumption+)+
+  apply(simp only: annotated_memory_image.simps load_relocated_program_image_def X64_state.simps)
+  apply(simp add: le_unat_uoi del: well_behaved_lem_ordering.simps natural_to_le_byte_list.simps)
+  apply(intro conjI)
+  apply(subst X64_memory_of_memory_image_concrete, simp, simp)
+  apply(subst X64_memory_of_memory_image_concrete, simp, simp)
+  apply(subst X64_memory_of_memory_image_concrete, simp, simp)
+  apply(subst X64_memory_of_memory_image_concrete, simp, simp)
+  apply(subst X64_memory_of_memory_image_concrete, simp, simp)
+  apply(subst X64_memory_of_memory_image_concrete, simp, simp)
+  apply(subst X64_memory_of_memory_image_concrete, simp, simp)
+  apply(subst X64_memory_of_memory_image_concrete, simp, simp)
+  apply(subst X64_memory_of_memory_image_concrete, simp, simp)
+  apply(subst X64_memory_of_memory_image_concrete, simp, simp)
+  apply(subst X64_memory_of_memory_image_concrete, simp, simp)
+  apply(subst X64_memory_of_memory_image_concrete, simp, simp)
+  apply(subst X64_memory_of_memory_image_concrete, simp, simp)
+  apply(subst X64_memory_of_memory_image_concrete, simp, simp)
+  apply(subst X64_memory_of_memory_image_concrete, simp, simp)
+  apply(subst X64_memory_of_memory_image_concrete, simp, simp)
+  apply(subst X64_memory_of_memory_image_concrete, simp, simp)
+  apply(subst X64_memory_of_memory_image_concrete, simp)+
+  apply(simp del: well_behaved_lem_ordering.simps natural_to_le_byte_list.simps)
+  apply eval (* XXX *)
+done
+
+lemma x64_decode_relocated_technical_2:
+  shows "x64_decode
+                  (fst (x64_fetch (snd (write'mem64 (5\<Colon>64 word, scast (word_cat (0\<Colon>8 word) (word_cat b3 (word_cat b2 b1))))
+                                         (load_relocated_program_image flags (elements (relocation_image addr)) reg (4194304\<Colon>nat)
+                                          \<lparr>RIP := RIP (load_relocated_program_image flags (elements (relocation_image addr)) reg (4194304\<Colon>nat)) +
+                                                  word_of_int (int ((20\<Colon>nat) - length [72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word]))\<rparr>))))) = xxx"
+  apply(simp only: x64_decode.simps readPrefixes.simps)
+
+xxxxxxxxxxxxxxxxxxxx HERE xxxxxxxxxxxxxxxxxxxxxxxx
 
 lemma Run_fixed_Zmov_in_concrete:
   shows "Run (Zmov (Z_ALWAYS, Z64, Zrm_i (Zm (None, ZnoBase, of_nat addr), 5\<Colon>64 word))) \<sigma> = write'EA (5\<Colon>64 word, Zea_m (Z64, of_nat addr)) \<sigma>"
@@ -1440,16 +1591,6 @@ using assms
   apply simp
 done
 
-lemma map_eqI:
-  assumes "\<forall>d \<in> dom m1 \<union> dom m2. m1 d = m2 d"
-  shows "m1 = m2"
-using assms by fastforce
-
-lemma map_upd_cong:
-  assumes "m1 = m2" and "x1 = x2" and "y1 = y2"
-  shows "m1(x1 := y1) = m2(x2 := y2)"
-using assms by simp
-
 lemma Run_fixed_Zmov_out_concrete:
   assumes "e_imm32 addr = [a1, a2, a3, a4]"
   shows "Run (Zmov (Z_ALWAYS, Z64, Zr_rm (RAX, Zm (None, ZnoBase, addr))))
@@ -1483,10 +1624,58 @@ using assms
   apply(rule refl | simp | eval)+
 done
 
+lemma analyse_all_in_range:
+  assumes "(4194324\<Colon>nat) \<le> addr" and "addr \<le> (4194324\<Colon>nat) + (8\<Colon>nat)"
+    and "P 4194324" and "P 4194325" and "P 4194326" and "P 4194327" and "P 4194328" and "P 4194329"
+    and "P 4194330" and "P 4194331" and "P 4194332"
+  shows "P addr"
+using assms
+sorry
+
 lemma size_lemma:
   assumes "(4194324\<Colon>nat) \<le> addr" and "addr \<le> (4194324\<Colon>nat) + (8\<Colon>nat)"
   shows "(18446744071562067968\<Colon>64 word) <=s of_nat addr \<and> of_nat addr <=s (2147483647\<Colon>64 word)"
-sorry (* XXX: obviously true *)
+using assms
+  apply(rule analyse_all_in_range)
+  apply simp_all
+done
+
+lemma monstrosity_is_well_behaved:
+  shows "well_behaved_lem_ordering
+        (isGreater_method
+          (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+            (instance_Basic_classes_Ord_Maybe_maybe_dict
+              (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))
+        (isLess_method
+          (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+            (instance_Basic_classes_Ord_Maybe_maybe_dict
+              (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))"
+sorry
+
+lemma three_bytes_exist:
+  assumes "address_is_disjoint_from_text_and_within_data_section addr (4194304\<Colon>nat) (4194324\<Colon>nat)
+        (length (encode (mov_constant_to_mem (5\<Colon>64 word) (of_nat addr)) @ encode (mov_constant_from_mem (of_nat addr)))) (8\<Colon>nat)"
+  shows "\<exists>b1 b2 b3. natural_to_le_byte_list ((16\<Colon>nat) + of_nat addr) = [b1, b2, b3]"
+sorry
+
+lemma Run_relocated_Zmov_in_concrete:
+  fixes b1 b2 b3 :: "8 word"
+  shows "Run (Zmov (Z_ALWAYS, Z64, Zrm_i (Zm (None, ZnoBase, (scast ((word_cat (0\<Colon>8 word) ((word_cat b3 ((word_cat b2 b1)::16 word))::24 word))::32 word))::64 word), 5\<Colon>64 word)))
+                                         (load_relocated_program_image flags (elements (relocation_image addr)) reg (4194304\<Colon>nat)
+                                          \<lparr>RIP := RIP (load_relocated_program_image flags (elements (relocation_image addr)) reg (4194304\<Colon>nat)) +
+                                                  word_of_int (int ((20\<Colon>nat) - length [72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word]))\<rparr>) =
+    write'mem64 (5\<Colon>64 word, (scast ((word_cat (0\<Colon>8 word) ((word_cat b3 ((word_cat b2 b1)::16 word))::24 word))::32 word))::64 word)
+     (load_relocated_program_image flags (elements (relocation_image addr)) reg (4194304\<Colon>nat)
+      \<lparr>RIP := RIP (load_relocated_program_image flags (elements (relocation_image addr)) reg (4194304\<Colon>nat)) +
+              word_of_int (int ((20\<Colon>nat) - length [72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word]))\<rparr>)"
+  apply(simp only: Run.simps instruction.case dfn'Zmov.simps read_cond.simps Zcond.case)
+  apply(simp only: split Let_def if_True fst_def ea_Zsrc.simps Zdest_src.simps EA.simps Zea.simps)
+  apply(simp only: ea_Zdest.simps Zdest_src.simps split fst_def ea_Zrm.simps Zrm.case)
+  apply(simp only: ea_index.simps option.case split ea_base.simps Zbase.simps)
+  apply(simp only: restrictSize.simps Zsize.simps add_0 write'EA.simps Zea.case split)
+done
 
 theorem le_big_theorem_ooh_la_la:
   shows "correctness_property"
@@ -1503,6 +1692,9 @@ theorem le_big_theorem_ooh_la_la:
   apply(subst x64_decode_fixed_technical_2, simp only: address_is_disjoint_from_text_and_within_data_section_def,
     erule conjE, rule size_lemma, (erule conjE, assumption)+, (rule refl)+)+
   apply(simp only: Zinst.case split)
+  apply(drule three_bytes_exist, elim exE)
+  apply(subst x64_decode_relocated_technical_1, rule monstrosity_is_well_behaved, simp)+
+  apply(simp only: Zinst.case split Run_relocated_Zmov_in_concrete)
 (*
 (Run (Zmov (Z_ALWAYS, Z64, Zr_rm (RAX, Zm (None, ZnoBase, of_nat addr))))
              (snd (write'EA (5\<Colon>64 word, Zea_m (Z64, of_nat addr))
