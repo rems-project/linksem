@@ -1355,4 +1355,12 @@ termination assign_inputs_to_output_sections
   apply simp_all
 done
 
+termination mapMaybe
+  apply lexicographic_order
+done
+
+termination drop
+  apply lexicographic_order
+done
+
 end

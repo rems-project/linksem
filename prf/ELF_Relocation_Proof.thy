@@ -114,11 +114,6 @@ definition address_is_disjoint_from_text_and_within_data_section :: "nat \<Right
      \<not> (addr \<ge> text_start \<and> addr \<le> text_start + program_len) \<and>
        (addr \<ge> data_start \<and> addr \<le> data_start + data_len)"
 
-fun possible_addresses :: "nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> bool" where
-  "possible_addresses start 0 addr = (addr = start)" |
-  "possible_addresses start (Suc cnt) addr =
-     (addr = start \<or> possible_addresses (Suc start) cnt addr)"
-
 text {* We now have our (rather silly) correctness property, which serves to demonstrate that our
 definitions are capable of supporting formal proof.  If we set the Isabelle execution mechanism up
 correctly we could just execute this to obtain our theorem, but we will use proof instead.  Creating
@@ -152,10 +147,11 @@ lemma nat_lesseq_elim:
   shows "m = n \<or> m < n"
 using assms by auto
 
-lemma possible_addresses_elim:
+lemma illegal_addresses:
   assumes "address_is_disjoint_from_text_and_within_data_section addr text_start data_start program_len data_len"
-  shows "possible_addresses data_start data_len addr"
-sorry
+  shows "\<forall>x \<le> program_len. addr \<noteq> (text_start + x)"
+using assms unfolding address_is_disjoint_from_text_and_within_data_section_def
+  by auto
 
 text {* The following is an ugly lemma that is necessary for controlling the unrolling of the for_loop
 function used in Anthony's model, otherwise the simplifier loops uncontrollably. *}
@@ -289,6 +285,10 @@ by eval (* XXX *)
 lemma word_extract_31_24_5:
   shows "word_extract (31\<Colon>nat) (24\<Colon>nat) (5\<Colon>64 word) = (0::8 word)"
 by eval (* XXX *)
+
+lemma word_extract_31_0_5:
+  shows "word_extract (31\<Colon>nat) (0\<Colon>nat) (5\<Colon>64 word) = (5::8 word)"
+by eval
 
 lemma OR_198_1:
   shows "(((198\<Colon>8 word) OR (1\<Colon>8 word))::8 word) = (199::8 word)"
@@ -1178,7 +1178,7 @@ lemma set_comprehension_decompose_concrete:
   apply(simp only: pairCompare.simps)
   apply(case_tac "dict1 (SymbolRef ref_and_reloc_rec0) (SymbolRef ref_and_reloc_rec0)")
   apply simp_all
-  apply(elim allE[where x="SymbolRef ref_and_reloc_rec0"], and "(18446744071562067968\<Colon>64 word) <=s addr \<and> addr <=s (2147483647\<Colon>64 word)"auto)+
+  apply(elim allE[where x="SymbolRef ref_and_reloc_rec0"], auto)+
 done
 
 lemma list_of_set_empty:
@@ -1466,7 +1466,7 @@ using assms
                                                  ''.data'' \<mapsto> \<lparr>startpos = Some 4194324, length1 = Some 8, contents = map Some (replicate 8 (of_nat 42))\<rparr>]
                                                  ''.data''" and option'="Some \<lparr>startpos = Some 4194324, length1 = Some 8, contents = map Some (replicate 8 (of_nat 42))\<rparr>"], simp)+
   apply(simp only: option.case element.simps)
-  apply(subgoal_tac "natural_to_le_byte_list (4194324 + addr - 4194308) =and "(18446744071562067968\<Colon>64 word) <=s addr \<and> addr <=s (2147483647\<Colon>64 word)" natural_to_le_byte_list (16 + addr)")
+  apply(subgoal_tac "natural_to_le_byte_list (4194324 + addr - 4194308) = natural_to_le_byte_list (16 + addr)")
   apply(simp del: well_behaved_lem_ordering.simps natural_to_le_byte_list.simps)
   apply simp
 done
@@ -1532,15 +1532,93 @@ using assms
   apply eval (* XXX *)
 done
 
+value "(word_extract (15\<Colon>nat) (0\<Colon>nat) (5\<Colon>32 word))::16 word"
+
+lemma word_extract_15_0_5:
+  shows "((word_extract (15\<Colon>nat) (0\<Colon>nat) (5\<Colon>32 word))::16 word) = 5"
+by eval
+
+lemma word_extract_7_0_5':
+  shows "(word_extract (7\<Colon>nat) (0\<Colon>nat) (5\<Colon>16 word)::8 word) = 5"
+by eval
+
+lemma word_extract_15_8_5':
+  shows "((word_extract (15\<Colon>nat) (8\<Colon>nat) (5\<Colon>16 word))::8 word) = 0"
+by eval
+
+lemma word_extract_31_16_5:
+  shows "(word_extract (31\<Colon>nat) (16\<Colon>nat) (5\<Colon>32 word)::16 word) = 0"
+by eval
+
+lemma word_extract_31_16_0:
+  shows "(word_extract (31\<Colon>nat) (16\<Colon>nat) (0\<Colon>32 word)::16 word) = 0"
+by eval
+
+lemma word_extract_7_0_0:
+  shows "(word_extract (7\<Colon>nat) (0\<Colon>nat) (0\<Colon>16 word)::8 word) = 0"
+by eval
+
+lemma word_extract_15_0_0:
+  shows "(word_extract (15\<Colon>nat) (0\<Colon>nat) (0\<Colon>32 word)::16 word) = 0"
+by eval
+
+lemma word_extract_15_8_0:
+  shows "(word_extract (15\<Colon>nat) (8\<Colon>nat) (0\<Colon>16 word)::8 word) = 0"
+by eval
+
+lemma word_extract_23_16_0:
+  shows "(word_extract (23\<Colon>nat) (16\<Colon>nat) (0\<Colon>16 word)::8 word) = 0"
+by eval
+
+lemma word_extract_63_32_5:
+  shows "(word_extract (63\<Colon>nat) (32\<Colon>nat) (5\<Colon>64 word)::32 word) = 0"
+by eval
+
+lemma monstrosity_is_well_behaved:
+  shows "well_behaved_lem_ordering
+        (isGreater_method
+          (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+            (instance_Basic_classes_Ord_Maybe_maybe_dict
+              (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))
+        (isLess_method
+          (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+            (instance_Basic_classes_Ord_Maybe_maybe_dict
+              (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))"
+sorry
+
 lemma x64_decode_relocated_technical_2:
+  assumes "natural_to_le_byte_list ((16\<Colon>nat) + of_nat addr) = [b1, b2, b3]" and
+    "address_is_disjoint_from_text_and_within_data_section addr 4194304 4194324 20 8"
   shows "x64_decode
-                  (fst (x64_fetch (snd (write'mem64 (5\<Colon>64 word, scast (word_cat (0\<Colon>8 word) (word_cat b3 (word_cat b2 b1))))
+                  (fst (x64_fetch (snd (write'mem64 (5\<Colon>64 word, of_nat addr)
                                          (load_relocated_program_image flags (elements (relocation_image addr)) reg (4194304\<Colon>nat)
                                           \<lparr>RIP := RIP (load_relocated_program_image flags (elements (relocation_image addr)) reg (4194304\<Colon>nat)) +
-                                                  word_of_int (int ((20\<Colon>nat) - length [72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word]))\<rparr>))))) = xxx"
+                                                  word_of_int (int ((20\<Colon>nat) - length [72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word]))\<rparr>))))) = Zfull_inst([], Zmov (Z_ALWAYS, Z64, Zr_rm (RAX, Zm (None, ZnoBase, of_nat addr))), [])"
+using assms
   apply(simp only: x64_decode.simps readPrefixes.simps)
+  apply(simp only: relocation_image_def relocatable_program_def mov_constant_to_mem_def mov_constant_from_mem_def)
+  apply(simp only: list.map)
+  apply(subst encode_Zmov_in_concrete, eval, (rule refl)+)+
+  apply(subst encode_Zmov_out_concrete, eval, (rule refl)+)+
+  apply(simp only: concat.simps append.simps append_Nil2)
+  apply(subst img1_concrete, rule monstrosity_is_well_behaved, assumption)+
+  apply(simp only: annotated_memory_image.simps)
+  apply(subst readPrefix.simps)
+  apply(simp only: fst_def snd_def load_relocated_program_image_def X64_state.simps)
+  apply(simp only: write'mem64.simps word_extract_63_32_5 word_extract_31_0_5 write'mem32.simps word_extract_31_16_0
+    word_extract_15_0_0 word_extract_31_16_5 word_extract_15_0_5)
+  apply(simp only: snd_def fst_def)
+  apply(simp only: write'mem16.simps word_extract_15_8_0 word_extract_7_0_0 word_extract_15_8_5' word_extract_7_0_5')
+  apply(simp only: snd_def fst_def)
+  apply(simp only: write'mem8.simps split snd_def fst_def X64_state.simps)
+  apply(simp only: x64_fetch_RIP X64_state.simps split list.case)
+  apply(simp only: prefixGroup.simps)
+  apply(drule illegal_addresses)
 
-xxxxxxxxxxxxxxxxxxxx HERE xxxxxxxxxxxxxxxxxxxxxxxx
+
+xxxxxxxxxxxxxxxxxx HERE xxxxxxxxxxxxxxxxxxx
 
 lemma Run_fixed_Zmov_in_concrete:
   shows "Run (Zmov (Z_ALWAYS, Z64, Zrm_i (Zm (None, ZnoBase, of_nat addr), 5\<Colon>64 word))) \<sigma> = write'EA (5\<Colon>64 word, Zea_m (Z64, of_nat addr)) \<sigma>"
@@ -1639,20 +1717,6 @@ using assms
   apply(rule analyse_all_in_range)
   apply simp_all
 done
-
-lemma monstrosity_is_well_behaved:
-  shows "well_behaved_lem_ordering
-        (isGreater_method
-          (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
-            (instance_Basic_classes_Ord_Maybe_maybe_dict
-              (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
-                (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))
-        (isLess_method
-          (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
-            (instance_Basic_classes_Ord_Maybe_maybe_dict
-              (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
-                (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))"
-sorry
 
 lemma three_bytes_exist:
   assumes "address_is_disjoint_from_text_and_within_data_section addr (4194304\<Colon>nat) (4194324\<Colon>nat)
