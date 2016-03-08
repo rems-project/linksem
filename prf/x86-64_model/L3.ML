@@ -405,7 +405,7 @@ local
 in
   val llc =
     fn ([], tm) =>
-         HOLogic.mk_split (HOLogic.cons_const (fst (HOLogic.dest_prodT (Term.type_of tm)))) $ tm
+         HOLogic.mk_case_prod (HOLogic.cons_const (fst (HOLogic.dest_prodT (Term.type_of tm)))) $ tm
      | (l, tm) =>  List.foldr mk_cons tm l
 end
 
@@ -551,7 +551,7 @@ local
       let
         val ty = Term.domain_type (Term.type_of tm)
       in
-        HOLogic.mk_split (Term.Const (s, ty --> f (HOLogic.dest_prodT ty))) $ tm
+        HOLogic.mk_case_prod (Term.Const (s, ty --> f (HOLogic.dest_prodT ty))) $ tm
       end
   fun mk_split3 s f tm =
     let
@@ -569,7 +569,7 @@ local
         val (ty1, ty2) = HOLogic.dest_prodT ty
         val (ty2, ty3) = HOLogic.dest_prodT ty2
       in
-        HOLogic.mk_split (Term.Const (s, ty --> f (ty1, ty2, ty3))) $ tm
+        HOLogic.mk_case_prod (Term.Const (s, ty --> f (ty1, ty2, ty3))) $ tm
       end
   fun mk_min tm =
     let
@@ -857,7 +857,7 @@ local
   val mk_minus = mk_comb2 @{const_name minus} fst
   val mk_plus = mk_comb2 @{const_name plus} fst
   val mk_times = mk_comb2 @{const_name times} fst
-  val mk_div = mk_comb2 @{const_name div} fst
+  val mk_div = mk_comb2 @{const_name divide} fst
   val mk_mod = mk_comb2 @{const_name mod} fst
   val mk_power = mk_comb2 @{const_name power} fst
   val mk_less = mk_comb2 @{const_name less} (fn _ => HOLogic.boolT)

@@ -2,6 +2,7 @@ theory
   ELF_Relocation_Proof
 imports
   Main
+  "~~/src/HOL/Word/Word"
   (* X86 model imports *)
   "x86-64_model/L3_Theory"
   "x86-64_model/X64"
@@ -9,6 +10,7 @@ imports
   "../auto_generated/isabelle/Import_everything"
   "../auto_generated/isabelle/Termination"
   "../auto_generated/isabelle/Test_image"
+  "~~/src/HOL/Eisbach/Eisbach"
 begin
 
 section {* Proof-of-concept relocation proof *}
@@ -207,11 +209,11 @@ lemma to_bl_139:
 by eval (* XXX *)
 
 lemma to_bl_37:
-  shows "to_bl (37\<Colon>8 word) = [False, False, True, False, False, True, False, True]"
+  shows "to_bl (37::8 word) = [False, False, True, False, False, True, False, True]"
 by eval (* XXX *)
 
 lemma to_bl_4:
-  shows "to_bl (4\<Colon>8 word) = [False, False, False, False, False, True, False, False]"
+  shows "to_bl (4::8 word) = [False, False, False, False, False, True, False, False]"
 by eval (* XXX *)
 
 lemma of_bl_True:
@@ -227,27 +229,27 @@ lemma word_extract_3_0_72:
 by eval (* XXX *)
 
 lemma bang_bang_8_0:
-  shows "((8\<Colon>4 word) !! (0\<Colon>nat)) = False"
+  shows "((8::4 word) !! (0::nat)) = False"
 by eval (* XXX *)
 
 lemma bang_bang_8_1:
-  shows "((8\<Colon>4 word) !! (1\<Colon>nat)) = False"
+  shows "((8::4 word) !! (1::nat)) = False"
 by eval (* XXX *)
 
 lemma bang_bang_8_2:
-  shows "((8\<Colon>4 word) !! (2\<Colon>nat)) = False"
+  shows "((8::4 word) !! (2::nat)) = False"
 by eval
 
 lemma bang_bang_8_3:
-  shows "((8\<Colon>4 word) !! (3\<Colon>nat)) = True"
+  shows "((8::4 word) !! (3::nat)) = True"
 by eval (* XXX *)
 
 lemma nat_to_Zreg_RSP:
-  shows "nat_to_Zreg (nat (uint ((word_cat (0\<Colon>1 word) ((of_bl [True, False, False])::3 word))::4 word))) = RSP"
+  shows "nat_to_Zreg (nat (uint ((word_cat (0::1 word) ((of_bl [True, False, False])::3 word))::4 word))) = RSP"
 by eval (* XXX *)
 
 lemma nat_to_Zreg_RBP:
-  shows "nat_to_Zreg (nat (uint ((word_cat (0\<Colon>1 word) ((of_bl [True, False, True])::3 word))::4 word))) = RBP"
+  shows "nat_to_Zreg (nat (uint ((word_cat (0::1 word) ((of_bl [True, False, True])::3 word))::4 word))) = RBP"
 by eval (* XXX *)
 
 lemma nat_to_Zreg_RAX:
@@ -259,47 +261,47 @@ lemma signed_arith_lemma_5:
 by eval (* XXX *)
 
 lemma word_cat_8:
-  shows "word_cat (0\<Colon>1 word) ((word_cat ((word_extract (3\<Colon>nat) (3\<Colon>nat) (0\<Colon>4 word))::1 word) (0\<Colon>2 word))::3 word) OR (8\<Colon>4 word) = (8::4 word)"
+  shows "word_cat (0::1 word) ((word_cat ((word_extract (3::nat) (3::nat) (0::4 word))::1 word) (0::2 word))::3 word) OR (8::4 word) = (8::4 word)"
 by eval (* XXX *)
 
 lemma word_cat_4_8_72:
-  shows "((word_cat (4\<Colon>4 word) (8\<Colon>4 word))::8 word) = (72::8 word)"
+  shows "((word_cat (4::4 word) (8::4 word))::8 word) = (72::8 word)"
 by eval (* XXX *)
 
 lemma word_cat_4:
-  shows "((word_cat (0\<Colon>2 word) ((word_cat ((word_extract (2\<Colon>nat) (0\<Colon>nat) (0\<Colon>4 word))::3 word) (4\<Colon>3 word))::6 word))::8 word) = (4::8 word)"
+  shows "((word_cat (0::2 word) ((word_cat ((word_extract (2::nat) (0::nat) (0::4 word))::3 word) (4::3 word))::6 word))::8 word) = (4::8 word)"
 by eval (* XXX *)
 
 lemma word_extract_7_0_5:
-  shows "word_extract (7\<Colon>nat) (0\<Colon>nat) (5\<Colon>64 word) = (5::8 word)"
+  shows "word_extract (7::nat) (0::nat) (5::64 word) = (5::8 word)"
 by eval (* XXX *)
 
 lemma word_extract_15_8_5:
-  shows "word_extract (15\<Colon>nat) (8\<Colon>nat) (5\<Colon>64 word) = (0::8 word)"
+  shows "word_extract (15::nat) (8::nat) (5::64 word) = (0::8 word)"
 by eval (* XXX *)
 
 lemma word_extract_23_16_5:
-  shows "word_extract (23\<Colon>nat) (16\<Colon>nat) (5\<Colon>64 word) = (0::8 word)"
+  shows "word_extract (23::nat) (16::nat) (5::64 word) = (0::8 word)"
 by eval (* XXX *)
 
 lemma word_extract_31_24_5:
-  shows "word_extract (31\<Colon>nat) (24\<Colon>nat) (5\<Colon>64 word) = (0::8 word)"
+  shows "word_extract (31::nat) (24::nat) (5::64 word) = (0::8 word)"
 by eval (* XXX *)
 
 lemma word_extract_31_0_5:
-  shows "word_extract (31\<Colon>nat) (0\<Colon>nat) (5\<Colon>64 word) = (5::8 word)"
+  shows "word_extract (31::nat) (0::nat) (5::64 word) = (5::8 word)"
 by eval
 
 lemma OR_198_1:
-  shows "(((198\<Colon>8 word) OR (1\<Colon>8 word))::8 word) = (199::8 word)"
+  shows "(((198::8 word) OR (1::8 word))::8 word) = (199::8 word)"
 by eval
 
 lemma OR_138_1:
-  shows "(138\<Colon>8 word) OR (1\<Colon>8 word) = (139\<Colon>8 word)"
+  shows "(138::8 word) OR (1::8 word) = (139::8 word)"
 by eval
 
 lemma word_of_int_of_int_0:
-  shows "(word_of_int (int (0\<Colon>nat))::'a::len word) = (0::'a word)"
+  shows "(word_of_int (int (0::nat))::'a::len word) = (0::'a word)"
 by simp
 
 lemma word_arith_technical:
@@ -397,14 +399,14 @@ using assms
   apply(simp only: word_extract_3_0_72 RexReg.simps bang_bang_8_0 bang_bang_8_1 bang_bang_8_3 if_False if_True)
   apply(simp only: Let_def nat_to_Zreg_RBP refl if_True readSibDisplacement.simps simp_thms if_False)
   apply(simp only: of_bl_False_False simp_thms if_True of_bl_True OpSize.simps)
-  apply(subst if_weak_cong[where b="(1\<Colon>1 word) = (0\<Colon>1 word)" and c="False"])
+  apply(subst if_weak_cong[where b="(1::1 word) = (0::1 word)" and c="False"])
   apply simp
   apply(simp only: if_False)
-  apply(subst if_weak_cong[where b="(1\<Colon>1 word) = (0\<Colon>1 word)" and c="False"], simp)
+  apply(subst if_weak_cong[where b="(1::1 word) = (0::1 word)" and c="False"], simp)
   apply(simp only: if_False nat_to_Zreg_RSP)
-  apply(subst if_weak_cong[where b="(0\<Colon>2 word) = (1\<Colon>2 word)" and c="False"], simp)
+  apply(subst if_weak_cong[where b="(0::2 word) = (1::2 word)" and c="False"], simp)
   apply(simp only: if_False refl if_True bang_bang_8_2 split immediate.simps Zsize.case)
-  apply(subst if_weak_cong[where b="word_of_int (int (Zreg_to_nat (nat_to_Zreg (nat (uint (word_cat (0\<Colon>1 word) (of_bl [False, False, False]))))) mod (8\<Colon>nat))) = (0::3 word)" and c="True"])
+  apply(subst if_weak_cong[where b="word_of_int (int (Zreg_to_nat (nat_to_Zreg (nat (uint (word_cat (0::1 word) (of_bl [False, False, False]))))) mod (8::nat))) = (0::3 word)" and c="True"])
   apply eval
   apply simp
 done
@@ -434,12 +436,12 @@ using assms
   apply(simp only: word_extract_3_0_72 RexReg.simps bang_bang_8_0 bang_bang_8_1 bang_bang_8_3 if_False if_True)
   apply(simp only: Let_def nat_to_Zreg_RBP refl if_True readSibDisplacement.simps simp_thms if_False)
   apply(simp only: of_bl_False_False simp_thms if_True of_bl_True OpSize.simps)
-  apply(subst if_weak_cong[where b="(0\<Colon>2 word) = (1\<Colon>2 word)" and c="False"], simp)
+  apply(subst if_weak_cong[where b="(0::2 word) = (1::2 word)" and c="False"], simp)
   apply(simp only: if_False)
-  apply(subst if_weak_cong[where b="(1\<Colon>1 word) = (0\<Colon>1 word)" and c="False"], simp)
+  apply(subst if_weak_cong[where b="(1::1 word) = (0::1 word)" and c="False"], simp)
   apply(simp only: if_False)
   apply(simp only: nat_to_Zreg_RSP refl if_True split)
-  apply(subst if_weak_cong[where b="(1\<Colon>1 word) = (0\<Colon>1 word)" and c="False"], simp)
+  apply(subst if_weak_cong[where b="(1::1 word) = (0::1 word)" and c="False"], simp)
   apply(simp only: if_False bang_bang_8_2 nat_to_Zreg_RAX)
 done
 
@@ -461,7 +463,7 @@ using assms
   apply(simp only: e_imm32.simps signed_arith_lemma_5 simp_thms if_True list.case)
   apply(simp only: option.case split concat.simps)
   apply(simp only: rex_prefix.simps word_cat_8)
-  apply(subst if_weak_cong[where b="(8\<Colon>4 word) = (0\<Colon>4 word)" and c="False"], simp)
+  apply(subst if_weak_cong[where b="(8::4 word) = (0::4 word)" and c="False"], simp)
   apply(simp only: if_False append.simps word_cat_4_8_72 OR_198_1 word_cat_4)
   apply(simp only: list.simps refl simp_thms word_extract_7_0_5 word_extract_15_8_5)
   apply(simp only: word_extract_23_16_5 simp_thms word_extract_31_24_5 append.simps list.simps)
@@ -481,7 +483,7 @@ using assms
   apply(simp only: e_opsize.simps Zsize.case)
   apply(simp only: rex_prefix.simps Zreg_to_nat.simps Zreg.case word_of_int_of_int_0)
   apply(simp only: word_cat_8)
-  apply(subst if_weak_cong[where b="(8\<Colon>4 word) = (0\<Colon>4 word)" and c="False"], simp)
+  apply(subst if_weak_cong[where b="(8::4 word) = (0::4 word)" and c="False"], simp)
   apply(simp only: if_False Let_def split concat.simps append.simps list.simps)
   apply(simp only: simp_thms word_cat_4_8_72 OR_138_1 word_of_int_of_int_0 word_cat_4)
 done
@@ -497,11 +499,11 @@ lemma of_nat_manipulate:
 by simp
 
 lemma rip_technical_12:
-  shows "(4194316\<Colon>64 word) = (((4194304::64 word) + ((of_nat 12)::64 word))::64 word)"
+  shows "(4194316::64 word) = (((4194304::64 word) + ((of_nat 12)::64 word))::64 word)"
 by simp
 
 lemma word_cat_OR_8:
-  shows "(word_cat (0\<Colon>1 word) ((word_cat (0\<Colon>1 word) (0\<Colon>2 word))::3 word)::4 word) OR (8\<Colon>4 word) = (8::4 word)"
+  shows "(word_cat (0::1 word) ((word_cat (0::1 word) (0::2 word))::3 word)::4 word) OR (8::4 word) = (8::4 word)"
 by eval (* XXX *)
 
 lemma x64_decode_fixed_technical_1:
@@ -550,15 +552,15 @@ lemma x64_decode_fixed_technical_2:
     "word_extract 7 0 addr = a1" and "word_extract 15 8 addr = a2" and "word_extract 23 16 addr = a3"
       and "word_extract 31 24 addr = a4"
   shows "x64_decode
-                  (fst (x64_fetch (snd (write'EA (5\<Colon>64 word, Zea_m (Z64, addr))
+                  (fst (x64_fetch (snd (write'EA (5::64 word, Zea_m (Z64, addr))
                                          \<lparr>EFLAGS = flags,
-                                            MEM = build_fixed_program_memory (4194304\<Colon>nat) (encode (mov_constant_to_mem (5\<Colon>64 word) addr) @ encode (mov_constant_from_mem addr)),
+                                            MEM = build_fixed_program_memory (4194304::nat) (encode (mov_constant_to_mem (5::64 word) addr) @ encode (mov_constant_from_mem addr)),
                                             REG = reg,
-                                            RIP = of_nat (4194304\<Colon>nat) +
+                                            RIP = of_nat (4194304::nat) +
                                                   word_of_int
-                                                   (int ((20\<Colon>nat) -
-                                                         length [72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, word_extract (7\<Colon>nat) (0\<Colon>nat) addr, word_extract (15\<Colon>nat) (8\<Colon>nat) addr,
-                                                                 word_extract (23\<Colon>nat) (16\<Colon>nat) addr, word_extract (31\<Colon>nat) (24\<Colon>nat) addr])),
+                                                   (int ((20::nat) -
+                                                         length [72::8 word, 139::8 word, 4::8 word, 37::8 word, word_extract (7::nat) (0::nat) addr, word_extract (15::nat) (8::nat) addr,
+                                                                 word_extract (23::nat) (16::nat) addr, word_extract (31::nat) (24::nat) addr])),
                                             exception = NoException\<rparr>)))) = Zfull_inst([], Zmov (Z_ALWAYS, Z64, Zr_rm (RAX, Zm (None, ZnoBase, addr))), [])"
 sorry
 
@@ -705,7 +707,7 @@ lemma split_concrete1:
                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))
            (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)) {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} =
               ({(SymbolDef def_rec0, Some (''.data'', addr, 8))}, {})"
-    apply(simp only: split_def Pair_eq instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes_Ord_tup2_dict_def)
+    apply(simp only: split_def prod.inject instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes_Ord_tup2_dict_def)
     apply(simp only: instance_Basic_classes_Ord_string_dict_def instance_Basic_classes_Ord_Maybe_maybe_dict_def)
     apply(simp only: instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def Ord_class.simps)
     apply(simp only: pairLess.simps pairLessEq.simps pairGreater_def pairGreaterEq_def tagCompare.simps symRefAndRelocSiteCompare_def pairCompare.simps)
@@ -720,7 +722,7 @@ lemma split_concrete2:
                (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))
            (SymbolDef def_rec0, Some (''.data'', addr, 8)) {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} = ({}, {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))})"
-  apply(simp only: split_def Pair_eq instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes_Ord_tup2_dict_def)
+  apply(simp only: split_def prod.inject instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes_Ord_tup2_dict_def)
   apply(simp only: instance_Basic_classes_Ord_string_dict_def instance_Basic_classes_Ord_Maybe_maybe_dict_def)
   apply(simp only: instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def Ord_class.simps)
   apply(simp only: pairLess.simps pairLessEq.simps pairGreater_def pairGreaterEq_def tagCompare.simps symRefAndRelocSiteCompare_def pairCompare.simps)
@@ -1212,13 +1214,13 @@ lemma lookupBy0_monstrosity:
            (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
        (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict) (SymbolRef null_symbol_reference_and_reloc_site)
        (by_tag \<lparr>elements = [''.text'' \<mapsto>
-                            \<lparr>startpos = Some (4194304\<Colon>nat), length1 = Some (20\<Colon>nat),
-                               contents = [Some (72\<Colon>8 word), Some (199\<Colon>8 word), Some (4\<Colon>8 word), Some (37\<Colon>8 word), Some (word_extract (7\<Colon>nat) (0\<Colon>nat) (0\<Colon>64 word)),
-                                           Some (word_extract (15\<Colon>nat) (8\<Colon>nat) (0\<Colon>64 word)), Some (word_extract (23\<Colon>nat) (16\<Colon>nat) (0\<Colon>64 word)), Some (word_extract (31\<Colon>nat) (24\<Colon>nat) (0\<Colon>64 word)),
-                                           Some (5\<Colon>8 word), Some (0\<Colon>8 word), Some (0\<Colon>8 word), Some (0\<Colon>8 word), Some (72\<Colon>8 word), Some (139\<Colon>8 word), Some (4\<Colon>8 word), Some (37\<Colon>8 word),
-                                           Some (word_extract (7\<Colon>nat) (0\<Colon>nat) (0\<Colon>64 word)), Some (word_extract (15\<Colon>nat) (8\<Colon>nat) (0\<Colon>64 word)), Some (word_extract (23\<Colon>nat) (16\<Colon>nat) (0\<Colon>64 word)),
-                                           Some (word_extract (31\<Colon>nat) (24\<Colon>nat) (0\<Colon>64 word))]\<rparr>,
-                            ''.data'' \<mapsto> \<lparr>startpos = Some (4194324\<Colon>nat), length1 = Some (8\<Colon>nat), contents = map Some (replicate (8\<Colon>nat) (of_nat (42\<Colon>nat)))\<rparr>],
+                            \<lparr>startpos = Some (4194304::nat), length1 = Some (20::nat),
+                               contents = [Some (72::8 word), Some (199::8 word), Some (4::8 word), Some (37::8 word), Some (word_extract (7::nat) (0::nat) (0::64 word)),
+                                           Some (word_extract (15::nat) (8::nat) (0::64 word)), Some (word_extract (23::nat) (16::nat) (0::64 word)), Some (word_extract (31::nat) (24::nat) (0::64 word)),
+                                           Some (5::8 word), Some (0::8 word), Some (0::8 word), Some (0::8 word), Some (72::8 word), Some (139::8 word), Some (4::8 word), Some (37::8 word),
+                                           Some (word_extract (7::nat) (0::nat) (0::64 word)), Some (word_extract (15::nat) (8::nat) (0::64 word)), Some (word_extract (23::nat) (16::nat) (0::64 word)),
+                                           Some (word_extract (31::nat) (24::nat) (0::64 word))]\<rparr>,
+                            ''.data'' \<mapsto> \<lparr>startpos = Some (4194324::nat), length1 = Some (8::nat), contents = map Some (replicate (8::nat) (of_nat (42::nat)))\<rparr>],
                   by_range = set (meta0 addr), by_tag = by_tag_from_by_range (set (meta0 addr))\<rparr>) = [(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))]"
 using assms
   apply(simp only: annotated_memory_image.simps by_tag_from_by_range_def meta0_def set_simps)
@@ -1267,7 +1269,7 @@ lemma split_singleton_technical:
                (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))
            (SymbolDef def_rec0, Some (''.data'', addr, 8)) {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))} = ({}, {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))})"
-  apply(simp only: split_def Pair_eq)
+  apply(simp only: split_def prod.inject)
   apply(rule conjI)
   apply(rule equalityI, rule subsetI)
   apply(drule CollectD)
@@ -1412,10 +1414,10 @@ lemma img1_concrete:
            (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
              (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))"
   and "natural_to_le_byte_list (16 + of_nat addr) = [b1, b2, b3]"
-  shows "img1 addr [72\<Colon>8 word, 199\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, word_extract (7\<Colon>nat) (0\<Colon>nat) (0\<Colon>64 word), word_extract (15\<Colon>nat) (8\<Colon>nat) (0\<Colon>64 word),
-                                word_extract (23\<Colon>nat) (16\<Colon>nat) (0\<Colon>64 word), word_extract (31\<Colon>nat) (24\<Colon>nat) (0\<Colon>64 word), 5\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word,
-                                37\<Colon>8 word, word_extract (7\<Colon>nat) (0\<Colon>nat) (0\<Colon>64 word), word_extract (15\<Colon>nat) (8\<Colon>nat) (0\<Colon>64 word), word_extract (23\<Colon>nat) (16\<Colon>nat) (0\<Colon>64 word),
-                                word_extract (31\<Colon>nat) (24\<Colon>nat) (0\<Colon>64 word)] =
+  shows "img1 addr [72::8 word, 199::8 word, 4::8 word, 37::8 word, word_extract (7::nat) (0::nat) (0::64 word), word_extract (15::nat) (8::nat) (0::64 word),
+                                word_extract (23::nat) (16::nat) (0::64 word), word_extract (31::nat) (24::nat) (0::64 word), 5::8 word, 0::8 word, 0::8 word, 0::8 word, 72::8 word, 139::8 word, 4::8 word,
+                                37::8 word, word_extract (7::nat) (0::nat) (0::64 word), word_extract (15::nat) (8::nat) (0::64 word), word_extract (23::nat) (16::nat) (0::64 word),
+                                word_extract (31::nat) (24::nat) (0::64 word)] =
          \<lparr>elements = [''.data'' \<mapsto> \<lparr>startpos = Some 4194324, length1 = Some 8, contents = [Some 42, Some 42, Some 42, Some 42, Some 42, Some 42, Some 42, Some 42]\<rparr>, ''.text'' \<mapsto>
                  \<lparr>startpos = Some 4194304, length1 = Some 20,
                     contents = [Some 72, Some 199, Some 4, Some 37, Some b1, Some b2, Some b3, Some 0, Some 5, Some 0, Some 0, Some 0, Some 72, Some 139, Some 4, Some 37, Some 0, Some 0, Some 0,
@@ -1471,8 +1473,6 @@ using assms
   apply simp
 done
 
-declare [[show_types]]
-
 lemma X64_memory_of_memory_image_concrete:
   assumes "z = (4194304 + x)"
   shows "X64_memory_of_memory_image
@@ -1495,8 +1495,8 @@ lemma x64_decode_relocated_technical_1:
            (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
              (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))"
   assumes "natural_to_le_byte_list (16 + of_nat addr) = [b1, b2, b3]"
-  shows "x64_decode (fst (x64_fetch (load_relocated_program_image flags (elements (relocation_image addr)) reg (4194304\<Colon>nat)))) =
-  Zfull_inst ([], Zmov (Z_ALWAYS, (Z64, Zrm_i (Zm (None, (ZnoBase, scast ((word_cat (0\<Colon>8 word) ((word_cat b3 ((word_cat b2 b1)::16 word))::24 word))::32 word)::64 word)), 5::64 word))), [72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word])"
+  shows "x64_decode (fst (x64_fetch (load_relocated_program_image flags (elements (relocation_image addr)) reg (4194304::nat)))) =
+  Zfull_inst ([], Zmov (Z_ALWAYS, (Z64, Zrm_i (Zm (None, (ZnoBase, scast ((word_cat (0::8 word) ((word_cat b3 ((word_cat b2 b1)::16 word))::24 word))::32 word)::64 word)), 5::64 word))), [72::8 word, 139::8 word, 4::8 word, 37::8 word, 0::8 word, 0::8 word, 0::8 word, 0::8 word])"
 using assms
   apply(simp only: x64_fetch_RIP fst_def X64_state.simps)
   apply(simp only: fst_def split append.simps list.simps)
@@ -1532,47 +1532,51 @@ using assms
   apply eval (* XXX *)
 done
 
-value "(word_extract (15\<Colon>nat) (0\<Colon>nat) (5\<Colon>32 word))::16 word"
+value "(word_extract (15::nat) (0::nat) (5::32 word))::16 word"
 
 lemma word_extract_15_0_5:
-  shows "((word_extract (15\<Colon>nat) (0\<Colon>nat) (5\<Colon>32 word))::16 word) = 5"
+  shows "((word_extract (15::nat) (0::nat) (5::32 word))::16 word) = 5"
 by eval
 
 lemma word_extract_7_0_5':
-  shows "(word_extract (7\<Colon>nat) (0\<Colon>nat) (5\<Colon>16 word)::8 word) = 5"
+  shows "(word_extract (7::nat) (0::nat) (5::16 word)::8 word) = 5"
 by eval
 
 lemma word_extract_15_8_5':
-  shows "((word_extract (15\<Colon>nat) (8\<Colon>nat) (5\<Colon>16 word))::8 word) = 0"
+  shows "((word_extract (15::nat) (8::nat) (5::16 word))::8 word) = 0"
 by eval
 
 lemma word_extract_31_16_5:
-  shows "(word_extract (31\<Colon>nat) (16\<Colon>nat) (5\<Colon>32 word)::16 word) = 0"
+  shows "(word_extract (31::nat) (16::nat) (5::32 word)::16 word) = 0"
 by eval
 
 lemma word_extract_31_16_0:
-  shows "(word_extract (31\<Colon>nat) (16\<Colon>nat) (0\<Colon>32 word)::16 word) = 0"
+  shows "(word_extract (31::nat) (16::nat) (0::32 word)::16 word) = 0"
 by eval
 
 lemma word_extract_7_0_0:
-  shows "(word_extract (7\<Colon>nat) (0\<Colon>nat) (0\<Colon>16 word)::8 word) = 0"
+  shows "(word_extract (7::nat) (0::nat) (0::16 word)::8 word) = 0"
 by eval
 
 lemma word_extract_15_0_0:
-  shows "(word_extract (15\<Colon>nat) (0\<Colon>nat) (0\<Colon>32 word)::16 word) = 0"
+  shows "(word_extract (15::nat) (0::nat) (0::32 word)::16 word) = 0"
 by eval
 
 lemma word_extract_15_8_0:
-  shows "(word_extract (15\<Colon>nat) (8\<Colon>nat) (0\<Colon>16 word)::8 word) = 0"
+  shows "(word_extract (15::nat) (8::nat) (0::16 word)::8 word) = 0"
 by eval
 
 lemma word_extract_23_16_0:
-  shows "(word_extract (23\<Colon>nat) (16\<Colon>nat) (0\<Colon>16 word)::8 word) = 0"
+  shows "(word_extract (23::nat) (16::nat) (0::16 word)::8 word) = 0"
 by eval
 
 lemma word_extract_63_32_5:
-  shows "(word_extract (63\<Colon>nat) (32\<Colon>nat) (5\<Colon>64 word)::32 word) = 0"
+  shows "(word_extract (63::nat) (32::nat) (5::64 word)::32 word) = 0"
 by eval
+
+lemma stringCompare_method_sym:
+  shows "stringCompare_method x y = stringCompare_method y x"
+sorry
 
 lemma monstrosity_is_well_behaved:
   shows "well_behaved_lem_ordering
@@ -1586,16 +1590,118 @@ lemma monstrosity_is_well_behaved:
             (instance_Basic_classes_Ord_Maybe_maybe_dict
               (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                 (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))"
+  apply(subst well_behaved_lem_ordering.simps)
+  apply(simp only: instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes_Ord_tup2_dict_def
+    instance_Basic_classes_Ord_string_dict_def instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def
+    instance_Basic_classes_Ord_Memory_image_range_tag_dict_def instance_Basic_classes_Ord_Maybe_maybe_dict_def)
+  apply(simp only: Ord_class.simps)
+  apply(rule conjI, clarify)
+  apply(case_tac aa; case_tac ba; case_tac a; case_tac b)
+  apply(clarify, simp only: pairGreater_def pairLess.simps Ord_class.simps tagCompare.simps maybeCompare.simps ordering.simps simp_thms)+
+  apply(rule conjI, clarify)
+  apply(case_tac aa; case_tac ba; case_tac a; case_tac b)
+  apply(clarify, simp only: pairGreater_def pairLess.simps Ord_class.simps tagCompare.simps maybeCompare.simps ordering.simps simp_thms)+
+  apply(rule conjI, clarify)
+  apply(case_tac aa; case_tac ba; case_tac a; case_tac b)
+  apply(clarify, simp only: pairGreater_def pairLess.simps pairCompare.simps Ord_class.simps tagCompare.simps maybeCompare.simps ordering.simps simp_thms set_simps, simp)+
+  apply(simp only: stringCompare_method_sym)
+  apply(case_tac "stringCompare_method ad ab")
 sorry
 
+lemma cases_20:
+  fixes x :: nat
+  assumes "x \<le> 20"
+  shows "x = 0 \<or> x = 1 \<or> x = 2 \<or> x = 3 \<or> x = 4 \<or>
+         x = 5 \<or> x = 6 \<or> x = 7 \<or> x = 8 \<or> x = 9 \<or>
+         x = 10 \<or> x = 11 \<or> x = 12 \<or> x = 13 \<or> x = 14 \<or>
+         x = 15 \<or> x = 16 \<or> x = 17 \<or> x = 18 \<or> x = 19 \<or> x = 20"
+using assms
+  apply(case_tac x, simp)
+  apply(simp, case_tac nat, simp)
+  apply(simp, case_tac nata, simp)
+  apply(simp, case_tac natb, simp)
+  apply(simp, case_tac natc, simp)
+  apply(simp, case_tac natd, simp)
+  apply(simp, case_tac nate, simp)
+  apply(simp, case_tac natf, simp)
+  apply(simp, case_tac natg, simp)
+  apply(simp, case_tac nath, simp)
+  apply(simp, case_tac nati, simp)
+  apply(simp, case_tac natj, simp)
+  apply(simp, case_tac natk, simp)
+  apply(simp, case_tac natl, simp)
+  apply(simp, case_tac natm, simp)
+  apply(simp, case_tac natn, simp)
+  apply(simp, case_tac nato, simp)
+  apply(simp, case_tac natp, simp)
+  apply(simp, case_tac natq, simp)
+  apply(simp, case_tac natr, simp)
+  apply auto
+done
+
+lemma illegal_address_manipulation:
+  shows "\<forall>x\<le>20::nat. addr \<noteq> (y::nat) + x \<Longrightarrow> \<forall>x\<le>20::nat. of_nat addr \<noteq> ((of_nat (y + x))::64 word)"
+  apply(rule allI, rule impI)
+  apply(erule_tac x="x" in allE)
+  apply(erule impE, assumption)
+  apply(drule cases_20)
+  apply auto
+sorry
+
+lemma fun_upd_removal:
+  assumes "\<forall>x\<le>20::nat. addr \<noteq> (4194304::nat) + x"
+  shows "(fun
+                              (of_nat addr := word_extract (7::nat) (0::nat) (word_extract (15::nat) (0::nat) (word_extract (31::nat) (0::nat) (5::64 word))),
+                               of_nat addr + (1::64 word) := word_extract (15::nat) (8::nat) (word_extract (15::nat) (0::nat) (word_extract (31::nat) (0::nat) (5::64 word))),
+                               of_nat addr + (2::64 word) := word_extract (7::nat) (0::nat) (word_extract (31::nat) (16::nat) (word_extract (31::nat) (0::nat) (5::64 word))),
+                               of_nat addr + (2::64 word) + (1::64 word) := word_extract (15::nat) (8::nat) (word_extract (31::nat) (16::nat) (word_extract (31::nat) (0::nat) (5::64 word))),
+                               of_nat addr + (4::64 word) := 0::8 word, of_nat addr + (4::64 word) + (1::64 word) := 0::8 word, of_nat addr + (4::64 word) + (2::64 word) := 0::8 word,
+                               of_nat addr + (4::64 word) + (2::64 word) + (1::64 word) := 0::8 word))
+                              (of_nat (4194304::nat) + word_of_int (int ((20::nat) - length [72::8 word, 139::8 word, 4::8 word, 37::8 word, 0::8 word, 0::8 word, 0::8 word, 0::8 word]))) =
+  fun (of_nat (4194304::nat) + word_of_int (int ((20::nat) - length [72::8 word, 139::8 word, 4::8 word, 37::8 word, 0::8 word, 0::8 word, 0::8 word, 0::8 word])))"
+using assms
+  apply(subst fun_upd_other, simp)
+  apply(drule illegal_address_manipulation)
+  apply(erule allE[where x=5], erule impE, simp)
+  apply simp
+  apply(subst fun_upd_other, simp)
+  apply(drule illegal_address_manipulation)
+  apply(erule allE[where x=6], erule impE, simp)
+  apply simp
+  apply(subst fun_upd_other, simp)
+  apply(drule illegal_address_manipulation)
+  apply(erule allE[where x=7], erule impE, simp)
+  apply simp
+  apply(subst fun_upd_other, simp)
+  apply(drule illegal_address_manipulation)
+  apply(erule allE[where x=8], erule impE, simp)
+  apply simp
+  apply(subst fun_upd_other, simp)
+  apply(drule illegal_address_manipulation)
+  apply(erule allE[where x=9], erule impE, simp)
+  apply simp
+  apply(subst fun_upd_other, simp)
+  apply(drule illegal_address_manipulation)
+  apply(erule allE[where x=10], erule impE, simp)
+  apply simp
+  apply(subst fun_upd_other, simp)
+  apply(drule illegal_address_manipulation)
+  apply(erule allE[where x=11], erule impE, simp)
+  apply simp
+  apply(subst fun_upd_other, simp)
+  apply(drule illegal_address_manipulation)
+  apply(erule allE[where x=12], erule impE, simp)
+  apply simp+
+done
+
 lemma x64_decode_relocated_technical_2:
-  assumes "natural_to_le_byte_list ((16\<Colon>nat) + of_nat addr) = [b1, b2, b3]" and
+  assumes "natural_to_le_byte_list ((16::nat) + of_nat addr) = [b1, b2, b3]" and
     "address_is_disjoint_from_text_and_within_data_section addr 4194304 4194324 20 8"
   shows "x64_decode
-                  (fst (x64_fetch (snd (write'mem64 (5\<Colon>64 word, of_nat addr)
-                                         (load_relocated_program_image flags (elements (relocation_image addr)) reg (4194304\<Colon>nat)
-                                          \<lparr>RIP := RIP (load_relocated_program_image flags (elements (relocation_image addr)) reg (4194304\<Colon>nat)) +
-                                                  word_of_int (int ((20\<Colon>nat) - length [72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word]))\<rparr>))))) = Zfull_inst([], Zmov (Z_ALWAYS, Z64, Zr_rm (RAX, Zm (None, ZnoBase, of_nat addr))), [])"
+                  (fst (x64_fetch (snd (write'mem64 (5::64 word, of_nat addr)
+                                         (load_relocated_program_image flags (elements (relocation_image addr)) reg (4194304::nat)
+                                          \<lparr>RIP := RIP (load_relocated_program_image flags (elements (relocation_image addr)) reg (4194304::nat)) +
+                                                  word_of_int (int ((20::nat) - length [72::8 word, 139::8 word, 4::8 word, 37::8 word, 0::8 word, 0::8 word, 0::8 word, 0::8 word]))\<rparr>))))) = Zfull_inst([], Zmov (Z_ALWAYS, Z64, Zr_rm (RAX, Zm (None, ZnoBase, of_nat addr))), [])"
 using assms
   apply(simp only: x64_decode.simps readPrefixes.simps)
   apply(simp only: relocation_image_def relocatable_program_def mov_constant_to_mem_def mov_constant_from_mem_def)
@@ -1616,12 +1722,51 @@ using assms
   apply(simp only: x64_fetch_RIP X64_state.simps split list.case)
   apply(simp only: prefixGroup.simps)
   apply(drule illegal_addresses)
+  apply(simp only: fun_upd_removal)
+  apply(subst X64_memory_of_memory_image_concrete, simp)
+  apply(subst X64_memory_of_memory_image_concrete, simp)
+  apply(subst X64_memory_of_memory_image_concrete, simp)
+  apply(subst X64_memory_of_memory_image_concrete, simp)
+  apply(subst X64_memory_of_memory_image_concrete, simp)
+  apply(subst X64_memory_of_memory_image_concrete, simp)
+  apply(subst X64_memory_of_memory_image_concrete, simp)
+  apply(subst X64_memory_of_memory_image_concrete, simp)
+  apply(subst X64_memory_of_memory_image_concrete, simp)
+  apply(subst X64_memory_of_memory_image_concrete, simp)
+  apply(subst X64_memory_of_memory_image_concrete, simp)
+  apply(subst X64_memory_of_memory_image_concrete, simp)
+  apply(subst X64_memory_of_memory_image_concrete, simp)
+  apply(simp only: nth.simps)
+  apply(simp only: eval_nat_numeral, simp only: BitM.simps nat.case)
+  apply(simp only: eval_nat_numeral, simp only: BitM.simps nat.case)
+  apply(simp only: eval_nat_numeral, simp only: BitM.simps nat.case)
+  apply(simp only: eval_nat_numeral, simp only: BitM.simps nat.case)
+  apply(simp only: eval_nat_numeral, simp only: BitM.simps nat.case)
+  apply(simp only: eval_nat_numeral, simp only: BitM.simps nat.case)
+  apply(simp only: Num.numerals One_nat_def nat.case)
+  apply(simp only: option.the_def option.case)
+  apply(subst if_weak_cong[where b="(72::8 word) = (240::8 word)" and c=False], eval, simp only: if_False)
+  apply(subst if_weak_cong[where b="(72::8 word) = (242::8 word)" and c=False], eval, simp only: if_False)
+  apply(subst if_weak_cong[where b="(72::8 word) = (243::8 word)" and c=False], eval, simp only: if_False)
+  apply(subst if_weak_cong[where b="(72::8 word) = (38::8 word)" and c=False], eval, simp only: if_False)
+  apply(subst if_weak_cong[where b="(72::8 word) = (46::8 word)" and c=False], eval, simp only: if_False)
+  apply(subst if_weak_cong[where b="(72::8 word) = (54::8 word)" and c=False], eval, simp only: if_False)
+  apply(subst if_weak_cong[where b="(72::8 word) = (62::8 word)" and c=False], eval, simp only: if_False)
+  apply(subst if_weak_cong[where b="(72::8 word) = (100::8 word)" and c=False], eval, simp only: if_False)
+  apply(subst if_weak_cong[where b="(72::8 word) = (101::8 word)" and c=False], eval, simp only: if_False)
+  apply(subst if_weak_cong[where b="(72::8 word) = (102::8 word)" and c=False], eval, simp only: if_False)
+  apply(subst if_weak_cong[where b="(72::8 word) = (103::8 word)" and c=False], eval, simp only: if_False)
+  apply(subst if_weak_cong[where b="word_extract (Suc (Suc (Suc (Suc (Suc (Suc (Suc (0::nat)))))))) (Suc (Suc (Suc (Suc (0::nat))))) (72::8 word) = (4::4 word)" and c=True], eval, simp only: if_True)
+  apply(simp only: Let_def)
+  apply(subst if_weak_cong[where b="Suc (Suc (Suc (Suc (Suc (0::nat))))) = (0::nat)" and c=False], simp, simp only: if_False)
+  apply(simp only: refl if_True option.case split)
+  apply(subst rec'REX.simps)
+  apply(simp only: list.set empty_iff simp_thms if_False)
+sorry
 
-
-xxxxxxxxxxxxxxxxxx HERE xxxxxxxxxxxxxxxxxxx
 
 lemma Run_fixed_Zmov_in_concrete:
-  shows "Run (Zmov (Z_ALWAYS, Z64, Zrm_i (Zm (None, ZnoBase, of_nat addr), 5\<Colon>64 word))) \<sigma> = write'EA (5\<Colon>64 word, Zea_m (Z64, of_nat addr)) \<sigma>"
+  shows "Run (Zmov (Z_ALWAYS, Z64, Zrm_i (Zm (None, ZnoBase, of_nat addr), 5::64 word))) \<sigma> = write'EA (5::64 word, Zea_m (Z64, of_nat addr)) \<sigma>"
   apply(simp only: Run.simps instruction.case dfn'Zmov.simps read_cond.simps Zcond.simps)
   apply(simp only: split Let_def if_True fst_def ea_Zsrc.simps Zdest_src.simps EA.simps Zea.simps)
   apply(simp only: restrictSize.simps Zsize.simps ea_Zdest.simps Zdest_src.simps split)
@@ -1632,18 +1777,18 @@ done
 definition fixed_map :: "8 word \<Rightarrow> 8 word \<Rightarrow> 8 word \<Rightarrow> 8 word \<Rightarrow> 64 word \<Rightarrow> 8 word" where
   "fixed_map a1 a2 a3 a4 x \<equiv>
      let fmap =
-       [4194323\<Colon>nat \<mapsto> a4, 4194322\<Colon>nat \<mapsto> a3, 4194321\<Colon>nat \<mapsto> a2, 4194320\<Colon>nat \<mapsto> a1,
-        4194319\<Colon>nat \<mapsto> 37\<Colon>8 word, 4194318\<Colon>nat \<mapsto> 4\<Colon>8 word, 4194317\<Colon>nat \<mapsto> 139\<Colon>8 word, 4194316\<Colon>nat \<mapsto> 72\<Colon>8 word,
-        4194315\<Colon>nat \<mapsto> 0\<Colon>8 word, 4194314\<Colon>nat \<mapsto> 0\<Colon>8 word, 4194313\<Colon>nat \<mapsto> 0\<Colon>8 word, 4194312\<Colon>nat \<mapsto> 5\<Colon>8 word,
-        4194311\<Colon>nat \<mapsto> a4, 4194310\<Colon>nat \<mapsto> a3, 4194309\<Colon>nat \<mapsto> a2, 4194308\<Colon>nat \<mapsto> a1, 4194307\<Colon>nat \<mapsto> 37\<Colon>8 word,
-        4194306\<Colon>nat \<mapsto> 4\<Colon>8 word, 4194305\<Colon>nat \<mapsto> 199\<Colon>8 word, 4194304\<Colon>nat \<mapsto> 72\<Colon>8 word]
+       [4194323::nat \<mapsto> a4, 4194322::nat \<mapsto> a3, 4194321::nat \<mapsto> a2, 4194320::nat \<mapsto> a1,
+        4194319::nat \<mapsto> 37::8 word, 4194318::nat \<mapsto> 4::8 word, 4194317::nat \<mapsto> 139::8 word, 4194316::nat \<mapsto> 72::8 word,
+        4194315::nat \<mapsto> 0::8 word, 4194314::nat \<mapsto> 0::8 word, 4194313::nat \<mapsto> 0::8 word, 4194312::nat \<mapsto> 5::8 word,
+        4194311::nat \<mapsto> a4, 4194310::nat \<mapsto> a3, 4194309::nat \<mapsto> a2, 4194308::nat \<mapsto> a1, 4194307::nat \<mapsto> 37::8 word,
+        4194306::nat \<mapsto> 4::8 word, 4194305::nat \<mapsto> 199::8 word, 4194304::nat \<mapsto> 72::8 word]
     in case fmap (unat x) of
       None \<Rightarrow> 0
     | Some x \<Rightarrow> x"
 
 lemma build_fixed_program_memory_expand_concrete:
   assumes "e_imm32 addr = [a1, a2, a3, a4]"
-  shows "build_fixed_program_memory (4194304\<Colon>nat) (encode (mov_constant_to_mem (5\<Colon>64 word) addr) @ encode (mov_constant_from_mem addr)) =
+  shows "build_fixed_program_memory (4194304::nat) (encode (mov_constant_to_mem (5::64 word) addr) @ encode (mov_constant_from_mem addr)) =
     fixed_map a1 a2 a3 a4"
 using assms
   apply(simp only: mov_constant_to_mem_def mov_constant_from_mem_def encode.simps instruction.case)
@@ -1652,14 +1797,14 @@ using assms
   apply(simp only: list.case split append.simps e_opsize_imm.simps e_rm_reg.simps e_gen_rm_reg.simps e_opsize.simps Zsize.case)
   apply(simp only: simp_thms if_True Zsize.case concat.simps append.simps append_Nil2)
   apply(simp only: rex_prefix.simps)
-  apply(subst if_weak_cong[where b="word_cat (0\<Colon>1 word) (word_cat (word_extract (3\<Colon>nat) (3\<Colon>nat) (0\<Colon>4 word)) (0\<Colon>2 word)) OR (8\<Colon>4 word) = (0\<Colon>4 word)" and c="False"])
+  apply(subst if_weak_cong[where b="word_cat (0::1 word) (word_cat (word_extract (3::nat) (3::nat) (0::4 word)) (0::2 word)) OR (8::4 word) = (0::4 word)" and c="False"])
   apply eval (* XXX *)
   apply(simp only: if_False e_imm32.simps)
-  apply(subst if_weak_cong[where b="(18446744071562067968\<Colon>64 word) <=s (5\<Colon>64 word) \<and> (5\<Colon>64 word) <=s (2147483647\<Colon>64 word)" and c="True"])
+  apply(subst if_weak_cong[where b="(18446744071562067968::64 word) <=s (5::64 word) \<and> (5::64 word) <=s (2147483647::64 word)" and c="True"])
   apply eval (* XXX *)
   apply(simp only: if_True list.case split Let_def refl option.case)
   apply(simp only: Zreg_to_nat.simps Zreg.case)
-  apply(subst if_weak_cong[where b="word_cat (0\<Colon>1 word) (word_cat (word_extract (3\<Colon>nat) (3\<Colon>nat) (word_of_int (int (0\<Colon>nat)))) (0\<Colon>2 word)) OR (8\<Colon>4 word) = (0\<Colon>4 word)" and c="False"])
+  apply(subst if_weak_cong[where b="word_cat (0::1 word) (word_cat (word_extract (3::nat) (3::nat) (word_of_int (int (0::nat)))) (0::2 word)) OR (8::4 word) = (0::4 word)" and c="False"])
   apply eval (* XXX *)
   apply(simp only: if_False append.simps word_extract_15_8_5 word_extract_31_24_5 word_extract_7_0_5 word_extract_23_16_5 OR_198_1)
   apply(simp only: word_cat_8 word_of_int_of_int_0 OR_138_1 word_cat_4_8_72 word_cat_4)
@@ -1672,19 +1817,19 @@ done
 lemma Run_fixed_Zmov_out_concrete:
   assumes "e_imm32 addr = [a1, a2, a3, a4]"
   shows "Run (Zmov (Z_ALWAYS, Z64, Zr_rm (RAX, Zm (None, ZnoBase, addr))))
-             (snd (write'EA (5\<Colon>64 word, Zea_m (Z64, addr))
-                    \<lparr>EFLAGS = flags, MEM = build_fixed_program_memory (4194304\<Colon>nat) (encode (mov_constant_to_mem (5\<Colon>64 word) addr) @ encode (mov_constant_from_mem addr)),
+             (snd (write'EA (5::64 word, Zea_m (Z64, addr))
+                    \<lparr>EFLAGS = flags, MEM = build_fixed_program_memory (4194304::nat) (encode (mov_constant_to_mem (5::64 word) addr) @ encode (mov_constant_from_mem addr)),
                        REG = reg,
-                       RIP = of_nat (4194304\<Colon>nat) +
+                       RIP = of_nat (4194304::nat) +
                              word_of_int
-                              (int ((20\<Colon>nat) -
-                                    length [72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, word_extract (7\<Colon>nat) (0\<Colon>nat) addr, word_extract (15\<Colon>nat) (8\<Colon>nat) addr,
-                                            word_extract (23\<Colon>nat) (16\<Colon>nat) addr, word_extract (31\<Colon>nat) (24\<Colon>nat) addr])),
+                              (int ((20::nat) -
+                                    length [72::8 word, 139::8 word, 4::8 word, 37::8 word, word_extract (7::nat) (0::nat) addr, word_extract (15::nat) (8::nat) addr,
+                                            word_extract (23::nat) (16::nat) addr, word_extract (31::nat) (24::nat) addr])),
                        exception = NoException\<rparr>)) = ((), \<lparr>EFLAGS = flags, MEM = (fixed_map a1 a2 a3 a4)
-                          (addr := 5, (1\<Colon>64 word) + addr := 0, (2\<Colon>64 word) + addr := 0, (3\<Colon>64 word) + addr := 0, (4\<Colon>64 word) + addr := 0,
-                          (5\<Colon>64 word) + addr := 0, (6\<Colon>64 word) + addr := 0, (7\<Colon>64 word) + addr := 0),
+                          (addr := 5, (1::64 word) + addr := 0, (2::64 word) + addr := 0, (3::64 word) + addr := 0, (4::64 word) + addr := 0,
+                          (5::64 word) + addr := 0, (6::64 word) + addr := 0, (7::64 word) + addr := 0),
        REG = reg(RAX := 5::64 word),
-       RIP = 4194316\<Colon>64 word, exception = NoException\<rparr>)"
+       RIP = 4194316::64 word, exception = NoException\<rparr>)"
 using assms
   apply(simp only: Run.simps instruction.case dfn'Zmov.simps read_cond.simps Zcond.simps)
   apply(simp only: split Let_def if_True fst_def ea_Zsrc.simps ea_Zrm.simps Zrm.case Zdest_src.simps)
@@ -1703,7 +1848,7 @@ using assms
 done
 
 lemma analyse_all_in_range:
-  assumes "(4194324\<Colon>nat) \<le> addr" and "addr \<le> (4194324\<Colon>nat) + (8\<Colon>nat)"
+  assumes "(4194324::nat) \<le> addr" and "addr \<le> (4194324::nat) + (8::nat)"
     and "P 4194324" and "P 4194325" and "P 4194326" and "P 4194327" and "P 4194328" and "P 4194329"
     and "P 4194330" and "P 4194331" and "P 4194332"
   shows "P addr"
@@ -1711,29 +1856,29 @@ using assms
 sorry
 
 lemma size_lemma:
-  assumes "(4194324\<Colon>nat) \<le> addr" and "addr \<le> (4194324\<Colon>nat) + (8\<Colon>nat)"
-  shows "(18446744071562067968\<Colon>64 word) <=s of_nat addr \<and> of_nat addr <=s (2147483647\<Colon>64 word)"
+  assumes "(4194324::nat) \<le> addr" and "addr \<le> (4194324::nat) + (8::nat)"
+  shows "(18446744071562067968::64 word) <=s of_nat addr \<and> of_nat addr <=s (2147483647::64 word)"
 using assms
   apply(rule analyse_all_in_range)
   apply simp_all
 done
 
 lemma three_bytes_exist:
-  assumes "address_is_disjoint_from_text_and_within_data_section addr (4194304\<Colon>nat) (4194324\<Colon>nat)
-        (length (encode (mov_constant_to_mem (5\<Colon>64 word) (of_nat addr)) @ encode (mov_constant_from_mem (of_nat addr)))) (8\<Colon>nat)"
-  shows "\<exists>b1 b2 b3. natural_to_le_byte_list ((16\<Colon>nat) + of_nat addr) = [b1, b2, b3]"
+  assumes "address_is_disjoint_from_text_and_within_data_section addr (4194304::nat) (4194324::nat)
+        (length (encode (mov_constant_to_mem (5::64 word) (of_nat addr)) @ encode (mov_constant_from_mem (of_nat addr)))) (8::nat)"
+  shows "\<exists>b1 b2 b3. natural_to_le_byte_list ((16::nat) + of_nat addr) = [b1, b2, b3]"
 sorry
 
 lemma Run_relocated_Zmov_in_concrete:
   fixes b1 b2 b3 :: "8 word"
-  shows "Run (Zmov (Z_ALWAYS, Z64, Zrm_i (Zm (None, ZnoBase, (scast ((word_cat (0\<Colon>8 word) ((word_cat b3 ((word_cat b2 b1)::16 word))::24 word))::32 word))::64 word), 5\<Colon>64 word)))
-                                         (load_relocated_program_image flags (elements (relocation_image addr)) reg (4194304\<Colon>nat)
-                                          \<lparr>RIP := RIP (load_relocated_program_image flags (elements (relocation_image addr)) reg (4194304\<Colon>nat)) +
-                                                  word_of_int (int ((20\<Colon>nat) - length [72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word]))\<rparr>) =
-    write'mem64 (5\<Colon>64 word, (scast ((word_cat (0\<Colon>8 word) ((word_cat b3 ((word_cat b2 b1)::16 word))::24 word))::32 word))::64 word)
-     (load_relocated_program_image flags (elements (relocation_image addr)) reg (4194304\<Colon>nat)
-      \<lparr>RIP := RIP (load_relocated_program_image flags (elements (relocation_image addr)) reg (4194304\<Colon>nat)) +
-              word_of_int (int ((20\<Colon>nat) - length [72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word, 0\<Colon>8 word]))\<rparr>)"
+  shows "Run (Zmov (Z_ALWAYS, Z64, Zrm_i (Zm (None, ZnoBase, (scast ((word_cat (0::8 word) ((word_cat b3 ((word_cat b2 b1)::16 word))::24 word))::32 word))::64 word), 5::64 word)))
+                                         (load_relocated_program_image flags (elements (relocation_image addr)) reg (4194304::nat)
+                                          \<lparr>RIP := RIP (load_relocated_program_image flags (elements (relocation_image addr)) reg (4194304::nat)) +
+                                                  word_of_int (int ((20::nat) - length [72::8 word, 139::8 word, 4::8 word, 37::8 word, 0::8 word, 0::8 word, 0::8 word, 0::8 word]))\<rparr>) =
+    write'mem64 (5::64 word, (scast ((word_cat (0::8 word) ((word_cat b3 ((word_cat b2 b1)::16 word))::24 word))::32 word))::64 word)
+     (load_relocated_program_image flags (elements (relocation_image addr)) reg (4194304::nat)
+      \<lparr>RIP := RIP (load_relocated_program_image flags (elements (relocation_image addr)) reg (4194304::nat)) +
+              word_of_int (int ((20::nat) - length [72::8 word, 139::8 word, 4::8 word, 37::8 word, 0::8 word, 0::8 word, 0::8 word, 0::8 word]))\<rparr>)"
   apply(simp only: Run.simps instruction.case dfn'Zmov.simps read_cond.simps Zcond.case)
   apply(simp only: split Let_def if_True fst_def ea_Zsrc.simps Zdest_src.simps EA.simps Zea.simps)
   apply(simp only: ea_Zdest.simps Zdest_src.simps split fst_def ea_Zrm.simps Zrm.case)
@@ -1759,16 +1904,17 @@ theorem le_big_theorem_ooh_la_la:
   apply(drule three_bytes_exist, elim exE)
   apply(subst x64_decode_relocated_technical_1, rule monstrosity_is_well_behaved, simp)+
   apply(simp only: Zinst.case split Run_relocated_Zmov_in_concrete)
+  apply(subst x64_decode_relocated_technical_2)
 (*
 (Run (Zmov (Z_ALWAYS, Z64, Zr_rm (RAX, Zm (None, ZnoBase, of_nat addr))))
-             (snd (write'EA (5\<Colon>64 word, Zea_m (Z64, of_nat addr))
-                    \<lparr>EFLAGS = flags, MEM = build_fixed_program_memory (4194304\<Colon>nat) (encode (mov_constant_to_mem (5\<Colon>64 word) (of_nat addr)) @ encode (mov_constant_from_mem (of_nat addr))),
+             (snd (write'EA (5::64 word, Zea_m (Z64, of_nat addr))
+                    \<lparr>EFLAGS = flags, MEM = build_fixed_program_memory (4194304::nat) (encode (mov_constant_to_mem (5::64 word) (of_nat addr)) @ encode (mov_constant_from_mem (of_nat addr))),
                        REG = reg,
-                       RIP = of_nat (4194304\<Colon>nat) +
+                       RIP = of_nat (4194304::nat) +
                              word_of_int
-                              (int ((20\<Colon>nat) -
-                                    length [72\<Colon>8 word, 139\<Colon>8 word, 4\<Colon>8 word, 37\<Colon>8 word, word_extract (7\<Colon>nat) (0\<Colon>nat) (of_nat addr), word_extract (15\<Colon>nat) (8\<Colon>nat) (of_nat addr),
-                                            word_extract (23\<Colon>nat) (16\<Colon>nat) (of_nat addr), word_extract (31\<Colon>nat) (24\<Colon>nat) (of_nat addr)])),
+                              (int ((20::nat) -
+                                    length [72::8 word, 139::8 word, 4::8 word, 37::8 word, word_extract (7::nat) (0::nat) (of_nat addr), word_extract (15::nat) (8::nat) (of_nat addr),
+                                            word_extract (23::nat) (16::nat) (of_nat addr), word_extract (31::nat) (24::nat) (of_nat addr)])),
                        exception = NoException\<rparr>)
 *)
   apply(subst Run_fixed_Zmov_out_concrete)
