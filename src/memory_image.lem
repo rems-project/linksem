@@ -716,6 +716,12 @@ val natural_to_le_byte_list : natural -> list byte
 let rec natural_to_le_byte_list n = 
     (byte_of_natural (n mod 256)) :: (let d = n/256 in if d = 0 then [] else natural_to_le_byte_list (n / 256))
 
+val natural_to_le_byte_list_padded_to : natural -> natural -> list byte
+let rec natural_to_le_byte_list_padded_to width n = 
+    let bytes = natural_to_le_byte_list n
+    in 
+    replicate (width - length bytes) (byte_of_natural 0)
+
 val write_natural_field : natural -> natural -> element -> natural -> element
 let write_natural_field new_field_value width element offset = 
     let pre_bytes = take offset element.contents

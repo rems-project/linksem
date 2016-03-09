@@ -13,7 +13,7 @@ open import Missing_pervasives
 
 open import Byte_sequence
 
-open import Abis
+(* open import Abis *)
 
 open import Elf_file
 open import Elf_header
@@ -26,6 +26,11 @@ open import Elf_types_native_uint
 open import Elf_relocation
 open import Elf_types_native_uint
 open import Memory_image
+
+(** Optional, like [stt_func] but always points to a function or piece of
+  * executable code that takes no arguments and returns a function pointer.
+  *)
+let stt_gnu_ifunc : natural = 10
 
 val gnu_extend: forall 'abifeature. abi 'abifeature -> abi 'abifeature
 let gnu_extend a = 

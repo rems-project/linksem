@@ -628,7 +628,7 @@ let relocate_output_image a bindings_by_name img =
                             let symaddr = match x.maybe_def_bound_to with
                                 Just(ApplyReloc(_), Just(bound_def)) ->
                                     match find_defs_matching bound_def img with
-                                        [] -> failwith "internal error: bound-to symbol not defined"
+                                        [] -> failwith ("internal error: bound-to symbol (name `" ^ bound_def.def_symname ^ "') not defined")
                                         | ((el_name, (start, len)), d) :: more ->
                                             let v = match element_and_offset_to_address (el_name, start) img with
                                                 Just a -> a
