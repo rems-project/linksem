@@ -853,7 +853,7 @@ let link script a options linkables =
     in
     *)
     let (unrelocated_output_image, bindings_by_name)
-     = interpret_linker_control_script script linker_script_linkable_idx a input_sections seen_ordering default_place_orphans initial_bindings_by_name
+     = interpret_linker_control_script script linkables linker_script_linkable_idx a input_sections seen_ordering default_place_orphans initial_bindings_by_name
     in
     (* This image has 
      * - addresses assigned 
