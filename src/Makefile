@@ -51,8 +51,10 @@ LEM_ELF_SRC := byte_sequence.lem archive.lem \
 	elf_interpreted_segment.lem elf_interpreted_section.lem \
 	elf_note.lem elf_file.lem elf_dynamic.lem
 	
-LEM_ABI_SRC := abis/abi_classes.lem memory_image.lem memory_image_orderings.lem \
+LEM_ABI_SRC := \
+	abis/abi_classes.lem memory_image.lem memory_image_orderings.lem \
 	abis/abi_utilities.lem \
+	gnu_extensions/gnu_ext_abi.lem \
 	abis/power64/abi_power64.lem \
 	abis/power64/abi_power64_elf_header.lem \
 	abis/power64/abi_power64_section_header_table.lem \
@@ -65,9 +67,7 @@ LEM_ABI_SRC := abis/abi_classes.lem memory_image.lem memory_image_orderings.lem 
 	abis/aarch64/abi_aarch64_relocation.lem \
 	abis/aarch64/abi_aarch64_le.lem \
 	abstract_linker_script.lem \
-	adaptors/sail_interface.lem \
 	abis/amd64/abi_amd64_elf_header.lem \
-	adaptors/harness_interface.lem \
 	abis/amd64/abi_amd64_serialisation.lem \
 	abis/amd64/abi_amd64_relocation.lem \
 	abis/amd64/abi_amd64_program_header_table.lem \
@@ -82,25 +82,25 @@ LEM_ABI_SRC := abis/abi_classes.lem memory_image.lem memory_image_orderings.lem 
 	abis/mips64/abi_mips64.lem \
 	abis/x86/abi_x86_relocation.lem \
 	abis/power64/abi_power64_relocation.lem \
-	abis/abis.lem \
-	gnu_extensions/gnu_ext_abi.lem
-
-#	abis/mips64/abi_mips64_relocation.lem \
-	
-LEM_GNU_SRC := gnu_extensions/gnu_ext_types_native_uint.lem \
+	gnu_extensions/gnu_ext_types_native_uint.lem \
 	gnu_extensions/gnu_ext_section_header_table.lem \
 	gnu_extensions/gnu_ext_dynamic.lem \
 	gnu_extensions/gnu_ext_symbol_versioning.lem \
 	gnu_extensions/gnu_ext_program_header_table.lem \
 	gnu_extensions/gnu_ext_section_to_segment_mapping.lem \
-	gnu_extensions/gnu_ext_note.lem
+	gnu_extensions/gnu_ext_note.lem \
+	abis/abis.lem \
+	adaptors/sail_interface.lem \
+	adaptors/harness_interface.lem \
+
+#	abis/mips64/abi_mips64_relocation.lem \
 
 LEM_LINK_SRC := elf_memory_image.lem elf_memory_image_of_elf64_file.lem command_line.lem input_list.lem linkable_list.lem linker_script.lem link.lem elf64_file_of_elf_memory_image.lem test_image.lem
 
 # LEM_MODEL_ML includes all OCaml except for the main programs
-LEM_MODEL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_GNU_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC))
+LEM_MODEL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC))
 
-LEM_MODEL_TP_THY := $(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_GNU_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC) test_image.lem import_everything.lem
+LEM_MODEL_TP_THY := $(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC) test_image.lem import_everything.lem
 OCAML_LIB_OBJS := unix.cma str.cma nums.cma zarith.cma nat_num.cmo big_int_impl.cmo nat_big_num.cmo uint.cma
 LEM_OCAML_OBJS := lem.cmo lem_basic_classes.cmo lem_function.cmo lem_list.cmo lem_num.cmo lem_sorting.cmo \
     xstring.cmo pset.cmo pmap.cmo lem_maybe.cmo lem_map.cmo lem_set.cmo lem_string_extra.cmo
@@ -128,7 +128,7 @@ ldgram.y.hacked: ldgram.y
 	tail -n+35 > "$@" || rm -f "$@"
 
 .PHONY: lem-all-ocaml
-lem-all-ocaml: $(filter-out error.lem,$(LEM_UTIL_SRC)) $(LEM_ELF_SRC) $(LEM_GNU_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC) main_link.lem main_elf.lem scratch.lem
+lem-all-ocaml: $(filter-out error.lem,$(LEM_UTIL_SRC)) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC) main_link.lem main_elf.lem scratch.lem
 	$(LEM) -ocaml -only_changed_output $+
 
 .PHONY: isa-extraction
@@ -180,16 +180,13 @@ $(OCAML_LEM_INCLUDES) \
 main_elf main_link main_elf.opt main_link.opt scratch scratch.opt: OCAMLFIND_PACKAGES := #-package batteries -package uint
 
 scratch scratch.opt: OCAML_LEM_SRC += $(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
-	$(patsubst %.lem,%.ml,$(LEM_GNU_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC))
 
 main_elf main_elf.opt: OCAML_LEM_SRC += $(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
-	$(patsubst %.lem,%.ml,$(LEM_GNU_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_LINK_SRC))
 
 main_link main_link.opt: OCAML_LEM_SRC += $(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
-	$(patsubst %.lem,%.ml,$(LEM_GNU_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_LINK_SRC))
 
@@ -199,7 +196,6 @@ linksem.cma: $(ALL_UTIL_ML) lem-all-ocaml
 	$(LEM_OCAML_OBJS) \
 	$(ALL_UTIL_ML) \
 	$(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
-	$(patsubst %.lem,%.ml,$(LEM_GNU_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_LINK_SRC))
 
@@ -208,7 +204,6 @@ linksem.cmxa: $(ALL_UTIL_ML) lem-all-ocaml
 	-I $(sort $(dir $(patsubst %.cmx,%.cmi,$(LEM_OCAML_OBJS_OPT)))) \
 	$(ALL_UTIL_ML) \
 	$(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
-	$(patsubst %.lem,%.ml,$(LEM_GNU_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_LINK_SRC))
 
@@ -227,7 +222,6 @@ main_elf.opt main_link.opt scratch.opt: %.opt: %.ml $(ALL_UTIL_ML) lem-all-ocaml
 	$(LEM_OCAML_OBJS_OPT) \
 	$(ALL_UTIL_ML) \
 	$(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
-	$(patsubst %.lem,%.ml,$(LEM_GNU_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_LINK_SRC)) \
 	"$<" $(OCAMLFIND_PACKAGES)

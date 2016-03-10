@@ -33,6 +33,7 @@ open import Elf_relocation
 open import Elf_symbol_table
 open import Elf_section_header_table
 open import Elf_types_native_uint
+open import Memory_image_orderings
 
 (* We model two kinds of linker script: "implicit scripts", which are supplied 
  * on the command line as input objects, and "control scripts" of which there
@@ -2261,6 +2262,7 @@ let default_place_orphans (discards, outputs) inputs =
 
 val interpret_linker_control_script : 
     linker_control_script
+    -> linkable_list
     -> natural (* linker_script_linkable_idx *)
     -> abi any_abi_feature
     -> list input_spec
@@ -2268,7 +2270,7 @@ val interpret_linker_control_script :
     -> (input_output_assignment -> list input_spec -> input_output_assignment)     (* place orphans *)
     -> (Map.map string (list (natural * binding))) (* initial_bindings_by_name *)
     -> (elf_memory_image * Map.map string (list (natural * binding)))
-let interpret_linker_control_script script linker_script_linkable_idx a inputs seen_ordering place_orphans initial_bindings_by_name =
+let interpret_linker_control_script script linkables linker_script_linkable_idx a inputs seen_ordering place_orphans initial_bindings_by_name =
     let labelled_script = label_script script
     in
     let (discards_before_orphans, outputs_before_orphans)
@@ -2302,17 +2304,49 @@ let interpret_linker_control_script script linker_script_linkable_idx a inputs s
             )) (acc : Map.map string (list (symbol_definition * symbol_def_policy))) comp
         )) Map.empty outputs
         in
-        (* Now that we've made these definitions, what bindings are affected? *)
+        (* Now that we've made these definitions, what bindings are affected? 
+         * We also use this opportunity to bind references to linker-generated symbols,
+         * such as _GLOBAL_OFFSET_TABLE_, since any definitions of these should now be merged
+         * into our inputs. *)
+        (* bit of a HACK: reconstruct the linkable img and idx from the input items *)
+        let idx_to_img = List.foldl (fun acc_m -> fun item -> 
+                            match item with 
+                                Common(idx, _, img, symdef) -> Map.insert idx img (Map.delete idx acc_m)
+                                | InputSection(irec) -> Map.insert irec.idx irec.img (Map.delete irec.idx acc_m)
+                            end
+                        ) Map.empty inputs
+        in
+        let (lowest_idx : natural) = match Set.findMin (Map.domain idx_to_img)
+            with Just x -> x
+            | Nothing -> failwith "internal error: no linkable items"
+        end
+        in
+        let first_linkable_item = match linkables with x :: more -> x | _ -> failwith "internal error: no linkables" end
+        in
         Map.map (fun b_list_initial -> 
             List.map (fun (b_idx, b_initial) ->
                 let ((iref_idx, iref, iref_item), maybe_idef) = b_initial
                 in
-                let _ = errln ("Looking for linker script defs of symbol `" ^ iref.ref_symname ^ "'")
+                let _ = errln ("Looking for linker script or linker-generated defs of symbol `" ^ iref.ref_symname ^ "'")
                 in
                 let possible_script_defs = match Map.lookup iref.ref_symname script_defs_by_name with
                     Just l -> l
                     | Nothing -> []
                 end
+                in
+                let (possible_linker_generated_def : maybe symbol_definition) = 
+                    if a.symbol_is_generated_by_linker iref.ref_symname
+                        then (* can we find a definition by this name? *)
+                            (match Map.lookup lowest_idx idx_to_img with
+                                Nothing -> failwith "no lowest idx found"
+                                | Just img -> 
+                                    match List.filter (fun def -> def.def_symname = iref.ref_symname) (defined_symbols img) with
+                                        [] -> Nothing
+                                        | [def] -> Just(def)
+                                        | _ -> failwith ("first linkable has multiple defs of name `" ^ iref.ref_symname ^ "'")
+                                    end
+                            end)
+                    else Nothing
                 in
                 let (control_script_input_item : input_item) = (
                     "(built-in control script)", 
@@ -2334,18 +2368,22 @@ let interpret_linker_control_script script linker_script_linkable_idx a inputs s
                 let _ = errs ("Do we override binding " ^ (show b_idx) ^ ", symbol named `" ^ 
                     iref.ref_symname ^ "'? ")
                 in
-                let new_b = match (maybe_idef, possible_script_defs) with
-                    | (_, []) -> let _ = errln "no" in ((iref_idx, iref, iref_item), maybe_idef)
-                    | (_, [(def, AlwaysDefine)]) -> let _ = errln "yes" in
+                (* FIXME: check real semantics of defining symbols like '_GLOBAL_OFFSET_TABLE_' in linker script or input objects. 
+                 * This is really just a guess. *)
+                let new_b = match (maybe_idef, possible_script_defs, possible_linker_generated_def) with
+                    | (_, [], Nothing) -> let _ = errln "no" in ((iref_idx, iref, iref_item), maybe_idef)
+                    | (Nothing, [], Just(def)) -> let _ = errln "yes (was undefined)" in ((iref_idx, iref, iref_item), 
+                        Just(lowest_idx, def, first_linkable_item))
+                    | (_, [(def, AlwaysDefine)], _) -> let _ = errln "yes" in
                         ((iref_idx, iref, iref_item), 
                         Just (linker_script_linkable_idx, def, control_script_linkable_item))
-                    | (Just existing_def, ([(def, ProvideIfUsed)])) -> let _ = errln "no" in
+                    | (Just existing_def, ([(def, ProvideIfUsed)]), _) -> let _ = errln "no" in
                         ((iref_idx, iref, iref_item), 
                         Just existing_def)
-                    | (Nothing, [(def, ProvideIfUsed)]) -> let _ = errln "yes" in
+                    | (Nothing, [(def, ProvideIfUsed)], _) -> let _ = errln "yes" in
                         ((iref_idx, iref, iref_item), 
                         Just (linker_script_linkable_idx, def, control_script_linkable_item))
-                    | (_, pair1 :: pair2 :: more) -> let _ = errln "error" in
+                    | (_, pair1 :: pair2 :: more, _) -> let _ = errln "error" in
                         failwith "ambiguous symbol binding in linker control script"
                 end
                 in
