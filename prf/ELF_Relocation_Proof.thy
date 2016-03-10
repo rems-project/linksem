@@ -131,16 +131,20 @@ definition correctness_property :: "bool" where
        let data_start   = 4194324 in (* Fixed in Test_image *)
        let program_len  = List.length fprogr in
        let data_len     = 8 in      (* Fixed in Test_image *)
-
+       
+       (*address_is_disjoint_from_text_and_within_data_section addr text_start data_start program_len data_len \<longrightarrow>*)
+       load_fixed_program_instructions flags fprogr reg text_start =
+       load_relocated_program_image flags (elements (relocation_image addr)) reg text_start 
+(*
        let fstate1 = load_fixed_program_instructions flags fprogr reg text_start in
        let fstate2 = run_two_steps fstate1 in
        let rstate1 = load_relocated_program_image flags (elements (relocation_image addr)) reg text_start in
        let rstate2 = run_two_steps rstate1 in
 
        address_is_disjoint_from_text_and_within_data_section addr text_start data_start program_len data_len \<longrightarrow>
-           rstate2 = fstate2"
+           rstate2 = fstate2*)"
 
-subsection {* Lemmas *}
+subsection {* Useful lemmas *}
 
 (* XXX: in library, somewhere?  find_theorems doesn't find it, sigh... *)
 lemma nat_lesseq_elim:
@@ -178,127 +182,46 @@ lemma for_loop_19_unroll:
   apply simp
 done
 
-text {* Key lemma: if we fetch from a given state, then we are given a 20-element list back in return,
-read from the state's memory at RIP+offset for 0 \<le> offset < 20, with the original state returned as
-second component. *}
-lemma x64_fetch_RIP:
-  shows "x64_fetch \<sigma> =
-    ([MEM \<sigma> (RIP \<sigma>), MEM \<sigma> (RIP \<sigma> + 1), MEM \<sigma> (RIP \<sigma> + 2), MEM \<sigma> (RIP \<sigma> + 3),
-      MEM \<sigma> (RIP \<sigma> + 4), MEM \<sigma> (RIP \<sigma> + 5), MEM \<sigma> (RIP \<sigma> + 6), MEM \<sigma> (RIP \<sigma> + 7),
-      MEM \<sigma> (RIP \<sigma> + 8), MEM \<sigma> (RIP \<sigma> + 9), MEM \<sigma> (RIP \<sigma> + 10), MEM \<sigma> (RIP \<sigma> + 11),
-      MEM \<sigma> (RIP \<sigma> + 12), MEM \<sigma> (RIP \<sigma> + 13), MEM \<sigma> (RIP \<sigma> + 14), MEM \<sigma> (RIP \<sigma> + 15),
-      MEM \<sigma> (RIP \<sigma> + 16), MEM \<sigma> (RIP \<sigma> + 17), MEM \<sigma> (RIP \<sigma> + 18), MEM \<sigma> (RIP \<sigma> + 19)], \<sigma>)"
-  apply(simp only: x64_fetch.simps)
-  apply(simp only: for_loop_19_unroll snd_def fst_def split Let_def Word.word_of_nat)
-  apply simp
-done
-
-text {* The following are technical lemmas that should hopefully be proved properly rather than with
-evaluation. *}
-
-lemma prefixGroup_72:
-  shows "prefixGroup 72 = 5"
-by eval (* XXX *)
-
-lemma to_bl_199:
-  shows "to_bl (199::8 word) = [True, True, False, False, False, True, True, True]"
-by eval (* XXX *)
-
-lemma to_bl_139:
-  shows "to_bl (139::8 word) = [True, False, False, False, True, False, True, True]"
-by eval (* XXX *)
-
-lemma to_bl_37:
-  shows "to_bl (37::8 word) = [False, False, True, False, False, True, False, True]"
-by eval (* XXX *)
-
-lemma to_bl_4:
-  shows "to_bl (4::8 word) = [False, False, False, False, False, True, False, False]"
-by eval (* XXX *)
-
-lemma of_bl_True:
-  shows "of_bl [True] = (1::1 word)"
-by eval
-
-lemma of_bl_False_False:
-  shows "of_bl [False, False] = (0::2 word)"
-by eval (* XXX *)
-
-lemma word_extract_3_0_72:
-  shows "((word_extract 3 0 (72::8 word))::4 word) = (8::4 word)"
-by eval (* XXX *)
-
-lemma bang_bang_8_0:
-  shows "((8::4 word) !! (0::nat)) = False"
-by eval (* XXX *)
-
-lemma bang_bang_8_1:
-  shows "((8::4 word) !! (1::nat)) = False"
-by eval (* XXX *)
-
-lemma bang_bang_8_2:
-  shows "((8::4 word) !! (2::nat)) = False"
-by eval
-
-lemma bang_bang_8_3:
-  shows "((8::4 word) !! (3::nat)) = True"
-by eval (* XXX *)
-
-lemma nat_to_Zreg_RSP:
-  shows "nat_to_Zreg (nat (uint ((word_cat (0::1 word) ((of_bl [True, False, False])::3 word))::4 word))) = RSP"
-by eval (* XXX *)
-
-lemma nat_to_Zreg_RBP:
-  shows "nat_to_Zreg (nat (uint ((word_cat (0::1 word) ((of_bl [True, False, True])::3 word))::4 word))) = RBP"
-by eval (* XXX *)
-
-lemma nat_to_Zreg_RAX:
-  shows "nat_to_Zreg (nat (uint ((word_cat (0::1 word) ((of_bl [False, False, False])::3 word))::4 word))) = RAX"
-by eval (* XXX *)
-
-lemma signed_arith_lemma_5:
-  shows "18446744071562067968 <=s (5::64 word) \<and> (5::64 word) <=s 2147483647"
-by eval (* XXX *)
-
-lemma word_cat_8:
-  shows "word_cat (0::1 word) ((word_cat ((word_extract (3::nat) (3::nat) (0::4 word))::1 word) (0::2 word))::3 word) OR (8::4 word) = (8::4 word)"
-by eval (* XXX *)
-
-lemma word_cat_4_8_72:
-  shows "((word_cat (4::4 word) (8::4 word))::8 word) = (72::8 word)"
-by eval (* XXX *)
-
-lemma word_cat_4:
-  shows "((word_cat (0::2 word) ((word_cat ((word_extract (2::nat) (0::nat) (0::4 word))::3 word) (4::3 word))::6 word))::8 word) = (4::8 word)"
-by eval (* XXX *)
-
-lemma word_extract_7_0_5:
-  shows "word_extract (7::nat) (0::nat) (5::64 word) = (5::8 word)"
-by eval (* XXX *)
-
-lemma word_extract_15_8_5:
-  shows "word_extract (15::nat) (8::nat) (5::64 word) = (0::8 word)"
-by eval (* XXX *)
-
-lemma word_extract_23_16_5:
-  shows "word_extract (23::nat) (16::nat) (5::64 word) = (0::8 word)"
-by eval (* XXX *)
-
-lemma word_extract_31_24_5:
-  shows "word_extract (31::nat) (24::nat) (5::64 word) = (0::8 word)"
-by eval (* XXX *)
-
-lemma word_extract_31_0_5:
-  shows "word_extract (31::nat) (0::nat) (5::64 word) = (5::8 word)"
-by eval
-
-lemma OR_198_1:
-  shows "(((198::8 word) OR (1::8 word))::8 word) = (199::8 word)"
-by eval
-
-lemma OR_138_1:
-  shows "(138::8 word) OR (1::8 word) = (139::8 word)"
-by eval
+lemma concrete_evaluations:
+  shows "((word_extract (15::nat) (0::nat) (5::32 word))::16 word) = 5"
+    and "(word_extract (7::nat) (0::nat) (5::16 word)::8 word) = 5"
+    and "((word_extract (15::nat) (8::nat) (5::16 word))::8 word) = 0"
+    and "(word_extract (31::nat) (16::nat) (5::32 word)::16 word) = 0"
+    and "(word_extract (31::nat) (16::nat) (0::32 word)::16 word) = 0"
+    and "(word_extract (7::nat) (0::nat) (0::16 word)::8 word) = 0"
+    and "(word_extract (15::nat) (0::nat) (0::32 word)::16 word) = 0"
+    and "(word_extract (15::nat) (8::nat) (0::16 word)::8 word) = 0"
+    and "(word_extract (23::nat) (16::nat) (0::16 word)::8 word) = 0"
+    and "(word_extract (63::nat) (32::nat) (5::64 word)::32 word) = 0"
+    and "prefixGroup 72 = 5"
+    and "to_bl (199::8 word) = [True, True, False, False, False, True, True, True]"
+    and "to_bl (139::8 word) = [True, False, False, False, True, False, True, True]"
+    and "to_bl (37::8 word) = [False, False, True, False, False, True, False, True]"
+    and "to_bl (4::8 word) = [False, False, False, False, False, True, False, False]"
+    and "of_bl [True] = (1::1 word)"
+    and "of_bl [False, False] = (0::2 word)"
+    and "((word_extract 3 0 (72::8 word))::4 word) = (8::4 word)"
+    and "((8::4 word) !! (0::nat)) = False"
+    and "((8::4 word) !! (1::nat)) = False"
+    and "((8::4 word) !! (2::nat)) = False"
+    and "((8::4 word) !! (3::nat)) = True"
+    and "nat_to_Zreg (nat (uint ((word_cat (0::1 word) ((of_bl [True, False, False])::3 word))::4 word))) = RSP"
+    and "nat_to_Zreg (nat (uint ((word_cat (0::1 word) ((of_bl [True, False, True])::3 word))::4 word))) = RBP"
+    and "nat_to_Zreg (nat (uint ((word_cat (0::1 word) ((of_bl [False, False, False])::3 word))::4 word))) = RAX"
+    and "18446744071562067968 <=s (5::64 word) \<and> (5::64 word) <=s 2147483647"
+    and "word_cat (0::1 word) ((word_cat ((word_extract (3::nat) (3::nat) (0::4 word))::1 word) (0::2 word))::3 word) OR (8::4 word) = (8::4 word)"
+    and "((word_cat (4::4 word) (8::4 word))::8 word) = (72::8 word)"
+    and "((word_cat (0::2 word) ((word_cat ((word_extract (2::nat) (0::nat) (0::4 word))::3 word) (4::3 word))::6 word))::8 word) = (4::8 word)"
+    and "word_extract (7::nat) (0::nat) (5::64 word) = (5::8 word)"
+    and "word_extract (15::nat) (8::nat) (5::64 word) = (0::8 word)"
+    and "word_extract (23::nat) (16::nat) (5::64 word) = (0::8 word)"
+    and "word_extract (31::nat) (24::nat) (5::64 word) = (0::8 word)"
+    and "word_extract (31::nat) (0::nat) (5::64 word) = (5::8 word)"
+    and "(((198::8 word) OR (1::8 word))::8 word) = (199::8 word)"
+    and "(138::8 word) OR (1::8 word) = (139::8 word)"
+    and "(word_cat (0::1 word) ((word_cat (0::1 word) (0::2 word))::3 word)::4 word) OR (8::4 word) = (8::4 word)"
+    and "(4194316::64 word) = (((4194304::64 word) + ((of_nat 12)::64 word))::64 word)"
+by eval+
 
 lemma word_of_int_of_int_0:
   shows "(word_of_int (int (0::nat))::'a::len word) = (0::'a word)"
@@ -309,264 +232,31 @@ lemma word_arith_technical:
   shows "of_nat n + word_of_int (int m) = of_nat (n + m)"
 by (metis Abs_fnat_hom_add of_int_of_nat_eq word_of_int)
 
-lemma numeral_4_eq_4:
-  shows "(4::nat) = Suc (Suc (Suc (Suc 0)))"
-by simp
-
-lemma numeral_5_eq_5:
-  shows "(5::nat) = Suc (Suc (Suc (Suc (Suc 0))))"
-by simp
-
-lemma numeral_6_eq_6:
-  shows "(6::nat) = Suc (Suc (Suc (Suc (Suc (Suc 0)))))"
-by simp
-
-lemma numeral_7_eq_7:
-  shows "(7::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc 0))))))"
-by simp
-
-lemma numeral_8_eq_8:
-  shows "(8::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0)))))))"
-by simp
-
-lemma numeral_9_eq_9:
-  shows "(9::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0))))))))"
-by simp
-
-lemma numeral_10_eq_10:
-  shows "(10::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0)))))))))"
-by simp
-
-lemma numeral_11_eq_11:
-  shows "(11::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0))))))))))"
-by simp
-
-lemma numeral_12_eq_12:
-  shows "(12::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0)))))))))))"
-by simp
-
-lemma numeral_13_eq_13:
-  shows "(13::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0))))))))))))"
-by simp
-
-lemma numeral_14_eq_14:
-  shows "(14::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0)))))))))))))"
-by simp
-
-lemma numeral_15_eq_15:
-  shows "(15::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0))))))))))))))"
-by simp
-
-lemma numeral_16_eq_16:
-  shows "(16::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0)))))))))))))))"
-by simp
-
-lemma numeral_17_eq_17:
-  shows "(17::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0))))))))))))))))"
-by simp
-
-lemma numeral_18_eq_18:
-  shows "(18::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0)))))))))))))))))"
-by simp
-
-lemma numeral_19_eq_19:
-  shows "(19::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0))))))))))))))))))"
-by simp
-
-lemma x64_decode_Zmov_in:
-  assumes "ss = [72, 199, 4, 37] @ [a1, a2, a3, a4] @ [c1, c2, c3, c4] @ rest" and
-    "immediate32 (a1 # a2 # a3 # a4 # c1 # c2 # c3 # c4 # rest) = (addr, i)" and
-    "immediate32 i = (cnst, rest)"
-  shows "x64_decode ss = Zfull_inst ([], Zmov (Z_ALWAYS, Z64, Zrm_i (Zm (None, ZnoBase, addr), cnst)), rest)"
-using assms
-  apply(clarify)
-  apply(simp only: append.simps x64_decode.simps readPrefixes.simps)
-  apply(subst readPrefix.simps)
-  apply(simp only: list.case prefixGroup_72)
-  apply(simp only: Let_def refl if_True)
-  apply(subst if_weak_cong[where b="5=0" and c="False"])
-  apply simp
-  apply(simp only: option.case if_False split)
-  apply(subst if_weak_cong[where b="W (rec'REX (word_extract 3 0 72)) \<and> 102 \<in> set []" and c="False"])
-  apply simp
-  apply(simp only: if_False)
-  apply(subst if_weak_cong[where b="103 \<in> set []" and c="False"], simp)
-  apply(simp only: if_False list.case boolify'8.simps to_bl_199)
-  apply(simp only: split list.cases bool.case rec'REX.simps REX.defs)
-  apply(simp only: readOpcodeModRM.simps readModRM.simps list.case boolify'8.simps)
-  apply(simp only: to_bl_4 list.case split bool.case readSIB.simps REX.simps boolify'8.simps)
-  apply(simp only: to_bl_37 list.case split)
-  apply(simp only: word_extract_3_0_72 RexReg.simps bang_bang_8_0 bang_bang_8_1 bang_bang_8_3 if_False if_True)
-  apply(simp only: Let_def nat_to_Zreg_RBP refl if_True readSibDisplacement.simps simp_thms if_False)
-  apply(simp only: of_bl_False_False simp_thms if_True of_bl_True OpSize.simps)
-  apply(subst if_weak_cong[where b="(1::1 word) = (0::1 word)" and c="False"])
-  apply simp
-  apply(simp only: if_False)
-  apply(subst if_weak_cong[where b="(1::1 word) = (0::1 word)" and c="False"], simp)
-  apply(simp only: if_False nat_to_Zreg_RSP)
-  apply(subst if_weak_cong[where b="(0::2 word) = (1::2 word)" and c="False"], simp)
-  apply(simp only: if_False refl if_True bang_bang_8_2 split immediate.simps Zsize.case)
-  apply(subst if_weak_cong[where b="word_of_int (int (Zreg_to_nat (nat_to_Zreg (nat (uint (word_cat (0::1 word) (of_bl [False, False, False]))))) mod (8::nat))) = (0::3 word)" and c="True"])
-  apply eval
-  apply simp
-done
-
-lemma x64_decode_Zmov_out:
-  assumes "ss = [72, 139, 4, 37] @ [a1, a2, a3, a4] @ rest" and
-    "immediate32 (a1 # a2 # a3 # a4 # rest) = (addr, rest)"
-  shows "x64_decode ss = Zfull_inst ([], Zmov (Z_ALWAYS, Z64, Zr_rm (RAX, Zm (None, ZnoBase, addr))), rest)"
-using assms
-  apply(clarify)
-  apply(simp only: append.simps x64_decode.simps readPrefixes.simps)
-  apply(subst readPrefix.simps)
-  apply(simp only: list.case prefixGroup_72)
-  apply(simp only: Let_def refl if_True)
-  apply(subst if_weak_cong[where b="5=0" and c="False"])
-  apply simp
-  apply(simp only: option.case if_False split)
-  apply(subst if_weak_cong[where b="W (rec'REX (word_extract 3 0 72)) \<and> 102 \<in> set []" and c="False"])
-  apply simp
-  apply(simp only: if_False)
-  apply(subst if_weak_cong[where b="103 \<in> set []" and c="False"], simp)
-  apply(simp only: if_False list.case boolify'8.simps to_bl_199)
-  apply(simp only: split list.cases bool.case rec'REX.simps REX.defs)
-  apply(simp only: readOpcodeModRM.simps readModRM.simps list.case boolify'8.simps)
-  apply(simp only: to_bl_139 list.case split bool.case to_bl_4 readSIB.simps REX.simps boolify'8.simps)
-  apply(simp only: to_bl_37 list.case split)
-  apply(simp only: word_extract_3_0_72 RexReg.simps bang_bang_8_0 bang_bang_8_1 bang_bang_8_3 if_False if_True)
-  apply(simp only: Let_def nat_to_Zreg_RBP refl if_True readSibDisplacement.simps simp_thms if_False)
-  apply(simp only: of_bl_False_False simp_thms if_True of_bl_True OpSize.simps)
-  apply(subst if_weak_cong[where b="(0::2 word) = (1::2 word)" and c="False"], simp)
-  apply(simp only: if_False)
-  apply(subst if_weak_cong[where b="(1::1 word) = (0::1 word)" and c="False"], simp)
-  apply(simp only: if_False)
-  apply(simp only: nat_to_Zreg_RSP refl if_True split)
-  apply(subst if_weak_cong[where b="(1::1 word) = (0::1 word)" and c="False"], simp)
-  apply(simp only: if_False bang_bang_8_2 nat_to_Zreg_RAX)
-done
-
-lemma encode_Zmov_in_concrete:
-  (* assumes "fst (immediate32 [a1, a2, a3, a4]) = addr" *)
-  assumes "(18446744071562067968::64 word) <=s addr \<and> addr <=s (2147483647::64 word)"
-    and "word_extract 7 0 addr = a1" and "word_extract 15 8 addr = a2" and "word_extract 23 16 addr = a3"
-    and "word_extract 31 24 addr = a4"
-  shows "encode (Zmov (Z_ALWAYS, Z64, Zrm_i (Zm (None, ZnoBase, addr), 5))) =
-    [72, 199, 4, 37, a1, a2, a3, a4, 5, 0, 0, 0]"
-using assms
-  apply(simp only: encode.simps instruction.case split Zcond.case Zsize.case)
-  apply(simp only: Zdest_src.case split Zrm.case)
-  apply(simp only: e_rm_imm.simps e_ModRM.simps Zrm.case split option.case)
-  apply(simp only: Zbase.case list.case split append.simps)
-  apply(simp only: e_opsize_imm.simps e_opsize.simps Zsize.case)
-  apply(subst if_weak_cong[where b="Z64 = Z64 \<and> True" and c="True"], simp)
-  apply(simp only: if_True Zsize.case Let_def split)
-  apply(simp only: e_imm32.simps signed_arith_lemma_5 simp_thms if_True list.case)
-  apply(simp only: option.case split concat.simps)
-  apply(simp only: rex_prefix.simps word_cat_8)
-  apply(subst if_weak_cong[where b="(8::4 word) = (0::4 word)" and c="False"], simp)
-  apply(simp only: if_False append.simps word_cat_4_8_72 OR_198_1 word_cat_4)
-  apply(simp only: list.simps refl simp_thms word_extract_7_0_5 word_extract_15_8_5)
-  apply(simp only: word_extract_23_16_5 simp_thms word_extract_31_24_5 append.simps list.simps)
-done
-
-lemma encode_Zmov_out_concrete:
-  assumes "(18446744071562067968::64 word) <=s addr \<and> addr <=s (2147483647::64 word)" and
-    "word_extract 7 0 addr = a1" and "word_extract 15 8 addr = a2" and "word_extract 23 16 addr = a3"
-      and "word_extract 31 24 addr = a4"
-  shows "encode (Zmov (Z_ALWAYS, Z64, Zr_rm (RAX, Zm (None, ZnoBase, addr)))) = [72, 139, 4, 37, a1, a2, a3, a4]"
-using assms
-  apply(simp only: encode.simps instruction.case split Zcond.case Zsize.case)
-  apply(simp only: Zdest_src.case split Zrm.case)
-  apply(simp only: e_rm_reg.simps e_gen_rm_reg.simps e_ModRM.simps)
-  apply(simp only: Zrm.case split option.case Zbase.case)
-  apply(simp only: e_imm32.simps simp_thms if_True list.case split append.simps)
-  apply(simp only: e_opsize.simps Zsize.case)
-  apply(simp only: rex_prefix.simps Zreg_to_nat.simps Zreg.case word_of_int_of_int_0)
-  apply(simp only: word_cat_8)
-  apply(subst if_weak_cong[where b="(8::4 word) = (0::4 word)" and c="False"], simp)
-  apply(simp only: if_False Let_def split concat.simps append.simps list.simps)
-  apply(simp only: simp_thms word_cat_4_8_72 OR_138_1 word_of_int_of_int_0 word_cat_4)
-done
-
-lemma build_fixed_program_memory_commute:
-  assumes "addr \<le> l \<and> l \<le> addr + List.length bytes" and "bytes \<noteq> []"
-  shows "(build_fixed_program_memory addr bytes) (of_nat l) = bytes ! (l - addr)"
-using assms
-sorry
-
 lemma of_nat_manipulate:
   "(of_nat m) + (n::'a::len word) = of_nat (m + unat n)"
 by simp
 
-lemma rip_technical_12:
-  shows "(4194316::64 word) = (((4194304::64 word) + ((of_nat 12)::64 word))::64 word)"
-by simp
+lemma numeral_expansion:
+  shows "(4::nat) = Suc (Suc (Suc (Suc 0)))"
+    and "(5::nat) = Suc (Suc (Suc (Suc (Suc 0))))"
+    and "(6::nat) = Suc (Suc (Suc (Suc (Suc (Suc 0)))))"
+    and "(7::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc 0))))))"
+    and "(8::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0)))))))"
+    and "(9::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0))))))))"
+    and "(10::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0)))))))))"
+    and "(11::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0))))))))))"
+    and "(12::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0)))))))))))"
+    and "(13::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0))))))))))))"
+    and "(14::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0)))))))))))))"
+    and "(15::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0))))))))))))))"
+    and "(16::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0)))))))))))))))"
+    and "(17::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0))))))))))))))))"
+    and "(18::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0)))))))))))))))))"
+    and "(19::nat) = Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc (Suc 0))))))))))))))))))"
+by simp_all
 
-lemma word_cat_OR_8:
-  shows "(word_cat (0::1 word) ((word_cat (0::1 word) (0::2 word))::3 word)::4 word) OR (8::4 word) = (8::4 word)"
-by eval (* XXX *)
-
-lemma x64_decode_fixed_technical_1:
-  assumes "(18446744071562067968::64 word) <=s (addr::64 word) \<and> addr <=s (2147483647::64 word)" and
-    "word_extract 7 0 addr = a1" and "word_extract 15 8 addr = a2" and "word_extract 23 16 addr = a3"
-      and "word_extract 31 24 addr = a4"
-  shows "x64_decode (fst (x64_fetch \<lparr>EFLAGS = flags,
-    MEM = build_fixed_program_memory 4194304 (encode (mov_constant_to_mem 5 addr) @ encode (mov_constant_from_mem addr)),
-    REG = reg, RIP = of_nat 4194304, exception = NoException\<rparr>)) = Zfull_inst ([], Zmov (Z_ALWAYS, Z64, Zrm_i (Zm (None, ZnoBase, addr), 5)), [72, 139, 4, 37, a1, a2, a3, a4])"
-using assms
-  apply(simp only: x64_fetch_RIP X64_state.simps)
-  apply(simp only: fst_def split append.simps list.simps)
-  apply(rule x64_decode_Zmov_in)
-  apply(simp only: append.simps list.simps mov_constant_to_mem_def mov_constant_from_mem_def)
-  apply(intro conjI)
-  apply(subst encode_Zmov_out_concrete, assumption, (rule refl)+, subst encode_Zmov_in_concrete, assumption, (rule refl)+,
-    subst build_fixed_program_memory_commute, simp, simp, simp only: append.simps, simp only: diff_self_eq_0 diff_add_inverse, simp only: nth.simps nat.case)
-  apply(subst encode_Zmov_out_concrete, assumption, (rule refl)+, subst encode_Zmov_in_concrete, assumption, (rule refl)+,
-    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp, simp only: append.simps,
-    simp only: diff_self_eq_0 diff_add_inverse, simp)
-  apply(subst encode_Zmov_out_concrete, assumption, (rule refl)+, subst encode_Zmov_in_concrete, assumption, (rule refl)+,
-    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp, simp only: append.simps,
-    simp only: diff_self_eq_0 diff_add_inverse, simp)
-  apply(subst encode_Zmov_out_concrete, assumption, (rule refl)+, subst encode_Zmov_in_concrete, assumption, (rule refl)+,
-    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp, simp only: append.simps,
-    simp only: diff_self_eq_0 diff_add_inverse, simp)
-  apply(subst encode_Zmov_out_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
-    subst encode_Zmov_in_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
-    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp, simp only: append.simps,
-    simp only: diff_self_eq_0 diff_add_inverse, simp)
-  apply(subst encode_Zmov_out_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
-    subst encode_Zmov_in_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
-    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp, simp only: append.simps,
-    simp only: diff_self_eq_0 diff_add_inverse, simp)
-  apply(subst encode_Zmov_out_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
-    subst encode_Zmov_in_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
-    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp, simp only: append.simps,
-    simp only: diff_self_eq_0 diff_add_inverse, simp)
-  apply(rule conjI)
-  apply(rule impI, simp only: word_cat_OR_8, simp)
-  apply(rule impI, simp only: word_cat_OR_8)
-sorry
-
-lemma x64_decode_fixed_technical_2:
-  assumes "(18446744071562067968::64 word) <=s (addr::64 word) \<and> addr <=s (2147483647::64 word)" and
-    "word_extract 7 0 addr = a1" and "word_extract 15 8 addr = a2" and "word_extract 23 16 addr = a3"
-      and "word_extract 31 24 addr = a4"
-  shows "x64_decode
-                  (fst (x64_fetch (snd (write'EA (5::64 word, Zea_m (Z64, addr))
-                                         \<lparr>EFLAGS = flags,
-                                            MEM = build_fixed_program_memory (4194304::nat) (encode (mov_constant_to_mem (5::64 word) addr) @ encode (mov_constant_from_mem addr)),
-                                            REG = reg,
-                                            RIP = of_nat (4194304::nat) +
-                                                  word_of_int
-                                                   (int ((20::nat) -
-                                                         length [72::8 word, 139::8 word, 4::8 word, 37::8 word, word_extract (7::nat) (0::nat) addr, word_extract (15::nat) (8::nat) addr,
-                                                                 word_extract (23::nat) (16::nat) addr, word_extract (31::nat) (24::nat) addr])),
-                                            exception = NoException\<rparr>)))) = Zfull_inst([], Zmov (Z_ALWAYS, Z64, Zr_rm (RAX, Zm (None, ZnoBase, addr))), [])"
-sorry
-
-lemma swap_pairs_technical:
-  shows "swap_pairs {(Some (''.text'', 4, 8), SymbolRef ref_and_reloc_rec0), (Some (''.data'', addr, 8), SymbolDef def_rec0)} =
-    {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), (SymbolDef def_rec0, Some (''.data'', addr, 8))}"
+lemma swap_pairs_rewrite:
+  shows "swap_pairs {(x1, y1), (x2, y2)} = {(y1, x1), (y2, x2)}"
   apply(simp only: swap_pairs_def image_def)
   apply auto
 done
@@ -574,6 +264,8 @@ done
 lemma set_choose_dichotomy:
   shows "set_choose {x, y} = x \<or> set_choose {x, y} = y"
 unfolding set_choose_def by (metis (mono_tags) insert_iff singletonD someI)
+
+section {* Discharging Lem ordering lemmas *}
 
 lemma genericCompare_refl:
   fixes x :: "'a::order"
@@ -699,62 +391,216 @@ lemma maybeCompare_refl_concrete:
   apply(rule allI, rule genericCompare_refl)+
 done
 
-lemma split_concrete1:
-  shows "Lem_set.split
-           (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
-             (instance_Basic_classes_Ord_Maybe_maybe_dict
-               (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
-                 (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))
-           (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)) {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} =
-              ({(SymbolDef def_rec0, Some (''.data'', addr, 8))}, {})"
-    apply(simp only: split_def prod.inject instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes_Ord_tup2_dict_def)
-    apply(simp only: instance_Basic_classes_Ord_string_dict_def instance_Basic_classes_Ord_Maybe_maybe_dict_def)
-    apply(simp only: instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def Ord_class.simps)
-    apply(simp only: pairLess.simps pairLessEq.simps pairGreater_def pairGreaterEq_def tagCompare.simps symRefAndRelocSiteCompare_def pairCompare.simps)
-    apply(auto simp only: set_choose_dichotomy pairLess.simps tagCompare.simps Ord_class.simps symRefAndRelocSiteCompare_refl)
-    apply(simp only: maybeCompare_refl_concrete ordering.simps)+
+section {* Start of the proof proper *}
+
+text {* Key lemma: if we fetch from a given state, then we are given a 20-element list back in return,
+read from the state's memory at RIP+offset for 0 \<le> offset < 20, with the original state returned as
+second component. *}
+lemma x64_fetch_RIP:
+  shows "x64_fetch \<sigma> =
+    ([MEM \<sigma> (RIP \<sigma>), MEM \<sigma> (RIP \<sigma> + 1), MEM \<sigma> (RIP \<sigma> + 2), MEM \<sigma> (RIP \<sigma> + 3),
+      MEM \<sigma> (RIP \<sigma> + 4), MEM \<sigma> (RIP \<sigma> + 5), MEM \<sigma> (RIP \<sigma> + 6), MEM \<sigma> (RIP \<sigma> + 7),
+      MEM \<sigma> (RIP \<sigma> + 8), MEM \<sigma> (RIP \<sigma> + 9), MEM \<sigma> (RIP \<sigma> + 10), MEM \<sigma> (RIP \<sigma> + 11),
+      MEM \<sigma> (RIP \<sigma> + 12), MEM \<sigma> (RIP \<sigma> + 13), MEM \<sigma> (RIP \<sigma> + 14), MEM \<sigma> (RIP \<sigma> + 15),
+      MEM \<sigma> (RIP \<sigma> + 16), MEM \<sigma> (RIP \<sigma> + 17), MEM \<sigma> (RIP \<sigma> + 18), MEM \<sigma> (RIP \<sigma> + 19)], \<sigma>)"
+  apply(simp only: x64_fetch.simps)
+  apply(simp only: for_loop_19_unroll snd_def fst_def split Let_def Word.word_of_nat)
+  apply simp
 done
 
-lemma split_concrete2:
-  shows "Lem_set.split
-           (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
-             (instance_Basic_classes_Ord_Maybe_maybe_dict
-               (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
-                 (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))
-           (SymbolDef def_rec0, Some (''.data'', addr, 8)) {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} = ({}, {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))})"
-  apply(simp only: split_def prod.inject instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes_Ord_tup2_dict_def)
-  apply(simp only: instance_Basic_classes_Ord_string_dict_def instance_Basic_classes_Ord_Maybe_maybe_dict_def)
-  apply(simp only: instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def Ord_class.simps)
-  apply(simp only: pairLess.simps pairLessEq.simps pairGreater_def pairGreaterEq_def tagCompare.simps symRefAndRelocSiteCompare_def pairCompare.simps)
-  apply(auto simp only: set_choose_dichotomy pairLess.simps tagCompare.simps Ord_class.simps symRefAndRelocSiteCompare_refl symDefCompare_refl)
-  apply(simp only: maybeCompare_refl_concrete, simp)+
-done
-
-lemma chooseAndSplit_concrete:
-  shows "chooseAndSplit
-           (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
-             (instance_Basic_classes_Ord_Maybe_maybe_dict
-               (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
-                 (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))
-           {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} = Some ({(SymbolDef def_rec0, Some (''.data'', addr, 8))}, (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), {}) \<or>
-         chooseAndSplit
-           (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
-             (instance_Basic_classes_Ord_Maybe_maybe_dict
-               (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
-                 (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))
-           {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} = Some ({}, (SymbolDef def_rec0, Some (''.data'', addr, 8)), {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))})"
-  apply(simp only: chooseAndSplit_def)
-  apply(subst if_weak_cong[where b="{(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} = {}" and c="False"])
+lemma x64_decode_Zmov_in:
+  assumes "ss = [72, 199, 4, 37] @ [a1, a2, a3, a4] @ [c1, c2, c3, c4] @ rest" and
+    "immediate32 (a1 # a2 # a3 # a4 # c1 # c2 # c3 # c4 # rest) = (addr, i)" and
+    "immediate32 i = (cnst, rest)"
+  shows "x64_decode ss = Zfull_inst ([], Zmov (Z_ALWAYS, Z64, Zrm_i (Zm (None, ZnoBase, addr), cnst)), rest)"
+using assms
+  apply(clarify)
+  apply(simp only: append.simps x64_decode.simps readPrefixes.simps)
+  apply(subst readPrefix.simps)
+  apply(simp only: list.case concrete_evaluations)
+  apply(simp only: Let_def refl if_True)
+  apply(subst if_weak_cong[where b="5=0" and c="False"])
+  apply simp
+  apply(simp only: option.case if_False split)
+  apply(subst if_weak_cong[where b="W (rec'REX 8) \<and> 102 \<in> set []" and c="False"])
   apply simp
   apply(simp only: if_False)
-  apply(rule disjE[OF set_choose_dichotomy[where x="(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))" and y="(SymbolDef def_rec0, Some (''.data'', addr, 8))"]])
-  apply(erule subst[OF sym])
-  apply(simp only: Let_def)
-  apply(simp only: split_concrete1 split, simp)
-  apply(erule subst[OF sym])
-  apply(simp only: Let_def)
-  apply(simp only: split_concrete2 split, simp)
+  apply(subst if_weak_cong[where b="103 \<in> set []" and c="False"], simp)
+  apply(simp only: if_False list.case boolify'8.simps concrete_evaluations)
+  apply(simp only: split list.cases bool.case rec'REX.simps REX.defs)
+  apply(simp only: readOpcodeModRM.simps readModRM.simps list.case boolify'8.simps)
+  apply(simp only: concrete_evaluations list.case split bool.case readSIB.simps REX.simps boolify'8.simps)
+  apply(simp only: concrete_evaluations RexReg.simps if_False if_True)
+  apply(simp only: Let_def if_True readSibDisplacement.simps simp_thms if_False)
+  apply(subst if_weak_cong[where b="0 = 1" and c="False"])
+  apply simp+
 done
+
+lemma x64_decode_Zmov_out:
+  assumes "ss = [72, 139, 4, 37] @ [a1, a2, a3, a4] @ rest" and
+    "immediate32 (a1 # a2 # a3 # a4 # rest) = (addr, rest)"
+  shows "x64_decode ss = Zfull_inst ([], Zmov (Z_ALWAYS, Z64, Zr_rm (RAX, Zm (None, ZnoBase, addr))), rest)"
+using assms
+  apply(clarify)
+  apply(simp only: append.simps x64_decode.simps readPrefixes.simps)
+  apply(subst readPrefix.simps)
+  apply(simp only: list.case concrete_evaluations)
+  apply(simp only: Let_def refl if_True)
+  apply(subst if_weak_cong[where b="5=0" and c="False"])
+  apply simp
+  apply(simp only: option.case if_False split)
+  apply(subst if_weak_cong[where b="W (rec'REX 8) \<and> 102 \<in> set []" and c="False"])
+  apply simp
+  apply(simp only: if_False)
+  apply(subst if_weak_cong[where b="103 \<in> set []" and c="False"], simp)
+  apply(simp only: if_False list.case boolify'8.simps concrete_evaluations)
+  apply(simp only: split list.cases bool.case rec'REX.simps REX.defs)
+  apply(simp only: readOpcodeModRM.simps readModRM.simps list.case boolify'8.simps)
+  apply(simp only: concrete_evaluations list.case split bool.case readSIB.simps REX.simps boolify'8.simps)
+  apply(simp only: RexReg.simps if_False if_True concrete_evaluations Let_def refl)
+  apply simp
+done
+
+lemma encode_Zmov_in_concrete:
+  (* assumes "fst (immediate32 [a1, a2, a3, a4]) = addr" *)
+  assumes "(18446744071562067968::64 word) <=s addr \<and> addr <=s (2147483647::64 word)"
+    and "word_extract 7 0 addr = a1" and "word_extract 15 8 addr = a2" and "word_extract 23 16 addr = a3"
+    and "word_extract 31 24 addr = a4"
+  shows "encode (Zmov (Z_ALWAYS, Z64, Zrm_i (Zm (None, ZnoBase, addr), 5))) =
+    [72, 199, 4, 37, a1, a2, a3, a4, 5, 0, 0, 0]"
+using assms
+  apply(simp only: encode.simps instruction.case split Zcond.case Zsize.case)
+  apply(simp only: Zdest_src.case split Zrm.case)
+  apply(simp only: e_rm_imm.simps e_ModRM.simps Zrm.case split option.case)
+  apply(simp only: Zbase.case list.case split append.simps)
+  apply(simp only: e_opsize_imm.simps e_opsize.simps Zsize.case)
+  apply(subst if_weak_cong[where b="Z64 = Z64 \<and> True" and c="True"], simp)
+  apply(simp only: if_True Zsize.case Let_def split)
+  apply(simp only: e_imm32.simps concrete_evaluations simp_thms if_True list.case)
+  apply(simp only: option.case split concat.simps list.case concrete_evaluations)
+  apply simp
+done
+
+lemma encode_Zmov_out_concrete:
+  assumes "(18446744071562067968::64 word) <=s addr \<and> addr <=s (2147483647::64 word)" and
+    "word_extract 7 0 addr = a1" and "word_extract 15 8 addr = a2" and "word_extract 23 16 addr = a3"
+      and "word_extract 31 24 addr = a4"
+  shows "encode (Zmov (Z_ALWAYS, Z64, Zr_rm (RAX, Zm (None, ZnoBase, addr)))) = [72, 139, 4, 37, a1, a2, a3, a4]"
+using assms
+  apply(simp only: encode.simps instruction.case split Zcond.case Zsize.case)
+  apply(simp only: Zdest_src.case split Zrm.case)
+  apply(simp only: e_rm_reg.simps e_gen_rm_reg.simps e_ModRM.simps)
+  apply(simp only: Zrm.case split option.case Zbase.case)
+  apply(simp only: e_imm32.simps simp_thms if_True list.case split append.simps)
+  apply(simp only: e_opsize.simps Zsize.case)
+  apply(simp only: rex_prefix.simps Zreg_to_nat.simps Zreg.case word_of_int_of_int_0)
+  apply(simp only: concrete_evaluations)
+  apply simp
+done
+
+lemma build_fixed_program_memory_commute:
+  assumes "addr \<le> l \<and> l \<le> addr + List.length bytes" and "bytes \<noteq> []"
+  shows "(build_fixed_program_memory addr bytes) (of_nat l) = bytes ! (l - addr)"
+using assms
+sorry
+
+lemma x64_decode_fixed_technical_1:
+  assumes "(18446744071562067968::64 word) <=s (addr::64 word) \<and> addr <=s (2147483647::64 word)" and
+    "word_extract 7 0 addr = a1" and "word_extract 15 8 addr = a2" and "word_extract 23 16 addr = a3"
+      and "word_extract 31 24 addr = a4"
+  shows "x64_decode (fst (x64_fetch \<lparr>EFLAGS = flags,
+    MEM = build_fixed_program_memory 4194304 (encode (mov_constant_to_mem 5 addr) @ encode (mov_constant_from_mem addr)),
+    REG = reg, RIP = of_nat 4194304, exception = NoException\<rparr>)) = Zfull_inst ([], Zmov (Z_ALWAYS, Z64, Zrm_i (Zm (None, ZnoBase, addr), 5)), [72, 139, 4, 37, a1, a2, a3, a4])"
+using assms
+  apply(simp only: x64_fetch_RIP X64_state.simps)
+  apply(simp only: fst_def split append.simps list.simps)
+  apply(rule x64_decode_Zmov_in)
+  apply(simp only: append.simps list.simps mov_constant_to_mem_def mov_constant_from_mem_def)
+  apply(intro conjI)
+  apply(subst encode_Zmov_out_concrete, assumption, (rule refl)+, subst encode_Zmov_in_concrete, assumption, (rule refl)+,
+    subst build_fixed_program_memory_commute, simp, simp, simp only: append.simps, simp only: diff_self_eq_0 diff_add_inverse, simp only: nth.simps nat.case)
+  apply(subst encode_Zmov_out_concrete, assumption, (rule refl)+, subst encode_Zmov_in_concrete, assumption, (rule refl)+,
+    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp, simp only: append.simps,
+    simp only: diff_self_eq_0 diff_add_inverse, simp)
+  apply(subst encode_Zmov_out_concrete, assumption, (rule refl)+, subst encode_Zmov_in_concrete, assumption, (rule refl)+,
+    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp, simp only: append.simps,
+    simp only: diff_self_eq_0 diff_add_inverse, simp)
+  apply(subst encode_Zmov_out_concrete, assumption, (rule refl)+, subst encode_Zmov_in_concrete, assumption, (rule refl)+,
+    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp, simp only: append.simps,
+    simp only: diff_self_eq_0 diff_add_inverse, simp)
+  apply(subst encode_Zmov_out_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
+    subst encode_Zmov_in_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
+    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp, simp only: append.simps,
+    simp only: diff_self_eq_0 diff_add_inverse, simp)
+  apply(subst encode_Zmov_out_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
+    subst encode_Zmov_in_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
+    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp, simp only: append.simps,
+    simp only: diff_self_eq_0 diff_add_inverse, simp)
+  apply(subst encode_Zmov_out_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
+    subst encode_Zmov_in_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
+    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp, simp only: append.simps,
+    simp only: diff_self_eq_0 diff_add_inverse, simp)
+  apply(rule conjI)
+  apply(rule impI, simp only: concrete_evaluations, simp)
+  apply(rule impI, simp only: concrete_evaluations, simp)
+sorry
+
+lemma x64_decode_fixed_technical_2:
+  assumes "(18446744071562067968::64 word) <=s (addr::64 word) \<and> addr <=s (2147483647::64 word)" and
+    "word_extract 7 0 addr = a1" and "word_extract 15 8 addr = a2" and "word_extract 23 16 addr = a3"
+      and "word_extract 31 24 addr = a4"
+  shows "x64_decode
+                  (fst (x64_fetch (snd (write'EA (5::64 word, Zea_m (Z64, addr))
+                                         \<lparr>EFLAGS = flags,
+                                            MEM = build_fixed_program_memory (4194304::nat) (encode (mov_constant_to_mem (5::64 word) addr) @ encode (mov_constant_from_mem addr)),
+                                            REG = reg,
+                                            RIP = of_nat (4194304::nat) +
+                                                  word_of_int
+                                                   (int ((20::nat) -
+                                                         length [72::8 word, 139::8 word, 4::8 word, 37::8 word, word_extract (7::nat) (0::nat) addr, word_extract (15::nat) (8::nat) addr,
+                                                                 word_extract (23::nat) (16::nat) addr, word_extract (31::nat) (24::nat) addr])),
+                                            exception = NoException\<rparr>)))) = Zfull_inst([], Zmov (Z_ALWAYS, Z64, Zr_rm (RAX, Zm (None, ZnoBase, addr))), [])"
+sorry
+
+(* XXX: to control rewriting *)
+lemma tagEquiv_rewrites:
+  shows "tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict (SymbolRef null_symbol_reference_and_reloc_site) (SymbolRef ref_and_reloc_rec0) = True"
+    and "tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict (SymbolRef null_symbol_reference_and_reloc_site) (SymbolDef def_rec0) = False"
+    and "tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict (SymbolDef null_symbol_definition) (SymbolRef ref_and_reloc_rec0) = False"
+    and "tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict (SymbolDef null_symbol_definition) (SymbolDef def_rec0) = True"
+by (simp_all add: tagEquiv.simps)
+
+lemma split_greater_2:
+  fixes dict :: "'a Ord_class" and element other :: "'a"
+  assumes "well_behaved_lem_ordering (isLess_method dict) (isGreater_method dict)"
+     and "isGreater_method dict element other"
+  shows "Lem_set.split dict element {element, other} = ({other}, {})"
+using assms unfolding well_behaved_lem_ordering.simps proof -
+  have "isGreater_method dict element other"
+    using assms by auto
+  hence "\<not> isLess_method dict element other" and "\<not> isGreater_method dict element element" and "\<not> isLess_method dict element element"
+    using assms well_behaved_lem_ordering.simps by smt+
+  hence "{x \<in> {element, other}. isGreater_method dict element x} = {other}" and "{x \<in> {element, other}. isLess_method dict element x} = {}"
+    using CollectI assms `\<not> isLess_method dict element element` `\<not> isLess_method dict element other` by auto
+  thus "split dict element {element, other} = ({other}, {})"
+    using split_def by (metis (full_types))
+qed
+
+lemma split_less_2:
+  fixes dict :: "'a Ord_class" and element other :: "'a"
+  assumes "well_behaved_lem_ordering (isLess_method dict) (isGreater_method dict)"
+      and "isLess_method dict element other"
+  shows "Lem_set.split dict element {other, element} = ({}, {other})"
+using assms unfolding well_behaved_lem_ordering.simps proof -
+  have "isLess_method dict element other"
+    using assms by auto
+  hence "\<not> isGreater_method dict element other" and "\<not> isLess_method dict element element" and "\<not> isGreater_method dict element element"
+    using assms well_behaved_lem_ordering.simps by smt+
+  hence "{x \<in> {element, other}. isGreater_method dict element x} = {}" and "{x \<in> {element, other}. isLess_method dict element x} = {other}"
+    using CollectI assms by auto
+  thus "split dict element {other, element} = ({}, {other})"
+    using split_def by (metis (full_types) insert_commute)
+qed
 
 lemma split_singleton:
   assumes "\<forall>x. \<not> (isGreater_method dict x x)" and "\<forall>x. \<not> (isLess_method dict x x)"
@@ -778,26 +624,67 @@ lemma chooseAndSplit_empty:
   apply simp
 done
 
-(* XXX: to control rewriting *)
-lemma tagEquiv_concrete_SymbolRef_SymbolRef:
-  shows "tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict (SymbolRef null_symbol_reference_and_reloc_site) (SymbolRef ref_and_reloc_rec0) = True"
-  apply(simp add: tagEquiv.simps)
+lemma chooseAndSplit_less_2:
+  fixes dict :: "'a Ord_class" and element1 element2 :: "'a"
+  assumes "well_behaved_lem_ordering (isLess_method dict) (isGreater_method dict)"
+    and "isLess_method dict element1 element2"
+  shows "chooseAndSplit dict {element1, element2} = Some ({}, element1, {element2}) \<or>
+         chooseAndSplit dict {element1, element2} = Some ({element1}, element2, {})"
+using assms
+  apply(simp only: chooseAndSplit_def)
+  apply(subst if_weak_cong[where b="{element1, element2} = {}" and c="False"], simp_all)
+  apply(rule disjE[OF set_choose_dichotomy[where x="element1" and y="element2"]])
+  apply(erule subst[OF sym])
+  apply(simp only: Let_def)
+  apply(drule split_less_2, assumption)
+  apply(subst prod.case_cong_weak[where prod="split dict element1 {element1, element2}" and prod'="({}, {element2})"], simp add: insert_commute)
+  apply simp
+  apply(erule subst[OF sym])
+  apply(simp only: Let_def)
+  apply(frule lem_ordering_lt, assumption)
+  apply(drule split_greater_2, assumption)
+  apply(subst prod.case_cong_weak[where prod="split dict element2 {element1, element2}" and prod'="({element1}, {})"], auto simp add: insert_commute)
 done
 
-lemma tagEquiv_concrete_SymbolRef_SymbolDef:
-  shows "tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict (SymbolRef null_symbol_reference_and_reloc_site) (SymbolDef def_rec0) = False"
-  apply(simp add: tagEquiv.simps)
+lemma chooseAndSplit_greater_2:
+  fixes dict :: "'a Ord_class" and element1 element2 :: "'a"
+  assumes "well_behaved_lem_ordering (isLess_method dict) (isGreater_method dict)"
+      and "isGreater_method dict element1 element2"
+  shows "chooseAndSplit dict {element1, element2} = Some ({element2}, element1, {}) \<or>
+         chooseAndSplit dict {element1, element2} = Some ({}, element2, {element1})"
+using assms
+  apply(simp only: chooseAndSplit_def)
+  apply(subst if_weak_cong[where b="{element1, element2} = {}" and c="False"], simp_all)
+  apply(rule disjE[OF set_choose_dichotomy[where x="element1" and y="element2"]])
+  apply(erule subst[OF sym])
+  apply(simp only: Let_def)
+  apply(drule split_greater_2, assumption)
+  apply(subst prod.case_cong_weak[where prod="split dict element1 {element1, element2}" and prod'="({element2}, {})"], simp add: insert_commute)
+  apply simp
+  apply(erule subst[OF sym])
+  apply(simp only: Let_def)
+  apply(frule lem_ordering_gt, assumption)
+  apply(drule split_less_2, assumption)
+  apply(subst prod.case_cong_weak[where prod="split dict element2 {element1, element2}" and prod'="({}, {element1})"], auto simp add: insert_commute)
 done
 
-lemma tagEquiv_concrete_SymbolDef_SymbolRef:
-  shows "tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict (SymbolDef null_symbol_definition) (SymbolRef ref_and_reloc_rec0) = False"
-  apply(simp add: tagEquiv.simps)
-done
+lemma tup2_dict_preserves_well_behavedness:
+  assumes "well_behaved_lem_ordering (isLess_method dict1) (isGreater_method dict1)" and
+    "well_behaved_lem_ordering (isLess_method dict2) (isGreater_method dict2)" and
+    "dict3 = instance_Basic_classes_Ord_tup2 dict1 dict2"
+  shows "well_behaved_lem_ordering (isLess_method dict3) (isGreater_method dict3)"
+sorry
 
-lemma tagEquiv_concrete_SymbolDef_SymbolDef:
-  shows "tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict (SymbolDef null_symbol_definition) (SymbolDef def_rec0) = True"
-  apply(simp add: tagEquiv.simps)
-done
+
+lemma findLowestKVWithKEqivTo:
+  assumes "finite s" and "well_behaved_lem_ordering (isLess_method key_dict) (isGreater_method key_dict)"
+      and "well_behaved_lem_ordering (isLess_method val_dict) (isGreater_method val_dict)"
+      and "\<forall>x \<in> s. pairLess val_dict key_dict candidate x"
+  shows "findLowestKVWithKEquivTo key_dict val_dict element eq s (Some candidate) = Some candidate"
+using assms
+  apply(subst findLowestKVWithKEquivTo.simps)
+  apply(subst if_weak_cong[where b="infinite s" and c="False"], simp)
+  apply(simp only: if_False)
 
 lemma findLowestKVWithKEqualTo_concrete1_Some:
   assumes "well_behaved_lem_ordering
@@ -1534,48 +1421,13 @@ done
 
 value "(word_extract (15::nat) (0::nat) (5::32 word))::16 word"
 
-lemma word_extract_15_0_5:
-  shows "((word_extract (15::nat) (0::nat) (5::32 word))::16 word) = 5"
-by eval
+fun flip_order :: "ordering \<Rightarrow> ordering" where
+  "flip_order EQ = EQ" |
+  "flip_order LT = GT" |
+  "flip_order GT = LT"
 
-lemma word_extract_7_0_5':
-  shows "(word_extract (7::nat) (0::nat) (5::16 word)::8 word) = 5"
-by eval
-
-lemma word_extract_15_8_5':
-  shows "((word_extract (15::nat) (8::nat) (5::16 word))::8 word) = 0"
-by eval
-
-lemma word_extract_31_16_5:
-  shows "(word_extract (31::nat) (16::nat) (5::32 word)::16 word) = 0"
-by eval
-
-lemma word_extract_31_16_0:
-  shows "(word_extract (31::nat) (16::nat) (0::32 word)::16 word) = 0"
-by eval
-
-lemma word_extract_7_0_0:
-  shows "(word_extract (7::nat) (0::nat) (0::16 word)::8 word) = 0"
-by eval
-
-lemma word_extract_15_0_0:
-  shows "(word_extract (15::nat) (0::nat) (0::32 word)::16 word) = 0"
-by eval
-
-lemma word_extract_15_8_0:
-  shows "(word_extract (15::nat) (8::nat) (0::16 word)::8 word) = 0"
-by eval
-
-lemma word_extract_23_16_0:
-  shows "(word_extract (23::nat) (16::nat) (0::16 word)::8 word) = 0"
-by eval
-
-lemma word_extract_63_32_5:
-  shows "(word_extract (63::nat) (32::nat) (5::64 word)::32 word) = 0"
-by eval
-
-lemma stringCompare_method_sym:
-  shows "stringCompare_method x y = stringCompare_method y x"
+lemma stringCompare_method_flip:
+  shows "stringCompare_method x y = flip_order (stringCompare_method y x)"
 sorry
 
 lemma monstrosity_is_well_behaved:
@@ -1604,7 +1456,6 @@ lemma monstrosity_is_well_behaved:
   apply(rule conjI, clarify)
   apply(case_tac aa; case_tac ba; case_tac a; case_tac b)
   apply(clarify, simp only: pairGreater_def pairLess.simps pairCompare.simps Ord_class.simps tagCompare.simps maybeCompare.simps ordering.simps simp_thms set_simps, simp)+
-  apply(simp only: stringCompare_method_sym)
   apply(case_tac "stringCompare_method ad ab")
 sorry
 
