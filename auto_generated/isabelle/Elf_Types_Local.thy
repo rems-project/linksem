@@ -409,22 +409,26 @@ begin
       (\<forall>x y. lt x y \<longrightarrow> gt y x) \<and>
       (\<forall>x y. gt x y \<or> lt x y \<or> x = y) \<and>
       (\<forall>x y. x = y \<longrightarrow> \<not> lt x y) \<and>
-      (\<forall>x y. x = y \<longrightarrow> \<not> gt x y))"
+      (\<forall>x y. x = y \<longrightarrow> \<not> gt x y) \<and>
+      (\<forall> x y. lt x y \<longrightarrow> \<not> gt x y) \<and>  
+      (\<forall> x y. gt x y \<longrightarrow> \<not> lt x y))"
+
+  declare well_behaved_lem_ordering.simps [simp del]
 
   lemma lem_ordering_tri:
     assumes "well_behaved_lem_ordering lt gt"
     shows "gt x y \<or> lt x y \<or> x = y"
-  using assms by auto
+  using assms by(metis well_behaved_lem_ordering.simps)
   
   lemma lem_ordering_gt:
     assumes "well_behaved_lem_ordering lt gt"
     shows "gt x y \<Longrightarrow> lt y x"
-  using assms by auto
+  using assms by(metis well_behaved_lem_ordering.simps)
 
   lemma lem_ordering_lt:
     assumes "well_behaved_lem_ordering lt gt"
     shows "lt x y \<Longrightarrow> gt y x"
-  using assms by auto
+  using assms by(metis well_behaved_lem_ordering.simps)
 
   lemma lem_ordering_not_gt:
     assumes "well_behaved_lem_ordering lt gt"

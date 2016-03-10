@@ -611,7 +611,7 @@ using assms
 done
 
 lemma chooseAndSplit_singleton:
-  assumes "well_behaved_lem_ordering (isGreater_method dict) (isLess_method dict)"
+  assumes "well_behaved_lem_ordering (isLess_method dict) (isGreater_method dict)"
   shows "chooseAndSplit dict { s } = Some ({}, s, {})"
 using assms unfolding well_behaved_lem_ordering.simps
   apply(simp only: chooseAndSplit_def)
@@ -669,85 +669,87 @@ using assms
 done
 
 lemma tup2_dict_preserves_well_behavedness:
+  fixes dict1 :: "'a Ord_class" and dict2 :: "'b Ord_class"
   assumes "well_behaved_lem_ordering (isLess_method dict1) (isGreater_method dict1)" and
     "well_behaved_lem_ordering (isLess_method dict2) (isGreater_method dict2)" and
-    "dict3 = instance_Basic_classes_Ord_tup2 dict1 dict2"
-  shows "well_behaved_lem_ordering (isLess_method dict3) (isGreater_method dict3)"
+    "d = instance_Basic_classes_Ord_tup2_dict dict1 dict2"
+  shows "well_behaved_lem_ordering (isLess_method d) (isGreater_method d)"
+using assms unfolding instance_Basic_classes_Ord_tup2_dict_def
 sorry
 
-
-lemma findLowestKVWithKEqivTo:
-  assumes "finite s" and "well_behaved_lem_ordering (isLess_method key_dict) (isGreater_method key_dict)"
+lemma findLowestKVWithKEquivTo_Some_empty:
+  assumes "well_behaved_lem_ordering (isLess_method key_dict) (isGreater_method key_dict)"
       and "well_behaved_lem_ordering (isLess_method val_dict) (isGreater_method val_dict)"
-      and "\<forall>x \<in> s. pairLess val_dict key_dict candidate x"
-  shows "findLowestKVWithKEquivTo key_dict val_dict element eq s (Some candidate) = Some candidate"
+  shows "findLowestKVWithKEquivTo key_dict val_dict element eq {} (Some candidate) = Some candidate"
 using assms
   apply(subst findLowestKVWithKEquivTo.simps)
-  apply(subst if_weak_cong[where b="infinite s" and c="False"], simp)
+  apply(subst if_weak_cong[where b="infinite {}" and c="False"], simp)
   apply(simp only: if_False)
-
-lemma findLowestKVWithKEqualTo_concrete1_Some:
-  assumes "well_behaved_lem_ordering
-            (isGreater_method
-              (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
-                (instance_Basic_classes_Ord_Maybe_maybe_dict
-                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
-                    (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))
-            (isLess_method
-              (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
-                (instance_Basic_classes_Ord_Maybe_maybe_dict
-                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
-                    (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))"
-  shows "findLowestKVWithKEquivTo (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
-     (instance_Basic_classes_Ord_Maybe_maybe_dict
-       (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
-         (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
-     (SymbolRef null_symbol_reference_and_reloc_site) (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict) {(SymbolDef def_rec0, Some (''.data'', addr, 8))}
-     (Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))) =
-    Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))"
-using assms
-  apply(subst findLowestKVWithKEquivTo.simps)
-  apply(subst if_weak_cong[where b="\<not> finite {(SymbolDef def_rec0, Some (''.data'', addr, 8))}" and c="False"])
-  apply simp
-  apply(simp only: if_False simp_thms chooseAndSplit_singleton option.case split)
-  apply(simp only: tagEquiv_concrete_SymbolRef_SymbolDef if_False HOL.if_cancel)
-  apply(subst findLowestKVWithKEquivTo.simps)
-  apply(subst if_weak_cong[where b="\<not> finite {}" and c="False"])
-  apply simp
-  apply(simp only: if_False simp_thms chooseAndSplit_singleton option.case split)
-  apply(simp only: chooseAndSplit_empty option.case)
+  apply(subst if_weak_cong[where b="\<not> well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict)) (isGreater_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict))" and c=False])
+  apply(simp, rule tup2_dict_preserves_well_behavedness, simp, simp, simp)
+  apply(simp only: if_False)
+  apply(subst chooseAndSplit_empty)
+  apply(simp only: option.case)
 done
 
-lemma findLowestKVWithKEqualTo_concrete1_None:
-  assumes "well_behaved_lem_ordering
-            (isGreater_method
-              (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
-                (instance_Basic_classes_Ord_Maybe_maybe_dict
-                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
-                    (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))
-            (isLess_method
-              (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
-                (instance_Basic_classes_Ord_Maybe_maybe_dict
-                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
-                    (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))"
-  shows "findLowestKVWithKEquivTo (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
-     (instance_Basic_classes_Ord_Maybe_maybe_dict
-       (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
-         (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
-     (SymbolDef null_symbol_definition) (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict) {(SymbolDef def_rec0, Some (''.data'', addr, 8))} None = Some (SymbolDef def_rec0, Some (''.data'', addr, 8))"
+lemma lem_ordering_not_lt:
+  assumes "well_behaved_lem_ordering (isLess_method dict) (isGreater_method dict)"
+      and "isLess_method dict e1 e2"
+     shows "\<not> isLess_method dict e2 e1"
+using assms unfolding well_behaved_lem_ordering.simps by meson
+
+lemma tup2_dict_preserves_not_lt:
+  assumes "well_behaved_lem_ordering (isLess_method dict1) (isGreater_method dict1)" and
+    "well_behaved_lem_ordering (isLess_method dict2) (isGreater_method dict2)" and
+    "pairLess dict1 dict2 p1 p2"
+  shows "\<not> pairLess dict1 dict2 p2 p1"
+sorry
+
+lemma findLowestKVWithKEqivTo_less_singleton_Some:
+  assumes "well_behaved_lem_ordering (isLess_method key_dict) (isGreater_method key_dict)"
+      and "well_behaved_lem_ordering (isLess_method val_dict) (isGreater_method val_dict)"
+      and "pairLess val_dict key_dict candidate e" and "eq element ek"
+      and "e = (ek, ev)" and "candidate = (ck, cv)"
+  shows "findLowestKVWithKEquivTo key_dict val_dict element eq {e} (Some candidate) = Some candidate"
 using assms
   apply(subst findLowestKVWithKEquivTo.simps)
-  apply(subst if_weak_cong[where b="\<not> finite {(SymbolDef def_rec0, Some (''.data'', addr, 8))}" and c="False"])
-  apply simp
-  apply(simp only: if_False simp_thms chooseAndSplit_singleton option.case split)
-  apply(simp only: tagEquiv_concrete_SymbolDef_SymbolDef if_True split Let_def)
-  apply(subst findLowestKVWithKEquivTo.simps)
-  apply(subst if_weak_cong[where b="\<not> finite {}" and c="False"])
-  apply simp
-  apply(simp only: if_False simp_thms chooseAndSplit_singleton option.case split)
-  apply(simp only: chooseAndSplit_empty option.case)
+  apply(subst if_weak_cong[where b="infinite {e}" and c="False"], simp)
+  apply(simp only: if_False)
+  apply(subst if_weak_cong[where b="\<not> well_behaved_lem_ordering (isGreater_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict)) (isLess_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict))" and c=False])
+  apply(simp, rule tup2_dict_preserves_well_behavedness, simp, simp, simp)
+  apply(simp only: if_False)
+  apply(subst chooseAndSplit_singleton, rule tup2_dict_preserves_well_behavedness, simp, simp, simp)
+  apply(simp only: split option.case if_True)
+  apply(case_tac "candidate", clarify)
+  apply(simp only: Let_def split)
+  apply(frule tup2_dict_preserves_not_lt, simp, simp)
+  apply(drule Eq_FalseI)
+  apply(subst if_weak_cong[where b="pairLess val_dict key_dict (ek, ev) (ck, cv)" and c=False], simp)
+  apply(simp only: if_False split)
+  apply(rule findLowestKVWithKEquivTo_Some_empty)
+  apply simp_all
 done
 
+lemma findLowestKVWithKEquivTo_singleton_None:
+  assumes "well_behaved_lem_ordering (isLess_method key_dict) (isGreater_method key_dict)"
+      and "well_behaved_lem_ordering (isLess_method val_dict) (isGreater_method val_dict)"
+      and "e = (ek, ev)" and "eq element ek"
+  shows "findLowestKVWithKEquivTo key_dict val_dict element eq {e} None = Some e"
+using assms
+  apply(subst findLowestKVWithKEquivTo.simps)
+  apply(subst if_weak_cong[where b="infinite {e}" and c="False"], simp)
+  apply(simp only: if_False)
+  apply(subst if_weak_cong[where b="\<not> well_behaved_lem_ordering (isGreater_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict)) (isLess_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict))" and c=False])
+  apply(simp, rule tup2_dict_preserves_well_behavedness, simp, simp, simp)
+  apply(simp only: if_False)
+  apply(subst chooseAndSplit_singleton rule tup2_dict_preserves_well_behavedness, simp, simp, simp)
+  apply(simp only: option.case split if_True)
+  apply(simp only: split Let_def)
+  apply(rule findLowestKVWithKEquivTo_Some_empty)
+  apply simp_all
+done
+
+(*
 lemma isLess_method_concrete_Ref_Def:
   shows "isLess_method (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict) (SymbolRef null_symbol_reference_and_reloc_site)
          (SymbolDef def_rec0) = False"
@@ -760,62 +762,29 @@ lemma isLess_method_concrete_Def_Ref:
   apply(simp only: instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def Ord_class.simps)
   apply(simp only: tagCompare.simps ordering.simps refl)
 done
+*)
 
-lemma findLowestKVWithKEquivTo_concrete_empty:
-  assumes "well_behaved_lem_ordering
-            (isGreater_method
-              (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
-                (instance_Basic_classes_Ord_Maybe_maybe_dict
-                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
-                    (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))
-            (isLess_method
-              (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
-                (instance_Basic_classes_Ord_Maybe_maybe_dict
-                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
-                    (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))"
-  shows "findLowestKVWithKEquivTo (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
-     (instance_Basic_classes_Ord_Maybe_maybe_dict
-       (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
-         (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
-     (SymbolDef null_symbol_definition) (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict) {} (Some (SymbolDef def_rec0, Some (''.data'', addr, 8))) =
-    Some (SymbolDef def_rec0, Some (''.data'', addr, 8))"
+lemma pairLess_intro:
+  assumes "isLess_method dict e1 e2"
+  shows "pairLess dict' dict (e1, f1) (e2, f2)"
+using assms unfolding pairLess.simps by auto
+
+lemma findLowestKVWithKEquivTo_2_None:
+  assumes "well_behaved_lem_ordering (isLess_method key_dict) (isGreater_method key_dict)"
+      and "well_behaved_lem_ordering (isLess_method val_dict) (isGreater_method val_dict)"
+      and "element1 = (e1k, e1v)" and "element2 = (e2k, e2v)"
+      and "isLess_method key_dict e1k e2k"
+  shows "findLowestKVWithKEquivTo key_dict val_dict element eq {element1, element2} None = Some element1"
 using assms
   apply(subst findLowestKVWithKEquivTo.simps)
-  apply(subst if_weak_cong[where b="\<not> finite {}" and c="False"])
-  apply simp
-  apply(simp only: if_False simp_thms)
-  apply(subst chooseAndSplit_empty)
-  apply(simp only: option.case)
-done
-
-lemma findLowestKVWithKEquivTo_concrete2:
-  assumes "well_behaved_lem_ordering
-            (isGreater_method
-              (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
-                (instance_Basic_classes_Ord_Maybe_maybe_dict
-                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
-                    (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))
-            (isLess_method
-              (instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
-                (instance_Basic_classes_Ord_Maybe_maybe_dict
-                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
-                    (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))))"
-  shows "findLowestKVWithKEquivTo (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
-     (instance_Basic_classes_Ord_Maybe_maybe_dict
-       (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
-         (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
-     (SymbolRef null_symbol_reference_and_reloc_site) (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict) {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))} None = Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))"
-using assms
-  apply(subst findLowestKVWithKEquivTo.simps)
-  apply(subst if_weak_cong[where b="\<not> finite {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))}" and c="False"])
-  apply simp
-  apply(simp only: if_False simp_thms chooseAndSplit_singleton option.case split)
-  apply(simp only: tagEquiv_concrete_SymbolRef_SymbolRef if_True Let_def split)
-  apply(subst findLowestKVWithKEquivTo.simps)
-  apply(subst if_weak_cong[where b="\<not> finite {}" and c="False"])
-  apply simp
-  apply(simp only: if_False simp_thms chooseAndSplit_empty option.case)
-done
+  apply(subst if_weak_cong[where b="infinite {element1, element2}" and c="False"], simp)
+  apply(simp only: if_False)
+  apply(subst if_weak_cong[where b="\<not> well_behaved_lem_ordering (isGreater_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict)) (isLess_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict))" and c=False])
+  apply(simp, rule tup2_dict_preserves_well_behavedness, simp, simp, simp)
+  apply(simp only: if_False)
+  apply(rule disjE[OF chooseAndSplit_less_2[where dict="instance_Basic_classes_Ord_tup2_dict key_dict val_dict"]])
+  apply(rule tup2_dict_preserves_well_behavedness)
+thm tup2_dict_preserves_well_behavedness
 
 lemma findLowestKVWithKEqualTo_concrete:
   assumes "well_behaved_lem_ordering

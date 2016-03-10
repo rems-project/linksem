@@ -222,7 +222,7 @@ lemma disjE3:
   by blast
 
 lemma set_split_union1:
-  assumes "well_behaved_lem_ordering (isGreater_method dict) (isLess_method dict)"
+  assumes "well_behaved_lem_ordering (isLess_method dict) (isGreater_method dict)"
       and "split dict e s = (x, y)"
       and "e \<in> s"
   shows "s = x \<union> { e } \<union> y"
@@ -235,12 +235,12 @@ proof -
       fix z :: "'a"
       assume "z \<in> s"
       have "isGreater_method dict z e \<or> isLess_method dict z e \<or> z = e"
-        using lem_ordering_tri assms by auto
+        using lem_ordering_tri assms(1) by metis
       thus "z \<in> x \<union> {e} \<union> y"
       proof(rule disjE3)
         assume "isGreater_method dict z e"
         hence "isLess_method dict e z"
-          using assms(1) by simp
+          using assms(1) lem_ordering_gt by metis
         hence "z \<in> { x\<in>s. isLess_method dict e x }"
           using assms(1) `z \<in> s` by simp
         hence "z \<in> { x\<in>s. isGreater_method dict e x } \<union> {e} \<union> { x\<in>s. isLess_method dict e x }"
@@ -250,7 +250,7 @@ proof -
       next
         assume "isLess_method dict z e"
         hence "isGreater_method dict e z"
-          using lem_ordering_lt assms by simp
+          using lem_ordering_lt assms by metis
         hence "z \<in> { x\<in>s. isGreater_method dict e x }"
           using assms(1) `z \<in> s` by simp
         hence "z \<in> { x\<in>s. isGreater_method dict e x } \<union> {e} \<union> { x\<in>s. isLess_method dict e x }"
@@ -308,14 +308,14 @@ proof -
       fix z :: "'a"
       assume "z \<in> s"
       have "isGreater_method dict z e \<or> isLess_method dict z e \<or> z = e"
-        using lem_ordering_tri assms by auto
+        using lem_ordering_tri assms by metis
       hence "isGreater_method dict z e \<or> isLess_method dict z e"
         using `e \<notin> s` `z \<in> s` by auto
       thus "z \<in> x \<union> y"
       proof(rule disjE)
         assume "isGreater_method dict z e"
         hence "isLess_method dict e z"
-          using assms(1) by simp
+          using assms lem_ordering_lt by metis
         hence "z \<in> { x\<in>s. isLess_method dict e x }"
           using assms(1) `z \<in> s` by simp
         hence "z \<in> { x\<in>s. isGreater_method dict e x } \<union> { x\<in>s. isLess_method dict e x }"
@@ -325,7 +325,7 @@ proof -
       next
         assume "isLess_method dict z e"
         hence "isGreater_method dict e z"
-          using lem_ordering_lt assms by simp
+          using lem_ordering_gt assms by metis
         hence "z \<in> { x\<in>s. isGreater_method dict e x }"
           using assms(1) `z \<in> s` by simp
         hence "z \<in> { x\<in>s. isGreater_method dict e x } \<union> { x\<in>s. isLess_method dict e x }"
@@ -365,7 +365,7 @@ lemma set_choose_member:
 using assms by auto
 
 lemma chooseAndSplit_card1:
-  assumes "well_behaved_lem_ordering (isGreater_method dict) (isLess_method dict)"
+  assumes "well_behaved_lem_ordering (isLess_method dict) (isGreater_method dict)"
       and "finite s"
       and "chooseAndSplit dict s = Some (x, e, y)"
   shows "card x < card s"
@@ -403,7 +403,7 @@ using assms proof -
     also have "set_choose s \<in> s"
       using set_choose_member `s \<noteq> {}` by simp
     have **: "\<And>x y. x = y \<Longrightarrow> \<not> isGreater_method dict x y"
-      using assms by simp
+      using assms lem_ordering_not_gt by metis
     hence "s = x \<union> {set_choose s} \<union> y"
       using set_split_union1[OF assms(1) `split dict (set_choose s) s = (x,y)` `set_choose s \<in> s`] by simp
     hence "x \<subset> s"
@@ -414,7 +414,7 @@ using assms proof -
 qed
 
 lemma chooseAndSplit_card2:
-  assumes "well_behaved_lem_ordering (isGreater_method dict) (isLess_method dict)"
+  assumes "well_behaved_lem_ordering (isLess_method dict) (isGreater_method dict)"
       and "finite s"
       and "chooseAndSplit dict s = Some (x, e, y)"
   shows "card y < card s"
@@ -452,7 +452,7 @@ using assms proof -
     also have "set_choose s \<in> s"
       using set_choose_member `s \<noteq> {}` by simp
     have **: "\<And>x y. x = y \<Longrightarrow> \<not> isLess_method dict x y"
-      using assms by simp
+      using assms using well_behaved_lem_ordering.elims(2) by auto
     hence "s = x \<union> {set_choose s} \<union> y"
       using set_split_union1[OF assms(1) `split dict (set_choose s) s = (x,y)` `set_choose s \<in> s`] by simp
     hence "y \<subset> s"
