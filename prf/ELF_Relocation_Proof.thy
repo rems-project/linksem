@@ -753,11 +753,11 @@ using assms
   apply(drule lem_ordering_not_lt, assumption, meson assms(2) lem_ordering_not_lt)+
 done
 
-lemma findLowestKVWithKEqivTo_less_singleton_Some:
+lemma findLowestKVWithKEquivTo_less_singleton_Some:
   assumes "well_behaved_lem_ordering (isLess_method key_dict) (isLessEqual_method key_dict) (isGreater_method key_dict)"
       and "well_behaved_lem_ordering (isLess_method val_dict) (isLessEqual_method val_dict) (isGreater_method val_dict)"
       and "pairLess val_dict key_dict candidate e" and "eq element ek"
-      and "e = (ek, ev)" and "candidate = (ck, cv)"
+      and "e = (ek, ev)"
   shows "findLowestKVWithKEquivTo key_dict val_dict element eq {e} (Some candidate) = Some candidate"
 using assms
   apply(subst findLowestKVWithKEquivTo.simps)
@@ -773,10 +773,40 @@ using assms
   apply(simp only: Let_def split)
   apply(frule tup2_dict_preserves_not_lt, simp, simp)
   apply(drule Eq_FalseI)
-  apply(subst if_weak_cong[where b="pairLess val_dict key_dict (ek, ev) (ck, cv)" and c=False], simp)
+  apply(subst if_weak_cong[where b="pairLess val_dict key_dict (ek, ev) (a, b)" and c=False], simp)
   apply(simp only: if_False split)
   apply(rule findLowestKVWithKEquivTo_Some_empty)
   apply simp_all
+done
+
+lemma pairGreater_asym:
+  assumes "well_behaved_lem_ordering (isLess_method dict1) (isLessEqual_method dict1) (isGreater_method dict1)"
+      and "well_behaved_lem_ordering (isLess_method dict2) (isLessEqual_method dict2) (isGreater_method dict2)"
+      and  "pairGreater dict1 dict2 x y"
+  shows "\<not> pairGreater dict2 dict1 y x"
+using assms sorry
+
+lemma findHighestKVWithKEquivTo_less_singleton_Some:
+  assumes "well_behaved_lem_ordering (isLess_method key_dict) (isLessEqual_method key_dict) (isGreater_method key_dict)"
+      and "well_behaved_lem_ordering (isLess_method val_dict) (isLessEqual_method val_dict) (isGreater_method val_dict)"
+      and "pairGreater val_dict key_dict candidate e" and "eq element ek"
+      and "e = (ek, ev)"
+  shows "findHighestKVWithKEquivTo key_dict val_dict element eq {e} (Some candidate) = Some candidate"
+using assms
+  apply(subst findHighestKVWithKEquivTo.simps)
+  apply(subst if_weak_cong[where b="infinite {e}" and c="False"], simp)
+  apply(simp only: if_False)
+  apply(subst if_weak_cong[where b="\<not> well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict))
+      (isLessEqual_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict)) (isGreater_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict))" and c=False], simp)
+  apply(rule tup2_dict_preserves_well_behavedness, simp, simp, simp)
+  apply(simp only: if_False)
+  apply(subst chooseAndSplit_singleton, rule tup2_dict_preserves_well_behavedness, simp, simp, simp)
+  apply(simp only: split option.case if_True)
+  apply(case_tac "candidate", clarify)
+  apply(simp only: Let_def split)
+  apply(frule pairGreater_asym, assumption, assumption)
+  apply(simp del: findHighestKVWithKEquivTo.simps)
+  apply(rule findHighestKVWithKEquivTo_Some_empty, simp_all)
 done
 
 lemma findLowestKVWithKEquivTo_singleton_None:
@@ -827,64 +857,89 @@ lemma findLowestKVWithKEquivTo_2_None:
   assumes "well_behaved_lem_ordering (isLess_method key_dict) (isLessEqual_method key_dict) (isGreater_method key_dict)"
       and "well_behaved_lem_ordering (isLess_method val_dict) (isLessEqual_method val_dict) (isGreater_method val_dict)"
       and "element1 = (e1k, e1v)" and "element2 = (e2k, e2v)"
-      and "isLess_method key_dict e1k e2k" and "eq element e1k" and "\<not> eq element e2k"
+      and "isLess_method key_dict e1k e2k" and "eq element e1k" and "\<not> eq e2k element"
       and "\<forall>x y1 y2. isLess_method key_dict y1 x \<longrightarrow> eq y2 y1 \<longrightarrow> isLess_method key_dict y2 x"
+      and "\<forall>x y. eq x y \<longleftrightarrow> eq y x"
   shows "findLowestKVWithKEquivTo key_dict val_dict element eq {element1, element2} None = Some element1"
 using assms
   apply(subst findLowestKVWithKEquivTo.simps)
-  apply(subst if_weak_cong[where b="infinite {element1, element2}" and c="False"], simp)
+  apply(subst if_weak_cong[where b="infinite {element1, element2}" and c=False], simp)
   apply(simp only: if_False)
-  apply(subst if_weak_cong[where b="\<not> well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict))
-      (isLessEqual_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict)) (isGreater_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict))" and c=False])
-  apply(simp, rule tup2_dict_preserves_well_behavedness, simp, simp, simp)
+  apply(subst if_weak_cong[where b="\<not> well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict)) (isLessEqual_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict))
+            (isGreater_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict))" and c=False], simp)
+  apply(rule tup2_dict_preserves_well_behavedness, assumption+, rule refl)
   apply(simp only: if_False)
   apply(rule disjE[OF chooseAndSplit_less_2[where dict="instance_Basic_classes_Ord_tup2_dict key_dict val_dict"]])
-  apply(rule tup2_dict_preserves_well_behavedness, simp+)
+  apply(rule tup2_dict_preserves_well_behavedness, assumption+, rule refl)
   apply(simp add: instance_Basic_classes_Ord_tup2_dict_def)
   apply(rule pairLess_intro, assumption)
   apply(subst option.case_cong_weak[where option="chooseAndSplit (instance_Basic_classes_Ord_tup2_dict key_dict val_dict) {(e1k, e1v), (e2k, e2v)}"], assumption)
-  apply(simp only: option.case split if_True split Let_def)
-  apply(rule findLowestKVWithKEquivTo_Some_empty, simp, simp)
+  apply(simp only: option.case split if_True Let_def)
+  apply(simp only: findLowestKVWithKEquivTo_Some_empty)
   apply(subst option.case_cong_weak[where option="chooseAndSplit (instance_Basic_classes_Ord_tup2_dict key_dict val_dict) {(e1k, e1v), (e2k, e2v)}"], assumption)
-  apply(simp only: option.case split if_True split Let_def if_False)
-  apply(subgoal_tac "isLess_method key_dict element e2k")
-  apply(rule findLowestKVWithKEquivTo_singleton_None, simp, simp, simp, simp)
-  apply(erule_tac x=e2k in allE, erule_tac x=e1k in allE, erule_tac x=element in allE)
-  apply simp
+  apply(simp only: option.case split if_False if_True)
+  apply(rule findLowestKVWithKEquivTo_singleton_None, simp_all)
+  apply blast
 done
 
 lemma findHighestKVWithKEquivTo_2_None:
   assumes "well_behaved_lem_ordering (isLess_method key_dict) (isLessEqual_method key_dict) (isGreater_method key_dict)"
       and "well_behaved_lem_ordering (isLess_method val_dict) (isLessEqual_method val_dict) (isGreater_method val_dict)"
       and "element1 = (e1k, e1v)" and "element2 = (e2k, e2v)"
-      and "isLess_method key_dict e2k e1k" and "eq element e1k" and "\<not> eq element e2k"
+      and "isLess_method key_dict e2k e1k" and "eq element e1k"
       and "\<forall>x y1 y2. isLess_method key_dict x y1 \<longrightarrow> eq y2 y1 \<longrightarrow> isLess_method key_dict x y2"
+      and "\<forall>x y. isLess_method key_dict x y \<longrightarrow> \<not> eq x y"
+      and "\<forall>x y. eq x y \<longleftrightarrow> eq y x"
   shows "findHighestKVWithKEquivTo key_dict val_dict element eq {element1, element2} None = Some element1"
 using assms
   apply(subst findHighestKVWithKEquivTo.simps)
-  apply(subst if_weak_cong[where b="infinite {element1, element2}" and c="False"], simp)
+  apply(subst if_weak_cong[where b="infinite {element1, element2}" and c=False], simp)
   apply(simp only: if_False)
-  apply(subst if_weak_cong[where b="\<not> well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict))
-      (isLessEqual_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict)) (isGreater_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict))" and c=False])
-  apply(simp, rule tup2_dict_preserves_well_behavedness, simp, simp, simp)
+  apply(subst if_weak_cong[where b="\<not> well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict)) (isLessEqual_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict))
+            (isGreater_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict))" and c=False], simp)
+  apply(rule tup2_dict_preserves_well_behavedness, assumption+, rule refl)
   apply(simp only: if_False)
   apply(rule disjE[OF chooseAndSplit_less_2[where dict="instance_Basic_classes_Ord_tup2_dict key_dict val_dict"]])
-  apply(rule tup2_dict_preserves_well_behavedness, simp+)
+  apply(rule tup2_dict_preserves_well_behavedness, assumption+, rule refl)
   apply(simp add: instance_Basic_classes_Ord_tup2_dict_def)
   apply(rule pairLess_intro, assumption)
   apply(simp only: insert_commute)
   apply(subst option.case_cong_weak[where option="chooseAndSplit (instance_Basic_classes_Ord_tup2_dict key_dict val_dict) {(e1k, e1v), (e2k, e2v)}"], assumption)
-  apply(simp only: option.case split if_False split Let_def)
-  apply(subgoal_tac "isGreater_method key_dict element e2k")
-  apply(subst if_weak_cong[where b="isGreater_method key_dict element e2k"], simp)
-  apply(simp only: if_True)
-  apply(rule findHighestKVWithKEquivTo_singleton_None, assumption, assumption, simp, assumption)
+  apply(simp only: option.case split if_False Let_def)
+  apply(subgoal_tac "isGreater_method key_dict element e2k = True", simp del: findHighestKVWithKEquivTo.simps)
+  apply(simp only: findHighestKVWithKEquivTo_singleton_None)
+  apply(rule eqTrueI)
   apply(rule lem_ordering_lt[where gt="isGreater_method key_dict"], assumption)
-  apply(erule_tac x="e2k" in allE, erule_tac x="e1k" in allE, erule_tac x="element" in allE, simp)
-  apply(simp only: insert_commute)
-  apply(simp only: option.case split if_True Let_def)
+  apply blast
+  apply(simp only: insert_commute option.case split if_True Let_def)
   apply(rule findHighestKVWithKEquivTo_Some_empty, simp_all)
 done
+
+lemma findHighestKVWithKEquivTo_2_None':
+  assumes "well_behaved_lem_ordering (isLess_method key_dict) (isLessEqual_method key_dict) (isGreater_method key_dict)"
+      and "well_behaved_lem_ordering (isLess_method val_dict) (isLessEqual_method val_dict) (isGreater_method val_dict)"
+      and "element1 = (e1k, e1v)" and "element2 = (e2k, e2v)"
+      and "isLess_method key_dict e2k e1k" and "\<not> eq element e1k" and "eq element e2k"
+      and "\<forall>x y1 y2. isLess_method key_dict x y1 \<longrightarrow> eq y2 y1 \<longrightarrow> isLess_method key_dict x y2"
+      and "\<forall>x y. isLess_method key_dict x y \<longrightarrow> \<not> eq x y"
+      and "\<forall>x y. eq x y \<longleftrightarrow> eq y x"
+  shows "findHighestKVWithKEquivTo key_dict val_dict element eq {element1, element2} None = Some element2"
+using assms
+  apply(subst findHighestKVWithKEquivTo.simps)
+  apply(subst if_weak_cong[where b="infinite {element1, element2}" and c=False], simp)
+  apply(simp only: if_False)
+  apply(subst if_weak_cong[where b="\<not> well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict)) (isLessEqual_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict))
+            (isGreater_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict))" and c=False], simp)
+  apply(rule tup2_dict_preserves_well_behavedness, assumption+, rule refl)
+  apply(simp only: if_False)
+  apply(rule disjE[OF chooseAndSplit_less_2[where dict="instance_Basic_classes_Ord_tup2_dict key_dict val_dict"]])
+  apply(rule tup2_dict_preserves_well_behavedness, assumption+, rule refl)
+  apply(simp add: instance_Basic_classes_Ord_tup2_dict_def)
+  apply(rule pairLess_intro, assumption)
+  apply(simp only: insert_commute)
+  apply(subst option.case_cong_weak[where option="chooseAndSplit (instance_Basic_classes_Ord_tup2_dict key_dict val_dict) {(e1k, e1v), (e2k, e2v)}"], assumption)
+  apply(simp only: option.case split if_True Let_def)
+  apply(drule findHighestKVWithKEquivTo_less_singleton_Some, assumption)
 
 lemma comprehension_2_decompose:
   shows "\<forall>x y. cmp1 x y = EQ \<longleftrightarrow> x = y \<Longrightarrow> \<forall>x y. cmp2 x y = EQ \<longleftrightarrow> x = y \<Longrightarrow>
@@ -910,17 +965,25 @@ done
 lemma lookupBy0_eq_singleton:
   assumes "well_behaved_lem_ordering (isLess_method key_dict) (isLessEqual_method key_dict) (isGreater_method key_dict)"
     and "well_behaved_lem_ordering (isLess_method val_dict) (isLessEqual_method val_dict) (isGreater_method val_dict)"
-    and "e1 = (ec1, ec2)" and "e2 = (ed1, ed2)" and "isLess_method key_dict ec1 ed1" and "isLess_method key_dict element ed1"
-    and "eq element ec1" and "\<not> eq element ed1"
+    and "e1 = (ec1, ec2)" and "e2 = (ed1, ed2)" and "isLess_method key_dict element ed1"
+    and "eq element ec1"
+    and "\<forall>x1 x2. eq x1 x2 \<longleftrightarrow> eq x2 x1"
+    and "\<forall>x y1 y2. isLess_method key_dict y1 x \<longrightarrow> eq y2 y1 \<longrightarrow> isLess_method key_dict y2 x"
+    and "\<forall>x y. isLess_method key_dict x y \<longrightarrow> \<not> eq x y"
   shows "lookupBy0 key_dict val_dict eq element {e1, e2} = [e1]"
 using assms
   apply(simp only: lookupBy0_def)
   apply(case_tac e2, clarify)
-  apply(subst findLowestKVWithKEquivTo_2_None)
-  apply(assumption+, simp, simp, assumption+)
-  apply(simp only: option.case)
-  apply(subst findHighestKVWithKEquivTo_2_None)
-  apply(assumption+, simp, simp)
+  apply(subgoal_tac "isLess_method key_dict ec1 ed1")
+  apply(frule findLowestKVWithKEquivTo_2_None[where e1k="ec1" and e2k="ed1" and eq="eq"])
+  apply(assumption, assumption, assumption, assumption, blast, blast, blast, assumption)
+  apply clarify
+  apply(subst option.case_cong_weak[where option="findLowestKVWithKEquivTo key_dict val_dict element eq {(ec1, ec2), (ed1, ed2)} None" and option'="Some (ec1, ec2)"], assumption)
+  apply(subst option.case)
+thm findHighestKVWithKEquivTo_2_None[where eq="eq" and e2k="ec1"]
+  apply(drule findHighestKVWithKEquivTo_2_None[where eq="eq" and e2k="ec1"])
+  apply(assumption, assumption, assumption)
+
 
 lemma lookupBy0_monstrosity:
   (*assumes "well_behaved_lem_ordering
