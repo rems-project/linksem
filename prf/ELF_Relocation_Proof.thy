@@ -156,8 +156,7 @@ using assms by auto
 lemma illegal_addresses:
   assumes "address_is_disjoint_from_text_and_within_data_section addr text_start data_start program_len data_len"
   shows "\<forall>x \<le> program_len. addr \<noteq> (text_start + x)"
-using assms unfolding address_is_disjoint_from_text_and_within_data_section_def
-  by auto
+using assms unfolding address_is_disjoint_from_text_and_within_data_section_def by auto
 
 text {* The following is an ugly lemma that is necessary for controlling the unrolling of the for_loop
 function used in Anthony's model, otherwise the simplifier loops uncontrollably. *}
@@ -265,8 +264,6 @@ done
 lemma set_choose_dichotomy:
   shows "set_choose {x, y} = x \<or> set_choose {x, y} = y"
 unfolding set_choose_def by (metis (mono_tags) insert_iff singletonD someI)
-
-section {* Discharging Lem ordering lemmas *}
 
 lemma genericCompare_refl:
   fixes x :: "'a::order"
@@ -624,6 +621,22 @@ lemma map_upd_cong:
   shows "m1(x1 := y1) = m2(x2 := y2)"
 using assms by simp
 
+lemma empty_singleton_induct:
+  assumes "P []" and "\<And>x. P [x]"
+     and "\<And>x xs. xs \<noteq> [] \<Longrightarrow> P xs \<Longrightarrow> P (x#xs)"
+  shows "P x"
+using assms
+  apply(induct x)
+  apply simp
+  apply(case_tac x, clarify)
+  apply simp+
+done
+
+lemma nat_le_massage:
+  assumes "addr ≤ l" and "l ≤ Suc (addr)"
+  shows "addr = l \<or> Suc addr = l"
+using assms by auto
+
 section {* Start of the proof proper *}
 
 text {* Key lemma: if we fetch from a given state, then we are given a 20-element list back in return,
@@ -732,10 +745,18 @@ using assms
 done
 
 lemma build_fixed_program_memory_commute:
+  fixes bytes :: "8 word list"
   assumes "addr \<le> l \<and> l \<le> addr + List.length bytes" and "bytes \<noteq> []"
   shows "(build_fixed_program_memory addr bytes) (of_nat l) = bytes ! (l - addr)"
-using assms
 sorry
+
+declare word_extract.simps [simp del]
+
+declare [[show_types]]
+
+lemma word_to_nat_conversions:
+  shows "(4194316::64 word) = of_nat 4194316"
+by simp
 
 lemma x64_decode_fixed_technical_1:
   assumes "(18446744071562067968::64 word) <=s (addr::64 word) \<and> addr <=s (2147483647::64 word)" and
@@ -776,6 +797,40 @@ using assms
   apply(rule conjI)
   apply(rule impI, simp only: concrete_evaluations, simp)
   apply(rule impI, simp only: concrete_evaluations, simp)
+  apply(subst word_to_nat_conversions, subst build_fixed_program_memory_commute[where l=4194316 and addr=4194304],
+    simp, simp, simp)
+  apply(subst encode_Zmov_out_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
+    subst encode_Zmov_in_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
+    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp, simp only: append.simps,
+    simp only: diff_self_eq_0 diff_add_inverse, simp)
+  apply(subst encode_Zmov_out_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
+    subst encode_Zmov_in_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
+    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp, simp only: append.simps,
+    simp only: diff_self_eq_0 diff_add_inverse, simp)
+  apply(subst encode_Zmov_out_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
+    subst encode_Zmov_in_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
+    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp, simp only: append.simps,
+    simp only: diff_self_eq_0 diff_add_inverse, simp)
+  apply(subst encode_Zmov_out_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
+    subst encode_Zmov_in_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
+    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp, simp only: append.simps,
+    simp only: diff_self_eq_0 diff_add_inverse, simp)
+  apply(subst encode_Zmov_out_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
+    subst encode_Zmov_in_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
+    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp, simp only: append.simps,
+    simp only: diff_self_eq_0 diff_add_inverse, simp)
+  apply(subst encode_Zmov_out_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
+    subst encode_Zmov_in_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
+    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp, simp only: append.simps,
+    simp only: diff_self_eq_0 diff_add_inverse, simp)
+  apply(subst encode_Zmov_out_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
+    subst encode_Zmov_in_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
+    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp, simp only: append.simps,
+    simp only: diff_self_eq_0 diff_add_inverse, simp)
+  apply(rule refl)
+  apply(simp only: concrete_evaluations)
+  xxxxxxxxxx here xxxxxxxxxxxx
+  
 sorry
 
 lemma x64_decode_fixed_technical_2:
