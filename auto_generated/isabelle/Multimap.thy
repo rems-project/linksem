@@ -98,8 +98,8 @@ function (sequential,domintros)  findLowestKVWithKEquivTo  :: " 'k Ord_class \<R
      " findLowestKVWithKEquivTo dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v k equiv1 subSet maybeBest = (
     if \<not> finite subSet then
       undefined
-    else if \<not> (well_behaved_lem_ordering (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
-     dict_Basic_classes_Ord_v)) (isLess_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
+    else if \<not> (well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
+     dict_Basic_classes_Ord_v)) (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
      dict_Basic_classes_Ord_v))) then
       undefined
     else
@@ -136,13 +136,17 @@ function (sequential,domintros)  findLowestKVWithKEquivTo  :: " 'k Ord_class \<R
                     findLowestKVWithKEquivTo 
   dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v k equiv1 higher maybeBest
     ))" 
-apply pat_completeness
-apply(case_tac "finite subSet"; case_tac "(well_behaved_lem_ordering (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
-     dict_Basic_classes_Ord_v)) (isLess_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
+  apply pat_completeness
+  apply(case_tac "finite subSet")
+  apply(subst if_weak_cong[where b="infinite subSet" and c="False"], simp)
+  apply(simp only: if_False simp_thms)
+  apply(case_tac "(well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
+     dict_Basic_classes_Ord_v)) (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
      dict_Basic_classes_Ord_v)))")
-apply auto
+  apply(subst if_weak_cong[where b="\<not> (well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v))
+               (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v)))" and c="False"])
+  apply auto
 done
-
 
 (*val testEquiv : natural -> natural -> bool*)
 definition testEquiv  :: " nat \<Rightarrow> nat \<Rightarrow> bool "  where 
@@ -166,8 +170,8 @@ function (sequential,domintros)  findHighestKVWithKEquivTo  :: " 'k Ord_class \<
      " findHighestKVWithKEquivTo dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v k equiv1 subSet maybeBest = (
     if \<not> finite subSet then
       undefined
-    else if \<not> (well_behaved_lem_ordering (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
-     dict_Basic_classes_Ord_v)) (isLess_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
+    else if \<not> (well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
+     dict_Basic_classes_Ord_v)) (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
      dict_Basic_classes_Ord_v))) then
       undefined
     else
@@ -205,11 +209,16 @@ function (sequential,domintros)  findHighestKVWithKEquivTo  :: " 'k Ord_class \<
                     findHighestKVWithKEquivTo 
   dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v k equiv1 lower maybeBest
     ))"
-apply pat_completeness
-apply(case_tac "finite subSet"; case_tac "(well_behaved_lem_ordering (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
-     dict_Basic_classes_Ord_v)) (isLess_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
+  apply pat_completeness
+  apply(case_tac "finite subSet")
+  apply(subst if_weak_cong[where b="infinite subSet" and c="False"], simp)
+  apply(simp only: if_False simp_thms)
+  apply(case_tac "(well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
+     dict_Basic_classes_Ord_v)) (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
      dict_Basic_classes_Ord_v)))")
-apply auto
+  apply(subst if_weak_cong[where b="\<not> (well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v))
+               (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v)))" and c="False"])
+  apply auto
 done
 
 
