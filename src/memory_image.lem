@@ -607,18 +607,28 @@ let tag_image t el_name el_offset tag_len img =
      |>
 
 val address_to_element_and_offset : forall 'abifeature. natural -> annotated_memory_image 'abifeature -> maybe (string * natural)
-let address_to_element_and_offset addr img = 
+let address_to_element_and_offset query_addr img = 
     (* Find the element with the highest address <= addr *)
     let (maybe_highest_le : maybe (natural * string * element))
      = List.foldl (fun maybe_current_max_le -> (fun (el_name, el_rec) ->
-        (* let _ = errln ("Saw element named `" ^ el_name ^ " with startpos " ^ (
-            match el_rec.startpos with Just addr -> ("0x" ^ (hex_string_of_natural addr)) | Nothing -> "(none)" end))
-        in *)
+        let _ = errln ("Saw element named `" ^ el_name ^ " with startpos " ^ (
+            (match el_rec.startpos with Just addr -> ("0x" ^ (hex_string_of_natural addr)) | Nothing -> "(none)" end)
+            ^ " and length " ^
+            (match el_rec.length with Just len -> ("0x" ^ (hex_string_of_natural len)) | Nothing -> "(none)" end)
+            ))
+        in
         match (maybe_current_max_le, el_rec.startpos) with
-            (Nothing, Nothing) -> Nothing
-            | (Nothing, Just pos) -> if pos <= addr then Just (pos, el_name, el_rec) else Nothing
-            | (Just (cur, cur_el_name, cur_el_rec), Nothing) -> maybe_current_max_le
-            | (Just (cur, cur_el_name, cur_el_rec), Just pos) -> if pos <= addr && pos > cur then Just (pos, el_name, el_rec) else maybe_current_max_le
+              (Nothing,                                    Nothing) -> Nothing
+            | (Nothing,                                    Just this_element_pos) -> if this_element_pos <= query_addr 
+                                                                                     then Just (this_element_pos, el_name, el_rec) 
+                                                                                     else Nothing
+            | (Just (cur_max_le, cur_el_name, cur_el_rec), Nothing) ->               maybe_current_max_le
+            | (Just (cur_max_le, cur_el_name, cur_el_rec), Just this_element_pos) -> if this_element_pos <= query_addr 
+                                                                                        && (this_element_pos > cur_max_le 
+                                                                                         || (this_element_pos = cur_max_le
+                                                                                             && (cur_el_rec.length = Just 0)))
+                                                                                        then Just (this_element_pos, el_name, el_rec) 
+                                                                                        else maybe_current_max_le
         end
     )) Nothing (Map_extra.toList img.elements)
     in
@@ -627,15 +637,15 @@ let address_to_element_and_offset addr img =
             (* final sanity check: is the length definite, and if so, does the
              * element span far enough? *)
             match el_rec.length with
-                Just l -> if el_def_startpos + l >= addr 
-                    then Just (el_name, addr - el_def_startpos) 
+                Just l -> if el_def_startpos + l >= query_addr 
+                    then Just (el_name, query_addr - el_def_startpos) 
                     else 
-                        (*let _ = errln ("Discounting " ^ el_name ^ " because length is too short") in*) Nothing
-                | Nothing -> (*let _ = errln ("Gave up because element has unknown length") in*) Nothing
+                        let _ = errln ("Discounting " ^ el_name ^ " because length is too short") in Nothing
+                | Nothing -> let _ = errln ("Gave up because element has unknown length") in Nothing
             end
         | Nothing -> 
             (* no elements with a low enough assigned address, so nothing *)
-            Nothing
+            let _ = errln ("Found no elements with low enough address") in Nothing
     end
     
 val element_and_offset_to_address : forall 'abifeature. (string * natural) -> annotated_memory_image 'abifeature -> maybe natural
