@@ -82,7 +82,7 @@ papers/pldi-elf-linking-2016/pldi-elf-linking-2016.out
 papers/pldi-elf-linking-2016/pldi-elf-linking-2016.pdf
 papers/pldi-elf-linking-2016/pldi-elf-linking-2016.ps.gz
 papers/pldi-elf-linking-2016/pldi-elf-linking-2016.undefined
-? src/abis/aarch64/abi_aarch64_program_header_table.ml
+src/abis/aarch64/abi_aarch64_program_header_table.ml
 src/abis/aarch64/abi_aarch64_section_header_table.ml
 src/abis/aarch64/abi_aarch64_symbol_table.ml
 src/abis/abi_utilities.ml
@@ -131,12 +131,3 @@ talks/rems-04-2015-linking/linking.pdf
 talks/rems-04-2015-linking/linking.snm
 talks/rems-04-2015-linking/linking.toc
 talks/rems-04-2015-linking/linking.vrb
-test/*/Makefile
-test/*/diff.sh
-test/*/run.sh
-test/*/*.o
-test/*/*.a
-test/*/*-cmd
-test/*/*.cmd
-test/*/*.env
-test/*/*.map
