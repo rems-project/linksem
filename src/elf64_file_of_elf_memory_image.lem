@@ -225,16 +225,9 @@ let elf64_file_of_elf_memory_image a make_concrete fname img =
     let symtab = 
         (* Get all the symbols *)
         elf64_null_symbol_table_entry :: [
-                let (el_name, (start, len)) = match maybe_range with 
-                    Just(el_name, (start, len)) -> (el_name, (start, len)) 
-                    | Nothing -> failwith "impossible: symbol with no range"
-                end
-                in 
                 match tag with 
-                    SymbolDef(d) -> 
-                    (* CHECK: can we expect these to be these usable, the way we generated them?  *)
-                      <|
-                         elf64_st_name  = match String_table.find_string d.def_symname strtab with
+                    SymbolDef(d) ->
+                         let nameidx = match String_table.find_string d.def_symname strtab with
                             Just idx -> let v = elf64_word_of_natural idx
                                         in
                                         (* let _ = errln ("strtab: found `" ^ d.def_symname ^ "' at index " ^ (show v))
@@ -242,28 +235,45 @@ let elf64_file_of_elf_memory_image a make_concrete fname img =
                                         v
                             | Nothing -> failwith "impossible: symbol name not in strtab we just created"
                             end
-                       ; elf64_st_info  = d.def_syment.elf64_st_info     (* type, binding, visibility *)
-                       ; elf64_st_other = d.def_syment.elf64_st_other
-                       ; elf64_st_shndx = elf64_half_of_natural ( (* what's the section index of this element? *)
-                                let maybe_found = mapMaybei
-                                    (fun i -> fun isec -> if isec.elf64_section_name_as_string = el_name then Just i else Nothing) 
-                                    sorted_sections
-                                in
-                                match maybe_found with
-                                    [i] -> 1 + i
-                                    | [] -> (* HMM *) (*let _ = errln ("Couldn't compute section index of symbol " ^ d.def_symname)
-                                        in*) 0
-                                    | _ -> failwith ("internal error: multiple sections named " ^ el_name)
+                        in
+                        let (shndx, svalue, sz) = if d.def_syment.elf64_st_shndx = elf64_half_of_natural shn_abs
+                            then (d.def_syment.elf64_st_shndx, d.def_syment.elf64_st_value, d.def_syment.elf64_st_size)
+                            else
+                                let (el_name, (start, len)) = match maybe_range with 
+                                    Just(el_name, (start, len)) -> (el_name, (start, len)) 
+                                    | Nothing -> failwith "impossible: non-ABS symbol with no range"
                                 end
-                            )
-                       ; elf64_st_value = elf64_addr_of_natural (start + match Map.lookup el_name img.elements with
+                                in
+                                (elf64_half_of_natural ( (* what's the section index of this element? *)
+                                    let maybe_found = mapMaybei
+                                        (fun i -> fun isec -> if isec.elf64_section_name_as_string = el_name then Just i else Nothing) 
+                                        sorted_sections
+                                    in
+                                    match maybe_found with
+                                        [i] -> 1 + i
+                                        | [] -> (* HMM *) (*let _ = errln ("Couldn't compute section index of symbol " ^ d.def_symname)
+                                            in*) 0
+                                        | _ -> failwith ("internal error: multiple sections named " ^ el_name)
+                                    end
+                                    ),
+                                    elf64_addr_of_natural (start + match Map.lookup el_name img.elements with
                                     Just x -> match x.startpos with
                                         Just addr -> addr
                                         | Nothing -> failwith "internal error: symbol defined in section with no address"
                                         end
                                     | Nothing -> failwith "internal error: section (of symbol) not found"
-                                    end)
-                       ; elf64_st_size  = elf64_xword_of_natural len
+                                    end),
+                                    elf64_xword_of_natural len
+                                )
+                        in
+                      (* CHECK: can we expect these to be these usable, the way we generated them?  *)
+                      <|
+                         elf64_st_name  = nameidx
+                       ; elf64_st_info  = d.def_syment.elf64_st_info     (* type, binding, visibility *)
+                       ; elf64_st_other = d.def_syment.elf64_st_other
+                       ; elf64_st_shndx = shndx
+                       ; elf64_st_value = svalue
+                       ; elf64_st_size  = sz
                        |>
 
                     (* FIXME: do we ever get symbolrefs? *)

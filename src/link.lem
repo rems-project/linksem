@@ -608,8 +608,8 @@ let relocate_output_image a bindings_by_name img =
         in
         <|
             elements = Map.insert el_name new_element (Map.delete el_name img.elements)
-         ;  by_tag   = img.by_tag \ {(SymbolRef(symref_and_reloc_site), Just(el_name, (start, len)))}
-         ;  by_range = img.by_range \ {(Just(el_name, (start, len)), SymbolRef(symref_and_reloc_site))}
+         ;  by_tag   = Set.difference img.by_tag {(SymbolRef(symref_and_reloc_site), Just(el_name, (start, len)))}
+         ;  by_range = Set.difference img.by_range {(Just(el_name, (start, len)), SymbolRef(symref_and_reloc_site))}
          |>
     )
     in
@@ -627,13 +627,26 @@ let relocate_output_image a bindings_by_name img =
                             in
                             let symaddr = match x.maybe_def_bound_to with
                                 Just(ApplyReloc(_), Just(bound_def)) ->
+                                    (* Here we are mapping
+                                     * *from* the definition found in an input object during resolution (bound_def)
+                                     * *to* the corresponding symbol in the output image, now that we've built it.
+                                     *)
                                     match find_defs_matching bound_def img with
                                         [] -> failwith ("internal error: bound-to symbol (name `" ^ bound_def.def_symname ^ "') not defined")
-                                        | ((el_name, (start, len)), d) :: more ->
-                                            let v = match element_and_offset_to_address (el_name, start) img with
-                                                Just a -> a
-                                                | Nothing -> failwith "internal error: could not get address for symbol"
-                                            end
+                                        | (maybe_range, d) :: more ->
+                                            let v = 
+                                                match maybe_range with 
+                                                    Just(el_name, (start, len)) ->
+                                                    match element_and_offset_to_address (el_name, start) img with
+                                                        Just a -> a
+                                                        | Nothing -> failwith "internal error: could not get address for symbol"
+                                                    end
+                                                    | Nothing ->
+                                                        (* okay, it'd better be an ABS symbol. *)
+                                                        if natural_of_elf64_half d.def_syment.elf64_st_shndx = shn_abs
+                                                            then natural_of_elf64_addr d.def_syment.elf64_st_value
+                                                            else failwith "no range for non-ABS symbol"
+                                                end
                                             in
                                             match more with 
                                                 [] -> v
@@ -852,9 +865,46 @@ let link script a options linkables =
     )))
     in
     *)
-    let (unrelocated_output_image, bindings_by_name)
+    let (unrelocated_output_image_lacking_abs_symbols, bindings_by_name)
      = interpret_linker_control_script script linkables linker_script_linkable_idx a input_sections seen_ordering default_place_orphans initial_bindings_by_name
     in
+    (* also copy over ABS (range-less) symbols from all included input items *)
+    let all_abs_range_tags_in_included_inputs = List.concat (
+        List.map (fun (img, (idx, linkable)) -> 
+          let abslist = List.mapMaybe (fun (tag, maybeRange) ->
+            match tag with
+                SymbolDef(ent) -> if maybeRange = Nothing && natural_of_elf64_half ent.def_syment.elf64_st_shndx = shn_abs
+                    then Just (maybeRange, ent)
+                    else Nothing
+                | _ -> Nothing
+            end
+          ) (tagged_ranges_matching_tag (SymbolDef(null_symbol_definition)) img)
+          in
+          let _ = errln ("Copying " ^ (show (length abslist)) ^ " ABS symbols (names: " ^ 
+            List.foldl (fun acc -> fun str -> if stringLength acc = 0 then str else acc ^ ", " ^ str) "" 
+                (List.map (fun (_, x) -> x.def_symname) abslist)
+            ^ ") from not-discarded linkable item " ^
+            (short_string_of_linkable_item linkable))
+          in
+          [ (maybe_range, SymbolDef(<| def_symname = ent.def_symname
+                                     ; def_syment  = ent.def_syment
+                                     ; def_sym_scn = ent.def_sym_scn
+                                     ; def_sym_idx = ent.def_sym_idx
+                                     ; def_linkable_idx = idx 
+                                     |>)) | forall ((maybe_range, ent) MEM abslist) | true ]
+        ) (zip imgs linkables_not_discarded)
+    )
+    in
+    let by_range_including_abs_symbols = 
+        unrelocated_output_image_lacking_abs_symbols.by_range
+        union
+        (Set.fromList all_abs_range_tags_in_included_inputs)
+    in
+    let unrelocated_output_image = <|
+        elements = unrelocated_output_image_lacking_abs_symbols.elements
+    ;   by_range = by_range_including_abs_symbols
+    ;   by_tag   = by_tag_from_by_range by_range_including_abs_symbols
+    |>
     (* This image has 
      * - addresses assigned 
      * - relocations *not* applied
@@ -864,6 +914,7 @@ let link script a options linkables =
            -- other ABI features have to be generated before the linker script runs (dyn relocs, GOT, PLT?)
            -- ... so we might be okay for now.
      *)
+    in
     let remaining_relocs = Multimap.lookupBy Memory_image_orderings.tagEquiv (SymbolRef(null_symbol_reference_and_reloc_site))
         unrelocated_output_image.by_tag
     in

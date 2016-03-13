@@ -1362,9 +1362,34 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                                                             (* check it against our section *)
                                                             let section_end_addr = accum_current_addr + irec.isec.elf64_section_size
                                                             in  
-                                                            abs_address >= accum_current_addr
-                                                                && abs_address < section_end_addr
+                                                            (abs_address >= accum_current_addr
+                                                                && abs_address < section_end_addr)
                                                                 (* FIXME: argument that this should be <=, i.e. can mark end addr *)
+                                                                (* PROBLEM: this is all very well, but there's no reason why
+                                                                 * ABS symbols need to point at an address within some output
+                                                                 * section. They can just be arbitrary values. This is a bit of an
+                                                                 * abuse if we do it within the C language (to get the value, you 
+                                                                 * have to do "(int) &sym", i.e. create a meaningless pointer 
+                                                                 * intermediate) but arguably is okay in an impl-def way.
+                                                                 * 
+                                                                 * WHAT to do? well, just always output the ABS symbols, for now.
+                                                                 * 
+                                                                 * The example that provoked this is in glibc's 
+                                                                 * locale/lc-address.c, which compiles down to create
+                                                                 * the following ABS symbol:
+                                                                 * 
+                                                                 * 0000000000000001 g       *ABS*	0000000000000000 _nl_current_LC_ADDRESS_used
+                                                                 * 
+                                                                 * ... i.e. the _nl_current_LC_ADDRESS_used appears to be just a flag.
+                                                                 *
+                                                                 * Where can we handle this? We don't see ABS symbols since they
+                                                                 * aren't associated with sections. We simply need to copy over
+                                                                 * all the ABS symbols appearing in included input objects.
+                                                                 * That means there's no point doing anything with them here
+                                                                 * while we're fiddling with sections. Do it later in a whole-
+                                                                 * -image pass.
+                                                                 *)
+                                                                 && false (* ... at least until we see a better way *)
                                                         )
                                                     | _ -> false
                                                 end

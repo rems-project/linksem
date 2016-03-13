@@ -571,7 +571,7 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
                             | Just sd -> 
                                 match Memory_image_orderings.find_defs_matching sd img with
                                     [] -> failwith ("no matching definitions for PLT entry named " ^ symname)
-                                    | [((def_el_name, (def_start, def_len)), d)] -> 
+                                    | [(Just(def_el_name, (def_start, def_len)), d)] -> 
                                         match element_and_offset_to_address (def_el_name, def_start) img with
                                             Nothing -> failwith ("PLT: no address for definition offset in element " ^ def_el_name)
                                             | Just x -> 
@@ -676,7 +676,7 @@ let amd64_concretise_support img =
                             | Just sd -> 
                                 match Memory_image_orderings.find_defs_matching sd img with
                                 [] -> failwith ("no matching definitions for GOT entry named " ^ symname)
-                                | [((def_el_name, (def_start, def_len)), d)] -> 
+                                | [(Just(def_el_name, (def_start, def_len)), d)] -> 
                                     match element_and_offset_to_address (def_el_name, def_start) img with
                                         Nothing -> failwith ("no address for definition offset in element " ^ def_el_name)
                                         | Just x -> 
