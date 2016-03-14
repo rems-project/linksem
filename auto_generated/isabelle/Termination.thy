@@ -222,7 +222,7 @@ lemma disjE3:
   by blast
 
 lemma set_split_union1:
-  assumes "well_behaved_lem_ordering (isLess_method dict) (isGreater_method dict)"
+  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict)"
       and "split dict e s = (x, y)"
       and "e \<in> s"
   shows "s = x \<union> { e } \<union> y"
@@ -295,7 +295,7 @@ proof -
 qed
 
 lemma set_split_union2:
-  assumes "well_behaved_lem_ordering (isGreater_method dict) (isLess_method dict)"
+  assumes "well_behaved_lem_ordering (isGreater_method dict) (isLessEqual_method dict) (isLess_method dict)"
       and "split dict e s = (x, y)"
       and "e \<notin> s"
   shows "s = x \<union> y"
@@ -365,7 +365,7 @@ lemma set_choose_member:
 using assms by auto
 
 lemma chooseAndSplit_card1:
-  assumes "well_behaved_lem_ordering (isLess_method dict) (isGreater_method dict)"
+  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict)"
       and "finite s"
       and "chooseAndSplit dict s = Some (x, e, y)"
   shows "card x < card s"
@@ -414,7 +414,7 @@ using assms proof -
 qed
 
 lemma chooseAndSplit_card2:
-  assumes "well_behaved_lem_ordering (isLess_method dict) (isGreater_method dict)"
+  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict)"
       and "finite s"
       and "chooseAndSplit dict s = Some (x, e, y)"
   shows "card y < card s"
@@ -452,7 +452,7 @@ using assms proof -
     also have "set_choose s \<in> s"
       using set_choose_member `s \<noteq> {}` by simp
     have **: "\<And>x y. x = y \<Longrightarrow> \<not> isLess_method dict x y"
-      using assms using well_behaved_lem_ordering.elims(2) by auto
+      using assms using well_behaved_lem_ordering.elims by metis
     hence "s = x \<union> {set_choose s} \<union> y"
       using set_split_union1[OF assms(1) `split dict (set_choose s) s = (x,y)` `set_choose s \<in> s`] by simp
     hence "y \<subset> s"
