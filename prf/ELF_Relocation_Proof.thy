@@ -221,6 +221,18 @@ lemma concrete_evaluations:
     and "(word_cat (0::1 word) ((word_cat (0::1 word) (0::2 word))::3 word)::4 word) OR (8::4 word) = (8::4 word)"
     and "(4194316::64 word) = (((4194304::64 word) + ((of_nat 12)::64 word))::64 word)"
     and "(unat (uint64_land (of_int (int 2)) (of_int (int (65536 * 65536 - 1))))) = 2"
+    and "((4194304::nat) + unat (4::64 word) - (4194304::nat)) = 4"
+    and "((8::4 word) = (0::4 word)) = False"
+    and "(of_nat (4194304::nat) + (5::64 word)) = (4194309::64 word)"
+    and "((4194304::nat) + unat (7::64 word) - (4194304::nat)) = 7"
+    and "(of_nat (4194304::nat) + (8::64 word)) = (4194312::64 word)"
+    and "(of_nat (4194304::nat) + (11::64 word)) = (4194315::64 word)"
+    and "((4194304::nat) + unat (10::64 word) - (4194304::nat)) = 10"
+    and "(4194309::nat) - (4194304::nat) = 5"
+    and "(4194310::nat) - (4194304::nat) = 6"
+    and "(4194312::nat) - (4194304::nat) = 8"
+    and "(4194313::nat) - (4194304::nat) = 9"
+    and "(4194315::nat) - (4194304::nat) = 11"
 by eval+
 
 lemma word_of_int_of_int_0:
@@ -235,6 +247,15 @@ by (metis Abs_fnat_hom_add of_int_of_nat_eq word_of_int)
 lemma of_nat_manipulate:
   "(of_nat m) + (n::'a::len word) = of_nat (m + unat n)"
 by simp
+
+lemma word_to_nat_conversions:
+  shows "(4194309::64 word) = of_nat 4194309"
+    and "(4194310::64 word) = of_nat 4194310"
+    and "(4194312::64 word) = of_nat 4194312"
+    and "(4194313::64 word) = of_nat 4194313"
+    and "(4194315::64 word) = of_nat 4194315"
+    and "(4194316::64 word) = of_nat 4194316"
+by simp_all
 
 lemma numeral_expansion:
   shows "(4::nat) = Suc (Suc (Suc (Suc 0)))"
@@ -750,13 +771,15 @@ lemma build_fixed_program_memory_commute:
   shows "(build_fixed_program_memory addr bytes) (of_nat l) = bytes ! (l - addr)"
 sorry
 
+lemma scast_word_cat_word_extract_64:
+  fixes a::"64 word"
+  assumes "18446744071562067968 <=s a" and "a <=s 2147483647"
+  shows "scast (word_cat (word_extract 31 24 a)
+          (word_cat (word_extract 23 16 a) (word_cat (word_extract 15 8 a)
+            (word_extract 7 0 a)))) = a"
+sorry
+
 declare word_extract.simps [simp del]
-
-declare [[show_types]]
-
-lemma word_to_nat_conversions:
-  shows "(4194316::64 word) = of_nat 4194316"
-by simp
 
 lemma x64_decode_fixed_technical_1:
   assumes "(18446744071562067968::64 word) <=s (addr::64 word) \<and> addr <=s (2147483647::64 word)" and
@@ -795,10 +818,8 @@ using assms
     subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp, simp only: append.simps,
     simp only: diff_self_eq_0 diff_add_inverse, simp)
   apply(rule conjI)
-  apply(rule impI, simp only: concrete_evaluations, simp)
-  apply(rule impI, simp only: concrete_evaluations, simp)
   apply(subst word_to_nat_conversions, subst build_fixed_program_memory_commute[where l=4194316 and addr=4194304],
-    simp, simp, simp)
+    simp, simp, simp, simp add: concrete_evaluations)+
   apply(subst encode_Zmov_out_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
     subst encode_Zmov_in_concrete, assumption, rule refl, rule refl, rule refl, rule refl,
     subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp, simp only: append.simps,
@@ -828,10 +849,20 @@ using assms
     subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp, simp only: append.simps,
     simp only: diff_self_eq_0 diff_add_inverse, simp)
   apply(rule refl)
+  apply(subst encode_Zmov_out_concrete, assumption+)+
+  apply(subst encode_Zmov_in_concrete, assumption+)+
+  apply(simp only: concrete_evaluations append.simps if_False word_to_nat_conversions)
+  apply(subst build_fixed_program_memory_commute, simp, simp)+
+  apply(simp only: immediate32.simps list.case)
+  apply(simp only: prod.inject)
+  apply(rule conjI)
   apply(simp only: concrete_evaluations)
-  xxxxxxxxxx here xxxxxxxxxxxx
-  
-sorry
+  apply(simp only: nth.simps numeral_expansion nat.case)
+  apply(clarify, drule scast_word_cat_word_extract_64, assumption, simp only: numeral_expansion)
+  apply(rule refl)
+  apply(simp only: concrete_evaluations nth.simps numeral_expansion nat.case immediate32.simps list.case)
+  apply(simp only: prod.inject, rule conjI, eval, rule refl)
+done
 
 lemma x64_decode_fixed_technical_2:
   assumes "(18446744071562067968::64 word) <=s (addr::64 word) \<and> addr <=s (2147483647::64 word)" and
