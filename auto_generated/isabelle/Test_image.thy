@@ -117,7 +117,7 @@ definition img1  :: "nat \<Rightarrow> (Elf_Types_Local.byte)list \<Rightarrow>(
           ((''.data''), (|
              startpos = (Some(( 4194324 :: nat)))
            , length1 = (Some(( 8 :: nat)))
-           , contents = (List.map (\<lambda> x .  Some x) (List.replicate(( 8 :: nat)) ((of_nat (( 42 :: nat)) :: byte))))
+           , contents = (List.map (\<lambda> x .  Some x) (List.replicate(( 8 :: nat)) ((of_nat ((0 :: nat)) :: byte))))
           |))
           ]))
         , by_range = (List.set (meta0 addr))

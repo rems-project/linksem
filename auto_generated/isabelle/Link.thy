@@ -608,7 +608,7 @@ definition write_natural_field  :: " nat \<Rightarrow> nat \<Rightarrow> element
     (* FIXME: avoid hard-coding little-endian *)
     (let field_bytes = (natural_to_le_byte_list new_field_value)
     in
-    if List.length field_bytes > width then failwith (''internal error: relocation output unrepresentable'')
+    if \<not> (List.length field_bytes \<le> width) then failwith (''internal error: relocation output unrepresentable'')
     else  (| startpos =(startpos   element) , length1 =(length1   element),
  contents = (((pre_bytes @
                  ((let x2 = ([]) in
