@@ -56,14 +56,17 @@ definition relocation_image :: "nat \<Rightarrow> Abis.any_abi_feature annotated
 text {* Produce an X64 memory (a map from addresses to bytes) out of a memory image that we will
 obtain from the relocation_image above. *}
 definition X64_memory_of_memory_image :: "memory_image \<Rightarrow> (nat \<Rightarrow> 8 word)" where
-  "X64_memory_of_memory_image i addr =
+  "X64_memory_of_memory_image i addr \<equiv>
      (* XXX: must be a better way than this, surely... *)
      (let keys = Map.dom i in
-      let rels = { s. \<exists>k \<in> keys. Some s = i k \<and> addr \<ge> the (startpos s) \<and> addr \<le> the (startpos s) + the (length1 s) } in
-      let arb  = Set.the_elem rels in
-      let reba = addr - the (startpos arb) in
-      let byte = List.nth (contents arb) reba in
-        the byte)"
+      let rels = { s. \<exists>k \<in> keys. Some s = i k \<and> addr \<ge> the (startpos s) \<and> addr < the (startpos s) + the (length1 s) } in
+        if rels = {} then
+          0
+        else
+          let arb  = Set.the_elem rels in
+          let reba = addr - the (startpos arb) in
+          let byte = List.nth (contents arb) reba in
+            the byte)"
 
 text {* Produces an initial state for the X64 emulation out of a memory_image (which will be converted
 to a memory, per the definition above) and a fixed start address for the instruction pointer.  This
@@ -126,6 +129,7 @@ particular, both RAX registers will contain the immediate constant, 5. *}
 definition correctness_property :: "bool" where
   "correctness_property \<equiv>
      \<forall>addr::nat. \<forall>flags :: Zeflags \<Rightarrow> bool option. \<forall>reg :: Zreg \<Rightarrow> 64 word.
+     \<forall>a1 a2 a3 a4.
        let fprogr  = fixed_program addr in
 
        let text_start   = 4194304 in (* Fixed in Test_image *)
@@ -135,6 +139,7 @@ definition correctness_property :: "bool" where
        
        (*address_is_disjoint_from_text_and_within_data_section addr text_start data_start program_len data_len \<longrightarrow>*)
        (18446744071562067968 <=s ((of_nat addr)::64 word) ∧ ((of_nat addr)::64 word) <=s 2147483647) \<longrightarrow>
+       natural_to_le_byte_list (16 + addr) = [a1, a2, a3, a4] \<longrightarrow>
        load_fixed_program_instructions flags fprogr reg text_start =
        load_relocated_program_image flags (elements (relocation_image addr)) reg text_start 
 (*
@@ -1567,8 +1572,6 @@ lemma the_elem_singleton:
   shows "the_elem {s. s = x} = x"
 by simp
 
-thm build_fixed_program_memory_commute
-
 lemma build_fixed_program_memory_commute_miss_lower:
   fixes bytes :: "8 word list"
   assumes "x < addr" and "x \<in> unats 64"
@@ -1611,12 +1614,54 @@ using assms unfolding build_fixed_program_memory_def
   apply auto[1]
 done
 
+lemma ext_of_nat:
+  fixes f g :: "64 word \<Rightarrow> 'a"
+  assumes "\<And>x. f (of_nat x) = g (of_nat x)"
+  shows "f = g"
+by(rule ext, metis assms word_unat.Rep_inverse)
+
+lemma set_comprehension_collapse_miss_lower:
+  assumes "x < 4194304"
+  shows "{s. ∃k∈{''.data'', ''.text''}.
+                      Some s = [''.data'' ↦ ⦇startpos = Some 4194324, length1 = Some 8, contents = [Some 0, Some 0, Some 0, Some 0, Some 0, Some 0, Some 0, Some 0]⦈, ''.text'' ↦
+                                ⦇startpos = Some 4194304, length1 = Some 20,
+                                   contents = [Some 72, Some 199, Some 4, Some 37, Some a1, Some a2, Some a3, Some a4, Some 5, Some 0, Some 0, Some 0, Some 72, Some 139, Some 4, Some 37, Some 0,
+                                               Some 0, Some 0, Some 0]⦈]
+                                k ∧
+                      the (startpos s) ≤ x ∧ x < the (startpos s) + the (length1 s)} = {}"
+using assms
+  apply auto
+done
+
+lemma set_comprehension_collapse_hit:
+  fixes x :: "nat"
+  assumes "4194304 ≤ x" and "x < 4194324"
+  shows "{s. ∃k∈{''.data'', ''.text''}.
+            Some s = [''.data'' ↦ ⦇startpos = Some 4194324, length1 = Some 8, contents = [Some 0, Some 0, Some 0, Some 0, Some 0, Some 0, Some 0, Some 0]⦈,
+                      ''.text'' ↦ ⦇startpos = Some 4194304, length1 = Some 20, contents = [Some 72, Some 199, Some 4, Some 37, Some a1, Some a2, Some a3,
+                                    Some a4, Some 5, Some 0, Some 0, Some 0, Some 72, Some 139, Some 4, Some 37, Some 0, Some 0, Some 0, Some 0]⦈] k ∧
+                  the (startpos s) ≤ unat ((of_nat x)::64 word) ∧ unat ((of_nat x)::64 word) < the (startpos s) + the (length1 s)} =
+  { ⦇startpos = Some 4194304, length1 = Some 20,
+     contents = [Some 72, Some 199, Some 4, Some 37, Some a1, Some a2, Some a3, Some a4, Some 5, Some 0, Some 0, Some 0, Some 72, Some 139, Some 4, Some 37,
+      Some 0, Some 0, Some 0, Some 0]⦈ }"
+using assms
+  apply auto
+  apply(subst (asm) word_unat.Abs_inverse, simp only: unats_def, simp)+
+  apply(subst word_unat.Abs_inverse, simp only: unats_def, simp)+
+  apply assumption
+  apply(subst word_unat.Abs_inverse, simp only: unats_def, simp, assumption)
+done
+
+lemma dom_2:
+  shows "dom [k1 ↦ v1, k2 ↦ v2] = {k1, k2}"
+by auto
+
 theorem
   shows "correctness_property"
 unfolding correctness_property_def
   apply(rule allI)+
   apply(simp only: Let_def)
-  apply(rule impI, erule conjE)
+  apply((rule impI)+, erule conjE)
   apply(simp only: load_fixed_program_instructions_def)
   apply(simp only: fixed_program_def mov_constant_to_mem_def mov_constant_from_mem_def list.map
     concat.simps append_Nil2 Let_def)
@@ -1630,23 +1675,28 @@ unfolding correctness_property_def
   apply(subst encode_Zmov_out_concrete, rule conjI, simp only: concrete_evaluations,
     simp only: concrete_evaluations, (rule refl)+)
   apply(simp only: concrete_evaluations)
-  apply(subst img1_technical)
-prefer 2
+  apply(subst img1_technical, assumption)
   apply(simp only: annotated_memory_image.simps)
   apply(simp only: load_relocated_program_image_def X64_state.ext_inject)
   apply(rule conjI, rule refl)
   apply(rule conjI)
-  apply(simp only: X64_memory_of_memory_image_def)
-  apply simp
-prefer 2
-  apply(simp)
-  apply(rule ext)
-  apply(subgoal_tac "a < 4194304 \<or> a \<ge> 4194304 \<and> a < 4194324 \<or> a \<ge> 4194324 \<and> a < 4194332 \<or> a \<ge> 4194332")
-using [[show_types]]
+  apply(simp only: X64_memory_of_memory_image_def dom_2)
+  apply(simp only: Let_def)
+  apply(rule ext_of_nat)
+  apply(subgoal_tac "x < 4194304 \<or> x \<ge> 4194304 \<and> x < 4194324 \<or> x \<ge> 4194324 \<and> x < 4194332 \<or> x \<ge> 4194332")
   apply(erule disjE)
-prefer 2
-  apply auto[1]
-thm build_fixed_program_memory_commute_miss_lower
+  apply(subst build_fixed_program_memory_commute_miss_lower, assumption, simp only: unats_def, rule CollectI, simp)
+  apply(subst word_unat.Abs_inverse, simp only: unats_def, simp)+
+  apply(subst set_comprehension_collapse_miss_lower, assumption)+
+  apply(simp only: refl if_True)
+  apply(erule disjE)
+  apply(subst build_fixed_program_memory_commute, simp, simp, simp only: unats_def, simp)
+  apply(subst set_comprehension_collapse_hit, simp, simp)+
+  apply(subst if_weak_cong[where b="{⦇startpos = Some 4194304, length1 = Some 20,
+               contents = [Some 72, Some 199, Some 4, Some 37, Some a1, Some a2, Some a3, Some a4, Some 5, Some 0, Some 0, Some 0, Some 72, Some 139, Some 4, Some 37, Some 0, Some 0, Some 0,
+                           Some 0]⦈} = {}" and c="False"], simp)
+  apply(simp only: if_False the_elem_eq element.simps option.sel)
+  apply(subst word_unat.Abs_inverse, simp only: unats_def, simp)+
 
 (*
 lemma lookupBy0_monstrosity:
