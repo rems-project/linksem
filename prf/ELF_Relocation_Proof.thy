@@ -1506,7 +1506,7 @@ by simp
 lemma img1_technical:
   assumes "natural_to_le_byte_list (16 + addr) = [a1, a2, a3, a4]"
   shows "img1 addr [72, 199, 4, 37, 0, 0, 0, 0, 5, 0, 0, 0, 72, 139, 4, 37, 0, 0, 0, 0] =
-          ⦇elements = [''.data'' ↦ ⦇startpos = Some 4194324, length1 = Some 8, contents = [Some 42, Some 42, Some 42, Some 42, Some 42, Some 42, Some 42, Some 42]⦈,
+          ⦇elements = [''.data'' ↦ ⦇startpos = Some 4194324, length1 = Some 8, contents = [Some 0, Some 0, Some 0, Some 0, Some 0, Some 0, Some 0, Some 0]⦈,
                        ''.text'' ↦ ⦇startpos = Some 4194304, length1 = Some 20,
                                       contents = [Some 72, Some 199, Some 4, Some 37, Some a1, Some a2, Some a3, Some a4, Some 5, Some 0, Some 0, Some 0, Some 72,
                                                   Some 139, Some 4, Some 37, Some 0, Some 0, Some 0, Some 0]⦈],
@@ -1646,6 +1646,7 @@ using [[show_types]]
   apply(erule disjE)
 prefer 2
   apply auto[1]
+thm build_fixed_program_memory_commute_miss_lower
 
 (*
 lemma lookupBy0_monstrosity:
