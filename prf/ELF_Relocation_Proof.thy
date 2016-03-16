@@ -396,7 +396,7 @@ unfolding set_choose_def by (metis (mono_tags) insert_iff singletonD someI)
 
 lemma genericCompare_refl:
   fixes x :: "'a::order"
-  shows "genericCompare (op <) (op =) x x = EQ"
+  shows "(genericCompare (op <) (op =) x y = EQ) = (x = y)"
 using assms
   apply(simp only: genericCompare_def)
   apply simp
@@ -448,7 +448,7 @@ lemma elf64_relocation_a_compare_refl:
   shows "elf64_relocation_a_compare r r = EQ"
   apply(simp only: elf64_relocation_a_compare_def)
   apply(rule tripleCompare_refl)
-  apply(rule allI, rule genericCompare_refl)+
+  apply(rule allI, simp add: genericCompare_refl)+
 done
 
 lemma relocSiteCompare_refl:
@@ -456,14 +456,14 @@ lemma relocSiteCompare_refl:
   apply(simp only: relocSiteCompare_def)
   apply(rule tripleCompare_refl)
   apply(rule allI, rule elf64_relocation_a_compare_refl)
-  apply(rule allI, rule genericCompare_refl)+
+  apply(rule allI, simp add: genericCompare_refl)+
 done
 
 lemma elf64_symbol_table_entry_compare_refl:
   shows "elf64_symbol_table_entry_compare e e = EQ"
   apply(simp only: elf64_symbol_table_entry_compare_def)
   apply(rule sextupleCompare_refl)
-  apply(rule allI, rule genericCompare_refl)+
+  apply(rule allI, simp add: genericCompare_refl)+
 done
 
 lemma symRefCompare_refl:
@@ -472,7 +472,7 @@ lemma symRefCompare_refl:
   apply(rule quadrupleCompare_refl) (* XXX: what is happening with the first comparison, here? *)
   apply(simp)
   apply(rule allI, rule elf64_symbol_table_entry_compare_refl)
-  apply(rule allI, rule genericCompare_refl)+
+  apply(rule allI, simp add: genericCompare_refl)+
 done
 
 lemma symDefCompare_refl:
@@ -481,7 +481,7 @@ lemma symDefCompare_refl:
   apply(rule quadrupleCompare_refl)
   apply simp
   apply(rule allI, rule elf64_symbol_table_entry_compare_refl)
-  apply(rule allI, rule genericCompare_refl)+
+  apply(rule allI, simp add: genericCompare_refl)+
 done
 
 lemma maybeCompare_refl:
@@ -515,7 +515,7 @@ lemma maybeCompare_refl_concrete:
   apply(rule pairCompare_refl)
   apply(rule allI, rule stringCompare_method_refl)
   apply(rule allI, case_tac q, clarify, rule pairCompare_refl)
-  apply(rule allI, rule genericCompare_refl)+
+  apply(rule allI, simp add: genericCompare_refl)+
 done
 
 lemma elfFileFeatureTag_sym:
@@ -1325,18 +1325,204 @@ lemma any_abi_feature_dict_well_behaved:
   shows "well_behaved_lem_ordering (isLess_method instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
     (isLessEqual_method instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
     (isGreater_method instance_Basic_classes_Ord_Abis_any_abi_feature_dict)"
-sorry
+sorry (* XXX: false as one of the orderings returns true whenever both x, y are GOT0 *)
+
+lemma stringCompare_method_Nil_Cons:
+  shows "stringCompare_method [] (x#xs) = LT"
+using stringCompare_method_def by simp
+
+lemma stringCompare_method_Cons_Nil:
+  shows "stringCompare_method (x#xs) [] = GT"
+using stringCompare_method_def by simp
+
+lemma stringCompare_tri:
+  shows "stringGreater x y ∨ stringLess x y ∨ x = y"
+  apply(induction x arbitrary: y)
+  apply(case_tac y; clarify)
+  apply(simp only: stringLess_def stringCompare_method_Nil_Cons)
+  apply(case_tac y; clarify)
+  apply(simp add: stringGreater_def stringLess_def stringCompare_method_Nil_Cons)
+  apply(simp only: stringGreater_def stringLess_def stringCompare_method_def)
+  apply simp
+  apply(smt nat_of_char_eq_iff not_less_iff_gr_or_eq)
+done
+
+lemma stringLess_stringGreater:
+  assumes "stringLess x y"
+  shows "¬ stringGreater x y"
+using assms unfolding stringLess_def stringGreater_def
+  apply(induction x arbitrary: y)
+  apply(case_tac y; clarify)
+  apply(simp add: stringCompare_method_refl)
+  apply(simp add: stringCompare_method_Cons_Nil)
+  apply(case_tac y; clarify)
+  apply(simp add: stringCompare_method_Cons_Nil)
+  apply(smt ordering.distinct(1) ordering.distinct(3) stringCompare_method_def)
+done
 
 lemma string_dict_well_behaved:
   shows "well_behaved_lem_ordering (isLess_method instance_Basic_classes_Ord_string_dict)
     (isLessEqual_method instance_Basic_classes_Ord_string_dict)
     (isGreater_method instance_Basic_classes_Ord_string_dict)"
-sorry
+unfolding well_behaved_lem_ordering.simps instance_Basic_classes_Ord_string_dict_def
+  apply(simp only: Ord_class.simps)
+  apply(rule conjI)
+  apply((rule allI)+, case_tac x; case_tac y; clarify; simp only: stringGreater_def)
+  apply(rule conjI)
+  apply((rule allI)+, case_tac x; case_tac y; clarify; simp only: stringGreater_def)
+  apply(rule conjI)
+  apply((rule allI)+, simp add: stringCompare_tri)
+  apply(rule conjI)
+  apply((rule allI)+, clarify, simp add: stringCompare_method_refl stringLess_def)
+  apply(rule conjI)
+  apply((rule allI)+, clarify, simp add: stringCompare_method_refl stringGreater_def stringLess_def)
+  apply(rule conjI)
+  apply((rule allI)+, simp add: stringLess_stringGreater)
+  apply(rule conjI)
+  apply((rule allI)+, meson stringLess_stringGreater)
+  apply(rule conjI)
+  apply((rule allI)+, meson stringGreater_def stringLess_stringGreater)
+  apply(rule conjI)
+  apply((rule allI)+, meson stringGreater_def stringLess_stringGreater)
+  apply(rule conjI)
+  apply((rule allI)+, smt ordering.distinct(5) stringCompare_method_def stringCompare_tri stringGreater_def stringLessEq_def stringLess_def)
+  apply(rule conjI)
+  apply((rule allI)+, simp add: stringCompare_method_refl stringLessEq_def)
+  apply((rule allI)+, simp add: stringLessEq_def stringLess_def)
+done
 
 lemma natural_dict_well_behaved:
   shows "well_behaved_lem_ordering (isLess_method instance_Basic_classes_Ord_Num_natural_dict)
     (isLessEqual_method instance_Basic_classes_Ord_Num_natural_dict)
     (isGreater_method instance_Basic_classes_Ord_Num_natural_dict)"
+unfolding well_behaved_lem_ordering.simps instance_Basic_classes_Ord_Num_natural_dict_def
+  apply(simp only: Ord_class.simps)
+  apply auto
+done
+
+lemma lexicographicCompareBy_refl:
+  assumes "\<And>x. cmp x x = EQ"
+  shows "lexicographicCompareBy cmp l l = EQ"
+using assms
+  apply(induction l)
+  apply(simp_all add: lexicographicCompareBy.simps genericCompare_def)
+done
+
+lemma elf64_header_compare_refl:
+  shows "elf64_header_compare h h = EQ"
+  apply(case_tac h; clarify)
+  apply(simp add: elf64_header_compare_def pairCompare.simps)
+  apply(subst lexicographicCompareBy_refl, simp only: genericCompare_def, simp)+
+  apply simp
+done
+
+lemma compare_elf64_section_header_table_entry_refl:
+  shows "compare_elf64_section_header_table_entry x x = EQ"
+  apply(case_tac x; clarify)
+  apply(simp only: compare_elf64_section_header_table_entry_def)
+  apply(subst lexicographicCompareBy_refl, simp only: genericCompare_def, simp)
+  apply simp
+done
+
+lemma compare_elf64_program_header_table_entry_refl:
+  shows "compare_elf64_program_header_table_entry x x = EQ"
+  apply(case_tac x; clarify)
+  apply(simp only: compare_elf64_program_header_table_entry_def)
+  apply(subst lexicographicCompareBy_refl, simp only: genericCompare_def, simp)
+  apply simp
+done
+
+lemma compare_byte_refl:
+  shows "compare_byte x x = EQ"
+  apply(simp only: compare_byte_def)
+  apply(simp add: genericCompare_refl)
+done
+
+lemma compare_byte_sequence_refl:
+  shows "compare_byte_sequence q q = EQ"
+  apply(case_tac q; clarify)
+  apply(simp only: compare_byte_sequence_def)
+  apply(rule lexicographicCompareBy_refl)
+  apply(rule compare_byte_refl)
+done
+
+lemma compare_elf64_interpreted_section_refl:
+  shows "compare_elf64_interpreted_section x x = EQ"
+  apply(case_tac x; clarify)
+  apply(simp only: compare_elf64_interpreted_section_def)
+  apply(rule pairCompare_refl)
+  apply(rule allI, rule lexicographicCompareBy_refl, simp add: genericCompare_def)
+  apply(rule allI, rule compare_byte_sequence_refl)
+done
+
+lemma compare_elf64_interpreted_segment_refl:
+  shows " compare_elf64_interpreted_segment x x = EQ"
+  apply(case_tac x; clarify)
+  apply(simp only: compare_elf64_interpreted_segment_def)
+  apply(rule tripleCompare_refl)
+  apply(rule allI, rule compare_byte_sequence_refl)
+  apply(rule allI, rule lexicographicCompareBy_refl, simp add: genericCompare_refl)+
+done
+
+lemma elfFileFeatureCompare_refl:
+  shows "elfFileFeatureCompare e e = EQ"
+  apply(case_tac e; clarify)
+  apply(simp add: elfFileFeatureCompare.simps elf64_header_compare_refl)
+  apply(simp add: elfFileFeatureCompare.simps)
+  apply(subst lexicographicCompareBy_refl, simp add: compare_elf64_section_header_table_entry_refl, rule refl)
+  apply(simp add: elfFileFeatureCompare.simps)
+  apply(subst lexicographicCompareBy_refl, simp add: compare_elf64_program_header_table_entry_refl, rule refl)
+  apply(simp add: elfFileFeatureCompare.simps)
+  apply(rule pairCompare_refl, rule allI, simp add: genericCompare_refl, rule allI, rule compare_elf64_interpreted_section_refl)
+  apply(simp add: elfFileFeatureCompare.simps)
+  apply(rule pairCompare_refl, rule allI, simp add: genericCompare_refl, rule allI, rule compare_elf64_interpreted_segment_refl)
+done
+
+lemma tagCompare_refl:
+  assumes "\<And>y. compare_method dict y y = EQ"
+  shows "tagCompare dict x x = EQ"
+using assms
+  apply(case_tac x; clarify)
+  apply(simp_all add: tagCompare.simps symDefCompare_refl symRefAndRelocSiteCompare_refl elfFileFeatureCompare_refl)
+done
+
+lemma genericCompare_GT_genericCompare_LT:
+  fixes x y :: "'a::linorder"
+  assumes "genericCompare (op <) (op =) x y = GT"
+  shows "genericCompare (op <) (op =) y x = LT"
+using assms antisym_conv3 unfolding genericCompare_def by fastforce
+
+lemma elf64_symbol_table_entry_compare_GT_elf64_symbol_table_entry_compare_LT:
+  assumes "elf64_symbol_table_entry_compare x y = GT"
+  shows "elf64_symbol_table_entry_compare y x = LT"
+using assms
+  apply(case_tac x; case_tac y; clarify)
+  apply(simp only: elf64_symbol_table_entry_compare_def sextupleCompare.simps pairCompare.simps
+    elf64_symbol_table_entry.simps)
+sorry
+
+lemma pairCompare_GT_pairCompare_LT:
+  assumes "pairCompare dict1 dict2 x y = GT"
+  shows "pairCompare dict1 dict2 y x = LT"
+using assms sorry
+
+lemma symDefCompare_GT_symDefCompare_LT:
+  assumes "symDefCompare x y = GT"
+  shows "symDefCompare y x = LT"
+using assms
+  apply(case_tac x; case_tac y; clarify)
+  apply(simp add: symDefCompare_def quadrupleCompare.simps pairCompare.simps)
+  apply(case_tac "elf64_symbol_table_entry_compare def_syment def_symenta"; simp)
+  apply(subgoal_tac "(elf64_symbol_table_entry_compare def_syment def_symenta = EQ) = (def_syment = def_symenta)")
+  apply simp
+sorry
+
+lemma tagCompare_GT_tagCompare_LT:
+  assumes "tagCompare dict x y = GT" and "\<And>y. compare_method dict y y = EQ"
+  shows "tagCompare dict y x = LT"
+using assms
+  apply(case_tac x; case_tac y; clarify)
+  apply(simp_all add: tagCompare_refl tagCompare.simps)
 sorry
 
 lemma tag_dict_preserves_well_behavedness:
@@ -1344,7 +1530,11 @@ lemma tag_dict_preserves_well_behavedness:
   shows "well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_Memory_image_range_tag_dict dict))
    (isLessEqual_method (instance_Basic_classes_Ord_Memory_image_range_tag_dict dict))
    (isGreater_method (instance_Basic_classes_Ord_Memory_image_range_tag_dict dict))"
-using assms sorry
+using assms unfolding well_behaved_lem_ordering.simps instance_Basic_classes_Ord_Memory_image_range_tag_dict_def
+  apply(simp only: Ord_class.simps)
+  apply(rule conjI, (rule allI)+)
+  apply(case_tac x; case_tac y; clarify)
+sorry
 
 lemma maybe_dict_preserves_well_behavedness:
   assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict)"
@@ -1388,13 +1578,31 @@ lemma anyAbiFeatureTagEquiv_sym:
   apply(simp only: anyAbiFeatureTagEquiv.simps abiFeatureTagEq0_sym abiFeatureTagEq_sym)+
 done
 
-lemma pairLess_technical:
+lemma pairLess_Ref_Ref_technical:
   shows "pairLess (instance_Basic_classes_Ord_Maybe_maybe_dict
                    (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                      (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
          (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict) (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))
          (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)) = False"
 by eval
+
+lemma pairLess_Def_Def_technical:
+  shows "pairLess (instance_Basic_classes_Ord_Maybe_maybe_dict
+                   (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                     (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
+         (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict) (SymbolDef def_rec0, Some (''.data'', addr, 8))
+         (SymbolDef def_rec0, Some (''.data'', addr, 8)) = False"
+unfolding instance_Basic_classes_Ord_Maybe_maybe_dict_def instance_Basic_classes_Ord_tup2_dict_def
+  instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes_Ord_string_dict_def
+  instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def
+  apply(simp only: Ord_class.simps pairLess.simps tagCompare.simps)
+  apply(auto simp add: symDefCompare_refl)
+  apply(simp add: maybeCompare.simps pairCompare.simps)
+  apply(simp only: stringCompare_method_refl ordering.case)
+  apply(subst (asm) pairCompare_refl)
+  apply(rule allI, simp add: genericCompare_refl)
+  apply simp
+done
 
 lemma isGreater_method_technical:
   shows "isGreater_method
@@ -1403,7 +1611,13 @@ lemma isGreater_method_technical:
          (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
            (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))
      (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)) (SymbolDef def_rec0, Some (''.data'', addr, 8))"
-sorry
+unfolding instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes_Ord_tup2_dict_def
+  instance_Basic_classes_Ord_string_dict_def instance_Basic_classes_Ord_Maybe_maybe_dict_def
+  instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def
+  apply(simp only: Ord_class.simps pairCompare.simps pairGreater_def pairLess.simps)
+  apply(simp only: tagCompare.simps)
+  apply auto
+done
 
 lemma pairCompare_not_EQ_technical:
   shows "EQ ≠ pairCompare (compare_method (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict))
@@ -1412,14 +1626,75 @@ lemma pairCompare_not_EQ_technical:
                (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))
            (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)) (SymbolDef def_rec0, Some (''.data'', addr, 8))"
-sorry
+unfolding instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes_Ord_string_dict_def
+  instance_Basic_classes_Ord_tup2_dict_def instance_Basic_classes_Ord_Maybe_maybe_dict_def
+  instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def
+  apply(simp only: Ord_class.simps pairCompare.simps tagCompare.simps ordering.case)
+  apply simp
+done
 
-lemma set_choose_technical_2:
-  assumes "well_behaved_lem_ordering (isLess_method dict1) (isLessEqual_method dict1) (isGreater_method dict1)"
-    and "well_behaved_lem_ordering (isLess_method dict2) (isLessEqual_method dict2) (isGreater_method dict2)"
-    and "¬ EQ = pairCompare (compare_method dict1) (compare_method dict2) candidate1 candidate2"
-  shows "{x \<in> {candidate1, candidate2}. EQ = pairCompare (compare_method dict1) (compare_method dict2) x candidate1} = {candidate1}"
-sorry
+lemma set_choose_technical_Ref_2:
+  shows "{x ∈ {(SymbolRef ref_and_reloc_rec0, Some (''.text'', (4::nat), (8::nat))), (SymbolDef def_rec0, Some (''.data'', addr, 8))}.
+      EQ = pairCompare
+            (tagCompare
+              ⦇compare_method = anyAbiFeatureCompare, isLess_method = λf1 f2. anyAbiFeatureCompare f1 f2 = LT, isLessEqual_method = λf1 f2. anyAbiFeatureCompare f1 f2 ∈ {LT, EQ},
+                 isGreater_method = λf1 f2. anyAbiFeatureCompare f1 f2 = GT, isGreaterEqual_method = λf1 f2. anyAbiFeatureCompare f1 f2 ∈ {GT, EQ}⦈)
+            (maybeCompare (pairCompare (compare_method instance_Basic_classes_Ord_string_dict) (pairCompare (genericCompare op < op =) (genericCompare op < op =)))) x
+            (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))} = {(SymbolRef ref_and_reloc_rec0, Some (''.text'', (4::nat), (8::nat)))}"
+  apply(rule equalityI)
+  apply(rule subsetI)
+  apply(drule CollectD)
+  apply(erule conjE)
+  apply simp
+  apply(erule disjE)
+  apply clarify+
+  apply(simp add: pairCompare.simps tagCompare.simps)
+  apply(rule subsetI)
+  apply simp
+  apply(auto simp add: pairCompare.simps tagCompare.simps symRefAndRelocSiteCompare_refl)
+  apply(simp only: instance_Basic_classes_Ord_string_dict_def Ord_class.simps)
+  apply(simp only: maybeCompare.simps pairCompare.simps stringCompare_method_refl ordering.case)
+  apply(case_tac "genericCompare (op <) (op =) (4::nat) 4"; simp)
+  apply(metis genericCompare_refl[where 'a=nat] ordering.simps)+
+done
+
+lemma set_choose_technical_Def_2:
+  shows "{x \<in> {(SymbolRef ⦇ref = ref_rec0,
+                          maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 2, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
+                          maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)⦈,
+             Some (''.text'', 4, 8)),
+            (SymbolDef def_rec0, Some (''.data'', addr, 8))} .
+      EQ = pairCompare (compare_method (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict))
+            (compare_method
+              (instance_Basic_classes_Ord_Maybe_maybe_dict
+                (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))
+            x (SymbolDef def_rec0, Some (''.data'', addr, 8))} = {(SymbolDef def_rec0, Some (''.data'', addr, 8))}"
+  apply(rule equalityI)
+  apply(rule subsetI)
+  apply(drule CollectD)
+  apply(erule conjE)
+  apply simp
+  apply(erule disjE)
+  apply clarify+
+  apply(simp add: pairCompare.simps tagCompare.simps instance_Basic_classes_Ord_Memory_image_range_tag_dict_def)
+  apply(simp add: pairCompare.simps)
+  apply(rule subsetI)
+  apply simp
+  apply(auto simp add: pairCompare.simps tagCompare.simps symRefAndRelocSiteCompare_refl)
+  apply(simp only: instance_Basic_classes_Ord_string_dict_def Ord_class.simps)
+  apply(simp only: instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def
+    Ord_class.simps tagCompare.simps)
+  apply(subst symDefCompare_refl)
+  apply(simp only: ordering.simps)
+  apply(simp add: instance_Basic_classes_Ord_Maybe_maybe_dict_def instance_Basic_classes_Ord_tup2_dict_def
+    instance_Basic_classes_Ord_Num_natural_dict_def maybeCompare.simps pairCompare.simps)
+  apply(subst stringCompare_method_refl)
+  apply(simp add: ordering.simps)
+  apply(subst pairCompare_refl, rule allI)
+  apply(simp add: genericCompare_refl)
+  apply simp
+done
 
 lemma lookupBy0_Ref_Ref_singleton:
   shows "lookupBy0 (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
@@ -1482,9 +1757,32 @@ using assms
   apply(rule natural_dict_well_behaved)+
   apply(rule isGreater_method_technical)
   apply(simp only: split split_empty list_of_set_empty append_Nil2)
-  apply(subst pairLess_technical)
+  apply(subst pairLess_Ref_Ref_technical)
   apply(simp only: if_False append_Nil2)
-  apply(subst set_choose_technical_2)
+  apply(simp only: instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes_Ord_tup2_dict_def
+    Ord_class.simps instance_Basic_classes_Ord_Maybe_maybe_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def
+    instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def pairCompare.simps maybeCompare.simps tagCompare.simps)
+  apply(subst set_choose_technical_Ref_2)
+  apply(simp only: list_of_set_singleton)
+done
+
+lemma findLowestKVWithKEquivTo_Def_Ref_Def_technical:
+  shows "findLowestKVWithKEquivTo (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+           (instance_Basic_classes_Ord_Maybe_maybe_dict
+             (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+               (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
+           (SymbolDef null_symbol_definition) (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict)
+           {(SymbolRef ⦇ref = ref_rec0,
+                          maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 2, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
+                          maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)⦈,
+             Some (''.text'', 4, 8)),
+            (SymbolDef def_rec0, Some (''.data'', addr, 8))}
+           None = Some (SymbolDef def_rec0, Some (''.data'', addr, 8))"
+  apply(subst findLowestKVWithKEquivTo.simps)
+  apply(subst if_weak_cong[where c="False"], simp)
+  apply(simp only: if_False)
+  apply(subst if_weak_cong[where c="False"], simp)
+  apply(rule tup2_dict_preserves_well_behavedness)
   apply(rule tag_dict_preserves_well_behavedness)
   apply(rule any_abi_feature_dict_well_behaved)
   apply(rule maybe_dict_preserves_well_behavedness)
@@ -1492,9 +1790,36 @@ using assms
   apply(rule string_dict_well_behaved)
   apply(rule tup2_dict_preserves_well_behavedness)
   apply(rule natural_dict_well_behaved)+
-  apply(rule pairCompare_not_EQ_technical)
-  apply(simp only: list_of_set_singleton)
-done
+  apply(simp only: if_False)
+  apply(rule disjE[OF chooseAndSplit_less_2[where dict="(instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+             (instance_Basic_classes_Ord_Maybe_maybe_dict
+               (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                 (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))"]])
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule tag_dict_preserves_well_behavedness)
+  apply(rule any_abi_feature_dict_well_behaved)
+  apply(rule maybe_dict_preserves_well_behavedness)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule string_dict_well_behaved)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule natural_dict_well_behaved)+
+
+xxxx
+  
+
+lemma findHighestKVWithKEquivTo_Def_Ref_Def_technical:
+  shows "findHighestKVWithKEquivTo (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+                 (instance_Basic_classes_Ord_Maybe_maybe_dict
+                   (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                     (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
+                 (SymbolDef null_symbol_definition) (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict)
+                 {(SymbolRef ⦇ref = ref_rec0,
+                                maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 2, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
+                                maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)⦈,
+                   Some (''.text'', 4, 8)),
+                  (SymbolDef def_rec0, Some (''.data'', addr, 8))}
+                 None = Some (SymbolDef def_rec0, Some (''.data'', addr, 8))"
+sorry
 
 lemma lookupBy0_Def_Def_singleton:
   shows "lookupBy0 (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
@@ -1502,7 +1827,44 @@ lemma lookupBy0_Def_Def_singleton:
            (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict) (SymbolDef null_symbol_definition)
            {(SymbolRef ⦇ref = ref_rec0, maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 2, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
             maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)⦈, Some (''.text'', 4, 8)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} = [(SymbolDef def_rec0, Some (''.data'', addr, 8))]"
-sorry
+  apply(subst lookupBy0_def)
+  apply(subst findLowestKVWithKEquivTo_Def_Ref_Def_technical)
+  apply(simp only: option.case)
+  apply(subst findHighestKVWithKEquivTo_Def_Ref_Def_technical)
+  apply(simp only: option.case split Let_def)
+  apply(subst split_less_2)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule tag_dict_preserves_well_behavedness)
+  apply(rule any_abi_feature_dict_well_behaved)
+  apply(rule maybe_dict_preserves_well_behavedness)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule string_dict_well_behaved)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule natural_dict_well_behaved)+
+  apply(simp only: instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes_Ord_string_dict_def
+    instance_Basic_classes_Ord_tup2_dict_def Ord_class.simps instance_Basic_classes_Ord_Memory_image_range_tag_dict_def
+    instance_Basic_classes_Ord_Maybe_maybe_dict_def pairLess.simps tagCompare.simps, simp)
+  apply(simp only: split)
+  apply(subst split_singleton_diff)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule tag_dict_preserves_well_behavedness)
+  apply(rule any_abi_feature_dict_well_behaved)
+  apply(rule maybe_dict_preserves_well_behavedness)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule string_dict_well_behaved)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule natural_dict_well_behaved)+
+  apply(simp only: instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes_Ord_string_dict_def
+    instance_Basic_classes_Ord_tup2_dict_def Ord_class.simps instance_Basic_classes_Ord_Memory_image_range_tag_dict_def
+    instance_Basic_classes_Ord_Maybe_maybe_dict_def pairLess.simps tagCompare.simps, simp)
+  apply(simp only: split)
+  apply(simp only: list_of_set_empty append_Nil2)
+  apply(subst set_choose_technical_Def_2)
+  apply(simp only: list_of_set_singleton)
+  apply(subst pairLess_Def_Def_technical)
+  apply(simp only: if_False)
+  apply simp
+done
 
 lemma list_comprehension_singleton:
   shows "[(x, y) ← [(u, v)]. y = v] = [(u,v)]"
@@ -1655,6 +2017,11 @@ done
 lemma dom_2:
   shows "dom [k1 ↦ v1, k2 ↦ v2] = {k1, k2}"
 by auto
+
+lemma the_map_Some_nth_commute:
+  assumes "m < length xs"
+  shows "the ((map Some xs) ! m) = xs ! m"
+using assms by simp
 
 theorem
   shows "correctness_property"
