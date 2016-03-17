@@ -111,11 +111,11 @@ definition img1  :: "nat \<Rightarrow> (Elf_Types_Local.byte)list \<Rightarrow>(
  ((|
         elements = (Map.map_of (List.rev [((''.text''), (|
              startpos = (Some(( 4194304 :: nat)))
-           , length1 = (Some(( 20 :: nat)))
+           , length1 = (Some(( 12 :: nat)))
            , contents = (List.map (\<lambda> x .  Some x) instr_bytes)
           |)),
           ((''.data''), (|
-             startpos = (Some(( 4194324 :: nat)))
+             startpos = (Some(( 4194316 :: nat)))
            , length1 = (Some(( 8 :: nat)))
            , contents = (List.map (\<lambda> x .  Some x) (List.replicate(( 8 :: nat)) ((of_nat ((0 :: nat)) :: byte))))
           |))
