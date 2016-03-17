@@ -130,72 +130,6 @@ definition correctness_property :: "bool" where
 
 subsection {* Useful lemmas and technical definitions *}
 
-definition support :: "('a \<Rightarrow> 'b::len word) \<Rightarrow> 'a set" where
-  "support f \<equiv> { x. \<exists>y. f x = y \<and> y \<noteq> 0 }"
-
-lemma support_upd_comm:
-  assumes "b \<noteq> 0"
-  shows "support (f(x:=b)) = support f \<union> {x}"
-using assms unfolding support_def
-  apply simp
-  apply(rule equalityI)
-  apply(rule subsetI)
-  apply(drule CollectD)
-  apply(simp only: insert_def)
-  apply blast
-  apply(rule subsetI)
-  apply(simp only: insert_def Set.Un_iff)
-  apply(erule disjE)
-  apply(drule CollectD)
-  apply simp
-  apply(drule CollectD)
-  apply(rule CollectI)
-  apply(rule impI, assumption)
-done
-
-lemma support_fun_upd_eqI:
-  assumes "\<forall>x \<in> support f \<union> support g. f x = g x"
-  shows "f = g"
-using assms unfolding support_def
-  apply simp
-  apply(rule ext)
-  apply(erule ballE, assumption)
-  apply simp
-done
-
-lemma MEM_write'EA_commute_Zea_m_Z64:
-  fixes a :: "64 word"
-  assumes "write'EA (a, Zea_m (Z64, addr)) \<sigma> = ((), \<sigma>')"
-  shows "MEM \<sigma>' =
-    (MEM \<sigma>)(addr := word_extract 7 0 ((word_extract 15 0 ((word_extract 31 0 a)::32 word)::16 word))::8 word,
-                    1 + addr := word_extract 15 8 ((word_extract 15 0 ((word_extract 31 0 a)::32 word)::16 word))::8 word,
-                    2 + addr := word_extract 7 0 ((word_extract 31 16 ((word_extract 31 0 a)::32 word)::16 word))::8 word,
-                    3 + addr := word_extract 15 8 ((word_extract 31 16 ((word_extract 31 0 a)::32 word)::16 word))::8 word,
-                    4 + addr := word_extract 7 0 ((word_extract 15 0 ((word_extract 63 32 a)::32 word)::16 word))::8 word,
-                    5 + addr := word_extract 15 8 ((word_extract 15 0 ((word_extract 63 32 a)::32 word)::16 word))::8 word,
-                    6 + addr := word_extract 7 0 ((word_extract 31 16 ((word_extract 63 32 a)::32 word)::16 word))::8 word,
-                    7 + addr := word_extract 15 8 ((word_extract 31 16 ((word_extract 63 32 a)::32 word)::16 word))::8 word)"
-using assms
-  apply(case_tac "\<sigma>", clarify)
-  apply(simp only: write'EA.simps)
-  apply(simp only: Zea.case split Zsize.case write'mem64.simps write'mem32.simps write'mem16.simps
-    write'mem8.simps snd_def X64_state.simps prod.inject)
-  apply(erule conjE, clarify, simp only: X64_state.simps)
-  apply auto
-done
-
-lemma fun_upd_garbage_collect:
-  assumes "x \<noteq> y"
-  shows "(f(x := u)) y = f y"  
-using assms by simp
-
-(* XXX: in library, somewhere?  find_theorems doesn't find it, sigh... *)
-lemma nat_lesseq_elim:
-  fixes m n :: nat
-  assumes "m \<le> n"
-  shows "m = n \<or> m < n"
-using assms by auto
-
 text {* The following is an ugly lemma that is necessary for controlling the unrolling of the for_loop
 function used in Anthony's model, otherwise the simplifier loops uncontrollably. *}
 lemma for_loop_19_unroll:
@@ -316,15 +250,6 @@ lemma concrete_evaluations:
     and "(18446744071562067968::64 word) <=s (0::64 word) = True"
     and "(0::64 word) <=s (2147483647::64 word) = True"
 by eval+
-
-lemma word_of_int_of_int_0:
-  shows "(word_of_int (int (0::nat))::'a::len word) = (0::'a word)"
-by simp
-
-lemma word_arith_technical:
-  assumes "m \<ge> 0"
-  shows "of_nat n + word_of_int (int m) = of_nat (n + m)"
-by (metis Abs_fnat_hom_add of_int_of_nat_eq word_of_int)
 
 lemma of_nat_manipulate:
   "(of_nat m) + (n::'a::len word) = of_nat (m + unat n)"
@@ -481,70 +406,6 @@ lemma stringCompare_method_refl:
   shows "stringCompare_method s s = EQ"
   apply(simp only: stringCompare_method_def)
   apply(simp add: ord.lexordp_eq_refl)
-done
-
-lemma maybeCompare_refl_concrete:
-  shows "(maybeCompare (pairCompare stringCompare_method (pairCompare (genericCompare op < op =) (genericCompare op < op =))) (Some (p, q::nat, r::nat)) (Some (p, q, r))) = EQ"
-  apply(rule maybeCompare_refl)
-  apply(rule allI)
-  apply(case_tac x, clarify)
-  apply(rule pairCompare_refl)
-  apply(rule allI, rule stringCompare_method_refl)
-  apply(rule allI, case_tac q, clarify, rule pairCompare_refl)
-  apply(rule allI, simp add: genericCompare_refl)+
-done
-
-lemma elfFileFeatureTag_sym:
-  shows "elfFileFeatureTagEquiv x y = elfFileFeatureTagEquiv y x"
-  apply(case_tac x; case_tac y; clarify)
-  apply(simp_all only: elfFileFeatureTagEquiv.simps)
-done
-
-lemma tagEquiv_sym:
-  assumes "\<forall>x y. abiFeatureTagEquiv_method dict x y = abiFeatureTagEquiv_method dict y x"
-  shows "tagEquiv dict x y = tagEquiv dict y x"
-using assms
-  apply(case_tac x; case_tac y; clarify)
-  apply(simp_all only: tagEquiv.simps elfFileFeatureTag_sym)
-done
-
-lemma pairLess_irrefl:
-  assumes "well_behaved_lem_ordering (isLess_method dict1) (isLessEqual_method dict1) (isGreater_method dict1)"
-    and "well_behaved_lem_ordering (isLess_method dict2) (isLessEqual_method dict2) (isGreater_method dict2)"
-  shows "\<not> pairLess dict1 dict2 x x"
-using assms
-  apply(case_tac x; clarify)
-  apply(simp only: pairLess.simps)
-  apply(erule disjE)
-  apply(meson lem_ordering_not_lt)
-  apply(erule conjE)
-  apply(meson lem_ordering_not_lt)
-done
-
-lemma pairLess_intro:
-  assumes "isLess_method dict e1 e2"
-  shows "pairLess dict' dict (e1, f1) (e2, f2)"
-using assms unfolding pairLess.simps by auto
-
-lemma tup2_dict_preserves_not_lt:
-  assumes "well_behaved_lem_ordering (isLess_method dict1) (isLessEqual_method dict1) (isGreater_method dict1)" and
-    "well_behaved_lem_ordering (isLess_method dict2) (isLessEqual_method dict2) (isGreater_method dict2)" and
-    "pairLess dict1 dict2 p1 p2"
-  shows "\<not> pairLess dict1 dict2 p2 p1"
-using assms
-  apply(case_tac p1; case_tac p2, clarify, simp only: pairLess.simps)
-  apply(erule disjE, erule disjE)
-  apply(drule lem_ordering_not_lt, assumption, simp)
-  apply(erule conjE)
-  apply(drule lem_ordering_le, assumption)
-  apply(erule disjE)
-  apply(drule lem_ordering_not_lt, assumption, meson assms(2) lem_ordering_not_lt)+
-  apply(erule disjE, erule conjE)
-  apply(drule lem_ordering_le, assumption)
-  apply(erule disjE)
-  apply(drule lem_ordering_not_lt, assumption, meson assms(2) lem_ordering_not_lt)+
-  apply(erule conjE)+
-  apply(drule lem_ordering_not_lt, assumption, meson assms(2) lem_ordering_not_lt)+
 done
 
 lemma tup2_dict_preserves_well_behavedness:
@@ -720,12 +581,6 @@ lemma map_eqI:
   shows "m1 = m2"
 using assms by fastforce
 
-(* XXX: specialised form of argcong from library... *)
-lemma map_upd_cong:
-  assumes "m1 = m2" and "x1 = x2" and "y1 = y2"
-  shows "m1(x1 := y1) = m2(x2 := y2)"
-using assms by simp
-
 lemma empty_singleton_induct:
   assumes "P []" and "\<And>x. P [x]"
      and "\<And>x xs. xs \<noteq> [] \<Longrightarrow> P xs \<Longrightarrow> P (x#xs)"
@@ -743,49 +598,6 @@ lemma nat_le_massage:
 using assms by auto
 
 section {* Start of the proof proper *}
-
-text {* Key lemma: if we fetch from a given state, then we are given a 20-element list back in return,
-read from the state's memory at RIP+offset for 0 \<le> offset < 20, with the original state returned as
-second component. *}
-lemma x64_fetch_RIP:
-  shows "x64_fetch \<sigma> =
-    ([MEM \<sigma> (RIP \<sigma>), MEM \<sigma> (RIP \<sigma> + 1), MEM \<sigma> (RIP \<sigma> + 2), MEM \<sigma> (RIP \<sigma> + 3),
-      MEM \<sigma> (RIP \<sigma> + 4), MEM \<sigma> (RIP \<sigma> + 5), MEM \<sigma> (RIP \<sigma> + 6), MEM \<sigma> (RIP \<sigma> + 7),
-      MEM \<sigma> (RIP \<sigma> + 8), MEM \<sigma> (RIP \<sigma> + 9), MEM \<sigma> (RIP \<sigma> + 10), MEM \<sigma> (RIP \<sigma> + 11),
-      MEM \<sigma> (RIP \<sigma> + 12), MEM \<sigma> (RIP \<sigma> + 13), MEM \<sigma> (RIP \<sigma> + 14), MEM \<sigma> (RIP \<sigma> + 15),
-      MEM \<sigma> (RIP \<sigma> + 16), MEM \<sigma> (RIP \<sigma> + 17), MEM \<sigma> (RIP \<sigma> + 18), MEM \<sigma> (RIP \<sigma> + 19)], \<sigma>)"
-  apply(simp only: x64_fetch.simps)
-  apply(simp only: for_loop_19_unroll snd_def fst_def split Let_def Word.word_of_nat)
-  apply simp
-done
-
-lemma x64_decode_Zmov_in:
-  assumes "ss = [72, 199, 4, 37] @ [a1, a2, a3, a4] @ [c1, c2, c3, c4] @ rest" and
-    "immediate32 (a1 # a2 # a3 # a4 # c1 # c2 # c3 # c4 # rest) = (addr, i)" and
-    "immediate32 i = (cnst, rest)"
-  shows "x64_decode ss = Zfull_inst ([], Zmov (Z_ALWAYS, Z64, Zrm_i (Zm (None, ZnoBase, addr), cnst)), rest)"
-using assms
-  apply(clarify)
-  apply(simp only: append.simps x64_decode.simps readPrefixes.simps)
-  apply(subst readPrefix.simps)
-  apply(simp only: list.case concrete_evaluations)
-  apply(simp only: Let_def refl if_True)
-  apply(subst if_weak_cong[where b="5=0" and c="False"])
-  apply simp
-  apply(simp only: option.case if_False split)
-  apply(subst if_weak_cong[where b="W (rec'REX 8) \<and> 102 \<in> set []" and c="False"])
-  apply simp
-  apply(simp only: if_False)
-  apply(subst if_weak_cong[where b="103 \<in> set []" and c="False"], simp)
-  apply(simp only: if_False list.case boolify'8.simps concrete_evaluations)
-  apply(simp only: split list.cases bool.case rec'REX.simps REX.defs)
-  apply(simp only: readOpcodeModRM.simps readModRM.simps list.case boolify'8.simps)
-  apply(simp only: concrete_evaluations list.case split bool.case readSIB.simps REX.simps boolify'8.simps)
-  apply(simp only: concrete_evaluations RexReg.simps if_False if_True)
-  apply(simp only: Let_def if_True readSibDisplacement.simps simp_thms if_False)
-  apply(subst if_weak_cong[where b="0 = 1" and c="False"])
-  apply simp+
-done
 
 lemma encode_Zmov_in_concrete:
   (* assumes "fst (immediate32 [a1, a2, a3, a4]) = addr" *)
@@ -834,166 +646,6 @@ using assms unfolding build_fixed_program_memory_def
   apply auto
 done
 
-lemma scast_word_cat_word_extract_64:
-  fixes a::"64 word"
-  assumes "18446744071562067968 <=s a" and "a <=s 2147483647"
-  shows "scast ((word_cat ((word_extract 31 24 a)::8 word)
-          ((word_cat ((word_extract 23 16 a)::8 word) ((word_cat ((word_extract 15 8 a)::8 word)
-            ((word_extract 7 0 a)::8 word))::16 word))::24 word))::32 word) = a"
-sorry
-
-lemma scast_word_extract_5:
-  shows "scast ((word_cat (0::8 word) ((word_cat (0::8 word) ((word_cat (0::8 word) (5::8 word))::16 word))::24 word))::32 word) = (5::64 word)"
-by eval
-
-declare word_extract.simps [simp del]
-
-lemma x64_decode_fixed_technical_1:
-  assumes "(18446744071562067968::64 word) <=s (addr::64 word) \<and> addr <=s (2147483647::64 word)" and
-    "word_extract 7 0 addr = a1" and "word_extract 15 8 addr = a2" and "word_extract 23 16 addr = a3"
-      and "word_extract 31 24 addr = a4"
-  shows "\<exists>rest. x64_decode (fst (x64_fetch \<lparr>EFLAGS = flags,
-    MEM = build_fixed_program_memory 4194304 (encode (mov_constant_to_mem 5 addr)),
-    REG = reg, RIP = of_nat 4194304, exception = NoException\<rparr>)) = Zfull_inst ([], Zmov (Z_ALWAYS, Z64, Zrm_i (Zm (None, ZnoBase, addr), 5)), rest)"
-using assms
-  apply(simp only: x64_fetch_RIP X64_state.simps)
-  apply(rule exI)
-  apply(simp only: fst_def split append.simps list.simps)
-  apply(rule x64_decode_Zmov_in)
-  apply(simp only: append.simps list.simps mov_constant_to_mem_def)
-  apply(intro conjI)
-  apply(subst encode_Zmov_in_concrete, assumption, (rule refl)+, subst build_fixed_program_memory_commute, simp, simp,
-    simp only: unats_def, simp, simp)
-  apply(subst encode_Zmov_in_concrete, assumption, (rule refl)+,
-    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp, simp only: unats_def, simp,
-    simp only: diff_self_eq_0 diff_add_inverse, simp)
-  apply(subst encode_Zmov_in_concrete, assumption, (rule refl)+,
-    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp, simp only: unats_def, simp,
-    simp only: diff_self_eq_0 diff_add_inverse, simp)
-  apply(subst encode_Zmov_in_concrete, assumption, (rule refl)+,
-    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp, simp only: unats_def, simp,
-    simp only: diff_self_eq_0 diff_add_inverse, simp)
-  apply(subst encode_Zmov_in_concrete, assumption, (rule refl)+)
-  apply(simp only: concrete_evaluations append.simps if_False word_to_nat_conversions)
-  apply(simp only: immediate32.simps list.case prod.inject)
-  apply(subst encode_Zmov_in_concrete, assumption, (rule refl)+,
-    subst of_nat_manipulate, subst build_fixed_program_memory_commute, simp, simp, simp only: unats_def, simp,
-    simp only: diff_self_eq_0 diff_add_inverse, simp)
-  apply(rule conjI)+
-  apply(simp only: concrete_evaluations append.simps if_False word_to_nat_conversions, simp)
-  apply(simp only: concrete_evaluations append.simps if_False word_to_nat_conversions, simp)
-  apply(rule conjI)
-  apply clarify
-  apply(simp only: concrete_evaluations append.simps if_False word_to_nat_conversions)
-  apply(subst build_fixed_program_memory_commute, simp, simp, simp only: unats_def, rule CollectI, simp)+
-  apply(drule scast_word_cat_word_extract_64)
-  apply(simp only: concrete_evaluations nth.simps nat.case numeral_expansion)
-  apply(simp only: concrete_evaluations nth.simps nat.case numeral_expansion)
-  apply(simp only: concrete_evaluations nth.simps nat.case numeral_expansion)
-  apply(simp only: immediate32.simps list.case prod.inject)
-  apply(rule conjI)
-  apply(simp only: word_to_nat_conversions)
-  apply(subst build_fixed_program_memory_commute, simp, simp, simp only: unats_def, rule CollectI, simp)+
-  apply(simp only: concrete_evaluations append.simps if_False word_to_nat_conversions)
-  apply(simp only: concrete_evaluations nth.simps nat.case numeral_expansion)
-  apply(rule scast_word_extract_5)
-  apply(subst encode_Zmov_in_concrete, assumption, (rule refl)+)+
-  apply(auto)
-  apply(simp add: numeral_expansion(12) numeral_expansion(13) numeral_expansion(4) numeral_expansion(5))+
-done
-
-lemma RIP_write'EA_commute:
-  assumes "write'EA a \<sigma> = ((), \<sigma>')" 
-  shows "RIP \<sigma>' = RIP \<sigma>"
-using assms
-  apply(case_tac "\<sigma>", case_tac "a", clarify)
-  apply(simp only: write'EA.simps prod.inject)
-  apply(case_tac "b", clarify)
-  apply(simp only: Zea.case)
-  apply(case_tac "b", clarify)
-  apply(simp only: raise'exception.simps X64_state.simps, case_tac "exception = NoException", clarify,
-    simp only: refl if_True X64_state.simps, clarify, simp)+
-  apply(clarify, simp only: Zea.case)
-  apply(case_tac "aaa", clarify)
-  apply(simp only: Zsize.case write'mem16.simps write'mem8.simps snd_def split X64_state.simps prod.inject)
-  apply(erule conjE, clarify, simp only: X64_state.simps)
-  apply(clarify, simp only: Zsize.case write'mem32.simps write'mem16.simps write'mem8.simps snd_def split
-    X64_state.simps prod.inject)
-  apply(erule conjE, clarify, simp only: X64_state.simps)
-  apply(clarify, simp only: Zsize.case write'mem64.simps write'mem32.simps write'mem16.simps
-    write'mem8.simps snd_def split X64_state.simps prod.inject)
-  apply(erule conjE, clarify, simp only: X64_state.simps)
-  apply(clarify, simp only: Zsize.case write'mem8.simps snd_def split X64_state.simps prod.inject)
-  apply(erule conjE, clarify, simp only: X64_state.simps)
-  apply clarify
-  apply(simp only: Zea.case)
-  apply(case_tac "aaa", clarify)
-  apply(simp only: Zsize.case prod.inject)
-  apply(erule conjE, clarify, simp only: X64_state.simps)
-  apply(clarify, simp only: Zsize.case prod.inject)
-  apply(erule conjE, clarify, simp only: X64_state.simps)
-  apply(clarify, simp only: Zsize.case prod.inject)
-  apply(erule conjE, clarify, simp only: X64_state.simps)
-  apply(clarify, simp only: Zsize.case prod.inject)
-  apply(case_tac "x4 ∨ ba ∉ set [RSP, RBP, RSI, RDI]")
-  apply simp
-  apply(clarify, simp only: X64_state.simps)
-  apply simp
-  apply(clarify, simp only: X64_state.simps)
-  apply(case_tac "ba ≠ RSP ∧ ba ≠ RBP ∧ ba ≠ RSI ∧ ba ≠ RDI")
-  apply simp
-  apply(simp only: eq_False if_False Let_def prod.inject)
-  apply(erule conjE, clarify, simp only: X64_state.simps)
-done
-
-lemma le_eq_bump:
-  fixes x :: "64 word"
-  assumes "x \<le> y"
-  shows "x = y \<or> 1 + x \<le> y"
-using assms by(metis add.commute inc_le le_less)
-
-lemma addr_le_ge_elim:
-  fixes addr :: "64 word"
-  shows "addr \<ge> 4194324 \<and> addr \<le> 4194332 \<Longrightarrow> addr = 4194324 \<or>
-         addr = 4194325 \<or> addr = 4194326 \<or> addr = 4194327 \<or> addr = 4194328 \<or>
-         addr = 4194329 \<or> addr = 4194330 \<or> addr = 4194331 \<or> addr = 4194332"
-using assms
-  apply(erule conjE)
-  apply(drule le_eq_bump[where y="addr"], erule disjE, simp)
-  apply(drule le_eq_bump[where y="addr"], erule disjE, simp)
-  apply(drule le_eq_bump[where y="addr"], erule disjE, simp)
-  apply(drule le_eq_bump[where y="addr"], erule disjE, simp)
-  apply(drule le_eq_bump[where y="addr"], erule disjE, simp)
-  apply(drule le_eq_bump[where y="addr"], erule disjE, simp)
-  apply(drule le_eq_bump[where y="addr"], erule disjE, simp)
-  apply(drule le_eq_bump[where y="addr"], erule disjE, simp)
-  apply(drule order_class.antisym, simp_all)
-done
-
-lemma signed_arith_technical:
-  fixes addr :: "64 word"
-  assumes "addr \<ge> 4194324" and "addr \<le> 4194332"
-  shows "(18446744071562067968::64 word) <=s (addr::64 word) \<and> addr <=s (2147483647::64 word)"
-using assms
-  apply auto
-  apply(drule conjI, assumption)
-  apply(drule addr_le_ge_elim)
-  apply(erule disjE, simp)+
-  apply simp
-  apply(drule conjI, assumption)
-  apply(drule addr_le_ge_elim)
-  apply(erule disjE, simp)+
-  apply simp
-done
-
-(* XXX: to control rewriting *)
-lemma tagEquiv_rewrites:
-  shows "tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict (SymbolRef ref1) (SymbolRef ref2) = True"
-    and "tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict (SymbolRef ref1) (SymbolDef def) = False"
-    and "tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict (SymbolDef def) (SymbolRef ref2) = False"
-    and "tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict (SymbolDef def1) (SymbolDef def2) = True"
-by(simp_all add: tagEquiv.simps)
-
 lemma findLowestKVWithKEquivTo_Some_empty:
   assumes "well_behaved_lem_ordering (isLess_method key_dict) (isLessEqual_method key_dict) (isGreater_method key_dict)"
       and "well_behaved_lem_ordering (isLess_method val_dict) (isLessEqual_method val_dict) (isGreater_method val_dict)"
@@ -1020,53 +672,6 @@ using assms
   apply(simp, rule tup2_dict_preserves_well_behavedness, simp, simp, simp)
   apply(subst chooseAndSplit_empty)
   apply(simp only: option.case)
-done
-
-lemma findLowestKVWithKEquivTo_less_singleton_Some:
-  assumes "well_behaved_lem_ordering (isLess_method key_dict) (isLessEqual_method key_dict) (isGreater_method key_dict)"
-      and "well_behaved_lem_ordering (isLess_method val_dict) (isLessEqual_method val_dict) (isGreater_method val_dict)"
-      and "pairLess val_dict key_dict candidate e" and "eq element ek"
-      and "e = (ek, ev)"
-  shows "findLowestKVWithKEquivTo key_dict val_dict element eq {e} (Some candidate) = Some candidate"
-using assms
-  apply(subst findLowestKVWithKEquivTo.simps)
-  apply(subst if_weak_cong[where b="infinite {e}" and c="False"], simp)
-  apply(simp only: if_False)
-  apply(subst if_weak_cong[where b="\<not> well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict))
-      (isLessEqual_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict)) (isGreater_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict))" and c=False], simp)
-  apply(rule tup2_dict_preserves_well_behavedness, simp, simp, simp)
-  apply(subst chooseAndSplit_singleton, rule tup2_dict_preserves_well_behavedness, simp, simp)
-  apply(simp only: split option.case if_True)
-  apply(case_tac "candidate", clarify)
-  apply(simp only: Let_def split)
-  apply(frule tup2_dict_preserves_not_lt, simp, simp)
-  apply(drule Eq_FalseI)
-  apply(subst if_weak_cong[where b="pairLess val_dict key_dict (ek, ev) (a, b)" and c=False], simp)
-  apply(simp only: if_False split)
-  apply(rule findLowestKVWithKEquivTo_Some_empty)
-  apply simp_all
-done
-
-lemma findHighestKVWithKEquivTo_less_singleton_Some:
-  fixes key_dict :: "'a Ord_class" and val_dict :: "'b Ord_class"
-  assumes "well_behaved_lem_ordering (isLess_method key_dict) (isLessEqual_method key_dict) (isGreater_method key_dict)"
-      and "well_behaved_lem_ordering (isLess_method val_dict) (isLessEqual_method val_dict) (isGreater_method val_dict)"
-      and "eq element ek" and "\<not> pairLess val_dict key_dict candidate e"
-      and "e = (ek, ev)"
-  shows "findHighestKVWithKEquivTo key_dict val_dict element eq {e} (Some candidate) = Some candidate"
-using assms
-  apply(subst findHighestKVWithKEquivTo.simps)
-  apply(subst if_weak_cong[where b="infinite {e}" and c="False"], simp)
-  apply(simp only: if_False)
-  apply(subst if_weak_cong[where b="\<not> well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict))
-      (isLessEqual_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict)) (isGreater_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict))" and c=False], simp)
-  apply(rule tup2_dict_preserves_well_behavedness, simp, simp)
-  apply(simp only: if_False)
-  apply(subst chooseAndSplit_singleton, rule tup2_dict_preserves_well_behavedness, simp, simp)
-  apply(simp only: split option.case if_True)
-  apply(case_tac "candidate", clarify)
-  apply(simp only: Let_def split pairGreater_def if_False)
-  apply(rule findHighestKVWithKEquivTo_Some_empty, simp_all)
 done
 
 lemma findLowestKVWithKEquivTo_singleton_None:
@@ -1106,97 +711,6 @@ using assms
   apply(simp only: split Let_def)
   apply(rule findHighestKVWithKEquivTo_Some_empty)
   apply simp_all
-done
-
-lemma findLowestKVWithKEquivTo_2_None:
-  assumes "well_behaved_lem_ordering (isLess_method key_dict) (isLessEqual_method key_dict) (isGreater_method key_dict)"
-      and "well_behaved_lem_ordering (isLess_method val_dict) (isLessEqual_method val_dict) (isGreater_method val_dict)"
-      and "element1 = (e1k, e1v)" and "element2 = (e2k, e2v)"
-      and "isLess_method key_dict e2k e1k" and "eq element e1k" and "\<not> eq e2k element"
-      and "\<forall>x y1 y2. isLess_method key_dict y1 x \<longrightarrow> eq y2 y1 \<longrightarrow> isLess_method key_dict y2 x"
-      and "\<forall>x y. eq x y \<longleftrightarrow> eq y x"
-  shows "findLowestKVWithKEquivTo key_dict val_dict element eq {element1, element2} None = Some element1"
-using assms
-  apply(subst findLowestKVWithKEquivTo.simps)
-  apply(subst if_weak_cong[where b="infinite {element1, element2}" and c=False], simp)
-  apply(simp only: if_False)
-  apply(subst if_weak_cong[where b="\<not> well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict)) (isLessEqual_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict))
-            (isGreater_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict))" and c=False], simp)
-  apply(rule tup2_dict_preserves_well_behavedness, assumption+)
-  apply(simp only: if_False)
-  apply(rule disjE[OF chooseAndSplit_less_2[where dict="instance_Basic_classes_Ord_tup2_dict key_dict val_dict"]])
-  apply(rule tup2_dict_preserves_well_behavedness, assumption+)
-  apply(simp add: instance_Basic_classes_Ord_tup2_dict_def)
-  apply(rule pairLess_intro, assumption)
-  apply(simp only: insert_commute)
-  apply(subst option.case_cong_weak[where option="chooseAndSplit (instance_Basic_classes_Ord_tup2_dict key_dict val_dict) {(e1k, e1v), (e2k, e2v)}"], assumption)
-  apply(simp only: option.case split if_False Let_def)
-sorry
-
-lemma findHighestKVWithKEquivTo_2_None:
-  assumes "well_behaved_lem_ordering (isLess_method key_dict) (isLessEqual_method key_dict) (isGreater_method key_dict)"
-      and "well_behaved_lem_ordering (isLess_method val_dict) (isLessEqual_method val_dict) (isGreater_method val_dict)"
-      and "element1 = (e1k, e1v)" and "element2 = (e2k, e2v)"
-      and "isLess_method key_dict e2k e1k" and "eq element e1k"
-      and "\<forall>x y1 y2. isLess_method key_dict x y1 \<longrightarrow> eq y2 y1 \<longrightarrow> isLess_method key_dict x y2"
-      and "\<forall>x y. isLess_method key_dict x y \<longrightarrow> \<not> eq x y"
-      and "\<forall>x y. eq x y \<longleftrightarrow> eq y x"
-  shows "findHighestKVWithKEquivTo key_dict val_dict element eq {element1, element2} None = Some element1"
-using assms
-  apply(subst findHighestKVWithKEquivTo.simps)
-  apply(subst if_weak_cong[where b="infinite {element1, element2}" and c=False], simp)
-  apply(simp only: if_False)
-  apply(subst if_weak_cong[where b="\<not> well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict)) (isLessEqual_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict))
-            (isGreater_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict))" and c=False], simp)
-  apply(rule tup2_dict_preserves_well_behavedness, assumption+)
-  apply(simp only: if_False)
-  apply(rule disjE[OF chooseAndSplit_less_2[where dict="instance_Basic_classes_Ord_tup2_dict key_dict val_dict"]])
-  apply(rule tup2_dict_preserves_well_behavedness, assumption+)
-  apply(simp add: instance_Basic_classes_Ord_tup2_dict_def)
-  apply(rule pairLess_intro, assumption)
-  apply(simp only: insert_commute)
-  apply(subst option.case_cong_weak[where option="chooseAndSplit (instance_Basic_classes_Ord_tup2_dict key_dict val_dict) {(e1k, e1v), (e2k, e2v)}"], assumption)
-  apply(simp only: option.case split if_False Let_def)
-  apply(subgoal_tac "isGreater_method key_dict element e2k = True", simp del: findHighestKVWithKEquivTo.simps)
-  apply(simp only: findHighestKVWithKEquivTo_singleton_None)
-  apply(rule eqTrueI)
-  apply(rule lem_ordering_lt[where gt="isGreater_method key_dict"], assumption)
-  apply blast
-  apply(simp only: insert_commute option.case split if_True Let_def)
-  apply(rule findHighestKVWithKEquivTo_Some_empty, simp_all)
-done
-
-lemma findHighestKVWithKEquivTo_2_None':
-  assumes "well_behaved_lem_ordering (isLess_method key_dict) (isLessEqual_method key_dict) (isGreater_method key_dict)"
-      and "well_behaved_lem_ordering (isLess_method val_dict) (isLessEqual_method val_dict) (isGreater_method val_dict)"
-      and "element1 = (e1k, e1v)" and "element2 = (e2k, e2v)"
-      and "isLess_method key_dict e2k e1k" and "\<not> eq element e1k" and "eq element e2k"
-      and "\<forall>x y1 y2. isLess_method key_dict x y1 \<longrightarrow> eq y2 y1 \<longrightarrow> isLess_method key_dict x y2"
-      and "\<forall>x y. isLess_method key_dict x y \<longrightarrow> \<not> eq x y"
-      and "\<forall>x y. eq x y \<longleftrightarrow> eq y x"
-  shows "findHighestKVWithKEquivTo key_dict val_dict element eq {element1, element2} None = Some element2"
-using assms
-sorry
-
-lemma comprehension_2_decompose:
-  shows "\<forall>x y. cmp1 x y = EQ \<longleftrightarrow> x = y \<Longrightarrow> \<forall>x y. cmp2 x y = EQ \<longleftrightarrow> x = y \<Longrightarrow>
-    { x \<in> {e1, e2}. EQ = pairCompare cmp1 cmp2 x e1 } = { e1 }"
-  apply(rule equalityI)
-  apply(rule subsetI)
-  apply(drule CollectD)
-  apply(erule conjE)
-  apply simp
-  apply(erule disjE, assumption)
-  apply(case_tac x, case_tac e1, clarify)
-  apply(simp only: pairCompare.simps)
-  apply(case_tac "cmp1 aa aaa", simp+)
-  apply(erule_tac x="ba" in allE, erule_tac x="baa" in allE, simp)
-  apply simp
-  apply(rule subsetI)
-  apply(drule singletonD, clarify)
-  apply(simp only: pairCompare.simps)
-  apply(erule_tac x="a" in allE, erule_tac x="a" in allE, simp)
-  apply(erule_tac x="b" in allE, erule_tac x="b" in allE, simp)
 done
 
 lemma any_abi_feature_dict_well_behaved:
@@ -1421,41 +935,6 @@ lemma maybe_dict_preserves_well_behavedness:
    (isGreater_method (instance_Basic_classes_Ord_Maybe_maybe_dict dict))"
 using assms sorry
 
-lemma isLess_method_tagEquiv_quasi_transitive_technical:
-  shows "∀x y1 y2. isLess_method (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict) y1 x ⟶
-              tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict y2 y1 ⟶
-              isLess_method (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict) y2 x"
-sorry
-
-lemma isLess_method_tagEquiv_quasi_transitive_technical':
-  shows "∀x y1 y2. isLess_method (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict) x y1 ⟶
-              tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict y2 y1 ⟶
-              isLess_method (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict) x y2"
-sorry
-
-lemma isLess_implies_not_tagEquiv_technical:
-  shows "∀x y. isLess_method (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict) x y ⟶
-          ¬ tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict x y"
-sorry
-
-lemma abiFeatureTagEq0_sym:
-  shows "abiFeatureTagEq0 x y = abiFeatureTagEq0 y x"
-  apply(case_tac x; case_tac y; clarify)
-  apply(simp only: abiFeatureTagEq0.simps)+
-done
-
-lemma abiFeatureTagEq_sym:
-  shows "abiFeatureTagEq x y = abiFeatureTagEq y x"
-  apply(case_tac x; case_tac y; clarify)
-  apply(simp only: abiFeatureTagEq.simps)+
-done
-
-lemma anyAbiFeatureTagEquiv_sym:
-  shows "anyAbiFeatureTagEquiv x y = anyAbiFeatureTagEquiv y x"
-  apply(case_tac x; case_tac y; clarify)
-  apply(simp only: anyAbiFeatureTagEquiv.simps abiFeatureTagEq0_sym abiFeatureTagEq_sym)+
-done
-
 lemma pairLess_Ref_Ref_technical:
   shows "pairLess (instance_Basic_classes_Ord_Maybe_maybe_dict
                    (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
@@ -1495,20 +974,6 @@ unfolding instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes
   apply(simp only: Ord_class.simps pairCompare.simps pairGreater_def pairLess.simps)
   apply(simp only: tagCompare.simps)
   apply auto
-done
-
-lemma pairCompare_not_EQ_technical:
-  shows "EQ ≠ pairCompare (compare_method (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict))
-           (compare_method
-             (instance_Basic_classes_Ord_Maybe_maybe_dict
-               (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
-                 (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))
-           (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)) (SymbolDef def_rec0, Some (''.data'', addr, 8))"
-unfolding instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes_Ord_string_dict_def
-  instance_Basic_classes_Ord_tup2_dict_def instance_Basic_classes_Ord_Maybe_maybe_dict_def
-  instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def
-  apply(simp only: Ord_class.simps pairCompare.simps tagCompare.simps ordering.case)
-  apply simp
 done
 
 lemma set_choose_technical_Ref_2:
@@ -1574,6 +1039,179 @@ lemma set_choose_technical_Def_2:
   apply simp
 done
 
+lemma findHighestKVWithKEquivTo_technical_Ref_Ref_None:
+  shows "findHighestKVWithKEquivTo (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+                 (instance_Basic_classes_Ord_Maybe_maybe_dict
+                   (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                     (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
+                 (SymbolRef null_symbol_reference_and_reloc_site) (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict)
+                 {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} None =
+         Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))"
+  apply(subst findHighestKVWithKEquivTo.simps)
+  apply(subst if_weak_cong[where c=False], simp)
+  apply(simp only: if_False)
+  apply(subst if_weak_cong[where c=False], simp)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule tag_dict_preserves_well_behavedness)
+  apply(rule any_abi_feature_dict_well_behaved)
+  apply(rule maybe_dict_preserves_well_behavedness)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule string_dict_well_behaved)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule natural_dict_well_behaved)
+  apply(rule natural_dict_well_behaved)
+  apply(simp only: if_False)
+  apply(simp only: insert_commute)
+  apply(rule disjE[OF chooseAndSplit_less_2[where dict="(instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+             (instance_Basic_classes_Ord_Maybe_maybe_dict
+               (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                 (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))"
+              and ?element2.0="(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))" and ?element1.0="(SymbolDef def_rec0, Some (''.data'', addr, 8))"]])
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule tag_dict_preserves_well_behavedness)
+  apply(rule any_abi_feature_dict_well_behaved)
+  apply(rule maybe_dict_preserves_well_behavedness)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule string_dict_well_behaved)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule natural_dict_well_behaved)
+  apply(rule natural_dict_well_behaved)
+  apply(simp only: instance_Basic_classes_Ord_Maybe_maybe_dict_def instance_Basic_classes_Ord_tup2_dict_def
+  instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes_Ord_string_dict_def
+  instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def)
+  apply simp
+  apply(simp add: Ord_class.simps pairLess.simps tagCompare.simps maybeCompare.simps pairCompare.simps)
+  apply(subst option.case_cong_weak[where option'="Some ({}, (SymbolDef def_rec0, Some (''.data'', addr, 8)), {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))})"], simp)
+  apply(simp only: option.case split tagEquiv.simps if_False)
+  apply(subst if_weak_cong[where c=True])
+  apply(simp only: instance_Basic_classes_Ord_Maybe_maybe_dict_def instance_Basic_classes_Ord_tup2_dict_def
+  instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes_Ord_string_dict_def
+  instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def)
+  apply(simp add: tagCompare.simps)
+  apply(simp only: if_True)
+  apply(rule findHighestKVWithKEquivTo_singleton_None)
+  apply(rule tag_dict_preserves_well_behavedness)
+  apply(rule any_abi_feature_dict_well_behaved)
+  apply(rule maybe_dict_preserves_well_behavedness)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule string_dict_well_behaved)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule natural_dict_well_behaved)
+  apply(rule natural_dict_well_behaved)
+  apply(rule refl)
+  apply(simp add: tagEquiv.simps)
+  apply(subst option.case_cong_weak[where option'="Some ({(SymbolDef def_rec0, Some (''.data'', addr, 8))}, (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), {})"], simp)
+  apply(simp only: option.case split tagEquiv.simps if_True Let_def)
+  apply(rule findHighestKVWithKEquivTo_Some_empty)
+  apply(rule tag_dict_preserves_well_behavedness)
+  apply(rule any_abi_feature_dict_well_behaved)
+  apply(rule maybe_dict_preserves_well_behavedness)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule string_dict_well_behaved)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule natural_dict_well_behaved)
+  apply(rule natural_dict_well_behaved)
+done
+
+lemma findLowestKVWithKEquivTo_technical_Ref_Ref_None:
+  shows "findLowestKVWithKEquivTo (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+           (instance_Basic_classes_Ord_Maybe_maybe_dict
+             (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+               (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
+           (SymbolRef null_symbol_reference_and_reloc_site) (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict)
+           {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} None = Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))"
+  apply(subst findLowestKVWithKEquivTo.simps)
+  apply(subst if_weak_cong[where c=False], simp)
+  apply(simp only: if_False)
+  apply(subst if_weak_cong[where c=False], simp)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule tag_dict_preserves_well_behavedness)
+  apply(rule any_abi_feature_dict_well_behaved)
+  apply(rule maybe_dict_preserves_well_behavedness)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule string_dict_well_behaved)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule natural_dict_well_behaved)
+  apply(rule natural_dict_well_behaved)
+  apply(simp only: if_False insert_commute)
+  apply(rule disjE[OF chooseAndSplit_less_2[where dict="(instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+             (instance_Basic_classes_Ord_Maybe_maybe_dict
+               (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                 (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))"
+         and ?element2.0="(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))" and ?element1.0="(SymbolDef def_rec0, Some (''.data'', addr, 8))"]])
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule tag_dict_preserves_well_behavedness)
+  apply(rule any_abi_feature_dict_well_behaved)
+  apply(rule maybe_dict_preserves_well_behavedness)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule string_dict_well_behaved)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule natural_dict_well_behaved)
+  apply(rule natural_dict_well_behaved)
+  apply(simp only: instance_Basic_classes_Ord_Maybe_maybe_dict_def instance_Basic_classes_Ord_tup2_dict_def
+  instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes_Ord_string_dict_def
+  instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def)
+  apply(simp add: pairLess.simps tagCompare.simps)
+  apply(subst option.case_cong_weak[where option'="Some ({}, (SymbolDef def_rec0, Some (''.data'', addr, 8)), {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))})"], simp)
+  apply(simp only: option.case split tagEquiv.simps if_False)
+  apply(subst if_weak_cong[where c="False"])
+  apply(simp only: instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def
+    Ord_class.simps tagCompare.simps ordering.simps)
+  apply(simp only: if_False)
+  apply(rule findLowestKVWithKEquivTo_singleton_None)
+  apply(rule tag_dict_preserves_well_behavedness)
+  apply(rule any_abi_feature_dict_well_behaved)
+  apply(rule maybe_dict_preserves_well_behavedness)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule string_dict_well_behaved)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule natural_dict_well_behaved)
+  apply(rule natural_dict_well_behaved)
+  apply(rule refl)
+  apply(simp only: tagEquiv.simps)
+  apply(subst option.case_cong_weak[where option'="Some ({(SymbolDef def_rec0, Some (''.data'', addr, 8))}, (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), {})"], simp)
+  apply(simp only: option.case split tagEquiv.simps if_True Let_def)
+  apply(subst findLowestKVWithKEquivTo.simps)
+  apply(subst findLowestKVWithKEquivTo.simps)
+  apply(subst if_weak_cong[where c=False], simp)
+  apply(simp only: if_False)
+  apply(subst if_weak_cong[where c=False], simp)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule tag_dict_preserves_well_behavedness)
+  apply(rule any_abi_feature_dict_well_behaved)
+  apply(rule maybe_dict_preserves_well_behavedness)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule string_dict_well_behaved)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule natural_dict_well_behaved)
+  apply(rule natural_dict_well_behaved)
+  apply(simp only: if_False)
+  apply(subst chooseAndSplit_singleton)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule tag_dict_preserves_well_behavedness)
+  apply(rule any_abi_feature_dict_well_behaved)
+  apply(rule maybe_dict_preserves_well_behavedness)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule string_dict_well_behaved)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule natural_dict_well_behaved)
+  apply(rule natural_dict_well_behaved)
+  apply(simp only: option.case split tagEquiv.simps if_False)
+  apply(subst if_weak_cong[where c=False])
+  apply(simp only: instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def
+    Ord_class.simps tagCompare.simps ordering.simps)
+  apply(simp only: if_False)
+  apply(rule findLowestKVWithKEquivTo_Some_empty)
+  apply(rule tag_dict_preserves_well_behavedness)
+  apply(rule any_abi_feature_dict_well_behaved)
+  apply(rule maybe_dict_preserves_well_behavedness)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule string_dict_well_behaved)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule natural_dict_well_behaved)
+  apply(rule natural_dict_well_behaved)
+done
+
 lemma lookupBy0_Ref_Ref_singleton:
   shows "lookupBy0 (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
                    (instance_Basic_classes_Ord_Maybe_maybe_dict
@@ -1584,45 +1222,9 @@ lemma lookupBy0_Ref_Ref_singleton:
                    [(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))]"
 using assms
   apply(simp only: lookupBy0_def)
-  apply(subst findLowestKVWithKEquivTo_2_None)
-  apply(rule tag_dict_preserves_well_behavedness)
-  apply(rule any_abi_feature_dict_well_behaved)
-  apply(rule maybe_dict_preserves_well_behavedness)
-  apply(rule tup2_dict_preserves_well_behavedness)
-  apply(rule string_dict_well_behaved)
-  apply(rule tup2_dict_preserves_well_behavedness)
-  apply(rule natural_dict_well_behaved)
-  apply(rule natural_dict_well_behaved)
-  apply(rule refl)+
-  apply(simp only: instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def
-    Ord_class.simps tagCompare.simps)
-  apply(simp only: tagEquiv_rewrites simp_thms)+
-  apply(rule isLess_method_tagEquiv_quasi_transitive_technical)
-  apply(rule allI)+
-  apply(rule tagEquiv_sym)
-  apply(rule allI)+
-  apply(simp only: instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict_def AbiFeatureTagEquiv_class.simps)
-  apply(rule anyAbiFeatureTagEquiv_sym)
+  apply(subst findLowestKVWithKEquivTo_technical_Ref_Ref_None)
   apply(simp only: option.case)
-  apply(subst findHighestKVWithKEquivTo_2_None)
-  apply(rule tag_dict_preserves_well_behavedness)
-  apply(rule any_abi_feature_dict_well_behaved)
-  apply(rule maybe_dict_preserves_well_behavedness)
-  apply(rule tup2_dict_preserves_well_behavedness)
-  apply(rule string_dict_well_behaved)
-  apply(rule tup2_dict_preserves_well_behavedness)
-  apply(rule natural_dict_well_behaved)+
-  apply(rule refl)+
-  apply(simp only: instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def
-    Ord_class.simps tagCompare.simps)
-  apply(simp only: tagEquiv_rewrites)
-  apply(rule isLess_method_tagEquiv_quasi_transitive_technical')
-  apply(rule isLess_implies_not_tagEquiv_technical)
-  apply(rule allI)+
-  apply(rule tagEquiv_sym)
-  apply(simp only: instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict_def AbiFeatureTagEquiv_class.simps)
-  apply(rule allI)+
-  apply(rule anyAbiFeatureTagEquiv_sym)
+  apply(subst findHighestKVWithKEquivTo_technical_Ref_Ref_None)
   apply(simp only: option.case Let_def)
   apply(subst split_greater_2)
   apply(rule tup2_dict_preserves_well_behavedness)
@@ -1948,10 +1550,6 @@ using assms
   apply auto
 done
 
-lemma the_elem_singleton:
-  shows "the_elem {s. s = x} = x"
-by simp
-
 lemma build_fixed_program_memory_commute_miss_lower:
   fixes bytes :: "8 word list"
   assumes "x < addr" and "x \<in> unats 64"
@@ -1994,12 +1592,6 @@ using assms unfolding build_fixed_program_memory_def
   apply auto[1]
 done
 
-lemma ext_of_nat:
-  fixes f g :: "64 word \<Rightarrow> 'a"
-  assumes "\<And>x. f (of_nat x) = g (of_nat x)"
-  shows "f = g"
-by(rule ext, metis assms word_unat.Rep_inverse)
-
 lemma set_comprehension_collapse_miss_lower:
   assumes "x < 4194304"
   shows "{s. ∃k∈{''.data'', ''.text''}.
@@ -2033,11 +1625,6 @@ done
 lemma dom_2:
   shows "dom [k1 ↦ v1, k2 ↦ v2] = {k1, k2}"
 by auto
-
-lemma the_map_Some_nth_commute:
-  assumes "m < length xs"
-  shows "the ((map Some xs) ! m) = xs ! m"
-using assms by simp
 
 lemma set_comprehension_elim_text_technical:
   assumes "4194304 ≤ x" and "x < 4194316"
