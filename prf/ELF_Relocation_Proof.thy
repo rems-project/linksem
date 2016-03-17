@@ -1862,7 +1862,104 @@ lemma findHighestKVWithKEquivTo_Def_Ref_Def_technical:
                    Some (''.text'', 4, 8)),
                   (SymbolDef def_rec0, Some (''.data'', addr, 8))}
                  None = Some (SymbolDef def_rec0, Some (''.data'', addr, 8))"
-sorry
+  apply(subst findHighestKVWithKEquivTo.simps)
+  apply(subst if_weak_cong[where c="False"], simp)
+  apply(simp only: if_False)
+  apply(subst if_weak_cong[where c="False"], simp)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule tag_dict_preserves_well_behavedness)
+  apply(rule any_abi_feature_dict_well_behaved)
+  apply(rule maybe_dict_preserves_well_behavedness)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule string_dict_well_behaved)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule natural_dict_well_behaved)+
+  apply(simp only: if_False)
+  apply(rule disjE[OF chooseAndSplit_greater_2[where dict="(instance_Basic_classes_Ord_tup2_dict (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+             (instance_Basic_classes_Ord_Maybe_maybe_dict
+               (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
+                 (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))"
+    and ?element2.0="(SymbolDef def_rec0, Some (''.data'', addr, 8))" and ?element1.0="(SymbolRef ⦇ref = ref_rec0,
+                          maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 2, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
+                          maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)⦈,
+             Some (''.text'', 4, 8))"]])
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule tag_dict_preserves_well_behavedness)
+  apply(rule any_abi_feature_dict_well_behaved)
+  apply(rule maybe_dict_preserves_well_behavedness)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule string_dict_well_behaved)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule natural_dict_well_behaved)+
+  apply(simp only: instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes_Ord_tup2_dict_def
+    Ord_class.simps instance_Basic_classes_Ord_Maybe_maybe_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def
+    instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def pairCompare.simps maybeCompare.simps tagCompare.simps)
+  apply(simp only: pairGreater_def pairLess.simps Ord_class.simps tagCompare.simps, simp)
+  apply(subst option.case_cong_weak[where option'="Some ({(SymbolDef def_rec0, Some (''.data'', addr, 8))},
+          (SymbolRef ⦇ref = ref_rec0,
+                        maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 2, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
+                        maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)⦈,
+           Some (''.text'', 4, 8)),
+          {})"], assumption)
+  apply(simp only: option.case split tagEquiv.simps if_False)
+  apply(subst if_weak_cong[where c=False])
+  apply(simp only: instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes_Ord_tup2_dict_def
+    Ord_class.simps instance_Basic_classes_Ord_Maybe_maybe_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def
+    instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def pairCompare.simps maybeCompare.simps tagCompare.simps, simp)
+  apply(simp only: if_False)
+  apply(rule findHighestKVWithKEquivTo_singleton_None)
+  apply(rule tag_dict_preserves_well_behavedness)
+  apply(rule any_abi_feature_dict_well_behaved)
+  apply(rule maybe_dict_preserves_well_behavedness)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule string_dict_well_behaved)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule natural_dict_well_behaved)+
+  apply(rule refl)
+  apply(simp only: tagEquiv.simps)
+  apply(subst option.case_cong_weak[where option'="Some ({}, (SymbolDef def_rec0, Some (''.data'', addr, 8)),
+          {(SymbolRef ⦇ref = ref_rec0,
+                         maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 2, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
+                         maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)⦈,
+            Some (''.text'', 4, 8))})"], assumption)
+  apply(simp only: option.case split tagEquiv.simps if_True Let_def)
+  apply(subst findHighestKVWithKEquivTo.simps)
+  apply(subst if_weak_cong[where c=False], simp)
+  apply(simp only: if_False)
+  apply(subst if_weak_cong[where c=False], simp)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule tag_dict_preserves_well_behavedness)
+  apply(rule any_abi_feature_dict_well_behaved)
+  apply(rule maybe_dict_preserves_well_behavedness)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule string_dict_well_behaved)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule natural_dict_well_behaved)+
+  apply(simp only: if_False)
+  apply(subst chooseAndSplit_singleton)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule tag_dict_preserves_well_behavedness)
+  apply(rule any_abi_feature_dict_well_behaved)
+  apply(rule maybe_dict_preserves_well_behavedness)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule string_dict_well_behaved)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule natural_dict_well_behaved)+
+  apply(simp only: option.case split tagEquiv.simps if_False)
+  apply(subst if_weak_cong[where c=False])
+  apply(simp only: instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes_Ord_tup2_dict_def
+    Ord_class.simps instance_Basic_classes_Ord_Maybe_maybe_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def
+    instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def pairCompare.simps maybeCompare.simps tagCompare.simps, simp)
+  apply(simp only: if_False)
+  apply(rule findHighestKVWithKEquivTo_Some_empty)
+  apply(rule tag_dict_preserves_well_behavedness)
+  apply(rule any_abi_feature_dict_well_behaved)
+  apply(rule maybe_dict_preserves_well_behavedness)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule string_dict_well_behaved)
+  apply(rule tup2_dict_preserves_well_behavedness)
+  apply(rule natural_dict_well_behaved)+
+done
 
 lemma lookupBy0_Def_Def_singleton:
   shows "lookupBy0 (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
