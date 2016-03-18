@@ -1,0 +1,639 @@
+We thank the reviewers for their helpful comments.  We first note that the
+reviewers collectively ask for three things:
+
+  1. Using the model to prove substantial theorems about the linking
+  process (A, D); 
+  2. Using "lessons learnt" from the specification process to
+  investigate how linking could be made less ad-hoc (B, D, E); and
+  3. Extending existing verified compilers such as CompCert to handle
+  linking (D).
+
+Each of these would be another (very interesting, multi-person-year)
+project in its own right, remembering that any mechanised proof is a
+major undertaking, and trying to combine any of them with the
+current work would take it beyond what can reasonably be explained in
+a single PLDI paper.  The fact that one can start seriously
+contemplating such work is itself a contribution of our current paper,
+and this is exactly what we meant when we wrote of "bringing linking
+into the formal discourse".
+
+To address some other important points:
+
+  * For A: all recursive functions, both in the ELF and linker
+    formalisation, have been proved terminating.  This already
+    establishes the basic usability of the model for proof.
+
+  * For A and D: while "hello world" is close to the simplest C
+    program, it is far from a simple link job, since it necessarily
+    includes a whole C library.  We focus on it because linking it
+    exercises most features in Section 3; our tool does scale to
+    larger programs, e.g. bzip2.
+
+
+*** EXPLICITLY TALK ABOU THTIS 
+  * Reviewers A and D suggest that the sole point of a formalisation
+    is to support proof, and question the relationship between a model
+    and an implementation in a restrictive language.  What we have is
+    a "model" in several important ways: (a) it is mathematically
+    precise, (b) it is written with clarity as the prime goal, and (c)
+    it explicitly addresses the various forms of loose specification
+    involved here, rather than fixing on some implementation choice.
+    Some of this would be more apparent if space had permitted more
+    detail of the formalisation in the main body of the paper.
+    Supporting proof is only one possible goal among many of a
+    formalisation: we are equally concerned with providing a clear
+    specification, supporting discussion at a level of abstraction
+    above C implementations, and providing a test oracle.
+
+
+*** EXPLICITLY TALK ABOUT THIS
+  * Reviewers B and D expected to see the "essence" of linking.  While
+    (we agree) it would be great if such a thing did exist, a clear
+    conclusion from our work is that it does not; instead, there are
+    many important use-cases for different aspects of linker-speak,
+    which are supported by many more-or-less ad hoc mechanisms.  The
+    behaviour of current linkers is essentially a contract between
+    hundreds of disparate compilers and other tools that now rely on
+    this behaviour in order to work correctly, so it cannot simply be
+    "fixed" in isolation.  Instead, we have to understand all those
+    use-cases and mechanisms in depth before going forwards, if one
+    wants to pursue (2) above, as E suggests.  Our work provides a
+    concise and precise characterisation of many of the issues that
+    will have to be addressed.  Previous formal work on linking, in
+    contrast, has used highly idealised models.
+
+  * Reviewers B, D and E suggest that what we write (eg in Section 3)
+    is present in public documentation or known to compiler
+    developers.  Some of it is, of course, but we have have anecdotal
+    data (omitted from the submission for anonymity) showing that many
+    compiler developers have a very weak understanding of linking,
+    (e.g. in OCaml, GHC, and Graal contexts). The existing literature
+    (e.g Levine) explains how a linker works, not why and how
+    programmers use it.
+
+  * For E: our formal model is included as supplementary material, and
+    we intend to make it available under an open-source licence before
+    publication.
+
+
+
+Specific replies to targetted questions and comments now follow.
+
+> ===========================================================================
+>                             PLDI '16 Review #3A
+> ---------------------------------------------------------------------------
+>   Paper #3: The missing link: explaining ELF static linking, semantically
+> ---------------------------------------------------------------------------
+> 
+>                  Reviewer expertise: X. Expert
+>                       Overall merit: C. Weak paper, though I will not fight
+>                                         strongly against it
+
+> - The model linker seems to yet scale only to small programs and a C
+> library that, while large, is not the standard Linux one
+
+
+*** HIGHLIGHT FOR OOPSLA
+This is true, although (as we noted above), our use of a "hello, world"
+example does not mean we can't process larger link jobs. As of the
+submission date, our spec could execute a successful link of bzip2 and
+similar-sized programs (bzip2 is 8000 raw lines of C, not including the
+C library it links with). The apparent obstacles to larger link jobs are
+very minor (OCaml stack overflows from non-tail-recursive library
+functions, and generally unoptimised code). Our use of uClibc is purely
+to avoid a small number of GNU extensions that are not yet in our
+specification, notably IRELATIVE relocations. 
+
+> - No interesting theorems have yet been proved
+
+Whilst to some extent this is true (modulo our comment below about
+proving termination of functions used to define the linker itself) we
+believe that proving anything interesting about the model is at
+*least* another paper's worth of work, and there's a limit to what we
+can sensibly report (and do) within the confines of a single paper.
+
+> Modeling a linker without proving anything about it is basically just
+> reimplementing a linker using a restrictive programming language.  The
+> level of detail the paper gives about how it does this makes it sound
+> well-structured and suitable as a basis for future work, but a real
+> demonstration of its value would be by constructing proofs. The
+> theorem about relocation correctness that the paper describes
+> formulating would sounds like a good demonstration, but if the
+> author(s) haven't yet proved it, we don't have much confidence that
+> its statement is correct. 
+
+As we discussed at the top, the model can provide value in several ways, not
+only proof, all of which we fully intend to support.
+
+> are the 1500 lines of handwritten termination proofs are
+> roughly proving the termination of ELF file parsing as in "readelf",
+> or the termination of linking as in "ld"? The latter would be a
+> somewhat more interesting result.
+*** FIX FOR OOPSLA
+They are doing both, and we will rewrite this text to make this clear.
+
+We should mention that in Linker_script.thy submitted with this paper
+one large recursive function is commented out in the Isabelle/HOL
+extraction, along with several other non-recursive functions that depend
+upon this. This definition provokes a bug in Isabelle, reported to the
+Isabelle mailing list in late 2015. We are still waiting on a fix. After
+submission, this function was rewritten by hand to work around the bug,
+and all remaining termination proofs completed.
+
+> The case for the
+> practical importance of the paper's work would be stronger, though, if
+> the paper could give a more pernicious example of linking causing
+> undesirable behavior, such as something silently incorrect, or clearly
+> contrary to programmer intent. Perhaps this position could be filled
+> by expanding on the claim in the introduction about Figure 1 that the
+> calls to _int_malloc might not go the function defined in that figure?
+> It wasn't clear to me which linker behavior could be the cause of
+> that.
+
+Section 3.2 refers back to the opening malloc-based example throughout,
+including in the "Build-time substitution", "Load-time substitution",
+"Aliases" and "Topology alternatives" paragraphs. The first two of these
+explain mechanisms by which the given "_int_malloc" might be bypassed,
+while the latter two explain the purpose of the alias directives shown.
+
+> I would have been curious to hear a bit more about the further bugs in
+> the ELF specification that were revealed not by testing on 7k binaries
+> but by the Isabelle/HOL proof process for termination and "various
+> other lemmas".
+** MENTION FOR OOPSLA
+Isabelle proofs and validation were carried out concurrently.  As a
+result, several very basic errors were in fact highlighted not by
+testing, but by preliminary work in Isabelle where we experimented with
+proof using the model. These included an incorrect byte ordering in the
+parsing function for 8-byte types like elf64_xword that caused
+roundtripping to fail.  This would eventually have been identified by
+validation, but was in fact identified within Isabelle itself.
+
+Some bugs that would not have been identified by validation include
+certain functions that did not terminate on all inputs, in the linker
+and in the ELF model, for example parsing functions relating to symbol
+versioning were originally not provably terminating on all inputs due
+to a silly error and this was only brought to light when we attempted
+to prove them so.  Bugs of this sort would only have been uncovered by
+validation if extremely lucky (and having a failing termination proof
+makes tracking down the cause of non- termination much easier than
+just observing a non-terminating program).
+
+Another recent bug in the specification uncovered by working with the
+model in Isabelle was a lack of padding in NOTE sections to align
+certain fields up to a 64- or 32-bit boundary.  This was not uncovered
+during validation as the actual contents of NOTE sections were never
+systematically decoded during validation (readelf does not do this for
+--program-headers, --section-headers, etc.).
+
+In short: Isabelle extraction was used relatively early and new
+versions of the model have continuously been extracted to Isabelle,
+proofs and definitions updated, and so on, and has played a role in
+validation of even basic definitions itself, as has trying to use our
+ELF model with other tools as a library.
+
+> "normally archives can only refer to objects appearing to their left":
+> did you mean "appearing to their right"? 
+
+Yes, good catch... this should say "archives can only be referenced by objects
+appearing to their left". (Note that archives themselves can potentially
+reference to the left *or* right.)
+
+> ===========================================================================
+>                             PLDI '16 Review #3B
+> ---------------------------------------------------------------------------
+>   Paper #3: The missing link: explaining ELF static linking, semantically
+> ---------------------------------------------------------------------------
+> 
+>                  Reviewer expertise: Y. Knowledgeable
+>                       Overall merit: B. OK paper, but I will not champion
+>                                         it
+
+
+*** MAYBE BE MORE CLEAR ABOUT LIMITATIONS OF PUBLIC DOCS?
+> The main thing missing from this paper is insights. The descriptive
+> aspects can already be found in public documentation (although it is
+> nice to have them collated and summarized here).  What did we learn
+> from this whole exercise? We already knew that linking is messy. The
+> high-level vision is somewhat missing from this paper.
+
+As we discussed at the top, our finding (or insight) is that there is no
+simple essence, since linker-speak addresses real but disparate programmer
+requirements. Designing a less ad-hoc alternative could certainly be done,
+and would build on our work.
+
+> The paper refers to an ELF "model" and "formalization", but such a
+> formalization is neither contained in the paper nor (as far as I could
+> tell) included as a reference. The "model" in this paper appears to be
+> just a description of the HOL implementation's phases, which mirrors a
+> real linker's phases.
+
+By "model" we mean the Lem specification of ELF and the linker, which
+we included as additional material in our submission, along with the
+extraction of an Isabelle/HOL version of this model.  See the
+discussion of model vs implementation in the main response.
+
+> The evaluation (Section 4.1) discusses validating the model against 7k
+> binaries. What sources of incompleteness in source specification
+> documents were found? Did you update the model to deal with all corner
+> cases exposed by these binaries? A table summarizing the results from
+> this large validation would make it more clear what exactly
+> happened. Also, what bugs did you discover when translating the model
+> to Isabelle/HOL?
+
+Most ELF binaries found "in the wild" contain section types, symbol
+types, relocation types, and so on that are not mentioned explicitly in
+any formal or semi-formal document.  Examples include many GNU-specific
+extensions, especially those related to prelinking. These are not
+described in the Linux Standard Base document (LSB) which does partially
+describe most GNU extensions (GNU HASH, etc).
+
+The ELF model was updated to accommodate these features as they were
+found during validation.  we therefore do not claim that our model is
+comprehensive --- validating against e.g. MIPS binaries, or even PowerPC
+binaries produced by an obscure compiler, may reveal yet more sources of
+incompleteness that will need to be added to the formal model on
+as-needed basis.
+
+There were other cases where the ELF specification is unclear or
+ambiguous. One example was a series of PowerPC64 binaries that contained
+a zero-sized segment whose offset was beyond the end of the file, 
+causing an exception when validating -- a case not explicitly allowed
+in the specification documents.
+
+> On a related note, this paper is very grounded in current
+> implementation details of linkers -- but that implementation may
+> change. How does that affect the results? Why formalize all the warts
+> in the linker instead of fixing some of them?
+
+***
+As noted at the top, linker behaviour is a contract shared between many
+compilers and linkers, all of which would need updating; working with
+existing warts avoids this.
+
+> ===========================================================================
+>                             PLDI '16 Review #3C
+> ---------------------------------------------------------------------------
+>   Paper #3: The missing link: explaining ELF static linking, semantically
+> ---------------------------------------------------------------------------
+> 
+>                  Reviewer expertise: X. Expert
+>                       Overall merit: B. OK paper, but I will not champion
+>                                         it
+
+> The linking model is more difficult to validate: linker behavior
+> contains non-deterministic computations and cannot be fully captured
+> by the proposed model. This means that a standard C library cannot be
+> currently linked using the model. 
+
+To clarify: the spec's incorporation of non-determinism (a.k.a.
+looseness), which is intentional, is unrelated to the current lack of
+glibc support.
+
+> This is a well-written paper that describes the experience in
+> formalizing ELF and its linking for the Linux platform. The actual
+> model used is not really seen in the text, which is more concerned
+> with the many obstacles that were encountered during formalization,
+> because of the current state of ELF linking semantics and
+> implementation.
+
+This was a conscious choice.  This type of modelling of real-world
+systems does not lead to neat, easily digestible definitions that fit
+nicely into a paper of this form, like e.g. typing rules of small
+calculi or toy programming languages.  As a result, we thought it better
+not to fill the paper with definitions and instead concentrate our
+effort on highlighting *why* the definitions are like they are.
+
+> 1. How difficult are the termination proofs? The whole effort seems
+> big enough for any attempt at proving things via a proof assistant
+> being painful. Any remarks on that?
+
+The termination proofs in Isabelle/HOL were not especially onerous
+(modulo working around bugs in Isabelle itself, as mentioned above)
+except for their size, which is essentially a reflection of the (quite
+large) size of the formalisation itself.
+
+The reviewer is correct in saying that proving anything non-trivial
+using this formalisation will be a significant amount of work, hence
+our comments at the start of the rebuttal, though given recent large
+formalisation projects (e.g.  CompCert, seL4, CerCo, and so on) this
+is to be expected for any new (or interesting) contemporary
+formalisation project.
+
+> 2. What kinds of bugs did the extraction/proving in Isabelle/HOL find?
+> Why weren't they captured by testing? Were they different in nature?
+
+We have answered an identical question above.
+
+> 3. Why are the proofs also done in Coq/HOL4? Isn't one proof assistant
+> enough? Is this related to integration with CakeML or other formalized
+> compilers?
+
+Unfortunately, the community has not rallied around any single theorem
+prover.  We have CompCert written in Coq, CakeML written in HOL4, seL4
+written in Isabelle/HOL, and so on, and we envisage that our work will
+be at least interesting to people involved in all of these projects. To
+maximise the utility of our model, we decided to aim to extract our
+definitions to all backends that Lem supports. 
+
+The Isabelle/HOL extraction is the only extraction that currently
+includes both definitions and termination proofs for recursive functions
+(hence the generation of simplification rules associated with those
+functions).  The HOL4 extraction consists of definitions only. We
+unearthed a fairly serious bug in the termination mechanism of HOL4 that
+is yet to be fixed but prevents us from completing proofs of termination
+for recursive, monadic functions. (A tentative fix by the HOL4 team was
+pushed but then reverted).  A Coq extraction is only planned at this
+stage, and is not yet concrete.
+
+> 4. (Possibly related to the previous remark.) How easy is it for a
+> "verified" linker like the one proposed to be interfaced with a
+> verified C/C++ compiler? In other words, how easy is it for the
+> linking specification (that the linker follows) to be combined with a
+> C/C++ spec (that e.g. CompCert follows)? Does this require using the
+> same (e.g. Coq) language/infrastructure?
+
+This is another paper's worth of work (at least!)  Note that we have
+explicitly listed this - the extension of existing verified compilers
+like CompCert and CakeML - as possible further work and is certainly
+something that we are interested in.
+
+> 5. Although the text is good, the reader is left with few technical
+> insights as to how to write such a model (apart from reading the
+> attached code). It feels strange that such a seemingly big and complex
+> piece of work does not demonstrate its technical "guts". More
+> technical stuff (like figures 2 and 3, the "symbolic memory images" of
+> section 5.1 or the "interpreter" and "eligibility predicate" of
+> section 5.2) would be welcome, to give a flavor of the way that such a
+> model can be formulated. Were there any expressive power problems
+> writing the ELF specification? Did the authors need any clever hacks
+> or principled programming to manage the specs of ELF and linking?
+
+We certainly ran into difficulties with the Lem language; our
+specification was the biggest Lem codebase yet, by some distance.
+Abstracting over 32- and 64-bit ELF details is not possible in Lem, so
+much code is duplicated and we effectively use the 64-bit definitions as
+our "internal representation" in many places. Limitations of Lem
+typeclasses and lack of support for cyclic references also required
+hackarounds. We could easily add a brief discussion of these, and/or 
+more snippets of the "guts" of the spec (although space is tight).
+
+> 6. The paper is not about modules at the level of the source at all;
+> it is about object code and its linking in a specific setting: ELF
+> linking on a Linux/Android platform. Since it is language-agnostic, it
+> seems that some of the higher-level related work should be seen as
+> complementary to it. Is this the case? Can this work be combined with
+> any of the related work?
+
+Certainly, formally specifying how source language implementations map
+down to linker-speak is worthwhile, as we noted in section 7. Doing so
+would be a complementary but separate (and large) piece of work.
+
+> ===========================================================================
+>                             PLDI '16 Review #3D
+> ---------------------------------------------------------------------------
+>   Paper #3: The missing link: explaining ELF static linking, semantically
+> ---------------------------------------------------------------------------
+> 
+>                  Reviewer expertise: X. Expert
+>                       Overall merit: D. Reject
+
+> First, the paper says very little about the substance of the model. It
+> presents a long list of surprising and disturbing features that have
+> crept into modern linkers. It presents some meta information about how
+> its ELF model was evaluated (running it on binaries) but not much
+> about the model itself. It describes, prosaically for a given example,
+> the stages of static linking, as implemented by the model (and actual
+> linkers, presumably). And it points out that the model, extracted, can
+> perform real work. But I expected the authors to teach me something
+> interesting, e.g., the "essence" of linking, perhaps, in a way that is
+> possibly more realistic or relevant than prior idealized
+> presentations. At the end of the paper, I had basically learned that
+> linking is an arcane activity perhaps in need of a re-think. I did not
+> have any larger insight than I did when I started.
+
+As mentioned at the start of this rebuttal one of the main lessons one
+can draw from this work is that there is no simple "essence" of
+linking, and indeed previous (theoretical) works that have worked on
+this basis only consider a small number of the tasks that linkers are
+actually used for in practice.
+
+Further, one very interesting line of future work is in interfacing
+our specification with existing verified compilers like CompCert and
+CakeML.  It would be highly advantageous if code produced by these
+compilers could work alongside and interact with "real" existing code
+produced by other untrusted tools, hence the complete modelling of
+linker features is necessary.  As a result, we chose to model
+everything, arcana and all, as-is.
+
+One reason for our enumerating the features of linker-speak is to show
+that linker complexity is grounded in real programmer requirements,
+*not* feature creep.
+
+> Second, there is no substantial use of the artifact that is reported
+> in any detail, and hence the model's true purpose is not really
+> evaluated. 
+
+> Instead, the whole point of a formal model is proving things
+> with it. To show that the model truly facilitates proof, we have to
+> prove something. Poor design decisions might get in the way of
+> effective proofs. But no serious applicatiosn of the model have been
+> carried out; only some termination proofs for recursive linking that
+> the paper barely reports on.
+
+We see formal proof as only one point of formalisation.  Another is
+the ability to precisely communicate with external engineers and
+systems companies, in a precise manner about complex mechanisms and
+artefacts at a level of abstraction above a C implementation.  We also
+see formalisation as a process that enables lots of other research
+(not necessarily formal proof) and helps clarify for the benefit of
+the rest of the community that which is being formalised.
+
+Further, proving anything remotely interesting about a model of this
+scale is another substantial paper's worth of work, at least.  We of
+course plan in the near future to start proving things using our
+model, and mention many ideas along these lines in our "future work"
+section, but there are limits in what can be done effectively within
+the confines of a single PLDI paper.
+
+> In short, this is impressive work that will surely be useful. But I
+> don't see much value in this particular paper about it, just yet.
+> 
+> Other comments/questions/nits:
+> 
+> P. 1: You say that a large fraction of code bases rely on linker
+> functionality; what is your basis for this claim? Clearly all programs
+> rely on linking, since all sizeable programs require separate
+> compilation. Programs that use libc rely on the wacky way that libc
+> has evolved with linking; but how many programs rely on non-obvious
+> linker features directly (e.g., require more than the "default
+> script")?
+
+It is true that few codebases use non-default linker scripts. However,
+the other linker features mentioned in section 3 are much more
+commonly used. The "large fraction" of codebases certainly includes
+most large libraries, which have to grapple with symbol visibility
+(viz. Drepper's guide for library authors) and often also with
+versioning. Besides libraries, it is not uncommon for large
+application codebases to ship with wrapper scripts that play tricks
+with LD_PRELOAD or LD_LIBRARY_PATH (e.g. Adobe Reader or Google Chrome
+both do this). Furthermore, any C++ codebase is dependent on link-time
+uniqueness handling. Threaded libraries fairly often make use of weak
+references (to test for the "single-threaded application" case). Code
+featuring plug-in systems uses the dynamic linking API (dlopen()
+etc.). And so on.  Although no one feature is common, almost no large
+library, and few large applications, gets away without using any of
+these features.
+
+> P. 1: Likewise, you say linker speak is used haphazardly and often
+> incorrectly -- what's your basis for this claim?
+
+"Haphazardly" refers to the *specification* of linker-speak, not its
+usage. We do say that linker-speak is often used "incorrectly or... in
+unportable or fragile ways". Section 3 already contains several
+anecdotes to this effect: we note how substitution via LD_PRELOAD is
+inherently unsound; how link-time interposition (with --wrap) fails to
+capture all references; and how an often-recommended option
+(-fvisibility=hidden) breaks the source semantics of C++. A further
+example is that clients of dlsym() are generally not robust to symbol
+versioning.
+
+> P. 1: The code example with "alias" annotations is interesting
+> motivation, showing how linker speak bubbles into the main
+> language. But IIRC this example does not return, e.g., when explaining
+> your formal model; you instead focus on hello world. It would have
+> been nice to close the loop on this.
+
+Linking a hello-world program involves *all* the C library code that
+we show in Section 3 (or close equivalents). For example, many linker
+aliases (coming from libc) are processed when linking hello-world. We
+choose hello-world precisely because although it is a small/simple
+program, linking it is *not at all* a simple link job.
+
+> P. 2: I'm surprised that you have not cited Levine's "Linkers and
+> Loaders" book as a careful reference.
+
+This was an oversight, though it's worth noting the book focusses on
+core linking mechanisms rather than how they are used.
+
+> P. 7: I found 4.1 hard to understand at first: Did you just use your
+> ELF model to parse a bunch of binaries? The first paragraph doesn't
+> say much; the next two describe the use of readelf and hexdump
+> equivalents whose output is diffed -- is this what you mean by
+> "testing?"
+
+We parsed binaries using an OCaml version of our Lem model, extracted
+by Lem itself, and wrote a tool around this code to mimic the output
+of readelf when passed flags like --section-headers, --file-header,
+--relocs, and so on, using information extracted from the parsed
+binaries by the Lem model.  We then mimicked the formatting and output
+of readelf's output and compared the output on ~7000 binaries
+automatically using a script and a diff tool.
+
+We also separately used hexdump to compare the byte-for-byte output of
+our code when a binary was read in and then blitted back out, again
+using diff, to ensure that our parsing and blitting code was correct.
+
+> P. 8: I didn't follow the paragraph at the end of 5.1 on symbolic
+> memory ranges. Footnote 6 was also confusing: -IX options might be
+> linked symbolically? What does it mean to link an option?
+
+The point here is that "options" of the form "-lX" actually denote
+libraries (e.g. -lc is mapped to /usr/lib/libc.a or similar). It is
+unfortunate that the typeface makes 'l' appear like 'I'.
+
+> P. 9 "Our formalisation defines the linker script language's abstract
+> syntax in Lem." What does this mean? Do you mean that you hand
+> translated the script to what you believed to be an equivalent
+> representation in the Lem model? Or, do you have a parser, and that
+> this is what it produced, in Lem syntax, for the default script?
+
+The former: for now, we hand-translate the script into a Lem value.
+
+
+> ===========================================================================
+>                             PLDI '16 Review #3E
+> ---------------------------------------------------------------------------
+>   Paper #3: The missing link: explaining ELF static linking, semantically
+> ---------------------------------------------------------------------------
+> 
+>                  Reviewer expertise: X. Expert
+>                       Overall merit: A. Good paper, I will champion it
+
+>  - There were no insights in how to create a better formal linker
+>    standard.  This is my main comment: I would like to have had more
+>    lessons learned on what would be a "clean" specification.  The
+>    paper described many implementation-dependent and obscure features,
+>    but it wasn't clear that there could be a cleaner specification.
+
+Please see our answer at the top.
+
+> The authors discuss implementation-specific behaviors, and at one
+> point, do say that differing implementations are at odds (S 5.1). This
+> reminded me that BFD is really, really buggy (at least the parts I
+> look at).  Did you end up formalizing bugs?  If it's implementation
+> specific behavior that you already have competing definitions for, why
+> is the formalization important?
+
+It is worth reiterating that we're not formalising BFD per se, nor
+solely testing against it (as noted in 5.2 we already use the gold
+linker, which doesn't use BFD, and will be able to use the new llvm
+linker once it's more mature). ELF linking is more general than BFD
+behavior, and we aspire to capture all legal behaviors (as our
+discussion of looseness noted, \S 5.3).  Of course, once a linker is
+widely-used, like the BFD-based GNU linker, other linkers aim to be
+"bug-compatible", making the bug de facto "standard" behavior.
+
+> I hope the source is indeed released so others can benefit.  My score
+> is probably a 0.5 on the anticipation it will be made available.
+
+Certainly, as we noted at the top, it will be.
+
+> Small things:
+> 
+>  - I'm not convinced your characterization of ELF is the standard is
+>    true.  I think focusing on ELF is great, and it is a very widely
+>    used standard and inspiration (along with it's predecessors) for a
+>    great many formats.  However, I felt there was not enough attention
+>    paid to different OS linker differences, esp. ELF vs. Microsoft
+>    with PE.
+
+We are careful not to proclaim ELF as *the* standard in Section 2.
+Rather, we claim that ELF is the de facto standard executable and
+linkable format on GNU/Linux and BSD and related operating systems
+(which it is).  Further, we acknowledge that Windows and MacOS each
+have their own executable and linkable formats in PE and Mach-O that
+whilst incompatible either have broadly similar features to ELF.
+
+Certainly, we can envisage that similar work specifying PE, a.out,
+Mach-O, etc.  linking is possible in analogy with this work.
+
+>  - I wrote "Meh" next to bullet point one for contributions.  I find
+>    this sort of contribution underwhelming. It's great for a blog; why
+>    for a scientific paper that should advance the field? I'm guessing
+>    there is a community of compiler developers who know many if not
+>    all these things.  I would leave this off the contribution list as
+>    it's a contribution of the discussion, but not really a
+>    contribution to science.
+
+Please see our response to this at the top.
+
+>  - 5.1 contrasts deterministic with non-deterministic.  However, I
+>    think you mean implementation-specific (the word looseness also
+>    used is good).  I would take non-deterministic to mean there is a
+>    coin flip somewhere, which doesn't seem the case here.  In other
+>    words, I would prefer not using the word non-deterministic; it
+>    seems to be the wrong word.
+
+In fact, a linker *would* be allowed to resolve looseness randomly,
+and this is not even a completely silly idea. For example, a
+hypothetical security-hardening linker might randomise the order of
+certain input objects in the link, to make address assignments less
+predictable. Our specification allows us uniformly to say what
+variation is and isn't allowed, whether between different linkers or
+between runs of the same linker.
+
+>  - S5.2 first says 891 objects, then 897 objects. I was confused.
+
+The numbers are correct; there are 891 objects in archives, and 6
+named directly on the command line shown, giving 897 in total.
