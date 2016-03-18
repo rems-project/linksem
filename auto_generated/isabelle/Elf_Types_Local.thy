@@ -403,8 +403,9 @@ begin
   definition compute_differences :: "nat \<Rightarrow> nat \<Rightarrow> (nat \<times> nat) list \<Rightarrow> ((nat \<times> nat) list) error" where
     "compute_differences start end ranges \<equiv> error_return (sorted_list_of_set { (x, y). \<forall>x. \<forall>y. start \<le> x \<and> x < y \<and> y \<le> end \<and> (\<not> (\<exists>r \<in> set ranges. covers (x, y) r)) })"
 
-  fun well_behaved_lem_ordering :: "('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> bool" where
-    "well_behaved_lem_ordering lt le gt =
+  fun well_behaved_lem_ordering :: "('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow>
+    ('a \<Rightarrow> 'a \<Rightarrow> ordering) \<Rightarrow> bool" where
+    "well_behaved_lem_ordering lt le gt compare =
      ((\<forall>x y. gt x y \<longrightarrow> lt y x) \<and>
       (\<forall>x y. lt x y \<longrightarrow> gt y x) \<and>
       (\<forall>x y. gt x y \<or> lt x y \<or> x = y) \<and>
@@ -416,40 +417,43 @@ begin
       (\<forall>x y. lt x y \<longrightarrow> x \<noteq> y) \<and>
       (\<forall>x y. le x y \<longrightarrow> x = y \<or> lt x y) \<and>
       (\<forall>x y. x = y \<longrightarrow> le x y) \<and>
-      (\<forall>x y. lt x y \<longrightarrow> le x y))"
+      (\<forall>x y. lt x y \<longrightarrow> le x y) \<and>
+      (\<forall>x y. compare x y = LT \<longrightarrow> compare y x = GT) \<and>
+      (\<forall>x y. compare x y = GT \<longrightarrow> compare y x = LT) \<and>
+      (\<forall>x y. compare x y = EQ \<longleftrightarrow> x = y))"
 
   declare well_behaved_lem_ordering.simps [simp del]
 
   lemma lem_ordering_tri:
-    assumes "well_behaved_lem_ordering lt le gt"
+    assumes "well_behaved_lem_ordering lt le gt cmp"
     shows "gt x y \<or> lt x y \<or> x = y"
   using assms well_behaved_lem_ordering.elims(2) by blast
   
   lemma lem_ordering_gt:
-    assumes "well_behaved_lem_ordering lt le gt"
+    assumes "well_behaved_lem_ordering lt le gt cmp"
     shows "gt x y \<Longrightarrow> lt y x"
   using assms well_behaved_lem_ordering.elims(2) by blast
 
   lemma lem_ordering_lt:
-    assumes "well_behaved_lem_ordering lt le gt"
+    assumes "well_behaved_lem_ordering lt le gt cmp"
     shows "lt x y \<Longrightarrow> gt y x"
   using assms well_behaved_lem_ordering.elims(2) by blast
 
   lemma lem_ordering_not_gt:
-    assumes "well_behaved_lem_ordering lt le gt"
+    assumes "well_behaved_lem_ordering lt le gt cmp"
     shows "x = y \<Longrightarrow> \<not> gt x y"
   using assms well_behaved_lem_ordering.elims(2) by blast
 
   lemma lem_ordering_not_lt:
-    assumes "well_behaved_lem_ordering lt le gt"
+    assumes "well_behaved_lem_ordering lt le gt cmp"
     and "lt e1 e2"
     shows "\<not> lt e2 e1"
   using assms unfolding well_behaved_lem_ordering.simps by meson
 
   lemma lem_ordering_le:
-  assumes "well_behaved_lem_ordering lt le gt"
-  and "le x y"
-  shows "x = y \<or> lt x y"
-using assms well_behaved_lem_ordering.elims(2) by blast
+    assumes "well_behaved_lem_ordering lt le gt cmp"
+    and "le x y"
+    shows "x = y \<or> lt x y"
+  using assms well_behaved_lem_ordering.elims(2) by blast
 
 end

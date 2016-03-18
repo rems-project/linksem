@@ -101,6 +101,7 @@ function (sequential,domintros)  findLowestKVWithKEquivTo  :: " 'k Ord_class \<R
     else if \<not> (well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
      dict_Basic_classes_Ord_v)) (isLessEqual_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
      dict_Basic_classes_Ord_v)) (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
+     dict_Basic_classes_Ord_v)) (compare_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
      dict_Basic_classes_Ord_v))) then
       undefined
     else
@@ -141,12 +142,12 @@ function (sequential,domintros)  findLowestKVWithKEquivTo  :: " 'k Ord_class \<R
   apply(case_tac "finite subSet")
   apply(subst if_weak_cong[where b="infinite subSet" and c="False"], simp)
   apply(simp only: if_False simp_thms)
-  apply(case_tac "well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v))
-               (isLessEqual_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v))
-               (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v))")
-  apply(subst if_weak_cong[where b="\<not> (well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v))
-    (isLessEqual_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
-     dict_Basic_classes_Ord_v)) (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v)))" and c="False"])
+  apply(case_tac "(well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
+     dict_Basic_classes_Ord_v)) (isLessEqual_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
+     dict_Basic_classes_Ord_v)) (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
+     dict_Basic_classes_Ord_v)) (compare_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
+     dict_Basic_classes_Ord_v)))")
+  apply(subst if_weak_cong[where c="False"])
   apply auto
 done
 
@@ -175,6 +176,7 @@ function (sequential,domintros)  findHighestKVWithKEquivTo  :: " 'k Ord_class \<
     else if \<not> (well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
      dict_Basic_classes_Ord_v)) (isLessEqual_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
      dict_Basic_classes_Ord_v)) (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
+     dict_Basic_classes_Ord_v)) (compare_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
      dict_Basic_classes_Ord_v))) then
       undefined
     else
@@ -216,12 +218,12 @@ function (sequential,domintros)  findHighestKVWithKEquivTo  :: " 'k Ord_class \<
   apply(case_tac "finite subSet")
   apply(subst if_weak_cong[where b="infinite subSet" and c="False"], simp)
   apply(simp only: if_False simp_thms)
-  apply(case_tac "well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v))
-               (isLessEqual_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v))
-               (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v))")
-  apply(subst if_weak_cong[where b="\<not> (well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v))
-    (isLessEqual_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
-     dict_Basic_classes_Ord_v)) (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v)))" and c="False"])
+  apply(case_tac "(well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
+     dict_Basic_classes_Ord_v)) (isLessEqual_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
+     dict_Basic_classes_Ord_v)) (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
+     dict_Basic_classes_Ord_v)) (compare_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
+     dict_Basic_classes_Ord_v)))")
+  apply(subst if_weak_cong[where c="False"])
   apply auto
 done
 

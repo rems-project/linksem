@@ -1,3 +1,0 @@
-class (AbiFeatureTagEquiv 'a)
-  val abiFeatureTagEquiv : 'a -> 'a -> bool
-end

@@ -109,24 +109,12 @@ definition correctness_property :: "bool" where
        let fprogr  = fixed_program addr in
 
        let text_start   = 4194304 in (* Fixed in Test_image *)
-(*     let data_start   = 4194324 in (* Fixed in Test_image *)
-       let program_len  = List.length fprogr in
-       let data_len     = 8 in      (* Fixed in Test_image *)*)
-       
-       (*address_is_disjoint_from_text_and_within_data_section addr text_start data_start program_len data_len \<longrightarrow>*)
+
        (18446744071562067968 <=s ((of_nat addr)::64 word) ∧ ((of_nat addr)::64 word) <=s 2147483647) \<longrightarrow>
        natural_to_le_byte_list (8 + addr) = [a1, a2, a3, a4] \<longrightarrow>
        (\<forall> x \<in> unats 64.
        MEM (load_fixed_program_instructions flags fprogr reg text_start) (of_nat x) =
-       MEM (load_relocated_program_image flags (elements (relocation_image addr)) reg text_start) (of_nat x))
-(*
-       let fstate1 = load_fixed_program_instructions flags fprogr reg text_start in
-       let fstate2 = run_two_steps fstate1 in
-       let rstate1 = load_relocated_program_image flags (elements (relocation_image addr)) reg text_start in
-       let rstate2 = run_two_steps rstate1 in
-
-       address_is_disjoint_from_text_and_within_data_section addr text_start data_start program_len data_len \<longrightarrow>
-           rstate2 = fstate2*)"
+       MEM (load_relocated_program_image flags (elements (relocation_image addr)) reg text_start) (of_nat x))"
 
 subsection {* Useful lemmas and technical definitions *}
 
@@ -153,6 +141,8 @@ lemma for_loop_19_unroll:
   apply simp
 done
 
+text {* These are useful for providing precise control over the simplifier and getting rid of
+annoying sums that automation won't budge. *}
 lemma concrete_evaluations:
   shows "((word_extract (15::nat) (0::nat) (5::32 word))::16 word) = 5"
     and "(word_extract (7::nat) (0::nat) (5::16 word)::8 word) = 5"
@@ -251,10 +241,12 @@ lemma concrete_evaluations:
     and "(0::64 word) <=s (2147483647::64 word) = True"
 by eval+
 
+text {* Manipulation of a word+nat offset. *}
 lemma of_nat_manipulate:
   "(of_nat m) + (n::'a::len word) = of_nat (m + unat n)"
 by simp
 
+text {* More useful equalities for precise simplification. *}
 lemma word_to_nat_conversions:
   shows "(4194308::64 word) = of_nat 4194308"
     and "(4194309::64 word) = of_nat 4194309"
@@ -266,6 +258,7 @@ lemma word_to_nat_conversions:
     and "(4194316::64 word) = of_nat 4194316"
 by simp_all
 
+text {* Working around Isabelle's overly-generic treatment of numerals... *}
 lemma numeral_expansion:
   shows "(4::nat) = Suc (Suc (Suc (Suc 0)))"
     and "(5::nat) = Suc (Suc (Suc (Suc (Suc 0))))"
@@ -293,7 +286,7 @@ done
 
 lemma set_choose_dichotomy:
   shows "set_choose {x, y} = x \<or> set_choose {x, y} = y"
-unfolding set_choose_def by (metis (mono_tags) insert_iff singletonD someI)
+unfolding set_choose_def by(metis (mono_tags) insert_iff singletonD someI)
 
 lemma genericCompare_refl:
   fixes x :: "'a::order"
@@ -329,6 +322,17 @@ using assms
   apply(rule pairCompare_refl, simp)
   apply(rule allI, case_tac q, clarify, rule pairCompare_refl, simp+)
   apply(rule allI, rule allI, rule pairCompare_refl, simp+)
+done
+
+lemma quintupleCompare_refl:
+  assumes "\<forall>p. cmp1 p p = EQ" and "\<forall>q. cmp2 q q = EQ" and "\<forall>r. cmp3 r r = EQ" and "\<forall>s. cmp4 s s = EQ"
+    and "\<forall>s. cmp5 s s = EQ"
+  shows "quintupleCompare cmp1 cmp2 cmp3 cmp4 cmp5 (p, q, r, s, t) (p, q, r, s, t) = EQ"
+using assms
+  apply(simp only: quintupleCompare.simps)
+  apply(rule pairCompare_refl, simp)
+  apply(rule allI, case_tac q, clarify, rule pairCompare_refl, simp+)
+  apply((rule allI)+, simp add: pairCompare.simps)
 done
 
 lemma sextupleCompare_refl:
@@ -367,11 +371,17 @@ lemma elf64_symbol_table_entry_compare_refl:
   apply(rule allI, simp add: genericCompare_refl)+
 done
 
+lemma stringCompare_method_refl:
+  shows "stringCompare_method s s = EQ"
+  apply(simp only: stringCompare_method_def)
+  apply(simp add: ord.lexordp_eq_refl)
+done
+
 lemma symRefCompare_refl:
   shows "symRefCompare r r = EQ"
   apply(simp only: symRefCompare_def)
   apply(rule quadrupleCompare_refl) (* XXX: what is happening with the first comparison, here? *)
-  apply(simp)
+  apply(rule allI, rule stringCompare_method_refl)
   apply(rule allI, rule elf64_symbol_table_entry_compare_refl)
   apply(rule allI, simp add: genericCompare_refl)+
 done
@@ -379,8 +389,8 @@ done
 lemma symDefCompare_refl:
   shows "symDefCompare d d = EQ"
   apply(simp only: symDefCompare_def) (* XXX: what is going on with the first comparison, here? *)
-  apply(rule quadrupleCompare_refl)
-  apply simp
+  apply(rule quintupleCompare_refl)
+  apply(rule allI, rule stringCompare_method_refl)
   apply(rule allI, rule elf64_symbol_table_entry_compare_refl)
   apply(rule allI, simp add: genericCompare_refl)+
 done
@@ -396,25 +406,29 @@ done
 lemma symRefAndRelocSiteCompare_refl:
   shows "symRefAndRelocSiteCompare r r = EQ"
   apply(simp only: symRefAndRelocSiteCompare_def)
-  apply(rule pairCompare_refl)
+  apply(rule tripleCompare_refl)
   apply(rule allI, rule symRefCompare_refl)
   apply(rule allI, rule maybeCompare_refl)
   apply(rule allI, simp only: relocSiteCompare_refl)
-done
-
-lemma stringCompare_method_refl:
-  shows "stringCompare_method s s = EQ"
-  apply(simp only: stringCompare_method_def)
-  apply(simp add: ord.lexordp_eq_refl)
+  apply(rule allI, rule maybeCompare_refl)
+  apply(rule allI)
+  apply(case_tac x, clarify)
+  apply(rule pairCompare_refl)
+  apply(rule allI, case_tac p; clarify; simp)
+  apply(rule allI, rule maybeCompare_refl)
+  apply(rule allI, rule symDefCompare_refl)
 done
 
 lemma tup2_dict_preserves_well_behavedness:
   fixes dict1 :: "'a Ord_class" and dict2 :: "'b Ord_class"
-  assumes "well_behaved_lem_ordering (isLess_method dict1) (isLessEqual_method dict1) (isGreater_method dict1)" and
-    "well_behaved_lem_ordering (isLess_method dict2) (isLessEqual_method dict2) (isGreater_method dict2)"
+  assumes "well_behaved_lem_ordering (isLess_method dict1) (isLessEqual_method dict1) (isGreater_method dict1)
+            (compare_method dict1)" and
+    "well_behaved_lem_ordering (isLess_method dict2) (isLessEqual_method dict2) (isGreater_method dict2)
+      (compare_method dict2)"
   shows "well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict dict1 dict2))
     (isLessEqual_method (instance_Basic_classes_Ord_tup2_dict dict1 dict2))
-    (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict1 dict2))"
+    (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict1 dict2))
+    (compare_method (instance_Basic_classes_Ord_tup2_dict dict1 dict2))"
 using assms unfolding instance_Basic_classes_Ord_tup2_dict_def
   apply(simp only: Ord_class.simps well_behaved_lem_ordering.simps)
   apply(erule conjE)+
@@ -440,13 +454,41 @@ using assms unfolding instance_Basic_classes_Ord_tup2_dict_def
   apply(subst (asm) pairLessEq.simps, subst (asm) pairLess.simps, meson)
   apply(rule conjI, (rule allI)+, case_tac x, case_tac y, clarify)
   apply(subst pairLessEq.simps, meson)
+  apply(rule conjI)
   apply((rule allI)+, case_tac x, case_tac y, clarify)
   apply(subst pairLessEq.simps, subst (asm) pairLess.simps, meson)
+  apply(rule conjI)
+  apply((rule allI)+, case_tac x, case_tac y, clarify)
+  apply(subst pairCompare.simps, subst (asm) pairCompare.simps)
+  apply(case_tac "compare_method dict1 ab aaa", subst (asm) ordering.case_cong_weak[where ordering'=LT])
+  apply blast
+  apply(metis ordering.simps(9))
+  apply(subst (asm) ordering.case_cong_weak[where ordering'=EQ])
+  apply blast
+  apply(metis (no_types, hide_lams) ordering.exhaust ordering.simps(8))
+  apply(subst (asm) ordering.case_cong_weak[where ordering'=GT], assumption)
+  apply(metis ordering.simps(9))
+  apply(rule conjI)
+  apply((rule allI)+, case_tac x, case_tac y, clarify)
+  apply(subst pairCompare.simps, subst (asm) pairCompare.simps)
+  apply(case_tac "compare_method dict1 ab aaa", subst (asm) ordering.case_cong_weak[where ordering'=LT])
+  apply blast
+  apply(metis ordering.simps(7))
+  apply(subst (asm) ordering.case_cong_weak[where ordering'=EQ])
+  apply blast
+  apply(metis (no_types, hide_lams) ordering.exhaust ordering.simps(8))
+  apply(subst (asm) ordering.case_cong_weak[where ordering'=GT], assumption)
+  apply(metis ordering.simps(7))
+  apply(rule allI)
+  apply(case_tac x, clarify)
+  apply(subst pairCompare.simps)
+  apply(smt Pair_inject ordering.exhaust ordering.simps(7) ordering.simps(8) ordering.simps(9))
 done
 
 lemma split_greater_2:
   fixes dict :: "'a Ord_class" and element other :: "'a"
-  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict)"
+  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict)
+            (compare_method dict)"
      and "isGreater_method dict element other"
   shows "Lem_set.split dict element {element, other} = ({other}, {})"
 using assms unfolding well_behaved_lem_ordering.simps proof -
@@ -462,7 +504,8 @@ qed
 
 lemma split_less_2:
   fixes dict :: "'a Ord_class" and element other :: "'a"
-  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict)"
+  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict)
+             (compare_method dict)"
       and "isLess_method dict element other"
   shows "Lem_set.split dict element {other, element} = ({}, {other})"
 using assms unfolding well_behaved_lem_ordering.simps proof -
@@ -477,7 +520,8 @@ using assms unfolding well_behaved_lem_ordering.simps proof -
 qed
 
 lemma split_singleton_same:
-  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict)"
+  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict)
+             (compare_method dict)"
   shows "split dict s {s} = ({}, {})"
 using assms
   apply(simp only: split_def)
@@ -488,7 +532,8 @@ using assms
 done
 
 lemma split_singleton_diff:
-  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict)"
+  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict)
+             (compare_method dict)"
     and "isLess_method dict s t"
   shows "split dict s {t} = ({}, {t})"
 using assms
@@ -519,7 +564,8 @@ lemma list_of_set_singleton:
 done
 
 lemma chooseAndSplit_singleton:
-  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict)"
+  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict)
+              (compare_method dict)"
   shows "chooseAndSplit dict { s } = Some ({}, s, {})"
 using assms
   apply(simp only: chooseAndSplit_def)
@@ -534,7 +580,8 @@ done
 
 lemma chooseAndSplit_less_2:
   fixes dict :: "'a Ord_class" and element1 element2 :: "'a"
-  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict)"
+  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict)
+            (compare_method dict)"
     and "isLess_method dict element1 element2"
   shows "chooseAndSplit dict {element1, element2} = Some ({}, element1, {element2}) \<or>
          chooseAndSplit dict {element1, element2} = Some ({element1}, element2, {})"
@@ -556,7 +603,7 @@ done
 
 lemma chooseAndSplit_greater_2:
   fixes dict :: "'a Ord_class" and element1 element2 :: "'a"
-  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict)"
+  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict) (compare_method dict)"
       and "isGreater_method dict element1 element2"
   shows "chooseAndSplit dict {element1, element2} = Some ({element2}, element1, {}) \<or>
          chooseAndSplit dict {element1, element2} = Some ({}, element2, {element1})"
@@ -647,43 +694,43 @@ using assms unfolding build_fixed_program_memory_def
 done
 
 lemma findLowestKVWithKEquivTo_Some_empty:
-  assumes "well_behaved_lem_ordering (isLess_method key_dict) (isLessEqual_method key_dict) (isGreater_method key_dict)"
-      and "well_behaved_lem_ordering (isLess_method val_dict) (isLessEqual_method val_dict) (isGreater_method val_dict)"
+  assumes "well_behaved_lem_ordering (isLess_method key_dict) (isLessEqual_method key_dict) (isGreater_method key_dict) (compare_method key_dict)"
+      and "well_behaved_lem_ordering (isLess_method val_dict) (isLessEqual_method val_dict) (isGreater_method val_dict) (compare_method val_dict)"
   shows "findLowestKVWithKEquivTo key_dict val_dict element eq {} (Some candidate) = Some candidate"
 using assms
   apply(subst findLowestKVWithKEquivTo.simps)
   apply(subst if_weak_cong[where b="infinite {}" and c="False"], simp)
   apply(simp only: if_False)
-  apply(subst if_weak_cong[where b="\<not> well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict)) (isLessEqual_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict)) (isGreater_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict))" and c=False])
+  apply(subst if_weak_cong[where c=False])
   apply(simp, rule tup2_dict_preserves_well_behavedness, simp, simp, simp)
   apply(subst chooseAndSplit_empty)
   apply(simp only: option.case)
 done
 
 lemma findHighestKVWithKEquivTo_Some_empty:
-  assumes "well_behaved_lem_ordering (isLess_method key_dict) (isLessEqual_method key_dict) (isGreater_method key_dict)"
-      and "well_behaved_lem_ordering (isLess_method val_dict) (isLessEqual_method val_dict) (isGreater_method val_dict)"
+  assumes "well_behaved_lem_ordering (isLess_method key_dict) (isLessEqual_method key_dict) (isGreater_method key_dict) (compare_method key_dict)"
+      and "well_behaved_lem_ordering (isLess_method val_dict) (isLessEqual_method val_dict) (isGreater_method val_dict) (compare_method val_dict)"
   shows "findHighestKVWithKEquivTo key_dict val_dict element eq {} (Some candidate) = Some candidate"
 using assms
   apply(subst findHighestKVWithKEquivTo.simps)
   apply(subst if_weak_cong[where b="infinite {}" and c="False"], simp)
   apply(simp only: if_False)
-  apply(subst if_weak_cong[where b="\<not> well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict)) (isLessEqual_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict)) (isGreater_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict))" and c=False])
+  apply(subst if_weak_cong[where c=False])
   apply(simp, rule tup2_dict_preserves_well_behavedness, simp, simp, simp)
   apply(subst chooseAndSplit_empty)
   apply(simp only: option.case)
 done
 
 lemma findLowestKVWithKEquivTo_singleton_None:
-  assumes "well_behaved_lem_ordering (isLess_method key_dict) (isLessEqual_method key_dict) (isGreater_method key_dict)"
-      and "well_behaved_lem_ordering (isLess_method val_dict) (isLessEqual_method val_dict) (isGreater_method val_dict)"
+  assumes "well_behaved_lem_ordering (isLess_method key_dict) (isLessEqual_method key_dict) (isGreater_method key_dict) (compare_method key_dict)"
+      and "well_behaved_lem_ordering (isLess_method val_dict) (isLessEqual_method val_dict) (isGreater_method val_dict) (compare_method val_dict)"
       and "e = (ek, ev)" and "eq element ek"
   shows "findLowestKVWithKEquivTo key_dict val_dict element eq {e} None = Some e"
 using assms
   apply(subst findLowestKVWithKEquivTo.simps)
   apply(subst if_weak_cong[where b="infinite {e}" and c="False"], simp)
   apply(simp only: if_False)
-  apply(subst if_weak_cong[where b="\<not> well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict)) (isLessEqual_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict)) (isGreater_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict))" and c=False])
+  apply(subst if_weak_cong[where c=False])
   apply(simp, rule tup2_dict_preserves_well_behavedness, simp, simp)
   apply(simp only: if_False)
   apply(subst chooseAndSplit_singleton, rule tup2_dict_preserves_well_behavedness, simp, simp)
@@ -694,16 +741,15 @@ using assms
 done
 
 lemma findHighestKVWithKEquivTo_singleton_None:
-  assumes "well_behaved_lem_ordering (isLess_method key_dict) (isLessEqual_method key_dict) (isGreater_method key_dict)"
-      and "well_behaved_lem_ordering (isLess_method val_dict) (isLessEqual_method val_dict) (isGreater_method val_dict)"
+  assumes "well_behaved_lem_ordering (isLess_method key_dict) (isLessEqual_method key_dict) (isGreater_method key_dict) (compare_method key_dict)"
+      and "well_behaved_lem_ordering (isLess_method val_dict) (isLessEqual_method val_dict) (isGreater_method val_dict) (compare_method val_dict)"
       and "e = (ek, ev)" and "eq element ek"
   shows "findHighestKVWithKEquivTo key_dict val_dict element eq {e} None = Some e"
 using assms
   apply(subst findHighestKVWithKEquivTo.simps)
   apply(subst if_weak_cong[where b="infinite {e}" and c="False"], simp)
   apply(simp only: if_False)
-  apply(subst if_weak_cong[where b="\<not> well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict))
-      (isLessEqual_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict)) (isGreater_method (instance_Basic_classes_Ord_tup2_dict key_dict val_dict))" and c=False])
+  apply(subst if_weak_cong[where c=False])
   apply(simp, rule tup2_dict_preserves_well_behavedness, simp, simp)
   apply(simp only: if_False)
   apply(subst chooseAndSplit_singleton, rule tup2_dict_preserves_well_behavedness, simp, simp)
@@ -716,7 +762,8 @@ done
 lemma any_abi_feature_dict_well_behaved:
   shows "well_behaved_lem_ordering (isLess_method instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
     (isLessEqual_method instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
-    (isGreater_method instance_Basic_classes_Ord_Abis_any_abi_feature_dict)"
+    (isGreater_method instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+    (compare_method instance_Basic_classes_Ord_Abis_any_abi_feature_dict)"
 sorry (* XXX: false as one of the orderings returns true whenever both x, y are GOT0 *)
 
 lemma stringCompare_method_Nil_Cons:
@@ -755,7 +802,8 @@ done
 lemma string_dict_well_behaved:
   shows "well_behaved_lem_ordering (isLess_method instance_Basic_classes_Ord_string_dict)
     (isLessEqual_method instance_Basic_classes_Ord_string_dict)
-    (isGreater_method instance_Basic_classes_Ord_string_dict)"
+    (isGreater_method instance_Basic_classes_Ord_string_dict)
+    (compare_method instance_Basic_classes_Ord_string_dict)"
 unfolding well_behaved_lem_ordering.simps instance_Basic_classes_Ord_string_dict_def
   apply(simp only: Ord_class.simps)
   apply(rule conjI)
@@ -780,16 +828,28 @@ unfolding well_behaved_lem_ordering.simps instance_Basic_classes_Ord_string_dict
   apply((rule allI)+, smt ordering.distinct(5) stringCompare_method_def stringCompare_tri stringGreater_def stringLessEq_def stringLess_def)
   apply(rule conjI)
   apply((rule allI)+, simp add: stringCompare_method_refl stringLessEq_def)
+  apply(rule conjI)
   apply((rule allI)+, simp add: stringLessEq_def stringLess_def)
+  apply(rule conjI)
+  apply((rule allI)+, simp add: stringCompare_method_def)
+  apply(smt ordering.distinct)
+  apply(rule conjI)
+  apply((rule allI)+, simp add: stringCompare_method_def)
+  apply(smt ordering.distinct stringCompare_method_def stringCompare_method_refl stringCompare_tri stringGreater_def stringLess_def)
+  apply(rule allI)
+  apply(smt ordering.distinct stringCompare_method_def stringCompare_method_refl stringCompare_tri stringGreater_def stringLess_def)
 done
 
 lemma natural_dict_well_behaved:
   shows "well_behaved_lem_ordering (isLess_method instance_Basic_classes_Ord_Num_natural_dict)
     (isLessEqual_method instance_Basic_classes_Ord_Num_natural_dict)
-    (isGreater_method instance_Basic_classes_Ord_Num_natural_dict)"
+    (isGreater_method instance_Basic_classes_Ord_Num_natural_dict)
+    (compare_method instance_Basic_classes_Ord_Num_natural_dict)"
 unfolding well_behaved_lem_ordering.simps instance_Basic_classes_Ord_Num_natural_dict_def
   apply(simp only: Ord_class.simps)
-  apply auto
+  apply(auto)
+  apply(auto simp add: genericCompare_def)
+  apply(meson neqE ordering.distinct)+
 done
 
 lemma lexicographicCompareBy_refl:
@@ -902,38 +962,419 @@ lemma symDefCompare_GT_symDefCompare_LT:
   assumes "symDefCompare x y = GT"
   shows "symDefCompare y x = LT"
 using assms
-  apply(case_tac x; case_tac y; clarify)
-  apply(simp add: symDefCompare_def quadrupleCompare.simps pairCompare.simps)
-  apply(case_tac "elf64_symbol_table_entry_compare def_syment def_symenta"; simp)
-  apply(subgoal_tac "(elf64_symbol_table_entry_compare def_syment def_symenta = EQ) = (def_syment = def_symenta)")
-  apply simp
+sorry
+
+lemma symDefCompare_LT_symDefCompare_GT:
+  assumes "symDefCompare x y = LT"
+  shows "symDefCompare y x = GT"
+using assms
+sorry
+
+lemma symRefAndRelocSiteCompare_GT_symRefAndRelocSiteCompare_LT:
+  assumes "symRefAndRelocSiteCompare x y = GT"
+  shows "symRefAndRelocSiteCompare y x = LT"
+using assms
+sorry
+
+lemma symRefAndRelocSiteCompare_LT_symRefAndRelocSiteCompare_GT:
+  assumes "symRefAndRelocSiteCompare x y = LT"
+  shows "symRefAndRelocSiteCompare y x = GT"
+using assms
+sorry
+
+lemma elfFileFeatureCompare_GT_elfFileFeatureCompare_LT:
+  assumes "elfFileFeatureCompare x y = GT"
+  shows "elfFileFeatureCompare y x = LT"
+using assms
+sorry
+
+lemma elfFileFeatureCompare_LT_elfFileFeatureCompare_GT:
+  assumes "elfFileFeatureCompare x y = LT"
+  shows "elfFileFeatureCompare y x = GT"
+using assms
 sorry
 
 lemma tagCompare_GT_tagCompare_LT:
-  assumes "tagCompare dict x y = GT" and "\<And>y. compare_method dict y y = EQ"
+  assumes "tagCompare dict x y = GT" and "\<And>x y. compare_method dict x y = GT \<Longrightarrow> compare_method dict y x = LT"
   shows "tagCompare dict y x = LT"
 using assms
+  apply(case_tac x; case_tac y; clarify; subst tagCompare.simps; subst (asm) tagCompare.simps)
+  apply(metis ordering.simps, metis ordering.simps, metis ordering.simps, metis ordering.simps,
+    metis ordering.simps, metis ordering.simps, metis ordering.simps, metis ordering.simps,
+    metis ordering.simps, metis ordering.simps, metis ordering.simps, metis ordering.simps,
+    metis ordering.simps, metis ordering.simps, rule symDefCompare_GT_symDefCompare_LT, assumption,
+    metis ordering.simps, metis ordering.simps, metis ordering.simps, metis ordering.simps,
+    metis ordering.simps, metis ordering.simps, rule symRefAndRelocSiteCompare_GT_symRefAndRelocSiteCompare_LT, assumption,
+    metis ordering.simps, metis ordering.simps, metis ordering.simps, metis ordering.simps,
+    metis ordering.simps, metis ordering.simps, rule elfFileFeatureCompare_GT_elfFileFeatureCompare_LT, assumption,
+    metis ordering.simps, metis ordering.simps, metis ordering.simps, metis ordering.simps,
+    metis ordering.simps, metis ordering.simps, meson)
+done
+
+lemma tagCompare_LT_tagCompare_GT:
+  assumes "tagCompare dict x y = LT" and "\<And>x y. compare_method dict x y = LT \<Longrightarrow> compare_method dict y x = GT"
+  shows "tagCompare dict y x = GT"
+using assms
+  apply(case_tac x; case_tac y; clarify; subst tagCompare.simps; subst (asm) tagCompare.simps)
+  apply((metis ordering.simps)+, rule symDefCompare_LT_symDefCompare_GT, assumption,
+    (metis ordering.simps)+, rule symRefAndRelocSiteCompare_LT_symRefAndRelocSiteCompare_GT, assumption,
+    (metis ordering.simps)+, rule elfFileFeatureCompare_LT_elfFileFeatureCompare_GT, assumption,
+    (metis ordering.simps)+)
+done
+
+lemma stringCompare_method_neq_not_EQ_Cons:
+  assumes "x \<noteq> y"
+  shows "stringCompare_method (x#xs) (y#ys) \<noteq> EQ"
+using assms
+  apply auto
+  apply(auto simp add: stringCompare_method_def Let_def)
+  apply(case_tac "(nat_of_char x < nat_of_char y ∨ ¬ nat_of_char y < nat_of_char x ∧ ord.lexordp_eq (λx y. nat_of_char x < nat_of_char y) xs ys) ∧
+        (nat_of_char y < nat_of_char x ∨ ¬ nat_of_char x < nat_of_char y ∧ ord.lexordp_eq (λx y. nat_of_char x < nat_of_char y) ys xs)")
+  apply(simp_all)
+  apply(erule conjE)
+  apply(erule disjE)
+  apply(erule disjE)
+  apply(metis less_not_sym)
+  apply(erule conjE, simp)
+  apply(erule disjE, erule conjE, simp)
+  apply(erule conjE)+
+  apply(simp add: inj_eq inj_nat_of_char)
+  apply(erule disjE)
+  apply(case_tac "nat_of_char x < nat_of_char y ∨ ¬ nat_of_char y < nat_of_char x ∧ ord.lexordp_eq (λx y. nat_of_char x < nat_of_char y) xs ys", simp_all)
+  apply(case_tac "¬ nat_of_char y < nat_of_char x ∧ ord.lexordp_eq (λx y. nat_of_char x < nat_of_char y) xs ys", simp_all)
+  apply(case_tac "nat_of_char x < nat_of_char y ∨ ord.lexordp_eq (λx y. nat_of_char x < nat_of_char y) xs ys", simp_all)
+done
+
+lemma stringCompare_method_neq_not_EQ:
+  assumes "s \<noteq> t"
+  shows "stringCompare_method s t \<noteq> EQ"
+using assms proof(auto)
+  fix s t :: string
+  assume "s \<noteq> t" and "stringCompare_method s t = EQ"
+  thus False
+  proof(induction s arbitrary: t)
+    fix t :: string
+    assume "[] \<noteq> t" and *: "stringCompare_method [] t = EQ"
+    from this obtain x xs where "t = x#xs" by(metis list.exhaust)
+    hence "stringCompare_method [] (x#xs) = EQ" using * by simp
+    hence "LT = EQ" using stringCompare_method_def by simp
+    thus False using ordering.simps by simp
+  next
+    fix xs t :: string and x :: char
+    assume IH: "(⋀t. xs ≠ t ⟹ stringCompare_method xs t = EQ ⟹ False)" and "x#xs \<noteq> t" and *: "stringCompare_method (x # xs) t = EQ"
+    hence "t = [] \<or> (\<exists>y ys. t = y#ys \<and> (x \<noteq> y \<or> ys \<noteq> xs))" by(metis remove_duplicates.cases)
+    thus False
+    proof
+      assume "t = []"
+      hence "stringCompare_method (x#xs) [] = EQ" using * by simp
+      hence "GT = EQ" using stringCompare_method_def by simp
+      thus False by simp
+    next
+      assume "∃y ys. t = y # ys ∧ (x ≠ y ∨ ys ≠ xs)"
+      from this obtain y ys where "t = y # ys \<and> (x ≠ y ∨ x = y \<and> ys ≠ xs)" by blast
+      hence EQ: "t = y#ys" and C: "(x ≠ y ∨ x = y \<and> ys ≠ xs)" by simp+
+      from C show False
+      proof
+        assume NEQ: "x \<noteq> y"
+        hence "stringCompare_method (x#xs) (y#ys) = EQ" using * and EQ by simp
+        thus False using stringCompare_method_def NEQ stringCompare_method_neq_not_EQ_Cons by simp
+      next
+        assume "x = y \<and> ys ≠ xs"
+        hence "x = y" and NEQ: "ys \<noteq> xs" by simp+
+        hence "stringCompare_method (x#xs) (x#ys) = EQ" using * and EQ by simp
+        hence "stringCompare_method xs ys = EQ" using stringCompare_method_def by simp
+        thus False using IH NEQ by metis
+      qed
+    qed
+  qed
+qed
+
+corollary stringCompare_method_refl':
+  shows "stringCompare_method x y = EQ \<longleftrightarrow> x = y"
+using stringCompare_method_neq_not_EQ stringCompare_method_refl by auto
+
+lemma symDefCompare_tri:
+  shows "symDefCompare x y = LT \<or> symDefCompare x y = GT \<or> x = y"
   apply(case_tac x; case_tac y; clarify)
-  apply(simp_all add: tagCompare_refl tagCompare.simps)
+  apply(simp add: symDefCompare_def quintupleCompare.simps pairCompare.simps)
+  apply(case_tac "stringCompare_method def_symname def_symnamea", simp_all)
+  apply(simp only: pairCompare.simps)
+  apply(case_tac "elf64_symbol_table_entry_compare def_syment def_symenta", simp_all)
+  apply(simp add: genericCompare_def)
+  apply(case_tac "def_sym_scn < def_sym_scna", simp_all)
+  apply(case_tac "def_sym_scn = def_sym_scna", simp_all)
+  apply(simp add: genericCompare_def)
+  apply(case_tac "def_sym_idx < def_sym_idxa", simp_all)
+  apply(case_tac "def_sym_idx = def_sym_idxa", simp_all)
+  apply(simp add: stringCompare_method_refl')
+  apply(simp only: elf64_symbol_table_entry_compare_def sextupleCompare.simps pairCompare.simps
+    genericCompare_def)
+  apply(case_tac "unat (elf64_st_name def_syment) < unat (elf64_st_name def_symenta)", simp_all)
+  apply(case_tac "elf64_st_name def_syment = elf64_st_name def_symenta", simp_all)
+  apply(case_tac "unat (elf64_st_value def_syment) < unat (elf64_st_value def_symenta)", simp_all)
+  apply(case_tac "elf64_st_value def_syment = elf64_st_value def_symenta", simp_all)
+  apply(case_tac "unat (elf64_st_size def_syment) < unat (elf64_st_size def_symenta)", simp_all)
+  apply(case_tac "elf64_st_size def_syment = elf64_st_size def_symenta", simp_all)
+  apply(case_tac "unat (elf64_st_info def_syment) < unat (elf64_st_info def_symenta)", simp_all)
+  apply(case_tac "elf64_st_info def_syment = elf64_st_info def_symenta", simp_all)
+  apply(case_tac "unat (elf64_st_other def_syment) < unat (elf64_st_other def_symenta)", simp_all)
+  apply(case_tac "elf64_st_other def_syment = elf64_st_other def_symenta", simp_all)
+  apply(case_tac "unat (elf64_st_shndx def_syment) < unat (elf64_st_shndx def_symenta)", simp_all)
+  apply(case_tac "elf64_st_shndx def_syment = elf64_st_shndx def_symenta", simp_all)
+  apply(case_tac "def_linkable_idx < def_linkable_idxa", simp_all)
+  apply(case_tac "def_linkable_idx = def_linkable_idxa", simp_all)
+done
+
+find_consts name: elf64_symbol_table_entry_compare
+
+lemma symRefAndRelocSiteCompare_tri:
+  shows "symRefAndRelocSiteCompare x y = LT \<or> symRefAndRelocSiteCompare x y = GT \<or> x = y"
+  apply(case_tac x; case_tac y; clarify)
+  apply(simp add: symRefAndRelocSiteCompare_def tripleCompare.simps pairCompare.simps)
+  apply(case_tac "symRefCompare ref refa", simp_all)
+  apply(simp add: symRefCompare_def quadrupleCompare.simps pairCompare.simps)
+  apply(case_tac "maybeCompare relocSiteCompare maybe_reloc maybe_reloca", simp_all)
+  apply(case_tac "stringCompare_method (ref_symname ref) (ref_symname refa)", simp_all)
+  apply(simp add: pairCompare.simps)
+  apply(case_tac "elf64_symbol_table_entry_compare (ref_syment ref) (ref_syment refa)", simp_all)
+  apply(simp add: pairCompare.simps genericCompare_def)
+  apply(case_tac "ref_sym_scn ref < ref_sym_scn refa", simp_all)
+  apply(case_tac "ref_sym_scn ref = ref_sym_scn refa", simp_all)
+  apply(case_tac maybe_reloc; case_tac maybe_reloca; clarify)
+  apply(simp_all add: maybeCompare.simps genericCompare_def)
+  apply(case_tac "ref_sym_idx ref < ref_sym_idx refa", simp_all)
+  apply(case_tac "ref_sym_idx ref = ref_sym_idx refa", simp_all)
+  apply(simp only: elf64_symbol_table_entry_compare_def sextupleCompare.simps pairCompare.simps
+    genericCompare_def)
+  apply(case_tac "unat (elf64_st_name (ref_syment ref)) < unat (elf64_st_name (ref_syment refa))", simp_all)
+  apply(case_tac "elf64_st_name (ref_syment ref) = elf64_st_name (ref_syment refa)", simp_all)
+  apply(case_tac "unat (elf64_st_value (ref_syment ref)) < unat (elf64_st_value (ref_syment refa))", simp_all)
+  apply(case_tac "elf64_st_value (ref_syment ref) = elf64_st_value (ref_syment refa)", simp_all)
+  apply(case_tac "unat (elf64_st_size (ref_syment ref)) < unat (elf64_st_size (ref_syment refa))", simp_all)
+  apply(case_tac "elf64_st_size (ref_syment ref) = elf64_st_size (ref_syment refa)", simp_all)
+  apply(case_tac "unat (elf64_st_info (ref_syment ref)) < unat (elf64_st_info (ref_syment refa))", simp_all)
+  apply(case_tac "elf64_st_info (ref_syment ref) = elf64_st_info (ref_syment refa)", simp_all)
+  apply(case_tac "unat (elf64_st_other (ref_syment ref)) < unat (elf64_st_other (ref_syment refa))", simp_all)
+  apply(case_tac "elf64_st_other (ref_syment ref) = elf64_st_other (ref_syment refa)", simp_all)
+  apply(case_tac "unat (elf64_st_shndx (ref_syment ref)) < unat (elf64_st_shndx (ref_syment refa))", simp_all)
+  apply(case_tac "elf64_st_shndx (ref_syment ref) = elf64_st_shndx (ref_syment refa)", simp_all)
+  apply(case_tac maybe_def_bound_to; case_tac maybe_def_bound_toa; clarify; simp add: maybeCompare.simps)
+  apply(simp add: stringCompare_method_refl')+
+  apply(simp add: pairCompare.simps)
+  apply(case_tac "relocDecisionCompare a aa", simp_all)
+  apply(case_tac b; case_tac ba; simp add: maybeCompare.simps)
+  apply(case_tac a; case_tac aa; simp add: relocDecisionCompare.simps)
+  apply(case_tac a; case_tac aa; simp add: relocDecisionCompare.simps)
+  apply(case_tac ab; case_tac ac; simp add: symDefCompare_def quintupleCompare.simps pairCompare.simps)
+  apply(case_tac "stringCompare_method def_symname def_symnamea", simp_all)
+  apply(simp add: pairCompare.simps)
+  apply(case_tac "elf64_symbol_table_entry_compare def_syment def_symenta", simp_all add: pairCompare.simps genericCompare_def)
+  apply(case_tac "def_sym_scn < def_sym_scna", simp_all)
+  apply(case_tac "def_sym_scn = def_sym_scna", simp_all add: pairCompare.simps genericCompare_def)
+  apply(case_tac "def_sym_idx < def_sym_idxa", simp_all)
+  apply(case_tac "def_sym_idx = def_sym_idxa", simp_all add: genericCompare_def)
+  apply(case_tac "def_linkable_idx < def_linkable_idxa", simp_all)
+  apply(case_tac "def_linkable_idx = def_linkable_idxa", simp_all add: stringCompare_method_refl')
+  apply(simp only: elf64_symbol_table_entry_compare_def sextupleCompare.simps genericCompare_def pairCompare.simps)
+  apply(case_tac "unat (elf64_st_name def_syment) < unat (elf64_st_name def_symenta)", simp_all)
+  apply(case_tac "elf64_st_name def_syment = elf64_st_name def_symenta", simp_all)
+  apply(case_tac "unat (elf64_st_value def_syment) < unat (elf64_st_value def_symenta)", simp_all)
+  apply(case_tac "elf64_st_value def_syment = elf64_st_value def_symenta", simp_all)
+  apply(case_tac "unat (elf64_st_size def_syment) < unat (elf64_st_size def_symenta)", simp_all)
+  apply(case_tac "elf64_st_size def_syment = elf64_st_size def_symenta", simp_all)
+  apply(case_tac "unat (elf64_st_info def_syment) < unat (elf64_st_info def_symenta)", simp_all)
+  apply(case_tac "elf64_st_info def_syment = elf64_st_info def_symenta", simp_all)
+  apply(case_tac "unat (elf64_st_other def_syment) < unat (elf64_st_other def_symenta)", simp_all)
+  apply(case_tac "elf64_st_other def_syment = elf64_st_other def_symenta", simp_all)
+  apply(case_tac "unat (elf64_st_shndx def_syment) < unat (elf64_st_shndx def_symenta)", simp_all)
+  apply(case_tac "elf64_st_shndx def_syment = elf64_st_shndx def_symenta", simp_all)
+  apply(case_tac ab; case_tac ac; simp_all add: symDefCompare_def quintupleCompare.simps pairCompare.simps)
+  apply(case_tac "stringCompare_method def_symname def_symnamea", simp_all add: pairCompare.simps)
+  apply(case_tac "elf64_symbol_table_entry_compare def_syment def_symenta", simp_all add: pairCompare.simps genericCompare_def)
+  apply(case_tac "def_sym_scn < def_sym_scna", simp_all)
+  apply(case_tac "def_sym_scn = def_sym_scna", simp_all add: pairCompare.simps genericCompare_def)
+  apply(case_tac "def_sym_idx < def_sym_idxa", simp_all)
+  apply(case_tac "def_sym_idx = def_sym_idxa", simp_all add: genericCompare_def)
+  apply(case_tac "def_linkable_idx < def_linkable_idxa", simp_all)
+  apply(case_tac "def_linkable_idx = def_linkable_idxa", simp_all add: stringCompare_method_refl')
+  apply(simp only: elf64_symbol_table_entry_compare_def sextupleCompare.simps genericCompare_def pairCompare.simps)
+  apply(case_tac "unat (elf64_st_name def_syment) < unat (elf64_st_name def_symenta)", simp_all)
+  apply(case_tac "elf64_st_name def_syment = elf64_st_name def_symenta", simp_all)
+  apply(case_tac "unat (elf64_st_value def_syment) < unat (elf64_st_value def_symenta)", simp_all)
+  apply(case_tac "elf64_st_value def_syment = elf64_st_value def_symenta", simp_all)
+  apply(case_tac "unat (elf64_st_size def_syment) < unat (elf64_st_size def_symenta)", simp_all)
+  apply(case_tac "elf64_st_size def_syment = elf64_st_size def_symenta", simp_all)
+  apply(case_tac "unat (elf64_st_info def_syment) < unat (elf64_st_info def_symenta)", simp_all)
+  apply(case_tac "elf64_st_info def_syment = elf64_st_info def_symenta", simp_all)
+  apply(case_tac "unat (elf64_st_other def_syment) < unat (elf64_st_other def_symenta)", simp_all)
+  apply(case_tac "elf64_st_other def_syment = elf64_st_other def_symenta", simp_all)
+  apply(case_tac "unat (elf64_st_shndx def_syment) < unat (elf64_st_shndx def_symenta)", simp_all)
+  apply(case_tac "elf64_st_shndx def_syment = elf64_st_shndx def_symenta", simp_all)
+  apply(case_tac ab; case_tac ac; simp_all add: symDefCompare_def quintupleCompare.simps pairCompare.simps)
+  apply(case_tac "stringCompare_method def_symname def_symnamea", simp_all add: pairCompare.simps)
+  apply(case_tac "elf64_symbol_table_entry_compare def_syment def_symenta", simp_all add: pairCompare.simps genericCompare_def)
+  apply(case_tac "def_sym_scn < def_sym_scna", simp_all)
+  apply(case_tac "def_sym_scn = def_sym_scna", simp_all add: pairCompare.simps genericCompare_def)
+  apply(case_tac "def_sym_idx < def_sym_idxa", simp_all)
+  apply(case_tac "def_sym_idx = def_sym_idxa", simp_all add: genericCompare_def)
+  apply(case_tac "def_linkable_idx < def_linkable_idxa", simp_all)
+  apply(case_tac "def_linkable_idx = def_linkable_idxa", simp_all add: stringCompare_method_refl')
+  apply(simp only: elf64_symbol_table_entry_compare_def sextupleCompare.simps genericCompare_def pairCompare.simps)
+  apply(case_tac "unat (elf64_st_name def_syment) < unat (elf64_st_name def_symenta)", simp_all)
+  apply(case_tac "elf64_st_name def_syment = elf64_st_name def_symenta", simp_all)
+  apply(case_tac "unat (elf64_st_value def_syment) < unat (elf64_st_value def_symenta)", simp_all)
+  apply(case_tac "elf64_st_value def_syment = elf64_st_value def_symenta", simp_all)
+  apply(case_tac "unat (elf64_st_size def_syment) < unat (elf64_st_size def_symenta)", simp_all)
+  apply(case_tac "elf64_st_size def_syment = elf64_st_size def_symenta", simp_all)
+  apply(case_tac "unat (elf64_st_info def_syment) < unat (elf64_st_info def_symenta)", simp_all)
+  apply(case_tac "elf64_st_info def_syment = elf64_st_info def_symenta", simp_all)
+  apply(case_tac "unat (elf64_st_other def_syment) < unat (elf64_st_other def_symenta)", simp_all)
+  apply(case_tac "elf64_st_other def_syment = elf64_st_other def_symenta", simp_all)
+  apply(case_tac "unat (elf64_st_shndx def_syment) < unat (elf64_st_shndx def_symenta)", simp_all)
+  apply(case_tac "elf64_st_shndx def_syment = elf64_st_shndx def_symenta", simp_all)
+  apply(case_tac "ref_sym_idx ref < ref_sym_idx refa", simp_all)
+  apply(case_tac "ref_sym_idx ref = ref_sym_idx refa", simp_all)
+  apply(case_tac "maybe_def_bound_to"; case_tac "maybe_def_bound_toa"; simp_all add: maybeCompare.simps elf64_symbol_table_entry_compare_def
+    sextupleCompare.simps pairCompare.simps genericCompare_def)
+  apply(case_tac "unat (elf64_st_name (ref_syment ref)) < unat (elf64_st_name (ref_syment refa))", simp_all)
+  apply(case_tac "elf64_st_name (ref_syment ref) = elf64_st_name (ref_syment refa)", simp_all add: pairCompare.simps genericCompare_def)
+  apply(case_tac "unat (elf64_st_value (ref_syment ref)) < unat (elf64_st_value (ref_syment refa))", simp_all)
+  apply(case_tac "elf64_st_value (ref_syment ref) = elf64_st_value (ref_syment refa)", simp_all add: pairCompare.simps genericCompare_def)
+  apply(case_tac "unat (elf64_st_size (ref_syment ref)) < unat (elf64_st_size (ref_syment refa))", simp_all)
+  apply(case_tac "elf64_st_size (ref_syment ref) = elf64_st_size (ref_syment refa)", simp_all add: pairCompare.simps genericCompare_def)
+  apply(case_tac "unat (elf64_st_info (ref_syment ref)) < unat (elf64_st_info (ref_syment refa))", simp_all)
+  apply(case_tac "elf64_st_info (ref_syment ref) = elf64_st_info (ref_syment refa)", simp_all add: pairCompare.simps genericCompare_def)
+  apply(case_tac "unat (elf64_st_other (ref_syment ref)) < unat (elf64_st_other (ref_syment refa))", simp_all)
+  apply(case_tac "elf64_st_other (ref_syment ref) = elf64_st_other (ref_syment refa)", simp_all add: pairCompare.simps genericCompare_def)
+  apply(case_tac "unat (elf64_st_shndx (ref_syment ref)) < unat (elf64_st_shndx (ref_syment refa))", simp_all)
+  apply(case_tac "elf64_st_shndx (ref_syment ref) = elf64_st_shndx (ref_syment refa)", simp_all)
+  apply(case_tac a; case_tac aa; simp_all add: relocSiteCompare_def tripleCompare.simps pairCompare.simps)
+  apply(case_tac "elf64_relocation_a_compare ref_relent ref_relenta", simp_all add: pairCompare.simps genericCompare_def)
+  apply(case_tac "ref_rel_idx < ref_rel_idxa", simp_all)
+  apply(case_tac "ref_rel_idx = ref_rel_idxa", simp_all add: genericCompare_def)
+  apply(case_tac "ref_src_scn < ref_src_scna", simp_all)
+  apply(case_tac "ref_src_scn = ref_src_scna", simp_all)
+  apply(case_tac "ref_relent"; case_tac "ref_relenta"; simp_all add: elf64_relocation_a_compare_def tripleCompare.simps
+    pairCompare.simps genericCompare_def)
+  apply(case_tac "unat elf64_ra_offset < unat elf64_ra_offseta", simp_all)
+  apply(case_tac "elf64_ra_offset = elf64_ra_offseta", simp_all add: pairCompare.simps genericCompare_def)
+  apply(case_tac "unat elf64_ra_info < unat elf64_ra_infoa", simp_all)
+  apply(case_tac "elf64_ra_info = elf64_ra_infoa", simp_all add: genericCompare_def)
+  apply(case_tac "sint elf64_ra_addend < sint elf64_ra_addenda", simp_all)
+  apply(case_tac "elf64_ra_addend = elf64_ra_addenda", simp_all)
+
+lemma elfFileFeatureCompare_tri:
+  shows "elfFileFeatureCompare x y = LT \<or> elfFileFeatureCompare x y = GT \<or> x = y"
 sorry
 
+lemma symDefCompare_eq:
+  shows "symDefCompare x y = EQ \<longleftrightarrow> x = y"
+sorry
+
+lemma symRefAndRelocSiteCompare_eq:
+  shows "symRefAndRelocSiteCompare x y = EQ \<longleftrightarrow> x = y"
+sorry
+
+lemma elf64_header_compare_eq:
+  shows "(elf64_header_compare x y = EQ) = (x = y)"
+sorry
+
+lemma elfFileFeatureCompare_eq:
+  shows "elfFileFeatureCompare x y = EQ \<longleftrightarrow> x = y"
+  apply(case_tac x; case_tac y; clarify)
+  apply(simp_all add: elfFileFeatureCompare.simps)
+
 lemma tag_dict_preserves_well_behavedness:
-  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict)"
+  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict) (compare_method dict)"
   shows "well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_Memory_image_range_tag_dict dict))
    (isLessEqual_method (instance_Basic_classes_Ord_Memory_image_range_tag_dict dict))
-   (isGreater_method (instance_Basic_classes_Ord_Memory_image_range_tag_dict dict))"
+   (isGreater_method (instance_Basic_classes_Ord_Memory_image_range_tag_dict dict))
+   (compare_method (instance_Basic_classes_Ord_Memory_image_range_tag_dict dict))"
 using assms unfolding well_behaved_lem_ordering.simps instance_Basic_classes_Ord_Memory_image_range_tag_dict_def
   apply(simp only: Ord_class.simps)
+  apply(rule conjI, (rule allI)+, rule impI, rule tagCompare_GT_tagCompare_LT, blast, blast)
+  apply(rule conjI, (rule allI)+, rule impI, rule tagCompare_LT_tagCompare_GT, blast, blast)
   apply(rule conjI, (rule allI)+)
-  apply(case_tac x; case_tac y; clarify)
+  apply(case_tac x; case_tac y; clarify; (subst tagCompare.simps)?; (subst (asm) tagCompare.simps)?, (subst (asm) tagCompare.simps)?)
+  apply((metis)+, metis symDefCompare_tri, (metis)+, metis symRefAndRelocSiteCompare_tri, (metis)+,
+    metis elfFileFeatureCompare_tri, (metis)+, metis ordering.exhaust)
+  apply(rule conjI, (rule allI)+)
+  apply(case_tac x; case_tac y; clarify; (subst (asm) tagCompare.simps)?)
+  apply(metis ordering.simps, metis ordering.simps, metis ordering.simps symDefCompare_eq,
+    metis ordering.simps symRefAndRelocSiteCompare_eq, metis ordering.simps elfFileFeatureCompare_eq,
+    metis ordering.distinct)
+  apply(rule conjI, (rule allI)+)
+  apply(case_tac x; case_tac y; clarify; (subst (asm) tagCompare.simps)?)
+  apply(metis ordering.simps, metis ordering.simps, metis ordering.simps symDefCompare_eq,
+    metis ordering.simps symRefAndRelocSiteCompare_eq, metis ordering.simps elfFileFeatureCompare_eq,
+    metis ordering.distinct)
+  apply(rule conjI, (rule allI)+, rule impI)
+  apply simp
+  apply(rule conjI, (rule allI)+, rule impI)
+  apply simp
+  apply(rule conjI, (rule allI)+, rule impI)
+  apply(metis ordering.distinct tagCompare_refl)
+  apply(rule conjI, (rule allI)+, rule impI)
+  apply(metis ordering.distinct tagCompare_refl)
+  apply(rule conjI, (rule allI)+, rule impI)
+  apply simp
+  apply(erule disjE, simp)
+  apply(case_tac x; case_tac y; clarify; (subst (asm) tagCompare.simps)?, (subst (asm) tagCompare.simps)?)
+  apply((metis)+)
 sorry
 
 lemma maybe_dict_preserves_well_behavedness:
-  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict)"
+  fixes dict :: "'a Ord_class"
+  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict) (compare_method dict)"
   shows "well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_Maybe_maybe_dict dict))
    (isLessEqual_method (instance_Basic_classes_Ord_Maybe_maybe_dict dict))
-   (isGreater_method (instance_Basic_classes_Ord_Maybe_maybe_dict dict))"
-using assms sorry
+   (isGreater_method (instance_Basic_classes_Ord_Maybe_maybe_dict dict))
+   (compare_method (instance_Basic_classes_Ord_Maybe_maybe_dict dict))"
+using assms unfolding well_behaved_lem_ordering.simps instance_Basic_classes_Ord_Maybe_maybe_dict_def
+  apply simp
+  apply(rule conjI)
+  apply((rule allI)+, case_tac x; case_tac y; clarify; (subst (asm) maybeCompare.simps);
+    subst maybeCompare.simps; metis)
+  apply(rule conjI)
+  apply((rule allI)+, case_tac x; case_tac y; clarify; (subst (asm) maybeCompare.simps);
+    subst maybeCompare.simps; metis)
+  apply(rule conjI)
+  apply((rule allI)+, case_tac x; case_tac y; clarify; (subst (asm) maybeCompare.simps))
+  apply(subst maybeCompare.simps, rule refl)
+  apply(metis)
+  apply(subst (asm) maybeCompare.simps)
+  apply(meson orderingIsLess.cases)
+  apply(rule conjI)
+  apply(rule allI, case_tac x; clarify)
+  apply(subst (asm) maybeCompare.simps, metis ordering.simps)+
+  apply(rule conjI)
+  apply(rule allI, case_tac x; clarify)
+  apply(subst (asm) maybeCompare.simps, metis ordering.simps)+
+  apply(rule conjI)
+  apply((rule allI)+, case_tac x; case_tac y; clarify)
+  apply(subst (asm) maybeCompare.simps, metis ordering.simps)+
+  apply(rule conjI)
+  apply((rule allI)+, case_tac x; case_tac y; clarify)
+  apply(subst (asm) maybeCompare.simps, metis ordering.simps)+
+  apply(rule conjI)
+  apply((rule allI)+, case_tac x; case_tac y; clarify)
+  apply((subst (asm) maybeCompare.simps)+, metis ordering.simps)+
+  apply(rule conjI)
+  apply(rule allI, case_tac x; clarify)
+  apply(subst maybeCompare.simps, metis)+
+  apply(rule conjI) 
+  apply((rule allI)+, case_tac x; case_tac y; clarify)
+  apply(subst (asm) maybeCompare.simps, subst maybeCompare.simps, metis ordering.simps)+
+  apply(rule conjI)
+  apply((rule allI)+, case_tac x; case_tac y; clarify)
+  apply(subst (asm) maybeCompare.simps, subst maybeCompare.simps, metis ordering.simps)+
+  apply((rule allI)+, case_tac x; case_tac y; clarify)
+  apply(subst maybeCompare.simps, metis ordering.simps)
+  apply(subst maybeCompare.simps, fast)
+  apply(subst maybeCompare.simps, fast)
+  apply(subst maybeCompare.simps, subst option.inject)
+  apply meson
+done
 
 lemma pairLess_Ref_Ref_technical:
   shows "pairLess (instance_Basic_classes_Ord_Maybe_maybe_dict
@@ -1657,7 +2098,6 @@ lemma set_comprehension_elim_neither_technical:
   apply auto
   apply(subst (asm) word_unat.Abs_inverse, auto simp add: unats_def)+
 done
-  
 
 lemma nth_the_technical:
   assumes "(4194316::nat) ≤ x" and "x < 4194324"
