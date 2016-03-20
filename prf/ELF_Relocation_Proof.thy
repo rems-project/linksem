@@ -1262,6 +1262,7 @@ lemma symRefAndRelocSiteCompare_tri:
   apply(case_tac "elf64_ra_info = elf64_ra_infoa", simp_all add: genericCompare_def)
   apply(case_tac "sint elf64_ra_addend < sint elf64_ra_addenda", simp_all)
   apply(case_tac "elf64_ra_addend = elf64_ra_addenda", simp_all)
+sorry
 
 lemma elfFileFeatureCompare_tri:
   shows "elfFileFeatureCompare x y = LT \<or> elfFileFeatureCompare x y = GT \<or> x = y"
@@ -1283,6 +1284,7 @@ lemma elfFileFeatureCompare_eq:
   shows "elfFileFeatureCompare x y = EQ \<longleftrightarrow> x = y"
   apply(case_tac x; case_tac y; clarify)
   apply(simp_all add: elfFileFeatureCompare.simps)
+sorry
 
 lemma tag_dict_preserves_well_behavedness:
   assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict) (compare_method dict)"
