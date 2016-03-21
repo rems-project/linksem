@@ -359,7 +359,7 @@ done
 lemma relocSiteCompare_refl:
   shows "relocSiteCompare r r = EQ"
   apply(simp only: relocSiteCompare_def)
-  apply(rule tripleCompare_refl)
+  apply(rule quadrupleCompare_refl)
   apply(rule allI, rule elf64_relocation_a_compare_refl)
   apply(rule allI, simp add: genericCompare_refl)+
 done
@@ -1129,161 +1129,126 @@ find_consts name: elf64_symbol_table_entry_compare
 
 lemma symRefAndRelocSiteCompare_tri:
   shows "symRefAndRelocSiteCompare x y = LT \<or> symRefAndRelocSiteCompare x y = GT \<or> x = y"
-  apply(case_tac x; case_tac y; clarify)
-  apply(simp add: symRefAndRelocSiteCompare_def tripleCompare.simps pairCompare.simps)
-  apply(case_tac "symRefCompare ref refa", simp_all)
-  apply(simp add: symRefCompare_def quadrupleCompare.simps pairCompare.simps)
-  apply(case_tac "maybeCompare relocSiteCompare maybe_reloc maybe_reloca", simp_all)
-  apply(case_tac "stringCompare_method (ref_symname ref) (ref_symname refa)", simp_all)
-  apply(simp add: pairCompare.simps)
-  apply(case_tac "elf64_symbol_table_entry_compare (ref_syment ref) (ref_syment refa)", simp_all)
-  apply(simp add: pairCompare.simps genericCompare_def)
-  apply(case_tac "ref_sym_scn ref < ref_sym_scn refa", simp_all)
-  apply(case_tac "ref_sym_scn ref = ref_sym_scn refa", simp_all)
-  apply(case_tac maybe_reloc; case_tac maybe_reloca; clarify)
-  apply(simp_all add: maybeCompare.simps genericCompare_def)
-  apply(case_tac "ref_sym_idx ref < ref_sym_idx refa", simp_all)
-  apply(case_tac "ref_sym_idx ref = ref_sym_idx refa", simp_all)
-  apply(simp only: elf64_symbol_table_entry_compare_def sextupleCompare.simps pairCompare.simps
-    genericCompare_def)
-  apply(case_tac "unat (elf64_st_name (ref_syment ref)) < unat (elf64_st_name (ref_syment refa))", simp_all)
-  apply(case_tac "elf64_st_name (ref_syment ref) = elf64_st_name (ref_syment refa)", simp_all)
-  apply(case_tac "unat (elf64_st_value (ref_syment ref)) < unat (elf64_st_value (ref_syment refa))", simp_all)
-  apply(case_tac "elf64_st_value (ref_syment ref) = elf64_st_value (ref_syment refa)", simp_all)
-  apply(case_tac "unat (elf64_st_size (ref_syment ref)) < unat (elf64_st_size (ref_syment refa))", simp_all)
-  apply(case_tac "elf64_st_size (ref_syment ref) = elf64_st_size (ref_syment refa)", simp_all)
-  apply(case_tac "unat (elf64_st_info (ref_syment ref)) < unat (elf64_st_info (ref_syment refa))", simp_all)
-  apply(case_tac "elf64_st_info (ref_syment ref) = elf64_st_info (ref_syment refa)", simp_all)
-  apply(case_tac "unat (elf64_st_other (ref_syment ref)) < unat (elf64_st_other (ref_syment refa))", simp_all)
-  apply(case_tac "elf64_st_other (ref_syment ref) = elf64_st_other (ref_syment refa)", simp_all)
-  apply(case_tac "unat (elf64_st_shndx (ref_syment ref)) < unat (elf64_st_shndx (ref_syment refa))", simp_all)
-  apply(case_tac "elf64_st_shndx (ref_syment ref) = elf64_st_shndx (ref_syment refa)", simp_all)
-  apply(case_tac maybe_def_bound_to; case_tac maybe_def_bound_toa; clarify; simp add: maybeCompare.simps)
-  apply(simp add: stringCompare_method_refl')+
-  apply(simp add: pairCompare.simps)
-  apply(case_tac "relocDecisionCompare a aa", simp_all)
-  apply(case_tac b; case_tac ba; simp add: maybeCompare.simps)
-  apply(case_tac a; case_tac aa; simp add: relocDecisionCompare.simps)
-  apply(case_tac a; case_tac aa; simp add: relocDecisionCompare.simps)
-  apply(case_tac ab; case_tac ac; simp add: symDefCompare_def quintupleCompare.simps pairCompare.simps)
-  apply(case_tac "stringCompare_method def_symname def_symnamea", simp_all)
-  apply(simp add: pairCompare.simps)
-  apply(case_tac "elf64_symbol_table_entry_compare def_syment def_symenta", simp_all add: pairCompare.simps genericCompare_def)
-  apply(case_tac "def_sym_scn < def_sym_scna", simp_all)
-  apply(case_tac "def_sym_scn = def_sym_scna", simp_all add: pairCompare.simps genericCompare_def)
-  apply(case_tac "def_sym_idx < def_sym_idxa", simp_all)
-  apply(case_tac "def_sym_idx = def_sym_idxa", simp_all add: genericCompare_def)
-  apply(case_tac "def_linkable_idx < def_linkable_idxa", simp_all)
-  apply(case_tac "def_linkable_idx = def_linkable_idxa", simp_all add: stringCompare_method_refl')
-  apply(simp only: elf64_symbol_table_entry_compare_def sextupleCompare.simps genericCompare_def pairCompare.simps)
-  apply(case_tac "unat (elf64_st_name def_syment) < unat (elf64_st_name def_symenta)", simp_all)
-  apply(case_tac "elf64_st_name def_syment = elf64_st_name def_symenta", simp_all)
-  apply(case_tac "unat (elf64_st_value def_syment) < unat (elf64_st_value def_symenta)", simp_all)
-  apply(case_tac "elf64_st_value def_syment = elf64_st_value def_symenta", simp_all)
-  apply(case_tac "unat (elf64_st_size def_syment) < unat (elf64_st_size def_symenta)", simp_all)
-  apply(case_tac "elf64_st_size def_syment = elf64_st_size def_symenta", simp_all)
-  apply(case_tac "unat (elf64_st_info def_syment) < unat (elf64_st_info def_symenta)", simp_all)
-  apply(case_tac "elf64_st_info def_syment = elf64_st_info def_symenta", simp_all)
-  apply(case_tac "unat (elf64_st_other def_syment) < unat (elf64_st_other def_symenta)", simp_all)
-  apply(case_tac "elf64_st_other def_syment = elf64_st_other def_symenta", simp_all)
-  apply(case_tac "unat (elf64_st_shndx def_syment) < unat (elf64_st_shndx def_symenta)", simp_all)
-  apply(case_tac "elf64_st_shndx def_syment = elf64_st_shndx def_symenta", simp_all)
-  apply(case_tac ab; case_tac ac; simp_all add: symDefCompare_def quintupleCompare.simps pairCompare.simps)
-  apply(case_tac "stringCompare_method def_symname def_symnamea", simp_all add: pairCompare.simps)
-  apply(case_tac "elf64_symbol_table_entry_compare def_syment def_symenta", simp_all add: pairCompare.simps genericCompare_def)
-  apply(case_tac "def_sym_scn < def_sym_scna", simp_all)
-  apply(case_tac "def_sym_scn = def_sym_scna", simp_all add: pairCompare.simps genericCompare_def)
-  apply(case_tac "def_sym_idx < def_sym_idxa", simp_all)
-  apply(case_tac "def_sym_idx = def_sym_idxa", simp_all add: genericCompare_def)
-  apply(case_tac "def_linkable_idx < def_linkable_idxa", simp_all)
-  apply(case_tac "def_linkable_idx = def_linkable_idxa", simp_all add: stringCompare_method_refl')
-  apply(simp only: elf64_symbol_table_entry_compare_def sextupleCompare.simps genericCompare_def pairCompare.simps)
-  apply(case_tac "unat (elf64_st_name def_syment) < unat (elf64_st_name def_symenta)", simp_all)
-  apply(case_tac "elf64_st_name def_syment = elf64_st_name def_symenta", simp_all)
-  apply(case_tac "unat (elf64_st_value def_syment) < unat (elf64_st_value def_symenta)", simp_all)
-  apply(case_tac "elf64_st_value def_syment = elf64_st_value def_symenta", simp_all)
-  apply(case_tac "unat (elf64_st_size def_syment) < unat (elf64_st_size def_symenta)", simp_all)
-  apply(case_tac "elf64_st_size def_syment = elf64_st_size def_symenta", simp_all)
-  apply(case_tac "unat (elf64_st_info def_syment) < unat (elf64_st_info def_symenta)", simp_all)
-  apply(case_tac "elf64_st_info def_syment = elf64_st_info def_symenta", simp_all)
-  apply(case_tac "unat (elf64_st_other def_syment) < unat (elf64_st_other def_symenta)", simp_all)
-  apply(case_tac "elf64_st_other def_syment = elf64_st_other def_symenta", simp_all)
-  apply(case_tac "unat (elf64_st_shndx def_syment) < unat (elf64_st_shndx def_symenta)", simp_all)
-  apply(case_tac "elf64_st_shndx def_syment = elf64_st_shndx def_symenta", simp_all)
-  apply(case_tac ab; case_tac ac; simp_all add: symDefCompare_def quintupleCompare.simps pairCompare.simps)
-  apply(case_tac "stringCompare_method def_symname def_symnamea", simp_all add: pairCompare.simps)
-  apply(case_tac "elf64_symbol_table_entry_compare def_syment def_symenta", simp_all add: pairCompare.simps genericCompare_def)
-  apply(case_tac "def_sym_scn < def_sym_scna", simp_all)
-  apply(case_tac "def_sym_scn = def_sym_scna", simp_all add: pairCompare.simps genericCompare_def)
-  apply(case_tac "def_sym_idx < def_sym_idxa", simp_all)
-  apply(case_tac "def_sym_idx = def_sym_idxa", simp_all add: genericCompare_def)
-  apply(case_tac "def_linkable_idx < def_linkable_idxa", simp_all)
-  apply(case_tac "def_linkable_idx = def_linkable_idxa", simp_all add: stringCompare_method_refl')
-  apply(simp only: elf64_symbol_table_entry_compare_def sextupleCompare.simps genericCompare_def pairCompare.simps)
-  apply(case_tac "unat (elf64_st_name def_syment) < unat (elf64_st_name def_symenta)", simp_all)
-  apply(case_tac "elf64_st_name def_syment = elf64_st_name def_symenta", simp_all)
-  apply(case_tac "unat (elf64_st_value def_syment) < unat (elf64_st_value def_symenta)", simp_all)
-  apply(case_tac "elf64_st_value def_syment = elf64_st_value def_symenta", simp_all)
-  apply(case_tac "unat (elf64_st_size def_syment) < unat (elf64_st_size def_symenta)", simp_all)
-  apply(case_tac "elf64_st_size def_syment = elf64_st_size def_symenta", simp_all)
-  apply(case_tac "unat (elf64_st_info def_syment) < unat (elf64_st_info def_symenta)", simp_all)
-  apply(case_tac "elf64_st_info def_syment = elf64_st_info def_symenta", simp_all)
-  apply(case_tac "unat (elf64_st_other def_syment) < unat (elf64_st_other def_symenta)", simp_all)
-  apply(case_tac "elf64_st_other def_syment = elf64_st_other def_symenta", simp_all)
-  apply(case_tac "unat (elf64_st_shndx def_syment) < unat (elf64_st_shndx def_symenta)", simp_all)
-  apply(case_tac "elf64_st_shndx def_syment = elf64_st_shndx def_symenta", simp_all)
-  apply(case_tac "ref_sym_idx ref < ref_sym_idx refa", simp_all)
-  apply(case_tac "ref_sym_idx ref = ref_sym_idx refa", simp_all)
-  apply(case_tac "maybe_def_bound_to"; case_tac "maybe_def_bound_toa"; simp_all add: maybeCompare.simps elf64_symbol_table_entry_compare_def
-    sextupleCompare.simps pairCompare.simps genericCompare_def)
-  apply(case_tac "unat (elf64_st_name (ref_syment ref)) < unat (elf64_st_name (ref_syment refa))", simp_all)
-  apply(case_tac "elf64_st_name (ref_syment ref) = elf64_st_name (ref_syment refa)", simp_all add: pairCompare.simps genericCompare_def)
-  apply(case_tac "unat (elf64_st_value (ref_syment ref)) < unat (elf64_st_value (ref_syment refa))", simp_all)
-  apply(case_tac "elf64_st_value (ref_syment ref) = elf64_st_value (ref_syment refa)", simp_all add: pairCompare.simps genericCompare_def)
-  apply(case_tac "unat (elf64_st_size (ref_syment ref)) < unat (elf64_st_size (ref_syment refa))", simp_all)
-  apply(case_tac "elf64_st_size (ref_syment ref) = elf64_st_size (ref_syment refa)", simp_all add: pairCompare.simps genericCompare_def)
-  apply(case_tac "unat (elf64_st_info (ref_syment ref)) < unat (elf64_st_info (ref_syment refa))", simp_all)
-  apply(case_tac "elf64_st_info (ref_syment ref) = elf64_st_info (ref_syment refa)", simp_all add: pairCompare.simps genericCompare_def)
-  apply(case_tac "unat (elf64_st_other (ref_syment ref)) < unat (elf64_st_other (ref_syment refa))", simp_all)
-  apply(case_tac "elf64_st_other (ref_syment ref) = elf64_st_other (ref_syment refa)", simp_all add: pairCompare.simps genericCompare_def)
-  apply(case_tac "unat (elf64_st_shndx (ref_syment ref)) < unat (elf64_st_shndx (ref_syment refa))", simp_all)
-  apply(case_tac "elf64_st_shndx (ref_syment ref) = elf64_st_shndx (ref_syment refa)", simp_all)
-  apply(case_tac a; case_tac aa; simp_all add: relocSiteCompare_def tripleCompare.simps pairCompare.simps)
-  apply(case_tac "elf64_relocation_a_compare ref_relent ref_relenta", simp_all add: pairCompare.simps genericCompare_def)
-  apply(case_tac "ref_rel_idx < ref_rel_idxa", simp_all)
-  apply(case_tac "ref_rel_idx = ref_rel_idxa", simp_all add: genericCompare_def)
-  apply(case_tac "ref_src_scn < ref_src_scna", simp_all)
-  apply(case_tac "ref_src_scn = ref_src_scna", simp_all)
-  apply(case_tac "ref_relent"; case_tac "ref_relenta"; simp_all add: elf64_relocation_a_compare_def tripleCompare.simps
-    pairCompare.simps genericCompare_def)
-  apply(case_tac "unat elf64_ra_offset < unat elf64_ra_offseta", simp_all)
-  apply(case_tac "elf64_ra_offset = elf64_ra_offseta", simp_all add: pairCompare.simps genericCompare_def)
-  apply(case_tac "unat elf64_ra_info < unat elf64_ra_infoa", simp_all)
-  apply(case_tac "elf64_ra_info = elf64_ra_infoa", simp_all add: genericCompare_def)
-  apply(case_tac "sint elf64_ra_addend < sint elf64_ra_addenda", simp_all)
-  apply(case_tac "elf64_ra_addend = elf64_ra_addenda", simp_all)
 sorry
 
 lemma elfFileFeatureCompare_tri:
   shows "elfFileFeatureCompare x y = LT \<or> elfFileFeatureCompare x y = GT \<or> x = y"
 sorry
 
-lemma symDefCompare_eq:
+lemma elf64_symbol_table_entry_compare_refl':
+  shows "(elf64_symbol_table_entry_compare x y = EQ) \<longleftrightarrow> x = y"
+  apply(case_tac x; case_tac y; simp add: elf64_symbol_table_entry_compare_def sextupleCompare.simps pairCompare.simps)
+  apply(simp add: genericCompare_def pairCompare.simps)
+done
+
+lemma symDefCompare_refl':
   shows "symDefCompare x y = EQ \<longleftrightarrow> x = y"
-sorry
+  apply(case_tac x; case_tac y; simp add: symDefCompare_def quintupleCompare.simps pairCompare.simps)
+  apply(case_tac "stringCompare_method def_symname def_symnamea"; simp; (metis ordering.distinct stringCompare_method_refl')?)
+  apply(simp add: pairCompare.simps)
+  apply(case_tac "elf64_symbol_table_entry_compare def_syment def_symenta"; simp; (metis ordering.distinct elf64_symbol_table_entry_compare_refl')?)
+  apply(simp add: pairCompare.simps genericCompare_def)
+  apply(metis elf64_symbol_table_entry_compare_refl' stringCompare_method_refl')
+done
+
+lemma symRefCompare_refl':
+  shows "symRefCompare x y = EQ \<longleftrightarrow> x = y"
+  apply(case_tac x; case_tac y; simp add: symRefCompare_def quadrupleCompare.simps pairCompare.simps)
+  apply(case_tac "stringCompare_method ref_symname ref_symnamea"; simp; (metis ordering.distinct stringCompare_method_refl')?)
+  apply(simp add: pairCompare.simps)
+  apply(case_tac "elf64_symbol_table_entry_compare ref_syment ref_symenta"; simp; (metis ordering.distinct elf64_symbol_table_entry_compare_refl')?)
+  apply(simp add: pairCompare.simps genericCompare_def)
+  apply(metis elf64_symbol_table_entry_compare_refl' stringCompare_method_refl')
+done
+
+lemma elf64_relocation_a_compare_refl':
+  shows "elf64_relocation_a_compare x y = EQ \<longleftrightarrow> x = y"
+  apply(case_tac x; case_tac y; simp add: elf64_relocation_a_compare_def tripleCompare.simps pairCompare.simps genericCompare_def)
+done
+
+lemma relocSiteCompare_refl':
+  shows "relocSiteCompare x y = EQ \<longleftrightarrow> x = y"
+  apply(case_tac x; case_tac y; simp add: relocSiteCompare_def quadrupleCompare.simps pairCompare.simps)
+  apply(case_tac "elf64_relocation_a_compare ref_relent ref_relenta"; simp; (metis ordering.distinct elf64_relocation_a_compare_refl')?)
+  apply(simp add: genericCompare_def pairCompare.simps)
+  apply(metis elf64_relocation_a_compare_refl')
+done
+
+lemma pairCompare_refl':
+  assumes "\<And>x y. cmp1 x y = EQ \<longleftrightarrow> x = y" and "\<And>x y. cmp2 x y = EQ \<longleftrightarrow> x = y"
+  shows "pairCompare cmp1 cmp2 x y = EQ \<longleftrightarrow> x = y"
+using assms
+  apply(case_tac x; case_tac y; simp add: pairCompare.simps)
+  apply(smt ordering.exhaust ordering.simps(7) ordering.simps(8) ordering.simps(9))
+done
+
+lemma maybeCompare_refl':
+  assumes "\<And>x y. cmp x y = EQ \<longleftrightarrow> x = y"
+  shows "maybeCompare cmp x y = EQ \<longleftrightarrow> x = y"
+using assms
+  apply auto
+  apply(case_tac x; case_tac y; simp add: maybeCompare.simps)
+  apply(case_tac x; case_tac y; simp add: maybeCompare.simps)
+done
+
+lemma relocDecisionCompare_refl':
+  shows "relocDecisionCompare x y = EQ \<longleftrightarrow> x = y"
+  apply(case_tac x; case_tac y; simp)
+done
 
 lemma symRefAndRelocSiteCompare_eq:
   shows "symRefAndRelocSiteCompare x y = EQ \<longleftrightarrow> x = y"
-sorry
+  apply(case_tac x; case_tac y; simp add: symRefAndRelocSiteCompare_def tripleCompare.simps pairCompare.simps)
+  apply(case_tac "symRefCompare ref refa"; simp; (metis ordering.distinct symRefCompare_refl')?)
+  apply(simp add: pairCompare.simps)
+  apply(case_tac "maybeCompare relocSiteCompare maybe_reloc maybe_reloca"; simp)
+  apply(metis ordering.distinct relocSiteCompare_refl' maybeCompare_refl')
+  apply(smt pairCompare_refl' maybeCompare_refl' symDefCompare_refl' relocDecisionCompare_refl' relocSiteCompare_refl' symRefCompare_refl')
+  apply(metis ordering.distinct maybeCompare_refl' relocSiteCompare_refl')
+done
 
-lemma elf64_header_compare_eq:
+lemma lexicographicCompareBy_refl':
+  assumes "\<And>x y. cmp x y = EQ \<longleftrightarrow> x = y"
+  shows "lexicographicCompareBy cmp x y = EQ \<longleftrightarrow> x = y"
+using assms
+  apply(induction x arbitrary: y)
+  apply(case_tac y; simp add: lexicographicCompareBy.simps)
+  apply(case_tac y; simp add: lexicographicCompareBy.simps)
+  apply(case_tac "cmp a aa")
+  apply clarify
+  apply(subst ordering.case_cong_weak[where ordering'=LT], assumption)
+  apply(metis ordering.distinct ordering.simps)
+  apply(subst ordering.case_cong_weak[where ordering'=EQ], assumption)
+  apply simp
+  apply(subst ordering.case_cong_weak[where ordering'=GT], assumption)
+  apply(simp only: ordering.case)
+  apply(metis ordering.distinct ordering.simps)
+done
+
+lemma elf64_header_compare_refl':
   shows "(elf64_header_compare x y = EQ) = (x = y)"
+  apply(case_tac x; case_tac y; simp add: elf64_header_compare_def pairCompare.simps lexicographicCompareBy.simps genericCompare_def)
+  apply(case_tac "lexicographicCompareBy (genericCompare op < op =) (map unat elf64_ident) (map unat elf64_identa)"; simp)
+  apply(metis genericCompare_refl lexicographicCompareBy_refl' genericCompare_def ordering.distinct)
+  apply(subst (asm) lexicographicCompareBy_refl', simp add: genericCompare_def)
+  apply(subst lexicographicCompareBy_refl', simp add: genericCompare_def)
+  apply(simp only: list.inject)
+  apply auto
+  apply(rule list.inj_map_strong[where f="unat" and fa="unat"], simp, simp)
+  apply(metis genericCompare_refl lexicographicCompareBy_refl' genericCompare_def ordering.distinct)
+done
+
+lemma compare_elf64_section_header_table_entry_refl':
+  shows "compare_elf64_section_header_table_entry x y = EQ \<longleftrightarrow> x = y"
+  apply(case_tac x; case_tac y; simp add: compare_elf64_section_header_table_entry_def)
+(*  using genericCompare_refl lexicographicCompareBy_refl' genericCompare_def ordering.distinct list.inject sledgehammer*)
 sorry
 
 lemma elfFileFeatureCompare_eq:
   shows "elfFileFeatureCompare x y = EQ \<longleftrightarrow> x = y"
-  apply(case_tac x; case_tac y; clarify)
-  apply(simp_all add: elfFileFeatureCompare.simps)
+  apply(case_tac x; case_tac y; simp add: elfFileFeatureCompare.simps)
+  apply(simp add: elf64_header_compare_refl')
+  apply(simp add: lexicographicCompareBy_refl' compare_elf64_section_header_table_entry_refl')
 sorry
 
 lemma tag_dict_preserves_well_behavedness:
@@ -1302,12 +1267,12 @@ using assms unfolding well_behaved_lem_ordering.simps instance_Basic_classes_Ord
     metis elfFileFeatureCompare_tri, (metis)+, metis ordering.exhaust)
   apply(rule conjI, (rule allI)+)
   apply(case_tac x; case_tac y; clarify; (subst (asm) tagCompare.simps)?)
-  apply(metis ordering.simps, metis ordering.simps, metis ordering.simps symDefCompare_eq,
+  apply(metis ordering.simps, metis ordering.simps, metis ordering.simps symDefCompare_refl',
     metis ordering.simps symRefAndRelocSiteCompare_eq, metis ordering.simps elfFileFeatureCompare_eq,
     metis ordering.distinct)
   apply(rule conjI, (rule allI)+)
   apply(case_tac x; case_tac y; clarify; (subst (asm) tagCompare.simps)?)
-  apply(metis ordering.simps, metis ordering.simps, metis ordering.simps symDefCompare_eq,
+  apply(metis ordering.simps, metis ordering.simps, metis ordering.simps symDefCompare_refl',
     metis ordering.simps symRefAndRelocSiteCompare_eq, metis ordering.simps elfFileFeatureCompare_eq,
     metis ordering.distinct)
   apply(rule conjI, (rule allI)+, rule impI)
@@ -2183,7 +2148,7 @@ prefer 2
 prefer 2
   apply(simp only: unats_def)
   apply(drule CollectD)
-  apply auto
-
+  apply auto[1]
+(* done *)
 
 end

@@ -250,8 +250,9 @@ record reloc_site =
 
 definition relocSiteCompare  :: " reloc_site \<Rightarrow> reloc_site \<Rightarrow> ordering "  where 
      " relocSiteCompare x1 x2 = (        
-(tripleCompare elf64_relocation_a_compare (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) ((ref_relent   x1),(ref_rel_idx   x1),(ref_src_scn   x1))
-                ((ref_relent   x2),(ref_rel_idx   x2),(ref_src_scn   x2))))"
+(quadrupleCompare elf64_relocation_a_compare (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) (genericCompare (op<) (op=))
+  ((ref_relent   x1), (ref_rel_scn x1), (ref_rel_idx   x1),(ref_src_scn   x1))
+                ((ref_relent   x2), (ref_rel_scn x2), (ref_rel_idx   x2),(ref_src_scn   x2))))"
 
                 
 definition instance_Basic_classes_Ord_Memory_image_reloc_site_dict  :: "(reloc_site)Ord_class "  where 
