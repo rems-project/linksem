@@ -1347,16 +1347,16 @@ lemma pairLess_Ref_Ref_technical:
   shows "pairLess (instance_Basic_classes_Ord_Maybe_maybe_dict
                    (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                      (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
-         (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict) (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))
-         (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)) = False"
+         (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict) (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 4))
+         (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 4)) = False"
 by eval
 
 lemma pairLess_Def_Def_technical:
   shows "pairLess (instance_Basic_classes_Ord_Maybe_maybe_dict
                    (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                      (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
-         (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict) (SymbolDef def_rec0, Some (''.data'', addr, 8))
-         (SymbolDef def_rec0, Some (''.data'', addr, 8)) = False"
+         (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict) (SymbolDef def_rec0, Some (''.data'', addr, 4))
+         (SymbolDef def_rec0, Some (''.data'', addr, 4)) = False"
 unfolding instance_Basic_classes_Ord_Maybe_maybe_dict_def instance_Basic_classes_Ord_tup2_dict_def
   instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes_Ord_string_dict_def
   instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def
@@ -1375,7 +1375,7 @@ lemma isGreater_method_technical:
        (instance_Basic_classes_Ord_Maybe_maybe_dict
          (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
            (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))
-     (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)) (SymbolDef def_rec0, Some (''.data'', addr, 8))"
+     (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 4)) (SymbolDef def_rec0, Some (''.data'', addr, 4))"
 unfolding instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes_Ord_tup2_dict_def
   instance_Basic_classes_Ord_string_dict_def instance_Basic_classes_Ord_Maybe_maybe_dict_def
   instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def
@@ -1385,13 +1385,13 @@ unfolding instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes
 done
 
 lemma set_choose_technical_Ref_2:
-  shows "{x ∈ {(SymbolRef ref_and_reloc_rec0, Some (''.text'', (4::nat), (8::nat))), (SymbolDef def_rec0, Some (''.data'', addr, 8))}.
+  shows "{x ∈ {(SymbolRef ref_and_reloc_rec0, Some (''.text'', (4::nat), (4::nat))), (SymbolDef def_rec0, Some (''.data'', addr, 4))}.
       EQ = pairCompare
             (tagCompare
               ⦇compare_method = anyAbiFeatureCompare, isLess_method = λf1 f2. anyAbiFeatureCompare f1 f2 = LT, isLessEqual_method = λf1 f2. anyAbiFeatureCompare f1 f2 ∈ {LT, EQ},
                  isGreater_method = λf1 f2. anyAbiFeatureCompare f1 f2 = GT, isGreaterEqual_method = λf1 f2. anyAbiFeatureCompare f1 f2 ∈ {GT, EQ}⦈)
             (maybeCompare (pairCompare (compare_method instance_Basic_classes_Ord_string_dict) (pairCompare (genericCompare op < op =) (genericCompare op < op =)))) x
-            (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))} = {(SymbolRef ref_and_reloc_rec0, Some (''.text'', (4::nat), (8::nat)))}"
+            (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 4))} = {(SymbolRef ref_and_reloc_rec0, Some (''.text'', (4::nat), (4::nat)))}"
   apply(rule equalityI)
   apply(rule subsetI)
   apply(drule CollectD)
@@ -1411,16 +1411,16 @@ done
 
 lemma set_choose_technical_Def_2:
   shows "{x \<in> {(SymbolRef ⦇ref = ref_rec0,
-                          maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 2, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
+                          maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 10, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
                           maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)⦈,
-             Some (''.text'', 4, 8)),
-            (SymbolDef def_rec0, Some (''.data'', addr, 8))} .
+             Some (''.text'', 4, 4)),
+            (SymbolDef def_rec0, Some (''.data'', addr, 4))} .
       EQ = pairCompare (compare_method (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict))
             (compare_method
               (instance_Basic_classes_Ord_Maybe_maybe_dict
                 (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                   (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))
-            x (SymbolDef def_rec0, Some (''.data'', addr, 8))} = {(SymbolDef def_rec0, Some (''.data'', addr, 8))}"
+            x (SymbolDef def_rec0, Some (''.data'', addr, 4))} = {(SymbolDef def_rec0, Some (''.data'', addr, 4))}"
   apply(rule equalityI)
   apply(rule subsetI)
   apply(drule CollectD)
@@ -1453,8 +1453,8 @@ lemma findHighestKVWithKEquivTo_technical_Ref_Ref_None:
                    (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                      (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
                  (SymbolRef null_symbol_reference_and_reloc_site) (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict)
-                 {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} None =
-         Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))"
+                 {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 4))} None =
+         Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 4))"
   apply(subst findHighestKVWithKEquivTo.simps)
   apply(subst if_weak_cong[where c=False], simp)
   apply(simp only: if_False)
@@ -1474,7 +1474,7 @@ lemma findHighestKVWithKEquivTo_technical_Ref_Ref_None:
              (instance_Basic_classes_Ord_Maybe_maybe_dict
                (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))"
-              and ?element2.0="(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))" and ?element1.0="(SymbolDef def_rec0, Some (''.data'', addr, 8))"]])
+              and ?element2.0="(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 4))" and ?element1.0="(SymbolDef def_rec0, Some (''.data'', addr, 4))"]])
   apply(rule tup2_dict_preserves_well_behavedness)
   apply(rule tag_dict_preserves_well_behavedness)
   apply(rule any_abi_feature_dict_well_behaved)
@@ -1489,7 +1489,7 @@ lemma findHighestKVWithKEquivTo_technical_Ref_Ref_None:
   instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def)
   apply simp
   apply(simp add: Ord_class.simps pairLess.simps tagCompare.simps maybeCompare.simps pairCompare.simps)
-  apply(subst option.case_cong_weak[where option'="Some ({}, (SymbolDef def_rec0, Some (''.data'', addr, 8)), {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))})"], simp)
+  apply(subst option.case_cong_weak[where option'="Some ({}, (SymbolDef def_rec0, Some (''.data'', addr, 4)), {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 4))})"], simp)
   apply(simp only: option.case split tagEquiv.simps if_False)
   apply(subst if_weak_cong[where c=True])
   apply(simp only: instance_Basic_classes_Ord_Maybe_maybe_dict_def instance_Basic_classes_Ord_tup2_dict_def
@@ -1508,7 +1508,7 @@ lemma findHighestKVWithKEquivTo_technical_Ref_Ref_None:
   apply(rule natural_dict_well_behaved)
   apply(rule refl)
   apply(simp add: tagEquiv.simps)
-  apply(subst option.case_cong_weak[where option'="Some ({(SymbolDef def_rec0, Some (''.data'', addr, 8))}, (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), {})"], simp)
+  apply(subst option.case_cong_weak[where option'="Some ({(SymbolDef def_rec0, Some (''.data'', addr, 4))}, (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 4)), {})"], simp)
   apply(simp only: option.case split tagEquiv.simps if_True Let_def)
   apply(rule findHighestKVWithKEquivTo_Some_empty)
   apply(rule tag_dict_preserves_well_behavedness)
@@ -1527,7 +1527,7 @@ lemma findLowestKVWithKEquivTo_technical_Ref_Ref_None:
              (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
            (SymbolRef null_symbol_reference_and_reloc_site) (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict)
-           {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} None = Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))"
+           {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 4))} None = Some (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 4))"
   apply(subst findLowestKVWithKEquivTo.simps)
   apply(subst if_weak_cong[where c=False], simp)
   apply(simp only: if_False)
@@ -1546,7 +1546,7 @@ lemma findLowestKVWithKEquivTo_technical_Ref_Ref_None:
              (instance_Basic_classes_Ord_Maybe_maybe_dict
                (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))"
-         and ?element2.0="(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))" and ?element1.0="(SymbolDef def_rec0, Some (''.data'', addr, 8))"]])
+         and ?element2.0="(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 4))" and ?element1.0="(SymbolDef def_rec0, Some (''.data'', addr, 4))"]])
   apply(rule tup2_dict_preserves_well_behavedness)
   apply(rule tag_dict_preserves_well_behavedness)
   apply(rule any_abi_feature_dict_well_behaved)
@@ -1560,7 +1560,7 @@ lemma findLowestKVWithKEquivTo_technical_Ref_Ref_None:
   instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes_Ord_string_dict_def
   instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def)
   apply(simp add: pairLess.simps tagCompare.simps)
-  apply(subst option.case_cong_weak[where option'="Some ({}, (SymbolDef def_rec0, Some (''.data'', addr, 8)), {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))})"], simp)
+  apply(subst option.case_cong_weak[where option'="Some ({}, (SymbolDef def_rec0, Some (''.data'', addr, 4)), {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 4))})"], simp)
   apply(simp only: option.case split tagEquiv.simps if_False)
   apply(subst if_weak_cong[where c="False"])
   apply(simp only: instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def
@@ -1577,7 +1577,7 @@ lemma findLowestKVWithKEquivTo_technical_Ref_Ref_None:
   apply(rule natural_dict_well_behaved)
   apply(rule refl)
   apply(simp only: tagEquiv.simps)
-  apply(subst option.case_cong_weak[where option'="Some ({(SymbolDef def_rec0, Some (''.data'', addr, 8))}, (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), {})"], simp)
+  apply(subst option.case_cong_weak[where option'="Some ({(SymbolDef def_rec0, Some (''.data'', addr, 4))}, (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 4)), {})"], simp)
   apply(simp only: option.case split tagEquiv.simps if_True Let_def)
   apply(subst findLowestKVWithKEquivTo.simps)
   apply(subst findLowestKVWithKEquivTo.simps)
@@ -1626,8 +1626,8 @@ lemma lookupBy0_Ref_Ref_singleton:
                      (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                        (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
                    (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict) (SymbolRef null_symbol_reference_and_reloc_site)
-                   {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} =
-                   [(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 8))]"
+                   {(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 4))} =
+                   [(SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 4))]"
 using assms
   apply(simp only: lookupBy0_def)
   apply(subst findLowestKVWithKEquivTo_technical_Ref_Ref_None)
@@ -1661,11 +1661,11 @@ lemma findLowestKVWithKEquivTo_Def_Ref_Def_technical:
                (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
            (SymbolDef null_symbol_definition) (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict)
            {(SymbolRef ⦇ref = ref_rec0,
-                          maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 2, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
+                          maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 10, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
                           maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)⦈,
-             Some (''.text'', 4, 8)),
-            (SymbolDef def_rec0, Some (''.data'', addr, 8))}
-           None = Some (SymbolDef def_rec0, Some (''.data'', addr, 8))"
+             Some (''.text'', 4, 4)),
+            (SymbolDef def_rec0, Some (''.data'', addr, 4))}
+           None = Some (SymbolDef def_rec0, Some (''.data'', addr, 4))"
   apply(subst findLowestKVWithKEquivTo.simps)
   apply(subst if_weak_cong[where c="False"], simp)
   apply(simp only: if_False)
@@ -1683,10 +1683,10 @@ lemma findLowestKVWithKEquivTo_Def_Ref_Def_technical:
              (instance_Basic_classes_Ord_Maybe_maybe_dict
                (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))"
-    and ?element2.0="(SymbolDef def_rec0, Some (''.data'', addr, 8))" and ?element1.0="(SymbolRef ⦇ref = ref_rec0,
-                          maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 2, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
+    and ?element2.0="(SymbolDef def_rec0, Some (''.data'', addr, 4))" and ?element1.0="(SymbolRef ⦇ref = ref_rec0,
+                          maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 10, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
                           maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)⦈,
-             Some (''.text'', 4, 8))"]])
+             Some (''.text'', 4, 4))"]])
   apply(rule tup2_dict_preserves_well_behavedness)
   apply(rule tag_dict_preserves_well_behavedness)
   apply(rule any_abi_feature_dict_well_behaved)
@@ -1699,11 +1699,11 @@ lemma findLowestKVWithKEquivTo_Def_Ref_Def_technical:
     Ord_class.simps instance_Basic_classes_Ord_Maybe_maybe_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def
     instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def pairCompare.simps maybeCompare.simps tagCompare.simps)
   apply(simp only: pairGreater_def pairLess.simps Ord_class.simps tagCompare.simps, simp)
-  apply(subst option.case_cong_weak[where option'="Some ({(SymbolDef def_rec0, Some (''.data'', addr, 8))},
+  apply(subst option.case_cong_weak[where option'="Some ({(SymbolDef def_rec0, Some (''.data'', addr, 4))},
           (SymbolRef ⦇ref = ref_rec0,
-                        maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 2, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
+                        maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 10, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
                         maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)⦈,
-           Some (''.text'', 4, 8)),
+           Some (''.text'', 4, 4)),
           {})"], assumption)
   apply(simp only: option.case split tagEquiv.simps if_False)
   apply(subst if_weak_cong[where c=True])
@@ -1721,11 +1721,11 @@ lemma findLowestKVWithKEquivTo_Def_Ref_Def_technical:
   apply(rule natural_dict_well_behaved)+
   apply(rule refl)
   apply(simp only: tagEquiv.simps)
-  apply(subst option.case_cong_weak[where option'="Some ({}, (SymbolDef def_rec0, Some (''.data'', addr, 8)),
+  apply(subst option.case_cong_weak[where option'="Some ({}, (SymbolDef def_rec0, Some (''.data'', addr, 4)),
           {(SymbolRef ⦇ref = ref_rec0,
-                         maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 2, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
+                         maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 10, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
                          maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)⦈,
-            Some (''.text'', 4, 8))})"], assumption)
+            Some (''.text'', 4, 4))})"], assumption)
   apply(simp only: option.case split)
   apply(simp only: tagEquiv.simps if_True split Let_def)
   apply(rule findLowestKVWithKEquivTo_Some_empty)
@@ -1745,11 +1745,11 @@ lemma findHighestKVWithKEquivTo_Def_Ref_Def_technical:
                      (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
                  (SymbolDef null_symbol_definition) (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict)
                  {(SymbolRef ⦇ref = ref_rec0,
-                                maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 2, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
+                                maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 10, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
                                 maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)⦈,
-                   Some (''.text'', 4, 8)),
-                  (SymbolDef def_rec0, Some (''.data'', addr, 8))}
-                 None = Some (SymbolDef def_rec0, Some (''.data'', addr, 8))"
+                   Some (''.text'', 4, 4)),
+                  (SymbolDef def_rec0, Some (''.data'', addr, 4))}
+                 None = Some (SymbolDef def_rec0, Some (''.data'', addr, 4))"
   apply(subst findHighestKVWithKEquivTo.simps)
   apply(subst if_weak_cong[where c="False"], simp)
   apply(simp only: if_False)
@@ -1767,10 +1767,10 @@ lemma findHighestKVWithKEquivTo_Def_Ref_Def_technical:
              (instance_Basic_classes_Ord_Maybe_maybe_dict
                (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))"
-    and ?element2.0="(SymbolDef def_rec0, Some (''.data'', addr, 8))" and ?element1.0="(SymbolRef ⦇ref = ref_rec0,
-                          maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 2, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
+    and ?element2.0="(SymbolDef def_rec0, Some (''.data'', addr, 4))" and ?element1.0="(SymbolRef ⦇ref = ref_rec0,
+                          maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 10, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
                           maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)⦈,
-             Some (''.text'', 4, 8))"]])
+             Some (''.text'', 4, 4))"]])
   apply(rule tup2_dict_preserves_well_behavedness)
   apply(rule tag_dict_preserves_well_behavedness)
   apply(rule any_abi_feature_dict_well_behaved)
@@ -1783,11 +1783,11 @@ lemma findHighestKVWithKEquivTo_Def_Ref_Def_technical:
     Ord_class.simps instance_Basic_classes_Ord_Maybe_maybe_dict_def instance_Basic_classes_Ord_Memory_image_range_tag_dict_def
     instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def pairCompare.simps maybeCompare.simps tagCompare.simps)
   apply(simp only: pairGreater_def pairLess.simps Ord_class.simps tagCompare.simps, simp)
-  apply(subst option.case_cong_weak[where option'="Some ({(SymbolDef def_rec0, Some (''.data'', addr, 8))},
+  apply(subst option.case_cong_weak[where option'="Some ({(SymbolDef def_rec0, Some (''.data'', addr, 4))},
           (SymbolRef ⦇ref = ref_rec0,
-                        maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 2, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
+                        maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 10, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
                         maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)⦈,
-           Some (''.text'', 4, 8)),
+           Some (''.text'', 4, 4)),
           {})"], assumption)
   apply(simp only: option.case split tagEquiv.simps if_False)
   apply(subst if_weak_cong[where c=False])
@@ -1805,11 +1805,11 @@ lemma findHighestKVWithKEquivTo_Def_Ref_Def_technical:
   apply(rule natural_dict_well_behaved)+
   apply(rule refl)
   apply(simp only: tagEquiv.simps)
-  apply(subst option.case_cong_weak[where option'="Some ({}, (SymbolDef def_rec0, Some (''.data'', addr, 8)),
+  apply(subst option.case_cong_weak[where option'="Some ({}, (SymbolDef def_rec0, Some (''.data'', addr, 4)),
           {(SymbolRef ⦇ref = ref_rec0,
-                         maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 2, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
+                         maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 10, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
                          maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)⦈,
-            Some (''.text'', 4, 8))})"], assumption)
+            Some (''.text'', 4, 4))})"], assumption)
   apply(simp only: option.case split tagEquiv.simps if_True Let_def)
   apply(subst findHighestKVWithKEquivTo.simps)
   apply(subst if_weak_cong[where c=False], simp)
@@ -1853,8 +1853,8 @@ lemma lookupBy0_Def_Def_singleton:
   shows "lookupBy0 (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
            (instance_Basic_classes_Ord_Maybe_maybe_dict (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
            (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict) (SymbolDef null_symbol_definition)
-           {(SymbolRef ⦇ref = ref_rec0, maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 2, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
-            maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)⦈, Some (''.text'', 4, 8)), (SymbolDef def_rec0, Some (''.data'', addr, 8))} = [(SymbolDef def_rec0, Some (''.data'', addr, 8))]"
+           {(SymbolRef ⦇ref = ref_rec0, maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 10, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
+            maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)⦈, Some (''.text'', 4, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 4))} = [(SymbolDef def_rec0, Some (''.data'', addr, 4))]"
   apply(subst lookupBy0_def)
   apply(subst findLowestKVWithKEquivTo_Def_Ref_Def_technical)
   apply(simp only: option.case)
@@ -1899,12 +1899,12 @@ lemma list_comprehension_singleton:
 by simp
 
 lemma img1_technical:
-  assumes "natural_to_le_byte_list (8 + addr) = [a1, a2, a3, a4]"
+  assumes "natural_to_le_byte_list addr = [a1, a2, a3, a4]"
   shows "img1 addr [72, 199, 4, 37, 0, 0, 0, 0, 5, 0, 0, 0] =
           ⦇elements = [''.data'' ↦ ⦇startpos = Some 4194316, length1 = Some 8, contents = [Some 0, Some 0, Some 0, Some 0, Some 0, Some 0, Some 0, Some 0]⦈,
                        ''.text'' ↦ ⦇startpos = Some 4194304, length1 = Some 12,
                                       contents = [Some 72, Some 199, Some 4, Some 37, Some a1, Some a2, Some a3, Some a4, Some 5, Some 0, Some 0, Some 0]⦈],
-           by_range = {(Some (''.data'', addr, 8), SymbolDef def_rec0)}, by_tag = {(SymbolDef def_rec0, Some (''.data'', addr, 8))}⦈"
+           by_range = {(Some (''.data'', addr, 4), SymbolDef def_rec0)}, by_tag = {(SymbolDef def_rec0, Some (''.data'', addr, 4))}⦈"
 using assms
   apply(simp only: img1_def rev.simps append.simps meta0_def list.set by_tag_from_by_range_def
     list.map map_of.simps fst_def snd_def split)
@@ -1922,9 +1922,20 @@ using assms
   apply(simp only: instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def
     instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict_def amd64_reloc_def Let_def)
   apply(simp only: string_of_amd64_relocation_type_def)
-  apply(simp only: r_x86_64_none_def r_x86_64_64_def r_x86_64_pc32_def simp_thms if_True)
-  apply(subst if_weak_cong[where b="2=0" and c=False], simp, simp only: if_False)+
-  apply(subst if_weak_cong[where b="2=1" and c=False], simp, simp only: if_False)+
+  apply(simp only: r_x86_64_none_def r_x86_64_64_def r_x86_64_pc32_def r_x86_64_plt32_def r_x86_64_got32_def
+    r_x86_64_copy_def r_x86_64_glob_dat_def r_x86_64_jump_slot_def r_x86_64_relative_def
+    r_x86_64_gotpcrel_def r_x86_64_32_def simp_thms if_True)
+  apply(subgoal_tac "unat (uint64_land (of_int (int 10)) (of_int (int (65536 * 65536 - 1)))) = 10")
+  apply(subst if_weak_cong[where b="unat (uint64_land (of_int (int 10)) (of_int (int (65536 * 65536 - 1)))) = 0" and c=False], simp, simp only: if_False)+
+  apply(subst if_weak_cong[where b="10=1" and c=False], simp, simp only: if_False)
+  apply(subst if_weak_cong[where b="10=2" and c=False], simp, simp only: if_False)
+  apply(subst if_weak_cong[where b="10=3" and c=False], simp, simp only: if_False)
+  apply(subst if_weak_cong[where b="10=4" and c=False], simp, simp only: if_False)
+  apply(subst if_weak_cong[where b="10=5" and c=False], simp, simp only: if_False)
+  apply(subst if_weak_cong[where b="10=6" and c=False], simp, simp only: if_False)
+  apply(subst if_weak_cong[where b="10=7" and c=False], simp, simp only: if_False)
+  apply(subst if_weak_cong[where b="10=8" and c=False], simp, simp only: if_False)
+  apply(subst if_weak_cong[where b="10=9" and c=False], simp, simp only: if_False)
   apply(simp del: natural_to_le_byte_list.simps)
   apply(simp only: elf_memory_image_defined_symbols_and_ranges_def tagged_ranges_matching_tag_def
     annotated_memory_image.simps write_natural_field_def element.simps element_and_offset_to_address.simps
@@ -1948,8 +1959,8 @@ using assms
   apply(subst if_weak_cong[where b="4+4-1-1-1-1-1=0" and c="False"], simp, simp only: if_False)
   apply(subst if_weak_cong[where b="4+4-1-1-1-1-1-1=0" and c="False"], simp, simp only: if_False)
   apply(subst if_weak_cong[where b="4+4-1-1-1-1-1-1-1=0" and c="False"], simp, simp only: if_False)
-  apply(subst if_weak_cong[where b="¬ length (natural_to_le_byte_list (4194316 + addr - 4194308)) ≤ 4"
-      and c="False"], simp)
+  apply(subst if_weak_cong[where b="¬ length (natural_to_le_byte_list (4194316 + (addr - 4194316))) ≤ 4"
+      and c="False"])
   apply(simp only: if_False)
   apply(subgoal_tac "(natural_to_le_byte_list (4194316 + addr - 4194308)) = [a1, a2, a3, a4]")
   apply(erule subst[OF sym])+
@@ -1957,6 +1968,7 @@ using assms
   apply(rule map_eqI)
   apply auto
 done
+*)
 
 lemma build_fixed_program_memory_commute_miss_lower:
   fixes bytes :: "8 word list"

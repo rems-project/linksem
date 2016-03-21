@@ -85,7 +85,7 @@ definition ref_and_reloc_rec0  :: " symbol_reference_and_reloc_site "  where
       (|
             ref_relent  = 
                 (| elf64_ra_offset = (Elf_Types_Local.uint64_of_nat(( 0 :: nat)))
-                 , elf64_ra_info   = (of_int (int r_x86_64_pc32))
+                 , elf64_ra_info   = (of_int (int r_x86_64_32))
                  , elf64_ra_addend = (of_int(( 0 :: int)))
                  |)
           , ref_rel_scn =(( 0 :: nat))
@@ -99,8 +99,8 @@ definition ref_and_reloc_rec0  :: " symbol_reference_and_reloc_site "  where
 (*val meta : list ((maybe element_range) * elf_range_tag)*)
 definition meta0  :: "nat \<Rightarrow> ((string*(nat*nat))option*(Abis.any_abi_feature)range_tag)list "  where 
      " meta0 rel_addr = ( [
-        (Some ((''.text''), (( 4 :: nat),( 8 :: nat))), SymbolRef(ref_and_reloc_rec0))
-    ,   (Some ((''.data''), (( rel_addr :: nat),( 8 :: nat))), SymbolDef(def_rec0))
+        (Some ((''.text''), (( 4 :: nat),( 4 :: nat))), SymbolRef(ref_and_reloc_rec0))
+    ,   (Some ((''.data''), (( rel_addr :: nat),( 4 :: nat))), SymbolDef(def_rec0))
 ])"
 
 
@@ -120,8 +120,8 @@ definition img1  :: "nat \<Rightarrow> (Elf_Types_Local.byte)list \<Rightarrow>(
            , contents = (List.map (\<lambda> x .  Some x) (List.replicate(( 8 :: nat)) ((of_nat ((0 :: nat)) :: byte))))
           |))
           ]))
-        , by_range = (List.set (meta0 addr))
-        , by_tag = (by_tag_from_by_range (List.set (meta0 addr)))
+        , by_range = (List.set (meta0 (addr - 4194316)))
+        , by_tag = (by_tag_from_by_range (List.set (meta0 (addr - 4194316))))
      |)) 
     in 
     (let ref_input_item
