@@ -601,55 +601,496 @@ lemma genericCompare_GT_genericCompare_LT:
   shows "genericCompare (op <) (op =) y x = LT"
 using assms antisym_conv3 unfolding genericCompare_def by fastforce
 
+lemma pairCompare_GT_pairCompare_LT:
+  assumes "pairCompare cmp1 cmp2 x y = GT"
+    and "\<And>x y. cmp1 x y = GT \<Longrightarrow> cmp1 y x = LT"
+    and "\<And>x y. cmp2 x y = GT \<Longrightarrow> cmp2 y x = LT"
+  shows "pairCompare cmp1 cmp2 y x = LT"
+using assms
+  apply(case_tac x; case_tac y; simp add: pairCompare.simps)
+  apply(case_tac "cmp1 aa a"; case_tac "cmp1 a aa"; auto)
+done
+
+lemma pairCompare_LT_pairCompare_GT:
+  assumes "pairCompare cmp1 cmp2 x y = LT"
+    and "\<And>x y. cmp1 x y = LT \<Longrightarrow> cmp1 y x = GT"
+    and "\<And>x y. cmp2 x y = LT \<Longrightarrow> cmp2 y x = GT"
+  shows "pairCompare cmp1 cmp2 y x = GT"
+using assms
+  apply(case_tac x; case_tac y; simp add: pairCompare.simps)
+  apply(case_tac "cmp1 aa a"; case_tac "cmp1 a aa"; auto)
+done
+
+lemma maybeCompare_LT_maybeCompare_GT:
+  assumes "maybeCompare cmp x y = LT" and "\<And>x y. cmp x y = LT \<Longrightarrow> cmp y x = GT"
+  shows "maybeCompare cmp y x = GT"
+using assms
+  apply(case_tac x; case_tac y; simp add: maybeCompare.simps)
+done
+
+lemma maybeCompare_GT_maybeCompare_LT:
+  assumes "maybeCompare cmp x y = GT" and "\<And>x y. cmp x y = GT \<Longrightarrow> cmp y x = LT"
+  shows "maybeCompare cmp y x = LT"
+using assms
+  apply(case_tac x; case_tac y; simp add: maybeCompare.simps)
+done
+
+lemma genericCompare_LT_genericCompare_GT:
+  fixes x y :: "'a::order"
+  assumes "genericCompare (op <) (op =) x y = LT"
+  shows "genericCompare (op <) (op =) y x = GT"
+using assms unfolding genericCompare_def
+  apply(case_tac "y < x"; simp)
+  apply(case_tac "x < y"; simp)
+  apply(case_tac "x = y"; simp)
+  apply auto
+done
+
+lemma stringCompare_method_GT_stringCompare_method_LT:
+  assumes "stringCompare_method x y = GT"
+  shows "stringCompare_method y x = LT"
+using assms
+  apply(induction x arbitrary: y)
+  apply(case_tac y; simp add: stringCompare_method_def)
+  apply(case_tac y)
+  apply(simp add: stringCompare_method_def)
+  apply clarify
+  apply(simp only: stringCompare_method_def)
+  apply(subst ord.lexordp_eq.simps)
+  apply(smt ord.lexordp_eq_simps(4) ordering.distinct(3))
+done
+
+lemma stringCompare_method_LT_stringCompare_method_GT:
+  assumes "stringCompare_method x y = LT"
+  shows "stringCompare_method y x = GT"
+using assms
+  apply(induction x arbitrary: y)
+  apply(case_tac y; simp add: stringCompare_method_def)
+  apply(case_tac y)
+  apply(simp add: stringCompare_method_def)
+  apply clarify
+  apply(simp only: stringCompare_method_def)
+  apply(subst ord.lexordp_eq.simps)
+sorry (* SMT timeout *)
+
 lemma elf64_symbol_table_entry_compare_GT_elf64_symbol_table_entry_compare_LT:
   assumes "elf64_symbol_table_entry_compare x y = GT"
   shows "elf64_symbol_table_entry_compare y x = LT"
 using assms
-  apply(case_tac x; case_tac y; clarify)
-  apply(simp only: elf64_symbol_table_entry_compare_def sextupleCompare.simps pairCompare.simps
-    elf64_symbol_table_entry.simps)
-sorry
+  apply(case_tac x; case_tac y; simp add: elf64_symbol_table_entry_compare_def sextupleCompare.simps)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption)
+  apply(rule genericCompare_GT_genericCompare_LT, assumption)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption)
+  apply(rule genericCompare_GT_genericCompare_LT, assumption)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption)
+  apply(rule genericCompare_GT_genericCompare_LT, assumption)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption)
+  apply(rule genericCompare_GT_genericCompare_LT, assumption)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption)
+  apply(rule genericCompare_GT_genericCompare_LT, assumption)
+  apply(rule genericCompare_GT_genericCompare_LT, assumption)
+done
 
-lemma pairCompare_GT_pairCompare_LT:
-  assumes "pairCompare dict1 dict2 x y = GT"
-  shows "pairCompare dict1 dict2 y x = LT"
-using assms sorry
+lemma elf64_symbol_table_entry_compare_LT_elf64_symbol_table_entry_compare_GT:
+  assumes "elf64_symbol_table_entry_compare x y = LT"
+  shows "elf64_symbol_table_entry_compare y x = GT"
+using assms
+  apply(case_tac x; case_tac y; simp add: elf64_symbol_table_entry_compare_def sextupleCompare.simps)
+  apply(rule pairCompare_LT_pairCompare_GT, assumption)
+  apply(rule genericCompare_LT_genericCompare_GT, assumption)
+  apply(rule pairCompare_LT_pairCompare_GT, assumption)
+  apply(rule genericCompare_LT_genericCompare_GT, assumption)
+  apply(rule pairCompare_LT_pairCompare_GT, assumption)
+  apply(rule genericCompare_LT_genericCompare_GT, assumption)
+  apply(rule pairCompare_LT_pairCompare_GT, assumption)
+  apply(rule genericCompare_LT_genericCompare_GT, assumption)
+  apply(rule pairCompare_LT_pairCompare_GT, assumption)
+  apply(rule genericCompare_LT_genericCompare_GT, assumption)
+  apply(rule genericCompare_LT_genericCompare_GT, assumption)
+done
 
 lemma symDefCompare_GT_symDefCompare_LT:
   assumes "symDefCompare x y = GT"
   shows "symDefCompare y x = LT"
 using assms
-sorry
+  apply(case_tac x; case_tac y; simp add: symDefCompare_def quintupleCompare.simps)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption)
+  apply(rule stringCompare_method_GT_stringCompare_method_LT, assumption)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption)
+  apply(rule elf64_symbol_table_entry_compare_GT_elf64_symbol_table_entry_compare_LT, assumption)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption)
+  apply(rule genericCompare_GT_genericCompare_LT, assumption)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption)
+  apply(rule genericCompare_GT_genericCompare_LT, assumption)
+  apply(rule genericCompare_GT_genericCompare_LT, assumption)
+done
 
 lemma symDefCompare_LT_symDefCompare_GT:
   assumes "symDefCompare x y = LT"
   shows "symDefCompare y x = GT"
 using assms
-sorry
+  apply(case_tac x; case_tac y; simp add: symDefCompare_def quintupleCompare.simps)
+  apply(rule pairCompare_LT_pairCompare_GT, assumption)
+  apply(rule stringCompare_method_LT_stringCompare_method_GT, assumption)
+  apply(rule pairCompare_LT_pairCompare_GT, assumption)
+  apply(rule elf64_symbol_table_entry_compare_LT_elf64_symbol_table_entry_compare_GT, assumption)
+  apply(rule pairCompare_LT_pairCompare_GT, assumption)
+  apply(rule genericCompare_LT_genericCompare_GT, assumption)
+  apply(rule pairCompare_LT_pairCompare_GT, assumption)
+  apply(rule genericCompare_LT_genericCompare_GT, assumption)
+  apply(rule genericCompare_LT_genericCompare_GT, assumption)
+done
+
+lemma symRefCompare_GT_symRefCompare_LT:
+  assumes "symRefCompare x y = GT"
+  shows "symRefCompare y x = LT"
+using assms
+  apply(case_tac x; case_tac y; simp add: symRefCompare_def quadrupleCompare.simps)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption)
+  apply(rule stringCompare_method_GT_stringCompare_method_LT, assumption)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption)
+  apply(rule elf64_symbol_table_entry_compare_GT_elf64_symbol_table_entry_compare_LT, assumption)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption)
+  apply(rule genericCompare_GT_genericCompare_LT, assumption)
+  apply(rule genericCompare_GT_genericCompare_LT, assumption)
+done
+
+lemma elf64_relocation_a_compare_GT_elf64_relocation_a_compare_LT:
+  assumes "elf64_relocation_a_compare x y = GT"
+  shows "elf64_relocation_a_compare y x = LT"
+using assms
+  apply(case_tac x; case_tac y; simp add: elf64_relocation_a_compare_def tripleCompare.simps pairCompare.simps)
+  apply(simp only: genericCompare_def)
+  apply(case_tac "unat elf64_ra_offseta < unat elf64_ra_offset"; simp)
+  apply(case_tac "elf64_ra_offset = elf64_ra_offseta"; simp)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption)
+  apply(rule genericCompare_GT_genericCompare_LT, assumption)+
+  apply(case_tac "unat elf64_ra_offset < unat elf64_ra_offseta"; simp)
+done
+
+lemma relocSiteCompare_GT_relocSiteCompare_LT:
+  assumes "relocSiteCompare x y = GT"
+  shows "relocSiteCompare y x = LT"
+using assms
+  apply(case_tac x; case_tac y; simp add: relocSiteCompare_def quadrupleCompare.simps)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption)
+  apply(rule elf64_relocation_a_compare_GT_elf64_relocation_a_compare_LT, assumption)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption)
+  apply(rule genericCompare_GT_genericCompare_LT, assumption)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption)
+  apply(rule genericCompare_GT_genericCompare_LT, assumption)
+  apply(rule genericCompare_GT_genericCompare_LT, assumption)
+done
+
+lemma symRefCompare_LT_symRefCompare_GT:
+  assumes "symRefCompare x y = LT"
+  shows "symRefCompare y x = GT"
+using assms
+  apply(case_tac x; case_tac y; simp add: symRefCompare_def quadrupleCompare.simps)
+  apply(rule pairCompare_LT_pairCompare_GT, assumption)
+  apply(rule stringCompare_method_LT_stringCompare_method_GT, assumption)
+  apply(rule pairCompare_LT_pairCompare_GT, assumption)
+  apply(rule elf64_symbol_table_entry_compare_LT_elf64_symbol_table_entry_compare_GT, assumption)
+  apply(rule pairCompare_LT_pairCompare_GT, assumption)
+  apply(rule genericCompare_LT_genericCompare_GT, assumption)
+  apply(rule genericCompare_LT_genericCompare_GT, assumption)
+done
+
+lemma relocDecisionCompare_GT_relocDecisionCompare_LT:
+  assumes "relocDecisionCompare x y = GT"
+  shows "relocDecisionCompare y x = LT"
+using assms
+  apply(case_tac x; case_tac y; simp add: relocDecisionCompare.simps)
+done
 
 lemma symRefAndRelocSiteCompare_GT_symRefAndRelocSiteCompare_LT:
   assumes "symRefAndRelocSiteCompare x y = GT"
   shows "symRefAndRelocSiteCompare y x = LT"
 using assms
-sorry
+  apply(case_tac x; case_tac y; simp add: symRefAndRelocSiteCompare_def tripleCompare.simps)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption)
+  apply(rule symRefCompare_GT_symRefCompare_LT, assumption)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption)
+  apply(rule maybeCompare_GT_maybeCompare_LT, assumption)
+  apply(rule relocSiteCompare_GT_relocSiteCompare_LT, assumption)
+  apply(rule maybeCompare_GT_maybeCompare_LT, assumption)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption)
+  apply(rule relocDecisionCompare_GT_relocDecisionCompare_LT, assumption)
+  apply(rule maybeCompare_GT_maybeCompare_LT, assumption)
+  apply(rule symDefCompare_GT_symDefCompare_LT, assumption)
+done
+
+lemma elf64_relocation_a_compare_LT_elf64_relocation_a_compare_GT:
+  assumes "elf64_relocation_a_compare x y = LT"
+  shows "elf64_relocation_a_compare y x = GT"
+using assms
+  apply(case_tac x; case_tac y; simp add: elf64_relocation_a_compare_def tripleCompare.simps pairCompare.simps)
+  apply(simp only: genericCompare_def)
+  apply(case_tac "unat elf64_ra_offseta < unat elf64_ra_offset"; simp)
+  apply(case_tac "elf64_ra_offset = elf64_ra_offseta"; simp)
+  apply(case_tac "unat elf64_ra_offset < unat elf64_ra_offseta"; simp)
+  apply(simp only: pairCompare.simps genericCompare_def)
+  apply(case_tac "unat elf64_ra_infoa < unat elf64_ra_info"; simp)
+  apply auto[1]
+  apply auto[1]
+  apply(simp only: pairCompare.simps genericCompare_def)
+  apply(case_tac "unat elf64_ra_infoa < unat elf64_ra_info"; simp)
+  apply(case_tac "elf64_ra_info = elf64_ra_infoa"; simp)
+  apply(case_tac "unat elf64_ra_info < unat elf64_ra_infoa"; simp)
+  apply auto
+done
+
+lemma relocSiteCompare_LT_relocSiteCompare_GT:
+  assumes "relocSiteCompare x y = LT"
+  shows "relocSiteCompare y x = GT"
+using assms
+  apply(case_tac x; case_tac y; simp add: relocSiteCompare_def quadrupleCompare.simps)
+  apply(rule pairCompare_LT_pairCompare_GT, assumption)
+  apply(rule elf64_relocation_a_compare_LT_elf64_relocation_a_compare_GT, assumption)
+  apply(rule pairCompare_LT_pairCompare_GT, assumption)
+  apply(rule genericCompare_LT_genericCompare_GT, assumption)
+  apply(rule pairCompare_LT_pairCompare_GT, assumption)
+  apply(rule genericCompare_LT_genericCompare_GT, assumption)
+  apply(rule genericCompare_LT_genericCompare_GT, assumption)
+done
+
+lemma relocDecisionCompare_LT_relocDecisionCompare_GT:
+  assumes "relocDecisionCompare x y = LT"
+  shows "relocDecisionCompare y x = GT"
+using assms
+  apply(case_tac x; case_tac y; simp add: relocDecisionCompare.simps)
+done
 
 lemma symRefAndRelocSiteCompare_LT_symRefAndRelocSiteCompare_GT:
   assumes "symRefAndRelocSiteCompare x y = LT"
   shows "symRefAndRelocSiteCompare y x = GT"
 using assms
-sorry
+  apply(case_tac x; case_tac y; simp add: symRefAndRelocSiteCompare_def tripleCompare.simps)
+  apply(rule pairCompare_LT_pairCompare_GT, assumption)
+  apply(rule symRefCompare_LT_symRefCompare_GT, assumption)
+  apply(rule pairCompare_LT_pairCompare_GT, assumption)
+  apply(rule maybeCompare_LT_maybeCompare_GT, assumption)
+  apply(rule relocSiteCompare_LT_relocSiteCompare_GT, assumption)
+  apply(rule maybeCompare_LT_maybeCompare_GT, assumption)
+  apply(rule pairCompare_LT_pairCompare_GT, assumption)
+  apply(rule relocDecisionCompare_LT_relocDecisionCompare_GT, assumption)
+  apply(rule maybeCompare_LT_maybeCompare_GT, assumption)
+  apply(rule symDefCompare_LT_symDefCompare_GT, assumption)
+done
+
+lemma lexicographicCompareBy_GT_lexicographicCompareBy_LT:
+  assumes "lexicographicCompareBy cmp xs ys = GT" and "\<And>x y. cmp x y = GT \<Longrightarrow> cmp y x = LT"
+  shows "lexicographicCompareBy cmp ys xs = LT"
+using assms
+  apply(induction xs arbitrary: ys)
+  apply(case_tac ys; simp add: lexicographicCompareBy.simps)
+  apply(case_tac ys; simp add: lexicographicCompareBy.simps)
+  apply(case_tac "cmp aa a"; simp)
+  apply(metis ordering.exhaust ordering.simps)
+done
+
+lemma lexicographicCompareBy_LT_lexicographicCompareBy_GT:
+  assumes "lexicographicCompareBy cmp xs ys = LT" and "\<And>x y. cmp x y = LT \<Longrightarrow> cmp y x = GT"
+  shows "lexicographicCompareBy cmp ys xs = GT"
+using assms
+  apply(induction xs arbitrary: ys)
+  apply(case_tac ys; simp add: lexicographicCompareBy.simps)
+  apply(case_tac ys; simp add: lexicographicCompareBy.simps)
+  apply(case_tac "cmp aa a"; simp)
+  apply(metis ordering.exhaust ordering.simps)
+done
+
+lemma elf64_header_compare_GT_elf64_header_compare_LT:
+  assumes "elf64_header_compare x y = GT"
+  shows "elf64_header_compare y x = LT"
+using assms
+  apply(case_tac x; case_tac y; simp add: elf64_header_compare_def)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption)
+  apply(rule lexicographicCompareBy_GT_lexicographicCompareBy_LT, assumption)
+  apply(rule genericCompare_GT_genericCompare_LT, assumption)
+  apply(rule lexicographicCompareBy_GT_lexicographicCompareBy_LT, assumption)
+  apply(rule genericCompare_GT_genericCompare_LT, assumption)
+done
+
+lemma compare_elf64_section_header_table_entry_GT_compare_elf64_section_header_table_entry_LT:
+  assumes "compare_elf64_section_header_table_entry x y = GT"
+  shows "compare_elf64_section_header_table_entry y x = LT"
+using assms
+  apply(case_tac x; case_tac y; simp add: compare_elf64_section_header_table_entry_def)
+  apply(rule lexicographicCompareBy_GT_lexicographicCompareBy_LT, assumption)
+  apply(simp add: genericCompare_def)
+  apply(case_tac "xa < ya", auto)
+done
+
+lemma compare_elf64_program_header_table_entry_GT_compare_elf64_program_header_table_entry_LT:
+  assumes "compare_elf64_program_header_table_entry x y = GT"
+  shows "compare_elf64_program_header_table_entry y x = LT"
+using assms
+  apply(case_tac x; case_tac y; simp add: compare_elf64_program_header_table_entry_def)
+  apply(rule lexicographicCompareBy_GT_lexicographicCompareBy_LT, assumption)
+  apply(simp add: genericCompare_def)
+  apply(case_tac "xa < ya", auto)
+done
+
+lemma compare_byte_GT_compare_byte_LT:
+  assumes "compare_byte x y = GT"
+  shows "compare_byte y x = LT"
+using assms unfolding compare_byte_def
+  apply(rule genericCompare_GT_genericCompare_LT)
+done
+
+lemma compare_byte_sequence_GT_compare_byte_sequence_LT:
+  assumes "compare_byte_sequence x y = GT"
+  shows "compare_byte_sequence y x = LT"
+using assms
+  apply(case_tac x; case_tac y; simp add: compare_byte_sequence_def)
+  apply(rule lexicographicCompareBy_GT_lexicographicCompareBy_LT, assumption)
+  apply(rule compare_byte_GT_compare_byte_LT, assumption)
+done
+
+lemma compare_elf64_interpreted_section_GT_compare_elf64_interpreted_section_LT:
+  assumes "compare_elf64_interpreted_section x y = GT"
+  shows "compare_elf64_interpreted_section y x = LT"
+using assms
+  apply(case_tac x; case_tac y; simp add: compare_elf64_interpreted_section_def tripleCompare.simps)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption)
+  apply(rule lexicographicCompareBy_GT_lexicographicCompareBy_LT, assumption)
+  apply(rule genericCompare_GT_genericCompare_LT, assumption)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption)
+  apply(rule compare_byte_sequence_GT_compare_byte_sequence_LT, assumption)
+  apply(rule stringCompare_method_GT_stringCompare_method_LT, assumption)
+done
+
+lemma compare_elf64_interpreted_segment_GT_compare_elf64_interpreted_segment_LT:
+  assumes "compare_elf64_interpreted_segment x y = GT"
+  shows "compare_elf64_interpreted_segment y x = LT"
+using assms
+  apply(case_tac x; case_tac y; simp add: compare_elf64_interpreted_segment_def tripleCompare.simps)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption)
+  apply(rule compare_byte_sequence_GT_compare_byte_sequence_LT, assumption)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption)
+  apply(rule lexicographicCompareBy_GT_lexicographicCompareBy_LT, assumption)
+  apply(rule genericCompare_GT_genericCompare_LT, assumption)
+  apply(rule lexicographicCompareBy_GT_lexicographicCompareBy_LT, assumption)
+  apply(rule genericCompare_GT_genericCompare_LT, assumption)
+done
 
 lemma elfFileFeatureCompare_GT_elfFileFeatureCompare_LT:
   assumes "elfFileFeatureCompare x y = GT"
   shows "elfFileFeatureCompare y x = LT"
 using assms
-sorry
+  apply(case_tac x; case_tac y; simp add: elfFileFeatureCompare.simps)
+  apply(rule elf64_header_compare_GT_elf64_header_compare_LT, assumption)
+  apply(rule lexicographicCompareBy_GT_lexicographicCompareBy_LT, assumption,
+    rule compare_elf64_section_header_table_entry_GT_compare_elf64_section_header_table_entry_LT,
+    assumption)
+  apply(rule lexicographicCompareBy_GT_lexicographicCompareBy_LT, assumption,
+    rule compare_elf64_program_header_table_entry_GT_compare_elf64_program_header_table_entry_LT,
+    assumption)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption)+
+  apply(rule genericCompare_GT_genericCompare_LT, assumption)
+  apply(rule compare_elf64_interpreted_section_GT_compare_elf64_interpreted_section_LT, assumption)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption)
+  apply(rule genericCompare_GT_genericCompare_LT, assumption)
+  apply(rule compare_elf64_interpreted_segment_GT_compare_elf64_interpreted_segment_LT, assumption)
+done
+
+lemma elf64_header_compare_LT_elf64_header_compare_GT:
+  assumes "elf64_header_compare x y = LT"
+  shows "elf64_header_compare y x = GT"
+using assms
+  apply(case_tac x; case_tac y; simp add: elf64_header_compare_def)
+  apply(rule pairCompare_LT_pairCompare_GT, assumption)
+  apply(rule lexicographicCompareBy_LT_lexicographicCompareBy_GT, assumption)
+  apply(rule genericCompare_LT_genericCompare_GT, assumption)
+  apply(rule lexicographicCompareBy_LT_lexicographicCompareBy_GT, assumption)
+  apply(rule genericCompare_LT_genericCompare_GT, assumption)
+done
+
+lemma compare_elf64_section_header_table_entry_LT_compare_elf64_section_header_table_entry_GT:
+  assumes "compare_elf64_section_header_table_entry x y = LT"
+  shows "compare_elf64_section_header_table_entry y x = GT"
+using assms
+  apply(case_tac x; case_tac y; simp add: compare_elf64_section_header_table_entry_def)
+  apply(rule lexicographicCompareBy_LT_lexicographicCompareBy_GT, assumption)
+  apply(simp add: genericCompare_def)
+  apply(case_tac "xa < ya"; simp)
+  apply(case_tac "xa = ya"; simp)
+done
+
+lemma compare_elf64_program_header_table_entry_LT_compare_elf64_program_header_table_entry_GT:
+  assumes "compare_elf64_program_header_table_entry x y = LT"
+  shows "compare_elf64_program_header_table_entry y x = GT"
+using assms
+  apply(case_tac x; case_tac y; simp add: compare_elf64_program_header_table_entry_def)
+  apply(rule lexicographicCompareBy_LT_lexicographicCompareBy_GT, assumption)
+  apply(simp add: genericCompare_def)
+  apply(case_tac "xa < ya"; simp)
+  apply(case_tac "xa = ya"; simp)
+done
+
+lemma compare_byte_LT_compare_byte_GT:
+  assumes "compare_byte x y = LT"
+  shows "compare_byte y x = GT"
+using assms unfolding compare_byte_def
+  apply(rule genericCompare_LT_genericCompare_GT)
+done
+
+lemma compare_byte_sequence_LT_compare_byte_sequence_GT:
+  assumes "compare_byte_sequence x y = LT"
+  shows "compare_byte_sequence y x = GT"
+using assms
+  apply(case_tac x; case_tac y; simp add: compare_byte_sequence_def)
+  apply(rule lexicographicCompareBy_LT_lexicographicCompareBy_GT, assumption)
+  apply(rule compare_byte_LT_compare_byte_GT, assumption)
+done
+
+lemma compare_elf64_interpreted_section_LT_compare_elf64_interpreted_section_GT:
+  assumes "compare_elf64_interpreted_section x y = LT"
+  shows "compare_elf64_interpreted_section y x = GT"
+using assms
+  apply(case_tac x; case_tac y; simp add: compare_elf64_interpreted_section_def tripleCompare.simps)
+  apply(rule pairCompare_LT_pairCompare_GT, assumption)
+  apply(rule lexicographicCompareBy_LT_lexicographicCompareBy_GT, assumption)
+  apply(rule genericCompare_LT_genericCompare_GT, assumption)
+  apply(rule pairCompare_LT_pairCompare_GT, assumption)
+  apply(rule compare_byte_sequence_LT_compare_byte_sequence_GT, assumption)
+  apply(rule stringCompare_method_LT_stringCompare_method_GT, assumption)
+done
+
+lemma compare_elf64_interpreted_segment_LT_compare_elf64_interpreted_segment_GT:
+  assumes "compare_elf64_interpreted_segment x y = LT"
+  shows "compare_elf64_interpreted_segment y x = GT"
+using assms
+  apply(case_tac x; case_tac y; simp add: compare_elf64_interpreted_segment_def tripleCompare.simps)
+  apply(rule pairCompare_LT_pairCompare_GT, assumption)
+  apply(rule compare_byte_sequence_LT_compare_byte_sequence_GT, assumption)
+  apply(rule pairCompare_LT_pairCompare_GT, assumption)
+  apply(rule lexicographicCompareBy_LT_lexicographicCompareBy_GT, assumption)
+  apply(rule genericCompare_LT_genericCompare_GT, assumption)
+  apply(rule lexicographicCompareBy_LT_lexicographicCompareBy_GT, assumption)
+  apply(rule genericCompare_LT_genericCompare_GT, assumption)
+done
 
 lemma elfFileFeatureCompare_LT_elfFileFeatureCompare_GT:
   assumes "elfFileFeatureCompare x y = LT"
   shows "elfFileFeatureCompare y x = GT"
 using assms
-sorry
+  apply(case_tac x; case_tac y; simp add: elfFileFeatureCompare.simps)
+  apply(rule elf64_header_compare_LT_elf64_header_compare_GT, assumption)
+  apply(rule lexicographicCompareBy_LT_lexicographicCompareBy_GT, assumption,
+    rule compare_elf64_section_header_table_entry_LT_compare_elf64_section_header_table_entry_GT,
+    assumption)
+  apply(rule lexicographicCompareBy_LT_lexicographicCompareBy_GT, assumption,
+    rule compare_elf64_program_header_table_entry_LT_compare_elf64_program_header_table_entry_GT,
+    assumption)
+  apply(rule pairCompare_LT_pairCompare_GT, assumption)+
+  apply(rule genericCompare_LT_genericCompare_GT, assumption)
+  apply(rule compare_elf64_interpreted_section_LT_compare_elf64_interpreted_section_GT, assumption)
+  apply(rule pairCompare_LT_pairCompare_GT, assumption)
+  apply(rule genericCompare_LT_genericCompare_GT, assumption)
+  apply(rule compare_elf64_interpreted_segment_LT_compare_elf64_interpreted_segment_GT, assumption)
+done
 
 lemma tagCompare_GT_tagCompare_LT:
   assumes "tagCompare dict x y = GT" and "\<And>x y. compare_method dict x y = GT \<Longrightarrow> compare_method dict y x = LT"
