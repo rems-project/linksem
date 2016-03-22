@@ -621,6 +621,32 @@ using assms
   apply(case_tac "cmp1 aa a"; case_tac "cmp1 a aa"; auto)
 done
 
+lemma tripleCompare_LT_tripleCompare_GT:
+  assumes "tripleCompare cmp1 cmp2 cmp3 x y = LT"
+    and "\<And>x y. cmp1 x y = LT \<Longrightarrow> cmp1 y x = GT"
+    and "\<And>x y. cmp2 x y = LT \<Longrightarrow> cmp2 y x = GT"
+    and "\<And>x y. cmp3 x y = LT \<Longrightarrow> cmp3 y x = GT"
+  shows "tripleCompare cmp1 cmp2 cmp3 y x = GT"
+using assms
+  apply(case_tac x; case_tac y; simp add: tripleCompare.simps)
+  apply(rule pairCompare_LT_pairCompare_GT, assumption, simp)
+  apply(rule pairCompare_LT_pairCompare_GT, assumption, simp)
+  apply simp
+done
+
+lemma tripleCompare_GT_tripleCompare_LT:
+  assumes "tripleCompare cmp1 cmp2 cmp3 x y = GT"
+    and "\<And>x y. cmp1 x y = GT \<Longrightarrow> cmp1 y x = LT"
+    and "\<And>x y. cmp2 x y = GT \<Longrightarrow> cmp2 y x = LT"
+    and "\<And>x y. cmp3 x y = GT \<Longrightarrow> cmp3 y x = LT"
+  shows "tripleCompare cmp1 cmp2 cmp3 y x = LT"
+using assms
+  apply(case_tac x; case_tac y; simp add: tripleCompare.simps)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption, simp)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption, simp)
+  apply simp
+done
+
 lemma maybeCompare_LT_maybeCompare_GT:
   assumes "maybeCompare cmp x y = LT" and "\<And>x y. cmp x y = LT \<Longrightarrow> cmp y x = GT"
   shows "maybeCompare cmp y x = GT"
@@ -670,8 +696,10 @@ using assms
   apply(simp add: stringCompare_method_def)
   apply clarify
   apply(simp only: stringCompare_method_def)
-  apply(subst ord.lexordp_eq.simps)
-sorry (* SMT timeout *)
+  apply(simp only: Let_def)
+  apply(case_tac "ord.lexordp_eq (λx y. nat_of_char x < nat_of_char y) (a # x) (aa # list)"; simp)
+  apply auto
+done
 
 lemma elf64_symbol_table_entry_compare_GT_elf64_symbol_table_entry_compare_LT:
   assumes "elf64_symbol_table_entry_compare x y = GT"
@@ -1291,6 +1319,25 @@ using assms
   apply(metis ordering.distinct ordering.simps)
 done
 
+lemma tripleCompare_refl':
+  assumes "\<And>x y. cmp1 x y = EQ \<longleftrightarrow> x = y"
+    and "\<And>x y. cmp2 x y = EQ \<longleftrightarrow> x = y"
+    and "\<And>x y. cmp3 x y = EQ \<longleftrightarrow> x = y"
+  shows "tripleCompare cmp1 cmp2 cmp3 x y = EQ \<longleftrightarrow> x = y"
+using assms
+  apply(case_tac x; case_tac y; simp add: tripleCompare.simps pairCompare.simps)
+  apply(case_tac "cmp1 a aa"; simp)
+  apply(metis ordering.distinct)
+  apply(case_tac "cmp1 aa aa")
+  apply(subst ordering.case_cong_weak[where ordering'=LT], assumption, simp)
+  apply(metis ordering.distinct)
+  apply(subst ordering.case_cong_weak[where ordering'=EQ], assumption, simp)
+  apply(simp add: pairCompare_refl')
+  apply(subst ordering.case_cong_weak[where ordering'=GT], assumption, simp)
+  apply(metis ordering.distinct)
+  apply(metis ordering.distinct)
+done
+
 lemma elf64_header_compare_refl':
   shows "(elf64_header_compare x y = EQ) = (x = y)"
   apply(case_tac x; case_tac y; simp add: elf64_header_compare_def pairCompare.simps lexicographicCompareBy.simps genericCompare_def)
@@ -1459,12 +1506,161 @@ using assms unfolding instance_Basic_classes_Ord_tup2_dict_def
   apply(smt Pair_inject ordering.exhaust ordering.simps)
 done
 
+lemma element_range_compare_GT_element_range_compare_LT:
+  assumes "element_range_compare x y = GT"
+  shows "element_range_compare y x = LT"
+using assms
+  apply(case_tac x; case_tac y; simp add: element_range_compare_def)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption)
+  apply(rule stringCompare_method_GT_stringCompare_method_LT, assumption)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption)
+  apply(rule genericCompare_GT_genericCompare_LT, assumption)+
+done
+
+lemma element_range_compare_LT_element_range_compare_GT:
+  assumes "element_range_compare x y = LT"
+  shows "element_range_compare y x = GT"
+using assms
+  apply(case_tac x; case_tac y; simp add: element_range_compare_def)
+  apply(rule pairCompare_LT_pairCompare_GT, assumption)
+  apply(rule stringCompare_method_LT_stringCompare_method_GT, assumption)
+  apply(rule pairCompare_LT_pairCompare_GT, assumption)
+  apply(rule genericCompare_LT_genericCompare_GT, assumption)+
+done
+
+lemma abiFeatureCompare0_GT_abiFeatureCompare0_LT:
+  assumes "abiFeatureCompare0 x y = GT"
+  shows "abiFeatureCompare0 y x = LT"
+using assms
+  apply(case_tac x; case_tac y; simp add: abiFeatureCompare0.simps)
+  apply(rule lexicographicCompareBy_GT_lexicographicCompareBy_LT, assumption)
+  apply(rule tripleCompare_GT_tripleCompare_LT, assumption)
+  apply(rule stringCompare_method_GT_stringCompare_method_LT, assumption)
+  apply(rule maybeCompare_GT_maybeCompare_LT, assumption)
+  apply(rule element_range_compare_GT_element_range_compare_LT, assumption)
+  apply(rule symRefAndRelocSiteCompare_GT_symRefAndRelocSiteCompare_LT, assumption)
+done
+
+lemma abiFeatureCompare0_LT_abiFeatureCompare0_GT:
+  assumes "abiFeatureCompare0 x y = LT"
+  shows "abiFeatureCompare0 y x = GT"
+using assms
+  apply(case_tac x; case_tac y; simp add: abiFeatureCompare0.simps)
+  apply(rule lexicographicCompareBy_LT_lexicographicCompareBy_GT, assumption)
+  apply(rule tripleCompare_LT_tripleCompare_GT, assumption)
+  apply(rule stringCompare_method_LT_stringCompare_method_GT, assumption)
+  apply(rule maybeCompare_LT_maybeCompare_GT, assumption)
+  apply(rule element_range_compare_LT_element_range_compare_GT, assumption)
+  apply(rule symRefAndRelocSiteCompare_LT_symRefAndRelocSiteCompare_GT, assumption)
+done
+
+lemma abiFeatureCompare_GT_abiFeatureCompare_LT:
+  assumes "abiFeatureCompare x y = GT"
+  shows "abiFeatureCompare y x = LT"
+using assms
+  apply(case_tac x; case_tac y; simp add: abiFeatureCompare.simps)
+done
+
+lemma abiFeatureCompare_LT_abiFeatureCompare_GT:
+  assumes "abiFeatureCompare x y = LT"
+  shows "abiFeatureCompare y x = GT"
+using assms
+  apply(case_tac x; case_tac y; simp add: abiFeatureCompare.simps)
+done
+
+lemma anyAbiFeatureCompare_GT_anyAbiFeatureCompare_LT:
+  assumes "anyAbiFeatureCompare x y = GT"
+  shows "anyAbiFeatureCompare y x = LT"
+using assms
+  apply(case_tac x; case_tac y; simp add: anyAbiFeatureCompare.simps)
+  apply(rule abiFeatureCompare0_GT_abiFeatureCompare0_LT, assumption)
+  apply(rule abiFeatureCompare_GT_abiFeatureCompare_LT, assumption)
+done
+
+lemma anyAbiFeatureCompare_LT_anyAbiFeatureCompare_GT:
+  assumes "anyAbiFeatureCompare x y = LT"
+  shows "anyAbiFeatureCompare y x = GT"
+using assms
+  apply(case_tac x; case_tac y; simp add: anyAbiFeatureCompare.simps)
+  apply(rule abiFeatureCompare0_LT_abiFeatureCompare0_GT, assumption)
+  apply(rule abiFeatureCompare_LT_abiFeatureCompare_GT, assumption)
+done
+
+lemma abiFeatureCompare_refl':
+  shows "abiFeatureCompare x y = EQ \<longleftrightarrow> x = y"
+  apply(case_tac x; case_tac y; simp add: abiFeatureCompare.simps)
+done
+
+lemma element_range_compare_refl':
+  shows "element_range_compare x y = EQ \<longleftrightarrow> x = y"
+  apply(case_tac x; case_tac y; simp add: element_range_compare_def)
+  apply(subst pairCompare_refl')
+  apply(rule stringCompare_method_refl')
+  apply(rule pairCompare_refl')
+  apply(simp add: genericCompare_def)+
+done
+
+lemma abiFeatureCompare0_refl':
+  shows "abiFeatureCompare0 x y = EQ \<longleftrightarrow> x = y"
+  apply(case_tac x; case_tac y; simp add: abiFeatureCompare0.simps)
+  apply(rule lexicographicCompareBy_refl')
+  apply(rule tripleCompare_refl')
+  apply(rule stringCompare_method_refl')
+  apply(rule maybeCompare_refl')
+  apply(rule element_range_compare_refl')
+  apply(rule symRefAndRelocSiteCompare_refl')
+done
+
+lemma anyAbiFeatureCompare_refl':
+  shows "anyAbiFeatureCompare x y = EQ \<longleftrightarrow> x = y"
+  apply(case_tac x; case_tac y; simp add: anyAbiFeatureCompare.simps)
+  apply(simp add: abiFeatureCompare0_refl')
+  apply(simp add: abiFeatureCompare_refl')
+done
+
+lemma anyAbiFeatureCompare_tri:
+  shows "anyAbiFeatureCompare x y = GT ∨ anyAbiFeatureCompare x y = LT ∨ x = y"
+  apply(case_tac "anyAbiFeatureCompare x y")
+  apply(metis ordering.distinct anyAbiFeatureCompare_refl')+
+done
+
 lemma any_abi_feature_dict_well_behaved:
   shows "well_behaved_lem_ordering (isLess_method instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
     (isLessEqual_method instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
     (isGreater_method instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
     (compare_method instance_Basic_classes_Ord_Abis_any_abi_feature_dict)"
-sorry (* XXX: false as one of the orderings returns true whenever both x, y are GOT0 *)
+unfolding instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def well_behaved_lem_ordering.simps
+  apply(simp only: Ord_class.simps)
+  apply(rule conjI)
+  apply((rule allI)+, rule impI, rule anyAbiFeatureCompare_GT_anyAbiFeatureCompare_LT, assumption)
+  apply(rule conjI)
+  apply((rule allI)+, rule impI, rule anyAbiFeatureCompare_LT_anyAbiFeatureCompare_GT, assumption)
+  apply(rule conjI)
+  apply((rule allI)+, simp add: anyAbiFeatureCompare_tri)
+  apply(rule conjI)
+  apply((rule allI)+, clarify, metis ordering.distinct anyAbiFeatureCompare_refl')
+  apply(rule conjI)
+  apply((rule allI)+, clarify, metis ordering.distinct anyAbiFeatureCompare_refl')
+  apply(rule conjI)
+  apply((rule allI)+, simp)
+  apply(rule conjI)
+  apply((rule allI)+, simp)
+  apply(rule conjI)
+  apply((rule allI)+, metis ordering.distinct anyAbiFeatureCompare_refl')
+  apply(rule conjI)
+  apply((rule allI)+, metis ordering.distinct anyAbiFeatureCompare_refl')
+  apply(rule conjI)
+  apply((rule allI)+, simp add: anyAbiFeatureCompare_refl')
+  apply(rule conjI)
+  apply((rule allI)+, simp add: anyAbiFeatureCompare_refl')
+  apply(rule conjI)
+  apply((rule allI)+, simp)
+  apply(rule conjI)
+  apply((rule allI)+, simp add: anyAbiFeatureCompare_LT_anyAbiFeatureCompare_GT)
+  apply(rule conjI)
+  apply((rule allI)+, simp add: anyAbiFeatureCompare_GT_anyAbiFeatureCompare_LT)
+  apply((rule allI)+, simp add: anyAbiFeatureCompare_refl')
+done
 
 lemma string_dict_well_behaved:
   shows "well_behaved_lem_ordering (isLess_method instance_Basic_classes_Ord_string_dict)
