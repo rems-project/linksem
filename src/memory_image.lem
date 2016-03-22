@@ -707,9 +707,6 @@ val compute_virtual_address_adjustment : natural -> natural -> natural -> natura
 let compute_virtual_address_adjustment max_page_size offset vaddr =
   (vaddr - offset) mod max_page_size
 
-
-
-
 val extract_natural_field : natural -> element -> natural -> natural
 let extract_natural_field width element offset = 
     (* Read n bytes from the contents *)
@@ -731,6 +728,34 @@ let rec natural_to_le_byte_list_padded_to width n =
     let bytes = natural_to_le_byte_list n
     in 
     replicate (width - length bytes) (byte_of_natural 0)
+
+val n2i : natural -> integer
+let n2i = integerFromNatural
+
+val i2n: integer -> natural
+let i2n = naturalFromInteger
+
+val i2n_signed : nat -> integer -> natural
+let i2n_signed width i = 
+    if i >= 0 then 
+        if i >= 2 ** (width-1) then failwith "overflow"
+        else naturalFromInteger i
+    else 
+        (* We manually encode the 2's complement of the negated value *)
+        let negated = naturalFromInteger (0 - i) in 
+        let (xormask : natural) = (2 ** width - 1) in
+        let compl = 1 + natural_lxor negated xormask
+        in
+        let _ = errln ("Signed value " ^ (show i) ^ " is 2's-compl'd to 0x" ^ (hex_string_of_natural compl))
+        in compl
+
+val to_le_signed_bytes : natural -> integer -> list byte
+let to_le_signed_bytes bytewidth i = 
+    natural_to_le_byte_list_padded_to bytewidth (i2n_signed (natFromNatural (8*bytewidth)) i)
+
+val to_le_unsigned_bytes : natural -> integer -> list byte
+let to_le_unsigned_bytes bytewidth i = 
+    natural_to_le_byte_list_padded_to bytewidth (naturalFromInteger i)
 
 val write_natural_field : natural -> natural -> element -> natural -> element
 let write_natural_field new_field_value width element offset = 

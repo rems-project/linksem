@@ -45,11 +45,15 @@ let header_is_amd64 h =
 
 let shf_x86_64_large : natural = (256 * 1048576) (* 0x10000000 a.k.a. 2^28 *)
 
-type plt_entry_address_fn 'abifeature = natural (* offset in PLT? *) -> annotated_memory_image 'abifeature (* img *) -> natural (* addr *)
+(* We model the PLT as a list of symbol name, maybe def, and a function
+ * - from the PLT slot offset and the whole with-addresses image (overkill)
+ * - to... what? currently it's the address of the named symbol *)
+type plt_entry_content_fn 'abifeature = natural -> natural -> (natural * list byte)
+                                     (* PLT base addr, GOT base addr (the rest is closure-captured) -> slot_addr, slot contents *)
 
 type amd64_abi_feature 'abifeature = 
     GOT of  (list (string * (maybe symbol_definition)))
-    | PLT of (list (string * (maybe symbol_definition) * plt_entry_address_fn 'abifeature))
+    | PLT of (list (string * (maybe symbol_definition) * plt_entry_content_fn 'abifeature))
     
 val abiFeatureCompare : forall 'abifeature. amd64_abi_feature 'abifeature -> amd64_abi_feature 'abifeature -> Basic_classes.ordering
 let abiFeatureCompare f1 f2 = 

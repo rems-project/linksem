@@ -316,26 +316,6 @@ let tls_extend a =
 
 (* We use these snappily-named functions in relocation calculations. *)
 
-val n2i : natural -> integer
-let n2i = integerFromNatural
-
-val i2n: integer -> natural
-let i2n = naturalFromInteger
-
-val i2n_signed : nat -> integer -> natural
-let i2n_signed width i = 
-    if i >= 0 then 
-        if i >= 2 ** (width-1) then failwith "overflow"
-        else naturalFromInteger i
-    else 
-        (* We manually encode the 2's complement of the negated value *)
-        let negated = naturalFromInteger (0 - i) in 
-        let (xormask : natural) = (2 ** width - 1) in
-        let compl = 1 + natural_lxor negated xormask
-        in
-        let _ = errln ("Signed value " ^ (show i) ^ " is 2's-compl'd to 0x" ^ (hex_string_of_natural compl))
-        in compl
-
 val make_default_phdrs : forall 'abifeature. natural -> natural -> natural (* file type *) -> annotated_memory_image 'abifeature -> list elf64_interpreted_section -> list elf64_program_header_table_entry
 let make_default_phdrs maxpagesize commonpagesize t img section_pairs_bare_sorted_by_address = 
     (* FIXME: do the shared object and dyn. exec. stuff too *)
@@ -469,6 +449,11 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
     in
     let got_defs_set = Set.fromList maybe_defs
     in
+    (* This is where we fix the order of the GOT entries. *)
+    let got_pairs_list = Set_extra.toList got_pairs_set
+    in
+    let got_idx_and_maybe_def_by_symname_map = Map.fromList (mapi (fun slot_idx -> fun (symname, maybe_def) -> (symname, (slot_idx, maybe_def))) got_pairs_list)
+    in
     let got_ifunc_set = { maybe_d | forall (maybe_d IN got_defs_set) | is_ifunc_def maybe_d }
     in
     (* Quirk: what if we have the same def appearing under two different symnames?
@@ -495,7 +480,11 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
     in
     (* We also need a PLT... sort of. We need a way to resolve via-PLT relocs. 
      * But we might do so without actually creating a (non-zero-length) PLT. 
-     * Again, this is to accommodate the sorts of optimisations the GNU linker does. *)
+     * Again, this is to accommodate the sorts of optimisations the GNU linker does.
+     * 
+     * Note that every PLT entry has a corresponding GOT entry. Here we are simply
+     * enumerating the via-PLT relocs that imply a PLT entry. We look their GOT
+     * slots up later, by symbol name. *)
     let refs_via_plt = list_concat_map (fun (i, fname, tags_and_ranges) -> List.mapMaybe (fun (tag, maybe_range) -> match tag with
          SymbolRef(rr) -> 
             (* Is this ref a relocation we're going to apply, and does it reference the GOT? *)
@@ -513,6 +502,8 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
                     else if is_ifunc_def maybe_def 
                          then
                          (* we ensure that a PLT entry (specifically .iplt) is generated for the symbol *)
+                        let _ = errln ("Saw a reference to IFUNC symbol `" ^ rr.ref.ref_symname ^ "'; ref is coming from linkable " ^ (show i) ^ " (" ^ 
+                            fname ^ "), relent idx " ^ (show r.ref_rel_idx) ^ " logically from section " ^ (show r.ref_src_scn) ) in
                           Just (rr.ref.ref_symname, maybe_def) 
                          else
                             (* not a PLT ref *)
@@ -522,12 +513,46 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
          | _ -> failwith "impossible: reloc site tag is not a SymbolRef"
     end) tags_and_ranges) tags_and_ranges_by_image
     in
+    let _ = errln ("Saw " ^ (show (length refs_via_plt)) ^ " relocations of a via-PLT type")
+    in
+    (* account for the optimisations we did on GOT slots *)
+    let refs_via_plt_having_got_slot = List.mapMaybe (fun (symname, _) -> 
+        match Map.lookup symname got_idx_and_maybe_def_by_symname_map with
+            Just(idx, maybe_d) -> Just (symname, idx, maybe_d)
+            | Nothing -> Nothing
+            end
+        ) refs_via_plt
+    in
+    let _ = errln ("Saw " ^ (show (length refs_via_plt_having_got_slot)) ^ " relocations of a via-PLT type where we instantiated a GOT slot for the symbol")
+    in
+    let (plt_symnames, plt_got_idxs, plt_ref_bound_to_maybe_defs) = unzip3 refs_via_plt_having_got_slot
+    in
+    let plt_symnames_excluding_header = (Set_extra.toList (Set.fromList plt_symnames))
+    in
+    let _ = errln ("PLT symnames: " ^ (show plt_symnames_excluding_header))
+    in
     let n_iplt_entries = Set.size got_ifunc_set
         (* The content of the IPLT entries depends on the address assignment of GOT slots
          * and the IFUNCs that they reference. We need to reserve space for them here, though. *)
     in
+    let _ = errln ("We think there should be " ^ (show n_iplt_entries) ^ " PLT entries due to references to IFUNC symbols")
+    in
+    (* let got_entries_referencing_functions =  (List.filter (fun (symname, maybe_def) -> 
+            match def with
+                Just d -> d.def_syment
+                | Nothing -> false
+            end) refs_via_got)
+    in *)
+    let plt_needs_header_entry = (List.length plt_symnames_excluding_header) > n_iplt_entries
+    in
+    let _ = errln ("PLT needs header entry? " ^ (show plt_needs_header_entry))
+    in
+    let total_n_plt_entries = (if plt_needs_header_entry then 1 else 0) + (Missing_pervasives.length plt_symnames_excluding_header)
+    in
+    let _ = errln ("PLT total entry count: " ^ (show total_n_plt_entries))
+    in
     let new_by_range = {
-        (Just(".got", (0, got_nentries * got_entrysize)), AbiFeature(Amd64AbiFeature(Abi_amd64.GOT(Set_extra.toList (Set.fromList refs_via_got)))))
+        (Just(".got", (0, got_nentries * got_entrysize)), AbiFeature(Amd64AbiFeature(Abi_amd64.GOT(got_pairs_list))))
     } union {
         (* For each GOT entry that corresponds to a thread-local symbol, we also need to 
          * generate a relocation record. HMM. These new relocation records are ones we don't 
@@ -562,10 +587,66 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
                 match maybe_def with Nothing -> Nothing | Just sd -> Just(i, symname, sd) end) refs_via_got)))
               | get_elf64_symbol_type sd.def_syment = stt_tls
      *)} union {
-        (Just(".plt", (0, 0)), AbiFeature(Amd64AbiFeature(Abi_amd64.PLT(
-                 List.map (fun (symname, maybe_def) ->
-                    (* We want to label the PLT entry with a function that yields the actual symbol address. *)
-                    (symname, maybe_def, ((fun offs -> fun img ->
+        (Just(".plt", (0, 16 * total_n_plt_entries)), AbiFeature(Amd64AbiFeature(Abi_amd64.PLT(
+                 mapi (fun plt_entry_idx_not_counting_header -> (fun symname ->
+                    (* We want to label the PLT entry with a function that 
+                     * - accepts the PLT base address, the GOT base address and the GOT slot number;
+                     * - closure-captures whatever else it needs (whether we're inserting a PLT header);
+                     * - yields the *full contents of the PLT entry* before relocation. 
+                     * - recall that PLT entries might be "header" (the special one at the start), 
+                     *      "normal" (to be relocated with R_X86_64_JUMP_SLOT)
+                     *   or "irelative" (to be relocated with R_X86_64_IRELATIVE).
+                     *    Q. Why are R_X86_64_JUMP_SLOT necessary?
+                     *       The PLT entries are doing relative addressing, and
+                     *       the offset to the GOT entry is known at link time,
+                     *       so the linker should be able to fill them in. In
+                     *       fact, it does. HMM. Understand this better. *)
+                    (* What is the GOT slot number? *)
+                    let (got_slot_idx, maybe_def) = match Map.lookup symname got_idx_and_maybe_def_by_symname_map with
+                        Just(idx, maybe_d) -> (naturalFromNat idx, maybe_d)
+                        | Nothing -> failwith ("GOT does not contain symbol `" ^ symname ^ "' required by PLT entry")
+                        end
+                    in
+                    (symname, maybe_def, ((fun (plt_base_addr : natural) -> fun (got_base_addr : natural) -> 
+                        (* Okay, now we can generate the entry. NOTE that we're lexically still in generate_support,
+                         * but we'll be called from concretise_support. The code that generates the header
+                         * entry is actually in concretise_support. 
+                         * 
+                         * If the entry is a normal entry, it looks like
+                         * 
+                               0x0000000000400410 <+0>:     ff 25 02 0c 20 00       jmpq   *0x200c02(%rip)        # 0x601018 <puts@got.plt>
+                               0x0000000000400416 <+6>:     68 00 00 00 00  pushq  $0x0
+                               0x000000000040041b <+11>:    e9 e0 ff ff ff  jmpq   0x400400
+                         * 
+                         * If the entry is an irelative entry, it looks like 
+                         * 
+                              400350:       ff 25 02 fd 2b 00       jmpq   *0x2bfd02(%rip)        # 6c0058 <_GLOBAL_OFFSET_TABLE_+0x58>
+                              400356:       68 00 00 00 00          pushq  $0x0
+                              40035b:       e9 00 00 00 00          jmpq   400360 <check_one_fd.part.0>
+                         
+                         * ... i.e. basically the same but the pushq and jmpq have literal-zero args (they're not used).
+                         *)
+                        let this_plt_slot_base_addr = plt_base_addr + 16 * ((naturalFromNat plt_entry_idx_not_counting_header) 
+                            + if plt_needs_header_entry then 1 else 0)
+                        in
+                        let got_slot_addr = got_base_addr + 8 * got_slot_idx
+                        in
+                        let maybe_header_entry_address = if plt_needs_header_entry then Just(plt_base_addr) else Nothing
+                        in
+                        (this_plt_slot_base_addr,
+                        [byte_of_natural 255; byte_of_natural 37] ++ (* offset to the GOT entry, from the *next* instruction start, signed 32-bit LE *)
+                            (to_le_signed_bytes 4 (((integerFromNatural got_slot_addr) - (integerFromNatural (this_plt_slot_base_addr + 6))) : integer)) ++
+                        [byte_of_natural 104] ++ (* plt slot number not including header, 32-bit LE *)
+                                 (to_le_unsigned_bytes 4 (integerFromNatural (naturalFromNat plt_entry_idx_not_counting_header))) ++
+                        [byte_of_natural 233] ++ (to_le_signed_bytes 4 (
+                            if is_ifunc_def maybe_def
+                            then 0
+                            else match maybe_header_entry_address with
+                                Nothing -> failwith "normal PLT entry but no PLT header!"
+                                | Just header_entry_address -> (integerFromNatural header_entry_address) - (integerFromNatural (this_plt_slot_base_addr + 16))
+                                end
+                        )))
+                        (* 
                         match maybe_def with 
                             Nothing -> 0
                             | Just sd -> 
@@ -584,9 +665,11 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
                                     | _ -> failwith ("multiple matching definitions for PLT entry named " ^ symname)
                                 end
                         end
-                    ) : plt_entry_address_fn any_abi_feature))
-                )
-                (Set_extra.toList (Set.fromList refs_via_plt))
+                        *)
+                        
+                    ) : plt_entry_content_fn any_abi_feature))
+                ))
+                plt_symnames
             ))) 
         )
     ;   (Just(".got", (0, got_nentries * got_entrysize)), FileFeature(ElfSection(1, 
@@ -604,7 +687,7 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
            ; elf64_section_name_as_string = ".got"
            |>
         )))
-    ;   (Just(".plt", (0, 0)), FileFeature(ElfSection(2, 
+    ;   (Just(".plt", (0, 16 * total_n_plt_entries)), FileFeature(ElfSection(2, 
           <| elf64_section_name = 0 (* ignored *)
            ; elf64_section_type = sht_progbits
            ; elf64_section_flags = shf_alloc
@@ -619,7 +702,7 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
            ; elf64_section_name_as_string = ".plt"
            |>
         )))
-    ;   (* FIXME: _GLOBAL_OFFSET_TABLE_ generally doesn't mark the *start* of the GOT; 
+    ;   (* FIXME: I've a feeling _GLOBAL_OFFSET_TABLE_ generally doesn't mark the *start* of the GOT; 
          * it's some distance in. What about .got.plt? *)
         (Just(".got", (0, got_nentries * got_entrysize)), SymbolDef(<|
               def_symname = "_GLOBAL_OFFSET_TABLE_"
@@ -642,7 +725,9 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
                ;    contents = []
                |> (Map.insert ".plt" <|
                     startpos = Nothing
-               ;    length = Just 0
+               ;    length = let len = 16 * total_n_plt_entries in 
+                        let _ = errln ("PLT length in element: " ^ (show len) ^ " bytes")
+                        in Just (16 * total_n_plt_entries)
                ;    contents = []
                |> (Map.insert ".rela.iplt" <|
                     startpos = Nothing
@@ -655,142 +740,200 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
      |>
 
 val amd64_concretise_support : annotated_memory_image any_abi_feature -> annotated_memory_image any_abi_feature
-let amd64_concretise_support img = 
+let amd64_concretise_support orig_img = 
     (* Fill in the GOT contents. *)
-    match Map.lookup ".got" img.elements with
-        Nothing -> (* got no GOT? okay... *) img
-        | Just got_el -> 
-            (* Find the GOT tag. *)
-            let tags_and_ranges = Multimap.lookupBy Memory_image_orderings.tagEquiv (AbiFeature(Amd64AbiFeature(Abi_amd64.GOT([])))) img.by_tag
-            in
-            match tags_and_ranges with
-                [] -> failwith "error: GOT element but no ABI feature GOT tag"
-                | [(AbiFeature(Amd64AbiFeature(Abi_amd64.GOT(l))), Just(got_el_name, (got_start_off, got_len)))] -> 
-                    (* We replace the GOT element's contents with the concrete addresses
-                     * of the symbols it should contain. We leave the metadata label in there,
-                     * for the relocation logic to find. If we change the order of entries, 
-                     * change it there too. *)
-                    let got_entry_content_and_iplt_relas = List.map (fun (symname, maybe_def) -> 
-                         match maybe_def with
-                            Nothing -> (replicate 8 (Just (byte_of_natural 0)), Nothing)
-                            | Just sd -> 
-                                match Memory_image_orderings.find_defs_matching sd img with
-                                [] -> failwith ("no matching definitions for GOT entry named " ^ symname)
-                                | [(Just(def_el_name, (def_start, def_len)), d)] -> 
-                                    match element_and_offset_to_address (def_el_name, def_start) img with
-                                        Nothing -> failwith ("no address for definition offset in element " ^ def_el_name)
-                                        | Just x -> 
-                                            (* If sd is a TLS symbol, we want its offset from the *end* of the 
-                                             * TLS segment. *)
-                                            (* FIXME: factor out this logic so that it lives in the TLS ABI spec. *)
-                                            let got_entry_bytes = 
-                                                if get_elf64_symbol_type sd.def_syment = stt_tls then
-                                                    (* FIXME: the right way to do this is to mark the segments in the image 
-                                                     * *first*. They can't have ranges, because they span many elements,
-                                                     * but they can have vaddr ranges as arguments. *)
-                                                    let offs = i2n_signed 64 (0-8)
+    let concretise_got = fun img -> 
+        match Map.lookup ".got" img.elements with
+            Nothing -> (* got no GOT? okay... *) img
+            | Just got_el -> 
+                (* Find the GOT tag. *)
+                let tags_and_ranges = Multimap.lookupBy Memory_image_orderings.tagEquiv (AbiFeature(Amd64AbiFeature(Abi_amd64.GOT([])))) img.by_tag
+                in
+                match tags_and_ranges with
+                    [] -> failwith "error: GOT element but no ABI feature GOT tag"
+                    | [(AbiFeature(Amd64AbiFeature(Abi_amd64.GOT(l))), Just(got_el_name, (got_start_off, got_len)))] -> 
+                        (* We replace the GOT element's contents with the concrete addresses
+                         * of the symbols it should contain. We leave the metadata label in there,
+                         * for the relocation logic to find. If we change the order of entries, 
+                         * change it there too. *)
+                        let got_entry_content_and_iplt_relas = List.map (fun (symname, maybe_def) -> 
+                             match maybe_def with
+                                Nothing -> (replicate 8 (Just (byte_of_natural 0)), Nothing)
+                                | Just sd -> 
+                                    match Memory_image_orderings.find_defs_matching sd img with
+                                    [] -> failwith ("no matching definitions for GOT entry named " ^ symname)
+                                    | [(Just(def_el_name, (def_start, def_len)), d)] -> 
+                                        match element_and_offset_to_address (def_el_name, def_start) img with
+                                            Nothing -> failwith ("no address for definition offset in element " ^ def_el_name)
+                                            | Just x -> 
+                                                (* If sd is a TLS symbol, we want its offset from the *end* of the 
+                                                 * TLS segment. *)
+                                                (* FIXME: factor out this logic so that it lives in the TLS ABI spec. *)
+                                                let got_entry_bytes = 
+                                                    if get_elf64_symbol_type sd.def_syment = stt_tls then
+                                                        (* FIXME: the right way to do this is to mark the segments in the image 
+                                                         * *first*. They can't have ranges, because they span many elements,
+                                                         * but they can have vaddr ranges as arguments. *)
+                                                        let offs = i2n_signed 64 (0-8)
+                                                        in
+                                                        let _ = errln ("GOT slot for TLS symbol `" ^ symname ^ 
+                                                            "' created containing offset 0x" ^ (hex_string_of_natural offs))
+                                                        in
+                                                        natural_to_le_byte_list offs
+                                                    else let _ = errln ("GOT slot for symbol `" ^ symname ^ 
+                                                        "' created pointing to address 0x" ^ (hex_string_of_natural x) ^ 
+                                                        " (offset 0x" ^ (hex_string_of_natural def_start) ^ " in element " ^ def_el_name ^ ")")
                                                     in
-                                                    let _ = errln ("GOT slot for TLS symbol `" ^ symname ^ 
-                                                        "' created containing offset 0x" ^ (hex_string_of_natural offs))
-                                                    in
-                                                    natural_to_le_byte_list offs
-                                                else let _ = errln ("GOT slot for symbol `" ^ symname ^ 
-                                                    "' created pointing to address 0x" ^ (hex_string_of_natural x) ^ 
-                                                    " (offset 0x" ^ (hex_string_of_natural def_start) ^ " in element " ^ def_el_name ^ ")")
+                                                    natural_to_le_byte_list_padded_to 8 x
                                                 in
-                                                natural_to_le_byte_list_padded_to 8 x
-                                            in
-                                            let got_entry_content = (List.map (fun b -> Just b) got_entry_bytes)
-                                            in
-                                            let iplt_rela_widget = 
-                                                if get_elf64_symbol_type sd.def_syment <> stt_gnu_ifunc then Nothing
-                                                else Just(fun index_in_got ->
-                                                    (* This is a 24-byte Elf64_Rela. *)
-                                                    let (r_offset : natural) (* GOT *slot* address! *) = 
-                                                        match got_el.startpos with
-                                                            Nothing -> failwith "internal error: GOT has no assigned address"
-                                                            | Just addr -> addr + (8 * index_in_got)
-                                                        end
-                                                    in
-                                                    let (r_info : natural) = r_x86_64_irelative in
-                                                    (natural_to_le_byte_list_padded_to 8 r_offset ++
-                                                    natural_to_le_byte_list_padded_to 8 r_info ++
-                                                    (* r_addend -- address of the ifunc definition! *) got_entry_bytes)
-                                                )
-                                            in
-                                            (got_entry_content, iplt_rela_widget)
+                                                let got_entry_content = (List.map (fun b -> Just b) got_entry_bytes)
+                                                in
+                                                let iplt_rela_widget = 
+                                                    if get_elf64_symbol_type sd.def_syment <> stt_gnu_ifunc then Nothing
+                                                    else Just(fun index_in_got ->
+                                                        (* This is a 24-byte Elf64_Rela. *)
+                                                        let (r_offset : natural) (* GOT *slot* address! *) = 
+                                                            match got_el.startpos with
+                                                                Nothing -> failwith "internal error: GOT has no assigned address"
+                                                                | Just addr -> addr + (8 * index_in_got)
+                                                            end
+                                                        in
+                                                        let (r_info : natural) = r_x86_64_irelative in
+                                                        (natural_to_le_byte_list_padded_to 8 r_offset ++
+                                                        natural_to_le_byte_list_padded_to 8 r_info ++
+                                                        (* r_addend -- address of the ifunc definition! *) got_entry_bytes)
+                                                    )
+                                                in
+                                                (got_entry_content, iplt_rela_widget)
+                                        end
+                                    | _ -> failwith ("multiple matching definitions for GOT entry named " ^ symname)
                                     end
-                                | _ -> failwith ("multiple matching definitions for GOT entry named " ^ symname)
-                                end
-                        end
-                    ) l
-                    in
-                    let (got_entry_contents, iplt_rela_widgets) = unzip got_entry_content_and_iplt_relas
-                    in
-                    (* Compute these from the GOT. Which GOT entries are for STT_GNU_IFUNC symbols? *)
-                    (* let all_ifunc_symdefs = list_concat_map (fun (symname, maybe_def) -> 
-                         match maybe_def with
-                            Nothing -> Nothing
-                            | Just sd -> if elf64_get_symbol_type sd.def_syment = stt_gnu_ifunc
-                                         then Some(sd)
-                                         else Nothing
-                        end
-                    ) l
-                    in *)
-                    let got_content = List.concat got_entry_contents
-                    in
-                    let maybe_iplt_element = Map.lookup ".rela.iplt" img.elements
-                    in
-                    let new_iplt_element = match maybe_iplt_element with
-                        Nothing -> (* got no .rela.iplt? okay... *) Nothing
-                        | Just iplt_el -> 
-                            let new_content_bytelists = 
-                                mapi (fun i -> fun rela_widget -> 
-                                match rela_widget with
-                                    Just f -> f (naturalFromNat i)
-                                    | Nothing -> []
-                                end
-                                ) iplt_rela_widgets
-                            in
-                            Just(
-                                <| contents = (List.map (fun b -> Just b) (List.concat new_content_bytelists))
-                                 ; startpos = iplt_el.startpos
-                                 ; length   = iplt_el.length
-                                 |>
-                            )
-                    end
-                    in
-                    let new_el = 
-                        <| contents = got_content
-                         ; startpos = got_el.startpos
-                         ; length   = got_el.length
-                         |>
-                    in
-                    let new_tag = AbiFeature(Amd64AbiFeature(Abi_amd64.GOT(l)))
-                    in
-                    let range = Just(got_el_name, (got_start_off, got_len))
-                    in
-                    let new_by_tag = ((img.by_tag : set ((range_tag any_abi_feature) * (maybe element_range))) \
-                        {(AbiFeature(Amd64AbiFeature(Abi_amd64.GOT(l))), range)})
-                        union {(new_tag, range)}
-                    in
-                    let new_elements_map = Map.insert ".got" new_el (
-                        Map.delete ".got" (
-                            match maybe_iplt_element with
-                                Nothing -> img.elements
-                                | Just el -> Map.insert ".rela.iplt" el (Map.delete ".rela.iplt" img.elements)
                             end
+                        ) l
+                        in
+                        let (got_entry_contents, rela_iplt_rela_widgets) = unzip got_entry_content_and_iplt_relas
+                        in
+                        (* Compute these from the GOT. Which GOT entries are for STT_GNU_IFUNC symbols? *)
+                        (* let all_ifunc_symdefs = list_concat_map (fun (symname, maybe_def) -> 
+                             match maybe_def with
+                                Nothing -> Nothing
+                                | Just sd -> if elf64_get_symbol_type sd.def_syment = stt_gnu_ifunc
+                                             then Some(sd)
+                                             else Nothing
+                            end
+                        ) l
+                        in *)
+                        let got_content = List.concat got_entry_contents
+                        in
+                        let maybe_rela_iplt_element = Map.lookup ".rela.iplt" img.elements
+                        in
+                        let new_rela_iplt_element = match maybe_rela_iplt_element with
+                            Nothing -> (* got no .rela.iplt? okay... *) Nothing
+                            | Just rela_iplt_el -> 
+                                let new_content_bytelists = 
+                                    mapi (fun i -> fun rela_widget -> 
+                                    match rela_widget with
+                                        Just f -> f (naturalFromNat i)
+                                        | Nothing -> []
+                                    end
+                                    ) rela_iplt_rela_widgets
+                                in
+                                Just(
+                                    <| contents = (List.map (fun b -> Just b) (List.concat new_content_bytelists))
+                                     ; startpos = rela_iplt_el.startpos
+                                     ; length   = rela_iplt_el.length
+                                     |>
+                                )
+                        end
+                        in
+                        let new_el = 
+                            <| contents = got_content
+                             ; startpos = got_el.startpos
+                             ; length   = got_el.length
+                             |>
+                        in
+                        let new_tag = AbiFeature(Amd64AbiFeature(Abi_amd64.GOT(l)))
+                        in
+                        let range = Just(got_el_name, (got_start_off, got_len))
+                        in
+                        let new_by_tag = ((img.by_tag : set ((range_tag any_abi_feature) * (maybe element_range))) \
+                            {(AbiFeature(Amd64AbiFeature(Abi_amd64.GOT(l))), range)})
+                            union {(new_tag, range)}
+                        in
+                        let new_elements_map = Map.insert ".got" new_el (
+                            Map.delete ".got" (
+                                match maybe_rela_iplt_element with
+                                    Nothing -> img.elements
+                                    | Just el -> Map.insert ".rela.iplt" el (Map.delete ".rela.iplt" img.elements)
+                                end
+                            )
                         )
-                    )
-                    in
-                    <| elements = new_elements_map
-                     ; by_tag   = new_by_tag
-                     ; by_range = by_range_from_by_tag new_by_tag
-                     |>
-                    
-                | _ -> failwith "bad or multiple GOT tags"
-            end
-    end
+                        in
+                        <| elements = new_elements_map
+                         ; by_tag   = new_by_tag
+                         ; by_range = by_range_from_by_tag new_by_tag
+                         |>
+
+                    | _ -> failwith "bad or multiple GOT tags"
+                end
+        end
+    in
+    let concretise_plt = fun img ->
+       match Map.lookup ".got" img.elements with
+            Nothing -> (* got no GOT? okay... *) img
+            | Just got_el -> 
+       match Map.lookup ".plt" img.elements with
+            Nothing -> (* got no PLT? okay... *) img
+            | Just plt_el -> 
+               (* Find the PLT tag. *)
+                let tags_and_ranges = Multimap.lookupBy Memory_image_orderings.tagEquiv (AbiFeature(Amd64AbiFeature(Abi_amd64.PLT([])))) img.by_tag
+                in
+                match tags_and_ranges with
+                    [] -> failwith "error: PLT element but no ABI feature PLT tag"
+                    | [(AbiFeature(Amd64AbiFeature(Abi_amd64.PLT(l))), Just(plt_el_name, (plt_start_off, plt_len)))] -> 
+                        (* We replace the PLT element's contents with the concrete entries
+                         * for each of the symbols in the table. We leave the metadata label in there,
+                         * for the relocation logic to find. If we change the order of entries, 
+                         * change it there too. *)
+                        let got_base_addr = match got_el.startpos with
+                            Just a -> a
+                            | Nothing -> failwith "GOT has no address assigned"
+                        end
+                        in 
+                        let plt_base_addr = match plt_el.startpos with
+                            Just a -> a
+                            | Nothing -> failwith "PLT has no address assigned" 
+                        end
+                        in
+                        let all_content = concatMap (fun (_, _, plt_content_fn) -> 
+                            let (_, content) = plt_content_fn got_base_addr plt_base_addr in content
+                        ) l
+                        in
+                        let _ = errln ("Got " ^ (show (length all_content)) ^ " bytes of PLT content")
+                        in
+                        let _ = errln ("Generated PLT reserved " ^ (show (match plt_el.length with
+                            Just n -> n
+                            | Nothing -> failwith "PLT has no length"
+                        end)) ^ " bytes of PLT content")
+                        in
+                        let new_plt_el = 
+                            <| contents = List.map (fun b -> Just b) all_content
+                             ; startpos = plt_el.startpos
+                             ; length   = Just(length all_content)
+                             |>
+                        in
+                        let new_elements_map = Map.insert ".plt" new_plt_el (
+                            Map.delete ".plt" img.elements
+                        )
+                        in
+                        <| elements = new_elements_map
+                         ; by_tag   = img.by_tag
+                         ; by_range = img.by_range
+                         |>
+                end
+        end end               
+    in
+    concretise_plt (concretise_got orig_img)
 
 val amd64_got_slot_idx : annotated_memory_image any_abi_feature -> symbol_reference_and_reloc_site -> natural
 let amd64_got_slot_idx img rr = 
@@ -860,8 +1003,34 @@ let amd64_plt_slot_addr img rr =
                     match rr.maybe_def_bound_to with
                         Just (_, Just(d)) -> 
                             match List.mapMaybe (fun (symname, maybe_def, fn) -> if Just(d) = maybe_def then Just fn else Nothing) l with
-                                [fn] -> fn plt_addr img 
-                                | [] -> failwith ("internal error: no PLT entry for reloc against `" ^ rr.ref.ref_symname ^ "'")
+                                [fn] -> 
+                                    let got_addr = 
+                                         match Map.lookup ".got" img.elements with
+                                            Nothing -> (* got no GOT? okay... *) failwith "got no GOT (applying PLT calculation)"
+                                            | Just got_el -> match got_el.startpos with
+                                                Just addr -> addr
+                                                | Nothing -> failwith "concrete GOT has no addr"
+                                                end
+                                        end
+                                    in
+                                    let (addr, content) = fn plt_addr got_addr
+                                    in
+                                    addr
+                                | [] -> (* failwith ("internal error: no PLT entry for reloc against `" ^ rr.ref.ref_symname ^ "'") *)
+                                    (* If we got no PLT slot, we assume it's because the PLT entry was optimised out. 
+                                     * So we just return the address of the symbol itself. *)
+                                    let _ = errln ("No PLT entry for reloc against `" ^ rr.ref.ref_symname ^ 
+                                        "', which we assume was optimised to avoid the GOT")
+                                    in
+                                    match Memory_image_orderings.find_defs_matching d img with
+                                        [] -> 0 (* HMM -- should be an error? *)
+                                        | [(Just(el_name, (start_off, len)), matching_d)] ->
+                                            match element_and_offset_to_address (el_name, start_off) img with
+                                                Just a -> a
+                                                | Nothing -> failwith ("internal error: could not get address for PLT-short-circuited symbol `" ^ rr.ref.ref_symname ^ "'")
+                                            end
+                                        | _ -> failwith ("output image has multiple and/or no-location definitions to which via-PLT ref to `" ^ rr.ref.ref_symname ^ "' could resolve")
+                                    end
                                 | _ ->  failwith ("internal error: multiple PLT entries for reloc against `" ^ rr.ref.ref_symname ^ "'")
                             end
                         | Just(_, Nothing) -> (* weak, so 0 *) 0
