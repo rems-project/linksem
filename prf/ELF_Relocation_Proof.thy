@@ -1710,7 +1710,7 @@ lemma tagCompare_refl':
 using assms
   apply(case_tac t1; case_tac t2; simp add: tagCompare.simps)
   apply(simp add: symDefCompare_refl')
-  apply(simp add: symRefAndRelocSiteCompare_eq)
+  apply(simp add: symRefAndRelocSiteCompare_refl')
   apply(simp add: elfFileFeatureCompare_refl')
   apply(subst (asm) well_behaved_lem_ordering.simps)
   apply meson
@@ -1745,12 +1745,12 @@ using assms unfolding well_behaved_lem_ordering.simps instance_Basic_classes_Ord
   apply(rule conjI, (rule allI)+)
   apply(case_tac x; case_tac y; clarify; (subst (asm) tagCompare.simps)?)
   apply(metis ordering.simps, metis ordering.simps, metis ordering.simps symDefCompare_refl',
-    metis ordering.simps symRefAndRelocSiteCompare_eq, metis ordering.simps elfFileFeatureCompare_refl',
+    metis ordering.simps symRefAndRelocSiteCompare_refl', metis ordering.simps elfFileFeatureCompare_refl',
     metis ordering.distinct)
   apply(rule conjI, (rule allI)+)
   apply(case_tac x; case_tac y; clarify; (subst (asm) tagCompare.simps)?)
   apply(metis ordering.simps, metis ordering.simps, metis ordering.simps symDefCompare_refl',
-    metis ordering.simps symRefAndRelocSiteCompare_eq, metis ordering.simps elfFileFeatureCompare_refl',
+    metis ordering.simps symRefAndRelocSiteCompare_refl', metis ordering.simps elfFileFeatureCompare_refl',
     metis ordering.distinct)
   apply(rule conjI, (rule allI)+, rule impI)
   apply simp
@@ -1767,7 +1767,7 @@ using assms unfolding well_behaved_lem_ordering.simps instance_Basic_classes_Ord
   apply((metis)+)
   apply(metis symDefCompare_refl')
   apply(meson ordering.simps)+
-  apply(metis symRefAndRelocSiteCompare_eq)
+  apply(metis symRefAndRelocSiteCompare_refl')
   apply(meson ordering.simps)+
   apply(metis elfFileFeatureCompare_refl')
   apply(meson ordering.simps)+
