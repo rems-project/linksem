@@ -120,6 +120,14 @@ definition correctness_property :: "bool" where
 
 subsection {* Useful lemmas and technical definitions *}
 
+text {* The majority of the lemmas in this subsection are generic and not really tied to our
+proof at all, but can be reused by any proof that uses the linker or the ELF model.  Some exceptions
+to this include those that are talking about manipulation of concrete addresses which are fairly
+specific to this proof.  However, the vast majority of the following lemmas are proving properties
+of internal data structures inside the linker, or demonstrating that ordering functions are indeed
+orders. *}
+
+text {* Useful lemma for converting a valid_address assertion into a range of possible addresses. *}
 lemma valid_address_elim:
   fixes addr :: nat
   assumes "valid_address 4194316 8 addr"
@@ -128,6 +136,8 @@ lemma valid_address_elim:
          addr = 4194322 \<or> addr = 4194323"
 using assms unfolding valid_address_def by auto
 
+text {* In some key lemmas below we need to show that an address is within the range of a 64-bit
+signed integer.  This lemma converts a valid_address assertion into a proof of that fact. *}
 lemma valid_address_signed_arith:
   fixes addr :: "nat"
   shows "valid_address (4194316::nat) (8::nat) addr \<Longrightarrow>
@@ -136,6 +146,9 @@ lemma valid_address_signed_arith:
   apply(drule valid_address_elim, auto)+
 done
 
+text {* When we apply relocation we need to show that the address can fit within the four byte
+`space' reserved in the instruction's encoding address field.  This lemmas converts a valid_address
+assertion into a proof that this is the case. *}
 lemma valid_address_four_bytes:
   shows "valid_address 4194316 8 addr \<Longrightarrow> length (natural_to_le_byte_list addr) \<le> 4"
   apply(drule valid_address_elim)
@@ -168,7 +181,8 @@ lemma for_loop_19_unroll:
 done
 
 text {* These are useful for providing precise control over the simplifier and getting rid of
-annoying sums that automation won't budge. *}
+annoying sums that automation won't budge.  Some of these are unneccessary and left over from a
+previous proof attempt, now, and should be cleaned up if we had more time to work on this proof... *}
 lemma concrete_evaluations:
   shows "((word_extract (15::nat) (0::nat) (5::32 word))::16 word) = 5"
     and "(word_extract (7::nat) (0::nat) (5::16 word)::8 word) = 5"
@@ -267,6 +281,9 @@ lemma concrete_evaluations:
     and "(0::64 word) <=s (2147483647::64 word) = True"
 by eval+
 
+text {* This is split out of the lemma above as merging the two together causes a significant
+slowdown in tactic application.  All of these equalities are only used in a single lemma at the
+bottom of the file. *}
 lemma concrete_evaluations':
   shows "(ucast ((4194316::64 word) AND mask 8)::8 word) = 12"
     and "ucast ((16384::64 word) AND mask (8::nat)) = (0::8 word)"
@@ -280,7 +297,7 @@ lemma concrete_evaluations':
     and "ucast ((4194323::64 word) AND mask (8::nat)) = (19::8 word)"
 by eval+
 
-text {* Manipulation of a word+nat offset. *}
+text {* Manipulation of a word+nat offset.  Useful when doing precise rewriting. *}
 lemma of_nat_manipulate:
   "(of_nat m) + (n::'a::len word) = of_nat (m + unat n)"
 by simp
@@ -297,7 +314,7 @@ lemma word_to_nat_conversions:
     and "(4194316::64 word) = of_nat 4194316"
 by simp_all
 
-text {* Working around Isabelle's overly-generic treatment of numerals... *}
+text {* Working around Isabelle's irritating and overly-generic treatment of numerals... *}
 lemma numeral_expansion:
   shows "(4::nat) = Suc (Suc (Suc (Suc 0)))"
     and "(5::nat) = Suc (Suc (Suc (Suc (Suc 0))))"
@@ -458,353 +475,6 @@ lemma symRefAndRelocSiteCompare_refl:
   apply(rule allI, rule symDefCompare_refl)
 done
 
-lemma tup2_dict_preserves_well_behavedness:
-  fixes dict1 :: "'a Ord_class" and dict2 :: "'b Ord_class"
-  assumes "well_behaved_lem_ordering (isLess_method dict1) (isLessEqual_method dict1) (isGreater_method dict1)
-            (compare_method dict1)" and
-    "well_behaved_lem_ordering (isLess_method dict2) (isLessEqual_method dict2) (isGreater_method dict2)
-      (compare_method dict2)"
-  shows "well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict dict1 dict2))
-    (isLessEqual_method (instance_Basic_classes_Ord_tup2_dict dict1 dict2))
-    (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict1 dict2))
-    (compare_method (instance_Basic_classes_Ord_tup2_dict dict1 dict2))"
-using assms unfolding instance_Basic_classes_Ord_tup2_dict_def
-  apply(simp only: Ord_class.simps well_behaved_lem_ordering.simps)
-  apply(erule conjE)+
-  apply(rule conjI, (rule allI)+, case_tac x, case_tac y, clarify)
-  apply(unfold pairGreater_def[where dict_Basic_classes_Ord_a="dict1"], assumption)
-  apply(rule conjI, (rule allI)+, case_tac x, case_tac y, clarify)
-  apply(rule conjI, (rule allI)+, case_tac x, case_tac y, clarify)
-  apply(rule conjI, (subst (asm) pairLess.simps)+, blast, metis pairLess.simps)
-  apply(rule conjI, (rule allI)+, case_tac x, case_tac y, clarify)
-  apply(subst (asm) pairLess.simps, meson)
-  apply(rule conjI, (rule allI)+, case_tac x, case_tac y, clarify)
-  apply(subst (asm) pairLess.simps, meson)
-  apply(rule conjI, (rule allI)+, case_tac x, case_tac y, clarify)
-  apply((subst (asm) pairLess.simps)+, meson)
-  apply(rule conjI, (rule allI)+, case_tac x, case_tac y, clarify)
-  apply((subst (asm) pairLess.simps)+, meson)
-  apply(rule conjI, (rule allI)+, case_tac x, case_tac y, clarify)
-  apply((subst (asm) pairLess.simps)+, meson)
-  apply(rule conjI, (rule allI)+, case_tac x, case_tac y, clarify)
-  apply((subst (asm) pairLess.simps)+, meson)
-  apply(rule conjI, (rule allI)+, case_tac x, case_tac y, clarify)
-  apply(rule conjI, subst (asm) pairLessEq.simps, subst (asm) pairLess.simps, meson)
-  apply(subst (asm) pairLessEq.simps, subst (asm) pairLess.simps, meson)
-  apply(rule conjI, (rule allI)+, case_tac x, case_tac y, clarify)
-  apply(subst pairLessEq.simps, meson)
-  apply(rule conjI)
-  apply((rule allI)+, case_tac x, case_tac y, clarify)
-  apply(subst pairLessEq.simps, subst (asm) pairLess.simps, meson)
-  apply(rule conjI)
-  apply((rule allI)+, case_tac x, case_tac y, clarify)
-  apply(subst pairCompare.simps, subst (asm) pairCompare.simps)
-  apply(case_tac "compare_method dict1 ab aaa", subst (asm) ordering.case_cong_weak[where ordering'=LT])
-  apply blast
-  apply(metis ordering.simps(9))
-  apply(subst (asm) ordering.case_cong_weak[where ordering'=EQ])
-  apply blast
-  apply(metis (no_types, hide_lams) ordering.exhaust ordering.simps(8))
-  apply(subst (asm) ordering.case_cong_weak[where ordering'=GT], assumption)
-  apply(metis ordering.simps(9))
-  apply(rule conjI)
-  apply((rule allI)+, case_tac x, case_tac y, clarify)
-  apply(subst pairCompare.simps, subst (asm) pairCompare.simps)
-  apply(case_tac "compare_method dict1 ab aaa", subst (asm) ordering.case_cong_weak[where ordering'=LT])
-  apply blast
-  apply(metis ordering.simps(7))
-  apply(subst (asm) ordering.case_cong_weak[where ordering'=EQ])
-  apply blast
-  apply(metis (no_types, hide_lams) ordering.exhaust ordering.simps(8))
-  apply(subst (asm) ordering.case_cong_weak[where ordering'=GT], assumption)
-  apply(metis ordering.simps(7))
-  apply(rule allI)
-  apply(case_tac x, clarify)
-  apply(subst pairCompare.simps)
-  apply(smt Pair_inject ordering.exhaust ordering.simps(7) ordering.simps(8) ordering.simps(9))
-done
-
-lemma split_greater_2:
-  fixes dict :: "'a Ord_class" and element other :: "'a"
-  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict)
-            (compare_method dict)"
-     and "isGreater_method dict element other"
-  shows "Lem_set.split dict element {element, other} = ({other}, {})"
-using assms unfolding well_behaved_lem_ordering.simps proof -
-  have "isGreater_method dict element other"
-    using assms by auto
-  hence "\<not> isLess_method dict element other" and "\<not> isGreater_method dict element element" and "\<not> isLess_method dict element element"
-    using assms well_behaved_lem_ordering.simps by smt+
-  hence "{x \<in> {element, other}. isGreater_method dict element x} = {other}" and "{x \<in> {element, other}. isLess_method dict element x} = {}"
-    using CollectI assms `\<not> isLess_method dict element element` `\<not> isLess_method dict element other` by auto
-  thus "split dict element {element, other} = ({other}, {})"
-    using split_def by (metis (full_types))
-qed
-
-lemma split_less_2:
-  fixes dict :: "'a Ord_class" and element other :: "'a"
-  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict)
-             (compare_method dict)"
-      and "isLess_method dict element other"
-  shows "Lem_set.split dict element {other, element} = ({}, {other})"
-using assms unfolding well_behaved_lem_ordering.simps proof -
-  have "isLess_method dict element other"
-    using assms by auto
-  hence "\<not> isGreater_method dict element other" and "\<not> isLess_method dict element element" and "\<not> isGreater_method dict element element"
-    using assms well_behaved_lem_ordering.simps by smt+
-  hence "{x \<in> {element, other}. isGreater_method dict element x} = {}" and "{x \<in> {element, other}. isLess_method dict element x} = {other}"
-    using CollectI assms by auto
-  thus "split dict element {other, element} = ({}, {other})"
-    using split_def by (metis (full_types) insert_commute)
-qed
-
-lemma split_singleton_same:
-  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict)
-             (compare_method dict)"
-  shows "split dict s {s} = ({}, {})"
-using assms
-  apply(simp only: split_def)
-  apply simp
-  apply(rule conjI)
-  apply(meson lem_ordering_not_gt)
-  apply(meson lem_ordering_not_lt)
-done
-
-lemma split_singleton_diff:
-  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict)
-             (compare_method dict)"
-    and "isLess_method dict s t"
-  shows "split dict s {t} = ({}, {t})"
-using assms
-  apply(simp only: split_def)
-  apply simp
-  apply(rule conjI)
-  apply(meson lem_ordering_gt lem_ordering_not_lt)
-  apply auto
-done
-
-lemma split_empty:
-  shows "split dict s {} = ({}, {})"
-  apply(simp only: split_def)
-  apply simp
-done
-
-lemma list_of_set_empty:
-  shows "list_of_set {} = []"
-by (meson finite.emptyI list_of_set(1) set_empty)
-
-lemma list_of_set_singleton:
-  shows "list_of_set {x} = [x]"
-  apply(simp only: list_of_set_def list_of_set_set_def set_choose_def)
-  apply(rule Hilbert_Choice.some_equality)
-  apply simp
-  apply(drule CollectD, erule conjE)
-  apply(metis distinct.simps(2) ex_in_conv insert_iff list.exhaust list.simps(15) set_empty)
-done
-
-lemma chooseAndSplit_singleton:
-  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict)
-              (compare_method dict)"
-  shows "chooseAndSplit dict { s } = Some ({}, s, {})"
-using assms
-  apply(simp only: chooseAndSplit_def)
-  apply(auto simp add: split_singleton_same)
-done
-
-lemma chooseAndSplit_empty:
-  shows "chooseAndSplit dict {} = None"
-  apply(simp only: chooseAndSplit_def)
-  apply simp
-done
-
-lemma chooseAndSplit_less_2:
-  fixes dict :: "'a Ord_class" and element1 element2 :: "'a"
-  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict)
-            (compare_method dict)"
-    and "isLess_method dict element1 element2"
-  shows "chooseAndSplit dict {element1, element2} = Some ({}, element1, {element2}) \<or>
-         chooseAndSplit dict {element1, element2} = Some ({element1}, element2, {})"
-using assms
-  apply(simp only: chooseAndSplit_def)
-  apply(subst if_weak_cong[where b="{element1, element2} = {}" and c="False"], simp_all)
-  apply(rule disjE[OF set_choose_dichotomy[where x="element1" and y="element2"]])
-  apply(erule subst[OF sym])
-  apply(simp only: Let_def)
-  apply(drule split_less_2, assumption)
-  apply(subst prod.case_cong_weak[where prod="split dict element1 {element1, element2}" and prod'="({}, {element2})"], simp add: insert_commute)
-  apply simp
-  apply(erule subst[OF sym])
-  apply(simp only: Let_def)
-  apply(frule lem_ordering_lt, assumption)
-  apply(drule split_greater_2, assumption)
-  apply(subst prod.case_cong_weak[where prod="split dict element2 {element1, element2}" and prod'="({element1}, {})"], auto simp add: insert_commute)
-done
-
-lemma chooseAndSplit_greater_2:
-  fixes dict :: "'a Ord_class" and element1 element2 :: "'a"
-  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict) (compare_method dict)"
-      and "isGreater_method dict element1 element2"
-  shows "chooseAndSplit dict {element1, element2} = Some ({element2}, element1, {}) \<or>
-         chooseAndSplit dict {element1, element2} = Some ({}, element2, {element1})"
-using assms
-  apply(simp only: chooseAndSplit_def)
-  apply(subst if_weak_cong[where b="{element1, element2} = {}" and c="False"], simp_all)
-  apply(rule disjE[OF set_choose_dichotomy[where x="element1" and y="element2"]])
-  apply(erule subst[OF sym])
-  apply(simp only: Let_def)
-  apply(drule split_greater_2, assumption)
-  apply(subst prod.case_cong_weak[where prod="split dict element1 {element1, element2}" and prod'="({element2}, {})"], simp add: insert_commute)
-  apply simp
-  apply(erule subst[OF sym])
-  apply(simp only: Let_def)
-  apply(frule lem_ordering_gt, assumption)
-  apply(drule split_less_2, assumption)
-  apply(subst prod.case_cong_weak[where prod="split dict element2 {element1, element2}" and prod'="({}, {element1})"], auto simp add: insert_commute)
-done
-
-lemma map_eqI:
-  assumes "\<forall>d \<in> dom m1 \<union> dom m2. m1 d = m2 d"
-  shows "m1 = m2"
-using assms by fastforce
-
-lemma empty_singleton_induct:
-  assumes "P []" and "\<And>x. P [x]"
-     and "\<And>x xs. xs \<noteq> [] \<Longrightarrow> P xs \<Longrightarrow> P (x#xs)"
-  shows "P x"
-using assms
-  apply(induct x)
-  apply simp
-  apply(case_tac x, clarify)
-  apply simp+
-done
-
-lemma nat_le_massage:
-  assumes "addr ≤ l" and "l ≤ Suc (addr)"
-  shows "addr = l \<or> Suc addr = l"
-using assms by auto
-
-section {* Start of the proof proper *}
-
-lemma encode_Zmov_in_concrete:
-  (* assumes "fst (immediate32 [a1, a2, a3, a4]) = addr" *)
-  assumes "(18446744071562067968::64 word) <=s addr \<and> addr <=s (2147483647::64 word)"
-    and "word_extract 7 0 addr = a1" and "word_extract 15 8 addr = a2" and "word_extract 23 16 addr = a3"
-    and "word_extract 31 24 addr = a4"
-  shows "encode (Zmov (Z_ALWAYS, Z64, Zrm_i (Zm (None, ZnoBase, addr), 5))) =
-    [72, 199, 4, 37, a1, a2, a3, a4, 5, 0, 0, 0]"
-using assms
-  apply(simp only: encode.simps instruction.case split Zcond.case Zsize.case)
-  apply(simp only: Zdest_src.case split Zrm.case)
-  apply(simp only: e_rm_imm.simps e_ModRM.simps Zrm.case split option.case)
-  apply(simp only: Zbase.case list.case split append.simps)
-  apply(simp only: e_opsize_imm.simps e_opsize.simps Zsize.case)
-  apply(subst if_weak_cong[where b="Z64 = Z64 \<and> True" and c="True"], simp)
-  apply(simp only: if_True Zsize.case Let_def split)
-  apply(simp only: e_imm32.simps concrete_evaluations simp_thms if_True list.case)
-  apply(simp only: option.case split concat.simps list.case concrete_evaluations)
-  apply simp
-done
-
-lemma build_fixed_program_memory_commute:
-  fixes bytes :: "8 word list"
-  assumes "addr \<le> l \<and> l < addr + List.length bytes" and "bytes \<noteq> []" and
-    "l \<in> unats 64"
-  shows "(build_fixed_program_memory addr bytes) (of_nat l) = bytes ! (l - addr)"
-using assms unfolding build_fixed_program_memory_def
-  apply(induction bytes arbitrary: addr rule: empty_singleton_induct)
-  apply simp
-  apply(simp only: build_fixed_program_code_memory.simps Let_def)
-  apply(simp only: map_of.simps fst_def snd_def split)
-  apply(erule conjE)
-  apply(drule nat_le_massage, simp)
-  apply(erule disjE; clarify)
-  apply(subst word_unat.Abs_inverse, simp)
-  apply(simp only: fun_upd_apply refl if_True option.case, simp)
-  apply(subst word_unat.Abs_inverse, simp)
-  apply(simp)
-  apply(simp only: build_fixed_program_code_memory.simps Let_def)
-  apply(simp only: map_of.simps fst_def snd_def split)
-  apply(subst word_unat.Abs_inverse, simp)
-  apply(case_tac "l = addr"; clarify)
-  apply(simp only: fun_upd_apply refl if_True option.case, simp)
-  apply(simp only: fun_upd_apply if_False)
-  apply(subst (asm) word_unat.Abs_inverse, simp)
-  apply auto
-done
-
-lemma findLowestKVWithKEquivTo_Some_empty:
-  assumes "well_behaved_lem_ordering (isLess_method key_dict) (isLessEqual_method key_dict) (isGreater_method key_dict) (compare_method key_dict)"
-      and "well_behaved_lem_ordering (isLess_method val_dict) (isLessEqual_method val_dict) (isGreater_method val_dict) (compare_method val_dict)"
-  shows "findLowestKVWithKEquivTo key_dict val_dict element eq {} (Some candidate) = Some candidate"
-using assms
-  apply(subst findLowestKVWithKEquivTo.simps)
-  apply(subst if_weak_cong[where b="infinite {}" and c="False"], simp)
-  apply(simp only: if_False)
-  apply(subst if_weak_cong[where c=False])
-  apply(simp, rule tup2_dict_preserves_well_behavedness, simp, simp, simp)
-  apply(subst chooseAndSplit_empty)
-  apply(simp only: option.case)
-done
-
-lemma findHighestKVWithKEquivTo_Some_empty:
-  assumes "well_behaved_lem_ordering (isLess_method key_dict) (isLessEqual_method key_dict) (isGreater_method key_dict) (compare_method key_dict)"
-      and "well_behaved_lem_ordering (isLess_method val_dict) (isLessEqual_method val_dict) (isGreater_method val_dict) (compare_method val_dict)"
-  shows "findHighestKVWithKEquivTo key_dict val_dict element eq {} (Some candidate) = Some candidate"
-using assms
-  apply(subst findHighestKVWithKEquivTo.simps)
-  apply(subst if_weak_cong[where b="infinite {}" and c="False"], simp)
-  apply(simp only: if_False)
-  apply(subst if_weak_cong[where c=False])
-  apply(simp, rule tup2_dict_preserves_well_behavedness, simp, simp, simp)
-  apply(subst chooseAndSplit_empty)
-  apply(simp only: option.case)
-done
-
-lemma findLowestKVWithKEquivTo_singleton_None:
-  assumes "well_behaved_lem_ordering (isLess_method key_dict) (isLessEqual_method key_dict) (isGreater_method key_dict) (compare_method key_dict)"
-      and "well_behaved_lem_ordering (isLess_method val_dict) (isLessEqual_method val_dict) (isGreater_method val_dict) (compare_method val_dict)"
-      and "e = (ek, ev)" and "eq element ek"
-  shows "findLowestKVWithKEquivTo key_dict val_dict element eq {e} None = Some e"
-using assms
-  apply(subst findLowestKVWithKEquivTo.simps)
-  apply(subst if_weak_cong[where b="infinite {e}" and c="False"], simp)
-  apply(simp only: if_False)
-  apply(subst if_weak_cong[where c=False])
-  apply(simp, rule tup2_dict_preserves_well_behavedness, simp, simp)
-  apply(simp only: if_False)
-  apply(subst chooseAndSplit_singleton, rule tup2_dict_preserves_well_behavedness, simp, simp)
-  apply(simp only: option.case split if_True)
-  apply(simp only: split Let_def)
-  apply(rule findLowestKVWithKEquivTo_Some_empty)
-  apply simp_all
-done
-
-lemma findHighestKVWithKEquivTo_singleton_None:
-  assumes "well_behaved_lem_ordering (isLess_method key_dict) (isLessEqual_method key_dict) (isGreater_method key_dict) (compare_method key_dict)"
-      and "well_behaved_lem_ordering (isLess_method val_dict) (isLessEqual_method val_dict) (isGreater_method val_dict) (compare_method val_dict)"
-      and "e = (ek, ev)" and "eq element ek"
-  shows "findHighestKVWithKEquivTo key_dict val_dict element eq {e} None = Some e"
-using assms
-  apply(subst findHighestKVWithKEquivTo.simps)
-  apply(subst if_weak_cong[where b="infinite {e}" and c="False"], simp)
-  apply(simp only: if_False)
-  apply(subst if_weak_cong[where c=False])
-  apply(simp, rule tup2_dict_preserves_well_behavedness, simp, simp)
-  apply(simp only: if_False)
-  apply(subst chooseAndSplit_singleton, rule tup2_dict_preserves_well_behavedness, simp, simp)
-  apply(simp only: option.case split if_True)
-  apply(simp only: split Let_def)
-  apply(rule findHighestKVWithKEquivTo_Some_empty)
-  apply simp_all
-done
-
-lemma any_abi_feature_dict_well_behaved:
-  shows "well_behaved_lem_ordering (isLess_method instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
-    (isLessEqual_method instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
-    (isGreater_method instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
-    (compare_method instance_Basic_classes_Ord_Abis_any_abi_feature_dict)"
-sorry (* XXX: false as one of the orderings returns true whenever both x, y are GOT0 *)
-
 lemma stringCompare_method_Nil_Cons:
   shows "stringCompare_method [] (x#xs) = LT"
 using stringCompare_method_def by simp
@@ -836,59 +506,6 @@ using assms unfolding stringLess_def stringGreater_def
   apply(case_tac y; clarify)
   apply(simp add: stringCompare_method_Cons_Nil)
   apply(smt ordering.distinct(1) ordering.distinct(3) stringCompare_method_def)
-done
-
-lemma string_dict_well_behaved:
-  shows "well_behaved_lem_ordering (isLess_method instance_Basic_classes_Ord_string_dict)
-    (isLessEqual_method instance_Basic_classes_Ord_string_dict)
-    (isGreater_method instance_Basic_classes_Ord_string_dict)
-    (compare_method instance_Basic_classes_Ord_string_dict)"
-unfolding well_behaved_lem_ordering.simps instance_Basic_classes_Ord_string_dict_def
-  apply(simp only: Ord_class.simps)
-  apply(rule conjI)
-  apply((rule allI)+, case_tac x; case_tac y; clarify; simp only: stringGreater_def)
-  apply(rule conjI)
-  apply((rule allI)+, case_tac x; case_tac y; clarify; simp only: stringGreater_def)
-  apply(rule conjI)
-  apply((rule allI)+, simp add: stringCompare_tri)
-  apply(rule conjI)
-  apply((rule allI)+, clarify, simp add: stringCompare_method_refl stringLess_def)
-  apply(rule conjI)
-  apply((rule allI)+, clarify, simp add: stringCompare_method_refl stringGreater_def stringLess_def)
-  apply(rule conjI)
-  apply((rule allI)+, simp add: stringLess_stringGreater)
-  apply(rule conjI)
-  apply((rule allI)+, meson stringLess_stringGreater)
-  apply(rule conjI)
-  apply((rule allI)+, meson stringGreater_def stringLess_stringGreater)
-  apply(rule conjI)
-  apply((rule allI)+, meson stringGreater_def stringLess_stringGreater)
-  apply(rule conjI)
-  apply((rule allI)+, smt ordering.distinct(5) stringCompare_method_def stringCompare_tri stringGreater_def stringLessEq_def stringLess_def)
-  apply(rule conjI)
-  apply((rule allI)+, simp add: stringCompare_method_refl stringLessEq_def)
-  apply(rule conjI)
-  apply((rule allI)+, simp add: stringLessEq_def stringLess_def)
-  apply(rule conjI)
-  apply((rule allI)+, simp add: stringCompare_method_def)
-  apply(smt ordering.distinct)
-  apply(rule conjI)
-  apply((rule allI)+, simp add: stringCompare_method_def)
-  apply(smt ordering.distinct stringCompare_method_def stringCompare_method_refl stringCompare_tri stringGreater_def stringLess_def)
-  apply(rule allI)
-  apply(smt ordering.distinct stringCompare_method_def stringCompare_method_refl stringCompare_tri stringGreater_def stringLess_def)
-done
-
-lemma natural_dict_well_behaved:
-  shows "well_behaved_lem_ordering (isLess_method instance_Basic_classes_Ord_Num_natural_dict)
-    (isLessEqual_method instance_Basic_classes_Ord_Num_natural_dict)
-    (isGreater_method instance_Basic_classes_Ord_Num_natural_dict)
-    (compare_method instance_Basic_classes_Ord_Num_natural_dict)"
-unfolding well_behaved_lem_ordering.simps instance_Basic_classes_Ord_Num_natural_dict_def
-  apply(simp only: Ord_class.simps)
-  apply(auto)
-  apply(auto simp add: genericCompare_def)
-  apply(meson neqE ordering.distinct)+
 done
 
 lemma lexicographicCompareBy_refl:
@@ -941,9 +558,10 @@ lemma compare_elf64_interpreted_section_refl:
   shows "compare_elf64_interpreted_section x x = EQ"
   apply(case_tac x; clarify)
   apply(simp only: compare_elf64_interpreted_section_def)
-  apply(rule pairCompare_refl)
+  apply(rule tripleCompare_refl)
   apply(rule allI, rule lexicographicCompareBy_refl, simp add: genericCompare_def)
   apply(rule allI, rule compare_byte_sequence_refl)
+  apply(rule allI, rule stringCompare_method_refl)
 done
 
 lemma compare_elf64_interpreted_segment_refl:
@@ -1132,48 +750,6 @@ corollary stringCompare_method_refl':
   shows "stringCompare_method x y = EQ \<longleftrightarrow> x = y"
 using stringCompare_method_neq_not_EQ stringCompare_method_refl by auto
 
-lemma symDefCompare_tri:
-  shows "symDefCompare x y = LT \<or> symDefCompare x y = GT \<or> x = y"
-  apply(case_tac x; case_tac y; clarify)
-  apply(simp add: symDefCompare_def quintupleCompare.simps pairCompare.simps)
-  apply(case_tac "stringCompare_method def_symname def_symnamea", simp_all)
-  apply(simp only: pairCompare.simps)
-  apply(case_tac "elf64_symbol_table_entry_compare def_syment def_symenta", simp_all)
-  apply(simp add: genericCompare_def)
-  apply(case_tac "def_sym_scn < def_sym_scna", simp_all)
-  apply(case_tac "def_sym_scn = def_sym_scna", simp_all)
-  apply(simp add: genericCompare_def)
-  apply(case_tac "def_sym_idx < def_sym_idxa", simp_all)
-  apply(case_tac "def_sym_idx = def_sym_idxa", simp_all)
-  apply(simp add: stringCompare_method_refl')
-  apply(simp only: elf64_symbol_table_entry_compare_def sextupleCompare.simps pairCompare.simps
-    genericCompare_def)
-  apply(case_tac "unat (elf64_st_name def_syment) < unat (elf64_st_name def_symenta)", simp_all)
-  apply(case_tac "elf64_st_name def_syment = elf64_st_name def_symenta", simp_all)
-  apply(case_tac "unat (elf64_st_value def_syment) < unat (elf64_st_value def_symenta)", simp_all)
-  apply(case_tac "elf64_st_value def_syment = elf64_st_value def_symenta", simp_all)
-  apply(case_tac "unat (elf64_st_size def_syment) < unat (elf64_st_size def_symenta)", simp_all)
-  apply(case_tac "elf64_st_size def_syment = elf64_st_size def_symenta", simp_all)
-  apply(case_tac "unat (elf64_st_info def_syment) < unat (elf64_st_info def_symenta)", simp_all)
-  apply(case_tac "elf64_st_info def_syment = elf64_st_info def_symenta", simp_all)
-  apply(case_tac "unat (elf64_st_other def_syment) < unat (elf64_st_other def_symenta)", simp_all)
-  apply(case_tac "elf64_st_other def_syment = elf64_st_other def_symenta", simp_all)
-  apply(case_tac "unat (elf64_st_shndx def_syment) < unat (elf64_st_shndx def_symenta)", simp_all)
-  apply(case_tac "elf64_st_shndx def_syment = elf64_st_shndx def_symenta", simp_all)
-  apply(case_tac "def_linkable_idx < def_linkable_idxa", simp_all)
-  apply(case_tac "def_linkable_idx = def_linkable_idxa", simp_all)
-done
-
-find_consts name: elf64_symbol_table_entry_compare
-
-lemma symRefAndRelocSiteCompare_tri:
-  shows "symRefAndRelocSiteCompare x y = LT \<or> symRefAndRelocSiteCompare x y = GT \<or> x = y"
-sorry
-
-lemma elfFileFeatureCompare_tri:
-  shows "elfFileFeatureCompare x y = LT \<or> elfFileFeatureCompare x y = GT \<or> x = y"
-sorry
-
 lemma elf64_symbol_table_entry_compare_refl':
   shows "(elf64_symbol_table_entry_compare x y = EQ) \<longleftrightarrow> x = y"
   apply(case_tac x; case_tac y; simp add: elf64_symbol_table_entry_compare_def sextupleCompare.simps pairCompare.simps)
@@ -1188,6 +764,11 @@ lemma symDefCompare_refl':
   apply(case_tac "elf64_symbol_table_entry_compare def_syment def_symenta"; simp; (metis ordering.distinct elf64_symbol_table_entry_compare_refl')?)
   apply(simp add: pairCompare.simps genericCompare_def)
   apply(metis elf64_symbol_table_entry_compare_refl' stringCompare_method_refl')
+done
+
+corollary symDefCompare_tri:
+  shows "symDefCompare x y = LT \<or> symDefCompare x y = GT \<or> x = y"
+  apply(case_tac "symDefCompare x y"; simp add: symDefCompare_refl')
 done
 
 lemma symRefCompare_refl':
@@ -1235,7 +816,7 @@ lemma relocDecisionCompare_refl':
   apply(case_tac x; case_tac y; simp)
 done
 
-lemma symRefAndRelocSiteCompare_eq:
+lemma symRefAndRelocSiteCompare_refl':
   shows "symRefAndRelocSiteCompare x y = EQ \<longleftrightarrow> x = y"
   apply(case_tac x; case_tac y; simp add: symRefAndRelocSiteCompare_def tripleCompare.simps pairCompare.simps)
   apply(case_tac "symRefCompare ref refa"; simp; (metis ordering.distinct symRefCompare_refl')?)
@@ -1244,6 +825,11 @@ lemma symRefAndRelocSiteCompare_eq:
   apply(metis ordering.distinct relocSiteCompare_refl' maybeCompare_refl')
   apply(smt pairCompare_refl' maybeCompare_refl' symDefCompare_refl' relocDecisionCompare_refl' relocSiteCompare_refl' symRefCompare_refl')
   apply(metis ordering.distinct maybeCompare_refl' relocSiteCompare_refl')
+done
+
+lemma symRefAndRelocSiteCompare_tri:
+  shows "symRefAndRelocSiteCompare x y = LT \<or> symRefAndRelocSiteCompare x y = GT \<or> x = y"
+  apply(case_tac "symRefAndRelocSiteCompare x y"; simp add: symRefAndRelocSiteCompare_refl')
 done
 
 lemma lexicographicCompareBy_refl':
@@ -1280,15 +866,230 @@ done
 lemma compare_elf64_section_header_table_entry_refl':
   shows "compare_elf64_section_header_table_entry x y = EQ \<longleftrightarrow> x = y"
   apply(case_tac x; case_tac y; simp add: compare_elf64_section_header_table_entry_def)
-(*  using genericCompare_refl lexicographicCompareBy_refl' genericCompare_def ordering.distinct list.inject sledgehammer*)
-sorry
+  apply(subst lexicographicCompareBy_refl', simp add: genericCompare_def)
+  apply auto
+done
 
-lemma elfFileFeatureCompare_eq:
+lemma compare_elf64_program_header_table_entry_refl':
+  shows "compare_elf64_program_header_table_entry x y = EQ \<longleftrightarrow> x = y"
+  apply(case_tac x; case_tac y; simp add: compare_elf64_program_header_table_entry_def)
+  apply(subst lexicographicCompareBy_refl', simp add: genericCompare_def)
+  apply auto
+done
+
+lemma compare_byte_refl':
+  shows "compare_byte b1 b2 = EQ \<longleftrightarrow> b1 = b2"
+unfolding compare_byte_def
+  apply(simp add: genericCompare_def)
+done
+
+lemma byte_list_of_byte_sequence_refl':
+  shows "byte_list_of_byte_sequence ss = byte_list_of_byte_sequence ts \<longleftrightarrow> ss = ts"
+  apply(case_tac ss; case_tac ts; clarify)
+  apply(simp add: byte_list_of_byte_sequence.simps)
+done
+
+lemma compare_byte_sequence_refl':
+  shows "compare_byte_sequence bs1 bs2 = EQ \<longleftrightarrow> bs1 = bs2"
+unfolding compare_byte_sequence_def
+  apply(subst lexicographicCompareBy_refl', simp add: compare_byte_refl')
+  apply(simp add: byte_list_of_byte_sequence_refl')
+done
+
+lemma compare_elf64_interpreted_section_refl':
+  shows "compare_elf64_interpreted_section x y = EQ \<longleftrightarrow> x = y"
+  apply(case_tac x; case_tac y; simp add: compare_elf64_interpreted_section_def tripleCompare.simps pairCompare.simps)
+  apply(case_tac "lexicographicCompareBy (genericCompare op < op =)
+               [elf64_section_name, elf64_section_type, elf64_section_flags, elf64_section_addr, elf64_section_offset, elf64_section_size, elf64_section_link, elf64_section_info,
+                elf64_section_align, elf64_section_entsize]
+               [elf64_section_namea, elf64_section_typea, elf64_section_flagsa, elf64_section_addra, elf64_section_offseta, elf64_section_sizea, elf64_section_linka, elf64_section_infoa,
+                elf64_section_aligna, elf64_section_entsizea]"; simp)
+  apply(metis ordering.distinct lexicographicCompareBy_refl' genericCompare_refl)
+  apply(subst (asm) lexicographicCompareBy_refl', simp add: genericCompare_refl)
+  apply(subst pairCompare_refl', subst compare_byte_sequence_refl', simp, rule stringCompare_method_refl')
+  apply(auto)
+  apply(metis ordering.distinct lexicographicCompareBy_refl' genericCompare_refl)
+done
+
+lemma natural_of_bool_refl':
+  shows "natural_of_bool b1 = natural_of_bool b2 \<longleftrightarrow> b1 = b2"
+  apply(case_tac b1; case_tac b2; simp add: natural_of_bool.simps)
+done
+
+lemma compare_elf64_interpreted_segment_refl':
+  shows "compare_elf64_interpreted_segment x y = EQ \<longleftrightarrow> x = y"
+  apply(case_tac x; case_tac y; simp add: compare_elf64_interpreted_segment_def tripleCompare.simps pairCompare.simps)
+  apply(case_tac "compare_byte_sequence elf64_segment_body elf64_segment_bodya", simp)
+  apply(metis ordering.distinct compare_byte_sequence_refl')
+  apply simp
+  apply(case_tac "(pairCompare (lexicographicCompareBy (genericCompare op < op =)) (lexicographicCompareBy (genericCompare op < op =))
+         ([elf64_segment_type, elf64_segment_size, elf64_segment_memsz, elf64_segment_base, elf64_segment_paddr, elf64_segment_align, elf64_segment_offset],
+          case elf64_segment_flags of (f1, f2, f3) ⇒ [natural_of_bool f1, natural_of_bool f2, natural_of_bool f3])
+         ([elf64_segment_typea, elf64_segment_sizea, elf64_segment_memsza, elf64_segment_basea, elf64_segment_paddra, elf64_segment_aligna, elf64_segment_offseta],
+          case elf64_segment_flagsa of (f1, f2, f3) ⇒ [natural_of_bool f1, natural_of_bool f2, natural_of_bool f3]) =
+        EQ)")
+  apply(subst (asm) pairCompare_refl', simp add: lexicographicCompareBy_refl' genericCompare_refl)
+  apply(case_tac elf64_segment_flags; case_tac elf64_segment_flagsa; simp)
+  apply(subst (asm) compare_byte_sequence_refl')
+  apply(subst (asm) natural_of_bool_refl')+
+  apply(subst pairCompare_refl', simp add: lexicographicCompareBy_refl' genericCompare_refl, simp)
+  apply(smt pairCompare_refl' lexicographicCompareBy_refl' genericCompare_refl ordering.distinct)
+  apply(metis ordering.simps ordering.distinct compare_byte_sequence_refl')
+done
+
+lemma elfFileFeatureCompare_refl':
   shows "elfFileFeatureCompare x y = EQ \<longleftrightarrow> x = y"
   apply(case_tac x; case_tac y; simp add: elfFileFeatureCompare.simps)
   apply(simp add: elf64_header_compare_refl')
   apply(simp add: lexicographicCompareBy_refl' compare_elf64_section_header_table_entry_refl')
-sorry
+  apply(simp add: lexicographicCompareBy_refl' compare_elf64_program_header_table_entry_refl')
+  apply(rule pairCompare_refl', rule genericCompare_refl, rule compare_elf64_interpreted_section_refl')
+  apply(rule pairCompare_refl', rule genericCompare_refl, rule compare_elf64_interpreted_segment_refl')
+done
+
+corollary elfFileFeatureCompare_tri:
+  shows "elfFileFeatureCompare x y = LT \<or> elfFileFeatureCompare x y = GT \<or> x = y"
+  apply(case_tac "elfFileFeatureCompare x y"; simp add: elfFileFeatureCompare_refl')
+done
+
+lemma tup2_dict_preserves_well_behavedness:
+  fixes dict1 :: "'a Ord_class" and dict2 :: "'b Ord_class"
+  assumes "well_behaved_lem_ordering (isLess_method dict1) (isLessEqual_method dict1) (isGreater_method dict1)
+            (compare_method dict1)" and
+    "well_behaved_lem_ordering (isLess_method dict2) (isLessEqual_method dict2) (isGreater_method dict2)
+      (compare_method dict2)"
+  shows "well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict dict1 dict2))
+    (isLessEqual_method (instance_Basic_classes_Ord_tup2_dict dict1 dict2))
+    (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict1 dict2))
+    (compare_method (instance_Basic_classes_Ord_tup2_dict dict1 dict2))"
+using assms unfolding instance_Basic_classes_Ord_tup2_dict_def
+  apply(simp only: Ord_class.simps well_behaved_lem_ordering.simps)
+  apply(erule conjE)+
+  apply(rule conjI, (rule allI)+, case_tac x, case_tac y, clarify)
+  apply(unfold pairGreater_def[where dict_Basic_classes_Ord_a="dict1"], assumption)
+  apply(rule conjI, (rule allI)+, case_tac x, case_tac y, clarify)
+  apply(rule conjI, (rule allI)+, case_tac x, case_tac y, clarify)
+  apply(rule conjI, (subst (asm) pairLess.simps)+, blast, metis pairLess.simps)
+  apply(rule conjI, (rule allI)+, case_tac x, case_tac y, clarify)
+  apply(subst (asm) pairLess.simps, meson)
+  apply(rule conjI, (rule allI)+, case_tac x, case_tac y, clarify)
+  apply(subst (asm) pairLess.simps, meson)
+  apply(rule conjI, (rule allI)+, case_tac x, case_tac y, clarify)
+  apply((subst (asm) pairLess.simps)+, meson)
+  apply(rule conjI, (rule allI)+, case_tac x, case_tac y, clarify)
+  apply((subst (asm) pairLess.simps)+, meson)
+  apply(rule conjI, (rule allI)+, case_tac x, case_tac y, clarify)
+  apply((subst (asm) pairLess.simps)+, meson)
+  apply(rule conjI, (rule allI)+, case_tac x, case_tac y, clarify)
+  apply((subst (asm) pairLess.simps)+, meson)
+  apply(rule conjI, (rule allI)+, case_tac x, case_tac y, clarify)
+  apply(rule conjI, subst (asm) pairLessEq.simps, subst (asm) pairLess.simps, meson)
+  apply(subst (asm) pairLessEq.simps, subst (asm) pairLess.simps, meson)
+  apply(rule conjI, (rule allI)+, case_tac x, case_tac y, clarify)
+  apply(subst pairLessEq.simps, meson)
+  apply(rule conjI)
+  apply((rule allI)+, case_tac x, case_tac y, clarify)
+  apply(subst pairLessEq.simps, subst (asm) pairLess.simps, meson)
+  apply(rule conjI)
+  apply((rule allI)+, case_tac x, case_tac y, clarify)
+  apply(subst pairCompare.simps, subst (asm) pairCompare.simps)
+  apply(case_tac "compare_method dict1 ab aaa", subst (asm) ordering.case_cong_weak[where ordering'=LT])
+  apply blast
+  apply(metis ordering.simps(9))
+  apply(subst (asm) ordering.case_cong_weak[where ordering'=EQ])
+  apply blast
+  apply(metis (no_types, hide_lams) ordering.exhaust ordering.simps(8))
+  apply(subst (asm) ordering.case_cong_weak[where ordering'=GT], assumption)
+  apply(metis ordering.simps(9))
+  apply(rule conjI)
+  apply((rule allI)+, case_tac x, case_tac y, clarify)
+  apply(subst pairCompare.simps, subst (asm) pairCompare.simps)
+  apply(case_tac "compare_method dict1 ab aaa", subst (asm) ordering.case_cong_weak[where ordering'=LT])
+  apply blast
+  apply(metis ordering.simps(7))
+  apply(subst (asm) ordering.case_cong_weak[where ordering'=EQ])
+  apply blast
+  apply(metis (no_types, hide_lams) ordering.exhaust ordering.simps(8))
+  apply(subst (asm) ordering.case_cong_weak[where ordering'=GT], assumption)
+  apply(metis ordering.simps(7))
+  apply(rule allI)
+  apply(case_tac x, clarify)
+  apply(subst pairCompare.simps)
+  apply(smt Pair_inject ordering.exhaust ordering.simps)
+done
+
+lemma any_abi_feature_dict_well_behaved:
+  shows "well_behaved_lem_ordering (isLess_method instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+    (isLessEqual_method instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+    (isGreater_method instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
+    (compare_method instance_Basic_classes_Ord_Abis_any_abi_feature_dict)"
+sorry (* XXX: false as one of the orderings returns true whenever both x, y are GOT0 *)
+
+lemma string_dict_well_behaved:
+  shows "well_behaved_lem_ordering (isLess_method instance_Basic_classes_Ord_string_dict)
+    (isLessEqual_method instance_Basic_classes_Ord_string_dict)
+    (isGreater_method instance_Basic_classes_Ord_string_dict)
+    (compare_method instance_Basic_classes_Ord_string_dict)"
+unfolding well_behaved_lem_ordering.simps instance_Basic_classes_Ord_string_dict_def
+  apply(simp only: Ord_class.simps)
+  apply(rule conjI)
+  apply((rule allI)+, case_tac x; case_tac y; clarify; simp only: stringGreater_def)
+  apply(rule conjI)
+  apply((rule allI)+, case_tac x; case_tac y; clarify; simp only: stringGreater_def)
+  apply(rule conjI)
+  apply((rule allI)+, simp add: stringCompare_tri)
+  apply(rule conjI)
+  apply((rule allI)+, clarify, simp add: stringCompare_method_refl stringLess_def)
+  apply(rule conjI)
+  apply((rule allI)+, clarify, simp add: stringCompare_method_refl stringGreater_def stringLess_def)
+  apply(rule conjI)
+  apply((rule allI)+, simp add: stringLess_stringGreater)
+  apply(rule conjI)
+  apply((rule allI)+, meson stringLess_stringGreater)
+  apply(rule conjI)
+  apply((rule allI)+, meson stringGreater_def stringLess_stringGreater)
+  apply(rule conjI)
+  apply((rule allI)+, meson stringGreater_def stringLess_stringGreater)
+  apply(rule conjI)
+  apply((rule allI)+, smt ordering.distinct(5) stringCompare_method_def stringCompare_tri stringGreater_def stringLessEq_def stringLess_def)
+  apply(rule conjI)
+  apply((rule allI)+, simp add: stringCompare_method_refl stringLessEq_def)
+  apply(rule conjI)
+  apply((rule allI)+, simp add: stringLessEq_def stringLess_def)
+  apply(rule conjI)
+  apply((rule allI)+, simp add: stringCompare_method_def)
+  apply(smt ordering.distinct)
+  apply(rule conjI)
+  apply((rule allI)+, simp add: stringCompare_method_def)
+  apply(smt ordering.distinct stringCompare_method_def stringCompare_method_refl stringCompare_tri stringGreater_def stringLess_def)
+  apply(rule allI)
+  apply(smt ordering.distinct stringCompare_method_def stringCompare_method_refl stringCompare_tri stringGreater_def stringLess_def)
+done
+
+lemma tagCompare_refl':
+  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict)
+              (compare_method dict)"
+  shows "tagCompare dict t1 t2 = EQ \<longleftrightarrow> t1 = t2"
+using assms
+  apply(case_tac t1; case_tac t2; simp add: tagCompare.simps)
+  apply(simp add: symDefCompare_refl')
+  apply(simp add: symRefAndRelocSiteCompare_eq)
+  apply(simp add: elfFileFeatureCompare_refl')
+  apply(subst (asm) well_behaved_lem_ordering.simps)
+  apply meson
+done
+
+lemma natural_dict_well_behaved:
+  shows "well_behaved_lem_ordering (isLess_method instance_Basic_classes_Ord_Num_natural_dict)
+    (isLessEqual_method instance_Basic_classes_Ord_Num_natural_dict)
+    (isGreater_method instance_Basic_classes_Ord_Num_natural_dict)
+    (compare_method instance_Basic_classes_Ord_Num_natural_dict)"
+unfolding well_behaved_lem_ordering.simps instance_Basic_classes_Ord_Num_natural_dict_def
+  apply(simp only: Ord_class.simps)
+  apply(auto)
+  apply(auto simp add: genericCompare_def)
+  apply(meson neqE ordering.distinct)+
+done
 
 lemma tag_dict_preserves_well_behavedness:
   assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict) (compare_method dict)"
@@ -1307,12 +1108,12 @@ using assms unfolding well_behaved_lem_ordering.simps instance_Basic_classes_Ord
   apply(rule conjI, (rule allI)+)
   apply(case_tac x; case_tac y; clarify; (subst (asm) tagCompare.simps)?)
   apply(metis ordering.simps, metis ordering.simps, metis ordering.simps symDefCompare_refl',
-    metis ordering.simps symRefAndRelocSiteCompare_eq, metis ordering.simps elfFileFeatureCompare_eq,
+    metis ordering.simps symRefAndRelocSiteCompare_eq, metis ordering.simps elfFileFeatureCompare_refl',
     metis ordering.distinct)
   apply(rule conjI, (rule allI)+)
   apply(case_tac x; case_tac y; clarify; (subst (asm) tagCompare.simps)?)
   apply(metis ordering.simps, metis ordering.simps, metis ordering.simps symDefCompare_refl',
-    metis ordering.simps symRefAndRelocSiteCompare_eq, metis ordering.simps elfFileFeatureCompare_eq,
+    metis ordering.simps symRefAndRelocSiteCompare_eq, metis ordering.simps elfFileFeatureCompare_refl',
     metis ordering.distinct)
   apply(rule conjI, (rule allI)+, rule impI)
   apply simp
@@ -1327,7 +1128,24 @@ using assms unfolding well_behaved_lem_ordering.simps instance_Basic_classes_Ord
   apply(erule disjE, simp)
   apply(case_tac x; case_tac y; clarify; (subst (asm) tagCompare.simps)?, (subst (asm) tagCompare.simps)?)
   apply((metis)+)
-sorry
+  apply(metis symDefCompare_refl')
+  apply(meson ordering.simps)+
+  apply(metis symRefAndRelocSiteCompare_eq)
+  apply(meson ordering.simps)+
+  apply(metis elfFileFeatureCompare_refl')
+  apply(meson ordering.simps)+
+  apply(subst tagCompare_refl)
+  apply meson
+  apply fast[1]
+  apply fast[1]
+  apply(drule tagCompare_LT_tagCompare_GT)
+  apply meson
+  apply assumption
+  apply(drule tagCompare_GT_tagCompare_LT)
+  apply meson
+  apply assumption
+  apply(metis tagCompare_refl' assms)+
+done
 
 lemma maybe_dict_preserves_well_behavedness:
   fixes dict :: "'a Ord_class"
@@ -1380,6 +1198,329 @@ using assms unfolding well_behaved_lem_ordering.simps instance_Basic_classes_Ord
   apply(subst maybeCompare.simps, fast)
   apply(subst maybeCompare.simps, subst option.inject)
   apply meson
+done
+
+lemma split_greater_2:
+  fixes dict :: "'a Ord_class" and element other :: "'a"
+  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict)
+            (compare_method dict)"
+     and "isGreater_method dict element other"
+  shows "Lem_set.split dict element {element, other} = ({other}, {})"
+using assms unfolding well_behaved_lem_ordering.simps proof -
+  have "isGreater_method dict element other"
+    using assms by auto
+  hence "\<not> isLess_method dict element other" and "\<not> isGreater_method dict element element" and "\<not> isLess_method dict element element"
+    using assms well_behaved_lem_ordering.simps by smt+
+  hence "{x \<in> {element, other}. isGreater_method dict element x} = {other}" and "{x \<in> {element, other}. isLess_method dict element x} = {}"
+    using CollectI assms `\<not> isLess_method dict element element` `\<not> isLess_method dict element other` by auto
+  thus "split dict element {element, other} = ({other}, {})"
+    using split_def by (metis (full_types))
+qed
+
+lemma split_less_2:
+  fixes dict :: "'a Ord_class" and element other :: "'a"
+  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict)
+             (compare_method dict)"
+      and "isLess_method dict element other"
+  shows "Lem_set.split dict element {other, element} = ({}, {other})"
+using assms unfolding well_behaved_lem_ordering.simps proof -
+  have "isLess_method dict element other"
+    using assms by auto
+  hence "\<not> isGreater_method dict element other" and "\<not> isLess_method dict element element" and "\<not> isGreater_method dict element element"
+    using assms well_behaved_lem_ordering.simps by smt+
+  hence "{x \<in> {element, other}. isGreater_method dict element x} = {}" and "{x \<in> {element, other}. isLess_method dict element x} = {other}"
+    using CollectI assms by auto
+  thus "split dict element {other, element} = ({}, {other})"
+    using split_def by (metis (full_types) insert_commute)
+qed
+
+lemma split_singleton_same:
+  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict)
+             (compare_method dict)"
+  shows "split dict s {s} = ({}, {})"
+using assms
+  apply(simp only: split_def)
+  apply simp
+  apply(rule conjI)
+  apply(meson lem_ordering_not_gt)
+  apply(meson lem_ordering_not_lt)
+done
+
+lemma split_singleton_diff:
+  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict)
+             (compare_method dict)"
+    and "isLess_method dict s t"
+  shows "split dict s {t} = ({}, {t})"
+using assms
+  apply(simp only: split_def)
+  apply simp
+  apply(rule conjI)
+  apply(meson lem_ordering_gt lem_ordering_not_lt)
+  apply auto
+done
+
+lemma split_empty:
+  shows "split dict s {} = ({}, {})"
+  apply(simp only: split_def)
+  apply simp
+done
+
+lemma list_of_set_empty:
+  shows "list_of_set {} = []"
+by (meson finite.emptyI list_of_set(1) set_empty)
+
+lemma list_of_set_singleton:
+  shows "list_of_set {x} = [x]"
+  apply(simp only: list_of_set_def list_of_set_set_def set_choose_def)
+  apply(rule Hilbert_Choice.some_equality)
+  apply simp
+  apply(drule CollectD, erule conjE)
+  apply(metis distinct.simps(2) ex_in_conv insert_iff list.exhaust list.simps(15) set_empty)
+done
+
+lemma chooseAndSplit_singleton:
+  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict)
+              (compare_method dict)"
+  shows "chooseAndSplit dict { s } = Some ({}, s, {})"
+using assms
+  apply(simp only: chooseAndSplit_def)
+  apply(auto simp add: split_singleton_same)
+done
+
+lemma chooseAndSplit_empty:
+  shows "chooseAndSplit dict {} = None"
+  apply(simp only: chooseAndSplit_def)
+  apply simp
+done
+
+lemma chooseAndSplit_less_2:
+  fixes dict :: "'a Ord_class" and element1 element2 :: "'a"
+  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict)
+            (compare_method dict)"
+    and "isLess_method dict element1 element2"
+  shows "chooseAndSplit dict {element1, element2} = Some ({}, element1, {element2}) \<or>
+         chooseAndSplit dict {element1, element2} = Some ({element1}, element2, {})"
+using assms
+  apply(simp only: chooseAndSplit_def)
+  apply(subst if_weak_cong[where b="{element1, element2} = {}" and c="False"], simp_all)
+  apply(rule disjE[OF set_choose_dichotomy[where x="element1" and y="element2"]])
+  apply(erule subst[OF sym])
+  apply(simp only: Let_def)
+  apply(drule split_less_2, assumption)
+  apply(subst prod.case_cong_weak[where prod="split dict element1 {element1, element2}" and prod'="({}, {element2})"], simp add: insert_commute)
+  apply simp
+  apply(erule subst[OF sym])
+  apply(simp only: Let_def)
+  apply(frule lem_ordering_lt, assumption)
+  apply(drule split_greater_2, assumption)
+  apply(subst prod.case_cong_weak[where prod="split dict element2 {element1, element2}" and prod'="({element1}, {})"], auto simp add: insert_commute)
+done
+
+lemma chooseAndSplit_greater_2:
+  fixes dict :: "'a Ord_class" and element1 element2 :: "'a"
+  assumes "well_behaved_lem_ordering (isLess_method dict) (isLessEqual_method dict) (isGreater_method dict) (compare_method dict)"
+      and "isGreater_method dict element1 element2"
+  shows "chooseAndSplit dict {element1, element2} = Some ({element2}, element1, {}) \<or>
+         chooseAndSplit dict {element1, element2} = Some ({}, element2, {element1})"
+using assms
+  apply(simp only: chooseAndSplit_def)
+  apply(subst if_weak_cong[where b="{element1, element2} = {}" and c="False"], simp_all)
+  apply(rule disjE[OF set_choose_dichotomy[where x="element1" and y="element2"]])
+  apply(erule subst[OF sym])
+  apply(simp only: Let_def)
+  apply(drule split_greater_2, assumption)
+  apply(subst prod.case_cong_weak[where prod="split dict element1 {element1, element2}" and prod'="({element2}, {})"], simp add: insert_commute)
+  apply simp
+  apply(erule subst[OF sym])
+  apply(simp only: Let_def)
+  apply(frule lem_ordering_gt, assumption)
+  apply(drule split_less_2, assumption)
+  apply(subst prod.case_cong_weak[where prod="split dict element2 {element1, element2}" and prod'="({}, {element1})"], auto simp add: insert_commute)
+done
+
+text {* In library somewhere?  Doesn't appear to be so, though find_theorems is so temprimental I
+can't really be sure... *}
+lemma map_eqI:
+  assumes "\<forall>d \<in> dom m1 \<union> dom m2. m1 d = m2 d"
+  shows "m1 = m2"
+using assms by fastforce
+
+text {* Induction principle for reasoning about list functions that have a special case for
+singleton lists. *}
+lemma empty_singleton_induct:
+  assumes "P []" and "\<And>x. P [x]"
+     and "\<And>x xs. xs \<noteq> [] \<Longrightarrow> P xs \<Longrightarrow> P (x#xs)"
+  shows "P x"
+using assms
+  apply(induct x)
+  apply simp
+  apply(case_tac x, clarify)
+  apply simp+
+done
+
+lemma nat_le_massage:
+  assumes "addr ≤ l" and "l ≤ Suc (addr)"
+  shows "addr = l \<or> Suc addr = l"
+using assms by auto
+
+lemma list_comprehension_singleton:
+  shows "[(x, y) ← [(u, v)]. y = v] = [(u,v)]"
+by simp
+
+lemma dom_2:
+  shows "dom [k1 ↦ v1, k2 ↦ v2] = {k1, k2}"
+by auto
+
+lemma nth_the_technical:
+  assumes "(4194316::nat) ≤ x" and "x < 4194324"
+  shows "the ([Some 0, Some 0, Some 0, Some 0, Some 0, Some 0, Some 0, Some 0] ! (x - 4194316)) = (0::8 word)"
+using assms
+  apply(case_tac "x = 4194316 \<or> x > 4194316 \<and> x < 4194324")
+  apply auto
+  apply(case_tac "x = 4194317 \<or> x > 4194317 \<and> x < 4194324")
+  apply auto
+  apply(case_tac "x = 4194318 \<or> x > 4194318 \<and> x < 4194324")
+  apply auto
+  apply(case_tac "x = 4194319 \<or> x > 4194319 \<and> x < 4194324")
+  apply auto
+  apply(case_tac "x = 4194320 \<or> x > 4194320 \<and> x < 4194324")
+  apply auto
+  apply(case_tac "x = 4194321 \<or> x > 4194321 \<and> x < 4194324")
+  apply auto
+  apply(case_tac "x = 4194322 \<or> x > 4194322 \<and> x < 4194324")
+  apply auto
+done
+
+lemma interval_elim:
+  fixes x::nat
+  assumes "4194304 ≤ x" and "x < 4194316"
+  shows "x = 4194304 \<or> x = 4194305 \<or> x = 4194306 \<or> x = 4194307 \<or>
+          x = 4194308 \<or> x = 4194309 \<or> x = 4194310 \<or> x = 4194311 \<or>
+          x = 4194312 \<or> x = 4194313 \<or> x = 4194314 \<or> x = 4194315"
+using assms by presburger
+
+lemma findLowestKVWithKEquivTo_Some_empty:
+  assumes "well_behaved_lem_ordering (isLess_method key_dict) (isLessEqual_method key_dict) (isGreater_method key_dict) (compare_method key_dict)"
+      and "well_behaved_lem_ordering (isLess_method val_dict) (isLessEqual_method val_dict) (isGreater_method val_dict) (compare_method val_dict)"
+  shows "findLowestKVWithKEquivTo key_dict val_dict element eq {} (Some candidate) = Some candidate"
+using assms
+  apply(subst findLowestKVWithKEquivTo.simps)
+  apply(subst if_weak_cong[where b="infinite {}" and c="False"], simp)
+  apply(simp only: if_False)
+  apply(subst if_weak_cong[where c=False])
+  apply(simp, rule tup2_dict_preserves_well_behavedness, simp, simp, simp)
+  apply(subst chooseAndSplit_empty)
+  apply(simp only: option.case)
+done
+
+lemma findHighestKVWithKEquivTo_Some_empty:
+  assumes "well_behaved_lem_ordering (isLess_method key_dict) (isLessEqual_method key_dict) (isGreater_method key_dict) (compare_method key_dict)"
+      and "well_behaved_lem_ordering (isLess_method val_dict) (isLessEqual_method val_dict) (isGreater_method val_dict) (compare_method val_dict)"
+  shows "findHighestKVWithKEquivTo key_dict val_dict element eq {} (Some candidate) = Some candidate"
+using assms
+  apply(subst findHighestKVWithKEquivTo.simps)
+  apply(subst if_weak_cong[where b="infinite {}" and c="False"], simp)
+  apply(simp only: if_False)
+  apply(subst if_weak_cong[where c=False])
+  apply(simp, rule tup2_dict_preserves_well_behavedness, simp, simp, simp)
+  apply(subst chooseAndSplit_empty)
+  apply(simp only: option.case)
+done
+
+lemma findLowestKVWithKEquivTo_singleton_None:
+  assumes "well_behaved_lem_ordering (isLess_method key_dict) (isLessEqual_method key_dict) (isGreater_method key_dict) (compare_method key_dict)"
+      and "well_behaved_lem_ordering (isLess_method val_dict) (isLessEqual_method val_dict) (isGreater_method val_dict) (compare_method val_dict)"
+      and "e = (ek, ev)" and "eq element ek"
+  shows "findLowestKVWithKEquivTo key_dict val_dict element eq {e} None = Some e"
+using assms
+  apply(subst findLowestKVWithKEquivTo.simps)
+  apply(subst if_weak_cong[where b="infinite {e}" and c="False"], simp)
+  apply(simp only: if_False)
+  apply(subst if_weak_cong[where c=False])
+  apply(simp, rule tup2_dict_preserves_well_behavedness, simp, simp)
+  apply(simp only: if_False)
+  apply(subst chooseAndSplit_singleton, rule tup2_dict_preserves_well_behavedness, simp, simp)
+  apply(simp only: option.case split if_True)
+  apply(simp only: split Let_def)
+  apply(rule findLowestKVWithKEquivTo_Some_empty)
+  apply simp_all
+done
+
+lemma findHighestKVWithKEquivTo_singleton_None:
+  assumes "well_behaved_lem_ordering (isLess_method key_dict) (isLessEqual_method key_dict) (isGreater_method key_dict) (compare_method key_dict)"
+      and "well_behaved_lem_ordering (isLess_method val_dict) (isLessEqual_method val_dict) (isGreater_method val_dict) (compare_method val_dict)"
+      and "e = (ek, ev)" and "eq element ek"
+  shows "findHighestKVWithKEquivTo key_dict val_dict element eq {e} None = Some e"
+using assms
+  apply(subst findHighestKVWithKEquivTo.simps)
+  apply(subst if_weak_cong[where b="infinite {e}" and c="False"], simp)
+  apply(simp only: if_False)
+  apply(subst if_weak_cong[where c=False])
+  apply(simp, rule tup2_dict_preserves_well_behavedness, simp, simp)
+  apply(simp only: if_False)
+  apply(subst chooseAndSplit_singleton, rule tup2_dict_preserves_well_behavedness, simp, simp)
+  apply(simp only: option.case split if_True)
+  apply(simp only: split Let_def)
+  apply(rule findHighestKVWithKEquivTo_Some_empty)
+  apply simp_all
+done
+
+section {* Start of the proof proper *}
+
+text {* The following section contains technical lemmas directly tied to the proof of our theorem,
+which is found at the very end of this section. *}
+
+text {* Result of encoding the MOV instruction according to Anthony's model.  Note we are generic
+in the absolute address that we are moving to, providing that address obeys some signed-integer
+bounds that are guaranteed by the valid_address assertion guarding our main theorem statement. *}
+lemma encode_Zmov_in_concrete:
+  assumes "(18446744071562067968::64 word) <=s addr \<and> addr <=s (2147483647::64 word)"
+    and "word_extract 7 0 addr = a1" and "word_extract 15 8 addr = a2" and "word_extract 23 16 addr = a3"
+    and "word_extract 31 24 addr = a4"
+  shows "encode (Zmov (Z_ALWAYS, Z64, Zrm_i (Zm (None, ZnoBase, addr), 5))) =
+    [72, 199, 4, 37, a1, a2, a3, a4, 5, 0, 0, 0]"
+using assms
+  apply(simp only: encode.simps instruction.case split Zcond.case Zsize.case)
+  apply(simp only: Zdest_src.case split Zrm.case)
+  apply(simp only: e_rm_imm.simps e_ModRM.simps Zrm.case split option.case)
+  apply(simp only: Zbase.case list.case split append.simps)
+  apply(simp only: e_opsize_imm.simps e_opsize.simps Zsize.case)
+  apply(subst if_weak_cong[where b="Z64 = Z64 \<and> True" and c="True"], simp)
+  apply(simp only: if_True Zsize.case Let_def split)
+  apply(simp only: e_imm32.simps concrete_evaluations simp_thms if_True list.case)
+  apply(simp only: option.case split concat.simps list.case concrete_evaluations)
+  apply simp
+done
+
+text {* Commutation lemma for the build_fixed_program_memory function: `loading' the fixed program
+into memory (i.e. constructing a finite map from `64 word' to `8 word') at a given address, and then
+trying to look up from another address, is the same as indexing into the encoded program's byte
+list at the lookup address minus the loading address. *}
+lemma build_fixed_program_memory_commute:
+  fixes bytes :: "8 word list"
+  assumes "addr \<le> l \<and> l < addr + List.length bytes" and "bytes \<noteq> []" and
+    "l \<in> unats 64"
+  shows "(build_fixed_program_memory addr bytes) (of_nat l) = bytes ! (l - addr)"
+using assms unfolding build_fixed_program_memory_def
+  apply(induction bytes arbitrary: addr rule: empty_singleton_induct)
+  apply simp
+  apply(simp only: build_fixed_program_code_memory.simps Let_def)
+  apply(simp only: map_of.simps fst_def snd_def split)
+  apply(erule conjE)
+  apply(drule nat_le_massage, simp)
+  apply(erule disjE; clarify)
+  apply(subst word_unat.Abs_inverse, simp)
+  apply(simp only: fun_upd_apply refl if_True option.case, simp)
+  apply(subst word_unat.Abs_inverse, simp)
+  apply(simp)
+  apply(simp only: build_fixed_program_code_memory.simps Let_def)
+  apply(simp only: map_of.simps fst_def snd_def split)
+  apply(subst word_unat.Abs_inverse, simp)
+  apply(case_tac "l = addr"; clarify)
+  apply(simp only: fun_upd_apply refl if_True option.case, simp)
+  apply(simp only: fun_upd_apply if_False)
+  apply(subst (asm) word_unat.Abs_inverse, simp)
+  apply auto
 done
 
 lemma pairLess_Ref_Ref_technical:
@@ -1933,10 +2074,6 @@ lemma lookupBy0_Def_Def_singleton:
   apply simp
 done
 
-lemma list_comprehension_singleton:
-  shows "[(x, y) ← [(u, v)]. y = v] = [(u,v)]"
-by simp
-
 lemma img1_technical:
   assumes "length (natural_to_le_byte_list (4194316 + offset)) \<le> 4"
   shows "img1 offset [72, 199, 4, 37, 0, 0, 0, 0, 5, 0, 0, 0] =
@@ -2084,10 +2221,6 @@ using assms
   apply(subst word_unat.Abs_inverse, simp only: unats_def, simp, assumption)
 done
 
-lemma dom_2:
-  shows "dom [k1 ↦ v1, k2 ↦ v2] = {k1, k2}"
-by auto
-
 lemma set_comprehension_elim_text_technical:
   assumes "4194304 ≤ x" and "x < 4194316"
   shows "{s. ∃k∈{''.data'', ''.text''}.
@@ -2131,34 +2264,6 @@ lemma set_comprehension_elim_neither_technical:
   apply(subst (asm) word_unat.Abs_inverse, auto simp add: unats_def)+
 done
 
-lemma nth_the_technical:
-  assumes "(4194316::nat) ≤ x" and "x < 4194324"
-  shows "the ([Some 0, Some 0, Some 0, Some 0, Some 0, Some 0, Some 0, Some 0] ! (x - 4194316)) = (0::8 word)"
-using assms
-  apply(case_tac "x = 4194316 \<or> x > 4194316 \<and> x < 4194324")
-  apply auto
-  apply(case_tac "x = 4194317 \<or> x > 4194317 \<and> x < 4194324")
-  apply auto
-  apply(case_tac "x = 4194318 \<or> x > 4194318 \<and> x < 4194324")
-  apply auto
-  apply(case_tac "x = 4194319 \<or> x > 4194319 \<and> x < 4194324")
-  apply auto
-  apply(case_tac "x = 4194320 \<or> x > 4194320 \<and> x < 4194324")
-  apply auto
-  apply(case_tac "x = 4194321 \<or> x > 4194321 \<and> x < 4194324")
-  apply auto
-  apply(case_tac "x = 4194322 \<or> x > 4194322 \<and> x < 4194324")
-  apply auto
-done
-
-lemma interval_elim:
-  fixes x::nat
-  assumes "4194304 ≤ x" and "x < 4194316"
-  shows "x = 4194304 \<or> x = 4194305 \<or> x = 4194306 \<or> x = 4194307 \<or>
-          x = 4194308 \<or> x = 4194309 \<or> x = 4194310 \<or> x = 4194311 \<or>
-          x = 4194312 \<or> x = 4194313 \<or> x = 4194314 \<or> x = 4194315"
-using assms by presburger
-
 lemma list_eq_discharge_technical:
   assumes "valid_address 4194316 8 addr" and "4194304 ≤ x ∧ x < 4194316"
   shows "[72, 199, 4, 37, word_extract 7 0 ((of_nat addr)::64 word), word_extract 15 8 ((of_nat addr)::64 word), word_extract 23 16 ((of_nat addr)::64 word), word_extract 31 24 ((of_nat addr)::64 word), 5, 0, 0, 0] ! (x - 4194304) =
@@ -2173,6 +2278,7 @@ using assms
   apply(((erule disjE)+, clarify, simp add: concrete_evaluations')+, (clarify, simp add: concrete_evaluations'))+
 done
 
+text {* Proof of the main correctness theorem. *}
 theorem
   shows "correctness_property"
 unfolding correctness_property_def
