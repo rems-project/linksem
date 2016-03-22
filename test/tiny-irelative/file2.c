@@ -20,8 +20,8 @@ static void init(void)
 	}
 }
 
-int main(void) __attribute__((noreturn));
-int main(void)
+int _start(void) __attribute__((noreturn));
+int _start(void)
 {
 	__asm__ volatile ("callq init\n\
                    callq ifunc\n\

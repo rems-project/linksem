@@ -15,7 +15,6 @@ Linker script and memory map
 
 LOAD file1.o
 LOAD file2.o
-                0x0000000000400229                _start = main
                 0x0000000000400000                PROVIDE (__executable_start, 0x400000)
                 0x0000000000400120                . = (0x400000 + SIZEOF_HEADERS)
 
@@ -96,7 +95,7 @@ LOAD file2.o
                 0x000000000040017b                f_2
                 0x0000000000400186                ifunc
  .text          0x00000000004001cf       0x74 file2.o
-                0x0000000000400229                main
+                0x0000000000400229                _start
  *(.gnu.warning)
 
 .fini
@@ -296,11 +295,11 @@ LOAD file2.o
  .debug_frame   0x0000000000000000       0xb8 file1.o
  .debug_frame   0x00000000000000b8       0x70 file2.o
 
-.debug_str      0x0000000000000000      0x1d4
+.debug_str      0x0000000000000000      0x1cf
  *(.debug_str)
  .debug_str     0x0000000000000000       0xfb file1.o
- .debug_str     0x00000000000000fb       0xd9 file2.o
-                                        0x1dc (size before relaxing)
+ .debug_str     0x00000000000000fb       0xd4 file2.o
+                                        0x1de (size before relaxing)
 
 .debug_loc
  *(.debug_loc)
