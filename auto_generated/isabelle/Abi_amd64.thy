@@ -85,7 +85,7 @@ datatype amd64_abi_feature =
     
 (*val abiFeatureCompare : amd64_abi_feature -> amd64_abi_feature -> Basic_classes.ordering*)
 fun abiFeatureCompare0  :: " amd64_abi_feature \<Rightarrow> amd64_abi_feature \<Rightarrow> ordering "  where 
-     " abiFeatureCompare0 (GOT0(_)) (GOT0(_)) = ( EQ )"
+     " abiFeatureCompare0 (GOT0 xs) (GOT0 ys) = lexicographicCompareBy (tripleCompare stringCompare_method (maybeCompare element_range_compare) symRefAndRelocSiteCompare) xs ys"
 |" abiFeatureCompare0 (GOT0(_)) PLT0 = ( LT )"
 |" abiFeatureCompare0 PLT0 PLT0 = ( EQ )"
 |" abiFeatureCompare0 PLT0 (GOT0(_)) = ( GT )" 

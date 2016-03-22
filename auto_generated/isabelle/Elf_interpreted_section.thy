@@ -132,7 +132,7 @@ record elf64_interpreted_section =
   ordering*)
 definition compare_elf64_interpreted_section  :: " elf64_interpreted_section \<Rightarrow> elf64_interpreted_section \<Rightarrow> ordering "  where 
      " compare_elf64_interpreted_section s1 s2 = (   
- (pairCompare (lexicographicCompareBy (genericCompare (op<) (op=))) compare_byte_sequence 
+ (tripleCompare (lexicographicCompareBy (genericCompare (op<) (op=))) compare_byte_sequence stringCompare_method
     ([(elf64_section_name   s1)    ,(elf64_section_type  
       s1)    ,(elf64_section_flags  
       s1)   ,(elf64_section_addr  
@@ -142,7 +142,7 @@ definition compare_elf64_interpreted_section  :: " elf64_interpreted_section \<R
       s1)    ,(elf64_section_info  
       s1)    ,(elf64_section_align  
       s1)   ,(elf64_section_entsize  
-      s1)],(elf64_section_body   s1))
+      s1)],(elf64_section_body   s1), (elf64_section_name_as_string s1))
     ([(elf64_section_name   s2)    ,(elf64_section_type  
       s2)    ,(elf64_section_flags  
       s2)   ,(elf64_section_addr  
@@ -152,7 +152,7 @@ definition compare_elf64_interpreted_section  :: " elf64_interpreted_section \<R
       s2)    ,(elf64_section_info  
       s2)    ,(elf64_section_align  
       s2)   ,(elf64_section_entsize  
-      s2)],(elf64_section_body   s2))))"
+      s2)],(elf64_section_body   s2), (elf64_section_name_as_string s2))))"
 
 
 definition instance_Basic_classes_Ord_Elf_interpreted_section_elf64_interpreted_section_dict  :: "(elf64_interpreted_section)Ord_class "  where 
