@@ -10,8 +10,6 @@ imports
   "../auto_generated/isabelle/Import_everything"
   "../auto_generated/isabelle/Termination"
   "../auto_generated/isabelle/Test_image"
-  "~~/src/HOL/Eisbach/Eisbach"
-  "~~/src/HOL/Word/WordBitwise"
 begin
 
 section {* Proof-of-concept relocation proof *}
@@ -828,7 +826,7 @@ lemma relocDecisionCompare_GT_relocDecisionCompare_LT:
   assumes "relocDecisionCompare x y = GT"
   shows "relocDecisionCompare y x = LT"
 using assms
-  apply(case_tac x; case_tac y; simp add: relocDecisionCompare.simps)
+  apply(case_tac x; case_tac y; simp)
 done
 
 lemma symRefAndRelocSiteCompare_GT_symRefAndRelocSiteCompare_LT:
@@ -886,7 +884,7 @@ lemma relocDecisionCompare_LT_relocDecisionCompare_GT:
   assumes "relocDecisionCompare x y = LT"
   shows "relocDecisionCompare y x = GT"
 using assms
-  apply(case_tac x; case_tac y; simp add: relocDecisionCompare.simps)
+  apply(case_tac x; case_tac y; simp)
 done
 
 lemma symRefAndRelocSiteCompare_LT_symRefAndRelocSiteCompare_GT:
