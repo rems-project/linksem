@@ -1618,7 +1618,7 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                                                                             ))
                                                                     in
                                                                     let new_bound_to = match matching_possibles with
-                                                                        [] -> Just(ApplyReloc(Nothing), Nothing)
+                                                                        [] -> Just(ApplyReloc, Nothing)
                                                                         | [(bi, ((rl, r, ri), maybe_d))] -> 
                                                                             Just(decision, 
                                                                                 match maybe_d with 

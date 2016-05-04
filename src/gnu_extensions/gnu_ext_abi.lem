@@ -120,4 +120,5 @@ let gnu_extend a =
          ;   by_range = new_by_range
          |>
     ; concretise_support  = a.concretise_support
+    ; get_reloc_symaddr   = a.get_reloc_symaddr
     |>

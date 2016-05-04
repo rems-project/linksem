@@ -40,6 +40,8 @@ open import Abi_classes
 open import Abi_utilities
 open import Elf_types_native_uint
 
+open import Memory_image_orderings
+
 (** Relocation operators and their validity on a given platform *)
 
 val is_valid_abi_aarch64_relocation_operator : relocation_operator -> bool
@@ -312,6 +314,7 @@ let tls_extend a =
     ; pad_code            = a.pad_code
     ; generate_support    = a.generate_support
     ; concretise_support  = a.concretise_support
+    ; get_reloc_symaddr   = a.get_reloc_symaddr
     |>
 
 (* We use these snappily-named functions in relocation calculations. *)
@@ -379,10 +382,57 @@ let (null_abi : abi any_abi_feature) = <|
     ; pad_code = pad_zeroes
     ; generate_support = (* fun _ -> *) fun _ -> get_empty_memory_image ()
     ; concretise_support = fun img -> img
+    ; get_reloc_symaddr = default_get_reloc_symaddr
     |>
 
 val got_entry_ordering : (string * maybe symbol_definition) -> (string * maybe symbol_definition) -> Basic_classes.ordering
 let got_entry_ordering (s1, md1) (s2, md2) = compare s1 s2 (* FIXME *)
+
+let is_ifunc_def = fun maybe_def -> 
+match maybe_def with
+ Nothing -> false
+ | Just d -> get_elf64_symbol_type d.def_syment = stt_gnu_ifunc
+end
+
+let amd64_reloc_needs_got_slot =  fun symref -> fun rr -> fun maybe_def -> 
+    if (get_elf64_relocation_a_type rr.ref_relent IN {
+        r_x86_64_got32; r_x86_64_gotpcrel; r_x86_64_gottpoff; r_x86_64_gotoff64; r_x86_64_gotpc32 (* ; r_x86_64_gotpc32_tlsdesc *)
+    }) then 
+       true
+    else if is_ifunc_def maybe_def
+         then
+         (* This reference is bound to a STT_GNU_IFUNC definition. 
+          * What now needs to happen is as follows.
+          * - we ensure that a GOT entry is generated for this symbol (we do this here);
+          * - we ensure that a PLT entry (specifically .iplt) is generated for the symbol (Below);
+          * - on making the GOT, we also generate a .rela.plt relocation record covering the GOT slot;
+          * - when applying the relocation, of whatever kind, the address of the PLT slot 
+          *      is the address input to the calculation
+          * - the code marked by the STT_GNU_IFUNC symbol definition is not the function
+          *      to call; it's the function that calculates the address of the function to call!
+          *      this becomes the addend of the R_X86_64_IRELATIVE Elf64_Rela marking the GOT slot
+          * - note that for static linking, the GOT is usually pre-filled (cf. dynamically when it is filled by JUMP_SLOT relocs).
+          *      ... but our GOT entries *must* have corresponding R_X86_64_IRELATIVEs generated
+          *)
+          true
+    else false
+
+
+let amd64_reloc_needs_plt_slot (symref : symbol_reference_and_reloc_site) rr maybe_def =
+    if (get_elf64_relocation_a_type rr.ref_relent IN {
+        r_x86_64_plt32
+    }) then
+       true
+    else if is_ifunc_def maybe_def 
+         then
+         true
+    else
+        (* not a PLT ref *)
+        false
+
+let amd64_get_reloc_symaddr bound_def_in_input output_img = 
+    default_get_reloc_symaddr bound_def_in_input output_img
+
 
 (* *)
 val amd64_generate_support : (* list (list reloc_site_resolution) -> *) list (string * annotated_memory_image any_abi_feature) -> annotated_memory_image any_abi_feature
@@ -401,42 +451,18 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
         (i, fname, Multimap.lookupBy Memory_image_orderings.tagEquiv (SymbolRef(null_symbol_reference_and_reloc_site)) img.by_tag)
     ) input_fnames_and_imgs
     in
-    let is_ifunc_def = fun maybe_def -> 
-        match maybe_def with
-         Nothing -> false
-         | Just d -> get_elf64_symbol_type d.def_syment = stt_gnu_ifunc
-        end
-    in
     let refs_via_got = list_concat_map (fun (i, fname, tags_and_ranges) -> List.mapMaybe (fun (tag, maybe_range) -> match tag with
-         SymbolRef(rr) -> 
+         SymbolRef(symref) -> 
             (* Is this ref a relocation we're going to apply, and does it reference the GOT? *)
-            match (rr.maybe_reloc, rr.maybe_def_bound_to) with
+            match (symref.maybe_reloc, symref.maybe_def_bound_to) with
                 (Nothing, _) -> Nothing
-                | (Just r, Just(ApplyReloc(_), maybe_def)) ->
-                    if (get_elf64_relocation_a_type r.ref_relent IN {
-                        r_x86_64_got32; r_x86_64_gotpcrel; r_x86_64_gottpoff; r_x86_64_gotoff64; r_x86_64_gotpc32 (* ; r_x86_64_gotpc32_tlsdesc *)
-                    }) then 
-                        let _ = errln ("Saw a via-GOT symbol reference: to `" ^ rr.ref.ref_symname ^ "' coming from linkable " ^ (show i) ^ " (" ^ 
-                            fname ^ "), logically from section " ^ (show r.ref_src_scn)) in 
-                        Just (rr.ref.ref_symname, maybe_def) 
-                    else if is_ifunc_def maybe_def
-                         then
-                         (* This reference is bound to a STT_GNU_IFUNC definition. 
-                          * What now needs to happen is as follows.
-                          * - we ensure that a GOT entry is generated for this symbol (we do this here);
-                          * - we ensure that a PLT entry (specifically .iplt) is generated for the symbol (Below);
-                          * - on making the GOT, we also generate a .rela.plt relocation record covering the GOT slot;
-                          * - when applying the relocation, of whatever kind, the address of the PLT slot 
-                          *      is the address input to the calculation
-                          * - the code marked by the STT_GNU_IFUNC symbol definition is not the function
-                          *      to call; it's the function that calculates the address of the function to call!
-                          *      this becomes the addend of the R_X86_64_IRELATIVE Elf64_Rela marking the GOT slot
-                          * - note that for static linking, the GOT is usually pre-filled (cf. dynamically when it is filled by JUMP_SLOT relocs).
-                          *      ... but our GOT entries *must* have corresponding R_X86_64_IRELATIVEs generated
-                          *)
-                          Just (rr.ref.ref_symname, maybe_def) 
+                | (Just rr, Just(ApplyReloc, maybe_def)) ->
+                    if amd64_reloc_needs_got_slot symref rr maybe_def then
+                        let _ = errln ("Saw a via-GOT symbol reference: to `" ^ symref.ref.ref_symname ^ "' coming from linkable " ^ (show i) ^ " (" ^ 
+                            fname ^ "), logically from section " ^ (show rr.ref_src_scn)) in 
+                        Just (symref.ref.ref_symname, maybe_def) 
                     else Nothing
-                | (Just r, Just(MakePIC, maybe_def)) -> failwith "FIXME: PIC support please"
+                | (Just rr, Just(MakePIC, maybe_def)) -> failwith "FIXME: PIC support please"
             end
          | _ -> failwith "impossible: reloc site tag is not a SymbolRef"
     end) tags_and_ranges) tags_and_ranges_by_image
@@ -486,29 +512,26 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
      * enumerating the via-PLT relocs that imply a PLT entry. We look their GOT
      * slots up later, by symbol name. *)
     let refs_via_plt = list_concat_map (fun (i, fname, tags_and_ranges) -> List.mapMaybe (fun (tag, maybe_range) -> match tag with
-         SymbolRef(rr) -> 
+         SymbolRef(symref) -> 
             (* Is this ref a relocation we're going to apply, and does it reference the GOT? *)
-            match (rr.maybe_reloc, rr.maybe_def_bound_to) with
+            match (symref.maybe_reloc, symref.maybe_def_bound_to) with
                 (Nothing, _) -> Nothing
-                | (Just r, Just(ApplyReloc(_), maybe_def)) ->
-                    if (get_elf64_relocation_a_type r.ref_relent IN {
-                        r_x86_64_plt32
-                    }) then 
-                        let _ = errln ("Saw a via-PLT symbol reference: to `" ^ rr.ref.ref_symname ^ "' coming from linkable " ^ (show i) ^ " (" ^ 
-                            fname ^ "), relent idx " ^ (show r.ref_rel_idx) ^ " logically from section " ^ (show r.ref_src_scn) ^ 
-                            match maybe_def with Just _ -> ", with definition" | Nothing -> ", not bound to anything" end
-                            ) in
-                        Just (rr.ref.ref_symname, maybe_def) 
-                    else if is_ifunc_def maybe_def 
-                         then
+                | (Just rr, Just(ApplyReloc, maybe_def)) ->
+                    if amd64_reloc_needs_plt_slot symref rr maybe_def 
+                    then 
+                        let _ = if is_ifunc_def maybe_def then
                          (* we ensure that a PLT entry (specifically .iplt) is generated for the symbol *)
-                        let _ = errln ("Saw a reference to IFUNC symbol `" ^ rr.ref.ref_symname ^ "'; ref is coming from linkable " ^ (show i) ^ " (" ^ 
-                            fname ^ "), relent idx " ^ (show r.ref_rel_idx) ^ " logically from section " ^ (show r.ref_src_scn) ) in
-                          Just (rr.ref.ref_symname, maybe_def) 
-                         else
-                            (* not a PLT ref *)
-                            Nothing
-                | (Just r, Just(MakePIC, maybe_def)) -> failwith "FIXME: PIC support please"
+                         errln ("Saw a reference to IFUNC symbol `" ^ symref.ref.ref_symname ^ "'; ref is coming from linkable " ^ (show i) ^ " (" ^ 
+                            fname ^ "), relent idx " ^ (show rr.ref_rel_idx) ^ " logically from section " ^ (show rr.ref_src_scn) ) 
+                        else
+                        errln ("Saw a via-PLT symbol reference: to `" ^ symref.ref.ref_symname ^ "' coming from linkable " ^ (show i) ^ " (" ^ 
+                            fname ^ "), relent idx " ^ (show rr.ref_rel_idx) ^ " logically from section " ^ (show rr.ref_src_scn) ^ 
+                            match maybe_def with Just _ -> ", with definition" | Nothing -> ", not bound to anything" end
+                            )
+                        in
+                        Just(symref.ref.ref_symname, maybe_def) 
+                    else Nothing
+                | (Just rr, Just(MakePIC, maybe_def)) -> failwith "FIXME: PIC support please"
             end
          | _ -> failwith "impossible: reloc site tag is not a SymbolRef"
     end) tags_and_ranges) tags_and_ranges_by_image
@@ -569,7 +592,7 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
                        ; ref_sym_scn = 0
                        ; ref_sym_idx = 0
                        |>
-                ; maybe_def_bound_to = Just(ApplyReloc(Nothing), Just sd)
+                ; maybe_def_bound_to = Just(ApplyReloc, Just sd)
                 ; maybe_reloc = Just(
                   <|
                         ref_relent  = 
@@ -1102,6 +1125,7 @@ let sysv_amd64_std_abi =
     ; pad_code = pad_0x90
     ; generate_support = amd64_generate_support
     ; concretise_support = amd64_concretise_support
+    ; get_reloc_symaddr = amd64_get_reloc_symaddr
     |>
 
 val sysv_aarch64_le_std_abi : abi any_abi_feature
@@ -1122,6 +1146,7 @@ let sysv_aarch64_le_std_abi =
     ; pad_code = pad_zeroes
     ; generate_support = (* fun _ -> *) fun _ -> get_empty_memory_image ()
     ; concretise_support = fun img -> img
+    ; get_reloc_symaddr = default_get_reloc_symaddr
     |>
 
 val all_abis : list (abi any_abi_feature)
