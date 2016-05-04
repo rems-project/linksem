@@ -92,6 +92,32 @@ let gnu_extend a =
     ; guess_entry_point   = a.guess_entry_point
     ; pad_data            = a.pad_data
     ; pad_code            = a.pad_code
-    ; generate_support    = a.generate_support
+    ; generate_support    = fun input_fnames_and_imgs -> 
+        let vanilla_support_img = a.generate_support input_fnames_and_imgs in
+        (* also generate .note.gnu.build-id *)
+        let new_by_range = Set.insert (Just(".note.gnu.build-id", (0, 24)), FileFeature(ElfSection(1, 
+          <| elf64_section_name = 0 (* ignored *)
+           ; elf64_section_type = sht_note
+           ; elf64_section_flags = shf_alloc
+           ; elf64_section_addr = 0 (* ignored -- covered by element *)
+           ; elf64_section_offset = 0 (* ignored -- will be replaced when file offsets are assigned *)
+           ; elf64_section_size = 24 (* ignored? NO, we use it in linker_script to avoid plumbing through the element record *)
+           ; elf64_section_link = 0
+           ; elf64_section_info = 0
+           ; elf64_section_align = 4
+           ; elf64_section_entsize = 0
+           ; elf64_section_body = Byte_sequence.empty (* ignored *)
+           ; elf64_section_name_as_string = ".note.gnu.build-id"
+           |>
+        ))) vanilla_support_img.by_range
+        in
+        <|  elements = Map.insert ".note.gnu.build-id" <|
+                startpos = Nothing
+           ;    length = Just 24
+           ;    contents = []
+           |> (vanilla_support_img.elements)
+         ;   by_tag = by_tag_from_by_range new_by_range
+         ;   by_range = new_by_range
+         |>
     ; concretise_support  = a.concretise_support
     |>
