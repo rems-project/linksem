@@ -633,7 +633,7 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
                         in
                         let maybe_header_entry_address = if plt_needs_header_entry then Just(plt_base_addr) else Nothing
                         in
-                        (this_plt_slot_base_addr,
+                        let content_bytes = 
                         [byte_of_natural 255; byte_of_natural 37] ++ (* offset to the GOT entry, from the *next* instruction start, signed 32-bit LE *)
                             (to_le_signed_bytes 4 (((integerFromNatural got_slot_addr) - (integerFromNatural (this_plt_slot_base_addr + 6))) : integer)) ++
                         [byte_of_natural 104] ++ (* plt slot number not including header, 32-bit LE *)
@@ -645,7 +645,9 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
                                 Nothing -> failwith "normal PLT entry but no PLT header!"
                                 | Just header_entry_address -> (integerFromNatural header_entry_address) - (integerFromNatural (this_plt_slot_base_addr + 16))
                                 end
-                        )))
+                        ))
+                        in
+                        (this_plt_slot_base_addr, content_bytes)
                         (* 
                         match maybe_def with 
                             Nothing -> 0
@@ -678,7 +680,7 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
            ; elf64_section_flags = natural_lor shf_write shf_alloc
            ; elf64_section_addr = 0 (* ignored -- covered by element *)
            ; elf64_section_offset = 0 (* ignored -- will be replaced when file offsets are assigned *)
-           ; elf64_section_size = got_nentries * got_entrysize (* ignored *)
+           ; elf64_section_size = got_nentries * got_entrysize (* ignored? NO, we use it in linker_script to avoid plumbing through the element record *)
            ; elf64_section_link = 0
            ; elf64_section_info = 0
            ; elf64_section_align = 8
@@ -693,10 +695,10 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
            ; elf64_section_flags = shf_alloc
            ; elf64_section_addr = 0 (* ignored -- covered by element *)
            ; elf64_section_offset = 0 (* ignored -- will be replaced when file offsets are assigned *)
-           ; elf64_section_size = 0 (* ignored *)
+           ; elf64_section_size = 16 * total_n_plt_entries (* ignored? NO, we use it in linker_script to avoid plumbing through the element record *)
            ; elf64_section_link = 0
            ; elf64_section_info = 0
-           ; elf64_section_align = 8
+           ; elf64_section_align = 16
            ; elf64_section_entsize = 16
            ; elf64_section_body = Byte_sequence.empty (* ignored *)
            ; elf64_section_name_as_string = ".plt"
@@ -906,7 +908,8 @@ let amd64_concretise_support orig_img =
                         end
                         in
                         let all_content = concatMap (fun (_, _, plt_content_fn) -> 
-                            let (_, content) = plt_content_fn got_base_addr plt_base_addr in content
+                            let (_, content) = plt_content_fn got_base_addr plt_base_addr in 
+                            content
                         ) l
                         in
                         let _ = errln ("Got " ^ (show (length all_content)) ^ " bytes of PLT content")

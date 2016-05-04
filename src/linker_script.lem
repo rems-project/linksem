@@ -1659,11 +1659,30 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                                             end (* match tag *) 
                                         ) (Set.fromList ranges_and_tags) (* end mapMaybe fn *)
                                     in
-                                    (irec.isec.elf64_section_size, 
-                                        let _ = errln ("Saw first 20 bytes of section " ^ irec.isec.elf64_section_name_as_string ^
-                                            " from " ^ irec.fname ^ " as " ^ (show (take 20 el.contents)))
-                                        in
-                                        el.contents, new_ranges_and_tags)
+                                    let isec_sz = irec.isec.elf64_section_size in
+                                    let maybe_el_sz = el.length in
+                                    let contents_sz = length el.contents in
+                                    let (actual_sz, padded_contents) = 
+                                        match maybe_el_sz with
+                                            Just el_sz -> 
+                                                let diff = el_sz - contents_sz in
+                                                if diff < 0 then
+                                                    (* contents greater than what the el says, so chop the end off *)
+                                                    let _ = Missing_pervasives.errln ("Warning: size mismatch for section " ^ irec.isec.elf64_section_name_as_string ^
+                                                       " from " ^ irec.fname)
+                                                    in
+                                                    (el_sz, take el_sz el.contents)
+                                                else (el_sz, el.contents ++ replicate diff Nothing)
+                                            | Nothing -> 
+                                                if length el.contents <> isec_sz 
+                                                then failwith "input section size not equal to its content pattern length"
+                                                else (isec_sz, el.contents)
+                                        end
+                                    in
+                                    let _ = errln ("Saw first 20 bytes of section " ^ irec.isec.elf64_section_name_as_string ^
+                                                       " from " ^ irec.fname ^ " as " ^ (show (take 20 padded_contents)))
+                                    in
+                                    (actual_sz, padded_contents, new_ranges_and_tags)
                          | _     -> failwith "impossible: no such element"
                        end (* match Map.lookup idstr img.elements *)
                     end (* match maybe_secname *)
@@ -2073,10 +2092,11 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                         (* let _ = errln ("Before adding output section, we have " ^ (show (count_sections_in_image acc))
                             ^ " sections.")
                         in *)
-                        let _ = errln ("At pos 0x" ^ (hex_string_of_natural pos) ^ ", adding output section " ^ name)
-                        in
                         let (new_pos, new_acc, sec_sz, replacement_output_sec)
                          = add_output_section ((* next_free_section_idx, *) pos, acc) found
+                        in
+                        let _ = errln ("At pos 0x" ^ (hex_string_of_natural pos) ^ ", adding output section " ^ name ^
+                            ", new pos is 0x" ^ (hex_string_of_natural pos))
                         in
                         (* let _ = errln ("Received from add_output_section a by_range with " ^ (show (Set.size new_acc.by_range))
                             ^ " metadata records of which " ^ (show (Set.size {
