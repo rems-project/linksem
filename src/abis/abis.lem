@@ -575,41 +575,6 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
     let _ = errln ("PLT total entry count: " ^ (show total_n_plt_entries))
     in
     let new_by_range = {
-        (Just(".got", (0, got_nentries * got_entrysize)), AbiFeature(Amd64AbiFeature(Abi_amd64.GOT(got_pairs_list))))
-    } union {
-        (* For each GOT entry that corresponds to a thread-local symbol, we also need to 
-         * generate a relocation record. HMM. These new relocation records are ones we don't 
-         * yet have decisions for. That might be a problem. 
-         * 
-         * In fact, this approach is not appropriate for static linking. Just put the offsets
-         * in there when we concretise the GOT. Something like this will be good for 
-         * dynamic linking, though. At the moment, creating a SymbolRef at this stage
-         * is problematic because it's not in the bindings list. When we generate shared
-         * objects, we'll have to revisit that code. *)
-        (* (Just(".got", (i * got_entrysize, 8)), SymbolRef( <|
-                ref = <| ref_symname = symname
-                       ; ref_syment = sd.def_syment
-                       ; ref_sym_scn = 0
-                       ; ref_sym_idx = 0
-                       |>
-                ; maybe_def_bound_to = Just(ApplyReloc, Just sd)
-                ; maybe_reloc = Just(
-                  <|
-                        ref_relent  = 
-                            <| elf64_ra_offset = elf64_addr_of_natural 0
-                             ; elf64_ra_info   = elf64_xword_of_natural r_x86_64_tpoff64
-                             ; elf64_ra_addend = elf64_sxword_of_integer 0
-                             |>
-                      ; ref_rel_scn = 0
-                      ; ref_rel_idx = 0
-                      ; ref_src_scn = 0
-                   |>
-                )
-              |>)) 
-              | forall ((i, symname, sd) IN (Set.fromList (mapMaybei (fun i -> fun (symname, maybe_def) ->
-                match maybe_def with Nothing -> Nothing | Just sd -> Just(i, symname, sd) end) refs_via_got)))
-              | get_elf64_symbol_type sd.def_syment = stt_tls
-     *)} union {
         (Just(".plt", (0, 16 * total_n_plt_entries)), AbiFeature(Amd64AbiFeature(Abi_amd64.PLT(
                  mapi (fun plt_entry_idx_not_counting_header -> (fun symname ->
                     (* We want to label the PLT entry with a function that 
@@ -697,22 +662,7 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
                 plt_symnames
             ))) 
         )
-    ;   (Just(".got", (0, got_nentries * got_entrysize)), FileFeature(ElfSection(1, 
-          <| elf64_section_name = 0 (* ignored *)
-           ; elf64_section_type = sht_progbits
-           ; elf64_section_flags = natural_lor shf_write shf_alloc
-           ; elf64_section_addr = 0 (* ignored -- covered by element *)
-           ; elf64_section_offset = 0 (* ignored -- will be replaced when file offsets are assigned *)
-           ; elf64_section_size = got_nentries * got_entrysize (* ignored? NO, we use it in linker_script to avoid plumbing through the element record *)
-           ; elf64_section_link = 0
-           ; elf64_section_info = 0
-           ; elf64_section_align = 8
-           ; elf64_section_entsize = got_entrysize
-           ; elf64_section_body = Byte_sequence.empty (* ignored *)
-           ; elf64_section_name_as_string = ".got"
-           |>
-        )))
-    ;   (Just(".plt", (0, 16 * total_n_plt_entries)), FileFeature(ElfSection(2, 
+    ;   (Just(".plt", (0, 16 * total_n_plt_entries)), FileFeature(ElfSection(1, 
           <| elf64_section_name = 0 (* ignored *)
            ; elf64_section_type = sht_progbits
            ; elf64_section_flags = shf_alloc
@@ -725,6 +675,55 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
            ; elf64_section_entsize = 16
            ; elf64_section_body = Byte_sequence.empty (* ignored *)
            ; elf64_section_name_as_string = ".plt"
+           |>
+        )))
+        (* For each GOT entry that corresponds to a thread-local symbol, we also need to 
+         * generate a relocation record. HMM. These new relocation records are ones we don't 
+         * yet have decisions for. That might be a problem. 
+         * 
+         * In fact, this approach is not appropriate for static linking. Just put the offsets
+         * in there when we concretise the GOT. Something like this will be good for 
+         * dynamic linking, though. At the moment, creating a SymbolRef at this stage
+         * is problematic because it's not in the bindings list. When we generate shared
+         * objects, we'll have to revisit that code. *)
+        (* (Just(".got", (i * got_entrysize, 8)), SymbolRef( <|
+                ref = <| ref_symname = symname
+                       ; ref_syment = sd.def_syment
+                       ; ref_sym_scn = 0
+                       ; ref_sym_idx = 0
+                       |>
+                ; maybe_def_bound_to = Just(ApplyReloc, Just sd)
+                ; maybe_reloc = Just(
+                  <|
+                        ref_relent  = 
+                            <| elf64_ra_offset = elf64_addr_of_natural 0
+                             ; elf64_ra_info   = elf64_xword_of_natural r_x86_64_tpoff64
+                             ; elf64_ra_addend = elf64_sxword_of_integer 0
+                             |>
+                      ; ref_rel_scn = 0
+                      ; ref_rel_idx = 0
+                      ; ref_src_scn = 0
+                   |>
+                )
+              |>)) 
+              | forall ((i, symname, sd) IN (Set.fromList (mapMaybei (fun i -> fun (symname, maybe_def) ->
+                match maybe_def with Nothing -> Nothing | Just sd -> Just(i, symname, sd) end) refs_via_got)))
+              | get_elf64_symbol_type sd.def_syment = stt_tls
+     *)
+    ;   (Just(".got", (0, got_nentries * got_entrysize)), AbiFeature(Amd64AbiFeature(Abi_amd64.GOT(got_pairs_list))))
+    ;   (Just(".got", (0, got_nentries * got_entrysize)), FileFeature(ElfSection(2, 
+          <| elf64_section_name = 0 (* ignored *)
+           ; elf64_section_type = sht_progbits
+           ; elf64_section_flags = natural_lor shf_write shf_alloc
+           ; elf64_section_addr = 0 (* ignored -- covered by element *)
+           ; elf64_section_offset = 0 (* ignored -- will be replaced when file offsets are assigned *)
+           ; elf64_section_size = got_nentries * got_entrysize (* ignored? NO, we use it in linker_script to avoid plumbing through the element record *)
+           ; elf64_section_link = 0
+           ; elf64_section_info = 0
+           ; elf64_section_align = 8
+           ; elf64_section_entsize = got_entrysize
+           ; elf64_section_body = Byte_sequence.empty (* ignored *)
+           ; elf64_section_name_as_string = ".got"
            |>
         )))
     ;   (* FIXME: I've a feeling _GLOBAL_OFFSET_TABLE_ generally doesn't mark the *start* of the GOT; 
@@ -742,6 +741,21 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
             ; def_sym_idx = 1
             ; def_linkable_idx = 0
             |>))
+    ; (Just(".rela.iplt", (0, 24 (* size of an Elf64_Rela *) * naturalFromNat n_iplt_entries)), FileFeature(ElfSection(3, 
+          <| elf64_section_name = 0 (* ignored *)
+           ; elf64_section_type = sht_rela
+           ; elf64_section_flags = natural_lor shf_alloc shf_info_link
+           ; elf64_section_addr = 0 (* ignored -- covered by element *)
+           ; elf64_section_offset = 0 (* ignored -- will be replaced when file offsets are assigned *)
+           ; elf64_section_size = 24 (* size of an Elf64_Rela *) * naturalFromNat n_iplt_entries (* ignored? NO, we use it in linker_script to avoid plumbing through the element record *)
+           ; elf64_section_link = 0
+           ; elf64_section_info = (* FIXME: want this to be the PLT section shndx *) 0
+           ; elf64_section_align = 8
+           ; elf64_section_entsize = 24
+           ; elf64_section_body = Byte_sequence.empty (* ignored *)
+           ; elf64_section_name_as_string = ".rela.iplt"
+           |>
+        )))
     }
     in
     <|  elements = Map.insert ".got" <|

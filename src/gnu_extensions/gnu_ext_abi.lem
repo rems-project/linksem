@@ -95,7 +95,7 @@ let gnu_extend a =
     ; generate_support    = fun input_fnames_and_imgs -> 
         let vanilla_support_img = a.generate_support input_fnames_and_imgs in
         (* also generate .note.gnu.build-id *)
-        let new_by_range = Set.insert (Just(".note.gnu.build-id", (0, 24)), FileFeature(ElfSection(1, 
+        let new_by_range = Set.insert (Just(".note.gnu.build-id", (0, 24)), FileFeature(ElfSection(4 (* HACK: calculate this *), 
           <| elf64_section_name = 0 (* ignored *)
            ; elf64_section_type = sht_note
            ; elf64_section_flags = shf_alloc
