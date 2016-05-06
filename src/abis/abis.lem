@@ -635,6 +635,8 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
                                 end
                         ))
                         in
+                        let _ = errln ("Created a PLT entry consisting of " ^ (show (length content_bytes)) ^ " bytes.")
+                        in
                         (this_plt_slot_base_addr, content_bytes)
                         (* 
                         match maybe_def with 

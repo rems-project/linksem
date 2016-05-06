@@ -730,7 +730,7 @@ val natural_to_le_byte_list_padded_to : natural -> natural -> list byte
 let rec natural_to_le_byte_list_padded_to width n = 
     let bytes = natural_to_le_byte_list n
     in 
-    replicate (width - length bytes) (byte_of_natural 0)
+    bytes ++ (replicate (width - length bytes) (byte_of_natural 0))
 
 val n2i : natural -> integer
 let n2i = integerFromNatural
