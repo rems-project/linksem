@@ -400,9 +400,9 @@ let expand_sections_for_one_image a options bindings_by_name linkable_idx item s
          * and re-create a lookalike in the memory image. 
          * 
          * We also get called for the "generated" memory image that contains .plt, 
-         * .rela.plt and so on. We don't strip these, sine they actually contain relocs
+         * .rela.plt and so on. We don't strip these, since they actually contain relocs
          * that need to go directly into the output file. That's what the strip_relocs
-         * argument is for.
+         * argument is for. FIXME: refactor this into two functions.
          *)
         let stripped_img_with_reloc_sections = if strip_relocs then strip_metadata_sections reloc_decisions a marked_img else marked_img
         in
@@ -610,7 +610,7 @@ let relocate_output_image a bindings_by_name img =
                                      * a matching symbol and use its address. But ABIs can do
                                      * wacky things if they like.
                                      *)
-                                    default_get_reloc_symaddr bound_def img
+                                    a.get_reloc_symaddr bound_def img x.maybe_reloc
                                 | Nothing -> failwith "no def found for bound-to symbol"
                                 | Just(ApplyReloc, Nothing) -> 
                                     let _ = errln "No definition, so we think this is a weak reference; giving it value 0."

@@ -347,7 +347,7 @@ type abi 'abifeature = (* forall 'abifeature. *)
     ; pad_code           : natural -> list byte
     ; generate_support   : (* list (list reloc_site_resolution) ->  *)list (string * annotated_memory_image 'abifeature) -> annotated_memory_image 'abifeature
     ; concretise_support : annotated_memory_image 'abifeature -> annotated_memory_image 'abifeature
-    ; get_reloc_symaddr  : symbol_definition -> annotated_memory_image 'abifeature -> natural
+    ; get_reloc_symaddr  : symbol_definition -> annotated_memory_image 'abifeature -> maybe reloc_site -> natural
     |>
 
 val align_up_to : natural -> natural -> natural

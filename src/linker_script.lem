@@ -1314,7 +1314,7 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
             )
             in
             let (concatenated_content, final_addr, new_range_tag_pairs) = List.foldl (fun (accum_pat, accum_current_addr, accum_meta) -> (fun (comp_el, comp_addr) ->
-                let _ = errln ("Adding an element to composition of output section `" ^ secname ^ "'")
+                let _ = errln ("Adding an element to composition of output section `" ^ secname ^ "', current address 0x" ^ (hex_string_of_natural accum_current_addr))
                 in
                 let make_line = fun namestr -> (fun addrstr -> (fun szstr -> (fun rhs -> (
                     (space_padded_and_maybe_newline 16 (" " ^ namestr)) ^ 
@@ -1720,12 +1720,12 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                         in
                         (next_addr - addr, content, {}) *)
                     | ProvideSymbol(pol, name, (size, info, other)) -> 
-                        let symaddr = pos (* FIXME: support others *)
+                        let symaddr = accum_current_addr (* FIXME: support others *)
                         in
                         let _ = Missing_pervasives.outln (make_line "" (hex_string_of_natural symaddr) "" ("PROVIDE (" ^ name ^ ", .)"))
                         in
                         ((* sz *) 0, (* comp_el_pat *) [],  (* this_el_meta *) {(
-                            Just(secname, ((pos - output_section_start_addr), 0)), 
+                            Just(secname, ((symaddr - output_section_start_addr), 0)), 
                             SymbolDef(symbol_def_for_provide_symbol name size info other linker_script_linkable_idx)
                             )}
                         )
@@ -2172,7 +2172,7 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                          = add_output_section ((* next_free_section_idx, *) pos, acc) found
                         in
                         let _ = errln ("At pos 0x" ^ (hex_string_of_natural pos) ^ ", adding output section " ^ name ^
-                            " composed of " ^ (show (length comp)) ^ " items, new pos is 0x" ^ (hex_string_of_natural pos))
+                            " composed of " ^ (show (length comp)) ^ " items, new pos is 0x" ^ (hex_string_of_natural new_pos))
                         in
                         (* let _ = errln ("Received from add_output_section a by_range with " ^ (show (Set.size new_acc.by_range))
                             ^ " metadata records of which " ^ (show (Set.size {

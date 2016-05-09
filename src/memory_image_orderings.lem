@@ -235,7 +235,7 @@ let defined_symbols img =
         end) all_symbol_tags
 
 
-let default_get_reloc_symaddr bound_def_in_input output_img = 
+let default_get_reloc_symaddr bound_def_in_input output_img maybe_reloc = 
     match find_defs_matching bound_def_in_input output_img with
         [] -> failwith ("internal error: bound-to symbol (name `" ^ bound_def_in_input.def_symname ^ "') not defined")
         | (maybe_range, d) :: more ->
