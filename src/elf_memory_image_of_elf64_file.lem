@@ -388,8 +388,8 @@ let elf_memory_image_element_coextensive_with_section idx img =
     match matches with
         [] -> Nothing
         | [x] -> Just x
-        | xs -> failwith ("impossible: more than one ELF section coextensive with section" (*^ (show idx) ^ ", names: "
-            ^ (show xs)*))
+        | xs -> failwith ("impossible: more than one ELF section coextensive with section" ^ (show idx) ^ ", names: "
+            ^ (show xs))
     end
 
 

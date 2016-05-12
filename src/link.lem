@@ -110,46 +110,10 @@ let retrieve_binding_for_ref r r_linkable_idx item bindings_by_name =
 
 type reloc_site_resolution = reloc_site * binding * reloc_decision
 
-type reloc_simplify_fn = reloc_site -> binding -> reloc_decision -> set Command_line.link_option -> reloc_decision
-val default_simplify_reloc : reloc_simplify_fn
-let default_simplify_reloc rs b rd options = 
-    (* If we're building a static executable, simplify PIC-style relocs 
-     * so that they bind directly. *)
-    let building_executable = Set.member (Command_line.OutputKind(Command_line.Executable)) options in
-    let linking_statically = (* for the moment *) true in
-    let ((ref_idx, ref, ref_item), maybe_def) = b in
-    if building_executable && linking_statically 
-    then match rd with
-        ApplyReloc(Nothing) ->
-            (* Okay -- simplify non-TLS via-GOT ones.
-             * ARGH. We can't just turn a via-GOT access into a not-via-GOT access.
-             * We need to change the addressing mode to be less indirect by one level.
-             * This means rewriting the instruction (from mov to lea, say).
-             * GNU ld does this even with --no-relax. *)
-            let replacement = (*  match Abi_amd64_relocation.string_of_amd64_relocation_type (get_elf64_relocation_a_type rs.ref_relent) with
-                "r_x86_64_got32"        -> 
-                | "r_x86_64_gotpcrel"   -> 
-                | "r_x86_64_gotoff64"   -> 
-                | "r_x86_64_gotpc32"    -> 
-                | _ -> Nothing
-            end *) Nothing
-            in
-            if replacement <> Nothing 
-            then
-                (*let _ = errln ("Simplifying a via-GOT symbol reference: " ^ ref.ref_symname ^ " coming from linkable " ^ (show ref_idx) ^ 
-                    ", logically from section " ^ (show rs.ref_src_scn)) 
-                in*) 
-                ApplyReloc(replacement)
-            else
-                (* FIXME: also simplify PLT ones. *)
-                rd
-        | _ -> rd
-    end
-    else rd
 
-val mark_fate_of_relocs : natural -> abi any_abi_feature -> reloc_simplify_fn -> set Command_line.link_option -> 
+val mark_fate_of_relocs : natural -> abi any_abi_feature -> set Command_line.link_option -> 
     binding_map -> linkable_item -> elf_memory_image -> ((list reloc_site_resolution) * elf_memory_image)
-let mark_fate_of_relocs linkable_idx a simplify_reloc options bindings_by_name item img = 
+let mark_fate_of_relocs linkable_idx a options bindings_by_name item img = 
     (* Our image already models relocation sites. For each relocation *record*,
      * we use our bindings to make a decision about whether to apply it or not.
      * 
@@ -257,8 +221,7 @@ let mark_fate_of_relocs linkable_idx a simplify_reloc options bindings_by_name i
                         let decide = fun decision -> (
                             let _ = errln ("Decided to " ^ match decision with
                                 LeaveReloc -> "leave"
-                                | ApplyReloc(Nothing) -> "apply unchanged"
-                                | ApplyReloc(Just _) -> "apply changed somehow (maybe PICify?)"
+                                | ApplyReloc -> "apply"
                             end ^ " relocation in linkable " ^ (show ref_item) ^ "'s image, bound to " ^ 
                             match maybe_def with
                                 Just(def_idx, def, def_item) -> "a definition called `" ^ def.def_symname ^ "' in linkable " ^
@@ -291,7 +254,7 @@ let mark_fate_of_relocs linkable_idx a simplify_reloc options bindings_by_name i
                         then decide LeaveReloc
                         else
                         (* In what circumstances do we apply the reloc? If it's a final binding. *)
-                        if binding_is_final options b then decide (ApplyReloc(Nothing))
+                        if binding_is_final options b then decide ApplyReloc
                         (* In what circumstances do we MakePIC? If it's a non-absolute relocatable field
                          *     and we're building a shared library. 
                          * 
@@ -406,7 +369,7 @@ let strip_metadata_sections reloc_decisions a img =
      |>
      
 
-let expand_sections_for_one_image a options bindings_by_name linkable_idx item = 
+let expand_sections_for_one_image a options bindings_by_name linkable_idx item strip_relocs = 
     match item with
     (RelocELF(img), (fname, blob, origin), input_opts) -> 
         (*let _ = List.foldl (fun _ -> fun (isec, shndx) ->  
@@ -427,14 +390,21 @@ let expand_sections_for_one_image a options bindings_by_name linkable_idx item =
                 ()
             ) () (elf_memory_image_sections_with_indices img)
         in*)
-        let ((reloc_decisions : list (reloc_site * binding * reloc_decision)), marked_img) = mark_fate_of_relocs linkable_idx a default_simplify_reloc options bindings_by_name item img
+        let ((reloc_decisions : list (reloc_site * binding * reloc_decision)), marked_img) = mark_fate_of_relocs linkable_idx a options bindings_by_name item img
         in 
         (* Now we have a decision for each reloc: Leave, Apply, MakePIC. Which ones
-         * do we materialize? Only the Leave ones, for now. For each relocation that
-         * we Leave, we figure out its originating section and create a lookalike
-         * in the memory image. We'll need to create .plt and .rela.plt later (FIXME).
+         * do we materialize? Only the Leave ones, for now. To support -q we'll 
+         * have to support tweaking this.
+         * 
+         * For each relocation that we Leave, we figure out its originating section 
+         * and re-create a lookalike in the memory image. 
+         * 
+         * We also get called for the "generated" memory image that contains .plt, 
+         * .rela.plt and so on. We don't strip these, since they actually contain relocs
+         * that need to go directly into the output file. That's what the strip_relocs
+         * argument is for. FIXME: refactor this into two functions.
          *)
-        let stripped_img_with_reloc_sections = strip_metadata_sections reloc_decisions a marked_img
+        let stripped_img_with_reloc_sections = if strip_relocs then strip_metadata_sections reloc_decisions a marked_img else marked_img
         in
         (* Now we have a whole new image! It differs from the old one in that 
          * - non-special sections have been stripped
@@ -449,7 +419,7 @@ let expand_sections_for_one_image a options bindings_by_name linkable_idx item =
         [
             let short_name = short_string_of_linkable_item item
             in
-            (*let _ = errln ("For file " ^ short_name ^ " after stripping, saw section idx " ^ (show shndx) ^ 
+            let _ = errln ("For file " ^ short_name ^ " after stripping, saw section idx " ^ (show shndx) ^ 
                 " with name " ^ isec.elf64_section_name_as_string ^ ", first 20 bytes: " ^ (show (take 20 (
                     (let maybe_elname = elf_memory_image_element_coextensive_with_section shndx stripped_img_with_reloc_sections
                      in
@@ -462,7 +432,7 @@ let expand_sections_for_one_image a options bindings_by_name linkable_idx item =
                             end
                     end
                     )))))
-            in*)
+            in
         InputSection(<| 
             idx   = linkable_idx
         ;   fname = short_name
@@ -505,14 +475,16 @@ val default_merge_generated : abi any_abi_feature -> elf_memory_image -> list (l
 let default_merge_generated a generated_img input_spec_lists = 
     (* We expand the sections in the generated image and hang them off
      * the first linkable item. *) 
-    (*let _ = errln ("Generated image has " ^ (show (Map.size generated_img.elements)) ^ " elements and " ^ (show (Set.size (generated_img.by_tag))) ^ 
+    let _ = errln ("Generated image has " ^ (show (Map.size generated_img.elements)) ^ " elements and " ^ (show (Set.size (generated_img.by_tag))) ^ 
         " metadata elements (sanity: " ^ (show (Set.size (generated_img.by_range))) ^ ")")
-    in*)
+    in
     let dummy_input_item = ("(no file)", Input_list.Reloc(Sequence([])), ((Command_line.File(Command_line.Filename("(no file)"), Command_line.null_input_file_options)), [InCommandLine(0)]))
     in 
     let dummy_linkable_item = (RelocELF(generated_img), dummy_input_item, Input_list.null_input_options)
     in
-    let (_, _, generated_inputs) = expand_sections_for_one_image a {} Map.empty 0 dummy_linkable_item
+    let (_, _, generated_inputs) = expand_sections_for_one_image a {} Map.empty 0 dummy_linkable_item false
+    in
+    let _ = errln ("Generated image yielded " ^ (show (length generated_inputs)) ^ " input items")
     in
     (* okay, hang them off the first one *)
     match input_spec_lists with
@@ -527,7 +499,7 @@ val expand_sections_for_all_inputs : abi any_abi_feature -> set Command_line.lin
     list (list reloc_resolution * elf_memory_image * list Linker_script.input_spec)
 let expand_sections_for_all_inputs a options bindings_by_name merge_generated idx_and_linkables = 
     let (expanded_reloc_lists, expanded_imgs, linker_script_input_lists) = unzip3 (List.map (fun (idx, linkable) -> 
-        expand_sections_for_one_image a options bindings_by_name idx linkable) idx_and_linkables)
+        expand_sections_for_one_image a options bindings_by_name idx linkable true) idx_and_linkables)
     in
     let fnames = List.map (fun (idx, (_, (fname, _, _), _)) -> fname) idx_and_linkables
     in
@@ -626,37 +598,21 @@ let relocate_output_image a bindings_by_name img =
                                 ", symbol name `" ^ x.ref.ref_symname ^ "'")
                             in
                             let symaddr = match x.maybe_def_bound_to with
-                                Just(ApplyReloc(_), Just(bound_def)) ->
+                                Just(ApplyReloc, Just(bound_def)) ->
                                     (* Here we are mapping
                                      * *from* the definition found in an input object during resolution (bound_def)
                                      * *to* the corresponding symbol in the output image, now that we've built it.
+                                     *
+                                     * Q. What about ABI-specific interventions, e.g.
+                                     * redirecting a symbol reference to its GOT or PLT slot?
+                                     * A. Indeed, we need to ask the ABI to give us the target
+                                     * address. The default implementation is just to look for
+                                     * a matching symbol and use its address. But ABIs can do
+                                     * wacky things if they like.
                                      *)
-                                    match find_defs_matching bound_def img with
-                                        [] -> failwith ("internal error: bound-to symbol (name `" ^ bound_def.def_symname ^ "') not defined")
-                                        | (maybe_range, d) :: more ->
-                                            let v = 
-                                                match maybe_range with 
-                                                    Just(el_name, (start, len)) ->
-                                                    match element_and_offset_to_address (el_name, start) img with
-                                                        Just a -> a
-                                                        | Nothing -> failwith "internal error: could not get address for symbol"
-                                                    end
-                                                    | Nothing ->
-                                                        (* okay, it'd better be an ABS symbol. *)
-                                                        if natural_of_elf64_half d.def_syment.elf64_st_shndx = shn_abs
-                                                            then natural_of_elf64_addr d.def_syment.elf64_st_value
-                                                            else failwith "no range for non-ABS symbol"
-                                                end
-                                            in
-                                            match more with 
-                                                [] -> v
-                                                | _ -> let _ = errln ("FIXME: internal error: more than one def range equalling bound def " ^
-                                                    "in section " ^ el_name)
-                                                    in v
-                                            end
-                                    end
+                                    a.get_reloc_symaddr bound_def img x.maybe_reloc
                                 | Nothing -> failwith "no def found for bound-to symbol"
-                                | Just(ApplyReloc(_), Nothing) -> 
+                                | Just(ApplyReloc, Nothing) -> 
                                     let _ = errln "No definition, so we think this is a weak reference; giving it value 0."
                                     in
                                     (* CHECK: does the syment say it's weak? *)

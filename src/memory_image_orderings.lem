@@ -233,3 +233,30 @@ let defined_symbols img =
             SymbolDef(ent) -> Just ent
             | _ -> failwith "impossible: non-symbol def in list of symbol defs"
         end) all_symbol_tags
+
+
+let default_get_reloc_symaddr bound_def_in_input output_img maybe_reloc = 
+    match find_defs_matching bound_def_in_input output_img with
+        [] -> failwith ("internal error: bound-to symbol (name `" ^ bound_def_in_input.def_symname ^ "') not defined")
+        | (maybe_range, d) :: more ->
+            let v = 
+                match maybe_range with 
+                    Just(el_name, (start, len)) ->
+                    match element_and_offset_to_address (el_name, start) output_img with
+                        Just a -> a
+                        | Nothing -> failwith "internal error: could not get address for symbol"
+                    end
+                    | Nothing ->
+                        (* okay, it'd better be an ABS symbol. *)
+                        if natural_of_elf64_half d.def_syment.elf64_st_shndx = shn_abs
+                            then natural_of_elf64_addr d.def_syment.elf64_st_value
+                            else failwith "no range for non-ABS symbol"
+                end
+            in
+            match more with 
+                [] -> v
+                | _ -> let _ = errln ("FIXME: internal error: more than one def matching bound def `" ^
+                    bound_def_in_input.def_symname ^ "'")
+                    in v
+            end
+    end

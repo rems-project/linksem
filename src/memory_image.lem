@@ -188,7 +188,7 @@ instance (Ord reloc_site)
 end
     
 type reloc_decision = LeaveReloc
-                    | ApplyReloc of maybe (natural * symbol_reference * reloc_site) (* change before apply *)
+                    | ApplyReloc
                     | ChangeRelocTo of (natural * symbol_reference * reloc_site)
                     (* | MakePIC    -- is now a kind of ChangeRelocTo *)
 
@@ -347,6 +347,7 @@ type abi 'abifeature = (* forall 'abifeature. *)
     ; pad_code           : natural -> list byte
     ; generate_support   : (* list (list reloc_site_resolution) ->  *)list (string * annotated_memory_image 'abifeature) -> annotated_memory_image 'abifeature
     ; concretise_support : annotated_memory_image 'abifeature -> annotated_memory_image 'abifeature
+    ; get_reloc_symaddr  : symbol_definition -> annotated_memory_image 'abifeature -> maybe reloc_site -> natural
     |>
 
 val align_up_to : natural -> natural -> natural
@@ -608,7 +609,9 @@ let tag_image t el_name el_offset tag_len img =
 
 val address_to_element_and_offset : forall 'abifeature. natural -> annotated_memory_image 'abifeature -> maybe (string * natural)
 let address_to_element_and_offset query_addr img = 
-    (* Find the element with the highest address <= addr *)
+    (* Find the element with the highest address <= addr.
+     * What about zero-length elements?
+     * Break ties on the bigger size. *)
     let (maybe_highest_le : maybe (natural * string * element))
      = List.foldl (fun maybe_current_max_le -> (fun (el_name, el_rec) ->
         let _ = errln ("Saw element named `" ^ el_name ^ " with startpos " ^ (
@@ -727,7 +730,7 @@ val natural_to_le_byte_list_padded_to : natural -> natural -> list byte
 let rec natural_to_le_byte_list_padded_to width n = 
     let bytes = natural_to_le_byte_list n
     in 
-    replicate (width - length bytes) (byte_of_natural 0)
+    bytes ++ (replicate (width - length bytes) (byte_of_natural 0))
 
 val n2i : natural -> integer
 let n2i = integerFromNatural

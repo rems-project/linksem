@@ -124,10 +124,10 @@ type retain_policy
 type output_section_composition_element
   = IncludeInputSection of (retain_policy * input_section_rec)
   | IncludeCommonSymbol of (retain_policy * string (* file *) * natural (* linkable_idx *) * symbol_definition * elf_memory_image)
-  (*| Hole of address_expr_fn (* compute the next addr to continue layout at *)*)
+  | Hole of address_expr_fn (* compute the next addr to continue layout at *)
   | ProvideSymbol of (symbol_def_policy * string * symbol_spec)
-
-type sort_policy
+and
+sort_policy
   = DefaultSort (* Use command line sort option, else "seen" order *)
   | SeenOrder (* Always use "seen" order *)
   | ByName
@@ -135,16 +135,16 @@ type sort_policy
   | ByAlignment
   | ByAlignmentThenName
   | ByInitPriority
-
+and
 (* This mirrors the OutputSection constructor, except that the script elements have become
  * output_section_composition_elements, and we might store the size here. *)
-type output_section_spec =
+output_section_spec =
   OutputSectionSpec of (output_guard * maybe natural * string * (list output_section_composition_element))
-
-type allocated_sections_map =
+and
+allocated_sections_map =
   Map.map string (output_section_spec (* OutputSection element idx *) * natural)
-
-type address_expr_fn
+and
+address_expr_fn
   = AddressExprFn of (natural -> allocated_sections_map -> natural)
 
 type script_element =
@@ -1273,6 +1273,9 @@ let symbol_def_for_provide_symbol name size info other linker_script_linkable_id
         ; def_linkable_idx = linker_script_linkable_idx
     |>
 
+val assign_dot_to_itself : address_expr_fn
+let assign_dot_to_itself = AddressExprFn (fun dot -> fun _ -> dot)
+
 val build_image : 
     elf_memory_image ->          (* accumulator *)
     natural ->                   (* location counter *)
@@ -1311,7 +1314,7 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
             )
             in
             let (concatenated_content, final_addr, new_range_tag_pairs) = List.foldl (fun (accum_pat, accum_current_addr, accum_meta) -> (fun (comp_el, comp_addr) ->
-                let _ = errln ("Adding an element to composition of output section `" ^ secname ^ "'")
+                let _ = errln ("Adding an element to composition of output section `" ^ secname ^ "', current address 0x" ^ (hex_string_of_natural accum_current_addr))
                 in
                 let make_line = fun namestr -> (fun addrstr -> (fun szstr -> (fun rhs -> (
                     (space_padded_and_maybe_newline 16 (" " ^ namestr)) ^ 
@@ -1618,7 +1621,7 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                                                                             ))
                                                                     in
                                                                     let new_bound_to = match matching_possibles with
-                                                                        [] -> Just(ApplyReloc(Nothing), Nothing)
+                                                                        [] -> Just(ApplyReloc, Nothing)
                                                                         | [(bi, ((rl, r, ri), maybe_d))] -> 
                                                                             Just(decision, 
                                                                                 match maybe_d with 
@@ -1659,11 +1662,30 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                                             end (* match tag *) 
                                         ) (Set.fromList ranges_and_tags) (* end mapMaybe fn *)
                                     in
-                                    (irec.isec.elf64_section_size, 
-                                        let _ = errln ("Saw first 20 bytes of section " ^ irec.isec.elf64_section_name_as_string ^
-                                            " from " ^ irec.fname ^ " as " ^ (show (take 20 el.contents)))
-                                        in
-                                        el.contents, new_ranges_and_tags)
+                                    let isec_sz = irec.isec.elf64_section_size in
+                                    let maybe_el_sz = el.length in
+                                    let contents_sz = length el.contents in
+                                    let (actual_sz, padded_contents) = 
+                                        match maybe_el_sz with
+                                            Just el_sz -> 
+                                                let diff = el_sz - contents_sz in
+                                                if diff < 0 then
+                                                    (* contents greater than what the el says, so chop the end off *)
+                                                    let _ = Missing_pervasives.errln ("Warning: size mismatch for section " ^ irec.isec.elf64_section_name_as_string ^
+                                                       " from " ^ irec.fname)
+                                                    in
+                                                    (el_sz, take el_sz el.contents)
+                                                else (el_sz, el.contents ++ replicate diff Nothing)
+                                            | Nothing -> 
+                                                if length el.contents <> isec_sz 
+                                                then failwith "input section size not equal to its content pattern length"
+                                                else (isec_sz, el.contents)
+                                        end
+                                    in
+                                    let _ = errln ("Saw first 20 bytes of section " ^ irec.isec.elf64_section_name_as_string ^
+                                                       " from " ^ irec.fname ^ " as " ^ (show (take 20 padded_contents)))
+                                    in
+                                    (actual_sz, padded_contents, new_ranges_and_tags)
                          | _     -> failwith "impossible: no such element"
                        end (* match Map.lookup idstr img.elements *)
                     end (* match maybe_secname *)
@@ -1698,12 +1720,12 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                         in
                         (next_addr - addr, content, {}) *)
                     | ProvideSymbol(pol, name, (size, info, other)) -> 
-                        let symaddr = pos (* FIXME: support others *)
+                        let symaddr = accum_current_addr (* FIXME: support others *)
                         in
                         let _ = Missing_pervasives.outln (make_line "" (hex_string_of_natural symaddr) "" ("PROVIDE (" ^ name ^ ", .)"))
                         in
                         ((* sz *) 0, (* comp_el_pat *) [],  (* this_el_meta *) {(
-                            Just(secname, ((pos - output_section_start_addr), 0)), 
+                            Just(secname, ((symaddr - output_section_start_addr), 0)), 
                             SymbolDef(symbol_def_for_provide_symbol name size info other linker_script_linkable_idx)
                             )}
                         )
@@ -2061,22 +2083,96 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                     )
                     in
                     (* Do we actually want to add an output section? Skip empty sections. 
-                     * FIXME: actually heed the proper ld semantics for empty sections (e.g. ". = ." will
-                     * force output). *)
+                     * CARE: we actually want to heed the proper ld semantics for empty sections 
+                     * (e.g. ". = ." will force output). From the GNU ld manual:
+                     
+                        The linker will not normally create output sections with no contents.
+                        This is for convenience when referring to input sections that may or
+                        may not be present in any of the input files.  For example:
+                             .foo : { *(.foo) }
+                           will only create a `.foo' section in the output file if there is a
+                        `.foo' section in at least one input file, and if the input sections
+                        are not all empty.  Other link script directives that allocate space in
+                        an output section will also create the output section.  So too will
+                        assignments to dot even if the assignment does not create space, except
+                        for `. = 0', `. = . + 0', `. = sym', `. = . + sym' and `. = ALIGN (. !=
+                        0, expr, 1)' when `sym' is an absolute symbol of value 0 defined in the
+                        script.  This allows you to force output of an empty section with `. =
+                        .'.
+
+                           The linker will ignore address assignments ( *note Output Section
+                        Address::) on discarded output sections, except when the linker script
+                        defines symbols in the output section.  In that case the linker will
+                        obey the address assignments, possibly advancing dot even though the
+                        section is discarded.
+                     
+                     * It follows that we might discard the output section,
+                     * but *retain* the symbol definitions within it,
+                     * and keep the dot-advancements that 
+                     * In other words, we care about two things:
+                     * 
+                     * -- whether there are any non-empty input sections, *or* 
+                     *       non-excluded assignments to dot, inside the composition:
+                     *       this controls whether the section is output
+                     
+                     * -- whether the script defines symbols in the section; if so
+                     *       then *even if the section is discarded*
+                     *       we must honour the address assignments,
+                     *       which means using the ending address of do_output_section_layout_starting_at_addr,
+                     *       *and*
+                     *       we must retain the symbol definitions (which now could
+                     *       end up going in some other section? HMM...)
+                     *)
+                    let comp_element_allocates_space = fun comp_el -> match comp_el with
+                        IncludeInputSection(_, irec) ->
+                            let _ = errln ("Saw an input section named `" ^ irec.isec.elf64_section_name_as_string ^ 
+                                "' of size " ^ (show irec.isec.elf64_section_size))
+                            in
+                            irec.isec.elf64_section_size > 0
+                        | IncludeCommonSymbol(retain_pol, fname, idx, def, img) ->
+                            natural_of_elf64_xword def.def_syment.elf64_st_size > 0
+                        | ProvideSymbol(pol, name, spec) -> false
+                        | Hole(AddressExprFn(address_fn)) ->
+                            let assignment_is_excluded = fun f -> 
+                                (* really makes you wish you were programming in Lisp *)
+                                let always_gives_0 = 
+                                    (f 0 outputs_by_name = 0
+                                    && f 42 outputs_by_name = 0)     (* FIXME: this is wrong *)
+                                in
+                                let always_gives_dot = 
+                                    (f 0 outputs_by_name = 0
+                                    && f 42 outputs_by_name = 42)     (* FIXME: this is wrong *)
+                                in
+                                (* FIXME: what are the semantics of function equality in Lem? *)
+                                always_gives_0 || (always_gives_dot && (AddressExprFn(f)) <> assign_dot_to_itself)
+                            in
+                            not (assignment_is_excluded address_fn)
+                    end
+                    in
+                    let section_contains_non_empty_inputs =
+                        List.any comp_element_allocates_space comp
+                    in
                     (* See note in MarkDataSegmentEnd case about script element idx. Short version:
                      * multiple output section stanzas, for a given section name, may be in the script,
                      * but only one was activated by the section composition pass. Ignore the others. *)
-                    let do_output = (seen_script_el_idx = el_idx) && (length comp) > 0
+                    let do_output = (seen_script_el_idx = el_idx) && section_contains_non_empty_inputs
                     in
-                    if do_output
-                    then (
+                    if not do_output then
+                        let _ = errln ("At pos 0x" ^ (hex_string_of_natural pos) ^ ", skipping output section " ^ name ^
+                            " because " ^ (if not section_contains_non_empty_inputs 
+                                        then "it contains no non-empty inputs"
+                                        else "it was excluded by its output guard"))
+                        in
+                        (acc, pos, outputs_by_name)
+                    else (
                         (* let _ = errln ("Before adding output section, we have " ^ (show (count_sections_in_image acc))
                             ^ " sections.")
                         in *)
-                        let _ = errln ("At pos 0x" ^ (hex_string_of_natural pos) ^ ", adding output section " ^ name)
-                        in
                         let (new_pos, new_acc, sec_sz, replacement_output_sec)
                          = add_output_section ((* next_free_section_idx, *) pos, acc) found
+                        in
+                        let _ = errln ("At pos 0x" ^ (hex_string_of_natural pos) ^ ", adding output section " ^ name ^
+                            " composed of " ^ (show (length comp)) ^ " items, new pos is 0x" ^ (hex_string_of_natural new_pos))
                         in
                         (* let _ = errln ("Received from add_output_section a by_range with " ^ (show (Set.size new_acc.by_range))
                             ^ " metadata records of which " ^ (show (Set.size {
@@ -2098,7 +2194,7 @@ let rec build_image acc pos outputs_by_name bindings_by_name script linker_scrip
                             ^ " sections.")
                         in *)
                         (new_acc, new_pos, (Map.insert name (replacement_output_sec, el_idx) (Map.delete name outputs_by_name)))
-                    ) else (acc, pos, outputs_by_name)
+                    )
                 | DiscardInput(selector) -> do_nothing
                 | InputQuery(retainpol, sortpol, selector) -> do_nothing
             end
