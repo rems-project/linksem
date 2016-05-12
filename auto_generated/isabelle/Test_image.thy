@@ -105,8 +105,8 @@ definition meta0  :: "nat \<Rightarrow> ((string*(nat*nat))option*(Abis.any_abi_
 
 
 
-definition img1  :: "nat \<Rightarrow> (Elf_Types_Local.byte)list \<Rightarrow>(Abis.any_abi_feature)annotated_memory_image "  where 
-     " img1 offset instr_bytes = ( 
+definition img1  :: "nat \<Rightarrow> nat \<Rightarrow> (Elf_Types_Local.byte)list \<Rightarrow>(Abis.any_abi_feature)annotated_memory_image "  where 
+     " img1 offset data_size instr_bytes = ( 
     (let initial_img =     
  ((|
         elements = (Map.map_of (List.rev [((''.text''), (|
@@ -116,8 +116,8 @@ definition img1  :: "nat \<Rightarrow> (Elf_Types_Local.byte)list \<Rightarrow>(
           |)),
           ((''.data''), (|
              startpos = (Some(( 4194316 :: nat)))
-           , length1 = (Some(( 8 :: nat)))
-           , contents = (List.map (\<lambda> x .  Some x) (List.replicate(( 8 :: nat)) ((of_nat ((0 :: nat)) :: byte))))
+           , length1 = (Some(( data_size :: nat)))
+           , contents = (List.map (\<lambda> x .  Some x) (List.replicate data_size ((of_nat ((0 :: nat)) :: byte))))
           |))
           ]))
         , by_range = (List.set (meta0 offset))

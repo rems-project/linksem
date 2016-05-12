@@ -36,8 +36,8 @@ definition relocatable_program :: "8 word list" where
 text {* The relocation image that the linker produces internally after relocation.  The relocatable
 program above has now been relocated.  We will use this to populate a memory for the X64 emulation
 below. *}
-definition relocation_image :: "nat \<Rightarrow> Abis.any_abi_feature annotated_memory_image" where
-  "relocation_image addr \<equiv> img1 addr relocatable_program"
+definition relocation_image :: "nat \<Rightarrow> nat \<Rightarrow> Abis.any_abi_feature annotated_memory_image" where
+  "relocation_image addr data_size \<equiv> img1 addr data_size relocatable_program"
 
 text {* Produce an X64 memory (a map from addresses to bytes) out of a memory image that we will
 obtain from the relocation_image above. *}
@@ -95,9 +95,12 @@ definition load_fixed_program_instructions :: "(Zeflags \<Rightarrow> bool optio
        , exception = NoException
        \<rparr>"
 
+text {* An address is "valid" in the correctness statement below whenever it resides within the
+bounds of the data section, as expressed in the predicate below, and the bounds of the data section
+can be fully described using 4 bytes (the width of the address field for the relocation). *}
 definition valid_address :: "nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> bool" where
   "valid_address data_start data_len addr \<equiv>
-     data_start \<le> addr \<and> addr < data_start + data_len"
+     data_start \<le> addr \<and> addr < data_start + data_len \<and> data_start + data_len < 4294967296"
 
 text {* We now have our (rather silly) correctness property, which serves to demonstrate that our
 definitions are capable of supporting formal proof.  If we set the Isabelle execution mechanism up
@@ -106,15 +109,18 @@ two initial states for the X64 emulation out of our fixed and relocated program,
 demonstrate that the contents of memory are thereafter the same. *}
 definition correctness_property :: "bool" where
   "correctness_property \<equiv>
-     \<forall>addr::nat. \<forall>flags :: Zeflags \<Rightarrow> bool option. \<forall>reg :: Zreg \<Rightarrow> 64 word.
+     \<forall>addr data_size::nat. \<forall>flags :: Zeflags \<Rightarrow> bool option. \<forall>reg :: Zreg \<Rightarrow> 64 word.
        let fprogr  = fixed_program addr in
        let text_start   = 4194304 in (* Fixed in Test_image *)
        let data_start   = 4194316 in (* Fixed in Test_image *)
        let offset       = addr - data_start in
-       valid_address data_start 8 addr \<longrightarrow>
+       (* The data section must not be empty, and the total size of that section added to its start address
+          must not overflow a 64-bit word... *)
+       1 \<le> data_size \<longrightarrow>
+       valid_address data_start data_size addr \<longrightarrow>
        (\<forall> x \<in> unats 64.
        MEM (load_fixed_program_instructions flags fprogr reg text_start) (of_nat x) =
-       MEM (load_relocated_program_image flags (elements (relocation_image offset)) reg text_start) (of_nat x))"
+       MEM (load_relocated_program_image flags (elements (relocation_image offset data_size)) reg text_start) (of_nat x))"
 
 subsection {* Useful lemmas and technical definitions *}
 
@@ -127,32 +133,31 @@ orders. *}
 
 text {* Useful lemma for converting a valid_address assertion into a range of possible addresses. *}
 lemma valid_address_elim:
-  fixes addr :: nat
-  assumes "valid_address 4194316 8 addr"
-  shows "addr = 4194316 \<or> addr = 4194317 \<or> addr = 4194318 \<or>
-         addr = 4194319 \<or> addr = 4194320 \<or> addr = 4194321 \<or>
-         addr = 4194322 \<or> addr = 4194323"
-using assms unfolding valid_address_def by auto
+  fixes addr data_size :: "nat"
+  assumes "1 \<le> data_size" and "valid_address 4194316 data_size addr"
+  shows "addr = Suc data_size \<or> (0 \<le> data_size \<and> valid_address 4194316 data_size addr)"
+using assms unfolding valid_address_def by simp
 
-text {* In some key lemmas below we need to show that an address is within the range of a 64-bit
-signed integer.  This lemma converts a valid_address assertion into a proof of that fact. *}
-lemma valid_address_signed_arith:
-  fixes addr :: "nat"
-  shows "valid_address (4194316::nat) (8::nat) addr \<Longrightarrow>
-    ((18446744071562067968::64 word) <=s ((of_nat addr)::64 word) ∧ ((of_nat addr)::64 word) <=s (2147483647::64 word))"
-  apply auto
-  apply(drule valid_address_elim, auto)+
-done
+text {* A technical lemma used for the lemma that immediately follows it.  An address that is
+strictly less than the 4294967296 (32 bit) limit can fit within 4 bytes (the width of the relocation
+address field) when converted to a byte list. *}
+lemma natural_to_le_byte_list_limit:
+  fixes addr :: nat
+  assumes "addr < 4294967296"
+  shows "length (natural_to_le_byte_list addr) \<le> 4"
+using assms by simp
 
 text {* When we apply relocation we need to show that the address can fit within the four byte
 `space' reserved in the instruction's encoding address field.  This lemmas converts a valid_address
 assertion into a proof that this is the case. *}
 lemma valid_address_four_bytes:
-  shows "valid_address 4194316 8 addr \<Longrightarrow> length (natural_to_le_byte_list addr) \<le> 4"
-  apply(drule valid_address_elim)
-  apply(erule disjE, clarify, eval)+
-  apply clarify
-  apply eval
+  fixes data_size addr :: "nat"
+  assumes "valid_address 4194316 data_size addr"
+  shows "length (natural_to_le_byte_list addr) \<le> 4"
+using assms
+  apply(simp only: valid_address_def)
+  apply(rule natural_to_le_byte_list_limit)
+  apply auto
 done
 
 text {* The following is an ugly lemma that is necessary for controlling the unrolling of the for_loop
@@ -286,6 +291,7 @@ lemma concrete_evaluations':
   shows "(ucast ((4194316::64 word) AND mask 8)::8 word) = 12"
     and "ucast ((16384::64 word) AND mask (8::nat)) = (0::8 word)"
     and "ucast ((64::64 word) AND mask (8::nat)) = (64::8 word)"
+    and "ucast ((4194316::64 word) AND mask (8::nat)) = (12::8 word)"
     and "ucast ((4194317::64 word) AND mask (8::nat)) = (13::8 word)"
     and "ucast ((4194318::64 word) AND mask (8::nat)) = (14::8 word)"
     and "ucast ((4194319::64 word) AND mask (8::nat)) = (15::8 word)"
@@ -482,7 +488,7 @@ lemma stringCompare_method_Cons_Nil:
 using stringCompare_method_def by simp
 
 lemma stringCompare_tri:
-  shows "stringGreater x y ∨ stringLess x y ∨ x = y"
+  shows "stringGreater x y \<or> stringLess x y \<or> x = y"
   apply(induction x arbitrary: y)
   apply(case_tac y; clarify)
   apply(simp only: stringLess_def stringCompare_method_Nil_Cons)
@@ -495,7 +501,7 @@ done
 
 lemma stringLess_stringGreater:
   assumes "stringLess x y"
-  shows "¬ stringGreater x y"
+  shows "\<not> stringGreater x y"
 using assms unfolding stringLess_def stringGreater_def
   apply(induction x arbitrary: y)
   apply(case_tac y; clarify)
@@ -695,7 +701,7 @@ using assms
   apply clarify
   apply(simp only: stringCompare_method_def)
   apply(simp only: Let_def)
-  apply(case_tac "ord.lexordp_eq (λx y. nat_of_char x < nat_of_char y) (a # x) (aa # list)"; simp)
+  apply(case_tac "ord.lexordp_eq (\<lambda>x y. nat_of_char x < nat_of_char y) (a # x) (aa # list)"; simp)
   apply auto
 done
 
@@ -1152,8 +1158,8 @@ lemma stringCompare_method_neq_not_EQ_Cons:
 using assms
   apply auto
   apply(auto simp add: stringCompare_method_def Let_def)
-  apply(case_tac "(nat_of_char x < nat_of_char y ∨ ¬ nat_of_char y < nat_of_char x ∧ ord.lexordp_eq (λx y. nat_of_char x < nat_of_char y) xs ys) ∧
-        (nat_of_char y < nat_of_char x ∨ ¬ nat_of_char x < nat_of_char y ∧ ord.lexordp_eq (λx y. nat_of_char x < nat_of_char y) ys xs)")
+  apply(case_tac "(nat_of_char x < nat_of_char y \<or> \<not> nat_of_char y < nat_of_char x \<and> ord.lexordp_eq (\<lambda>x y. nat_of_char x < nat_of_char y) xs ys) \<and>
+        (nat_of_char y < nat_of_char x \<or> \<not> nat_of_char x < nat_of_char y \<and> ord.lexordp_eq (\<lambda>x y. nat_of_char x < nat_of_char y) ys xs)")
   apply(simp_all)
   apply(erule conjE)
   apply(erule disjE)
@@ -1164,9 +1170,9 @@ using assms
   apply(erule conjE)+
   apply(simp add: inj_eq inj_nat_of_char)
   apply(erule disjE)
-  apply(case_tac "nat_of_char x < nat_of_char y ∨ ¬ nat_of_char y < nat_of_char x ∧ ord.lexordp_eq (λx y. nat_of_char x < nat_of_char y) xs ys", simp_all)
-  apply(case_tac "¬ nat_of_char y < nat_of_char x ∧ ord.lexordp_eq (λx y. nat_of_char x < nat_of_char y) xs ys", simp_all)
-  apply(case_tac "nat_of_char x < nat_of_char y ∨ ord.lexordp_eq (λx y. nat_of_char x < nat_of_char y) xs ys", simp_all)
+  apply(case_tac "nat_of_char x < nat_of_char y \<or> \<not> nat_of_char y < nat_of_char x \<and> ord.lexordp_eq (\<lambda>x y. nat_of_char x < nat_of_char y) xs ys", simp_all)
+  apply(case_tac "\<not> nat_of_char y < nat_of_char x \<and> ord.lexordp_eq (\<lambda>x y. nat_of_char x < nat_of_char y) xs ys", simp_all)
+  apply(case_tac "nat_of_char x < nat_of_char y \<or> ord.lexordp_eq (\<lambda>x y. nat_of_char x < nat_of_char y) xs ys", simp_all)
 done
 
 lemma stringCompare_method_neq_not_EQ:
@@ -1185,7 +1191,7 @@ using assms proof(auto)
     thus False using ordering.simps by simp
   next
     fix xs t :: string and x :: char
-    assume IH: "(⋀t. xs ≠ t ⟹ stringCompare_method xs t = EQ ⟹ False)" and "x#xs \<noteq> t" and *: "stringCompare_method (x # xs) t = EQ"
+    assume IH: "(\<And>t. xs \<noteq> t \<Longrightarrow> stringCompare_method xs t = EQ \<Longrightarrow> False)" and "x#xs \<noteq> t" and *: "stringCompare_method (x # xs) t = EQ"
     hence "t = [] \<or> (\<exists>y ys. t = y#ys \<and> (x \<noteq> y \<or> ys \<noteq> xs))" by(metis remove_duplicates.cases)
     thus False
     proof
@@ -1194,16 +1200,16 @@ using assms proof(auto)
       hence "GT = EQ" using stringCompare_method_def by simp
       thus False by simp
     next
-      assume "∃y ys. t = y # ys ∧ (x ≠ y ∨ ys ≠ xs)"
-      from this obtain y ys where "t = y # ys \<and> (x ≠ y ∨ x = y \<and> ys ≠ xs)" by blast
-      hence EQ: "t = y#ys" and C: "(x ≠ y ∨ x = y \<and> ys ≠ xs)" by simp+
+      assume "\<exists>y ys. t = y # ys \<and> (x \<noteq> y \<or> ys \<noteq> xs)"
+      from this obtain y ys where "t = y # ys \<and> (x \<noteq> y \<or> x = y \<and> ys \<noteq> xs)" by blast
+      hence EQ: "t = y#ys" and C: "(x \<noteq> y \<or> x = y \<and> ys \<noteq> xs)" by simp+
       from C show False
       proof
         assume NEQ: "x \<noteq> y"
         hence "stringCompare_method (x#xs) (y#ys) = EQ" using * and EQ by simp
         thus False using stringCompare_method_def NEQ stringCompare_method_neq_not_EQ_Cons by simp
       next
-        assume "x = y \<and> ys ≠ xs"
+        assume "x = y \<and> ys \<noteq> xs"
         hence "x = y" and NEQ: "ys \<noteq> xs" by simp+
         hence "stringCompare_method (x#xs) (x#ys) = EQ" using * and EQ by simp
         hence "stringCompare_method xs ys = EQ" using stringCompare_method_def by simp
@@ -1410,9 +1416,9 @@ lemma compare_elf64_interpreted_segment_refl':
   apply simp
   apply(case_tac "(pairCompare (lexicographicCompareBy (genericCompare op < op =)) (lexicographicCompareBy (genericCompare op < op =))
          ([elf64_segment_type, elf64_segment_size, elf64_segment_memsz, elf64_segment_base, elf64_segment_paddr, elf64_segment_align, elf64_segment_offset],
-          case elf64_segment_flags of (f1, f2, f3) ⇒ [natural_of_bool f1, natural_of_bool f2, natural_of_bool f3])
+          case elf64_segment_flags of (f1, f2, f3) \<Rightarrow> [natural_of_bool f1, natural_of_bool f2, natural_of_bool f3])
          ([elf64_segment_typea, elf64_segment_sizea, elf64_segment_memsza, elf64_segment_basea, elf64_segment_paddra, elf64_segment_aligna, elf64_segment_offseta],
-          case elf64_segment_flagsa of (f1, f2, f3) ⇒ [natural_of_bool f1, natural_of_bool f2, natural_of_bool f3]) =
+          case elf64_segment_flagsa of (f1, f2, f3) \<Rightarrow> [natural_of_bool f1, natural_of_bool f2, natural_of_bool f3]) =
         EQ)")
   apply(subst (asm) pairCompare_refl', simp add: lexicographicCompareBy_refl' genericCompare_refl)
   apply(case_tac elf64_segment_flags; case_tac elf64_segment_flagsa; simp)
@@ -1617,7 +1623,7 @@ lemma anyAbiFeatureCompare_refl':
 done
 
 lemma anyAbiFeatureCompare_tri:
-  shows "anyAbiFeatureCompare x y = GT ∨ anyAbiFeatureCompare x y = LT ∨ x = y"
+  shows "anyAbiFeatureCompare x y = GT \<or> anyAbiFeatureCompare x y = LT \<or> x = y"
   apply(case_tac "anyAbiFeatureCompare x y")
   apply(metis ordering.distinct anyAbiFeatureCompare_refl')+
 done
@@ -1994,41 +2000,26 @@ using assms
 done
 
 lemma nat_le_massage:
-  assumes "addr ≤ l" and "l ≤ Suc (addr)"
+  assumes "addr \<le> l" and "l \<le> Suc (addr)"
   shows "addr = l \<or> Suc addr = l"
 using assms by auto
 
 lemma list_comprehension_singleton:
-  shows "[(x, y) ← [(u, v)]. y = v] = [(u,v)]"
+  shows "[(x, y) \<leftarrow> [(u, v)]. y = v] = [(u,v)]"
 by simp
 
 lemma dom_2:
-  shows "dom [k1 ↦ v1, k2 ↦ v2] = {k1, k2}"
+  shows "dom [k1 \<mapsto> v1, k2 \<mapsto> v2] = {k1, k2}"
 by auto
 
 lemma nth_the_technical:
-  assumes "(4194316::nat) ≤ x" and "x < 4194324"
-  shows "the ([Some 0, Some 0, Some 0, Some 0, Some 0, Some 0, Some 0, Some 0] ! (x - 4194316)) = (0::8 word)"
-using assms
-  apply(case_tac "x = 4194316 \<or> x > 4194316 \<and> x < 4194324")
-  apply auto
-  apply(case_tac "x = 4194317 \<or> x > 4194317 \<and> x < 4194324")
-  apply auto
-  apply(case_tac "x = 4194318 \<or> x > 4194318 \<and> x < 4194324")
-  apply auto
-  apply(case_tac "x = 4194319 \<or> x > 4194319 \<and> x < 4194324")
-  apply auto
-  apply(case_tac "x = 4194320 \<or> x > 4194320 \<and> x < 4194324")
-  apply auto
-  apply(case_tac "x = 4194321 \<or> x > 4194321 \<and> x < 4194324")
-  apply auto
-  apply(case_tac "x = 4194322 \<or> x > 4194322 \<and> x < 4194324")
-  apply auto
-done
+  assumes "4194316 \<le> x" and "x < 4194316 + data_size"
+  shows "the (replicate data_size (Some 0) ! (x - 4194316)) = 0"
+using assms by(induction x; auto)
 
 lemma interval_elim:
   fixes x::nat
-  assumes "4194304 ≤ x" and "x < 4194316"
+  assumes "4194304 \<le> x" and "x < 4194316"
   shows "x = 4194304 \<or> x = 4194305 \<or> x = 4194306 \<or> x = 4194307 \<or>
           x = 4194308 \<or> x = 4194309 \<or> x = 4194310 \<or> x = 4194311 \<or>
           x = 4194312 \<or> x = 4194313 \<or> x = 4194314 \<or> x = 4194315"
@@ -2200,11 +2191,11 @@ unfolding instance_Basic_classes_Ord_Num_natural_dict_def instance_Basic_classes
 done
 
 lemma set_choose_technical_Ref_2:
-  shows "{x ∈ {(SymbolRef ref_and_reloc_rec0, Some (''.text'', (4::nat), (4::nat))), (SymbolDef def_rec0, Some (''.data'', addr, 4))}.
+  shows "{x \<in> {(SymbolRef ref_and_reloc_rec0, Some (''.text'', (4::nat), (4::nat))), (SymbolDef def_rec0, Some (''.data'', addr, 4))}.
       EQ = pairCompare
             (tagCompare
-              ⦇compare_method = anyAbiFeatureCompare, isLess_method = λf1 f2. anyAbiFeatureCompare f1 f2 = LT, isLessEqual_method = λf1 f2. anyAbiFeatureCompare f1 f2 ∈ {LT, EQ},
-                 isGreater_method = λf1 f2. anyAbiFeatureCompare f1 f2 = GT, isGreaterEqual_method = λf1 f2. anyAbiFeatureCompare f1 f2 ∈ {GT, EQ}⦈)
+              \<lparr>compare_method = anyAbiFeatureCompare, isLess_method = \<lambda>f1 f2. anyAbiFeatureCompare f1 f2 = LT, isLessEqual_method = \<lambda>f1 f2. anyAbiFeatureCompare f1 f2 \<in> {LT, EQ},
+                 isGreater_method = \<lambda>f1 f2. anyAbiFeatureCompare f1 f2 = GT, isGreaterEqual_method = \<lambda>f1 f2. anyAbiFeatureCompare f1 f2 \<in> {GT, EQ}\<rparr>)
             (maybeCompare (pairCompare (compare_method instance_Basic_classes_Ord_string_dict) (pairCompare (genericCompare op < op =) (genericCompare op < op =)))) x
             (SymbolRef ref_and_reloc_rec0, Some (''.text'', 4, 4))} = {(SymbolRef ref_and_reloc_rec0, Some (''.text'', (4::nat), (4::nat)))}"
   apply(rule equalityI)
@@ -2225,9 +2216,9 @@ lemma set_choose_technical_Ref_2:
 done
 
 lemma set_choose_technical_Def_2:
-  shows "{x \<in> {(SymbolRef ⦇ref = ref_rec0,
-                          maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 10, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
-                          maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)⦈,
+  shows "{x \<in> {(SymbolRef \<lparr>ref = ref_rec0,
+                          maybe_reloc = Some \<lparr>ref_relent = \<lparr>elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 10, elf64_ra_addend = 0\<rparr>, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0\<rparr>,
+                          maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)\<rparr>,
              Some (''.text'', 4, 4)),
             (SymbolDef def_rec0, Some (''.data'', addr, 4))} .
       EQ = pairCompare (compare_method (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict))
@@ -2475,9 +2466,9 @@ lemma findLowestKVWithKEquivTo_Def_Ref_Def_technical:
              (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
            (SymbolDef null_symbol_definition) (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict)
-           {(SymbolRef ⦇ref = ref_rec0,
-                          maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 10, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
-                          maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)⦈,
+           {(SymbolRef \<lparr>ref = ref_rec0,
+                          maybe_reloc = Some \<lparr>ref_relent = \<lparr>elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 10, elf64_ra_addend = 0\<rparr>, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0\<rparr>,
+                          maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)\<rparr>,
              Some (''.text'', 4, 4)),
             (SymbolDef def_rec0, Some (''.data'', addr, 4))}
            None = Some (SymbolDef def_rec0, Some (''.data'', addr, 4))"
@@ -2498,9 +2489,9 @@ lemma findLowestKVWithKEquivTo_Def_Ref_Def_technical:
              (instance_Basic_classes_Ord_Maybe_maybe_dict
                (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))"
-    and ?element2.0="(SymbolDef def_rec0, Some (''.data'', addr, 4))" and ?element1.0="(SymbolRef ⦇ref = ref_rec0,
-                          maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 10, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
-                          maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)⦈,
+    and ?element2.0="(SymbolDef def_rec0, Some (''.data'', addr, 4))" and ?element1.0="(SymbolRef \<lparr>ref = ref_rec0,
+                          maybe_reloc = Some \<lparr>ref_relent = \<lparr>elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 10, elf64_ra_addend = 0\<rparr>, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0\<rparr>,
+                          maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)\<rparr>,
              Some (''.text'', 4, 4))"]])
   apply(rule tup2_dict_preserves_well_behavedness)
   apply(rule tag_dict_preserves_well_behavedness)
@@ -2515,9 +2506,9 @@ lemma findLowestKVWithKEquivTo_Def_Ref_Def_technical:
     instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def pairCompare.simps maybeCompare.simps tagCompare.simps)
   apply(simp only: pairGreater_def pairLess.simps Ord_class.simps tagCompare.simps, simp)
   apply(subst option.case_cong_weak[where option'="Some ({(SymbolDef def_rec0, Some (''.data'', addr, 4))},
-          (SymbolRef ⦇ref = ref_rec0,
-                        maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 10, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
-                        maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)⦈,
+          (SymbolRef \<lparr>ref = ref_rec0,
+                        maybe_reloc = Some \<lparr>ref_relent = \<lparr>elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 10, elf64_ra_addend = 0\<rparr>, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0\<rparr>,
+                        maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)\<rparr>,
            Some (''.text'', 4, 4)),
           {})"], assumption)
   apply(simp only: option.case split tagEquiv.simps if_False)
@@ -2537,9 +2528,9 @@ lemma findLowestKVWithKEquivTo_Def_Ref_Def_technical:
   apply(rule refl)
   apply(simp only: tagEquiv.simps)
   apply(subst option.case_cong_weak[where option'="Some ({}, (SymbolDef def_rec0, Some (''.data'', addr, 4)),
-          {(SymbolRef ⦇ref = ref_rec0,
-                         maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 10, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
-                         maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)⦈,
+          {(SymbolRef \<lparr>ref = ref_rec0,
+                         maybe_reloc = Some \<lparr>ref_relent = \<lparr>elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 10, elf64_ra_addend = 0\<rparr>, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0\<rparr>,
+                         maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)\<rparr>,
             Some (''.text'', 4, 4))})"], assumption)
   apply(simp only: option.case split)
   apply(simp only: tagEquiv.simps if_True split Let_def)
@@ -2559,9 +2550,9 @@ lemma findHighestKVWithKEquivTo_Def_Ref_Def_technical:
                    (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                      (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
                  (SymbolDef null_symbol_definition) (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict)
-                 {(SymbolRef ⦇ref = ref_rec0,
-                                maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 10, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
-                                maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)⦈,
+                 {(SymbolRef \<lparr>ref = ref_rec0,
+                                maybe_reloc = Some \<lparr>ref_relent = \<lparr>elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 10, elf64_ra_addend = 0\<rparr>, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0\<rparr>,
+                                maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)\<rparr>,
                    Some (''.text'', 4, 4)),
                   (SymbolDef def_rec0, Some (''.data'', addr, 4))}
                  None = Some (SymbolDef def_rec0, Some (''.data'', addr, 4))"
@@ -2582,9 +2573,9 @@ lemma findHighestKVWithKEquivTo_Def_Ref_Def_technical:
              (instance_Basic_classes_Ord_Maybe_maybe_dict
                (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict
                  (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict))))"
-    and ?element2.0="(SymbolDef def_rec0, Some (''.data'', addr, 4))" and ?element1.0="(SymbolRef ⦇ref = ref_rec0,
-                          maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 10, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
-                          maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)⦈,
+    and ?element2.0="(SymbolDef def_rec0, Some (''.data'', addr, 4))" and ?element1.0="(SymbolRef \<lparr>ref = ref_rec0,
+                          maybe_reloc = Some \<lparr>ref_relent = \<lparr>elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 10, elf64_ra_addend = 0\<rparr>, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0\<rparr>,
+                          maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)\<rparr>,
              Some (''.text'', 4, 4))"]])
   apply(rule tup2_dict_preserves_well_behavedness)
   apply(rule tag_dict_preserves_well_behavedness)
@@ -2599,9 +2590,9 @@ lemma findHighestKVWithKEquivTo_Def_Ref_Def_technical:
     instance_Basic_classes_Ord_Abis_any_abi_feature_dict_def pairCompare.simps maybeCompare.simps tagCompare.simps)
   apply(simp only: pairGreater_def pairLess.simps Ord_class.simps tagCompare.simps, simp)
   apply(subst option.case_cong_weak[where option'="Some ({(SymbolDef def_rec0, Some (''.data'', addr, 4))},
-          (SymbolRef ⦇ref = ref_rec0,
-                        maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 10, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
-                        maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)⦈,
+          (SymbolRef \<lparr>ref = ref_rec0,
+                        maybe_reloc = Some \<lparr>ref_relent = \<lparr>elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 10, elf64_ra_addend = 0\<rparr>, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0\<rparr>,
+                        maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)\<rparr>,
            Some (''.text'', 4, 4)),
           {})"], assumption)
   apply(simp only: option.case split tagEquiv.simps if_False)
@@ -2621,9 +2612,9 @@ lemma findHighestKVWithKEquivTo_Def_Ref_Def_technical:
   apply(rule refl)
   apply(simp only: tagEquiv.simps)
   apply(subst option.case_cong_weak[where option'="Some ({}, (SymbolDef def_rec0, Some (''.data'', addr, 4)),
-          {(SymbolRef ⦇ref = ref_rec0,
-                         maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 10, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
-                         maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)⦈,
+          {(SymbolRef \<lparr>ref = ref_rec0,
+                         maybe_reloc = Some \<lparr>ref_relent = \<lparr>elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 10, elf64_ra_addend = 0\<rparr>, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0\<rparr>,
+                         maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)\<rparr>,
             Some (''.text'', 4, 4))})"], assumption)
   apply(simp only: option.case split tagEquiv.simps if_True Let_def)
   apply(subst findHighestKVWithKEquivTo.simps)
@@ -2668,8 +2659,8 @@ lemma lookupBy0_Def_Def_singleton:
   shows "lookupBy0 (instance_Basic_classes_Ord_Memory_image_range_tag_dict instance_Basic_classes_Ord_Abis_any_abi_feature_dict)
            (instance_Basic_classes_Ord_Maybe_maybe_dict (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_string_dict (instance_Basic_classes_Ord_tup2_dict instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict)))
            (tagEquiv instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict) (SymbolDef null_symbol_definition)
-           {(SymbolRef ⦇ref = ref_rec0, maybe_reloc = Some ⦇ref_relent = ⦇elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 10, elf64_ra_addend = 0⦈, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0⦈,
-            maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)⦈, Some (''.text'', 4, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 4))} = [(SymbolDef def_rec0, Some (''.data'', addr, 4))]"
+           {(SymbolRef \<lparr>ref = ref_rec0, maybe_reloc = Some \<lparr>ref_relent = \<lparr>elf64_ra_offset = uint64_of_nat 0, elf64_ra_info = 10, elf64_ra_addend = 0\<rparr>, ref_rel_scn = 0, ref_rel_idx = 0, ref_src_scn = 0\<rparr>,
+            maybe_def_bound_to = Some (ApplyReloc, Some def_rec0)\<rparr>, Some (''.text'', 4, 4)), (SymbolDef def_rec0, Some (''.data'', addr, 4))} = [(SymbolDef def_rec0, Some (''.data'', addr, 4))]"
   apply(subst lookupBy0_def)
   apply(subst findLowestKVWithKEquivTo_Def_Ref_Def_technical)
   apply(simp only: option.case)
@@ -2711,13 +2702,13 @@ done
 
 lemma img1_technical:
   assumes "length (natural_to_le_byte_list (4194316 + offset)) \<le> 4"
-  shows "img1 offset [72, 199, 4, 37, 0, 0, 0, 0, 5, 0, 0, 0] =
-          ⦇elements = [''.data'' ↦ ⦇startpos = Some 4194316, length1 = Some 8, contents = [Some 0, Some 0, Some 0, Some 0, Some 0, Some 0, Some 0, Some 0]⦈,
-                       ''.text'' ↦ ⦇startpos = Some 4194304, length1 = Some 12,
-        contents = (([Some 72, Some 199, Some 4, Some 37] @ foldr (λb. op # (Some b)) (natural_to_le_byte_list (4194316 + offset)) []) @
+  shows "img1 offset data_size [72, 199, 4, 37, 0, 0, 0, 0, 5, 0, 0, 0] =
+          \<lparr>elements = [''.data'' \<mapsto> \<lparr>startpos = Some 4194316, length1 = Some data_size, contents = replicate data_size (Some 0)\<rparr>,
+                       ''.text'' \<mapsto> \<lparr>startpos = Some 4194304, length1 = Some 12,
+        contents = (([Some 72, Some 199, Some 4, Some 37] @ foldr (\<lambda>b. op # (Some b)) (natural_to_le_byte_list (4194316 + offset)) []) @
                     replicate (4 - length (natural_to_le_byte_list (4194316 + offset))) (Some (of_nat 0))) @
-                   [Some 5, Some 0, Some 0, Some 0]⦈],
-           by_range = {(Some (''.data'', offset, 4), SymbolDef def_rec0)}, by_tag = {(SymbolDef def_rec0, Some (''.data'', offset, 4))}⦈"
+                   [Some 5, Some 0, Some 0, Some 0]\<rparr>],
+           by_range = {(Some (''.data'', offset, 4), SymbolDef def_rec0)}, by_tag = {(SymbolDef def_rec0, Some (''.data'', offset, 4))}\<rparr>"
 using assms
   apply(simp only: img1_def rev.simps append.simps meta0_def list.set by_tag_from_by_range_def
     list.map map_of.simps fst_def snd_def split)
@@ -2821,33 +2812,33 @@ done
 
 lemma set_comprehension_collapse_miss_lower:
   assumes "x < 4194304"
-  shows "{s. ∃k∈{''.data'', ''.text''}.
-                      Some s = [''.data'' ↦ ⦇startpos = Some 4194316, length1 = Some 8, contents = [Some 0, Some 0, Some 0, Some 0, Some 0, Some 0, Some 0, Some 0]⦈, ''.text'' ↦
-                                ⦇startpos = Some 4194304, length1 = Some 12,
-                                   contents = (([Some 72, Some 199, Some 4, Some 37] @ foldr (λb. op # (Some b)) (natural_to_le_byte_list (4194316 + (addr - 4194316))) []) @
+  shows "{s. \<exists>k\<in>{''.data'', ''.text''}.
+                      Some s = [''.data'' \<mapsto> \<lparr>startpos = Some 4194316, length1 = Some data_size, contents = replicate data_size (Some 0)\<rparr>, ''.text'' \<mapsto>
+                                \<lparr>startpos = Some 4194304, length1 = Some 12,
+                                   contents = (([Some 72, Some 199, Some 4, Some 37] @ foldr (\<lambda>b. op # (Some b)) (natural_to_le_byte_list (4194316 + (addr - 4194316))) []) @
                                                replicate (4 - length (natural_to_le_byte_list (4194316 + (addr - 4194316)))) (Some (of_nat 0))) @
-                                              [Some 5, Some 0, Some 0, Some 0]⦈]
-                                k ∧
-                      the (startpos s) ≤ x ∧ x < the (startpos s) + the (length1 s)} = {}"
+                                              [Some 5, Some 0, Some 0, Some 0]\<rparr>]
+                                k \<and>
+                      the (startpos s) \<le> x \<and> x < the (startpos s) + the (length1 s)} = {}"
 using assms
   apply(auto simp del: foldr.simps natural_to_le_byte_list.simps)
 done
 
 lemma set_comprehension_collapse_hit:
   fixes x :: "nat"
-  assumes "4194304 ≤ x" and "x < 4194316"
-  shows "{s. ∃k∈{''.data'', ''.text''}.
-                  Some s = [''.data'' ↦ ⦇startpos = Some 4194316, length1 = Some 8, contents = [Some 0, Some 0, Some 0, Some 0, Some 0, Some 0, Some 0, Some 0]⦈, ''.text'' ↦
-                            ⦇startpos = Some 4194304, length1 = Some 12,
-                               contents = (([Some 72, Some 199, Some 4, Some 37] @ foldr (λb. op # (Some b)) (natural_to_le_byte_list (4194316 + (addr - 4194316))) []) @
+  assumes "4194304 \<le> x" and "x < 4194316"
+  shows "{s. \<exists>k\<in>{''.data'', ''.text''}.
+                  Some s = [''.data'' \<mapsto> \<lparr>startpos = Some 4194316, length1 = Some data_size, contents = replicate data_size (Some 0)\<rparr>, ''.text'' \<mapsto>
+                            \<lparr>startpos = Some 4194304, length1 = Some 12,
+                               contents = (([Some 72, Some 199, Some 4, Some 37] @ foldr (\<lambda>b. op # (Some b)) (natural_to_le_byte_list (4194316 + (addr - 4194316))) []) @
                                            replicate (4 - length (natural_to_le_byte_list ((4194316::nat) + (addr - 4194316)))) (Some (of_nat 0))) @
-                                          [Some 5, Some 0, Some 0, Some 0]⦈]
-                            k ∧
-                  the (startpos s) ≤ unat ((of_nat x)::64 word) ∧ unat ((of_nat x)::64 word) < the (startpos s) + the (length1 s)} =
-  { ⦇startpos = Some 4194304, length1 = Some 12,
-                               contents = (([Some 72, Some 199, Some 4, Some 37] @ foldr (λb. op # (Some b)) (natural_to_le_byte_list (4194316 + (addr - 4194316))) []) @
+                                          [Some 5, Some 0, Some 0, Some 0]\<rparr>]
+                            k \<and>
+                  the (startpos s) \<le> unat ((of_nat x)::64 word) \<and> unat ((of_nat x)::64 word) < the (startpos s) + the (length1 s)} =
+  { \<lparr>startpos = Some 4194304, length1 = Some 12,
+                               contents = (([Some 72, Some 199, Some 4, Some 37] @ foldr (\<lambda>b. op # (Some b)) (natural_to_le_byte_list (4194316 + (addr - 4194316))) []) @
                                            replicate (4 - length (natural_to_le_byte_list (4194316 + (addr - 4194316)))) (Some (of_nat 0))) @
-                                          [Some 5, Some 0, Some 0, Some 0]⦈ }"
+                                          [Some 5, Some 0, Some 0, Some 0]\<rparr> }"
 using assms
   apply(auto simp del: foldr.simps natural_to_le_byte_list.simps)
   apply(subst (asm) word_unat.Abs_inverse, simp only: unats_def, simp)+
@@ -2857,61 +2848,136 @@ using assms
 done
 
 lemma set_comprehension_elim_text_technical:
-  assumes "4194304 ≤ x" and "x < 4194316"
-  shows "{s. ∃k∈{''.data'', ''.text''}.
-          Some s = [''.data'' ↦ ⦇startpos = Some 4194316, length1 = Some 8, contents = [Some 0, Some 0, Some 0, Some 0, Some 0, Some 0, Some 0, Some 0]⦈,
-                    ''.text'' ↦ ⦇startpos = Some 4194304, length1 = Some 12,
-                                  contents = (([Some 72, Some 199, Some 4, Some 37] @ foldr (λb. op # (Some b)) (natural_to_le_byte_list (4194316 + (addr - 4194316))) []) @
-                                              replicate (4 - length (natural_to_le_byte_list (4194316 + (addr - 4194316)))) (Some (of_nat 0))) @ [Some 5, Some 0, Some 0, Some 0]⦈]
-                      k ∧ the (startpos s) ≤ x ∧ x < the (startpos s) + the (length1 s)} = {⦇startpos = Some 4194304, length1 = Some 12,
-                                  contents = (([Some 72, Some 199, Some 4, Some 37] @ foldr (λb. op # (Some b)) (natural_to_le_byte_list (4194316 + (addr - 4194316))) []) @
-                                              replicate (4 - length (natural_to_le_byte_list (4194316 + (addr - 4194316)))) (Some (of_nat 0))) @ [Some 5, Some 0, Some 0, Some 0]⦈}"
+  assumes "4194304 \<le> x" and "x < 4194316"
+  shows "{s. \<exists>k\<in>{''.data'', ''.text''}.
+          Some s = [''.data'' \<mapsto> \<lparr>startpos = Some 4194316, length1 = Some data_size, contents = replicate data_size (Some 0)\<rparr>,
+                    ''.text'' \<mapsto> \<lparr>startpos = Some 4194304, length1 = Some 12,
+                                  contents = (([Some 72, Some 199, Some 4, Some 37] @ foldr (\<lambda>b. op # (Some b)) (natural_to_le_byte_list (4194316 + (addr - 4194316))) []) @
+                                              replicate (4 - length (natural_to_le_byte_list (4194316 + (addr - 4194316)))) (Some (of_nat 0))) @ [Some 5, Some 0, Some 0, Some 0]\<rparr>]
+                      k \<and> the (startpos s) \<le> x \<and> x < the (startpos s) + the (length1 s)} =
+  {\<lparr>startpos = Some 4194304, length1 = Some 12,
+    contents = (([Some 72, Some 199, Some 4, Some 37] @ foldr (\<lambda>b. op # (Some b)) (natural_to_le_byte_list (4194316 + (addr - 4194316))) []) @
+    replicate (4 - length (natural_to_le_byte_list (4194316 + (addr - 4194316)))) (Some (of_nat 0))) @ [Some 5, Some 0, Some 0, Some 0]\<rparr>}"
 using assms
   apply(auto simp del: foldr.simps natural_to_le_byte_list.simps)
 done
+
+declare [[show_types]]
+
+lemma valid_address_minus_rearrange:
+  assumes "valid_address start data_size addr"
+  shows "start + (addr - start) = addr"
+using assms unfolding valid_address_def by simp
 
 lemma set_comprehension_elim_data_technical:
-  assumes "4194316 ≤ x" and "x < 4194324"
-  shows "{s. ∃k∈{''.data'', ''.text''}.
-                      Some s = [''.data'' ↦ ⦇startpos = Some 4194316, length1 = Some 8, contents = [Some 0, Some 0, Some 0, Some 0, Some 0, Some 0, Some 0, Some 0]⦈, ''.text'' ↦
-                                ⦇startpos = Some 4194304, length1 = Some 12,
-                                   contents = (([Some 72, Some 199, Some 4, Some 37] @ foldr (λb. op # (Some b)) (natural_to_le_byte_list (4194316 + (addr - 4194316))) []) @
+  fixes data_size addr x :: "nat"
+  shows "valid_address (4194316::nat) data_size addr \<Longrightarrow>
+          4194316 \<le> x \<Longrightarrow> x < 4194316 + data_size \<Longrightarrow>
+                   {s. \<exists>k\<in>{''.data'', ''.text''}.
+                      Some s = [''.data'' \<mapsto> \<lparr>startpos = Some 4194316, length1 = Some data_size, contents = replicate data_size (Some 0)\<rparr>,
+                                ''.text'' \<mapsto> \<lparr>startpos = Some 4194304, length1 = Some 12,
+                                             contents = (([Some 72, Some 199, Some 4, Some 37] @ foldr (\<lambda>b. op # (Some b)) (natural_to_le_byte_list (4194316 + (addr - 4194316))) []) @
+                                               replicate (4 - length (natural_to_le_byte_list (4194316 + (addr - 4194316)))) ((Some (of_nat 0)::8 word option))) @ [Some 5, Some 0, Some 0, Some 0]\<rparr>]
+                       k \<and> the (startpos s) \<le> unat ((of_nat x)::64 word) \<and> unat ((of_nat x)::64 word) < the (startpos s) + the (length1 s)} =
+    {\<lparr>startpos = Some 4194316, length1 = Some data_size, contents = replicate data_size (Some 0)\<rparr>}"
+using assms unfolding valid_address_def
+  apply(auto simp del: foldr.simps natural_to_le_byte_list.simps)
+  apply(subst (asm) word_unat.Abs_inverse)+
+  apply(simp add: unats_def valid_address_def)
+  apply(simp add: unats_def valid_address_def)
+  apply(subst (asm) word_unat.Abs_inverse)+
+  apply(simp add: unats_def valid_address_def)
+  apply simp
+  apply(subst (asm) word_unat.Abs_inverse)+
+  apply(simp add: unats_def valid_address_def)
+  apply(simp add: unats_def valid_address_def)
+  apply(subst (asm) word_unat.Abs_inverse)+
+  apply(simp add: unats_def valid_address_def)
+  apply simp
+  apply(subst (asm) word_unat.Abs_inverse)
+  apply(simp add: unats_def valid_address_def)
+  apply(subst (asm) word_unat.Abs_inverse)
+  apply(simp add: unats_def valid_address_def)
+  apply auto
+  apply(subst word_unat.Abs_inverse)
+  apply(simp add: unats_def valid_address_def)
+  apply assumption
+  apply(subst word_unat.Abs_inverse)
+  apply(simp add: unats_def valid_address_def)
+  apply assumption
+done
+  
+lemma set_comprehension_elim_neither_technical:
+  shows "4194316 + data_size \<le> (x::nat) \<Longrightarrow> (x::nat) < 18446744073709551616 \<Longrightarrow> {s. \<exists>k\<in>{''.data'', ''.text''}.
+                      Some s = [''.data'' \<mapsto> \<lparr>startpos = Some 4194316, length1 = Some data_size, contents = replicate data_size (Some 0)\<rparr>, ''.text'' \<mapsto>
+                                \<lparr>startpos = Some 4194304, length1 = Some 12,
+                                   contents = (([Some 72, Some 199, Some 4, Some 37] @ foldr (\<lambda>b. op # (Some b)) (natural_to_le_byte_list (4194316 + (addr - 4194316))) []) @
                                                replicate (4 - length (natural_to_le_byte_list (4194316 + (addr - 4194316)))) (Some (of_nat 0))) @
-                                              [Some 5, Some 0, Some 0, Some 0]⦈]
-                                k ∧
-                      the (startpos s) ≤ unat ((of_nat x)::64 word) ∧ unat ((of_nat x)::64 word) < the (startpos s) + the (length1 s)} = {⦇startpos = Some 4194316, length1 = Some 8, contents = [Some 0, Some 0, Some 0, Some 0, Some 0, Some 0, Some 0, Some 0]⦈}"
-using assms
+                                              [Some 5, Some 0, Some 0, Some 0]\<rparr>]
+                                k \<and>
+                      the (startpos s) \<le> unat ((of_nat x)::64 word) \<and> unat ((of_nat x)::64 word) < the (startpos s) + the (length1 s)} = {}"
   apply(auto simp del: foldr.simps natural_to_le_byte_list.simps)
   apply(subst (asm) word_unat.Abs_inverse, auto simp add: unats_def)+
-  apply(subst word_unat.Abs_inverse, auto simp add: unats_def)+
 done
 
-lemma set_comprehension_elim_neither_technical:
-  shows "4194324 \<le> (x::nat) \<Longrightarrow> (x::nat) < 18446744073709551616 \<Longrightarrow> {s. ∃k∈{''.data'', ''.text''}.
-                      Some s = [''.data'' ↦ ⦇startpos = Some 4194316, length1 = Some 8, contents = [Some 0, Some 0, Some 0, Some 0, Some 0, Some 0, Some 0, Some 0]⦈, ''.text'' ↦
-                                ⦇startpos = Some 4194304, length1 = Some 12,
-                                   contents = (([Some 72, Some 199, Some 4, Some 37] @ foldr (λb. op # (Some b)) (natural_to_le_byte_list (4194316 + (addr - 4194316))) []) @
-                                               replicate (4 - length (natural_to_le_byte_list (4194316 + (addr - 4194316)))) (Some (of_nat 0))) @
-                                              [Some 5, Some 0, Some 0, Some 0]⦈]
-                                k ∧
-                      the (startpos s) ≤ unat ((of_nat x)::64 word) ∧ unat ((of_nat x)::64 word) < the (startpos s) + the (length1 s)} = {}"
-  apply(auto simp del: foldr.simps natural_to_le_byte_list.simps)
-  apply(subst (asm) word_unat.Abs_inverse, auto simp add: unats_def)+
-done
+lemma mask_ucast_technical:
+  shows "ucast (of_nat addr AND mask (8::nat)) = (of_nat (addr mod (256::nat))::8 word)"
+sorry
+
+lemma valid_address_natural_to_le_byte_list_elim:
+  assumes "valid_address 4194316 data_size addr"
+  shows "(\<exists>b1 b2 b3 b4. natural_to_le_byte_list addr = [b1, b2, b3, b4]) \<or>
+         (\<exists>b1 b2 b3. natural_to_le_byte_list addr = [b1, b2, b3])"
+using assms unfolding valid_address_def
+  apply -
+  apply(erule conjE)+
+  apply(rule dec_induct, assumption)
+  apply(rule disjI2)
+  apply(rule exI[where x="12"])
+  apply(rule exI[where x="0"])
+  apply(rule exI[where x="64"])
+  apply eval
+  apply(erule disjE)
+  apply(erule exE)+
+  apply(subst (asm) natural_to_le_byte_list.simps)
+  apply(rule disjI1)
+  apply(rule exI)+
+  apply(simp only: Let_def)
+  apply(case_tac "n div (256::nat) = (0::nat)", simp, clarify)
+sorry
 
 lemma list_eq_discharge_technical:
-  assumes "valid_address 4194316 8 addr" and "4194304 ≤ x ∧ x < 4194316"
+  assumes "4194304 \<le> x \<and> x < 4194316"
   shows "[72, 199, 4, 37, word_extract 7 0 ((of_nat addr)::64 word), word_extract 15 8 ((of_nat addr)::64 word), word_extract 23 16 ((of_nat addr)::64 word), word_extract 31 24 ((of_nat addr)::64 word), 5, 0, 0, 0] ! (x - 4194304) =
-       the (((([Some 72, Some 199, Some 4, Some 37] @ foldr (λb. op # (Some b)) (natural_to_le_byte_list (4194316 + (addr - 4194316))) []) @
-              replicate (4 - length (natural_to_le_byte_list (4194316 + (addr - 4194316)))) (Some (of_nat 0))) @
+       the (((([Some 72, Some 199, Some 4, Some 37] @ foldr (\<lambda>b. op # (Some b)) (natural_to_le_byte_list addr) []) @
+              replicate (4 - length (natural_to_le_byte_list addr)) (Some (of_nat 0))) @
              [Some 5, Some 0, Some 0, Some 0]) !
             (x - 4194304))"
 using assms
-  apply(auto simp del: foldr.simps word_extract.simps natural_to_le_byte_list.simps)
-  apply(drule valid_address_elim)
-  apply(drule interval_elim, simp)
-  apply(((erule disjE)+, clarify, simp add: concrete_evaluations')+, (clarify, simp add: concrete_evaluations'))+
-done
+  apply(simp del: natural_to_le_byte_list.simps word_extract.simps)
+  apply(erule conjE)
+  apply(drule interval_elim, assumption)
+  apply(erule disjE, clarify)
+  apply simp
+  apply(erule disjE, clarify)
+  apply simp
+  apply(erule disjE, clarify)
+  apply simp
+  apply(erule disjE, clarify)
+  apply simp
+  apply(erule disjE, clarify)
+  apply(simp add: mask_ucast_technical)
+  apply(erule disjE, clarify)
+  apply simp
+
+lemma valid_address_64_bit_overflow:
+  assumes "1 \<le> data_size" and "valid_address 4194316 data_size addr"
+  shows "18446744071562067968 <=s of_nat addr \<and> of_nat addr <=s 2147483647"
+using assms unfolding valid_address_def
+  apply simp
+  apply(erule conjE)+
+  apply(rule conjI)
+sorry
 
 text {* Proof of the main correctness theorem. *}
 theorem
@@ -2919,12 +2985,11 @@ theorem
 unfolding correctness_property_def
   apply(rule allI)+
   apply(simp only: Let_def)
-  apply(rule impI)
+  apply(rule impI)+
   apply(rule ballI)
-  apply(frule valid_address_signed_arith)
   apply(subst load_fixed_program_instructions_def)
   apply(simp only: fixed_program_def mov_constant_to_mem_def Let_def)
-  apply(subst encode_Zmov_in_concrete, assumption)
+  apply(subst encode_Zmov_in_concrete, rule valid_address_64_bit_overflow, assumption+)
   apply(rule refl)+
   apply(simp only: relocation_image_def relocatable_program_def
     mov_constant_to_mem_def)
@@ -2932,13 +2997,13 @@ unfolding correctness_property_def
   apply(simp only: concrete_evaluations)
   apply(subst img1_technical)
   apply(rule valid_address_four_bytes)
-  apply(subst add_diff_inverse_nat, drule valid_address_elim, linarith, assumption)
+  apply(subst add_diff_inverse_nat, simp add: valid_address_def, assumption)
   apply(simp only: annotated_memory_image.simps)
   apply(simp only: load_relocated_program_image_def X64_state.ext_inject)
   apply(simp only: X64_state.simps)
   apply(simp only: X64_memory_of_memory_image_def dom_2)
   apply(simp only: Let_def)
-  apply(subgoal_tac "x < 4194304 \<or> x \<ge> 4194304 \<and> x < 4194316 \<or> x \<ge> 4194316 \<and> x < 4194324 \<or> x \<ge> 4194324 \<and> x < 18446744073709551616")
+  apply(subgoal_tac "x < 4194304 \<or> x \<ge> 4194304 \<and> x < 4194316 \<or> x \<ge> 4194316 \<and> x < 4194316 + data_size \<or> x \<ge> 4194316 + data_size \<and> x < 18446744073709551616")
   apply(erule disjE)
   apply(subst build_fixed_program_memory_commute_miss_lower, simp, simp)
   apply(subst word_unat.Abs_inverse, simp only: unats_def, simp)+
@@ -2951,12 +3016,14 @@ unfolding correctness_property_def
   apply(simp only: if_False)
   apply(subst word_unat.Abs_inverse, simp only: unats_def, simp)+
   apply(subst set_comprehension_elim_text_technical, simp, simp)+
-  apply(simp only: the_elem_eq element.simps option.sel)
-  apply(subst list_eq_discharge_technical, assumption+, rule refl)
+  apply(simp only: the_elem_eq element.simps option.sel append.simps)
+  apply(subst list_eq_discharge_technical, simp, simp)
   apply(erule disjE, erule conjE)
   apply(subst build_fixed_program_memory_commute_miss_higher, simp, simp add: unats_def)
-  apply(subst set_comprehension_elim_data_technical, simp, simp)+
-  apply(subst word_unat.Abs_inverse, simp only: unats_def, simp, simp)
+  apply(subst set_comprehension_elim_data_technical, assumption, assumption, assumption)+
+  apply(subst word_unat.Abs_inverse, simp add: unats_def)+
+  apply(subst if_weak_cong[where c=False], simp, simp only: if_False)
+  apply(simp only: the_elem_eq element.simps option.sel)
   apply(simp only: nth_the_technical)
   apply(subst build_fixed_program_memory_commute_miss_higher, simp, simp)+
   apply(subst set_comprehension_elim_neither_technical, simp, simp)+
