@@ -18,7 +18,7 @@ The main contributors to the formalisation are: Stephen Kell, Dominic Mulligan a
 
 Current clients of the formalisation are: Shaked Flur, Kathy Gray, Christopher Pulte, and Susmit Sarkar, authors of the `ppcmem2` tool.
 
-This work is funded by [REMS: Rigorous Engineering of Mainstream Systems](http://http://www.cl.cam.ac.uk/~pes20/rems), EPSRC Programme Grant, EP/K008528/1.
+This work is funded by [REMS: Rigorous Engineering of Mainstream Systems](http://www.cl.cam.ac.uk/~pes20/rems), EPSRC Programme Grant EP/K008528/1.
 
 ## Directory structure
 
