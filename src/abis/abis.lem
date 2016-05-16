@@ -530,8 +530,8 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
                 (Nothing, _) -> Nothing
                 | (Just rr, Just(ApplyReloc, maybe_def)) ->
                     if amd64_reloc_needs_got_slot symref rr maybe_def then
-                        let _ = errln ("Saw a via-GOT symbol reference: to `" ^ symref.ref.ref_symname ^ "' coming from linkable " ^ (show i) ^ " (" ^ 
-                            fname ^ "), logically from section " ^ (show rr.ref_src_scn)) in 
+                        (*let _ = errln ("Saw a via-GOT symbol reference: to `" ^ symref.ref.ref_symname ^ "' coming from linkable " ^ (show i) ^ " (" ^ 
+                            fname ^ "), logically from section " ^ (show rr.ref_src_scn)) in *)
                         Just (symref.ref.ref_symname, maybe_def) 
                     else Nothing
                 | (Just rr, Just(MakePIC, maybe_def)) -> failwith "FIXME: PIC support please"
@@ -541,8 +541,8 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
     in
     let (symnames, maybe_defs) = unzip refs_via_got
     in
-    let _ = errln ("GOT includes defs with names: " ^ (show (Set_extra.toList (Set.fromList symnames))))
-    in
+    (*let _ = errln ("GOT includes defs with names: " ^ (show (Set_extra.toList (Set.fromList symnames))))
+    in*)
     let got_pairs_set = Set.fromList refs_via_got
     in
     let got_defs_set = Set.fromList maybe_defs
@@ -591,7 +591,7 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
                 | (Just rr, Just(ApplyReloc, maybe_def)) ->
                     if amd64_reloc_needs_plt_slot symref rr maybe_def 
                     then 
-                        let _ = if is_ifunc_def maybe_def then
+                        (*let _ = if is_ifunc_def maybe_def then
                          (* we ensure that a PLT entry (specifically .iplt) is generated for the symbol *)
                          errln ("Saw a reference to IFUNC symbol `" ^ symref.ref.ref_symname ^ "'; ref is coming from linkable " ^ (show i) ^ " (" ^ 
                             fname ^ "), relent idx " ^ (show rr.ref_rel_idx) ^ " logically from section " ^ (show rr.ref_src_scn) ) 
@@ -600,7 +600,7 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
                             fname ^ "), relent idx " ^ (show rr.ref_rel_idx) ^ " logically from section " ^ (show rr.ref_src_scn) ^ 
                             match maybe_def with Just _ -> ", with definition" | Nothing -> ", not bound to anything" end
                             )
-                        in
+                        in*)
                         Just(symref.ref.ref_symname, maybe_def) 
                     else Nothing
                 | (Just rr, Just(MakePIC, maybe_def)) -> failwith "FIXME: PIC support please"
@@ -608,8 +608,8 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
          | _ -> failwith "impossible: reloc site tag is not a SymbolRef"
     end) tags_and_ranges) tags_and_ranges_by_image
     in
-    let _ = errln ("Saw " ^ (show (length refs_via_plt)) ^ " relocations of a via-PLT type")
-    in
+    (*let _ = errln ("Saw " ^ (show (length refs_via_plt)) ^ " relocations of a via-PLT type")
+    in*)
     (* account for the optimisations we did on GOT slots *)
     let refs_via_plt_having_got_slot = List.mapMaybe (fun (symname, _) -> 
         match Map.lookup symname got_idx_and_maybe_def_by_symname_map with
@@ -618,20 +618,20 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
             end
         ) refs_via_plt
     in
-    let _ = errln ("Saw " ^ (show (length refs_via_plt_having_got_slot)) ^ " relocations of a via-PLT type where we instantiated a GOT slot for the symbol")
-    in
+    (*let _ = errln ("Saw " ^ (show (length refs_via_plt_having_got_slot)) ^ " relocations of a via-PLT type where we instantiated a GOT slot for the symbol")
+    in*)
     let (plt_symnames, plt_got_idxs, plt_ref_bound_to_maybe_defs) = unzip3 refs_via_plt_having_got_slot
     in
     let plt_symnames_excluding_header = (Set_extra.toList (Set.fromList plt_symnames))
     in
-    let _ = errln ("PLT symnames: " ^ (show plt_symnames_excluding_header))
-    in
+    (*let _ = errln ("PLT symnames: " ^ (show plt_symnames_excluding_header))
+    in*)
     let n_iplt_entries = Set.size got_ifunc_set
         (* The content of the IPLT entries depends on the address assignment of GOT slots
          * and the IFUNCs that they reference. We need to reserve space for them here, though. *)
     in
-    let _ = errln ("We think there should be " ^ (show n_iplt_entries) ^ " PLT entries due to references to IFUNC symbols")
-    in
+    (*let _ = errln ("We think there should be " ^ (show n_iplt_entries) ^ " PLT entries due to references to IFUNC symbols")
+    in*)
     (* let got_entries_referencing_functions =  (List.filter (fun (symname, maybe_def) -> 
             match def with
                 Just d -> d.def_syment
@@ -640,12 +640,12 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
     in *)
     let plt_needs_header_entry = (List.length plt_symnames_excluding_header) > n_iplt_entries
     in
-    let _ = errln ("PLT needs header entry? " ^ (show plt_needs_header_entry))
-    in
+    (*let _ = errln ("PLT needs header entry? " ^ (show plt_needs_header_entry))
+    in*)
     let total_n_plt_entries = (if plt_needs_header_entry then 1 else 0) + (Missing_pervasives.length plt_symnames_excluding_header)
     in
-    let _ = errln ("PLT total entry count: " ^ (show total_n_plt_entries))
-    in
+    (*let _ = errln ("PLT total entry count: " ^ (show total_n_plt_entries))
+    in*)
     let new_by_range = {
         (Just(".plt", (0, 16 * total_n_plt_entries)), AbiFeature(Amd64AbiFeature(Abi_amd64.PLT(
                  mapi (fun plt_entry_idx_not_counting_header -> (fun symname ->
@@ -689,14 +689,14 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
                         let this_plt_slot_base_addr = plt_base_addr + 16 * ((naturalFromNat plt_entry_idx_not_counting_header) 
                             + if plt_needs_header_entry then 1 else 0)
                         in
-                        let _ = Missing_pervasives.errln ("PLT slot base address for symname `" ^ symname ^ "': 0x" ^
+                        (*let _ = Missing_pervasives.errln ("PLT slot base address for symname `" ^ symname ^ "': 0x" ^
                             (hex_string_of_natural this_plt_slot_base_addr))
-                        in
+                        in*)
                         let got_slot_addr = got_base_addr + 8 * got_slot_idx
                         in
-                        let _ = Missing_pervasives.errln ("GOT slot address for symname `" ^ symname ^ "' (idx " ^ (show got_slot_idx) ^ "): 0x" ^
+                        (*let _ = Missing_pervasives.errln ("GOT slot address for symname `" ^ symname ^ "' (idx " ^ (show got_slot_idx) ^ "): 0x" ^
                             (hex_string_of_natural got_slot_addr))
-                        in
+                        in*)
                         let maybe_header_entry_address = if plt_needs_header_entry then Just(plt_base_addr) else Nothing
                         in
                         let content_bytes = 
@@ -715,8 +715,8 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
                                 end
                         ))
                         in
-                        let _ = errln ("Created a PLT entry consisting of " ^ (show (length content_bytes)) ^ " bytes.")
-                        in
+                        (*let _ = errln ("Created a PLT entry consisting of " ^ (show (length content_bytes)) ^ " bytes.")
+                        in*)
                         (this_plt_slot_base_addr, content_bytes)
                         (* 
                         match maybe_def with 
@@ -847,8 +847,8 @@ let amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs =
                |> (Map.insert ".plt" <|
                     startpos = Nothing
                ;    length = let len = 16 * total_n_plt_entries in 
-                        let _ = errln ("PLT length in element: " ^ (show len) ^ " bytes")
-                        in Just (16 * total_n_plt_entries)
+                        (*let _ = errln ("PLT length in element: " ^ (show len) ^ " bytes")
+                        in*) Just (16 * total_n_plt_entries)
                ;    contents = []
                |> (Map.insert ".rela.iplt" <|
                     startpos = Nothing
@@ -973,13 +973,13 @@ let amd64_concretise_support orig_img =
             content
         ) l
         in
-        let _ = errln ("Got " ^ (show (length all_content)) ^ " bytes of PLT content")
-        in
-        let _ = errln ("Generated PLT reserved " ^ (show (match plt_el.length with
+        (*let _ = errln ("Got " ^ (show (length all_content)) ^ " bytes of PLT content")
+        in*)
+        (*let _ = errln ("Generated PLT reserved " ^ (show (match plt_el.length with
             Just n -> n
             | Nothing -> failwith "PLT has no length"
         end)) ^ " bytes of PLT content")
-        in
+        in*)
         let new_plt_el = 
             <| contents = List.map (fun b -> Just b) all_content
              ; startpos = plt_el.startpos
@@ -1000,8 +1000,8 @@ let amd64_concretise_support orig_img =
         in
         let maybe_new_rela_plt_el = match maybe_rela_plt_el with
             Nothing -> (* got no .rela.plt? okay... *) 
-                let _ = errln "No .rela.plt found"
-                in
+                (*let _ = errln "No .rela.plt found"
+                in*)
                 Nothing
             | Just rela_plt_el -> 
                 let got_entry_iplt_widget_for = fun symname -> fun maybe_def -> match maybe_def with
@@ -1055,8 +1055,8 @@ let amd64_concretise_support orig_img =
                 in
                 let new_contents = (List.map (fun b -> Just b) (List.concat new_content_bytelists))
                 in
-                let _ = errln ("Concretised .rela.plt; first 24 bytes: " ^ (show (take 24 new_contents)))
-                in
+                (*let _ = errln ("Concretised .rela.plt; first 24 bytes: " ^ (show (take 24 new_contents)))
+                in*)
                 Just(
                     <| contents = new_contents
                      ; startpos = rela_plt_el.startpos

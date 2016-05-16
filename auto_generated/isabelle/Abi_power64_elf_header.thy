@@ -37,7 +37,7 @@ begin
 (*val is_valid_abi_power64_machine_architecture : nat -> bool*)
 definition is_valid_abi_power64_machine_architecture  :: " nat \<Rightarrow> bool "  where 
      " is_valid_abi_power64_machine_architecture m = (
-  m = id elf_ma_ppc64 )"
+  m =  elf_ma_ppc64 )"
 
 
 (** [is_valid_abi_power64_magic_number magic] checks whether the ELF header's
@@ -49,10 +49,10 @@ definition is_valid_abi_power64_machine_architecture  :: " nat \<Rightarrow> boo
 (*val is_valid_abi_power64_magic_number : list unsigned_char -> endianness -> bool*)
 definition is_valid_abi_power64_magic_number  :: "(Elf_Types_Local.unsigned_char)list \<Rightarrow> endianness \<Rightarrow> bool "  where 
      " is_valid_abi_power64_magic_number magic endian = (
-  (case  index magic (id elf_ii_class) of
+  (case  index magic ( elf_ii_class) of
       None  => False
     | Some cls =>
-      (case  index magic (id elf_ii_data) of
+      (case  index magic ( elf_ii_data) of
           None => False
         | Some ed =>
           (case  endian of

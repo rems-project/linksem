@@ -23,7 +23,7 @@ let default_endianness = Little
   * [e].
   *)
 val string_of_endianness : endianness -> string
-let {ocaml} string_of_endianness e =
+let string_of_endianness e =
   match e with
     | Big    -> "Big"
     | Little -> "Little"

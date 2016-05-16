@@ -98,6 +98,21 @@ definition stb_hiproc  :: " nat "  where
   * OCaml specific definition.
   *)
 (*val string_of_symbol_binding : natural -> (natural -> string) -> (natural -> string) -> string*)
+definition string_of_symbol_binding  :: " nat \<Rightarrow>(nat \<Rightarrow> string)\<Rightarrow>(nat \<Rightarrow> string)\<Rightarrow> string "  where 
+     " string_of_symbol_binding m os proc = (
+  if m = stb_local then
+    (''LOCAL'')
+  else if m = stb_global then
+    (''GLOBAL'')
+  else if m = stb_weak then
+    (''WEAK'')
+  else if (m \<ge> stb_loos) \<and> (m \<le> stb_hios) then
+    os m
+  else if (m \<ge> stb_loproc) \<and> (m \<le> stb_hiproc) then
+    proc m
+  else
+    (''Invalid symbol binding''))"
+
 
 (** Symbol types *)
 
@@ -456,16 +471,42 @@ type_synonym symtab_print_bundle ="
   * of symbol table entry [ent].
   *)
 (*val string_of_elf32_symbol_table_entry : elf32_symbol_table_entry -> string*)
+definition string_of_elf32_symbol_table_entry  :: " elf32_symbol_table_entry \<Rightarrow> string "  where 
+     " string_of_elf32_symbol_table_entry entry = (
+  unlines [    
+(([(Char Nibble0 Nibble9)]) @ ((''Name: '')  @ Elf_Types_Local.string_of_uint32(elf32_st_name   entry)))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Value: '') @ Elf_Types_Local.string_of_uint32(elf32_st_value   entry)))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Size: '')  @ Elf_Types_Local.string_of_uint32(elf32_st_size   entry)))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Info: '')  @ Elf_Types_Local.string_of_unsigned_char(elf32_st_info   entry)))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Other: '') @ Elf_Types_Local.string_of_unsigned_char(elf32_st_other   entry)))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Shndx: '') @ Elf_Types_Local.string_of_uint16(elf32_st_shndx   entry)))
+  ])"
+
   
 (** [string_of_elf64_symbol_table_entry ent] produces a string based representation
   * of symbol table entry [ent].
   *)
 (*val string_of_elf64_symbol_table_entry : elf64_symbol_table_entry -> string*)
+definition string_of_elf64_symbol_table_entry  :: " elf64_symbol_table_entry \<Rightarrow> string "  where 
+     " string_of_elf64_symbol_table_entry entry = (
+  unlines [    
+(([(Char Nibble0 Nibble9)]) @ ((''Name: '')  @ Elf_Types_Local.string_of_uint32(elf64_st_name   entry)))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Info: '')  @ Elf_Types_Local.string_of_unsigned_char(elf64_st_info   entry)))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Other: '') @ Elf_Types_Local.string_of_unsigned_char(elf64_st_other   entry)))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Shndx: '') @ Elf_Types_Local.string_of_uint16(elf64_st_shndx   entry)))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Value: '') @ Elf_Types_Local.string_of_uint64(elf64_st_value   entry)))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Size: '')  @ Elf_Types_Local.string_of_uint64(elf64_st_size   entry)))
+  ])"
+
 
 (** [string_of_elf32_symbol_table stbl] produces a string based representation
   * of symbol table [stbl].
   *)
 (*val string_of_elf32_symbol_table : elf32_symbol_table -> string*)
+definition string_of_elf32_symbol_table  :: "(elf32_symbol_table_entry)list \<Rightarrow> string "  where 
+     " string_of_elf32_symbol_table symtab = (
+  unlines (List.map string_of_elf32_symbol_table_entry symtab))"
+
   
 (** [elf64_null_symbol_table_entry] is the null symbol table entry, with all
   * fields set to zero.
@@ -483,6 +524,22 @@ definition elf64_null_symbol_table_entry  :: " elf64_symbol_table_entry "  where
 
 
 (*val string_of_elf64_symbol_table : elf64_symbol_table -> string*)
+definition string_of_elf64_symbol_table  :: "(elf64_symbol_table_entry)list \<Rightarrow> string "  where 
+     " string_of_elf64_symbol_table symtab = (
+  unlines (List.map string_of_elf64_symbol_table_entry symtab))"
+
+  
+definition instance_Show_Show_Elf_symbol_table_elf32_symbol_table_entry_dict  :: "(elf32_symbol_table_entry)Show_class "  where 
+     " instance_Show_Show_Elf_symbol_table_elf32_symbol_table_entry_dict = ((|
+
+  show_method = string_of_elf32_symbol_table_entry |) )"
+
+
+definition instance_Show_Show_Elf_symbol_table_elf64_symbol_table_entry_dict  :: "(elf64_symbol_table_entry)Show_class "  where 
+     " instance_Show_Show_Elf_symbol_table_elf64_symbol_table_entry_dict = ((|
+
+  show_method = string_of_elf64_symbol_table_entry |) )"
+
 
 (** Reading in symbol table (entries) *)
 

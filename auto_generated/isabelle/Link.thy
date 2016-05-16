@@ -129,8 +129,8 @@ fun def_is_in_reloc  :: " linkable_object*(string*input_blob*input_origin)*input
 declare def_is_in_reloc.simps [simp del]
 
 
-definition retrieve_binding_for_ref  :: " symbol_reference_and_reloc_site \<Rightarrow> 'b \<Rightarrow> 'e \<Rightarrow>((string),(('a*(('b*symbol_reference*'d)*'c))list))Map.map \<Rightarrow>('b*symbol_reference*'d)*'c "  where 
-     " retrieve_binding_for_ref r r_linkable_idx item bindings_by_name = ( 
+definition retrieve_binding_for_ref  :: " 'b Show_class \<Rightarrow> 'd Show_class \<Rightarrow> 'e Show_class \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> 'e \<Rightarrow> 'd \<Rightarrow>((string),(('a*(('e*symbol_reference*'f)*('b*symbol_definition*'c)option))list))Map.map \<Rightarrow>('e*symbol_reference*'f)*('b*symbol_definition*'c)option "  where 
+     " retrieve_binding_for_ref dict_Show_Show_b dict_Show_Show_d dict_Show_Show_e r r_linkable_idx item bindings_by_name = ( 
     (let maybe_found_bs = ( bindings_by_name(ref_symname  (ref   r)))
     in 
     (case  maybe_found_bs of
@@ -138,18 +138,8 @@ definition retrieve_binding_for_ref  :: " symbol_reference_and_reloc_site \<Righ
             (* FIXME: could this actually be an undefined symbol link error perhaps? *)
         | Some bis_and_bs => (case  List.filter (\<lambda> (b_idx, ((b_ref_idx, b_ref, b_ref_item), b_maybe_def)) .  
             if (b_ref_idx = r_linkable_idx) \<and> (b_ref =(ref   r)) then 
-            (*let _ = Missing_pervasives.outln (saw ref from linkable idx  ^ (show r_linkable_idx) 
-                ^ , ref sym scn  ^ (show r.ref.ref_sym_scn) ^ , ref sym idx ^ (show r.ref.ref_sym_idx) 
-                ^ , item  ^ (show item) ^ ; binding to  ^ (
-                    match b_maybe_def with
-                        Just (def_idx, def, def_item) -> linkable idx  ^ (show def_idx) ^ 
-                            , def sym scn  ^ (show def.def_sym_scn) ^ , def sym idx  ^ 
-                            (show def.def_sym_idx)
-                      | Nothing -> no definition
-                    end
-                )
-            )
-            in*) True
+            (let _ = (())
+            in True)
             else False) bis_and_bs of
                   [] => failwith (''impossible: list of bindings does not include symbol reference (filtered list empty)'')
                 | [(bi, b)] => b
@@ -160,6 +150,7 @@ definition retrieve_binding_for_ref  :: " symbol_reference_and_reloc_site \<Righ
 
 
 type_synonym reloc_site_resolution =" reloc_site * binding * reloc_decision "
+
 
 (*val mark_fate_of_relocs : natural -> abi any_abi_feature -> set Command_line.link_option -> 
     binding_map -> linkable_item -> elf_memory_image -> ((list reloc_site_resolution) * elf_memory_image)*)
@@ -260,7 +251,16 @@ definition mark_fate_of_relocs  :: " nat \<Rightarrow>(any_abi_feature)abi \<Rig
                                it's not PIC because that address needs load-time fixup.
                                So actually it's is absolute address again.
                          *)
-                        (let b = (retrieve_binding_for_ref r linkable_idx item bindings_by_name)
+                        (let b = (retrieve_binding_for_ref 
+  instance_Show_Show_Num_natural_dict (instance_Show_Show_tup3_dict
+   instance_Show_Show_Linkable_list_linkable_object_dict
+   (instance_Show_Show_tup3_dict instance_Show_Show_string_dict
+      instance_Show_Show_Input_list_input_blob_dict
+      (instance_Show_Show_tup2_dict
+         Command_line.instance_Show_Show_Command_line_input_unit_dict
+         (instance_Show_Show_list_dict
+            instance_Show_Show_Input_list_origin_coord_dict)))
+   instance_Show_Show_Input_list_input_options_dict) instance_Show_Show_Num_natural_dict r linkable_idx item bindings_by_name)
                         in
                         (let ((ref_idx, _, ref_item), maybe_def) = b
                         in
@@ -269,36 +269,26 @@ definition mark_fate_of_relocs  :: " nat \<Rightarrow>(any_abi_feature)abi \<Rig
                             | None => False (* i.e. the definition, 0, can be linked in *)
                         ))
                         in
-                        (let decide = (\<lambda> decision .  (
-                            (*let _ = errln (Decided to  ^ match decision with
-                                LeaveReloc -> leave
-                                | ApplyReloc -> apply
-                                | MakePIC -> PICify
-                            end ^  relocation in linkable  ^ (show ref_item) ^ 's image, bound to  ^ 
-                            match maybe_def with
-                                Just(def_idx, def, def_item) -> a definition called ` ^ def.def_symname ^ ' in linkable  ^
-                                    (show def_item)
-                                | Nothing -> no definition
-                            end
-                            )
-                            in*)
+                        (let decide = (\<lambda> decision .  (                            
+((let _ = (())
+                            in
                             Set.insert (SymbolRef((|
-                                ref           =(ref   r)
-                                , maybe_reloc =(maybe_reloc   r)
+                                ref           = ((ref   r))
+                                , maybe_reloc = ((maybe_reloc   r))
                                 , maybe_def_bound_to = (Some (decision, 
                                     (case  maybe_def of
                                         Some(def_idx, def1, def_item) => 
-                                                Some (| def_symname =(def_symname   def1)
-                                                      , def_syment  =(def_syment   def1)
-                                                      , def_sym_scn =(def_sym_scn   def1)
-                                                      , def_sym_idx =(def_sym_idx   def1)
+                                                Some (| def_symname = ((def_symname   def1))
+                                                      , def_syment  = ((def_syment   def1))
+                                                      , def_sym_scn = ((def_sym_scn   def1))
+                                                      , def_sym_idx = ((def_sym_idx   def1))
                                                       , def_linkable_idx = def_idx 
                                                       |)
                                         | None => None
                                     )
                                     ))
                                 |)
-                            ), maybe_range) acc_by_tag,                            
+                            ), maybe_range) acc_by_tag)),                            
 ((reloc1, b, decision) # rev_acc_decisions)))
                         in
                         if (building_executable \<and> defined_in_shared_lib)
@@ -321,6 +311,7 @@ definition mark_fate_of_relocs  :: " nat \<Rightarrow>(any_abi_feature)abi \<Rig
                          * The initial reloc is removed! Since PLT means removing relocs from code
                          * and reproducing their effect using a PLT.
                          * That's why we need this special MakePIC behaviour.
+                         * Actually, generalise to a ChangeRelocTo.
                          * 
                          * What about data?
                          * Suppose I have a shared library containing a read-only pointer to <environ>.
@@ -332,7 +323,7 @@ definition mark_fate_of_relocs  :: " nat \<Rightarrow>(any_abi_feature)abi \<Rig
                          * we don't apply the reloc. We'll be removing the reloc. But we *do* need to create 
                          * extra stuff later (PLT, GOT).
                          *)
-                        else if building_shared_library then decide MakePIC
+                        else if building_shared_library then decide (* MakePIC *) (ChangeRelocTo(( 0 :: nat),(ref   r), reloc1)) (* FIXME *)
                         (* The above are non-exclusive and non-exhaustive. Often, more than one option is available,
                          * ABIs / practice makes an arbitrary choice. For example, final bindings
                          * within a library could be realised the PIC way, but aren't (it'd create a 
@@ -346,7 +337,7 @@ definition mark_fate_of_relocs  :: " nat \<Rightarrow>(any_abi_feature)abi \<Rig
         ))
     )) ({}, []) (list_of_set(by_tag   img3)))
     in
-    (List.rev rev_decisions, (| elements =(elements   img3)
+    (List.rev rev_decisions, (| elements = ((elements   img3))
       , by_range = (by_range_from_by_tag new_by_tag), by_tag = new_by_tag
         
       |))))))))"
@@ -397,19 +388,19 @@ definition strip_metadata_sections  :: "(reloc_site*((nat*symbol_reference*linka
     if new_reloc_section_length idx1 isec1 > ( 0 :: nat) then
       ((let new_len = (new_reloc_section_length idx1 isec1) in
        (let new_el = ((| startpos = None , length1 = (Some new_len), contents = 
-                      [] |)) in
-       (let new_isec = ((| elf64_section_name =(elf64_section_name   isec1)
-                        , elf64_section_type =(elf64_section_type   isec1)
-                        , elf64_section_flags =(elf64_section_flags   isec1)
+                      ([]) |)) in
+       (let new_isec = ((| elf64_section_name = ((elf64_section_name   isec1))
+                        , elf64_section_type = ((elf64_section_type   isec1))
+                        , elf64_section_flags = ((elf64_section_flags   isec1))
                         , elf64_section_addr =(( 0 :: nat)) (* should be 0 anyway *)
                         , elf64_section_offset =(( 0 :: nat)) (* ignored *)
                         , elf64_section_size = new_len
-                        , elf64_section_link =(elf64_section_link   isec1)
-                        , elf64_section_info =(elf64_section_info   isec1)
-                        , elf64_section_align =(elf64_section_align   isec1)
-                        , elf64_section_entsize =(elf64_section_entsize   isec1)
+                        , elf64_section_link = ((elf64_section_link   isec1))
+                        , elf64_section_info = ((elf64_section_info   isec1))
+                        , elf64_section_align = ((elf64_section_align   isec1))
+                        , elf64_section_entsize = ((elf64_section_entsize   isec1))
                         , elf64_section_body = Byte_sequence.empty (* ignored *)
-                        , elf64_section_name_as_string =(elf64_section_name_as_string   isec1)
+                        , elf64_section_name_as_string = ((elf64_section_name_as_string   isec1))
                         |)) in
        (let new_meta = (FileFeature (ElfSection (idx1, new_isec))) in
        ((el_name, new_el), (new_meta, Some (el_name, (( 0 :: nat), new_len)))))))))
@@ -425,8 +416,8 @@ definition strip_metadata_sections  :: "(reloc_site*((nat*symbol_reference*linka
 
      
 
-definition expand_sections_for_one_image  :: "(any_abi_feature)abi \<Rightarrow>(Command_line.link_option)set \<Rightarrow>((string),((nat*binding)list))Map.map \<Rightarrow> nat \<Rightarrow> linkable_object*input_item*input_options \<Rightarrow>(reloc_site*binding*reloc_decision)list*(any_abi_feature)annotated_memory_image*(input_spec)list "  where 
-     " expand_sections_for_one_image a options bindings_by_name linkable_idx item = ( 
+definition expand_sections_for_one_image  :: "(any_abi_feature)abi \<Rightarrow>(Command_line.link_option)set \<Rightarrow>((string),((nat*binding)list))Map.map \<Rightarrow> nat \<Rightarrow> linkable_object*input_item*input_options \<Rightarrow> bool \<Rightarrow>(reloc_site*binding*reloc_decision)list*(any_abi_feature)annotated_memory_image*(input_spec)list "  where 
+     " expand_sections_for_one_image a options bindings_by_name linkable_idx item strip_relocs = ( 
     (case  item of
     (RelocELF(img3), (fname1, blob, origin), input_opts) => 
         (*let _ = List.foldl (fun _ -> fun (isec, shndx) ->  
@@ -450,11 +441,18 @@ definition expand_sections_for_one_image  :: "(any_abi_feature)abi \<Rightarrow>
         (let ((reloc_decisions :: (reloc_site * binding * reloc_decision) list), marked_img) = (mark_fate_of_relocs linkable_idx a options bindings_by_name item img3)
         in 
         (* Now we have a decision for each reloc: Leave, Apply, MakePIC. Which ones
-         * do we materialize? Only the Leave ones, for now. For each relocation that
-         * we Leave, we figure out its originating section and create a lookalike
-         * in the memory image. We'll need to create .plt and .rela.plt later (FIXME).
+         * do we materialize? Only the Leave ones, for now. To support -q we'll 
+         * have to support tweaking this.
+         * 
+         * For each relocation that we Leave, we figure out its originating section 
+         * and re-create a lookalike in the memory image. 
+         * 
+         * We also get called for the generated memory image that contains .plt, 
+         * .rela.plt and so on. We don't strip these, since they actually contain relocs
+         * that need to go directly into the output file. That's what the strip_relocs
+         * argument is for. FIXME: refactor this into two functions.
          *)
-        (let stripped_img_with_reloc_sections = (strip_metadata_sections reloc_decisions a marked_img)
+        (let stripped_img_with_reloc_sections = (if strip_relocs then strip_metadata_sections reloc_decisions a marked_img else marked_img)
         in
         (* Now we have a whole new image! It differs from the old one in that 
          * - non-special sections have been stripped
@@ -471,25 +469,12 @@ definition expand_sections_for_one_image  :: "(any_abi_feature)abi \<Rightarrow>
     (\<lambda>(isec1, shndx1) x2 . 
      if True then
        ((let short_name = (short_string_of_linkable_item item) in
-        (*let _ = errln (For file  ^ short_name ^  after stripping, saw section idx  ^ (show shndx) ^ 
-                 with name  ^ isec.elf64_section_name_as_string ^ , first 20 bytes:  ^ (show (take 20 (
-                    (let maybe_elname = elf_memory_image_element_coextensive_with_section shndx stripped_img_with_reloc_sections
-                     in
-                     match maybe_elname with
-                        Nothing -> failwith (impossible: no such section (matching  ^ (show shndx) ^ ))
-                        | Just idstr -> 
-                            match Map.lookup idstr stripped_img_with_reloc_sections.elements with
-                                Just el -> el.contents
-                                | Nothing -> failwith no such element
-                            end
-                    end
-                    )))))
-            in*)
+        (let _ = (()) in
         InputSection
           ((| idx = linkable_idx , fname = short_name
            , img = stripped_img_with_reloc_sections , shndx = shndx1
-           , secname =(elf64_section_name_as_string   isec1) , isec = isec1
-           |)))) # x2 else x2)
+           , secname = ((elf64_section_name_as_string   isec1))
+           , isec = isec1 |))))) # x2 else x2)
     (elf_memory_image_sections_with_indices stripped_img_with_reloc_sections)
     x2))
         @ (
@@ -505,16 +490,7 @@ definition expand_sections_for_one_image  :: "(any_abi_feature)abi \<Rightarrow>
         in*)
         (let x2 = ([]) in  List.foldr
    (\<lambda>def1 x2 . 
-    if
-    (*let _ = Missing_pervasives.outln ((space_padded_and_maybe_newline 20 def.def_symname)
-                ^ (let hexstr = 0x ^ (hex_string_of_natural (natural_of_elf64_xword def.def_syment.elf64_st_size))
-                  in
-                  space_padded_and_maybe_newline 20 hexstr
-                  )
-                ^ 
-                fname)
-            in*)
-    True then
+    if (let _ = (()) in True) then
       Common (linkable_idx, fname1, stripped_img_with_reloc_sections, def1) #
         x2 else x2) common_symbols x2))
         ))
@@ -530,20 +506,21 @@ definition default_merge_generated  :: "(any_abi_feature)abi \<Rightarrow>(any_a
      " default_merge_generated a generated_img input_spec_lists = ( 
     (* We expand the sections in the generated image and hang them off
      * the first linkable item. *) 
-    (*let _ = errln (Generated image has  ^ (show (Map.size generated_img.elements)) ^  elements and  ^ (show (Set.size (generated_img.by_tag))) ^ 
-         metadata elements (sanity:  ^ (show (Set.size (generated_img.by_range))) ^ ))
-    in*)
+    (let _ = (())
+    in
     (let dummy_input_item = ((''(no file)''), Input_list.Reloc(Sequence([])), ((Command_line.File(Command_line.Filename((''(no file)'')), Command_line.null_input_file_options)), [InCommandLine(( 0 :: nat))]))
     in 
     (let dummy_linkable_item = (RelocELF(generated_img), dummy_input_item, Input_list.null_input_options)
     in
-    (let (_, _, generated_inputs) = (expand_sections_for_one_image a {} Map.empty(( 0 :: nat)) dummy_linkable_item)
+    (let (_, _, generated_inputs) = (expand_sections_for_one_image a {} Map.empty(( 0 :: nat)) dummy_linkable_item False)
+    in
+    (let _ = (())
     in
     (* okay, hang them off the first one *)
     (case  input_spec_lists of
         [] => failwith (''link job empty'')
         | first_input_list # more_input_lists => (first_input_list @ generated_inputs) # more_input_lists
-    )))))"
+    )))))))"
 
     (* input_spec_lists *)
 
@@ -554,7 +531,9 @@ definition default_merge_generated  :: "(any_abi_feature)abi \<Rightarrow>(any_a
 definition expand_sections_for_all_inputs  :: "(any_abi_feature)abi \<Rightarrow>(Command_line.link_option)set \<Rightarrow>((string),((nat*binding)list))Map.map \<Rightarrow>((any_abi_feature)abi \<Rightarrow>(any_abi_feature)annotated_memory_image \<Rightarrow>((input_spec)list)list \<Rightarrow>((input_spec)list)list)\<Rightarrow>(nat*(linkable_object*input_item*input_options))list \<Rightarrow>((reloc_site*binding*reloc_decision)list*(any_abi_feature)annotated_memory_image*(input_spec)list)list "  where 
      " expand_sections_for_all_inputs a options bindings_by_name merge_generated idx_and_linkables = ( 
     (let (expanded_reloc_lists, expanded_imgs, linker_script_input_lists) = (unzip3 (List.map (\<lambda> (idx1, linkable) .  
-        expand_sections_for_one_image a options bindings_by_name idx1 linkable) idx_and_linkables))
+        expand_sections_for_one_image a options bindings_by_name idx1 linkable True) idx_and_linkables))
+    in
+    (let fnames = (List.map (\<lambda> (idx1, (_, (fname1, _, _), _)) .  fname1) idx_and_linkables)
     in
     (* We pass the collection of linkable images and reloc decision lists 
      * to an ABI tap function. 
@@ -565,7 +544,7 @@ definition expand_sections_for_all_inputs  :: "(any_abi_feature)abi \<Rightarrow
      * linker script inputs... in the case of the GNU linker, this means pretending
      * the generated stuff came from the first input object.
      *)
-    (let generated_img = ((generate_support   a) (* expanded_relocs *) expanded_imgs)
+    (let generated_img = ((generate_support   a) (* expanded_relocs *) (List.zip fnames expanded_imgs))
     in
     (* We need to return a 
      * 
@@ -574,50 +553,7 @@ definition expand_sections_for_all_inputs  :: "(any_abi_feature)abi \<Rightarrow
      * i.e. one item for every input image. *)
     (let (final_input_spec_lists :: ( Linker_script.input_spec list) list) = (merge_generated a generated_img linker_script_input_lists)
     in
-    zip3 expanded_reloc_lists expanded_imgs final_input_spec_lists))))"
-
-
-(*val extract_natural_field : natural -> Memory_image.element -> natural -> natural*)
-definition extract_natural_field  :: " nat \<Rightarrow> element \<Rightarrow> nat \<Rightarrow> nat "  where 
-     " extract_natural_field width element offset = ( 
-    (* Read n bytes from the contents *)
-    (let maybe_bytes = (take width (drop offset(contents   element)))
-    in
-    (let bytes = (List.map (\<lambda> mb .  (case  mb of None => (of_nat (( 0 :: nat)) :: byte) | Some mb => mb )) maybe_bytes)
-    in
-    (* FIXME: do we want little- or big-endian? *)
-    List.foldl (\<lambda> acc1 .  \<lambda> next_byte .         
-(acc1 *( 256 :: nat)) + (natural_of_byte next_byte)
-    ) (( 0 :: nat) :: nat) bytes)))"
-
-
-(*val natural_to_le_byte_list : natural -> list byte*)
-function (sequential,domintros)  natural_to_le_byte_list  :: " nat \<Rightarrow>(Elf_Types_Local.byte)list "  where 
-     " natural_to_le_byte_list n = ( 
-    ((of_nat (n mod( 256 :: nat)) :: byte)) # ((let d = (n div( 256 :: nat)) in if d =( 0 :: nat) then [] else natural_to_le_byte_list (n div( 256 :: nat)))))" 
-by pat_completeness auto
-
-
-(*val write_natural_field : natural -> natural -> Memory_image.element -> natural -> Memory_image.element*)
-definition write_natural_field  :: " nat \<Rightarrow> nat \<Rightarrow> element \<Rightarrow> nat \<Rightarrow> element "  where 
-     " write_natural_field new_field_value width element offset = ( 
-    (let pre_bytes = (take offset(contents   element))
-    in
-    (let post_bytes = (drop (offset + width)(contents   element))
-    in
-    (* FIXME: avoid hard-coding little-endian *)
-    (let field_bytes = (natural_to_le_byte_list new_field_value)
-    in
-    if \<not> (List.length field_bytes \<le> width) then failwith (''internal error: relocation output unrepresentable'')
-    else  (| startpos =(startpos   element) , length1 =(length1   element),
- contents = (((pre_bytes @
-                 ((let x2 = ([]) in
-                  List.foldr
-                    (\<lambda>b x2 .  if True then Some b # x2 else x2)
-                    field_bytes x2))) @
-                (List.replicate (width - (List.length field_bytes))
-                   (Some ((of_nat (( 0 :: nat)) :: byte))))) @ post_bytes)  
- |)))))"
+    zip3 expanded_reloc_lists expanded_imgs final_input_spec_lists)))))"
 
 
 (*val relocate_output_image : abi any_abi_feature -> map string (list (natural * binding)) -> elf_memory_image -> elf_memory_image*)
@@ -672,23 +608,23 @@ definition relocate_output_image  :: "(any_abi_feature)abi \<Rightarrow>((string
         in
         (let existing_field = (extract_natural_field width element start)
         in
-        (*let _ = errln (Existing field has value 0x ^ (hex_string_of_natural existing_field))
-        in*)
-        (*let _ = errln (Symaddr has value 0x ^ (hex_string_of_natural symaddr))
-        in*)
+        (let _ = (())
+        in
+        (let _ = (())
+        in
         (let addend = (sint(elf64_ra_addend  (ref_relent   reloc_site)))
         in
         (let new_field_value = (calculate symaddr addend existing_field)
         in
-        (*let _ = errln (Calculated new field value 0x ^ (hex_string_of_natural new_field_value))
-        in*)
+        (let _ = (())
+        in
         (let new_element = (write_natural_field new_field_value width element start)
         in
         (|
             elements = (map_update el_name new_element (map_remove el_name(elements   img3)))
          ,  by_range = ((by_range   img3) - {(Some(el_name, (start, len)), SymbolRef(symref_and_reloc_site))}),  by_tag   = ((by_tag   img3) - {(SymbolRef(symref_and_reloc_site), Some(el_name, (start, len)))})
           
-         |))))))))))
+         |)))))))))))))
     ))
     in
     (let relocated_img = (List.foldl (\<lambda> acc_img .  (\<lambda> (tag, maybe_range) . 
@@ -698,64 +634,41 @@ definition relocate_output_image  :: "(any_abi_feature)abi \<Rightarrow>((string
                     (case  maybe_range of
                         None => failwith (''impossible: reloc site with no range'')
                         | Some (el_name, (start, len)) => 
-                            (*let _ = errln (During relocation, saw a reloc site in element  ^ el_name ^ , offset 0x ^
-                                (hex_string_of_natural start) ^ , length 0x ^ (hex_string_of_natural len) ^ 
-                                , reloc type  ^ (* a. *) Abi_amd64_relocation.string_of_amd64_relocation_type (get_elf64_relocation_a_type rs.ref_relent) ^ 
-                                , symbol name ` ^ x.ref.ref_symname ^ ')
-                            in*)
+                            (let _ = (())
+                            in
                             (let symaddr = ((case (maybe_def_bound_to   x) of
-                                Some(ApplyReloc, Some(bound_def)) =>
-                                    (* Find the bound def *)
-                                    (let ranges_and_defs = (elf_memory_image_defined_symbols_and_ranges img3)
-                                    in 
-                                    (*let _ = errln (Searching for the bound-to symbol, which came from linkable idx  ^ 
-                                        (show bound_def.def_linkable_idx) ^ , section  ^ 
-                                        (show bound_def.def_syment.elf64_st_shndx) ^ 
-                                        , symtab shndx  ^ (show bound_def.def_sym_scn) ^ 
-                                        , symind  ^ (show bound_def.def_sym_idx))
-                                    in*)
-                                    (case  List.filter (\<lambda> (some_range, some_def) .  
-                                        if ((def_symname   some_def) =(def_symname   bound_def)) 
-                                        \<and> ((def_linkable_idx   some_def) =(def_linkable_idx   bound_def)) then
-                                            (*let _ = errln (Found one in the same linkable: syment is  ^
-                                                (show some_def.def_syment))
-                                            in*) some_def = bound_def
-                                        else some_def = bound_def
-                                    ) ranges_and_defs of
-                                        [] => failwith (''internal error: bound-to symbol not defined'')
-                                        | (r, d) # more1 => (case  r of
-                                            Some(el_name, (start, len)) => 
-                                                (let v = ((case  element_and_offset_to_address (el_name, start) img3 of
-                                                    Some a => a
-                                                    | None => failwith (''internal error: could not get address for symbol'')
-                                                ))
-                                                in
-                                                (case  more1 of 
-                                                    [] => v
-                                                    | _ => (*let _ = errln (FIXME: internal error: more than one def range equalling bound def  ^
-                                                        in section  ^ el_name)
-                                                        in*) v
-                                                ))
-                                            | None => failwith (''internal error: defined symbol without range'')
-                                            )
-                                    ))
+                                Some(ApplyReloc, Some(bound_def)) =>(get_reloc_symaddr  
+                                    (* Here we are mapping
+                                     * *from* the definition found in an input object during resolution (bound_def)
+                                     * *to* the corresponding symbol in the output image, now that we've built it.
+                                     *
+                                     * Q. What about ABI-specific interventions, e.g.
+                                     * redirecting a symbol reference to its GOT or PLT slot?
+                                     * A. Indeed, we need to ask the ABI to give us the target
+                                     * address. The default implementation is just to look for
+                                     * a matching symbol and use its address. But ABIs can do
+                                     * wacky things if they like.
+                                     *)
+                                    a) bound_def img3(maybe_reloc   x)
                                 | None => failwith (''no def found for bound-to symbol'')
                                 | Some(ApplyReloc, None) => 
-                                    (*let _ = errln No definition, so we think this is a weak reference; giving it value 0.
-                                    in*)
+                                    (let _ = (())
+                                    in
                                     (* CHECK: does the syment say it's weak? *)
                                     if \<not> ((get_elf64_symbol_binding(ref_syment  (ref   x))) = stb_weak) then
                                         (*let _ = errln Actually not weak! bailing
                                         in*)
                                         failwith (''not a weak reference, but no binding'')
                                     else(  
-                                    (* Weak symbol. *)0 :: nat)
+                                    (* Weak symbol. *)0 :: nat))
                                 | Some(LeaveReloc, _) => 
                                     (* We shouldn't be seeing this, given that we're applying the reloc Right Now. *)
                                     failwith (''internal error: applying reloc that is not to be applied'')
                             ))
                             in
-                            apply_reloc acc_img (el_name, start, len) x symaddr)
+                            (*let _ = errln (Got symaddr: 0x ^ (hex_string_of_natural symaddr))
+                            in*)
+                            apply_reloc acc_img (el_name, start, len) x symaddr))
                     )
                 | None => (* okay, do nothing *) acc_img
                 )
@@ -765,8 +678,8 @@ definition relocate_output_image  :: "(any_abi_feature)abi \<Rightarrow>((string
     in
     relocated_img))))"
 
-(* XXX: bug in Isabelle, see comments elsewhere...
-val link : linker_control_script -> abi any_abi_feature -> set Command_line.link_option -> linkable_list -> elf_memory_image*)
+
+(*val link : linker_control_script -> abi any_abi_feature -> set Command_line.link_option -> linkable_list -> elf_memory_image*)
 definition link  :: "(script_element)list \<Rightarrow>(any_abi_feature)abi \<Rightarrow>(Command_line.link_option)set \<Rightarrow>(linkable_object*(string*input_blob*input_origin)*input_options)list \<Rightarrow>(any_abi_feature)annotated_memory_image "  where 
      " link script a options linkables = ( 
     (let initial_included_indices = (mapMaybei (\<lambda> i .  (\<lambda> (obj, inp, (opts :: input_options)) .  
@@ -797,7 +710,7 @@ definition link  :: "(script_element)list \<Rightarrow>(any_abi_feature)abi \<Ri
     )) (Map.empty :: (nat, (symbol_reference * linkable_item)) Map.map) accumulated_bindings)
     in
     (* Print something similar to GNU ld's linker map output, about included archive members. *)
-    (*let _ = Missing_pervasives.outln Archive member included to satisfy reference by file (symbol)n in*)
+    (let _ = (()) in
     (let linkables_not_discarded = (mapMaybei (\<lambda> i .  (\<lambda> (obj, inp, opts) .  
         (let referenced_object_map_entry = ( referenced_object_indices_and_reasons i)
         in
@@ -841,8 +754,8 @@ definition link  :: "(script_element)list \<Rightarrow>(any_abi_feature)abi \<Ri
         else None))
     )) linkables)
     in
-    (*let _ = Missing_pervasives.outln nAllocating common symbolsnCommon symbol       size              filen
-    in*)
+    (let _ = (())
+    in
     (* We have to do a pass over relocations quite early. This is because relocs *do* participate 
      * in linking. For each reloc, we need to decide whether to apply it or not. For those not applied,
      * we include it in a synthesised section that participates in linking. 
@@ -900,7 +813,7 @@ definition link  :: "(script_element)list \<Rightarrow>(any_abi_feature)abi \<Ri
                 | InputSection(isrec) => ((idx   isrec),(shndx   isrec))
             ))
             in
-            (case  index linkables (id linkable_idx) of
+            (case  index linkables ( linkable_idx) of
                 None => failwith (''impossible: linker input not in linkables list'')
                 | Some (obj, (fname1, blob, (inp_unit, coords)), options) => 
                     (let (our_cid, our_gid, our_aid, maybe_archive_size) = ((case  coords of
@@ -949,9 +862,47 @@ definition link  :: "(script_element)list \<Rightarrow>(any_abi_feature)abi \<Ri
     )))
     in
     *)
-    (let (unrelocated_output_image, bindings_by_name)
-     = (interpret_linker_control_script script linker_script_linkable_idx a input_sections seen_ordering default_place_orphans initial_bindings_by_name)
+    (let (unrelocated_output_image_lacking_abs_symbols, bindings_by_name)
+     = (interpret_linker_control_script script linkables linker_script_linkable_idx a input_sections seen_ordering default_place_orphans initial_bindings_by_name)
     in
+    (* also copy over ABS (range-less) symbols from all included input items *)
+    (let all_abs_range_tags_in_included_inputs = (List.concat (
+        List.map (\<lambda> (img3, (idx1, linkable)) .  
+          (let abslist = (Lem_list.mapMaybe (\<lambda> (tag, maybeRange) . 
+            (case  tag of
+                SymbolDef(ent) => if (maybeRange = None) \<and> (unat(elf64_st_shndx  (def_syment   ent)) = shn_abs)
+                    then Some (maybeRange, ent)
+                    else None
+                | _ => None
+            )
+          ) (tagged_ranges_matching_tag 
+  instance_Basic_classes_Ord_Abis_any_abi_feature_dict instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict (SymbolDef(null_symbol_definition)) img3))
+          in
+          (let _ = (())
+          in
+          (let x2 = ([]) in  List.foldr
+   (\<lambda>(maybe_range, ent) x2 . 
+    if True then
+      (maybe_range, SymbolDef
+                      ((| def_symname = ((def_symname   ent))
+                       , def_syment = ((def_syment   ent))
+                       , def_sym_scn = ((def_sym_scn   ent))
+                       , def_sym_idx = ((def_sym_idx   ent))
+                       , def_linkable_idx = idx1 |))) # x2 else x2) abslist
+   x2)))
+        ) (List.zip imgs linkables_not_discarded)
+    ))
+    in
+    (let by_range_including_abs_symbols =        
+ ((by_range   unrelocated_output_image_lacking_abs_symbols)
+        \<union>
+        (List.set all_abs_range_tags_in_included_inputs))
+    in
+    (let unrelocated_output_image = ((|
+        elements = ((elements   unrelocated_output_image_lacking_abs_symbols))
+    ,   by_range = by_range_including_abs_symbols
+    ,   by_tag   = (by_tag_from_by_range by_range_including_abs_symbols)
+    |))
     (* This image has 
      * - addresses assigned 
      * - relocations *not* applied
@@ -961,6 +912,7 @@ definition link  :: "(script_element)list \<Rightarrow>(any_abi_feature)abi \<Ri
            -- other ABI features have to be generated before the linker script runs (dyn relocs, GOT, PLT?)
            -- ... so we might be okay for now.
      *)
+    in
     (let remaining_relocs = (Multimap.lookupBy0 
   (instance_Basic_classes_Ord_Memory_image_range_tag_dict
      instance_Basic_classes_Ord_Abis_any_abi_feature_dict) (instance_Basic_classes_Ord_Maybe_maybe_dict
@@ -1017,6 +969,6 @@ definition link  :: "(script_element)list \<Rightarrow>(any_abi_feature)abi \<Ri
             (*let _ = errln Warning: not tagging entry point in output image
             in*) 
             output_image
-    )))))))))))))))))))"
+    ))))))))))))))))))))))))"
 
 end

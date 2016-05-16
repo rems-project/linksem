@@ -113,7 +113,7 @@ definition null_program_header_table  :: " elf_file_feature "  where
 
 definition null_elf_header  :: " elf64_header "  where 
      " null_elf_header = ( (| 
-     elf64_ident    = []
+     elf64_ident    = ([])
    , elf64_type     = (Elf_Types_Local.uint16_of_nat(( 0 :: nat)))  
    , elf64_machine  = (Elf_Types_Local.uint16_of_nat(( 0 :: nat)))  
    , elf64_version  = (Elf_Types_Local.uint32_of_nat(( 0 :: nat)))  
@@ -286,8 +286,8 @@ definition extract_all_relocs  :: " string \<Rightarrow> elf64_file \<Rightarrow
          rela sections (indices  ^ (show (List.map (fun (scn, _) -> scn) all_rela_sections)) ^ ))
     in*)
     (let rel_to_rela = (\<lambda> rel .  (|
-         elf64_ra_offset =(elf64_r_offset   rel)
-       , elf64_ra_info   =(elf64_r_info   rel)
+         elf64_ra_offset = ((elf64_r_offset   rel))
+       , elf64_ra_info   = ((elf64_r_info   rel))
        , elf64_ra_addend = (of_int(( 0 :: int)))
     |))
     in

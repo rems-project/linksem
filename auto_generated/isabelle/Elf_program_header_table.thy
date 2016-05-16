@@ -111,6 +111,31 @@ definition elf_pt_hiproc  :: " nat "  where
   *)
 (* XXX: is GNU stuff supposed to be hardcoded here? *)
 (*val string_of_segment_type : (natural -> string) -> (natural -> string) -> natural -> string*)
+definition string_of_segment_type  :: "(nat \<Rightarrow> string)\<Rightarrow>(nat \<Rightarrow> string)\<Rightarrow> nat \<Rightarrow> string "  where 
+     " string_of_segment_type os proc pt = (
+	if pt = elf_pt_null then
+		(''NULL'')
+	else if pt = elf_pt_load then
+		(''LOAD'')
+	else if pt = elf_pt_dynamic then
+		(''DYNAMIC'')
+	else if pt = elf_pt_interp then
+		(''INTERP'')
+	else if pt = elf_pt_note then
+		(''NOTE'')
+	else if pt = elf_pt_shlib then
+		(''SHLIB'')
+	else if pt = elf_pt_phdr then
+		(''PHDR'')
+	else if pt = elf_pt_tls then
+		(''TLS'')
+	else if (pt \<ge> elf_pt_loos) \<and> (pt \<le> elf_pt_hios) then
+		os pt
+	else if (pt \<ge> elf_pt_loproc) \<and> (pt \<le> elf_pt_hiproc) then
+		proc pt
+	else
+		(''Undefined or invalid segment type''))"
+
 		
 (** Segments permission flags *)
 
@@ -362,24 +387,74 @@ definition instance_Basic_classes_Ord_Elf_program_header_table_elf64_program_hea
   * to render OS- and processor-specific entries.
   *)
 (*val string_of_elf32_program_header_table_entry : (natural -> string) -> (natural -> string) -> elf32_program_header_table_entry -> string*)
+definition string_of_elf32_program_header_table_entry  :: "(nat \<Rightarrow> string)\<Rightarrow>(nat \<Rightarrow> string)\<Rightarrow> elf32_program_header_table_entry \<Rightarrow> string "  where 
+     " string_of_elf32_program_header_table_entry os proc entry = (
+	unlines [		
+(([(Char Nibble0 Nibble9)]) @ ((''Segment type: '') @ string_of_segment_type os proc (unat(elf32_p_type   entry))))
+	, (([(Char Nibble0 Nibble9)]) @ ((''Offset: '') @ Elf_Types_Local.string_of_uint32(elf32_p_offset   entry)))
+	, (([(Char Nibble0 Nibble9)]) @ ((''Virtual address: '') @ Elf_Types_Local.string_of_uint32(elf32_p_vaddr   entry)))
+	, (([(Char Nibble0 Nibble9)]) @ ((''Physical address: '') @ Elf_Types_Local.string_of_uint32(elf32_p_paddr   entry)))
+	, (([(Char Nibble0 Nibble9)]) @ ((''Segment size (bytes): '') @ Elf_Types_Local.string_of_uint32(elf32_p_filesz   entry)))
+	, (([(Char Nibble0 Nibble9)]) @ ((''Segment size in memory image (bytes): '') @ Elf_Types_Local.string_of_uint32(elf32_p_memsz   entry)))
+	, (([(Char Nibble0 Nibble9)]) @ ((''Flags: '') @ Elf_Types_Local.string_of_uint32(elf32_p_flags   entry)))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Alignment: '') @ Elf_Types_Local.string_of_uint32(elf32_p_align   entry)))
+	])"
+
 
 (** [string_of_elf64_program_header_table_entry os proc et] produces a string
   * representation of a 64-bit program header table entry using [os] and [proc]
   * to render OS- and processor-specific entries.
   *)
 (*val string_of_elf64_program_header_table_entry : (natural -> string) -> (natural -> string) -> elf64_program_header_table_entry -> string*)
+definition string_of_elf64_program_header_table_entry  :: "(nat \<Rightarrow> string)\<Rightarrow>(nat \<Rightarrow> string)\<Rightarrow> elf64_program_header_table_entry \<Rightarrow> string "  where 
+     " string_of_elf64_program_header_table_entry os proc entry = (
+  unlines [    
+(([(Char Nibble0 Nibble9)]) @ ((''Segment type: '') @ string_of_segment_type os proc (unat(elf64_p_type   entry))))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Offset: '') @ Elf_Types_Local.string_of_uint64(elf64_p_offset   entry)))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Virtual address: '') @ Elf_Types_Local.string_of_uint64(elf64_p_vaddr   entry)))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Physical address: '') @ Elf_Types_Local.string_of_uint64(elf64_p_paddr   entry)))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Segment size (bytes): '') @ Elf_Types_Local.string_of_uint64(elf64_p_filesz   entry)))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Segment size in memory image (bytes): '') @ Elf_Types_Local.string_of_uint64(elf64_p_memsz   entry)))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Flags: '') @ Elf_Types_Local.string_of_uint32(elf64_p_flags   entry)))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Alignment: '') @ Elf_Types_Local.string_of_uint64(elf64_p_align   entry)))
+  ])"
+
 
 (** [string_of_elf32_program_header_table_entry_default et] produces a string representation
   * of table entry [et] where OS- and processor-specific entries are replaced with
   * default strings.
   *)
 (*val string_of_elf32_program_header_table_entry_default : elf32_program_header_table_entry -> string*)
+definition string_of_elf32_program_header_table_entry_default  :: " elf32_program_header_table_entry \<Rightarrow> string "  where 
+     " string_of_elf32_program_header_table_entry_default = (
+	string_of_elf32_program_header_table_entry
+    ((\<lambda> y. (''*Default OS specific print*'')))
+      ((\<lambda> y. (''*Default processor specific print*''))))"
+
 
 (** [string_of_elf64_program_header_table_entry_default et] produces a string representation
   * of table entry [et] where OS- and processor-specific entries are replaced with
   * default strings.
   *)
 (*val string_of_elf64_program_header_table_entry_default : elf64_program_header_table_entry -> string*)
+definition string_of_elf64_program_header_table_entry_default  :: " elf64_program_header_table_entry \<Rightarrow> string "  where 
+     " string_of_elf64_program_header_table_entry_default = (
+  string_of_elf64_program_header_table_entry
+    ((\<lambda> y. (''*Default OS specific print*'')))
+      ((\<lambda> y. (''*Default processor specific print*''))))"
+
+	
+definition instance_Show_Show_Elf_program_header_table_elf32_program_header_table_entry_dict  :: "(elf32_program_header_table_entry)Show_class "  where 
+     " instance_Show_Show_Elf_program_header_table_elf32_program_header_table_entry_dict = ((|
+
+  show_method = string_of_elf32_program_header_table_entry_default |) )"
+
+
+definition instance_Show_Show_Elf_program_header_table_elf64_program_header_table_entry_dict  :: "(elf64_program_header_table_entry)Show_class "  where 
+     " instance_Show_Show_Elf_program_header_table_elf64_program_header_table_entry_dict = ((|
+
+  show_method = string_of_elf64_program_header_table_entry_default |) )"
+
 
 (** Parsing and blitting *)
 
@@ -572,12 +647,22 @@ type_synonym pht_print_bundle =" (nat \<Rightarrow> string) * (nat \<Rightarrow>
   * specific entries.
   *)
 (*val string_of_elf32_program_header_table : pht_print_bundle -> elf32_program_header_table -> string*)
+fun string_of_elf32_program_header_table  :: "(nat \<Rightarrow> string)*(nat \<Rightarrow> string)\<Rightarrow>(elf32_program_header_table_entry)list \<Rightarrow> string "  where 
+     " string_of_elf32_program_header_table (os, proc) tbl = (
+  unlines (List.map (string_of_elf32_program_header_table_entry os proc) tbl))" 
+declare string_of_elf32_program_header_table.simps [simp del]
+
 
 (** [string_of_elf64_program_header_table os proc tbl] produces a string representation
   * of program header table [tbl] using [os] and [proc] to render OS- and processor-
   * specific entries.
   *)
 (*val string_of_elf64_program_header_table : pht_print_bundle -> elf64_program_header_table -> string*)
+fun string_of_elf64_program_header_table  :: "(nat \<Rightarrow> string)*(nat \<Rightarrow> string)\<Rightarrow>(elf64_program_header_table_entry)list \<Rightarrow> string "  where 
+     " string_of_elf64_program_header_table (os, proc) tbl = (
+  unlines (List.map (string_of_elf64_program_header_table_entry os proc) tbl))" 
+declare string_of_elf64_program_header_table.simps [simp del]
+
 
 (** Static/dynamic linkage *)
 

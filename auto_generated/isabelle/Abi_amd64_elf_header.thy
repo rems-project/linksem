@@ -80,10 +80,10 @@ definition is_valid_abi_amd64_machine_architecture  :: " nat \<Rightarrow> bool 
 (*val is_valid_abi_amd64_magic_number : list unsigned_char -> bool*)
 definition is_valid_abi_amd64_magic_number  :: "(Elf_Types_Local.unsigned_char)list \<Rightarrow> bool "  where 
      " is_valid_abi_amd64_magic_number magic = (
-  (case  index magic (id elf_ii_class) of
+  (case  index magic ( elf_ii_class) of
       None  => False
     | Some cls =>
-      (case  index magic (id elf_ii_data) of
+      (case  index magic ( elf_ii_data) of
           None   => False
         | Some data =>
             (unat cls = abi_amd64_file_class) \<and>

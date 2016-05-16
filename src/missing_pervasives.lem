@@ -157,9 +157,9 @@ let natural_of_bool b =
 val unsafe_nat_of_natural : natural -> nat
 
 declare ocaml    target_rep function unsafe_nat_of_natural = `Nat_big_num.to_int`
-declare isabelle target_rep function unsafe_nat_of_natural = `id`
-declare hol      target_rep function unsafe_nat_of_natural = `id`
-declare coq      target_rep function unsafe_nat_of_natural = `id`
+declare isabelle target_rep function unsafe_nat_of_natural = ``
+declare hol      target_rep function unsafe_nat_of_natural = ``
+declare coq      target_rep function unsafe_nat_of_natural = ``
 
 val unsafe_int_of_natural   : natural -> int
 
@@ -391,7 +391,7 @@ let bracket xs =
 (** [string_of_list l] produces a string representation of list [l].
   *)
 val string_of_list : forall 'a. Show 'a => list 'a -> string
-let {ocaml} string_of_list l =
+let string_of_list l =
   let result = intercalate "," (List.map show l) in
   let folded = foldl (^) "" result in
     "[" ^ folded ^ "]"

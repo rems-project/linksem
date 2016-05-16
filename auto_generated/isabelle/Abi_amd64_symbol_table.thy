@@ -6,6 +6,7 @@ imports
  	 Main
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_num" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Gnu_ext_abi" 
 
 begin 
 
@@ -15,17 +16,11 @@ begin
 
 (*open import Basic_classes*)
 (*open import Num*)
+(*open import Gnu_ext_abi*)
 
 (** AMD64 specific symbol types.  See doc/ifunc.txt and Section 4.3 of the
   * ABI.
   *)
-
-(** Optional, like [stt_func] but always points to a function or piece of
-  * executable code that takes no arguments and returns a function pointer.
-  *)
-definition stt_abi_amd64_gnu_ifunc  :: " nat "  where 
-     " stt_abi_amd64_gnu_ifunc = (( 12 :: nat))"
-
 
 (** [string_of_abi_amd64_symbol_type m] produces a string based representation
   * of AMD64 symbol type [m].

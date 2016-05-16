@@ -57,17 +57,17 @@ begin
   * constituting the process image (passed in as [segs] here for a uniform
   * interface).
   *)
-(*val abi_aarch64_le_compute_program_entry_point : list elf64_interpreted_segments -> elf64_addr -> error elf64_addr*)
-definition abi_aarch64_le_compute_program_entry_point  :: "(elf64_interpreted_segments)list \<Rightarrow> Elf_Types_Local.uint64 \<Rightarrow>(Elf_Types_Local.uint64)error "  where 
+(*val abi_aarch64_le_compute_program_entry_point : list elf64_interpreted_segments -> elf64_addr -> error natural*)
+definition abi_aarch64_le_compute_program_entry_point  :: "(elf64_interpreted_segments)list \<Rightarrow> Elf_Types_Local.uint64 \<Rightarrow>(nat)error "  where 
      " abi_aarch64_le_compute_program_entry_point segs entry = (
-	error_return entry )"
+	error_return (unat entry))"
 
 
 (*val header_is_aarch64_le : elf64_header -> bool*)
 definition header_is_aarch64_le  :: " elf64_header \<Rightarrow> bool "  where 
      " header_is_aarch64_le h = ( 
     is_valid_elf64_header h
-    \<and> ((index(elf64_ident   h) (id elf_ii_data) = Some (Elf_Types_Local.unsigned_char_of_nat elf_data_2lsb))
+    \<and> ((index(elf64_ident   h) ( elf_ii_data) = Some (Elf_Types_Local.unsigned_char_of_nat elf_data_2lsb))
     \<and> (is_valid_abi_aarch64_le_machine_architecture (unat(elf64_machine   h))
     \<and> is_valid_abi_aarch64_le_magic_number(elf64_ident   h))))"
 

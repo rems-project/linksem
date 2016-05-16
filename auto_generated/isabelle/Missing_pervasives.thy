@@ -30,6 +30,7 @@ begin
 
 (*open import {isabelle} `$ISABELLE_HOME/src/HOL/Word/Word`*)
 (*open import {isabelle} `Elf_Types_Local`*)
+(*open import {coq} `elf_types_local`*)
 
 (*val naturalZero : natural*)
 definition naturalZero  :: " nat "  where 
@@ -111,6 +112,12 @@ definition hex_string_of_byte  :: " Elf_Types_Local.byte \<Rightarrow> string " 
      " hex_string_of_byte b = ( 
     [ hex_char_of_nibble ((unat b) div( 16 :: nat))
              , hex_char_of_nibble ((unat b) mod( 16 :: nat))])"
+
+
+definition instance_Show_Show_Missing_pervasives_byte_dict  :: "(Elf_Types_Local.byte)Show_class "  where 
+     " instance_Show_Show_Missing_pervasives_byte_dict = ((|
+
+  show_method = hex_string_of_byte |) )"
 
 
 (*val natural_of_decimal_digit : char -> maybe natural*)
@@ -201,7 +208,7 @@ by pat_completeness auto
 
 
 (*val sort_by : forall 'a. ('a -> 'a -> ordering) -> list 'a -> list 'a*)
-(*let rec sort_by comp xs =
+(*let rec sort_by comp xs= 
   match xs with
     | [] -> []
     | [x] -> [x]
@@ -385,6 +392,20 @@ definition bracket  :: "(string)list \<Rightarrow> string "  where
 (** [string_of_list l] produces a string representation of list [l].
   *)
 (*val string_of_list : forall 'a. Show 'a => list 'a -> string*)
+definition string_of_list  :: " 'a Show_class \<Rightarrow> 'a list \<Rightarrow> string "  where 
+     " string_of_list dict_Show_Show_a l = (
+  (let result = (intercalate ('','') (List.map 
+  (show_method   dict_Show_Show_a) l)) in
+  (let folded = (List.foldl (op@) ('''') result) in
+    (''['') @ (folded @ ('']'')))))"
+
+
+definition instance_Show_Show_list_dict  :: " 'a Show_class \<Rightarrow>('a list)Show_class "  where 
+     " instance_Show_Show_list_dict dict_Show_Show_a = ((|
+
+  show_method = 
+  (string_of_list dict_Show_Show_a) |) )"
+
 
 (** [split_string_on_char s c] splits a string [s] into a list of substrings
   * on character [c], otherwise returning the singleton list containing [s]
@@ -405,25 +426,32 @@ definition bracket  :: "(string)list \<Rightarrow> string "  where
 (** [string_suffix i s] returns all but the first [i] characters of [s].
   * Fails if the index is negative, or beyond the end of the string.
   *)
-(*val string_suffix : natural -> string -> maybe string*) (* XXX: add custom binding *)
+(*val string_suffix : natural -> string -> maybe string*)
   
 (*val nat_length : forall 'a. list 'a -> nat*)
   
 (*val length : forall 'a. list 'a -> natural*)
-(*let ~{ocaml} length xs = List.foldl (fun y _ -> (Instance_Num_NumAdd_Num_natural.+) 1 y) 0 xs*)
+(*let ~{ocaml} length xs=  List.foldl (fun y _ -> (Instance_Num_NumAdd_Num_natural.+) 1 y) 0 xs*)
+
+(*val takeRevAcc : forall 'a. natural -> list 'a -> list 'a -> list 'a*)
+function (sequential,domintros)  takeRevAcc  :: " nat \<Rightarrow> 'a list \<Rightarrow> 'a list \<Rightarrow> 'a list "  where 
+     " takeRevAcc m ([]) rev_acc = ( List.rev rev_acc )"
+|" takeRevAcc m (x # xs) rev_acc = (
+      if m =( 0 :: nat) then
+        List.rev rev_acc
+      else
+        takeRevAcc (m -( 1 :: nat)) xs (x # rev_acc))" 
+by pat_completeness auto
+
 
 (** [take cnt xs] takes the first [cnt] elements of list [xs].  Returns a truncation
   * if [cnt] is greater than the length of [xs].
   *)
 (*val take : forall 'a. natural -> list 'a -> list 'a*)
-function (sequential,domintros)  take  :: " nat \<Rightarrow> 'a list \<Rightarrow> 'a list "  where 
-     " take m ([]) = ( [])"
-|" take m (x # xs) = (
-      if m =( 0 :: nat) then
-        []
-      else
-        x # take (m -( 1 :: nat)) xs )" 
-by pat_completeness auto
+fun  take  :: " nat \<Rightarrow> 'a list \<Rightarrow> 'a list "  where 
+     " take m xs = (
+  takeRevAcc m xs [])" 
+declare take.simps [simp del]
 
   
 (** [drop cnt xs] returns all but the first [cnt] elements of list [xs].  Returns an empty list
@@ -473,7 +501,7 @@ definition string_index_of  :: " char \<Rightarrow> string \<Rightarrow>(nat)opt
 
 
 (*val index : forall 'a. natural -> list 'a -> maybe 'a*)
-(*let rec index m xs =
+(*let rec index m xs= 
   match xs with
     | []    -> Nothing
     | x::xs ->
@@ -509,7 +537,7 @@ by pat_completeness auto
 
 
 (*val replicate : forall 'a. natural -> 'a -> list 'a*)
-(*let rec replicate len e =
+(*let rec replicate len e= 
 	replicate_revacc [] len e*)
 
 (* We want a tail-recursive append. reverse_append l1 l2 appends l2 to the
@@ -571,7 +599,7 @@ by pat_completeness auto
 (*val unsafe_string_take : natural -> string -> string*)
 definition unsafe_string_take  :: " nat \<Rightarrow> string \<Rightarrow> string "  where 
      " unsafe_string_take m str = (
-  (let m = (id m) in 
+  (let m = ( m) in 
     (List.take m ( str))))"
 
 

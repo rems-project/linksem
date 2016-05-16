@@ -57,7 +57,7 @@ let stb_hiproc : natural = 15
   * OCaml specific definition.
   *)
 val string_of_symbol_binding : natural -> (natural -> string) -> (natural -> string) -> string
-let {ocaml} string_of_symbol_binding m os proc =
+let string_of_symbol_binding m os proc =
   if m = stb_local then
     "LOCAL"
   else if m = stb_global then
@@ -346,7 +346,7 @@ type symtab_print_bundle =
   * of symbol table entry [ent].
   *)
 val string_of_elf32_symbol_table_entry : elf32_symbol_table_entry -> string
-let {ocaml} string_of_elf32_symbol_table_entry entry =
+let string_of_elf32_symbol_table_entry entry =
   unlines [
     "\t" ^ "Name: "  ^ show entry.elf32_st_name
   ; "\t" ^ "Value: " ^ show entry.elf32_st_value
@@ -360,7 +360,7 @@ let {ocaml} string_of_elf32_symbol_table_entry entry =
   * of symbol table entry [ent].
   *)
 val string_of_elf64_symbol_table_entry : elf64_symbol_table_entry -> string
-let {ocaml} string_of_elf64_symbol_table_entry entry =
+let string_of_elf64_symbol_table_entry entry =
   unlines [
     "\t" ^ "Name: "  ^ show entry.elf64_st_name
   ; "\t" ^ "Info: "  ^ show entry.elf64_st_info
@@ -374,7 +374,7 @@ let {ocaml} string_of_elf64_symbol_table_entry entry =
   * of symbol table [stbl].
   *)
 val string_of_elf32_symbol_table : elf32_symbol_table -> string
-let {ocaml} string_of_elf32_symbol_table symtab =
+let string_of_elf32_symbol_table symtab =
   unlines (List.map string_of_elf32_symbol_table_entry symtab)
   
 (** [elf64_null_symbol_table_entry] is the null symbol table entry, with all
@@ -391,7 +391,7 @@ let elf64_null_symbol_table_entry =
    |>
 
 val string_of_elf64_symbol_table : elf64_symbol_table -> string
-let {ocaml} string_of_elf64_symbol_table symtab =
+let string_of_elf64_symbol_table symtab =
   unlines (List.map string_of_elf64_symbol_table_entry symtab)
   
 instance (Show elf32_symbol_table_entry)

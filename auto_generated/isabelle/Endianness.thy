@@ -36,4 +36,15 @@ definition default_endianness  :: " endianness "  where
   * [e].
   *)
 (*val string_of_endianness : endianness -> string*)
+fun string_of_endianness  :: " endianness \<Rightarrow> string "  where 
+     " string_of_endianness Big = ( (''Big''))"
+|" string_of_endianness Little = ( (''Little''))" 
+declare string_of_endianness.simps [simp del]
+
+
+definition instance_Show_Show_Endianness_endianness_dict  :: "(endianness)Show_class "  where 
+     " instance_Show_Show_Endianness_endianness_dict = ((|
+
+  show_method = string_of_endianness |) )"
+
 end

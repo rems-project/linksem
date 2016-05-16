@@ -109,6 +109,12 @@ definition bytes_of_unsigned_char  :: " Elf_Types_Local.unsigned_char \<Rightarr
 
 (*val equal_unsigned_char  : unsigned_char -> unsigned_char -> bool*)
 
+definition instance_Show_Show_Elf_types_native_uint_unsigned_char_dict  :: "(Elf_Types_Local.unsigned_char)Show_class "  where 
+     " instance_Show_Show_Elf_types_native_uint_unsigned_char_dict = ((|
+
+  show_method = Elf_Types_Local.string_of_unsigned_char |) )"
+
+
 (** ELF address type:
   * 4 byte unsigned type on 32-bit architectures.
   * 8 byte unsigned type on 64-bit architectures.
@@ -122,7 +128,7 @@ definition bytes_of_unsigned_char  :: " Elf_Types_Local.unsigned_char \<Rightarr
 
 (*val elf32_addr_of_natural : natural -> elf32_addr*)
 
-(*val elf32_addr_of_quad : byte -> byte -> byte -> byte -> elf32_addr*) (* TODO: add custom binding *)
+(*val elf32_addr_of_quad : byte -> byte -> byte -> byte -> elf32_addr*)
 
 (*val read_elf32_addr : endianness -> byte_sequence -> error (elf32_addr * byte_sequence)*)
 fun read_elf32_addr  :: " endianness \<Rightarrow> byte_sequence \<Rightarrow>(uint32*byte_sequence)error "  where 
@@ -137,7 +143,7 @@ declare read_elf32_addr.simps [simp del]
 
 (*val equal_elf32_addr : elf32_addr -> elf32_addr -> bool*)
 
-(*val quad_of_elf32_addr : elf32_addr -> (byte * byte * byte * byte)*) (* TODO: add custom binding *)
+(*val quad_of_elf32_addr : elf32_addr -> (byte * byte * byte * byte)*)
 
 (*val bytes_of_elf32_addr : endianness -> elf32_addr -> list byte*)
 fun bytes_of_elf32_addr  :: " endianness \<Rightarrow> uint32 \<Rightarrow>(Elf_Types_Local.byte)list "  where 
@@ -148,6 +154,12 @@ fun bytes_of_elf32_addr  :: " endianness \<Rightarrow> uint32 \<Rightarrow>(Elf_
       (let (b0, b1, b2, b3) = (Elf_Types_Local.quad_of_uint32 w) in
         [b3, b2, b1, b0]))" 
 declare bytes_of_elf32_addr.simps [simp del]
+
+
+definition instance_Show_Show_Elf_types_native_uint_elf32_addr_dict  :: "(uint32)Show_class "  where 
+     " instance_Show_Show_Elf_types_native_uint_elf32_addr_dict = ((|
+
+  show_method = Elf_Types_Local.string_of_uint32 |) )"
 
 
 (** elf64_addr type and bindings *)
@@ -175,7 +187,7 @@ declare read_elf64_addr.simps [simp del]
 
 (*val equal_elf64_addr : elf64_addr -> elf64_addr -> bool*)
 
-(*val oct_of_elf64_addr : elf64_addr -> (byte * byte * byte * byte * byte * byte * byte * byte)*) (* TODO *)
+(*val oct_of_elf64_addr : elf64_addr -> (byte * byte * byte * byte * byte * byte * byte * byte)*)
 
 (*val bytes_of_elf64_addr : endianness -> elf64_addr -> list byte*)
 fun bytes_of_elf64_addr  :: " endianness \<Rightarrow> Elf_Types_Local.uint64 \<Rightarrow>(Elf_Types_Local.byte)list "  where 
@@ -197,6 +209,12 @@ declare bytes_of_elf64_addr.simps [simp del]
 (*val elf64_addr_land : elf64_addr -> elf64_addr -> elf64_addr*)
 
 (*val elf64_addr_lor : elf64_addr -> elf64_addr -> elf64_addr*)
+
+definition instance_Show_Show_Elf_types_native_uint_elf64_addr_dict  :: "(Elf_Types_Local.uint64)Show_class "  where 
+     " instance_Show_Show_Elf_types_native_uint_elf64_addr_dict = ((|
+
+  show_method = Elf_Types_Local.string_of_uint64 |) )"
+
 
 (** ELF half word type:
   * 2 byte unsigned type on 32-bit architectures.
@@ -237,6 +255,12 @@ fun bytes_of_elf32_half  :: " endianness \<Rightarrow> uint16 \<Rightarrow>(Elf_
 declare bytes_of_elf32_half.simps [simp del]
 
 
+definition instance_Show_Show_Elf_types_native_uint_elf32_half_dict  :: "(uint16)Show_class "  where 
+     " instance_Show_Show_Elf_types_native_uint_elf32_half_dict = ((|
+
+  show_method = Elf_Types_Local.string_of_uint16 |) )"
+
+
 (** elf64_half type and bindings *)
 
 (*type elf64_half*)
@@ -273,6 +297,12 @@ fun bytes_of_elf64_half  :: " endianness \<Rightarrow> uint16 \<Rightarrow>(Elf_
       (let (b0, b1) = (Elf_Types_Local.dual_of_uint16 w) in
         [b0, b1]))" 
 declare bytes_of_elf64_half.simps [simp del]
+
+
+definition instance_Show_Show_Elf_types_native_uint_elf64_half_dict  :: "(uint16)Show_class "  where 
+     " instance_Show_Show_Elf_types_native_uint_elf64_half_dict = ((|
+
+  show_method = Elf_Types_Local.string_of_uint16 |) )"
 
 
 (*
@@ -326,6 +356,12 @@ fun bytes_of_elf32_off  :: " endianness \<Rightarrow> uint32 \<Rightarrow>(Elf_T
 declare bytes_of_elf32_off.simps [simp del]
 
 
+definition instance_Show_Show_Elf_types_native_uint_elf32_off_dict  :: "(uint32)Show_class "  where 
+     " instance_Show_Show_Elf_types_native_uint_elf32_off_dict = ((|
+
+  show_method = Elf_Types_Local.string_of_uint32 |) )"
+
+
 (** elf64_off type and bindings *)
 
 (*type elf64_off*)
@@ -362,6 +398,12 @@ fun bytes_of_elf64_off  :: " endianness \<Rightarrow> uint64 \<Rightarrow>(Elf_T
       (let (b0, b1, b2, b3, b4, b5, b6, b7) = (Elf_Types_Local.oct_of_uint64 w) in
         [b7, b6, b5, b4, b3, b2, b1, b0]))" 
 declare bytes_of_elf64_off.simps [simp del]
+
+
+definition instance_Show_Show_Elf_types_native_uint_elf64_off_dict  :: "(uint64)Show_class "  where 
+     " instance_Show_Show_Elf_types_native_uint_elf64_off_dict = ((|
+
+  show_method = Elf_Types_Local.string_of_uint64 |) )"
 
 
 (** ELF word type:
@@ -411,6 +453,12 @@ fun bytes_of_elf32_word  :: " endianness \<Rightarrow> uint32 \<Rightarrow>(Elf_
 declare bytes_of_elf32_word.simps [simp del]
 
 
+definition instance_Show_Show_Elf_types_native_uint_elf32_word_dict  :: "(uint32)Show_class "  where 
+     " instance_Show_Show_Elf_types_native_uint_elf32_word_dict = ((|
+
+  show_method = Elf_Types_Local.string_of_uint32 |) )"
+
+
 (** elf64_word type and bindings *)
 
 (*type elf64_word*)
@@ -451,6 +499,12 @@ fun bytes_of_elf64_word  :: " endianness \<Rightarrow> uint32 \<Rightarrow>(Elf_
 declare bytes_of_elf64_word.simps [simp del]
 
 
+definition instance_Show_Show_Elf_types_native_uint_elf64_word_dict  :: "(uint32)Show_class "  where 
+     " instance_Show_Show_Elf_types_native_uint_elf64_word_dict = ((|
+
+  show_method = Elf_Types_Local.string_of_uint32 |) )"
+
+
 (** ELF signed word type:
   * 4 byte signed type on 32-bit architectures.
   * 4 byte signed type on 64-bit architectures.
@@ -488,6 +542,12 @@ fun bytes_of_elf32_sword  :: " endianness \<Rightarrow> sint32 \<Rightarrow>(Elf
 declare bytes_of_elf32_sword.simps [simp del]
 
 
+definition instance_Show_Show_Elf_types_native_uint_elf32_sword_dict  :: "(sint32)Show_class "  where 
+     " instance_Show_Show_Elf_types_native_uint_elf32_sword_dict = ((|
+
+  show_method = Elf_Types_Local.string_of_sint32 |) )"
+
+
 (** elf64_sword type and bindings *)
 
 (*type elf64_sword*)
@@ -520,6 +580,12 @@ fun bytes_of_elf64_sword  :: " endianness \<Rightarrow> sint32 \<Rightarrow>(Elf
       (let (b0, b1, b2, b3) = (Elf_Types_Local.quad_of_sint32 w) in
         [b3, b2, b1, b0]))" 
 declare bytes_of_elf64_sword.simps [simp del]
+
+
+definition instance_Show_Show_Elf_types_native_uint_elf64_sword_dict  :: "(sint32)Show_class "  where 
+     " instance_Show_Show_Elf_types_native_uint_elf64_sword_dict = ((|
+
+  show_method = Elf_Types_Local.string_of_sint32 |) )"
 
 
 (** ELF extra wide word type:
@@ -572,6 +638,12 @@ fun bytes_of_elf64_xword  :: " endianness \<Rightarrow> uint64 \<Rightarrow>(Elf
 declare bytes_of_elf64_xword.simps [simp del]
 
 
+definition instance_Show_Show_Elf_types_native_uint_elf64_xword_dict  :: "(uint64)Show_class "  where 
+     " instance_Show_Show_Elf_types_native_uint_elf64_xword_dict = ((|
+
+  show_method = Elf_Types_Local.string_of_uint64 |) )"
+
+
 (** ELF signed extra wide word type:
   * 8 byte signed type on 64-bit architectures.
   *)
@@ -608,6 +680,12 @@ fun bytes_of_elf64_sxword  :: " endianness \<Rightarrow> sint64 \<Rightarrow>(El
       (let (b0, b1, b2, b3, b4, b5, b6, b7) = (Elf_Types_Local.oct_of_sint64 w) in
         [b7, b6, b5, b4, b3, b2, b1, b0]))" 
 declare bytes_of_elf64_sxword.simps [simp del]
+
+
+definition instance_Show_Show_Elf_types_native_uint_elf64_sxword_dict  :: "(sint64)Show_class "  where 
+     " instance_Show_Show_Elf_types_native_uint_elf64_sxword_dict = ((|
+
+  show_method = Elf_Types_Local.string_of_sint64 |) )"
 
 
 (*val natural_land : natural -> natural -> natural*)

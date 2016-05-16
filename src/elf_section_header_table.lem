@@ -65,7 +65,7 @@ let shn_hireserve : natural = 65535 (* 0xffff *)
   * of a section header entry's special section index, [m].
   *)
 val string_of_special_section_index : natural -> string
-let {ocaml} string_of_special_section_index i =
+let string_of_special_section_index i =
   if i = shn_undef then
     "SHN_UNDEF"
   else if i = shn_loreserve then
@@ -169,7 +169,7 @@ let sht_hiuser : natural = (603979775 * 4) + 3 (* 2415919103 (* 0x8fffffff *) *)
   *)
 val string_of_section_type : (natural -> string) -> (natural -> string) ->
   (natural -> string) -> natural -> string
-let {ocaml} string_of_section_type os proc user i =
+let string_of_section_type os proc user i =
   if i = sht_null then
     "NULL"
   else if i = sht_progbits then
@@ -268,7 +268,7 @@ let shf_mask_proc        : natural = 4 * 1006632960 (* 0xf0000000 *)
   *)
 val string_of_section_flags : (natural -> string) -> (natural -> string) ->
   natural -> string
-let {ocaml} string_of_section_flags os proc f =
+let string_of_section_flags os proc f =
   if f = shf_write then
     "W"
   else if f = shf_alloc then
@@ -791,7 +791,7 @@ type sht_print_bundle =
   *)
 val string_of_elf32_section_header_table_entry : sht_print_bundle ->
   elf32_section_header_table_entry -> string
-let {ocaml} string_of_elf32_section_header_table_entry (os, proc, user) entry =
+let string_of_elf32_section_header_table_entry (os, proc, user) entry =
   unlines [
     "\t" ^ "Name: "    ^ show entry.elf32_sh_name
   ; "\t" ^ "Type: "    ^ string_of_section_type os proc user (natural_of_elf32_word entry.elf32_sh_type)
@@ -807,7 +807,7 @@ let {ocaml} string_of_elf32_section_header_table_entry (os, proc, user) entry =
   *)
 val string_of_elf64_section_header_table_entry : sht_print_bundle ->
   elf64_section_header_table_entry -> string
-let {ocaml} string_of_elf64_section_header_table_entry (os, proc, user) entry =
+let string_of_elf64_section_header_table_entry (os, proc, user) entry =
   unlines [
     "\t" ^ "Name: "    ^ show entry.elf64_sh_name
   ; "\t" ^ "Type: "    ^ string_of_section_type os proc user (natural_of_elf64_word entry.elf64_sh_type)
@@ -824,7 +824,7 @@ let {ocaml} string_of_elf64_section_header_table_entry (os, proc, user) entry =
   *)
 val string_of_elf32_section_header_table_entry' : sht_print_bundle ->
   string_table -> elf32_section_header_table_entry -> string
-let {ocaml} string_of_elf32_section_header_table_entry' (os, proc, user) stbl entry =
+let string_of_elf32_section_header_table_entry' (os, proc, user) stbl entry =
   let name =
     match get_string_at (natural_of_elf32_word entry.elf32_sh_name) stbl with
       | Fail _ -> "Invalid index into string table"
@@ -847,7 +847,7 @@ let {ocaml} string_of_elf32_section_header_table_entry' (os, proc, user) stbl en
   *)
 val string_of_elf64_section_header_table_entry' : sht_print_bundle ->
   string_table -> elf64_section_header_table_entry -> string
-let {ocaml} string_of_elf64_section_header_table_entry' (os, proc, user) stbl entry =
+let string_of_elf64_section_header_table_entry' (os, proc, user) stbl entry =
   let name =
     match get_string_at (natural_of_elf64_word entry.elf64_sh_name) stbl with
       | Fail _ -> "Invalid index into string table"
@@ -868,7 +868,7 @@ let {ocaml} string_of_elf64_section_header_table_entry' (os, proc, user) stbl en
   *)
   
 val string_of_elf32_section_header_table_entry_default : elf32_section_header_table_entry -> string
-let {ocaml} string_of_elf32_section_header_table_entry_default =
+let string_of_elf32_section_header_table_entry_default =
   string_of_elf32_section_header_table_entry
     ((const "*Default OS specific print*"),
       (const "*Default processor specific print*"),
@@ -879,7 +879,7 @@ instance (Show elf32_section_header_table_entry)
 end
 
 val string_of_elf64_section_header_table_entry_default : elf64_section_header_table_entry -> string
-let {ocaml} string_of_elf64_section_header_table_entry_default =
+let string_of_elf64_section_header_table_entry_default =
   string_of_elf64_section_header_table_entry
     ((const "*Default OS specific print*"),
       (const "*Default processor specific print*"),
@@ -891,12 +891,12 @@ end
 
 val string_of_elf32_section_header_table : sht_print_bundle ->
   elf32_section_header_table -> string
-let {ocaml} string_of_elf32_section_header_table sht_bdl tbl =
+let string_of_elf32_section_header_table sht_bdl tbl =
   unlines (List.map (string_of_elf32_section_header_table_entry sht_bdl) tbl)
 
 val string_of_elf32_section_header_table_default : elf32_section_header_table ->
   string
-let {ocaml} string_of_elf32_section_header_table_default =
+let string_of_elf32_section_header_table_default =
   string_of_elf32_section_header_table
     ((const "*Default OS specific print*"),
       (const "*Default processor specific print*"),
@@ -904,12 +904,12 @@ let {ocaml} string_of_elf32_section_header_table_default =
 
 val string_of_elf64_section_header_table : sht_print_bundle ->
   elf64_section_header_table -> string
-let {ocaml} string_of_elf64_section_header_table sht_bdl tbl =
+let string_of_elf64_section_header_table sht_bdl tbl =
   unlines (List.map (string_of_elf64_section_header_table_entry sht_bdl) tbl)
   
 val string_of_elf64_section_header_table_default : elf64_section_header_table ->
   string
-let {ocaml} string_of_elf64_section_header_table_default =
+let string_of_elf64_section_header_table_default =
   string_of_elf64_section_header_table
     ((const "*Default OS specific print*"),
       (const "*Default processor specific print*"),
@@ -917,12 +917,12 @@ let {ocaml} string_of_elf64_section_header_table_default =
 
 val string_of_elf32_section_header_table' : sht_print_bundle -> string_table ->
   elf32_section_header_table -> string
-let {ocaml} string_of_elf32_section_header_table' sht_bdl stbl tbl =
+let string_of_elf32_section_header_table' sht_bdl stbl tbl =
   unlines (List.map (string_of_elf32_section_header_table_entry' sht_bdl stbl) tbl)
 
 val string_of_elf64_section_header_table' : sht_print_bundle -> string_table ->
   elf64_section_header_table -> string
-let {ocaml} string_of_elf64_section_header_table' sht_bdl stbl tbl =
+let string_of_elf64_section_header_table' sht_bdl stbl tbl =
   unlines (List.map (string_of_elf64_section_header_table_entry' sht_bdl stbl) tbl)
   
 (** Section to segment mappings *)

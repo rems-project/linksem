@@ -26,8 +26,10 @@ imports
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Elf_relocation" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Memory_image" 
 	 "Abi_classes" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Memory_image_orderings" 
 	 "Abi_utilities" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Abi_aarch64_relocation" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Gnu_ext_abi" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Abi_amd64_relocation" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Abi_amd64" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Abi_aarch64_le" 
@@ -47,7 +49,7 @@ begin
 (*open import Maybe*)
 (*open import List*)
 (*open import Set*)
-(*open import Map*)
+(*import Map*)
 (*open import String*)
 (*open import Show*)
 (*open import Assert_extra*)
@@ -72,9 +74,13 @@ begin
 (*open import Abi_power64*)
 (*open import Abi_power64_relocation*)
 
+(*open import Gnu_ext_abi*)
+
 (*open import Abi_classes*)
 (*open import Abi_utilities*)
 (*open import Elf_types_native_uint*)
+
+(*open import Memory_image_orderings*)
 
 (** Relocation operators and their validity on a given platform *)
 
@@ -126,7 +132,7 @@ definition is_valid_abi_power64_relocation_operator2  :: " relocation_operator2 
 
 (** Misc. ABI related stuff *)
 
-datatype any_abi_feature = Amd64AbiFeature " amd64_abi_feature "
+datatype any_abi_feature = Amd64AbiFeature " any_abi_feature amd64_abi_feature "
                      | Aarch64LeAbiFeature " aarch64_le_abi_feature "
 
 (*val anyAbiFeatureCompare : any_abi_feature -> any_abi_feature -> Basic_classes.ordering*)
@@ -169,7 +175,7 @@ definition instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict  ::
 
 definition make_elf64_header  :: " nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> elf64_header "  where 
      " make_elf64_header data osabi abiv ma t entry shoff phoff phnum shnum shstrndx = (
-      (| elf64_ident    = [elf_mn_mag0, elf_mn_mag1, elf_mn_mag2, elf_mn_mag3, 
+      (| elf64_ident    = ([elf_mn_mag0, elf_mn_mag1, elf_mn_mag2, elf_mn_mag3, 
                            Elf_Types_Local.unsigned_char_of_nat elf_class_64, 
                            Elf_Types_Local.unsigned_char_of_nat data,
                            Elf_Types_Local.unsigned_char_of_nat elf_ev_current,
@@ -181,7 +187,7 @@ definition make_elf64_header  :: " nat \<Rightarrow> nat \<Rightarrow> nat \<Rig
                            Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat)),
                            Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat)),
                            Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat)),
-                           Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat))]
+                           Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat))])
        , elf64_type     = (Elf_Types_Local.uint16_of_nat t)
        , elf64_machine  = (Elf_Types_Local.uint16_of_nat ma)
        , elf64_version  = (Elf_Types_Local.uint32_of_nat elf_ev_current)
@@ -197,98 +203,120 @@ definition make_elf64_header  :: " nat \<Rightarrow> nat \<Rightarrow> nat \<Rig
        , elf64_shstrndx = (Elf_Types_Local.uint16_of_nat shstrndx)
        |) )"
 
+       
+(*val phdr_flags_from_section_flags : natural -> string -> natural*)
+definition phdr_flags_from_section_flags  :: " nat \<Rightarrow> string \<Rightarrow> nat "  where 
+     " phdr_flags_from_section_flags section_flags sec_name = (
+    (let flags = (natural_lor elf_pf_r (natural_lor 
+        (if flag_is_set shf_write section_flags then elf_pf_w else( 0 :: nat))
+        (if flag_is_set shf_execinstr section_flags then elf_pf_x else( 0 :: nat))))
+    in
+    (*let _ = errln (Phdr flags of section  ^ sec_name ^ (ELF section flags 0x  ^ 
+        (hex_string_of_natural section_flags) ^ ) are 0x ^ (hex_string_of_natural flags))
+    in*)
+    flags))"
 
-(*val make_load_phdrs : forall 'abifeature. natural -> natural -> annotated_memory_image 'abifeature -> list elf64_interpreted_section -> list elf64_program_header_table_entry*)
-definition make_load_phdrs  :: " nat \<Rightarrow> nat \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>(elf64_interpreted_section)list \<Rightarrow>(elf64_program_header_table_entry)list "  where 
-     " make_load_phdrs max_page_sz common_page_sz img3 section_pairs_bare_sorted_by_address = ( 
-    (let (phdr_flags_from_section_flags :: nat \<Rightarrow> string \<Rightarrow> nat) = (\<lambda> section_flags .  \<lambda> sec_name . 
-        (let flags = (natural_lor elf_pf_r (natural_lor 
-            (if flag_is_set shf_write section_flags then elf_pf_w else( 0 :: nat))
-            (if flag_is_set shf_execinstr section_flags then elf_pf_x else( 0 :: nat))))
-        in
-        (*let _ = errln (Phdr flags of section  ^ sec_name ^ (ELF section flags 0x  ^ 
-            (hex_string_of_natural section_flags) ^ ) are 0x ^ (hex_string_of_natural flags))
-        in*)
-        flags))
+
+(*val phdr_is_writable : natural -> bool*)
+definition phdr_is_writable  :: " nat \<Rightarrow> bool "  where 
+     " phdr_is_writable flags = (
+    (natural_land flags elf_pf_w) = elf_pf_w )"
+
+
+type_synonym can_combine_flags_fn =" nat set \<Rightarrow>  nat option "
+
+(* FIXME: lift this to a personality function of the GNU linker? 
+ * Not sure really... need to try some other linkers. *)
+(*val load_can_combine_flags : can_combine_flags_fn*)
+definition load_can_combine_flags  :: "(nat)set \<Rightarrow>(nat)option "  where 
+     " load_can_combine_flags flagsets = ( 
+    (* The GNU linker happily adds a .rodata section to a RX segment,
+     * but not to a RW segment. So the only clear rule is: if any is writable,
+     * all must be writable. *)
+    (let flagslist = (list_of_set flagsets)
     in
-    (let maybe_extend_phdr = (\<lambda> phdr .  \<lambda> isec1 .  ( 
-        (let new_p_type = (unat(elf64_p_type   phdr))
-        in
-        (let this_section_phdr_flags = (phdr_flags_from_section_flags(elf64_section_flags   isec1)(elf64_section_name_as_string   isec1))
-        in
-        (let can_combine_flags = (\<lambda> flagsets .  
-            (* The GNU linker happily adds a .rodata section to a RX segment,
-             * but not to a RW segment. So the only clear rule is: if any is writable,
-             * all must be writable. *)
-            (let is_writable = (\<lambda> flags .  natural_land flags elf_pf_w = elf_pf_w)
-            in
-            (let flagslist = (list_of_set flagsets)
-            in
-            (let union_flags = (List.foldl natural_lor(( 0 :: nat)) flagslist)
-            in
-            if ((\<exists> x \<in> (set flagslist).  is_writable x))
-            then
-                if ((\<forall> x \<in> (set flagslist).  is_writable x)) then Some union_flags
-                else None
-            else
-                Some union_flags))))
-        in
-        (let maybe_extended_flags = (can_combine_flags { this_section_phdr_flags, unat(elf64_p_flags   phdr) })
-        in
-        if maybe_extended_flags = None then (*let _ = errln flag mismatch in*) None
-        else (let new_p_flags = ((case  maybe_extended_flags of Some flags => flags | _ => failwith (''impossible'') ))
-        in
-        (* The new filesz is the file end offset of this section,
-         * minus the existing file start offset of the phdr. 
-         * Check that the new section begins after the old offset+filesz. *)
-        if(elf64_section_offset   isec1) < ((unat(elf64_p_offset   phdr)) + (unat(elf64_p_filesz   phdr)))
-        then (*let _ = errln offset went backwards in*) None
-        else 
-        (let new_p_filesz = (unat(elf64_p_filesz   phdr) + (if(elf64_section_type   isec1) = sht_progbits then(elf64_section_size   isec1) else( 0 :: nat)))
-        in 
-        (* The new memsz is the virtual address end address of this section,
-         * minus the existing start vaddr of the phdr. 
-         * Check that the new section begins after the old vaddr+memsz. *)
-        if(elf64_section_addr   isec1) < ((unat(elf64_p_vaddr   phdr)) + (unat(elf64_p_memsz   phdr)))
-        then (*let _ = errln vaddr went backwards in*) None
-        else 
-        (let new_p_memsz = (unat(elf64_p_memsz   phdr) +(elf64_section_size   isec1))
-        in
-        (let (one_if_zero :: nat \<Rightarrow> nat) = (\<lambda> n .  if n =( 0 :: nat) then( 1 :: nat) else n)
-        in
-        (let new_p_align =  (GCD.lcm (one_if_zero (unat(elf64_p_align   phdr))) (one_if_zero(elf64_section_align   isec1)))
-        in
-        Some
-          (| elf64_p_type   = (Elf_Types_Local.uint32_of_nat new_p_type)
-           , elf64_p_flags  = (Elf_Types_Local.uint32_of_nat new_p_flags)
-           , elf64_p_offset =(elf64_p_offset   phdr)
-           , elf64_p_vaddr  =(elf64_p_vaddr   phdr)
-           , elf64_p_paddr  =(elf64_p_paddr   phdr)
-           , elf64_p_filesz = (of_int (int new_p_filesz))
-           , elf64_p_memsz  = (of_int (int new_p_memsz))
-           , elf64_p_align  = (of_int (int new_p_align))
-           |))))))))))
-    ))
+    (let union_flags = (List.foldl natural_lor(( 0 :: nat)) flagslist)
     in
-    (let rounded_down_offset = (\<lambda> isec1 .  round_down_to common_page_sz(elf64_section_offset   isec1))
+    if ((\<exists> x \<in> (set flagslist).  phdr_is_writable x))
+    then
+        if ((\<forall> x \<in> (set flagslist).  phdr_is_writable x)) then Some union_flags
+        else None
+    else
+        Some union_flags)))"
+
+        
+(*val tls_can_combine_flags : can_combine_flags_fn*)
+definition tls_can_combine_flags  :: "(nat)set \<Rightarrow>(nat)option "  where 
+     " tls_can_combine_flags flagsets = ( Some (List.foldl natural_lor(( 0 :: nat)) (list_of_set flagsets)))"
+
+
+definition maybe_extend_phdr  :: " elf64_program_header_table_entry \<Rightarrow> elf64_interpreted_section \<Rightarrow>((nat)set \<Rightarrow>(nat)option)\<Rightarrow>(elf64_program_header_table_entry)option "  where 
+     " maybe_extend_phdr phdr isec1 can_combine_flags = (
+    (let new_p_type = (unat(elf64_p_type   phdr))
+    in
+    (let this_section_phdr_flags = (phdr_flags_from_section_flags(elf64_section_flags   isec1)(elf64_section_name_as_string   isec1))
+    in
+    (let maybe_extended_flags = (can_combine_flags { this_section_phdr_flags, unat(elf64_p_flags   phdr) })
+    in
+    if maybe_extended_flags = None then (*let _ = errln flag mismatch in*) None
+    else (let new_p_flags = ((case  maybe_extended_flags of Some flags => flags | _ => failwith (''impossible'') ))
+    in
+    (* The new filesz is the file end offset of this section,
+     * minus the existing file start offset of the phdr. 
+     * Check that the new section begins after the old offset+filesz. *)
+    if(elf64_section_offset   isec1) < ((unat(elf64_p_offset   phdr)) + (unat(elf64_p_filesz   phdr)))
+    then (*let _ = errln offset went backwards in*) None
+    else 
+    (let new_p_filesz = (unat(elf64_p_filesz   phdr) + (if(elf64_section_type   isec1) = sht_progbits then(elf64_section_size   isec1) else( 0 :: nat)))
+    in 
+    (* The new memsz is the virtual address end address of this section,
+     * minus the existing start vaddr of the phdr. 
+     * Check that the new section begins after the old vaddr+memsz. *)
+    if(elf64_section_addr   isec1) < ((unat(elf64_p_vaddr   phdr)) + (unat(elf64_p_memsz   phdr)))
+    then (*let _ = errln vaddr went backwards in*) None
+    else 
+    (let new_p_memsz = (unat(elf64_p_memsz   phdr) +(elf64_section_size   isec1))
+    in
+    (let (one_if_zero :: nat \<Rightarrow> nat) = (\<lambda> n .  if n =( 0 :: nat) then( 1 :: nat) else n)
+    in
+    (let new_p_align =  (GCD.lcm (one_if_zero (unat(elf64_p_align   phdr))) (one_if_zero(elf64_section_align   isec1)))
+    in
+    Some
+      (| elf64_p_type   = (Elf_Types_Local.uint32_of_nat new_p_type)
+       , elf64_p_flags  = (Elf_Types_Local.uint32_of_nat new_p_flags)
+       , elf64_p_offset = ((elf64_p_offset   phdr))
+       , elf64_p_vaddr  = ((elf64_p_vaddr   phdr))
+       , elf64_p_paddr  = ((elf64_p_paddr   phdr))
+       , elf64_p_filesz = (of_int (int new_p_filesz))
+       , elf64_p_memsz  = (of_int (int new_p_memsz))
+       , elf64_p_align  = (of_int (int new_p_align))
+       |))))))))))"
+
+
+definition make_new_phdr  :: " elf64_interpreted_section \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> elf64_program_header_table_entry "  where 
+     " make_new_phdr isec1 t maxpagesize1 commonpagesize1 = (
+    (let rounded_down_offset = (\<lambda> isec1 .  round_down_to commonpagesize1(elf64_section_offset   isec1))
     in
     (let offset_round_down_amount = (\<lambda> isec1 . (elf64_section_offset   isec1) - (rounded_down_offset isec1))
     in
-    (let rounded_down_vaddr = (\<lambda> isec1 .  round_down_to common_page_sz(elf64_section_addr   isec1))
+    (let rounded_down_vaddr = (\<lambda> isec1 .  round_down_to commonpagesize1(elf64_section_addr   isec1))
     in
     (let vaddr_round_down_amount = (\<lambda> isec1 . (elf64_section_addr   isec1) - (rounded_down_vaddr isec1))
     in
-    (let new_phdr = (\<lambda> isec1 .  
-      (| elf64_p_type   = (Elf_Types_Local.uint32_of_nat elf_pt_load) (** Type of the segment *)
-       , elf64_p_flags  = (Elf_Types_Local.uint32_of_nat (phdr_flags_from_section_flags(elf64_section_flags   isec1)(elf64_section_name_as_string   isec1))) (** Segment flags *)
-       , elf64_p_offset = (Elf_Types_Local.uint64_of_nat (rounded_down_offset isec1)) (** Offset from beginning of file for segment *)
-       , elf64_p_vaddr  = (Elf_Types_Local.uint64_of_nat (rounded_down_vaddr isec1)) (** Virtual address for segment in memory *)
-       , elf64_p_paddr  = (Elf_Types_Local.uint64_of_nat(( 0 :: nat))) (** Physical address for segment *)
-       , elf64_p_filesz = (of_int (int (if(elf64_section_type   isec1) = sht_nobits then( 0 :: nat) else(elf64_section_size   isec1) + (offset_round_down_amount isec1)))) (** Size of segment in file, in bytes *)
-       , elf64_p_memsz  = (of_int (int ((elf64_section_size   isec1) + (vaddr_round_down_amount isec1)))) (** Size of segment in memory image, in bytes *)
-       , elf64_p_align  = (of_int (int  (* isec.elf64_section_align *)max_page_sz)) (** Segment alignment memory for memory and file *)
-       |))
-    in
+  (| elf64_p_type   = (Elf_Types_Local.uint32_of_nat t) (** Type of the segment *)
+   , elf64_p_flags  = (Elf_Types_Local.uint32_of_nat (phdr_flags_from_section_flags(elf64_section_flags   isec1)(elf64_section_name_as_string   isec1))) (** Segment flags *)
+   , elf64_p_offset = (Elf_Types_Local.uint64_of_nat (rounded_down_offset isec1)) (** Offset from beginning of file for segment *)
+   , elf64_p_vaddr  = (Elf_Types_Local.uint64_of_nat (rounded_down_vaddr isec1)) (** Virtual address for segment in memory *)
+   , elf64_p_paddr  = (Elf_Types_Local.uint64_of_nat(( 0 :: nat))) (** Physical address for segment *)
+   , elf64_p_filesz = (of_int (int (if(elf64_section_type   isec1) = sht_nobits then( 0 :: nat) else(elf64_section_size   isec1) + (offset_round_down_amount isec1)))) (** Size of segment in file, in bytes *)
+   , elf64_p_memsz  = (of_int (int ((elf64_section_size   isec1) + (vaddr_round_down_amount isec1)))) (** Size of segment in memory image, in bytes *)
+   , elf64_p_align  = (of_int (int  (* isec.elf64_section_align *)maxpagesize1)) (** Segment alignment memory for memory and file *)
+   |))))))"
+
+
+(*val make_load_phdrs : forall 'abifeature. natural -> natural -> annotated_memory_image 'abifeature -> list elf64_interpreted_section -> list elf64_program_header_table_entry*)
+definition make_load_phdrs  :: " nat \<Rightarrow> nat \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>(elf64_interpreted_section)list \<Rightarrow>(elf64_program_header_table_entry)list "  where 
+     " make_load_phdrs maxpagesize1 commonpagesize1 img3 section_pairs_bare_sorted_by_address = ( 
     (* accumulate sections into the phdr *)
     (let rev_list = (List.foldl (\<lambda> accum_phdr_list .  (\<lambda> isec1 .  (
         (* Do we have a current phdr? *)
@@ -296,14 +324,14 @@ definition make_load_phdrs  :: " nat \<Rightarrow> nat \<Rightarrow> 'abifeature
             [] => (* no, so make one *)
                 (*let _ = errln (Starting the first LOAD phdr for section  ^ isec.elf64_section_name_as_string)
                 in*)
-                [new_phdr isec1]
+                [make_new_phdr isec1 elf_pt_load maxpagesize1 commonpagesize1]
             | current_phdr # more1 => 
                 (* can we extend it with the current section? *)
-                (case  maybe_extend_phdr current_phdr isec1 of
+                (case  maybe_extend_phdr current_phdr isec1 load_can_combine_flags of
                     None => 
                         (*let _ = errln (Starting new LOAD phdr for section  ^ isec.elf64_section_name_as_string)
                         in*)
-                        (new_phdr isec1) # (current_phdr # more1)
+                        (make_new_phdr isec1 elf_pt_load maxpagesize1 commonpagesize1) # (current_phdr # more1)
                     | Some phdr => phdr # more1
                 )
         )
@@ -312,9 +340,51 @@ definition make_load_phdrs  :: " nat \<Rightarrow> nat \<Rightarrow> 'abifeature
     in
     (*let _ = errln Successfully made phdrs
     in*)
-    List.rev rev_list)))))))))"
+    List.rev rev_list))"
 
-    
+
+(*val tls_extend: forall 'abifeature. abi 'abifeature -> abi 'abifeature*)
+definition tls_extend  :: " 'abifeature abi \<Rightarrow> 'abifeature abi "  where 
+     " tls_extend a = ( 
+   (| is_valid_elf_header = ((is_valid_elf_header   a))
+    , make_elf_header     = ((make_elf_header   a))
+    , reloc               = ((reloc   a))
+    , section_is_special  = ((section_is_special   a))
+    , section_is_large    = ((section_is_large   a))
+    , maxpagesize         = ((maxpagesize   a))
+    , minpagesize         = ((minpagesize   a))
+    , commonpagesize      = ((commonpagesize   a))
+    , symbol_is_generated_by_linker = ((symbol_is_generated_by_linker   a))
+    , make_phdrs          = (\<lambda> maxpagesize1 .  \<lambda> commonpagesize1 .  \<lambda> file_type .  \<lambda> img3 .  \<lambda> section_pairs_bare_sorted_by_address .  (
+        (let rev_list = (List.foldl (\<lambda> accum_phdr_list .  (\<lambda> isec1 .  (
+        (case  accum_phdr_list of
+            [] =>
+                (let _ = (()) in
+                [make_new_phdr isec1 elf_pt_tls maxpagesize1 commonpagesize1])
+            | current_phdr # more1 => 
+                (case  maybe_extend_phdr current_phdr isec1 tls_can_combine_flags of
+                    None => 
+                        (make_new_phdr isec1 elf_pt_tls maxpagesize1 commonpagesize1) # (current_phdr # more1)
+                    | Some phdr => phdr # more1
+                )
+        )
+        ))) [] (List.filter (\<lambda> isec1 .  flag_is_set shf_alloc(elf64_section_flags   isec1)
+            \<and> flag_is_set shf_tls(elf64_section_flags   isec1)) section_pairs_bare_sorted_by_address))
+        in
+        ((make_phdrs   a) maxpagesize1 commonpagesize1 file_type img3 section_pairs_bare_sorted_by_address) @ (List.rev rev_list))
+    ))
+    , max_phnum           =(( 1 :: nat) +(max_phnum   a))
+    , guess_entry_point   = ((guess_entry_point   a))
+    , pad_data            = ((pad_data   a))
+    , pad_code            = ((pad_code   a))
+    , generate_support    = ((generate_support   a))
+    , concretise_support  = ((concretise_support   a))
+    , get_reloc_symaddr   = ((get_reloc_symaddr   a))
+    |) )"
+
+
+(* We use these snappily-named functions in relocation calculations. *)
+
 (*val make_default_phdrs : forall 'abifeature. natural -> natural -> natural (* file type *) -> annotated_memory_image 'abifeature -> list elf64_interpreted_section -> list elf64_program_header_table_entry*)
 definition make_default_phdrs  :: " nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>(elf64_interpreted_section)list \<Rightarrow>(elf64_program_header_table_entry)list "  where 
      " make_default_phdrs maxpagesize1 commonpagesize1 t img3 section_pairs_bare_sorted_by_address = ( 
@@ -391,113 +461,77 @@ definition null_abi  :: "(any_abi_feature)abi "  where
     , pad_code = pad_zeroes
     , generate_support = ( (* fun _ -> *)\<lambda> _ .  get_empty_memory_image () )
     , concretise_support = (\<lambda> img3 .  img3)
+    , get_reloc_symaddr = 
+  (default_get_reloc_symaddr
+     instance_Basic_classes_Ord_Abis_any_abi_feature_dict
+     instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict)
     |) )"
 
 
-(* *)
-(*val amd64_generate_support : (* list (list reloc_site_resolution) -> *) list (annotated_memory_image any_abi_feature) -> annotated_memory_image any_abi_feature*)
-definition amd64_generate_support  :: "((any_abi_feature)annotated_memory_image)list \<Rightarrow>(any_abi_feature)annotated_memory_image "  where 
-     " amd64_generate_support (* reloc_resolution_lists *) input_imgs = ( 
-    (* We generate a basic GOT. At the moment we can only describe the GOT
-     * contents abstractly, not as its binary content, because addresses
-     * have not yet been fixed. 
-     * 
-     * To do this, we create a set of Abi_amd64.GOTEntry records, one for
-     * each distinct symbol that is referenced by one or more GOT-based relocations.
-     * To enumerate these, we look at all the symbol refs in the image.
-     *)
-    (let tags_and_ranges_by_image = (Lem_list.mapi (\<lambda> i .  \<lambda> img3 . 
-        (i, Multimap.lookupBy0 
-  (Memory_image_orderings.instance_Basic_classes_Ord_Memory_image_range_tag_dict
-     instance_Basic_classes_Ord_Abis_any_abi_feature_dict) (instance_Basic_classes_Ord_Maybe_maybe_dict
-   (instance_Basic_classes_Ord_tup2_dict
-      Lem_string_extra.instance_Basic_classes_Ord_string_dict
-      (instance_Basic_classes_Ord_tup2_dict
-         instance_Basic_classes_Ord_Num_natural_dict
-         instance_Basic_classes_Ord_Num_natural_dict)))  (Memory_image_orderings.tagEquiv
-    instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict) (SymbolRef(null_symbol_reference_and_reloc_site))(by_tag   img3))
-    ) input_imgs)
-    in
-    (let refs_via_got = (list_concat_map (\<lambda> (i, tags_and_ranges) .  Lem_list.mapMaybe (\<lambda> (tag, maybe_range) .  (case  tag of
-         SymbolRef(rr) => 
-            (* Is this ref a relocation we're going to apply, and does it reference the GOT? *)
-            (case  ((maybe_reloc   rr),(maybe_def_bound_to   rr)) of
-                (None, _) => None
-                | (Some r, Some(ApplyReloc, maybe_def)) =>
-                    if (get_elf64_relocation_a_type(ref_relent   r) \<in> {
-                        r_x86_64_got32, r_x86_64_gotpcrel, r_x86_64_gottpoff, r_x86_64_gotoff64, r_x86_64_gotpc32, r_x86_64_gotpc32_tlsdesc
-                    }) then Some (i,(ref_symname  (ref   rr)), (maybe_range, rr)) else None
-                | (Some r, Some(MakePIC, maybe_def)) => failwith (''FIXME: PIC support please'')
-            )
-         | _ => failwith (''impossible: reloc site tag is not a SymbolRef'')
-    )) tags_and_ranges) tags_and_ranges_by_image)
-    in
-    (let (idxs, symnames, items) = (unzip3 refs_via_got)
-    in
-    (* We now have our list of symbols. How many distinct symbols? *)
-    (let by_symname = (List.foldl (\<lambda> acc1 .  \<lambda> (idx1, symname, item) .  map_update symname ((case   acc1 symname of 
-            None => [item]
-            | Some l => item # l
-        )) acc1) Map.empty refs_via_got)
-    in
-    (let nentries = ( (card (Map.dom by_symname)))
-    in
-    (let entrysize =(( 8 :: nat))
-    in
-    (let new_by_range = ({
-        (Some((''.got''), (( 0 :: nat), (nentries * entrysize))), AbiFeature(Amd64AbiFeature(Abi_amd64.GOT0(List.zip symnames items))))
-    ,   (Some((''.got''), (( 0 :: nat), (nentries * entrysize))), FileFeature(ElfSection(( 1 :: nat), 
-          (| elf64_section_name =(( 0 :: nat)) (* ignored *)
-           , elf64_section_type = sht_progbits
-           , elf64_section_flags = (natural_lor shf_write shf_alloc)
-           , elf64_section_addr =(( 0 :: nat)) (* ignored -- covered by element *)
-           , elf64_section_offset =(( 0 :: nat)) (* ignored -- will be replaced when file offsets are assigned *)
-           , elf64_section_size = (nentries * entrysize) (* ignored *)
-           , elf64_section_link =(( 0 :: nat))
-           , elf64_section_info =(( 0 :: nat))
-           , elf64_section_align =(( 8 :: nat))
-           , elf64_section_entsize =(( 8 :: nat))
-           , elf64_section_body = Byte_sequence.empty (* ignored *)
-           , elf64_section_name_as_string = (''.got'')
-           |)
-        )))
-    ,   (* FIXME: _GLOBAL_OFFSET_TABLE_ generally doesn't mark the *start* of the GOT; 
-         * it's some distance in. What about .got.plt? *)
-        (Some((''.got''), (( 0 :: nat), (nentries * entrysize))), SymbolDef((|
-              def_symname = (''_GLOBAL_OFFSET_TABLE_'')
-            , def_syment =    (| elf64_st_name  = (Elf_Types_Local.uint32_of_nat(( 0 :: nat))) (* ignored *)
-                               , elf64_st_info  = (Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat))) (* FIXME *)
-                               , elf64_st_other = (Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat))) (* FIXME *)
-                               , elf64_st_shndx = (Elf_Types_Local.uint16_of_nat(( 1 :: nat)))
-                               , elf64_st_value = (Elf_Types_Local.uint64_of_nat(( 0 :: nat))) (* ignored *)
-                               , elf64_st_size  = (of_int (int (nentries * entrysize))) (* FIXME: start later, smaller size? zero size? *)
-                               |)
-            , def_sym_scn =(( 1 :: nat))
-            , def_sym_idx =(( 1 :: nat))
-            , def_linkable_idx =(( 0 :: nat))
-            |)))
-    })
-    in
-    (|  elements = (map_update (''.got'') (|
-                    startpos = None
-               ,    length1 = (Some (nentries * entrysize))
-               ,    contents = []
-               |) Map.empty)
-     ,   by_range = new_by_range,   by_tag = (by_tag_from_by_range new_by_range)
-      
-     |)))))))))"
+(*val got_entry_ordering : (string * maybe symbol_definition) -> (string * maybe symbol_definition) -> Basic_classes.ordering*)
+fun got_entry_ordering  :: " string*(symbol_definition)option \<Rightarrow> string*(symbol_definition)option \<Rightarrow> ordering "  where 
+     " got_entry_ordering (s1, md1) (s2, md2) = ( EQ )" 
+declare got_entry_ordering.simps [simp del]
+ (* FIXME *)
+
+definition is_ifunc_def  :: "(symbol_definition)option \<Rightarrow> bool "  where 
+     " is_ifunc_def = ( \<lambda> maybe_def .  
+(case  maybe_def of
+ None => False
+ | Some d => get_elf64_symbol_type(def_syment   d) = stt_gnu_ifunc
+))"
 
 
-(*val amd64_concretise_support : annotated_memory_image any_abi_feature -> annotated_memory_image any_abi_feature*)
-definition amd64_concretise_support  :: "(any_abi_feature)annotated_memory_image \<Rightarrow>(any_abi_feature)annotated_memory_image "  where 
-     " amd64_concretise_support img3 = ( 
-    (* Fill in the GOT contents. *)
+definition amd64_reloc_needs_got_slot  :: " 'a \<Rightarrow> reloc_site \<Rightarrow>(symbol_definition)option \<Rightarrow> bool "  where 
+     " amd64_reloc_needs_got_slot = (  \<lambda> symref .  \<lambda> rr .  \<lambda> maybe_def .  
+    if (get_elf64_relocation_a_type(ref_relent   rr) \<in> {
+        r_x86_64_got32, r_x86_64_gotpcrel, r_x86_64_gottpoff, r_x86_64_gotoff64, r_x86_64_gotpc32 (* ; r_x86_64_gotpc32_tlsdesc *)
+    }) then 
+       True
+    else if is_ifunc_def maybe_def
+         then
+         (* This reference is bound to a STT_GNU_IFUNC definition. 
+          * What now needs to happen is as follows.
+          * - we ensure that a GOT entry is generated for this symbol (we do this here);
+          * - we ensure that a PLT entry (specifically .iplt) is generated for the symbol (Below);
+          * - on making the GOT, we also generate a .rela.plt relocation record covering the GOT slot;
+          * - when applying the relocation, of whatever kind, the address of the PLT slot 
+          *      is the address input to the calculation
+          * - the code marked by the STT_GNU_IFUNC symbol definition is not the function
+          *      to call; it's the function that calculates the address of the function to call!
+          *      this becomes the addend of the R_X86_64_IRELATIVE Elf64_Rela marking the GOT slot
+          * - note that for static linking, the GOT is usually pre-filled (cf. dynamically when it is filled by JUMP_SLOT relocs).
+          *      ... but our GOT entries *must* have corresponding R_X86_64_IRELATIVEs generated
+          *)
+          True
+    else False )"
+
+
+
+definition amd64_reloc_needs_plt_slot  :: " symbol_reference_and_reloc_site \<Rightarrow> reloc_site \<Rightarrow>(symbol_definition)option \<Rightarrow> bool "  where 
+     " amd64_reloc_needs_plt_slot (symref :: symbol_reference_and_reloc_site) rr maybe_def = (
+    if (get_elf64_relocation_a_type(ref_relent   rr) \<in> {
+        r_x86_64_plt32      (* NOTE: when generating shared libs, it starts to matter
+                             * where the definition is -- anything that is locally interposable
+                             * or undefined will need a slot. See amd64_get_reloc_symaddr. *)
+    }) then
+       True
+    else if is_ifunc_def maybe_def 
+         then
+         True
+    else
+        (* not a PLT ref *)
+        False )"
+
+
+definition amd64_find_got_label_and_element  :: "(any_abi_feature)annotated_memory_image \<Rightarrow>((string*(symbol_definition)option)list*element)option "  where 
+     " amd64_find_got_label_and_element img3 = ( 
     (case  (elements   img3) (''.got'') of
-        None => (* got no GOT? okay... *) img3
-        | Some got => 
+        None => (* got no GOT? okay... *) None
+        | Some got_el => 
             (* Find the GOT tag. *)
             (let tags_and_ranges = (Multimap.lookupBy0 
-  (Memory_image_orderings.instance_Basic_classes_Ord_Memory_image_range_tag_dict
+  (instance_Basic_classes_Ord_Memory_image_range_tag_dict
      instance_Basic_classes_Ord_Abis_any_abi_feature_dict) (instance_Basic_classes_Ord_Maybe_maybe_dict
    (instance_Basic_classes_Ord_tup2_dict
       Lem_string_extra.instance_Basic_classes_Ord_string_dict
@@ -508,10 +542,1204 @@ definition amd64_concretise_support  :: "(any_abi_feature)annotated_memory_image
             in
             (case  tags_and_ranges of
                 [] => failwith (''error: GOT element but no ABI feature GOT tag'')
-                | [(AbiFeature(Amd64AbiFeature(Abi_amd64.GOT0(l))), Some(el_name, (start, len)))] => img3 (* FIXME *)
-                | _ => failwith (''bad or multiple GOT tags'')
+                | [(AbiFeature(Amd64AbiFeature(Abi_amd64.GOT0(l))), _)] => Some (l, got_el)
+                | _ => failwith ((''multiple GOT elements/tags''))
             ))
     ))"
+
+
+definition amd64_find_plt_label_and_element  :: "(any_abi_feature)annotated_memory_image \<Rightarrow>((string*(symbol_definition)option*(any_abi_feature)plt_entry_content_fn)list*element)option "  where 
+     " amd64_find_plt_label_and_element img3 = ( 
+    (case  (elements   img3) (''.plt'') of
+        None => (* got no PLT? okay... *) None
+        | Some plt_el => 
+            (* Find the PLT tag. *)
+            (let tags_and_ranges = (Multimap.lookupBy0 
+  (instance_Basic_classes_Ord_Memory_image_range_tag_dict
+     instance_Basic_classes_Ord_Abis_any_abi_feature_dict) (instance_Basic_classes_Ord_Maybe_maybe_dict
+   (instance_Basic_classes_Ord_tup2_dict
+      Lem_string_extra.instance_Basic_classes_Ord_string_dict
+      (instance_Basic_classes_Ord_tup2_dict
+         instance_Basic_classes_Ord_Num_natural_dict
+         instance_Basic_classes_Ord_Num_natural_dict)))  (Memory_image_orderings.tagEquiv
+    instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict) (AbiFeature(Amd64AbiFeature(Abi_amd64.PLT0([]))))(by_tag   img3))
+            in
+            (case  tags_and_ranges of
+                [] => failwith (''error: PLT element but no ABI feature PLT tag'')
+                | [(AbiFeature(Amd64AbiFeature(Abi_amd64.PLT0(l))), _)] => Some (l, plt_el)
+                | _ => failwith ((''multiple PLT elements/tags''))
+            ))
+    ))"
+
+
+definition got_slot_index_for_symname  :: " 'a \<Rightarrow>('a*'b)list \<Rightarrow>(nat)option "  where 
+     " got_slot_index_for_symname symname got_label = (
+    find_index (\<lambda> (s, _) .  s = symname) got_label )"
+
+
+(*val amd64_get_reloc_symaddr : symbol_definition -> annotated_memory_image any_abi_feature -> maybe reloc_site -> natural*)
+definition amd64_get_reloc_symaddr  :: " symbol_definition \<Rightarrow>(any_abi_feature)annotated_memory_image \<Rightarrow>(reloc_site)option \<Rightarrow> nat "  where 
+     " amd64_get_reloc_symaddr the_input_def output_img maybe_reloc1 = ( 
+    (* The default implementation simply looks up a matching symbol in the output image
+     * and calculates its address.
+     * 
+     * That's normally fine, even for via-GOT references since their calculations don't
+     * use the symaddr. For via-PLT references, we need to use the PLT slot address.
+     * HMM. Isn't this duplicating the role of functions like amd64_plt_slot_addr?
+     
+     * Recall that we created this get_reloc_symaddr mechanism to deal with IFUNC symbols. 
+     * With an IFUNC symbol, we reference it simply using a PC32 relocation, but the address
+     * that gets filled in isn't the IFUNC address; it's the corresponding PLT slot. 
+     * HMM: does this happen for other PC32 references? If so, we'll need this mechanism
+     * there. And it certainly does, because relocatable object code never uses PLT32
+     * relocs. 
+     * 
+     * I had previously tried to handle this issue in mark_fate_of_relocs, using the
+     * 1-argument ApplyReloc(_) and MakePIC to encode the replacement. But at that stage, 
+     * which is ABI-independent and happens before address assignment?, we can't know enough.
+     *)
+    (* match bound_def_in_input with
+        Nothing -> 0
+        | Just the_input_def -> *)
+        if is_ifunc_def (Some(the_input_def))
+        then
+            (* We need to return the address of the matching PLT slot.
+             * PLT label entries are (symname, maybe_def, content_fn). *)
+            (case  amd64_find_plt_label_and_element output_img of
+                None => failwith (''error: ifunc but no PLT'')
+                | Some (l, plt_el) =>
+                (case  find_index (\<lambda> (symname, _, _) .  symname =(def_symname   the_input_def)) l of
+                    (* FIXME: using symnames seems wrong *)
+                    Some idx1 => 
+                        (case (startpos   plt_el) of
+                            Some addr => addr + (( idx1) *( 16 :: nat)) (* size of a PLT entry *)
+                            | None => failwith (''error: PLT has no address assigned'')
+                        )
+                    | None =>( 0 :: nat)
+                )
+            )
+        else default_get_reloc_symaddr 
+  instance_Basic_classes_Ord_Abis_any_abi_feature_dict instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict the_input_def output_img maybe_reloc1 )"
+
+    (* end *)
+
+(* *)
+(*val amd64_generate_support : (* list (list reloc_site_resolution) -> *) list (string * annotated_memory_image any_abi_feature) -> annotated_memory_image any_abi_feature*)
+definition amd64_generate_support  :: "(string*(any_abi_feature)annotated_memory_image)list \<Rightarrow>(any_abi_feature)annotated_memory_image "  where 
+     " amd64_generate_support (* reloc_resolution_lists *) input_fnames_and_imgs = ( 
+    (* We generate a basic GOT. At the moment we can only describe the GOT
+     * contents abstractly, not as its binary content, because addresses
+     * have not yet been fixed. 
+     * 
+     * To do this, we create a set of Abi_amd64.GOTEntry records, one for
+     * each distinct symbol that is referenced by one or more GOT-based relocations.
+     * To enumerate these, we look at all the symbol refs in the image.
+     *)
+    (let (fnames, input_imgs) = (list_unzip input_fnames_and_imgs)
+    in
+    (let tags_and_ranges_by_image = (Lem_list.mapi (\<lambda> i .  \<lambda> (fname1, img3) . 
+        (i, fname1, Multimap.lookupBy0 
+  (instance_Basic_classes_Ord_Memory_image_range_tag_dict
+     instance_Basic_classes_Ord_Abis_any_abi_feature_dict) (instance_Basic_classes_Ord_Maybe_maybe_dict
+   (instance_Basic_classes_Ord_tup2_dict
+      Lem_string_extra.instance_Basic_classes_Ord_string_dict
+      (instance_Basic_classes_Ord_tup2_dict
+         instance_Basic_classes_Ord_Num_natural_dict
+         instance_Basic_classes_Ord_Num_natural_dict)))  (Memory_image_orderings.tagEquiv
+    instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict) (SymbolRef(null_symbol_reference_and_reloc_site))(by_tag   img3))
+    ) input_fnames_and_imgs)
+    in
+    (let refs_via_got = (list_concat_map (\<lambda> (i, fname1, tags_and_ranges) .  Lem_list.mapMaybe (\<lambda> (tag, maybe_range) .  (case  tag of
+         SymbolRef(symref) => 
+            (* Is this ref a relocation we're going to apply, and does it reference the GOT? *)
+            (case  ((maybe_reloc   symref),(maybe_def_bound_to   symref)) of
+                (None, _) => None
+                | (Some rr, Some(ApplyReloc, maybe_def)) =>
+                    if amd64_reloc_needs_got_slot symref rr maybe_def then
+                        (*let _ = errln (Saw a via-GOT symbol reference: to ` ^ symref.ref.ref_symname ^ ' coming from linkable  ^ (show i) ^  ( ^ 
+                            fname ^ ), logically from section  ^ (show rr.ref_src_scn)) in *)
+                        Some ((ref_symname  (ref   symref)), maybe_def) 
+                    else None
+                | (Some rr, Some(MakePIC, maybe_def)) => failwith (''FIXME: PIC support please'')
+            )
+         | _ => failwith (''impossible: reloc site tag is not a SymbolRef'')
+    )) tags_and_ranges) tags_and_ranges_by_image)
+    in
+    (let (symnames, maybe_defs) = (list_unzip refs_via_got)
+    in
+    (*let _ = errln (GOT includes defs with names:  ^ (show (Set_extra.toList (Set.fromList symnames))))
+    in*)
+    (let got_pairs_set = (List.set refs_via_got)
+    in
+    (let got_defs_set = (List.set maybe_defs)
+    in
+    (* This is where we fix the order of the GOT entries. *)
+    (let got_pairs_list = (list_of_set got_pairs_set)
+    in
+    (let got_idx_and_maybe_def_by_symname_map = (Map.map_of (List.rev (mapi (\<lambda> slot_idx .  \<lambda> (symname, maybe_def) .  (symname, (slot_idx, maybe_def))) got_pairs_list)))
+    in
+    (let got_ifunc_set =
+  (set_filter (\<lambda> maybe_d .  (is_ifunc_def maybe_d)) got_defs_set)
+    in
+    (* Quirk: what if we have the same def appearing under two different symnames?
+     * This shouldn't happen, at present. 
+     * What if we have the same symname related to two different defs? This also 
+     * shouldn't happen, because only global symbols go in the GOT, so we don't have
+     * to worry about local symbols with the same name as another symbol. But still, it 
+     * could plausibly happen in some situations with weird symbol visibilities or binding. *)
+    (* if Set.size pairs_set <> Set.size defs_set then
+        failwith something quirky going on with GOT symbol defs and their names
+    else *)
+(*    let name_def_pairs = List.foldl (fun acc -> fun (idx, symname, (maybe_range, rr)) -> 
+        Set.insert (
+        
+                symname, (match rr.maybe_def_bound_to with
+        Map.lookup symname acc with 
+            Nothing -> [item]
+            | Just l -> item :: l
+        end) acc) {} refs_via_got
+    in *)
+    (let got_nentries = ( (card got_pairs_set))
+    in
+    (let got_entrysize =(( 8 :: nat))
+    in
+    (* We also need a PLT... sort of. We need a way to resolve via-PLT relocs. 
+     * But we might do so without actually creating a (non-zero-length) PLT. 
+     * Again, this is to accommodate the sorts of optimisations the GNU linker does.
+     * 
+     * Note that every PLT entry has a corresponding GOT entry. Here we are simply
+     * enumerating the via-PLT relocs that imply a PLT entry. We look their GOT
+     * slots up later, by symbol name. *)
+    (let refs_via_plt = (list_concat_map (\<lambda> (i, fname1, tags_and_ranges) .  Lem_list.mapMaybe (\<lambda> (tag, maybe_range) .  (case  tag of
+         SymbolRef(symref) => 
+            (* Is this ref a relocation we're going to apply, and does it reference the GOT? *)
+            (case  ((maybe_reloc   symref),(maybe_def_bound_to   symref)) of
+                (None, _) => None
+                | (Some rr, Some(ApplyReloc, maybe_def)) =>
+                    if amd64_reloc_needs_plt_slot symref rr maybe_def 
+                    then 
+                        (*let _ = if is_ifunc_def maybe_def then
+                         (* we ensure that a PLT entry (specifically .iplt) is generated for the symbol *)
+                         errln (Saw a reference to IFUNC symbol ` ^ symref.ref.ref_symname ^ '; ref is coming from linkable  ^ (show i) ^  ( ^ 
+                            fname ^ ), relent idx  ^ (show rr.ref_rel_idx) ^  logically from section  ^ (show rr.ref_src_scn) ) 
+                        else
+                        errln (Saw a via-PLT symbol reference: to ` ^ symref.ref.ref_symname ^ ' coming from linkable  ^ (show i) ^  ( ^ 
+                            fname ^ ), relent idx  ^ (show rr.ref_rel_idx) ^  logically from section  ^ (show rr.ref_src_scn) ^ 
+                            match maybe_def with Just _ -> , with definition | Nothing -> , not bound to anything end
+                            )
+                        in*)
+                        Some((ref_symname  (ref   symref)), maybe_def) 
+                    else None
+                | (Some rr, Some(MakePIC, maybe_def)) => failwith (''FIXME: PIC support please'')
+            )
+         | _ => failwith (''impossible: reloc site tag is not a SymbolRef'')
+    )) tags_and_ranges) tags_and_ranges_by_image)
+    in
+    (*let _ = errln (Saw  ^ (show (length refs_via_plt)) ^  relocations of a via-PLT type)
+    in*)
+    (* account for the optimisations we did on GOT slots *)
+    (let refs_via_plt_having_got_slot = (Lem_list.mapMaybe (\<lambda> (symname, _) .  
+        (case   got_idx_and_maybe_def_by_symname_map symname of
+            Some(idx1, maybe_d) => Some (symname, idx1, maybe_d)
+            | None => None
+            )
+        ) refs_via_plt)
+    in
+    (*let _ = errln (Saw  ^ (show (length refs_via_plt_having_got_slot)) ^  relocations of a via-PLT type where we instantiated a GOT slot for the symbol)
+    in*)
+    (let (plt_symnames, plt_got_idxs, plt_ref_bound_to_maybe_defs) = (unzip3 refs_via_plt_having_got_slot)
+    in
+    (let plt_symnames_excluding_header = (list_of_set (List.set plt_symnames))
+    in
+    (*let _ = errln (PLT symnames:  ^ (show plt_symnames_excluding_header))
+    in*)
+    (let n_iplt_entries = (card got_ifunc_set)
+        (* The content of the IPLT entries depends on the address assignment of GOT slots
+         * and the IFUNCs that they reference. We need to reserve space for them here, though. *)
+    in
+    (*let _ = errln (We think there should be  ^ (show n_iplt_entries) ^  PLT entries due to references to IFUNC symbols)
+    in*)
+    (* let got_entries_referencing_functions =  (List.filter (fun (symname, maybe_def) -> 
+            match def with
+                Just d -> d.def_syment
+                | Nothing -> false
+            end) refs_via_got)
+    in *)
+    (let plt_needs_header_entry = ((List.length plt_symnames_excluding_header) > n_iplt_entries)
+    in
+    (*let _ = errln (PLT needs header entry?  ^ (show plt_needs_header_entry))
+    in*)
+    (let total_n_plt_entries = ((if plt_needs_header_entry then( 1 :: nat) else( 0 :: nat)) + (List.length plt_symnames_excluding_header))
+    in
+    (*let _ = errln (PLT total entry count:  ^ (show total_n_plt_entries))
+    in*)
+    (let new_by_range = ({
+        (Some((''.plt''), (( 0 :: nat),(( 16 :: nat) * total_n_plt_entries))), AbiFeature(Amd64AbiFeature(Abi_amd64.PLT0(
+                 mapi (\<lambda> plt_entry_idx_not_counting_header .  (\<lambda> symname . 
+                    (* We want to label the PLT entry with a function that 
+                     * - accepts the PLT base address, the GOT base address and the GOT slot number;
+                     * - closure-captures whatever else it needs (whether we're inserting a PLT header);
+                     * - yields the *full contents of the PLT entry* before relocation. 
+                     * - recall that PLT entries might be header (the special one at the start), 
+                     *      normal (to be relocated with R_X86_64_JUMP_SLOT)
+                     *   or irelative (to be relocated with R_X86_64_IRELATIVE).
+                     *    Q. Why are R_X86_64_JUMP_SLOT necessary?
+                     *       The PLT entries are doing relative addressing, and
+                     *       the offset to the GOT entry is known at link time,
+                     *       so the linker should be able to fill them in. In
+                     *       fact, it does. HMM. Understand this better. *)
+                    (* What is the GOT slot number? *)
+                    (let (got_slot_idx, maybe_def) = ((case   got_idx_and_maybe_def_by_symname_map symname of
+                        Some(idx1, maybe_d) => ( idx1, maybe_d)
+                        | None => failwith (([(CHR ''G''), (CHR ''O''), (CHR ''T''), (CHR '' ''), (CHR ''d''), (CHR ''o''), (CHR ''e''), (CHR ''s''), (CHR '' ''), (CHR ''n''), (CHR ''o''), (CHR ''t''), (CHR '' ''), (CHR ''c''), (CHR ''o''), (CHR ''n''), (CHR ''t''), (CHR ''a''), (CHR ''i''), (CHR ''n''), (CHR '' ''), (CHR ''s''), (CHR ''y''), (CHR ''m''), (CHR ''b''), (CHR ''o''), (CHR ''l''), (CHR '' ''), (Char Nibble6 Nibble0)]) @ (symname @ ([(Char Nibble2 Nibble7), (CHR '' ''), (CHR ''r''), (CHR ''e''), (CHR ''q''), (CHR ''u''), (CHR ''i''), (CHR ''r''), (CHR ''e''), (CHR ''d''), (CHR '' ''), (CHR ''b''), (CHR ''y''), (CHR '' ''), (CHR ''P''), (CHR ''L''), (CHR ''T''), (CHR '' ''), (CHR ''e''), (CHR ''n''), (CHR ''t''), (CHR ''r''), (CHR ''y'')])))
+                        ))
+                    in
+                    (symname, maybe_def, ((\<lambda> (got_base_addr :: nat) .  \<lambda> (plt_base_addr :: nat) .  
+                        (* Okay, now we can generate the entry. NOTE that we're lexically still in generate_support,
+                         * but we'll be called from concretise_support. The code that generates the header
+                         * entry is actually in concretise_support. 
+                         * 
+                         * If the entry is a normal entry, it looks like
+                         * 
+                               0x0000000000400410 <+0>:     ff 25 02 0c 20 00       jmpq   *0x200c02(%rip)        # 0x601018 <puts@got.plt>
+                               0x0000000000400416 <+6>:     68 00 00 00 00  pushq  $0x0
+                               0x000000000040041b <+11>:    e9 e0 ff ff ff  jmpq   0x400400
+                         * 
+                         * If the entry is an irelative entry, it looks like 
+                         * 
+                              400350:       ff 25 02 fd 2b 00       jmpq   *0x2bfd02(%rip)        # 6c0058 <_GLOBAL_OFFSET_TABLE_+0x58>
+                              400356:       68 00 00 00 00          pushq  $0x0
+                              40035b:       e9 00 00 00 00          jmpq   400360 <check_one_fd.part.0>
+                         
+                         * ... i.e. basically the same but the pushq and jmpq have literal-zero args (they're not used).
+                         *)
+                        (let this_plt_slot_base_addr = (plt_base_addr +(( 16 :: nat) * (( plt_entry_idx_not_counting_header) 
+                            + (if plt_needs_header_entry then( 1 :: nat) else( 0 :: nat)))))
+                        in
+                        (*let _ = Missing_pervasives.errln (PLT slot base address for symname ` ^ symname ^ ': 0x ^
+                            (hex_string_of_natural this_plt_slot_base_addr))
+                        in*)
+                        (let got_slot_addr = (got_base_addr +(( 8 :: nat) * got_slot_idx))
+                        in
+                        (*let _ = Missing_pervasives.errln (GOT slot address for symname ` ^ symname ^ ' (idx  ^ (show got_slot_idx) ^ ): 0x ^
+                            (hex_string_of_natural got_slot_addr))
+                        in*)
+                        (let maybe_header_entry_address = (if plt_needs_header_entry then Some(plt_base_addr) else None)
+                        in
+                        (let content_bytes =                        
+ ((((([(of_nat (( 255 :: nat)) :: byte), (of_nat (( 37 :: nat)) :: byte)] @ (* offset to the GOT entry, from the *next* instruction start, signed 32-bit LE *)
+                            (to_le_signed_bytes(( 4 :: nat)) (
+                                (int got_slot_addr) - (int (this_plt_slot_base_addr +( 6 :: nat)))
+                            ))) @
+                        [(of_nat (( 104 :: nat)) :: byte)]) @ (* plt slot number not including header, 32-bit LE *)
+                                 (to_le_unsigned_bytes(( 4 :: nat)) (int ( plt_entry_idx_not_counting_header)))) @
+                        [(of_nat (( 233 :: nat)) :: byte)]) @ (to_le_signed_bytes(( 4 :: nat)) (
+                            if is_ifunc_def maybe_def
+                            then( 0 :: int)
+                            else (case  maybe_header_entry_address of
+                                None => failwith (''normal PLT entry but no PLT header!'')
+                                | Some header_entry_address => (int header_entry_address) - (int (this_plt_slot_base_addr +( 16 :: nat)))
+                                )
+                        )))
+                        in
+                        (*let _ = errln (Created a PLT entry consisting of  ^ (show (length content_bytes)) ^  bytes.)
+                        in*)
+                        (this_plt_slot_base_addr, content_bytes)))))
+                        (* 
+                        match maybe_def with 
+                            Nothing -> 0
+                            | Just sd -> 
+                                match Memory_image_orderings.find_defs_matching sd img with
+                                    [] -> failwith (no matching definitions for PLT entry named  ^ symname)
+                                    | [(Just(def_el_name, (def_start, def_len)), d)] -> 
+                                        match element_and_offset_to_address (def_el_name, def_start) img with
+                                            Nothing -> failwith (PLT: no address for definition offset in element  ^ def_el_name)
+                                            | Just x -> 
+                                                let _ = errln (PLT slot for symbol ` ^ symname ^ 
+                                                    ' calculated at (non-PLT) address 0x ^ (hex_string_of_natural x) ^ 
+                                                     (offset 0x ^ (hex_string_of_natural def_start) ^  in element  ^ def_el_name ^ ))
+                                                in
+                                                x
+                                        end
+                                    | _ -> failwith (multiple matching definitions for PLT entry named  ^ symname)
+                                end
+                        end
+                        *)
+                        
+                    ) :: any_abi_feature plt_entry_content_fn)))
+                ))
+                plt_symnames
+            ))) 
+        )
+    ,   (Some((''.plt''), (( 0 :: nat),(( 16 :: nat) * total_n_plt_entries))), FileFeature(ElfSection(( 1 :: nat), 
+          (| elf64_section_name =(( 0 :: nat)) (* ignored *)
+           , elf64_section_type = sht_progbits
+           , elf64_section_flags = shf_alloc
+           , elf64_section_addr =(( 0 :: nat)) (* ignored -- covered by element *)
+           , elf64_section_offset =(( 0 :: nat)) (* ignored -- will be replaced when file offsets are assigned *)
+           , elf64_section_size =(( 16 :: nat) * total_n_plt_entries) (* ignored? NO, we use it in linker_script to avoid plumbing through the element record *)
+           , elf64_section_link =(( 0 :: nat))
+           , elf64_section_info =(( 0 :: nat))
+           , elf64_section_align =(( 16 :: nat))
+           , elf64_section_entsize =(( 16 :: nat))
+           , elf64_section_body = Byte_sequence.empty (* ignored *)
+           , elf64_section_name_as_string = (''.plt'')
+           |)
+        )))
+        (* For each GOT entry that corresponds to a thread-local symbol, we also need to 
+         * generate a relocation record. HMM. These new relocation records are ones we don't 
+         * yet have decisions for. That might be a problem. 
+         * 
+         * In fact, this approach is not appropriate for static linking. Just put the offsets
+         * in there when we concretise the GOT. Something like this will be good for 
+         * dynamic linking, though. At the moment, creating a SymbolRef at this stage
+         * is problematic because it's not in the bindings list. When we generate shared
+         * objects, we'll have to revisit that code. *)
+        (* (Just(.got, (i * got_entrysize, 8)), SymbolRef( <|
+                ref = <| ref_symname = symname
+                       ; ref_syment = sd.def_syment
+                       ; ref_sym_scn = 0
+                       ; ref_sym_idx = 0
+                       |>
+                ; maybe_def_bound_to = Just(ApplyReloc, Just sd)
+                ; maybe_reloc = Just(
+                  <|
+                        ref_relent  = 
+                            <| elf64_ra_offset = elf64_addr_of_natural 0
+                             ; elf64_ra_info   = elf64_xword_of_natural r_x86_64_tpoff64
+                             ; elf64_ra_addend = elf64_sxword_of_integer 0
+                             |>
+                      ; ref_rel_scn = 0
+                      ; ref_rel_idx = 0
+                      ; ref_src_scn = 0
+                   |>
+                )
+              |>)) 
+              | forall ((i, symname, sd) IN (Set.fromList (mapMaybei (fun i -> fun (symname, maybe_def) ->
+                match maybe_def with Nothing -> Nothing | Just sd -> Just(i, symname, sd) end) refs_via_got)))
+              | get_elf64_symbol_type sd.def_syment = stt_tls
+     *)
+    ,   (Some((''.got''), (( 0 :: nat), (got_nentries * got_entrysize))), AbiFeature(Amd64AbiFeature(Abi_amd64.GOT0(got_pairs_list))))
+    ,   (Some((''.got''), (( 0 :: nat), (got_nentries * got_entrysize))), FileFeature(ElfSection(( 2 :: nat), 
+          (| elf64_section_name =(( 0 :: nat)) (* ignored *)
+           , elf64_section_type = sht_progbits
+           , elf64_section_flags = (natural_lor shf_write shf_alloc)
+           , elf64_section_addr =(( 0 :: nat)) (* ignored -- covered by element *)
+           , elf64_section_offset =(( 0 :: nat)) (* ignored -- will be replaced when file offsets are assigned *)
+           , elf64_section_size = (got_nentries * got_entrysize) (* ignored? NO, we use it in linker_script to avoid plumbing through the element record *)
+           , elf64_section_link =(( 0 :: nat))
+           , elf64_section_info =(( 0 :: nat))
+           , elf64_section_align =(( 8 :: nat))
+           , elf64_section_entsize = got_entrysize
+           , elf64_section_body = Byte_sequence.empty (* ignored *)
+           , elf64_section_name_as_string = (''.got'')
+           |)
+        )))
+    ,   (* FIXME: I've a feeling _GLOBAL_OFFSET_TABLE_ generally doesn't mark the *start* of the GOT; 
+         * it's some distance in. What about .got.plt? *)
+        (Some((''.got''), (( 0 :: nat), (got_nentries * got_entrysize))), SymbolDef((|
+              def_symname = (''_GLOBAL_OFFSET_TABLE_'')
+            , def_syment =    ((| elf64_st_name  = (Elf_Types_Local.uint32_of_nat(( 0 :: nat))) (* ignored *)
+                               , elf64_st_info  = (Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat))) (* FIXME *)
+                               , elf64_st_other = (Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat))) (* FIXME *)
+                               , elf64_st_shndx = (Elf_Types_Local.uint16_of_nat(( 1 :: nat)))
+                               , elf64_st_value = (Elf_Types_Local.uint64_of_nat(( 0 :: nat))) (* ignored *)
+                               , elf64_st_size  = (of_int (int (got_nentries * got_entrysize))) (* FIXME: start later, smaller size? zero size? *)
+                               |))
+            , def_sym_scn =(( 1 :: nat))
+            , def_sym_idx =(( 1 :: nat))
+            , def_linkable_idx =(( 0 :: nat))
+            |)))
+    , (Some((''.rela.iplt''), (( 0 :: nat),(( 24 :: nat) (* size of an Elf64_Rela *) *  n_iplt_entries))), FileFeature(ElfSection(( 3 :: nat), 
+          (| elf64_section_name =(( 0 :: nat)) (* ignored *)
+           , elf64_section_type = sht_rela
+           , elf64_section_flags = (natural_lor shf_alloc shf_info_link)
+           , elf64_section_addr =(( 0 :: nat)) (* ignored -- covered by element *)
+           , elf64_section_offset =(( 0 :: nat)) (* ignored -- will be replaced when file offsets are assigned *)
+           , elf64_section_size =(( 24 :: nat) (* size of an Elf64_Rela *) *  n_iplt_entries) (* ignored? NO, we use it in linker_script to avoid plumbing through the element record *)
+           , elf64_section_link =(( 0 :: nat))
+           , elf64_section_info =((  (* FIXME: want this to be the PLT section shndx *)0 :: nat))
+           , elf64_section_align =(( 8 :: nat))
+           , elf64_section_entsize =(( 24 :: nat))
+           , elf64_section_body = Byte_sequence.empty (* ignored *)
+           , elf64_section_name_as_string = (''.rela.iplt'')
+           |)
+        )))
+    })
+    in
+    (|  elements = (map_update (''.got'') (|
+                    startpos = None
+               ,    length1 = (Some (got_nentries * got_entrysize))
+               ,    contents = ([])
+               |) (map_update (''.plt'') (|
+                    startpos = None
+               ,    length1 = ((let len =(( 16 :: nat) * total_n_plt_entries) in 
+                        (*let _ = errln (PLT length in element:  ^ (show len) ^  bytes)
+                        in*) Some (( 16 :: nat) * total_n_plt_entries)))
+               ,    contents = ([])
+               |) (map_update (''.rela.iplt'') (|
+                    startpos = None
+               ,    length1 = (Some (( 24 :: nat) (* size of an Elf64_Rela *) *  n_iplt_entries))
+               ,    contents = ([])
+               |) Map.empty
+               )))
+     ,   by_range = new_by_range,   by_tag = (by_tag_from_by_range new_by_range)
+      
+     |)))))))))))))))))))))"
+
+
+(*val amd64_concretise_support : annotated_memory_image any_abi_feature -> annotated_memory_image any_abi_feature*)
+definition amd64_concretise_support  :: "(any_abi_feature)annotated_memory_image \<Rightarrow>(any_abi_feature)annotated_memory_image "  where 
+     " amd64_concretise_support orig_img = ( 
+    (* Fill in the GOT contents. *)
+    (case  amd64_find_got_label_and_element orig_img of
+        None => orig_img (* no GOT, but that's okay *) 
+        | Some (got_l, got_el) =>
+    (case  amd64_find_plt_label_and_element orig_img of
+        None => orig_img (* no PLT, but possibly a GOT -- is that okay? *)
+        | Some (plt_l, plt_el) =>
+    (let got_base_addr = ((case (startpos   got_el) of
+        Some a => a
+        | None => failwith (''GOT has no address assigned'')
+    ))
+    in 
+    (let plt_base_addr = ((case (startpos   plt_el) of
+        Some a => a
+        | None => failwith (''PLT has no address assigned'') 
+    ))
+    in
+    (let got_entry_bytes_for = (\<lambda> img3 .  \<lambda> symname .  \<lambda> maybe_def .  (case  maybe_def of
+        None => List.replicate(( 8 :: nat)) ((of_nat (( 0 :: nat)) :: byte))
+        | Some sd =>
+            (* What should the GOT slot be initialized to point to? 
+             * If there's a PLT entry, we should point to that + 6,
+             * i.e. the second instruction.
+             * 
+             * If there's not, then it might be a thread-local. *)
+            (case  find_index (\<lambda> (plt_symname, _, _) .  symname = plt_symname) plt_l of
+                Some plt_slot_idx =>
+                    (case (startpos   plt_el) of
+                        Some addr => natural_to_le_byte_list_padded_to(( 8 :: nat)) ((addr + (( plt_slot_idx) *( 16 :: nat))) +( 6 :: nat))
+                        | None => failwith ((''no PLT!''))
+                    )
+                | None => 
+                    (* Just look for a definition. *)
+                        (case  Memory_image_orderings.find_defs_matching 
+  instance_Basic_classes_Ord_Abis_any_abi_feature_dict instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict sd img3 of
+                        [] => failwith ((''no matching definitions for GOT entry named '') @ symname)
+                        | [(Some(def_el_name, (def_start, def_len)), d)] => 
+                            (case  element_and_offset_to_address (def_el_name, def_start) img3 of
+                                None => failwith ((''no address for definition offset in element '') @ def_el_name)
+                                | Some x => 
+                                    (* If sd is a TLS symbol, we want its offset from the *end* of the 
+                                     * TLS segment. *)
+                                    (* FIXME: factor out this logic so that it lives in the TLS ABI spec. *)
+                                    if get_elf64_symbol_type(def_syment   sd) = stt_tls then
+                                        (* FIXME: the right way to do this is to mark the segments in the image 
+                                         * *first*. They can't have ranges, because they span many elements,
+                                         * but they can have vaddr ranges as arguments. *)
+                                        (let offs = (i2n_signed(( 64 :: nat)) (( 0 :: int)-( 8 :: int)))
+                                        in
+                                        (let _ = (())
+                                        in
+                                        natural_to_le_byte_list offs))
+                                    else (let _ = (())
+                                    in
+                                    natural_to_le_byte_list_padded_to(( 8 :: nat)) x)
+                            )
+                        | _ => failwith ((''multiple matching definitions for GOT entry named '') @ symname)
+                    )
+            )
+    ))
+    in
+    (let concretise_got = (\<lambda> img3 .  
+        (let l = got_l
+        (*       Just(got_el_name, (got_start_off, got_len)))] ->   *)
+        in
+        (let got_entry_contents = (List.map (\<lambda> (symname, maybe_def) .  
+            List.map (\<lambda> b .  Some b) (got_entry_bytes_for img3 symname maybe_def)) l)
+        in
+        (* We replace the GOT element's contents with the concrete addresses
+         * of the symbols it should contain. We leave the metadata label in there,
+         * for the relocation logic to find. If we change the order of entries, 
+         * change it there too. *)
+        (let got_content = (List.concat got_entry_contents)
+        in
+        (let new_got_el = 
+  ((| startpos = ((startpos   got_el))
+   , length1 = ((length1   got_el)), contents = got_content   |))
+        in
+        (let new_got_tag = (AbiFeature(Amd64AbiFeature(Abi_amd64.GOT0(l))))
+        in
+        (let got_range = (Some((''.got''), (( 0 :: nat),(( 8 :: nat) * List.length l))))
+        in
+        (let new_by_tag = ((((by_tag   img3) :: (( any_abi_feature range_tag) * ( element_range option)) set) -
+            {(AbiFeature(Amd64AbiFeature(Abi_amd64.GOT0(l))), got_range)})
+            \<union> {(new_got_tag, got_range)})
+        in
+        (let new_elements_map = (map_update (''.got'') new_got_el (
+            map_remove (''.got'')(elements   img3)
+        ))
+        in
+        (| elements = new_elements_map
+         , by_range = (by_range_from_by_tag new_by_tag), by_tag   = new_by_tag
+          
+         |))))))))))
+    in
+    (let concretise_plt = (\<lambda> img3 . 
+       (let l = plt_l
+       in
+        (* We replace the PLT element's contents with the concrete entries
+         * for each of the symbols in the table. We leave the metadata label in there,
+         * for the relocation logic to find. If we change the order of entries, 
+         * change it there too. *)
+        (let all_content = (List.concat (List.map (\<lambda> (_, _, plt_content_fn) .  
+            (let (_, content) = (plt_content_fn got_base_addr plt_base_addr) in 
+            content)
+        ) l))
+        in
+        (*let _ = errln (Got  ^ (show (length all_content)) ^  bytes of PLT content)
+        in*)
+        (*let _ = errln (Generated PLT reserved  ^ (show (match plt_el.length with
+            Just n -> n
+            | Nothing -> failwith PLT has no length
+        end)) ^  bytes of PLT content)
+        in*)
+        (let new_plt_el = 
+  ((| startpos = ((startpos   plt_el))
+   , length1 = (Some (List.length all_content)), contents = (List.map
+                                                               (\<lambda> b .  
+                                                                Some 
+                                                                b)
+                                                               all_content)  
+   |))
+        in
+        (let new_elements_map = (map_update (''.plt'') new_plt_el (
+            map_remove (''.plt'')(elements   img3)
+        ))
+        in
+        (| elements = new_elements_map
+         , by_range = ((by_range   img3)), by_tag   = ((by_tag   img3))
+          
+         |))))))
+    in
+    (let concretise_rela_plt = (\<lambda> img3 . 
+        (let maybe_rela_plt_el = ((elements   img3) (''.rela.plt''))
+        in
+        (let maybe_new_rela_plt_el = ((case  maybe_rela_plt_el of
+            None => (* got no .rela.plt? okay... *) 
+                (*let _ = errln No .rela.plt found
+                in*)
+                None
+            | Some rela_plt_el => 
+                (let got_entry_iplt_widget_for = (\<lambda> symname .  \<lambda> maybe_def .  (case  maybe_def of
+                    None => None
+                    | Some sd => 
+                        if \<not> ((get_elf64_symbol_type(def_syment   sd)) = stt_gnu_ifunc) then None
+                        else Some(\<lambda> index_in_got . 
+                            (* This is a 24-byte Elf64_Rela. *)
+                            (let (r_offset :: nat) (* GOT *slot* address! *) =                                
+ ((case (startpos   got_el) of
+                                    None => failwith (''internal error: GOT has no assigned address'')
+                                    | Some addr => addr + (( 8 :: nat) * index_in_got)
+                                ))
+                            in
+                            (let (r_info :: nat) = r_x86_64_irelative in
+                            ((natural_to_le_byte_list_padded_to(( 8 :: nat)) r_offset @
+                            natural_to_le_byte_list_padded_to(( 8 :: nat)) r_info) @
+                            (* r_addend -- address of the ifunc definition.
+                             * NOTE that this is NOT the same as the GOT entry bytes.
+                             * It's the actual address of the ifunc, whereas
+                             * the GOT entry is initialized to point back into the PLT entry. *)
+                            (case  Memory_image_orderings.find_defs_matching 
+  instance_Basic_classes_Ord_Abis_any_abi_feature_dict instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict sd img3 of
+                                  [] => failwith ((''impossible: IPLT entry widget found matching ifunc definition for '') @ symname)
+                                | [(Some(def_el_name, (def_start, def_len)), d)] => 
+                                    (case  element_and_offset_to_address (def_el_name, def_start) img3 of
+                                        None => failwith ((''no address for ifunc definition offset in element '') @ def_el_name)
+                                        | Some x => 
+                                            (* If sd is a TLS symbol, we want its offset from the *end* of the 
+                                             * TLS segment. *)
+                                            (* FIXME: factor out this logic so that it lives in the TLS ABI spec. *)
+                                            if \<not> ((get_elf64_symbol_type(def_syment   sd)) = stt_gnu_ifunc)
+                                            then failwith (''impossible: found ifunc definition that is not an ifunc'')
+                                            else
+                                                natural_to_le_byte_list_padded_to(( 8 :: nat)) x
+                                    )
+                                | _ => failwith (''impossible: more than one ifunc definition'')
+                             )
+                           ))))
+                        (* end Just sd *)
+                    ))
+                in
+                (let rela_iplt_widgets = (List.map (\<lambda> (symname, maybe_def) .  got_entry_iplt_widget_for symname maybe_def) got_l)
+                in
+                (let new_content_bytelists =                    
+ (mapi (\<lambda> i .  \<lambda> rela_widget .  
+                    (case  rela_widget of
+                        Some f => f ( i)
+                        | None => []
+                    )
+                    ) rela_iplt_widgets)
+                in
+                (let new_contents = (List.map (\<lambda> b .  Some b) (List.concat new_content_bytelists))
+                in
+                (*let _ = errln (Concretised .rela.plt; first 24 bytes:  ^ (show (take 24 new_contents)))
+                in*)
+                Some(
+                    (| startpos = ((startpos   rela_plt_el))
+                     , length1   = ((length1   rela_plt_el)), contents = new_contents
+                      
+                     |)
+                )))))
+        ))
+        in
+        (let new_elements_map = ((case  maybe_new_rela_plt_el of
+            Some new_rela_plt_el => map_update (''.rela.plt'') new_rela_plt_el (
+                map_remove (''.rela.plt'')(elements   img3)
+            )
+            | None =>(elements   img3)
+        ))
+        in
+        (| elements = new_elements_map
+         , by_range = ((by_range   img3)), by_tag   = ((by_tag   img3))
+          
+         |)))))
+    in
+    concretise_rela_plt (concretise_plt (concretise_got orig_img))))))))
+) ))"
+
+
+(*val amd64_got_slot_idx : annotated_memory_image any_abi_feature -> symbol_reference_and_reloc_site -> natural*)
+definition amd64_got_slot_idx  :: "(any_abi_feature)annotated_memory_image \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> nat "  where 
+     " amd64_got_slot_idx img3 rr = ( 
+    (*let _ = errln (Looking up GOT slot for symbol  ^ rr.ref.ref_symname) in*)
+    (case  (elements   img3) (''.got'') of
+        None => (* got no GOT? okay... *) failwith (''got no GOT'')
+        | Some got_el => 
+            (* Find the GOT tag. *)
+            (let tags_and_ranges = (Multimap.lookupBy0 
+  (instance_Basic_classes_Ord_Memory_image_range_tag_dict
+     instance_Basic_classes_Ord_Abis_any_abi_feature_dict) (instance_Basic_classes_Ord_Maybe_maybe_dict
+   (instance_Basic_classes_Ord_tup2_dict
+      Lem_string_extra.instance_Basic_classes_Ord_string_dict
+      (instance_Basic_classes_Ord_tup2_dict
+         instance_Basic_classes_Ord_Num_natural_dict
+         instance_Basic_classes_Ord_Num_natural_dict)))  (Memory_image_orderings.tagEquiv
+    instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict) (AbiFeature(Amd64AbiFeature(Abi_amd64.GOT0([]))))(by_tag   img3))
+            in
+            (case  tags_and_ranges of
+                [] => failwith (''error: GOT element but no ABI feature GOT tag'')
+                | [(AbiFeature(Amd64AbiFeature(Abi_amd64.GOT0(l))), Some(got_el_name, (got_start_off, got_len)))] => 
+                    (* Find the slot corresponding to rr, if we have one. *)
+                    (let got_addr = ((case (startpos   got_el) of Some addr => addr | None => failwith (''GOT has no addr at reloc time'') ))
+                    in
+                    (case (maybe_def_bound_to   rr) of
+                        Some (_, Some(d)) => 
+                            (case  find_index (\<lambda> (symname, maybe_def) .  Some(d) = maybe_def) l of
+                                Some idx1 =>  idx1
+                             |  None => failwith (([(CHR ''n''), (CHR ''o''), (CHR '' ''), (CHR ''G''), (CHR ''O''), (CHR ''T''), (CHR '' ''), (CHR ''s''), (CHR ''l''), (CHR ''o''), (CHR ''t''), (CHR '' ''), (CHR ''f''), (CHR ''o''), (CHR ''r''), (CHR '' ''), (CHR ''r''), (CHR ''e''), (CHR ''l''), (CHR ''o''), (CHR ''c''), (CHR '' ''), (CHR ''a''), (CHR ''g''), (CHR ''a''), (CHR ''i''), (CHR ''n''), (CHR ''s''), (CHR ''t''), (CHR '' ''), (Char Nibble6 Nibble0)]) @ ((ref_symname  (ref   rr)) @ ([(Char Nibble2 Nibble7)])))
+                            )
+                        | Some(_, None) => (* HACK: look for the weak symname. Really want more (ref-based) labelling. *)
+                            (case  find_index (\<lambda> (symname, _) .  symname =(ref_symname  (ref   rr))) l of
+                                Some idx1 =>  idx1
+                             |  None => failwith (([(CHR ''n''), (CHR ''o''), (CHR '' ''), (CHR ''G''), (CHR ''O''), (CHR ''T''), (CHR '' ''), (CHR ''s''), (CHR ''l''), (CHR ''o''), (CHR ''t''), (CHR '' ''), (CHR ''f''), (CHR ''o''), (CHR ''r''), (CHR '' ''), (CHR ''r''), (CHR ''e''), (CHR ''l''), (CHR ''o''), (CHR ''c''), (CHR '' ''), (CHR ''a''), (CHR ''g''), (CHR ''a''), (CHR ''i''), (CHR ''n''), (CHR ''s''), (CHR ''t''), (CHR '' ''), (CHR ''u''), (CHR ''n''), (CHR ''d''), (CHR ''e''), (CHR ''f''), (CHR ''i''), (CHR ''n''), (CHR ''e''), (CHR ''d''), (CHR '' ''), (CHR ''s''), (CHR ''y''), (CHR ''m''), (CHR ''b''), (CHR ''o''), (CHR ''l''), (CHR '' ''), (Char Nibble6 Nibble0)]) @ ((ref_symname  (ref   rr)) @ ([(Char Nibble2 Nibble7)])))
+                            )
+                        | _ => failwith (''GOT: unbound def'')
+                    ))
+                | _ => failwith (''got bad GOT'')
+            ))
+    ))"
+
+
+(*val amd64_got_slot_addr : annotated_memory_image any_abi_feature -> symbol_reference_and_reloc_site -> natural*)
+definition amd64_got_slot_addr  :: "(any_abi_feature)annotated_memory_image \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> nat "  where 
+     " amd64_got_slot_addr img3 rr = ( 
+    (case  (elements   img3) (''.got'') of
+        None => (* got no GOT? okay... *) failwith (''got no GOT'')
+        | Some got_el => 
+            (* Find the GOT tag. *)
+            (let tags_and_ranges = (Multimap.lookupBy0 
+  (instance_Basic_classes_Ord_Memory_image_range_tag_dict
+     instance_Basic_classes_Ord_Abis_any_abi_feature_dict) (instance_Basic_classes_Ord_Maybe_maybe_dict
+   (instance_Basic_classes_Ord_tup2_dict
+      Lem_string_extra.instance_Basic_classes_Ord_string_dict
+      (instance_Basic_classes_Ord_tup2_dict
+         instance_Basic_classes_Ord_Num_natural_dict
+         instance_Basic_classes_Ord_Num_natural_dict)))  (Memory_image_orderings.tagEquiv
+    instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict) (AbiFeature(Amd64AbiFeature(Abi_amd64.GOT0([]))))(by_tag   img3))
+            in
+            (case  tags_and_ranges of
+                [] => failwith (''error: GOT element but no ABI feature GOT tag'')
+                | [(AbiFeature(Amd64AbiFeature(Abi_amd64.GOT0(l))), Some(got_el_name, (got_start_off, got_len)))] => 
+                    (* Find the slot corresponding to rr, if we have one. *)
+                    (let got_addr = ((case (startpos   got_el) of Some addr => addr | None => failwith (''GOT has no addr at reloc time'') ))
+                    in(( 8 :: nat) * amd64_got_slot_idx img3 rr) + got_addr)
+                | _ => failwith (''got bad GOT'')
+            ))
+    ))"
+
+
+(*val amd64_plt_slot_addr : annotated_memory_image any_abi_feature -> symbol_reference_and_reloc_site -> natural*)
+definition amd64_plt_slot_addr  :: "(any_abi_feature)annotated_memory_image \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> nat "  where 
+     " amd64_plt_slot_addr img3 rr = ( 
+    (case  (elements   img3) (''.plt'') of
+        None => (* got no PLT? okay... *) failwith (''got no PLT'')
+        | Some plt_el => 
+            (* Find the PLT tag. *)
+            (let tags_and_ranges = (Multimap.lookupBy0 
+  (instance_Basic_classes_Ord_Memory_image_range_tag_dict
+     instance_Basic_classes_Ord_Abis_any_abi_feature_dict) (instance_Basic_classes_Ord_Maybe_maybe_dict
+   (instance_Basic_classes_Ord_tup2_dict
+      Lem_string_extra.instance_Basic_classes_Ord_string_dict
+      (instance_Basic_classes_Ord_tup2_dict
+         instance_Basic_classes_Ord_Num_natural_dict
+         instance_Basic_classes_Ord_Num_natural_dict)))  (Memory_image_orderings.tagEquiv
+    instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict) (AbiFeature(Amd64AbiFeature(Abi_amd64.PLT0([]))))(by_tag   img3))
+            in
+            (case  tags_and_ranges of
+                [] => failwith (''error: PLT element but no ABI feature PLT tag'')
+                | [(AbiFeature(Amd64AbiFeature(Abi_amd64.PLT0(l))), Some(plt_el_name, (plt_start_off, plt_len)))] => 
+                    (let plt_addr = ((case (startpos   plt_el) of Some addr => addr | None => failwith (''PLT has no addr at reloc time'') ))
+                    in
+                    (* Find the slot corresponding to rr, if we have one. *)
+                    (case (maybe_def_bound_to   rr) of
+                        Some (_, Some(d)) => 
+                            (case  Lem_list.mapMaybe (\<lambda> (symname, maybe_def, fn) .  if Some(d) = maybe_def then Some fn else None) l of
+                                [fn] => 
+                                    (let got_addr =                                         
+ ((case  (elements   img3) (''.got'') of
+                                            None => (* got no GOT? okay... *) failwith (''got no GOT (applying PLT calculation)'')
+                                            | Some got_el => (case (startpos   got_el) of
+                                                Some addr => addr
+                                                | None => failwith (''concrete GOT has no addr'')
+                                                )
+                                        ))
+                                    in
+                                    (let (addr, content) = (fn plt_addr got_addr)
+                                    in
+                                    addr))
+                                | [] => (* failwith (internal error: no PLT entry for reloc against ` ^ rr.ref.ref_symname ^ ') *)
+                                    (* If we got no PLT slot, we assume it's because the PLT entry was optimised out. 
+                                     * So we just return the address of the symbol itself. *)
+                                    (let _ = (())
+                                    in
+                                    (case  Memory_image_orderings.find_defs_matching 
+  instance_Basic_classes_Ord_Abis_any_abi_feature_dict instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict d img3 of
+                                        [] =>( 0 :: nat) (* HMM -- should be an error? *)
+                                        | [(Some(el_name, (start_off, len)), matching_d)] =>
+                                            (case  element_and_offset_to_address (el_name, start_off) img3 of
+                                                Some a => a
+                                                | None => failwith (([(CHR ''i''), (CHR ''n''), (CHR ''t''), (CHR ''e''), (CHR ''r''), (CHR ''n''), (CHR ''a''), (CHR ''l''), (CHR '' ''), (CHR ''e''), (CHR ''r''), (CHR ''r''), (CHR ''o''), (CHR ''r''), (CHR '':''), (CHR '' ''), (CHR ''c''), (CHR ''o''), (CHR ''u''), (CHR ''l''), (CHR ''d''), (CHR '' ''), (CHR ''n''), (CHR ''o''), (CHR ''t''), (CHR '' ''), (CHR ''g''), (CHR ''e''), (CHR ''t''), (CHR '' ''), (CHR ''a''), (CHR ''d''), (CHR ''d''), (CHR ''r''), (CHR ''e''), (CHR ''s''), (CHR ''s''), (CHR '' ''), (CHR ''f''), (CHR ''o''), (CHR ''r''), (CHR '' ''), (CHR ''P''), (CHR ''L''), (CHR ''T''), (CHR ''-''), (CHR ''s''), (CHR ''h''), (CHR ''o''), (CHR ''r''), (CHR ''t''), (CHR ''-''), (CHR ''c''), (CHR ''i''), (CHR ''r''), (CHR ''c''), (CHR ''u''), (CHR ''i''), (CHR ''t''), (CHR ''e''), (CHR ''d''), (CHR '' ''), (CHR ''s''), (CHR ''y''), (CHR ''m''), (CHR ''b''), (CHR ''o''), (CHR ''l''), (CHR '' ''), (Char Nibble6 Nibble0)]) @ ((ref_symname  (ref   rr)) @ ([(Char Nibble2 Nibble7)])))
+                                            )
+                                        | _ => failwith (([(CHR ''o''), (CHR ''u''), (CHR ''t''), (CHR ''p''), (CHR ''u''), (CHR ''t''), (CHR '' ''), (CHR ''i''), (CHR ''m''), (CHR ''a''), (CHR ''g''), (CHR ''e''), (CHR '' ''), (CHR ''h''), (CHR ''a''), (CHR ''s''), (CHR '' ''), (CHR ''m''), (CHR ''u''), (CHR ''l''), (CHR ''t''), (CHR ''i''), (CHR ''p''), (CHR ''l''), (CHR ''e''), (CHR '' ''), (CHR ''a''), (CHR ''n''), (CHR ''d''), (CHR ''/''), (CHR ''o''), (CHR ''r''), (CHR '' ''), (CHR ''n''), (CHR ''o''), (CHR ''-''), (CHR ''l''), (CHR ''o''), (CHR ''c''), (CHR ''a''), (CHR ''t''), (CHR ''i''), (CHR ''o''), (CHR ''n''), (CHR '' ''), (CHR ''d''), (CHR ''e''), (CHR ''f''), (CHR ''i''), (CHR ''n''), (CHR ''i''), (CHR ''t''), (CHR ''i''), (CHR ''o''), (CHR ''n''), (CHR ''s''), (CHR '' ''), (CHR ''t''), (CHR ''o''), (CHR '' ''), (CHR ''w''), (CHR ''h''), (CHR ''i''), (CHR ''c''), (CHR ''h''), (CHR '' ''), (CHR ''v''), (CHR ''i''), (CHR ''a''), (CHR ''-''), (CHR ''P''), (CHR ''L''), (CHR ''T''), (CHR '' ''), (CHR ''r''), (CHR ''e''), (CHR ''f''), (CHR '' ''), (CHR ''t''), (CHR ''o''), (CHR '' ''), (Char Nibble6 Nibble0)]) @ ((ref_symname  (ref   rr)) @ ([(Char Nibble2 Nibble7), (CHR '' ''), (CHR ''c''), (CHR ''o''), (CHR ''u''), (CHR ''l''), (CHR ''d''), (CHR '' ''), (CHR ''r''), (CHR ''e''), (CHR ''s''), (CHR ''o''), (CHR ''l''), (CHR ''v''), (CHR ''e'')])))
+                                    ))
+                                | _ =>  failwith (([(CHR ''i''), (CHR ''n''), (CHR ''t''), (CHR ''e''), (CHR ''r''), (CHR ''n''), (CHR ''a''), (CHR ''l''), (CHR '' ''), (CHR ''e''), (CHR ''r''), (CHR ''r''), (CHR ''o''), (CHR ''r''), (CHR '':''), (CHR '' ''), (CHR ''m''), (CHR ''u''), (CHR ''l''), (CHR ''t''), (CHR ''i''), (CHR ''p''), (CHR ''l''), (CHR ''e''), (CHR '' ''), (CHR ''P''), (CHR ''L''), (CHR ''T''), (CHR '' ''), (CHR ''e''), (CHR ''n''), (CHR ''t''), (CHR ''r''), (CHR ''i''), (CHR ''e''), (CHR ''s''), (CHR '' ''), (CHR ''f''), (CHR ''o''), (CHR ''r''), (CHR '' ''), (CHR ''r''), (CHR ''e''), (CHR ''l''), (CHR ''o''), (CHR ''c''), (CHR '' ''), (CHR ''a''), (CHR ''g''), (CHR ''a''), (CHR ''i''), (CHR ''n''), (CHR ''s''), (CHR ''t''), (CHR '' ''), (Char Nibble6 Nibble0)]) @ ((ref_symname  (ref   rr)) @ ([(Char Nibble2 Nibble7)])))
+                            )
+                        | Some(_, None) =>(  (* weak, so 0 *)0 :: nat)
+                        | _ => failwith (''PLT: unbound def'')
+                    ))
+                | _ => failwith (''got bad PLT'')
+            ))
+    ))"
+
+
+(** [amd64_reloc r] yields a function that applies relocations of type [r]. *)
+(*val amd64_reloc : reloc_fn any_abi_feature*)
+definition amd64_reloc  :: " nat \<Rightarrow> bool*((any_abi_feature)annotated_memory_image \<Rightarrow> nat \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> nat*(nat \<Rightarrow> int \<Rightarrow> nat \<Rightarrow> nat))"  where 
+     " amd64_reloc r = ( 
+  if((string_of_amd64_relocation_type r) = (''R_X86_64_NONE'')) then
+    (False, (\<lambda> img3 .  (\<lambda> site_addr .  (\<lambda> rr .  
+                                                        (( 0 :: nat), 
+                                                        (\<lambda> s .  \<lambda> a .  \<lambda> e .  e))))))
+  else
+    (
+    if((string_of_amd64_relocation_type r) = (''R_X86_64_64'')) then
+      (True, (\<lambda> img3 .  (\<lambda> site_addr .  (\<lambda> rr .  
+                                                         (( 8 :: nat), 
+                                                         (\<lambda> s .  \<lambda> a .  \<lambda> e .  
+                                                          i2n (n2i s + a)))))))
+    else
+      (
+      if((string_of_amd64_relocation_type r) = (''R_X86_64_PC32'')) then
+        (False, (\<lambda> img3 .  (\<lambda> site_addr .  (\<lambda> rr .  
+                                                            (( 4 :: nat), 
+                                                            (\<lambda> s .  \<lambda> a .  \<lambda> e .  
+                                                             i2n_signed
+                                                               (( 32 :: nat))
+                                                               (((n2i s) + a)
+                                                                  -
+                                                                  (n2i
+                                                                    site_addr))))))))
+      else
+        (
+        if((string_of_amd64_relocation_type r) = (''R_X86_64_GOT32'')) then
+          (False, (\<lambda> img3 .  (\<lambda> site_addr .  (\<lambda> rr .  
+                                                              (( 4 :: nat), 
+                                                              (\<lambda> s .  \<lambda> a .  \<lambda> e .  
+                                                               i2n_signed
+                                                                 (( 32 :: nat))
+                                                                 ((n2i
+                                                                    (
+                                                                    amd64_got_slot_idx
+                                                                    img3 
+                                                                    rr)) + 
+                                                                  a)))))))
+        else
+          (
+          if((string_of_amd64_relocation_type r) = (''R_X86_64_PLT32'')) then
+            (False, (\<lambda> img3 .  (\<lambda> site_addr .  (\<lambda> rr .  
+                                                                (( 4 :: nat), 
+                                                                (\<lambda> s .  \<lambda> a .  \<lambda> e .  
+                                                                 i2n_signed
+                                                                   ((
+                                                                     32 :: nat))
+                                                                   ((
+                                                                    (
+                                                                    n2i
+                                                                    (
+                                                                    amd64_plt_slot_addr
+                                                                    img3 
+                                                                    rr)) + 
+                                                                    a) -
+                                                                    (
+                                                                    n2i
+                                                                    site_addr))) )))) )
+          else
+            (
+            if((string_of_amd64_relocation_type r) = (''R_X86_64_COPY'')) then
+              (False, (\<lambda> img3 .  (\<lambda> site_addr .  (\<lambda> rr .  
+                                                                  (size_of_copy_reloc
+                                                                    img3 
+                                                                   rr, 
+                                                                  (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
+            else
+              (
+              if((string_of_amd64_relocation_type r) =
+                   (''R_X86_64_GLOB_DAT'')) then
+                (False, (\<lambda> img3 .  (\<lambda> site_addr .  (\<lambda> rr .  
+                                                                    (
+                                                                    size_of_def
+                                                                    rr, 
+                                                                    (
+                                                                    \<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
+              else
+                (
+                if((string_of_amd64_relocation_type r) =
+                     (''R_X86_64_JUMP_SLOT'')) then
+                  (False, (\<lambda> img3 .  (\<lambda> site_addr .  
+                                              (\<lambda> rr .  (( 4 :: nat) (* CHECK *) , 
+                                                               (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
+                else
+                  (
+                  if((string_of_amd64_relocation_type r) =
+                       (''R_X86_64_RELATIVE'')) then
+                    (True, (\<lambda> img3 .  (\<lambda> site_addr .  
+                                               (\<lambda> rr .  (( 8 :: nat), 
+                                                                (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
+                  else
+                    (
+                    if((string_of_amd64_relocation_type r) =
+                         (''R_X86_64_GOTPCREL'')) then
+                      (False, (\<lambda> img3 .  (\<lambda> site_addr .  
+                                                  (\<lambda> rr .  ((
+                                                                     4 :: nat), 
+                                                                   (\<lambda> s .  \<lambda> a .  \<lambda> e .  
+                                                                    i2n_signed
+                                                                    (
+                                                                    (
+                                                                     32 :: nat))
+                                                                    (
+                                                                    (
+                                                                    (
+                                                                    n2i
+                                                                    (
+                                                                    amd64_got_slot_addr
+                                                                    img3 
+                                                                    rr)) + 
+                                                                    a) -
+                                                                    (
+                                                                    n2i
+                                                                    site_addr))) )))) )
+                    else
+                      (
+                      if((string_of_amd64_relocation_type r) =
+                           (''R_X86_64_32'')) then
+                        (True, (\<lambda> img3 .  (\<lambda> site_addr .  
+                                                   (\<lambda> rr .  (
+                                                                    (
+                                                                     4 :: nat), 
+                                                                    (
+                                                                    \<lambda> s .  \<lambda> a .  \<lambda> e .  
+                                                                    i2n
+                                                                    (
+                                                                    n2i s + 
+                                                                    a)))))))
+                      else
+                        (
+                        if((string_of_amd64_relocation_type r) =
+                             (''R_X86_64_32S'')) then
+                          (True, (\<lambda> img3 .  (\<lambda> site_addr .  
+                                                     (\<lambda> rr .  
+                                                      (( 4 :: nat), (
+                                                                    \<lambda> s .  \<lambda> a .  \<lambda> e .  
+                                                                    i2n_signed
+                                                                    (
+                                                                    (
+                                                                     32 :: nat))
+                                                                    (
+                                                                    (n2i s) +
+                                                                    a)))))))
+                        else
+                          (
+                          if((string_of_amd64_relocation_type r) =
+                               (''R_X86_64_16'')) then
+                            (True, (\<lambda> img3 .  (\<lambda> site_addr .  
+                                                       (\<lambda> rr .  
+                                                        (( 2 :: nat), 
+                                                        (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
+                          else
+                            (
+                            if((string_of_amd64_relocation_type r) =
+                                 (''R_X86_64_PC16'')) then
+                              (False, (\<lambda> img3 .  (\<lambda> site_addr .  
+                                                          (\<lambda> rr .  
+                                                           (( 2 :: nat), 
+                                                           (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
+                            else
+                              (
+                              if((string_of_amd64_relocation_type r) =
+                                   (''R_X86_64_8'')) then
+                                (True, (\<lambda> img3 .  (\<lambda> site_addr .  
+                                                           (\<lambda> rr .  
+                                                            (( 1 :: nat), 
+                                                            (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
+                              else
+                                (
+                                if((string_of_amd64_relocation_type r) =
+                                     (''R_X86_64_PC8'')) then
+                                  (False, (\<lambda> img3 .  (\<lambda> site_addr .  
+                                                              (\<lambda> rr .  
+                                                               (( 1 :: nat), 
+                                                               (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
+                                else
+                                  (
+                                  if((string_of_amd64_relocation_type r) =
+                                       (''R_X86_64_DTPMOD64'')) then
+                                    (False, (\<lambda> img3 .  (\<lambda> site_addr .  
+                                                                (\<lambda> rr .  
+                                                                 (( 8 :: nat) (* CHECK *) , 
+                                                                 (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
+                                  else
+                                    (
+                                    if((string_of_amd64_relocation_type r) =
+                                         (''R_X86_64_DTPOFF64'')) then
+                                      (False, (\<lambda> img3 .  (\<lambda> site_addr .  
+                                                                  (\<lambda> rr .  
+                                                                   ((
+                                                                     8 :: nat) (* CHECK *) , 
+                                                                   (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
+                                    else
+                                      (
+                                      if((string_of_amd64_relocation_type r)
+                                           = (''R_X86_64_TPOFF64'')) then
+                                        (False, (\<lambda> img3 .  (\<lambda> site_addr .  
+                                                                    (
+                                                                    \<lambda> rr .  
+                                                                    (
+                                                                    (
+                                                                     8 :: nat) (* CHECK *) , 
+                                                                    (
+                                                                    \<lambda> s .  \<lambda> a .  \<lambda> e .  
+                                                                    i2n_signed
+                                                                    (
+                                                                    (
+                                                                     64 :: nat))
+                                                                    (
+                                                                    (
+                                                                     0 :: int)
+                                                                    -
+                                                                    (
+                                                                     8 :: int))) (* FIXME *) )))))
+                                      else
+                                        (
+                                        if((string_of_amd64_relocation_type r)
+                                             = (''R_X86_64_TLSGD'')) then
+                                          (False, (\<lambda> img3 .  
+                                                   (\<lambda> site_addr .  
+                                                    (\<lambda> rr .  
+                                                     (( 8 :: nat) (* CHECK *) , 
+                                                     (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
+                                        else
+                                          (
+                                          if((string_of_amd64_relocation_type
+                                                r) = (''R_X86_64_TLSLD'')) then
+                                            (False, (\<lambda> img3 .  
+                                                     (\<lambda> site_addr .  
+                                                      (\<lambda> rr .  
+                                                       (( 8 :: nat) (* CHECK *) , 
+                                                       (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
+                                          else
+                                            (
+                                            if((string_of_amd64_relocation_type
+                                                  r) =
+                                                 (''R_X86_64_DTPOFF32'')) then
+                                              (False, (\<lambda> img3 .  
+                                                       (\<lambda> site_addr .  
+                                                        (\<lambda> rr .  
+                                                         (( 4 :: nat) (* CHECK *) , 
+                                                         (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
+                                            else
+                                              (
+                                              if((string_of_amd64_relocation_type
+                                                    r) =
+                                                   (''R_X86_64_GOTTPOFF'')) then
+                                                (False, (\<lambda> img3 .  
+                                                         (\<lambda> site_addr .  
+                                                          (\<lambda> rr .  
+                                                           (( 4 :: nat), 
+                                                           (\<lambda> s .  \<lambda> a .  \<lambda> e .  
+                                                            i2n_signed
+                                                              (( 32 :: nat))
+                                                              (((n2i
+                                                                   (amd64_got_slot_addr
+                                                                    img3 
+                                                                    rr)) + 
+                                                                a) -
+                                                                 (n2i
+                                                                    site_addr))))))))
+                                              else
+                                                (
+                                                if((string_of_amd64_relocation_type
+                                                      r) =
+                                                     (''R_X86_64_TPOFF32'')) then
+                                                  (False, (\<lambda> img3 .  
+                                                           (\<lambda> site_addr .  
+                                                            (\<lambda> rr .  
+                                                             (( 4 :: nat) (* CHECK *) , 
+                                                             (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
+                                                else
+                                                  (
+                                                  if((string_of_amd64_relocation_type
+                                                        r) =
+                                                       (''R_X86_64_PC64'')) then
+                                                    (False, (\<lambda> img3 .  
+                                                             (\<lambda> site_addr .  
+                                                              (\<lambda> rr .  
+                                                               (( 8 :: nat), 
+                                                               (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
+                                                  else
+                                                    (
+                                                    if((string_of_amd64_relocation_type
+                                                          r) =
+                                                         (''R_X86_64_GOTOFF64'')) then
+                                                      (False, (\<lambda> img3 .  
+                                                               (\<lambda> site_addr .  
+                                                                (\<lambda> rr .  
+                                                                 (( 8 :: nat), 
+                                                                 (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
+                                                    else
+                                                      (
+                                                      if((string_of_amd64_relocation_type
+                                                            r) =
+                                                           (''R_X86_64_GOTPC32'')) then
+                                                        (False, (\<lambda> img3 .  
+                                                                 (\<lambda> site_addr .  
+                                                                  (\<lambda> rr .  
+                                                                   ((
+                                                                     4 :: nat), 
+                                                                   (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
+                                                      else
+                                                        (
+                                                        if((string_of_amd64_relocation_type
+                                                              r) =
+                                                             (''R_X86_64_SIZE32'')) then
+                                                          (False, (\<lambda> img3 .  
+                                                                   (\<lambda> site_addr .  
+                                                                    (
+                                                                    \<lambda> rr .  
+                                                                    (
+                                                                    (
+                                                                     4 :: nat), 
+                                                                    (
+                                                                    \<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
+                                                        else
+                                                          (
+                                                          if((string_of_amd64_relocation_type
+                                                                r) =
+                                                               (''R_X86_64_SIZE64'')) then
+                                                            (False, (
+                                                                    \<lambda> img3 .  
+                                                                    (
+                                                                    \<lambda> site_addr .  
+                                                                    (
+                                                                    \<lambda> rr .  
+                                                                    (
+                                                                    (
+                                                                     8 :: nat), 
+                                                                    (
+                                                                    \<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
+                                                          else
+                                                            (
+                                                            if((string_of_amd64_relocation_type
+                                                                  r) =
+                                                                 (''R_X86_64_GOTPC32_TLSDESC'')) then
+                                                              (False, 
+                                                              (\<lambda> img3 .  
+                                                               (\<lambda> site_addr .  
+                                                                (\<lambda> rr .  
+                                                                 (( 4 :: nat) (* CHECK *) , 
+                                                                 (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
+                                                            else
+                                                              (
+                                                              if((string_of_amd64_relocation_type
+                                                                    r) =
+                                                                   (''R_X86_64_TLSDESC_CALL'')) then
+                                                                (False, 
+                                                                (\<lambda> img3 .  
+                                                                 (\<lambda> site_addr .  
+                                                                  (\<lambda> rr .  
+                                                                   ((
+                                                                     4 :: nat) (* CHECK *) , 
+                                                                   (\<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
+                                                              else
+                                                                (
+                                                                if((string_of_amd64_relocation_type
+                                                                    r) =
+                                                                    (''R_X86_64_TLSDESC'')) then
+                                                                  (False, 
+                                                                  (\<lambda> img3 .  
+                                                                   (\<lambda> site_addr .  
+                                                                    (
+                                                                    \<lambda> rr .  
+                                                                    (
+                                                                    (
+                                                                     8 :: nat) (* CHECK *) , 
+                                                                    (
+                                                                    \<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
+                                                                else
+                                                                  (
+                                                                  if(
+                                                                    (
+                                                                    string_of_amd64_relocation_type
+                                                                    r) =
+                                                                    (''R_X86_64_IRELATIVE'')) then
+                                                                    (True, 
+                                                                    (
+                                                                    \<lambda> img3 .  
+                                                                    (
+                                                                    \<lambda> site_addr .  
+                                                                    (
+                                                                    \<lambda> rr .  
+                                                                    (
+                                                                    (
+                                                                     8 :: nat) (* CHECK *) , 
+                                                                    (
+                                                                    \<lambda> s .  \<lambda> a .  \<lambda> e .  e) (* FIXME *) )))))
+                                                                  else
+                                                                    (
+                                                                    failwith
+                                                                    (''unrecognised relocation'')))))))))))))))))))))))))))))))))) )"
 
 
 (*val sysv_amd64_std_abi : abi any_abi_feature*)
@@ -519,8 +1747,7 @@ definition sysv_amd64_std_abi  :: "(any_abi_feature)abi "  where
      " sysv_amd64_std_abi = ( 
    (| is_valid_elf_header = header_is_amd64
     , make_elf_header = (make_elf64_header elf_data_2lsb elf_osabi_none(( 0 :: nat)) elf_ma_x86_64)
-    , reloc = (amd64_reloc instance_Basic_classes_Ord_Abis_any_abi_feature_dict
-    instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict)
+    , reloc = amd64_reloc
     , section_is_special = section_is_special0
     , section_is_large = (\<lambda> s .  (\<lambda> f .  flag_is_set shf_x86_64_large(elf64_section_flags   s)))
     , maxpagesize =(( 65536 :: nat))
@@ -529,7 +1756,7 @@ definition sysv_amd64_std_abi  :: "(any_abi_feature)abi "  where
       (* XXX: DPM, changed from explicit reference to null_abi field due to problems in HOL4. *)
     , symbol_is_generated_by_linker = (\<lambda> symname .  symname = (''_GLOBAL_OFFSET_TABLE_''))
     , make_phdrs = make_default_phdrs
-    , max_phnum =(( 4 :: nat))
+    , max_phnum =(( 2 :: nat)) (* incremented by extensions *)
     , guess_entry_point = 
   (find_start_symbol_address
      instance_Basic_classes_Ord_Abis_any_abi_feature_dict
@@ -538,6 +1765,7 @@ definition sysv_amd64_std_abi  :: "(any_abi_feature)abi "  where
     , pad_code = pad_0x90
     , generate_support = amd64_generate_support
     , concretise_support = amd64_concretise_support
+    , get_reloc_symaddr = amd64_get_reloc_symaddr
     |) )"
 
 
@@ -554,7 +1782,7 @@ definition sysv_aarch64_le_std_abi  :: "(any_abi_feature)abi "  where
     , commonpagesize =(( 4096 :: nat))
     , symbol_is_generated_by_linker = (\<lambda> symname .  symname = (''_GLOBAL_OFFSET_TABLE_''))
     , make_phdrs = make_default_phdrs
-    , max_phnum =(( 5 :: nat))
+    , max_phnum =(( 2 :: nat)) (* incremented by extensions *)
     , guess_entry_point = 
   (find_start_symbol_address
      instance_Basic_classes_Ord_Abis_any_abi_feature_dict
@@ -563,6 +1791,10 @@ definition sysv_aarch64_le_std_abi  :: "(any_abi_feature)abi "  where
     , pad_code = pad_zeroes
     , generate_support = ( (* fun _ -> *)\<lambda> _ .  get_empty_memory_image () )
     , concretise_support = (\<lambda> img3 .  img3)
+    , get_reloc_symaddr = 
+  (default_get_reloc_symaddr
+     instance_Basic_classes_Ord_Abis_any_abi_feature_dict
+     instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict)
     |) )"
 
 

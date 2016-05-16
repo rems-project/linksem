@@ -216,7 +216,7 @@ definition tagged_ranges_matching_tag  :: " 'abifeature Ord_class \<Rightarrow> 
 
 (*val element_range_compare : element_range -> element_range -> Basic_classes.ordering*)
 definition element_range_compare  :: " string*(nat*nat) \<Rightarrow> string*(nat*nat) \<Rightarrow> ordering "  where 
-     " element_range_compare = ( pairCompare stringCompare_method (pairCompare (genericCompare (op<) (op=)) (genericCompare (op<) (op=))))"
+     " element_range_compare = ( pairCompare (\<lambda> x y. EQ) (pairCompare (genericCompare (op<) (op=)) (genericCompare (op<) (op=))))"
 
 
 (*val unique_tag_matching_at_range_exact : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature =>
@@ -274,6 +274,50 @@ definition defined_symbols_and_ranges  :: " 'abifeature Ord_class \<Rightarrow> 
         )) (tagged_ranges_matching_tag 
   dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature (SymbolDef(null_symbol_definition)) img3))"
 
+    
+(*val make_ranges_definite : list (maybe element_range) -> list element_range*)
+definition make_ranges_definite  :: "((element_range)option)list \<Rightarrow>(string*range)list "  where 
+     " make_ranges_definite rs = ( 
+    List.map (\<lambda> (maybeR ::  element_range option) .  (case  maybeR of
+            Some r => r
+            | None => failwith (''impossible: range not definite, but asserted to be'')
+        )) rs )"
+
+
+(*val find_defs_matching : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature => symbol_definition -> annotated_memory_image 'abifeature -> list ((maybe element_range) * symbol_definition)*)
+definition find_defs_matching  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature AbiFeatureTagEquiv_class \<Rightarrow> symbol_definition \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>((element_range)option*symbol_definition)list "  where 
+     " find_defs_matching dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature bound_def img3 = ( 
+    (let (ranges_and_defs :: ( element_range option * symbol_definition) list) = (defined_symbols_and_ranges 
+  dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature img3)
+    in 
+    (*let _ = errln (Searching for the bound-to symbol, which came from linkable idx  ^ 
+        (show bound_def.def_linkable_idx) ^ , section  ^ 
+        (show bound_def.def_syment.elf64_st_shndx) ^ 
+        , symtab shndx  ^ (show bound_def.def_sym_scn) ^ 
+        , symind  ^ (show bound_def.def_sym_idx))
+    in*)
+    Lem_list.mapMaybe (\<lambda> (maybe_some_range, some_def) .  
+       (* match maybe_some_range with
+            Nothing -> failwith symbol definition not over a definite range
+            | Just some_range -> *)
+                (* if some_def.def_symname = bound_def.def_symname 
+                && some_def.def_linkable_idx = bound_def.def_linkable_idx then
+                if some_def = bound_def 
+                    then Just(maybe_some_range, some_def) else Nothing*)
+                    (*let _ = errln (Found one in the same linkable: syment is  ^
+                        (show some_def.def_syment))
+                    in*) 
+                (*else*) if some_def = bound_def 
+                            then (
+                                (*let _ = errln (Found one: syment is  ^ (show some_def.def_syment))
+                                in*)
+                                Some(maybe_some_range, some_def)
+                            )
+                            else None
+       (* end *)
+    ) ranges_and_defs))"
+
+
 
 (*val defined_symbols : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature =>  annotated_memory_image 'abifeature -> list symbol_definition*)
 definition defined_symbols  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature AbiFeatureTagEquiv_class \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>(symbol_definition)list "  where 
@@ -285,5 +329,34 @@ definition defined_symbols  :: " 'abifeature Ord_class \<Rightarrow> 'abifeature
             SymbolDef(ent) => Some ent
             | _ => failwith (''impossible: non-symbol def in list of symbol defs'')
         )) all_symbol_tags))"
+
+
+
+definition default_get_reloc_symaddr  :: " 'a Ord_class \<Rightarrow> 'a AbiFeatureTagEquiv_class \<Rightarrow> symbol_definition \<Rightarrow> 'a annotated_memory_image \<Rightarrow> 'b \<Rightarrow> nat "  where 
+     " default_get_reloc_symaddr dict_Basic_classes_Ord_a dict_Abi_classes_AbiFeatureTagEquiv_a bound_def_in_input output_img maybe_reloc1 = ( 
+    (case  find_defs_matching 
+  dict_Basic_classes_Ord_a dict_Abi_classes_AbiFeatureTagEquiv_a bound_def_in_input output_img of
+        [] => failwith (([(CHR ''i''), (CHR ''n''), (CHR ''t''), (CHR ''e''), (CHR ''r''), (CHR ''n''), (CHR ''a''), (CHR ''l''), (CHR '' ''), (CHR ''e''), (CHR ''r''), (CHR ''r''), (CHR ''o''), (CHR ''r''), (CHR '':''), (CHR '' ''), (CHR ''b''), (CHR ''o''), (CHR ''u''), (CHR ''n''), (CHR ''d''), (CHR ''-''), (CHR ''t''), (CHR ''o''), (CHR '' ''), (CHR ''s''), (CHR ''y''), (CHR ''m''), (CHR ''b''), (CHR ''o''), (CHR ''l''), (CHR '' ''), (CHR ''(''), (CHR ''n''), (CHR ''a''), (CHR ''m''), (CHR ''e''), (CHR '' ''), (Char Nibble6 Nibble0)]) @ ((def_symname   bound_def_in_input) @ ([(Char Nibble2 Nibble7), (CHR '')''), (CHR '' ''), (CHR ''n''), (CHR ''o''), (CHR ''t''), (CHR '' ''), (CHR ''d''), (CHR ''e''), (CHR ''f''), (CHR ''i''), (CHR ''n''), (CHR ''e''), (CHR ''d'')])))
+        | (maybe_range, d) # more1 =>
+            (let v =                
+ ((case  maybe_range of 
+                    Some(el_name, (start, len)) =>
+                    (case  element_and_offset_to_address (el_name, start) output_img of
+                        Some a => a
+                        | None => failwith (''internal error: could not get address for symbol'')
+                    )
+                    | None =>
+                        (* okay, it'd better be an ABS symbol. *)
+                        if unat(elf64_st_shndx  (def_syment   d)) = shn_abs
+                            then unat(elf64_st_value  (def_syment   d))
+                            else failwith (''no range for non-ABS symbol'')
+                ))
+            in
+            (case  more1 of 
+                [] => v
+                | _ => (let _ = (())
+                    in v)
+            ))
+    ))"
 
 end

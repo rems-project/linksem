@@ -17,6 +17,9 @@ begin
   definition unsigned_char_of_nat :: "nat \<Rightarrow> unsigned_char" where
     "unsigned_char_of_nat n \<equiv> of_int (int n)"
 
+  definition string_of_unsigned_char :: "unsigned_char \<Rightarrow> string" where
+    "string_of_unsigned_char u \<equiv> LemExtraDefs.nat_to_string (unat u)"
+
   definition unsigned_char_of_char :: "char \<Rightarrow> unsigned_char" where
     "unsigned_char_of_char c \<equiv> unsigned_char_of_nat (String.nat_of_char c)"
 
@@ -44,6 +47,9 @@ begin
 
   definition uint16_of_dual :: "byte \<Rightarrow> byte \<Rightarrow> uint16" where
     "uint16_of_dual u1 u2 \<equiv> Word.word_cat u1 u2"
+
+  definition string_of_uint16 :: "uint16 \<Rightarrow> string" where
+    "string_of_uint16 u \<equiv> LemExtraDefs.nat_to_string (unat u)"
 
   definition dual_of_uint16 :: "uint16 \<Rightarrow> (byte \<times> byte)" where
     "dual_of_uint16 u \<equiv> Word.word_split u"
@@ -75,6 +81,9 @@ begin
       (let (upper :: 16 word) = Word.word_cat u1 u2 in
        let (lower :: 16 word) = Word.word_cat u3 u4 in
          Word.word_cat upper lower)"
+
+  definition string_of_uint32 :: "uint32 \<Rightarrow> string" where
+    "string_of_uint32 u \<equiv> LemExtraDefs.nat_to_string (unat u)"
 
   definition quad_of_uint32 :: "uint32 \<Rightarrow> (byte \<times> byte \<times> byte \<times> byte)" where
     "quad_of_uint32 u \<equiv>
@@ -119,6 +128,9 @@ begin
        let (lower :: 32 word) = word_cat ((word_cat b5 b6) :: 16 word) ((word_cat b7 b8) :: 16 word) in
          word_cat upper lower)"
 
+  definition string_of_uint64 :: "uint64 \<Rightarrow> string" where
+    "string_of_uint64 u \<equiv> LemExtraDefs.nat_to_string (unat u)"
+
   definition uint64_of_nat :: "nat \<Rightarrow> uint64" where
     "uint64_of_nat n = of_int (int n)"
 
@@ -150,6 +162,9 @@ begin
   definition int_of_sint32 :: "sint32 \<Rightarrow> int" where
     "int_of_sint32 s \<equiv> sint s"
 
+  definition string_of_sint32 :: "sint32 \<Rightarrow> string" where
+    "string_of_sint32 u \<equiv> LemExtraDefs.int_to_string (sint u)"
+
   definition quad_of_sint32 :: "sint32 \<Rightarrow> (byte \<times> byte \<times> byte \<times> byte)" where
     "quad_of_sint32 s \<equiv>
        (let (upper :: 16 word, lower :: 16 word) = Word.word_split s in
@@ -172,6 +187,9 @@ begin
 
   definition int_of_sint64 :: "sint64 \<Rightarrow> int" where
     "int_of_sint64 s = sint s"
+
+  definition string_of_sint64 :: "sint64 \<Rightarrow> string" where
+    "string_of_sint64 u \<equiv> LemExtraDefs.int_to_string (sint u)"
 
   definition sint64_plus :: "sint64 \<Rightarrow> sint64 \<Rightarrow> sint64" where
     "sint64_plus left right \<equiv> of_int (sint left + sint right)"

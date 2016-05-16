@@ -217,12 +217,9 @@ definition elf64_file_of_elf_memory_image  :: "(any_abi_feature)abi \<Rightarrow
                     else (((maxpagesize   a) + target_remainder) - this_remainder)
                 )
                 in
-                (*let _ = errln (For section  ^ isec.elf64_section_name_as_string ^ , bumping offset by  ^ 
-                    (hex_string_of_natural bump) ^ (remainder  ^ (hex_string_of_natural this_remainder) ^ 
-                    , target remainder  ^ (hex_string_of_natural target_remainder) ^ ) to 0x ^ 
-                    (hex_string_of_natural (current_off + bump)))
-                in*)
-                current_off + bump)))
+                (let _ = (())
+                in
+                current_off + bump))))
             | None => 
                 (* It has no assigned address. That's okay if it's not allocatable. 
                  * If it's not allocatable, it has no alignment. *)
@@ -244,25 +241,25 @@ definition elf64_file_of_elf_memory_image  :: "(any_abi_feature)abi \<Rightarrow
                     | None => failwith
                                 (''internal error: section not found'')
                   )) in
-       (| elf64_section_name =(elf64_section_name   isec1) (* ignored *)
-       , elf64_section_type =(elf64_section_type   isec1)
-       , elf64_section_flags =(elf64_section_flags   isec1)
-       , elf64_section_addr = (case (startpos   el) of
-                                  Some addr => addr
-                                | None =>( 0 :: nat)
-                              ) , elf64_section_offset =
+       (| elf64_section_name = ((elf64_section_name   isec1)) (* ignored *)
+       , elf64_section_type = ((elf64_section_type   isec1))
+       , elf64_section_flags = ((elf64_section_flags   isec1))
+       , elf64_section_addr = ((case (startpos   el) of
+                                   Some addr => addr
+                                 | None =>( 0 :: nat)
+                               )) , elf64_section_offset =
        (*let _ = errln (Assigning offset 0x ^ (hex_string_of_natural off) ^  to section  ^ 
                     isec.elf64_section_name_as_string)
                 in*)
        off
-       , elf64_section_size = (case (length1   el) of
-                                  Some len => len
-                                | None => List.length (contents   el)
-                              )
-       , elf64_section_link =(elf64_section_link   isec1)
-       , elf64_section_info =(elf64_section_info   isec1)
-       , elf64_section_align =(elf64_section_align   isec1)
-       , elf64_section_entsize =(elf64_section_entsize   isec1)
+       , elf64_section_size = ((case (length1   el) of
+                                   Some len => len
+                                 | None => List.length (contents   el)
+                               ))
+       , elf64_section_link = ((elf64_section_link   isec1))
+       , elf64_section_info = ((elf64_section_info   isec1))
+       , elf64_section_align = ((elf64_section_align   isec1))
+       , elf64_section_entsize = ((elf64_section_entsize   isec1))
        , elf64_section_body =
        ((let pad_fn = (
                       if flag_is_set shf_execinstr
@@ -271,7 +268,7 @@ definition elf64_file_of_elf_memory_image  :: "(any_abi_feature)abi \<Rightarrow
         Sequence
           (concretise_byte_pattern [] (( 0 :: nat))
              (contents   (make_concrete el)) pad_fn)))
-       , elf64_section_name_as_string =(elf64_section_name_as_string   isec1)
+       , elf64_section_name_as_string = ((elf64_section_name_as_string   isec1))
        |))) # x2 else x2)
    (List.zip section_file_offsets element_section_tag_pairs_sorted_by_address)
    x2))    
@@ -282,60 +279,73 @@ definition elf64_file_of_elf_memory_image  :: "(any_abi_feature)abi \<Rightarrow
   ([]) in  List.foldr
    (\<lambda>(maybe_range, tag) x2 . 
     if True then
-      ((let (el_name, (start, len)) = ((case  maybe_range of
-                                           Some(el_name, (start, len)) => 
-                                       (el_name, (start, len))
-                                         | None => failwith
-                                                     (''impossible: symbol with no range'')
-                                       )) in
-       (case  tag of
-           SymbolDef (d) =>
-       (* CHECK: can we expect these to be these usable, the way we generated them?  *)
-         (|
-         elf64_st_name = (case  String_table.find_string (def_symname   d)
-                                  strtab of
-                             Some idx1 => (let v = (Elf_Types_Local.uint32_of_nat
-                                                      idx1) in
-                                          (* let _ = errln (strtab: found ` ^ d.def_symname ^ ' at index  ^ (show v))
+      (case  tag of
+          SymbolDef (d) =>
+      (let nameidx = ((case  String_table.find_string (def_symname   d)
+                               strtab of
+                          Some idx1 => (let v = (Elf_Types_Local.uint32_of_nat
+                                                   idx1) in
+                                       (* let _ = errln (strtab: found ` ^ d.def_symname ^ ' at index  ^ (show v))
                                         in *)
-                                          v)
-                           | None => failwith
-                                       (''impossible: symbol name not in strtab we just created'')
-                         )
-         , elf64_st_info =(elf64_st_info  (def_syment   d)) (* type, binding, visibility *)
-         , elf64_st_other =(elf64_st_other  (def_syment   d))
-         , elf64_st_shndx = (Elf_Types_Local.uint16_of_nat
-                               ( (* what's the section index of this element? *)
-                                 (let maybe_found = (mapMaybei
-                                                       (\<lambda> i .  \<lambda> isec1 . 
-                                                        if(elf64_section_name_as_string   isec1)
-                                                            = el_name then
-                                                          Some i else 
-                                                        None) sorted_sections)
-                                 in
-                                 (case  maybe_found of
-                                     [i] =>( 1 :: nat) + i
-                                   | [] =>(
-                                             (* HMM *) (*let _ = errln (Couldn't compute section index of symbol  ^ d.def_symname)
-                                        in*) 0 :: nat)
-                                   | _ => failwith
-                                            ((''internal error: multiple sections named '')
-                                               @ el_name)
-                                 )) ))
-         , elf64_st_value = (Elf_Types_Local.uint64_of_nat
-                               (start +
-                                  (case   (elements   img3) el_name of
-                                      Some x => (case (startpos   x) of
-                                                    Some addr => addr
-                                                  | None => failwith
-                                                              (''internal error: symbol defined in section with no address'')
-                                                )
-                                    | None => failwith
-                                                (''internal error: section (of symbol) not found'')
-                                  ))) , elf64_st_size = (of_int (int len)) |)
-       (* FIXME: do we ever get symbolrefs? *)
-         | _ => failwith (''not a symbol tag, in symbol_tags'')
-       ))) # x2 else x2) (List.zip symbol_ranges symbol_tags) x2)))
+                                       v)
+                        | None => failwith
+                                    (''impossible: symbol name not in strtab we just created'')
+                      )) in
+      (let (shndx1, svalue, sz) = (
+                                  if(elf64_st_shndx  (def_syment   d)) =
+                                      Elf_Types_Local.uint16_of_nat shn_abs
+                                  then
+                                    ((elf64_st_shndx  (def_syment   d)),(elf64_st_value  (def_syment   d)),(elf64_st_size  (def_syment   d)))
+                                  else
+                                    (let (el_name, (start, len)) = ((case  maybe_range of
+                                                                    Some(el_name, (start, len)) => 
+                                                                    (el_name, 
+                                                                    (start, len))
+                                                                    | None => 
+                                                                    failwith
+                                                                    (''impossible: non-ABS symbol with no range'')
+                                                                    )) in
+                                    (Elf_Types_Local.uint16_of_nat
+                                       ( (* what's the section index of this element? *)
+                                         (let maybe_found = (mapMaybei
+                                                               (\<lambda> i .  \<lambda> isec1 . 
+                                                                if(elf64_section_name_as_string   isec1)
+                                                                    = 
+                                                                  el_name then
+                                                                  Some i else
+                                                                  None)
+                                                               sorted_sections)
+                                         in
+                                         (case  maybe_found of
+                                             [i] =>( 1 :: nat) + i
+                                           | [] =>(
+                                                     (* HMM *) (*let _ = errln (Couldn't compute section index of symbol  ^ d.def_symname)
+                                            in*) 0 :: nat)
+                                           | _ => failwith
+                                                    ((''internal error: multiple sections named '')
+                                                       @ el_name)
+                                         )) ),
+                                    Elf_Types_Local.uint64_of_nat
+                                      (start +
+                                         (case   (elements   img3) el_name of
+                                             Some x => (case (startpos   x) of
+                                                           Some addr => 
+                                                       addr
+                                                         | None => failwith
+                                                                    (''internal error: symbol defined in section with no address'')
+                                                       )
+                                           | None => failwith
+                                                       (''internal error: section (of symbol) not found'')
+                                         )), of_int (int len) ))) in
+      (* CHECK: can we expect these to be these usable, the way we generated them?  *)
+      (| elf64_st_name = nameidx
+      , elf64_st_info = ((elf64_st_info  (def_syment   d))) (* type, binding, visibility *)
+      , elf64_st_other = ((elf64_st_other  (def_syment   d)))
+      , elf64_st_shndx = shndx1 , elf64_st_value = svalue
+      , elf64_st_size = sz |)))
+      (* FIXME: do we ever get symbolrefs? *)
+        | _ => failwith (''not a symbol tag, in symbol_tags'')
+      ) # x2 else x2) (List.zip symbol_ranges symbol_tags) x2)))
     in
     (*let _ = errln (Building an ELF file from ^ (show (length element_section_tag_pairs_sorted_by_address)) ^  sections)
     in*)
@@ -411,10 +421,10 @@ definition elf64_file_of_elf_memory_image  :: "(any_abi_feature)abi \<Rightarrow
     (let endian = (if Elf_Types_Local.index(elf64_ident   hdr) elf_ii_data = Some(Elf_Types_Local.unsigned_char_of_nat elf_data_2lsb) then Little else Big)
     in
     (let all_sections_sorted_with_offsets = (user_sections_sorted_with_offsets @ [
-          (| elf64_section_name = (case  String_table.find_string (''.shstrtab'') shstrtab of
+          (| elf64_section_name = ((case  String_table.find_string (''.shstrtab'') shstrtab of
                                     Some n => n
                                     | None => failwith ([(CHR ''i''), (CHR ''n''), (CHR ''t''), (CHR ''e''), (CHR ''r''), (CHR ''n''), (CHR ''a''), (CHR ''l''), (CHR '' ''), (CHR ''e''), (CHR ''r''), (CHR ''r''), (CHR ''o''), (CHR ''r''), (CHR '':''), (CHR '' ''), (Char Nibble6 Nibble0), (CHR ''.''), (CHR ''s''), (CHR ''h''), (CHR ''s''), (CHR ''t''), (CHR ''r''), (CHR ''t''), (CHR ''a''), (CHR ''b''), (Char Nibble2 Nibble7), (CHR '' ''), (CHR ''n''), (CHR ''o''), (CHR ''t''), (CHR '' ''), (CHR ''i''), (CHR ''n''), (CHR '' ''), (CHR ''s''), (CHR ''h''), (CHR ''s''), (CHR ''t''), (CHR ''r''), (CHR ''t''), (CHR ''a''), (CHR ''b'')])
-                                )
+                                ))
            , elf64_section_type = sht_strtab
            , elf64_section_flags =(( 0 :: nat))
            , elf64_section_addr =(( 0 :: nat))
@@ -427,10 +437,10 @@ definition elf64_file_of_elf_memory_image  :: "(any_abi_feature)abi \<Rightarrow
            , elf64_section_body = (Sequence(List.map Elf_Types_Local.unsigned_char_of_char ((String_table.get_base_string shstrtab))))
            , elf64_section_name_as_string = (''.shstrtab'')
            |),
-          (| elf64_section_name      = (case  String_table.find_string (''.symtab'') shstrtab of
+          (| elf64_section_name      = ((case  String_table.find_string (''.symtab'') shstrtab of
                                     Some n => n
                                     | None => failwith ([(CHR ''i''), (CHR ''n''), (CHR ''t''), (CHR ''e''), (CHR ''r''), (CHR ''n''), (CHR ''a''), (CHR ''l''), (CHR '' ''), (CHR ''e''), (CHR ''r''), (CHR ''r''), (CHR ''o''), (CHR ''r''), (CHR '':''), (CHR '' ''), (Char Nibble6 Nibble0), (CHR ''.''), (CHR ''s''), (CHR ''y''), (CHR ''m''), (CHR ''t''), (CHR ''a''), (CHR ''b''), (Char Nibble2 Nibble7), (CHR '' ''), (CHR ''n''), (CHR ''o''), (CHR ''t''), (CHR '' ''), (CHR ''i''), (CHR ''n''), (CHR '' ''), (CHR ''s''), (CHR ''h''), (CHR ''s''), (CHR ''t''), (CHR ''r''), (CHR ''t''), (CHR ''a''), (CHR ''b'')])
-                                )
+                                ))
            , elf64_section_type      = sht_symtab
            , elf64_section_flags     =(( 0 :: nat))
            , elf64_section_addr      =(( 0 :: nat))
@@ -444,10 +454,10 @@ definition elf64_file_of_elf_memory_image  :: "(any_abi_feature)abi \<Rightarrow
            , elf64_section_name_as_string = (''.symtab'')
            |), 
           (* strtab *)
-          (| elf64_section_name      = (case  String_table.find_string (''.strtab'') shstrtab of
+          (| elf64_section_name      = ((case  String_table.find_string (''.strtab'') shstrtab of
                                     Some n => n
                                     | None => failwith ([(CHR ''i''), (CHR ''n''), (CHR ''t''), (CHR ''e''), (CHR ''r''), (CHR ''n''), (CHR ''a''), (CHR ''l''), (CHR '' ''), (CHR ''e''), (CHR ''r''), (CHR ''r''), (CHR ''o''), (CHR ''r''), (CHR '':''), (CHR '' ''), (Char Nibble6 Nibble0), (CHR ''.''), (CHR ''s''), (CHR ''t''), (CHR ''r''), (CHR ''t''), (CHR ''a''), (CHR ''b''), (Char Nibble2 Nibble7), (CHR '' ''), (CHR ''n''), (CHR ''o''), (CHR ''t''), (CHR '' ''), (CHR ''i''), (CHR ''n''), (CHR '' ''), (CHR ''s''), (CHR ''h''), (CHR ''s''), (CHR ''t''), (CHR ''r''), (CHR ''t''), (CHR ''a''), (CHR ''b'')])
-                                )
+                                ))
            , elf64_section_type      = sht_strtab
            , elf64_section_flags     =(( 0 :: nat))
            , elf64_section_addr      =(( 0 :: nat))
@@ -464,22 +474,22 @@ definition elf64_file_of_elf_memory_image  :: "(any_abi_feature)abi \<Rightarrow
     in
     (let phdrs = ((make_phdrs   a)(maxpagesize   a)(commonpagesize   a) elf_ft_exec img3 all_sections_sorted_with_offsets)
     in
-    (| elf64_file_header               = (| (* fix up hdr with the precise phnum *)
-         elf64_ident =(elf64_ident   hdr)
-       , elf64_type =(elf64_type   hdr)
-       , elf64_machine =(elf64_machine   hdr)
-       , elf64_version =(elf64_version   hdr)
-       , elf64_entry =(elf64_entry   hdr)
-       , elf64_phoff =(elf64_phoff   hdr)
-       , elf64_shoff =(elf64_shoff   hdr)
-       , elf64_flags =(elf64_flags   hdr)
-       , elf64_ehsize =(elf64_ehsize   hdr)
-       , elf64_phentsize =(elf64_phentsize   hdr)
+    (| elf64_file_header               = ((| (* fix up hdr with the precise phnum *)
+         elf64_ident = ((elf64_ident   hdr))
+       , elf64_type = ((elf64_type   hdr))
+       , elf64_machine = ((elf64_machine   hdr))
+       , elf64_version = ((elf64_version   hdr))
+       , elf64_entry = ((elf64_entry   hdr))
+       , elf64_phoff = ((elf64_phoff   hdr))
+       , elf64_shoff = ((elf64_shoff   hdr))
+       , elf64_flags = ((elf64_flags   hdr))
+       , elf64_ehsize = ((elf64_ehsize   hdr))
+       , elf64_phentsize = ((elf64_phentsize   hdr))
        , elf64_phnum = (Elf_Types_Local.uint16_of_nat (List.length phdrs))
-       , elf64_shentsize =(elf64_shentsize   hdr)
-       , elf64_shnum =(elf64_shnum   hdr)
-       , elf64_shstrndx =(elf64_shstrndx   hdr)
-        |)
+       , elf64_shentsize = ((elf64_shentsize   hdr))
+       , elf64_shnum = ((elf64_shnum   hdr))
+       , elf64_shstrndx = ((elf64_shstrndx   hdr))
+        |))
      , elf64_file_program_header_table = phdrs
      , elf64_file_section_header_table = (elf64_null_section_header # ((Lem_list.mapi (\<lambda> i .  \<lambda> isec1 .  
           (| elf64_sh_name      = ((let s = ((elf64_section_name_as_string   isec1)) in
@@ -498,9 +508,11 @@ definition elf64_file_of_elf_memory_image  :: "(any_abi_feature)abi \<Rightarrow
            , elf64_sh_entsize   = (of_int (int(elf64_section_entsize   isec1)))
            |)
      )) (* (zip section_tags_bare section_file_offsets) *) all_sections_sorted_with_offsets))
-     , elf64_file_interpreted_segments = []
+     , elf64_file_interpreted_segments = ([])             (* do we need to build this? I have HACKed elf_file so that we don't; 
+               we assume that all the relevant payload is in the section bodies, 
+               as it should be. *)
      , elf64_file_interpreted_sections = (null_elf64_interpreted_section # all_sections_sorted_with_offsets)
-     , elf64_file_bits_and_bobs        = []
+     , elf64_file_bits_and_bobs        = ([])
      |))))))))))))))))))))))))))))))))"
 
 end

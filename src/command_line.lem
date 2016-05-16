@@ -116,7 +116,7 @@ type input_unit = File of input_file_and_options
                 | BuiltinControlScript (* for uniformity when processing script defs *)
 
 val string_of_input_unit : input_unit -> string
-let {ocaml} string_of_input_unit u = 
+let string_of_input_unit u = 
     match u with
         File(spec, opts) -> 
             "single " ^ (show spec)

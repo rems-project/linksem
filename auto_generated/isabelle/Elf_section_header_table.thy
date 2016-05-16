@@ -107,6 +107,27 @@ definition shn_hireserve  :: " nat "  where
   * of a section header entry's special section index, [m].
   *)
 (*val string_of_special_section_index : natural -> string*)
+definition string_of_special_section_index  :: " nat \<Rightarrow> string "  where 
+     " string_of_special_section_index i = (
+  if i = shn_undef then
+    (''SHN_UNDEF'')
+  else if i = shn_loreserve then
+    (''SHN_LORESERVE'')
+  else if (i \<ge> shn_loproc) \<and> (i \<le> shn_hiproc) then
+    (''SHN_PROCESSOR_SPECIFIC'')
+  else if (i \<ge> shn_loos) \<and> (i \<le> shn_hios) then
+    (''SHN_OS_SPECIFIC'')
+  else if i = shn_abs then
+    (''SHN_ABS'')
+  else if i = shn_common then
+    (''SHN_COMMON'')
+  else if i = shn_xindex then
+    (''SHN_XINDEX'')
+  else if i = shn_hireserve then
+    (''SHN_HIRESERVE'')
+  else
+  	(''SHN UNDEFINED''))"
+
 
 (** Section types. *)
 
@@ -238,6 +259,51 @@ definition sht_hiuser  :: " nat "  where
   *)
 (*val string_of_section_type : (natural -> string) -> (natural -> string) ->
   (natural -> string) -> natural -> string*)
+definition string_of_section_type  :: "(nat \<Rightarrow> string)\<Rightarrow>(nat \<Rightarrow> string)\<Rightarrow>(nat \<Rightarrow> string)\<Rightarrow> nat \<Rightarrow> string "  where 
+     " string_of_section_type os proc user i = (
+  if i = sht_null then
+    (''NULL'')
+  else if i = sht_progbits then
+    (''PROGBITS'')
+  else if i = sht_symtab then
+    (''SYMTAB'')
+  else if i = sht_strtab then
+    (''STRTAB'')
+  else if i = sht_rela then
+    (''RELA'')
+  else if i = sht_hash then
+    (''HASH'')
+  else if i = sht_dynamic then
+    (''DYNAMIC'')
+  else if i = sht_note then
+    (''NOTE'')
+  else if i = sht_nobits then
+    (''NOBITS'')
+  else if i = sht_rel then
+    (''REL'')
+  else if i = sht_shlib then
+    (''SHLIB'')
+  else if i = sht_dynsym then
+    (''DYNSYM'')
+  else if i = sht_init_array then
+    (''INIT_ARRAY'')
+  else if i = sht_fini_array then
+    (''FINI_ARRAY'')
+  else if i = sht_preinit_array then
+    (''PREINIT_ARRAY'')
+  else if i = sht_group then
+    (''GROUP'')
+  else if i = sht_symtab_shndx then
+    (''SYMTAB_SHNDX'')
+  else if (i \<ge> sht_loos) \<and> (i \<le> sht_hios) then
+    os i 
+  else if (i \<ge> sht_loproc) \<and> (i \<le> sht_hiproc) then
+    proc i
+  else if (i \<ge> sht_louser) \<and> (i \<le> sht_hiuser) then
+    user i
+  else
+    (''Undefined or invalid section type''))"
+
 
 (** Section flag numeric values. *)
 
@@ -320,6 +386,43 @@ definition shf_mask_proc  :: " nat "  where
   *)
 (*val string_of_section_flags : (natural -> string) -> (natural -> string) ->
   natural -> string*)
+definition string_of_section_flags  :: "(nat \<Rightarrow> string)\<Rightarrow>(nat \<Rightarrow> string)\<Rightarrow> nat \<Rightarrow> string "  where 
+     " string_of_section_flags os proc f = (
+  if f = shf_write then
+    (''W'')
+  else if f = shf_alloc then
+    (''  A'')
+  else if f = shf_execinstr then
+    (''  X'')
+  else if f = (shf_alloc + shf_execinstr) then
+    ('' AX'')
+  else if f = (shf_write + shf_alloc) then
+    ('' WA'')
+  else if f = shf_merge then
+    ('' M '')
+  else if f = (shf_merge + shf_alloc) then
+    ('' AM'')
+  else if f = ((shf_merge + shf_alloc) + shf_strings) then
+    (''AMS'')
+  else if f = ((shf_alloc + shf_execinstr) + shf_group) then
+    (''AXG'')
+  else if f = shf_strings then
+    (''  S'')
+  else if f = (shf_merge + shf_strings) then
+    ('' MS'')
+  else if f = shf_tls then
+    (''  T'')
+  else if f = (shf_tls + shf_alloc) then
+    ('' AT'')
+  else if f = ((shf_write + shf_alloc) + shf_tls) then
+    (''WAT'')
+  else if f = shf_info_link then
+    (''  I'')
+  else if f = (shf_alloc + shf_info_link) then
+    ('' AI'')
+  else
+    (''   ''))"
+
 
 (** Section compression. *)
 
@@ -907,6 +1010,17 @@ type_synonym sht_print_bundle ="
   *)
 (*val string_of_elf32_section_header_table_entry : sht_print_bundle ->
   elf32_section_header_table_entry -> string*)
+fun string_of_elf32_section_header_table_entry  :: "(nat \<Rightarrow> string)*(nat \<Rightarrow> string)*(nat \<Rightarrow> string)\<Rightarrow> elf32_section_header_table_entry \<Rightarrow> string "  where 
+     " string_of_elf32_section_header_table_entry (os, proc, user) entry = (
+  unlines [    
+(([(Char Nibble0 Nibble9)]) @ ((''Name: '')    @ Elf_Types_Local.string_of_uint32(elf32_sh_name   entry)))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Type: '')    @ string_of_section_type os proc user (unat(elf32_sh_type   entry))))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Flags: '')   @ Elf_Types_Local.string_of_uint32(elf32_sh_flags   entry)))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Address: '') @ Elf_Types_Local.string_of_uint32(elf32_sh_addr   entry)))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Size: '')    @ Elf_Types_Local.string_of_uint32(elf32_sh_size   entry)))
+  ])" 
+declare string_of_elf32_section_header_table_entry.simps [simp del]
+
 
 (** [string_of_elf64_section_header_table_entry sht ent] produces a string
   * representation of section header table entry [ent] using [sht], a
@@ -915,6 +1029,17 @@ type_synonym sht_print_bundle ="
   *)
 (*val string_of_elf64_section_header_table_entry : sht_print_bundle ->
   elf64_section_header_table_entry -> string*)
+fun string_of_elf64_section_header_table_entry  :: "(nat \<Rightarrow> string)*(nat \<Rightarrow> string)*(nat \<Rightarrow> string)\<Rightarrow> elf64_section_header_table_entry \<Rightarrow> string "  where 
+     " string_of_elf64_section_header_table_entry (os, proc, user) entry = (
+  unlines [    
+(([(Char Nibble0 Nibble9)]) @ ((''Name: '')    @ Elf_Types_Local.string_of_uint32(elf64_sh_name   entry)))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Type: '')    @ string_of_section_type os proc user (unat(elf64_sh_type   entry))))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Flags: '')   @ Elf_Types_Local.string_of_uint64(elf64_sh_flags   entry)))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Address: '') @ Elf_Types_Local.string_of_uint64(elf64_sh_addr   entry)))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Size: '')    @ Elf_Types_Local.string_of_uint64(elf64_sh_size   entry)))
+  ])" 
+declare string_of_elf64_section_header_table_entry.simps [simp del]
+
 
 (** [string_of_elf32_section_header_table_entry' sht stab ent] produces a string
   * representation of section header table entry [ent] using [sht] and section
@@ -924,6 +1049,23 @@ type_synonym sht_print_bundle ="
   *)
 (*val string_of_elf32_section_header_table_entry' : sht_print_bundle ->
   string_table -> elf32_section_header_table_entry -> string*)
+fun string_of_elf32_section_header_table_entry'  :: "(nat \<Rightarrow> string)*(nat \<Rightarrow> string)*(nat \<Rightarrow> string)\<Rightarrow> string_table \<Rightarrow> elf32_section_header_table_entry \<Rightarrow> string "  where 
+     " string_of_elf32_section_header_table_entry' (os, proc, user) stbl entry = (
+  (let name1 =    
+((case  get_string_at (unat(elf32_sh_name   entry)) stbl of
+        Fail _ => (''Invalid index into string table'')
+      | Success i => i
+    ))
+  in
+    unlines [      
+(([(Char Nibble0 Nibble9)]) @ ((''Name: '')    @ name1))
+    , (([(Char Nibble0 Nibble9)]) @ ((''Type: '')    @ string_of_section_type os proc user (unat(elf32_sh_type   entry))))
+    , (([(Char Nibble0 Nibble9)]) @ ((''Flags: '')   @ Elf_Types_Local.string_of_uint32(elf32_sh_flags   entry)))
+    , (([(Char Nibble0 Nibble9)]) @ ((''Address: '') @ Elf_Types_Local.string_of_uint32(elf32_sh_addr   entry)))
+    , (([(Char Nibble0 Nibble9)]) @ ((''Size: '')    @ Elf_Types_Local.string_of_uint32(elf32_sh_size   entry)))
+    ]))" 
+declare string_of_elf32_section_header_table_entry'.simps [simp del]
+
 
 (** [string_of_elf64_section_header_table_entry' sht stab ent] produces a string
   * representation of section header table entry [ent] using [sht] and section
@@ -933,6 +1075,23 @@ type_synonym sht_print_bundle ="
   *)
 (*val string_of_elf64_section_header_table_entry' : sht_print_bundle ->
   string_table -> elf64_section_header_table_entry -> string*)
+fun string_of_elf64_section_header_table_entry'  :: "(nat \<Rightarrow> string)*(nat \<Rightarrow> string)*(nat \<Rightarrow> string)\<Rightarrow> string_table \<Rightarrow> elf64_section_header_table_entry \<Rightarrow> string "  where 
+     " string_of_elf64_section_header_table_entry' (os, proc, user) stbl entry = (
+  (let name1 =    
+((case  get_string_at (unat(elf64_sh_name   entry)) stbl of
+        Fail _ => (''Invalid index into string table'')
+      | Success i => i
+    ))
+  in
+    unlines [      
+(([(Char Nibble0 Nibble9)]) @ ((''Name: '')    @ name1))
+    , (([(Char Nibble0 Nibble9)]) @ ((''Type: '')    @ string_of_section_type os proc user (unat(elf64_sh_type   entry))))
+    , (([(Char Nibble0 Nibble9)]) @ ((''Flags: '')   @ Elf_Types_Local.string_of_uint64(elf64_sh_flags   entry)))
+    , (([(Char Nibble0 Nibble9)]) @ ((''Address: '') @ Elf_Types_Local.string_of_uint64(elf64_sh_addr   entry)))
+    , (([(Char Nibble0 Nibble9)]) @ ((''Size: '')    @ Elf_Types_Local.string_of_uint64(elf64_sh_size   entry)))
+    ]))" 
+declare string_of_elf64_section_header_table_entry'.simps [simp del]
+
 
 (** The following defintions are default printing functions, with no ABI-specific
   * functionality, in order to produce a [Show] instance for section header
@@ -940,26 +1099,82 @@ type_synonym sht_print_bundle ="
   *)
   
 (*val string_of_elf32_section_header_table_entry_default : elf32_section_header_table_entry -> string*)
+definition string_of_elf32_section_header_table_entry_default  :: " elf32_section_header_table_entry \<Rightarrow> string "  where 
+     " string_of_elf32_section_header_table_entry_default = (
+  string_of_elf32_section_header_table_entry
+    (((\<lambda> y. (''*Default OS specific print*''))),
+      ((\<lambda> y. (''*Default processor specific print*''))),
+      ((\<lambda> y. (''*Default user specific print*'')))))"
+
+
+definition instance_Show_Show_Elf_section_header_table_elf32_section_header_table_entry_dict  :: "(elf32_section_header_table_entry)Show_class "  where 
+     " instance_Show_Show_Elf_section_header_table_elf32_section_header_table_entry_dict = ((|
+
+  show_method = string_of_elf32_section_header_table_entry_default |) )"
+
 
 (*val string_of_elf64_section_header_table_entry_default : elf64_section_header_table_entry -> string*)
+definition string_of_elf64_section_header_table_entry_default  :: " elf64_section_header_table_entry \<Rightarrow> string "  where 
+     " string_of_elf64_section_header_table_entry_default = (
+  string_of_elf64_section_header_table_entry
+    (((\<lambda> y. (''*Default OS specific print*''))),
+      ((\<lambda> y. (''*Default processor specific print*''))),
+      ((\<lambda> y. (''*Default user specific print*'')))))"
+
+
+definition instance_Show_Show_Elf_section_header_table_elf64_section_header_table_entry_dict  :: "(elf64_section_header_table_entry)Show_class "  where 
+     " instance_Show_Show_Elf_section_header_table_elf64_section_header_table_entry_dict = ((|
+
+  show_method = string_of_elf64_section_header_table_entry_default |) )"
+
 
 (*val string_of_elf32_section_header_table : sht_print_bundle ->
   elf32_section_header_table -> string*)
+definition string_of_elf32_section_header_table  :: "(nat \<Rightarrow> string)*(nat \<Rightarrow> string)*(nat \<Rightarrow> string)\<Rightarrow>(elf32_section_header_table_entry)list \<Rightarrow> string "  where 
+     " string_of_elf32_section_header_table sht_bdl tbl = (
+  unlines (List.map (string_of_elf32_section_header_table_entry sht_bdl) tbl))"
+
 
 (*val string_of_elf32_section_header_table_default : elf32_section_header_table ->
   string*)
+definition string_of_elf32_section_header_table_default  :: " elf32_section_header_table \<Rightarrow> string "  where 
+     " string_of_elf32_section_header_table_default = (
+  string_of_elf32_section_header_table
+    (((\<lambda> y. (''*Default OS specific print*''))),
+      ((\<lambda> y. (''*Default processor specific print*''))),
+      ((\<lambda> y. (''*Default user specific print*'')))))"
+
 
 (*val string_of_elf64_section_header_table : sht_print_bundle ->
   elf64_section_header_table -> string*)
+definition string_of_elf64_section_header_table  :: "(nat \<Rightarrow> string)*(nat \<Rightarrow> string)*(nat \<Rightarrow> string)\<Rightarrow>(elf64_section_header_table_entry)list \<Rightarrow> string "  where 
+     " string_of_elf64_section_header_table sht_bdl tbl = (
+  unlines (List.map (string_of_elf64_section_header_table_entry sht_bdl) tbl))"
+
   
 (*val string_of_elf64_section_header_table_default : elf64_section_header_table ->
   string*)
+definition string_of_elf64_section_header_table_default  :: " elf64_section_header_table \<Rightarrow> string "  where 
+     " string_of_elf64_section_header_table_default = (
+  string_of_elf64_section_header_table
+    (((\<lambda> y. (''*Default OS specific print*''))),
+      ((\<lambda> y. (''*Default processor specific print*''))),
+      ((\<lambda> y. (''*Default user specific print*'')))))"
+
 
 (*val string_of_elf32_section_header_table' : sht_print_bundle -> string_table ->
   elf32_section_header_table -> string*)
+definition string_of_elf32_section_header_table'  :: "(nat \<Rightarrow> string)*(nat \<Rightarrow> string)*(nat \<Rightarrow> string)\<Rightarrow> string_table \<Rightarrow>(elf32_section_header_table_entry)list \<Rightarrow> string "  where 
+     " string_of_elf32_section_header_table' sht_bdl stbl tbl = (
+  unlines (List.map (string_of_elf32_section_header_table_entry' sht_bdl stbl) tbl))"
+
 
 (*val string_of_elf64_section_header_table' : sht_print_bundle -> string_table ->
   elf64_section_header_table -> string*)
+definition string_of_elf64_section_header_table'  :: "(nat \<Rightarrow> string)*(nat \<Rightarrow> string)*(nat \<Rightarrow> string)\<Rightarrow> string_table \<Rightarrow>(elf64_section_header_table_entry)list \<Rightarrow> string "  where 
+     " string_of_elf64_section_header_table' sht_bdl stbl tbl = (
+  unlines (List.map (string_of_elf64_section_header_table_entry' sht_bdl stbl) tbl))"
+
   
 (** Section to segment mappings *)
 

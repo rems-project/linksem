@@ -45,7 +45,7 @@ type origin_coord = InArchive of (natural * natural * string * natural) (* archi
                   | Builtin
 
 val string_of_origin_coord : origin_coord -> string
-let {ocaml} string_of_origin_coord c = match c with
+let string_of_origin_coord c = match c with
     InArchive(aid, aidx, aname, _) -> "at position " ^ (show aidx) ^ " within archive " ^ aname ^ " (at position " ^ (show aid) ^ ")"
     | InGroup(gid, gidx) -> "at position " ^ (show gidx) ^ " within group at position " ^ (show gid)
     | InCommandLine(cid) -> "(command line)"
@@ -61,7 +61,7 @@ type input_origin = input_unit * list origin_coord
 type input_item = string * input_blob * input_origin
 
 val string_of_input_blob : input_blob -> string
-let {ocaml} string_of_input_blob item = match item with
+let string_of_input_blob item = match item with
     Reloc(seq) -> "relocatable file (" ^ (show (Byte_sequence.length seq)) ^ " bytes)"
   | Shared(seq) -> "shared object (" ^ (show (Byte_sequence.length seq)) ^ " bytes)"
   | Script(seq) -> "script (" ^ (show (Byte_sequence.length seq)) ^ " bytes)"
@@ -109,7 +109,7 @@ let null_input_options =
                        |>
 
 val string_of_input_options : input_options -> string
-let {ocaml} string_of_input_options opts = "(some options)"
+let string_of_input_options opts = "(some options)"
 
 instance (Show input_options)
     let show = string_of_input_options

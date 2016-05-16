@@ -294,8 +294,8 @@ definition elf_memory_image_of_elf64_file  :: " 'abifeature abi \<Rightarrow> st
                     (
                         name1, 
                         (|
-                           startpos =(startpos   element)
-                         , length1   =(length1   element)
+                           startpos = ((startpos   element))
+                         , length1   = ((length1   element))
                          , contents =                            
 ( 
                             (*let _ = errln (Reloc-relaxing section  ^ name ^  in file  ^ fname ^ : before, first 20 bytes:  ^
@@ -335,7 +335,7 @@ definition elf_memory_image_of_elf64_file  :: " 'abifeature abi \<Rightarrow> st
                     (|
                         startpos = (Some(elf64_segment_base   seg))
                       , length1 = (Some(elf64_segment_memsz   seg))
-                      , contents = [] (* FIXME *)
+                      , contents = ([]) (* FIXME *)
                      |))
                 ))(elf64_file_interpreted_segments   f))
                 in
@@ -377,15 +377,6 @@ definition elf_memory_image_sht  :: "(Abis.any_abi_feature)annotated_memory_imag
         FileFeature(ElfSectionHeaderTable(x)) => Some x
         | _ => None
     ))"
-
-    
-(*val make_ranges_definite : list (maybe element_range) -> list element_range*)
-definition make_ranges_definite  :: "((element_range)option)list \<Rightarrow>(string*range)list "  where 
-     " make_ranges_definite rs = ( 
-    List.map (\<lambda> (maybeR ::  element_range option) .  (case  maybeR of
-            Some r => r
-            | None => failwith (''impossible: range not definite, but asserted to be'')
-        )) rs )"
 
 
 (*val elf_memory_image_section_ranges : elf_memory_image -> (list elf_range_tag * list element_range)*)
@@ -466,8 +457,9 @@ definition elf_memory_image_element_coextensive_with_section  :: " nat \<Rightar
     (case  matches of
         [] => None
         | [x] => Some x
-        | xs => failwith ((''impossible: more than one ELF section coextensive with section'') (*^ (show idx) ^ , names: 
-            ^ (show xs)*))
+        | xs => failwith ((''impossible: more than one ELF section coextensive with section'') @ ((Lem_string_extra.stringFromNatural idx1) @ (('', names: '')
+            @ (string_of_list 
+  instance_Show_Show_string_dict xs))))
     ))))"
 
 
@@ -562,12 +554,8 @@ definition name_of_symbol_def0  :: " symbol_definition \<Rightarrow> string "  w
 (*val elf_memory_image_defined_symbols_and_ranges : elf_memory_image -> list ((maybe element_range) * symbol_definition)*)
 definition elf_memory_image_defined_symbols_and_ranges  :: "(Abis.any_abi_feature)annotated_memory_image \<Rightarrow>((element_range)option*symbol_definition)list "  where 
      " elf_memory_image_defined_symbols_and_ranges img3 = ( 
-    Lem_list.mapMaybe (\<lambda> (tag, maybeRange) .  
-        (case  tag of
-            SymbolDef(ent) => Some (maybeRange, ent)
-            | _ => failwith (''impossible: non-symbol def in list of symbol defs'')
-        )) (tagged_ranges_matching_tag 
-  Abis.instance_Basic_classes_Ord_Abis_any_abi_feature_dict Abis.instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict (SymbolDef(null_symbol_definition)) img3))"
+    Memory_image_orderings.defined_symbols_and_ranges 
+  Abis.instance_Basic_classes_Ord_Abis_any_abi_feature_dict Abis.instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict img3 )"
 
 
 (*val elf_memory_image_defined_symbols : elf_memory_image -> list symbol_definition*)

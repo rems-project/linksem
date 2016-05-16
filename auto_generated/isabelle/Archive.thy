@@ -72,9 +72,9 @@ definition read_archive_entry_header  :: " nat \<Rightarrow> byte_sequence \<Rig
         offset_and_cut(( 48 :: nat))(( 10 :: nat)) header1 >>= (\<lambda> size_str .  
         (let size3 = (natural_of_decimal_string (string_of_byte_sequence0 size_str)) in 
                 (* let _ = Missing_pervasives.errln (: yes, size  ^ (show size)) in *)
-        error_return ((| name = (string_of_byte_sequence0 name1), timestamp = (( 0 :: nat) :: nat) (* FIXME *),
+        error_return ((| name = (string_of_byte_sequence0 name1), timestamp = ((( 0 :: nat) :: nat)) (* FIXME *),
           uid =(( 0 :: nat)) (* FIXME *) , gid =(( 0 :: nat)) (* FIXME *) , mode =(( 0 :: nat)) (* FIXME *),
-            size0 = (id size3) (* FIXME *) |), (seq_length - header_length), rest)))))))))))))"
+            size0 = ( size3) (* FIXME *) |), (seq_length - header_length), rest)))))))))))))"
 
 
 (*val read_archive_global_header : byte_sequence -> error (archive_global_header * byte_sequence)*)

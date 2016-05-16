@@ -76,12 +76,38 @@ datatype origin_coord = InArchive " (nat * nat * string * nat)" (* archive-id, p
                   | Builtin
 
 (*val string_of_origin_coord : origin_coord -> string*)
+fun string_of_origin_coord  :: " origin_coord \<Rightarrow> string "  where 
+     " string_of_origin_coord (InArchive(aid, aidx, aname, _)) = ( (''at position '') @ ((stringFromNatural aidx) @ (('' within archive '') @ (aname @ (('' (at position '') @ ((stringFromNatural aid) @ ('')'')))))))"
+|" string_of_origin_coord (InGroup(gid1, gidx)) = ( (''at position '') @ ((stringFromNatural gidx) @ (('' within group at position '') @ (stringFromNatural gid1))))"
+|" string_of_origin_coord (InCommandLine(cid)) = ( (''(command line)''))"
+|" string_of_origin_coord Builtin = ( (''(built-in)''))" 
+declare string_of_origin_coord.simps [simp del]
+
+
+definition instance_Show_Show_Input_list_origin_coord_dict  :: "(origin_coord)Show_class "  where 
+     " instance_Show_Show_Input_list_origin_coord_dict = ((|
+
+  show_method = string_of_origin_coord |) )"
+
 
 type_synonym input_origin =" input_unit * origin_coord list "
 
 type_synonym input_item =" string * input_blob * input_origin "
 
 (*val string_of_input_blob : input_blob -> string*)
+fun string_of_input_blob  :: " input_blob \<Rightarrow> string "  where 
+     " string_of_input_blob (Reloc(seq)) = ( (''relocatable file ('') @ ((stringFromNatural (Byte_sequence.length0 seq)) @ ('' bytes)'')))"
+|" string_of_input_blob (Shared(seq)) = ( (''shared object ('') @ ((stringFromNatural (Byte_sequence.length0 seq)) @ ('' bytes)'')))"
+|" string_of_input_blob (Script(seq)) = ( (''script ('') @ ((stringFromNatural (Byte_sequence.length0 seq)) @ ('' bytes)'')))"
+|" string_of_input_blob ControlScript = ( (''the linker control script''))" 
+declare string_of_input_blob.simps [simp del]
+
+
+definition instance_Show_Show_Input_list_input_blob_dict  :: "(input_blob)Show_class "  where 
+     " instance_Show_Show_Input_list_input_blob_dict = ((|
+
+  show_method = string_of_input_blob |) )"
+
 
 (*val short_string_of_input_item : input_item -> string*)
 definition short_string_of_input_item  :: " string*input_blob*(input_unit*(origin_coord)list)\<Rightarrow> string "  where 
@@ -129,6 +155,15 @@ definition null_input_options  :: " input_options "  where
 
 
 (*val string_of_input_options : input_options -> string*)
+definition string_of_input_options  :: " input_options \<Rightarrow> string "  where 
+     " string_of_input_options opts = ( (''(some options)''))"
+
+
+definition instance_Show_Show_Input_list_input_options_dict  :: "(input_options)Show_class "  where 
+     " instance_Show_Show_Input_list_input_options_dict = ((|
+
+  show_method = string_of_input_options |) )"
+
 
 type_synonym input_list =" (input_item * input_options) list "
 
@@ -196,22 +231,22 @@ definition make_input_items_and_options  :: "(string*input_blob*(input_unit*(ori
       [] => failwith (''impossible: empty list of files'')
     | [(fname1, Reloc (seq), (u, coords))] =>
   [((fname1, Reloc (seq), (u, (coords @ coords_to_append))),
-   (| item_fmt =(input_fmt   cmdopts)
-   , item_check_sections =(input_check_sections   cmdopts)
-   , item_copy_dt_needed =(input_copy_dt_needed   cmdopts)
+   (| item_fmt = ((input_fmt   cmdopts))
+   , item_check_sections = ((input_check_sections   cmdopts))
+   , item_copy_dt_needed = ((input_copy_dt_needed   cmdopts))
    , item_force_output = True |))]
     | [(fname1, Shared (seq), (u, coords))] =>
   [((fname1, Shared (seq), (u, (coords @ coords_to_append))),
-   (| item_fmt =(input_fmt   cmdopts)
-   , item_check_sections =(input_check_sections   cmdopts)
-   , item_copy_dt_needed =(input_copy_dt_needed   cmdopts)
+   (| item_fmt = ((input_fmt   cmdopts))
+   , item_check_sections = ((input_check_sections   cmdopts))
+   , item_copy_dt_needed = ((input_copy_dt_needed   cmdopts))
    , item_force_output = (if(input_as_needed   cmdopts) then False else True)
    |))]
     | [(fname1, Script (seq), (u, coords))] =>
   [((fname1, Script (seq), (u, (coords @ coords_to_append))),
-   (| item_fmt =(input_fmt   cmdopts)
-   , item_check_sections =(input_check_sections   cmdopts)
-   , item_copy_dt_needed =(input_copy_dt_needed   cmdopts)
+   (| item_fmt = ((input_fmt   cmdopts))
+   , item_check_sections = ((input_check_sections   cmdopts))
+   , item_copy_dt_needed = ((input_copy_dt_needed   cmdopts))
    , item_force_output = True |))]
     | _ => (* guaranteed to be all relocs, from one archive *)
            (let (items_and_options :: ( input_item * input_options) list) =
@@ -223,9 +258,9 @@ definition make_input_items_and_options  :: "(string*input_blob*(input_unit*(ori
                                                                     coords_to_append)))
                                     in
                                     (let (options :: input_options) =
-                                         ((| item_fmt =(input_fmt   cmdopts)
-                                          , item_check_sections =(input_check_sections   cmdopts)
-                                          , item_copy_dt_needed =(input_copy_dt_needed   cmdopts)
+                                         ((| item_fmt = ((input_fmt   cmdopts))
+                                          , item_check_sections = ((input_check_sections   cmdopts))
+                                          , item_copy_dt_needed = ((input_copy_dt_needed   cmdopts))
                                           , item_force_output = (
                                                                 if(input_whole_archive   cmdopts) then
                                                                   True else

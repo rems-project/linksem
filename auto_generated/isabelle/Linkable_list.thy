@@ -101,6 +101,12 @@ definition short_string_of_linkable_item  :: " linkable_object*(string*input_blo
     short_string_of_input_item inp))"
 
 
+definition instance_Show_Show_Linkable_list_linkable_object_dict  :: "(linkable_object)Show_class "  where 
+     " instance_Show_Show_Linkable_list_linkable_object_dict = ((|
+
+  show_method = string_of_linkable_object |) )"
+
+
 type_synonym linkable_list =" linkable_item list "
 
 type_synonym symbol_resolution_oracle =" linkable_list \<Rightarrow> nat \<Rightarrow> string \<Rightarrow> nat list "
@@ -292,7 +298,9 @@ definition resolve_one_reference_default  :: " 'abifeature abi \<Rightarrow>(lin
             else
                 if def_is_in_archive
                 then
-                    (\<not> ref_is_weak) 
+                    (* Weak references *can* be resolved to archive members...
+                     * if the reference itself is also in the archive. *)
+                    ((\<not> ref_is_weak) \<or> ref_and_def_are_in_same_archive)
                     \<and> (
                            ref_is_leftmore
                         \<or> (ref_and_def_are_in_same_archive
@@ -308,8 +316,17 @@ definition resolve_one_reference_default  :: " 'abifeature abi \<Rightarrow>(lin
         [] => (None, None, None)
         | [(def_idx, def1, def_linkable)] => (Some def_idx, Some def1, Some def_linkable)
         | (d_idx, d, d_l) # more_pairs => 
-            (* Break ties by which definition appeared first in the left-to-right order. *)
-            (let sorted = (sort_by (\<lambda> (d_idx1, d1, d_l1) .  (\<lambda> (d_idx2, d2, d_l2) .  d_idx1 < d_idx2)) eligible_defs)
+            (* Break ties by
+             * - putting defs in relocs (or --defsym or linker script, a.k.a. command line) ahead of defs in archives;
+             * - else whichever definition appeared first in the left-to-right order. 
+             *)
+            (let sorted = (sort_by (\<lambda> (d_idx1, d1, (_, (_, _, (_, d_l1_coords)), _)) .  (\<lambda> (d_idx2, d2, (_, (_, _, (_, d_l2_coords)), _)) .  
+                (case  (d_l1_coords, d_l2_coords) of
+                      (InCommandLine(_) # _, InCommandLine(_) # _) => d_idx1 < d_idx2
+                    | (InCommandLine(_) # _, _)                     => (* command-line wins *) True
+                    | (_,                     InCommandLine(_) # _) => (* command-line wins *) False
+                    | (_, _) => d_idx1 < d_idx2
+                ))) eligible_defs)
             in
             (case  sorted of 
                 (first_d_idx, first_d, first_d_l) # _ => (Some first_d_idx, Some first_d, Some first_d_l)
@@ -317,29 +334,29 @@ definition resolve_one_reference_default  :: " 'abifeature abi \<Rightarrow>(lin
             ))
     ))
     in 
-    (*let refstr = ` 
-                ^ ref.ref_symname ^ ' ( ^ 
-                (if (natural_of_elf64_half ref.ref_syment.elf64_st_shndx) = shn_undef then UND else defined) ^ 
-                 symbol at index  ^ (show ref.ref_sym_idx) ^  in symtab 
-                ^ (show ref.ref_sym_scn) ^  in  ^ ref_fname
-                ^ )
+    (let refstr = (([(Char Nibble6 Nibble0)]) 
+                @ ((ref_symname   ref1) @ (([(Char Nibble2 Nibble7), (CHR '' ''), (CHR ''('')]) @                
+ ((if (unat(elf64_st_shndx  (ref_syment   ref1))) = shn_undef then (''UND'') else (''defined'')) @                
+ (('' symbol at index '') @ ((stringFromNatural(ref_sym_idx   ref1)) @ (('' in symtab '')
+                @ ((stringFromNatural(ref_sym_scn   ref1)) @ (('' in '') @ (ref_fname
+                @ ('')'')))))))))))
     in
-    let _ = Missing_pervasives.errs (Bound a reference from  ^ refstr ^  to )
-    in*)
+    (let _ = (())
+    in
     (case  (maybe_target_def_idx, maybe_target_def, maybe_target_def_linkable) of
         (Some target_def_idx, Some target_def, Some target_def_linkable) =>
-            (*let _ = Missing_pervasives.errln ( a definition in ^ (show (target_def_linkable)))
-            in*)
-            Some(target_def_idx, target_def, target_def_linkable)
+            (let _ = (())
+            in
+            Some(target_def_idx, target_def, target_def_linkable))
     |  (None, None, None) => 
-            (*let _ = Missing_pervasives.errln  no definition
-            in*)
+            (let _ = (())
+            in
             if ref_is_weak (* || a.symbol_is_generated_by_linker ref.ref_symname *) then None 
-            else (* failwith (undefined symbol:  ^ refstr) *) None
+            else (* failwith (undefined symbol:  ^ refstr) *) None)
             (* FIXME: do a check, *after* the linker script has been interpreted, 
              * that all remaining undefined symbols are permitted by the ABI/policy. *)
     | _ => failwith (''impossible: non-matching maybes for target_def_idx and target_def'')
-    )))))))))"
+    )))))))))))"
 
 
 (*val resolve_all :
@@ -502,7 +519,7 @@ by pat_completeness auto
                                                              nodes to this list, making them grey, then we 
                                                              recurse by taking from the head. We must always
                                                              filter out the prepended nodes from the existing list, 
-                                                             to ensure we don't reeurse infinitely. *)
+                                                             to ensure we don't recurse infinitely. *)
     -> list ((natural * symbol_reference * linkable_item) * maybe (natural * symbol_definition * linkable_item))*)  (* all accumulated bindings bindings *)
 function (sequential,domintros)  accumulate_bindings_objectwise_df  :: " 'abifeature abi \<Rightarrow>(linkable_item)list \<Rightarrow>((string),((nat*symbol_definition*linkable_item)list))Map.map \<Rightarrow>((nat*symbol_reference*linkable_item)*(nat*symbol_definition*linkable_item)option)list \<Rightarrow>(nat)set \<Rightarrow>(nat)list \<Rightarrow>((nat*symbol_reference*linkable_item)*(nat*symbol_definition*linkable_item)option)list "  where 
      " accumulate_bindings_objectwise_df a linkables all_defs bindings_accum blacks greys = (

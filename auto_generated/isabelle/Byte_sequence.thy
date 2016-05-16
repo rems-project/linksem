@@ -213,7 +213,7 @@ declare string_of_byte_sequence.simps [simp del]
 (** [equal bs0 bs1] checks whether two byte sequences, [bs0] and [bs1], are equal.
   *)
 (*val equal : byte_sequence -> byte_sequence -> bool*)
-(*let rec equal left right =
+(*let rec equal left right= 
   match (left, right) with
     | (Sequence [], Sequence []) -> true
     | (Sequence (x::xs), Sequence (y::ys)) ->
@@ -250,7 +250,7 @@ declare takebytes_r_with_length.simps [simp del]
 (*val takebytes : natural -> byte_sequence -> error byte_sequence*)
 fun takebytes  :: " nat \<Rightarrow> byte_sequence \<Rightarrow>(byte_sequence)error "  where 
      " takebytes count1 (Sequence ts) = (
-  (let result = (takebytes_r_with_length (id count1) (List.length ts) (Sequence ts)) in 
+  (let result = (takebytes_r_with_length ( count1) (List.length ts) (Sequence ts)) in 
     result))" 
 declare takebytes.simps [simp del]
 
@@ -259,7 +259,7 @@ declare takebytes.simps [simp del]
 fun takebytes_with_length  :: " nat \<Rightarrow> nat \<Rightarrow> byte_sequence \<Rightarrow>(byte_sequence)error "  where 
      " takebytes_with_length count1 ts_length (Sequence ts) = (
   (* let _ = Missing_pervasives.errs (Trying to take  ^ (show count) ^  bytes from sequence of  ^ (show (List.length ts)) ^ n) in *)
-  (let result = (takebytes_r_with_length (id count1) ts_length (Sequence ts)) in 
+  (let result = (takebytes_r_with_length ( count1) ts_length (Sequence ts)) in 
   (*let _ = Missing_pervasives.errs (Succeededn) in *)
     result))" 
 declare takebytes_with_length.simps [simp del]
@@ -383,5 +383,11 @@ definition offset_and_cut  :: " nat \<Rightarrow> nat \<Rightarrow> byte_sequenc
   dropbytes off bs0 >>= (\<lambda> bs1 . 
   takebytes cut1 bs1 >>= (\<lambda> res . 
   error_return res)))"
+
+
+definition instance_Show_Show_Byte_sequence_byte_sequence_dict  :: "(byte_sequence)Show_class "  where 
+     " instance_Show_Show_Byte_sequence_byte_sequence_dict = ((|
+
+  show_method = string_of_byte_sequence |) )"
 
 end

@@ -29,6 +29,7 @@ imports
 	 "Elf_file" 
 	 "Elf_relocation" 
 	 "Memory_image" 
+	 "Memory_image_orderings" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Abis" 
 	 "Elf_memory_image" 
 	 "Command_line" 
@@ -73,6 +74,7 @@ begin
 (*open import Elf_symbol_table*)
 (*open import Elf_section_header_table*)
 (*open import Elf_types_native_uint*)
+(*open import Memory_image_orderings*)
 
 (* We model two kinds of linker script: implicit scripts, which are supplied 
  * on the command line as input objects, and control scripts of which there
@@ -170,10 +172,10 @@ datatype retain_policy
 datatype output_section_composition_element
   = IncludeInputSection " (retain_policy * input_section_rec)"
   | IncludeCommonSymbol " (retain_policy * string (* file *) * nat (* linkable_idx *) * symbol_definition * elf_memory_image)"
-  (*| Hole of address_expr_fn (* compute the next addr to continue layout at *)*)
+  | Hole " address_expr_fn " (* compute the next addr to continue layout at *)
   | ProvideSymbol " (symbol_def_policy * string * symbol_spec)"
-
-datatype sort_policy
+and
+sort_policy
   = DefaultSort (* Use command line sort option, else seen order *)
   | SeenOrder (* Always use seen order *)
   | ByName
@@ -181,16 +183,16 @@ datatype sort_policy
   | ByAlignment
   | ByAlignmentThenName
   | ByInitPriority
-
+and
 (* This mirrors the OutputSection constructor, except that the script elements have become
  * output_section_composition_elements, and we might store the size here. *)
-datatype output_section_spec =
+output_section_spec =
   OutputSectionSpec " (output_guard *  nat option * string * ( output_section_composition_element list))"
-
-type_synonym allocated_sections_map =" (string, (output_section_spec (* OutputSection element idx *) * nat))
+and
+allocated_sections_map = "(string, (output_section_spec (* OutputSection element idx *) * nat))
   Map.map "
-
-datatype address_expr_fn
+and
+address_expr_fn
   = AddressExprFn " (nat \<Rightarrow> allocated_sections_map \<Rightarrow> nat)"
 
 datatype script_element =
@@ -247,6 +249,10 @@ by pat_completeness auto
 (*val default_symbol_spec : symbol_spec*)
 definition default_symbol_spec  :: " nat*Elf_Types_Local.unsigned_char*Elf_Types_Local.unsigned_char "  where 
      " default_symbol_spec = ( (( 0 :: nat), Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat)), Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat))))"
+
+(*val hidden_symbol_spec : symbol_spec*)
+definition hidden_symbol_spec  :: " nat*Elf_Types_Local.unsigned_char*Elf_Types_Local.unsigned_char "  where 
+     " hidden_symbol_spec = ( (( 0 :: nat), Elf_Types_Local.unsigned_char_of_nat(( 0 :: nat)), Elf_Types_Local.unsigned_char_of_nat stv_hidden))"
 
 
 (* These Lem functions replicate linker script functions or builtin behaviours. *)
@@ -385,7 +391,9 @@ definition do_output_section_layout_starting_at_addr  :: " nat \<Rightarrow>((st
           IncludeInputSection(retain_pol, irec (* fname, linkable_idx, shndx, isec, img *)) => 
                 (let aligned_next_free = (align_up_to(elf64_section_align  (isec   irec)) next_free_addr)
                 in
-                ((aligned_next_free +(elf64_section_size  (isec   irec))), (addr_list @ [aligned_next_free])))
+                (let _ = (())
+                in
+                ((aligned_next_free +(elf64_section_size  (isec   irec))), (addr_list @ [aligned_next_free]))))
         | IncludeCommonSymbol(retain_pol, fname1, linkable_idx, def1, img3) => 
                 (let aligned_next_free = (align_up_to (unat(elf64_st_value  (def_syment   def1))) next_free_addr)
                 in
@@ -1776,8 +1784,7 @@ SECTIONS
          (\<lambda> s .  name_matches (''.note.GNU-stack'') s \<or>
                            (name_matches (''.gnu_debuglink'') s \<or>
                               name_matches (''.gnu.lto_*'') s)))
-  (* FIXME: orphan sections? This 
-       probably needs to go in the core linking logic,
+  (* NOTE: orphan sections are dealt with in the core linking logic,
        not the script. *)
   ]))) )"
 
@@ -1810,10 +1817,21 @@ definition label_script  :: "(script_element)list \<Rightarrow>(script_element*n
 
 type_synonym input_output_assignment =" ( input_spec list * (output_section_spec * nat) list)"
 
-function flush_output_sec :: "(output_section_spec \<times> nat) option \<Rightarrow> 'a \<times> (output_section_spec \<times> nat) list \<Rightarrow> 'a \<times> (output_section_spec \<times> nat) list" where
-  "flush_output_sec maybe_output_sec_and_idx acc1 = (
-        let (rev_discards, rev_outputs) = acc1 in
-        case  (maybe_output_sec_and_idx ::  (output_section_spec * nat)option) of
+(*val assign_inputs_to_output_sections : 
+    input_output_assignment ->  (* accumulator: list of discards, list of output compositions (these include symbols)  *)
+    set (natural * natural) ->  (* used sections *)
+    set (natural * natural * natural) -> (* used commons *)
+    list input_spec ->            (* remaining inputs *)
+    maybe (output_section_spec * natural) ->  (* cur_sec -- the current output section spec and its OutputSection script item idx *)
+    maybe input_spec ->           (* last input section to be output -- might not have one *)
+    (input_spec -> input_spec -> Basic_classes.ordering) (* seen ordering *) ->
+    labelled_linker_control_script -> 
+    input_output_assignment*)     (* accumulated result *)
+function (sequential,domintros)  assign_inputs_to_output_sections  :: "(input_spec)list*(output_section_spec*nat)list \<Rightarrow>(nat*nat)set \<Rightarrow>(nat*nat*nat)set \<Rightarrow>(input_spec)list \<Rightarrow>(output_section_spec*nat)option \<Rightarrow>(input_spec)option \<Rightarrow>(input_spec \<Rightarrow> input_spec \<Rightarrow> ordering)\<Rightarrow>(script_element*nat)list \<Rightarrow>(input_spec)list*(output_section_spec*nat)list "  where 
+     " assign_inputs_to_output_sections acc1 used_sections used_commons inputs1 (cur_output_sec ::  (output_section_spec * nat)option) last_input_sec seen_ordering script = ( 
+    (let (rev_discards, rev_outputs) = acc1 in 
+    (let flush_output_sec 
+     = (\<lambda> maybe_output_sec_and_idx .  (case  (maybe_output_sec_and_idx ::  (output_section_spec * nat)option) of
         Some (OutputSectionSpec (guard, addr, name1, comp1), script_idx) => 
             (*let _ = errln (Guardedly flushing output section named  ^ name ^  with  ^ (
                 match addr with Nothing -> no address yet | Just a -> address 0x ^ (hex_string_of_natural a) end
@@ -1826,242 +1844,169 @@ function flush_output_sec :: "(output_section_spec \<times> nat) option \<Righta
         | None => (* for convenience, make this a no-op rather than error *)
             (* failwith internal error: flushing output section with no current output section *)
             acc1
-    )"
-by pat_completeness auto
-
-(* DPM: hand rewrote this in Isabelle to stop Isabelle throwing an exception...*)
-(*val assign_inputs_to_output_sections : 
-    input_output_assignment ->  (* accumulator: list of discards, list of output compositions (these include symbols)  *)
-    list input_spec ->            (* remaining inputs *)
-    maybe (output_section_spec * natural) ->  (* cur_sec -- the current output section spec and its OutputSection script item idx *)
-    maybe input_spec ->           (* last input section to be output -- might not have one *)
-    (input_spec -> input_spec -> Basic_classes.ordering) (* seen ordering *) ->
-    labelled_linker_control_script -> 
-    input_output_assignment*)     (* accumulated result *)
-
-fun extract_output_sections :: "script_element list \<Rightarrow> _ set" where
-  "extract_output_sections (OutputSection (x, y, z, subelements)#xs) =
-     { (x, y, z, subelements) } \<union> extract_output_sections xs \<union> extract_output_sections subelements" |
-  "extract_output_sections _ = {}"
-
-(* XXX: duplication here to remove awkward double recursion that causes termination nightmares.  The following function
- * differs from the one below in how OutputSection is handled.  Here, the invariant is maintained that the input list
- * does not contain any occurrence of OutputSection.  This is checked in the second function when the first "recursive"
- * call is made.
- *)
-function assign_inputs_to_output_sections' :: "input_spec list * (output_section_spec * nat) list \<Rightarrow> input_spec list \<Rightarrow> (output_section_spec * nat) option \<Rightarrow> input_spec option \<Rightarrow> (input_spec \<Rightarrow> input_spec \<Rightarrow> ordering)\<Rightarrow>(script_element*nat)list \<Rightarrow>(input_spec)list*(output_section_spec*nat)list "  where 
-  "assign_inputs_to_output_sections' acc1 inputs1 cur_output_sec last_input_sec seen_ordering [] = flush_output_sec cur_output_sec acc1" |
-  "assign_inputs_to_output_sections' (rev_discards, rev_outputs) inputs1 None last_input_sec seen_ordering ((DefineSymbol(symdefpol, name1, (symsize, syminfo, symother)), idx1)#more_elements_and_idx) =
-      (let (new_acc, new_cur_output_sec, new_last_input_sec) = ((rev_discards, rev_outputs), None, last_input_sec) in
-        assign_inputs_to_output_sections' new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx)" |
-  "assign_inputs_to_output_sections' (rev_discards, rev_outputs) inputs1 (Some ((OutputSectionSpec (guard, maybe_addr, secname1, comp1)), output_script_idx)) last_input_sec seen_ordering ((DefineSymbol(symdefpol, name1, (symsize, syminfo, symother)), idx1)#more_elements_and_idx) =
-      (let (new_acc, new_cur_output_sec, new_last_input_sec) = ((rev_discards, rev_outputs), Some ((OutputSectionSpec (guard, maybe_addr, secname1, (comp1 @ [ProvideSymbol(symdefpol, name1, (symsize, syminfo, symother))]))), output_script_idx), last_input_sec) in
-        assign_inputs_to_output_sections' new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx)" |
-  "assign_inputs_to_output_sections' (rev_discards, rev_outputs) inputs1 cur_output_sec last_input_sec seen_ordering ((AdvanceAddress (AddressExprFn advance_fn), idx1)#more_elements_and_idx) =
-      (* XXX: DPM check this as the original version branched on cur_output_sec but did the same thing in both cases...*)
-      (let (new_acc, new_cur_output_sec, new_last_input_sec) = ((rev_discards, rev_outputs), cur_output_sec, last_input_sec) in
-         assign_inputs_to_output_sections' new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx)" |
-  "assign_inputs_to_output_sections' (rev_discards, rev_outputs) inputs1 cur_output_sec last_input_sec seen_ordering ((MarkAndAlignDataSegment(maxpagesize1, commonpagesize1), idx1)#more_elements_and_idx) =
-      (let (new_acc, new_cur_output_sec, new_last_input_sec) = ((rev_discards, rev_outputs), cur_output_sec, last_input_sec) in
-         assign_inputs_to_output_sections' new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx)" |
-  "assign_inputs_to_output_sections' (rev_discards, rev_outputs) inputs1 cur_output_sec last_input_sec seen_ordering ((MarkDataSegmentEnd, idx1)#more_elements_and_idx) =
-      (let (new_acc, new_cur_output_sec, new_last_input_sec) = ((rev_discards, rev_outputs), cur_output_sec, last_input_sec) in
-         assign_inputs_to_output_sections' new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx)" |
-  "assign_inputs_to_output_sections' (rev_discards, rev_outputs) inputs1 cur_output_sec last_input_sec seen_ordering ((MarkDataSegmentRelroEnd, idx1)#more_elements_and_idx) =
-      (let (new_acc, new_cur_output_sec, new_last_input_sec) = ((rev_discards, rev_outputs), cur_output_sec, last_input_sec) in
-         assign_inputs_to_output_sections' new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx)" |
-  "assign_inputs_to_output_sections' (rev_discards, rev_outputs) inputs1 cur_output_sec last_input_sec seen_ordering ((OutputSection (outputguard, maybe_expr, name1, sub_elements), idx1)#more_elements_and_idx) = undefined" |
-  "assign_inputs_to_output_sections' (rev_discards, rev_outputs) inputs1 cur_output_sec last_input_sec seen_ordering ((DiscardInput selector, idx1)#more_elements_and_idx) =
-     (let (new_acc, new_cur_output_sec, new_last_input_sec) =
-         ((((List.rev (List.foldr (op #) (selector inputs1) [])) @ rev_discards), rev_outputs), cur_output_sec, last_input_sec)
-      in
-        assign_inputs_to_output_sections' new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx)" |
-  "assign_inputs_to_output_sections' (rev_discards, rev_outputs) inputs1 None last_input_sec seen_ordering ((InputQuery (retainpol, sortpol, selector), idx1)#more_elements_and_idx) =
-     failwith (''linker script error: input query without output section'')" |
-  "assign_inputs_to_output_sections' (rev_discards, rev_outputs) inputs1 (Some ((OutputSectionSpec (output_guard, output_sec_addr, output_sec_name, output_composition)), output_script_idx)) last_input_sec seen_ordering ((InputQuery (retainpol, sortpol, selector), idx1)#more_elements_and_idx) =
-     (let (new_acc, new_cur_output_sec, new_last_input_sec) =
-     (let sortfun =
-        (case sortpol of
-           DefaultSort => Elf_Types_Local.merge_sort seen_ordering
-         | SeenOrder => Elf_Types_Local.merge_sort seen_ordering
-         | ByName => Elf_Types_Local.merge_sort compareInputSpecByName
-         | ByNameThenAlignment => Elf_Types_Local.merge_sort compareInputSpecByNameThenAlignment
-         | ByAlignment => Elf_Types_Local.merge_sort compareInputSpecByAlignment
-         | ByAlignmentThenName => Elf_Types_Local.merge_sort compareInputSpecByAlignmentThenName
-         | ByInitPriority => Elf_Types_Local.merge_sort compareInputSpecByInitPriority)
-      in
-      (let sorted_selected_inputs = sortfun (selector inputs1) in
-      (let sectionMatchList = (Lem_list.mapMaybe (\<lambda>inp. (case inp of InputSection x => Some x | _ => None)) sorted_selected_inputs) in
-      (let commonMatchList = (Lem_list.mapMaybe (\<lambda>inp. (case inp of Common (idx1, fname1, img3, def1) => Some (idx1, fname1, img3, def1) | _ => None)) sorted_selected_inputs) in
-         ((rev_discards, rev_outputs), Some ((OutputSectionSpec (output_guard, output_sec_addr, output_sec_name, ((output_composition @                                     
-            ((List.foldr (\<lambda>input_sec x2. IncludeInputSection (retainpol, input_sec) # x2) sectionMatchList []))) @
-              ((List.foldr (\<lambda>(idx1, fname1, img3, def1) x2. IncludeCommonSymbol (DefaultKeep, fname1, idx1, def1, img3) # x2) commonMatchList []))))), output_script_idx), last_input_sec)))))
-      in
-        assign_inputs_to_output_sections' new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx)"
-by pat_completeness auto
-
-function assign_inputs_to_output_sections :: "input_spec list * (output_section_spec * nat) list \<Rightarrow> input_spec list \<Rightarrow> (output_section_spec * nat) option \<Rightarrow> input_spec option \<Rightarrow> (input_spec \<Rightarrow> input_spec \<Rightarrow> ordering)\<Rightarrow>(script_element*nat)list \<Rightarrow>(input_spec)list*(output_section_spec*nat)list "  where 
-  "assign_inputs_to_output_sections acc1 inputs1 cur_output_sec last_input_sec seen_ordering [] = flush_output_sec cur_output_sec acc1" |
-  "assign_inputs_to_output_sections (rev_discards, rev_outputs) inputs1 None last_input_sec seen_ordering ((DefineSymbol(symdefpol, name1, (symsize, syminfo, symother)), idx1)#more_elements_and_idx) =
-      (let (new_acc, new_cur_output_sec, new_last_input_sec) = ((rev_discards, rev_outputs), None, last_input_sec) in
-        assign_inputs_to_output_sections new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx)" |
-  "assign_inputs_to_output_sections (rev_discards, rev_outputs) inputs1 (Some ((OutputSectionSpec (guard, maybe_addr, secname1, comp1)), output_script_idx)) last_input_sec seen_ordering ((DefineSymbol(symdefpol, name1, (symsize, syminfo, symother)), idx1)#more_elements_and_idx) =
-      (let (new_acc, new_cur_output_sec, new_last_input_sec) = ((rev_discards, rev_outputs), Some ((OutputSectionSpec (guard, maybe_addr, secname1, (comp1 @ [ProvideSymbol(symdefpol, name1, (symsize, syminfo, symother))]))), output_script_idx), last_input_sec) in
-        assign_inputs_to_output_sections new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx)" |
-  "assign_inputs_to_output_sections (rev_discards, rev_outputs) inputs1 cur_output_sec last_input_sec seen_ordering ((AdvanceAddress (AddressExprFn advance_fn), idx1)#more_elements_and_idx) =
-      (* XXX: DPM check this as the original version branched on cur_output_sec but did the same thing in both cases...*)
-      (let (new_acc, new_cur_output_sec, new_last_input_sec) = ((rev_discards, rev_outputs), cur_output_sec, last_input_sec) in
-         assign_inputs_to_output_sections new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx)" |
-  "assign_inputs_to_output_sections (rev_discards, rev_outputs) inputs1 cur_output_sec last_input_sec seen_ordering ((MarkAndAlignDataSegment(maxpagesize1, commonpagesize1), idx1)#more_elements_and_idx) =
-      (let (new_acc, new_cur_output_sec, new_last_input_sec) = ((rev_discards, rev_outputs), cur_output_sec, last_input_sec) in
-         assign_inputs_to_output_sections new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx)" |
-  "assign_inputs_to_output_sections (rev_discards, rev_outputs) inputs1 cur_output_sec last_input_sec seen_ordering ((MarkDataSegmentEnd, idx1)#more_elements_and_idx) =
-      (let (new_acc, new_cur_output_sec, new_last_input_sec) = ((rev_discards, rev_outputs), cur_output_sec, last_input_sec) in
-         assign_inputs_to_output_sections new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx)" |
-  "assign_inputs_to_output_sections (rev_discards, rev_outputs) inputs1 cur_output_sec last_input_sec seen_ordering ((MarkDataSegmentRelroEnd, idx1)#more_elements_and_idx) =
-      (let (new_acc, new_cur_output_sec, new_last_input_sec) = ((rev_discards, rev_outputs), cur_output_sec, last_input_sec) in
-         assign_inputs_to_output_sections new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx)" |
-  "assign_inputs_to_output_sections (rev_discards, rev_outputs) inputs1 cur_output_sec last_input_sec seen_ordering ((OutputSection (outputguard, maybe_expr, name1, sub_elements), idx1)#more_elements_and_idx) =
-     (if {} \<noteq> extract_output_sections sub_elements then
-       undefined
-     else
-       (let (new_acc, new_cur_output_sec, new_last_input_sec) =
-         (let acc_with_output_sec = flush_output_sec cur_output_sec (rev_discards, rev_outputs) in
-         (let new_cur_output_sec = Some ((OutputSectionSpec (outputguard, None, name1, [])), idx1) in
-         (let final_acc = assign_inputs_to_output_sections' (rev_discards, rev_outputs) inputs1 new_cur_output_sec last_input_sec seen_ordering (label_script sub_elements) in
-           (final_acc, None, last_input_sec))))
-       in
-         assign_inputs_to_output_sections new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx))" |
-  "assign_inputs_to_output_sections (rev_discards, rev_outputs) inputs1 cur_output_sec last_input_sec seen_ordering ((DiscardInput selector, idx1)#more_elements_and_idx) =
-     (let (new_acc, new_cur_output_sec, new_last_input_sec) =
-         ((((List.rev (List.foldr (op #) (selector inputs1) [])) @ rev_discards), rev_outputs), cur_output_sec, last_input_sec)
-      in
-        assign_inputs_to_output_sections new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx)" |
-  "assign_inputs_to_output_sections (rev_discards, rev_outputs) inputs1 None last_input_sec seen_ordering ((InputQuery (retainpol, sortpol, selector), idx1)#more_elements_and_idx) =
-     failwith (''linker script error: input query without output section'')" |
-  "assign_inputs_to_output_sections (rev_discards, rev_outputs) inputs1 (Some ((OutputSectionSpec (output_guard, output_sec_addr, output_sec_name, output_composition)), output_script_idx)) last_input_sec seen_ordering ((InputQuery (retainpol, sortpol, selector), idx1)#more_elements_and_idx) =
-     (let (new_acc, new_cur_output_sec, new_last_input_sec) =
-     (let sortfun =
-        (case sortpol of
-           DefaultSort => Elf_Types_Local.merge_sort seen_ordering
-         | SeenOrder => Elf_Types_Local.merge_sort seen_ordering
-         | ByName => Elf_Types_Local.merge_sort compareInputSpecByName
-         | ByNameThenAlignment => Elf_Types_Local.merge_sort compareInputSpecByNameThenAlignment
-         | ByAlignment => Elf_Types_Local.merge_sort compareInputSpecByAlignment
-         | ByAlignmentThenName => Elf_Types_Local.merge_sort compareInputSpecByAlignmentThenName
-         | ByInitPriority => Elf_Types_Local.merge_sort compareInputSpecByInitPriority)
-      in
-      (let sorted_selected_inputs = sortfun (selector inputs1) in
-      (let sectionMatchList = (Lem_list.mapMaybe (\<lambda>inp. (case inp of InputSection x => Some x | _ => None)) sorted_selected_inputs) in
-      (let commonMatchList = (Lem_list.mapMaybe (\<lambda>inp. (case inp of Common (idx1, fname1, img3, def1) => Some (idx1, fname1, img3, def1) | _ => None)) sorted_selected_inputs) in
-         ((rev_discards, rev_outputs), Some ((OutputSectionSpec (output_guard, output_sec_addr, output_sec_name, ((output_composition @                                     
-            ((List.foldr (\<lambda>input_sec x2. IncludeInputSection (retainpol, input_sec) # x2) sectionMatchList []))) @
-              ((List.foldr (\<lambda>(idx1, fname1, img3, def1) x2. IncludeCommonSymbol (DefaultKeep, fname1, idx1, def1, img3) # x2) commonMatchList []))))), output_script_idx), last_input_sec)))))
-      in
-        assign_inputs_to_output_sections new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx)"
-by pat_completeness auto
-
-(* XXX: dpm old version of the function
-    (((let do_nothing = ((rev_discards, rev_outputs), cur_output_sec, last_input_sec) in
-      (let xs =
-         ((case element of
-             DefineSymbol(symdefpol, name1, (symsize, syminfo, symother)) =>
-             (* Label the current section in the image 
-              * with a new symbol definition. If there isn't
-              * a current section, use the ABS section (what is that labelling?). *)
-             ((rev_discards, rev_outputs),
-                (case cur_output_sec of
-                   None => (*let _ = errln FIXME: ABS symbol defs not yet supported in*) None
-                 | Some ((OutputSectionSpec (guard, maybe_addr, secname1, comp1)), output_script_idx) => Some ((OutputSectionSpec (guard, maybe_addr, secname1, (comp1 @ [ProvideSymbol(symdefpol, name1, (symsize, syminfo, symother))]))), output_script_idx)), last_input_sec)
-           | AdvanceAddress (AddressExprFn advance_fn) =>
-               (* If we're inside a section, insert a hole, 
-                * else just update the logical address *)
-               (case cur_output_sec of
-                  None => do_nothing
-                  (* This assignment is setting a new LMA. *)
-                  (* (acc,) *)
-                | Some (sec, idx1) => do_nothing)
-           | MarkAndAlignDataSegment(maxpagesize1, commonpagesize1) => 
-             (* The data segment end is a distinguished label, 
-              * so we can encode the whole thing into a conditional. *)
-              do_nothing
-           | MarkDataSegmentEnd => do_nothing
-           | MarkDataSegmentRelroEnd(*(fun_from_secs_to_something)*) => do_nothing
-           | OutputSection(outputguard, maybe_expr, name1, sub_elements) => 
-             (* If we have a current output section, finish it and add it to the image.
-              * Q. Where do guards (ONLY_IF_RO etc) get evaluated?
-              * A. Inside flush_output_sec. *)
-              (let acc_with_output_sec = (flush_output_sec cur_output_sec (rev_discards, rev_outputs)) in
-              (let new_cur_output_sec = (Some ((OutputSectionSpec (outputguard, (* maybe_expr pos secs *) None, name1, [])), idx1)) in
-              (* Recurse down the list of input queries, assigning them to this output sec
-               * Note that output sections may not nest within other output sections. 
-               * At the end of the list of sub_elements, we will flush the section we built up. 
-               *)
-              (let final_acc = (assign_inputs_to_output_sections (rev_discards, rev_outputs) inputs1 new_cur_output_sec last_input_sec seen_ordering (label_script sub_elements)) in
-              (* NOTE that this sub-accumulation will never add a new output section
-               * because output sections can't nest. *)
-                (final_acc, (* cur_output_sec *) None, last_input_sec)))) 
-           | DiscardInput selector  => 
-             (let selected = selector inputs1 in
-             (*let _ = Missing_pervasives.errln (Processing discard rule; selected  ^ (show (length selected)) ^  inputs.) in*)
-              ((((List.rev ((let x2 = [] in
-                    List.foldr (\<lambda>i x2. i # x2) selected x2))) @ rev_discards), rev_outputs), cur_output_sec, last_input_sec))
-           | InputQuery (retainpol, sortpol, selector) => 
-             (* Input queries can only occur within an output section. *)
-             (case cur_output_sec of
-                None => failwith (''linker script error: input query without output section'')
-              | Some ((OutputSectionSpec (output_guard, output_sec_addr, output_sec_name, output_composition)), output_script_idx) =>
-                (* Add them to the current output spec. We have to be careful about ordering:
-                 * according to the GNU ld manual (and observed behaviour), by default
-                 * the linker will place files and sections matched by wildcards in the order
-                 * in which they are seen during the link. For .o files on the command line,
-                 * this means the command line order. But for members of archives, it means
-                 * the order in which they were pulled in during input enumeration. We 
-                 * actually don't compute this here; it is passed in from our caller in link.lem. *)
-                (let sortfun =
-                   ((case  sortpol of
-                      DefaultSort => Elf_Types_Local.merge_sort seen_ordering (* FIXME: pay attention to command line *)
-                    | SeenOrder => Elf_Types_Local.merge_sort seen_ordering
-                    | ByName => Elf_Types_Local.merge_sort compareInputSpecByName
-                    | ByNameThenAlignment => Elf_Types_Local.merge_sort compareInputSpecByNameThenAlignment
-                    | ByAlignment => Elf_Types_Local.merge_sort compareInputSpecByAlignment
-                    | ByAlignmentThenName => Elf_Types_Local.merge_sort compareInputSpecByAlignmentThenName
-                    | ByInitPriority => Elf_Types_Local.merge_sort compareInputSpecByInitPriority))
-                 in
-                 (* Search input memory images for matching sections. *)
-                 (let sorted_selected_inputs = (sortfun (selector inputs1)) in
-                 (let sectionMatchList =
-                    (Lem_list.mapMaybe (\<lambda>inp.  
-                       (case inp of
-                          InputSection x => 
-                          (*let _ = errln (Matched an input section named  ^ x.isec.elf64_section_name_as_string ^ 
-                               in a file  ^ x.fname ^  with first 20 bytes  ^ (show (take 20 
-                           (let maybe_elname = elf_memory_image_element_coextensive_with_section x.shndx x.img in
-                              match maybe_elname with
-                                Nothing -> failwith (impossible: no such element (matching shndx  ^ (show x.shndx) ^ ))
-                              | Just idstr -> 
-                                match Map.lookup idstr x.img.elements with
-                                  Just el -> el.contents
-                                | Nothing -> failwith no such element
-                                end
-                              end)))) in*)
-                           Some x
-                         | _ => None)) sorted_selected_inputs) in
-                  (let commonMatchList = (Lem_list.mapMaybe (\<lambda>inp.  
-                     (case inp of
-                        Common (idx1, fname1, img3, def1) => Some (idx1, fname1, img3, def1)
-                      | _ => None)) sorted_selected_inputs)
-                   in
-                     ((rev_discards, rev_outputs), Some ((OutputSectionSpec(output_guard, output_sec_addr, output_sec_name, ((output_composition @                                     
-                        ((let x2 = ([]) in List.foldr (\<lambda>input_sec x2.
-                            IncludeInputSection (retainpol, (* input_sec.fname, input_sec.idx, input_sec.shndx, input_sec.isec, input_sec.img *) input_sec) # x2) sectionMatchList x2))) @
-                        ((let x2 = ([]) in List.foldr (\<lambda>(idx1, fname1, img3, def1) x2. IncludeCommonSymbol (DefaultKeep, fname1, idx1, def1, img3) # x2) commonMatchList x2))))), output_script_idx), last_input_sec))))))))
+    ))
     in
-    let (new_acc, new_cur_output_sec, new_last_input_sec) = xs in
-    assign_inputs_to_output_sections undefined undefined undefined undefined undefined
-                (*assign_inputs_to_output_sections new_acc inputs1 new_cur_output_sec new_last_input_sec seen_ordering more_elements_and_idx*)))
-    ))"
-by pat_completeness auto*)
+    (case  script of
+        [] =>  flush_output_sec cur_output_sec
+        | (element, idx1) # more_elements_and_idx =>
+            (let do_nothing = (acc1, used_sections, used_commons, cur_output_sec, last_input_sec) 
+            in
+            (let (new_acc, new_used_sections, new_used_commons, (new_cur_output_sec ::  (output_section_spec * nat)option), new_last_input_sec)
+             = ((case  element of
+                DefineSymbol(symdefpol, name1, (symsize, syminfo, symother)) =>
+                    (* Label the current section in the image 
+                     * with a new symbol definition. If there isn't
+                     * a current section, use the ABS section (what is that labelling?). *)
+                    (acc1,
+                     used_sections,
+                     used_commons,
+                     (case  (cur_output_sec ::  (output_section_spec * nat)option) of
+                        None => (*let _ = errln FIXME: ABS symbol defs not yet supported in*) None
+                        | Some ((OutputSectionSpec (guard, maybe_addr, secname1, comp1)), output_script_idx) =>
+                            Some ((OutputSectionSpec (guard, maybe_addr, secname1,                                
+ (comp1 @ [ProvideSymbol(symdefpol, name1, (symsize, syminfo, symother))])))
+                             , output_script_idx)
+                    ),
+                    last_input_sec)
+                | AdvanceAddress(AddressExprFn advance_fn) =>
+                     (* If we're inside a section, insert a hole, 
+                      * else just update the logical address *)
+                     (case  cur_output_sec of
+                        None => do_nothing
+                            (* This assignment is setting a new LMA. *)
+                            (* (acc,  *)
+                        | Some (sec, idx1) => do_nothing
+                     )
+                | MarkAndAlignDataSegment(maxpagesize1, commonpagesize1) => 
+                     (* The data segment end is a distinguished label, 
+                      * so we can encode the whole thing into a conditional. *)
+                     do_nothing
+                | MarkDataSegmentEnd => do_nothing
+                | MarkDataSegmentRelroEnd(*(fun_from_secs_to_something)*) => do_nothing
+                | OutputSection(outputguard, maybe_expr, name1, sub_elements) => 
+                    (* If we have a current output section, finish it and add it to the image.
+                     * Q. Where do guards (ONLY_IF_RO etc) get evaluated?
+                     * A. Inside flush_output_sec. *)
+                    (let acc_with_output_sec = (flush_output_sec cur_output_sec)
+                    in
+                    (let new_cur_output_sec = (Some((OutputSectionSpec(outputguard, (* maybe_expr pos secs *) None, name1, [])), idx1))
+                    in
+                    (* Recurse down the list of input queries, assigning them to this output sec
+                     * Note that output sections may not nest within other output sections. 
+                     * At the end of the list of sub_elements, we will flush the section we built up. 
+                     *)
+                    (let final_acc
+                    = (assign_inputs_to_output_sections acc1 used_sections used_commons inputs1 new_cur_output_sec last_input_sec seen_ordering (label_script sub_elements))
+                    in
+                    (* NOTE that this sub-accumulation will never add a new output section
+                     * because output sections can't nest. *)
+                    (final_acc, used_sections, used_commons, (* cur_output_sec *) None, last_input_sec)))) 
+                | DiscardInput(selector) => 
+                    (let selected = (selector inputs1)
+                    in
+                    (let (rev_discards, rev_outputs) = acc1 in
+                    (*let _ = Missing_pervasives.errln (Processing discard rule; selected  ^ (show (length selected))
+                        ^  inputs.)
+                    in*)
+                    ((((List.rev ((let x2 = 
+  ([]) in  List.foldr (\<lambda>i x2 .  if True then i # x2 else x2) selected x2))) @ rev_discards), rev_outputs), used_sections, used_commons, cur_output_sec, last_input_sec)))
+                | InputQuery(retainpol, sortpol, selector) => 
+                    (* Input queries can only occur within an output section. *)
+                    (case  cur_output_sec of
+                        None => failwith (''linker script error: input query without output section'')
+                        | Some ((OutputSectionSpec (output_guard, output_sec_addr, output_sec_name, output_composition)), output_script_idx) =>
+                            (* Add them to the current output spec. We have to be careful about ordering:
+                             * according to the GNU ld manual (and observed behaviour), by default
+                             * the linker will place files and sections matched by wildcards in the order
+                             * in which they are seen during the link. For .o files on the command line,
+                             * this means the command line order. But for members of archives, it means
+                             * the order in which they were pulled in during input enumeration. We 
+                             * actually don't compute this here; it is passed in from our caller in link.lem. *)
+                            (let sortfun = ((case  sortpol of
+                                DefaultSort => Elf_Types_Local.merge_sort seen_ordering (* FIXME: pay attention to command line *)
+                                | SeenOrder => Elf_Types_Local.merge_sort seen_ordering
+                                | ByName => Elf_Types_Local.merge_sort compareInputSpecByName
+                                | ByNameThenAlignment => Elf_Types_Local.merge_sort compareInputSpecByNameThenAlignment
+                                | ByAlignment => Elf_Types_Local.merge_sort compareInputSpecByAlignment
+                                | ByAlignmentThenName => Elf_Types_Local.merge_sort compareInputSpecByAlignmentThenName
+                                | ByInitPriority => Elf_Types_Local.merge_sort compareInputSpecByInitPriority
+                            ))
+                            in
+                            (let selected = (selector inputs1)
+                            in
+                            (let selected_deduplicated = (List.filter (\<lambda> inp .  (case  inp of
+                                InputSection(irec) => \<not> (((idx   irec),(shndx   irec)) \<in> used_sections)
+                                | Common(idx1, fname1, img3, def1) => \<not> ((idx1,(def_sym_scn   def1),(def_sym_idx   def1)) \<in> used_commons)
+                            )) selected)
+                            in
+                            (* Search input memory images for matching sections. *)
+                            (let sorted_selected_inputs = (sortfun selected_deduplicated)
+                            in
+                            (let (sectionMatchList :: input_section_rec list) = (Lem_list.mapMaybe (\<lambda> inp .  
+                                (case  inp of
+                                    InputSection(x) => 
+                                        (*let _ = errln (Matched an input section named  ^ x.isec.elf64_section_name_as_string ^ 
+                                             in a file  ^ x.fname ^  with first 20 bytes  ^ (show (take 20 
+                                                (let maybe_elname = elf_memory_image_element_coextensive_with_section x.shndx x.img 
+                                                 in
+                                                 match maybe_elname with
+                                                    Nothing -> failwith (impossible: no such element (matching shndx  ^ (show x.shndx) ^ ))
+                                                    | Just idstr -> 
+                                                        match Map.lookup idstr x.img.elements with
+                                                            Just el -> el.contents
+                                                            | Nothing -> failwith no such element
+                                                        end
+                                                end
+                                                ))))
+                                            in*)
+                                            Some x
+                                   | _ => None
+                                )) sorted_selected_inputs)
+                            in
+                            (let commonMatchList = (Lem_list.mapMaybe (\<lambda> inp .  
+                                (case  inp of
+                                     Common(idx1, fname1, img3, def1) => Some(idx1, fname1, img3, def1)
+                                   | _ => None
+                                )) sorted_selected_inputs)
+                            in
+                            
+                            (acc1,                             
+ (used_sections \<union> 
+  Set.image (\<lambda> irec .  ((idx   irec),(shndx   irec)))
+    (set_filter (\<lambda> irec .  True) (List.set sectionMatchList))),                             
+(used_commons  \<union> 
+  Set.image
+    (\<lambda> (idx1, fname1, img3, def1) .  (idx1,(def_sym_scn   def1),(def_sym_idx   def1)))
+    (set_filter (\<lambda> (idx1, fname1, img3, def1) .  True)
+       (List.set commonMatchList))),
+                             Some (
+                                (OutputSectionSpec(output_guard, output_sec_addr, output_sec_name, 
+                                    ((output_composition @                                     
+ ((let x2 = ([]) in  List.foldr
+   (\<lambda>input_sec x2 . 
+    if True then
+      IncludeInputSection
+        (retainpol, (* input_sec.fname, input_sec.idx, input_sec.shndx, input_sec.isec, input_sec.img *) input_sec)
+        # x2 else x2) sectionMatchList x2))) @ ((let x2 = ([]) in  List.foldr
+   (\<lambda>(idx1, fname1, img3, def1) x2 . 
+    if True then
+      IncludeCommonSymbol (DefaultKeep, fname1, idx1, def1, img3) # x2 else
+      x2) commonMatchList x2)))
+                                )), output_script_idx), 
+                             last_input_sec
+                            )))))))
+                    )
+            ))
+            in
+            assign_inputs_to_output_sections new_acc new_used_sections new_used_commons 
+                (inputs1 :: input_spec list)
+                (new_cur_output_sec)
+                (new_last_input_sec ::  input_spec option)
+                seen_ordering
+                (more_elements_and_idx :: labelled_linker_control_script)))
+    ))))" 
+by pat_completeness auto
+
 
 (* NOTE: this is also responsible for deleting any PROVIDEd symbols that 
  * were not actually referenced. BUT HOW, if we haven't built the image and 
@@ -2123,25 +2068,27 @@ definition output_section_flags  :: "(output_section_composition_element)list \<
         )) x)))
     in
     (let alloc = (((\<exists> x \<in> (set comp1).  (\<lambda> comp_el .  
-  (case  comp_el of
-      IncludeInputSection (retain_pol, (* fname, linkable_idx, shndx, isec, img *) irec) =>
-  flag_is_set shf_alloc (elf64_section_flags  (isec   irec))
-    | IncludeCommonSymbol (retain_pol, fname1, linkable_idx, def1, img3) =>
-  (* common symbols are allocatable *) True
-    | ProvideSymbol (pol, name1, spec) =>
-  (* symbols make a section allocatable? HMM *) True
-  )) x)))
+        (case  comp_el of 
+            IncludeInputSection(retain_pol, (* fname, linkable_idx, shndx, isec, img *) irec) => 
+                flag_is_set shf_alloc(elf64_section_flags  (isec   irec))
+            | IncludeCommonSymbol(retain_pol, fname1, linkable_idx, def1, img3) => 
+                (* common symbols are allocatable *) True
+            | ProvideSymbol(pol, name1, spec) => 
+                (* symbols make a section allocatable? HMM *) True
+            | _ => (* padding does not make a section allocatable *) False
+        )) x)))
     in
     (let is_thread_local_yesnomaybe = (\<lambda> comp_el .  
-  (case  comp_el of
-      IncludeInputSection (retain_pol, (* fname, linkable_idx, shndx, isec, img *) irec) =>
-  Some (flag_is_set shf_tls (elf64_section_flags  (isec   irec)))
-    | IncludeCommonSymbol (retain_pol, fname1, linkable_idx, def1, img3) =>
-  (* FIXME: support tcommon *) Some (False)
-    | ProvideSymbol (pol, name1, spec) =>
-  (* linker script symbols shouldn't be defined here, unless they can be declared thread-local (FIXME: can they?) *)
-  Some False
-  )
+        (case  comp_el of 
+            IncludeInputSection(retain_pol, (* fname, linkable_idx, shndx, isec, img *) irec) => 
+                Some(flag_is_set shf_tls(elf64_section_flags  (isec   irec)))
+            | IncludeCommonSymbol(retain_pol, fname1, linkable_idx, def1, img3) => 
+                (* FIXME: support tcommon *) Some(False)
+            | ProvideSymbol(pol, name1, spec) => 
+                (* linker script symbols shouldn't be defined here, unless they can be declared thread-local (FIXME: can they?) *)
+                Some False
+            | _ => (* padding does not make a section thread-local, or non-. *) None
+        )
     )
     in
     (let thread_local = (
@@ -2189,18 +2136,23 @@ definition symbol_def_for_provide_symbol  :: " string \<Rightarrow> nat \<Righta
      " symbol_def_for_provide_symbol name1 size3 info other linker_script_linkable_idx = ( 
     (|
         def_symname = (*let _ = errln (Linker script is defining symbol called ` ^ name ^ ') in*) name1
-        , def_syment = (|
+        , def_syment = ((|
              elf64_st_name  = (Elf_Types_Local.uint32_of_nat(( 0 :: nat))) (* ignored *)
            , elf64_st_info  = info
            , elf64_st_other = other
            , elf64_st_shndx = (Elf_Types_Local.uint16_of_nat(( 0 :: nat)))
            , elf64_st_value = (Elf_Types_Local.uint64_of_nat(( 0 :: nat))) (* ignored *)
            , elf64_st_size  = (of_int (int size3))
-           |)
+           |))
         , def_sym_scn =(( 0 :: nat))
         , def_sym_idx =(( 0 :: nat))
         , def_linkable_idx = linker_script_linkable_idx
     |) )"
+
+
+(*val assign_dot_to_itself : address_expr_fn*)
+definition assign_dot_to_itself  :: " address_expr_fn "  where 
+     " assign_dot_to_itself = ( AddressExprFn (\<lambda> dot .  \<lambda> _ .  dot))"
 
 
 (*val build_image : 
@@ -2229,27 +2181,22 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                  | None => pos
                                )) in
   (let align = (alignof_output_section comp1) in
-  (*let _ = errln (Aligning section  ^ secname ^  up to a  ^ (show align) ^ -byte address boundary)
-            in*)
-  (let start_addr = (align_up_to align unaligned_start_addr) in
+  (let _ = (()) in
+  (let output_section_start_addr = (align_up_to align unaligned_start_addr)
+  in
   (let (end_addr, comp_addrs) = (do_output_section_layout_starting_at_addr
-                                   start_addr outputs_by_name comp1) in
-  (let size3 = (end_addr - start_addr) in
-  (*let _ = Missing_pervasives.outln (
-                if List.null comp then secname else (
-                    ((space_padded_and_maybe_newline 16 secname) ^
-                    (0x ^ (left_zero_padded_to 16 (hex_string_of_natural start_addr))) ^   ^
-                    (left_space_padded_to 10 (0x ^ (hex_string_of_natural size))))
-                )
-            )
-            in*)
+                                   output_section_start_addr outputs_by_name
+                                   comp1) in
+  (let size3 = (end_addr - output_section_start_addr) in
+  (let _ = (()) in
   (let (concatenated_content, final_addr, new_range_tag_pairs) = (List.foldl
                                                                     (
-                                                                    \<lambda> (accum_pat, addr, accum_meta) .  
+                                                                    \<lambda> (accum_pat, accum_current_addr, accum_meta) .  
                                                                     (
                                                                     \<lambda> (comp_el, comp_addr) . 
-                                                                    (* let _ = errln (Adding an element to composition of output section ` ^ secname ^ ')
-                in *)
+                                                                    (let 
+                                                                    _ = 
+                                                                    (()) in
                                                                     (let 
                                                                     make_line = 
                                                                     (
@@ -2316,18 +2263,17 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                     (
                                                                     (''impossible: no such section'') (*(matching irec.shndx  ^ (show irec.shndx) ^ )*) )
                                                                     | Some idstr =>
-                                                                    (*let _ = errln (Found element named  ^ idstr ^  coextensive with section named  ^ 
-                                    irec.isec.elf64_section_name_as_string ^  in file  ^ irec.fname)
-                                in*)
+                                                                    (let 
+                                                                    _ = 
+                                                                    (()) in
                                                                     (case  
                                                                     
                                                                     (elements  (img   irec))
                                                                     idstr of
                                                                     Some el =>
-                                                                    (*let _ = Missing_pervasives.outln (make_line irec.isec.elf64_section_name_as_string
-                                        (hex_string_of_natural comp_addr) (hex_string_of_natural irec.isec.elf64_section_size)
-                                        irec.fname)
-                                    in*)
+                                                                    (let 
+                                                                    _ = 
+                                                                    (()) in
                                                                     (let 
                                                                     range_or_sym_is_in_this_sec = 
                                                                     (
@@ -2392,19 +2338,47 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                     (let 
                                                                     section_end_addr = 
                                                                     (
-                                                                    addr +
+                                                                    accum_current_addr
+                                                                    +
                                                                     (elf64_section_size  (isec   irec)))
                                                                     in
                                                                     (
+                                                                    (
                                                                     abs_address
                                                                     \<ge>
-                                                                    addr)
+                                                                    accum_current_addr)
                                                                     \<and>
                                                                     (
                                                                     abs_address
                                                                     <
-                                                                    section_end_addr)))
+                                                                    section_end_addr))
                                                                     (* FIXME: argument that this should be <=, i.e. can mark end addr *)
+                                                                    (* PROBLEM: this is all very well, but there's no reason why
+                                                                 * ABS symbols need to point at an address within some output
+                                                                 * section. They can just be arbitrary values. This is a bit of an
+                                                                 * abuse if we do it within the C language (to get the value, you 
+                                                                 * have to do (int) &sym, i.e. create a meaningless pointer 
+                                                                 * intermediate) but arguably is okay in an impl-def way.
+                                                                 * 
+                                                                 * WHAT to do? well, just always output the ABS symbols, for now.
+                                                                 * 
+                                                                 * The example that provoked this is in glibc's 
+                                                                 * locale/lc-address.c, which compiles down to create
+                                                                 * the following ABS symbol:
+                                                                 * 
+                                                                 * 0000000000000001 g       *ABS*	0000000000000000 _nl_current_LC_ADDRESS_used
+                                                                 * 
+                                                                 * ... i.e. the _nl_current_LC_ADDRESS_used appears to be just a flag.
+                                                                 *
+                                                                 * Where can we handle this? We don't see ABS symbols since they
+                                                                 * aren't associated with sections. We simply need to copy over
+                                                                 * all the ABS symbols appearing in included input objects.
+                                                                 * That means there's no point doing anything with them here
+                                                                 * while we're fiddling with sections. Do it later in a whole-
+                                                                 * -image pass.
+                                                                 *)
+                                                                    \<and>
+                                                                    False)) (* ... at least until we see a better way *)
                                                                     ))
                                                                     | _ => 
                                                                     False
@@ -2502,17 +2476,25 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                     None
                                                                     | Some(el_name, (start, len)) =>
                                                                     Some
-                                                                    (secname1 (* FIXME: pass this through a section-to-element gensym. 
+                                                                    (secname1,
+                                                                    ( 
+                                                                    (* FIXME: pass this through a section-to-element gensym. 
                                                                 We can just (for now) define output element names
                                                                 to equal the section names, since we have no unnamed
-                                                                output sections and no output common symbols. *) ,
-                                                                    (
+                                                                output sections and no output common symbols. *) (let 
+                                                                    new_start_off = 
                                                                     (
                                                                     start +
                                                                     (
-                                                                    addr -
-                                                                    start_addr)),
-                                                                    len))
+                                                                    comp_addr
+                                                                    -
+                                                                    output_section_start_addr))
+                                                                    in
+                                                                    (let 
+                                                                    _ = 
+                                                                    (()) in
+                                                                    (new_start_off,
+                                                                    len)))))
                                                                     )) in
                                                                     (case  tag of
                                                                     (* If it's a section, we discard it.
@@ -2527,20 +2509,30 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                              * should replace syment with a minimal structure
                                              * that avoids duplication. Same for isecs. *)
                                                                     | SymbolDef (def1) =>
-                                                                    (*let _ = if def.def_symname = _start then errln (Saw def of _start, 
-                                                    ^ in section  ^ irec.isec.elf64_section_name_as_string ^  of linkable  ^ (show irec.idx)
-                                                    ^ , destined for output section ` ^ irec.secname ^ ')
-                                                 else ()
-                                                in*) Some
+                                                                    (* if get_elf64_symbol_type def.def_syment = stt_section
+                                                then Nothing FIXME: also re-create the section symbol when we create the ElfSection
+                                                else *) (* This doesn't work -- some refs might be bound to this symbol. 
+                                                           Instead, strip the symbol when we generate the output symtab (FIXME). *)
+                                                                    Some
                                                                     (new_range, 
                                                                     SymbolDef
                                                                     (
                                                                     (|
-                                                                    def_symname =(def_symname   def1)
-                                                                    , def_syment =(def_syment   def1)
-                                                                    , def_sym_scn =(def_sym_scn   def1)
-                                                                    , def_sym_idx =(def_sym_idx   def1)
-                                                                    , def_linkable_idx =(idx   irec)
+                                                                    def_symname = 
+                                                                    (
+                                                                    (def_symname   def1))
+                                                                    , def_syment = 
+                                                                    (
+                                                                    (def_syment   def1))
+                                                                    , def_sym_scn = 
+                                                                    (
+                                                                    (def_sym_scn   def1))
+                                                                    , def_sym_idx = 
+                                                                    (
+                                                                    (def_sym_idx   def1))
+                                                                    , def_linkable_idx = 
+                                                                    (
+                                                                    (idx   irec))
                                                                     |)))
                                                                     | AbiFeature (x) => 
                                                                     Some
@@ -2549,10 +2541,15 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                     (x))
                                                                     (* If it's a symbol ref with no reloc site, we discard it? *)
                                                                     | SymbolRef (r) =>
-                                                                    (*let _ = if r.ref.ref_symname = _start then errln (Saw ref to _start,  
-                                                    ^ in section  ^ irec.isec.elf64_section_name_as_string ^  of linkable  ^ (show irec.idx))
-                                                else ()
-                                                in*)
+                                                                    (let 
+                                                                    _ = 
+                                                                    (
+                                                                    if
+                                                                    (ref_symname  (ref   r))
+                                                                    =
+                                                                    (''_start'') then
+                                                                    () else
+                                                                    () ) in
                                                                     (let 
                                                                     get_binding_for_ref = 
                                                                     (
@@ -2654,7 +2651,9 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                     (new_range, 
                                                                     SymbolRef
                                                                     (
-                                                                    (| ref = (|
+                                                                    (| ref = 
+                                                                    (
+                                                                    (|
                                                                     (* This is not the place to be fixing up 
                                                          * symbol references. We can't yet patch the element content,
                                                          * because we haven't yet decided on the address of everything.
@@ -2663,16 +2662,23 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                          * linked-image context. That's *all* we should be doing, right now.
                                                          * 
                                                          *)
-                                                                    ref_symname =(ref_symname   ref1)
+                                                                    ref_symname = 
+                                                                    (
+                                                                    (ref_symname   ref1))
                                                                     , ref_syment =
+                                                                    (
                                                                     (| elf64_st_name = 
                                                                     (
                                                                     Elf_Types_Local.uint32_of_nat
                                                                     (
                                                                     (
                                                                      0 :: nat))) (* unused *)
-                                                                    , elf64_st_info =(elf64_st_info  (ref_syment   ref1))
-                                                                    , elf64_st_other =(elf64_st_other  (ref_syment   ref1))
+                                                                    , elf64_st_info = 
+                                                                    (
+                                                                    (elf64_st_info  (ref_syment   ref1)))
+                                                                    , elf64_st_other = 
+                                                                    (
+                                                                    (elf64_st_other  (ref_syment   ref1)))
                                                                     , elf64_st_shndx = 
                                                                     (
                                                                     Elf_Types_Local.uint16_of_nat
@@ -2694,7 +2700,7 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                     (
                                                                     (
                                                                      0 :: nat))))
-                                                                    |)
+                                                                    |))
                                                                     , ref_sym_scn =
                                                                     (
                                                                     (
@@ -2704,12 +2710,14 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                     (
                                                                      0 :: nat))
                                                                     (* match maybe_def with Just _ -> 1+bi | Nothing -> 0 end *)
-                                                                    |)
+                                                                    |))
                                                                     , maybe_reloc = 
                                                                     (
                                                                     Some
                                                                     (|
-                                                                    ref_relent = (|
+                                                                    ref_relent = 
+                                                                    (
+                                                                    (|
                                                                     elf64_ra_offset = 
                                                                     (
                                                                     Elf_Types_Local.uint64_of_nat
@@ -2742,8 +2750,10 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                     (
                                                                      32 :: nat))
                                                                     ) )
-                                                                    , elf64_ra_addend =(elf64_ra_addend  (ref_relent   rs))
-                                                                    |)
+                                                                    , elf64_ra_addend = 
+                                                                    (
+                                                                    (elf64_ra_addend  (ref_relent   rs)))
+                                                                    |))
                                                                     , ref_rel_scn =
                                                                     (
                                                                     (
@@ -2775,11 +2785,10 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                     (ref_symname   ref1)
                                                                     =
                                                                     (''__fini_array_end'') then
-                                                                    (*let _ = errln (Found  ^ (show (length l)) ^  bindings for __fini_array_end, of which  ^
-                                                                        (show (length (List.filter (fun (bi, (r, maybe_d)) -> maybe_d <> Nothing) l))) ^ 
-                                                                         are with definition)
-                                                                        in*) l
-                                                                    else 
+                                                                    (let 
+                                                                    _ = 
+                                                                    (()) in
+                                                                    l) else 
                                                                     l
                                                                     | None => 
                                                                     []
@@ -2832,19 +2841,9 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                     ) )
                                                                     possible_bindings)
                                                                     in
-                                                                    (*let _ = errln (For a ref to ` ^ ref.ref_symname ^ 
-                                                                            ', possibles list is:  ^ (
-                                                                                List.foldl (fun x -> fun y -> x ^ ,  ^ y)  (List.map (fun (bi, ((_, _, _), maybe_d)) -> 
-                                                                                    match maybe_d with
-                                                                                        Just(def_idx, def, def_item) -> 
-                                                                                            in linkable  ^ (show def_idx) ^ 
-                                                                                            , section  ^ (show def.def_sym_scn) ^
-                                                                                            , sym idx  ^ (show def.def_sym_idx)
-                                                                                        | _ -> failwith impossible: just filtered out no-def bindings
-                                                                                    end
-                                                                                ) matching_possibles)
-                                                                            ))
-                                                                    in*)
+                                                                    (let 
+                                                                    _ = 
+                                                                    (()) in
                                                                     (let 
                                                                     new_bound_to = 
                                                                     (
@@ -2859,10 +2858,18 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                     Some (def_idx, def1, def_item) => 
                                                                     Some
                                                                     (|
-                                                                    def_symname =(def_symname   def1)
-                                                                    , def_syment =(def_syment   def1)
-                                                                    , def_sym_scn =(def_sym_scn   def1)
-                                                                    , def_sym_idx =(def_sym_idx   def1)
+                                                                    def_symname = 
+                                                                    (
+                                                                    (def_symname   def1))
+                                                                    , def_syment = 
+                                                                    (
+                                                                    (def_syment   def1))
+                                                                    , def_sym_scn = 
+                                                                    (
+                                                                    (def_sym_scn   def1))
+                                                                    , def_sym_idx = 
+                                                                    (
+                                                                    (def_sym_idx   def1))
                                                                     , def_linkable_idx = def_idx
                                                                     |)
                                                                     | None => 
@@ -2884,10 +2891,10 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                     new_bound_to
                                                                     =
                                                                     (maybe_def_bound_to   r)) then
-                                                                    (*let _ = errln (Changed binding for reference to ` ^ ref.ref_symname ^ 
-                                                                            ' in linkable  ^ (show irec.idx))
-                                                                        in*)
-                                                                    new_bound_to
+                                                                    (let 
+                                                                    _ = 
+                                                                    (()) in
+                                                                    new_bound_to)
                                                                     else
                                                                     if 
                                                                     new_bound_to
@@ -2896,10 +2903,9 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                     failwith
                                                                     (''really need a decision by now'')
                                                                     else
-                                                                    new_bound_to))
+                                                                    new_bound_to)))
                                                                     )))
-                                                                    (*
-                                                            if irec.fname = libc.a(__uClibc_main.os)
+                                                                    (* if irec.fname = libc.a(__uClibc_main.os)
                                                                 && irec.isec.elf64_section_name_as_string = .data.rel.local
                                                                 then
                                                                 let _ = errln (Saw the bugger:  ^ (match r.maybe_def_bound_to with
@@ -2910,26 +2916,84 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                             else r.maybe_def_bound_to
                                                             *)
                                                                     |) ))
-                                                                    )))) (* match maybe_reloc *)
+                                                                    ))))) (* match maybe_reloc *)
                                                                     )) (* match tag *)
                                                                     )
                                                                     (
                                                                     List.set
                                                                     ranges_and_tags)) (* end mapMaybe fn *)
                                                                     in
-                                                                    ((elf64_section_size  (isec   irec)),(contents  
-                                                                    (*let _ = errln (Saw first 20 bytes of section  ^ irec.isec.elf64_section_name_as_string ^
-                                             from  ^ irec.fname ^  as  ^ (show (take 20 el.contents)))
-                                        in*)
-                                                                    el), new_ranges_and_tags))))))
+                                                                    (let 
+                                                                    isec_sz = 
+                                                                    (
+                                                                    (elf64_section_size  (isec   irec))) in
+                                                                    (let 
+                                                                    maybe_el_sz = 
+                                                                    (
+                                                                    (length1   el)) in
+                                                                    (let 
+                                                                    contents_sz = 
+                                                                    (
+                                                                    List.length
+                                                                    (contents   el)) in
+                                                                    (let 
+                                                                    (actual_sz, padded_contents) =
+                                                                    (
+                                                                    (case  maybe_el_sz of
+                                                                    Some el_sz =>
+                                                                    (let 
+                                                                    diff = 
+                                                                    (
+                                                                    el_sz -
+                                                                    contents_sz) in
+                                                                    if 
+                                                                    diff <
+                                                                    (
+                                                                     0 :: nat) then
+                                                                    (* contents greater than what the el says, so chop the end off *)
+                                                                    (let 
+                                                                    _ = 
+                                                                    (()) in
+                                                                    (el_sz, 
+                                                                    take
+                                                                    el_sz
+                                                                    (contents   el)))
+                                                                    else
+                                                                    (el_sz, 
+                                                                    (
+                                                                    (contents   el)
+                                                                    @
+                                                                    List.replicate
+                                                                    diff 
+                                                                    None)))
+                                                                    | None =>
+                                                                    if 
+                                                                    \<not>
+                                                                    (
+                                                                    (
+                                                                    List.length
+                                                                    (contents   el))
+                                                                    = 
+                                                                    isec_sz)
+                                                                    then
+                                                                    failwith
+                                                                    (''input section size not equal to its content pattern length'')
+                                                                    else
+                                                                    (isec_sz,(contents   el))
+                                                                    )) in
+                                                                    (let 
+                                                                    _ = 
+                                                                    (()) in
+                                                                    (actual_sz, padded_contents, new_ranges_and_tags))))))))))))
                                                                     | _ => 
                                                                     failwith
                                                                     (''impossible: no such element'')
-                                                                    ) (* match Map.lookup idstr img.elements *)
+                                                                    )) (* match Map.lookup idstr img.elements *)
                                                                     )) (* match maybe_secname *)
                                                                     | IncludeCommonSymbol (retain_pol, fname1, linkable_idx, def1, img3) =>
-                                                                    (*let _ = errln (Including common symbol called ` ^ def.def_symname ^ ')
-                        in*)
+                                                                    (let 
+                                                                    _ = 
+                                                                    (()) in
                                                                     (* We want to get the common symbol as a byte pattern *)
                                                                     (let 
                                                                     sz = 
@@ -2953,9 +3017,9 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                     :: 
                                                                     byte))))
                                                                     in
-                                                                    (*let _ = Missing_pervasives.outln (make_line COMMON (hex_string_of_natural comp_addr)
-                             (hex_string_of_natural sz) fname)
-                        in*)
+                                                                    (let 
+                                                                    _ = 
+                                                                    (()) in
                                                                     (sz, content, 
                                                                     {
                                                                     (
@@ -2963,16 +3027,26 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                     (secname1, 
                                                                     (
                                                                     (
-                                                                     0 :: nat), sz)), 
+                                                                    comp_addr
+                                                                    -
+                                                                    output_section_start_addr), sz)), 
                                                                     SymbolDef
                                                                     (
                                                                     (|
-                                                                    def_symname =(def_symname   def1)
-                                                                    , def_syment =(def_syment   def1)
-                                                                    , def_sym_scn =(def_sym_scn   def1)
-                                                                    , def_sym_idx =(def_sym_idx   def1)
+                                                                    def_symname = 
+                                                                    (
+                                                                    (def_symname   def1))
+                                                                    , def_syment = 
+                                                                    (
+                                                                    (def_syment   def1))
+                                                                    , def_sym_scn = 
+                                                                    (
+                                                                    (def_sym_scn   def1))
+                                                                    , def_sym_idx = 
+                                                                    (
+                                                                    (def_sym_idx   def1))
                                                                     , def_linkable_idx = linkable_idx
-                                                                    |)))})))
+                                                                    |)))})))))
                                                                     (*                    | Hole(AddressExprFn f) -> 
                         let next_addr = f addr (AllocatedSectionsMap outputs_by_name)
                         in
@@ -2980,17 +3054,18 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                         in
                         let content = Missing_pervasives.replicate n Nothing
                         in 
-                        (*let _ = Missing_pervasives.outln (make_line *fill* (hex_string_of_natural comp_addr)
+                        let _ = Missing_pervasives.outln (make_line *fill* (hex_string_of_natural comp_addr)
                              (hex_string_of_natural n)
                              )
-                        in*)
+                        in
                         (next_addr - addr, content, {}) *)
                                                                     | ProvideSymbol (pol, name1, (size3, info, other)) =>
                                                                     (let 
-                                                                    symaddr = pos (* FIXME: support others *)
+                                                                    symaddr = accum_current_addr (* FIXME: support others *)
                                                                     in
-                                                                    (*let _ = Missing_pervasives.outln (make_line  (hex_string_of_natural symaddr)  (PROVIDE ( ^ name ^ , .)))
-                        in*)
+                                                                    (let 
+                                                                    _ = 
+                                                                    (()) in
                                                                     (
                                                                     (
                                                                     
@@ -3002,8 +3077,8 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                     (secname1, 
                                                                     (
                                                                     (
-                                                                    pos -
-                                                                    start_addr),
+                                                                    symaddr -
+                                                                    output_section_start_addr),
                                                                     (
                                                                      0 :: nat))),
                                                                     SymbolDef
@@ -3014,12 +3089,12 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                     info
                                                                     other
                                                                     linker_script_linkable_idx)
-                                                                    )} ))
+                                                                    )} )))
                                                                     )) (* match comp_el_pat *)
                                                                     in
-                                                                    (*let _ = errln (Appending byte pattern to section  ^ secname ^ , first 20 bytes:  ^ 
-                    (show (take 20 comp_el_pat)))
-                in*)
+                                                                    (let 
+                                                                    _ = 
+                                                                    (()) in
                                                                     (let 
                                                                     new_content = 
                                                                     (
@@ -3027,7 +3102,7 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                     (
                                                                     comp_addr
                                                                     -
-                                                                    start_addr)
+                                                                    output_section_start_addr)
                                                                     accum_pat
                                                                     comp_el_pat)
                                                                     in
@@ -3044,20 +3119,22 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                     \<union>
                                                                     this_el_meta)
                                                                     in
-                                                                    (new_content, new_addr, new_meta))))))
+                                                                    (new_content, new_addr, new_meta))))))))
                                                                     ))
                                                                     (
-                                                                    [], start_addr, 
+                                                                    [], output_section_start_addr, 
                                                                     {})
                                                                     (
                                                                     List.zip
                                                                     comp1
                                                                     comp_addrs))
   in
-  (let concat_sec_el = ((| Memory_image.element.startpos = (Some (start_addr))
-                        , Memory_image.element.length1 = (Some (size3))
-                        , Memory_image.element.contents = concatenated_content |)) in
-  (*let _ = Missing_pervasives.outln  in*)
+  (let concat_sec_el = ((|
+                        Memory_image.startpos = (Some
+                                                   (output_section_start_addr))
+                        , Memory_image.length1 = (Some (size3))
+                        , Memory_image.contents = concatenated_content |)) in
+  (let _ = (()) in
   (* Make a new element in the image, also transferring metadata from input elements 
              * as appropriate. *)
   (let new_by_range_list =
@@ -3092,8 +3169,7 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                      , elf64_section_name_as_string = secname1 (* can't rely on this being ignored *)
                                                      |) ))) #
           list_of_set new_range_tag_pairs) in
-  (* let _ = errln (Metadata for new section  ^ secname ^  consists of  ^ (show (length new_by_range_list)) ^  tags.)
-            in *)
+  (let _ = (()) in
   (let new_by_range = (List.foldl
                          (\<lambda> m .  \<lambda> (maybe_range, tag) . 
                           (let new_s = (Set.insert (maybe_range, tag) m) in
@@ -3113,15 +3189,15 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                     ^ by_tag consistent?  ^ (show (new_by_tag = by_tag_from_by_range new_by_range))) *) () ))
   in
   (* this expression is the return value of add_output_section *)
-  ( ( (* new_pos *) start_addr + size3), (* new_acc *) (|
+  ( ( (* new_pos *) output_section_start_addr + size3), (* new_acc *) (|
   elements = (map_update secname1 concat_sec_el (elements   acc_img))
   (* tag it as a section, and transfer any tags *)
   , by_range = (* let _ = errln (Returning from add_output_section a by_range with  ^ 
                                 (show (Set.size new_by_range))) in *) new_by_range
   , by_tag = new_by_tag |), (* sec_sz *) size3,
   (* replacement_output_sec *) (OutputSectionSpec
-                                  (guard, Some (start_addr), secname1, comp1))
-  ))))))))))))
+                                  (guard, Some (output_section_start_addr), secname1, comp1))
+  ))))))))))))))))
   )
         )) (* end add_output_section *)
     in
@@ -3278,34 +3354,33 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                     
                      *)
                     (* let num_pages_used *)
-                    (*let _ = errln (Option 1 congruence add-in from pos 0x ^ (hex_string_of_natural pos) ^ , maxpagesize 0x ^ 
-                        (hex_string_of_natural maxpagesize) ^  is 0x ^ (hex_string_of_natural (natural_land pos (maxpagesize - 1))))
-                    in*)
+                    (let _ = (())
+                    in
                     (let option1 = (align_up_to maxpagesize1 pos + (natural_land pos (maxpagesize1 -( 1 :: nat))))
                     in
-                    (*let _ = errln (Mark/align data segment: option 1 is to bump pos to 0x ^ (hex_string_of_natural option1))
-                    in*)
+                    (let _ = (())
+                    in
                     (let option2 = (align_up_to maxpagesize1 pos + (natural_land ((pos + commonpagesize1) -( 1 :: nat)) (maxpagesize1 - commonpagesize1)))
                     in
-                    (*let _ = errln (Mark/align data segment: option 2 is to bump pos to 0x ^ (hex_string_of_natural option2))
-                    in*)
+                    (let _ = (())
+                    in
                     (let data_segment_endpos = (\<lambda> startpos1 .  
                         (* run forward from here until MarkDataSegmentEnd, 
                          * accumulating the actually-made outputs by name and their sizes *)
                         (let (endpos, _) = (List.foldl (\<lambda> (curpos, seen_end) .  \<lambda> (new_script_item, new_script_item_idx) .  
-                            (* let _ = errln (Folding at pos 0x ^ (hex_string_of_natural curpos))
-                            in *)
+                            (let _ = (())
+                            in
                             if seen_end 
                             then (curpos, True)
                             else (let (newpos, new_seen) = ((case  new_script_item of 
                                   MarkDataSegmentEnd => 
-                                    (* let _ = errln data segment end
-                                    in *)
+                                    (let _ = (())
+                                    in
                                     (* break the loop early here *)
-                                    (curpos, True)
+                                    (curpos, True))
                                 | OutputSection(outputguard, maybe_expr, name1, sub_elements) => 
-                                    (* let _ = errln (output section  ^ name)
-                                    in *)
+                                    (let _ = (())
+                                    in
                                     (let maybe_found = ( outputs_by_name name1)
                                     in  
   (case  (case  maybe_found of
@@ -3330,17 +3405,17 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                      start_addr outputs_by_name comp1) in
     (let size3 = (end_addr - start_addr) in (end_addr, (* seen_end *) False)))))
     ) else (curpos, (* seen_end *) False))
-  ))
+  )))
                                 | AdvanceAddress(AddressExprFn advance_fn) => 
-                                    (* let _ = errln Advance address
-                                    in *)
+                                    (let _ = (())
+                                    in
                                     (let new_pos = (advance_fn curpos outputs_by_name)
                                     in
-                                    (new_pos, False))
+                                    (new_pos, False)))
                                 | _ => (curpos, seen_end)
                             ))
                             in
-                            if newpos < curpos then failwith (''went backwards'') else (newpos, new_seen))
+                            if newpos < curpos then failwith (''went backwards'') else (newpos, new_seen)))
                         ) (startpos1, False) more_elements_and_idx)
                         in endpos)
                     )
@@ -3349,10 +3424,10 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                     in
                     (let endpos_option2 = (data_segment_endpos option2)
                     in
-                    (*let _ = errln (Mark/align data segment: option 1 gives an endpos of 0x ^ (hex_string_of_natural endpos_option1))
-                    in*)
-                    (*let _ = errln (Mark/align data segment: option 2 gives an endpos of 0x ^ (hex_string_of_natural endpos_option2))
-                    in*)
+                    (let _ = (())
+                    in
+                    (let _ = (())
+                    in
                     (let npages = (\<lambda> startpos1 .  (\<lambda> endpos . 
                         ((align_up_to  commonpagesize1 endpos) - 
                         (round_down_to commonpagesize1 startpos1)) div commonpagesize1
@@ -3362,13 +3437,13 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                     in
                     (let npages_option2 = (npages option2 endpos_option1)
                     in
-                    (*let _ = errln (Mark/align data segment: option 1 uses  ^ (show npages_option1) ^  COMMONPAGESIZE-sized pages)
-                    in*)
-                    (*let _ = errln (Mark/align data segment: option 2 uses  ^ (show npages_option2) ^  COMMONPAGESIZE-sized pages)
-                    in*)
+                    (let _ = (())
+                    in
+                    (let _ = (())
+                    in
                     if npages_option1 < npages_option2 
-                    then (*let _ = errln Choosing option 1 in*) (acc1, option1, outputs_by_name)
-                    else (*let _ = errln Choosing option 2 in*) (acc1, option2, outputs_by_name)))))))))
+                    then (let _ = (()) in (acc1, option1, outputs_by_name))
+                    else (let _ = (()) in (acc1, option2, outputs_by_name)))))))))))))))))
                 | MarkDataSegmentEnd => do_nothing
                 | MarkDataSegmentRelroEnd(*(fun_from_secs_to_something)*) => do_nothing
                 | OutputSection(outputguard, maybe_expr, name1, sub_elements) => 
@@ -3403,23 +3478,138 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                       section_tags_bare)) ))
   in
   (* Do we actually want to add an output section? Skip empty sections. 
-                     * FIXME: actually heed the proper ld semantics for empty sections (e.g. . = . will
-                     * force output). *)
+                     * CARE: we actually want to heed the proper ld semantics for empty sections 
+                     * (e.g. . = . will force output). From the GNU ld manual:
+                     
+                        The linker will not normally create output sections with no contents.
+                        This is for convenience when referring to input sections that may or
+                        may not be present in any of the input files.  For example:
+                             .foo : { *(.foo) }
+                           will only create a `.foo' section in the output file if there is a
+                        `.foo' section in at least one input file, and if the input sections
+                        are not all empty.  Other link script directives that allocate space in
+                        an output section will also create the output section.  So too will
+                        assignments to dot even if the assignment does not create space, except
+                        for `. = 0', `. = . + 0', `. = sym', `. = . + sym' and `. = ALIGN (. !=
+                        0, expr, 1)' when `sym' is an absolute symbol of value 0 defined in the
+                        script.  This allows you to force output of an empty section with `. =
+                        .'.
+
+                           The linker will ignore address assignments ( *note Output Section
+                        Address::) on discarded output sections, except when the linker script
+                        defines symbols in the output section.  In that case the linker will
+                        obey the address assignments, possibly advancing dot even though the
+                        section is discarded.
+                     
+                     * It follows that we might discard the output section,
+                     * but *retain* the symbol definitions within it,
+                     * and keep the dot-advancements that 
+                     * In other words, we care about two things:
+                     * 
+                     * -- whether there are any non-empty input sections, *or* 
+                     *       non-excluded assignments to dot, inside the composition:
+                     *       this controls whether the section is output
+                     
+                     * -- whether the script defines symbols in the section; if so
+                     *       then *even if the section is discarded*
+                     *       we must honour the address assignments,
+                     *       which means using the ending address of do_output_section_layout_starting_at_addr,
+                     *       *and*
+                     *       we must retain the symbol definitions (which now could
+                     *       end up going in some other section? HMM...)
+                     *)
+  (let comp_element_allocates_space = (\<lambda> comp_el .  (case  comp_el of
+                                                                IncludeInputSection (_, irec) =>
+                                                            (let _ = (()) in
+                                                            (elf64_section_size  (isec  
+                                                            irec)) >
+                                                              ( 0 :: nat))
+                                                              | IncludeCommonSymbol (retain_pol, fname1, idx1, def1, img3) =>
+                                                            unat
+                                                              (elf64_st_size  (def_syment   def1))
+                                                              > ( 0 :: nat)
+                                                              | ProvideSymbol (pol, name1, spec) => 
+                                                            False
+                                                              | Hole (AddressExprFn (address_fn)) =>
+                                                            (let assignment_is_excluded = 
+                                                                 (\<lambda> f . 
+                                                                  (* really makes you wish you were programming in Lisp *)
+                                                                  (let 
+                                                                  always_gives_0 =
+                                                                  ((f
+                                                                    (
+                                                                    (
+                                                                     0 :: nat))
+                                                                    outputs_by_name
+                                                                    =
+                                                                    (
+                                                                     0 :: nat))
+                                                                    \<and>
+                                                                    (
+                                                                    f
+                                                                    (
+                                                                    (
+                                                                     42 :: nat))
+                                                                    outputs_by_name
+                                                                    =
+                                                                    (
+                                                                     0 :: nat))) (* FIXME: this is wrong *)
+                                                                  in
+                                                                  (let 
+                                                                  always_gives_dot =
+                                                                  ((f
+                                                                    (
+                                                                    (
+                                                                     0 :: nat))
+                                                                    outputs_by_name
+                                                                    =
+                                                                    (
+                                                                     0 :: nat))
+                                                                    \<and>
+                                                                    (
+                                                                    f
+                                                                    (
+                                                                    (
+                                                                     42 :: nat))
+                                                                    outputs_by_name
+                                                                    =
+                                                                    (
+                                                                     42 :: nat))) (* FIXME: this is wrong *)
+                                                                  in
+                                                                  (* FIXME: what are the semantics of function equality in Lem? *)
+                                                                  always_gives_0
+                                                                    \<or>
+                                                                    (
+                                                                    always_gives_dot
+                                                                    \<and>
+                                                                    (
+                                                                    (
+                                                                    AddressExprFn
+                                                                    (f))
+                                                                    \<noteq>
+                                                                    assign_dot_to_itself)))))
+                                                            in
+                                                            \<not>
+                                                              (assignment_is_excluded
+                                                                 address_fn))
+                                                            )) in
+  (let section_contains_non_empty_inputs =
+       (((\<exists> x \<in> (set comp1). comp_element_allocates_space x))) in
   (* See note in MarkDataSegmentEnd case about script element idx. Short version:
                      * multiple output section stanzas, for a given section name, may be in the script,
                      * but only one was activated by the section composition pass. Ignore the others. *)
   (let do_output = ((seen_script_el_idx = el_idx) \<and>
-                      ((List.length comp1) > ( 0 :: nat))) in
-  if do_output then
+                      section_contains_non_empty_inputs) in
+  if \<not> do_output then (let _ = (()) in (acc1, pos, outputs_by_name))
+  else
     (
     (* let _ = errln (Before adding output section, we have  ^ (show (count_sections_in_image acc))
                             ^  sections.)
                         in *)
-    (*let _ = errln (At pos 0x ^ (hex_string_of_natural pos) ^ , adding output section  ^ name)
-                        in*)
     (let (new_pos, new_acc, sec_sz, replacement_output_sec)
          = (add_output_section ((* next_free_section_idx, *) pos, acc1) found)
     in
+    (let _ = (()) in
     (* let _ = errln (Received from add_output_section a by_range with  ^ (show (Set.size new_acc.by_range))
                             ^  metadata records of which  ^ (show (Set.size {
                                 (r, t)
@@ -3440,8 +3630,7 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                             ^  sections.)
                         in *)
     (new_acc, new_pos, (map_update name1 (replacement_output_sec, el_idx)
-                          (map_remove name1 outputs_by_name)))) ) else
-    (acc1, pos, outputs_by_name)))
+                          (map_remove name1 outputs_by_name))))) )))))
   )))
                 | DiscardInput(selector) => do_nothing
                 | InputQuery(retainpol, sortpol, selector) => do_nothing
@@ -3564,9 +3753,8 @@ fun default_place_orphans  :: "(input_spec)list*(output_section_spec*nat)list \<
      in
      (let (orphans :: input_spec list) = (List.filter (\<lambda> inp .  (case  inp of 
              InputSection(irec) => (let v = (\<not> (irec \<in> output_irecs))
-                                   in (*let _ = if v then errln (Saw an orphan input section:  ^ 
-                                    irec.secname ^  in  ^ irec.fname) else ()
-                                   in*) v)
+                                   in (let _ = (if v then () else () )
+                                   in v))
              | _ => False
      )) inputs1)
      in
@@ -3641,17 +3829,19 @@ fun default_place_orphans  :: "(input_spec)list*(output_section_spec*nat)list \<
                     ) outputs1
                 )
             | None => 
-                    (*let _ = errln (Warning: discarding orphan section)
-                    in*)
-                    ((discards @ [input]), outputs1)
+                    (let _ = (())
+                    in
+                    ((discards @ [input]), outputs1))
          )))))))))))))
      ))
      in
      List.foldl place_one_orphan (discards, outputs1) orphans))))" 
 declare default_place_orphans.simps [simp del]
  
+
 (*val interpret_linker_control_script : 
     linker_control_script
+    -> linkable_list
     -> natural (* linker_script_linkable_idx *)
     -> abi any_abi_feature
     -> list input_spec
@@ -3659,12 +3849,12 @@ declare default_place_orphans.simps [simp del]
     -> (input_output_assignment -> list input_spec -> input_output_assignment)     (* place orphans *)
     -> (Map.map string (list (natural * binding))) (* initial_bindings_by_name *)
     -> (elf_memory_image * Map.map string (list (natural * binding)))*)
-definition interpret_linker_control_script  :: "(script_element)list \<Rightarrow> nat \<Rightarrow>(any_abi_feature)abi \<Rightarrow>(input_spec)list \<Rightarrow>(input_spec \<Rightarrow> input_spec \<Rightarrow> ordering)\<Rightarrow>((input_spec)list*(output_section_spec*nat)list \<Rightarrow>(input_spec)list \<Rightarrow>(input_spec)list*(output_section_spec*nat)list)\<Rightarrow>((string),((nat*((nat*symbol_reference*(linkable_object*input_item*input_options))*(nat*symbol_definition*(linkable_object*input_item*input_options))option))list))Map.map \<Rightarrow>(any_abi_feature)annotated_memory_image*((string),((nat*binding)list))Map.map "  where 
-     " interpret_linker_control_script script linker_script_linkable_idx a inputs1 seen_ordering place_orphans initial_bindings_by_name = (
+definition interpret_linker_control_script  :: "(script_element)list \<Rightarrow>(linkable_object*input_item*input_options)list \<Rightarrow> nat \<Rightarrow>(any_abi_feature)abi \<Rightarrow>(input_spec)list \<Rightarrow>(input_spec \<Rightarrow> input_spec \<Rightarrow> ordering)\<Rightarrow>((input_spec)list*(output_section_spec*nat)list \<Rightarrow>(input_spec)list \<Rightarrow>(input_spec)list*(output_section_spec*nat)list)\<Rightarrow>((string),((nat*((nat*symbol_reference*(linkable_object*input_item*input_options))*(nat*symbol_definition*(linkable_object*input_item*input_options))option))list))Map.map \<Rightarrow>(any_abi_feature)annotated_memory_image*((string),((nat*binding)list))Map.map "  where 
+     " interpret_linker_control_script script linkables linker_script_linkable_idx a inputs1 seen_ordering place_orphans initial_bindings_by_name = (
     (let labelled_script = (label_script script)
     in
     (let (discards_before_orphans, outputs_before_orphans)
-     = (assign_inputs_to_output_sections ([], []) inputs1 None None seen_ordering labelled_script)
+     = (assign_inputs_to_output_sections ([], []) {} {} inputs1 None None seen_ordering labelled_script)
     in
     (* place orphans *)
     (let (discards, outputs1) = (place_orphans (discards_before_orphans, outputs_before_orphans) inputs1)
@@ -3682,8 +3872,7 @@ definition interpret_linker_control_script  :: "(script_element)list \<Rightarro
     (\<lambda> inner_acc .  \<lambda> comp_el .  (
                                                  (case  comp_el of
                                                      ProvideSymbol (pol, name1, (size3, info, other)) =>
-                                                 (*let _ = errln (Linker script defining symbol ` ^ name ^ ')
-                        in*)
+                                                 (let _ = (()) in
                                                  (let def1 = (symbol_def_for_provide_symbol
                                                                 name1 
                                                               size3 info
@@ -3698,7 +3887,7 @@ definition interpret_linker_control_script  :: "(script_element)list \<Rightarro
                                                            (def1, pol) # 
                                                            l
                                                            )) in
-                                                 map_update name1 v inner_acc))
+                                                 map_update name1 v inner_acc)))
                                                    | _ => inner_acc
                                                  ) ))
     (acc1 :: ( string, ( ( symbol_definition * symbol_def_policy) list)) Map.map)
@@ -3706,17 +3895,50 @@ definition interpret_linker_control_script  :: "(script_element)list \<Rightarro
   )
         )) Map.empty outputs1)
         in
-        (* Now that we've made these definitions, what bindings are affected? *)
+        (* Now that we've made these definitions, what bindings are affected? 
+         * We also use this opportunity to bind references to linker-generated symbols,
+         * such as _GLOBAL_OFFSET_TABLE_, since any definitions of these should now be merged
+         * into our inputs. *)
+        (* bit of a HACK: reconstruct the linkable img and idx from the input items *)
+        (let idx_to_img = (List.foldl (\<lambda> acc_m .  \<lambda> item .  
+                            (case  item of 
+                                Common(idx1, _, img3, symdef) => map_update idx1 img3 (map_remove idx1 acc_m)
+                                | InputSection(irec) => map_update(idx   irec)(img   irec) (map_remove(idx   irec) acc_m)
+                            )
+                        ) Map.empty inputs1)
+        in
+        (let (lowest_idx :: nat) = ((case  ELF_Types_Local.find_min_element (Map.dom idx_to_img)
+            of Some x => x
+            | None => failwith (''internal error: no linkable items'')
+        ))
+        in
+        (let first_linkable_item = ((case  linkables of x # more1 => x | _ => failwith (''internal error: no linkables'') ))
+        in
         map_image (\<lambda> b_list_initial .  
             List.map (\<lambda> (b_idx, b_initial) . 
                 (let ((iref_idx, iref, iref_item), maybe_idef) = b_initial
                 in
-                (*let _ = errln (Looking for linker script defs of symbol ` ^ iref.ref_symname ^ ')
-                in*)
+                (let _ = (())
+                in
                 (let possible_script_defs = ((case   script_defs_by_name(ref_symname   iref) of
                     Some l => l
                     | None => []
                 ))
+                in
+                (let (possible_linker_generated_def ::  symbol_definition option) =                    
+ (if(symbol_is_generated_by_linker   a)(ref_symname   iref)
+                        then (* can we find a definition by this name? *)
+                            ((case   idx_to_img lowest_idx of
+                                None => failwith (''no lowest idx found'')
+                                | Some img3 => 
+                                    (case  List.filter (\<lambda> def1 . (def_symname   def1) =(ref_symname   iref)) (defined_symbols 
+  instance_Basic_classes_Ord_Abis_any_abi_feature_dict instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict img3) of
+                                        [] => None
+                                        | [def1] => Some(def1)
+                                        | _ => failwith (([(CHR ''f''), (CHR ''i''), (CHR ''r''), (CHR ''s''), (CHR ''t''), (CHR '' ''), (CHR ''l''), (CHR ''i''), (CHR ''n''), (CHR ''k''), (CHR ''a''), (CHR ''b''), (CHR ''l''), (CHR ''e''), (CHR '' ''), (CHR ''h''), (CHR ''a''), (CHR ''s''), (CHR '' ''), (CHR ''m''), (CHR ''u''), (CHR ''l''), (CHR ''t''), (CHR ''i''), (CHR ''p''), (CHR ''l''), (CHR ''e''), (CHR '' ''), (CHR ''d''), (CHR ''e''), (CHR ''f''), (CHR ''s''), (CHR '' ''), (CHR ''o''), (CHR ''f''), (CHR '' ''), (CHR ''n''), (CHR ''a''), (CHR ''m''), (CHR ''e''), (CHR '' ''), (Char Nibble6 Nibble0)]) @ ((ref_symname   iref) @ ([(Char Nibble2 Nibble7)])))
+                                    )
+                            ))
+                    else None)
                 in
                 (let (control_script_input_item :: input_item) = (
                     (''(built-in control script)''), 
@@ -3735,27 +3957,30 @@ definition interpret_linker_control_script  :: "(script_element)list \<Rightarro
                 in
                 (* If the binding has no def, we always use the def we have. 
                  * If the binding has a def, we use our def only if the policy is AlwaysDefine. *)
-                (*let _ = errs (Do we override binding  ^ (show b_idx) ^ , symbol named ` ^ 
-                    iref.ref_symname ^ '? )
-                in*)
-                (let new_b = ((case  (maybe_idef, possible_script_defs) of
-                      (_, []) => (*let _ = errln no in*) ((iref_idx, iref, iref_item), maybe_idef)
-                    | (_, [(def1, AlwaysDefine)]) => (*let _ = errln yes in*)
+                (let _ = (())
+                in
+                (* FIXME: check real semantics of defining symbols like '_GLOBAL_OFFSET_TABLE_' in linker script or input objects. 
+                 * This is really just a guess. *)
+                (let new_b = ((case  (maybe_idef, possible_script_defs, possible_linker_generated_def) of
+                      (_, [], None) => (let _ = (()) in ((iref_idx, iref, iref_item), maybe_idef))
+                    | (None, [], Some(def1)) => (let _ = (()) in ((iref_idx, iref, iref_item), 
+                        Some(lowest_idx, def1, first_linkable_item)))
+                    | (_, [(def1, AlwaysDefine)], _) => (let _ = (()) in
                         ((iref_idx, iref, iref_item), 
-                        Some (linker_script_linkable_idx, def1, control_script_linkable_item))
-                    | (Some existing_def, ([(def1, ProvideIfUsed)])) => (*let _ = errln no in*)
+                        Some (linker_script_linkable_idx, def1, control_script_linkable_item)))
+                    | (Some existing_def, ([(def1, ProvideIfUsed)]), _) => (let _ = (()) in
                         ((iref_idx, iref, iref_item), 
-                        Some existing_def)
-                    | (None, [(def1, ProvideIfUsed)]) => (*let _ = errln yes in*)
+                        Some existing_def))
+                    | (None, [(def1, ProvideIfUsed)], _) => (let _ = (()) in
                         ((iref_idx, iref, iref_item), 
-                        Some (linker_script_linkable_idx, def1, control_script_linkable_item))
-                    | (_, pair1 # pair2 # more1) => (*let _ = errln error in*)
-                        failwith (''ambiguous symbol binding in linker control script'')
+                        Some (linker_script_linkable_idx, def1, control_script_linkable_item)))
+                    | (_, pair1 # pair2 # more1, _) => (let _ = (()) in
+                        failwith (''ambiguous symbol binding in linker control script''))
                 ))
                 in
-                (b_idx, new_b))))))
+                (b_idx, new_b)))))))))
             ) b_list_initial
-        ) initial_bindings_by_name)
+        ) initial_bindings_by_name))))
     )
     in
     (*let _ = errln (For __fini_array_end, we have  ^ 
@@ -3785,8 +4010,8 @@ definition interpret_linker_control_script  :: "(script_element)list \<Rightarro
         List.foldl insert_fun Map.empty outputs1))
     in
     (* Print the link map's discarded input sections output. *)
-    (*let _ = Missing_pervasives.outln nDiscarded input sectionsn
-    in*)
+    (let _ = (())
+    in
     (let discard_line = (\<lambda> i .  ((case  i of
         InputSection(s) => 
             (let lpadded_secname = (('' '') @(secname   s))
@@ -3801,10 +4026,10 @@ definition interpret_linker_control_script  :: "(script_element)list \<Rightarro
     in*)
     (let outputs_by_name_after_gc = (compute_def_use_and_gc outputs_by_name)
     in
-    (*let _ = Missing_pervasives.outs nMemory ConfigurationnnName             Origin             Length             Attributesn*default*        0x0000000000000000 0xffffffffffffffffn
-    in*)
-    (*let _ = Missing_pervasives.outln nLinker script and memory mapn
-    in*)
+    (let _ = (())
+    in
+    (let _ = (())
+    in
     (* FIXME: print LOAD and START_GROUP trace *)
     (let (img3, outputs_by_name_with_position)
      = (build_image empty_elf_memory_image(( 0 :: nat)) outputs_by_name_after_gc bindings_by_name labelled_script linker_script_linkable_idx)
@@ -3868,6 +4093,6 @@ definition interpret_linker_control_script  :: "(script_element)list \<Rightarro
     element manually. For the moment, for diffing purposes, filter out lines with asterisks.
      
      *)
-    (img3, bindings_by_name))))))))))"
+    (img3, bindings_by_name)))))))))))))"
 
 end

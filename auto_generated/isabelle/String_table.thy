@@ -146,4 +146,10 @@ definition insert_string  :: " string \<Rightarrow> string_table \<Rightarrow> n
     in*)
     (inserted_idx, new_strtab)))"
 
+
+definition instance_Show_Show_String_table_string_table_dict  :: "(string_table)Show_class "  where 
+     " instance_Show_Show_String_table_string_table_dict = ((|
+
+  show_method = (\<lambda> tbl. (List.map (\<lambda> c .  if c = (Char Nibble0 Nibble0) then (Char Nibble0 NibbleA) else c) ((get_base_string tbl))))|) )"
+
 end

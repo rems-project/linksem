@@ -66,6 +66,12 @@ fun string_of_input_file_spec  :: " input_file_spec \<Rightarrow> string "  wher
 declare string_of_input_file_spec.simps [simp del]
 
 
+definition instance_Show_Show_Command_line_input_file_spec_dict  :: "(input_file_spec)Show_class "  where 
+     " instance_Show_Show_Command_line_input_file_spec_dict = ((|
+
+  show_method = string_of_input_file_spec |) )"
+
+
 record input_file_options = 
  input_fmt ::" string "
                            
@@ -87,7 +93,7 @@ record input_file_options =
 definition null_input_file_options  :: " input_file_options "  where 
      " null_input_file_options = ( 
                       (| input_fmt = ('''')
-                       , input_libpath = []
+                       , input_libpath = ([])
                        , input_link_sharedlibs = False
                        , input_check_sections = False
                        , input_copy_dt_needed = False
@@ -135,6 +141,21 @@ datatype input_unit = File " input_file_and_options "
                 | BuiltinControlScript (* for uniformity when processing script defs *)
 
 (*val string_of_input_unit : input_unit -> string*)
+fun string_of_input_unit  :: " input_unit \<Rightarrow> string "  where 
+     " string_of_input_unit (File(spec, opts)) = ( 
+            (''single '') @ (string_of_input_file_spec spec))"
+|" string_of_input_unit (Group(spec_opt_list)) = ( 
+            (''group: ['') @ ((string_of_list 
+  instance_Show_Show_Command_line_input_file_spec_dict (List.map (\<lambda> (spec, opts) .  spec) spec_opt_list)) @ ('']'')))"
+|" string_of_input_unit BuiltinControlScript = ( (''(built-in control script)''))" 
+declare string_of_input_unit.simps [simp del]
+
+
+definition instance_Show_Show_Command_line_input_unit_dict  :: "(input_unit)Show_class "  where 
+     " instance_Show_Show_Command_line_input_unit_dict = ((|
+
+  show_method = string_of_input_unit |) )"
+
 
 (* Reading the command-line: 
  * we encode the meaning of a linker command token 
@@ -163,16 +184,16 @@ record command_state =
 (* This is the default state when we start reading input options *)
 (*val initial_state : list command_state*) (* the stack *)
 definition initial_state  :: "(command_state)list "  where 
-     " initial_state = ( [(| input_units = []
-                     , link_options = {OutputFilename((''a.out'')), OutputKind(Executable)}
-                     , current_input_options = (| input_fmt = (''elf64-x86-64'')   (* FIXME *)
-                                                , input_libpath = [(''/usr/lib'')] (* FIXME: this probably isn't the right place to supply the default search path *)
+     " initial_state = ( [(| input_units = ([])
+                     , link_options = ({OutputFilename((''a.out'')), OutputKind(Executable)})
+                     , current_input_options = ((| input_fmt = (''elf64-x86-64'')   (* FIXME *)
+                                                , input_libpath = ([(''/usr/lib'')]) (* FIXME: this probably isn't the right place to supply the default search path *)
                                                 , input_link_sharedlibs = True
                                                 , input_check_sections = True
                                                 , input_copy_dt_needed = False
                                                 , input_whole_archive = False
                                                 , input_as_needed = True (* FIXME *)
-                                                |)
+                                                |))
                      , current_group = None
                      |)])"
 
@@ -193,14 +214,14 @@ fun add_input_file  :: "(command_state)list \<Rightarrow> string \<Rightarrow>(c
     if(current_group   state) = None 
     then
         (| input_units = ((input_units   state) @ [File(spec,(current_input_options   state))])
-         , link_options =(link_options   state)
-         , current_input_options =(current_input_options   state)
-         , current_group =(current_group   state)
+         , link_options = ((link_options   state))
+         , current_input_options = ((current_input_options   state))
+         , current_group = ((current_group   state))
          |) # more1
     else 
-        (| input_units =(input_units   state)
-         , link_options =(link_options   state)
-         , current_input_options =(current_input_options   state)
+        (| input_units = ((input_units   state))
+         , link_options = ((link_options   state))
+         , current_input_options = ((current_input_options   state))
          , current_group = ((let toAppend = ([(spec,(current_input_options   state))]) in 
             (case (current_group   state) of Some l => Some(l @ toAppend) | None => Some(toAppend) 
             )))
@@ -211,13 +232,13 @@ declare add_input_file.simps [simp del]
 (*val start_group : list command_state -> list command_state*)
 fun start_group  :: "(command_state)list \<Rightarrow>(command_state)list "  where 
      " start_group (state # more1) = ( (|
-           input_units =(input_units   state)
-         , link_options =(link_options   state)
-         , current_input_options =(current_input_options   state)
-         , current_group = (case (current_group   state) of
+           input_units = ((input_units   state))
+         , link_options = ((link_options   state))
+         , current_input_options = ((current_input_options   state))
+         , current_group = ((case (current_group   state) of
                 None => Some []
                 | _ => failwith (''cannot nest groups'')
-            )
+            ))
          |) # more1 )" 
 declare start_group.simps [simp del]
 
@@ -229,8 +250,8 @@ fun end_group  :: "(command_state)list \<Rightarrow>(command_state)list "  where
                 Some l => [Group(l)]
                 | None => failwith (''end group without start group'')
             )))
-         , link_options =(link_options   state)
-         , current_input_options =(current_input_options   state)
+         , link_options = ((link_options   state))
+         , current_input_options = ((current_input_options   state))
          , current_group = None
          |) # more1 )" 
 declare end_group.simps [simp del]
@@ -244,10 +265,10 @@ type_synonym option_argvals =" string list * string list "
 fun set_or_replace_option  :: " link_option \<Rightarrow>(command_state)list \<Rightarrow>(command_state)list "  where 
      " set_or_replace_option opt ([]) = ( failwith (''error: no state''))"
 |" set_or_replace_option opt (state # more1) = ( 
-            (| input_units =(input_units   state)
+            (| input_units = ((input_units   state))
              , link_options = (Set.insert opt (set_filter (\<lambda> existing .  ((\<lambda> opt1 .  (\<lambda> opt2 .  \<not> (opt1 = opt2))) existing opt))(link_options   state)))
-             , current_input_options =(current_input_options   state)
-             , current_group =(current_group   state)
+             , current_input_options = ((current_input_options   state))
+             , current_group = ((current_group   state))
              |) # more1 )" 
 declare set_or_replace_option.simps [simp del]
 

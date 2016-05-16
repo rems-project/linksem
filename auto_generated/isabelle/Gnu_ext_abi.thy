@@ -27,7 +27,6 @@ imports
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Elf_file" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Elf_relocation" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Memory_image" 
-	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Abis" 
 
 begin 
 
@@ -46,7 +45,7 @@ begin
 
 (*open import Byte_sequence*)
 
-(*open import Abis*)
+(* open import Abis *)
 
 (*open import Elf_file*)
 (*open import Elf_header*)
@@ -60,37 +59,44 @@ begin
 (*open import Elf_types_native_uint*)
 (*open import Memory_image*)
 
+(** Optional, like [stt_func] but always points to a function or piece of
+  * executable code that takes no arguments and returns a function pointer.
+  *)
+definition stt_gnu_ifunc  :: " nat "  where 
+     " stt_gnu_ifunc = (( 10 :: nat))"
+
+
 (*val gnu_extend: forall 'abifeature. abi 'abifeature -> abi 'abifeature*)
 definition gnu_extend  :: " 'abifeature abi \<Rightarrow> 'abifeature abi "  where 
      " gnu_extend a = ( 
-   (| is_valid_elf_header =(is_valid_elf_header   a)
+   (| is_valid_elf_header = ((is_valid_elf_header   a))
     , make_elf_header     =            
 ( (*  t -> entry -> shoff -> phoff -> phnum -> shnum -> shstrndx -> hdr *)\<lambda> t .  \<lambda> entry .  \<lambda> shoff .  \<lambda> phoff .  \<lambda> phnum .  \<lambda> shnum .  \<lambda> shstrndx . 
             (let unmod = ((make_elf_header   a) t entry shoff phoff phnum shnum shstrndx)
             in
-              (| elf64_ident    = (case (elf64_ident   unmod) of 
+              (| elf64_ident    = ((case (elf64_ident   unmod) of 
                 i0 # i1 # i2 # i3  # i4  # i5  # i6  # 
                 _  # _  # i9 # i10 # i11 # i12 # i13 # i14 # i15 # []
                     => [i0, i1, i2, i3, i4, i5, i6,
                         Elf_Types_Local.unsigned_char_of_nat elf_osabi_gnu,
                         Elf_Types_Local.unsigned_char_of_nat(( 1 :: nat)),
                         i9, i10, i11, i12, i13, i14, i15]
-                )
+                ))
                , elf64_type     = (Elf_Types_Local.uint16_of_nat t)
-               , elf64_machine  =(elf64_machine   unmod)
-               , elf64_version  =(elf64_version   unmod)
-               , elf64_entry    =(elf64_entry   unmod)
+               , elf64_machine  = ((elf64_machine   unmod))
+               , elf64_version  = ((elf64_version   unmod))
+               , elf64_entry    = ((elf64_entry   unmod))
                , elf64_phoff    = (Elf_Types_Local.uint64_of_nat phoff)
                , elf64_shoff    = (Elf_Types_Local.uint64_of_nat shoff)
-               , elf64_flags    =(elf64_flags   unmod)
-               , elf64_ehsize   =(elf64_ehsize   unmod)
-               , elf64_phentsize=(elf64_phentsize   unmod)
+               , elf64_flags    = ((elf64_flags   unmod))
+               , elf64_ehsize   = ((elf64_ehsize   unmod))
+               , elf64_phentsize= ((elf64_phentsize   unmod))
                , elf64_phnum    = (Elf_Types_Local.uint16_of_nat phnum)
-               , elf64_shentsize=(elf64_shentsize   unmod)
+               , elf64_shentsize= ((elf64_shentsize   unmod))
                , elf64_shnum    = (Elf_Types_Local.uint16_of_nat shnum)
                , elf64_shstrndx = (Elf_Types_Local.uint16_of_nat shstrndx)
                |)))
-    , reloc               =(reloc   a)
+    , reloc               = ((reloc   a))
     , section_is_special  = (\<lambda> isec1 .  (\<lambda> img3 .  ((section_is_special  
                                 a) isec1 img3
                                 \<or> (Missing_pervasives.string_prefix ( (List.length (''.gnu.warning'')))(elf64_section_name_as_string   isec1)
@@ -111,18 +117,45 @@ definition gnu_extend  :: " 'abifeature abi \<Rightarrow> 'abifeature abi "  whe
          * is *not* GNU contains a .gnu.warning.* section? That would be a fair
          * test about whether looking at the input ABI is worth doing. *)
                             )))
-    , section_is_large    =(section_is_large   a)
-    , maxpagesize         =(maxpagesize   a)
-    , minpagesize         =(minpagesize   a)
-    , commonpagesize      =(commonpagesize   a)
-    , symbol_is_generated_by_linker =(symbol_is_generated_by_linker   a)
-    , make_phdrs          =(make_phdrs   a) (* FIXME: also make the GNU phdrs! *)
-    , max_phnum           =(( 3 :: nat) +(max_phnum   a)) (* FIXME: GNU_RELRO, GNU_STACK; what else? *)
-    , guess_entry_point   =(guess_entry_point   a)
-    , pad_data            =(pad_data   a)
-    , pad_code            =(pad_code   a)
-    , generate_support    =(generate_support   a)
-    , concretise_support  =(concretise_support   a)
+    , section_is_large    = ((section_is_large   a))
+    , maxpagesize         = ((maxpagesize   a))
+    , minpagesize         = ((minpagesize   a))
+    , commonpagesize      = ((commonpagesize   a))
+    , symbol_is_generated_by_linker = ((symbol_is_generated_by_linker   a))
+    , make_phdrs          = ((make_phdrs   a)) (* FIXME: also make the GNU phdrs! *)
+    , max_phnum           =(( 1 :: nat) +(max_phnum   a)) (* FIXME: GNU_RELRO, GNU_STACK; what else? *)
+    , guess_entry_point   = ((guess_entry_point   a))
+    , pad_data            = ((pad_data   a))
+    , pad_code            = ((pad_code   a))
+    , generate_support    = (\<lambda> input_fnames_and_imgs .  
+        (let vanilla_support_img = ((generate_support   a) input_fnames_and_imgs) in
+        (* also generate .note.gnu.build-id *)
+        (let new_by_range = (Set.insert (Some((''.note.gnu.build-id''), (( 0 :: nat),( 24 :: nat))), FileFeature(ElfSection(( 4 :: nat) (* HACK: calculate this *), 
+          (| elf64_section_name =(( 0 :: nat)) (* ignored *)
+           , elf64_section_type = sht_note
+           , elf64_section_flags = shf_alloc
+           , elf64_section_addr =(( 0 :: nat)) (* ignored -- covered by element *)
+           , elf64_section_offset =(( 0 :: nat)) (* ignored -- will be replaced when file offsets are assigned *)
+           , elf64_section_size =(( 24 :: nat)) (* ignored? NO, we use it in linker_script to avoid plumbing through the element record *)
+           , elf64_section_link =(( 0 :: nat))
+           , elf64_section_info =(( 0 :: nat))
+           , elf64_section_align =(( 4 :: nat))
+           , elf64_section_entsize =(( 0 :: nat))
+           , elf64_section_body = Byte_sequence.empty (* ignored *)
+           , elf64_section_name_as_string = (''.note.gnu.build-id'')
+           |)
+        )))(by_range   vanilla_support_img))
+        in
+        (|  elements = (map_update (''.note.gnu.build-id'') (|
+                startpos = None
+           ,    length1 = (Some(( 24 :: nat)))
+           ,    contents = ([])
+           |) ((elements   vanilla_support_img)))
+         ,   by_range = new_by_range,   by_tag = (by_tag_from_by_range new_by_range)
+          
+         |))))
+    , concretise_support  = ((concretise_support   a))
+    , get_reloc_symaddr   = ((get_reloc_symaddr   a))
     |) )"
 
 end

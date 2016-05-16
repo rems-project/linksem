@@ -19,13 +19,26 @@ begin
   * functionality.
   *)
 (*val default_os_specific_print : forall 'a. 'a -> string*)
+definition default_os_specific_print  :: " 'a \<Rightarrow> string "  where 
+     " default_os_specific_print = (
+  ((\<lambda> y. (''*Default OS specific print*''))))"
+
 
 (** [default_proc_specific_print] is a default print function for processor specific
   * functionality.
   *)
 (*val default_proc_specific_print : forall 'a. 'a -> string*)
+definition default_proc_specific_print  :: " 'a \<Rightarrow> string "  where 
+     " default_proc_specific_print = (
+  ((\<lambda> y. (''*Default processor specific print*''))))"
+
 
 (** [default_user_specific_print] is a default print function for user specific
   * functionality.
   *)
-(*val default_user_specific_print : forall 'a. 'a -> string*)end
+(*val default_user_specific_print : forall 'a. 'a -> string*)
+definition default_user_specific_print  :: " 'a \<Rightarrow> string "  where 
+     " default_user_specific_print = (
+  ((\<lambda> y. (''*Default user specific print*''))))"
+
+end

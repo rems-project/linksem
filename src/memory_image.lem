@@ -749,8 +749,8 @@ let i2n_signed width i =
         let (xormask : natural) = (2 ** width - 1) in
         let compl = 1 + natural_lxor negated xormask
         in
-        let _ = errln ("Signed value " ^ (show i) ^ " is 2's-compl'd to 0x" ^ (hex_string_of_natural compl))
-        in compl
+        (*let _ = errln ("Signed value " ^ (show i) ^ " is 2's-compl'd to 0x" ^ (hex_string_of_natural compl))
+        in*) compl
 
 val to_le_signed_bytes : natural -> integer -> list byte
 let to_le_signed_bytes bytewidth i = 

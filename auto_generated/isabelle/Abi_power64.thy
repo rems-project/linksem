@@ -44,8 +44,8 @@ begin
   * AArch64 and AMD64, the entry point in the ELF header [entry] is the actual
   * program entry point.
   *)
-(*val abi_power64_compute_program_entry_point : list elf64_interpreted_segment -> elf64_addr -> error elf64_addr*)
-definition abi_power64_compute_program_entry_point  :: "(elf64_interpreted_segment)list \<Rightarrow> Elf_Types_Local.uint64 \<Rightarrow>(Elf_Types_Local.uint64)error "  where 
+(*val abi_power64_compute_program_entry_point : list elf64_interpreted_segment -> elf64_addr -> error natural*)
+definition abi_power64_compute_program_entry_point  :: "(elf64_interpreted_segment)list \<Rightarrow> Elf_Types_Local.uint64 \<Rightarrow>(nat)error "  where 
      " abi_power64_compute_program_entry_point segs entry = (
   (let entry = (unat entry) in
   (let filtered = (List.filter (
@@ -62,7 +62,7 @@ definition abi_power64_compute_program_entry_point  :: "(elf64_interpreted_segme
         Byte_sequence.offset_and_cut rebase(( 8 :: nat))(elf64_segment_body   x) >>= (\<lambda> bytes . 
         Byte_sequence.read_8_bytes_le bytes >>= (\<lambda> (bytes, _) . 
         (let (b1,b2,b3,b4,b5,b6,b7,b8) = bytes in
-        error_return (Elf_Types_Local.uint64_of_oct b1 b2 b3 b4 b5 b6 b7 b8)))))
+        error_return (unat (Elf_Types_Local.uint64_of_oct b1 b2 b3 b4 b5 b6 b7 b8))))))
       | _   => error_fail (''abi_power64_compute_program_entry_point: multiple program segments contain the program entry point'')
     ))))"
 

@@ -184,10 +184,10 @@ record symbol_definition
     
 
 
-definition symDefCompare  :: "symbol_definition \<Rightarrow> symbol_definition \<Rightarrow> ordering "  where 
-     " symDefCompare x1 x2 = ((quintupleCompare (\<lambda> x y. stringCompare_method x y)
-        elf64_symbol_table_entry_compare (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) ((def_symname   x1),(def_syment   x1),(def_sym_scn   x1),(def_sym_idx   x1), (def_linkable_idx x1))
-                ((def_symname   x2),(def_syment   x2),(def_sym_scn   x2),(def_sym_idx   x2), (def_linkable_idx x2))))"
+definition symDefCompare  :: " symbol_definition \<Rightarrow> symbol_definition \<Rightarrow> ordering "  where 
+     " symDefCompare x1 x2 = (        
+(quadrupleCompare (\<lambda> x y. EQ) elf64_symbol_table_entry_compare (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) ((def_symname   x1),(def_syment   x1),(def_sym_scn   x1),(def_sym_idx   x1))
+                ((def_symname   x2),(def_syment   x2),(def_sym_scn   x2),(def_sym_idx   x2))))"
 
 
 definition instance_Basic_classes_Ord_Memory_image_symbol_definition_dict  :: "(symbol_definition)Ord_class "  where 
@@ -218,7 +218,7 @@ record symbol_reference
 
 definition symRefCompare  :: " symbol_reference \<Rightarrow> symbol_reference \<Rightarrow> ordering "  where 
      " symRefCompare x1 x2 = (        
-(quadrupleCompare stringCompare_method elf64_symbol_table_entry_compare (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) ((ref_symname   x1),(ref_syment   x1),(ref_sym_scn   x1),(ref_sym_idx   x1))
+(quadrupleCompare (\<lambda> x y. EQ) elf64_symbol_table_entry_compare (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) ((ref_symname   x1),(ref_syment   x1),(ref_sym_scn   x1),(ref_sym_idx   x1))
                 ((ref_symname   x2),(ref_syment   x2),(ref_sym_scn   x2),(ref_sym_idx   x2))))"
 
                 
@@ -250,9 +250,8 @@ record reloc_site =
 
 definition relocSiteCompare  :: " reloc_site \<Rightarrow> reloc_site \<Rightarrow> ordering "  where 
      " relocSiteCompare x1 x2 = (        
-(quadrupleCompare elf64_relocation_a_compare (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) (genericCompare (op<) (op=))
-  ((ref_relent   x1), (ref_rel_scn x1), (ref_rel_idx   x1),(ref_src_scn   x1))
-                ((ref_relent   x2), (ref_rel_scn x2), (ref_rel_idx   x2),(ref_src_scn   x2))))"
+(tripleCompare elf64_relocation_a_compare (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) ((ref_relent   x1),(ref_rel_idx   x1),(ref_src_scn   x1))
+                ((ref_relent   x2),(ref_rel_idx   x2),(ref_src_scn   x2))))"
 
                 
 definition instance_Basic_classes_Ord_Memory_image_reloc_site_dict  :: "(reloc_site)Ord_class "  where 
@@ -271,16 +270,8 @@ definition instance_Basic_classes_Ord_Memory_image_reloc_site_dict  :: "(reloc_s
     
 datatype reloc_decision = LeaveReloc
                     | ApplyReloc
-                    | MakePIC
-
-fun relocDecisionCompare :: "reloc_decision \<Rightarrow> reloc_decision \<Rightarrow> ordering" where
-  "relocDecisionCompare LeaveReloc LeaveReloc = EQ" |
-  "relocDecisionCompare LeaveReloc _ = LT" |
-  "relocDecisionCompare ApplyReloc LeaveReloc = GT" |
-  "relocDecisionCompare ApplyReloc ApplyReloc = EQ" |
-  "relocDecisionCompare ApplyReloc MakePIC = LT" |
-  "relocDecisionCompare MakePIC MakePIC = EQ" |
-  "relocDecisionCompare MakePIC _ = GT"
+                    | ChangeRelocTo " (nat * symbol_reference * reloc_site)"
+                    (* | MakePIC    -- is now a kind of ChangeRelocTo *)
 
 record symbol_reference_and_reloc_site = 
 
@@ -294,8 +285,8 @@ record symbol_reference_and_reloc_site =
 
 definition symRefAndRelocSiteCompare  :: " symbol_reference_and_reloc_site \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> ordering "  where 
      " symRefAndRelocSiteCompare x1 x2 = (        
-(tripleCompare symRefCompare (maybeCompare relocSiteCompare) (maybeCompare (pairCompare relocDecisionCompare (maybeCompare symDefCompare))) ((ref   x1),(maybe_reloc   x1), (maybe_def_bound_to x1))
-                ((ref   x2),(maybe_reloc   x2), (maybe_def_bound_to x2))))"
+(pairCompare symRefCompare (maybeCompare relocSiteCompare) ((ref   x1),(maybe_reloc   x1))
+                ((ref   x2),(maybe_reloc   x2))))"
 
 
 definition instance_Basic_classes_Ord_Memory_image_symbol_reference_and_reloc_site_dict  :: "(symbol_reference_and_reloc_site)Ord_class "  where 
@@ -476,9 +467,11 @@ record 'abifeature abi = (* forall 'abifeature. *)
     
  pad_code           ::" nat \<Rightarrow> Elf_Types_Local.byte list "
     
- generate_support   ::" ( 'abifeature annotated_memory_image) (* list (list reloc_site_resolution) ->  *)list \<Rightarrow> 'abifeature annotated_memory_image "
+ generate_support   ::" (string * 'abifeature annotated_memory_image) (* list (list reloc_site_resolution) ->  *)list \<Rightarrow> 'abifeature annotated_memory_image "
     
  concretise_support ::" 'abifeature annotated_memory_image \<Rightarrow> 'abifeature annotated_memory_image "
+    
+ get_reloc_symaddr  ::" symbol_definition \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>  reloc_site option \<Rightarrow> nat "
     
 
 
@@ -525,11 +518,11 @@ definition compl64  :: " nat \<Rightarrow> nat "  where
 
 
 (*val gcd : natural -> natural -> natural*)
-(*let rec gcd a b = 
+(*let rec gcd a b=  
     if (Instance_Basic_classes_Eq_Num_natural.=) b 0 then a else gcd b ((Instance_Num_NumRemainder_Num_natural.mod) a b)*)
 
 (*val lcm : natural -> natural -> natural*)
-(*let lcm a b = 
+(*let lcm a b=  
     (* let _ = errln (lcm of  ^ (show a) ^  and  ^ (show b) ^ ?)
     in *)
     (Instance_Num_NumDivision_Num_natural./) (( Instance_Num_NumMult_Num_natural.* ) a b) (gcd a b)*)
@@ -695,7 +688,7 @@ definition append_to_byte_pattern_at_offset  :: " nat \<Rightarrow>((Elf_Types_L
     (let pad_length = (offset - List.length pat1)
     in
     if pad_length <( 0 :: nat) then failwith ([(CHR ''c''), (CHR ''a''), (CHR ''n''), (Char Nibble2 Nibble7), (CHR ''t''), (CHR '' ''), (CHR ''a''), (CHR ''p''), (CHR ''p''), (CHR ''e''), (CHR ''n''), (CHR ''d''), (CHR '' ''), (CHR ''a''), (CHR ''t''), (CHR '' ''), (CHR ''o''), (CHR ''f''), (CHR ''f''), (CHR ''s''), (CHR ''e''), (CHR ''t''), (CHR '' ''), (CHR ''a''), (CHR ''l''), (CHR ''r''), (CHR ''e''), (CHR ''a''), (CHR ''d''), (CHR ''y''), (CHR '' ''), (CHR ''u''), (CHR ''s''), (CHR ''e''), (CHR ''d'')])
-    else (pat1 @ (List.replicate (id pad_length) None)) @ pat2))"
+    else (pat1 @ (List.replicate ( pad_length) None)) @ pat2))"
 
 
 (*val accum_pattern_possible_starts_in_one_byte_sequence : list (maybe byte) -> nat -> list byte -> nat -> natural -> list natural -> list natural*)
@@ -787,7 +780,7 @@ definition tag_image  :: " 'abifeature range_tag \<Rightarrow> string \<Rightarr
     in
     (let new_by_tag = (Set.insert (v, k)(by_tag   img3))
     in
-    (| elements =(elements   img3)
+    (| elements = ((elements   img3))
      , by_range = new_by_range
      , by_tag   = new_by_tag
      |)))))"
@@ -795,19 +788,27 @@ definition tag_image  :: " 'abifeature range_tag \<Rightarrow> string \<Rightarr
 
 (*val address_to_element_and_offset : forall 'abifeature. natural -> annotated_memory_image 'abifeature -> maybe (string * natural)*)
 definition address_to_element_and_offset  :: " nat \<Rightarrow> 'abifeature annotated_memory_image \<Rightarrow>(string*nat)option "  where 
-     " address_to_element_and_offset addr img3 = ( 
-    (* Find the element with the highest address <= addr *)
+     " address_to_element_and_offset query_addr img3 = ( 
+    (* Find the element with the highest address <= addr.
+     * What about zero-length elements?
+     * Break ties on the bigger size. *)
     (let (maybe_highest_le ::  (nat * string * element)option)
      = (List.foldl (\<lambda> maybe_current_max_le .  (\<lambda> (el_name, el_rec) . 
-        (* let _ = errln (Saw element named ` ^ el_name ^  with startpos  ^ (
-            match el_rec.startpos with Just addr -> (0x ^ (hex_string_of_natural addr)) | Nothing -> (none) end))
-        in *)
+        (let _ = (())
+        in
         (case  (maybe_current_max_le,(startpos   el_rec)) of
-            (None, None) => None
-            | (None, Some pos) => if pos \<le> addr then Some (pos, el_name, el_rec) else None
-            | (Some (cur, cur_el_name, cur_el_rec), None) => maybe_current_max_le
-            | (Some (cur, cur_el_name, cur_el_rec), Some pos) => if (pos \<le> addr) \<and> (pos > cur) then Some (pos, el_name, el_rec) else maybe_current_max_le
-        )
+              (None,                                    None) => None
+            | (None,                                    Some this_element_pos) => if this_element_pos \<le> query_addr 
+                                                                                     then Some (this_element_pos, el_name, el_rec) 
+                                                                                     else None
+            | (Some (cur_max_le, cur_el_name, cur_el_rec), None) =>               maybe_current_max_le
+            | (Some (cur_max_le, cur_el_name, cur_el_rec), Some this_element_pos) => if (this_element_pos \<le> query_addr) 
+                                                                                        \<and> ((this_element_pos > cur_max_le) 
+                                                                                         \<or> ((this_element_pos = cur_max_le)
+                                                                                             \<and> ((length1   cur_el_rec) = Some(( 0 :: nat)))))
+                                                                                        then Some (this_element_pos, el_name, el_rec) 
+                                                                                        else maybe_current_max_le
+        ))
     )) None (list_of_set (LemExtraDefs.map_to_set (elements img3))))
     in
     (case  maybe_highest_le of
@@ -815,15 +816,15 @@ definition address_to_element_and_offset  :: " nat \<Rightarrow> 'abifeature ann
             (* final sanity check: is the length definite, and if so, does the
              * element span far enough? *)
             (case (length1   el_rec) of
-                Some l => if (el_def_startpos + l) \<ge> addr 
-                    then Some (el_name, (addr - el_def_startpos)) 
+                Some l => if (el_def_startpos + l) \<ge> query_addr 
+                    then Some (el_name, (query_addr - el_def_startpos)) 
                     else 
-                        (*let _ = errln (Discounting  ^ el_name ^  because length is too short) in*) None
-                | None => (*let _ = errln (Gave up because element has unknown length) in*) None
+                        (let _ = (()) in None)
+                | None => (let _ = (()) in None)
             )
         | None => 
             (* no elements with a low enough assigned address, so nothing *)
-            None
+            (let _ = (()) in None)
     )))"
 
     
@@ -839,7 +840,6 @@ fun element_and_offset_to_address  :: " string*nat \<Rightarrow> 'abifeature ann
     ))" 
 declare element_and_offset_to_address.simps [simp del]
 
-                
 
 definition null_symbol_reference  :: " symbol_reference "  where 
      " null_symbol_reference = ( (|
@@ -901,5 +901,95 @@ declare byte_pattern_of_byte_sequence.simps [simp del]
 definition compute_virtual_address_adjustment  :: " nat \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> nat "  where 
      " compute_virtual_address_adjustment max_page_size offset vaddr = (
   (vaddr - offset) mod max_page_size )"
+
+
+(*val extract_natural_field : natural -> element -> natural -> natural*)
+definition extract_natural_field  :: " nat \<Rightarrow> element \<Rightarrow> nat \<Rightarrow> nat "  where 
+     " extract_natural_field width element offset = ( 
+    (* Read n bytes from the contents *)
+    (let maybe_bytes = (take width (drop offset(contents   element)))
+    in
+    (let bytes = (List.map (\<lambda> mb .  (case  mb of None => (of_nat (( 0 :: nat)) :: byte) | Some mb => mb )) maybe_bytes)
+    in
+    (* FIXME: do we want little- or big-endian? *)
+    List.foldl (\<lambda> acc1 .  \<lambda> next_byte .         
+(acc1 *( 256 :: nat)) + (unat next_byte)
+    ) (( 0 :: nat) :: nat) bytes)))"
+
+
+(*val natural_to_le_byte_list : natural -> list byte*)
+function (sequential,domintros)  natural_to_le_byte_list  :: " nat \<Rightarrow>(Elf_Types_Local.byte)list "  where 
+     " natural_to_le_byte_list n = ( 
+    ((of_nat (n mod( 256 :: nat)) :: byte)) # ((let d = (n div( 256 :: nat)) in if d =( 0 :: nat) then [] else natural_to_le_byte_list (n div( 256 :: nat)))))" 
+by pat_completeness auto
+
+
+(*val natural_to_le_byte_list_padded_to : natural -> natural -> list byte*)
+fun  natural_to_le_byte_list_padded_to  :: " nat \<Rightarrow> nat \<Rightarrow>(Elf_Types_Local.byte)list "  where 
+     " natural_to_le_byte_list_padded_to width n = ( 
+    (let bytes = (natural_to_le_byte_list n)
+    in 
+    bytes @ (List.replicate (width - List.length bytes) ((of_nat (( 0 :: nat)) :: byte)))))" 
+declare natural_to_le_byte_list_padded_to.simps [simp del]
+
+
+(*val n2i : natural -> integer*)
+definition n2i  :: " nat \<Rightarrow> int "  where 
+     " n2i = ( int )"
+
+
+(*val i2n: integer -> natural*)
+definition i2n  :: " int \<Rightarrow> nat "  where 
+     " i2n = ( (\<lambda> i. nat (abs i)))"
+
+
+(*val i2n_signed : nat -> integer -> natural*)
+definition i2n_signed  :: " nat \<Rightarrow> int \<Rightarrow> nat "  where 
+     " i2n_signed width i = ( 
+    if i \<ge>( 0 :: int) then 
+        if i \<ge>(( 2 :: int) ^ (width-( 1 :: nat))) then failwith (''overflow'')
+        else nat (abs i)
+    else 
+        (* We manually encode the 2's complement of the negated value *)
+        (let negated = (nat (abs (( 0 :: int) - i))) in 
+        (let (xormask :: nat) = ((( 2 :: nat) ^ width) -( 1 :: nat)) in
+        (let compl =(( 1 :: nat) + natural_lxor negated xormask)
+        in
+        (*let _ = errln (Signed value  ^ (show i) ^  is 2's-compl'd to 0x ^ (hex_string_of_natural compl))
+        in*) compl))))"
+
+
+(*val to_le_signed_bytes : natural -> integer -> list byte*)
+definition to_le_signed_bytes  :: " nat \<Rightarrow> int \<Rightarrow>(Elf_Types_Local.byte)list "  where 
+     " to_le_signed_bytes bytewidth i = ( 
+    natural_to_le_byte_list_padded_to bytewidth (i2n_signed ( (( 8 :: nat)*bytewidth)) i))"
+
+
+(*val to_le_unsigned_bytes : natural -> integer -> list byte*)
+definition to_le_unsigned_bytes  :: " nat \<Rightarrow> int \<Rightarrow>(Elf_Types_Local.byte)list "  where 
+     " to_le_unsigned_bytes bytewidth i = ( 
+    natural_to_le_byte_list_padded_to bytewidth (nat (abs i)))"
+
+
+(*val write_natural_field : natural -> natural -> element -> natural -> element*)
+definition write_natural_field  :: " nat \<Rightarrow> nat \<Rightarrow> element \<Rightarrow> nat \<Rightarrow> element "  where 
+     " write_natural_field new_field_value width element offset = ( 
+    (let pre_bytes = (take offset(contents   element))
+    in
+    (let post_bytes = (drop (offset + width)(contents   element))
+    in
+    (* FIXME: avoid hard-coding little-endian *)
+    (let field_bytes = (natural_to_le_byte_list new_field_value)
+    in
+    if List.length field_bytes > width then failwith (''internal error: relocation output unrepresentable'')
+    else  (| startpos = ((startpos   element)) , length1 = ((length1   element)),
+ contents = (((pre_bytes @
+                 ((let x2 = ([]) in
+                  List.foldr
+                    (\<lambda>b x2 .  if True then Some b # x2 else x2)
+                    field_bytes x2))) @
+                (List.replicate (width - (List.length field_bytes))
+                   (Some ((of_nat (( 0 :: nat)) :: byte))))) @ post_bytes)  
+ |)))))"
 
 end

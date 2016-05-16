@@ -73,7 +73,7 @@ let elf_ft_hi_proc : natural = 65535 (* 0xffff *)
   * used for printing, respectively.
   *)
 val string_of_elf_file_type : (natural -> string) -> (natural -> string) -> natural -> string
-let {ocaml} string_of_elf_file_type os_specific proc_specific m =
+let string_of_elf_file_type os_specific proc_specific m =
 	if m = elf_ft_none then
 		"No file type"
 	else if m = elf_ft_rel then
@@ -565,7 +565,7 @@ let elf_ma_reserved159 : natural = 159
   * TODO: finish this .
   *)
 val string_of_elf_machine_architecture : natural -> string
-let {ocaml} string_of_elf_machine_architecture m =
+let string_of_elf_machine_architecture m =
 	if m = elf_ma_386 then
 		"Intel 80386"
   else if m = elf_ma_ppc then
@@ -595,7 +595,7 @@ let elf_ev_current : natural = 1
   * numeric encoding [m] of the ELF version number.
   *)
 val string_of_elf_version_number : natural -> string
-let {ocaml} string_of_elf_version_number m =
+let string_of_elf_version_number m =
 	if m = elf_ev_none then
 		"Invalid ELF version"
 	else if m = elf_ev_current then
@@ -663,7 +663,7 @@ let elf_class_64 : natural = 2
   * encoding [m] of the ELF file class.
   *)
 val string_of_elf_file_class : natural -> string
-let {ocaml} string_of_elf_file_class m =
+let string_of_elf_file_class m =
 	if m = elf_class_none then
 		"Invalid ELF file class"
 	else if m = elf_class_32 then
@@ -689,7 +689,7 @@ let elf_data_2msb : natural = 2
   * numeric encoding [m] of the ELF data encoding.
   *)
 val string_of_elf_data_encoding : natural -> string
-let {ocaml} string_of_elf_data_encoding m =
+let string_of_elf_data_encoding m =
 	if m = elf_data_none then
 		"Invalid data encoding"
 	else if m = elf_data_2lsb then
@@ -753,7 +753,7 @@ let is_valid_architecture_defined_osabi_version (n : natural) =
   * numeric encoding [m] of the ELF OSABI version.
   *)
 val string_of_elf_osabi_version : (natural -> string) -> natural -> string
-let {ocaml} string_of_elf_osabi_version arch m =
+let string_of_elf_osabi_version arch m =
 	if m = elf_osabi_none then
 		"UNIX - System V"
 	else if m = elf_osabi_netbsd then
@@ -1209,7 +1209,7 @@ type hdr_print_bundle = (natural -> string) * (natural -> string)
   * of header [hdr] using the ABI-specific print bundle [hdr_bdl].
   *)
 val string_of_elf32_header : hdr_print_bundle -> elf32_header -> string
-let {ocaml} string_of_elf32_header (os, proc) hdr =
+let string_of_elf32_header (os, proc) hdr =
 	unlines [
 	  "\t" ^ "Magic number: " ^ show hdr.elf32_ident
   ; "\t" ^ "Endianness: " ^ show (deduce_endianness hdr.elf32_ident)
@@ -1226,7 +1226,7 @@ let {ocaml} string_of_elf32_header (os, proc) hdr =
   * of header [hdr] using the ABI-specific print bundle [hdr_bdl].
   *)
 val string_of_elf64_header : hdr_print_bundle -> elf64_header -> string
-let {ocaml} string_of_elf64_header (os, proc) hdr =
+let string_of_elf64_header (os, proc) hdr =
   unlines [
     "\t" ^ "Magic number: " ^ show hdr.elf64_ident
   ; "\t" ^ "Endianness: " ^ show (deduce_endianness hdr.elf64_ident)
@@ -1244,13 +1244,13 @@ let {ocaml} string_of_elf64_header (os, proc) hdr =
   *)
   
 val string_of_elf32_header_default : elf32_header -> string
-let {ocaml} string_of_elf32_header_default =
+let string_of_elf32_header_default =
 	string_of_elf32_header
     (default_os_specific_print,
       default_proc_specific_print)
 
 val string_of_elf64_header_default : elf64_header -> string
-let {ocaml} string_of_elf64_header_default =
+let string_of_elf64_header_default =
   string_of_elf64_header
     (default_os_specific_print,
       default_proc_specific_print)

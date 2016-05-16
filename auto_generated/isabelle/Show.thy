@@ -24,46 +24,157 @@ begin
 (*open import String*)
 (*open import String_extra*)
 
-(*class (Show 'a)
-  val {ocaml} show : 'a -> string
-end*)
+record 'a Show_class=
+
+  show_method ::" 'a \<Rightarrow> string "
+
+
 
 (** [string_of_unit u] produces a string representation of unit [u].
   *)
 (*val string_of_unit : unit -> string*)
+definition string_of_unit  :: " unit \<Rightarrow> string "  where 
+     " string_of_unit u = ( (''()''))"
+
+
+definition instance_Show_Show_unit_dict  :: "(unit)Show_class "  where 
+     " instance_Show_Show_unit_dict = ((|
+
+  show_method = string_of_unit |) )"
+
 
 (** [string_of_bool b] produces a string representation of boolean [b].
   *)
 (*val string_of_bool : bool -> string*)
+fun string_of_bool  :: " bool \<Rightarrow> string "  where 
+     " string_of_bool True = ( (''true''))"
+|" string_of_bool False = ( (''false''))" 
+declare string_of_bool.simps [simp del]
+
+
+definition instance_Show_Show_bool_dict  :: "(bool)Show_class "  where 
+     " instance_Show_Show_bool_dict = ((|
+
+  show_method = string_of_bool |) )"
+
 
 (** To give control over extraction as instances cannot be target specific, but
   * the functions they are bound to can be...
   *)
 (*val string_of_string : string -> string*)
+definition string_of_string  :: " string \<Rightarrow> string "  where 
+     " string_of_string x = ( x )"
+
+
+definition instance_Show_Show_string_dict  :: "(string)Show_class "  where 
+     " instance_Show_Show_string_dict = ((|
+
+  show_method = string_of_string |) )"
+
 
 (** [string_of_pair p] produces a string representation of pair [p].
   *)
 (*val string_of_pair : forall 'a 'b. Show 'a, Show 'b => ('a * 'b) -> string*)
+fun string_of_pair  :: " 'a Show_class \<Rightarrow> 'b Show_class \<Rightarrow> 'a*'b \<Rightarrow> string "  where 
+     " string_of_pair dict_Show_Show_a dict_Show_Show_b (left, right) = (
+  (''('') @ ((show_method   dict_Show_Show_a) left @ (('', '') @ (
+  (show_method   dict_Show_Show_b) right @ ('')'')))))" 
+declare string_of_pair.simps [simp del]
+
+
+definition instance_Show_Show_tup2_dict  :: " 'a Show_class \<Rightarrow> 'b Show_class \<Rightarrow>('a*'b)Show_class "  where 
+     " instance_Show_Show_tup2_dict dict_Show_Show_a dict_Show_Show_b = ((|
+
+  show_method = 
+  (string_of_pair dict_Show_Show_a dict_Show_Show_b) |) )"
+
 
 (** [string_of_triple p] produces a string representation of triple [p].
   *)
 (*val string_of_triple : forall 'a 'b 'c. Show 'a, Show 'b, Show 'c => ('a * 'b * 'c) -> string*)
+fun string_of_triple  :: " 'a Show_class \<Rightarrow> 'b Show_class \<Rightarrow> 'c Show_class \<Rightarrow> 'a*'b*'c \<Rightarrow> string "  where 
+     " string_of_triple dict_Show_Show_a dict_Show_Show_b dict_Show_Show_c (left, middle, right) = (
+  (''('') @ ((show_method   dict_Show_Show_a) left @ (('', '') @ (
+  (show_method   dict_Show_Show_b) middle @ (('', '') @ (
+  (show_method   dict_Show_Show_c) right @ ('')'')))))))" 
+declare string_of_triple.simps [simp del]
+
+
+definition instance_Show_Show_tup3_dict  :: " 'a Show_class \<Rightarrow> 'b Show_class \<Rightarrow> 'c Show_class \<Rightarrow>('a*'b*'c)Show_class "  where 
+     " instance_Show_Show_tup3_dict dict_Show_Show_a dict_Show_Show_b dict_Show_Show_c = ((|
+
+  show_method = 
+  (string_of_triple dict_Show_Show_a dict_Show_Show_b dict_Show_Show_c) |) )"
+
 
 (** [string_of_quad p] produces a string representation of quad [p].
   *)
 (*val string_of_quad : forall 'a 'b 'c 'd. Show 'a, Show 'b, Show 'c, Show 'd => ('a * 'b * 'c * 'd) -> string*)
+fun string_of_quad  :: " 'a Show_class \<Rightarrow> 'b Show_class \<Rightarrow> 'c Show_class \<Rightarrow> 'd Show_class \<Rightarrow> 'a*'b*'c*'d \<Rightarrow> string "  where 
+     " string_of_quad dict_Show_Show_a dict_Show_Show_b dict_Show_Show_c dict_Show_Show_d (left, middle1, middle2, right) = (
+  (''('') @ ((show_method   dict_Show_Show_a) left @ (('', '') @ (
+  (show_method   dict_Show_Show_b) middle1 @ (('', '') @ (
+  (show_method   dict_Show_Show_c) middle2 @ (('', '') @ (
+  (show_method   dict_Show_Show_d) right @ ('')'')))))))))" 
+declare string_of_quad.simps [simp del]
+
+
+definition instance_Show_Show_tup4_dict  :: " 'a Show_class \<Rightarrow> 'b Show_class \<Rightarrow> 'c Show_class \<Rightarrow> 'd Show_class \<Rightarrow>('a*'b*'c*'d)Show_class "  where 
+     " instance_Show_Show_tup4_dict dict_Show_Show_a dict_Show_Show_b dict_Show_Show_c dict_Show_Show_d = ((|
+
+  show_method = 
+  (string_of_quad dict_Show_Show_a dict_Show_Show_b dict_Show_Show_c
+     dict_Show_Show_d) |) )"
+
 
 (** [string_of_maybe m] produces a string representation of maybe value [m].
   *)
 (*val string_of_maybe : forall 'a. Show 'a => maybe 'a -> string*)
+fun string_of_maybe  :: " 'a Show_class \<Rightarrow> 'a option \<Rightarrow> string "  where 
+     " string_of_maybe dict_Show_Show_a None = ( (''Nothing''))"
+|" string_of_maybe dict_Show_Show_a (Some e) = ( (''Just '') @
+  (show_method   dict_Show_Show_a) e )" 
+declare string_of_maybe.simps [simp del]
+
+
+definition instance_Show_Show_Maybe_maybe_dict  :: " 'a Show_class \<Rightarrow>('a option)Show_class "  where 
+     " instance_Show_Show_Maybe_maybe_dict dict_Show_Show_a = ((|
+
+  show_method = 
+  (string_of_maybe dict_Show_Show_a) |) )"
+
 
 (** [show_else s m] produces a string representation of maybe [m], using [s] 
   * in the case [m] = Nothing. *)
 (*val show_else : forall 'a. Show 'a => string -> maybe 'a -> string*)
+fun show_else  :: " 'a Show_class \<Rightarrow> string \<Rightarrow> 'a option \<Rightarrow> string "  where 
+     " show_else dict_Show_Show_a subst (Some x) = (
+  (show_method   dict_Show_Show_a) x )"
+|" show_else dict_Show_Show_a subst None = ( subst )" 
+declare show_else.simps [simp del]
+
 
 (** [string_of_nat m] produces a string representation of nat value [m].
   *)
 (*val string_of_nat : nat -> string*)
 
+definition instance_Show_Show_nat_dict  :: "(nat)Show_class "  where 
+     " instance_Show_Show_nat_dict = ((|
+
+  show_method = LemExtraDefs.nat_to_string |) )"
+
+
+definition instance_Show_Show_Num_natural_dict  :: "(nat)Show_class "  where 
+     " instance_Show_Show_Num_natural_dict = ((|
+
+  show_method = stringFromNatural |) )"
+
+
 (*val string_of_integer : integer -> string*)
+
+definition instance_Show_Show_Num_integer_dict  :: "(int)Show_class "  where 
+     " instance_Show_Show_Num_integer_dict = ((|
+
+  show_method = LemExtraDefs.int_to_string |) )"
+
 end

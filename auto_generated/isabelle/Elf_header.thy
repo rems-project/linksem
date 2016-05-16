@@ -120,6 +120,25 @@ definition elf_ft_hi_proc  :: " nat "  where
   * used for printing, respectively.
   *)
 (*val string_of_elf_file_type : (natural -> string) -> (natural -> string) -> natural -> string*)
+definition string_of_elf_file_type  :: "(nat \<Rightarrow> string)\<Rightarrow>(nat \<Rightarrow> string)\<Rightarrow> nat \<Rightarrow> string "  where 
+     " string_of_elf_file_type os_specific proc_specific m = (
+	if m = elf_ft_none then
+		(''No file type'')
+	else if m = elf_ft_rel then
+		(''REL (Relocatable file)'')
+	else if m = elf_ft_exec then
+		(''EXEC (Executable file)'')
+	else if m = elf_ft_dyn then
+		(''DYN (Shared object file)'')
+	else if m = elf_ft_core then
+		(''CORE (Core file)'')
+	else if (m \<ge> elf_ft_lo_os) \<and> (m \<le> elf_ft_hi_os) then
+		os_specific m
+	else if (m \<ge> elf_ft_lo_proc) \<and> (m \<le> elf_ft_hi_proc) then
+		proc_specific m
+	else
+		(''Invalid file type''))"
+
 
 (** [is_operating_specific_file_type_value] checks whether a numeric value is
   * reserved by the ABI for operating system-specific purposes.
@@ -1051,6 +1070,23 @@ definition elf_ma_reserved159  :: " nat "  where
   * TODO: finish this .
   *)
 (*val string_of_elf_machine_architecture : natural -> string*)
+definition string_of_elf_machine_architecture  :: " nat \<Rightarrow> string "  where 
+     " string_of_elf_machine_architecture m = (
+	if m = elf_ma_386 then
+		(''Intel 80386'')
+  else if m = elf_ma_ppc then
+    (''PowerPC'')
+  else if m = elf_ma_ppc64 then
+    (''PowerPC64'')
+  else if m = elf_ma_arm then
+    (''AArch'')
+  else if m = elf_ma_x86_64 then
+    (''Advanced Micro Devices X86-64'')
+  else if m = elf_ma_aarch64 then
+    (''AArch64'')
+	else
+		(''Other architecture''))"
+
 
 (** ELF version numbers.  Denotes the ELF version number of an ELF file.  Current is
   * defined to have a value of 1 with the present specification.  Extensions
@@ -1070,6 +1106,15 @@ definition elf_ev_current  :: " nat "  where
   * numeric encoding [m] of the ELF version number.
   *)
 (*val string_of_elf_version_number : natural -> string*)
+definition string_of_elf_version_number  :: " nat \<Rightarrow> string "  where 
+     " string_of_elf_version_number m = (
+	if m = elf_ev_none then
+		(''Invalid ELF version'')
+	else if m = elf_ev_current then
+		(''1 (current)'')
+	else
+		(''Extended ELF version''))"
+
 
 (** Check that an extended version number is correct (i.e. greater than 1). *)
 definition is_valid_extended_version_number  :: " nat \<Rightarrow> bool "  where 
@@ -1169,6 +1214,17 @@ definition elf_class_64  :: " nat "  where
   * encoding [m] of the ELF file class.
   *)
 (*val string_of_elf_file_class : natural -> string*)
+definition string_of_elf_file_class  :: " nat \<Rightarrow> string "  where 
+     " string_of_elf_file_class m = (
+	if m = elf_class_none then
+		(''Invalid ELF file class'')
+	else if m = elf_class_32 then
+		(''ELF32'')
+	else if m = elf_class_64 then
+		(''ELF64'')
+	else
+		(''Invalid ELF file class''))"
+
 
 (** ELF data encodings.  Byte e_ident[elf_ei_data] specifies the encoding of both the
   * data structures used by object file container and data contained in object
@@ -1192,6 +1248,17 @@ definition elf_data_2msb  :: " nat "  where
   * numeric encoding [m] of the ELF data encoding.
   *)
 (*val string_of_elf_data_encoding : natural -> string*)
+definition string_of_elf_data_encoding  :: " nat \<Rightarrow> string "  where 
+     " string_of_elf_data_encoding m = (
+	if m = elf_data_none then
+		(''Invalid data encoding'')
+	else if m = elf_data_2lsb then
+		([(CHR ''2''), (Char Nibble2 Nibble7), (CHR ''s''), (CHR '' ''), (CHR ''c''), (CHR ''o''), (CHR ''m''), (CHR ''p''), (CHR ''l''), (CHR ''e''), (CHR ''m''), (CHR ''e''), (CHR ''n''), (CHR ''t''), (CHR '',''), (CHR '' ''), (CHR ''l''), (CHR ''i''), (CHR ''t''), (CHR ''t''), (CHR ''l''), (CHR ''e''), (CHR '' ''), (CHR ''e''), (CHR ''n''), (CHR ''d''), (CHR ''i''), (CHR ''a''), (CHR ''n'')])
+	else if m = elf_data_2msb then
+		([(CHR ''2''), (Char Nibble2 Nibble7), (CHR ''s''), (CHR '' ''), (CHR ''c''), (CHR ''o''), (CHR ''m''), (CHR ''p''), (CHR ''l''), (CHR ''e''), (CHR ''m''), (CHR ''e''), (CHR ''n''), (CHR ''t''), (CHR '',''), (CHR '' ''), (CHR ''b''), (CHR ''i''), (CHR ''g''), (CHR '' ''), (CHR ''e''), (CHR ''n''), (CHR ''d''), (CHR ''i''), (CHR ''a''), (CHR ''n'')])
+	else
+		(''Invalid data encoding''))"
+
 
 (** OS and ABI versions.  Byte e_ident[elf_ei_osabi] identifies the OS- or
   * ABI-specific ELF extensions used by this file. Some fields in other ELF
@@ -1285,6 +1352,49 @@ definition is_valid_architecture_defined_osabi_version  :: " nat \<Rightarrow> b
   * numeric encoding [m] of the ELF OSABI version.
   *)
 (*val string_of_elf_osabi_version : (natural -> string) -> natural -> string*)
+definition string_of_elf_osabi_version  :: "(nat \<Rightarrow> string)\<Rightarrow> nat \<Rightarrow> string "  where 
+     " string_of_elf_osabi_version arch m = (
+	if m = elf_osabi_none then
+		(''UNIX - System V'')
+	else if m = elf_osabi_netbsd then
+		(''Hewlett-Packard HP-UX'')
+	else if m = elf_osabi_netbsd then
+		(''NetBSD'')
+	else if m = elf_osabi_gnu then
+		(''UNIX - GNU'')
+	else if m = elf_osabi_linux then
+		(''Linux'')
+	else if m = elf_osabi_solaris then
+		(''Sun Solaris'')
+	else if m = elf_osabi_aix then
+		(''AIX'')
+	else if m = elf_osabi_irix then
+		(''IRIX'')
+	else if m = elf_osabi_freebsd then
+		(''FreeBSD'')
+	else if m = elf_osabi_tru64 then
+		(''Compaq Tru64 Unix'')
+	else if m = elf_osabi_modesto then
+		(''Novell Modesto'')
+	else if m = elf_osabi_openbsd then
+		(''OpenBSD'')
+	else if m = elf_osabi_openvms then
+		(''OpenVMS'')
+	else if m = elf_osabi_nsk then
+		(''Hewlett-Packard Non-stop Kernel'')
+	else if m = elf_osabi_aros then
+		(''Amiga Research OS'')
+	else if m = elf_osabi_fenixos then
+		(''FenixOS highly-scalable multi-core OS'')
+  else if m = elf_osabi_cloudabi then
+    (''Nuxi CloudABI'')
+  else if m = elf_osabi_openvos then
+    (''Stratus technologies OpenVOS'')
+	else if is_valid_architecture_defined_osabi_version m then
+	  arch m
+	else
+		(''Invalid OSABI version''))"
+
 
 (** ELF Header type *)
 
@@ -1556,7 +1666,7 @@ definition get_elf64_machine_architecture  :: " elf64_header \<Rightarrow> nat "
 (*val get_elf32_osabi : elf32_header -> natural*)
 definition get_elf32_osabi  :: " elf32_header \<Rightarrow> nat "  where 
      " get_elf32_osabi hdr = (
-  (case  index(elf32_ident   hdr) (id elf_ii_osabi) of
+  (case  index(elf32_ident   hdr) ( elf_ii_osabi) of
       Some osabi => unat osabi
     | None    => failwith (''get_elf32_osabi: lookup in ident failed'')
   ))"
@@ -1568,7 +1678,7 @@ definition get_elf32_osabi  :: " elf32_header \<Rightarrow> nat "  where
 (*val get_elf64_osabi : elf64_header -> natural*)
 definition get_elf64_osabi  :: " elf64_header \<Rightarrow> nat "  where 
      " get_elf64_osabi hdr = (
-  (case  index(elf64_ident   hdr) (id elf_ii_osabi) of
+  (case  index(elf64_ident   hdr) ( elf_ii_osabi) of
       Some osabi => unat osabi
     | None    => failwith (''get_elf64_osabi: lookup in ident failed'')
   ))"
@@ -1580,7 +1690,7 @@ definition get_elf64_osabi  :: " elf64_header \<Rightarrow> nat "  where
 (*val get_elf32_data_encoding : elf32_header -> natural*)
 definition get_elf32_data_encoding  :: " elf32_header \<Rightarrow> nat "  where 
      " get_elf32_data_encoding hdr = (
-  (case  index(elf32_ident   hdr) (id elf_ii_data) of
+  (case  index(elf32_ident   hdr) ( elf_ii_data) of
       Some data => unat data
     | None    => failwith (''get_elf32_data_encoding: lookup in ident failed'')
   ))"
@@ -1592,7 +1702,7 @@ definition get_elf32_data_encoding  :: " elf32_header \<Rightarrow> nat "  where
 (*val get_elf64_data_encoding : elf64_header -> natural*)
 definition get_elf64_data_encoding  :: " elf64_header \<Rightarrow> nat "  where 
      " get_elf64_data_encoding hdr = (
-  (case  index(elf64_ident   hdr) (id elf_ii_data) of
+  (case  index(elf64_ident   hdr) ( elf_ii_data) of
       Some data => unat data
     | None    => failwith (''get_elf64_data_encoding: lookup in ident failed'')
   ))"
@@ -1604,7 +1714,7 @@ definition get_elf64_data_encoding  :: " elf64_header \<Rightarrow> nat "  where
 (*val get_elf32_file_class : elf32_header -> natural*)
 definition get_elf32_file_class  :: " elf32_header \<Rightarrow> nat "  where 
      " get_elf32_file_class hdr = (
-  (case  index(elf32_ident   hdr) (id elf_ii_class) of
+  (case  index(elf32_ident   hdr) ( elf_ii_class) of
       Some cls => unat cls
     | None    => failwith (''get_elf32_file_class: lookup in ident failed'')
   ))"
@@ -1616,7 +1726,7 @@ definition get_elf32_file_class  :: " elf32_header \<Rightarrow> nat "  where
 (*val get_elf64_file_class : elf64_header -> natural*)
 definition get_elf64_file_class  :: " elf64_header \<Rightarrow> nat "  where 
      " get_elf64_file_class hdr = (
-  (case  index(elf64_ident   hdr) (id elf_ii_class) of
+  (case  index(elf64_ident   hdr) ( elf_ii_class) of
       Some cls => unat cls
     | None    => failwith (''get_elf64_file_class: lookup in ident failed'')
   ))"
@@ -1628,7 +1738,7 @@ definition get_elf64_file_class  :: " elf64_header \<Rightarrow> nat "  where
 (*val get_elf32_version_number : elf32_header -> natural*)
 definition get_elf32_version_number  :: " elf32_header \<Rightarrow> nat "  where 
      " get_elf32_version_number hdr = (
-  (case  index(elf32_ident   hdr) (id elf_ii_version) of
+  (case  index(elf32_ident   hdr) ( elf_ii_version) of
       Some ver => unat ver
     | None    => failwith (''get_elf32_version_number: lookup in ident failed'')
   ))"
@@ -1640,7 +1750,7 @@ definition get_elf32_version_number  :: " elf32_header \<Rightarrow> nat "  wher
 (*val get_elf64_version_number : elf64_header -> natural*)
 definition get_elf64_version_number  :: " elf64_header \<Rightarrow> nat "  where 
      " get_elf64_version_number hdr = (
-  (case  index(elf64_ident   hdr) (id elf_ii_version) of
+  (case  index(elf64_ident   hdr) ( elf_ii_version) of
       Some ver => unat ver
     | None    => failwith (''get_elf64_version_number: lookup in ident failed'')
   ))"
@@ -1674,7 +1784,7 @@ definition is_valid_elf64_version_numer  :: " elf64_header \<Rightarrow> bool " 
 (*val get_elf32_abi_version : elf32_header -> natural*)
 definition get_elf32_abi_version  :: " elf32_header \<Rightarrow> nat "  where 
      " get_elf32_abi_version hdr = (
-  (case  index(elf32_ident   hdr) (id elf_ii_abiversion) of
+  (case  index(elf32_ident   hdr) ( elf_ii_abiversion) of
       Some ver => unat ver
     | None    => failwith (''get_elf32_abi_version: lookup in ident failed'')
   ))"
@@ -1686,7 +1796,7 @@ definition get_elf32_abi_version  :: " elf32_header \<Rightarrow> nat "  where
 (*val get_elf64_abi_version : elf64_header -> natural*)
 definition get_elf64_abi_version  :: " elf64_header \<Rightarrow> nat "  where 
      " get_elf64_abi_version hdr = (
-  (case  index(elf64_ident   hdr) (id elf_ii_abiversion) of
+  (case  index(elf64_ident   hdr) ( elf_ii_abiversion) of
       Some ver => unat ver
     | None    => failwith (''get_elf64_abi_version: lookup in ident failed'')
   ))"
@@ -1814,19 +1924,75 @@ type_synonym hdr_print_bundle =" (nat \<Rightarrow> string) * (nat \<Rightarrow>
   * of header [hdr] using the ABI-specific print bundle [hdr_bdl].
   *)
 (*val string_of_elf32_header : hdr_print_bundle -> elf32_header -> string*)
+fun string_of_elf32_header  :: "(nat \<Rightarrow> string)*(nat \<Rightarrow> string)\<Rightarrow> elf32_header \<Rightarrow> string "  where 
+     " string_of_elf32_header (os, proc) hdr = (
+	unlines [	  
+(([(Char Nibble0 Nibble9)]) @ ((''Magic number: '') @ string_of_list 
+  instance_Show_Show_Elf_types_native_uint_unsigned_char_dict(elf32_ident   hdr)))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Endianness: '') @ string_of_endianness (deduce_endianness(elf32_ident   hdr))))
+	, (([(Char Nibble0 Nibble9)]) @ ((''Type: '') @ string_of_elf_file_type os proc (unat(elf32_type   hdr))))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Version: '') @ string_of_elf_version_number (unat(elf32_version   hdr))))
+	, (([(Char Nibble0 Nibble9)]) @ ((''Machine: '') @ string_of_elf_machine_architecture (unat(elf32_machine   hdr))))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Entry point: '') @ Elf_Types_Local.string_of_uint32(elf32_entry   hdr)))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Flags: '') @ Elf_Types_Local.string_of_uint32(elf32_flags   hdr)))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Entries in program header table: '') @ Elf_Types_Local.string_of_uint16(elf32_phnum   hdr)))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Entries in section header table: '') @ Elf_Types_Local.string_of_uint16(elf32_shnum   hdr)))
+	])" 
+declare string_of_elf32_header.simps [simp del]
+
 
 (** [string_of_elf64_header hdr_bdl hdr] returns a string-based representation
   * of header [hdr] using the ABI-specific print bundle [hdr_bdl].
   *)
 (*val string_of_elf64_header : hdr_print_bundle -> elf64_header -> string*)
+fun string_of_elf64_header  :: "(nat \<Rightarrow> string)*(nat \<Rightarrow> string)\<Rightarrow> elf64_header \<Rightarrow> string "  where 
+     " string_of_elf64_header (os, proc) hdr = (
+  unlines [    
+(([(Char Nibble0 Nibble9)]) @ ((''Magic number: '') @ string_of_list 
+  instance_Show_Show_Elf_types_native_uint_unsigned_char_dict(elf64_ident   hdr)))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Endianness: '') @ string_of_endianness (deduce_endianness(elf64_ident   hdr))))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Type: '') @ string_of_elf_file_type os proc (unat(elf64_type   hdr))))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Version: '') @ string_of_elf_version_number (unat(elf64_version   hdr))))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Machine: '') @ string_of_elf_machine_architecture (unat(elf64_machine   hdr))))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Entry point: '') @ Elf_Types_Local.string_of_uint64(elf64_entry   hdr)))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Flags: '') @ Elf_Types_Local.string_of_uint32(elf64_flags   hdr)))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Entries in program header table: '') @ Elf_Types_Local.string_of_uint16(elf64_phnum   hdr)))
+  , (([(Char Nibble0 Nibble9)]) @ ((''Entries in section header table: '') @ Elf_Types_Local.string_of_uint16(elf64_shnum   hdr)))
+  ])" 
+declare string_of_elf64_header.simps [simp del]
+
 
 (** The following are thin wrappers around the pretty-printing functions above
   * using a default print bundle for the header.
   *)
   
 (*val string_of_elf32_header_default : elf32_header -> string*)
+definition string_of_elf32_header_default  :: " elf32_header \<Rightarrow> string "  where 
+     " string_of_elf32_header_default = (
+	string_of_elf32_header
+    (default_os_specific_print,
+      default_proc_specific_print))"
+
 
 (*val string_of_elf64_header_default : elf64_header -> string*)
+definition string_of_elf64_header_default  :: " elf64_header \<Rightarrow> string "  where 
+     " string_of_elf64_header_default = (
+  string_of_elf64_header
+    (default_os_specific_print,
+      default_proc_specific_print))"
+
+	
+definition instance_Show_Show_Elf_header_elf32_header_dict  :: "(elf32_header)Show_class "  where 
+     " instance_Show_Show_Elf_header_elf32_header_dict = ((|
+
+  show_method = string_of_elf32_header_default |) )"
+
+
+definition instance_Show_Show_Elf_header_elf64_header_dict  :: "(elf64_header)Show_class "  where 
+     " instance_Show_Show_Elf_header_elf64_header_dict = ((|
+
+  show_method = string_of_elf64_header_default |) )"
+
 
 (** [read_elf_ident bs0] reads the initial bytes of an ELF file from byte sequence
   * [bs0], returning the remainder of the byte sequence too.
