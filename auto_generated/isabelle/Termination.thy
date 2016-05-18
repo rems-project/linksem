@@ -1313,9 +1313,11 @@ termination accumulate_hex_chars
   apply lexicographic_order
 done
 
+(*
 termination build_image
   apply lexicographic_order
 done
+*)
 
 termination cook_argv
   apply lexicographic_order
@@ -1341,23 +1343,29 @@ termination all_suffixes
   apply lexicographic_order
 done
 
+(*
 termination flush_output_sec
   apply lexicographic_order
 done
+*)
 
 termination mapiAux
   apply lexicographic_order
 done
 
+(*
 termination assign_inputs_to_output_sections'
   apply(relation "measure (\<lambda>(_,_,_,_,_,x). List.length x)")
   apply simp_all
 done
+*)
 
+(*
 termination assign_inputs_to_output_sections
   apply(relation "measure (\<lambda>(_,_,_,_,_,x). List.length x)")
   apply simp_all
 done
+*)
 
 termination mapMaybe
   apply lexicographic_order

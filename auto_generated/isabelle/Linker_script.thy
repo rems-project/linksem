@@ -187,13 +187,12 @@ and
 (* This mirrors the OutputSection constructor, except that the script elements have become
  * output_section_composition_elements, and we might store the size here. *)
 output_section_spec =
-  OutputSectionSpec " (output_guard *  nat option * string * ( output_section_composition_element list))"
-and
-allocated_sections_map = "(string, (output_section_spec (* OutputSection element idx *) * nat))
-  Map.map "
+  OutputSectionSpec "(output_guard *  nat option * string * ( output_section_composition_element list))"
 and
 address_expr_fn
-  = AddressExprFn " (nat \<Rightarrow> allocated_sections_map \<Rightarrow> nat)"
+  = AddressExprFn " (nat \<Rightarrow> nat)"
+
+type_synonym allocated_sections_map = "(string, (output_section_spec (* OutputSection element idx *) * nat)) Map.map "
 
 datatype script_element =
   DefineSymbol " (symbol_def_policy * string * symbol_spec)"
@@ -376,7 +375,7 @@ definition has_writability  :: " 'a \<Rightarrow> input_spec \<Rightarrow> bool 
 
 (*val address_zero : address_expr_fn*)
 definition address_zero  :: " address_expr_fn "  where 
-     " address_zero = ( AddressExprFn (\<lambda> pos .  (\<lambda> secs . ( 0 :: nat))))"
+     " address_zero = ( AddressExprFn (\<lambda> pos. ( 0 :: nat)))"
 
 
 (*
@@ -720,7 +719,7 @@ SECTIONS
      (ProvideIfUsed, (''__executable_start''), default_symbol_spec))
   , AdvanceAddress
       ((* BinRel(Eq, Constant( *) AddressExprFn
-         (\<lambda> _ .  (\<lambda> _ . 
+         (\<lambda> _ .  ( 
                           (segment_start (''text-segment'')
                              (( 4 :: nat) * ( 1048576 :: nat))) +
                             elf_headers_size)))
@@ -1073,7 +1072,7 @@ SECTIONS
                                                           s))])
   , AdvanceAddress
       (AddressExprFn
-         (\<lambda> addr .  (\<lambda> _ . 
+         (\<lambda> addr .  ( 
                              (* (align_up_to a.maxpagesize addr) - (natural_land (a.maxpagesize - addr) (a.maxpagesize - 1)) *)
                              (*
     FIXME: understand the intention of this assignment.
@@ -1495,7 +1494,7 @@ SECTIONS
                                            ) ])
   , AdvanceAddress
       (AddressExprFn
-         (\<lambda> pos .  (\<lambda> secs .  align_up_to
+         (\<lambda> pos .  (  align_up_to
                                                 (
                                                 if pos = ( 0 :: nat) then
                                                   (( 64 :: nat) div
@@ -1529,17 +1528,17 @@ SECTIONS
                                               (is_large_common)) ])
   , AdvanceAddress
       (AddressExprFn
-         (\<lambda> pos .  (\<lambda> secs .  align_up_to
+         (\<lambda> pos .  (  align_up_to
                                                 (( 64 :: nat) div ( 8 :: nat))
                                                 pos)))
   , AdvanceAddress
       (AddressExprFn
-         (\<lambda> pos .  (\<lambda> secs .  segment_start
+         (\<lambda> pos .  (  segment_start
                                                 (''ldata-segment'') pos)))
   , OutputSection
       (AlwaysOutput, Some
                        (AddressExprFn
-                          (\<lambda> pos .  \<lambda> secs .  align_up_to
+                          (\<lambda> pos . align_up_to
                                                                 ((maxpagesize   a)
                                                                    +
                                                                    ((
@@ -1565,7 +1564,7 @@ SECTIONS
                                                             s) ))
       , AdvanceAddress
           (AddressExprFn
-             (\<lambda> pos .  (\<lambda> secs .  (
+             (\<lambda> pos .  ( (
                                                   if \<not>
                                                        (pos = (( 0 :: nat))) then
                                                     ( 64 :: nat) div
@@ -1573,7 +1572,7 @@ SECTIONS
                                                     ( 1 :: nat))))) ])
   , AdvanceAddress
       (AddressExprFn
-         (\<lambda> pos .  (\<lambda> secs .  align_up_to
+         (\<lambda> pos .  (  align_up_to
                                                 (( 64 :: nat) div ( 8 :: nat))
                                                 pos)))
   , DefineSymbol (AlwaysDefine, (''_end''), default_symbol_spec)
@@ -1827,7 +1826,36 @@ type_synonym input_output_assignment =" ( input_spec list * (output_section_spec
     (input_spec -> input_spec -> Basic_classes.ordering) (* seen ordering *) ->
     labelled_linker_control_script -> 
     input_output_assignment*)     (* accumulated result *)
-function (sequential,domintros)  assign_inputs_to_output_sections  :: "(input_spec)list*(output_section_spec*nat)list \<Rightarrow>(nat*nat)set \<Rightarrow>(nat*nat*nat)set \<Rightarrow>(input_spec)list \<Rightarrow>(output_section_spec*nat)option \<Rightarrow>(input_spec)option \<Rightarrow>(input_spec \<Rightarrow> input_spec \<Rightarrow> ordering)\<Rightarrow>(script_element*nat)list \<Rightarrow>(input_spec)list*(output_section_spec*nat)list "  where 
+
+fun assign_inputs_to_output_sections :: "input_spec list * (output_section_spec * nat) list \<Rightarrow> (nat * nat) set \<Rightarrow> (nat * nat * nat) set \<Rightarrow>
+  input_spec list \<Rightarrow> (output_section_spec * nat) option \<Rightarrow> input_spec option \<Rightarrow> (input_spec \<Rightarrow> input_spec \<Rightarrow> ordering) \<Rightarrow> (script_element * nat) list \<Rightarrow>
+  input_spec list * (output_section_spec * nat) list"
+where
+  "assign_inputs_to_output_sections acc1 used_sections used_commons inputs1 cur_output_sec last_input_sec seen_ordering []     =
+     (let flush_output_sec = (\<lambda>maybe_output_sec_and_idx. 
+            (case maybe_output_sec_and_idx of
+               Some (OutputSectionSpec (guard, addr, name1, comp1), script_idx) \<Rightarrow>
+               (* evaluate the guard *)
+               if interpret_guard guard comp1 name1 then
+                 (fst acc1, (((OutputSectionSpec (guard, addr, name1, comp1)), script_idx) # (snd acc1)))
+               else acc1
+        | None \<Rightarrow> acc1))
+     in flush_output_sec cur_output_sec)" |
+  "assign_inputs_to_output_sections acc1 used_sections used_commons inputs1 cur_output_sec last_input_sec seen_ordering ((element, idx1) # more_elements_and_idx) =
+     (let (rev_discards, rev_outputs) = acc1;
+          flush_output_sec = (\<lambda>maybe_output_sec_and_idx. 
+       (case maybe_output_sec_and_idx of
+          Some (OutputSectionSpec (guard, addr, name1, comp1), script_idx) \<Rightarrow>
+            (* evaluate the guard *)
+            if interpret_guard guard comp1 name1 then
+              (rev_discards, (((OutputSectionSpec (guard, addr, name1, comp1)), script_idx) # rev_outputs))
+            else acc1
+        | None \<Rightarrow> acc1))
+     in
+       undefined)"
+
+(*
+function assign_inputs_to_output_sections  :: "(input_spec)list*(output_section_spec*nat)list \<Rightarrow>(nat*nat)set \<Rightarrow>(nat*nat*nat)set \<Rightarrow>(input_spec)list \<Rightarrow>(output_section_spec*nat)option \<Rightarrow>(input_spec)option \<Rightarrow>(input_spec \<Rightarrow> input_spec \<Rightarrow> ordering)\<Rightarrow>(script_element*nat)list \<Rightarrow>(input_spec)list*(output_section_spec*nat)list "  where 
      " assign_inputs_to_output_sections acc1 used_sections used_commons inputs1 (cur_output_sec ::  (output_section_spec * nat)option) last_input_sec seen_ordering script = ( 
     (let (rev_discards, rev_outputs) = acc1 in 
     (let flush_output_sec 
@@ -2006,7 +2034,7 @@ function (sequential,domintros)  assign_inputs_to_output_sections  :: "(input_sp
                 (more_elements_and_idx :: labelled_linker_control_script)))
     ))))" 
 by pat_completeness auto
-
+*)
 
 (* NOTE: this is also responsible for deleting any PROVIDEd symbols that 
  * were not actually referenced. BUT HOW, if we haven't built the image and 
@@ -2163,7 +2191,7 @@ definition assign_dot_to_itself  :: " address_expr_fn "  where
     labelled_linker_control_script -> 
     natural -> (* linker_script_linkable_idx *)
     (elf_memory_image * allocated_sections_map)*)            (* accumulated result *)
-function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_memory_image \<Rightarrow> nat \<Rightarrow>((string),(output_section_spec*nat))Map.map \<Rightarrow>((string),((nat*((nat*symbol_reference*(linkable_object*input_item*input_options))*(nat*symbol_definition*linkable_item)option))list))Map.map \<Rightarrow>(script_element*nat)list \<Rightarrow> nat \<Rightarrow>(any_abi_feature)annotated_memory_image*((string),(output_section_spec*nat))Map.map "  where 
+function  build_image  :: "(any_abi_feature)annotated_memory_image \<Rightarrow> nat \<Rightarrow>((string),(output_section_spec*nat))Map.map \<Rightarrow>((string),((nat*((nat*symbol_reference*(linkable_object*input_item*input_options))*(nat*symbol_definition*linkable_item)option))list))Map.map \<Rightarrow>(script_element*nat)list \<Rightarrow> nat \<Rightarrow>(any_abi_feature)annotated_memory_image*((string),(output_section_spec*nat))Map.map "  where 
      " build_image acc1 pos outputs_by_name bindings_by_name script linker_script_linkable_idx = ( 
      (let (add_output_section :: (nat * elf_memory_image) \<Rightarrow> output_section_spec \<Rightarrow> (nat * elf_memory_image * nat * output_section_spec))
      = (\<lambda> ((*scn_idx, *)pos, acc_img) . 
@@ -3130,10 +3158,10 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                     comp_addrs))
   in
   (let concat_sec_el = ((|
-                        Memory_image.startpos = (Some
+                        Memory_image.element.startpos = (Some
                                                    (output_section_start_addr))
-                        , Memory_image.length1 = (Some (size3))
-                        , Memory_image.contents = concatenated_content |)) in
+                        , Memory_image.element.length1 = (Some (size3))
+                        , Memory_image.element.contents = concatenated_content |)) in
   (let _ = (()) in
   (* Make a new element in the image, also transferring metadata from input elements 
              * as appropriate. *)
