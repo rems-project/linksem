@@ -91,7 +91,7 @@ definition ref_and_reloc_rec0  :: " symbol_reference_and_reloc_site "  where
       (|
             ref_relent  =                
  ((| elf64_ra_offset = (Elf_Types_Local.uint64_of_nat(( 0 :: nat)))
-                 , elf64_ra_info   = (of_int (int r_x86_64_pc32))
+                 , elf64_ra_info   = (of_int (int r_x86_64_32))
                  , elf64_ra_addend = (of_int(( 0 :: int)))
                  |))
           , ref_rel_scn =(( 0 :: nat))
@@ -122,8 +122,8 @@ definition def_rec0  :: " symbol_definition "  where
 (*val meta : list ((maybe element_range) * elf_range_tag)*)
 definition meta0  :: "nat \<Rightarrow> ((string*(nat*nat))option*(any_abi_feature)range_tag)list "  where 
      " meta0 offset = ( [
-        (Some ((''.text''), (( 1 :: nat),( 4 :: nat))), SymbolRef(ref_and_reloc_rec0))
-    ,   (Some ((''.data''), (( offset :: nat),( 8 :: nat))), SymbolDef(def_rec0))
+        (Some ((''.text''), (( 4 :: nat),( 4 :: nat))), SymbolRef(ref_and_reloc_rec0))
+    ,   (Some ((''.data''), (( offset :: nat),( 4 :: nat))), SymbolDef(def_rec0))
 ])"
 
 
