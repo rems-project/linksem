@@ -463,6 +463,16 @@ using assms
   apply(simp only: maybeCompare.simps)+
 done
 
+lemma relocDecisionCompare_refl:
+  shows "relocDecisionCompare d d = EQ"
+  apply(case_tac d; simp)
+  apply(case_tac x3; simp)
+  apply(rule tripleCompare_refl)
+  apply(rule allI, simp add: genericCompare_refl)
+  apply(rule allI, rule symRefCompare_refl)
+  apply(rule allI, rule relocSiteCompare_refl)
+done
+
 lemma symRefAndRelocSiteCompare_refl:
   shows "symRefAndRelocSiteCompare r r = EQ"
   apply(simp only: symRefAndRelocSiteCompare_def)
@@ -474,7 +484,7 @@ lemma symRefAndRelocSiteCompare_refl:
   apply(rule allI)
   apply(case_tac x, clarify)
   apply(rule pairCompare_refl)
-  apply(rule allI, case_tac p; clarify; simp)
+  apply(rule allI, rule relocDecisionCompare_refl)
   apply(rule allI, rule maybeCompare_refl)
   apply(rule allI, rule symDefCompare_refl)
 done
@@ -753,8 +763,7 @@ using assms
   apply(rule pairCompare_GT_pairCompare_LT, assumption)
   apply(rule genericCompare_GT_genericCompare_LT, assumption)
   apply(rule pairCompare_GT_pairCompare_LT, assumption)
-  apply(rule genericCompare_GT_genericCompare_LT, assumption)
-  apply(rule genericCompare_GT_genericCompare_LT, assumption)
+  apply(rule genericCompare_GT_genericCompare_LT, assumption)+
 done
 
 lemma symDefCompare_LT_symDefCompare_GT:
@@ -769,8 +778,7 @@ using assms
   apply(rule pairCompare_LT_pairCompare_GT, assumption)
   apply(rule genericCompare_LT_genericCompare_GT, assumption)
   apply(rule pairCompare_LT_pairCompare_GT, assumption)
-  apply(rule genericCompare_LT_genericCompare_GT, assumption)
-  apply(rule genericCompare_LT_genericCompare_GT, assumption)
+  apply(rule genericCompare_LT_genericCompare_GT, assumption)+
 done
 
 lemma symRefCompare_GT_symRefCompare_LT:
@@ -810,8 +818,7 @@ using assms
   apply(rule pairCompare_GT_pairCompare_LT, assumption)
   apply(rule genericCompare_GT_genericCompare_LT, assumption)
   apply(rule pairCompare_GT_pairCompare_LT, assumption)
-  apply(rule genericCompare_GT_genericCompare_LT, assumption)
-  apply(rule genericCompare_GT_genericCompare_LT, assumption)
+  apply(rule genericCompare_GT_genericCompare_LT, assumption)+
 done
 
 lemma symRefCompare_LT_symRefCompare_GT:
@@ -833,6 +840,10 @@ lemma relocDecisionCompare_GT_relocDecisionCompare_LT:
   shows "relocDecisionCompare y x = LT"
 using assms
   apply(case_tac x; case_tac y; simp)
+  apply(rule tripleCompare_GT_tripleCompare_LT, assumption)
+  apply(rule genericCompare_GT_genericCompare_LT, assumption)
+  apply(rule symRefCompare_GT_symRefCompare_LT, assumption)
+  apply(rule relocSiteCompare_GT_relocSiteCompare_LT, assumption)
 done
 
 lemma symRefAndRelocSiteCompare_GT_symRefAndRelocSiteCompare_LT:
@@ -882,25 +893,27 @@ using assms
   apply(rule pairCompare_LT_pairCompare_GT, assumption)
   apply(rule genericCompare_LT_genericCompare_GT, assumption)
   apply(rule pairCompare_LT_pairCompare_GT, assumption)
-  apply(rule genericCompare_LT_genericCompare_GT, assumption)
-  apply(rule genericCompare_LT_genericCompare_GT, assumption)
+  apply(rule genericCompare_LT_genericCompare_GT, assumption)+
 done
 
 lemma relocDecisionCompare_LT_relocDecisionCompare_GT:
   assumes "relocDecisionCompare x y = LT"
   shows "relocDecisionCompare y x = GT"
 using assms
-  apply(case_tac x; case_tac y; simp)
+  apply(case_tac x; case_tac y; simp only: relocDecisionCompare.simps ordering.simps)
+  apply(rule tripleCompare_LT_tripleCompare_GT, assumption)
+  apply(rule genericCompare_LT_genericCompare_GT, assumption)
+  apply(rule symRefCompare_LT_symRefCompare_GT, assumption)
+  apply(rule relocSiteCompare_LT_relocSiteCompare_GT, assumption)
 done
 
 lemma symRefAndRelocSiteCompare_LT_symRefAndRelocSiteCompare_GT:
   assumes "symRefAndRelocSiteCompare x y = LT"
   shows "symRefAndRelocSiteCompare y x = GT"
 using assms
-  apply(case_tac x; case_tac y; simp add: symRefAndRelocSiteCompare_def tripleCompare.simps)
-  apply(rule pairCompare_LT_pairCompare_GT, assumption)
+  apply(case_tac x; case_tac y; simp add: symRefAndRelocSiteCompare_def pairCompare.simps)
+  apply(rule tripleCompare_LT_tripleCompare_GT, assumption)
   apply(rule symRefCompare_LT_symRefCompare_GT, assumption)
-  apply(rule pairCompare_LT_pairCompare_GT, assumption)
   apply(rule maybeCompare_LT_maybeCompare_GT, assumption)
   apply(rule relocSiteCompare_LT_relocSiteCompare_GT, assumption)
   apply(rule maybeCompare_LT_maybeCompare_GT, assumption)
@@ -984,7 +997,8 @@ lemma compare_elf64_interpreted_section_GT_compare_elf64_interpreted_section_LT:
   assumes "compare_elf64_interpreted_section x y = GT"
   shows "compare_elf64_interpreted_section y x = LT"
 using assms
-  apply(case_tac x; case_tac y; simp add: compare_elf64_interpreted_section_def tripleCompare.simps)
+  apply(case_tac x; case_tac y; simp add: compare_elf64_interpreted_section_def)
+  apply(simp only: tripleCompare.simps)
   apply(rule pairCompare_GT_pairCompare_LT, assumption)
   apply(rule lexicographicCompareBy_GT_lexicographicCompareBy_LT, assumption)
   apply(rule genericCompare_GT_genericCompare_LT, assumption)
@@ -1185,7 +1199,7 @@ using assms proof(auto)
   proof(induction s arbitrary: t)
     fix t :: string
     assume "[] \<noteq> t" and *: "stringCompare_method [] t = EQ"
-    from this obtain x xs where "t = x#xs" by(metis list.exhaust)
+    from this obtain x xs where "t = x#xs" by (metis list.exhaust)
     hence "stringCompare_method [] (x#xs) = EQ" using * by simp
     hence "LT = EQ" using stringCompare_method_def by simp
     thus False using ordering.simps by simp
@@ -1287,6 +1301,14 @@ done
 lemma relocDecisionCompare_refl':
   shows "relocDecisionCompare x y = EQ \<longleftrightarrow> x = y"
   apply(case_tac x; case_tac y; simp)
+  apply(case_tac x3; case_tac x3a; simp)
+  apply(simp only: tripleCompare.simps)
+  apply(subst pairCompare_refl')
+  apply(simp add: genericCompare_def)
+  apply(subst pairCompare_refl')
+  apply(simp add: symRefCompare_refl')
+  apply(simp add: relocSiteCompare_refl')
+  apply simp+
 done
 
 lemma symRefAndRelocSiteCompare_refl':
@@ -1390,17 +1412,15 @@ done
 
 lemma compare_elf64_interpreted_section_refl':
   shows "compare_elf64_interpreted_section x y = EQ \<longleftrightarrow> x = y"
-  apply(case_tac x; case_tac y; simp add: compare_elf64_interpreted_section_def tripleCompare.simps pairCompare.simps)
-  apply(case_tac "lexicographicCompareBy (genericCompare op < op =)
-               [elf64_section_name, elf64_section_type, elf64_section_flags, elf64_section_addr, elf64_section_offset, elf64_section_size, elf64_section_link, elf64_section_info,
-                elf64_section_align, elf64_section_entsize]
-               [elf64_section_namea, elf64_section_typea, elf64_section_flagsa, elf64_section_addra, elf64_section_offseta, elf64_section_sizea, elf64_section_linka, elf64_section_infoa,
-                elf64_section_aligna, elf64_section_entsizea]"; simp)
-  apply(metis ordering.distinct lexicographicCompareBy_refl' genericCompare_refl)
-  apply(subst (asm) lexicographicCompareBy_refl', simp add: genericCompare_refl)
-  apply(subst pairCompare_refl', subst compare_byte_sequence_refl', simp, rule stringCompare_method_refl')
-  apply(auto)
-  apply(metis ordering.distinct lexicographicCompareBy_refl' genericCompare_refl)
+  apply(case_tac x; case_tac y; simp add: compare_elf64_interpreted_section_def)
+  apply(simp only: tripleCompare.simps)
+  apply(subst pairCompare_refl')
+  apply(subst lexicographicCompareBy_refl')
+  apply(simp add: genericCompare_def, rule refl)
+  apply(subst pairCompare_refl')
+  apply(subst compare_byte_sequence_refl', simp)
+  apply(subst stringCompare_method_refl')
+  apply simp_all
 done
 
 lemma natural_of_bool_refl':
@@ -1532,17 +1552,36 @@ using assms
   apply(rule genericCompare_LT_genericCompare_GT, assumption)+
 done
 
+lemma plt_entry_content_fn_compare_GT_plt_entry_content_fn_compare_LT:
+  assumes "plt_entry_content_fn_compare f g = GT"
+  shows "plt_entry_content_fn_compare g f = LT"
+using assms
+sorry
+
+lemma plt_entry_content_fn_compare_LT_plt_entry_content_fn_compare_GT:
+  assumes "plt_entry_content_fn_compare f g = LT"
+  shows "plt_entry_content_fn_compare g f = GT"
+using assms
+sorry
+
 lemma abiFeatureCompare0_GT_abiFeatureCompare0_LT:
   assumes "abiFeatureCompare0 x y = GT"
   shows "abiFeatureCompare0 y x = LT"
 using assms
   apply(case_tac x; case_tac y; simp add: abiFeatureCompare0.simps)
   apply(rule lexicographicCompareBy_GT_lexicographicCompareBy_LT, assumption)
-  apply(rule tripleCompare_GT_tripleCompare_LT, assumption)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption)
   apply(rule stringCompare_method_GT_stringCompare_method_LT, assumption)
   apply(rule maybeCompare_GT_maybeCompare_LT, assumption)
-  apply(rule element_range_compare_GT_element_range_compare_LT, assumption)
-  apply(rule symRefAndRelocSiteCompare_GT_symRefAndRelocSiteCompare_LT, assumption)
+  apply(rule symDefCompare_GT_symDefCompare_LT, assumption)
+  apply(rule lexicographicCompareBy_GT_lexicographicCompareBy_LT, assumption)
+  apply(case_tac xa; case_tac ya; simp add: tripleCompare.simps)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption)
+  apply(rule stringCompare_method_GT_stringCompare_method_LT, assumption)
+  apply(rule pairCompare_GT_pairCompare_LT, assumption)
+  apply(rule maybeCompare_GT_maybeCompare_LT, assumption)
+  apply(rule symDefCompare_GT_symDefCompare_LT, assumption)
+  apply(rule plt_entry_content_fn_compare_GT_plt_entry_content_fn_compare_LT, assumption)
 done
 
 lemma abiFeatureCompare0_LT_abiFeatureCompare0_GT:
@@ -1551,11 +1590,18 @@ lemma abiFeatureCompare0_LT_abiFeatureCompare0_GT:
 using assms
   apply(case_tac x; case_tac y; simp add: abiFeatureCompare0.simps)
   apply(rule lexicographicCompareBy_LT_lexicographicCompareBy_GT, assumption)
-  apply(rule tripleCompare_LT_tripleCompare_GT, assumption)
+  apply(rule pairCompare_LT_pairCompare_GT, assumption)
   apply(rule stringCompare_method_LT_stringCompare_method_GT, assumption)
   apply(rule maybeCompare_LT_maybeCompare_GT, assumption)
-  apply(rule element_range_compare_LT_element_range_compare_GT, assumption)
-  apply(rule symRefAndRelocSiteCompare_LT_symRefAndRelocSiteCompare_GT, assumption)
+  apply(rule symDefCompare_LT_symDefCompare_GT, assumption)
+  apply(rule lexicographicCompareBy_LT_lexicographicCompareBy_GT, assumption)
+  apply(case_tac xa; case_tac ya; simp add: tripleCompare.simps)
+  apply(rule pairCompare_LT_pairCompare_GT, assumption)
+  apply(rule stringCompare_method_LT_stringCompare_method_GT, assumption)
+  apply(rule pairCompare_LT_pairCompare_GT, assumption)
+  apply(rule maybeCompare_LT_maybeCompare_GT, assumption)
+  apply(rule symDefCompare_LT_symDefCompare_GT, assumption)
+  apply(rule plt_entry_content_fn_compare_LT_plt_entry_content_fn_compare_GT, assumption)
 done
 
 lemma abiFeatureCompare_GT_abiFeatureCompare_LT:
@@ -1604,15 +1650,42 @@ lemma element_range_compare_refl':
   apply(simp add: genericCompare_def)+
 done
 
+lemma plt_entry_content_fn_compare_refl':
+  shows "plt_entry_content_fn_compare f g = EQ \<longleftrightarrow> f = g"
+unfolding plt_entry_content_fn_compare_def
+  apply(case_tac "\<forall>n1 n2. pairCompare (genericCompare op < op =) (lexicographicCompareBy (genericCompare op < op =)) (f n1 n2) (g n1 n2) = EQ"; simp)
+  apply(subst (asm) pairCompare_refl')
+  apply(simp add: genericCompare_def)
+  apply(rule lexicographicCompareBy_refl')
+  apply(simp add: genericCompare_def)
+  apply(rule ext, rule ext, simp)
+  apply(rule conjI)
+  apply(rule impI)
+  apply(rule conjI)
+  apply(rule impI)
+  apply simp
+  apply auto
+  apply(simp add: pairCompare_refl' genericCompare_def lexicographicCompareBy_refl')+
+done
+
 lemma abiFeatureCompare0_refl':
   shows "abiFeatureCompare0 x y = EQ \<longleftrightarrow> x = y"
   apply(case_tac x; case_tac y; simp add: abiFeatureCompare0.simps)
   apply(rule lexicographicCompareBy_refl')
-  apply(rule tripleCompare_refl')
+  apply(rule pairCompare_refl')
   apply(rule stringCompare_method_refl')
   apply(rule maybeCompare_refl')
-  apply(rule element_range_compare_refl')
-  apply(rule symRefAndRelocSiteCompare_refl')
+  apply(rule symDefCompare_refl')
+  apply(rule lexicographicCompareBy_refl')
+  apply(case_tac "xa"; case_tac "ya"; simp)
+  apply(simp only: tripleCompare.simps)
+  apply(subst pairCompare_refl')
+  apply(rule stringCompare_method_refl')
+  apply(rule pairCompare_refl')
+  apply(rule maybeCompare_refl')
+  apply(rule symDefCompare_refl')
+  apply(rule plt_entry_content_fn_compare_refl')
+  apply simp
 done
 
 lemma anyAbiFeatureCompare_refl':

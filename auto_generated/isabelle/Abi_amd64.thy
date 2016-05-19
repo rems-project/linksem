@@ -85,16 +85,24 @@ definition shf_x86_64_large  :: " nat "  where
 type_synonym 'abifeature plt_entry_content_fn =" nat \<Rightarrow> nat \<Rightarrow> (nat * Elf_Types_Local.byte list)"
                                      (* PLT base addr, GOT base addr (the rest is closure-captured) -> slot_addr, slot contents *)
 
+definition plt_entry_content_fn_compare :: "'a plt_entry_content_fn \<Rightarrow> 'a plt_entry_content_fn \<Rightarrow> ordering" where
+  "plt_entry_content_fn_compare f1 f2 \<equiv>
+     ((if \<forall>n1 n2. pairCompare (genericCompare (op <) (op =)) (lexicographicCompareBy (genericCompare (op <) (op =))) (f1 n1 n2) (f2 n1 n2) = EQ then
+         EQ
+       else if \<exists>n1 n2. pairCompare (genericCompare (op <) (op =)) (lexicographicCompareBy (genericCompare (op <) (op =))) (f1 n1 n2) (f2 n1 n2) = GT then
+         GT
+       else LT))"
+
 datatype 'abifeature amd64_abi_feature = 
     GOT0 "  ( (string * ( symbol_definition option))list)"
     | PLT0 " ( (string * ( symbol_definition option) * 'abifeature plt_entry_content_fn)list)"
     
 (*val abiFeatureCompare : forall 'abifeature. amd64_abi_feature 'abifeature -> amd64_abi_feature 'abifeature -> Basic_classes.ordering*)
 fun abiFeatureCompare0  :: " 'abifeature amd64_abi_feature \<Rightarrow> 'abifeature amd64_abi_feature \<Rightarrow> ordering "  where 
-     " abiFeatureCompare0 (GOT0(_)) (GOT0(_)) = ( EQ )"
+     " abiFeatureCompare0 (GOT0 gs) (GOT0 is) = lexicographicCompareBy (pairCompare stringCompare_method (maybeCompare symDefCompare)) gs is"
 |" abiFeatureCompare0 (GOT0(_)) (PLT0(_)) = ( LT )"
-|" abiFeatureCompare0 (PLT0(_)) (PLT0(_)) = ( EQ )"
-|" abiFeatureCompare0 (PLT0(_)) (GOT0(_)) = ( GT )" 
+|" abiFeatureCompare0 (PLT0 ps) (PLT0 qs) = lexicographicCompareBy (tripleCompare stringCompare_method (maybeCompare symDefCompare) plt_entry_content_fn_compare) ps qs"
+|" abiFeatureCompare0 (PLT0 (_)) (GOT0(_)) = ( GT )" 
 declare abiFeatureCompare0.simps [simp del]
 
 
