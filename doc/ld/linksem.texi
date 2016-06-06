@@ -1,0 +1,25 @@
+@c This is the bitbucket URL fragment corresponding to the documented commit.
+@c Update this to point to the latest git revision that this documentation applies to.
+@macro bbcommit cd0c00e5f9d097206a317762da4d5bd581067c31
+@end macro
+
+@macro semnote{text}
+@ifinfo
+@quotation
+@center ==================================================================
+@center @strong{linksem note:}
+\text\@*
+@center ==================================================================
+@end quotation
+@end ifinfo
+@ifnotinfo
+@cartouche
+@center @strong{linksem note:}
+\text\
+@end cartouche
+@end ifnotinfo
+@end macro
+
+@macro semurl{url}
+@uref{https://bitbucket.org/Peter_Sewell/linksem/src/@bbcommit{}/src/\url\,\url\}
+@end macro
