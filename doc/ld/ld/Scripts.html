@@ -69,6 +69,14 @@ default linker script.
    <p>You may also use linker scripts implicitly by naming them as input files
 to the linker, as though they were files to be linked.  See <a href="Implicit-Linker-Scripts.html#Implicit-Linker-Scripts">Implicit Linker Scripts</a>.
 
+   <p><table class="cartouche" summary="cartouche" border="1"><tr><td>
+<div align="center"><strong>linksem note:</strong></div>
+<p>The linker script language is largely supported; details follow. 
+However, no parser is currently provided, so only the main linker script
+is modelled; this may be found, in a Lem AST representation,
+in <a href="https://bitbucket.org/Peter_Sewell/linksem/src/cd0c00e5f9d097206a317762da4d5bd581067c31/src/linker_script.lem">linker_script.lem</a>. 
+</td></tr></table>
+
 <ul class="menu">
 <li><a accesskey="1" href="Basic-Script-Concepts.html#Basic-Script-Concepts">Basic Script Concepts</a>: 	Basic Linker Script Concepts
 <li><a accesskey="2" href="Script-Format.html#Script-Format">Script Format</a>: 		Linker Script Format

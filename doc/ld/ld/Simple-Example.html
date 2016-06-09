@@ -72,6 +72,29 @@ linker script which will do that:
        .bss : { *(.bss) }
      }
 </pre>
+   <p><table class="cartouche" summary="cartouche" border="1"><tr><td>
+<div align="center"><strong>linksem note:</strong></div>
+<p>In AST form, the above script appears as the following Lem code.
+
+<pre class="smallexample">       [AdvanceAddress(AddressExprFn (fun _ -&gt; (fun _ -&gt; 65536)))
+       ; OutputSection(AlwaysOutput, Nothing, ".text",
+         [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".text"))])
+       ; AdvanceAddress(AddressExprFn (fun _ -&gt; (fun _ -&gt; 134217728)))
+       ; OutputSection(AlwaysOutput, Nothing, ".data",
+         [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".data"))])
+       ; OutputSection(AlwaysOutput, Nothing, ".bss",
+         [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".bss"))])
+       ]
+</pre>
+   <p>Note that some elements of the linker script language are only shallowly embedded. 
+Specifically, Lem arithmetic is used directly in place of linker-script arithmetic. 
+Also, helper functions in Lem are used to match names (<code>name_matches</code>)
+and compute sublists of input sections (<code>filter_and_concat</code>),
+rather than having a direct AST form of their own
+(cf. the script language's <code>*(.data)</code> and similar).
+
+   </td></tr></table>
+
    <p>You write the &lsquo;<samp><span class="samp">SECTIONS</span></samp>&rsquo; command as the keyword &lsquo;<samp><span class="samp">SECTIONS</span></samp>&rsquo;,
 followed by a series of symbol assignments and output section
 descriptions enclosed in curly braces.

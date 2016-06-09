@@ -279,7 +279,7 @@ directories.  (See the discussion of the @samp{-l} option below.)
 
 @semnote{linksem is invoked the same way as the linker, but
 the output file must already exist. A second output file,
-containing linksem's attempt at the same link, is created in @code{output.test-out}.
+containing linksem's attempt at the same link, is created in @var{output.test-out}.
 The intention of this file is that it embodies the same memory image
 as the actual link output; it is unlikely to be bytewise-identical,
 owing to alternative renderings of ELF file features (e.g. ordering of section headers
@@ -319,6 +319,11 @@ extra commands placed after the main script; use the @samp{-T} option
 to replace the default linker script entirely, but note the effect of
 the @code{INSERT} command.  @xref{Scripts}.
 
+@semnote{Augmenting linker scripts are not currently supported,
+although could easily be added.
+To change the main linker script, one must edit its Lem AST form
+in @semurl{linker_script.lem} and rebuild.}
+
 For options whose names are a single letter,
 option arguments must either follow the option letter without intervening
 whitespace, or be given as separate arguments immediately following the
@@ -333,12 +338,17 @@ only be preceded by two dashes.  This is to reduce confusion with the
 name to @samp{magic} whereas @samp{--omagic} sets the NMAGIC flag on the
 output.
 
+@semnote{Command-line processing does not currently replicate this quirk.}
+
 Arguments to multiple-letter options must either be separated from the
 option name by an equals sign, or be given as separate arguments
 immediately following the option that requires them.  For example,
 @samp{--trace-symbol foo} and @samp{--trace-symbol=foo} are equivalent.
 Unique abbreviations of the names of multiple-letter options are
 accepted.
+
+@semnote{Use of the equals sign is supported, as is the separate-argument form;
+abbreviation sare not supported.}
 
 Note---if the linker is being invoked indirectly, via a compiler driver
 (e.g. @samp{gcc}) then all the linker command line options should be
@@ -377,6 +387,8 @@ argument must be one of the strings @samp{archive}, @samp{shared}, or
 @samp{-Bstatic}, and the other two keywords are functionally equivalent
 to @samp{-Bdynamic}.  This option may be used any number of times.
 
+@semnote{Not supported.}
+
 @kindex --audit @var{AUDITLIB}
 @item --audit @var{AUDITLIB}
 Adds @var{AUDITLIB} to the @code{DT_AUDIT} entry of the dynamic section.
@@ -387,6 +399,8 @@ finds an object with an audit entry while searching for shared libraries,
 it will add a corresponding @code{DT_DEPAUDIT} entry in the output file.
 This option is only meaningful on ELF platforms supporting the rtld-audit
 interface.
+
+@semnote{Not currently supported.}
 
 @ifset I960
 @cindex architectures
@@ -403,6 +417,8 @@ family}, for details.
 
 Future releases of @command{ld} may support similar functionality for
 other architecture families.
+
+@semnote{Not currently supported.}
 @end ifset
 
 @ifclear SingleFormat
@@ -430,6 +446,8 @@ binary format.  You can also use @samp{-b} to switch formats explicitly (when
 linking object files of different formats), by including
 @samp{-b @var{input-format}} before each group of object files in a
 particular format.
+
+@semnote{Not supported: binary inputs must be ELF.}
 
 The default format is taken from the environment variable
 @code{GNUTARGET}.
@@ -462,6 +480,8 @@ scripts written in the general-purpose @command{ld} scripting language.
 If @var{MRI-cmdfile} does not exist, @command{ld} looks for it in the directories
 specified by any @samp{-L} options.
 
+@semnote{Not supported.}
+
 @cindex common allocation
 @kindex -d
 @kindex -dc
@@ -475,6 +495,8 @@ even if a relocatable output file is specified (with @samp{-r}).  The
 script command @code{FORCE_COMMON_ALLOCATION} has the same effect.
 @xref{Miscellaneous Commands}.
 
+@semnote{Not currently supported (since relocatable output is not).}
+
 @kindex --depaudit @var{AUDITLIB}
 @kindex -P @var{AUDITLIB}
 @item --depaudit @var{AUDITLIB}
@@ -485,6 +507,8 @@ specified in the library.  If specified multiple times @code{DT_DEPAUDIT}
 will contain a colon separated list of audit interfaces to use.  This
 option is only meaningful on ELF platforms supporting the rtld-audit interface.
 The -P option is provided for Solaris compatibility.
+
+@semnote{Not currently supported.}
 
 @cindex entry point, from command line
 @kindex -e @var{entry}
@@ -499,6 +523,7 @@ base 10; you may use a leading @samp{0x} for base 16, or a leading
 @samp{0} for base 8).  @xref{Entry Point}, for a discussion of defaults
 and other ways of specifying the entry point.
 
+@semnote{Not currently supported.}
 @kindex --exclude-libs
 @item --exclude-libs @var{lib},@var{lib},...
 Specifies a list of archive libraries from which symbols should not be automatically
@@ -509,6 +534,8 @@ port of the linker and for ELF targeted ports.  For i386 PE, symbols
 explicitly listed in a .def file are still exported, regardless of this
 option.  For ELF targeted ports, symbols affected by this option will
 be treated as hidden.
+
+@semnote{Not currently supported.}
 
 @kindex --exclude-modules-for-implib
 @item --exclude-modules-for-implib @var{module},@var{module},...
@@ -522,6 +549,8 @@ match precisely any path used to specify the input file on the linker's
 command-line.  This option is available only for the i386 PE targeted port
 of the linker.  Symbols explicitly listed in a .def file are still exported,
 regardless of this option.
+
+@semnote{Not currently supported.}
 
 @cindex dynamic symbol table
 @kindex -E
@@ -553,6 +582,8 @@ Note that this option is specific to ELF targeted ports.  PE targets
 support a similar function to export all symbols from a DLL or EXE; see
 the description of @samp{--export-all-symbols} below.
 
+@semnote{Not currently supported (until dynamic linking is added).}
+
 @ifclear SingleFormat
 @cindex big-endian objects
 @cindex endianness
@@ -560,10 +591,14 @@ the description of @samp{--export-all-symbols} below.
 @item -EB
 Link big-endian objects.  This affects the default output format.
 
+@semnote{Not currently supported.}
+
 @cindex little-endian objects
 @kindex -EL
 @item -EL
 Link little-endian objects.  This affects the default output format.
+
+@semnote{Not currently supported.}
 @end ifclear
 
 @kindex -f @var{name}
@@ -587,6 +622,8 @@ machine specific performance.
 
 This option may be specified more than once.  The DT_AUXILIARY entries
 will be created in the order in which they appear on the command line.
+
+@semnote{Not currently supported.}
 
 @kindex -F @var{name}
 @kindex --filter=@var{name}
@@ -616,6 +653,7 @@ environment variable.
 @end ifclear
 The @sc{gnu} linker will ignore the @option{-F} option when not
 creating an ELF shared object.
+@semnote{Not currently supported.}
 
 @cindex finalization function
 @kindex -fini=@var{name}
@@ -624,6 +662,7 @@ When creating an ELF executable or shared object, call NAME when the
 executable or shared object is unloaded, by setting DT_FINI to the
 address of the function.  By default, the linker uses @code{_fini} as
 the function to call.
+@semnote{Not currently supported.}
 
 @kindex -g
 @item -g
@@ -638,6 +677,7 @@ Set the maximum size of objects to be optimized using the GP register to
 @var{size}.  This is only meaningful for object file formats such as
 MIPS ELF that support putting large and small objects into different
 sections.  This is ignored for other object file formats.
+@semnote{Not currently supported.}
 
 @cindex runtime library name
 @kindex -h @var{name}
@@ -649,11 +689,13 @@ the specified name.  When an executable is linked with a shared object
 which has a DT_SONAME field, then when the executable is run the dynamic
 linker will attempt to load the shared object specified by the DT_SONAME
 field rather than the using the file name given to the linker.
+@semnote{Not currently supported.}
 
 @kindex -i
 @cindex incremental link
 @item -i
 Perform an incremental link (same as option @samp{-r}).
+@semnote{Not currently supported.}
 
 @cindex initialization function
 @kindex -init=@var{name}
@@ -662,6 +704,7 @@ When creating an ELF executable or shared object, call NAME when the
 executable or shared object is loaded, by setting DT_INIT to the address
 of the function.  By default, the linker uses @code{_init} as the
 function to call.
+@semnote{Not currently supported.}
 
 @cindex archive files, from cmd line
 @kindex -l @var{namespec}
@@ -700,6 +743,8 @@ This type of archive searching is standard for Unix linkers.  However,
 if you are using @command{ld} on AIX, note that it is different from the
 behaviour of the AIX linker.
 @end ifset
+@semnote{Library search is not currently supported; input files
+should be specified by their full path.}
 
 @cindex search directory, from cmd line
 @kindex -L @var{dir}
@@ -741,6 +786,9 @@ If the @samp{-m} option is not used, the emulation is taken from the
 
 Otherwise, the default emulation depends upon how the linker was
 configured.
+
+@semnote{Not currently supported as an input option; the emulation is 
+inferred by examining the output file.}
 
 @cindex link map
 @kindex -M
@@ -788,6 +836,8 @@ See @ref{Expressions} for more information about expressions in linker
 scripts.
 @end itemize
 
+@semnote{Ignored; link maps are printed by default.}
+
 @kindex -n
 @cindex read-only text
 @cindex NMAGIC
@@ -797,6 +847,8 @@ scripts.
 Turn off page alignment of sections, and disable linking against shared
 libraries.  If the output format supports Unix style magic numbers,
 mark the output as @code{NMAGIC}.
+
+@semnote{Not supported.}
 
 @kindex -N
 @kindex --omagic
@@ -811,6 +863,8 @@ mark the output as @code{OMAGIC}. Note: Although a writable text section
 is allowed for PE-COFF targets, it does not conform to the format
 specification published by Microsoft.
 
+@semnote{Not currently supported.}
+
 @kindex --no-omagic
 @cindex OMAGIC
 @item --no-omagic
@@ -818,6 +872,8 @@ This option negates most of the effects of the @option{-N} option.  It
 sets the text section to be read-only, and forces the data segment to
 be page-aligned.  Note - this option does not enable linking against
 shared libraries.  Use @option{-Bdynamic} for this.
+
+@semnote{Not currently supported.}
 
 @kindex -o @var{output}
 @kindex --output=@var{output}
@@ -827,6 +883,9 @@ shared libraries.  Use @option{-Bdynamic} for this.
 Use @var{output} as the name for the program produced by @command{ld}; if this
 option is not specified, the name @file{a.out} is used by default.  The
 script command @code{OUTPUT} can also specify the output file name.
+
+@semnote{Supported; the output file is assumed to exist, and is read in. A second
+output file, @var{output}@code{.test-out}, is generated.}
 
 @kindex -O @var{level}
 @cindex generating optimized output
@@ -838,6 +897,8 @@ option only affects ELF shared library generation.  Future releases of
 the linker may make more use of this option.  Also currently there is
 no difference in the linker's behaviour for different non-zero values
 of this option.  Again this may change with future releases.
+
+@semnote{Not currently supported.}
 
 @kindex --push-state
 @cindex push state governing input file handling
@@ -867,6 +928,8 @@ something as follows:
 Undoes the effect of --push-state, restores the previous values of the
 flags governing input file handling.
 
+@semnote{Not currently supported.}
+
 @kindex -q
 @kindex --emit-relocs
 @cindex retain relocations in final executable
@@ -878,6 +941,8 @@ order to perform correct modifications of executables.  This results
 in larger executables.
 
 This option is currently only supported on ELF platforms.
+
+@semnote{Not currently supported.}
 
 @kindex --force-dynamic
 @cindex forcing the creation of dynamic sections
@@ -909,6 +974,8 @@ with input files in other formats at all.
 
 This option does the same thing as @samp{-i}.
 
+@semnote{Not currently supported.}
+
 @kindex -R @var{file}
 @kindex --just-symbols=@var{file}
 @cindex symbol-only input
@@ -923,12 +990,16 @@ For compatibility with other ELF linkers, if the @option{-R} option is
 followed by a directory name, rather than a file name, it is treated as
 the @option{-rpath} option.
 
+@semnote{Not currently supported (either semantic).}
+
 @kindex -s
 @kindex --strip-all
 @cindex strip all symbols
 @item -s
 @itemx --strip-all
 Omit all symbol information from the output file.
+
+@semnote{Not currently supported.}
 
 @kindex -S
 @kindex --strip-debug
@@ -937,12 +1008,16 @@ Omit all symbol information from the output file.
 @itemx --strip-debug
 Omit debugger symbol information (but not all symbols) from the output file.
 
+@semnote{Not currently supported.}
+
 @kindex -t
 @kindex --trace
 @cindex input files, displaying
 @item -t
 @itemx --trace
 Print the names of the input files as @command{ld} processes them.
+
+@semnote{Not currently supported.}
 
 @kindex -T @var{script}
 @kindex --script=@var{script}
@@ -956,6 +1031,9 @@ output file.  @xref{Scripts}.  If @var{scriptfile} does not exist in
 the current directory, @code{ld} looks for it in the directories
 specified by any preceding @samp{-L} options.  Multiple @samp{-T}
 options accumulate.
+
+@semnote{Not currently supported. To change the main linker script,
+edit its AST in @semurl{linker_script.lem}.}
 
 @kindex -dT @var{script}
 @kindex --default-script=@var{script}
@@ -973,6 +1051,9 @@ command line cannot be directly controlled by the user.  (eg because
 the command line is being constructed by another tool, such as
 @samp{gcc}).
 
+@semnote{Not currently supported. To change the main linker script,
+edit its AST in @semurl{linker_script.lem}.}
+
 @kindex -u @var{symbol}
 @kindex --undefined=@var{symbol}
 @cindex undefined symbol
@@ -989,6 +1070,8 @@ into the link, and if it is an error for the symbol to remain
 undefined, then the option @option{--require-defined} should be used
 instead.
 
+@semnote{Not currently supported.}
+
 @kindex --require-defined=@var{symbol}
 @cindex symbols, require defined
 @cindex defined symbol
@@ -999,6 +1082,8 @@ is not defined in the output file then the linker will issue an error
 and exit.  The same effect can be achieved in a linker script by using
 @code{EXTERN}, @code{ASSERT} and @code{DEFINED} together.  This option
 can be used multiple times to require additional symbols.
+
+@semnote{Not currently supported.}
 
 @kindex -Ur
 @cindex constructors
@@ -1011,6 +1096,8 @@ It does not work to use @samp{-Ur} on files that were themselves linked
 with @samp{-Ur}; once the constructor table has been built, it cannot
 be added to.  Use @samp{-Ur} only for the last partial link, and
 @samp{-r} for the others.
+
+@semnote{Not currently supported.}
 
 @kindex --orphan-handling=@var{MODE}
 @cindex orphan sections
@@ -1041,6 +1128,9 @@ The linker will exit with an error if any orphan section is found.
 
 The default if @samp{--orphan-handling} is not given is @code{place}.
 
+@semnote{Setting this option is not currently supported. The @code{place}
+option is modelled by default.}
+
 @kindex --unique[=@var{SECTION}]
 @item --unique[=@var{SECTION}]
 Creates a separate output section for every input section matching
@@ -1050,6 +1140,8 @@ specifically mentioned in a linker script.  You may use this option
 multiple times on the command line;  It prevents the normal merging of
 input sections with the same name, overriding output section assignments
 in a linker script.
+
+@semnote{Not currently supported.}
 
 @kindex -v
 @kindex -V
@@ -1068,6 +1160,8 @@ lists the supported emulations.
 @itemx --discard-all
 Delete all local symbols.
 
+@semnote{Not currently supported.}
+
 @kindex -X
 @kindex --discard-locals
 @cindex local symbols, deleting
@@ -1076,6 +1170,8 @@ Delete all local symbols.
 Delete all temporary local symbols.  (These symbols start with
 system-specific local label prefixes, typically @samp{.L} for ELF systems
 or @samp{L} for traditional a.out systems.)
+
+@semnote{Not currently supported.}
 
 @kindex -y @var{symbol}
 @kindex --trace-symbol=@var{symbol}
@@ -1089,10 +1185,14 @@ to prepend an underscore.
 This option is useful when you have an undefined symbol in your link but
 don't know where the reference is coming from.
 
+@semnote{Not currently supported.}
+
 @kindex -Y @var{path}
 @item -Y @var{path}
 Add @var{path} to the default library search path.  This option exists
 for Solaris compatibility.
+
+@semnote{Not currently supported.}
 
 @kindex -z @var{keyword}
 @item -z @var{keyword}
@@ -1103,17 +1203,25 @@ The recognized keywords are:
 Combines multiple reloc sections and sorts them to make dynamic symbol
 lookup caching possible.
 
+@semnote{Not currently supported.}
+
 @item defs
 Disallows undefined symbols in object files.  Undefined symbols in
 shared libraries are still allowed.
 
+@semnote{Not currently supported.}
+
 @item execstack
 Marks the object as requiring executable stack.
+
+@semnote{Not currently supported.}
 
 @item global
 This option is only meaningful when building a shared object.  It makes
 the symbols defined by this shared object available for symbol resolution
 of subsequently loaded libraries.
+
+@semnote{Not currently supported.}
 
 @item initfirst
 This option is only meaningful when building a shared object.
@@ -1123,9 +1231,13 @@ the process at the same time.  Similarly the runtime finalization of
 the object will occur after the runtime finalization of any other
 objects.
 
+@semnote{Not currently supported.}
+
 @item interpose
 Marks the object that its symbol table interposes before all symbols
 but the primary executable.
+
+@semnote{Not currently supported.}
 
 @item lazy
 When generating an executable or shared library, mark it to tell the
@@ -1133,47 +1245,75 @@ dynamic linker to defer function call resolution to the point when
 the function is called (lazy binding), rather than at load time.
 Lazy binding is the default.
 
+@semnote{Not currently supported.}
+
 @item loadfltr
 Marks  the object that its filters be processed immediately at
 runtime.
 
+@semnote{Not currently supported.}
+
 @item muldefs
 Allows multiple definitions.
 
+@semnote{Not currently supported.}
+
 @item nocombreloc
 Disables multiple reloc sections combining.
+
+@semnote{Not currently supported.}
 
 @item nocopyreloc
 Disable linker generated .dynbss variables used in place of variables
 defined in shared libraries.  May result in dynamic text relocations.
 
+@semnote{Not currently supported.}
+
 @item nodefaultlib
 Marks the object that the search for dependencies of this object will
 ignore any default library search paths.
 
+@semnote{Not currently supported.}
+
 @item nodelete
 Marks the object shouldn't be unloaded at runtime.
+
+@semnote{Not currently supported.}
 
 @item nodlopen
 Marks the object not available to @code{dlopen}.
 
+@semnote{Not currently supported.}
+
 @item nodump
 Marks the object can not be dumped by @code{dldump}.
+
+@semnote{Not currently supported.}
 
 @item noexecstack
 Marks the object as not requiring executable stack.
 
+@semnote{Not currently supported.}
+
 @item text
 Treat DT_TEXTREL in shared object as error.
+
+@semnote{Not currently supported.}
 
 @item notext
 Don't treat DT_TEXTREL in shared object as error.
 
+@semnote{Not currently supported.}
+
 @item textoff
 Don't treat DT_TEXTREL in shared object as error.
 
+@semnote{Not currently supported.}
+
 @item norelro
 Don't create an ELF @code{PT_GNU_RELRO} segment header in the object.
+
+@semnote{Not currently supported.}
 
 @item now
 When generating an executable or shared library, mark it to tell the
@@ -1182,25 +1322,39 @@ when the shared library is linked to using dlopen, instead of
 deferring function call resolution to the point when the function is
 first called.
 
+@semnote{Not currently supported.}
+
 @item origin
 Marks the object may contain $ORIGIN.
+
+@semnote{Not currently supported.}
 
 @item relro
 Create an ELF @code{PT_GNU_RELRO} segment header in the object.
 
+@semnote{Not currently supported.}
+
 @item max-page-size=@var{value}
 Set the emulation maximum page size to @var{value}.
 
+@semnote{Not currently supported.}
+
 @item common-page-size=@var{value}
 Set the emulation common page size to @var{value}.
+
+@semnote{Not currently supported.}
 
 @item stack-size=@var{value}
 Specify a stack size for in an ELF @code{PT_GNU_STACK} segment.
 Specifying zero will override any default non-zero sized
 @code{PT_GNU_STACK} segment creation.
 
+@semnote{Not currently supported.}
+
 @item bndplt
 Always generate BND prefix in PLT entries. Supported for Linux/x86_64.
+
+@semnote{Not currently supported.}
 
 @item noextern-protected-data
 Don't treat protected data symbol as external when building shared
@@ -1209,6 +1363,8 @@ to workaround incorrect relocations against protected data symbols
 generated by compiler.  Updates on protected data symbols by another
 module aren't visible to the resulting shared library.  Supported for
 i386 and x86-64.
+
+@semnote{Not currently supported.}
 
 @item call-nop=prefix-addr
 @itemx call-nop=prefix-nop
@@ -1223,6 +1379,8 @@ to a locally defined function, foo, via its GOT slot.
 @option{call-nop=prefix-@var{byte}} generates @code{@var{byte} call foo}.
 @option{call-nop=suffix-@var{byte}} generates @code{call foo @var{byte}}.
 Supported for i386 and x86_64.
+
+@semnote{Not currently supported.}
 
 @end table
 
@@ -1248,6 +1406,8 @@ Using this option has a significant performance cost.  It is best to use
 it only when there are unavoidable circular references between two or
 more archives.
 
+@semnote{Fully supported.}
+
 @kindex --accept-unknown-input-arch
 @kindex --no-accept-unknown-input-arch
 @item --accept-unknown-input-arch
@@ -1259,6 +1419,8 @@ the default behaviour of the linker, before release 2.14.  The default
 behaviour from release 2.14 onwards is to reject such input files, and
 so the @samp{--accept-unknown-input-arch} option has been added to
 restore the old behaviour.
+
+@semnote{Not currently supported.}
 
 @kindex --as-needed
 @kindex --no-as-needed
@@ -1278,6 +1440,8 @@ the library in question do not affect whether the library is seen as
 needed.  This is similar to the rules for extraction of object files
 from archives.  @option{--no-as-needed} restores the default behaviour.
 
+@semnote{Not currently supported.}
+
 @kindex --add-needed
 @kindex --no-add-needed
 @item --add-needed
@@ -1286,6 +1450,8 @@ These two options have been deprecated because of the similarity of
 their names to the @option{--as-needed} and @option{--no-as-needed}
 options.  They have been replaced by @option{--copy-dt-needed-entries}
 and @option{--no-copy-dt-needed-entries}.
+
+@semnote{Not currently supported.}
 
 @kindex -assert @var{keyword}
 @item -assert @var{keyword}
@@ -1304,6 +1470,8 @@ for compatibility with various systems.  You may use this option
 multiple times on the command line: it affects library searching for
 @option{-l} options which follow it.
 
+@semnote{Not currently supported.}
+
 @kindex -Bgroup
 @item -Bgroup
 Set the @code{DF_1_GROUP} flag in the @code{DT_FLAGS_1} entry in the dynamic
@@ -1311,6 +1479,8 @@ section.  This causes the runtime linker to handle lookups in this
 object and its dependencies to be performed only inside the group.
 @option{--unresolved-symbols=report-all} is implied.  This option is
 only meaningful on ELF platforms which support shared libraries.
+
+@semnote{Not currently supported.}
 
 @kindex -Bstatic
 @kindex -dn
@@ -1331,6 +1501,8 @@ shared library is being created but that all of the library's external
 references must be resolved by pulling in entries from static
 libraries.
 
+@semnote{Static linking is the only supported case.}
+
 @kindex -Bsymbolic
 @item -Bsymbolic
 When creating a shared library, bind references to global symbols to the
@@ -1339,12 +1511,16 @@ for a program linked against a shared library to override the definition
 within the shared library.  This option is only meaningful on ELF
 platforms which support shared libraries.
 
+@semnote{This is modelled in the spec, but will have no effect until dynamic linking is supported.}
+
 @kindex -Bsymbolic-functions
 @item -Bsymbolic-functions
 When creating a shared library, bind references to global function
 symbols to the definition within the shared library, if any.
 This option is only meaningful on ELF platforms which support shared
 libraries.
+
+@semnote{This is modelled in the spec, but will have no effect until dynamic linking is supported.}
 
 @kindex --dynamic-list=@var{dynamic-list-file}
 @item --dynamic-list=@var{dynamic-list-file}
@@ -1359,18 +1535,26 @@ which support shared libraries.
 The format of the dynamic list is the same as the version node without
 scope and node name.  See @ref{VERSION} for more information.
 
+@semnote{Not currently supported.}
+
 @kindex --dynamic-list-data
 @item --dynamic-list-data
 Include all global data symbols to the dynamic list.
+
+@semnote{Not currently supported.}
 
 @kindex --dynamic-list-cpp-new
 @item --dynamic-list-cpp-new
 Provide the builtin dynamic list for C++ operator new and delete.  It
 is mainly useful for building shared libstdc++.
 
+@semnote{Not currently supported.}
+
 @kindex --dynamic-list-cpp-typeinfo
 @item --dynamic-list-cpp-typeinfo
 Provide the builtin dynamic list for C++ runtime type identification.
+
+@semnote{Not currently supported.}
 
 @kindex --check-sections
 @kindex --no-check-sections
@@ -1385,6 +1569,8 @@ restored by using the command line switch @option{--check-sections}.
 Section overlap is not usually checked for relocatable links.  You can
 force checking in that case by using the @option{--check-sections}
 option.
+
+@semnote{Not currently supported.}
 
 @kindex --copy-dt-needed-entries
 @kindex --no-copy-dt-needed-entries
@@ -1408,6 +1594,8 @@ the searching of dynamic libraries that follow it will stop with the
 dynamic library itself.  No DT_NEEDED links will be traversed to resolve
 symbols.
 
+@semnote{Not currently supported.}
+
 @cindex cross reference table
 @kindex --cref
 @item --cref
@@ -1422,6 +1610,8 @@ symbol is defined, the first file listed is the location of the
 definition.  If the symbol is defined as a common value then any files
 where this happens appear next.  Finally any files that reference the
 symbol are listed.
+
+@semnote{Not currently supported.}
 
 @cindex common allocation
 @kindex --no-define-common
@@ -1441,6 +1631,8 @@ and also prevents any possible confusion over resolving to the wrong
 duplicate when there are many dynamic modules with specialized search
 paths for runtime symbol resolution.
 
+@semnote{Not currently supported.}
+
 @cindex symbols, from command line
 @kindex --defsym=@var{symbol}=@var{exp}
 @item --defsym=@var{symbol}=@var{expression}
@@ -1454,6 +1646,8 @@ constants or symbols.  If you need more elaborate expressions, consider
 using the linker command language from a script (@pxref{Assignments}).
 @emph{Note:} there should be no white space between @var{symbol}, the
 equals sign (``@key{=}''), and @var{expression}.
+
+@semnote{Not currently supported.}
 
 @cindex demangling, from command line
 @kindex --demangle[=@var{style}]
@@ -1470,6 +1664,8 @@ to choose an appropriate demangling style for your compiler.  The linker will
 demangle by default unless the environment variable @samp{COLLECT_NO_DEMANGLE}
 is set.  These options may be used to override the default.
 
+@semnote{Not currently supported.}
+
 @cindex dynamic linker, from command line
 @kindex -I@var{file}
 @kindex --dynamic-linker=@var{file}
@@ -1480,12 +1676,16 @@ generating dynamically linked ELF executables.  The default dynamic
 linker is normally correct; don't use this unless you know what you are
 doing.
 
+@semnote{Not currently supported.}
+
 @kindex --no-dynamic-linker
 @item --no-dynamic-linker
 When producing an executable file, omit the request for a dynamic
 linker to be used at load-time.  This is only meaningful for ELF
 executables that contain dynamic relocations, and usually requires
 entry point code that is capable of processing these relocations.
+
+@semnote{Not currently supported.}
 
 @kindex --fatal-warnings
 @kindex --no-fatal-warnings
@@ -1504,6 +1704,8 @@ the output file to one of the same name with a @code{.exe} suffix. This
 option is useful when using unmodified Unix makefiles on a Microsoft
 Windows host, since some versions of Windows won't run an image unless
 it ends in a @code{.exe} suffix.
+
+@semnote{Not currently supported.}
 
 @kindex --gc-sections
 @kindex --no-gc-sections
@@ -1532,6 +1734,8 @@ This option can be set when doing a partial link (enabled with option
 specified either by an @samp{--entry} or @samp{--undefined} option or by
 a @code{ENTRY} command in the linker script.
 
+@semnote{Not currently supported.}
+
 @kindex --print-gc-sections
 @kindex --no-print-gc-sections
 @cindex garbage collection
@@ -1544,12 +1748,16 @@ default behaviour (of not listing the sections that are removed) can
 be restored by specifying @samp{--no-print-gc-sections} on the command
 line.
 
+@semnote{Not currently supported.}
+
 @kindex --print-output-format
 @cindex output format
 @item --print-output-format
 Print the name of the default output format (perhaps influenced by
 other command-line options).  This is the string that would appear
 in an @code{OUTPUT_FORMAT} linker script command (@pxref{File Commands}).
+
+@semnote{Not currently supported.}
 
 @kindex --print-memory-usage
 @cindex memory usage
@@ -1572,14 +1780,20 @@ Memory region         Used Size  Region Size  %age Used
 @item --help
 Print a summary of the command-line options on the standard output and exit.
 
+@semnote{Not currently supported.}
+
 @kindex --target-help
 @item --target-help
 Print a summary of all target specific options on the standard output and exit.
+
+@semnote{Not currently supported.}
 
 @kindex -Map=@var{mapfile}
 @item -Map=@var{mapfile}
 Print a link map to the file @var{mapfile}.  See the description of the
 @option{-M} option, above.
+
+@semnote{Not supported; link maps are output to stderr by default.}
 
 @cindex memory usage
 @kindex --no-keep-memory
@@ -1589,6 +1803,8 @@ symbol tables of input files in memory.  This option tells @command{ld} to
 instead optimize for memory usage, by rereading the symbol tables as
 necessary.  This may be required if @command{ld} runs out of memory space
 while linking a large executable.
+
+@semnote{Not supported.}
 
 @kindex --no-undefined
 @kindex -z defs
@@ -1600,6 +1816,8 @@ The switch @option{--[no-]allow-shlib-undefined} controls the
 behaviour for reporting unresolved references found in shared
 libraries being linked in.
 
+@semnote{Not currently supported.}
+
 @kindex --allow-multiple-definition
 @kindex -z muldefs
 @item --allow-multiple-definition
@@ -1607,6 +1825,8 @@ libraries being linked in.
 Normally when a symbol is defined multiple times, the linker will
 report a fatal error. These options allow multiple definitions and the
 first definition will be used.
+
+@semnote{Not currently supported.}
 
 @kindex --allow-shlib-undefined
 @kindex --no-allow-shlib-undefined
@@ -1641,21 +1861,29 @@ architecture.  This is used, for example, to dynamically select an
 appropriate memset function.
 @end itemize
 
+@semnote{Not currently supported.}
+
 @kindex --no-undefined-version
 @item --no-undefined-version
 Normally when a symbol has an undefined version, the linker will ignore
 it. This option disallows symbols with undefined version and a fatal error
 will be issued instead.
 
+@semnote{Not currently supported.}
+
 @kindex --default-symver
 @item --default-symver
 Create and use a default symbol version (the soname) for unversioned
 exported symbols.
 
+@semnote{Not currently supported.}
+
 @kindex --default-imported-symver
 @item --default-imported-symver
 Create and use a default symbol version (the soname) for unversioned
 imported symbols.
+
+@semnote{Not currently supported.}
 
 @kindex --no-warn-mismatch
 @item --no-warn-mismatch
@@ -1667,15 +1895,21 @@ errors.  This option should only be used with care, in cases when you
 have taken some special action that ensures that the linker errors are
 inappropriate.
 
+@semnote{Not currently supported.}
+
 @kindex --no-warn-search-mismatch
 @item --no-warn-search-mismatch
 Normally @command{ld} will give a warning if it finds an incompatible
 library during a library search.  This option silences the warning.
 
+@semnote{Not currently supported.}
+
 @kindex --no-whole-archive
 @item --no-whole-archive
 Turn off the effect of the @option{--whole-archive} option for subsequent
 archive files.
+
+@semnote{Not currently supported.}
 
 @cindex output file after errors
 @kindex --noinhibit-exec
@@ -1685,11 +1919,15 @@ Normally, the linker will not produce an output file if it encounters
 errors during the link process; it exits without writing an output file
 when it issues any error whatsoever.
 
+@semnote{Not currently supported.}
+
 @kindex -nostdlib
 @item -nostdlib
 Only search library directories explicitly specified on the
 command line.  Library directories specified in linker scripts
 (including linker scripts specified on the command line) are ignored.
+
+@semnote{Not currently supported.}
 
 @ifclear SingleFormat
 @kindex --oformat=@var{output-format}
@@ -1707,6 +1945,8 @@ command @code{OUTPUT_FORMAT} can also specify the output format, but
 this option overrides it.  @xref{BFD}.
 @end ifclear
 
+@semnote{Not currently supported.}
+
 @kindex -pie
 @kindex --pic-executable
 @item -pie
@@ -1719,9 +1959,13 @@ address the OS chooses for them (which can vary between invocations).  Like
 normal dynamically linked executables they can be executed and symbols
 defined in the executable cannot be overridden by shared libraries.
 
+@semnote{Not currently supported.}
+
 @kindex -qmagic
 @item -qmagic
 This option is ignored for Linux compatibility.
+
+@semnote{Not currently supported.}
 
 @kindex -Qy
 @item -Qy
@@ -1797,6 +2041,8 @@ or symbols needed for relocations.
 You may only specify @samp{--retain-symbols-file} once in the command
 line.  It overrides @samp{-s} and @samp{-S}.
 
+@semnote{Not currently supported.}
+
 @ifset GENERIC
 @item -rpath=@var{dir}
 @cindex runtime library search path
@@ -1823,6 +2069,8 @@ For compatibility with other ELF linkers, if the @option{-R} option is
 followed by a directory name, rather than a file name, it is treated as
 the @option{-rpath} option.
 @end ifset
+
+@semnote{Not currently supported.}
 
 @ifset GENERIC
 @cindex link-time runtime library search path
@@ -1885,6 +2133,8 @@ If the required shared library is not found, the linker will issue a
 warning and continue with the link.
 @end ifset
 
+@semnote{Not currently supported.}
+
 @kindex -shared
 @kindex -Bshareable
 @item -shared
@@ -1894,6 +2144,8 @@ Create a shared library.  This is currently only supported on ELF, XCOFF
 and SunOS platforms.  On SunOS, the linker will automatically create a
 shared library if the @option{-e} option is not used and there are
 undefined symbols in the link.
+
+@semnote{Not currently supported.}
 
 @kindex --sort-common
 @item --sort-common
@@ -1906,21 +2158,29 @@ eight-byte, four-byte, two-byte, and one-byte. This is to prevent gaps
 between symbols due to alignment constraints.  If no sorting order is
 specified, then descending order is assumed.
 
+@semnote{Not currently supported.}
+
 @kindex --sort-section=name
 @item --sort-section=name
 This option will apply @code{SORT_BY_NAME} to all wildcard section
 patterns in the linker script.
+
+@semnote{Not currently supported.}
 
 @kindex --sort-section=alignment
 @item --sort-section=alignment
 This option will apply @code{SORT_BY_ALIGNMENT} to all wildcard section
 patterns in the linker script.
 
+@semnote{Not currently supported.}
+
 @kindex --split-by-file
 @item --split-by-file[=@var{size}]
 Similar to @option{--split-by-reloc} but creates a new output section for
 each input file when @var{size} is reached.  @var{size} defaults to a
 size of 1 if not given.
+
+@semnote{Not currently supported.}
 
 @kindex --split-by-reloc
 @item --split-by-reloc[=@var{count}]
@@ -1935,16 +2195,22 @@ input sections for redistribution, so if a single input section contains
 more than @var{count} relocations one output section will contain that
 many relocations.  @var{count} defaults to a value of 32768.
 
+@semnote{Not currently supported.}
+
 @kindex --stats
 @item --stats
 Compute and display statistics about the operation of the linker, such
 as execution time and memory usage.
+
+@semnote{Not currently supported.}
 
 @kindex --sysroot=@var{directory}
 @item --sysroot=@var{directory}
 Use @var{directory} as the location of the sysroot, overriding the
 configure-time default.  This option is only supported by linkers
 that were configured using @option{--with-sysroot}.
+
+@semnote{Not currently supported.}
 
 @kindex --traditional-format
 @cindex traditional format
@@ -1960,6 +2226,8 @@ full debugging information by over 30 percent.  Unfortunately, the SunOS
 @code{dbx} program can not read the resulting program (@code{gdb} has no
 trouble).  The @samp{--traditional-format} switch tells @command{ld} to not
 combine duplicate entries.
+
+@semnote{Not currently supported.}
 
 @kindex --section-start=@var{sectionname}=@var{org}
 @item --section-start=@var{sectionname}=@var{org}
@@ -1983,11 +2251,17 @@ sign (``@key{=}''), and @var{org}.
 Same as @option{--section-start}, with @code{.bss}, @code{.data} or
 @code{.text} as the @var{sectionname}.
 
+@semnote{Not currently supported.}
+
+@semnote{Supported.}
+
 @kindex -Ttext-segment=@var{org}
 @item -Ttext-segment=@var{org}
 @cindex text segment origin, cmd line
 When creating an ELF executable, it will set the address of the first
 byte of the text segment.
+
+@semnote{Supported.}
 
 @kindex -Trodata-segment=@var{org}
 @item -Trodata-segment=@var{org}
@@ -1996,11 +2270,15 @@ When creating an ELF executable or shared object for a target where
 the read-only data is in its own segment separate from the executable
 text, it will set the address of the first byte of the read-only data segment.
 
+@semnote{Supported.}
+
 @kindex -Tldata-segment=@var{org}
 @item -Tldata-segment=@var{org}
 @cindex ldata segment origin, cmd line
 When creating an ELF executable or shared object for x86-64 medium memory
 model, it will set the address of the first byte of the ldata segment.
+
+@semnote{Not currently supported.}
 
 @kindex --unresolved-symbols
 @item --unresolved-symbols=@var{method}
@@ -2033,6 +2311,9 @@ Normally the linker will generate an error message for each reported
 unresolved symbol but the option @option{--warn-unresolved-symbols}
 can change this to a warning.
 
+@semnote{Not currently supported. Any unresolved symbols that are not required
+by relocations are tolerated.}
+
 @kindex --verbose[=@var{NUMBER}]
 @cindex verbose[=@var{NUMBER}]
 @item --dll-verbose
@@ -2041,6 +2322,8 @@ Display the version number for @command{ld} and list the linker emulations
 supported.  Display which input files can and cannot be opened.  Display
 the linker script being used by the linker. If the optional @var{NUMBER}
 argument > 1, plugin symbol status will also be displayed.
+
+@semnote{Not currently supported.}
 
 @kindex --version-script=@var{version-scriptfile}
 @cindex version script, symbol versions
@@ -2053,6 +2336,8 @@ see @ref{VERSION}.  It is partially supported on PE platforms, which can
 use version scripts to filter symbol visibility in auto-export mode: any
 symbols marked @samp{local} in the version script will not be exported.
 @xref{WIN32}.
+
+@semnote{Not currently supported.}
 
 @kindex --warn-common
 @cindex warnings, on combining symbols
@@ -2139,11 +2424,15 @@ encountered in a different order.
 @end smallexample
 @end enumerate
 
+@semnote{Not currently supported.}
+
 @kindex --warn-constructors
 @item --warn-constructors
 Warn if any global constructors are used.  This is only useful for a few
 object file formats.  For formats like COFF or ELF, the linker can not
 detect the use of global constructors.
+
+@semnote{Not currently supported.}
 
 @kindex --warn-multiple-gp
 @item --warn-multiple-gp
@@ -2159,12 +2448,16 @@ large programs, it is often necessary to use multiple global pointer
 values in order to be able to address all possible constants.  This
 option causes a warning to be issued whenever this case occurs.
 
+@semnote{Not currently supported.}
+
 @kindex --warn-once
 @cindex warnings, on undefined symbols
 @cindex undefined symbols, warnings on
 @item --warn-once
 Only warn once for each undefined symbol, rather than once per module
 which refers to it.
+
+@semnote{Not currently supported.}
 
 @kindex --warn-section-align
 @cindex warnings, on section alignment
@@ -2176,13 +2469,19 @@ The address will only be changed if it not explicitly specified; that
 is, if the @code{SECTIONS} command does not specify a start address for
 the section (@pxref{SECTIONS}).
 
+@semnote{Not currently supported.}
+
 @kindex --warn-shared-textrel
 @item --warn-shared-textrel
 Warn if the linker adds a DT_TEXTREL to a shared object.
 
+@semnote{Not currently supported.}
+
 @kindex --warn-alternate-em
 @item --warn-alternate-em
 Warn if an object has alternate ELF machine code.
+
+@semnote{Not currently supported.}
 
 @kindex --warn-unresolved-symbols
 @item --warn-unresolved-symbols
@@ -2190,10 +2489,14 @@ If the linker is going to report an unresolved symbol (see the option
 @option{--unresolved-symbols}) it will normally generate an error.
 This option makes it generate a warning instead.
 
+@semnote{Not currently supported.}
+
 @kindex --error-unresolved-symbols
 @item --error-unresolved-symbols
 This restores the linker's default behaviour of generating errors when
 it is reporting unresolved symbols.
+
+@semnote{Not currently supported.}
 
 @kindex --whole-archive
 @cindex including an entire archive
@@ -2210,6 +2513,8 @@ about this option, so you have to use @option{-Wl,-whole-archive}.
 Second, don't forget to use @option{-Wl,-no-whole-archive} after your
 list of archives, because gcc will add its own list of archives to
 your link and you may not want this flag to affect those as well.
+
+@semnote{Not currently supported.}
 
 @kindex --wrap=@var{symbol}
 @item --wrap=@var{symbol}
@@ -2245,16 +2550,22 @@ you should not put the definition of @code{__real_malloc} in the same
 file as @code{__wrap_malloc}; if you do, the assembler may resolve the
 call before the linker has a chance to wrap it to @code{malloc}.
 
+@semnote{Not currently supported.}
+
 @kindex --eh-frame-hdr
 @item --eh-frame-hdr
 Request creation of @code{.eh_frame_hdr} section and ELF
 @code{PT_GNU_EH_FRAME} segment header.
+
+@semnote{Not currently supported.}
 
 @kindex --ld-generated-unwind-info
 @item --no-ld-generated-unwind-info
 Request creation of @code{.eh_frame} unwind info for linker
 generated code sections like PLT.  This option is on by default
 if linker generated unwind info is supported.
+
+@semnote{Not currently supported.}
 
 @kindex --enable-new-dtags
 @kindex --disable-new-dtags
@@ -2268,6 +2579,8 @@ If you specify @option{--disable-new-dtags}, no new dynamic tags will be
 created. By default, the new dynamic tags are not created. Note that
 those options are only available for ELF systems.
 
+@semnote{Not currently supported.}
+
 @kindex --hash-size=@var{number}
 @item --hash-size=@var{number}
 Set the default size of the linker's hash tables to a prime number
@@ -2276,6 +2589,8 @@ time it takes the linker to perform its tasks, at the expense of
 increasing the linker's memory requirements.  Similarly reducing this
 value can reduce the memory requirements at the expense of speed.
 
+@semnote{Not currently supported.}
+
 @kindex --hash-style=@var{style}
 @item --hash-style=@var{style}
 Set the type of linker's hash table(s).  @var{style} can be either
@@ -2283,6 +2598,8 @@ Set the type of linker's hash table(s).  @var{style} can be either
 new style GNU @code{.gnu.hash} section or @code{both} for both
 the classic ELF @code{.hash} and new style GNU @code{.gnu.hash}
 hash tables.  The default is @code{sysv}.
+
+@semnote{Not currently supported.}
 
 @kindex --compress-debug-sections=none
 @kindex --compress-debug-sections=zlib
@@ -2303,6 +2620,8 @@ compress DWARF debug sections with SHF_COMPRESSED from the ELF ABI.
 The default behaviour varies depending upon the target involved and
 the configure options used to build the toolchain.  The default can be
 determined by examing the output from the linker's @option{--help} option.
+
+@semnote{Not currently supported.}
 
 @kindex --reduce-memory-overheads
 @item --reduce-memory-overheads
@@ -2344,6 +2663,8 @@ string identifying the original linked file does not change.
 Passing @code{none} for @var{style} disables the setting from any
 @code{--build-id} options earlier on the command line.
 @end table
+
+@semnote{Not currently supported.}
 
 @c man end
 
@@ -2967,6 +3288,8 @@ You can change the behaviour of @command{ld} with the environment variables
 @end ifclear
 @code{LDEMULATION} and @code{COLLECT_NO_DEMANGLE}.
 
+@semnote{Effects of environment variables are not currently modelled.}
+
 @ifclear SingleFormat
 @kindex GNUTARGET
 @cindex default input format
@@ -3035,6 +3358,11 @@ default linker script.
 You may also use linker scripts implicitly by naming them as input files
 to the linker, as though they were files to be linked.  @xref{Implicit
 Linker Scripts}.
+
+@semnote{The linker script language is largely supported; details follow.
+However, no parser is currently provided, so only the main linker script
+is modelled; this may be found, in a Lem AST representation,
+in @semurl{linker_script.lem}.}
 
 @menu
 * Basic Script Concepts::	Basic Linker Script Concepts
@@ -3152,9 +3480,32 @@ SECTIONS
 @}
 @end smallexample
 
+@semnote{In AST form, the above script appears as the following Lem code.
+
+@smallexample
+  [AdvanceAddress(AddressExprFn (fun _ -> (fun _ -> 65536)))
+  ; OutputSection(AlwaysOutput, Nothing, ".text", 
+    [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".text"))])
+  ; AdvanceAddress(AddressExprFn (fun _ -> (fun _ -> 134217728)))
+  ; OutputSection(AlwaysOutput, Nothing, ".data", 
+    [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".data"))])
+  ; OutputSection(AlwaysOutput, Nothing, ".bss", 
+    [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".bss"))])
+  ]
+@end smallexample
+
+Note that some elements of the linker script language are only shallowly embedded.
+Specifically, Lem arithmetic is used directly in place of linker-script arithmetic.
+Also, helper functions in Lem are used to match names (@code{name_matches})
+and compute sublists of input sections (@code{filter_and_concat}),
+rather than having a direct AST form of their own 
+(cf. the script language's @code{*(.data)} and similar).
+}
+
 You write the @samp{SECTIONS} command as the keyword @samp{SECTIONS},
 followed by a series of symbol assignments and output section
 descriptions enclosed in curly braces.
+
 
 The first line inside the @samp{SECTIONS} command of the above example
 sets the value of the special symbol @samp{.}, which is the location
@@ -3239,6 +3590,9 @@ the address of the first byte of the @samp{.text} section, if present;
 The address @code{0}.
 @end itemize
 
+@semnote{Only the `target-specific symbol' method is currently supported.
+This symbol is @code{_start}, on the supported ABIs.}
+
 @node File Commands
 @subsection Commands Dealing with Files
 @cindex linker script file commands
@@ -3256,6 +3610,8 @@ with the @option{-L} option.  You can nest calls to @code{INCLUDE} up to
 You can place @code{INCLUDE} directives at the top level, in @code{MEMORY} or
 @code{SECTIONS} commands, or in output section descriptions.
 
+@semnote{No support (requires a parser/preprocessor for linker script files).}
+
 @item INPUT(@var{file}, @var{file}, @dots{})
 @itemx INPUT(@var{file} @var{file} @dots{})
 @kindex INPUT(@var{files})
@@ -3271,6 +3627,9 @@ then you can put @samp{INPUT (subr.o)} in your linker script.
 
 In fact, if you like, you can list all of your input files in the linker
 script, and then invoke the linker with nothing but a @samp{-T} option.
+
+@semnote{Note that this arguably contradicts earlier text, in @ref{Options,,},
+saying that at least one binary file must be specified on (by implication) the command line.}
 
 In case a @dfn{sysroot prefix} is configured, and the filename starts
 with the @samp{/} character, and the script being processed was
@@ -3299,6 +3658,9 @@ files should all be archives, and they are searched repeatedly until no
 new undefined references are created.  See the description of @samp{-(}
 in @ref{Options,,Command Line Options}.
 
+@semnote{Not supported in the linker script AST; groups are supported via the
+command line (@url{command_line.lem}).}
+
 @item AS_NEEDED(@var{file}, @var{file}, @dots{})
 @itemx AS_NEEDED(@var{file} @var{file} @dots{})
 @kindex AS_NEEDED(@var{files})
@@ -3310,6 +3672,8 @@ when they are actually needed.  This construct essentially enables
 @option{--as-needed} option for all the files listed inside of it
 and restores previous @option{--as-needed} resp. @option{--no-as-needed}
 setting afterwards.
+
+@semnote{Not currently supported.}
 
 @item OUTPUT(@var{filename})
 @kindex OUTPUT(@var{filename})
@@ -3323,6 +3687,8 @@ precedence.
 You can use the @code{OUTPUT} command to define a default name for the
 output file other than the usual default of @file{a.out}.
 
+@semnote{Not currently supported.}
+
 @item SEARCH_DIR(@var{path})
 @kindex SEARCH_DIR(@var{path})
 @cindex library search path in linker script
@@ -3335,6 +3701,8 @@ on the command line (@pxref{Options,,Command Line Options}).  If both
 are used, then the linker will search both paths.  Paths specified using
 the command line option are searched first.
 
+@semnote{Not currently supported.}
+
 @item STARTUP(@var{filename})
 @kindex STARTUP(@var{filename})
 @cindex first input file
@@ -3344,6 +3712,9 @@ though it were specified first on the command line.  This may be useful
 when using a system in which the entry point is always the start of the
 first file.
 @end table
+
+@semnote{Not currently supported.}
+@semnote{Ambiguity: if specified more than once, which comes first?}
 
 @ifclear SingleFormat
 @node Format Commands
@@ -3393,6 +3764,8 @@ command is also used to set the format for the output file.  @xref{BFD}.
 @end table
 @end ifclear
 
+@semnote{Not currently supported.}
+
 @node REGION_ALIAS
 @subsection Assign alias names to memory regions
 @kindex REGION_ALIAS(@var{alias}, @var{region})
@@ -3401,6 +3774,8 @@ command is also used to set the format for the output file.  @xref{BFD}.
 
 Alias names can be added to existing memory regions created with the
 @ref{MEMORY} command.  Each name corresponds to at most one memory region.
+
+@semnote{Not currently supported.}
 
 @smallexample
 REGION_ALIAS(@var{alias}, @var{region})
@@ -3549,6 +3924,8 @@ void copy_data(void)
 @}
 @end smallexample
 
+@semnote{Not currently supported.}
+
 @node Miscellaneous Commands
 @subsection Other Linker Script Commands
 There are a few other linker scripts commands.
@@ -3590,6 +3967,8 @@ can be used inside ASSERTions.  Thus:
 
 will work.
 
+@semnote{Not currently supported.}
+
 @item EXTERN(@var{symbol} @var{symbol} @dots{})
 @kindex EXTERN
 @cindex undefined symbol in linker script
@@ -3599,6 +3978,8 @@ modules from standard libraries.  You may list several @var{symbol}s for
 each @code{EXTERN}, and you may use @code{EXTERN} multiple times.  This
 command has the same effect as the @samp{-u} command-line option.
 
+@semnote{Not currently supported.}
+
 @item FORCE_COMMON_ALLOCATION
 @kindex FORCE_COMMON_ALLOCATION
 @cindex common allocation in linker script
@@ -3606,12 +3987,16 @@ This command has the same effect as the @samp{-d} command-line option:
 to make @command{ld} assign space to common symbols even if a relocatable
 output file is specified (@samp{-r}).
 
+@semnote{Not currently supported.}
+
 @item INHIBIT_COMMON_ALLOCATION
 @kindex INHIBIT_COMMON_ALLOCATION
 @cindex common allocation in linker script
 This command has the same effect as the @samp{--no-define-common}
 command-line option: to make @code{ld} omit the assignment of addresses
 to common symbols even for a non-relocatable output file.
+
+@semnote{Not currently supported.}
 
 @item INSERT [ AFTER | BEFORE ] @var{output_section}
 @kindex INSERT
@@ -3642,6 +4027,8 @@ SECTIONS
 INSERT AFTER .text;
 @end smallexample
 
+@semnote{Not currently supported.}
+
 @item NOCROSSREFS(@var{section} @var{section} @dots{})
 @kindex NOCROSSREFS(@var{sections})
 @cindex cross references
@@ -3660,6 +4047,8 @@ an error and returns a non-zero exit status.  Note that the
 @code{NOCROSSREFS} command uses output section names, not input section
 names.
 
+@semnote{Not currently supported.}
+
 @ifclear SingleFormat
 @item OUTPUT_ARCH(@var{bfdarch})
 @kindex OUTPUT_ARCH(@var{bfdarch})
@@ -3671,12 +4060,17 @@ architecture of an object file by using the @code{objdump} program with
 the @samp{-f} option.
 @end ifclear
 
+@semnote{Not currently supported; the output architecture is fixed
+by the pre-existing output file.}
+
 @item LD_FEATURE(@var{string})
 @kindex LD_FEATURE(@var{string})
 This command may be used to modify @command{ld} behavior.  If
 @var{string} is @code{"SANE_EXPR"} then absolute symbols and numbers
 in a script are simply treated as numbers everywhere.
 @xref{Expression Section}.
+
+@semnote{Not currently supported.}
 @end table
 
 @node Assignments
@@ -3716,8 +4110,17 @@ The first case will define @var{symbol} to the value of
 @var{expression}.  In the other cases, @var{symbol} must already be
 defined, and the value will be adjusted accordingly.
 
+@semnote{The linker script AST allows symbol definition,
+but any arithmetic must be done within Lem code.
+Currently there is no convenient way to redefine a symbol previously defined,
+since it must be removed first.}
+
 The special symbol name @samp{.} indicates the location counter.  You
 may only use this within a @code{SECTIONS} command.  @xref{Location Counter}.
+
+@semnote{Contexts requiring expressions are modelled as 
+@code{address_expr_fn} values, 
+a function type whose first argument is the location counter (@code{.}).}
 
 The semicolon after @var{expression} is required.
 
