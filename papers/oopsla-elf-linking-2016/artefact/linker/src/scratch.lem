@@ -1,0 +1,26 @@
+open import Byte_sequence
+open import Error
+open import Missing_pervasives
+
+open import Endianness
+open import Show
+
+open import Elf_file
+open import Elf_header
+open import Elf_note
+open import Elf_section_header_table
+
+open import Gnu_ext_note
+
+let _ =
+  let res =
+    Byte_sequence.acquire "/usr/bin/less" >>= fun bs0 ->
+    Elf_file.read_elf32_file bs0 >>= fun ef1 ->
+    let endian = get_elf32_header_endianness ef1.elf32_file_header in
+    Elf_file.get_elf32_file_section_header_string_table ef1 >>= fun sect_hdr ->
+    return (gnu_ext_extract_elf32_earliest_compatible_kernel endian ef1.elf32_file_section_header_table sect_hdr bs0)
+  in
+    match res with
+      | Fail err  -> outln err
+      | Success s -> outln (show s)
+    end

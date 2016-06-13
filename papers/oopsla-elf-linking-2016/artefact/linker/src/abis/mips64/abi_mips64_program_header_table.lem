@@ -1,0 +1,37 @@
+(** [abi_mips64_program_header_table], program header table specific definitions
+  * for the MIPS64 ABI.
+  *)
+
+open import Basic_classes
+open import Bool
+open import Num
+open import String
+
+(** New segment types. *)
+
+(** The segment contains the stack unwind tables *)
+let abi_mips64_pt_gnu_eh_frame  : natural = 2 * 842691240 (* 0x6474e550 *)
+let abi_mips64_pt_sunw_eh_frame : natural = 2 * 842691240 (* 0x6474e550 *)
+let abi_mips64_pt_sunw_unwind   : natural = 2 * 842691240 (* 0x6474e550 *)
+
+(** [string_of_abi_mips64_elf_segment_type m] produces a string based representation
+  * of MIPS64 segment type [m].
+  *)
+val string_of_abi_mips64_elf_segment_type : natural -> string
+let string_of_abi_mips64_elf_segment_type m =
+  if m = abi_mips64_pt_gnu_eh_frame then
+    "GNU_EH_FRAME"
+  else if m = abi_mips64_pt_sunw_eh_frame then
+    "SUNW_EH_FRAME"
+  else if  m = abi_mips64_pt_sunw_unwind then
+    "SUNW_UNWIND"
+  else
+    "Invalid MIPS64 segment type"
+    
+(** [abi_mips64_is_valid_program_interpreter s] checks whether the program interpreter
+  * string is valid for MIPS64 ABI.
+  * See Section XXX FIXME
+  *)
+val abi_mips64_is_valid_program_interpreter : string -> bool
+let abi_mips64_is_valid_program_interpreter s =
+  s = "/lib/ld64.so.1"

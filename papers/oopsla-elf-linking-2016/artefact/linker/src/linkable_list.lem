@@ -1,0 +1,525 @@
+open import Basic_classes
+open import Function
+open import String
+open import String_extra
+open import Tuple
+open import Bool
+open import List
+open import List_extra
+open import Set
+open import Set_extra
+import Map
+open import Sorting
+open import Num
+open import Maybe
+open import Assert_extra
+
+open import Byte_sequence
+open import Default_printing
+open import Error
+open import Missing_pervasives
+open import Show
+
+open import Elf_types_native_uint
+open import Elf_memory_image
+open import Elf_header
+open import Elf_file
+open import Memory_image
+open import Elf_memory_image
+open import Elf_section_header_table
+open import Elf_symbol_table
+open import String_table
+open import Input_list
+
+open import Elf_memory_image
+open import Elf_memory_image_of_elf64_file
+
+type script = byte_sequence (* FIXME *)
+
+type linkable_object = RelocELF of elf_memory_image    (* memory image without address assignments *)
+                     | SharedELF of elf_memory_image   (* memory image with address assignments *)
+                     | ScriptAST of script       (* FIXME: should be elaborated away *)
+                     | ControlScriptDefs
+
+val string_of_linkable_object : linkable_object -> string
+let string_of_linkable_object l = match l with
+    RelocELF(_)    -> "a relocatable file (...)"
+    | SharedELF(_) -> "a shared library (...)"
+    | ScriptAST(_) -> "a linker script (...)"
+    | ControlScriptDefs -> "the control script"
+end
+
+(* We keep the original input item around, hence the filename and byte sequence
+ * and options. *)
+type linkable_item = linkable_object * input_item * input_options
+
+val short_string_of_linkable_item : linkable_item -> string
+let short_string_of_linkable_item item = 
+    let (obj, inp, opts) = item
+    in
+    short_string_of_input_item inp
+
+instance (Show linkable_object)
+    let show = string_of_linkable_object
+end
+
+type linkable_list = list linkable_item
+
+type symbol_resolution_oracle = linkable_list -> nat -> string -> list nat
+type binding      = (natural * symbol_reference * linkable_item) * maybe (natural * symbol_definition * linkable_item)
+type binding_list = list binding
+type binding_map  = Map.map string (list (natural * binding))
+
+
+let image_of_linkable_item item = match item with
+    (RelocELF(image), _, _) -> image
+    | (SharedELF(image), _, _) -> image
+    | _ -> failwith "no image"
+end
+
+val linkable_item_of_input_item_and_options : forall 'abifeature. abi 'abifeature -> input_item -> input_options -> linkable_item
+let linkable_item_of_input_item_and_options a it opts = 
+    match (match it with
+        (fname, Reloc(seq), origin) -> 
+            (*let _ = Missing_pervasives.errln ("Considering relocatable file " ^ fname) in*)
+            Elf_file.read_elf64_file seq >>= fun e ->
+            return (RelocELF(elf_memory_image_of_elf64_file a fname e), it, opts)
+        | (fname, Shared(seq), origin) -> 
+            (*let _ = Missing_pervasives.errln ("Skipping shared object " ^ fname) in *)
+            fail "unsupported input item"
+        | (fname, Script(seq), origin) -> 
+            (*let _ = Missing_pervasives.errln ("Skipping linker script " ^ fname) in*)
+            fail "unsupported input item"
+        end)
+    with
+        Success(item) -> item
+        | Fail(str) -> failwith (str ^ ": non-ELF or non-relocatable input file")
+    end
+
+val string_of_linkable : linkable_item -> string
+let {ocaml} string_of_linkable l = match l with 
+    (_, item, _) -> show item
+end
+
+(* How do we signal "multiple definitions"? 
+ * This is part of the policy baked into the particular oracle:
+ * are multiple definitions okay, or do we fail?
+ * 
+ * NOTE that multiple definitions *globally* is not the same as 
+ * multiple definitions as candidates for a given binding. We
+ * can get the former even if we don't have the latter, in some
+ * weird group/archive arrangements. The right place to detect
+ * this condition is probably when generating the output symtab.
+ *)
+
+val add_definition_to_map : (natural * symbol_definition * linkable_item) -> Map.map string (list (natural * symbol_definition * linkable_item))
+                    -> Map.map string (list (natural * symbol_definition * linkable_item))
+let add_definition_to_map def_idx_and_def_and_linkable m = 
+    let (def_idx, def, def_linkable) = def_idx_and_def_and_linkable
+    in
+    match Map.lookup def.def_symname m with
+        Just curlist -> Map.insert def.def_symname ((def_idx, def, def_linkable) :: curlist) m
+        | Nothing -> Map.insert def.def_symname [(def_idx, def, def_linkable)] m
+    end
+
+val all_definitions_by_name : linkable_list -> Map.map string (list (natural * symbol_definition * linkable_item))
+let all_definitions_by_name linkables = 
+    (* Now that linkables are ELF memory images, we can make the 
+     * list of definitions much more easily. *)
+    let list_of_deflists = List.mapi (fun (idx : nat) -> (fun (item : linkable_item) ->
+        let img = image_of_linkable_item item
+        in 
+        let (all_def_tags, all_def_ranges)
+         = unzip (Multimap.lookupBy Memory_image_orderings.tagEquiv (SymbolDef(null_symbol_definition)) img.by_tag)
+        in
+        let all_defs = List.map (fun tag -> match tag with
+            SymbolDef(def) -> (def, item)
+            | _ -> failwith "matched tag not a symbol definition"
+        end) all_def_tags
+        in
+        [(naturalFromNat idx, def, def_linkable) | forall ((def, def_linkable) MEM all_defs) | true]
+    )) linkables
+    in
+    foldl (fun accum -> (fun deflist -> 
+        foldl (fun m -> (fun (def_idx, def, def_linkable) -> add_definition_to_map (def_idx, def, def_linkable) m)) accum deflist
+    )) Map.empty list_of_deflists
+ 
+type binding_oracle = 
+    linkable_list 
+    -> Map.map string (list (natural * symbol_definition * linkable_item))
+    -> (natural * symbol_reference * linkable_item)
+    -> maybe (natural * symbol_definition * linkable_item)
+
+val resolve_one_reference_default : forall 'abifeature. abi 'abifeature -> binding_oracle
+let resolve_one_reference_default a linkables defmap ref_idx_and_ref_and_linkable =
+    let (ref_idx, ref, ref_linkable) = ref_idx_and_ref_and_linkable
+    in
+    (* Get the list of all definitions whose name matches. 
+     * Don't match empty names. 
+     * How should we handle common symbols here?
+     * A common symbol is a potential definition, so it goes in the def list.
+     *)
+    let (defs_and_linkables_with_matching_name : list (natural * symbol_definition * linkable_item))
+     = match Map.lookup ref.ref_symname defmap with
+        Just (l : (list (natural * symbol_definition * linkable_item))) -> l
+        | Nothing -> []
+    end
+    in
+    (* Filter the list by eligibility rules. 
+     * Normally, 
+     * 
+     * - any .o file can supply any other .o file on the command line
+     * - any .a file supplies only files appearing to its left
+     *      i.e. "it is searched once for definitions"
+     * - does a .o file supply a .a file? to both its right and left? Experimentally, YES.
+     *
+     * So the restrictions are
+     * - archives may not supply weak references
+     * - archives may only supply to the left, or to themselves, or to objects in the same group
+     *)
+    let (ref_obj, (ref_fname, ref_blob, (ref_u, ref_coords)), ref_options) = ref_linkable
+    in
+    let ref_is_weak = (get_elf64_symbol_binding ref.ref_syment) = stb_weak
+    in
+    let def_is_eligible = (fun (def_idx, def, def_linkable) -> 
+        let ref_is_unnamed = (ref.ref_symname = "")
+        in
+        let ref_is_to_defined_or_common_symbol = ((natural_of_elf64_half ref.ref_syment.elf64_st_shndx) <> stn_undef)
+        in
+        let def_sym_is_ref_sym = (ref_idx = def_idx && ref.ref_sym_scn = def.def_sym_scn
+            && ref.ref_sym_idx = def.def_sym_idx)
+        in
+        let (def_obj, (def_fname, def_blob, def_origin), def_options) = def_linkable
+        in
+        let (def_u, def_coords) = def_origin
+        in
+        let (def_in_group, def_in_archive) = match def_coords with
+              InArchive(aid, aidx, _, _) :: InGroup(gid, gidx) :: [_] -> (Just gid, Just aid)
+            | InArchive(aid, aidx, _, _) :: [_]                       -> (Nothing, Just aid)
+            | InGroup(gid, gidx) :: [_]                              -> (Just gid, Nothing)
+            | [_]                                                    -> (Nothing, Nothing)
+            | _ -> failwith "internal error: didn't understand origin coordinates of definition"
+        end
+        in
+        let ref_is_leftmore = ref_idx <= def_idx
+        in
+        (* For simplicity we include the case of "same archive" in "in group with". *)
+        let ref_is_in_group_with_def = match def_in_group with 
+              Nothing -> false
+            | Just def_gid -> 
+                match ref_coords with
+                  InArchive(_, _, _, _) :: InGroup(gid, _) :: [_] -> gid = def_gid
+                | InGroup(gid, _) :: [_]                       -> gid = def_gid
+                | _ -> false
+                end
+            end
+        in
+        (* but maybe same archive? *)
+        (* DEBUGGING: print some stuff out if we care about this symbol. *)let _ = 
+            if ref_fname = "backtrace.o" && def.def_symname = "_Unwind_GetCFA" then 
+                (*Missing_pervasives.errln ("saw backtrace.o referencing _Unwind_GetCFA; coords are "
+                    ^ "def: " ^ (show def_coords) ^ ", ref: " ^ (show ref_coords) ^ "; ref_is_in_group_with_def: " 
+                    ^ (show ref_is_in_group_with_def) ^ "; def_in_group: " ^ (show def_in_group))*)
+              ()
+            else ()
+        in
+        let ref_and_def_are_in_same_archive = match (def_coords, ref_coords) with
+            (InArchive(x1, _, _, _) :: _, InArchive(x2, _, _, _) :: _) -> x1 = x2
+            | _ -> false
+        end
+        in
+        let def_is_in_archive = match def_in_archive with
+            Just _ -> true
+            | Nothing -> false
+        end
+        in
+        if ref_is_to_defined_or_common_symbol then def_sym_is_ref_sym
+        else 
+            if ref_is_unnamed then false
+            else
+                if def_is_in_archive
+                then
+                    (* Weak references *can* be resolved to archive members...
+                     * if the reference itself is also in the archive. *)
+                    ((not ref_is_weak) || ref_and_def_are_in_same_archive)
+                    && (
+                           ref_is_leftmore
+                        || ref_and_def_are_in_same_archive
+                        || ref_is_in_group_with_def
+                    )
+                else 
+                    true
+    )
+    in
+    let eligible_defs = List.filter def_is_eligible defs_and_linkables_with_matching_name
+    in
+    let (maybe_target_def_idx, maybe_target_def, maybe_target_def_linkable) = match eligible_defs with 
+        [] -> (Nothing, Nothing, Nothing)
+        | [(def_idx, def, def_linkable)] -> (Just def_idx, Just def, Just def_linkable)
+        | (d_idx, d, d_l) :: more_pairs -> 
+            (* Break ties by
+             * - putting defs in relocs (or --defsym or linker script, a.k.a. command line) ahead of defs in archives;
+             * - else whichever definition appeared first in the left-to-right order. 
+             *)
+            let sorted = sortBy (fun (d_idx1, d1, (_, (_, _, (_, d_l1_coords)), _)) -> (fun (d_idx2, d2, (_, (_, _, (_, d_l2_coords)), _)) -> 
+                match (d_l1_coords, d_l2_coords) with
+                      (InCommandLine(_) :: _, InCommandLine(_) :: _) -> d_idx1 < d_idx2
+                    | (InCommandLine(_) :: _, _)                     -> (* command-line wins *) true
+                    | (_,                     InCommandLine(_) :: _) -> (* command-line wins *) false
+                    | (_, _) -> d_idx1 < d_idx2
+                end)) eligible_defs
+            in
+            match sorted with 
+                (first_d_idx, first_d, first_d_l) :: _ -> (Just first_d_idx, Just first_d, Just first_d_l)
+                | _ -> failwith "impossible: sorted list is shorter than original"
+            end
+    end
+    in 
+    let refstr = "`" 
+                ^ ref.ref_symname ^ "' (" ^ 
+                (if (natural_of_elf64_half ref.ref_syment.elf64_st_shndx) = shn_undef then "UND" else "defined") ^ 
+                " symbol at index " ^ (show ref.ref_sym_idx) ^ " in symtab "
+                ^ (show ref.ref_sym_scn) ^ " in " ^ ref_fname
+                ^ ")"
+    in
+    let _ = Missing_pervasives.errs ("Bound a reference from " ^ refstr ^ " to ")
+    in
+    match (maybe_target_def_idx, maybe_target_def, maybe_target_def_linkable) with
+        (Just target_def_idx, Just target_def, Just target_def_linkable) ->
+            let _ = Missing_pervasives.errln (" a definition in "^ (show (target_def_linkable)))
+            in
+            Just(target_def_idx, target_def, target_def_linkable)
+    |  (Nothing, Nothing, Nothing) -> 
+            let _ = Missing_pervasives.errln " no definition"
+            in
+            if ref_is_weak (* || a.symbol_is_generated_by_linker ref.ref_symname *) then Nothing 
+            else (* failwith ("undefined symbol: " ^ refstr) *) Nothing
+            (* FIXME: do a check, *after* the linker script has been interpreted, 
+             * that all remaining undefined symbols are permitted by the ABI/policy. *)
+    | _ -> failwith "impossible: non-matching maybes for target_def_idx and target_def"
+    end
+
+val resolve_all :
+    linkable_list
+    -> Map.map string (list (natural * symbol_definition * linkable_item))                (* all definitions *)
+    -> binding_oracle
+    -> list (natural * symbol_reference * linkable_item)
+    -> list ((natural * symbol_reference * linkable_item) * maybe (natural * symbol_definition * linkable_item))
+let resolve_all linkables all_defs oracle refs = 
+    List.map (fun (ref_idx, ref, ref_linkable) -> ((ref_idx, ref, ref_linkable), (oracle linkables all_defs (ref_idx, ref, ref_linkable)))) refs
+
+(* To accumulate which inputs are needed, we work with a list of undefineds, starting with those
+ * in the  forced-output objects. We then iteratively build a list of all needed symbol definitions,
+ * pulling in the objects that contain them, until we reach a fixed point. *)
+val resolve_undefs_in_one_object : 
+    linkable_list
+    -> Map.map string (list (natural * symbol_definition * linkable_item))                (* all definitions *)
+    -> binding_oracle
+    -> natural
+    -> list ((natural * symbol_reference * linkable_item) * maybe (natural * symbol_definition * linkable_item))
+let resolve_undefs_in_one_object linkables all_defs oracle idx =
+    (* Get this object's list of references *)
+    let item = match List.index linkables (natFromNatural idx) with
+        Just it -> it
+        | Nothing -> failwith "impossible: linkable not in list of linkables"
+    end
+    in
+    let img = image_of_linkable_item item
+    in 
+    let (all_ref_tags, all_ref_ranges)
+     = unzip (Multimap.lookupBy Memory_image_orderings.tagEquiv (SymbolRef(null_symbol_reference_and_reloc_site)) img.by_tag)
+    in
+    (* By using SymbolRef, we are extracting and binding each relocation site individually. 
+     * since there might be more than one relocation site referencing the same symbol name, 
+     * in a given object.
+     * 
+     * We are also binding SymbolRefs that have no relocation, which occur when there's
+     * an UND symbol which is not actually used by a relocation site, but is nevertheless 
+     * in need of being resolved.
+     * 
+     * We don't (for the moment) want to make different decisions for different reloc sites
+     * in the same object referencing the same symbol. So we dedup from a list to a set.
+     *)
+    let all_refs = Set.fromList (List.map (fun tag -> match tag with
+        SymbolRef(r) -> r.ref
+        | _ -> failwith "matched tag not a relocation site"
+    end) all_ref_tags)
+    in
+    let ref_triples = { (idx, ref, item) | forall (ref IN all_refs) | true }
+    in
+    (*let _ = Missing_pervasives.errln ("object " ^ (show item) ^ " has " ^ 
+        (show (Set.size ref_triples)) ^ " reloc references (symname, sym_scn, sym_idx, st_shndx) (" ^ 
+        (show (List.map (fun x -> ("\"" ^ x.ref_symname ^ "\"", x.ref_sym_scn, x.ref_sym_idx, natural_of_elf64_half x.ref_syment.elf64_st_shndx)) (Set_extra.toList all_refs))) ^ ")")
+    in*)
+    let und_ref_triples = { (idx, ref, ref_item) | forall ((idx, ref, ref_item) IN ref_triples) | natural_of_elf64_half ref.ref_syment.elf64_st_shndx = shn_undef }
+    in
+    (*let _ = Missing_pervasives.errln ("... of which " ^
+        (show (Set.size und_ref_triples)) ^ " are to undefined symbols: (symname, sym_scn, sym_idx, st_shndx) (" ^ 
+        (show (List.map (fun (idx, x, _) -> ("\"" ^ x.ref_symname ^ "\"", x.ref_sym_scn, x.ref_sym_idx, natural_of_elf64_half x.ref_syment.elf64_st_shndx)) (Set_extra.toList und_ref_triples))) ^ ")")
+    in*)
+    resolve_all linkables all_defs oracle (Set_extra.toList ref_triples)
+
+val accumulate_bindings_bf : forall 'abifeature.
+    abi 'abifeature
+    -> linkable_list
+    -> Map.map string (list (natural * symbol_definition * linkable_item))                (* all definitions *)
+    -> set natural                                        (* inputs fully-bound so far *)
+    -> list natural                                       (* ordered list of inputs to bind next *)
+    -> list ((natural * symbol_reference * linkable_item) * maybe (natural * symbol_definition * linkable_item))  (* bindings made so far *)
+    -> list ((natural * symbol_reference * linkable_item) * maybe (natural * symbol_definition * linkable_item))  (* all accumulated bindings bindings *)
+let rec accumulate_bindings_bf a linkables all_defs fully_bound to_bind bindings_accum =
+    (* This is like foldl, except that each stage
+     * can add stuff to the work list *)
+    match to_bind with 
+        [] -> bindings_accum (* termination *)
+        | l_idx :: more_idx ->
+            (* Get the new bindings for this object *)
+            let new_bindings = resolve_undefs_in_one_object
+                linkables
+                all_defs
+                (resolve_one_reference_default a)
+                l_idx
+            in
+            let new_fully_bound = Set.insert l_idx fully_bound
+            in
+            (* Which of the new bindings are to objects 
+             * not yet fully bound or not yet in the to-bind list? *)
+            let new_bindings_def_idx = list_concat_map (fun (ref, maybe_def_and_idx_and_linkable) -> 
+                match maybe_def_and_idx_and_linkable with 
+                    Just (def_idx, def, def_linkable) -> [def_idx]
+                    | Nothing -> []
+                end
+            ) new_bindings 
+            in
+            let new_bindings_def_idx_set = Set.fromList new_bindings_def_idx
+            in
+            let included_linkables_idx = fully_bound union (Set.fromList to_bind)
+            in
+            let new_l_idx = new_bindings_def_idx_set \ included_linkables_idx
+            in
+            let new_l_idx_list = Set_extra.toList new_l_idx
+            in
+            (*let _ = Missing_pervasives.errln (
+                if List.null new_l_idx_list 
+                then
+                    "Fully bound references in  " ^ (show (List.index linkables (natFromNatural l_idx)))
+                        ^ " using only already-included linkables (" 
+                        ^ (show (List.map (fun i -> List.index linkables (natFromNatural i)) (Set_extra.toList included_linkables_idx)))
+                else
+                    "Including additional linkables "
+                    ^ (show (List.mapMaybe (fun i -> List.index linkables (natFromNatural i)) new_l_idx_list))
+                    )
+            in*)
+            accumulate_bindings_bf
+                a
+                linkables
+                all_defs
+                new_fully_bound
+                (more_idx ++ new_l_idx_list)
+                (bindings_accum ++ new_bindings)
+    end
+
+(* We need a generalised kind of depth-first search in which there are multiple start points. 
+ * Also, we always work one object at a time, not one edge at a time; when we pull in an object,
+ * we resolve *all* the references therein.
+ *)
+val accumulate_bindings_objectwise_df : forall 'abifeature.
+    abi 'abifeature
+    -> linkable_list
+    -> Map.map string (list (natural * symbol_definition * linkable_item))                (* all definitions *)
+
+    -> list ((natural * symbol_reference * linkable_item) * maybe (natural * symbol_definition * linkable_item))  (* bindings made so far *)
+    -> set natural                                        (* inputs fully-bound so far -- these are "black" *)
+    -> list natural                                       (* inputs scheduled for binding -- these include 
+                                                             any "grey" (in-progress) nodes *and*
+                                                             any nodes that we have committed to exploring 
+                                                             (the "start nodes").
+                                                             Because we're depth-first, we prepend our adjacent
+                                                             nodes to this list, making them grey, then we 
+                                                             recurse by taking from the head. We must always
+                                                             filter out the prepended nodes from the existing list, 
+                                                             to ensure we don't recurse infinitely. *)
+    -> list ((natural * symbol_reference * linkable_item) * maybe (natural * symbol_definition * linkable_item))  (* all accumulated bindings bindings *)
+let rec accumulate_bindings_objectwise_df a linkables all_defs bindings_accum blacks greys =
+    match greys with 
+        [] -> bindings_accum (* termination *)
+        | l_idx :: more_idx ->
+            (* Get the new bindings for this object *)
+            let new_bindings = resolve_undefs_in_one_object
+                linkables
+                all_defs
+                (resolve_one_reference_default a)
+                l_idx
+            in 
+            (* We pull in the whole object at a time ("objectwise"), so by definition,
+             * we have created bindings for everything in this object; it's now black. *)
+            let new_fully_bound = Set.insert l_idx blacks
+            in
+            (* Which of the new bindings are to objects 
+             * not yet fully bound or not yet in the to-bind list? *)
+            let new_bindings_def_idx = list_concat_map (fun (ref, maybe_def_and_idx_and_linkable) -> 
+                match maybe_def_and_idx_and_linkable with 
+                    Just (def_idx, def, def_linkable) -> [def_idx]
+                    | Nothing -> []
+                end
+            ) new_bindings 
+            in
+            let new_bindings_def_idx_set = Set.fromList new_bindings_def_idx
+            in
+            (* this is the "black or grey" set. *)
+            let included_linkables_idx = blacks union (Set.fromList greys)
+            in
+            (* these are the white ones that we're adjacent to *)
+            let new_l_idx = new_bindings_def_idx_set \ included_linkables_idx
+            in
+            let new_l_idx_list = Set_extra.toList new_l_idx
+            in
+            (* What is the new grey-alike list? (This is the list we tail-recurse down.)
+             * It's
+             * - the existing grey-alike list
+             * - with any new (were-white) objects prepended
+             * - ... and filtered to *remove* these from the existing list (avoid duplication).
+             *)
+            let new_grey_list = new_l_idx_list ++ (List.filter (fun x -> not (x IN new_l_idx)) more_idx)
+            in
+            (* whether or not we've not uncovered any new white nodes, we tail-recurse  *)
+            (*let _ = (if List.null new_l_idx_list then
+                Missing_pervasives.errln ("Fully bound references in  " ^ (show (List.index linkables (natFromNatural l_idx)))
+                    ^ " using only already-included linkables (" 
+                    ^ (show (List.map (fun i -> List.index linkables (natFromNatural i)) (Set_extra.toList included_linkables_idx)))
+                ) else Missing_pervasives.errln ("Including additional linkables "
+            ^ (show (List.mapMaybe (fun i -> List.index linkables (natFromNatural i)) new_l_idx_list))))
+            in*)
+            accumulate_bindings_objectwise_df
+                a
+                linkables
+                all_defs
+                (bindings_accum ++ new_bindings)
+                (new_fully_bound : set natural)
+                (new_grey_list : list natural)
+   end
+
+(* Rather than recursively expanding the link by searching for definitions of undefs, 
+ * the GNU linker works by recursing/looping along the list of *linkables*, testing whether
+ * any of the defs satisfies a currently-undef'd thing. On adding a new undef'd thing, 
+ * we re-search only from the current archive, not from the beginning (i.e. the 
+ * "def_is_leftmore or def_in_same_archive" logic).
+ *
+ * Why is this not the same as depth-first? One example is if we pull in a new object
+ * which happens to have two undefs: one satisfied by the *first* element in the current archive,
+ * and one satisfied by the last. 
+ * 
+ * In the GNU algorithm, we'll pull in the first archive element immediately afterwards, because
+ * we'll re-traverse the archive and find it's needed.
+ * 
+ * In the depth-first algorithm, it depends entirely on the ordering of the new bindings, i.e.
+ * the symtab ordering of the two undefs. If the later-in-archive def was bound *first*, we'll
+ * recurse down *that* object's dependencies first.
+ * 
+ * So if we sort the new grey list
+ * so that bindings formed in order of *current archive def pos*,
+ * will we get the same behaviour?
+ * We can't really do this, because we have no "current archive".
+ * 
+ * Need to rewrite the algorithm to fold along the list of linkables.
+ *)

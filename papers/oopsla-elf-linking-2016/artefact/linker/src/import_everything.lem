@@ -1,0 +1,76 @@
+(** [import_everything] imports all Lem files for convenience when testing the
+  * Isabelle/HOL4 extractions, etc.
+  *
+  * XXX: all commented files are part of the linker formalisation and not yet
+  *      tested with Isabelle.
+  *)
+
+(*open import Abstract_linker_script*)
+open import Archive
+open import Byte_sequence
+(*open import Command_line*)
+open import Default_printing
+open import Elf_dynamic
+open import Elf_file
+open import Elf_header
+open import Elf_interpreted_section
+open import Elf_interpreted_segment
+open import Elf_memory_image
+open import Elf_memory_image_of_elf64_file
+open import Elf64_file_of_elf_memory_image
+open import Elf_note
+open import Elf_program_header_table
+open import Elf_relocation
+open import Elf_section_header_table
+open import Elf_symbol_table
+open import Elf_types_native_uint
+open import Endianness
+open import Error
+open import Hex_printing
+open import Input_list
+open import Linkable_list
+open import Linker_script
+open import Link
+open import Memory_image
+open import Memory_image_orderings
+open import Missing_pervasives
+open import Multimap
+open import Show
+open import String_table
+
+open import Abi_classes
+open import Abis
+open import Abi_utilities
+open import Harness_interface
+open import Sail_interface
+open import Gnu_ext_abi
+open import Gnu_ext_dynamic
+open import Gnu_ext_note
+open import Gnu_ext_program_header_table
+open import Gnu_ext_section_header_table
+open import Gnu_ext_section_to_segment_mapping
+open import Gnu_ext_symbol_versioning
+open import Gnu_ext_types_native_uint
+
+open import Abi_aarch64_le_elf_header
+open import Abi_aarch64_le
+open import Abi_aarch64_le_serialisation
+open import Abi_aarch64_program_header_table
+open import Abi_aarch64_relocation
+open import Abi_aarch64_section_header_table
+open import Abi_aarch64_symbol_table
+open import Abi_amd64_elf_header
+open import Abi_amd64
+open import Abi_amd64_program_header_table
+open import Abi_amd64_relocation
+open import Abi_amd64_section_header_table
+open import Abi_amd64_serialisation
+open import Abi_amd64_symbol_table
+open import Abi_power64_dynamic
+open import Abi_power64_elf_header
+open import Abi_power64
+open import Abi_power64_relocation
+open import Abi_power64_section_header_table
+open import Abi_x86_relocation
+
+open import Test_image

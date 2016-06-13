@@ -1,0 +1,262 @@
+open import Basic_classes
+open import Function
+open import String
+open import Tuple
+open import Bool
+open import List
+open import Sorting
+open import Map
+open import Set
+open import Multimap
+open import Num
+open import Maybe
+open import Assert_extra
+open import Show
+
+open import Byte_sequence
+open import Elf_file
+open import Elf_header
+open import Elf_interpreted_segment
+open import Elf_interpreted_section
+open import Elf_program_header_table
+open import Elf_section_header_table
+open import Elf_symbol_table
+open import Elf_types_native_uint
+open import Elf_relocation
+open import Memory_image
+open import Abi_classes
+(* open import Abis *)
+
+open import Missing_pervasives
+
+val elfFileFeatureCompare : elf_file_feature -> elf_file_feature -> Basic_classes.ordering
+let elfFileFeatureCompare f1 f2 = 
+    (* order is: *)
+    match (f1, f2) with
+        (ElfHeader(x1), ElfHeader(x2)) -> (* equal tags, so ... *) compare x1 x2
+      | (ElfHeader(x1), _) -> LT
+      | (ElfSectionHeaderTable(x1), ElfHeader(x2)) -> GT
+      | (ElfSectionHeaderTable(x1), ElfSectionHeaderTable(x2)) -> (* equal tags, so ... *) compare x1 x2
+      | (ElfSectionHeaderTable(x1), _) -> LT
+      | (ElfProgramHeaderTable(x1), ElfHeader(x2)) -> GT
+      | (ElfProgramHeaderTable(x1), ElfSectionHeaderTable(x2)) -> GT
+      | (ElfProgramHeaderTable(x1), ElfProgramHeaderTable(x2)) -> compare x1 x2
+      | (ElfProgramHeaderTable(x1), _) -> LT
+      | (ElfSection(x1), ElfHeader(x2)) -> GT
+      | (ElfSection(x1), ElfSectionHeaderTable(x2)) -> GT
+      | (ElfSection(x1), ElfProgramHeaderTable(x2)) -> GT
+      | (ElfSection(x1), ElfSection(x2)) -> compare x1 x2
+      | (ElfSection(x1), _) -> LT
+      | (ElfSegment(x1), ElfHeader(x2)) -> GT
+      | (ElfSegment(x1), ElfSectionHeaderTable(x2)) -> GT
+      | (ElfSegment(x1), ElfProgramHeaderTable(x2)) -> GT
+      | (ElfSegment(x1), ElfSection(x2)) -> GT
+      | (ElfSegment(x1), ElfSegment(x2)) -> compare x1 x2
+      | (ElfSegment(x1), _) -> LT
+    end
+
+val elfFileFeatureTagEquiv : elf_file_feature -> elf_file_feature -> bool
+let elfFileFeatureTagEquiv f1 f2 = 
+    (* order is: *)
+    match (f1, f2) with
+        (ElfHeader(x1), ElfHeader(x2)) -> (* equal tags, so ... *) true
+      | (ElfSectionHeaderTable(x1), ElfSectionHeaderTable(x2)) -> true
+      | (ElfProgramHeaderTable(x1), ElfProgramHeaderTable(x2)) -> true
+      | (ElfSection(x1), ElfSection(x2)) -> true
+      | (ElfSegment(x1), ElfSegment(x2)) -> true
+      | (_, _) -> false
+    end
+
+instance (Ord elf_file_feature)
+    let compare = elfFileFeatureCompare
+    let (<) = fun f1 -> (fun f2 -> (elfFileFeatureCompare f1 f2 = LT))
+    let (<=) = fun f1 -> (fun f2 -> Set.member (elfFileFeatureCompare f1 f2) {LT; EQ})
+    let (>) = fun f1 -> (fun f2 -> (elfFileFeatureCompare f1 f2 = GT))
+    let (>=) = fun f1 -> (fun f2 -> Set.member (elfFileFeatureCompare f1 f2) {GT; EQ})
+end
+
+val tagCompare : forall 'abifeature. Ord 'abifeature =>
+    range_tag 'abifeature -> range_tag 'abifeature -> Basic_classes.ordering
+let tagCompare k1 k2 = 
+    match (k1, k2) with
+        (ImageBase, ImageBase) -> EQ
+        | (ImageBase, _) -> LT
+        | (EntryPoint, ImageBase) -> GT
+        | (EntryPoint, EntryPoint) -> EQ
+        | (EntryPoint, _) -> LT
+        | (SymbolDef(_), ImageBase) -> GT
+        | (SymbolDef(_), EntryPoint) -> GT
+        | (SymbolDef(x1), SymbolDef(x2)) -> compare x1 x2
+        | (SymbolDef(_), _) -> LT
+        | (SymbolRef(_), ImageBase) -> GT
+        | (SymbolRef(_), EntryPoint) -> GT
+        | (SymbolRef(_), SymbolDef(_)) -> GT
+        | (SymbolRef(x1), SymbolRef(x2)) -> compare x1 x2
+        | (SymbolRef(_), _) -> LT
+        | (FileFeature(_), ImageBase) -> GT
+        | (FileFeature(_), EntryPoint) -> GT
+        | (FileFeature(_), SymbolDef(_)) -> GT
+        | (FileFeature(_), SymbolRef(_)) -> GT
+        | (FileFeature(x1), FileFeature(x2)) -> compare x1 x2
+        | (FileFeature(_), _) -> LT
+        | (AbiFeature(_), ImageBase) -> GT
+        | (AbiFeature(_), EntryPoint) -> GT
+        | (AbiFeature(_), SymbolDef(_)) -> GT
+        | (AbiFeature(_), SymbolRef(_)) -> GT
+        | (AbiFeature(_), FileFeature(_)) -> GT
+        | (AbiFeature(x1), AbiFeature(x2)) -> compare x1 x2
+        | (AbiFeature(_), _) -> LT
+    end
+
+instance forall 'abifeature. Ord 'abifeature => (Ord range_tag 'abifeature)
+    let compare = tagCompare
+    let (<) = fun tag1 -> (fun tag2 -> (tagCompare tag1 tag2 = LT))
+    let (<=) = fun tag1 -> (fun tag2 -> Set.member (tagCompare tag1 tag2) {LT; EQ})
+    let (>) = fun tag1 -> (fun tag2 -> (tagCompare tag1 tag2 = GT))
+    let (>=) = fun tag1 -> (fun tag2 -> Set.member (tagCompare tag1 tag2) {GT; EQ})
+end
+
+val tagEquiv : forall 'abifeature. AbiFeatureTagEquiv 'abifeature => range_tag 'abifeature -> range_tag 'abifeature -> bool
+let tagEquiv k1 k2 = 
+    match (k1, k2) with
+        (ImageBase, ImageBase) -> true
+        | (EntryPoint, EntryPoint) -> true
+        | (SymbolDef(x1), SymbolDef(x2)) -> true
+        | (SymbolRef(_), SymbolRef(_)) -> true
+        | (FileFeature(x1), FileFeature(x2)) -> elfFileFeatureTagEquiv x1 x2
+        | (AbiFeature(x1), AbiFeature(x2)) -> abiFeatureTagEquiv x1 x2
+        | (_, _) -> false
+    end
+
+(* ------- end of Ord / compare / ConstructorToNaturalList functions *)
+
+
+val unique_tag_matching : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature => range_tag 'abifeature -> annotated_memory_image 'abifeature -> range_tag 'abifeature
+let unique_tag_matching tag img = 
+    match Multimap.lookupBy tagEquiv tag img.by_tag with
+        [] -> failwith "no tag match found"
+        | [(t, r)] -> t
+        | x -> failwith ("more than one tag match") (* (ranges: " ^ 
+            (show (List.map (fun (t, r) -> r) x))
+            ^  ") when asserted unique")" *)
+    end
+    
+val tagged_ranges_matching_tag : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature => range_tag 'abifeature -> annotated_memory_image 'abifeature -> list (range_tag 'abifeature * maybe element_range)
+let tagged_ranges_matching_tag tag img = 
+    Multimap.lookupBy tagEquiv tag img.by_tag
+
+val element_range_compare : element_range -> element_range -> Basic_classes.ordering
+let element_range_compare = pairCompare compare compare
+
+val unique_tag_matching_at_range_exact : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature =>
+    maybe element_range
+    -> range_tag 'abifeature
+    -> annotated_memory_image 'abifeature
+    -> range_tag 'abifeature
+let unique_tag_matching_at_range_exact r tag img = 
+    (* 1. find tags a unique range labelled as ELF section header table. *)
+    let (_, (allRangeMatches : list (range_tag 'abifeature))) = unzip (Multimap.lookupBy (=) r img.by_range)
+    in
+    let (tagAlsoMatches : list (range_tag 'abifeature)) = List.filter (fun x -> tagEquiv x tag) allRangeMatches
+    in
+    match tagAlsoMatches with
+        [] -> failwith "no range/tag match when asserted to exist"
+        | [x] -> x
+        | _ -> failwith "multiple range/tag match when asserted unique"
+    end
+
+val symbol_def_ranges : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature => annotated_memory_image 'abifeature -> (list (range_tag 'abifeature) * list (maybe element_range))
+let symbol_def_ranges img = 
+    (* find all element ranges labelled as ELF symbols *)
+    let (tags, maybe_ranges) = unzip (
+        tagged_ranges_matching_tag (SymbolDef(null_symbol_definition)) img
+    )
+    in
+    (* some symbols, specifically ABS symbols, needn't label a range. *)
+    (tags, maybe_ranges)
+
+val name_of_symbol_def : symbol_definition -> string
+let name_of_symbol_def sym = sym.def_symname
+
+val defined_symbols_and_ranges : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature => annotated_memory_image 'abifeature -> list ((maybe element_range) * symbol_definition)
+let defined_symbols_and_ranges img = 
+    List.mapMaybe (fun (tag, maybeRange) -> 
+        match tag with
+            SymbolDef(ent) -> Just (maybeRange, ent)
+            | _ -> failwith "impossible: non-symbol def in list of symbol defs"
+        end) (tagged_ranges_matching_tag (SymbolDef(null_symbol_definition)) img)
+    
+val make_ranges_definite : list (maybe element_range) -> list element_range
+let make_ranges_definite rs = 
+    List.map (fun (maybeR : maybe element_range) -> match maybeR with
+            Just r -> r
+            | Nothing -> failwith "impossible: range not definite, but asserted to be"
+        end) rs
+
+val find_defs_matching : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature => symbol_definition -> annotated_memory_image 'abifeature -> list ((maybe element_range) * symbol_definition)
+let find_defs_matching bound_def img = 
+    let (ranges_and_defs : list (maybe element_range * symbol_definition)) = defined_symbols_and_ranges img
+    in 
+    (*let _ = errln ("Searching for the bound-to symbol, which came from linkable idx " ^ 
+        (show bound_def.def_linkable_idx) ^ ", section " ^ 
+        (show bound_def.def_syment.elf64_st_shndx) ^ 
+        ", symtab shndx " ^ (show bound_def.def_sym_scn) ^ 
+        ", symind " ^ (show bound_def.def_sym_idx))
+    in*)
+    List.mapMaybe (fun (maybe_some_range, some_def) -> 
+       (* match maybe_some_range with
+            Nothing -> failwith "symbol definition not over a definite range"
+            | Just some_range -> *)
+                (* if some_def.def_symname = bound_def.def_symname 
+                && some_def.def_linkable_idx = bound_def.def_linkable_idx then
+                if some_def = bound_def 
+                    then Just(maybe_some_range, some_def) else Nothing*)
+                    (*let _ = errln ("Found one in the same linkable: syment is " ^
+                        (show some_def.def_syment))
+                    in*) 
+                (*else*) if some_def = bound_def 
+                            then (
+                                (*let _ = errln ("Found one: syment is " ^ (show some_def.def_syment))
+                                in*)
+                                Just(maybe_some_range, some_def)
+                            )
+                            else Nothing
+       (* end *)
+    ) ranges_and_defs
+
+
+val defined_symbols : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature =>  annotated_memory_image 'abifeature -> list symbol_definition
+let defined_symbols img = 
+    let (all_symbol_tags, all_symbol_ranges) = symbol_def_ranges img in
+    List.mapMaybe (fun tag -> 
+        match tag with
+            SymbolDef(ent) -> Just ent
+            | _ -> failwith "impossible: non-symbol def in list of symbol defs"
+        end) all_symbol_tags
+
+
+let default_get_reloc_symaddr bound_def_in_input output_img maybe_reloc = 
+    match find_defs_matching bound_def_in_input output_img with
+        [] -> failwith ("internal error: bound-to symbol (name `" ^ bound_def_in_input.def_symname ^ "') not defined")
+        | (maybe_range, d) :: more ->
+            let v = 
+                match maybe_range with 
+                    Just(el_name, (start, len)) ->
+                    match element_and_offset_to_address (el_name, start) output_img with
+                        Just a -> a
+                        | Nothing -> failwith "internal error: could not get address for symbol"
+                    end
+                    | Nothing ->
+                        (* okay, it'd better be an ABS symbol. *)
+                        if natural_of_elf64_half d.def_syment.elf64_st_shndx = shn_abs
+                            then natural_of_elf64_addr d.def_syment.elf64_st_value
+                            else failwith "no range for non-ABS symbol"
+                end
+            in
+            match more with 
+                [] -> v
+                | _ -> let _ = errln ("FIXME: internal error: more than one def matching bound def `" ^
+                    bound_def_in_input.def_symname ^ "'")
+                    in v
+            end
+    end

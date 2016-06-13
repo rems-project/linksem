@@ -1,0 +1,33 @@
+(** [gnu_ext_program_header_table] contains GNU extension specific functionality
+  * related to the program header table.
+  *)
+
+open import Basic_classes
+open import Num
+
+(** GNU extensions, as defined in the LSB, see section 11.2. *)
+
+(** The element specifies the location and size of a segment that may be made
+  * read-only after relocations have been processed.
+  *)
+let elf_pt_gnu_relro : natural = (4 * 421345620) + 2 (* 0x6474e552 *)
+(** The [p_flags] member specifies the permissions of the segment containing the
+  * stack and is used to indicate whether the stack should be executable.
+  *)
+let elf_pt_gnu_stack : natural = (4 * 421345620) + 1 (* 0x6474e551 *)
+(** Element specifies the location and size of exception handling information. *)
+let elf_pt_gnu_eh_frame : natural = 4 * 421345620    (* 0x6474e550 *)
+
+(** [string_of_gnu_ext_segment_type m] produces a string representation of
+  * GNU extension segment type [m].
+  *)
+val string_of_gnu_ext_segment_type : natural -> string
+let {ocaml} string_of_gnu_ext_segment_type pt =
+  if pt = elf_pt_gnu_relro then
+    "GNU_RELRO"
+  else if pt = elf_pt_gnu_stack then
+    "GNU_STACK"
+  else if pt = elf_pt_gnu_eh_frame then
+    "GNU_EH_FRAME"
+  else
+    "Invalid GNU EXT segment type"

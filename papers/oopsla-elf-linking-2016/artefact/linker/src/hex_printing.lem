@@ -1,0 +1,76 @@
+(** [hex_printing] is a utility module for converting natural numbers and integers
+  * into hex strings of various widths.  Split into a new module as both the
+  * validation code and the main program need this functionality.
+  *)
+
+open import Basic_classes
+open import List
+open import Num
+open import String
+
+open import Missing_pervasives
+open import Elf_types_native_uint
+
+val hex_string_of_big_int_no_padding : natural -> string
+(* declare ocaml target_rep function hex_string_of_big_int_no_padding = `Ml_bindings.hex_string_of_big_int_no_padding` *)
+let hex_string_of_big_int_no_padding = hex_string_of_natural
+val hex_string_of_big_int_no_padding' : integer -> string
+declare ocaml target_rep function hex_string_of_big_int_no_padding' = `Ml_bindings.hex_string_of_big_int_no_padding`
+val hex_string_of_big_int_pad2 : natural -> string
+declare ocaml target_rep function hex_string_of_big_int_pad2 = `Ml_bindings.hex_string_of_big_int_pad2`
+val hex_string_of_big_int_pad4 : natural -> string
+declare ocaml target_rep function hex_string_of_big_int_pad4 = `Ml_bindings.hex_string_of_big_int_pad4`
+val hex_string_of_big_int_pad5 : natural -> string
+declare ocaml target_rep function hex_string_of_big_int_pad5 = `Ml_bindings.hex_string_of_big_int_pad5`
+val hex_string_of_big_int_pad6 : natural -> string
+declare ocaml target_rep function hex_string_of_big_int_pad6 = `Ml_bindings.hex_string_of_big_int_pad6`
+val hex_string_of_big_int_pad7 : natural -> string
+declare ocaml target_rep function hex_string_of_big_int_pad7 = `Ml_bindings.hex_string_of_big_int_pad7`
+val hex_string_of_big_int_pad8 : natural -> string
+declare ocaml target_rep function hex_string_of_big_int_pad8 = `Ml_bindings.hex_string_of_big_int_pad8`
+val hex_string_of_big_int_pad16 : natural -> string
+declare ocaml target_rep function hex_string_of_big_int_pad16 = `Ml_bindings.hex_string_of_big_int_pad16`
+
+val hex_string_of_nat_pad2 : nat -> string
+declare ocaml target_rep function hex_string_of_nat_pad2 = `Ml_bindings.hex_string_of_nat_pad2`
+
+val unsafe_hex_string_of_natural : nat -> natural -> string
+let {ocaml} unsafe_hex_string_of_natural pad m =
+  if pad = 2 then
+    hex_string_of_big_int_pad2 m
+  else if pad = 5 then
+    hex_string_of_big_int_pad5 m
+  else if pad = 4 then
+    hex_string_of_big_int_pad4 m
+  else if pad = 6 then
+    hex_string_of_big_int_pad6 m
+  else if pad = 7 then
+    hex_string_of_big_int_pad7 m
+  else if pad = 8 then
+    hex_string_of_big_int_pad8 m
+  else if pad = 16 then
+    hex_string_of_big_int_pad16 m
+  else
+    hex_string_of_big_int_no_padding m
+
+val unsafe_hex_string_of_uc_list : list unsigned_char -> string
+let rec {ocaml} unsafe_hex_string_of_uc_list xs =
+  match xs with
+    | []       -> ""
+    | x::y::xs ->
+      let sx = unsafe_hex_string_of_natural 2 (natural_of_unsigned_char x) in
+      let sy = unsafe_hex_string_of_natural 2 (natural_of_unsigned_char y) in
+      let sx =
+        if String.stringLength sx = 2 then
+          sx
+        else
+          "0" ^ sx
+      in
+      let sy =
+        if String.stringLength sy = 2 then
+          sy
+        else
+          "0" ^ sy
+      in
+        sx ^ " " ^ sy ^ " " ^ unsafe_hex_string_of_uc_list xs
+  end

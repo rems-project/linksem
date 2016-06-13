@@ -1,0 +1,150 @@
+(** The module [gnu_ext_section_header_table] implements function, definitions
+  * and types relating to the GNU extensions to the standard ELF section header
+  * table.
+  *)
+
+open import Basic_classes
+open import Bool
+open import Map
+open import Maybe
+open import Num
+open import String
+
+open import Hex_printing
+
+open import Error
+open import String_table
+open import Show
+
+open import Elf_section_header_table
+open import Elf_interpreted_section
+
+(** GNU extended section types *)
+
+(** [GNU_HASH] does not appear to be defined in the LSB but is present in
+  * several ELF binaries collected in the wild...
+  *
+  * TODO: find out where this comes from?
+  * ANSW: a mailing list apparently!  See here:
+  *   https://sourceware.org/ml/binutils/2006-10/msg00377.html
+  *)
+let sht_gnu_hash    : natural = (2 * 939524091)     (* 0x6FFFFFF6 *)
+
+(** The following are all defined in Section 10.2.2.2 of the LSB as additional
+  * section types over the ones defined in the SCO ELF spec.
+  *)
+
+(** [sht_gnu_verdef] contains the symbol versions that are provided.
+  *)
+let sht_gnu_verdef  : natural = (2 * 939524095) - 1 (* 0x6ffffffd *)
+(** [sht_gnu_verneed] contains the symbol versions that are required.
+  *)
+let sht_gnu_verneed : natural = (2 * 939524095)     (* 0x6ffffffe *)
+(** [sht_gnu_versym] contains the symbol version table.
+  *)
+let sht_gnu_versym  : natural = (2 * 939524095) + 1 (* 0x6fffffff *)
+(** [sht_gnu_liblist] appears to be undocumented but appears in PowerPC 64 ELF
+  * binaries in "the wild".
+  *)
+let sht_gnu_liblist : natural = (2 * 939524091) + 1 (* 0x6FFFFFF7 *)
+
+(** [string_of_gnu_ext_section_type m] produces a string based representation of
+  * GNU extension section type [m].
+  *)
+val string_of_gnu_ext_section_type : natural -> string
+let {ocaml} string_of_gnu_ext_section_type i =
+  if i = sht_gnu_hash then
+    "GNU_HASH"
+  else if i = sht_gnu_verdef then
+    "VERDEF"
+  else if i = sht_gnu_verneed then
+    "VERNEED"
+  else if i = sht_gnu_versym then
+    "VERSYM"
+  else if i = sht_gnu_liblist then
+    "GNU_LIBLIST"
+  else if i >= sht_loos && i <= sht_hios then
+    let diff = i - sht_loos in
+    let suff = unsafe_hex_string_of_natural 0 diff in
+      "LOOS+" ^ suff
+  else
+    "Invalid GNU EXT section type: " ^ show i
+    
+(** [gnu_ext_additionall_special_sections] records additional section names that
+  * map appear in GNU ELF binaries and their required associated types and
+  * attributes.  See Section 10.3.1.1 of the LSB and the related map
+  * [elf_special_sections] in [Elf_section_header_table] which records section
+  * names and their required types and attributes that all ELF binaries share.
+  *)
+val gnu_ext_additional_special_sections : Map.map string (natural * natural)
+let gnu_ext_additional_special_sections =
+  Map.fromList [
+    (".ctors", (sht_progbits, shf_alloc + shf_write))
+  ; (".data.rel.ro", (sht_progbits, shf_alloc + shf_write))
+  ; (".dtors", (sht_progbits, shf_alloc + shf_write))
+  ; (".eh_frame", (sht_progbits, shf_alloc))
+  ; (".eh_frame_hdr", (sht_progbits, shf_alloc))
+  ; (".gcc_execpt_table", (sht_progbits, shf_alloc))
+  ; (".gnu.version", (sht_gnu_versym, shf_alloc))
+  ; (".gnu.version_d", (sht_gnu_verdef, shf_alloc))
+  ; (".gnu.version_r", (sht_gnu_verneed, shf_alloc))
+  ; (".got.plt", (sht_progbits, shf_alloc + shf_write))
+  ; (".jcr", (sht_progbits, shf_alloc + shf_write))
+  ; (".note.ABI-tag", (sht_note, shf_alloc))
+  ; (".stab", (sht_progbits, 0))
+  ; (".stabstr", (sht_strtab, 0))
+  ]
+  
+(** [is_valid_gnu_ext_elf32_section_header_table_entry scts stbl] checks whether
+  * sections [scts] conforms with the contents of the special sections table.
+  * Fails otherwise.
+  *)
+val is_valid_gnu_ext_elf32_section_header_table_entry : elf32_interpreted_section ->
+  string_table -> bool
+let is_valid_gnu_ext_elf32_section_header_table_entry ent stbl =
+  match String_table.get_string_at ent.elf32_section_name stbl with
+    | Fail    f    -> false
+    | Success name ->
+      match Map.lookup name gnu_ext_additional_special_sections with
+        | Nothing           ->
+            is_valid_elf32_section_header_table_entry ent stbl
+        | Just (typ, flags) ->
+            typ = ent.elf32_section_type && flags = ent.elf32_section_flags
+      end
+  end
+  
+(** [is_valid_gnu_ext_elf32_section_header_table sht stbl] checks whether every
+  * member of the section header table [sht] conforms with the special sections
+  * table.
+  *)
+val is_valid_gnu_ext_elf32_section_header_table : list elf32_interpreted_section ->
+  string_table -> bool
+let is_valid_gnu_ext_elf32_section_header_table ents stbl =
+  List.all (fun x -> is_valid_gnu_ext_elf32_section_header_table_entry x stbl) ents
+  
+(** [is_valid_gnu_ext_elf64_section_header_table_entry scts stbl] checks whether
+  * sections [scts] conforms with the contents of the special sections table.
+  * Fails otherwise.
+  *)
+val is_valid_gnu_ext_elf64_section_header_table_entry : elf64_interpreted_section ->
+  string_table -> bool
+let is_valid_gnu_ext_elf64_section_header_table_entry ent stbl =
+  match String_table.get_string_at ent.elf64_section_name stbl with
+    | Fail    f    -> false
+    | Success name ->
+      match Map.lookup name gnu_ext_additional_special_sections with
+        | Nothing           ->
+            is_valid_elf64_section_header_table_entry ent stbl
+        | Just (typ, flags) ->
+            typ = ent.elf64_section_type && flags = ent.elf64_section_flags
+      end
+  end
+  
+(** [is_valid_gnu_ext_elf64_section_header_table sht stbl] checks whether every
+  * member of the section header table [sht] conforms with the special sections
+  * table.
+  *)
+val is_valid_gnu_ext_elf64_section_header_table : list elf64_interpreted_section ->
+  string_table -> bool
+let is_valid_gnu_ext_elf64_section_header_table ents stbl =
+  List.all (fun x -> is_valid_gnu_ext_elf64_section_header_table_entry x stbl) ents

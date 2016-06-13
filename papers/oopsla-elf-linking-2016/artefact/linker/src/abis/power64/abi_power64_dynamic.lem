@@ -1,0 +1,39 @@
+open import Basic_classes
+open import Num
+open import String
+
+open import Error
+open import Show
+open import String_table
+
+open import Elf_dynamic
+open import Elf_types_native_uint
+
+let abi_power64_dt_ppcgot : natural = (939524096 * 2) (* 0x70000000 *)
+
+val string_of_abi_power64_dynamic_tag : natural -> string
+let string_of_abi_power64_dynamic_tag m =
+  if m = abi_power64_dt_ppcgot then
+    "PPC64_GLINK"
+  else
+    "Invalid Power64 dynamic tag"
+
+val abi_power64_tag_correspondence_of_tag : natural -> error tag_correspondence
+let abi_power64_tag_correspondence_of_tag m =
+  if m = abi_power64_dt_ppcgot then
+    return C_Ptr
+  else
+    fail ("abi_power64_tag_correspondence_of_tag: invalid Power64 dynamic tag")
+    
+val abi_power64_elf64_value_of_elf64_dyn : elf64_dyn -> string_table -> error elf64_dyn_value
+let abi_power64_elf64_value_of_elf64_dyn dyn stbl =
+  let tag = naturalFromInteger (integer_of_elf64_sxword dyn.elf64_dyn_tag) in
+    if tag = abi_power64_dt_ppcgot then
+      match dyn.elf64_dyn_d_un with
+        | D_Val     v -> fail "abi_power64_elf64_value_of_elf64_dyn: PPC_GOT must be a PTR"
+        | D_Ptr     p -> return p
+        | D_Ignored i -> fail "abi_power64_elf64_value_of_elf64_dyn: PPC_GOT must be a PTR"
+      end >>= fun addr ->
+      return (Address addr)
+    else
+      fail ("abi_power64_elf64_value_of_elf64_dyn: invalid Power64 dynamic tag")

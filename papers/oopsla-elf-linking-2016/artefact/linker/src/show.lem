@@ -1,0 +1,127 @@
+(** [show.lem] exports the typeclass [Show] and associated functions for pretty
+  * printing arbitrary values.
+  *)
+
+open import Function
+open import List
+open import Maybe
+open import Num
+open import String
+open import String_extra
+
+class (Show 'a)
+  val show : 'a -> string
+end
+
+(** [string_of_unit u] produces a string representation of unit [u].
+  *)
+val string_of_unit : unit -> string
+let string_of_unit u = "()"
+
+instance (Show unit)
+  let show = string_of_unit
+end
+
+(** [string_of_bool b] produces a string representation of boolean [b].
+  *)
+val string_of_bool : bool -> string
+let string_of_bool b =
+  match b with
+    | true  -> "true"
+    | false -> "false"
+  end
+
+instance (Show bool)
+  let show = string_of_bool
+end
+
+(** To give control over extraction as instances cannot be target specific, but
+  * the functions they are bound to can be...
+  *)
+val string_of_string : string -> string
+let string_of_string x = x
+
+instance (Show string)
+  let show = string_of_string
+end
+
+(** [string_of_pair p] produces a string representation of pair [p].
+  *)
+val string_of_pair : forall 'a 'b. Show 'a, Show 'b => ('a * 'b) -> string
+let string_of_pair (left, right) =
+  "(" ^ show left ^ ", " ^ show right ^ ")"
+
+instance forall 'a 'b. Show 'a, Show 'b => (Show ('a * 'b))
+  let show = string_of_pair
+end
+
+(** [string_of_triple p] produces a string representation of triple [p].
+  *)
+val string_of_triple : forall 'a 'b 'c. Show 'a, Show 'b, Show 'c => ('a * 'b * 'c) -> string
+let string_of_triple (left, middle, right) =
+  "(" ^ show left ^ ", " ^ show middle ^ ", " ^ show right ^ ")"
+
+instance forall 'a 'b 'c. Show 'a, Show 'b, Show 'c => (Show ('a * 'b * 'c))
+  let show = string_of_triple
+end
+
+(** [string_of_quad p] produces a string representation of quad [p].
+  *)
+val string_of_quad : forall 'a 'b 'c 'd. Show 'a, Show 'b, Show 'c, Show 'd => ('a * 'b * 'c * 'd) -> string
+let string_of_quad (left, middle1, middle2, right) =
+  "(" ^ show left ^ ", " ^ show middle1 ^ ", " ^ show middle2 ^ ", " ^ show right ^ ")"
+
+instance forall 'a 'b 'c 'd. Show 'a, Show 'b, Show 'c, Show 'd => (Show ('a * 'b * 'c * 'd))
+  let show = string_of_quad
+end
+
+(** [string_of_maybe m] produces a string representation of maybe value [m].
+  *)
+val string_of_maybe : forall 'a. Show 'a => maybe 'a -> string
+let string_of_maybe m =
+  match m with
+    | Nothing -> "Nothing"
+    | Just e  -> "Just " ^ show e
+  end
+
+instance forall 'a. Show 'a => (Show (maybe 'a))
+  let show = string_of_maybe
+end
+
+(** [show_else s m] produces a string representation of maybe [m], using [s] 
+  * in the case [m] = Nothing. *)
+val show_else : forall 'a. Show 'a => string -> maybe 'a -> string
+let show_else subst m = 
+    match m with 
+          Just x -> show x 
+        | Nothing -> subst 
+    end
+
+(** [string_of_nat m] produces a string representation of nat value [m].
+  *)
+val string_of_nat : nat -> string
+(* let rec {ocaml} string_of_nat m =
+  match m with
+    | 0 -> "0"
+    | m -> "S(" ^ string_of_nat (m - 1) ^ ")"
+  end
+  *)
+declare ocaml    target_rep function string_of_nat = `Pervasives.string_of_int`
+declare isabelle target_rep function string_of_nat = `LemExtraDefs.nat_to_string`
+
+instance (Show nat)
+	let show = string_of_nat
+end
+
+instance (Show natural)
+  let show = stringFromNatural
+end
+
+val string_of_integer : integer -> string
+
+declare ocaml    target_rep function string_of_integer = `Nat_big_num.to_string`
+declare isabelle target_rep function string_of_integer = `LemExtraDefs.int_to_string`
+
+instance (Show integer)
+  let show = string_of_integer
+end

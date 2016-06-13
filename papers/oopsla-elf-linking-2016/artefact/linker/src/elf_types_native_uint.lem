@@ -1,0 +1,1173 @@
+open import Basic_classes
+open import Bool
+open import Num
+open import String
+open import Assert_extra
+
+open import Endianness
+
+open import Byte_sequence
+open import Error
+open import Missing_pervasives
+open import Show
+
+open import {isabelle} `$ISABELLE_HOME/src/HOL/Word/Word`
+open import {isabelle} `Elf_Types_Local`
+
+open import {hol} `integer_wordLib`
+
+(** unsigned char type and bindings *)
+
+type unsigned_char
+
+declare ocaml    target_rep type unsigned_char = `Uint32.uint32`
+declare isabelle target_rep type unsigned_char = `Elf_Types_Local.unsigned_char`
+declare hol      target_rep type unsigned_char = `word8`
+declare coq      target_rep type unsigned_char = `unsigned_char`
+
+(** [string_of_unsigned_char uc] provides a string representation of unsigned
+  * char [uc] (in base 10).
+  *)
+val string_of_unsigned_char : unsigned_char -> string
+
+declare ocaml    target_rep function string_of_unsigned_char = `Uint32.to_string`
+declare isabelle target_rep function string_of_unsigned_char = `Elf_Types_Local.string_of_unsigned_char`
+
+(** [natural_of_unsigned_char uc] converts an unsigned char [uc] into a natural.
+  *)
+val natural_of_unsigned_char : unsigned_char -> natural
+
+declare ocaml    target_rep function natural_of_unsigned_char u = `Nat_big_num.of_string` (`Uint32.to_string` u)
+declare isabelle target_rep function natural_of_unsigned_char = `unat`
+declare hol      target_rep function natural_of_unsigned_char = `w2n`
+declare coq      target_rep function natural_of_unsigned_char = `nat_of_unsigned_char`
+
+(** [unsigned_char_of_natural i] converts a [natural] into an unsigned char, wrapping
+  * around if the size of the nat exceeds the storage capacity of an unsigned
+  * char.
+  *)
+val unsigned_char_of_natural : natural -> unsigned_char
+
+declare ocaml    target_rep function unsigned_char_of_natural m = `Uint32.of_string` (`Nat_big_num.to_string` m)
+declare isabelle target_rep function unsigned_char_of_natural = `Elf_Types_Local.unsigned_char_of_nat`
+declare hol      target_rep function unsigned_char_of_natural = (`n2w` `:` `num` `->` `8` `word`)
+declare coq      target_rep function unsigned_char_of_natural = `unsigned_char_of_nat`
+
+(** [unsigned_char_land uc0 uc1] bitwise ANDs two unsigned chars, [uc0] and [uc1]
+  * together.
+  *)
+val unsigned_char_land   : unsigned_char -> unsigned_char -> unsigned_char
+
+declare ocaml    target_rep function unsigned_char_land = `Uint32.logand`
+declare isabelle target_rep function unsigned_char_land = `Elf_Types_Local.unsigned_char_land`
+declare hol      target_rep function unsigned_char_land = `word_and`
+declare coq      target_rep function unsigned_char_land = `unsigned_char_land`
+
+(** [unsigned_char_lor uc0 uc1] bitwise OR two unsigned chars, [uc0] and [uc1]
+  * together.
+  *)
+val unsigned_char_lor   : unsigned_char -> unsigned_char -> unsigned_char
+
+declare ocaml    target_rep function unsigned_char_lor = `Uint32.logor`
+declare isabelle target_rep function unsigned_char_lor = `Elf_Types_Local.unsigned_char_lor`
+declare hol      target_rep function unsigned_char_lor = `word_or`
+declare coq      target_rep function unsigned_char_lor = `unsigned_char_lor`
+
+(** [unsigned_char_lshift uc n] performs a left bitshift of [n] places on unsigned
+  * char [uc].
+  *)
+val unsigned_char_lshift : unsigned_char -> nat -> unsigned_char
+
+declare ocaml    target_rep function unsigned_char_lshift = `Uint32.shift_left`
+declare isabelle target_rep function unsigned_char_lshift = `Elf_Types_Local.unsigned_char_lshift`
+declare hol      target_rep function unsigned_char_lshift = `word_lsl`
+declare coq      target_rep function unsigned_char_lshift = `unsigned_char_lshift`
+
+(** [unsigned_char_rshift uc n] performs a right bitshift of [n] places on unsigned
+  * char [uc].
+  *)
+val unsigned_char_rshift : unsigned_char -> nat -> unsigned_char
+
+declare ocaml    target_rep function unsigned_char_rshift = `Uint32.shift_right`
+declare isabelle target_rep function unsigned_char_rshift = `Elf_Types_Local.unsigned_char_rshift`
+declare hol      target_rep function unsigned_char_rshift = `word_lsr`
+declare coq      target_rep function unsigned_char_rshift = `unsigned_char_rshift`
+
+(** [unsigned_char_plus uc0 uc1] adds two unsigned chars, [uc0] and [uc1].
+  *)
+val unsigned_char_plus   : unsigned_char -> unsigned_char -> unsigned_char
+
+declare ocaml    target_rep function unsigned_char_plus = `Uint32.add`
+declare isabelle target_rep function unsigned_char_plus = `Elf_Types_Local.unsigned_char_plus`
+declare hol      target_rep function unsigned_char_plus = `word_add`
+declare coq      target_rep function unsigned_char_plus = `unsigned_char_plus`
+
+val unsigned_char_of_byte : byte -> unsigned_char
+
+declare ocaml    target_rep function unsigned_char_of_byte m = `Uint32.of_int` (`Char.code` m)
+declare isabelle target_rep function unsigned_char_of_byte = `id`
+declare hol      target_rep function unsigned_char_of_byte = `id`
+declare coq      target_rep function unsigned_char_of_byte = `unsigned_char_of_byte`
+
+let natural_of_byte b
+    = natural_of_unsigned_char (unsigned_char_of_byte b)
+
+(** [read_unsigned_char end bs0] reads an unsigned char from byte_sequence [bs0]
+  * assuming endianness [end].  Returns the unsigned char and the remainder of
+  * the byte_sequence.  Fails if an unsigned char cannot be read from the byte_sequence,
+  * e.g. if [bs0] is too small.
+  *)
+val read_unsigned_char : endianness -> byte_sequence -> error (unsigned_char * byte_sequence)
+let read_unsigned_char endian bs0 =
+  Byte_sequence.read_char bs0 >>= fun (u1, bs1) ->
+  return (unsigned_char_of_byte u1, bs1)
+
+val byte_of_unsigned_char : unsigned_char -> byte
+
+declare ocaml    target_rep function byte_of_unsigned_char u = `Char.chr` (`Uint32.to_int` u)
+declare isabelle target_rep function byte_of_unsigned_char = `id`
+declare hol      target_rep function byte_of_unsigned_char = `id`
+declare coq      target_rep function byte_of_unsigned_char = `byte_of_unsigned_char`
+
+val bytes_of_unsigned_char : unsigned_char -> list byte
+let bytes_of_unsigned_char u = [byte_of_unsigned_char u]
+
+val equal_unsigned_char  : unsigned_char -> unsigned_char -> bool
+
+let inline {isabelle; ocaml; hol} equal_unsigned_char = unsafe_structural_equality
+declare coq target_rep function equal_unsigned_char = `unsigned_char_equal`
+
+instance (Eq unsigned_char)
+  let (=) = equal_unsigned_char
+  let (<>) l r = not (equal_unsigned_char l r)
+end
+
+instance (Show unsigned_char)
+	let show = string_of_unsigned_char
+end
+
+(** ELF address type:
+  * 4 byte unsigned type on 32-bit architectures.
+  * 8 byte unsigned type on 64-bit architectures.
+  *)
+
+type elf32_addr
+
+declare ocaml    target_rep type elf32_addr = `Uint32.uint32`
+declare isabelle target_rep type elf32_addr = `uint32`
+declare hol      target_rep type elf32_addr = `word32`
+declare coq      target_rep type elf32_addr = `elf32_addr`
+
+val string_of_elf32_addr : elf32_addr -> string
+
+declare ocaml    target_rep function string_of_elf32_addr = `Uint32.to_string`
+declare isabelle target_rep function string_of_elf32_addr = `Elf_Types_Local.string_of_uint32`
+
+val natural_of_elf32_addr : elf32_addr -> natural
+
+declare ocaml    target_rep function natural_of_elf32_addr a = `Nat_big_num.of_string` (`Uint32.to_string` a)
+declare isabelle target_rep function natural_of_elf32_addr = `unat`
+declare hol      target_rep function natural_of_elf32_addr = `w2n`
+declare coq      target_rep function natural_of_elf32_addr = `nat_of_elf32_addr`
+
+val elf32_addr_of_natural : natural -> elf32_addr
+
+declare ocaml    target_rep function elf32_addr_of_natural m = `Uint32.of_string` (`Nat_big_num.to_string` m)
+declare isabelle target_rep function elf32_addr_of_natural = `Elf_Types_Local.uint32_of_nat`
+declare hol      target_rep function elf32_addr_of_natural = `n2w`
+declare coq      target_rep function elf32_addr_of_natural = `elf32_addr_of_nat`
+
+val elf32_addr_of_quad : byte -> byte -> byte -> byte -> elf32_addr
+
+declare ocaml    target_rep function elf32_addr_of_quad = `Uint32_wrapper.of_quad_native`
+declare isabelle target_rep function elf32_addr_of_quad = `Elf_Types_Local.uint32_of_quad`
+declare hol      target_rep function elf32_addr_of_quad = `ARB` (* TODO: add custom binding *)
+declare coq      target_rep function elf32_addr_of_quad = `elf32_addr_of_quad`
+
+val read_elf32_addr : endianness -> byte_sequence -> error (elf32_addr * byte_sequence)
+let read_elf32_addr endian bs0 =
+  match endian with
+    | Little ->
+      Byte_sequence.read_4_bytes_le bs0 >>= fun ((b1, b2, b3, b4), bs1) ->
+      return (elf32_addr_of_quad b4 b3 b2 b1, bs1)
+    | Big    ->
+      Byte_sequence.read_4_bytes_be bs0 >>= fun ((b1, b2, b3, b4), bs1) ->
+      return (elf32_addr_of_quad b4 b3 b2 b1, bs1)
+  end
+
+val equal_elf32_addr : elf32_addr -> elf32_addr -> bool
+
+let inline {isabelle; ocaml; hol} equal_elf32_addr = unsafe_structural_equality
+declare coq target_rep function equal_elf32_addr = `elf32_addr_equal`
+
+val quad_of_elf32_addr : elf32_addr -> (byte * byte * byte * byte)
+
+declare ocaml    target_rep function quad_of_elf32_addr = `Uint32_wrapper.to_bytes_native`
+declare isabelle target_rep function quad_of_elf32_addr = `Elf_Types_Local.quad_of_uint32`
+declare hol      target_rep function quad_of_elf32_addr = `ARB` (* TODO: add custom binding *)
+declare coq      target_rep function quad_of_elf32_addr = `quad_of_elf32_addr`
+
+val bytes_of_elf32_addr : endianness -> elf32_addr -> list byte
+let bytes_of_elf32_addr endian w =
+  match endian with
+    | Little ->
+      let (b0, b1, b2, b3) = quad_of_elf32_addr w in
+        [b0; b1; b2; b3]
+    | Big    ->
+      let (b0, b1, b2, b3) = quad_of_elf32_addr w in
+        [b3; b2; b1; b0]
+  end
+
+instance (Eq elf32_addr)
+  let (=) = equal_elf32_addr
+  let (<>) l r = not (equal_elf32_addr l r)
+end
+
+instance (Show elf32_addr)
+	let show = string_of_elf32_addr
+end
+
+(** elf64_addr type and bindings *)
+
+type elf64_addr
+
+declare ocaml    target_rep type elf64_addr = `Uint64.uint64`
+declare isabelle target_rep type elf64_addr = `Elf_Types_Local.uint64`
+declare hol      target_rep type elf64_addr = `word64`
+declare coq      target_rep type elf64_addr = `elf64_addr`
+
+val string_of_elf64_addr : elf64_addr -> string
+
+declare ocaml target_rep function string_of_elf64_addr = `Uint64.to_string`
+declare isabelle target_rep function string_of_elf64_addr = `Elf_Types_Local.string_of_uint64`
+
+val natural_of_elf64_addr : elf64_addr -> natural
+
+declare ocaml    target_rep function natural_of_elf64_addr a = `Ml_bindings.nat_big_num_of_uint64` a
+declare isabelle target_rep function natural_of_elf64_addr = `unat`
+declare hol      target_rep function natural_of_elf64_addr = `w2n`
+declare coq      target_rep function natural_of_elf64_addr = `nat_of_elf64_addr`
+
+val elf64_addr_of_natural : natural -> elf64_addr
+
+declare ocaml    target_rep function elf64_addr_of_natural m = `Uint64.of_string` (`Nat_big_num.to_string` m)
+declare isabelle target_rep function elf64_addr_of_natural = `Elf_Types_Local.uint64_of_nat`
+declare hol      target_rep function elf64_addr_of_natural = (`n2w` `:` `num` `->` `64` `word`)
+declare coq      target_rep function elf64_addr_of_natural = `elf64_addr_of_nat`
+
+val elf64_addr_of_oct : byte -> byte -> byte -> byte -> byte -> byte -> byte -> byte -> elf64_addr
+
+declare ocaml    target_rep function elf64_addr_of_oct = `Uint64_wrapper.of_oct_native`
+declare isabelle target_rep function elf64_addr_of_oct = `Elf_Types_Local.uint64_of_oct`
+declare hol      target_rep function elf64_addr_of_oct = `ARB`
+declare coq      target_rep function elf64_addr_of_oct = `elf64_addr_of_oct`
+
+val read_elf64_addr : endianness -> byte_sequence -> error (elf64_addr * byte_sequence)
+let read_elf64_addr endian bs0 =
+  match endian with
+    | Little ->
+      Byte_sequence.read_8_bytes_le bs0 >>= fun ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) ->
+      return (elf64_addr_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1)
+    | Big    ->
+      Byte_sequence.read_8_bytes_be bs0 >>= fun ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) ->
+      return (elf64_addr_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1)
+  end
+
+val equal_elf64_addr : elf64_addr -> elf64_addr -> bool
+
+let inline {isabelle; ocaml; hol} equal_elf64_addr = unsafe_structural_equality
+declare coq target_rep function equal_elf64_addr = `elf64_addr_equal`
+
+val oct_of_elf64_addr : elf64_addr -> (byte * byte * byte * byte * byte * byte * byte * byte)
+
+declare ocaml    target_rep function oct_of_elf64_addr = `Uint64_wrapper.to_bytes_native`
+declare isabelle target_rep function oct_of_elf64_addr = `Elf_Types_Local.oct_of_uint64`
+declare hol      target_rep function oct_of_elf64_addr = `ARB` (* TODO *)
+declare coq      target_rep function oct_of_elf64_addr = `oct_of_elf64_addr`
+
+val bytes_of_elf64_addr : endianness -> elf64_addr -> list byte
+let bytes_of_elf64_addr endian w =
+  match endian with
+    | Little ->
+      let (b0, b1, b2, b3, b4, b5, b6, b7) = oct_of_elf64_addr w in
+        [b0; b1; b2; b3; b4; b5; b6; b7]
+    | Big    ->
+      let (b0, b1, b2, b3, b4, b5, b6, b7) = oct_of_elf64_addr w in
+        [b7; b6; b5; b4; b3; b2; b1; b0]
+  end
+
+val elf64_addr_minus : elf64_addr -> elf64_addr -> elf64_addr
+
+declare ocaml target_rep function elf64_addr_minus = `Uint64.sub`
+declare hol   target_rep function elf64_addr_minus = `word_sub`
+
+val elf64_addr_rshift : elf64_addr -> nat -> elf64_addr
+
+declare ocaml    target_rep function elf64_addr_rshift = `Uint64.shift_right`
+declare isabelle target_rep function elf64_addr_rshift = `Elf_Types_Local.uint64_rshift`
+declare hol      target_rep function elf64_addr_rshift = `word_lsr`
+declare coq      target_rep function elf64_addr_rshift = `elf64_addr_rshift`
+
+val elf64_addr_lshift : elf64_addr -> nat -> elf64_addr
+
+declare ocaml target_rep function elf64_addr_lshift = `Uint64.shift_left`
+declare hol   target_rep function elf64_addr_lshift = `word_lsl`
+declare coq   target_rep function elf64_addr_lshift = `elf64_addr_lshift`
+
+val elf64_addr_land : elf64_addr -> elf64_addr -> elf64_addr
+
+declare ocaml    target_rep function elf64_addr_land = `Uint64.logand`
+declare isabelle target_rep function elf64_addr_land = `Elf_Types_Local.uint64_land`
+declare hol      target_rep function elf64_addr_land = `word_and`
+declare coq      target_rep function elf64_addr_land = `elf64_addr_land`
+
+val elf64_addr_lor : elf64_addr -> elf64_addr -> elf64_addr
+
+declare ocaml    target_rep function elf64_addr_lor = `Uint64.logor`
+declare isabelle target_rep function elf64_addr_lor = `Elf_Types_Local.uint64_lor`
+declare hol      target_rep function elf64_addr_lor = `word_or`
+declare coq      target_rep function elf64_addr_lor = `elf64_addr_lor`
+
+instance (Eq elf64_addr)
+  let (=) = equal_elf64_addr
+  let (<>) l r = not (equal_elf64_addr l r)
+end
+
+instance (Show elf64_addr)
+  let show = string_of_elf64_addr
+end
+
+(** ELF half word type:
+  * 2 byte unsigned type on 32-bit architectures.
+  * 2 byte unsigned type on 64-bit architectures.
+  *)
+
+type elf32_half
+
+declare ocaml    target_rep type elf32_half = `Uint32.uint32`
+declare isabelle target_rep type elf32_half = `uint16`
+declare hol      target_rep type elf32_half = `word16`
+declare coq      target_rep type elf32_half = `elf32_half`
+
+val string_of_elf32_half : elf32_half -> string
+
+declare ocaml target_rep function string_of_elf32_half = `Uint32.to_string`
+declare isabelle target_rep function string_of_elf32_half = `Elf_Types_Local.string_of_uint16`
+
+val elf32_half_of_dual : byte -> byte -> elf32_half
+
+declare ocaml    target_rep function elf32_half_of_dual = `Uint32_wrapper.of_dual_native`
+declare isabelle target_rep function elf32_half_of_dual = `Elf_Types_Local.uint16_of_dual`
+declare hol      target_rep function elf32_half_of_dual = `ARB`
+declare coq      target_rep function elf32_half_of_dual = `elf32_half_of_dual`
+
+val read_elf32_half : endianness -> byte_sequence -> error (elf32_half * byte_sequence)
+let read_elf32_half endian bs0 =
+  match endian with
+    | Little ->
+      Byte_sequence.read_2_bytes_le bs0 >>= fun ((b1, b2), bs1) ->
+      return (elf32_half_of_dual b2 b1, bs1)
+    | Big    ->
+      Byte_sequence.read_2_bytes_be bs0 >>= fun ((b1, b2), bs1) ->
+      return (elf32_half_of_dual b2 b1, bs1)
+  end
+
+val natural_of_elf32_half : elf32_half -> natural
+
+declare ocaml    target_rep function natural_of_elf32_half a = `Nat_big_num.of_string` (`Uint32.to_string` a)
+declare isabelle target_rep function natural_of_elf32_half = `unat`
+declare hol      target_rep function natural_of_elf32_half = `w2n`
+declare coq      target_rep function natural_of_elf32_half = `nat_of_elf32_half`
+
+val equal_elf32_half : elf32_half -> elf32_half -> bool
+
+let inline {isabelle; ocaml; hol} equal_elf32_half = unsafe_structural_equality
+declare coq target_rep function equal_elf32_half = `elf32_half_equal`
+
+val dual_of_elf32_half : elf32_half -> (byte * byte)
+
+declare ocaml    target_rep function dual_of_elf32_half = `Uint32_wrapper.to_dual_bytes_native`
+declare isabelle target_rep function dual_of_elf32_half = `Elf_Types_Local.dual_of_uint16`
+declare hol      target_rep function dual_of_elf32_half = `ARB`
+declare coq      target_rep function dual_of_elf32_half = `dual_of_elf32_half`
+
+val bytes_of_elf32_half : endianness -> elf32_half -> list byte
+let bytes_of_elf32_half endian h =
+  match endian with
+    | Little ->
+      let (b0, b1) = dual_of_elf32_half h in
+        [b0; b1]
+    | Big    ->
+      let (b0, b1) = dual_of_elf32_half h in
+        [b1; b0]
+  end
+
+instance (Eq elf32_half)
+  let (=) = equal_elf32_half
+  let (<>) l r = not (equal_elf32_half l r)
+end
+
+instance (Show elf32_half)
+	let show = string_of_elf32_half
+end
+
+(** elf64_half type and bindings *)
+
+type elf64_half
+
+declare ocaml    target_rep type elf64_half = `Uint32.uint32`
+declare isabelle target_rep type elf64_half = `uint16`
+declare hol      target_rep type elf64_half = `word16`
+declare coq      target_rep type elf64_half = `elf64_half`
+
+val string_of_elf64_half : elf64_half -> string
+
+declare ocaml target_rep function string_of_elf64_half = `Uint32.to_string`
+declare isabelle target_rep function string_of_elf64_half = `Elf_Types_Local.string_of_uint16`
+
+val elf64_half_of_dual : byte -> byte -> elf64_half
+
+declare ocaml    target_rep function elf64_half_of_dual = `Uint32_wrapper.of_dual_native`
+declare isabelle target_rep function elf64_half_of_dual = `Elf_Types_Local.uint16_of_dual`
+declare hol      target_rep function elf64_half_of_dual = `ARB`
+declare coq      target_rep function elf64_half_of_dual = `elf64_half_of_dual`
+
+val read_elf64_half : endianness -> byte_sequence -> error (elf64_half * byte_sequence)
+let read_elf64_half endian bs0 =
+  match endian with
+    | Big ->
+      Byte_sequence.read_2_bytes_be bs0 >>= fun ((b1, b2), bs1) ->
+      return (elf64_half_of_dual b2 b1, bs1)
+    | Little ->
+      Byte_sequence.read_2_bytes_le bs0 >>= fun ((b1, b2), bs1) ->
+      return (elf64_half_of_dual b2 b1, bs1)
+  end
+
+val natural_of_elf64_half : elf64_half -> natural
+
+declare ocaml    target_rep function natural_of_elf64_half a = `Nat_big_num.of_string` (`Uint32.to_string` a)
+declare isabelle target_rep function natural_of_elf64_half = `unat`
+declare hol      target_rep function natural_of_elf64_half = `w2n`
+declare coq      target_rep function natural_of_elf64_half = `nat_of_elf64_half`
+
+val elf64_half_of_natural : natural -> elf64_half
+
+declare ocaml    target_rep function elf64_half_of_natural m = `Uint32.of_string` (`Nat_big_num.to_string` m)
+declare isabelle target_rep function elf64_half_of_natural = `Elf_Types_Local.uint16_of_nat`
+declare hol      target_rep function elf64_half_of_natural = (`n2w` `:` `num` `->` `16` `word`)
+declare coq      target_rep function elf64_half_of_natural = `elf64_half_of_nat`
+
+val equal_elf64_half : elf64_half -> elf64_half -> bool
+
+let inline {isabelle; ocaml; hol} equal_elf64_half = unsafe_structural_equality
+declare coq target_rep function equal_elf64_half = `elf64_half_equal`
+
+val dual_of_elf64_half : elf64_half -> (byte * byte)
+
+declare ocaml    target_rep function dual_of_elf64_half = `Uint32_wrapper.to_dual_bytes_native`
+declare isabelle target_rep function dual_of_elf64_half = `Elf_Types_Local.dual_of_uint16`
+declare hol      target_rep function dual_of_elf64_half = `ARB`
+declare coq      target_rep function dual_of_elf64_half = `dual_of_elf64_half`
+
+val bytes_of_elf64_half : endianness -> elf64_half -> list byte
+let bytes_of_elf64_half endian w =
+  match endian with
+    | Big ->
+      let (b0, b1) = dual_of_elf64_half w in
+        [b1; b0]
+    | Little    ->
+      let (b0, b1) = dual_of_elf64_half w in
+        [b0; b1]
+  end
+
+instance (Eq elf64_half)
+  let (=) = equal_elf64_half
+  let (<>) l r = not (equal_elf64_half l r)
+end
+
+instance (Show elf64_half)
+  let show = string_of_elf64_half
+end
+
+(*
+instance (Ord elf64_half)
+    let compare = 
+    let (<) = 
+    let (<=) = 
+    let (>) = 
+    let (>=) = 
+end
+*)
+
+(** ELF offset type:
+  * 4 byte unsigned type on 32-bit architectures.
+  * 8 byte unsigned type on 64-bit architectures.
+  *)
+
+type elf32_off
+
+declare ocaml    target_rep type elf32_off = `Uint32.uint32`
+declare isabelle target_rep type elf32_off = `uint32`
+declare hol      target_rep type elf32_off = `word32`
+declare coq      target_rep type elf32_off = `elf32_off`
+
+val string_of_elf32_off : elf32_off -> string
+
+declare ocaml target_rep function string_of_elf32_off = `Uint32.to_string`
+declare isabelle target_rep function string_of_elf32_off = `Elf_Types_Local.string_of_uint32`
+
+val natural_of_elf32_off : elf32_off -> natural
+
+declare ocaml    target_rep function natural_of_elf32_off a = `Nat_big_num.of_string` (`Uint32.to_string` a)
+declare isabelle target_rep function natural_of_elf32_off = `unat`
+declare hol      target_rep function natural_of_elf32_off = `w2n`
+declare coq      target_rep function natural_of_elf32_off = `nat_of_elf32_off`
+
+val elf32_off_of_natural : natural -> elf32_off
+
+declare ocaml    target_rep function elf32_off_of_natural m = `Uint32.of_string` (`Nat_big_num.to_string` m)
+declare isabelle target_rep function elf32_off_of_natural = `Elf_Types_Local.uint32_of_nat`
+declare hol      target_rep function elf32_off_of_natural = `n2w`
+declare coq      target_rep function elf32_off_of_natural = `elf32_off_of_nat`
+
+val elf32_off_of_quad : byte -> byte -> byte -> byte -> elf32_off
+
+declare ocaml    target_rep function elf32_off_of_quad = `Uint32_wrapper.of_quad_native`
+declare isabelle target_rep function elf32_off_of_quad = `Elf_Types_Local.uint32_of_quad`
+declare hol      target_rep function elf32_off_of_quad = `ARB`
+declare coq      target_rep function elf32_off_of_quad = `elf32_off_of_quad`
+
+val read_elf32_off : endianness -> byte_sequence -> error (elf32_off * byte_sequence)
+let read_elf32_off endian bs0 =
+  match endian with
+    | Little ->
+      Byte_sequence.read_4_bytes_le bs0 >>= fun ((b1, b2, b3, b4), bs1) ->
+      return (elf32_off_of_quad b4 b3 b2 b1, bs1)
+    | Big    ->
+      Byte_sequence.read_4_bytes_be bs0 >>= fun ((b1, b2, b3, b4), bs1) ->
+      return (elf32_off_of_quad b4 b3 b2 b1, bs1)
+  end
+
+val equal_elf32_off : elf32_off -> elf32_off -> bool
+
+let inline {isabelle; ocaml; hol} equal_elf32_off = unsafe_structural_equality
+declare coq target_rep function equal_elf32_off = `elf32_off_equal`
+
+val quad_of_elf32_off : elf32_off -> (byte * byte * byte * byte)
+
+declare ocaml    target_rep function quad_of_elf32_off = `Uint32_wrapper.to_bytes_native`
+declare isabelle target_rep function quad_of_elf32_off = `Elf_Types_Local.quad_of_uint32`
+declare hol      target_rep function quad_of_elf32_off = `ARB`
+declare coq      target_rep function quad_of_elf32_off = `quad_of_elf32_off`
+
+val bytes_of_elf32_off : endianness -> elf32_off -> list byte
+let bytes_of_elf32_off endian w =
+  match endian with
+    | Little ->
+      let (b0, b1, b2, b3) = quad_of_elf32_off w in
+        [b0; b1; b2; b3]
+    | Big    ->
+      let (b0, b1, b2, b3) = quad_of_elf32_off w in
+        [b3; b2; b1; b0]
+  end
+
+instance (Eq elf32_off)
+  let (=) = equal_elf32_off
+  let (<>) l r = not (equal_elf32_off l r)
+end
+
+instance (Show elf32_off)
+	let show = string_of_elf32_off
+end
+
+(** elf64_off type and bindings *)
+
+type elf64_off
+
+declare ocaml    target_rep type elf64_off = `Uint64.uint64`
+declare isabelle target_rep type elf64_off = `uint64`
+declare hol      target_rep type elf64_off = `word64`
+declare coq      target_rep type elf64_off = `elf64_off`
+
+val string_of_elf64_off : elf64_off -> string
+
+declare ocaml target_rep function string_of_elf64_off = `Uint64.to_string`
+declare isabelle target_rep function string_of_elf64_off = `Elf_Types_Local.string_of_uint64`
+
+val natural_of_elf64_off : elf64_off -> natural
+
+declare ocaml    target_rep function natural_of_elf64_off a = `Nat_big_num.of_string` (`Uint64.to_string` a)
+declare isabelle target_rep function natural_of_elf64_off = `unat`
+declare hol      target_rep function natural_of_elf64_off = `w2n`
+declare coq      target_rep function natural_of_elf64_off = `nat_of_elf64_off`
+
+val elf64_off_of_natural : natural -> elf64_off
+
+declare ocaml    target_rep function elf64_off_of_natural m = `Uint64.of_string` (`Nat_big_num.to_string` m)
+declare isabelle target_rep function elf64_off_of_natural = `Elf_Types_Local.uint64_of_nat`
+declare hol      target_rep function elf64_off_of_natural = (`n2w` `:` `num` `->` `64` `word`)
+declare coq      target_rep function elf64_off_of_natural = `elf64_off_of_nat`
+
+val elf64_off_of_oct : byte -> byte -> byte -> byte -> byte -> byte -> byte -> byte -> elf64_off
+
+declare ocaml    target_rep function elf64_off_of_oct = `Uint64_wrapper.of_oct_native`
+declare isabelle target_rep function elf64_off_of_oct = `Elf_Types_Local.uint64_of_oct`
+declare hol      target_rep function elf64_off_of_oct = `ARB`
+declare coq      target_rep function elf64_off_of_oct = `elf64_off_of_oct`
+
+val read_elf64_off : endianness -> byte_sequence -> error (elf64_off * byte_sequence)
+let read_elf64_off endian bs0 =
+  match endian with
+    | Little ->
+      Byte_sequence.read_8_bytes_le bs0 >>= fun ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) ->
+      return (elf64_off_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1)
+    | Big    ->
+      Byte_sequence.read_8_bytes_be bs0 >>= fun ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) ->
+      return (elf64_off_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1)
+  end
+
+val equal_elf64_off : elf64_off -> elf64_off -> bool
+
+let inline {isabelle; ocaml; hol} equal_elf64_off = unsafe_structural_equality
+declare coq target_rep function equal_elf64_off = `elf64_off_equal`
+
+val oct_of_elf64_off : elf64_off -> (byte * byte * byte * byte * byte * byte * byte * byte)
+
+declare ocaml    target_rep function oct_of_elf64_off = `Uint64_wrapper.to_bytes_native`
+declare isabelle target_rep function oct_of_elf64_off = `Elf_Types_Local.oct_of_uint64`
+declare hol      target_rep function oct_of_elf64_off = `ARB`
+declare coq      target_rep function oct_of_elf64_off = `oct_of_elf64_off`
+
+val bytes_of_elf64_off : endianness -> elf64_off -> list byte
+let bytes_of_elf64_off endian w =
+  match endian with
+    | Little ->
+      let (b0, b1, b2, b3, b4, b5, b6, b7) = oct_of_elf64_off w in
+        [b0; b1; b2; b3; b4; b5; b6; b7]
+    | Big    ->
+      let (b0, b1, b2, b3, b4, b5, b6, b7) = oct_of_elf64_off w in
+        [b7; b6; b5; b4; b3; b2; b1; b0]
+  end
+
+instance (Eq elf64_off)
+  let (=) = equal_elf64_off
+  let (<>) l r = not (equal_elf64_off l r)
+end
+
+instance (Show elf64_off)
+  let show = string_of_elf64_off
+end
+
+(** ELF word type:
+  * 4 byte unsigned type on 32-bit architectures.
+  * 4 byte unsigned type on 64-bit architectures.
+  *)
+
+type elf32_word
+
+declare ocaml    target_rep type elf32_word = `Uint32.uint32`
+declare isabelle target_rep type elf32_word = `uint32`
+declare hol      target_rep type elf32_word = `word32`
+declare coq      target_rep type elf32_word = `elf32_word`
+
+val string_of_elf32_word : elf32_word -> string
+
+declare ocaml target_rep function string_of_elf32_word = `Uint32.to_string`
+declare isabelle target_rep function string_of_elf32_word = `Elf_Types_Local.string_of_uint32`
+
+val natural_of_elf32_word : elf32_word -> natural
+
+declare ocaml    target_rep function natural_of_elf32_word a = `Nat_big_num.of_string` (`Uint32.to_string` a)
+declare isabelle target_rep function natural_of_elf32_word = `unat`
+declare hol      target_rep function natural_of_elf32_word = `w2n`
+declare coq      target_rep function natural_of_elf32_word = `nat_of_elf32_word`
+
+val elf32_word_of_natural : natural -> elf32_word
+
+declare ocaml    target_rep function elf32_word_of_natural m = `Uint32.of_string` (`Nat_big_num.to_string` m)
+declare isabelle target_rep function elf32_word_of_natural = `Elf_Types_Local.uint32_of_nat`
+declare hol      target_rep function elf32_word_of_natural = (`n2w` `:` `num` `->` `32` `word`)
+declare coq      target_rep function elf32_word_of_natural = `elf32_word_of_nat`
+
+val elf32_word_land : elf32_word -> elf32_word -> elf32_word
+
+declare ocaml    target_rep function elf32_word_land = `Uint32.logand`
+declare isabelle target_rep function elf32_word_land = `Elf_Types_Local.uint32_land`
+declare hol      target_rep function elf32_word_land = `word_and`
+declare coq      target_rep function elf32_word_land = `elf32_word_land`
+
+val elf32_word_rshift : elf32_word -> nat -> elf32_word
+
+declare ocaml    target_rep function elf32_word_rshift = `Uint32.shift_right`
+declare isabelle target_rep function elf32_word_rshift = `Elf_Types_Local.uint32_rshift`
+declare hol      target_rep function elf32_word_rshift = `word_lsr`
+declare coq      target_rep function elf32_word_rshift = `elf32_word_rshift`
+
+val elf32_word_of_quad : byte -> byte -> byte -> byte -> elf32_word
+
+declare ocaml    target_rep function elf32_word_of_quad = `Uint32_wrapper.of_quad_native`
+declare isabelle target_rep function elf32_word_of_quad = `Elf_Types_Local.uint32_of_quad`
+declare hol      target_rep function elf32_word_of_quad = `ARB`
+declare coq      target_rep function elf32_word_of_quad = `elf32_word_of_quad`
+
+val read_elf32_word : endianness -> byte_sequence -> error (elf32_word * byte_sequence)
+let read_elf32_word endian bs0 =
+  match endian with
+    | Little ->
+      Byte_sequence.read_4_bytes_le bs0 >>= fun ((b1, b2, b3, b4), bs1) ->
+      return (elf32_word_of_quad b4 b3 b2 b1, bs1)
+    | Big    ->
+      Byte_sequence.read_4_bytes_be bs0 >>= fun ((b1, b2, b3, b4), bs1) ->
+      return (elf32_word_of_quad b4 b3 b2 b1, bs1)
+  end
+
+val unsigned_char_of_elf32_word : elf32_word -> unsigned_char
+
+declare ocaml target_rep function unsigned_char_of_elf32_word = ``
+
+val equal_elf32_word : elf32_word -> elf32_word -> bool
+
+let inline {isabelle; ocaml; hol} equal_elf32_word = unsafe_structural_equality
+declare coq target_rep function equal_elf32_word = `elf32_word_equal`
+
+val quad_of_elf32_word : elf32_word -> (byte * byte * byte * byte)
+
+declare ocaml    target_rep function quad_of_elf32_word = `Uint32_wrapper.to_bytes_native`
+declare isabelle target_rep function quad_of_elf32_word = `Elf_Types_Local.quad_of_uint32`
+declare hol      target_rep function quad_of_elf32_word = `ARB`
+declare coq      target_rep function quad_of_elf32_word = `quad_of_elf32_word`
+
+val bytes_of_elf32_word : endianness -> elf32_word -> list byte
+let bytes_of_elf32_word endian w =
+  match endian with
+    | Little ->
+      let (b0, b1, b2, b3) = quad_of_elf32_word w in
+        [b0; b1; b2; b3]
+    | Big    ->
+      let (b0, b1, b2, b3) = quad_of_elf32_word w in
+        [b3; b2; b1; b0]
+  end
+
+instance (Eq elf32_word)
+  let (=) = equal_elf32_word
+  let (<>) l r = not (equal_elf32_word l r)
+end
+
+instance (Show elf32_word)
+	let show = string_of_elf32_word
+end
+
+(** elf64_word type and bindings *)
+
+type elf64_word
+
+declare ocaml    target_rep type elf64_word = `Uint32.uint32`
+declare isabelle target_rep type elf64_word = `uint32`
+declare hol      target_rep type elf64_word = `word32`
+declare coq      target_rep type elf64_word = `elf64_word`
+
+val string_of_elf64_word : elf64_word -> string
+
+declare ocaml target_rep function string_of_elf64_word = `Uint32.to_string`
+declare isabelle target_rep function string_of_elf64_word = `Elf_Types_Local.string_of_uint32`
+
+val natural_of_elf64_word : elf64_word -> natural
+
+declare ocaml    target_rep function natural_of_elf64_word a = `Nat_big_num.of_string` (`Uint32.to_string` a)
+declare isabelle target_rep function natural_of_elf64_word = `unat`
+declare hol      target_rep function natural_of_elf64_word = `w2n`
+declare coq      target_rep function natural_of_elf64_word = `nat_of_elf64_word`
+
+val elf64_word_of_natural : natural -> elf64_word
+
+declare ocaml    target_rep function elf64_word_of_natural m = `Uint32.of_string` (`Nat_big_num.to_string` m)
+declare isabelle target_rep function elf64_word_of_natural = `Elf_Types_Local.uint32_of_nat`
+declare hol      target_rep function elf64_word_of_natural = (`n2w` `:` `num` `->` `32` `word`)
+declare coq      target_rep function elf64_word_of_natural = `elf64_word_of_nat`
+
+val elf64_word_land : elf64_word -> elf64_word -> elf64_word
+
+declare ocaml    target_rep function elf64_word_land = `Uint32.logand`
+declare isabelle target_rep function elf64_word_land = `Elf_Types_Local.uint32_land`
+declare hol      target_rep function elf64_word_land = `word_and`
+declare coq      target_rep function elf64_word_land = `elf64_word_land`
+
+val elf64_word_of_quad : byte -> byte -> byte -> byte -> elf64_word
+
+declare ocaml    target_rep function elf64_word_of_quad = `Uint32_wrapper.of_quad_native`
+declare isabelle target_rep function elf64_word_of_quad = `Elf_Types_Local.uint32_of_quad`
+declare hol      target_rep function elf64_word_of_quad = `ARB`
+declare coq      target_rep function elf64_word_of_quad = `elf64_word_of_quad`
+
+val read_elf64_word : endianness -> byte_sequence -> error (elf64_word * byte_sequence)
+let read_elf64_word endian bs0 =
+  match endian with
+    | Little ->
+      Byte_sequence.read_4_bytes_le bs0 >>= fun ((b1, b2, b3, b4), bs1) ->
+      return (elf64_word_of_quad b4 b3 b2 b1, bs1)
+    | Big    ->
+      Byte_sequence.read_4_bytes_be bs0 >>= fun ((b1, b2, b3, b4), bs1) ->
+      return (elf64_word_of_quad b4 b3 b2 b1, bs1)
+  end
+
+val equal_elf64_word : elf64_word -> elf64_word -> bool
+
+let inline {isabelle; ocaml; hol} equal_elf64_word = unsafe_structural_equality
+declare coq target_rep function equal_elf64_word = `elf64_word_equal`
+
+val quad_of_elf64_word : elf64_word -> (byte * byte * byte * byte)
+
+declare ocaml    target_rep function quad_of_elf64_word = `Uint32_wrapper.to_bytes_native`
+declare isabelle target_rep function quad_of_elf64_word = `Elf_Types_Local.quad_of_uint32`
+declare hol      target_rep function quad_of_elf64_word = `ARB`
+declare coq      target_rep function quad_of_elf64_word = `quad_of_elf64_word`
+
+val bytes_of_elf64_word : endianness -> elf64_word -> list byte
+let bytes_of_elf64_word endian w =
+  match endian with
+    | Little ->
+      let (b0, b1, b2, b3) = quad_of_elf64_word w in
+        [b0; b1; b2; b3]
+    | Big    ->
+      let (b0, b1, b2, b3) = quad_of_elf64_word w in
+        [b3; b2; b1; b0]
+  end
+
+instance (Eq elf64_word)
+  let (=) = equal_elf64_word
+  let (<>) l r = not (equal_elf64_word l r)
+end
+
+instance (Show elf64_word)
+  let show = string_of_elf64_word
+end
+
+(** ELF signed word type:
+  * 4 byte signed type on 32-bit architectures.
+  * 4 byte signed type on 64-bit architectures.
+  *)
+
+type elf32_sword
+
+declare ocaml    target_rep type elf32_sword = `Int32.t`
+declare isabelle target_rep type elf32_sword = `sint32`
+declare hol      target_rep type elf32_sword = `word32`
+declare coq      target_rep type elf32_sword = `elf32_sword`
+
+val string_of_elf32_sword : elf32_sword -> string
+
+declare ocaml target_rep function string_of_elf32_sword = `Int32.to_string`
+declare isabelle target_rep function string_of_elf32_sword = `Elf_Types_Local.string_of_sint32`
+
+val integer_of_elf32_sword : elf32_sword -> integer
+
+declare ocaml    target_rep function integer_of_elf32_sword = `Nat_big_num.of_int32`
+declare isabelle target_rep function integer_of_elf32_sword = `sint`
+declare hol      target_rep function integer_of_elf32_sword = `w2i`
+declare coq      target_rep function integer_of_elf32_sword = `int_of_elf32_sword`
+
+val elf32_sword_of_quad : byte -> byte -> byte -> byte -> elf32_sword
+
+declare ocaml    target_rep function elf32_sword_of_quad = `Ml_bindings.int32_of_quad`
+declare isabelle target_rep function elf32_sword_of_quad = `Elf_Types_Local.sint32_of_quad`
+declare hol      target_rep function elf32_sword_of_quad = `ARB`
+declare coq      target_rep function elf32_sword_of_quad = `elf32_sword_of_quad`
+
+val read_elf32_sword : endianness -> byte_sequence -> error (elf32_sword * byte_sequence)
+let read_elf32_sword endian bs0 =
+  match endian with
+    | Little ->
+      Byte_sequence.read_4_bytes_le bs0 >>= fun ((b1, b2, b3, b4), bs1) ->
+      return (elf32_sword_of_quad b4 b3 b2 b1, bs1)
+    | Big    ->
+      Byte_sequence.read_4_bytes_be bs0 >>= fun ((b1, b2, b3, b4), bs1) ->
+      return (elf32_sword_of_quad b4 b3 b2 b1, bs1)
+  end
+
+val quad_of_elf32_sword : elf32_sword -> (byte * byte * byte * byte)
+
+declare ocaml    target_rep function quad_of_elf32_sword = `Ml_bindings.bytes_of_int32`
+declare isabelle target_rep function quad_of_elf32_sword = `Elf_Types_Local.quad_of_sint32`
+declare hol      target_rep function quad_of_elf32_sword = `ARB`
+declare coq      target_rep function quad_of_elf32_sword = `quad_of_elf32_sword`
+
+val bytes_of_elf32_sword : endianness -> elf32_sword -> list byte
+let bytes_of_elf32_sword endian w =
+  match endian with
+    | Little ->
+      let (b0, b1, b2, b3) = quad_of_elf32_sword w in
+        [b0; b1; b2; b3]
+    | Big    ->
+      let (b0, b1, b2, b3) = quad_of_elf32_sword w in
+        [b3; b2; b1; b0]
+  end
+
+instance (Show elf32_sword)
+	let show = string_of_elf32_sword
+end
+
+(** elf64_sword type and bindings *)
+
+type elf64_sword
+
+declare ocaml    target_rep type elf64_sword = `Int32.t`
+declare isabelle target_rep type elf64_sword = `sint32`
+declare hol      target_rep type elf64_sword = `word32`
+declare coq      target_rep type elf64_sword = `elf64_sword`
+
+val string_of_elf64_sword : elf64_sword -> string
+
+declare ocaml target_rep function string_of_elf64_sword = `Int32.to_string`
+declare isabelle target_rep function string_of_elf64_sword = `Elf_Types_Local.string_of_sint32`
+
+val integer_of_elf64_sword : elf64_sword -> integer
+
+declare ocaml    target_rep function integer_of_elf64_sword = `Nat_big_num.of_int32`
+declare isabelle target_rep function integer_of_elf64_sword = `sint`
+declare hol      target_rep function integer_of_elf64_sword = `w2i`
+declare coq      target_rep function integer_of_elf64_sword = `int_of_elf64_sword`
+
+val elf64_sword_of_quad : byte -> byte -> byte -> byte -> elf64_sword
+
+declare ocaml    target_rep function elf64_sword_of_quad = `Ml_bindings.int32_of_quad`
+declare isabelle target_rep function elf64_sword_of_quad = `Elf_Types_Local.sint32_of_quad`
+declare hol      target_rep function elf64_sword_of_quad = `ARB`
+declare coq      target_rep function elf64_sword_of_quad = `elf64_sword_of_quad`
+
+val read_elf64_sword : endianness -> byte_sequence -> error (elf64_sword * byte_sequence)
+let read_elf64_sword endian bs0 =
+  match endian with
+    | Little ->
+      Byte_sequence.read_4_bytes_le bs0 >>= fun ((b1, b2, b3, b4), bs1) ->
+      return (elf64_sword_of_quad b4 b3 b2 b1, bs1)
+    | Big    ->
+      Byte_sequence.read_4_bytes_be bs0 >>= fun ((b1, b2, b3, b4), bs1) ->
+      return (elf64_sword_of_quad b4 b3 b2 b1, bs1)
+  end
+
+val quad_of_elf64_sword : elf64_sword -> (byte * byte * byte * byte)
+
+declare ocaml    target_rep function quad_of_elf64_sword = `Ml_bindings.bytes_of_int32`
+declare isabelle target_rep function quad_of_elf64_sword = `Elf_Types_Local.quad_of_sint32`
+declare hol      target_rep function quad_of_elf64_sword = `ARB`
+declare coq      target_rep function quad_of_elf64_sword = `quad_of_elf64_sword`
+
+val bytes_of_elf64_sword : endianness -> elf64_sword -> list byte
+let bytes_of_elf64_sword endian w =
+  match endian with
+    | Little ->
+      let (b0, b1, b2, b3) = quad_of_elf64_sword w in
+        [b0; b1; b2; b3]
+    | Big    ->
+      let (b0, b1, b2, b3) = quad_of_elf64_sword w in
+        [b3; b2; b1; b0]
+  end
+
+instance (Show elf64_sword)
+  let show = string_of_elf64_sword
+end
+
+(** ELF extra wide word type:
+  * 8 byte unsigned type on 64-bit architectures.
+  *)
+
+type elf64_xword
+
+declare ocaml    target_rep type elf64_xword = `Uint64.uint64`
+declare isabelle target_rep type elf64_xword = `uint64`
+declare hol      target_rep type elf64_xword = `word64`
+declare coq      target_rep type elf64_xword = `elf64_xword`
+
+val string_of_elf64_xword : elf64_xword -> string
+
+declare ocaml target_rep function string_of_elf64_xword = `Uint64.to_string`
+declare isabelle target_rep function string_of_elf64_xword = `Elf_Types_Local.string_of_uint64`
+
+val natural_of_elf64_xword : elf64_xword -> natural
+
+declare ocaml    target_rep function natural_of_elf64_xword a = `Ml_bindings.nat_big_num_of_uint64` a
+declare isabelle target_rep function natural_of_elf64_xword = `unat`
+declare hol      target_rep function natural_of_elf64_xword = `w2n`
+declare coq      target_rep function natural_of_elf64_xword = `nat_of_elf64_xword`
+
+val elf64_xword_of_oct : byte -> byte -> byte -> byte -> byte -> byte -> byte -> byte -> elf64_xword
+
+declare ocaml    target_rep function elf64_xword_of_oct = `Uint64_wrapper.of_oct_native`
+declare isabelle target_rep function elf64_xword_of_oct = `Elf_Types_Local.uint64_of_oct`
+declare hol      target_rep function elf64_xword_of_oct = `ARB`
+declare coq      target_rep function elf64_xword_of_oct = `elf64_xword_of_oct`
+
+val read_elf64_xword : endianness -> byte_sequence -> error (elf64_xword * byte_sequence)
+let read_elf64_xword endian bs0 =
+  match endian with
+    | Little ->
+      Byte_sequence.read_8_bytes_le bs0 >>= fun ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) ->
+      return (elf64_xword_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1)
+    | Big    ->
+      Byte_sequence.read_8_bytes_be bs0 >>= fun ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) ->
+      return (elf64_xword_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1)
+  end
+
+val elf64_xword_rshift : elf64_xword -> nat -> elf64_xword
+
+declare ocaml    target_rep function elf64_xword_rshift = `Uint64.shift_right`
+declare isabelle target_rep function elf64_xword_rshift = `Elf_Types_Local.uint64_rshift`
+declare hol      target_rep function elf64_xword_rshift = `word_lsr`
+declare coq      target_rep function elf64_xword_rshift = `elf64_xword_rshift`
+
+val elf64_xword_lshift : elf64_xword -> nat -> elf64_xword
+
+declare ocaml    target_rep function elf64_xword_lshift = `Uint64.shift_left`
+declare isabelle target_rep function elf64_xword_lshift = `Elf_Types_Local.uint64_lshift`
+declare hol      target_rep function elf64_xword_lshift = `word_lsl`
+declare coq      target_rep function elf64_xword_lshift = `elf64_xword_lshift`
+
+val elf64_xword_land : elf64_xword -> elf64_xword -> elf64_xword
+
+declare ocaml    target_rep function elf64_xword_land = `Uint64.logand`
+declare isabelle target_rep function elf64_xword_land = `Elf_Types_Local.uint64_land`
+declare hol      target_rep function elf64_xword_land = `word_and`
+declare coq      target_rep function elf64_xword_land = `elf64_xword_land`
+
+val elf64_xword_lor : elf64_xword -> elf64_xword -> elf64_xword
+
+declare ocaml    target_rep function elf64_xword_lor = `Uint64.logor`
+declare isabelle target_rep function elf64_xword_lor = `Elf_Types_Local.uint64_lor`
+declare hol      target_rep function elf64_xword_lor = `word_or`
+declare coq      target_rep function elf64_xword_lor = `elf64_xword_lor`
+
+val elf64_xword_lxor : elf64_xword -> elf64_xword -> elf64_xword
+
+declare ocaml    target_rep function elf64_xword_lxor = `Uint64.logxor`
+declare isabelle target_rep function elf64_xword_lxor = `Elf_Types_Local.uint64_lxor`
+declare hol      target_rep function elf64_xword_lxor = `word_xor`
+declare coq      target_rep function elf64_xword_lxor = `elf64_xword_lxor`
+
+val elf64_xword_of_natural : natural -> elf64_xword
+
+declare ocaml    target_rep function elf64_xword_of_natural m = `Uint64.of_string` (`Nat_big_num.to_string` m)
+declare isabelle target_rep function elf64_xword_of_natural m = `of_int` (`int` m)
+declare hol      target_rep function elf64_xword_of_natural = (`n2w` `:` `num` `->` `64` `word`)
+declare coq      target_rep function elf64_xword_of_natural = `elf64_xword_of_nat`
+
+val equal_elf64_xword : elf64_xword -> elf64_xword -> bool
+
+let inline {isabelle; ocaml; hol} equal_elf64_xword = unsafe_structural_equality
+declare coq target_rep function equal_elf64_xword = `elf64_xword_equal`
+
+val oct_of_elf64_xword : elf64_xword -> (byte * byte * byte * byte * byte * byte * byte * byte)
+
+declare ocaml    target_rep function oct_of_elf64_xword = `Uint64_wrapper.to_bytes_native`
+declare isabelle target_rep function oct_of_elf64_xword = `Elf_Types_Local.oct_of_uint64`
+declare hol      target_rep function oct_of_elf64_xword = `ARB`
+declare coq      target_rep function oct_of_elf64_xword = `oct_of_elf64_xword`
+
+val bytes_of_elf64_xword : endianness -> elf64_xword -> list byte
+let bytes_of_elf64_xword endian x =
+  match endian with
+    | Little ->
+      let (b0, b1, b2, b3, b4, b5, b6, b7) = oct_of_elf64_xword x in
+        [b0; b1; b2; b3; b4; b5; b6; b7]
+    | Big    ->
+      let (b0, b1, b2, b3, b4, b5, b6, b7) = oct_of_elf64_xword x in
+        [b7; b6; b5; b4; b3; b2; b1; b0]
+  end
+
+instance (Eq elf64_xword)
+  let (=) = equal_elf64_xword
+  let (<>) l r = not (equal_elf64_xword l r)
+end
+
+instance (Show elf64_xword)
+  let show = string_of_elf64_xword
+end
+
+(** ELF signed extra wide word type:
+  * 8 byte signed type on 64-bit architectures.
+  *)
+
+type elf64_sxword
+
+declare ocaml    target_rep type elf64_sxword = `Int64.t`
+declare isabelle target_rep type elf64_sxword = `sint64`
+declare hol      target_rep type elf64_sxword = `word64`
+declare coq      target_rep type elf64_sxword = `elf64_sxword`
+
+val string_of_elf64_sxword : elf64_sxword -> string
+
+declare ocaml target_rep function string_of_elf64_sxword = `Int64.to_string`
+declare isabelle target_rep function string_of_elf64_sxword = `Elf_Types_Local.string_of_sint64`
+
+val integer_of_elf64_sxword : elf64_sxword -> integer
+
+declare ocaml    target_rep function integer_of_elf64_sxword = `Nat_big_num.of_int64`
+declare isabelle target_rep function integer_of_elf64_sxword = `sint`
+declare hol      target_rep function integer_of_elf64_sxword = `w2i`
+declare coq      target_rep function integer_of_elf64_sxword = `int_of_elf64_sxword`
+
+val elf64_sxword_of_integer : integer -> elf64_sxword
+
+declare ocaml    target_rep function elf64_sxword_of_integer = `Nat_big_num.to_int64`
+declare isabelle target_rep function elf64_sxword_of_integer = `of_int`
+declare coq      target_rep function elf64_sxword_of_integer = `elf64_sxword_of_int`
+
+val elf64_sxword_of_oct : byte -> byte -> byte -> byte -> byte -> byte -> byte -> byte -> elf64_sxword
+
+declare ocaml    target_rep function elf64_sxword_of_oct = `Ml_bindings.int64_of_oct`
+declare isabelle target_rep function elf64_sxword_of_oct = `Elf_Types_Local.sint64_of_oct`
+declare hol      target_rep function elf64_sxword_of_oct = `ARB`
+declare coq      target_rep function elf64_sxword_of_oct = `elf64_sxword_of_oct`
+
+val read_elf64_sxword : endianness -> byte_sequence -> error (elf64_sxword * byte_sequence)
+let read_elf64_sxword endian bs0 =
+  match endian with
+    | Little ->
+      Byte_sequence.read_8_bytes_le bs0 >>= fun ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) ->
+      return (elf64_sxword_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1)
+    | Big    ->
+      Byte_sequence.read_8_bytes_be bs0 >>= fun ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) ->
+      return (elf64_sxword_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1)
+  end
+
+val oct_of_elf64_sxword : elf64_sxword -> (byte * byte * byte * byte * byte * byte * byte * byte)
+
+declare ocaml    target_rep function oct_of_elf64_sxword = `Ml_bindings.bytes_of_int64`
+declare isabelle target_rep function oct_of_elf64_sxword = `Elf_Types_Local.oct_of_sint64`
+declare hol      target_rep function oct_of_elf64_sxword = `ARB`
+declare coq      target_rep function oct_of_elf64_sxword = `oct_of_elf64_sxword`
+
+val bytes_of_elf64_sxword : endianness -> elf64_sxword -> list byte
+let bytes_of_elf64_sxword endian w =
+  match endian with
+    | Little ->
+      let (b0, b1, b2, b3, b4, b5, b6, b7) = oct_of_elf64_sxword w in
+        [b0; b1; b2; b3; b4; b5; b6; b7]
+    | Big    ->
+      let (b0, b1, b2, b3, b4, b5, b6, b7) = oct_of_elf64_sxword w in
+        [b7; b6; b5; b4; b3; b2; b1; b0]
+  end
+
+instance (Show elf64_sxword)
+  let show = string_of_elf64_sxword
+end
+
+val natural_land : natural -> natural -> natural
+let natural_land m n =
+  (* For Isabelle backend...*)
+  natural_of_elf64_xword (elf64_xword_land (elf64_xword_of_natural m) (elf64_xword_of_natural n))
+declare ocaml    target_rep function natural_land = `Nat_big_num.bitwise_and`
+declare coq      target_rep function natural_land = `nat_land`
+
+val natural_lor : natural -> natural -> natural
+let natural_lor m n =
+  (* For Isabelle backend...*)
+  natural_of_elf64_xword (elf64_xword_lor (elf64_xword_of_natural m) (elf64_xword_of_natural n))
+declare ocaml    target_rep function natural_lor = `Nat_big_num.bitwise_or`
+declare coq      target_rep function natural_lor = `nat_lor`
+
+val natural_lxor : natural -> natural -> natural
+let natural_lxor m n =
+  (* For Isabelle backend...*)
+  natural_of_elf64_xword (elf64_xword_lxor (elf64_xword_of_natural m) (elf64_xword_of_natural n))
+declare ocaml    target_rep function natural_lxor = `Nat_big_num.bitwise_xor`
+declare coq      target_rep function natural_lxor = `nat_lxor`

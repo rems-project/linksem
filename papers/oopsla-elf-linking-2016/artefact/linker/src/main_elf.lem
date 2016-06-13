@@ -1,0 +1,337 @@
+(** [main_elf], the main module for the test program of the ELF development.
+  * Run like so:
+  *   ./main_elf.opt --FLAG BINARY
+  * where:
+  *   BINARY is an ELF binary
+  *   FLAG   is in the set { file-header, program-headers, section-headers,
+  *                            dynamic, relocs, symbols }
+  *
+  *)
+
+open import Basic_classes
+open import Function
+open import Maybe
+open import List
+open import Num
+open import String
+open import Tuple
+
+open import Byte_sequence
+open import Default_printing
+open import Error
+open import Hex_printing
+open import Missing_pervasives
+open import Show
+open import Assert_extra
+
+open import Endianness
+
+open import Elf_dynamic
+open import Elf_header
+open import Elf_file
+open import Elf_program_header_table
+open import Elf_section_header_table
+open import Elf_types_native_uint
+
+open import Harness_interface
+open import Sail_interface
+
+open import Abi_aarch64_relocation
+
+open import Abi_amd64_elf_header
+open import Abi_amd64_relocation
+open import Abi_amd64_serialisation
+
+open import Abi_power64_dynamic
+
+open import Abi_x86_relocation
+
+open import Abi_power64_relocation
+
+open import Gnu_ext_dynamic
+open import Gnu_ext_program_header_table
+open import Gnu_ext_section_header_table
+
+let default_hdr_bdl =
+  (default_os_specific_print, default_proc_specific_print)
+
+let default_pht_bdl =
+  (default_os_specific_print, default_proc_specific_print)
+
+let default_sht_bdl =
+  (default_os_specific_print, default_proc_specific_print, default_user_specific_print)
+
+(* unrolled and made tail recursive for efficiency on large ELF files...*)
+val chunks : list string -> list (list string) -> list (list string) * nat
+let rec chunks (ss : list string) (accum : list (list string)) =
+  match ss with
+    | s1::s2::s3::s4::s5::s6::s7::s8::s9::s10::s11::s12::s13::s14::s15::s16::ss ->
+        chunks ss ([s2^s1;s4^s3;s6^s5;s8^s7;s10^s9;s12^s11;s14^s13;s16^s15]::accum)
+    | s1::s2::s3::s4::s5::s6::s7::s8::s9::s10::s11::s12::s13::s14::s15::[] ->
+        let buff    = [s2^s1;s4^s3;s6^s5;s8^s7;s10^s9;s12^s11;s14^s13;"00"^s15] in
+          (List.reverse accum ++ [buff], 15)
+    | s1::s2::s3::s4::s5::s6::s7::s8::s9::s10::s11::s12::s13::s14::ss ->
+        let bits    = replicate 1 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = [s2^s1;s4^s3;s6^s5;s8^s7;s10^s9;s12^s11;s14^s13] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 14)
+    | s1::s2::s3::s4::s5::s6::s7::s8::s9::s10::s11::s12::s13::[] ->
+        let bits    = replicate 1 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = [s2^s1;s4^s3;s6^s5;s8^s7;s10^s9;s12^s11;"00"^s13] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 13)
+    | s1::s2::s3::s4::s5::s6::s7::s8::s9::s10::s11::s12::[] ->
+        let bits    = replicate 2 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = [s2^s1;s4^s3;s6^s5;s8^s7;s10^s9;s12^s11] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 12)
+    | s1::s2::s3::s4::s5::s6::s7::s8::s9::s10::s11::[] ->
+        let bits    = replicate 2 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = [s2^s1;s4^s3;s6^s5;s8^s7;s10^s9;"00"^s11] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 11)
+    | s1::s2::s3::s4::s5::s6::s7::s8::s9::s10::[] ->
+        let bits    = replicate 3 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = [s2^s1;s4^s3;s6^s5;s8^s7;s10^s9] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 10)
+    | s1::s2::s3::s4::s5::s6::s7::s8::s9::[] ->
+        let bits    = replicate 3 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = [s2^s1;s4^s3;s6^s5;s8^s7;"00"^s9] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 9)
+    | s1::s2::s3::s4::s5::s6::s7::s8::[] ->
+        let bits    = replicate 4 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = [s2^s1;s4^s3;s6^s5;s8^s7] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 8)
+    | s1::s2::s3::s4::s5::s6::s7::[] ->
+        let bits    = replicate 4 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = [s2^s1;s4^s3;s6^s5;"00"^s7] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 7)
+    | s1::s2::s3::s4::s5::s6::[] ->
+        let bits    = replicate 5 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = [s2^s1;s4^s3;s6^s5] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 6)
+    | s1::s2::s3::s4::s5::[] ->
+        let bits    = replicate 5 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = [s2^s1;s4^s3;"00"^s5] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 5)
+    | s1::s2::s3::s4::[] ->
+        let bits    = replicate 6 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = [s2^s1;s4^s3] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 4)
+    | s1::s2::s3::[] ->
+        let bits    = replicate 6 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = [s2^s1;"00"^s3] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 3)
+    | s1::s2::[] ->
+        let bits    = replicate 7 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = [s2^s1] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 2)
+    | s1::[] ->
+        let bits    = replicate 7 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = ["00"^s1] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 1)
+    | [] -> (List.reverse accum, 0)
+  end
+  
+val provide_offsets : (list (list string) * nat) -> list (string * list string)
+let provide_offsets (ss, ed) =
+  List.mapi (fun i x ->
+    let hx = unsafe_hex_string_of_natural 7 ((naturalFromNat i) * 16) in
+      (hx, x)) ss
+  ++
+    if ed = 0 then
+      [(unsafe_hex_string_of_natural 7 ((naturalFromNat (List.length ss)) * 16), [])]
+    else
+      [(unsafe_hex_string_of_natural 7 (((naturalFromNat (List.length ss - 1)) * 16) + naturalFromNat ed), [])]
+
+val create_chunks : byte_sequence -> list (string * list string)
+let create_chunks bs0 =
+  let ss = List.map (fun x ->
+    unsafe_hex_string_of_natural 2 (natural_of_byte x))
+    (Byte_sequence.byte_list_of_byte_sequence bs0)
+  in
+    provide_offsets (chunks ss [])
+    
+val print_chunk : string * list string -> string
+let print_chunk (off, ss) =
+  match ss with
+    | [] -> off
+    | _  -> off ^ " " ^ concatS (intercalate " " ss)
+  end
+    
+val obtain_abi_specific_string_of_reloc_type : natural -> (natural -> string)
+let obtain_abi_specific_string_of_reloc_type mach =
+  if mach = elf_ma_ppc64 then
+    string_of_ppc64_relocation_type
+  else if mach = elf_ma_386 then
+    string_of_x86_relocation_type
+  else if mach = elf_ma_aarch64 then
+    string_of_aarch64_relocation_type
+  else if mach = elf_ma_x86_64 then
+    string_of_amd64_relocation_type
+  (*else if mach = elf_ma_mips then
+    string_of_mips64_relocation_type*)
+  else
+    const "Cannot deduce ABI"
+    
+let _ =
+  let res =
+    let (flag, arg) =
+      match argv with
+        | progname::flag::fname::more -> (flag, fname)
+        | _                           -> failwith "usage: main_elf <flag> <fname>"
+      end
+    in
+    Byte_sequence.acquire arg    >>= fun bs0 ->
+    repeatM' Elf_header.ei_nident bs0 (read_unsigned_char Endianness.default_endianness) >>= fun (ident, bs) ->
+    match List.index ident 4 with
+      | Nothing -> failwith "ELF ident transcription error"
+      | Just c  ->
+        if natural_of_unsigned_char c = Elf_header.elf_class_32 then
+            let ret =
+              if flag = "--file-header" then
+                Elf_header.read_elf32_header bs0 >>= fun (hdr, _) ->
+                return (Harness_interface.harness_string_of_elf32_file_header hdr)
+              else if flag = "--program-headers" then
+                Elf_file.read_elf32_file bs0 >>= fun f1 ->
+                get_elf32_file_section_header_string_table f1 >>= fun stbl ->
+                return (Harness_interface.harness_string_of_elf32_program_headers
+                  string_of_gnu_ext_segment_type 
+                  (fun x ->
+                    show x)
+                  f1.elf32_file_header
+                  f1.elf32_file_program_header_table
+                  f1.elf32_file_section_header_table
+                  stbl
+                  bs0)
+              else if flag = "--section-headers" then
+                Elf_file.read_elf32_file bs0 >>= fun f1 ->
+                get_elf32_file_section_header_string_table f1 >>= fun stbl ->
+                return (Harness_interface.harness_string_of_elf32_section_headers
+                  string_of_gnu_ext_section_type
+                  (fun x -> show x)
+                  (fun x -> show x)
+                  f1.elf32_file_header
+                  f1.elf32_file_section_header_table
+                  stbl)
+              else if flag = "--relocs" then
+                Elf_file.read_elf32_file bs0 >>= fun f1 ->
+                let print_reloc = obtain_abi_specific_string_of_reloc_type (natural_of_elf32_half f1.elf32_file_header.elf32_machine) in
+                return (Harness_interface.harness_string_of_elf32_relocs
+                  f1
+                  print_reloc
+                  bs0)
+(*            else if flag = "--symbols" then
+                Harness_interface.harness_string_of_elf32_syms
+                  f1
+                  show
+                  show
+                  bs0 *)
+              else if flag = "--dynamic" then
+                Elf_file.read_elf32_file bs0 >>= fun f1 ->
+                let so = is_elf32_shared_object_file f1.elf32_file_header in
+                return (Harness_interface.harness_string_of_elf32_dynamic_section
+                  f1
+                  bs0
+                  gnu_ext_os_additional_ranges
+                  (fun x -> gnu_ext_tag_correspondence_of_tag x)
+                  (fun x -> gnu_ext_tag_correspondence_of_tag x)
+                  (fun x -> string_of_dynamic_tag so x gnu_ext_os_additional_ranges string_of_gnu_ext_dynamic_tag (fun _ -> "proc: from main_elf"))
+                  gnu_ext_elf32_value_of_elf32_dyn
+                  (fun _ _ -> Error.fail "proc: from main_elf"))
+              else if flag = "--in-out" then
+                Elf_file.read_elf32_file bs0 >>= fun f1 ->
+                match Elf_file.bytes_of_elf32_file f1 with
+                  | Fail    f -> return f
+                  | Success s ->
+                    let chunks = create_chunks s in
+                    let lines  = concatS (intercalate "\n" (List.map print_chunk chunks)) in
+                      return lines
+                end
+              else
+                failwith "Unrecognised flag"
+            in
+              ret
+        else if natural_of_unsigned_char c = Elf_header.elf_class_64 then
+            let ret =
+              if flag = "--file-header" then
+                Elf_header.read_elf64_header bs0 >>= fun (hdr, _) ->
+                return (Harness_interface.harness_string_of_elf64_file_header hdr)
+              else if flag = "--program-headers" then
+                Elf_file.read_elf64_file bs0 >>= fun f1 ->
+                get_elf64_file_section_header_string_table f1 >>= fun stbl ->
+                return (Harness_interface.harness_string_of_elf64_program_headers
+                  string_of_gnu_ext_segment_type 
+                  (fun x ->
+                    show x)
+                  f1.elf64_file_header
+                  f1.elf64_file_program_header_table
+                  f1.elf64_file_section_header_table
+                  stbl
+                  bs0)
+              else if flag = "--section-headers" then
+                Elf_file.read_elf64_file bs0 >>= fun f1 ->
+                get_elf64_file_section_header_string_table f1 >>= fun stbl ->
+                return (Harness_interface.harness_string_of_elf64_section_headers
+                  string_of_gnu_ext_section_type
+                  (fun x -> show x)
+                  (fun x -> show x)
+                  f1.elf64_file_header
+                  f1.elf64_file_section_header_table
+                  stbl)
+              else if flag = "--relocs" then
+                Elf_file.read_elf64_file bs0 >>= fun f1 ->
+                let print_reloc = obtain_abi_specific_string_of_reloc_type (natural_of_elf64_half f1.elf64_file_header.elf64_machine) in
+                return (Harness_interface.harness_string_of_elf64_relocs
+                  f1
+                  print_reloc
+                  bs0)
+              (*else if flag = "--symbols" then
+                Harness_interface.harness_string_of_elf64_syms
+                  f1
+                  show
+                  show
+                  bs0*)
+              else if flag = "--dynamic" then
+                Elf_file.read_elf64_file bs0 >>= fun f1 ->
+                let so = is_elf64_shared_object_file f1.elf64_file_header in
+                return (Harness_interface.harness_string_of_elf64_dynamic_section
+                  f1
+                  bs0
+                  gnu_ext_os_additional_ranges
+                  (fun x -> gnu_ext_tag_correspondence_of_tag x)
+                  (fun x -> abi_power64_tag_correspondence_of_tag x) (* ABI! *)
+                  (fun x -> string_of_dynamic_tag so x gnu_ext_os_additional_ranges string_of_gnu_ext_dynamic_tag string_of_abi_power64_dynamic_tag)
+                  gnu_ext_elf64_value_of_elf64_dyn
+                  abi_power64_elf64_value_of_elf64_dyn) (* ABI! *)
+              else if flag = "--in-out" then
+                Elf_file.read_elf64_file bs0 >>= fun f1 ->
+                match Elf_file.bytes_of_elf64_file f1 with
+                  | Fail    f -> return f
+                  | Success s ->
+                    let chunks = create_chunks s in
+                    let lines  = concatS (intercalate "\n" (List.map print_chunk chunks)) in
+                      return lines
+                end
+              else
+                failwith "Unimplemented (for ELF64) or unrecognised flag"
+            in
+              ret
+        else
+          failwith "ELF ident transcription error"
+    end
+  in
+    match res with
+      | Fail err  -> Missing_pervasives.errln ("[!]: " ^ err)
+      | Success e -> Missing_pervasives.outln (show e)
+    end

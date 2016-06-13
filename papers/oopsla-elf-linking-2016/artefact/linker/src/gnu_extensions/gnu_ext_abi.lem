@@ -1,0 +1,124 @@
+open import Basic_classes
+open import Function
+open import String
+open import Tuple
+open import Bool
+open import List
+open import Sorting
+open import Num
+open import Maybe
+open import Assert_extra
+open import Show
+open import Missing_pervasives
+
+open import Byte_sequence
+
+(* open import Abis *)
+
+open import Elf_file
+open import Elf_header
+open import Elf_interpreted_segment
+open import Elf_interpreted_section
+open import Elf_program_header_table
+open import Elf_section_header_table
+open import Elf_symbol_table
+open import Elf_types_native_uint
+open import Elf_relocation
+open import Elf_types_native_uint
+open import Memory_image
+
+(** Optional, like [stt_func] but always points to a function or piece of
+  * executable code that takes no arguments and returns a function pointer.
+  *)
+let stt_gnu_ifunc : natural = 10
+
+val gnu_extend: forall 'abifeature. abi 'abifeature -> abi 'abifeature
+let gnu_extend a = 
+   <| is_valid_elf_header = a.is_valid_elf_header
+    ; make_elf_header     = (*  t -> entry -> shoff -> phoff -> phnum -> shnum -> shstrndx -> hdr *)
+            fun t -> fun entry -> fun shoff -> fun phoff -> fun phnum -> fun shnum -> fun shstrndx ->
+            let unmod = a.make_elf_header t entry shoff phoff phnum shnum shstrndx
+            in
+              <| elf64_ident    = match unmod.elf64_ident with 
+                i0 :: i1 :: i2 :: i3  :: i4  :: i5  :: i6  :: 
+                _  :: _  :: i9 :: i10 :: i11 :: i12 :: i13 :: i14 :: i15 :: []
+                    -> [i0; i1; i2; i3; i4; i5; i6;
+                        unsigned_char_of_natural elf_osabi_gnu;
+                        unsigned_char_of_natural 1;
+                        i9; i10; i11; i12; i13; i14; i15]
+                end
+               ; elf64_type     = elf64_half_of_natural t
+               ; elf64_machine  = unmod.elf64_machine
+               ; elf64_version  = unmod.elf64_version
+               ; elf64_entry    = unmod.elf64_entry
+               ; elf64_phoff    = elf64_off_of_natural phoff
+               ; elf64_shoff    = elf64_off_of_natural shoff
+               ; elf64_flags    = unmod.elf64_flags
+               ; elf64_ehsize   = unmod.elf64_ehsize
+               ; elf64_phentsize= unmod.elf64_phentsize
+               ; elf64_phnum    = elf64_half_of_natural phnum
+               ; elf64_shentsize= unmod.elf64_shentsize
+               ; elf64_shnum    = elf64_half_of_natural shnum
+               ; elf64_shstrndx = elf64_half_of_natural shstrndx
+               |>
+    ; reloc               = a.reloc
+    ; section_is_special  = fun isec -> (fun img -> (
+                                a.section_is_special isec img
+                                || (Missing_pervasives.string_prefix (naturalFromNat (stringLength ".gnu.warning")) isec.elf64_section_name_as_string
+                                 = Just(".gnu.warning"))
+        (* FIXME: This is a slight abuse. The GNU linker's treatment of 
+         * ".gnu.warning.*" section is not really a function of the output
+         * ABI -- it's a function of the input ABI, or arguably perhaps just
+         * of the linker itself. We have to do something to make sure these
+         * sections get silently processed separately from the usual linker
+         * control script, because otherwise our link map output doesn't match
+         * the GNU linker's. By declaring these sections "special" we achieve
+         * this by saying they don't participate in linking proper, just like 
+         * ".symtab" and similar sections don't. HMM. I suppose this is 
+         * okay, in that although a non-GNU linker might happily link these
+         * sections, arguably that is a failure to understand the input files. 
+         * But the issue about it being a per-input-file property remains.
+         * Q. What does the GNU linker do if a reloc input file whose OSABI
+         * is *not* GNU contains a .gnu.warning.* section? That would be a fair
+         * test about whether looking at the input ABI is worth doing. *)
+                            ))
+    ; section_is_large    = a.section_is_large
+    ; maxpagesize         = a.maxpagesize
+    ; minpagesize         = a.minpagesize
+    ; commonpagesize      = a.commonpagesize
+    ; symbol_is_generated_by_linker = a.symbol_is_generated_by_linker
+    ; make_phdrs          = a.make_phdrs (* FIXME: also make the GNU phdrs! *)
+    ; max_phnum           = 1 + a.max_phnum (* FIXME: GNU_RELRO, GNU_STACK; what else? *)
+    ; guess_entry_point   = a.guess_entry_point
+    ; pad_data            = a.pad_data
+    ; pad_code            = a.pad_code
+    ; generate_support    = fun input_fnames_and_imgs -> 
+        let vanilla_support_img = a.generate_support input_fnames_and_imgs in
+        (* also generate .note.gnu.build-id *)
+        let new_by_range = Set.insert (Just(".note.gnu.build-id", (0, 24)), FileFeature(ElfSection(4 (* HACK: calculate this *), 
+          <| elf64_section_name = 0 (* ignored *)
+           ; elf64_section_type = sht_note
+           ; elf64_section_flags = shf_alloc
+           ; elf64_section_addr = 0 (* ignored -- covered by element *)
+           ; elf64_section_offset = 0 (* ignored -- will be replaced when file offsets are assigned *)
+           ; elf64_section_size = 24 (* ignored? NO, we use it in linker_script to avoid plumbing through the element record *)
+           ; elf64_section_link = 0
+           ; elf64_section_info = 0
+           ; elf64_section_align = 4
+           ; elf64_section_entsize = 0
+           ; elf64_section_body = Byte_sequence.empty (* ignored *)
+           ; elf64_section_name_as_string = ".note.gnu.build-id"
+           |>
+        ))) vanilla_support_img.by_range
+        in
+        <|  elements = Map.insert ".note.gnu.build-id" <|
+                startpos = Nothing
+           ;    length = Just 24
+           ;    contents = []
+           |> (vanilla_support_img.elements)
+         ;   by_tag = by_tag_from_by_range new_by_range
+         ;   by_range = new_by_range
+         |>
+    ; concretise_support  = a.concretise_support
+    ; get_reloc_symaddr   = a.get_reloc_symaddr
+    |>

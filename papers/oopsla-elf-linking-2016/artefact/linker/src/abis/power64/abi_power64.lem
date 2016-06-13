@@ -1,0 +1,45 @@
+(** [abi_power64] contains top-level definition for the PowerPC64 ABI.
+  *)
+
+open import Basic_classes
+open import Bool
+open import List
+open import Num
+open import Maybe
+
+open import Byte_sequence
+open import Error
+open import Missing_pervasives
+
+open import Elf_header
+open import Elf_types_native_uint
+open import Elf_file
+open import Elf_interpreted_segment
+
+(** [abi_power64_compute_program_entry_point segs entry] computes the program
+  * entry point using ABI-specific conventions.  On Power64 the entry point in
+  * the ELF header ([entry] here) is a pointer into a program segment that
+  * contains the "real" entry point.  On other ABIs, e.g.
+  * AArch64 and AMD64, the entry point in the ELF header [entry] is the actual
+  * program entry point.
+  *)
+val abi_power64_compute_program_entry_point : list elf64_interpreted_segment -> elf64_addr -> error natural
+let abi_power64_compute_program_entry_point segs entry =
+  let entry = natural_of_elf64_addr entry in
+  let filtered = List.filter (
+      fun seg ->
+        let base = seg.elf64_segment_base in
+        let size = seg.elf64_segment_memsz in
+          base <= entry && entry <= (base + size)
+      ) segs
+  in
+    match filtered with
+      | []  -> fail "abi_power64_compute_program_entry_point: no program segment contains the program entry point"
+      | [x] ->
+        let rebase = entry - x.elf64_segment_base in
+        Byte_sequence.offset_and_cut rebase 8 x.elf64_segment_body >>= fun bytes ->
+        Byte_sequence.read_8_bytes_le bytes >>= fun (bytes, _) ->
+        let (b1,b2,b3,b4,b5,b6,b7,b8) = bytes in
+        return (natural_of_elf64_addr (Elf_types_native_uint.elf64_addr_of_oct b1 b2 b3 b4 b5 b6 b7 b8))
+      | _   -> fail "abi_power64_compute_program_entry_point: multiple program segments contain the program entry point"
+    end

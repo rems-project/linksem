@@ -1,0 +1,11 @@
+(** [gnu_ext_types_native_uint] provides extended types defined by the GNU
+  * extensions over and above the based ELF types.
+  *)
+
+open import Missing_pervasives
+open import Elf_types_native_uint
+
+(** LSB section 9.2.1.1: in addition to SCO ELF spec types GNU defines an
+  * additional 1-byte integral type.
+  *)
+type gnu_ext_byte = byte

@@ -1,0 +1,83 @@
+(** [abi_mips64] contains top-level definition for the MIPS64 ABI.
+  *)
+
+open import Basic_classes
+open import Bool
+open import List
+open import Num
+open import Maybe
+open import Error
+open import Map
+open import Assert_extra
+
+open import Missing_pervasives
+open import Elf_header
+open import Elf_types_native_uint
+open import Elf_file
+open import Elf_interpreted_segment
+open import Elf_interpreted_section
+
+open import Endianness
+open import Memory_image
+(* open import Elf_memory_image *)
+
+open import Abi_classes
+(*open import Abi_mips64_relocation*)
+open import Abi_mips64_elf_header
+
+(** [abi_mips64_compute_program_entry_point segs entry] computes the program
+  * entry point using ABI-specific conventions.  On MIPS64 the entry point in
+  * the ELF header ([entry] here) is the real entry point.  On other ABIs, e.g.
+  * PowerPC64, the entry point [entry] is a pointer into one of the segments
+  * constituting the process image (passed in as [segs] here for a uniform
+  * interface).
+  *)
+val abi_mips64_compute_program_entry_point : list elf64_interpreted_segments -> elf64_addr -> error natural
+let abi_mips64_compute_program_entry_point segs entry =
+	return (natural_of_elf64_addr entry)
+
+val header_is_mips64 : elf64_header -> bool
+let header_is_mips64 h =  
+    is_valid_elf64_header h
+    && List.index h.elf64_ident (unsafe_nat_of_natural elf_ii_data) = Just (unsigned_char_of_natural elf_data_2msb)
+    && is_valid_abi_mips64_machine_architecture (natural_of_elf64_half h.elf64_machine)
+    && is_valid_abi_mips64_magic_number h.elf64_ident
+
+type plt_entry_address_fn 'abifeature = natural (* offset in PLT? *) -> annotated_memory_image 'abifeature (* img *) -> natural (* addr *)
+
+type mips64_abi_feature 'abifeature = 
+    GOT of  (list (string * (maybe symbol_definition)))
+    | PLT of (list (string * (maybe symbol_definition) * plt_entry_address_fn 'abifeature))
+    
+val abiFeatureCompare : forall 'abifeature. mips64_abi_feature 'abifeature -> mips64_abi_feature 'abifeature -> Basic_classes.ordering
+let abiFeatureCompare f1 f2 = 
+    match (f1, f2) with
+        (GOT(_), GOT(_)) -> EQ
+        | (GOT(_), PLT(_)) -> LT
+        | (PLT(_), PLT(_)) -> EQ
+        | (PLT(_), GOT(_)) -> GT
+    end
+
+val abiFeatureTagEq : forall 'abifeature. mips64_abi_feature 'abifeature -> mips64_abi_feature 'abifeature -> bool
+let abiFeatureTagEq f1 f2 =
+    match (f1, f2) with
+        (GOT(_), GOT(_)) -> true
+        | (PLT(_), PLT(_)) -> true
+        | (_, _) -> false
+    end
+
+instance forall 'abifeature. (AbiFeatureTagEquiv mips64_abi_feature 'abifeature)
+    let abiFeatureTagEquiv = abiFeatureTagEq
+end
+
+instance forall 'abifeature. (Ord mips64_abi_feature 'abifeature)
+    let compare = abiFeatureCompare
+    let (<) = fun f1 -> (fun f2 -> (abiFeatureCompare f1 f2 = LT))
+    let (<=) = fun f1 -> (fun f2 -> Set.member (abiFeatureCompare f1 f2) {LT; EQ})
+    let (>) = fun f1 -> (fun f2 -> (abiFeatureCompare f1 f2 = GT))
+    let (>=) = fun f1 -> (fun f2 -> Set.member (abiFeatureCompare f1 f2) {GT; EQ})
+end
+
+val section_is_special : forall 'abifeature. elf64_interpreted_section -> annotated_memory_image 'abifeature -> bool
+let section_is_special s img = 
+    elf_section_is_special s img 

@@ -1,0 +1,59 @@
+(** [abi_aarch64_le_elf_header] contains types and definitions relating to ABI
+  * specific ELF header functionality for the AArch64 ABI (little-endian).
+  *)
+
+open import Basic_classes
+open import Bool
+open import List
+open import Num
+open import Maybe
+open import Missing_pervasives
+
+open import Elf_header
+open import Elf_types_native_uint
+
+open import Endianness
+
+val abi_aarch64_le_data_encoding : natural
+let abi_aarch64_le_data_encoding = elf_data_2lsb
+
+val abi_aarch64_le_endianness : endianness
+let abi_aarch64_le_endianness = Little (* Must match above *)
+
+val abi_aarch64_le_file_class : natural
+let abi_aarch64_le_file_class = elf_class_64
+
+val abi_aarch64_le_file_version : natural
+let abi_aarch64_le_file_version = elf_ev_current
+
+val abi_aarch64_le_page_size_min : natural
+let abi_aarch64_le_page_size_min = 4096
+
+val abi_aarch64_le_page_size_max : natural
+let abi_aarch64_le_page_size_max = 65536
+
+(** [is_valid_abi_aarch64_le_machine_architecture m] checks whether the ELF header's
+  * machine architecture is valid according to the ABI-specific specification.
+  * Machine architecture must be AArch64 (pg 60)
+  *)
+val is_valid_abi_aarch64_le_machine_architecture : natural -> bool
+let is_valid_abi_aarch64_le_machine_architecture m =
+  m = elf_ma_aarch64
+
+(** [is_valid_abi_aarch64_le_magic_number magic] checks whether the ELF header's
+  * magic number is valid according to the ABI-specific specification.
+  * File class must be 64-bit (pg 60)
+  * Data encoding must be little endian (pg 60)
+  *)
+val is_valid_abi_aarch64_le_magic_number : list unsigned_char -> bool
+let is_valid_abi_aarch64_le_magic_number magic =
+  match List.index magic (unsafe_nat_of_natural elf_ii_class) with
+    | Nothing  -> false
+    | Just cls ->
+      match List.index magic (unsafe_nat_of_natural elf_ii_data) with
+        | Nothing   -> false
+        | Just data ->
+            (natural_of_unsigned_char cls = abi_aarch64_le_file_class) &&
+              (natural_of_unsigned_char data = abi_aarch64_le_data_encoding)
+      end
+  end

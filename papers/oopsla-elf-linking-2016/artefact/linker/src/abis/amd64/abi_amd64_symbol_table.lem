@@ -1,0 +1,21 @@
+(** [abi_amd64_symbol_table], AMD64 ABI specific definitions for the ELF symbol
+  * table.
+  *)
+
+open import Basic_classes
+open import Num
+open import Gnu_ext_abi
+
+(** AMD64 specific symbol types.  See doc/ifunc.txt and Section 4.3 of the
+  * ABI.
+  *)
+
+(** [string_of_abi_amd64_symbol_type m] produces a string based representation
+  * of AMD64 symbol type [m].
+  *)
+val string_of_abi_amd64_symbol_type : natural -> string
+let {ocaml} string_of_abi_amd64_symbol_type m =
+  if m = stt_gnu_ifunc then
+    "GNU_IFUNC"
+  else
+    "Invalid AMD64 symbol type"

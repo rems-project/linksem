@@ -1,0 +1,779 @@
+open import Basic_classes
+open import Function
+open import String
+open import Tuple
+open import Bool
+open import List
+open import Sorting
+open import Map
+import Map_extra
+open import Set
+open import Set_extra
+open import Multimap
+open import Num
+open import Maybe
+open import Assert_extra
+open import Show
+
+open import Byte_sequence
+open import Elf_file
+open import Elf_header
+open import Elf_interpreted_segment
+open import Elf_interpreted_section
+open import Elf_program_header_table
+open import Elf_section_header_table
+open import Elf_symbol_table
+open import Elf_types_native_uint
+open import Elf_relocation
+
+open import Missing_pervasives
+
+open import {isabelle} `GCD`
+
+(* Now we can define memory images *)
+
+type byte_pattern_element = maybe byte
+type byte_pattern = list byte_pattern_element
+
+(* An element might have an address/offset, and it has some contents. *)
+type element = <| startpos : maybe natural 
+                ; length   : maybe natural
+                ; contents : byte_pattern
+                |>
+
+(* HMM -- ideally I want to fold these into the memory image notion
+ * and the startpos thingy. *)
+type allocated_symbols_map = Map.map string (natural * natural) (* start, length *)
+
+(* Instead of modelling address calculations (in linker scripts) like so:
+
+type address_expr = natural -> allocated_symbols_map -> natural
+                  ( pos     -> environment           -> result address )
+                  
+   ... we model it as expressions in terms of CursorPosition. HMM.
+*) 
+
+type expr_operand = Var of string
+                   | CursorPosition          (* only valid in certain expressions... HMM *)
+                   | Constant of natural
+                   | UnOp of (expr_unary_operation * expr_operand)
+                   | BinOp of (expr_binary_operation * expr_operand * expr_operand)
+and
+expr_unary_operation = Neg of expr_operand
+                           | BitwiseInverse of expr_operand
+and 
+expr_binary_operation = Add of (expr_operand * expr_operand)
+                           | Sub of (expr_operand * expr_operand)
+                           | BitwiseAnd of (expr_operand * expr_operand)
+                           | BitwiseOr of (expr_operand * expr_operand)
+
+type expr_binary_relation = 
+    Lt
+    | Lte
+    | Gt
+    | Gte
+    | Eq
+    | Neq
+
+type expr = 
+    False
+    | True
+    | Not of expr
+    | And of (expr * expr)
+    | Or of (expr * expr)
+    | BinRel of (expr_binary_relation * expr_operand)  (* LH operand is the expr's value *)
+
+(*
+val cond_expr : expr -> expr -> expr -> expr
+let cond_expr expr1 expr2 expr3 = (Or((And(expr1, expr2)), (And((Not(expr1)), expr3))))
+*)
+
+(* Memory image elements all have identities. For convenience
+ * we make the identities strings. The string contents are arbitrary,
+ * and only their equality is relevant, but choosing friendly names
+ * like "ELF header" is good practice.*)
+type memory_image = Map.map string element
+
+type range = natural * natural (* start, length *)
+
+type element_range = string * range
+
+(* An "element" of an ELF image, in the linking phase, is either a section,
+ * the ELF header, the section header table or the program header table.
+ * 
+ * PROBLEM: We'd like to use section names as the identifiers
+ * for those elements that are sections.
+ * but we can't, because they are not guaranteed to be unique. 
+ * 
+ * SOLUTION: Names that are unique in the file are used as keys. 
+ * If not unique, the sections are treated as anonymous and given
+ * gensym'd string ids (FIXME: implement this).
+ *)
+
+(* Currently, our elements have unique names, which are strings.
+ * We *don't* want to encode any meaning onto these strings.
+ * All meaning should be encoded into labelled ranges.
+ * We want to be able to look up 
+ *
+ * - elements
+ * - ranges within elements
+ * 
+ * ... by their *labels* -- or sometimes just *part* of their labels.
+ *)
+
+(* ELF file features with which we can label ranges of the memory image. *)
+type elf_file_feature = 
+    ElfHeader of elf64_header
+    | ElfSectionHeaderTable of elf64_section_header_table (* do we want to expand these? *)
+    | ElfProgramHeaderTable of elf64_program_header_table
+    | ElfSection of (natural * elf64_interpreted_section) (* SHT idx *)
+    | ElfSegment of (natural * elf64_interpreted_segment) (* PHT idx *)
+
+type symbol_definition
+ = <| def_symname : string
+    ; def_syment : elf64_symbol_table_entry (* definition's symtab entry *)
+    ; def_sym_scn : natural                 (* symtab section index, to disamiguate dynsym *)
+    ; def_sym_idx : natural                 (* index of symbol into the symtab *)
+    ; def_linkable_idx : natural            (* used to propagate origin linkable information to linked image *)
+    |>
+
+let symDefCompare x1 x2 =
+        compare (x1.def_symname, x1.def_syment, x1.def_sym_scn, x1.def_sym_idx)
+                (x2.def_symname, x2.def_syment, x2.def_sym_scn, x2.def_sym_idx)
+
+instance (Ord symbol_definition)
+    let compare = symDefCompare
+    let (<) = fun f1 -> (fun f2 -> (symDefCompare f1 f2 = LT))
+    let (<=) = fun f1 -> (fun f2 -> Set.member (symDefCompare f1 f2) {LT; EQ})
+    let (>) = fun f1 -> (fun f2 -> (symDefCompare f1 f2 = GT))
+    let (>=) = fun f1 -> (fun f2 -> Set.member (symDefCompare f1 f2) {GT; EQ})
+end
+
+type symbol_reference
+ = <| ref_symname : string                  (* symbol name *)
+    ; ref_syment : elf64_symbol_table_entry (* likely-undefined (referencing) symbol *)
+    ; ref_sym_scn : natural                 (* symtab section idx *) 
+    ; ref_sym_idx : natural                 (* index into symbol table *)
+    |>
+
+let symRefCompare x1 x2 =
+        compare (x1.ref_symname, x1.ref_syment, x1.ref_sym_scn, x1.ref_sym_idx)
+                (x2.ref_symname, x2.ref_syment, x2.ref_sym_scn, x2.ref_sym_idx)
+                
+instance (Ord symbol_reference)
+    let compare = symRefCompare
+    let (<) = fun f1 -> (fun f2 -> (symRefCompare f1 f2 = LT))
+    let (<=) = fun f1 -> (fun f2 -> Set.member (symRefCompare f1 f2) {LT; EQ})
+    let (>) = fun f1 -> (fun f2 -> (symRefCompare f1 f2 = GT))
+    let (>=) = fun f1 -> (fun f2 -> Set.member (symRefCompare f1 f2) {GT; EQ})
+end
+
+type reloc_site = <|
+      ref_relent  : elf64_relocation_a 
+    ; ref_rel_scn : natural  (* the relocation section idx *)
+    ; ref_rel_idx : natural  (* the index of the relocation rec *)
+    ; ref_src_scn : natural  (* the section *from which* the reference logically comes *)
+|>
+
+let relocSiteCompare x1 x2 =
+        compare (x1.ref_relent, x1.ref_rel_idx, x1.ref_src_scn)
+                (x2.ref_relent, x2.ref_rel_idx, x2.ref_src_scn)
+                
+instance (Ord reloc_site)
+    let compare = relocSiteCompare
+    let (<) = fun f1 -> (fun f2 -> (relocSiteCompare f1 f2 = LT))
+    let (<=) = fun f1 -> (fun f2 -> Set.member (relocSiteCompare f1 f2) {LT; EQ})
+    let (>) = fun f1 -> (fun f2 -> (relocSiteCompare f1 f2 = GT))
+    let (>=) = fun f1 -> (fun f2 -> Set.member (relocSiteCompare f1 f2) {GT; EQ})
+end
+    
+type reloc_decision = LeaveReloc
+                    | ApplyReloc
+                    | ChangeRelocTo of (natural * symbol_reference * reloc_site)
+                    (* | MakePIC    -- is now a kind of ChangeRelocTo *)
+
+type symbol_reference_and_reloc_site = <|
+      ref         : symbol_reference
+    ; maybe_reloc : maybe reloc_site
+    ; maybe_def_bound_to : maybe (reloc_decision * maybe symbol_definition)
+    |>
+
+let symRefAndRelocSiteCompare x1 x2 =
+        compare (x1.ref, x1.maybe_reloc)
+                (x2.ref, x2.maybe_reloc)
+
+instance (Ord symbol_reference_and_reloc_site)
+    let compare = symRefAndRelocSiteCompare
+    let (<) = fun f1 -> (fun f2 -> (symRefAndRelocSiteCompare f1 f2 = LT))
+    let (<=) = fun f1 -> (fun f2 -> Set.member (symRefAndRelocSiteCompare f1 f2) {LT; EQ})
+    let (>) = fun f1 -> (fun f2 -> (symRefAndRelocSiteCompare f1 f2 = GT))
+    let (>=) = fun f1 -> (fun f2 -> Set.member (symRefAndRelocSiteCompare f1 f2) {GT; EQ})
+end
+
+(* We can also annotate arbitrary ranges of bytes within an element
+ * with arbitrary metadata. 
+ * 
+ * Ideally we want to data-abstract this a bit. But it's hard to do
+ * so without baking in ELF-specific and/or (moreover) per-ABI concepts, 
+ * like PLTs and GOTs. Ideally we would use something like polymorphic
+ * variants here. For now, this has to be the union of all the concepts
+ * that we find in the various ABIs we care about. To avoid ELFy things
+ * creeping in, we parameterise by 'a, and instantiate the 'a with the
+ * relevant ELFy thing when we use it. OH, but then 'a is different for
+ * every distinct ELF thing, which is no good. Can we define a mapping
+ * from an umbrella "ELF" type to the relevant types in each case? *)
+type range_tag 'abifeature = (*  forall 'abifeature . *)
+                 ImageBase
+               | EntryPoint
+               | SymbolDef of symbol_definition
+               | SymbolRef of symbol_reference_and_reloc_site
+               | FileFeature of elf_file_feature (* file feature other than symdef and reloc *)
+               | AbiFeature of 'abifeature
+
+type annotated_memory_image 'abifeature = <|
+      elements         : memory_image 
+    ; by_range         : set ((maybe element_range) * (range_tag 'abifeature))
+    ; by_tag           : multimap (range_tag 'abifeature) (maybe element_range)
+|>
+
+val get_empty_memory_image : forall 'abifeature. unit -> annotated_memory_image 'abifeature
+let get_empty_memory_image = fun _ -> <| 
+      elements = Map.empty
+    ; by_range = Set.empty
+    ; by_tag   = Set.empty
+|>
+
+(* Basic ELFy and ABI-y things. *)
+(* FIXME: shouldn't really be here, but need to be in some low-lying module, and 
+ * keeping out of elf_* for now to avoid duplication into elf64_, elf32_. *)
+let elf_section_is_special s f = s.elf64_section_type <> sht_progbits
+                     && s.elf64_section_type <> sht_nobits
+
+(* This record collects things that ABIs may or must define. 
+ * 
+ * Since we want to put all ABIs in a list and select one at run time, 
+ * we can't maintain a type-level distinction between ABIs; we have to
+ * use elf_memory_image any_abi_feature. To avoid a reference cycle,
+ * stay polymorphic in the ABI feature type until we define specific ABIs.
+ * In practice we'll use only any_abi_feature, because we need to pull
+ * the ABI out of a list at run time.
+ *)
+type null_abi_feature = unit
+
+(* The reloc calculation is complicated, so we split up the big function
+ * type into smaller ones. *)
+
+(* Q. Do we want "existing", or is it a kind of addend? 
+ * A. We do want it -- modelling both separately is necessary, 
+ * because we model relocations bytewise, but some arches
+ * do bitfield relocations (think ARM). *)
+type reloc_calculate_fn    = natural -> integer -> natural -> natural (* symaddr -> addend -> existing -> relocated *)
+
+type reloc_apply_fn 'abifeature = 
+                                (* elf memory image: the context in which the relocation is being applied *)
+                                annotated_memory_image 'abifeature ->
+                               (* the site address *)
+                                natural ->
+                                (* Typically there are two symbol table entries involved in a relocation.
+                                 * One is the reference, and is usually undefined.
+                                 * The other is the definition, and is defined (else absent, when we use 0).
+                                 * However, sometimes the reference is itself a defined symbol.
+                                 * Almost always, if so, *that* symbol *is* "the definition".
+                                 * However, copy relocs are an exception.
+                                 * 
+                                 * In the case of copy relocations being fixed up by the dynamic
+                                 * linker, the dynamic linker must figure out which definition to
+                                 * copy from. This can't be as simple as "the first definition in
+                                 * link order", because *our* copy of that symbol is a definition
+                                 * (typically in bss). It could be as simple as "the first *after us*
+                                 * in link order". FIXME: find the glibc code that does this.
+                                 * 
+                                 * Can we dig this stuff out of the memory image? If we pass the address
+                                 * being relocated, we can find the tags. But I don't want to pass
+                                 * the symbol address until the very end. It seems better to pass the symbol
+                                 * name, since that's the key that the dynamic linker uses to look for
+                                 * other definitions.
+                                 * 
+                                 * Do we want to pass a whole symbol_reference? This has not only the
+                                 * symbol name but also syment, scn and idx. The syment is usually UND, 
+                                 * but *could* be defined (and is for copy relocs). The scn and idx are
+                                 * not relevant, but it seems cleaner to pass the whole thing anyway.
+                                 *)
+                                symbol_reference_and_reloc_site -> 
+                                (* Should we pass a symbol_definition too? Implicitly, we pass part of it
+                                 * by passing the symaddr argument (below). I'd prefer not to depend on
+                                 * others -- relocation calculations should look like "mostly address 
+                                 * arithmetic", i.e. only the weird ones do something else. *)
+                                 (* How wide, in bytes, is the relocated field? this may depend on img 
+                                 * and on the wider image (copy relocs), so it's returned *by* the reloc function. *)
+                                (natural (* width *) * reloc_calculate_fn)
+
+(* Some kinds of relocation necessarily give us back a R_*_RELATIVE reloc.
+ * We don't record this explicitly. Instead, the "bool" is a flag recording whether
+ * the field represents an absolute address.
+ * Similarly, some relocations can "fail" according to their ABI manuals.
+ * This just means that the result can't be represented in the field width.
+ * We detect this when actually applying the reloc in the memory image content
+ * (done elsewhere). *)
+type reloc_fn 'abifeature = natural -> (bool * reloc_apply_fn 'abifeature)
+
+val noop_reloc_calculate : natural -> integer -> natural -> natural
+let noop_reloc_calculate symaddr addend existing = existing
+
+val noop_reloc_apply : forall 'abifeature. reloc_apply_fn 'abifeature
+let noop_reloc_apply img site_addr ref = (0, noop_reloc_calculate)
+
+val noop_reloc : forall 'abifeature. natural -> (bool (* result is absolute addr *) * reloc_apply_fn 'abifeature)
+let noop_reloc k = (false, noop_reloc_apply)
+
+type abi 'abifeature = (* forall 'abifeature. *)
+   <| is_valid_elf_header : elf64_header -> bool (* doesn't this generalise outrageously? is_valid_elf_file? *)
+    ; make_elf_header    : natural -> natural -> natural -> natural -> natural -> natural -> natural -> elf64_header
+                           (* t entry shoff phoff phnum shnum shstrndx *)
+    ; reloc              : reloc_fn 'abifeature
+    ; section_is_special : elf64_interpreted_section -> annotated_memory_image 'abifeature -> bool
+    ; section_is_large   : elf64_interpreted_section -> annotated_memory_image 'abifeature -> bool
+    ; maxpagesize        : natural
+    ; minpagesize        : natural
+    ; commonpagesize     : natural
+    ; symbol_is_generated_by_linker : string -> bool
+    (*; link_inputs_tap    : 
+    ; link_output_sections_tap   : 
+    ; link_output_image_tap      : *)
+    ; make_phdrs         : natural -> natural -> natural (* file type *) -> annotated_memory_image 'abifeature -> list elf64_interpreted_section -> list elf64_program_header_table_entry
+    ; max_phnum          : natural
+    ; guess_entry_point  : annotated_memory_image 'abifeature -> maybe natural
+    ; pad_data           : natural -> list byte
+    ; pad_code           : natural -> list byte
+    ; generate_support   : (* list (list reloc_site_resolution) ->  *)list (string * annotated_memory_image 'abifeature) -> annotated_memory_image 'abifeature
+    ; concretise_support : annotated_memory_image 'abifeature -> annotated_memory_image 'abifeature
+    ; get_reloc_symaddr  : symbol_definition -> annotated_memory_image 'abifeature -> maybe reloc_site -> natural
+    |>
+
+val align_up_to : natural -> natural -> natural
+let align_up_to align addr = 
+    let quot = addr / align
+    in
+    if quot * align = addr then addr else (quot + 1) * align
+
+val round_down_to : natural -> natural -> natural
+let round_down_to align addr = 
+    let quot = addr / align
+    in
+    quot * align
+
+val uint32_max : natural
+let uint32_max = (2 ** 32) - 1
+
+val uint64_max : natural
+let uint64_max =
+    (* HACK around Lem's inability to parse 18446744073709551615: 
+     * the square of uint32_max is 
+     *       (2**32 - 1) (2**32 - 1)
+     * i.e.   2**64 - 2**32 - 2**32 + 1
+     * So
+     * 2**64 - 1 =  uint32_max * uint32_max  + 2**32 + 2**32 - 2
+     *)
+    uint32_max * uint32_max - 2 + (2**33)
+    (* 18446744073709551615 *) (* i.e. 0x ffff ffff ffff ffff *)
+    (* HMM. This still overflows int64 *)
+
+(* The 2's complement of a value, at 64-bit width *)
+val compl64 : natural -> natural
+let compl64 v =
+    1 + (natural_lxor v uint64_max)
+
+val gcd : natural -> natural -> natural
+let rec gcd a b = 
+    if b = 0 then a else gcd b (a mod b)
+declare isabelle target_rep function gcd = `GCD.gcd`
+
+val lcm : natural -> natural -> natural
+let lcm a b = 
+    (* let _ = errln ("lcm of " ^ (show a) ^ " and " ^ (show b) ^ "?")
+    in *)
+    (a * b) / (gcd a b)
+declare isabelle target_rep function lcm = `GCD.lcm`
+
+val address_of_range : forall 'abifeature. element_range -> annotated_memory_image 'abifeature -> natural
+let address_of_range el_range img = 
+    let (el_name, (start, len)) = el_range
+    in
+    match Map.lookup el_name img.elements with
+        Just el ->
+            match el.startpos with
+                Just addr -> addr + start
+                | Nothing -> failwith "address_of_range called for element with no address"
+            end
+        | Nothing -> failwith "address_of_range called on nonexistent element"
+    end
+
+val range_contains : (natural * natural) -> (natural * natural) -> bool
+let range_contains (r1begin, r1len) (r2begin, r2len) = 
+    (* r1 is at least as big as r2 *)
+    r2begin >= r1begin && (r2begin + r2len) <= (r1begin + r1len)
+
+val range_overlaps : (natural * natural) -> (natural * natural) -> bool
+let range_overlaps (r1begin, r1len) (r2begin, r2len) =
+    (r1begin < (r2begin + r2len) && (r1begin + r1len) > r2begin)
+     || (r2begin < (r1begin + r1len) && (r2begin + r2len) > r1begin)
+    
+val is_partition : list (natural * natural) -> list (natural * natural) -> bool
+let is_partition rs ranges = 
+    (* 1. each element of the first list falls entirely within some element
+     * from the second list. *)
+    let r_is_contained_by_some_range
+     = fun r -> foldl (||) false (List.map (fun range -> range_contains range r) ranges)
+    in
+    List.all (fun r -> r_is_contained_by_some_range r) rs
+    &&
+    (* 2. elements of the first list do not overlap *)
+    List.all (fun r -> List.all (fun r2 -> (r = (* should be "=="? *) r2) || (not (range_overlaps r r2))) rs) rs
+
+val     nat_range : natural -> natural -> list natural
+let rec nat_range base len =
+    match len with 
+        0 -> []
+    |   _ -> base :: (nat_range (base + 1) (len - 1))
+    end
+
+(* Expand a sorted list of ranges into a list of bool, where the list contains
+ * true if its index is included in one or more ranges, else false. *)
+val expand_sorted_ranges : list (natural * natural) -> natural -> list bool -> list bool
+let rec expand_sorted_ranges sorted_ranges min_length accum =
+    match sorted_ranges with
+        [] -> accum ++ (
+            let pad_length = max 0 (min_length - (Missing_pervasives.length accum))
+            in
+            (* let _ = Missing_pervasives.errln (
+                "padding ranges cares list with " ^ (show pad_length) ^ 
+                " cares (accumulated " ^ (show (Missing_pervasives.length accum)) ^ 
+                ", min length " ^ (show min_length) ^ ")")
+            in *)
+            Missing_pervasives.replicate pad_length true)
+     |  (base, len) :: more -> 
+            (* pad the accum so that it reaches up to base *)
+            let up_to_base = (Missing_pervasives.replicate (base - (Missing_pervasives.length accum)) true)
+            in
+            let up_to_end_of_range = up_to_base ++ (Missing_pervasives.replicate len false)
+            in
+            expand_sorted_ranges more min_length (accum ++ up_to_end_of_range)
+    end
+
+val expand_unsorted_ranges : list (natural * natural) -> natural -> list bool -> list bool
+let rec expand_unsorted_ranges unsorted_ranges min_length accum =
+    expand_sorted_ranges (sortBy (fun (base1, len1) -> (fun (base2, len2) -> base1 < base2)) unsorted_ranges) min_length accum
+
+val make_byte_pattern_revacc : list (maybe byte) -> list byte -> list bool -> list (maybe byte)
+let rec make_byte_pattern_revacc revacc bytes cares = 
+    match bytes with
+          [] -> reverse revacc
+        | b :: bs -> match cares with 
+                care :: more -> make_byte_pattern_revacc ((if not care then Nothing else Just b) :: revacc) bs more
+              | _ -> failwith "make_byte_pattern: unequal length"
+              end
+    end
+
+val make_byte_pattern : list byte -> list bool -> list (maybe byte)
+let rec make_byte_pattern bytes cares = 
+    make_byte_pattern_revacc [] bytes cares
+
+val relax_byte_pattern_revacc : list (maybe byte) -> list (maybe byte) -> list bool -> list (maybe byte)
+let rec relax_byte_pattern_revacc revacc bytes cares = 
+    match bytes with
+          [] -> reverse revacc
+        | b :: bs -> match cares with 
+                care :: more -> relax_byte_pattern_revacc ((if not care then Nothing else b) :: revacc) bs more
+              | _ -> failwith ("relax_byte_pattern: unequal length")
+              end
+    end
+    
+val relax_byte_pattern : list (maybe byte) -> list bool -> list (maybe byte)
+let rec relax_byte_pattern bytes cares = 
+    relax_byte_pattern_revacc [] bytes cares
+
+type pad_fn = natural -> list byte
+
+val concretise_byte_pattern : list byte -> natural -> list (maybe byte) -> pad_fn -> list byte
+let rec concretise_byte_pattern rev_acc acc_pad bs pad = 
+    match bs with
+        [] -> 
+            let padding_bytes = if acc_pad > 0 then pad acc_pad else []
+            in List.reverse ((List.reverse padding_bytes) ++ rev_acc)
+        | Just(b) :: more -> 
+            (* flush accumulated padding *)
+            let padding_bytes = if acc_pad > 0 then pad acc_pad else []
+            in
+            concretise_byte_pattern (b :: ((List.reverse padding_bytes) ++ rev_acc)) 0 more pad
+        | Nothing :: more -> 
+            concretise_byte_pattern rev_acc (acc_pad+1) more pad
+    end
+
+val byte_option_matches_byte : maybe byte -> byte -> bool
+let byte_option_matches_byte optb b =
+    match optb with 
+            Nothing -> true 
+        |   Just some -> some = b 
+    end
+
+val byte_list_matches_pattern : list (maybe byte) -> list byte -> bool
+let rec byte_list_matches_pattern pattern bytes = 
+    match pattern with 
+        [] -> true
+        | optbyte :: more -> match bytes with 
+                [] -> false
+                | abyte :: morebytes -> 
+                    byte_option_matches_byte optbyte abyte 
+                 && byte_list_matches_pattern more morebytes
+            end
+    end
+
+val append_to_byte_pattern_at_offset : natural -> list (maybe byte) -> list (maybe byte) -> list (maybe byte)
+let append_to_byte_pattern_at_offset offset pat1 pat2 =
+    let pad_length = offset - Missing_pervasives.length pat1
+    in
+    if pad_length < 0 then failwith "can't append at offset already used"
+    else pat1 ++ (List.replicate (unsafe_nat_of_natural pad_length) Nothing) ++ pat2
+
+val accum_pattern_possible_starts_in_one_byte_sequence : list (maybe byte) -> nat -> list byte -> nat -> natural -> list natural -> list natural
+let rec accum_pattern_possible_starts_in_one_byte_sequence pattern pattern_len seq seq_len offset accum =
+    (* let _ = Missing_pervasives.errs ("At offset " ^ (show offset) ^ "... ")
+    in *)
+    match pattern with
+        [] -> (* let _ = Missing_pervasives.errs ("terminating with hit (empty pattern)\n") in *)
+            offset :: accum
+        | bpe :: more_bpes -> (* nonempty, so check for nonempty seq *)
+            match seq with 
+                [] -> (*let _ = Missing_pervasives.errs ("terminating with miss (empty pattern)\n") 
+                    in *) accum (* ran out of bytes in the sequence, so no match *)
+                | byte :: more_bytes -> let matched_this_byte = 
+                            byte_option_matches_byte bpe byte
+                       in
+                       (* let _ = Missing_pervasives.errs ("Byte " ^ (show byte) ^ " matched " ^ (show byte_pattern) ^ "? " ^ (show matched_this_byte) ^ "; ") 
+                       in *)
+                       let sequence_long_enough = (seq_len >= pattern_len) 
+                       in
+                       (* let _ = Missing_pervasives.errs ("enough bytes remaining (" ^ (show seq_len) ^ ") to match rest of pattern (" ^ (show pattern_len) ^ ")? " ^ (show sequence_long_enough) ^ "; ") 
+                       in *)
+                       let matched_here = matched_this_byte && sequence_long_enough &&
+                        byte_list_matches_pattern more_bpes more_bytes
+                       in
+                       (* let _ = Missing_pervasives.errs ("matched pattern anchored here? " ^ (show matched_this_byte) ^ "\n") 
+                       in *)
+                       accum_pattern_possible_starts_in_one_byte_sequence 
+                           pattern pattern_len 
+                           more_bytes (seq_len - 1) 
+                           (offset + 1) 
+                           (if matched_here then offset :: accum else accum)
+            end
+    end
+
+let swap_pairs s = { (v, k) | forall ((k, v) IN s) | true }
+
+let by_range_from_by_tag = swap_pairs
+
+let by_tag_from_by_range = swap_pairs
+
+val filter_elements : forall 'abifeature. ((string * element) -> bool) -> 
+    annotated_memory_image 'abifeature -> annotated_memory_image 'abifeature
+let filter_elements pred img = 
+    let new_elements = Map.fromList [(n, r) | forall ((n, r) MEM (Set_extra.toList (toSet img.elements))) | 
+        let result = pred (n, r) in 
+        if not result then (*let _ = Missing_pervasives.outln ("Discarding element named " ^ n) in*) result else result]
+    in
+    let new_by_range =  Set.filter (fun (maybe_range, tag) -> match maybe_range with
+            Nothing -> true
+            | Just (el_name, el_range) -> el_name IN domain new_elements
+        end) img.by_range
+    in
+    let new_by_tag = { (v, k) | forall ((k, v) IN new_by_range) | true }
+    in
+    <| elements = new_elements
+     ; by_range = new_by_range
+     ; by_tag   = new_by_tag
+     |>
+
+val tag_image : forall 'abifeature. range_tag 'abifeature -> string -> natural -> natural -> annotated_memory_image 'abifeature
+    ->  annotated_memory_image 'abifeature
+let tag_image t el_name el_offset tag_len img = 
+    let (k, v) = (Just (el_name, (el_offset, tag_len)), t)
+    in
+    let new_by_range = Set.insert (k, v) img.by_range
+    in
+    let new_by_tag = Set.insert (v, k) img.by_tag
+    in
+    <| elements = img.elements
+     ; by_range = new_by_range
+     ; by_tag   = new_by_tag
+     |>
+
+val address_to_element_and_offset : forall 'abifeature. natural -> annotated_memory_image 'abifeature -> maybe (string * natural)
+let address_to_element_and_offset query_addr img = 
+    (* Find the element with the highest address <= addr.
+     * What about zero-length elements?
+     * Break ties on the bigger size. *)
+    let (maybe_highest_le : maybe (natural * string * element))
+     = List.foldl (fun maybe_current_max_le -> (fun (el_name, el_rec) ->
+        let _ = errln ("Saw element named `" ^ el_name ^ " with startpos " ^ (
+            (match el_rec.startpos with Just addr -> ("0x" ^ (hex_string_of_natural addr)) | Nothing -> "(none)" end)
+            ^ " and length " ^
+            (match el_rec.length with Just len -> ("0x" ^ (hex_string_of_natural len)) | Nothing -> "(none)" end)
+            ))
+        in
+        match (maybe_current_max_le, el_rec.startpos) with
+              (Nothing,                                    Nothing) -> Nothing
+            | (Nothing,                                    Just this_element_pos) -> if this_element_pos <= query_addr 
+                                                                                     then Just (this_element_pos, el_name, el_rec) 
+                                                                                     else Nothing
+            | (Just (cur_max_le, cur_el_name, cur_el_rec), Nothing) ->               maybe_current_max_le
+            | (Just (cur_max_le, cur_el_name, cur_el_rec), Just this_element_pos) -> if this_element_pos <= query_addr 
+                                                                                        && (this_element_pos > cur_max_le 
+                                                                                         || (this_element_pos = cur_max_le
+                                                                                             && (cur_el_rec.length = Just 0)))
+                                                                                        then Just (this_element_pos, el_name, el_rec) 
+                                                                                        else maybe_current_max_le
+        end
+    )) Nothing (Map_extra.toList img.elements)
+    in
+    match maybe_highest_le with
+        Just (el_def_startpos, el_name, el_rec) ->
+            (* final sanity check: is the length definite, and if so, does the
+             * element span far enough? *)
+            match el_rec.length with
+                Just l -> if el_def_startpos + l >= query_addr 
+                    then Just (el_name, query_addr - el_def_startpos) 
+                    else 
+                        let _ = errln ("Discounting " ^ el_name ^ " because length is too short") in Nothing
+                | Nothing -> let _ = errln ("Gave up because element has unknown length") in Nothing
+            end
+        | Nothing -> 
+            (* no elements with a low enough assigned address, so nothing *)
+            let _ = errln ("Found no elements with low enough address") in Nothing
+    end
+    
+val element_and_offset_to_address : forall 'abifeature. (string * natural) -> annotated_memory_image 'abifeature -> maybe natural
+let element_and_offset_to_address (el_name, el_off) img = 
+    match Map.lookup el_name img.elements with
+        Just el -> match el.startpos with
+                        Just addr -> Just (addr + el_off)
+                        | Nothing -> Nothing
+                   end
+        | Nothing -> failwith ("error: nonexistent element: " ^ el_name)
+    end
+
+let null_symbol_reference = <|
+    ref_symname = ""
+    ; ref_syment = elf64_null_symbol_table_entry
+    ; ref_sym_scn = 0
+    ; ref_sym_idx = 0
+|>
+
+let null_elf_relocation_a =
+  <| elf64_ra_offset = elf64_addr_of_natural 0  
+   ; elf64_ra_info   = elf64_xword_of_natural 0 
+   ; elf64_ra_addend = elf64_sxword_of_integer 0
+   |>
+
+
+let null_symbol_reference_and_reloc_site = <|
+      ref = null_symbol_reference
+    ; maybe_reloc = 
+        Just   <| ref_relent = null_elf_relocation_a
+                ; ref_rel_scn = 0
+                ; ref_rel_idx = 0
+                ; ref_src_scn = 0
+                |>
+    ; maybe_def_bound_to = Nothing
+    |>
+
+let null_symbol_definition = <|
+    def_symname = ""
+    ; def_syment = elf64_null_symbol_table_entry
+    ; def_sym_scn = 0
+    ; def_sym_idx = 0
+    ; def_linkable_idx = 0
+|>
+    
+val pattern_possible_starts_in_one_byte_sequence : list (maybe byte) -> list byte -> natural -> list natural
+let pattern_possible_starts_in_one_byte_sequence pattern seq offset =
+    (* let _ = Missing_pervasives.errs ("Looking for matches of " ^
+        (show (List.length pattern)) ^ "-byte pattern in " ^ (show (List.length seq)) ^ "-byte region\n")
+    in *)
+    accum_pattern_possible_starts_in_one_byte_sequence pattern (List.length pattern) seq (List.length seq) offset []
+
+val byte_pattern_of_byte_sequence : byte_sequence -> list (maybe byte)
+let byte_pattern_of_byte_sequence seq = match seq with
+    Sequence(bs) -> List.map (fun b -> Just b) bs
+end
+
+val compute_virtual_address_adjustment : natural -> natural -> natural -> natural
+let compute_virtual_address_adjustment max_page_size offset vaddr =
+  (vaddr - offset) mod max_page_size
+
+val extract_natural_field : natural -> element -> natural -> natural
+let extract_natural_field width element offset = 
+    (* Read n bytes from the contents *)
+    let maybe_bytes = take width (drop offset element.contents)
+    in
+    let bytes = List.map (fun mb -> match mb with Nothing -> byte_of_natural 0 | Just mb -> mb end) maybe_bytes
+    in
+    (* FIXME: do we want little- or big-endian? *)
+    List.foldl (fun acc -> fun next_byte ->
+        acc * 256 + (natural_of_byte next_byte)
+    ) (0 : natural) bytes
+
+val natural_to_le_byte_list : natural -> list byte
+let rec natural_to_le_byte_list n = 
+    (byte_of_natural (n mod 256)) :: (let d = n/256 in if d = 0 then [] else natural_to_le_byte_list (n / 256))
+
+val natural_to_le_byte_list_padded_to : natural -> natural -> list byte
+let rec natural_to_le_byte_list_padded_to width n = 
+    let bytes = natural_to_le_byte_list n
+    in 
+    bytes ++ (replicate (width - length bytes) (byte_of_natural 0))
+
+val n2i : natural -> integer
+let n2i = integerFromNatural
+
+val i2n: integer -> natural
+let i2n = naturalFromInteger
+
+val i2n_signed : nat -> integer -> natural
+let i2n_signed width i = 
+    if i >= 0 then 
+        if i >= 2 ** (width-1) then failwith "overflow"
+        else naturalFromInteger i
+    else 
+        (* We manually encode the 2's complement of the negated value *)
+        let negated = naturalFromInteger (0 - i) in 
+        let (xormask : natural) = (2 ** width - 1) in
+        let compl = 1 + natural_lxor negated xormask
+        in
+        (*let _ = errln ("Signed value " ^ (show i) ^ " is 2's-compl'd to 0x" ^ (hex_string_of_natural compl))
+        in*) compl
+
+val to_le_signed_bytes : natural -> integer -> list byte
+let to_le_signed_bytes bytewidth i = 
+    natural_to_le_byte_list_padded_to bytewidth (i2n_signed (natFromNatural (8*bytewidth)) i)
+
+val to_le_unsigned_bytes : natural -> integer -> list byte
+let to_le_unsigned_bytes bytewidth i = 
+    natural_to_le_byte_list_padded_to bytewidth (naturalFromInteger i)
+
+val write_natural_field : natural -> natural -> element -> natural -> element
+let write_natural_field new_field_value width element offset = 
+    let pre_bytes = take offset element.contents
+    in
+    let post_bytes = drop (offset + width) element.contents
+    in
+    (* FIXME: avoid hard-coding little-endian *)
+    let field_bytes = natural_to_le_byte_list new_field_value
+    in
+    if length field_bytes > width then failwith "internal error: relocation output unrepresentable"
+    else
+    <|
+        contents = pre_bytes ++ [Just b | forall (b MEM field_bytes) | true]
+            ++ (replicate (width - (length field_bytes)) (Just (byte_of_natural 0))) ++ post_bytes
+        ; startpos = element.startpos
+        ; length = element.length
+     |>

@@ -1,0 +1,298 @@
+(** Module [elf_interpreted_section] provides a record of "interpreted" sections,
+  * i.e. the data stored in the section header table converted to more amenable
+  * infinite precision types, and operation on those records.
+  *)
+
+open import Basic_classes
+open import Bool
+open import List
+open import Maybe
+open import Num
+open import String
+
+open import Byte_sequence
+open import Error
+open import String_table
+
+open import Elf_types_native_uint
+open import Elf_section_header_table
+
+open import Missing_pervasives
+open import Show
+
+(** [elf32_interpreted_section] exactly mirrors the structure of a section header
+  * table entry, barring the conversion of all fields to more amenable types.
+  *)
+type elf32_interpreted_section =
+  <| elf32_section_name    : natural       (** Name of the section *)
+   ; elf32_section_type    : natural       (** Type of the section *)
+   ; elf32_section_flags   : natural       (** Flags associated with the section *)
+   ; elf32_section_addr    : natural       (** Base address of the section in memory *)
+   ; elf32_section_offset  : natural       (** Offset from beginning of file *)
+   ; elf32_section_size    : natural       (** Section size in bytes *)
+   ; elf32_section_link    : natural       (** Section header table index link *)
+   ; elf32_section_info    : natural       (** Extra information, depends on section type *)
+   ; elf32_section_align   : natural       (** Alignment constraints for section *)
+   ; elf32_section_entsize : natural       (** Size of each entry in table, if section is one *)
+   ; elf32_section_body    : byte_sequence (** Body of section *)
+   ; elf32_section_name_as_string : string (** Name of the section, as a string; "" for no name (name = 0) *)
+   |>
+   
+(** [elf32_interpreted_section_equal s1 s2] is an equality test on interpreted
+  * sections [s1] and [s2].
+  *)
+val elf32_interpreted_section_equal : elf32_interpreted_section -> elf32_interpreted_section -> bool
+let elf32_interpreted_section_equal x y =
+    x.elf32_section_name = y.elf32_section_name &&
+    x.elf32_section_type = y.elf32_section_type &&
+    x.elf32_section_flags = y.elf32_section_flags &&
+    x.elf32_section_addr = y.elf32_section_addr &&
+    x.elf32_section_offset = y.elf32_section_offset &&
+    x.elf32_section_size = y.elf32_section_size &&
+    x.elf32_section_link = y.elf32_section_link &&
+    x.elf32_section_info = y.elf32_section_info &&
+    x.elf32_section_align = y.elf32_section_align &&
+    x.elf32_section_entsize = y.elf32_section_entsize &&
+    x.elf32_section_body = y.elf32_section_body &&
+    x.elf32_section_name_as_string = y.elf32_section_name_as_string
+
+instance (Eq elf32_interpreted_section)
+	let (=)      = elf32_interpreted_section_equal
+	let (<>) x y = not (elf32_interpreted_section_equal x y)
+end
+
+(** [elf64_interpreted_section] exactly mirrors the structure of a section header
+  * table entry, barring the conversion of all fields to more amenable types.
+  *)
+type elf64_interpreted_section =
+  <| elf64_section_name    : natural       (** Name of the section *)
+   ; elf64_section_type    : natural       (** Type of the section *)
+   ; elf64_section_flags   : natural       (** Flags associated with the section *)
+   ; elf64_section_addr    : natural       (** Base address of the section in memory *)
+   ; elf64_section_offset  : natural       (** Offset from beginning of file *)
+   ; elf64_section_size    : natural       (** Section size in bytes *)
+   ; elf64_section_link    : natural       (** Section header table index link *)
+   ; elf64_section_info    : natural       (** Extra information, depends on section type *)
+   ; elf64_section_align   : natural       (** Alignment constraints for section *)
+   ; elf64_section_entsize : natural       (** Size of each entry in table, if section is one *)
+   ; elf64_section_body    : byte_sequence (** Body of section *)
+   ; elf64_section_name_as_string : string (** Name of the section, as a string; "" for no name (name = 0) *)
+   |>
+
+(** [compare_elf64_interpreted_section s1 s2] is an ordering comparison function
+  * on interpreted sections suitable for use in sets, finite maps and other
+  * ordered structures.
+  *)
+val compare_elf64_interpreted_section : elf64_interpreted_section -> elf64_interpreted_section ->
+  ordering
+let compare_elf64_interpreted_section s1 s2 = 
+   compare 
+    ([s1.elf64_section_name    ;
+      s1.elf64_section_type    ;
+      s1.elf64_section_flags   ;
+      s1.elf64_section_addr    ;
+      s1.elf64_section_offset  ;
+      s1.elf64_section_size    ;
+      s1.elf64_section_link    ;
+      s1.elf64_section_info    ;
+      s1.elf64_section_align   ;
+      s1.elf64_section_entsize], s1.elf64_section_body)
+    ([s2.elf64_section_name    ;
+      s2.elf64_section_type    ;
+      s2.elf64_section_flags   ;
+      s2.elf64_section_addr    ;
+      s2.elf64_section_offset  ;
+      s2.elf64_section_size    ;
+      s2.elf64_section_link    ;
+      s2.elf64_section_info    ;
+      s2.elf64_section_align   ;
+      s2.elf64_section_entsize], s2.elf64_section_body)
+
+instance (Ord elf64_interpreted_section)
+    let compare = compare_elf64_interpreted_section
+    let (<) = fun f1 -> (fun f2 -> (compare_elf64_interpreted_section f1 f2 = LT))
+    let (<=) = fun f1 -> (fun f2 -> Set.member (compare_elf64_interpreted_section f1 f2) {LT; EQ})
+    let (>) = fun f1 -> (fun f2 -> (compare_elf64_interpreted_section f1 f2 = GT))
+    let (>=) = fun f1 -> (fun f2 -> Set.member (compare_elf64_interpreted_section f1 f2) {GT; EQ})
+end
+
+(** [elf64_interpreted_section_equal s1 s2] is an equality test on interpreted
+  * sections [s1] and [s2].
+  *)
+val elf64_interpreted_section_equal : elf64_interpreted_section -> elf64_interpreted_section -> bool
+let elf64_interpreted_section_equal x y =
+    x.elf64_section_name = y.elf64_section_name &&
+    x.elf64_section_type = y.elf64_section_type &&
+    x.elf64_section_flags = y.elf64_section_flags &&
+    x.elf64_section_addr = y.elf64_section_addr &&
+    x.elf64_section_offset = y.elf64_section_offset &&
+    x.elf64_section_size = y.elf64_section_size &&
+    x.elf64_section_link = y.elf64_section_link &&
+    x.elf64_section_info = y.elf64_section_info &&
+    x.elf64_section_align = y.elf64_section_align &&
+    x.elf64_section_entsize = y.elf64_section_entsize &&
+    x.elf64_section_body = y.elf64_section_body &&
+    x.elf64_section_name_as_string = y.elf64_section_name_as_string
+
+(** [null_elf32_interpreted_section] --- the null interpreted section.
+  *)
+val null_elf32_interpreted_section : elf32_interpreted_section
+let null_elf32_interpreted_section =
+  <| elf32_section_name = 0
+   ; elf32_section_type = 0
+   ; elf32_section_flags = 0
+   ; elf32_section_addr = 0
+   ; elf32_section_offset = 0
+   ; elf32_section_size = 0
+   ; elf32_section_link = 0
+   ; elf32_section_info = 0
+   ; elf32_section_align = 0
+   ; elf32_section_entsize = 0 
+   ; elf32_section_body = Byte_sequence.empty
+   ; elf32_section_name_as_string = ""
+   |>
+
+(** [null_elf64_interpreted_section] --- the null interpreted section.
+  *)
+val null_elf64_interpreted_section : elf64_interpreted_section
+let null_elf64_interpreted_section =
+  <| elf64_section_name = 0
+   ; elf64_section_type = 0
+   ; elf64_section_flags = 0
+   ; elf64_section_addr = 0
+   ; elf64_section_offset = 0
+   ; elf64_section_size = 0
+   ; elf64_section_link = 0
+   ; elf64_section_info = 0
+   ; elf64_section_align = 0
+   ; elf64_section_entsize = 0 
+   ; elf64_section_body = Byte_sequence.empty
+   ; elf64_section_name_as_string = ""
+   |>
+
+instance (Eq elf64_interpreted_section)
+	let (=)      = elf64_interpreted_section_equal
+	let (<>) x y = not (elf64_interpreted_section_equal x y)
+end
+
+(** [elf64_interpreted_section_matches_section_header sect ent] checks whether
+  * the interpreted section and the corresponding section header table entry
+  * match.
+  *)
+val elf64_interpreted_section_matches_section_header : 
+    elf64_interpreted_section
+        -> elf64_section_header_table_entry
+            -> bool
+let elf64_interpreted_section_matches_section_header i sh =
+  i.elf64_section_name = natural_of_elf64_word sh.elf64_sh_name &&
+  i.elf64_section_type = natural_of_elf64_word sh.elf64_sh_type &&
+  i.elf64_section_flags = natural_of_elf64_xword sh.elf64_sh_flags &&
+  i.elf64_section_addr = natural_of_elf64_addr sh.elf64_sh_addr &&
+  i.elf64_section_offset = natural_of_elf64_off sh.elf64_sh_offset &&
+  i.elf64_section_size = natural_of_elf64_xword sh.elf64_sh_size &&
+  i.elf64_section_link = natural_of_elf64_word sh.elf64_sh_link &&
+  i.elf64_section_info = natural_of_elf64_word sh.elf64_sh_info &&
+  i.elf64_section_align = natural_of_elf64_xword sh.elf64_sh_addralign (* WHY? *) &&
+  i.elf64_section_entsize = natural_of_elf64_xword sh.elf64_sh_entsize
+  (* Don't compare the name as a string, because it's implied by the shshtrtab index. *)
+  (* NOTE that we can have multiple sections *indistinguishable*
+   * except by their section header table index. Imagine 
+   * multiple zero-size bss sections at the same address with the same name.
+   * That's why in elf_memory_image we always label each ElfSection
+   * with its SHT index.
+   *)
+
+type elf32_interpreted_sections = list elf32_interpreted_section
+type elf64_interpreted_sections = list elf64_interpreted_section
+
+(** [string_of_elf32_interpreted_section sect] returns a string-based representation
+  * of interpreted section, [sect].
+  *)
+val string_of_elf32_interpreted_section : elf32_interpreted_section -> string
+let {ocaml} string_of_elf32_interpreted_section is =
+   unlines [
+     "Name: " ^ is.elf32_section_name_as_string ^ "(" ^ (show is.elf32_section_name) ^ ")"
+   ; "Type: " ^ show is.elf32_section_type 
+   ; "Flags: " ^ show is.elf32_section_type
+   ; "Base address: " ^ show is.elf32_section_addr
+   ; "Section offset: " ^ show is.elf32_section_offset
+   ; "Section size: " ^ show is.elf32_section_size
+   ; "Link: " ^ show is.elf32_section_link
+   ; "Info: " ^ show is.elf32_section_info
+   ; "Section alignment: " ^ show is.elf32_section_align
+   ; "Entry size: " ^ show is.elf32_section_entsize
+   ]
+
+(** [string_of_elf64_interpreted_section sect] returns a string-based representation
+  * of interpreted section, [sect].
+  *)
+val string_of_elf64_interpreted_section : elf64_interpreted_section -> string
+let {ocaml} string_of_elf64_interpreted_section is =
+   unlines [
+     "Name: " ^ is.elf64_section_name_as_string ^ "(" ^ (show is.elf64_section_name) ^ ")"
+   ; "Type: " ^ show is.elf64_section_type 
+   ; "Flags: " ^ show is.elf64_section_type
+   ; "Base address: " ^ show is.elf64_section_addr
+   ; "Section offset: " ^ show is.elf64_section_offset
+   ; "Section size: " ^ show is.elf64_section_size
+   ; "Link: " ^ show is.elf64_section_link
+   ; "Info: " ^ show is.elf64_section_info
+   ; "Section alignment: " ^ show is.elf64_section_align
+   ; "Entry size: " ^ show is.elf64_section_entsize
+   ]
+   
+(** [is_valid_elf32_section_header_table_entry sect stab] checks whether a
+  * interpreted section conforms with the prescribed flags and types declared
+  * in the "special sections" table of the ELF specification.
+  * TODO: some of these entries in the table are overridden by ABI supplements.
+  * Make sure it is these that are passed in rather than the default table
+  * declared in the spec?
+  *)
+val is_valid_elf32_section_header_table_entry : elf32_interpreted_section ->
+  string_table -> bool
+let is_valid_elf32_section_header_table_entry ent stbl =
+  match String_table.get_string_at ent.elf32_section_name stbl with
+    | Fail    f    -> false
+    | Success name ->
+      match Map.lookup name elf_special_sections with
+        | Nothing           -> false (* ??? *)
+        | Just (typ, flags) ->
+            typ = ent.elf32_section_type && flags = ent.elf32_section_flags
+      end
+  end
+  
+(** [is_valid_elf64_section_header_table_entry sect stab] checks whether a
+  * interpreted section conforms with the prescribed flags and types declared
+  * in the "special sections" table of the ELF specification.
+  * TODO: some of these entries in the table are overridden by ABI supplements.
+  * Make sure it is these that are passed in rather than the default table
+  * declared in the spec?
+  *)  
+val is_valid_elf64_section_header_table_entry : elf64_interpreted_section ->
+  string_table -> bool
+let is_valid_elf64_section_header_table_entry ent stbl =
+  match String_table.get_string_at ent.elf64_section_name stbl with
+    | Fail    f    -> false
+    | Success name ->
+      match Map.lookup name elf_special_sections with
+        | Nothing           -> false (* ??? *)
+        | Just (typ, flags) ->
+            typ = ent.elf64_section_type && flags = ent.elf64_section_flags
+      end
+  end
+  
+(** [is_valid_elf32_section_header_table sects] checks whether all entries in
+  * [sect] are valid.
+  *)
+val is_valid_elf32_section_header_table : list elf32_interpreted_section ->
+  string_table -> bool
+let is_valid_elf32_section_header_table ents stbl =
+  List.all (fun x -> is_valid_elf32_section_header_table_entry x stbl) ents
+  
+(** [is_valid_elf64_section_header_table sects] checks whether all entries in
+  * [sect] are valid.
+  *)
+val is_valid_elf64_section_header_table : list elf64_interpreted_section ->
+  string_table -> bool
+let is_valid_elf64_section_header_table ents stbl =
+  List.all (fun x -> is_valid_elf64_section_header_table_entry x stbl) ents   
