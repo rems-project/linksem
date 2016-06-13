@@ -4,6 +4,38 @@
 
 This is the artefact submission for the 2016 OOPSLA SPLASH submission "The missing link: explaining ELF linking, semantically" by Kell, Mulligan, and Sewell.  There are two main components of the artefact submission: the ELF and linker formalisation in Lem itself, and the Isabelle-2016 sample proof relating to AMD64 relocation and termination proof, using a derived Isabelle version of our Lem model.  We will now detail how the artefact reviewer can assess both of these components:
 
+### ELF formalisation and linker
+
+To build the ELF/linker formalisation, first install OCaml 4.01.0 (easiest using the OPAM tool: `https://opam.ocaml.org/`) and the Mercurial distributed source control system.  Next, obtain Lem:
+
+  1. Checkout the Lem source distribution with Mercurial by running `hg clone https://bitbucket.org/Peter_Sewell/lem.git`.  This should create a new directory called `lem`.
+
+  2. Change into this new `lem` directory, and build Lem by typing `make`.   This should build Lem and also extract the Lem libraries for OCaml, Isabelle, and other backends.
+
+  3. Once built, the Lem executable (`lem`) should be residing at the top of the Lem directory.  To test it was built correctly, invoke the following command: `lem --help`, which should display a guide to Lem's command line interface.
+
+Next, build the Lem linking/ELF formalisation (in the `linker` subdirectory of the artefact submission):
+
+  1. First, edit the `linker/src/Makefile` makefile so that the `LEMDIR` variable points to the directory containing the Lem executable (`lem`, in the description above).
+
+  2. Then, in the top-level `linker` directory, type `make`.  This will first build the ocaml-uint library, distributed in the `contrib` subdirectory, before running Lem on the ELF/linker model, and finally building an executable from this model using OCaml.  The build process should not take longer than five minutes.
+
+  3. If the build process proceeded without error, the `linker/src` subdirectory should contain the `main_link.opt` executable, which is our optimised executable linker/link-checker.
+
+To invoke the linker/link-checker, do:
+
+  ***XXX: Stephen***
+
+The `linker/src` subdirectory contains the following:
+
+  1. The `abis/` subdirectory, which contains the formalisation of various aspects of the AARCH64, AMD64, Power64, MIPS64, and X86 ABIs, in analogously named subdirectories.
+
+  2. The `adaptors/` subdirectory, which contains simplified interfaces to the linker/ELF code that external tools such as PPCMem2 use for reading ELF files.
+
+  3. The `gnu_extensions/` subdirectory, which contains the formalisation of various aspects of the GNU extensions for ELF, which the Linux ecosystem relies upon.
+
+  4. All other files, barring several ML files, contain the ELF/linker formalisation proper, in Lem.  The few ML files contain utility code needed by the OCaml extraction of our ELF/linker model, or contain (as in the case of `error.ml`) hand edited ML code produced by Lem to work around bugs in the Lem system.
+
 ### Isabelle-2016 relocation and termination proof
 
 Checking the relocation and termination proof first requires the installation of Isabelle-2016.  The following instructions detail how this can be installed and correctly set up, ready to check our proofs:
@@ -16,7 +48,7 @@ Checking the relocation and termination proof first requires the installation of
 
   4. This concludes the installation of Isabelle-2016.
 
-To check our relocation proof, do the following:
+To check our relocation proof (in the `prf` subdirectory of our artefact submission) do the following:
 
   1. Assuming our artefact submission has been extracted to `$LINKSEM_ARTEFACT`, invoke `Isabelle2016 $LINKSEM_ARTEFACT/ELF_Relocation_Proof.thy`.  This file is the top-level relocation proof theory script.  This contains both the proof of the sample theorem, discussed in our paper submission, and also imports the termination proofs, as well as (transitively) importing all Isabelle theory files derived from our Lem model.
 
