@@ -6,7 +6,7 @@
 THIS_MAKEFILE := $(realpath $(lastword $(MAKEFILE_LIST)))
 REPOROOT := $(dir $(THIS_MAKEFILE))/..
 
-LEMDIR ?= ../../lem
+LEMDIR ?= ../lem
 LEM ?= $(LEMDIR)/lem
 CONTRIB ?= ../contrib
 UINT ?= $(CONTRIB)/ocaml-uint/_build/lib
