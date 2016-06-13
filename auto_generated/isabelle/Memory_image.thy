@@ -186,8 +186,8 @@ record symbol_definition
 
 definition symDefCompare  :: " symbol_definition \<Rightarrow> symbol_definition \<Rightarrow> ordering "  where 
      " symDefCompare x1 x2 = (        
-(quintupleCompare stringCompare_method elf64_symbol_table_entry_compare (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) ((def_symname   x1),(def_syment   x1),(def_sym_scn   x1),(def_sym_idx   x1),(def_linkable_idx   x1))
-                ((def_symname   x2),(def_syment   x2),(def_sym_scn   x2),(def_sym_idx   x2),(def_linkable_idx   x2))))"
+(quadrupleCompare (\<lambda> x y. EQ) elf64_symbol_table_entry_compare (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) ((def_symname   x1),(def_syment   x1),(def_sym_scn   x1),(def_sym_idx   x1))
+                ((def_symname   x2),(def_syment   x2),(def_sym_scn   x2),(def_sym_idx   x2))))"
 
 
 definition instance_Basic_classes_Ord_Memory_image_symbol_definition_dict  :: "(symbol_definition)Ord_class "  where 
@@ -218,7 +218,7 @@ record symbol_reference
 
 definition symRefCompare  :: " symbol_reference \<Rightarrow> symbol_reference \<Rightarrow> ordering "  where 
      " symRefCompare x1 x2 = (        
-(quadrupleCompare stringCompare_method elf64_symbol_table_entry_compare (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) ((ref_symname   x1),(ref_syment   x1),(ref_sym_scn   x1),(ref_sym_idx   x1))
+(quadrupleCompare (\<lambda> x y. EQ) elf64_symbol_table_entry_compare (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) ((ref_symname   x1),(ref_syment   x1),(ref_sym_scn   x1),(ref_sym_idx   x1))
                 ((ref_symname   x2),(ref_syment   x2),(ref_sym_scn   x2),(ref_sym_idx   x2))))"
 
                 
@@ -250,8 +250,8 @@ record reloc_site =
 
 definition relocSiteCompare  :: " reloc_site \<Rightarrow> reloc_site \<Rightarrow> ordering "  where 
      " relocSiteCompare x1 x2 = (        
-(quadrupleCompare elf64_relocation_a_compare (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) ((ref_relent   x1),(ref_rel_scn   x1),(ref_rel_idx   x1),(ref_src_scn   x1))
-                ((ref_relent   x2),(ref_rel_scn   x2),(ref_rel_idx   x2),(ref_src_scn   x2))))"
+(tripleCompare elf64_relocation_a_compare (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) ((ref_relent   x1),(ref_rel_idx   x1),(ref_src_scn   x1))
+                ((ref_relent   x2),(ref_rel_idx   x2),(ref_src_scn   x2))))"
 
                 
 definition instance_Basic_classes_Ord_Memory_image_reloc_site_dict  :: "(reloc_site)Ord_class "  where 
@@ -273,16 +273,6 @@ datatype reloc_decision = LeaveReloc
                     | ChangeRelocTo " (nat * symbol_reference * reloc_site)"
                     (* | MakePIC    -- is now a kind of ChangeRelocTo *)
 
-fun relocDecisionCompare :: "reloc_decision \<Rightarrow> reloc_decision \<Rightarrow> ordering" where
-  "relocDecisionCompare LeaveReloc         LeaveReloc         = EQ" |
-  "relocDecisionCompare LeaveReloc         _                  = LT" |
-  "relocDecisionCompare ApplyReloc         ApplyReloc         = EQ" |
-  "relocDecisionCompare ApplyReloc         (ChangeRelocTo _)  = LT" |
-  "relocDecisionCompare ApplyReloc         LeaveReloc         = GT" |
-  "relocDecisionCompare (ChangeRelocTo ms) (ChangeRelocTo ns) =
-     tripleCompare (genericCompare (op <) (op =)) symRefCompare relocSiteCompare ms ns" |
-  "relocDecisionCompare (ChangeRelocTo _)  _                  = GT"
-
 record symbol_reference_and_reloc_site = 
 
       ref         ::" symbol_reference "
@@ -290,11 +280,13 @@ record symbol_reference_and_reloc_site =
  maybe_reloc ::"  reloc_site option "
     
  maybe_def_bound_to ::"  (reloc_decision *  symbol_definition option)option "
+    
+
 
 definition symRefAndRelocSiteCompare  :: " symbol_reference_and_reloc_site \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> ordering "  where 
      " symRefAndRelocSiteCompare x1 x2 = (        
-(tripleCompare symRefCompare (maybeCompare relocSiteCompare) (maybeCompare (pairCompare relocDecisionCompare (maybeCompare symDefCompare))) ((ref   x1),(maybe_reloc   x1),(maybe_def_bound_to x1))
-                ((ref   x2),(maybe_reloc   x2),(maybe_def_bound_to x2))))"
+(pairCompare symRefCompare (maybeCompare relocSiteCompare) ((ref   x1),(maybe_reloc   x1))
+                ((ref   x2),(maybe_reloc   x2))))"
 
 
 definition instance_Basic_classes_Ord_Memory_image_symbol_reference_and_reloc_site_dict  :: "(symbol_reference_and_reloc_site)Ord_class "  where 

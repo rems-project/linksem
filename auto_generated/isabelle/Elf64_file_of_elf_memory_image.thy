@@ -508,9 +508,11 @@ definition elf64_file_of_elf_memory_image  :: "(any_abi_feature)abi \<Rightarrow
            , elf64_sh_entsize   = (of_int (int(elf64_section_entsize   isec1)))
            |)
      )) (* (zip section_tags_bare section_file_offsets) *) all_sections_sorted_with_offsets))
-     , elf64_file_interpreted_segments = ([])             (* do we need to build this? I have HACKed elf_file so that we don't; 
+     , elf64_file_interpreted_segments = ([
+            (* do we need to build this? I have HACKed elf_file so that we don't; 
                we assume that all the relevant payload is in the section bodies, 
                as it should be. *)
+        ])
      , elf64_file_interpreted_sections = (null_elf64_interpreted_section # all_sections_sorted_with_offsets)
      , elf64_file_bits_and_bobs        = ([])
      |))))))))))))))))))))))))))))))))"

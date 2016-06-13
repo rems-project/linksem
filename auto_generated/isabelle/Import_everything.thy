@@ -48,9 +48,9 @@ imports
 	 "Input_list" 
 	 "Elf_memory_image_of_elf64_file" 
 	 "Linkable_list" 
-	 (*"Linker_script"*) 
+	 "Linker_script" 
 	 "Elf64_file_of_elf_memory_image" 
-	 (*"Link"*) 
+	 "Link" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Harness_interface" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Sail_interface" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/linksem/auto_generated/isabelle/Gnu_ext_note" 
