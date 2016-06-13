@@ -6,23 +6,10 @@ This is the artefact submission for the 2016 OOPSLA SPLASH submission "The missi
 
 ### ELF formalisation and linker
 
-To build the ELF/linker formalisation, first install OCaml 4.01.0 (easiest using the OPAM tool: `https://opam.ocaml.org/`).  Next, build Lem:
+To build the ELF/linker formalisation, first install OCaml 4.01.0 (easiest using the OPAM tool: `https://opam.ocaml.org/`).  Next, in the `linker/` subdirectory of our artefact submission, type `make`.  This will first build Lem and its library, then build the ocaml-uint library supplied in the `contrib` directory, before invoking Lem on the ELF/linker formalisation, finally invoking the OCaml compiler on the generated OCaml source code.  After this process is complete, an executable (`main_link.opt`) will reside in the `linker/src` subdirectory.
 
-  1. In the `linker/lem` subdirectory, type  `make`.   This should build Lem and also extract the Lem libraries for OCaml, Isabelle, and other backends.
-
-  2. Once built, the Lem executable (`lem`) should be residing at the top of the Lem directory.  To test it was built correctly, invoke the following command: `lem --help`, which should display a guide to Lem's command line interface.
-
-Next, build the Lem linking/ELF formalisation (in the `linker` subdirectory of the artefact submission):
-
-  1. In the top-level `linker` directory, type `make`.  This will first build the ocaml-uint library, distributed in the `contrib` subdirectory, before running Lem on the ELF/linker model, and finally building an executable from this model using OCaml.  The build process should not take longer than five minutes.
-
-  2. If the build process proceeded without error, the `linker/src` subdirectory should contain the `main_link.opt` executable, which is our optimised executable linker/link-checker.
-
-To invoke the linker/link-checker, just run `main-link.opt` with the usual GNU ld command-line
-syntax. The easiest way to exercise it is to run the `run.sh` symlinks in any of the subdirectories
-under `test`, which are already link jobs of the supported form. If you choose to run it on your own
-link jobs, note that all linker inputs must be specified explicitly by their path in the filesystem,
-(the `-l` option is not yet supported) and that some linker output of the specified name should already exist (as a minimum, a placeholder ELF file of the intended ABI). The output from the executable specification is created in a new file, named with the suffix `.test-out` added.
+To invoke the linker/link-checker, just run `main_link.opt` with the usual GNU ld command-line syntax. The easiest way to exercise it is to run the `run.sh` symlinks in any of the subdirectories under `test`, which are already link jobs of the supported form. If you choose to run it on your own
+link jobs, note that all linker inputs must be specified explicitly by their path in the filesystem, (the `-l` option is not yet supported) and that some linker output of the specified name should already exist (as a minimum, a placeholder ELF file of the intended ABI). The output from the executable specification is created in a new file, named with the suffix `.test-out` added.
 
 The `linker/src` subdirectory contains the following:
 
