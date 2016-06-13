@@ -20,21 +20,23 @@ To check our relocation proof, do the following:
 
   1. Assuming our artefact submission has been extracted to `$LINKSEM_ARTEFACT`, invoke `Isabelle2016 $LINKSEM_ARTEFACT/ELF_Relocation_Proof.thy`.  This file is the top-level relocation proof theory script.  This contains both the proof of the sample theorem, discussed in our paper submission, and also imports the termination proofs, as well as (transitively) importing all Isabelle theory files derived from our Lem model.
 
-  2. After opening the file, Isabelle2016 will ask whether the dependencies of the `ELF_Relocation_Proof` theory script should be opened.  Click "yes".  Isabelle will proceed to open and transitively check all dependencies concurrently.  Isabelle's progress can be monitored by clicking the "Theories" tab on the right hand side of the editor pane.  This can be interpreted as follows:
+  2. After opening the file, and after a brief pause, Isabelle2016 will produce a popup window asking whether the dependencies of the `ELF_Relocation_Proof` theory script should be opened and checked.  Click "yes".  Isabelle will proceed to open and transitively check all dependencies concurrently.  Isabelle's progress can be monitored by clicking the "Theories" tab on the right hand side of the editor pane.  This can be interpreted as follows:
 
-    a. Any red band in a theory's progress box indicates that Isabelle has encountered an error when processing that theory.  If we have correctly submitted our artefact, this should never happen.
+    a. Any red band in a theory's progress box indicates that Isabelle has encountered an error when processing that theory.  If we have correctly submitted our artefact, this should not happen.
 
     b. Any yellow band in a theory's progress box indicates a proof step has caused some informative message to be produced by Isabelle for the user's benefit.  This output can be safely ignored as it does not affect correctness of the proof being processed.
 
-    c. Any purple band in a theory's progress box indicates that Isabelle is still working to check a proof step (note Isabelle is able to concurrently check theories).  Some proof steps in our proof require longer than others, though none should take longer than a minute to process.  Ultimately, Isabelle should be able to process `ELF_Relocation_Proof` and all of its dependencies within 15 minutes.
+    c. Any purple band in a theory's progress box indicates that Isabelle is still working to check a proof step or definition (note Isabelle is able to concurrently check theories using multiple cores, so progress should still be being made checking other theories if this happens).  Some proof steps in our proof require longer than others, though none should take longer than a minute to process.  Ultimately, Isabelle should be able to process `ELF_Relocation_Proof` and all of its dependencies within 15 minutes, even on a very slow machine.
 
-  The dependencies fall into three different classes:
+  The dependencies fall into four different classes:
 
-    a. The Isabelle extraction of our Lem linker and ELF model,
+    a. The Isabelle extraction of our Lem linker and ELF model, which makes up the bulk of the dependencies.  These file can be surveyed by opening the `Import_everything` theory, which acts as a top-level import,
 
-    b. An Isabelle extraction of Anthony Fox's X86_64 model,
+    b. An Isabelle extraction of Anthony Fox's X86_64 model, and supporting files for his proprietary `L3` tool,
 
-    c. Supporting files for Lem extracted code (i.e. the Lem standard library extracted to Isabelle).
+    c. Supporting files for Lem extracted code (i.e. the Lem standard library extracted to Isabelle), consisting of files beginning with `Lem_`,
+
+    d. Handwritten supporting files for the Lem Isabelle extraction, providing missing definitions, handwritten bindings for Lem types in Isabelle, and similar content.  The most important of these is the file `ELF_Types_Local.thy` which provides bindings for ELF-specific types, and operations over them, in terms of the Isabelle Word library for bitvectors and machine words.
 
   3. After at most 15 minutes, Isabelle should have reached the bottom of `ELF_Relocation_Proof` (i.e. there should be no purple bands in the ELF_Relocation_Proof box in the theories side-panel, nor should there be any purple lines on the right-hand side of the editor gutter when the ELF_Relocation_Proof.thy file is open) and checking the proof should be complete.  At the very bottom of the `ELF_Relocation_Proof` file is the theorem `correctness` which encodes the sample correctness property for AMD64 relocation which was mentioned in our paper submission.  For reviewers not familiar with Isabelle, the following should now be checked:
 
