@@ -54,8 +54,23 @@ Up:&nbsp;<a rel="up" accesskey="u" href="Assignments.html#Assignments">Assignmen
 <var>expression</var>.  In the other cases, <var>symbol</var> must already be
 defined, and the value will be adjusted accordingly.
 
+   <p><table class="cartouche" summary="cartouche" border="1"><tr><td>
+<div align="center"><strong>linksem note:</strong></div>
+<p>The linker script AST allows symbol definition,
+but any arithmetic must be done within Lem code. 
+Currently there is no convenient way to redefine a symbol previously defined,
+since it must be removed first. 
+</td></tr></table>
+
    <p>The special symbol name &lsquo;<samp><span class="samp">.</span></samp>&rsquo; indicates the location counter.  You
 may only use this within a <code>SECTIONS</code> command.  See <a href="Location-Counter.html#Location-Counter">Location Counter</a>.
+
+   <p><table class="cartouche" summary="cartouche" border="1"><tr><td>
+<div align="center"><strong>linksem note:</strong></div>
+<p>Contexts requiring expressions are modelled as
+<code>address_expr_fn</code> values,
+a function type whose first argument is the location counter (<code>.</code>). 
+</td></tr></table>
 
    <p>The semicolon after <var>expression</var> is required.
 

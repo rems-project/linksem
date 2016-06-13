@@ -77,19 +77,39 @@ can be used inside ASSERTions.  Thus:
 </pre>
      <p>will work.
 
+     <p><table class="cartouche" summary="cartouche" border="1"><tr><td>
+<div align="center"><strong>linksem note:</strong></div>
+     <p>Not currently supported. 
+</td></tr></table>
+
      <br><dt><code>EXTERN(</code><var>symbol</var> <var>symbol</var><code> ...)</code><dd><a name="index-EXTERN-403"></a><a name="index-undefined-symbol-in-linker-script-404"></a>Force <var>symbol</var> to be entered in the output file as an undefined
 symbol.  Doing this may, for example, trigger linking of additional
 modules from standard libraries.  You may list several <var>symbol</var>s for
 each <code>EXTERN</code>, and you may use <code>EXTERN</code> multiple times.  This
 command has the same effect as the &lsquo;<samp><span class="samp">-u</span></samp>&rsquo; command-line option.
 
+     <p><table class="cartouche" summary="cartouche" border="1"><tr><td>
+<div align="center"><strong>linksem note:</strong></div>
+     <p>Not currently supported. 
+</td></tr></table>
+
      <br><dt><code>FORCE_COMMON_ALLOCATION</code><dd><a name="index-FORCE_005fCOMMON_005fALLOCATION-405"></a><a name="index-common-allocation-in-linker-script-406"></a>This command has the same effect as the &lsquo;<samp><span class="samp">-d</span></samp>&rsquo; command-line option:
 to make <samp><span class="command">ld</span></samp> assign space to common symbols even if a relocatable
 output file is specified (&lsquo;<samp><span class="samp">-r</span></samp>&rsquo;).
 
+     <p><table class="cartouche" summary="cartouche" border="1"><tr><td>
+<div align="center"><strong>linksem note:</strong></div>
+     <p>Not currently supported. 
+</td></tr></table>
+
      <br><dt><code>INHIBIT_COMMON_ALLOCATION</code><dd><a name="index-INHIBIT_005fCOMMON_005fALLOCATION-407"></a><a name="index-common-allocation-in-linker-script-408"></a>This command has the same effect as the &lsquo;<samp><span class="samp">--no-define-common</span></samp>&rsquo;
 command-line option: to make <code>ld</code> omit the assignment of addresses
 to common symbols even for a non-relocatable output file.
+
+     <p><table class="cartouche" summary="cartouche" border="1"><tr><td>
+<div align="center"><strong>linksem note:</strong></div>
+     <p>Not currently supported. 
+</td></tr></table>
 
      <br><dt><code>INSERT [ AFTER | BEFORE ] </code><var>output_section</var><dd><a name="index-INSERT-409"></a><a name="index-insert-user-script-into-default-script-410"></a>This command is typically used in a script specified by &lsquo;<samp><span class="samp">-T</span></samp>&rsquo; to
 augment the default <code>SECTIONS</code> with, for example, overlays.  It
@@ -115,6 +135,11 @@ is an example of how a &lsquo;<samp><span class="samp">-T</span></samp>&rsquo; s
           }
           INSERT AFTER .text;
 </pre>
+     <p><table class="cartouche" summary="cartouche" border="1"><tr><td>
+<div align="center"><strong>linksem note:</strong></div>
+     <p>Not currently supported. 
+</td></tr></table>
+
      <br><dt><code>NOCROSSREFS(</code><var>section</var> <var>section</var><code> ...)</code><dd><a name="index-NOCROSSREFS_0028_0040var_007bsections_007d_0029-411"></a><a name="index-cross-references-412"></a>This command may be used to tell <samp><span class="command">ld</span></samp> to issue an error about any
 references among certain output sections.
 
@@ -130,16 +155,33 @@ an error and returns a non-zero exit status.  Note that the
 <code>NOCROSSREFS</code> command uses output section names, not input section
 names.
 
+     <p><table class="cartouche" summary="cartouche" border="1"><tr><td>
+<div align="center"><strong>linksem note:</strong></div>
+     <p>Not currently supported. 
+</td></tr></table>
+
      <br><dt><code>OUTPUT_ARCH(</code><var>bfdarch</var><code>)</code><dd><a name="index-OUTPUT_005fARCH_0028_0040var_007bbfdarch_007d_0029-413"></a><a name="index-machine-architecture-414"></a><a name="index-architecture-415"></a>Specify a particular output machine architecture.  The argument is one
 of the names used by the BFD library (see <a href="BFD.html#BFD">BFD</a>).  You can see the
 architecture of an object file by using the <code>objdump</code> program with
 the &lsquo;<samp><span class="samp">-f</span></samp>&rsquo; option.
 
+     <p><table class="cartouche" summary="cartouche" border="1"><tr><td>
+<div align="center"><strong>linksem note:</strong></div>
+     <p>Not currently supported; the output architecture is fixed
+by the pre-existing output file. 
+</td></tr></table>
+
      <br><dt><code>LD_FEATURE(</code><var>string</var><code>)</code><dd><a name="index-LD_005fFEATURE_0028_0040var_007bstring_007d_0029-416"></a>This command may be used to modify <samp><span class="command">ld</span></samp> behavior.  If
 <var>string</var> is <code>"SANE_EXPR"</code> then absolute symbols and numbers
 in a script are simply treated as numbers everywhere. 
-See <a href="Expression-Section.html#Expression-Section">Expression Section</a>. 
-</dl>
+See <a href="Expression-Section.html#Expression-Section">Expression Section</a>.
+
+     <p><table class="cartouche" summary="cartouche" border="1"><tr><td>
+<div align="center"><strong>linksem note:</strong></div>
+     <p>Not currently supported. 
+</td></tr></table>
+
+   </dl>
 
    </body></html>
 

@@ -22,9 +22,11 @@ Next, build the Lem linking/ELF formalisation (in the `linker` subdirectory of t
 
   3. If the build process proceeded without error, the `linker/src` subdirectory should contain the `main_link.opt` executable, which is our optimised executable linker/link-checker.
 
-To invoke the linker/link-checker, do:
-
-  ***XXX: Stephen***
+To invoke the linker/link-checker, just run `main-link.opt` with the usual GNU ld command-line
+syntax. The easiest way to exercise it is to run the `run.sh` symlinks in any of the subdirectories
+under `test`, which are already link jobs of the supported form. If you choose to run it on your own
+link jobs, note that all linker inputs must be specified explicitly by their path in the filesystem,
+(the `-l` option is not yet supported) and that some linker output of the specified name should already exist (as a minimum, a placeholder ELF file of the intended ABI). The output from the executable specification is created in a new file, named with the suffix `.test-out` added.
 
 The `linker/src` subdirectory contains the following:
 
