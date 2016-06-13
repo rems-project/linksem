@@ -1,0 +1,64 @@
+open import Pervasives_extra
+
+type a = nat
+type b 'a = 'a * a
+type c 'a 'b = 'a * 'b
+
+let d = (1 : a)
+let e = ((1, 2) : b nat)
+let f = ((1, false) : c nat bool)
+
+type g = <| field_one : nat; field_two : bool |>
+type h 'a = <| field_three : 'a; field_four : bool |>
+type i 'a 'b = <| field_five : 'a; field_six : 'b |>
+type j = <| field_seven : g |>
+
+let k = (<| field_one = 1; field_two = true |> : g)
+let l = (<| field_three = (1, true); field_four = false |> : h (nat * bool))
+let m = (<| field_seven = <| field_one = 1; field_two = true |> |>)
+
+let n = (<| field_five = (fun x -> x); field_six =
+           <| field_three = 1; field_four = true |> |> :  i ('a -> 'a) (h nat))
+
+type o = A of a
+
+type p
+  = B of a
+  | C of (b nat)
+  | D of g
+
+type q
+  = E of nat
+  | F of i g (h a)
+  | G of r
+and r
+  = H of q
+
+let s = (B 1 : p)
+let t = (G (H (E 1)) : q)
+
+type bool =
+  True
+| False
+
+type mynat =
+  Zero
+| Succ of mynat
+
+type heap 'a =
+  Nil
+| Node of mynat * heap 'a * 'a * heap 'a
+
+type u 'a = I of 'a
+
+type v 'a 'b 'c
+  = J of 'a
+  | K of 'b
+  | L of (w 'c)
+and w 'a =
+  | M of ('a -> 'a) * v nat nat nat
+
+type x 'a =
+  | N of y 'a
+and y 'a =
+  | O of x 'a

@@ -1,0 +1,74 @@
+(******************************************************************************)
+(* A library for common operations on functions                               *)
+(******************************************************************************)
+
+open import Bool Basic_classes
+
+declare {isabelle;hol;ocaml;coq} rename module = lem_function
+
+open import {coq} `Program.Basics`
+
+(* ----------------------- *)
+(* identity function       *)
+(* ----------------------- *)
+
+val id : forall 'a. 'a -> 'a
+let id x = x
+
+let inline {coq} id x = x
+declare isabelle target_rep function id = `id`
+declare hol      target_rep function id = `I`
+
+
+(* ----------------------- *)
+(* constant function       *)
+(* ----------------------- *)
+
+val const : forall 'a 'b. 'a -> 'b -> 'a
+let inline const x y = x
+
+declare coq target_rep function const = `const`
+declare hol      target_rep function const = `K`
+
+
+(* ----------------------- *)
+(* function composition    *)
+(* ----------------------- *)
+
+val comb : forall 'a 'b 'c. ('b -> 'c) -> ('a -> 'b) -> ('a -> 'c)
+let comb f g = (fun x -> f (g x))
+
+declare coq target_rep function comb = `compose`
+declare isabelle target_rep function comb = infix `o`
+declare hol      target_rep function comb = infix `o`
+
+
+(* ----------------------- *)
+(* function application    *)
+(* ----------------------- *)
+
+val ($) [`apply`] : forall 'a 'b. ('a -> 'b) -> ('a -> 'b)
+let apply f = (fun x -> f x)
+
+declare coq target_rep function apply = `apply`
+let inline {isabelle;ocaml;hol} apply f x = f x
+
+(* ----------------------- *)
+(* flipping argument order *)
+(* ----------------------- *)
+
+val flip : forall 'a 'b 'c. ('a -> 'b -> 'c) -> ('b -> 'a -> 'c)
+let flip f = (fun x y -> f y x)
+
+declare coq target_rep function flip = `flip`
+let inline {isabelle} flip f x y = f y x
+declare hol      target_rep function flip = `combin$C`
+
+
+(* currying / uncurrying *)
+
+val curry : forall 'a 'b 'c. (('a * 'b) -> 'c) -> 'a -> 'b -> 'c
+let curry f = (fun a b -> f (a, b))
+
+val uncurry : forall 'a 'b 'c. ('a -> 'b -> 'c) -> ('a * 'b -> 'c)
+let uncurry f (a,b) = f a b

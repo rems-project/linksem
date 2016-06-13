@@ -6,21 +6,17 @@ This is the artefact submission for the 2016 OOPSLA SPLASH submission "The missi
 
 ### ELF formalisation and linker
 
-To build the ELF/linker formalisation, first install OCaml 4.01.0 (easiest using the OPAM tool: `https://opam.ocaml.org/`) and the Mercurial distributed source control system.  Next, obtain Lem:
+To build the ELF/linker formalisation, first install OCaml 4.01.0 (easiest using the OPAM tool: `https://opam.ocaml.org/`).  Next, build Lem:
 
-  1. Checkout the Lem source distribution with Mercurial by running `hg clone https://bitbucket.org/Peter_Sewell/lem.git`.  This should create a new directory called `lem`.
+  1. In the `linker/lem` subdirectory, type  `make`.   This should build Lem and also extract the Lem libraries for OCaml, Isabelle, and other backends.
 
-  2. Change into this new `lem` directory, and build Lem by typing `make`.   This should build Lem and also extract the Lem libraries for OCaml, Isabelle, and other backends.
-
-  3. Once built, the Lem executable (`lem`) should be residing at the top of the Lem directory.  To test it was built correctly, invoke the following command: `lem --help`, which should display a guide to Lem's command line interface.
+  2. Once built, the Lem executable (`lem`) should be residing at the top of the Lem directory.  To test it was built correctly, invoke the following command: `lem --help`, which should display a guide to Lem's command line interface.
 
 Next, build the Lem linking/ELF formalisation (in the `linker` subdirectory of the artefact submission):
 
-  1. First, edit the `linker/src/Makefile` makefile so that the `LEMDIR` variable points to the directory containing the Lem executable (`lem`, in the description above).
+  1. In the top-level `linker` directory, type `make`.  This will first build the ocaml-uint library, distributed in the `contrib` subdirectory, before running Lem on the ELF/linker model, and finally building an executable from this model using OCaml.  The build process should not take longer than five minutes.
 
-  2. Then, in the top-level `linker` directory, type `make`.  This will first build the ocaml-uint library, distributed in the `contrib` subdirectory, before running Lem on the ELF/linker model, and finally building an executable from this model using OCaml.  The build process should not take longer than five minutes.
-
-  3. If the build process proceeded without error, the `linker/src` subdirectory should contain the `main_link.opt` executable, which is our optimised executable linker/link-checker.
+  2. If the build process proceeded without error, the `linker/src` subdirectory should contain the `main_link.opt` executable, which is our optimised executable linker/link-checker.
 
 To invoke the linker/link-checker, do:
 

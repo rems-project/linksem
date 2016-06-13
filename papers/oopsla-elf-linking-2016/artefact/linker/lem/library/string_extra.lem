@@ -1,0 +1,150 @@
+(******************************************************************************)
+(* String functions                                                           *)
+(******************************************************************************)
+
+open import Basic_classes
+open import Num
+open import List
+open import String
+open import List_extra
+open import {hol} `stringLib`
+open import {hol} `ASCIInumbersTheory`
+
+declare {isabelle;ocaml;hol;coq} rename module = lem_string_extra
+
+
+(******************************************************************************)
+(* Character's to numbers                                                     *)
+(******************************************************************************)
+
+val ord : char -> nat
+declare hol target_rep function ord = `ORD`
+declare ocaml target_rep function ord = `Char.code`
+(* TODO: The Isabelle and Coq representations are taken from a quick Google
+   search, they might not be the best options *)
+declare isabelle target_rep function ord = `nat_of_char`
+declare coq target_rep function ord = `nat_of_ascii`
+
+val chr : nat -> char
+declare hol target_rep function chr = `CHR`
+declare ocaml target_rep function chr = `Char.chr`
+(* TODO: The Isabelle and Coq representations are taken from a quick Google
+   search, they might not be the best options *)
+declare isabelle target_rep function chr = `char_of_nat`
+declare coq target_rep function chr = `ascii_of_nat`
+
+(******************************************************************************)
+(* Converting to strings                                                      *)
+(******************************************************************************)
+
+val stringFromNatHelper : nat -> list char -> list char
+let rec stringFromNatHelper n acc =
+  if n = 0 then
+    acc
+  else
+    stringFromNatHelper (n / 10) (chr (n mod 10 + 48) :: acc)
+
+val stringFromNat : nat -> string
+let ~{ocaml;hol} stringFromNat n = 
+  if n = 0 then "0" else toString (stringFromNatHelper n [])
+
+declare ocaml target_rep function stringFromNat = `string_of_int`
+declare hol target_rep function stringFromNat = `num_to_dec_string`
+
+assert stringFromNat_0: stringFromNat 0 = "0"
+assert stringFromNat_1: stringFromNat 1 = "1"
+assert stringFromNat_2: stringFromNat 42 = "42"
+
+val stringFromNaturalHelper : natural -> list char -> list char
+let rec stringFromNaturalHelper n acc =
+  if n = 0 then
+    acc
+  else
+    stringFromNaturalHelper (n / 10) (chr (natFromNatural (n mod 10 + 48)) :: acc)
+
+val stringFromNatural : natural -> string
+let ~{ocaml;hol} stringFromNatural n = 
+  if n = 0 then "0" else toString (stringFromNaturalHelper n [])
+
+declare hol target_rep function stringFromNatural = `num_to_dec_string`
+declare ocaml target_rep function stringFromNatural = `Nat_big_num.to_string`
+
+assert stringFromNatural_0: stringFromNatural 0 = "0"
+assert stringFromNatural_1: stringFromNatural 1 = "1"
+assert stringFromNatural_2: stringFromNatural 42 = "42"
+
+val stringFromInt : int -> string
+let ~{ocaml} stringFromInt i = 
+  if i < 0 then 
+    "-" ^ stringFromNat (natFromInt i)
+  else
+    stringFromNat (natFromInt i)
+
+declare ocaml target_rep function stringFromInt = `string_of_int`
+
+assert stringFromInt_0: stringFromInt 0 = "0"
+assert stringFromInt_1: stringFromInt 1 = "1"
+assert stringFromInt_2: stringFromInt 42 = "42"
+assert stringFromInt_3: stringFromInt (~1) = "-1"
+
+val stringFromInteger : integer -> string
+let ~{ocaml} stringFromInteger i = 
+  if i < 0 then 
+    "-" ^ stringFromNatural (naturalFromInteger i)
+  else
+    stringFromNatural (naturalFromInteger i)
+
+declare ocaml target_rep function stringFromInteger = `Nat_big_num.to_string`
+
+assert stringFromInteger_0: stringFromInteger 0 = "0"
+assert stringFromInteger_1: stringFromInteger 1 = "1"
+assert stringFromInteger_2: stringFromInteger 42 = "42"
+assert stringFromInteger_3: stringFromInteger (~1) = "-1"
+
+
+(******************************************************************************)
+(* List-like operations                                                       *)
+(******************************************************************************)
+
+val nth : string -> nat -> char
+let nth s n = List_extra.nth (toCharList s) n
+
+declare hol      target_rep function nth l n = `SUB` (l, n)
+declare ocaml    target_rep function nth     = `String.get`
+
+val stringConcat : list string -> string
+let stringConcat s =
+  List.foldr (^) "" s
+
+declare hol      target_rep function stringConcat = `CONCAT`
+declare ocaml    target_rep function stringConcat s = `String.concat` "" s
+
+(******************************************************************************)
+(* String comparison                                                          *)
+(******************************************************************************)
+
+val stringCompare : string -> string -> ordering
+
+(* TODO: *)
+let inline stringCompare x y = EQ
+let inline {ocaml} stringCompare = defaultCompare
+
+declare compile_message stringCompare = "It is highly unclear, what string comparison should do. Do we have abc < ABC < bbc or abc < bbc < Abc? How about A with various accents? We don't make any guarentees on what stringCompare does for the different backends."
+
+let stringLess x y = orderingIsLess (stringCompare x y)
+let stringLessEq x y = orderingIsLessEqual (stringCompare x y)
+let stringGreater x y = stringLess y x
+let stringGreaterEq x y = stringLessEq y x
+
+instance (Ord string)
+  let compare = stringCompare
+  let (<) = stringLess
+  let (<=) = stringLessEq
+  let (>) = stringGreater
+  let (>=) = stringGreaterEq
+end
+
+assert {ocaml} string_compare_1: "abc" < "bbc"
+assert {ocaml} string_compare_2: "abc" <= "abc"
+assert {ocaml} string_compare_3: "abc" > "ab"
+ 

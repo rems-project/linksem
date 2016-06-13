@@ -1,0 +1,55 @@
+declare {isabelle;hol;ocaml;coq} rename module = lem_show
+
+open import String Maybe Num Basic_classes
+
+open import {hol} `lemTheory`
+
+class (Show 'a)
+  val show: 'a -> string
+end
+
+instance (Show string)
+  let show s = "\"" ^ s ^ "\""
+end
+
+val stringFromMaybe : forall 'a. ('a -> string) -> maybe 'a -> string
+let stringFromMaybe showX x =
+  match x with
+    | Just x -> "Just (" ^ showX x ^ ")"
+    | Nothing -> "Nothing"
+  end
+
+instance forall 'a. Show 'a => (Show (maybe 'a))
+  let show x_opt = stringFromMaybe show x_opt
+end
+
+val stringFromListAux : forall 'a. ('a -> string) -> list 'a -> string
+let rec stringFromListAux showX x =
+  match x with
+    | [] -> ""
+    | x::xs' ->
+      match xs' with
+      | [] -> showX x
+      | _ -> showX x ^ "; " ^ stringFromListAux showX xs'
+      end
+  end
+
+val stringFromList : forall 'a. ('a -> string) -> list 'a -> string
+let stringFromList showX xs =
+  "[" ^ stringFromListAux showX xs ^ "]"
+
+instance forall 'a. Show 'a => (Show (list 'a))
+  let show xs = stringFromList show xs
+end
+
+val stringFromPair : forall 'a 'b. ('a -> string) -> ('b -> string) -> ('a * 'b) -> string
+let stringFromPair showX showY (x,y) =
+  "(" ^ showX x ^ ", " ^ showY y ^ ")"
+
+instance forall 'a 'b. Show 'a, Show 'b => (Show ('a * 'b))
+  let show = stringFromPair show show
+end
+
+instance (Show bool)
+  let show b = if b then "true" else "false"
+end

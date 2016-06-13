@@ -1,0 +1,9 @@
+*~
+ocaml-lib/_build
+src/_build
+lem
+src/build_directory.ml
+src/main.native
+src/version.ml
+examples/ppcmem-model/generated/*
+

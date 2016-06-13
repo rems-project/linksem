@@ -1,0 +1,89 @@
+(******************************************************************************)
+(* A library for finite maps                                                  *)
+(******************************************************************************)
+
+(* ========================================================================== *)
+(* Header                                                                     *)
+(* ========================================================================== *)
+
+declare {isabelle;hol;ocaml;coq} rename module = lem_map_extra
+
+open import Bool Basic_classes Function Assert_extra Maybe List Num Set Map
+
+(* -------------------------------------------------------------------------- *)
+(* find                                                                       *)
+(* -------------------------------------------------------------------------- *)
+
+val find : forall 'k 'v. MapKeyType 'k => 'k -> map 'k 'v -> 'v
+let find k m = match (lookup k m) with Just x -> x | Nothing -> failwith "Map_extra.find" end
+
+declare ocaml    target_rep function find = `Pmap.find`
+declare isabelle target_rep function find = `map_find`
+declare hol      target_rep function find k m = `FAPPLY` m k
+
+declare compile_message find = "find is only defined if the key is found. Use lookup instead and handle the not-found case explicitly."
+assert find_insert_1: (find 16 (insert (16 : nat) true empty) = true)
+assert find_insert_2: (find 36 (insert 36 false (insert (16 : nat) true empty)) = false )
+
+
+
+(* -------------------------------------------------------------------------- *)
+(* from sets / domain / range                                                 *)
+(* -------------------------------------------------------------------------- *)
+
+
+val fromSet : forall 'k 'v. MapKeyType 'k => ('k -> 'v) -> set 'k -> map 'k 'v
+let fromSet f s = Set_helpers.fold (fun k m -> Map.insert k (f k) m) s Map.empty
+
+declare compile_message fromSet = "fromSet only works for finite sets, use carefully."
+
+declare ocaml    target_rep function fromSet = `Pmap.from_set`
+declare hol      target_rep function fromSet = `FUN_FMAP`
+
+(*
+assert fromSet_0: (fromSet succ (Set.empty : set nat) = Map.empty)
+assert fromSet_1: (fromSet succ {(2:nat); 3; 4}) = Map.fromList [(2,3); (3, 4); (4, 5)]
+*)
+
+(* -------------------------------------------------------------------------- *)
+(* fold                                                                       *)
+(* -------------------------------------------------------------------------- *)
+
+val fold : forall 'k 'v 'r. MapKeyType 'k, SetType 'k, SetType 'v => ('k -> 'v -> 'r -> 'r) -> map 'k 'v -> 'r -> 'r
+let fold f m v = Set_helpers.fold (fun (k, v) r -> f k v r) (Map.toSet m) v
+  
+declare ocaml    target_rep function fold = `Pmap.fold`
+
+declare compile_message fold = "Map_extra.fold iterates over the elements of the map in a unspecified order"
+
+(*
+assert fold_1: (fold (fun k v a -> (a+k)) (Map.fromList [((2:nat),(3:nat)); (3, 4); (4, 5)]) 0 = 9)
+assert fold_2: (fold (fun k v a -> (a+v)) (Map.fromList [((2:nat),(3:nat)); (3, 4); (4, 5)]) 0 = 12)
+*)
+
+val toList: forall 'k 'v. MapKeyType 'k => map 'k 'v -> list ('k * 'v)
+
+declare ocaml    target_rep function toList = `Pmap.bindings_list`
+declare coq target_rep function toList = `fmap_elements` (* TODO *)
+declare hol target_rep function toList = `MAP_TO_LIST`
+declare isabelle target_rep function toList m = `list_of_set` (`LemExtraDefs.map_to_set` `m`)
+declare compile_message toList = "Map_extra.toList is only defined for the ocaml, isabelle and coq backend"
+
+(* more 'map' functions *)
+
+(* TODO: this function is in map_extra rather than map just for implementation reasons *)
+val mapMaybe : forall 'a 'b 'c. MapKeyType 'a => ('a -> 'b -> maybe 'c) -> map 'a 'b -> map 'a 'c
+(* TODO: mapMaybe depends on toList that is not defined for hol and isabelle *)
+let ~{hol;isabelle} mapMaybe f m =
+  List.foldl
+    (fun m' (k, v) ->
+      match f k v with
+        | Nothing -> m'
+        | Just v' -> Map.insert k v' m'
+      end)
+    Map.empty
+    (toList m)
+
+declare {ocaml;hol;isabelle} rename function mapMaybe = option_map
+declare compile_message toList = "Map_extra.mapMaybe is only defined for the ocaml and coq backend"
+
