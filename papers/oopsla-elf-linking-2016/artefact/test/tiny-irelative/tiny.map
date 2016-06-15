@@ -1,0 +1,338 @@
+
+Discarded input sections
+
+ .note.GNU-stack
+                0x0000000000000000        0x0 file1.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 file2.o
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+*default*        0x0000000000000000 0xffffffffffffffff
+
+Linker script and memory map
+
+LOAD file1.o
+LOAD file2.o
+                0x0000000000400000                PROVIDE (__executable_start, 0x400000)
+                0x0000000000400120                . = (0x400000 + SIZEOF_HEADERS)
+
+.interp
+ *(.interp)
+
+.note.gnu.build-id
+                0x0000000000400120       0x24
+ *(.note.gnu.build-id)
+ .note.gnu.build-id
+                0x0000000000400120       0x24 file1.o
+
+.hash
+ *(.hash)
+
+.gnu.hash
+ *(.gnu.hash)
+
+.dynsym
+ *(.dynsym)
+
+.dynstr
+ *(.dynstr)
+
+.gnu.version
+ *(.gnu.version)
+
+.gnu.version_d
+ *(.gnu.version_d)
+
+.gnu.version_r
+ *(.gnu.version_r)
+
+.rela.dyn       0x0000000000400148        0x0
+ *(.rela.init)
+ *(.rela.text .rela.text.* .rela.gnu.linkonce.t.*)
+ .rela.text     0x0000000000400148        0x0 file1.o
+ *(.rela.fini)
+ *(.rela.rodata .rela.rodata.* .rela.gnu.linkonce.r.*)
+ *(.rela.data .rela.data.* .rela.gnu.linkonce.d.*)
+ *(.rela.tdata .rela.tdata.* .rela.gnu.linkonce.td.*)
+ *(.rela.tbss .rela.tbss.* .rela.gnu.linkonce.tb.*)
+ *(.rela.ctors)
+ *(.rela.dtors)
+ *(.rela.got)
+ *(.rela.bss .rela.bss.* .rela.gnu.linkonce.b.*)
+ *(.rela.ldata .rela.ldata.* .rela.gnu.linkonce.l.*)
+ *(.rela.lbss .rela.lbss.* .rela.gnu.linkonce.lb.*)
+ *(.rela.lrodata .rela.lrodata.* .rela.gnu.linkonce.lr.*)
+ *(.rela.ifunc)
+
+.rela.plt       0x0000000000400148       0x18
+ *(.rela.plt)
+                0x0000000000400148                PROVIDE (__rela_iplt_start, .)
+ *(.rela.iplt)
+ .rela.iplt     0x0000000000400148       0x18 file1.o
+                0x0000000000400160                PROVIDE (__rela_iplt_end, .)
+
+.init
+ *(SORT(.init))
+
+.plt            0x0000000000400160       0x10
+ *(.plt)
+ *(.iplt)
+ .iplt          0x0000000000400160       0x10 file1.o
+
+.plt.bnd
+ *(.plt.bnd)
+
+.text           0x0000000000400170       0xd3
+ *(.text.unlikely .text.*_unlikely .text.unlikely.*)
+ *(.text.exit .text.exit.*)
+ *(.text.startup .text.startup.*)
+ *(.text.hot .text.hot.*)
+ *(.text .stub .text.* .gnu.linkonce.t.*)
+ .text          0x0000000000400170       0x5f file1.o
+                0x0000000000400170                f_1
+                0x000000000040017b                f_2
+                0x0000000000400186                ifunc
+ .text          0x00000000004001cf       0x74 file2.o
+                0x0000000000400229                _start
+ *(.gnu.warning)
+
+.fini
+ *(SORT(.fini))
+                0x0000000000400243                PROVIDE (__etext, .)
+                0x0000000000400243                PROVIDE (_etext, .)
+                0x0000000000400243                PROVIDE (etext, .)
+
+.rodata
+ *(.rodata .rodata.* .gnu.linkonce.r.*)
+
+.rodata1
+ *(.rodata1)
+
+.eh_frame_hdr
+ *(.eh_frame_hdr)
+
+.eh_frame
+ *(.eh_frame)
+
+.gcc_except_table
+ *(.gcc_except_table .gcc_except_table.*)
+
+.exception_ranges
+ *(.exception_ranges .exception_ranges*)
+                0x0000000000400243                . = (ALIGN (0x200000) - ((0x200000 - .) & 0x1fffff))
+                0x0000000000600243                . = DATA_SEGMENT_ALIGN (0x200000, 0x1000)
+
+.eh_frame
+ *(.eh_frame)
+
+.gcc_except_table
+ *(.gcc_except_table .gcc_except_table.*)
+
+.exception_ranges
+ *(.exception_ranges .exception_ranges*)
+
+.tdata
+ *(.tdata .tdata.* .gnu.linkonce.td.*)
+
+.tbss
+ *(.tbss .tbss.* .gnu.linkonce.tb.*)
+ *(.tcommon)
+
+.preinit_array  0x0000000000600243        0x0
+                0x0000000000600243                PROVIDE (__preinit_array_start, .)
+ *(.preinit_array)
+                0x0000000000600243                PROVIDE (__preinit_array_end, .)
+
+.init_array     0x0000000000600243        0x0
+                0x0000000000600243                PROVIDE (__init_array_start, .)
+ *(SORT(.init_array.*) SORT(.ctors.*))
+ *(.init_array EXCLUDE_FILE(*crtend?.o *crtend.o *crtbegin?.o *crtbegin.o) .ctors)
+                0x0000000000600243                PROVIDE (__init_array_end, .)
+
+.fini_array     0x0000000000600243        0x0
+                0x0000000000600243                PROVIDE (__fini_array_start, .)
+ *(SORT(.fini_array.*) SORT(.dtors.*))
+ *(.fini_array EXCLUDE_FILE(*crtend?.o *crtend.o *crtbegin?.o *crtbegin.o) .dtors)
+                0x0000000000600243                PROVIDE (__fini_array_end, .)
+
+.ctors
+ *crtbegin.o(.ctors)
+ *crtbegin?.o(.ctors)
+ *(EXCLUDE_FILE(*crtend?.o *crtend.o) .ctors)
+ *(SORT(.ctors.*))
+ *(.ctors)
+
+.dtors
+ *crtbegin.o(.dtors)
+ *crtbegin?.o(.dtors)
+ *(EXCLUDE_FILE(*crtend?.o *crtend.o) .dtors)
+ *(SORT(.dtors.*))
+ *(.dtors)
+
+.jcr
+ *(.jcr)
+
+.data.rel.ro
+ *(.data.rel.ro.local* .gnu.linkonce.d.rel.ro.local.*)
+ *(.data.rel.ro .data.rel.ro.* .gnu.linkonce.d.rel.ro.*)
+
+.dynamic
+ *(.dynamic)
+
+.got
+ *(.got)
+ *(.igot)
+                0x0000000000600243                . = DATA_SEGMENT_RELRO_END (., (SIZEOF (.got.plt) >= 0x18)?0x18:0x0)
+
+.got.plt        0x0000000000600248        0x8
+ *(.got.plt)
+ *(.igot.plt)
+ .igot.plt      0x0000000000600248        0x8 file1.o
+
+.data           0x0000000000600250        0x0
+ *(.data .data.* .gnu.linkonce.d.*)
+ .data          0x0000000000600250        0x0 file1.o
+ .data          0x0000000000600250        0x0 file2.o
+
+.data1
+ *(.data1)
+                0x0000000000600250                _edata = .
+                0x0000000000600250                PROVIDE (edata, .)
+                0x0000000000600250                . = .
+                0x0000000000600250                __bss_start = .
+
+.bss            0x0000000000600250        0x0
+ *(.dynbss)
+ *(.bss .bss.* .gnu.linkonce.b.*)
+ .bss           0x0000000000600250        0x0 file1.o
+ .bss           0x0000000000600250        0x0 file2.o
+ *(COMMON)
+                0x0000000000600250                . = ALIGN ((. != 0x0)?0x8:0x1)
+
+.lbss
+ *(.dynlbss)
+ *(.lbss .lbss.* .gnu.linkonce.lb.*)
+ *(LARGE_COMMON)
+                0x0000000000600250                . = ALIGN (0x8)
+                0x0000000000600250                . = SEGMENT_START ("ldata-segment", .)
+
+.lrodata
+ *(.lrodata .lrodata.* .gnu.linkonce.lr.*)
+
+.ldata          0x0000000000a00250        0x0
+ *(.ldata .ldata.* .gnu.linkonce.l.*)
+                0x0000000000a00250                . = ALIGN ((. != 0x0)?0x8:0x1)
+                0x0000000000a00250                . = ALIGN (0x8)
+                0x0000000000a00250                _end = .
+                0x0000000000a00250                PROVIDE (end, .)
+                0x0000000000a00250                . = DATA_SEGMENT_END (.)
+
+.stab
+ *(.stab)
+
+.stabstr
+ *(.stabstr)
+
+.stab.excl
+ *(.stab.excl)
+
+.stab.exclstr
+ *(.stab.exclstr)
+
+.stab.index
+ *(.stab.index)
+
+.stab.indexstr
+ *(.stab.indexstr)
+
+.comment        0x0000000000000000       0x25
+ *(.comment)
+ .comment       0x0000000000000000       0x25 file1.o
+                                         0x26 (size before relaxing)
+ .comment       0x0000000000000025       0x26 file2.o
+
+.debug
+ *(.debug)
+
+.line
+ *(.line)
+
+.debug_srcinfo
+ *(.debug_srcinfo)
+
+.debug_sfnames
+ *(.debug_sfnames)
+
+.debug_aranges  0x0000000000000000       0x60
+ *(.debug_aranges)
+ .debug_aranges
+                0x0000000000000000       0x30 file1.o
+ .debug_aranges
+                0x0000000000000030       0x30 file2.o
+
+.debug_pubnames
+ *(.debug_pubnames)
+
+.debug_info     0x0000000000000000      0x258
+ *(.debug_info .gnu.linkonce.wi.*)
+ .debug_info    0x0000000000000000       0xd1 file1.o
+ .debug_info    0x00000000000000d1      0x187 file2.o
+
+.debug_abbrev   0x0000000000000000      0x17d
+ *(.debug_abbrev)
+ .debug_abbrev  0x0000000000000000       0x9a file1.o
+ .debug_abbrev  0x000000000000009a       0xe3 file2.o
+
+.debug_line     0x0000000000000000       0xf1
+ *(.debug_line .debug_line.* .debug_line_end)
+ .debug_line    0x0000000000000000       0x4e file1.o
+ .debug_line    0x000000000000004e       0xa3 file2.o
+
+.debug_frame    0x0000000000000000      0x128
+ *(.debug_frame)
+ .debug_frame   0x0000000000000000       0xb8 file1.o
+ .debug_frame   0x00000000000000b8       0x70 file2.o
+
+.debug_str      0x0000000000000000      0x1cf
+ *(.debug_str)
+ .debug_str     0x0000000000000000       0xfb file1.o
+ .debug_str     0x00000000000000fb       0xd4 file2.o
+                                        0x1de (size before relaxing)
+
+.debug_loc
+ *(.debug_loc)
+
+.debug_macinfo
+ *(.debug_macinfo)
+
+.debug_weaknames
+ *(.debug_weaknames)
+
+.debug_funcnames
+ *(.debug_funcnames)
+
+.debug_typenames
+ *(.debug_typenames)
+
+.debug_varnames
+ *(.debug_varnames)
+
+.debug_pubtypes
+ *(.debug_pubtypes)
+
+.debug_ranges
+ *(.debug_ranges)
+
+.debug_macro
+ *(.debug_macro)
+
+.gnu.attributes
+ *(.gnu.attributes)
+
+/DISCARD/
+ *(.note.GNU-stack)
+ *(.gnu_debuglink)
+ *(.gnu.lto_*)
+OUTPUT(tiny elf64-x86-64)
