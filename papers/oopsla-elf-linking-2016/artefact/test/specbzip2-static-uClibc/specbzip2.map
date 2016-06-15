@@ -1,0 +1,2401 @@
+Archive member included to satisfy reference by file (symbol)
+
+libc.a(close.os)              spec.o (close)
+libc.a(open.os)               spec.o (open)
+libc.a(read.os)               spec.o (read)
+libc.a(__ctype_b_loc.os)      bzlib.o (__ctype_b_loc)
+libc.a(errno.os)              libc.a(close.os) (__libc_errno)
+libc.a(__errno_location.os)   spec.o (__errno_location)
+libc.a(__curlocale.os)        libc.a(__ctype_b_loc.os) (__GI___curlocale)
+libc.a(perror.os)             bzip2.o (perror)
+libc.a(puts.os)               spec.o (puts)
+libc.a(printf.os)             spec.o (printf)
+libc.a(fprintf.os)            libc.a(perror.os) (__GI_fprintf)
+libc.a(_stdio.os)             blocksort.o (stderr)
+libc.a(_wcommit.os)           libc.a(_stdio.os) (__stdio_wcommit)
+libc.a(_cs_funcs.os)          libc.a(_stdio.os) (_cs_read)
+libc.a(vfprintf.os)           libc.a(printf.os) (__GI_vfprintf)
+libc.a(_vfprintf_internal.os)
+                              libc.a(vfprintf.os) (_vfprintf_internal)
+libc.a(_ppfs_init.os)         libc.a(_vfprintf_internal.os) (_ppfs_init)
+libc.a(_ppfs_prepargs.os)     libc.a(_vfprintf_internal.os) (_ppfs_prepargs)
+libc.a(_ppfs_setargs.os)      libc.a(_vfprintf_internal.os) (_ppfs_setargs)
+libc.a(_ppfs_parsespec.os)    libc.a(_vfprintf_internal.os) (_ppfs_parsespec)
+libc.a(fputc.os)              bzip2.o (fputc)
+libc.a(fwrite.os)             blocksort.o (fwrite)
+libc.a(fputc_unlocked.os)     libc.a(puts.os) (__GI___fputc_unlocked)
+libc.a(fputs_unlocked.os)     libc.a(puts.os) (__GI_fputs_unlocked)
+libc.a(fwrite_unlocked.os)    libc.a(fwrite.os) (__GI_fwrite_unlocked)
+libc.a(memcpy.os)             spec.o (memcpy)
+libc.a(memset.os)             spec.o (memset)
+libc.a(strlen.os)             libc.a(_vfprintf_internal.os) (__GI_strlen)
+libc.a(strnlen.os)            libc.a(_vfprintf_internal.os) (__GI_strnlen)
+libc.a(__glibc_strerror_r.os)
+                              libc.a(_vfprintf_internal.os) (__GI___glibc_strerror_r)
+libc.a(__xpg_strerror_r.os)   libc.a(__glibc_strerror_r.os) (__GI___xpg_strerror_r)
+libc.a(_string_syserrmsgs.os)
+                              libc.a(__xpg_strerror_r.os) (_string_syserrmsgs)
+libc.a(strerror.os)           spec.o (strerror)
+libc.a(isatty.os)             libc.a(_stdio.os) (__GI_isatty)
+libc.a(tcgetattr.os)          libc.a(isatty.os) (__GI_tcgetattr)
+libc.a(free.os)               bzlib.o (free)
+libc.a(malloc.os)             bzlib.o (malloc)
+libc.a(abort.os)              libc.a(free.os) (__GI_abort)
+libc.a(atoi.os)               spec.o (atoi)
+libc.a(strtol.os)             libc.a(atoi.os) (__GI_strtol)
+libc.a(_stdlib_strto_l.os)    libc.a(strtol.os) (_stdlib_strto_l)
+libc.a(_stdlib_strto_l_l.os)  libc.a(_stdlib_strto_l.os) (_stdlib_strto_l_l)
+libc.a(exit.os)               bzip2.o (exit)
+libc.a(sysconf.os)            libc.a(free.os) (__GI_sysconf)
+libc.a(libc-cancellation.os)  libc.a(close.os) (__libc_enable_asynccancel)
+libc.a(libc-lowlevellock.os)  libc.a(puts.os) (__lll_lock_wait_private)
+libc.a(libc_multiple_threads.os)
+                              libc.a(close.os) (__libc_multiple_threads)
+libc.a(raise.os)              libc.a(abort.os) (__GI_raise)
+libc.a(__uClibc_main.os)      libc.a(exit.os) (__uClibc_fini)
+libc.a(sigaction.os)          libc.a(abort.os) (__GI_sigaction)
+libc.a(bsd-_setjmp.os)        libc.a(__uClibc_main.os) (_setjmp)
+libc.a(__syscall_fcntl.os)    libc.a(__uClibc_main.os) (__GI_fcntl)
+libc.a(_exit.os)              libc.a(abort.os) (__GI__exit)
+libc.a(clock_getres.os)       libc.a(sysconf.os) (__GI_clock_getres)
+libc.a(getdtablesize.os)      libc.a(sysconf.os) (__GI_getdtablesize)
+libc.a(getegid.os)            libc.a(__uClibc_main.os) (__GI_getegid)
+libc.a(geteuid.os)            libc.a(__uClibc_main.os) (__GI_geteuid)
+libc.a(getgid.os)             libc.a(__uClibc_main.os) (__GI_getgid)
+libc.a(getpagesize.os)        libc.a(sysconf.os) (__GI_getpagesize)
+libc.a(getrlimit.os)          libc.a(sysconf.os) (__GI_getrlimit)
+libc.a(getuid.os)             libc.a(__uClibc_main.os) (__GI_getuid)
+libc.a(ioctl.os)              libc.a(tcgetattr.os) (__GI_ioctl)
+libc.a(lseek.os)              libc.a(_cs_funcs.os) (__GI_lseek64)
+libc.a(mmap.os)               libc.a(malloc.os) (__GI_mmap)
+libc.a(munmap.os)             libc.a(free.os) (__GI_munmap)
+libc.a(sbrk.os)               libc.a(free.os) (__GI_sbrk)
+libc.a(sigprocmask.os)        libc.a(abort.os) (__GI_sigprocmask)
+libc.a(write.os)              libc.a(_cs_funcs.os) (__GI_write)
+libc.a(closedir.os)           libc.a(sysconf.os) (__GI_closedir)
+libc.a(opendir.os)            libc.a(sysconf.os) (__GI_opendir)
+libc.a(readdir.os)            libc.a(sysconf.os) (__GI_readdir64)
+libc.a(__h_errno_location.os)
+                              libc.a(__uClibc_main.os) (__h_errno_location)
+libc.a(parse_config.os)       libc.a(sysconf.os) (__GI_config_open)
+libc.a(_locale_init.os)       libc.a(__curlocale.os) (__curlocale_var)
+libc.a(__locale_mbrtowc_l.os)
+                              libc.a(_locale_init.os) (__locale_mbrtowc_l)
+libc.a(wcrtomb.os)            libc.a(_vfprintf_internal.os) (__GI_wcrtomb)
+libc.a(mbsrtowcs.os)          libc.a(_ppfs_init.os) (__GI_mbsrtowcs)
+libc.a(wcsrtombs.os)          libc.a(_vfprintf_internal.os) (__GI_wcsrtombs)
+libc.a(_wchar_utf8sntowcs.os)
+                              libc.a(__locale_mbrtowc_l.os) (_wchar_utf8sntowcs)
+libc.a(mbsnrtowcs.os)         libc.a(mbsrtowcs.os) (__GI_mbsnrtowcs)
+libc.a(wcsnrtombs.os)         libc.a(wcrtomb.os) (__GI_wcsnrtombs)
+libc.a(fclose.os)             libc.a(parse_config.os) (__GI_fclose)
+libc.a(fopen.os)              libc.a(parse_config.os) (__GI_fopen)
+libc.a(_WRITE.os)             libc.a(_wcommit.os) (__stdio_WRITE)
+libc.a(_fopen.os)             libc.a(fopen.os) (_stdio_fopen)
+libc.a(_fwrite.os)            libc.a(_vfprintf_internal.os) (__stdio_fwrite)
+libc.a(_trans2w.os)           libc.a(vfprintf.os) (__stdio_trans2w_o)
+libc.a(_load_inttype.os)      libc.a(_vfprintf_internal.os) (_load_inttype)
+libc.a(_store_inttype.os)     libc.a(_vfprintf_internal.os) (_store_inttype)
+libc.a(_uintmaxtostr.os)      libc.a(_vfprintf_internal.os) (_uintmaxtostr)
+libc.a(_fpmaxtostr.os)        libc.a(_vfprintf_internal.os) (_fpmaxtostr)
+libc.a(fgetc.os)              libc.a(parse_config.os) (__GI_fgetc)
+libc.a(fgets.os)              libc.a(parse_config.os) (__GI_fgets)
+libc.a(fflush_unlocked.os)    libc.a(fclose.os) (_stdio_openlist_dec_use)
+libc.a(fgetc_unlocked.os)     libc.a(fgetc.os) (__GI___fgetc_unlocked)
+libc.a(fgets_unlocked.os)     libc.a(fgets.os) (__GI_fgets_unlocked)
+libc.a(mempcpy.os)            libc.a(tcgetattr.os) (__GI_mempcpy)
+libc.a(strchr.os)             libc.a(parse_config.os) (__GI_strchr)
+libc.a(strcmp.os)             libc.a(sysconf.os) (__GI_strcmp)
+libc.a(strcspn.os)            libc.a(parse_config.os) (__GI_strcspn)
+libc.a(strspn.os)             libc.a(parse_config.os) (__GI_strspn)
+libc.a(memchr.os)             libc.a(_fwrite.os) (__GI_memchr)
+libc.a(memrchr.os)            libc.a(_fwrite.os) (__GI_memrchr)
+libc.a(strchrnul.os)          libc.a(parse_config.os) (__GI_strchrnul)
+libc.a(strrchr.os)            libc.a(__uClibc_main.os) (__GI_strrchr)
+libc.a(calloc.os)             libc.a(opendir.os) (calloc)
+libc.a(realloc.os)            libc.a(parse_config.os) (realloc)
+libc.a(libc-tls.os)           libc.a(__uClibc_main.os) (__pthread_initialize_minimal)
+libc.a(dl-support.os)         libc.a(__uClibc_main.os) (_dl_aux_init)
+libc.a(locale_data.os)        libc.a(_locale_init.os) (__locale_mmap)
+libc.a(brk.os)                libc.a(sbrk.os) (__GI_brk)
+libc.a(setjmp.os)             libc.a(bsd-_setjmp.os) (__GI___sigsetjmp)
+libc.a(fstat.os)              libc.a(opendir.os) (__GI_fstat)
+libc.a(mremap.os)             libc.a(realloc.os) (__GI_mremap)
+libc.a(xstatconv.os)          libc.a(fstat.os) (__xstat_conv)
+libc.a(getdents64.os)         libc.a(readdir.os) (__getdents)
+libc.a(__C_ctype_b.os)        libc.a(_locale_init.os) (__GI___C_ctype_b)
+libc.a(__C_ctype_tolower.os)  libc.a(_locale_init.os) (__GI___C_ctype_tolower)
+libc.a(__C_ctype_toupper.os)  libc.a(_locale_init.os) (__GI___C_ctype_toupper)
+libc.a(h_errno.os)            libc.a(__h_errno_location.os) (__libc_h_errno)
+libc.a(_wchar_wcsntoutf8s.os)
+                              libc.a(wcsnrtombs.os) (_wchar_wcsntoutf8s)
+libc.a(fseeko.os)             libc.a(_trans2w.os) (__GI_fseek)
+libc.a(fseeko64.os)           libc.a(fseeko.os) (__GI_fseeko64)
+libc.a(_READ.os)              libc.a(fgetc_unlocked.os) (__stdio_READ)
+libc.a(_adjust_pos.os)        libc.a(fseeko64.os) (__stdio_adjust_position)
+libc.a(_rfill.os)             libc.a(fgetc_unlocked.os) (__stdio_rfill)
+libc.a(_trans2r.os)           libc.a(fgetc_unlocked.os) (__stdio_trans2r_o)
+libc.a(sigjmp.os)             libc.a(setjmp.os) (__sigjmp_save)
+
+Allocating common symbols
+Common symbol       size              file
+
+srcMode             0x4               bzip2.o
+progNameReally      0x40a             bzip2.o
+deleteOutputOnInterrupt
+                    0x1               bzip2.o
+forceOverwrite      0x1               bzip2.o
+__global_locale_data
+                    0xcf8             libc.a(_locale_init.os)
+opMode              0x4               bzip2.o
+testFailsExist      0x1               bzip2.o
+outName             0x40a             bzip2.o
+_dl_tls_static_used
+                    0x8               libc.a(libc-tls.os)
+workFactor          0x4               bzip2.o
+verbosity           0x4               bzip2.o
+progName            0x8               bzip2.o
+_dl_tls_static_align
+                    0x8               libc.a(libc-tls.os)
+_dl_tls_max_dtv_idx
+                    0x8               libc.a(libc-tls.os)
+numFilesProcessed   0x4               bzip2.o
+outputHandleJustInCase
+                    0x4               bzip2.o
+__malloc_state      0x6d8             libc.a(malloc.os)
+_dl_tls_static_size
+                    0x8               libc.a(libc-tls.os)
+_custom_printf_arginfo
+                    0x50              libc.a(_ppfs_parsespec.os)
+blockSize100k       0x4               bzip2.o
+_dl_tls_dtv_slotinfo_list
+                    0x8               libc.a(libc-tls.os)
+inName              0x40a             bzip2.o
+seedi               0x8               spec.o
+numFileNames        0x4               bzip2.o
+_dl_tls_dtv_gaps    0x1               libc.a(libc-tls.os)
+_dl_phdr            0x8               libc.a(dl-support.os)
+_dl_tls_generation  0x8               libc.a(libc-tls.os)
+noisy               0x1               bzip2.o
+longestFileName     0x4               bzip2.o
+spec_fd             0x48              spec.o
+__libc_multiple_threads
+                    0x4               libc.a(libc_multiple_threads.os)
+smallMode           0x1               bzip2.o
+_dl_tls_static_nelem
+                    0x8               libc.a(libc-tls.os)
+_dl_phnum           0x8               libc.a(dl-support.os)
+tmpName             0x40a             bzip2.o
+_custom_printf_handler
+                    0x50              libc.a(_ppfs_parsespec.os)
+keepInputFiles      0x1               bzip2.o
+unzFailsExist       0x1               bzip2.o
+_dl_pagesize        0x8               libc.a(dl-support.os)
+exitValue           0x4               bzip2.o
+
+Discarded input sections
+
+ .note.GNU-stack
+                0x0000000000000000        0x0 crt1.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 crti.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 crtbeginT.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 blocksort.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 bzip2.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 bzlib.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 compress.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 crctable.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 decompress.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 huffman.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 randtable.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 spec.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(close.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(open.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(read.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(__ctype_b_loc.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(errno.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(__errno_location.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(__curlocale.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(perror.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(puts.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(printf.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(fprintf.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(_stdio.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(_wcommit.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(_cs_funcs.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(vfprintf.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(_vfprintf_internal.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(_ppfs_init.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(_ppfs_prepargs.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(_ppfs_setargs.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(_ppfs_parsespec.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(fputc.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(fwrite.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(fputc_unlocked.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(fputs_unlocked.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(fwrite_unlocked.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(memcpy.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(memset.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(strlen.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(strnlen.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(__glibc_strerror_r.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(__xpg_strerror_r.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(_string_syserrmsgs.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(strerror.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(isatty.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(tcgetattr.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(free.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(malloc.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(abort.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(atoi.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(strtol.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(_stdlib_strto_l.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(_stdlib_strto_l_l.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(exit.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(sysconf.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(libc-cancellation.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(libc-lowlevellock.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(libc_multiple_threads.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(raise.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(__uClibc_main.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(sigaction.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(bsd-_setjmp.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(__syscall_fcntl.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(_exit.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(clock_getres.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(getdtablesize.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(getegid.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(geteuid.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(getgid.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(getpagesize.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(getrlimit.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(getuid.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(ioctl.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(lseek.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(mmap.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(munmap.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(sbrk.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(sigprocmask.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(write.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(closedir.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(opendir.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(readdir.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(__h_errno_location.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(parse_config.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(_locale_init.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(__locale_mbrtowc_l.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(wcrtomb.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(mbsrtowcs.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(wcsrtombs.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(_wchar_utf8sntowcs.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(mbsnrtowcs.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(wcsnrtombs.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(fclose.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(fopen.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(_WRITE.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(_fopen.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(_fwrite.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(_trans2w.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(_load_inttype.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(_store_inttype.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(_uintmaxtostr.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(_fpmaxtostr.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(fgetc.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(fgets.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(fflush_unlocked.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(fgetc_unlocked.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(fgets_unlocked.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(mempcpy.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(strchr.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(strcmp.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(strcspn.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(strspn.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(memchr.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(memrchr.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(strchrnul.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(strrchr.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(calloc.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(realloc.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(libc-tls.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(dl-support.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(locale_data.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(brk.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(setjmp.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(fstat.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(mremap.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(xstatconv.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(getdents64.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(__C_ctype_b.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(__C_ctype_tolower.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(__C_ctype_toupper.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(h_errno.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(_wchar_wcsntoutf8s.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(fseeko.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(fseeko64.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(_READ.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(_adjust_pos.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(_rfill.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(_trans2r.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 libc.a(sigjmp.os)
+ .note.GNU-stack
+                0x0000000000000000        0x0 crtend.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 crtn.o
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+*default*        0x0000000000000000 0xffffffffffffffff
+
+Linker script and memory map
+
+LOAD crt1.o
+LOAD crti.o
+LOAD crtbeginT.o
+LOAD blocksort.o
+LOAD bzip2.o
+LOAD bzlib.o
+LOAD compress.o
+LOAD crctable.o
+LOAD decompress.o
+LOAD huffman.o
+LOAD randtable.o
+LOAD spec.o
+LOAD libm.a
+START GROUP
+LOAD libgcc.a
+LOAD libgcc_eh.a
+LOAD libc.a
+END GROUP
+LOAD crtend.o
+LOAD crtn.o
+                0x0000000000400000                PROVIDE (__executable_start, 0x400000)
+                0x0000000000400120                . = (0x400000 + SIZEOF_HEADERS)
+
+.interp
+ *(.interp)
+
+.note.gnu.build-id
+ *(.note.gnu.build-id)
+
+.hash
+ *(.hash)
+
+.gnu.hash
+ *(.gnu.hash)
+
+.dynsym
+ *(.dynsym)
+
+.dynstr
+ *(.dynstr)
+
+.gnu.version
+ *(.gnu.version)
+
+.gnu.version_d
+ *(.gnu.version_d)
+
+.gnu.version_r
+ *(.gnu.version_r)
+
+.rela.dyn       0x0000000000400120        0x0
+ *(.rela.init)
+ *(.rela.text .rela.text.* .rela.gnu.linkonce.t.*)
+ .rela.text     0x0000000000400120        0x0 crt1.o
+ .rela.text.startup
+                0x0000000000400120        0x0 crt1.o
+ *(.rela.fini)
+ *(.rela.rodata .rela.rodata.* .rela.gnu.linkonce.r.*)
+ *(.rela.data .rela.data.* .rela.gnu.linkonce.d.*)
+ .rela.data.rel.local
+                0x0000000000400120        0x0 crt1.o
+ .rela.data.rel
+                0x0000000000400120        0x0 crt1.o
+ *(.rela.tdata .rela.tdata.* .rela.gnu.linkonce.td.*)
+ *(.rela.tbss .rela.tbss.* .rela.gnu.linkonce.tb.*)
+ *(.rela.ctors)
+ *(.rela.dtors)
+ *(.rela.got)
+ .rela.got      0x0000000000400120        0x0 crt1.o
+ *(.rela.bss .rela.bss.* .rela.gnu.linkonce.b.*)
+ *(.rela.ldata .rela.ldata.* .rela.gnu.linkonce.l.*)
+ *(.rela.lbss .rela.lbss.* .rela.gnu.linkonce.lb.*)
+ *(.rela.lrodata .rela.lrodata.* .rela.gnu.linkonce.lr.*)
+ *(.rela.ifunc)
+
+.rela.plt       0x0000000000400120        0x0
+ *(.rela.plt)
+                0x0000000000400120                PROVIDE (__rela_iplt_start, .)
+ *(.rela.iplt)
+ .rela.iplt     0x0000000000400120        0x0 crt1.o
+                0x0000000000400120                PROVIDE (__rela_iplt_end, .)
+
+.init           0x0000000000400120       0x13
+ *(SORT(.init))
+ .init          0x0000000000400120        0x4 crti.o
+                0x0000000000400120                _init
+ .init          0x0000000000400124        0x5 crtbeginT.o
+ .init          0x0000000000400129        0x5 crtend.o
+ .init          0x000000000040012e        0x5 crtn.o
+
+.plt            0x0000000000400140        0x0
+ *(.plt)
+ *(.iplt)
+ .iplt          0x0000000000400140        0x0 crt1.o
+
+.plt.bnd
+ *(.plt.bnd)
+
+.text           0x0000000000400140    0x12a5e
+ *(.text.unlikely .text.*_unlikely .text.unlikely.*)
+ .text.unlikely
+                0x0000000000400140        0x0 crtbeginT.o
+ .text.unlikely
+                0x0000000000400140        0x0 blocksort.o
+ .text.unlikely
+                0x0000000000400140        0x0 bzip2.o
+ .text.unlikely
+                0x0000000000400140        0x0 bzlib.o
+ .text.unlikely
+                0x0000000000400140        0x0 compress.o
+ .text.unlikely
+                0x0000000000400140        0x0 decompress.o
+ .text.unlikely
+                0x0000000000400140        0x0 huffman.o
+ .text.unlikely
+                0x0000000000400140        0x0 spec.o
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(close.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(open.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(read.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(__ctype_b_loc.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(__errno_location.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(__curlocale.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(perror.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(puts.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(printf.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(fprintf.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(_stdio.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(_wcommit.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(_cs_funcs.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(vfprintf.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(_vfprintf_internal.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(_ppfs_init.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(_ppfs_prepargs.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(_ppfs_setargs.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(_ppfs_parsespec.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(fputc.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(fwrite.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(fputc_unlocked.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(fputs_unlocked.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(fwrite_unlocked.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(strnlen.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(__glibc_strerror_r.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(__xpg_strerror_r.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(strerror.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(isatty.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(tcgetattr.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(free.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(malloc.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(abort.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(atoi.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(strtol.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(_stdlib_strto_l.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(_stdlib_strto_l_l.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(exit.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(sysconf.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(raise.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(__uClibc_main.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(sigaction.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(__syscall_fcntl.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(_exit.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(clock_getres.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(getdtablesize.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(getegid.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(geteuid.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(getgid.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(getpagesize.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(getrlimit.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(getuid.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(ioctl.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(lseek.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(mmap.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(munmap.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(sbrk.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(sigprocmask.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(write.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(closedir.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(opendir.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(readdir.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(__h_errno_location.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(parse_config.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(_locale_init.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(__locale_mbrtowc_l.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(wcrtomb.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(mbsrtowcs.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(wcsrtombs.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(_wchar_utf8sntowcs.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(mbsnrtowcs.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(wcsnrtombs.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(fclose.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(fopen.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(_WRITE.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(_fopen.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(_fwrite.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(_trans2w.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(_load_inttype.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(_store_inttype.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(_uintmaxtostr.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(_fpmaxtostr.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(fgetc.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(fgets.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(fflush_unlocked.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(fgetc_unlocked.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(fgets_unlocked.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(memchr.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(memrchr.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(strchrnul.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(strrchr.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(calloc.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(realloc.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(libc-tls.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(dl-support.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(brk.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(fstat.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(mremap.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(xstatconv.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(getdents64.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(_wchar_wcsntoutf8s.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(fseeko.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(fseeko64.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(_READ.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(_adjust_pos.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(_rfill.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(_trans2r.os)
+ .text.unlikely
+                0x0000000000400140        0x0 libc.a(sigjmp.os)
+ .text.unlikely
+                0x0000000000400140        0x0 crtend.o
+ *(.text.exit .text.exit.*)
+ *(.text.startup .text.startup.*)
+ .text.startup  0x0000000000400140      0x2e9 spec.o
+                0x0000000000400140                main
+ *(.text.hot .text.hot.*)
+ *(.text .stub .text.* .gnu.linkonce.t.*)
+ .text          0x0000000000400429       0x2a crt1.o
+                0x0000000000400429                _start
+ .text          0x0000000000400453        0x0 crti.o
+ .text          0x0000000000400453      0x102 crtbeginT.o
+ *fill*         0x0000000000400555        0xb 
+ .text          0x0000000000400560     0x1c7c blocksort.o
+                0x0000000000402020                BZ2_blockSort
+ *fill*         0x00000000004021dc        0x4 
+ .text          0x00000000004021e0      0x8a3 bzip2.o
+                0x0000000000402410                compressStream
+                0x0000000000402790                uncompressStream
+ *fill*         0x0000000000402a83        0xd 
+ .text          0x0000000000402a90     0x28ef bzlib.o
+                0x0000000000403070                BZ2_bz__AssertH__fail
+                0x00000000004030c0                BZ2_bzCompressInit
+                0x0000000000403310                BZ2_bzCompress
+                0x00000000004034a0                BZ2_bzCompressEnd
+                0x0000000000403520                BZ2_bzDecompressInit
+                0x0000000000403640                BZ2_indexIntoF
+                0x0000000000403670                BZ2_bzDecompress
+                0x00000000004043a0                BZ2_bzDecompressEnd
+                0x0000000000404430                BZ2_bzWriteOpen
+                0x00000000004045b0                BZ2_bzWrite
+                0x0000000000404730                BZ2_bzWriteClose64
+                0x0000000000404940                BZ2_bzWriteClose
+                0x0000000000404960                BZ2_bzReadOpen
+                0x0000000000404c60                BZ2_bzReadClose
+                0x0000000000404cf0                BZ2_bzRead
+                0x0000000000404f40                BZ2_bzReadGetUnused
+                0x0000000000404fd0                BZ2_bzBuffToBuffCompress
+                0x0000000000405120                BZ2_bzBuffToBuffDecompress
+                0x0000000000405230                BZ2_bzlibVersion
+                0x0000000000405240                BZ2_bzopen
+                0x0000000000405250                BZ2_bzdopen
+                0x0000000000405260                BZ2_bzread
+                0x00000000004052a0                BZ2_bzwrite
+                0x00000000004052d0                BZ2_bzflush
+                0x00000000004052e0                BZ2_bzclose
+                0x0000000000405360                BZ2_bzerror
+ *fill*         0x000000000040537f        0x1 
+ .text          0x0000000000405380     0x22f6 compress.o
+                0x0000000000405460                BZ2_bsInitWrite
+                0x0000000000405480                BZ2_compressBlock
+ .text          0x0000000000407676        0x0 crctable.o
+ *fill*         0x0000000000407676        0xa 
+ .text          0x0000000000407680     0x277a decompress.o
+                0x0000000000407680                BZ2_decompress
+ *fill*         0x0000000000409dfa        0x6 
+ .text          0x0000000000409e00      0x61c huffman.o
+                0x0000000000409e00                BZ2_hbMakeCodeLengths
+                0x000000000040a280                BZ2_hbAssignCodes
+                0x000000000040a2d0                BZ2_hbCreateDecodeTables
+ .text          0x000000000040a41c        0x0 randtable.o
+ *fill*         0x000000000040a41c        0x4 
+ .text          0x000000000040a420      0x9a3 spec.o
+                0x000000000040a420                ran
+                0x000000000040a490                spec_init
+                0x000000000040a530                spec_random_load
+                0x000000000040a660                spec_load
+                0x000000000040a7b0                spec_read
+                0x000000000040a8a0                spec_fread
+                0x000000000040a9c0                spec_getc
+                0x000000000040aa70                spec_ungetc
+                0x000000000040ab40                spec_rewind
+                0x000000000040ab60                spec_reset
+                0x000000000040aba0                spec_write
+                0x000000000040ac40                spec_fwrite
+                0x000000000040acf0                spec_putc
+                0x000000000040ad70                spec_initbufs
+                0x000000000040ada0                spec_compress
+                0x000000000040adb0                spec_uncompress
+                0x000000000040adc0                debug_time
+ .text          0x000000000040adc3       0x68 libc.a(close.os)
+                0x000000000040adc3                __close_nocancel
+                0x000000000040ade6                __close_nocancel_no_status
+                0x000000000040adf1                __GI_close
+                0x000000000040adf1                close
+ .text          0x000000000040ae2b       0xf9 libc.a(open.os)
+                0x000000000040ae2b                __open_nocancel
+                0x000000000040ae50                __open2_nocancel
+                0x000000000040ae73                __GI_open
+                0x000000000040ae73                open
+ .text          0x000000000040af24       0x70 libc.a(read.os)
+                0x000000000040af24                __read_nocancel
+                0x000000000040af44                __GI_read
+                0x000000000040af44                read
+ .text          0x000000000040af94        0x8 libc.a(__ctype_b_loc.os)
+                0x000000000040af94                __GI___ctype_b_loc
+                0x000000000040af94                __ctype_b_loc
+ .text          0x000000000040af9c        0x0 libc.a(errno.os)
+ .text          0x000000000040af9c       0x11 libc.a(__errno_location.os)
+                0x000000000040af9c                __errno_location
+ .text          0x000000000040afad       0x19 libc.a(__curlocale.os)
+                0x000000000040afad                __curlocale
+                0x000000000040afad                __GI___curlocale
+                0x000000000040afb8                __GI___curlocale_set
+                0x000000000040afb8                __curlocale_set
+ .text          0x000000000040afc6       0x36 libc.a(perror.os)
+                0x000000000040afc6                perror
+                0x000000000040afc6                __GI_perror
+ .text          0x000000000040affc       0xe5 libc.a(puts.os)
+                0x000000000040affc                puts
+ .text          0x000000000040b0e1       0xa1 libc.a(printf.os)
+                0x000000000040b0e1                printf
+                0x000000000040b0e1                __GI_printf
+ .text          0x000000000040b182       0x8f libc.a(fprintf.os)
+                0x000000000040b182                fprintf
+                0x000000000040b182                __GI_fprintf
+ .text          0x000000000040b211      0x12a libc.a(_stdio.os)
+                0x000000000040b211                _stdio_term
+                0x000000000040b2fc                _stdio_init
+ .text          0x000000000040b33b       0x24 libc.a(_wcommit.os)
+                0x000000000040b33b                __stdio_wcommit
+ .text          0x000000000040b35f       0x32 libc.a(_cs_funcs.os)
+                0x000000000040b35f                _cs_read
+                0x000000000040b366                _cs_write
+                0x000000000040b36d                _cs_seek
+                0x000000000040b38a                _cs_close
+ .text          0x000000000040b391      0x103 libc.a(vfprintf.os)
+                0x000000000040b391                __GI_vfprintf
+                0x000000000040b391                vfprintf
+ .text          0x000000000040b494      0x748 libc.a(_vfprintf_internal.os)
+                0x000000000040b54c                _vfprintf_internal
+ .text          0x000000000040bbdc       0xd1 libc.a(_ppfs_init.os)
+                0x000000000040bbdc                _ppfs_init
+ .text          0x000000000040bcad       0x42 libc.a(_ppfs_prepargs.os)
+                0x000000000040bcad                _ppfs_prepargs
+ .text          0x000000000040bcef      0x1d0 libc.a(_ppfs_setargs.os)
+                0x000000000040bcef                _ppfs_setargs
+ .text          0x000000000040bebf      0x471 libc.a(_ppfs_parsespec.os)
+                0x000000000040bebf                _ppfs_parsespec
+ .text          0x000000000040c330       0xc1 libc.a(fputc.os)
+                0x000000000040c330                __GI_fputc
+                0x000000000040c330                putc
+                0x000000000040c330                fputc
+ .text          0x000000000040c3f1       0xcc libc.a(fwrite.os)
+                0x000000000040c3f1                fwrite
+                0x000000000040c3f1                __GI_fwrite
+ .text          0x000000000040c4bd       0xb3 libc.a(fputc_unlocked.os)
+                0x000000000040c4bd                putc_unlocked
+                0x000000000040c4bd                __GI___fputc_unlocked
+                0x000000000040c4bd                fputc_unlocked
+                0x000000000040c4bd                __fputc_unlocked
+ .text          0x000000000040c570       0x38 libc.a(fputs_unlocked.os)
+                0x000000000040c570                __GI_fputs_unlocked
+                0x000000000040c570                fputs_unlocked
+ .text          0x000000000040c5a8       0x83 libc.a(fwrite_unlocked.os)
+                0x000000000040c5a8                __GI_fwrite_unlocked
+                0x000000000040c5a8                fwrite_unlocked
+ *fill*         0x000000000040c62b        0x5 
+ .text          0x000000000040c630       0x66 libc.a(memcpy.os)
+                0x000000000040c630                memcpy
+                0x000000000040c630                __GI_memcpy
+ *fill*         0x000000000040c696        0xa 
+ .text          0x000000000040c6a0       0xd2 libc.a(memset.os)
+                0x000000000040c6a0                __GI_memset
+                0x000000000040c6a0                memset
+ *fill*         0x000000000040c772        0xe 
+ .text          0x000000000040c780       0xe1 libc.a(strlen.os)
+                0x000000000040c780                strlen
+                0x000000000040c780                __GI_strlen
+ .text          0x000000000040c861       0xce libc.a(strnlen.os)
+                0x000000000040c861                strnlen
+                0x000000000040c861                __GI_strnlen
+ .text          0x000000000040c92f        0xe libc.a(__glibc_strerror_r.os)
+                0x000000000040c92f                __GI___glibc_strerror_r
+                0x000000000040c92f                __glibc_strerror_r
+                0x000000000040c92f                strerror_r
+ .text          0x000000000040c93d       0xcd libc.a(__xpg_strerror_r.os)
+                0x000000000040c93d                __xpg_strerror_r
+                0x000000000040c93d                __GI___xpg_strerror_r
+ .text          0x000000000040ca0a        0x0 libc.a(_string_syserrmsgs.os)
+ .text          0x000000000040ca0a       0x1b libc.a(strerror.os)
+                0x000000000040ca0a                strerror
+                0x000000000040ca0a                __GI_strerror
+ .text          0x000000000040ca25       0x1b libc.a(isatty.os)
+                0x000000000040ca25                isatty
+                0x000000000040ca25                __GI_isatty
+ .text          0x000000000040ca40       0x75 libc.a(tcgetattr.os)
+                0x000000000040ca40                __GI_tcgetattr
+                0x000000000040ca40                tcgetattr
+ .text          0x000000000040cab5      0x44d libc.a(free.os)
+                0x000000000040cb47                __malloc_consolidate
+                0x000000000040ccd9                malloc_trim
+                0x000000000040cd39                free
+ .text          0x000000000040cf02      0x8c4 libc.a(malloc.os)
+                0x000000000040cf69                malloc
+ .text          0x000000000040d7c6       0xd3 libc.a(abort.os)
+                0x000000000040d7c6                abort
+                0x000000000040d7c6                __GI_abort
+ .text          0x000000000040d899        0xf libc.a(atoi.os)
+                0x000000000040d899                atoi
+                0x000000000040d899                __GI_atoi
+ .text          0x000000000040d8a8        0xa libc.a(strtol.os)
+                0x000000000040d8a8                strtoimax
+                0x000000000040d8a8                strtoll
+                0x000000000040d8a8                strtoq
+                0x000000000040d8a8                strtol
+                0x000000000040d8a8                __GI_strtoll
+                0x000000000040d8a8                __GI_strtol
+ .text          0x000000000040d8b2       0x39 libc.a(_stdlib_strto_l.os)
+                0x000000000040d8b2                _stdlib_strto_l
+ .text          0x000000000040d8eb      0x154 libc.a(_stdlib_strto_l_l.os)
+                0x000000000040d8eb                _stdlib_strto_l_l
+ .text          0x000000000040da3f       0x6a libc.a(exit.os)
+                0x000000000040da3f                __GI_exit
+                0x000000000040da3f                exit
+ .text          0x000000000040daa9      0x5d9 libc.a(sysconf.os)
+                0x000000000040dba0                sysconf
+                0x000000000040dba0                __GI_sysconf
+ *fill*         0x000000000040e082        0xe 
+ .text          0x000000000040e090       0xb9 libc.a(libc-cancellation.os)
+                0x000000000040e090                __libc_enable_asynccancel
+                0x000000000040e0f0                __libc_disable_asynccancel
+ *fill*         0x000000000040e149        0x7 
+ .text          0x000000000040e150       0x4c libc.a(libc-lowlevellock.os)
+                0x000000000040e150                __lll_lock_wait_private
+                0x000000000040e180                __lll_unlock_wake_private
+ .text          0x000000000040e19c        0x0 libc.a(libc_multiple_threads.os)
+ .text          0x000000000040e19c       0x65 libc.a(raise.os)
+                0x000000000040e19c                __GI_raise
+                0x000000000040e19c                raise
+ .text          0x000000000040e201      0x3d4 libc.a(__uClibc_main.os)
+                0x000000000040e235                __pthread_mutex_lock
+                0x000000000040e235                __pthread_mutex_unlock
+                0x000000000040e235                __pthread_mutex_trylock
+                0x000000000040e238                __pthread_mutex_init
+                0x000000000040e23b                _pthread_cleanup_push_defer
+                0x000000000040e243                _pthread_cleanup_pop_restore
+                0x000000000040e254                __uClibc_init
+                0x000000000040e294                __uClibc_fini
+                0x000000000040e2e4                __uClibc_main
+ .text          0x000000000040e5d5       0x75 libc.a(sigaction.os)
+                0x000000000040e5df                __libc_sigaction
+                0x000000000040e5df                __GI_sigaction
+                0x000000000040e5df                sigaction
+ .text          0x000000000040e64a        0x8 libc.a(bsd-_setjmp.os)
+                0x000000000040e64a                _setjmp
+ .text          0x000000000040e652       0x98 libc.a(__syscall_fcntl.os)
+                0x000000000040e652                __fcntl_nocancel
+                0x000000000040e678                __GI_fcntl
+                0x000000000040e678                fcntl
+ .text          0x000000000040e6ea       0x2a libc.a(_exit.os)
+                0x000000000040e6ea                _Exit
+                0x000000000040e6ea                __GI__exit
+                0x000000000040e6ea                _exit
+ .text          0x000000000040e714       0x23 libc.a(clock_getres.os)
+                0x000000000040e714                __GI_clock_getres
+                0x000000000040e714                clock_getres
+ .text          0x000000000040e737       0x24 libc.a(getdtablesize.os)
+                0x000000000040e737                getdtablesize
+                0x000000000040e737                __GI_getdtablesize
+ .text          0x000000000040e75b        0x8 libc.a(getegid.os)
+                0x000000000040e75b                getegid
+                0x000000000040e75b                __GI_getegid
+ .text          0x000000000040e763        0x8 libc.a(geteuid.os)
+                0x000000000040e763                geteuid
+                0x000000000040e763                __GI_geteuid
+ .text          0x000000000040e76b        0x8 libc.a(getgid.os)
+                0x000000000040e76b                getgid
+                0x000000000040e76b                __GI_getgid
+ .text          0x000000000040e773       0x13 libc.a(getpagesize.os)
+                0x000000000040e773                __GI_getpagesize
+                0x000000000040e773                getpagesize
+                0x000000000040e773                __getpagesize
+ .text          0x000000000040e786       0x22 libc.a(getrlimit.os)
+                0x000000000040e786                getrlimit
+                0x000000000040e786                getrlimit64
+                0x000000000040e786                __GI_getrlimit
+ .text          0x000000000040e7a8        0x8 libc.a(getuid.os)
+                0x000000000040e7a8                getuid
+                0x000000000040e7a8                __GI_getuid
+ .text          0x000000000040e7b0       0xaa libc.a(ioctl.os)
+                0x000000000040e7b0                ioctl
+                0x000000000040e7b0                __GI_ioctl
+ .text          0x000000000040e85a       0x76 libc.a(lseek.os)
+                0x000000000040e85a                __lseek_nocancel
+                0x000000000040e85a                __lseek64_nocancel
+                0x000000000040e880                __GI_lseek64
+                0x000000000040e880                lseek
+                0x000000000040e880                __GI_lseek
+                0x000000000040e880                lseek64
+ .text          0x000000000040e8d0       0x29 libc.a(mmap.os)
+                0x000000000040e8d0                mmap
+                0x000000000040e8d0                __GI_mmap
+ .text          0x000000000040e8f9       0x20 libc.a(munmap.os)
+                0x000000000040e8f9                munmap
+                0x000000000040e8f9                __GI_munmap
+ .text          0x000000000040e919       0x43 libc.a(sbrk.os)
+                0x000000000040e919                __GI_sbrk
+                0x000000000040e919                sbrk
+ .text          0x000000000040e95c       0x59 libc.a(sigprocmask.os)
+                0x000000000040e95c                __GI_sigprocmask
+                0x000000000040e95c                sigprocmask
+ .text          0x000000000040e9b5       0x73 libc.a(write.os)
+                0x000000000040e9b5                __write_nocancel
+                0x000000000040e9d8                __GI_write
+                0x000000000040e9d8                write
+ .text          0x000000000040ea28       0x77 libc.a(closedir.os)
+                0x000000000040ea28                __GI_closedir
+                0x000000000040ea28                closedir
+ .text          0x000000000040ea9f      0x15f libc.a(opendir.os)
+                0x000000000040eb27                fdopendir
+                0x000000000040eb9e                __GI_opendir
+                0x000000000040eb9e                opendir
+ .text          0x000000000040ebfe       0x98 libc.a(readdir.os)
+                0x000000000040ebfe                __GI_readdir
+                0x000000000040ebfe                readdir
+                0x000000000040ebfe                readdir64
+                0x000000000040ebfe                __GI_readdir64
+ .text          0x000000000040ec96       0x11 libc.a(__h_errno_location.os)
+                0x000000000040ec96                __h_errno_location
+ .text          0x000000000040eca7      0x30e libc.a(parse_config.os)
+                0x000000000040eca7                __GI_config_open
+                0x000000000040ecdf                __GI_config_close
+                0x000000000040ed09                __GI_config_read
+ .text          0x000000000040efb5      0x80c libc.a(_locale_init.os)
+                0x000000000040efb5                _locale_set_l
+                0x000000000040f6a4                _locale_init_l
+                0x000000000040f7b2                _locale_init
+ .text          0x000000000040f7c1       0xa2 libc.a(__locale_mbrtowc_l.os)
+                0x000000000040f7c1                __locale_mbrtowc_l
+ .text          0x000000000040f863       0x46 libc.a(wcrtomb.os)
+                0x000000000040f863                __GI_wcrtomb
+                0x000000000040f863                wcrtomb
+ .text          0x000000000040f8a9       0x1a libc.a(mbsrtowcs.os)
+                0x000000000040f8a9                __GI_mbsrtowcs
+                0x000000000040f8a9                mbsrtowcs
+ .text          0x000000000040f8c3        0xf libc.a(wcsrtombs.os)
+                0x000000000040f8c3                __GI_wcsrtombs
+                0x000000000040f8c3                wcsrtombs
+ .text          0x000000000040f8d2      0x19f libc.a(_wchar_utf8sntowcs.os)
+                0x000000000040f8d2                _wchar_utf8sntowcs
+ .text          0x000000000040fa71      0x17b libc.a(mbsnrtowcs.os)
+                0x000000000040fa71                mbsnrtowcs
+                0x000000000040fa71                __GI_mbsnrtowcs
+ .text          0x000000000040fbec      0x17b libc.a(wcsnrtombs.os)
+                0x000000000040fbec                __GI_wcsnrtombs
+                0x000000000040fbec                wcsnrtombs
+ .text          0x000000000040fd67      0x27c libc.a(fclose.os)
+                0x000000000040fd67                __GI_fclose
+                0x000000000040fd67                fclose
+ .text          0x000000000040ffe3        0xa libc.a(fopen.os)
+                0x000000000040ffe3                __GI_fopen
+                0x000000000040ffe3                fopen
+ .text          0x000000000040ffed       0xbb libc.a(_WRITE.os)
+                0x000000000040ffed                __stdio_WRITE
+ .text          0x00000000004100a8      0x375 libc.a(_fopen.os)
+                0x00000000004100a8                _stdio_fopen
+ .text          0x000000000041041d       0xfd libc.a(_fwrite.os)
+                0x000000000041041d                __stdio_fwrite
+ .text          0x000000000041051a       0x80 libc.a(_trans2w.os)
+                0x000000000041051a                __stdio_trans2w_o
+ .text          0x000000000041059a       0x5e libc.a(_load_inttype.os)
+                0x000000000041059a                _load_inttype
+ .text          0x00000000004105f8       0x2e libc.a(_store_inttype.os)
+                0x00000000004105f8                _store_inttype
+ .text          0x0000000000410626      0x17e libc.a(_uintmaxtostr.os)
+                0x0000000000410626                _uintmaxtostr
+ .text          0x00000000004107a4      0x797 libc.a(_fpmaxtostr.os)
+                0x00000000004107a4                _fpmaxtostr
+ .text          0x0000000000410f3b       0xbb libc.a(fgetc.os)
+                0x0000000000410f3b                __GI_fgetc
+                0x0000000000410f3b                getc
+                0x0000000000410f3b                fgetc
+ .text          0x0000000000410ff6       0xca libc.a(fgets.os)
+                0x0000000000410ff6                fgets
+                0x0000000000410ff6                __GI_fgets
+ .text          0x00000000004110c0      0x479 libc.a(fflush_unlocked.os)
+                0x00000000004110c0                _stdio_openlist_dec_use
+                0x0000000000411222                fflush_unlocked
+                0x0000000000411222                __GI_fflush_unlocked
+ .text          0x0000000000411539       0xd2 libc.a(fgetc_unlocked.os)
+                0x0000000000411539                getc_unlocked
+                0x0000000000411539                __GI_fgetc_unlocked
+                0x0000000000411539                __fgetc_unlocked
+                0x0000000000411539                __GI_getc_unlocked
+                0x0000000000411539                __GI___fgetc_unlocked
+                0x0000000000411539                fgetc_unlocked
+ .text          0x000000000041160b       0x54 libc.a(fgets_unlocked.os)
+                0x000000000041160b                __GI_fgets_unlocked
+                0x000000000041160b                fgets_unlocked
+ *fill*         0x000000000041165f        0x1 
+ .text          0x0000000000411660       0x5a libc.a(mempcpy.os)
+                0x0000000000411660                mempcpy
+                0x0000000000411660                __GI_mempcpy
+ *fill*         0x00000000004116ba        0x6 
+ .text          0x00000000004116c0      0x1a1 libc.a(strchr.os)
+                0x00000000004116c0                __GI_strchr
+                0x00000000004116c0                index
+                0x00000000004116c0                strchr
+ .text          0x0000000000411861       0x21 libc.a(strcmp.os)
+                0x0000000000411861                __GI_strcmp
+                0x0000000000411861                strcmp
+ *fill*         0x0000000000411882        0x6 
+ .text          0x0000000000411888       0x87 libc.a(strcspn.os)
+                0x0000000000411888                strcspn
+                0x0000000000411888                __GI_strcspn
+ *fill*         0x000000000041190f        0x1 
+ .text          0x0000000000411910       0x87 libc.a(strspn.os)
+                0x0000000000411910                __GI_strspn
+                0x0000000000411910                strspn
+ .text          0x0000000000411997       0xe2 libc.a(memchr.os)
+                0x0000000000411997                __GI_memchr
+                0x0000000000411997                memchr
+ .text          0x0000000000411a79       0xe0 libc.a(memrchr.os)
+                0x0000000000411a79                memrchr
+                0x0000000000411a79                __GI_memrchr
+ .text          0x0000000000411b59      0x121 libc.a(strchrnul.os)
+                0x0000000000411b59                __GI_strchrnul
+                0x0000000000411b59                strchrnul
+ .text          0x0000000000411c7a       0x34 libc.a(strrchr.os)
+                0x0000000000411c7a                strrchr
+                0x0000000000411c7a                rindex
+                0x0000000000411c7a                __GI_strrchr
+ .text          0x0000000000411cae      0x107 libc.a(calloc.os)
+                0x0000000000411cae                calloc
+ .text          0x0000000000411db5      0x330 libc.a(realloc.os)
+                0x0000000000411db5                realloc
+ .text          0x00000000004120e5      0x299 libc.a(libc-tls.os)
+                0x00000000004120e5                __libc_setup_tls
+                0x0000000000412301                _dl_tls_setup
+                0x000000000041236f                __pthread_initialize_minimal
+ .text          0x000000000041237e       0x85 libc.a(dl-support.os)
+                0x000000000041237e                _dl_nothread_init_static_tls
+                0x00000000004123cc                _dl_aux_init
+ .text          0x0000000000412403        0x0 libc.a(locale_data.os)
+ .text          0x0000000000412403       0x2c libc.a(brk.os)
+                0x0000000000412403                __GI_brk
+                0x0000000000412403                brk
+ .text          0x000000000041242f       0x2d libc.a(setjmp.os)
+                0x000000000041242f                __sigsetjmp
+                0x000000000041242f                __GI___sigsetjmp
+ .text          0x000000000041245c       0x4c libc.a(fstat.os)
+                0x000000000041245c                fstat64
+                0x000000000041245c                fstat
+                0x000000000041245c                __GI_fstat
+                0x000000000041245c                __GI_fstat64
+ .text          0x00000000004124a8       0x23 libc.a(mremap.os)
+                0x00000000004124a8                mremap
+                0x00000000004124a8                __GI_mremap
+ .text          0x00000000004124cb      0x1bf libc.a(xstatconv.os)
+                0x00000000004124cb                __xstat_conv
+                0x0000000000412560                __xstat32_conv
+                0x00000000004125f5                __xstat64_conv
+ .text          0x000000000041268a      0x11e libc.a(getdents64.os)
+                0x000000000041268a                __getdents
+                0x000000000041268a                __getdents64
+ .text          0x00000000004127a8        0x0 libc.a(__C_ctype_b.os)
+ .text          0x00000000004127a8        0x0 libc.a(__C_ctype_tolower.os)
+ .text          0x00000000004127a8        0x0 libc.a(__C_ctype_toupper.os)
+ .text          0x00000000004127a8        0x0 libc.a(h_errno.os)
+ .text          0x00000000004127a8      0x10d libc.a(_wchar_wcsntoutf8s.os)
+                0x00000000004127a8                _wchar_wcsntoutf8s
+ .text          0x00000000004128b5        0x5 libc.a(fseeko.os)
+                0x00000000004128b5                __GI_fseek
+                0x00000000004128b5                fseeko
+                0x00000000004128b5                fseek
+ .text          0x00000000004128ba      0x153 libc.a(fseeko64.os)
+                0x00000000004128ba                __GI_fseeko64
+                0x00000000004128ba                fseeko64
+ .text          0x0000000000412a0d       0x55 libc.a(_READ.os)
+                0x0000000000412a0d                __stdio_READ
+ .text          0x0000000000412a62       0x7b libc.a(_adjust_pos.os)
+                0x0000000000412a62                __stdio_adjust_position
+ .text          0x0000000000412add       0x25 libc.a(_rfill.os)
+                0x0000000000412add                __stdio_rfill
+ .text          0x0000000000412b02       0x56 libc.a(_trans2r.os)
+                0x0000000000412b02                __stdio_trans2r_o
+ .text          0x0000000000412b58       0x26 libc.a(sigjmp.os)
+                0x0000000000412b58                __sigjmp_save
+ .text          0x0000000000412b7e       0x20 crtend.o
+ .text          0x0000000000412b9e        0x0 crtn.o
+ *(.gnu.warning)
+
+.fini           0x0000000000412b9e        0xe
+ *(SORT(.fini))
+ .fini          0x0000000000412b9e        0x4 crti.o
+                0x0000000000412b9e                _fini
+ .fini          0x0000000000412ba2        0x5 crtbeginT.o
+ .fini          0x0000000000412ba7        0x5 crtn.o
+                0x0000000000412bac                PROVIDE (__etext, .)
+                0x0000000000412bac                PROVIDE (_etext, .)
+                0x0000000000412bac                PROVIDE (etext, .)
+
+.rodata         0x0000000000412bc0     0x92c0
+ *(.rodata .rodata.* .gnu.linkonce.r.*)
+ .rodata.str1.1
+                0x0000000000412bc0       0x4b blocksort.o
+ *fill*         0x0000000000412c0b        0x5 
+ .rodata.str1.8
+                0x0000000000412c10      0x10e blocksort.o
+ *fill*         0x0000000000412d1e        0x2 
+ .rodata        0x0000000000412d20       0x38 blocksort.o
+ .rodata.str1.8
+                0x0000000000412d58      0x415 bzip2.o
+ .rodata.str1.1
+                0x000000000041316d       0x53 bzip2.o
+                                         0x6d (size before relaxing)
+ .rodata        0x00000000004131c0       0x38 bzip2.o
+ .rodata.cst8   0x00000000004131f8       0x20 bzip2.o
+ .rodata.str1.1
+                0x0000000000413218       0xa1 bzlib.o
+                                         0xa3 (size before relaxing)
+ *fill*         0x00000000004132b9        0x7 
+ .rodata.str1.8
+                0x00000000004132c0      0x56f bzlib.o
+ *fill*         0x000000000041382f       0x11 
+ .rodata        0x0000000000413840       0x80 bzlib.o
+ .rodata.str1.8
+                0x00000000004138c0      0x114 compress.o
+ .rodata.str1.1
+                0x00000000004139d4       0x49 compress.o
+ .rodata.cst8   0x0000000000413a1d        0x8 compress.o
+ .rodata.str1.1
+                0x0000000000413a1d       0x1b decompress.o
+ .rodata        0x0000000000413a38      0x148 decompress.o
+ .rodata.str1.1
+                0x0000000000413b80      0x17b spec.o
+                                        0x183 (size before relaxing)
+ *fill*         0x0000000000413cfb        0x5 
+ .rodata.str1.8
+                0x0000000000413d00      0x23d spec.o
+ *fill*         0x0000000000413f3d        0x3 
+ .rodata.cst4   0x0000000000413f40        0x4 spec.o
+ *fill*         0x0000000000413f44        0x4 
+ .rodata.cst8   0x0000000000413f48        0x8 spec.o
+                                         0x10 (size before relaxing)
+ .rodata.str1.1
+                0x0000000000413f50        0xb libc.a(perror.os)
+ .rodata.str1.1
+                0x0000000000413f5b        0xd libc.a(_vfprintf_internal.os)
+ .rodata        0x0000000000413f68       0x13 libc.a(_vfprintf_internal.os)
+ *fill*         0x0000000000413f7b        0x5 
+ .rodata.str1.16
+                0x0000000000413f80       0x21 libc.a(_ppfs_init.os)
+ *fill*         0x0000000000413fa1        0xf 
+ .rodata.cst16  0x0000000000413fb0       0x20 libc.a(_ppfs_parsespec.os)
+ .rodata        0x0000000000413fd0       0x58 libc.a(_ppfs_parsespec.os)
+ *fill*         0x0000000000414028        0x8 
+ .rodata.str1.16
+                0x0000000000414030       0x20 libc.a(_ppfs_parsespec.os)
+                                         0x15 (size before relaxing)
+ .rodata.str1.8
+                0x0000000000414050        0x8 libc.a(_ppfs_parsespec.os)
+ .rodata        0x0000000000414058        0xe libc.a(__xpg_strerror_r.os)
+ *fill*         0x0000000000414066       0x1a 
+ .rodata        0x0000000000414080      0xb5a libc.a(_string_syserrmsgs.os)
+                0x0000000000414080                _string_syserrmsgs
+ .rodata.str1.1
+                0x0000000000414bda       0x3b libc.a(sysconf.os)
+                                         0x3d (size before relaxing)
+ *fill*         0x0000000000414c15        0x3 
+ .rodata        0x0000000000414c18      0x3c8 libc.a(sysconf.os)
+ .rodata.str1.1
+                0x0000000000414fe0        0xa libc.a(__uClibc_main.os)
+                                          0xb (size before relaxing)
+ .rodata.str1.1
+                0x0000000000414fea        0x2 libc.a(parse_config.os)
+ .rodata.str1.1
+                0x0000000000414fea       0x1a libc.a(_locale_init.os)
+ *fill*         0x0000000000415004        0xc 
+ .rodata        0x0000000000415010       0x20 libc.a(_locale_init.os)
+ *fill*         0x0000000000415030       0x10 
+ .rodata        0x0000000000415040      0x1e4 libc.a(_fpmaxtostr.os)
+ .rodata.cst4   0x0000000000415224       0x1c libc.a(_fpmaxtostr.os)
+ .rodata        0x0000000000415240     0x6330 libc.a(locale_data.os)
+ *fill*         0x000000000041b570       0x10 
+ .rodata        0x000000000041b580      0x300 libc.a(__C_ctype_b.os)
+ .rodata        0x000000000041b880      0x300 libc.a(__C_ctype_tolower.os)
+ .rodata        0x000000000041bb80      0x300 libc.a(__C_ctype_toupper.os)
+
+.rodata1
+ *(.rodata1)
+
+.eh_frame_hdr
+ *(.eh_frame_hdr)
+
+.eh_frame       0x000000000041be80     0x3024
+ *(.eh_frame)
+ .eh_frame      0x000000000041be80        0x0 crtbeginT.o
+ .eh_frame      0x000000000041be80      0x188 blocksort.o
+                                        0x180 (size before relaxing)
+ .eh_frame      0x000000000041c008      0x198 bzip2.o
+                                        0x190 (size before relaxing)
+ .eh_frame      0x000000000041c1a0      0x708 bzlib.o
+                                        0x6d0 (size before relaxing)
+ .eh_frame      0x000000000041c8a8       0xa8 compress.o
+                                         0xb8 (size before relaxing)
+ .eh_frame      0x000000000041c950       0x60 decompress.o
+                                         0x78 (size before relaxing)
+ .eh_frame      0x000000000041c9b0       0x98 huffman.o
+                                         0xa8 (size before relaxing)
+ .eh_frame      0x000000000041ca48      0x358 spec.o
+                                        0x338 (size before relaxing)
+ .eh_frame      0x000000000041cda0       0x60 libc.a(close.os)
+                                         0x70 (size before relaxing)
+ .eh_frame      0x000000000041ce00       0x60 libc.a(open.os)
+                                         0x70 (size before relaxing)
+ .eh_frame      0x000000000041ce60       0x58 libc.a(read.os)
+                                         0x68 (size before relaxing)
+ .eh_frame      0x000000000041ceb8       0x18 libc.a(__ctype_b_loc.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041ced0       0x18 libc.a(__errno_location.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041cee8       0x30 libc.a(__curlocale.os)
+                                         0x40 (size before relaxing)
+ .eh_frame      0x000000000041cf18       0x18 libc.a(perror.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041cf30       0xd8 libc.a(puts.os)
+                                        0x108 (size before relaxing)
+ .eh_frame      0x000000000041d008       0x20 libc.a(printf.os)
+                                         0x38 (size before relaxing)
+ .eh_frame      0x000000000041d028       0x20 libc.a(fprintf.os)
+                                         0x38 (size before relaxing)
+ .eh_frame      0x000000000041d048       0x50 libc.a(_stdio.os)
+                                         0x68 (size before relaxing)
+ .eh_frame      0x000000000041d098       0x20 libc.a(_wcommit.os)
+                                         0x38 (size before relaxing)
+ .eh_frame      0x000000000041d0b8       0x68 libc.a(_cs_funcs.os)
+                                         0x70 (size before relaxing)
+ .eh_frame      0x000000000041d120       0xc0 libc.a(vfprintf.os)
+                                        0x108 (size before relaxing)
+ .eh_frame      0x000000000041d1e0       0xd8 libc.a(_vfprintf_internal.os)
+                                         0xe8 (size before relaxing)
+ .eh_frame      0x000000000041d2b8       0x30 libc.a(_ppfs_init.os)
+                                         0x48 (size before relaxing)
+ .eh_frame      0x000000000041d2e8       0x28 libc.a(_ppfs_prepargs.os)
+                                         0x40 (size before relaxing)
+ .eh_frame      0x000000000041d310       0x18 libc.a(_ppfs_setargs.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041d328       0x48 libc.a(_ppfs_parsespec.os)
+                                         0x60 (size before relaxing)
+ .eh_frame      0x000000000041d370       0xb0 libc.a(fputc.os)
+                                         0xf8 (size before relaxing)
+ .eh_frame      0x000000000041d420       0xc0 libc.a(fwrite.os)
+                                        0x108 (size before relaxing)
+ .eh_frame      0x000000000041d4e0       0x28 libc.a(fputc_unlocked.os)
+                                         0x40 (size before relaxing)
+ .eh_frame      0x000000000041d508       0x30 libc.a(fputs_unlocked.os)
+                                         0x48 (size before relaxing)
+ .eh_frame      0x000000000041d538       0x38 libc.a(fwrite_unlocked.os)
+                                         0x50 (size before relaxing)
+ .eh_frame      0x000000000041d570       0x18 libc.a(strnlen.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041d588       0x20 libc.a(__glibc_strerror_r.os)
+                                         0x38 (size before relaxing)
+ .eh_frame      0x000000000041d5a8       0x38 libc.a(__xpg_strerror_r.os)
+                                         0x50 (size before relaxing)
+ .eh_frame      0x000000000041d5e0       0x18 libc.a(strerror.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041d5f8       0x18 libc.a(isatty.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041d610       0x30 libc.a(tcgetattr.os)
+                                         0x48 (size before relaxing)
+ .eh_frame      0x000000000041d640       0xb8 libc.a(free.os)
+                                         0xc8 (size before relaxing)
+ .eh_frame      0x000000000041d6f8       0x70 libc.a(malloc.os)
+                                         0x80 (size before relaxing)
+ .eh_frame      0x000000000041d768       0x20 libc.a(abort.os)
+                                         0x38 (size before relaxing)
+ .eh_frame      0x000000000041d788       0x18 libc.a(atoi.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041d7a0       0x18 libc.a(strtol.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041d7b8       0x18 libc.a(_stdlib_strto_l.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041d7d0       0x50 libc.a(_stdlib_strto_l_l.os)
+                                         0x68 (size before relaxing)
+ .eh_frame      0x000000000041d820       0x20 libc.a(exit.os)
+                                         0x38 (size before relaxing)
+ .eh_frame      0x000000000041d840       0x78 libc.a(sysconf.os)
+                                         0x90 (size before relaxing)
+ .eh_frame      0x000000000041d8b8       0x30 libc.a(libc-cancellation.os)
+                                         0x40 (size before relaxing)
+ .eh_frame      0x000000000041d8e8       0x50 libc.a(libc-lowlevellock.os)
+                                         0x60 (size before relaxing)
+ .eh_frame      0x000000000041d938       0x18 libc.a(raise.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041d950      0x110 libc.a(__uClibc_main.os)
+ .eh_frame      0x000000000041da60       0x30 libc.a(sigaction.os)
+                                         0x48 (size before relaxing)
+ .eh_frame      0x000000000041da90       0x48 libc.a(__syscall_fcntl.os)
+                                         0x58 (size before relaxing)
+ .eh_frame      0x000000000041dad8       0x18 libc.a(_exit.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041daf0       0x18 libc.a(clock_getres.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041db08       0x18 libc.a(getdtablesize.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041db20       0x18 libc.a(getegid.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041db38       0x18 libc.a(geteuid.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041db50       0x18 libc.a(getgid.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041db68       0x18 libc.a(getpagesize.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041db80       0x18 libc.a(getrlimit.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041db98       0x18 libc.a(getuid.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041dbb0       0x30 libc.a(ioctl.os)
+                                         0x48 (size before relaxing)
+ .eh_frame      0x000000000041dbe0       0x58 libc.a(lseek.os)
+                                         0x68 (size before relaxing)
+ .eh_frame      0x000000000041dc38       0x18 libc.a(mmap.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041dc50       0x18 libc.a(munmap.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041dc68       0x28 libc.a(sbrk.os)
+                                         0x40 (size before relaxing)
+ .eh_frame      0x000000000041dc90       0x18 libc.a(sigprocmask.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041dca8       0x58 libc.a(write.os)
+                                         0x68 (size before relaxing)
+ .eh_frame      0x000000000041dd00       0x38 libc.a(closedir.os)
+                                         0x50 (size before relaxing)
+ .eh_frame      0x000000000041dd38       0x80 libc.a(opendir.os)
+                                         0x90 (size before relaxing)
+ .eh_frame      0x000000000041ddb8       0x30 libc.a(readdir.os)
+                                         0x48 (size before relaxing)
+ .eh_frame      0x000000000041dde8       0x18 libc.a(__h_errno_location.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041de00       0x90 libc.a(parse_config.os)
+                                         0xa0 (size before relaxing)
+ .eh_frame      0x000000000041de90       0x98 libc.a(_locale_init.os)
+                                         0xa8 (size before relaxing)
+ .eh_frame      0x000000000041df28       0x20 libc.a(__locale_mbrtowc_l.os)
+                                         0x38 (size before relaxing)
+ .eh_frame      0x000000000041df48       0x18 libc.a(wcrtomb.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041df60       0x18 libc.a(mbsrtowcs.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041df78       0x18 libc.a(wcsrtombs.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041df90       0x38 libc.a(_wchar_utf8sntowcs.os)
+                                         0x50 (size before relaxing)
+ .eh_frame      0x000000000041dfc8       0x38 libc.a(mbsnrtowcs.os)
+                                         0x50 (size before relaxing)
+ .eh_frame      0x000000000041e000       0x40 libc.a(wcsnrtombs.os)
+                                         0x58 (size before relaxing)
+ .eh_frame      0x000000000041e040      0x1f0 libc.a(fclose.os)
+                                        0x298 (size before relaxing)
+ .eh_frame      0x000000000041e230       0x18 libc.a(fopen.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041e248       0x40 libc.a(_WRITE.os)
+                                         0x58 (size before relaxing)
+ .eh_frame      0x000000000041e288      0x160 libc.a(_fopen.os)
+                                        0x1d8 (size before relaxing)
+ .eh_frame      0x000000000041e3e8       0x50 libc.a(_fwrite.os)
+                                         0x68 (size before relaxing)
+ .eh_frame      0x000000000041e438       0x20 libc.a(_trans2w.os)
+                                         0x38 (size before relaxing)
+ .eh_frame      0x000000000041e458       0x18 libc.a(_load_inttype.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041e470       0x18 libc.a(_store_inttype.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041e488       0x50 libc.a(_uintmaxtostr.os)
+                                         0x68 (size before relaxing)
+ .eh_frame      0x000000000041e4d8       0x50 libc.a(_fpmaxtostr.os)
+                                         0x68 (size before relaxing)
+ .eh_frame      0x000000000041e528       0xb0 libc.a(fgetc.os)
+                                         0xf8 (size before relaxing)
+ .eh_frame      0x000000000041e5d8       0xb8 libc.a(fgets.os)
+                                        0x100 (size before relaxing)
+ .eh_frame      0x000000000041e690      0x350 libc.a(fflush_unlocked.os)
+                                        0x450 (size before relaxing)
+ .eh_frame      0x000000000041e9e0       0x20 libc.a(fgetc_unlocked.os)
+                                         0x38 (size before relaxing)
+ .eh_frame      0x000000000041ea00       0x38 libc.a(fgets_unlocked.os)
+                                         0x50 (size before relaxing)
+ .eh_frame      0x000000000041ea38       0x18 libc.a(memchr.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041ea50       0x18 libc.a(memrchr.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041ea68       0x28 libc.a(strchrnul.os)
+                                         0x40 (size before relaxing)
+ .eh_frame      0x000000000041ea90       0x38 libc.a(strrchr.os)
+                                         0x50 (size before relaxing)
+ .eh_frame      0x000000000041eac8       0x28 libc.a(calloc.os)
+                                         0x40 (size before relaxing)
+ .eh_frame      0x000000000041eaf0       0x50 libc.a(realloc.os)
+                                         0x68 (size before relaxing)
+ .eh_frame      0x000000000041eb40       0x80 libc.a(libc-tls.os)
+                                         0x90 (size before relaxing)
+ .eh_frame      0x000000000041ebc0       0x38 libc.a(dl-support.os)
+                                         0x48 (size before relaxing)
+ .eh_frame      0x000000000041ebf8       0x18 libc.a(brk.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041ec10       0x20 libc.a(fstat.os)
+                                         0x38 (size before relaxing)
+ .eh_frame      0x000000000041ec30       0x18 libc.a(mremap.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041ec48       0x78 libc.a(xstatconv.os)
+                                         0x90 (size before relaxing)
+ .eh_frame      0x000000000041ecc0       0x30 libc.a(getdents64.os)
+                                         0x48 (size before relaxing)
+ .eh_frame      0x000000000041ecf0       0x30 libc.a(_wchar_wcsntoutf8s.os)
+                                         0x48 (size before relaxing)
+ .eh_frame      0x000000000041ed20       0x18 libc.a(fseeko.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041ed38       0xc8 libc.a(fseeko64.os)
+                                        0x110 (size before relaxing)
+ .eh_frame      0x000000000041ee00       0x28 libc.a(_READ.os)
+                                         0x40 (size before relaxing)
+ .eh_frame      0x000000000041ee28       0x18 libc.a(_adjust_pos.os)
+                                         0x30 (size before relaxing)
+ .eh_frame      0x000000000041ee40       0x20 libc.a(_rfill.os)
+                                         0x38 (size before relaxing)
+ .eh_frame      0x000000000041ee60       0x20 libc.a(_trans2r.os)
+                                         0x38 (size before relaxing)
+ .eh_frame      0x000000000041ee80       0x20 libc.a(sigjmp.os)
+                                         0x38 (size before relaxing)
+ .eh_frame      0x000000000041eea0        0x4 crtend.o
+
+.gcc_except_table
+ *(.gcc_except_table .gcc_except_table.*)
+
+.exception_ranges
+ *(.exception_ranges .exception_ranges*)
+                0x000000000041eea4                . = (ALIGN (0x200000) - ((0x200000 - .) & 0x1fffff))
+                0x000000000061f000                . = DATA_SEGMENT_ALIGN (0x200000, 0x1000)
+
+.eh_frame
+ *(.eh_frame)
+
+.gcc_except_table
+ *(.gcc_except_table .gcc_except_table.*)
+
+.exception_ranges
+ *(.exception_ranges .exception_ranges*)
+
+.tdata
+ *(.tdata .tdata.* .gnu.linkonce.td.*)
+
+.tbss           0x000000000061f000        0x8
+ *(.tbss .tbss.* .gnu.linkonce.tb.*)
+ .tbss          0x000000000061f000        0x4 libc.a(errno.os)
+                0x000000000061f000                errno
+                0x000000000061f000                __libc_errno
+ .tbss          0x000000000061f004        0x4 libc.a(h_errno.os)
+                0x000000000061f004                __libc_h_errno
+                0x000000000061f004                h_errno
+ *(.tcommon)
+
+.preinit_array  0x000000000061f000        0x0
+                0x000000000061f000                PROVIDE (__preinit_array_start, .)
+ *(.preinit_array)
+                0x000000000061f000                PROVIDE (__preinit_array_end, .)
+
+.init_array     0x000000000061f000        0x0
+                0x000000000061f000                PROVIDE (__init_array_start, .)
+ *(SORT(.init_array.*) SORT(.ctors.*))
+ *(.init_array EXCLUDE_FILE(*crtend?.o *crtend.o *crtbegin?.o *crtbegin.o) .ctors)
+                0x000000000061f000                PROVIDE (__init_array_end, .)
+
+.fini_array     0x000000000061f000        0x0
+                0x000000000061f000                PROVIDE (__fini_array_start, .)
+ *(SORT(.fini_array.*) SORT(.dtors.*))
+ *(.fini_array EXCLUDE_FILE(*crtend?.o *crtend.o *crtbegin?.o *crtbegin.o) .dtors)
+                0x000000000061f000                PROVIDE (__fini_array_end, .)
+
+.ctors          0x000000000061f000       0x10
+ *crtbegin.o(.ctors)
+ *crtbegin?.o(.ctors)
+ .ctors         0x000000000061f000        0x8 crtbeginT.o
+ *(EXCLUDE_FILE(*crtend?.o *crtend.o) .ctors)
+ *(SORT(.ctors.*))
+ *(.ctors)
+ .ctors         0x000000000061f008        0x8 crtend.o
+
+.dtors          0x000000000061f010       0x10
+ *crtbegin.o(.dtors)
+ *crtbegin?.o(.dtors)
+ .dtors         0x000000000061f010        0x8 crtbeginT.o
+ *(EXCLUDE_FILE(*crtend?.o *crtend.o) .dtors)
+ *(SORT(.dtors.*))
+ *(.dtors)
+ .dtors         0x000000000061f018        0x8 crtend.o
+                0x000000000061f018                __DTOR_END__
+
+.jcr            0x000000000061f020        0x8
+ *(.jcr)
+ .jcr           0x000000000061f020        0x0 crtbeginT.o
+ .jcr           0x000000000061f020        0x8 crtend.o
+
+.data.rel.ro
+ *(.data.rel.ro.local* .gnu.linkonce.d.rel.ro.local.*)
+ *(.data.rel.ro .data.rel.ro.* .gnu.linkonce.d.rel.ro.*)
+
+.dynamic
+ *(.dynamic)
+
+.got            0x000000000061f028       0x50
+ *(.got)
+ .got           0x000000000061f028       0x50 crt1.o
+ *(.igot)
+                0x000000000061f078                . = DATA_SEGMENT_RELRO_END (., (SIZEOF (.got.plt) >= 0x18)?0x18:0x0)
+
+.got.plt        0x000000000061f078       0x18
+ *(.got.plt)
+ .got.plt       0x000000000061f078       0x18 crt1.o
+                0x000000000061f078                _GLOBAL_OFFSET_TABLE_
+ *(.igot.plt)
+ .igot.plt      0x000000000061f090        0x0 crt1.o
+
+.data           0x000000000061f0c0      0xf38
+ *(.data .data.* .gnu.linkonce.d.*)
+ .data          0x000000000061f0c0        0x4 crt1.o
+                0x000000000061f0c0                data_start
+                0x000000000061f0c0                __data_start
+ .data          0x000000000061f0c4        0x0 crti.o
+ *fill*         0x000000000061f0c4        0x4 
+ .data          0x000000000061f0c8        0x8 crtbeginT.o
+                0x000000000061f0c8                __dso_handle
+ .data          0x000000000061f0d0        0x0 blocksort.o
+ .data          0x000000000061f0d0        0x0 bzip2.o
+ .data          0x000000000061f0d0        0x0 bzlib.o
+ .data          0x000000000061f0d0        0x0 compress.o
+ *fill*         0x000000000061f0d0       0x30 
+ .data          0x000000000061f100      0x400 crctable.o
+                0x000000000061f100                BZ2_crc32Table
+ .data          0x000000000061f500        0x0 decompress.o
+ .data          0x000000000061f500        0x0 huffman.o
+ .data          0x000000000061f500      0x800 randtable.o
+                0x000000000061f500                BZ2_rNums
+ .data          0x000000000061fd00        0x4 spec.o
+                0x000000000061fd00                dbglvl
+ .data          0x000000000061fd04        0x0 libc.a(close.os)
+ .data          0x000000000061fd04        0x0 libc.a(open.os)
+ .data          0x000000000061fd04        0x0 libc.a(read.os)
+ .data          0x000000000061fd04        0x0 libc.a(__ctype_b_loc.os)
+ .data          0x000000000061fd04        0x0 libc.a(errno.os)
+ .data          0x000000000061fd04        0x0 libc.a(__errno_location.os)
+ .data          0x000000000061fd04        0x0 libc.a(__curlocale.os)
+ .data          0x000000000061fd04        0x0 libc.a(perror.os)
+ .data          0x000000000061fd04        0x0 libc.a(puts.os)
+ .data          0x000000000061fd04        0x0 libc.a(printf.os)
+ .data          0x000000000061fd04        0x0 libc.a(fprintf.os)
+ .data          0x000000000061fd04        0x4 libc.a(_stdio.os)
+                0x000000000061fd04                _stdio_user_locking
+ *fill*         0x000000000061fd08       0x38 
+ .data.rel.local
+                0x000000000061fd40      0x1d8 libc.a(_stdio.os)
+                0x000000000061fd40                _stdio_openlist
+                0x000000000061fd48                stderr
+                0x000000000061fd50                stdout
+                0x000000000061fd58                stdin
+ .data          0x000000000061ff18        0x0 libc.a(_wcommit.os)
+ .data          0x000000000061ff18        0x0 libc.a(_cs_funcs.os)
+ .data          0x000000000061ff18        0x0 libc.a(vfprintf.os)
+ .data          0x000000000061ff18        0x0 libc.a(_vfprintf_internal.os)
+ .data          0x000000000061ff18        0x0 libc.a(_ppfs_init.os)
+ .data          0x000000000061ff18        0x0 libc.a(_ppfs_prepargs.os)
+ .data          0x000000000061ff18        0x0 libc.a(_ppfs_setargs.os)
+ .data          0x000000000061ff18        0x0 libc.a(_ppfs_parsespec.os)
+ .data.rel.local
+                0x000000000061ff18        0x8 libc.a(_ppfs_parsespec.os)
+                0x000000000061ff18                _custom_printf_spec
+ .data          0x000000000061ff20        0x0 libc.a(fputc.os)
+ .data          0x000000000061ff20        0x0 libc.a(fwrite.os)
+ .data          0x000000000061ff20        0x0 libc.a(fputc_unlocked.os)
+ .data          0x000000000061ff20        0x0 libc.a(fputs_unlocked.os)
+ .data          0x000000000061ff20        0x0 libc.a(fwrite_unlocked.os)
+ .data          0x000000000061ff20        0x0 libc.a(memcpy.os)
+ .data          0x000000000061ff20        0x0 libc.a(memset.os)
+ .data          0x000000000061ff20        0x0 libc.a(strlen.os)
+ .data          0x000000000061ff20        0x0 libc.a(strnlen.os)
+ .data          0x000000000061ff20        0x0 libc.a(__glibc_strerror_r.os)
+ .data          0x000000000061ff20        0x0 libc.a(__xpg_strerror_r.os)
+ .data          0x000000000061ff20        0x0 libc.a(_string_syserrmsgs.os)
+ .data          0x000000000061ff20        0x0 libc.a(strerror.os)
+ .data          0x000000000061ff20        0x0 libc.a(isatty.os)
+ .data          0x000000000061ff20        0x0 libc.a(tcgetattr.os)
+ .data          0x000000000061ff20        0x0 libc.a(free.os)
+ .data          0x000000000061ff20       0x28 libc.a(malloc.os)
+                0x000000000061ff20                __malloc_lock
+ *fill*         0x000000000061ff48        0x8 
+ .data          0x000000000061ff50       0x28 libc.a(abort.os)
+ .data          0x000000000061ff78        0x0 libc.a(atoi.os)
+ .data          0x000000000061ff78        0x0 libc.a(strtol.os)
+ .data          0x000000000061ff78        0x0 libc.a(_stdlib_strto_l.os)
+ .data          0x000000000061ff78        0x0 libc.a(_stdlib_strto_l_l.os)
+ *fill*         0x000000000061ff78        0x8 
+ .data          0x000000000061ff80       0x28 libc.a(exit.os)
+                0x000000000061ff80                __atexit_lock
+ .data          0x000000000061ffa8        0x0 libc.a(sysconf.os)
+ .data          0x000000000061ffa8        0x0 libc.a(libc-cancellation.os)
+ .data          0x000000000061ffa8        0x0 libc.a(libc-lowlevellock.os)
+ .data          0x000000000061ffa8        0x0 libc.a(libc_multiple_threads.os)
+ .data          0x000000000061ffa8        0x0 libc.a(raise.os)
+ .data          0x000000000061ffa8        0x0 libc.a(__uClibc_main.os)
+ .data.rel.local
+                0x000000000061ffa8       0x18 libc.a(__uClibc_main.os)
+                0x000000000061ffa8                program_invocation_name
+                0x000000000061ffa8                __progname_full
+                0x000000000061ffb0                __progname
+                0x000000000061ffb0                program_invocation_short_name
+                0x000000000061ffb8                __uclibc_progname
+ .data          0x000000000061ffc0        0x0 libc.a(sigaction.os)
+ .data          0x000000000061ffc0        0x0 libc.a(bsd-_setjmp.os)
+ .data          0x000000000061ffc0        0x0 libc.a(__syscall_fcntl.os)
+ .data          0x000000000061ffc0        0x0 libc.a(_exit.os)
+ .data          0x000000000061ffc0        0x0 libc.a(clock_getres.os)
+ .data          0x000000000061ffc0        0x0 libc.a(getdtablesize.os)
+ .data          0x000000000061ffc0        0x0 libc.a(getegid.os)
+ .data          0x000000000061ffc0        0x0 libc.a(geteuid.os)
+ .data          0x000000000061ffc0        0x0 libc.a(getgid.os)
+ .data          0x000000000061ffc0        0x0 libc.a(getpagesize.os)
+ .data          0x000000000061ffc0        0x0 libc.a(getrlimit.os)
+ .data          0x000000000061ffc0        0x0 libc.a(getuid.os)
+ .data          0x000000000061ffc0        0x0 libc.a(ioctl.os)
+ .data          0x000000000061ffc0        0x0 libc.a(lseek.os)
+ .data          0x000000000061ffc0        0x0 libc.a(mmap.os)
+ .data          0x000000000061ffc0        0x0 libc.a(munmap.os)
+ .data          0x000000000061ffc0        0x0 libc.a(sbrk.os)
+ .data          0x000000000061ffc0        0x0 libc.a(sigprocmask.os)
+ .data          0x000000000061ffc0        0x0 libc.a(write.os)
+ .data          0x000000000061ffc0        0x0 libc.a(closedir.os)
+ .data          0x000000000061ffc0        0x0 libc.a(opendir.os)
+ .data          0x000000000061ffc0        0x0 libc.a(readdir.os)
+ .data          0x000000000061ffc0        0x0 libc.a(__h_errno_location.os)
+ .data          0x000000000061ffc0        0x0 libc.a(parse_config.os)
+ .data          0x000000000061ffc0        0x0 libc.a(_locale_init.os)
+ .data.rel      0x000000000061ffc0       0x10 libc.a(_locale_init.os)
+                0x000000000061ffc0                __curlocale_var
+                0x000000000061ffc8                __global_locale
+ .data          0x000000000061ffd0        0x0 libc.a(__locale_mbrtowc_l.os)
+ .data          0x000000000061ffd0        0x0 libc.a(wcrtomb.os)
+ .data          0x000000000061ffd0        0x0 libc.a(mbsrtowcs.os)
+ .data          0x000000000061ffd0        0x0 libc.a(wcsrtombs.os)
+ .data          0x000000000061ffd0        0x0 libc.a(_wchar_utf8sntowcs.os)
+ .data          0x000000000061ffd0        0x0 libc.a(mbsnrtowcs.os)
+ .data          0x000000000061ffd0        0x0 libc.a(wcsnrtombs.os)
+ .data          0x000000000061ffd0        0x0 libc.a(fclose.os)
+ .data          0x000000000061ffd0        0x0 libc.a(fopen.os)
+ .data          0x000000000061ffd0        0x0 libc.a(_WRITE.os)
+ .data          0x000000000061ffd0        0x0 libc.a(_fopen.os)
+ .data          0x000000000061ffd0        0x0 libc.a(_fwrite.os)
+ .data          0x000000000061ffd0        0x0 libc.a(_trans2w.os)
+ .data          0x000000000061ffd0        0x0 libc.a(_load_inttype.os)
+ .data          0x000000000061ffd0        0x0 libc.a(_store_inttype.os)
+ .data          0x000000000061ffd0        0x0 libc.a(_uintmaxtostr.os)
+ .data          0x000000000061ffd0        0x0 libc.a(_fpmaxtostr.os)
+ .data          0x000000000061ffd0        0x0 libc.a(fgetc.os)
+ .data          0x000000000061ffd0        0x0 libc.a(fgets.os)
+ .data          0x000000000061ffd0        0x0 libc.a(fflush_unlocked.os)
+ .data          0x000000000061ffd0        0x0 libc.a(fgetc_unlocked.os)
+ .data          0x000000000061ffd0        0x0 libc.a(fgets_unlocked.os)
+ .data          0x000000000061ffd0        0x0 libc.a(mempcpy.os)
+ .data          0x000000000061ffd0        0x0 libc.a(strchr.os)
+ .data          0x000000000061ffd0        0x0 libc.a(strcmp.os)
+ .data          0x000000000061ffd0        0x0 libc.a(strcspn.os)
+ .data          0x000000000061ffd0        0x0 libc.a(strspn.os)
+ .data          0x000000000061ffd0        0x0 libc.a(memchr.os)
+ .data          0x000000000061ffd0        0x0 libc.a(memrchr.os)
+ .data          0x000000000061ffd0        0x0 libc.a(strchrnul.os)
+ .data          0x000000000061ffd0        0x0 libc.a(strrchr.os)
+ .data          0x000000000061ffd0        0x0 libc.a(calloc.os)
+ .data          0x000000000061ffd0        0x0 libc.a(realloc.os)
+ .data          0x000000000061ffd0        0x0 libc.a(libc-tls.os)
+ .data          0x000000000061ffd0        0x0 libc.a(dl-support.os)
+ .data.rel.local
+                0x000000000061ffd0        0x8 libc.a(dl-support.os)
+                0x000000000061ffd0                _dl_init_static_tls
+ .data          0x000000000061ffd8        0x0 libc.a(locale_data.os)
+ .data.rel.local
+                0x000000000061ffd8        0x8 libc.a(locale_data.os)
+                0x000000000061ffd8                __locale_mmap
+ .data          0x000000000061ffe0        0x0 libc.a(brk.os)
+ .data          0x000000000061ffe0        0x0 libc.a(setjmp.os)
+ .data          0x000000000061ffe0        0x0 libc.a(fstat.os)
+ .data          0x000000000061ffe0        0x0 libc.a(mremap.os)
+ .data          0x000000000061ffe0        0x0 libc.a(xstatconv.os)
+ .data          0x000000000061ffe0        0x0 libc.a(getdents64.os)
+ .data          0x000000000061ffe0        0x0 libc.a(__C_ctype_b.os)
+ .data.rel.local
+                0x000000000061ffe0        0x8 libc.a(__C_ctype_b.os)
+                0x000000000061ffe0                __GI___C_ctype_b
+                0x000000000061ffe0                __C_ctype_b
+ .data          0x000000000061ffe8        0x0 libc.a(__C_ctype_tolower.os)
+ .data.rel.local
+                0x000000000061ffe8        0x8 libc.a(__C_ctype_tolower.os)
+                0x000000000061ffe8                __C_ctype_tolower
+                0x000000000061ffe8                __GI___C_ctype_tolower
+ .data          0x000000000061fff0        0x0 libc.a(__C_ctype_toupper.os)
+ .data.rel.local
+                0x000000000061fff0        0x8 libc.a(__C_ctype_toupper.os)
+                0x000000000061fff0                __GI___C_ctype_toupper
+                0x000000000061fff0                __C_ctype_toupper
+ .data          0x000000000061fff8        0x0 libc.a(h_errno.os)
+ .data          0x000000000061fff8        0x0 libc.a(_wchar_wcsntoutf8s.os)
+ .data          0x000000000061fff8        0x0 libc.a(fseeko.os)
+ .data          0x000000000061fff8        0x0 libc.a(fseeko64.os)
+ .data          0x000000000061fff8        0x0 libc.a(_READ.os)
+ .data          0x000000000061fff8        0x0 libc.a(_adjust_pos.os)
+ .data          0x000000000061fff8        0x0 libc.a(_rfill.os)
+ .data          0x000000000061fff8        0x0 libc.a(_trans2r.os)
+ .data          0x000000000061fff8        0x0 libc.a(sigjmp.os)
+ .data          0x000000000061fff8        0x0 crtend.o
+ .data          0x000000000061fff8        0x0 crtn.o
+
+.tm_clone_table
+                0x000000000061fff8        0x0
+ .tm_clone_table
+                0x000000000061fff8        0x0 crtbeginT.o
+ .tm_clone_table
+                0x000000000061fff8        0x0 crtend.o
+                0x000000000061fff8                __TMC_END__
+
+.data1
+ *(.data1)
+                0x000000000061fff8                _edata = .
+                0x000000000061fff8                PROVIDE (edata, .)
+                0x000000000061fff8                . = .
+                0x000000000061fff8                __bss_start = .
+
+.bss            0x0000000000620000     0x5390
+ *(.dynbss)
+ *(.bss .bss.* .gnu.linkonce.b.*)
+ .bss           0x0000000000620000        0x0 crt1.o
+ .bss           0x0000000000620000        0x0 crti.o
+ .bss           0x0000000000620000       0x40 crtbeginT.o
+ .bss           0x0000000000620040        0x0 blocksort.o
+ .bss           0x0000000000620040        0x0 bzip2.o
+ .bss           0x0000000000620040        0x0 bzlib.o
+ .bss           0x0000000000620040        0x0 compress.o
+ .bss           0x0000000000620040        0x0 crctable.o
+ .bss           0x0000000000620040        0x0 decompress.o
+ .bss           0x0000000000620040        0x0 huffman.o
+ .bss           0x0000000000620040        0x0 randtable.o
+ .bss           0x0000000000620040        0x0 spec.o
+ .bss           0x0000000000620040        0x0 libc.a(close.os)
+ .bss           0x0000000000620040        0x0 libc.a(open.os)
+ .bss           0x0000000000620040        0x0 libc.a(read.os)
+ .bss           0x0000000000620040        0x0 libc.a(__ctype_b_loc.os)
+ .bss           0x0000000000620040        0x0 libc.a(errno.os)
+ .bss           0x0000000000620040        0x0 libc.a(__errno_location.os)
+ .bss           0x0000000000620040        0x0 libc.a(__curlocale.os)
+ .bss           0x0000000000620040        0x0 libc.a(perror.os)
+ .bss           0x0000000000620040        0x0 libc.a(puts.os)
+ .bss           0x0000000000620040        0x0 libc.a(printf.os)
+ .bss           0x0000000000620040        0x0 libc.a(fprintf.os)
+ .bss           0x0000000000620040     0x2040 libc.a(_stdio.os)
+                0x0000000000620040                _stdio_openlist_del_count
+                0x0000000000620044                _stdio_openlist_use_count
+                0x0000000000620050                _stdio_openlist_del_lock
+                0x0000000000620060                _stdio_openlist_add_lock
+ .bss           0x0000000000622080        0x0 libc.a(_wcommit.os)
+ .bss           0x0000000000622080        0x0 libc.a(_cs_funcs.os)
+ .bss           0x0000000000622080        0x0 libc.a(vfprintf.os)
+ .bss           0x0000000000622080        0x0 libc.a(_vfprintf_internal.os)
+ .bss           0x0000000000622080        0x0 libc.a(_ppfs_init.os)
+ .bss           0x0000000000622080        0x0 libc.a(_ppfs_prepargs.os)
+ .bss           0x0000000000622080        0x0 libc.a(_ppfs_setargs.os)
+ .bss           0x0000000000622080        0xa libc.a(_ppfs_parsespec.os)
+ .bss           0x000000000062208a        0x0 libc.a(fputc.os)
+ .bss           0x000000000062208a        0x0 libc.a(fwrite.os)
+ .bss           0x000000000062208a        0x0 libc.a(fputc_unlocked.os)
+ .bss           0x000000000062208a        0x0 libc.a(fputs_unlocked.os)
+ .bss           0x000000000062208a        0x0 libc.a(fwrite_unlocked.os)
+ .bss           0x000000000062208a        0x0 libc.a(memcpy.os)
+ .bss           0x000000000062208a        0x0 libc.a(memset.os)
+ .bss           0x000000000062208a        0x0 libc.a(strlen.os)
+ .bss           0x000000000062208a        0x0 libc.a(strnlen.os)
+ .bss           0x000000000062208a        0x0 libc.a(__glibc_strerror_r.os)
+ .bss           0x000000000062208a        0x0 libc.a(__xpg_strerror_r.os)
+ .bss           0x000000000062208a        0x0 libc.a(_string_syserrmsgs.os)
+ *fill*         0x000000000062208a        0x6 
+ .bss           0x0000000000622090       0x32 libc.a(strerror.os)
+ .bss           0x00000000006220c2        0x0 libc.a(isatty.os)
+ .bss           0x00000000006220c2        0x0 libc.a(tcgetattr.os)
+ .bss           0x00000000006220c2        0x0 libc.a(free.os)
+ .bss           0x00000000006220c2        0x0 libc.a(malloc.os)
+ *fill*         0x00000000006220c2        0x2 
+ .bss           0x00000000006220c4        0x4 libc.a(abort.os)
+ .bss           0x00000000006220c8        0x0 libc.a(atoi.os)
+ .bss           0x00000000006220c8        0x0 libc.a(strtol.os)
+ .bss           0x00000000006220c8        0x0 libc.a(_stdlib_strto_l.os)
+ .bss           0x00000000006220c8        0x0 libc.a(_stdlib_strto_l_l.os)
+ .bss           0x00000000006220c8        0x8 libc.a(exit.os)
+                0x00000000006220c8                __exit_cleanup
+ .bss           0x00000000006220d0        0x0 libc.a(sysconf.os)
+ .bss           0x00000000006220d0        0x0 libc.a(libc-cancellation.os)
+ .bss           0x00000000006220d0        0x0 libc.a(libc-lowlevellock.os)
+ .bss           0x00000000006220d0        0x0 libc.a(libc_multiple_threads.os)
+ .bss           0x00000000006220d0        0x0 libc.a(raise.os)
+ .bss           0x00000000006220d0       0x2c libc.a(__uClibc_main.os)
+                0x00000000006220d0                __rtld_fini
+                0x00000000006220d8                __app_fini
+                0x00000000006220e0                __pagesize
+                0x00000000006220e8                __environ
+                0x00000000006220e8                environ
+                0x00000000006220f0                __libc_stack_end
+                0x00000000006220f8                _pe_secure
+                0x00000000006220f8                __GI__pe_secure
+ .bss           0x00000000006220fc        0x0 libc.a(sigaction.os)
+ .bss           0x00000000006220fc        0x0 libc.a(bsd-_setjmp.os)
+ .bss           0x00000000006220fc        0x0 libc.a(__syscall_fcntl.os)
+ .bss           0x00000000006220fc        0x0 libc.a(_exit.os)
+ .bss           0x00000000006220fc        0x0 libc.a(clock_getres.os)
+ .bss           0x00000000006220fc        0x0 libc.a(getdtablesize.os)
+ .bss           0x00000000006220fc        0x0 libc.a(getegid.os)
+ .bss           0x00000000006220fc        0x0 libc.a(geteuid.os)
+ .bss           0x00000000006220fc        0x0 libc.a(getgid.os)
+ .bss           0x00000000006220fc        0x0 libc.a(getpagesize.os)
+ .bss           0x00000000006220fc        0x0 libc.a(getrlimit.os)
+ .bss           0x00000000006220fc        0x0 libc.a(getuid.os)
+ .bss           0x00000000006220fc        0x0 libc.a(ioctl.os)
+ .bss           0x00000000006220fc        0x0 libc.a(lseek.os)
+ .bss           0x00000000006220fc        0x0 libc.a(mmap.os)
+ .bss           0x00000000006220fc        0x0 libc.a(munmap.os)
+ .bss           0x00000000006220fc        0x0 libc.a(sbrk.os)
+ .bss           0x00000000006220fc        0x0 libc.a(sigprocmask.os)
+ .bss           0x00000000006220fc        0x0 libc.a(write.os)
+ .bss           0x00000000006220fc        0x0 libc.a(closedir.os)
+ .bss           0x00000000006220fc        0x0 libc.a(opendir.os)
+ .bss           0x00000000006220fc        0x0 libc.a(readdir.os)
+ .bss           0x00000000006220fc        0x0 libc.a(__h_errno_location.os)
+ .bss           0x00000000006220fc        0x0 libc.a(parse_config.os)
+ .bss           0x00000000006220fc        0x0 libc.a(_locale_init.os)
+ .bss           0x00000000006220fc        0x0 libc.a(__locale_mbrtowc_l.os)
+ .bss           0x00000000006220fc        0x0 libc.a(wcrtomb.os)
+ *fill*         0x00000000006220fc        0x4 
+ .bss           0x0000000000622100        0x8 libc.a(mbsrtowcs.os)
+ .bss           0x0000000000622108        0x0 libc.a(wcsrtombs.os)
+ .bss           0x0000000000622108        0x0 libc.a(_wchar_utf8sntowcs.os)
+ .bss           0x0000000000622108        0x8 libc.a(mbsnrtowcs.os)
+ .bss           0x0000000000622110        0x0 libc.a(wcsnrtombs.os)
+ .bss           0x0000000000622110        0x0 libc.a(fclose.os)
+ .bss           0x0000000000622110        0x0 libc.a(fopen.os)
+ .bss           0x0000000000622110        0x0 libc.a(_WRITE.os)
+ .bss           0x0000000000622110        0x0 libc.a(_fopen.os)
+ .bss           0x0000000000622110        0x0 libc.a(_fwrite.os)
+ .bss           0x0000000000622110        0x0 libc.a(_trans2w.os)
+ .bss           0x0000000000622110        0x0 libc.a(_load_inttype.os)
+ .bss           0x0000000000622110        0x0 libc.a(_store_inttype.os)
+ .bss           0x0000000000622110        0x0 libc.a(_uintmaxtostr.os)
+ .bss           0x0000000000622110        0x0 libc.a(_fpmaxtostr.os)
+ .bss           0x0000000000622110        0x0 libc.a(fgetc.os)
+ .bss           0x0000000000622110        0x0 libc.a(fgets.os)
+ .bss           0x0000000000622110        0x0 libc.a(fflush_unlocked.os)
+ .bss           0x0000000000622110        0x0 libc.a(fgetc_unlocked.os)
+ .bss           0x0000000000622110        0x0 libc.a(fgets_unlocked.os)
+ .bss           0x0000000000622110        0x0 libc.a(mempcpy.os)
+ .bss           0x0000000000622110        0x0 libc.a(strchr.os)
+ .bss           0x0000000000622110        0x0 libc.a(strcmp.os)
+ .bss           0x0000000000622110        0x0 libc.a(strcspn.os)
+ .bss           0x0000000000622110        0x0 libc.a(strspn.os)
+ .bss           0x0000000000622110        0x0 libc.a(memchr.os)
+ .bss           0x0000000000622110        0x0 libc.a(memrchr.os)
+ .bss           0x0000000000622110        0x0 libc.a(strchrnul.os)
+ .bss           0x0000000000622110        0x0 libc.a(strrchr.os)
+ .bss           0x0000000000622110        0x0 libc.a(calloc.os)
+ .bss           0x0000000000622110        0x0 libc.a(realloc.os)
+ *fill*         0x0000000000622110       0x30 
+ .bss           0x0000000000622140      0xac0 libc.a(libc-tls.os)
+ .bss           0x0000000000622c00        0x0 libc.a(dl-support.os)
+ .bss           0x0000000000622c00        0x0 libc.a(locale_data.os)
+ .bss           0x0000000000622c00        0x8 libc.a(brk.os)
+                0x0000000000622c00                __curbrk
+ .bss           0x0000000000622c08        0x0 libc.a(setjmp.os)
+ .bss           0x0000000000622c08        0x0 libc.a(fstat.os)
+ .bss           0x0000000000622c08        0x0 libc.a(mremap.os)
+ .bss           0x0000000000622c08        0x0 libc.a(xstatconv.os)
+ .bss           0x0000000000622c08        0x0 libc.a(getdents64.os)
+ .bss           0x0000000000622c08        0x0 libc.a(__C_ctype_b.os)
+ .bss           0x0000000000622c08        0x0 libc.a(__C_ctype_tolower.os)
+ .bss           0x0000000000622c08        0x0 libc.a(__C_ctype_toupper.os)
+ .bss           0x0000000000622c08        0x0 libc.a(h_errno.os)
+ .bss           0x0000000000622c08        0x0 libc.a(_wchar_wcsntoutf8s.os)
+ .bss           0x0000000000622c08        0x0 libc.a(fseeko.os)
+ .bss           0x0000000000622c08        0x0 libc.a(fseeko64.os)
+ .bss           0x0000000000622c08        0x0 libc.a(_READ.os)
+ .bss           0x0000000000622c08        0x0 libc.a(_adjust_pos.os)
+ .bss           0x0000000000622c08        0x0 libc.a(_rfill.os)
+ .bss           0x0000000000622c08        0x0 libc.a(_trans2r.os)
+ .bss           0x0000000000622c08        0x0 libc.a(sigjmp.os)
+ .bss           0x0000000000622c08        0x0 crtend.o
+ .bss           0x0000000000622c08        0x0 crtn.o
+ *(COMMON)
+ *fill*         0x0000000000622c08       0x38 
+ COMMON         0x0000000000622c40     0x1110 bzip2.o
+                0x0000000000622c40                srcMode
+                0x0000000000622c80                progNameReally
+                0x000000000062308a                deleteOutputOnInterrupt
+                0x000000000062308b                forceOverwrite
+                0x000000000062308c                opMode
+                0x0000000000623090                testFailsExist
+                0x00000000006230c0                outName
+                0x00000000006234cc                workFactor
+                0x00000000006234d0                verbosity
+                0x00000000006234d8                progName
+                0x00000000006234e0                numFilesProcessed
+                0x00000000006234e4                outputHandleJustInCase
+                0x00000000006234e8                blockSize100k
+                0x0000000000623500                inName
+                0x000000000062390c                numFileNames
+                0x0000000000623910                noisy
+                0x0000000000623914                longestFileName
+                0x0000000000623918                smallMode
+                0x0000000000623940                tmpName
+                0x0000000000623d4a                keepInputFiles
+                0x0000000000623d4b                unzFailsExist
+                0x0000000000623d4c                exitValue
+ *fill*         0x0000000000623d50       0x30 
+ COMMON         0x0000000000623d80       0x88 spec.o
+                0x0000000000623d80                seedi
+                0x0000000000623dc0                spec_fd
+ *fill*         0x0000000000623e08       0x38 
+ COMMON         0x0000000000623e40       0xd0 libc.a(_ppfs_parsespec.os)
+                0x0000000000623e40                _custom_printf_arginfo
+                0x0000000000623ec0                _custom_printf_handler
+ *fill*         0x0000000000623f10       0x30 
+ COMMON         0x0000000000623f40      0x6d8 libc.a(malloc.os)
+                0x0000000000623f40                __malloc_state
+ COMMON         0x0000000000624618        0x4 libc.a(libc_multiple_threads.os)
+                0x0000000000624618                __libc_multiple_threads
+ *fill*         0x000000000062461c       0x24 
+ COMMON         0x0000000000624640      0xcf8 libc.a(_locale_init.os)
+                0x0000000000624640                __global_locale_data
+ COMMON         0x0000000000625338       0x40 libc.a(libc-tls.os)
+                0x0000000000625338                _dl_tls_static_used
+                0x0000000000625340                _dl_tls_static_align
+                0x0000000000625348                _dl_tls_max_dtv_idx
+                0x0000000000625350                _dl_tls_static_size
+                0x0000000000625358                _dl_tls_dtv_slotinfo_list
+                0x0000000000625360                _dl_tls_dtv_gaps
+                0x0000000000625368                _dl_tls_generation
+                0x0000000000625370                _dl_tls_static_nelem
+ COMMON         0x0000000000625378       0x18 libc.a(dl-support.os)
+                0x0000000000625378                _dl_phdr
+                0x0000000000625380                _dl_phnum
+                0x0000000000625388                _dl_pagesize
+                0x0000000000625390                . = ALIGN ((. != 0x0)?0x8:0x1)
+
+.lbss
+ *(.dynlbss)
+ *(.lbss .lbss.* .gnu.linkonce.lb.*)
+ *(LARGE_COMMON)
+                0x0000000000625390                . = ALIGN (0x8)
+                0x0000000000625390                . = SEGMENT_START ("ldata-segment", .)
+
+.lrodata
+ *(.lrodata .lrodata.* .gnu.linkonce.lr.*)
+
+.ldata          0x0000000000a25390        0x0
+ *(.ldata .ldata.* .gnu.linkonce.l.*)
+                0x0000000000a25390                . = ALIGN ((. != 0x0)?0x8:0x1)
+                0x0000000000a25390                . = ALIGN (0x8)
+                0x0000000000a25390                _end = .
+                0x0000000000a25390                PROVIDE (end, .)
+                0x0000000000a25390                . = DATA_SEGMENT_END (.)
+
+.stab
+ *(.stab)
+
+.stabstr
+ *(.stabstr)
+
+.stab.excl
+ *(.stab.excl)
+
+.stab.exclstr
+ *(.stab.exclstr)
+
+.stab.index
+ *(.stab.index)
+
+.stab.indexstr
+ *(.stab.indexstr)
+
+.comment        0x0000000000000000       0x30
+ *(.comment)
+ .comment       0x0000000000000000       0x30 crtbeginT.o
+                                         0x31 (size before relaxing)
+ .comment       0x0000000000000030       0x31 blocksort.o
+ .comment       0x0000000000000030       0x31 bzip2.o
+ .comment       0x0000000000000030       0x31 bzlib.o
+ .comment       0x0000000000000030       0x31 compress.o
+ .comment       0x0000000000000030       0x31 crctable.o
+ .comment       0x0000000000000030       0x31 decompress.o
+ .comment       0x0000000000000030       0x31 huffman.o
+ .comment       0x0000000000000030       0x31 randtable.o
+ .comment       0x0000000000000030       0x31 spec.o
+ .comment       0x0000000000000030       0x31 libc.a(close.os)
+ .comment       0x0000000000000030       0x31 libc.a(open.os)
+ .comment       0x0000000000000030       0x31 libc.a(read.os)
+ .comment       0x0000000000000030       0x31 libc.a(__ctype_b_loc.os)
+ .comment       0x0000000000000030       0x31 libc.a(errno.os)
+ .comment       0x0000000000000030       0x31 libc.a(__errno_location.os)
+ .comment       0x0000000000000030       0x31 libc.a(__curlocale.os)
+ .comment       0x0000000000000030       0x31 libc.a(perror.os)
+ .comment       0x0000000000000030       0x31 libc.a(puts.os)
+ .comment       0x0000000000000030       0x31 libc.a(printf.os)
+ .comment       0x0000000000000030       0x31 libc.a(fprintf.os)
+ .comment       0x0000000000000030       0x31 libc.a(_stdio.os)
+ .comment       0x0000000000000030       0x31 libc.a(_wcommit.os)
+ .comment       0x0000000000000030       0x31 libc.a(_cs_funcs.os)
+ .comment       0x0000000000000030       0x31 libc.a(vfprintf.os)
+ .comment       0x0000000000000030       0x31 libc.a(_vfprintf_internal.os)
+ .comment       0x0000000000000030       0x31 libc.a(_ppfs_init.os)
+ .comment       0x0000000000000030       0x31 libc.a(_ppfs_prepargs.os)
+ .comment       0x0000000000000030       0x31 libc.a(_ppfs_setargs.os)
+ .comment       0x0000000000000030       0x31 libc.a(_ppfs_parsespec.os)
+ .comment       0x0000000000000030       0x31 libc.a(fputc.os)
+ .comment       0x0000000000000030       0x31 libc.a(fwrite.os)
+ .comment       0x0000000000000030       0x31 libc.a(fputc_unlocked.os)
+ .comment       0x0000000000000030       0x31 libc.a(fputs_unlocked.os)
+ .comment       0x0000000000000030       0x31 libc.a(fwrite_unlocked.os)
+ .comment       0x0000000000000030       0x31 libc.a(strnlen.os)
+ .comment       0x0000000000000030       0x31 libc.a(__glibc_strerror_r.os)
+ .comment       0x0000000000000030       0x31 libc.a(__xpg_strerror_r.os)
+ .comment       0x0000000000000030       0x31 libc.a(_string_syserrmsgs.os)
+ .comment       0x0000000000000030       0x31 libc.a(strerror.os)
+ .comment       0x0000000000000030       0x31 libc.a(isatty.os)
+ .comment       0x0000000000000030       0x31 libc.a(tcgetattr.os)
+ .comment       0x0000000000000030       0x31 libc.a(free.os)
+ .comment       0x0000000000000030       0x31 libc.a(malloc.os)
+ .comment       0x0000000000000030       0x31 libc.a(abort.os)
+ .comment       0x0000000000000030       0x31 libc.a(atoi.os)
+ .comment       0x0000000000000030       0x31 libc.a(strtol.os)
+ .comment       0x0000000000000030       0x31 libc.a(_stdlib_strto_l.os)
+ .comment       0x0000000000000030       0x31 libc.a(_stdlib_strto_l_l.os)
+ .comment       0x0000000000000030       0x31 libc.a(exit.os)
+ .comment       0x0000000000000030       0x31 libc.a(sysconf.os)
+ .comment       0x0000000000000030       0x31 libc.a(libc_multiple_threads.os)
+ .comment       0x0000000000000030       0x31 libc.a(raise.os)
+ .comment       0x0000000000000030       0x31 libc.a(__uClibc_main.os)
+ .comment       0x0000000000000030       0x31 libc.a(sigaction.os)
+ .comment       0x0000000000000030       0x31 libc.a(__syscall_fcntl.os)
+ .comment       0x0000000000000030       0x31 libc.a(_exit.os)
+ .comment       0x0000000000000030       0x31 libc.a(clock_getres.os)
+ .comment       0x0000000000000030       0x31 libc.a(getdtablesize.os)
+ .comment       0x0000000000000030       0x31 libc.a(getegid.os)
+ .comment       0x0000000000000030       0x31 libc.a(geteuid.os)
+ .comment       0x0000000000000030       0x31 libc.a(getgid.os)
+ .comment       0x0000000000000030       0x31 libc.a(getpagesize.os)
+ .comment       0x0000000000000030       0x31 libc.a(getrlimit.os)
+ .comment       0x0000000000000030       0x31 libc.a(getuid.os)
+ .comment       0x0000000000000030       0x31 libc.a(ioctl.os)
+ .comment       0x0000000000000030       0x31 libc.a(lseek.os)
+ .comment       0x0000000000000030       0x31 libc.a(mmap.os)
+ .comment       0x0000000000000030       0x31 libc.a(munmap.os)
+ .comment       0x0000000000000030       0x31 libc.a(sbrk.os)
+ .comment       0x0000000000000030       0x31 libc.a(sigprocmask.os)
+ .comment       0x0000000000000030       0x31 libc.a(write.os)
+ .comment       0x0000000000000030       0x31 libc.a(closedir.os)
+ .comment       0x0000000000000030       0x31 libc.a(opendir.os)
+ .comment       0x0000000000000030       0x31 libc.a(readdir.os)
+ .comment       0x0000000000000030       0x31 libc.a(__h_errno_location.os)
+ .comment       0x0000000000000030       0x31 libc.a(parse_config.os)
+ .comment       0x0000000000000030       0x31 libc.a(_locale_init.os)
+ .comment       0x0000000000000030       0x31 libc.a(__locale_mbrtowc_l.os)
+ .comment       0x0000000000000030       0x31 libc.a(wcrtomb.os)
+ .comment       0x0000000000000030       0x31 libc.a(mbsrtowcs.os)
+ .comment       0x0000000000000030       0x31 libc.a(wcsrtombs.os)
+ .comment       0x0000000000000030       0x31 libc.a(_wchar_utf8sntowcs.os)
+ .comment       0x0000000000000030       0x31 libc.a(mbsnrtowcs.os)
+ .comment       0x0000000000000030       0x31 libc.a(wcsnrtombs.os)
+ .comment       0x0000000000000030       0x31 libc.a(fclose.os)
+ .comment       0x0000000000000030       0x31 libc.a(fopen.os)
+ .comment       0x0000000000000030       0x31 libc.a(_WRITE.os)
+ .comment       0x0000000000000030       0x31 libc.a(_fopen.os)
+ .comment       0x0000000000000030       0x31 libc.a(_fwrite.os)
+ .comment       0x0000000000000030       0x31 libc.a(_trans2w.os)
+ .comment       0x0000000000000030       0x31 libc.a(_load_inttype.os)
+ .comment       0x0000000000000030       0x31 libc.a(_store_inttype.os)
+ .comment       0x0000000000000030       0x31 libc.a(_uintmaxtostr.os)
+ .comment       0x0000000000000030       0x31 libc.a(_fpmaxtostr.os)
+ .comment       0x0000000000000030       0x31 libc.a(fgetc.os)
+ .comment       0x0000000000000030       0x31 libc.a(fgets.os)
+ .comment       0x0000000000000030       0x31 libc.a(fflush_unlocked.os)
+ .comment       0x0000000000000030       0x31 libc.a(fgetc_unlocked.os)
+ .comment       0x0000000000000030       0x31 libc.a(fgets_unlocked.os)
+ .comment       0x0000000000000030       0x31 libc.a(memchr.os)
+ .comment       0x0000000000000030       0x31 libc.a(memrchr.os)
+ .comment       0x0000000000000030       0x31 libc.a(strchrnul.os)
+ .comment       0x0000000000000030       0x31 libc.a(strrchr.os)
+ .comment       0x0000000000000030       0x31 libc.a(calloc.os)
+ .comment       0x0000000000000030       0x31 libc.a(realloc.os)
+ .comment       0x0000000000000030       0x31 libc.a(libc-tls.os)
+ .comment       0x0000000000000030       0x31 libc.a(dl-support.os)
+ .comment       0x0000000000000030       0x31 libc.a(locale_data.os)
+ .comment       0x0000000000000030       0x31 libc.a(brk.os)
+ .comment       0x0000000000000030       0x31 libc.a(fstat.os)
+ .comment       0x0000000000000030       0x31 libc.a(mremap.os)
+ .comment       0x0000000000000030       0x31 libc.a(xstatconv.os)
+ .comment       0x0000000000000030       0x31 libc.a(getdents64.os)
+ .comment       0x0000000000000030       0x31 libc.a(__C_ctype_b.os)
+ .comment       0x0000000000000030       0x31 libc.a(__C_ctype_tolower.os)
+ .comment       0x0000000000000030       0x31 libc.a(__C_ctype_toupper.os)
+ .comment       0x0000000000000030       0x31 libc.a(h_errno.os)
+ .comment       0x0000000000000030       0x31 libc.a(_wchar_wcsntoutf8s.os)
+ .comment       0x0000000000000030       0x31 libc.a(fseeko.os)
+ .comment       0x0000000000000030       0x31 libc.a(fseeko64.os)
+ .comment       0x0000000000000030       0x31 libc.a(_READ.os)
+ .comment       0x0000000000000030       0x31 libc.a(_adjust_pos.os)
+ .comment       0x0000000000000030       0x31 libc.a(_rfill.os)
+ .comment       0x0000000000000030       0x31 libc.a(_trans2r.os)
+ .comment       0x0000000000000030       0x31 libc.a(sigjmp.os)
+ .comment       0x0000000000000030       0x31 crtend.o
+
+.debug
+ *(.debug)
+
+.line
+ *(.line)
+
+.debug_srcinfo
+ *(.debug_srcinfo)
+
+.debug_sfnames
+ *(.debug_sfnames)
+
+.debug_aranges
+ *(.debug_aranges)
+
+.debug_pubnames
+ *(.debug_pubnames)
+
+.debug_info
+ *(.debug_info .gnu.linkonce.wi.*)
+
+.debug_abbrev
+ *(.debug_abbrev)
+
+.debug_line
+ *(.debug_line .debug_line.* .debug_line_end)
+
+.debug_frame
+ *(.debug_frame)
+
+.debug_str
+ *(.debug_str)
+
+.debug_loc
+ *(.debug_loc)
+
+.debug_macinfo
+ *(.debug_macinfo)
+
+.debug_weaknames
+ *(.debug_weaknames)
+
+.debug_funcnames
+ *(.debug_funcnames)
+
+.debug_typenames
+ *(.debug_typenames)
+
+.debug_varnames
+ *(.debug_varnames)
+
+.debug_pubtypes
+ *(.debug_pubtypes)
+
+.debug_ranges
+ *(.debug_ranges)
+
+.debug_macro
+ *(.debug_macro)
+
+.gnu.attributes
+ *(.gnu.attributes)
+
+/DISCARD/
+ *(.note.GNU-stack)
+ *(.gnu_debuglink)
+ *(.gnu.lto_*)
+OUTPUT(specbzip2.with-relocs elf64-x86-64)

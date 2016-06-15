@@ -1,0 +1,1 @@
+ld "--sysroot=/" --build-id -m elf_x86_64 "--hash-style=gnu" --as-needed -static -z relro -o hello crt1.o crti.o crtbeginT.o hello.o "-Map=hello.map" --start-group libgcc.a libgcc_eh.a libc.a --end-group crtend.o crtn.o 
