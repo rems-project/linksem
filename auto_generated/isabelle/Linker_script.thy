@@ -169,10 +169,12 @@ datatype retain_policy
   = DefaultKeep
   | KeepEvenWhenGC
 
+type_synonym address_expr_fn_id = "string"
+
 datatype output_section_composition_element
   = IncludeInputSection " (retain_policy * input_section_rec)"
   | IncludeCommonSymbol " (retain_policy * string (* file *) * nat (* linkable_idx *) * symbol_definition * elf_memory_image)"
-  | Hole " address_expr_fn " (* compute the next addr to continue layout at *)
+  | Hole " address_expr_fn_id " (* compute the next addr to continue layout at *)
   | ProvideSymbol " (symbol_def_policy * string * symbol_spec)"
 and
 sort_policy
@@ -189,19 +191,17 @@ and
 output_section_spec =
   OutputSectionSpec " (output_guard *  nat option * string * ( output_section_composition_element list))"
 and
-allocated_sections_map =" (string, (output_section_spec (* OutputSection element idx *) * nat))
-  Map.map "
+allocated_sections_map = AllocatedSectionsMap "(string, (output_section_spec (* OutputSection element idx *) * nat)) Map.map "
 and
-address_expr_fn
-  = AddressExprFn " (nat \<Rightarrow> allocated_sections_map \<Rightarrow> nat)"
+address_expr_fn = AddressExprFn "(nat \<Rightarrow> nat)"
 
 datatype script_element =
   DefineSymbol " (symbol_def_policy * string * symbol_spec)"
-| AdvanceAddress " address_expr_fn "
+| AdvanceAddress "address_expr_fn_id"
 | MarkAndAlignDataSegment " (nat * nat)" (* maxpagesize, commonpagesize *)
 | MarkDataSegmentEnd
 | MarkDataSegmentRelroEnd (*of (allocated_sections_map -> (natural * (natural -> natural))) DPM: commented out because of positivity constrains in Isabelle *)
-| OutputSection " (output_guard * ( (* address_expr *) address_expr_fn option) * string * script_element list)"
+| OutputSection " (output_guard * ( (* address_expr *) address_expr_fn_id option) * string * script_element list)"
 | DiscardInput " input_selector " 
   (* Input queries can only occur within an output section. 
      Output sections may not nest within other output sections. 
@@ -376,7 +376,7 @@ definition has_writability  :: " 'a \<Rightarrow> input_spec \<Rightarrow> bool 
 
 (*val address_zero : address_expr_fn*)
 definition address_zero  :: " address_expr_fn "  where 
-     " address_zero = ( AddressExprFn (\<lambda> pos .  (\<lambda> secs . ( 0 :: nat))))"
+     " address_zero = ( AddressExprFn (\<lambda> pos . ( 0 :: nat)))"
 
 
 (*
@@ -441,8 +441,8 @@ definition alignof_output_section  :: "(output_section_composition_element)list 
 
 
 (*val default_linker_control_script : abi any_abi_feature -> maybe natural -> maybe natural -> maybe natural -> natural -> linker_control_script*)
-definition default_linker_control_script  :: "(any_abi_feature)abi \<Rightarrow>(nat)option \<Rightarrow>(nat)option \<Rightarrow>(nat)option \<Rightarrow> nat \<Rightarrow>(script_element)list "  where 
-     " default_linker_control_script a user_text_segment_start user_data_segment_start user_rodata_segment_start elf_headers_size = ( 
+definition default_linker_control_script  :: "address_expr_fn_id \<Rightarrow> (any_abi_feature)abi \<Rightarrow>(nat)option \<Rightarrow>(nat)option \<Rightarrow>(nat)option \<Rightarrow> nat \<Rightarrow> ((script_element)list \<times> (address_expr_fn_id \<times> address_expr_fn_id \<rightharpoonup> address_expr_fn))"  where 
+     " default_linker_control_script fresh_id a user_text_segment_start user_data_segment_start user_rodata_segment_start elf_headers_size = ( 
   (let segment_start = (\<lambda> name1 default1 . 
                         if(name1 = (''ldata-segment'')) then
                           ((case  user_data_segment_start of
@@ -720,7 +720,7 @@ SECTIONS
      (ProvideIfUsed, (''__executable_start''), default_symbol_spec))
   , AdvanceAddress
       ((* BinRel(Eq, Constant( *) AddressExprFn
-         (\<lambda> _ .  (\<lambda> _ . 
+         (\<lambda> _ .  (
                           (segment_start (''text-segment'')
                              (( 4 :: nat) * ( 1048576 :: nat))) +
                             elf_headers_size)))
