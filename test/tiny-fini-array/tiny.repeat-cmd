@@ -1,0 +1,1 @@
+ld -static --sysroot=/ --build-id -m elf_x86_64 --hash-style=gnu --as-needed -static -z relro -o tiny file1.o file2.o -Map tiny.map --no-ld-generated-unwind-info
