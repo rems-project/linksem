@@ -197,13 +197,15 @@ val find_defs_matching : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv
 let find_defs_matching bound_def img = 
     let (ranges_and_defs : list (maybe element_range * symbol_definition)) = defined_symbols_and_ranges img
     in 
-    (*let _ = errln ("Searching for the bound-to symbol, which came from linkable idx " ^ 
+    let _ = errln ("Searching (among " ^ (show (length ranges_and_defs)) ^ ") for the bound-to symbol `" ^ bound_def.def_symname 
+        ^ "', which came from linkable idx " ^ 
         (show bound_def.def_linkable_idx) ^ ", section " ^ 
         (show bound_def.def_syment.elf64_st_shndx) ^ 
         ", symtab shndx " ^ (show bound_def.def_sym_scn) ^ 
         ", symind " ^ (show bound_def.def_sym_idx))
-    in*)
+    in
     List.mapMaybe (fun (maybe_some_range, some_def) -> 
+       (* let _ = errln ("Considering one: `" ^ some_def.def_symname ^ "'") in *)
        (* match maybe_some_range with
             Nothing -> failwith "symbol definition not over a definite range"
             | Just some_range -> *)
@@ -216,10 +218,17 @@ let find_defs_matching bound_def img =
                     in*) 
                 (*else*) if some_def = bound_def 
                             then (
-                                (*let _ = errln ("Found one: syment is " ^ (show some_def.def_syment))
-                                in*)
+                                let _ = errln ("Found one: syment is " ^ (show some_def.def_syment))
+                                in
                                 Just(maybe_some_range, some_def)
                             )
+                            else if some_def.def_symname = bound_def.def_symname then
+                                let _ = errln ("Warning: passing over name-matching def with section " ^ 
+                                    (show some_def.def_syment.elf64_st_shndx) ^ 
+                                    ", symtab shndx " ^ (show some_def.def_sym_scn) ^ 
+                                    ", symind " ^ (show some_def.def_sym_idx) ^
+                                    ", linkable idx " ^ (show some_def.def_linkable_idx))
+                                in Nothing
                             else Nothing
        (* end *)
     ) ranges_and_defs
