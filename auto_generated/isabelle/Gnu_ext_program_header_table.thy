@@ -4,8 +4,8 @@ theory "Gnu_ext_program_header_table"
 
 imports 
  	 Main
-	 "../../lem-libs/isabelle-lib/Lem_num" 
-	 "../../lem-libs/isabelle-lib/Lem_basic_classes" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_num" 
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
 
 begin 
 
