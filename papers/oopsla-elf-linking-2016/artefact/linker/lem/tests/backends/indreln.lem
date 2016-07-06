@@ -1,0 +1,40 @@
+open import Pervasives_extra
+
+indreln [reflexive : forall 'a. ('a * 'a) -> bool]
+  reflexive_intro: forall r x. r (x, x) ==> reflexive r
+
+indreln [symmetric : forall 'a. ('a * 'a) -> bool]
+  symmetric_intro : forall r x y. r (x, y) && r (y, x) ==> symmetric r
+
+indreln [even: nat -> bool]
+    even_zero: forall. true ==> even 0
+and even_plus: forall n. even n ==> even (n+2)
+
+(*
+indreln
+	reflexive_intro: forall r x. r (x, x) ==> reflexive r
+
+indreln
+  symmetric_intro: forall r x y. r (x, y) && r (y, x) ==> symmetric r
+
+indreln
+  transitive_intro: forall r x y z. r (x, y) && r (y, z) && r (x, z) ==> transitive r
+
+indreln 
+    forall. true ==> even 0
+and forall n. even n ==> even (n+2)
+
+indreln 
+    forall. true ==> even2 0
+and forall n. even2 n ==> odd2 (n + 1)
+and forall n. odd2 n ==> even2 (n + 1)
+   
+let f n =
+  if even n then
+    false
+  else
+    true
+
+(* test renaming *)
+indreln forall set. set > 0 ==> rel set
+*)

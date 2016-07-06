@@ -1,0 +1,136 @@
+(******************************************************************************)
+(* Boolean                                                                    *)
+(******************************************************************************)
+
+(* rename module to clash with existing list modules of targets *)
+
+declare {isabelle;hol;ocaml;coq} rename module = lem_bool 
+
+(* The type bool is hard-coded, so are true and false *)
+
+(* ----------------------- *)
+(* not                     *)
+(* ----------------------- *)
+
+val not : bool -> bool
+let not b = match b with
+  | true -> false
+  | false -> true
+end
+
+declare hol      target_rep function not x = `~` x
+declare ocaml    target_rep function not = `not`
+declare isabelle target_rep function not x = `\<not>` x
+declare html     target_rep function not = `&not;`
+declare coq      target_rep function not = `negb`
+declare tex      target_rep function not b = `$\neg$` b
+
+assert not_1 : not (not true)
+assert not_2 : not false
+
+(* ----------------------- *)
+(* and                     *)
+(* ----------------------- *)
+
+val (&&) [`and`] : bool -> bool -> bool
+let (&&) b1 b2 = match (b1, b2) with
+  | (true, true) -> true
+  | _ -> false
+end
+
+declare hol      target_rep function (&&) = infix right_assoc 0 `/\` 
+declare ocaml    target_rep function (&&) = infix `&&`
+declare isabelle target_rep function (&&) = infix `\<and>`
+declare coq      target_rep function (&&) = infix `&&`
+declare html     target_rep function (&&) = infix `&and;`
+declare tex      target_rep function (&&) = infix `$\wedge$`
+
+assert and_1 : (not (true && false))
+assert and_2 : (not (false && true))
+assert and_3 : (not (false && false))
+assert and_4 : (true && true)
+
+
+(* ----------------------- *)
+(* or                      *)
+(* ----------------------- *)
+
+val (||) [`or`] : bool -> bool -> bool
+let (||) b1 b2 = match (b1, b2) with
+  | (false, false) -> false
+  | _ -> true
+end
+
+declare hol      target_rep function (||) = infix `\/`
+declare ocaml    target_rep function (||) = infix `||`
+declare isabelle target_rep function (||) = infix `\<or>`
+declare coq      target_rep function (||) = infix `||`
+declare html     target_rep function (||) = infix `&or;`
+declare tex      target_rep function (||) = infix `$\vee$`
+
+assert or_1 : (true || false)
+assert or_2 : (false || true)
+assert or_3 : (true || true)
+assert or_4 : (not (false || false))
+
+
+(* ----------------------- *)
+(* implication             *)
+(* ----------------------- *)
+
+val (-->) [`imp`] : bool -> bool -> bool
+let (-->) b1 b2 = match (b1, b2) with
+  | (true, false) -> false
+  | _ -> true
+end
+
+declare hol      target_rep function (-->) = infix `==>`
+declare isabelle target_rep function (-->) = infix `\<longrightarrow>`
+(* declare coq      target_rep function (-->) = `imp` *)
+declare html     target_rep function (-->) = infix `&rarr;`
+declare tex      target_rep function (-->) = infix `$\longrightarrow$`
+
+let inline {ocaml; coq} imp x y = ((not x) || y)
+
+assert imp_1 : (not (true --> false))
+assert imp_2 : (false --> true)
+assert imp_3 : (false --> false)
+assert imp_4 : (true --> true)
+
+
+(* ----------------------- *)
+(* equivalence             *)
+(* ----------------------- *)
+
+val (<->) [`equiv`] : bool -> bool -> bool
+let (<->) b1 b2 = match (b1, b2) with
+  | (true, true) -> true
+  | (false, false) -> true
+  | _ -> false
+end
+
+declare hol      target_rep function (<->) = infix `<=>`
+declare isabelle target_rep function (<->) = infix `\<longleftrightarrow>`
+declare coq      target_rep function (<->) = `eqb`
+declare ocaml    target_rep function (<->) = infix `=`
+declare html     target_rep function (<->) = infix `&harr;`
+declare tex      target_rep function (<->) = infix `$\longleftrightarrow$`
+
+assert equiv_1 : (not (true <-> false))
+assert equiv_2 : (not (false <-> true))
+assert equiv_3 : (false <-> false)
+assert equiv_4 : (true <-> true)
+
+
+(* ----------------------- *)
+(* xor                     *)
+(* ----------------------- *)
+
+val xor : bool -> bool -> bool
+let inline xor b1 b2 = not (b1 <-> b2)
+
+assert xor_1 : (xor true false)
+assert xor_2 : (xor false true)
+assert xor_3 : (not (xor true true))
+assert xor_4 : (not (xor false false))
+

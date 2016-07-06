@@ -1,0 +1,46 @@
+open import Pervasives_extra
+
+type t = <| fn : nat |>
+type t2 = <| X : nat |>
+
+let X = <| fn = (2:nat) |>
+
+type u = | fn
+
+module X = struct 
+  let Y = (1:nat)
+end
+
+let _ = X . fn 
+
+module Y = struct
+  let Z = (1:nat)
+end
+
+let _ = Y.Z
+
+let F Y = Y . fn
+
+module Z = struct
+  type m = <| F : nat |>
+  type t = <| fn : m |>
+  let x1 = <| fn = <| F = (2:nat) |> |>
+  module F = struct
+    let _ = (1:nat)
+  end
+end
+
+let x1 = <| Z.fn = <| Z.F = 1 |> |>
+let _ = Z.x1 . Z.fn . Z.F
+let _ = (if true then x1 else x1) . Z.fn . Z.F
+
+(* TODO
+
+module T = struct
+  type t = <| (^^^) : num |>
+  let (---) = 1
+end
+
+
+let _ = <| T.( ^^^ ) = 1 |>.T.( ^^^ )
+ *)

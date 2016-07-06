@@ -2,7 +2,12 @@
 default: build-all
 
 .PHONY: build-all
-build-all: build-contrib build
+build-all: build-lem build-contrib build
+
+.PHONY: build-lem
+build-lem:
+	$(MAKE) -C lem
+	$(MAKE) -C lem ocaml-libs
 
 .PHONY: build-contrib
 build-contrib:

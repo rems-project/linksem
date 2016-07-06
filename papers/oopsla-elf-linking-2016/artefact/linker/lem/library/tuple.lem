@@ -1,0 +1,88 @@
+(******************************************************************************)
+(* Tuples                                                                     *)
+(******************************************************************************)
+
+(* The type for tuples (pairs) is hard-coded, so here only a few functions are used *)
+
+declare {isabelle;hol;ocaml;coq} rename module = lem_tuple 
+
+open import Bool Basic_classes
+
+(* ----------------------- *)
+(* fst                     *)
+(* ----------------------- *)
+
+val fst : forall 'a 'b. 'a * 'b -> 'a
+let fst (v1, v2) = v1
+
+declare hol      target_rep function fst = `FST`
+declare ocaml    target_rep function fst = `fst`
+declare isabelle target_rep function fst = `fst`
+declare coq      target_rep function fst = (`@` `fst` `_` `_`)
+
+assert fst_1 : (fst (true, false) = true) 
+assert fst_2 : (fst (false, true) = false)
+
+(* ----------------------- *)
+(* snd                     *)
+(* ----------------------- *)
+
+val snd : forall 'a 'b. 'a * 'b -> 'b
+let snd (v1, v2) = v2
+
+declare hol      target_rep function snd = `SND`
+declare ocaml    target_rep function snd = `snd`
+declare isabelle target_rep function snd = `snd`
+declare coq      target_rep function snd = (`@` `snd` `_` `_`)
+
+lemma fst_snd: (forall v. v = (fst v, snd v))
+
+assert snd_1 : (snd (true, false) = false) 
+assert snd_2 : (snd (false, true) = true)
+
+
+(* ----------------------- *)
+(* curry                   *)
+(* ----------------------- *)
+
+val curry : forall 'a 'b 'c. ('a * 'b -> 'c) -> ('a -> 'b -> 'c)
+let inline curry f v1 v2 = f (v1, v2)
+
+declare hol      target_rep function curry = `CURRY`
+declare isabelle target_rep function curry = `curry`
+declare ocaml    target_rep function curry = `Lem.curry`
+declare coq      target_rep function curry = `prod_curry`
+
+assert curry_1 : (curry (fun (x,y) -> x && y) true false = false)
+
+(* ----------------------- *)
+(* uncurry                 *)
+(* ----------------------- *)
+
+val uncurry : forall 'a 'b 'c. ('a -> 'b -> 'c) -> ('a * 'b -> 'c) 
+let inline uncurry f = (fun (v1, v2) -> f v1 v2)
+
+declare hol      target_rep function uncurry = `UNCURRY`
+declare isabelle target_rep function uncurry = `Product_Type.split`
+declare ocaml    target_rep function uncurry = `Lem.uncurry`
+declare coq      target_rep function uncurry = `prod_uncurry`
+
+lemma curry_uncurry: (forall f xy. uncurry (curry f) xy = f xy)
+lemma uncurry_curry: (forall f x y. curry (uncurry f) x y = f x y)
+
+assert uncurry_1 : (uncurry (fun x y -> x && y) (true, false) = false)
+
+
+(* ----------------------- *)
+(* swap                    *)
+(* ----------------------- *)
+
+val swap : forall 'a 'b. ('a * 'b) -> ('b * 'a) 
+let swap (v1, v2) = (v2, v1)
+
+let inline {isabelle; coq} swap = (fun (v1, v2) -> (v2, v1))
+declare hol      target_rep function swap = `SWAP`
+declare ocaml    target_rep function swap = `Lem.pair_swap`
+
+assert swap_1 : (swap (false, true) = (true, false))
+
