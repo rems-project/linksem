@@ -644,8 +644,8 @@ let relocate_output_image a bindings_by_name img =
     in
     relocated_img
 
-val link : linker_control_script -> abi any_abi_feature -> set Command_line.link_option -> linkable_list -> elf_memory_image
-let link script a options linkables = 
+val link : address_expr_fn_map allocated_sections_map -> linker_control_script -> abi any_abi_feature -> set Command_line.link_option -> linkable_list -> elf_memory_image
+let link alloc_map script a options linkables = 
     let initial_included_indices = mapMaybei (fun i -> (fun (obj, inp, (opts : input_options)) -> 
         if opts.item_force_output 
         then Just i
@@ -827,7 +827,7 @@ let link script a options linkables =
     in
     *)
     let (unrelocated_output_image_lacking_abs_symbols, bindings_by_name)
-     = interpret_linker_control_script script linkables linker_script_linkable_idx a input_sections seen_ordering default_place_orphans initial_bindings_by_name
+     = interpret_linker_control_script alloc_map script linkables linker_script_linkable_idx a input_sections seen_ordering default_place_orphans initial_bindings_by_name
     in
     (* also copy over ABS (range-less) symbols from all included input items *)
     let all_abs_range_tags_in_included_inputs = List.concat (

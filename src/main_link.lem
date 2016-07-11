@@ -54,7 +54,7 @@ val correctly_linked : abi any_abi_feature -> linkable_list -> list string -> se
 let correctly_linked a linkables names options eout = 
     let output_image = elf_memory_image_of_elf64_file a "(output file)" eout
     in
-    let script = default_linker_control_script a 
+    let (fresh, alloc_map, script) = default_linker_control_script 0 Map.empty a 
         (* user_text_segment_start *) (match Command_line.find_option_matching_tag (TextSegmentStart(0)) options with Just(TextSegmentStart(addr)) -> Just addr | _ -> Nothing end)
         (* user_data_segment_start *) Nothing
         (* user_rodata_segment_start *) (match Command_line.find_option_matching_tag (RodataSegmentStart(0)) options with Just(RodataSegmentStart(addr)) -> Just addr | _ -> Nothing end)
@@ -63,7 +63,7 @@ let correctly_linked a linkables names options eout =
                 (* ELF header size *) 64 + a.max_phnum * 56 (* size of one phdr *)
             )
     in
-    let linked_image = link script a options linkables
+    let linked_image = link alloc_map script a options linkables
     in
     if images_consistent output_image linked_image then Just linked_image else Nothing
 

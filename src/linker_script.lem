@@ -121,6 +121,10 @@ type retain_policy
   = DefaultKeep
   | KeepEvenWhenGC
 
+type address_expr_fn_ref    = natural
+type address_expr_fn_map 'a = Map.map address_expr_fn_ref (natural -> 'a -> natural)
+(* 'a = allocated_sections_map *)
+
 type output_section_composition_element
   = IncludeInputSection of (retain_policy * input_section_rec)
   | IncludeCommonSymbol of (retain_policy * string (* file *) * natural (* linkable_idx *) * symbol_definition * elf_memory_image)
@@ -145,7 +149,7 @@ allocated_sections_map =
   AllocatedSectionsMap of Map.map string (output_section_spec (* OutputSection element idx *) * natural)
 and
 address_expr_fn
-  = AddressExprFn of (natural -> allocated_sections_map -> natural)
+  = AddressExprFn of address_expr_fn_ref
 
 type script_element =
   DefineSymbol of (symbol_def_policy * string * symbol_spec)
@@ -304,8 +308,12 @@ let has_writability = fun writable -> (fun input_sec -> (
    
  *)
 
-val address_zero : address_expr_fn
-let address_zero = AddressExprFn (fun pos -> (fun secs -> 0))
+val address_zero : natural -> address_expr_fn_map allocated_sections_map ->
+  (natural * address_expr_fn_map allocated_sections_map * address_expr_fn)
+let address_zero fresh alloc_map =
+  let alloc_map' = Map.insert fresh (fun pos -> (fun secs -> 0)) alloc_map in
+  let fresh'     = 1 + fresh in
+    (fresh', alloc_map', AddressExprFn fresh)
 
 (*
 val output_sec_composition_size : list output_section_composition_element -> natural
@@ -363,8 +371,10 @@ let alignof_output_section comps =
     in
     List.foldl (fun acc_lcm -> fun next -> lcm acc_lcm next) 1 aligns
 
-val default_linker_control_script : abi any_abi_feature -> maybe natural -> maybe natural -> maybe natural -> natural -> linker_control_script
-let default_linker_control_script a user_text_segment_start user_data_segment_start user_rodata_segment_start elf_headers_size = 
+val default_linker_control_script : natural -> address_expr_fn_map allocated_sections_map ->
+  abi any_abi_feature -> maybe natural -> maybe natural -> maybe natural ->
+  natural -> (natural * address_expr_fn_map allocated_sections_map * linker_control_script)
+let default_linker_control_script fresh alloc_map a user_text_segment_start user_data_segment_start user_rodata_segment_start elf_headers_size = 
     let segment_start name default = match name with 
       "ldata-segment" -> match user_data_segment_start with 
         Nothing -> default
@@ -385,7 +395,67 @@ let default_linker_control_script a user_text_segment_start user_data_segment_st
          | _ -> false
     end)
     in
-    [
+    let alloc_fn1     = fun _ -> (fun _ ->  (segment_start "text-segment" (4 * 1048576)) + elf_headers_size) in
+    let alloc_fn1_ref = fresh in
+    let alloc_map     = Map.insert alloc_fn1_ref alloc_fn1 alloc_map in
+    let fresh         = 1 + fresh in
+    let alloc_fn2     = fun addr -> (fun _ -> 
+      (* (align_up_to a.maxpagesize addr) - (natural_land (a.maxpagesize - addr) (a.maxpagesize - 1)) *)
+      (*
+      FIXME: understand the intention of this assignment.
+      Evaluating a simple example of this (from true-static-uClibc)
+
+      (ALIGN (0x200000) - ((0x200000 - .) & 0x1fffff))
+
+      starting from 0x00000000004017dc
+      means 
+      0x600000 - ((0x200000 - 0x4017dc) & 0x1fffff)
+      i.e. 
+      0x600000 - (((-0x2017dc)) & 0x1fffff)
+      i.e.
+      0x600000 - (     -0x2017dc   
+                      & 0x1fffff )
+
+      which really does come to (according to bash) 0x4017dc
+      i.e. we subtract 0x1fe824 from 0x600000
+      and end up back where we started.
+
+      What does ANDing a negative number mean?
+      It doesn't seem to work for us.
+      Well, to take the negation we flip every bit and add one.
+      So if we don't want to do a subtraction that might go negative, 
+      we can instead add the complement.    
+      *)
+        (align_up_to a.maxpagesize addr) - (natural_land (a.maxpagesize + compl64 addr) (a.maxpagesize - 1))) in
+    let (fresh, alloc_map, (address_zero_fn : address_expr_fn)) = address_zero fresh alloc_map in
+    let alloc_fn2_ref = fresh in
+    let alloc_map     = Map.insert alloc_fn2_ref alloc_fn2 alloc_map in
+    let fresh         = 1 + fresh in
+    let alloc_fn3     = fun pos -> (fun secs -> align_up_to (if pos = 0 then (64/8) else 1) pos) in
+    let alloc_fn3_ref = fresh in
+    let alloc_map     = Map.insert alloc_fn3_ref alloc_fn3 alloc_map in
+    let fresh         = 1 + fresh in
+    let alloc_fn4     = (fun pos -> (fun secs -> align_up_to (64/8) pos)) in
+    let alloc_fn4_ref = fresh in
+    let alloc_map     = Map.insert alloc_fn4_ref alloc_fn4 alloc_map in
+    let fresh         = 1 + fresh in
+    let alloc_fn5     = (fun pos -> (fun secs -> segment_start "ldata-segment" pos)) in
+    let alloc_fn5_ref = fresh in
+    let alloc_map     = Map.insert alloc_fn5_ref alloc_fn5 alloc_map in
+    let fresh         = 1 + fresh in
+    let alloc_fn6     = (fun pos -> fun secs -> align_up_to (a.maxpagesize + ((natural_land pos a.maxpagesize) - 1)) pos) in
+    let alloc_fn6_ref = fresh in
+    let alloc_map     = Map.insert alloc_fn6_ref alloc_fn6 alloc_map in
+    let fresh         = 1 + fresh in
+    let alloc_fn7     = (fun pos -> (fun secs -> (if pos <> 0 then 64 / 8 else 1))) in
+    let alloc_fn7_ref = fresh in
+    let alloc_map     = Map.insert alloc_fn7_ref alloc_fn7 alloc_map in
+    let fresh         = 1 + fresh in
+    let alloc_fn8     = (fun pos -> (fun secs -> align_up_to (64/8) pos)) in
+    let alloc_fn8_ref = fresh in
+    let alloc_map     = Map.insert alloc_fn8_ref alloc_fn8 alloc_map in
+    let fresh         = 1 + fresh in
+    (fresh, alloc_map, [
         (* For now, we base our script on the GNU bfd linker's scripts. 
            Here's the static -z combreloc one.
            
@@ -640,8 +710,7 @@ SECTIONS
              
           *)
     (DefineSymbol(ProvideIfUsed, "__executable_start", default_symbol_spec))
-  ; AdvanceAddress((* BinRel(Eq, Constant( *) AddressExprFn (fun _ -> (fun _ -> 
-        (segment_start "text-segment" (4 * 1048576)) + elf_headers_size)))
+  ; AdvanceAddress(AddressExprFn alloc_fn1_ref)
   ; OutputSection(AlwaysOutput, Nothing, ".interp", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".interp"))])
   ; OutputSection(AlwaysOutput, Nothing, ".note.gnu.build-id", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".note.gnu.build-id"))])
   ; OutputSection(AlwaysOutput, Nothing, ".hash", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".hash"))])
@@ -719,35 +788,7 @@ SECTIONS
     filter_and_concat (fun s -> name_matches ".gcc_except_table" s || name_matches ".gcc_except_table.*" s))])
   ; OutputSection(OnlyIfRo, Nothing, ".exception_ranges", [InputQuery(DefaultKeep, DefaultSort, 
     filter_and_concat (fun s -> name_matches ".exception_ranges" s || name_matches ".exception_ranges*" s))])
-  ; AdvanceAddress(AddressExprFn (fun addr -> (fun _ -> 
-    (* (align_up_to a.maxpagesize addr) - (natural_land (a.maxpagesize - addr) (a.maxpagesize - 1)) *)
-    (*
-    FIXME: understand the intention of this assignment.
-    Evaluating a simple example of this (from true-static-uClibc)
-
-    (ALIGN (0x200000) - ((0x200000 - .) & 0x1fffff))
-
-    starting from 0x00000000004017dc
-    means 
-    0x600000 - ((0x200000 - 0x4017dc) & 0x1fffff)
-    i.e. 
-    0x600000 - (((-0x2017dc)) & 0x1fffff)
-    i.e.
-    0x600000 - (     -0x2017dc   
-                    & 0x1fffff )
-
-    which really does come to (according to bash) 0x4017dc
-    i.e. we subtract 0x1fe824 from 0x600000
-    and end up back where we started.
-
-    What does ANDing a negative number mean?
-    It doesn't seem to work for us.
-    Well, to take the negation we flip every bit and add one.
-    So if we don't want to do a subtraction that might go negative, 
-    we can instead add the complement.    
-    *)
-        (align_up_to a.maxpagesize addr) - (natural_land (a.maxpagesize + compl64 addr) (a.maxpagesize - 1))
-    )))
+  ; AdvanceAddress(AddressExprFn alloc_fn2_ref)
   ; MarkAndAlignDataSegment((* a.maxpagesize *) 2 * 1024 * 1024 (* <-- for some reason binutils assumes 2MB max page size,
     even if ABI says smaller *), a.commonpagesize)
   ; OutputSection(OnlyIfRw, Nothing, ".eh_frame", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".eh_frame"))])
@@ -855,7 +896,7 @@ SECTIONS
                                 in*) result
                             )
       ])
-    ; AdvanceAddress(AddressExprFn (fun pos -> (fun secs -> align_up_to (if pos = 0 then (64/8) else 1) pos)))
+    ; AdvanceAddress(AddressExprFn alloc_fn3_ref)
     ; OutputSection(AlwaysOutput, Nothing, ".lbss", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".dynlbss"))
                             ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".dynlbss"))
                             ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
@@ -863,63 +904,63 @@ SECTIONS
                                 ))
                             ; InputQuery(DefaultKeep, DefaultSort, filter_and_concat (is_large_common))
       ])
-    ; AdvanceAddress(AddressExprFn (fun pos -> (fun secs -> align_up_to (64/8) pos)))
-    ; AdvanceAddress(AddressExprFn (fun pos -> (fun secs -> segment_start "ldata-segment" pos)))
-    ; OutputSection(AlwaysOutput, Just (AddressExprFn (fun pos -> fun secs -> align_up_to (a.maxpagesize + ((natural_land pos a.maxpagesize) - 1)) pos)), 
+    ; AdvanceAddress(AddressExprFn alloc_fn4_ref)
+    ; AdvanceAddress(AddressExprFn alloc_fn5_ref)
+    ; OutputSection(AlwaysOutput, Just (AddressExprFn alloc_fn6_ref), 
          ".lrodata",
          [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
             fun s -> name_matches ".lrodata" s || name_matches ".lrodata.*" s || name_matches ".gnu.linkonce.lr.*" s
             ))
-        ; AdvanceAddress(AddressExprFn (fun pos -> (fun secs -> (if pos <> 0 then 64 / 8 else 1))))
+        ; AdvanceAddress(AddressExprFn alloc_fn7_ref)
         ])
-    ; AdvanceAddress(AddressExprFn (fun pos -> (fun secs -> align_up_to (64/8) pos)))
+    ; AdvanceAddress(AddressExprFn alloc_fn8_ref)
     ; DefineSymbol(AlwaysDefine, "_end", default_symbol_spec)
     ; DefineSymbol(ProvideIfUsed, "end", default_symbol_spec)
     ; MarkDataSegmentEnd
-    ; OutputSection(AlwaysOutput, Just address_zero, ".stab", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".stab"))])
-    ; OutputSection(AlwaysOutput, Just address_zero, ".stabstr", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".stabstr"))])
-    ; OutputSection(AlwaysOutput, Just address_zero, ".stab.excl", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".stab.excl"))])
-    ; OutputSection(AlwaysOutput, Just address_zero, ".stab.exclstr", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".stab.exclstr"))])
-    ; OutputSection(AlwaysOutput, Just address_zero, ".stab.index", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".stab.index"))])
-    ; OutputSection(AlwaysOutput, Just address_zero, ".stab.indexstr", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".stab.indexstr"))])
-    ; OutputSection(AlwaysOutput, Just address_zero, ".comment", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".comment"))])
+    ; OutputSection(AlwaysOutput, Just address_zero_fn, ".stab", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".stab"))])
+    ; OutputSection(AlwaysOutput, Just address_zero_fn, ".stabstr", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".stabstr"))])
+    ; OutputSection(AlwaysOutput, Just address_zero_fn, ".stab.excl", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".stab.excl"))])
+    ; OutputSection(AlwaysOutput, Just address_zero_fn, ".stab.exclstr", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".stab.exclstr"))])
+    ; OutputSection(AlwaysOutput, Just address_zero_fn, ".stab.index", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".stab.index"))])
+    ; OutputSection(AlwaysOutput, Just address_zero_fn, ".stab.indexstr", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".stab.indexstr"))])
+    ; OutputSection(AlwaysOutput, Just address_zero_fn, ".comment", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".comment"))])
       (* DWARF debug sections.
      Symbols in the DWARF debugging sections are relative to the beginning
      of the section so we begin them at 0.  *)
       (* DWARF 1 *)
-    ; OutputSection(AlwaysOutput, Just address_zero, ".debug", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug"))])
-    ; OutputSection(AlwaysOutput, Just address_zero, ".line", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".line"))])
+    ; OutputSection(AlwaysOutput, Just address_zero_fn, ".debug", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug"))])
+    ; OutputSection(AlwaysOutput, Just address_zero_fn, ".line", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".line"))])
       (* GNU DWARF 1 extensions *)
-    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_srcinfo", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_srcinfo"))])
-    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_sfnames", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_sfname"))])
+    ; OutputSection(AlwaysOutput, Just address_zero_fn, ".debug_srcinfo", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_srcinfo"))])
+    ; OutputSection(AlwaysOutput, Just address_zero_fn, ".debug_sfnames", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_sfname"))])
       (* DWARF 1.1 and DWARF 2 *)
-    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_aranges", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_aranges"))])
-    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_pubnames", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_pubnames"))])
+    ; OutputSection(AlwaysOutput, Just address_zero_fn, ".debug_aranges", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_aranges"))])
+    ; OutputSection(AlwaysOutput, Just address_zero_fn, ".debug_pubnames", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_pubnames"))])
       (* DWARF 2 *)
-    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_info", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
+    ; OutputSection(AlwaysOutput, Just address_zero_fn, ".debug_info", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
         fun s -> name_matches ".debug_info" s || name_matches ".gnu.linkonce.wi.*" s))])
-    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_abbrev", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_abbrev"))])
-    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_line", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
+    ; OutputSection(AlwaysOutput, Just address_zero_fn, ".debug_abbrev", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_abbrev"))])
+    ; OutputSection(AlwaysOutput, Just address_zero_fn, ".debug_line", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (
         fun s -> name_matches ".debug_line" s || name_matches ".debug_line.*" s || name_matches ".debug_line_end" s))])
-    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_frame", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_frame"))])
-    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_str", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_str"))])
-    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_loc", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_loc"))])
-    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_macinfo", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_macinfo"))])
+    ; OutputSection(AlwaysOutput, Just address_zero_fn, ".debug_frame", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_frame"))])
+    ; OutputSection(AlwaysOutput, Just address_zero_fn, ".debug_str", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_str"))])
+    ; OutputSection(AlwaysOutput, Just address_zero_fn, ".debug_loc", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_loc"))])
+    ; OutputSection(AlwaysOutput, Just address_zero_fn, ".debug_macinfo", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_macinfo"))])
       (* SGI/MIPS DWARF 2 extensions *)
-    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_weaknames", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_weaknames"))])
-    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_funcnames", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_funcnames"))])
-    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_typenames", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_typenames"))])
-    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_varnames", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_varnames"))])
+    ; OutputSection(AlwaysOutput, Just address_zero_fn, ".debug_weaknames", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_weaknames"))])
+    ; OutputSection(AlwaysOutput, Just address_zero_fn, ".debug_funcnames", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_funcnames"))])
+    ; OutputSection(AlwaysOutput, Just address_zero_fn, ".debug_typenames", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_typenames"))])
+    ; OutputSection(AlwaysOutput, Just address_zero_fn, ".debug_varnames", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_varnames"))])
       (* DWARF 3 *) 
-    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_pubtypes", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_pubtypes"))])
-    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_ranges", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_ranges"))])
+    ; OutputSection(AlwaysOutput, Just address_zero_fn, ".debug_pubtypes", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_pubtypes"))])
+    ; OutputSection(AlwaysOutput, Just address_zero_fn, ".debug_ranges", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_ranges"))])
       (* DWARF Extension.  *) 
-    ; OutputSection(AlwaysOutput, Just address_zero, ".debug_macro", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_macro"))])
-    ; OutputSection(AlwaysOutput, Just address_zero, ".gnu.attributes", [InputQuery(KeepEvenWhenGC, DefaultSort, filter_and_concat (name_matches ".gnu.attributes"))])
+    ; OutputSection(AlwaysOutput, Just address_zero_fn, ".debug_macro", [InputQuery(DefaultKeep, DefaultSort, filter_and_concat (name_matches ".debug_macro"))])
+    ; OutputSection(AlwaysOutput, Just address_zero_fn, ".gnu.attributes", [InputQuery(KeepEvenWhenGC, DefaultSort, filter_and_concat (name_matches ".gnu.attributes"))])
     ; DiscardInput(filter_and_concat (fun s -> name_matches ".note.GNU-stack" s || name_matches ".gnu_debuglink" s || name_matches ".gnu.lto_*" s))
     (* NOTE: orphan sections are dealt with in the core linking logic,
        not the script. *)
-    ]
+    ])
 
 let interpret_guard guard comp name = 
      match guard with
@@ -1297,10 +1338,15 @@ let symbol_def_for_provide_symbol name size info other control_script_linkable_i
         ; def_linkable_idx = control_script_linkable_idx
     |>
 
-val assign_dot_to_itself : address_expr_fn
-let assign_dot_to_itself = AddressExprFn (fun dot -> fun _ -> dot)
+val assign_dot_to_itself : natural -> address_expr_fn_map allocated_sections_map -> (natural * address_expr_fn_map allocated_sections_map * address_expr_fn)
+let assign_dot_to_itself fresh alloc_map =
+  let fn = (fun dot -> fun _ -> dot) in
+  let alloc_map' = Map.insert fresh fn alloc_map in
+  let fresh' = 1 + fresh in
+    (fresh', alloc_map', AddressExprFn fresh)
 
-val build_image : 
+val build_image :
+    address_expr_fn_map allocated_sections_map -> (* global dictionary of address_expr_fn_ref -> address_expr_fn *)
     elf_memory_image ->          (* accumulator *)
     natural ->                   (* location counter *)
     allocated_sections_map ->  (* outputs constructed earlier *)
@@ -1309,7 +1355,7 @@ val build_image :
     natural -> (* control_script_linkable_idx *)
     (Map.map string (list symbol_definition)) -> (* linker_defs_by_name *)
     (elf_memory_image * allocated_sections_map)            (* accumulated result *)
-let rec build_image acc pos (AllocatedSectionsMap outputs_by_name) bindings_by_name script control_script_linkable_idx linker_defs_by_name = 
+let rec build_image alloc_map acc pos (AllocatedSectionsMap outputs_by_name) bindings_by_name script control_script_linkable_idx linker_defs_by_name = 
      let (add_output_section : (natural * elf_memory_image) -> output_section_spec -> (natural * elf_memory_image * natural * output_section_spec))
      = fun ((*scn_idx, *)pos, acc_img) ->
         (fun (OutputSectionSpec (guard, addr, secname, comp)) -> 
@@ -1851,7 +1897,13 @@ let rec build_image acc pos (AllocatedSectionsMap outputs_by_name) bindings_by_n
                 DefineSymbol(symdefpol, name, (symsize, syminfo, symother)) -> 
                     (* We've already added this to the output composition. *)
                     do_nothing
-                | AdvanceAddress(AddressExprFn advance_fn) -> 
+                | AdvanceAddress(AddressExprFn advance_fn_ref) -> 
+                    let advance_fn =
+                      match Map.lookup advance_fn_ref alloc_map with
+                        | Just m  -> m
+                        | Nothing -> failwith "alloc_map invariant failure"
+                      end
+                    in
                     let new_pos = advance_fn pos (AllocatedSectionsMap outputs_by_name)
                     in
                     (acc, new_pos, (AllocatedSectionsMap outputs_by_name))
@@ -2052,8 +2104,14 @@ let rec build_image acc pos (AllocatedSectionsMap outputs_by_name) bindings_by_n
                                         (end_addr, (* seen_end *) false)
                                     )
                                     else (curpos, (* seen_end *) false)
-                                | AdvanceAddress(AddressExprFn advance_fn) -> 
+                                | AdvanceAddress(AddressExprFn advance_fn_ref) -> 
                                     let _ = errln "Advance address"
+                                    in
+                                    let advance_fn =
+                                      match Map.lookup advance_fn_ref alloc_map with
+                                        | Just m  -> m
+                                        | Nothing -> failwith "alloc_map invariant failed"
+                                      end
                                     in
                                     let new_pos = advance_fn curpos (AllocatedSectionsMap outputs_by_name)
                                     in
@@ -2168,7 +2226,13 @@ let rec build_image acc pos (AllocatedSectionsMap outputs_by_name) bindings_by_n
                         | IncludeCommonSymbol(retain_pol, fname, idx, def, img) ->
                             natural_of_elf64_xword def.def_syment.elf64_st_size > 0
                         | ProvideSymbol(pol, name, spec) -> true (* HACK: what else makes sense here? *)
-                        | Hole(AddressExprFn(address_fn)) ->
+                        | Hole(AddressExprFn(address_fn_ref)) ->
+                            let address_fn =
+                              match Map.lookup address_fn_ref alloc_map with
+                                | Just m  -> m
+                                | Nothing -> failwith "alloc_map invariant failed"
+                              end
+                            in
                             let assignment_is_excluded = fun f -> 
                                 (* really makes you wish you were programming in Lisp *)
                                 let always_gives_0 = 
@@ -2180,7 +2244,7 @@ let rec build_image acc pos (AllocatedSectionsMap outputs_by_name) bindings_by_n
                                     && f 42 (AllocatedSectionsMap outputs_by_name) = 42)     (* FIXME: this is wrong *)
                                 in
                                 (* FIXME: what are the semantics of function equality in Lem? *)
-                                always_gives_0 || (always_gives_dot && (AddressExprFn(f)) <> assign_dot_to_itself)
+                                always_gives_0 || (always_gives_dot (*&& (AddressExprFn(f)) <> assign_dot_to_itself*) (* FIXME DPM: almost certainly not what is meant... *))
                             in
                             not (assignment_is_excluded address_fn)
                     end
@@ -2236,7 +2300,7 @@ let rec build_image acc pos (AllocatedSectionsMap outputs_by_name) bindings_by_n
             end
             in
             (* recurse *)
-            build_image new_acc new_pos new_outputs_by_name bindings_by_name more_elements_and_idx control_script_linkable_idx linker_defs_by_name
+            build_image alloc_map new_acc new_pos new_outputs_by_name bindings_by_name more_elements_and_idx control_script_linkable_idx linker_defs_by_name
     end
 
 (*
@@ -2418,7 +2482,8 @@ let default_place_orphans (discards, outputs) inputs =
      in
      List.foldl place_one_orphan (discards, outputs) orphans 
 
-val interpret_linker_control_script : 
+val interpret_linker_control_script :
+    address_expr_fn_map allocated_sections_map ->
     linker_control_script
     -> linkable_list
     -> natural (* control_script_linkable_idx *)
@@ -2428,7 +2493,7 @@ val interpret_linker_control_script :
     -> (input_output_assignment -> list input_spec -> input_output_assignment)     (* place orphans *)
     -> (Map.map string (list (natural * binding))) (* initial_bindings_by_name *)
     -> (elf_memory_image * Map.map string (list (natural * binding)))
-let interpret_linker_control_script script linkables control_script_linkable_idx a inputs seen_ordering place_orphans initial_bindings_by_name =
+let interpret_linker_control_script alloc_map script linkables control_script_linkable_idx a inputs seen_ordering place_orphans initial_bindings_by_name =
     let labelled_script = label_script script
     in
     let _ = List.mapi (fun i -> fun input -> 
@@ -2617,7 +2682,7 @@ let interpret_linker_control_script script linkables control_script_linkable_idx
     in
     (* FIXME: print LOAD and START_GROUP trace *)
     let (img, outputs_by_name_with_position)
-     = build_image empty_elf_memory_image 0 outputs_by_name_after_gc bindings_by_name labelled_script control_script_linkable_idx linker_defs_by_name
+     = build_image alloc_map empty_elf_memory_image 0 outputs_by_name_after_gc bindings_by_name labelled_script control_script_linkable_idx linker_defs_by_name
     in
     (*let _ = errln ("Final image has " ^ (show (Map.size img.elements)) ^ " elements and " 
         ^ (show (Set.size img.by_tag)) ^ " metadata tags, of which " ^ (
