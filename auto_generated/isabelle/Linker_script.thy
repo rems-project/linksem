@@ -169,12 +169,14 @@ datatype retain_policy
   = DefaultKeep
   | KeepEvenWhenGC
 
-type_synonym address_expr_fn_id = "string"
+type_synonym address_expr_fn_ref    =" nat "
+type_synonym 'a address_expr_fn_map =" (address_expr_fn_ref, (nat \<Rightarrow> 'a \<Rightarrow> nat)) Map.map "
+(* 'a = allocated_sections_map *)
 
 datatype output_section_composition_element
   = IncludeInputSection " (retain_policy * input_section_rec)"
   | IncludeCommonSymbol " (retain_policy * string (* file *) * nat (* linkable_idx *) * symbol_definition * elf_memory_image)"
-  | Hole " address_expr_fn_id " (* compute the next addr to continue layout at *)
+  | Hole " address_expr_fn " (* compute the next addr to continue layout at *)
   | ProvideSymbol " (symbol_def_policy * string * symbol_spec)"
 and
 sort_policy
@@ -191,17 +193,19 @@ and
 output_section_spec =
   OutputSectionSpec " (output_guard *  nat option * string * ( output_section_composition_element list))"
 and
-allocated_sections_map = AllocatedSectionsMap "(string, (output_section_spec (* OutputSection element idx *) * nat)) Map.map "
+allocated_sections_map =
+  AllocatedSectionsMap " (string, (output_section_spec (* OutputSection element idx *) * nat)) Map.map "
 and
-address_expr_fn = AddressExprFn "(nat \<Rightarrow> nat)"
+address_expr_fn
+  = AddressExprFn " address_expr_fn_ref "
 
 datatype script_element =
   DefineSymbol " (symbol_def_policy * string * symbol_spec)"
-| AdvanceAddress "address_expr_fn_id"
+| AdvanceAddress " address_expr_fn "
 | MarkAndAlignDataSegment " (nat * nat)" (* maxpagesize, commonpagesize *)
 | MarkDataSegmentEnd
 | MarkDataSegmentRelroEnd (*of (allocated_sections_map -> (natural * (natural -> natural))) DPM: commented out because of positivity constrains in Isabelle *)
-| OutputSection " (output_guard * ( (* address_expr *) address_expr_fn_id option) * string * script_element list)"
+| OutputSection " (output_guard * ( (* address_expr *) address_expr_fn option) * string * script_element list)"
 | DiscardInput " input_selector " 
   (* Input queries can only occur within an output section. 
      Output sections may not nest within other output sections. 
@@ -273,7 +277,9 @@ definition filter_and_concat  :: "(input_spec \<Rightarrow> bool)\<Rightarrow>(i
 
 (*val name_matches : string -> input_spec -> bool*)
 fun name_matches  :: " string \<Rightarrow> input_spec \<Rightarrow> bool "  where 
-     " name_matches pat (InputSection(inp)) = ( glob_match ( pat) ((secname   inp)))"
+     " name_matches pat (InputSection(inp)) = ( 
+            (*let _ = errln (Does section name ` ^ inp.secname ^ ' match glob pattern ` ^ pat ^ '? ) in
+            let result = *)glob_match ( pat) ((secname   inp)))"
 |" name_matches pat _ = ( False )" 
 declare name_matches.simps [simp del]
 
@@ -374,9 +380,13 @@ definition has_writability  :: " 'a \<Rightarrow> input_spec \<Rightarrow> bool 
    
  *)
 
-(*val address_zero : address_expr_fn*)
-definition address_zero  :: " address_expr_fn "  where 
-     " address_zero = ( AddressExprFn (\<lambda> pos . ( 0 :: nat)))"
+(*val address_zero : natural -> address_expr_fn_map allocated_sections_map ->
+  (natural * address_expr_fn_map allocated_sections_map * address_expr_fn)*)
+definition address_zero  :: " nat \<Rightarrow>((nat),(nat \<Rightarrow> allocated_sections_map \<Rightarrow> nat))Map.map \<Rightarrow> nat*((nat),(nat \<Rightarrow> allocated_sections_map \<Rightarrow> nat))Map.map*address_expr_fn "  where 
+     " address_zero fresh alloc_map = (
+  (let alloc_map' = (map_update fresh (\<lambda> pos .  (\<lambda> secs . ( 0 :: nat))) alloc_map) in
+  (let fresh'     =(( 1 :: nat) + fresh) in
+    (fresh', alloc_map', AddressExprFn fresh))))"
 
 
 (*
@@ -384,8 +394,8 @@ val output_sec_composition_size : list output_section_composition_element -> nat
 let output_sec_composition_size comp = List.foldl (+) 0 (List.map size_of_output_section_composition_element comp)
 *)
 (*val do_output_section_layout_starting_at_addr : natural -> allocated_sections_map -> list output_section_composition_element -> (natural * list natural)*)
-definition do_output_section_layout_starting_at_addr  :: " nat \<Rightarrow>((string),(output_section_spec*nat))Map.map \<Rightarrow>(output_section_composition_element)list \<Rightarrow> nat*(nat)list "  where 
-     " do_output_section_layout_starting_at_addr start_addr secs comps = ( 
+fun do_output_section_layout_starting_at_addr  :: " nat \<Rightarrow> allocated_sections_map \<Rightarrow>(output_section_composition_element)list \<Rightarrow> nat*(nat)list "  where 
+     " do_output_section_layout_starting_at_addr start_addr (AllocatedSectionsMap secs) comps = ( 
     (* map out where we plumb in each section, accounting for their alignment *)
     List.foldl (\<lambda> (next_free_addr, addr_list) .  (\<lambda> comp_el .  (case  comp_el of
           IncludeInputSection(retain_pol, irec (* fname, linkable_idx, shndx, isec, img *)) => 
@@ -401,11 +411,12 @@ definition do_output_section_layout_starting_at_addr  :: " nat \<Rightarrow>((st
         (*| Hole(AddressExprFn f) -> (f next_free_addr secs, addr_list ++ [next_free_addr])*)
         | ProvideSymbol(pol, name1, spec) => (next_free_addr, (addr_list @ [next_free_addr]))
     )
-    )) (start_addr, []) comps )"
+    )) (start_addr, []) comps )" 
+declare do_output_section_layout_starting_at_addr.simps [simp del]
 
 
 (*val output_sec_composition_size_given_start_addr : natural -> allocated_sections_map -> list output_section_composition_element -> natural*)
-definition output_sec_composition_size_given_start_addr  :: " nat \<Rightarrow>((string),(output_section_spec*nat))Map.map \<Rightarrow>(output_section_composition_element)list \<Rightarrow> nat "  where 
+definition output_sec_composition_size_given_start_addr  :: " nat \<Rightarrow> allocated_sections_map \<Rightarrow>(output_section_composition_element)list \<Rightarrow> nat "  where 
      " output_sec_composition_size_given_start_addr   start_addr secs comp1 = ( 
     (let (end_addr, comp_addrs) = (do_output_section_layout_starting_at_addr start_addr secs comp1)
     in
@@ -413,15 +424,16 @@ definition output_sec_composition_size_given_start_addr  :: " nat \<Rightarrow>(
 
 
 (*val sizeof : string -> allocated_sections_map -> natural*)
-definition sizeof  :: " string \<Rightarrow>((string),(output_section_spec*nat))Map.map \<Rightarrow> nat "  where 
-     " sizeof secname1 secs = ( 
+fun sizeof  :: " string \<Rightarrow> allocated_sections_map \<Rightarrow> nat "  where 
+     " sizeof secname1 (AllocatedSectionsMap secs) = ( 
     (case   secs secname1 of
         Some(OutputSectionSpec (_, maybe_addr, _, comp1), _) => (case  maybe_addr of
-            Some addr => output_sec_composition_size_given_start_addr addr secs comp1
+            Some addr => output_sec_composition_size_given_start_addr addr (AllocatedSectionsMap secs) comp1
             | None => failwith ((''error: sizeof applied to section without defined start address''))
         )
         | None => failwith ((''error: sizeof applied to non-existent section name '') @ secname1)
-    ))"
+    ))" 
+declare sizeof.simps [simp del]
 
 
 (*val alignof_output_section_composition_element : output_section_composition_element -> natural*)
@@ -440,9 +452,11 @@ definition alignof_output_section  :: "(output_section_composition_element)list 
     List.foldl (\<lambda> acc_lcm .  \<lambda> next1 .  GCD.lcm acc_lcm next1)(( 1 :: nat)) aligns))"
 
 
-(*val default_linker_control_script : abi any_abi_feature -> maybe natural -> maybe natural -> maybe natural -> natural -> linker_control_script*)
-definition default_linker_control_script  :: "address_expr_fn_id \<Rightarrow> (any_abi_feature)abi \<Rightarrow>(nat)option \<Rightarrow>(nat)option \<Rightarrow>(nat)option \<Rightarrow> nat \<Rightarrow> ((script_element)list \<times> (address_expr_fn_id \<times> address_expr_fn_id \<rightharpoonup> address_expr_fn))"  where 
-     " default_linker_control_script fresh_id a user_text_segment_start user_data_segment_start user_rodata_segment_start elf_headers_size = ( 
+(*val default_linker_control_script : natural -> address_expr_fn_map allocated_sections_map ->
+  abi any_abi_feature -> maybe natural -> maybe natural -> maybe natural ->
+  natural -> (natural * address_expr_fn_map allocated_sections_map * linker_control_script)*)
+definition default_linker_control_script  :: " nat \<Rightarrow>((nat),(nat \<Rightarrow> allocated_sections_map \<Rightarrow> nat))Map.map \<Rightarrow>(any_abi_feature)abi \<Rightarrow>(nat)option \<Rightarrow>(nat)option \<Rightarrow>(nat)option \<Rightarrow> nat \<Rightarrow> nat*((nat),(nat \<Rightarrow> allocated_sections_map \<Rightarrow> nat))Map.map*(script_element)list "  where 
+     " default_linker_control_script fresh alloc_map a user_text_segment_start user_data_segment_start user_rodata_segment_start elf_headers_size = ( 
   (let segment_start = (\<lambda> name1 default1 . 
                         if(name1 = (''ldata-segment'')) then
                           ((case  user_data_segment_start of
@@ -463,8 +477,104 @@ definition default_linker_control_script  :: "address_expr_fn_id \<Rightarrow> (
                                        \<not> (is_large_common isec1)
                                          | _ => False
                                        )) in
-  [
-  (* For now, we base our script on the GNU bfd linker's scripts. 
+  (let alloc_fn1 = (\<lambda> _ .  (\<lambda> _ .  (segment_start
+                                                      (''text-segment'')
+                                                      (( 4 :: nat) *
+                                                         ( 1048576 :: nat)))
+                                                     + elf_headers_size)) in
+  (let alloc_fn1_ref = fresh in
+  (let alloc_map = (map_update alloc_fn1_ref alloc_fn1 alloc_map) in
+  (let fresh =(( 1 :: nat) + fresh) in
+  (let alloc_fn2 = (\<lambda> addr .  (\<lambda> _ . 
+                                       (* (align_up_to a.maxpagesize addr) - (natural_land (a.maxpagesize - addr) (a.maxpagesize - 1)) *)
+                                       (*
+      FIXME: understand the intention of this assignment.
+      Evaluating a simple example of this (from true-static-uClibc)
+
+      (ALIGN (0x200000) - ((0x200000 - .) & 0x1fffff))
+
+      starting from 0x00000000004017dc
+      means 
+      0x600000 - ((0x200000 - 0x4017dc) & 0x1fffff)
+      i.e. 
+      0x600000 - (((-0x2017dc)) & 0x1fffff)
+      i.e.
+      0x600000 - (     -0x2017dc   
+                      & 0x1fffff )
+
+      which really does come to (according to bash) 0x4017dc
+      i.e. we subtract 0x1fe824 from 0x600000
+      and end up back where we started.
+
+      What does ANDing a negative number mean?
+      It doesn't seem to work for us.
+      Well, to take the negation we flip every bit and add one.
+      So if we don't want to do a subtraction that might go negative, 
+      we can instead add the complement.    
+      *)
+                                       (align_up_to (maxpagesize   a) addr) -
+                                         (natural_land
+                                            ((maxpagesize   a) + compl64 addr)
+                                            ((maxpagesize   a) - ( 1 :: nat))))) in
+  (let (fresh, alloc_map, (address_zero_fn :: address_expr_fn)) = (address_zero
+                                                                    fresh
+                                                                    alloc_map) in
+  (let alloc_fn2_ref = fresh in
+  (let alloc_map = (map_update alloc_fn2_ref alloc_fn2 alloc_map) in
+  (let fresh =(( 1 :: nat) + fresh) in
+  (let alloc_fn3 = (\<lambda> pos .  (\<lambda> secs .  align_up_to
+                                                          (
+                                                          if pos =
+                                                               ( 0 :: nat) then
+                                                            (( 64 :: nat) div
+                                                               ( 8 :: nat))
+                                                          else ( 1 :: nat))
+                                                          pos)) in
+  (let alloc_fn3_ref = fresh in
+  (let alloc_map = (map_update alloc_fn3_ref alloc_fn3 alloc_map) in
+  (let fresh =(( 1 :: nat) + fresh) in
+  (let alloc_fn4 = (\<lambda> pos .  (\<lambda> secs .  align_up_to
+                                                          (( 64 :: nat) div
+                                                             ( 8 :: nat)) 
+                                                        pos)) in
+  (let alloc_fn4_ref = fresh in
+  (let alloc_map = (map_update alloc_fn4_ref alloc_fn4 alloc_map) in
+  (let fresh =(( 1 :: nat) + fresh) in
+  (let alloc_fn5 = (\<lambda> pos .  (\<lambda> secs .  segment_start
+                                                          (''ldata-segment'')
+                                                          pos)) in
+  (let alloc_fn5_ref = fresh in
+  (let alloc_map = (map_update alloc_fn5_ref alloc_fn5 alloc_map) in
+  (let fresh =(( 1 :: nat) + fresh) in
+  (let alloc_fn6 = (\<lambda> pos .  \<lambda> secs .  align_up_to
+                                                         ((maxpagesize   a) +
+                                                            ((natural_land
+                                                                pos
+                                                                (maxpagesize   a))
+                                                               - ( 1 :: nat)))
+                                                         pos) in
+  (let alloc_fn6_ref = fresh in
+  (let alloc_map = (map_update alloc_fn6_ref alloc_fn6 alloc_map) in
+  (let fresh =(( 1 :: nat) + fresh) in
+  (let alloc_fn7 = (\<lambda> pos .  (\<lambda> secs .  (
+                                                        if \<not>
+                                                             (pos =
+                                                                (( 0 :: nat))) then
+                                                          ( 64 :: nat) div
+                                                            ( 8 :: nat) else
+                                                          ( 1 :: nat)))) in
+  (let alloc_fn7_ref = fresh in
+  (let alloc_map = (map_update alloc_fn7_ref alloc_fn7 alloc_map) in
+  (let fresh =(( 1 :: nat) + fresh) in
+  (let alloc_fn8 = (\<lambda> pos .  (\<lambda> secs .  align_up_to
+                                                          (( 64 :: nat) div
+                                                             ( 8 :: nat)) 
+                                                        pos)) in
+  (let alloc_fn8_ref = fresh in
+  (let alloc_map = (map_update alloc_fn8_ref alloc_fn8 alloc_map) in
+  (let fresh =(( 1 :: nat) + fresh) in
+  (fresh, alloc_map, [
+                     (* For now, we base our script on the GNU bfd linker's scripts. 
            Here's the static -z combreloc one.
            
 /* Script for -z combreloc: combine and sort reloc sections */
@@ -695,7 +805,7 @@ SECTIONS
   /DISCARD/ : { *(.note.GNU-stack) *(.gnu_debuglink) *(.gnu.lto_* ) }
 }
          *)
-  (*  function from 
+                     (*  function from 
                   inputs and configuration
              to
                   output sections-with-address-and-policy, output symbols-with-address-and-attributes, 
@@ -716,488 +826,530 @@ SECTIONS
                          if so, need to return a current address
              
           *)
-  (DefineSymbol
-     (ProvideIfUsed, (''__executable_start''), default_symbol_spec))
-  , AdvanceAddress
-      ((* BinRel(Eq, Constant( *) AddressExprFn
-         (\<lambda> _ .  (
-                          (segment_start (''text-segment'')
-                             (( 4 :: nat) * ( 1048576 :: nat))) +
-                            elf_headers_size)))
-  , OutputSection
-      (AlwaysOutput, None, (''.interp''), [InputQuery
-                                             (DefaultKeep, DefaultSort, 
-                                             filter_and_concat
-                                               (name_matches (''.interp'')))])
-  , OutputSection
-      (AlwaysOutput, None, (''.note.gnu.build-id''), [InputQuery
-                                                        (DefaultKeep, DefaultSort, 
-                                                        filter_and_concat
-                                                          (name_matches
-                                                             (''.note.gnu.build-id'')))])
-  , OutputSection
-      (AlwaysOutput, None, (''.hash''), [InputQuery
-                                           (DefaultKeep, DefaultSort, 
-                                           filter_and_concat
-                                             (name_matches (''.hash'')))])
-  , OutputSection
-      (AlwaysOutput, None, (''.gnu.hash''), [InputQuery
-                                               (DefaultKeep, DefaultSort, 
-                                               filter_and_concat
-                                                 (name_matches
-                                                    (''.gnu.hash'')))])
-  , OutputSection
-      (AlwaysOutput, None, (''.dynsym''), [InputQuery
-                                             (DefaultKeep, DefaultSort, 
-                                             filter_and_concat
-                                               (name_matches (''.dynsym'')))])
-  , OutputSection
-      (AlwaysOutput, None, (''.dynstr''), [InputQuery
-                                             (DefaultKeep, DefaultSort, 
-                                             filter_and_concat
-                                               (name_matches (''.dynstr'')))])
-  , OutputSection
-      (AlwaysOutput, None, (''.gnu.version''), [InputQuery
-                                                  (DefaultKeep, DefaultSort, 
-                                                  filter_and_concat
-                                                    (name_matches
-                                                       (''.gnu.version'')))])
-  , OutputSection
-      (AlwaysOutput, None, (''.gnu.version_d''), [InputQuery
-                                                    (DefaultKeep, DefaultSort, 
-                                                    filter_and_concat
-                                                      (name_matches
-                                                         (''.gnu.version_d'')))])
-  , OutputSection
-      (AlwaysOutput, None, (''.gnu.version_r''), [InputQuery
-                                                    (DefaultKeep, DefaultSort, 
-                                                    filter_and_concat
-                                                      (name_matches
-                                                         (''.gnu.version_r'')))])
-  , OutputSection
-      (AlwaysOutput, None, (''.rela.dyn''), [InputQuery
-                                               (DefaultKeep, DefaultSort, 
-                                               filter_and_concat
-                                                 (name_matches
-                                                    (''.rela.init'')))
-                                            , InputQuery
-                                                (DefaultKeep, DefaultSort, 
-                                                filter_and_concat
-                                                  (
-                                                  \<lambda> s .  name_matches
-                                                                   (''.rela.text'')
-                                                                   s \<or>
-                                                                   (name_matches
+                     (DefineSymbol
+                        (ProvideIfUsed, (''__executable_start''), default_symbol_spec))
+                     , AdvanceAddress (AddressExprFn alloc_fn1_ref)
+                     , OutputSection
+                         (AlwaysOutput, None, (''.interp''), [InputQuery
+                                                                (DefaultKeep, DefaultSort, 
+                                                                filter_and_concat
+                                                                  (name_matches
+                                                                    (''.interp'')))])
+                     , OutputSection
+                         (AlwaysOutput, None, (''.note.gnu.build-id''), 
+                         [InputQuery
+                            (DefaultKeep, DefaultSort, filter_and_concat
+                                                         (name_matches
+                                                            (''.note.gnu.build-id'')))])
+                     , OutputSection
+                         (AlwaysOutput, None, (''.hash''), [InputQuery
+                                                              (DefaultKeep, DefaultSort, 
+                                                              filter_and_concat
+                                                                (name_matches
+                                                                   (''.hash'')))])
+                     , OutputSection
+                         (AlwaysOutput, None, (''.gnu.hash''), [InputQuery
+                                                                  (DefaultKeep, DefaultSort, 
+                                                                  filter_and_concat
+                                                                    (
+                                                                    name_matches
+                                                                    (''.gnu.hash'')))])
+                     , OutputSection
+                         (AlwaysOutput, None, (''.dynsym''), [InputQuery
+                                                                (DefaultKeep, DefaultSort, 
+                                                                filter_and_concat
+                                                                  (name_matches
+                                                                    (''.dynsym'')))])
+                     , OutputSection
+                         (AlwaysOutput, None, (''.dynstr''), [InputQuery
+                                                                (DefaultKeep, DefaultSort, 
+                                                                filter_and_concat
+                                                                  (name_matches
+                                                                    (''.dynstr'')))])
+                     , OutputSection
+                         (AlwaysOutput, None, (''.gnu.version''), [InputQuery
+                                                                    (DefaultKeep, DefaultSort, 
+                                                                    filter_and_concat
+                                                                    (
+                                                                    name_matches
+                                                                    (''.gnu.version'')))])
+                     , OutputSection
+                         (AlwaysOutput, None, (''.gnu.version_d''), [
+                                                                    InputQuery
+                                                                    (DefaultKeep, DefaultSort, 
+                                                                    filter_and_concat
+                                                                    (
+                                                                    name_matches
+                                                                    (''.gnu.version_d'')))])
+                     , OutputSection
+                         (AlwaysOutput, None, (''.gnu.version_r''), [
+                                                                    InputQuery
+                                                                    (DefaultKeep, DefaultSort, 
+                                                                    filter_and_concat
+                                                                    (
+                                                                    name_matches
+                                                                    (''.gnu.version_r'')))])
+                     , OutputSection
+                         (AlwaysOutput, None, (''.rela.dyn''), [InputQuery
+                                                                  (DefaultKeep, DefaultSort, 
+                                                                  filter_and_concat
+                                                                    (
+                                                                    name_matches
+                                                                    (''.rela.init'')))
+                                                               , InputQuery
+                                                                   (DefaultKeep, DefaultSort, 
+                                                                   filter_and_concat
+                                                                    (
+                                                                    \<lambda> s .  
+                                                                    name_matches
+                                                                    (''.rela.text'')
+                                                                    s \<or>
+                                                                    (
+                                                                    name_matches
                                                                     (''.rela.text.*'')
                                                                     s \<or>
                                                                     name_matches
                                                                     (''.rela.gnu.linkonce.t.*'')
                                                                     s)))
-                                            , InputQuery
-                                                (DefaultKeep, DefaultSort, 
-                                                filter_and_concat
-                                                  (
-                                                  \<lambda> s .  name_matches
-                                                                   (''.rela.rodata'')
-                                                                   s \<or>
-                                                                   (name_matches
+                                                               , InputQuery
+                                                                   (DefaultKeep, DefaultSort, 
+                                                                   filter_and_concat
+                                                                    (
+                                                                    \<lambda> s .  
+                                                                    name_matches
+                                                                    (''.rela.rodata'')
+                                                                    s \<or>
+                                                                    (
+                                                                    name_matches
                                                                     (''.rela.rodata.*'')
                                                                     s \<or>
                                                                     name_matches
                                                                     (''.rela.gnu.linkonce.r.*'')
                                                                     s)))
-                                            , InputQuery
-                                                (DefaultKeep, DefaultSort, 
-                                                filter_and_concat
-                                                  (
-                                                  \<lambda> s .  name_matches
-                                                                   (''.rela.data'')
-                                                                   s \<or>
-                                                                   (name_matches
+                                                               , InputQuery
+                                                                   (DefaultKeep, DefaultSort, 
+                                                                   filter_and_concat
+                                                                    (
+                                                                    \<lambda> s .  
+                                                                    name_matches
+                                                                    (''.rela.data'')
+                                                                    s \<or>
+                                                                    (
+                                                                    name_matches
                                                                     (''.rela.data.*'')
                                                                     s \<or>
                                                                     name_matches
                                                                     (''.rela.gnu.linkonce.d.*'')
                                                                     s)))
-                                            , InputQuery
-                                                (DefaultKeep, DefaultSort, 
-                                                filter_and_concat
-                                                  (
-                                                  \<lambda> s .  name_matches
-                                                                   (''.rela.tdata'')
-                                                                   s \<or>
-                                                                   (name_matches
+                                                               , InputQuery
+                                                                   (DefaultKeep, DefaultSort, 
+                                                                   filter_and_concat
+                                                                    (
+                                                                    \<lambda> s .  
+                                                                    name_matches
+                                                                    (''.rela.tdata'')
+                                                                    s \<or>
+                                                                    (
+                                                                    name_matches
                                                                     (''.rela.tdata.*'')
                                                                     s \<or>
                                                                     name_matches
                                                                     (''.rela.gnu.linkonce.td.*'')
                                                                     s)))
-                                            , InputQuery
-                                                (DefaultKeep, DefaultSort, 
-                                                filter_and_concat
-                                                  (
-                                                  \<lambda> s .  name_matches
-                                                                   (''.rela.tbss'')
-                                                                   s \<or>
-                                                                   (name_matches
+                                                               , InputQuery
+                                                                   (DefaultKeep, DefaultSort, 
+                                                                   filter_and_concat
+                                                                    (
+                                                                    \<lambda> s .  
+                                                                    name_matches
+                                                                    (''.rela.tbss'')
+                                                                    s \<or>
+                                                                    (
+                                                                    name_matches
                                                                     (''.rela.tbss.*'')
                                                                     s \<or>
                                                                     name_matches
                                                                     (''.rela.gnu.linkonce.tb.*'')
                                                                     s)))
-                                            , InputQuery
-                                                (DefaultKeep, DefaultSort, 
-                                                filter_and_concat
-                                                  (name_matches
-                                                     (''.rela.ctors'')))
-                                            , InputQuery
-                                                (DefaultKeep, DefaultSort, 
-                                                filter_and_concat
-                                                  (name_matches
-                                                     (''.rela.got'')))
-                                            , InputQuery
-                                                (DefaultKeep, DefaultSort, 
-                                                filter_and_concat
-                                                  (
-                                                  \<lambda> s .  name_matches
-                                                                   (''.rela.bss'')
-                                                                   s \<or>
-                                                                   (name_matches
+                                                               , InputQuery
+                                                                   (DefaultKeep, DefaultSort, 
+                                                                   filter_and_concat
+                                                                    (
+                                                                    name_matches
+                                                                    (''.rela.ctors'')))
+                                                               , InputQuery
+                                                                   (DefaultKeep, DefaultSort, 
+                                                                   filter_and_concat
+                                                                    (
+                                                                    name_matches
+                                                                    (''.rela.got'')))
+                                                               , InputQuery
+                                                                   (DefaultKeep, DefaultSort, 
+                                                                   filter_and_concat
+                                                                    (
+                                                                    \<lambda> s .  
+                                                                    name_matches
+                                                                    (''.rela.bss'')
+                                                                    s \<or>
+                                                                    (
+                                                                    name_matches
                                                                     (''.rela.bss.*'')
                                                                     s \<or>
                                                                     name_matches
                                                                     (''.rela.gnu.linkonce.b.*'')
                                                                     s)))
-                                            , InputQuery
-                                                (DefaultKeep, DefaultSort, 
-                                                filter_and_concat
-                                                  (
-                                                  \<lambda> s .  name_matches
-                                                                   (''.rela.ldata'')
-                                                                   s \<or>
-                                                                   (name_matches
+                                                               , InputQuery
+                                                                   (DefaultKeep, DefaultSort, 
+                                                                   filter_and_concat
+                                                                    (
+                                                                    \<lambda> s .  
+                                                                    name_matches
+                                                                    (''.rela.ldata'')
+                                                                    s \<or>
+                                                                    (
+                                                                    name_matches
                                                                     (''.rela.ldata.*'')
                                                                     s \<or>
                                                                     name_matches
                                                                     (''.rela.gnu.linkonce.l.*'')
                                                                     s)))
-                                            , InputQuery
-                                                (DefaultKeep, DefaultSort, 
-                                                filter_and_concat
-                                                  (
-                                                  \<lambda> s .  name_matches
-                                                                   (''.rela.lbss'')
-                                                                   s \<or>
-                                                                   (name_matches
+                                                               , InputQuery
+                                                                   (DefaultKeep, DefaultSort, 
+                                                                   filter_and_concat
+                                                                    (
+                                                                    \<lambda> s .  
+                                                                    name_matches
+                                                                    (''.rela.lbss'')
+                                                                    s \<or>
+                                                                    (
+                                                                    name_matches
                                                                     (''.rela.lbss.*'')
                                                                     s \<or>
                                                                     name_matches
                                                                     (''.rela.gnu.linkonce.lb.*'')
                                                                     s)))
-                                            , InputQuery
-                                                (DefaultKeep, DefaultSort, 
-                                                filter_and_concat
-                                                  (name_matches
-                                                     (''.rela.ifunc''))) ])
-  , OutputSection
-      (AlwaysOutput, None, (''.rela.plt''), [
-                                            InputQuery
-                                              (DefaultKeep, DefaultSort, 
-                                              filter_and_concat
-                                                (name_matches (''.rela.plt'')))
-                                            , DefineSymbol
-                                                (ProvideIfUsed, (''__rela_iplt_start''), 
-                                                (( 0 :: nat), make_symbol_info
-                                                                stb_local
-                                                                stt_notype (* FIXME *) , 
-                                                make_symbol_other stv_hidden))
-                                            , InputQuery
-                                                (DefaultKeep, DefaultSort, 
-                                                filter_and_concat
-                                                  (name_matches
-                                                     (''.rela.iplt'')))
-                                            , DefineSymbol
-                                                (ProvideIfUsed, (''__rela_iplt_end''), 
-                                                (( 0 :: nat), make_symbol_info
-                                                                stb_local
-                                                                stt_notype (* FIXME *) , 
-                                                make_symbol_other stv_hidden))
-                                            ])
-  , OutputSection
-      (AlwaysOutput, None, (''.init''), [
-                                        InputQuery
-                                          (KeepEvenWhenGC, SeenOrder, 
-                                          filter_and_concat
-                                            (name_matches (''.init''))) ])
-  , OutputSection
-      (AlwaysOutput, None, (''.plt''), [InputQuery
-                                          (DefaultKeep, DefaultSort, 
-                                          filter_and_concat
-                                            (name_matches (''.plt'')))
-                                       , InputQuery
-                                           (DefaultKeep, DefaultSort, 
-                                           filter_and_concat
-                                             (name_matches (''.iplt''))) ])
-  , OutputSection
-      (AlwaysOutput, None, (''.plt.bnd''), [InputQuery
-                                              (DefaultKeep, DefaultSort, 
-                                              filter_and_concat
-                                                (name_matches (''.plt.bnd'')))])
-  , OutputSection
-      (AlwaysOutput, None, (''.text''), [
-                                        InputQuery
-                                          (DefaultKeep, DefaultSort, 
-                                          filter_and_concat
-                                            (
-                                            \<lambda> s .  name_matches
-                                                             (''.text.unlikely'')
-                                                             s \<or>
-                                                             (name_matches
-                                                                (''.text.*_unlikely'')
-                                                                s \<or>
-                                                                name_matches
-                                                                  (''.text.unlikely.*'')
-                                                                  s) ))
-                                        , InputQuery
-                                            (DefaultKeep, DefaultSort, 
-                                            filter_and_concat
-                                              (
-                                              \<lambda> s .  name_matches
-                                                               (''.text.exit'')
-                                                               s \<or>
-                                                               name_matches
-                                                                 (''.text.exit.*'')
-                                                                 s))
-                                        , InputQuery
-                                            (DefaultKeep, DefaultSort, 
-                                            filter_and_concat
-                                              (
-                                              \<lambda> s .  name_matches
-                                                               (''.text.startup'')
-                                                               s \<or>
-                                                               name_matches
-                                                                 (''.text.startup.*'')
-                                                                 s))
-                                        , InputQuery
-                                            (DefaultKeep, DefaultSort, 
-                                            filter_and_concat
-                                              (
-                                              \<lambda> s .  name_matches
-                                                               (''.text.hot'')
-                                                               s \<or>
-                                                               name_matches
-                                                                 (''.text.hot.*'')
-                                                                 s))
-                                        , InputQuery
-                                            (DefaultKeep, DefaultSort, 
-                                            filter_and_concat
-                                              (
-                                              \<lambda> s .  name_matches
-                                                               (''.text'') 
-                                                             s \<or>
+                                                               , InputQuery
+                                                                   (DefaultKeep, DefaultSort, 
+                                                                   filter_and_concat
+                                                                    (
+                                                                    name_matches
+                                                                    (''.rela.ifunc'')))
+                                                               ])
+                     , OutputSection
+                         (AlwaysOutput, None, (''.rela.plt''), [
+                                                               InputQuery
+                                                                 (DefaultKeep, DefaultSort, 
+                                                                 filter_and_concat
+                                                                   (name_matches
+                                                                    (''.rela.plt'')))
+                                                               , DefineSymbol
+                                                                   (ProvideIfUsed, (''__rela_iplt_start''), 
+                                                                   ((
+                                                                     0 :: nat), 
+                                                                   make_symbol_info
+                                                                    stb_local
+                                                                    stt_notype (* FIXME *) , 
+                                                                   make_symbol_other
+                                                                    stv_hidden))
+                                                               , InputQuery
+                                                                   (DefaultKeep, DefaultSort, 
+                                                                   filter_and_concat
+                                                                    (
+                                                                    name_matches
+                                                                    (''.rela.iplt'')))
+                                                               , DefineSymbol
+                                                                   (ProvideIfUsed, (''__rela_iplt_end''), 
+                                                                   ((
+                                                                     0 :: nat), 
+                                                                   make_symbol_info
+                                                                    stb_local
+                                                                    stt_notype (* FIXME *) , 
+                                                                   make_symbol_other
+                                                                    stv_hidden))
+                                                               ])
+                     , OutputSection
+                         (AlwaysOutput, None, (''.init''), [
+                                                           InputQuery
+                                                             (KeepEvenWhenGC, SeenOrder, 
+                                                             filter_and_concat
                                                                (name_matches
-                                                                  (''.stub'')
-                                                                  s \<or>
-                                                                  (name_matches
+                                                                  (''.init'')))
+                                                           ])
+                     , OutputSection
+                         (AlwaysOutput, None, (''.plt''), [InputQuery
+                                                             (DefaultKeep, DefaultSort, 
+                                                             filter_and_concat
+                                                               (name_matches
+                                                                  (''.plt'')))
+                                                          , InputQuery
+                                                              (DefaultKeep, DefaultSort, 
+                                                              filter_and_concat
+                                                                (name_matches
+                                                                   (''.iplt'')))
+                                                          ])
+                     , OutputSection
+                         (AlwaysOutput, None, (''.plt.bnd''), [InputQuery
+                                                                 (DefaultKeep, DefaultSort, 
+                                                                 filter_and_concat
+                                                                   (name_matches
+                                                                    (''.plt.bnd'')))])
+                     , OutputSection
+                         (AlwaysOutput, None, (''.text''), [
+                                                           InputQuery
+                                                             (DefaultKeep, DefaultSort, 
+                                                             filter_and_concat
+                                                               (
+                                                               \<lambda> s .  
+                                                               name_matches
+                                                                 (''.text.unlikely'')
+                                                                 s \<or>
+                                                                 (name_matches
+                                                                    (''.text.*_unlikely'')
+                                                                    s \<or>
+                                                                    name_matches
+                                                                    (''.text.unlikely.*'')
+                                                                    s) ))
+                                                           , InputQuery
+                                                               (DefaultKeep, DefaultSort, 
+                                                               filter_and_concat
+                                                                 (
+                                                                 \<lambda> s .  
+                                                                 name_matches
+                                                                   (''.text.exit'')
+                                                                   s \<or>
+                                                                   name_matches
+                                                                    (''.text.exit.*'')
+                                                                    s))
+                                                           , InputQuery
+                                                               (DefaultKeep, DefaultSort, 
+                                                               filter_and_concat
+                                                                 (
+                                                                 \<lambda> s .  
+                                                                 name_matches
+                                                                   (''.text.startup'')
+                                                                   s \<or>
+                                                                   name_matches
+                                                                    (''.text.startup.*'')
+                                                                    s))
+                                                           , InputQuery
+                                                               (DefaultKeep, DefaultSort, 
+                                                               filter_and_concat
+                                                                 (
+                                                                 \<lambda> s .  
+                                                                 name_matches
+                                                                   (''.text.hot'')
+                                                                   s \<or>
+                                                                   name_matches
+                                                                    (''.text.hot.*'')
+                                                                    s))
+                                                           , InputQuery
+                                                               (DefaultKeep, DefaultSort, 
+                                                               filter_and_concat
+                                                                 (
+                                                                 \<lambda> s .  
+                                                                 name_matches
+                                                                   (''.text'')
+                                                                   s \<or>
+                                                                   (name_matches
+                                                                    (''.stub'')
+                                                                    s \<or>
+                                                                    (
+                                                                    name_matches
                                                                     (''.text.*'')
                                                                     s \<or>
                                                                     name_matches
                                                                     (''.gnu.linkonce.t.*'')
                                                                     s))))
-                                        , InputQuery
-                                            (DefaultKeep, DefaultSort, 
-                                            filter_and_concat
-                                              (
-                                              (* .gnu.warning sections are handled specially by elf32.em.
+                                                           , InputQuery
+                                                               (DefaultKeep, DefaultSort, 
+                                                               filter_and_concat
+                                                                 (
+                                                                 (* .gnu.warning sections are handled specially by elf32.em.
           * GAH. That means that what we specify here is not (completely) what 
           * needs to happen with these sections. *)
-                                              \<lambda> s .  name_matches
-                                                               (''.gnu_warning'')
-                                                               s)) ])
-  , OutputSection
-      (AlwaysOutput, None, (''.fini''), [
-                                        InputQuery
-                                          (KeepEvenWhenGC, SeenOrder, 
-                                          filter_and_concat
-                                            (name_matches (''.fini''))) ])
-  , DefineSymbol (ProvideIfUsed, (''__etext''), default_symbol_spec)
-  , DefineSymbol (ProvideIfUsed, (''_etext''), default_symbol_spec)
-  , DefineSymbol (ProvideIfUsed, (''etext''), default_symbol_spec)
-  , OutputSection
-      (AlwaysOutput, None, (''.rodata''), [
-                                          InputQuery
-                                            (DefaultKeep, DefaultSort, 
-                                            filter_and_concat
-                                              (
-                                              \<lambda> s .  name_matches
-                                                               (''.rodata'')
-                                                               s \<or>
+                                                                 \<lambda> s .  
+                                                                 name_matches
+                                                                   (''.gnu_warning'')
+                                                                   s)) ])
+                     , OutputSection
+                         (AlwaysOutput, None, (''.fini''), [
+                                                           InputQuery
+                                                             (KeepEvenWhenGC, SeenOrder, 
+                                                             filter_and_concat
                                                                (name_matches
-                                                                  (''.rodata.*'')
-                                                                  s \<or>
-                                                                  name_matches
+                                                                  (''.fini'')))
+                                                           ])
+                     , DefineSymbol
+                         (ProvideIfUsed, (''__etext''), default_symbol_spec)
+                     , DefineSymbol
+                         (ProvideIfUsed, (''_etext''), default_symbol_spec)
+                     , DefineSymbol
+                         (ProvideIfUsed, (''etext''), default_symbol_spec)
+                     , OutputSection
+                         (AlwaysOutput, None, (''.rodata''), [
+                                                             InputQuery
+                                                               (DefaultKeep, DefaultSort, 
+                                                               filter_and_concat
+                                                                 (
+                                                                 \<lambda> s .  
+                                                                 name_matches
+                                                                   (''.rodata'')
+                                                                   s \<or>
+                                                                   (name_matches
+                                                                    (''.rodata.*'')
+                                                                    s \<or>
+                                                                    name_matches
                                                                     (''.gnu.linkonce.r.*'')
                                                                     s) ))])
-  , OutputSection
-      (AlwaysOutput, None, (''.eh_frame_hdr''), [InputQuery
-                                                   (DefaultKeep, DefaultSort, 
-                                                   filter_and_concat
-                                                     (name_matches
-                                                        (''.eh_frame_hdr''))) ])
-  , OutputSection
-      (OnlyIfRo, None, (''.eh_frame''), [InputQuery
-                                           (DefaultKeep, DefaultSort, 
-                                           filter_and_concat
-                                             (name_matches (''.eh_frame'')))])
-  , OutputSection
-      (OnlyIfRo, None, (''.gcc_except_table''), [InputQuery
-                                                   (DefaultKeep, DefaultSort,
-                                                   filter_and_concat
-                                                     (\<lambda> s .  
-                                                      name_matches
-                                                        (''.gcc_except_table'')
-                                                        s \<or>
-                                                        name_matches
-                                                          (''.gcc_except_table.*'')
-                                                          s))])
-  , OutputSection
-      (OnlyIfRo, None, (''.exception_ranges''), [InputQuery
-                                                   (DefaultKeep, DefaultSort,
-                                                   filter_and_concat
-                                                     (\<lambda> s .  
-                                                      name_matches
-                                                        (''.exception_ranges'')
-                                                        s \<or>
-                                                        name_matches
-                                                          (''.exception_ranges*'')
-                                                          s))])
-  , AdvanceAddress
-      (AddressExprFn
-         (\<lambda> addr .  (\<lambda> _ . 
-                             (* (align_up_to a.maxpagesize addr) - (natural_land (a.maxpagesize - addr) (a.maxpagesize - 1)) *)
-                             (*
-    FIXME: understand the intention of this assignment.
-    Evaluating a simple example of this (from true-static-uClibc)
-
-    (ALIGN (0x200000) - ((0x200000 - .) & 0x1fffff))
-
-    starting from 0x00000000004017dc
-    means 
-    0x600000 - ((0x200000 - 0x4017dc) & 0x1fffff)
-    i.e. 
-    0x600000 - (((-0x2017dc)) & 0x1fffff)
-    i.e.
-    0x600000 - (     -0x2017dc   
-                    & 0x1fffff )
-
-    which really does come to (according to bash) 0x4017dc
-    i.e. we subtract 0x1fe824 from 0x600000
-    and end up back where we started.
-
-    What does ANDing a negative number mean?
-    It doesn't seem to work for us.
-    Well, to take the negation we flip every bit and add one.
-    So if we don't want to do a subtraction that might go negative, 
-    we can instead add the complement.    
-    *)
-                             (align_up_to (maxpagesize   a) addr) -
-                               (natural_land
-                                  ((maxpagesize   a) + compl64 addr)
-                                  ((maxpagesize   a) - ( 1 :: nat))) )))
-  , MarkAndAlignDataSegment
-      (((( (* a.maxpagesize *) 2 :: nat) * ( 1024 :: nat)) * ( 1024 :: nat)) (* <-- for some reason binutils assumes 2MB max page size,
-    even if ABI says smaller *) ,(commonpagesize   a))
-  , OutputSection
-      (OnlyIfRw, None, (''.eh_frame''), [InputQuery
-                                           (DefaultKeep, DefaultSort, 
-                                           filter_and_concat
-                                             (name_matches (''.eh_frame'')))])
-  , OutputSection
-      (OnlyIfRw, None, (''.gcc_except_table''), [InputQuery
-                                                   (DefaultKeep, DefaultSort,
-                                                   filter_and_concat
-                                                     (\<lambda> s .  
-                                                      name_matches
-                                                        (''.gcc_except_table'')
-                                                        s \<or>
-                                                        name_matches
-                                                          (''.gcc_except_table.*'')
-                                                          s))])
-  , OutputSection
-      (OnlyIfRw, None, (''.exception_ranges''), [InputQuery
-                                                   (DefaultKeep, DefaultSort,
-                                                   filter_and_concat
-                                                     (\<lambda> s .  
-                                                      name_matches
-                                                        (''.exception_ranges'')
-                                                        s \<or>
-                                                        name_matches
-                                                          (''.exception_ranges*'')
-                                                          s))])
-  , OutputSection
-      (AlwaysOutput, None, (''.tdata''), [InputQuery
-                                            (DefaultKeep, DefaultSort, 
-                                            filter_and_concat
-                                              (\<lambda> s .  name_matches
-                                                                (''.tdata'')
-                                                                s \<or>
+                     , OutputSection
+                         (AlwaysOutput, None, (''.eh_frame_hdr''), [InputQuery
+                                                                    (DefaultKeep, DefaultSort, 
+                                                                    filter_and_concat
+                                                                    (
+                                                                    name_matches
+                                                                    (''.eh_frame_hdr''))) ])
+                     , OutputSection
+                         (OnlyIfRo, None, (''.eh_frame''), [InputQuery
+                                                              (DefaultKeep, DefaultSort, 
+                                                              filter_and_concat
                                                                 (name_matches
-                                                                   (''.tdata.*'')
-                                                                   s \<or>
-                                                                   name_matches
+                                                                   (''.eh_frame'')))])
+                     , OutputSection
+                         (OnlyIfRo, None, (''.gcc_except_table''), [InputQuery
+                                                                    (DefaultKeep, DefaultSort,
+                                                                    filter_and_concat
+                                                                    (
+                                                                    \<lambda> s .  
+                                                                    name_matches
+                                                                    (''.gcc_except_table'')
+                                                                    s \<or>
+                                                                    name_matches
+                                                                    (''.gcc_except_table.*'')
+                                                                    s))])
+                     , OutputSection
+                         (OnlyIfRo, None, (''.exception_ranges''), [InputQuery
+                                                                    (DefaultKeep, DefaultSort,
+                                                                    filter_and_concat
+                                                                    (
+                                                                    \<lambda> s .  
+                                                                    name_matches
+                                                                    (''.exception_ranges'')
+                                                                    s \<or>
+                                                                    name_matches
+                                                                    (''.exception_ranges*'')
+                                                                    s))])
+                     , AdvanceAddress (AddressExprFn alloc_fn2_ref)
+                     , MarkAndAlignDataSegment
+                         (((( (* a.maxpagesize *) 2 :: nat) * ( 1024 :: nat))
+                             * ( 1024 :: nat)) (* <-- for some reason binutils assumes 2MB max page size,
+    even if ABI says smaller *) ,(commonpagesize   a))
+                     , OutputSection
+                         (OnlyIfRw, None, (''.eh_frame''), [InputQuery
+                                                              (DefaultKeep, DefaultSort, 
+                                                              filter_and_concat
+                                                                (name_matches
+                                                                   (''.eh_frame'')))])
+                     , OutputSection
+                         (OnlyIfRw, None, (''.gcc_except_table''), [InputQuery
+                                                                    (DefaultKeep, DefaultSort,
+                                                                    filter_and_concat
+                                                                    (
+                                                                    \<lambda> s .  
+                                                                    name_matches
+                                                                    (''.gcc_except_table'')
+                                                                    s \<or>
+                                                                    name_matches
+                                                                    (''.gcc_except_table.*'')
+                                                                    s))])
+                     , OutputSection
+                         (OnlyIfRw, None, (''.exception_ranges''), [InputQuery
+                                                                    (DefaultKeep, DefaultSort,
+                                                                    filter_and_concat
+                                                                    (
+                                                                    \<lambda> s .  
+                                                                    name_matches
+                                                                    (''.exception_ranges'')
+                                                                    s \<or>
+                                                                    name_matches
+                                                                    (''.exception_ranges*'')
+                                                                    s))])
+                     , OutputSection
+                         (AlwaysOutput, None, (''.tdata''), [InputQuery
+                                                               (DefaultKeep, DefaultSort, 
+                                                               filter_and_concat
+                                                                 (\<lambda> s .  
+                                                                  name_matches
+                                                                    (''.tdata'')
+                                                                    s \<or>
+                                                                    (
+                                                                    name_matches
+                                                                    (''.tdata.*'')
+                                                                    s \<or>
+                                                                    name_matches
                                                                     (''.gnu.linkonce.td.*'')
                                                                     s)))])
-  , OutputSection
-      (AlwaysOutput, None, (''.tbss''), [InputQuery
-                                           (DefaultKeep, DefaultSort, 
-                                           filter_and_concat
-                                             (\<lambda> s .  name_matches
-                                                               (''.tbss'') 
-                                                             s \<or>
-                                                               (name_matches
-                                                                  (''.tbss.*'')
-                                                                  s \<or>
-                                                                  name_matches
+                     , OutputSection
+                         (AlwaysOutput, None, (''.tbss''), [InputQuery
+                                                              (DefaultKeep, DefaultSort, 
+                                                              filter_and_concat
+                                                                (\<lambda> s .  
+                                                                 name_matches
+                                                                   (''.tbss'')
+                                                                   s \<or>
+                                                                   (name_matches
+                                                                    (''.tbss.*'')
+                                                                    s \<or>
+                                                                    name_matches
                                                                     (''.gnu.linkonce.tb.*'')
                                                                     s)))
-                                        , InputQuery
-                                            (DefaultKeep, DefaultSort, 
-                                            filter_and_concat
-                                              (name_matches (''.tcommon'')))])
-  , OutputSection
-      (AlwaysOutput, None, (''.preinit_array''), [
-                                                 DefineSymbol
-                                                   (ProvideIfUsed, (''__preinit_array_start''), default_symbol_spec)
-                                                 , InputQuery
-                                                     (KeepEvenWhenGC, DefaultSort, 
-                                                     filter_and_concat
-                                                       (\<lambda> s .  
-                                                        name_matches
-                                                          (''.preinit_array'')
-                                                          s))
-                                                 , DefineSymbol
-                                                     (ProvideIfUsed, (''__preinit_array_end''), default_symbol_spec)
-                                                 ])
-  , OutputSection
-      (AlwaysOutput, None, (''.init_array''), [
-                                              DefineSymbol
-                                                (ProvideIfUsed, (''__init_array_start''), default_symbol_spec)
-                                              , InputQuery
-                                                  (KeepEvenWhenGC, ByInitPriority, 
-                                                  filter_and_concat
-                                                    (\<lambda> s .  name_matches
+                                                           , InputQuery
+                                                               (DefaultKeep, DefaultSort, 
+                                                               filter_and_concat
+                                                                 (name_matches
+                                                                    (''.tcommon'')))])
+                     , OutputSection
+                         (AlwaysOutput, None, (''.preinit_array''), [
+                                                                    DefineSymbol
+                                                                    (ProvideIfUsed, (''__preinit_array_start''), default_symbol_spec)
+                                                                    , 
+                                                                    InputQuery
+                                                                    (KeepEvenWhenGC, DefaultSort, 
+                                                                    filter_and_concat
+                                                                    (
+                                                                    \<lambda> s .  
+                                                                    name_matches
+                                                                    (''.preinit_array'')
+                                                                    s))
+                                                                    , 
+                                                                    DefineSymbol
+                                                                    (ProvideIfUsed, (''__preinit_array_end''), default_symbol_spec)
+                                                                    ])
+                     , OutputSection
+                         (AlwaysOutput, None, (''.init_array''), [
+                                                                 DefineSymbol
+                                                                   (ProvideIfUsed, (''__init_array_start''), default_symbol_spec)
+                                                                 , InputQuery
+                                                                    (KeepEvenWhenGC, ByInitPriority, 
+                                                                    filter_and_concat
+                                                                    (
+                                                                    \<lambda> s .  
+                                                                    name_matches
                                                                     (''.init_array.*'')
                                                                     s))
-                                              , InputQuery
-                                                  (KeepEvenWhenGC, ByInitPriority, 
-                                                  filter_and_concat
-                                                    (\<lambda> s .  name_matches
+                                                                 , InputQuery
+                                                                    (KeepEvenWhenGC, ByInitPriority, 
+                                                                    filter_and_concat
+                                                                    (
+                                                                    \<lambda> s .  
+                                                                    name_matches
                                                                     (''.ctors.*'')
                                                                     s))
-                                              , InputQuery
-                                                  (KeepEvenWhenGC, ByInitPriority, 
-                                                  filter_and_concat
-                                                    (\<lambda> s .  name_matches
+                                                                 , InputQuery
+                                                                    (KeepEvenWhenGC, ByInitPriority, 
+                                                                    filter_and_concat
+                                                                    (
+                                                                    \<lambda> s .  
+                                                                    name_matches
                                                                     (''.init_array'')
                                                                     s \<or>
                                                                     (
@@ -1220,29 +1372,35 @@ SECTIONS
                                                                     file_matches
                                                                     (''*crtend?.o '')
                                                                     s))))) )
-                                              , DefineSymbol
-                                                  (ProvideIfUsed, (''__init_array_end''), default_symbol_spec)
-                                              ])
-  , OutputSection
-      (AlwaysOutput, None, (''.fini_array''), [
-                                              DefineSymbol
-                                                (ProvideIfUsed, (''__fini_array_start''), default_symbol_spec)
-                                              , InputQuery
-                                                  (KeepEvenWhenGC, ByInitPriority, 
-                                                  filter_and_concat
-                                                    (\<lambda> s .  name_matches
+                                                                 , DefineSymbol
+                                                                    (ProvideIfUsed, (''__init_array_end''), default_symbol_spec)
+                                                                 ])
+                     , OutputSection
+                         (AlwaysOutput, None, (''.fini_array''), [
+                                                                 DefineSymbol
+                                                                   (ProvideIfUsed, (''__fini_array_start''), default_symbol_spec)
+                                                                 , InputQuery
+                                                                    (KeepEvenWhenGC, ByInitPriority, 
+                                                                    filter_and_concat
+                                                                    (
+                                                                    \<lambda> s .  
+                                                                    name_matches
                                                                     (''.fini_array.*'')
                                                                     s))
-                                              , InputQuery
-                                                  (KeepEvenWhenGC, ByInitPriority, 
-                                                  filter_and_concat
-                                                    (\<lambda> s .  name_matches
+                                                                 , InputQuery
+                                                                    (KeepEvenWhenGC, ByInitPriority, 
+                                                                    filter_and_concat
+                                                                    (
+                                                                    \<lambda> s .  
+                                                                    name_matches
                                                                     (''.dtors.*'')
                                                                     s))
-                                              , InputQuery
-                                                  (KeepEvenWhenGC, ByInitPriority, 
-                                                  filter_and_concat
-                                                    (\<lambda> s .  name_matches
+                                                                 , InputQuery
+                                                                    (KeepEvenWhenGC, ByInitPriority, 
+                                                                    filter_and_concat
+                                                                    (
+                                                                    \<lambda> s .  
+                                                                    name_matches
                                                                     (''.fini_array'')
                                                                     s \<or>
                                                                     (
@@ -1265,138 +1423,153 @@ SECTIONS
                                                                     file_matches
                                                                     (''*crtend?.o '')
                                                                     s))))) )
-                                              , DefineSymbol
-                                                  (ProvideIfUsed, (''__fini_array_end''), default_symbol_spec)
-                                              ])
-  , OutputSection
-      (AlwaysOutput, None, (''.ctors''), [
-                                         InputQuery
-                                           (KeepEvenWhenGC, DefaultSort, 
-                                           filter_and_concat
-                                             (\<lambda> s .  file_matches
-                                                               (''*crtbegin.o'')
-                                                               s \<and>
-                                                               name_matches
-                                                                 (''.ctors'')
-                                                                 s))
-                                         , InputQuery
-                                             (KeepEvenWhenGC, DefaultSort, 
-                                             filter_and_concat
-                                               (\<lambda> s .  file_matches
-                                                                 (''*crtbegin?.o'')
-                                                                 s \<and>
-                                                                 name_matches
-                                                                   (''.ctors'')
-                                                                   s))
-                                         , InputQuery
-                                             (KeepEvenWhenGC, DefaultSort, 
-                                             filter_and_concat
-                                               (\<lambda> s .  \<not>
-                                                                 (file_matches
+                                                                 , DefineSymbol
+                                                                    (ProvideIfUsed, (''__fini_array_end''), default_symbol_spec)
+                                                                 ])
+                     , OutputSection
+                         (AlwaysOutput, None, (''.ctors''), [
+                                                            InputQuery
+                                                              (KeepEvenWhenGC, DefaultSort, 
+                                                              filter_and_concat
+                                                                (\<lambda> s .  
+                                                                 file_matches
+                                                                   (''*crtbegin.o'')
+                                                                   s \<and>
+                                                                   name_matches
+                                                                    (''.ctors'')
+                                                                    s))
+                                                            , InputQuery
+                                                                (KeepEvenWhenGC, DefaultSort, 
+                                                                filter_and_concat
+                                                                  (\<lambda> s .  
+                                                                   file_matches
+                                                                    (''*crtbegin?.o'')
+                                                                    s \<and>
+                                                                    name_matches
+                                                                    (''.ctors'')
+                                                                    s))
+                                                            , InputQuery
+                                                                (KeepEvenWhenGC, DefaultSort, 
+                                                                filter_and_concat
+                                                                  (\<lambda> s .  
+                                                                   \<not>
+                                                                    (
+                                                                    file_matches
                                                                     (''*crtend.o'')
                                                                     s \<or>
                                                                     file_matches
                                                                     (''*crtend?.o'')
                                                                     s) \<and>
-                                                                 name_matches
-                                                                   (''.ctors'')
-                                                                   s))
-                                         , InputQuery
-                                             (KeepEvenWhenGC, ByName, 
-                                             filter_and_concat
-                                               (\<lambda> s .  name_matches
-                                                                 (''.ctors.*'')
-                                                                 s))
-                                         , InputQuery
-                                             (KeepEvenWhenGC, DefaultSort, 
-                                             filter_and_concat
-                                               (\<lambda> s .  (file_matches
-                                                                  (''*crtend.o'')
-                                                                  s \<or>
-                                                                  file_matches
+                                                                    name_matches
+                                                                    (''.ctors'')
+                                                                    s))
+                                                            , InputQuery
+                                                                (KeepEvenWhenGC, ByName, 
+                                                                filter_and_concat
+                                                                  (\<lambda> s .  
+                                                                   name_matches
+                                                                    (''.ctors.*'')
+                                                                    s))
+                                                            , InputQuery
+                                                                (KeepEvenWhenGC, DefaultSort, 
+                                                                filter_and_concat
+                                                                  (\<lambda> s .  
+                                                                   (file_matches
+                                                                    (''*crtend.o'')
+                                                                    s \<or>
+                                                                    file_matches
                                                                     (''*crtend?.o'')
                                                                     s) \<and>
-                                                                 name_matches
-                                                                   (''.ctors'')
-                                                                   s))
-                                         (* NOTE: this exclusion is implicit in the usual linker script, 
+                                                                    name_matches
+                                                                    (''.ctors'')
+                                                                    s))
+                                                            (* NOTE: this exclusion is implicit in the usual linker script, 
          * because it won't match an input section more than once. We should
          * just replicate this behaviour, since other parts of the script might rely on it
          * less obviously. *)
-                                         ])
-  , OutputSection
-      (AlwaysOutput, None, (''.dtors''), [
-                                         InputQuery
-                                           (KeepEvenWhenGC, DefaultSort, 
-                                           filter_and_concat
-                                             (\<lambda> s .  file_matches
-                                                               (''*crtbegin.o'')
-                                                               s \<and>
-                                                               name_matches
-                                                                 (''.dtors'')
-                                                                 s))
-                                         , InputQuery
-                                             (KeepEvenWhenGC, DefaultSort, 
-                                             filter_and_concat
-                                               (\<lambda> s .  file_matches
-                                                                 (''*crtbegin?.o'')
-                                                                 s \<and>
-                                                                 name_matches
-                                                                   (''.dtors'')
-                                                                   s))
-                                         , InputQuery
-                                             (KeepEvenWhenGC, DefaultSort, 
-                                             filter_and_concat
-                                               (\<lambda> s .  \<not>
-                                                                 (file_matches
+                                                            ])
+                     , OutputSection
+                         (AlwaysOutput, None, (''.dtors''), [
+                                                            InputQuery
+                                                              (KeepEvenWhenGC, DefaultSort, 
+                                                              filter_and_concat
+                                                                (\<lambda> s .  
+                                                                 file_matches
+                                                                   (''*crtbegin.o'')
+                                                                   s \<and>
+                                                                   name_matches
+                                                                    (''.dtors'')
+                                                                    s))
+                                                            , InputQuery
+                                                                (KeepEvenWhenGC, DefaultSort, 
+                                                                filter_and_concat
+                                                                  (\<lambda> s .  
+                                                                   file_matches
+                                                                    (''*crtbegin?.o'')
+                                                                    s \<and>
+                                                                    name_matches
+                                                                    (''.dtors'')
+                                                                    s))
+                                                            , InputQuery
+                                                                (KeepEvenWhenGC, DefaultSort, 
+                                                                filter_and_concat
+                                                                  (\<lambda> s .  
+                                                                   \<not>
+                                                                    (
+                                                                    file_matches
                                                                     (''*crtend.o'')
                                                                     s \<or>
                                                                     file_matches
                                                                     (''*crtend?.o'')
                                                                     s) \<and>
-                                                                 name_matches
-                                                                   (''.dtors'')
-                                                                   s))
-                                         , InputQuery
-                                             (KeepEvenWhenGC, ByName, 
-                                             filter_and_concat
-                                               (\<lambda> s .  name_matches
-                                                                 (''.dtors.*'')
-                                                                 s))
-                                         , InputQuery
-                                             (KeepEvenWhenGC, DefaultSort, 
-                                             filter_and_concat
-                                               (\<lambda> s .  (file_matches
-                                                                  (''*crtend.o'')
-                                                                  s \<or>
-                                                                  file_matches
+                                                                    name_matches
+                                                                    (''.dtors'')
+                                                                    s))
+                                                            , InputQuery
+                                                                (KeepEvenWhenGC, ByName, 
+                                                                filter_and_concat
+                                                                  (\<lambda> s .  
+                                                                   name_matches
+                                                                    (''.dtors.*'')
+                                                                    s))
+                                                            , InputQuery
+                                                                (KeepEvenWhenGC, DefaultSort, 
+                                                                filter_and_concat
+                                                                  (\<lambda> s .  
+                                                                   (file_matches
+                                                                    (''*crtend.o'')
+                                                                    s \<or>
+                                                                    file_matches
                                                                     (''*crtend?.o'')
                                                                     s) \<and>
-                                                                 name_matches
-                                                                   (''.dtors'')
-                                                                   s)) ])
-  , OutputSection
-      (AlwaysOutput, None, (''.jcr''), [InputQuery
-                                          (KeepEvenWhenGC, DefaultSort, 
-                                          filter_and_concat
-                                            (name_matches (''.jcr'')))])
-  , OutputSection
-      (AlwaysOutput, None, (''.data.rel.ro''), [
-                                               InputQuery
-                                                 (DefaultKeep, DefaultSort, 
-                                                 filter_and_concat
-                                                   (
-                                                   \<lambda> s .  name_matches
+                                                                    name_matches
+                                                                    (''.dtors'')
+                                                                    s)) ])
+                     , OutputSection
+                         (AlwaysOutput, None, (''.jcr''), [InputQuery
+                                                             (KeepEvenWhenGC, DefaultSort, 
+                                                             filter_and_concat
+                                                               (name_matches
+                                                                  (''.jcr'')))])
+                     , OutputSection
+                         (AlwaysOutput, None, (''.data.rel.ro''), [
+                                                                  InputQuery
+                                                                    (DefaultKeep, DefaultSort, 
+                                                                    filter_and_concat
+                                                                    (
+                                                                    \<lambda> s .  
+                                                                    name_matches
                                                                     (''.data.rel.ro.local*'')
                                                                     s \<or>
                                                                     name_matches
                                                                     (''.gnu.linkonce.d.rel.ro.local.*'')
                                                                     s )),
-                                               InputQuery
-                                                 (DefaultKeep, DefaultSort, 
-                                                 filter_and_concat
-                                                   (
-                                                   \<lambda> s .  name_matches
+                                                                  InputQuery
+                                                                    (DefaultKeep, DefaultSort, 
+                                                                    filter_and_concat
+                                                                    (
+                                                                    \<lambda> s .  
+                                                                    name_matches
                                                                     (''.data.rel.ro'')
                                                                     s \<or>
                                                                     (
@@ -1406,85 +1579,102 @@ SECTIONS
                                                                     name_matches
                                                                     (''.gnu.linkonce.d.rel.ro.*'')
                                                                     s) )) ])
-  , OutputSection
-      (AlwaysOutput, None, (''.dynamic''), [InputQuery
-                                              (DefaultKeep, DefaultSort, 
-                                              filter_and_concat
-                                                (name_matches (''.dynamic'')))])
-  , OutputSection
-      (AlwaysOutput, None, (''.got''), [InputQuery
-                                          (DefaultKeep, DefaultSort, 
-                                          filter_and_concat
-                                            (name_matches (''.got'')))
-                                       , InputQuery
-                                           (DefaultKeep, DefaultSort, 
-                                           filter_and_concat
-                                             (name_matches (''.igot''))) ])
-  , MarkDataSegmentRelroEnd (*(fun secs -> (if (sizeof .got.plt secs) >= 24 then 24 else 0, (fun pos -> pos)))*)
-  , OutputSection
-      (AlwaysOutput, None, (''.got.plt''), [InputQuery
-                                              (DefaultKeep, DefaultSort, 
-                                              filter_and_concat
-                                                (name_matches (''.got.plt'')))
-                                           , InputQuery
-                                               (DefaultKeep, DefaultSort, 
-                                               filter_and_concat
-                                                 (name_matches
-                                                    (''.igot.plt''))) ])
-  , OutputSection
-      (AlwaysOutput, None, (''.data''), [InputQuery
-                                           (DefaultKeep, DefaultSort, 
-                                           filter_and_concat
-                                             (
-                                             \<lambda> s .  name_matches
-                                                              (''.data'') 
-                                                            s \<or>
-                                                              (name_matches
-                                                                 (''.data.*'')
-                                                                 s \<or>
-                                                                 name_matches
-                                                                   (''.gnu.linkonce.d.*'')
-                                                                   s)))
-                                        (* the script also has SORT(CONSTRUCTORS) here, but it has no effect for ELF (I think) *)
-                                        ])
-  , OutputSection
-      (AlwaysOutput, None, (''.data1''), [InputQuery
-                                            (DefaultKeep, DefaultSort, 
-                                            filter_and_concat
-                                              (name_matches (''.data1'')))])
-  , DefineSymbol (AlwaysDefine, (''_edata''), default_symbol_spec)
-  , DefineSymbol (ProvideIfUsed, (''edata''), default_symbol_spec)
-  , (* . = .;    <-- does this do anything? YES! It forces an output section to be emitted. 
+                     , OutputSection
+                         (AlwaysOutput, None, (''.dynamic''), [InputQuery
+                                                                 (DefaultKeep, DefaultSort, 
+                                                                 filter_and_concat
+                                                                   (name_matches
+                                                                    (''.dynamic'')))])
+                     , OutputSection
+                         (AlwaysOutput, None, (''.got''), [InputQuery
+                                                             (DefaultKeep, DefaultSort, 
+                                                             filter_and_concat
+                                                               (name_matches
+                                                                  (''.got'')))
+                                                          , InputQuery
+                                                              (DefaultKeep, DefaultSort, 
+                                                              filter_and_concat
+                                                                (name_matches
+                                                                   (''.igot'')))
+                                                          ])
+                     , MarkDataSegmentRelroEnd (*(fun secs -> (if (sizeof .got.plt secs) >= 24 then 24 else 0, (fun pos -> pos)))*)
+                     , OutputSection
+                         (AlwaysOutput, None, (''.got.plt''), [InputQuery
+                                                                 (DefaultKeep, DefaultSort, 
+                                                                 filter_and_concat
+                                                                   (name_matches
+                                                                    (''.got.plt'')))
+                                                              , InputQuery
+                                                                  (DefaultKeep, DefaultSort, 
+                                                                  filter_and_concat
+                                                                    (
+                                                                    name_matches
+                                                                    (''.igot.plt'')))
+                                                              ])
+                     , OutputSection
+                         (AlwaysOutput, None, (''.data''), [InputQuery
+                                                              (DefaultKeep, DefaultSort, 
+                                                              filter_and_concat
+                                                                (
+                                                                \<lambda> s .  
+                                                                name_matches
+                                                                  (''.data'')
+                                                                  s \<or>
+                                                                  (name_matches
+                                                                    (''.data.*'')
+                                                                    s \<or>
+                                                                    name_matches
+                                                                    (''.gnu.linkonce.d.*'')
+                                                                    s)))
+                                                           (* the script also has SORT(CONSTRUCTORS) here, but it has no effect for ELF (I think) *)
+                                                           ])
+                     , OutputSection
+                         (AlwaysOutput, None, (''.data1''), [InputQuery
+                                                               (DefaultKeep, DefaultSort, 
+                                                               filter_and_concat
+                                                                 (name_matches
+                                                                    (''.data1'')))])
+                     , DefineSymbol
+                         (AlwaysDefine, (''_edata''), default_symbol_spec)
+                     , DefineSymbol
+                         (ProvideIfUsed, (''edata''), default_symbol_spec)
+                     , (* . = .;    <-- does this do anything? YES! It forces an output section to be emitted. 
          Since it occurs *outside* any output section, 
          it is assumed to start 
        *)
-    DefineSymbol (AlwaysDefine, (''__bss_start''), default_symbol_spec)
-  , OutputSection
-      (AlwaysOutput, None, (''.bss''), [InputQuery
-                                          (DefaultKeep, DefaultSort, 
-                                          filter_and_concat
-                                            (name_matches (''.dynbss'')))
-                                       , InputQuery
-                                           (DefaultKeep, DefaultSort, 
-                                           filter_and_concat
-                                             (
-                                             \<lambda> s .  name_matches
-                                                              (''.bss'') 
-                                                            s \<or>
-                                                              (name_matches
-                                                                 (''.bss.*'')
-                                                                 s \<or>
-                                                                 name_matches
-                                                                   (''.gnu.linkonce.b.*'')
-                                                                   s)))
-                                       , InputQuery
-                                           (DefaultKeep, DefaultSort, 
-                                           (\<lambda> inputlist . 
-                                            (*let _ = errln Looking for commons in *)
-                                            (let result = (filter_and_concat
-                                                             is_common
-                                                             inputlist) in
-                                            (*let _ = errln (Got  ^ (show (length (result))) ^  commons; sanity check: input list contains  ^
+                       DefineSymbol
+                         (AlwaysDefine, (''__bss_start''), default_symbol_spec)
+                     , OutputSection
+                         (AlwaysOutput, None, (''.bss''), [InputQuery
+                                                             (DefaultKeep, DefaultSort, 
+                                                             filter_and_concat
+                                                               (name_matches
+                                                                  (''.dynbss'')))
+                                                          , InputQuery
+                                                              (DefaultKeep, DefaultSort, 
+                                                              filter_and_concat
+                                                                (
+                                                                \<lambda> s .  
+                                                                name_matches
+                                                                  (''.bss'')
+                                                                  s \<or>
+                                                                  (name_matches
+                                                                    (''.bss.*'')
+                                                                    s \<or>
+                                                                    name_matches
+                                                                    (''.gnu.linkonce.b.*'')
+                                                                    s)))
+                                                          , InputQuery
+                                                              (DefaultKeep, DefaultSort, 
+                                                              (\<lambda> inputlist . 
+                                                               (*let _ = errln Looking for commons in *)
+                                                               (let result = 
+                                                                    (
+                                                                    filter_and_concat
+                                                                    is_common
+                                                                    inputlist)
+                                                               in
+                                                               (*let _ = errln (Got  ^ (show (length (result))) ^  commons; sanity check: input list contains  ^
                                     (show (length inputlist)) ^  of which  ^
                                     (show (length (List.filter (fun inp -> match inp with
                                         Common _ -> true
@@ -1492,301 +1682,268 @@ SECTIONS
                                     end) inputlist))) ^  are commons.
                                 ) 
                                 in*) result))
-                                           ) ])
-  , AdvanceAddress
-      (AddressExprFn
-         (\<lambda> pos .  (\<lambda> secs .  align_up_to
-                                                (
-                                                if pos = ( 0 :: nat) then
-                                                  (( 64 :: nat) div
-                                                     ( 8 :: nat)) else
-                                                  ( 1 :: nat)) pos)))
-  , OutputSection
-      (AlwaysOutput, None, (''.lbss''), [InputQuery
-                                           (DefaultKeep, DefaultSort, 
-                                           filter_and_concat
-                                             (name_matches (''.dynlbss'')))
-                                        , InputQuery
-                                            (DefaultKeep, DefaultSort, 
-                                            filter_and_concat
-                                              (name_matches (''.dynlbss'')))
-                                        , InputQuery
-                                            (DefaultKeep, DefaultSort, 
-                                            filter_and_concat
-                                              (
-                                              \<lambda> s .  name_matches
-                                                               (''.lbss'') 
-                                                             s \<or>
-                                                               (name_matches
-                                                                  (''.lbss.*'')
-                                                                  s \<or>
-                                                                  name_matches
-                                                                    (''.gnu.linkonce.lb.*'')
-                                                                    s) ))
-                                        , InputQuery
-                                            (DefaultKeep, DefaultSort, 
-                                            filter_and_concat
-                                              (is_large_common)) ])
-  , AdvanceAddress
-      (AddressExprFn
-         (\<lambda> pos .  (\<lambda> secs .  align_up_to
-                                                (( 64 :: nat) div ( 8 :: nat))
-                                                pos)))
-  , AdvanceAddress
-      (AddressExprFn
-         (\<lambda> pos .  (\<lambda> secs .  segment_start
-                                                (''ldata-segment'') pos)))
-  , OutputSection
-      (AlwaysOutput, Some
-                       (AddressExprFn
-                          (\<lambda> pos .  \<lambda> secs .  align_up_to
-                                                                ((maxpagesize   a)
-                                                                   +
-                                                                   ((
-                                                                    natural_land
-                                                                    pos
-                                                                    (maxpagesize   a))
-                                                                    -
-                                                                    (
-                                                                     1 :: nat)))
-                                                                pos)),
-      (''.lrodata''),
-      [InputQuery
-         (DefaultKeep, DefaultSort, filter_and_concat
-                                      (
-                                      \<lambda> s .  name_matches
-                                                       (''.lrodata'') 
-                                                     s \<or>
-                                                       (name_matches
-                                                          (''.lrodata.*'') 
-                                                        s \<or>
-                                                          name_matches
-                                                            (''.gnu.linkonce.lr.*'')
-                                                            s) ))
-      , AdvanceAddress
-          (AddressExprFn
-             (\<lambda> pos .  (\<lambda> secs .  (
-                                                  if \<not>
-                                                       (pos = (( 0 :: nat))) then
-                                                    ( 64 :: nat) div
-                                                      ( 8 :: nat) else
-                                                    ( 1 :: nat))))) ])
-  , AdvanceAddress
-      (AddressExprFn
-         (\<lambda> pos .  (\<lambda> secs .  align_up_to
-                                                (( 64 :: nat) div ( 8 :: nat))
-                                                pos)))
-  , DefineSymbol (AlwaysDefine, (''_end''), default_symbol_spec)
-  , DefineSymbol (ProvideIfUsed, (''end''), default_symbol_spec)
-  , MarkDataSegmentEnd
-  , OutputSection
-      (AlwaysOutput, Some address_zero, (''.stab''), [InputQuery
-                                                        (DefaultKeep, DefaultSort, 
-                                                        filter_and_concat
-                                                          (name_matches
-                                                             (''.stab'')))])
-  , OutputSection
-      (AlwaysOutput, Some address_zero, (''.stabstr''), [InputQuery
-                                                           (DefaultKeep, DefaultSort, 
-                                                           filter_and_concat
-                                                             (name_matches
-                                                                (''.stabstr'')))])
-  , OutputSection
-      (AlwaysOutput, Some address_zero, (''.stab.excl''), [InputQuery
-                                                             (DefaultKeep, DefaultSort, 
-                                                             filter_and_concat
-                                                               (name_matches
-                                                                  (''.stab.excl'')))])
-  , OutputSection
-      (AlwaysOutput, Some address_zero, (''.stab.exclstr''), [InputQuery
-                                                                (DefaultKeep, DefaultSort, 
-                                                                filter_and_concat
-                                                                  (name_matches
-                                                                    (''.stab.exclstr'')))])
-  , OutputSection
-      (AlwaysOutput, Some address_zero, (''.stab.index''), [InputQuery
+                                                              ) ])
+                     , AdvanceAddress (AddressExprFn alloc_fn3_ref)
+                     , OutputSection
+                         (AlwaysOutput, None, (''.lbss''), [InputQuery
                                                               (DefaultKeep, DefaultSort, 
                                                               filter_and_concat
                                                                 (name_matches
-                                                                   (''.stab.index'')))])
-  , OutputSection
-      (AlwaysOutput, Some address_zero, (''.stab.indexstr''), [InputQuery
-                                                                 (DefaultKeep, DefaultSort, 
-                                                                 filter_and_concat
+                                                                   (''.dynlbss'')))
+                                                           , InputQuery
+                                                               (DefaultKeep, DefaultSort, 
+                                                               filter_and_concat
+                                                                 (name_matches
+                                                                    (''.dynlbss'')))
+                                                           , InputQuery
+                                                               (DefaultKeep, DefaultSort, 
+                                                               filter_and_concat
+                                                                 (
+                                                                 \<lambda> s .  
+                                                                 name_matches
+                                                                   (''.lbss'')
+                                                                   s \<or>
                                                                    (name_matches
-                                                                    (''.stab.indexstr'')))])
-  , OutputSection
-      (AlwaysOutput, Some address_zero, (''.comment''), [InputQuery
-                                                           (DefaultKeep, DefaultSort, 
-                                                           filter_and_concat
-                                                             (name_matches
-                                                                (''.comment'')))])
-  (* DWARF debug sections.
-     Symbols in the DWARF debugging sections are relative to the beginning
-     of the section so we begin them at 0.  *)
-  (* DWARF 1 *)
-  , OutputSection
-      (AlwaysOutput, Some address_zero, (''.debug''), [InputQuery
-                                                         (DefaultKeep, DefaultSort, 
-                                                         filter_and_concat
-                                                           (name_matches
-                                                              (''.debug'')))])
-  , OutputSection
-      (AlwaysOutput, Some address_zero, (''.line''), [InputQuery
-                                                        (DefaultKeep, DefaultSort, 
-                                                        filter_and_concat
-                                                          (name_matches
-                                                             (''.line'')))])
-  (* GNU DWARF 1 extensions *)
-  , OutputSection
-      (AlwaysOutput, Some address_zero, (''.debug_srcinfo''), [InputQuery
-                                                                 (DefaultKeep, DefaultSort, 
-                                                                 filter_and_concat
-                                                                   (name_matches
-                                                                    (''.debug_srcinfo'')))])
-  , OutputSection
-      (AlwaysOutput, Some address_zero, (''.debug_sfnames''), [InputQuery
-                                                                 (DefaultKeep, DefaultSort, 
-                                                                 filter_and_concat
-                                                                   (name_matches
-                                                                    (''.debug_sfname'')))])
-  (* DWARF 1.1 and DWARF 2 *)
-  , OutputSection
-      (AlwaysOutput, Some address_zero, (''.debug_aranges''), [InputQuery
-                                                                 (DefaultKeep, DefaultSort, 
-                                                                 filter_and_concat
-                                                                   (name_matches
-                                                                    (''.debug_aranges'')))])
-  , OutputSection
-      (AlwaysOutput, Some address_zero, (''.debug_pubnames''), [InputQuery
-                                                                  (DefaultKeep, DefaultSort, 
-                                                                  filter_and_concat
-                                                                    (
-                                                                    name_matches
-                                                                    (''.debug_pubnames'')))])
-  (* DWARF 2 *)
-  , OutputSection
-      (AlwaysOutput, Some address_zero, (''.debug_info''), [InputQuery
-                                                              (DefaultKeep, DefaultSort, 
-                                                              filter_and_concat
-                                                                (
-                                                                \<lambda> s .  
-                                                                name_matches
-                                                                  (''.debug_info'')
-                                                                  s \<or>
-                                                                  name_matches
-                                                                    (''.gnu.linkonce.wi.*'')
-                                                                    s))])
-  , OutputSection
-      (AlwaysOutput, Some address_zero, (''.debug_abbrev''), [InputQuery
-                                                                (DefaultKeep, DefaultSort, 
-                                                                filter_and_concat
-                                                                  (name_matches
-                                                                    (''.debug_abbrev'')))])
-  , OutputSection
-      (AlwaysOutput, Some address_zero, (''.debug_line''), [InputQuery
-                                                              (DefaultKeep, DefaultSort, 
-                                                              filter_and_concat
-                                                                (
-                                                                \<lambda> s .  
-                                                                name_matches
-                                                                  (''.debug_line'')
-                                                                  s \<or>
-                                                                  (name_matches
-                                                                    (''.debug_line.*'')
+                                                                    (''.lbss.*'')
                                                                     s \<or>
                                                                     name_matches
-                                                                    (''.debug_line_end'')
-                                                                    s)))])
-  , OutputSection
-      (AlwaysOutput, Some address_zero, (''.debug_frame''), [InputQuery
+                                                                    (''.gnu.linkonce.lb.*'')
+                                                                    s) ))
+                                                           , InputQuery
                                                                (DefaultKeep, DefaultSort, 
                                                                filter_and_concat
-                                                                 (name_matches
-                                                                    (''.debug_frame'')))])
-  , OutputSection
-      (AlwaysOutput, Some address_zero, (''.debug_str''), [InputQuery
-                                                             (DefaultKeep, DefaultSort, 
-                                                             filter_and_concat
-                                                               (name_matches
-                                                                  (''.debug_str'')))])
-  , OutputSection
-      (AlwaysOutput, Some address_zero, (''.debug_loc''), [InputQuery
-                                                             (DefaultKeep, DefaultSort, 
-                                                             filter_and_concat
-                                                               (name_matches
-                                                                  (''.debug_loc'')))])
-  , OutputSection
-      (AlwaysOutput, Some address_zero, (''.debug_macinfo''), [InputQuery
-                                                                 (DefaultKeep, DefaultSort, 
-                                                                 filter_and_concat
-                                                                   (name_matches
-                                                                    (''.debug_macinfo'')))])
-  (* SGI/MIPS DWARF 2 extensions *)
-  , OutputSection
-      (AlwaysOutput, Some address_zero, (''.debug_weaknames''), [InputQuery
-                                                                   (DefaultKeep, DefaultSort, 
-                                                                   filter_and_concat
-                                                                    (
-                                                                    name_matches
-                                                                    (''.debug_weaknames'')))])
-  , OutputSection
-      (AlwaysOutput, Some address_zero, (''.debug_funcnames''), [InputQuery
-                                                                   (DefaultKeep, DefaultSort, 
-                                                                   filter_and_concat
-                                                                    (
-                                                                    name_matches
-                                                                    (''.debug_funcnames'')))])
-  , OutputSection
-      (AlwaysOutput, Some address_zero, (''.debug_typenames''), [InputQuery
-                                                                   (DefaultKeep, DefaultSort, 
-                                                                   filter_and_concat
-                                                                    (
-                                                                    name_matches
-                                                                    (''.debug_typenames'')))])
-  , OutputSection
-      (AlwaysOutput, Some address_zero, (''.debug_varnames''), [InputQuery
-                                                                  (DefaultKeep, DefaultSort, 
-                                                                  filter_and_concat
-                                                                    (
-                                                                    name_matches
-                                                                    (''.debug_varnames'')))])
-  (* DWARF 3 *)
-  , OutputSection
-      (AlwaysOutput, Some address_zero, (''.debug_pubtypes''), [InputQuery
-                                                                  (DefaultKeep, DefaultSort, 
-                                                                  filter_and_concat
-                                                                    (
-                                                                    name_matches
-                                                                    (''.debug_pubtypes'')))])
-  , OutputSection
-      (AlwaysOutput, Some address_zero, (''.debug_ranges''), [InputQuery
-                                                                (DefaultKeep, DefaultSort, 
-                                                                filter_and_concat
-                                                                  (name_matches
-                                                                    (''.debug_ranges'')))])
-  (* DWARF Extension.  *)
-  , OutputSection
-      (AlwaysOutput, Some address_zero, (''.debug_macro''), [InputQuery
-                                                               (DefaultKeep, DefaultSort, 
-                                                               filter_and_concat
-                                                                 (name_matches
-                                                                    (''.debug_macro'')))])
-  , OutputSection
-      (AlwaysOutput, Some address_zero, (''.gnu.attributes''), [InputQuery
-                                                                  (KeepEvenWhenGC, DefaultSort, 
-                                                                  filter_and_concat
-                                                                    (
-                                                                    name_matches
-                                                                    (''.gnu.attributes'')))])
-  , DiscardInput
-      (filter_and_concat
-         (\<lambda> s .  name_matches (''.note.GNU-stack'') s \<or>
-                           (name_matches (''.gnu_debuglink'') s \<or>
-                              name_matches (''.gnu.lto_*'') s)))
-  (* NOTE: orphan sections are dealt with in the core linking logic,
+                                                                 (is_large_common))
+                                                           ])
+                     , AdvanceAddress (AddressExprFn alloc_fn4_ref)
+                     , AdvanceAddress (AddressExprFn alloc_fn5_ref)
+                     , OutputSection
+                         (AlwaysOutput, Some (AddressExprFn alloc_fn6_ref),
+                         (''.lrodata''),
+                         [InputQuery
+                            (DefaultKeep, DefaultSort, filter_and_concat
+                                                         (
+                                                         \<lambda> s .  
+                                                         name_matches
+                                                           (''.lrodata'') 
+                                                         s \<or>
+                                                           (name_matches
+                                                              (''.lrodata.*'')
+                                                              s \<or>
+                                                              name_matches
+                                                                (''.gnu.linkonce.lr.*'')
+                                                                s) ))
+                         , AdvanceAddress (AddressExprFn alloc_fn7_ref) ])
+                     , AdvanceAddress (AddressExprFn alloc_fn8_ref)
+                     , DefineSymbol
+                         (AlwaysDefine, (''_end''), default_symbol_spec)
+                     , DefineSymbol
+                         (ProvideIfUsed, (''end''), default_symbol_spec)
+                     , MarkDataSegmentEnd
+                     , OutputSection
+                         (AlwaysOutput, Some address_zero_fn, (''.stab''), 
+                         [InputQuery
+                            (DefaultKeep, DefaultSort, filter_and_concat
+                                                         (name_matches
+                                                            (''.stab'')))])
+                     , OutputSection
+                         (AlwaysOutput, Some address_zero_fn, (''.stabstr''), 
+                         [InputQuery
+                            (DefaultKeep, DefaultSort, filter_and_concat
+                                                         (name_matches
+                                                            (''.stabstr'')))])
+                     , OutputSection
+                         (AlwaysOutput, Some address_zero_fn, (''.stab.excl''), 
+                         [InputQuery
+                            (DefaultKeep, DefaultSort, filter_and_concat
+                                                         (name_matches
+                                                            (''.stab.excl'')))])
+                     , OutputSection
+                         (AlwaysOutput, Some address_zero_fn, (''.stab.exclstr''), 
+                         [InputQuery
+                            (DefaultKeep, DefaultSort, filter_and_concat
+                                                         (name_matches
+                                                            (''.stab.exclstr'')))])
+                     , OutputSection
+                         (AlwaysOutput, Some address_zero_fn, (''.stab.index''), 
+                         [InputQuery
+                            (DefaultKeep, DefaultSort, filter_and_concat
+                                                         (name_matches
+                                                            (''.stab.index'')))])
+                     , OutputSection
+                         (AlwaysOutput, Some address_zero_fn, (''.stab.indexstr''), 
+                         [InputQuery
+                            (DefaultKeep, DefaultSort, filter_and_concat
+                                                         (name_matches
+                                                            (''.stab.indexstr'')))])
+                     , OutputSection
+                         (AlwaysOutput, Some address_zero_fn, (''.comment''), 
+                         [InputQuery
+                            (DefaultKeep, DefaultSort, filter_and_concat
+                                                         (name_matches
+                                                            (''.comment'')))])
+                     (* DWARF debug sections.
+     Symbols in the DWARF debugging sections are relative to the beginning
+     of the section so we begin them at 0.  *)
+                     (* DWARF 1 *)
+                     , OutputSection
+                         (AlwaysOutput, Some address_zero_fn, (''.debug''), 
+                         [InputQuery
+                            (DefaultKeep, DefaultSort, filter_and_concat
+                                                         (name_matches
+                                                            (''.debug'')))])
+                     , OutputSection
+                         (AlwaysOutput, Some address_zero_fn, (''.line''), 
+                         [InputQuery
+                            (DefaultKeep, DefaultSort, filter_and_concat
+                                                         (name_matches
+                                                            (''.line'')))])
+                     (* GNU DWARF 1 extensions *)
+                     , OutputSection
+                         (AlwaysOutput, Some address_zero_fn, (''.debug_srcinfo''), 
+                         [InputQuery
+                            (DefaultKeep, DefaultSort, filter_and_concat
+                                                         (name_matches
+                                                            (''.debug_srcinfo'')))])
+                     , OutputSection
+                         (AlwaysOutput, Some address_zero_fn, (''.debug_sfnames''), 
+                         [InputQuery
+                            (DefaultKeep, DefaultSort, filter_and_concat
+                                                         (name_matches
+                                                            (''.debug_sfname'')))])
+                     (* DWARF 1.1 and DWARF 2 *)
+                     , OutputSection
+                         (AlwaysOutput, Some address_zero_fn, (''.debug_aranges''), 
+                         [InputQuery
+                            (DefaultKeep, DefaultSort, filter_and_concat
+                                                         (name_matches
+                                                            (''.debug_aranges'')))])
+                     , OutputSection
+                         (AlwaysOutput, Some address_zero_fn, (''.debug_pubnames''), 
+                         [InputQuery
+                            (DefaultKeep, DefaultSort, filter_and_concat
+                                                         (name_matches
+                                                            (''.debug_pubnames'')))])
+                     (* DWARF 2 *)
+                     , OutputSection
+                         (AlwaysOutput, Some address_zero_fn, (''.debug_info''), 
+                         [InputQuery
+                            (DefaultKeep, DefaultSort, filter_and_concat
+                                                         (
+                                                         \<lambda> s .  
+                                                         name_matches
+                                                           (''.debug_info'')
+                                                           s \<or>
+                                                           name_matches
+                                                             (''.gnu.linkonce.wi.*'')
+                                                             s))])
+                     , OutputSection
+                         (AlwaysOutput, Some address_zero_fn, (''.debug_abbrev''), 
+                         [InputQuery
+                            (DefaultKeep, DefaultSort, filter_and_concat
+                                                         (name_matches
+                                                            (''.debug_abbrev'')))])
+                     , OutputSection
+                         (AlwaysOutput, Some address_zero_fn, (''.debug_line''), 
+                         [InputQuery
+                            (DefaultKeep, DefaultSort, filter_and_concat
+                                                         (
+                                                         \<lambda> s .  
+                                                         name_matches
+                                                           (''.debug_line'')
+                                                           s \<or>
+                                                           (name_matches
+                                                              (''.debug_line.*'')
+                                                              s \<or>
+                                                              name_matches
+                                                                (''.debug_line_end'')
+                                                                s)))])
+                     , OutputSection
+                         (AlwaysOutput, Some address_zero_fn, (''.debug_frame''), 
+                         [InputQuery
+                            (DefaultKeep, DefaultSort, filter_and_concat
+                                                         (name_matches
+                                                            (''.debug_frame'')))])
+                     , OutputSection
+                         (AlwaysOutput, Some address_zero_fn, (''.debug_str''), 
+                         [InputQuery
+                            (DefaultKeep, DefaultSort, filter_and_concat
+                                                         (name_matches
+                                                            (''.debug_str'')))])
+                     , OutputSection
+                         (AlwaysOutput, Some address_zero_fn, (''.debug_loc''), 
+                         [InputQuery
+                            (DefaultKeep, DefaultSort, filter_and_concat
+                                                         (name_matches
+                                                            (''.debug_loc'')))])
+                     , OutputSection
+                         (AlwaysOutput, Some address_zero_fn, (''.debug_macinfo''), 
+                         [InputQuery
+                            (DefaultKeep, DefaultSort, filter_and_concat
+                                                         (name_matches
+                                                            (''.debug_macinfo'')))])
+                     (* SGI/MIPS DWARF 2 extensions *)
+                     , OutputSection
+                         (AlwaysOutput, Some address_zero_fn, (''.debug_weaknames''), 
+                         [InputQuery
+                            (DefaultKeep, DefaultSort, filter_and_concat
+                                                         (name_matches
+                                                            (''.debug_weaknames'')))])
+                     , OutputSection
+                         (AlwaysOutput, Some address_zero_fn, (''.debug_funcnames''), 
+                         [InputQuery
+                            (DefaultKeep, DefaultSort, filter_and_concat
+                                                         (name_matches
+                                                            (''.debug_funcnames'')))])
+                     , OutputSection
+                         (AlwaysOutput, Some address_zero_fn, (''.debug_typenames''), 
+                         [InputQuery
+                            (DefaultKeep, DefaultSort, filter_and_concat
+                                                         (name_matches
+                                                            (''.debug_typenames'')))])
+                     , OutputSection
+                         (AlwaysOutput, Some address_zero_fn, (''.debug_varnames''), 
+                         [InputQuery
+                            (DefaultKeep, DefaultSort, filter_and_concat
+                                                         (name_matches
+                                                            (''.debug_varnames'')))])
+                     (* DWARF 3 *)
+                     , OutputSection
+                         (AlwaysOutput, Some address_zero_fn, (''.debug_pubtypes''), 
+                         [InputQuery
+                            (DefaultKeep, DefaultSort, filter_and_concat
+                                                         (name_matches
+                                                            (''.debug_pubtypes'')))])
+                     , OutputSection
+                         (AlwaysOutput, Some address_zero_fn, (''.debug_ranges''), 
+                         [InputQuery
+                            (DefaultKeep, DefaultSort, filter_and_concat
+                                                         (name_matches
+                                                            (''.debug_ranges'')))])
+                     (* DWARF Extension.  *)
+                     , OutputSection
+                         (AlwaysOutput, Some address_zero_fn, (''.debug_macro''), 
+                         [InputQuery
+                            (DefaultKeep, DefaultSort, filter_and_concat
+                                                         (name_matches
+                                                            (''.debug_macro'')))])
+                     , OutputSection
+                         (AlwaysOutput, Some address_zero_fn, (''.gnu.attributes''), 
+                         [InputQuery
+                            (KeepEvenWhenGC, DefaultSort, filter_and_concat
+                                                            (name_matches
+                                                               (''.gnu.attributes'')))])
+                     , DiscardInput
+                         (filter_and_concat
+                            (\<lambda> s .  name_matches
+                                              (''.note.GNU-stack'') s \<or>
+                                              (name_matches
+                                                 (''.gnu_debuglink'') 
+                                               s \<or>
+                                                 name_matches
+                                                   (''.gnu.lto_*'') s)))
+                     (* NOTE: orphan sections are dealt with in the core linking logic,
        not the script. *)
-  ]))) )"
+                     ]))))))))))))))))))))))))))))))))))))) )"
 
 
 definition interpret_guard  :: " output_guard \<Rightarrow>(output_section_composition_element)list \<Rightarrow> 'a \<Rightarrow> bool "  where 
@@ -1817,6 +1974,9 @@ definition label_script  :: "(script_element)list \<Rightarrow>(script_element*n
 
 type_synonym input_output_assignment =" ( input_spec list * (output_section_spec * nat) list)"
 
+axiomatization
+  assign_inputs_to_output_sections  :: "(input_spec)list*(output_section_spec*nat)list \<Rightarrow>(nat*nat)set \<Rightarrow>(nat*nat*nat)set \<Rightarrow>(input_spec)list \<Rightarrow>(output_section_spec*nat)option \<Rightarrow>(input_spec)option \<Rightarrow>(input_spec \<Rightarrow> input_spec \<Rightarrow> ordering)\<Rightarrow>(script_element*nat)list \<Rightarrow>(input_spec)list*(output_section_spec*nat)list"
+
 (*val assign_inputs_to_output_sections : 
     input_output_assignment ->  (* accumulator: list of discards, list of output compositions (these include symbols)  *)
     set (natural * natural) ->  (* used sections *)
@@ -1827,20 +1987,19 @@ type_synonym input_output_assignment =" ( input_spec list * (output_section_spec
     (input_spec -> input_spec -> Basic_classes.ordering) (* seen ordering *) ->
     labelled_linker_control_script -> 
     input_output_assignment*)     (* accumulated result *)
+(*
 function (sequential,domintros)  assign_inputs_to_output_sections  :: "(input_spec)list*(output_section_spec*nat)list \<Rightarrow>(nat*nat)set \<Rightarrow>(nat*nat*nat)set \<Rightarrow>(input_spec)list \<Rightarrow>(output_section_spec*nat)option \<Rightarrow>(input_spec)option \<Rightarrow>(input_spec \<Rightarrow> input_spec \<Rightarrow> ordering)\<Rightarrow>(script_element*nat)list \<Rightarrow>(input_spec)list*(output_section_spec*nat)list "  where 
      " assign_inputs_to_output_sections acc1 used_sections used_commons inputs1 (cur_output_sec ::  (output_section_spec * nat)option) last_input_sec seen_ordering script = ( 
     (let (rev_discards, rev_outputs) = acc1 in 
     (let flush_output_sec 
      = (\<lambda> maybe_output_sec_and_idx .  (case  (maybe_output_sec_and_idx ::  (output_section_spec * nat)option) of
         Some (OutputSectionSpec (guard, addr, name1, comp1), script_idx) => 
-            (*let _ = errln (Guardedly flushing output section named  ^ name ^  with  ^ (
-                match addr with Nothing -> no address yet | Just a -> address 0x ^ (hex_string_of_natural a) end
-            ))
-            in*)
+            (let _ = (())
+            in
             (* evaluate the guard *)
             if interpret_guard guard comp1 name1
             then (* do it     *) (rev_discards, (((OutputSectionSpec (guard, addr, name1, comp1)), script_idx) # rev_outputs))
-            else (* ignore it *) acc1
+            else (* ignore it *) acc1)
         | None => (* for convenience, make this a no-op rather than error *)
             (* failwith internal error: flushing output section with no current output section *)
             acc1
@@ -1861,32 +2020,40 @@ function (sequential,domintros)  assign_inputs_to_output_sections  :: "(input_sp
                      used_sections,
                      used_commons,
                      (case  (cur_output_sec ::  (output_section_spec * nat)option) of
-                        None => (*let _ = errln FIXME: ABS symbol defs not yet supported in*) None
+                        None => (let _ = (()) in None)
                         | Some ((OutputSectionSpec (guard, maybe_addr, secname1, comp1)), output_script_idx) =>
+                            (let _ = (()) in
                             Some ((OutputSectionSpec (guard, maybe_addr, secname1,                                
  (comp1 @ [ProvideSymbol(symdefpol, name1, (symsize, syminfo, symother))])))
-                             , output_script_idx)
+                             , output_script_idx))
                     ),
                     last_input_sec)
                 | AdvanceAddress(AddressExprFn advance_fn) =>
                      (* If we're inside a section, insert a hole, 
                       * else just update the logical address *)
+                     (let _ = (()) in
                      (case  cur_output_sec of
                         None => do_nothing
                             (* This assignment is setting a new LMA. *)
                             (* (acc,  *)
                         | Some (sec, idx1) => do_nothing
-                     )
+                     ))
                 | MarkAndAlignDataSegment(maxpagesize1, commonpagesize1) => 
                      (* The data segment end is a distinguished label, 
                       * so we can encode the whole thing into a conditional. *)
-                     do_nothing
-                | MarkDataSegmentEnd => do_nothing
-                | MarkDataSegmentRelroEnd(*(fun_from_secs_to_something)*) => do_nothing
+                     (let _ = (()) in
+                     do_nothing)
+                | MarkDataSegmentEnd => 
+                     (let _ = (()) in
+                     do_nothing)
+                | MarkDataSegmentRelroEnd(*(fun_from_secs_to_something)*) =>
+                     (let _ = (()) in
+                     do_nothing)
                 | OutputSection(outputguard, maybe_expr, name1, sub_elements) => 
                     (* If we have a current output section, finish it and add it to the image.
                      * Q. Where do guards (ONLY_IF_RO etc) get evaluated?
                      * A. Inside flush_output_sec. *)
+                    (let _ = (()) in
                     (let acc_with_output_sec = (flush_output_sec cur_output_sec)
                     in
                     (let new_cur_output_sec = (Some((OutputSectionSpec(outputguard, (* maybe_expr pos secs *) None, name1, [])), idx1))
@@ -1900,16 +2067,15 @@ function (sequential,domintros)  assign_inputs_to_output_sections  :: "(input_sp
                     in
                     (* NOTE that this sub-accumulation will never add a new output section
                      * because output sections can't nest. *)
-                    (final_acc, used_sections, used_commons, (* cur_output_sec *) None, last_input_sec)))) 
+                    (final_acc, used_sections, used_commons, (* cur_output_sec *) None, last_input_sec))))) 
                 | DiscardInput(selector) => 
                     (let selected = (selector inputs1)
                     in
                     (let (rev_discards, rev_outputs) = acc1 in
-                    (*let _ = Missing_pervasives.errln (Processing discard rule; selected  ^ (show (length selected))
-                        ^  inputs.)
-                    in*)
+                    (let _ = (())
+                    in
                     ((((List.rev ((let x2 = 
-  ([]) in  List.foldr (\<lambda>i x2 .  if True then i # x2 else x2) selected x2))) @ rev_discards), rev_outputs), used_sections, used_commons, cur_output_sec, last_input_sec)))
+  ([]) in  List.foldr (\<lambda>i x2 .  if True then i # x2 else x2) selected x2))) @ rev_discards), rev_outputs), used_sections, used_commons, cur_output_sec, last_input_sec))))
                 | InputQuery(retainpol, sortpol, selector) => 
                     (* Input queries can only occur within an output section. *)
                     (case  cur_output_sec of
@@ -1939,6 +2105,7 @@ function (sequential,domintros)  assign_inputs_to_output_sections  :: "(input_sp
                                 | Common(idx1, fname1, img3, def1) => \<not> ((idx1,(def_sym_scn   def1),(def_sym_idx   def1)) \<in> used_commons)
                             )) selected)
                             in
+                            (let _ = (()) in
                             (* Search input memory images for matching sections. *)
                             (let sorted_selected_inputs = (sortfun selected_deduplicated)
                             in
@@ -1979,7 +2146,7 @@ function (sequential,domintros)  assign_inputs_to_output_sections  :: "(input_sp
     (\<lambda> (idx1, fname1, img3, def1) .  (idx1,(def_sym_scn   def1),(def_sym_idx   def1)))
     (set_filter (\<lambda> (idx1, fname1, img3, def1) .  True)
        (List.set commonMatchList))),
-                             Some (
+                             (* new_cur_output_spec *) Some (
                                 (OutputSectionSpec(output_guard, output_sec_addr, output_sec_name, 
                                     ((output_composition @                                     
  ((let x2 = ([]) in  List.foldr
@@ -1987,26 +2154,32 @@ function (sequential,domintros)  assign_inputs_to_output_sections  :: "(input_sp
     if True then
       IncludeInputSection
         (retainpol, (* input_sec.fname, input_sec.idx, input_sec.shndx, input_sec.isec, input_sec.img *) input_sec)
-        # x2 else x2) sectionMatchList x2))) @ ((let x2 = ([]) in  List.foldr
+        # x2 else x2) sectionMatchList x2))) @                                     
+ ((let x2 = ([]) in  List.foldr
    (\<lambda>(idx1, fname1, img3, def1) x2 . 
     if True then
       IncludeCommonSymbol (DefaultKeep, fname1, idx1, def1, img3) # x2 else
       x2) commonMatchList x2)))
                                 )), output_script_idx), 
                              last_input_sec
-                            )))))))
+                            ))))))))
                     )
             ))
             in
+            (let _ = ((case  new_cur_output_sec of
+                Some (OutputSectionSpec (guard, addr, name1, comp1), script_idx) => 
+                    ()
+                | None => () 
+            )) in
             assign_inputs_to_output_sections new_acc new_used_sections new_used_commons 
                 (inputs1 :: input_spec list)
                 (new_cur_output_sec)
                 (new_last_input_sec ::  input_spec option)
                 seen_ordering
-                (more_elements_and_idx :: labelled_linker_control_script)))
+                (more_elements_and_idx :: labelled_linker_control_script))))
     ))))" 
 by pat_completeness auto
-
+*)
 
 (* NOTE: this is also responsible for deleting any PROVIDEd symbols that 
  * were not actually referenced. BUT HOW, if we haven't built the image and 
@@ -2029,7 +2202,7 @@ by pat_completeness auto
  * So that implies we need not yet build a memory image.
  *)
 (*val compute_def_use_and_gc : allocated_sections_map -> allocated_sections_map*)
-definition compute_def_use_and_gc  :: "((string),(output_section_spec*nat))Map.map \<Rightarrow>((string),(output_section_spec*nat))Map.map "  where 
+definition compute_def_use_and_gc  :: " allocated_sections_map \<Rightarrow> allocated_sections_map "  where 
      " compute_def_use_and_gc outputs_by_name = ( outputs_by_name )"
  (* FIXME: implement GC *)
 
@@ -2133,7 +2306,7 @@ definition output_section_flags  :: "(output_section_composition_element)list \<
 
 
 definition symbol_def_for_provide_symbol  :: " string \<Rightarrow> nat \<Rightarrow> Elf_Types_Local.unsigned_char \<Rightarrow> Elf_Types_Local.unsigned_char \<Rightarrow> nat \<Rightarrow> symbol_definition "  where 
-     " symbol_def_for_provide_symbol name1 size3 info other linker_script_linkable_idx = ( 
+     " symbol_def_for_provide_symbol name1 size3 info other control_script_linkable_idx = ( 
     (|
         def_symname = (*let _ = errln (Linker script is defining symbol called ` ^ name ^ ') in*) name1
         , def_syment = ((|
@@ -2146,32 +2319,37 @@ definition symbol_def_for_provide_symbol  :: " string \<Rightarrow> nat \<Righta
            |))
         , def_sym_scn =(( 0 :: nat))
         , def_sym_idx =(( 0 :: nat))
-        , def_linkable_idx = linker_script_linkable_idx
+        , def_linkable_idx = control_script_linkable_idx
     |) )"
 
 
-(*val assign_dot_to_itself : address_expr_fn*)
-definition assign_dot_to_itself  :: " address_expr_fn "  where 
-     " assign_dot_to_itself = ( AddressExprFn (\<lambda> dot .  \<lambda> _ .  dot))"
+(*val assign_dot_to_itself : natural -> address_expr_fn_map allocated_sections_map -> (natural * address_expr_fn_map allocated_sections_map * address_expr_fn)*)
+definition assign_dot_to_itself  :: " nat \<Rightarrow>((nat),(nat \<Rightarrow> allocated_sections_map \<Rightarrow> nat))Map.map \<Rightarrow> nat*((nat),(nat \<Rightarrow> allocated_sections_map \<Rightarrow> nat))Map.map*address_expr_fn "  where 
+     " assign_dot_to_itself fresh alloc_map = (
+  (let fn = (\<lambda> dot .  \<lambda> _ .  dot) in
+  (let alloc_map' = (map_update fresh fn alloc_map) in
+  (let fresh' =(( 1 :: nat) + fresh) in
+    (fresh', alloc_map', AddressExprFn fresh)))))"
 
 
-(*val build_image : 
+(*val build_image :
+    address_expr_fn_map allocated_sections_map -> (* global dictionary of address_expr_fn_ref -> address_expr_fn *)
     elf_memory_image ->          (* accumulator *)
     natural ->                   (* location counter *)
     allocated_sections_map ->  (* outputs constructed earlier *)
     (Map.map string (list (natural * binding))) -> (* bindings_by_name *)
     labelled_linker_control_script -> 
-    natural -> (* linker_script_linkable_idx *)
+    natural -> (* control_script_linkable_idx *)
+    (Map.map string (list symbol_definition)) -> (* linker_defs_by_name *)
     (elf_memory_image * allocated_sections_map)*)            (* accumulated result *)
-function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_memory_image \<Rightarrow> nat \<Rightarrow>((string),(output_section_spec*nat))Map.map \<Rightarrow>((string),((nat*((nat*symbol_reference*(linkable_object*input_item*input_options))*(nat*symbol_definition*linkable_item)option))list))Map.map \<Rightarrow>(script_element*nat)list \<Rightarrow> nat \<Rightarrow>(any_abi_feature)annotated_memory_image*((string),(output_section_spec*nat))Map.map "  where 
-     " build_image acc1 pos outputs_by_name bindings_by_name script linker_script_linkable_idx = ( 
+function (sequential,domintros)  build_image  :: "((nat),(nat \<Rightarrow> allocated_sections_map \<Rightarrow> nat))Map.map \<Rightarrow>(any_abi_feature)annotated_memory_image \<Rightarrow> nat \<Rightarrow> allocated_sections_map \<Rightarrow>((string),((nat*((nat*symbol_reference*(linkable_object*input_item*input_options))*(nat*symbol_definition*linkable_item)option))list))Map.map \<Rightarrow>(script_element*nat)list \<Rightarrow> nat \<Rightarrow>((string),((symbol_definition)list))Map.map \<Rightarrow>(any_abi_feature)annotated_memory_image*allocated_sections_map "  where 
+     " build_image alloc_map acc1 pos (AllocatedSectionsMap outputs_by_name) bindings_by_name script control_script_linkable_idx linker_defs_by_name = ( 
      (let (add_output_section :: (nat * elf_memory_image) \<Rightarrow> output_section_spec \<Rightarrow> (nat * elf_memory_image * nat * output_section_spec))
      = (\<lambda> ((*scn_idx, *)pos, acc_img) . 
         (\<lambda>o1 .  
   (case  (o1 ) of
       ( (OutputSectionSpec (guard, addr, secname1, comp1)) ) =>
-  (* let _ = errln (Computing composition of output section ` ^ secname ^ ' from  ^ (show (length comp)) ^  elements)
-            in *)
+  (let _ = (()) in
   (let unaligned_start_addr = ((case  addr of
                                    Some a => failwith
                                                ((''internal error: section '')
@@ -2185,7 +2363,8 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
   (let output_section_start_addr = (align_up_to align unaligned_start_addr)
   in
   (let (end_addr, comp_addrs) = (do_output_section_layout_starting_at_addr
-                                   output_section_start_addr outputs_by_name
+                                   output_section_start_addr
+                                   (AllocatedSectionsMap outputs_by_name)
                                    comp1) in
   (let size3 = (end_addr - output_section_start_addr) in
   (let _ = (()) in
@@ -2251,6 +2430,9 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                       IncludeInputSection (retainpolicy, (* fname, linkable_idx, shndx, isec, img *) irec) =>
                                                                     (* We want to get the input section as a byte pattern *)
                                                                     (let 
+                                                                    _ = 
+                                                                    (()) in
+                                                                    (let 
                                                                     maybe_secname = 
                                                                     (
                                                                     elf_memory_image_element_coextensive_with_section
@@ -2275,14 +2457,6 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                     _ = 
                                                                     (()) in
                                                                     (let 
-                                                                    range_or_sym_is_in_this_sec = 
-                                                                    (
-                                                                    \<lambda> maybe_range .  
-                                                                    (
-                                                                    \<lambda> tag . 
-                                                                    (* is it within the section we're outputting? 
-                                         * first we needs its element name. *)
-                                                                    (let 
                                                                     section_el_name = 
                                                                     (
                                                                     get_unique_name_for_section_from_index
@@ -2290,6 +2464,17 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                     (isec   irec)
                                                                     (img   irec))
                                                                     in
+                                                                    (let 
+                                                                    _ = 
+                                                                    (()) in
+                                                                    (let 
+                                                                    range_or_sym_is_in_this_sec = 
+                                                                    (
+                                                                    \<lambda> maybe_range .  
+                                                                    (
+                                                                    \<lambda> tag . 
+                                                                    (* is it within the section we're outputting? 
+                                         * first we needs its element name. *)
                                                                     (* filter out ones that don't overlap *)
                                                                     (case  maybe_range of
                                                                     Some(el_name, (start, len)) =>
@@ -2383,7 +2568,7 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                     | _ => 
                                                                     False
                                                                     )
-                                                                    )) )) in
+                                                                    ) )) in
                                                                     (let 
                                                                     ranges_and_tags = 
                                                                     (
@@ -2513,6 +2698,9 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                 then Nothing FIXME: also re-create the section symbol when we create the ElfSection
                                                 else *) (* This doesn't work -- some refs might be bound to this symbol. 
                                                            Instead, strip the symbol when we generate the output symtab (FIXME). *)
+                                                                    (let 
+                                                                    _ = 
+                                                                    (()) in
                                                                     Some
                                                                     (new_range, 
                                                                     SymbolDef
@@ -2533,7 +2721,7 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                     , def_linkable_idx = 
                                                                     (
                                                                     (idx   irec))
-                                                                    |)))
+                                                                    |))))
                                                                     | AbiFeature (x) => 
                                                                     Some
                                                                     (new_range, 
@@ -2984,12 +3172,12 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                     (let 
                                                                     _ = 
                                                                     (()) in
-                                                                    (actual_sz, padded_contents, new_ranges_and_tags))))))))))))
+                                                                    (actual_sz, padded_contents, new_ranges_and_tags))))))))))))))
                                                                     | _ => 
                                                                     failwith
                                                                     (''impossible: no such element'')
                                                                     )) (* match Map.lookup idstr img.elements *)
-                                                                    )) (* match maybe_secname *)
+                                                                    ))) (* match maybe_secname *)
                                                                     | IncludeCommonSymbol (retain_pol, fname1, linkable_idx, def1, img3) =>
                                                                     (let 
                                                                     _ = 
@@ -3061,6 +3249,9 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                         (next_addr - addr, content, {}) *)
                                                                     | ProvideSymbol (pol, name1, (size3, info, other)) =>
                                                                     (let 
+                                                                    _ = 
+                                                                    (()) in
+                                                                    (let 
                                                                     symaddr = accum_current_addr (* FIXME: support others *)
                                                                     in
                                                                     (let 
@@ -3088,8 +3279,8 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                     size3
                                                                     info
                                                                     other
-                                                                    linker_script_linkable_idx)
-                                                                    )} )))
+                                                                    control_script_linkable_idx)
+                                                                    )} ))))
                                                                     )) (* match comp_el_pat *)
                                                                     in
                                                                     (let 
@@ -3130,10 +3321,10 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                     comp_addrs))
   in
   (let concat_sec_el = ((|
-                        Memory_image.startpos = (Some
+                        Memory_image.element.startpos = (Some
                                                    (output_section_start_addr))
-                        , Memory_image.length1 = (Some (size3))
-                        , Memory_image.contents = concatenated_content |)) in
+                        , Memory_image.element.length1 = (Some (size3))
+                        , Memory_image.element.contents = concatenated_content |)) in
   (let _ = (()) in
   (* Make a new element in the image, also transferring metadata from input elements 
              * as appropriate. *)
@@ -3197,23 +3388,29 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
   , by_tag = new_by_tag |), (* sec_sz *) size3,
   (* replacement_output_sec *) (OutputSectionSpec
                                   (guard, Some (output_section_start_addr), secname1, comp1))
-  ))))))))))))))))
+  )))))))))))))))))
   )
         )) (* end add_output_section *)
     in
     (case  script of
-        [] => (acc1, outputs_by_name)
+        [] => (acc1, (AllocatedSectionsMap outputs_by_name))
         | (element, el_idx) # more_elements_and_idx =>
-             (let do_nothing = (acc1, pos, outputs_by_name) in 
+             (let do_nothing = (acc1, pos, (AllocatedSectionsMap outputs_by_name)) in 
              (let (new_acc, new_pos, new_outputs_by_name) =             
  ((case  element of
                 DefineSymbol(symdefpol, name1, (symsize, syminfo, symother)) => 
                     (* We've already added this to the output composition. *)
                     do_nothing
-                | AdvanceAddress(AddressExprFn advance_fn) => 
-                    (let new_pos = (advance_fn pos outputs_by_name)
+                | AdvanceAddress(AddressExprFn advance_fn_ref) => 
+                    (let advance_fn =                      
+((case   alloc_map advance_fn_ref of
+                          Some m  => m
+                        | None => failwith (''alloc_map invariant failure'')
+                      ))
                     in
-                    (acc1, new_pos, outputs_by_name))
+                    (let new_pos = (advance_fn pos (AllocatedSectionsMap outputs_by_name))
+                    in
+                    (acc1, new_pos, (AllocatedSectionsMap outputs_by_name))))
                     (* FIXME: the allocated sections map is the subset of the outputs_by_name map 
                      * that has been allocated -- meaning *both* sized *and* placed. 
                      * Since we're a multi-pass interpreter, we've sized everything already, but 
@@ -3402,16 +3599,24 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
     (let start_addr = (align_up_to (alignof_output_section comp1)
                          unaligned_start_addr) in
     (let (end_addr, comp_addrs) = (do_output_section_layout_starting_at_addr
-                                     start_addr outputs_by_name comp1) in
+                                     start_addr
+                                     (AllocatedSectionsMap outputs_by_name)
+                                     comp1) in
     (let size3 = (end_addr - start_addr) in (end_addr, (* seen_end *) False)))))
     ) else (curpos, (* seen_end *) False))
   )))
-                                | AdvanceAddress(AddressExprFn advance_fn) => 
+                                | AdvanceAddress(AddressExprFn advance_fn_ref) => 
                                     (let _ = (())
                                     in
-                                    (let new_pos = (advance_fn curpos outputs_by_name)
+                                    (let advance_fn =                                      
+((case   alloc_map advance_fn_ref of
+                                          Some m  => m
+                                        | None => failwith (''alloc_map invariant failed'')
+                                      ))
                                     in
-                                    (new_pos, False)))
+                                    (let new_pos = (advance_fn curpos (AllocatedSectionsMap outputs_by_name))
+                                    in
+                                    (new_pos, False))))
                                 | _ => (curpos, seen_end)
                             ))
                             in
@@ -3442,8 +3647,8 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                     (let _ = (())
                     in
                     if npages_option1 < npages_option2 
-                    then (let _ = (()) in (acc1, option1, outputs_by_name))
-                    else (let _ = (()) in (acc1, option2, outputs_by_name)))))))))))))))))
+                    then (let _ = (()) in (acc1, option1, (AllocatedSectionsMap outputs_by_name)))
+                    else (let _ = (()) in (acc1, option2, (AllocatedSectionsMap outputs_by_name))))))))))))))))))
                 | MarkDataSegmentEnd => do_nothing
                 | MarkDataSegmentRelroEnd(*(fun_from_secs_to_something)*) => do_nothing
                 | OutputSection(outputguard, maybe_expr, name1, sub_elements) => 
@@ -3529,8 +3734,18 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                               (elf64_st_size  (def_syment   def1))
                                                               > ( 0 :: nat)
                                                               | ProvideSymbol (pol, name1, spec) => 
-                                                            False
-                                                              | Hole (AddressExprFn (address_fn)) =>
+                                                            True (* HACK: what else makes sense here? *)
+                                                              | Hole (AddressExprFn (address_fn_ref)) =>
+                                                            (let address_fn =
+                                                                 ((case  
+                                                                   alloc_map
+                                                                    address_fn_ref of
+                                                                      Some m => 
+                                                                  m
+                                                                    | None => 
+                                                                  failwith
+                                                                    (''alloc_map invariant failed'')
+                                                                  )) in
                                                             (let assignment_is_excluded = 
                                                                  (\<lambda> f . 
                                                                   (* really makes you wish you were programming in Lisp *)
@@ -3540,7 +3755,9 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                     (
                                                                     (
                                                                      0 :: nat))
-                                                                    outputs_by_name
+                                                                    (
+                                                                    AllocatedSectionsMap
+                                                                    outputs_by_name)
                                                                     =
                                                                     (
                                                                      0 :: nat))
@@ -3550,7 +3767,9 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                     (
                                                                     (
                                                                      42 :: nat))
-                                                                    outputs_by_name
+                                                                    (
+                                                                    AllocatedSectionsMap
+                                                                    outputs_by_name)
                                                                     =
                                                                     (
                                                                      0 :: nat))) (* FIXME: this is wrong *)
@@ -3561,7 +3780,9 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                     (
                                                                     (
                                                                      0 :: nat))
-                                                                    outputs_by_name
+                                                                    (
+                                                                    AllocatedSectionsMap
+                                                                    outputs_by_name)
                                                                     =
                                                                     (
                                                                      0 :: nat))
@@ -3571,7 +3792,9 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                     (
                                                                     (
                                                                      42 :: nat))
-                                                                    outputs_by_name
+                                                                    (
+                                                                    AllocatedSectionsMap
+                                                                    outputs_by_name)
                                                                     =
                                                                     (
                                                                      42 :: nat))) (* FIXME: this is wrong *)
@@ -3580,18 +3803,11 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                                                                   always_gives_0
                                                                     \<or>
                                                                     (
-                                                                    always_gives_dot
-                                                                    \<and>
-                                                                    (
-                                                                    (
-                                                                    AddressExprFn
-                                                                    (f))
-                                                                    \<noteq>
-                                                                    assign_dot_to_itself)))))
+                                                                    always_gives_dot (*&& (AddressExprFn(f)) <> assign_dot_to_itself*) (* FIXME DPM: almost certainly not what is meant... *) ))))
                                                             in
                                                             \<not>
                                                               (assignment_is_excluded
-                                                                 address_fn))
+                                                                 address_fn)))
                                                             )) in
   (let section_contains_non_empty_inputs =
        (((\<exists> x \<in> (set comp1). comp_element_allocates_space x))) in
@@ -3600,7 +3816,8 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
                      * but only one was activated by the section composition pass. Ignore the others. *)
   (let do_output = ((seen_script_el_idx = el_idx) \<and>
                       section_contains_non_empty_inputs) in
-  if \<not> do_output then (let _ = (()) in (acc1, pos, outputs_by_name))
+  if \<not> do_output then
+    (let _ = (()) in (acc1, pos, (AllocatedSectionsMap outputs_by_name)))
   else
     (
     (* let _ = errln (Before adding output section, we have  ^ (show (count_sections_in_image acc))
@@ -3629,15 +3846,16 @@ function (sequential,domintros)  build_image  :: "(any_abi_feature)annotated_mem
     (* let _ = errln (After adding output section, we have  ^ (show (count_sections_in_image new_acc))
                             ^  sections.)
                         in *)
-    (new_acc, new_pos, (map_update name1 (replacement_output_sec, el_idx)
-                          (map_remove name1 outputs_by_name))))) )))))
+    (new_acc, new_pos, (AllocatedSectionsMap
+                          (map_update name1 (replacement_output_sec, el_idx)
+                             (map_remove name1 outputs_by_name)))))) )))))
   )))
                 | DiscardInput(selector) => do_nothing
                 | InputQuery(retainpol, sortpol, selector) => do_nothing
             ))
             in
             (* recurse *)
-            build_image new_acc new_pos new_outputs_by_name bindings_by_name more_elements_and_idx linker_script_linkable_idx))
+            build_image alloc_map new_acc new_pos new_outputs_by_name bindings_by_name more_elements_and_idx control_script_linkable_idx linker_defs_by_name))
     )))" 
 by pat_completeness auto
 
@@ -3839,19 +4057,24 @@ fun default_place_orphans  :: "(input_spec)list*(output_section_spec*nat)list \<
 declare default_place_orphans.simps [simp del]
  
 
-(*val interpret_linker_control_script : 
+(*val interpret_linker_control_script :
+    address_expr_fn_map allocated_sections_map ->
     linker_control_script
     -> linkable_list
-    -> natural (* linker_script_linkable_idx *)
+    -> natural (* control_script_linkable_idx *)
     -> abi any_abi_feature
     -> list input_spec
     -> (input_spec -> input_spec -> ordering)                       (* seen ordering *)
     -> (input_output_assignment -> list input_spec -> input_output_assignment)     (* place orphans *)
     -> (Map.map string (list (natural * binding))) (* initial_bindings_by_name *)
     -> (elf_memory_image * Map.map string (list (natural * binding)))*)
-definition interpret_linker_control_script  :: "(script_element)list \<Rightarrow>(linkable_object*input_item*input_options)list \<Rightarrow> nat \<Rightarrow>(any_abi_feature)abi \<Rightarrow>(input_spec)list \<Rightarrow>(input_spec \<Rightarrow> input_spec \<Rightarrow> ordering)\<Rightarrow>((input_spec)list*(output_section_spec*nat)list \<Rightarrow>(input_spec)list \<Rightarrow>(input_spec)list*(output_section_spec*nat)list)\<Rightarrow>((string),((nat*((nat*symbol_reference*(linkable_object*input_item*input_options))*(nat*symbol_definition*(linkable_object*input_item*input_options))option))list))Map.map \<Rightarrow>(any_abi_feature)annotated_memory_image*((string),((nat*binding)list))Map.map "  where 
-     " interpret_linker_control_script script linkables linker_script_linkable_idx a inputs1 seen_ordering place_orphans initial_bindings_by_name = (
+definition interpret_linker_control_script  :: "((address_expr_fn_ref),(nat \<Rightarrow> allocated_sections_map \<Rightarrow> nat))Map.map \<Rightarrow>(script_element)list \<Rightarrow>(linkable_object*input_item*input_options)list \<Rightarrow> nat \<Rightarrow>(any_abi_feature)abi \<Rightarrow>(input_spec)list \<Rightarrow>(input_spec \<Rightarrow> input_spec \<Rightarrow> ordering)\<Rightarrow>((input_spec)list*(output_section_spec*nat)list \<Rightarrow>(input_spec)list \<Rightarrow>(input_spec)list*(output_section_spec*nat)list)\<Rightarrow>((string),((nat*((nat*symbol_reference*(linkable_object*input_item*input_options))*(nat*symbol_definition*(linkable_object*input_item*input_options))option))list))Map.map \<Rightarrow>(any_abi_feature)annotated_memory_image*((string),((nat*binding)list))Map.map "  where 
+     " interpret_linker_control_script alloc_map script linkables (control_script_linkable_idx::nat) a inputs1 seen_ordering place_orphans initial_bindings_by_name = (
     (let labelled_script = (label_script script)
+    in
+    (let _ = (Lem_list.mapi (\<lambda> i .  \<lambda> input .  
+        ()
+    ) inputs1)
     in
     (let (discards_before_orphans, outputs_before_orphans)
      = (assign_inputs_to_output_sections ([], []) {} {} inputs1 None None seen_ordering labelled_script)
@@ -3863,7 +4086,7 @@ definition interpret_linker_control_script  :: "(script_element)list \<Rightarro
      * bindings that are formed. So, we rewrite the bindings here. Note that we have to do so here,
      * not in the caller, because these extra bindings can affect the reachability calculation 
      * during GC. *)
-    (let (bindings_by_name :: ( (string, ( (nat * binding)list))Map.map)) = (
+    (let (linker_defs_by_name, (bindings_by_name :: ( (string, ( (nat * binding)list))Map.map))) = (
         (let (script_defs_by_name :: (string, ( (symbol_definition * symbol_def_policy)list)) Map.map)
          = (List.foldl (\<lambda> acc1 .  (\<lambda>p .  
   (case  (p ) of
@@ -3877,7 +4100,7 @@ definition interpret_linker_control_script  :: "(script_element)list \<Rightarro
                                                                 name1 
                                                               size3 info
                                                                 other
-                                                                linker_script_linkable_idx)
+                                                                control_script_linkable_idx)
                                                  in
                                                  (let v = ((case   inner_acc
                                                                     name1 of
@@ -3907,14 +4130,29 @@ definition interpret_linker_control_script  :: "(script_element)list \<Rightarro
                             )
                         ) Map.empty inputs1)
         in
-        (let (lowest_idx :: nat) = ((case  ELF_Types_Local.find_min_element (Map.dom idx_to_img)
+        (let (lowest_idx :: nat) = ((case  Elf_Types_Local.find_min_element (Map.dom idx_to_img)
             of Some x => x
             | None => failwith (''internal error: no linkable items'')
         ))
         in
         (let first_linkable_item = ((case  linkables of x # more1 => x | _ => failwith (''internal error: no linkables'') ))
         in
-        map_image (\<lambda> b_list_initial .  
+        (let (control_script_input_item :: input_item) = (
+            (''(built-in control script)''), 
+            ControlScript, 
+            (BuiltinControlScript, [Builtin])
+        )
+        in
+        (let (control_script_linkable_item :: linkable_item) = (
+            ControlScriptDefs, control_script_input_item, 
+                  (| item_fmt = ('''')
+                   , item_check_sections = False
+                   , item_copy_dt_needed = False
+                   , item_force_output = True 
+                   |)
+        )
+        in
+        (let updated_bindings_and_new_defs = (map_image (\<lambda> b_list_initial .  
             List.map (\<lambda> (b_idx, b_initial) . 
                 (let ((iref_idx, iref, iref_item), maybe_idef) = b_initial
                 in
@@ -3940,47 +4178,44 @@ definition interpret_linker_control_script  :: "(script_element)list \<Rightarro
                             ))
                     else None)
                 in
-                (let (control_script_input_item :: input_item) = (
-                    (''(built-in control script)''), 
-                    ControlScript, 
-                    (BuiltinControlScript, [Builtin])
-                )
-                in
-                (let (control_script_linkable_item :: linkable_item) = (
-                    ControlScriptDefs, control_script_input_item, 
-                          (| item_fmt = ('''')
-                           , item_check_sections = False
-                           , item_copy_dt_needed = False
-                           , item_force_output = True 
-                           |)
-                )
-                in
                 (* If the binding has no def, we always use the def we have. 
                  * If the binding has a def, we use our def only if the policy is AlwaysDefine. *)
                 (let _ = (())
                 in
                 (* FIXME: check real semantics of defining symbols like '_GLOBAL_OFFSET_TABLE_' in linker script or input objects. 
                  * This is really just a guess. *)
-                (let new_b = ((case  (maybe_idef, possible_script_defs, possible_linker_generated_def) of
-                      (_, [], None) => (let _ = (()) in ((iref_idx, iref, iref_item), maybe_idef))
-                    | (None, [], Some(def1)) => (let _ = (()) in ((iref_idx, iref, iref_item), 
-                        Some(lowest_idx, def1, first_linkable_item)))
+                (let new_b_and_maybe_new_def = ((case  (maybe_idef, possible_script_defs, possible_linker_generated_def) of
+                      (_, [], None) => (let _ = (()) in 
+                        (((iref_idx, iref, iref_item), maybe_idef), None))
+                    | (None, [], Some(def1)) => (let _ = (()) in 
+                        (((iref_idx, iref, iref_item), Some(lowest_idx, def1, first_linkable_item)), Some(def1)))
                     | (_, [(def1, AlwaysDefine)], _) => (let _ = (()) in
-                        ((iref_idx, iref, iref_item), 
-                        Some (linker_script_linkable_idx, def1, control_script_linkable_item)))
+                        (((iref_idx, iref, iref_item), Some (control_script_linkable_idx, def1, control_script_linkable_item)), Some(def1)))
                     | (Some existing_def, ([(def1, ProvideIfUsed)]), _) => (let _ = (()) in
-                        ((iref_idx, iref, iref_item), 
-                        Some existing_def))
+                        (((iref_idx, iref, iref_item), Some existing_def), None))
                     | (None, [(def1, ProvideIfUsed)], _) => (let _ = (()) in
-                        ((iref_idx, iref, iref_item), 
-                        Some (linker_script_linkable_idx, def1, control_script_linkable_item)))
+                        (((iref_idx, iref, iref_item), Some (control_script_linkable_idx, def1, control_script_linkable_item)), Some(def1)))
                     | (_, pair1 # pair2 # more1, _) => (let _ = (()) in
                         failwith (''ambiguous symbol binding in linker control script''))
                 ))
                 in
-                (b_idx, new_b)))))))))
+                (b_idx, new_b_and_maybe_new_def)))))))
             ) b_list_initial
-        ) initial_bindings_by_name))))
+        ) initial_bindings_by_name)
+        in
+        (let (new_symbol_defs_map :: (string, ( ( symbol_definition option)list)) Map.map)
+         = (map_image (\<lambda> b_pair_list .  List.map (\<lambda> (b_idx, (new_b, maybe_new_def)) .  maybe_new_def) b_pair_list) updated_bindings_and_new_defs)
+        in
+        (let (new_symbol_defs_by_name :: (string, ( symbol_definition list)) Map.map) = (map_image
+            (\<lambda> v .  Lem_list.mapMaybe id0 v) new_symbol_defs_map)
+        in
+        (*    { List.mapMaybe id maybe_def_list | forall ((_, maybe_def_list) IN (Map.toSet new_symbol_defs_map)) | true }
+        in*)
+        (*let new_symbol_defs = List.concat (Set_extra.toList new_symbol_def_list_set)
+        in*)
+        (let updated_bindings = (map_image (\<lambda> b_pair_list .  List.map (\<lambda> (b_idx, (new_b, maybe_new_def)) .  (b_idx, new_b)) b_pair_list) updated_bindings_and_new_defs)
+        in
+        (new_symbol_defs_by_name, updated_bindings)))))))))))
     )
     in
     (*let _ = errln (For __fini_array_end, we have  ^ 
@@ -4024,7 +4259,7 @@ definition interpret_linker_control_script  :: "(script_element)list \<Rightarro
     in
     (*let _ = Missing_pervasives.outs (List.foldl (fun str -> (fun input -> (str ^ (discard_line input))))  (reverse discards))
     in*)
-    (let outputs_by_name_after_gc = (compute_def_use_and_gc outputs_by_name)
+    (let outputs_by_name_after_gc = (compute_def_use_and_gc (AllocatedSectionsMap outputs_by_name))
     in
     (let _ = (())
     in
@@ -4032,7 +4267,7 @@ definition interpret_linker_control_script  :: "(script_element)list \<Rightarro
     in
     (* FIXME: print LOAD and START_GROUP trace *)
     (let (img3, outputs_by_name_with_position)
-     = (build_image empty_elf_memory_image(( 0 :: nat)) outputs_by_name_after_gc bindings_by_name labelled_script linker_script_linkable_idx)
+     = (build_image alloc_map empty_elf_memory_image(( 0 :: nat)) outputs_by_name_after_gc bindings_by_name labelled_script control_script_linkable_idx linker_defs_by_name)
     in
     (*let _ = errln (Final image has  ^ (show (Map.size img.elements)) ^  elements and  
         ^ (show (Set.size img.by_tag)) ^  metadata tags, of which  ^ (
@@ -4093,6 +4328,6 @@ definition interpret_linker_control_script  :: "(script_element)list \<Rightarro
     element manually. For the moment, for diffing purposes, filter out lines with asterisks.
      
      *)
-    (img3, bindings_by_name)))))))))))))"
+    (img3, bindings_by_name))))))))))))))"
 
 end

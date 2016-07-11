@@ -1,7 +1,7 @@
 theory
   Elf_Types_Local
 imports
-  Main "$ISABELLE_HOME/src////////HOL/Word/Word"
+  Main "$ISABELLE_HOME/src/HOL/Word/Word" "$ISABELLE_HOME/src/HOL/Library/Option_ord"
   "../../../lem/isabelle-lib/Lem_basic_classes"
   "Error"
 begin
@@ -224,6 +224,12 @@ begin
         (upperuu, upperul, upperlu, upperll, loweruu, lowerul, lowerlu, lowerll))"
 
   section {* Miscellaneous operations *}
+
+  definition find_min_element :: "'a::{wellorder} set \<Rightarrow> 'a option" where
+    "find_min_element S \<equiv>
+       if S = {} then
+         None
+       else Some (LEAST x. x \<in> S)"
 
   fun split_string_on_char0 :: "string \<Rightarrow> char \<Rightarrow> string \<Rightarrow> string list" where
     "split_string_on_char0 []     c buffer = [buffer]"

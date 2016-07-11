@@ -216,7 +216,7 @@ definition tagged_ranges_matching_tag  :: " 'abifeature Ord_class \<Rightarrow> 
 
 (*val element_range_compare : element_range -> element_range -> Basic_classes.ordering*)
 definition element_range_compare  :: " string*(nat*nat) \<Rightarrow> string*(nat*nat) \<Rightarrow> ordering "  where 
-     " element_range_compare = ( pairCompare (\<lambda> x y. EQ) (pairCompare (genericCompare (op<) (op=)) (genericCompare (op<) (op=))))"
+     " element_range_compare = ( pairCompare stringCompare_method (pairCompare (genericCompare (op<) (op=)) (genericCompare (op<) (op=))))"
 
 
 (*val unique_tag_matching_at_range_exact : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature =>
@@ -290,13 +290,10 @@ definition find_defs_matching  :: " 'abifeature Ord_class \<Rightarrow> 'abifeat
     (let (ranges_and_defs :: ( element_range option * symbol_definition) list) = (defined_symbols_and_ranges 
   dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature img3)
     in 
-    (*let _ = errln (Searching for the bound-to symbol, which came from linkable idx  ^ 
-        (show bound_def.def_linkable_idx) ^ , section  ^ 
-        (show bound_def.def_syment.elf64_st_shndx) ^ 
-        , symtab shndx  ^ (show bound_def.def_sym_scn) ^ 
-        , symind  ^ (show bound_def.def_sym_idx))
-    in*)
+    (let _ = (())
+    in
     Lem_list.mapMaybe (\<lambda> (maybe_some_range, some_def) .  
+       (* let _ = errln (Considering one: ` ^ some_def.def_symname ^ ') in *)
        (* match maybe_some_range with
             Nothing -> failwith symbol definition not over a definite range
             | Just some_range -> *)
@@ -309,13 +306,16 @@ definition find_defs_matching  :: " 'abifeature Ord_class \<Rightarrow> 'abifeat
                     in*) 
                 (*else*) if some_def = bound_def 
                             then (
-                                (*let _ = errln (Found one: syment is  ^ (show some_def.def_syment))
-                                in*)
-                                Some(maybe_some_range, some_def)
+                                (let _ = (())
+                                in
+                                Some(maybe_some_range, some_def))
                             )
+                            else if(def_symname   some_def) =(def_symname   bound_def) then
+                                (let _ = (())
+                                in None)
                             else None
        (* end *)
-    ) ranges_and_defs))"
+    ) ranges_and_defs)))"
 
 
 

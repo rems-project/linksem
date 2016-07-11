@@ -508,14 +508,14 @@ definition amd64_reloc_needs_got_slot  :: " 'a \<Rightarrow> reloc_site \<Righta
 
 
 
-definition amd64_reloc_needs_plt_slot  :: " symbol_reference_and_reloc_site \<Rightarrow> reloc_site \<Rightarrow>(symbol_definition)option \<Rightarrow> bool "  where 
-     " amd64_reloc_needs_plt_slot (symref :: symbol_reference_and_reloc_site) rr maybe_def = (
+definition amd64_reloc_needs_plt_slot  :: " symbol_reference_and_reloc_site \<Rightarrow> reloc_site \<Rightarrow>(symbol_definition)option \<Rightarrow>(reloc_site \<Rightarrow> bool)\<Rightarrow> bool "  where 
+     " amd64_reloc_needs_plt_slot (symref :: symbol_reference_and_reloc_site) rr maybe_def ref_is_statically_linked = (
     if (get_elf64_relocation_a_type(ref_relent   rr) \<in> {
         r_x86_64_plt32      (* NOTE: when generating shared libs, it starts to matter
                              * where the definition is -- anything that is locally interposable
                              * or undefined will need a slot. See amd64_get_reloc_symaddr. *)
     }) then
-       True
+       \<not> (ref_is_statically_linked rr)
     else if is_ifunc_def maybe_def 
          then
          True
@@ -635,6 +635,8 @@ definition amd64_generate_support  :: "(string*(any_abi_feature)annotated_memory
      * each distinct symbol that is referenced by one or more GOT-based relocations.
      * To enumerate these, we look at all the symbol refs in the image.
      *)
+    (let ref_is_statically_linked = (\<lambda> _ .  True)
+    in
     (let (fnames, input_imgs) = (list_unzip input_fnames_and_imgs)
     in
     (let tags_and_ranges_by_image = (Lem_list.mapi (\<lambda> i .  \<lambda> (fname1, img3) . 
@@ -656,9 +658,8 @@ definition amd64_generate_support  :: "(string*(any_abi_feature)annotated_memory
                 (None, _) => None
                 | (Some rr, Some(ApplyReloc, maybe_def)) =>
                     if amd64_reloc_needs_got_slot symref rr maybe_def then
-                        (*let _ = errln (Saw a via-GOT symbol reference: to ` ^ symref.ref.ref_symname ^ ' coming from linkable  ^ (show i) ^  ( ^ 
-                            fname ^ ), logically from section  ^ (show rr.ref_src_scn)) in *)
-                        Some ((ref_symname  (ref   symref)), maybe_def) 
+                        (let _ = (()) in 
+                        Some ((ref_symname  (ref   symref)), maybe_def)) 
                     else None
                 | (Some rr, Some(MakePIC, maybe_def)) => failwith (''FIXME: PIC support please'')
             )
@@ -667,8 +668,8 @@ definition amd64_generate_support  :: "(string*(any_abi_feature)annotated_memory
     in
     (let (symnames, maybe_defs) = (list_unzip refs_via_got)
     in
-    (*let _ = errln (GOT includes defs with names:  ^ (show (Set_extra.toList (Set.fromList symnames))))
-    in*)
+    (let _ = (())
+    in
     (let got_pairs_set = (List.set refs_via_got)
     in
     (let got_defs_set = (List.set maybe_defs)
@@ -716,27 +717,23 @@ definition amd64_generate_support  :: "(string*(any_abi_feature)annotated_memory
             (case  ((maybe_reloc   symref),(maybe_def_bound_to   symref)) of
                 (None, _) => None
                 | (Some rr, Some(ApplyReloc, maybe_def)) =>
-                    if amd64_reloc_needs_plt_slot symref rr maybe_def 
+                    if amd64_reloc_needs_plt_slot symref rr maybe_def ref_is_statically_linked
                     then 
-                        (*let _ = if is_ifunc_def maybe_def then
+                        (let _ = (if is_ifunc_def maybe_def then
                          (* we ensure that a PLT entry (specifically .iplt) is generated for the symbol *)
-                         errln (Saw a reference to IFUNC symbol ` ^ symref.ref.ref_symname ^ '; ref is coming from linkable  ^ (show i) ^  ( ^ 
-                            fname ^ ), relent idx  ^ (show rr.ref_rel_idx) ^  logically from section  ^ (show rr.ref_src_scn) ) 
+                         () 
                         else
-                        errln (Saw a via-PLT symbol reference: to ` ^ symref.ref.ref_symname ^ ' coming from linkable  ^ (show i) ^  ( ^ 
-                            fname ^ ), relent idx  ^ (show rr.ref_rel_idx) ^  logically from section  ^ (show rr.ref_src_scn) ^ 
-                            match maybe_def with Just _ -> , with definition | Nothing -> , not bound to anything end
-                            )
-                        in*)
-                        Some((ref_symname  (ref   symref)), maybe_def) 
+                        ())
+                        in
+                        Some((ref_symname  (ref   symref)), maybe_def)) 
                     else None
                 | (Some rr, Some(MakePIC, maybe_def)) => failwith (''FIXME: PIC support please'')
             )
          | _ => failwith (''impossible: reloc site tag is not a SymbolRef'')
     )) tags_and_ranges) tags_and_ranges_by_image)
     in
-    (*let _ = errln (Saw  ^ (show (length refs_via_plt)) ^  relocations of a via-PLT type)
-    in*)
+    (let _ = (())
+    in
     (* account for the optimisations we did on GOT slots *)
     (let refs_via_plt_having_got_slot = (Lem_list.mapMaybe (\<lambda> (symname, _) .  
         (case   got_idx_and_maybe_def_by_symname_map symname of
@@ -745,20 +742,20 @@ definition amd64_generate_support  :: "(string*(any_abi_feature)annotated_memory
             )
         ) refs_via_plt)
     in
-    (*let _ = errln (Saw  ^ (show (length refs_via_plt_having_got_slot)) ^  relocations of a via-PLT type where we instantiated a GOT slot for the symbol)
-    in*)
+    (let _ = (())
+    in
     (let (plt_symnames, plt_got_idxs, plt_ref_bound_to_maybe_defs) = (unzip3 refs_via_plt_having_got_slot)
     in
     (let plt_symnames_excluding_header = (list_of_set (List.set plt_symnames))
     in
-    (*let _ = errln (PLT symnames:  ^ (show plt_symnames_excluding_header))
-    in*)
+    (let _ = (())
+    in
     (let n_iplt_entries = (card got_ifunc_set)
         (* The content of the IPLT entries depends on the address assignment of GOT slots
          * and the IFUNCs that they reference. We need to reserve space for them here, though. *)
     in
-    (*let _ = errln (We think there should be  ^ (show n_iplt_entries) ^  PLT entries due to references to IFUNC symbols)
-    in*)
+    (let _ = (())
+    in
     (* let got_entries_referencing_functions =  (List.filter (fun (symname, maybe_def) -> 
             match def with
                 Just d -> d.def_syment
@@ -767,14 +764,25 @@ definition amd64_generate_support  :: "(string*(any_abi_feature)annotated_memory
     in *)
     (let plt_needs_header_entry = ((List.length plt_symnames_excluding_header) > n_iplt_entries)
     in
-    (*let _ = errln (PLT needs header entry?  ^ (show plt_needs_header_entry))
-    in*)
+    (let _ = (())
+    in
     (let total_n_plt_entries = ((if plt_needs_header_entry then( 1 :: nat) else( 0 :: nat)) + (List.length plt_symnames_excluding_header))
     in
-    (*let _ = errln (PLT total entry count:  ^ (show total_n_plt_entries))
-    in*)
+    (let _ = (())
+    in
     (let new_by_range = ({
         (Some((''.plt''), (( 0 :: nat),(( 16 :: nat) * total_n_plt_entries))), AbiFeature(Amd64AbiFeature(Abi_amd64.PLT0(
+                 (* header content fn *)
+                 (* the header entry is required only for dynamic linking, which is not supported yet *)
+                 (* (if plt_needs_header_entry then
+                    (, Nothing, (((fun (got_base_addr : natural) -> fun (plt_base_addr : natural) -> 
+                     (0, [byte_of_natural 0; byte_of_natural 0; byte_of_natural 0; byte_of_natural 0; 
+                      byte_of_natural 0; byte_of_natural 0; byte_of_natural 0; byte_of_natural 0; 
+                      byte_of_natural 0; byte_of_natural 0; byte_of_natural 0; byte_of_natural 0; 
+                      byte_of_natural 0; byte_of_natural 0; byte_of_natural 0; byte_of_natural 0]))) : plt_entry_content_fn any_abi_feature))
+                 else (, Nothing, (((fun (got_base_addr : natural) -> fun (plt_base_addr : natural) -> (0, []))) : plt_entry_content_fn any_abi_feature))
+                 )
+                 ++ *) (
                  mapi (\<lambda> plt_entry_idx_not_counting_header .  (\<lambda> symname . 
                     (* We want to label the PLT entry with a function that 
                      * - accepts the PLT base address, the GOT base address and the GOT slot number;
@@ -816,21 +824,21 @@ definition amd64_generate_support  :: "(string*(any_abi_feature)annotated_memory
                         (let this_plt_slot_base_addr = (plt_base_addr +(( 16 :: nat) * (( plt_entry_idx_not_counting_header) 
                             + (if plt_needs_header_entry then( 1 :: nat) else( 0 :: nat)))))
                         in
-                        (*let _ = Missing_pervasives.errln (PLT slot base address for symname ` ^ symname ^ ': 0x ^
-                            (hex_string_of_natural this_plt_slot_base_addr))
-                        in*)
+                        (let _ = (())
+                        in
                         (let got_slot_addr = (got_base_addr +(( 8 :: nat) * got_slot_idx))
                         in
-                        (*let _ = Missing_pervasives.errln (GOT slot address for symname ` ^ symname ^ ' (idx  ^ (show got_slot_idx) ^ ): 0x ^
-                            (hex_string_of_natural got_slot_addr))
-                        in*)
+                        (let _ = (())
+                        in
                         (let maybe_header_entry_address = (if plt_needs_header_entry then Some(plt_base_addr) else None)
+                        in
+                        (let offset_to_got_slot = ((int got_slot_addr) - (int (this_plt_slot_base_addr +( 6 :: nat))))
+                        in
+                        (let _ = (())
                         in
                         (let content_bytes =                        
  ((((([(of_nat (( 255 :: nat)) :: byte), (of_nat (( 37 :: nat)) :: byte)] @ (* offset to the GOT entry, from the *next* instruction start, signed 32-bit LE *)
-                            (to_le_signed_bytes(( 4 :: nat)) (
-                                (int got_slot_addr) - (int (this_plt_slot_base_addr +( 6 :: nat)))
-                            ))) @
+                            (to_le_signed_bytes(( 4 :: nat)) offset_to_got_slot)) @
                         [(of_nat (( 104 :: nat)) :: byte)]) @ (* plt slot number not including header, 32-bit LE *)
                                  (to_le_unsigned_bytes(( 4 :: nat)) (int ( plt_entry_idx_not_counting_header)))) @
                         [(of_nat (( 233 :: nat)) :: byte)]) @ (to_le_signed_bytes(( 4 :: nat)) (
@@ -842,9 +850,9 @@ definition amd64_generate_support  :: "(string*(any_abi_feature)annotated_memory
                                 )
                         )))
                         in
-                        (*let _ = errln (Created a PLT entry consisting of  ^ (show (length content_bytes)) ^  bytes.)
-                        in*)
-                        (this_plt_slot_base_addr, content_bytes)))))
+                        (let _ = (())
+                        in
+                        (this_plt_slot_base_addr, content_bytes))))))))))
                         (* 
                         match maybe_def with 
                             Nothing -> 0
@@ -868,7 +876,7 @@ definition amd64_generate_support  :: "(string*(any_abi_feature)annotated_memory
                         
                     ) :: any_abi_feature plt_entry_content_fn)))
                 ))
-                plt_symnames
+                plt_symnames)
             ))) 
         )
     ,   (Some((''.plt''), (( 0 :: nat),(( 16 :: nat) * total_n_plt_entries))), FileFeature(ElfSection(( 1 :: nat), 
@@ -974,8 +982,8 @@ definition amd64_generate_support  :: "(string*(any_abi_feature)annotated_memory
                |) (map_update (''.plt'') (|
                     startpos = None
                ,    length1 = ((let len =(( 16 :: nat) * total_n_plt_entries) in 
-                        (*let _ = errln (PLT length in element:  ^ (show len) ^  bytes)
-                        in*) Some (( 16 :: nat) * total_n_plt_entries)))
+                        (let _ = (())
+                        in Some (( 16 :: nat) * total_n_plt_entries))))
                ,    contents = ([])
                |) (map_update (''.rela.iplt'') (|
                     startpos = None
@@ -985,30 +993,24 @@ definition amd64_generate_support  :: "(string*(any_abi_feature)annotated_memory
                )))
      ,   by_range = new_by_range,   by_tag = (by_tag_from_by_range new_by_range)
       
-     |)))))))))))))))))))))"
+     |)))))))))))))))))))))))))))))"
 
 
 (*val amd64_concretise_support : annotated_memory_image any_abi_feature -> annotated_memory_image any_abi_feature*)
 definition amd64_concretise_support  :: "(any_abi_feature)annotated_memory_image \<Rightarrow>(any_abi_feature)annotated_memory_image "  where 
      " amd64_concretise_support orig_img = ( 
+    (let _ = (())
+    in
     (* Fill in the GOT contents. *)
     (case  amd64_find_got_label_and_element orig_img of
         None => orig_img (* no GOT, but that's okay *) 
         | Some (got_l, got_el) =>
-    (case  amd64_find_plt_label_and_element orig_img of
-        None => orig_img (* no PLT, but possibly a GOT -- is that okay? *)
-        | Some (plt_l, plt_el) =>
     (let got_base_addr = ((case (startpos   got_el) of
         Some a => a
         | None => failwith (''GOT has no address assigned'')
     ))
     in 
-    (let plt_base_addr = ((case (startpos   plt_el) of
-        Some a => a
-        | None => failwith (''PLT has no address assigned'') 
-    ))
-    in
-    (let got_entry_bytes_for = (\<lambda> img3 .  \<lambda> symname .  \<lambda> maybe_def .  (case  maybe_def of
+    (let got_entry_bytes_for = (\<lambda> img3 .  \<lambda> symname .  \<lambda> maybe_def .  \<lambda> plt_l .  \<lambda> maybe_plt_el .  (case  maybe_def of
         None => List.replicate(( 8 :: nat)) ((of_nat (( 0 :: nat)) :: byte))
         | Some sd =>
             (* What should the GOT slot be initialized to point to? 
@@ -1018,9 +1020,13 @@ definition amd64_concretise_support  :: "(any_abi_feature)annotated_memory_image
              * If there's not, then it might be a thread-local. *)
             (case  find_index (\<lambda> (plt_symname, _, _) .  symname = plt_symname) plt_l of
                 Some plt_slot_idx =>
+                    (case  maybe_plt_el of
+                        None => failwith (''GOT slot with PLT entry but no PLT element'')
+                       | Some plt_el =>
                     (case (startpos   plt_el) of
                         Some addr => natural_to_le_byte_list_padded_to(( 8 :: nat)) ((addr + (( plt_slot_idx) *( 16 :: nat))) +( 6 :: nat))
                         | None => failwith ((''no PLT!''))
+                    )
                     )
                 | None => 
                     (* Just look for a definition. *)
@@ -1052,12 +1058,14 @@ definition amd64_concretise_support  :: "(any_abi_feature)annotated_memory_image
             )
     ))
     in
-    (let concretise_got = (\<lambda> img3 .  
+    (let concretise_got = (\<lambda> img3 .  \<lambda> plt_l .  \<lambda> maybe_plt_el . 
         (let l = got_l
         (*       Just(got_el_name, (got_start_off, got_len)))] ->   *)
         in
+        (let _ = (())
+        in
         (let got_entry_contents = (List.map (\<lambda> (symname, maybe_def) .  
-            List.map (\<lambda> b .  Some b) (got_entry_bytes_for img3 symname maybe_def)) l)
+            List.map (\<lambda> b .  Some b) (got_entry_bytes_for img3 symname maybe_def plt_l maybe_plt_el)) l)
         in
         (* We replace the GOT element's contents with the concrete addresses
          * of the symbols it should contain. We leave the metadata label in there,
@@ -1084,7 +1092,15 @@ definition amd64_concretise_support  :: "(any_abi_feature)annotated_memory_image
         (| elements = new_elements_map
          , by_range = (by_range_from_by_tag new_by_tag), by_tag   = new_by_tag
           
-         |))))))))))
+         |)))))))))))
+    in
+    (case  amd64_find_plt_label_and_element orig_img of
+        None => concretise_got orig_img [] None (* no PLT, but possibly a GOT *)
+        | Some (plt_l, plt_el) =>
+    (let plt_base_addr = ((case (startpos   plt_el) of
+        Some a => a
+        | None => failwith (''PLT has no address assigned'') 
+    ))
     in
     (let concretise_plt = (\<lambda> img3 . 
        (let l = plt_l
@@ -1098,13 +1114,10 @@ definition amd64_concretise_support  :: "(any_abi_feature)annotated_memory_image
             content)
         ) l))
         in
-        (*let _ = errln (Got  ^ (show (length all_content)) ^  bytes of PLT content)
-        in*)
-        (*let _ = errln (Generated PLT reserved  ^ (show (match plt_el.length with
-            Just n -> n
-            | Nothing -> failwith PLT has no length
-        end)) ^  bytes of PLT content)
-        in*)
+        (let _ = (())
+        in
+        (let _ = (())
+        in
         (let new_plt_el = 
   ((| startpos = ((startpos   plt_el))
    , length1 = (Some (List.length all_content)), contents = (List.map
@@ -1121,16 +1134,16 @@ definition amd64_concretise_support  :: "(any_abi_feature)annotated_memory_image
         (| elements = new_elements_map
          , by_range = ((by_range   img3)), by_tag   = ((by_tag   img3))
           
-         |))))))
+         |))))))))
     in
     (let concretise_rela_plt = (\<lambda> img3 . 
         (let maybe_rela_plt_el = ((elements   img3) (''.rela.plt''))
         in
         (let maybe_new_rela_plt_el = ((case  maybe_rela_plt_el of
             None => (* got no .rela.plt? okay... *) 
-                (*let _ = errln No .rela.plt found
-                in*)
-                None
+                (let _ = (())
+                in
+                None)
             | Some rela_plt_el => 
                 (let got_entry_iplt_widget_for = (\<lambda> symname .  \<lambda> maybe_def .  (case  maybe_def of
                     None => None
@@ -1184,14 +1197,14 @@ definition amd64_concretise_support  :: "(any_abi_feature)annotated_memory_image
                 in
                 (let new_contents = (List.map (\<lambda> b .  Some b) (List.concat new_content_bytelists))
                 in
-                (*let _ = errln (Concretised .rela.plt; first 24 bytes:  ^ (show (take 24 new_contents)))
-                in*)
+                (let _ = (())
+                in
                 Some(
                     (| startpos = ((startpos   rela_plt_el))
                      , length1   = ((length1   rela_plt_el)), contents = new_contents
                       
                      |)
-                )))))
+                ))))))
         ))
         in
         (let new_elements_map = ((case  maybe_new_rela_plt_el of
@@ -1206,8 +1219,8 @@ definition amd64_concretise_support  :: "(any_abi_feature)annotated_memory_image
           
          |)))))
     in
-    concretise_rela_plt (concretise_plt (concretise_got orig_img))))))))
-) ))"
+    concretise_rela_plt (concretise_plt (concretise_got orig_img plt_l (Some plt_el))))))
+)))) )))"
 
 
 (*val amd64_got_slot_idx : annotated_memory_image any_abi_feature -> symbol_reference_and_reloc_site -> natural*)
@@ -1280,11 +1293,17 @@ definition amd64_got_slot_addr  :: "(any_abi_feature)annotated_memory_image \<Ri
     ))"
 
 
-(*val amd64_plt_slot_addr : annotated_memory_image any_abi_feature -> symbol_reference_and_reloc_site -> natural*)
-definition amd64_plt_slot_addr  :: "(any_abi_feature)annotated_memory_image \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> nat "  where 
-     " amd64_plt_slot_addr img3 rr = ( 
+(*val amd64_plt_slot_addr : annotated_memory_image any_abi_feature -> symbol_reference_and_reloc_site -> natural -> natural*)
+definition amd64_plt_slot_addr  :: "(any_abi_feature)annotated_memory_image \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> nat \<Rightarrow> nat "  where 
+     " amd64_plt_slot_addr img3 rr raw_addr = ( 
     (case  (elements   img3) (''.plt'') of
-        None => (* got no PLT? okay... *) failwith (''got no PLT'')
+        None =>
+            (* got no PLT? okay... under static linking this can happen. 
+               We use the actual symbol address of the *)
+            (let _ = (())
+            in 
+            (* if raw_addr = 0 then failwith bailing rather than resolving PLT slot to null address (perhaps conservatively) else  *)
+            raw_addr)
         | Some plt_el => 
             (* Find the PLT tag. *)
             (let tags_and_ranges = (Multimap.lookupBy0 
@@ -1316,9 +1335,11 @@ definition amd64_plt_slot_addr  :: "(any_abi_feature)annotated_memory_image \<Ri
                                                 )
                                         ))
                                     in
-                                    (let (addr, content) = (fn plt_addr got_addr)
+                                    (let (addr, content) = (fn got_addr plt_addr)
                                     in
-                                    addr))
+                                    (let _ = (())
+                                    in
+                                    addr)))
                                 | [] => (* failwith (internal error: no PLT entry for reloc against ` ^ rr.ref.ref_symname ^ ') *)
                                     (* If we got no PLT slot, we assume it's because the PLT entry was optimised out. 
                                      * So we just return the address of the symbol itself. *)
@@ -1400,7 +1421,8 @@ definition amd64_reloc  :: " nat \<Rightarrow> bool*((any_abi_feature)annotated_
                                                                     (
                                                                     amd64_plt_slot_addr
                                                                     img3 
-                                                                    rr)) + 
+                                                                    rr 
+                                                                    s)) + 
                                                                     a) -
                                                                     (
                                                                     n2i

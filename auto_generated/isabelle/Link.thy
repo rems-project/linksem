@@ -366,8 +366,10 @@ definition strip_metadata_sections  :: "(reloc_site*((nat*symbol_reference*linka
         )
     ) (List.zip section_tags section_ranges))
     in
-    (let discarded_elements_map = (List.foldl (\<lambda> m .  (\<lambda> (el_name, range_tag) .  map_update el_name range_tag m)) 
-        Map.empty discarded_sections_with_element_name)
+    (let discarded_elements_map = (List.foldl (\<lambda> m .  (\<lambda> (el_name, range_tag) .  
+        (let _ = (()) in
+        map_update el_name range_tag m)
+        )) Map.empty discarded_sections_with_element_name)
     in
     (let filtered_image = (Memory_image.filter_elements (\<lambda> (el_name, el) .  \<not> (el_name \<in> Map.dom discarded_elements_map)) img3)
     in
@@ -452,7 +454,10 @@ definition expand_sections_for_one_image  :: "(any_abi_feature)abi \<Rightarrow>
          * that need to go directly into the output file. That's what the strip_relocs
          * argument is for. FIXME: refactor this into two functions.
          *)
-        (let stripped_img_with_reloc_sections = (if strip_relocs then strip_metadata_sections reloc_decisions a marked_img else marked_img)
+        (let stripped_img_with_reloc_sections = (if strip_relocs
+            then (let _ = (()) in
+            strip_metadata_sections reloc_decisions a marked_img) 
+            else marked_img)
         in
         (* Now we have a whole new image! It differs from the old one in that 
          * - non-special sections have been stripped
@@ -679,9 +684,9 @@ definition relocate_output_image  :: "(any_abi_feature)abi \<Rightarrow>((string
     relocated_img))))"
 
 
-(*val link : linker_control_script -> abi any_abi_feature -> set Command_line.link_option -> linkable_list -> elf_memory_image*)
-definition link  :: "(script_element)list \<Rightarrow>(any_abi_feature)abi \<Rightarrow>(Command_line.link_option)set \<Rightarrow>(linkable_object*(string*input_blob*input_origin)*input_options)list \<Rightarrow>(any_abi_feature)annotated_memory_image "  where 
-     " link script a options linkables = ( 
+(*val link : address_expr_fn_map allocated_sections_map -> linker_control_script -> abi any_abi_feature -> set Command_line.link_option -> linkable_list -> elf_memory_image*)
+definition link  :: "((address_expr_fn_ref),(nat \<Rightarrow> allocated_sections_map \<Rightarrow> nat))Map.map \<Rightarrow>(script_element)list \<Rightarrow>(any_abi_feature)abi \<Rightarrow>(Command_line.link_option)set \<Rightarrow>(linkable_object*(string*input_blob*input_origin)*input_options)list \<Rightarrow>(any_abi_feature)annotated_memory_image "  where 
+     " link alloc_map script a options linkables = ( 
     (let initial_included_indices = (mapMaybei (\<lambda> i .  (\<lambda> (obj, inp, (opts :: input_options)) .  
         if(item_force_output   opts) 
         then Some i
@@ -863,7 +868,7 @@ definition link  :: "(script_element)list \<Rightarrow>(any_abi_feature)abi \<Ri
     in
     *)
     (let (unrelocated_output_image_lacking_abs_symbols, bindings_by_name)
-     = (interpret_linker_control_script script linkables linker_script_linkable_idx a input_sections seen_ordering default_place_orphans initial_bindings_by_name)
+     = (interpret_linker_control_script alloc_map script linkables linker_script_linkable_idx a input_sections seen_ordering default_place_orphans initial_bindings_by_name)
     in
     (* also copy over ABS (range-less) symbols from all included input items *)
     (let all_abs_range_tags_in_included_inputs = (List.concat (
@@ -944,6 +949,7 @@ definition link  :: "(script_element)list \<Rightarrow>(any_abi_feature)abi \<Ri
     )) ()  remaining_relocs)
     in
     (* Before we relocate, we concretise any ABI features that we've linked in. *)
+    (let _ = (()) in
     (let unrelocated_concrete_output_image = ((concretise_support   a) unrelocated_output_image)
     in
     (let output_image = (relocate_output_image a bindings_by_name unrelocated_concrete_output_image)
@@ -969,6 +975,6 @@ definition link  :: "(script_element)list \<Rightarrow>(any_abi_feature)abi \<Ri
             (*let _ = errln Warning: not tagging entry point in output image
             in*) 
             output_image
-    ))))))))))))))))))))))))"
+    )))))))))))))))))))))))))"
 
 end
