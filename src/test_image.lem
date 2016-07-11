@@ -54,7 +54,7 @@ let (ref_and_reloc_rec : symbol_reference_and_reloc_site) =
       <|
             ref_relent  = 
                 <| elf64_ra_offset = elf64_addr_of_natural 0
-                 ; elf64_ra_info   = elf64_xword_of_natural r_x86_64_pc32
+                 ; elf64_ra_info   = elf64_xword_of_natural r_x86_64_32
                  ; elf64_ra_addend = elf64_sxword_of_integer 0
                  |>
           ; ref_rel_scn = 0
