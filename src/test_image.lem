@@ -78,14 +78,14 @@ let def_rec =
     ; def_linkable_idx = 0
     |>
 
-val meta : list ((maybe element_range) * elf_range_tag)
-let meta = [
+val meta : natural -> list ((maybe element_range) * elf_range_tag)
+let meta offset = [
         (Just (".text", (1, 4)), SymbolRef(ref_and_reloc_rec))
-    ;   (Just (".data", (0, 8)), SymbolDef(def_rec))
+    ;   (Just (".data", (offset, 8)), SymbolDef(def_rec))
 ]
 
 
-let img instr_bytes = 
+let img addr data_size instr_bytes = 
     let initial_img = 
      <|
         elements = Map.fromList [(".text", <|
@@ -95,12 +95,12 @@ let img instr_bytes =
           |>);
           (".data", <|
              startpos = Just 4194320
-           ; length = Just 8
-           ; contents = List.map (fun x -> Just x) (List.replicate 8 (byte_of_natural 42))
+           ; length = Just data_size
+           ; contents = List.map (fun x -> Just x) (List.replicate data_size (byte_of_natural 42))
           |>)
           ]
-        ; by_range = Set.fromList meta
-        ; by_tag = by_tag_from_by_range (Set.fromList meta)
+        ; by_range = Set.fromList (meta (addr - 4194316))
+        ; by_tag = by_tag_from_by_range (Set.fromList (meta (addr - 4194316)))
      |> 
     in 
     let ref_input_item
