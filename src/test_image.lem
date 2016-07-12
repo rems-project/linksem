@@ -4,6 +4,7 @@ open import Map
 open import Maybe
 open import Set
 open import Missing_pervasives
+open import Num
 
 open import Assert_extra
 
@@ -78,14 +79,14 @@ let def_rec =
     ; def_linkable_idx = 0
     |>
 
-val meta : natural -> list ((maybe element_range) * elf_range_tag)
+val meta : nat -> list ((maybe element_range) * elf_range_tag)
 let meta offset = [
         (Just (".text", (1, 4)), SymbolRef(ref_and_reloc_rec))
-    ;   (Just (".data", (offset, 8)), SymbolDef(def_rec))
+    ;   (Just (".data", (naturalFromNat offset, 8)), SymbolDef(def_rec))
 ]
 
 
-let img addr data_size instr_bytes = 
+let img (addr : nat) (data_size : nat) instr_bytes = 
     let initial_img = 
      <|
         elements = Map.fromList [(".text", <|
@@ -95,7 +96,7 @@ let img addr data_size instr_bytes =
           |>);
           (".data", <|
              startpos = Just 4194320
-           ; length = Just data_size
+           ; length = Just (naturalFromNat data_size)
            ; contents = List.map (fun x -> Just x) (List.replicate data_size (byte_of_natural 42))
           |>)
           ]
@@ -114,6 +115,7 @@ let img addr data_size instr_bytes =
     in
     relocate_output_image Abis.sysv_amd64_std_abi bindings_by_name initial_img
 
+(* XXX: DPM, no longer needed?
 let compute_relocated_bytes () =
   let res =
     let relocatable_program =
@@ -132,3 +134,4 @@ let compute_relocated_bytes () =
     | Success s -> outln "success"
     | Fail e -> errln e
   end
+*)

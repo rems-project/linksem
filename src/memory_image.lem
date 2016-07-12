@@ -138,8 +138,8 @@ type symbol_definition
     |>
 
 let symDefCompare x1 x2 =
-        compare (x1.def_symname, x1.def_syment, x1.def_sym_scn, x1.def_sym_idx)
-                (x2.def_symname, x2.def_syment, x2.def_sym_scn, x2.def_sym_idx)
+        compare (x1.def_symname, x1.def_syment, x1.def_sym_scn, x1.def_sym_idx, x1.def_linkable_idx)
+                (x2.def_symname, x2.def_syment, x2.def_sym_scn, x2.def_sym_idx, x2.def_linkable_idx)
 
 instance (Ord symbol_definition)
     let compare = symDefCompare
@@ -176,8 +176,8 @@ type reloc_site = <|
 |>
 
 let relocSiteCompare x1 x2 =
-        compare (x1.ref_relent, x1.ref_rel_idx, x1.ref_src_scn)
-                (x2.ref_relent, x2.ref_rel_idx, x2.ref_src_scn)
+        compare (x1.ref_relent, x1.ref_rel_scn, x1.ref_rel_idx, x1.ref_src_scn)
+                (x2.ref_relent, x2.ref_rel_scn, x2.ref_rel_idx, x2.ref_src_scn)
                 
 instance (Ord reloc_site)
     let compare = relocSiteCompare
@@ -192,6 +192,25 @@ type reloc_decision = LeaveReloc
                     | ChangeRelocTo of (natural * symbol_reference * reloc_site)
                     (* | MakePIC    -- is now a kind of ChangeRelocTo *)
 
+let relocDecisionCompare x1 x2 =
+  match (x1, x2) with
+    | (LeaveReloc, LeaveReloc) -> EQ
+    | (LeaveReloc, _)          -> LT
+    | (ApplyReloc, ApplyReloc) -> EQ
+    | (ApplyReloc, ChangeRelocTo _) -> LT
+    | (ApplyReloc, LeaveReloc)      -> GT
+    | (ChangeRelocTo t1, ChangeRelocTo t2) -> compare t1 t2
+    | (ChangeRelocTo _, _) -> GT
+  end
+
+instance (Ord reloc_decision)
+  let compare = relocDecisionCompare 
+  let (<) = fun f1 -> (fun f2 -> (relocDecisionCompare f1 f2 = LT))
+  let (<=) = fun f1 -> (fun f2 -> Set.member (relocDecisionCompare f1 f2) {LT; EQ})
+  let (>) = fun f1 -> (fun f2 -> (relocDecisionCompare f1 f2 = GT))
+  let (>=) = fun f1 -> (fun f2 -> Set.member (relocDecisionCompare f1 f2) {GT; EQ})
+end
+
 type symbol_reference_and_reloc_site = <|
       ref         : symbol_reference
     ; maybe_reloc : maybe reloc_site
@@ -199,8 +218,8 @@ type symbol_reference_and_reloc_site = <|
     |>
 
 let symRefAndRelocSiteCompare x1 x2 =
-        compare (x1.ref, x1.maybe_reloc)
-                (x2.ref, x2.maybe_reloc)
+        compare (x1.ref, x1.maybe_reloc, x1.maybe_def_bound_to)
+                (x2.ref, x2.maybe_reloc, x2.maybe_def_bound_to)
 
 instance (Ord symbol_reference_and_reloc_site)
     let compare = symRefAndRelocSiteCompare
