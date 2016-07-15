@@ -1327,6 +1327,8 @@ unfolding chooseAndSplit_def
   apply(subst (asm) Let_def)
   apply(case_tac "split d (SOME x. x \<in> s) s"; simp add: split_def)
 done
+
+declare [[show_types]]
                              
 lemma findLowestKVWithKEquivTo_termination:
   fixes   s :: "('a \<times> 'b) set"
@@ -1348,6 +1350,7 @@ proof(induction s arbitrary: maybe rule: measure_induct_rule[where f=card])
         using `s = {}` by auto
       hence "None = Some (l, (cK, cV), g)"
         using chooseAndSplit_empty_iff by metis
+      thus "?thesis"
       
 
 termination findLowestKVWithKEquivTo
