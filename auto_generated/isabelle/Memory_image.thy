@@ -186,7 +186,7 @@ record symbol_definition
 
 definition symDefCompare  :: " symbol_definition \<Rightarrow> symbol_definition \<Rightarrow> ordering "  where 
      " symDefCompare x1 x2 = (        
-(quintupleCompare stringCompare_method elf64_symbol_table_entry_compare (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) ((def_symname   x1),(def_syment   x1),(def_sym_scn   x1),(def_sym_idx   x1),(def_linkable_idx   x1))
+(quintupleCompare (\<lambda> x y. EQ) elf64_symbol_table_entry_compare (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) ((def_symname   x1),(def_syment   x1),(def_sym_scn   x1),(def_sym_idx   x1),(def_linkable_idx   x1))
                 ((def_symname   x2),(def_syment   x2),(def_sym_scn   x2),(def_sym_idx   x2),(def_linkable_idx   x2))))"
 
 
@@ -218,7 +218,7 @@ record symbol_reference
 
 definition symRefCompare  :: " symbol_reference \<Rightarrow> symbol_reference \<Rightarrow> ordering "  where 
      " symRefCompare x1 x2 = (        
-(quadrupleCompare stringCompare_method elf64_symbol_table_entry_compare (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) ((ref_symname   x1),(ref_syment   x1),(ref_sym_scn   x1),(ref_sym_idx   x1))
+(quadrupleCompare (\<lambda> x y. EQ) elf64_symbol_table_entry_compare (genericCompare (op<) (op=)) (genericCompare (op<) (op=)) ((ref_symname   x1),(ref_syment   x1),(ref_sym_scn   x1),(ref_sym_idx   x1))
                 ((ref_symname   x2),(ref_syment   x2),(ref_sym_scn   x2),(ref_sym_idx   x2))))"
 
                 
@@ -273,15 +273,30 @@ datatype reloc_decision = LeaveReloc
                     | ChangeRelocTo " (nat * symbol_reference * reloc_site)"
                     (* | MakePIC    -- is now a kind of ChangeRelocTo *)
 
-fun relocDecisionCompare :: "reloc_decision \<Rightarrow> reloc_decision \<Rightarrow> ordering" where
-  "relocDecisionCompare LeaveReloc         LeaveReloc         = EQ" |
-  "relocDecisionCompare LeaveReloc         _                  = LT" |
-  "relocDecisionCompare ApplyReloc         ApplyReloc         = EQ" |
-  "relocDecisionCompare ApplyReloc         (ChangeRelocTo _)  = LT" |
-  "relocDecisionCompare ApplyReloc         LeaveReloc         = GT" |
-  "relocDecisionCompare (ChangeRelocTo ms) (ChangeRelocTo ns) =
-     tripleCompare (genericCompare (op <) (op =)) symRefCompare relocSiteCompare ms ns" |
-  "relocDecisionCompare (ChangeRelocTo _)  _                  = GT"
+fun relocDecisionCompare  :: " reloc_decision \<Rightarrow> reloc_decision \<Rightarrow> ordering "  where 
+     " relocDecisionCompare LeaveReloc LeaveReloc = ( EQ )"
+|" relocDecisionCompare LeaveReloc _ = ( LT )"
+|" relocDecisionCompare ApplyReloc ApplyReloc = ( EQ )"
+|" relocDecisionCompare ApplyReloc (ChangeRelocTo _) = ( LT )"
+|" relocDecisionCompare ApplyReloc LeaveReloc = ( GT )"
+|" relocDecisionCompare (ChangeRelocTo t1) (ChangeRelocTo t2) = ( (tripleCompare (genericCompare (op<) (op=)) symRefCompare relocSiteCompare t1 t2))"
+|" relocDecisionCompare (ChangeRelocTo _) _ = ( GT )" 
+declare relocDecisionCompare.simps [simp del]
+
+
+definition instance_Basic_classes_Ord_Memory_image_reloc_decision_dict  :: "(reloc_decision)Ord_class "  where 
+     " instance_Basic_classes_Ord_Memory_image_reloc_decision_dict = ((|
+
+  compare_method = relocDecisionCompare,
+
+  isLess_method = (\<lambda> f1 .  (\<lambda> f2 .  (relocDecisionCompare f1 f2 = LT))),
+
+  isLessEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (relocDecisionCompare f1 f2) ({LT, EQ}))),
+
+  isGreater_method = (\<lambda> f1 .  (\<lambda> f2 .  (relocDecisionCompare f1 f2 = GT))),
+
+  isGreaterEqual_method = (\<lambda> f1 .  (\<lambda> f2 .  (op \<in>) (relocDecisionCompare f1 f2) ({GT, EQ})))|) )"
+
 
 record symbol_reference_and_reloc_site = 
 
@@ -290,11 +305,13 @@ record symbol_reference_and_reloc_site =
  maybe_reloc ::"  reloc_site option "
     
  maybe_def_bound_to ::"  (reloc_decision *  symbol_definition option)option "
+    
+
 
 definition symRefAndRelocSiteCompare  :: " symbol_reference_and_reloc_site \<Rightarrow> symbol_reference_and_reloc_site \<Rightarrow> ordering "  where 
      " symRefAndRelocSiteCompare x1 x2 = (        
-(tripleCompare symRefCompare (maybeCompare relocSiteCompare) (maybeCompare (pairCompare relocDecisionCompare (maybeCompare symDefCompare))) ((ref   x1),(maybe_reloc   x1),(maybe_def_bound_to x1))
-                ((ref   x2),(maybe_reloc   x2),(maybe_def_bound_to x2))))"
+(tripleCompare symRefCompare (maybeCompare relocSiteCompare) (maybeCompare (pairCompare relocDecisionCompare (maybeCompare symDefCompare))) ((ref   x1),(maybe_reloc   x1),(maybe_def_bound_to   x1))
+                ((ref   x2),(maybe_reloc   x2),(maybe_def_bound_to   x2))))"
 
 
 definition instance_Basic_classes_Ord_Memory_image_symbol_reference_and_reloc_site_dict  :: "(symbol_reference_and_reloc_site)Ord_class "  where 
@@ -351,11 +368,21 @@ definition get_empty_memory_image  :: " unit \<Rightarrow> 'abifeature annotated
 
 
 (* Basic ELFy and ABI-y things. *)
-(* FIXME: shouldn't really be here, but need to be in some low-lying module, and 
- * keeping out of elf_* for now to avoid duplication into elf64_, elf32_. *)
+(* Special sections are those that necessarily require special treatment by the 
+ * linker. Examples include symbol tables and relocation tables. There are some
+ * grey areas, such as .eh_frame, debug info, and string tables. For us, the rule
+ * is that if we have special code to create them, i.e. that we don't rely on
+ * ordinary section concatenation during the linker script interpretation, they
+ * should be special -- it means strip_metadata_sections will remove them from
+ * the image, they won't be seen by the linker script, and that it's *our* job
+ * to reinstate them afterwards (as we do with symtab and strtab, for example). *)
+(* FIXME: this shouldn't really be here, but needs to be in some low-lying module;
+ * keeping it out of elf_* for now to avoid duplication into elf64_, elf32_. *)
 definition elf_section_is_special  :: " elf64_interpreted_section \<Rightarrow> 'a \<Rightarrow> bool "  where 
      " elf_section_is_special s f = ( \<not> ((elf64_section_type   s) = sht_progbits)
-                     \<and> \<not> ((elf64_section_type   s) = sht_nobits))"
+                     \<and> (\<not> ((elf64_section_type   s) = sht_nobits)
+                     \<and> (\<not> ((elf64_section_type   s) = sht_fini_array)
+                     \<and> \<not> ((elf64_section_type   s) = sht_init_array))))"
 
 
 (* This record collects things that ABIs may or must define. 

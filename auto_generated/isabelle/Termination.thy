@@ -1285,6 +1285,71 @@ termination list_reverse_concat_map_helper
   apply lexicographic_order
 done
 
+lemma findLowestKVWithKEquivTo_termination_base:
+  shows "findLowestKVWithKEquivTo_dom (k, v, key, equ, {}, maybe)"
+  apply(rule findLowestKVWithKEquivTo.domintros)
+  apply(simp add: chooseAndSplit_def)+
+done
+
+lemma findLowestKVWithKEquivTo_termination_equ_None:
+  assumes "chooseAndSplit (instance_Basic_classes_Ord_tup2_dict k v) s = Some (l, (cK, cV), g)"
+  assumes "equ key cK"
+  assumes "findLowestKVWithKEquivTo_dom (k, v, key, equ, l, Some (cK, cV))"
+  shows "findLowestKVWithKEquivTo_dom (k, v, key, equ, s, None)"
+by (rule findLowestKVWithKEquivTo.domintros, auto simp add: assms)
+
+lemma findLowestKVWithKEquivTo_termination_equ_pairLess_Some:
+  assumes "chooseAndSplit (instance_Basic_classes_Ord_tup2_dict k v) s = Some (l, (cK, cV), g)"
+  assumes "equ key cK" "pairLess v k (cK, cV) (bK, bV)"
+  assumes "findLowestKVWithKEquivTo_dom (k, v, key, equ, l, Some (cK, cV))"
+  shows "findLowestKVWithKEquivTo_dom (k, v, key, equ, s, Some (bK, bV))"
+by (rule findLowestKVWithKEquivTo.domintros, auto simp add: assms)
+
+lemma findLowestKVWithKEquivTo_termination_not_equ_isLess:
+  assumes "chooseAndSplit (instance_Basic_classes_Ord_tup2_dict k v) s = Some (l, (cK, cV), g)"
+  assumes "\<not> equ key cK" "isLess_method k key cK"
+  assumes "findLowestKVWithKEquivTo_dom (k, v, key, equ, l, maybe)"
+  shows "findLowestKVWithKEquivTo_dom (k, v, key, equ, s, maybe)"
+by (rule findLowestKVWithKEquivTo.domintros, auto simp add: assms)
+
+lemma findLowestKVWithKEquivTo_termination_not_equ_not_isLess:
+  assumes "chooseAndSplit (instance_Basic_classes_Ord_tup2_dict k v) s = Some (l, (cK, cV), g)"
+  assumes "\<not> equ key cK" "\<not> isLess_method k key cK"
+  assumes "findLowestKVWithKEquivTo_dom (k, v, key, equ, g, maybe)"
+  shows "findLowestKVWithKEquivTo_dom (k, v, key, equ, s, maybe)"
+by (rule findLowestKVWithKEquivTo.domintros, auto simp add: assms)
+
+lemma chooseAndSplit_empty_iff:
+  shows "chooseAndSplit d s = None \<longleftrightarrow> s = {}"
+unfolding chooseAndSplit_def
+  apply(simp add: set_choose_def)
+  apply(auto)
+  apply(subst (asm) Let_def)
+  apply(case_tac "split d (SOME x. x \<in> s) s"; simp add: split_def)
+done
+                             
+lemma findLowestKVWithKEquivTo_termination:
+  fixes   s :: "('a \<times> 'b) set"
+  assumes "finite s" "well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict k v))
+    (isLessEqual_method (instance_Basic_classes_Ord_tup2_dict k v)) (isGreater_method (instance_Basic_classes_Ord_tup2_dict k v))
+      (compare_method (instance_Basic_classes_Ord_tup2_dict k v))"
+  shows "findLowestKVWithKEquivTo_dom (k, v, key, equ, s, maybe)"
+proof(induction s arbitrary: maybe rule: measure_induct_rule[where f=card])
+  fix s :: "('a \<times> 'b) set" and maybe :: "('a \<times> 'b) option"
+  assume IH: "(\<And>y maybe. card y < card s \<Longrightarrow> findLowestKVWithKEquivTo_dom (k, v, key, equ, y, maybe))"
+  show "findLowestKVWithKEquivTo_dom (k, v, key, equ, s, maybe)"
+  proof(cases "s = {}")
+    assume "s = {}"
+    show "findLowestKVWithKEquivTo_dom (k, v, key, equ, s, maybe)"
+    proof(rule findLowestKVWithKEquivTo.domintros)
+      fix l g :: "('a \<times> 'b) set" and cK :: "'a" and cV :: "'b"
+      assume "chooseAndSplit (instance_Basic_classes_Ord_tup2_dict k v) s = Some (l, (cK, cV), g)"
+      hence "chooseAndSplit (instance_Basic_classes_Ord_tup2_dict k v) {} = Some (l, (cK, cV), g)"
+        using `s = {}` by auto
+      hence "None = Some (l, (cK, cV), g)"
+        using chooseAndSplit_empty_iff by metis
+      
+
 termination findLowestKVWithKEquivTo
   apply(relation "measure (\<lambda>(_,_,_,_,s,_). Finite_Set.card s)")
   apply(simp_all del: well_behaved_lem_ordering.simps)
@@ -1308,6 +1373,7 @@ termination findHighestKVWithKEquivTo
   apply(case_tac x2, simp del: well_behaved_lem_ordering.simps)
   apply(drule chooseAndSplit_card1, assumption, assumption, assumption)
 done
+*)
 
 termination accumulate_hex_chars
   apply lexicographic_order

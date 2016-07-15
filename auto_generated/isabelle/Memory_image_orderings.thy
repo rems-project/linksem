@@ -216,7 +216,7 @@ definition tagged_ranges_matching_tag  :: " 'abifeature Ord_class \<Rightarrow> 
 
 (*val element_range_compare : element_range -> element_range -> Basic_classes.ordering*)
 definition element_range_compare  :: " string*(nat*nat) \<Rightarrow> string*(nat*nat) \<Rightarrow> ordering "  where 
-     " element_range_compare = ( pairCompare stringCompare_method (pairCompare (genericCompare (op<) (op=)) (genericCompare (op<) (op=))))"
+     " element_range_compare = ( pairCompare (\<lambda> x y. EQ) (pairCompare (genericCompare (op<) (op=)) (genericCompare (op<) (op=))))"
 
 
 (*val unique_tag_matching_at_range_exact : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature =>

@@ -95,13 +95,7 @@ val all : forall 'k 'v. ('k -> 'v -> bool) -> multimap 'k 'v -> bool
         -> maybe ('k * 'v) 
         -> maybe ('k * 'v)*)
 function (sequential,domintros)  findLowestKVWithKEquivTo  :: " 'k Ord_class \<Rightarrow> 'v Ord_class \<Rightarrow> 'k \<Rightarrow>('k \<Rightarrow> 'k \<Rightarrow> bool)\<Rightarrow>('k*'v)set \<Rightarrow>('k*'v)option \<Rightarrow>('k*'v)option "  where 
-     " findLowestKVWithKEquivTo dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v k equiv1 subSet maybeBest = (
-      if \<not> finite subSet then
-        undefined
-      else if \<not> well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v)) (isLessEqual_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v))
-        (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v)) (compare_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v)) then
-        undefined
-      else
+     " findLowestKVWithKEquivTo dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v k equiv1 subSet maybeBest = ( 
     (case  Lem_set_extra.chooseAndSplit 
   (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
      dict_Basic_classes_Ord_v) subSet of
@@ -157,13 +151,7 @@ definition testEquiv  :: " nat \<Rightarrow> nat \<Rightarrow> bool "  where
         -> maybe ('k * 'v) 
         -> maybe ('k * 'v)*)
 function (sequential,domintros)  findHighestKVWithKEquivTo  :: " 'k Ord_class \<Rightarrow> 'v Ord_class \<Rightarrow> 'k \<Rightarrow>('k \<Rightarrow> 'k \<Rightarrow> bool)\<Rightarrow>('k*'v)set \<Rightarrow>('k*'v)option \<Rightarrow>('k*'v)option "  where 
-     " findHighestKVWithKEquivTo dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v k equiv1 subSet maybeBest = (
-      if \<not> finite subSet then
-        undefined
-      else if \<not> well_behaved_lem_ordering (isLess_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v)) (isLessEqual_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v))
-        (isGreater_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v)) (compare_method (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v)) then
-        undefined
-      else
+     " findHighestKVWithKEquivTo dict_Basic_classes_Ord_k dict_Basic_classes_Ord_v k equiv1 subSet maybeBest = ( 
     (case  Lem_set_extra.chooseAndSplit 
   (instance_Basic_classes_Ord_tup2_dict dict_Basic_classes_Ord_k
      dict_Basic_classes_Ord_v) subSet of

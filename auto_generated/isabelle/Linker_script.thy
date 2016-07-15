@@ -1987,8 +1987,8 @@ axiomatization
     (input_spec -> input_spec -> Basic_classes.ordering) (* seen ordering *) ->
     labelled_linker_control_script -> 
     input_output_assignment*)     (* accumulated result *)
-(*
-function (sequential,domintros)  assign_inputs_to_output_sections  :: "(input_spec)list*(output_section_spec*nat)list \<Rightarrow>(nat*nat)set \<Rightarrow>(nat*nat*nat)set \<Rightarrow>(input_spec)list \<Rightarrow>(output_section_spec*nat)option \<Rightarrow>(input_spec)option \<Rightarrow>(input_spec \<Rightarrow> input_spec \<Rightarrow> ordering)\<Rightarrow>(script_element*nat)list \<Rightarrow>(input_spec)list*(output_section_spec*nat)list "  where 
+
+(*function (sequential,domintros)  assign_inputs_to_output_sections  :: "(input_spec)list*(output_section_spec*nat)list \<Rightarrow>(nat*nat)set \<Rightarrow>(nat*nat*nat)set \<Rightarrow>(input_spec)list \<Rightarrow>(output_section_spec*nat)option \<Rightarrow>(input_spec)option \<Rightarrow>(input_spec \<Rightarrow> input_spec \<Rightarrow> ordering)\<Rightarrow>(script_element*nat)list \<Rightarrow>(input_spec)list*(output_section_spec*nat)list "  where 
      " assign_inputs_to_output_sections acc1 used_sections used_commons inputs1 (cur_output_sec ::  (output_section_spec * nat)option) last_input_sec seen_ordering script = ( 
     (let (rev_discards, rev_outputs) = acc1 in 
     (let flush_output_sec 
@@ -4069,7 +4069,7 @@ declare default_place_orphans.simps [simp del]
     -> (Map.map string (list (natural * binding))) (* initial_bindings_by_name *)
     -> (elf_memory_image * Map.map string (list (natural * binding)))*)
 definition interpret_linker_control_script  :: "((address_expr_fn_ref),(nat \<Rightarrow> allocated_sections_map \<Rightarrow> nat))Map.map \<Rightarrow>(script_element)list \<Rightarrow>(linkable_object*input_item*input_options)list \<Rightarrow> nat \<Rightarrow>(any_abi_feature)abi \<Rightarrow>(input_spec)list \<Rightarrow>(input_spec \<Rightarrow> input_spec \<Rightarrow> ordering)\<Rightarrow>((input_spec)list*(output_section_spec*nat)list \<Rightarrow>(input_spec)list \<Rightarrow>(input_spec)list*(output_section_spec*nat)list)\<Rightarrow>((string),((nat*((nat*symbol_reference*(linkable_object*input_item*input_options))*(nat*symbol_definition*(linkable_object*input_item*input_options))option))list))Map.map \<Rightarrow>(any_abi_feature)annotated_memory_image*((string),((nat*binding)list))Map.map "  where 
-     " interpret_linker_control_script alloc_map script linkables (control_script_linkable_idx::nat) a inputs1 seen_ordering place_orphans initial_bindings_by_name = (
+     " interpret_linker_control_script alloc_map script linkables control_script_linkable_idx a inputs1 seen_ordering place_orphans initial_bindings_by_name = (
     (let labelled_script = (label_script script)
     in
     (let _ = (Lem_list.mapi (\<lambda> i .  \<lambda> input .  

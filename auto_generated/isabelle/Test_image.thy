@@ -4,6 +4,7 @@ theory "Test_image"
 
 imports 
  	 Main
+	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_num" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_list" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_set" 
 	 "/auto/homes/dpm36/Work/Cambridge/bitbucket/lem/isabelle-lib/Lem_basic_classes" 
@@ -39,6 +40,7 @@ begin
 (*open import Maybe*)
 (*open import Set*)
 (*open import Missing_pervasives*)
+(*open import Num*)
 
 (*open import Assert_extra*)
 
@@ -119,17 +121,17 @@ definition def_rec0  :: " symbol_definition "  where
     |) )"
 
 
-(*val meta : list ((maybe element_range) * elf_range_tag)*)
-definition meta0  :: "nat \<Rightarrow> ((string*(nat*nat))option*(any_abi_feature)range_tag)list "  where 
+(*val meta : nat -> list ((maybe element_range) * elf_range_tag)*)
+definition meta0  :: " nat \<Rightarrow>((string*(nat*nat))option*(any_abi_feature)range_tag)list "  where 
      " meta0 offset = ( [
         (Some ((''.text''), (( 1 :: nat),( 4 :: nat))), SymbolRef(ref_and_reloc_rec0))
-    ,   (Some ((''.data''), (( offset :: nat),( 8 :: nat))), SymbolDef(def_rec0))
+    ,   (Some ((''.data''), ( offset,( 8 :: nat))), SymbolDef(def_rec0))
 ])"
 
 
 
-definition img1  :: "nat \<Rightarrow> nat \<Rightarrow> (Elf_Types_Local.byte)list \<Rightarrow>(any_abi_feature)annotated_memory_image "  where 
-     " img1 addr data_size instr_bytes = ( 
+definition img1  :: " nat \<Rightarrow> nat \<Rightarrow>(Elf_Types_Local.byte)list \<Rightarrow>(any_abi_feature)annotated_memory_image "  where 
+     " img1 (addr :: nat) (data_size :: nat) instr_bytes = ( 
     (let initial_img =     
  ((|
         elements = (Map.map_of (List.rev [((''.text''), (|
@@ -139,12 +141,12 @@ definition img1  :: "nat \<Rightarrow> nat \<Rightarrow> (Elf_Types_Local.byte)l
           |)),
           ((''.data''), (|
              startpos = (Some(( 4194320 :: nat)))
-           , length1 = (Some(data_size))
+           , length1 = (Some ( data_size))
            , contents = (List.map (\<lambda> x .  Some x) (List.replicate data_size ((of_nat (( 42 :: nat)) :: byte))))
           |))
           ]))
-        , by_range = (List.set (meta0 (addr - 4194316)))
-        , by_tag = (by_tag_from_by_range (List.set (meta0 (addr - 4194316))))
+        , by_range = (List.set (meta0 (addr -( 4194316 :: nat))))
+        , by_tag = (by_tag_from_by_range (List.set (meta0 (addr -( 4194316 :: nat)))))
      |)) 
     in 
     (let ref_input_item
@@ -158,26 +160,25 @@ definition img1  :: "nat \<Rightarrow> nat \<Rightarrow> (Elf_Types_Local.byte)l
     in
     relocate_output_image Abis.sysv_amd64_std_abi bindings_by_name initial_img)))))"
 
-(*
-definition compute_relocated_bytes0  :: " unit \<Rightarrow> unit "  where 
-     " compute_relocated_bytes0 _ = (
-  (let res =    
-((let relocatable_program =      
-(List.map (\<lambda> m. (of_nat m :: byte)) [( 72 :: nat),( 199 :: nat),( 4 :: nat),( 37 :: nat),( 0 :: nat),( 0 :: nat),( 0 :: nat),( 0 :: nat),( 5 :: nat),( 0 :: nat),( 0 :: nat),( 0 :: nat),( 72 :: nat),( 139 :: nat),( 4 :: nat),( 37 :: nat),( 0 :: nat),( 0 :: nat),( 0 :: nat),( 0 :: nat)])
-    in
-      (let ef = (elf64_file_of_elf_memory_image sysv_amd64_std_abi id0 (''at_least_some_relocations_relocate.out'') (img1 relocatable_program)) in
-      get_elf64_executable_image ef >>= (\<lambda> (segs_and_provenance, entry, mach) . 
-        if mach = elf_ma_x86_64 then
-          (let filtered = (List.filter (\<lambda> x . (elf64_segment_type   x) = elf_pt_load) (List.map (\<lambda> (x, y) .  x) segs_and_provenance)) in
-          (let filtered = (List.map Byte_sequence.byte_list_of_byte_sequence (List.map (\<lambda> x . (elf64_segment_body   x)) filtered)) in
-          (let _ = (List.map (\<lambda> x .  ()) filtered) in
-            error_return () )))
-        else
-          failwith (''wrong machine type returned'')))))
-  in (case  res of
-      Success s => ()
-    | Fail e => ()
-  )))"
-*)
 
+(* XXX: DPM, no longer needed?
+let compute_relocated_bytes () =
+  let res =
+    let relocatable_program =
+      List.map byte_of_natural [72; 199; 4; 37; 0; 0; 0; 0; 5; 0; 0; 0; 72; 139; 4; 37; 0; 0; 0; 0]
+    in
+      let ef = elf64_file_of_elf_memory_image sysv_amd64_std_abi id at_least_some_relocations_relocate.out (img relocatable_program) in
+      get_elf64_executable_image ef >>= fun (segs_and_provenance, entry, mach) ->
+        if mach = elf_ma_x86_64 then
+          let filtered = List.filter (fun x -> x.elf64_segment_type = elf_pt_load) (List.map (fun (x, y) -> x) segs_and_provenance) in
+          let filtered = List.map Byte_sequence.byte_list_of_byte_sequence (List.map (fun x -> x.elf64_segment_body) filtered) in
+          let _ = List.map (fun x -> outln (show x)) filtered in
+            return ()
+        else
+          failwith wrong machine type returned
+  in match res with
+    | Success s -> outln success
+    | Fail e -> errln e
+  end
+*)
 end

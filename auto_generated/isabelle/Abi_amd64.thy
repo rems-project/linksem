@@ -88,18 +88,12 @@ type_synonym 'abifeature plt_entry_content_fn =" nat \<Rightarrow> nat \<Rightar
 datatype 'abifeature amd64_abi_feature = 
     GOT0 "  ( (string * ( symbol_definition option))list)"
     | PLT0 " ( (string * ( symbol_definition option) * 'abifeature plt_entry_content_fn)list)"
-
-definition plt_entry_content_fn_compare :: "'a plt_entry_content_fn \<Rightarrow> 'a plt_entry_content_fn \<Rightarrow> ordering" where
-  "plt_entry_content_fn_compare f1 f2 \<equiv>
-     if \<forall>x. f1 x = f2 x then
-       EQ
-     else undefined (* XXX *)"
     
 (*val abiFeatureCompare : forall 'abifeature. amd64_abi_feature 'abifeature -> amd64_abi_feature 'abifeature -> Basic_classes.ordering*)
 fun abiFeatureCompare0  :: " 'abifeature amd64_abi_feature \<Rightarrow> 'abifeature amd64_abi_feature \<Rightarrow> ordering "  where 
-     " abiFeatureCompare0 (GOT0 gs) (GOT0 is) = lexicographicCompareBy (pairCompare stringCompare_method (maybeCompare symDefCompare)) gs is"
+     " abiFeatureCompare0 (GOT0(_)) (GOT0(_)) = ( EQ )"
 |" abiFeatureCompare0 (GOT0(_)) (PLT0(_)) = ( LT )"
-|" abiFeatureCompare0 (PLT0 ps) (PLT0 qs) = lexicographicCompareBy (tripleCompare stringCompare_method (maybeCompare symDefCompare) plt_entry_content_fn_compare) ps qs"
+|" abiFeatureCompare0 (PLT0(_)) (PLT0(_)) = ( EQ )"
 |" abiFeatureCompare0 (PLT0(_)) (GOT0(_)) = ( GT )" 
 declare abiFeatureCompare0.simps [simp del]
 
