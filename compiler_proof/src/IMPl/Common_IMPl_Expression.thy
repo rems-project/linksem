@@ -7,6 +7,7 @@ theory
   Common_IMPl_Expression
 imports
   Main
+  "~~/src/HOL/Word/Word"
   Common
   Common_IMPl_Decl_Body
 begin
@@ -29,7 +30,7 @@ datatype unop
 
 datatype expr
   = Var        "ident"
-  | Literal    "int + bool"
+  | Literal    "32 word + bool"
   | BinOp      "binop" "expr" "expr"
   | UnOp       "unop"  "expr"
   | IfThenElse "expr"  "expr" "expr"
@@ -44,8 +45,8 @@ fun expr_var_footprint :: "expr \<Rightarrow> ident set" where
      expr_var_footprint e1 \<union> expr_var_footprint e2 \<union> expr_var_footprint e3" |
   "expr_var_footprint (Call fn args)        = (\<Union>a \<in> set args. expr_var_footprint a)"
 
-text\<open>Utility function for lifting Isabelle integers into expressions as literals.\<close>
-definition lift_literal_int :: "int \<Rightarrow> expr" where
+text\<open>Utility function for lifting Isabelle machine integers into expressions as literals.\<close>
+definition lift_literal_int :: "32 word \<Rightarrow> expr" where
   "lift_literal_int i \<equiv> Literal (Inl i)"
 
 lemma expr_var_footprint_lift_literal_int [simp]:
@@ -398,5 +399,64 @@ lemma unicity_of_expr_typing:
   assumes "\<Delta> \<circ> \<Gamma> \<turnstile>e e \<triangleright> t1" "\<Delta> \<circ> \<Gamma> \<turnstile>e e \<triangleright> t2"
   shows   "t1 = t2"
 using assms expr_typing_complete option.inject by metis
+
+section\<open>Semantics\<close>
+
+datatype memory_value
+  = VBoolean "bool"
+  | VInt32   "32 word"
+
+type_synonym memory = "ident \<rightharpoonup> memory_value"
+type_synonym fun_oracle = "ident \<Rightarrow> memory_value list \<rightharpoonup> memory_value"
+
+definition initial_value :: "type \<Rightarrow> memory_value" where
+  "initial_value v \<equiv>
+     case v of
+       int32   \<Rightarrow> VInt32   0
+     | boolean \<Rightarrow> VBoolean True"
+
+inductive expr_semantics :: "memory \<Rightarrow> fun_oracle \<Rightarrow> expr \<Rightarrow> memory_value \<Rightarrow> bool" ("_/ \<circ> _/ \<turnstile>e/ _/ \<longrightarrow>/ _" [65,65,65]65) where
+  expr_semantics_Var [intro!]: "\<lbrakk> \<M> v = Some value \<rbrakk> \<Longrightarrow> \<M> \<circ> \<O> \<turnstile>e Var v \<longrightarrow> value" |
+  expr_semantics_int_Literal [intro!]: "\<lbrakk> l = Inl i; value = VInt32 i \<rbrakk> \<Longrightarrow> \<M> \<circ> \<O> \<turnstile>e Literal l \<longrightarrow> value" |
+  expr_semantics_bool_Literal [intro!]: "\<lbrakk> l = Inr b; value = VBoolean b \<rbrakk> \<Longrightarrow> \<M> \<circ> \<O> \<turnstile>e Literal l \<longrightarrow> value" |
+  expr_semantics_Add [intro!]: "\<lbrakk> \<M> \<circ> \<O> \<turnstile>e e1 \<longrightarrow> VInt32 v1; \<M> \<circ> \<O> \<turnstile>e e2 \<longrightarrow> VInt32 v2; value = VInt32 (v1 + v2) \<rbrakk> \<Longrightarrow> \<M> \<circ> \<O> \<turnstile>e (e1 \<oplus> e2) \<longrightarrow> value" |
+  expr_semantics_And [intro!]: "\<lbrakk> \<M> \<circ> \<O> \<turnstile>e e1 \<longrightarrow> VBoolean v1; \<M> \<circ> \<O> \<turnstile>e e2 \<longrightarrow> VBoolean v2; value = VBoolean (v1 \<and> v2) \<rbrakk> \<Longrightarrow> \<M> \<circ> \<O> \<turnstile>e (e1 andalso e2) \<longrightarrow> value" |
+  expr_semantics_Neg [intro!]: "\<lbrakk> \<M> \<circ> \<O> \<turnstile>e e1 \<longrightarrow> VInt32 v1; value = VInt32 (- v) \<rbrakk> \<Longrightarrow> \<M> \<circ> \<O> \<turnstile>e (\<sim> e1) \<longrightarrow> value" |
+  expr_semantics_Not [intro!]: "\<lbrakk> \<M> \<circ> \<O> \<turnstile>e e1 \<longrightarrow> VBoolean v1; value = VBoolean (\<not> v) \<rbrakk> \<Longrightarrow> \<M> \<circ> \<O> \<turnstile>e (not e1) \<longrightarrow> value" |
+  expr_semantics_Equal [intro!]: "\<lbrakk> \<M> \<circ> \<O> \<turnstile>e e1 \<longrightarrow> v1; \<M> \<circ> \<O> \<turnstile>e e2 \<longrightarrow> v2; value = VBoolean (v1 = v2) \<rbrakk> \<Longrightarrow> \<M> \<circ> \<O> \<turnstile>e (e1 \<approx> e2) \<longrightarrow> value" |
+  expr_semantics_True_IfThenElse [intro!]: "\<lbrakk> \<M> \<circ> \<O> \<turnstile>e e \<longrightarrow> VBoolean True; \<M> \<circ> \<O> \<turnstile>e t \<longrightarrow> value \<rbrakk> \<Longrightarrow> \<M> \<circ> \<O> \<turnstile>e (If e Then t Else f End) \<longrightarrow> value" |
+  expr_semantics_False_IfThenElse [intro!]: "\<lbrakk> \<M> \<circ> \<O> \<turnstile>e e \<longrightarrow> VBoolean False; \<M> \<circ> \<O> \<turnstile>e f \<longrightarrow> value \<rbrakk> \<Longrightarrow> \<M> \<circ> \<O> \<turnstile>e (If e Then t Else f End) \<longrightarrow> value" |
+  expr_semantics_Fun [intro!]: "\<lbrakk> \<forall>i. \<M> \<circ> \<O> \<turnstile>e (args ! i) \<longrightarrow> (values ! i); \<O> F values = Some value \<rbrakk> \<Longrightarrow> \<M> \<circ> \<O> \<turnstile>e (F\<lparr> args \<rparr>) \<longrightarrow> value"
+
+lemma expr_semantics_Or [intro!]:
+  assumes "\<M> \<circ> \<O> \<turnstile>e e1 \<longrightarrow> VBoolean v1" "\<M> \<circ> \<O> \<turnstile>e e2 \<longrightarrow> VBoolean v2" "value = VBoolean (v1 \<or> v2)"
+  shows   "\<M> \<circ> \<O> \<turnstile>e (e1 orelse e2) \<longrightarrow> value"
+proof -
+  have "\<M> \<circ> \<O> \<turnstile>e not e1 \<longrightarrow> VBoolean (\<not> v1)" "\<M> \<circ> \<O> \<turnstile>e not e2 \<longrightarrow> VBoolean (\<not> v2)"
+    using `\<M> \<circ> \<O> \<turnstile>e e1 \<longrightarrow> VBoolean v1` `\<M> \<circ> \<O> \<turnstile>e e2 \<longrightarrow> VBoolean v2` by blast+
+  hence "\<M> \<circ> \<O> \<turnstile>e (not e1) andalso (not e2) \<longrightarrow> VBoolean (\<not> v1 \<and> \<not> v2)"
+    using `\<M> \<circ> \<O> \<turnstile>e e1 \<longrightarrow> VBoolean v1` `\<M> \<circ> \<O> \<turnstile>e e2 \<longrightarrow> VBoolean v2` by blast
+  hence "\<M> \<circ> \<O> \<turnstile>e not ((not e1) andalso (not e2)) \<longrightarrow> VBoolean (\<not> (\<not> v1 \<and> \<not> v2))"
+    by blast
+  thus "\<M> \<circ> \<O> \<turnstile>e (e1 orelse e2) \<longrightarrow> value"
+    using `value = VBoolean (v1 \<or> v2)` derived_or_def by auto
+qed
+
+lemma expr_semantics_Sub [intro!]:
+  assumes "\<M> \<circ> \<O> \<turnstile>e e1 \<longrightarrow> VInt32 v1" "\<M> \<circ> \<O> \<turnstile>e e2 \<longrightarrow> VInt32 v2" "value = VInt32 (v1 - v2)"
+  shows   "\<M> \<circ> \<O> \<turnstile>e (e1 \<ominus> e2) \<longrightarrow> value"
+proof -
+  have "\<M> \<circ> \<O> \<turnstile>e e1 \<longrightarrow> VInt32 v1" "\<M> \<circ> \<O> \<turnstile>e \<sim> e2 \<longrightarrow> VInt32 (- v2)"
+    using `\<M> \<circ> \<O> \<turnstile>e e1 \<longrightarrow> VInt32 v1` `\<M> \<circ> \<O> \<turnstile>e e2 \<longrightarrow> VInt32 v2` by blast+
+  hence "\<M> \<circ> \<O> \<turnstile>e (e1 \<oplus> (\<sim> e2)) \<longrightarrow> VInt32 (v1 + - v2)"
+    by blast
+  thus "\<M> \<circ> \<O> \<turnstile>e (e1 \<ominus> e2) \<longrightarrow> value"
+    using `value = VInt32 (v1 - v2)` derived_subtraction_def by auto
+qed
+
+lemma expr_semantics_NotEqual [intro!]:
+  assumes "\<M> \<circ> \<O> \<turnstile>e e1 \<longrightarrow> v1" "\<M> \<circ> \<O> \<turnstile>e e2 \<longrightarrow> v2" "value = VBoolean (v1 \<noteq> v2)"
+  shows   "\<M> \<circ> \<O> \<turnstile>e (e1 !\<approx> e2) \<longrightarrow> value"
+using assms unfolding derived_not_equal_def by blast
 
 end
