@@ -61,6 +61,7 @@ let default_pht_bdl =
 let default_sht_bdl =
   (default_os_specific_print, default_proc_specific_print, default_user_specific_print)
 
+(*
 (* unrolled and made tail recursive for efficiency on large ELF files...*)
 val chunks : list string -> list (list string) -> list (list string) * nat
 let rec chunks (ss : list string) (accum : list (list string)) =
@@ -335,3 +336,10 @@ let _ =
       | Fail err  -> Missing_pervasives.errln ("[!]: " ^ err)
       | Success e -> Missing_pervasives.outln (show e)
     end
+*)
+
+let _ =
+  match Sail_interface.populate "../test/mixed-binaries/1548" with
+    | Fail err  -> Missing_pervasives.errln ("[!]: " ^ err)
+    | Success img -> Missing_pervasives.outln (Sail_interface.string_of_executable_process_image img)
+  end

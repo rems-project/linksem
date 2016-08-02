@@ -9,10 +9,13 @@ open import Num
 open import String
 
 open import Elf_types_native_uint
+open import Elf_program_header_table
 
 open import Byte_sequence
 open import Missing_pervasives
 open import Show
+
+open import Hex_printing
 
 (** [elf32_interpreted_segment] represents an ELF32 interpreted segment, i.e. the
   * contents of an ELF program header table entry converted into more amenable
@@ -134,12 +137,12 @@ let {ocaml} string_of_flags flags =
 val string_of_elf32_interpreted_segment : elf32_interpreted_segment -> string
 let {ocaml} string_of_elf32_interpreted_segment seg =
   unlines [
-    "Body of length: " ^ show (Byte_sequence.length seg.elf32_segment_body)
-  ; "Segment type: " ^ show seg.elf32_segment_type
-  ; "Segment size: " ^ show seg.elf32_segment_size
-  ; "Segment memory size: " ^ show seg.elf32_segment_memsz
-  ; "Segment base address: " ^ show seg.elf32_segment_base
-  ; "Segment physical address: " ^ show seg.elf32_segment_paddr
+    "Body of length: " ^ unsafe_hex_string_of_natural 16 (Byte_sequence.length seg.elf32_segment_body)
+  ; "Segment type: " ^ string_of_segment_type (fun _ -> "ABI specific") (fun _ -> "ABI specific") seg.elf32_segment_type
+  ; "Segment size: " ^ unsafe_hex_string_of_natural 16 seg.elf32_segment_size
+  ; "Segment memory size: " ^ unsafe_hex_string_of_natural 16 seg.elf32_segment_memsz
+  ; "Segment base address: " ^ unsafe_hex_string_of_natural 16 seg.elf32_segment_base
+  ; "Segment physical address: " ^ unsafe_hex_string_of_natural 16 seg.elf32_segment_paddr
   ; "Segment flags: " ^ string_of_flags seg.elf32_segment_flags
   ]
 
@@ -149,11 +152,11 @@ let {ocaml} string_of_elf32_interpreted_segment seg =
 val string_of_elf64_interpreted_segment : elf64_interpreted_segment -> string
 let {ocaml} string_of_elf64_interpreted_segment seg =
   unlines [
-    "Body of length: " ^ show (Byte_sequence.length seg.elf64_segment_body)
-  ; "Segment type: " ^ show seg.elf64_segment_type
-  ; "Segment size: " ^ show seg.elf64_segment_size
-  ; "Segment memory size: " ^ show seg.elf64_segment_memsz
-  ; "Segment base address: " ^ show seg.elf64_segment_base
-  ; "Segment physical address: " ^ show seg.elf64_segment_paddr
+    "Body of length: " ^ unsafe_hex_string_of_natural 16 (Byte_sequence.length seg.elf64_segment_body)
+  ; "Segment type: " ^ string_of_segment_type (fun _ -> "ABI specific") (fun _ -> "ABI specific") seg.elf64_segment_type
+  ; "Segment size: " ^ unsafe_hex_string_of_natural 16 seg.elf64_segment_size
+  ; "Segment memory size: " ^ unsafe_hex_string_of_natural 16 seg.elf64_segment_memsz
+  ; "Segment base address: " ^ unsafe_hex_string_of_natural 16 seg.elf64_segment_base
+  ; "Segment physical address: " ^ unsafe_hex_string_of_natural 16 seg.elf64_segment_paddr
   ; "Segment flags: " ^ string_of_flags seg.elf64_segment_flags
   ]
