@@ -95,12 +95,15 @@ let read_char (Sequence ts) =
 (** [repeat cnt b] creates a list of length [cnt] containing only [b].
   * TODO: move into missing_pervasives.lem.
   *)
-val repeat : natural -> byte -> list byte
-let rec repeat count c =
+val repeat' : natural -> byte -> list byte -> list byte
+let rec repeat' count c acc =
   match count with
-    | 0 -> []
-    | m -> c::repeat (count - 1) c
+    | 0 -> acc
+    | m -> repeat' (count - 1) c (c::acc)
   end
+
+val repeat : natural -> byte -> list byte
+let repeat count c = repeat' count c []
 
 (** [create cnt b] creates a byte sequence of length [cnt] containing only [b].
   *)
