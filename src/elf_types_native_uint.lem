@@ -429,7 +429,7 @@ val string_of_elf64_half : elf64_half -> string
 
 declare ocaml    target_rep function string_of_elf64_half = `Uint32.to_string`
 declare isabelle target_rep function string_of_elf64_half = `Elf_Types_Local.string_of_uint16`
-declare hol      target_rep function string_of_elf64_half = `nat_to_dec_string` `o` `w2n`
+declare hol      target_rep function string_of_elf64_half = `num_to_dec_string` `o` `w2n`
 
 val elf64_half_of_dual : byte -> byte -> elf64_half
 

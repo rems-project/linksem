@@ -13,11 +13,11 @@ struct
   in end;
   val _ = Theory.link_parents
           ("endianness",
-          Arbnum.fromString "1471275034",
-          Arbnum.fromString "676706")
+          Arbnum.fromString "1471276695",
+          Arbnum.fromString "362370")
           [("show",
-           Arbnum.fromString "1471275022",
-           Arbnum.fromString "917651")];
+           Arbnum.fromString "1471276683",
+           Arbnum.fromString "370384")];
   val _ = Theory.incorporate_types "endianness" [("endianness", 0)];
 
   val idvector = 

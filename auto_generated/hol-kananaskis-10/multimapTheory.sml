@@ -13,11 +13,11 @@ struct
   in end;
   val _ = Theory.link_parents
           ("multimap",
-          Arbnum.fromString "1471275051",
-          Arbnum.fromString "462872")
+          Arbnum.fromString "1471276712",
+          Arbnum.fromString "787889")
           [("missing_pervasives",
-           Arbnum.fromString "1471275035",
-           Arbnum.fromString "222876"),
+           Arbnum.fromString "1471276695",
+           Arbnum.fromString "273504"),
            ("lem_set_extra",
            Arbnum.fromString "1471269279",
            Arbnum.fromString "653228")];

@@ -307,7 +307,7 @@ val _ = Define `
 val _ = Define `
 (instance_Show_Show_Elf_types_native_uint_elf64_half_dict= (<|
 
-  show_method := (nat_to_dec_string o w2n)|>))`;
+  show_method := (num_to_dec_string o w2n)|>))`;
 
 
 (*
