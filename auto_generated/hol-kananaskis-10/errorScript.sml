@@ -30,13 +30,13 @@ val _ = Hol_datatype `
   *)
 (*val return : forall 'a. 'a -> error 'a*)
 val _ = Define `
- (return r = (Success r))`;
+ (return r=  (Success r))`;
 
 
 (*val with_success : forall 'a 'b. error 'a -> 'b -> ('a -> 'b) -> 'b*)
 val _ = Define `
- (with_success err fl suc =  
-((case err of
+ (with_success err fl suc=  
+ ((case err of
       Success s => suc s
     | Fail err  => fl
   )))`;
@@ -46,21 +46,22 @@ val _ = Define `
   *)
 (*val fail : forall 'a. string -> error 'a*)
 val _ = Define `
- (fail0 err = (Fail err))`;
+ (fail0 err=  (Fail err))`;
 
 
 (** [(>>=)] is the monadic binding function for [error].
   *)
 (*val >>= : forall 'a 'b. error 'a -> ('a -> error 'b) -> error 'b*)
 val _ = Define `
- (error_bind x f =	
-((case x of
+ (error_bind x f=	
+ ((case x of
 		  Success s => f s
 		| Fail err  => Fail err
 	)))`;
 
 val _ = set_fixity ">>=" (Infixl 500);
 val _ = overload_on (">>=", ``error_bind``);
+
 	
 (** [as_maybe e] drops an [error] value into a [maybe] value, throwing away
   * error information.
@@ -68,8 +69,8 @@ val _ = overload_on (">>=", ``error_bind``);
 
 (*val as_maybe : forall 'a. error 'a -> maybe 'a*)
 val _ = Define `
- (as_maybe e =  
-((case e of
+ (as_maybe e=  
+ ((case e of
       Fail err => NONE
     | Success s => SOME s
   )))`;
@@ -79,17 +80,20 @@ val _ = Define `
   * successfully produces a list [count] elements long, where each element is
   * the value successfully returned by [action].
   *)
-(*val repeatM : forall 'a. natural -> error 'a -> error (list 'a)*)
- val repeatM_defn = Hol_defn "repeatM" `
- (repeatM count1 action =  
-(if count1 = 0 then
-    return []
+(*val repeatM'' : forall 'a. natural -> error 'a -> error (list 'a) -> error (list 'a)*)
+ val repeatM''_defn = Hol_defn "repeatM''" `
+ (repeatM'' count1 action acc=  
+ (if count1 =( 0:num) then
+    acc
   else
-    action >>= (\ head . 
-    repeatM (count1 -  1) action >>= (\ tail . 
-    return (head::tail)))))`;
+    repeatM'' (count1 -( 1:num)) action (acc >>= (\ tail .  action >>= (\ head .  return (head::tail))))))`;
 
-val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn repeatM_defn;
+val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn repeatM''_defn;
+
+(*val repeatM : forall 'a. natural -> error 'a -> error (list 'a)*)
+val _ = Define `
+ (repeatM count1 action=  (repeatM'' count1 action (return [])))`;
+
 
 (** [repeatM' count seed action] is a variant of [repeatM] that acts like [repeatM]
   * apart from any successful result returns a tuple whose second component is [seed]
@@ -97,38 +101,40 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
   *)
 (*val repeatM' : forall 'a 'b. natural -> 'b -> ('b -> error ('a * 'b)) -> error ((list 'a) * 'b)*)
  val repeatM'_defn = Hol_defn "repeatM'" `
- (repeatM' count1 seed action =  
-(if count1 = 0 then
+ (repeatM' count1 seed action=  
+ (if count1 =( 0:num) then
     return ([], seed)
   else
     action seed >>= (\ (head, seed) . 
-    repeatM' (count1 -  1) seed action >>= (\ (tail, seed) . 
+    repeatM' (count1 -( 1:num)) seed action >>= (\ (tail, seed) . 
     return ((head::tail), seed)))))`;
 
 val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn repeatM'_defn;
 	
 (** [mapM f xs] maps [f] across [xs], failing if [f] fails on any element of [xs].
   *)
-(*val mapM : forall 'a 'b. ('a -> error 'b) -> list 'a -> error (list 'b)*)
- val mapM_defn = Hol_defn "mapM" `
- (mapM f xs =	
-((case xs of
-		  []    => return []
-		| x::xs =>
-				f x >>= (\ hd . 
-				mapM f xs >>= (\ tl . 
-				return (hd::tl)))
+(*val mapM' : forall 'a 'b. ('a -> error 'b) -> list 'a -> error (list 'b) -> error (list 'b)*)
+ val mapM'_defn = Hol_defn "mapM'" `
+ (mapM' f xs acc=	
+ ((case xs of
+		  []    => acc
+		| x::xs => mapM' f xs (acc >>= (\ tl .  f x >>= (\ hd .  return (hd::tl))))
 	)))`;
 
-val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn mapM_defn;
+val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn mapM'_defn;
+
+(*val mapM : forall 'a 'b. ('a -> error 'b) -> list 'a -> error (list 'b)*)
+val _ = Define `
+ (mapM f xs=  (mapM' f xs (return [])))`;
+
 
 (** [foldM f e xs] performs a monadic right fold of [f] across [xs] using [e]
   * as the base case.  Fails if any application of [f] fails.
   *)
 (*val foldM : forall 'a 'b. ('a -> 'b -> error 'a) -> 'a -> list 'b -> error 'a*)
  val foldM_defn = Hol_defn "foldM" `
- (foldM f e xs =  
-((case xs of
+ (foldM f e xs=  
+ ((case xs of
       []    => return e
     | x::xs => f e x >>= (\ res .  foldM f res xs)
   )))`;
@@ -138,5 +144,18 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
 (** [string_of_error err] produces a string representation of [err].
   *)
 (*val string_of_error : forall 'a. Show 'a => error 'a -> string*)
-val _ = export_theory()
+val _ = Define `
+ (string_of_error dict_Show_Show_a e=	
+ ((case e of
+		  Fail err =>  STRCAT"Fail: " err
+		| Success s => dict_Show_Show_a.show_method s
+	)))`;
 
+
+val _ = Define `
+(instance_Show_Show_Error_error_dict dict_Show_Show_a= (<|
+
+  show_method := 
+  (string_of_error dict_Show_Show_a)|>))`;
+
+val _ = export_theory()
