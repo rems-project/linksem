@@ -974,11 +974,11 @@ val _ = type_abbrev( "sht_print_bundle" , ``:
 val _ = Define `
  (string_of_elf32_section_header_table_entry (os, proc, user) entry=  
  (unlines [
-     STRCAT"\t"     (STRCAT"Name: " (ARB entry.elf32_sh_name))
+     STRCAT"\t"     (STRCAT"Name: " ((num_to_dec_string o w2n entry.elf32_sh_name)))
   ;  STRCAT"\t"     (STRCAT"Type: " (string_of_section_type os proc user (w2n entry.elf32_sh_type)))
-  ;  STRCAT"\t"    (STRCAT"Flags: " (ARB entry.elf32_sh_flags))
-  ;  STRCAT"\t"  (STRCAT"Address: " (ARB entry.elf32_sh_addr))
-  ;  STRCAT"\t"     (STRCAT"Size: " (ARB entry.elf32_sh_size))
+  ;  STRCAT"\t"    (STRCAT"Flags: " ((num_to_dec_string o w2n entry.elf32_sh_flags)))
+  ;  STRCAT"\t"  (STRCAT"Address: " ((num_to_dec_string o w2n entry.elf32_sh_addr)))
+  ;  STRCAT"\t"     (STRCAT"Size: " ((num_to_dec_string o w2n entry.elf32_sh_size)))
   ]))`;
 
 
@@ -992,11 +992,11 @@ val _ = Define `
 val _ = Define `
  (string_of_elf64_section_header_table_entry (os, proc, user) entry=  
  (unlines [
-     STRCAT"\t"     (STRCAT"Name: " (ARB entry.elf64_sh_name))
+     STRCAT"\t"     (STRCAT"Name: " ((num_to_dec_string o w2n entry.elf64_sh_name)))
   ;  STRCAT"\t"     (STRCAT"Type: " (string_of_section_type os proc user (w2n entry.elf64_sh_type)))
-  ;  STRCAT"\t"    (STRCAT"Flags: " (ARB entry.elf64_sh_flags))
-  ;  STRCAT"\t"  (STRCAT"Address: " (ARB entry.elf64_sh_addr))
-  ;  STRCAT"\t"     (STRCAT"Size: " (ARB entry.elf64_sh_size))
+  ;  STRCAT"\t"    (STRCAT"Flags: " ((num_to_dec_string o w2n entry.elf64_sh_flags)))
+  ;  STRCAT"\t"  (STRCAT"Address: " ((num_to_dec_string o w2n entry.elf64_sh_addr)))
+  ;  STRCAT"\t"     (STRCAT"Size: " ((num_to_dec_string o w2n entry.elf64_sh_size)))
   ]))`;
 
 
@@ -1019,9 +1019,9 @@ val _ = Define `
     unlines [
        STRCAT"\t"     (STRCAT"Name: " name)
     ;  STRCAT"\t"     (STRCAT"Type: " (string_of_section_type os proc user (w2n entry.elf32_sh_type)))
-    ;  STRCAT"\t"    (STRCAT"Flags: " (ARB entry.elf32_sh_flags))
-    ;  STRCAT"\t"  (STRCAT"Address: " (ARB entry.elf32_sh_addr))
-    ;  STRCAT"\t"     (STRCAT"Size: " (ARB entry.elf32_sh_size))
+    ;  STRCAT"\t"    (STRCAT"Flags: " ((num_to_dec_string o w2n entry.elf32_sh_flags)))
+    ;  STRCAT"\t"  (STRCAT"Address: " ((num_to_dec_string o w2n entry.elf32_sh_addr)))
+    ;  STRCAT"\t"     (STRCAT"Size: " ((num_to_dec_string o w2n entry.elf32_sh_size)))
     ]))`;
 
 
@@ -1044,9 +1044,9 @@ val _ = Define `
     unlines [
        STRCAT"\t"     (STRCAT"Name: " name)
     ;  STRCAT"\t"     (STRCAT"Type: " (string_of_section_type os proc user (w2n entry.elf64_sh_type)))
-    ;  STRCAT"\t"    (STRCAT"Flags: " (ARB entry.elf64_sh_flags))
-    ;  STRCAT"\t"  (STRCAT"Address: " (ARB entry.elf64_sh_addr))
-    ;  STRCAT"\t"     (STRCAT"Size: " (ARB entry.elf64_sh_size))
+    ;  STRCAT"\t"    (STRCAT"Flags: " ((num_to_dec_string o w2n entry.elf64_sh_flags)))
+    ;  STRCAT"\t"  (STRCAT"Address: " ((num_to_dec_string o w2n entry.elf64_sh_addr)))
+    ;  STRCAT"\t"     (STRCAT"Size: " ((num_to_dec_string o w2n entry.elf64_sh_size)))
     ]))`;
 
 

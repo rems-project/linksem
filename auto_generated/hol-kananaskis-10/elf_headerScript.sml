@@ -1892,10 +1892,10 @@ val _ = Define `
 	;  STRCAT"\t"  (STRCAT"Type: " (string_of_elf_file_type os proc (w2n hdr.elf32_type)))
   ;  STRCAT"\t"  (STRCAT"Version: " (string_of_elf_version_number (w2n hdr.elf32_version)))
 	;  STRCAT"\t"  (STRCAT"Machine: " (string_of_elf_machine_architecture (w2n hdr.elf32_machine)))
-  ;  STRCAT"\t"  (STRCAT"Entry point: " (ARB hdr.elf32_entry))
-  ;  STRCAT"\t"  (STRCAT"Flags: " (ARB hdr.elf32_flags))
-  ;  STRCAT"\t"  (STRCAT"Entries in program header table: " (ARB hdr.elf32_phnum))
-  ;  STRCAT"\t"  (STRCAT"Entries in section header table: " (ARB hdr.elf32_shnum))
+  ;  STRCAT"\t"  (STRCAT"Entry point: " ((num_to_dec_string o w2n hdr.elf32_entry)))
+  ;  STRCAT"\t"  (STRCAT"Flags: " ((num_to_dec_string o w2n hdr.elf32_flags)))
+  ;  STRCAT"\t"  (STRCAT"Entries in program header table: " ((num_to_dec_string o w2n hdr.elf32_phnum)))
+  ;  STRCAT"\t"  (STRCAT"Entries in section header table: " ((num_to_dec_string o w2n hdr.elf32_shnum)))
 	]))`;
 
 
@@ -1912,8 +1912,8 @@ val _ = Define `
   ;  STRCAT"\t"  (STRCAT"Type: " (string_of_elf_file_type os proc (w2n hdr.elf64_type)))
   ;  STRCAT"\t"  (STRCAT"Version: " (string_of_elf_version_number (w2n hdr.elf64_version)))
   ;  STRCAT"\t"  (STRCAT"Machine: " (string_of_elf_machine_architecture (w2n hdr.elf64_machine)))
-  ;  STRCAT"\t"  (STRCAT"Entry point: " (ARB hdr.elf64_entry))
-  ;  STRCAT"\t"  (STRCAT"Flags: " (ARB hdr.elf64_flags))
+  ;  STRCAT"\t"  (STRCAT"Entry point: " ((num_to_dec_string o w2n hdr.elf64_entry)))
+  ;  STRCAT"\t"  (STRCAT"Flags: " ((num_to_dec_string o w2n hdr.elf64_flags)))
   ;  STRCAT"\t"  (STRCAT"Entries in program header table: " (ARB hdr.elf64_phnum))
   ;  STRCAT"\t"  (STRCAT"Entries in section header table: " (ARB hdr.elf64_shnum))
   ]))`;

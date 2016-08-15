@@ -423,7 +423,7 @@ assert {ocaml} split_string_null : (let afterSplit = split_string_on_char (toStr
 (* [find_substring sub s] returns the index at which *)
 val find_substring : string -> string -> maybe natural
 declare ocaml    target_rep function find_substring = `Ml_bindings.find_substring`
-declare hol      target_rep function find_substring = `ARB`
+declare hol      target_rep function find_substring = `Elf_Local$find_substring`
 declare isabelle target_rep function find_substring = `undefined`
 declare coq      target_rep function find_substring = `find_substring`
 
@@ -438,7 +438,7 @@ val string_suffix : natural -> string -> maybe string
 
 declare ocaml    target_rep function string_suffix = `Ml_bindings.string_suffix`
 declare isabelle target_rep function string_suffix = `Elf_Types_Local.string_suffix`
-declare hol      target_rep function string_suffix = `ARB` (* XXX: add custom binding *)
+declare hol      target_rep function string_suffix = `Elf_Local$string_suffix` (* XXX: add custom binding *)
 declare coq      target_rep function string_suffix = `string_suffix`
   
 val nat_length : forall 'a. list 'a -> nat

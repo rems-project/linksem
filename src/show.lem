@@ -9,6 +9,8 @@ open import Num
 open import String
 open import String_extra
 
+open import {hol} `ASCIInumbersTheory`
+
 class (Show 'a)
   val show : 'a -> string
 end
@@ -108,7 +110,7 @@ val string_of_nat : nat -> string
   *)
 declare ocaml    target_rep function string_of_nat = `Pervasives.string_of_int`
 declare isabelle target_rep function string_of_nat = `LemExtraDefs.nat_to_string`
-declare hol      target_rep function string_of_nat = `ARB`
+declare hol      target_rep function string_of_nat = `num_to_dec_string`
 
 instance (Show nat)
 	let show = string_of_nat
@@ -122,7 +124,7 @@ val string_of_integer : integer -> string
 
 declare ocaml    target_rep function string_of_integer = `Nat_big_num.to_string`
 declare isabelle target_rep function string_of_integer = `LemExtraDefs.int_to_string`
-declare hol      target_rep function string_of_integer = `ARB`
+declare hol      target_rep function string_of_integer = `num_from_dec_string`
 
 instance (Show integer)
   let show = string_of_integer

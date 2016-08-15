@@ -110,7 +110,7 @@ val _ = Define `
 (*val get_string_at : natural -> string_table -> error string*)
 val _ = Define `
  (get_string_at index tbl=  
- ((case ARB index (get_base_string tbl) of
+ ((case Elf_Local$string_suffix index (get_base_string tbl) of
       NONE     => Fail "get_string_at: index out of range"
     | SOME suffix =>
       let delim = (get_delimiting_character tbl) in
@@ -129,7 +129,7 @@ val _ = Define `
 val _ = Define `
  (find_string s t=    
   ((case t of
-        Strings(delim, base) => ARB ( STRCAT s (IMPLODE [delim])) base
+        Strings(delim, base) => Elf_Local$find_substring ( STRCAT s (IMPLODE [delim])) base
     )))`;
 
 

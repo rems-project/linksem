@@ -449,12 +449,12 @@ val _ = type_abbrev( "symtab_print_bundle" , ``:
 val _ = Define `
  (string_of_elf32_symbol_table_entry entry=  
  (unlines [
-     STRCAT"\t"   (STRCAT"Name: " (ARB entry.elf32_st_name))
-  ;  STRCAT"\t"  (STRCAT"Value: " (ARB entry.elf32_st_value))
-  ;  STRCAT"\t"   (STRCAT"Size: " (ARB entry.elf32_st_size))
-  ;  STRCAT"\t"   (STRCAT"Info: " (ARB entry.elf32_st_info))
-  ;  STRCAT"\t"  (STRCAT"Other: " (ARB entry.elf32_st_other))
-  ;  STRCAT"\t"  (STRCAT"Shndx: " (ARB entry.elf32_st_shndx))
+     STRCAT"\t"   (STRCAT"Name: " ((num_to_dec_string o w2n entry.elf32_st_name)))
+  ;  STRCAT"\t"  (STRCAT"Value: " ((num_to_dec_string o w2n entry.elf32_st_value)))
+  ;  STRCAT"\t"   (STRCAT"Size: " ((num_to_dec_string o w2n entry.elf32_st_size)))
+  ;  STRCAT"\t"   (STRCAT"Info: " ((num_to_dec_string o w2n entry.elf32_st_info)))
+  ;  STRCAT"\t"  (STRCAT"Other: " ((num_to_dec_string o w2n entry.elf32_st_other)))
+  ;  STRCAT"\t"  (STRCAT"Shndx: " ((num_to_dec_string o w2n entry.elf32_st_shndx)))
   ]))`;
 
   
@@ -465,12 +465,12 @@ val _ = Define `
 val _ = Define `
  (string_of_elf64_symbol_table_entry entry=  
  (unlines [
-     STRCAT"\t"   (STRCAT"Name: " (ARB entry.elf64_st_name))
-  ;  STRCAT"\t"   (STRCAT"Info: " (ARB entry.elf64_st_info))
-  ;  STRCAT"\t"  (STRCAT"Other: " (ARB entry.elf64_st_other))
+     STRCAT"\t"   (STRCAT"Name: " ((num_to_dec_string o w2n entry.elf64_st_name)))
+  ;  STRCAT"\t"   (STRCAT"Info: " ((num_to_dec_string o w2n entry.elf64_st_info)))
+  ;  STRCAT"\t"  (STRCAT"Other: " ((num_to_dec_string o w2n entry.elf64_st_other)))
   ;  STRCAT"\t"  (STRCAT"Shndx: " (ARB entry.elf64_st_shndx))
-  ;  STRCAT"\t"  (STRCAT"Value: " (ARB entry.elf64_st_value))
-  ;  STRCAT"\t"   (STRCAT"Size: " (ARB entry.elf64_st_size))
+  ;  STRCAT"\t"  (STRCAT"Value: " ((num_to_dec_string o w2n entry.elf64_st_value)))
+  ;  STRCAT"\t"   (STRCAT"Size: " ((num_to_dec_string o w2n entry.elf64_st_size)))
   ]))`;
 
 

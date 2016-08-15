@@ -126,7 +126,7 @@ val _ = Define `
                             (case extended_filenames of 
                                 NONE => failwith "corrupt archive: reference to non-existent extended filenames"
                               | SOME s => 
-                                let table_suffix = ((case ARB index s of SOME x => x | NONE => "" )) in
+                                let table_suffix = ((case Elf_Local$string_suffix index s of SOME x => x | NONE => "" )) in
                                 let index = ((case string_index_of #"/" table_suffix of SOME x => x | NONE => (I (STRLEN table_suffix)) )) in 
                                 let ext_name = ((case string_prefix index table_suffix of SOME x => x | NONE => "" )) in
                                   (*let _ = Missing_pervasives.errln ("Got ext_name " ^ ext_name) in*)
@@ -137,7 +137,7 @@ val _ = Define `
                           (case extended_filenames of 
                               NONE => failwith "corrupt archive: reference to non-existent extended filenames"
                             | SOME s => 
-                              let table_suffix = ((case ARB index s of SOME x => x | NONE => "" )) in
+                              let table_suffix = ((case Elf_Local$string_suffix index s of SOME x => x | NONE => "" )) in
                               let index = ((case string_index_of #"/" table_suffix of SOME x => x | NONE => (I (STRLEN table_suffix)) )) in 
                               let ext_name = ((case string_prefix index table_suffix of SOME x => x | NONE => "" )) in
                                 (*let _ = Missing_pervasives.errln ("Got ext_name " ^ ext_name) in*)

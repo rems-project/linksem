@@ -100,7 +100,7 @@ val _ = Define `
 val _ = Define `
 (instance_Show_Show_Elf_types_native_uint_unsigned_char_dict= (<|
 
-  show_method := ARB|>))`;
+  show_method := (num_to_dec_string o w2n)|>))`;
 
 
 (** ELF address type:
@@ -151,7 +151,7 @@ val _ = Define `
 val _ = Define `
 (instance_Show_Show_Elf_types_native_uint_elf32_addr_dict= (<|
 
-  show_method := ARB|>))`;
+  show_method := (num_to_dec_string o w2n)|>))`;
 
 
 (** elf64_addr type and bindings *)
@@ -209,7 +209,7 @@ val _ = Define `
 val _ = Define `
 (instance_Show_Show_Elf_types_native_uint_elf64_addr_dict= (<|
 
-  show_method := ARB|>))`;
+  show_method := (num_to_dec_string o w2n)|>))`;
 
 
 (** ELF half word type:
@@ -258,7 +258,7 @@ val _ = Define `
 val _ = Define `
 (instance_Show_Show_Elf_types_native_uint_elf32_half_dict= (<|
 
-  show_method := ARB|>))`;
+  show_method := (num_to_dec_string o w2n)|>))`;
 
 
 (** elf64_half type and bindings *)
@@ -367,7 +367,7 @@ val _ = Define `
 val _ = Define `
 (instance_Show_Show_Elf_types_native_uint_elf32_off_dict= (<|
 
-  show_method := ARB|>))`;
+  show_method := (num_to_dec_string o w2n)|>))`;
 
 
 (** elf64_off type and bindings *)
@@ -415,7 +415,7 @@ val _ = Define `
 val _ = Define `
 (instance_Show_Show_Elf_types_native_uint_elf64_off_dict= (<|
 
-  show_method := ARB|>))`;
+  show_method := (num_to_dec_string o w2n)|>))`;
 
 
 (** ELF word type:
@@ -472,7 +472,7 @@ val _ = Define `
 val _ = Define `
 (instance_Show_Show_Elf_types_native_uint_elf32_word_dict= (<|
 
-  show_method := ARB|>))`;
+  show_method := (num_to_dec_string o w2n)|>))`;
 
 
 (** elf64_word type and bindings *)
@@ -522,7 +522,7 @@ val _ = Define `
 val _ = Define `
 (instance_Show_Show_Elf_types_native_uint_elf64_word_dict= (<|
 
-  show_method := ARB|>))`;
+  show_method := (num_to_dec_string o w2n)|>))`;
 
 
 (** ELF signed word type:
@@ -569,7 +569,7 @@ val _ = Define `
 val _ = Define `
 (instance_Show_Show_Elf_types_native_uint_elf32_sword_dict= (<|
 
-  show_method := ARB|>))`;
+  show_method := (num_to_dec_string o w2i)|>))`;
 
 
 (** elf64_sword type and bindings *)
@@ -613,7 +613,7 @@ val _ = Define `
 val _ = Define `
 (instance_Show_Show_Elf_types_native_uint_elf64_sword_dict= (<|
 
-  show_method := ARB|>))`;
+  show_method := (num_to_dec_string o w2i)|>))`;
 
 
 (** ELF extra wide word type:
@@ -673,7 +673,7 @@ val _ = Define `
 val _ = Define `
 (instance_Show_Show_Elf_types_native_uint_elf64_xword_dict= (<|
 
-  show_method := ARB|>))`;
+  show_method := (num_to_dec_string o w2n)|>))`;
 
 
 (** ELF signed extra wide word type:
@@ -721,7 +721,7 @@ val _ = Define `
 val _ = Define `
 (instance_Show_Show_Elf_types_native_uint_elf64_sxword_dict= (<|
 
-  show_method := ARB|>))`;
+  show_method := (num_to_dec_string o w2i)|>))`;
 
 
 (*val natural_land : natural -> natural -> natural*)

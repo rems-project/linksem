@@ -364,13 +364,13 @@ val _ = Define `
  (string_of_elf32_program_header_table_entry os proc entry=	
  (unlines [
 		 STRCAT"\t"  (STRCAT"Segment type: " (string_of_segment_type os proc (w2n entry.elf32_p_type)))
-	;  STRCAT"\t"  (STRCAT"Offset: " (ARB entry.elf32_p_offset))
-	;  STRCAT"\t"  (STRCAT"Virtual address: " (ARB entry.elf32_p_vaddr))
-	;  STRCAT"\t"  (STRCAT"Physical address: " (ARB entry.elf32_p_paddr))
-	;  STRCAT"\t"  (STRCAT"Segment size (bytes): " (ARB entry.elf32_p_filesz))
-	;  STRCAT"\t"  (STRCAT"Segment size in memory image (bytes): " (ARB entry.elf32_p_memsz))
-	;  STRCAT"\t"  (STRCAT"Flags: " (ARB entry.elf32_p_flags))
-  ;  STRCAT"\t"  (STRCAT"Alignment: " (ARB entry.elf32_p_align))
+	;  STRCAT"\t"  (STRCAT"Offset: " ((num_to_dec_string o w2n entry.elf32_p_offset)))
+	;  STRCAT"\t"  (STRCAT"Virtual address: " ((num_to_dec_string o w2n entry.elf32_p_vaddr)))
+	;  STRCAT"\t"  (STRCAT"Physical address: " ((num_to_dec_string o w2n entry.elf32_p_paddr)))
+	;  STRCAT"\t"  (STRCAT"Segment size (bytes): " ((num_to_dec_string o w2n entry.elf32_p_filesz)))
+	;  STRCAT"\t"  (STRCAT"Segment size in memory image (bytes): " ((num_to_dec_string o w2n entry.elf32_p_memsz)))
+	;  STRCAT"\t"  (STRCAT"Flags: " ((num_to_dec_string o w2n entry.elf32_p_flags)))
+  ;  STRCAT"\t"  (STRCAT"Alignment: " ((num_to_dec_string o w2n entry.elf32_p_align)))
 	]))`;
 
 
@@ -383,13 +383,13 @@ val _ = Define `
  (string_of_elf64_program_header_table_entry os proc entry=  
  (unlines [
      STRCAT"\t"  (STRCAT"Segment type: " (string_of_segment_type os proc (w2n entry.elf64_p_type)))
-  ;  STRCAT"\t"  (STRCAT"Offset: " (ARB entry.elf64_p_offset))
-  ;  STRCAT"\t"  (STRCAT"Virtual address: " (ARB entry.elf64_p_vaddr))
-  ;  STRCAT"\t"  (STRCAT"Physical address: " (ARB entry.elf64_p_paddr))
-  ;  STRCAT"\t"  (STRCAT"Segment size (bytes): " (ARB entry.elf64_p_filesz))
-  ;  STRCAT"\t"  (STRCAT"Segment size in memory image (bytes): " (ARB entry.elf64_p_memsz))
-  ;  STRCAT"\t"  (STRCAT"Flags: " (ARB entry.elf64_p_flags))
-  ;  STRCAT"\t"  (STRCAT"Alignment: " (ARB entry.elf64_p_align))
+  ;  STRCAT"\t"  (STRCAT"Offset: " ((num_to_dec_string o w2n entry.elf64_p_offset)))
+  ;  STRCAT"\t"  (STRCAT"Virtual address: " ((num_to_dec_string o w2n entry.elf64_p_vaddr)))
+  ;  STRCAT"\t"  (STRCAT"Physical address: " ((num_to_dec_string o w2n entry.elf64_p_paddr)))
+  ;  STRCAT"\t"  (STRCAT"Segment size (bytes): " ((num_to_dec_string o w2n entry.elf64_p_filesz)))
+  ;  STRCAT"\t"  (STRCAT"Segment size in memory image (bytes): " ((num_to_dec_string o w2n entry.elf64_p_memsz)))
+  ;  STRCAT"\t"  (STRCAT"Flags: " ((num_to_dec_string o w2n entry.elf64_p_flags)))
+  ;  STRCAT"\t"  (STRCAT"Alignment: " ((num_to_dec_string o w2n entry.elf64_p_align)))
   ]))`;
 
 
