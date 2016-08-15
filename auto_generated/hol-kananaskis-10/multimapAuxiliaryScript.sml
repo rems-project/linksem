@@ -17,45 +17,65 @@ val _ = new_theory "multimapAuxiliary"
 (*                                                  *)
 (****************************************************)
 
-val _ = lem_assertion "lowest_simple" ``findLowestEquiv 
-  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv( 4) (<) ({ ( 1, 0); ( 2, 0); ( 3, 0); ( 4, 0); ( 5, 0); ( 6, 0) } : (num # num) set) NONE = SOME ( 3, 0)``;
+val _ = lem_assertion "lowest_simple" ``findLowestKVWithKEquivTo 
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(I 4) testEquiv 
+({ (I 1,I 0); (I 2,I 0); (I 3,I 0); (I 4,I 0); (I 5,I 0); (I 6,I 0) } : (num # num) set) NONE = SOME (I 3,I 0)``;
 
-val _ = lem_assertion "lowest_empty" ``findLowestEquiv 
-  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv( 4) (<) ({} : (num # num) set) NONE = NONE``;
+val _ = lem_assertion "lowest_kv" ``findLowestKVWithKEquivTo 
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(I 4) testEquiv 
+({ (I 1,I 0); (I 2,I 0); (I 3,I 0); (I 3,I 1); (I 4,I 0); (I 5,I 0); (I 6,I 0) } : (num # num) set) NONE = SOME (I 3,I 0)``;
 
-val _ = lem_assertion "lowest_onepast" ``findLowestEquiv 
-  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv( 4) (<) ({ ( 6, 0) } : (num # num) set) NONE = NONE``;
+val _ = lem_assertion "lowest_empty" ``findLowestKVWithKEquivTo 
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(I 4) testEquiv
+({} : (num # num) set) NONE = NONE``;
 
-val _ = lem_assertion "lowest_oneprev" ``findLowestEquiv 
-  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv( 4) (<) ({ ( 2, 0) } : (num # num) set) NONE = NONE``;
+val _ = lem_assertion "lowest_onepast" ``findLowestKVWithKEquivTo 
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(I 4) testEquiv
+({ (I 6,I 0) } : (num # num) set) NONE = NONE``;
 
-val _ = lem_assertion "highest_simple" ``findHighestEquiv 
-  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv( 4) (>) ({ ( 1, 0); ( 2, 0); ( 3, 0); ( 4, 0); ( 5, 0); ( 6, 0) } : (num # num) set) NONE = SOME ( 5, 0)``;
+val _ = lem_assertion "lowest_oneprev" ``findLowestKVWithKEquivTo 
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(I 4) testEquiv 
+({ (I 2,I 0) } : (num # num) set) NONE = NONE``;
 
-val _ = lem_assertion "highest_empty" ``findHighestEquiv 
-  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv( 4) (>) ({} : (num # num) set) NONE = NONE``;
+val _ = lem_assertion "highest_simple" ``findHighestKVWithKEquivTo 
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(I 4) testEquiv
+({ (I 1,I 0); (I 2,I 0); (I 3,I 0); (I 4,I 0); (I 5,I 0); (I 6,I 0) } : (num # num) set) NONE = SOME (I 5,I 0)``;
 
-val _ = lem_assertion "highest_onepast" ``findHighestEquiv 
-  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv( 4) (>) ({ ( 6, 0) } : (num # num) set) NONE = NONE``;
+val _ = lem_assertion "highest_kv" ``findHighestKVWithKEquivTo 
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(I 4) testEquiv
+({ (I 1,I 0); (I 2,I 0); (I 3,I 0); (I 4,I 0); (I 5,I 0); (I 5,I 1); (I 6,I 0) } : (num # num) set) NONE = SOME (I 5,I 1)``;
 
-val _ = lem_assertion "highest_oneprev" ``findHighestEquiv 
-  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv( 4) (>) ({ ( 2, 0) } : (num # num) set) NONE = NONE``;
+val _ = lem_assertion "highest_empty" ``findHighestKVWithKEquivTo 
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(I 4) testEquiv
+({} : (num # num) set) NONE = NONE``;
+
+val _ = lem_assertion "highest_onepast" ``findHighestKVWithKEquivTo 
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(I 4) testEquiv 
+({ (I 6,I 0) } : (num # num) set) NONE = NONE``;
+
+val _ = lem_assertion "highest_oneprev" ``findHighestKVWithKEquivTo 
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(I 4) testEquiv
+({ (I 2,I 0) } : (num # num) set) NONE = NONE``;
 
 val _ = lem_assertion "lookup_simple" ``lookupBy0 
-  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv( 4) ({ ( 1, 0); ( 2, 0); ( 3, 0); ( 4, 0); ( 5, 0); ( 6, 0) } : (num # num) set)
-= ([( 3, 0); ( 4, 0); ( 5, 0)] : (num # num) list)``;
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv(I 4) ({ (I 1,I 0); (I 2,I 0); (I 3,I 0); (I 4,I 0); (I 5,I 0); (I 6,I 0) } : (num # num) set)
+= ([(I 3,I 0); (I 4,I 0); (I 5,I 0)] : (num # num) list)``;
+
+val _ = lem_assertion "lookup_kv" ``lookupBy0 
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv(I 4) ({ (I 1,I 0); (I 2,I 0); (I 3,I 0); (I 4,I 0); (I 4,I 1); (I 5,I 0); (I 6,I 0) } : (num # num) set)
+= ([(I 3,I 0); (I 4,I 0); (I 4,I 1); (I 5,I 0)] : (num # num) list)``;
 
 val _ = lem_assertion "lookup_empty" ``lookupBy0 
-  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv( 4) ({} : (num # num) set) = ([]: (num # num) list)``;
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv(I 4) ({} : (num # num) set) = ([]: (num # num) list)``;
 
 val _ = lem_assertion "lookup_singleton" ``lookupBy0 
-  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv( 4) ({( 5, 0)} : (num # num) set) = ([( 5, 0)]: (num # num) list)``;
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv(I 4) ({(I 5,I 0)} : (num # num) set) = ([(I 5,I 0)]: (num # num) list)``;
 
 val _ = lem_assertion "lookup_onepast" ``lookupBy0 
-  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv( 4) ({ ( 6, 0) } : (num # num) set) = ([] : (num # num) list)``;
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv(I 4) ({ (I 6,I 0) } : (num # num) set) = ([] : (num # num) list)``;
 
 val _ = lem_assertion "lookup_oneprev" ``lookupBy0 
-  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv( 4) ({ ( 2, 0) } : (num # num) set) = ([] : (num # num) list)``;
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv(I 4) ({ (I 2,I 0) } : (num # num) set) = ([] : (num # num) list)``;
 
 
 (****************************************************)
@@ -64,22 +84,22 @@ val _ = lem_assertion "lookup_oneprev" ``lookupBy0
 (*                                                  *)
 (****************************************************)
 
-(* val gst = Defn.tgoal_no_defn (findLowestEquiv_def, findLowestEquiv_ind) *)
-val (findLowestEquiv_rw, findLowestEquiv_ind_rw) =
-  Defn.tprove_no_defn ((findLowestEquiv_def, findLowestEquiv_ind),
-    cheat
+(* val gst = Defn.tgoal_no_defn (findLowestKVWithKEquivTo_def, findLowestKVWithKEquivTo_ind) *)
+val (findLowestKVWithKEquivTo_rw, findLowestKVWithKEquivTo_ind_rw) =
+  Defn.tprove_no_defn ((findLowestKVWithKEquivTo_def, findLowestKVWithKEquivTo_ind),
+    (* the termination proof *)
   )
-val findLowestEquiv_rw = save_thm ("findLowestEquiv_rw", findLowestEquiv_rw);
-val findLowestEquiv_ind_rw = save_thm ("findLowestEquiv_ind_rw", findLowestEquiv_ind_rw);
+val findLowestKVWithKEquivTo_rw = save_thm ("findLowestKVWithKEquivTo_rw", findLowestKVWithKEquivTo_rw);
+val findLowestKVWithKEquivTo_ind_rw = save_thm ("findLowestKVWithKEquivTo_ind_rw", findLowestKVWithKEquivTo_ind_rw);
 
 
-(* val gst = Defn.tgoal_no_defn (findHighestEquiv_def, findHighestEquiv_ind) *)
-val (findHighestEquiv_rw, findHighestEquiv_ind_rw) =
-  Defn.tprove_no_defn ((findHighestEquiv_def, findHighestEquiv_ind),
-    cheat
+(* val gst = Defn.tgoal_no_defn (findHighestKVWithKEquivTo_def, findHighestKVWithKEquivTo_ind) *)
+val (findHighestKVWithKEquivTo_rw, findHighestKVWithKEquivTo_ind_rw) =
+  Defn.tprove_no_defn ((findHighestKVWithKEquivTo_def, findHighestKVWithKEquivTo_ind),
+    (* the termination proof *)
   )
-val findHighestEquiv_rw = save_thm ("findHighestEquiv_rw", findHighestEquiv_rw);
-val findHighestEquiv_ind_rw = save_thm ("findHighestEquiv_ind_rw", findHighestEquiv_ind_rw);
+val findHighestKVWithKEquivTo_rw = save_thm ("findHighestKVWithKEquivTo_rw", findHighestKVWithKEquivTo_rw);
+val findHighestKVWithKEquivTo_ind_rw = save_thm ("findHighestKVWithKEquivTo_ind_rw", findHighestKVWithKEquivTo_ind_rw);
 
 
 

@@ -22,6 +22,9 @@ val _ = new_theory "gnu_ext_abi"
 (*open import Missing_pervasives*)
 
 (*open import Byte_sequence*)
+
+(* open import Abis *)
+
 (*open import Elf_file*)
 (*open import Elf_header*)
 (*open import Elf_interpreted_segment*)
@@ -34,40 +37,47 @@ val _ = new_theory "gnu_ext_abi"
 (*open import Elf_types_native_uint*)
 (*open import Memory_image*)
 
+(** Optional, like [stt_func] but always points to a function or piece of
+  * executable code that takes no arguments and returns a function pointer.
+  *)
+val _ = Define `
+ (stt_gnu_ifunc : num= (I 10))`;
+
+
 (*val gnu_extend: forall 'abifeature. abi 'abifeature -> abi 'abifeature*)
 val _ = Define `
- (gnu_extend a =   
- (<| is_valid_elf_header := a.is_valid_elf_header
+ (gnu_extend a=   
+  (<| is_valid_elf_header := (a.is_valid_elf_header)
     ; make_elf_header     :=            
 ( (*  t -> entry -> shoff -> phoff -> phnum -> shnum -> shstrndx -> hdr *)\ t .  \ entry .  \ shoff .  \ phoff .  \ phnum .  \ shnum .  \ shstrndx . 
             let unmod = (a.make_elf_header t entry shoff phoff phnum shnum shstrndx)
             in
-              <| elf64_ident    := (case unmod.elf64_ident of 
-                i0  ::  i1  ::  i2  ::  i3   ::  i4   ::  i5   ::  i6   ::  
-                _   ::  _   ::  i9  ::  i10  ::  i11  ::  i12  ::  i13  ::  i14  ::  i15  ::  []
+              <| elf64_ident    := ((case unmod.elf64_ident of 
+                i0 :: i1 :: i2 :: i3  :: i4  :: i5  :: i6  :: 
+                _  :: _  :: i9 :: i10 :: i11 :: i12 :: i13 :: i14 :: i15 :: []
                     => [i0; i1; i2; i3; i4; i5; i6;
                         (n2w : num -> 8 word) elf_osabi_gnu;
-                        (n2w : num -> 8 word)( 1);
+                        (n2w : num -> 8 word)(I 1);
                         i9; i10; i11; i12; i13; i14; i15]
-                )
+                ))
                ; elf64_type     := ((n2w : num -> 16 word) t)
-               ; elf64_machine  := unmod.elf64_machine
-               ; elf64_version  := unmod.elf64_version
-               ; elf64_entry    := unmod.elf64_entry
+               ; elf64_machine  := (unmod.elf64_machine)
+               ; elf64_version  := (unmod.elf64_version)
+               ; elf64_entry    := (unmod.elf64_entry)
                ; elf64_phoff    := ((n2w : num -> 64 word) phoff)
                ; elf64_shoff    := ((n2w : num -> 64 word) shoff)
-               ; elf64_flags    := unmod.elf64_flags
-               ; elf64_ehsize   := unmod.elf64_ehsize
-               ; elf64_phentsize:= unmod.elf64_phentsize
+               ; elf64_flags    := (unmod.elf64_flags)
+               ; elf64_ehsize   := (unmod.elf64_ehsize)
+               ; elf64_phentsize:= (unmod.elf64_phentsize)
                ; elf64_phnum    := ((n2w : num -> 16 word) phnum)
-               ; elf64_shentsize:= unmod.elf64_shentsize
+               ; elf64_shentsize:= (unmod.elf64_shentsize)
                ; elf64_shnum    := ((n2w : num -> 16 word) shnum)
                ; elf64_shstrndx := ((n2w : num -> 16 word) shstrndx)
                |>)
-    ; reloc               := a.reloc
+    ; reloc               := (a.reloc)
     ; section_is_special  := (\ isec .  (\ img .  (
                                 a.section_is_special isec img
-                                \/ (missing_pervasives$string_prefix ( (STRLEN ".gnu.warning")) isec.elf64_section_name_as_string
+                                \/ (missing_pervasives$string_prefix (I (STRLEN ".gnu.warning")) isec.elf64_section_name_as_string
                                  = SOME(".gnu.warning"))
         (* FIXME: This is a slight abuse. The GNU linker's treatment of 
          * ".gnu.warning.*" section is not really a function of the output
@@ -85,11 +95,45 @@ val _ = Define `
          * is *not* GNU contains a .gnu.warning.* section? That would be a fair
          * test about whether looking at the input ABI is worth doing. *)
                             )))
-    ; section_is_large    := a.section_is_large
-    ; maxpagesize         := a.maxpagesize
-    ; minpagesize         := a.minpagesize
-    ; commonpagesize      := a.commonpagesize
-    ; symbol_is_generated_by_linker := a.symbol_is_generated_by_linker
+    ; section_is_large    := (a.section_is_large)
+    ; maxpagesize         := (a.maxpagesize)
+    ; minpagesize         := (a.minpagesize)
+    ; commonpagesize      := (a.commonpagesize)
+    ; symbol_is_generated_by_linker := (a.symbol_is_generated_by_linker)
+    ; make_phdrs          := (a.make_phdrs) (* FIXME: also make the GNU phdrs! *)
+    ; max_phnum           :=(I 1 + a.max_phnum) (* FIXME: GNU_RELRO, GNU_STACK; what else? *)
+    ; guess_entry_point   := (a.guess_entry_point)
+    ; pad_data            := (a.pad_data)
+    ; pad_code            := (a.pad_code)
+    ; generate_support    := (\ input_fnames_and_imgs .  
+        let vanilla_support_img = (a.generate_support input_fnames_and_imgs) in
+        (* also generate .note.gnu.build-id *)
+        let new_by_range = ((SOME(".note.gnu.build-id", (I 0,I 24)), FileFeature(ElfSection(I 4 (* HACK: calculate this *), 
+          <| elf64_section_name :=(I 0) (* ignored *)
+           ; elf64_section_type := sht_note
+           ; elf64_section_flags := shf_alloc
+           ; elf64_section_addr :=(I 0) (* ignored -- covered by element *)
+           ; elf64_section_offset :=(I 0) (* ignored -- will be replaced when file offsets are assigned *)
+           ; elf64_section_size :=(I 24) (* ignored? NO, we use it in linker_script to avoid plumbing through the element record *)
+           ; elf64_section_link :=(I 0)
+           ; elf64_section_info :=(I 0)
+           ; elf64_section_align :=(I 4)
+           ; elf64_section_entsize :=(I 0)
+           ; elf64_section_body := byte_sequence$empty (* ignored *)
+           ; elf64_section_name_as_string := ".note.gnu.build-id"
+           |>
+        ))) INSERT vanilla_support_img.by_range)
+        in
+        <|  elements := ((vanilla_support_img.elements) |+ (".note.gnu.build-id", <|
+                startpos := NONE
+           ;    length1 := (SOME(I 24))
+           ;    contents := ([])
+           |>))
+         ;   by_tag := (by_tag_from_by_range new_by_range)
+         ;   by_range := new_by_range
+         |>)
+    ; concretise_support  := (a.concretise_support)
+    ; get_reloc_symaddr   := (a.get_reloc_symaddr)
     |>))`;
 
 val _ = export_theory()

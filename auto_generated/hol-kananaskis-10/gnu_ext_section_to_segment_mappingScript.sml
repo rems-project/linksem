@@ -89,36 +89,36 @@ val _ = new_theory "gnu_ext_section_to_segment_mapping"
   
 (*val elf32_section_flags : elf32_section_header_table_entry -> natural -> bool*)
 val _ = Define `
- (elf32_section_flags0 sec_hdr typ = (~ ((word_and sec_hdr.elf32_sh_flags ((n2w : num -> 32 word) typ)) = ((n2w : num -> 32 word)( 0)))))`;
+ (elf32_section_flags0 sec_hdr typ=  (~ ((word_and sec_hdr.elf32_sh_flags ((n2w : num -> 32 word) typ)) = ((n2w : num -> 32 word)(I 0)))))`;
 
     
 (*val elf64_section_flags : elf64_section_header_table_entry -> natural -> bool*)
 val _ = Define `
- (elf64_section_flags0 sec_hdr typ = (~ ((word_and sec_hdr.elf64_sh_flags ((n2w : num -> 64 word) typ)) = ((n2w : num -> 64 word)( 0)))))`;
+ (elf64_section_flags0 sec_hdr typ=  (~ ((word_and sec_hdr.elf64_sh_flags ((n2w : num -> 64 word) typ)) = ((n2w : num -> 64 word)(I 0)))))`;
 
     
 (*val elf32_section_of_type : elf32_section_header_table_entry -> natural -> bool*)
 val _ = Define `
- (elf32_section_of_type sec_hdr typ =  
-(sec_hdr.elf32_sh_type = (n2w : num -> 32 word) typ))`;
+ (elf32_section_of_type sec_hdr typ=  
+ (sec_hdr.elf32_sh_type = (n2w : num -> 32 word) typ))`;
 
   
 (*val elf64_section_of_type : elf64_section_header_table_entry -> natural -> bool*)
 val _ = Define `
- (elf64_section_of_type sec_hdr typ =  
-(sec_hdr.elf64_sh_type = (n2w : num -> 32 word) typ))`;
+ (elf64_section_of_type sec_hdr typ=  
+ (sec_hdr.elf64_sh_type = (n2w : num -> 32 word) typ))`;
 
   
 (*val elf32_segment_of_type : elf32_program_header_table_entry -> natural -> bool*)
 val _ = Define `
- (elf32_segment_of_type segment typ =  
-(segment.elf32_p_type = (n2w : num -> 32 word) typ))`;
+ (elf32_segment_of_type segment typ=  
+ (segment.elf32_p_type = (n2w : num -> 32 word) typ))`;
 
   
 (*val elf64_segment_of_type : elf64_program_header_table_entry -> natural -> bool*)
 val _ = Define `
- (elf64_segment_of_type segment typ =  
-(segment.elf64_p_type = (n2w : num -> 32 word) typ))`;
+ (elf64_segment_of_type segment typ=  
+ (segment.elf64_p_type = (n2w : num -> 32 word) typ))`;
 
 
 (** Only PT_LOAD, PT_GNU_RELRO and PT_TLS segments can contain SHF_TLS sections
@@ -126,8 +126,8 @@ val _ = Define `
   *)
 (*val elf32_section_in_segment1 : elf32_section_header_table_entry -> elf32_program_header_table_entry -> bool*)
 val _ = Define `
- (elf32_section_in_segment1 sec_hdr segment =  
-((elf32_section_flags0 sec_hdr shf_tls /\
+ (elf32_section_in_segment1 sec_hdr segment=  
+ ((elf32_section_flags0 sec_hdr shf_tls /\
   (elf32_segment_of_type segment elf_pt_tls \/    
 (elf32_segment_of_type segment elf_pt_gnu_relro \/
     elf32_segment_of_type segment elf_pt_load))) \/
@@ -138,8 +138,8 @@ val _ = Define `
   
 (*val elf64_section_in_segment1 : elf64_section_header_table_entry -> elf64_program_header_table_entry -> bool*)
 val _ = Define `
- (elf64_section_in_segment1 sec_hdr segment =  
-((elf64_section_flags0 sec_hdr shf_tls /\
+ (elf64_section_in_segment1 sec_hdr segment=  
+ ((elf64_section_flags0 sec_hdr shf_tls /\
   (elf64_segment_of_type segment elf_pt_tls \/    
 (elf64_segment_of_type segment elf_pt_gnu_relro \/
     elf64_segment_of_type segment elf_pt_load))) \/
@@ -152,8 +152,8 @@ val _ = Define `
 
 (*val elf32_section_in_segment2 : elf32_section_header_table_entry -> elf32_program_header_table_entry -> bool*)
 val _ = Define `
- (elf32_section_in_segment2 sec_hdr segment =  
-(~ ((~ (elf32_section_flags0 sec_hdr shf_alloc)) /\
+ (elf32_section_in_segment2 sec_hdr segment=  
+ (~ ((~ (elf32_section_flags0 sec_hdr shf_alloc)) /\
        (elf32_segment_of_type segment elf_pt_load \/        
 (elf32_segment_of_type segment elf_pt_dynamic \/        
 (elf32_segment_of_type segment elf_pt_gnu_eh_frame \/        
@@ -163,8 +163,8 @@ val _ = Define `
 
 (*val elf64_section_in_segment2 : elf64_section_header_table_entry -> elf64_program_header_table_entry -> bool*)
 val _ = Define `
- (elf64_section_in_segment2 sec_hdr segment =  
-(~ ((~ (elf64_section_flags0 sec_hdr shf_alloc)) /\
+ (elf64_section_in_segment2 sec_hdr segment=  
+ (~ ((~ (elf64_section_flags0 sec_hdr shf_alloc)) /\
        (elf64_segment_of_type segment elf_pt_load \/        
 (elf64_segment_of_type segment elf_pt_dynamic \/        
 (elf64_segment_of_type segment elf_pt_gnu_eh_frame \/        
@@ -179,24 +179,24 @@ val _ = Define `
 
 (*val elf32_sect_size : elf32_header -> elf32_section_header_table_entry -> elf32_program_header_table_entry -> natural*)
 val _ = Define `
- (elf32_sect_size hdr sec_hdr segment =  
-(if is_elf32_tbss_special sec_hdr segment then  0
+ (elf32_sect_size hdr sec_hdr segment=  
+ (if is_elf32_tbss_special sec_hdr segment then I 0
   else
     w2n (hdr.elf32_shentsize)))`;
 
   
 (*val elf64_sect_size : elf64_header -> elf64_section_header_table_entry -> elf64_program_header_table_entry -> natural*)
 val _ = Define `
- (elf64_sect_size hdr sec_hdr segment =  
-(if is_elf64_tbss_special sec_hdr segment then  0
+ (elf64_sect_size hdr sec_hdr segment=  
+ (if is_elf64_tbss_special sec_hdr segment then I 0
   else
     w2n (hdr.elf64_shentsize)))`;
 
     
 (*val elf32_section_in_segment3 : elf32_header -> elf32_section_header_table_entry -> elf32_program_header_table_entry -> bool*)
 val _ = Define `
- (elf32_section_in_segment3 hdr sec_hdr segment =  
-(let sec_off = (int_of_num (w2n  sec_hdr.elf32_sh_offset)) in
+ (elf32_section_in_segment3 hdr sec_hdr segment=  
+ (let sec_off = (int_of_num (w2n  sec_hdr.elf32_sh_offset)) in
   let seg_off = (int_of_num (w2n  segment.elf32_p_offset)) in
   let seg_fsz = (int_of_num (w2n segment.elf32_p_filesz)) in
   let sec_siz = (int_of_num (elf32_sect_size hdr sec_hdr segment)) in
@@ -208,8 +208,8 @@ val _ = Define `
   
 (*val elf64_section_in_segment3 : elf64_header -> elf64_section_header_table_entry -> elf64_program_header_table_entry -> bool*)
 val _ = Define `
- (elf64_section_in_segment3 hdr sec_hdr segment =  
-(let sec_off = (int_of_num (w2n   sec_hdr.elf64_sh_offset)) in
+ (elf64_section_in_segment3 hdr sec_hdr segment=  
+ (let sec_off = (int_of_num (w2n   sec_hdr.elf64_sh_offset)) in
   let seg_off = (int_of_num (w2n   segment.elf64_p_offset)) in
   let seg_fsz = (int_of_num (w2n segment.elf64_p_filesz)) in
   let sec_siz = (int_of_num (elf64_sect_size hdr sec_hdr segment)) in
@@ -224,8 +224,8 @@ val _ = Define `
   
 (*val elf32_section_in_segment4 : elf32_header -> elf32_section_header_table_entry -> elf32_program_header_table_entry -> bool*)
 val _ = Define `
- (elf32_section_in_segment4 hdr sec_hdr segment =  
-(let sec_addr = (int_of_num (w2n sec_hdr.elf32_sh_addr)) in
+ (elf32_section_in_segment4 hdr sec_hdr segment=  
+ (let sec_addr = (int_of_num (w2n sec_hdr.elf32_sh_addr)) in
   let seg_vadr = (int_of_num (w2n segment.elf32_p_vaddr)) in
   let seg_mmsz = (int_of_num (w2n segment.elf32_p_memsz)) in
   let sec_size = (int_of_num (elf32_sect_size hdr sec_hdr segment)) in
@@ -237,8 +237,8 @@ val _ = Define `
   
 (*val elf64_section_in_segment4 : elf64_header -> elf64_section_header_table_entry -> elf64_program_header_table_entry -> bool*)
 val _ = Define `
- (elf64_section_in_segment4 hdr sec_hdr segment =  
-(let sec_addr = (int_of_num (w2n  sec_hdr.elf64_sh_addr)) in
+ (elf64_section_in_segment4 hdr sec_hdr segment=  
+ (let sec_addr = (int_of_num (w2n  sec_hdr.elf64_sh_addr)) in
   let seg_vadr = (int_of_num (w2n  segment.elf64_p_vaddr)) in
   let seg_mmsz = (int_of_num (w2n segment.elf64_p_memsz)) in
   let sec_size = (int_of_num (elf64_sect_size hdr sec_hdr segment)) in
@@ -252,8 +252,8 @@ val _ = Define `
 
 (*val elf32_section_in_segment5 : elf32_section_header_table_entry -> elf32_program_header_table_entry -> bool*)
 val _ = Define `
- (elf32_section_in_segment5 sec_hdr segment =  
-(let sec_siz = (int_of_num (w2n sec_hdr.elf32_sh_size)) in
+ (elf32_section_in_segment5 sec_hdr segment=  
+ (let sec_siz = (int_of_num (w2n sec_hdr.elf32_sh_size)) in
   let seg_msz = (int_of_num (w2n segment.elf32_p_memsz)) in
   let sec_off = (int_of_num (w2n  sec_hdr.elf32_sh_offset)) in
   let seg_off = (int_of_num (w2n  segment.elf32_p_offset)) in
@@ -272,8 +272,8 @@ val _ = Define `
 
 (*val elf64_section_in_segment5 : elf64_section_header_table_entry -> elf64_program_header_table_entry -> bool*)
 val _ = Define `
- (elf64_section_in_segment5 sec_hdr segment =  
-(let sec_siz = (int_of_num (w2n sec_hdr.elf64_sh_size)) in
+ (elf64_section_in_segment5 sec_hdr segment=  
+ (let sec_siz = (int_of_num (w2n sec_hdr.elf64_sh_size)) in
   let seg_msz = (int_of_num (w2n segment.elf64_p_memsz)) in
   let sec_off = (int_of_num (w2n   sec_hdr.elf64_sh_offset)) in
   let seg_off = (int_of_num (w2n   segment.elf64_p_offset)) in
@@ -295,8 +295,8 @@ val _ = Define `
 
 (*val elf32_section_in_segment : elf32_header -> elf32_section_header_table_entry -> elf32_program_header_table_entry -> bool*)
 val _ = Define `
- (elf32_section_in_segment hdr sec_hdr segment =  
-(elf32_section_in_segment1 sec_hdr segment /\
+ (elf32_section_in_segment hdr sec_hdr segment=  
+ (elf32_section_in_segment1 sec_hdr segment /\
   elf32_section_in_segment2 sec_hdr segment /\
   elf32_section_in_segment3 hdr sec_hdr segment /\
   elf32_section_in_segment4 hdr sec_hdr segment /\
@@ -305,8 +305,8 @@ val _ = Define `
     
 (*val elf64_section_in_segment : elf64_header -> elf64_section_header_table_entry -> elf64_program_header_table_entry -> bool*)
 val _ = Define `
- (elf64_section_in_segment hdr sec_hdr segment =  
-(elf64_section_in_segment1 sec_hdr segment /\
+ (elf64_section_in_segment hdr sec_hdr segment=  
+ (elf64_section_in_segment1 sec_hdr segment /\
   elf64_section_in_segment2 sec_hdr segment /\
   elf64_section_in_segment3 hdr sec_hdr segment /\
   elf64_section_in_segment4 hdr sec_hdr segment /\

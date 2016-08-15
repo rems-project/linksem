@@ -59,14 +59,15 @@ let as_maybe e =
   * successfully produces a list [count] elements long, where each element is
   * the value successfully returned by [action].
   *)
-val repeatM : forall 'a. natural -> error 'a -> error (list 'a)
-let rec repeatM count action =
+val repeatM'' : forall 'a. natural -> error 'a -> error (list 'a) -> error (list 'a)
+let rec repeatM'' count action acc =
   if count = 0 then
-    return []
+    acc
   else
-    action >>= fun head ->
-    repeatM (count - 1) action >>= fun tail ->
-    return (head::tail)
+    repeatM'' (count - 1) action (acc >>= fun tail -> action >>= fun head -> return (head::tail))
+
+val repeatM : forall 'a. natural -> error 'a -> error (list 'a)
+let repeatM count action = repeatM'' count action (return [])
 
 (** [repeatM' count seed action] is a variant of [repeatM] that acts like [repeatM]
   * apart from any successful result returns a tuple whose second component is [seed]
@@ -83,15 +84,15 @@ let rec repeatM' count seed action =
 	
 (** [mapM f xs] maps [f] across [xs], failing if [f] fails on any element of [xs].
   *)
-val mapM : forall 'a 'b. ('a -> error 'b) -> list 'a -> error (list 'b)
-let rec mapM f xs =
+val mapM' : forall 'a 'b. ('a -> error 'b) -> list 'a -> error (list 'b) -> error (list 'b)
+let rec mapM' f xs acc =
 	match xs with
-		| []    -> return []
-		| x::xs ->
-				f x >>= fun hd ->
-				mapM f xs >>= fun tl ->
-				return (hd::tl)
+		| []    -> acc
+		| x::xs -> mapM' f xs (acc >>= fun tl -> f x >>= fun hd -> return (hd::tl))
 	end
+
+val mapM : forall 'a 'b. ('a -> error 'b) -> list 'a -> error (list 'b)
+let mapM f xs = mapM' f xs (return [])
 
 (** [foldM f e xs] performs a monadic right fold of [f] across [xs] using [e]
   * as the base case.  Fails if any application of [f] fails.

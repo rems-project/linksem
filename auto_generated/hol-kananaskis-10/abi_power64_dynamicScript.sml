@@ -20,13 +20,13 @@ val _ = new_theory "abi_power64_dynamic"
 (*open import Elf_types_native_uint*)
 
 val _ = Define `
- (abi_power64_dt_ppcgot : num = ( 939524096 * 2))`;
+ (abi_power64_dt_ppcgot : num=  (I 939524096 *I 2))`;
  (* 0x70000000 *)
 
 (*val string_of_abi_power64_dynamic_tag : natural -> string*)
 val _ = Define `
- (string_of_abi_power64_dynamic_tag m =  
-(if m = abi_power64_dt_ppcgot then
+ (string_of_abi_power64_dynamic_tag m=  
+ (if m = abi_power64_dt_ppcgot then
     "PPC64_GLINK"
   else
     "Invalid Power64 dynamic tag"))`;
@@ -34,8 +34,8 @@ val _ = Define `
 
 (*val abi_power64_tag_correspondence_of_tag : natural -> error tag_correspondence*)
 val _ = Define `
- (abi_power64_tag_correspondence_of_tag m =  
-(if m = abi_power64_dt_ppcgot then
+ (abi_power64_tag_correspondence_of_tag m=  
+ (if m = abi_power64_dt_ppcgot then
     return C_Ptr
   else
     fail0 ("abi_power64_tag_correspondence_of_tag: invalid Power64 dynamic tag")))`;
@@ -43,8 +43,8 @@ val _ = Define `
     
 (*val abi_power64_elf64_value_of_elf64_dyn : elf64_dyn -> string_table -> error elf64_dyn_value*)
 val _ = Define `
- (abi_power64_elf64_value_of_elf64_dyn dyn stbl =  
-(let tag = (Num (ABS (w2i dyn.elf64_dyn_tag))) in
+ (abi_power64_elf64_value_of_elf64_dyn dyn stbl=  
+ (let tag = (Num (ABS (w2i dyn.elf64_dyn_tag))) in
     if tag = abi_power64_dt_ppcgot then
       (case dyn.elf64_dyn_d_un of
           D_Val     v => fail0 "abi_power64_elf64_value_of_elf64_dyn: PPC_GOT must be a PTR"

@@ -22,7 +22,7 @@ val _ = new_theory "abi_aarch64_section_header_table"
   * Section 4.3.
   *)
 val _ = Define `
- (sht_aarch64_attributes : num = (( 939524097 * 2) + 1))`;
+ (sht_aarch64_attributes : num=  ((I 939524097 *I 2) +I 1))`;
  (* 0x70000003 *)
 
 (** [string_of_aarch64_section_type m] produces a string based representation of

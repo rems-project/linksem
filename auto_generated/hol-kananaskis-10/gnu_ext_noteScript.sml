@@ -36,10 +36,10 @@ val _ = new_theory "gnu_ext_note"
   
 (*val group_elf32_words : endianness -> list byte -> error (list elf32_word)*)
  val group_elf32_words_defn = Hol_defn "group_elf32_words" `
- (group_elf32_words endian xs =  
-((case xs of
+ (group_elf32_words endian xs=  
+ ((case xs of
       []                 => return []
-    | x1  ::  x2  ::  x3  ::  x4  ::  xs =>
+    | x1::x2::x3::x4::xs =>
       let bs0 = (byte_sequence$from_byte_lists [[x1;x2;x3;x4]]) in
       read_elf32_word   endian bs0 >>= 
   (\p .  (case (p ) of
@@ -53,10 +53,10 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
   
 (*val group_elf64_words : endianness -> list byte -> error (list elf64_word)*)
  val group_elf64_words_defn = Hol_defn "group_elf64_words" `
- (group_elf64_words endian xs =  
-((case xs of
+ (group_elf64_words endian xs=  
+ ((case xs of
       []                 => return []
-    | x1  ::  x2  ::  x3  ::  x4  ::  xs =>
+    | x1::x2::x3::x4::xs =>
       let bs0 = (byte_sequence$from_byte_lists [[x1;x2;x3;x4]]) in
       read_elf64_word   endian bs0 >>= 
   (\p .  (case (p ) of
@@ -75,8 +75,8 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
 (*val gnu_ext_check_elf32_abi_note_tag_section : endianness -> elf32_section_header_table ->
   string_table -> byte_sequence -> bool*)
 val _ = Define `
- (gnu_ext_check_elf32_abi_note_tag_section endian sht sect_hdr_tbl bs0 =  
-(let abi_note_sects =    
+ (gnu_ext_check_elf32_abi_note_tag_section endian sht sect_hdr_tbl bs0=  
+ (let abi_note_sects =    
 (FILTER (\ x . 
       if w2n x.elf32_sh_type = sht_note then
         let nm = (w2n x.elf32_sh_name) in
@@ -102,9 +102,9 @@ val _ = Define `
             | Success abi_tag =>
               let str = (name_string_of_elf32_note abi_tag) in
                 if str = "GNU\^^@" then
-                  if w2n abi_tag.elf32_note_descsz >= 16 then
-                    let take = (TAKE( 16) abi_tag.elf32_note_desc) in
-                      if LENGTH take < 16 then
+                  if w2n abi_tag.elf32_note_descsz >=I 16 then
+                    let take = (TAKE(I 16) abi_tag.elf32_note_desc) in
+                      if LENGTH take <I 16 then
                         F
                       else
                         T
@@ -125,8 +125,8 @@ val _ = Define `
 (*val gnu_ext_check_elf64_abi_note_tag_section : endianness -> elf64_section_header_table ->
   string_table -> byte_sequence -> bool*)
 val _ = Define `
- (gnu_ext_check_elf64_abi_note_tag_section endian sht sect_hdr_tbl bs0 =  
-(let abi_note_sects =    
+ (gnu_ext_check_elf64_abi_note_tag_section endian sht sect_hdr_tbl bs0=  
+ (let abi_note_sects =    
 (FILTER (\ x . 
       if w2n x.elf64_sh_type = sht_note then
         let nm = (w2n x.elf64_sh_name) in
@@ -152,9 +152,9 @@ val _ = Define `
             | Success abi_tag =>
               let str = (name_string_of_elf64_note abi_tag) in
                 if str = "GNU\^^@" then
-                  if w2n abi_tag.elf64_note_descsz >= 16 then
-                    let take = (TAKE( 16) abi_tag.elf64_note_desc) in
-                      if LENGTH take < 16 then
+                  if w2n abi_tag.elf64_note_descsz >=I 16 then
+                    let take = (TAKE(I 16) abi_tag.elf64_note_desc) in
+                      if LENGTH take <I 16 then
                         F
                       else
                         T

@@ -29,8 +29,8 @@ val _ = new_theory "abi_power64_elf_header"
   *)
 (*val is_valid_abi_power64_machine_architecture : nat -> bool*)
 val _ = Define `
- (is_valid_abi_power64_machine_architecture m =  
-(m = id elf_ma_ppc64))`;
+ (is_valid_abi_power64_machine_architecture m=  
+ (m =  elf_ma_ppc64))`;
 
 
 (** [is_valid_abi_power64_magic_number magic] checks whether the ELF header's
@@ -41,11 +41,11 @@ val _ = Define `
   *)
 (*val is_valid_abi_power64_magic_number : list unsigned_char -> endianness -> bool*)
 val _ = Define `
- (is_valid_abi_power64_magic_number magic endian =  
-((case lem_list$list_index magic (id elf_ii_class) of
+ (is_valid_abi_power64_magic_number magic endian=  
+ ((case lem_list$list_index magic ( elf_ii_class) of
       NONE  => F
     | SOME cls =>
-      (case lem_list$list_index magic (id elf_ii_data) of
+      (case lem_list$list_index magic ( elf_ii_data) of
           NONE => F
         | SOME ed =>
           (case endian of

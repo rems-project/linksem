@@ -32,316 +32,316 @@ val _ = new_theory "abi_power64_relocation"
 (** Power64 relocation types *)
 
 val _ = Define `
- (r_ppc64_none : num =( 0))`;
+ (r_ppc64_none : num= (I 0))`;
 
 val _ = Define `
- (r_ppc64_addr32 : num =( 1))`;
+ (r_ppc64_addr32 : num= (I 1))`;
 
 val _ = Define `
- (r_ppc64_addr24 : num =( 2))`;
+ (r_ppc64_addr24 : num= (I 2))`;
 
 val _ = Define `
- (r_ppc64_addr16 : num =( 3))`;
+ (r_ppc64_addr16 : num= (I 3))`;
 
 val _ = Define `
- (r_ppc64_addr16_lo : num =( 4))`;
+ (r_ppc64_addr16_lo : num= (I 4))`;
 
 val _ = Define `
- (r_ppc64_addr16_hi : num =( 5))`;
+ (r_ppc64_addr16_hi : num= (I 5))`;
 
 val _ = Define `
- (r_ppc64_addr16_ha : num =( 6))`;
+ (r_ppc64_addr16_ha : num= (I 6))`;
 
 val _ = Define `
- (r_ppc64_addr14 : num =( 7))`;
+ (r_ppc64_addr14 : num= (I 7))`;
 
 val _ = Define `
- (r_ppc64_addr14_brtaken : num =( 8))`;
+ (r_ppc64_addr14_brtaken : num= (I 8))`;
 
 val _ = Define `
- (r_ppc64_addr14_brntaken : num =( 9))`;
+ (r_ppc64_addr14_brntaken : num= (I 9))`;
 
 val _ = Define `
- (r_ppc64_rel24 : num =( 10))`;
+ (r_ppc64_rel24 : num= (I 10))`;
 
 val _ = Define `
- (r_ppc64_rel14 : num =( 11))`;
+ (r_ppc64_rel14 : num= (I 11))`;
 
 val _ = Define `
- (r_ppc64_rel14_brtaken : num =( 12))`;
+ (r_ppc64_rel14_brtaken : num= (I 12))`;
 
 val _ = Define `
- (r_ppc64_rel14_brntaken : num =( 13))`;
+ (r_ppc64_rel14_brntaken : num= (I 13))`;
 
 val _ = Define `
- (r_ppc64_got16 : num =( 14))`;
+ (r_ppc64_got16 : num= (I 14))`;
 
 val _ = Define `
- (r_ppc64_got16_lo : num =( 15))`;
+ (r_ppc64_got16_lo : num= (I 15))`;
 
 val _ = Define `
- (r_ppc64_got16_hi : num =( 16))`;
+ (r_ppc64_got16_hi : num= (I 16))`;
 
 val _ = Define `
- (r_ppc64_got16_ha : num =( 17))`;
+ (r_ppc64_got16_ha : num= (I 17))`;
 
 val _ = Define `
- (r_ppc64_copy : num =( 19))`;
+ (r_ppc64_copy : num= (I 19))`;
 
 val _ = Define `
- (r_ppc64_glob_dat : num =( 20))`;
+ (r_ppc64_glob_dat : num= (I 20))`;
 
 val _ = Define `
- (r_ppc64_jmp_slot : num =( 21))`;
+ (r_ppc64_jmp_slot : num= (I 21))`;
 
 val _ = Define `
- (r_ppc64_relative : num =( 22))`;
+ (r_ppc64_relative : num= (I 22))`;
 
 val _ = Define `
- (r_ppc64_uaddr32 : num =( 24))`;
+ (r_ppc64_uaddr32 : num= (I 24))`;
 
 val _ = Define `
- (r_ppc64_uaddr16 : num =( 25))`;
+ (r_ppc64_uaddr16 : num= (I 25))`;
 
 val _ = Define `
- (r_ppc64_rel32 : num =( 26))`;
+ (r_ppc64_rel32 : num= (I 26))`;
 
 val _ = Define `
- (r_ppc64_plt32 : num =( 27))`;
+ (r_ppc64_plt32 : num= (I 27))`;
 
 val _ = Define `
- (r_ppc64_pltrel32 : num =( 28))`;
+ (r_ppc64_pltrel32 : num= (I 28))`;
 
 val _ = Define `
- (r_ppc64_plt16_lo : num =( 29))`;
+ (r_ppc64_plt16_lo : num= (I 29))`;
 
 val _ = Define `
- (r_ppc64_plt16_hi : num =( 30))`;
+ (r_ppc64_plt16_hi : num= (I 30))`;
 
 val _ = Define `
- (r_ppc64_plt16_ha : num =( 31))`;
+ (r_ppc64_plt16_ha : num= (I 31))`;
 
 val _ = Define `
- (r_ppc64_sectoff : num =( 33))`;
+ (r_ppc64_sectoff : num= (I 33))`;
 
 val _ = Define `
- (r_ppc64_sectoff_lo : num =( 34))`;
+ (r_ppc64_sectoff_lo : num= (I 34))`;
 
 val _ = Define `
- (r_ppc64_sectoff_hi : num =( 35))`;
+ (r_ppc64_sectoff_hi : num= (I 35))`;
 
 val _ = Define `
- (r_ppc64_sectoff_ha : num =( 36))`;
+ (r_ppc64_sectoff_ha : num= (I 36))`;
 
 val _ = Define `
- (r_ppc64_addr30 : num =( 37))`;
+ (r_ppc64_addr30 : num= (I 37))`;
 
 val _ = Define `
- (r_ppc64_addr64 : num =( 38))`;
+ (r_ppc64_addr64 : num= (I 38))`;
 
 val _ = Define `
- (r_ppc64_addr16_higher : num =( 39))`;
+ (r_ppc64_addr16_higher : num= (I 39))`;
 
 val _ = Define `
- (r_ppc64_addr16_highera : num =( 40))`;
+ (r_ppc64_addr16_highera : num= (I 40))`;
 
 val _ = Define `
- (r_ppc64_addr16_highest : num =( 41))`;
+ (r_ppc64_addr16_highest : num= (I 41))`;
 
 val _ = Define `
- (r_ppc64_addr16_highesta : num =( 42))`;
+ (r_ppc64_addr16_highesta : num= (I 42))`;
 
 val _ = Define `
- (r_ppc64_uaddr64 : num =( 43))`;
+ (r_ppc64_uaddr64 : num= (I 43))`;
 
 val _ = Define `
- (r_ppc64_rel64 : num =( 44))`;
+ (r_ppc64_rel64 : num= (I 44))`;
 
 val _ = Define `
- (r_ppc64_plt64 : num =( 45))`;
+ (r_ppc64_plt64 : num= (I 45))`;
 
 val _ = Define `
- (r_ppc64_pltrel64 : num =( 46))`;
+ (r_ppc64_pltrel64 : num= (I 46))`;
 
 val _ = Define `
- (r_ppc64_toc16 : num =( 47))`;
+ (r_ppc64_toc16 : num= (I 47))`;
 
 val _ = Define `
- (r_ppc64_toc16_lo : num =( 48))`;
+ (r_ppc64_toc16_lo : num= (I 48))`;
 
 val _ = Define `
- (r_ppc64_toc16_hi : num =( 49))`;
+ (r_ppc64_toc16_hi : num= (I 49))`;
 
 val _ = Define `
- (r_ppc64_toc16_ha : num =( 50))`;
+ (r_ppc64_toc16_ha : num= (I 50))`;
 
 val _ = Define `
- (r_ppc64_toc : num =( 51))`;
+ (r_ppc64_toc : num= (I 51))`;
 
 val _ = Define `
- (r_ppc64_pltgot16 : num =( 52))`;
+ (r_ppc64_pltgot16 : num= (I 52))`;
 
 val _ = Define `
- (r_ppc64_pltgot16_lo : num =( 53))`;
+ (r_ppc64_pltgot16_lo : num= (I 53))`;
 
 val _ = Define `
- (r_ppc64_pltgot16_hi : num =( 54))`;
+ (r_ppc64_pltgot16_hi : num= (I 54))`;
 
 val _ = Define `
- (r_ppc64_pltgot16_ha : num =( 55))`;
+ (r_ppc64_pltgot16_ha : num= (I 55))`;
 
 val _ = Define `
- (r_ppc64_addr16_ds : num =( 56))`;
+ (r_ppc64_addr16_ds : num= (I 56))`;
 
 val _ = Define `
- (r_ppc64_addr16_lo_ds : num =( 57))`;
+ (r_ppc64_addr16_lo_ds : num= (I 57))`;
 
 val _ = Define `
- (r_ppc64_got16_ds : num =( 58))`;
+ (r_ppc64_got16_ds : num= (I 58))`;
 
 val _ = Define `
- (r_ppc64_got16_lo_ds : num =( 59))`;
+ (r_ppc64_got16_lo_ds : num= (I 59))`;
 
 val _ = Define `
- (r_ppc64_plt16_lo_ds : num =( 60))`;
+ (r_ppc64_plt16_lo_ds : num= (I 60))`;
 
 val _ = Define `
- (r_ppc64_sectoff_ds : num =( 61))`;
+ (r_ppc64_sectoff_ds : num= (I 61))`;
 
 val _ = Define `
- (r_ppc64_sectoff_lo_ds : num =( 62))`;
+ (r_ppc64_sectoff_lo_ds : num= (I 62))`;
 
 val _ = Define `
- (r_ppc64_toc16_ds : num =( 63))`;
+ (r_ppc64_toc16_ds : num= (I 63))`;
 
 val _ = Define `
- (r_ppc64_toc16_lo_ds : num =( 64))`;
+ (r_ppc64_toc16_lo_ds : num= (I 64))`;
 
 val _ = Define `
- (r_ppc64_pltgot16_ds : num =( 65))`;
+ (r_ppc64_pltgot16_ds : num= (I 65))`;
 
 val _ = Define `
- (r_ppc64_pltgot16_lo_ds : num =( 66))`;
+ (r_ppc64_pltgot16_lo_ds : num= (I 66))`;
 
 val _ = Define `
- (r_ppc64_tls : num =( 67))`;
+ (r_ppc64_tls : num= (I 67))`;
 
 val _ = Define `
- (r_ppc64_dtpmod64 : num =( 68))`;
+ (r_ppc64_dtpmod64 : num= (I 68))`;
 
 val _ = Define `
- (r_ppc64_tprel16 : num =( 69))`;
+ (r_ppc64_tprel16 : num= (I 69))`;
 
 val _ = Define `
- (r_ppc64_tprel16_lo : num =( 60))`;
+ (r_ppc64_tprel16_lo : num= (I 60))`;
 
 val _ = Define `
- (r_ppc64_tprel16_hi : num =( 71))`;
+ (r_ppc64_tprel16_hi : num= (I 71))`;
 
 val _ = Define `
- (r_ppc64_tprel16_ha : num =( 72))`;
+ (r_ppc64_tprel16_ha : num= (I 72))`;
 
 val _ = Define `
- (r_ppc64_tprel64 : num =( 73))`;
+ (r_ppc64_tprel64 : num= (I 73))`;
 
 val _ = Define `
- (r_ppc64_dtprel16 : num =( 74))`;
+ (r_ppc64_dtprel16 : num= (I 74))`;
 
 val _ = Define `
- (r_ppc64_dtprel16_lo : num =( 75))`;
+ (r_ppc64_dtprel16_lo : num= (I 75))`;
 
 val _ = Define `
- (r_ppc64_dtprel16_hi : num =( 76))`;
+ (r_ppc64_dtprel16_hi : num= (I 76))`;
 
 val _ = Define `
- (r_ppc64_dtprel16_ha : num =( 77))`;
+ (r_ppc64_dtprel16_ha : num= (I 77))`;
 
 val _ = Define `
- (r_ppc64_dtprel64 : num =( 78))`;
+ (r_ppc64_dtprel64 : num= (I 78))`;
 
 val _ = Define `
- (r_ppc64_got_tlsgd16 : num =( 79))`;
+ (r_ppc64_got_tlsgd16 : num= (I 79))`;
 
 val _ = Define `
- (r_ppc64_got_tlsgd16_lo : num =( 80))`;
+ (r_ppc64_got_tlsgd16_lo : num= (I 80))`;
 
 val _ = Define `
- (r_ppc64_got_tlsgd16_hi : num =( 81))`;
+ (r_ppc64_got_tlsgd16_hi : num= (I 81))`;
 
 val _ = Define `
- (r_ppc64_got_tlsgd16_ha : num =( 82))`;
+ (r_ppc64_got_tlsgd16_ha : num= (I 82))`;
 
 val _ = Define `
- (r_ppc64_got_tlsld16 : num =( 83))`;
+ (r_ppc64_got_tlsld16 : num= (I 83))`;
 
 val _ = Define `
- (r_ppc64_got_tlsld16_lo : num =( 84))`;
+ (r_ppc64_got_tlsld16_lo : num= (I 84))`;
 
 val _ = Define `
- (r_ppc64_got_tlsld16_hi : num =( 85))`;
+ (r_ppc64_got_tlsld16_hi : num= (I 85))`;
 
 val _ = Define `
- (r_ppc64_got_tlsld16_ha : num =( 86))`;
+ (r_ppc64_got_tlsld16_ha : num= (I 86))`;
 
 val _ = Define `
- (r_ppc64_got_tprel16_ds : num =( 87))`;
+ (r_ppc64_got_tprel16_ds : num= (I 87))`;
 
 val _ = Define `
- (r_ppc64_got_tprel16_lo_ds : num =( 88))`;
+ (r_ppc64_got_tprel16_lo_ds : num= (I 88))`;
 
 val _ = Define `
- (r_ppc64_got_tprel16_hi : num =( 89))`;
+ (r_ppc64_got_tprel16_hi : num= (I 89))`;
 
 val _ = Define `
- (r_ppc64_got_tprel16_ha : num =( 90))`;
+ (r_ppc64_got_tprel16_ha : num= (I 90))`;
 
 val _ = Define `
- (r_ppc64_got_dtprel16_ds : num =( 91))`;
+ (r_ppc64_got_dtprel16_ds : num= (I 91))`;
 
 val _ = Define `
- (r_ppc64_got_dtprel16_lo_ds : num =( 92))`;
+ (r_ppc64_got_dtprel16_lo_ds : num= (I 92))`;
 
 val _ = Define `
- (r_ppc64_got_dtprel16_hi : num =( 93))`;
+ (r_ppc64_got_dtprel16_hi : num= (I 93))`;
 
 val _ = Define `
- (r_ppc64_got_dtprel16_ha : num =( 94))`;
+ (r_ppc64_got_dtprel16_ha : num= (I 94))`;
 
 val _ = Define `
- (r_ppc64_tprel16_ds : num =( 95))`;
+ (r_ppc64_tprel16_ds : num= (I 95))`;
 
 val _ = Define `
- (r_ppc64_tprel16_lo_ds : num =( 96))`;
+ (r_ppc64_tprel16_lo_ds : num= (I 96))`;
 
 val _ = Define `
- (r_ppc64_tprel16_higher : num =( 97))`;
+ (r_ppc64_tprel16_higher : num= (I 97))`;
 
 val _ = Define `
- (r_ppc64_tprel16_highera : num =( 98))`;
+ (r_ppc64_tprel16_highera : num= (I 98))`;
 
 val _ = Define `
- (r_ppc64_tprel16_highest : num =( 99))`;
+ (r_ppc64_tprel16_highest : num= (I 99))`;
 
 val _ = Define `
- (r_ppc64_tprel16_highesta : num =( 100))`;
+ (r_ppc64_tprel16_highesta : num= (I 100))`;
 
 val _ = Define `
- (r_ppc64_dtprel16_ds : num =( 101))`;
+ (r_ppc64_dtprel16_ds : num= (I 101))`;
 
 val _ = Define `
- (r_ppc64_dtprel16_lo_ds : num =( 102))`;
+ (r_ppc64_dtprel16_lo_ds : num= (I 102))`;
 
 val _ = Define `
- (r_ppc64_dtprel16_higher : num =( 103))`;
+ (r_ppc64_dtprel16_higher : num= (I 103))`;
 
 val _ = Define `
- (r_ppc64_dtprel16_highera : num =( 104))`;
+ (r_ppc64_dtprel16_highera : num= (I 104))`;
 
 val _ = Define `
- (r_ppc64_dtprel16_highest : num =( 105))`;
+ (r_ppc64_dtprel16_highest : num= (I 105))`;
 
 val _ = Define `
- (r_ppc64_dtprel16_highesta : num =( 106))`;
+ (r_ppc64_dtprel16_highesta : num= (I 106))`;
 
 
 (** [string_of_ppc64_relocation_type rel_type] produces a string representation
@@ -349,8 +349,8 @@ val _ = Define `
   *)
 (*val string_of_ppc64_relocation_type : natural -> string*)
 val _ = Define `
- (string_of_ppc64_relocation_type rel_type =  
-(if rel_type = r_ppc64_none then
+ (string_of_ppc64_relocation_type rel_type=  
+ (if rel_type = r_ppc64_none then
     "R_PPC64_NONE"
   else if rel_type = r_ppc64_addr32 then
   	"R_PPC64_ADDR32"
@@ -569,8 +569,8 @@ val _ = Define `
 val _ = Define `
  (abi_ppc64_apply_relocation rel s_val b_val p_val l_val g_val r_val m_val
           toc_val dtpmod_val tprel_val dtprel_val gottlsgd_val gottlsld_val
-          gottprel_val gotdtprel_val ef =  
-(if is_elf64_relocatable_file ef.elf64_file_header then
+          gottprel_val gotdtprel_val ef=  
+ (if is_elf64_relocatable_file ef.elf64_file_header then
     let rel_type = (extract_elf64_relocation_r_type rel.elf64_ra_info) in
     let a_val    = (w2i rel.elf64_ra_addend) in
       (** No width, no calculation *)
@@ -583,7 +583,7 @@ val _ = Define `
       	return (FEMPTY |+ (addr, (result, I32, CanFail)))
       (** Width: Low24 Calculation: (S + A) >> 2 *)
       else if rel_type = r_ppc64_addr24 then
-        let result = (RShift (Lift(s_val + a_val), 2)) in
+        let result = (RShift (Lift(s_val + a_val),I 2)) in
       	let addr   = (rel.elf64_ra_offset) in
       	return (FEMPTY |+ (addr, (result, Low24, CanFail)))
       (** Width: Half16 Calculation: S + A *)
@@ -608,37 +608,37 @@ val _ = Define `
       	return (FEMPTY |+ (addr, (result, I16, CannotFail)))
       (** Width: Low14 Calculation: (S + A) >> 2 *)
       else if rel_type = r_ppc64_addr14 then
-        let result = (RShift(Lift(s_val + a_val), 2)) in
+        let result = (RShift(Lift(s_val + a_val),I 2)) in
       	let addr   = (rel.elf64_ra_offset) in
       	return (FEMPTY |+ (addr, (result, Low14, CanFail)))
       (** Width: Low14 Calculation: (S + A) >> 2 *)
       else if rel_type = r_ppc64_addr14_brtaken then
-        let result = (RShift(Lift(s_val + a_val), 2)) in
+        let result = (RShift(Lift(s_val + a_val),I 2)) in
       	let addr   = (rel.elf64_ra_offset) in
       	return (FEMPTY |+ (addr, (result, Low14, CanFail)))
       (** Width: Low14 Calculation: (S + A) >> 2 *)
       else if rel_type = r_ppc64_addr14_brntaken then
-        let result = (RShift(Lift(s_val + a_val), 2)) in
+        let result = (RShift(Lift(s_val + a_val),I 2)) in
       	let addr   = (rel.elf64_ra_offset) in
       	return (FEMPTY |+ (addr, (result, Low14, CanFail)))
       (** Width: Low24 Calculation: ((S + A) - P) >> 2 *)
       else if rel_type = r_ppc64_rel24 then
-        let result = (RShift(Lift ((s_val + a_val) - p_val), 2)) in
+        let result = (RShift(Lift ((s_val + a_val) - p_val),I 2)) in
       	let addr   = (rel.elf64_ra_offset) in
       	return (FEMPTY |+ (addr, (result, Low24, CanFail)))
       (** Width: Low14 Calculation: ((S + A) - P) >> 2 *)
       else if rel_type = r_ppc64_rel14 then
-        let result = (RShift(Lift ((s_val + a_val) - p_val), 2)) in
+        let result = (RShift(Lift ((s_val + a_val) - p_val),I 2)) in
       	let addr   = (rel.elf64_ra_offset) in
       	return (FEMPTY |+ (addr, (result, Low14, CanFail)))
       (** Width: Low14 Calculation: ((S + A) - P) >> 2 *)
       else if rel_type = r_ppc64_rel14_brtaken then
-        let result = (RShift(Lift ((s_val + a_val) - p_val), 2)) in
+        let result = (RShift(Lift ((s_val + a_val) - p_val),I 2)) in
       	let addr   = (rel.elf64_ra_offset) in
       	return (FEMPTY |+ (addr, (result, Low14, CanFail)))
       (** Width: Low14 Calculation: ((S + A) - P) >> 2 *)
       else if rel_type = r_ppc64_rel14_brntaken then
-        let result = (RShift(Lift ((s_val + a_val) - p_val), 2)) in
+        let result = (RShift(Lift ((s_val + a_val) - p_val),I 2)) in
       	let addr   = (rel.elf64_ra_offset) in
       	return (FEMPTY |+ (addr, (result, Low14, CanFail)))
       (** Width: Half16 Calculation: G *)
@@ -739,7 +739,7 @@ val _ = Define `
       	return (FEMPTY |+ (addr, (result, I16, CannotFail)))
       (** Width: Word30 Calculation: ((S + A) - P) >> 2 *)
       else if rel_type = r_ppc64_addr30 then
-        let result = (RShift(Lift ((s_val + a_val) - p_val), 2)) in
+        let result = (RShift(Lift ((s_val + a_val) - p_val),I 2)) in
       	let addr   = (rel.elf64_ra_offset) in
       	return (FEMPTY |+ (addr, (result, Word30, CannotFail)))
       (** Width: I64 Calculation: S + A *)
@@ -834,57 +834,57 @@ val _ = Define `
       	return (FEMPTY |+ (addr, (result, I16, CannotFail)))
       (** Width: Half16ds Calculation: (S + A) >> 2 *)
       else if rel_type = r_ppc64_addr16_ds then
-      	let result = (RShift(Lift (s_val + a_val), 2)) in
+      	let result = (RShift(Lift (s_val + a_val),I 2)) in
       	let addr   = (rel.elf64_ra_offset) in
       	return (FEMPTY |+ (addr, (result, Half16ds, CanFail)))
       (** Width: Half16ds Calculation: #lo((S + A) >> 2) *)    
       else if rel_type = r_ppc64_addr16_lo_ds then
-      	let result = (Apply(Lo, RShift(Lift (s_val + a_val), 2))) in
+      	let result = (Apply(Lo, RShift(Lift (s_val + a_val),I 2))) in
       	let addr   = (rel.elf64_ra_offset) in
       	return (FEMPTY |+ (addr, (result, Half16ds, CannotFail)))
       (** Width: Half16ds Calculation: G >> 2 *)
       else if rel_type = r_ppc64_got16_ds then
-      	let result = (RShift(Lift g_val, 2)) in
+      	let result = (RShift(Lift g_val,I 2)) in
       	let addr   = (rel.elf64_ra_offset) in
       	return (FEMPTY |+ (addr, (result, Half16ds, CanFail)))
       (** Width: Half16ds Calculation: #lo(G) >> 2 *)
       else if rel_type = r_ppc64_got16_lo_ds then
-      	let result = (RShift(Apply(Lo, Lift g_val), 2)) in
+      	let result = (RShift(Apply(Lo, Lift g_val),I 2)) in
       	let addr   = (rel.elf64_ra_offset) in
       	return (FEMPTY |+ (addr, (result, Half16ds, CannotFail)))
       (** Width: Half16ds Calculation: #lo(L) >> 2 *)
       else if rel_type = r_ppc64_plt16_lo_ds then
-      	let result = (RShift (Apply(Lo, Lift l_val), 2)) in
+      	let result = (RShift (Apply(Lo, Lift l_val),I 2)) in
       	let addr   = (rel.elf64_ra_offset) in
       	return (FEMPTY |+ (addr, (result, Half16ds, CannotFail)))
       (** Width: Half16ds Calculation: (R + A) >> 2 *)
       else if rel_type = r_ppc64_sectoff_ds then
-      	let result = (RShift (Lift (r_val + a_val), 2)) in
+      	let result = (RShift (Lift (r_val + a_val),I 2)) in
       	let addr   = (rel.elf64_ra_offset) in
       	return (FEMPTY |+ (addr, (result, Half16ds, CanFail)))
       (** Width: Half16ds Calculation: #lo(R + A) >> 2 *)
       else if rel_type = r_ppc64_sectoff_lo_ds then
-      	let result = (RShift(Apply(Lo, Lift (r_val + a_val)), 2)) in
+      	let result = (RShift(Apply(Lo, Lift (r_val + a_val)),I 2)) in
       	let addr   = (rel.elf64_ra_offset) in
       	return (FEMPTY |+ (addr, (result, Half16ds, CannotFail)))
       (** Width: Half16ds Calculation: ((S + A) - TOC) >> 2 *)
       else if rel_type = r_ppc64_toc16_ds then
-      	let result = (RShift (Lift ((s_val + a_val) - toc_val), 2)) in
+      	let result = (RShift (Lift ((s_val + a_val) - toc_val),I 2)) in
       	let addr   = (rel.elf64_ra_offset) in
       	return (FEMPTY |+ (addr, (result, Half16ds, CanFail)))
       (** Width: Half16ds Calculation: #lo((S + A) - TOC) >> 2 *)
       else if rel_type = r_ppc64_toc16_lo_ds then
-      	let result = (RShift (Apply(Lo, Lift ((s_val + a_val) - toc_val)), 2)) in
+      	let result = (RShift (Apply(Lo, Lift ((s_val + a_val) - toc_val)),I 2)) in
       	let addr   = (rel.elf64_ra_offset) in
       	return (FEMPTY |+ (addr, (result, Half16ds, CannotFail)))
       (** Width: Half16ds Calculation: M >> 2 *)
       else if rel_type = r_ppc64_pltgot16_ds then
-      	let result = (RShift(Lift m_val, 2)) in
+      	let result = (RShift(Lift m_val,I 2)) in
       	let addr   = (rel.elf64_ra_offset) in
       	return (FEMPTY |+ (addr, (result, Half16ds, CanFail)))
       (** Width: Half16ds Calculation: #lo(M) >> 2 *)
       else if rel_type = r_ppc64_pltgot16_lo_ds then
-      	let result = (RShift (Apply(Lo, Lift m_val), 2)) in
+      	let result = (RShift (Apply(Lo, Lift m_val),I 2)) in
       	let addr   = (rel.elf64_ra_offset) in
       	return (FEMPTY |+ (addr, (result, Half16ds, CannotFail)))
       (** No width, no calculation *)

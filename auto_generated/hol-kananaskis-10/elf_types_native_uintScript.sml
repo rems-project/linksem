@@ -72,8 +72,8 @@ val _ = new_theory "elf_types_native_uint"
 (*val unsigned_char_of_byte : byte -> unsigned_char*)
 
 val _ = Define `
- (natural_of_byte b
-    = (w2n (id b)))`;
+ (natural_of_byte b=     
+(w2n (id b)))`;
 
 
 (** [read_unsigned_char end bs0] reads an unsigned char from byte_sequence [bs0]
@@ -83,14 +83,25 @@ val _ = Define `
   *)
 (*val read_unsigned_char : endianness -> byte_sequence -> error (unsigned_char * byte_sequence)*)
 val _ = Define `
- (read_unsigned_char endian bs0 =  
-(byte_sequence$read_char bs0 >>= (\ (u1, bs1) . 
+ (read_unsigned_char endian bs0=  
+ (byte_sequence$read_char bs0 >>= (\ (u1, bs1) . 
   return (id u1, bs1))))`;
 
 
-(*val bytes_of_unsigned_char : unsigned_char -> byte*)
+(*val byte_of_unsigned_char : unsigned_char -> byte*)
+
+(*val bytes_of_unsigned_char : unsigned_char -> list byte*)
+val _ = Define `
+ (bytes_of_unsigned_char u=  ([id u]))`;
+
 
 (*val equal_unsigned_char  : unsigned_char -> unsigned_char -> bool*)
+
+val _ = Define `
+(instance_Show_Show_Elf_types_native_uint_unsigned_char_dict= (<|
+
+  show_method := ARB|>))`;
+
 
 (** ELF address type:
   * 4 byte unsigned type on 32-bit architectures.
@@ -103,12 +114,14 @@ val _ = Define `
 
 (*val natural_of_elf32_addr : elf32_addr -> natural*)
 
-(*val elf32_addr_of_quad : byte -> byte -> byte -> byte -> elf32_addr*) (* TODO: add custom binding *)
+(*val elf32_addr_of_natural : natural -> elf32_addr*)
+
+(*val elf32_addr_of_quad : byte -> byte -> byte -> byte -> elf32_addr*)
 
 (*val read_elf32_addr : endianness -> byte_sequence -> error (elf32_addr * byte_sequence)*)
 val _ = Define `
- (read_elf32_addr endian bs0 =  
-((case endian of
+ (read_elf32_addr endian bs0=  
+ ((case endian of
       Little =>
       byte_sequence$read_4_bytes_le bs0 >>= (\ ((b1, b2, b3, b4), bs1) . 
       return (ARB b4 b3 b2 b1, bs1))
@@ -120,12 +133,12 @@ val _ = Define `
 
 (*val equal_elf32_addr : elf32_addr -> elf32_addr -> bool*)
 
-(*val quad_of_elf32_addr : elf32_addr -> (byte * byte * byte * byte)*) (* TODO: add custom binding *)
+(*val quad_of_elf32_addr : elf32_addr -> (byte * byte * byte * byte)*)
 
 (*val bytes_of_elf32_addr : endianness -> elf32_addr -> list byte*)
 val _ = Define `
- (bytes_of_elf32_addr endian w =  
-((case endian of
+ (bytes_of_elf32_addr endian w=  
+ ((case endian of
       Little =>
       let (b0, b1, b2, b3) = (ARB w) in
         [b0; b1; b2; b3]
@@ -133,6 +146,12 @@ val _ = Define `
       let (b0, b1, b2, b3) = (ARB w) in
         [b3; b2; b1; b0]
   )))`;
+
+
+val _ = Define `
+(instance_Show_Show_Elf_types_native_uint_elf32_addr_dict= (<|
+
+  show_method := ARB|>))`;
 
 
 (** elf64_addr type and bindings *)
@@ -149,8 +168,8 @@ val _ = Define `
 
 (*val read_elf64_addr : endianness -> byte_sequence -> error (elf64_addr * byte_sequence)*)
 val _ = Define `
- (read_elf64_addr endian bs0 =  
-((case endian of
+ (read_elf64_addr endian bs0=  
+ ((case endian of
       Little =>
       byte_sequence$read_8_bytes_le bs0 >>= (\ ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) . 
       return (ARB b8 b7 b6 b5 b4 b3 b2 b1, bs1))
@@ -162,12 +181,12 @@ val _ = Define `
 
 (*val equal_elf64_addr : elf64_addr -> elf64_addr -> bool*)
 
-(*val oct_of_elf64_addr : elf64_addr -> (byte * byte * byte * byte * byte * byte * byte * byte)*) (* TODO *)
+(*val oct_of_elf64_addr : elf64_addr -> (byte * byte * byte * byte * byte * byte * byte * byte)*)
 
 (*val bytes_of_elf64_addr : endianness -> elf64_addr -> list byte*)
 val _ = Define `
- (bytes_of_elf64_addr endian w =  
-((case endian of
+ (bytes_of_elf64_addr endian w=  
+ ((case endian of
       Little =>
       let (b0, b1, b2, b3, b4, b5, b6, b7) = (ARB w) in
         [b0; b1; b2; b3; b4; b5; b6; b7]
@@ -187,6 +206,12 @@ val _ = Define `
 
 (*val elf64_addr_lor : elf64_addr -> elf64_addr -> elf64_addr*)
 
+val _ = Define `
+(instance_Show_Show_Elf_types_native_uint_elf64_addr_dict= (<|
+
+  show_method := ARB|>))`;
+
+
 (** ELF half word type:
   * 2 byte unsigned type on 32-bit architectures.
   * 2 byte unsigned type on 64-bit architectures.
@@ -200,8 +225,8 @@ val _ = Define `
 
 (*val read_elf32_half : endianness -> byte_sequence -> error (elf32_half * byte_sequence)*)
 val _ = Define `
- (read_elf32_half endian bs0 =  
-((case endian of
+ (read_elf32_half endian bs0=  
+ ((case endian of
       Little =>
       byte_sequence$read_2_bytes_le bs0 >>= (\ ((b1, b2), bs1) . 
       return (ARB b2 b1, bs1))
@@ -219,8 +244,8 @@ val _ = Define `
 
 (*val bytes_of_elf32_half : endianness -> elf32_half -> list byte*)
 val _ = Define `
- (bytes_of_elf32_half endian h =  
-((case endian of
+ (bytes_of_elf32_half endian h=  
+ ((case endian of
       Little =>
       let (b0, b1) = (ARB h) in
         [b0; b1]
@@ -228,6 +253,12 @@ val _ = Define `
       let (b0, b1) = (ARB h) in
         [b1; b0]
   )))`;
+
+
+val _ = Define `
+(instance_Show_Show_Elf_types_native_uint_elf32_half_dict= (<|
+
+  show_method := ARB|>))`;
 
 
 (** elf64_half type and bindings *)
@@ -240,8 +271,8 @@ val _ = Define `
 
 (*val read_elf64_half : endianness -> byte_sequence -> error (elf64_half * byte_sequence)*)
 val _ = Define `
- (read_elf64_half endian bs0 =  
-((case endian of
+ (read_elf64_half endian bs0=  
+ ((case endian of
       Big =>
       byte_sequence$read_2_bytes_be bs0 >>= (\ ((b1, b2), bs1) . 
       return (ARB b2 b1, bs1))
@@ -261,8 +292,8 @@ val _ = Define `
 
 (*val bytes_of_elf64_half : endianness -> elf64_half -> list byte*)
 val _ = Define `
- (bytes_of_elf64_half endian w =  
-((case endian of
+ (bytes_of_elf64_half endian w=  
+ ((case endian of
       Big =>
       let (b0, b1) = (ARB w) in
         [b1; b0]
@@ -270,6 +301,12 @@ val _ = Define `
       let (b0, b1) = (ARB w) in
         [b0; b1]
   )))`;
+
+
+val _ = Define `
+(instance_Show_Show_Elf_types_native_uint_elf64_half_dict= (<|
+
+  show_method := ARB|>))`;
 
 
 (*
@@ -293,12 +330,14 @@ end
 
 (*val natural_of_elf32_off : elf32_off -> natural*)
 
+(*val elf32_off_of_natural : natural -> elf32_off*)
+
 (*val elf32_off_of_quad : byte -> byte -> byte -> byte -> elf32_off*)
 
 (*val read_elf32_off : endianness -> byte_sequence -> error (elf32_off * byte_sequence)*)
 val _ = Define `
- (read_elf32_off endian bs0 =  
-((case endian of
+ (read_elf32_off endian bs0=  
+ ((case endian of
       Little =>
       byte_sequence$read_4_bytes_le bs0 >>= (\ ((b1, b2, b3, b4), bs1) . 
       return (ARB b4 b3 b2 b1, bs1))
@@ -314,8 +353,8 @@ val _ = Define `
 
 (*val bytes_of_elf32_off : endianness -> elf32_off -> list byte*)
 val _ = Define `
- (bytes_of_elf32_off endian w =  
-((case endian of
+ (bytes_of_elf32_off endian w=  
+ ((case endian of
       Little =>
       let (b0, b1, b2, b3) = (ARB w) in
         [b0; b1; b2; b3]
@@ -323,6 +362,12 @@ val _ = Define `
       let (b0, b1, b2, b3) = (ARB w) in
         [b3; b2; b1; b0]
   )))`;
+
+
+val _ = Define `
+(instance_Show_Show_Elf_types_native_uint_elf32_off_dict= (<|
+
+  show_method := ARB|>))`;
 
 
 (** elf64_off type and bindings *)
@@ -339,8 +384,8 @@ val _ = Define `
 
 (*val read_elf64_off : endianness -> byte_sequence -> error (elf64_off * byte_sequence)*)
 val _ = Define `
- (read_elf64_off endian bs0 =  
-((case endian of
+ (read_elf64_off endian bs0=  
+ ((case endian of
       Little =>
       byte_sequence$read_8_bytes_le bs0 >>= (\ ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) . 
       return (ARB b8 b7 b6 b5 b4 b3 b2 b1, bs1))
@@ -356,8 +401,8 @@ val _ = Define `
 
 (*val bytes_of_elf64_off : endianness -> elf64_off -> list byte*)
 val _ = Define `
- (bytes_of_elf64_off endian w =  
-((case endian of
+ (bytes_of_elf64_off endian w=  
+ ((case endian of
       Little =>
       let (b0, b1, b2, b3, b4, b5, b6, b7) = (ARB w) in
         [b0; b1; b2; b3; b4; b5; b6; b7]
@@ -365,6 +410,12 @@ val _ = Define `
       let (b0, b1, b2, b3, b4, b5, b6, b7) = (ARB w) in
         [b7; b6; b5; b4; b3; b2; b1; b0]
   )))`;
+
+
+val _ = Define `
+(instance_Show_Show_Elf_types_native_uint_elf64_off_dict= (<|
+
+  show_method := ARB|>))`;
 
 
 (** ELF word type:
@@ -388,8 +439,8 @@ val _ = Define `
 
 (*val read_elf32_word : endianness -> byte_sequence -> error (elf32_word * byte_sequence)*)
 val _ = Define `
- (read_elf32_word endian bs0 =  
-((case endian of
+ (read_elf32_word endian bs0=  
+ ((case endian of
       Little =>
       byte_sequence$read_4_bytes_le bs0 >>= (\ ((b1, b2, b3, b4), bs1) . 
       return (ARB b4 b3 b2 b1, bs1))
@@ -407,8 +458,8 @@ val _ = Define `
 
 (*val bytes_of_elf32_word : endianness -> elf32_word -> list byte*)
 val _ = Define `
- (bytes_of_elf32_word endian w =  
-((case endian of
+ (bytes_of_elf32_word endian w=  
+ ((case endian of
       Little =>
       let (b0, b1, b2, b3) = (ARB w) in
         [b0; b1; b2; b3]
@@ -416,6 +467,12 @@ val _ = Define `
       let (b0, b1, b2, b3) = (ARB w) in
         [b3; b2; b1; b0]
   )))`;
+
+
+val _ = Define `
+(instance_Show_Show_Elf_types_native_uint_elf32_word_dict= (<|
+
+  show_method := ARB|>))`;
 
 
 (** elf64_word type and bindings *)
@@ -434,8 +491,8 @@ val _ = Define `
 
 (*val read_elf64_word : endianness -> byte_sequence -> error (elf64_word * byte_sequence)*)
 val _ = Define `
- (read_elf64_word endian bs0 =  
-((case endian of
+ (read_elf64_word endian bs0=  
+ ((case endian of
       Little =>
       byte_sequence$read_4_bytes_le bs0 >>= (\ ((b1, b2, b3, b4), bs1) . 
       return (ARB b4 b3 b2 b1, bs1))
@@ -451,8 +508,8 @@ val _ = Define `
 
 (*val bytes_of_elf64_word : endianness -> elf64_word -> list byte*)
 val _ = Define `
- (bytes_of_elf64_word endian w =  
-((case endian of
+ (bytes_of_elf64_word endian w=  
+ ((case endian of
       Little =>
       let (b0, b1, b2, b3) = (ARB w) in
         [b0; b1; b2; b3]
@@ -460,6 +517,12 @@ val _ = Define `
       let (b0, b1, b2, b3) = (ARB w) in
         [b3; b2; b1; b0]
   )))`;
+
+
+val _ = Define `
+(instance_Show_Show_Elf_types_native_uint_elf64_word_dict= (<|
+
+  show_method := ARB|>))`;
 
 
 (** ELF signed word type:
@@ -477,8 +540,8 @@ val _ = Define `
 
 (*val read_elf32_sword : endianness -> byte_sequence -> error (elf32_sword * byte_sequence)*)
 val _ = Define `
- (read_elf32_sword endian bs0 =  
-((case endian of
+ (read_elf32_sword endian bs0=  
+ ((case endian of
       Little =>
       byte_sequence$read_4_bytes_le bs0 >>= (\ ((b1, b2, b3, b4), bs1) . 
       return (ARB b4 b3 b2 b1, bs1))
@@ -492,8 +555,8 @@ val _ = Define `
 
 (*val bytes_of_elf32_sword : endianness -> elf32_sword -> list byte*)
 val _ = Define `
- (bytes_of_elf32_sword endian w =  
-((case endian of
+ (bytes_of_elf32_sword endian w=  
+ ((case endian of
       Little =>
       let (b0, b1, b2, b3) = (ARB w) in
         [b0; b1; b2; b3]
@@ -501,6 +564,12 @@ val _ = Define `
       let (b0, b1, b2, b3) = (ARB w) in
         [b3; b2; b1; b0]
   )))`;
+
+
+val _ = Define `
+(instance_Show_Show_Elf_types_native_uint_elf32_sword_dict= (<|
+
+  show_method := ARB|>))`;
 
 
 (** elf64_sword type and bindings *)
@@ -515,8 +584,8 @@ val _ = Define `
 
 (*val read_elf64_sword : endianness -> byte_sequence -> error (elf64_sword * byte_sequence)*)
 val _ = Define `
- (read_elf64_sword endian bs0 =  
-((case endian of
+ (read_elf64_sword endian bs0=  
+ ((case endian of
       Little =>
       byte_sequence$read_4_bytes_le bs0 >>= (\ ((b1, b2, b3, b4), bs1) . 
       return (ARB b4 b3 b2 b1, bs1))
@@ -530,8 +599,8 @@ val _ = Define `
 
 (*val bytes_of_elf64_sword : endianness -> elf64_sword -> list byte*)
 val _ = Define `
- (bytes_of_elf64_sword endian w =  
-((case endian of
+ (bytes_of_elf64_sword endian w=  
+ ((case endian of
       Little =>
       let (b0, b1, b2, b3) = (ARB w) in
         [b0; b1; b2; b3]
@@ -539,6 +608,12 @@ val _ = Define `
       let (b0, b1, b2, b3) = (ARB w) in
         [b3; b2; b1; b0]
   )))`;
+
+
+val _ = Define `
+(instance_Show_Show_Elf_types_native_uint_elf64_sword_dict= (<|
+
+  show_method := ARB|>))`;
 
 
 (** ELF extra wide word type:
@@ -555,8 +630,8 @@ val _ = Define `
 
 (*val read_elf64_xword : endianness -> byte_sequence -> error (elf64_xword * byte_sequence)*)
 val _ = Define `
- (read_elf64_xword endian bs0 =  
-((case endian of
+ (read_elf64_xword endian bs0=  
+ ((case endian of
       Little =>
       byte_sequence$read_8_bytes_le bs0 >>= (\ ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) . 
       return (ARB b8 b7 b6 b5 b4 b3 b2 b1, bs1))
@@ -574,6 +649,8 @@ val _ = Define `
 
 (*val elf64_xword_lor : elf64_xword -> elf64_xword -> elf64_xword*)
 
+(*val elf64_xword_lxor : elf64_xword -> elf64_xword -> elf64_xword*)
+
 (*val elf64_xword_of_natural : natural -> elf64_xword*)
 
 (*val equal_elf64_xword : elf64_xword -> elf64_xword -> bool*)
@@ -582,8 +659,8 @@ val _ = Define `
 
 (*val bytes_of_elf64_xword : endianness -> elf64_xword -> list byte*)
 val _ = Define `
- (bytes_of_elf64_xword endian x =  
-((case endian of
+ (bytes_of_elf64_xword endian x=  
+ ((case endian of
       Little =>
       let (b0, b1, b2, b3, b4, b5, b6, b7) = (ARB x) in
         [b0; b1; b2; b3; b4; b5; b6; b7]
@@ -591,6 +668,12 @@ val _ = Define `
       let (b0, b1, b2, b3, b4, b5, b6, b7) = (ARB x) in
         [b7; b6; b5; b4; b3; b2; b1; b0]
   )))`;
+
+
+val _ = Define `
+(instance_Show_Show_Elf_types_native_uint_elf64_xword_dict= (<|
+
+  show_method := ARB|>))`;
 
 
 (** ELF signed extra wide word type:
@@ -609,8 +692,8 @@ val _ = Define `
 
 (*val read_elf64_sxword : endianness -> byte_sequence -> error (elf64_sxword * byte_sequence)*)
 val _ = Define `
- (read_elf64_sxword endian bs0 =  
-((case endian of
+ (read_elf64_sxword endian bs0=  
+ ((case endian of
       Little =>
       byte_sequence$read_8_bytes_le bs0 >>= (\ ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) . 
       return (ARB b8 b7 b6 b5 b4 b3 b2 b1, bs1))
@@ -624,8 +707,8 @@ val _ = Define `
 
 (*val bytes_of_elf64_sxword : endianness -> elf64_sxword -> list byte*)
 val _ = Define `
- (bytes_of_elf64_sxword endian w =  
-((case endian of
+ (bytes_of_elf64_sxword endian w=  
+ ((case endian of
       Little =>
       let (b0, b1, b2, b3, b4, b5, b6, b7) = (ARB w) in
         [b0; b1; b2; b3; b4; b5; b6; b7]
@@ -635,11 +718,31 @@ val _ = Define `
   )))`;
 
 
-(*val unsafe_natural_land : natural -> natural -> natural*)
 val _ = Define `
- (unsafe_natural_land arg1 arg2 = (w2n (
-    word_and ((n2w : num -> 64 word) arg1) ((n2w : num -> 64 word) arg2)
-)))`;
+(instance_Show_Show_Elf_types_native_uint_elf64_sxword_dict= (<|
+
+  show_method := ARB|>))`;
+
+
+(*val natural_land : natural -> natural -> natural*)
+val _ = Define `
+ (natural_land m n=  
+( 
+  (* For Isabelle backend...*)w2n (word_and ((n2w : num -> 64 word) m) ((n2w : num -> 64 word) n))))`;
+
+
+(*val natural_lor : natural -> natural -> natural*)
+val _ = Define `
+ (natural_lor m n=  
+( 
+  (* For Isabelle backend...*)w2n (word_or ((n2w : num -> 64 word) m) ((n2w : num -> 64 word) n))))`;
+
+
+(*val natural_lxor : natural -> natural -> natural*)
+val _ = Define `
+ (natural_lxor m n=  
+( 
+  (* For Isabelle backend...*)w2n (word_xor ((n2w : num -> 64 word) m) ((n2w : num -> 64 word) n))))`;
 
 val _ = export_theory()
 

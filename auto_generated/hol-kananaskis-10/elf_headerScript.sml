@@ -40,7 +40,7 @@ val _ = new_theory "elf_header"
   * below requires this constant (i.e. forward reference in the ELF spec).
   *)
 val _ = Define `
- (shn_undef : num =( 0))`;
+ (shn_undef : num= (I 0))`;
 
 
 (** [shn_xindex]: an escape value.  It indicates the actual section header index
@@ -50,7 +50,7 @@ val _ = Define `
   * constant (i.e. forward reference in the ELF spec).
   *)
 val _ = Define `
- (shn_xindex : num =( 65535))`;
+ (shn_xindex : num= (I 65535))`;
  (* 0xffff *)
 
 (** ELF object file types.  Enumerates the ELF object file types specified in the
@@ -64,39 +64,39 @@ val _ = Define `
 
 (** No file type *)
 val _ = Define `
- (elf_ft_none : num =( 0))`;
+ (elf_ft_none : num= (I 0))`;
 
 (** Relocatable file *)
 val _ = Define `
- (elf_ft_rel : num =( 1))`;
+ (elf_ft_rel : num= (I 1))`;
 
 (** Executable file *)
 val _ = Define `
- (elf_ft_exec : num =( 2))`;
+ (elf_ft_exec : num= (I 2))`;
 
 (** Shared object file *)
 val _ = Define `
- (elf_ft_dyn : num =( 3))`;
+ (elf_ft_dyn : num= (I 3))`;
 
 (** Core file *)
 val _ = Define `
- (elf_ft_core : num =( 4))`;
+ (elf_ft_core : num= (I 4))`;
 
 (** Operating-system specific *)
 val _ = Define `
- (elf_ft_lo_os : num =( 65024))`;
+ (elf_ft_lo_os : num= (I 65024))`;
  (* 0xfe00 *)
 (** Operating-system specific *)
 val _ = Define `
- (elf_ft_hi_os : num =( 65279))`;
+ (elf_ft_hi_os : num= (I 65279))`;
  (* 0xfeff *)
 (** Processor specific *)
 val _ = Define `
- (elf_ft_lo_proc : num =( 65280))`;
+ (elf_ft_lo_proc : num= (I 65280))`;
  (* 0xff00 *)
 (** Processor specific *)
 val _ = Define `
- (elf_ft_hi_proc : num =( 65535))`;
+ (elf_ft_hi_proc : num= (I 65535))`;
  (* 0xffff *)
 
 (** [string_of_elf_file_type os proc m] produces a string representation of the
@@ -105,14 +105,33 @@ val _ = Define `
   * used for printing, respectively.
   *)
 (*val string_of_elf_file_type : (natural -> string) -> (natural -> string) -> natural -> string*)
+val _ = Define `
+ (string_of_elf_file_type os_specific proc_specific m=	
+ (if m = elf_ft_none then
+		"No file type"
+	else if m = elf_ft_rel then
+		"REL (Relocatable file)"
+	else if m = elf_ft_exec then
+		"EXEC (Executable file)"
+	else if m = elf_ft_dyn then
+		"DYN (Shared object file)"
+	else if m = elf_ft_core then
+		"CORE (Core file)"
+	else if (m >= elf_ft_lo_os) /\ (m <= elf_ft_hi_os) then
+		os_specific m
+	else if (m >= elf_ft_lo_proc) /\ (m <= elf_ft_hi_proc) then
+		proc_specific m
+	else
+		"Invalid file type"))`;
+
 
 (** [is_operating_specific_file_type_value] checks whether a numeric value is
   * reserved by the ABI for operating system-specific purposes.
   *)
 (*val is_operating_system_specific_object_file_type_value : natural -> bool*)
 val _ = Define `
- (is_operating_system_specific_object_file_type_value v =
-  ((v >= 65024) /\ (v <= 65279)))`;
+ (is_operating_system_specific_object_file_type_value v=
+   ((v >=I 65024) /\ (v <=I 65279)))`;
 
 
 (** [is_processor_specific_file_type_value] checks whether a numeric value is
@@ -120,915 +139,915 @@ val _ = Define `
   *)
 (*val is_processor_specific_object_file_type_value : natural -> bool*)
 val _ = Define `
- (is_processor_specific_object_file_type_value v =
-  ((v >= 65280) /\ (v <= 65535)))`;
+ (is_processor_specific_object_file_type_value v=
+   ((v >=I 65280) /\ (v <=I 65535)))`;
 
 
 (** ELF machine architectures *)
 
 (** RISC-V *)
 val _ = Define `
- (elf_ma_riscv : num =( 243))`;
+ (elf_ma_riscv : num= (I 243))`;
 
 (** AMD GPU architecture *)
 val _ = Define `
- (elf_ma_amdgpu : num =( 224))`;
+ (elf_ma_amdgpu : num= (I 224))`;
 
 (** Moxie processor family *)
 val _ = Define `
- (elf_ma_moxie : num =( 223))`;
+ (elf_ma_moxie : num= (I 223))`;
 
 (** FTDI Chip FT32 high performance 32-bit RISC architecture *)
 val _ = Define `
- (elf_ma_ft32 : num =( 222))`;
+ (elf_ma_ft32 : num= (I 222))`;
 
 (** Controls and Data Services VISIUMcore processor *)
 val _ = Define `
- (elf_ma_visium : num =( 221))`;
+ (elf_ma_visium : num= (I 221))`;
 
 (** Zilog Z80 *)
 val _ = Define `
- (elf_ma_z80 : num =( 220))`;
+ (elf_ma_z80 : num= (I 220))`;
 
 (** CSR Kalimba architecture family *)
 val _ = Define `
- (elf_ma_kalimba : num =( 219))`;
+ (elf_ma_kalimba : num= (I 219))`;
 
 (** Nanoradio optimised RISC *)
 val _ = Define `
- (elf_ma_norc : num =( 218))`;
+ (elf_ma_norc : num= (I 218))`;
 
 (** iCelero CoolEngine *)
 val _ = Define `
- (elf_ma_cool : num =( 217))`;
+ (elf_ma_cool : num= (I 217))`;
 
 (** Cognitive Smart Memory Processor *)
 val _ = Define `
- (elf_ma_coge : num =( 216))`;
+ (elf_ma_coge : num= (I 216))`;
 
 (** Paneve CDP architecture family *)
 val _ = Define `
- (elf_ma_cdp : num =( 215))`;
+ (elf_ma_cdp : num= (I 215))`;
 
 (** KM211 KVARC processor *)
 val _ = Define `
- (elf_ma_kvarc : num =( 214))`;
+ (elf_ma_kvarc : num= (I 214))`;
 
 (** KM211 KMX8 8-bit processor *)
 val _ = Define `
- (elf_ma_kmx8 : num =( 213))`;
+ (elf_ma_kmx8 : num= (I 213))`;
 
 (** KM211 KMX16 16-bit processor *)
 val _ = Define `
- (elf_ma_kmx16 : num =( 212))`;
+ (elf_ma_kmx16 : num= (I 212))`;
 
 (** KM211 KMX32 32-bit processor *)
 val _ = Define `
- (elf_ma_kmx32 : num =( 211))`;
+ (elf_ma_kmx32 : num= (I 211))`;
 
 (** KM211 KM32 32-bit processor *)
 val _ = Define `
- (elf_ma_km32 : num =( 210))`;
+ (elf_ma_km32 : num= (I 210))`;
 
 (** Microchip 8-bit PIC(r) family *)
 val _ = Define `
- (elf_ma_mchp_pic : num =( 204))`;
+ (elf_ma_mchp_pic : num= (I 204))`;
 
 (** XMOS xCORE processor family *)
 val _ = Define `
- (elf_ma_xcore : num =( 203))`;
+ (elf_ma_xcore : num= (I 203))`;
 
 (** Beyond BA2 CPU architecture *)
 val _ = Define `
- (elf_ma_ba2 : num =( 202))`;
+ (elf_ma_ba2 : num= (I 202))`;
 
 (** Beyond BA1 CPU architecture *)  
 val _ = Define `
- (elf_ma_ba1 : num =( 201))`;
+ (elf_ma_ba1 : num= (I 201))`;
 
 (** Freescale 56800EX Digital Signal Controller (DSC) *)
 val _ = Define `
- (elf_ma_5600ex : num =( 200))`;
+ (elf_ma_5600ex : num= (I 200))`;
 
 (** 199 Renesas 78KOR family *)
 val _ = Define `
- (elf_ma_78kor : num =( 199))`;
+ (elf_ma_78kor : num= (I 199))`;
 
 (** Broadcom VideoCore V processor *)
 val _ = Define `
- (elf_ma_videocore5 : num =( 198))`;
+ (elf_ma_videocore5 : num= (I 198))`;
 
 (** Renesas RL78 family *)
 val _ = Define `
- (elf_ma_rl78 : num =( 197))`;
+ (elf_ma_rl78 : num= (I 197))`;
 
 (** Open8 8-bit RISC soft processing core *)
 val _ = Define `
- (elf_ma_open8 : num =( 196))`;
+ (elf_ma_open8 : num= (I 196))`;
 
 (** Synopsys ARCompact V2 *)
 val _ = Define `
- (elf_ma_arc_compact2 : num =( 195))`;
+ (elf_ma_arc_compact2 : num= (I 195))`;
 
 (** KIPO_KAIST Core-A 2nd generation processor family *)
 val _ = Define `
- (elf_ma_corea_2nd : num =( 194))`;
+ (elf_ma_corea_2nd : num= (I 194))`;
 
 (** KIPO_KAIST Core-A 1st generation processor family *)
 val _ = Define `
- (elf_ma_corea_1st : num =( 193))`;
+ (elf_ma_corea_1st : num= (I 193))`;
 
 (** CloudShield architecture family *)
 val _ = Define `
- (elf_ma_cloudshield : num =( 192))`;
+ (elf_ma_cloudshield : num= (I 192))`;
 
 (** Infineon Technologies SLE9X core *)
 val _ = Define `
- (elf_ma_sle9x : num =( 179))`;
+ (elf_ma_sle9x : num= (I 179))`;
 
 (** Intel L10M *)
 val _ = Define `
- (elf_ma_l10m : num =( 180))`;
+ (elf_ma_l10m : num= (I 180))`;
 
 (** Intel K10M *)
 val _ = Define `
- (elf_ma_k10m : num =( 181))`;
+ (elf_ma_k10m : num= (I 181))`;
 
 (** ARM 64-bit architecture (AARCH64) *)
 val _ = Define `
- (elf_ma_aarch64 : num =( 183))`;
+ (elf_ma_aarch64 : num= (I 183))`;
 
 (** Atmel Corporation 32-bit microprocessor family *)
 val _ = Define `
- (elf_ma_avr32 : num =( 185))`;
+ (elf_ma_avr32 : num= (I 185))`;
 
 (** STMicroelectronics STM8 8-bit microcontroller *)
 val _ = Define `
- (elf_ma_stm8 : num =( 186))`;
+ (elf_ma_stm8 : num= (I 186))`;
 
 (** Tilera TILE64 multicore architecture family *)
 val _ = Define `
- (elf_ma_tile64 : num =( 187))`;
+ (elf_ma_tile64 : num= (I 187))`;
 
 (** Tilera TILEPro multicore architecture family *)
 val _ = Define `
- (elf_ma_tilepro : num =( 188))`;
+ (elf_ma_tilepro : num= (I 188))`;
 
 (** Xilinix MicroBlaze 32-bit RISC soft processor core *)
 val _ = Define `
- (elf_ma_microblaze : num =( 189))`;
+ (elf_ma_microblaze : num= (I 189))`;
 
 (** NVIDIA CUDA architecture *)
 val _ = Define `
- (elf_ma_cuda : num =( 190))`;
+ (elf_ma_cuda : num= (I 190))`;
 
 (** Tilera TILE-Gx multicore architecture family *)
 val _ = Define `
- (elf_ma_tilegx : num =( 191))`;
+ (elf_ma_tilegx : num= (I 191))`;
 
 (** Cypress M8C microprocessor *)
 val _ = Define `
- (elf_ma_cypress : num =( 161))`;
+ (elf_ma_cypress : num= (I 161))`;
 
 (** Renesas R32C series microprocessors *)
 val _ = Define `
- (elf_ma_r32c : num =( 162))`;
+ (elf_ma_r32c : num= (I 162))`;
 
 (** NXP Semiconductors TriMedia architecture family *)
 val _ = Define `
- (elf_ma_trimedia : num =( 163))`;
+ (elf_ma_trimedia : num= (I 163))`;
 
 (** QUALCOMM DSP6 processor *)
 val _ = Define `
- (elf_ma_qdsp6 : num =( 164))`;
+ (elf_ma_qdsp6 : num= (I 164))`;
 
 (** Intel 8051 and variants *)
 val _ = Define `
- (elf_ma_8051 : num =( 165))`;
+ (elf_ma_8051 : num= (I 165))`;
 
 (** STMicroelectronics STxP7x family of configurable and extensible RISC processors *)
 val _ = Define `
- (elf_ma_stxp7x : num =( 166))`;
+ (elf_ma_stxp7x : num= (I 166))`;
 
 (** Andes Technology compact code size embedded RISC processor family *)
 val _ = Define `
- (elf_ma_nds32 : num =( 167))`;
+ (elf_ma_nds32 : num= (I 167))`;
 
 (** Cyan Technology eCOG1X family *)
 val _ = Define `
- (elf_ma_ecog1x : num =( 168))`;
+ (elf_ma_ecog1x : num= (I 168))`;
 
 (** Dallas Semiconductor MAXQ30 Core Micro-controllers *)
 val _ = Define `
- (elf_ma_maxq30 : num =( 169))`;
+ (elf_ma_maxq30 : num= (I 169))`;
 
 (** New Japan Radio (NJR) 16-bit DSP Processor *)
 val _ = Define `
- (elf_ma_ximo16 : num =( 170))`;
+ (elf_ma_ximo16 : num= (I 170))`;
 
 (** M2000 Reconfigurable RISC Microprocessor *)
 val _ = Define `
- (elf_ma_manik : num =( 171))`;
+ (elf_ma_manik : num= (I 171))`;
 
 (** Cray Inc. NV2 vector architecture *)
 val _ = Define `
- (elf_ma_craynv2 : num =( 172))`;
+ (elf_ma_craynv2 : num= (I 172))`;
 
 (** Renesas RX family *)
 val _ = Define `
- (elf_ma_rx : num =( 173))`;
+ (elf_ma_rx : num= (I 173))`;
 
 (** Imagination Technologies META processor architecture *)
 val _ = Define `
- (elf_ma_metag : num =( 174))`;
+ (elf_ma_metag : num= (I 174))`;
 
 (** MCST Elbrus general purpose hardware architecture *)
 val _ = Define `
- (elf_ma_mcst_elbrus : num =( 175))`;
+ (elf_ma_mcst_elbrus : num= (I 175))`;
 
 (** Cyan Technology eCOG16 family *)
 val _ = Define `
- (elf_ma_ecog16 : num =( 176))`;
+ (elf_ma_ecog16 : num= (I 176))`;
 
 (** National Semiconductor CompactRISC CR16 16-bit microprocessor *)
 val _ = Define `
- (elf_ma_cr16 : num =( 177))`;
+ (elf_ma_cr16 : num= (I 177))`;
 
 (** Freescale Extended Time Processing Unit *)
 val _ = Define `
- (elf_ma_etpu : num =( 178))`;
+ (elf_ma_etpu : num= (I 178))`;
 
 (** Altium TSK3000 core *)
 val _ = Define `
- (elf_ma_tsk3000 : num =( 131))`;
+ (elf_ma_tsk3000 : num= (I 131))`;
 
 (** Freescale RS08 embedded processor *)
 val _ = Define `
- (elf_ma_rs08 : num =( 132))`;
+ (elf_ma_rs08 : num= (I 132))`;
 
 (** Analog Devices SHARC family of 32-bit DSP processors *)
 val _ = Define `
- (elf_ma_sharc : num =( 133))`;
+ (elf_ma_sharc : num= (I 133))`;
 
 (** Cyan Technology eCOG2 microprocessor *)
 val _ = Define `
- (elf_ma_ecog2 : num =( 134))`;
+ (elf_ma_ecog2 : num= (I 134))`;
 
 (** Sunplus S+core7 RISC processor *)
 val _ = Define `
- (elf_ma_ccore7 : num =( 135))`;
+ (elf_ma_ccore7 : num= (I 135))`;
 
 (** New Japan Radio (NJR) 24-bit DSP Processor *)
 val _ = Define `
- (elf_ma_dsp24 : num =( 136))`;
+ (elf_ma_dsp24 : num= (I 136))`;
 
 (** Broadcom VideoCore III processor *)
 val _ = Define `
- (elf_ma_videocore3 : num =( 137))`;
+ (elf_ma_videocore3 : num= (I 137))`;
 
 (** RISC processor for Lattice FPGA architecture *)
 val _ = Define `
- (elf_ma_latticemico32 : num =( 138))`;
+ (elf_ma_latticemico32 : num= (I 138))`;
 
 (** Seiko Epson C17 family *)
 val _ = Define `
- (elf_ma_c17 : num =( 139))`;
+ (elf_ma_c17 : num= (I 139))`;
 
 (** The Texas Instruments TMS320C6000 DSP family *)
 val _ = Define `
- (elf_ma_c6000 : num =( 140))`;
+ (elf_ma_c6000 : num= (I 140))`;
 
 (** The Texas Instruments TMS320C2000 DSP family *)
 val _ = Define `
- (elf_ma_c2000 : num =( 141))`;
+ (elf_ma_c2000 : num= (I 141))`;
 
 (** The Texas Instruments TMS320C55x DSP family *)
 val _ = Define `
- (elf_ma_c5500 : num =( 142))`;
+ (elf_ma_c5500 : num= (I 142))`;
 
 (** STMicroelectronics 64bit VLIW Data Signal Processor *)
 val _ = Define `
- (elf_ma_mmdsp_plus : num =( 160))`;
+ (elf_ma_mmdsp_plus : num= (I 160))`;
 
 (** LSI Logic 16-bit DSP Processor *)
 val _ = Define `
- (elf_ma_zsp : num =( 79))`;
+ (elf_ma_zsp : num= (I 79))`;
 
 (** Donald Knuth's educational 64-bit processor *)
 val _ = Define `
- (elf_ma_mmix : num =( 80))`;
+ (elf_ma_mmix : num= (I 80))`;
 
 (** Harvard University machine-independent object files *)
 val _ = Define `
- (elf_ma_huany : num =( 81))`;
+ (elf_ma_huany : num= (I 81))`;
 
 (** SiTera Prism *)
 val _ = Define `
- (elf_ma_prism : num =( 82))`;
+ (elf_ma_prism : num= (I 82))`;
 
 (** Atmel AVR 8-bit microcontroller *)
 val _ = Define `
- (elf_ma_avr : num =( 83))`;
+ (elf_ma_avr : num= (I 83))`;
 
 (** Fujitsu FR30 *)
 val _ = Define `
- (elf_ma_fr30 : num =( 84))`;
+ (elf_ma_fr30 : num= (I 84))`;
 
 (** Mitsubishi D10V *)
 val _ = Define `
- (elf_ma_d10v : num =( 85))`;
+ (elf_ma_d10v : num= (I 85))`;
 
 (** Mitsubishi D30V *)
 val _ = Define `
- (elf_ma_d30v : num =( 86))`;
+ (elf_ma_d30v : num= (I 86))`;
 
 (** NEC v850 *)
 val _ = Define `
- (elf_ma_v850 : num =( 87))`;
+ (elf_ma_v850 : num= (I 87))`;
 
 (** Mitsubishi M32R *)
 val _ = Define `
- (elf_ma_m32r : num =( 88))`;
+ (elf_ma_m32r : num= (I 88))`;
 
 (** Matsushita MN10300 *)
 val _ = Define `
- (elf_ma_mn10300 : num =( 89))`;
+ (elf_ma_mn10300 : num= (I 89))`;
 
 (** Matsushita MN10200 *)
 val _ = Define `
- (elf_ma_mn10200 : num =( 90))`;
+ (elf_ma_mn10200 : num= (I 90))`;
 
 (** picoJava *)
 val _ = Define `
- (elf_ma_pj : num =( 91))`;
+ (elf_ma_pj : num= (I 91))`;
 
 (** OpenRISC 32-bit embedded processor *)
 val _ = Define `
- (elf_ma_openrisc : num =( 92))`;
+ (elf_ma_openrisc : num= (I 92))`;
 
 (** ARC International ARCompact processor (old spelling/synonym: ELF_MA_ARC_A5) *)
 val _ = Define `
- (elf_ma_arc_compact : num =( 93))`;
+ (elf_ma_arc_compact : num= (I 93))`;
 
 (** Tensilica Xtensa Architecture *)
 val _ = Define `
- (elf_ma_xtensa : num =( 94))`;
+ (elf_ma_xtensa : num= (I 94))`;
 
 (** Alphamosaic VideoCore processor *)
 val _ = Define `
- (elf_ma_videocore : num =( 95))`;
+ (elf_ma_videocore : num= (I 95))`;
 
 (** Thompson Multimedia General Purpose Processor *)
 val _ = Define `
- (elf_ma_tmm_gpp : num =( 96))`;
+ (elf_ma_tmm_gpp : num= (I 96))`;
 
 (** National Semiconductor 32000 series *)
 val _ = Define `
- (elf_ma_ns32k : num =( 97))`;
+ (elf_ma_ns32k : num= (I 97))`;
 
 (** Tenor Network TPC processor *)
 val _ = Define `
- (elf_ma_tpc : num =( 98))`;
+ (elf_ma_tpc : num= (I 98))`;
 
 (** Trebia SNP 1000 processor *)
 val _ = Define `
- (elf_ma_snp1k : num =( 99))`;
+ (elf_ma_snp1k : num= (I 99))`;
 
 (** STMicroelectronics ST200 microcontroller *)
 val _ = Define `
- (elf_ma_st200 : num =( 100))`;
+ (elf_ma_st200 : num= (I 100))`;
 
 (** Ubicom IP2xxx microcontroller family *)
 val _ = Define `
- (elf_ma_ip2k : num =( 101))`;
+ (elf_ma_ip2k : num= (I 101))`;
 
 (** MAX Processor *)
 val _ = Define `
- (elf_ma_max : num =( 102))`;
+ (elf_ma_max : num= (I 102))`;
 
 (** National Semiconductor CompactRISC microprocessor *)
 val _ = Define `
- (elf_ma_cr : num =( 103))`;
+ (elf_ma_cr : num= (I 103))`;
 
 (** Fujitsu F2MC16 *)
 val _ = Define `
- (elf_ma_f2mc16 : num =( 104))`;
+ (elf_ma_f2mc16 : num= (I 104))`;
 
 (** Texas Instruments embedded microcontroller msp430 *)
 val _ = Define `
- (elf_ma_msp430 : num =( 105))`;
+ (elf_ma_msp430 : num= (I 105))`;
 
 (** Analog Devices Blackfin (DSP) processor *)
 val _ = Define `
- (elf_ma_blackfin : num =( 106))`;
+ (elf_ma_blackfin : num= (I 106))`;
 
 (** S1C33 Family of Seiko Epson processors *)
 val _ = Define `
- (elf_ma_se_c33 : num =( 107))`;
+ (elf_ma_se_c33 : num= (I 107))`;
 
 (** Sharp embedded microprocessor *)
 val _ = Define `
- (elf_ma_sep : num =( 108))`;
+ (elf_ma_sep : num= (I 108))`;
 
 (** Arca RISC Microprocessor *)
 val _ = Define `
- (elf_ma_arca : num =( 109))`;
+ (elf_ma_arca : num= (I 109))`;
 
 (** Microprocessor series from PKU-Unity Ltd. and MPRC of Peking University *)
 val _ = Define `
- (elf_ma_unicore : num =( 110))`;
+ (elf_ma_unicore : num= (I 110))`;
 
 (** eXcess: 16/32/64-bit configurable embedded CPU *)
 val _ = Define `
- (elf_ma_excess : num =( 111))`;
+ (elf_ma_excess : num= (I 111))`;
 
 (** Icera Semiconductor Inc. Deep Execution Processor *)
 val _ = Define `
- (elf_ma_dxp : num =( 112))`;
+ (elf_ma_dxp : num= (I 112))`;
 
 (** Altera Nios II soft-core processor *)
 val _ = Define `
- (elf_ma_altera_nios2 : num =( 113))`;
+ (elf_ma_altera_nios2 : num= (I 113))`;
 
 (** National Semiconductor CompactRISC CRX microprocessor *)
 val _ = Define `
- (elf_ma_crx : num =( 114))`;
+ (elf_ma_crx : num= (I 114))`;
 
 (** Motorola XGATE embedded processor *)
 val _ = Define `
- (elf_ma_xgate : num =( 115))`;
+ (elf_ma_xgate : num= (I 115))`;
 
 (** Infineon C16x/XC16x processor *)
 val _ = Define `
- (elf_ma_c166 : num =( 116))`;
+ (elf_ma_c166 : num= (I 116))`;
 
 (** Renesas M16C series microprocessors *)
 val _ = Define `
- (elf_ma_m16c : num =( 117))`;
+ (elf_ma_m16c : num= (I 117))`;
 
 (** Microchip Technology dsPIC30F Digital Signal Controller *)
 val _ = Define `
- (elf_ma_dspic30f : num =( 118))`;
+ (elf_ma_dspic30f : num= (I 118))`;
 
 (** Freescale Communication Engine RISC core *)
 val _ = Define `
- (elf_ma_ce : num =( 119))`;
+ (elf_ma_ce : num= (I 119))`;
 
 (** Renesas M32C series microprocessors *)
 val _ = Define `
- (elf_ma_m32c : num =( 120))`;
+ (elf_ma_m32c : num= (I 120))`;
 
 (** No machine *)
 val _ = Define `
- (elf_ma_none : num =( 0))`;
+ (elf_ma_none : num= (I 0))`;
 
 (** AT&T WE 32100 *)
 val _ = Define `
- (elf_ma_m32 : num =( 1))`;
+ (elf_ma_m32 : num= (I 1))`;
 
 (** SPARC *)
 val _ = Define `
- (elf_ma_sparc : num =( 2))`;
+ (elf_ma_sparc : num= (I 2))`;
 
 (** Intel 80386 *)
 val _ = Define `
- (elf_ma_386 : num =( 3))`;
+ (elf_ma_386 : num= (I 3))`;
 
 (** Motorola 68000 *)
 val _ = Define `
- (elf_ma_68k : num =( 4))`;
+ (elf_ma_68k : num= (I 4))`;
 
 (** Motorola 88000 *)
 val _ = Define `
- (elf_ma_88k : num =( 5))`;
+ (elf_ma_88k : num= (I 5))`;
 
 (** Intel 80860 *)
 val _ = Define `
- (elf_ma_860 : num =( 7))`;
+ (elf_ma_860 : num= (I 7))`;
 
 (** MIPS I Architecture *)
 val _ = Define `
- (elf_ma_mips : num =( 8))`;
+ (elf_ma_mips : num= (I 8))`;
 
 (** IBM System/370 Processor *)
 val _ = Define `
- (elf_ma_s370 : num =( 9))`;
+ (elf_ma_s370 : num= (I 9))`;
 
 (** MIPS RS3000 Little-endian *)
 val _ = Define `
- (elf_ma_mips_rs3_le : num =( 10))`;
+ (elf_ma_mips_rs3_le : num= (I 10))`;
 
 (** Hewlett-Packard PA-RISC *)
 val _ = Define `
- (elf_ma_parisc : num =( 15))`;
+ (elf_ma_parisc : num= (I 15))`;
 
 (** Fujitsu VPP500 *)
 val _ = Define `
- (elf_ma_vpp500 : num =( 17))`;
+ (elf_ma_vpp500 : num= (I 17))`;
 
 (** Enhanced instruction set SPARC *)
 val _ = Define `
- (elf_ma_sparc32plus : num =( 18))`;
+ (elf_ma_sparc32plus : num= (I 18))`;
 
 (** Intel 80960 *)
 val _ = Define `
- (elf_ma_960 : num =( 19))`;
+ (elf_ma_960 : num= (I 19))`;
 
 (** PowerPC *)
 val _ = Define `
- (elf_ma_ppc : num =( 20))`;
+ (elf_ma_ppc : num= (I 20))`;
 
 (** 64-bit PowerPC *)
 val _ = Define `
- (elf_ma_ppc64 : num =( 21))`;
+ (elf_ma_ppc64 : num= (I 21))`;
 
 (** IBM System/390 Processor *)
 val _ = Define `
- (elf_ma_s390 : num =( 22))`;
+ (elf_ma_s390 : num= (I 22))`;
 
 (** IBM SPU/SPC *)
 val _ = Define `
- (elf_ma_spu : num =( 23))`;
+ (elf_ma_spu : num= (I 23))`;
 
 (** NEC V800 *)
 val _ = Define `
- (elf_ma_v800 : num =( 36))`;
+ (elf_ma_v800 : num= (I 36))`;
 
 (** Fujitsu FR20 *)
 val _ = Define `
- (elf_ma_fr20 : num =( 37))`;
+ (elf_ma_fr20 : num= (I 37))`;
 
 (** TRW RH-32 *)
 val _ = Define `
- (elf_ma_rh32 : num =( 38))`;
+ (elf_ma_rh32 : num= (I 38))`;
 
 (** Motorola RCE *)
 val _ = Define `
- (elf_ma_rce : num =( 39))`;
+ (elf_ma_rce : num= (I 39))`;
 
 (** ARM 32-bit architecture (AARCH32) *)
 val _ = Define `
- (elf_ma_arm : num =( 40))`;
+ (elf_ma_arm : num= (I 40))`;
 
 (** Digital Alpha *)
 val _ = Define `
- (elf_ma_alpha : num =( 41))`;
+ (elf_ma_alpha : num= (I 41))`;
 
 (** Hitachi SH *)
 val _ = Define `
- (elf_ma_sh : num =( 42))`;
+ (elf_ma_sh : num= (I 42))`;
 
 (** SPARC Version 9 *)
 val _ = Define `
- (elf_ma_sparcv9 : num =( 43))`;
+ (elf_ma_sparcv9 : num= (I 43))`;
 
 (** Siemens TriCore embedded processor *)
 val _ = Define `
- (elf_ma_tricore : num =( 44))`;
+ (elf_ma_tricore : num= (I 44))`;
 
 (** Argonaut RISC Core, Argonaut Technologies Inc. *)
 val _ = Define `
- (elf_ma_arc : num =( 45))`;
+ (elf_ma_arc : num= (I 45))`;
 
 (** Hitachi H8/300 *)
 val _ = Define `
- (elf_ma_h8_300 : num =( 46))`;
+ (elf_ma_h8_300 : num= (I 46))`;
 
 (** Hitachi H8/300H *)
 val _ = Define `
- (elf_ma_h8_300h : num =( 47))`;
+ (elf_ma_h8_300h : num= (I 47))`;
 
 (** Hitachi H8S *)
 val _ = Define `
- (elf_ma_h8s : num =( 48))`;
+ (elf_ma_h8s : num= (I 48))`;
 
 (** Hitachi H8/500 *)
 val _ = Define `
- (elf_ma_h8_500 : num =( 49))`;
+ (elf_ma_h8_500 : num= (I 49))`;
 
 (** Intel IA-64 processor architecture *)
 val _ = Define `
- (elf_ma_ia_64 : num =( 50))`;
+ (elf_ma_ia_64 : num= (I 50))`;
 
 (** Stanford MIPS-X *)
 val _ = Define `
- (elf_ma_mips_x : num =( 51))`;
+ (elf_ma_mips_x : num= (I 51))`;
 
 (** Motorola ColdFire *)
 val _ = Define `
- (elf_ma_coldfire : num =( 52))`;
+ (elf_ma_coldfire : num= (I 52))`;
 
 (** Motorola M68HC12 *)
 val _ = Define `
- (elf_ma_68hc12 : num =( 53))`;
+ (elf_ma_68hc12 : num= (I 53))`;
 
 (** Fujitsu MMA Multimedia Accelerator *)
 val _ = Define `
- (elf_ma_mma : num =( 54))`;
+ (elf_ma_mma : num= (I 54))`;
 
 (** Siemens PCP *)
 val _ = Define `
- (elf_ma_pcp : num =( 55))`;
+ (elf_ma_pcp : num= (I 55))`;
 
 (** Sony nCPU embedded RISC processor *)
 val _ = Define `
- (elf_ma_ncpu : num =( 56))`;
+ (elf_ma_ncpu : num= (I 56))`;
 
 (** Denso NDR1 microprocessor *)
 val _ = Define `
- (elf_ma_ndr1 : num =( 57))`;
+ (elf_ma_ndr1 : num= (I 57))`;
 
 (** Motorola Star*Core processor *)
 val _ = Define `
- (elf_ma_starcore : num =( 58))`;
+ (elf_ma_starcore : num= (I 58))`;
 
 (** Toyota ME16 processor *)
 val _ = Define `
- (elf_ma_me16 : num =( 59))`;
+ (elf_ma_me16 : num= (I 59))`;
 
 (** STMicroelectronics ST100 processor *)
 val _ = Define `
- (elf_ma_st100 : num =( 60))`;
+ (elf_ma_st100 : num= (I 60))`;
 
 (** Advanced Logic Corp. TinyJ embedded processor family *)
 val _ = Define `
- (elf_ma_tinyj : num =( 61))`;
+ (elf_ma_tinyj : num= (I 61))`;
 
 (** AMD x86-64 architecture *)
 val _ = Define `
- (elf_ma_x86_64 : num =( 62))`;
+ (elf_ma_x86_64 : num= (I 62))`;
 
 (** Sony DSP Processor *)
 val _ = Define `
- (elf_ma_pdsp : num =( 63))`;
+ (elf_ma_pdsp : num= (I 63))`;
 
 (** Digital Equipment Corp. PDP-10 *)
 val _ = Define `
- (elf_ma_pdp10 : num =( 64))`;
+ (elf_ma_pdp10 : num= (I 64))`;
 
 (** Digital Equipment Corp. PDP-11 *)
 val _ = Define `
- (elf_ma_pdp11 : num =( 65))`;
+ (elf_ma_pdp11 : num= (I 65))`;
 
 (** Siemens FX66 microcontroller *)
 val _ = Define `
- (elf_ma_fx66 : num =( 66))`;
+ (elf_ma_fx66 : num= (I 66))`;
 
 (** STMicroelectronics ST9+ 8/16 bit microcontroller *)
 val _ = Define `
- (elf_ma_st9plus : num =( 67))`;
+ (elf_ma_st9plus : num= (I 67))`;
 
 (** STMicroelectronics ST7 8-bit microcontroller *)
 val _ = Define `
- (elf_ma_st7 : num =( 68))`;
+ (elf_ma_st7 : num= (I 68))`;
 
 (** Motorola MC68HC16 Microcontroller *)
 val _ = Define `
- (elf_ma_68hc16 : num =( 69))`;
+ (elf_ma_68hc16 : num= (I 69))`;
 
 (** Motorola MC68HC11 Microcontroller *)
 val _ = Define `
- (elf_ma_68hc11 : num =( 70))`;
+ (elf_ma_68hc11 : num= (I 70))`;
 
 (** Motorola MC68HC08 Microcontroller *)
 val _ = Define `
- (elf_ma_68hc08 : num =( 71))`;
+ (elf_ma_68hc08 : num= (I 71))`;
 
 (** Motorola MC68HC05 Microcontroller *)
 val _ = Define `
- (elf_ma_68hc05 : num =( 72))`;
+ (elf_ma_68hc05 : num= (I 72))`;
 
 (** Silicon Graphics SVx *)
 val _ = Define `
- (elf_ma_svx : num =( 73))`;
+ (elf_ma_svx : num= (I 73))`;
 
 (** STMicroelectronics ST19 8-bit microcontroller *)
 val _ = Define `
- (elf_ma_st19 : num =( 74))`;
+ (elf_ma_st19 : num= (I 74))`;
 
 (** Digital VAX *)
 val _ = Define `
- (elf_ma_vax : num =( 75))`;
+ (elf_ma_vax : num= (I 75))`;
 
 (** Axis Communications 32-bit embedded processor *)
 val _ = Define `
- (elf_ma_cris : num =( 76))`;
+ (elf_ma_cris : num= (I 76))`;
 
 (** Infineon Technologies 32-bit embedded processor *)
 val _ = Define `
- (elf_ma_javelin : num =( 77))`;
+ (elf_ma_javelin : num= (I 77))`;
 
 (** Element 14 64-bit DSP Processor *)
 val _ = Define `
- (elf_ma_firepath : num =( 78))`;
+ (elf_ma_firepath : num= (I 78))`;
 
 (** Reserved by Intel *)
 val _ = Define `
- (elf_ma_intel209 : num =( 209))`;
+ (elf_ma_intel209 : num= (I 209))`;
 
 (** Reserved by Intel *)
 val _ = Define `
- (elf_ma_intel208 : num =( 208))`;
+ (elf_ma_intel208 : num= (I 208))`;
 
 (** Reserved by Intel *)
 val _ = Define `
- (elf_ma_intel207 : num =( 207))`;
+ (elf_ma_intel207 : num= (I 207))`;
 
 (** Reserved by Intel *)
 val _ = Define `
- (elf_ma_intel206 : num =( 206))`;
+ (elf_ma_intel206 : num= (I 206))`;
 
 (** Reserved by Intel *)
 val _ = Define `
- (elf_ma_intel205 : num =( 205))`;
+ (elf_ma_intel205 : num= (I 205))`;
 
 (** Reserved by Intel *)
 val _ = Define `
- (elf_ma_intel182 : num =( 182))`;
+ (elf_ma_intel182 : num= (I 182))`;
 
 (** Reserved by ARM *)
 val _ = Define `
- (elf_ma_arm184 : num =( 184))`;
+ (elf_ma_arm184 : num= (I 184))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved6 : num =( 6))`;
+ (elf_ma_reserved6 : num= (I 6))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved11 : num =( 11))`;
+ (elf_ma_reserved11 : num= (I 11))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved12 : num =( 12))`;
+ (elf_ma_reserved12 : num= (I 12))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved13 : num =( 13))`;
+ (elf_ma_reserved13 : num= (I 13))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved14 : num =( 14))`;
+ (elf_ma_reserved14 : num= (I 14))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved16 : num =( 16))`;
+ (elf_ma_reserved16 : num= (I 16))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved24 : num =( 24))`;
+ (elf_ma_reserved24 : num= (I 24))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved25 : num =( 25))`;
+ (elf_ma_reserved25 : num= (I 25))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved26 : num =( 26))`;
+ (elf_ma_reserved26 : num= (I 26))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved27 : num =( 27))`;
+ (elf_ma_reserved27 : num= (I 27))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved28 : num =( 28))`;
+ (elf_ma_reserved28 : num= (I 28))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved29 : num =( 29))`;
+ (elf_ma_reserved29 : num= (I 29))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved30 : num =( 30))`;
+ (elf_ma_reserved30 : num= (I 30))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved31 : num =( 31))`;
+ (elf_ma_reserved31 : num= (I 31))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved32 : num =( 32))`;
+ (elf_ma_reserved32 : num= (I 32))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved33 : num =( 33))`;
+ (elf_ma_reserved33 : num= (I 33))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved34 : num =( 34))`;
+ (elf_ma_reserved34 : num= (I 34))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved35 : num =( 35))`;
+ (elf_ma_reserved35 : num= (I 35))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved121 : num =( 121))`;
+ (elf_ma_reserved121 : num= (I 121))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved122 : num =( 122))`;
+ (elf_ma_reserved122 : num= (I 122))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved123 : num =( 123))`;
+ (elf_ma_reserved123 : num= (I 123))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved124 : num =( 124))`;
+ (elf_ma_reserved124 : num= (I 124))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved125 : num =( 125))`;
+ (elf_ma_reserved125 : num= (I 125))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved126 : num =( 126))`;
+ (elf_ma_reserved126 : num= (I 126))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved127 : num =( 127))`;
+ (elf_ma_reserved127 : num= (I 127))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved128 : num =( 128))`;
+ (elf_ma_reserved128 : num= (I 128))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved129 : num =( 129))`;
+ (elf_ma_reserved129 : num= (I 129))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved130 : num =( 130))`;
+ (elf_ma_reserved130 : num= (I 130))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved143 : num =( 143))`;
+ (elf_ma_reserved143 : num= (I 143))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved144 : num =( 144))`;
+ (elf_ma_reserved144 : num= (I 144))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved145 : num =( 145))`;
+ (elf_ma_reserved145 : num= (I 145))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved146 : num =( 146))`;
+ (elf_ma_reserved146 : num= (I 146))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved147 : num =( 147))`;
+ (elf_ma_reserved147 : num= (I 147))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved148 : num =( 148))`;
+ (elf_ma_reserved148 : num= (I 148))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved149 : num =( 149))`;
+ (elf_ma_reserved149 : num= (I 149))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved150 : num =( 150))`;
+ (elf_ma_reserved150 : num= (I 150))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved151 : num =( 151))`;
+ (elf_ma_reserved151 : num= (I 151))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved152 : num =( 152))`;
+ (elf_ma_reserved152 : num= (I 152))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved153 : num =( 153))`;
+ (elf_ma_reserved153 : num= (I 153))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved154 : num =( 154))`;
+ (elf_ma_reserved154 : num= (I 154))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved155 : num =( 155))`;
+ (elf_ma_reserved155 : num= (I 155))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved156 : num =( 156))`;
+ (elf_ma_reserved156 : num= (I 156))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved157 : num =( 157))`;
+ (elf_ma_reserved157 : num= (I 157))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved158 : num =( 158))`;
+ (elf_ma_reserved158 : num= (I 158))`;
 
 (** Reserved for future use *)
 val _ = Define `
- (elf_ma_reserved159 : num =( 159))`;
+ (elf_ma_reserved159 : num= (I 159))`;
 
 
 (** [string_of_elf_machine_architecture m] produces a string representation of
@@ -1036,6 +1055,23 @@ val _ = Define `
   * TODO: finish this .
   *)
 (*val string_of_elf_machine_architecture : natural -> string*)
+val _ = Define `
+ (string_of_elf_machine_architecture m=	
+ (if m = elf_ma_386 then
+		"Intel 80386"
+  else if m = elf_ma_ppc then
+    "PowerPC"
+  else if m = elf_ma_ppc64 then
+    "PowerPC64"
+  else if m = elf_ma_arm then
+    "AArch"
+  else if m = elf_ma_x86_64 then
+    "Advanced Micro Devices X86-64"
+  else if m = elf_ma_aarch64 then
+    "AArch64"
+	else
+		"Other architecture"))`;
+
 
 (** ELF version numbers.  Denotes the ELF version number of an ELF file.  Current is
   * defined to have a value of 1 with the present specification.  Extensions
@@ -1044,21 +1080,30 @@ val _ = Define `
 
 (** Invalid version *)
 val _ = Define `
- (elf_ev_none : num =( 0))`;
+ (elf_ev_none : num= (I 0))`;
 
 (** Current version *)
 val _ = Define `
- (elf_ev_current : num =( 1))`;
+ (elf_ev_current : num= (I 1))`;
 
 
 (** [string_of_elf_version_number m] produces a string representation of the
   * numeric encoding [m] of the ELF version number.
   *)
 (*val string_of_elf_version_number : natural -> string*)
+val _ = Define `
+ (string_of_elf_version_number m=	
+ (if m = elf_ev_none then
+		"Invalid ELF version"
+	else if m = elf_ev_current then
+		"1 (current)"
+	else
+		"Extended ELF version"))`;
+
 
 (** Check that an extended version number is correct (i.e. greater than 1). *)
 val _ = Define `
- (is_valid_extended_version_number (n : num) = (n > 1))`;
+ (is_valid_extended_version_number (n : num)=  (n >I 1))`;
 
 
 (** Identification indices.  The initial bytes of an ELF header (and an object
@@ -1067,47 +1112,47 @@ val _ = Define `
 
 (** File identification *)
 val _ = Define `
- (elf_ii_mag0 : num =( 0))`;
+ (elf_ii_mag0 : num= (I 0))`;
 
 (** File identification *)
 val _ = Define `
- (elf_ii_mag1 : num =( 1))`;
+ (elf_ii_mag1 : num= (I 1))`;
 
 (** File identification *)
 val _ = Define `
- (elf_ii_mag2 : num =( 2))`;
+ (elf_ii_mag2 : num= (I 2))`;
 
 (** File identification *)
 val _ = Define `
- (elf_ii_mag3 : num =( 3))`;
+ (elf_ii_mag3 : num= (I 3))`;
 
 (** File class *)
 val _ = Define `
- (elf_ii_class : num =( 4))`;
+ (elf_ii_class : num= (I 4))`;
 
 (** Data encoding *)
 val _ = Define `
- (elf_ii_data : num =( 5))`;
+ (elf_ii_data : num= (I 5))`;
 
 (** File version *)
 val _ = Define `
- (elf_ii_version : num =( 6))`;
+ (elf_ii_version : num= (I 6))`;
 
 (** Operating system/ABI identification *)
 val _ = Define `
- (elf_ii_osabi : num =( 7))`;
+ (elf_ii_osabi : num= (I 7))`;
 
 (** ABI version *)
 val _ = Define `
- (elf_ii_abiversion : num =( 8))`;
+ (elf_ii_abiversion : num= (I 8))`;
 
 (** Start of padding bytes *)
 val _ = Define `
- (elf_ii_pad : num =( 9))`;
+ (elf_ii_pad : num= (I 9))`;
 
 (** Size of e*_ident[] *)
 val _ = Define `
- (elf_ii_nident : num =( 16))`;
+ (elf_ii_nident : num= (I 16))`;
 
 
 (** Magic number indices.  A file's first 4 bytes hold a ``magic number,''
@@ -1116,19 +1161,19 @@ val _ = Define `
 
 (** Position: e*_ident[elf_ii_mag0], 0x7f magic number *)
 val _ = Define `
- (elf_mn_mag0 : word8 = ((n2w : num -> 8 word)( 127)))`;
+ (elf_mn_mag0 : word8=  ((n2w : num -> 8 word)(I 127)))`;
 
 (** Position: e*_ident[elf_ii_mag1], 'E' format identifier *)
 val _ = Define `
- (elf_mn_mag1 : word8 = ((n2w : num -> 8 word)( 69)))`;
+ (elf_mn_mag1 : word8=  ((n2w : num -> 8 word)(I 69)))`;
 
 (** Position: e*_ident[elf_ii_mag2], 'L' format identifier *)
 val _ = Define `
- (elf_mn_mag2 : word8 = ((n2w : num -> 8 word)( 76)))`;
+ (elf_mn_mag2 : word8=  ((n2w : num -> 8 word)(I 76)))`;
 
 (** Position: e*_ident[elf_ii_mag3], 'F' format identifier *)
 val _ = Define `
- (elf_mn_mag3 : word8 = ((n2w : num -> 8 word)( 70)))`;
+ (elf_mn_mag3 : word8=  ((n2w : num -> 8 word)(I 70)))`;
 
 
 (** ELf file classes.  The file format is designed to be portable among machines
@@ -1139,21 +1184,32 @@ val _ = Define `
 
 (** Invalid class *)
 val _ = Define `
- (elf_class_none : num =( 0))`;
+ (elf_class_none : num= (I 0))`;
 
 (** 32 bit objects *)
 val _ = Define `
- (elf_class_32 : num =( 1))`;
+ (elf_class_32 : num= (I 1))`;
 
 (** 64 bit objects *)
 val _ = Define `
- (elf_class_64 : num =( 2))`;
+ (elf_class_64 : num= (I 2))`;
 
 
 (** [string_of_elf_file_class m] produces a string representation of the numeric
   * encoding [m] of the ELF file class.
   *)
 (*val string_of_elf_file_class : natural -> string*)
+val _ = Define `
+ (string_of_elf_file_class m=	
+ (if m = elf_class_none then
+		"Invalid ELF file class"
+	else if m = elf_class_32 then
+		"ELF32"
+	else if m = elf_class_64 then
+		"ELF64"
+	else
+		"Invalid ELF file class"))`;
+
 
 (** ELF data encodings.  Byte e_ident[elf_ei_data] specifies the encoding of both the
   * data structures used by object file container and data contained in object
@@ -1162,21 +1218,32 @@ val _ = Define `
 
 (** Invalid data encoding *)
 val _ = Define `
- (elf_data_none : num =( 0))`;
+ (elf_data_none : num= (I 0))`;
 
 (** Two's complement values, least significant byte occupying lowest address *)
 val _ = Define `
- (elf_data_2lsb : num =( 1))`;
+ (elf_data_2lsb : num= (I 1))`;
 
 (** Two's complement values, most significant byte occupying lowest address *)
 val _ = Define `
- (elf_data_2msb : num =( 2))`;
+ (elf_data_2msb : num= (I 2))`;
 
 
 (** [string_of_elf_data_encoding m] produces a string representation of the
   * numeric encoding [m] of the ELF data encoding.
   *)
 (*val string_of_elf_data_encoding : natural -> string*)
+val _ = Define `
+ (string_of_elf_data_encoding m=	
+ (if m = elf_data_none then
+		"Invalid data encoding"
+	else if m = elf_data_2lsb then
+		"2's complement, little endian"
+	else if m = elf_data_2msb then
+		"2's complement, big endian"
+	else
+		"Invalid data encoding"))`;
+
 
 (** OS and ABI versions.  Byte e_ident[elf_ei_osabi] identifies the OS- or
   * ABI-specific ELF extensions used by this file. Some fields in other ELF
@@ -1187,89 +1254,132 @@ val _ = Define `
 
 (** No extensions or unspecified *)
 val _ = Define `
- (elf_osabi_none : num =( 0))`;
+ (elf_osabi_none : num= (I 0))`;
 
 (** Hewlett-Packard HP-UX *)
 val _ = Define `
- (elf_osabi_hpux : num =( 1))`;
+ (elf_osabi_hpux : num= (I 1))`;
 
 (** NetBSD *)
 val _ = Define `
- (elf_osabi_netbsd : num =( 2))`;
+ (elf_osabi_netbsd : num= (I 2))`;
 
 (** GNU *)
 val _ = Define `
- (elf_osabi_gnu : num =( 3))`;
+ (elf_osabi_gnu : num= (I 3))`;
 
 (** Linux, historical alias for GNU *)
 val _ = Define `
- (elf_osabi_linux : num =( 3))`;
+ (elf_osabi_linux : num= (I 3))`;
 
 (** Sun Solaris *)
 val _ = Define `
- (elf_osabi_solaris : num =( 6))`;
+ (elf_osabi_solaris : num= (I 6))`;
 
 (** AIX *)
 val _ = Define `
- (elf_osabi_aix : num =( 7))`;
+ (elf_osabi_aix : num= (I 7))`;
 
 (** IRIX *)
 val _ = Define `
- (elf_osabi_irix : num =( 8))`;
+ (elf_osabi_irix : num= (I 8))`;
 
 (** FreeBSD *)
 val _ = Define `
- (elf_osabi_freebsd : num =( 9))`;
+ (elf_osabi_freebsd : num= (I 9))`;
 
 (** Compaq Tru64 Unix *)
 val _ = Define `
- (elf_osabi_tru64 : num =( 10))`;
+ (elf_osabi_tru64 : num= (I 10))`;
 
 (** Novell Modesto *)
 val _ = Define `
- (elf_osabi_modesto : num =( 11))`;
+ (elf_osabi_modesto : num= (I 11))`;
 
 (** OpenBSD *)
 val _ = Define `
- (elf_osabi_openbsd : num =( 12))`;
+ (elf_osabi_openbsd : num= (I 12))`;
 
 (** OpenVMS *)
 val _ = Define `
- (elf_osabi_openvms : num =( 13))`;
+ (elf_osabi_openvms : num= (I 13))`;
 
 (** Hewlett-Packard Non-stop Kernel *)
 val _ = Define `
- (elf_osabi_nsk : num =( 14))`;
+ (elf_osabi_nsk : num= (I 14))`;
 
 (** Amiga Research OS *)
 val _ = Define `
- (elf_osabi_aros : num =( 15))`;
+ (elf_osabi_aros : num= (I 15))`;
 
 (** FenixOS highly-scalable multi-core OS *)
 val _ = Define `
- (elf_osabi_fenixos : num =( 16))`;
+ (elf_osabi_fenixos : num= (I 16))`;
 
 (** Nuxi CloudABI *)
 val _ = Define `
- (elf_osabi_cloudabi : num =( 17))`;
+ (elf_osabi_cloudabi : num= (I 17))`;
 
 (** Stratus technologies OpenVOS *)
 val _ = Define `
- (elf_osabi_openvos : num =( 18))`;
+ (elf_osabi_openvos : num= (I 18))`;
 
 
 (** Checks an architecture defined OSABI version is correct, i.e. in the range
   * 64 to 255 inclusive.
   *)
 val _ = Define `
- (is_valid_architecture_defined_osabi_version (n : num) =
-  ((n >= 64) /\ (n <= 255)))`;
+ (is_valid_architecture_defined_osabi_version (n : num)=
+   ((n >=I 64) /\ (n <=I 255)))`;
 
 
 (** [string_of_elf_osabi_version m] produces a string representation of the
   * numeric encoding [m] of the ELF OSABI version.
   *)
 (*val string_of_elf_osabi_version : (natural -> string) -> natural -> string*)
+val _ = Define `
+ (string_of_elf_osabi_version arch m=	
+ (if m = elf_osabi_none then
+		"UNIX - System V"
+	else if m = elf_osabi_netbsd then
+		"Hewlett-Packard HP-UX"
+	else if m = elf_osabi_netbsd then
+		"NetBSD"
+	else if m = elf_osabi_gnu then
+		"UNIX - GNU"
+	else if m = elf_osabi_linux then
+		"Linux"
+	else if m = elf_osabi_solaris then
+		"Sun Solaris"
+	else if m = elf_osabi_aix then
+		"AIX"
+	else if m = elf_osabi_irix then
+		"IRIX"
+	else if m = elf_osabi_freebsd then
+		"FreeBSD"
+	else if m = elf_osabi_tru64 then
+		"Compaq Tru64 Unix"
+	else if m = elf_osabi_modesto then
+		"Novell Modesto"
+	else if m = elf_osabi_openbsd then
+		"OpenBSD"
+	else if m = elf_osabi_openvms then
+		"OpenVMS"
+	else if m = elf_osabi_nsk then
+		"Hewlett-Packard Non-stop Kernel"
+	else if m = elf_osabi_aros then
+		"Amiga Research OS"
+	else if m = elf_osabi_fenixos then
+		"FenixOS highly-scalable multi-core OS"
+  else if m = elf_osabi_cloudabi then
+    "Nuxi CloudABI"
+  else if m = elf_osabi_openvos then
+    "Stratus technologies OpenVOS"
+	else if is_valid_architecture_defined_osabi_version m then
+	  arch m
+	else
+		"Invalid OSABI version"))`;
+
 
 (** ELF Header type *)
 
@@ -1278,7 +1388,7 @@ val _ = Define `
   *)
 (*val ei_nident : natural*)
 val _ = Define `
- (ei_nident =( 16))`;
+ (ei_nident= (I 16))`;
 
 
 (** [elf32_header] is the type of headers for 32-bit ELF files.
@@ -1330,8 +1440,8 @@ val _ = Hol_datatype `
   *)
 (*val is_valid_elf32_header : elf32_header -> bool*)
 val _ = Define `
- (is_valid_elf32_header hdr =  
-(TAKE( 4) hdr.elf32_ident = [elf_mn_mag0; elf_mn_mag1; elf_mn_mag2; elf_mn_mag3]))`;
+ (is_valid_elf32_header hdr=  
+ (TAKE(I 4) hdr.elf32_ident = [elf_mn_mag0; elf_mn_mag1; elf_mn_mag2; elf_mn_mag3]))`;
 
   
 (** [is_valid_elf64_header hdr] checks whether header [hdr] is valid, i.e. has
@@ -1341,8 +1451,8 @@ val _ = Define `
   *)
 (*val is_valid_elf64_header : elf64_header -> bool*)
 val _ = Define `
- (is_valid_elf64_header hdr =  
-(TAKE( 4) hdr.elf64_ident = [elf_mn_mag0; elf_mn_mag1; elf_mn_mag2; elf_mn_mag3]))`;
+ (is_valid_elf64_header hdr=  
+ (TAKE(I 4) hdr.elf64_ident = [elf_mn_mag0; elf_mn_mag1; elf_mn_mag2; elf_mn_mag3]))`;
 
 
 (** [elf32_header_compare hdr1 hdr2] is an ordering comparison function for
@@ -1351,7 +1461,7 @@ val _ = Define `
   *)
 (*val elf32_header_compare : elf32_header -> elf32_header -> Basic_classes.ordering*)
 val _ = Define `
- (elf32_header_compare h1 h2 =    
+ (elf32_header_compare h1 h2=     
  (pairCompare (lexicographic_compare (genericCompare (<) (=))) (lexicographic_compare (genericCompare (<) (=))) (MAP w2n h1.elf32_ident, [w2n h1.elf32_type; 
             w2n h1.elf32_machine ; w2n h1.elf32_version ; 
             w2n h1.elf32_entry ; w2n h1.elf32_phoff ; w2n h1.elf32_shoff ; 
@@ -1369,7 +1479,7 @@ val _ = Define `
 
 
 val _ = Define `
-(instance_Basic_classes_Ord_Elf_header_elf32_header_dict =(<|
+(instance_Basic_classes_Ord_Elf_header_elf32_header_dict= (<|
 
   compare_method := elf32_header_compare;
 
@@ -1388,7 +1498,7 @@ val _ = Define `
   *)
 (*val elf64_header_compare : elf64_header -> elf64_header -> Basic_classes.ordering*)
 val _ = Define `
- (elf64_header_compare h1 h2 =    
+ (elf64_header_compare h1 h2=     
  (pairCompare (lexicographic_compare (genericCompare (<) (=))) (lexicographic_compare (genericCompare (<) (=))) (MAP w2n h1.elf64_ident, [w2n h1.elf64_type; 
             w2n h1.elf64_machine ; w2n h1.elf64_version ; 
             w2n h1.elf64_entry ; w2n h1.elf64_phoff ; w2n h1.elf64_shoff ; 
@@ -1406,7 +1516,7 @@ val _ = Define `
 
 
 val _ = Define `
-(instance_Basic_classes_Ord_Elf_header_elf64_header_dict =(<|
+(instance_Basic_classes_Ord_Elf_header_elf64_header_dict= (<|
 
   compare_method := elf64_header_compare;
 
@@ -1424,8 +1534,8 @@ val _ = Define `
   *)
 (*val is_elf32_executable_file : elf32_header -> bool*)
 val _ = Define `
- (is_elf32_executable_file hdr =  
-(w2n hdr.elf32_type = elf_ft_exec))`;
+ (is_elf32_executable_file hdr=  
+ (w2n hdr.elf32_type = elf_ft_exec))`;
 
 
 (** [is_elf64_executable_file hdr] checks whether the header [hdr] states if the
@@ -1433,8 +1543,8 @@ val _ = Define `
   *)
 (*val is_elf64_executable_file : elf64_header -> bool*)
 val _ = Define `
- (is_elf64_executable_file hdr =  
-(w2n hdr.elf64_type = elf_ft_exec))`;
+ (is_elf64_executable_file hdr=  
+ (w2n hdr.elf64_type = elf_ft_exec))`;
 
 
 (** [is_elf32_shared_object_file hdr] checks whether the header [hdr] states if the
@@ -1442,8 +1552,8 @@ val _ = Define `
   *)
 (*val is_elf32_shared_object_file : elf32_header -> bool*)
 val _ = Define `
- (is_elf32_shared_object_file hdr =  
-(w2n hdr.elf32_type = elf_ft_dyn))`;
+ (is_elf32_shared_object_file hdr=  
+ (w2n hdr.elf32_type = elf_ft_dyn))`;
 
 
 (** [is_elf64_shared_object_file hdr] checks whether the header [hdr] states if the
@@ -1451,8 +1561,8 @@ val _ = Define `
   *)
 (*val is_elf64_shared_object_file : elf64_header -> bool*)
 val _ = Define `
- (is_elf64_shared_object_file hdr =  
-(w2n hdr.elf64_type = elf_ft_dyn))`;
+ (is_elf64_shared_object_file hdr=  
+ (w2n hdr.elf64_type = elf_ft_dyn))`;
 
 
 (** [is_elf32_relocatable_file hdr] checks whether the header [hdr] states if the
@@ -1460,8 +1570,8 @@ val _ = Define `
   *)
 (*val is_elf32_relocatable_file : elf32_header -> bool*)
 val _ = Define `
- (is_elf32_relocatable_file hdr =  
-(w2n hdr.elf32_type = elf_ft_rel))`;
+ (is_elf32_relocatable_file hdr=  
+ (w2n hdr.elf32_type = elf_ft_rel))`;
 
 
 (** [is_elf64_relocatable_file hdr] checks whether the header [hdr] states if the
@@ -1469,8 +1579,8 @@ val _ = Define `
   *)
 (*val is_elf64_relocatable_file : elf64_header -> bool*)
 val _ = Define `
- (is_elf64_relocatable_file hdr =  
-(w2n hdr.elf64_type = elf_ft_rel))`;
+ (is_elf64_relocatable_file hdr=  
+ (w2n hdr.elf64_type = elf_ft_rel))`;
 
 
 (** [is_elf32_linkable_file hdr] checks whether the header [hdr] states if the
@@ -1478,8 +1588,8 @@ val _ = Define `
   *)
 (*val is_elf32_linkable_file : elf32_header -> bool*)
 val _ = Define `
- (is_elf32_linkable_file hdr =  
-(is_elf32_shared_object_file hdr \/ is_elf32_relocatable_file hdr))`;
+ (is_elf32_linkable_file hdr=  
+ (is_elf32_shared_object_file hdr \/ is_elf32_relocatable_file hdr))`;
 
 
 (** [is_elf64_linkable_file hdr] checks whether the header [hdr] states if the
@@ -1487,8 +1597,8 @@ val _ = Define `
   *)
 (*val is_elf64_linkable_file : elf64_header -> bool*)
 val _ = Define `
- (is_elf64_linkable_file hdr =  
-(is_elf64_shared_object_file hdr \/ is_elf64_relocatable_file hdr))`;
+ (is_elf64_linkable_file hdr=  
+ (is_elf64_shared_object_file hdr \/ is_elf64_relocatable_file hdr))`;
 
 
 (** [get_elf32_machine_architecture hdr] returns the ELF file's declared machine
@@ -1496,8 +1606,8 @@ val _ = Define `
   *)
 (*val get_elf32_machine_architecture : elf32_header -> natural*)
 val _ = Define `
- (get_elf32_machine_architecture hdr =  
-(w2n hdr.elf32_machine))`;
+ (get_elf32_machine_architecture hdr=  
+ (w2n hdr.elf32_machine))`;
 
 
 (** [get_elf64_machine_architecture hdr] returns the ELF file's declared machine
@@ -1505,8 +1615,8 @@ val _ = Define `
   *)
 (*val get_elf64_machine_architecture : elf64_header -> natural*)
 val _ = Define `
- (get_elf64_machine_architecture hdr =  
-(w2n hdr.elf64_machine))`;
+ (get_elf64_machine_architecture hdr=  
+ (w2n hdr.elf64_machine))`;
 
 
 (** [get_elf32_osabi hdr] returns the ELF file's declared OS/ABI
@@ -1514,8 +1624,8 @@ val _ = Define `
   *)
 (*val get_elf32_osabi : elf32_header -> natural*)
 val _ = Define `
- (get_elf32_osabi hdr =  
-((case lem_list$list_index hdr.elf32_ident (id elf_ii_osabi) of
+ (get_elf32_osabi hdr=  
+ ((case lem_list$list_index hdr.elf32_ident ( elf_ii_osabi) of
       SOME osabi => w2n osabi
     | NONE    => failwith "get_elf32_osabi: lookup in ident failed"
   )))`;
@@ -1526,8 +1636,8 @@ val _ = Define `
   *)
 (*val get_elf64_osabi : elf64_header -> natural*)
 val _ = Define `
- (get_elf64_osabi hdr =  
-((case lem_list$list_index hdr.elf64_ident (id elf_ii_osabi) of
+ (get_elf64_osabi hdr=  
+ ((case lem_list$list_index hdr.elf64_ident ( elf_ii_osabi) of
       SOME osabi => w2n osabi
     | NONE    => failwith "get_elf64_osabi: lookup in ident failed"
   )))`;
@@ -1538,8 +1648,8 @@ val _ = Define `
   *)
 (*val get_elf32_data_encoding : elf32_header -> natural*)
 val _ = Define `
- (get_elf32_data_encoding hdr =  
-((case lem_list$list_index hdr.elf32_ident (id elf_ii_data) of
+ (get_elf32_data_encoding hdr=  
+ ((case lem_list$list_index hdr.elf32_ident ( elf_ii_data) of
       SOME data => w2n data
     | NONE    => failwith "get_elf32_data_encoding: lookup in ident failed"
   )))`;
@@ -1550,8 +1660,8 @@ val _ = Define `
   *)
 (*val get_elf64_data_encoding : elf64_header -> natural*)
 val _ = Define `
- (get_elf64_data_encoding hdr =  
-((case lem_list$list_index hdr.elf64_ident (id elf_ii_data) of
+ (get_elf64_data_encoding hdr=  
+ ((case lem_list$list_index hdr.elf64_ident ( elf_ii_data) of
       SOME data => w2n data
     | NONE    => failwith "get_elf64_data_encoding: lookup in ident failed"
   )))`;
@@ -1562,8 +1672,8 @@ val _ = Define `
   *)
 (*val get_elf32_file_class : elf32_header -> natural*)
 val _ = Define `
- (get_elf32_file_class hdr =  
-((case lem_list$list_index hdr.elf32_ident (id elf_ii_class) of
+ (get_elf32_file_class hdr=  
+ ((case lem_list$list_index hdr.elf32_ident ( elf_ii_class) of
       SOME cls => w2n cls
     | NONE    => failwith "get_elf32_file_class: lookup in ident failed"
   )))`;
@@ -1574,8 +1684,8 @@ val _ = Define `
   *)
 (*val get_elf64_file_class : elf64_header -> natural*)
 val _ = Define `
- (get_elf64_file_class hdr =  
-((case lem_list$list_index hdr.elf64_ident (id elf_ii_class) of
+ (get_elf64_file_class hdr=  
+ ((case lem_list$list_index hdr.elf64_ident ( elf_ii_class) of
       SOME cls => w2n cls
     | NONE    => failwith "get_elf64_file_class: lookup in ident failed"
   )))`;
@@ -1586,8 +1696,8 @@ val _ = Define `
   *)
 (*val get_elf32_version_number : elf32_header -> natural*)
 val _ = Define `
- (get_elf32_version_number hdr =  
-((case lem_list$list_index hdr.elf32_ident (id elf_ii_version) of
+ (get_elf32_version_number hdr=  
+ ((case lem_list$list_index hdr.elf32_ident ( elf_ii_version) of
       SOME ver => w2n ver
     | NONE    => failwith "get_elf32_version_number: lookup in ident failed"
   )))`;
@@ -1598,8 +1708,8 @@ val _ = Define `
   *)
 (*val get_elf64_version_number : elf64_header -> natural*)
 val _ = Define `
- (get_elf64_version_number hdr =  
-((case lem_list$list_index hdr.elf64_ident (id elf_ii_version) of
+ (get_elf64_version_number hdr=  
+ ((case lem_list$list_index hdr.elf64_ident ( elf_ii_version) of
       SOME ver => w2n ver
     | NONE    => failwith "get_elf64_version_number: lookup in ident failed"
   )))`;
@@ -1612,8 +1722,8 @@ val _ = Define `
   *)
 (*val is_valid_elf32_version_number : elf32_header -> bool*)
 val _ = Define `
- (is_valid_elf32_version_numer hdr =  
-(get_elf32_version_number hdr = elf_ev_current))`;
+ (is_valid_elf32_version_numer hdr=  
+ (get_elf32_version_number hdr = elf_ev_current))`;
 
 
 (** [is_valid_elf64_version_number hdr] checks whether an ELF file's declared
@@ -1623,8 +1733,8 @@ val _ = Define `
   *)
 (*val is_valid_elf64_version_number : elf64_header -> bool*)
 val _ = Define `
- (is_valid_elf64_version_numer hdr =  
-(get_elf64_version_number hdr = elf_ev_current))`;
+ (is_valid_elf64_version_numer hdr=  
+ (get_elf64_version_number hdr = elf_ev_current))`;
 
   
 (** [get_elf32_abi_version hdr] returns the ELF file's declared ABI version
@@ -1632,8 +1742,8 @@ val _ = Define `
   *)
 (*val get_elf32_abi_version : elf32_header -> natural*)
 val _ = Define `
- (get_elf32_abi_version hdr =  
-((case lem_list$list_index hdr.elf32_ident (id elf_ii_abiversion) of
+ (get_elf32_abi_version hdr=  
+ ((case lem_list$list_index hdr.elf32_ident ( elf_ii_abiversion) of
       SOME ver => w2n ver
     | NONE    => failwith "get_elf32_abi_version: lookup in ident failed"
   )))`;
@@ -1644,8 +1754,8 @@ val _ = Define `
   *)
 (*val get_elf64_abi_version : elf64_header -> natural*)
 val _ = Define `
- (get_elf64_abi_version hdr =  
-((case lem_list$list_index hdr.elf64_ident (id elf_ii_abiversion) of
+ (get_elf64_abi_version hdr=  
+ ((case lem_list$list_index hdr.elf64_ident ( elf_ii_abiversion) of
       SOME ver => w2n ver
     | NONE    => failwith "get_elf64_abi_version: lookup in ident failed"
   )))`;
@@ -1656,8 +1766,8 @@ val _ = Define `
   *)
 (*val deduce_endianness : list unsigned_char -> endianness*)
 val _ = Define `
- (deduce_endianness id =  
-((case lem_list$list_index id( 5) of
+ (deduce_endianness id=  
+ ((case lem_list$list_index id(I 5) of
       NONE => failwith "deduce_endianness: read of magic number has failed"
     | SOME v  =>
       if w2n v = elf_data_2lsb then
@@ -1674,8 +1784,8 @@ val _ = Define `
   *)
 (*val get_elf32_header_endianness : elf32_header -> endianness*)
 val _ = Define `
- (get_elf32_header_endianness hdr =  
-(deduce_endianness (hdr.elf32_ident)))`;
+ (get_elf32_header_endianness hdr=  
+ (deduce_endianness (hdr.elf32_ident)))`;
 
 
 (** [get_elf64_header_endianness hdr] returns the endianness of the ELF file
@@ -1683,8 +1793,8 @@ val _ = Define `
   *)
 (*val get_elf64_header_endianness : elf64_header -> endianness*)
 val _ = Define `
- (get_elf64_header_endianness hdr =  
-(deduce_endianness (hdr.elf64_ident)))`;
+ (get_elf64_header_endianness hdr=  
+ (deduce_endianness (hdr.elf64_ident)))`;
 
   
 (** [has_elf32_header_associated_entry_point hdr] checks whether the header
@@ -1692,7 +1802,7 @@ val _ = Define `
   *)
 (*val has_elf32_header_associated_entry_point : elf32_header -> bool*)
 val _ = Define `
- (has_elf32_header_associated_entry_point hdr = (~ ((w2n hdr.elf32_entry) =( 0))))`;
+ (has_elf32_header_associated_entry_point hdr=  (~ ((w2n hdr.elf32_entry) =(I 0))))`;
 
 
 (** [has_elf64_header_associated_entry_point hdr] checks whether the header
@@ -1700,7 +1810,7 @@ val _ = Define `
   *)
 (*val has_elf64_header_associated_entry_point : elf64_header -> bool*)
 val _ = Define `
- (has_elf64_header_associated_entry_point hdr = (~ ((w2n hdr.elf64_entry) =( 0))))`;
+ (has_elf64_header_associated_entry_point hdr=  (~ ((w2n hdr.elf64_entry) =(I 0))))`;
 
   
 (** [has_elf32_header_string_table hdr] checks whether the header
@@ -1708,7 +1818,7 @@ val _ = Define `
   *)
 (*val has_elf32_header_string_table : elf32_header -> bool*)
 val _ = Define `
- (has_elf32_header_string_table hdr = (~ ((w2n hdr.elf32_shstrndx) = shn_undef)))`;
+ (has_elf32_header_string_table hdr=  (~ ((w2n hdr.elf32_shstrndx) = shn_undef)))`;
 
   
 (** [has_elf64_header_string_table hdr] checks whether the header
@@ -1716,7 +1826,7 @@ val _ = Define `
   *)
 (*val has_elf64_header_string_table : elf64_header -> bool*)
 val _ = Define `
- (has_elf64_header_string_table hdr = (~ ((w2n hdr.elf64_shstrndx) = shn_undef)))`;
+ (has_elf64_header_string_table hdr=  (~ ((w2n hdr.elf64_shstrndx) = shn_undef)))`;
 
   
 (** [is_elf32_header_section_size_in_section_header_table hdr] checks whether the header
@@ -1725,8 +1835,8 @@ val _ = Define `
   *)
 (*val is_elf32_header_section_size_in_section_header_table : elf32_header -> bool*)
 val _ = Define `
- (is_elf32_header_section_size_in_section_header_table hdr =  
-(w2n hdr.elf32_shnum = 0))`;
+ (is_elf32_header_section_size_in_section_header_table hdr=  
+ (w2n hdr.elf32_shnum =I 0))`;
 
   
 (** [is_elf64_header_section_size_in_section_header_table hdr] checks whether the header
@@ -1735,8 +1845,8 @@ val _ = Define `
   *)
 (*val is_elf64_header_section_size_in_section_header_table : elf64_header -> bool*)
 val _ = Define `
- (is_elf64_header_section_size_in_section_header_table hdr =  
-(w2n hdr.elf64_shnum = 0))`;
+ (is_elf64_header_section_size_in_section_header_table hdr=  
+ (w2n hdr.elf64_shnum =I 0))`;
 
   
 (** [is_elf32_header_string_table_index_in_link hdr] checks whether the header
@@ -1746,8 +1856,8 @@ val _ = Define `
   *)
 (*val is_elf32_header_string_table_index_in_link : elf32_header -> bool*)
 val _ = Define `
- (is_elf32_header_string_table_index_in_link hdr =  
-(w2n hdr.elf32_shstrndx = shn_xindex))`;
+ (is_elf32_header_string_table_index_in_link hdr=  
+ (w2n hdr.elf32_shstrndx = shn_xindex))`;
 
   
 (** [is_elf64_header_string_table_index_in_link hdr] checks whether the header
@@ -1757,8 +1867,8 @@ val _ = Define `
   *)
 (*val is_elf64_header_string_table_index_in_link : elf64_header -> bool*)
 val _ = Define `
- (is_elf64_header_string_table_index_in_link hdr =  
-(w2n hdr.elf64_shstrndx = shn_xindex))`;
+ (is_elf64_header_string_table_index_in_link hdr=  
+ (w2n hdr.elf64_shstrndx = shn_xindex))`;
 
 
 (** The [hdr_print_bundle] type is used to tidy up other type signatures.  Some of the
@@ -1773,19 +1883,73 @@ val _ = type_abbrev( "hdr_print_bundle" , ``: (num -> string) # (num -> string)`
   * of header [hdr] using the ABI-specific print bundle [hdr_bdl].
   *)
 (*val string_of_elf32_header : hdr_print_bundle -> elf32_header -> string*)
+val _ = Define `
+ (string_of_elf32_header (os, proc) hdr=	
+ (unlines [
+	   STRCAT"\t"  (STRCAT"Magic number: " (string_of_list 
+  instance_Show_Show_Elf_types_native_uint_unsigned_char_dict hdr.elf32_ident))
+  ;  STRCAT"\t"  (STRCAT"Endianness: " (string_of_endianness (deduce_endianness hdr.elf32_ident)))
+	;  STRCAT"\t"  (STRCAT"Type: " (string_of_elf_file_type os proc (w2n hdr.elf32_type)))
+  ;  STRCAT"\t"  (STRCAT"Version: " (string_of_elf_version_number (w2n hdr.elf32_version)))
+	;  STRCAT"\t"  (STRCAT"Machine: " (string_of_elf_machine_architecture (w2n hdr.elf32_machine)))
+  ;  STRCAT"\t"  (STRCAT"Entry point: " (ARB hdr.elf32_entry))
+  ;  STRCAT"\t"  (STRCAT"Flags: " (ARB hdr.elf32_flags))
+  ;  STRCAT"\t"  (STRCAT"Entries in program header table: " (ARB hdr.elf32_phnum))
+  ;  STRCAT"\t"  (STRCAT"Entries in section header table: " (ARB hdr.elf32_shnum))
+	]))`;
+
 
 (** [string_of_elf64_header hdr_bdl hdr] returns a string-based representation
   * of header [hdr] using the ABI-specific print bundle [hdr_bdl].
   *)
 (*val string_of_elf64_header : hdr_print_bundle -> elf64_header -> string*)
+val _ = Define `
+ (string_of_elf64_header (os, proc) hdr=  
+ (unlines [
+     STRCAT"\t"  (STRCAT"Magic number: " (string_of_list 
+  instance_Show_Show_Elf_types_native_uint_unsigned_char_dict hdr.elf64_ident))
+  ;  STRCAT"\t"  (STRCAT"Endianness: " (string_of_endianness (deduce_endianness hdr.elf64_ident)))
+  ;  STRCAT"\t"  (STRCAT"Type: " (string_of_elf_file_type os proc (w2n hdr.elf64_type)))
+  ;  STRCAT"\t"  (STRCAT"Version: " (string_of_elf_version_number (w2n hdr.elf64_version)))
+  ;  STRCAT"\t"  (STRCAT"Machine: " (string_of_elf_machine_architecture (w2n hdr.elf64_machine)))
+  ;  STRCAT"\t"  (STRCAT"Entry point: " (ARB hdr.elf64_entry))
+  ;  STRCAT"\t"  (STRCAT"Flags: " (ARB hdr.elf64_flags))
+  ;  STRCAT"\t"  (STRCAT"Entries in program header table: " (ARB hdr.elf64_phnum))
+  ;  STRCAT"\t"  (STRCAT"Entries in section header table: " (ARB hdr.elf64_shnum))
+  ]))`;
+
 
 (** The following are thin wrappers around the pretty-printing functions above
   * using a default print bundle for the header.
   *)
   
 (*val string_of_elf32_header_default : elf32_header -> string*)
+val _ = Define `
+ (string_of_elf32_header_default=	
+ (string_of_elf32_header
+    (default_os_specific_print,
+      default_proc_specific_print)))`;
+
 
 (*val string_of_elf64_header_default : elf64_header -> string*)
+val _ = Define `
+ (string_of_elf64_header_default=  
+ (string_of_elf64_header
+    (default_os_specific_print,
+      default_proc_specific_print)))`;
+
+	
+val _ = Define `
+(instance_Show_Show_Elf_header_elf32_header_dict= (<|
+
+  show_method := string_of_elf32_header_default|>))`;
+
+
+val _ = Define `
+(instance_Show_Show_Elf_header_elf64_header_dict= (<|
+
+  show_method := string_of_elf64_header_default|>))`;
+
 
 (** [read_elf_ident bs0] reads the initial bytes of an ELF file from byte sequence
   * [bs0], returning the remainder of the byte sequence too.
@@ -1793,8 +1957,8 @@ val _ = type_abbrev( "hdr_print_bundle" , ``: (num -> string) # (num -> string)`
   *)
 (*val read_elf_ident : byte_sequence -> error (list unsigned_char * byte_sequence)*)
 val _ = Define `
- (read_elf_ident bs
- = (repeatM' ei_nident bs (read_unsigned_char default_endianness)))`;
+ (read_elf_ident bs=  
+(repeatM' ei_nident bs (read_unsigned_char default_endianness)))`;
 
 
 (** [bytes_of_elf32_header hdr] blits an ELF header [hdr] to a byte sequence,
@@ -1802,8 +1966,8 @@ val _ = Define `
   *)
 (*val bytes_of_elf32_header : elf32_header -> byte_sequence*)
 val _ = Define `
- (bytes_of_elf32_header hdr =  
-(let endian = (deduce_endianness hdr.elf32_ident) in
+ (bytes_of_elf32_header hdr=  
+ (let endian = (deduce_endianness hdr.elf32_ident) in
     byte_sequence$from_byte_lists [
       MAP id hdr.elf32_ident
     ; bytes_of_elf32_half endian hdr.elf32_type
@@ -1827,8 +1991,8 @@ val _ = Define `
   *)
 (*val bytes_of_elf64_header : elf64_header -> byte_sequence*)
 val _ = Define `
- (bytes_of_elf64_header hdr =  
-(let endian = (deduce_endianness hdr.elf64_ident) in
+ (bytes_of_elf64_header hdr=  
+ (let endian = (deduce_endianness hdr.elf64_ident) in
     byte_sequence$from_byte_lists [
       MAP id hdr.elf64_ident
     ; bytes_of_elf64_half endian hdr.elf64_type
@@ -1849,23 +2013,23 @@ val _ = Define `
     
 (*val is_elf32_header_padding_correct : elf32_header -> bool*)
 val _ = Define `
- (is_elf32_header_padding_correct ehdr =
-  ((lem_list$list_index ehdr.elf32_ident( 9)  = SOME ((n2w : num -> 8 word)( 0))) /\  
-(lem_list$list_index ehdr.elf32_ident( 10) = SOME ((n2w : num -> 8 word)( 0))) /\  
-(lem_list$list_index ehdr.elf32_ident( 11) = SOME ((n2w : num -> 8 word)( 0))) /\  
-(lem_list$list_index ehdr.elf32_ident( 12) = SOME ((n2w : num -> 8 word)( 0))) /\  
-(lem_list$list_index ehdr.elf32_ident( 13) = SOME ((n2w : num -> 8 word)( 0))) /\  
-(lem_list$list_index ehdr.elf32_ident( 14) = SOME ((n2w : num -> 8 word)( 0))) /\  
-(lem_list$list_index ehdr.elf32_ident( 15) = SOME ((n2w : num -> 8 word)( 0)))))`;
+ (is_elf32_header_padding_correct ehdr=
+   ((lem_list$list_index ehdr.elf32_ident(I 9)  = SOME ((n2w : num -> 8 word)(I 0))) /\  
+(lem_list$list_index ehdr.elf32_ident(I 10) = SOME ((n2w : num -> 8 word)(I 0))) /\  
+(lem_list$list_index ehdr.elf32_ident(I 11) = SOME ((n2w : num -> 8 word)(I 0))) /\  
+(lem_list$list_index ehdr.elf32_ident(I 12) = SOME ((n2w : num -> 8 word)(I 0))) /\  
+(lem_list$list_index ehdr.elf32_ident(I 13) = SOME ((n2w : num -> 8 word)(I 0))) /\  
+(lem_list$list_index ehdr.elf32_ident(I 14) = SOME ((n2w : num -> 8 word)(I 0))) /\  
+(lem_list$list_index ehdr.elf32_ident(I 15) = SOME ((n2w : num -> 8 word)(I 0)))))`;
 
 
 (*val is_magic_number_correct : list unsigned_char -> bool*)
 val _ = Define `
- (is_magic_number_correct ident =
-  ((lem_list$list_index ident( 0) = SOME ((n2w : num -> 8 word)( 127))) /\  
-(lem_list$list_index ident( 1) = SOME ((n2w : num -> 8 word)( 69)))  /\  
-(lem_list$list_index ident( 2) = SOME ((n2w : num -> 8 word)( 76)))  /\  
-(lem_list$list_index ident( 3) = SOME ((n2w : num -> 8 word)( 70)))))`;
+ (is_magic_number_correct ident=
+   ((lem_list$list_index ident(I 0) = SOME ((n2w : num -> 8 word)(I 127))) /\  
+(lem_list$list_index ident(I 1) = SOME ((n2w : num -> 8 word)(I 69)))  /\  
+(lem_list$list_index ident(I 2) = SOME ((n2w : num -> 8 word)(I 76)))  /\  
+(lem_list$list_index ident(I 3) = SOME ((n2w : num -> 8 word)(I 70)))))`;
 
 
 (** [read_elf32_header bs0] reads an ELF header from the byte sequence [bs0].
@@ -1873,8 +2037,8 @@ val _ = Define `
   *)
 (*val read_elf32_header : byte_sequence -> error (elf32_header * byte_sequence)*)
 val _ = Define `
- (read_elf32_header bs =	
-(read_elf_ident bs >>= (\ (ident, bs) . 
+ (read_elf32_header bs=	
+ (read_elf_ident bs >>= (\ (ident, bs) . 
 	if ~ (is_magic_number_correct ident) then
 	  fail0 "read_elf32_header: magic number incorrect"
 	else
@@ -1892,7 +2056,7 @@ val _ = Define `
 	  read_elf32_half endian bs >>= (\ (shentsize, bs) . 
 	  read_elf32_half endian bs >>= (\ (shnum, bs) . 
 	  read_elf32_half endian bs >>= (\ (shstrndx, bs) . 
-    (case lem_list$list_index ident( 4) of
+    (case lem_list$list_index ident(I 4) of
         NONE => fail0 "read_elf32_header: transcription of ELF identifier failed"
       | SOME c  =>
         if w2n c = elf_class_32 then
@@ -1913,8 +2077,8 @@ val _ = Define `
   *)
 (*val read_elf64_header : byte_sequence -> error (elf64_header * byte_sequence)*)
 val _ = Define `
- (read_elf64_header bs =  
-(read_elf_ident bs >>= (\ (ident, bs) . 
+ (read_elf64_header bs=  
+ (read_elf_ident bs >>= (\ (ident, bs) . 
   if ~ (is_magic_number_correct ident) then
     fail0 "read_elf64_header: magic number incorrect"
   else
@@ -1932,7 +2096,7 @@ val _ = Define `
     read_elf64_half endian bs >>= (\ (shentsize, bs) . 
     read_elf64_half endian bs >>= (\ (shnum, bs) . 
     read_elf64_half endian bs >>= (\ (shstrndx, bs) . 
-    (case lem_list$list_index ident( 4) of
+    (case lem_list$list_index ident(I 4) of
         NONE => fail0 "read_elf64_header: transcription of ELF identifier failed"
       | SOME c  =>
         if w2n c = elf_class_64 then
@@ -1953,8 +2117,8 @@ val _ = Define `
   *)
 (*val is_elf32_header_class_correct : elf32_header -> bool*)
 val _ = Define `
- (is_elf32_header_class_correct ehdr =  
-(lem_list$list_index ehdr.elf32_ident( 4) = SOME ((n2w : num -> 8 word)( 1))))`;
+ (is_elf32_header_class_correct ehdr=  
+ (lem_list$list_index ehdr.elf32_ident(I 4) = SOME ((n2w : num -> 8 word)(I 1))))`;
 
   
 (** [is_elf64_header_class_correct hdr] checks whether the declared file class
@@ -1962,8 +2126,8 @@ val _ = Define `
   *)
 (*val is_elf64_header_class_correct : elf64_header -> bool*)
 val _ = Define `
- (is_elf64_header_class_correct ehdr =  
-(lem_list$list_index ehdr.elf64_ident( 4) = SOME ((n2w : num -> 8 word)( 1))))`;
+ (is_elf64_header_class_correct ehdr=  
+ (lem_list$list_index ehdr.elf64_ident(I 4) = SOME ((n2w : num -> 8 word)(I 1))))`;
 
 
 (** [is_elf32_header_version_correct hdr] checks whether the declared file version
@@ -1971,8 +2135,8 @@ val _ = Define `
   *)
 (*val is_elf32_header_version_correct : elf32_header -> bool*)
 val _ = Define `
- (is_elf32_header_version_correct ehdr =  
-(lem_list$list_index ehdr.elf32_ident( 6) = SOME ((n2w : num -> 8 word)( 1))))`;
+ (is_elf32_header_version_correct ehdr=  
+ (lem_list$list_index ehdr.elf32_ident(I 6) = SOME ((n2w : num -> 8 word)(I 1))))`;
 
   
 (** [is_elf64_header_version_correct hdr] checks whether the declared file version
@@ -1980,8 +2144,8 @@ val _ = Define `
   *)
 (*val is_elf64_header_version_correct : elf64_header -> bool*)
 val _ = Define `
- (is_elf64_header_version_correct ehdr =  
-(lem_list$list_index ehdr.elf64_ident( 6) = SOME ((n2w : num -> 8 word)( 1))))`;
+ (is_elf64_header_version_correct ehdr=  
+ (lem_list$list_index ehdr.elf64_ident(I 6) = SOME ((n2w : num -> 8 word)(I 1))))`;
 
 
 (** [is_elf32_header_valid] checks whether an [elf32_header] value is a valid 32-bit
@@ -1990,8 +2154,8 @@ val _ = Define `
   *)
 (*val is_elf32_header_valid : elf32_header -> bool*)
 val _ = Define `
- (is_elf32_header_valid ehdr =
-  (( (LENGTH ehdr.elf32_ident) = ei_nident) /\
+ (is_elf32_header_valid ehdr=
+   ((I (LENGTH ehdr.elf32_ident) = ei_nident) /\
   is_magic_number_correct ehdr.elf32_ident /\
   is_elf32_header_padding_correct ehdr /\
   is_elf32_header_class_correct ehdr /\
@@ -2003,8 +2167,8 @@ val _ = Define `
   *)
 (*val get_elf32_header_program_table_size : elf32_header -> natural*)
 val _ = Define `
- (get_elf32_header_program_table_size ehdr =  
-(let phentsize = (w2n ehdr.elf32_phentsize) in
+ (get_elf32_header_program_table_size ehdr=  
+ (let phentsize = (w2n ehdr.elf32_phentsize) in
   let phnum     = (w2n ehdr.elf32_phnum) in
     phentsize * phnum))`;
 
@@ -2014,8 +2178,8 @@ val _ = Define `
   *)
 (*val get_elf64_header_program_table_size : elf64_header -> natural*)
 val _ = Define `
- (get_elf64_header_program_table_size ehdr =  
-(let phentsize = (w2n ehdr.elf64_phentsize) in
+ (get_elf64_header_program_table_size ehdr=  
+ (let phentsize = (w2n ehdr.elf64_phentsize) in
   let phnum     = (w2n ehdr.elf64_phnum) in
     phentsize * phnum))`;
 
@@ -2025,8 +2189,8 @@ val _ = Define `
   *)
 (*val is_elf32_header_section_table_present : elf32_header -> bool*)
 val _ = Define `
- (is_elf32_header_section_table_present ehdr =  
-(~ (w2n ehdr.elf32_shoff = 0)))`;
+ (is_elf32_header_section_table_present ehdr=  
+ (~ (w2n ehdr.elf32_shoff =I 0)))`;
 
 
 (** [is_elf64_header_section_table_present] calculates whether a section table
@@ -2034,8 +2198,8 @@ val _ = Define `
   *)
 (*val is_elf64_header_section_table_present : elf64_header -> bool*)
 val _ = Define `
- (is_elf64_header_section_table_present ehdr =  
-(~ (w2n ehdr.elf64_shoff = 0)))`;
+ (is_elf64_header_section_table_present ehdr=  
+ (~ (w2n ehdr.elf64_shoff =I 0)))`;
 
 
 (** [get_elf32_header_section_table_size] calculates the size of the section table
@@ -2043,8 +2207,8 @@ val _ = Define `
   *)
 (*val get_elf32_header_section_table_size : elf32_header -> natural*)
 val _ = Define `
- (get_elf32_header_section_table_size ehdr =  
-(let shentsize = (w2n ehdr.elf32_shentsize) in
+ (get_elf32_header_section_table_size ehdr=  
+ (let shentsize = (w2n ehdr.elf32_shentsize) in
   let shnum     = (w2n ehdr.elf32_shnum) in
     shentsize * shnum))`;
 
@@ -2054,8 +2218,8 @@ val _ = Define `
   *)
 (*val get_elf64_header_section_table_size : elf64_header -> natural*)
 val _ = Define `
- (get_elf64_header_section_table_size ehdr =  
-(let shentsize = (w2n ehdr.elf64_shentsize) in
+ (get_elf64_header_section_table_size ehdr=  
+ (let shentsize = (w2n ehdr.elf64_shentsize) in
   let shnum     = (w2n ehdr.elf64_shnum) in
     shentsize * shnum))`;
 

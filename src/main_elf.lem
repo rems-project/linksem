@@ -339,7 +339,7 @@ let _ =
 *)
 
 let _ =
-  match Sail_interface.populate_and_obtain_global_symbol_init_info "../test/mixed-binaries/1548" with
+  match Sail_interface.populate_and_obtain_global_symbol_init_info "../test/mixed-binaries/tiny-istatic-with-malloc/tiny-tinystatic-with-malloc" with
     | Fail err  -> Missing_pervasives.errln ("[!]: " ^ err)
-    | Success img -> Missing_pervasives.outln (Sail_interface.string_of_executable_process_image img)
+    | Success (img, syms) -> Missing_pervasives.outln (Sail_interface.string_of_executable_process_image img)
   end

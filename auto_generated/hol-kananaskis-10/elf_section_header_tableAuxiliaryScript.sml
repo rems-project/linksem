@@ -20,7 +20,7 @@ val _ = new_theory "elf_section_header_tableAuxiliary"
 (* val gst = Defn.tgoal_no_defn (read_elf32_section_header_table'_def, read_elf32_section_header_table'_ind) *)
 val (read_elf32_section_header_table'_rw, read_elf32_section_header_table'_ind_rw) =
   Defn.tprove_no_defn ((read_elf32_section_header_table'_def, read_elf32_section_header_table'_ind),
-    cheat
+    (* the termination proof *)
   )
 val read_elf32_section_header_table'_rw = save_thm ("read_elf32_section_header_table'_rw", read_elf32_section_header_table'_rw);
 val read_elf32_section_header_table'_ind_rw = save_thm ("read_elf32_section_header_table'_ind_rw", read_elf32_section_header_table'_ind_rw);
@@ -29,7 +29,7 @@ val read_elf32_section_header_table'_ind_rw = save_thm ("read_elf32_section_head
 (* val gst = Defn.tgoal_no_defn (read_elf64_section_header_table'_def, read_elf64_section_header_table'_ind) *)
 val (read_elf64_section_header_table'_rw, read_elf64_section_header_table'_ind_rw) =
   Defn.tprove_no_defn ((read_elf64_section_header_table'_def, read_elf64_section_header_table'_ind),
-    cheat
+    (* the termination proof *)
   )
 val read_elf64_section_header_table'_rw = save_thm ("read_elf64_section_header_table'_rw", read_elf64_section_header_table'_rw);
 val read_elf64_section_header_table'_ind_rw = save_thm ("read_elf64_section_header_table'_ind_rw", read_elf64_section_header_table'_ind_rw);
@@ -38,7 +38,7 @@ val read_elf64_section_header_table'_ind_rw = save_thm ("read_elf64_section_head
 (* val gst = Defn.tgoal_no_defn (get_elf32_section_to_segment_mapping_def, get_elf32_section_to_segment_mapping_ind) *)
 val (get_elf32_section_to_segment_mapping_rw, get_elf32_section_to_segment_mapping_ind_rw) =
   Defn.tprove_no_defn ((get_elf32_section_to_segment_mapping_def, get_elf32_section_to_segment_mapping_ind),
-    cheat
+    (* the termination proof *)
   )
 val get_elf32_section_to_segment_mapping_rw = save_thm ("get_elf32_section_to_segment_mapping_rw", get_elf32_section_to_segment_mapping_rw);
 val get_elf32_section_to_segment_mapping_ind_rw = save_thm ("get_elf32_section_to_segment_mapping_ind_rw", get_elf32_section_to_segment_mapping_ind_rw);
@@ -47,7 +47,7 @@ val get_elf32_section_to_segment_mapping_ind_rw = save_thm ("get_elf32_section_t
 (* val gst = Defn.tgoal_no_defn (get_elf64_section_to_segment_mapping_def, get_elf64_section_to_segment_mapping_ind) *)
 val (get_elf64_section_to_segment_mapping_rw, get_elf64_section_to_segment_mapping_ind_rw) =
   Defn.tprove_no_defn ((get_elf64_section_to_segment_mapping_def, get_elf64_section_to_segment_mapping_ind),
-    cheat
+    (* the termination proof *)
   )
 val get_elf64_section_to_segment_mapping_rw = save_thm ("get_elf64_section_to_segment_mapping_rw", get_elf64_section_to_segment_mapping_rw);
 val get_elf64_section_to_segment_mapping_ind_rw = save_thm ("get_elf64_section_to_segment_mapping_ind_rw", get_elf64_section_to_segment_mapping_ind_rw);

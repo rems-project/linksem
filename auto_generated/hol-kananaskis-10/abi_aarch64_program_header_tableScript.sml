@@ -19,11 +19,11 @@ val _ = new_theory "abi_aarch64_program_header_table"
 
 (** Reserved for architecture compatibility information. *)
 val _ = Define `
- (abi_aarch64_pt_archext : num =( 939524096 * 2))`;
+ (abi_aarch64_pt_archext : num= (I 939524096 *I 2))`;
        (* 0x70000000 *)
 (** Reserved for unwind information. *)
 val _ = Define `
- (abi_aarch64_pt_unwind  : num = (( 939524096 * 2) + 1))`;
+ (abi_aarch64_pt_unwind  : num=  ((I 939524096 *I 2) +I 1))`;
  (* 0x70000001 *)
 
 (** [string_of_abi_aarch64_segment_type m] produces a string representation of

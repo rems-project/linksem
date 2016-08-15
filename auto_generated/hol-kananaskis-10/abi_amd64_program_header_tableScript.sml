@@ -21,13 +21,13 @@ val _ = new_theory "abi_amd64_program_header_table"
 
 (** The segment contains the stack unwind tables *)
 val _ = Define `
- (abi_amd64_pt_gnu_eh_frame  : num =( 2 * 842691240))`;
+ (abi_amd64_pt_gnu_eh_frame  : num= (I 2 *I 842691240))`;
  (* 0x6474e550 *)
 val _ = Define `
- (abi_amd64_pt_sunw_eh_frame : num =( 2 * 842691240))`;
+ (abi_amd64_pt_sunw_eh_frame : num= (I 2 *I 842691240))`;
  (* 0x6474e550 *)
 val _ = Define `
- (abi_amd64_pt_sunw_unwind   : num =( 2 * 842691240))`;
+ (abi_amd64_pt_sunw_unwind   : num= (I 2 *I 842691240))`;
  (* 0x6474e550 *)
 
 (** [string_of_abi_amd64_elf_segment_type m] produces a string based representation
@@ -35,8 +35,8 @@ val _ = Define `
   *)
 (*val string_of_abi_amd64_elf_segment_type : natural -> string*)
 val _ = Define `
- (string_of_abi_amd64_elf_segment_type m =  
-(if m = abi_amd64_pt_gnu_eh_frame then
+ (string_of_abi_amd64_elf_segment_type m=  
+ (if m = abi_amd64_pt_gnu_eh_frame then
     "GNU_EH_FRAME"
   else if m = abi_amd64_pt_sunw_eh_frame then
     "SUNW_EH_FRAME"
@@ -52,8 +52,8 @@ val _ = Define `
   *)
 (*val abi_amd64_is_valid_program_interpreter : string -> bool*)
 val _ = Define `
- (abi_amd64_is_valid_program_interpreter s =
-  ((s = "/lib/ld64.so.1") \/ (s = "/lib64/ld-linux-x86-64.so.2")))`;
+ (abi_amd64_is_valid_program_interpreter s=
+   ((s = "/lib/ld64.so.1") \/ (s = "/lib64/ld-linux-x86-64.so.2")))`;
 
 val _ = export_theory()
 

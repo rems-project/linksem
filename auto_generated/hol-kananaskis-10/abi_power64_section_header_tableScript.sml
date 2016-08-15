@@ -23,8 +23,8 @@ val _ = new_theory "abi_power64_section_header_table"
 
 (*val abi_power64_special_sections : Map.map string (natural * natural)*)
 val _ = Define `
- (abi_power64_special_sections =  
-(FUPDATE_LIST FEMPTY [
+ (abi_power64_special_sections=  
+ (FUPDATE_LIST FEMPTY [
     (".glink", (sht_progbits, (shf_alloc + shf_execinstr)))
   ; (".got", (sht_progbits, (shf_alloc + shf_write)))
   ; (".toc", (sht_progbits, (shf_alloc + shf_write)))

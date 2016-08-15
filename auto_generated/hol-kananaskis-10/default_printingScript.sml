@@ -19,14 +19,27 @@ val _ = new_theory "default_printing"
   * functionality.
   *)
 (*val default_os_specific_print : forall 'a. 'a -> string*)
+val _ = Define `
+ (default_os_specific_print= 
+  (K "*Default OS specific print*"))`;
+
 
 (** [default_proc_specific_print] is a default print function for processor specific
   * functionality.
   *)
 (*val default_proc_specific_print : forall 'a. 'a -> string*)
+val _ = Define `
+ (default_proc_specific_print= 
+  (K "*Default processor specific print*"))`;
+
 
 (** [default_user_specific_print] is a default print function for user specific
   * functionality.
   *)
-(*val default_user_specific_print : forall 'a. 'a -> string*)val _ = export_theory()
+(*val default_user_specific_print : forall 'a. 'a -> string*)
+val _ = Define `
+ (default_user_specific_print= 
+  (K "*Default user specific print*"))`;
+
+val _ = export_theory()
 

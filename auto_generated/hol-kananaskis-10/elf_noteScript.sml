@@ -58,8 +58,8 @@ val _ = Hol_datatype `
   *)
 (*val read_elf32_note : endianness -> byte_sequence -> error (elf32_note * byte_sequence)*)
 val _ = Define `
- (read_elf32_note endian bs0 =  
-(read_elf32_word endian bs0 >>= (\ (namesz, bs0) . 
+ (read_elf32_note endian bs0=  
+ (read_elf32_word endian bs0 >>= (\ (namesz, bs0) . 
   read_elf32_word endian bs0 >>= (\ (descsz, bs0) . 
   read_elf32_word endian bs0 >>= (\ (typ, bs0) . 
   repeatM' (w2n namesz) bs0 read_char >>= (\ (name, bs0) . 
@@ -75,8 +75,8 @@ val _ = Define `
   *)
 (*val read_elf64_note : endianness -> byte_sequence -> error (elf64_note * byte_sequence)*)
 val _ = Define `
- (read_elf64_note endian bs0 =  
-(read_elf64_xword endian bs0 >>= (\ (namesz, bs0) . 
+ (read_elf64_note endian bs0=  
+ (read_elf64_xword endian bs0 >>= (\ (namesz, bs0) . 
   read_elf64_xword endian bs0 >>= (\ (descsz, bs0) . 
   read_elf64_xword endian bs0 >>= (\ (typ, bs0) . 
   repeatM' (w2n namesz) bs0 read_char >>= (\ (name, bs0) . 
@@ -94,8 +94,8 @@ val _ = Define `
 (*val obtain_elf32_note_sections : endianness -> elf32_section_header_table ->
   byte_sequence -> error (list elf32_note)*)
 val _ = Define `
- (obtain_elf32_note_sections endian sht bs0 =  
-(let note_sects =    
+ (obtain_elf32_note_sections endian sht bs0=  
+ (let note_sects =    
 (FILTER (\ x . 
       x.elf32_sh_type = (n2w : num -> 32 word) sht_note
     ) sht)
@@ -117,8 +117,8 @@ val _ = Define `
 (*val obtain_elf64_note_sections : endianness -> elf64_section_header_table ->
   byte_sequence -> error (list elf64_note)*)
 val _ = Define `
- (obtain_elf64_note_sections endian sht bs0 =  
-(let note_sects =    
+ (obtain_elf64_note_sections endian sht bs0=  
+ (let note_sects =    
 (FILTER (\ x . 
       x.elf64_sh_type = (n2w : num -> 32 word) sht_note
     ) sht)
@@ -140,8 +140,8 @@ val _ = Define `
 (*val obtain_elf32_note_segments : endianness -> elf32_program_header_table ->
   byte_sequence -> error (list elf32_note)*)
 val _ = Define `
- (obtain_elf32_note_segments endian pht bs0 =  
-(let note_segs =    
+ (obtain_elf32_note_segments endian pht bs0=  
+ (let note_segs =    
 (FILTER (\ x . 
       x.elf32_p_type = (n2w : num -> 32 word) elf_pt_note
     ) pht)
@@ -163,8 +163,8 @@ val _ = Define `
 (*val obtain_elf64_note_segments : endianness -> elf64_program_header_table ->
   byte_sequence -> error (list elf64_note)*)
 val _ = Define `
- (obtain_elf64_note_segments endian pht bs0 =  
-(let note_segs =    
+ (obtain_elf64_note_segments endian pht bs0=  
+ (let note_segs =    
 (FILTER (\ x . 
       x.elf64_p_type = (n2w : num -> 32 word) elf_pt_note
     ) pht)
@@ -187,8 +187,8 @@ val _ = Define `
 (*val obtain_elf32_note_section_and_segments : endianness -> elf32_program_header_table ->
   elf32_section_header_table -> byte_sequence -> error (list elf32_note)*)
 val _ = Define `
- (obtain_elf32_note_section_and_segments endian pht sht bs0 =  
-(obtain_elf32_note_segments endian pht bs0 >>= (\ pht_notes . 
+ (obtain_elf32_note_section_and_segments endian pht sht bs0=  
+ (obtain_elf32_note_segments endian pht bs0 >>= (\ pht_notes . 
   obtain_elf32_note_sections endian sht bs0 >>= (\ sht_notes . 
   return (pht_notes ++ sht_notes)))))`;
 
@@ -202,8 +202,8 @@ val _ = Define `
 (*val obtain_elf64_note_section_and_segments : endianness -> elf64_program_header_table ->
   elf64_section_header_table -> byte_sequence -> error (list elf64_note)*)
 val _ = Define `
- (obtain_elf64_note_section_and_segments endian pht sht bs0 =  
-(obtain_elf64_note_segments endian pht bs0 >>= (\ pht_notes . 
+ (obtain_elf64_note_section_and_segments endian pht sht bs0=  
+ (obtain_elf64_note_segments endian pht bs0 >>= (\ pht_notes . 
   obtain_elf64_note_sections endian sht bs0 >>= (\ sht_notes . 
   return (pht_notes ++ sht_notes)))))`;
 
@@ -213,8 +213,8 @@ val _ = Define `
   *)
 (*val name_string_of_elf32_note : elf32_note -> string*)
 val _ = Define `
- (name_string_of_elf32_note note =  
-(let bs0   = (byte_sequence$from_byte_lists [note.elf32_note_name]) in
+ (name_string_of_elf32_note note=  
+ (let bs0   = (byte_sequence$from_byte_lists [note.elf32_note_name]) in
     byte_sequence$string_of_byte_sequence bs0))`;
 
   
@@ -223,8 +223,8 @@ val _ = Define `
   *)  
 (*val name_string_of_elf64_note : elf64_note -> string*)
 val _ = Define `
- (name_string_of_elf64_note note =  
-(let bs0   = (byte_sequence$from_byte_lists [note.elf64_note_name]) in
+ (name_string_of_elf64_note note=  
+ (let bs0   = (byte_sequence$from_byte_lists [note.elf64_note_name]) in
     byte_sequence$string_of_byte_sequence bs0))`;
  
 val _ = export_theory()

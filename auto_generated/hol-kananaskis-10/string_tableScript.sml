@@ -39,22 +39,22 @@ val _ = Hol_datatype `
   *)
 (*val mk_string_table : string -> char -> string_table*)
 val _ = Define `
- (mk_string_table base sep =  
-(Strings (sep, base)))`;
+ (mk_string_table base sep=  
+ (Strings (sep, base)))`;
 
 
 (** [string_table_of_byte_sequence seq] constructs a string table, using the NUL
   * character as terminator, from a byte sequence. *)
 (*val string_table_of_byte_sequence : byte_sequence -> string_table*)
 val _ = Define `
- (string_table_of_byte_sequence seq = (mk_string_table (string_of_byte_sequence seq) (CHR 0)))`;
+ (string_table_of_byte_sequence seq=  (mk_string_table (string_of_byte_sequence seq) (CHR 0)))`;
 
 
 (** [empty] is the empty string table with an arbitrary choice of delimiter.
   *)
 (*val empty : string_table*)
 val _ = Define `
- (empty0 = (Strings ((CHR 0), "")))`;
+ (empty0=  (Strings ((CHR 0), IMPLODE [(CHR 0)])))`;
 
 
 (** [get_delimiating_character tbl] returns the delimiting character associated
@@ -62,8 +62,8 @@ val _ = Define `
   *)
 (*val get_delimiting_character : string_table -> char*)
 val _ = Define `
- (get_delimiting_character tbl =  
-((case tbl of
+ (get_delimiting_character tbl=  
+ ((case tbl of
       Strings (sep, base) => sep
   )))`;
 
@@ -72,10 +72,17 @@ val _ = Define `
   *)
 (*val get_base_string : string_table -> string*)
 val _ = Define `
- (get_base_string tbl =  
-((case tbl of
+ (get_base_string tbl=  
+ ((case tbl of
       Strings (sep, base) => base
   )))`;
+
+
+(** [size tbl] returns the size in bytes of the string table [tbl].
+  *)
+(*val size : string_table -> natural*)
+val _ = Define `
+ (size1 tbl=  (I (STRLEN (get_base_string tbl))))`;
 
 
 (** [concat xs] concatenates several string tables into one providing they all
@@ -83,10 +90,10 @@ val _ = Define `
   *)
 (*val concat : list string_table -> error string_table*)
 val _ = Define `
- (concat1 xs =  
-((case xs of
+ (concat1 xs=  
+ ((case xs of
       []    => return empty0
-    | x  ::  xs =>
+    | x::xs =>
       let delim = (get_delimiting_character x) in
         if (EVERY (\ x .  get_delimiting_character x = delim) (x::xs)) then
           let base = (FOLDR STRCAT "" (MAP get_base_string (x::xs))) in
@@ -102,8 +109,8 @@ val _ = Define `
   *)
 (*val get_string_at : natural -> string_table -> error string*)
 val _ = Define `
- (get_string_at index tbl =  
-((case ARB index (get_base_string tbl) of
+ (get_string_at index tbl=  
+ ((case ARB index (get_base_string tbl) of
       NONE     => Fail "get_string_at: index out of range"
     | SOME suffix =>
       let delim = (get_delimiting_character tbl) in
@@ -120,21 +127,32 @@ val _ = Define `
 
 (*val find_string : string -> string_table -> maybe natural*)
 val _ = Define `
- (find_string s t =    
- ((case t of
+ (find_string s t=    
+  ((case t of
         Strings(delim, base) => ARB ( STRCAT s (IMPLODE [delim])) base
     )))`;
 
 
 (*val insert_string : string -> string_table -> (natural * string_table)*)
 val _ = Define `
- (insert_string s t =    
- ((case find_string s t of
+ (insert_string s t=    
+(  
+    (*let _ = errln ("Inserting string `" ^ s ^ "' into a string table") in*)let (inserted_idx, new_strtab) = ((case find_string s t of
         NONE => (case t of
-            Strings(delim, base) => (( 1 +  (STRLEN base)), Strings(delim,  STRCAT base  (STRCAT(IMPLODE [delim]) s)))
+            Strings(delim, base) => (I (STRLEN base), Strings(delim,  STRCAT base  (STRCAT s (IMPLODE [delim]))))
             )
         | SOME pos => (pos, t)
-    )))`;
+    ))
+    in
+    (*let _ = errln ("Inserted string at idx " ^ (show inserted_idx) ^ ", see: " ^ (show (find_string s new_strtab)))
+    in*)
+    (inserted_idx, new_strtab)))`;
+
+
+val _ = Define `
+(instance_Show_Show_String_table_string_table_dict= (<|
+
+  show_method := (\ tbl. IMPLODE (MAP (\ c .  if c = #"\^^@" then #"\n" else c) (EXPLODE (get_base_string tbl))))|>))`;
 
 val _ = export_theory()
 

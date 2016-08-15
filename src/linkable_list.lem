@@ -282,16 +282,16 @@ let resolve_one_reference_default a linkables defmap ref_idx_and_ref_and_linkabl
                 ^ (show ref.ref_sym_scn) ^ " in " ^ ref_fname
                 ^ ")"
     in
-    let _ = Missing_pervasives.errs ("Bound a reference from " ^ refstr ^ " to ")
-    in
+    (*let _ = Missing_pervasives.errs ("Bound a reference from " ^ refstr ^ " to ")
+    in*)
     match (maybe_target_def_idx, maybe_target_def, maybe_target_def_linkable) with
         (Just target_def_idx, Just target_def, Just target_def_linkable) ->
-            let _ = Missing_pervasives.errln (" a definition in "^ (show (target_def_linkable)))
-            in
+            (*let _ = Missing_pervasives.errln (" a definition in "^ (show (target_def_linkable)))
+            in*)
             Just(target_def_idx, target_def, target_def_linkable)
     |  (Nothing, Nothing, Nothing) -> 
-            let _ = Missing_pervasives.errln " no definition"
-            in
+            (*let _ = Missing_pervasives.errln " no definition"
+            in*)
             if ref_is_weak (* || a.symbol_is_generated_by_linker ref.ref_symname *) then Nothing 
             else (* failwith ("undefined symbol: " ^ refstr) *) Nothing
             (* FIXME: do a check, *after* the linker script has been interpreted, 

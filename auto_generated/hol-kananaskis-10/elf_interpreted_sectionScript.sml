@@ -55,8 +55,8 @@ val _ = Hol_datatype `
   *)
 (*val elf32_interpreted_section_equal : elf32_interpreted_section -> elf32_interpreted_section -> bool*)
 val _ = Define `
- (elf32_interpreted_section_equal x y =
-    ((x.elf32_section_name = y.elf32_section_name) /\    
+ (elf32_interpreted_section_equal x y=
+     ((x.elf32_section_name = y.elf32_section_name) /\    
 (x.elf32_section_type = y.elf32_section_type) /\    
 (x.elf32_section_flags = y.elf32_section_flags) /\    
 (x.elf32_section_addr = y.elf32_section_addr) /\    
@@ -97,7 +97,7 @@ val _ = Hol_datatype `
 (*val compare_elf64_interpreted_section : elf64_interpreted_section -> elf64_interpreted_section ->
   ordering*)
 val _ = Define `
- (compare_elf64_interpreted_section s1 s2 =   
+ (compare_elf64_interpreted_section s1 s2=    
  (pairCompare (lexicographic_compare (genericCompare (<) (=))) compare_byte_sequence 
     ([s1.elf64_section_name    ;
       s1.elf64_section_type    ;
@@ -122,7 +122,7 @@ val _ = Define `
 
 
 val _ = Define `
-(instance_Basic_classes_Ord_Elf_interpreted_section_elf64_interpreted_section_dict =(<|
+(instance_Basic_classes_Ord_Elf_interpreted_section_elf64_interpreted_section_dict= (<|
 
   compare_method := compare_elf64_interpreted_section;
 
@@ -140,8 +140,8 @@ val _ = Define `
   *)
 (*val elf64_interpreted_section_equal : elf64_interpreted_section -> elf64_interpreted_section -> bool*)
 val _ = Define `
- (elf64_interpreted_section_equal x y =
-    ((x.elf64_section_name = y.elf64_section_name) /\    
+ (elf64_interpreted_section_equal x y=
+     ((x.elf64_section_name = y.elf64_section_name) /\    
 (x.elf64_section_type = y.elf64_section_type) /\    
 (x.elf64_section_flags = y.elf64_section_flags) /\    
 (x.elf64_section_addr = y.elf64_section_addr) /\    
@@ -159,17 +159,17 @@ val _ = Define `
   *)
 (*val null_elf32_interpreted_section : elf32_interpreted_section*)
 val _ = Define `
- (null_elf32_interpreted_section =  
-(<| elf32_section_name :=( 0)
-   ; elf32_section_type :=( 0)
-   ; elf32_section_flags :=( 0)
-   ; elf32_section_addr :=( 0)
-   ; elf32_section_offset :=( 0)
-   ; elf32_section_size :=( 0)
-   ; elf32_section_link :=( 0)
-   ; elf32_section_info :=( 0)
-   ; elf32_section_align :=( 0)
-   ; elf32_section_entsize :=( 0) 
+ (null_elf32_interpreted_section=  
+ (<| elf32_section_name :=(I 0)
+   ; elf32_section_type :=(I 0)
+   ; elf32_section_flags :=(I 0)
+   ; elf32_section_addr :=(I 0)
+   ; elf32_section_offset :=(I 0)
+   ; elf32_section_size :=(I 0)
+   ; elf32_section_link :=(I 0)
+   ; elf32_section_info :=(I 0)
+   ; elf32_section_align :=(I 0)
+   ; elf32_section_entsize :=(I 0) 
    ; elf32_section_body := byte_sequence$empty
    ; elf32_section_name_as_string := ""
    |>))`;
@@ -179,17 +179,17 @@ val _ = Define `
   *)
 (*val null_elf64_interpreted_section : elf64_interpreted_section*)
 val _ = Define `
- (null_elf64_interpreted_section =  
-(<| elf64_section_name :=( 0)
-   ; elf64_section_type :=( 0)
-   ; elf64_section_flags :=( 0)
-   ; elf64_section_addr :=( 0)
-   ; elf64_section_offset :=( 0)
-   ; elf64_section_size :=( 0)
-   ; elf64_section_link :=( 0)
-   ; elf64_section_info :=( 0)
-   ; elf64_section_align :=( 0)
-   ; elf64_section_entsize :=( 0) 
+ (null_elf64_interpreted_section=  
+ (<| elf64_section_name :=(I 0)
+   ; elf64_section_type :=(I 0)
+   ; elf64_section_flags :=(I 0)
+   ; elf64_section_addr :=(I 0)
+   ; elf64_section_offset :=(I 0)
+   ; elf64_section_size :=(I 0)
+   ; elf64_section_link :=(I 0)
+   ; elf64_section_info :=(I 0)
+   ; elf64_section_align :=(I 0)
+   ; elf64_section_entsize :=(I 0) 
    ; elf64_section_body := byte_sequence$empty
    ; elf64_section_name_as_string := ""
    |>))`;
@@ -204,8 +204,8 @@ val _ = Define `
         -> elf64_section_header_table_entry
             -> bool*)
 val _ = Define `
- (elf64_interpreted_section_matches_section_header i sh =
-  ((i.elf64_section_name = w2n sh.elf64_sh_name) /\  
+ (elf64_interpreted_section_matches_section_header i sh=
+   ((i.elf64_section_name = w2n sh.elf64_sh_name) /\  
 (i.elf64_section_type = w2n sh.elf64_sh_type) /\  
 (i.elf64_section_flags = w2n sh.elf64_sh_flags) /\  
 (i.elf64_section_addr = w2n sh.elf64_sh_addr) /\  
@@ -247,8 +247,8 @@ val _ = type_abbrev( "elf64_interpreted_sections" , ``: elf64_interpreted_sectio
 (*val is_valid_elf32_section_header_table_entry : elf32_interpreted_section ->
   string_table -> bool*)
 val _ = Define `
- (is_valid_elf32_section_header_table_entry ent stbl =  
-((case string_table$get_string_at ent.elf32_section_name stbl of
+ (is_valid_elf32_section_header_table_entry ent stbl=  
+ ((case string_table$get_string_at ent.elf32_section_name stbl of
       Fail    f    => F
     | Success name =>
       (case FLOOKUP elf_special_sections name of
@@ -269,8 +269,8 @@ val _ = Define `
 (*val is_valid_elf64_section_header_table_entry : elf64_interpreted_section ->
   string_table -> bool*)
 val _ = Define `
- (is_valid_elf64_section_header_table_entry ent stbl =  
-((case string_table$get_string_at ent.elf64_section_name stbl of
+ (is_valid_elf64_section_header_table_entry ent stbl=  
+ ((case string_table$get_string_at ent.elf64_section_name stbl of
       Fail    f    => F
     | Success name =>
       (case FLOOKUP elf_special_sections name of
@@ -287,8 +287,8 @@ val _ = Define `
 (*val is_valid_elf32_section_header_table : list elf32_interpreted_section ->
   string_table -> bool*)
 val _ = Define `
- (is_valid_elf32_section_header_table0 ents stbl =  
-(EVERY (\ x .  is_valid_elf32_section_header_table_entry x stbl) ents))`;
+ (is_valid_elf32_section_header_table0 ents stbl=  
+ (EVERY (\ x .  is_valid_elf32_section_header_table_entry x stbl) ents))`;
 
   
 (** [is_valid_elf64_section_header_table sects] checks whether all entries in
@@ -297,8 +297,8 @@ val _ = Define `
 (*val is_valid_elf64_section_header_table : list elf64_interpreted_section ->
   string_table -> bool*)
 val _ = Define `
- (is_valid_elf64_section_header_table0 ents stbl =  
-(EVERY (\ x .  is_valid_elf64_section_header_table_entry x stbl) ents))`;
+ (is_valid_elf64_section_header_table0 ents stbl=  
+ (EVERY (\ x .  is_valid_elf64_section_header_table_entry x stbl) ents))`;
    
 val _ = export_theory()
 

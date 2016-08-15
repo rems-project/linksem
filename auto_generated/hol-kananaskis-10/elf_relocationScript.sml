@@ -76,7 +76,7 @@ val _ = Hol_datatype `
 (*val elf64_relocation_a_compare : elf64_relocation_a -> elf64_relocation_a ->
   ordering*)
 val _ = Define `
- (elf64_relocation_a_compare ent1 ent2 =    
+ (elf64_relocation_a_compare ent1 ent2=     
  (tripleCompare (genericCompare (<) (=)) (genericCompare (<) (=)) (genericCompare (<) (=)) (w2n ent1.elf64_ra_offset, w2n ent1.elf64_ra_info,
         w2i ent1.elf64_ra_addend) 
         (w2n ent2.elf64_ra_offset, w2n ent2.elf64_ra_info,
@@ -84,7 +84,7 @@ val _ = Define `
 
 
 val _ = Define `
-(instance_Basic_classes_Ord_Elf_relocation_elf64_relocation_a_dict =(<|
+(instance_Basic_classes_Ord_Elf_relocation_elf64_relocation_a_dict= (<|
 
   compare_method := elf64_relocation_a_compare;
 
@@ -105,8 +105,8 @@ val _ = Define `
   *)
 (*val extract_elf32_relocation_r_sym : elf32_word -> natural*)
 val _ = Define `
- (extract_elf32_relocation_r_sym w =  
-(w2n (word_lsr w( 8))))`;
+ (extract_elf32_relocation_r_sym w=  
+ (w2n (word_lsr w(I 8))))`;
 
 
 (** [extract_elf64_relocation_r_sym w] computes the symbol table index associated with
@@ -115,8 +115,8 @@ val _ = Define `
   *)
 (*val extract_elf64_relocation_r_sym : elf64_xword -> natural*)
 val _ = Define `
- (extract_elf64_relocation_r_sym w =  
-(w2n (word_lsr w( 32))))`;
+ (extract_elf64_relocation_r_sym w=  
+ (w2n (word_lsr w(I 32))))`;
 
 
 (** [extract_elf32_relocation_r_type w] computes the symbol type associated with an ELF32
@@ -125,8 +125,8 @@ val _ = Define `
   *)
 (*val extract_elf32_relocation_r_type : elf32_word -> natural*)
 val _ = Define `
- (extract_elf32_relocation_r_type w =  
-((w2n w) MOD  256))`;
+ (extract_elf32_relocation_r_type w=  
+ ((w2n w) MOD I 256))`;
 
 
 (** [extract_elf64_relocation_r_type w] computes the symbol type associated with an ELF64
@@ -135,8 +135,8 @@ val _ = Define `
   *)
 (*val extract_elf64_relocation_r_type : elf64_xword -> natural*)
 val _ = Define `
- (extract_elf64_relocation_r_type w =  
-(let magic = (( 65536 * 65536) -  1) in (* 0xffffffffL *)
+ (extract_elf64_relocation_r_type w=  
+ (let magic = ((I 65536 *I 65536) - I 1) in (* 0xffffffffL *)
     w2n (word_and w ((n2w : num -> 64 word) magic))))`;
 
     
@@ -144,50 +144,50 @@ val _ = Define `
 
 (*val get_elf32_relocation_r_sym : elf32_relocation -> natural*)
 val _ = Define `
- (get_elf32_relocation_r_sym r =  
-(extract_elf32_relocation_r_sym r.elf32_r_info))`;
+ (get_elf32_relocation_r_sym r=  
+ (extract_elf32_relocation_r_sym r.elf32_r_info))`;
 
 
 (*val get_elf32_relocation_a_sym :  elf32_relocation_a -> natural*)
 val _ = Define `
- (get_elf32_relocation_a_sym r  =  
-(extract_elf32_relocation_r_sym r.elf32_ra_info))`;
+ (get_elf32_relocation_a_sym r=  
+  (extract_elf32_relocation_r_sym r.elf32_ra_info))`;
   
 
 (*val get_elf64_relocation_sym : elf64_relocation -> natural*)
 val _ = Define `
- (get_elf64_relocation_sym r =  
-(extract_elf64_relocation_r_sym r.elf64_r_info))`;
+ (get_elf64_relocation_sym r=  
+ (extract_elf64_relocation_r_sym r.elf64_r_info))`;
   
   
 (*val get_elf64_relocation_a_sym :  elf64_relocation_a -> natural*)
 val _ = Define `
- (get_elf64_relocation_a_sym r  =  
-(extract_elf64_relocation_r_sym r.elf64_ra_info))`;
+ (get_elf64_relocation_a_sym r=  
+  (extract_elf64_relocation_r_sym r.elf64_ra_info))`;
   
 
 (*val get_elf32_relocation_type : elf32_relocation -> natural*)
 val _ = Define `
- (get_elf32_relocation_type r =  
-(extract_elf32_relocation_r_type r.elf32_r_info))`;
+ (get_elf32_relocation_type r=  
+ (extract_elf32_relocation_r_type r.elf32_r_info))`;
 
 
 (*val get_elf32_relocation_a_type  : elf32_relocation_a -> natural*)
 val _ = Define `
- (get_elf32_relocation_a_type  r =  
-(extract_elf32_relocation_r_type r.elf32_ra_info))`;
+ (get_elf32_relocation_a_type  r=  
+ (extract_elf32_relocation_r_type r.elf32_ra_info))`;
   
 
 (*val get_elf64_relocation_type : elf64_relocation -> natural*)
 val _ = Define `
- (get_elf64_relocation_type r =  
-(extract_elf64_relocation_r_type r.elf64_r_info))`;
+ (get_elf64_relocation_type r=  
+ (extract_elf64_relocation_r_type r.elf64_r_info))`;
   
 
 (*val get_elf64_relocation_a_type  : elf64_relocation_a -> natural*)
 val _ = Define `
- (get_elf64_relocation_a_type  r =  
-(extract_elf64_relocation_r_type r.elf64_ra_info))`;
+ (get_elf64_relocation_a_type  r=  
+ (extract_elf64_relocation_r_type r.elf64_ra_info))`;
   
 
     
@@ -201,8 +201,8 @@ val _ = Define `
 (*val read_elf32_relocation : endianness -> byte_sequence ->
   error (elf32_relocation * byte_sequence)*)
 val _ = Define `
- (read_elf32_relocation endian bs =  
-(read_elf32_addr endian bs >>= (\ (r_offset, bs) . 
+ (read_elf32_relocation endian bs=  
+ (read_elf32_addr endian bs >>= (\ (r_offset, bs) . 
   read_elf32_word endian bs >>= (\ (r_info, bs) . 
   return (<| elf32_r_offset := r_offset; elf32_r_info := r_info |>, bs)))))`;
 
@@ -215,8 +215,8 @@ val _ = Define `
 (*val read_elf64_relocation : endianness -> byte_sequence ->
   error (elf64_relocation * byte_sequence)*)
 val _ = Define `
- (read_elf64_relocation endian bs =  
-(read_elf64_addr endian bs  >>= (\ (r_offset, bs) . 
+ (read_elf64_relocation endian bs=  
+ (read_elf64_addr endian bs  >>= (\ (r_offset, bs) . 
   read_elf64_xword endian bs >>= (\ (r_info, bs) . 
   return (<| elf64_r_offset := r_offset; elf64_r_info := r_info |>, bs)))))`;
 
@@ -229,8 +229,8 @@ val _ = Define `
 (*val read_elf32_relocation_a : endianness -> byte_sequence ->
   error (elf32_relocation_a * byte_sequence)*)
 val _ = Define `
- (read_elf32_relocation_a endian bs =  
-(read_elf32_addr endian bs  >>= (\ (r_offset, bs) . 
+ (read_elf32_relocation_a endian bs=  
+ (read_elf32_addr endian bs  >>= (\ (r_offset, bs) . 
   read_elf32_word endian bs  >>= (\ (r_info, bs) . 
   read_elf32_sword endian bs >>= (\ (r_addend, bs) . 
   return (<| elf32_ra_offset := r_offset; elf32_ra_info := r_info;
@@ -244,8 +244,8 @@ val _ = Define `
   *)
 (*val read_elf64_relocation_a : endianness -> byte_sequence -> error (elf64_relocation_a * byte_sequence)*)
 val _ = Define `
- (read_elf64_relocation_a endian bs =  
-(read_elf64_addr endian bs   >>= (\ (r_offset, bs) . 
+ (read_elf64_relocation_a endian bs=  
+ (read_elf64_addr endian bs   >>= (\ (r_offset, bs) . 
   read_elf64_xword endian bs  >>= (\ (r_info, bs) . 
   read_elf64_sxword endian bs >>= (\ (r_addend, bs) . 
   return (<| elf64_ra_offset := r_offset; elf64_ra_info := r_info;
@@ -260,8 +260,8 @@ val _ = Define `
 (*val read_elf32_relocation_section' : endianness -> byte_sequence ->
   error (list elf32_relocation)*)
  val read_elf32_relocation_section'_defn = Hol_defn "read_elf32_relocation_section'" `
- (read_elf32_relocation_section' endian bs0 =  
-(if byte_sequence$length0 bs0 = 0 then
+ (read_elf32_relocation_section' endian bs0=  
+ (if byte_sequence$length0 bs0 =I 0 then
     return []
   else
     read_elf32_relocation endian bs0 >>= (\ (entry, bs1) . 
@@ -278,8 +278,8 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
 (*val read_elf64_relocation_section' : endianness -> byte_sequence ->
   error (list elf64_relocation)*)
  val read_elf64_relocation_section'_defn = Hol_defn "read_elf64_relocation_section'" `
- (read_elf64_relocation_section' endian bs0 =  
-(if byte_sequence$length0 bs0 = 0 then
+ (read_elf64_relocation_section' endian bs0=  
+ (if byte_sequence$length0 bs0 =I 0 then
     return []
   else
     read_elf64_relocation endian bs0 >>= (\ (entry, bs1) . 
@@ -296,8 +296,8 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
 (*val read_elf32_relocation_a_section' : endianness -> byte_sequence ->
   error (list elf32_relocation_a)*)
  val read_elf32_relocation_a_section'_defn = Hol_defn "read_elf32_relocation_a_section'" `
- (read_elf32_relocation_a_section' endian bs0 =  
-(if byte_sequence$length0 bs0 = 0 then
+ (read_elf32_relocation_a_section' endian bs0=  
+ (if byte_sequence$length0 bs0 =I 0 then
     return []
   else
     read_elf32_relocation_a endian bs0 >>= (\ (entry, bs1) . 
@@ -314,8 +314,8 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
 (*val read_elf64_relocation_a_section' : endianness -> byte_sequence ->
   error (list elf64_relocation_a)*)
  val read_elf64_relocation_a_section'_defn = Hol_defn "read_elf64_relocation_a_section'" `
- (read_elf64_relocation_a_section' endian bs0 =  
-(if byte_sequence$length0 bs0 = 0 then
+ (read_elf64_relocation_a_section' endian bs0=  
+ (if byte_sequence$length0 bs0 =I 0 then
     return []
   else
     read_elf64_relocation_a endian bs0 >>= (\ (entry, bs1) . 
@@ -333,8 +333,8 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
 (*val read_elf32_relocation_section : natural -> endianness -> byte_sequence
   -> error (list elf32_relocation * byte_sequence)*)
 val _ = Define `
- (read_elf32_relocation_section table_size endian bs0 =  
-(partition0 table_size bs0 >>= (\ (eat, rest) . 
+ (read_elf32_relocation_section table_size endian bs0=  
+ (partition0 table_size bs0 >>= (\ (eat, rest) . 
   read_elf32_relocation_section' endian eat >>= (\ entries . 
   return (entries, rest)))))`;
 
@@ -348,8 +348,8 @@ val _ = Define `
 (*val read_elf64_relocation_section : natural -> endianness -> byte_sequence
   -> error (list elf64_relocation * byte_sequence)*)
 val _ = Define `
- (read_elf64_relocation_section table_size endian bs0 =  
-(partition0 table_size bs0 >>= (\ (eat, rest) . 
+ (read_elf64_relocation_section table_size endian bs0=  
+ (partition0 table_size bs0 >>= (\ (eat, rest) . 
   read_elf64_relocation_section' endian eat >>= (\ entries . 
   return (entries, rest)))))`;
 
@@ -363,8 +363,8 @@ val _ = Define `
 (*val read_elf32_relocation_a_section : natural -> endianness -> byte_sequence ->
   error (list elf32_relocation_a * byte_sequence)*)
 val _ = Define `
- (read_elf32_relocation_a_section table_size endian bs0 =  
-(partition0 table_size bs0 >>= (\ (eat, rest) . 
+ (read_elf32_relocation_a_section table_size endian bs0=  
+ (partition0 table_size bs0 >>= (\ (eat, rest) . 
   read_elf32_relocation_a_section' endian eat >>= (\ entries . 
   return (entries, rest)))))`;
 
@@ -378,8 +378,8 @@ val _ = Define `
 (*val read_elf64_relocation_a_section : natural -> endianness -> byte_sequence ->
   error (list elf64_relocation_a * byte_sequence)*)
 val _ = Define `
- (read_elf64_relocation_a_section table_size endian bs0 =  
-(partition0 table_size bs0 >>= (\ (eat, rest) . 
+ (read_elf64_relocation_a_section table_size endian bs0=  
+ (partition0 table_size bs0 >>= (\ (eat, rest) . 
   read_elf64_relocation_a_section' endian eat >>= (\ entries . 
   return (entries, rest)))))`;
 

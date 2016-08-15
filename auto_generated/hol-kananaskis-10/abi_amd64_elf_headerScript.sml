@@ -26,32 +26,32 @@ val _ = new_theory "abi_amd64_elf_header"
 
 (*val abi_amd64_data_encoding : natural*)
 val _ = Define `
- (abi_amd64_data_encoding = elf_data_2lsb)`;
+ (abi_amd64_data_encoding=  elf_data_2lsb)`;
 
 
 (*val abi_amd64_endianness : endianness*)
 val _ = Define `
- (abi_amd64_endianness = Little)`;
+ (abi_amd64_endianness=  Little)`;
  (* Must match above *)
 
 (*val abi_amd64_file_class : natural*)
 val _ = Define `
- (abi_amd64_file_class = elf_class_64)`;
+ (abi_amd64_file_class=  elf_class_64)`;
 
 
 (*val abi_amd64_file_version : natural*)
 val _ = Define `
- (abi_amd64_file_version = elf_ev_current)`;
+ (abi_amd64_file_version=  elf_ev_current)`;
 
 
 (*val abi_amd64_page_size_min : natural*)
 val _ = Define `
- (abi_amd64_page_size_min =( 4096))`;
+ (abi_amd64_page_size_min= (I 4096))`;
 
 
 (*val abi_amd64_page_size_max : natural*)
 val _ = Define `
- (abi_amd64_page_size_max =( 65536))`;
+ (abi_amd64_page_size_max= (I 65536))`;
 
 
 (** [is_valid_abi_amd64_machine_architecture m] checks whether the ELF header's
@@ -60,8 +60,8 @@ val _ = Define `
   *)
 (*val is_valid_abi_amd64_machine_architecture : natural -> bool*)
 val _ = Define `
- (is_valid_abi_amd64_machine_architecture m =  
-(m = elf_ma_x86_64))`;
+ (is_valid_abi_amd64_machine_architecture m=  
+ (m = elf_ma_x86_64))`;
 
 
 (** [is_valid_abi_amd64_magic_number magic] checks whether the ELF header's
@@ -71,11 +71,11 @@ val _ = Define `
   *)
 (*val is_valid_abi_amd64_magic_number : list unsigned_char -> bool*)
 val _ = Define `
- (is_valid_abi_amd64_magic_number magic =  
-((case lem_list$list_index magic (id elf_ii_class) of
+ (is_valid_abi_amd64_magic_number magic=  
+ ((case lem_list$list_index magic ( elf_ii_class) of
       NONE  => F
     | SOME cls =>
-      (case lem_list$list_index magic (id elf_ii_data) of
+      (case lem_list$list_index magic ( elf_ii_data) of
           NONE   => F
         | SOME data =>
             (w2n cls = abi_amd64_file_class) /\

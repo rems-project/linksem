@@ -21,13 +21,13 @@ val _ = new_theory "abi_amd64_section_header_table"
 (** AMD64 specific flags.  See Section 4.2.1. *)
 
 val _ = Define `
- (shf_abi_amd64_large : num =( 67108864 * 4))`;
+ (shf_abi_amd64_large : num= (I 67108864 *I 4))`;
  (* 0x10000000 *)
 
 (** AMD64 specific section types.  See Section 4.2.2 *)
 
 val _ = Define `
- (sht_abi_amd64_unwind : num = (( 939524096 * 2) + 1))`;
+ (sht_abi_amd64_unwind : num=  ((I 939524096 *I 2) +I 1))`;
  (* 0x70000001 *)
 
 (** [string_of_abi_amd64_section_type m] produces a string based representation
@@ -39,8 +39,8 @@ val _ = Define `
 
 (*val abi_amd64_special_sections : Map.map string (natural * natural)*)
 val _ = Define `
- (abi_amg64_special_sections =  
-(FUPDATE_LIST FEMPTY [
+ (abi_amg64_special_sections=  
+ (FUPDATE_LIST FEMPTY [
     (".got", (sht_progbits, (shf_alloc + shf_write)))
   ; (".plt", (sht_progbits, (shf_alloc + shf_execinstr)))
   ; (".eh_frame", (sht_abi_amd64_unwind, shf_alloc))
@@ -49,8 +49,8 @@ val _ = Define `
   
 (*val abi_amd64_special_sections_large_code_model : Map.map string (natural * natural)*)
 val _ = Define `
- (abi_amd64_special_sections_large_code_model =  
-(FUPDATE_LIST FEMPTY [
+ (abi_amd64_special_sections_large_code_model=  
+ (FUPDATE_LIST FEMPTY [
     (".lbss", (sht_nobits, ((shf_alloc + shf_write) + shf_abi_amd64_large)))
   ; (".ldata", (sht_progbits, ((shf_alloc + shf_write) + shf_abi_amd64_large)))
   ; (".ldata1", (sht_progbits, ((shf_alloc + shf_write) + shf_abi_amd64_large)))

@@ -174,11 +174,11 @@ let elf64_file_of_elf_memory_image a make_concrete fname img =
                     else (a.maxpagesize + target_remainder - this_remainder)
                 )
                 in
-                let _ = errln ("For section " ^ isec.elf64_section_name_as_string ^ ", bumping offset by " ^ 
+                (*let _ = errln ("For section " ^ isec.elf64_section_name_as_string ^ ", bumping offset by " ^ 
                     (hex_string_of_natural bump) ^ "(remainder " ^ (hex_string_of_natural this_remainder) ^ 
                     ", target remainder " ^ (hex_string_of_natural target_remainder) ^ ") to 0x" ^ 
                     (hex_string_of_natural (current_off + bump)))
-                in
+                in*)
                 current_off + bump
             | Nothing -> 
                 (* It has no assigned address. That's okay if it's not allocatable. 

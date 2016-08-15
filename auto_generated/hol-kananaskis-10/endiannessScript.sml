@@ -30,12 +30,25 @@ val _ = Hol_datatype `
   *)
 (*val default_endianness : endianness*)
 val _ = Define `
- (default_endianness = Little)`;
+ (default_endianness=  Little)`;
 
 
 (** [string_of_endianness e] produces a string representation of the [endianness] value
   * [e].
   *)
 (*val string_of_endianness : endianness -> string*)
+val _ = Define `
+ (string_of_endianness e=  
+ ((case e of
+      Big    => "Big"
+    | Little => "Little"
+  )))`;
+
+
+val _ = Define `
+(instance_Show_Show_Endianness_endianness_dict= (<|
+
+  show_method := string_of_endianness|>))`;
+
 val _ = export_theory()
 

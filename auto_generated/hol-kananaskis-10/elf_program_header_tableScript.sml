@@ -41,55 +41,55 @@ val _ = new_theory "elf_program_header_table"
 
 (** Unused array element.  All other members of the structure are undefined. *)
 val _ = Define `
- (elf_pt_null : num =( 0))`;
+ (elf_pt_null : num= (I 0))`;
 
 (** A loadable segment. *)
 val _ = Define `
- (elf_pt_load : num =( 1))`;
+ (elf_pt_load : num= (I 1))`;
 
 (** Dynamic linking information. *)
 val _ = Define `
- (elf_pt_dynamic : num =( 2))`;
+ (elf_pt_dynamic : num= (I 2))`;
 
 (** Specifies the location and size of a null-terminated path name to be used to
   * invoke an interpreter.
   *)
 val _ = Define `
- (elf_pt_interp : num =( 3))`;
+ (elf_pt_interp : num= (I 3))`;
 
 (** Specifies location and size of auxiliary information. *)
 val _ = Define `
- (elf_pt_note : num =( 4))`;
+ (elf_pt_note : num= (I 4))`;
 
 (** Reserved but with unspecified semantics.  If the file contains a segment of
   * this type then it is to be regarded as non-conformant with the ABI.
   *)
 val _ = Define `
- (elf_pt_shlib : num =( 5))`;
+ (elf_pt_shlib : num= (I 5))`;
 
 (** Specifies the location and size of the program header table. *)
 val _ = Define `
- (elf_pt_phdr : num =( 6))`;
+ (elf_pt_phdr : num= (I 6))`;
 
 (** Specifies the thread local storage (TLS) template.  Need not be supported. *)
 val _ = Define `
- (elf_pt_tls : num =( 7))`;
+ (elf_pt_tls : num= (I 7))`;
 
 (** Start of reserved indices for operating system specific semantics. *)
 val _ = Define `
- (elf_pt_loos : num =(((( 128 * 128) * 128) * 256) * 3))`;
+ (elf_pt_loos : num= ((((I 128 *I 128) *I 128) *I 256) *I 3))`;
  (* 1610612736 (* 0x60000000 *) *)
 (** End of reserved indices for operating system specific semantics. *)
 val _ = Define `
- (elf_pt_hios : num = (( 469762047 * 4) + 3))`;
+ (elf_pt_hios : num=  ((I 469762047 *I 4) +I 3))`;
  (* 1879048191 (* 0x6fffffff *) *)
 (** Start of reserved indices for processor specific semantics. *)
 val _ = Define `
- (elf_pt_loproc : num = ( 469762048 * 4))`;
+ (elf_pt_loproc : num=  (I 469762048 *I 4))`;
  (* 1879048192 (* 0x70000000 *) *)
 (** End of reserved indices for processor specific semantics. *)
 val _ = Define `
- (elf_pt_hiproc : num = (( 536870911 * 4) + 3))`;
+ (elf_pt_hiproc : num=  ((I 536870911 *I 4) +I 3))`;
  (* 2147483647 (* 0x7fffffff *) *)
 
 (** [string_of_elf_segment_type os proc st] produces a string representation of
@@ -98,29 +98,54 @@ val _ = Define `
   *)
 (* XXX: is GNU stuff supposed to be hardcoded here? *)
 (*val string_of_segment_type : (natural -> string) -> (natural -> string) -> natural -> string*)
+val _ = Define `
+ (string_of_segment_type os proc pt=	
+ (if pt = elf_pt_null then
+		"NULL"
+	else if pt = elf_pt_load then
+		"LOAD"
+	else if pt = elf_pt_dynamic then
+		"DYNAMIC"
+	else if pt = elf_pt_interp then
+		"INTERP"
+	else if pt = elf_pt_note then
+		"NOTE"
+	else if pt = elf_pt_shlib then
+		"SHLIB"
+	else if pt = elf_pt_phdr then
+		"PHDR"
+	else if pt = elf_pt_tls then
+		"TLS"
+	else if (pt >= elf_pt_loos) /\ (pt <= elf_pt_hios) then
+		os pt
+	else if (pt >= elf_pt_loproc) /\ (pt <= elf_pt_hiproc) then
+		proc pt
+	else
+		"Undefined or invalid segment type"))`;
+
 		
 (** Segments permission flags *)
 
 (** Execute bit *)
 val _ = Define `
- (elf_pf_x        : num =( 1))`;
+ (elf_pf_x        : num= (I 1))`;
 
 (** Write bit *)
 val _ = Define `
- (elf_pf_w        : num =( 2))`;
+ (elf_pf_w        : num= (I 2))`;
 
 (** Read bit *)
 val _ = Define `
- (elf_pf_r        : num =( 4))`;
+ (elf_pf_r        : num= (I 4))`;
 
 (** The following two bit ranges are reserved for OS- and processor-specific
   * flags respectively.
   *)
 val _ = Define `
- (elf_pf_maskos   : num =( 267386880))`;
+ (elf_pf_maskos   : num= (I 267386880))`;
       (* 0x0ff00000 *)
 val _ = Define `
- (elf_pf_maskproc : num =( 4 * 1006632960))`;
+ (elf_pf_maskproc : num= (I 4 *I 1006632960))`;
  (* 0xf0000000 *)
 
 (** [exact_permission_of_permission m]: ELF has two interpretations of a RWX-style
@@ -134,23 +159,23 @@ val _ = Define `
   *)
 (*val exact_permissions_of_permission : natural -> error natural*)
 val _ = Define `
- (exact_permissions_of_permission m =  
-(if m = 0 then
-    return( 0)
+ (exact_permissions_of_permission m=  
+ (if m =I 0 then
+    return(I 0)
   else if m = elf_pf_x then
-    return( 1)
+    return(I 1)
   else if m = elf_pf_w then
-    return( 2)
+    return(I 2)
   else if m = elf_pf_r then
-    return( 4)
+    return(I 4)
   else if m = (elf_pf_x + elf_pf_w) then
-    return( 3)
+    return(I 3)
   else if m = (elf_pf_x + elf_pf_r) then
-    return( 5)
+    return(I 5)
   else if m = (elf_pf_w + elf_pf_r) then
-    return( 6)
+    return(I 6)
   else if m = ((elf_pf_x + elf_pf_r) + elf_pf_w) then
-    return( 7)
+    return(I 7)
   else
     fail0 "exact_permission_of_permission: invalid permission flag"))`;
 
@@ -165,23 +190,23 @@ val _ = Define `
   *)
 (*val allowable_permissions_of_permission : natural -> error natural*)
 val _ = Define `
- (allowable_permissions_of_permission m =  
-(if m = 0 then
-    return( 0)
+ (allowable_permissions_of_permission m=  
+ (if m =I 0 then
+    return(I 0)
   else if m = elf_pf_x then
-    return( 5)
+    return(I 5)
   else if m = elf_pf_w then
-    return( 7)
+    return(I 7)
   else if m = elf_pf_r then
-    return( 5)
+    return(I 5)
   else if m = (elf_pf_x + elf_pf_w) then
-    return( 7)
+    return(I 7)
   else if m = (elf_pf_x + elf_pf_r) then
-    return( 5)
+    return(I 5)
   else if m = (elf_pf_w + elf_pf_r) then
-    return( 7)
+    return(I 7)
   else if m = ((elf_pf_x + elf_pf_r) + elf_pf_w) then
-    return( 7)
+    return(I 7)
   else
     fail0 "exact_permission_of_permission: invalid permission flag"))`;
 
@@ -192,8 +217,8 @@ val _ = Define `
   *)
 (*val string_of_elf_segment_permissions : natural -> string*)
 val _ = Define `
- (string_of_elf_segment_permissions m =  
-(if m = 0 then
+ (string_of_elf_segment_permissions m=  
+ (if m =I 0 then
     "  "
   else if m = elf_pf_x then
     "  E"
@@ -239,7 +264,7 @@ val _ = Hol_datatype `
 (*val compare_elf32_program_header_table_entry : elf32_program_header_table_entry ->
   elf32_program_header_table_entry -> ordering*)
 val _ = Define `
- (compare_elf32_program_header_table_entry h1 h2 =    
+ (compare_elf32_program_header_table_entry h1 h2=     
  (lexicographic_compare (genericCompare (<) (=)) [w2n h1.elf32_p_type;
     w2n h1.elf32_p_offset;
     w2n h1.elf32_p_vaddr;
@@ -259,7 +284,7 @@ val _ = Define `
 
 
 val _ = Define `
-(instance_Basic_classes_Ord_Elf_program_header_table_elf32_program_header_table_entry_dict =(<|
+(instance_Basic_classes_Ord_Elf_program_header_table_elf32_program_header_table_entry_dict= (<|
 
   compare_method := compare_elf32_program_header_table_entry;
 
@@ -296,7 +321,7 @@ val _ = Hol_datatype `
 (*val compare_elf64_program_header_table_entry : elf64_program_header_table_entry ->
   elf64_program_header_table_entry -> ordering*)
 val _ = Define `
- (compare_elf64_program_header_table_entry h1 h2 =    
+ (compare_elf64_program_header_table_entry h1 h2=     
  (lexicographic_compare (genericCompare (<) (=)) [w2n h1.elf64_p_type;
     w2n h1.elf64_p_offset;
     w2n h1.elf64_p_vaddr;
@@ -316,7 +341,7 @@ val _ = Define `
 
 
 val _ = Define `
-(instance_Basic_classes_Ord_Elf_program_header_table_elf64_program_header_table_entry_dict =(<|
+(instance_Basic_classes_Ord_Elf_program_header_table_elf64_program_header_table_entry_dict= (<|
 
   compare_method := compare_elf64_program_header_table_entry;
 
@@ -335,24 +360,74 @@ val _ = Define `
   * to render OS- and processor-specific entries.
   *)
 (*val string_of_elf32_program_header_table_entry : (natural -> string) -> (natural -> string) -> elf32_program_header_table_entry -> string*)
+val _ = Define `
+ (string_of_elf32_program_header_table_entry os proc entry=	
+ (unlines [
+		 STRCAT"\t"  (STRCAT"Segment type: " (string_of_segment_type os proc (w2n entry.elf32_p_type)))
+	;  STRCAT"\t"  (STRCAT"Offset: " (ARB entry.elf32_p_offset))
+	;  STRCAT"\t"  (STRCAT"Virtual address: " (ARB entry.elf32_p_vaddr))
+	;  STRCAT"\t"  (STRCAT"Physical address: " (ARB entry.elf32_p_paddr))
+	;  STRCAT"\t"  (STRCAT"Segment size (bytes): " (ARB entry.elf32_p_filesz))
+	;  STRCAT"\t"  (STRCAT"Segment size in memory image (bytes): " (ARB entry.elf32_p_memsz))
+	;  STRCAT"\t"  (STRCAT"Flags: " (ARB entry.elf32_p_flags))
+  ;  STRCAT"\t"  (STRCAT"Alignment: " (ARB entry.elf32_p_align))
+	]))`;
+
 
 (** [string_of_elf64_program_header_table_entry os proc et] produces a string
   * representation of a 64-bit program header table entry using [os] and [proc]
   * to render OS- and processor-specific entries.
   *)
 (*val string_of_elf64_program_header_table_entry : (natural -> string) -> (natural -> string) -> elf64_program_header_table_entry -> string*)
+val _ = Define `
+ (string_of_elf64_program_header_table_entry os proc entry=  
+ (unlines [
+     STRCAT"\t"  (STRCAT"Segment type: " (string_of_segment_type os proc (w2n entry.elf64_p_type)))
+  ;  STRCAT"\t"  (STRCAT"Offset: " (ARB entry.elf64_p_offset))
+  ;  STRCAT"\t"  (STRCAT"Virtual address: " (ARB entry.elf64_p_vaddr))
+  ;  STRCAT"\t"  (STRCAT"Physical address: " (ARB entry.elf64_p_paddr))
+  ;  STRCAT"\t"  (STRCAT"Segment size (bytes): " (ARB entry.elf64_p_filesz))
+  ;  STRCAT"\t"  (STRCAT"Segment size in memory image (bytes): " (ARB entry.elf64_p_memsz))
+  ;  STRCAT"\t"  (STRCAT"Flags: " (ARB entry.elf64_p_flags))
+  ;  STRCAT"\t"  (STRCAT"Alignment: " (ARB entry.elf64_p_align))
+  ]))`;
+
 
 (** [string_of_elf32_program_header_table_entry_default et] produces a string representation
   * of table entry [et] where OS- and processor-specific entries are replaced with
   * default strings.
   *)
 (*val string_of_elf32_program_header_table_entry_default : elf32_program_header_table_entry -> string*)
+val _ = Define `
+ (string_of_elf32_program_header_table_entry_default=	
+ (string_of_elf32_program_header_table_entry
+    (K "*Default OS specific print*")
+      (K "*Default processor specific print*")))`;
+
 
 (** [string_of_elf64_program_header_table_entry_default et] produces a string representation
   * of table entry [et] where OS- and processor-specific entries are replaced with
   * default strings.
   *)
 (*val string_of_elf64_program_header_table_entry_default : elf64_program_header_table_entry -> string*)
+val _ = Define `
+ (string_of_elf64_program_header_table_entry_default=  
+ (string_of_elf64_program_header_table_entry
+    (K "*Default OS specific print*")
+      (K "*Default processor specific print*")))`;
+
+	
+val _ = Define `
+(instance_Show_Show_Elf_program_header_table_elf32_program_header_table_entry_dict= (<|
+
+  show_method := string_of_elf32_program_header_table_entry_default|>))`;
+
+
+val _ = Define `
+(instance_Show_Show_Elf_program_header_table_elf64_program_header_table_entry_dict= (<|
+
+  show_method := string_of_elf64_program_header_table_entry_default|>))`;
+
 
 (** Parsing and blitting *)
 
@@ -361,8 +436,8 @@ val _ = Define `
   *)
 (*val bytes_of_elf32_program_header_table_entry : endianness -> elf32_program_header_table_entry -> byte_sequence*)
 val _ = Define `
- (bytes_of_elf32_program_header_table_entry endian entry =  
-(byte_sequence$from_byte_lists [
+ (bytes_of_elf32_program_header_table_entry endian entry=  
+ (byte_sequence$from_byte_lists [
     bytes_of_elf32_word endian entry.elf32_p_type
   ; bytes_of_elf32_off  endian entry.elf32_p_offset
   ; bytes_of_elf32_addr endian entry.elf32_p_vaddr
@@ -379,8 +454,8 @@ val _ = Define `
   *)
 (*val bytes_of_elf64_program_header_table_entry : endianness -> elf64_program_header_table_entry -> byte_sequence*)
 val _ = Define `
- (bytes_of_elf64_program_header_table_entry endian entry =  
-(byte_sequence$from_byte_lists [
+ (bytes_of_elf64_program_header_table_entry endian entry=  
+ (byte_sequence$from_byte_lists [
     bytes_of_elf64_word  endian entry.elf64_p_type
   ; bytes_of_elf64_word  endian entry.elf64_p_flags
   ; bytes_of_elf64_off   endian entry.elf64_p_offset
@@ -400,8 +475,8 @@ val _ = Define `
 (*val read_elf32_program_header_table_entry : endianness -> byte_sequence ->
   error (elf32_program_header_table_entry * byte_sequence)*)
 val _ = Define `
- (read_elf32_program_header_table_entry endian bs =	
-(read_elf32_word endian bs >>= (\ (typ, bs) . 
+ (read_elf32_program_header_table_entry endian bs=	
+ (read_elf32_word endian bs >>= (\ (typ, bs) . 
 	read_elf32_off  endian bs >>= (\ (offset, bs) . 
 	read_elf32_addr endian bs >>= (\ (vaddr, bs) . 
 	read_elf32_addr endian bs >>= (\ (paddr, bs) . 
@@ -423,8 +498,8 @@ val _ = Define `
 (*val read_elf64_program_header_table_entry : endianness -> byte_sequence ->
   error (elf64_program_header_table_entry * byte_sequence)*)
 val _ = Define `
- (read_elf64_program_header_table_entry endian bs =  
-(read_elf64_word endian bs >>= (\ (typ, bs) . 
+ (read_elf64_program_header_table_entry endian bs=  
+ (read_elf64_word endian bs >>= (\ (typ, bs) . 
   read_elf64_word endian bs >>= (\ (flags, bs) . 
   read_elf64_off  endian bs >>= (\ (offset, bs) . 
   read_elf64_addr endian bs >>= (\ (vaddr, bs) . 
@@ -458,16 +533,16 @@ val _ = type_abbrev( "elf64_program_header_table" , ``: elf64_program_header_tab
   * table into a byte sequence assuming endianness [ed].
   *)
 val _ = Define `
- (bytes_of_elf32_program_header_table endian tbl =  
-(byte_sequence$concat0 (MAP (bytes_of_elf32_program_header_table_entry endian) tbl)))`;
+ (bytes_of_elf32_program_header_table endian tbl=  
+ (byte_sequence$concat0 (MAP (bytes_of_elf32_program_header_table_entry endian) tbl)))`;
 
 
 (** [bytes_of_elf64_program_header_table ed tbl] blits an ELF64 program header
   * table into a byte sequence assuming endianness [ed].
   *)  
 val _ = Define `
- (bytes_of_elf64_program_header_table endian tbl =  
-(byte_sequence$concat0 (MAP (bytes_of_elf64_program_header_table_entry endian) tbl)))`;
+ (bytes_of_elf64_program_header_table endian tbl=  
+ (byte_sequence$concat0 (MAP (bytes_of_elf64_program_header_table_entry endian) tbl)))`;
 
 
 (** [read_elf32_program_header_table' endian bs0] reads an ELF32 program header table from
@@ -476,8 +551,8 @@ val _ = Define `
   * [read_elf32_program_header_table] below instead.
   *)
  val read_elf32_program_header_table'_defn = Hol_defn "read_elf32_program_header_table'" `
- (read_elf32_program_header_table' endian bs0 =	
-(if byte_sequence$length0 bs0 = 0 then
+ (read_elf32_program_header_table' endian bs0=	
+ (if byte_sequence$length0 bs0 =I 0 then
   	return []
   else
   	read_elf32_program_header_table_entry endian bs0 >>= (\ (entry, bs1) . 
@@ -492,8 +567,8 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
   * [read_elf32_program_header_table] below instead.
   *)
  val read_elf64_program_header_table'_defn = Hol_defn "read_elf64_program_header_table'" `
- (read_elf64_program_header_table' endian bs0 =  
-(if byte_sequence$length0 bs0 = 0 then
+ (read_elf64_program_header_table' endian bs0=  
+ (if byte_sequence$length0 bs0 =I 0 then
     return []
   else
     read_elf64_program_header_table_entry endian bs0 >>= (\ (entry, bs1) . 
@@ -511,8 +586,8 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
 (*val read_elf32_program_header_table : natural -> endianness -> byte_sequence ->
   error (elf32_program_header_table * byte_sequence)*)
 val _ = Define `
- (read_elf32_program_header_table table_size endian bs0 =	
-(partition0 table_size bs0 >>= (\ (eat, rest) . 
+ (read_elf32_program_header_table table_size endian bs0=	
+ (partition0 table_size bs0 >>= (\ (eat, rest) . 
 	read_elf32_program_header_table' endian eat >>= (\ table . 
 	return (table, rest)))))`;
 
@@ -526,8 +601,8 @@ val _ = Define `
 (*val read_elf64_program_header_table : natural -> endianness -> byte_sequence ->
   error (elf64_program_header_table * byte_sequence)*)
 val _ = Define `
- (read_elf64_program_header_table table_size endian bs0 =  
-(partition0 table_size bs0 >>= (\ (eat, rest) . 
+ (read_elf64_program_header_table table_size endian bs0=  
+ (partition0 table_size bs0 >>= (\ (eat, rest) . 
   read_elf64_program_header_table' endian eat >>= (\ table . 
   return (table, rest)))))`;
 
@@ -545,12 +620,20 @@ val _ = type_abbrev( "pht_print_bundle" , ``: (num -> string) # (num -> string)`
   * specific entries.
   *)
 (*val string_of_elf32_program_header_table : pht_print_bundle -> elf32_program_header_table -> string*)
+val _ = Define `
+ (string_of_elf32_program_header_table (os, proc) tbl=  
+ (unlines (MAP (string_of_elf32_program_header_table_entry os proc) tbl)))`;
+
 
 (** [string_of_elf64_program_header_table os proc tbl] produces a string representation
   * of program header table [tbl] using [os] and [proc] to render OS- and processor-
   * specific entries.
   *)
 (*val string_of_elf64_program_header_table : pht_print_bundle -> elf64_program_header_table -> string*)
+val _ = Define `
+ (string_of_elf64_program_header_table (os, proc) tbl=  
+ (unlines (MAP (string_of_elf64_program_header_table_entry os proc) tbl)))`;
+
 
 (** Static/dynamic linkage *)
 
@@ -562,8 +645,8 @@ val _ = type_abbrev( "pht_print_bundle" , ``: (num -> string) # (num -> string)`
   *)
 (*val get_elf32_dynamic_linked : elf32_program_header_table -> bool*)
 val _ = Define `
- (get_elf32_dynamic_linked pht =  
-(EXISTS (\ p .  w2n p.elf32_p_type = elf_pt_interp) pht))`;
+ (get_elf32_dynamic_linked pht=  
+ (EXISTS (\ p .  w2n p.elf32_p_type = elf_pt_interp) pht))`;
 
 
 (** [get_elf64_dynamic_linked pht] tests whether an ELF64 file is a dynamically
@@ -574,8 +657,8 @@ val _ = Define `
   *)
 (*val get_elf64_dynamic_linked : elf64_program_header_table -> bool*)
 val _ = Define `
- (get_elf64_dynamic_linked pht =  
-(EXISTS (\ p .  w2n p.elf64_p_type = elf_pt_interp) pht))`;
+ (get_elf64_dynamic_linked pht=  
+ (EXISTS (\ p .  w2n p.elf64_p_type = elf_pt_interp) pht))`;
 
 
 (** [get_elf32_static_linked] is a utility function defined as the inverse
@@ -583,8 +666,8 @@ val _ = Define `
   *)
 (*val get_elf32_static_linked : elf32_program_header_table -> bool*)
 val _ = Define `
- (get_elf32_static_linked pht =  
-(~ (get_elf32_dynamic_linked pht)))`;
+ (get_elf32_static_linked pht=  
+ (~ (get_elf32_dynamic_linked pht)))`;
 
 
 (** [get_elf64_static_linked] is a utility function defined as the inverse
@@ -592,8 +675,8 @@ val _ = Define `
   *)
 (*val get_elf64_static_linked : elf64_program_header_table -> bool*)
 val _ = Define `
- (get_elf64_static_linked pht =  
-(~ (get_elf64_dynamic_linked pht)))`;
+ (get_elf64_static_linked pht=  
+ (~ (get_elf64_dynamic_linked pht)))`;
 
   
 (** [get_elf32_requested_interpreter ent bs0] extracts the requested interpreter
@@ -605,11 +688,11 @@ val _ = Define `
 (*val get_elf32_requested_interpreter : elf32_program_header_table_entry ->
   byte_sequence -> error string*)
 val _ = Define `
- (get_elf32_requested_interpreter pent bs0 =  
-(if w2n pent.elf32_p_type = elf_pt_interp then
+ (get_elf32_requested_interpreter pent bs0=  
+ (if w2n pent.elf32_p_type = elf_pt_interp then
     let off = (w2n  pent.elf32_p_offset) in
     let siz = (w2n pent.elf32_p_filesz) in
-      byte_sequence$offset_and_cut off (siz -  1) bs0 >>= (\ cut . 
+      byte_sequence$offset_and_cut off (siz - I 1) bs0 >>= (\ cut . 
       return (byte_sequence$string_of_byte_sequence cut))
   else
     fail0 "get_elf32_requested_interpreter: not an INTERP segment header"))`;
@@ -624,11 +707,11 @@ val _ = Define `
 (*val get_elf64_requested_interpreter : elf64_program_header_table_entry ->
   byte_sequence -> error string*)
 val _ = Define `
- (get_elf64_requested_interpreter pent bs0 =  
-(if w2n pent.elf64_p_type = elf_pt_interp then
+ (get_elf64_requested_interpreter pent bs0=  
+ (if w2n pent.elf64_p_type = elf_pt_interp then
     let off = (w2n   pent.elf64_p_offset) in
     let siz = (w2n pent.elf64_p_filesz) in
-      byte_sequence$offset_and_cut off (siz -  1) bs0 >>= (\ cut . 
+      byte_sequence$offset_and_cut off (siz - I 1) bs0 >>= (\ cut . 
       return (byte_sequence$string_of_byte_sequence cut))
   else
     fail0 "get_elf64_requested_interpreter: not an INTERP segment header"))`;

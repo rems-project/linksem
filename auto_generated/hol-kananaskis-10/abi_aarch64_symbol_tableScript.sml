@@ -24,15 +24,15 @@ val _ = new_theory "abi_aarch64_symbol_table"
   *)
 (*val is_aarch64_weak_reference : elf64_symbol_table_entry -> bool*)
 val _ = Define `
- (is_aarch64_weak_reference ent =
-  ((w2n ent.elf64_st_shndx = shn_undef) /\    
-(get_symbol_binding ent.elf64_st_info = stb_weak)))`;
+ (is_aarch64_weak_reference ent=
+   ((w2n ent.elf64_st_shndx = shn_undef) /\    
+(get_elf64_symbol_binding ent = stb_weak)))`;
 
 
 (*val is_aarch64_weak_definition : elf64_symbol_table_entry -> bool*)
 val _ = Define `
- (is_aarch64_weak_definition ent = (~ ((w2n ent.elf64_st_shndx) = shn_undef) /\    
-(get_symbol_binding ent.elf64_st_info = stb_weak)))`;
+ (is_aarch64_weak_definition ent=  (~ ((w2n ent.elf64_st_shndx) = shn_undef) /\    
+(get_elf64_symbol_binding ent = stb_weak)))`;
 
 val _ = export_theory()
 

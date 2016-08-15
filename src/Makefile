@@ -217,7 +217,7 @@ main_elf main_link scratch: %: %.ml $(ALL_UTIL_ML) lem-all-ocaml
 	"$<" $(OCAMLFIND_PACKAGES)
 
 main_elf.opt main_link.opt scratch.opt: %.opt: %.ml $(ALL_UTIL_ML) lem-all-ocaml
-	ocamlfind ocamlopt $(OCAMLFLAGS) -o "$@" -g \
+	ocamlfind ocamlopt $(OCAMLFLAGS) -p -o "$@" -g \
 	$(OCAML_LIB_OBJS_OPT) \
 	$(LEM_OCAML_OBJS_OPT) \
 	$(ALL_UTIL_ML) \

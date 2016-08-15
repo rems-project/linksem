@@ -21,52 +21,52 @@ val _ = new_theory "abi_x86_relocation"
 (** Relocation types. *)
 
 val _ = Define `
- (r_386_none : num =( 0))`;
+ (r_386_none : num= (I 0))`;
 
 val _ = Define `
- (r_386_32 : num =( 1))`;
+ (r_386_32 : num= (I 1))`;
 
 val _ = Define `
- (r_386_pc32 : num =( 2))`;
+ (r_386_pc32 : num= (I 2))`;
 
 val _ = Define `
- (r_386_got32 : num =( 3))`;
+ (r_386_got32 : num= (I 3))`;
 
 val _ = Define `
- (r_386_plt32 : num =( 4))`;
+ (r_386_plt32 : num= (I 4))`;
 
 val _ = Define `
- (r_386_copy : num =( 5))`;
+ (r_386_copy : num= (I 5))`;
 
 val _ = Define `
- (r_386_glob_dat : num =( 6))`;
+ (r_386_glob_dat : num= (I 6))`;
 
 val _ = Define `
- (r_386_jmp_slot : num =( 7))`;
+ (r_386_jmp_slot : num= (I 7))`;
 
 val _ = Define `
- (r_386_relative : num =( 8))`;
+ (r_386_relative : num= (I 8))`;
 
 val _ = Define `
- (r_386_gotoff : num =( 9))`;
+ (r_386_gotoff : num= (I 9))`;
 
 val _ = Define `
- (r_386_gotpc : num =( 10))`;
+ (r_386_gotpc : num= (I 10))`;
 
 
 (** Found in the "wild" but not in the ABI docs: *)
 
 val _ = Define `
- (r_386_tls_tpoff : num =( 14))`;
+ (r_386_tls_tpoff : num= (I 14))`;
 
 val _ = Define `
- (r_386_tls_dtpmod32 : num =( 35))`;
+ (r_386_tls_dtpmod32 : num= (I 35))`;
 
 val _ = Define `
- (r_386_tls_dtpoff32 : num =( 36))`;
+ (r_386_tls_dtpoff32 : num= (I 36))`;
 
 val _ = Define `
- (r_386_irelative : num =( 42))`;
+ (r_386_irelative : num= (I 42))`;
 
 
 (** [string_of_x86_relocation_type m] produces a string based representation of
@@ -74,8 +74,8 @@ val _ = Define `
   *)
 (*val string_of_x86_relocation_type : natural -> string*)
 val _ = Define `
- (string_of_x86_relocation_type m =  
-(if m = r_386_none then
+ (string_of_x86_relocation_type m=  
+ (if m = r_386_none then
     "R_386_NONE"
   else if m = r_386_32 then
     "R_386_32"

@@ -70,8 +70,8 @@ val _ = Hol_datatype `
 
 (*val mk_range : natural -> natural -> value_formula*)
  val _ = Define `
- (mk_range left right =  
-(if left = right then
+ (mk_range left right=  
+ (if left = right then
     VFTrue
   else if right < left then
     VFFalse
