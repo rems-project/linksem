@@ -13,8 +13,8 @@ struct
   in end;
   val _ = Theory.link_parents
           ("abi_aarch64_section_header_table",
-          Arbnum.fromString "1471269339",
-          Arbnum.fromString "504410")
+          Arbnum.fromString "1471274831",
+          Arbnum.fromString "615407")
           [("lem_num",
            Arbnum.fromString "1471269219",
            Arbnum.fromString "41338")];
@@ -25,7 +25,7 @@ struct
     in Vector.fromList
   [ID("num", "num"), ID("arithmetic", "*"), ID("min", "fun"),
    ID("arithmetic", "+"), ID("min", "="), ID("min", "bool"),
-   ID("arithmetic", "BIT1"), ID("arithmetic", "BIT2"), ID("combin", "I"),
+   ID("arithmetic", "BIT1"), ID("arithmetic", "BIT2"),
    ID("arithmetic", "NUMERAL"), ID("arithmetic", "ZERO"),
    ID("abi_aarch64_section_header_table", "sht_aarch64_attributes")]
   end;
@@ -42,7 +42,7 @@ struct
   in
   val tmvector = build_term_vector idvector tyvector
   [TMC(1, 2), TMC(3, 2), TMC(4, 5), TMC(6, 1), TMC(7, 1), TMC(8, 1),
-   TMC(9, 1), TMC(10, 0), TMC(11, 0)]
+   TMC(9, 0), TMC(10, 0)]
   end
   local
   val DT = Thm.disk_thm val read = Term.read_raw tmvector
@@ -50,7 +50,7 @@ struct
   fun op sht_aarch64_attributes_def x = x
     val op sht_aarch64_attributes_def =
     DT(((("abi_aarch64_section_header_table",0),[]),[]),
-       [read"%2%8@%1%0%5%6%3%4%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%4%4%7@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%5%6%4%7@@@@@%5%6%3%7@@@@@"])
+       [read"%2%7@%1%0%5%3%4%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%4%4%6@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%5%4%6@@@@%5%3%6@@@@"])
   end
   val _ = DB.bindl "abi_aarch64_section_header_table"
   [("sht_aarch64_attributes_def",sht_aarch64_attributes_def,DB.Def)]

@@ -10,6 +10,7 @@ open import String
 open import String_extra
 
 open import {hol} `ASCIInumbersTheory`
+open import {hol} `elf_localTheory`
 
 class (Show 'a)
   val show : 'a -> string
@@ -124,7 +125,7 @@ val string_of_integer : integer -> string
 
 declare ocaml    target_rep function string_of_integer = `Nat_big_num.to_string`
 declare isabelle target_rep function string_of_integer = `LemExtraDefs.int_to_string`
-declare hol      target_rep function string_of_integer = `num_from_dec_string`
+declare hol      target_rep function string_of_integer = `int_to_dec_string`
 
 instance (Show integer)
   let show = string_of_integer

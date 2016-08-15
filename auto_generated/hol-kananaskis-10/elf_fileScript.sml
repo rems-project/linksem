@@ -1035,16 +1035,14 @@ val _ = Hol_datatype `
   * and begin execution.
   * XXX: (segments, provenance), entry point, machine type
   *)
-val _ = type_abbrev( "elf32_executable_process_image" , ``:
-  ( (elf32_interpreted_segment # segment_provenance)list # num # num)``);
+val _ = type_abbrev( "elf32_executable_process_image" , ``:((elf32_interpreted_segment # segment_provenance)list # num # num)``);
 
 (** [elf64_executable_process_image] is a process image for ELF64 files.  Contains
   * all that is necessary to load the executable components of an ELF64 file
   * and begin execution.
   * XXX: (segments, provenance), entry point, machine type
   *)
-val _ = type_abbrev( "elf64_executable_process_image" , ``:
-  ( (elf64_interpreted_segment # segment_provenance)list # num # num)``);
+val _ = type_abbrev( "elf64_executable_process_image" , ``:((elf64_interpreted_segment # segment_provenance)list # num # num)``);
 
 (** [get_elf32_executable_image f1] extracts an executable process image from an
   * executable ELF file.  May fail if extraction is impossible.

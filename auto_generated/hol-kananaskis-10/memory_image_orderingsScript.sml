@@ -295,26 +295,8 @@ val _ = Define `
   (let (ranges_and_defs : ( element_range option # symbol_definition) list) = (defined_symbols_and_ranges 
   dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature img)
     in 
-    (*let _ = errln ("Searching (among " ^ (show (length ranges_and_defs)) ^ ") for the bound-to symbol `" ^ bound_def.def_symname 
-        ^ "', which came from linkable idx " ^ 
-        (show bound_def.def_linkable_idx) ^ ", section " ^ 
-        (show bound_def.def_syment.elf64_st_shndx) ^ 
-        ", symtab shndx " ^ (show bound_def.def_sym_scn) ^ 
-        ", symind " ^ (show bound_def.def_sym_idx))
-    in*)
     lem_list$mapMaybe (\ (maybe_some_range, some_def) .  
-       (* let _ = errln ("Considering one: `" ^ some_def.def_symname ^ "'") in *)
-       (* match maybe_some_range with
-            Nothing -> failwith "symbol definition not over a definite range"
-            | Just some_range -> *)
-                (* if some_def.def_symname = bound_def.def_symname 
-                && some_def.def_linkable_idx = bound_def.def_linkable_idx then
-                if some_def = bound_def 
-                    then Just(maybe_some_range, some_def) else Nothing*)
-                    (*let _ = errln ("Found one in the same linkable: syment is " ^
-                        (show some_def.def_syment))
-                    in*) 
-                (*else*) if some_def = bound_def 
+      if some_def = bound_def 
                             then (
                                 (*let _ = errln ("Found one: syment is " ^ (show some_def.def_syment))
                                 in*)
@@ -368,9 +350,7 @@ val _ = Define `
             in
             (case more of 
                 [] => v
-                | _ => (*let _ = errln ("FIXME: internal error: more than one def matching bound def `" ^
-                    bound_def_in_input.def_symname ^ "'")
-                    in *) v
+                | _ => v
             )
     )))`;
 

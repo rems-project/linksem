@@ -439,8 +439,7 @@ val _ = Define `
 
 (** Printing symbol table entries *)
 
-val _ = type_abbrev( "symtab_print_bundle" , ``:
-  (num -> string) # (num -> string)``);
+val _ = type_abbrev( "symtab_print_bundle" , ``:(num -> string) # (num -> string)``);
 
 (** [string_of_elf32_symbol_table_entry ent] produces a string based representation
   * of symbol table entry [ent].
