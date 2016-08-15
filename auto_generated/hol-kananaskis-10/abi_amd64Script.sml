@@ -58,7 +58,7 @@ val _ = Define `
 
 
 val _ = Define `
- (shf_x86_64_large : num=  (I 256 *I 1048576))`;
+ (shf_x86_64_large : num=  (( 256:num) *( 1048576:num)))`;
  (* 0x10000000 a.k.a. 2^28 *)
 
 (* We model the PLT as a list of symbol name, maybe def, and a function

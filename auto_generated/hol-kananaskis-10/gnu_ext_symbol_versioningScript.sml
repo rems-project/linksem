@@ -65,7 +65,7 @@ val _ = Define `
         let siz = (w2n ver.elf32_sh_size) in
         let lnk = (w2n ver.elf32_sh_link) in
         get_elf32_symbol_table_by_index f1 lnk >>= (\ symtab . 
-        let dlen = (I (LENGTH symtab)) in
+        let dlen = (((LENGTH symtab):num)) in
         byte_sequence$offset_and_cut off siz bs0         >>= (\ ver      . 
         error$repeatM' dlen bs0 (read_elf32_half endian) >>= 
   (\p .  (case (p ) of ( (ver, _) ) => return ver ))))
@@ -76,8 +76,8 @@ val _ = Define `
 (*val obtain_gnu_ext_elf64_symbol_version_table : endianness -> elf64_section_header_table -> elf64_symbol_table -> byte_sequence -> error gnu_ext_elf64_symbol_version_table*)
 val _ = Define `
  (obtain_gnu_ext_elf64_symbol_version_table endian sht dynsym bs0=  
- (let dlen = (I (LENGTH dynsym)) in
-    if dlen =I 0 then
+ (let dlen = (((LENGTH dynsym):num)) in
+    if dlen =( 0:num) then
       return []
     else
       let vers = (FILTER (\ ent . 
@@ -158,12 +158,12 @@ val _ = Define `
       
 (*val gnu_ext_elf32_verdef_size : natural*)
 val _ = Define `
- (gnu_ext_elf32_verdef_size= (I 160))`;
+ (gnu_ext_elf32_verdef_size= (( 160:num)))`;
 
   
 (*val gnu_ext_elf64_verdef_size : natural*)
 val _ = Define `
- (gnu_ext_elf64_verdef_size= (I 256))`;
+ (gnu_ext_elf64_verdef_size= (( 256:num)))`;
 
    
 val _ = Hol_datatype `
@@ -182,12 +182,12 @@ val _ = Hol_datatype `
    
 (*val gnu_ext_elf32_veraux_size : natural*)
 val _ = Define `
- (gnu_ext_elf32_veraux_size= (I 64))`;
+ (gnu_ext_elf32_veraux_size= (( 64:num)))`;
 
 
 (*val gnu_ext_elf64_veraux_size : natural*)
 val _ = Define `
- (gnu_ext_elf64_veraux_size= (I 128))`;
+ (gnu_ext_elf64_veraux_size= (( 128:num)))`;
 
    
 (*val read_gnu_ext_elf32_veraux : endianness -> byte_sequence -> error (gnu_ext_elf32_veraux * byte_sequence)*)
@@ -228,12 +228,12 @@ val _ = Hol_datatype `
    
 (*val gnu_ext_elf32_verneed_size : natural*)
 val _ = Define `
- (gnu_ext_elf32_verneed_size= (I 128))`;
+ (gnu_ext_elf32_verneed_size= (( 128:num)))`;
 
 
 (*val gnu_ext_elf64_verneed_size : natural*)
 val _ = Define `
- (gnu_ext_elf64_verneed_size= (I 224))`;
+ (gnu_ext_elf64_verneed_size= (( 224:num)))`;
 
    
 (*val read_gnu_ext_elf32_verneed : endianness -> byte_sequence -> error (gnu_ext_elf32_verneed * byte_sequence)*)
@@ -288,12 +288,12 @@ val _ = Hol_datatype `
    
 (*val gnu_ext_elf32_vernaux_size : natural*)
 val _ = Define `
- (gnu_ext_elf32_vernaux_size= (I 16))`;
+ (gnu_ext_elf32_vernaux_size= (( 16:num)))`;
 
 
 (*val gnu_ext_elf64_vernaux_size : natural*)
 val _ = Define `
- (gnu_ext_elf64_vernaux_size= (I 224))`;
+ (gnu_ext_elf64_vernaux_size= (( 224:num)))`;
 
    
 (*val read_gnu_ext_elf32_vernaux : endianness -> byte_sequence -> error (gnu_ext_elf32_vernaux * byte_sequence)*)

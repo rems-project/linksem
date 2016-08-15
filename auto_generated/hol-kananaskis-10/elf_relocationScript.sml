@@ -106,7 +106,7 @@ val _ = Define `
 (*val extract_elf32_relocation_r_sym : elf32_word -> natural*)
 val _ = Define `
  (extract_elf32_relocation_r_sym w=  
- (w2n (word_lsr w(I 8))))`;
+ (w2n (word_lsr w(( 8 : num)))))`;
 
 
 (** [extract_elf64_relocation_r_sym w] computes the symbol table index associated with
@@ -116,7 +116,7 @@ val _ = Define `
 (*val extract_elf64_relocation_r_sym : elf64_xword -> natural*)
 val _ = Define `
  (extract_elf64_relocation_r_sym w=  
- (w2n (word_lsr w(I 32))))`;
+ (w2n (word_lsr w(( 32 : num)))))`;
 
 
 (** [extract_elf32_relocation_r_type w] computes the symbol type associated with an ELF32
@@ -126,7 +126,7 @@ val _ = Define `
 (*val extract_elf32_relocation_r_type : elf32_word -> natural*)
 val _ = Define `
  (extract_elf32_relocation_r_type w=  
- ((w2n w) MOD I 256))`;
+ ((w2n w) MOD( 256:num)))`;
 
 
 (** [extract_elf64_relocation_r_type w] computes the symbol type associated with an ELF64
@@ -136,7 +136,7 @@ val _ = Define `
 (*val extract_elf64_relocation_r_type : elf64_xword -> natural*)
 val _ = Define `
  (extract_elf64_relocation_r_type w=  
- (let magic = ((I 65536 *I 65536) - I 1) in (* 0xffffffffL *)
+ (let magic = ((( 65536:num) *( 65536:num)) -( 1:num)) in (* 0xffffffffL *)
     w2n (word_and w ((n2w : num -> 64 word) magic))))`;
 
     
@@ -261,7 +261,7 @@ val _ = Define `
   error (list elf32_relocation)*)
  val read_elf32_relocation_section'_defn = Hol_defn "read_elf32_relocation_section'" `
  (read_elf32_relocation_section' endian bs0=  
- (if byte_sequence$length0 bs0 =I 0 then
+ (if byte_sequence$length0 bs0 =( 0:num) then
     return []
   else
     read_elf32_relocation endian bs0 >>= (\ (entry, bs1) . 
@@ -279,7 +279,7 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
   error (list elf64_relocation)*)
  val read_elf64_relocation_section'_defn = Hol_defn "read_elf64_relocation_section'" `
  (read_elf64_relocation_section' endian bs0=  
- (if byte_sequence$length0 bs0 =I 0 then
+ (if byte_sequence$length0 bs0 =( 0:num) then
     return []
   else
     read_elf64_relocation endian bs0 >>= (\ (entry, bs1) . 
@@ -297,7 +297,7 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
   error (list elf32_relocation_a)*)
  val read_elf32_relocation_a_section'_defn = Hol_defn "read_elf32_relocation_a_section'" `
  (read_elf32_relocation_a_section' endian bs0=  
- (if byte_sequence$length0 bs0 =I 0 then
+ (if byte_sequence$length0 bs0 =( 0:num) then
     return []
   else
     read_elf32_relocation_a endian bs0 >>= (\ (entry, bs1) . 
@@ -315,7 +315,7 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
   error (list elf64_relocation_a)*)
  val read_elf64_relocation_a_section'_defn = Hol_defn "read_elf64_relocation_a_section'" `
  (read_elf64_relocation_a_section' endian bs0=  
- (if byte_sequence$length0 bs0 =I 0 then
+ (if byte_sequence$length0 bs0 =( 0:num) then
     return []
   else
     read_elf64_relocation_a endian bs0 >>= (\ (entry, bs1) . 

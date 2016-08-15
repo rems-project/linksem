@@ -49,76 +49,76 @@ val _ = new_theory "gnu_ext_dynamic"
   *)
 
 val _ = Define `
- (elf_dt_gnu_addrrnghi  : num=  ((I 939523967 *I 2) +I 1))`;
+ (elf_dt_gnu_addrrnghi  : num=  ((( 939523967:num) *( 2:num)) +( 1:num)))`;
   (*0x6ffffeff*)
 val _ = Define `
- (elf_dt_gnu_addrrnglo  : num= (I 939523840 *I 2))`;
+ (elf_dt_gnu_addrrnglo  : num= (( 939523840:num) *( 2:num)))`;
         (*0x6ffffe00*)
 val _ = Define `
- (elf_dt_gnu_auxiliary  : num=  ((I 1073741822 *I 2) +I 1))`;
+ (elf_dt_gnu_auxiliary  : num=  ((( 1073741822:num) *( 2:num)) +( 1:num)))`;
  (*0x7ffffffd*)
 val _ = Define `
- (elf_dt_gnu_filter     : num=  ((I 1073741823 *I 2) +I 1))`;
+ (elf_dt_gnu_filter     : num=  ((( 1073741823:num) *( 2:num)) +( 1:num)))`;
  (*0x7fffffff*)
 (** The following is "specified" in the LSB document but is not present in the
   * elf.c file so taken from elf.h from GLIBC:
   *)
 val _ = Define `
- (elf_dt_gnu_num        : num= (I 32))`;
+ (elf_dt_gnu_num        : num= (( 32:num)))`;
  (** ??? This should match something *)
 val _ = Define `
- (elf_dt_gnu_posflag_1  : num=  ((I 939523838 *I 2) +I 1))`;
+ (elf_dt_gnu_posflag_1  : num=  ((( 939523838:num) *( 2:num)) +( 1:num)))`;
  (*0x6ffffdfd*)
 val _ = Define `
- (elf_dt_gnu_relcount   : num= (I 939524093 *I 2))`;
+ (elf_dt_gnu_relcount   : num= (( 939524093:num) *( 2:num)))`;
        (*0x6ffffffa*)
 val _ = Define `
- (elf_dt_gnu_relacount  : num=  ((I 939524092 *I 2) +I 1))`;
+ (elf_dt_gnu_relacount  : num=  ((( 939524092:num) *( 2:num)) +( 1:num)))`;
  (*0x6FFFFFF9*)
 val _ = Define `
- (elf_dt_gnu_syminent   : num=  ((I 939523839 *I 2) +I 1))`;
+ (elf_dt_gnu_syminent   : num=  ((( 939523839:num) *( 2:num)) +( 1:num)))`;
  (*0x6ffffdff*)
 val _ = Define `
- (elf_dt_gnu_syminfo    : num=  ((I 939523967 *I 2) +I 1))`;
+ (elf_dt_gnu_syminfo    : num=  ((( 939523967:num) *( 2:num)) +( 1:num)))`;
  (*0x6ffffeff*)
 val _ = Define `
- (elf_dt_gnu_syminsz    : num= (I 939523839 *I 2))`;
+ (elf_dt_gnu_syminsz    : num= (( 939523839:num) *( 2:num)))`;
        (*0x6ffffdfe*)
 val _ = Define `
- (elf_dt_gnu_valrnghi   : num=  ((I 939523839 *I 2) +I 1))`;
+ (elf_dt_gnu_valrnghi   : num=  ((( 939523839:num) *( 2:num)) +( 1:num)))`;
  (*0x6ffffdff*)
 val _ = Define `
- (elf_dt_gnu_valrnglo   : num=  (I 939523712 *I 2))`;
+ (elf_dt_gnu_valrnglo   : num=  (( 939523712:num) *( 2:num)))`;
      (*0x6ffffd00*)
 val _ = Define `
- (elf_dt_gnu_verdef     : num= (I 939524094 *I 2))`;
+ (elf_dt_gnu_verdef     : num= (( 939524094:num) *( 2:num)))`;
        (*0x6ffffffc*)
 val _ = Define `
- (elf_dt_gnu_verdefnum  : num=  ((I 939524094 *I 2) +I 1))`;
+ (elf_dt_gnu_verdefnum  : num=  ((( 939524094:num) *( 2:num)) +( 1:num)))`;
  (*0x6ffffffd*)
 val _ = Define `
- (elf_dt_gnu_verneed    : num= (I 939524095 *I 2))`;
+ (elf_dt_gnu_verneed    : num= (( 939524095:num) *( 2:num)))`;
        (*0x6ffffffe*)
 val _ = Define `
- (elf_dt_gnu_verneednum : num=  ((I 939524095 *I 2) +I 1))`;
+ (elf_dt_gnu_verneednum : num=  ((( 939524095:num) *( 2:num)) +( 1:num)))`;
  (*0x6fffffff*)
 val _ = Define `
- (elf_dt_gnu_versym     : num= (I 939524088 *I 2))`;
+ (elf_dt_gnu_versym     : num= (( 939524088:num) *( 2:num)))`;
        (*0x6ffffff0*)
 
 (** Not present in the LSB but turns up in "real" ELF files... *)
 
 val _ = Define `
- (elf_dt_gnu_hash      : num=  ((I 939523962 *I 2) +I 1))`;
+ (elf_dt_gnu_hash      : num=  ((( 939523962:num) *( 2:num)) +( 1:num)))`;
  (*0x6ffffef5*)
 val _ = Define `
- (elf_dt_gnu_flags_1   : num=  ((I 939524093 *I 2) +I 1))`;
+ (elf_dt_gnu_flags_1   : num=  ((( 939524093:num) *( 2:num)) +( 1:num)))`;
  (*0x6ffffffb*)
 val _ = Define `
- (elf_dt_gnu_checksum  : num=  (I 939523836 *I 2))`;
+ (elf_dt_gnu_checksum  : num=  (( 939523836:num) *( 2:num)))`;
      (* 0x6FFFFDF8 *)
 val _ = Define `
- (elf_dt_gnu_prelinked : num=  ((I 2 *I 939523834) +I 1))`;
+ (elf_dt_gnu_prelinked : num=  ((( 2:num) *( 939523834:num)) +( 1:num)))`;
  (* 0x6FFFFDF5 *)
 
 (** Extended DT flags for FLAGS_1 dynamic section types.  Taken from GLibC source
@@ -126,55 +126,55 @@ val _ = Define `
   *)
   
 val _ = Define `
- (gnu_df_1_now        : num= (I 1))`;
+ (gnu_df_1_now        : num= (( 1:num)))`;
      (*0x00000001*)
 val _ = Define `
- (gnu_df_1_global     : num= (I 2))`;
+ (gnu_df_1_global     : num= (( 2:num)))`;
      (*0x00000002*)
 val _ = Define `
- (gnu_df_1_group      : num= (I 4))`;
+ (gnu_df_1_group      : num= (( 4:num)))`;
      (*0x00000004*)
 val _ = Define `
- (gnu_df_1_nodelete   : num= (I 8))`;
+ (gnu_df_1_nodelete   : num= (( 8:num)))`;
      (*0x00000008*)
 val _ = Define `
- (gnu_df_1_loadfltr   : num= (I 16))`;
+ (gnu_df_1_loadfltr   : num= (( 16:num)))`;
     (*0x00000010*)
 val _ = Define `
- (gnu_df_1_initfirst  : num= (I 32))`;
+ (gnu_df_1_initfirst  : num= (( 32:num)))`;
     (*0x00000020*)
 val _ = Define `
- (gnu_df_1_noopen     : num= (I 64))`;
+ (gnu_df_1_noopen     : num= (( 64:num)))`;
     (*0x00000040*)
 val _ = Define `
- (gnu_df_1_origin     : num= (I 128))`;
+ (gnu_df_1_origin     : num= (( 128:num)))`;
    (*0x00000080*)
 val _ = Define `
- (gnu_df_1_direct     : num= (I 256))`;
+ (gnu_df_1_direct     : num= (( 256:num)))`;
    (*0x00000100*)
 val _ = Define `
- (gnu_df_1_trans      : num= (I 512))`;
+ (gnu_df_1_trans      : num= (( 512:num)))`;
    (*0x00000200*)
 val _ = Define `
- (gnu_df_1_interpose  : num= (I 1024))`;
+ (gnu_df_1_interpose  : num= (( 1024:num)))`;
   (*0x00000400*)
 val _ = Define `
- (gnu_df_1_nodeflib   : num= (I 2048))`;
+ (gnu_df_1_nodeflib   : num= (( 2048:num)))`;
   (*0x00000800*)
 val _ = Define `
- (gnu_df_1_nodump     : num= (I 4096))`;
+ (gnu_df_1_nodump     : num= (( 4096:num)))`;
   (*0x00001000*)
 val _ = Define `
- (gnu_df_1_confalt    : num= (I 8192))`;
+ (gnu_df_1_confalt    : num= (( 8192:num)))`;
   (*0x00002000*)
 val _ = Define `
- (gnu_df_1_endfiltee  : num= (I 16384))`;
+ (gnu_df_1_endfiltee  : num= (( 16384:num)))`;
  (*0x00004000*)
 val _ = Define `
- (gnu_df_1_dispreldne : num= (I 32768))`;
+ (gnu_df_1_dispreldne : num= (( 32768:num)))`;
  (*0x00008000*)
 val _ = Define `
- (gnu_df_1_disprelpnd : num= (I 65536))`;
+ (gnu_df_1_disprelpnd : num= (( 65536:num)))`;
  (*0x00010000*)
 
 (** [gnu_string_of_dt_flag1 m] produces a string based representation of GNU

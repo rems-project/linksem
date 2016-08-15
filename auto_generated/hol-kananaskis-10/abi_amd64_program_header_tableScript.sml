@@ -21,13 +21,13 @@ val _ = new_theory "abi_amd64_program_header_table"
 
 (** The segment contains the stack unwind tables *)
 val _ = Define `
- (abi_amd64_pt_gnu_eh_frame  : num= (I 2 *I 842691240))`;
+ (abi_amd64_pt_gnu_eh_frame  : num= (( 2:num) *( 842691240:num)))`;
  (* 0x6474e550 *)
 val _ = Define `
- (abi_amd64_pt_sunw_eh_frame : num= (I 2 *I 842691240))`;
+ (abi_amd64_pt_sunw_eh_frame : num= (( 2:num) *( 842691240:num)))`;
  (* 0x6474e550 *)
 val _ = Define `
- (abi_amd64_pt_sunw_unwind   : num= (I 2 *I 842691240))`;
+ (abi_amd64_pt_sunw_unwind   : num= (( 2:num) *( 842691240:num)))`;
  (* 0x6474e550 *)
 
 (** [string_of_abi_amd64_elf_segment_type m] produces a string based representation

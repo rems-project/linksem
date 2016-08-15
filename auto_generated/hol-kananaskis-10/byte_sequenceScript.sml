@@ -117,7 +117,7 @@ val _ = Define `
  (repeat' count1 c acc=  
  ((case count1 of
       0 => acc
-    | m => repeat' (count1 - I 1) c (c::acc)
+    | m => repeat' (count1 -( 1:num)) c (c::acc)
   )))`;
 
 val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn repeat'_defn;
@@ -149,7 +149,7 @@ val _ = Define `
 (*val length : byte_sequence -> natural*)
 val _ = Define `
  (length0 (Sequence ts)=  
- (I (LENGTH ts)))`;
+ (((LENGTH ts):num)))`;
 
 
 
@@ -239,7 +239,7 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
   else
     (case ts of
         []    => fail0 "dropbytes: cannot drop more bytes than are contained in sequence"
-      | x::xs => dropbytes (count1 - I 1) (Sequence xs)
+      | x::xs => dropbytes (count1 -( 1:num)) (Sequence xs)
     )))`;
 
 val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn dropbytes_defn;
@@ -247,7 +247,7 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
 (*val takebytes_r_with_length: nat -> natural -> byte_sequence -> error byte_sequence*)
  val _ = Define `
  (takebytes_r_with_length count1 ts_length (Sequence ts)=  
-  (if ts_length >= (I count1) then 
+  (if ts_length >= (( count1:num)) then 
     return (Sequence (list_take_with_accum count1 [] ts))
   else
     fail0 "takebytes: cannot take more bytes than are contained in sequence"))`;

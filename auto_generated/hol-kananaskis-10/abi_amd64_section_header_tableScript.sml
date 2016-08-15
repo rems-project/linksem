@@ -21,13 +21,13 @@ val _ = new_theory "abi_amd64_section_header_table"
 (** AMD64 specific flags.  See Section 4.2.1. *)
 
 val _ = Define `
- (shf_abi_amd64_large : num= (I 67108864 *I 4))`;
+ (shf_abi_amd64_large : num= (( 67108864:num) *( 4:num)))`;
  (* 0x10000000 *)
 
 (** AMD64 specific section types.  See Section 4.2.2 *)
 
 val _ = Define `
- (sht_abi_amd64_unwind : num=  ((I 939524096 *I 2) +I 1))`;
+ (sht_abi_amd64_unwind : num=  ((( 939524096:num) *( 2:num)) +( 1:num)))`;
  (* 0x70000001 *)
 
 (** [string_of_abi_amd64_section_type m] produces a string based representation

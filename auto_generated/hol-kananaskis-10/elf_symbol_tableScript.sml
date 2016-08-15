@@ -34,7 +34,7 @@ val _ = new_theory "elf_symbol_table"
 (** Undefined symbol index *)
 
 val _ = Define `
- (stn_undef : num= (I 0))`;
+ (stn_undef : num= (( 0:num)))`;
 
 
 (** Symbol binding *)
@@ -43,38 +43,38 @@ val _ = Define `
   * definition.
   *)
 val _ = Define `
- (stb_local : num= (I 0))`;
+ (stb_local : num= (( 0:num)))`;
 
 
 (** Global symbols are visible to all object files being combined.
   *)
 val _ = Define `
- (stb_global : num= (I 1))`;
+ (stb_global : num= (( 1:num)))`;
 
 
 (** Weak symbols resemble global symbols but their definitions have lower
   * precedence.
   *)
 val _ = Define `
- (stb_weak : num= (I 2))`;
+ (stb_weak : num= (( 2:num)))`;
 
 
 (** Values in the following range have reserved OS specific semantics.
   *)
 val _ = Define `
- (stb_loos : num= (I 10))`;
+ (stb_loos : num= (( 10:num)))`;
 
 val _ = Define `
- (stb_hios : num= (I 12))`;
+ (stb_hios : num= (( 12:num)))`;
 
 
 (** Values in the following range have reserved processor specific semantics.
   *)
 val _ = Define `
- (stb_loproc : num= (I 13))`;
+ (stb_loproc : num= (( 13:num)))`;
 
 val _ = Define `
- (stb_hiproc : num= (I 15))`;
+ (stb_hiproc : num= (( 15:num)))`;
 
 
 (** string_of_symbol_binding b os proc] produces a string representation of
@@ -104,63 +104,63 @@ val _ = Define `
 (** The symbol's type is not specified.
   *)
 val _ = Define `
- (stt_notype : num= (I 0))`;
+ (stt_notype : num= (( 0:num)))`;
 
 
 (** The symbol is associated with a data object such as a variable.
   *)
 val _ = Define `
- (stt_object : num= (I 1))`;
+ (stt_object : num= (( 1:num)))`;
 
 
 (** The symbol is associated with a function or other executable code.
   *)
 val _ = Define `
- (stt_func : num= (I 2))`;
+ (stt_func : num= (( 2:num)))`;
 
 
 (** The symbol is associated with a section.
   *)
 val _ = Define `
- (stt_section : num= (I 3))`;
+ (stt_section : num= (( 3:num)))`;
 
 
 (** Conventionally the symbol's value gives the name of the source file associated
   * with the object file.
   *)
 val _ = Define `
- (stt_file : num= (I 4))`;
+ (stt_file : num= (( 4:num)))`;
 
 
 (** The symbol is an uninitialised common block.
   *)
 val _ = Define `
- (stt_common : num= (I 5))`;
+ (stt_common : num= (( 5:num)))`;
 
 
 (** The symbol specified a Thread Local Storage (TLS) entity.
   *)
 val _ = Define `
- (stt_tls : num= (I 6))`;
+ (stt_tls : num= (( 6:num)))`;
 
 
 (** Values in the following range are reserved solely for OS-specific semantics.
   *)
 val _ = Define `
- (stt_loos : num= (I 10))`;
+ (stt_loos : num= (( 10:num)))`;
 
 val _ = Define `
- (stt_hios : num= (I 12))`;
+ (stt_hios : num= (( 12:num)))`;
 
 
 (** Values in the following range are reserved solely for processor-specific
   * semantics.
   *)
 val _ = Define `
- (stt_loproc : num= (I 13))`;
+ (stt_loproc : num= (( 13:num)))`;
 
 val _ = Define `
- (stt_hiproc : num= (I 15))`;
+ (stt_hiproc : num= (( 15:num)))`;
 
 
 (** [string_of_symbol_type sym os proc] produces a string representation of
@@ -197,20 +197,20 @@ val _ = Define `
 (** The visibility of the symbol is as specified by the symbol's binding type.
   *)
 val _ = Define `
- (stv_default : num= (I 0))`;
+ (stv_default : num= (( 0:num)))`;
 
 
 (** The meaning of this visibility may be defined by processor supplements to
   * further constrain hidden symbols.
   *)
 val _ = Define `
- (stv_internal : num= (I 1))`;
+ (stv_internal : num= (( 1:num)))`;
 
 
 (** The symbol's name is not visible in other components.
   *)
 val _ = Define `
- (stv_hidden : num= (I 2))`;
+ (stv_hidden : num= (( 2:num)))`;
 
 
 (** The symbol is visible in other components but not pre-emptable.  That is,
@@ -219,7 +219,7 @@ val _ = Define `
   * resolved to instead if we followed the normal rules of symbol resolution.
   *)
 val _ = Define `
- (stv_protected : num= (I 3))`;
+ (stv_protected : num= (( 3:num)))`;
 
 
 (** [string_of_symbol_visibility m] produces a string representation of symbol
@@ -328,9 +328,11 @@ val _ = Define `
   isGreaterEqual_method := (\ f1 .  (\ f2 .  (IN) (elf64_symbol_table_entry_compare f1 f2) ({GT; EQ})))|>))`;
 
   
-val _ = type_abbrev( "elf32_symbol_table" , ``: elf32_symbol_table_entry list``);
+val _ = type_abbrev( "elf32_symbol_table" , ``: elf32_symbol_table_entry
+  list``);
   
-val _ = type_abbrev( "elf64_symbol_table" , ``: elf64_symbol_table_entry list``);
+val _ = type_abbrev( "elf64_symbol_table" , ``: elf64_symbol_table_entry
+  list``);
 
 (** Extraction of symbol table data *)
 
@@ -342,7 +344,7 @@ val _ = type_abbrev( "elf64_symbol_table" , ``: elf64_symbol_table_entry list``)
 (*val extract_symbol_binding : unsigned_char -> natural*)
 val _ = Define `
  (extract_symbol_binding entry=  
- (w2n (word_lsr entry(I 4))))`;
+ (w2n (word_lsr entry(( 4 : num)))))`;
 
   
 (** [extract_symbol_type u] extracts a symbol table entry's symbol type.  [u]
@@ -351,7 +353,7 @@ val _ = Define `
 (*val extract_symbol_type : unsigned_char -> natural*)
 val _ = Define `
  (extract_symbol_type entry=  
- (w2n (word_and entry ((n2w : num -> 8 word)(I 15)))))`;
+ (w2n (word_and entry ((n2w : num -> 8 word)(( 15:num))))))`;
  (* 0xf *)
 
 (** [get_symbol_info u] extracts a symbol table entry's symbol info.  [u]
@@ -361,9 +363,9 @@ val _ = Define `
 val _ = Define `
  (make_symbol_info binding symtype=  
  (word_add
-    (word_lsl ((n2w : num -> 8 word) binding)(I 4))
+    (word_lsl ((n2w : num -> 8 word) binding)(( 4 : num)))
     (word_and ((n2w : num -> 8 word) symtype)
-      ((n2w : num -> 8 word)(I 15)))))`;
+      ((n2w : num -> 8 word)(( 15:num))))))`;
  (*0xf*)  
 
 (** [get_symbol_visibility u] extracts a symbol table entry's symbol visibility.  [u]
@@ -372,7 +374,7 @@ val _ = Define `
 (*val get_symbol_visibility : unsigned_char -> natural*)
 val _ = Define `
  (get_symbol_visibility info=  
- (w2n (word_and info ((n2w : num -> 8 word)(I 3)))))`;
+ (w2n (word_and info ((n2w : num -> 8 word)(( 3:num))))))`;
  (* 0x3*)
   
 (** [make_symbol_other m] converts a natural [m] to an unsigned char suitable
@@ -413,12 +415,12 @@ val _ = Define `
 (*val is_elf32_null_entry : elf32_symbol_table_entry -> bool*)
 val _ = Define `
  (is_elf32_null_entry ent= 
-     (((w2n ent.elf32_st_name) =I 0)
-    /\ (w2n ent.elf32_st_value =I 0)
-    /\ (w2n ent.elf32_st_size =I 0)
-    /\ (w2n ent.elf32_st_info =I 0)
-    /\ (w2n ent.elf32_st_other =I 0)
-    /\ (w2n ent.elf32_st_shndx =I 0)))`;
+     (((w2n ent.elf32_st_name) =( 0:num))
+    /\ (w2n ent.elf32_st_value =( 0:num))
+    /\ (w2n ent.elf32_st_size =( 0:num))
+    /\ (w2n ent.elf32_st_info =( 0:num))
+    /\ (w2n ent.elf32_st_other =( 0:num))
+    /\ (w2n ent.elf32_st_shndx =( 0:num))))`;
 
     
 (** [is_elf64_null_entry ent] tests whether [ent] is a null symbol table entry,
@@ -427,17 +429,18 @@ val _ = Define `
 (*val is_elf64_null_entry : elf64_symbol_table_entry -> bool*)
 val _ = Define `
  (is_elf64_null_entry ent= 
-     (((w2n ent.elf64_st_name) =I 0)
-    /\ (w2n ent.elf64_st_value =I 0)
-    /\ (w2n ent.elf64_st_size =I 0)
-    /\ (w2n ent.elf64_st_info =I 0)
-    /\ (w2n ent.elf64_st_other =I 0)
-    /\ (w2n ent.elf64_st_shndx =I 0)))`;
+     (((w2n ent.elf64_st_name) =( 0:num))
+    /\ (w2n ent.elf64_st_value =( 0:num))
+    /\ (w2n ent.elf64_st_size =( 0:num))
+    /\ (w2n ent.elf64_st_info =( 0:num))
+    /\ (w2n ent.elf64_st_other =( 0:num))
+    /\ (w2n ent.elf64_st_shndx =( 0:num))))`;
 
 
 (** Printing symbol table entries *)
 
-val _ = type_abbrev( "symtab_print_bundle" , ``:(num -> string) # (num -> string)``);
+val _ = type_abbrev( "symtab_print_bundle" , ``:
+  (num -> string) # (num -> string)``);
 
 (** [string_of_elf32_symbol_table_entry ent] produces a string based representation
   * of symbol table entry [ent].
@@ -486,12 +489,12 @@ val _ = Define `
 (*val elf64_null_symbol_table_entry : elf64_symbol_table_entry*)
 val _ = Define `
  (elf64_null_symbol_table_entry=  
- (<| elf64_st_name  := ((n2w : num -> 32 word)(I 0))
-   ; elf64_st_info  := ((n2w : num -> 8 word)(I 0))
-   ; elf64_st_other := ((n2w : num -> 8 word)(I 0))
-   ; elf64_st_shndx := ((n2w : num -> 16 word)(I 0))
-   ; elf64_st_value := ((n2w : num -> 64 word)(I 0))
-   ; elf64_st_size  := ((n2w : num -> 64 word)(I 0))
+ (<| elf64_st_name  := ((n2w : num -> 32 word)(( 0:num)))
+   ; elf64_st_info  := ((n2w : num -> 8 word)(( 0:num)))
+   ; elf64_st_other := ((n2w : num -> 8 word)(( 0:num)))
+   ; elf64_st_shndx := ((n2w : num -> 16 word)(( 0:num)))
+   ; elf64_st_value := ((n2w : num -> 64 word)(( 0:num)))
+   ; elf64_st_size  := ((n2w : num -> 64 word)(( 0:num)))
    |>))`;
 
 
@@ -588,7 +591,7 @@ val _ = Define `
 (*val read_elf32_symbol_table : endianness -> byte_sequence -> error elf32_symbol_table*)
  val read_elf32_symbol_table_defn = Hol_defn "read_elf32_symbol_table" `
  (read_elf32_symbol_table endian bs0=  
- (if byte_sequence$length0 bs0 =I 0 then
+ (if byte_sequence$length0 bs0 =( 0:num) then
     return []
   else
     read_elf32_symbol_table_entry endian bs0 >>= (\ (head, bs0) . 
@@ -604,7 +607,7 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
 (*val read_elf64_symbol_table : endianness -> byte_sequence -> error elf64_symbol_table*)
  val read_elf64_symbol_table_defn = Hol_defn "read_elf64_symbol_table" `
  (read_elf64_symbol_table endian bs0=  
- (if byte_sequence$length0 bs0 =I 0 then
+ (if byte_sequence$length0 bs0 =( 0:num) then
     return []
   else
     read_elf64_symbol_table_entry endian bs0 >>= (\ (head, bs0) . 
@@ -617,7 +620,8 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
   * and symbol binding.
   * A PPCMemism.
   *)
-val _ = type_abbrev( "symbol_address_map", ``: (string # (num # num # num # num)) list``);
+val _ = type_abbrev( "symbol_address_map"
+  , ``: (string # (num # num # num # num)) list``);
 
 (** [get_elf32_symbol_image_address symtab stbl] extracts the symbol address map
   * from the symbol table [symtab] using the string table [stbl].
@@ -630,7 +634,7 @@ val _ = Define `
  (mapM (\ entry . 
     let name = (w2n entry.elf32_st_name) in
     let addr = (w2n entry.elf32_st_value) in
-    let size1 = (w2n entry.elf32_st_size *I 8) in
+    let size1 = (w2n entry.elf32_st_size *( 8:num)) in
     let typ  = (extract_symbol_type entry.elf32_st_info) in
     let bnd  = (extract_symbol_binding entry.elf32_st_info) in
       string_table$get_string_at name strtab >>= (\ str . 

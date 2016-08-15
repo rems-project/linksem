@@ -48,12 +48,12 @@ val _ = Define `
         []  => fail0 "abi_power64_compute_program_entry_point: no program segment contains the program entry point"
       | [x] =>
         let rebase = (entry - x.elf64_segment_base) in
-        byte_sequence$offset_and_cut rebase(I 8) x.elf64_segment_body >>= (\ bytes . 
+        byte_sequence$offset_and_cut rebase(( 8:num)) x.elf64_segment_body >>= (\ bytes . 
         byte_sequence$read_8_bytes_le bytes >>= 
   (\p .  (case (p ) of
              ( (bytes, _) ) =>
          let (b1,b2,b3,b4,b5,b6,b7,b8) = bytes in
-         return (w2n (Elf_Local%uint64_of_oct b1 b2 b3 b4 b5 b6 b7 b8))
+         return (w2n (uint64_of_oct b1 b2 b3 b4 b5 b6 b7 b8))
          )))
       | _   => fail0 "abi_power64_compute_program_entry_point: multiple program segments contain the program entry point"
     )))`;

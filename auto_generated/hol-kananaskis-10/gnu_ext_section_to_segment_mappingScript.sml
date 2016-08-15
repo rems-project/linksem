@@ -89,12 +89,12 @@ val _ = new_theory "gnu_ext_section_to_segment_mapping"
   
 (*val elf32_section_flags : elf32_section_header_table_entry -> natural -> bool*)
 val _ = Define `
- (elf32_section_flags0 sec_hdr typ=  (~ ((word_and sec_hdr.elf32_sh_flags ((n2w : num -> 32 word) typ)) = ((n2w : num -> 32 word)(I 0)))))`;
+ (elf32_section_flags0 sec_hdr typ=  (~ ((word_and sec_hdr.elf32_sh_flags ((n2w : num -> 32 word) typ)) = ((n2w : num -> 32 word)(( 0:num))))))`;
 
     
 (*val elf64_section_flags : elf64_section_header_table_entry -> natural -> bool*)
 val _ = Define `
- (elf64_section_flags0 sec_hdr typ=  (~ ((word_and sec_hdr.elf64_sh_flags ((n2w : num -> 64 word) typ)) = ((n2w : num -> 64 word)(I 0)))))`;
+ (elf64_section_flags0 sec_hdr typ=  (~ ((word_and sec_hdr.elf64_sh_flags ((n2w : num -> 64 word) typ)) = ((n2w : num -> 64 word)(( 0:num))))))`;
 
     
 (*val elf32_section_of_type : elf32_section_header_table_entry -> natural -> bool*)
@@ -180,7 +180,7 @@ val _ = Define `
 (*val elf32_sect_size : elf32_header -> elf32_section_header_table_entry -> elf32_program_header_table_entry -> natural*)
 val _ = Define `
  (elf32_sect_size hdr sec_hdr segment=  
- (if is_elf32_tbss_special sec_hdr segment then I 0
+ (if is_elf32_tbss_special sec_hdr segment then( 0:num)
   else
     w2n (hdr.elf32_shentsize)))`;
 
@@ -188,7 +188,7 @@ val _ = Define `
 (*val elf64_sect_size : elf64_header -> elf64_section_header_table_entry -> elf64_program_header_table_entry -> natural*)
 val _ = Define `
  (elf64_sect_size hdr sec_hdr segment=  
- (if is_elf64_tbss_special sec_hdr segment then I 0
+ (if is_elf64_tbss_special sec_hdr segment then( 0:num)
   else
     w2n (hdr.elf64_shentsize)))`;
 

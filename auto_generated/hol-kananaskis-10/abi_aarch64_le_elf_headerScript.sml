@@ -46,12 +46,12 @@ val _ = Define `
 
 (*val abi_aarch64_le_page_size_min : natural*)
 val _ = Define `
- (abi_aarch64_le_page_size_min= (I 4096))`;
+ (abi_aarch64_le_page_size_min= (( 4096:num)))`;
 
 
 (*val abi_aarch64_le_page_size_max : natural*)
 val _ = Define `
- (abi_aarch64_le_page_size_max= (I 65536))`;
+ (abi_aarch64_le_page_size_max= (( 65536:num)))`;
 
 
 (** [is_valid_abi_aarch64_le_machine_architecture m] checks whether the ELF header's

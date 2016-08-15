@@ -43,7 +43,7 @@ val _ = new_theory "elf_dynamic"
   bool*)
 val _ = Define `
  (is_elf32_valid_program_header_table_for_dynamic_linking pht=  
- (LENGTH (FILTER (\ x .  w2n x.elf32_p_type = elf_pt_interp) pht) =I 1))`;
+ (LENGTH (FILTER (\ x .  w2n x.elf32_p_type = elf_pt_interp) pht) =( 1 : num)))`;
 
   
 (** [is_elf64_valid_program_header_table_for_dynamic_linking pht] checks whether
@@ -56,7 +56,7 @@ val _ = Define `
   bool*)
 val _ = Define `
  (is_elf64_valid_program_header_table_for_dynamic_linking pht=  
- (LENGTH (FILTER (\ x .  w2n x.elf64_p_type = elf_pt_interp) pht) =I 1))`;
+ (LENGTH (FILTER (\ x .  w2n x.elf64_p_type = elf_pt_interp) pht) =( 1 : num)))`;
 
 
 (** Dynamic section entry *)
@@ -99,104 +99,104 @@ val _ = Hol_datatype `
 
 (** [dt_null] marks the end of the dynamic array *)
 val _ = Define `
- (dt_null : num= (I 0))`;
+ (dt_null : num= (( 0:num)))`;
 
 (** [dt_needed] holds the string table offset of a string containing the name of
   * a needed library.
   *)
 val _ = Define `
- (dt_needed : num= (I 1))`;
+ (dt_needed : num= (( 1:num)))`;
 
 (** [dt_pltrelsz] holds the size in bytes of relocation entries associated with
   * the PLT.
   *)
 val _ = Define `
- (dt_pltrelsz : num= (I 2))`;
+ (dt_pltrelsz : num= (( 2:num)))`;
 
 (** [dt_pltgot] holds an address associated with the PLT or GOT. *)
 val _ = Define `
- (dt_pltgot : num= (I 3))`;
+ (dt_pltgot : num= (( 3:num)))`;
 
 (** [dt_hash] holds the address of a symbol-table hash. *)
 val _ = Define `
- (dt_hash : num= (I 4))`;
+ (dt_hash : num= (( 4:num)))`;
 
 (** [dt_strtab] holds the address of the string table. *)
 val _ = Define `
- (dt_strtab : num= (I 5))`;
+ (dt_strtab : num= (( 5:num)))`;
 
 (** [dt_symtab] holds the address of a symbol table. *)
 val _ = Define `
- (dt_symtab : num= (I 6))`;
+ (dt_symtab : num= (( 6:num)))`;
 
 (** [dt_rela] holds the address of a relocation table. *)
 val _ = Define `
- (dt_rela : num= (I 7))`;
+ (dt_rela : num= (( 7:num)))`;
 
 (** [dt_relasz] holds the size in bytes of the relocation table. *)
 val _ = Define `
- (dt_relasz : num= (I 8))`;
+ (dt_relasz : num= (( 8:num)))`;
 
 (** [dt_relaent] holds the size in bytes of a relocation table entry. *)
 val _ = Define `
- (dt_relaent : num= (I 9))`;
+ (dt_relaent : num= (( 9:num)))`;
 
 (** [dt_strsz] holds the size in bytes of the string table. *)
 val _ = Define `
- (dt_strsz : num= (I 10))`;
+ (dt_strsz : num= (( 10:num)))`;
 
 (** [dt_syment] holds the size in bytes of a symbol table entry. *)
 val _ = Define `
- (dt_syment : num= (I 11))`;
+ (dt_syment : num= (( 11:num)))`;
 
 (** [dt_init] holds the address of the initialisation function. *)
 val _ = Define `
- (dt_init : num= (I 12))`;
+ (dt_init : num= (( 12:num)))`;
 
 (** [dt_fini] holds the address of the finalisation function. *)
 val _ = Define `
- (dt_fini : num= (I 13))`;
+ (dt_fini : num= (( 13:num)))`;
 
 (** [dt_soname] holds the string table offset of a string containing the shared-
   * object name.
   *)
 val _ = Define `
- (dt_soname : num= (I 14))`;
+ (dt_soname : num= (( 14:num)))`;
 
 (** [dt_rpath] holds the string table offset of a string containing the library
   * search path.
   *)
 val _ = Define `
- (dt_rpath : num= (I 15))`;
+ (dt_rpath : num= (( 15:num)))`;
 
 (** [dt_symbolic] alters the linker's symbol resolution algorithm so that names
   * are resolved first from the shared object file itself, rather than the
   * executable file.
   *)
 val _ = Define `
- (dt_symbolic : num= (I 16))`;
+ (dt_symbolic : num= (( 16:num)))`;
 
 (** [dt_rel] is similar to [dt_rela] except its table has implicit addends. *)
 val _ = Define `
- (dt_rel : num= (I 17))`;
+ (dt_rel : num= (( 17:num)))`;
 
 (** [dt_relsz] holds the size in bytes of the [dt_rel] relocation table. *)
 val _ = Define `
- (dt_relsz : num= (I 18))`;
+ (dt_relsz : num= (( 18:num)))`;
 
 (** [dt_relent] holds the size in bytes of a [dt_rel] relocation entry. *)
 val _ = Define `
- (dt_relent : num= (I 19))`;
+ (dt_relent : num= (( 19:num)))`;
 
 (** [dt_pltrel] specifies the type of relocation entry to which the PLT refers. *)
 val _ = Define `
- (dt_pltrel : num= (I 20))`;
+ (dt_pltrel : num= (( 20:num)))`;
 
 (** [dt_debug] is used for debugging and its purpose is not specified in the ABI.
   * Programs using this entry are not ABI-conformant.
   *)
 val _ = Define `
- (dt_debug : num= (I 21))`;
+ (dt_debug : num= (( 21:num)))`;
 
 (** [dt_textrel] absence of this entry indicates that no relocation entry should
   * cause a modification to a non-writable segment.  Otherwise, if present, one
@@ -204,86 +204,86 @@ val _ = Define `
   * segment.
   *)
 val _ = Define `
- (dt_textrel : num= (I 22))`;
+ (dt_textrel : num= (( 22:num)))`;
 
 (** [dt_jmprel]'s member holds the address of relocation entries associated with
   * the PLT.
   *)
 val _ = Define `
- (dt_jmprel : num= (I 23))`;
+ (dt_jmprel : num= (( 23:num)))`;
 
 (** [dt_bindnow] instructs the linker to process all relocations for the object
   * containing the entry before transferring control to the program.
   *)
 val _ = Define `
- (dt_bindnow : num= (I 24))`;
+ (dt_bindnow : num= (( 24:num)))`;
 
 (** [dt_init_array] holds the address to the array of pointers to initialisation
   * functions.
   *)
 val _ = Define `
- (dt_init_array : num= (I 25))`;
+ (dt_init_array : num= (( 25:num)))`;
 
 (** [dt_fini_array] holds the address to the array of pointers to finalisation
   * functions.
   *)
 val _ = Define `
- (dt_fini_array : num= (I 26))`;
+ (dt_fini_array : num= (( 26:num)))`;
 
 (** [dt_init_arraysz] holds the size in bytes of the array of pointers to
   * initialisation functions.
   *)
 val _ = Define `
- (dt_init_arraysz : num= (I 27))`;
+ (dt_init_arraysz : num= (( 27:num)))`;
 
 (** [dt_fini_arraysz] holds the size in bytes of the array of pointers to
   * finalisation functions.
   *)
 val _ = Define `
- (dt_fini_arraysz : num= (I 28))`;
+ (dt_fini_arraysz : num= (( 28:num)))`;
 
 (** [dt_runpath] holds an offset into the string table holding a string containing
   * the library search path.
   *)
 val _ = Define `
- (dt_runpath : num= (I 29))`;
+ (dt_runpath : num= (( 29:num)))`;
 
 (** [dt_flags] holds flag values specific to the object being loaded. *)
 val _ = Define `
- (dt_flags : num= (I 30))`;
+ (dt_flags : num= (( 30:num)))`;
 
 val _ = Define `
- (dt_encoding : num= (I 32))`;
+ (dt_encoding : num= (( 32:num)))`;
 
 (** [dt_preinit_array] holds the address to the array of pointers of pre-
   * initialisation functions.
   *)
 val _ = Define `
- (dt_preinit_array : num= (I 32))`;
+ (dt_preinit_array : num= (( 32:num)))`;
 
 (** [dt_preinit_arraysz] holds the size in bytes of the array of pointers of
   * pre-initialisation functions.
   *)
 val _ = Define `
- (dt_preinit_arraysz : num= (I 33))`;
+ (dt_preinit_arraysz : num= (( 33:num)))`;
 
 (** [dt_loos] and [dt_hios]: this inclusive range is reserved for OS-specific
   * semantics.
   *)
 val _ = Define `
- (dt_loos : num=  ((I 2 *I 805306374) +I 1))`;
+ (dt_loos : num=  ((( 2:num) *( 805306374:num)) +( 1:num)))`;
  (* 0x6000000D *)
 val _ = Define `
- (dt_hios : num=  (I 2 *I 939522048))`;
+ (dt_hios : num=  (( 2:num) *( 939522048:num)))`;
  (* 0x6ffff000 *)
 (** [dt_loproc] and [dt_hiproc]: this inclusive range is reserved for processor
   * specific semantics.
   *)
 val _ = Define `
- (dt_loproc : num=  (I 2 *I 939524096))`;
+ (dt_loproc : num=  (( 2:num) *( 939524096:num)))`;
  (* 0x70000000 *)
 val _ = Define `
- (dt_hiproc : num=  ((I 2 *I 1073741823) +I 1))`;
+ (dt_hiproc : num=  ((( 2:num) *( 1073741823:num)) +( 1:num)))`;
  (* 0x7fffffff *)
 
 (** [string_of_dynamic_tag so t os proc] produces a string-based representation of
@@ -561,7 +561,7 @@ val _ = Define `
   (natural -> error tag_correspondence) -> error (list elf32_dyn)*)
  val obtain_elf32_dynamic_section_contents'_defn = Hol_defn "obtain_elf32_dynamic_section_contents'" `
  (obtain_elf32_dynamic_section_contents' endian bs0 shared_object os_additional_ranges os proc=  
- (if byte_sequence$length0 bs0 =I 0 then
+ (if byte_sequence$length0 bs0 =( 0:num) then
     return []
   else
     read_elf32_dyn endian bs0 shared_object os_additional_ranges os proc >>= (\ (head, bs0) . 
@@ -584,7 +584,7 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
   (natural -> error tag_correspondence) -> error (list elf64_dyn)*)
  val obtain_elf64_dynamic_section_contents'_defn = Hol_defn "obtain_elf64_dynamic_section_contents'" `
  (obtain_elf64_dynamic_section_contents' endian bs0 shared_object os_additional_ranges os proc=  
- (if byte_sequence$length0 bs0 =I 0 then
+ (if byte_sequence$length0 bs0 =( 0:num) then
     return []
   else
     read_elf64_dyn endian bs0 shared_object os_additional_ranges os proc >>= (\ (head, bs0) . 
@@ -654,31 +654,31 @@ val _ = Define `
   * $(ORIGIN) substitution string.
   *)
 val _ = Define `
- (df_origin : num= (I 1))`;
+ (df_origin : num= (( 1:num)))`;
  (* 0x1 *)
 (** [df_symbolic] changes the linker's symbol resolution algorithm, resolving
   * symbols first from the shared object file rather than the executable file.
   *)
 val _ = Define `
- (df_symbolic : num= (I 2))`;
+ (df_symbolic : num= (( 2:num)))`;
  (* 0x2 *)
 (** [df_textrel] if this flag is not set then no relocation entry should cause
   * modification to a non-writable segment.
   *)
 val _ = Define `
- (df_textrel : num= (I 4))`;
+ (df_textrel : num= (( 4:num)))`;
  (* 0x4 *)
 (** [df_bindnow] if set this instructs the linker to process all relocation entries
   * of the containing object before transferring control to the program.
   *)
 val _ = Define `
- (df_bindnow : num= (I 8))`;
+ (df_bindnow : num= (( 8:num)))`;
  (* 0x8 *)
 (** [df_static_tls] if set instructs the linker to reject all attempts to load
   * the containing file dynamically.
   *)
 val _ = Define `
- (df_static_tls : num= (I 16))`;
+ (df_static_tls : num= (( 16:num)))`;
  (* 0x10 *)
 
 (** [check_flag] is a utility function for testing whether a flag is set.
@@ -695,7 +695,7 @@ val _ = Define `
 (*val string_of_dt_flag : natural -> string*)
 val _ = Define `
  (string_of_dt_flag flag=  
- (if check_flag flag(I 0) then
+ (if check_flag flag(( 0:num)) then
     "None"
   else if check_flag flag df_origin then
     "ORIGIN"

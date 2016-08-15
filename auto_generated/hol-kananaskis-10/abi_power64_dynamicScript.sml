@@ -20,7 +20,7 @@ val _ = new_theory "abi_power64_dynamic"
 (*open import Elf_types_native_uint*)
 
 val _ = Define `
- (abi_power64_dt_ppcgot : num=  (I 939524096 *I 2))`;
+ (abi_power64_dt_ppcgot : num=  (( 939524096:num) *( 2:num)))`;
  (* 0x70000000 *)
 
 (*val string_of_abi_power64_dynamic_tag : natural -> string*)

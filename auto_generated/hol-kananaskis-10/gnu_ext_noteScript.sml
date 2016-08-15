@@ -102,9 +102,9 @@ val _ = Define `
             | Success abi_tag =>
               let str = (name_string_of_elf32_note abi_tag) in
                 if str = "GNU\^^@" then
-                  if w2n abi_tag.elf32_note_descsz >=I 16 then
-                    let take = (TAKE(I 16) abi_tag.elf32_note_desc) in
-                      if LENGTH take <I 16 then
+                  if w2n abi_tag.elf32_note_descsz >=( 16:num) then
+                    let take = (TAKE(( 16 : num)) abi_tag.elf32_note_desc) in
+                      if LENGTH take <( 16 : num) then
                         F
                       else
                         T
@@ -152,9 +152,9 @@ val _ = Define `
             | Success abi_tag =>
               let str = (name_string_of_elf64_note abi_tag) in
                 if str = "GNU\^^@" then
-                  if w2n abi_tag.elf64_note_descsz >=I 16 then
-                    let take = (TAKE(I 16) abi_tag.elf64_note_desc) in
-                      if LENGTH take <I 16 then
+                  if w2n abi_tag.elf64_note_descsz >=( 16:num) then
+                    let take = (TAKE(( 16 : num)) abi_tag.elf64_note_desc) in
+                      if LENGTH take <( 16 : num) then
                         F
                       else
                         T

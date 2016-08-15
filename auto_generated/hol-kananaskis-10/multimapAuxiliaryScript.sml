@@ -18,64 +18,64 @@ val _ = new_theory "multimapAuxiliary"
 (****************************************************)
 
 val _ = lem_assertion "lowest_simple" ``findLowestKVWithKEquivTo 
-  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(I 4) testEquiv 
-({ (I 1,I 0); (I 2,I 0); (I 3,I 0); (I 4,I 0); (I 5,I 0); (I 6,I 0) } : (num # num) set) NONE = SOME (I 3,I 0)``;
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(( 4:num)) testEquiv 
+({ (( 1:num),( 0:num)); (( 2:num),( 0:num)); (( 3:num),( 0:num)); (( 4:num),( 0:num)); (( 5:num),( 0:num)); (( 6:num),( 0:num)) } : (num # num) set) NONE = SOME (( 3:num),( 0:num))``;
 
 val _ = lem_assertion "lowest_kv" ``findLowestKVWithKEquivTo 
-  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(I 4) testEquiv 
-({ (I 1,I 0); (I 2,I 0); (I 3,I 0); (I 3,I 1); (I 4,I 0); (I 5,I 0); (I 6,I 0) } : (num # num) set) NONE = SOME (I 3,I 0)``;
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(( 4:num)) testEquiv 
+({ (( 1:num),( 0:num)); (( 2:num),( 0:num)); (( 3:num),( 0:num)); (( 3:num),( 1:num)); (( 4:num),( 0:num)); (( 5:num),( 0:num)); (( 6:num),( 0:num)) } : (num # num) set) NONE = SOME (( 3:num),( 0:num))``;
 
 val _ = lem_assertion "lowest_empty" ``findLowestKVWithKEquivTo 
-  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(I 4) testEquiv
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(( 4:num)) testEquiv
 ({} : (num # num) set) NONE = NONE``;
 
 val _ = lem_assertion "lowest_onepast" ``findLowestKVWithKEquivTo 
-  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(I 4) testEquiv
-({ (I 6,I 0) } : (num # num) set) NONE = NONE``;
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(( 4:num)) testEquiv
+({ (( 6:num),( 0:num)) } : (num # num) set) NONE = NONE``;
 
 val _ = lem_assertion "lowest_oneprev" ``findLowestKVWithKEquivTo 
-  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(I 4) testEquiv 
-({ (I 2,I 0) } : (num # num) set) NONE = NONE``;
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(( 4:num)) testEquiv 
+({ (( 2:num),( 0:num)) } : (num # num) set) NONE = NONE``;
 
 val _ = lem_assertion "highest_simple" ``findHighestKVWithKEquivTo 
-  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(I 4) testEquiv
-({ (I 1,I 0); (I 2,I 0); (I 3,I 0); (I 4,I 0); (I 5,I 0); (I 6,I 0) } : (num # num) set) NONE = SOME (I 5,I 0)``;
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(( 4:num)) testEquiv
+({ (( 1:num),( 0:num)); (( 2:num),( 0:num)); (( 3:num),( 0:num)); (( 4:num),( 0:num)); (( 5:num),( 0:num)); (( 6:num),( 0:num)) } : (num # num) set) NONE = SOME (( 5:num),( 0:num))``;
 
 val _ = lem_assertion "highest_kv" ``findHighestKVWithKEquivTo 
-  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(I 4) testEquiv
-({ (I 1,I 0); (I 2,I 0); (I 3,I 0); (I 4,I 0); (I 5,I 0); (I 5,I 1); (I 6,I 0) } : (num # num) set) NONE = SOME (I 5,I 1)``;
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(( 4:num)) testEquiv
+({ (( 1:num),( 0:num)); (( 2:num),( 0:num)); (( 3:num),( 0:num)); (( 4:num),( 0:num)); (( 5:num),( 0:num)); (( 5:num),( 1:num)); (( 6:num),( 0:num)) } : (num # num) set) NONE = SOME (( 5:num),( 1:num))``;
 
 val _ = lem_assertion "highest_empty" ``findHighestKVWithKEquivTo 
-  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(I 4) testEquiv
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(( 4:num)) testEquiv
 ({} : (num # num) set) NONE = NONE``;
 
 val _ = lem_assertion "highest_onepast" ``findHighestKVWithKEquivTo 
-  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(I 4) testEquiv 
-({ (I 6,I 0) } : (num # num) set) NONE = NONE``;
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(( 4:num)) testEquiv 
+({ (( 6:num),( 0:num)) } : (num # num) set) NONE = NONE``;
 
 val _ = lem_assertion "highest_oneprev" ``findHighestKVWithKEquivTo 
-  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(I 4) testEquiv
-({ (I 2,I 0) } : (num # num) set) NONE = NONE``;
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict(( 4:num)) testEquiv
+({ (( 2:num),( 0:num)) } : (num # num) set) NONE = NONE``;
 
 val _ = lem_assertion "lookup_simple" ``lookupBy0 
-  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv(I 4) ({ (I 1,I 0); (I 2,I 0); (I 3,I 0); (I 4,I 0); (I 5,I 0); (I 6,I 0) } : (num # num) set)
-= ([(I 3,I 0); (I 4,I 0); (I 5,I 0)] : (num # num) list)``;
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv(( 4:num)) ({ (( 1:num),( 0:num)); (( 2:num),( 0:num)); (( 3:num),( 0:num)); (( 4:num),( 0:num)); (( 5:num),( 0:num)); (( 6:num),( 0:num)) } : (num # num) set)
+= ([(( 3:num),( 0:num)); (( 4:num),( 0:num)); (( 5:num),( 0:num))] : (num # num) list)``;
 
 val _ = lem_assertion "lookup_kv" ``lookupBy0 
-  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv(I 4) ({ (I 1,I 0); (I 2,I 0); (I 3,I 0); (I 4,I 0); (I 4,I 1); (I 5,I 0); (I 6,I 0) } : (num # num) set)
-= ([(I 3,I 0); (I 4,I 0); (I 4,I 1); (I 5,I 0)] : (num # num) list)``;
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv(( 4:num)) ({ (( 1:num),( 0:num)); (( 2:num),( 0:num)); (( 3:num),( 0:num)); (( 4:num),( 0:num)); (( 4:num),( 1:num)); (( 5:num),( 0:num)); (( 6:num),( 0:num)) } : (num # num) set)
+= ([(( 3:num),( 0:num)); (( 4:num),( 0:num)); (( 4:num),( 1:num)); (( 5:num),( 0:num))] : (num # num) list)``;
 
 val _ = lem_assertion "lookup_empty" ``lookupBy0 
-  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv(I 4) ({} : (num # num) set) = ([]: (num # num) list)``;
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv(( 4:num)) ({} : (num # num) set) = ([]: (num # num) list)``;
 
 val _ = lem_assertion "lookup_singleton" ``lookupBy0 
-  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv(I 4) ({(I 5,I 0)} : (num # num) set) = ([(I 5,I 0)]: (num # num) list)``;
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv(( 4:num)) ({(( 5:num),( 0:num))} : (num # num) set) = ([(( 5:num),( 0:num))]: (num # num) list)``;
 
 val _ = lem_assertion "lookup_onepast" ``lookupBy0 
-  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv(I 4) ({ (I 6,I 0) } : (num # num) set) = ([] : (num # num) list)``;
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv(( 4:num)) ({ (( 6:num),( 0:num)) } : (num # num) set) = ([] : (num # num) list)``;
 
 val _ = lem_assertion "lookup_oneprev" ``lookupBy0 
-  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv(I 4) ({ (I 2,I 0) } : (num # num) set) = ([] : (num # num) list)``;
+  instance_Basic_classes_Ord_Num_natural_dict instance_Basic_classes_Ord_Num_natural_dict testEquiv(( 4:num)) ({ (( 2:num),( 0:num)) } : (num # num) set) = ([] : (num # num) list)``;
 
 
 (****************************************************)

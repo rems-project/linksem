@@ -41,55 +41,55 @@ val _ = new_theory "elf_program_header_table"
 
 (** Unused array element.  All other members of the structure are undefined. *)
 val _ = Define `
- (elf_pt_null : num= (I 0))`;
+ (elf_pt_null : num= (( 0:num)))`;
 
 (** A loadable segment. *)
 val _ = Define `
- (elf_pt_load : num= (I 1))`;
+ (elf_pt_load : num= (( 1:num)))`;
 
 (** Dynamic linking information. *)
 val _ = Define `
- (elf_pt_dynamic : num= (I 2))`;
+ (elf_pt_dynamic : num= (( 2:num)))`;
 
 (** Specifies the location and size of a null-terminated path name to be used to
   * invoke an interpreter.
   *)
 val _ = Define `
- (elf_pt_interp : num= (I 3))`;
+ (elf_pt_interp : num= (( 3:num)))`;
 
 (** Specifies location and size of auxiliary information. *)
 val _ = Define `
- (elf_pt_note : num= (I 4))`;
+ (elf_pt_note : num= (( 4:num)))`;
 
 (** Reserved but with unspecified semantics.  If the file contains a segment of
   * this type then it is to be regarded as non-conformant with the ABI.
   *)
 val _ = Define `
- (elf_pt_shlib : num= (I 5))`;
+ (elf_pt_shlib : num= (( 5:num)))`;
 
 (** Specifies the location and size of the program header table. *)
 val _ = Define `
- (elf_pt_phdr : num= (I 6))`;
+ (elf_pt_phdr : num= (( 6:num)))`;
 
 (** Specifies the thread local storage (TLS) template.  Need not be supported. *)
 val _ = Define `
- (elf_pt_tls : num= (I 7))`;
+ (elf_pt_tls : num= (( 7:num)))`;
 
 (** Start of reserved indices for operating system specific semantics. *)
 val _ = Define `
- (elf_pt_loos : num= ((((I 128 *I 128) *I 128) *I 256) *I 3))`;
+ (elf_pt_loos : num= ((((( 128:num) *( 128:num)) *( 128:num)) *( 256:num)) *( 3:num)))`;
  (* 1610612736 (* 0x60000000 *) *)
 (** End of reserved indices for operating system specific semantics. *)
 val _ = Define `
- (elf_pt_hios : num=  ((I 469762047 *I 4) +I 3))`;
+ (elf_pt_hios : num=  ((( 469762047:num) *( 4:num)) +( 3:num)))`;
  (* 1879048191 (* 0x6fffffff *) *)
 (** Start of reserved indices for processor specific semantics. *)
 val _ = Define `
- (elf_pt_loproc : num=  (I 469762048 *I 4))`;
+ (elf_pt_loproc : num=  (( 469762048:num) *( 4:num)))`;
  (* 1879048192 (* 0x70000000 *) *)
 (** End of reserved indices for processor specific semantics. *)
 val _ = Define `
- (elf_pt_hiproc : num=  ((I 536870911 *I 4) +I 3))`;
+ (elf_pt_hiproc : num=  ((( 536870911:num) *( 4:num)) +( 3:num)))`;
  (* 2147483647 (* 0x7fffffff *) *)
 
 (** [string_of_elf_segment_type os proc st] produces a string representation of
@@ -128,24 +128,24 @@ val _ = Define `
 
 (** Execute bit *)
 val _ = Define `
- (elf_pf_x        : num= (I 1))`;
+ (elf_pf_x        : num= (( 1:num)))`;
 
 (** Write bit *)
 val _ = Define `
- (elf_pf_w        : num= (I 2))`;
+ (elf_pf_w        : num= (( 2:num)))`;
 
 (** Read bit *)
 val _ = Define `
- (elf_pf_r        : num= (I 4))`;
+ (elf_pf_r        : num= (( 4:num)))`;
 
 (** The following two bit ranges are reserved for OS- and processor-specific
   * flags respectively.
   *)
 val _ = Define `
- (elf_pf_maskos   : num= (I 267386880))`;
+ (elf_pf_maskos   : num= (( 267386880:num)))`;
       (* 0x0ff00000 *)
 val _ = Define `
- (elf_pf_maskproc : num= (I 4 *I 1006632960))`;
+ (elf_pf_maskproc : num= (( 4:num) *( 1006632960:num)))`;
  (* 0xf0000000 *)
 
 (** [exact_permission_of_permission m]: ELF has two interpretations of a RWX-style
@@ -160,22 +160,22 @@ val _ = Define `
 (*val exact_permissions_of_permission : natural -> error natural*)
 val _ = Define `
  (exact_permissions_of_permission m=  
- (if m =I 0 then
-    return(I 0)
+ (if m =( 0:num) then
+    return(( 0:num))
   else if m = elf_pf_x then
-    return(I 1)
+    return(( 1:num))
   else if m = elf_pf_w then
-    return(I 2)
+    return(( 2:num))
   else if m = elf_pf_r then
-    return(I 4)
+    return(( 4:num))
   else if m = (elf_pf_x + elf_pf_w) then
-    return(I 3)
+    return(( 3:num))
   else if m = (elf_pf_x + elf_pf_r) then
-    return(I 5)
+    return(( 5:num))
   else if m = (elf_pf_w + elf_pf_r) then
-    return(I 6)
+    return(( 6:num))
   else if m = ((elf_pf_x + elf_pf_r) + elf_pf_w) then
-    return(I 7)
+    return(( 7:num))
   else
     fail0 "exact_permission_of_permission: invalid permission flag"))`;
 
@@ -191,22 +191,22 @@ val _ = Define `
 (*val allowable_permissions_of_permission : natural -> error natural*)
 val _ = Define `
  (allowable_permissions_of_permission m=  
- (if m =I 0 then
-    return(I 0)
+ (if m =( 0:num) then
+    return(( 0:num))
   else if m = elf_pf_x then
-    return(I 5)
+    return(( 5:num))
   else if m = elf_pf_w then
-    return(I 7)
+    return(( 7:num))
   else if m = elf_pf_r then
-    return(I 5)
+    return(( 5:num))
   else if m = (elf_pf_x + elf_pf_w) then
-    return(I 7)
+    return(( 7:num))
   else if m = (elf_pf_x + elf_pf_r) then
-    return(I 5)
+    return(( 5:num))
   else if m = (elf_pf_w + elf_pf_r) then
-    return(I 7)
+    return(( 7:num))
   else if m = ((elf_pf_x + elf_pf_r) + elf_pf_w) then
-    return(I 7)
+    return(( 7:num))
   else
     fail0 "exact_permission_of_permission: invalid permission flag"))`;
 
@@ -218,7 +218,7 @@ val _ = Define `
 (*val string_of_elf_segment_permissions : natural -> string*)
 val _ = Define `
  (string_of_elf_segment_permissions m=  
- (if m =I 0 then
+ (if m =( 0:num) then
     "  "
   else if m = elf_pf_x then
     "  E"
@@ -552,7 +552,7 @@ val _ = Define `
   *)
  val read_elf32_program_header_table'_defn = Hol_defn "read_elf32_program_header_table'" `
  (read_elf32_program_header_table' endian bs0=	
- (if byte_sequence$length0 bs0 =I 0 then
+ (if byte_sequence$length0 bs0 =( 0:num) then
   	return []
   else
   	read_elf32_program_header_table_entry endian bs0 >>= (\ (entry, bs1) . 
@@ -568,7 +568,7 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
   *)
  val read_elf64_program_header_table'_defn = Hol_defn "read_elf64_program_header_table'" `
  (read_elf64_program_header_table' endian bs0=  
- (if byte_sequence$length0 bs0 =I 0 then
+ (if byte_sequence$length0 bs0 =( 0:num) then
     return []
   else
     read_elf64_program_header_table_entry endian bs0 >>= (\ (entry, bs1) . 
@@ -692,7 +692,7 @@ val _ = Define `
  (if w2n pent.elf32_p_type = elf_pt_interp then
     let off = (w2n  pent.elf32_p_offset) in
     let siz = (w2n pent.elf32_p_filesz) in
-      byte_sequence$offset_and_cut off (siz - I 1) bs0 >>= (\ cut . 
+      byte_sequence$offset_and_cut off (siz -( 1:num)) bs0 >>= (\ cut . 
       return (byte_sequence$string_of_byte_sequence cut))
   else
     fail0 "get_elf32_requested_interpreter: not an INTERP segment header"))`;
@@ -711,7 +711,7 @@ val _ = Define `
  (if w2n pent.elf64_p_type = elf_pt_interp then
     let off = (w2n   pent.elf64_p_offset) in
     let siz = (w2n pent.elf64_p_filesz) in
-      byte_sequence$offset_and_cut off (siz - I 1) bs0 >>= (\ cut . 
+      byte_sequence$offset_and_cut off (siz -( 1:num)) bs0 >>= (\ cut . 
       return (byte_sequence$string_of_byte_sequence cut))
   else
     fail0 "get_elf64_requested_interpreter: not an INTERP segment header"))`;

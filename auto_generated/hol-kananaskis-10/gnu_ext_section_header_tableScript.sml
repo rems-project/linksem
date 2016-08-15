@@ -39,7 +39,7 @@ val _ = new_theory "gnu_ext_section_header_table"
   *   https://sourceware.org/ml/binutils/2006-10/msg00377.html
   *)
 val _ = Define `
- (sht_gnu_hash    : num=  (I 2 *I 939524091))`;
+ (sht_gnu_hash    : num=  (( 2:num) *( 939524091:num)))`;
      (* 0x6FFFFFF6 *)
 
 (** The following are all defined in Section 10.2.2.2 of the LSB as additional
@@ -49,23 +49,23 @@ val _ = Define `
 (** [sht_gnu_verdef] contains the symbol versions that are provided.
   *)
 val _ = Define `
- (sht_gnu_verdef  : num=  ((I 2 *I 939524095) - I 1))`;
+ (sht_gnu_verdef  : num=  ((( 2:num) *( 939524095:num)) -( 1:num)))`;
  (* 0x6ffffffd *)
 (** [sht_gnu_verneed] contains the symbol versions that are required.
   *)
 val _ = Define `
- (sht_gnu_verneed : num=  (I 2 *I 939524095))`;
+ (sht_gnu_verneed : num=  (( 2:num) *( 939524095:num)))`;
      (* 0x6ffffffe *)
 (** [sht_gnu_versym] contains the symbol version table.
   *)
 val _ = Define `
- (sht_gnu_versym  : num=  ((I 2 *I 939524095) +I 1))`;
+ (sht_gnu_versym  : num=  ((( 2:num) *( 939524095:num)) +( 1:num)))`;
  (* 0x6fffffff *)
 (** [sht_gnu_liblist] appears to be undocumented but appears in PowerPC 64 ELF
   * binaries in "the wild".
   *)
 val _ = Define `
- (sht_gnu_liblist : num=  ((I 2 *I 939524091) +I 1))`;
+ (sht_gnu_liblist : num=  ((( 2:num) *( 939524091:num)) +( 1:num)))`;
  (* 0x6FFFFFF7 *)
 
 (** [string_of_gnu_ext_section_type m] produces a string based representation of
@@ -95,8 +95,8 @@ val _ = Define `
   ; (".got.plt", (sht_progbits, (shf_alloc + shf_write)))
   ; (".jcr", (sht_progbits, (shf_alloc + shf_write)))
   ; (".note.ABI-tag", (sht_note, shf_alloc))
-  ; (".stab", (sht_progbits,I 0))
-  ; (".stabstr", (sht_strtab,I 0))
+  ; (".stab", (sht_progbits,( 0:num)))
+  ; (".stabstr", (sht_strtab,( 0:num)))
   ]))`;
 
   

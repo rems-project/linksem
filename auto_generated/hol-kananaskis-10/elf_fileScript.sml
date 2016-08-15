@@ -61,7 +61,7 @@ val _ = Define `
  (bytes_of_elf32_file ef=  
  (let endian      = (get_elf32_header_endianness ef.elf32_file_header) in
   let hdr_bytes   = (bytes_of_elf32_header ef.elf32_file_header) in
-  let hdr_layout  = (I 0, hdr_bytes) in
+  let hdr_layout  = (( 0:num), hdr_bytes) in
   let pht_bytes   = (bytes_of_elf32_program_header_table endian ef.elf32_file_program_header_table) in
   let sht_bytes   = (bytes_of_elf32_section_header_table endian ef.elf32_file_section_header_table) in
   let pht_off     = (w2n ef.elf32_file_header.elf32_phoff) in
@@ -80,7 +80,9 @@ val _ = Define `
           (w2n seg.elf32_p_offset, interp_seg.elf32_segment_body)
         ) (FILTER (\p .  
   (case (p ) of
-      ( (x, _) ) => ~ (x.elf32_p_filesz = ((n2w : num -> 32 word) (I 0)))
+      ( (x, _) ) => ~
+                      (x.elf32_p_filesz =
+                         ((n2w : num -> 32 word) (( 0: num))))
   )) segs_zip))
       in
       let sects_layout =        
@@ -121,7 +123,7 @@ val _ = Define `
               let concat = (byte_sequence$concat0 [so_far; reps; body]) in
               let delta  = (point_to_add + byte_sequence$length0 body) in
                 return (delta, concat)
-        ) (I 0, byte_sequence$empty) final_layout)
+        ) (( 0:num), byte_sequence$empty) final_layout)
       in
         concats >>= (\ (offset, body) . 
         return body)
@@ -157,7 +159,7 @@ val _ = Define `
  (bytes_of_elf64_file ef=  
  (let endian      = (get_elf64_header_endianness ef.elf64_file_header) in
   let hdr_bytes   = (bytes_of_elf64_header ef.elf64_file_header) in
-  let hdr_layout  = (I 0, hdr_bytes) in
+  let hdr_layout  = (( 0:num), hdr_bytes) in
   let pht_bytes   = (bytes_of_elf64_program_header_table endian ef.elf64_file_program_header_table) in
   let sht_bytes   = (bytes_of_elf64_section_header_table endian ef.elf64_file_section_header_table) in
   let pht_off     = (w2n ef.elf64_file_header.elf64_phoff) in
@@ -214,7 +216,7 @@ val _ = Define `
               let concat = (byte_sequence$concat0 [so_far; reps; body]) in
               let delta  = (point_to_add + byte_sequence$length0 body) in
                 return (delta, concat)
-        ) (I 0, byte_sequence$empty) final_layout)
+        ) (( 0:num), byte_sequence$empty) final_layout)
       in
         concats >>= (\ (offset, body) . 
         return body)
@@ -236,7 +238,7 @@ val _ = Define `
   let pentries    = (w2n hdr.elf32_phnum)     in
   let pentry_size = (w2n hdr.elf32_phentsize) in
   let psize       = (pentries * pentry_size) in
-    if psize =I 0 then
+    if psize =( 0:num) then
       return []
     else
       let poffset = (w2n hdr.elf32_phoff) in
@@ -258,7 +260,7 @@ val _ = Define `
   let pentries    = (w2n hdr.elf64_phnum)     in
   let pentry_size = (w2n hdr.elf64_phentsize) in
   let psize       = (pentries * pentry_size) in
-    if psize =I 0 then
+    if psize =( 0:num) then
       return []
     else
       let poffset = (w2n hdr.elf64_phoff) in
@@ -280,7 +282,7 @@ val _ = Define `
   let sentries    = (w2n hdr.elf32_shnum) in
   let sentry_size = (w2n hdr.elf32_shentsize) in
   let ssize       = (sentries * sentry_size) in
-    if ssize =I 0 then
+    if ssize =( 0:num) then
       return []
     else
       let soffset = (w2n hdr.elf32_shoff) in
@@ -301,7 +303,7 @@ val _ = Define `
   let sentries    = (w2n hdr.elf64_shnum) in
   let sentry_size = (w2n hdr.elf64_shentsize) in
   let ssize       = (sentries * sentry_size) in
-    if ssize =I 0 then
+    if ssize =( 0:num) then
       return []
     else
       let soffset = (w2n hdr.elf64_shoff) in
@@ -357,7 +359,7 @@ val _ = Define `
  (mapM (\ ph . 
     let offset   = (w2n ph.elf32_p_offset)  in
     let size1     = (w2n ph.elf32_p_filesz) in
-      (if size1 =I 0 then
+      (if size1 =( 0:num) then
          return byte_sequence$empty
        else
          byte_sequence$offset_and_cut offset size1 bdy) >>= (\ relevant . 
@@ -390,7 +392,7 @@ val _ = Define `
  (mapM (\ ph . 
     let offset   = (w2n   ph.elf64_p_offset)  in
     let size1     = (w2n ph.elf64_p_filesz) in
-      (if size1 =I 0 then
+      (if size1 =( 0:num) then
          return byte_sequence$empty
        else
          byte_sequence$offset_and_cut offset size1 bdy) >>= (\ relevant . 
@@ -425,7 +427,7 @@ val _ = Define `
     let size1   = (w2n sh.elf32_sh_size) in
     let name   = (w2n sh.elf32_sh_name) in
     let typ    = (w2n sh.elf32_sh_type) in
-    let filesz = (if typ = sht_nobits then I 0 else size1) in
+    let filesz = (if typ = sht_nobits then( 0:num) else size1) in
     let flags  = (w2n sh.elf32_sh_flags) in
     let base   = (w2n sh.elf32_sh_addr) in
     let link   = (w2n sh.elf32_sh_link) in
@@ -433,7 +435,7 @@ val _ = Define `
     let align  = (w2n sh.elf32_sh_addralign) in
     let entry_size = (w2n sh.elf32_sh_entsize) in
     let name_string = ((case (get_string_at name shstrtab) of Success n => n | Fail _ => "" )) in
-      (if filesz =I 0 then
+      (if filesz =( 0:num) then
         return byte_sequence$empty
       else
         byte_sequence$offset_and_cut offset filesz bs0) >>= (\ relevant . 
@@ -461,7 +463,7 @@ val _ = Define `
     let size1   = (w2n sh.elf64_sh_size) in
     let name   = (w2n  sh.elf64_sh_name) in
     let typ    = (w2n  sh.elf64_sh_type) in
-    let filesz = (if typ = sht_nobits then I 0 else size1) in
+    let filesz = (if typ = sht_nobits then( 0:num) else size1) in
     let flags  = (w2n sh.elf64_sh_flags) in
     let base   = (w2n  sh.elf64_sh_addr) in
     let link   = (w2n  sh.elf64_sh_link) in
@@ -469,7 +471,7 @@ val _ = Define `
     let align  = (w2n sh.elf64_sh_addralign) in
     let entry_size = (w2n sh.elf64_sh_entsize) in
     let name_string = ((case (get_string_at name shstrtab) of Success n => n | Fail _ => "" )) in 
-      (if filesz =I 0 then
+      (if filesz =( 0:num) then
         return byte_sequence$empty
       else
         byte_sequence$offset_and_cut offset filesz bs0) >>= (\ relevant . 
@@ -492,7 +494,7 @@ val _ = Define `
  (find_first_not_in_range start ranges=  
  ((case FILTER (\ (x, y) .  (start >= x) /\ (start <= y)) ranges of
       [] => start
-    | _  => find_first_not_in_range (start +I 1) ranges
+    | _  => find_first_not_in_range (start +( 1:num)) ranges
   )))`;
 
 val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn find_first_not_in_range_defn;
@@ -505,7 +507,7 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
  val find_first_in_range_defn = Hol_defn "find_first_in_range" `
  (find_first_in_range start ranges=  
  ((case FILTER (\ (x, y) .  (start >= x) /\ (start <= y)) ranges of
-      [] => find_first_in_range (start +I 1) ranges
+      [] => find_first_in_range (start +( 1:num)) ranges
     | _  => start
   )))`;
 
@@ -545,7 +547,7 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
   -> elf32_section_header_table -> elf32_interpreted_sections -> byte_sequence -> error (list (natural * byte_sequence))*)
 val _ = Define `
  (obtain_elf32_bits_and_bobs hdr segs interp_segs sects interp_sects bs0=  
- (let hdr_off_len  = (I 0, w2n hdr.elf32_ehsize) in
+ (let hdr_off_len  = (( 0:num), w2n hdr.elf32_ehsize) in
   let pht_off      = (w2n hdr.elf32_phoff) in
   let pht_len      = (w2n hdr.elf32_phentsize * w2n hdr.elf32_phnum) in
   let pht_off_len  = (pht_off, (pht_off + pht_len)) in
@@ -576,7 +578,7 @@ val _ = Define `
  )
           ) pre_layout)
         in
-          compute_differences(I 0) (byte_sequence$length0 bs0) layout >>= (\ diffs . 
+          compute_differences(( 0:num)) (byte_sequence$length0 bs0) layout >>= (\ diffs . 
             mapM (\ (start, len) . 
               byte_sequence$offset_and_cut start (len - start) bs0 >>= (\ rel . 
               return (start, rel))
@@ -595,7 +597,7 @@ val _ = Define `
   -> elf64_section_header_table -> elf64_interpreted_sections -> byte_sequence -> error (list (natural * byte_sequence))*)
 val _ = Define `
  (obtain_elf64_bits_and_bobs hdr segs interp_segs sects interp_sects bs0=  
- (let hdr_off_len  = (I 0, w2n hdr.elf64_ehsize) in
+ (let hdr_off_len  = (( 0:num), w2n hdr.elf64_ehsize) in
   
   let pht_off      = (w2n hdr.elf64_phoff) in
   let pht_len      = (w2n hdr.elf64_phentsize * w2n hdr.elf64_phnum) in
@@ -627,7 +629,7 @@ val _ = Define `
  )
           ) pre_layout)
         in
-          compute_differences(I 0) (byte_sequence$length0 bs0) layout >>= (\ diffs . 
+          compute_differences(( 0:num)) (byte_sequence$length0 bs0) layout >>= (\ diffs . 
             mapM (\ (start, finish) . 
               byte_sequence$offset_and_cut start (finish - start) bs0 >>= (\ rel . 
               return (start, rel))
@@ -729,11 +731,11 @@ val _ = Define `
 (*val find_elf32_symbols_by_symtab_idx : natural -> elf32_file -> error (elf32_symbol_table * string_table * natural)*)
 val _ = Define `
  (find_elf32_symbols_by_symtab_idx sec_idx f=    
- ((case lem_list$list_index f.elf32_file_interpreted_sections (x) of
+ ((case lem_list$list_index f.elf32_file_interpreted_sections (( sec_idx:num)) of
         NONE => fail0 "impossible: interpreted section found but not indexable"
         | SOME sec => return sec
     ) >>= (\ sec .  
-    (case lem_list$list_index f.elf32_file_interpreted_sections (x) of
+    (case lem_list$list_index f.elf32_file_interpreted_sections (( sec.elf32_section_link:num)) of
         NONE => fail0 "no associated strtab"
         | SOME strs => return strs
     ) >>= (\ strs .  
@@ -757,11 +759,11 @@ val _ = Define `
 (*val find_elf64_symbols_by_symtab_idx : natural -> elf64_file -> error (elf64_symbol_table * string_table * natural)*)
 val _ = Define `
  (find_elf64_symbols_by_symtab_idx sec_idx f=    
- ((case lem_list$list_index f.elf64_file_interpreted_sections (x) of
+ ((case lem_list$list_index f.elf64_file_interpreted_sections (( sec_idx:num)) of
         NONE => fail0 "impossible: interpreted section found but not indexable"
         | SOME sec => return sec
     ) >>= (\ sec .  
-    (case lem_list$list_index f.elf64_file_interpreted_sections (x) of
+    (case lem_list$list_index f.elf64_file_interpreted_sections (( sec.elf64_section_link:num)) of
         NONE => fail0 "no associated strtab"
         | SOME strs => return strs
     ) >>= (\ strs .  
@@ -1033,14 +1035,16 @@ val _ = Hol_datatype `
   * and begin execution.
   * XXX: (segments, provenance), entry point, machine type
   *)
-val _ = type_abbrev( "elf32_executable_process_image" , ``:( (elf32_interpreted_segment # segment_provenance)list # num # num)``);
+val _ = type_abbrev( "elf32_executable_process_image" , ``:
+  ( (elf32_interpreted_segment # segment_provenance)list # num # num)``);
 
 (** [elf64_executable_process_image] is a process image for ELF64 files.  Contains
   * all that is necessary to load the executable components of an ELF64 file
   * and begin execution.
   * XXX: (segments, provenance), entry point, machine type
   *)
-val _ = type_abbrev( "elf64_executable_process_image" , ``:( (elf64_interpreted_segment # segment_provenance)list # num # num)``);
+val _ = type_abbrev( "elf64_executable_process_image" , ``:
+  ( (elf64_interpreted_segment # segment_provenance)list # num # num)``);
 
 (** [get_elf32_executable_image f1] extracts an executable process image from an
   * executable ELF file.  May fail if extraction is impossible.
@@ -1056,7 +1060,7 @@ val _ = Define `
           []    => fail0 "get_elf32_executable_image: an executable ELF file must have at least one loadable segment"
         | load  =>
             mapM (\ sg . 
-              if sg.elf32_segment_memsz =I 0 then
+              if sg.elf32_segment_memsz =( 0:num) then
                 return []
               else if sg.elf32_segment_memsz = sg.elf32_segment_size then
                 return [(sg, FromELF)]
@@ -1097,7 +1101,7 @@ val _ = Define `
           []    => fail0 "get_elf64_executable_image: an executable ELF file must have at least one loadable segment"
         | load  =>
             mapM (\ sg . 
-              if sg.elf64_segment_memsz =I 0 then
+              if sg.elf64_segment_memsz =( 0:num) then
                 return []
               else if sg.elf64_segment_memsz = sg.elf64_segment_size then
                 return [(sg, FromELF)]
@@ -1129,7 +1133,8 @@ val _ = Define `
   * global symbol in an ELF file.
   * Another PPCMemism.
   *)
-val _ = type_abbrev( "global_symbol_init_info", ``: (string # (num # num # num #  byte_sequence option # num)) list``);
+val _ = type_abbrev( "global_symbol_init_info"
+  , ``: (string # (num # num # num #  byte_sequence option # num)) list``);
 
 (** [get_elf32_file_global_symbol_init f1] extracts the global symbol init info
   * for ELF file [f1].  May fail.

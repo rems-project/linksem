@@ -123,9 +123,9 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
 
 (*val testEquiv : natural -> natural -> bool*)
 val _ = Define `
- (testEquiv x y=  (if ((x >=I 3) /\ (x <I 5) /\ (y >=I 3) /\ (y <=I 5)) then T
-     else if ((x <I 3) /\ (y <I 3)) then T
-     else if ((x >I 5) /\ (y >I 5)) then T
+ (testEquiv x y=  (if ((x >=( 3:num)) /\ (x <( 5:num)) /\ (y >=( 3:num)) /\ (y <=( 5:num))) then T
+     else if ((x <( 3:num)) /\ (y <( 3:num))) then T
+     else if ((x >( 5:num)) /\ (y >( 5:num))) then T
      else F))`;
 
 

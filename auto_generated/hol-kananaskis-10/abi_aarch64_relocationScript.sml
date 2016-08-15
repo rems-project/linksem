@@ -32,391 +32,391 @@ val _ = new_theory "abi_aarch64_relocation"
 (** Relocations *)
 
 val _ = Define `
- (r_aarch64_none : num= (I 0))`;
+ (r_aarch64_none : num= (( 0:num)))`;
 
 val _ = Define `
- (r_aarch64_withdrawn : num= (I 256))`;
+ (r_aarch64_withdrawn : num= (( 256:num)))`;
   (** Treated as R_AARCH6_NONE *)
 
 val _ = Define `
- (r_aarch64_abs64 : num= (I 257))`;
+ (r_aarch64_abs64 : num= (( 257:num)))`;
 
 val _ = Define `
- (r_aarch64_abs32 : num= (I 258))`;
+ (r_aarch64_abs32 : num= (( 258:num)))`;
 
 val _ = Define `
- (r_aarch64_abs16 : num= (I 259))`;
+ (r_aarch64_abs16 : num= (( 259:num)))`;
 
 val _ = Define `
- (r_aarch64_prel64 : num= (I 260))`;
+ (r_aarch64_prel64 : num= (( 260:num)))`;
 
 val _ = Define `
- (r_aarch64_prel32 : num= (I 261))`;
+ (r_aarch64_prel32 : num= (( 261:num)))`;
 
 val _ = Define `
- (r_aarch64_prel16 : num= (I 262))`;
+ (r_aarch64_prel16 : num= (( 262:num)))`;
 
 
 val _ = Define `
- (r_aarch64_movw_uabs_g0 : num= (I 263))`;
+ (r_aarch64_movw_uabs_g0 : num= (( 263:num)))`;
 
 val _ = Define `
- (r_aarch64_movw_uabs_g0_nc : num= (I 264))`;
+ (r_aarch64_movw_uabs_g0_nc : num= (( 264:num)))`;
 
 val _ = Define `
- (r_aarch64_movw_uabs_g1 : num= (I 265))`;
+ (r_aarch64_movw_uabs_g1 : num= (( 265:num)))`;
 
 val _ = Define `
- (r_aarch64_movw_uabs_g1_nc : num= (I 266))`;
+ (r_aarch64_movw_uabs_g1_nc : num= (( 266:num)))`;
 
 val _ = Define `
- (r_aarch64_movw_uabs_g2 : num= (I 267))`;
+ (r_aarch64_movw_uabs_g2 : num= (( 267:num)))`;
 
 val _ = Define `
- (r_aarch64_movw_uabs_g2_nc : num= (I 268))`;
+ (r_aarch64_movw_uabs_g2_nc : num= (( 268:num)))`;
 
 val _ = Define `
- (r_aarch64_movw_uabs_g3 : num= (I 269))`;
+ (r_aarch64_movw_uabs_g3 : num= (( 269:num)))`;
 
 
 val _ = Define `
- (r_aarch64_movw_sabs_g0 : num= (I 270))`;
+ (r_aarch64_movw_sabs_g0 : num= (( 270:num)))`;
 
 val _ = Define `
- (r_aarch64_movw_sabs_g1 : num= (I 271))`;
+ (r_aarch64_movw_sabs_g1 : num= (( 271:num)))`;
 
 val _ = Define `
- (r_aarch64_movw_sabs_g2 : num= (I 272))`;
+ (r_aarch64_movw_sabs_g2 : num= (( 272:num)))`;
 
 
 val _ = Define `
- (r_aarch64_ld_prel_lo19 : num= (I 273))`;
+ (r_aarch64_ld_prel_lo19 : num= (( 273:num)))`;
 
 val _ = Define `
- (r_aarch64_adr_prel_lo21 : num= (I 274))`;
+ (r_aarch64_adr_prel_lo21 : num= (( 274:num)))`;
 
 val _ = Define `
- (r_aarch64_adr_prel_pg_hi21 : num= (I 275))`;
+ (r_aarch64_adr_prel_pg_hi21 : num= (( 275:num)))`;
 
 val _ = Define `
- (r_aarch64_adr_prel_pg_hi21_nc : num= (I 276))`;
+ (r_aarch64_adr_prel_pg_hi21_nc : num= (( 276:num)))`;
 
 val _ = Define `
- (r_aarch64_add_abs_lo12_nc : num= (I 277))`;
+ (r_aarch64_add_abs_lo12_nc : num= (( 277:num)))`;
 
 val _ = Define `
- (r_aarch64_ldst8_abs_lo12_nc : num= (I 278))`;
+ (r_aarch64_ldst8_abs_lo12_nc : num= (( 278:num)))`;
 
 val _ = Define `
- (r_aarch64_ldst16_abs_lo12_nc : num= (I 284))`;
+ (r_aarch64_ldst16_abs_lo12_nc : num= (( 284:num)))`;
 
 val _ = Define `
- (r_aarch64_ldst32_abs_lo12_nc : num= (I 285))`;
+ (r_aarch64_ldst32_abs_lo12_nc : num= (( 285:num)))`;
 
 val _ = Define `
- (r_aarch64_ldst64_abs_lo12_nc : num= (I 286))`;
+ (r_aarch64_ldst64_abs_lo12_nc : num= (( 286:num)))`;
 
 val _ = Define `
- (r_aarch64_ldst128_abs_lo12_nc : num= (I 299))`;
+ (r_aarch64_ldst128_abs_lo12_nc : num= (( 299:num)))`;
 
 
 val _ = Define `
- (r_aarch64_tstbr14 : num= (I 279))`;
+ (r_aarch64_tstbr14 : num= (( 279:num)))`;
 
 val _ = Define `
- (r_aarch64_condbr19 : num= (I 280))`;
+ (r_aarch64_condbr19 : num= (( 280:num)))`;
 
 val _ = Define `
- (r_aarch64_jump26 : num= (I 282))`;
+ (r_aarch64_jump26 : num= (( 282:num)))`;
 
 val _ = Define `
- (r_aarch64_call26 : num= (I 283))`;
+ (r_aarch64_call26 : num= (( 283:num)))`;
 
 
 val _ = Define `
- (r_aarch64_movw_prel_g0 : num= (I 287))`;
+ (r_aarch64_movw_prel_g0 : num= (( 287:num)))`;
 
 val _ = Define `
- (r_aarch64_movw_prel_g0_nc : num= (I 288))`;
+ (r_aarch64_movw_prel_g0_nc : num= (( 288:num)))`;
 
 val _ = Define `
- (r_aarch64_movw_prel_g1 : num= (I 289))`;
+ (r_aarch64_movw_prel_g1 : num= (( 289:num)))`;
 
 val _ = Define `
- (r_aarch64_movw_prel_g1_nc : num= (I 290))`;
+ (r_aarch64_movw_prel_g1_nc : num= (( 290:num)))`;
 
 val _ = Define `
- (r_aarch64_movw_prel_g2 : num= (I 291))`;
+ (r_aarch64_movw_prel_g2 : num= (( 291:num)))`;
 
 val _ = Define `
- (r_aarch64_movw_prel_g2_nc : num= (I 292))`;
+ (r_aarch64_movw_prel_g2_nc : num= (( 292:num)))`;
 
 val _ = Define `
- (r_aarch64_movw_prel_g3 : num= (I 293))`;
+ (r_aarch64_movw_prel_g3 : num= (( 293:num)))`;
 
 
 val _ = Define `
- (r_aarch64_movw_gotoff_g0 : num= (I 300))`;
+ (r_aarch64_movw_gotoff_g0 : num= (( 300:num)))`;
 
 val _ = Define `
- (r_aarch64_movw_gotoff_g0_nc : num= (I 301))`;
+ (r_aarch64_movw_gotoff_g0_nc : num= (( 301:num)))`;
 
 val _ = Define `
- (r_aarch64_movw_gotoff_g1 : num= (I 302))`;
+ (r_aarch64_movw_gotoff_g1 : num= (( 302:num)))`;
 
 val _ = Define `
- (r_aarch64_movw_gotoff_g1_nc : num= (I 303))`;
+ (r_aarch64_movw_gotoff_g1_nc : num= (( 303:num)))`;
 
 val _ = Define `
- (r_aarch64_movw_gotoff_g2 : num= (I 304))`;
+ (r_aarch64_movw_gotoff_g2 : num= (( 304:num)))`;
 
 val _ = Define `
- (r_aarch64_movw_gotoff_g2_nc : num= (I 305))`;
+ (r_aarch64_movw_gotoff_g2_nc : num= (( 305:num)))`;
 
 val _ = Define `
- (r_aarch64_movw_gotoff_g3 : num= (I 306))`;
+ (r_aarch64_movw_gotoff_g3 : num= (( 306:num)))`;
 
 
 val _ = Define `
- (r_aarch64_gotrel64 : num= (I 307))`;
+ (r_aarch64_gotrel64 : num= (( 307:num)))`;
 
 val _ = Define `
- (r_aarch64_gotrel32 : num= (I 308))`;
+ (r_aarch64_gotrel32 : num= (( 308:num)))`;
 
 
 val _ = Define `
- (r_aarch64_got_ld_prel19 : num= (I 309))`;
+ (r_aarch64_got_ld_prel19 : num= (( 309:num)))`;
 
 val _ = Define `
- (r_aarch64_got_ld64_gotoff_lo15 : num= (I 310))`;
+ (r_aarch64_got_ld64_gotoff_lo15 : num= (( 310:num)))`;
 
 val _ = Define `
- (r_aarch64_adr_got_page : num= (I 311))`;
+ (r_aarch64_adr_got_page : num= (( 311:num)))`;
 
 val _ = Define `
- (r_aarch64_ld64_got_lo12_nc : num= (I 312))`;
+ (r_aarch64_ld64_got_lo12_nc : num= (( 312:num)))`;
 
 val _ = Define `
- (r_aarch64_ld64_gotpage_lo15 : num= (I 313))`;
+ (r_aarch64_ld64_gotpage_lo15 : num= (( 313:num)))`;
 
 
 val _ = Define `
- (r_aarch64_tlsgd_adr_prel21 : num= (I 512))`;
+ (r_aarch64_tlsgd_adr_prel21 : num= (( 512:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsgd_adr_page21 : num= (I 513))`;
+ (r_aarch64_tlsgd_adr_page21 : num= (( 513:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsgd_add_lo12_nc : num= (I 514))`;
+ (r_aarch64_tlsgd_add_lo12_nc : num= (( 514:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsgd_movw_g1 : num= (I 515))`;
+ (r_aarch64_tlsgd_movw_g1 : num= (( 515:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsgd_movw_g0_nc : num= (I 516))`;
+ (r_aarch64_tlsgd_movw_g0_nc : num= (( 516:num)))`;
 
 
 val _ = Define `
- (r_aarch64_tlsld_adr_prel21 : num= (I 517))`;
+ (r_aarch64_tlsld_adr_prel21 : num= (( 517:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsld_adr_page21 : num= (I 518))`;
+ (r_aarch64_tlsld_adr_page21 : num= (( 518:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsld_add_lo12_nc : num= (I 519))`;
+ (r_aarch64_tlsld_add_lo12_nc : num= (( 519:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsld_movw_g1 : num= (I 520))`;
+ (r_aarch64_tlsld_movw_g1 : num= (( 520:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsld_movw_g0_nc : num= (I 521))`;
+ (r_aarch64_tlsld_movw_g0_nc : num= (( 521:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsld_ld_prel19 : num= (I 522))`;
+ (r_aarch64_tlsld_ld_prel19 : num= (( 522:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsld_movw_dtprel_g2 : num= (I 523))`;
+ (r_aarch64_tlsld_movw_dtprel_g2 : num= (( 523:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsld_movw_dtprel_g1 : num= (I 524))`;
+ (r_aarch64_tlsld_movw_dtprel_g1 : num= (( 524:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsld_movw_dtprel_g1_nc : num= (I 525))`;
+ (r_aarch64_tlsld_movw_dtprel_g1_nc : num= (( 525:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsld_movw_dtprel_g0 : num= (I 526))`;
+ (r_aarch64_tlsld_movw_dtprel_g0 : num= (( 526:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsld_movw_dtprel_g0_nc : num= (I 527))`;
+ (r_aarch64_tlsld_movw_dtprel_g0_nc : num= (( 527:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsld_add_dtprel_hi12 : num= (I 528))`;
+ (r_aarch64_tlsld_add_dtprel_hi12 : num= (( 528:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsld_add_dtprel_lo12 : num= (I 529))`;
+ (r_aarch64_tlsld_add_dtprel_lo12 : num= (( 529:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsld_add_dtprel_lo12_nc : num= (I 530))`;
+ (r_aarch64_tlsld_add_dtprel_lo12_nc : num= (( 530:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsld_ldst8_dtprel_lo12 : num= (I 531))`;
+ (r_aarch64_tlsld_ldst8_dtprel_lo12 : num= (( 531:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsld_ldst8_dtprel_lo12_nc : num= (I 532))`;
+ (r_aarch64_tlsld_ldst8_dtprel_lo12_nc : num= (( 532:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsld_ldst16_dtprel_lo12 : num= (I 533))`;
+ (r_aarch64_tlsld_ldst16_dtprel_lo12 : num= (( 533:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsld_ldst16_dtprel_lo12_nc : num= (I 534))`;
+ (r_aarch64_tlsld_ldst16_dtprel_lo12_nc : num= (( 534:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsld_ldst32_dtprel_lo12 : num= (I 535))`;
+ (r_aarch64_tlsld_ldst32_dtprel_lo12 : num= (( 535:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsld_ldst32_dtprel_lo12_nc : num= (I 536))`;
+ (r_aarch64_tlsld_ldst32_dtprel_lo12_nc : num= (( 536:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsld_ldst64_dtprel_lo12 : num= (I 537))`;
+ (r_aarch64_tlsld_ldst64_dtprel_lo12 : num= (( 537:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsld_ldst64_dtprel_lo12_nc : num= (I 538))`;
+ (r_aarch64_tlsld_ldst64_dtprel_lo12_nc : num= (( 538:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsld_ldst128_dtprel_lo12 : num= (I 572))`;
+ (r_aarch64_tlsld_ldst128_dtprel_lo12 : num= (( 572:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsld_ldst128_dtprel_lo12_nc : num= (I 573))`;
+ (r_aarch64_tlsld_ldst128_dtprel_lo12_nc : num= (( 573:num)))`;
 
 
 val _ = Define `
- (r_aarch64_tlsie_movw_gottprel_g1 : num= (I 539))`;
+ (r_aarch64_tlsie_movw_gottprel_g1 : num= (( 539:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsie_movw_gottprel_g0_nc : num= (I 540))`;
+ (r_aarch64_tlsie_movw_gottprel_g0_nc : num= (( 540:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsie_movw_gottprel_page21 : num= (I 541))`;
+ (r_aarch64_tlsie_movw_gottprel_page21 : num= (( 541:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsie_movw_gottprel_lo12_nc : num= (I 542))`;
+ (r_aarch64_tlsie_movw_gottprel_lo12_nc : num= (( 542:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsie_movw_gottprel_prel19 : num= (I 543))`;
+ (r_aarch64_tlsie_movw_gottprel_prel19 : num= (( 543:num)))`;
 
 
 val _ = Define `
- (r_aarch64_tlsle_movw_tprel_g2 : num= (I 544))`;
+ (r_aarch64_tlsle_movw_tprel_g2 : num= (( 544:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsle_movw_tprel_g1 : num= (I 545))`;
+ (r_aarch64_tlsle_movw_tprel_g1 : num= (( 545:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsle_movw_tprel_g1_nc : num= (I 546))`;
+ (r_aarch64_tlsle_movw_tprel_g1_nc : num= (( 546:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsle_movw_tprel_g0 : num= (I 547))`;
+ (r_aarch64_tlsle_movw_tprel_g0 : num= (( 547:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsle_movw_tprel_g0_nc : num= (I 548))`;
+ (r_aarch64_tlsle_movw_tprel_g0_nc : num= (( 548:num)))`;
 
 val _ = Define `
- (r_aarch64_add_tprel_hi12 : num= (I 549))`;
+ (r_aarch64_add_tprel_hi12 : num= (( 549:num)))`;
 
 val _ = Define `
- (r_aarch64_add_tprel_lo12 : num= (I 550))`;
+ (r_aarch64_add_tprel_lo12 : num= (( 550:num)))`;
 
 val _ = Define `
- (r_aarch64_add_tprel_lo12_nc : num= (I 551))`;
+ (r_aarch64_add_tprel_lo12_nc : num= (( 551:num)))`;
 
 val _ = Define `
- (r_aarch64_ldst8_tprel_lo12 : num= (I 552))`;
+ (r_aarch64_ldst8_tprel_lo12 : num= (( 552:num)))`;
 
 val _ = Define `
- (r_aarch64_ldst8_tprel_lo12_nc : num= (I 553))`;
+ (r_aarch64_ldst8_tprel_lo12_nc : num= (( 553:num)))`;
 
 val _ = Define `
- (r_aarch64_ldst16_tprel_lo12 : num= (I 554))`;
+ (r_aarch64_ldst16_tprel_lo12 : num= (( 554:num)))`;
 
 val _ = Define `
- (r_aarch64_ldst16_tprel_lo12_nc : num= (I 555))`;
+ (r_aarch64_ldst16_tprel_lo12_nc : num= (( 555:num)))`;
 
 val _ = Define `
- (r_aarch64_ldst32_tprel_lo12 : num= (I 556))`;
+ (r_aarch64_ldst32_tprel_lo12 : num= (( 556:num)))`;
 
 val _ = Define `
- (r_aarch64_ldst32_tprel_lo12_nc : num= (I 557))`;
+ (r_aarch64_ldst32_tprel_lo12_nc : num= (( 557:num)))`;
 
 val _ = Define `
- (r_aarch64_ldst64_tprel_lo12 : num= (I 558))`;
+ (r_aarch64_ldst64_tprel_lo12 : num= (( 558:num)))`;
 
 val _ = Define `
- (r_aarch64_ldst64_tprel_lo12_nc : num= (I 559))`;
+ (r_aarch64_ldst64_tprel_lo12_nc : num= (( 559:num)))`;
 
 val _ = Define `
- (r_aarch64_ldst128_tprel_lo12 : num= (I 570))`;
+ (r_aarch64_ldst128_tprel_lo12 : num= (( 570:num)))`;
 
 val _ = Define `
- (r_aarch64_ldst128_tprel_lo12_nc : num= (I 571))`;
+ (r_aarch64_ldst128_tprel_lo12_nc : num= (( 571:num)))`;
 
 
 val _ = Define `
- (r_aarch64_tlsdesc_ld_prel19 : num= (I 560))`;
+ (r_aarch64_tlsdesc_ld_prel19 : num= (( 560:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsdesc_adr_prel21 : num= (I 561))`;
+ (r_aarch64_tlsdesc_adr_prel21 : num= (( 561:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsdesc_adr_page21 : num= (I 562))`;
+ (r_aarch64_tlsdesc_adr_page21 : num= (( 562:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsdesc_ld64_lo12 : num= (I 563))`;
+ (r_aarch64_tlsdesc_ld64_lo12 : num= (( 563:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsdesc_add_lo12 : num= (I 564))`;
+ (r_aarch64_tlsdesc_add_lo12 : num= (( 564:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsdesc_off_g1 : num= (I 565))`;
+ (r_aarch64_tlsdesc_off_g1 : num= (( 565:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsdesc_off_g0_nc : num= (I 566))`;
+ (r_aarch64_tlsdesc_off_g0_nc : num= (( 566:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsdesc_ldr : num= (I 567))`;
+ (r_aarch64_tlsdesc_ldr : num= (( 567:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsdesc_add : num= (I 568))`;
+ (r_aarch64_tlsdesc_add : num= (( 568:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsdesc_call : num= (I 569))`;
+ (r_aarch64_tlsdesc_call : num= (( 569:num)))`;
 
 
 val _ = Define `
- (r_aarch64_copy : num= (I 1024))`;
+ (r_aarch64_copy : num= (( 1024:num)))`;
 
 val _ = Define `
- (r_aarch64_glob_dat : num= (I 1025))`;
+ (r_aarch64_glob_dat : num= (( 1025:num)))`;
 
 val _ = Define `
- (r_aarch64_jump_slot : num= (I 1026))`;
+ (r_aarch64_jump_slot : num= (( 1026:num)))`;
 
 val _ = Define `
- (r_aarch64_relative : num= (I 1027))`;
+ (r_aarch64_relative : num= (( 1027:num)))`;
 
 val _ = Define `
- (r_aarch64_tls_dtprel64 : num= (I 1028))`;
+ (r_aarch64_tls_dtprel64 : num= (( 1028:num)))`;
 
 val _ = Define `
- (r_aarch64_tls_dtpmod64 : num= (I 1029))`;
+ (r_aarch64_tls_dtpmod64 : num= (( 1029:num)))`;
 
 val _ = Define `
- (r_aarch64_tls_tprel64 : num= (I 1030))`;
+ (r_aarch64_tls_tprel64 : num= (( 1030:num)))`;
 
 val _ = Define `
- (r_aarch64_tlsdesc : num= (I 1031))`;
+ (r_aarch64_tlsdesc : num= (( 1031:num)))`;
 
 val _ = Define `
- (r_aarch64_irelative : num= (I 1032))`;
+ (r_aarch64_irelative : num= (( 1032:num)))`;
 
 
 (** [string_of_aarch64_relocation_type m] produces a string representation of the
@@ -428,7 +428,7 @@ val _ = Define `
 val _ = Define `
  (aarch64_le_reloc r=  
  (if r = r_aarch64_none then
-    (F, (\ img .  (\ site_addr .  (\ rr .  (I 0, (\ s .  \ a .  \ e .  e))))))
+    (F, (\ img .  (\ site_addr .  (\ rr .  (( 0:num), (\ s .  \ a .  \ e .  e))))))
   else
     (F, noop_reloc_apply)))`;
 

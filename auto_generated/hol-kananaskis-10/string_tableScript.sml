@@ -82,7 +82,7 @@ val _ = Define `
   *)
 (*val size : string_table -> natural*)
 val _ = Define `
- (size1 tbl=  (I (STRLEN (get_base_string tbl))))`;
+ (size1 tbl=  (((STRLEN (get_base_string tbl)):num)))`;
 
 
 (** [concat xs] concatenates several string tables into one providing they all
@@ -110,7 +110,7 @@ val _ = Define `
 (*val get_string_at : natural -> string_table -> error string*)
 val _ = Define `
  (get_string_at index tbl=  
- ((case Elf_Local$string_suffix index (get_base_string tbl) of
+ ((case string_suffix index (get_base_string tbl) of
       NONE     => Fail "get_string_at: index out of range"
     | SOME suffix =>
       let delim = (get_delimiting_character tbl) in
@@ -129,7 +129,7 @@ val _ = Define `
 val _ = Define `
  (find_string s t=    
   ((case t of
-        Strings(delim, base) => Elf_Local$find_substring ( STRCAT s (IMPLODE [delim])) base
+        Strings(delim, base) => ARB ( STRCAT s (IMPLODE [delim])) base
     )))`;
 
 
@@ -137,13 +137,15 @@ val _ = Define `
 val _ = Define `
  (insert_string s t=    
 (  
-    let (inserted_idx, new_strtab) = ((case find_string s t of
+    (*let _ = errln ("Inserting string `" ^ s ^ "' into a string table") in*)let (inserted_idx, new_strtab) = ((case find_string s t of
         NONE => (case t of
-            Strings(delim, base) => (I (STRLEN base), Strings(delim,  STRCAT base  (STRCAT s (IMPLODE [delim]))))
+            Strings(delim, base) => (((STRLEN base):num), Strings(delim,  STRCAT base  (STRCAT s (IMPLODE [delim]))))
             )
         | SOME pos => (pos, t)
     ))
     in
+    (*let _ = errln ("Inserted string at idx " ^ (show inserted_idx) ^ ", see: " ^ (show (find_string s new_strtab)))
+    in*)
     (inserted_idx, new_strtab)))`;
 
 

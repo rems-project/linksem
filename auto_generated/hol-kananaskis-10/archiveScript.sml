@@ -46,21 +46,21 @@ val _ = Define `
 (*val read_archive_entry_header : natural -> byte_sequence -> error (archive_entry_header * natural * byte_sequence)*)
 val _ = Define `
  (read_archive_entry_header seq_length seq=  
- (let magic_bytes = ([(n2w : num -> 8 word(I 96)) (* 0x60 *); (n2w : num -> 8 word(I 10)) (* 0x0a *)]) in
-        let header_length =(I 60) in
+ (let magic_bytes = ([(n2w : num -> 8 word(( 96:num))) (* 0x60 *); (n2w : num -> 8 word(( 10:num))) (* 0x0a *)]) in
+        let header_length =(( 60:num)) in
         (* let _ = Missing_pervasives.errs ("Archive entry header? " ^ (show (take 16 bs)) ^ "? ") in *)
         partition_with_length header_length seq_length seq >>= (\ (header, rest) .  
-        offset_and_cut(I 58)(I 2) header >>= (\ magic .  
-        offset_and_cut(I 0)(I 16) header >>= (\ name .  
-        offset_and_cut(I 16)(I 12) header >>= (\ timestamp_str .  
-        offset_and_cut(I 28)(I 6)  header >>= (\ uid_str .  
-        offset_and_cut(I 34)(I 6)  header >>= (\ gid_str .  
-        offset_and_cut(I 40)(I 8)  header >>= (\ mode_str .  
-        offset_and_cut(I 48)(I 10) header >>= (\ size_str .  
+        offset_and_cut(( 58:num))(( 2:num)) header >>= (\ magic .  
+        offset_and_cut(( 0:num))(( 16:num)) header >>= (\ name .  
+        offset_and_cut(( 16:num))(( 12:num)) header >>= (\ timestamp_str .  
+        offset_and_cut(( 28:num))(( 6:num))  header >>= (\ uid_str .  
+        offset_and_cut(( 34:num))(( 6:num))  header >>= (\ gid_str .  
+        offset_and_cut(( 40:num))(( 8:num))  header >>= (\ mode_str .  
+        offset_and_cut(( 48:num))(( 10:num)) header >>= (\ size_str .  
         let size1 = (natural_of_decimal_string (string_of_byte_sequence0 size_str)) in 
                 (* let _ = Missing_pervasives.errln (": yes, size " ^ (show size)) in *)
-        return (<| name := (string_of_byte_sequence0 name); timestamp := ((I 0 : num)) (* FIXME *);
-          uid :=(I 0) (* FIXME *) ; gid :=(I 0) (* FIXME *) ; mode :=(I 0) (* FIXME *);
+        return (<| name := (string_of_byte_sequence0 name); timestamp := ((( 0:num) : num)) (* FIXME *);
+          uid :=(( 0 : num)) (* FIXME *) ; gid :=(( 0 : num)) (* FIXME *) ; mode :=(( 0 : num)) (* FIXME *);
             size0 := ( size1) (* FIXME *) |>, (seq_length - header_length), rest)))))))))))`;
 
 
@@ -71,10 +71,10 @@ val _ = Define `
       Sequence bs =>
             (* let _ = Missing_pervasives.errs ("Archive? " ^ (show (take 16 bs)) ^ "? ")
             in*)
-      let chars = (MAP (CHR o w2n) (take(I 8) bs)) in 
+      let chars = (MAP (CHR o w2n) (take(( 8:num)) bs)) in 
         if IMPLODE chars = "!<arch>\n" then
           (* let _ = Missing_pervasives.errln ": yes" in *)
-          return (chars, Sequence(drop(I 8) bs))
+          return (chars, Sequence(drop(( 8:num)) bs))
         else
           (* let _ = Missing_pervasives.errln ": no" in *)
           fail0 "read_archive_global_header: not an archive"
@@ -96,12 +96,12 @@ val _ = Define `
         Sequence next_bs =>
         (* let _ = Missing_pervasives.errln ("yes; next_bs has length " ^ (show (List.length next_bs))) in *)
         let amount_to_drop =          
-(if (hdr.size0 MOD I 2) =I 0 then
-            (I hdr.size0)
+(if (hdr.size0 MOD( 2 : num)) =( 0 : num) then
+            (( hdr.size0:num))
           else
-            (I hdr.size0) +I 1)
+            (( hdr.size0:num)) +( 1:num))
         in
-        if amount_to_drop =I 0 then
+        if amount_to_drop =( 0:num) then
           fail0 "accum_archive_contents: amount to drop from byte sequence is 0"
         else
         (*let _ = Missing_pervasives.errln ("amount_to_drop is " ^ (show amount_to_drop)) in*)
@@ -126,8 +126,8 @@ val _ = Define `
                             (case extended_filenames of 
                                 NONE => failwith "corrupt archive: reference to non-existent extended filenames"
                               | SOME s => 
-                                let table_suffix = ((case Elf_Local$string_suffix index s of SOME x => x | NONE => "" )) in
-                                let index = ((case string_index_of #"/" table_suffix of SOME x => x | NONE => (I (STRLEN table_suffix)) )) in 
+                                let table_suffix = ((case string_suffix index s of SOME x => x | NONE => "" )) in
+                                let index = ((case string_index_of #"/" table_suffix of SOME x => x | NONE => (((STRLEN table_suffix):num)) )) in 
                                 let ext_name = ((case string_prefix index table_suffix of SOME x => x | NONE => "" )) in
                                   (*let _ = Missing_pervasives.errln ("Got ext_name " ^ ext_name) in*)
                                   (((ext_name, chunk) :: accum), extended_filenames)
@@ -137,8 +137,8 @@ val _ = Define `
                           (case extended_filenames of 
                               NONE => failwith "corrupt archive: reference to non-existent extended filenames"
                             | SOME s => 
-                              let table_suffix = ((case Elf_Local$string_suffix index s of SOME x => x | NONE => "" )) in
-                              let index = ((case string_index_of #"/" table_suffix of SOME x => x | NONE => (I (STRLEN table_suffix)) )) in 
+                              let table_suffix = ((case string_suffix index s of SOME x => x | NONE => "" )) in
+                              let index = ((case string_index_of #"/" table_suffix of SOME x => x | NONE => (((STRLEN table_suffix):num)) )) in 
                               let ext_name = ((case string_prefix index table_suffix of SOME x => x | NONE => "" )) in
                                 (*let _ = Missing_pervasives.errln ("Got ext_name " ^ ext_name) in*)
                                 (((ext_name, chunk) :: accum), extended_filenames)

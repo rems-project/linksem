@@ -169,24 +169,24 @@ val _ = Define `
                            (n2w : num -> 8 word) elf_ev_current;
                            (n2w : num -> 8 word) osabi;
                            (n2w : num -> 8 word) abiv;
-                           (n2w : num -> 8 word)(I 0);
-                           (n2w : num -> 8 word)(I 0);
-                           (n2w : num -> 8 word)(I 0);
-                           (n2w : num -> 8 word)(I 0);
-                           (n2w : num -> 8 word)(I 0);
-                           (n2w : num -> 8 word)(I 0);
-                           (n2w : num -> 8 word)(I 0)])
+                           (n2w : num -> 8 word)(( 0:num));
+                           (n2w : num -> 8 word)(( 0:num));
+                           (n2w : num -> 8 word)(( 0:num));
+                           (n2w : num -> 8 word)(( 0:num));
+                           (n2w : num -> 8 word)(( 0:num));
+                           (n2w : num -> 8 word)(( 0:num));
+                           (n2w : num -> 8 word)(( 0:num))])
        ; elf64_type     := ((n2w : num -> 16 word) t)
        ; elf64_machine  := ((n2w : num -> 16 word) ma)
        ; elf64_version  := ((n2w : num -> 32 word) elf_ev_current)
        ; elf64_entry    := ((n2w : num -> 64 word) entry)
        ; elf64_phoff    := ((n2w : num -> 64 word) phoff)
        ; elf64_shoff    := ((n2w : num -> 64 word) shoff)
-       ; elf64_flags    := ((n2w : num -> 32 word)(I 0))
-       ; elf64_ehsize   := ((n2w : num -> 16 word)(I 64))
-       ; elf64_phentsize:= ((n2w : num -> 16 word)(I 56))
+       ; elf64_flags    := ((n2w : num -> 32 word)(( 0:num)))
+       ; elf64_ehsize   := ((n2w : num -> 16 word)(( 64:num)))
+       ; elf64_phentsize:= ((n2w : num -> 16 word)(( 56:num)))
        ; elf64_phnum    := ((n2w : num -> 16 word) phnum)
-       ; elf64_shentsize:= ((n2w : num -> 16 word)(I 64))
+       ; elf64_shentsize:= ((n2w : num -> 16 word)(( 64:num)))
        ; elf64_shnum    := ((n2w : num -> 16 word) shnum)
        ; elf64_shstrndx := ((n2w : num -> 16 word) shstrndx)
        |>))`;
@@ -196,8 +196,8 @@ val _ = Define `
 val _ = Define `
  (phdr_flags_from_section_flags section_flags sec_name=    
  (let flags = (natural_lor elf_pf_r (natural_lor 
-        (if flag_is_set shf_write section_flags then elf_pf_w else I 0)
-        (if flag_is_set shf_execinstr section_flags then elf_pf_x else I 0)))
+        (if flag_is_set shf_write section_flags then elf_pf_w else( 0:num))
+        (if flag_is_set shf_execinstr section_flags then elf_pf_x else( 0:num))))
     in
     (*let _ = errln ("Phdr flags of section " ^ sec_name ^ "(ELF section flags 0x " ^ 
         (hex_string_of_natural section_flags) ^ ") are 0x" ^ (hex_string_of_natural flags))
@@ -223,7 +223,7 @@ val _ = Define `
      * but not to a RW segment. So the only clear rule is: if any is writable,
      * all must be writable. *)let flagslist = (SET_TO_LIST flagsets)
     in
-    let union_flags = (FOLDL natural_lor(I 0) flagslist)
+    let union_flags = (FOLDL natural_lor(( 0:num)) flagslist)
     in
     if EXISTS phdr_is_writable flagslist
     then
@@ -235,7 +235,7 @@ val _ = Define `
         
 (*val tls_can_combine_flags : can_combine_flags_fn*)
 val _ = Define `
- (tls_can_combine_flags flagsets=  (SOME (FOLDL natural_lor(I 0) (SET_TO_LIST flagsets))))`;
+ (tls_can_combine_flags flagsets=  (SOME (FOLDL natural_lor(( 0:num)) (SET_TO_LIST flagsets))))`;
 
 
 val _ = Define `
@@ -255,7 +255,7 @@ val _ = Define `
     if isec.elf64_section_offset < ((w2n phdr.elf64_p_offset) + (w2n phdr.elf64_p_filesz))
     then (*let _ = errln "offset went backwards" in*) NONE
     else 
-    let new_p_filesz = (w2n phdr.elf64_p_filesz + (if isec.elf64_section_type = sht_progbits then isec.elf64_section_size else I 0))
+    let new_p_filesz = (w2n phdr.elf64_p_filesz + (if isec.elf64_section_type = sht_progbits then isec.elf64_section_size else( 0:num)))
     in 
     (* The new memsz is the virtual address end address of this section,
      * minus the existing start vaddr of the phdr. 
@@ -265,7 +265,7 @@ val _ = Define `
     else 
     let new_p_memsz = (w2n phdr.elf64_p_memsz + isec.elf64_section_size)
     in
-    let (one_if_zero : num -> num) = (\ n .  if n =I 0 then I 1 else n)
+    let (one_if_zero : num -> num) = (\ n .  if n =( 0:num) then( 1:num) else n)
     in
     let new_p_align =  (lcm (one_if_zero (w2n phdr.elf64_p_align)) (one_if_zero isec.elf64_section_align))
     in
@@ -295,8 +295,8 @@ val _ = Define `
    ; elf64_p_flags  := ((n2w : num -> 32 word) (phdr_flags_from_section_flags isec.elf64_section_flags isec.elf64_section_name_as_string)) (** Segment flags *)
    ; elf64_p_offset := ((n2w : num -> 64 word) (rounded_down_offset isec)) (** Offset from beginning of file for segment *)
    ; elf64_p_vaddr  := ((n2w : num -> 64 word) (rounded_down_vaddr isec)) (** Virtual address for segment in memory *)
-   ; elf64_p_paddr  := ((n2w : num -> 64 word)(I 0)) (** Physical address for segment *)
-   ; elf64_p_filesz := ((n2w : num -> 64 word) (if isec.elf64_section_type = sht_nobits then I 0 else isec.elf64_section_size + (offset_round_down_amount isec))) (** Size of segment in file, in bytes *)
+   ; elf64_p_paddr  := ((n2w : num -> 64 word)(( 0:num))) (** Physical address for segment *)
+   ; elf64_p_filesz := ((n2w : num -> 64 word) (if isec.elf64_section_type = sht_nobits then( 0:num) else isec.elf64_section_size + (offset_round_down_amount isec))) (** Size of segment in file, in bytes *)
    ; elf64_p_memsz  := ((n2w : num -> 64 word) (isec.elf64_section_size + (vaddr_round_down_amount isec))) (** Size of segment in memory image, in bytes *)
    ; elf64_p_align  := ((n2w : num -> 64 word) (* isec.elf64_section_align *) maxpagesize) (** Segment alignment memory for memory and file *)
    |>))`;
@@ -361,7 +361,7 @@ val _ = Define `
         in
         (a.make_phdrs maxpagesize commonpagesize file_type img section_pairs_bare_sorted_by_address) ++ (REVERSE rev_list)
     ))
-    ; max_phnum           :=(I 1 + a.max_phnum)
+    ; max_phnum           :=(( 1:num) + a.max_phnum)
     ; guess_entry_point   := (a.guess_entry_point)
     ; pad_data            := (a.pad_data)
     ; pad_code            := (a.pad_code)
@@ -403,25 +403,26 @@ val _ = Define `
                         NONE => failwith ( STRCAT"_start symbol defined in nonexistent element ^`"  (STRCAT el_name "'"))
                         | SOME el_rec => 
                             (case el_rec.startpos of
-                                NONE => NONE
+                                NONE => (*let _ = Missing_pervasives.errln "warning: saw `_start' in element with no assigned address" in *)NONE
                                 | SOME x => (* success! *) SOME (x + el_off)
                             )
                     )
-                | _ => NONE
+                | _ => (*let _ = Missing_pervasives.errln "warning: `_start' symbol with no range" in*) NONE
             )
         | [] => (* no _start symbol *) NONE
-        | _ => NONE
+        | _ => (*let _ = Missing_pervasives.errln ("warning: saw multiple `_start' symbols: " ^
+            (let (ranges, defs) = unzip all_entry_points in show ranges)) in *)NONE
     )))`;
 
 
 (*val pad_zeroes : natural -> list byte*)
 val _ = Define `
- (pad_zeroes n=  (replicate n ((n2w : num -> 8 word(I 0)))))`;
+ (pad_zeroes n=  (replicate n ((n2w : num -> 8 word(( 0:num))))))`;
 
 
 (*val pad_0x90 : natural -> list byte*)
 val _ = Define `
- (pad_0x90 n=  (replicate n ((n2w : num -> 8 word (I 9 *I 16)))))`;
+ (pad_0x90 n=  (replicate n ((n2w : num -> 8 word (( 9:num) *( 16:num))))))`;
 
 
 (* null_abi captures ABI details common to all ELF-based, System V-based systems.
@@ -430,16 +431,16 @@ val _ = Define `
 val _ = Define `
 (null_abi=  (<|
       is_valid_elf_header := is_valid_elf64_header
-    ; make_elf_header := (make_elf64_header elf_data_2lsb elf_osabi_none(I 0) elf_ma_none)
+    ; make_elf_header := (make_elf64_header elf_data_2lsb elf_osabi_none(( 0:num)) elf_ma_none)
     ; reloc := noop_reloc
     ; section_is_special := elf_section_is_special
     ; section_is_large := (\ s .  (\ f .  F))
-    ; maxpagesize :=((I 2 *I 256) *I 4096) (* 2MB; bit of a guess, based on gdb and prelink code *)
-    ; minpagesize :=(I 1024) (* bit of a guess again *)
-    ; commonpagesize :=(I 4096)
+    ; maxpagesize :=((( 2:num) *( 256:num)) *( 4096:num)) (* 2MB; bit of a guess, based on gdb and prelink code *)
+    ; minpagesize :=(( 1024:num)) (* bit of a guess again *)
+    ; commonpagesize :=(( 4096:num))
     ; symbol_is_generated_by_linker := (\ symname .  symname = "_GLOBAL_OFFSET_TABLE_")
     ; make_phdrs := make_default_phdrs
-    ; max_phnum :=(I 2)
+    ; max_phnum :=(( 2:num))
     ; guess_entry_point := 
   (find_start_symbol_address
      instance_Basic_classes_Ord_Abis_any_abi_feature_dict
@@ -601,10 +602,10 @@ val _ = Define `
                     (* FIXME: using symnames seems wrong *)
                     SOME idx => 
                         (case plt_el.startpos of
-                            SOME addr => addr + ((I idx) *I 16) (* size of a PLT entry *)
+                            SOME addr => addr + ((( idx:num)) *( 16:num)) (* size of a PLT entry *)
                             | NONE => failwith "error: PLT has no address assigned"
                         )
-                    | NONE =>I 0
+                    | NONE =>( 0:num)
                 )
             )
         else default_get_reloc_symaddr 
@@ -648,6 +649,8 @@ val _ = Define `
                 (NONE, _) => NONE
                 | (SOME rr, SOME(ApplyReloc, maybe_def)) =>
                     if amd64_reloc_needs_got_slot symref rr maybe_def then
+                        (*let _ = errln ("Saw a via-GOT symbol reference: to `" ^ symref.ref.ref_symname ^ "' coming from linkable " ^ (show i) ^ " (" ^ 
+                            fname ^ "), logically from section " ^ (show rr.ref_src_scn)) in *)
                         SOME (symref.ref.ref_symname, maybe_def) 
                     else NONE
                 | (SOME rr, SOME(MakePIC, maybe_def)) => failwith "FIXME: PIC support please"
@@ -689,9 +692,9 @@ val _ = Define `
             | Just l -> item :: l
         end) acc) {} refs_via_got
     in *)
-    let got_nentries = (I (CARD got_pairs_set))
+    let got_nentries = (((CARD got_pairs_set):num))
     in
-    let got_entrysize =(I 8)
+    let got_entrysize =(( 8:num))
     in
     (* We also need a PLT... sort of. We need a way to resolve via-PLT relocs. 
      * But we might do so without actually creating a (non-zero-length) PLT. 
@@ -708,6 +711,16 @@ val _ = Define `
                 | (SOME rr, SOME(ApplyReloc, maybe_def)) =>
                     if amd64_reloc_needs_plt_slot symref rr maybe_def ref_is_statically_linked
                     then 
+                        (*let _ = if is_ifunc_def maybe_def then
+                         (* we ensure that a PLT entry (specifically .iplt) is generated for the symbol *)
+                         errln ("Saw a reference to IFUNC symbol `" ^ symref.ref.ref_symname ^ "'; ref is coming from linkable " ^ (show i) ^ " (" ^ 
+                            fname ^ "), relent idx " ^ (show rr.ref_rel_idx) ^ " logically from section " ^ (show rr.ref_src_scn) ) 
+                        else
+                        errln ("Saw a via-PLT symbol reference: to `" ^ symref.ref.ref_symname ^ "' coming from linkable " ^ (show i) ^ " (" ^ 
+                            fname ^ "), relent idx " ^ (show rr.ref_rel_idx) ^ " logically from section " ^ (show rr.ref_src_scn) ^ 
+                            match maybe_def with Just _ -> ", with definition" | Nothing -> ", not bound to anything" end
+                            )
+                        in*)
                         SOME(symref.ref.ref_symname, maybe_def) 
                     else NONE
                 | (SOME rr, SOME(MakePIC, maybe_def)) => failwith "FIXME: PIC support please"
@@ -752,12 +765,12 @@ val _ = Define `
     in
     (*let _ = errln ("PLT needs header entry? " ^ (show plt_needs_header_entry))
     in*)
-    let total_n_plt_entries = ((if plt_needs_header_entry then I 1 else I 0) + (missing_pervasives$length plt_symnames_excluding_header))
+    let total_n_plt_entries = ((if plt_needs_header_entry then( 1:num) else( 0:num)) + (missing_pervasives$length plt_symnames_excluding_header))
     in
     (*let _ = errln ("PLT total entry count: " ^ (show total_n_plt_entries))
     in*)
     let new_by_range = ({
-        (SOME(".plt", (I 0,(I 16 * total_n_plt_entries))), AbiFeature(Amd64AbiFeature(abi_amd64$PLT0(
+        (SOME(".plt", (( 0:num),(( 16:num) * total_n_plt_entries))), AbiFeature(Amd64AbiFeature(abi_amd64$PLT0(
                  (* header content fn *)
                  (* the header entry is required only for dynamic linking, which is not supported yet *)
                  (* (if plt_needs_header_entry then
@@ -784,7 +797,7 @@ val _ = Define `
                      *       fact, it does. HMM. Understand this better. *)
                     (* What is the GOT slot number? *)
                     let (got_slot_idx, maybe_def) = ((case FLOOKUP got_idx_and_maybe_def_by_symname_map symname of
-                        SOME(idx, maybe_d) => (I idx, maybe_d)
+                        SOME(idx, maybe_d) => (( idx:num), maybe_d)
                         | NONE => failwith ( STRCAT"GOT does not contain symbol ^`"  (STRCAT symname "' required by PLT entry"))
                         ))
                     in
@@ -807,47 +820,78 @@ val _ = Define `
                          
                          * ... i.e. basically the same but the pushq and jmpq have literal-zero args (they're not used).
                          *)
-                        let this_plt_slot_base_addr = (plt_base_addr +(I 16 * ((I plt_entry_idx_not_counting_header) 
-                            + (if plt_needs_header_entry then I 1 else I 0))))
+                        let this_plt_slot_base_addr = (plt_base_addr +(( 16:num) * ((( plt_entry_idx_not_counting_header:num)) 
+                            + (if plt_needs_header_entry then( 1:num) else( 0:num)))))
                         in
-                        let got_slot_addr = (got_base_addr +(I 8 * got_slot_idx))
+                        (*let _ = Missing_pervasives.errln ("PLT slot base address for symname `" ^ symname ^ "': 0x" ^
+                            (hex_string_of_natural this_plt_slot_base_addr))
+                        in*)
+                        let got_slot_addr = (got_base_addr +(( 8:num) * got_slot_idx))
                         in
+                        (*let _ = Missing_pervasives.errln ("GOT slot address for symname `" ^ symname ^ "' (idx " ^ (show got_slot_idx) ^ "): 0x" ^
+                            (hex_string_of_natural got_slot_addr))
+                        in*)
                         let maybe_header_entry_address = (if plt_needs_header_entry then SOME(plt_base_addr) else NONE)
                         in
-                        let offset_to_got_slot = ((int_of_num got_slot_addr) - (int_of_num (this_plt_slot_base_addr +I 6)))
+                        let offset_to_got_slot = ((int_of_num got_slot_addr) - (int_of_num (this_plt_slot_base_addr +( 6:num))))
                         in
+                        (*let _ = Missing_pervasives.errln ("PLT's PC-relative index to GOT slot for symname `" ^ symname ^ "' (GOT idx " ^ (show got_slot_idx) ^ ") is (decimal)" ^
+                            (show offset_to_got_slot))
+                        in*)
                         let content_bytes =                        
- ((((([(n2w : num -> 8 word(I 255)); (n2w : num -> 8 word(I 37))] ++ (* offset to the GOT entry, from the *next* instruction start, signed 32-bit LE *)
-                            (to_le_signed_bytes(I 4) offset_to_got_slot)) ++
-                        [(n2w : num -> 8 word(I 104))]) ++ (* plt slot number not including header, 32-bit LE *)
-                                 (to_le_unsigned_bytes(I 4) (int_of_num (I plt_entry_idx_not_counting_header)))) ++
-                        [(n2w : num -> 8 word(I 233))]) ++ (to_le_signed_bytes(I 4) (
+ ((((([(n2w : num -> 8 word(( 255:num))); (n2w : num -> 8 word(( 37:num)))] ++ (* offset to the GOT entry, from the *next* instruction start, signed 32-bit LE *)
+                            (to_le_signed_bytes(( 4:num)) offset_to_got_slot)) ++
+                        [(n2w : num -> 8 word(( 104:num)))]) ++ (* plt slot number not including header, 32-bit LE *)
+                                 (to_le_unsigned_bytes(( 4:num)) (int_of_num (( plt_entry_idx_not_counting_header:num))))) ++
+                        [(n2w : num -> 8 word(( 233:num)))]) ++ (to_le_signed_bytes(( 4:num)) (
                             if is_ifunc_def maybe_def
                             then( 0 : int)
                             else (case maybe_header_entry_address of
                                 NONE => failwith "normal PLT entry but no PLT header!"
-                                | SOME header_entry_address => (int_of_num header_entry_address) - (int_of_num (this_plt_slot_base_addr +I 16))
+                                | SOME header_entry_address => (int_of_num header_entry_address) - (int_of_num (this_plt_slot_base_addr +( 16:num)))
                                 )
                         )))
                         in
+                        (*let _ = errln ("Created a PLT entry consisting of " ^ (show (length content_bytes)) ^ " bytes.")
+                        in*)
                         (this_plt_slot_base_addr, content_bytes)
+                        (* 
+                        match maybe_def with 
+                            Nothing -> 0
+                            | Just sd -> 
+                                match Memory_image_orderings.find_defs_matching sd img with
+                                    [] -> failwith ("no matching definitions for PLT entry named " ^ symname)
+                                    | [(Just(def_el_name, (def_start, def_len)), d)] -> 
+                                        match element_and_offset_to_address (def_el_name, def_start) img with
+                                            Nothing -> failwith ("PLT: no address for definition offset in element " ^ def_el_name)
+                                            | Just x -> 
+                                                let _ = errln ("PLT slot for symbol `" ^ symname ^ 
+                                                    "' calculated at (non-PLT) address 0x" ^ (hex_string_of_natural x) ^ 
+                                                    " (offset 0x" ^ (hex_string_of_natural def_start) ^ " in element " ^ def_el_name ^ ")")
+                                                in
+                                                x
+                                        end
+                                    | _ -> failwith ("multiple matching definitions for PLT entry named " ^ symname)
+                                end
+                        end
+                        *)
                         
                     ) : any_abi_feature plt_entry_content_fn))
                 ))
                 plt_symnames)
             ))) 
         )
-    ;   (SOME(".plt", (I 0,(I 16 * total_n_plt_entries))), FileFeature(ElfSection(I 1, 
-          <| elf64_section_name :=(I 0) (* ignored *)
+    ;   (SOME(".plt", (( 0:num),(( 16:num) * total_n_plt_entries))), FileFeature(ElfSection(( 1:num), 
+          <| elf64_section_name :=(( 0:num)) (* ignored *)
            ; elf64_section_type := sht_progbits
            ; elf64_section_flags := shf_alloc
-           ; elf64_section_addr :=(I 0) (* ignored -- covered by element *)
-           ; elf64_section_offset :=(I 0) (* ignored -- will be replaced when file offsets are assigned *)
-           ; elf64_section_size :=(I 16 * total_n_plt_entries) (* ignored? NO, we use it in linker_script to avoid plumbing through the element record *)
-           ; elf64_section_link :=(I 0)
-           ; elf64_section_info :=(I 0)
-           ; elf64_section_align :=(I 16)
-           ; elf64_section_entsize :=(I 16)
+           ; elf64_section_addr :=(( 0:num)) (* ignored -- covered by element *)
+           ; elf64_section_offset :=(( 0:num)) (* ignored -- will be replaced when file offsets are assigned *)
+           ; elf64_section_size :=(( 16:num) * total_n_plt_entries) (* ignored? NO, we use it in linker_script to avoid plumbing through the element record *)
+           ; elf64_section_link :=(( 0:num))
+           ; elf64_section_info :=(( 0:num))
+           ; elf64_section_align :=(( 16:num))
+           ; elf64_section_entsize :=(( 16:num))
            ; elf64_section_body := byte_sequence$empty (* ignored *)
            ; elf64_section_name_as_string := ".plt"
            |>
@@ -885,17 +929,17 @@ val _ = Define `
                 match maybe_def with Nothing -> Nothing | Just sd -> Just(i, symname, sd) end) refs_via_got)))
               | get_elf64_symbol_type sd.def_syment = stt_tls
      *)
-    ;   (SOME(".got", (I 0, (got_nentries * got_entrysize))), AbiFeature(Amd64AbiFeature(abi_amd64$GOT0(got_pairs_list))))
-    ;   (SOME(".got", (I 0, (got_nentries * got_entrysize))), FileFeature(ElfSection(I 2, 
-          <| elf64_section_name :=(I 0) (* ignored *)
+    ;   (SOME(".got", (( 0:num), (got_nentries * got_entrysize))), AbiFeature(Amd64AbiFeature(abi_amd64$GOT0(got_pairs_list))))
+    ;   (SOME(".got", (( 0:num), (got_nentries * got_entrysize))), FileFeature(ElfSection(( 2:num), 
+          <| elf64_section_name :=(( 0:num)) (* ignored *)
            ; elf64_section_type := sht_progbits
            ; elf64_section_flags := (natural_lor shf_write shf_alloc)
-           ; elf64_section_addr :=(I 0) (* ignored -- covered by element *)
-           ; elf64_section_offset :=(I 0) (* ignored -- will be replaced when file offsets are assigned *)
+           ; elf64_section_addr :=(( 0:num)) (* ignored -- covered by element *)
+           ; elf64_section_offset :=(( 0:num)) (* ignored -- will be replaced when file offsets are assigned *)
            ; elf64_section_size := (got_nentries * got_entrysize) (* ignored? NO, we use it in linker_script to avoid plumbing through the element record *)
-           ; elf64_section_link :=(I 0)
-           ; elf64_section_info :=(I 0)
-           ; elf64_section_align :=(I 8)
+           ; elf64_section_link :=(( 0:num))
+           ; elf64_section_info :=(( 0:num))
+           ; elf64_section_align :=(( 8:num))
            ; elf64_section_entsize := got_entrysize
            ; elf64_section_body := byte_sequence$empty (* ignored *)
            ; elf64_section_name_as_string := ".got"
@@ -903,30 +947,30 @@ val _ = Define `
         )))
     ;   (* FIXME: I've a feeling _GLOBAL_OFFSET_TABLE_ generally doesn't mark the *start* of the GOT; 
          * it's some distance in. What about .got.plt? *)
-        (SOME(".got", (I 0, (got_nentries * got_entrysize))), SymbolDef(<|
+        (SOME(".got", (( 0:num), (got_nentries * got_entrysize))), SymbolDef(<|
               def_symname := "_GLOBAL_OFFSET_TABLE_"
-            ; def_syment :=    (<| elf64_st_name  := ((n2w : num -> 32 word)(I 0)) (* ignored *)
-                               ; elf64_st_info  := ((n2w : num -> 8 word)(I 0)) (* FIXME *)
-                               ; elf64_st_other := ((n2w : num -> 8 word)(I 0)) (* FIXME *)
-                               ; elf64_st_shndx := ((n2w : num -> 16 word)(I 1))
-                               ; elf64_st_value := ((n2w : num -> 64 word)(I 0)) (* ignored *)
+            ; def_syment :=    (<| elf64_st_name  := ((n2w : num -> 32 word)(( 0:num))) (* ignored *)
+                               ; elf64_st_info  := ((n2w : num -> 8 word)(( 0:num))) (* FIXME *)
+                               ; elf64_st_other := ((n2w : num -> 8 word)(( 0:num))) (* FIXME *)
+                               ; elf64_st_shndx := ((n2w : num -> 16 word)(( 1:num)))
+                               ; elf64_st_value := ((n2w : num -> 64 word)(( 0:num))) (* ignored *)
                                ; elf64_st_size  := ((n2w : num -> 64 word) (got_nentries * got_entrysize)) (* FIXME: start later, smaller size? zero size? *)
                                |>)
-            ; def_sym_scn :=(I 1)
-            ; def_sym_idx :=(I 1)
-            ; def_linkable_idx :=(I 0)
+            ; def_sym_scn :=(( 1:num))
+            ; def_sym_idx :=(( 1:num))
+            ; def_linkable_idx :=(( 0:num))
             |>))
-    ; (SOME(".rela.iplt", (I 0,(I 24 (* size of an Elf64_Rela *) * I n_iplt_entries))), FileFeature(ElfSection(I 3, 
-          <| elf64_section_name :=(I 0) (* ignored *)
+    ; (SOME(".rela.iplt", (( 0:num),(( 24:num) (* size of an Elf64_Rela *) * ( n_iplt_entries:num)))), FileFeature(ElfSection(( 3:num), 
+          <| elf64_section_name :=(( 0:num)) (* ignored *)
            ; elf64_section_type := sht_rela
            ; elf64_section_flags := (natural_lor shf_alloc shf_info_link)
-           ; elf64_section_addr :=(I 0) (* ignored -- covered by element *)
-           ; elf64_section_offset :=(I 0) (* ignored -- will be replaced when file offsets are assigned *)
-           ; elf64_section_size :=(I 24 (* size of an Elf64_Rela *) * I n_iplt_entries) (* ignored? NO, we use it in linker_script to avoid plumbing through the element record *)
-           ; elf64_section_link :=(I 0)
-           ; elf64_section_info :=(I  (* FIXME: want this to be the PLT section shndx *)0)
-           ; elf64_section_align :=(I 8)
-           ; elf64_section_entsize :=(I 24)
+           ; elf64_section_addr :=(( 0:num)) (* ignored -- covered by element *)
+           ; elf64_section_offset :=(( 0:num)) (* ignored -- will be replaced when file offsets are assigned *)
+           ; elf64_section_size :=(( 24:num) (* size of an Elf64_Rela *) * ( n_iplt_entries:num)) (* ignored? NO, we use it in linker_script to avoid plumbing through the element record *)
+           ; elf64_section_link :=(( 0:num))
+           ; elf64_section_info :=((  (* FIXME: want this to be the PLT section shndx *)0:num))
+           ; elf64_section_align :=(( 8:num))
+           ; elf64_section_entsize :=(( 24:num))
            ; elf64_section_body := byte_sequence$empty (* ignored *)
            ; elf64_section_name_as_string := ".rela.iplt"
            |>
@@ -935,14 +979,14 @@ val _ = Define `
     in
     <|  elements := (((FEMPTY |+ (".rela.iplt", <|
                     startpos := NONE
-               ;    length1 := (SOME (I 24 (* size of an Elf64_Rela *) * I n_iplt_entries))
+               ;    length1 := (SOME (( 24:num) (* size of an Elf64_Rela *) * ( n_iplt_entries:num)))
                ;    contents := ([])
                |>)
                ) |+ (".plt", <|
                     startpos := NONE
-               ;    length1 := (let len =(I 16 * total_n_plt_entries) in 
+               ;    length1 := (let len =(( 16:num) * total_n_plt_entries) in 
                         (*let _ = errln ("PLT length in element: " ^ (show len) ^ " bytes")
-                        in *) SOME (I 16 * total_n_plt_entries))
+                        in *) SOME (( 16:num) * total_n_plt_entries))
                ;    contents := ([])
                |>)) |+ (".got", <|
                     startpos := NONE
@@ -969,7 +1013,7 @@ val _ = Define `
     ))
     in 
     let got_entry_bytes_for = (\ img .  \ symname .  \ maybe_def .  \ plt_l .  \ maybe_plt_el .  (case maybe_def of
-        NONE => replicate(I 8) ((n2w : num -> 8 word(I 0)))
+        NONE => replicate(( 8:num)) ((n2w : num -> 8 word(( 0:num))))
         | SOME sd =>
             (* What should the GOT slot be initialized to point to? 
              * If there's a PLT entry, we should point to that + 6,
@@ -983,7 +1027,7 @@ val _ = Define `
                         NONE => failwith "GOT slot with PLT entry but no PLT element"
                        | SOME plt_el =>
                     (case plt_el.startpos of
-                        SOME addr => natural_to_le_byte_list_padded_to(I 8) ((addr + ((I plt_slot_idx) *I 16)) +I 6)
+                        SOME addr => natural_to_le_byte_list_padded_to(( 8:num)) ((addr + ((( plt_slot_idx:num)) *( 16:num))) +( 6:num))
                         | NONE => failwith ("no PLT!")
                     )
                     )
@@ -1003,11 +1047,17 @@ val _ = Define `
                                         (* FIXME: the right way to do this is to mark the segments in the image 
                                          * *first*. They can't have ranges, because they span many elements,
                                          * but they can have vaddr ranges as arguments. *)
-                                        let offs = (i2n_signed(I 64) (( 0 : int)-( 8 : int)))
+                                        let offs = (i2n_signed(( 64 : num)) (( 0 : int)-( 8 : int)))
                                         in
+                                        (*let _ = errln ("GOT slot for TLS symbol `" ^ symname ^ 
+                                            "' created containing offset 0x" ^ (hex_string_of_natural offs))
+                                        in*)
                                         natural_to_le_byte_list offs
-                                    else
-                                    natural_to_le_byte_list_padded_to(I 8) x
+                                    else (*let _ = errln ("GOT slot for symbol `" ^ symname ^ 
+                                        "' created pointing to address 0x" ^ (hex_string_of_natural x) ^ 
+                                        " (offset 0x" ^ (hex_string_of_natural def_start) ^ " in element " ^ def_el_name ^ ")")
+                                    in*)
+                                    natural_to_le_byte_list_padded_to(( 8:num)) x
                             )
                         | _ => failwith ( STRCAT"multiple matching definitions for GOT entry named " symname)
                     )
@@ -1037,7 +1087,7 @@ val _ = Define `
         in
         let new_got_tag = (AbiFeature(Amd64AbiFeature(abi_amd64$GOT0(l))))
         in
-        let got_range = (SOME(".got", (I 0,(I 8 * length l))))
+        let got_range = (SOME(".got", (( 0:num),(( 8:num) * length l))))
         in
         let new_by_tag = (((img.by_tag : (( any_abi_feature range_tag) # ( element_range option)) set) DIFF
             {(AbiFeature(Amd64AbiFeature(abi_amd64$GOT0(l))), got_range)})
@@ -1117,12 +1167,12 @@ val _ = Define `
                             let (r_offset : num) (* GOT *slot* address! *) =                                
  ((case got_el.startpos of
                                     NONE => failwith "internal error: GOT has no assigned address"
-                                    | SOME addr => addr + (I 8 * index_in_got)
+                                    | SOME addr => addr + (( 8:num) * index_in_got)
                                 ))
                             in
                             let (r_info : num) = r_x86_64_irelative in
-                            ((natural_to_le_byte_list_padded_to(I 8) r_offset ++
-                            natural_to_le_byte_list_padded_to(I 8) r_info) ++
+                            ((natural_to_le_byte_list_padded_to(( 8:num)) r_offset ++
+                            natural_to_le_byte_list_padded_to(( 8:num)) r_info) ++
                             (* r_addend -- address of the ifunc definition.
                              * NOTE that this is NOT the same as the GOT entry bytes.
                              * It's the actual address of the ifunc, whereas
@@ -1140,7 +1190,7 @@ val _ = Define `
                                             if ~ ((get_elf64_symbol_type sd.def_syment) = stt_gnu_ifunc)
                                             then failwith "impossible: found ifunc definition that is not an ifunc"
                                             else
-                                                natural_to_le_byte_list_padded_to(I 8) x
+                                                natural_to_le_byte_list_padded_to(( 8:num)) x
                                     )
                                 | _ => failwith "impossible: more than one ifunc definition"
                              )
@@ -1153,7 +1203,7 @@ val _ = Define `
                 let new_content_bytelists =                    
  (mapi (\ i .  \ rela_widget .  
                     (case rela_widget of
-                        SOME f => f (I i)
+                        SOME f => f (( i:num))
                         | NONE => []
                     )
                     ) rela_iplt_widgets)
@@ -1213,13 +1263,13 @@ val _ = Define `
                     (case rr.maybe_def_bound_to of
                         SOME (_, SOME(d)) => 
                             (case lem_list$find_index (\ (symname, maybe_def) .  SOME(d) = maybe_def) l of
-                                SOME idx => I idx
+                                SOME idx => ( idx:num)
                              |  NONE => failwith ( STRCAT"no GOT slot for reloc against ^`"  (STRCAT rr.ref.ref_symname "'"))
                             )
                         | SOME(_, NONE) => (* HACK: look for the weak symname. Really want more (ref-based) labelling. *)
                             (case lem_list$find_index (\p .  
   (case (p ) of ( (symname, _) ) => symname = rr.ref.ref_symname )) l of
-                                SOME idx => I idx
+                                SOME idx => ( idx:num)
                              |  NONE => failwith ( STRCAT"no GOT slot for reloc against undefined symbol ^`"  (STRCAT rr.ref.ref_symname "'"))
                             )
                         | _ => failwith "GOT: unbound def"
@@ -1251,7 +1301,7 @@ val _ = Define `
                 | [(AbiFeature(Amd64AbiFeature(abi_amd64$GOT0(l))), SOME(got_el_name, (got_start_off, got_len)))] => 
                     (* Find the slot corresponding to rr, if we have one. *)
                     let got_addr = ((case got_el.startpos of SOME addr => addr | NONE => failwith "GOT has no addr at reloc time" ))
-                    in(I 8 * amd64_got_slot_idx img rr) + got_addr
+                    in(( 8:num) * amd64_got_slot_idx img rr) + got_addr
                 | _ => failwith "got bad GOT"
             )
     )))`;
@@ -1301,11 +1351,19 @@ val _ = Define `
                                     in
                                     let (addr, content) = (fn got_addr plt_addr)
                                     in
+                                    (*let _ = errln ("Calculated PLT slot for `" ^ d.def_symname ^ "', from PLT addr " ^ (hex_string_of_natural plt_addr)
+                                        ^ " and GOT addr " ^ (hex_string_of_natural got_addr) ^ ", as " ^ (hex_string_of_natural addr))
+                                    in*)
                                     addr
-                                | [] =>
+                                | [] => (* failwith ("internal error: no PLT entry for reloc against `" ^ rr.ref.ref_symname ^ "'") *)
+                                    (* If we got no PLT slot, we assume it's because the PLT entry was optimised out. 
+                                     * So we just return the address of the symbol itself. *)
+                                    (*let _ = errln ("No PLT entry for reloc against `" ^ rr.ref.ref_symname ^ 
+                                        "', which we assume was optimised to avoid the GOT")
+                                    in*)
                                     (case memory_image_orderings$find_defs_matching 
   instance_Basic_classes_Ord_Abis_any_abi_feature_dict instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict d img of
-                                        [] =>I 0 (* HMM -- should be an error? *)
+                                        [] =>( 0:num) (* HMM -- should be an error? *)
                                         | [(SOME(el_name, (start_off, len)), matching_d)] =>
                                             (case element_and_offset_to_address (el_name, start_off) img of
                                                 SOME a => a
@@ -1315,7 +1373,7 @@ val _ = Define `
                                     )
                                 | _ =>  failwith ( STRCAT"internal error: multiple PLT entries for reloc against ^`"  (STRCAT rr.ref.ref_symname "'"))
                             )
-                        | SOME(_, NONE) =>I  (* weak, so 0 *)0
+                        | SOME(_, NONE) =>(  (* weak, so 0 *)0:num)
                         | _ => failwith "PLT: unbound def"
                     )
                 | _ => failwith "got bad PLT"
@@ -1328,39 +1386,39 @@ val _ = Define `
 val _ = Define `
  (amd64_reloc r=    
   ((case (string_of_amd64_relocation_type r) of
-      "R_X86_64_NONE" =>            (F, (\ img .  (\ site_addr .  (\ rr .  (I 0, (\ s .  \ a .  \ e .  e))))))
-    | "R_X86_64_64" =>              (T,  (\ img .  (\ site_addr .  (\ rr .  (I 8, (\ s .  \ a .  \ e .  i2n (n2i s + a)))))))
-    | "R_X86_64_PC32" =>            (F, (\ img .  (\ site_addr .  (\ rr .  (I 4, (\ s .  \ a .  \ e .  i2n_signed(I 32) (((n2i s) + a) - (n2i site_addr))))))))
-    | "R_X86_64_GOT32" =>           (F, (\ img .  (\ site_addr .  (\ rr .  (I 4, (\ s .  \ a .  \ e .  i2n_signed(I 32) ((n2i (amd64_got_slot_idx img rr)) + a)))))))
-    | "R_X86_64_PLT32" =>           (F, (\ img .  (\ site_addr .  (\ rr .  (I 4, (\ s .  \ a .  \ e .  i2n_signed(I 32) (((n2i (amd64_plt_slot_addr img rr s)) + a) - (n2i site_addr))) )))) )
+      "R_X86_64_NONE" =>            (F, (\ img .  (\ site_addr .  (\ rr .  (( 0:num), (\ s .  \ a .  \ e .  e))))))
+    | "R_X86_64_64" =>              (T,  (\ img .  (\ site_addr .  (\ rr .  (( 8:num), (\ s .  \ a .  \ e .  i2n (n2i s + a)))))))
+    | "R_X86_64_PC32" =>            (F, (\ img .  (\ site_addr .  (\ rr .  (( 4:num), (\ s .  \ a .  \ e .  i2n_signed(( 32 : num)) (((n2i s) + a) - (n2i site_addr))))))))
+    | "R_X86_64_GOT32" =>           (F, (\ img .  (\ site_addr .  (\ rr .  (( 4:num), (\ s .  \ a .  \ e .  i2n_signed(( 32 : num)) ((n2i (amd64_got_slot_idx img rr)) + a)))))))
+    | "R_X86_64_PLT32" =>           (F, (\ img .  (\ site_addr .  (\ rr .  (( 4:num), (\ s .  \ a .  \ e .  i2n_signed(( 32 : num)) (((n2i (amd64_plt_slot_addr img rr s)) + a) - (n2i site_addr))) )))) )
     | "R_X86_64_COPY" =>            (F, (\ img .  (\ site_addr .  (\ rr .  (size_of_copy_reloc img rr, (\ s .  \ a .  \ e .  e) (* FIXME *))))))
     | "R_X86_64_GLOB_DAT" =>        (F, (\ img .  (\ site_addr .  (\ rr .  (size_of_def rr, (\ s .  \ a .  \ e .  e) (* FIXME *))))))
-    | "R_X86_64_JUMP_SLOT" =>       (F, (\ img .  (\ site_addr .  (\ rr .  (I 4 (* CHECK *), (\ s .  \ a .  \ e .  e) (* FIXME *))))))
-    | "R_X86_64_RELATIVE" =>        (T,  (\ img .  (\ site_addr .  (\ rr .  (I 8, (\ s .  \ a .  \ e .  e) (* FIXME *))))))
-    | "R_X86_64_GOTPCREL" =>        (F, (\ img .  (\ site_addr .  (\ rr .  (I 4, (\ s .  \ a .  \ e .  i2n_signed(I 32) (((n2i (amd64_got_slot_addr img rr)) + a) - (n2i site_addr))) )))) )
-    | "R_X86_64_32" =>              (T,  (\ img .  (\ site_addr .  (\ rr .  (I 4, (\ s .  \ a .  \ e .  i2n (n2i s + a)))))))
-    | "R_X86_64_32S" =>             (T,  (\ img .  (\ site_addr .  (\ rr .  (I 4, (\ s .  \ a .  \ e .  i2n_signed(I 32) ((n2i s) + a)))))))
-    | "R_X86_64_16" =>              (T,  (\ img .  (\ site_addr .  (\ rr .  (I 2, (\ s .  \ a .  \ e .  e) (* FIXME *))))))
-    | "R_X86_64_PC16" =>            (F, (\ img .  (\ site_addr .  (\ rr .  (I 2, (\ s .  \ a .  \ e .  e) (* FIXME *))))))
-    | "R_X86_64_8" =>               (T,  (\ img .  (\ site_addr .  (\ rr .  (I 1, (\ s .  \ a .  \ e .  e) (* FIXME *))))))
-    | "R_X86_64_PC8" =>             (F, (\ img .  (\ site_addr .  (\ rr .  (I 1, (\ s .  \ a .  \ e .  e) (* FIXME *))))))
-    | "R_X86_64_DTPMOD64" =>        (F, (\ img .  (\ site_addr .  (\ rr .  (I 8 (* CHECK *), (\ s .  \ a .  \ e .  e) (* FIXME *))))))
-    | "R_X86_64_DTPOFF64" =>        (F, (\ img .  (\ site_addr .  (\ rr .  (I 8 (* CHECK *), (\ s .  \ a .  \ e .  e) (* FIXME *))))))
-    | "R_X86_64_TPOFF64" =>         (F, (\ img .  (\ site_addr .  (\ rr .  (I 8 (* CHECK *), (\ s .  \ a .  \ e .  i2n_signed(I 64) (( 0 : int)-( 8 : int)))  (* FIXME *))))))
-    | "R_X86_64_TLSGD" =>           (F, (\ img .  (\ site_addr .  (\ rr .  (I 8 (* CHECK *), (\ s .  \ a .  \ e .  e) (* FIXME *))))))
-    | "R_X86_64_TLSLD" =>           (F, (\ img .  (\ site_addr .  (\ rr .  (I 8 (* CHECK *), (\ s .  \ a .  \ e .  e) (* FIXME *))))))
-    | "R_X86_64_DTPOFF32" =>        (F, (\ img .  (\ site_addr .  (\ rr .  (I 4 (* CHECK *), (\ s .  \ a .  \ e .  e) (* FIXME *))))))
-    | "R_X86_64_GOTTPOFF" =>        (F, (\ img .  (\ site_addr .  (\ rr .  (I 4, (\ s .  \ a .  \ e .  i2n_signed(I 32) (((n2i (amd64_got_slot_addr img rr)) + a) - (n2i site_addr))))))))
-    | "R_X86_64_TPOFF32" =>         (F, (\ img .  (\ site_addr .  (\ rr .  (I 4 (* CHECK *), (\ s .  \ a .  \ e .  e) (* FIXME *))))))
-    | "R_X86_64_PC64" =>            (F, (\ img .  (\ site_addr .  (\ rr .  (I 8, (\ s .  \ a .  \ e .  e) (* FIXME *))))))
-    | "R_X86_64_GOTOFF64" =>        (F, (\ img .  (\ site_addr .  (\ rr .  (I 8, (\ s .  \ a .  \ e .  e) (* FIXME *))))))
-    | "R_X86_64_GOTPC32" =>         (F, (\ img .  (\ site_addr .  (\ rr .  (I 4, (\ s .  \ a .  \ e .  e) (* FIXME *))))))
-    | "R_X86_64_SIZE32" =>          (F, (\ img .  (\ site_addr .  (\ rr .  (I 4, (\ s .  \ a .  \ e .  e) (* FIXME *))))))
-    | "R_X86_64_SIZE64" =>          (F, (\ img .  (\ site_addr .  (\ rr .  (I 8, (\ s .  \ a .  \ e .  e) (* FIXME *))))))
-    | "R_X86_64_GOTPC32_TLSDESC" => (F, (\ img .  (\ site_addr .  (\ rr .  (I 4 (* CHECK *), (\ s .  \ a .  \ e .  e) (* FIXME *))))))
-    | "R_X86_64_TLSDESC_CALL" =>    (F, (\ img .  (\ site_addr .  (\ rr .  (I 4 (* CHECK *), (\ s .  \ a .  \ e .  e) (* FIXME *))))))
-    | "R_X86_64_TLSDESC" =>         (F, (\ img .  (\ site_addr .  (\ rr .  (I 8 (* CHECK *), (\ s .  \ a .  \ e .  e) (* FIXME *))))))
-    | "R_X86_64_IRELATIVE" =>       (T,  (\ img .  (\ site_addr .  (\ rr .  (I 8 (* CHECK *), (\ s .  \ a .  \ e .  e) (* FIXME *))))))
+    | "R_X86_64_JUMP_SLOT" =>       (F, (\ img .  (\ site_addr .  (\ rr .  (( 4:num) (* CHECK *), (\ s .  \ a .  \ e .  e) (* FIXME *))))))
+    | "R_X86_64_RELATIVE" =>        (T,  (\ img .  (\ site_addr .  (\ rr .  (( 8:num), (\ s .  \ a .  \ e .  e) (* FIXME *))))))
+    | "R_X86_64_GOTPCREL" =>        (F, (\ img .  (\ site_addr .  (\ rr .  (( 4:num), (\ s .  \ a .  \ e .  i2n_signed(( 32 : num)) (((n2i (amd64_got_slot_addr img rr)) + a) - (n2i site_addr))) )))) )
+    | "R_X86_64_32" =>              (T,  (\ img .  (\ site_addr .  (\ rr .  (( 4:num), (\ s .  \ a .  \ e .  i2n (n2i s + a)))))))
+    | "R_X86_64_32S" =>             (T,  (\ img .  (\ site_addr .  (\ rr .  (( 4:num), (\ s .  \ a .  \ e .  i2n_signed(( 32 : num)) ((n2i s) + a)))))))
+    | "R_X86_64_16" =>              (T,  (\ img .  (\ site_addr .  (\ rr .  (( 2:num), (\ s .  \ a .  \ e .  e) (* FIXME *))))))
+    | "R_X86_64_PC16" =>            (F, (\ img .  (\ site_addr .  (\ rr .  (( 2:num), (\ s .  \ a .  \ e .  e) (* FIXME *))))))
+    | "R_X86_64_8" =>               (T,  (\ img .  (\ site_addr .  (\ rr .  (( 1:num), (\ s .  \ a .  \ e .  e) (* FIXME *))))))
+    | "R_X86_64_PC8" =>             (F, (\ img .  (\ site_addr .  (\ rr .  (( 1:num), (\ s .  \ a .  \ e .  e) (* FIXME *))))))
+    | "R_X86_64_DTPMOD64" =>        (F, (\ img .  (\ site_addr .  (\ rr .  (( 8:num) (* CHECK *), (\ s .  \ a .  \ e .  e) (* FIXME *))))))
+    | "R_X86_64_DTPOFF64" =>        (F, (\ img .  (\ site_addr .  (\ rr .  (( 8:num) (* CHECK *), (\ s .  \ a .  \ e .  e) (* FIXME *))))))
+    | "R_X86_64_TPOFF64" =>         (F, (\ img .  (\ site_addr .  (\ rr .  (( 8:num) (* CHECK *), (\ s .  \ a .  \ e .  i2n_signed(( 64 : num)) (( 0 : int)-( 8 : int)))  (* FIXME *))))))
+    | "R_X86_64_TLSGD" =>           (F, (\ img .  (\ site_addr .  (\ rr .  (( 8:num) (* CHECK *), (\ s .  \ a .  \ e .  e) (* FIXME *))))))
+    | "R_X86_64_TLSLD" =>           (F, (\ img .  (\ site_addr .  (\ rr .  (( 8:num) (* CHECK *), (\ s .  \ a .  \ e .  e) (* FIXME *))))))
+    | "R_X86_64_DTPOFF32" =>        (F, (\ img .  (\ site_addr .  (\ rr .  (( 4:num) (* CHECK *), (\ s .  \ a .  \ e .  e) (* FIXME *))))))
+    | "R_X86_64_GOTTPOFF" =>        (F, (\ img .  (\ site_addr .  (\ rr .  (( 4:num), (\ s .  \ a .  \ e .  i2n_signed(( 32 : num)) (((n2i (amd64_got_slot_addr img rr)) + a) - (n2i site_addr))))))))
+    | "R_X86_64_TPOFF32" =>         (F, (\ img .  (\ site_addr .  (\ rr .  (( 4:num) (* CHECK *), (\ s .  \ a .  \ e .  e) (* FIXME *))))))
+    | "R_X86_64_PC64" =>            (F, (\ img .  (\ site_addr .  (\ rr .  (( 8:num), (\ s .  \ a .  \ e .  e) (* FIXME *))))))
+    | "R_X86_64_GOTOFF64" =>        (F, (\ img .  (\ site_addr .  (\ rr .  (( 8:num), (\ s .  \ a .  \ e .  e) (* FIXME *))))))
+    | "R_X86_64_GOTPC32" =>         (F, (\ img .  (\ site_addr .  (\ rr .  (( 4:num), (\ s .  \ a .  \ e .  e) (* FIXME *))))))
+    | "R_X86_64_SIZE32" =>          (F, (\ img .  (\ site_addr .  (\ rr .  (( 4:num), (\ s .  \ a .  \ e .  e) (* FIXME *))))))
+    | "R_X86_64_SIZE64" =>          (F, (\ img .  (\ site_addr .  (\ rr .  (( 8:num), (\ s .  \ a .  \ e .  e) (* FIXME *))))))
+    | "R_X86_64_GOTPC32_TLSDESC" => (F, (\ img .  (\ site_addr .  (\ rr .  (( 4:num) (* CHECK *), (\ s .  \ a .  \ e .  e) (* FIXME *))))))
+    | "R_X86_64_TLSDESC_CALL" =>    (F, (\ img .  (\ site_addr .  (\ rr .  (( 4:num) (* CHECK *), (\ s .  \ a .  \ e .  e) (* FIXME *))))))
+    | "R_X86_64_TLSDESC" =>         (F, (\ img .  (\ site_addr .  (\ rr .  (( 8:num) (* CHECK *), (\ s .  \ a .  \ e .  e) (* FIXME *))))))
+    | "R_X86_64_IRELATIVE" =>       (T,  (\ img .  (\ site_addr .  (\ rr .  (( 8:num) (* CHECK *), (\ s .  \ a .  \ e .  e) (* FIXME *))))))
     | _ => failwith "unrecognised relocation"
 )))`;
 
@@ -1369,17 +1427,17 @@ val _ = Define `
 val _ = Define `
  (sysv_amd64_std_abi=   
   (<| is_valid_elf_header := header_is_amd64
-    ; make_elf_header := (make_elf64_header elf_data_2lsb elf_osabi_none(I 0) elf_ma_x86_64)
+    ; make_elf_header := (make_elf64_header elf_data_2lsb elf_osabi_none(( 0:num)) elf_ma_x86_64)
     ; reloc := amd64_reloc
     ; section_is_special := section_is_special0
     ; section_is_large := (\ s .  (\ f .  flag_is_set shf_x86_64_large s.elf64_section_flags))
-    ; maxpagesize :=(I 65536)
-    ; minpagesize :=(I 4096)
-    ; commonpagesize :=(I 4096)
+    ; maxpagesize :=(( 65536:num))
+    ; minpagesize :=(( 4096:num))
+    ; commonpagesize :=(( 4096:num))
       (* XXX: DPM, changed from explicit reference to null_abi field due to problems in HOL4. *)
     ; symbol_is_generated_by_linker := (\ symname .  symname = "_GLOBAL_OFFSET_TABLE_")
     ; make_phdrs := make_default_phdrs
-    ; max_phnum :=(I 2) (* incremented by extensions *)
+    ; max_phnum :=(( 2:num)) (* incremented by extensions *)
     ; guess_entry_point := 
   (find_start_symbol_address
      instance_Basic_classes_Ord_Abis_any_abi_feature_dict
@@ -1396,17 +1454,17 @@ val _ = Define `
 val _ = Define `
  (sysv_aarch64_le_std_abi=   
   (<| is_valid_elf_header := header_is_aarch64_le
-    ; make_elf_header := (make_elf64_header elf_data_2lsb elf_osabi_none(I 0) elf_ma_aarch64)
+    ; make_elf_header := (make_elf64_header elf_data_2lsb elf_osabi_none(( 0:num)) elf_ma_aarch64)
     ; reloc := aarch64_le_reloc
     ; section_is_special := section_is_special0
     ; section_is_large := (\e .  
   (case (e ) of ( _ ) => (\a .  (case (a ) of ( _ ) => F )) ))
-    ; maxpagesize :=((I 2 *I 256) *I 4096) (* 2MB; bit of a guess, based on gdb and prelink code *)
-    ; minpagesize :=(I 1024) (* bit of a guess again *)
-    ; commonpagesize :=(I 4096)
+    ; maxpagesize :=((( 2:num) *( 256:num)) *( 4096:num)) (* 2MB; bit of a guess, based on gdb and prelink code *)
+    ; minpagesize :=(( 1024:num)) (* bit of a guess again *)
+    ; commonpagesize :=(( 4096:num))
     ; symbol_is_generated_by_linker := (\ symname .  symname = "_GLOBAL_OFFSET_TABLE_")
     ; make_phdrs := make_default_phdrs
-    ; max_phnum :=(I 2) (* incremented by extensions *)
+    ; max_phnum :=(( 2:num)) (* incremented by extensions *)
     ; guess_entry_point := 
   (find_start_symbol_address
      instance_Basic_classes_Ord_Abis_any_abi_feature_dict

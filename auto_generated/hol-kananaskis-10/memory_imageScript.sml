@@ -376,7 +376,44 @@ val _ = type_abbrev( "null_abi_feature" , ``: unit``);
  * do bitfield relocations (think ARM). *)
 val _ = type_abbrev( "reloc_calculate_fn"    , ``: num -> int -> num -> num``); (* symaddr -> addend -> existing -> relocated *)
 
-val _ = type_abbrev((*  'abifeature *) "reloc_apply_fn" , ``:'abifeature annotated_memory_image -> num -> symbol_reference_and_reloc_site -> (num # reloc_calculate_fn)``);
+val _ = type_abbrev((*  'abifeature *) "reloc_apply_fn" , ``: 'abifeature 
+                                (* elf memory image: the context in which the relocation is being applied *)
+                                annotated_memory_image ->
+                               (* the site address *)
+                                num ->
+                                (* Typically there are two symbol table entries involved in a relocation.
+                                 * One is the reference, and is usually undefined.
+                                 * The other is the definition, and is defined (else absent, when we use 0).
+                                 * However, sometimes the reference is itself a defined symbol.
+                                 * Almost always, if so, *that* symbol *is* "the definition".
+                                 * However, copy relocs are an exception.
+                                 * 
+                                 * In the case of copy relocations being fixed up by the dynamic
+                                 * linker, the dynamic linker must figure out which definition to
+                                 * copy from. This can't be as simple as "the first definition in
+                                 * link order", because *our* copy of that symbol is a definition
+                                 * (typically in bss). It could be as simple as "the first *after us*
+                                 * in link order". FIXME: find the glibc code that does this.
+                                 * 
+                                 * Can we dig this stuff out of the memory image? If we pass the address
+                                 * being relocated, we can find the tags. But I don't want to pass
+                                 * the symbol address until the very end. It seems better to pass the symbol
+                                 * name, since that's the key that the dynamic linker uses to look for
+                                 * other definitions.
+                                 * 
+                                 * Do we want to pass a whole symbol_reference? This has not only the
+                                 * symbol name but also syment, scn and idx. The syment is usually UND, 
+                                 * but *could* be defined (and is for copy relocs). The scn and idx are
+                                 * not relevant, but it seems cleaner to pass the whole thing anyway.
+                                 *)
+                                symbol_reference_and_reloc_site -> 
+                                (* Should we pass a symbol_definition too? Implicitly, we pass part of it
+                                 * by passing the symaddr argument (below). I'd prefer not to depend on
+                                 * others -- relocation calculations should look like "mostly address 
+                                 * arithmetic", i.e. only the weird ones do something else. *)
+                                 (* How wide, in bytes, is the relocated field? this may depend on img 
+                                 * and on the wider image (copy relocs), so it's returned *by* the reloc function. *)
+                                (num (* width *) # reloc_calculate_fn)``);
 
 (* Some kinds of relocation necessarily give us back a R_*_RELATIVE reloc.
  * We don't record this explicitly. Instead, the "bool" is a flag recording whether
@@ -394,7 +431,7 @@ val _ = Define `
 
 (*val noop_reloc_apply : forall 'abifeature. reloc_apply_fn 'abifeature*)
 val _ = Define `
- (noop_reloc_apply img site_addr ref=  (I 0, noop_reloc_calculate))`;
+ (noop_reloc_apply img site_addr ref=  (( 0:num), noop_reloc_calculate))`;
 
 
 (*val noop_reloc : forall 'abifeature. natural -> (bool (* result is absolute addr *) * reloc_apply_fn 'abifeature)*)
@@ -433,7 +470,7 @@ val _ = Define `
  (align_up_to align addr=    
   (let quot1 = (addr DIV align)
     in
-    if (quot1 * align) = addr then addr else (quot1 +I 1) * align))`;
+    if (quot1 * align) = addr then addr else (quot1 +( 1:num)) * align))`;
 
 
 (*val round_down_to : natural -> natural -> natural*)
@@ -446,7 +483,7 @@ val _ = Define `
 
 (*val uint32_max : natural*)
 val _ = Define `
- (uint32_max=  ((I 2 **I 32) - I 1))`;
+ (uint32_max=  ((( 2:num) **( 32 : num)) -( 1:num)))`;
 
 
 (*val uint64_max : natural*)
@@ -459,7 +496,7 @@ val _ = Define `
      * i.e.   2**64 - 2**32 - 2**32 + 1
      * So
      * 2**64 - 1 =  uint32_max * uint32_max  + 2**32 + 2**32 - 2
-     *)uint32_max * uint32_max) - I 2) + (I 2**I 33)))`;
+     *)uint32_max * uint32_max) -( 2:num)) + (( 2:num)**( 33 : num))))`;
 
     (* 18446744073709551615 *) (* i.e. 0x ffff ffff ffff ffff *)
     (* HMM. This still overflows int64 *)
@@ -467,13 +504,13 @@ val _ = Define `
 (* The 2's complement of a value, at 64-bit width *)
 (*val compl64 : natural -> natural*)
 val _ = Define `
- (compl64 v= (I 1 + (natural_lxor v uint64_max)))`;
+ (compl64 v= (( 1:num) + (natural_lxor v uint64_max)))`;
 
 
 (*val gcd : natural -> natural -> natural*)
  val gcd_defn = Hol_defn "gcd" `
  (gcd a b=    
-  (if b =I 0 then a else gcd b (a MOD b)))`;
+  (if b =( 0:num) then a else gcd b (a MOD b)))`;
 
 val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn gcd_defn;
 
@@ -533,7 +570,7 @@ val _ = Define `
  (nat_range base len=    
  ((case len of 
         0 => []
-    |   _ => base :: (nat_range (base +I 1) (len - I 1))
+    |   _ => base :: (nat_range (base +( 1:num)) (len -( 1:num)))
     )))`;
 
 val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn nat_range_defn;
@@ -545,7 +582,7 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
  (expand_sorted_ranges sorted_ranges min_length accum=    
  ((case sorted_ranges of
         [] => accum ++ (
-            let pad_length = (MAX(I 0) (min_length - (missing_pervasives$length accum)))
+            let pad_length = (MAX(( 0:num)) (min_length - (missing_pervasives$length accum)))
             in
             (* let _ = Missing_pervasives.errln (
                 "padding ranges cares list with " ^ (show pad_length) ^ 
@@ -615,15 +652,15 @@ val _ = type_abbrev( "pad_fn" , ``: num -> word8 list``);
  (concretise_byte_pattern rev_acc acc_pad bs pad=    
   ((case bs of
         [] => 
-            let padding_bytes = (if acc_pad >I 0 then pad acc_pad else [])
+            let padding_bytes = (if acc_pad >( 0:num) then pad acc_pad else [])
             in REVERSE ((REVERSE padding_bytes) ++ rev_acc)
         | SOME(b) :: more => 
             (* flush accumulated padding *)
-            let padding_bytes = (if acc_pad >I 0 then pad acc_pad else [])
+            let padding_bytes = (if acc_pad >( 0:num) then pad acc_pad else [])
             in
-            concretise_byte_pattern (b :: ((REVERSE padding_bytes) ++ rev_acc))(I 0) more pad
+            concretise_byte_pattern (b :: ((REVERSE padding_bytes) ++ rev_acc))(( 0:num)) more pad
         | NONE :: more => 
-            concretise_byte_pattern rev_acc (acc_pad+I 1) more pad
+            concretise_byte_pattern rev_acc (acc_pad+( 1:num)) more pad
     )))`;
 
 val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn concretise_byte_pattern_defn;
@@ -657,7 +694,7 @@ val _ = Define `
  (append_to_byte_pattern_at_offset offset pat1 pat2=    
  (let pad_length = (offset - missing_pervasives$length pat1)
     in
-    if pad_length <I 0 then failwith "can't append at offset already used"
+    if pad_length <( 0:num) then failwith "can't append at offset already used"
     else (pat1 ++ (REPLICATE ( pad_length) NONE)) ++ pat2))`;
 
 
@@ -689,8 +726,8 @@ val _ = Define `
                        in *)
                        accum_pattern_possible_starts_in_one_byte_sequence 
                            pattern pattern_len 
-                           more_bytes (seq_len - I 1) 
-                           (offset +I 1) 
+                           more_bytes (seq_len -( 1 : num)) 
+                           (offset +( 1:num)) 
                            (if matched_here then offset :: accum else accum)
             )
     )))`;
@@ -761,6 +798,12 @@ val _ = Define `
      * What about zero-length elements?
      * Break ties on the bigger size. *)let (maybe_highest_le :  (num # string # element)option)
      = (FOLDL (\ maybe_current_max_le .  (\ (el_name, el_rec) . 
+        (*let _ = errln ("Saw element named `" ^ el_name ^ " with startpos " ^ (
+            (match el_rec.startpos with Just addr -> ("0x" ^ (hex_string_of_natural addr)) | Nothing -> "(none)" end)
+            ^ " and length " ^
+            (match el_rec.length with Just len -> ("0x" ^ (hex_string_of_natural len)) | Nothing -> "(none)" end)
+            ))
+        in*)
         (case (maybe_current_max_le, el_rec.startpos) of
               (NONE,                                    NONE) => NONE
             | (NONE,                                    SOME this_element_pos) => if this_element_pos <= query_addr 
@@ -770,7 +813,7 @@ val _ = Define `
             | (SOME (cur_max_le, cur_el_name, cur_el_rec), SOME this_element_pos) => if (this_element_pos <= query_addr) 
                                                                                         /\ ((this_element_pos > cur_max_le) 
                                                                                          \/ ((this_element_pos = cur_max_le)
-                                                                                             /\ (cur_el_rec.length1 = SOME(I 0))))
+                                                                                             /\ (cur_el_rec.length1 = SOME(( 0:num)))))
                                                                                         then SOME (this_element_pos, el_name, el_rec) 
                                                                                         else maybe_current_max_le
         )
@@ -809,15 +852,15 @@ val _ = Define `
  (null_symbol_reference=  (<|
     ref_symname := ""
     ; ref_syment := elf64_null_symbol_table_entry
-    ; ref_sym_scn :=(I 0)
-    ; ref_sym_idx :=(I 0)
+    ; ref_sym_scn :=(( 0:num))
+    ; ref_sym_idx :=(( 0:num))
 |>))`;
 
 
 val _ = Define `
  (null_elf_relocation_a=  
- (<| elf64_ra_offset := ((n2w : num -> 64 word)(I 0))  
-   ; elf64_ra_info   := ((n2w : num -> 64 word)(I 0)) 
+ (<| elf64_ra_offset := ((n2w : num -> 64 word)(( 0:num)))  
+   ; elf64_ra_info   := ((n2w : num -> 64 word)(( 0:num))) 
    ; elf64_ra_addend := ((i2w (( 0 : int))))
    |>))`;
 
@@ -828,9 +871,9 @@ val _ = Define `
       ref := null_symbol_reference
     ; maybe_reloc :=        
  (SOME   <| ref_relent := null_elf_relocation_a
-                ; ref_rel_scn :=(I 0)
-                ; ref_rel_idx :=(I 0)
-                ; ref_src_scn :=(I 0)
+                ; ref_rel_scn :=(( 0:num))
+                ; ref_rel_idx :=(( 0:num))
+                ; ref_src_scn :=(( 0:num))
                 |>)
     ; maybe_def_bound_to := NONE
     |>))`;
@@ -840,9 +883,9 @@ val _ = Define `
  (null_symbol_definition=  (<|
     def_symname := ""
     ; def_syment := elf64_null_symbol_table_entry
-    ; def_sym_scn :=(I 0)
-    ; def_sym_idx :=(I 0)
-    ; def_linkable_idx :=(I 0)
+    ; def_sym_scn :=(( 0:num))
+    ; def_sym_idx :=(( 0:num))
+    ; def_linkable_idx :=(( 0:num))
 |>))`;
 
     
@@ -874,18 +917,18 @@ val _ = Define `
 (  
     (* Read n bytes from the contents *)let maybe_bytes = (take width (drop offset element.contents))
     in
-    let bytes = (MAP (\ mb .  (case mb of NONE => (n2w : num -> 8 word(I 0)) | SOME mb => mb )) maybe_bytes)
+    let bytes = (MAP (\ mb .  (case mb of NONE => (n2w : num -> 8 word(( 0:num))) | SOME mb => mb )) maybe_bytes)
     in
     (* FIXME: do we want little- or big-endian? *)
     FOLDL (\ acc .  \ next_byte .         
-(acc *I 256) + (w2n next_byte)
-    ) (I 0 : num) bytes))`;
+(acc *( 256:num)) + (w2n next_byte)
+    ) (( 0:num) : num) bytes))`;
 
 
 (*val natural_to_le_byte_list : natural -> list byte*)
  val natural_to_le_byte_list_defn = Hol_defn "natural_to_le_byte_list" `
  (natural_to_le_byte_list n=    
-  (((n2w : num -> 8 word (n MOD I 256))) :: (let d = (n DIV I 256) in if d =I 0 then [] else natural_to_le_byte_list (n DIV I 256))))`;
+  (((n2w : num -> 8 word (n MOD( 256:num)))) :: (let d = (n DIV( 256:num)) in if d =( 0:num) then [] else natural_to_le_byte_list (n DIV( 256:num)))))`;
 
 val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn natural_to_le_byte_list_defn;
 
@@ -894,7 +937,7 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
  (natural_to_le_byte_list_padded_to width n=    
   (let bytes = (natural_to_le_byte_list n)
     in 
-    bytes ++ (replicate (width - length bytes) ((n2w : num -> 8 word(I 0))))))`;
+    bytes ++ (replicate (width - length bytes) ((n2w : num -> 8 word(( 0:num)))))))`;
 
 
 (*val n2i : natural -> integer*)
@@ -911,13 +954,13 @@ val _ = Define `
 val _ = Define `
  (i2n_signed width i=    
   (if i >=( 0 : int) then 
-        if i >=(( 2 : int) ** (width - I 1)) then failwith "overflow"
+        if i >=(( 2 : int) ** (width -( 1 : num))) then failwith "overflow"
         else Num (ABS i)
     else 
         (* We manually encode the 2's complement of the negated value *)
         let negated = (Num (ABS (( 0 : int) - i))) in 
-        let (xormask : num) = ((I 2 ** width) - I 1) in
-        let compl =(I 1 + natural_lxor negated xormask)
+        let (xormask : num) = ((( 2:num) ** width) -( 1:num)) in
+        let compl =(( 1:num) + natural_lxor negated xormask)
         in
         (*let _ = errln ("Signed value " ^ (show i) ^ " is 2's-compl'd to 0x" ^ (hex_string_of_natural compl))
         in*) compl))`;
@@ -926,7 +969,7 @@ val _ = Define `
 (*val to_le_signed_bytes : natural -> integer -> list byte*)
 val _ = Define `
  (to_le_signed_bytes bytewidth i=    
-  (natural_to_le_byte_list_padded_to bytewidth (i2n_signed (x) i)))`;
+  (natural_to_le_byte_list_padded_to bytewidth (i2n_signed (((( 8:num)*bytewidth):num)) i)))`;
 
 
 (*val to_le_unsigned_bytes : natural -> integer -> list byte*)
@@ -950,7 +993,7 @@ val _ = Define `
     <|
         contents := (((pre_bytes ++ (let x2 = 
   ([]) in  FOLDR (\b x2 .  if T then SOME b :: x2 else x2) x2 field_bytes))
-            ++ (replicate (width - (length field_bytes)) (SOME ((n2w : num -> 8 word(I 0)))))) ++ post_bytes)
+            ++ (replicate (width - (length field_bytes)) (SOME ((n2w : num -> 8 word(( 0:num))))))) ++ post_bytes)
         ; startpos := (element.startpos)
         ; length1 := (element.length1)
      |>))`;

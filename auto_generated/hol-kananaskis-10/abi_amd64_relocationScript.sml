@@ -35,103 +35,103 @@ val _ = new_theory "abi_amd64_relocation"
 (** x86-64 relocation types. *)
 
 val _ = Define `
- (r_x86_64_none : num= (I 0))`;
+ (r_x86_64_none : num= (( 0:num)))`;
 
 val _ = Define `
- (r_x86_64_64 : num= (I 1))`;
+ (r_x86_64_64 : num= (( 1:num)))`;
 
 val _ = Define `
- (r_x86_64_pc32 : num= (I 2))`;
+ (r_x86_64_pc32 : num= (( 2:num)))`;
 
 val _ = Define `
- (r_x86_64_got32 : num= (I 3))`;
+ (r_x86_64_got32 : num= (( 3:num)))`;
 
 val _ = Define `
- (r_x86_64_plt32 : num= (I 4))`;
+ (r_x86_64_plt32 : num= (( 4:num)))`;
 
 val _ = Define `
- (r_x86_64_copy : num= (I 5))`;
+ (r_x86_64_copy : num= (( 5:num)))`;
 
 val _ = Define `
- (r_x86_64_glob_dat : num= (I 6))`;
+ (r_x86_64_glob_dat : num= (( 6:num)))`;
 
 val _ = Define `
- (r_x86_64_jump_slot : num= (I 7))`;
+ (r_x86_64_jump_slot : num= (( 7:num)))`;
 
 val _ = Define `
- (r_x86_64_relative : num= (I 8))`;
+ (r_x86_64_relative : num= (( 8:num)))`;
 
 val _ = Define `
- (r_x86_64_gotpcrel : num= (I 9))`;
+ (r_x86_64_gotpcrel : num= (( 9:num)))`;
 
 val _ = Define `
- (r_x86_64_32 : num= (I 10))`;
+ (r_x86_64_32 : num= (( 10:num)))`;
 
 val _ = Define `
- (r_x86_64_32s : num= (I 11))`;
+ (r_x86_64_32s : num= (( 11:num)))`;
 
 val _ = Define `
- (r_x86_64_16 : num= (I 12))`;
+ (r_x86_64_16 : num= (( 12:num)))`;
 
 val _ = Define `
- (r_x86_64_pc16 : num= (I 13))`;
+ (r_x86_64_pc16 : num= (( 13:num)))`;
 
 val _ = Define `
- (r_x86_64_8 : num= (I 14))`;
+ (r_x86_64_8 : num= (( 14:num)))`;
 
 val _ = Define `
- (r_x86_64_pc8 : num= (I 15))`;
+ (r_x86_64_pc8 : num= (( 15:num)))`;
 
 val _ = Define `
- (r_x86_64_dtpmod64 : num= (I 16))`;
+ (r_x86_64_dtpmod64 : num= (( 16:num)))`;
 
 val _ = Define `
- (r_x86_64_dtpoff64 : num= (I 17))`;
+ (r_x86_64_dtpoff64 : num= (( 17:num)))`;
 
 val _ = Define `
- (r_x86_64_tpoff64 : num= (I 18))`;
+ (r_x86_64_tpoff64 : num= (( 18:num)))`;
 
 val _ = Define `
- (r_x86_64_tlsgd : num= (I 19))`;
+ (r_x86_64_tlsgd : num= (( 19:num)))`;
 
 val _ = Define `
- (r_x86_64_tlsld : num= (I 20))`;
+ (r_x86_64_tlsld : num= (( 20:num)))`;
 
 val _ = Define `
- (r_x86_64_dtpoff32 : num= (I 21))`;
+ (r_x86_64_dtpoff32 : num= (( 21:num)))`;
 
 val _ = Define `
- (r_x86_64_gottpoff : num= (I 22))`;
+ (r_x86_64_gottpoff : num= (( 22:num)))`;
 
 val _ = Define `
- (r_x86_64_tpoff32 : num= (I 23))`;
+ (r_x86_64_tpoff32 : num= (( 23:num)))`;
 
 val _ = Define `
- (r_x86_64_pc64 : num= (I 24))`;
+ (r_x86_64_pc64 : num= (( 24:num)))`;
 
 val _ = Define `
- (r_x86_64_gotoff64 : num= (I 25))`;
+ (r_x86_64_gotoff64 : num= (( 25:num)))`;
 
 val _ = Define `
- (r_x86_64_gotpc32 : num= (I 26))`;
+ (r_x86_64_gotpc32 : num= (( 26:num)))`;
 
 val _ = Define `
- (r_x86_64_size32 : num= (I 32))`;
+ (r_x86_64_size32 : num= (( 32:num)))`;
 
 val _ = Define `
- (r_x86_64_size64 : num= (I 33))`;
+ (r_x86_64_size64 : num= (( 33:num)))`;
 
 val _ = Define `
- (r_x86_64_gotpc32_tlsdesc : num= (I 34))`;
+ (r_x86_64_gotpc32_tlsdesc : num= (( 34:num)))`;
 
 val _ = Define `
- (r_x86_64_tlsdesc_call : num= (I 35))`;
+ (r_x86_64_tlsdesc_call : num= (( 35:num)))`;
 
 val _ = Define `
- (r_x86_64_tlsdesc : num= (I 36))`;
+ (r_x86_64_tlsdesc : num= (( 36:num)))`;
 
 val _ = Define `
- (r_x86_64_irelative : num= (I 37))`;
+ (r_x86_64_irelative : num= (( 37:num)))`;
 
 
 (** [string_of_x86_64_relocation_type m] produces a string representation of the

@@ -41,7 +41,7 @@ val _ = new_theory "gnu_ext_abi"
   * executable code that takes no arguments and returns a function pointer.
   *)
 val _ = Define `
- (stt_gnu_ifunc : num= (I 10))`;
+ (stt_gnu_ifunc : num= (( 10:num)))`;
 
 
 (*val gnu_extend: forall 'abifeature. abi 'abifeature -> abi 'abifeature*)
@@ -57,7 +57,7 @@ val _ = Define `
                 _  :: _  :: i9 :: i10 :: i11 :: i12 :: i13 :: i14 :: i15 :: []
                     => [i0; i1; i2; i3; i4; i5; i6;
                         (n2w : num -> 8 word) elf_osabi_gnu;
-                        (n2w : num -> 8 word)(I 1);
+                        (n2w : num -> 8 word)(( 1:num));
                         i9; i10; i11; i12; i13; i14; i15]
                 ))
                ; elf64_type     := ((n2w : num -> 16 word) t)
@@ -77,7 +77,7 @@ val _ = Define `
     ; reloc               := (a.reloc)
     ; section_is_special  := (\ isec .  (\ img .  (
                                 a.section_is_special isec img
-                                \/ (missing_pervasives$string_prefix (I (STRLEN ".gnu.warning")) isec.elf64_section_name_as_string
+                                \/ (missing_pervasives$string_prefix (((STRLEN ".gnu.warning"):num)) isec.elf64_section_name_as_string
                                  = SOME(".gnu.warning"))
         (* FIXME: This is a slight abuse. The GNU linker's treatment of 
          * ".gnu.warning.*" section is not really a function of the output
@@ -101,24 +101,24 @@ val _ = Define `
     ; commonpagesize      := (a.commonpagesize)
     ; symbol_is_generated_by_linker := (a.symbol_is_generated_by_linker)
     ; make_phdrs          := (a.make_phdrs) (* FIXME: also make the GNU phdrs! *)
-    ; max_phnum           :=(I 1 + a.max_phnum) (* FIXME: GNU_RELRO, GNU_STACK; what else? *)
+    ; max_phnum           :=(( 1:num) + a.max_phnum) (* FIXME: GNU_RELRO, GNU_STACK; what else? *)
     ; guess_entry_point   := (a.guess_entry_point)
     ; pad_data            := (a.pad_data)
     ; pad_code            := (a.pad_code)
     ; generate_support    := (\ input_fnames_and_imgs .  
         let vanilla_support_img = (a.generate_support input_fnames_and_imgs) in
         (* also generate .note.gnu.build-id *)
-        let new_by_range = ((SOME(".note.gnu.build-id", (I 0,I 24)), FileFeature(ElfSection(I 4 (* HACK: calculate this *), 
-          <| elf64_section_name :=(I 0) (* ignored *)
+        let new_by_range = ((SOME(".note.gnu.build-id", (( 0:num),( 24:num))), FileFeature(ElfSection(( 4:num) (* HACK: calculate this *), 
+          <| elf64_section_name :=(( 0:num)) (* ignored *)
            ; elf64_section_type := sht_note
            ; elf64_section_flags := shf_alloc
-           ; elf64_section_addr :=(I 0) (* ignored -- covered by element *)
-           ; elf64_section_offset :=(I 0) (* ignored -- will be replaced when file offsets are assigned *)
-           ; elf64_section_size :=(I 24) (* ignored? NO, we use it in linker_script to avoid plumbing through the element record *)
-           ; elf64_section_link :=(I 0)
-           ; elf64_section_info :=(I 0)
-           ; elf64_section_align :=(I 4)
-           ; elf64_section_entsize :=(I 0)
+           ; elf64_section_addr :=(( 0:num)) (* ignored -- covered by element *)
+           ; elf64_section_offset :=(( 0:num)) (* ignored -- will be replaced when file offsets are assigned *)
+           ; elf64_section_size :=(( 24:num)) (* ignored? NO, we use it in linker_script to avoid plumbing through the element record *)
+           ; elf64_section_link :=(( 0:num))
+           ; elf64_section_info :=(( 0:num))
+           ; elf64_section_align :=(( 4:num))
+           ; elf64_section_entsize :=(( 0:num))
            ; elf64_section_body := byte_sequence$empty (* ignored *)
            ; elf64_section_name_as_string := ".note.gnu.build-id"
            |>
@@ -126,7 +126,7 @@ val _ = Define `
         in
         <|  elements := ((vanilla_support_img.elements) |+ (".note.gnu.build-id", <|
                 startpos := NONE
-           ;    length1 := (SOME(I 24))
+           ;    length1 := (SOME(( 24:num)))
            ;    contents := ([])
            |>))
          ;   by_tag := (by_tag_from_by_range new_by_range)

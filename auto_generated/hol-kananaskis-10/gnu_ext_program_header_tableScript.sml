@@ -21,17 +21,17 @@ val _ = new_theory "gnu_ext_program_header_table"
   * read-only after relocations have been processed.
   *)
 val _ = Define `
- (elf_pt_gnu_relro : num=  ((I 4 *I 421345620) +I 2))`;
+ (elf_pt_gnu_relro : num=  ((( 4:num) *( 421345620:num)) +( 2:num)))`;
  (* 0x6474e552 *)
 (** The [p_flags] member specifies the permissions of the segment containing the
   * stack and is used to indicate whether the stack should be executable.
   *)
 val _ = Define `
- (elf_pt_gnu_stack : num=  ((I 4 *I 421345620) +I 1))`;
+ (elf_pt_gnu_stack : num=  ((( 4:num) *( 421345620:num)) +( 1:num)))`;
  (* 0x6474e551 *)
 (** Element specifies the location and size of exception handling information. *)
 val _ = Define `
- (elf_pt_gnu_eh_frame : num= (I 4 *I 421345620))`;
+ (elf_pt_gnu_eh_frame : num= (( 4:num) *( 421345620:num)))`;
     (* 0x6474e550 *)
 
 (** [string_of_gnu_ext_segment_type m] produces a string representation of

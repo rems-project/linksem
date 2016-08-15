@@ -41,42 +41,42 @@ val _ = new_theory "elf_section_header_table"
   * indices.
   *)
 val _ = Define `
- (shn_loreserve : num= (I 65280))`;
+ (shn_loreserve : num= (( 65280:num)))`;
  (* 0xff00 *)
 (** [shn_loproc]: start of the range reserved for processor-specific semantics.
   *)
 val _ = Define `
- (shn_loproc : num= (I 65280))`;
+ (shn_loproc : num= (( 65280:num)))`;
  (* 0xff00 *)
 (** [shn_hiproc]: end of the range reserved for processor-specific semantics.
   *)
 val _ = Define `
- (shn_hiproc : num= (I 65311))`;
+ (shn_hiproc : num= (( 65311:num)))`;
  (* 0xff1f *)
 (** [shn_loos]: start of the range reserved for operating system-specific
   * semantics.
   *)
 val _ = Define `
- (shn_loos : num= (I 65312))`;
+ (shn_loos : num= (( 65312:num)))`;
  (* 0xff20 *)
 (** [shn_hios]: end of the range reserved for operating system-specific
   * semantics.
   *)
 val _ = Define `
- (shn_hios : num= (I 65343))`;
+ (shn_hios : num= (( 65343:num)))`;
  (* 0xff3f *)
 (** [shn_abs]: specifies the absolute values for the corresponding reference.
   * Symbols defined relative to section number [shn_abs] have absolute values
   * and are not affected by relocation.
   *)
 val _ = Define `
- (shn_abs : num= (I 65521))`;
+ (shn_abs : num= (( 65521:num)))`;
  (* 0xfff1 *)
 (** [shn_common]: symbols defined relative to this index are common symbols,
   * such as unallocated C external variables.
   *)
 val _ = Define `
- (shn_common : num= (I 65522))`;
+ (shn_common : num= (( 65522:num)))`;
  (* 0xfff2 *)
 
 (** See elf_header.lem for shn_xindex. *)
@@ -84,7 +84,7 @@ val _ = Define `
 (** [shn_hireserve]: specifies the upper-bound of reserved values.
   *)
 val _ = Define `
- (shn_hireserve : num= (I 65535))`;
+ (shn_hireserve : num= (( 65535:num)))`;
  (* 0xffff *)
 
 (** [string_of_special_section_index m] produces a string-based representation
@@ -117,11 +117,11 @@ val _ = Define `
 
 (** Marks the section header as being inactive. *)
 val _ = Define `
- (sht_null : num= (I 0))`;
+ (sht_null : num= (( 0:num)))`;
 
 (** Section holds information defined by the program. *)
 val _ = Define `
- (sht_progbits : num= (I 1))`;
+ (sht_progbits : num= (( 1:num)))`;
 
 (** The following two section types hold a symbol table.  An object file may only
   * have one symbol table of each of the respective types.  The symtab provides
@@ -129,78 +129,78 @@ val _ = Define `
   * dynamic linking symbols
   *)
 val _ = Define `
- (sht_symtab : num= (I 2))`;
+ (sht_symtab : num= (( 2:num)))`;
 
 val _ = Define `
- (sht_dynsym : num= (I 11))`;
+ (sht_dynsym : num= (( 11:num)))`;
 
 (** Section holds a string table *)
 val _ = Define `
- (sht_strtab : num= (I 3))`;
+ (sht_strtab : num= (( 3:num)))`;
 
 (** Section holds relocation entries with explicit addends.  An object file may
   * have multiple section of this type.
   *)
 val _ = Define `
- (sht_rela : num= (I 4))`;
+ (sht_rela : num= (( 4:num)))`;
 
 (** Section holds a symbol hash table.  An object file may only have a single
   * hash table.
   *)
 val _ = Define `
- (sht_hash : num= (I 5))`;
+ (sht_hash : num= (( 5:num)))`;
 
 (** Section holds information for dynamic linking.  An object file may only have
   * a single dynamic section.
   *)
 val _ = Define `
- (sht_dynamic : num= (I 6))`;
+ (sht_dynamic : num= (( 6:num)))`;
 
 (** Section holds information that marks the file in some way. *)
 val _ = Define `
- (sht_note : num= (I 7))`;
+ (sht_note : num= (( 7:num)))`;
 
 (** Section occupies no space in the file but otherwise resembles a progbits
   * section.
   *)
 val _ = Define `
- (sht_nobits : num= (I 8))`;
+ (sht_nobits : num= (( 8:num)))`;
 
 (** Section holds relocation entries without explicit addends.  An object file
   * may have multiple section of this type.
   *)
 val _ = Define `
- (sht_rel : num= (I 9))`;
+ (sht_rel : num= (( 9:num)))`;
 
 (** Section type is reserved but has an unspecified meaning. *)
 val _ = Define `
- (sht_shlib : num= (I 10))`;
+ (sht_shlib : num= (( 10:num)))`;
 
 (** Section contains an array of pointers to initialisation functions.  Each
   * pointer is taken as a parameterless function with a void return type.
   *)
 val _ = Define `
- (sht_init_array : num= (I 14))`;
+ (sht_init_array : num= (( 14:num)))`;
 
 (** Section contains an array of pointers to termination functions.  Each
   * pointer is taken as a parameterless function with a void return type.
   *)
 val _ = Define `
- (sht_fini_array : num= (I 15))`;
+ (sht_fini_array : num= (( 15:num)))`;
 
 (** Section contains an array of pointers to initialisation functions that are
   * invoked before all other initialisation functions.  Each
   * pointer is taken as a parameterless function with a void return type.
   *)
 val _ = Define `
- (sht_preinit_array : num= (I 16))`;
+ (sht_preinit_array : num= (( 16:num)))`;
 
 (** Section defines a section group, i.e. a set of sections that are related and
   * must be treated especially by the linker.  May only appear in relocatable
   * objects.
   *)
 val _ = Define `
- (sht_group : num= (I 17))`;
+ (sht_group : num= (( 17:num)))`;
 
 (** Section is associated with sections of type SHT_SYMTAB and is required if
   * any of the section header indices referenced by that symbol table contains
@@ -211,29 +211,29 @@ val _ = Define `
   * way in which they are written.
   *)
 val _ = Define `
- (sht_symtab_shndx : num= (I 18))`;
+ (sht_symtab_shndx : num= (( 18:num)))`;
 
 
 (** The following ranges are reserved solely for OS-, processor- and user-
   * specific semantics, respectively.
   *)
 val _ = Define `
- (sht_loos   : num= (((I 3 *I 1024) *I 1024) *I 512))`;
+ (sht_loos   : num= (((( 3:num) *( 1024:num)) *( 1024:num)) *( 512:num)))`;
  (* 1610612736 (* 0x60000000 *) *)
 val _ = Define `
- (sht_hios   : num=  ((I 469762047 *I 4) +I 3))`;
+ (sht_hios   : num=  ((( 469762047:num) *( 4:num)) +( 3:num)))`;
  (* 1879048191 (* 0x6fffffff *) *)
 val _ = Define `
- (sht_loproc : num=  (I 469762048 *I 4))`;
+ (sht_loproc : num=  (( 469762048:num) *( 4:num)))`;
  (* 1879048192 (* 0x70000000 *) *)
 val _ = Define `
- (sht_hiproc : num=  ((I 536870911 *I 4) +I 3))`;
+ (sht_hiproc : num=  ((( 536870911:num) *( 4:num)) +( 3:num)))`;
  (* 2147483647 (* 0x7fffffff *) *)
 val _ = Define `
- (sht_louser : num=  (I 536870912 *I 4))`;
+ (sht_louser : num=  (( 536870912:num) *( 4:num)))`;
  (* 2147483648 (* 0x80000000 *) *)
 val _ = Define `
- (sht_hiuser : num=  ((I 603979775 *I 4) +I 3))`;
+ (sht_hiuser : num=  ((( 603979775:num) *( 4:num)) +( 3:num)))`;
  (* 2415919103 (* 0x8fffffff *) *)
 
 (** [string_of_section_type os proc user i] produces a string-based representation
@@ -294,72 +294,72 @@ val _ = Define `
 (** The section contains data that should be writable during program execution.
   *)
 val _ = Define `
- (shf_write            : num= (I 1))`;
+ (shf_write            : num= (( 1:num)))`;
 
 (** The section occupies memory during program execution.
   *)
 val _ = Define `
- (shf_alloc            : num= (I 2))`;
+ (shf_alloc            : num= (( 2:num)))`;
 
 (** The section contains executable instructions.
   *)
 val _ = Define `
- (shf_execinstr        : num= (I 4))`;
+ (shf_execinstr        : num= (( 4:num)))`;
 
 (** The data in the section may be merged to reduce duplication.  Each section
   * is compared based on name, type and flags set with sections with identical
   * values at run time being mergeable.
   *)
 val _ = Define `
- (shf_merge            : num= (I 16))`;
+ (shf_merge            : num= (( 16:num)))`;
 
 (** The section contains null-terminated character strings.
   *)
 val _ = Define `
- (shf_strings          : num= (I 32))`;
+ (shf_strings          : num= (( 32:num)))`;
 
 (** The [info] field of this section header contains a section header table
   * index.
   *)
 val _ = Define `
- (shf_info_link        : num= (I 64))`;
+ (shf_info_link        : num= (( 64:num)))`;
 
 (** Adds special link ordering for link editors.
   *)
 val _ = Define `
- (shf_link_order       : num= (I 128))`;
+ (shf_link_order       : num= (( 128:num)))`;
 
 (** This section requires special OS-specific processing beyond the standard
   * link rules.
   *)
 val _ = Define `
- (shf_os_nonconforming : num= (I 256))`;
+ (shf_os_nonconforming : num= (( 256:num)))`;
 
 (** This section is a member (potentially the only member) of a link group.
   *)
 val _ = Define `
- (shf_group            : num= (I 512))`;
+ (shf_group            : num= (( 512:num)))`;
 
 (** This section contains Thread Local Storage (TLS) meaning that each thread of
   * execution has its own instance of this data.
   *)
 val _ = Define `
- (shf_tls              : num= (I 1024))`;
+ (shf_tls              : num= (( 1024:num)))`;
 
 (** This section contains compressed data.  Compressed data may not be marked as
   * allocatable.
   *)
 val _ = Define `
- (shf_compressed       : num= (I 2048))`;
+ (shf_compressed       : num= (( 2048:num)))`;
 
 (** All bits included in these masks are reserved for OS and processor specific
   * semantics respectively.
   *)
 val _ = Define `
- (shf_mask_os          : num= (I 267386880))`;
+ (shf_mask_os          : num= (( 267386880:num)))`;
       (* 0x0ff00000 *)
 val _ = Define `
- (shf_mask_proc        : num= (I 4 *I 1006632960))`;
+ (shf_mask_proc        : num= (( 4:num) *( 1006632960:num)))`;
  (* 0xf0000000 *)
 
 (** [string_of_section_flags os proc f] produces a string based representation
@@ -439,25 +439,25 @@ val _ = Hol_datatype `
   * at the first byte immediately following the end of the compression header.
   *)   
 val _ = Define `
- (elfcompress_zlib   : num= (I 1))`;
+ (elfcompress_zlib   : num= (( 1:num)))`;
 
 
 (** Values in these ranges are reserved for OS-specific semantics.
   *)
 val _ = Define `
- (elfcompress_loos   : num= (I 4 *I 402653184))`;
+ (elfcompress_loos   : num= (( 4:num) *( 402653184:num)))`;
        (* 0x60000000 *)
 val _ = Define `
- (elfcompress_hios   : num=  ((I 2 *I 939524095) +I 1))`;
+ (elfcompress_hios   : num=  ((( 2:num) *( 939524095:num)) +( 1:num)))`;
  (* 0x6fffffff *)
 
 (** Values in these ranges are reserved for processor-specific semantics.
   *)
 val _ = Define `
- (elfcompress_loproc : num= (I 4 *I 469762048))`;
+ (elfcompress_loproc : num= (( 4:num) *( 469762048:num)))`;
         (* 0x70000000 *)
 val _ = Define `
- (elfcompress_hiproc : num=  ((I 2 *I 1073741823) +I 1))`;
+ (elfcompress_hiproc : num=  ((( 2:num) *( 1073741823:num)) +( 1:num)))`;
  (* 0x7fffffff *)
 
 (** [read_elf32_compression_header ed bs0] reads an [elf32_compression_header]
@@ -516,16 +516,16 @@ val _ = Hol_datatype `
    
 val _ = Define `
 (elf32_null_section_header=  
- (<| elf32_sh_name      := ((n2w : num -> 32 word)(I 0))
-   ; elf32_sh_type      := ((n2w : num -> 32 word)(I 0))
-   ; elf32_sh_flags     := ((n2w : num -> 32 word)(I 0))
-   ; elf32_sh_addr      := (n2w(I 0))
-   ; elf32_sh_offset    := (n2w(I 0)) 
-   ; elf32_sh_size      := ((n2w : num -> 32 word)(I 0))
-   ; elf32_sh_link      := ((n2w : num -> 32 word)(I 0))
-   ; elf32_sh_info      := ((n2w : num -> 32 word)(I 0))
-   ; elf32_sh_addralign := ((n2w : num -> 32 word)(I 0))
-   ; elf32_sh_entsize   := ((n2w : num -> 32 word)(I 0))
+ (<| elf32_sh_name      := ((n2w : num -> 32 word)(( 0:num)))
+   ; elf32_sh_type      := ((n2w : num -> 32 word)(( 0:num)))
+   ; elf32_sh_flags     := ((n2w : num -> 32 word)(( 0:num)))
+   ; elf32_sh_addr      := (n2w(( 0:num)))
+   ; elf32_sh_offset    := (n2w(( 0:num))) 
+   ; elf32_sh_size      := ((n2w : num -> 32 word)(( 0:num)))
+   ; elf32_sh_link      := ((n2w : num -> 32 word)(( 0:num)))
+   ; elf32_sh_info      := ((n2w : num -> 32 word)(( 0:num)))
+   ; elf32_sh_addralign := ((n2w : num -> 32 word)(( 0:num)))
+   ; elf32_sh_entsize   := ((n2w : num -> 32 word)(( 0:num)))
    |>))`;
 
    
@@ -595,16 +595,16 @@ val _ = Hol_datatype `
    
 val _ = Define `
 (elf64_null_section_header=  
- (<| elf64_sh_name      := ((n2w : num -> 32 word)(I 0)) 
-   ; elf64_sh_type      := ((n2w : num -> 32 word)(I 0)) 
-   ; elf64_sh_flags     := ((n2w : num -> 64 word)(I 0))
-   ; elf64_sh_addr      := ((n2w : num -> 64 word)(I 0)) 
-   ; elf64_sh_offset    := ((n2w : num -> 64 word)(I 0))  
-   ; elf64_sh_size      := ((n2w : num -> 64 word)(I 0))
-   ; elf64_sh_link      := ((n2w : num -> 32 word)(I 0)) 
-   ; elf64_sh_info      := ((n2w : num -> 32 word)(I 0)) 
-   ; elf64_sh_addralign := ((n2w : num -> 64 word)(I 0))
-   ; elf64_sh_entsize   := ((n2w : num -> 64 word)(I 0))
+ (<| elf64_sh_name      := ((n2w : num -> 32 word)(( 0:num))) 
+   ; elf64_sh_type      := ((n2w : num -> 32 word)(( 0:num))) 
+   ; elf64_sh_flags     := ((n2w : num -> 64 word)(( 0:num)))
+   ; elf64_sh_addr      := ((n2w : num -> 64 word)(( 0:num))) 
+   ; elf64_sh_offset    := ((n2w : num -> 64 word)(( 0:num)))  
+   ; elf64_sh_size      := ((n2w : num -> 64 word)(( 0:num)))
+   ; elf64_sh_link      := ((n2w : num -> 32 word)(( 0:num))) 
+   ; elf64_sh_info      := ((n2w : num -> 32 word)(( 0:num))) 
+   ; elf64_sh_addralign := ((n2w : num -> 64 word)(( 0:num)))
+   ; elf64_sh_entsize   := ((n2w : num -> 64 word)(( 0:num)))
    |>))`;
 
 
@@ -659,13 +659,15 @@ val _ = Define `
   * ELF files.  A section header table is an array (implemented as a list, here)
   * of section header table entries.
   *)
-val _ = type_abbrev( "elf32_section_header_table" , ``: elf32_section_header_table_entry list``);
+val _ = type_abbrev( "elf32_section_header_table" , ``: elf32_section_header_table_entry
+  list``);
 
 (** Type [elf64_section_header_table] represents a section header table for 64-bit
   * ELF files.  A section header table is an array (implemented as a list, here)
   * of section header table entries.
   *)
-val _ = type_abbrev( "elf64_section_header_table" , ``: elf64_section_header_table_entry list``);
+val _ = type_abbrev( "elf64_section_header_table" , ``: elf64_section_header_table_entry
+  list``);
 
 (** Parsing and blitting *)
 
@@ -790,7 +792,7 @@ val _ = Define `
   error elf32_section_header_table*)
  val read_elf32_section_header_table'_defn = Hol_defn "read_elf32_section_header_table'" `
  (read_elf32_section_header_table' endian bs0=  
- (if byte_sequence$length0 bs0 =I 0 then
+ (if byte_sequence$length0 bs0 =( 0:num) then
     return []
   else
     read_elf32_section_header_table_entry endian bs0 >>= (\ (entry, bs1) . 
@@ -808,7 +810,7 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
   error elf64_section_header_table*)
  val read_elf64_section_header_table'_defn = Hol_defn "read_elf64_section_header_table'" `
  (read_elf64_section_header_table' endian bs0=  
- (if byte_sequence$length0 bs0 =I 0 then
+ (if byte_sequence$length0 bs0 =( 0:num) then
     return []
   else
     read_elf64_section_header_table_entry endian bs0 >>= (\ (entry, bs1) . 
@@ -857,10 +859,10 @@ val _ = Define `
 val _ = Define `
  (elf32_size_correct hdr tbl=  
  (let m = (w2n hdr.elf32_sh_size) in
-    if m =I 0 then
+    if m =( 0:num) then
       T
     else
-      m = I (LENGTH tbl)))`;
+      m = ((LENGTH tbl):num)))`;
 
 
 
@@ -870,10 +872,10 @@ val _ = Define `
 val _ = Define `
  (elf64_size_correct hdr tbl=  
  (let m = (w2n hdr.elf64_sh_size) in
-    if m =I 0 then
+    if m =( 0:num) then
       T
     else
-      m = I (LENGTH tbl)))`;
+      m = ((LENGTH tbl):num)))`;
 
 
 
@@ -886,8 +888,8 @@ val _ = Define `
  (is_elf32_addr_addralign_correct ent=  
  (let align = (w2n ent.elf32_sh_addralign) in
   let addr  = (w2n ent.elf32_sh_addr) in
-    if (addr MOD align) =I 0 then      
-(align =I 0) \/ (align =I 1) (* TODO: or a power of two *)
+    if (addr MOD align) =( 0:num) then      
+(align =( 0:num)) \/ (align =( 1:num)) (* TODO: or a power of two *)
     else
       F))`;
 
@@ -901,8 +903,8 @@ val _ = Define `
  (is_elf64_addr_addralign_correct ent=  
  (let align = (w2n ent.elf64_sh_addralign) in
   let addr  = (w2n ent.elf64_sh_addr) in
-    if (addr MOD align) =I 0 then      
-(align =I 0) \/ (align =I 1) (* TODO: or a power of two *)
+    if (addr MOD align) =( 0:num) then      
+(align =( 0:num)) \/ (align =( 1:num)) (* TODO: or a power of two *)
     else
       F))`;
 
@@ -916,14 +918,14 @@ val _ = Define `
  ((case tbl of
       []    => T
     | x::xs =>        
-(w2n x.elf32_sh_name =I 0) /\        
+(w2n x.elf32_sh_name =( 0:num)) /\        
 (w2n x.elf32_sh_type = sht_null) /\        
-(w2n x.elf32_sh_flags =I 0) /\        
-(w2n x.elf32_sh_addr =I 0) /\        
-(w2n x.elf32_sh_offset =I 0) /\        
-(w2n x.elf32_sh_info =I 0) /\        
-(w2n x.elf32_sh_addralign =I 0) /\        
-(w2n x.elf32_sh_entsize =I 0) /\
+(w2n x.elf32_sh_flags =( 0:num)) /\        
+(w2n x.elf32_sh_addr =( 0:num)) /\        
+(w2n x.elf32_sh_offset =( 0:num)) /\        
+(w2n x.elf32_sh_info =( 0:num)) /\        
+(w2n x.elf32_sh_addralign =( 0:num)) /\        
+(w2n x.elf32_sh_entsize =( 0:num)) /\
         elf32_size_correct x tbl
         (* XXX: more correctness criteria in time *)
   )))`;
@@ -938,14 +940,14 @@ val _ = Define `
  ((case tbl of
       []    => T
     | x::xs =>        
-(w2n x.elf64_sh_name =I 0) /\        
+(w2n x.elf64_sh_name =( 0:num)) /\        
 (w2n x.elf64_sh_type = sht_null) /\        
-(w2n x.elf64_sh_flags =I 0) /\        
-(w2n x.elf64_sh_addr =I 0) /\        
-(w2n x.elf64_sh_offset =I 0) /\        
-(w2n x.elf64_sh_info =I 0) /\        
-(w2n x.elf64_sh_addralign =I 0) /\        
-(w2n x.elf64_sh_entsize =I 0) /\
+(w2n x.elf64_sh_flags =( 0:num)) /\        
+(w2n x.elf64_sh_addr =( 0:num)) /\        
+(w2n x.elf64_sh_offset =( 0:num)) /\        
+(w2n x.elf64_sh_info =( 0:num)) /\        
+(w2n x.elf64_sh_addralign =( 0:num)) /\        
+(w2n x.elf64_sh_entsize =( 0:num)) /\
         elf64_size_correct x tbl
         (* XXX: more correctness criteria in time *)
   )))`;
@@ -959,7 +961,8 @@ val _ = Define `
   * The first component of the type is an OS specific print function, the second is
   * a processor specific print function.
   *)
-val _ = type_abbrev( "sht_print_bundle" , ``:(num -> string) # (num -> string) # (num -> string)``);
+val _ = type_abbrev( "sht_print_bundle" , ``:
+  (num -> string) # (num -> string) # (num -> string)``);
 
 (** [string_of_elf32_section_header_table_entry sht ent] produces a string
   * representation of section header table entry [ent] using [sht], a
@@ -1144,7 +1147,7 @@ val _ = Define `
   *)
 (*val is_elf32_tbss_special : elf32_section_header_table_entry -> elf32_program_header_table_entry -> bool*)
 val _ = Define `
- (is_elf32_tbss_special sec_hdr segment=  (~ ((word_and sec_hdr.elf32_sh_flags ((n2w : num -> 32 word) shf_tls)) = ((n2w : num -> 32 word)(I 0))) /\
+ (is_elf32_tbss_special sec_hdr segment=  (~ ((word_and sec_hdr.elf32_sh_flags ((n2w : num -> 32 word) shf_tls)) = ((n2w : num -> 32 word)(( 0:num)))) /\
     ((w2n sec_hdr.elf32_sh_type) = sht_nobits) /\
     ( ~ ((w2n segment.elf32_p_type) = elf_pt_tls))))`;
 
@@ -1161,7 +1164,7 @@ val _ = Define `
   *)
 (*val is_elf64_tbss_special : elf64_section_header_table_entry -> elf64_program_header_table_entry -> bool*)
 val _ = Define `
- (is_elf64_tbss_special sec_hdr segment=  (~ ((word_and sec_hdr.elf64_sh_flags ((n2w : num -> 64 word) shf_tls)) = ((n2w : num -> 64 word)(I 0))) /\
+ (is_elf64_tbss_special sec_hdr segment=  (~ ((word_and sec_hdr.elf64_sh_flags ((n2w : num -> 64 word) shf_tls)) = ((n2w : num -> 64 word)(( 0:num)))) /\
     ((w2n sec_hdr.elf64_sh_type) = sht_nobits) /\
     ( ~ ((w2n segment.elf64_p_type) = elf_pt_tls))))`;
 
@@ -1228,17 +1231,17 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
   * files.
   *)
 val _ = Define `
- (grp_comdat   : num= (I 1))`;
+ (grp_comdat   : num= (( 1:num)))`;
 
 
 (** Any bits in the following mask ranges are reserved exclusively for OS and
   * processor specific semantics, respectively.
   *)
 val _ = Define `
- (grp_maskos   : num= (I 267386880))`;
+ (grp_maskos   : num= (( 267386880:num)))`;
       (* 0x0ff00000 *)
 val _ = Define `
- (grp_maskproc : num= (I 4 *I 1006632960))`;
+ (grp_maskproc : num= (( 4:num) *( 1006632960:num)))`;
  (* 0xf0000000 *)
 
 (** [obtain_elf32_section_group_indices endian sht bs0] extracts all section header
@@ -1254,7 +1257,7 @@ val _ = Define `
     mapM (\ grp . 
       let off = (w2n grp.elf32_sh_offset) in
       let siz = (w2n grp.elf32_sh_size) in
-      let cnt = (siz DIV I 4) (* size of elf32_word in bytes *) in
+      let cnt = (siz DIV( 4:num)) (* size of elf32_word in bytes *) in
       byte_sequence$offset_and_cut off siz bs0 >>= (\ rel . 
       error$repeatM' cnt rel (read_elf32_word endian) >>= 
   (\p .  (case (p ) of
@@ -1282,7 +1285,7 @@ val _ = Define `
     mapM (\ grp . 
       let off = (w2n grp.elf64_sh_offset) in
       let siz = (w2n grp.elf64_sh_size) in
-      let cnt = (siz DIV I 4) (* size of elf64_word in bytes *) in
+      let cnt = (siz DIV( 4:num)) (* size of elf64_word in bytes *) in
       byte_sequence$offset_and_cut off siz bs0 >>= (\ rel . 
       error$repeatM' cnt rel (read_elf64_word endian) >>= 
   (\p .  (case (p ) of
@@ -1304,7 +1307,7 @@ val _ = Define `
 val _ = Define `
  (obtain_elf32_tls_template sht=  
  (FILTER (\ ent . 
-    let flags = (w2n ent.elf32_sh_flags) in ~ ((natural_land flags shf_tls) =(I 0))) sht))`;
+    let flags = (w2n ent.elf32_sh_flags) in ~ ((natural_land flags shf_tls) =(( 0:num)))) sht))`;
 
 
 (** [obtain_elf64_tls_template sht] extracts the TLS template (i.e. all sections
@@ -1314,7 +1317,7 @@ val _ = Define `
 val _ = Define `
  (obtain_elf64_tls_template sht=  
  (FILTER (\ ent . 
-    let flags = (w2n ent.elf64_sh_flags) in ~ ((natural_land flags shf_tls) =(I 0))) sht))`;
+    let flags = (w2n ent.elf64_sh_flags) in ~ ((natural_land flags shf_tls) =(( 0:num)))) sht))`;
 
       
 (** [obtain_elf32_hash_table endian sht bs0] extracts a hash table from an ELF file
@@ -1391,10 +1394,10 @@ val _ = Define `
  (elf_special_sections=    
  (FUPDATE_LIST FEMPTY [
       (".bss", (sht_nobits, (shf_alloc + shf_write)))
-    ; (".comment", (sht_progbits,I 0))
+    ; (".comment", (sht_progbits,( 0:num)))
     ; (".data", (sht_progbits, (shf_alloc + shf_write)))
     ; (".data1", (sht_progbits, (shf_alloc + shf_write)))
-    ; (".debug", (sht_progbits,I 0))
+    ; (".debug", (sht_progbits,( 0:num)))
     (* ; (".dynamic", (sht_dynamic, ?)) *)
     ; (".dynstr", (sht_strtab, shf_alloc))
     ; (".dynsym", (sht_dynsym, shf_alloc))
@@ -1405,15 +1408,15 @@ val _ = Define `
     ; (".init", (sht_progbits, (shf_alloc + shf_execinstr)))
     ; (".init_array", (sht_init_array, (shf_alloc + shf_write)))
     (* ; (".interp", (sht_progbits, ?)) *)
-    ; (".line", (sht_progbits,I 0))
-    ; (".note", (sht_note,I 0))
+    ; (".line", (sht_progbits,( 0:num)))
+    ; (".note", (sht_note,( 0:num)))
     (* ; (".plt", (sht_progbits, ?)) *)
     ; (".preinit_array", (sht_preinit_array, (shf_alloc + shf_write)))
     (* ; (".relname", (sht_rel, ?)) *)
     (* ; (".relaname", (sht_rela, ?)) *)
     ; (".rodata", (sht_progbits, shf_alloc))
     ; (".rodata1", (sht_progbits, shf_alloc))
-    ; (".shstrtab", (sht_strtab,I 0))
+    ; (".shstrtab", (sht_strtab,( 0:num)))
     (* ; (".strtab", (sht_strtab, ?)) *)
     (* ; (".symtab", (sht_symtab, ?)) *)
     (* ; (".symtab_shndx", (sht_symtab_shndx, ?)) *)
