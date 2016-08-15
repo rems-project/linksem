@@ -53,7 +53,7 @@ val _ = Define `
   (\p .  (case (p ) of
              ( (bytes, _) ) =>
          let (b1,b2,b3,b4,b5,b6,b7,b8) = bytes in
-         return (w2n (ARB b1 b2 b3 b4 b5 b6 b7 b8))
+         return (w2n (Elf_Local%uint64_of_oct b1 b2 b3 b4 b5 b6 b7 b8))
          )))
       | _   => fail0 "abi_power64_compute_program_entry_point: multiple program segments contain the program entry point"
     )))`;

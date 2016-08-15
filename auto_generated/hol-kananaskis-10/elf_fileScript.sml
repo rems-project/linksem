@@ -1033,16 +1033,14 @@ val _ = Hol_datatype `
   * and begin execution.
   * XXX: (segments, provenance), entry point, machine type
   *)
-val _ = type_abbrev( "elf32_executable_process_image" , ``:
-  ( (elf32_interpreted_segment # segment_provenance)list # num # num)``);
+val _ = type_abbrev( "elf32_executable_process_image" , ``:( (elf32_interpreted_segment # segment_provenance)list # num # num)``);
 
 (** [elf64_executable_process_image] is a process image for ELF64 files.  Contains
   * all that is necessary to load the executable components of an ELF64 file
   * and begin execution.
   * XXX: (segments, provenance), entry point, machine type
   *)
-val _ = type_abbrev( "elf64_executable_process_image" , ``:
-  ( (elf64_interpreted_segment # segment_provenance)list # num # num)``);
+val _ = type_abbrev( "elf64_executable_process_image" , ``:( (elf64_interpreted_segment # segment_provenance)list # num # num)``);
 
 (** [get_elf32_executable_image f1] extracts an executable process image from an
   * executable ELF file.  May fail if extraction is impossible.
@@ -1131,8 +1129,7 @@ val _ = Define `
   * global symbol in an ELF file.
   * Another PPCMemism.
   *)
-val _ = type_abbrev( "global_symbol_init_info"
-  , ``: (string # (num # num # num #  byte_sequence option # num)) list``);
+val _ = type_abbrev( "global_symbol_init_info", ``: (string # (num # num # num #  byte_sequence option # num)) list``);
 
 (** [get_elf32_file_global_symbol_init f1] extracts the global symbol init info
   * for ELF file [f1].  May fail.

@@ -137,15 +137,13 @@ val _ = Define `
 val _ = Define `
  (insert_string s t=    
 (  
-    (*let _ = errln ("Inserting string `" ^ s ^ "' into a string table") in*)let (inserted_idx, new_strtab) = ((case find_string s t of
+    let (inserted_idx, new_strtab) = ((case find_string s t of
         NONE => (case t of
             Strings(delim, base) => (I (STRLEN base), Strings(delim,  STRCAT base  (STRCAT s (IMPLODE [delim]))))
             )
         | SOME pos => (pos, t)
     ))
     in
-    (*let _ = errln ("Inserted string at idx " ^ (show inserted_idx) ^ ", see: " ^ (show (find_string s new_strtab)))
-    in*)
     (inserted_idx, new_strtab)))`;
 
 

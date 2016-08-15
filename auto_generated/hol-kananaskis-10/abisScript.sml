@@ -403,15 +403,14 @@ val _ = Define `
                         NONE => failwith ( STRCAT"_start symbol defined in nonexistent element ^`"  (STRCAT el_name "'"))
                         | SOME el_rec => 
                             (case el_rec.startpos of
-                                NONE => (*let _ = Missing_pervasives.errln "warning: saw `_start' in element with no assigned address" in *)NONE
+                                NONE => NONE
                                 | SOME x => (* success! *) SOME (x + el_off)
                             )
                     )
-                | _ => (*let _ = Missing_pervasives.errln "warning: `_start' symbol with no range" in*) NONE
+                | _ => NONE
             )
         | [] => (* no _start symbol *) NONE
-        | _ => (*let _ = Missing_pervasives.errln ("warning: saw multiple `_start' symbols: " ^
-            (let (ranges, defs) = unzip all_entry_points in show ranges)) in *)NONE
+        | _ => NONE
     )))`;
 
 
@@ -649,8 +648,6 @@ val _ = Define `
                 (NONE, _) => NONE
                 | (SOME rr, SOME(ApplyReloc, maybe_def)) =>
                     if amd64_reloc_needs_got_slot symref rr maybe_def then
-                        (*let _ = errln ("Saw a via-GOT symbol reference: to `" ^ symref.ref.ref_symname ^ "' coming from linkable " ^ (show i) ^ " (" ^ 
-                            fname ^ "), logically from section " ^ (show rr.ref_src_scn)) in *)
                         SOME (symref.ref.ref_symname, maybe_def) 
                     else NONE
                 | (SOME rr, SOME(MakePIC, maybe_def)) => failwith "FIXME: PIC support please"
@@ -711,16 +708,6 @@ val _ = Define `
                 | (SOME rr, SOME(ApplyReloc, maybe_def)) =>
                     if amd64_reloc_needs_plt_slot symref rr maybe_def ref_is_statically_linked
                     then 
-                        (*let _ = if is_ifunc_def maybe_def then
-                         (* we ensure that a PLT entry (specifically .iplt) is generated for the symbol *)
-                         errln ("Saw a reference to IFUNC symbol `" ^ symref.ref.ref_symname ^ "'; ref is coming from linkable " ^ (show i) ^ " (" ^ 
-                            fname ^ "), relent idx " ^ (show rr.ref_rel_idx) ^ " logically from section " ^ (show rr.ref_src_scn) ) 
-                        else
-                        errln ("Saw a via-PLT symbol reference: to `" ^ symref.ref.ref_symname ^ "' coming from linkable " ^ (show i) ^ " (" ^ 
-                            fname ^ "), relent idx " ^ (show rr.ref_rel_idx) ^ " logically from section " ^ (show rr.ref_src_scn) ^ 
-                            match maybe_def with Just _ -> ", with definition" | Nothing -> ", not bound to anything" end
-                            )
-                        in*)
                         SOME(symref.ref.ref_symname, maybe_def) 
                     else NONE
                 | (SOME rr, SOME(MakePIC, maybe_def)) => failwith "FIXME: PIC support please"
@@ -823,21 +810,12 @@ val _ = Define `
                         let this_plt_slot_base_addr = (plt_base_addr +(I 16 * ((I plt_entry_idx_not_counting_header) 
                             + (if plt_needs_header_entry then I 1 else I 0))))
                         in
-                        (*let _ = Missing_pervasives.errln ("PLT slot base address for symname `" ^ symname ^ "': 0x" ^
-                            (hex_string_of_natural this_plt_slot_base_addr))
-                        in*)
                         let got_slot_addr = (got_base_addr +(I 8 * got_slot_idx))
                         in
-                        (*let _ = Missing_pervasives.errln ("GOT slot address for symname `" ^ symname ^ "' (idx " ^ (show got_slot_idx) ^ "): 0x" ^
-                            (hex_string_of_natural got_slot_addr))
-                        in*)
                         let maybe_header_entry_address = (if plt_needs_header_entry then SOME(plt_base_addr) else NONE)
                         in
                         let offset_to_got_slot = ((int_of_num got_slot_addr) - (int_of_num (this_plt_slot_base_addr +I 6)))
                         in
-                        (*let _ = Missing_pervasives.errln ("PLT's PC-relative index to GOT slot for symname `" ^ symname ^ "' (GOT idx " ^ (show got_slot_idx) ^ ") is (decimal)" ^
-                            (show offset_to_got_slot))
-                        in*)
                         let content_bytes =                        
  ((((([(n2w : num -> 8 word(I 255)); (n2w : num -> 8 word(I 37))] ++ (* offset to the GOT entry, from the *next* instruction start, signed 32-bit LE *)
                             (to_le_signed_bytes(I 4) offset_to_got_slot)) ++
@@ -852,29 +830,7 @@ val _ = Define `
                                 )
                         )))
                         in
-                        (*let _ = errln ("Created a PLT entry consisting of " ^ (show (length content_bytes)) ^ " bytes.")
-                        in*)
                         (this_plt_slot_base_addr, content_bytes)
-                        (* 
-                        match maybe_def with 
-                            Nothing -> 0
-                            | Just sd -> 
-                                match Memory_image_orderings.find_defs_matching sd img with
-                                    [] -> failwith ("no matching definitions for PLT entry named " ^ symname)
-                                    | [(Just(def_el_name, (def_start, def_len)), d)] -> 
-                                        match element_and_offset_to_address (def_el_name, def_start) img with
-                                            Nothing -> failwith ("PLT: no address for definition offset in element " ^ def_el_name)
-                                            | Just x -> 
-                                                let _ = errln ("PLT slot for symbol `" ^ symname ^ 
-                                                    "' calculated at (non-PLT) address 0x" ^ (hex_string_of_natural x) ^ 
-                                                    " (offset 0x" ^ (hex_string_of_natural def_start) ^ " in element " ^ def_el_name ^ ")")
-                                                in
-                                                x
-                                        end
-                                    | _ -> failwith ("multiple matching definitions for PLT entry named " ^ symname)
-                                end
-                        end
-                        *)
                         
                     ) : any_abi_feature plt_entry_content_fn))
                 ))
@@ -1049,14 +1005,8 @@ val _ = Define `
                                          * but they can have vaddr ranges as arguments. *)
                                         let offs = (i2n_signed(I 64) (( 0 : int)-( 8 : int)))
                                         in
-                                        (*let _ = errln ("GOT slot for TLS symbol `" ^ symname ^ 
-                                            "' created containing offset 0x" ^ (hex_string_of_natural offs))
-                                        in*)
                                         natural_to_le_byte_list offs
-                                    else (*let _ = errln ("GOT slot for symbol `" ^ symname ^ 
-                                        "' created pointing to address 0x" ^ (hex_string_of_natural x) ^ 
-                                        " (offset 0x" ^ (hex_string_of_natural def_start) ^ " in element " ^ def_el_name ^ ")")
-                                    in*)
+                                    else
                                     natural_to_le_byte_list_padded_to(I 8) x
                             )
                         | _ => failwith ( STRCAT"multiple matching definitions for GOT entry named " symname)
@@ -1351,16 +1301,8 @@ val _ = Define `
                                     in
                                     let (addr, content) = (fn got_addr plt_addr)
                                     in
-                                    (*let _ = errln ("Calculated PLT slot for `" ^ d.def_symname ^ "', from PLT addr " ^ (hex_string_of_natural plt_addr)
-                                        ^ " and GOT addr " ^ (hex_string_of_natural got_addr) ^ ", as " ^ (hex_string_of_natural addr))
-                                    in*)
                                     addr
-                                | [] => (* failwith ("internal error: no PLT entry for reloc against `" ^ rr.ref.ref_symname ^ "'") *)
-                                    (* If we got no PLT slot, we assume it's because the PLT entry was optimised out. 
-                                     * So we just return the address of the symbol itself. *)
-                                    (*let _ = errln ("No PLT entry for reloc against `" ^ rr.ref.ref_symname ^ 
-                                        "', which we assume was optimised to avoid the GOT")
-                                    in*)
+                                | [] =>
                                     (case memory_image_orderings$find_defs_matching 
   instance_Basic_classes_Ord_Abis_any_abi_feature_dict instance_Abi_classes_AbiFeatureTagEquiv_Abis_any_abi_feature_dict d img of
                                         [] =>I 0 (* HMM -- should be an error? *)

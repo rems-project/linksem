@@ -659,15 +659,13 @@ val _ = Define `
   * ELF files.  A section header table is an array (implemented as a list, here)
   * of section header table entries.
   *)
-val _ = type_abbrev( "elf32_section_header_table" , ``: elf32_section_header_table_entry
-  list``);
+val _ = type_abbrev( "elf32_section_header_table" , ``: elf32_section_header_table_entry list``);
 
 (** Type [elf64_section_header_table] represents a section header table for 64-bit
   * ELF files.  A section header table is an array (implemented as a list, here)
   * of section header table entries.
   *)
-val _ = type_abbrev( "elf64_section_header_table" , ``: elf64_section_header_table_entry
-  list``);
+val _ = type_abbrev( "elf64_section_header_table" , ``: elf64_section_header_table_entry list``);
 
 (** Parsing and blitting *)
 
@@ -961,8 +959,7 @@ val _ = Define `
   * The first component of the type is an OS specific print function, the second is
   * a processor specific print function.
   *)
-val _ = type_abbrev( "sht_print_bundle" , ``:
-  (num -> string) # (num -> string) # (num -> string)``);
+val _ = type_abbrev( "sht_print_bundle" , ``:(num -> string) # (num -> string) # (num -> string)``);
 
 (** [string_of_elf32_section_header_table_entry sht ent] produces a string
   * representation of section header table entry [ent] using [sht], a

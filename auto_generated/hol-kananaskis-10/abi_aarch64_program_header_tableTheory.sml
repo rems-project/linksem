@@ -13,11 +13,11 @@ struct
   in end;
   val _ = Theory.link_parents
           ("abi_aarch64_program_header_table",
-          Arbnum.fromString "1445346454",
-          Arbnum.fromString "177335")
+          Arbnum.fromString "1471268577",
+          Arbnum.fromString "824281")
           [("lem_num",
-           Arbnum.fromString "1444993253",
-           Arbnum.fromString "763379")];
+           Arbnum.fromString "1471268473",
+           Arbnum.fromString "634554")];
   val _ = Theory.incorporate_types "abi_aarch64_program_header_table" [];
 
   val idvector = 
@@ -25,7 +25,7 @@ struct
     in Vector.fromList
   [ID("num", "num"), ID("arithmetic", "*"), ID("min", "fun"),
    ID("arithmetic", "+"), ID("min", "="), ID("min", "bool"),
-   ID("arithmetic", "BIT1"), ID("arithmetic", "BIT2"),
+   ID("arithmetic", "BIT1"), ID("arithmetic", "BIT2"), ID("combin", "I"),
    ID("arithmetic", "NUMERAL"), ID("arithmetic", "ZERO"),
    ID("abi_aarch64_program_header_table", "abi_aarch64_pt_archext"),
    ID("abi_aarch64_program_header_table", "abi_aarch64_pt_unwind")]
@@ -43,7 +43,7 @@ struct
   in
   val tmvector = build_term_vector idvector tyvector
   [TMC(1, 2), TMC(3, 2), TMC(4, 5), TMC(6, 1), TMC(7, 1), TMC(8, 1),
-   TMC(9, 0), TMC(10, 0), TMC(11, 0)]
+   TMC(9, 1), TMC(10, 0), TMC(11, 0), TMC(12, 0)]
   end
   local
   val DT = Thm.disk_thm val read = Term.read_raw tmvector
@@ -51,17 +51,17 @@ struct
   fun op abi_aarch64_pt_archext_def x = x
     val op abi_aarch64_pt_archext_def =
     DT(((("abi_aarch64_program_header_table",0),[]),[]),
-       [read"%2%7@%0%5%4%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%4%4%6@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%5%4%6@@@@"])
+       [read"%2%8@%0%5%6%4%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%4%4%7@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%5%6%4%7@@@@@"])
   fun op abi_aarch64_pt_unwind_def x = x
     val op abi_aarch64_pt_unwind_def =
     DT(((("abi_aarch64_program_header_table",1),[]),[]),
-       [read"%2%8@%1%0%5%4%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%4%4%6@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%5%4%6@@@@%5%3%6@@@@"])
+       [read"%2%9@%1%0%5%6%4%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%3%4%4%7@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%5%6%4%7@@@@@%5%6%3%7@@@@@"])
   end
   val _ = DB.bindl "abi_aarch64_program_header_table"
   [("abi_aarch64_pt_archext_def",abi_aarch64_pt_archext_def,DB.Def),
    ("abi_aarch64_pt_unwind_def",abi_aarch64_pt_unwind_def,DB.Def)]
 
-  local open Portable GrammarSpecials Parse
+  local open GrammarSpecials Parse
     fun UTOFF f = Feedback.trace("Parse.unicode_trace_off_complaints",0)f
   in
   val _ = mk_local_grms [("lem_numTheory.lem_num_grammars",

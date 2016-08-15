@@ -376,44 +376,7 @@ val _ = type_abbrev( "null_abi_feature" , ``: unit``);
  * do bitfield relocations (think ARM). *)
 val _ = type_abbrev( "reloc_calculate_fn"    , ``: num -> int -> num -> num``); (* symaddr -> addend -> existing -> relocated *)
 
-val _ = type_abbrev((*  'abifeature *) "reloc_apply_fn" , ``: 'abifeature 
-                                (* elf memory image: the context in which the relocation is being applied *)
-                                annotated_memory_image ->
-                               (* the site address *)
-                                num ->
-                                (* Typically there are two symbol table entries involved in a relocation.
-                                 * One is the reference, and is usually undefined.
-                                 * The other is the definition, and is defined (else absent, when we use 0).
-                                 * However, sometimes the reference is itself a defined symbol.
-                                 * Almost always, if so, *that* symbol *is* "the definition".
-                                 * However, copy relocs are an exception.
-                                 * 
-                                 * In the case of copy relocations being fixed up by the dynamic
-                                 * linker, the dynamic linker must figure out which definition to
-                                 * copy from. This can't be as simple as "the first definition in
-                                 * link order", because *our* copy of that symbol is a definition
-                                 * (typically in bss). It could be as simple as "the first *after us*
-                                 * in link order". FIXME: find the glibc code that does this.
-                                 * 
-                                 * Can we dig this stuff out of the memory image? If we pass the address
-                                 * being relocated, we can find the tags. But I don't want to pass
-                                 * the symbol address until the very end. It seems better to pass the symbol
-                                 * name, since that's the key that the dynamic linker uses to look for
-                                 * other definitions.
-                                 * 
-                                 * Do we want to pass a whole symbol_reference? This has not only the
-                                 * symbol name but also syment, scn and idx. The syment is usually UND, 
-                                 * but *could* be defined (and is for copy relocs). The scn and idx are
-                                 * not relevant, but it seems cleaner to pass the whole thing anyway.
-                                 *)
-                                symbol_reference_and_reloc_site -> 
-                                (* Should we pass a symbol_definition too? Implicitly, we pass part of it
-                                 * by passing the symaddr argument (below). I'd prefer not to depend on
-                                 * others -- relocation calculations should look like "mostly address 
-                                 * arithmetic", i.e. only the weird ones do something else. *)
-                                 (* How wide, in bytes, is the relocated field? this may depend on img 
-                                 * and on the wider image (copy relocs), so it's returned *by* the reloc function. *)
-                                (num (* width *) # reloc_calculate_fn)``);
+val _ = type_abbrev((*  'abifeature *) "reloc_apply_fn" , ``:'abifeature annotated_memory_image -> num -> symbol_reference_and_reloc_site -> (num # reloc_calculate_fn)``);
 
 (* Some kinds of relocation necessarily give us back a R_*_RELATIVE reloc.
  * We don't record this explicitly. Instead, the "bool" is a flag recording whether
@@ -798,12 +761,6 @@ val _ = Define `
      * What about zero-length elements?
      * Break ties on the bigger size. *)let (maybe_highest_le :  (num # string # element)option)
      = (FOLDL (\ maybe_current_max_le .  (\ (el_name, el_rec) . 
-        (*let _ = errln ("Saw element named `" ^ el_name ^ " with startpos " ^ (
-            (match el_rec.startpos with Just addr -> ("0x" ^ (hex_string_of_natural addr)) | Nothing -> "(none)" end)
-            ^ " and length " ^
-            (match el_rec.length with Just len -> ("0x" ^ (hex_string_of_natural len)) | Nothing -> "(none)" end)
-            ))
-        in*)
         (case (maybe_current_max_le, el_rec.startpos) of
               (NONE,                                    NONE) => NONE
             | (NONE,                                    SOME this_element_pos) => if this_element_pos <= query_addr 

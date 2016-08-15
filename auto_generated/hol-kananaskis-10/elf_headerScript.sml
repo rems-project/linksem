@@ -1914,8 +1914,8 @@ val _ = Define `
   ;  STRCAT"\t"  (STRCAT"Machine: " (string_of_elf_machine_architecture (w2n hdr.elf64_machine)))
   ;  STRCAT"\t"  (STRCAT"Entry point: " ((num_to_dec_string o w2n hdr.elf64_entry)))
   ;  STRCAT"\t"  (STRCAT"Flags: " ((num_to_dec_string o w2n hdr.elf64_flags)))
-  ;  STRCAT"\t"  (STRCAT"Entries in program header table: " (ARB hdr.elf64_phnum))
-  ;  STRCAT"\t"  (STRCAT"Entries in section header table: " (ARB hdr.elf64_shnum))
+  ;  STRCAT"\t"  (STRCAT"Entries in program header table: " ((nat_to_dec_string o w2n hdr.elf64_phnum)))
+  ;  STRCAT"\t"  (STRCAT"Entries in section header table: " ((nat_to_dec_string o w2n hdr.elf64_shnum)))
   ]))`;
 
 

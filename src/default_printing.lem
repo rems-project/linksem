@@ -5,6 +5,8 @@
   *)
 open import Function
 
+open import {hol} `stringTheory`
+
 (** [default_os_specific_print] is a default print function for OS specific
   * functionality.
   *)

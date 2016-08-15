@@ -124,10 +124,10 @@ val _ = Define `
  ((case endian of
       Little =>
       byte_sequence$read_4_bytes_le bs0 >>= (\ ((b1, b2, b3, b4), bs1) . 
-      return (ARB b4 b3 b2 b1, bs1))
+      return (Elf_Local%uint32_of_quad b4 b3 b2 b1, bs1))
     | Big    =>
       byte_sequence$read_4_bytes_be bs0 >>= (\ ((b1, b2, b3, b4), bs1) . 
-      return (ARB b4 b3 b2 b1, bs1))
+      return (Elf_Local%uint32_of_quad b4 b3 b2 b1, bs1))
   )))`;
 
 
@@ -140,10 +140,10 @@ val _ = Define `
  (bytes_of_elf32_addr endian w=  
  ((case endian of
       Little =>
-      let (b0, b1, b2, b3) = (ARB w) in
+      let (b0, b1, b2, b3) = (Elf_Local%quad_of_uint32 w) in
         [b0; b1; b2; b3]
     | Big    =>
-      let (b0, b1, b2, b3) = (ARB w) in
+      let (b0, b1, b2, b3) = (Elf_Local%quad_of_uint32 w) in
         [b3; b2; b1; b0]
   )))`;
 
@@ -172,10 +172,10 @@ val _ = Define `
  ((case endian of
       Little =>
       byte_sequence$read_8_bytes_le bs0 >>= (\ ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) . 
-      return (ARB b8 b7 b6 b5 b4 b3 b2 b1, bs1))
+      return (Elf_Local%uint64_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1))
     | Big    =>
       byte_sequence$read_8_bytes_be bs0 >>= (\ ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) . 
-      return (ARB b8 b7 b6 b5 b4 b3 b2 b1, bs1))
+      return (Elf_Local%uint64_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1))
   )))`;
 
 
@@ -188,10 +188,10 @@ val _ = Define `
  (bytes_of_elf64_addr endian w=  
  ((case endian of
       Little =>
-      let (b0, b1, b2, b3, b4, b5, b6, b7) = (ARB w) in
+      let (b0, b1, b2, b3, b4, b5, b6, b7) = (Elf_Local%oct_of_uint64 w) in
         [b0; b1; b2; b3; b4; b5; b6; b7]
     | Big    =>
-      let (b0, b1, b2, b3, b4, b5, b6, b7) = (ARB w) in
+      let (b0, b1, b2, b3, b4, b5, b6, b7) = (Elf_Local%oct_of_uint64 w) in
         [b7; b6; b5; b4; b3; b2; b1; b0]
   )))`;
 
@@ -229,10 +229,10 @@ val _ = Define `
  ((case endian of
       Little =>
       byte_sequence$read_2_bytes_le bs0 >>= (\ ((b1, b2), bs1) . 
-      return (ARB b2 b1, bs1))
+      return (Elf_Local%uint16_of_dual b2 b1, bs1))
     | Big    =>
       byte_sequence$read_2_bytes_be bs0 >>= (\ ((b1, b2), bs1) . 
-      return (ARB b2 b1, bs1))
+      return (Elf_Local%uint16_of_dual b2 b1, bs1))
   )))`;
 
 
@@ -247,10 +247,10 @@ val _ = Define `
  (bytes_of_elf32_half endian h=  
  ((case endian of
       Little =>
-      let (b0, b1) = (ARB h) in
+      let (b0, b1) = (Elf_Local%dual_of_uint16 h) in
         [b0; b1]
     | Big    =>
-      let (b0, b1) = (ARB h) in
+      let (b0, b1) = (Elf_Local%dual_of_uint16 h) in
         [b1; b0]
   )))`;
 
@@ -275,10 +275,10 @@ val _ = Define `
  ((case endian of
       Big =>
       byte_sequence$read_2_bytes_be bs0 >>= (\ ((b1, b2), bs1) . 
-      return (ARB b2 b1, bs1))
+      return (Elf_Local%uint16_of_dual b2 b1, bs1))
     | Little =>
       byte_sequence$read_2_bytes_le bs0 >>= (\ ((b1, b2), bs1) . 
-      return (ARB b2 b1, bs1))
+      return (Elf_Local%uint16_of_dual b2 b1, bs1))
   )))`;
 
 
@@ -295,10 +295,10 @@ val _ = Define `
  (bytes_of_elf64_half endian w=  
  ((case endian of
       Big =>
-      let (b0, b1) = (ARB w) in
+      let (b0, b1) = (Elf_Local%dual_of_uint16 w) in
         [b1; b0]
     | Little    =>
-      let (b0, b1) = (ARB w) in
+      let (b0, b1) = (Elf_Local%dual_of_uint16 w) in
         [b0; b1]
   )))`;
 
@@ -306,7 +306,7 @@ val _ = Define `
 val _ = Define `
 (instance_Show_Show_Elf_types_native_uint_elf64_half_dict= (<|
 
-  show_method := ARB|>))`;
+  show_method := (nat_to_dec_string o w2n)|>))`;
 
 
 (*
@@ -340,10 +340,10 @@ val _ = Define `
  ((case endian of
       Little =>
       byte_sequence$read_4_bytes_le bs0 >>= (\ ((b1, b2, b3, b4), bs1) . 
-      return (ARB b4 b3 b2 b1, bs1))
+      return (Elf_Local%uint32_of_quad b4 b3 b2 b1, bs1))
     | Big    =>
       byte_sequence$read_4_bytes_be bs0 >>= (\ ((b1, b2, b3, b4), bs1) . 
-      return (ARB b4 b3 b2 b1, bs1))
+      return (Elf_Local%uint32_of_quad b4 b3 b2 b1, bs1))
   )))`;
 
 
@@ -356,10 +356,10 @@ val _ = Define `
  (bytes_of_elf32_off endian w=  
  ((case endian of
       Little =>
-      let (b0, b1, b2, b3) = (ARB w) in
+      let (b0, b1, b2, b3) = (Elf_Local%quad_of_uint32 w) in
         [b0; b1; b2; b3]
     | Big    =>
-      let (b0, b1, b2, b3) = (ARB w) in
+      let (b0, b1, b2, b3) = (Elf_Local%quad_of_uint32 w) in
         [b3; b2; b1; b0]
   )))`;
 
@@ -388,10 +388,10 @@ val _ = Define `
  ((case endian of
       Little =>
       byte_sequence$read_8_bytes_le bs0 >>= (\ ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) . 
-      return (ARB b8 b7 b6 b5 b4 b3 b2 b1, bs1))
+      return (Elf_Local%uint64_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1))
     | Big    =>
       byte_sequence$read_8_bytes_be bs0 >>= (\ ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) . 
-      return (ARB b8 b7 b6 b5 b4 b3 b2 b1, bs1))
+      return (Elf_Local%uint64_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1))
   )))`;
 
 
@@ -404,10 +404,10 @@ val _ = Define `
  (bytes_of_elf64_off endian w=  
  ((case endian of
       Little =>
-      let (b0, b1, b2, b3, b4, b5, b6, b7) = (ARB w) in
+      let (b0, b1, b2, b3, b4, b5, b6, b7) = (Elf_Local%oct_of_uint64 w) in
         [b0; b1; b2; b3; b4; b5; b6; b7]
     | Big    =>
-      let (b0, b1, b2, b3, b4, b5, b6, b7) = (ARB w) in
+      let (b0, b1, b2, b3, b4, b5, b6, b7) = (Elf_Local%oct_of_uint64 w) in
         [b7; b6; b5; b4; b3; b2; b1; b0]
   )))`;
 
@@ -443,10 +443,10 @@ val _ = Define `
  ((case endian of
       Little =>
       byte_sequence$read_4_bytes_le bs0 >>= (\ ((b1, b2, b3, b4), bs1) . 
-      return (ARB b4 b3 b2 b1, bs1))
+      return (Elf_Local%uint32_of_quad b4 b3 b2 b1, bs1))
     | Big    =>
       byte_sequence$read_4_bytes_be bs0 >>= (\ ((b1, b2, b3, b4), bs1) . 
-      return (ARB b4 b3 b2 b1, bs1))
+      return (Elf_Local%uint32_of_quad b4 b3 b2 b1, bs1))
   )))`;
 
 
@@ -461,10 +461,10 @@ val _ = Define `
  (bytes_of_elf32_word endian w=  
  ((case endian of
       Little =>
-      let (b0, b1, b2, b3) = (ARB w) in
+      let (b0, b1, b2, b3) = (Elf_Local%quad_of_uint32 w) in
         [b0; b1; b2; b3]
     | Big    =>
-      let (b0, b1, b2, b3) = (ARB w) in
+      let (b0, b1, b2, b3) = (Elf_Local%quad_of_uint32 w) in
         [b3; b2; b1; b0]
   )))`;
 
@@ -495,10 +495,10 @@ val _ = Define `
  ((case endian of
       Little =>
       byte_sequence$read_4_bytes_le bs0 >>= (\ ((b1, b2, b3, b4), bs1) . 
-      return (ARB b4 b3 b2 b1, bs1))
+      return (Elf_Local%uint32_of_quad b4 b3 b2 b1, bs1))
     | Big    =>
       byte_sequence$read_4_bytes_be bs0 >>= (\ ((b1, b2, b3, b4), bs1) . 
-      return (ARB b4 b3 b2 b1, bs1))
+      return (Elf_Local%uint32_of_quad b4 b3 b2 b1, bs1))
   )))`;
 
 
@@ -511,10 +511,10 @@ val _ = Define `
  (bytes_of_elf64_word endian w=  
  ((case endian of
       Little =>
-      let (b0, b1, b2, b3) = (ARB w) in
+      let (b0, b1, b2, b3) = (Elf_Local%quad_of_uint32 w) in
         [b0; b1; b2; b3]
     | Big    =>
-      let (b0, b1, b2, b3) = (ARB w) in
+      let (b0, b1, b2, b3) = (Elf_Local%quad_of_uint32 w) in
         [b3; b2; b1; b0]
   )))`;
 
@@ -544,10 +544,10 @@ val _ = Define `
  ((case endian of
       Little =>
       byte_sequence$read_4_bytes_le bs0 >>= (\ ((b1, b2, b3, b4), bs1) . 
-      return (ARB b4 b3 b2 b1, bs1))
+      return (Elf_Local%sint32_of_quad b4 b3 b2 b1, bs1))
     | Big    =>
       byte_sequence$read_4_bytes_be bs0 >>= (\ ((b1, b2, b3, b4), bs1) . 
-      return (ARB b4 b3 b2 b1, bs1))
+      return (Elf_Local%sint32_of_quad b4 b3 b2 b1, bs1))
   )))`;
 
 
@@ -558,10 +558,10 @@ val _ = Define `
  (bytes_of_elf32_sword endian w=  
  ((case endian of
       Little =>
-      let (b0, b1, b2, b3) = (ARB w) in
+      let (b0, b1, b2, b3) = (Elf_Local%quad_of_sint32 w) in
         [b0; b1; b2; b3]
     | Big    =>
-      let (b0, b1, b2, b3) = (ARB w) in
+      let (b0, b1, b2, b3) = (Elf_Local%quad_of_sint32 w) in
         [b3; b2; b1; b0]
   )))`;
 
@@ -588,10 +588,10 @@ val _ = Define `
  ((case endian of
       Little =>
       byte_sequence$read_4_bytes_le bs0 >>= (\ ((b1, b2, b3, b4), bs1) . 
-      return (ARB b4 b3 b2 b1, bs1))
+      return (Elf_Local%sint32_of_quad b4 b3 b2 b1, bs1))
     | Big    =>
       byte_sequence$read_4_bytes_be bs0 >>= (\ ((b1, b2, b3, b4), bs1) . 
-      return (ARB b4 b3 b2 b1, bs1))
+      return (Elf_Local%sint32_of_quad b4 b3 b2 b1, bs1))
   )))`;
 
 
@@ -602,10 +602,10 @@ val _ = Define `
  (bytes_of_elf64_sword endian w=  
  ((case endian of
       Little =>
-      let (b0, b1, b2, b3) = (ARB w) in
+      let (b0, b1, b2, b3) = (Elf_Local%quad_of_sint32 w) in
         [b0; b1; b2; b3]
     | Big    =>
-      let (b0, b1, b2, b3) = (ARB w) in
+      let (b0, b1, b2, b3) = (Elf_Local%quad_of_sint32 w) in
         [b3; b2; b1; b0]
   )))`;
 
@@ -634,10 +634,10 @@ val _ = Define `
  ((case endian of
       Little =>
       byte_sequence$read_8_bytes_le bs0 >>= (\ ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) . 
-      return (ARB b8 b7 b6 b5 b4 b3 b2 b1, bs1))
+      return (Elf_Local%uint64_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1))
     | Big    =>
       byte_sequence$read_8_bytes_be bs0 >>= (\ ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) . 
-      return (ARB b8 b7 b6 b5 b4 b3 b2 b1, bs1))
+      return (Elf_Local%uint64_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1))
   )))`;
 
 
@@ -662,10 +662,10 @@ val _ = Define `
  (bytes_of_elf64_xword endian x=  
  ((case endian of
       Little =>
-      let (b0, b1, b2, b3, b4, b5, b6, b7) = (ARB x) in
+      let (b0, b1, b2, b3, b4, b5, b6, b7) = (Elf_Local%oct_of_uint64 x) in
         [b0; b1; b2; b3; b4; b5; b6; b7]
     | Big    =>
-      let (b0, b1, b2, b3, b4, b5, b6, b7) = (ARB x) in
+      let (b0, b1, b2, b3, b4, b5, b6, b7) = (Elf_Local%oct_of_uint64 x) in
         [b7; b6; b5; b4; b3; b2; b1; b0]
   )))`;
 
@@ -696,10 +696,10 @@ val _ = Define `
  ((case endian of
       Little =>
       byte_sequence$read_8_bytes_le bs0 >>= (\ ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) . 
-      return (ARB b8 b7 b6 b5 b4 b3 b2 b1, bs1))
+      return (Elf_Local%sint64_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1))
     | Big    =>
       byte_sequence$read_8_bytes_be bs0 >>= (\ ((b1, b2, b3, b4, b5, b6, b7, b8), bs1) . 
-      return (ARB b8 b7 b6 b5 b4 b3 b2 b1, bs1))
+      return (Elf_Local%sint64_of_oct b8 b7 b6 b5 b4 b3 b2 b1, bs1))
   )))`;
 
 
@@ -710,10 +710,10 @@ val _ = Define `
  (bytes_of_elf64_sxword endian w=  
  ((case endian of
       Little =>
-      let (b0, b1, b2, b3, b4, b5, b6, b7) = (ARB w) in
+      let (b0, b1, b2, b3, b4, b5, b6, b7) = (Elf_Local%oct_of_sint64 w) in
         [b0; b1; b2; b3; b4; b5; b6; b7]
     | Big    =>
-      let (b0, b1, b2, b3, b4, b5, b6, b7) = (ARB w) in
+      let (b0, b1, b2, b3, b4, b5, b6, b7) = (Elf_Local%oct_of_sint64 w) in
         [b7; b6; b5; b4; b3; b2; b1; b0]
   )))`;
 
