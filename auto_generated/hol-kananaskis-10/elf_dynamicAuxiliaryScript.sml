@@ -20,7 +20,7 @@ val _ = new_theory "elf_dynamicAuxiliary"
 (* val gst = Defn.tgoal_no_defn (obtain_elf32_dynamic_section_contents'_def, obtain_elf32_dynamic_section_contents'_ind) *)
 val (obtain_elf32_dynamic_section_contents'_rw, obtain_elf32_dynamic_section_contents'_ind_rw) =
   Defn.tprove_no_defn ((obtain_elf32_dynamic_section_contents'_def, obtain_elf32_dynamic_section_contents'_ind),
-    cheat
+    cheat (* the termination proof *)
   )
 val obtain_elf32_dynamic_section_contents'_rw = save_thm ("obtain_elf32_dynamic_section_contents'_rw", obtain_elf32_dynamic_section_contents'_rw);
 val obtain_elf32_dynamic_section_contents'_ind_rw = save_thm ("obtain_elf32_dynamic_section_contents'_ind_rw", obtain_elf32_dynamic_section_contents'_ind_rw);
@@ -29,7 +29,7 @@ val obtain_elf32_dynamic_section_contents'_ind_rw = save_thm ("obtain_elf32_dyna
 (* val gst = Defn.tgoal_no_defn (obtain_elf64_dynamic_section_contents'_def, obtain_elf64_dynamic_section_contents'_ind) *)
 val (obtain_elf64_dynamic_section_contents'_rw, obtain_elf64_dynamic_section_contents'_ind_rw) =
   Defn.tprove_no_defn ((obtain_elf64_dynamic_section_contents'_def, obtain_elf64_dynamic_section_contents'_ind),
-    cheat
+    cheat (* the termination proof *)
   )
 val obtain_elf64_dynamic_section_contents'_rw = save_thm ("obtain_elf64_dynamic_section_contents'_rw", obtain_elf64_dynamic_section_contents'_rw);
 val obtain_elf64_dynamic_section_contents'_ind_rw = save_thm ("obtain_elf64_dynamic_section_contents'_ind_rw", obtain_elf64_dynamic_section_contents'_ind_rw);

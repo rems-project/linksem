@@ -13,11 +13,11 @@ struct
   in end;
   val _ = Theory.link_parents
           ("abi_power64_relocation",
-          Arbnum.fromString "1445439248",
-          Arbnum.fromString "329592")
+          Arbnum.fromString "1471355416",
+          Arbnum.fromString "26544")
           [("abi_utilities",
-           Arbnum.fromString "1445438975",
-           Arbnum.fromString "524862")];
+           Arbnum.fromString "1471355380",
+           Arbnum.fromString "362513")];
   val _ = Theory.incorporate_types "abi_power64_relocation" [];
 
   val idvector = 
@@ -827,7 +827,7 @@ struct
     abi_ppc64_apply_relocation_def,
     DB.Def)]
 
-  local open Portable GrammarSpecials Parse
+  local open GrammarSpecials Parse
     fun UTOFF f = Feedback.trace("Parse.unicode_trace_off_complaints",0)f
   in
   val _ = mk_local_grms [("abi_utilitiesTheory.abi_utilities_grammars",

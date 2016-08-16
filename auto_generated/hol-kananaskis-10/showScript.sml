@@ -20,6 +20,7 @@ val _ = new_theory "show"
 (*open import String_extra*)
 
 (*open import {hol} `ASCIInumbersTheory`*)
+(*open import {hol} `elf_localTheory`*)
 
 val _ = Hol_datatype `
 (*  'a *) Show_class= <|
@@ -177,7 +178,7 @@ val _ = Define `
 val _ = Define `
 (instance_Show_Show_Num_integer_dict= (<|
 
-  show_method := int_to_dec_string |>))`;
+  show_method := int_to_dec_string|>))`;
 
 val _ = export_theory()
 

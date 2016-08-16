@@ -13,11 +13,11 @@ struct
   in end;
   val _ = Theory.link_parents
           ("abi_power64_section_header_table",
-          Arbnum.fromString "1445439272",
-          Arbnum.fromString "522425")
+          Arbnum.fromString "1471355269",
+          Arbnum.fromString "642082")
           [("elf_section_header_table",
-           Arbnum.fromString "1445438821",
-           Arbnum.fromString "375061")];
+           Arbnum.fromString "1471355220",
+           Arbnum.fromString "107187")];
   val _ = Theory.incorporate_types "abi_power64_section_header_table" [];
 
   val idvector = 
@@ -71,7 +71,7 @@ struct
     abi_power64_special_sections_def,
     DB.Def)]
 
-  local open Portable GrammarSpecials Parse
+  local open GrammarSpecials Parse
     fun UTOFF f = Feedback.trace("Parse.unicode_trace_off_complaints",0)f
   in
   val _ = mk_local_grms [("elf_section_header_tableTheory.elf_section_header_table_grammars",

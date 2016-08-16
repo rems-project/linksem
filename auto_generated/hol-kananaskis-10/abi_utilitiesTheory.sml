@@ -13,11 +13,11 @@ struct
   in end;
   val _ = Theory.link_parents
           ("abi_utilities",
-          Arbnum.fromString "1445438975",
-          Arbnum.fromString "524862")
+          Arbnum.fromString "1471355380",
+          Arbnum.fromString "362513")
           [("memory_image_orderings",
-           Arbnum.fromString "1445438955",
-           Arbnum.fromString "493782")];
+           Arbnum.fromString "1471355354",
+           Arbnum.fromString "242874")];
   val _ = Theory.incorporate_types "abi_utilities"
        [("relocation_operator_expression", 1), ("relocation_operator2", 0),
         ("relocation_operator", 0), ("relocation_frame", 2),
@@ -35,18 +35,18 @@ struct
    ID("abi_utilities", "can_fail"),
    ID("abi_utilities", "integer_bit_width"),
    ID("memory_image", "annotated_memory_image"),
-   ID("memory_image", "ToNaturalList_class"),
    ID("lem_basic_classes", "Ord_class"), ID("error", "error"),
    ID("min", "bool"), ID("ind_type", "recspace"),
-   ID("memory_image", "memory_image_element"), ID("list", "list"),
+   ID("memory_image", "element0"), ID("list", "list"),
    ID("string", "char"), ID("option", "option"),
-   ID("memory_image", "range_tag"), ID("bool", "!"), ID("arithmetic", "+"),
-   ID("pair", ","), ID("bool", "/\\"), ID("num", "0"), ID("prim_rec", "<"),
-   ID("min", "="), ID("min", "==>"), ID("bool", "?"), ID("bool", "ARB"),
-   ID("abi_utilities", "Apply"), ID("abi_utilities", "Apply2"),
-   ID("arithmetic", "BIT1"), ID("arithmetic", "BIT2"),
-   ID("ind_type", "BOTTOM"), ID("string", "CHR"), ID("bool", "COND"),
-   ID("list", "CONS"), ID("ind_type", "CONSTR"),
+   ID("memory_image", "range_tag"), ID("memory_image", "symbol_reference"),
+   ID("elf_symbol_table", "elf64_symbol_table_entry"), ID("bool", "!"),
+   ID("arithmetic", "+"), ID("pair", ","), ID("bool", "/\\"),
+   ID("num", "0"), ID("prim_rec", "<"), ID("min", "="), ID("min", "==>"),
+   ID("bool", "?"), ID("bool", "ARB"), ID("abi_utilities", "Apply"),
+   ID("abi_utilities", "Apply2"), ID("arithmetic", "BIT1"),
+   ID("arithmetic", "BIT2"), ID("ind_type", "BOTTOM"), ID("string", "CHR"),
+   ID("bool", "COND"), ID("list", "CONS"), ID("ind_type", "CONSTR"),
    ID("abi_utilities", "CanFail"), ID("abi_utilities", "CanFailOnTest"),
    ID("abi_utilities", "CannotFail"), ID("abi_utilities", "Copy"),
    ID("bool", "DATATYPE"), ID("abi_utilities", "DTPMod"),
@@ -82,9 +82,9 @@ struct
    ID("memory_image", "annotated_memory_image_elements"),
    ID("abi_utilities", "can_fail_CASE"),
    ID("abi_utilities", "can_fail_size"),
+   ID("memory_image", "element0_startpos"),
    ID("elf_symbol_table", "elf64_symbol_table_entry_elf64_st_size"),
    ID("fcp", "cart"), ID("fcp", "bit0"), ID("one", "one"),
-   ID("elf_symbol_table", "elf64_symbol_table_entry"),
    ID("error", "fail0"), ID("lem", "failwith"),
    ID("finite_map", "fmap_size"),
    ID("lem_maybe", "instance_Basic_classes_Ord_Maybe_maybe_dict"),
@@ -96,7 +96,6 @@ struct
    ID("abi_utilities", "integer_bit_width_CASE"),
    ID("abi_utilities", "integer_bit_width_size"), ID("list", "list_CASE"),
    ID("multimap", "lookupBy0"), ID("abi_utilities", "lookupM"),
-   ID("memory_image", "memory_image_element_startpos"),
    ID("abi_utilities", "natural_of_integer_bit_width"),
    ID("abi_utilities", "num2integer_bit_width"),
    ID("abi_utilities", "num2relocation_operator"),
@@ -120,7 +119,6 @@ struct
    ID("abi_utilities", "size_of_copy_reloc"),
    ID("abi_utilities", "size_of_def"),
    ID("memory_image", "symbol_reference_and_reloc_site_ref"),
-   ID("memory_image", "symbol_reference"),
    ID("memory_image", "symbol_reference_ref_syment"), ID("words", "w2n"),
    ID("bool", "~")]
   end;
@@ -146,139 +144,139 @@ struct
    TYOP [0, 65, 64], TYOP [0, 62, 0], TYOP [0, 67, 66], TYOP [9, 61],
    TYOP [10], TYOP [5, 70, 69], TYOP [4, 61], TYOP [5, 72, 71],
    TYOP [8, 62, 73], TYOP [0, 74, 3], TYOP [0, 75, 3], TYOP [0, 3, 76],
-   TYOP [0, 63, 77], TYOP [11, 3], TYOP [0, 79, 2], TYOP [12, 3],
-   TYOP [0, 81, 80], TYOP [13, 3], TYOP [0, 83, 82], TYOP [0, 0, 19],
-   TYOP [0, 0, 5], TYOP [0, 0, 70], TYOP [0, 70, 0], TYOP [14, 3],
-   TYOP [8, 11, 3], TYOP [0, 90, 89], TYOP [0, 11, 91], TYOP [0, 70, 57],
-   TYOP [9, 3], TYOP [0, 94, 0], TYOP [0, 9, 95], TYOP [0, 11, 11],
-   TYOP [15], TYOP [0, 3, 98], TYOP [0, 99, 11], TYOP [0, 100, 97],
-   TYOP [0, 11, 101], TYOP [0, 94, 102], TYOP [0, 12, 7], TYOP [0, 15, 7],
-   TYOP [0, 74, 63], TYOP [0, 3, 7], TYOP [0, 99, 94], TYOP [0, 20, 7],
-   TYOP [0, 23, 7], TYOP [5, 0, 5], TYOP [5, 19, 111], TYOP [5, 3, 112],
-   TYOP [16, 113], TYOP [0, 114, 98], TYOP [16, 99], TYOP [0, 116, 98],
-   TYOP [16, 74], TYOP [0, 118, 98], TYOP [0, 94, 98], TYOP [0, 70, 98],
-   TYOP [0, 63, 98], TYOP [0, 5, 98], TYOP [0, 19, 98], TYOP [0, 7, 98],
-   TYOP [0, 20, 98], TYOP [0, 12, 98], TYOP [0, 23, 98], TYOP [0, 15, 98],
-   TYOP [0, 108, 120], TYOP [0, 94, 130], TYOP [17], TYOP [19],
-   TYOP [18, 133], TYOP [5, 0, 0], TYOP [0, 70, 3], TYOP [0, 5, 3],
-   TYOP [0, 19, 3], TYV "'e", TYOP [0, 139, 11], TYOP [0, 23, 140],
-   TYV "'c", TYOP [0, 142, 11], TYOP [0, 20, 143], TYV "'f",
-   TYOP [0, 145, 11], TYOP [0, 15, 146], TYV "'d", TYOP [0, 148, 11],
-   TYOP [0, 12, 149], TYOP [0, 145, 142], TYOP [0, 15, 151],
-   TYOP [0, 19, 152], TYOP [0, 11, 148], TYOP [0, 7, 154],
-   TYOP [0, 0, 155], TYOP [0, 11, 139], TYOP [0, 7, 157], TYOP [0, 5, 158],
-   TYOP [0, 11, 145], TYOP [0, 11, 160], TYOP [0, 7, 161],
-   TYOP [0, 7, 162], TYOP [0, 94, 11], TYOP [0, 63, 3], TYOP [0, 7, 11],
-   TYOP [0, 20, 142], TYOP [0, 12, 148], TYOP [0, 23, 139],
-   TYOP [0, 15, 145], TYOP [5, 134, 135], TYOP [20, 171], TYOP [21, 3],
-   TYOP [5, 173, 172], TYOP [18, 174], TYOP [0, 70, 121],
-   TYOP [0, 70, 176], TYOP [0, 70, 177], TYOP [0, 70, 178],
-   TYOP [0, 70, 179], TYOP [0, 70, 180], TYOP [0, 70, 181],
-   TYOP [0, 70, 182], TYOP [0, 70, 183], TYOP [0, 70, 184],
-   TYOP [0, 70, 185], TYOP [0, 70, 186], TYOP [0, 70, 187],
-   TYOP [0, 70, 188], TYOP [0, 70, 189], TYOP [0, 70, 190],
-   TYOP [0, 70, 191], TYOP [0, 70, 192], TYOP [0, 70, 193],
-   TYOP [0, 70, 194], TYOP [0, 106, 98], TYOP [0, 63, 196],
-   TYOP [0, 5, 123], TYOP [0, 5, 198], TYOP [0, 5, 199], TYOP [0, 5, 200],
-   TYOP [0, 5, 201], TYOP [0, 5, 202], TYOP [0, 5, 203], TYOP [0, 5, 204],
-   TYOP [0, 5, 205], TYOP [0, 5, 206], TYOP [0, 5, 207], TYOP [0, 5, 208],
-   TYOP [0, 5, 209], TYOP [0, 5, 210], TYOP [0, 5, 211], TYOP [0, 5, 212],
-   TYOP [0, 5, 213], TYOP [0, 5, 214], TYOP [0, 5, 215], TYOP [0, 5, 216],
-   TYOP [0, 104, 98], TYOP [0, 105, 218], TYOP [0, 105, 219],
-   TYOP [0, 109, 220], TYOP [0, 110, 221], TYOP [0, 107, 222],
-   TYOP [0, 94, 116], TYOP [0, 63, 118], TYOP [0, 7, 114],
-   TYOP [0, 99, 98], TYOP [0, 11, 98], TYOP [0, 228, 98], TYOP [0, 83, 98],
-   TYOP [0, 230, 98], TYOP [0, 81, 98], TYOP [0, 232, 98],
-   TYOP [0, 79, 98], TYOP [0, 234, 98], TYOP [0, 120, 98],
-   TYOP [0, 74, 98], TYOP [0, 237, 98], TYOP [0, 90, 98],
-   TYOP [0, 239, 98], TYOP [0, 26, 98], TYOP [0, 241, 98],
-   TYOP [0, 227, 98], TYOP [0, 9, 98], TYOP [0, 244, 98], TYOP [0, 67, 98],
-   TYOP [0, 246, 98], TYOP [0, 65, 98], TYOP [0, 248, 98],
-   TYOP [0, 236, 98], TYOP [0, 75, 98], TYOP [0, 251, 98],
-   TYOP [0, 100, 98], TYOP [0, 253, 98], TYOP [0, 121, 98],
-   TYOP [0, 255, 98], TYOP [0, 156, 98], TYOP [0, 257, 98],
-   TYOP [0, 24, 98], TYOP [0, 259, 98], TYOP [0, 128, 98],
-   TYOP [0, 261, 98], TYOP [0, 141, 98], TYOP [0, 263, 98],
-   TYOP [0, 21, 98], TYOP [0, 265, 98], TYOP [0, 126, 98],
-   TYOP [0, 267, 98], TYOP [0, 144, 98], TYOP [0, 269, 98],
-   TYOP [0, 13, 98], TYOP [0, 271, 98], TYOP [0, 127, 98],
-   TYOP [0, 273, 98], TYOP [0, 150, 98], TYOP [0, 275, 98],
-   TYOP [0, 16, 98], TYOP [0, 277, 98], TYOP [0, 129, 98],
-   TYOP [0, 279, 98], TYOP [0, 147, 98], TYOP [0, 281, 98],
-   TYOP [0, 119, 98], TYOP [0, 283, 98], TYOP [0, 117, 98],
-   TYOP [0, 285, 98], TYOP [0, 115, 98], TYOP [0, 287, 98],
-   TYOP [0, 122, 98], TYOP [0, 289, 98], TYOP [0, 123, 98],
-   TYOP [0, 291, 98], TYOP [0, 159, 98], TYOP [0, 293, 98],
-   TYOP [0, 124, 98], TYOP [0, 295, 98], TYOP [0, 153, 98],
-   TYOP [0, 297, 98], TYOP [0, 125, 98], TYOP [0, 299, 98],
-   TYOP [0, 163, 98], TYOP [0, 301, 98], TYOP [0, 0, 98],
-   TYOP [0, 303, 98], TYOP [0, 1, 98], TYOP [0, 305, 98], TYOP [0, 0, 0],
-   TYOP [0, 0, 307], TYOP [0, 112, 113], TYOP [0, 3, 309],
-   TYOP [0, 5, 111], TYOP [0, 0, 311], TYOP [0, 7, 23], TYOP [0, 5, 313],
-   TYOP [0, 111, 112], TYOP [0, 19, 315], TYOP [0, 15, 20],
-   TYOP [0, 19, 317], TYOP [0, 0, 12], TYOP [0, 7, 319], TYOP [0, 7, 15],
-   TYOP [0, 7, 321], TYOP [0, 98, 98], TYOP [0, 98, 323], TYOP [0, 0, 303],
-   TYOP [0, 3, 99], TYOP [0, 11, 228], TYOP [0, 142, 98],
-   TYOP [0, 142, 328], TYOP [0, 148, 98], TYOP [0, 148, 330],
-   TYOP [0, 139, 98], TYOP [0, 139, 332], TYOP [0, 145, 98],
-   TYOP [0, 145, 334], TYOP [0, 94, 120], TYOP [0, 89, 98],
-   TYOP [0, 89, 337], TYOP [0, 74, 237], TYOP [0, 99, 227],
-   TYOP [0, 23, 128], TYOP [0, 20, 126], TYOP [0, 12, 127],
-   TYOP [0, 15, 129], TYOP [0, 173, 98], TYOP [0, 173, 345],
-   TYOP [0, 118, 119], TYOP [0, 116, 117], TYOP [0, 114, 115],
-   TYOP [0, 63, 122], TYOP [0, 19, 124], TYOP [0, 7, 125],
-   TYOP [0, 164, 98], TYOP [0, 353, 98], TYOP [0, 224, 98],
-   TYOP [0, 355, 98], TYOP [0, 136, 98], TYOP [0, 357, 98],
-   TYOP [0, 88, 98], TYOP [0, 359, 98], TYOP [0, 169, 98],
-   TYOP [0, 361, 98], TYOP [0, 167, 98], TYOP [0, 363, 98],
-   TYOP [0, 168, 98], TYOP [0, 365, 98], TYOP [0, 170, 98],
-   TYOP [0, 367, 98], TYOP [0, 165, 98], TYOP [0, 369, 98],
-   TYOP [0, 225, 98], TYOP [0, 371, 98], TYOP [0, 137, 98],
-   TYOP [0, 373, 98], TYOP [0, 6, 98], TYOP [0, 375, 98],
-   TYOP [0, 138, 98], TYOP [0, 377, 98], TYOP [0, 59, 98],
-   TYOP [0, 379, 98], TYOP [0, 166, 98], TYOP [0, 381, 98],
-   TYOP [0, 226, 98], TYOP [0, 383, 98], TYOP [0, 0, 133],
-   TYOP [0, 98, 38], TYOP [0, 134, 134], TYOP [0, 133, 387],
-   TYOP [0, 0, 118], TYOP [0, 389, 118], TYOP [0, 74, 390],
-   TYOP [0, 0, 391], TYOP [0, 0, 116], TYOP [0, 393, 116],
-   TYOP [0, 99, 394], TYOP [0, 0, 395], TYOP [0, 0, 114],
-   TYOP [0, 397, 114], TYOP [0, 113, 398], TYOP [0, 0, 399],
-   TYOP [0, 397, 397], TYOP [0, 114, 401], TYOP [20, 3], TYOP [0, 11, 403],
-   TYOP [0, 90, 404], TYOP [20, 132], TYOP [0, 134, 406],
-   TYOP [8, 134, 132], TYOP [0, 408, 407], TYOP [0, 175, 0],
-   TYOP [0, 410, 410], TYOP [0, 307, 307], TYOP [0, 1, 173],
-   TYOP [0, 303, 359], TYOP [0, 303, 375], TYOP [0, 303, 379],
-   TYOP [0, 119, 371], TYOP [0, 117, 355], TYOP [0, 115, 383],
-   TYOP [0, 174, 98], TYOP [0, 79, 420], TYOP [0, 79, 408],
-   TYOP [0, 69, 0], TYOP [0, 65, 423], TYOP [111], TYOP [110, 425],
-   TYOP [110, 426], TYOP [110, 427], TYOP [110, 428], TYOP [110, 429],
-   TYOP [110, 430], TYOP [109, 98, 431], TYOP [112], TYOP [0, 433, 432],
-   TYOP [0, 134, 89], TYOP [0, 134, 0], TYOP [0, 74, 0], TYOP [0, 73, 0],
-   TYOP [0, 438, 437], TYOP [0, 67, 439], TYOP [13, 172], TYOP [13, 171],
-   TYOP [0, 442, 441], TYOP [13, 173], TYOP [0, 81, 444],
-   TYOP [0, 83, 445], TYOP [13, 0], TYOP [13, 134], TYOP [13, 135],
-   TYOP [0, 449, 442], TYOP [0, 448, 450], TYOP [0, 447, 449],
-   TYOP [0, 447, 452], TYOP [0, 0, 308], TYOP [0, 0, 454],
-   TYOP [0, 0, 455], TYOP [0, 0, 456], TYOP [0, 0, 457], TYOP [0, 0, 458],
-   TYOP [0, 0, 459], TYOP [0, 0, 460], TYOP [0, 0, 461], TYOP [0, 0, 462],
-   TYOP [0, 0, 463], TYOP [0, 0, 464], TYOP [0, 0, 465], TYOP [0, 0, 466],
-   TYOP [0, 0, 467], TYOP [0, 0, 468], TYOP [0, 0, 469], TYOP [0, 0, 470],
-   TYOP [0, 0, 471], TYOP [0, 70, 472], TYOP [0, 174, 410],
-   TYOP [0, 474, 0], TYOP [0, 0, 475], TYOP [0, 175, 476],
-   TYOP [0, 420, 175], TYOP [0, 173, 478], TYOP [0, 346, 479],
-   TYOP [0, 441, 480], TYOP [0, 444, 481], TYOP [20, 0],
-   TYOP [0, 132, 483], TYOP [0, 3, 89], TYOP [0, 485, 89],
-   TYOP [0, 89, 486], TYOP [0, 403, 487], TYOP [0, 132, 0],
-   TYOP [0, 489, 0], TYOP [0, 0, 490], TYOP [0, 406, 491],
-   TYOP [0, 307, 0], TYOP [0, 0, 493], TYOP [0, 483, 494],
-   TYOP [0, 171, 0], TYOP [0, 496, 0], TYOP [0, 0, 497],
-   TYOP [0, 172, 498], TYOP [0, 135, 0], TYOP [0, 134, 500],
-   TYOP [0, 501, 0], TYOP [0, 171, 502], TYOP [0, 308, 0],
-   TYOP [0, 135, 504], TYOP [0, 172, 0], TYOP [0, 173, 506],
-   TYOP [0, 507, 0], TYOP [0, 174, 508], TYOP [0, 71, 0],
-   TYOP [0, 423, 510], TYOP [0, 88, 511], TYOP [0, 510, 438],
-   TYOP [0, 72, 0], TYOP [0, 514, 513], TYOP [0, 65, 514], TYOP [154],
-   TYOP [0, 1, 517], TYOP [0, 517, 433], TYOP [0, 432, 0]]
+   TYOP [0, 63, 77], TYOP [11, 3], TYOP [0, 79, 2], TYOP [0, 11, 80],
+   TYOP [12, 3], TYOP [0, 82, 81], TYOP [0, 0, 19], TYOP [0, 0, 5],
+   TYOP [0, 0, 70], TYOP [0, 70, 0], TYOP [13, 3], TYOP [8, 11, 3],
+   TYOP [0, 89, 88], TYOP [0, 11, 90], TYOP [0, 70, 57], TYOP [9, 3],
+   TYOP [0, 93, 0], TYOP [0, 9, 94], TYOP [0, 11, 11], TYOP [14],
+   TYOP [0, 3, 97], TYOP [0, 98, 11], TYOP [0, 99, 96], TYOP [0, 11, 100],
+   TYOP [0, 93, 101], TYOP [0, 12, 7], TYOP [0, 15, 7], TYOP [0, 74, 63],
+   TYOP [0, 3, 7], TYOP [0, 98, 93], TYOP [0, 20, 7], TYOP [0, 23, 7],
+   TYOP [5, 0, 5], TYOP [5, 19, 110], TYOP [5, 3, 111], TYOP [15, 112],
+   TYOP [0, 113, 97], TYOP [15, 98], TYOP [0, 115, 97], TYOP [15, 74],
+   TYOP [0, 117, 97], TYOP [0, 93, 97], TYOP [0, 70, 97], TYOP [0, 63, 97],
+   TYOP [0, 5, 97], TYOP [0, 19, 97], TYOP [0, 7, 97], TYOP [0, 20, 97],
+   TYOP [0, 12, 97], TYOP [0, 23, 97], TYOP [0, 15, 97],
+   TYOP [0, 107, 119], TYOP [0, 93, 129], TYOP [16], TYOP [18],
+   TYOP [17, 132], TYOP [5, 0, 0], TYOP [0, 70, 3], TYOP [0, 5, 3],
+   TYOP [0, 19, 3], TYV "'e", TYOP [0, 138, 11], TYOP [0, 23, 139],
+   TYV "'c", TYOP [0, 141, 11], TYOP [0, 20, 142], TYV "'f",
+   TYOP [0, 144, 11], TYOP [0, 15, 145], TYV "'d", TYOP [0, 147, 11],
+   TYOP [0, 12, 148], TYOP [0, 144, 141], TYOP [0, 15, 150],
+   TYOP [0, 19, 151], TYOP [0, 11, 147], TYOP [0, 7, 153],
+   TYOP [0, 0, 154], TYOP [0, 11, 138], TYOP [0, 7, 156], TYOP [0, 5, 157],
+   TYOP [0, 11, 144], TYOP [0, 11, 159], TYOP [0, 7, 160],
+   TYOP [0, 7, 161], TYOP [0, 93, 11], TYOP [0, 63, 3], TYOP [0, 7, 11],
+   TYOP [0, 20, 141], TYOP [0, 12, 147], TYOP [0, 23, 138],
+   TYOP [0, 15, 144], TYOP [5, 133, 134], TYOP [19, 170], TYOP [20, 3],
+   TYOP [5, 172, 171], TYOP [17, 173], TYOP [0, 70, 120],
+   TYOP [0, 70, 175], TYOP [0, 70, 176], TYOP [0, 70, 177],
+   TYOP [0, 70, 178], TYOP [0, 70, 179], TYOP [0, 70, 180],
+   TYOP [0, 70, 181], TYOP [0, 70, 182], TYOP [0, 70, 183],
+   TYOP [0, 70, 184], TYOP [0, 70, 185], TYOP [0, 70, 186],
+   TYOP [0, 70, 187], TYOP [0, 70, 188], TYOP [0, 70, 189],
+   TYOP [0, 70, 190], TYOP [0, 70, 191], TYOP [0, 70, 192],
+   TYOP [0, 70, 193], TYOP [0, 105, 97], TYOP [0, 63, 195],
+   TYOP [0, 5, 122], TYOP [0, 5, 197], TYOP [0, 5, 198], TYOP [0, 5, 199],
+   TYOP [0, 5, 200], TYOP [0, 5, 201], TYOP [0, 5, 202], TYOP [0, 5, 203],
+   TYOP [0, 5, 204], TYOP [0, 5, 205], TYOP [0, 5, 206], TYOP [0, 5, 207],
+   TYOP [0, 5, 208], TYOP [0, 5, 209], TYOP [0, 5, 210], TYOP [0, 5, 211],
+   TYOP [0, 5, 212], TYOP [0, 5, 213], TYOP [0, 5, 214], TYOP [0, 5, 215],
+   TYOP [0, 103, 97], TYOP [0, 104, 217], TYOP [0, 104, 218],
+   TYOP [0, 108, 219], TYOP [0, 109, 220], TYOP [0, 106, 221],
+   TYOP [0, 93, 115], TYOP [0, 63, 117], TYOP [0, 7, 113], TYOP [21],
+   TYOP [22], TYOP [0, 98, 97], TYOP [0, 11, 97], TYOP [0, 229, 97],
+   TYOP [0, 82, 97], TYOP [0, 231, 97], TYOP [0, 79, 97],
+   TYOP [0, 233, 97], TYOP [0, 119, 97], TYOP [0, 74, 97],
+   TYOP [0, 236, 97], TYOP [0, 89, 97], TYOP [0, 238, 97],
+   TYOP [0, 26, 97], TYOP [0, 240, 97], TYOP [0, 228, 97], TYOP [0, 9, 97],
+   TYOP [0, 243, 97], TYOP [0, 67, 97], TYOP [0, 245, 97],
+   TYOP [0, 65, 97], TYOP [0, 247, 97], TYOP [0, 235, 97],
+   TYOP [0, 75, 97], TYOP [0, 250, 97], TYOP [0, 99, 97],
+   TYOP [0, 252, 97], TYOP [0, 120, 97], TYOP [0, 254, 97],
+   TYOP [0, 155, 97], TYOP [0, 256, 97], TYOP [0, 24, 97],
+   TYOP [0, 258, 97], TYOP [0, 127, 97], TYOP [0, 260, 97],
+   TYOP [0, 140, 97], TYOP [0, 262, 97], TYOP [0, 21, 97],
+   TYOP [0, 264, 97], TYOP [0, 125, 97], TYOP [0, 266, 97],
+   TYOP [0, 143, 97], TYOP [0, 268, 97], TYOP [0, 13, 97],
+   TYOP [0, 270, 97], TYOP [0, 126, 97], TYOP [0, 272, 97],
+   TYOP [0, 149, 97], TYOP [0, 274, 97], TYOP [0, 16, 97],
+   TYOP [0, 276, 97], TYOP [0, 128, 97], TYOP [0, 278, 97],
+   TYOP [0, 146, 97], TYOP [0, 280, 97], TYOP [0, 118, 97],
+   TYOP [0, 282, 97], TYOP [0, 116, 97], TYOP [0, 284, 97],
+   TYOP [0, 114, 97], TYOP [0, 286, 97], TYOP [0, 121, 97],
+   TYOP [0, 288, 97], TYOP [0, 122, 97], TYOP [0, 290, 97],
+   TYOP [0, 158, 97], TYOP [0, 292, 97], TYOP [0, 123, 97],
+   TYOP [0, 294, 97], TYOP [0, 152, 97], TYOP [0, 296, 97],
+   TYOP [0, 124, 97], TYOP [0, 298, 97], TYOP [0, 162, 97],
+   TYOP [0, 300, 97], TYOP [0, 0, 97], TYOP [0, 302, 97], TYOP [0, 1, 97],
+   TYOP [0, 304, 97], TYOP [0, 0, 0], TYOP [0, 0, 306], TYOP [0, 111, 112],
+   TYOP [0, 3, 308], TYOP [0, 5, 110], TYOP [0, 0, 310], TYOP [0, 7, 23],
+   TYOP [0, 5, 312], TYOP [0, 110, 111], TYOP [0, 19, 314],
+   TYOP [0, 15, 20], TYOP [0, 19, 316], TYOP [0, 0, 12], TYOP [0, 7, 318],
+   TYOP [0, 7, 15], TYOP [0, 7, 320], TYOP [0, 97, 97], TYOP [0, 97, 322],
+   TYOP [0, 0, 302], TYOP [0, 3, 98], TYOP [0, 11, 229], TYOP [0, 141, 97],
+   TYOP [0, 141, 327], TYOP [0, 147, 97], TYOP [0, 147, 329],
+   TYOP [0, 138, 97], TYOP [0, 138, 331], TYOP [0, 144, 97],
+   TYOP [0, 144, 333], TYOP [0, 93, 119], TYOP [0, 88, 97],
+   TYOP [0, 88, 336], TYOP [0, 74, 236], TYOP [0, 98, 228],
+   TYOP [0, 23, 127], TYOP [0, 20, 125], TYOP [0, 12, 126],
+   TYOP [0, 15, 128], TYOP [0, 172, 97], TYOP [0, 172, 344],
+   TYOP [0, 117, 118], TYOP [0, 115, 116], TYOP [0, 113, 114],
+   TYOP [0, 63, 121], TYOP [0, 19, 123], TYOP [0, 7, 124],
+   TYOP [0, 163, 97], TYOP [0, 352, 97], TYOP [0, 223, 97],
+   TYOP [0, 354, 97], TYOP [0, 135, 97], TYOP [0, 356, 97],
+   TYOP [0, 87, 97], TYOP [0, 358, 97], TYOP [0, 168, 97],
+   TYOP [0, 360, 97], TYOP [0, 166, 97], TYOP [0, 362, 97],
+   TYOP [0, 167, 97], TYOP [0, 364, 97], TYOP [0, 169, 97],
+   TYOP [0, 366, 97], TYOP [0, 164, 97], TYOP [0, 368, 97],
+   TYOP [0, 224, 97], TYOP [0, 370, 97], TYOP [0, 136, 97],
+   TYOP [0, 372, 97], TYOP [0, 6, 97], TYOP [0, 374, 97],
+   TYOP [0, 137, 97], TYOP [0, 376, 97], TYOP [0, 59, 97],
+   TYOP [0, 378, 97], TYOP [0, 165, 97], TYOP [0, 380, 97],
+   TYOP [0, 225, 97], TYOP [0, 382, 97], TYOP [0, 0, 132],
+   TYOP [0, 97, 38], TYOP [0, 133, 133], TYOP [0, 132, 386],
+   TYOP [0, 0, 117], TYOP [0, 388, 117], TYOP [0, 74, 389],
+   TYOP [0, 0, 390], TYOP [0, 0, 115], TYOP [0, 392, 115],
+   TYOP [0, 98, 393], TYOP [0, 0, 394], TYOP [0, 0, 113],
+   TYOP [0, 396, 113], TYOP [0, 112, 397], TYOP [0, 0, 398],
+   TYOP [0, 396, 396], TYOP [0, 113, 400], TYOP [19, 3], TYOP [0, 11, 402],
+   TYOP [0, 89, 403], TYOP [19, 131], TYOP [0, 133, 405],
+   TYOP [8, 133, 131], TYOP [0, 407, 406], TYOP [0, 227, 0],
+   TYOP [0, 409, 409], TYOP [0, 174, 0], TYOP [0, 411, 411],
+   TYOP [0, 306, 306], TYOP [0, 226, 0], TYOP [0, 414, 414],
+   TYOP [0, 1, 172], TYOP [0, 302, 358], TYOP [0, 302, 374],
+   TYOP [0, 302, 378], TYOP [0, 118, 370], TYOP [0, 116, 354],
+   TYOP [0, 114, 382], TYOP [0, 173, 97], TYOP [0, 79, 423],
+   TYOP [0, 79, 407], TYOP [0, 69, 0], TYOP [0, 65, 426], TYOP [19, 0],
+   TYOP [0, 131, 428], TYOP [113], TYOP [112, 430], TYOP [112, 431],
+   TYOP [112, 432], TYOP [112, 433], TYOP [112, 434], TYOP [112, 435],
+   TYOP [111, 97, 436], TYOP [0, 227, 437], TYOP [0, 133, 88],
+   TYOP [0, 133, 0], TYOP [0, 74, 0], TYOP [0, 73, 0], TYOP [0, 442, 441],
+   TYOP [0, 67, 443], TYOP [12, 171], TYOP [12, 170], TYOP [0, 446, 445],
+   TYOP [12, 172], TYOP [0, 82, 448], TYOP [12, 0], TYOP [12, 133],
+   TYOP [12, 134], TYOP [0, 452, 446], TYOP [0, 451, 453],
+   TYOP [0, 450, 452], TYOP [0, 450, 455], TYOP [0, 0, 307],
+   TYOP [0, 0, 457], TYOP [0, 0, 458], TYOP [0, 0, 459], TYOP [0, 0, 460],
+   TYOP [0, 0, 461], TYOP [0, 0, 462], TYOP [0, 0, 463], TYOP [0, 0, 464],
+   TYOP [0, 0, 465], TYOP [0, 0, 466], TYOP [0, 0, 467], TYOP [0, 0, 468],
+   TYOP [0, 0, 469], TYOP [0, 0, 470], TYOP [0, 0, 471], TYOP [0, 0, 472],
+   TYOP [0, 0, 473], TYOP [0, 0, 474], TYOP [0, 70, 475],
+   TYOP [0, 173, 411], TYOP [0, 477, 0], TYOP [0, 0, 478],
+   TYOP [0, 174, 479], TYOP [0, 423, 174], TYOP [0, 172, 481],
+   TYOP [0, 345, 482], TYOP [0, 445, 483], TYOP [0, 448, 484],
+   TYOP [0, 3, 88], TYOP [0, 486, 88], TYOP [0, 88, 487],
+   TYOP [0, 402, 488], TYOP [0, 131, 0], TYOP [0, 490, 0],
+   TYOP [0, 0, 491], TYOP [0, 405, 492], TYOP [0, 306, 0],
+   TYOP [0, 0, 494], TYOP [0, 428, 495], TYOP [0, 170, 0],
+   TYOP [0, 497, 0], TYOP [0, 0, 498], TYOP [0, 171, 499],
+   TYOP [0, 134, 0], TYOP [0, 133, 501], TYOP [0, 502, 0],
+   TYOP [0, 170, 503], TYOP [0, 307, 0], TYOP [0, 134, 505],
+   TYOP [0, 171, 0], TYOP [0, 172, 507], TYOP [0, 508, 0],
+   TYOP [0, 173, 509], TYOP [0, 71, 0], TYOP [0, 426, 511],
+   TYOP [0, 87, 512], TYOP [0, 511, 442], TYOP [0, 72, 0],
+   TYOP [0, 515, 514], TYOP [0, 65, 515], TYOP [0, 1, 226],
+   TYOP [0, 226, 227], TYOP [0, 437, 0]]
   end
   val _ = Theory.incorporate_consts "abi_utilities" tyvector
      [("size_of_def", 2), ("size_of_copy_reloc", 4),
@@ -292,147 +290,149 @@ struct
       ("relocation_operator_CASE", 58), ("relocation_operator2num", 6),
       ("relocation_operator2_size", 59), ("relocation_operator2_CASE", 60),
       ("relocation_operator22num", 59), ("relocation_frame_size", 68),
-      ("relocation_frame_CASE", 78), ("reloc_site_address", 84),
-      ("num2relocation_operator2", 85), ("num2relocation_operator", 86),
-      ("num2integer_bit_width", 87), ("natural_of_integer_bit_width", 88),
-      ("lookupM", 92), ("integer_bit_width_size", 88),
-      ("integer_bit_width_CASE", 93), ("integer_bit_width2num", 88),
-      ("can_fail_size", 96), ("can_fail_CASE", 103), ("Word30", 70),
+      ("relocation_frame_CASE", 78), ("reloc_site_address", 83),
+      ("num2relocation_operator2", 84), ("num2relocation_operator", 85),
+      ("num2integer_bit_width", 86), ("natural_of_integer_bit_width", 87),
+      ("lookupM", 91), ("integer_bit_width_size", 87),
+      ("integer_bit_width_CASE", 92), ("integer_bit_width2num", 87),
+      ("can_fail_size", 95), ("can_fail_CASE", 102), ("Word30", 70),
       ("U64", 70), ("U48", 70), ("U32", 70), ("U24", 70), ("U16", 70),
       ("U15", 70), ("U12", 70), ("TPRel", 5), ("TLSDesc", 5),
-      ("RShift", 104), ("Plus", 105), ("Page", 5), ("NoCopy", 106),
-      ("Minus", 105), ("Low24", 70), ("Low14", 70), ("Lo", 5),
-      ("Lift", 107), ("LTOff", 5), ("LDM", 5), ("Indirect", 5), ("I8", 70),
+      ("RShift", 103), ("Plus", 104), ("Page", 5), ("NoCopy", 105),
+      ("Minus", 104), ("Low24", 70), ("Low14", 70), ("Lo", 5),
+      ("Lift", 106), ("LTOff", 5), ("LDM", 5), ("Indirect", 5), ("I8", 70),
       ("I64X2", 70), ("I64", 70), ("I48", 70), ("I32", 70), ("I27", 70),
       ("I20", 70), ("I16", 70), ("I15", 70), ("I12", 70), ("HighestA", 5),
       ("Highest", 5), ("HigherA", 5), ("Higher", 5), ("Hi", 5),
       ("Half16ds", 70), ("Ha", 5), ("GTPRel", 5), ("GTLSIdx", 19),
       ("GTLSDesc", 5), ("GLDM", 5), ("GDat", 5), ("G", 5), ("Delta", 5),
-      ("DTPRel", 5), ("DTPMod", 5), ("Copy", 63), ("CannotFail", 94),
-      ("CanFailOnTest", 108), ("CanFail", 94), ("Apply2", 109),
-      ("Apply", 110)];
+      ("DTPRel", 5), ("DTPMod", 5), ("Copy", 63), ("CannotFail", 93),
+      ("CanFailOnTest", 107), ("CanFail", 93), ("Apply2", 108),
+      ("Apply", 109)];
 
   local open SharingTables
   in
   val tmvector = build_term_vector idvector tyvector
-  [TMV("'@temp @ind_typeabi_utilities5prod'", 115),
-   TMV("'@temp @ind_typeabi_utilities6prod'", 115),
-   TMV("'@temp @ind_typeabi_utilities7prod'", 115),
-   TMV("'@temp @ind_typeabi_utilities8prod'", 115), TMV("'can_fail'", 117),
-   TMV("'relocation_frame'", 119),
-   TMV("'relocation_operator_expression'", 115), TMV("M", 94),
+  [TMV("'@temp @ind_typeabi_utilities5prod'", 114),
+   TMV("'@temp @ind_typeabi_utilities6prod'", 114),
+   TMV("'@temp @ind_typeabi_utilities7prod'", 114),
+   TMV("'@temp @ind_typeabi_utilities8prod'", 114), TMV("'can_fail'", 116),
+   TMV("'relocation_frame'", 118),
+   TMV("'relocation_operator_expression'", 114), TMV("M", 93),
    TMV("M", 70), TMV("M", 63), TMV("M", 5), TMV("M", 19), TMV("M", 7),
-   TMV("M'", 94), TMV("M'", 70), TMV("M'", 63), TMV("M'", 5),
-   TMV("M'", 19), TMV("M'", 7), TMV("P", 120), TMV("P", 121),
-   TMV("P", 122), TMV("P", 123), TMV("P", 124), TMV("P0", 125),
-   TMV("P1", 126), TMV("P2", 127), TMV("P3", 128), TMV("P4", 129),
-   TMV("a", 3), TMV("a", 74), TMV("a", 99), TMV("a", 70), TMV("a", 23),
-   TMV("a", 20), TMV("a", 12), TMV("a", 15), TMV("a", 114), TMV("a", 5),
-   TMV("a", 19), TMV("a'", 3), TMV("a'", 74), TMV("a'", 99), TMV("a'", 70),
+   TMV("M'", 93), TMV("M'", 70), TMV("M'", 63), TMV("M'", 5),
+   TMV("M'", 19), TMV("M'", 7), TMV("P", 119), TMV("P", 120),
+   TMV("P", 121), TMV("P", 122), TMV("P", 123), TMV("P0", 124),
+   TMV("P1", 125), TMV("P2", 126), TMV("P3", 127), TMV("P4", 128),
+   TMV("a", 3), TMV("a", 74), TMV("a", 98), TMV("a", 70), TMV("a", 23),
+   TMV("a", 20), TMV("a", 12), TMV("a", 15), TMV("a", 113), TMV("a", 5),
+   TMV("a", 19), TMV("a'", 3), TMV("a'", 74), TMV("a'", 98), TMV("a'", 70),
    TMV("a'", 23), TMV("a'", 20), TMV("a'", 12), TMV("a'", 15),
-   TMV("a'", 5), TMV("a'", 19), TMV("a0", 118), TMV("a0", 116),
-   TMV("a0", 114), TMV("a0", 5), TMV("a0", 19), TMV("a0", 7),
-   TMV("a0'", 114), TMV("a1", 0), TMV("a1", 15), TMV("a1", 114),
-   TMV("a1", 7), TMV("a1'", 114), TMV("a2", 114), TMV("a3", 114),
-   TMV("a4", 114), TMV("addr", 0), TMV("c", 94), TMV("can_fail", 131),
-   TMV("cc", 94), TMV("dict_Basic_classes_Ord_abifeature", 83),
-   TMV("dict_Memory_image_ToNaturalList_abifeature", 81), TMV("el", 132),
-   TMV("el_name", 134), TMV("el_range", 135), TMV("element_addr", 0),
-   TMV("f", 74), TMV("f", 26), TMV("f", 99), TMV("f", 9), TMV("f", 67),
-   TMV("f", 75), TMV("f", 100), TMV("f", 136), TMV("f", 137),
-   TMV("f", 138), TMV("f'", 26), TMV("f'", 75), TMV("f'", 100),
-   TMV("f0", 3), TMV("f0", 11), TMV("f0", 26), TMV("f1", 65),
-   TMV("f1", 75), TMV("f1", 100), TMV("f1", 24), TMV("f1", 141),
-   TMV("f1'", 24), TMV("f2", 11), TMV("f2", 21), TMV("f2", 144),
-   TMV("f2'", 21), TMV("f3", 16), TMV("f3", 147), TMV("f3'", 16),
-   TMV("f4", 16), TMV("f4", 147), TMV("f4'", 16), TMV("f5", 13),
-   TMV("f5", 150), TMV("f5'", 13), TMV("f6", 153), TMV("f7", 156),
-   TMV("f8", 159), TMV("f9", 163), TMV("fn", 164), TMV("fn", 165),
-   TMV("fn0", 166), TMV("fn1", 167), TMV("fn2", 168), TMV("fn3", 169),
-   TMV("fn4", 170), TMV("found_kvs", 175), TMV("i", 70), TMV("img", 3),
-   TMV("img", 79), TMV("integer_bit_width", 195), TMV("j", 3),
-   TMV("k", 62), TMV("key", 11), TMV("m", 0), TMV("n", 0), TMV("p", 23),
-   TMV("p", 20), TMV("p", 12), TMV("p", 15), TMV("r", 0), TMV("r", 63),
-   TMV("r", 19), TMV("r", 7), TMV("r'", 0), TMV("r0", 5), TMV("r0", 7),
-   TMV("relocation_frame", 197), TMV("relocation_operator", 217),
-   TMV("relocation_operator2", 124),
-   TMV("relocation_operator_expression", 223), TMV("rep", 224),
-   TMV("rep", 88), TMV("rep", 225), TMV("rep", 6), TMV("rep", 59),
-   TMV("rep", 226), TMV("rr", 63), TMV("rr", 7), TMV("rr", 1),
-   TMV("site_offset", 0), TMV("start", 0), TMV("v", 3), TMV("v", 11),
-   TMV("v", 171), TMV("v", 73), TMV("v'", 3), TMV("v'", 11), TMV("v0", 3),
-   TMV("v0'", 3), TMV("v1", 3), TMV("v1", 11), TMV("v1", 0), TMV("v1'", 3),
-   TMV("v1'", 11), TMV("v10", 3), TMV("v10", 173), TMV("v10'", 3),
-   TMV("v11", 3), TMV("v11", 172), TMV("v11'", 3), TMV("v12", 3),
-   TMV("v12'", 3), TMV("v13", 3), TMV("v13'", 3), TMV("v14", 3),
-   TMV("v14'", 3), TMV("v15", 3), TMV("v15'", 3), TMV("v16", 3),
-   TMV("v16'", 3), TMV("v17", 3), TMV("v17'", 3), TMV("v18", 3),
-   TMV("v18'", 3), TMV("v19", 3), TMV("v19'", 3), TMV("v2", 3),
-   TMV("v2", 174), TMV("v2'", 3), TMV("v20", 3), TMV("v20'", 3),
-   TMV("v3", 3), TMV("v3", 175), TMV("v3'", 3), TMV("v4", 3),
-   TMV("v4'", 3), TMV("v5", 3), TMV("v5'", 3), TMV("v6", 3),
-   TMV("v6", 174), TMV("v6'", 3), TMV("v7", 3), TMV("v7", 175),
-   TMV("v7'", 3), TMV("v8", 3), TMV("v8'", 3), TMV("v9", 3), TMV("v9'", 3),
-   TMV("val_map", 90), TMV("x", 70), TMV("x", 5), TMV("x", 19),
-   TMV("x0", 3), TMV("x1", 3), TMV("x10", 3), TMV("x11", 3), TMV("x12", 3),
-   TMV("x13", 3), TMV("x14", 3), TMV("x15", 3), TMV("x16", 3),
-   TMV("x17", 3), TMV("x18", 3), TMV("x19", 3), TMV("x2", 3),
-   TMV("x20", 3), TMV("x3", 3), TMV("x4", 3), TMV("x5", 3), TMV("x6", 3),
-   TMV("x7", 3), TMV("x8", 3), TMV("x9", 3), TMC(22, 227), TMC(22, 229),
-   TMC(22, 231), TMC(22, 233), TMC(22, 235), TMC(22, 236), TMC(22, 238),
-   TMC(22, 240), TMC(22, 242), TMC(22, 243), TMC(22, 245), TMC(22, 247),
-   TMC(22, 249), TMC(22, 250), TMC(22, 252), TMC(22, 254), TMC(22, 256),
-   TMC(22, 258), TMC(22, 260), TMC(22, 262), TMC(22, 264), TMC(22, 266),
-   TMC(22, 268), TMC(22, 270), TMC(22, 272), TMC(22, 274), TMC(22, 276),
-   TMC(22, 278), TMC(22, 280), TMC(22, 282), TMC(22, 284), TMC(22, 286),
-   TMC(22, 288), TMC(22, 290), TMC(22, 292), TMC(22, 294), TMC(22, 296),
-   TMC(22, 298), TMC(22, 300), TMC(22, 302), TMC(22, 255), TMC(22, 304),
-   TMC(22, 261), TMC(22, 267), TMC(22, 273), TMC(22, 279), TMC(22, 283),
-   TMC(22, 285), TMC(22, 287), TMC(22, 289), TMC(22, 291), TMC(22, 295),
-   TMC(22, 299), TMC(22, 306), TMC(23, 308), TMC(24, 310), TMC(24, 312),
-   TMC(24, 314), TMC(24, 316), TMC(24, 318), TMC(24, 320), TMC(24, 322),
-   TMC(25, 324), TMC(26, 0), TMC(27, 325), TMC(28, 326), TMC(28, 327),
-   TMC(28, 329), TMC(28, 331), TMC(28, 333), TMC(28, 335), TMC(28, 324),
-   TMC(28, 336), TMC(28, 338), TMC(28, 339), TMC(28, 340), TMC(28, 176),
-   TMC(28, 325), TMC(28, 341), TMC(28, 342), TMC(28, 343), TMC(28, 344),
-   TMC(28, 346), TMC(28, 347), TMC(28, 348), TMC(28, 349), TMC(28, 350),
-   TMC(28, 198), TMC(28, 351), TMC(28, 352), TMC(29, 324), TMC(30, 227),
-   TMC(30, 238), TMC(30, 243), TMC(30, 354), TMC(30, 356), TMC(30, 358),
-   TMC(30, 360), TMC(30, 362), TMC(30, 364), TMC(30, 366), TMC(30, 368),
-   TMC(30, 370), TMC(30, 372), TMC(30, 374), TMC(30, 376), TMC(30, 378),
-   TMC(30, 380), TMC(30, 382), TMC(30, 384), TMC(30, 255), TMC(30, 304),
-   TMC(30, 261), TMC(30, 267), TMC(30, 273), TMC(30, 279), TMC(30, 287),
-   TMC(30, 291), TMC(30, 295), TMC(31, 3), TMC(31, 74), TMC(31, 99),
-   TMC(31, 0), TMC(31, 5), TMC(31, 19), TMC(32, 110), TMC(33, 109),
-   TMC(34, 307), TMC(35, 307), TMC(36, 118), TMC(36, 116), TMC(36, 114),
-   TMC(37, 385), TMC(38, 386), TMC(39, 388), TMC(40, 392), TMC(40, 396),
-   TMC(40, 400), TMC(41, 94), TMC(42, 108), TMC(43, 94), TMC(44, 63),
-   TMC(45, 323), TMC(46, 5), TMC(47, 5), TMC(48, 5), TMC(49, 402),
-   TMC(50, 405), TMC(50, 409), TMC(51, 5), TMC(52, 5), TMC(53, 5),
-   TMC(54, 5), TMC(55, 19), TMC(56, 5), TMC(57, 5), TMC(58, 70),
-   TMC(59, 5), TMC(60, 5), TMC(61, 5), TMC(62, 5), TMC(63, 5), TMC(64, 70),
+   TMV("a'", 5), TMV("a'", 19), TMV("a0", 117), TMV("a0", 115),
+   TMV("a0", 113), TMV("a0", 5), TMV("a0", 19), TMV("a0", 7),
+   TMV("a0'", 113), TMV("a1", 0), TMV("a1", 15), TMV("a1", 113),
+   TMV("a1", 7), TMV("a1'", 113), TMV("a2", 113), TMV("a3", 113),
+   TMV("a4", 113), TMV("addr", 0), TMV("c", 93), TMV("can_fail", 130),
+   TMV("cc", 93),
+   TMV("dict_Abi_classes_AbiFeatureTagEquiv_abifeature", 11),
+   TMV("dict_Basic_classes_Ord_abifeature", 82), TMV("el", 131),
+   TMV("el_name", 133), TMV("el_range", 134), TMV("element_addr", 0),
+   TMV("f", 74), TMV("f", 26), TMV("f", 98), TMV("f", 9), TMV("f", 67),
+   TMV("f", 75), TMV("f", 99), TMV("f", 135), TMV("f", 136), TMV("f", 137),
+   TMV("f'", 26), TMV("f'", 75), TMV("f'", 99), TMV("f0", 3),
+   TMV("f0", 11), TMV("f0", 26), TMV("f1", 65), TMV("f1", 75),
+   TMV("f1", 99), TMV("f1", 24), TMV("f1", 140), TMV("f1'", 24),
+   TMV("f2", 11), TMV("f2", 21), TMV("f2", 143), TMV("f2'", 21),
+   TMV("f3", 16), TMV("f3", 146), TMV("f3'", 16), TMV("f4", 16),
+   TMV("f4", 146), TMV("f4'", 16), TMV("f5", 13), TMV("f5", 149),
+   TMV("f5'", 13), TMV("f6", 152), TMV("f7", 155), TMV("f8", 158),
+   TMV("f9", 162), TMV("fn", 163), TMV("fn", 164), TMV("fn0", 165),
+   TMV("fn1", 166), TMV("fn2", 167), TMV("fn3", 168), TMV("fn4", 169),
+   TMV("found_kvs", 174), TMV("i", 70), TMV("img", 3), TMV("img", 79),
+   TMV("integer_bit_width", 194), TMV("j", 3), TMV("k", 62),
+   TMV("key", 11), TMV("m", 0), TMV("n", 0), TMV("p", 23), TMV("p", 20),
+   TMV("p", 12), TMV("p", 15), TMV("r", 0), TMV("r", 63), TMV("r", 19),
+   TMV("r", 7), TMV("r'", 0), TMV("r0", 5), TMV("r0", 7),
+   TMV("relocation_frame", 196), TMV("relocation_operator", 216),
+   TMV("relocation_operator2", 123),
+   TMV("relocation_operator_expression", 222), TMV("rep", 223),
+   TMV("rep", 87), TMV("rep", 224), TMV("rep", 6), TMV("rep", 59),
+   TMV("rep", 225), TMV("rf", 226), TMV("rr", 63), TMV("rr", 7),
+   TMV("rr", 1), TMV("site_offset", 0), TMV("sm", 227), TMV("start", 0),
+   TMV("v", 3), TMV("v", 11), TMV("v", 170), TMV("v", 73), TMV("v'", 3),
+   TMV("v'", 11), TMV("v0", 3), TMV("v0'", 3), TMV("v1", 3), TMV("v1", 11),
+   TMV("v1", 0), TMV("v1'", 3), TMV("v1'", 11), TMV("v10", 3),
+   TMV("v10", 172), TMV("v10'", 3), TMV("v11", 3), TMV("v11", 171),
+   TMV("v11'", 3), TMV("v12", 3), TMV("v12'", 3), TMV("v13", 3),
+   TMV("v13'", 3), TMV("v14", 3), TMV("v14'", 3), TMV("v15", 3),
+   TMV("v15'", 3), TMV("v16", 3), TMV("v16'", 3), TMV("v17", 3),
+   TMV("v17'", 3), TMV("v18", 3), TMV("v18'", 3), TMV("v19", 3),
+   TMV("v19'", 3), TMV("v2", 3), TMV("v2", 173), TMV("v2'", 3),
+   TMV("v20", 3), TMV("v20'", 3), TMV("v3", 3), TMV("v3", 174),
+   TMV("v3'", 3), TMV("v4", 3), TMV("v4'", 3), TMV("v5", 3), TMV("v5'", 3),
+   TMV("v6", 3), TMV("v6", 173), TMV("v6'", 3), TMV("v7", 3),
+   TMV("v7", 174), TMV("v7'", 3), TMV("v8", 3), TMV("v8'", 3),
+   TMV("v9", 3), TMV("v9'", 3), TMV("val_map", 89), TMV("x", 70),
+   TMV("x", 5), TMV("x", 19), TMV("x0", 3), TMV("x1", 3), TMV("x10", 3),
+   TMV("x11", 3), TMV("x12", 3), TMV("x13", 3), TMV("x14", 3),
+   TMV("x15", 3), TMV("x16", 3), TMV("x17", 3), TMV("x18", 3),
+   TMV("x19", 3), TMV("x2", 3), TMV("x20", 3), TMV("x3", 3), TMV("x4", 3),
+   TMV("x5", 3), TMV("x6", 3), TMV("x7", 3), TMV("x8", 3), TMV("x9", 3),
+   TMC(23, 228), TMC(23, 230), TMC(23, 232), TMC(23, 234), TMC(23, 235),
+   TMC(23, 237), TMC(23, 239), TMC(23, 241), TMC(23, 242), TMC(23, 244),
+   TMC(23, 246), TMC(23, 248), TMC(23, 249), TMC(23, 251), TMC(23, 253),
+   TMC(23, 255), TMC(23, 257), TMC(23, 259), TMC(23, 261), TMC(23, 263),
+   TMC(23, 265), TMC(23, 267), TMC(23, 269), TMC(23, 271), TMC(23, 273),
+   TMC(23, 275), TMC(23, 277), TMC(23, 279), TMC(23, 281), TMC(23, 283),
+   TMC(23, 285), TMC(23, 287), TMC(23, 289), TMC(23, 291), TMC(23, 293),
+   TMC(23, 295), TMC(23, 297), TMC(23, 299), TMC(23, 301), TMC(23, 254),
+   TMC(23, 303), TMC(23, 260), TMC(23, 266), TMC(23, 272), TMC(23, 278),
+   TMC(23, 282), TMC(23, 284), TMC(23, 286), TMC(23, 288), TMC(23, 290),
+   TMC(23, 294), TMC(23, 298), TMC(23, 305), TMC(24, 307), TMC(25, 309),
+   TMC(25, 311), TMC(25, 313), TMC(25, 315), TMC(25, 317), TMC(25, 319),
+   TMC(25, 321), TMC(26, 323), TMC(27, 0), TMC(28, 324), TMC(29, 325),
+   TMC(29, 326), TMC(29, 328), TMC(29, 330), TMC(29, 332), TMC(29, 334),
+   TMC(29, 323), TMC(29, 335), TMC(29, 337), TMC(29, 338), TMC(29, 339),
+   TMC(29, 175), TMC(29, 324), TMC(29, 340), TMC(29, 341), TMC(29, 342),
+   TMC(29, 343), TMC(29, 345), TMC(29, 346), TMC(29, 347), TMC(29, 348),
+   TMC(29, 349), TMC(29, 197), TMC(29, 350), TMC(29, 351), TMC(30, 323),
+   TMC(31, 228), TMC(31, 237), TMC(31, 242), TMC(31, 353), TMC(31, 355),
+   TMC(31, 357), TMC(31, 359), TMC(31, 361), TMC(31, 363), TMC(31, 365),
+   TMC(31, 367), TMC(31, 369), TMC(31, 371), TMC(31, 373), TMC(31, 375),
+   TMC(31, 377), TMC(31, 379), TMC(31, 381), TMC(31, 383), TMC(31, 254),
+   TMC(31, 303), TMC(31, 260), TMC(31, 266), TMC(31, 272), TMC(31, 278),
+   TMC(31, 286), TMC(31, 290), TMC(31, 294), TMC(32, 3), TMC(32, 74),
+   TMC(32, 98), TMC(32, 0), TMC(32, 5), TMC(32, 19), TMC(33, 109),
+   TMC(34, 108), TMC(35, 306), TMC(36, 306), TMC(37, 117), TMC(37, 115),
+   TMC(37, 113), TMC(38, 384), TMC(39, 385), TMC(40, 387), TMC(41, 391),
+   TMC(41, 395), TMC(41, 399), TMC(42, 93), TMC(43, 107), TMC(44, 93),
+   TMC(45, 63), TMC(46, 322), TMC(47, 5), TMC(48, 5), TMC(49, 5),
+   TMC(50, 401), TMC(51, 404), TMC(51, 408), TMC(52, 5), TMC(53, 5),
+   TMC(54, 5), TMC(55, 5), TMC(56, 19), TMC(57, 5), TMC(58, 5),
+   TMC(59, 70), TMC(60, 5), TMC(61, 5), TMC(62, 5), TMC(63, 5), TMC(64, 5),
    TMC(65, 70), TMC(66, 70), TMC(67, 70), TMC(68, 70), TMC(69, 70),
-   TMC(70, 70), TMC(71, 70), TMC(72, 70), TMC(73, 70), TMC(74, 5),
-   TMC(75, 5), TMC(76, 411), TMC(76, 412), TMC(77, 5), TMC(78, 107),
-   TMC(79, 5), TMC(80, 70), TMC(81, 70), TMC(82, 105), TMC(83, 134),
-   TMC(84, 307), TMC(85, 106), TMC(86, 5), TMC(87, 105), TMC(88, 104),
-   TMC(89, 307), TMC(90, 413), TMC(91, 5), TMC(92, 5), TMC(93, 414),
-   TMC(93, 415), TMC(93, 416), TMC(93, 417), TMC(93, 418), TMC(93, 419),
-   TMC(94, 70), TMC(95, 70), TMC(96, 70), TMC(97, 70), TMC(98, 70),
-   TMC(99, 70), TMC(100, 70), TMC(101, 70), TMC(102, 0), TMC(103, 324),
-   TMC(104, 421), TMC(105, 422), TMC(106, 103), TMC(107, 96),
-   TMC(107, 424), TMC(108, 434), TMC(113, 435), TMC(114, 436),
-   TMC(115, 440), TMC(116, 443), TMC(117, 446), TMC(118, 447),
-   TMC(119, 448), TMC(120, 451), TMC(120, 453), TMC(121, 88), TMC(122, 93),
-   TMC(122, 473), TMC(123, 88), TMC(124, 477), TMC(125, 482), TMC(126, 92),
-   TMC(127, 484), TMC(128, 88), TMC(129, 87), TMC(130, 86), TMC(131, 85),
-   TMC(132, 488), TMC(132, 492), TMC(132, 495), TMC(132, 499),
-   TMC(133, 503), TMC(133, 505), TMC(133, 509), TMC(134, 512),
-   TMC(134, 515), TMC(135, 84), TMC(136, 78), TMC(137, 68), TMC(138, 59),
-   TMC(139, 60), TMC(140, 59), TMC(141, 6), TMC(142, 58), TMC(143, 36),
-   TMC(144, 34), TMC(145, 32), TMC(146, 30), TMC(147, 28), TMC(148, 10),
-   TMC(148, 516), TMC(149, 6), TMC(150, 485), TMC(151, 4), TMC(152, 2),
-   TMC(153, 518), TMC(155, 519), TMC(156, 520), TMC(157, 323)]
+   TMC(70, 70), TMC(71, 70), TMC(72, 70), TMC(73, 70), TMC(74, 70),
+   TMC(75, 5), TMC(76, 5), TMC(77, 410), TMC(77, 412), TMC(77, 413),
+   TMC(77, 415), TMC(78, 5), TMC(79, 106), TMC(80, 5), TMC(81, 70),
+   TMC(82, 70), TMC(83, 104), TMC(84, 133), TMC(85, 306), TMC(86, 105),
+   TMC(87, 5), TMC(88, 104), TMC(89, 103), TMC(90, 306), TMC(91, 416),
+   TMC(92, 5), TMC(93, 5), TMC(94, 417), TMC(94, 418), TMC(94, 419),
+   TMC(94, 420), TMC(94, 421), TMC(94, 422), TMC(95, 70), TMC(96, 70),
+   TMC(97, 70), TMC(98, 70), TMC(99, 70), TMC(100, 70), TMC(101, 70),
+   TMC(102, 70), TMC(103, 0), TMC(104, 323), TMC(105, 424), TMC(106, 425),
+   TMC(107, 102), TMC(108, 95), TMC(108, 427), TMC(109, 429),
+   TMC(110, 438), TMC(114, 439), TMC(115, 440), TMC(116, 444),
+   TMC(117, 447), TMC(118, 449), TMC(119, 450), TMC(120, 451),
+   TMC(121, 454), TMC(121, 456), TMC(122, 87), TMC(123, 92), TMC(123, 476),
+   TMC(124, 87), TMC(125, 480), TMC(126, 485), TMC(127, 91), TMC(128, 87),
+   TMC(129, 86), TMC(130, 85), TMC(131, 84), TMC(132, 489), TMC(132, 493),
+   TMC(132, 496), TMC(132, 500), TMC(133, 504), TMC(133, 506),
+   TMC(133, 510), TMC(134, 513), TMC(134, 516), TMC(135, 83), TMC(136, 78),
+   TMC(137, 68), TMC(138, 59), TMC(139, 60), TMC(140, 59), TMC(141, 6),
+   TMC(142, 58), TMC(143, 36), TMC(144, 34), TMC(145, 32), TMC(146, 30),
+   TMC(147, 28), TMC(148, 10), TMC(148, 517), TMC(149, 6), TMC(150, 486),
+   TMC(151, 4), TMC(152, 2), TMC(153, 518), TMC(154, 519), TMC(155, 520),
+   TMC(156, 322)]
   end
   local
   val DT = Thm.disk_thm val read = Term.read_raw tmvector
@@ -441,12 +441,12 @@ struct
     val op integer_bit_width_TY_DEF =
     DT(((("abi_utilities",0),
         [("bool",[25]),("numeral",[3,7])]),["DISK_THM"]),
-       [read"%336%147%431%130%303$0@%422%366%367%367%366%445@@@@@@|@$0@|@"])
+       [read"%337%147%434%130%304$0@%425%367%368%368%367%448@@@@@@|@$0@|@"])
   fun op integer_bit_width_BIJ x = x
     val op integer_bit_width_BIJ =
     DT(((("abi_utilities",1),
-        [("abi_utilities",[0]),("bool",[117])]),["DISK_THM"]),
-       [read"%301%279%32%315%471%462$0@@@$0@|@@%280%135%310%130%303$0@%422%366%367%367%366%445@@@@@@|$0@@%316%462%471$0@@@$0@@|@@"])
+        [("abi_utilities",[0]),("bool",[116])]),["DISK_THM"]),
+       [read"%302%280%32%316%474%466$0@@@$0@|@@%281%135%311%130%304$0@%425%367%368%368%367%448@@@@@@|$0@@%317%466%474$0@@@$0@@|@@"])
 
 
 
@@ -470,25 +470,25 @@ struct
 
   fun op integer_bit_width_size_def x = x
     val op integer_bit_width_size_def =
-    DT(((("abi_utilities",32),[]),[]), [read"%279%215%316%465$0@@%302@|@"])
+    DT(((("abi_utilities",32),[]),[]), [read"%280%217%317%469$0@@%303@|@"])
   fun op integer_bit_width_CASE x = x
     val op integer_bit_width_CASE =
     DT(((("abi_utilities",33),[]),[]),
-       [read"%279%215%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%463$21@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@%129%372%303$0@%422%367%367%366%445@@@@@@%372%303$0@%422%367%366%445@@@@@%372%303$0@%422%366%445@@@@$21@%372%303$0@%422%367%445@@@@$20@%372%316$0@%422%367%445@@@@$19@$18@@@@%372%303$0@%422%367%367%445@@@@@%372%316$0@%422%367%366%445@@@@@$17@$16@@%372%303$0@%422%366%366%366%445@@@@@@$15@%372%303$0@%422%367%366%366%445@@@@@@$14@%372%316$0@%422%367%366%366%445@@@@@@$13@$12@@@@@@%372%303$0@%422%366%366%366%366%445@@@@@@@%372%303$0@%422%367%366%367%445@@@@@@%372%316$0@%422%367%367%366%445@@@@@@$11@$10@@%372%303$0@%422%366%367%367%445@@@@@@$9@%372%316$0@%422%366%367%367%445@@@@@@$8@$7@@@@%372%303$0@%422%366%367%366%366%445@@@@@@@%372%316$0@%422%366%366%366%366%445@@@@@@@$6@$5@@%372%303$0@%422%367%367%366%366%445@@@@@@@$4@%372%303$0@%422%366%366%367%366%445@@@@@@@$3@%372%316$0@%422%366%366%367%366%445@@@@@@@$2@$1@@@@@@|%462$21@@@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@"])
+       [read"%280%217%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%467$21@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@%129%373%304$0@%425%368%368%367%448@@@@@@%373%304$0@%425%368%367%448@@@@@%373%304$0@%425%367%448@@@@$21@%373%304$0@%425%368%448@@@@$20@%373%317$0@%425%368%448@@@@$19@$18@@@@%373%304$0@%425%368%368%448@@@@@%373%317$0@%425%368%367%448@@@@@$17@$16@@%373%304$0@%425%367%367%367%448@@@@@@$15@%373%304$0@%425%368%367%367%448@@@@@@$14@%373%317$0@%425%368%367%367%448@@@@@@$13@$12@@@@@@%373%304$0@%425%367%367%367%367%448@@@@@@@%373%304$0@%425%368%367%368%448@@@@@@%373%317$0@%425%368%368%367%448@@@@@@$11@$10@@%373%304$0@%425%367%368%368%448@@@@@@$9@%373%317$0@%425%367%368%368%448@@@@@@$8@$7@@@@%373%304$0@%425%367%368%367%367%448@@@@@@@%373%317$0@%425%367%367%367%367%448@@@@@@@$6@$5@@%373%304$0@%425%368%368%367%367%448@@@@@@@$4@%373%304$0@%425%367%367%368%367%448@@@@@@@$3@%373%317$0@%425%367%367%368%367%448@@@@@@@$2@$1@@@@@@|%466$21@@@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@"])
   fun op natural_of_integer_bit_width_def x = x
     val op natural_of_integer_bit_width_def =
     DT(((("abi_utilities",40),[]),[]),
-       [read"%279%122%316%470$0@@%464$0@%422%367%366%366%445@@@@@%422%367%366%367%445@@@@@%422%367%366%367%445@@@@@%422%367%367%367%445@@@@@%422%366%366%366%366%445@@@@@@%422%366%366%366%366%445@@@@@@%422%367%366%366%366%445@@@@@@%422%367%366%366%366%445@@@@@@%422%367%366%367%366%445@@@@@@%422%367%366%366%367%445@@@@@@%422%366%366%367%367%445@@@@@@%422%367%367%367%367%445@@@@@@%422%367%366%366%366%366%445@@@@@@@%422%367%366%366%366%367%445@@@@@@@%422%367%366%366%366%366%366%445@@@@@@@@%422%367%366%366%366%366%366%366%445@@@@@@@@@%422%367%366%366%366%445@@@@@@%422%367%366%366%367%445@@@@@@%422%367%366%366%366%366%445@@@@@@@%422%367%366%366%366%367%445@@@@@@@%422%367%366%366%366%366%366%445@@@@@@@@@|@"])
+       [read"%280%122%317%473$0@@%468$0@%425%368%367%367%448@@@@@%425%368%367%368%448@@@@@%425%368%367%368%448@@@@@%425%368%368%368%448@@@@@%425%367%367%367%367%448@@@@@@%425%367%367%367%367%448@@@@@@%425%368%367%367%367%448@@@@@@%425%368%367%367%367%448@@@@@@%425%368%367%368%367%448@@@@@@%425%368%367%367%368%448@@@@@@%425%367%367%368%368%448@@@@@@%425%368%368%368%368%448@@@@@@%425%368%367%367%367%367%448@@@@@@@%425%368%367%367%367%368%448@@@@@@@%425%368%367%367%367%367%367%448@@@@@@@@%425%368%367%367%367%367%367%367%448@@@@@@@@@%425%368%367%367%367%448@@@@@@%425%368%367%367%368%448@@@@@@%425%368%367%367%367%367%448@@@@@@@%425%368%367%367%367%368%448@@@@@@@%425%368%367%367%367%367%367%448@@@@@@@@@|@"])
   fun op relocation_operator_TY_DEF x = x
     val op relocation_operator_TY_DEF =
     DT(((("abi_utilities",41),
         [("bool",[25]),("numeral",[3,7])]),["DISK_THM"]),
-       [read"%344%149%432%130%303$0@%422%366%367%367%366%445@@@@@@|@$0@|@"])
+       [read"%345%149%435%130%304$0@%425%367%368%368%367%448@@@@@@|@$0@|@"])
   fun op relocation_operator_BIJ x = x
     val op relocation_operator_BIJ =
     DT(((("abi_utilities",42),
-        [("abi_utilities",[41]),("bool",[117])]),["DISK_THM"]),
-       [read"%301%289%38%326%472%489$0@@@$0@|@@%280%135%310%130%303$0@%422%366%367%367%366%445@@@@@@|$0@@%316%489%472$0@@@$0@@|@@"])
+        [("abi_utilities",[41]),("bool",[116])]),["DISK_THM"]),
+       [read"%302%290%38%327%475%492$0@@@$0@|@@%281%135%311%130%304$0@%425%367%368%368%367%448@@@@@@|$0@@%317%492%475$0@@@$0@@|@@"])
 
 
 
@@ -512,54 +512,54 @@ struct
 
   fun op relocation_operator_size_def x = x
     val op relocation_operator_size_def =
-    DT(((("abi_utilities",73),[]),[]), [read"%289%216%316%498$0@@%302@|@"])
+    DT(((("abi_utilities",73),[]),[]), [read"%290%218%317%501$0@@%303@|@"])
   fun op relocation_operator_CASE x = x
     val op relocation_operator_CASE =
     DT(((("abi_utilities",74),[]),[]),
-       [read"%289%216%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%490$21@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@%129%372%303$0@%422%367%367%366%445@@@@@@%372%303$0@%422%367%366%445@@@@@%372%303$0@%422%366%445@@@@$21@%372%303$0@%422%367%445@@@@$20@%372%316$0@%422%367%445@@@@$19@$18@@@@%372%303$0@%422%367%367%445@@@@@%372%316$0@%422%367%366%445@@@@@$17@$16@@%372%303$0@%422%366%366%366%445@@@@@@$15@%372%303$0@%422%367%366%366%445@@@@@@$14@%372%316$0@%422%367%366%366%445@@@@@@$13@$12@@@@@@%372%303$0@%422%366%366%366%366%445@@@@@@@%372%303$0@%422%367%366%367%445@@@@@@%372%316$0@%422%367%367%366%445@@@@@@$11@$10@@%372%303$0@%422%366%367%367%445@@@@@@$9@%372%316$0@%422%366%367%367%445@@@@@@$8@$7@@@@%372%303$0@%422%366%367%366%366%445@@@@@@@%372%316$0@%422%366%366%366%366%445@@@@@@@$6@$5@@%372%303$0@%422%367%367%366%366%445@@@@@@@$4@%372%303$0@%422%366%366%367%366%445@@@@@@@$3@%372%316$0@%422%366%366%367%366%445@@@@@@@$2@$1@@@@@@|%489$21@@@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@"])
+       [read"%290%218%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%493$21@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@%129%373%304$0@%425%368%368%367%448@@@@@@%373%304$0@%425%368%367%448@@@@@%373%304$0@%425%367%448@@@@$21@%373%304$0@%425%368%448@@@@$20@%373%317$0@%425%368%448@@@@$19@$18@@@@%373%304$0@%425%368%368%448@@@@@%373%317$0@%425%368%367%448@@@@@$17@$16@@%373%304$0@%425%367%367%367%448@@@@@@$15@%373%304$0@%425%368%367%367%448@@@@@@$14@%373%317$0@%425%368%367%367%448@@@@@@$13@$12@@@@@@%373%304$0@%425%367%367%367%367%448@@@@@@@%373%304$0@%425%368%367%368%448@@@@@@%373%317$0@%425%368%368%367%448@@@@@@$11@$10@@%373%304$0@%425%367%368%368%448@@@@@@$9@%373%317$0@%425%367%368%368%448@@@@@@$8@$7@@@@%373%304$0@%425%367%368%367%367%448@@@@@@@%373%317$0@%425%367%367%367%367%448@@@@@@@$6@$5@@%373%304$0@%425%368%368%367%367%448@@@@@@@$4@%373%304$0@%425%367%367%368%367%448@@@@@@@$3@%373%317$0@%425%367%367%368%367%448@@@@@@@$2@$1@@@@@@|%492$21@@@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@"])
   fun op relocation_operator2_TY_DEF x = x
     val op relocation_operator2_TY_DEF =
     DT(((("abi_utilities",81),
         [("bool",[25]),("numeral",[3,7])]),["DISK_THM"]),
-       [read"%346%150%433%130%303$0@%422%366%445@@@|@$0@|@"])
+       [read"%347%150%436%130%304$0@%425%367%448@@@|@$0@|@"])
   fun op relocation_operator2_BIJ x = x
     val op relocation_operator2_BIJ =
     DT(((("abi_utilities",82),
-        [("abi_utilities",[81]),("bool",[117])]),["DISK_THM"]),
-       [read"%301%290%39%327%473%486$0@@@$0@|@@%280%135%310%130%303$0@%422%366%445@@@|$0@@%316%486%473$0@@@$0@@|@@"])
+        [("abi_utilities",[81]),("bool",[116])]),["DISK_THM"]),
+       [read"%302%291%39%328%476%489$0@@@$0@|@@%281%135%311%130%304$0@%425%367%448@@@|$0@@%317%489%476$0@@@$0@@|@@"])
 
   fun op relocation_operator2_size_def x = x
     val op relocation_operator2_size_def =
-    DT(((("abi_utilities",93),[]),[]), [read"%290%217%316%488$0@@%302@|@"])
+    DT(((("abi_utilities",93),[]),[]), [read"%291%219%317%491$0@@%303@|@"])
   fun op relocation_operator2_CASE x = x
     val op relocation_operator2_CASE =
     DT(((("abi_utilities",94),[]),[]),
-       [read"%290%217%239%163%304%487$1@$0@@%129$1|%486$1@@@|@|@"])
+       [read"%291%219%241%165%305%490$1@$0@@%129$1|%489$1@@@|@|@"])
   fun op lookupM_def x = x
     val op lookupM_def =
     DT(((("abi_utilities",101),[]),[]),
-       [read"%240%128%246%214%312%468$1@$0@@%474%386$0@$1@@%453%373%371%422%367%366%367%367%366%367%445@@@@@@@@@%373%371%422%366%366%366%366%367%367%445@@@@@@@@@%373%371%422%366%366%366%366%367%367%445@@@@@@@@@%373%371%422%366%366%367%367%366%367%445@@@@@@@@@%373%371%422%366%367%367%366%367%367%445@@@@@@@@@%373%371%422%367%366%366%366%367%367%445@@@@@@@@@%373%371%422%366%367%367%367%366%366%445@@@@@@@@@%373%371%422%367%367%366%367%367%445@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%366%366%367%367%366%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%366%367%366%367%367%367%445@@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%367%367%367%367%366%367%445@@@@@@@@@%373%371%422%366%366%366%366%367%367%445@@@@@@@@@%373%371%422%367%366%367%366%367%367%445@@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%367%367%367%366%366%367%445@@@@@@@@@%373%371%422%366%366%366%366%367%367%445@@@@@@@@@%373%371%422%366%367%367%366%367%367%445@@@@@@@@@%373%371%422%367%367%367%367%366%367%445@@@@@@@@@%373%371%422%367%366%367%366%366%367%445@@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%366%367%366%367%366%367%445@@@@@@@@@%373%371%422%367%367%367%367%366%367%445@@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%367%367%367%366%367%367%445@@@@@@@@@%373%371%422%366%367%366%366%366%367%445@@@@@@@@@%373%371%422%367%366%367%367%366%367%445@@@@@@@@@%373%371%422%366%366%366%366%366%367%445@@@@@@@@@%373%371%422%366%367%367%367%366%367%445@@@@@@@@@%373%371%422%366%367%366%366%366%367%445@@@@@@@@@%373%371%422%367%366%366%366%367%367%445@@@@@@@@@%421@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%126%499$0@|@@|@|@"])
+       [read"%242%128%247%216%313%472$1@$0@@%477%387$0@$1@@%457%374%372%425%368%367%368%368%367%368%448@@@@@@@@@%374%372%425%367%367%367%367%368%368%448@@@@@@@@@%374%372%425%367%367%367%367%368%368%448@@@@@@@@@%374%372%425%367%367%368%368%367%368%448@@@@@@@@@%374%372%425%367%368%368%367%368%368%448@@@@@@@@@%374%372%425%368%367%367%367%368%368%448@@@@@@@@@%374%372%425%367%368%368%368%367%367%448@@@@@@@@@%374%372%425%368%368%367%368%368%448@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%367%367%368%368%367%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%367%368%367%368%368%368%448@@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%368%368%368%368%367%368%448@@@@@@@@@%374%372%425%367%367%367%367%368%368%448@@@@@@@@@%374%372%425%368%367%368%367%368%368%448@@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%368%368%368%367%367%368%448@@@@@@@@@%374%372%425%367%367%367%367%368%368%448@@@@@@@@@%374%372%425%367%368%368%367%368%368%448@@@@@@@@@%374%372%425%368%368%368%368%367%368%448@@@@@@@@@%374%372%425%368%367%368%367%367%368%448@@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%367%368%367%368%367%368%448@@@@@@@@@%374%372%425%368%368%368%368%367%368%448@@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%368%368%368%367%368%368%448@@@@@@@@@%374%372%425%367%368%367%367%367%368%448@@@@@@@@@%374%372%425%368%367%368%368%367%368%448@@@@@@@@@%374%372%425%367%367%367%367%367%368%448@@@@@@@@@%374%372%425%367%368%368%368%367%368%448@@@@@@@@@%374%372%425%367%368%367%367%367%368%448@@@@@@@@@%374%372%425%368%367%367%367%368%368%448@@@@@@@@@%424@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%126%502$0@|@@|@|@"])
   fun op can_fail_TY_DEF x = x
     val op can_fail_TY_DEF =
     DT(((("abi_utilities",102),[("bool",[26])]),["DISK_THM"]),
-       [read"%334%146%435%51%270%4%329%286%51%329%446%323$0@%375%302@%360@%130%369|@@@%446%332%31%323$1@%31%375%427%302@@$0@%130%369|@|$0@@|@@%323$0@%375%427%427%302@@@%360@%130%369|@@@@@$1$0@@|@@$0$1@@|@|@$0@|@"])
+       [read"%335%146%438%51%271%4%330%287%51%330%449%324$0@%376%303@%361@%130%370|@@@%449%333%31%324$1@%31%376%430%303@@$0@%130%370|@|$0@@|@@%324$0@%376%430%430%303@@@%361@%130%370|@@@@@$1$0@@|@@$0$1@@|@|@$0@|@"])
   fun op can_fail_case_def x = x
     val op can_fail_case_def =
     DT(((("abi_utilities",110),
-        [("abi_utilities",[103,104,105,106,107,108,109]),("bool",[26,181]),
+        [("abi_utilities",[103,104,105,106,107,108,109]),("bool",[26,180]),
          ("ind_type",[33,34])]),["DISK_THM"]),
-       [read"%301%240%158%254%81%240%166%305%449%377@$2@$1@$0@@$2@|@|@|@@%301%248%31%240%158%254%81%240%166%305%449%378$3@@$2@$1@$0@@$1$3@@|@|@|@|@@%240%158%254%81%240%166%305%449%379@$2@$1@$0@@$0@|@|@|@@@"])
+       [read"%302%242%160%255%81%242%168%306%452%378@$2@$1@$0@@$2@|@|@|@@%302%249%31%242%160%255%81%242%168%306%452%379$3@@$2@$1@$0@@$1$3@@|@|@|@|@@%242%160%255%81%242%168%306%452%380@$2@$1@$0@@$0@|@|@|@@@"])
   fun op can_fail_size_def x = x
     val op can_fail_size_def =
     DT(((("abi_utilities",111),
-        [("abi_utilities",[103,104,105,106,107,108,109]),("bool",[26,181]),
+        [("abi_utilities",[103,104,105,106,107,108,109]),("bool",[26,180]),
          ("ind_type",[33,34])]),["DISK_THM"]),
-       [read"%301%249%78%316%450$0@%377@@%302@|@@%301%249%78%248%31%316%450$1@%378$0@@@%422%366%445@@@|@|@@%249%78%316%450$0@%379@@%302@|@@@"])
+       [read"%302%250%78%317%453$0@%378@@%303@|@@%302%250%78%249%31%317%453$1@%379$0@@@%425%367%448@@@|@|@@%250%78%317%453$0@%380@@%303@|@@@"])
   fun op relocation_operator_expression_TY_DEF x = x
     val op relocation_operator_expression_TY_DEF =
     DT(((("abi_utilities",119),
-        [("bool",[14,25,26,53,132,133,138])]),["DISK_THM"]),
-       [read"%348%151%436%56%271%6%271%0%271%1%271%2%271%3%329%301%287%56%329%446%330%29%324$1@%29%376%302@%294$0@%297%363@%295%361@%362@@@@%130%370|@|$0@@|@@%446%355%37%301%324$1@%37%376%427%302@@%294%358@%297%363@%295%361@%362@@@@%385$0@%130%370|@@|$0@@@$3$0@@|@@%446%355%37%301%324$1@%37%376%427%427%302@@@%294%358@%297%363@%295%361@%362@@@@%385$0@%130%370|@@|$0@@@$5$0@@|@@%446%355%37%301%324$1@%37%376%427%427%427%302@@@@%294%358@%297%363@%295%361@%362@@@@%385$0@%130%370|@@|$0@@@$2$0@@|@@%446%355%37%301%324$1@%37%376%427%427%427%427%302@@@@@%294%358@%297%363@%295%361@%362@@@@%385$0@%130%370|@@|$0@@@$2$0@@|@@%355%37%301%324$1@%37%376%427%427%427%427%427%302@@@@@@%294%358@%297%363@%295%361@%362@@@@%385$0@%130%370|@@|$0@@@$4$0@@|@@@@@@@$5$0@@|@@%301%287%61%329%357%54%355%59%301%324$2@%54%59%376%427%427%427%427%427%427%302@@@@@@@%294%358@%297$1@%295%361@%362@@@@%385$0@%130%370|@@||$1@$0@@@$3$0@@|@|@@$4$0@@|@@%301%287%62%329%355%52%350%57%301%324$2@%52%57%376%427%427%427%427%427%427%427%302@@@@@@@@%294%358@%297%363@%295$0@%362@@@@%385$1@%130%370|@@||$1@$0@@@$7$1@@|@|@@$3$0@@|@@%301%287%63%329%356%53%355%59%301%324$2@%53%59%376%427%427%427%427%427%427%427%427%302@@@@@@@@@%294%358@%297%363@%295%361@$1@@@@%385$0@%130%370|@@||$1@$0@@@$7$0@@|@|@@$2$0@@|@@%287%64%329%355%52%355%59%301%324$2@%52%59%376%427%427%427%427%427%427%427%427%427%302@@@@@@@@@@%294%358@%297%363@%295%361@%362@@@@%385$1@%385$0@%130%370|@@@||$1@$0@@@%301$7$1@@$7$0@@@|@|@@$1$0@@|@@@@@@$4$5@@|@|@|@|@|@|@$0@|@"])
+        [("bool",[14,25,26,52,131,132,137])]),["DISK_THM"]),
+       [read"%349%151%439%56%272%6%272%0%272%1%272%2%272%3%330%302%288%56%330%449%331%29%325$1@%29%377%303@%295$0@%298%364@%296%362@%363@@@@%130%371|@|$0@@|@@%449%356%37%302%325$1@%37%377%430%303@@%295%359@%298%364@%296%362@%363@@@@%386$0@%130%371|@@|$0@@@$3$0@@|@@%449%356%37%302%325$1@%37%377%430%430%303@@@%295%359@%298%364@%296%362@%363@@@@%386$0@%130%371|@@|$0@@@$5$0@@|@@%449%356%37%302%325$1@%37%377%430%430%430%303@@@@%295%359@%298%364@%296%362@%363@@@@%386$0@%130%371|@@|$0@@@$2$0@@|@@%449%356%37%302%325$1@%37%377%430%430%430%430%303@@@@@%295%359@%298%364@%296%362@%363@@@@%386$0@%130%371|@@|$0@@@$2$0@@|@@%356%37%302%325$1@%37%377%430%430%430%430%430%303@@@@@@%295%359@%298%364@%296%362@%363@@@@%386$0@%130%371|@@|$0@@@$4$0@@|@@@@@@@$5$0@@|@@%302%288%61%330%358%54%356%59%302%325$2@%54%59%377%430%430%430%430%430%430%303@@@@@@@%295%359@%298$1@%296%362@%363@@@@%386$0@%130%371|@@||$1@$0@@@$3$0@@|@|@@$4$0@@|@@%302%288%62%330%356%52%351%57%302%325$2@%52%57%377%430%430%430%430%430%430%430%303@@@@@@@@%295%359@%298%364@%296$0@%363@@@@%386$1@%130%371|@@||$1@$0@@@$7$1@@|@|@@$3$0@@|@@%302%288%63%330%357%53%356%59%302%325$2@%53%59%377%430%430%430%430%430%430%430%430%303@@@@@@@@@%295%359@%298%364@%296%362@$1@@@@%386$0@%130%371|@@||$1@$0@@@$7$0@@|@|@@$2$0@@|@@%288%64%330%356%52%356%59%302%325$2@%52%59%377%430%430%430%430%430%430%430%430%430%303@@@@@@@@@@%295%359@%298%364@%296%362@%363@@@@%386$1@%386$0@%130%371|@@@||$1@$0@@@%302$7$1@@$7$0@@@|@|@@$1$0@@|@@@@@@$4$5@@|@|@|@|@|@|@$0@|@"])
   fun op relocation_operator_expression_case_def x = x
     val op relocation_operator_expression_case_def =
     DT(((("abi_utilities",151),
@@ -567,10 +567,10 @@ struct
          [120,122,124,126,128,129,130,131,132,133,134,135,136,137,138,139,
           140,141,142,143,144,145,146,147,148,149,150]),
          ("bool",
-         [14,15,25,26,31,36,51,53,56,58,60,63,105,124,132,133,138,181]),
+         [14,15,25,26,30,35,50,52,55,57,59,62,104,123,131,132,137,180]),
          ("ind_type",[33,34,37,38,39,40]),("pair",[8,9,21,26]),
          ("sum",[19,20])]),["DISK_THM"]),
-       [read"%301%239%29%247%76%257%94%260%98%266%101%266%104%263%107%305%495%416$6@@$5@$4@$3@$2@$1@$0@@$5$6@@|@|@|@|@|@|@|@@%301%281%33%247%76%257%94%260%98%266%101%266%104%263%107%305%495%364$6@@$5@$4@$3@$2@$1@$0@@$4$6@@|@|@|@|@|@|@|@@%301%282%34%247%76%257%94%260%98%266%101%266%104%263%107%305%495%365$6@@$5@$4@$3@$2@$1@$0@@$3$6@@|@|@|@|@|@|@|@@%301%284%36%247%76%257%94%260%98%266%101%266%104%263%107%305%495%425$6@@$5@$4@$3@$2@$1@$0@@$2$6@@|@|@|@|@|@|@|@@%301%284%36%247%76%257%94%260%98%266%101%266%104%263%107%305%495%420$6@@$5@$4@$3@$2@$1@$0@@$1$6@@|@|@|@|@|@|@|@@%283%35%247%76%257%94%260%98%266%101%266%104%263%107%305%495%426$6@@$5@$4@$3@$2@$1@$0@@$0$6@@|@|@|@|@|@|@|@@@@@@"])
+       [read"%302%241%29%248%76%258%94%261%98%267%101%267%104%264%107%306%498%419$6@@$5@$4@$3@$2@$1@$0@@$5$6@@|@|@|@|@|@|@|@@%302%282%33%248%76%258%94%261%98%267%101%267%104%264%107%306%498%365$6@@$5@$4@$3@$2@$1@$0@@$4$6@@|@|@|@|@|@|@|@@%302%283%34%248%76%258%94%261%98%267%101%267%104%264%107%306%498%366$6@@$5@$4@$3@$2@$1@$0@@$3$6@@|@|@|@|@|@|@|@@%302%285%36%248%76%258%94%261%98%267%101%267%104%264%107%306%498%428$6@@$5@$4@$3@$2@$1@$0@@$2$6@@|@|@|@|@|@|@|@@%302%285%36%248%76%258%94%261%98%267%101%267%104%264%107%306%498%423$6@@$5@$4@$3@$2@$1@$0@@$1$6@@|@|@|@|@|@|@|@@%284%35%248%76%258%94%261%98%267%101%267%104%264%107%306%498%429$6@@$5@$4@$3@$2@$1@$0@@$0$6@@|@|@|@|@|@|@|@@@@@@"])
   fun op relocation_operator_expression_size_def x = x
     val op relocation_operator_expression_size_def =
     DT(((("abi_utilities",152),
@@ -578,364 +578,364 @@ struct
          [120,122,124,126,128,129,130,131,132,133,134,135,136,137,138,139,
           140,141,142,143,144,145,146,147,148,149,150]),
          ("bool",
-         [14,15,25,26,31,36,51,53,56,58,60,63,105,124,132,133,138,181]),
+         [14,15,25,26,30,35,50,52,55,57,59,62,104,123,131,132,137,180]),
          ("ind_type",[33,34,37,38,39,40]),("pair",[8,9,21,26]),
          ("sum",[19,20])]),["DISK_THM"]),
-       [read"%301%249%78%239%29%316%496$1@%416$0@@@%293%422%366%445@@@$1$0@@@|@|@@%301%249%78%281%33%316%496$1@%364$0@@@%293%422%366%445@@@%493$1@$0@@@|@|@@%301%249%78%282%34%316%496$1@%365$0@@@%293%422%366%445@@@%491$1@$0@@@|@|@@%301%249%78%284%36%316%496$1@%425$0@@@%293%422%366%445@@@%494$1@$0@@@|@|@@%301%249%78%284%36%316%496$1@%420$0@@@%293%422%366%445@@@%494$1@$0@@@|@|@@%301%249%78%283%35%316%496$1@%426$0@@@%293%422%366%445@@@%492$1@$0@@@|@|@@%301%249%78%290%54%284%58%316%491$2@%298$1@$0@@@%293%422%366%445@@@%293%488$1@@%494$2@$0@@@@|@|@|@@%301%249%78%291%55%280%57%316%492$2@%299$1@$0@@@%293%422%366%445@@@%293%496$2@$1@@$0@@@|@|@|@@%301%249%78%289%53%291%60%316%493$2@%296$1@$0@@@%293%422%366%445@@@%293%498$1@@%496$2@$0@@@@|@|@|@@%249%78%291%55%291%60%316%494$2@%300$1@$0@@@%293%422%366%445@@@%293%496$2@$1@@%496$2@$0@@@@|@|@|@@@@@@@@@@"])
+       [read"%302%250%78%241%29%317%499$1@%419$0@@@%294%425%367%448@@@$1$0@@@|@|@@%302%250%78%282%33%317%499$1@%365$0@@@%294%425%367%448@@@%496$1@$0@@@|@|@@%302%250%78%283%34%317%499$1@%366$0@@@%294%425%367%448@@@%494$1@$0@@@|@|@@%302%250%78%285%36%317%499$1@%428$0@@@%294%425%367%448@@@%497$1@$0@@@|@|@@%302%250%78%285%36%317%499$1@%423$0@@@%294%425%367%448@@@%497$1@$0@@@|@|@@%302%250%78%284%35%317%499$1@%429$0@@@%294%425%367%448@@@%495$1@$0@@@|@|@@%302%250%78%291%54%285%58%317%494$2@%299$1@$0@@@%294%425%367%448@@@%294%491$1@@%497$2@$0@@@@|@|@|@@%302%250%78%292%55%281%57%317%495$2@%300$1@$0@@@%294%425%367%448@@@%294%499$2@$1@@$0@@@|@|@|@@%302%250%78%290%53%292%60%317%496$2@%297$1@$0@@@%294%425%367%448@@@%294%501$1@@%499$2@$0@@@@|@|@|@@%250%78%292%55%292%60%317%497$2@%301$1@$0@@@%294%425%367%448@@@%294%499$2@$1@@%499$2@$0@@@@|@|@|@@@@@@@@@@"])
   fun op relocation_frame_TY_DEF x = x
     val op relocation_frame_TY_DEF =
     DT(((("abi_utilities",160),[("bool",[26])]),["DISK_THM"]),
-       [read"%342%148%434%50%269%5%329%285%50%329%446%322$0@%374%302@%359@%130%368|@@@%331%30%322$1@%30%374%427%302@@$0@%130%368|@|$0@@|@@@$1$0@@|@@$0$1@@|@|@$0@|@"])
+       [read"%343%148%437%50%270%5%330%286%50%330%449%323$0@%375%303@%360@%130%369|@@@%332%30%323$1@%30%375%430%303@@$0@%130%369|@|$0@@|@@@$1$0@@|@@$0$1@@|@|@$0@|@"])
   fun op relocation_frame_case_def x = x
     val op relocation_frame_case_def =
     DT(((("abi_utilities",166),
-        [("abi_utilities",[161,162,163,164,165]),("bool",[26,181]),
+        [("abi_utilities",[161,162,163,164,165]),("bool",[26,180]),
          ("ind_type",[33,34])]),["DISK_THM"]),
-       [read"%301%239%157%253%80%304%484%380@$1@$0@@$1@|@|@@%245%30%239%157%253%80%304%484%423$2@@$1@$0@@$0$2@@|@|@|@@"])
+       [read"%302%241%159%254%80%305%487%381@$1@$0@@$1@|@|@@%246%30%241%159%254%80%305%487%426$2@@$1@$0@@$0$2@@|@|@|@@"])
   fun op relocation_frame_size_def x = x
     val op relocation_frame_size_def =
     DT(((("abi_utilities",167),
-        [("abi_utilities",[161,162,163,164,165]),("bool",[26,181]),
+        [("abi_utilities",[161,162,163,164,165]),("bool",[26,180]),
          ("ind_type",[33,34])]),["DISK_THM"]),
-       [read"%301%250%79%251%91%316%485$1@$0@%380@@%302@|@|@@%250%79%251%91%245%30%316%485$2@$1@%423$0@@@%293%422%366%445@@@%455%127%302|@%160%293%422%366%445@@@%482%497$2@@%481%465@%451$2@@@$0@@|@$0@@@|@|@|@@"])
+       [read"%302%251%79%252%91%317%488$1@$0@%381@@%303@|@|@@%251%79%252%91%246%30%317%488$2@$1@%426$0@@@%294%425%367%448@@@%459%127%303|@%162%294%425%367%448@@@%485%500$2@@%484%469@%454$2@@@$0@@|@$0@@@|@|@|@@"])
   fun op size_of_def_def x = x
     val op size_of_def_def =
     DT(((("abi_utilities",175),[]),[]),
-       [read"%292%154%316%501$0@@%504%452%503%502$0@@@@@|@"])
+       [read"%293%155%317%504$0@@%417%152%414%157%507%456$0@@|@%506$0@@|@%505$0@@@|@"])
   fun op size_of_copy_reloc_def x = x
     val op size_of_copy_reloc_def =
     DT(((("abi_utilities",176),[]),[]),
-       [read"%239%123%292%154%316%500$1@$0@@%501$0@@|@|@"])
+       [read"%241%123%293%155%317%503$1@$0@@%504$0@@|@|@"])
   fun op reloc_site_address_def x = x
     val op reloc_site_address_def =
     DT(((("abi_utilities",177),[]),[]),
-       [read"%241%69%242%70%243%124%292%154%316%483$3@$2@$1@$0@@%413%121%466$0@%454%373%371%422%366%367%366%367%366%367%445@@@@@@@@@%373%371%422%366%367%367%367%366%367%445@@@@@@@@@%373%371%422%367%366%366%366%367%367%445@@@@@@@@@%373%371%422%366%366%366%366%367%367%445@@@@@@@@@%373%371%422%366%366%367%366%367%367%445@@@@@@@@@%373%371%422%366%366%367%366%367%367%445@@@@@@@@@%373%371%422%366%367%366%367%366%367%445@@@@@@@@@%373%371%422%367%367%366%366%366%367%445@@@@@@@@@%373%371%422%367%366%367%367%366%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%367%367%366%367%367%445@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%367%367%366%366%367%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%367%366%367%367%366%367%445@@@@@@@@@%373%371%422%366%366%366%366%367%367%445@@@@@@@@@%373%371%422%366%366%367%366%366%367%445@@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%366%366%367%366%367%367%445@@@@@@@@@%373%371%422%366%367%366%367%366%367%445@@@@@@@@@%373%371%422%367%366%367%366%367%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%367%367%367%367%366%367%445@@@@@@@@@%373%371%422%366%366%366%366%367%367%445@@@@@@@@@%373%371%422%367%366%367%366%367%367%445@@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%366%367%367%367%366%367%445@@@@@@@@@%373%371%422%366%367%366%366%366%367%445@@@@@@@@@%373%371%422%367%367%366%366%367%367%445@@@@@@@@@%373%371%422%366%366%367%367%366%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%367%366%367%366%366%367%445@@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%366%367%366%367%366%367%445@@@@@@@@@%373%371%422%367%367%367%367%366%367%445@@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%366%367%367%367%366%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%366%367%367%367%366%367%445@@@@@@@@@%373%371%422%366%366%366%366%367%367%445@@@@@@@@@%373%371%422%367%367%366%366%367%367%445@@@@@@@@@%373%371%422%366%367%366%367%367%367%445@@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%366%367%366%367%366%367%445@@@@@@@@@%373%371%422%366%367%367%367%366%367%445@@@@@@@@@%373%371%422%366%367%366%366%366%367%445@@@@@@@@@%373%371%422%366%366%366%367%366%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%421@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%193%198%466$0@%480$1@%171%174%477$0@%454%373%371%422%366%367%366%367%366%367%445@@@@@@@@@%373%371%422%366%367%367%367%366%367%445@@@@@@@@@%373%371%422%367%366%366%366%367%367%445@@@@@@@@@%373%371%422%366%366%366%366%367%367%445@@@@@@@@@%373%371%422%366%366%367%366%367%367%445@@@@@@@@@%373%371%422%366%366%367%366%367%367%445@@@@@@@@@%373%371%422%366%367%366%367%366%367%445@@@@@@@@@%373%371%422%367%367%366%366%366%367%445@@@@@@@@@%373%371%422%367%366%367%367%366%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%367%367%366%367%367%445@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%367%367%366%366%367%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%367%366%367%367%366%367%445@@@@@@@@@%373%371%422%366%366%366%366%367%367%445@@@@@@@@@%373%371%422%366%366%367%366%366%367%445@@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%366%366%367%366%367%367%445@@@@@@@@@%373%371%422%366%367%366%367%366%367%445@@@@@@@@@%373%371%422%367%366%367%366%367%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%367%366%366%367%366%367%445@@@@@@@@@%373%371%422%366%367%366%366%366%367%445@@@@@@@@@%373%371%422%366%366%367%366%367%367%445@@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%367%367%367%367%366%367%445@@@@@@@@@%373%371%422%366%366%366%366%367%367%445@@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%367%366%367%367%366%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%366%367%367%367%366%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%367%367%367%367%366%367%445@@@@@@@@@%373%371%422%367%366%367%366%367%367%445@@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%367%367%366%366%367%367%445@@@@@@@@@%373%371%422%366%367%366%366%366%367%445@@@@@@@@@%373%371%422%367%367%367%367%366%367%445@@@@@@@@@%373%371%422%366%366%366%367%366%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%421@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%159%478$0@%72%73%414%74%414%155%293$1@$0@|@%479$1@%156%167$1||@@|@%475%387%448$9@@$1@@%454%373%371%422%366%367%366%367%366%367%445@@@@@@@@@%373%371%422%366%367%367%367%366%367%445@@@@@@@@@%373%371%422%367%366%366%366%367%367%445@@@@@@@@@%373%371%422%366%366%366%366%367%367%445@@@@@@@@@%373%371%422%366%366%367%366%367%367%445@@@@@@@@@%373%371%422%366%366%367%366%367%367%445@@@@@@@@@%373%371%422%366%367%366%367%366%367%445@@@@@@@@@%373%371%422%367%367%366%366%366%367%445@@@@@@@@@%373%371%422%367%366%367%367%366%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%367%367%366%367%367%445@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%367%367%367%367%366%367%445@@@@@@@@@%373%371%422%366%366%366%366%367%367%445@@@@@@@@@%373%371%422%367%367%367%367%366%367%445@@@@@@@@@%373%371%422%366%367%367%367%366%445@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%367%366%366%367%367%367%445@@@@@@@@@%373%371%422%366%367%366%367%366%367%445@@@@@@@@@%373%371%422%366%366%367%366%367%367%445@@@@@@@@@%373%371%422%367%366%367%366%367%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%367%367%367%367%366%367%445@@@@@@@@@%373%371%422%367%366%367%366%367%367%445@@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%367%366%367%367%366%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%366%367%367%367%366%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%367%367%367%367%366%367%445@@@@@@@@@%373%371%422%367%366%367%366%367%367%445@@@@@@@@@%421@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%71%476%469$0@@%454%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%367%367%366%366%367%367%445@@@@@@@@@%373%371%422%367%367%366%366%367%367%445@@@@@@@@@%373%371%422%366%366%366%366%367%367%445@@@@@@@@@%373%371%422%367%367%366%366%367%367%445@@@@@@@@@%373%371%422%367%367%366%367%367%445@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%367%367%366%366%367%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%366%366%367%366%367%367%445@@@@@@@@@%373%371%422%366%366%366%366%367%367%445@@@@@@@@@%373%371%422%367%366%367%367%366%367%445@@@@@@@@@%373%371%422%367%367%367%366%367%367%445@@@@@@@@@%373%371%422%366%367%366%367%366%367%445@@@@@@@@@%373%371%422%367%367%367%367%366%367%445@@@@@@@@@%373%371%422%366%366%366%367%366%367%445@@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%367%367%366%366%367%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%367%366%367%367%366%367%445@@@@@@@@@%373%371%422%366%366%366%366%367%367%445@@@@@@@@@%373%371%422%366%366%367%366%366%367%445@@@@@@@@@%373%371%422%366%367%366%366%366%367%445@@@@@@@@@%373%371%422%367%366%367%366%367%367%445@@@@@@@@@%373%371%422%366%367%366%367%366%367%445@@@@@@@@@%373%371%422%366%366%366%366%367%367%445@@@@@@@@@%373%371%422%367%367%367%367%366%367%445@@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%366%366%367%366%367%367%445@@@@@@@@@%373%371%422%366%367%366%367%366%367%445@@@@@@@@@%373%371%422%367%366%367%366%367%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%366%367%366%366%366%367%445@@@@@@@@@%373%371%422%367%366%367%366%366%367%445@@@@@@@@@%373%371%422%367%366%367%366%366%367%445@@@@@@@@@%373%371%422%367%367%366%366%367%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%366%366%367%366%367%367%445@@@@@@@@@%373%371%422%366%366%367%366%367%367%445@@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%367%367%366%366%366%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%367%367%367%366%366%367%445@@@@@@@@@%373%371%422%366%366%366%366%367%367%445@@@@@@@@@%373%371%422%367%367%366%366%367%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%366%367%366%366%366%367%445@@@@@@@@@%373%371%422%367%366%367%366%366%367%445@@@@@@@@@%373%371%422%367%366%367%366%366%367%445@@@@@@@@@%373%371%422%367%367%366%366%367%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%366%366%367%366%367%367%445@@@@@@@@@%373%371%422%366%366%367%366%367%367%445@@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%367%366%366%367%366%367%445@@@@@@@@@%373%371%422%366%367%366%366%366%367%445@@@@@@@@@%373%371%422%366%366%367%366%367%367%445@@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%367%367%366%366%366%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%367%367%367%367%366%367%445@@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%366%367%366%366%366%367%445@@@@@@@@@%373%371%422%366%366%367%366%367%367%445@@@@@@@@@%373%371%422%366%366%367%366%367%367%445@@@@@@@@@%373%371%422%366%367%366%367%366%367%445@@@@@@@@@%373%371%422%366%366%366%367%366%367%445@@@@@@@@@%373%371%422%367%367%367%367%366%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%367%366%367%366%366%367%445@@@@@@@@@%421@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%65$0|@|@@||@|@||@@%205%208%454%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%367%367%366%366%367%367%445@@@@@@@@@%373%371%422%367%367%366%366%367%367%445@@@@@@@@@%373%371%422%366%366%366%366%367%367%445@@@@@@@@@%373%371%422%367%367%366%366%367%367%445@@@@@@@@@%373%371%422%367%367%366%367%367%445@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%366%367%367%367%366%367%445@@@@@@@@@%373%371%422%366%366%366%366%367%367%445@@@@@@@@@%373%371%422%367%367%366%366%367%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%367%366%367%366%367%367%445@@@@@@@@@%373%371%422%367%366%366%367%366%367%445@@@@@@@@@%373%371%422%366%367%366%366%366%367%445@@@@@@@@@%373%371%422%367%367%367%367%366%367%445@@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%366%366%366%366%367%367%445@@@@@@@@@%373%371%422%367%367%367%367%366%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%367%367%366%366%367%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%367%366%367%367%366%367%445@@@@@@@@@%373%371%422%366%366%366%366%367%367%445@@@@@@@@@%373%371%422%366%366%367%366%366%367%445@@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%366%367%367%367%366%367%445@@@@@@@@@%373%371%422%366%367%366%366%366%367%445@@@@@@@@@%373%371%422%367%367%366%366%367%367%445@@@@@@@@@%373%371%422%366%366%367%367%366%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%367%366%367%366%366%367%445@@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%366%367%366%366%366%367%445@@@@@@@@@%373%371%422%367%366%367%366%367%367%445@@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%367%366%367%366%367%367%445@@@@@@@@@%373%371%422%367%366%366%367%366%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%366%366%367%366%367%367%445@@@@@@@@@%373%371%422%366%367%366%366%366%367%445@@@@@@@@@%373%371%422%366%367%367%367%366%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%373%371%422%367%366%366%366%366%445@@@@@@@@%373%371%422%366%366%367%366%367%367%445@@@@@@@@@%373%371%422%366%367%366%367%366%367%445@@@@@@@@@%373%371%422%367%366%367%366%367%367%445@@@@@@@@@%373%371%422%366%367%367%366%366%367%445@@@@@@@@@%421@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@||@||@|@%467%457$3@$2@@%456%460%459@%461%458@%458@@@@%321@%428$0@@%447$1@@@@|@|@|@|@"])
+       [read"%243%70%242%69%244%124%293%155%317%486$3@$2@$1@$0@@%415%121%470$0@%458%374%372%425%367%368%367%368%367%368%448@@@@@@@@@%374%372%425%367%368%368%368%367%368%448@@@@@@@@@%374%372%425%368%367%367%367%368%368%448@@@@@@@@@%374%372%425%367%367%367%367%368%368%448@@@@@@@@@%374%372%425%367%367%368%367%368%368%448@@@@@@@@@%374%372%425%367%367%368%367%368%368%448@@@@@@@@@%374%372%425%367%368%367%368%367%368%448@@@@@@@@@%374%372%425%368%368%367%367%367%368%448@@@@@@@@@%374%372%425%368%367%368%368%367%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%368%368%367%368%368%448@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%368%368%367%367%368%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%368%367%368%368%367%368%448@@@@@@@@@%374%372%425%367%367%367%367%368%368%448@@@@@@@@@%374%372%425%367%367%368%367%367%368%448@@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%367%367%368%367%368%368%448@@@@@@@@@%374%372%425%367%368%367%368%367%368%448@@@@@@@@@%374%372%425%368%367%368%367%368%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%368%368%368%368%367%368%448@@@@@@@@@%374%372%425%367%367%367%367%368%368%448@@@@@@@@@%374%372%425%368%367%368%367%368%368%448@@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%367%368%368%368%367%368%448@@@@@@@@@%374%372%425%367%368%367%367%367%368%448@@@@@@@@@%374%372%425%368%368%367%367%368%368%448@@@@@@@@@%374%372%425%367%367%368%368%367%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%368%367%368%367%367%368%448@@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%367%368%367%368%367%368%448@@@@@@@@@%374%372%425%368%368%368%368%367%368%448@@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%367%368%368%368%367%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%367%368%368%368%367%368%448@@@@@@@@@%374%372%425%367%367%367%367%368%368%448@@@@@@@@@%374%372%425%368%368%367%367%368%368%448@@@@@@@@@%374%372%425%367%368%367%368%368%368%448@@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%367%368%367%368%367%368%448@@@@@@@@@%374%372%425%367%368%368%368%367%368%448@@@@@@@@@%374%372%425%367%368%367%367%367%368%448@@@@@@@@@%374%372%425%367%367%367%368%367%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%424@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%195%200%470$0@%483$1@%173%176%480$0@%458%374%372%425%367%368%367%368%367%368%448@@@@@@@@@%374%372%425%367%368%368%368%367%368%448@@@@@@@@@%374%372%425%368%367%367%367%368%368%448@@@@@@@@@%374%372%425%367%367%367%367%368%368%448@@@@@@@@@%374%372%425%367%367%368%367%368%368%448@@@@@@@@@%374%372%425%367%367%368%367%368%368%448@@@@@@@@@%374%372%425%367%368%367%368%367%368%448@@@@@@@@@%374%372%425%368%368%367%367%367%368%448@@@@@@@@@%374%372%425%368%367%368%368%367%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%368%368%367%368%368%448@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%368%368%367%367%368%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%368%367%368%368%367%368%448@@@@@@@@@%374%372%425%367%367%367%367%368%368%448@@@@@@@@@%374%372%425%367%367%368%367%367%368%448@@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%367%367%368%367%368%368%448@@@@@@@@@%374%372%425%367%368%367%368%367%368%448@@@@@@@@@%374%372%425%368%367%368%367%368%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%368%367%367%368%367%368%448@@@@@@@@@%374%372%425%367%368%367%367%367%368%448@@@@@@@@@%374%372%425%367%367%368%367%368%368%448@@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%368%368%368%368%367%368%448@@@@@@@@@%374%372%425%367%367%367%367%368%368%448@@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%368%367%368%368%367%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%367%368%368%368%367%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%368%368%368%368%367%368%448@@@@@@@@@%374%372%425%368%367%368%367%368%368%448@@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%368%368%367%367%368%368%448@@@@@@@@@%374%372%425%367%368%367%367%367%368%448@@@@@@@@@%374%372%425%368%368%368%368%367%368%448@@@@@@@@@%374%372%425%367%367%367%368%367%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%424@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%161%481$0@%72%73%416%74%416%156%294$1@$0@|@%482$1@%158%169$1||@@|@%478%388%451$9@@$1@@%458%374%372%425%367%368%367%368%367%368%448@@@@@@@@@%374%372%425%367%368%368%368%367%368%448@@@@@@@@@%374%372%425%368%367%367%367%368%368%448@@@@@@@@@%374%372%425%367%367%367%367%368%368%448@@@@@@@@@%374%372%425%367%367%368%367%368%368%448@@@@@@@@@%374%372%425%367%367%368%367%368%368%448@@@@@@@@@%374%372%425%367%368%367%368%367%368%448@@@@@@@@@%374%372%425%368%368%367%367%367%368%448@@@@@@@@@%374%372%425%368%367%368%368%367%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%368%368%367%368%368%448@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%368%368%368%368%367%368%448@@@@@@@@@%374%372%425%367%367%367%367%368%368%448@@@@@@@@@%374%372%425%368%368%368%368%367%368%448@@@@@@@@@%374%372%425%367%368%368%368%367%448@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%368%367%367%368%368%368%448@@@@@@@@@%374%372%425%367%368%367%368%367%368%448@@@@@@@@@%374%372%425%367%367%368%367%368%368%448@@@@@@@@@%374%372%425%368%367%368%367%368%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%368%368%368%368%367%368%448@@@@@@@@@%374%372%425%368%367%368%367%368%368%448@@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%368%367%368%368%367%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%367%368%368%368%367%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%368%368%368%368%367%368%448@@@@@@@@@%374%372%425%368%367%368%367%368%368%448@@@@@@@@@%424@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%71%479%455$0@@%458%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%368%368%367%367%368%368%448@@@@@@@@@%374%372%425%368%368%367%367%368%368%448@@@@@@@@@%374%372%425%367%367%367%367%368%368%448@@@@@@@@@%374%372%425%368%368%367%367%368%368%448@@@@@@@@@%374%372%425%368%368%367%368%368%448@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%368%368%367%367%368%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%367%367%368%367%368%368%448@@@@@@@@@%374%372%425%367%367%367%367%368%368%448@@@@@@@@@%374%372%425%368%367%368%368%367%368%448@@@@@@@@@%374%372%425%368%368%368%367%368%368%448@@@@@@@@@%374%372%425%367%368%367%368%367%368%448@@@@@@@@@%374%372%425%368%368%368%368%367%368%448@@@@@@@@@%374%372%425%367%367%367%368%367%368%448@@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%368%368%367%367%368%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%368%367%368%368%367%368%448@@@@@@@@@%374%372%425%367%367%367%367%368%368%448@@@@@@@@@%374%372%425%367%367%368%367%367%368%448@@@@@@@@@%374%372%425%367%368%367%367%367%368%448@@@@@@@@@%374%372%425%368%367%368%367%368%368%448@@@@@@@@@%374%372%425%367%368%367%368%367%368%448@@@@@@@@@%374%372%425%367%367%367%367%368%368%448@@@@@@@@@%374%372%425%368%368%368%368%367%368%448@@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%367%367%368%367%368%368%448@@@@@@@@@%374%372%425%367%368%367%368%367%368%448@@@@@@@@@%374%372%425%368%367%368%367%368%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%367%368%367%367%367%368%448@@@@@@@@@%374%372%425%368%367%368%367%367%368%448@@@@@@@@@%374%372%425%368%367%368%367%367%368%448@@@@@@@@@%374%372%425%368%368%367%367%368%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%367%367%368%367%368%368%448@@@@@@@@@%374%372%425%367%367%368%367%368%368%448@@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%368%368%367%367%367%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%368%368%368%367%367%368%448@@@@@@@@@%374%372%425%367%367%367%367%368%368%448@@@@@@@@@%374%372%425%368%368%367%367%368%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%367%368%367%367%367%368%448@@@@@@@@@%374%372%425%368%367%368%367%367%368%448@@@@@@@@@%374%372%425%368%367%368%367%367%368%448@@@@@@@@@%374%372%425%368%368%367%367%368%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%367%367%368%367%368%368%448@@@@@@@@@%374%372%425%367%367%368%367%368%368%448@@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%368%367%367%368%367%368%448@@@@@@@@@%374%372%425%367%368%367%367%367%368%448@@@@@@@@@%374%372%425%367%367%368%367%368%368%448@@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%368%368%367%367%367%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%368%368%368%368%367%368%448@@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%367%368%367%367%367%368%448@@@@@@@@@%374%372%425%367%367%368%367%368%368%448@@@@@@@@@%374%372%425%367%367%368%367%368%368%448@@@@@@@@@%374%372%425%367%368%367%368%367%368%448@@@@@@@@@%374%372%425%367%367%367%368%367%368%448@@@@@@@@@%374%372%425%368%368%368%368%367%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%368%367%368%367%367%368%448@@@@@@@@@%424@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%65$0|@|@@||@|@||@@%207%210%458%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%368%368%367%367%368%368%448@@@@@@@@@%374%372%425%368%368%367%367%368%368%448@@@@@@@@@%374%372%425%367%367%367%367%368%368%448@@@@@@@@@%374%372%425%368%368%367%367%368%368%448@@@@@@@@@%374%372%425%368%368%367%368%368%448@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%367%368%368%368%367%368%448@@@@@@@@@%374%372%425%367%367%367%367%368%368%448@@@@@@@@@%374%372%425%368%368%367%367%368%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%368%367%368%367%368%368%448@@@@@@@@@%374%372%425%368%367%367%368%367%368%448@@@@@@@@@%374%372%425%367%368%367%367%367%368%448@@@@@@@@@%374%372%425%368%368%368%368%367%368%448@@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%367%367%367%367%368%368%448@@@@@@@@@%374%372%425%368%368%368%368%367%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%367%368%367%367%367%368%448@@@@@@@@@%374%372%425%368%367%368%367%367%368%448@@@@@@@@@%374%372%425%368%367%368%367%367%368%448@@@@@@@@@%374%372%425%368%368%367%367%368%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%367%367%368%367%368%368%448@@@@@@@@@%374%372%425%367%367%368%367%368%368%448@@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%367%367%367%368%368%368%448@@@@@@@@@%374%372%425%367%368%367%368%367%368%448@@@@@@@@@%374%372%425%368%367%368%367%368%368%448@@@@@@@@@%374%372%425%368%367%367%368%367%368%448@@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%367%368%367%368%367%368%448@@@@@@@@@%374%372%425%368%367%368%367%367%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%368%368%368%368%367%368%448@@@@@@@@@%374%372%425%368%367%368%367%368%368%448@@@@@@@@@%374%372%425%367%368%367%368%367%368%448@@@@@@@@@%374%372%425%367%367%368%367%367%368%448@@@@@@@@@%374%372%425%367%368%367%367%367%368%448@@@@@@@@@%374%372%425%368%367%368%368%367%368%448@@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%368%368%367%367%368%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%368%367%368%368%367%368%448@@@@@@@@@%374%372%425%367%367%367%367%368%368%448@@@@@@@@@%374%372%425%367%367%368%367%367%368%448@@@@@@@@@%374%372%425%367%368%367%367%367%368%448@@@@@@@@@%374%372%425%368%367%368%367%368%368%448@@@@@@@@@%374%372%425%367%368%367%368%367%368%448@@@@@@@@@%374%372%425%367%367%367%367%368%368%448@@@@@@@@@%374%372%425%368%368%368%368%367%368%448@@@@@@@@@%374%372%425%368%367%367%367%367%448@@@@@@@@%374%372%425%368%368%367%367%368%368%448@@@@@@@@@%374%372%425%367%368%368%367%367%368%448@@@@@@@@@%374%372%425%367%367%368%367%367%368%448@@@@@@@@@%374%372%425%367%367%367%367%368%368%448@@@@@@@@@%374%372%425%368%368%367%367%368%368%448@@@@@@@@@%374%372%425%368%367%368%367%367%368%448@@@@@@@@@%424@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@||@||@|@%471%461$3@@%460%464%463@%465%462@%462@@@@%322@%431$0@@%450$1@@@@|@|@|@|@"])
   fun op num2integer_bit_width_integer_bit_width2num x = x
     val op num2integer_bit_width_integer_bit_width2num =
     DT(((("abi_utilities",2),[("abi_utilities",[1])]),["DISK_THM"]),
-       [read"%279%32%315%471%462$0@@@$0@|@"])
+       [read"%280%32%316%474%466$0@@@$0@|@"])
   fun op integer_bit_width2num_num2integer_bit_width x = x
     val op integer_bit_width2num_num2integer_bit_width =
     DT(((("abi_utilities",3),[("abi_utilities",[1])]),["DISK_THM"]),
-       [read"%280%135%310%303$0@%422%366%367%367%366%445@@@@@@@%316%462%471$0@@@$0@@|@"])
+       [read"%281%135%311%304$0@%425%367%368%368%367%448@@@@@@@%317%466%474$0@@@$0@@|@"])
   fun op num2integer_bit_width_11 x = x
     val op num2integer_bit_width_11 =
     DT(((("abi_utilities",4),
         [("abi_utilities",[1]),("bool",[26])]),["DISK_THM"]),
-       [read"%280%135%280%139%329%303$1@%422%366%367%367%366%445@@@@@@@%329%303$0@%422%366%367%367%366%445@@@@@@@%310%315%471$1@@%471$0@@@%316$1@$0@@@@|@|@"])
+       [read"%281%135%281%139%330%304$1@%425%367%368%368%367%448@@@@@@@%330%304$0@%425%367%368%368%367%448@@@@@@@%311%316%474$1@@%474$0@@@%317$1@$0@@@@|@|@"])
   fun op integer_bit_width2num_11 x = x
     val op integer_bit_width2num_11 =
     DT(((("abi_utilities",5),
         [("abi_utilities",[1]),("bool",[26])]),["DISK_THM"]),
-       [read"%279%32%279%43%310%316%462$1@@%462$0@@@%315$1@$0@@|@|@"])
+       [read"%280%32%280%43%311%317%466$1@@%466$0@@@%316$1@$0@@|@|@"])
   fun op num2integer_bit_width_ONTO x = x
     val op num2integer_bit_width_ONTO =
     DT(((("abi_utilities",6),
-        [("abi_utilities",[1]),("bool",[25,63])]),["DISK_THM"]),
-       [read"%279%32%350%135%301%315$1@%471$0@@@%303$0@%422%366%367%367%366%445@@@@@@@|@|@"])
+        [("abi_utilities",[1]),("bool",[25,62])]),["DISK_THM"]),
+       [read"%280%32%351%135%302%316$1@%474$0@@@%304$0@%425%367%368%368%367%448@@@@@@@|@|@"])
   fun op integer_bit_width2num_ONTO x = x
     val op integer_bit_width2num_ONTO =
     DT(((("abi_utilities",7),
         [("abi_utilities",[1]),("bool",[26])]),["DISK_THM"]),
-       [read"%280%135%310%303$0@%422%366%367%367%366%445@@@@@@@%349%32%316$1@%462$0@@|@@|@"])
+       [read"%281%135%311%304$0@%425%367%368%368%367%448@@@@@@@%350%32%317$1@%466$0@@|@@|@"])
   fun op num2integer_bit_width_thm x = x
     val op num2integer_bit_width_thm =
     DT(((("abi_utilities",29),
         [("abi_utilities",
          [8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,
           28])]),[]),
-       [read"%301%315%471%302@@%410@@%301%315%471%422%366%445@@@@%401@@%301%315%471%422%367%445@@@@%437@@%301%315%471%422%366%366%445@@@@@%418@@%301%315%471%422%367%366%445@@@@@%438@@%301%315%471%422%366%367%445@@@@@%402@@%301%315%471%422%367%367%445@@@@@%403@@%301%315%471%422%366%366%366%445@@@@@@%395@@%301%315%471%422%367%366%366%445@@@@@@%404@@%301%315%471%422%366%367%366%445@@@@@@%419@@%301%315%471%422%367%367%366%445@@@@@@%405@@%301%315%471%422%366%366%367%445@@@@@@%444@@%301%315%471%422%367%366%367%445@@@@@@%406@@%301%315%471%422%366%367%367%445@@@@@@%407@@%301%315%471%422%367%367%367%445@@@@@@%408@@%301%315%471%422%366%366%366%366%445@@@@@@@%409@@%301%315%471%422%367%366%366%366%445@@@@@@@%439@@%301%315%471%422%366%367%366%366%445@@@@@@@%440@@%301%315%471%422%367%367%366%366%445@@@@@@@%441@@%301%315%471%422%366%366%367%366%445@@@@@@@%442@@%315%471%422%367%366%367%366%445@@@@@@@%443@@@@@@@@@@@@@@@@@@@@@"])
+       [read"%302%316%474%303@@%411@@%302%316%474%425%367%448@@@@%402@@%302%316%474%425%368%448@@@@%440@@%302%316%474%425%367%367%448@@@@@%421@@%302%316%474%425%368%367%448@@@@@%441@@%302%316%474%425%367%368%448@@@@@%403@@%302%316%474%425%368%368%448@@@@@%404@@%302%316%474%425%367%367%367%448@@@@@@%396@@%302%316%474%425%368%367%367%448@@@@@@%405@@%302%316%474%425%367%368%367%448@@@@@@%422@@%302%316%474%425%368%368%367%448@@@@@@%406@@%302%316%474%425%367%367%368%448@@@@@@%447@@%302%316%474%425%368%367%368%448@@@@@@%407@@%302%316%474%425%367%368%368%448@@@@@@%408@@%302%316%474%425%368%368%368%448@@@@@@%409@@%302%316%474%425%367%367%367%367%448@@@@@@@%410@@%302%316%474%425%368%367%367%367%448@@@@@@@%442@@%302%316%474%425%367%368%367%367%448@@@@@@@%443@@%302%316%474%425%368%368%367%367%448@@@@@@@%444@@%302%316%474%425%367%367%368%367%448@@@@@@@%445@@%316%474%425%368%367%368%367%448@@@@@@@%446@@@@@@@@@@@@@@@@@@@@@"])
   fun op integer_bit_width2num_thm x = x
     val op integer_bit_width2num_thm =
     DT(((("abi_utilities",30),
         [("abi_utilities",
          [3,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28]),
-         ("bool",[25,54]),("numeral",[3,7])]),["DISK_THM"]),
-       [read"%301%316%462%410@@%302@@%301%316%462%401@@%422%366%445@@@@%301%316%462%437@@%422%367%445@@@@%301%316%462%418@@%422%366%366%445@@@@@%301%316%462%438@@%422%367%366%445@@@@@%301%316%462%402@@%422%366%367%445@@@@@%301%316%462%403@@%422%367%367%445@@@@@%301%316%462%395@@%422%366%366%366%445@@@@@@%301%316%462%404@@%422%367%366%366%445@@@@@@%301%316%462%419@@%422%366%367%366%445@@@@@@%301%316%462%405@@%422%367%367%366%445@@@@@@%301%316%462%444@@%422%366%366%367%445@@@@@@%301%316%462%406@@%422%367%366%367%445@@@@@@%301%316%462%407@@%422%366%367%367%445@@@@@@%301%316%462%408@@%422%367%367%367%445@@@@@@%301%316%462%409@@%422%366%366%366%366%445@@@@@@@%301%316%462%439@@%422%367%366%366%366%445@@@@@@@%301%316%462%440@@%422%366%367%366%366%445@@@@@@@%301%316%462%441@@%422%367%367%366%366%445@@@@@@@%301%316%462%442@@%422%366%366%367%366%445@@@@@@@%316%462%443@@%422%367%366%367%366%445@@@@@@@@@@@@@@@@@@@@@@@@@@"])
+         ("bool",[25,53]),("numeral",[3,7])]),["DISK_THM"]),
+       [read"%302%317%466%411@@%303@@%302%317%466%402@@%425%367%448@@@@%302%317%466%440@@%425%368%448@@@@%302%317%466%421@@%425%367%367%448@@@@@%302%317%466%441@@%425%368%367%448@@@@@%302%317%466%403@@%425%367%368%448@@@@@%302%317%466%404@@%425%368%368%448@@@@@%302%317%466%396@@%425%367%367%367%448@@@@@@%302%317%466%405@@%425%368%367%367%448@@@@@@%302%317%466%422@@%425%367%368%367%448@@@@@@%302%317%466%406@@%425%368%368%367%448@@@@@@%302%317%466%447@@%425%367%367%368%448@@@@@@%302%317%466%407@@%425%368%367%368%448@@@@@@%302%317%466%408@@%425%367%368%368%448@@@@@@%302%317%466%409@@%425%368%368%368%448@@@@@@%302%317%466%410@@%425%367%367%367%367%448@@@@@@@%302%317%466%442@@%425%368%367%367%367%448@@@@@@@%302%317%466%443@@%425%367%368%367%367%448@@@@@@@%302%317%466%444@@%425%368%368%367%367%448@@@@@@@%302%317%466%445@@%425%367%367%368%367%448@@@@@@@%317%466%446@@%425%368%367%368%367%448@@@@@@@@@@@@@@@@@@@@@@@@@@"])
   fun op integer_bit_width_EQ_integer_bit_width x = x
     val op integer_bit_width_EQ_integer_bit_width =
     DT(((("abi_utilities",31),
-        [("abi_utilities",[5]),("bool",[58])]),["DISK_THM"]),
-       [read"%279%32%279%43%310%315$1@$0@@%316%462$1@@%462$0@@@|@|@"])
+        [("abi_utilities",[5]),("bool",[57])]),["DISK_THM"]),
+       [read"%280%32%280%43%311%316$1@$0@@%317%466$1@@%466$0@@@|@|@"])
   fun op integer_bit_width_case_def x = x
     val op integer_bit_width_case_def =
     DT(((("abi_utilities",34),
-        [("abi_utilities",[30,33]),("bool",[54,56,64]),
+        [("abi_utilities",[30,33]),("bool",[53,55,63]),
          ("numeral",[3,6,7])]),["DISK_THM"]),
-       [read"%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%463%410@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$20@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%463%401@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$19@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%463%437@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$18@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%463%418@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$17@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%463%438@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$16@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%463%402@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$15@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%463%403@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$14@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%463%395@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$13@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%463%404@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$12@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%463%419@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$11@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%463%405@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$10@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%463%444@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$9@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%463%406@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$8@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%463%407@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$7@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%463%408@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$6@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%463%409@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$5@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%463%439@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$4@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%463%440@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$3@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%463%441@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$2@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%463%442@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$1@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%463%443@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$0@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@@@@@@@@@@@@@@@@@@@@"])
+       [read"%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%467%411@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$20@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%467%402@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$19@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%467%440@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$18@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%467%421@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$17@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%467%441@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$16@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%467%403@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$15@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%467%404@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$14@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%467%396@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$13@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%467%405@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$12@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%467%422@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$11@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%467%406@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$10@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%467%447@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$9@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%467%407@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$8@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%467%408@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$7@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%467%409@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$6@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%467%410@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$5@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%467%442@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$4@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%467%443@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$3@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%467%444@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$2@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%467%445@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$1@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%467%446@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$0@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@@@@@@@@@@@@@@@@@@@@"])
   fun op datatype_integer_bit_width x = x
     val op datatype_integer_bit_width =
-    DT(((("abi_utilities",35),[("bool",[25,171])]),["DISK_THM"]),
-       [read"%381%125%410@%401@%437@%418@%438@%402@%403@%395@%404@%419@%405@%444@%406@%407@%408@%409@%439@%440@%441@%442@%443@@"])
+    DT(((("abi_utilities",35),[("bool",[25,170])]),["DISK_THM"]),
+       [read"%382%125%411@%402@%440@%421@%441@%403@%404@%396@%405@%422@%406@%447@%407@%408@%409@%410@%442@%443@%444@%445@%446@@"])
   fun op integer_bit_width_case_cong x = x
     val op integer_bit_width_case_cong =
     DT(((("abi_utilities",36),
         [("abi_utilities",
          [6,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,
           34]),
-         ("arithmetic",
-         [24,25,27,41,46,59,73,95,173,174,177,178,181,200,206]),
-         ("bool",[8,14,25,32,36,43,51,52,54,58,63,64,93,96,104,105,107]),
+         ("arithmetic",[24,25,27,41,46,59,73,95,177,178,182,185,274]),
+         ("bool",
+         [8,14,25,31,35,42,50,51,53,57,62,63,92,95,100,103,104,106]),
          ("numeral",[3,5,6,7,8,15,16,17]),
          ("sat",[1,3,5,6,7,11,12,13,15])]),["DISK_THM"]),
-       [read"%279%8%279%14%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%329%301%315$22@$21@@%301%329%315$21@%410@@%304$20@%164@@@%301%329%315$21@%401@@%304$19@%168@@@%301%329%315$21@%437@@%304$18@%194@@@%301%329%315$21@%418@@%304$17@%199@@@%301%329%315$21@%438@@%304$16@%201@@@%301%329%315$21@%402@@%304$15@%203@@@%301%329%315$21@%403@@%304$14@%206@@@%301%329%315$21@%395@@%304$13@%209@@@%301%329%315$21@%404@@%304$12@%211@@@%301%329%315$21@%419@@%304$11@%213@@@%301%329%315$21@%405@@%304$10@%172@@@%301%329%315$21@%444@@%304$9@%175@@@%301%329%315$21@%406@@%304$8@%177@@@%301%329%315$21@%407@@%304$7@%179@@@%301%329%315$21@%408@@%304$6@%181@@@%301%329%315$21@%409@@%304$5@%183@@@%301%329%315$21@%439@@%304$4@%185@@@%301%329%315$21@%440@@%304$3@%187@@@%301%329%315$21@%441@@%304$2@%189@@@%301%329%315$21@%442@@%304$1@%191@@@%329%315$21@%443@@%304$0@%196@@@@@@@@@@@@@@@@@@@@@@@@%304%463$22@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@%463$21@%164@%168@%194@%199@%201@%203@%206@%209@%211@%213@%172@%175@%177@%179@%181@%183@%185@%187@%189@%191@%196@@@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@"])
+       [read"%280%8%280%14%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%330%302%316$22@$21@@%302%330%316$21@%411@@%305$20@%166@@@%302%330%316$21@%402@@%305$19@%170@@@%302%330%316$21@%440@@%305$18@%196@@@%302%330%316$21@%421@@%305$17@%201@@@%302%330%316$21@%441@@%305$16@%203@@@%302%330%316$21@%403@@%305$15@%205@@@%302%330%316$21@%404@@%305$14@%208@@@%302%330%316$21@%396@@%305$13@%211@@@%302%330%316$21@%405@@%305$12@%213@@@%302%330%316$21@%422@@%305$11@%215@@@%302%330%316$21@%406@@%305$10@%174@@@%302%330%316$21@%447@@%305$9@%177@@@%302%330%316$21@%407@@%305$8@%179@@@%302%330%316$21@%408@@%305$7@%181@@@%302%330%316$21@%409@@%305$6@%183@@@%302%330%316$21@%410@@%305$5@%185@@@%302%330%316$21@%442@@%305$4@%187@@@%302%330%316$21@%443@@%305$3@%189@@@%302%330%316$21@%444@@%305$2@%191@@@%302%330%316$21@%445@@%305$1@%193@@@%330%316$21@%446@@%305$0@%198@@@@@@@@@@@@@@@@@@@@@@@@%305%467$22@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@%467$21@%166@%170@%196@%201@%203@%205@%208@%211@%213@%215@%174@%177@%179@%181@%183@%185@%187@%189@%191@%193@%198@@@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@"])
   fun op integer_bit_width_nchotomy x = x
     val op integer_bit_width_nchotomy =
     DT(((("abi_utilities",37),
         [("abi_utilities",
          [6,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28]),
-         ("arithmetic",
-         [24,25,27,41,46,59,73,95,173,174,177,178,181,200,206]),
-         ("bool",[8,14,25,32,36,43,51,52,54,58,63,64,93,96,104,105,107]),
+         ("arithmetic",[24,25,27,41,46,59,73,95,177,178,182,185,274]),
+         ("bool",
+         [8,14,25,31,35,42,50,51,53,57,62,63,92,95,100,103,104,106]),
          ("numeral",[3,5,6,7,8,15,16,17]),
          ("sat",[1,3,5,6,7,11,12,13,15])]),["DISK_THM"]),
-       [read"%279%32%446%315$0@%410@@%446%315$0@%401@@%446%315$0@%437@@%446%315$0@%418@@%446%315$0@%438@@%446%315$0@%402@@%446%315$0@%403@@%446%315$0@%395@@%446%315$0@%404@@%446%315$0@%419@@%446%315$0@%405@@%446%315$0@%444@@%446%315$0@%406@@%446%315$0@%407@@%446%315$0@%408@@%446%315$0@%409@@%446%315$0@%439@@%446%315$0@%440@@%446%315$0@%441@@%446%315$0@%442@@%315$0@%443@@@@@@@@@@@@@@@@@@@@@|@"])
+       [read"%280%32%449%316$0@%411@@%449%316$0@%402@@%449%316$0@%440@@%449%316$0@%421@@%449%316$0@%441@@%449%316$0@%403@@%449%316$0@%404@@%449%316$0@%396@@%449%316$0@%405@@%449%316$0@%422@@%449%316$0@%406@@%449%316$0@%447@@%449%316$0@%407@@%449%316$0@%408@@%449%316$0@%409@@%449%316$0@%410@@%449%316$0@%442@@%449%316$0@%443@@%449%316$0@%444@@%449%316$0@%445@@%316$0@%446@@@@@@@@@@@@@@@@@@@@@|@"])
   fun op integer_bit_width_Axiom x = x
     val op integer_bit_width_Axiom =
     DT(((("abi_utilities",38),
-        [("abi_utilities",[30]),("bool",[8,14,25,54,56,64]),
+        [("abi_utilities",[30]),("bool",[8,14,25,53,55,63]),
          ("numeral",[3,8])]),["DISK_THM"]),
-       [read"%239%218%239%219%239%230%239%232%239%233%239%234%239%235%239%236%239%237%239%238%239%220%239%221%239%222%239%223%239%224%239%225%239%226%239%227%239%228%239%229%239%231%335%82%301%304$0%410@@$21@@%301%304$0%401@@$20@@%301%304$0%437@@$19@@%301%304$0%418@@$18@@%301%304$0%438@@$17@@%301%304$0%402@@$16@@%301%304$0%403@@$15@@%301%304$0%395@@$14@@%301%304$0%404@@$13@@%301%304$0%419@@$12@@%301%304$0%405@@$11@@%301%304$0%444@@$10@@%301%304$0%406@@$9@@%301%304$0%407@@$8@@%301%304$0%408@@$7@@%301%304$0%409@@$6@@%301%304$0%439@@$5@@%301%304$0%440@@$4@@%301%304$0%441@@$3@@%301%304$0%442@@$2@@%304$0%443@@$1@@@@@@@@@@@@@@@@@@@@@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@"])
+       [read"%241%220%241%221%241%232%241%234%241%235%241%236%241%237%241%238%241%239%241%240%241%222%241%223%241%224%241%225%241%226%241%227%241%228%241%229%241%230%241%231%241%233%336%82%302%305$0%411@@$21@@%302%305$0%402@@$20@@%302%305$0%440@@$19@@%302%305$0%421@@$18@@%302%305$0%441@@$17@@%302%305$0%403@@$16@@%302%305$0%404@@$15@@%302%305$0%396@@$14@@%302%305$0%405@@$13@@%302%305$0%422@@$12@@%302%305$0%406@@$11@@%302%305$0%447@@$10@@%302%305$0%407@@$9@@%302%305$0%408@@$8@@%302%305$0%409@@$7@@%302%305$0%410@@$6@@%302%305$0%442@@$5@@%302%305$0%443@@$4@@%302%305$0%444@@$3@@%302%305$0%445@@$2@@%305$0%446@@$1@@@@@@@@@@@@@@@@@@@@@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@"])
   fun op integer_bit_width_induction x = x
     val op integer_bit_width_induction =
     DT(((("abi_utilities",39),
         [("abi_utilities",
          [6,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28]),
-         ("arithmetic",
-         [24,25,27,41,46,59,73,95,173,174,177,178,181,200,206]),
-         ("bool",[8,14,25,32,36,43,51,52,54,58,63,64,93,96,104,105,107]),
+         ("arithmetic",[24,25,27,41,46,59,73,95,177,178,182,185,274]),
+         ("bool",
+         [8,14,25,31,35,42,50,51,53,57,62,63,92,95,100,103,104,106]),
          ("numeral",[3,5,6,7,8,15,16,17]),
          ("sat",[1,3,5,6,7,11,12,13,15])]),["DISK_THM"]),
-       [read"%255%20%329%301$0%395@@%301$0%401@@%301$0%402@@%301$0%403@@%301$0%404@@%301$0%405@@%301$0%406@@%301$0%407@@%301$0%408@@%301$0%409@@%301$0%410@@%301$0%418@@%301$0%419@@%301$0%437@@%301$0%438@@%301$0%439@@%301$0%440@@%301$0%441@@%301$0%442@@%301$0%443@@$0%444@@@@@@@@@@@@@@@@@@@@@@%279%32$1$0@|@@|@"])
+       [read"%256%20%330%302$0%396@@%302$0%402@@%302$0%403@@%302$0%404@@%302$0%405@@%302$0%406@@%302$0%407@@%302$0%408@@%302$0%409@@%302$0%410@@%302$0%411@@%302$0%421@@%302$0%422@@%302$0%440@@%302$0%441@@%302$0%442@@%302$0%443@@%302$0%444@@%302$0%445@@%302$0%446@@$0%447@@@@@@@@@@@@@@@@@@@@@@%280%32$1$0@|@@|@"])
   fun op num2relocation_operator_relocation_operator2num x = x
     val op num2relocation_operator_relocation_operator2num =
     DT(((("abi_utilities",43),[("abi_utilities",[42])]),["DISK_THM"]),
-       [read"%289%38%326%472%489$0@@@$0@|@"])
+       [read"%290%38%327%475%492$0@@@$0@|@"])
   fun op relocation_operator2num_num2relocation_operator x = x
     val op relocation_operator2num_num2relocation_operator =
     DT(((("abi_utilities",44),[("abi_utilities",[42])]),["DISK_THM"]),
-       [read"%280%135%310%303$0@%422%366%367%367%366%445@@@@@@@%316%489%472$0@@@$0@@|@"])
+       [read"%281%135%311%304$0@%425%367%368%368%367%448@@@@@@@%317%492%475$0@@@$0@@|@"])
   fun op num2relocation_operator_11 x = x
     val op num2relocation_operator_11 =
     DT(((("abi_utilities",45),
         [("abi_utilities",[42]),("bool",[26])]),["DISK_THM"]),
-       [read"%280%135%280%139%329%303$1@%422%366%367%367%366%445@@@@@@@%329%303$0@%422%366%367%367%366%445@@@@@@@%310%326%472$1@@%472$0@@@%316$1@$0@@@@|@|@"])
+       [read"%281%135%281%139%330%304$1@%425%367%368%368%367%448@@@@@@@%330%304$0@%425%367%368%368%367%448@@@@@@@%311%327%475$1@@%475$0@@@%317$1@$0@@@@|@|@"])
   fun op relocation_operator2num_11 x = x
     val op relocation_operator2num_11 =
     DT(((("abi_utilities",46),
         [("abi_utilities",[42]),("bool",[26])]),["DISK_THM"]),
-       [read"%289%38%289%48%310%316%489$1@@%489$0@@@%326$1@$0@@|@|@"])
+       [read"%290%38%290%48%311%317%492$1@@%492$0@@@%327$1@$0@@|@|@"])
   fun op num2relocation_operator_ONTO x = x
     val op num2relocation_operator_ONTO =
     DT(((("abi_utilities",47),
-        [("abi_utilities",[42]),("bool",[25,63])]),["DISK_THM"]),
-       [read"%289%38%350%135%301%326$1@%472$0@@@%303$0@%422%366%367%367%366%445@@@@@@@|@|@"])
+        [("abi_utilities",[42]),("bool",[25,62])]),["DISK_THM"]),
+       [read"%290%38%351%135%302%327$1@%475$0@@@%304$0@%425%367%368%368%367%448@@@@@@@|@|@"])
   fun op relocation_operator2num_ONTO x = x
     val op relocation_operator2num_ONTO =
     DT(((("abi_utilities",48),
         [("abi_utilities",[42]),("bool",[26])]),["DISK_THM"]),
-       [read"%280%135%310%303$0@%422%366%367%367%366%445@@@@@@@%356%38%316$1@%489$0@@|@@|@"])
+       [read"%281%135%311%304$0@%425%367%368%368%367%448@@@@@@@%357%38%317$1@%492$0@@|@@|@"])
   fun op num2relocation_operator_thm x = x
     val op num2relocation_operator_thm =
     DT(((("abi_utilities",70),
         [("abi_utilities",
          [49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,
           69])]),[]),
-       [read"%301%326%472%302@@%430@@%301%326%472%422%366%445@@@@%415@@%301%326%472%422%367%445@@@@%382@@%301%326%472%422%366%366%445@@@@@%383@@%301%326%472%422%367%366%445@@@@@%424@@%301%326%472%422%366%367%445@@@@@%389@@%301%326%472%422%367%367%445@@@@@%388@@%301%326%472%422%366%366%366%445@@@@@@%390@@%301%326%472%422%367%366%366%445@@@@@@%393@@%301%326%472%422%366%367%366%445@@@@@@%391@@%301%326%472%422%367%367%366%445@@@@@@%384@@%301%326%472%422%366%366%367%445@@@@@@%412@@%301%326%472%422%367%366%367%445@@@@@@%429@@%301%326%472%422%366%367%367%445@@@@@@%411@@%301%326%472%422%367%367%367%445@@@@@@%417@@%301%326%472%422%366%366%366%366%445@@@@@@@%396@@%301%326%472%422%367%366%366%366%445@@@@@@@%394@@%301%326%472%422%366%367%366%366%445@@@@@@@%397@@%301%326%472%422%367%367%366%366%445@@@@@@@%398@@%301%326%472%422%366%366%367%366%445@@@@@@@%399@@%326%472%422%367%366%367%366%445@@@@@@@%400@@@@@@@@@@@@@@@@@@@@@"])
+       [read"%302%327%475%303@@%433@@%302%327%475%425%367%448@@@@%418@@%302%327%475%425%368%448@@@@%383@@%302%327%475%425%367%367%448@@@@@%384@@%302%327%475%425%368%367%448@@@@@%427@@%302%327%475%425%367%368%448@@@@@%390@@%302%327%475%425%368%368%448@@@@@%389@@%302%327%475%425%367%367%367%448@@@@@@%391@@%302%327%475%425%368%367%367%448@@@@@@%394@@%302%327%475%425%367%368%367%448@@@@@@%392@@%302%327%475%425%368%368%367%448@@@@@@%385@@%302%327%475%425%367%367%368%448@@@@@@%413@@%302%327%475%425%368%367%368%448@@@@@@%432@@%302%327%475%425%367%368%368%448@@@@@@%412@@%302%327%475%425%368%368%368%448@@@@@@%420@@%302%327%475%425%367%367%367%367%448@@@@@@@%397@@%302%327%475%425%368%367%367%367%448@@@@@@@%395@@%302%327%475%425%367%368%367%367%448@@@@@@@%398@@%302%327%475%425%368%368%367%367%448@@@@@@@%399@@%302%327%475%425%367%367%368%367%448@@@@@@@%400@@%327%475%425%368%367%368%367%448@@@@@@@%401@@@@@@@@@@@@@@@@@@@@@"])
   fun op relocation_operator2num_thm x = x
     val op relocation_operator2num_thm =
     DT(((("abi_utilities",71),
         [("abi_utilities",
          [44,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,
-          69]),("bool",[25,54]),("numeral",[3,7])]),["DISK_THM"]),
-       [read"%301%316%489%430@@%302@@%301%316%489%415@@%422%366%445@@@@%301%316%489%382@@%422%367%445@@@@%301%316%489%383@@%422%366%366%445@@@@@%301%316%489%424@@%422%367%366%445@@@@@%301%316%489%389@@%422%366%367%445@@@@@%301%316%489%388@@%422%367%367%445@@@@@%301%316%489%390@@%422%366%366%366%445@@@@@@%301%316%489%393@@%422%367%366%366%445@@@@@@%301%316%489%391@@%422%366%367%366%445@@@@@@%301%316%489%384@@%422%367%367%366%445@@@@@@%301%316%489%412@@%422%366%366%367%445@@@@@@%301%316%489%429@@%422%367%366%367%445@@@@@@%301%316%489%411@@%422%366%367%367%445@@@@@@%301%316%489%417@@%422%367%367%367%445@@@@@@%301%316%489%396@@%422%366%366%366%366%445@@@@@@@%301%316%489%394@@%422%367%366%366%366%445@@@@@@@%301%316%489%397@@%422%366%367%366%366%445@@@@@@@%301%316%489%398@@%422%367%367%366%366%445@@@@@@@%301%316%489%399@@%422%366%366%367%366%445@@@@@@@%316%489%400@@%422%367%366%367%366%445@@@@@@@@@@@@@@@@@@@@@@@@@@"])
+          69]),("bool",[25,53]),("numeral",[3,7])]),["DISK_THM"]),
+       [read"%302%317%492%433@@%303@@%302%317%492%418@@%425%367%448@@@@%302%317%492%383@@%425%368%448@@@@%302%317%492%384@@%425%367%367%448@@@@@%302%317%492%427@@%425%368%367%448@@@@@%302%317%492%390@@%425%367%368%448@@@@@%302%317%492%389@@%425%368%368%448@@@@@%302%317%492%391@@%425%367%367%367%448@@@@@@%302%317%492%394@@%425%368%367%367%448@@@@@@%302%317%492%392@@%425%367%368%367%448@@@@@@%302%317%492%385@@%425%368%368%367%448@@@@@@%302%317%492%413@@%425%367%367%368%448@@@@@@%302%317%492%432@@%425%368%367%368%448@@@@@@%302%317%492%412@@%425%367%368%368%448@@@@@@%302%317%492%420@@%425%368%368%368%448@@@@@@%302%317%492%397@@%425%367%367%367%367%448@@@@@@@%302%317%492%395@@%425%368%367%367%367%448@@@@@@@%302%317%492%398@@%425%367%368%367%367%448@@@@@@@%302%317%492%399@@%425%368%368%367%367%448@@@@@@@%302%317%492%400@@%425%367%367%368%367%448@@@@@@@%317%492%401@@%425%368%367%368%367%448@@@@@@@@@@@@@@@@@@@@@@@@@@"])
   fun op relocation_operator_EQ_relocation_operator x = x
     val op relocation_operator_EQ_relocation_operator =
     DT(((("abi_utilities",72),
-        [("abi_utilities",[46]),("bool",[58])]),["DISK_THM"]),
-       [read"%289%38%289%48%310%326$1@$0@@%316%489$1@@%489$0@@@|@|@"])
+        [("abi_utilities",[46]),("bool",[57])]),["DISK_THM"]),
+       [read"%290%38%290%48%311%327$1@$0@@%317%492$1@@%492$0@@@|@|@"])
   fun op relocation_operator_case_def x = x
     val op relocation_operator_case_def =
     DT(((("abi_utilities",75),
-        [("abi_utilities",[71,74]),("bool",[54,56,64]),
+        [("abi_utilities",[71,74]),("bool",[53,55,63]),
          ("numeral",[3,6,7])]),["DISK_THM"]),
-       [read"%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%490%430@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$20@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%490%415@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$19@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%490%382@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$18@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%490%383@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$17@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%490%424@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$16@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%490%389@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$15@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%490%388@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$14@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%490%390@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$13@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%490%393@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$12@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%490%391@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$11@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%490%384@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$10@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%490%412@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$9@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%490%429@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$8@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%490%411@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$7@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%490%417@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$6@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%490%396@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$5@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%490%394@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$4@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%490%397@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$3@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%490%398@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$2@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%301%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%490%399@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$1@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%304%490%400@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$0@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@@@@@@@@@@@@@@@@@@@@"])
+       [read"%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%493%433@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$20@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%493%418@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$19@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%493%383@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$18@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%493%384@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$17@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%493%427@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$16@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%493%390@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$15@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%493%389@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$14@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%493%391@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$13@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%493%394@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$12@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%493%392@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$11@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%493%385@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$10@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%493%413@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$9@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%493%432@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$8@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%493%412@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$7@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%493%420@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$6@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%493%397@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$5@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%493%395@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$4@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%493%398@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$3@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%493%399@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$2@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%302%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%493%400@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$1@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%305%493%401@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@$0@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@@@@@@@@@@@@@@@@@@@@@"])
   fun op datatype_relocation_operator x = x
     val op datatype_relocation_operator =
-    DT(((("abi_utilities",76),[("bool",[25,171])]),["DISK_THM"]),
-       [read"%381%143%430@%415@%382@%383@%424@%389@%388@%390@%393@%391@%384@%412@%429@%411@%417@%396@%394@%397@%398@%399@%400@@"])
+    DT(((("abi_utilities",76),[("bool",[25,170])]),["DISK_THM"]),
+       [read"%382%143%433@%418@%383@%384@%427@%390@%389@%391@%394@%392@%385@%413@%432@%412@%420@%397@%395@%398@%399@%400@%401@@"])
   fun op relocation_operator_case_cong x = x
     val op relocation_operator_case_cong =
     DT(((("abi_utilities",77),
         [("abi_utilities",
          [47,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,
           69,75]),
-         ("arithmetic",
-         [24,25,27,41,46,59,73,95,173,174,177,178,181,200,206]),
-         ("bool",[8,14,25,32,36,43,51,52,54,58,63,64,93,96,104,105,107]),
+         ("arithmetic",[24,25,27,41,46,59,73,95,177,178,182,185,274]),
+         ("bool",
+         [8,14,25,31,35,42,50,51,53,57,62,63,92,95,100,103,104,106]),
          ("numeral",[3,5,6,7,8,15,16,17]),
          ("sat",[1,3,5,6,7,11,12,13,15])]),["DISK_THM"]),
-       [read"%289%10%289%16%239%163%239%165%239%192%239%197%239%200%239%202%239%204%239%207%239%210%239%212%239%170%239%173%239%176%239%178%239%180%239%182%239%184%239%186%239%188%239%190%239%195%329%301%326$22@$21@@%301%329%326$21@%430@@%304$20@%164@@@%301%329%326$21@%415@@%304$19@%168@@@%301%329%326$21@%382@@%304$18@%194@@@%301%329%326$21@%383@@%304$17@%199@@@%301%329%326$21@%424@@%304$16@%201@@@%301%329%326$21@%389@@%304$15@%203@@@%301%329%326$21@%388@@%304$14@%206@@@%301%329%326$21@%390@@%304$13@%209@@@%301%329%326$21@%393@@%304$12@%211@@@%301%329%326$21@%391@@%304$11@%213@@@%301%329%326$21@%384@@%304$10@%172@@@%301%329%326$21@%412@@%304$9@%175@@@%301%329%326$21@%429@@%304$8@%177@@@%301%329%326$21@%411@@%304$7@%179@@@%301%329%326$21@%417@@%304$6@%181@@@%301%329%326$21@%396@@%304$5@%183@@@%301%329%326$21@%394@@%304$4@%185@@@%301%329%326$21@%397@@%304$3@%187@@@%301%329%326$21@%398@@%304$2@%189@@@%301%329%326$21@%399@@%304$1@%191@@@%329%326$21@%400@@%304$0@%196@@@@@@@@@@@@@@@@@@@@@@@@%304%490$22@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@%490$21@%164@%168@%194@%199@%201@%203@%206@%209@%211@%213@%172@%175@%177@%179@%181@%183@%185@%187@%189@%191@%196@@@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@"])
+       [read"%290%10%290%16%241%165%241%167%241%194%241%199%241%202%241%204%241%206%241%209%241%212%241%214%241%172%241%175%241%178%241%180%241%182%241%184%241%186%241%188%241%190%241%192%241%197%330%302%327$22@$21@@%302%330%327$21@%433@@%305$20@%166@@@%302%330%327$21@%418@@%305$19@%170@@@%302%330%327$21@%383@@%305$18@%196@@@%302%330%327$21@%384@@%305$17@%201@@@%302%330%327$21@%427@@%305$16@%203@@@%302%330%327$21@%390@@%305$15@%205@@@%302%330%327$21@%389@@%305$14@%208@@@%302%330%327$21@%391@@%305$13@%211@@@%302%330%327$21@%394@@%305$12@%213@@@%302%330%327$21@%392@@%305$11@%215@@@%302%330%327$21@%385@@%305$10@%174@@@%302%330%327$21@%413@@%305$9@%177@@@%302%330%327$21@%432@@%305$8@%179@@@%302%330%327$21@%412@@%305$7@%181@@@%302%330%327$21@%420@@%305$6@%183@@@%302%330%327$21@%397@@%305$5@%185@@@%302%330%327$21@%395@@%305$4@%187@@@%302%330%327$21@%398@@%305$3@%189@@@%302%330%327$21@%399@@%305$2@%191@@@%302%330%327$21@%400@@%305$1@%193@@@%330%327$21@%401@@%305$0@%198@@@@@@@@@@@@@@@@@@@@@@@@%305%493$22@$20@$19@$18@$17@$16@$15@$14@$13@$12@$11@$10@$9@$8@$7@$6@$5@$4@$3@$2@$1@$0@@%493$21@%166@%170@%196@%201@%203@%205@%208@%211@%213@%215@%174@%177@%179@%181@%183@%185@%187@%189@%191@%193@%198@@@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@"])
   fun op relocation_operator_nchotomy x = x
     val op relocation_operator_nchotomy =
     DT(((("abi_utilities",78),
         [("abi_utilities",
          [47,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,
           69]),
-         ("arithmetic",
-         [24,25,27,41,46,59,73,95,173,174,177,178,181,200,206]),
-         ("bool",[8,14,25,32,36,43,51,52,54,58,63,64,93,96,104,105,107]),
+         ("arithmetic",[24,25,27,41,46,59,73,95,177,178,182,185,274]),
+         ("bool",
+         [8,14,25,31,35,42,50,51,53,57,62,63,92,95,100,103,104,106]),
          ("numeral",[3,5,6,7,8,15,16,17]),
          ("sat",[1,3,5,6,7,11,12,13,15])]),["DISK_THM"]),
-       [read"%289%38%446%326$0@%430@@%446%326$0@%415@@%446%326$0@%382@@%446%326$0@%383@@%446%326$0@%424@@%446%326$0@%389@@%446%326$0@%388@@%446%326$0@%390@@%446%326$0@%393@@%446%326$0@%391@@%446%326$0@%384@@%446%326$0@%412@@%446%326$0@%429@@%446%326$0@%411@@%446%326$0@%417@@%446%326$0@%396@@%446%326$0@%394@@%446%326$0@%397@@%446%326$0@%398@@%446%326$0@%399@@%326$0@%400@@@@@@@@@@@@@@@@@@@@@|@"])
+       [read"%290%38%449%327$0@%433@@%449%327$0@%418@@%449%327$0@%383@@%449%327$0@%384@@%449%327$0@%427@@%449%327$0@%390@@%449%327$0@%389@@%449%327$0@%391@@%449%327$0@%394@@%449%327$0@%392@@%449%327$0@%385@@%449%327$0@%413@@%449%327$0@%432@@%449%327$0@%412@@%449%327$0@%420@@%449%327$0@%397@@%449%327$0@%395@@%449%327$0@%398@@%449%327$0@%399@@%449%327$0@%400@@%327$0@%401@@@@@@@@@@@@@@@@@@@@@|@"])
   fun op relocation_operator_Axiom x = x
     val op relocation_operator_Axiom =
     DT(((("abi_utilities",79),
-        [("abi_utilities",[71]),("bool",[8,14,25,54,56,64]),
+        [("abi_utilities",[71]),("bool",[8,14,25,53,55,63]),
          ("numeral",[3,8])]),["DISK_THM"]),
-       [read"%239%218%239%219%239%230%239%232%239%233%239%234%239%235%239%236%239%237%239%238%239%220%239%221%239%222%239%223%239%224%239%225%239%226%239%227%239%228%239%229%239%231%343%83%301%304$0%430@@$21@@%301%304$0%415@@$20@@%301%304$0%382@@$19@@%301%304$0%383@@$18@@%301%304$0%424@@$17@@%301%304$0%389@@$16@@%301%304$0%388@@$15@@%301%304$0%390@@$14@@%301%304$0%393@@$13@@%301%304$0%391@@$12@@%301%304$0%384@@$11@@%301%304$0%412@@$10@@%301%304$0%429@@$9@@%301%304$0%411@@$8@@%301%304$0%417@@$7@@%301%304$0%396@@$6@@%301%304$0%394@@$5@@%301%304$0%397@@$4@@%301%304$0%398@@$3@@%301%304$0%399@@$2@@%304$0%400@@$1@@@@@@@@@@@@@@@@@@@@@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@"])
+       [read"%241%220%241%221%241%232%241%234%241%235%241%236%241%237%241%238%241%239%241%240%241%222%241%223%241%224%241%225%241%226%241%227%241%228%241%229%241%230%241%231%241%233%344%83%302%305$0%433@@$21@@%302%305$0%418@@$20@@%302%305$0%383@@$19@@%302%305$0%384@@$18@@%302%305$0%427@@$17@@%302%305$0%390@@$16@@%302%305$0%389@@$15@@%302%305$0%391@@$14@@%302%305$0%394@@$13@@%302%305$0%392@@$12@@%302%305$0%385@@$11@@%302%305$0%413@@$10@@%302%305$0%432@@$9@@%302%305$0%412@@$8@@%302%305$0%420@@$7@@%302%305$0%397@@$6@@%302%305$0%395@@$5@@%302%305$0%398@@$4@@%302%305$0%399@@$3@@%302%305$0%400@@$2@@%305$0%401@@$1@@@@@@@@@@@@@@@@@@@@@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@"])
   fun op relocation_operator_induction x = x
     val op relocation_operator_induction =
     DT(((("abi_utilities",80),
         [("abi_utilities",
          [47,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,
           69]),
-         ("arithmetic",
-         [24,25,27,41,46,59,73,95,173,174,177,178,181,200,206]),
-         ("bool",[8,14,25,32,36,43,51,52,54,58,63,64,93,96,104,105,107]),
+         ("arithmetic",[24,25,27,41,46,59,73,95,177,178,182,185,274]),
+         ("bool",
+         [8,14,25,31,35,42,50,51,53,57,62,63,92,95,100,103,104,106]),
          ("numeral",[3,5,6,7,8,15,16,17]),
          ("sat",[1,3,5,6,7,11,12,13,15])]),["DISK_THM"]),
-       [read"%273%22%329%301$0%382@@%301$0%383@@%301$0%384@@%301$0%388@@%301$0%389@@%301$0%390@@%301$0%391@@%301$0%393@@%301$0%394@@%301$0%396@@%301$0%397@@%301$0%398@@%301$0%399@@%301$0%400@@%301$0%411@@%301$0%412@@%301$0%415@@%301$0%417@@%301$0%424@@%301$0%429@@$0%430@@@@@@@@@@@@@@@@@@@@@@%289%38$1$0@|@@|@"])
+       [read"%274%22%330%302$0%383@@%302$0%384@@%302$0%385@@%302$0%389@@%302$0%390@@%302$0%391@@%302$0%392@@%302$0%394@@%302$0%395@@%302$0%397@@%302$0%398@@%302$0%399@@%302$0%400@@%302$0%401@@%302$0%412@@%302$0%413@@%302$0%418@@%302$0%420@@%302$0%427@@%302$0%432@@$0%433@@@@@@@@@@@@@@@@@@@@@@%290%38$1$0@|@@|@"])
   fun op num2relocation_operator2_relocation_operator22num x = x
     val op num2relocation_operator2_relocation_operator22num =
     DT(((("abi_utilities",83),[("abi_utilities",[82])]),["DISK_THM"]),
-       [read"%290%39%327%473%486$0@@@$0@|@"])
+       [read"%291%39%328%476%489$0@@@$0@|@"])
   fun op relocation_operator22num_num2relocation_operator2 x = x
     val op relocation_operator22num_num2relocation_operator2 =
     DT(((("abi_utilities",84),[("abi_utilities",[82])]),["DISK_THM"]),
-       [read"%280%135%310%303$0@%422%366%445@@@@%316%486%473$0@@@$0@@|@"])
+       [read"%281%135%311%304$0@%425%367%448@@@@%317%489%476$0@@@$0@@|@"])
   fun op num2relocation_operator2_11 x = x
     val op num2relocation_operator2_11 =
     DT(((("abi_utilities",85),
         [("abi_utilities",[82]),("bool",[26])]),["DISK_THM"]),
-       [read"%280%135%280%139%329%303$1@%422%366%445@@@@%329%303$0@%422%366%445@@@@%310%327%473$1@@%473$0@@@%316$1@$0@@@@|@|@"])
+       [read"%281%135%281%139%330%304$1@%425%367%448@@@@%330%304$0@%425%367%448@@@@%311%328%476$1@@%476$0@@@%317$1@$0@@@@|@|@"])
   fun op relocation_operator22num_11 x = x
     val op relocation_operator22num_11 =
     DT(((("abi_utilities",86),
         [("abi_utilities",[82]),("bool",[26])]),["DISK_THM"]),
-       [read"%290%39%290%49%310%316%486$1@@%486$0@@@%327$1@$0@@|@|@"])
+       [read"%291%39%291%49%311%317%489$1@@%489$0@@@%328$1@$0@@|@|@"])
   fun op num2relocation_operator2_ONTO x = x
     val op num2relocation_operator2_ONTO =
     DT(((("abi_utilities",87),
-        [("abi_utilities",[82]),("bool",[25,63])]),["DISK_THM"]),
-       [read"%290%39%350%135%301%327$1@%473$0@@@%303$0@%422%366%445@@@@|@|@"])
+        [("abi_utilities",[82]),("bool",[25,62])]),["DISK_THM"]),
+       [read"%291%39%351%135%302%328$1@%476$0@@@%304$0@%425%367%448@@@@|@|@"])
   fun op relocation_operator22num_ONTO x = x
     val op relocation_operator22num_ONTO =
     DT(((("abi_utilities",88),
         [("abi_utilities",[82]),("bool",[26])]),["DISK_THM"]),
-       [read"%280%135%310%303$0@%422%366%445@@@@%357%39%316$1@%486$0@@|@@|@"])
+       [read"%281%135%311%304$0@%425%367%448@@@@%358%39%317$1@%489$0@@|@@|@"])
   fun op num2relocation_operator2_thm x = x
     val op num2relocation_operator2_thm =
     DT(((("abi_utilities",90),[("abi_utilities",[89])]),[]),
-       [read"%327%473%302@@%392@"])
+       [read"%328%476%303@@%393@"])
   fun op relocation_operator22num_thm x = x
     val op relocation_operator22num_thm =
     DT(((("abi_utilities",91),
         [("abi_utilities",[84,89]),("bool",[25]),
-         ("numeral",[3,7])]),["DISK_THM"]), [read"%316%486%392@@%302@"])
+         ("numeral",[3,7])]),["DISK_THM"]), [read"%317%489%393@@%303@"])
   fun op relocation_operator2_EQ_relocation_operator2 x = x
     val op relocation_operator2_EQ_relocation_operator2 =
     DT(((("abi_utilities",92),
-        [("abi_utilities",[86]),("bool",[58])]),["DISK_THM"]),
-       [read"%290%39%290%49%310%327$1@$0@@%316%486$1@@%486$0@@@|@|@"])
+        [("abi_utilities",[86]),("bool",[57])]),["DISK_THM"]),
+       [read"%291%39%291%49%311%328$1@$0@@%317%489$1@@%489$0@@@|@|@"])
   fun op relocation_operator2_case_def x = x
     val op relocation_operator2_case_def =
     DT(((("abi_utilities",95),[("abi_utilities",[91,94])]),["DISK_THM"]),
-       [read"%239%163%304%487%392@$0@@$0@|@"])
+       [read"%241%165%305%490%393@$0@@$0@|@"])
   fun op datatype_relocation_operator2 x = x
     val op datatype_relocation_operator2 =
-    DT(((("abi_utilities",96),[("bool",[25,171])]),["DISK_THM"]),
-       [read"%381%144%392@@"])
+    DT(((("abi_utilities",96),[("bool",[25,170])]),["DISK_THM"]),
+       [read"%382%144%393@@"])
   fun op relocation_operator2_case_cong x = x
     val op relocation_operator2_case_cong =
     DT(((("abi_utilities",97),
         [("abi_utilities",[87,89,95]),
-         ("arithmetic",
-         [24,25,27,41,46,59,73,95,173,174,177,178,181,200,206]),
-         ("bool",[8,14,25,32,36,43,51,52,54,63,64,93,96,104,105,107]),
+         ("arithmetic",[24,25,27,41,46,59,73,95,177,178,182,185,274]),
+         ("bool",
+         [8,14,25,31,35,42,50,51,53,57,62,63,92,95,100,103,104,106]),
          ("numeral",[3,5,6,7,8,16]),
          ("sat",[1,3,5,6,7,11,12,13,15])]),["DISK_THM"]),
-       [read"%290%11%290%17%239%163%329%301%327$2@$1@@%329%327$1@%392@@%304$0@%164@@@@%304%487$2@$0@@%487$1@%164@@@|@|@|@"])
+       [read"%291%11%291%17%241%165%330%302%328$2@$1@@%330%328$1@%393@@%305$0@%166@@@@%305%490$2@$0@@%490$1@%166@@@|@|@|@"])
   fun op relocation_operator2_nchotomy x = x
     val op relocation_operator2_nchotomy =
     DT(((("abi_utilities",98),
         [("abi_utilities",[87,89]),
-         ("arithmetic",
-         [24,25,27,41,46,59,73,95,173,174,177,178,181,200,206]),
-         ("bool",[8,14,25,32,36,43,51,52,54,63,64,93,96,104,105,107]),
+         ("arithmetic",[24,25,27,41,46,59,73,95,177,178,182,185,274]),
+         ("bool",
+         [8,14,25,31,35,42,50,51,53,57,62,63,92,95,100,103,104,106]),
          ("numeral",[3,5,6,7,8,16]),
          ("sat",[1,3,5,6,7,11,12,13,15])]),["DISK_THM"]),
-       [read"%290%39%327$0@%392@|@"])
+       [read"%291%39%328$0@%393@|@"])
   fun op relocation_operator2_Axiom x = x
     val op relocation_operator2_Axiom =
     DT(((("abi_utilities",99),
-        [("abi_utilities",[91]),("bool",[8,25,56])]),["DISK_THM"]),
-       [read"%239%218%345%84%304$0%392@@$1@|@|@"])
+        [("abi_utilities",[91]),("bool",[8,25,55])]),["DISK_THM"]),
+       [read"%241%220%346%84%305$0%393@@$1@|@|@"])
   fun op relocation_operator2_induction x = x
     val op relocation_operator2_induction =
     DT(((("abi_utilities",100),
         [("abi_utilities",[87,89]),
-         ("arithmetic",
-         [24,25,27,41,46,59,73,95,173,174,177,178,181,200,206]),
-         ("bool",[8,14,25,32,36,43,51,52,54,63,64,93,96,104,105,107]),
+         ("arithmetic",[24,25,27,41,46,59,73,95,177,178,182,185,274]),
+         ("bool",
+         [8,14,25,31,35,42,50,51,53,57,62,63,92,95,100,103,104,106]),
          ("numeral",[3,5,6,7,8,16]),
          ("sat",[1,3,5,6,7,11,12,13,15])]),["DISK_THM"]),
-       [read"%275%23%329$0%392@@%290%39$1$0@|@@|@"])
+       [read"%276%23%330$0%393@@%291%39$1$0@|@@|@"])
   fun op datatype_can_fail x = x
     val op datatype_can_fail =
-    DT(((("abi_utilities",112),[("bool",[25,171])]),["DISK_THM"]),
-       [read"%381%67%377@%378@%379@@"])
+    DT(((("abi_utilities",112),[("bool",[25,170])]),["DISK_THM"]),
+       [read"%382%67%378@%379@%380@@"])
   fun op can_fail_11 x = x
     val op can_fail_11 =
     DT(((("abi_utilities",113),
         [("abi_utilities",[103,104,105,106,107,108,109]),
-         ("bool",[26,56,63,181]),("ind_type",[33,34])]),["DISK_THM"]),
-       [read"%248%31%248%42%310%311%378$1@@%378$0@@@%314$1@$0@@|@|@"])
+         ("bool",[26,55,62,180]),("ind_type",[33,34])]),["DISK_THM"]),
+       [read"%249%31%249%42%311%312%379$1@@%379$0@@@%315$1@$0@@|@|@"])
   fun op can_fail_distinct x = x
     val op can_fail_distinct =
     DT(((("abi_utilities",114),
         [("abi_utilities",[103,104,105,106,107,108,109]),
-         ("bool",[25,26,36,47,51,54,56,63,181]),
+         ("bool",[25,26,35,46,50,53,55,62,180]),
          ("ind_type",[33,34])]),["DISK_THM"]),
-       [read"%301%248%31%505%311%377@%378$0@@@|@@%301%505%311%377@%379@@@%248%31%505%311%378$0@@%379@@|@@@"])
+       [read"%302%249%31%508%312%378@%379$0@@@|@@%302%508%312%378@%380@@@%249%31%508%312%379$0@@%380@@|@@@"])
   fun op can_fail_case_cong x = x
     val op can_fail_case_cong =
     DT(((("abi_utilities",115),
         [("abi_utilities",[103,104,105,106,107,108,109,110]),
-         ("bool",[26,181])]),["DISK_THM"]),
-       [read"%244%7%244%13%240%158%254%81%240%166%329%301%311$4@$3@@%301%329%311$3@%377@@%305$2@%162@@@%301%248%31%329%311$4@%378$0@@@%305$2$0@@%87$0@@@|@@%329%311$3@%379@@%305$0@%169@@@@@@%305%449$4@$2@$1@$0@@%449$3@%162@%87@%169@@@|@|@|@|@|@"])
+         ("bool",[26,180])]),["DISK_THM"]),
+       [read"%245%7%245%13%242%160%255%81%242%168%330%302%312$4@$3@@%302%330%312$3@%378@@%306$2@%164@@@%302%249%31%330%312$4@%379$0@@@%306$2$0@@%87$0@@@|@@%330%312$3@%380@@%306$0@%171@@@@@@%306%452$4@$2@$1@$0@@%452$3@%164@%87@%171@@@|@|@|@|@|@"])
   fun op can_fail_nchotomy x = x
     val op can_fail_nchotomy =
     DT(((("abi_utilities",116),
         [("abi_utilities",[103,104,105,106,107,108,109]),
-         ("bool",[26,181])]),["DISK_THM"]),
-       [read"%244%68%446%311$0@%377@@%446%332%77%311$1@%378$0@@|@@%311$0@%379@@@|@"])
+         ("bool",[26,180])]),["DISK_THM"]),
+       [read"%245%68%449%312$0@%378@@%449%333%77%312$1@%379$0@@|@@%312$0@%380@@@|@"])
   fun op can_fail_Axiom x = x
     val op can_fail_Axiom =
     DT(((("abi_utilities",117),
-        [("abi_utilities",[103,104,105,106,107,108,109]),("bool",[26,181]),
+        [("abi_utilities",[103,104,105,106,107,108,109]),("bool",[26,180]),
          ("ind_type",[33,34])]),["DISK_THM"]),
-       [read"%240%89%254%93%240%97%333%114%301%305$0%377@@$3@@%301%248%31%305$1%378$0@@@$3$0@@|@@%305$0%379@@$1@@@|@|@|@|@"])
+       [read"%242%89%255%93%242%97%334%114%302%306$0%378@@$3@@%302%249%31%306$1%379$0@@@$3$0@@|@@%306$0%380@@$1@@@|@|@|@|@"])
   fun op can_fail_induction x = x
     val op can_fail_induction =
     DT(((("abi_utilities",118),
         [("abi_utilities",[103,104,105,106,107,108,109]),
          ("bool",[26])]),["DISK_THM"]),
-       [read"%252%19%329%301$0%377@@%301%248%77$1%378$0@@|@@$0%379@@@@%244%66$1$0@|@@|@"])
+       [read"%253%19%330%302$0%378@@%302%249%77$1%379$0@@|@@$0%380@@@@%245%66$1$0@|@@|@"])
   fun op datatype_relocation_operator_expression x = x
     val op datatype_relocation_operator_expression =
-    DT(((("abi_utilities",153),[("bool",[25,171])]),["DISK_THM"]),
-       [read"%381%145%416@%364@%365@%425@%420@%426@@"])
+    DT(((("abi_utilities",153),[("bool",[25,170])]),["DISK_THM"]),
+       [read"%382%145%419@%365@%366@%428@%423@%429@@"])
   fun op relocation_operator_expression_11 x = x
     val op relocation_operator_expression_11 =
     DT(((("abi_utilities",154),
@@ -943,10 +943,10 @@ struct
          [120,122,124,126,128,129,130,131,132,133,134,135,136,137,138,139,
           140,141,142,143,144,145,146,147,148,149,150]),
          ("bool",
-         [14,15,25,26,31,36,51,53,56,58,60,63,105,124,132,133,138,181]),
+         [14,15,25,26,30,35,50,52,55,57,59,62,104,123,131,132,137,180]),
          ("ind_type",[33,34,37,38,39,40]),("pair",[8,9,21,26]),
          ("sum",[19,20])]),["DISK_THM"]),
-       [read"%301%239%29%239%40%310%328%416$1@@%416$0@@@%304$1@$0@@|@|@@%301%281%33%281%44%310%328%364$1@@%364$0@@@%317$1@$0@@|@|@@%301%282%34%282%45%310%328%365$1@@%365$0@@@%318$1@$0@@|@|@@%301%284%36%284%47%310%328%425$1@@%425$0@@@%320$1@$0@@|@|@@%301%284%36%284%47%310%328%420$1@@%420$0@@@%320$1@$0@@|@|@@%283%35%283%46%310%328%426$1@@%426$0@@@%319$1@$0@@|@|@@@@@@"])
+       [read"%302%241%29%241%40%311%329%419$1@@%419$0@@@%305$1@$0@@|@|@@%302%282%33%282%44%311%329%365$1@@%365$0@@@%318$1@$0@@|@|@@%302%283%34%283%45%311%329%366$1@@%366$0@@@%319$1@$0@@|@|@@%302%285%36%285%47%311%329%428$1@@%428$0@@@%321$1@$0@@|@|@@%302%285%36%285%47%311%329%423$1@@%423$0@@@%321$1@$0@@|@|@@%284%35%284%46%311%329%429$1@@%429$0@@@%320$1@$0@@|@|@@@@@@"])
   fun op relocation_operator_expression_distinct x = x
     val op relocation_operator_expression_distinct =
     DT(((("abi_utilities",155),
@@ -954,10 +954,10 @@ struct
          [120,122,124,126,128,129,130,131,132,133,134,135,136,137,138,139,
           140,141,142,143,144,145,146,147,148,149,150]),
          ("bool",
-         [14,15,25,26,31,36,47,51,53,54,56,58,60,63,105,124,132,133,138,
-          181]),("ind_type",[33,34,37,38,39,40]),("pair",[8,9,21,26]),
+         [14,15,25,26,30,35,46,50,52,53,55,57,59,62,104,123,131,132,137,
+          180]),("ind_type",[33,34,37,38,39,40]),("pair",[8,9,21,26]),
          ("sum",[19,20])]),["DISK_THM"]),
-       [read"%301%281%44%239%29%505%328%416$0@@%364$1@@@|@|@@%301%282%45%239%29%505%328%416$0@@%365$1@@@|@|@@%301%284%47%239%29%505%328%416$0@@%425$1@@@|@|@@%301%284%47%239%29%505%328%416$0@@%420$1@@@|@|@@%301%283%46%239%29%505%328%416$0@@%426$1@@@|@|@@%301%282%45%281%33%505%328%364$0@@%365$1@@@|@|@@%301%284%47%281%33%505%328%364$0@@%425$1@@@|@|@@%301%284%47%281%33%505%328%364$0@@%420$1@@@|@|@@%301%283%46%281%33%505%328%364$0@@%426$1@@@|@|@@%301%284%47%282%34%505%328%365$0@@%425$1@@@|@|@@%301%284%47%282%34%505%328%365$0@@%420$1@@@|@|@@%301%283%46%282%34%505%328%365$0@@%426$1@@@|@|@@%301%284%47%284%36%505%328%425$0@@%420$1@@@|@|@@%301%283%46%284%36%505%328%425$0@@%426$1@@@|@|@@%283%46%284%36%505%328%420$0@@%426$1@@@|@|@@@@@@@@@@@@@@@"])
+       [read"%302%282%44%241%29%508%329%419$0@@%365$1@@@|@|@@%302%283%45%241%29%508%329%419$0@@%366$1@@@|@|@@%302%285%47%241%29%508%329%419$0@@%428$1@@@|@|@@%302%285%47%241%29%508%329%419$0@@%423$1@@@|@|@@%302%284%46%241%29%508%329%419$0@@%429$1@@@|@|@@%302%283%45%282%33%508%329%365$0@@%366$1@@@|@|@@%302%285%47%282%33%508%329%365$0@@%428$1@@@|@|@@%302%285%47%282%33%508%329%365$0@@%423$1@@@|@|@@%302%284%46%282%33%508%329%365$0@@%429$1@@@|@|@@%302%285%47%283%34%508%329%366$0@@%428$1@@@|@|@@%302%285%47%283%34%508%329%366$0@@%423$1@@@|@|@@%302%284%46%283%34%508%329%366$0@@%429$1@@@|@|@@%302%285%47%285%36%508%329%428$0@@%423$1@@@|@|@@%302%284%46%285%36%508%329%428$0@@%429$1@@@|@|@@%284%46%285%36%508%329%423$0@@%429$1@@@|@|@@@@@@@@@@@@@@@"])
   fun op relocation_operator_expression_case_cong x = x
     val op relocation_operator_expression_case_cong =
     DT(((("abi_utilities",156),
@@ -965,10 +965,10 @@ struct
          [120,122,124,126,128,129,130,131,132,133,134,135,136,137,138,139,
           140,141,142,143,144,145,146,147,148,149,150,151]),
          ("bool",
-         [14,15,25,26,31,36,51,53,56,58,60,63,105,124,132,133,138,181]),
+         [14,15,25,26,30,35,50,52,55,57,59,62,104,123,131,132,137,180]),
          ("ind_type",[33,34,37,38,39,40]),("pair",[8,9,21,26]),
          ("sum",[19,20])]),["DISK_THM"]),
-       [read"%291%12%291%18%247%76%257%94%260%98%266%101%266%104%263%107%329%301%328$7@$6@@%301%239%29%329%328$7@%416$0@@@%305$6$0@@%85$0@@@|@@%301%281%33%329%328$7@%364$0@@@%305$5$0@@%96$0@@@|@@%301%282%34%329%328$7@%365$0@@@%305$4$0@@%100$0@@@|@@%301%284%36%329%328$7@%425$0@@@%305$3$0@@%103$0@@@|@@%301%284%36%329%328$7@%420$0@@@%305$2$0@@%106$0@@@|@@%283%35%329%328$7@%426$0@@@%305$1$0@@%109$0@@@|@@@@@@@@%305%495$7@$5@$4@$3@$2@$1@$0@@%495$6@%85@%96@%100@%103@%106@%109@@@|@|@|@|@|@|@|@|@"])
+       [read"%292%12%292%18%248%76%258%94%261%98%267%101%267%104%264%107%330%302%329$7@$6@@%302%241%29%330%329$7@%419$0@@@%306$6$0@@%85$0@@@|@@%302%282%33%330%329$7@%365$0@@@%306$5$0@@%96$0@@@|@@%302%283%34%330%329$7@%366$0@@@%306$4$0@@%100$0@@@|@@%302%285%36%330%329$7@%428$0@@@%306$3$0@@%103$0@@@|@@%302%285%36%330%329$7@%423$0@@@%306$2$0@@%106$0@@@|@@%284%35%330%329$7@%429$0@@@%306$1$0@@%109$0@@@|@@@@@@@@%306%498$7@$5@$4@$3@$2@$1@$0@@%498$6@%85@%96@%100@%103@%106@%109@@@|@|@|@|@|@|@|@|@"])
   fun op relocation_operator_expression_nchotomy x = x
     val op relocation_operator_expression_nchotomy =
     DT(((("abi_utilities",157),
@@ -976,10 +976,10 @@ struct
          [120,122,124,126,128,129,130,131,132,133,134,135,136,137,138,139,
           140,141,142,143,144,145,146,147,148,149,150]),
          ("bool",
-         [14,15,25,26,31,36,51,53,56,58,60,63,105,124,132,133,138,181]),
+         [14,15,25,26,30,35,50,52,55,57,59,62,104,123,131,132,137,180]),
          ("ind_type",[33,34,37,38,39,40]),("pair",[8,9,21,26]),
          ("sum",[19,20])]),["DISK_THM"]),
-       [read"%291%153%446%330%29%328$1@%416$0@@|@@%446%351%131%328$1@%364$0@@|@@%446%352%132%328$1@%365$0@@|@@%446%354%134%328$1@%425$0@@|@@%446%354%134%328$1@%420$0@@|@@%353%133%328$1@%426$0@@|@@@@@@|@"])
+       [read"%292%154%449%331%29%329$1@%419$0@@|@@%449%352%131%329$1@%365$0@@|@@%449%353%132%329$1@%366$0@@|@@%449%355%134%329$1@%428$0@@|@@%449%355%134%329$1@%423$0@@|@@%354%133%329$1@%429$0@@|@@@@@@|@"])
   fun op relocation_operator_expression_Axiom x = x
     val op relocation_operator_expression_Axiom =
     DT(((("abi_utilities",158),
@@ -987,10 +987,10 @@ struct
          [120,122,124,126,128,129,130,131,132,133,134,135,136,137,138,139,
           140,141,142,143,144,145,146,147,148,149,150]),
          ("bool",
-         [14,15,25,26,31,36,51,53,56,58,60,63,105,124,132,133,138,181]),
+         [14,15,25,26,30,35,50,52,55,57,59,62,104,123,131,132,137,180]),
          ("ind_type",[33,34,37,38,39,40]),("pair",[8,9,21,26]),
          ("sum",[19,20])]),["DISK_THM"]),
-       [read"%247%90%259%95%262%99%268%102%268%105%265%108%276%110%256%111%274%112%278%113%347%116%338%117%339%118%337%119%340%120%301%239%29%305$5%416$0@@@$15$0@@|@@%301%281%33%305$5%364$0@@@$14$0@$2$0@@@|@@%301%282%34%305$5%365$0@@@$13$0@$4$0@@@|@@%301%284%36%305$5%425$0@@@$12$0@$1$0@@@|@@%301%284%36%305$5%420$0@@@$11$0@$1$0@@@|@@%301%283%35%305$5%426$0@@@$10$0@$3$0@@@|@@%301%290%54%284%58%306$5%298$1@$0@@@$10$1@$0@$2$0@@@|@|@@%301%291%55%280%57%307$4%299$1@$0@@@$9$0@$1@$6$1@@@|@|@@%301%289%53%291%60%308$3%296$1@$0@@@$8$1@$0@$6$0@@@|@|@@%291%55%291%60%309$2%300$1@$0@@@$7$1@$0@$6$1@@$6$0@@@|@|@@@@@@@@@@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@"])
+       [read"%248%90%260%95%263%99%269%102%269%105%266%108%277%110%257%111%275%112%279%113%348%116%339%117%340%118%338%119%341%120%302%241%29%306$5%419$0@@@$15$0@@|@@%302%282%33%306$5%365$0@@@$14$0@$2$0@@@|@@%302%283%34%306$5%366$0@@@$13$0@$4$0@@@|@@%302%285%36%306$5%428$0@@@$12$0@$1$0@@@|@@%302%285%36%306$5%423$0@@@$11$0@$1$0@@@|@@%302%284%35%306$5%429$0@@@$10$0@$3$0@@@|@@%302%291%54%285%58%307$5%299$1@$0@@@$10$1@$0@$2$0@@@|@|@@%302%292%55%281%57%308$4%300$1@$0@@@$9$0@$1@$6$1@@@|@|@@%302%290%53%292%60%309$3%297$1@$0@@@$8$1@$0@$6$0@@@|@|@@%292%55%292%60%310$2%301$1@$0@@@$7$1@$0@$6$1@@$6$0@@@|@|@@@@@@@@@@|@|@|@|@|@|@|@|@|@|@|@|@|@|@|@"])
   fun op relocation_operator_expression_induction x = x
     val op relocation_operator_expression_induction =
     DT(((("abi_utilities",159),
@@ -998,51 +998,51 @@ struct
          [120,122,124,126,128,129,130,131,132,133,134,135,136,137,138,139,
           140,141,142,143,144,145,146,147,148,149,150]),
          ("bool",
-         [14,15,25,26,31,36,51,53,56,58,60,63,105,124,132,133,138,181]),
+         [14,15,25,26,30,35,50,52,55,57,59,62,104,123,131,132,137,180]),
          ("ind_type",[33,34,37,38,39,40]),("pair",[8,9,21,26]),
          ("sum",[19,20])]),["DISK_THM"]),
-       [read"%277%24%261%25%264%26%258%27%267%28%329%301%239%29$5%416$0@@|@@%301%281%131%329$2$0@@$5%364$0@@@|@@%301%282%132%329$4$0@@$5%365$0@@@|@@%301%284%134%329$1$0@@$5%425$0@@@|@@%301%284%134%329$1$0@@$5%420$0@@@|@@%301%283%133%329$3$0@@$5%426$0@@@|@@%301%284%134%329$1$0@@%290%137$5%298$0@$1@@|@@|@@%301%291%138%329$5$0@@%280%130$4%299$1@$0@@|@@|@@%301%291%138%329$5$0@@%289%140$3%296$0@$1@@|@@|@@%291%138%291%141%329%301$6$1@@$6$0@@@$2%300$1@$0@@@|@|@@@@@@@@@@@%301%291%138$5$0@|@@%301%282%132$4$0@|@@%301%283%133$3$0@|@@%301%281%131$2$0@|@@%284%134$1$0@|@@@@@@|@|@|@|@|@"])
+       [read"%278%24%262%25%265%26%259%27%268%28%330%302%241%29$5%419$0@@|@@%302%282%131%330$2$0@@$5%365$0@@@|@@%302%283%132%330$4$0@@$5%366$0@@@|@@%302%285%134%330$1$0@@$5%428$0@@@|@@%302%285%134%330$1$0@@$5%423$0@@@|@@%302%284%133%330$3$0@@$5%429$0@@@|@@%302%285%134%330$1$0@@%291%137$5%299$0@$1@@|@@|@@%302%292%138%330$5$0@@%281%130$4%300$1@$0@@|@@|@@%302%292%138%330$5$0@@%290%140$3%297$0@$1@@|@@|@@%292%138%292%141%330%302$6$1@@$6$0@@@$2%301$1@$0@@@|@|@@@@@@@@@@@%302%292%138$5$0@|@@%302%283%132$4$0@|@@%302%284%133$3$0@|@@%302%282%131$2$0@|@@%285%134$1$0@|@@@@@@|@|@|@|@|@"])
   fun op datatype_relocation_frame x = x
     val op datatype_relocation_frame =
-    DT(((("abi_utilities",168),[("bool",[25,171])]),["DISK_THM"]),
-       [read"%381%142%380@%423@@"])
+    DT(((("abi_utilities",168),[("bool",[25,170])]),["DISK_THM"]),
+       [read"%382%142%381@%426@@"])
   fun op relocation_frame_11 x = x
     val op relocation_frame_11 =
     DT(((("abi_utilities",169),
-        [("abi_utilities",[161,162,163,164,165]),("bool",[26,56,63,181]),
+        [("abi_utilities",[161,162,163,164,165]),("bool",[26,55,62,180]),
          ("ind_type",[33,34])]),["DISK_THM"]),
-       [read"%245%30%245%41%310%325%423$1@@%423$0@@@%313$1@$0@@|@|@"])
+       [read"%246%30%246%41%311%326%426$1@@%426$0@@@%314$1@$0@@|@|@"])
   fun op relocation_frame_distinct x = x
     val op relocation_frame_distinct =
     DT(((("abi_utilities",170),
         [("abi_utilities",[161,162,163,164,165]),
-         ("bool",[25,26,47,54,63,181]),
+         ("bool",[25,26,46,53,62,180]),
          ("ind_type",[33,34])]),["DISK_THM"]),
-       [read"%245%30%505%325%380@%423$0@@@|@"])
+       [read"%246%30%508%326%381@%426$0@@@|@"])
   fun op relocation_frame_case_cong x = x
     val op relocation_frame_case_cong =
     DT(((("abi_utilities",171),
         [("abi_utilities",[161,162,163,164,165,166]),
-         ("bool",[26,181])]),["DISK_THM"]),
-       [read"%288%9%288%15%239%157%253%80%329%301%325$3@$2@@%301%329%325$2@%380@@%304$1@%161@@@%245%30%329%325$3@%423$0@@@%304$1$0@@%86$0@@@|@@@@%304%484$3@$1@$0@@%484$2@%161@%86@@@|@|@|@|@"])
+         ("bool",[26,180])]),["DISK_THM"]),
+       [read"%289%9%289%15%241%159%254%80%330%302%326$3@$2@@%302%330%326$2@%381@@%305$1@%163@@@%246%30%330%326$3@%426$0@@@%305$1$0@@%86$0@@@|@@@@%305%487$3@$1@$0@@%487$2@%163@%86@@@|@|@|@|@"])
   fun op relocation_frame_nchotomy x = x
     val op relocation_frame_nchotomy =
     DT(((("abi_utilities",172),
         [("abi_utilities",[161,162,163,164,165]),
-         ("bool",[26,181])]),["DISK_THM"]),
-       [read"%288%152%446%325$0@%380@@%331%75%325$1@%423$0@@|@@|@"])
+         ("bool",[26,180])]),["DISK_THM"]),
+       [read"%289%153%449%326$0@%381@@%332%75%326$1@%426$0@@|@@|@"])
   fun op relocation_frame_Axiom x = x
     val op relocation_frame_Axiom =
     DT(((("abi_utilities",173),
-        [("abi_utilities",[161,162,163,164,165]),("bool",[26,181]),
+        [("abi_utilities",[161,162,163,164,165]),("bool",[26,180]),
          ("ind_type",[33,34])]),["DISK_THM"]),
-       [read"%239%88%253%92%341%115%301%304$0%380@@$2@@%245%30%304$1%423$0@@@$2$0@@|@@|@|@|@"])
+       [read"%241%88%254%92%342%115%302%305$0%381@@$2@@%246%30%305$1%426$0@@@$2$0@@|@@|@|@|@"])
   fun op relocation_frame_induction x = x
     val op relocation_frame_induction =
     DT(((("abi_utilities",174),
         [("abi_utilities",[161,162,163,164,165]),
          ("bool",[26])]),["DISK_THM"]),
-       [read"%272%21%329%301$0%380@@%245%75$1%423$0@@|@@@%288%136$1$0@|@@|@"])
+       [read"%273%21%330%302$0%381@@%246%75$1%426$0@@|@@@%289%136$1$0@|@@|@"])
   end
   val _ = DB.bindl "abi_utilities"
   [("integer_bit_width_TY_DEF",integer_bit_width_TY_DEF,DB.Def),
@@ -1179,7 +1179,7 @@ struct
    ("relocation_frame_Axiom",relocation_frame_Axiom,DB.Thm),
    ("relocation_frame_induction",relocation_frame_induction,DB.Thm)]
 
-  local open Portable GrammarSpecials Parse
+  local open GrammarSpecials Parse
     fun UTOFF f = Feedback.trace("Parse.unicode_trace_off_complaints",0)f
   in
   val _ = mk_local_grms [("memory_image_orderingsTheory.memory_image_orderings_grammars",
@@ -1730,7 +1730,7 @@ in
            updates=[],
            recognizers=[],
            destructors=[]}
-        val tyinfo0 = EnumType.update_tyinfo "integer_bit_width" integer_bit_width_EQ_integer_bit_width integer_bit_width2num_thm tyinfo0
+        val tyinfo0 = EnumType.update_tyinfo num2integer_bit_width_thm integer_bit_width2num_thm (SOME ("integer_bit_width", integer_bit_width_EQ_integer_bit_width)) tyinfo0
         val () = computeLib.write_datatype_info tyinfo0
       in
         tyinfo0
@@ -1762,7 +1762,7 @@ in
            updates=[],
            recognizers=[],
            destructors=[]}
-        val tyinfo0 = EnumType.update_tyinfo "relocation_operator" relocation_operator_EQ_relocation_operator relocation_operator2num_thm tyinfo0
+        val tyinfo0 = EnumType.update_tyinfo num2relocation_operator_thm relocation_operator2num_thm (SOME ("relocation_operator", relocation_operator_EQ_relocation_operator)) tyinfo0
         val () = computeLib.write_datatype_info tyinfo0
       in
         tyinfo0
@@ -1794,7 +1794,7 @@ in
            updates=[],
            recognizers=[],
            destructors=[]}
-        val tyinfo0 = EnumType.update_tyinfo "relocation_operator2" relocation_operator2_EQ_relocation_operator2 relocation_operator22num_thm tyinfo0
+        val tyinfo0 = EnumType.update_tyinfo num2relocation_operator2_thm relocation_operator22num_thm (SOME ("relocation_operator2", relocation_operator2_EQ_relocation_operator2)) tyinfo0
         val () = computeLib.write_datatype_info tyinfo0
       in
         tyinfo0

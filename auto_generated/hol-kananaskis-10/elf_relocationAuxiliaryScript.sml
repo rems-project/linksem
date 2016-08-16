@@ -20,7 +20,7 @@ val _ = new_theory "elf_relocationAuxiliary"
 (* val gst = Defn.tgoal_no_defn (read_elf32_relocation_section'_def, read_elf32_relocation_section'_ind) *)
 val (read_elf32_relocation_section'_rw, read_elf32_relocation_section'_ind_rw) =
   Defn.tprove_no_defn ((read_elf32_relocation_section'_def, read_elf32_relocation_section'_ind),
-    cheat
+    cheat (* the termination proof *)
   )
 val read_elf32_relocation_section'_rw = save_thm ("read_elf32_relocation_section'_rw", read_elf32_relocation_section'_rw);
 val read_elf32_relocation_section'_ind_rw = save_thm ("read_elf32_relocation_section'_ind_rw", read_elf32_relocation_section'_ind_rw);
@@ -29,7 +29,7 @@ val read_elf32_relocation_section'_ind_rw = save_thm ("read_elf32_relocation_sec
 (* val gst = Defn.tgoal_no_defn (read_elf64_relocation_section'_def, read_elf64_relocation_section'_ind) *)
 val (read_elf64_relocation_section'_rw, read_elf64_relocation_section'_ind_rw) =
   Defn.tprove_no_defn ((read_elf64_relocation_section'_def, read_elf64_relocation_section'_ind),
-    cheat
+    cheat (* the termination proof *)
   )
 val read_elf64_relocation_section'_rw = save_thm ("read_elf64_relocation_section'_rw", read_elf64_relocation_section'_rw);
 val read_elf64_relocation_section'_ind_rw = save_thm ("read_elf64_relocation_section'_ind_rw", read_elf64_relocation_section'_ind_rw);
@@ -38,7 +38,7 @@ val read_elf64_relocation_section'_ind_rw = save_thm ("read_elf64_relocation_sec
 (* val gst = Defn.tgoal_no_defn (read_elf32_relocation_a_section'_def, read_elf32_relocation_a_section'_ind) *)
 val (read_elf32_relocation_a_section'_rw, read_elf32_relocation_a_section'_ind_rw) =
   Defn.tprove_no_defn ((read_elf32_relocation_a_section'_def, read_elf32_relocation_a_section'_ind),
-    cheat
+    cheat (* the termination proof *)
   )
 val read_elf32_relocation_a_section'_rw = save_thm ("read_elf32_relocation_a_section'_rw", read_elf32_relocation_a_section'_rw);
 val read_elf32_relocation_a_section'_ind_rw = save_thm ("read_elf32_relocation_a_section'_ind_rw", read_elf32_relocation_a_section'_ind_rw);
@@ -47,7 +47,7 @@ val read_elf32_relocation_a_section'_ind_rw = save_thm ("read_elf32_relocation_a
 (* val gst = Defn.tgoal_no_defn (read_elf64_relocation_a_section'_def, read_elf64_relocation_a_section'_ind) *)
 val (read_elf64_relocation_a_section'_rw, read_elf64_relocation_a_section'_ind_rw) =
   Defn.tprove_no_defn ((read_elf64_relocation_a_section'_def, read_elf64_relocation_a_section'_ind),
-    cheat
+    cheat (* the termination proof *)
   )
 val read_elf64_relocation_a_section'_rw = save_thm ("read_elf64_relocation_a_section'_rw", read_elf64_relocation_a_section'_rw);
 val read_elf64_relocation_a_section'_ind_rw = save_thm ("read_elf64_relocation_a_section'_ind_rw", read_elf64_relocation_a_section'_ind_rw);

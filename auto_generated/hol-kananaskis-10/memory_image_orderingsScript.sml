@@ -295,8 +295,8 @@ val _ = Define `
   (let (ranges_and_defs : ( element_range option # symbol_definition) list) = (defined_symbols_and_ranges 
   dict_Basic_classes_Ord_abifeature dict_Abi_classes_AbiFeatureTagEquiv_abifeature img)
     in 
-    lem_list$mapMaybe (\ (maybe_some_range, some_def) .  
-      if some_def = bound_def 
+    lem_list$mapMaybe (\ (maybe_some_range, some_def) .
+        if some_def = bound_def 
                             then (
                                 (*let _ = errln ("Found one: syment is " ^ (show some_def.def_syment))
                                 in*)

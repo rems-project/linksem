@@ -50,7 +50,7 @@ val _ = Define `
 val _ = Define `
  (header_is_aarch64_le h=    
   (is_valid_elf64_header h
-    /\ (lem_list$list_index h.elf64_ident ( elf_ii_data) = SOME ((n2w : num -> 8 word) elf_data_2lsb))
+    /\ (lem_list$list_index h.elf64_ident ( elf_ii_data) = SOME ((n2w : num -> unsigned_char) elf_data_2lsb))
     /\ is_valid_abi_aarch64_le_machine_architecture (w2n h.elf64_machine)
     /\ is_valid_abi_aarch64_le_magic_number h.elf64_ident))`;
 

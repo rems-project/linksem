@@ -20,7 +20,7 @@ val _ = new_theory "missing_pervasivesAuxiliary"
 (* val gst = Defn.tgoal_no_defn (natural_of_decimal_string_helper_def, natural_of_decimal_string_helper_ind) *)
 val (natural_of_decimal_string_helper_rw, natural_of_decimal_string_helper_ind_rw) =
   Defn.tprove_no_defn ((natural_of_decimal_string_helper_def, natural_of_decimal_string_helper_ind),
-cheat
+    cheat (* the termination proof *)
   )
 val natural_of_decimal_string_helper_rw = save_thm ("natural_of_decimal_string_helper_rw", natural_of_decimal_string_helper_rw);
 val natural_of_decimal_string_helper_ind_rw = save_thm ("natural_of_decimal_string_helper_ind_rw", natural_of_decimal_string_helper_ind_rw);
@@ -29,7 +29,7 @@ val natural_of_decimal_string_helper_ind_rw = save_thm ("natural_of_decimal_stri
 (* val gst = Defn.tgoal_no_defn (hex_string_of_natural_def, hex_string_of_natural_ind) *)
 val (hex_string_of_natural_rw, hex_string_of_natural_ind_rw) =
   Defn.tprove_no_defn ((hex_string_of_natural_def, hex_string_of_natural_ind),
-cheat
+    cheat (* the termination proof *)
   )
 val hex_string_of_natural_rw = save_thm ("hex_string_of_natural_rw", hex_string_of_natural_rw);
 val hex_string_of_natural_ind_rw = save_thm ("hex_string_of_natural_ind_rw", hex_string_of_natural_ind_rw);
@@ -38,7 +38,7 @@ val hex_string_of_natural_ind_rw = save_thm ("hex_string_of_natural_ind_rw", hex
 (* val gst = Defn.tgoal_no_defn (merge_by_def, merge_by_ind) *)
 val (merge_by_rw, merge_by_ind_rw) =
   Defn.tprove_no_defn ((merge_by_def, merge_by_ind),
-cheat
+    cheat (* the termination proof *)
   )
 val merge_by_rw = save_thm ("merge_by_rw", merge_by_rw);
 val merge_by_ind_rw = save_thm ("merge_by_ind_rw", merge_by_ind_rw);
@@ -47,7 +47,7 @@ val merge_by_ind_rw = save_thm ("merge_by_ind_rw", merge_by_ind_rw);
 (* val gst = Defn.tgoal_no_defn (sort_by_def, sort_by_ind) *)
 val (sort_by_rw, sort_by_ind_rw) =
   Defn.tprove_no_defn ((sort_by_def, sort_by_ind),
-cheat
+    cheat (* the termination proof *)
   )
 val sort_by_rw = save_thm ("sort_by_rw", sort_by_rw);
 val sort_by_ind_rw = save_thm ("sort_by_ind_rw", sort_by_ind_rw);
@@ -56,7 +56,7 @@ val sort_by_ind_rw = save_thm ("sort_by_ind_rw", sort_by_ind_rw);
 (* val gst = Defn.tgoal_no_defn (mapMaybei'_def, mapMaybei'_ind) *)
 val (mapMaybei'_rw, mapMaybei'_ind_rw) =
   Defn.tprove_no_defn ((mapMaybei'_def, mapMaybei'_ind),
-cheat
+    cheat (* the termination proof *)
   )
 val mapMaybei'_rw = save_thm ("mapMaybei'_rw", mapMaybei'_rw);
 val mapMaybei'_ind_rw = save_thm ("mapMaybei'_ind_rw", mapMaybei'_ind_rw);
@@ -65,7 +65,7 @@ val mapMaybei'_ind_rw = save_thm ("mapMaybei'_ind_rw", mapMaybei'_ind_rw);
 (* val gst = Defn.tgoal_no_defn (partitionii'_def, partitionii'_ind) *)
 val (partitionii'_rw, partitionii'_ind_rw) =
   Defn.tprove_no_defn ((partitionii'_def, partitionii'_ind),
-cheat
+    cheat (* the termination proof *)
   )
 val partitionii'_rw = save_thm ("partitionii'_rw", partitionii'_rw);
 val partitionii'_ind_rw = save_thm ("partitionii'_ind_rw", partitionii'_ind_rw);
@@ -74,7 +74,7 @@ val partitionii'_ind_rw = save_thm ("partitionii'_ind_rw", partitionii'_ind_rw);
 (* val gst = Defn.tgoal_no_defn (zip3_def, zip3_ind) *)
 val (zip3_rw, zip3_ind_rw) =
   Defn.tprove_no_defn ((zip3_def, zip3_ind),
-cheat
+    cheat (* the termination proof *)
   )
 val zip3_rw = save_thm ("zip3_rw", zip3_rw);
 val zip3_ind_rw = save_thm ("zip3_ind_rw", zip3_ind_rw);
@@ -83,7 +83,7 @@ val zip3_ind_rw = save_thm ("zip3_ind_rw", zip3_ind_rw);
 (* val gst = Defn.tgoal_no_defn (intercalate'_def, intercalate'_ind) *)
 val (intercalate'_rw, intercalate'_ind_rw) =
   Defn.tprove_no_defn ((intercalate'_def, intercalate'_ind),
-cheat
+    cheat (* the termination proof *)
   )
 val intercalate'_rw = save_thm ("intercalate'_rw", intercalate'_rw);
 val intercalate'_ind_rw = save_thm ("intercalate'_ind_rw", intercalate'_ind_rw);
@@ -92,7 +92,7 @@ val intercalate'_ind_rw = save_thm ("intercalate'_ind_rw", intercalate'_ind_rw);
 (* val gst = Defn.tgoal_no_defn (takeRevAcc_def, takeRevAcc_ind) *)
 val (takeRevAcc_rw, takeRevAcc_ind_rw) =
   Defn.tprove_no_defn ((takeRevAcc_def, takeRevAcc_ind),
-cheat
+    cheat (* the termination proof *)
   )
 val takeRevAcc_rw = save_thm ("takeRevAcc_rw", takeRevAcc_rw);
 val takeRevAcc_ind_rw = save_thm ("takeRevAcc_ind_rw", takeRevAcc_ind_rw);
@@ -101,7 +101,7 @@ val takeRevAcc_ind_rw = save_thm ("takeRevAcc_ind_rw", takeRevAcc_ind_rw);
 (* val gst = Defn.tgoal_no_defn (drop_def, drop_ind) *)
 val (drop_rw, drop_ind_rw) =
   Defn.tprove_no_defn ((drop_def, drop_ind),
-cheat
+    cheat (* the termination proof *)
   )
 val drop_rw = save_thm ("drop_rw", drop_rw);
 val drop_ind_rw = save_thm ("drop_ind_rw", drop_ind_rw);
@@ -110,7 +110,7 @@ val drop_ind_rw = save_thm ("drop_ind_rw", drop_ind_rw);
 (* val gst = Defn.tgoal_no_defn (string_index_of'_def, string_index_of'_ind) *)
 val (string_index_of'_rw, string_index_of'_ind_rw) =
   Defn.tprove_no_defn ((string_index_of'_def, string_index_of'_ind),
-cheat
+    cheat (* the termination proof *)
   )
 val string_index_of'_rw = save_thm ("string_index_of'_rw", string_index_of'_rw);
 val string_index_of'_ind_rw = save_thm ("string_index_of'_ind_rw", string_index_of'_ind_rw);
@@ -119,7 +119,7 @@ val string_index_of'_ind_rw = save_thm ("string_index_of'_ind_rw", string_index_
 (* val gst = Defn.tgoal_no_defn (index_def, index_ind) *)
 val (index_rw, index_ind_rw) =
   Defn.tprove_no_defn ((index_def, index_ind),
-cheat
+    cheat (* the termination proof *)
   )
 val index_rw = save_thm ("index_rw", index_rw);
 val index_ind_rw = save_thm ("index_ind_rw", index_ind_rw);
@@ -128,7 +128,7 @@ val index_ind_rw = save_thm ("index_ind_rw", index_ind_rw);
 (* val gst = Defn.tgoal_no_defn (find_index_helper_def, find_index_helper_ind) *)
 val (find_index_helper_rw, find_index_helper_ind_rw) =
   Defn.tprove_no_defn ((find_index_helper_def, find_index_helper_ind),
-cheat
+    cheat (* the termination proof *)
   )
 val find_index_helper_rw = save_thm ("find_index_helper_rw", find_index_helper_rw);
 val find_index_helper_ind_rw = save_thm ("find_index_helper_ind_rw", find_index_helper_ind_rw);
@@ -137,7 +137,7 @@ val find_index_helper_ind_rw = save_thm ("find_index_helper_ind_rw", find_index_
 (* val gst = Defn.tgoal_no_defn (replicate_revacc_def, replicate_revacc_ind) *)
 val (replicate_revacc_rw, replicate_revacc_ind_rw) =
   Defn.tprove_no_defn ((replicate_revacc_def, replicate_revacc_ind),
-cheat
+    cheat (* the termination proof *)
   )
 val replicate_revacc_rw = save_thm ("replicate_revacc_rw", replicate_revacc_rw);
 val replicate_revacc_ind_rw = save_thm ("replicate_revacc_ind_rw", replicate_revacc_ind_rw);
@@ -146,7 +146,7 @@ val replicate_revacc_ind_rw = save_thm ("replicate_revacc_ind_rw", replicate_rev
 (* val gst = Defn.tgoal_no_defn (list_reverse_concat_map_helper_def, list_reverse_concat_map_helper_ind) *)
 val (list_reverse_concat_map_helper_rw, list_reverse_concat_map_helper_ind_rw) =
   Defn.tprove_no_defn ((list_reverse_concat_map_helper_def, list_reverse_concat_map_helper_ind),
-cheat
+    cheat (* the termination proof *)
   )
 val list_reverse_concat_map_helper_rw = save_thm ("list_reverse_concat_map_helper_rw", list_reverse_concat_map_helper_rw);
 val list_reverse_concat_map_helper_ind_rw = save_thm ("list_reverse_concat_map_helper_ind_rw", list_reverse_concat_map_helper_ind_rw);
@@ -155,7 +155,7 @@ val list_reverse_concat_map_helper_ind_rw = save_thm ("list_reverse_concat_map_h
 (* val gst = Defn.tgoal_no_defn (list_take_with_accum_def, list_take_with_accum_ind) *)
 val (list_take_with_accum_rw, list_take_with_accum_ind_rw) =
   Defn.tprove_no_defn ((list_take_with_accum_def, list_take_with_accum_ind),
-cheat
+    cheat (* the termination proof *)
   )
 val list_take_with_accum_rw = save_thm ("list_take_with_accum_rw", list_take_with_accum_rw);
 val list_take_with_accum_ind_rw = save_thm ("list_take_with_accum_ind_rw", list_take_with_accum_ind_rw);

@@ -13,14 +13,14 @@ struct
   in end;
   val _ = Theory.link_parents
           ("missing_pervasives",
-          Arbnum.fromString "1471276695",
-          Arbnum.fromString "273504")
+          Arbnum.fromString "1471355106",
+          Arbnum.fromString "934043")
           [("show",
-           Arbnum.fromString "1471276683",
-           Arbnum.fromString "370384"),
+           Arbnum.fromString "1471355094",
+           Arbnum.fromString "275066"),
            ("lem_sorting",
-           Arbnum.fromString "1471269250",
-           Arbnum.fromString "503421")];
+           Arbnum.fromString "1471353329",
+           Arbnum.fromString "675733")];
   val _ = Theory.incorporate_types "missing_pervasives" [];
 
   val idvector = 

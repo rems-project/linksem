@@ -13,8 +13,8 @@ struct
   in end;
   val _ = Theory.link_parents
           ("abi_aarch64_program_header_table",
-          Arbnum.fromString "1471274831",
-          Arbnum.fromString "717660")
+          Arbnum.fromString "1471355085",
+          Arbnum.fromString "155053")
           [("lem_num",
            Arbnum.fromString "1471269219",
            Arbnum.fromString "41338")];

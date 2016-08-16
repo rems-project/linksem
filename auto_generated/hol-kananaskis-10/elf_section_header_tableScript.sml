@@ -416,9 +416,9 @@ val _ = Define `
   *)
 val _ = Hol_datatype `
  elf32_compression_header =
-  <| elf32_chdr_type      : word32  (** Specifies the compression algorithm *)
-   ; elf32_chdr_size      : word32  (** Size in bytes of the uncompressed data *)
-   ; elf32_chdr_addralign : word32  (** Specifies the required alignment of the uncompressed data *)
+  <| elf32_chdr_type      : uint32  (** Specifies the compression algorithm *)
+   ; elf32_chdr_size      : uint32  (** Size in bytes of the uncompressed data *)
+   ; elf32_chdr_addralign : uint32  (** Specifies the required alignment of the uncompressed data *)
    |>`;
 
 
@@ -428,10 +428,10 @@ val _ = Hol_datatype `
   *)   
 val _ = Hol_datatype `
  elf64_compression_header =
-  <| elf64_chdr_type      : word32  (** Specified the compression algorithm *)
-   ; elf64_chdr_reserved  : word32  (** Reserved. *)
-   ; elf64_chdr_size      : word64 (** Size in bytes of the uncompressed data *)
-   ; elf64_chdr_addralign : word64 (** Specifies the required alignment of the uncompressed data *)
+  <| elf64_chdr_type      : uint32  (** Specified the compression algorithm *)
+   ; elf64_chdr_reserved  : uint32  (** Reserved. *)
+   ; elf64_chdr_size      : uint64 (** Size in bytes of the uncompressed data *)
+   ; elf64_chdr_addralign : uint64 (** Specifies the required alignment of the uncompressed data *)
    |>`;
 
 
@@ -501,31 +501,31 @@ val _ = Define `
   *) 
 val _ = Hol_datatype `
  elf32_section_header_table_entry =
-  <| elf32_sh_name      : word32 (** Name of the section *)
-   ; elf32_sh_type      : word32 (** Type of the section and its semantics *)
-   ; elf32_sh_flags     : word32 (** Flags associated with the section *)
-   ; elf32_sh_addr      : word32 (** Address of first byte of section in memory image *)
-   ; elf32_sh_offset    : word32  (** Offset from beginning of file of first byte of section *)
-   ; elf32_sh_size      : word32 (** Section size in bytes *)
-   ; elf32_sh_link      : word32 (** Section header table index link *)
-   ; elf32_sh_info      : word32 (** Extra information, contents depends on type of section *)
-   ; elf32_sh_addralign : word32 (** Alignment constraints for section *)
-   ; elf32_sh_entsize   : word32 (** Size of each entry in table, if section is one *)
+  <| elf32_sh_name      : uint32 (** Name of the section *)
+   ; elf32_sh_type      : uint32 (** Type of the section and its semantics *)
+   ; elf32_sh_flags     : uint32 (** Flags associated with the section *)
+   ; elf32_sh_addr      : uint32 (** Address of first byte of section in memory image *)
+   ; elf32_sh_offset    : uint32  (** Offset from beginning of file of first byte of section *)
+   ; elf32_sh_size      : uint32 (** Section size in bytes *)
+   ; elf32_sh_link      : uint32 (** Section header table index link *)
+   ; elf32_sh_info      : uint32 (** Extra information, contents depends on type of section *)
+   ; elf32_sh_addralign : uint32 (** Alignment constraints for section *)
+   ; elf32_sh_entsize   : uint32 (** Size of each entry in table, if section is one *)
    |>`;
 
    
 val _ = Define `
 (elf32_null_section_header=  
- (<| elf32_sh_name      := ((n2w : num -> 32 word)(( 0:num)))
-   ; elf32_sh_type      := ((n2w : num -> 32 word)(( 0:num)))
-   ; elf32_sh_flags     := ((n2w : num -> 32 word)(( 0:num)))
-   ; elf32_sh_addr      := (n2w(( 0:num)))
-   ; elf32_sh_offset    := (n2w(( 0:num))) 
-   ; elf32_sh_size      := ((n2w : num -> 32 word)(( 0:num)))
-   ; elf32_sh_link      := ((n2w : num -> 32 word)(( 0:num)))
-   ; elf32_sh_info      := ((n2w : num -> 32 word)(( 0:num)))
-   ; elf32_sh_addralign := ((n2w : num -> 32 word)(( 0:num)))
-   ; elf32_sh_entsize   := ((n2w : num -> 32 word)(( 0:num)))
+ (<| elf32_sh_name      := ((n2w : num -> uint32) (( 0:num)))
+   ; elf32_sh_type      := ((n2w : num -> uint32) (( 0:num)))
+   ; elf32_sh_flags     := ((n2w : num -> uint32) (( 0:num)))
+   ; elf32_sh_addr      := ((n2w : num -> uint32) (( 0:num)))
+   ; elf32_sh_offset    := ((n2w : num -> uint32) (( 0:num))) 
+   ; elf32_sh_size      := ((n2w : num -> uint32) (( 0:num)))
+   ; elf32_sh_link      := ((n2w : num -> uint32) (( 0:num)))
+   ; elf32_sh_info      := ((n2w : num -> uint32) (( 0:num)))
+   ; elf32_sh_addralign := ((n2w : num -> uint32) (( 0:num)))
+   ; elf32_sh_entsize   := ((n2w : num -> uint32) (( 0:num)))
    |>))`;
 
    
@@ -580,31 +580,31 @@ val _ = Define `
   *) 
 val _ = Hol_datatype `
  elf64_section_header_table_entry =
-  <| elf64_sh_name      : word32  (** Name of the section *)
-   ; elf64_sh_type      : word32  (** Type of the section and its semantics *)
-   ; elf64_sh_flags     : word64 (** Flags associated with the section *)
-   ; elf64_sh_addr      : word64  (** Address of first byte of section in memory image *)
-   ; elf64_sh_offset    : word64   (** Offset from beginning of file of first byte of section *)
-   ; elf64_sh_size      : word64 (** Section size in bytes *)
-   ; elf64_sh_link      : word32  (** Section header table index link *)
-   ; elf64_sh_info      : word32  (** Extra information, contents depends on type of section *)
-   ; elf64_sh_addralign : word64 (** Alignment constraints for section *)
-   ; elf64_sh_entsize   : word64 (** Size of each entry in table, if section is one *)
+  <| elf64_sh_name      : uint32  (** Name of the section *)
+   ; elf64_sh_type      : uint32  (** Type of the section and its semantics *)
+   ; elf64_sh_flags     : uint64 (** Flags associated with the section *)
+   ; elf64_sh_addr      : uint64  (** Address of first byte of section in memory image *)
+   ; elf64_sh_offset    : uint64   (** Offset from beginning of file of first byte of section *)
+   ; elf64_sh_size      : uint64 (** Section size in bytes *)
+   ; elf64_sh_link      : uint32  (** Section header table index link *)
+   ; elf64_sh_info      : uint32  (** Extra information, contents depends on type of section *)
+   ; elf64_sh_addralign : uint64 (** Alignment constraints for section *)
+   ; elf64_sh_entsize   : uint64 (** Size of each entry in table, if section is one *)
    |>`;
 
    
 val _ = Define `
 (elf64_null_section_header=  
- (<| elf64_sh_name      := ((n2w : num -> 32 word)(( 0:num))) 
-   ; elf64_sh_type      := ((n2w : num -> 32 word)(( 0:num))) 
-   ; elf64_sh_flags     := ((n2w : num -> 64 word)(( 0:num)))
-   ; elf64_sh_addr      := ((n2w : num -> 64 word)(( 0:num))) 
-   ; elf64_sh_offset    := ((n2w : num -> 64 word)(( 0:num)))  
-   ; elf64_sh_size      := ((n2w : num -> 64 word)(( 0:num)))
-   ; elf64_sh_link      := ((n2w : num -> 32 word)(( 0:num))) 
-   ; elf64_sh_info      := ((n2w : num -> 32 word)(( 0:num))) 
-   ; elf64_sh_addralign := ((n2w : num -> 64 word)(( 0:num)))
-   ; elf64_sh_entsize   := ((n2w : num -> 64 word)(( 0:num)))
+ (<| elf64_sh_name      := ((n2w : num -> uint32) (( 0:num))) 
+   ; elf64_sh_type      := ((n2w : num -> uint32) (( 0:num))) 
+   ; elf64_sh_flags     := ((n2w : num -> uint64) (( 0:num)))
+   ; elf64_sh_addr      := ((n2w : num -> uint64) (( 0:num))) 
+   ; elf64_sh_offset    := ((n2w : num -> uint64) (( 0:num)))  
+   ; elf64_sh_size      := ((n2w : num -> uint64) (( 0:num)))
+   ; elf64_sh_link      := ((n2w : num -> uint32) (( 0:num))) 
+   ; elf64_sh_info      := ((n2w : num -> uint32) (( 0:num))) 
+   ; elf64_sh_addralign := ((n2w : num -> uint64) (( 0:num)))
+   ; elf64_sh_entsize   := ((n2w : num -> uint64) (( 0:num)))
    |>))`;
 
 
@@ -973,11 +973,11 @@ val _ = type_abbrev( "sht_print_bundle" , ``:(num -> string) # (num -> string) #
 val _ = Define `
  (string_of_elf32_section_header_table_entry (os, proc, user) entry=  
  (unlines [
-     STRCAT"\t"     (STRCAT"Name: " ((num_to_dec_string o w2n entry.elf32_sh_name)))
+     STRCAT"\t"     (STRCAT"Name: " ((num_to_dec_string o w2n) entry.elf32_sh_name))
   ;  STRCAT"\t"     (STRCAT"Type: " (string_of_section_type os proc user (w2n entry.elf32_sh_type)))
-  ;  STRCAT"\t"    (STRCAT"Flags: " ((num_to_dec_string o w2n entry.elf32_sh_flags)))
-  ;  STRCAT"\t"  (STRCAT"Address: " ((num_to_dec_string o w2n entry.elf32_sh_addr)))
-  ;  STRCAT"\t"     (STRCAT"Size: " ((num_to_dec_string o w2n entry.elf32_sh_size)))
+  ;  STRCAT"\t"    (STRCAT"Flags: " ((num_to_dec_string o w2n) entry.elf32_sh_flags))
+  ;  STRCAT"\t"  (STRCAT"Address: " ((num_to_dec_string o w2n) entry.elf32_sh_addr))
+  ;  STRCAT"\t"     (STRCAT"Size: " ((num_to_dec_string o w2n) entry.elf32_sh_size))
   ]))`;
 
 
@@ -991,11 +991,11 @@ val _ = Define `
 val _ = Define `
  (string_of_elf64_section_header_table_entry (os, proc, user) entry=  
  (unlines [
-     STRCAT"\t"     (STRCAT"Name: " ((num_to_dec_string o w2n entry.elf64_sh_name)))
+     STRCAT"\t"     (STRCAT"Name: " ((num_to_dec_string o w2n) entry.elf64_sh_name))
   ;  STRCAT"\t"     (STRCAT"Type: " (string_of_section_type os proc user (w2n entry.elf64_sh_type)))
-  ;  STRCAT"\t"    (STRCAT"Flags: " ((num_to_dec_string o w2n entry.elf64_sh_flags)))
-  ;  STRCAT"\t"  (STRCAT"Address: " ((num_to_dec_string o w2n entry.elf64_sh_addr)))
-  ;  STRCAT"\t"     (STRCAT"Size: " ((num_to_dec_string o w2n entry.elf64_sh_size)))
+  ;  STRCAT"\t"    (STRCAT"Flags: " ((num_to_dec_string o w2n) entry.elf64_sh_flags))
+  ;  STRCAT"\t"  (STRCAT"Address: " ((num_to_dec_string o w2n) entry.elf64_sh_addr))
+  ;  STRCAT"\t"     (STRCAT"Size: " ((num_to_dec_string o w2n) entry.elf64_sh_size))
   ]))`;
 
 
@@ -1018,9 +1018,9 @@ val _ = Define `
     unlines [
        STRCAT"\t"     (STRCAT"Name: " name)
     ;  STRCAT"\t"     (STRCAT"Type: " (string_of_section_type os proc user (w2n entry.elf32_sh_type)))
-    ;  STRCAT"\t"    (STRCAT"Flags: " ((num_to_dec_string o w2n entry.elf32_sh_flags)))
-    ;  STRCAT"\t"  (STRCAT"Address: " ((num_to_dec_string o w2n entry.elf32_sh_addr)))
-    ;  STRCAT"\t"     (STRCAT"Size: " ((num_to_dec_string o w2n entry.elf32_sh_size)))
+    ;  STRCAT"\t"    (STRCAT"Flags: " ((num_to_dec_string o w2n) entry.elf32_sh_flags))
+    ;  STRCAT"\t"  (STRCAT"Address: " ((num_to_dec_string o w2n) entry.elf32_sh_addr))
+    ;  STRCAT"\t"     (STRCAT"Size: " ((num_to_dec_string o w2n) entry.elf32_sh_size))
     ]))`;
 
 
@@ -1043,9 +1043,9 @@ val _ = Define `
     unlines [
        STRCAT"\t"     (STRCAT"Name: " name)
     ;  STRCAT"\t"     (STRCAT"Type: " (string_of_section_type os proc user (w2n entry.elf64_sh_type)))
-    ;  STRCAT"\t"    (STRCAT"Flags: " ((num_to_dec_string o w2n entry.elf64_sh_flags)))
-    ;  STRCAT"\t"  (STRCAT"Address: " ((num_to_dec_string o w2n entry.elf64_sh_addr)))
-    ;  STRCAT"\t"     (STRCAT"Size: " ((num_to_dec_string o w2n entry.elf64_sh_size)))
+    ;  STRCAT"\t"    (STRCAT"Flags: " ((num_to_dec_string o w2n) entry.elf64_sh_flags))
+    ;  STRCAT"\t"  (STRCAT"Address: " ((num_to_dec_string o w2n) entry.elf64_sh_addr))
+    ;  STRCAT"\t"     (STRCAT"Size: " ((num_to_dec_string o w2n) entry.elf64_sh_size))
     ]))`;
 
 
@@ -1146,7 +1146,7 @@ val _ = Define `
   *)
 (*val is_elf32_tbss_special : elf32_section_header_table_entry -> elf32_program_header_table_entry -> bool*)
 val _ = Define `
- (is_elf32_tbss_special sec_hdr segment=  (~ ((word_and sec_hdr.elf32_sh_flags ((n2w : num -> 32 word) shf_tls)) = ((n2w : num -> 32 word)(( 0:num)))) /\
+ (is_elf32_tbss_special sec_hdr segment=  (~ ((word_and sec_hdr.elf32_sh_flags ((n2w : num -> uint32) shf_tls)) = ((n2w : num -> uint32) (( 0:num)))) /\
     ((w2n sec_hdr.elf32_sh_type) = sht_nobits) /\
     ( ~ ((w2n segment.elf32_p_type) = elf_pt_tls))))`;
 
@@ -1163,7 +1163,7 @@ val _ = Define `
   *)
 (*val is_elf64_tbss_special : elf64_section_header_table_entry -> elf64_program_header_table_entry -> bool*)
 val _ = Define `
- (is_elf64_tbss_special sec_hdr segment=  (~ ((word_and sec_hdr.elf64_sh_flags ((n2w : num -> 64 word) shf_tls)) = ((n2w : num -> 64 word)(( 0:num)))) /\
+ (is_elf64_tbss_special sec_hdr segment=  (~ ((word_and sec_hdr.elf64_sh_flags ((n2w : num -> uint64) shf_tls)) = ((n2w : num -> uint64) (( 0:num)))) /\
     ((w2n sec_hdr.elf64_sh_type) = sht_nobits) /\
     ( ~ ((w2n segment.elf64_p_type) = elf_pt_tls))))`;
 

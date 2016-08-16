@@ -47,7 +47,7 @@ val _ = type_abbrev( "byte_pattern" , ``: byte_pattern_element list``);
 
 (* An element might have an address/offset, and it has some contents. *)
 val _ = Hol_datatype `
- element = <| startpos :  num option 
+ element0 = <| startpos :  num option 
                 ; length1   :  num option
                 ; contents : byte_pattern
                 |>`;
@@ -110,7 +110,7 @@ let cond_expr expr1 expr2 expr3 = (Or((And(expr1, expr2)), (And((Not(expr1)), ex
  * we make the identities strings. The string contents are arbitrary,
  * and only their equality is relevant, but choosing friendly names
  * like "ELF header" is good practice.*)
-val _ = type_abbrev( "memory_image" , ``: (string, element) fmap``);
+val _ = type_abbrev( "memory_image" , ``: (string, element0) fmap``);
 
 val _ = type_abbrev( "range0" , ``: num # num``); (* start, length *)
 
@@ -796,7 +796,7 @@ val _ = Define `
 (  
     (* Find the element with the highest address <= addr.
      * What about zero-length elements?
-     * Break ties on the bigger size. *)let (maybe_highest_le :  (num # string # element)option)
+     * Break ties on the bigger size. *)let (maybe_highest_le :  (num # string # element0)option)
      = (FOLDL (\ maybe_current_max_le .  (\ (el_name, el_rec) . 
         (case (maybe_current_max_le, el_rec.startpos) of
               (NONE,                                    NONE) => NONE
@@ -853,8 +853,8 @@ val _ = Define `
 
 val _ = Define `
  (null_elf_relocation_a=  
- (<| elf64_ra_offset := ((n2w : num -> 64 word)(( 0:num)))  
-   ; elf64_ra_info   := ((n2w : num -> 64 word)(( 0:num))) 
+ (<| elf64_ra_offset := ((n2w : num -> uint64) (( 0:num)))  
+   ; elf64_ra_info   := ((n2w : num -> uint64) (( 0:num))) 
    ; elf64_ra_addend := ((i2w (( 0 : int))))
    |>))`;
 
@@ -907,9 +907,9 @@ val _ = Define `
 
 (*val extract_natural_field : natural -> element -> natural -> natural*)
 val _ = Define `
- (extract_natural_field width element offset=    
+ (extract_natural_field width element1 offset=    
 (  
-    (* Read n bytes from the contents *)let maybe_bytes = (take width (drop offset element.contents))
+    (* Read n bytes from the contents *)let maybe_bytes = (take width (drop offset element1.contents))
     in
     let bytes = (MAP (\ mb .  (case mb of NONE => (n2w : num -> 8 word(( 0:num))) | SOME mb => mb )) maybe_bytes)
     in
@@ -974,10 +974,10 @@ val _ = Define `
 
 (*val write_natural_field : natural -> natural -> element -> natural -> element*)
 val _ = Define `
- (write_natural_field new_field_value width element offset=    
-  (let pre_bytes = (take offset element.contents)
+ (write_natural_field new_field_value width element1 offset=    
+  (let pre_bytes = (take offset element1.contents)
     in
-    let post_bytes = (drop (offset + width) element.contents)
+    let post_bytes = (drop (offset + width) element1.contents)
     in
     (* FIXME: avoid hard-coding little-endian *)
     let field_bytes = (natural_to_le_byte_list new_field_value)
@@ -988,8 +988,8 @@ val _ = Define `
         contents := (((pre_bytes ++ (let x2 = 
   ([]) in  FOLDR (\b x2 .  if T then SOME b :: x2 else x2) x2 field_bytes))
             ++ (replicate (width - (length field_bytes)) (SOME ((n2w : num -> 8 word(( 0:num))))))) ++ post_bytes)
-        ; startpos := (element.startpos)
-        ; length1 := (element.length1)
+        ; startpos := (element1.startpos)
+        ; length1 := (element1.length1)
      |>))`;
 
 val _ = export_theory()

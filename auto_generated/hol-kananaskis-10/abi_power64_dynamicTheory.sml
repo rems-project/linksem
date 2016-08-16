@@ -13,11 +13,11 @@ struct
   in end;
   val _ = Theory.link_parents
           ("abi_power64_dynamic",
-          Arbnum.fromString "1445439218",
-          Arbnum.fromString "26689")
+          Arbnum.fromString "1471355342",
+          Arbnum.fromString "551115")
           [("elf_dynamic",
-           Arbnum.fromString "1445439191",
-           Arbnum.fromString "352176")];
+           Arbnum.fromString "1471355307",
+           Arbnum.fromString "153517")];
   val _ = Theory.incorporate_types "abi_power64_dynamic" [];
 
   val idvector = 
@@ -119,7 +119,7 @@ struct
     abi_power64_elf64_value_of_elf64_dyn_def,
     DB.Def)]
 
-  local open Portable GrammarSpecials Parse
+  local open GrammarSpecials Parse
     fun UTOFF f = Feedback.trace("Parse.unicode_trace_off_complaints",0)f
   in
   val _ = mk_local_grms [("elf_dynamicTheory.elf_dynamic_grammars",

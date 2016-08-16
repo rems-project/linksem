@@ -13,14 +13,14 @@ struct
   in end;
   val _ = Theory.link_parents
           ("abi_aarch64_le_serialisation",
-          Arbnum.fromString "1445439059",
-          Arbnum.fromString "791523")
+          Arbnum.fromString "1471355364",
+          Arbnum.fromString "542344")
           [("memory_image",
-           Arbnum.fromString "1445438925",
-           Arbnum.fromString "21925"),
+           Arbnum.fromString "1471355304",
+           Arbnum.fromString "439092"),
            ("abi_aarch64_le_elf_header",
-           Arbnum.fromString "1445438988",
-           Arbnum.fromString "708351")];
+           Arbnum.fromString "1471355219",
+           Arbnum.fromString "93628")];
   val _ = Theory.incorporate_types "abi_aarch64_le_serialisation" [];
 
   val idvector = 
@@ -44,7 +44,7 @@ struct
 
   val _ = DB.bindl "abi_aarch64_le_serialisation" []
 
-  local open Portable GrammarSpecials Parse
+  local open GrammarSpecials Parse
     fun UTOFF f = Feedback.trace("Parse.unicode_trace_off_complaints",0)f
   in
   val _ = mk_local_grms [("memory_imageTheory.memory_image_grammars",

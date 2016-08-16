@@ -81,8 +81,7 @@ val _ = Define `
         ) (FILTER (\p .  
   (case (p ) of
       ( (x, _) ) => ~
-                      (x.elf32_p_filesz =
-                         ((n2w : num -> 32 word) (( 0: num))))
+                      (x.elf32_p_filesz = ((n2w : num -> uint32) (( 0: num))))
   )) segs_zip))
       in
       let sects_layout =        
@@ -90,7 +89,7 @@ val _ = Define `
           (w2n sect.elf32_sh_offset, interp_sect.elf32_section_body)
         ) (FILTER (\p .  
   (case (p ) of
-      ( (x, _) ) => ~ (x.elf32_sh_type = ((n2w : num -> 32 word) sht_nobits))
+      ( (x, _) ) => ~ (x.elf32_sh_type = ((n2w : num -> uint32) sht_nobits))
   )) sects_zip))
       in
       let pre_layout = ((([hdr_layout; pht_layout; sht_layout] ++ sects_layout) ++ segs_layout) ++ bab_layout) in
@@ -183,7 +182,7 @@ val _ = Define `
           (w2n sect.elf64_sh_offset, interp_sect.elf64_section_body)
         ) (FILTER (\p .  
   (case (p ) of
-      ( (x, _) ) => ~ (x.elf64_sh_type = ((n2w : num -> 32 word) sht_nobits))
+      ( (x, _) ) => ~ (x.elf64_sh_type = ((n2w : num -> uint32) sht_nobits))
   )) sects_zip))
       in
       let pre_layout = ((([hdr_layout; pht_layout; sht_layout] ++ sects_layout) ++ segs_layout) ++ bab_layout) in
@@ -1035,14 +1034,14 @@ val _ = Hol_datatype `
   * and begin execution.
   * XXX: (segments, provenance), entry point, machine type
   *)
-val _ = type_abbrev( "elf32_executable_process_image" , ``:((elf32_interpreted_segment # segment_provenance)list # num # num)``);
+val _ = type_abbrev( "elf32_executable_process_image" , ``:( (elf32_interpreted_segment # segment_provenance)list # num # num)``);
 
 (** [elf64_executable_process_image] is a process image for ELF64 files.  Contains
   * all that is necessary to load the executable components of an ELF64 file
   * and begin execution.
   * XXX: (segments, provenance), entry point, machine type
   *)
-val _ = type_abbrev( "elf64_executable_process_image" , ``:((elf64_interpreted_segment # segment_provenance)list # num # num)``);
+val _ = type_abbrev( "elf64_executable_process_image" , ``:( (elf64_interpreted_segment # segment_provenance)list # num # num)``);
 
 (** [get_elf32_executable_image f1] extracts an executable process image from an
   * executable ELF file.  May fail if extraction is impossible.
@@ -1233,9 +1232,9 @@ val _ = Define `
 (  
     (* HACK: convert to elf64_xword first. Flags never live 
      * in objects bigger than 64 bits. *)word_and 
-            ((n2w : num -> 64 word) v) 
-            ((n2w : num -> 64 word) flag)
-    = ((n2w : num -> 64 word) flag)))`;
+            ((n2w : num -> uint64) v) 
+            ((n2w : num -> uint64) flag)
+    = ((n2w : num -> uint64) flag)))`;
 
 val _ = export_theory()
 

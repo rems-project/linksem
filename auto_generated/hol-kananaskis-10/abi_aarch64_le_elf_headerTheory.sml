@@ -13,11 +13,11 @@ struct
   in end;
   val _ = Theory.link_parents
           ("abi_aarch64_le_elf_header",
-          Arbnum.fromString "1445438988",
-          Arbnum.fromString "708351")
+          Arbnum.fromString "1471355219",
+          Arbnum.fromString "93628")
           [("elf_header",
-           Arbnum.fromString "1445438753",
-           Arbnum.fromString "972064")];
+           Arbnum.fromString "1471355161",
+           Arbnum.fromString "843300")];
   val _ = Theory.incorporate_types "abi_aarch64_le_elf_header" [];
 
   val idvector = 
@@ -38,7 +38,6 @@ struct
    ID("elf_header", "elf_class_64"), ID("elf_header", "elf_data_2lsb"),
    ID("elf_header", "elf_ev_current"), ID("elf_header", "elf_ii_class"),
    ID("elf_header", "elf_ii_data"), ID("elf_header", "elf_ma_aarch64"),
-   ID("missing_pervasives", "id"),
    ID("abi_aarch64_le_elf_header", "is_valid_abi_aarch64_le_machine_architecture"),
    ID("abi_aarch64_le_elf_header", "is_valid_abi_aarch64_le_magic_number"),
    ID("lem_list", "list_index"), ID("option", "option"),
@@ -50,7 +49,7 @@ struct
   [TYOP [1], TYV "'a", TYOP [3, 0, 1], TYOP [2, 2], TYOP [0, 3, 0],
    TYOP [4], TYOP [0, 5, 0], TYOP [5], TYOP [0, 4, 0], TYOP [0, 6, 0],
    TYOP [0, 0, 0], TYOP [0, 0, 10], TYOP [0, 7, 0], TYOP [0, 7, 12],
-   TYOP [0, 5, 6], TYOP [0, 5, 5], TYOP [31, 2], TYOP [0, 5, 16],
+   TYOP [0, 5, 6], TYOP [0, 5, 5], TYOP [30, 2], TYOP [0, 5, 16],
    TYOP [0, 3, 17], TYOP [0, 2, 0], TYOP [0, 19, 0], TYOP [0, 0, 20],
    TYOP [0, 16, 21], TYOP [0, 2, 5]]
   end
@@ -71,8 +70,7 @@ struct
    TMC(10, 15), TMC(11, 0), TMC(12, 7), TMC(13, 15), TMC(14, 5),
    TMC(15, 5), TMC(16, 7), TMC(17, 5), TMC(18, 5), TMC(19, 5), TMC(20, 5),
    TMC(21, 5), TMC(22, 5), TMC(23, 5), TMC(24, 5), TMC(25, 5), TMC(26, 5),
-   TMC(27, 15), TMC(28, 6), TMC(29, 4), TMC(30, 18), TMC(32, 22),
-   TMC(33, 23)]
+   TMC(27, 6), TMC(28, 4), TMC(29, 18), TMC(31, 22), TMC(32, 23)]
   end
   local
   val DT = Thm.disk_thm val read = Term.read_raw tmvector
@@ -100,11 +98,11 @@ struct
   fun op is_valid_abi_aarch64_le_machine_architecture_def x = x
     val op is_valid_abi_aarch64_le_machine_architecture_def =
     DT(((("abi_aarch64_le_elf_header",6),[]),[]),
-       [read"%5%2%7%29$0@@%9$0@%27@@|@"])
+       [read"%5%2%7%28$0@@%9$0@%27@@|@"])
   fun op is_valid_abi_aarch64_le_magic_number_def x = x
     val op is_valid_abi_aarch64_le_magic_number_def =
     DT(((("abi_aarch64_le_elf_header",7),[]),[]),
-       [read"%4%3%7%30$0@@%32%31$0@%28%25@@@%12@%0%32%31$1@%28%26@@@%12@%1%6%9%33$1@@%18@@%9%33$0@@%16@@|@|@@|@"])
+       [read"%4%3%7%29$0@@%31%30$0@%25@@%12@%0%31%30$1@%26@@%12@%1%6%9%32$1@@%18@@%9%32$0@@%16@@|@|@@|@"])
   end
   val _ = DB.bindl "abi_aarch64_le_elf_header"
   [("abi_aarch64_le_data_encoding_def",
@@ -128,7 +126,7 @@ struct
     is_valid_abi_aarch64_le_magic_number_def,
     DB.Def)]
 
-  local open Portable GrammarSpecials Parse
+  local open GrammarSpecials Parse
     fun UTOFF f = Feedback.trace("Parse.unicode_trace_off_complaints",0)f
   in
   val _ = mk_local_grms [("elf_headerTheory.elf_header_grammars",

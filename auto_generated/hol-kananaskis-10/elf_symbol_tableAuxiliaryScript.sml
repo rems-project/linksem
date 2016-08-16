@@ -20,7 +20,7 @@ val _ = new_theory "elf_symbol_tableAuxiliary"
 (* val gst = Defn.tgoal_no_defn (read_elf32_symbol_table_def, read_elf32_symbol_table_ind) *)
 val (read_elf32_symbol_table_rw, read_elf32_symbol_table_ind_rw) =
   Defn.tprove_no_defn ((read_elf32_symbol_table_def, read_elf32_symbol_table_ind),
-    cheat
+    cheat (* the termination proof *)
   )
 val read_elf32_symbol_table_rw = save_thm ("read_elf32_symbol_table_rw", read_elf32_symbol_table_rw);
 val read_elf32_symbol_table_ind_rw = save_thm ("read_elf32_symbol_table_ind_rw", read_elf32_symbol_table_ind_rw);
@@ -29,7 +29,7 @@ val read_elf32_symbol_table_ind_rw = save_thm ("read_elf32_symbol_table_ind_rw",
 (* val gst = Defn.tgoal_no_defn (read_elf64_symbol_table_def, read_elf64_symbol_table_ind) *)
 val (read_elf64_symbol_table_rw, read_elf64_symbol_table_ind_rw) =
   Defn.tprove_no_defn ((read_elf64_symbol_table_def, read_elf64_symbol_table_ind),
-    cheat
+    cheat (* the termination proof *)
   )
 val read_elf64_symbol_table_rw = save_thm ("read_elf64_symbol_table_rw", read_elf64_symbol_table_rw);
 val read_elf64_symbol_table_ind_rw = save_thm ("read_elf64_symbol_table_ind_rw", read_elf64_symbol_table_ind_rw);

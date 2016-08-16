@@ -20,7 +20,7 @@ val _ = new_theory "harness_interfaceAuxiliary"
 (* val gst = Defn.tgoal_no_defn (concatS'_def, concatS'_ind) *)
 val (concatS'_rw, concatS'_ind_rw) =
   Defn.tprove_no_defn ((concatS'_def, concatS'_ind),
-    cheat
+    cheat (* the termination proof *)
   )
 val concatS'_rw = save_thm ("concatS'_rw", concatS'_rw);
 val concatS'_ind_rw = save_thm ("concatS'_ind_rw", concatS'_ind_rw);

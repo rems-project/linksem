@@ -13,14 +13,14 @@ struct
   in end;
   val _ = Theory.link_parents
           ("elf_symbol_table",
-          Arbnum.fromString "1445438870",
-          Arbnum.fromString "16827")
+          Arbnum.fromString "1471355220",
+          Arbnum.fromString "286029")
           [("string_table",
-           Arbnum.fromString "1445438794",
-           Arbnum.fromString "925999"),
+           Arbnum.fromString "1471355139",
+           Arbnum.fromString "3264"),
            ("elf_header",
-           Arbnum.fromString "1445438753",
-           Arbnum.fromString "972064")];
+           Arbnum.fromString "1471355161",
+           Arbnum.fromString "843300")];
   val _ = Theory.incorporate_types "elf_symbol_table"
        [("elf64_symbol_table_entry", 0), ("elf32_symbol_table_entry", 0)];
 
@@ -29,33 +29,44 @@ struct
     in Vector.fromList
   [ID("num", "num"), ID("min", "fun"), ID("list", "list"),
    ID("string", "char"),
-   ID("elf_symbol_table", "elf64_symbol_table_entry"), ID("fcp", "cart"),
+   ID("elf_symbol_table", "elf64_symbol_table_entry"),
+   ID("elf_symbol_table", "elf32_symbol_table_entry"), ID("fcp", "cart"),
    ID("fcp", "bit0"), ID("one", "one"), ID("min", "bool"),
-   ID("elf_symbol_table", "elf32_symbol_table_entry"),
    ID("error", "error"), ID("pair", "prod"),
    ID("byte_sequence", "byte_sequence"), ID("endianness", "endianness"),
-   ID("lem_basic_classes", "Ord_class"),
+   ID("show", "Show_class"), ID("lem_basic_classes", "Ord_class"),
    ID("string_table", "string_table"), ID("lem_basic_classes", "ordering"),
    ID("ind_type", "recspace"), ID("min", "ind"), ID("bool", "!"),
    ID("arithmetic", "*"), ID("pair", ","), ID("bool", "/\\"),
    ID("num", "0"), ID("prim_rec", "<"), ID("arithmetic", "<="),
    ID("min", "="), ID("min", "==>"), ID("arithmetic", ">="),
-   ID("bool", "?"), ID("min", "@"), ID("bool", "ARB"),
+   ID("bool", "?"), ID("list", "APPEND"), ID("bool", "ARB"),
    ID("arithmetic", "BIT1"), ID("arithmetic", "BIT2"),
    ID("ind_type", "BOTTOM"), ID("string", "CHR"), ID("bool", "COND"),
    ID("list", "CONS"), ID("ind_type", "CONSTR"), ID("bool", "DATATYPE"),
    ID("pred_set", "EMPTY"), ID("lem_basic_classes", "EQ"),
-   ID("lem_basic_classes", "GT"), ID("combin", "I"), ID("bool", "IN"),
+   ID("lem_basic_classes", "GT"), ID("bool", "IN"),
    ID("pred_set", "INSERT"), ID("combin", "K"), ID("bool", "LET"),
-   ID("lem_basic_classes", "LT"), ID("list", "NIL"),
+   ID("lem_basic_classes", "LT"), ID("list", "MAP"), ID("list", "NIL"),
    ID("arithmetic", "NUMERAL"),
    ID("lem_basic_classes", "Ord_class_compare_method_fupd"),
    ID("lem_basic_classes", "Ord_class_isGreaterEqual_method_fupd"),
    ID("lem_basic_classes", "Ord_class_isGreater_method_fupd"),
    ID("lem_basic_classes", "Ord_class_isLessEqual_method_fupd"),
    ID("lem_basic_classes", "Ord_class_isLess_method_fupd"),
+   ID("show", "Show_class_show_method_fupd"),
    ID("bool", "TYPE_DEFINITION"), ID("pair", "UNCURRY"),
-   ID("relation", "WF"), ID("relation", "WFREC"), ID("arithmetic", "ZERO"),
+   ID("relation", "WF"), ID("arithmetic", "ZERO"),
+   ID("elf_types_native_uint", "bytes_of_elf32_addr"),
+   ID("elf_types_native_uint", "bytes_of_elf32_half"),
+   ID("elf_symbol_table", "bytes_of_elf32_symbol_table_entry"),
+   ID("elf_types_native_uint", "bytes_of_elf32_word"),
+   ID("elf_types_native_uint", "bytes_of_elf64_addr"),
+   ID("elf_types_native_uint", "bytes_of_elf64_half"),
+   ID("elf_symbol_table", "bytes_of_elf64_symbol_table_entry"),
+   ID("elf_types_native_uint", "bytes_of_elf64_word"),
+   ID("elf_types_native_uint", "bytes_of_elf64_xword"),
+   ID("elf_types_native_uint", "bytes_of_unsigned_char"),
    ID("elf_symbol_table", "elf32_symbol_table_entry_CASE"),
    ID("elf_symbol_table", "elf32_symbol_table_entry_compare"),
    ID("elf_symbol_table", "elf32_symbol_table_entry_elf32_st_info"),
@@ -87,17 +98,23 @@ struct
    ID("elf_symbol_table", "elf64_symbol_table_entry_elf64_st_value"),
    ID("elf_symbol_table", "elf64_symbol_table_entry_elf64_st_value_fupd"),
    ID("elf_symbol_table", "elf64_symbol_table_entry_size"),
-   ID("error", "error_bind"), ID("lem_basic_classes", "genericCompare"),
+   ID("error", "error_bind"),
+   ID("elf_symbol_table", "extract_symbol_binding"),
+   ID("elf_symbol_table", "extract_symbol_type"),
+   ID("byte_sequence", "from_byte_lists"),
+   ID("lem_basic_classes", "genericCompare"),
+   ID("elf_symbol_table", "get_elf32_symbol_binding"),
    ID("elf_symbol_table", "get_elf32_symbol_image_address"),
    ID("elf_symbol_table", "get_elf32_symbol_type"),
+   ID("elf_symbol_table", "get_elf64_symbol_binding"),
    ID("elf_symbol_table", "get_elf64_symbol_image_address"),
    ID("elf_symbol_table", "get_elf64_symbol_type"),
    ID("string_table", "get_string_at"),
-   ID("elf_symbol_table", "get_symbol_binding"),
-   ID("elf_symbol_table", "get_symbol_type"),
    ID("elf_symbol_table", "get_symbol_visibility"),
    ID("elf_symbol_table", "instance_Basic_classes_Ord_Elf_symbol_table_elf32_symbol_table_entry_dict"),
    ID("elf_symbol_table", "instance_Basic_classes_Ord_Elf_symbol_table_elf64_symbol_table_entry_dict"),
+   ID("elf_symbol_table", "instance_Show_Show_Elf_symbol_table_elf32_symbol_table_entry_dict"),
+   ID("elf_symbol_table", "instance_Show_Show_Elf_symbol_table_elf64_symbol_table_entry_dict"),
    ID("elf_symbol_table", "is_elf32_null_entry"),
    ID("elf_symbol_table", "is_elf32_shndx_too_large"),
    ID("elf_symbol_table", "is_elf64_null_entry"),
@@ -105,18 +122,16 @@ struct
    ID("byte_sequence", "length0"),
    ID("elf_symbol_table", "make_symbol_info"),
    ID("elf_symbol_table", "make_symbol_other"), ID("error", "mapM"),
-   ID("words", "n2w"), ID("combin", "o"), ID("pair", "pair_CASE"),
-   ID("elf_types_native_uint", "read_elf32_addr"),
+   ID("words", "n2w"), ID("ASCIInumbers", "num_to_dec_string"),
+   ID("combin", "o"), ID("elf_types_native_uint", "read_elf32_addr"),
    ID("elf_types_native_uint", "read_elf32_half"),
    ID("elf_symbol_table", "read_elf32_symbol_table"),
    ID("elf_symbol_table", "read_elf32_symbol_table_entry"),
-   ID("elf_symbol_table", "read_elf32_symbol_table_tupled"),
    ID("elf_types_native_uint", "read_elf32_word"),
    ID("elf_types_native_uint", "read_elf64_addr"),
    ID("elf_types_native_uint", "read_elf64_half"),
    ID("elf_symbol_table", "read_elf64_symbol_table"),
    ID("elf_symbol_table", "read_elf64_symbol_table_entry"),
-   ID("elf_symbol_table", "read_elf64_symbol_table_tupled"),
    ID("elf_types_native_uint", "read_elf64_word"),
    ID("elf_types_native_uint", "read_elf64_xword"),
    ID("elf_types_native_uint", "read_unsigned_char"),
@@ -129,6 +144,11 @@ struct
    ID("elf_symbol_table", "stb_local"), ID("elf_symbol_table", "stb_loos"),
    ID("elf_symbol_table", "stb_loproc"),
    ID("elf_symbol_table", "stb_weak"), ID("elf_symbol_table", "stn_undef"),
+   ID("elf_symbol_table", "string_of_elf32_symbol_table"),
+   ID("elf_symbol_table", "string_of_elf32_symbol_table_entry"),
+   ID("elf_symbol_table", "string_of_elf64_symbol_table"),
+   ID("elf_symbol_table", "string_of_elf64_symbol_table_entry"),
+   ID("elf_symbol_table", "string_of_symbol_binding"),
    ID("elf_symbol_table", "string_of_symbol_type"),
    ID("elf_symbol_table", "string_of_symbol_visibility"),
    ID("elf_symbol_table", "stt_common"),
@@ -144,7 +164,8 @@ struct
    ID("elf_symbol_table", "stv_default"),
    ID("elf_symbol_table", "stv_hidden"),
    ID("elf_symbol_table", "stv_internal"),
-   ID("elf_symbol_table", "stv_protected"), ID("words", "w2n"),
+   ID("elf_symbol_table", "stv_protected"),
+   ID("missing_pervasives", "unlines"), ID("words", "w2n"),
    ID("words", "word_add"), ID("words", "word_and"),
    ID("words", "word_lsl"), ID("words", "word_lsr"), ID("bool", "~")]
   end;
@@ -152,147 +173,158 @@ struct
   in
   val tyvector = build_type_vector idvector
   [TYOP [0], TYOP [3], TYOP [2, 1], TYOP [1, 0, 2], TYOP [1, 3, 2],
-   TYOP [1, 3, 4], TYOP [1, 0, 5], TYOP [4], TYOP [7], TYOP [6, 8],
-   TYOP [6, 9], TYOP [6, 10], TYOP [6, 11], TYOP [6, 12], TYOP [6, 13],
-   TYOP [8], TYOP [5, 15, 14], TYOP [1, 16, 7], TYOP [1, 16, 17],
-   TYOP [5, 15, 12], TYOP [1, 19, 18], TYOP [5, 15, 11], TYOP [1, 21, 20],
-   TYOP [1, 21, 22], TYOP [5, 15, 13], TYOP [1, 24, 23], TYOP [9],
-   TYOP [1, 19, 26], TYOP [1, 21, 27], TYOP [1, 21, 28], TYOP [1, 24, 29],
-   TYOP [1, 24, 30], TYOP [1, 24, 31], TYOP [2, 7], TYOP [10, 33],
-   TYOP [12], TYOP [13], TYOP [11, 36, 35], TYOP [1, 37, 34],
-   TYOP [11, 7, 35], TYOP [10, 39], TYOP [1, 35, 40], TYOP [1, 36, 41],
-   TYOP [1, 35, 34], TYOP [1, 36, 43], TYOP [2, 26], TYOP [10, 45],
-   TYOP [1, 37, 46], TYOP [11, 26, 35], TYOP [10, 48], TYOP [1, 35, 49],
-   TYOP [1, 36, 50], TYOP [1, 35, 46], TYOP [1, 36, 52], TYOP [1, 0, 21],
-   TYOP [1, 0, 54], TYOP [1, 7, 15], TYOP [1, 26, 15], TYOP [14, 7],
-   TYOP [14, 26], TYOP [1, 21, 0], TYV "'a", TYOP [5, 15, 61],
-   TYOP [1, 62, 0], TYOP [1, 7, 0], TYOP [11, 0, 0], TYOP [11, 0, 65],
-   TYOP [11, 0, 66], TYOP [11, 2, 67], TYOP [2, 68], TYOP [10, 69],
-   TYOP [15], TYOP [1, 71, 70], TYOP [1, 33, 72], TYOP [1, 26, 0],
-   TYOP [1, 45, 72], TYOP [1, 7, 7], TYOP [1, 16, 16], TYOP [1, 77, 76],
-   TYOP [1, 7, 16], TYOP [1, 19, 19], TYOP [1, 80, 76], TYOP [1, 7, 19],
-   TYOP [1, 21, 21], TYOP [1, 83, 76], TYOP [1, 7, 21], TYOP [1, 24, 24],
-   TYOP [1, 86, 76], TYOP [1, 7, 24], TYOP [16], TYOP [1, 7, 89],
-   TYOP [1, 7, 90], TYOP [1, 16, 61], TYOP [1, 16, 92], TYOP [1, 19, 93],
-   TYOP [1, 21, 94], TYOP [1, 21, 95], TYOP [1, 24, 96], TYOP [1, 97, 61],
-   TYOP [1, 7, 98], TYOP [1, 26, 26], TYOP [1, 86, 100], TYOP [1, 26, 24],
-   TYOP [1, 80, 100], TYOP [1, 26, 19], TYOP [1, 83, 100],
-   TYOP [1, 26, 21], TYOP [1, 26, 89], TYOP [1, 26, 107], TYOP [1, 19, 61],
-   TYOP [1, 21, 109], TYOP [1, 21, 110], TYOP [1, 24, 111],
-   TYOP [1, 24, 112], TYOP [1, 24, 113], TYOP [1, 114, 61],
-   TYOP [1, 26, 115], TYOP [11, 21, 19], TYOP [11, 21, 117],
-   TYOP [11, 24, 118], TYOP [11, 24, 119], TYOP [11, 24, 120],
-   TYOP [17, 121], TYOP [1, 122, 15], TYOP [11, 16, 16],
-   TYOP [11, 19, 124], TYOP [11, 21, 125], TYOP [11, 21, 126],
-   TYOP [11, 24, 127], TYOP [17, 128], TYOP [1, 129, 15], TYOP [1, 35, 15],
-   TYOP [1, 36, 131], TYOP [1, 37, 15], TYOP [1, 37, 133], TYOP [18],
-   TYOP [1, 26, 61], TYOP [1, 7, 61], TYOP [1, 61, 26], TYOP [1, 61, 7],
-   TYOP [1, 19, 15], TYOP [1, 21, 140], TYOP [1, 21, 141],
-   TYOP [1, 24, 142], TYOP [1, 24, 143], TYOP [1, 24, 144],
-   TYOP [1, 135, 145], TYOP [1, 16, 15], TYOP [1, 16, 147],
-   TYOP [1, 19, 148], TYOP [1, 21, 149], TYOP [1, 21, 150],
-   TYOP [1, 24, 151], TYOP [1, 135, 152], TYOP [1, 26, 122],
-   TYOP [1, 7, 129], TYOP [1, 131, 15], TYOP [1, 62, 15],
-   TYOP [1, 157, 15], TYOP [1, 147, 15], TYOP [1, 24, 15],
-   TYOP [1, 160, 15], TYOP [1, 140, 15], TYOP [1, 21, 15],
-   TYOP [1, 163, 15], TYOP [1, 57, 15], TYOP [1, 56, 15], TYOP [1, 36, 15],
-   TYOP [1, 167, 15], TYOP [1, 138, 15], TYOP [1, 169, 15],
-   TYOP [1, 139, 15], TYOP [1, 171, 15], TYOP [1, 77, 15],
-   TYOP [1, 173, 15], TYOP [1, 86, 15], TYOP [1, 175, 15],
-   TYOP [1, 114, 15], TYOP [1, 177, 15], TYOP [1, 97, 15],
-   TYOP [1, 179, 15], TYOP [1, 80, 15], TYOP [1, 181, 15],
-   TYOP [1, 83, 15], TYOP [1, 183, 15], TYOP [1, 165, 15],
-   TYOP [1, 166, 15], TYOP [1, 132, 15], TYOP [1, 187, 15],
-   TYOP [1, 3, 15], TYOP [1, 189, 15], TYOP [1, 123, 15],
-   TYOP [1, 191, 15], TYOP [1, 130, 15], TYOP [1, 193, 15],
-   TYOP [1, 45, 15], TYOP [1, 195, 15], TYOP [1, 33, 15],
-   TYOP [1, 197, 15], TYOP [1, 0, 15], TYOP [1, 199, 15], TYOP [1, 71, 15],
-   TYOP [1, 201, 15], TYOP [1, 0, 0], TYOP [1, 0, 203], TYOP [1, 16, 124],
-   TYOP [1, 16, 205], TYOP [1, 120, 121], TYOP [1, 24, 207],
-   TYOP [1, 119, 120], TYOP [1, 24, 209], TYOP [1, 118, 119],
-   TYOP [1, 24, 211], TYOP [1, 127, 128], TYOP [1, 24, 213],
-   TYOP [1, 124, 125], TYOP [1, 19, 215], TYOP [1, 19, 117],
-   TYOP [1, 21, 217], TYOP [1, 125, 126], TYOP [1, 21, 219],
-   TYOP [1, 117, 118], TYOP [1, 21, 221], TYOP [1, 126, 127],
-   TYOP [1, 21, 223], TYOP [1, 35, 48], TYOP [1, 26, 225],
-   TYOP [1, 35, 39], TYOP [1, 7, 227], TYOP [1, 35, 37], TYOP [1, 36, 229],
-   TYOP [1, 67, 68], TYOP [1, 2, 231], TYOP [1, 0, 65], TYOP [1, 0, 233],
-   TYOP [1, 65, 66], TYOP [1, 0, 235], TYOP [1, 66, 67], TYOP [1, 0, 237],
-   TYOP [11, 0, 67], TYOP [1, 67, 239], TYOP [1, 0, 240],
-   TYOP [11, 0, 239], TYOP [1, 239, 242], TYOP [1, 0, 243],
-   TYOP [1, 15, 15], TYOP [1, 15, 245], TYOP [1, 0, 199], TYOP [1, 61, 15],
-   TYOP [1, 61, 248], TYOP [1, 59, 15], TYOP [1, 59, 250],
-   TYOP [1, 58, 15], TYOP [1, 58, 252], TYOP [1, 24, 160],
-   TYOP [1, 19, 140], TYOP [1, 21, 163], TYOP [1, 26, 57], TYOP [1, 7, 56],
-   TYOP [1, 46, 15], TYOP [1, 46, 259], TYOP [1, 34, 15],
-   TYOP [1, 34, 261], TYOP [1, 70, 15], TYOP [1, 70, 263],
-   TYOP [1, 49, 15], TYOP [1, 49, 265], TYOP [1, 40, 15],
-   TYOP [1, 40, 267], TYOP [1, 138, 169], TYOP [1, 139, 171],
-   TYOP [1, 100, 15], TYOP [1, 100, 271], TYOP [1, 76, 15],
-   TYOP [1, 76, 273], TYOP [1, 47, 15], TYOP [1, 47, 275],
-   TYOP [1, 38, 15], TYOP [1, 38, 277], TYOP [1, 2, 15], TYOP [1, 2, 279],
-   TYOP [1, 89, 15], TYOP [1, 89, 281], TYOP [1, 122, 123],
-   TYOP [1, 129, 130], TYOP [1, 136, 15], TYOP [1, 285, 15],
-   TYOP [1, 154, 15], TYOP [1, 287, 15], TYOP [1, 137, 15],
-   TYOP [1, 289, 15], TYOP [1, 155, 15], TYOP [1, 291, 15],
-   TYOP [1, 134, 15], TYOP [1, 293, 134], TYOP [1, 0, 1], TYOP [1, 46, 46],
-   TYOP [1, 46, 296], TYOP [1, 15, 297], TYOP [1, 34, 34],
-   TYOP [1, 34, 299], TYOP [1, 15, 300], TYOP [1, 2, 2], TYOP [1, 2, 302],
-   TYOP [1, 15, 303], TYOP [1, 1, 302], TYOP [1, 45, 45],
-   TYOP [1, 26, 306], TYOP [1, 33, 33], TYOP [1, 7, 308], TYOP [1, 0, 122],
-   TYOP [1, 310, 122], TYOP [1, 121, 311], TYOP [1, 0, 312],
-   TYOP [1, 0, 129], TYOP [1, 314, 129], TYOP [1, 128, 315],
-   TYOP [1, 0, 316], TYOP [1, 281, 15], TYOP [1, 89, 318],
-   TYOP [1, 281, 281], TYOP [1, 89, 320], TYOP [1, 16, 77],
-   TYOP [1, 24, 86], TYOP [1, 19, 80], TYOP [1, 21, 83],
-   TYOP [1, 257, 257], TYOP [1, 257, 326], TYOP [1, 108, 108],
-   TYOP [1, 108, 328], TYOP [1, 258, 258], TYOP [1, 258, 330],
-   TYOP [1, 91, 91], TYOP [1, 91, 332], TYOP [10, 68], TYOP [1, 0, 334],
-   TYOP [1, 335, 335], TYOP [1, 59, 59], TYOP [1, 328, 337],
-   TYOP [1, 58, 58], TYOP [1, 332, 339], TYOP [1, 326, 337],
-   TYOP [1, 330, 339], TYOP [1, 123, 287], TYOP [1, 130, 291],
-   TYOP [11, 16, 35], TYOP [1, 345, 40], TYOP [1, 16, 41],
-   TYOP [1, 347, 346], TYOP [11, 24, 35], TYOP [1, 349, 49],
-   TYOP [1, 24, 50], TYOP [1, 351, 350], TYOP [1, 349, 40],
-   TYOP [1, 24, 41], TYOP [1, 354, 353], TYOP [11, 19, 35],
-   TYOP [1, 356, 49], TYOP [1, 19, 50], TYOP [1, 358, 357],
-   TYOP [1, 356, 40], TYOP [1, 19, 41], TYOP [1, 361, 360],
-   TYOP [11, 21, 35], TYOP [1, 363, 49], TYOP [1, 21, 50],
-   TYOP [1, 365, 364], TYOP [1, 363, 40], TYOP [1, 21, 41],
-   TYOP [1, 368, 367], TYOP [1, 48, 46], TYOP [1, 26, 52],
-   TYOP [1, 371, 370], TYOP [1, 39, 34], TYOP [1, 7, 43],
-   TYOP [1, 374, 373], TYOP [1, 47, 47], TYOP [1, 376, 47],
-   TYOP [1, 134, 377], TYOP [1, 38, 38], TYOP [1, 379, 38],
-   TYOP [1, 134, 380], TYOP [1, 2, 334], TYOP [1, 382, 334], TYOP [10, 2],
-   TYOP [1, 384, 383], TYOP [1, 45, 46], TYOP [1, 386, 46],
-   TYOP [1, 46, 387], TYOP [1, 33, 34], TYOP [1, 389, 34],
-   TYOP [1, 34, 390], TYOP [1, 346, 40], TYOP [10, 345],
-   TYOP [1, 393, 392], TYOP [1, 350, 49], TYOP [10, 349],
-   TYOP [1, 396, 395], TYOP [1, 353, 40], TYOP [1, 396, 398],
-   TYOP [1, 357, 49], TYOP [10, 356], TYOP [1, 401, 400],
-   TYOP [1, 360, 40], TYOP [1, 401, 403], TYOP [1, 364, 49],
-   TYOP [10, 363], TYOP [1, 406, 405], TYOP [1, 367, 40],
-   TYOP [1, 406, 408], TYOP [1, 370, 46], TYOP [1, 49, 410],
-   TYOP [1, 373, 34], TYOP [1, 40, 412], TYOP [1, 0, 89], TYOP [1, 0, 414],
-   TYOP [1, 247, 415], TYOP [1, 247, 416], TYOP [1, 71, 384],
-   TYOP [1, 0, 418], TYOP [1, 35, 0], TYOP [1, 45, 70], TYOP [1, 26, 334],
-   TYOP [1, 422, 421], TYOP [1, 33, 70], TYOP [1, 7, 334],
-   TYOP [1, 425, 424], TYOP [1, 0, 16], TYOP [1, 0, 24], TYOP [1, 0, 19],
-   TYOP [1, 77, 77], TYOP [1, 77, 430], TYOP [1, 86, 86],
-   TYOP [1, 86, 432], TYOP [1, 80, 80], TYOP [1, 80, 434],
-   TYOP [1, 83, 83], TYOP [1, 83, 436], TYOP [1, 138, 138],
-   TYOP [1, 100, 438], TYOP [1, 100, 100], TYOP [1, 100, 440],
-   TYOP [1, 139, 139], TYOP [1, 76, 442], TYOP [1, 76, 76],
-   TYOP [1, 76, 444], TYOP [1, 53, 46], TYOP [1, 37, 446],
-   TYOP [1, 44, 34], TYOP [1, 37, 448], TYOP [1, 35, 396],
-   TYOP [1, 36, 450], TYOP [1, 35, 401], TYOP [1, 36, 452],
-   TYOP [1, 35, 393], TYOP [1, 36, 454], TYOP [1, 35, 406],
-   TYOP [1, 36, 456], TYOP [1, 48, 49], TYOP [1, 39, 40],
-   TYOP [1, 68, 334], TYOP [1, 242, 89], TYOP [1, 242, 461],
-   TYOP [1, 415, 462], TYOP [1, 415, 463], TYOP [1, 415, 464],
-   TYOP [1, 415, 465], TYOP [1, 415, 466], TYOP [1, 415, 467],
-   TYOP [1, 16, 0], TYOP [1, 24, 0], TYOP [1, 19, 0], TYOP [1, 21, 54],
-   TYOP [1, 0, 62], TYOP [1, 62, 473]]
+   TYOP [1, 3, 4], TYOP [1, 0, 5], TYOP [4], TYOP [1, 7, 2], TYOP [2, 7],
+   TYOP [1, 9, 2], TYOP [5], TYOP [1, 11, 2], TYOP [2, 11],
+   TYOP [1, 13, 2], TYOP [8], TYOP [7, 15], TYOP [7, 16], TYOP [7, 17],
+   TYOP [7, 18], TYOP [7, 19], TYOP [7, 20], TYOP [9], TYOP [6, 22, 21],
+   TYOP [1, 23, 7], TYOP [1, 23, 24], TYOP [6, 22, 19], TYOP [1, 26, 25],
+   TYOP [6, 22, 18], TYOP [1, 28, 27], TYOP [1, 28, 29], TYOP [6, 22, 20],
+   TYOP [1, 31, 30], TYOP [1, 26, 11], TYOP [1, 28, 33], TYOP [1, 28, 34],
+   TYOP [1, 31, 35], TYOP [1, 31, 36], TYOP [1, 31, 37], TYOP [12],
+   TYOP [11, 7, 39], TYOP [10, 40], TYOP [1, 39, 41], TYOP [13],
+   TYOP [1, 43, 42], TYOP [10, 9], TYOP [1, 39, 45], TYOP [1, 43, 46],
+   TYOP [11, 11, 39], TYOP [10, 48], TYOP [1, 39, 49], TYOP [1, 43, 50],
+   TYOP [10, 13], TYOP [1, 39, 52], TYOP [1, 43, 53], TYOP [1, 0, 28],
+   TYOP [1, 0, 55], TYOP [1, 7, 22], TYOP [1, 11, 22], TYOP [14, 7],
+   TYOP [14, 11], TYOP [15, 7], TYOP [15, 11], TYOP [1, 28, 0],
+   TYOP [1, 7, 0], TYOP [11, 0, 0], TYOP [11, 0, 65], TYOP [11, 0, 66],
+   TYOP [11, 2, 67], TYOP [2, 68], TYOP [10, 69], TYOP [16],
+   TYOP [1, 71, 70], TYOP [1, 9, 72], TYOP [1, 11, 0], TYOP [1, 13, 72],
+   TYV "'a", TYOP [6, 22, 76], TYOP [1, 77, 0], TYOP [1, 7, 7],
+   TYOP [1, 23, 23], TYOP [1, 80, 79], TYOP [1, 7, 23], TYOP [1, 26, 26],
+   TYOP [1, 83, 79], TYOP [1, 7, 26], TYOP [1, 28, 28], TYOP [1, 86, 79],
+   TYOP [1, 7, 28], TYOP [1, 31, 31], TYOP [1, 89, 79], TYOP [1, 7, 31],
+   TYOP [17], TYOP [1, 7, 92], TYOP [1, 7, 93], TYOP [1, 23, 76],
+   TYOP [1, 23, 95], TYOP [1, 26, 96], TYOP [1, 28, 97], TYOP [1, 28, 98],
+   TYOP [1, 31, 99], TYOP [1, 100, 76], TYOP [1, 7, 101], TYOP [1, 11, 11],
+   TYOP [1, 89, 103], TYOP [1, 11, 31], TYOP [1, 83, 103],
+   TYOP [1, 11, 26], TYOP [1, 86, 103], TYOP [1, 11, 28], TYOP [1, 11, 92],
+   TYOP [1, 11, 110], TYOP [1, 26, 76], TYOP [1, 28, 112],
+   TYOP [1, 28, 113], TYOP [1, 31, 114], TYOP [1, 31, 115],
+   TYOP [1, 31, 116], TYOP [1, 117, 76], TYOP [1, 11, 118],
+   TYOP [1, 7, 39], TYOP [1, 43, 120], TYOP [1, 11, 39], TYOP [1, 43, 122],
+   TYOP [11, 28, 26], TYOP [11, 28, 124], TYOP [11, 31, 125],
+   TYOP [11, 31, 126], TYOP [11, 31, 127], TYOP [18, 128],
+   TYOP [1, 129, 22], TYOP [11, 23, 23], TYOP [11, 26, 131],
+   TYOP [11, 28, 132], TYOP [11, 28, 133], TYOP [11, 31, 134],
+   TYOP [18, 135], TYOP [1, 136, 22], TYOP [1, 39, 22], TYOP [1, 43, 138],
+   TYOP [11, 43, 39], TYOP [1, 140, 22], TYOP [1, 140, 141], TYOP [19],
+   TYOP [1, 11, 76], TYOP [1, 7, 76], TYOP [1, 76, 11], TYOP [1, 76, 7],
+   TYOP [1, 26, 22], TYOP [1, 28, 148], TYOP [1, 28, 149],
+   TYOP [1, 31, 150], TYOP [1, 31, 151], TYOP [1, 31, 152],
+   TYOP [1, 143, 153], TYOP [1, 23, 22], TYOP [1, 23, 155],
+   TYOP [1, 26, 156], TYOP [1, 28, 157], TYOP [1, 28, 158],
+   TYOP [1, 31, 159], TYOP [1, 143, 160], TYOP [1, 11, 129],
+   TYOP [1, 7, 136], TYOP [1, 138, 22], TYOP [1, 77, 22],
+   TYOP [1, 165, 22], TYOP [1, 155, 22], TYOP [1, 31, 22],
+   TYOP [1, 168, 22], TYOP [1, 148, 22], TYOP [1, 28, 22],
+   TYOP [1, 171, 22], TYOP [1, 58, 22], TYOP [1, 57, 22], TYOP [1, 43, 22],
+   TYOP [1, 175, 22], TYOP [1, 146, 22], TYOP [1, 177, 22],
+   TYOP [1, 147, 22], TYOP [1, 179, 22], TYOP [1, 80, 22],
+   TYOP [1, 181, 22], TYOP [1, 89, 22], TYOP [1, 183, 22],
+   TYOP [1, 117, 22], TYOP [1, 185, 22], TYOP [1, 100, 22],
+   TYOP [1, 187, 22], TYOP [1, 83, 22], TYOP [1, 189, 22],
+   TYOP [1, 86, 22], TYOP [1, 191, 22], TYOP [1, 173, 22],
+   TYOP [1, 174, 22], TYOP [1, 139, 22], TYOP [1, 195, 22],
+   TYOP [1, 3, 22], TYOP [1, 197, 22], TYOP [1, 130, 22],
+   TYOP [1, 199, 22], TYOP [1, 137, 22], TYOP [1, 201, 22],
+   TYOP [1, 13, 22], TYOP [1, 203, 22], TYOP [1, 9, 22], TYOP [1, 205, 22],
+   TYOP [1, 0, 22], TYOP [1, 207, 22], TYOP [1, 71, 22], TYOP [1, 209, 22],
+   TYOP [1, 0, 0], TYOP [1, 0, 211], TYOP [1, 23, 131], TYOP [1, 23, 213],
+   TYOP [1, 127, 128], TYOP [1, 31, 215], TYOP [1, 126, 127],
+   TYOP [1, 31, 217], TYOP [1, 125, 126], TYOP [1, 31, 219],
+   TYOP [1, 134, 135], TYOP [1, 31, 221], TYOP [1, 131, 132],
+   TYOP [1, 26, 223], TYOP [1, 26, 124], TYOP [1, 28, 225],
+   TYOP [1, 132, 133], TYOP [1, 28, 227], TYOP [1, 124, 125],
+   TYOP [1, 28, 229], TYOP [1, 133, 134], TYOP [1, 28, 231],
+   TYOP [1, 39, 48], TYOP [1, 11, 233], TYOP [1, 39, 40], TYOP [1, 7, 235],
+   TYOP [1, 39, 140], TYOP [1, 43, 237], TYOP [1, 67, 68],
+   TYOP [1, 2, 239], TYOP [1, 0, 65], TYOP [1, 0, 241], TYOP [1, 65, 66],
+   TYOP [1, 0, 243], TYOP [1, 66, 67], TYOP [1, 0, 245], TYOP [11, 0, 67],
+   TYOP [1, 67, 247], TYOP [1, 0, 248], TYOP [11, 0, 247],
+   TYOP [1, 247, 250], TYOP [1, 0, 251], TYOP [1, 22, 22],
+   TYOP [1, 22, 253], TYOP [1, 0, 207], TYOP [1, 76, 22],
+   TYOP [1, 76, 256], TYOP [1, 62, 22], TYOP [1, 62, 258],
+   TYOP [1, 61, 22], TYOP [1, 61, 260], TYOP [1, 60, 22],
+   TYOP [1, 60, 262], TYOP [1, 59, 22], TYOP [1, 59, 264],
+   TYOP [1, 39, 138], TYOP [1, 31, 168], TYOP [1, 26, 148],
+   TYOP [1, 28, 171], TYOP [1, 11, 58], TYOP [1, 7, 57], TYOP [1, 52, 22],
+   TYOP [1, 52, 272], TYOP [1, 45, 22], TYOP [1, 45, 274],
+   TYOP [1, 70, 22], TYOP [1, 70, 276], TYOP [1, 49, 22],
+   TYOP [1, 49, 278], TYOP [1, 41, 22], TYOP [1, 41, 280],
+   TYOP [1, 146, 177], TYOP [1, 147, 179], TYOP [1, 103, 22],
+   TYOP [1, 103, 284], TYOP [1, 79, 22], TYOP [1, 79, 286],
+   TYOP [1, 2, 22], TYOP [1, 2, 288], TYOP [1, 92, 22], TYOP [1, 92, 290],
+   TYOP [1, 129, 130], TYOP [1, 136, 137], TYOP [1, 144, 22],
+   TYOP [1, 294, 22], TYOP [1, 162, 22], TYOP [1, 296, 22],
+   TYOP [1, 145, 22], TYOP [1, 298, 22], TYOP [1, 163, 22],
+   TYOP [1, 300, 22], TYOP [1, 2, 2], TYOP [1, 2, 302], TYOP [1, 0, 1],
+   TYOP [1, 52, 52], TYOP [1, 52, 305], TYOP [1, 22, 306],
+   TYOP [1, 45, 45], TYOP [1, 45, 308], TYOP [1, 22, 309],
+   TYOP [1, 22, 303], TYOP [1, 1, 302], TYOP [1, 13, 13],
+   TYOP [1, 11, 313], TYOP [1, 9, 9], TYOP [1, 7, 315], TYOP [2, 28],
+   TYOP [2, 317], TYOP [1, 318, 318], TYOP [1, 317, 319], TYOP [2, 2],
+   TYOP [1, 321, 321], TYOP [1, 2, 322], TYOP [1, 0, 129],
+   TYOP [1, 324, 129], TYOP [1, 128, 325], TYOP [1, 0, 326],
+   TYOP [1, 0, 136], TYOP [1, 328, 136], TYOP [1, 135, 329],
+   TYOP [1, 0, 330], TYOP [1, 290, 22], TYOP [1, 92, 332],
+   TYOP [1, 290, 290], TYOP [1, 92, 334], TYOP [1, 23, 80],
+   TYOP [1, 31, 89], TYOP [1, 26, 83], TYOP [1, 28, 86],
+   TYOP [1, 270, 270], TYOP [1, 270, 340], TYOP [1, 111, 111],
+   TYOP [1, 111, 342], TYOP [1, 12, 12], TYOP [1, 12, 344],
+   TYOP [1, 271, 271], TYOP [1, 271, 346], TYOP [1, 94, 94],
+   TYOP [1, 94, 348], TYOP [1, 8, 8], TYOP [1, 8, 350], TYOP [10, 68],
+   TYOP [1, 0, 352], TYOP [1, 353, 353], TYOP [1, 13, 321],
+   TYOP [1, 12, 355], TYOP [1, 9, 321], TYOP [1, 8, 357], TYOP [1, 62, 62],
+   TYOP [1, 342, 359], TYOP [1, 61, 61], TYOP [1, 348, 361],
+   TYOP [1, 340, 359], TYOP [1, 346, 361], TYOP [1, 60, 60],
+   TYOP [1, 344, 365], TYOP [1, 59, 59], TYOP [1, 350, 367],
+   TYOP [1, 130, 296], TYOP [1, 137, 300], TYOP [11, 23, 39],
+   TYOP [1, 371, 41], TYOP [1, 23, 42], TYOP [1, 373, 372],
+   TYOP [11, 31, 39], TYOP [1, 375, 49], TYOP [1, 31, 50],
+   TYOP [1, 377, 376], TYOP [1, 375, 41], TYOP [1, 31, 42],
+   TYOP [1, 380, 379], TYOP [11, 26, 39], TYOP [1, 382, 49],
+   TYOP [1, 26, 50], TYOP [1, 384, 383], TYOP [1, 382, 41],
+   TYOP [1, 26, 42], TYOP [1, 387, 386], TYOP [11, 28, 39],
+   TYOP [1, 389, 49], TYOP [1, 28, 50], TYOP [1, 391, 390],
+   TYOP [1, 389, 41], TYOP [1, 28, 42], TYOP [1, 394, 393],
+   TYOP [1, 48, 52], TYOP [1, 11, 53], TYOP [1, 397, 396],
+   TYOP [1, 40, 45], TYOP [1, 7, 46], TYOP [1, 400, 399],
+   TYOP [1, 142, 22], TYOP [1, 31, 317], TYOP [1, 43, 403],
+   TYOP [1, 26, 317], TYOP [1, 43, 405], TYOP [1, 23, 317],
+   TYOP [1, 43, 407], TYOP [1, 28, 317], TYOP [1, 2, 352],
+   TYOP [1, 410, 352], TYOP [10, 2], TYOP [1, 412, 411], TYOP [1, 13, 52],
+   TYOP [1, 414, 52], TYOP [1, 52, 415], TYOP [1, 9, 45],
+   TYOP [1, 417, 45], TYOP [1, 45, 418], TYOP [1, 372, 41], TYOP [10, 371],
+   TYOP [1, 421, 420], TYOP [1, 376, 49], TYOP [10, 375],
+   TYOP [1, 424, 423], TYOP [1, 379, 41], TYOP [1, 424, 426],
+   TYOP [1, 383, 49], TYOP [10, 382], TYOP [1, 429, 428],
+   TYOP [1, 386, 41], TYOP [1, 429, 431], TYOP [1, 390, 49],
+   TYOP [10, 389], TYOP [1, 434, 433], TYOP [1, 393, 41],
+   TYOP [1, 434, 436], TYOP [1, 396, 52], TYOP [1, 49, 438],
+   TYOP [1, 399, 45], TYOP [1, 41, 440], TYOP [1, 318, 39],
+   TYOP [1, 0, 92], TYOP [1, 0, 443], TYOP [1, 255, 444],
+   TYOP [1, 255, 445], TYOP [1, 71, 412], TYOP [1, 0, 447],
+   TYOP [1, 39, 0], TYOP [1, 13, 70], TYOP [1, 11, 352],
+   TYOP [1, 451, 450], TYOP [1, 9, 70], TYOP [1, 7, 352],
+   TYOP [1, 454, 453], TYOP [1, 0, 23], TYOP [1, 0, 31], TYOP [1, 0, 26],
+   TYOP [1, 80, 80], TYOP [1, 80, 459], TYOP [1, 89, 89],
+   TYOP [1, 89, 461], TYOP [1, 83, 83], TYOP [1, 83, 463],
+   TYOP [1, 86, 86], TYOP [1, 86, 465], TYOP [1, 146, 146],
+   TYOP [1, 103, 467], TYOP [1, 103, 103], TYOP [1, 103, 469],
+   TYOP [1, 147, 147], TYOP [1, 79, 471], TYOP [1, 79, 79],
+   TYOP [1, 79, 473], TYOP [1, 23, 2], TYOP [1, 23, 0], TYOP [1, 476, 475],
+   TYOP [1, 3, 477], TYOP [1, 31, 2], TYOP [1, 31, 0], TYOP [1, 480, 479],
+   TYOP [1, 3, 481], TYOP [1, 26, 2], TYOP [1, 26, 0], TYOP [1, 484, 483],
+   TYOP [1, 3, 485], TYOP [1, 28, 2], TYOP [1, 63, 487], TYOP [1, 3, 488],
+   TYOP [1, 39, 424], TYOP [1, 43, 490], TYOP [1, 39, 429],
+   TYOP [1, 43, 492], TYOP [1, 39, 421], TYOP [1, 43, 494],
+   TYOP [1, 39, 434], TYOP [1, 43, 496], TYOP [1, 48, 49],
+   TYOP [1, 40, 41], TYOP [1, 68, 352], TYOP [1, 250, 92],
+   TYOP [1, 250, 501], TYOP [1, 444, 502], TYOP [1, 444, 503],
+   TYOP [1, 444, 504], TYOP [1, 444, 505], TYOP [1, 444, 506],
+   TYOP [1, 444, 507], TYOP [1, 321, 2], TYOP [1, 28, 55], TYOP [1, 0, 77],
+   TYOP [1, 77, 511]]
   end
   val _ = Theory.incorporate_consts "elf_symbol_table" tyvector
      [("stv_protected", 0), ("stv_internal", 0), ("stv_hidden", 0),
@@ -301,798 +333,846 @@ struct
       ("stt_loos", 0), ("stt_hiproc", 0), ("stt_hios", 0), ("stt_func", 0),
       ("stt_file", 0), ("stt_common", 0),
       ("string_of_symbol_visibility", 3), ("string_of_symbol_type", 6),
-      ("stn_undef", 0), ("stb_weak", 0), ("stb_loproc", 0),
-      ("stb_loos", 0), ("stb_local", 0), ("stb_hiproc", 0),
-      ("stb_hios", 0), ("stb_global", 0),
-      ("recordtype.elf64_symbol_table_entry", 25),
-      ("recordtype.elf32_symbol_table_entry", 32),
-      ("read_elf64_symbol_table_tupled", 38),
-      ("read_elf64_symbol_table_entry", 42),
-      ("read_elf64_symbol_table", 44),
-      ("read_elf32_symbol_table_tupled", 47),
+      ("string_of_symbol_binding", 6),
+      ("string_of_elf64_symbol_table_entry", 8),
+      ("string_of_elf64_symbol_table", 10),
+      ("string_of_elf32_symbol_table_entry", 12),
+      ("string_of_elf32_symbol_table", 14), ("stn_undef", 0),
+      ("stb_weak", 0), ("stb_loproc", 0), ("stb_loos", 0),
+      ("stb_local", 0), ("stb_hiproc", 0), ("stb_hios", 0),
+      ("stb_global", 0), ("recordtype.elf64_symbol_table_entry", 32),
+      ("recordtype.elf32_symbol_table_entry", 38),
+      ("read_elf64_symbol_table_entry", 44),
+      ("read_elf64_symbol_table", 47),
       ("read_elf32_symbol_table_entry", 51),
-      ("read_elf32_symbol_table", 53), ("make_symbol_other", 54),
-      ("make_symbol_info", 55), ("is_elf64_shndx_too_large", 56),
-      ("is_elf64_null_entry", 56), ("is_elf32_shndx_too_large", 57),
-      ("is_elf32_null_entry", 57),
-      ("instance_Basic_classes_Ord_Elf_symbol_table_elf64_symbol_table_entry_dict", 58),
-      ("instance_Basic_classes_Ord_Elf_symbol_table_elf32_symbol_table_entry_dict", 59),
-      ("get_symbol_visibility", 60), ("get_symbol_type", 60),
-      ("get_symbol_binding", 63), ("get_elf64_symbol_type", 64),
+      ("read_elf32_symbol_table", 54), ("make_symbol_other", 55),
+      ("make_symbol_info", 56), ("is_elf64_shndx_too_large", 57),
+      ("is_elf64_null_entry", 57), ("is_elf32_shndx_too_large", 58),
+      ("is_elf32_null_entry", 58),
+      ("instance_Show_Show_Elf_symbol_table_elf64_symbol_table_entry_dict", 59),
+      ("instance_Show_Show_Elf_symbol_table_elf32_symbol_table_entry_dict", 60),
+      ("instance_Basic_classes_Ord_Elf_symbol_table_elf64_symbol_table_entry_dict", 61),
+      ("instance_Basic_classes_Ord_Elf_symbol_table_elf32_symbol_table_entry_dict", 62),
+      ("get_symbol_visibility", 63), ("get_elf64_symbol_type", 64),
       ("get_elf64_symbol_image_address", 73),
-      ("get_elf32_symbol_type", 74),
+      ("get_elf64_symbol_binding", 64), ("get_elf32_symbol_type", 74),
       ("get_elf32_symbol_image_address", 75),
+      ("get_elf32_symbol_binding", 74), ("extract_symbol_type", 63),
+      ("extract_symbol_binding", 78),
       ("elf64_symbol_table_entry_size", 64),
-      ("elf64_symbol_table_entry_elf64_st_value_fupd", 78),
-      ("elf64_symbol_table_entry_elf64_st_value", 79),
-      ("elf64_symbol_table_entry_elf64_st_size_fupd", 78),
-      ("elf64_symbol_table_entry_elf64_st_size", 79),
-      ("elf64_symbol_table_entry_elf64_st_shndx_fupd", 81),
-      ("elf64_symbol_table_entry_elf64_st_shndx", 82),
-      ("elf64_symbol_table_entry_elf64_st_other_fupd", 84),
-      ("elf64_symbol_table_entry_elf64_st_other", 85),
-      ("elf64_symbol_table_entry_elf64_st_name_fupd", 87),
-      ("elf64_symbol_table_entry_elf64_st_name", 88),
-      ("elf64_symbol_table_entry_elf64_st_info_fupd", 84),
-      ("elf64_symbol_table_entry_elf64_st_info", 85),
-      ("elf64_symbol_table_entry_compare", 91),
-      ("elf64_symbol_table_entry_CASE", 99),
+      ("elf64_symbol_table_entry_elf64_st_value_fupd", 81),
+      ("elf64_symbol_table_entry_elf64_st_value", 82),
+      ("elf64_symbol_table_entry_elf64_st_size_fupd", 81),
+      ("elf64_symbol_table_entry_elf64_st_size", 82),
+      ("elf64_symbol_table_entry_elf64_st_shndx_fupd", 84),
+      ("elf64_symbol_table_entry_elf64_st_shndx", 85),
+      ("elf64_symbol_table_entry_elf64_st_other_fupd", 87),
+      ("elf64_symbol_table_entry_elf64_st_other", 88),
+      ("elf64_symbol_table_entry_elf64_st_name_fupd", 90),
+      ("elf64_symbol_table_entry_elf64_st_name", 91),
+      ("elf64_symbol_table_entry_elf64_st_info_fupd", 87),
+      ("elf64_symbol_table_entry_elf64_st_info", 88),
+      ("elf64_symbol_table_entry_compare", 94),
+      ("elf64_symbol_table_entry_CASE", 102),
       ("elf64_null_symbol_table_entry", 7),
       ("elf32_symbol_table_entry_size", 74),
-      ("elf32_symbol_table_entry_elf32_st_value_fupd", 101),
-      ("elf32_symbol_table_entry_elf32_st_value", 102),
-      ("elf32_symbol_table_entry_elf32_st_size_fupd", 101),
-      ("elf32_symbol_table_entry_elf32_st_size", 102),
-      ("elf32_symbol_table_entry_elf32_st_shndx_fupd", 103),
-      ("elf32_symbol_table_entry_elf32_st_shndx", 104),
-      ("elf32_symbol_table_entry_elf32_st_other_fupd", 105),
-      ("elf32_symbol_table_entry_elf32_st_other", 106),
-      ("elf32_symbol_table_entry_elf32_st_name_fupd", 101),
-      ("elf32_symbol_table_entry_elf32_st_name", 102),
-      ("elf32_symbol_table_entry_elf32_st_info_fupd", 105),
-      ("elf32_symbol_table_entry_elf32_st_info", 106),
-      ("elf32_symbol_table_entry_compare", 108),
-      ("elf32_symbol_table_entry_CASE", 116)];
+      ("elf32_symbol_table_entry_elf32_st_value_fupd", 104),
+      ("elf32_symbol_table_entry_elf32_st_value", 105),
+      ("elf32_symbol_table_entry_elf32_st_size_fupd", 104),
+      ("elf32_symbol_table_entry_elf32_st_size", 105),
+      ("elf32_symbol_table_entry_elf32_st_shndx_fupd", 106),
+      ("elf32_symbol_table_entry_elf32_st_shndx", 107),
+      ("elf32_symbol_table_entry_elf32_st_other_fupd", 108),
+      ("elf32_symbol_table_entry_elf32_st_other", 109),
+      ("elf32_symbol_table_entry_elf32_st_name_fupd", 104),
+      ("elf32_symbol_table_entry_elf32_st_name", 105),
+      ("elf32_symbol_table_entry_elf32_st_info_fupd", 108),
+      ("elf32_symbol_table_entry_elf32_st_info", 109),
+      ("elf32_symbol_table_entry_compare", 111),
+      ("elf32_symbol_table_entry_CASE", 119),
+      ("bytes_of_elf64_symbol_table_entry", 121),
+      ("bytes_of_elf32_symbol_table_entry", 123)];
 
   local open SharingTables
   in
   val tmvector = build_term_vector idvector tyvector
-  [TMV("'elf32_symbol_table_entry'", 123),
-   TMV("'elf64_symbol_table_entry'", 130), TMV("M", 26), TMV("M", 7),
-   TMV("M'", 26), TMV("M'", 7), TMV("P", 57), TMV("P", 56), TMV("P", 132),
-   TMV("R", 134), TMV("a", 37), TMV("a0", 24), TMV("a0'", 24),
-   TMV("a0'", 122), TMV("a0'", 129), TMV("a1", 24), TMV("a1", 21),
-   TMV("a1'", 24), TMV("a1'", 21), TMV("a2", 24), TMV("a2", 21),
-   TMV("a2'", 24), TMV("a2'", 21), TMV("a3", 19), TMV("a3", 21),
-   TMV("a3'", 19), TMV("a3'", 21), TMV("a4", 16), TMV("a4", 21),
-   TMV("a4'", 16), TMV("a4'", 21), TMV("a5", 16), TMV("a5", 19),
-   TMV("a5'", 16), TMV("a5'", 19), TMV("addr", 0), TMV("binding", 0),
-   TMV("bnd", 0), TMV("bs0", 35), TMV("bs0'", 35), TMV("c", 16),
-   TMV("c", 24), TMV("c", 19), TMV("c0", 16), TMV("c0", 24), TMV("c0", 21),
-   TMV("c01", 16), TMV("c01", 21), TMV("c02", 16), TMV("c02", 21),
-   TMV("c1", 16), TMV("c1", 24), TMV("c1", 19), TMV("c1", 21),
-   TMV("c11", 19), TMV("c11", 21), TMV("c12", 19), TMV("c12", 21),
-   TMV("c2", 16), TMV("c2", 24), TMV("c2", 19), TMV("c2", 21),
-   TMV("c21", 24), TMV("c21", 21), TMV("c22", 24), TMV("c22", 21),
-   TMV("c3", 16), TMV("c3", 24), TMV("c3", 21), TMV("c31", 24),
-   TMV("c31", 21), TMV("c32", 24), TMV("c32", 21), TMV("c4", 16),
-   TMV("c4", 24), TMV("c4", 19), TMV("c41", 24), TMV("c42", 24),
-   TMV("e", 26), TMV("e", 7), TMV("e1", 26), TMV("e1", 7), TMV("e2", 26),
-   TMV("e2", 7), TMV("ee", 26), TMV("ee", 7), TMV("elf32_st_info", 21),
-   TMV("elf32_st_name", 24), TMV("elf32_st_other", 21),
-   TMV("elf32_st_shndx", 19), TMV("elf32_st_size", 24),
-   TMV("elf32_st_value", 24), TMV("elf32_symbol_table_entry", 135),
-   TMV("elf64_st_info", 21), TMV("elf64_st_name", 24),
-   TMV("elf64_st_other", 21), TMV("elf64_st_shndx", 19),
-   TMV("elf64_st_size", 16), TMV("elf64_st_value", 16),
-   TMV("elf64_symbol_table_entry", 135), TMV("endian", 36), TMV("ent", 26),
-   TMV("ent", 7), TMV("ent1", 26), TMV("ent1", 7), TMV("ent2", 26),
-   TMV("ent2", 7), TMV("entry", 62), TMV("entry", 21), TMV("entry", 26),
-   TMV("entry", 7), TMV("f", 77), TMV("f", 86), TMV("f", 114),
-   TMV("f", 97), TMV("f", 80), TMV("f", 83), TMV("f'", 114), TMV("f'", 97),
-   TMV("f1", 26), TMV("f1", 7), TMV("f2", 26), TMV("f2", 7),
-   TMV("fn", 136), TMV("fn", 137), TMV("g", 77), TMV("g", 86),
-   TMV("g", 80), TMV("g", 83), TMV("h", 138), TMV("h", 139),
-   TMV("head", 26), TMV("head", 7), TMV("info", 21), TMV("m", 0),
+  [TMV("'elf32_symbol_table_entry'", 130),
+   TMV("'elf64_symbol_table_entry'", 137), TMV("M", 11), TMV("M", 7),
+   TMV("M'", 11), TMV("M'", 7), TMV("P", 58), TMV("P", 57), TMV("P", 139),
+   TMV("R", 142), TMV("a0", 31), TMV("a0'", 31), TMV("a0'", 129),
+   TMV("a0'", 136), TMV("a1", 31), TMV("a1", 28), TMV("a1'", 31),
+   TMV("a1'", 28), TMV("a2", 31), TMV("a2", 28), TMV("a2'", 31),
+   TMV("a2'", 28), TMV("a3", 26), TMV("a3", 28), TMV("a3'", 26),
+   TMV("a3'", 28), TMV("a4", 23), TMV("a4", 28), TMV("a4'", 23),
+   TMV("a4'", 28), TMV("a5", 23), TMV("a5", 26), TMV("a5'", 23),
+   TMV("a5'", 26), TMV("addr", 0), TMV("binding", 0), TMV("bnd", 0),
+   TMV("bs0", 39), TMV("bs0'", 39), TMV("c", 23), TMV("c", 31),
+   TMV("c", 26), TMV("c0", 23), TMV("c0", 31), TMV("c0", 28),
+   TMV("c01", 23), TMV("c01", 28), TMV("c02", 23), TMV("c02", 28),
+   TMV("c1", 23), TMV("c1", 31), TMV("c1", 26), TMV("c1", 28),
+   TMV("c11", 26), TMV("c11", 28), TMV("c12", 26), TMV("c12", 28),
+   TMV("c2", 23), TMV("c2", 31), TMV("c2", 26), TMV("c2", 28),
+   TMV("c21", 31), TMV("c21", 28), TMV("c22", 31), TMV("c22", 28),
+   TMV("c3", 23), TMV("c3", 31), TMV("c3", 28), TMV("c31", 31),
+   TMV("c31", 28), TMV("c32", 31), TMV("c32", 28), TMV("c4", 23),
+   TMV("c4", 31), TMV("c4", 26), TMV("c41", 31), TMV("c42", 31),
+   TMV("e", 11), TMV("e", 7), TMV("e1", 11), TMV("e1", 7), TMV("e2", 11),
+   TMV("e2", 7), TMV("ee", 11), TMV("ee", 7), TMV("elf32_st_info", 28),
+   TMV("elf32_st_name", 31), TMV("elf32_st_other", 28),
+   TMV("elf32_st_shndx", 26), TMV("elf32_st_size", 31),
+   TMV("elf32_st_value", 31), TMV("elf32_symbol_table_entry", 143),
+   TMV("elf64_st_info", 28), TMV("elf64_st_name", 31),
+   TMV("elf64_st_other", 28), TMV("elf64_st_shndx", 26),
+   TMV("elf64_st_size", 23), TMV("elf64_st_value", 23),
+   TMV("elf64_symbol_table_entry", 143), TMV("endian", 43), TMV("ent", 11),
+   TMV("ent", 7), TMV("ent1", 11), TMV("ent1", 7), TMV("ent2", 11),
+   TMV("ent2", 7), TMV("entry", 77), TMV("entry", 28), TMV("entry", 11),
+   TMV("entry", 7), TMV("f", 80), TMV("f", 89), TMV("f", 117),
+   TMV("f", 100), TMV("f", 83), TMV("f", 86), TMV("f'", 117),
+   TMV("f'", 100), TMV("f1", 11), TMV("f1", 7), TMV("f2", 11),
+   TMV("f2", 7), TMV("fn", 144), TMV("fn", 145), TMV("g", 80),
+   TMV("g", 89), TMV("g", 83), TMV("g", 86), TMV("h", 146), TMV("h", 147),
+   TMV("head", 11), TMV("head", 7), TMV("info", 28), TMV("m", 0),
    TMV("n", 0), TMV("name", 0), TMV("os", 3), TMV("proc", 3),
-   TMV("read_elf32_symbol_table_tupled", 47),
-   TMV("read_elf64_symbol_table_tupled", 38), TMV("record", 146),
-   TMV("record", 153), TMV("rep", 154), TMV("rep", 155), TMV("size1", 0),
-   TMV("st_info", 21), TMV("st_name", 24), TMV("st_other", 21),
-   TMV("st_shndx", 19), TMV("st_size", 16), TMV("st_size", 24),
-   TMV("st_value", 16), TMV("st_value", 24), TMV("str", 2),
-   TMV("strtab", 71), TMV("syment", 26), TMV("syment", 7),
-   TMV("symtab", 45), TMV("symtab", 33), TMV("symtype", 0),
-   TMV("tail", 45), TMV("tail", 33), TMV("typ", 0), TMV("v", 36),
-   TMV("v1", 35), TMV("visibility", 0), TMV("x", 36), TMV("x1", 35),
-   TMC(19, 156), TMC(19, 158), TMC(19, 159), TMC(19, 161), TMC(19, 162),
-   TMC(19, 164), TMC(19, 165), TMC(19, 166), TMC(19, 168), TMC(19, 170),
-   TMC(19, 172), TMC(19, 174), TMC(19, 176), TMC(19, 178), TMC(19, 180),
-   TMC(19, 182), TMC(19, 184), TMC(19, 185), TMC(19, 186), TMC(19, 188),
-   TMC(19, 190), TMC(19, 192), TMC(19, 194), TMC(19, 196), TMC(19, 198),
-   TMC(19, 200), TMC(19, 191), TMC(19, 193), TMC(19, 202), TMC(20, 204),
-   TMC(21, 206), TMC(21, 208), TMC(21, 210), TMC(21, 212), TMC(21, 214),
-   TMC(21, 216), TMC(21, 218), TMC(21, 220), TMC(21, 222), TMC(21, 224),
-   TMC(21, 226), TMC(21, 228), TMC(21, 230), TMC(21, 232), TMC(21, 234),
-   TMC(21, 236), TMC(21, 238), TMC(21, 241), TMC(21, 244), TMC(22, 246),
-   TMC(23, 0), TMC(24, 247), TMC(25, 247), TMC(26, 249), TMC(26, 251),
-   TMC(26, 253), TMC(26, 246), TMC(26, 148), TMC(26, 254), TMC(26, 255),
-   TMC(26, 256), TMC(26, 257), TMC(26, 258), TMC(26, 260), TMC(26, 262),
-   TMC(26, 264), TMC(26, 266), TMC(26, 268), TMC(26, 269), TMC(26, 270),
-   TMC(26, 272), TMC(26, 274), TMC(26, 276), TMC(26, 278), TMC(26, 280),
-   TMC(26, 247), TMC(26, 282), TMC(26, 283), TMC(26, 284), TMC(27, 246),
-   TMC(28, 247), TMC(29, 159), TMC(29, 161), TMC(29, 162), TMC(29, 164),
-   TMC(29, 165), TMC(29, 166), TMC(29, 286), TMC(29, 288), TMC(29, 290),
-   TMC(29, 292), TMC(30, 294), TMC(31, 59), TMC(31, 58), TMC(31, 26),
-   TMC(31, 7), TMC(32, 203), TMC(33, 203), TMC(34, 122), TMC(34, 129),
-   TMC(35, 295), TMC(36, 298), TMC(36, 301), TMC(36, 304), TMC(37, 305),
-   TMC(37, 307), TMC(37, 309), TMC(38, 313), TMC(38, 317), TMC(39, 245),
-   TMC(40, 281), TMC(41, 89), TMC(42, 89), TMC(43, 296), TMC(43, 299),
-   TMC(44, 319), TMC(45, 321), TMC(46, 322), TMC(46, 323), TMC(46, 324),
-   TMC(46, 325), TMC(46, 327), TMC(46, 329), TMC(46, 331), TMC(46, 333),
-   TMC(47, 336), TMC(48, 89), TMC(49, 2), TMC(49, 45), TMC(49, 33),
-   TMC(50, 203), TMC(51, 338), TMC(51, 340), TMC(52, 341), TMC(52, 342),
-   TMC(53, 341), TMC(53, 342), TMC(54, 341), TMC(54, 342), TMC(55, 341),
-   TMC(55, 342), TMC(56, 343), TMC(56, 344), TMC(57, 348), TMC(57, 352),
-   TMC(57, 355), TMC(57, 359), TMC(57, 362), TMC(57, 366), TMC(57, 369),
-   TMC(57, 372), TMC(57, 375), TMC(58, 293), TMC(59, 378), TMC(59, 381),
-   TMC(60, 0), TMC(61, 116), TMC(62, 108), TMC(63, 106), TMC(64, 105),
-   TMC(65, 102), TMC(66, 101), TMC(67, 106), TMC(68, 105), TMC(69, 104),
-   TMC(70, 103), TMC(71, 102), TMC(72, 101), TMC(73, 102), TMC(74, 101),
-   TMC(75, 74), TMC(76, 7), TMC(77, 99), TMC(78, 91), TMC(79, 85),
-   TMC(80, 84), TMC(81, 88), TMC(82, 87), TMC(83, 85), TMC(84, 84),
-   TMC(85, 82), TMC(86, 81), TMC(87, 79), TMC(88, 78), TMC(89, 79),
-   TMC(90, 78), TMC(91, 64), TMC(92, 385), TMC(92, 388), TMC(92, 391),
-   TMC(92, 394), TMC(92, 397), TMC(92, 399), TMC(92, 402), TMC(92, 404),
-   TMC(92, 407), TMC(92, 409), TMC(92, 411), TMC(92, 413), TMC(93, 417),
-   TMC(94, 75), TMC(95, 74), TMC(96, 73), TMC(97, 64), TMC(98, 419),
-   TMC(99, 63), TMC(99, 60), TMC(100, 60), TMC(101, 60), TMC(102, 59),
-   TMC(103, 58), TMC(104, 57), TMC(105, 57), TMC(106, 56), TMC(107, 56),
-   TMC(108, 420), TMC(109, 55), TMC(110, 54), TMC(111, 423), TMC(111, 426),
-   TMC(112, 427), TMC(112, 428), TMC(112, 429), TMC(112, 54),
-   TMC(113, 431), TMC(113, 433), TMC(113, 435), TMC(113, 437),
-   TMC(113, 439), TMC(113, 441), TMC(113, 443), TMC(113, 445),
-   TMC(114, 447), TMC(114, 449), TMC(115, 451), TMC(116, 453),
-   TMC(117, 53), TMC(118, 51), TMC(119, 47), TMC(120, 451), TMC(121, 455),
-   TMC(122, 453), TMC(123, 44), TMC(124, 42), TMC(125, 38), TMC(126, 451),
-   TMC(127, 455), TMC(128, 457), TMC(129, 32), TMC(130, 25), TMC(131, 386),
-   TMC(131, 389), TMC(131, 458), TMC(131, 459), TMC(131, 460),
-   TMC(132, 468), TMC(133, 0), TMC(134, 0), TMC(135, 0), TMC(136, 0),
-   TMC(137, 0), TMC(138, 0), TMC(139, 0), TMC(140, 0), TMC(141, 0),
-   TMC(142, 6), TMC(143, 3), TMC(144, 0), TMC(145, 0), TMC(146, 0),
-   TMC(147, 0), TMC(148, 0), TMC(149, 0), TMC(150, 0), TMC(151, 0),
-   TMC(152, 0), TMC(153, 0), TMC(154, 0), TMC(155, 0), TMC(156, 0),
-   TMC(157, 0), TMC(158, 0), TMC(159, 63), TMC(159, 469), TMC(159, 470),
-   TMC(159, 471), TMC(159, 60), TMC(160, 325), TMC(161, 325),
-   TMC(162, 472), TMC(163, 474), TMC(164, 245)]
+   TMV("record", 154), TMV("record", 161), TMV("rep", 162),
+   TMV("rep", 163), TMV("size1", 0), TMV("st_info", 28),
+   TMV("st_name", 31), TMV("st_other", 28), TMV("st_shndx", 26),
+   TMV("st_size", 23), TMV("st_size", 31), TMV("st_value", 23),
+   TMV("st_value", 31), TMV("str", 2), TMV("strtab", 71),
+   TMV("syment", 11), TMV("syment", 7), TMV("symtab", 13),
+   TMV("symtab", 9), TMV("symtype", 0), TMV("tail", 13), TMV("tail", 9),
+   TMV("typ", 0), TMV("v", 43), TMV("v1", 39), TMV("visibility", 0),
+   TMC(20, 164), TMC(20, 166), TMC(20, 167), TMC(20, 169), TMC(20, 170),
+   TMC(20, 172), TMC(20, 173), TMC(20, 174), TMC(20, 176), TMC(20, 178),
+   TMC(20, 180), TMC(20, 182), TMC(20, 184), TMC(20, 186), TMC(20, 188),
+   TMC(20, 190), TMC(20, 192), TMC(20, 193), TMC(20, 194), TMC(20, 196),
+   TMC(20, 198), TMC(20, 200), TMC(20, 202), TMC(20, 204), TMC(20, 206),
+   TMC(20, 208), TMC(20, 199), TMC(20, 201), TMC(20, 210), TMC(21, 212),
+   TMC(22, 214), TMC(22, 216), TMC(22, 218), TMC(22, 220), TMC(22, 222),
+   TMC(22, 224), TMC(22, 226), TMC(22, 228), TMC(22, 230), TMC(22, 232),
+   TMC(22, 234), TMC(22, 236), TMC(22, 238), TMC(22, 240), TMC(22, 242),
+   TMC(22, 244), TMC(22, 246), TMC(22, 249), TMC(22, 252), TMC(23, 254),
+   TMC(24, 0), TMC(25, 255), TMC(26, 255), TMC(27, 257), TMC(27, 259),
+   TMC(27, 261), TMC(27, 263), TMC(27, 265), TMC(27, 254), TMC(27, 266),
+   TMC(27, 156), TMC(27, 267), TMC(27, 268), TMC(27, 269), TMC(27, 270),
+   TMC(27, 271), TMC(27, 273), TMC(27, 275), TMC(27, 277), TMC(27, 279),
+   TMC(27, 281), TMC(27, 282), TMC(27, 283), TMC(27, 285), TMC(27, 287),
+   TMC(27, 289), TMC(27, 255), TMC(27, 291), TMC(27, 292), TMC(27, 293),
+   TMC(28, 254), TMC(29, 255), TMC(30, 167), TMC(30, 169), TMC(30, 170),
+   TMC(30, 172), TMC(30, 173), TMC(30, 174), TMC(30, 295), TMC(30, 297),
+   TMC(30, 299), TMC(30, 301), TMC(31, 303), TMC(32, 62), TMC(32, 61),
+   TMC(32, 60), TMC(32, 59), TMC(32, 11), TMC(32, 7), TMC(33, 211),
+   TMC(34, 211), TMC(35, 129), TMC(35, 136), TMC(36, 304), TMC(37, 307),
+   TMC(37, 310), TMC(37, 311), TMC(38, 312), TMC(38, 314), TMC(38, 316),
+   TMC(38, 320), TMC(38, 323), TMC(39, 327), TMC(39, 331), TMC(40, 253),
+   TMC(41, 290), TMC(42, 92), TMC(43, 92), TMC(44, 333), TMC(45, 335),
+   TMC(46, 336), TMC(46, 337), TMC(46, 338), TMC(46, 339), TMC(46, 341),
+   TMC(46, 343), TMC(46, 345), TMC(46, 347), TMC(46, 349), TMC(46, 351),
+   TMC(47, 354), TMC(48, 92), TMC(49, 356), TMC(49, 358), TMC(50, 2),
+   TMC(50, 13), TMC(50, 9), TMC(50, 318), TMC(50, 321), TMC(51, 211),
+   TMC(52, 360), TMC(52, 362), TMC(53, 363), TMC(53, 364), TMC(54, 363),
+   TMC(54, 364), TMC(55, 363), TMC(55, 364), TMC(56, 363), TMC(56, 364),
+   TMC(57, 366), TMC(57, 368), TMC(58, 369), TMC(58, 370), TMC(59, 374),
+   TMC(59, 378), TMC(59, 381), TMC(59, 385), TMC(59, 388), TMC(59, 392),
+   TMC(59, 395), TMC(59, 398), TMC(59, 401), TMC(60, 402), TMC(61, 0),
+   TMC(62, 404), TMC(63, 406), TMC(64, 123), TMC(65, 404), TMC(66, 408),
+   TMC(67, 406), TMC(68, 121), TMC(69, 404), TMC(70, 408), TMC(71, 409),
+   TMC(72, 119), TMC(73, 111), TMC(74, 109), TMC(75, 108), TMC(76, 105),
+   TMC(77, 104), TMC(78, 109), TMC(79, 108), TMC(80, 107), TMC(81, 106),
+   TMC(82, 105), TMC(83, 104), TMC(84, 105), TMC(85, 104), TMC(86, 74),
+   TMC(87, 7), TMC(88, 102), TMC(89, 94), TMC(90, 88), TMC(91, 87),
+   TMC(92, 91), TMC(93, 90), TMC(94, 88), TMC(95, 87), TMC(96, 85),
+   TMC(97, 84), TMC(98, 82), TMC(99, 81), TMC(100, 82), TMC(101, 81),
+   TMC(102, 64), TMC(103, 413), TMC(103, 416), TMC(103, 419),
+   TMC(103, 422), TMC(103, 425), TMC(103, 427), TMC(103, 430),
+   TMC(103, 432), TMC(103, 435), TMC(103, 437), TMC(103, 439),
+   TMC(103, 441), TMC(104, 78), TMC(104, 63), TMC(105, 63), TMC(106, 442),
+   TMC(107, 446), TMC(108, 74), TMC(109, 75), TMC(110, 74), TMC(111, 64),
+   TMC(112, 73), TMC(113, 64), TMC(114, 448), TMC(115, 63), TMC(116, 62),
+   TMC(117, 61), TMC(118, 60), TMC(119, 59), TMC(120, 58), TMC(121, 58),
+   TMC(122, 57), TMC(123, 57), TMC(124, 449), TMC(125, 56), TMC(126, 55),
+   TMC(127, 452), TMC(127, 455), TMC(128, 456), TMC(128, 457),
+   TMC(128, 458), TMC(128, 55), TMC(129, 3), TMC(130, 460), TMC(130, 462),
+   TMC(130, 464), TMC(130, 466), TMC(130, 468), TMC(130, 470),
+   TMC(130, 472), TMC(130, 474), TMC(130, 478), TMC(130, 482),
+   TMC(130, 486), TMC(130, 489), TMC(131, 491), TMC(132, 493),
+   TMC(133, 54), TMC(134, 51), TMC(135, 491), TMC(136, 495), TMC(137, 493),
+   TMC(138, 47), TMC(139, 44), TMC(140, 491), TMC(141, 495), TMC(142, 497),
+   TMC(143, 38), TMC(144, 32), TMC(145, 414), TMC(145, 417), TMC(145, 498),
+   TMC(145, 499), TMC(145, 500), TMC(146, 508), TMC(147, 0), TMC(148, 0),
+   TMC(149, 0), TMC(150, 0), TMC(151, 0), TMC(152, 0), TMC(153, 0),
+   TMC(154, 0), TMC(155, 0), TMC(156, 14), TMC(157, 12), TMC(158, 10),
+   TMC(159, 8), TMC(160, 6), TMC(161, 6), TMC(162, 3), TMC(163, 0),
+   TMC(164, 0), TMC(165, 0), TMC(166, 0), TMC(167, 0), TMC(168, 0),
+   TMC(169, 0), TMC(170, 0), TMC(171, 0), TMC(172, 0), TMC(173, 0),
+   TMC(174, 0), TMC(175, 0), TMC(176, 0), TMC(177, 0), TMC(178, 509),
+   TMC(179, 78), TMC(179, 476), TMC(179, 480), TMC(179, 484), TMC(179, 63),
+   TMC(180, 339), TMC(181, 339), TMC(182, 510), TMC(183, 512),
+   TMC(184, 253)]
   end
   local
   val DT = Thm.disk_thm val read = Term.read_raw tmvector
   in
   fun op stn_undef_def x = x
     val op stn_undef_def =
-    DT(((("elf_symbol_table",0),[]),[]), [read"%244%433@%219@"])
+    DT(((("elf_symbol_table",0),[]),[]), [read"%240%453@%214@"])
   fun op stb_local_def x = x
     val op stb_local_def =
-    DT(((("elf_symbol_table",1),[]),[]), [read"%244%429@%219@"])
+    DT(((("elf_symbol_table",1),[]),[]), [read"%240%449@%214@"])
   fun op stb_global_def x = x
     val op stb_global_def =
-    DT(((("elf_symbol_table",2),[]),[]), [read"%244%426@%299%265%324@@@"])
+    DT(((("elf_symbol_table",2),[]),[]), [read"%240%446@%303%263%328@@@"])
   fun op stb_weak_def x = x
     val op stb_weak_def =
-    DT(((("elf_symbol_table",3),[]),[]), [read"%244%432@%299%266%324@@@"])
+    DT(((("elf_symbol_table",3),[]),[]), [read"%240%452@%303%264%328@@@"])
   fun op stb_loos_def x = x
     val op stb_loos_def =
     DT(((("elf_symbol_table",4),[]),[]),
-       [read"%244%430@%299%266%266%265%324@@@@@"])
+       [read"%240%450@%303%264%264%263%328@@@@@"])
   fun op stb_hios_def x = x
     val op stb_hios_def =
     DT(((("elf_symbol_table",5),[]),[]),
-       [read"%244%427@%299%266%265%266%324@@@@@"])
+       [read"%240%447@%303%264%263%264%328@@@@@"])
   fun op stb_loproc_def x = x
     val op stb_loproc_def =
     DT(((("elf_symbol_table",6),[]),[]),
-       [read"%244%431@%299%265%266%266%324@@@@@"])
+       [read"%240%451@%303%263%264%264%328@@@@@"])
   fun op stb_hiproc_def x = x
     val op stb_hiproc_def =
     DT(((("elf_symbol_table",7),[]),[]),
-       [read"%244%428@%299%265%265%265%265%324@@@@@@"])
+       [read"%240%448@%303%263%263%263%263%328@@@@@@"])
+  fun op string_of_symbol_binding_def x = x
+    val op string_of_symbol_binding_def =
+    DT(((("elf_symbol_table",8),[]),[]),
+       [read"%189%133%184%136%184%137%239%458$2@$1@$0@@%270%240$2@%449@@%271%267%303%264%263%264%264%263%263%328@@@@@@@@@%271%267%303%263%263%263%263%264%263%328@@@@@@@@@%271%267%303%263%263%264%263%263%263%328@@@@@@@@@%271%267%303%263%264%263%263%263%263%328@@@@@@@@@%271%267%303%264%263%264%264%263%263%328@@@@@@@@@%298@@@@@@%270%240$2@%446@@%271%267%303%263%263%263%264%263%263%328@@@@@@@@@%271%267%303%264%263%264%264%263%263%328@@@@@@@@@%271%267%303%263%263%263%263%264%263%328@@@@@@@@@%271%267%303%264%264%263%263%263%263%328@@@@@@@@@%271%267%303%263%264%263%263%263%263%328@@@@@@@@@%271%267%303%264%263%264%264%263%263%328@@@@@@@@@%298@@@@@@@%270%240$2@%452@@%271%267%303%263%263%263%264%264%263%328@@@@@@@@@%271%267%303%263%264%264%263%263%263%328@@@@@@@@@%271%267%303%263%264%263%263%263%263%328@@@@@@@@@%271%267%303%263%263%264%264%263%263%328@@@@@@@@@%298@@@@@%270%213%245$2@%450@@%216$2@%447@@@$1$2@@%270%213%245$2@%451@@%216$2@%448@@@$0$2@@%271%267%303%263%264%263%264%263%263%328@@@@@@@@@%271%267%303%264%264%264%264%263%264%328@@@@@@@@@%271%267%303%264%264%264%263%264%264%328@@@@@@@@@%271%267%303%263%264%263%263%263%264%328@@@@@@@@@%271%267%303%264%263%264%264%263%264%328@@@@@@@@@%271%267%303%263%264%263%264%263%264%328@@@@@@@@@%271%267%303%264%263%264%263%263%264%328@@@@@@@@@%271%267%303%264%263%263%263%263%328@@@@@@@@%271%267%303%263%263%264%263%264%264%328@@@@@@@@@%271%267%303%263%264%263%264%264%264%328@@@@@@@@@%271%267%303%263%264%264%264%263%264%328@@@@@@@@@%271%267%303%264%264%263%263%263%264%328@@@@@@@@@%271%267%303%263%263%263%263%264%264%328@@@@@@@@@%271%267%303%264%263%264%264%263%264%328@@@@@@@@@%271%267%303%264%263%263%263%263%328@@@@@@@@%271%267%303%264%264%263%263%263%264%328@@@@@@@@@%271%267%303%263%264%263%264%263%264%328@@@@@@@@@%271%267%303%264%264%264%264%263%264%328@@@@@@@@@%271%267%303%264%263%264%263%263%264%328@@@@@@@@@%271%267%303%263%264%263%264%263%264%328@@@@@@@@@%271%267%303%264%264%264%264%263%264%328@@@@@@@@@%271%267%303%263%263%263%264%263%264%328@@@@@@@@@%298@@@@@@@@@@@@@@@@@@@@@@@@@@@@|@|@|@"])
   fun op stt_notype_def x = x
     val op stt_notype_def =
-    DT(((("elf_symbol_table",8),[]),[]), [read"%244%443@%219@"])
+    DT(((("elf_symbol_table",9),[]),[]), [read"%240%468@%214@"])
   fun op stt_object_def x = x
     val op stt_object_def =
-    DT(((("elf_symbol_table",9),[]),[]), [read"%244%444@%299%265%324@@@"])
+    DT(((("elf_symbol_table",10),[]),[]), [read"%240%469@%303%263%328@@@"])
   fun op stt_func_def x = x
     val op stt_func_def =
-    DT(((("elf_symbol_table",10),[]),[]), [read"%244%438@%299%266%324@@@"])
+    DT(((("elf_symbol_table",11),[]),[]), [read"%240%463@%303%264%328@@@"])
   fun op stt_section_def x = x
     val op stt_section_def =
-    DT(((("elf_symbol_table",11),[]),[]),
-       [read"%244%445@%299%265%265%324@@@@"])
+    DT(((("elf_symbol_table",12),[]),[]),
+       [read"%240%470@%303%263%263%328@@@@"])
   fun op stt_file_def x = x
     val op stt_file_def =
-    DT(((("elf_symbol_table",12),[]),[]),
-       [read"%244%437@%299%266%265%324@@@@"])
+    DT(((("elf_symbol_table",13),[]),[]),
+       [read"%240%462@%303%264%263%328@@@@"])
   fun op stt_common_def x = x
     val op stt_common_def =
-    DT(((("elf_symbol_table",13),[]),[]),
-       [read"%244%436@%299%265%266%324@@@@"])
+    DT(((("elf_symbol_table",14),[]),[]),
+       [read"%240%461@%303%263%264%328@@@@"])
   fun op stt_tls_def x = x
     val op stt_tls_def =
-    DT(((("elf_symbol_table",14),[]),[]),
-       [read"%244%446@%299%266%266%324@@@@"])
+    DT(((("elf_symbol_table",15),[]),[]),
+       [read"%240%471@%303%264%264%328@@@@"])
   fun op stt_loos_def x = x
     val op stt_loos_def =
-    DT(((("elf_symbol_table",15),[]),[]),
-       [read"%244%441@%299%266%266%265%324@@@@@"])
+    DT(((("elf_symbol_table",16),[]),[]),
+       [read"%240%466@%303%264%264%263%328@@@@@"])
   fun op stt_hios_def x = x
     val op stt_hios_def =
-    DT(((("elf_symbol_table",16),[]),[]),
-       [read"%244%439@%299%266%265%266%324@@@@@"])
+    DT(((("elf_symbol_table",17),[]),[]),
+       [read"%240%464@%303%264%263%264%328@@@@@"])
   fun op stt_loproc_def x = x
     val op stt_loproc_def =
-    DT(((("elf_symbol_table",17),[]),[]),
-       [read"%244%442@%299%265%266%266%324@@@@@"])
+    DT(((("elf_symbol_table",18),[]),[]),
+       [read"%240%467@%303%263%264%264%328@@@@@"])
   fun op stt_hiproc_def x = x
     val op stt_hiproc_def =
-    DT(((("elf_symbol_table",18),[]),[]),
-       [read"%244%440@%299%265%265%265%265%324@@@@@@"])
+    DT(((("elf_symbol_table",19),[]),[]),
+       [read"%240%465@%303%263%263%263%263%328@@@@@@"])
   fun op string_of_symbol_type_def x = x
     val op string_of_symbol_type_def =
-    DT(((("elf_symbol_table",19),[]),[]),
-       [read"%194%134%189%137%189%138%243%434$2@$1@$0@@%272%244$2@%443@@%273%269%299%266%266%266%266%265%265%324@@@@@@@@@%273%269%299%265%265%265%265%266%265%324@@@@@@@@@%273%269%299%266%265%266%265%266%265%324@@@@@@@@@%273%269%299%265%266%265%266%266%265%324@@@@@@@@@%273%269%299%266%265%265%265%266%265%324@@@@@@@@@%273%269%299%265%266%266%265%265%265%324@@@@@@@@@%296@@@@@@@%272%244$2@%444@@%273%269%299%265%265%265%265%266%265%324@@@@@@@@@%273%269%299%266%266%265%265%265%265%324@@@@@@@@@%273%269%299%266%266%265%266%265%265%324@@@@@@@@@%273%269%299%265%266%266%265%265%265%324@@@@@@@@@%273%269%299%265%265%266%265%265%265%324@@@@@@@@@%273%269%299%266%265%266%265%266%265%324@@@@@@@@@%296@@@@@@@%272%244$2@%438@@%273%269%299%266%266%266%265%265%265%324@@@@@@@@@%273%269%299%265%266%266%265%266%265%324@@@@@@@@@%273%269%299%266%266%266%266%265%265%324@@@@@@@@@%273%269%299%265%265%266%265%265%265%324@@@@@@@@@%296@@@@@%272%244$2@%445@@%273%269%299%265%265%266%265%266%265%324@@@@@@@@@%273%269%299%265%266%266%265%265%265%324@@@@@@@@@%273%269%299%265%265%266%265%265%265%324@@@@@@@@@%273%269%299%266%265%266%265%266%265%324@@@@@@@@@%273%269%299%265%266%265%266%265%265%324@@@@@@@@@%273%269%299%265%265%265%265%266%265%324@@@@@@@@@%273%269%299%266%266%266%266%265%265%324@@@@@@@@@%296@@@@@@@@%272%244$2@%437@@%273%269%299%266%266%266%265%265%265%324@@@@@@@@@%273%269%299%265%266%265%266%265%265%324@@@@@@@@@%273%269%299%266%265%266%266%265%265%324@@@@@@@@@%273%269%299%265%266%266%265%265%265%324@@@@@@@@@%296@@@@@%272%244$2@%436@@%273%269%299%265%265%266%265%265%265%324@@@@@@@@@%273%269%299%265%265%265%265%266%265%324@@@@@@@@@%273%269%299%265%266%266%266%265%265%324@@@@@@@@@%273%269%299%265%266%266%266%265%265%324@@@@@@@@@%273%269%299%265%265%265%265%266%265%324@@@@@@@@@%273%269%299%266%266%266%266%265%265%324@@@@@@@@@%296@@@@@@@%272%244$2@%446@@%273%269%299%266%265%266%265%266%265%324@@@@@@@@@%273%269%299%266%265%266%266%265%265%324@@@@@@@@@%273%269%299%265%265%266%265%266%265%324@@@@@@@@@%296@@@@%272%218%249$2@%441@@%221$2@%439@@@$1$2@@%272%218%249$2@%442@@%221$2@%440@@@$0$2@@%273%269%299%265%266%265%266%265%265%324@@@@@@@@@%273%269%299%266%266%266%266%265%266%324@@@@@@@@@%273%269%299%266%266%266%265%266%266%324@@@@@@@@@%273%269%299%265%266%265%265%265%266%324@@@@@@@@@%273%269%299%266%265%266%266%265%266%324@@@@@@@@@%273%269%299%265%266%265%266%265%266%324@@@@@@@@@%273%269%299%266%265%266%265%265%266%324@@@@@@@@@%273%269%299%266%265%265%265%265%324@@@@@@@@%273%269%299%265%265%266%265%266%266%324@@@@@@@@@%273%269%299%265%266%265%266%266%266%324@@@@@@@@@%273%269%299%265%266%266%266%265%266%324@@@@@@@@@%273%269%299%266%266%265%265%265%266%324@@@@@@@@@%273%269%299%265%265%265%265%266%266%324@@@@@@@@@%273%269%299%266%265%266%266%265%266%324@@@@@@@@@%273%269%299%266%265%265%265%265%324@@@@@@@@%273%269%299%266%265%266%265%266%266%324@@@@@@@@@%273%269%299%265%266%265%266%266%266%324@@@@@@@@@%273%269%299%266%265%265%265%266%266%324@@@@@@@@@%273%269%299%265%266%266%265%265%266%324@@@@@@@@@%296@@@@@@@@@@@@@@@@@@@@@@@@@@@@@|@|@|@"])
+    DT(((("elf_symbol_table",20),[]),[]),
+       [read"%189%133%184%136%184%137%239%459$2@$1@$0@@%270%240$2@%468@@%271%267%303%264%264%264%264%263%263%328@@@@@@@@@%271%267%303%263%263%263%263%264%263%328@@@@@@@@@%271%267%303%264%263%264%263%264%263%328@@@@@@@@@%271%267%303%263%264%263%264%264%263%328@@@@@@@@@%271%267%303%264%263%263%263%264%263%328@@@@@@@@@%271%267%303%263%264%264%263%263%263%328@@@@@@@@@%298@@@@@@@%270%240$2@%469@@%271%267%303%263%263%263%263%264%263%328@@@@@@@@@%271%267%303%264%264%263%263%263%263%328@@@@@@@@@%271%267%303%264%264%263%264%263%263%328@@@@@@@@@%271%267%303%263%264%264%263%263%263%328@@@@@@@@@%271%267%303%263%263%264%263%263%263%328@@@@@@@@@%271%267%303%264%263%264%263%264%263%328@@@@@@@@@%298@@@@@@@%270%240$2@%463@@%271%267%303%264%264%264%263%263%263%328@@@@@@@@@%271%267%303%263%264%264%263%264%263%328@@@@@@@@@%271%267%303%264%264%264%264%263%263%328@@@@@@@@@%271%267%303%263%263%264%263%263%263%328@@@@@@@@@%298@@@@@%270%240$2@%470@@%271%267%303%263%263%264%263%264%263%328@@@@@@@@@%271%267%303%263%264%264%263%263%263%328@@@@@@@@@%271%267%303%263%263%264%263%263%263%328@@@@@@@@@%271%267%303%264%263%264%263%264%263%328@@@@@@@@@%271%267%303%263%264%263%264%263%263%328@@@@@@@@@%271%267%303%263%263%263%263%264%263%328@@@@@@@@@%271%267%303%264%264%264%264%263%263%328@@@@@@@@@%298@@@@@@@@%270%240$2@%462@@%271%267%303%264%264%264%263%263%263%328@@@@@@@@@%271%267%303%263%264%263%264%263%263%328@@@@@@@@@%271%267%303%264%263%264%264%263%263%328@@@@@@@@@%271%267%303%263%264%264%263%263%263%328@@@@@@@@@%298@@@@@%270%240$2@%461@@%271%267%303%263%263%264%263%263%263%328@@@@@@@@@%271%267%303%263%263%263%263%264%263%328@@@@@@@@@%271%267%303%263%264%264%264%263%263%328@@@@@@@@@%271%267%303%263%264%264%264%263%263%328@@@@@@@@@%271%267%303%263%263%263%263%264%263%328@@@@@@@@@%271%267%303%264%264%264%264%263%263%328@@@@@@@@@%298@@@@@@@%270%240$2@%471@@%271%267%303%264%263%264%263%264%263%328@@@@@@@@@%271%267%303%264%263%264%264%263%263%328@@@@@@@@@%271%267%303%263%263%264%263%264%263%328@@@@@@@@@%298@@@@%270%213%245$2@%466@@%216$2@%464@@@$1$2@@%270%213%245$2@%467@@%216$2@%465@@@$0$2@@%271%267%303%263%264%263%264%263%263%328@@@@@@@@@%271%267%303%264%264%264%264%263%264%328@@@@@@@@@%271%267%303%264%264%264%263%264%264%328@@@@@@@@@%271%267%303%263%264%263%263%263%264%328@@@@@@@@@%271%267%303%264%263%264%264%263%264%328@@@@@@@@@%271%267%303%263%264%263%264%263%264%328@@@@@@@@@%271%267%303%264%263%264%263%263%264%328@@@@@@@@@%271%267%303%264%263%263%263%263%328@@@@@@@@%271%267%303%263%263%264%263%264%264%328@@@@@@@@@%271%267%303%263%264%263%264%264%264%328@@@@@@@@@%271%267%303%263%264%264%264%263%264%328@@@@@@@@@%271%267%303%264%264%263%263%263%264%328@@@@@@@@@%271%267%303%263%263%263%263%264%264%328@@@@@@@@@%271%267%303%264%263%264%264%263%264%328@@@@@@@@@%271%267%303%264%263%263%263%263%328@@@@@@@@%271%267%303%264%263%264%263%264%264%328@@@@@@@@@%271%267%303%263%264%263%264%264%264%328@@@@@@@@@%271%267%303%264%263%263%263%264%264%328@@@@@@@@@%271%267%303%263%264%264%263%263%264%328@@@@@@@@@%298@@@@@@@@@@@@@@@@@@@@@@@@@@@@@|@|@|@"])
   fun op stv_default_def x = x
     val op stv_default_def =
-    DT(((("elf_symbol_table",20),[]),[]), [read"%244%447@%219@"])
+    DT(((("elf_symbol_table",21),[]),[]), [read"%240%472@%214@"])
   fun op stv_internal_def x = x
     val op stv_internal_def =
-    DT(((("elf_symbol_table",21),[]),[]), [read"%244%449@%299%265%324@@@"])
+    DT(((("elf_symbol_table",22),[]),[]), [read"%240%474@%303%263%328@@@"])
   fun op stv_hidden_def x = x
     val op stv_hidden_def =
-    DT(((("elf_symbol_table",22),[]),[]), [read"%244%448@%299%266%324@@@"])
+    DT(((("elf_symbol_table",23),[]),[]), [read"%240%473@%303%264%328@@@"])
   fun op stv_protected_def x = x
     val op stv_protected_def =
-    DT(((("elf_symbol_table",23),[]),[]),
-       [read"%244%450@%299%265%265%324@@@@"])
+    DT(((("elf_symbol_table",24),[]),[]),
+       [read"%240%475@%303%263%263%328@@@@"])
   fun op string_of_symbol_visibility_def x = x
     val op string_of_symbol_visibility_def =
-    DT(((("elf_symbol_table",24),[]),[]),
-       [read"%194%134%243%435$0@@%272%244$0@%447@@%273%269%299%266%265%266%265%265%265%324@@@@@@@@@%273%269%299%265%266%266%265%265%265%324@@@@@@@@@%273%269%299%266%266%266%265%265%265%324@@@@@@@@@%273%269%299%265%266%265%265%265%265%324@@@@@@@@@%273%269%299%265%266%266%265%266%265%324@@@@@@@@@%273%269%299%266%265%266%266%265%265%324@@@@@@@@@%273%269%299%266%265%266%265%266%265%324@@@@@@@@@%296@@@@@@@@%272%244$0@%449@@%273%269%299%265%266%265%266%265%265%324@@@@@@@@@%273%269%299%266%266%266%266%265%265%324@@@@@@@@@%273%269%299%266%265%266%265%266%265%324@@@@@@@@@%273%269%299%265%266%266%265%265%265%324@@@@@@@@@%273%269%299%266%266%265%265%266%265%324@@@@@@@@@%273%269%299%266%266%266%266%265%265%324@@@@@@@@@%273%269%299%265%266%265%265%265%265%324@@@@@@@@@%273%269%299%266%265%266%266%265%265%324@@@@@@@@@%296@@@@@@@@@%272%244$0@%448@@%273%269%299%266%265%265%266%265%265%324@@@@@@@@@%273%269%299%265%266%265%266%265%265%324@@@@@@@@@%273%269%299%266%265%266%265%265%265%324@@@@@@@@@%273%269%299%266%265%266%265%265%265%324@@@@@@@@@%273%269%299%265%266%266%265%265%265%324@@@@@@@@@%273%269%299%266%266%266%266%265%265%324@@@@@@@@@%296@@@@@@@%272%244$0@%450@@%273%269%299%266%265%265%265%266%265%324@@@@@@@@@%273%269%299%266%266%265%265%266%265%324@@@@@@@@@%273%269%299%265%265%265%265%266%265%324@@@@@@@@@%273%269%299%266%265%266%265%266%265%324@@@@@@@@@%273%269%299%265%266%266%265%265%265%324@@@@@@@@@%273%269%299%265%265%266%265%265%265%324@@@@@@@@@%273%269%299%266%265%266%265%266%265%324@@@@@@@@@%273%269%299%265%266%266%265%265%265%324@@@@@@@@@%273%269%299%266%265%266%265%265%265%324@@@@@@@@@%296@@@@@@@@@@%273%269%299%265%266%265%266%265%265%324@@@@@@@@@%273%269%299%266%266%266%266%265%266%324@@@@@@@@@%273%269%299%266%266%266%265%266%266%324@@@@@@@@@%273%269%299%265%266%265%265%265%266%324@@@@@@@@@%273%269%299%266%265%266%266%265%266%324@@@@@@@@@%273%269%299%265%266%265%266%265%266%324@@@@@@@@@%273%269%299%266%265%266%265%265%266%324@@@@@@@@@%273%269%299%266%265%265%265%265%324@@@@@@@@%273%269%299%265%265%266%265%266%266%324@@@@@@@@@%273%269%299%265%266%265%266%266%266%324@@@@@@@@@%273%269%299%265%266%266%266%265%266%324@@@@@@@@@%273%269%299%266%266%265%265%265%266%324@@@@@@@@@%273%269%299%265%265%265%265%266%266%324@@@@@@@@@%273%269%299%266%265%266%266%265%266%324@@@@@@@@@%273%269%299%266%265%265%265%265%324@@@@@@@@%273%269%299%266%266%266%265%266%266%324@@@@@@@@@%273%269%299%265%266%265%266%265%266%324@@@@@@@@@%273%269%299%265%265%266%265%266%266%324@@@@@@@@@%273%269%299%265%266%265%266%265%266%324@@@@@@@@@%273%269%299%266%266%265%265%265%266%324@@@@@@@@@%273%269%299%265%266%265%266%265%266%324@@@@@@@@@%273%269%299%266%265%266%266%265%266%324@@@@@@@@@%273%269%299%265%266%265%266%265%266%324@@@@@@@@@%273%269%299%266%265%266%265%266%266%324@@@@@@@@@%273%269%299%265%266%265%266%266%266%324@@@@@@@@@%296@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@|@"])
+    DT(((("elf_symbol_table",25),[]),[]),
+       [read"%189%133%239%460$0@@%270%240$0@%472@@%271%267%303%264%263%264%263%263%263%328@@@@@@@@@%271%267%303%263%264%264%263%263%263%328@@@@@@@@@%271%267%303%264%264%264%263%263%263%328@@@@@@@@@%271%267%303%263%264%263%263%263%263%328@@@@@@@@@%271%267%303%263%264%264%263%264%263%328@@@@@@@@@%271%267%303%264%263%264%264%263%263%328@@@@@@@@@%271%267%303%264%263%264%263%264%263%328@@@@@@@@@%298@@@@@@@@%270%240$0@%474@@%271%267%303%263%264%263%264%263%263%328@@@@@@@@@%271%267%303%264%264%264%264%263%263%328@@@@@@@@@%271%267%303%264%263%264%263%264%263%328@@@@@@@@@%271%267%303%263%264%264%263%263%263%328@@@@@@@@@%271%267%303%264%264%263%263%264%263%328@@@@@@@@@%271%267%303%264%264%264%264%263%263%328@@@@@@@@@%271%267%303%263%264%263%263%263%263%328@@@@@@@@@%271%267%303%264%263%264%264%263%263%328@@@@@@@@@%298@@@@@@@@@%270%240$0@%473@@%271%267%303%264%263%263%264%263%263%328@@@@@@@@@%271%267%303%263%264%263%264%263%263%328@@@@@@@@@%271%267%303%264%263%264%263%263%263%328@@@@@@@@@%271%267%303%264%263%264%263%263%263%328@@@@@@@@@%271%267%303%263%264%264%263%263%263%328@@@@@@@@@%271%267%303%264%264%264%264%263%263%328@@@@@@@@@%298@@@@@@@%270%240$0@%475@@%271%267%303%264%263%263%263%264%263%328@@@@@@@@@%271%267%303%264%264%263%263%264%263%328@@@@@@@@@%271%267%303%263%263%263%263%264%263%328@@@@@@@@@%271%267%303%264%263%264%263%264%263%328@@@@@@@@@%271%267%303%263%264%264%263%263%263%328@@@@@@@@@%271%267%303%263%263%264%263%263%263%328@@@@@@@@@%271%267%303%264%263%264%263%264%263%328@@@@@@@@@%271%267%303%263%264%264%263%263%263%328@@@@@@@@@%271%267%303%264%263%264%263%263%263%328@@@@@@@@@%298@@@@@@@@@@%271%267%303%263%264%263%264%263%263%328@@@@@@@@@%271%267%303%264%264%264%264%263%264%328@@@@@@@@@%271%267%303%264%264%264%263%264%264%328@@@@@@@@@%271%267%303%263%264%263%263%263%264%328@@@@@@@@@%271%267%303%264%263%264%264%263%264%328@@@@@@@@@%271%267%303%263%264%263%264%263%264%328@@@@@@@@@%271%267%303%264%263%264%263%263%264%328@@@@@@@@@%271%267%303%264%263%263%263%263%328@@@@@@@@%271%267%303%263%263%264%263%264%264%328@@@@@@@@@%271%267%303%263%264%263%264%264%264%328@@@@@@@@@%271%267%303%263%264%264%264%263%264%328@@@@@@@@@%271%267%303%264%264%263%263%263%264%328@@@@@@@@@%271%267%303%263%263%263%263%264%264%328@@@@@@@@@%271%267%303%264%263%264%264%263%264%328@@@@@@@@@%271%267%303%264%263%263%263%263%328@@@@@@@@%271%267%303%264%264%264%263%264%264%328@@@@@@@@@%271%267%303%263%264%263%264%263%264%328@@@@@@@@@%271%267%303%263%263%264%263%264%264%328@@@@@@@@@%271%267%303%263%264%263%264%263%264%328@@@@@@@@@%271%267%303%264%264%263%263%263%264%328@@@@@@@@@%271%267%303%263%264%263%264%263%264%328@@@@@@@@@%271%267%303%264%263%264%264%263%264%328@@@@@@@@@%271%267%303%263%264%263%264%263%264%328@@@@@@@@@%271%267%303%264%263%264%263%264%264%328@@@@@@@@@%271%267%303%263%264%263%264%264%264%328@@@@@@@@@%298@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@|@"])
   fun op elf32_symbol_table_entry_TY_DEF x = x
     val op elf32_symbol_table_entry_TY_DEF =
-    DT(((("elf_symbol_table",25),[("bool",[26])]),["DISK_THM"]),
-       [read"%257%143%310%13%190%0%248%195%13%248%251%11%251%15%251%19%253%24%253%28%252%32%246$6@%11%15%19%24%28%32%276%219@%200$5@%201$4@%202$3@%207$2@%205$1@$0@@@@@@%135%267|@||||||$5@$4@$3@$2@$1@$0@@|@|@|@|@|@|@@$1$0@@|@@$0$1@@|@|@$0@|@"])
+    DT(((("elf_symbol_table",26),[("bool",[26])]),["DISK_THM"]),
+       [read"%253%140%316%12%185%0%244%190%12%244%247%10%247%14%247%18%249%23%249%27%248%31%242$6@%10%14%18%23%27%31%276%214@%195$5@%196$4@%197$3@%202$2@%200$1@$0@@@@@@%134%265|@||||||$5@$4@$3@$2@$1@$0@@|@|@|@|@|@|@@$1$0@@|@@$0$1@@|@|@$0@|@"])
   fun op elf32_symbol_table_entry_case_def x = x
     val op elf32_symbol_table_entry_case_def =
-    DT(((("elf_symbol_table",29),
-        [("bool",[26,181]),("elf_symbol_table",[26,27,28]),
+    DT(((("elf_symbol_table",30),
+        [("bool",[26,180]),("elf_symbol_table",[27,28,29]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%172%11%172%15%172%19%174%24%174%28%173%32%182%113%222%325%417$6@$5@$4@$3@$2@$1@@$0@@$0$6@$5@$4@$3@$2@$1@@|@|@|@|@|@|@|@"])
+       [read"%167%10%167%14%167%18%169%23%169%27%168%31%177%112%217%339%437$6@$5@$4@$3@$2@$1@@$0@@$0$6@$5@$4@$3@$2@$1@@|@|@|@|@|@|@|@"])
   fun op elf32_symbol_table_entry_size_def x = x
     val op elf32_symbol_table_entry_size_def =
-    DT(((("elf_symbol_table",30),
-        [("bool",[26,181]),("elf_symbol_table",[26,27,28]),
+    DT(((("elf_symbol_table",31),
+        [("bool",[26,180]),("elf_symbol_table",[27,28,29]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%172%11%172%15%172%19%174%24%174%28%173%32%244%339%417$5@$4@$3@$2@$1@$0@@@%299%265%324@@@|@|@|@|@|@|@"])
+       [read"%167%10%167%14%167%18%169%23%169%27%168%31%240%353%437$5@$4@$3@$2@$1@$0@@@%303%263%328@@@|@|@|@|@|@|@"])
   fun op elf32_symbol_table_entry_elf32_st_name x = x
     val op elf32_symbol_table_entry_elf32_st_name =
-    DT(((("elf_symbol_table",31),
-        [("bool",[26,181]),("elf_symbol_table",[26,27,28]),
+    DT(((("elf_symbol_table",32),
+        [("bool",[26,180]),("elf_symbol_table",[27,28,29]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%172%41%172%44%172%51%174%61%174%68%173%75%227%329%417$5@$4@$3@$2@$1@$0@@@$5@|@|@|@|@|@|@"])
+       [read"%167%40%167%43%167%50%169%60%169%67%168%74%225%343%437$5@$4@$3@$2@$1@$0@@@$5@|@|@|@|@|@|@"])
   fun op elf32_symbol_table_entry_elf32_st_value x = x
     val op elf32_symbol_table_entry_elf32_st_value =
-    DT(((("elf_symbol_table",32),
-        [("bool",[26,181]),("elf_symbol_table",[26,27,28]),
+    DT(((("elf_symbol_table",33),
+        [("bool",[26,180]),("elf_symbol_table",[27,28,29]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%172%41%172%44%172%51%174%61%174%68%173%75%227%337%417$5@$4@$3@$2@$1@$0@@@$4@|@|@|@|@|@|@"])
+       [read"%167%40%167%43%167%50%169%60%169%67%168%74%225%351%437$5@$4@$3@$2@$1@$0@@@$4@|@|@|@|@|@|@"])
   fun op elf32_symbol_table_entry_elf32_st_size x = x
     val op elf32_symbol_table_entry_elf32_st_size =
-    DT(((("elf_symbol_table",33),
-        [("bool",[26,181]),("elf_symbol_table",[26,27,28]),
+    DT(((("elf_symbol_table",34),
+        [("bool",[26,180]),("elf_symbol_table",[27,28,29]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%172%41%172%44%172%51%174%61%174%68%173%75%227%335%417$5@$4@$3@$2@$1@$0@@@$3@|@|@|@|@|@|@"])
+       [read"%167%40%167%43%167%50%169%60%169%67%168%74%225%349%437$5@$4@$3@$2@$1@$0@@@$3@|@|@|@|@|@|@"])
   fun op elf32_symbol_table_entry_elf32_st_info x = x
     val op elf32_symbol_table_entry_elf32_st_info =
-    DT(((("elf_symbol_table",34),
-        [("bool",[26,181]),("elf_symbol_table",[26,27,28]),
+    DT(((("elf_symbol_table",35),
+        [("bool",[26,180]),("elf_symbol_table",[27,28,29]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%172%41%172%44%172%51%174%61%174%68%173%75%229%327%417$5@$4@$3@$2@$1@$0@@@$2@|@|@|@|@|@|@"])
+       [read"%167%40%167%43%167%50%169%60%169%67%168%74%227%341%437$5@$4@$3@$2@$1@$0@@@$2@|@|@|@|@|@|@"])
   fun op elf32_symbol_table_entry_elf32_st_other x = x
     val op elf32_symbol_table_entry_elf32_st_other =
-    DT(((("elf_symbol_table",35),
-        [("bool",[26,181]),("elf_symbol_table",[26,27,28]),
+    DT(((("elf_symbol_table",36),
+        [("bool",[26,180]),("elf_symbol_table",[27,28,29]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%172%41%172%44%172%51%174%61%174%68%173%75%229%331%417$5@$4@$3@$2@$1@$0@@@$1@|@|@|@|@|@|@"])
+       [read"%167%40%167%43%167%50%169%60%169%67%168%74%227%345%437$5@$4@$3@$2@$1@$0@@@$1@|@|@|@|@|@|@"])
   fun op elf32_symbol_table_entry_elf32_st_shndx x = x
     val op elf32_symbol_table_entry_elf32_st_shndx =
-    DT(((("elf_symbol_table",36),
-        [("bool",[26,181]),("elf_symbol_table",[26,27,28]),
+    DT(((("elf_symbol_table",37),
+        [("bool",[26,180]),("elf_symbol_table",[27,28,29]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%172%41%172%44%172%51%174%61%174%68%173%75%228%333%417$5@$4@$3@$2@$1@$0@@@$0@|@|@|@|@|@|@"])
+       [read"%167%40%167%43%167%50%169%60%169%67%168%74%226%347%437$5@$4@$3@$2@$1@$0@@@$0@|@|@|@|@|@|@"])
   fun op elf32_symbol_table_entry_elf32_st_name_fupd x = x
     val op elf32_symbol_table_entry_elf32_st_name_fupd =
-    DT(((("elf_symbol_table",38),
-        [("bool",[26,181]),("elf_symbol_table",[26,27,28]),
+    DT(((("elf_symbol_table",39),
+        [("bool",[26,180]),("elf_symbol_table",[27,28,29]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%181%112%172%41%172%44%172%51%174%61%174%68%173%75%230%330$6@%417$5@$4@$3@$2@$1@$0@@@%417$6$5@@$4@$3@$2@$1@$0@@|@|@|@|@|@|@|@"])
+       [read"%176%111%167%40%167%43%167%50%169%60%169%67%168%74%228%344$6@%437$5@$4@$3@$2@$1@$0@@@%437$6$5@@$4@$3@$2@$1@$0@@|@|@|@|@|@|@|@"])
   fun op elf32_symbol_table_entry_elf32_st_value_fupd x = x
     val op elf32_symbol_table_entry_elf32_st_value_fupd =
-    DT(((("elf_symbol_table",39),
-        [("bool",[26,181]),("elf_symbol_table",[26,27,28]),
+    DT(((("elf_symbol_table",40),
+        [("bool",[26,180]),("elf_symbol_table",[27,28,29]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%181%112%172%41%172%44%172%51%174%61%174%68%173%75%230%338$6@%417$5@$4@$3@$2@$1@$0@@@%417$5@$6$4@@$3@$2@$1@$0@@|@|@|@|@|@|@|@"])
+       [read"%176%111%167%40%167%43%167%50%169%60%169%67%168%74%228%352$6@%437$5@$4@$3@$2@$1@$0@@@%437$5@$6$4@@$3@$2@$1@$0@@|@|@|@|@|@|@|@"])
   fun op elf32_symbol_table_entry_elf32_st_size_fupd x = x
     val op elf32_symbol_table_entry_elf32_st_size_fupd =
-    DT(((("elf_symbol_table",40),
-        [("bool",[26,181]),("elf_symbol_table",[26,27,28]),
+    DT(((("elf_symbol_table",41),
+        [("bool",[26,180]),("elf_symbol_table",[27,28,29]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%181%112%172%41%172%44%172%51%174%61%174%68%173%75%230%336$6@%417$5@$4@$3@$2@$1@$0@@@%417$5@$4@$6$3@@$2@$1@$0@@|@|@|@|@|@|@|@"])
+       [read"%176%111%167%40%167%43%167%50%169%60%169%67%168%74%228%350$6@%437$5@$4@$3@$2@$1@$0@@@%437$5@$4@$6$3@@$2@$1@$0@@|@|@|@|@|@|@|@"])
   fun op elf32_symbol_table_entry_elf32_st_info_fupd x = x
     val op elf32_symbol_table_entry_elf32_st_info_fupd =
-    DT(((("elf_symbol_table",41),
-        [("bool",[26,181]),("elf_symbol_table",[26,27,28]),
+    DT(((("elf_symbol_table",42),
+        [("bool",[26,180]),("elf_symbol_table",[27,28,29]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%185%116%172%41%172%44%172%51%174%61%174%68%173%75%230%328$6@%417$5@$4@$3@$2@$1@$0@@@%417$5@$4@$3@$6$2@@$1@$0@@|@|@|@|@|@|@|@"])
+       [read"%180%115%167%40%167%43%167%50%169%60%169%67%168%74%228%342$6@%437$5@$4@$3@$2@$1@$0@@@%437$5@$4@$3@$6$2@@$1@$0@@|@|@|@|@|@|@|@"])
   fun op elf32_symbol_table_entry_elf32_st_other_fupd x = x
     val op elf32_symbol_table_entry_elf32_st_other_fupd =
-    DT(((("elf_symbol_table",42),
-        [("bool",[26,181]),("elf_symbol_table",[26,27,28]),
+    DT(((("elf_symbol_table",43),
+        [("bool",[26,180]),("elf_symbol_table",[27,28,29]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%185%116%172%41%172%44%172%51%174%61%174%68%173%75%230%332$6@%417$5@$4@$3@$2@$1@$0@@@%417$5@$4@$3@$2@$6$1@@$0@@|@|@|@|@|@|@|@"])
+       [read"%180%115%167%40%167%43%167%50%169%60%169%67%168%74%228%346$6@%437$5@$4@$3@$2@$1@$0@@@%437$5@$4@$3@$2@$6$1@@$0@@|@|@|@|@|@|@|@"])
   fun op elf32_symbol_table_entry_elf32_st_shndx_fupd x = x
     val op elf32_symbol_table_entry_elf32_st_shndx_fupd =
-    DT(((("elf_symbol_table",43),
-        [("bool",[26,181]),("elf_symbol_table",[26,27,28]),
+    DT(((("elf_symbol_table",44),
+        [("bool",[26,180]),("elf_symbol_table",[27,28,29]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%184%115%172%41%172%44%172%51%174%61%174%68%173%75%230%334$6@%417$5@$4@$3@$2@$1@$0@@@%417$5@$4@$3@$2@$1@$6$0@@@|@|@|@|@|@|@|@"])
+       [read"%179%114%167%40%167%43%167%50%169%60%169%67%168%74%228%348$6@%437$5@$4@$3@$2@$1@$0@@@%437$5@$4@$3@$2@$1@$6$0@@@|@|@|@|@|@|@|@"])
   fun op elf32_symbol_table_entry_compare_def x = x
     val op elf32_symbol_table_entry_compare_def =
-    DT(((("elf_symbol_table",62),[]),[]),
-       [read"%175%103%175%105%245%326$1@$0@@%424%368%220@%244@@%368%220@%244@@%368%220@%244@@%368%220@%244@@%368%220@%244@@%368%220@%244@@%217%453%329$1@@@%216%453%337$1@@@%215%453%335$1@@@%214%455%327$1@@@%213%455%331$1@@@%454%333$1@@@@@@@@%217%453%329$0@@@%216%453%337$0@@@%215%453%335$0@@@%214%455%327$0@@@%213%455%331$0@@@%454%333$0@@@@@@@@@|@|@"])
+    DT(((("elf_symbol_table",63),[]),[]),
+       [read"%170%102%170%104%241%340$1@$0@@%444%386%215@%240@@%386%215@%240@@%386%215@%240@@%386%215@%240@@%386%215@%240@@%386%215@%240@@%212%479%343$1@@@%211%479%351$1@@@%210%479%349$1@@@%209%481%341$1@@@%208%481%345$1@@@%480%347$1@@@@@@@@%212%479%343$0@@@%211%479%351$0@@@%210%479%349$0@@@%209%481%341$0@@@%208%481%345$0@@@%480%347$0@@@@@@@@@|@|@"])
   fun
     op instance_Basic_classes_Ord_Elf_symbol_table_elf32_symbol_table_entry_dict_def
     x = x
     val
     op instance_Basic_classes_Ord_Elf_symbol_table_elf32_symbol_table_entry_dict_def
     =
-    DT(((("elf_symbol_table",63),[]),[]),
-       [read"%223%378@%300%291%326@@%308%290%119%121%245%326$1@$0@@%295@||@@%306%290%119%121%284%326$1@$0@@%285%295@%285%280@%279@@@||@@%304%290%119%121%245%326$1@$0@@%281@||@@%302%290%119%121%284%326$1@$0@@%285%281@%285%280@%279@@@||@@%261@@@@@@"])
+    DT(((("elf_symbol_table",64),[]),[]),
+       [read"%218%395@%304%289%340@@%312%288%118%120%241%340$1@$0@@%295@||@@%310%288%118%120%282%340$1@$0@@%283%295@%283%280@%279@@@||@@%308%288%118%120%241%340$1@$0@@%281@||@@%306%288%118%120%282%340$1@$0@@%283%281@%283%280@%279@@@||@@%257@@@@@@"])
   fun op elf64_symbol_table_entry_TY_DEF x = x
     val op elf64_symbol_table_entry_TY_DEF =
-    DT(((("elf_symbol_table",64),[("bool",[26])]),["DISK_THM"]),
-       [read"%259%144%311%14%191%1%248%196%14%248%251%11%253%16%253%20%252%23%250%27%250%31%247$6@%11%16%20%23%27%31%277%219@%203$5@%208$4@%206$3@%204$2@%199$1@$0@@@@@@%135%268|@||||||$5@$4@$3@$2@$1@$0@@|@|@|@|@|@|@@$1$0@@|@@$0$1@@|@|@$0@|@"])
+    DT(((("elf_symbol_table",65),[("bool",[26])]),["DISK_THM"]),
+       [read"%255%141%317%13%186%1%244%191%13%244%247%10%249%15%249%19%248%22%246%26%246%30%243$6@%10%15%19%22%26%30%277%214@%198$5@%203$4@%201$3@%199$2@%194$1@$0@@@@@@%134%266|@||||||$5@$4@$3@$2@$1@$0@@|@|@|@|@|@|@@$1$0@@|@@$0$1@@|@|@$0@|@"])
   fun op elf64_symbol_table_entry_case_def x = x
     val op elf64_symbol_table_entry_case_def =
-    DT(((("elf_symbol_table",68),
-        [("bool",[26,181]),("elf_symbol_table",[65,66,67]),
+    DT(((("elf_symbol_table",69),
+        [("bool",[26,180]),("elf_symbol_table",[66,67,68]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%172%11%174%16%174%20%173%23%171%27%171%31%183%114%222%341%418$6@$5@$4@$3@$2@$1@@$0@@$0$6@$5@$4@$3@$2@$1@@|@|@|@|@|@|@|@"])
+       [read"%167%10%169%15%169%19%168%22%166%26%166%30%178%113%217%355%438$6@$5@$4@$3@$2@$1@@$0@@$0$6@$5@$4@$3@$2@$1@@|@|@|@|@|@|@|@"])
   fun op elf64_symbol_table_entry_size_def x = x
     val op elf64_symbol_table_entry_size_def =
-    DT(((("elf_symbol_table",69),
-        [("bool",[26,181]),("elf_symbol_table",[65,66,67]),
+    DT(((("elf_symbol_table",70),
+        [("bool",[26,180]),("elf_symbol_table",[66,67,68]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%172%11%174%16%174%20%173%23%171%27%171%31%244%355%418$5@$4@$3@$2@$1@$0@@@%299%265%324@@@|@|@|@|@|@|@"])
+       [read"%167%10%169%15%169%19%168%22%166%26%166%30%240%369%438$5@$4@$3@$2@$1@$0@@@%303%263%328@@@|@|@|@|@|@|@"])
   fun op elf64_symbol_table_entry_elf64_st_name x = x
     val op elf64_symbol_table_entry_elf64_st_name =
-    DT(((("elf_symbol_table",70),
-        [("bool",[26,181]),("elf_symbol_table",[65,66,67]),
+    DT(((("elf_symbol_table",71),
+        [("bool",[26,180]),("elf_symbol_table",[66,67,68]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%172%41%174%45%174%53%173%60%171%66%171%73%227%345%418$5@$4@$3@$2@$1@$0@@@$5@|@|@|@|@|@|@"])
+       [read"%167%40%169%44%169%52%168%59%166%65%166%72%225%359%438$5@$4@$3@$2@$1@$0@@@$5@|@|@|@|@|@|@"])
   fun op elf64_symbol_table_entry_elf64_st_info x = x
     val op elf64_symbol_table_entry_elf64_st_info =
-    DT(((("elf_symbol_table",71),
-        [("bool",[26,181]),("elf_symbol_table",[65,66,67]),
+    DT(((("elf_symbol_table",72),
+        [("bool",[26,180]),("elf_symbol_table",[66,67,68]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%172%41%174%45%174%53%173%60%171%66%171%73%229%343%418$5@$4@$3@$2@$1@$0@@@$4@|@|@|@|@|@|@"])
+       [read"%167%40%169%44%169%52%168%59%166%65%166%72%227%357%438$5@$4@$3@$2@$1@$0@@@$4@|@|@|@|@|@|@"])
   fun op elf64_symbol_table_entry_elf64_st_other x = x
     val op elf64_symbol_table_entry_elf64_st_other =
-    DT(((("elf_symbol_table",72),
-        [("bool",[26,181]),("elf_symbol_table",[65,66,67]),
+    DT(((("elf_symbol_table",73),
+        [("bool",[26,180]),("elf_symbol_table",[66,67,68]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%172%41%174%45%174%53%173%60%171%66%171%73%229%347%418$5@$4@$3@$2@$1@$0@@@$3@|@|@|@|@|@|@"])
+       [read"%167%40%169%44%169%52%168%59%166%65%166%72%227%361%438$5@$4@$3@$2@$1@$0@@@$3@|@|@|@|@|@|@"])
   fun op elf64_symbol_table_entry_elf64_st_shndx x = x
     val op elf64_symbol_table_entry_elf64_st_shndx =
-    DT(((("elf_symbol_table",73),
-        [("bool",[26,181]),("elf_symbol_table",[65,66,67]),
+    DT(((("elf_symbol_table",74),
+        [("bool",[26,180]),("elf_symbol_table",[66,67,68]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%172%41%174%45%174%53%173%60%171%66%171%73%228%349%418$5@$4@$3@$2@$1@$0@@@$2@|@|@|@|@|@|@"])
+       [read"%167%40%169%44%169%52%168%59%166%65%166%72%226%363%438$5@$4@$3@$2@$1@$0@@@$2@|@|@|@|@|@|@"])
   fun op elf64_symbol_table_entry_elf64_st_value x = x
     val op elf64_symbol_table_entry_elf64_st_value =
-    DT(((("elf_symbol_table",74),
-        [("bool",[26,181]),("elf_symbol_table",[65,66,67]),
+    DT(((("elf_symbol_table",75),
+        [("bool",[26,180]),("elf_symbol_table",[66,67,68]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%172%41%174%45%174%53%173%60%171%66%171%73%226%353%418$5@$4@$3@$2@$1@$0@@@$1@|@|@|@|@|@|@"])
+       [read"%167%40%169%44%169%52%168%59%166%65%166%72%224%367%438$5@$4@$3@$2@$1@$0@@@$1@|@|@|@|@|@|@"])
   fun op elf64_symbol_table_entry_elf64_st_size x = x
     val op elf64_symbol_table_entry_elf64_st_size =
-    DT(((("elf_symbol_table",75),
-        [("bool",[26,181]),("elf_symbol_table",[65,66,67]),
+    DT(((("elf_symbol_table",76),
+        [("bool",[26,180]),("elf_symbol_table",[66,67,68]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%172%41%174%45%174%53%173%60%171%66%171%73%226%351%418$5@$4@$3@$2@$1@$0@@@$0@|@|@|@|@|@|@"])
+       [read"%167%40%169%44%169%52%168%59%166%65%166%72%224%365%438$5@$4@$3@$2@$1@$0@@@$0@|@|@|@|@|@|@"])
   fun op elf64_symbol_table_entry_elf64_st_name_fupd x = x
     val op elf64_symbol_table_entry_elf64_st_name_fupd =
-    DT(((("elf_symbol_table",77),
-        [("bool",[26,181]),("elf_symbol_table",[65,66,67]),
+    DT(((("elf_symbol_table",78),
+        [("bool",[26,180]),("elf_symbol_table",[66,67,68]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%181%112%172%41%174%45%174%53%173%60%171%66%171%73%231%346$6@%418$5@$4@$3@$2@$1@$0@@@%418$6$5@@$4@$3@$2@$1@$0@@|@|@|@|@|@|@|@"])
+       [read"%176%111%167%40%169%44%169%52%168%59%166%65%166%72%229%360$6@%438$5@$4@$3@$2@$1@$0@@@%438$6$5@@$4@$3@$2@$1@$0@@|@|@|@|@|@|@|@"])
   fun op elf64_symbol_table_entry_elf64_st_info_fupd x = x
     val op elf64_symbol_table_entry_elf64_st_info_fupd =
-    DT(((("elf_symbol_table",78),
-        [("bool",[26,181]),("elf_symbol_table",[65,66,67]),
+    DT(((("elf_symbol_table",79),
+        [("bool",[26,180]),("elf_symbol_table",[66,67,68]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%185%116%172%41%174%45%174%53%173%60%171%66%171%73%231%344$6@%418$5@$4@$3@$2@$1@$0@@@%418$5@$6$4@@$3@$2@$1@$0@@|@|@|@|@|@|@|@"])
+       [read"%180%115%167%40%169%44%169%52%168%59%166%65%166%72%229%358$6@%438$5@$4@$3@$2@$1@$0@@@%438$5@$6$4@@$3@$2@$1@$0@@|@|@|@|@|@|@|@"])
   fun op elf64_symbol_table_entry_elf64_st_other_fupd x = x
     val op elf64_symbol_table_entry_elf64_st_other_fupd =
-    DT(((("elf_symbol_table",79),
-        [("bool",[26,181]),("elf_symbol_table",[65,66,67]),
+    DT(((("elf_symbol_table",80),
+        [("bool",[26,180]),("elf_symbol_table",[66,67,68]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%185%116%172%41%174%45%174%53%173%60%171%66%171%73%231%348$6@%418$5@$4@$3@$2@$1@$0@@@%418$5@$4@$6$3@@$2@$1@$0@@|@|@|@|@|@|@|@"])
+       [read"%180%115%167%40%169%44%169%52%168%59%166%65%166%72%229%362$6@%438$5@$4@$3@$2@$1@$0@@@%438$5@$4@$6$3@@$2@$1@$0@@|@|@|@|@|@|@|@"])
   fun op elf64_symbol_table_entry_elf64_st_shndx_fupd x = x
     val op elf64_symbol_table_entry_elf64_st_shndx_fupd =
-    DT(((("elf_symbol_table",80),
-        [("bool",[26,181]),("elf_symbol_table",[65,66,67]),
+    DT(((("elf_symbol_table",81),
+        [("bool",[26,180]),("elf_symbol_table",[66,67,68]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%184%115%172%41%174%45%174%53%173%60%171%66%171%73%231%350$6@%418$5@$4@$3@$2@$1@$0@@@%418$5@$4@$3@$6$2@@$1@$0@@|@|@|@|@|@|@|@"])
+       [read"%179%114%167%40%169%44%169%52%168%59%166%65%166%72%229%364$6@%438$5@$4@$3@$2@$1@$0@@@%438$5@$4@$3@$6$2@@$1@$0@@|@|@|@|@|@|@|@"])
   fun op elf64_symbol_table_entry_elf64_st_value_fupd x = x
     val op elf64_symbol_table_entry_elf64_st_value_fupd =
-    DT(((("elf_symbol_table",81),
-        [("bool",[26,181]),("elf_symbol_table",[65,66,67]),
+    DT(((("elf_symbol_table",82),
+        [("bool",[26,180]),("elf_symbol_table",[66,67,68]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%180%111%172%41%174%45%174%53%173%60%171%66%171%73%231%354$6@%418$5@$4@$3@$2@$1@$0@@@%418$5@$4@$3@$2@$6$1@@$0@@|@|@|@|@|@|@|@"])
+       [read"%175%110%167%40%169%44%169%52%168%59%166%65%166%72%229%368$6@%438$5@$4@$3@$2@$1@$0@@@%438$5@$4@$3@$2@$6$1@@$0@@|@|@|@|@|@|@|@"])
   fun op elf64_symbol_table_entry_elf64_st_size_fupd x = x
     val op elf64_symbol_table_entry_elf64_st_size_fupd =
-    DT(((("elf_symbol_table",82),
-        [("bool",[26,181]),("elf_symbol_table",[65,66,67]),
+    DT(((("elf_symbol_table",83),
+        [("bool",[26,180]),("elf_symbol_table",[66,67,68]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%180%111%172%41%174%45%174%53%173%60%171%66%171%73%231%352$6@%418$5@$4@$3@$2@$1@$0@@@%418$5@$4@$3@$2@$1@$6$0@@@|@|@|@|@|@|@|@"])
+       [read"%175%110%167%40%169%44%169%52%168%59%166%65%166%72%229%366$6@%438$5@$4@$3@$2@$1@$0@@@%438$5@$4@$3@$2@$1@$6$0@@@|@|@|@|@|@|@|@"])
   fun op elf64_symbol_table_entry_compare_def x = x
     val op elf64_symbol_table_entry_compare_def =
-    DT(((("elf_symbol_table",101),[]),[]),
-       [read"%176%104%176%106%245%342$1@$0@@%424%368%220@%244@@%368%220@%244@@%368%220@%244@@%368%220@%244@@%368%220@%244@@%368%220@%244@@%217%453%345$1@@@%216%452%353$1@@@%215%452%351$1@@@%214%455%343$1@@@%213%455%347$1@@@%454%349$1@@@@@@@@%217%453%345$0@@@%216%452%353$0@@@%215%452%351$0@@@%214%455%343$0@@@%213%455%347$0@@@%454%349$0@@@@@@@@@|@|@"])
+    DT(((("elf_symbol_table",102),[]),[]),
+       [read"%171%103%171%105%241%356$1@$0@@%444%386%215@%240@@%386%215@%240@@%386%215@%240@@%386%215@%240@@%386%215@%240@@%386%215@%240@@%212%479%359$1@@@%211%478%367$1@@@%210%478%365$1@@@%209%481%357$1@@@%208%481%361$1@@@%480%363$1@@@@@@@@%212%479%359$0@@@%211%478%367$0@@@%210%478%365$0@@@%209%481%357$0@@@%208%481%361$0@@@%480%363$0@@@@@@@@@|@|@"])
   fun
     op instance_Basic_classes_Ord_Elf_symbol_table_elf64_symbol_table_entry_dict_def
     x = x
     val
     op instance_Basic_classes_Ord_Elf_symbol_table_elf64_symbol_table_entry_dict_def
     =
-    DT(((("elf_symbol_table",102),[]),[]),
-       [read"%224%379@%301%293%342@@%309%292%120%122%245%342$1@$0@@%295@||@@%307%292%120%122%284%342$1@$0@@%285%295@%285%280@%279@@@||@@%305%292%120%122%245%342$1@$0@@%281@||@@%303%292%120%122%284%342$1@$0@@%285%281@%285%280@%279@@@||@@%262@@@@@@"])
-  fun op get_symbol_binding_def x = x
-    val op get_symbol_binding_def =
     DT(((("elf_symbol_table",103),[]),[]),
-       [read"%170%107%244%374$0@@%451%459$0@%299%266%265%324@@@@@@|@"])
-  fun op get_symbol_type_def x = x
-    val op get_symbol_type_def =
+       [read"%219%396@%305%292%356@@%313%291%119%121%241%356$1@$0@@%295@||@@%311%291%119%121%282%356$1@$0@@%283%295@%283%280@%279@@@||@@%309%291%119%121%241%356$1@$0@@%281@||@@%307%291%119%121%282%356$1@$0@@%283%281@%283%280@%279@@@||@@%258@@@@@@"])
+  fun op extract_symbol_binding_def x = x
+    val op extract_symbol_binding_def =
     DT(((("elf_symbol_table",104),[]),[]),
-       [read"%174%108%244%376$0@@%455%457$0@%392%299%265%265%265%265%324@@@@@@@@@|@"])
+       [read"%165%106%240%382$0@@%477%485$0@%303%264%263%328@@@@@@|@"])
+  fun op extract_symbol_type_def x = x
+    val op extract_symbol_type_def =
+    DT(((("elf_symbol_table",105),[]),[]),
+       [read"%169%107%240%384$0@@%481%483$0@%411%303%263%263%263%263%328@@@@@@@@@|@"])
   fun op make_symbol_info_def x = x
     val op make_symbol_info_def =
-    DT(((("elf_symbol_table",105),[]),[]),
-       [read"%194%36%194%160%229%385$1@$0@@%456%458%392$1@@%299%266%265%324@@@@@%457%392$0@@%392%299%265%265%265%265%324@@@@@@@@@|@|@"])
+    DT(((("elf_symbol_table",106),[]),[]),
+       [read"%189%35%189%157%227%404$1@$0@@%482%484%411$1@@%303%264%263%328@@@@@%483%411$0@@%411%303%263%263%263%263%328@@@@@@@@@|@|@"])
   fun op get_symbol_visibility_def x = x
     val op get_symbol_visibility_def =
-    DT(((("elf_symbol_table",106),[]),[]),
-       [read"%174%133%244%377$0@@%455%457$0@%392%299%265%265%324@@@@@@@|@"])
+    DT(((("elf_symbol_table",107),[]),[]),
+       [read"%169%132%240%394$0@@%481%483$0@%411%303%263%263%328@@@@@@@|@"])
   fun op make_symbol_other_def x = x
     val op make_symbol_other_def =
-    DT(((("elf_symbol_table",107),[]),[]),
-       [read"%194%166%229%386$0@@%392$0@@|@"])
+    DT(((("elf_symbol_table",108),[]),[]),
+       [read"%189%163%227%405$0@@%411$0@@|@"])
   fun op is_elf32_shndx_too_large_def x = x
     val op is_elf32_shndx_too_large_def =
-    DT(((("elf_symbol_table",108),[]),[]),
-       [read"%175%156%225%381$0@@%244%454%333$0@@@%425@@|@"])
+    DT(((("elf_symbol_table",109),[]),[]),
+       [read"%170%153%222%400$0@@%240%480%347$0@@@%445@@|@"])
   fun op is_elf64_shndx_too_large_def x = x
     val op is_elf64_shndx_too_large_def =
-    DT(((("elf_symbol_table",109),[]),[]),
-       [read"%176%157%225%383$0@@%244%454%349$0@@@%425@@|@"])
+    DT(((("elf_symbol_table",110),[]),[]),
+       [read"%171%154%222%402$0@@%240%480%363$0@@@%445@@|@"])
   fun op is_elf32_null_entry_def x = x
     val op is_elf32_null_entry_def =
-    DT(((("elf_symbol_table",110),[]),[]),
-       [read"%175%101%225%380$0@@%218%244%453%329$0@@@%219@@%218%244%453%337$0@@@%219@@%218%244%453%335$0@@@%219@@%218%244%455%327$0@@@%219@@%218%244%455%331$0@@@%219@@%244%454%333$0@@@%219@@@@@@@|@"])
+    DT(((("elf_symbol_table",111),[]),[]),
+       [read"%170%100%222%399$0@@%213%240%479%343$0@@@%214@@%213%240%479%351$0@@@%214@@%213%240%479%349$0@@@%214@@%213%240%481%341$0@@@%214@@%213%240%481%345$0@@@%214@@%240%480%347$0@@@%214@@@@@@@|@"])
   fun op is_elf64_null_entry_def x = x
     val op is_elf64_null_entry_def =
-    DT(((("elf_symbol_table",111),[]),[]),
-       [read"%176%102%225%382$0@@%218%244%453%345$0@@@%219@@%218%244%452%353$0@@@%219@@%218%244%452%351$0@@@%219@@%218%244%455%343$0@@@%219@@%218%244%455%347$0@@@%219@@%244%454%349$0@@@%219@@@@@@@|@"])
+    DT(((("elf_symbol_table",112),[]),[]),
+       [read"%171%101%222%401$0@@%213%240%479%359$0@@@%214@@%213%240%478%367$0@@@%214@@%213%240%478%365$0@@@%214@@%213%240%481%357$0@@@%214@@%213%240%481%361$0@@@%214@@%240%480%363$0@@@%214@@@@@@@|@"])
+  fun op string_of_elf32_symbol_table_entry_def x = x
+    val op string_of_elf32_symbol_table_entry_def =
+    DT(((("elf_symbol_table",113),[]),[]),
+       [read"%170%108%239%455$0@@%476%275%256%271%267%303%263%264%263%328@@@@@@%298@@%256%271%267%303%264%264%264%264%263%263%328@@@@@@@@@%271%267%303%263%264%263%263%263%264%328@@@@@@@@@%271%267%303%263%264%264%264%263%264%328@@@@@@@@@%271%267%303%263%264%264%263%263%264%328@@@@@@@@@%271%267%303%264%264%263%264%264%328@@@@@@@@%271%267%303%264%263%263%263%263%328@@@@@@@@%298@@@@@@@%422%412@%479@%343$0@@@@@%275%256%271%267%303%263%264%263%328@@@@@@%298@@%256%271%267%303%264%264%264%263%264%263%328@@@@@@@@@%271%267%303%263%264%263%263%263%264%328@@@@@@@@@%271%267%303%264%263%264%264%263%264%328@@@@@@@@@%271%267%303%263%264%264%263%264%264%328@@@@@@@@@%271%267%303%263%264%264%263%263%264%328@@@@@@@@@%271%267%303%264%264%263%264%264%328@@@@@@@@%271%267%303%264%263%263%263%263%328@@@@@@@@%298@@@@@@@@%422%412@%479@%351$0@@@@@%275%256%271%267%303%263%264%263%328@@@@@@%298@@%256%271%267%303%263%263%264%263%264%263%328@@@@@@@@@%271%267%303%263%264%263%264%263%264%328@@@@@@@@@%271%267%303%264%264%263%264%264%264%328@@@@@@@@@%271%267%303%263%264%264%263%263%264%328@@@@@@@@@%271%267%303%264%264%263%264%264%328@@@@@@@@%271%267%303%264%263%263%263%263%328@@@@@@@@%298@@@@@@@%422%412@%479@%349$0@@@@@%275%256%271%267%303%263%264%263%328@@@@@@%298@@%256%271%267%303%263%264%263%264%263%263%328@@@@@@@@@%271%267%303%264%264%264%264%263%264%328@@@@@@@@@%271%267%303%264%264%264%263%263%264%328@@@@@@@@@%271%267%303%263%263%263%263%264%264%328@@@@@@@@@%271%267%303%264%264%263%264%264%328@@@@@@@@%271%267%303%264%263%263%263%263%328@@@@@@@@%298@@@@@@@%424%412@%481@%341$0@@@@@%275%256%271%267%303%263%264%263%328@@@@@@%298@@%256%271%267%303%263%263%263%263%264%263%328@@@@@@@@@%271%267%303%264%263%264%263%264%264%328@@@@@@@@@%271%267%303%264%263%263%264%263%264%328@@@@@@@@@%271%267%303%263%264%264%263%263%264%328@@@@@@@@@%271%267%303%264%264%263%263%264%264%328@@@@@@@@@%271%267%303%264%264%263%264%264%328@@@@@@@@%271%267%303%264%263%263%263%263%328@@@@@@@@%298@@@@@@@@%424%412@%481@%345$0@@@@@%275%256%271%267%303%263%264%263%328@@@@@@%298@@%256%271%267%303%263%263%264%263%264%263%328@@@@@@@@@%271%267%303%264%263%263%264%263%264%328@@@@@@@@@%271%267%303%264%264%264%264%263%264%328@@@@@@@@@%271%267%303%264%263%264%263%263%264%328@@@@@@@@@%271%267%303%264%263%263%264%264%264%328@@@@@@@@@%271%267%303%264%264%263%264%264%328@@@@@@@@%271%267%303%264%263%263%263%263%328@@@@@@@@%298@@@@@@@@%423%412@%480@%347$0@@@@@%302@@@@@@@@|@"])
+  fun op string_of_elf64_symbol_table_entry_def x = x
+    val op string_of_elf64_symbol_table_entry_def =
+    DT(((("elf_symbol_table",114),[]),[]),
+       [read"%171%109%239%457$0@@%476%275%256%271%267%303%263%264%263%328@@@@@@%298@@%256%271%267%303%264%264%264%264%263%263%328@@@@@@@@@%271%267%303%263%264%263%263%263%264%328@@@@@@@@@%271%267%303%263%264%264%264%263%264%328@@@@@@@@@%271%267%303%263%264%264%263%263%264%328@@@@@@@@@%271%267%303%264%264%263%264%264%328@@@@@@@@%271%267%303%264%263%263%263%263%328@@@@@@@@%298@@@@@@@%422%412@%479@%359$0@@@@@%275%256%271%267%303%263%264%263%328@@@@@@%298@@%256%271%267%303%263%264%263%264%263%263%328@@@@@@@@@%271%267%303%264%264%264%264%263%264%328@@@@@@@@@%271%267%303%264%264%264%263%263%264%328@@@@@@@@@%271%267%303%263%263%263%263%264%264%328@@@@@@@@@%271%267%303%264%264%263%264%264%328@@@@@@@@%271%267%303%264%263%263%263%263%328@@@@@@@@%298@@@@@@@%424%412@%481@%357$0@@@@@%275%256%271%267%303%263%264%263%328@@@@@@%298@@%256%271%267%303%263%263%263%263%264%263%328@@@@@@@@@%271%267%303%264%263%264%263%264%264%328@@@@@@@@@%271%267%303%264%263%263%264%263%264%328@@@@@@@@@%271%267%303%263%264%264%263%263%264%328@@@@@@@@@%271%267%303%264%264%263%263%264%264%328@@@@@@@@@%271%267%303%264%264%263%264%264%328@@@@@@@@%271%267%303%264%263%263%263%263%328@@@@@@@@%298@@@@@@@@%424%412@%481@%361$0@@@@@%275%256%271%267%303%263%264%263%328@@@@@@%298@@%256%271%267%303%263%263%264%263%264%263%328@@@@@@@@@%271%267%303%264%263%263%264%263%264%328@@@@@@@@@%271%267%303%264%264%264%264%263%264%328@@@@@@@@@%271%267%303%264%263%264%263%263%264%328@@@@@@@@@%271%267%303%264%263%263%264%264%264%328@@@@@@@@@%271%267%303%264%264%263%264%264%328@@@@@@@@%271%267%303%264%263%263%263%263%328@@@@@@@@%298@@@@@@@@%423%412@%480@%363$0@@@@@%275%256%271%267%303%263%264%263%328@@@@@@%298@@%256%271%267%303%264%264%264%263%264%263%328@@@@@@@@@%271%267%303%263%264%263%263%263%264%328@@@@@@@@@%271%267%303%264%263%264%264%263%264%328@@@@@@@@@%271%267%303%263%264%264%263%264%264%328@@@@@@@@@%271%267%303%263%264%264%263%263%264%328@@@@@@@@@%271%267%303%264%264%263%264%264%328@@@@@@@@%271%267%303%264%263%263%263%263%328@@@@@@@@%298@@@@@@@@%421%412@%478@%367$0@@@@@%275%256%271%267%303%263%264%263%328@@@@@@%298@@%256%271%267%303%263%263%264%263%264%263%328@@@@@@@@@%271%267%303%263%264%263%264%263%264%328@@@@@@@@@%271%267%303%264%264%263%264%264%264%328@@@@@@@@@%271%267%303%263%264%264%263%263%264%328@@@@@@@@@%271%267%303%264%264%263%264%264%328@@@@@@@@%271%267%303%264%263%263%263%263%328@@@@@@@@%298@@@@@@@%421%412@%478@%365$0@@@@@%302@@@@@@@@|@"])
+  fun op string_of_elf32_symbol_table_def x = x
+    val op string_of_elf32_symbol_table_def =
+    DT(((("elf_symbol_table",115),[]),[]),
+       [read"%187%155%239%454$0@@%476%296%455@$0@@@|@"])
   fun op elf64_null_symbol_table_entry_def x = x
     val op elf64_null_symbol_table_entry_def =
-    DT(((("elf_symbol_table",112),[]),[]),
-       [read"%231%340@%346%287%390%219@@@%344%289%392%219@@@%348%289%392%219@@@%350%288%391%219@@@%354%286%389%219@@@%352%286%389%219@@@%264@@@@@@@"])
+    DT(((("elf_symbol_table",116),[]),[]),
+       [read"%229%354@%360%285%409%214@@@%358%287%411%214@@@%362%287%411%214@@@%364%286%410%214@@@%368%284%408%214@@@%366%284%408%214@@@%262@@@@@@@"])
+  fun op string_of_elf64_symbol_table_def x = x
+    val op string_of_elf64_symbol_table_def =
+    DT(((("elf_symbol_table",117),[]),[]),
+       [read"%188%156%239%456$0@@%476%297%457@$0@@@|@"])
+  fun
+    op instance_Show_Show_Elf_symbol_table_elf32_symbol_table_entry_dict_def
+    x = x
+    val
+    op instance_Show_Show_Elf_symbol_table_elf32_symbol_table_entry_dict_def
+    =
+    DT(((("elf_symbol_table",118),[]),[]),
+       [read"%220%397@%314%290%455@@%259@@"])
+  fun
+    op instance_Show_Show_Elf_symbol_table_elf64_symbol_table_entry_dict_def
+    x = x
+    val
+    op instance_Show_Show_Elf_symbol_table_elf64_symbol_table_entry_dict_def
+    =
+    DT(((("elf_symbol_table",119),[]),[]),
+       [read"%221%398@%315%293%457@@%260@@"])
   fun op read_elf32_symbol_table_entry_def x = x
     val op read_elf32_symbol_table_entry_def =
-    DT(((("elf_symbol_table",113),[]),[]),
-       [read"%177%100%169%38%235%406$1@$0@@%360%408$1@$0@@%313%147%38%360%403$3@$0@@%313%153%38%360%408$5@$0@@%313%151%38%364%416$7@$0@@%317%146%38%364%416$9@$0@@%317%148%38%362%404$11@$0@@%315%149%38%421%209%330%287$11@@%338%287$9@@%336%287$7@@%328%289$5@@%332%289$3@@%334%288$1@@%263@@@@@@@$0@@||@@||@@||@@||@@||@@||@@@|@|@"])
+    DT(((("elf_symbol_table",120),[]),[]),
+       [read"%172%99%164%37%233%428$1@$0@@%374%429$1@$0@@%319%144%37%374%425$3@$0@@%319%150%37%374%429$5@$0@@%319%148%37%378%436$7@$0@@%323%143%37%378%436$9@$0@@%323%145%37%376%426$11@$0@@%321%146%37%441%204%344%285$11@@%352%285$9@@%350%285$7@@%342%287$5@@%346%287$3@@%348%286$1@@%261@@@@@@@$0@@||@@||@@||@@||@@||@@||@@@|@|@"])
+  fun op bytes_of_elf32_symbol_table_entry_def x = x
+    val op bytes_of_elf32_symbol_table_entry_def =
+    DT(((("elf_symbol_table",121),[]),[]),
+       [read"%172%99%170%108%223%331$1@$0@@%385%274%332$1@%343$0@@@%274%329$1@%351$0@@@%274%332$1@%349$0@@@%274%338%341$0@@@%274%338%345$0@@@%274%330$1@%347$0@@@%301@@@@@@@@|@|@"])
   fun op read_elf64_symbol_table_entry_def x = x
     val op read_elf64_symbol_table_entry_def =
-    DT(((("elf_symbol_table",114),[]),[]),
-       [read"%177%100%169%38%236%412$1@$0@@%361%414$1@$0@@%314%147%38%365%416$3@$0@@%318%146%38%365%416$5@$0@@%318%148%38%363%410$7@$0@@%316%149%38%359%409$9@$0@@%312%152%38%359%415$11@$0@@%312%150%38%422%210%346%287$11@@%344%289$9@@%348%289$7@@%350%288$5@@%354%286$3@@%352%286$1@@%264@@@@@@@$0@@||@@||@@||@@||@@||@@||@@@|@|@"])
-  fun op read_elf32_symbol_table_tupled_primitive_def x = x
-    val op read_elf32_symbol_table_tupled_primitive_def =
-    DT(((("elf_symbol_table",115),[]),[]),
-       [read"%241%407@%322%260%9%218%321$0@@%177%100%169%38%169%39%248%460%244%384$1@@%219@@@$3%211$2@$0@@%211$2@$1@@@|@|@|@@|@@%139%10%401$0@%100%38%282%270%244%384$0@@%219@@%419%297@@%366%406$1@$0@@%319%131%38%357$5%211$3@$0@@@%161%419%274$2@$0@@|@||@@@@||@||@@"])
-  fun op read_elf32_symbol_table_curried_def x = x
-    val op read_elf32_symbol_table_curried_def =
-    DT(((("elf_symbol_table",116),[]),[]),
-       [read"%177%167%169%168%232%405$1@$0@@%407%211$1@$0@@@|@|@"])
-  fun op read_elf64_symbol_table_tupled_primitive_def x = x
-    val op read_elf64_symbol_table_tupled_primitive_def =
-    DT(((("elf_symbol_table",119),[]),[]),
-       [read"%242%413@%323%260%9%218%321$0@@%177%100%169%38%169%39%248%460%244%384$1@@%219@@@$3%211$2@$0@@%211$2@$1@@@|@|@|@@|@@%140%10%402$0@%100%38%283%271%244%384$0@@%219@@%420%298@@%367%412$1@$0@@%320%132%38%358$5%211$3@$0@@@%162%420%275$2@$0@@|@||@@@@||@||@@"])
-  fun op read_elf64_symbol_table_curried_def x = x
-    val op read_elf64_symbol_table_curried_def =
-    DT(((("elf_symbol_table",120),[]),[]),
-       [read"%177%167%169%168%233%411$1@$0@@%413%211$1@$0@@@|@|@"])
+    DT(((("elf_symbol_table",122),[]),[]),
+       [read"%172%99%164%37%234%433$1@$0@@%375%434$1@$0@@%320%144%37%379%436$3@$0@@%324%143%37%379%436$5@$0@@%324%145%37%377%431$7@$0@@%322%146%37%373%430$9@$0@@%318%149%37%373%435$11@$0@@%318%147%37%442%205%360%285$11@@%358%287$9@@%362%287$7@@%364%286$5@@%368%284$3@@%366%284$1@@%262@@@@@@@$0@@||@@||@@||@@||@@||@@||@@@|@|@"])
+  fun op bytes_of_elf64_symbol_table_entry_def x = x
+    val op bytes_of_elf64_symbol_table_entry_def =
+    DT(((("elf_symbol_table",123),[]),[]),
+       [read"%172%99%171%109%223%335$1@$0@@%385%274%336$1@%359$0@@@%274%338%357$0@@@%274%338%361$0@@@%274%334$1@%363$0@@@%274%333$1@%367$0@@@%274%337$1@%365$0@@@%301@@@@@@@@|@|@"])
   fun op get_elf32_symbol_image_address_def x = x
     val op get_elf32_symbol_image_address_def =
-    DT(((("elf_symbol_table",123),[]),[]),
-       [read"%192%158%197%155%234%369$1@$0@@%387%109%294%136%294%35%294%145%294%163%294%37%356%373$4@$6@@%154%423%212$0@%215$2@%214$3@%213$4@$1@@@@@|@|@%375%327$4@@@|@%376%327$3@@@|@%198%453%335$2@@@%299%266%265%265%324@@@@@@|@%453%337$1@@@|@%453%329$0@@@|@$1@@|@|@"])
+    DT(((("elf_symbol_table",132),[]),[]),
+       [read"%187%155%192%152%232%388$1@$0@@%406%108%294%135%294%34%294%142%294%160%294%36%370%393$4@$6@@%151%443%207$0@%210$2@%209$3@%208$4@$1@@@@@|@|@%383%341$4@@@|@%384%341$3@@@|@%193%479%349$2@@@%303%264%263%263%328@@@@@@|@%479%351$1@@@|@%479%343$0@@@|@$1@@|@|@"])
   fun op get_elf64_symbol_image_address_def x = x
     val op get_elf64_symbol_image_address_def =
-    DT(((("elf_symbol_table",124),[]),[]),
-       [read"%193%159%197%155%234%371$1@$0@@%388%110%294%136%294%35%294%145%294%163%294%37%356%373$4@$6@@%154%423%212$0@%215$2@%214$3@%213$4@$1@@@@@|@|@%375%343$4@@@|@%376%343$3@@@|@%452%351$2@@@|@%452%353$1@@@|@%453%345$0@@@|@$1@@|@|@"])
+    DT(((("elf_symbol_table",133),[]),[]),
+       [read"%188%156%192%152%232%391$1@$0@@%407%109%294%135%294%34%294%142%294%160%294%36%370%393$4@$6@@%151%443%207$0@%210$2@%209$3@%208$4@$1@@@@@|@|@%383%357$4@@@|@%384%357$3@@@|@%478%365$2@@@|@%478%367$1@@@|@%479%359$0@@@|@$1@@|@|@"])
   fun op get_elf32_symbol_type_def x = x
     val op get_elf32_symbol_type_def =
-    DT(((("elf_symbol_table",125),[]),[]),
-       [read"%175%156%244%370$0@@%376%327$0@@@|@"])
+    DT(((("elf_symbol_table",134),[]),[]),
+       [read"%170%153%240%389$0@@%384%341$0@@@|@"])
   fun op get_elf64_symbol_type_def x = x
     val op get_elf64_symbol_type_def =
-    DT(((("elf_symbol_table",126),[]),[]),
-       [read"%176%157%244%372$0@@%376%343$0@@@|@"])
+    DT(((("elf_symbol_table",135),[]),[]),
+       [read"%171%154%240%392$0@@%384%357$0@@@|@"])
+  fun op get_elf32_symbol_binding_def x = x
+    val op get_elf32_symbol_binding_def =
+    DT(((("elf_symbol_table",136),[]),[]),
+       [read"%170%153%240%387$0@@%383%341$0@@@|@"])
+  fun op get_elf64_symbol_binding_def x = x
+    val op get_elf64_symbol_binding_def =
+    DT(((("elf_symbol_table",137),[]),[]),
+       [read"%171%154%240%390$0@@%383%357$0@@@|@"])
   fun op elf32_symbol_table_entry_accessors x = x
     val op elf32_symbol_table_entry_accessors =
-    DT(((("elf_symbol_table",37),
-        [("elf_symbol_table",[31,32,33,34,35,36])]),["DISK_THM"]),
-       [read"%218%172%41%172%44%172%51%174%61%174%68%173%75%227%329%417$5@$4@$3@$2@$1@$0@@@$5@|@|@|@|@|@|@@%218%172%41%172%44%172%51%174%61%174%68%173%75%227%337%417$5@$4@$3@$2@$1@$0@@@$4@|@|@|@|@|@|@@%218%172%41%172%44%172%51%174%61%174%68%173%75%227%335%417$5@$4@$3@$2@$1@$0@@@$3@|@|@|@|@|@|@@%218%172%41%172%44%172%51%174%61%174%68%173%75%229%327%417$5@$4@$3@$2@$1@$0@@@$2@|@|@|@|@|@|@@%218%172%41%172%44%172%51%174%61%174%68%173%75%229%331%417$5@$4@$3@$2@$1@$0@@@$1@|@|@|@|@|@|@@%172%41%172%44%172%51%174%61%174%68%173%75%228%333%417$5@$4@$3@$2@$1@$0@@@$0@|@|@|@|@|@|@@@@@@"])
+    DT(((("elf_symbol_table",38),
+        [("elf_symbol_table",[32,33,34,35,36,37])]),["DISK_THM"]),
+       [read"%213%167%40%167%43%167%50%169%60%169%67%168%74%225%343%437$5@$4@$3@$2@$1@$0@@@$5@|@|@|@|@|@|@@%213%167%40%167%43%167%50%169%60%169%67%168%74%225%351%437$5@$4@$3@$2@$1@$0@@@$4@|@|@|@|@|@|@@%213%167%40%167%43%167%50%169%60%169%67%168%74%225%349%437$5@$4@$3@$2@$1@$0@@@$3@|@|@|@|@|@|@@%213%167%40%167%43%167%50%169%60%169%67%168%74%227%341%437$5@$4@$3@$2@$1@$0@@@$2@|@|@|@|@|@|@@%213%167%40%167%43%167%50%169%60%169%67%168%74%227%345%437$5@$4@$3@$2@$1@$0@@@$1@|@|@|@|@|@|@@%167%40%167%43%167%50%169%60%169%67%168%74%226%347%437$5@$4@$3@$2@$1@$0@@@$0@|@|@|@|@|@|@@@@@@"])
   fun op elf32_symbol_table_entry_fn_updates x = x
     val op elf32_symbol_table_entry_fn_updates =
-    DT(((("elf_symbol_table",44),
-        [("elf_symbol_table",[38,39,40,41,42,43])]),["DISK_THM"]),
-       [read"%218%181%112%172%41%172%44%172%51%174%61%174%68%173%75%230%330$6@%417$5@$4@$3@$2@$1@$0@@@%417$6$5@@$4@$3@$2@$1@$0@@|@|@|@|@|@|@|@@%218%181%112%172%41%172%44%172%51%174%61%174%68%173%75%230%338$6@%417$5@$4@$3@$2@$1@$0@@@%417$5@$6$4@@$3@$2@$1@$0@@|@|@|@|@|@|@|@@%218%181%112%172%41%172%44%172%51%174%61%174%68%173%75%230%336$6@%417$5@$4@$3@$2@$1@$0@@@%417$5@$4@$6$3@@$2@$1@$0@@|@|@|@|@|@|@|@@%218%185%116%172%41%172%44%172%51%174%61%174%68%173%75%230%328$6@%417$5@$4@$3@$2@$1@$0@@@%417$5@$4@$3@$6$2@@$1@$0@@|@|@|@|@|@|@|@@%218%185%116%172%41%172%44%172%51%174%61%174%68%173%75%230%332$6@%417$5@$4@$3@$2@$1@$0@@@%417$5@$4@$3@$2@$6$1@@$0@@|@|@|@|@|@|@|@@%184%115%172%41%172%44%172%51%174%61%174%68%173%75%230%334$6@%417$5@$4@$3@$2@$1@$0@@@%417$5@$4@$3@$2@$1@$6$0@@@|@|@|@|@|@|@|@@@@@@"])
+    DT(((("elf_symbol_table",45),
+        [("elf_symbol_table",[39,40,41,42,43,44])]),["DISK_THM"]),
+       [read"%213%176%111%167%40%167%43%167%50%169%60%169%67%168%74%228%344$6@%437$5@$4@$3@$2@$1@$0@@@%437$6$5@@$4@$3@$2@$1@$0@@|@|@|@|@|@|@|@@%213%176%111%167%40%167%43%167%50%169%60%169%67%168%74%228%352$6@%437$5@$4@$3@$2@$1@$0@@@%437$5@$6$4@@$3@$2@$1@$0@@|@|@|@|@|@|@|@@%213%176%111%167%40%167%43%167%50%169%60%169%67%168%74%228%350$6@%437$5@$4@$3@$2@$1@$0@@@%437$5@$4@$6$3@@$2@$1@$0@@|@|@|@|@|@|@|@@%213%180%115%167%40%167%43%167%50%169%60%169%67%168%74%228%342$6@%437$5@$4@$3@$2@$1@$0@@@%437$5@$4@$3@$6$2@@$1@$0@@|@|@|@|@|@|@|@@%213%180%115%167%40%167%43%167%50%169%60%169%67%168%74%228%346$6@%437$5@$4@$3@$2@$1@$0@@@%437$5@$4@$3@$2@$6$1@@$0@@|@|@|@|@|@|@|@@%179%114%167%40%167%43%167%50%169%60%169%67%168%74%228%348$6@%437$5@$4@$3@$2@$1@$0@@@%437$5@$4@$3@$2@$1@$6$0@@@|@|@|@|@|@|@|@@@@@@"])
   fun op elf32_symbol_table_entry_accfupds x = x
     val op elf32_symbol_table_entry_accfupds =
-    DT(((("elf_symbol_table",45),
-        [("bool",[25,26,56,181]),
-         ("elf_symbol_table",[26,27,28,37,44])]),["DISK_THM"]),
-       [read"%218%181%112%175%78%227%329%338$1@$0@@@%329$0@@|@|@@%218%181%112%175%78%227%329%336$1@$0@@@%329$0@@|@|@@%218%185%116%175%78%227%329%328$1@$0@@@%329$0@@|@|@@%218%185%116%175%78%227%329%332$1@$0@@@%329$0@@|@|@@%218%184%115%175%78%227%329%334$1@$0@@@%329$0@@|@|@@%218%181%112%175%78%227%337%330$1@$0@@@%337$0@@|@|@@%218%181%112%175%78%227%337%336$1@$0@@@%337$0@@|@|@@%218%185%116%175%78%227%337%328$1@$0@@@%337$0@@|@|@@%218%185%116%175%78%227%337%332$1@$0@@@%337$0@@|@|@@%218%184%115%175%78%227%337%334$1@$0@@@%337$0@@|@|@@%218%181%112%175%78%227%335%330$1@$0@@@%335$0@@|@|@@%218%181%112%175%78%227%335%338$1@$0@@@%335$0@@|@|@@%218%185%116%175%78%227%335%328$1@$0@@@%335$0@@|@|@@%218%185%116%175%78%227%335%332$1@$0@@@%335$0@@|@|@@%218%184%115%175%78%227%335%334$1@$0@@@%335$0@@|@|@@%218%181%112%175%78%229%327%330$1@$0@@@%327$0@@|@|@@%218%181%112%175%78%229%327%338$1@$0@@@%327$0@@|@|@@%218%181%112%175%78%229%327%336$1@$0@@@%327$0@@|@|@@%218%185%116%175%78%229%327%332$1@$0@@@%327$0@@|@|@@%218%184%115%175%78%229%327%334$1@$0@@@%327$0@@|@|@@%218%181%112%175%78%229%331%330$1@$0@@@%331$0@@|@|@@%218%181%112%175%78%229%331%338$1@$0@@@%331$0@@|@|@@%218%181%112%175%78%229%331%336$1@$0@@@%331$0@@|@|@@%218%185%116%175%78%229%331%328$1@$0@@@%331$0@@|@|@@%218%184%115%175%78%229%331%334$1@$0@@@%331$0@@|@|@@%218%181%112%175%78%228%333%330$1@$0@@@%333$0@@|@|@@%218%181%112%175%78%228%333%338$1@$0@@@%333$0@@|@|@@%218%181%112%175%78%228%333%336$1@$0@@@%333$0@@|@|@@%218%185%116%175%78%228%333%328$1@$0@@@%333$0@@|@|@@%218%185%116%175%78%228%333%332$1@$0@@@%333$0@@|@|@@%218%181%112%175%78%227%329%330$1@$0@@@$1%329$0@@@|@|@@%218%181%112%175%78%227%337%338$1@$0@@@$1%337$0@@@|@|@@%218%181%112%175%78%227%335%336$1@$0@@@$1%335$0@@@|@|@@%218%185%116%175%78%229%327%328$1@$0@@@$1%327$0@@@|@|@@%218%185%116%175%78%229%331%332$1@$0@@@$1%331$0@@@|@|@@%184%115%175%78%228%333%334$1@$0@@@$1%333$0@@@|@|@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"])
+    DT(((("elf_symbol_table",46),
+        [("bool",[25,26,55,180]),
+         ("elf_symbol_table",[27,28,29,38,45])]),["DISK_THM"]),
+       [read"%213%176%111%170%77%225%343%352$1@$0@@@%343$0@@|@|@@%213%176%111%170%77%225%343%350$1@$0@@@%343$0@@|@|@@%213%180%115%170%77%225%343%342$1@$0@@@%343$0@@|@|@@%213%180%115%170%77%225%343%346$1@$0@@@%343$0@@|@|@@%213%179%114%170%77%225%343%348$1@$0@@@%343$0@@|@|@@%213%176%111%170%77%225%351%344$1@$0@@@%351$0@@|@|@@%213%176%111%170%77%225%351%350$1@$0@@@%351$0@@|@|@@%213%180%115%170%77%225%351%342$1@$0@@@%351$0@@|@|@@%213%180%115%170%77%225%351%346$1@$0@@@%351$0@@|@|@@%213%179%114%170%77%225%351%348$1@$0@@@%351$0@@|@|@@%213%176%111%170%77%225%349%344$1@$0@@@%349$0@@|@|@@%213%176%111%170%77%225%349%352$1@$0@@@%349$0@@|@|@@%213%180%115%170%77%225%349%342$1@$0@@@%349$0@@|@|@@%213%180%115%170%77%225%349%346$1@$0@@@%349$0@@|@|@@%213%179%114%170%77%225%349%348$1@$0@@@%349$0@@|@|@@%213%176%111%170%77%227%341%344$1@$0@@@%341$0@@|@|@@%213%176%111%170%77%227%341%352$1@$0@@@%341$0@@|@|@@%213%176%111%170%77%227%341%350$1@$0@@@%341$0@@|@|@@%213%180%115%170%77%227%341%346$1@$0@@@%341$0@@|@|@@%213%179%114%170%77%227%341%348$1@$0@@@%341$0@@|@|@@%213%176%111%170%77%227%345%344$1@$0@@@%345$0@@|@|@@%213%176%111%170%77%227%345%352$1@$0@@@%345$0@@|@|@@%213%176%111%170%77%227%345%350$1@$0@@@%345$0@@|@|@@%213%180%115%170%77%227%345%342$1@$0@@@%345$0@@|@|@@%213%179%114%170%77%227%345%348$1@$0@@@%345$0@@|@|@@%213%176%111%170%77%226%347%344$1@$0@@@%347$0@@|@|@@%213%176%111%170%77%226%347%352$1@$0@@@%347$0@@|@|@@%213%176%111%170%77%226%347%350$1@$0@@@%347$0@@|@|@@%213%180%115%170%77%226%347%342$1@$0@@@%347$0@@|@|@@%213%180%115%170%77%226%347%346$1@$0@@@%347$0@@|@|@@%213%176%111%170%77%225%343%344$1@$0@@@$1%343$0@@@|@|@@%213%176%111%170%77%225%351%352$1@$0@@@$1%351$0@@@|@|@@%213%176%111%170%77%225%349%350$1@$0@@@$1%349$0@@@|@|@@%213%180%115%170%77%227%341%342$1@$0@@@$1%341$0@@@|@|@@%213%180%115%170%77%227%345%346$1@$0@@@$1%345$0@@@|@|@@%179%114%170%77%226%347%348$1@$0@@@$1%347$0@@@|@|@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"])
   fun op elf32_symbol_table_entry_fupdfupds x = x
     val op elf32_symbol_table_entry_fupdfupds =
-    DT(((("elf_symbol_table",46),
-        [("bool",[25,26,56,181]),("combin",[8]),
-         ("elf_symbol_table",[26,27,28,44])]),["DISK_THM"]),
-       [read"%218%181%126%181%112%175%78%230%330$1@%330$2@$0@@@%330%394$1@$2@@$0@@|@|@|@@%218%181%126%181%112%175%78%230%338$1@%338$2@$0@@@%338%394$1@$2@@$0@@|@|@|@@%218%181%126%181%112%175%78%230%336$1@%336$2@$0@@@%336%394$1@$2@@$0@@|@|@|@@%218%185%128%185%116%175%78%230%328$1@%328$2@$0@@@%328%396$1@$2@@$0@@|@|@|@@%218%185%128%185%116%175%78%230%332$1@%332$2@$0@@@%332%396$1@$2@@$0@@|@|@|@@%184%127%184%115%175%78%230%334$1@%334$2@$0@@@%334%395$1@$2@@$0@@|@|@|@@@@@@"])
+    DT(((("elf_symbol_table",47),
+        [("bool",[25,26,55,180]),("combin",[8]),
+         ("elf_symbol_table",[27,28,29,45])]),["DISK_THM"]),
+       [read"%213%176%125%176%111%170%77%228%344$1@%344$2@$0@@@%344%414$1@$2@@$0@@|@|@|@@%213%176%125%176%111%170%77%228%352$1@%352$2@$0@@@%352%414$1@$2@@$0@@|@|@|@@%213%176%125%176%111%170%77%228%350$1@%350$2@$0@@@%350%414$1@$2@@$0@@|@|@|@@%213%180%127%180%115%170%77%228%342$1@%342$2@$0@@@%342%416$1@$2@@$0@@|@|@|@@%213%180%127%180%115%170%77%228%346$1@%346$2@$0@@@%346%416$1@$2@@$0@@|@|@|@@%179%126%179%114%170%77%228%348$1@%348$2@$0@@@%348%415$1@$2@@$0@@|@|@|@@@@@@"])
   fun op elf32_symbol_table_entry_fupdfupds_comp x = x
     val op elf32_symbol_table_entry_fupdfupds_comp =
-    DT(((("elf_symbol_table",47),
-        [("bool",[14,25,26,56,58,181]),("combin",[8,9]),
-         ("elf_symbol_table",[26,27,28,44])]),["DISK_THM"]),
-       [read"%218%218%181%126%181%112%239%398%330$0@@%330$1@@@%330%394$0@$1@@@|@|@@%178%129%181%126%181%112%237%397%330$0@@%397%330$1@@$2@@@%397%330%394$0@$1@@@$2@@|@|@|@@@%218%218%181%126%181%112%239%398%338$0@@%338$1@@@%338%394$0@$1@@@|@|@@%178%129%181%126%181%112%237%397%338$0@@%397%338$1@@$2@@@%397%338%394$0@$1@@@$2@@|@|@|@@@%218%218%181%126%181%112%239%398%336$0@@%336$1@@@%336%394$0@$1@@@|@|@@%178%129%181%126%181%112%237%397%336$0@@%397%336$1@@$2@@@%397%336%394$0@$1@@@$2@@|@|@|@@@%218%218%185%128%185%116%239%398%328$0@@%328$1@@@%328%396$0@$1@@@|@|@@%178%129%185%128%185%116%237%397%328$0@@%397%328$1@@$2@@@%397%328%396$0@$1@@@$2@@|@|@|@@@%218%218%185%128%185%116%239%398%332$0@@%332$1@@@%332%396$0@$1@@@|@|@@%178%129%185%128%185%116%237%397%332$0@@%397%332$1@@$2@@@%397%332%396$0@$1@@@$2@@|@|@|@@@%218%184%127%184%115%239%398%334$0@@%334$1@@@%334%395$0@$1@@@|@|@@%178%129%184%127%184%115%237%397%334$0@@%397%334$1@@$2@@@%397%334%395$0@$1@@@$2@@|@|@|@@@@@@@"])
+    DT(((("elf_symbol_table",48),
+        [("bool",[14,25,26,55,57,180]),("combin",[8,9]),
+         ("elf_symbol_table",[27,28,29,45])]),["DISK_THM"]),
+       [read"%213%213%176%125%176%111%237%418%344$0@@%344$1@@@%344%414$0@$1@@@|@|@@%173%128%176%125%176%111%235%417%344$0@@%417%344$1@@$2@@@%417%344%414$0@$1@@@$2@@|@|@|@@@%213%213%176%125%176%111%237%418%352$0@@%352$1@@@%352%414$0@$1@@@|@|@@%173%128%176%125%176%111%235%417%352$0@@%417%352$1@@$2@@@%417%352%414$0@$1@@@$2@@|@|@|@@@%213%213%176%125%176%111%237%418%350$0@@%350$1@@@%350%414$0@$1@@@|@|@@%173%128%176%125%176%111%235%417%350$0@@%417%350$1@@$2@@@%417%350%414$0@$1@@@$2@@|@|@|@@@%213%213%180%127%180%115%237%418%342$0@@%342$1@@@%342%416$0@$1@@@|@|@@%173%128%180%127%180%115%235%417%342$0@@%417%342$1@@$2@@@%417%342%416$0@$1@@@$2@@|@|@|@@@%213%213%180%127%180%115%237%418%346$0@@%346$1@@@%346%416$0@$1@@@|@|@@%173%128%180%127%180%115%235%417%346$0@@%417%346$1@@$2@@@%417%346%416$0@$1@@@$2@@|@|@|@@@%213%179%126%179%114%237%418%348$0@@%348$1@@@%348%415$0@$1@@@|@|@@%173%128%179%126%179%114%235%417%348$0@@%417%348$1@@$2@@@%417%348%415$0@$1@@@$2@@|@|@|@@@@@@@"])
   fun op elf32_symbol_table_entry_fupdcanon x = x
     val op elf32_symbol_table_entry_fupdcanon =
-    DT(((("elf_symbol_table",48),
-        [("bool",[25,26,56,181]),
-         ("elf_symbol_table",[26,27,28,44])]),["DISK_THM"]),
-       [read"%218%181%126%181%112%175%78%230%338$1@%330$2@$0@@@%330$2@%338$1@$0@@@|@|@|@@%218%181%126%181%112%175%78%230%336$1@%330$2@$0@@@%330$2@%336$1@$0@@@|@|@|@@%218%181%126%181%112%175%78%230%336$1@%338$2@$0@@@%338$2@%336$1@$0@@@|@|@|@@%218%181%126%185%116%175%78%230%328$1@%330$2@$0@@@%330$2@%328$1@$0@@@|@|@|@@%218%181%126%185%116%175%78%230%328$1@%338$2@$0@@@%338$2@%328$1@$0@@@|@|@|@@%218%181%126%185%116%175%78%230%328$1@%336$2@$0@@@%336$2@%328$1@$0@@@|@|@|@@%218%181%126%185%116%175%78%230%332$1@%330$2@$0@@@%330$2@%332$1@$0@@@|@|@|@@%218%181%126%185%116%175%78%230%332$1@%338$2@$0@@@%338$2@%332$1@$0@@@|@|@|@@%218%181%126%185%116%175%78%230%332$1@%336$2@$0@@@%336$2@%332$1@$0@@@|@|@|@@%218%185%128%185%116%175%78%230%332$1@%328$2@$0@@@%328$2@%332$1@$0@@@|@|@|@@%218%181%126%184%115%175%78%230%334$1@%330$2@$0@@@%330$2@%334$1@$0@@@|@|@|@@%218%181%126%184%115%175%78%230%334$1@%338$2@$0@@@%338$2@%334$1@$0@@@|@|@|@@%218%181%126%184%115%175%78%230%334$1@%336$2@$0@@@%336$2@%334$1@$0@@@|@|@|@@%218%185%128%184%115%175%78%230%334$1@%328$2@$0@@@%328$2@%334$1@$0@@@|@|@|@@%185%128%184%115%175%78%230%334$1@%332$2@$0@@@%332$2@%334$1@$0@@@|@|@|@@@@@@@@@@@@@@@"])
+    DT(((("elf_symbol_table",49),
+        [("bool",[25,26,55,180]),
+         ("elf_symbol_table",[27,28,29,45])]),["DISK_THM"]),
+       [read"%213%176%125%176%111%170%77%228%352$1@%344$2@$0@@@%344$2@%352$1@$0@@@|@|@|@@%213%176%125%176%111%170%77%228%350$1@%344$2@$0@@@%344$2@%350$1@$0@@@|@|@|@@%213%176%125%176%111%170%77%228%350$1@%352$2@$0@@@%352$2@%350$1@$0@@@|@|@|@@%213%176%125%180%115%170%77%228%342$1@%344$2@$0@@@%344$2@%342$1@$0@@@|@|@|@@%213%176%125%180%115%170%77%228%342$1@%352$2@$0@@@%352$2@%342$1@$0@@@|@|@|@@%213%176%125%180%115%170%77%228%342$1@%350$2@$0@@@%350$2@%342$1@$0@@@|@|@|@@%213%176%125%180%115%170%77%228%346$1@%344$2@$0@@@%344$2@%346$1@$0@@@|@|@|@@%213%176%125%180%115%170%77%228%346$1@%352$2@$0@@@%352$2@%346$1@$0@@@|@|@|@@%213%176%125%180%115%170%77%228%346$1@%350$2@$0@@@%350$2@%346$1@$0@@@|@|@|@@%213%180%127%180%115%170%77%228%346$1@%342$2@$0@@@%342$2@%346$1@$0@@@|@|@|@@%213%176%125%179%114%170%77%228%348$1@%344$2@$0@@@%344$2@%348$1@$0@@@|@|@|@@%213%176%125%179%114%170%77%228%348$1@%352$2@$0@@@%352$2@%348$1@$0@@@|@|@|@@%213%176%125%179%114%170%77%228%348$1@%350$2@$0@@@%350$2@%348$1@$0@@@|@|@|@@%213%180%127%179%114%170%77%228%348$1@%342$2@$0@@@%342$2@%348$1@$0@@@|@|@|@@%180%127%179%114%170%77%228%348$1@%346$2@$0@@@%346$2@%348$1@$0@@@|@|@|@@@@@@@@@@@@@@@"])
   fun op elf32_symbol_table_entry_fupdcanon_comp x = x
     val op elf32_symbol_table_entry_fupdcanon_comp =
-    DT(((("elf_symbol_table",49),
-        [("bool",[14,25,26,56,58,181]),("combin",[8,9]),
-         ("elf_symbol_table",[26,27,28,44])]),["DISK_THM"]),
-       [read"%218%218%181%126%181%112%239%398%338$0@@%330$1@@@%398%330$1@@%338$0@@@|@|@@%178%129%181%126%181%112%237%397%338$0@@%397%330$1@@$2@@@%397%330$1@@%397%338$0@@$2@@@|@|@|@@@%218%218%181%126%181%112%239%398%336$0@@%330$1@@@%398%330$1@@%336$0@@@|@|@@%178%129%181%126%181%112%237%397%336$0@@%397%330$1@@$2@@@%397%330$1@@%397%336$0@@$2@@@|@|@|@@@%218%218%181%126%181%112%239%398%336$0@@%338$1@@@%398%338$1@@%336$0@@@|@|@@%178%129%181%126%181%112%237%397%336$0@@%397%338$1@@$2@@@%397%338$1@@%397%336$0@@$2@@@|@|@|@@@%218%218%181%126%185%116%239%398%328$0@@%330$1@@@%398%330$1@@%328$0@@@|@|@@%178%129%181%126%185%116%237%397%328$0@@%397%330$1@@$2@@@%397%330$1@@%397%328$0@@$2@@@|@|@|@@@%218%218%181%126%185%116%239%398%328$0@@%338$1@@@%398%338$1@@%328$0@@@|@|@@%178%129%181%126%185%116%237%397%328$0@@%397%338$1@@$2@@@%397%338$1@@%397%328$0@@$2@@@|@|@|@@@%218%218%181%126%185%116%239%398%328$0@@%336$1@@@%398%336$1@@%328$0@@@|@|@@%178%129%181%126%185%116%237%397%328$0@@%397%336$1@@$2@@@%397%336$1@@%397%328$0@@$2@@@|@|@|@@@%218%218%181%126%185%116%239%398%332$0@@%330$1@@@%398%330$1@@%332$0@@@|@|@@%178%129%181%126%185%116%237%397%332$0@@%397%330$1@@$2@@@%397%330$1@@%397%332$0@@$2@@@|@|@|@@@%218%218%181%126%185%116%239%398%332$0@@%338$1@@@%398%338$1@@%332$0@@@|@|@@%178%129%181%126%185%116%237%397%332$0@@%397%338$1@@$2@@@%397%338$1@@%397%332$0@@$2@@@|@|@|@@@%218%218%181%126%185%116%239%398%332$0@@%336$1@@@%398%336$1@@%332$0@@@|@|@@%178%129%181%126%185%116%237%397%332$0@@%397%336$1@@$2@@@%397%336$1@@%397%332$0@@$2@@@|@|@|@@@%218%218%185%128%185%116%239%398%332$0@@%328$1@@@%398%328$1@@%332$0@@@|@|@@%178%129%185%128%185%116%237%397%332$0@@%397%328$1@@$2@@@%397%328$1@@%397%332$0@@$2@@@|@|@|@@@%218%218%181%126%184%115%239%398%334$0@@%330$1@@@%398%330$1@@%334$0@@@|@|@@%178%129%181%126%184%115%237%397%334$0@@%397%330$1@@$2@@@%397%330$1@@%397%334$0@@$2@@@|@|@|@@@%218%218%181%126%184%115%239%398%334$0@@%338$1@@@%398%338$1@@%334$0@@@|@|@@%178%129%181%126%184%115%237%397%334$0@@%397%338$1@@$2@@@%397%338$1@@%397%334$0@@$2@@@|@|@|@@@%218%218%181%126%184%115%239%398%334$0@@%336$1@@@%398%336$1@@%334$0@@@|@|@@%178%129%181%126%184%115%237%397%334$0@@%397%336$1@@$2@@@%397%336$1@@%397%334$0@@$2@@@|@|@|@@@%218%218%185%128%184%115%239%398%334$0@@%328$1@@@%398%328$1@@%334$0@@@|@|@@%178%129%185%128%184%115%237%397%334$0@@%397%328$1@@$2@@@%397%328$1@@%397%334$0@@$2@@@|@|@|@@@%218%185%128%184%115%239%398%334$0@@%332$1@@@%398%332$1@@%334$0@@@|@|@@%178%129%185%128%184%115%237%397%334$0@@%397%332$1@@$2@@@%397%332$1@@%397%334$0@@$2@@@|@|@|@@@@@@@@@@@@@@@@"])
+    DT(((("elf_symbol_table",50),
+        [("bool",[14,25,26,55,57,180]),("combin",[8,9]),
+         ("elf_symbol_table",[27,28,29,45])]),["DISK_THM"]),
+       [read"%213%213%176%125%176%111%237%418%352$0@@%344$1@@@%418%344$1@@%352$0@@@|@|@@%173%128%176%125%176%111%235%417%352$0@@%417%344$1@@$2@@@%417%344$1@@%417%352$0@@$2@@@|@|@|@@@%213%213%176%125%176%111%237%418%350$0@@%344$1@@@%418%344$1@@%350$0@@@|@|@@%173%128%176%125%176%111%235%417%350$0@@%417%344$1@@$2@@@%417%344$1@@%417%350$0@@$2@@@|@|@|@@@%213%213%176%125%176%111%237%418%350$0@@%352$1@@@%418%352$1@@%350$0@@@|@|@@%173%128%176%125%176%111%235%417%350$0@@%417%352$1@@$2@@@%417%352$1@@%417%350$0@@$2@@@|@|@|@@@%213%213%176%125%180%115%237%418%342$0@@%344$1@@@%418%344$1@@%342$0@@@|@|@@%173%128%176%125%180%115%235%417%342$0@@%417%344$1@@$2@@@%417%344$1@@%417%342$0@@$2@@@|@|@|@@@%213%213%176%125%180%115%237%418%342$0@@%352$1@@@%418%352$1@@%342$0@@@|@|@@%173%128%176%125%180%115%235%417%342$0@@%417%352$1@@$2@@@%417%352$1@@%417%342$0@@$2@@@|@|@|@@@%213%213%176%125%180%115%237%418%342$0@@%350$1@@@%418%350$1@@%342$0@@@|@|@@%173%128%176%125%180%115%235%417%342$0@@%417%350$1@@$2@@@%417%350$1@@%417%342$0@@$2@@@|@|@|@@@%213%213%176%125%180%115%237%418%346$0@@%344$1@@@%418%344$1@@%346$0@@@|@|@@%173%128%176%125%180%115%235%417%346$0@@%417%344$1@@$2@@@%417%344$1@@%417%346$0@@$2@@@|@|@|@@@%213%213%176%125%180%115%237%418%346$0@@%352$1@@@%418%352$1@@%346$0@@@|@|@@%173%128%176%125%180%115%235%417%346$0@@%417%352$1@@$2@@@%417%352$1@@%417%346$0@@$2@@@|@|@|@@@%213%213%176%125%180%115%237%418%346$0@@%350$1@@@%418%350$1@@%346$0@@@|@|@@%173%128%176%125%180%115%235%417%346$0@@%417%350$1@@$2@@@%417%350$1@@%417%346$0@@$2@@@|@|@|@@@%213%213%180%127%180%115%237%418%346$0@@%342$1@@@%418%342$1@@%346$0@@@|@|@@%173%128%180%127%180%115%235%417%346$0@@%417%342$1@@$2@@@%417%342$1@@%417%346$0@@$2@@@|@|@|@@@%213%213%176%125%179%114%237%418%348$0@@%344$1@@@%418%344$1@@%348$0@@@|@|@@%173%128%176%125%179%114%235%417%348$0@@%417%344$1@@$2@@@%417%344$1@@%417%348$0@@$2@@@|@|@|@@@%213%213%176%125%179%114%237%418%348$0@@%352$1@@@%418%352$1@@%348$0@@@|@|@@%173%128%176%125%179%114%235%417%348$0@@%417%352$1@@$2@@@%417%352$1@@%417%348$0@@$2@@@|@|@|@@@%213%213%176%125%179%114%237%418%348$0@@%350$1@@@%418%350$1@@%348$0@@@|@|@@%173%128%176%125%179%114%235%417%348$0@@%417%350$1@@$2@@@%417%350$1@@%417%348$0@@$2@@@|@|@|@@@%213%213%180%127%179%114%237%418%348$0@@%342$1@@@%418%342$1@@%348$0@@@|@|@@%173%128%180%127%179%114%235%417%348$0@@%417%342$1@@$2@@@%417%342$1@@%417%348$0@@$2@@@|@|@|@@@%213%180%127%179%114%237%418%348$0@@%346$1@@@%418%346$1@@%348$0@@@|@|@@%173%128%180%127%179%114%235%417%348$0@@%417%346$1@@$2@@@%417%346$1@@%417%348$0@@$2@@@|@|@|@@@@@@@@@@@@@@@@"])
   fun op elf32_symbol_table_entry_component_equality x = x
     val op elf32_symbol_table_entry_component_equality =
-    DT(((("elf_symbol_table",50),
-        [("bool",[25,26,51,56,63,181]),("elf_symbol_table",[26,27,28,37]),
+    DT(((("elf_symbol_table",51),
+        [("bool",[25,26,50,55,62,180]),("elf_symbol_table",[27,28,29,38]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%175%80%175%82%225%230$1@$0@@%218%227%329$1@@%329$0@@@%218%227%337$1@@%337$0@@@%218%227%335$1@@%335$0@@@%218%229%327$1@@%327$0@@@%218%229%331$1@@%331$0@@@%228%333$1@@%333$0@@@@@@@@|@|@"])
+       [read"%170%79%170%81%222%228$1@$0@@%213%225%343$1@@%343$0@@@%213%225%351$1@@%351$0@@@%213%225%349$1@@%349$0@@@%213%227%341$1@@%341$0@@@%213%227%345$1@@%345$0@@@%226%347$1@@%347$0@@@@@@@@|@|@"])
   fun op elf32_symbol_table_entry_updates_eq_literal x = x
     val op elf32_symbol_table_entry_updates_eq_literal =
-    DT(((("elf_symbol_table",51),
-        [("bool",[25,26,56,181]),("combin",[12]),
-         ("elf_symbol_table",[26,27,28,44])]),["DISK_THM"]),
-       [read"%175%78%172%74%172%67%172%59%174%53%174%45%173%42%230%330%287$5@@%338%287$4@@%336%287$3@@%328%289$2@@%332%289$1@@%334%288$0@@$6@@@@@@@%330%287$5@@%338%287$4@@%336%287$3@@%328%289$2@@%332%289$1@@%334%288$0@@%263@@@@@@@|@|@|@|@|@|@|@"])
+    DT(((("elf_symbol_table",52),
+        [("bool",[25,26,55,180]),("combin",[12]),
+         ("elf_symbol_table",[27,28,29,45])]),["DISK_THM"]),
+       [read"%170%77%167%73%167%66%167%58%169%52%169%44%168%41%228%344%285$5@@%352%285$4@@%350%285$3@@%342%287$2@@%346%287$1@@%348%286$0@@$6@@@@@@@%344%285$5@@%352%285$4@@%350%285$3@@%342%287$2@@%346%287$1@@%348%286$0@@%261@@@@@@@|@|@|@|@|@|@|@"])
   fun op elf32_symbol_table_entry_literal_nchotomy x = x
     val op elf32_symbol_table_entry_literal_nchotomy =
-    DT(((("elf_symbol_table",52),
-        [("bool",[25,26,51,56,58,63,143,181]),("combin",[12]),
-         ("elf_symbol_table",[26,27,28,44]),("ind_type",[33,34]),
+    DT(((("elf_symbol_table",53),
+        [("bool",[25,26,50,55,57,62,142,180]),("combin",[12]),
+         ("elf_symbol_table",[27,28,29,45]),("ind_type",[33,34]),
          ("pair",[8,9])]),["DISK_THM"]),
-       [read"%175%78%251%74%251%67%251%59%253%53%253%45%252%42%230$6@%330%287$5@@%338%287$4@@%336%287$3@@%328%289$2@@%332%289$1@@%334%288$0@@%263@@@@@@@|@|@|@|@|@|@|@"])
+       [read"%170%77%247%73%247%66%247%58%249%52%249%44%248%41%228$6@%344%285$5@@%352%285$4@@%350%285$3@@%342%287$2@@%346%287$1@@%348%286$0@@%261@@@@@@@|@|@|@|@|@|@|@"])
   fun op FORALL_elf32_symbol_table_entry x = x
     val op FORALL_elf32_symbol_table_entry =
-    DT(((("elf_symbol_table",53),
-        [("bool",[25,26,36,51,56,58,63,143,181]),("combin",[12]),
-         ("elf_symbol_table",[26,27,28,44]),("ind_type",[33,34]),
+    DT(((("elf_symbol_table",54),
+        [("bool",[25,26,35,50,55,57,62,142,180]),("combin",[12]),
+         ("elf_symbol_table",[27,28,29,45]),("ind_type",[33,34]),
          ("pair",[8,9])]),["DISK_THM"]),
-       [read"%186%6%225%175%78$1$0@|@@%172%74%172%67%172%59%174%53%174%45%173%42$6%330%287$5@@%338%287$4@@%336%287$3@@%328%289$2@@%332%289$1@@%334%288$0@@%263@@@@@@@|@|@|@|@|@|@@|@"])
+       [read"%181%6%222%170%77$1$0@|@@%167%73%167%66%167%58%169%52%169%44%168%41$6%344%285$5@@%352%285$4@@%350%285$3@@%342%287$2@@%346%287$1@@%348%286$0@@%261@@@@@@@|@|@|@|@|@|@@|@"])
   fun op EXISTS_elf32_symbol_table_entry x = x
     val op EXISTS_elf32_symbol_table_entry =
-    DT(((("elf_symbol_table",54),
-        [("bool",[25,26,51,56,58,63,143,181]),("combin",[12]),
-         ("elf_symbol_table",[26,27,28,44]),("ind_type",[33,34]),
+    DT(((("elf_symbol_table",55),
+        [("bool",[25,26,50,55,57,62,142,180]),("combin",[12]),
+         ("elf_symbol_table",[27,28,29,45]),("ind_type",[33,34]),
          ("pair",[8,9])]),["DISK_THM"]),
-       [read"%186%6%225%254%78$1$0@|@@%251%74%251%67%251%59%253%53%253%45%252%42$6%330%287$5@@%338%287$4@@%336%287$3@@%328%289$2@@%332%289$1@@%334%288$0@@%263@@@@@@@|@|@|@|@|@|@@|@"])
+       [read"%181%6%222%250%77$1$0@|@@%247%73%247%66%247%58%249%52%249%44%248%41$6%344%285$5@@%352%285$4@@%350%285$3@@%342%287$2@@%346%287$1@@%348%286$0@@%261@@@@@@@|@|@|@|@|@|@@|@"])
   fun op elf32_symbol_table_entry_literal_11 x = x
     val op elf32_symbol_table_entry_literal_11 =
-    DT(((("elf_symbol_table",55),
-        [("combin",[12]),("elf_symbol_table",[45,50])]),["DISK_THM"]),
-       [read"%172%76%172%69%172%62%174%55%174%47%173%52%172%77%172%71%172%64%174%57%174%49%173%60%225%230%330%287$11@@%338%287$10@@%336%287$9@@%328%289$8@@%332%289$7@@%334%288$6@@%263@@@@@@@%330%287$5@@%338%287$4@@%336%287$3@@%328%289$2@@%332%289$1@@%334%288$0@@%263@@@@@@@@%218%227$11@$5@@%218%227$10@$4@@%218%227$9@$3@@%218%229$8@$2@@%218%229$7@$1@@%228$6@$0@@@@@@@|@|@|@|@|@|@|@|@|@|@|@|@"])
+    DT(((("elf_symbol_table",56),
+        [("combin",[12]),("elf_symbol_table",[46,51])]),["DISK_THM"]),
+       [read"%167%75%167%68%167%61%169%54%169%46%168%51%167%76%167%70%167%63%169%56%169%48%168%59%222%228%344%285$11@@%352%285$10@@%350%285$9@@%342%287$8@@%346%287$7@@%348%286$6@@%261@@@@@@@%344%285$5@@%352%285$4@@%350%285$3@@%342%287$2@@%346%287$1@@%348%286$0@@%261@@@@@@@@%213%225$11@$5@@%213%225$10@$4@@%213%225$9@$3@@%213%227$8@$2@@%213%227$7@$1@@%226$6@$0@@@@@@@|@|@|@|@|@|@|@|@|@|@|@|@"])
   fun op datatype_elf32_symbol_table_entry x = x
     val op datatype_elf32_symbol_table_entry =
-    DT(((("elf_symbol_table",56),[("bool",[25,171])]),["DISK_THM"]),
-       [read"%278%141%92@%87@%91@%90@%86@%88@%89@@"])
+    DT(((("elf_symbol_table",57),[("bool",[25,170])]),["DISK_THM"]),
+       [read"%278%138%91@%86@%90@%89@%85@%87@%88@@"])
   fun op elf32_symbol_table_entry_11 x = x
     val op elf32_symbol_table_entry_11 =
-    DT(((("elf_symbol_table",57),
-        [("bool",[26,51,56,63,181]),("elf_symbol_table",[26,27,28]),
+    DT(((("elf_symbol_table",58),
+        [("bool",[26,50,55,62,180]),("elf_symbol_table",[27,28,29]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%172%11%172%15%172%19%174%24%174%28%173%32%172%12%172%17%172%21%174%26%174%30%173%34%225%230%417$11@$10@$9@$8@$7@$6@@%417$5@$4@$3@$2@$1@$0@@@%218%227$11@$5@@%218%227$10@$4@@%218%227$9@$3@@%218%229$8@$2@@%218%229$7@$1@@%228$6@$0@@@@@@@|@|@|@|@|@|@|@|@|@|@|@|@"])
+       [read"%167%10%167%14%167%18%169%23%169%27%168%31%167%11%167%16%167%20%169%25%169%29%168%33%222%228%437$11@$10@$9@$8@$7@$6@@%437$5@$4@$3@$2@$1@$0@@@%213%225$11@$5@@%213%225$10@$4@@%213%225$9@$3@@%213%227$8@$2@@%213%227$7@$1@@%226$6@$0@@@@@@@|@|@|@|@|@|@|@|@|@|@|@|@"])
   fun op elf32_symbol_table_entry_case_cong x = x
     val op elf32_symbol_table_entry_case_cong =
-    DT(((("elf_symbol_table",58),
-        [("bool",[26,181]),
-         ("elf_symbol_table",[26,27,28,29])]),["DISK_THM"]),
-       [read"%175%2%175%4%182%113%248%218%230$2@$1@@%172%11%172%15%172%19%174%24%174%28%173%32%248%230$7@%417$5@$4@$3@$2@$1@$0@@@%222$6$5@$4@$3@$2@$1@$0@@%117$5@$4@$3@$2@$1@$0@@@|@|@|@|@|@|@@@%222%325$2@$0@@%325$1@%117@@@|@|@|@"])
+    DT(((("elf_symbol_table",59),
+        [("bool",[26,180]),
+         ("elf_symbol_table",[27,28,29,30])]),["DISK_THM"]),
+       [read"%170%2%170%4%177%112%244%213%228$2@$1@@%167%10%167%14%167%18%169%23%169%27%168%31%244%228$7@%437$5@$4@$3@$2@$1@$0@@@%217$6$5@$4@$3@$2@$1@$0@@%116$5@$4@$3@$2@$1@$0@@@|@|@|@|@|@|@@@%217%339$2@$0@@%339$1@%116@@@|@|@|@"])
   fun op elf32_symbol_table_entry_nchotomy x = x
     val op elf32_symbol_table_entry_nchotomy =
-    DT(((("elf_symbol_table",59),
-        [("bool",[26,181]),("elf_symbol_table",[26,27,28])]),["DISK_THM"]),
-       [read"%175%84%251%41%251%44%251%51%253%61%253%68%252%75%230$6@%417$5@$4@$3@$2@$1@$0@@|@|@|@|@|@|@|@"])
+    DT(((("elf_symbol_table",60),
+        [("bool",[26,180]),("elf_symbol_table",[27,28,29])]),["DISK_THM"]),
+       [read"%170%83%247%40%247%43%247%50%249%60%249%67%248%74%228$6@%437$5@$4@$3@$2@$1@$0@@|@|@|@|@|@|@|@"])
   fun op elf32_symbol_table_entry_Axiom x = x
     val op elf32_symbol_table_entry_Axiom =
-    DT(((("elf_symbol_table",60),
-        [("bool",[26,181]),("elf_symbol_table",[26,27,28]),
+    DT(((("elf_symbol_table",61),
+        [("bool",[26,180]),("elf_symbol_table",[27,28,29]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%182%113%256%123%172%11%172%15%172%19%174%24%174%28%173%32%222$6%417$5@$4@$3@$2@$1@$0@@@$7$5@$4@$3@$2@$1@$0@@|@|@|@|@|@|@|@|@"])
+       [read"%177%112%252%122%167%10%167%14%167%18%169%23%169%27%168%31%217$6%437$5@$4@$3@$2@$1@$0@@@$7$5@$4@$3@$2@$1@$0@@|@|@|@|@|@|@|@|@"])
   fun op elf32_symbol_table_entry_induction x = x
     val op elf32_symbol_table_entry_induction =
-    DT(((("elf_symbol_table",61),
-        [("bool",[26]),("elf_symbol_table",[26,27,28])]),["DISK_THM"]),
-       [read"%186%6%248%172%41%172%44%172%51%174%61%174%68%173%75$6%417$5@$4@$3@$2@$1@$0@@|@|@|@|@|@|@@%175%78$1$0@|@@|@"])
+    DT(((("elf_symbol_table",62),
+        [("bool",[26]),("elf_symbol_table",[27,28,29])]),["DISK_THM"]),
+       [read"%181%6%244%167%40%167%43%167%50%169%60%169%67%168%74$6%437$5@$4@$3@$2@$1@$0@@|@|@|@|@|@|@@%170%77$1$0@|@@|@"])
   fun op elf64_symbol_table_entry_accessors x = x
     val op elf64_symbol_table_entry_accessors =
-    DT(((("elf_symbol_table",76),
-        [("elf_symbol_table",[70,71,72,73,74,75])]),["DISK_THM"]),
-       [read"%218%172%41%174%45%174%53%173%60%171%66%171%73%227%345%418$5@$4@$3@$2@$1@$0@@@$5@|@|@|@|@|@|@@%218%172%41%174%45%174%53%173%60%171%66%171%73%229%343%418$5@$4@$3@$2@$1@$0@@@$4@|@|@|@|@|@|@@%218%172%41%174%45%174%53%173%60%171%66%171%73%229%347%418$5@$4@$3@$2@$1@$0@@@$3@|@|@|@|@|@|@@%218%172%41%174%45%174%53%173%60%171%66%171%73%228%349%418$5@$4@$3@$2@$1@$0@@@$2@|@|@|@|@|@|@@%218%172%41%174%45%174%53%173%60%171%66%171%73%226%353%418$5@$4@$3@$2@$1@$0@@@$1@|@|@|@|@|@|@@%172%41%174%45%174%53%173%60%171%66%171%73%226%351%418$5@$4@$3@$2@$1@$0@@@$0@|@|@|@|@|@|@@@@@@"])
+    DT(((("elf_symbol_table",77),
+        [("elf_symbol_table",[71,72,73,74,75,76])]),["DISK_THM"]),
+       [read"%213%167%40%169%44%169%52%168%59%166%65%166%72%225%359%438$5@$4@$3@$2@$1@$0@@@$5@|@|@|@|@|@|@@%213%167%40%169%44%169%52%168%59%166%65%166%72%227%357%438$5@$4@$3@$2@$1@$0@@@$4@|@|@|@|@|@|@@%213%167%40%169%44%169%52%168%59%166%65%166%72%227%361%438$5@$4@$3@$2@$1@$0@@@$3@|@|@|@|@|@|@@%213%167%40%169%44%169%52%168%59%166%65%166%72%226%363%438$5@$4@$3@$2@$1@$0@@@$2@|@|@|@|@|@|@@%213%167%40%169%44%169%52%168%59%166%65%166%72%224%367%438$5@$4@$3@$2@$1@$0@@@$1@|@|@|@|@|@|@@%167%40%169%44%169%52%168%59%166%65%166%72%224%365%438$5@$4@$3@$2@$1@$0@@@$0@|@|@|@|@|@|@@@@@@"])
   fun op elf64_symbol_table_entry_fn_updates x = x
     val op elf64_symbol_table_entry_fn_updates =
-    DT(((("elf_symbol_table",83),
-        [("elf_symbol_table",[77,78,79,80,81,82])]),["DISK_THM"]),
-       [read"%218%181%112%172%41%174%45%174%53%173%60%171%66%171%73%231%346$6@%418$5@$4@$3@$2@$1@$0@@@%418$6$5@@$4@$3@$2@$1@$0@@|@|@|@|@|@|@|@@%218%185%116%172%41%174%45%174%53%173%60%171%66%171%73%231%344$6@%418$5@$4@$3@$2@$1@$0@@@%418$5@$6$4@@$3@$2@$1@$0@@|@|@|@|@|@|@|@@%218%185%116%172%41%174%45%174%53%173%60%171%66%171%73%231%348$6@%418$5@$4@$3@$2@$1@$0@@@%418$5@$4@$6$3@@$2@$1@$0@@|@|@|@|@|@|@|@@%218%184%115%172%41%174%45%174%53%173%60%171%66%171%73%231%350$6@%418$5@$4@$3@$2@$1@$0@@@%418$5@$4@$3@$6$2@@$1@$0@@|@|@|@|@|@|@|@@%218%180%111%172%41%174%45%174%53%173%60%171%66%171%73%231%354$6@%418$5@$4@$3@$2@$1@$0@@@%418$5@$4@$3@$2@$6$1@@$0@@|@|@|@|@|@|@|@@%180%111%172%41%174%45%174%53%173%60%171%66%171%73%231%352$6@%418$5@$4@$3@$2@$1@$0@@@%418$5@$4@$3@$2@$1@$6$0@@@|@|@|@|@|@|@|@@@@@@"])
+    DT(((("elf_symbol_table",84),
+        [("elf_symbol_table",[78,79,80,81,82,83])]),["DISK_THM"]),
+       [read"%213%176%111%167%40%169%44%169%52%168%59%166%65%166%72%229%360$6@%438$5@$4@$3@$2@$1@$0@@@%438$6$5@@$4@$3@$2@$1@$0@@|@|@|@|@|@|@|@@%213%180%115%167%40%169%44%169%52%168%59%166%65%166%72%229%358$6@%438$5@$4@$3@$2@$1@$0@@@%438$5@$6$4@@$3@$2@$1@$0@@|@|@|@|@|@|@|@@%213%180%115%167%40%169%44%169%52%168%59%166%65%166%72%229%362$6@%438$5@$4@$3@$2@$1@$0@@@%438$5@$4@$6$3@@$2@$1@$0@@|@|@|@|@|@|@|@@%213%179%114%167%40%169%44%169%52%168%59%166%65%166%72%229%364$6@%438$5@$4@$3@$2@$1@$0@@@%438$5@$4@$3@$6$2@@$1@$0@@|@|@|@|@|@|@|@@%213%175%110%167%40%169%44%169%52%168%59%166%65%166%72%229%368$6@%438$5@$4@$3@$2@$1@$0@@@%438$5@$4@$3@$2@$6$1@@$0@@|@|@|@|@|@|@|@@%175%110%167%40%169%44%169%52%168%59%166%65%166%72%229%366$6@%438$5@$4@$3@$2@$1@$0@@@%438$5@$4@$3@$2@$1@$6$0@@@|@|@|@|@|@|@|@@@@@@"])
   fun op elf64_symbol_table_entry_accfupds x = x
     val op elf64_symbol_table_entry_accfupds =
-    DT(((("elf_symbol_table",84),
-        [("bool",[25,26,56,181]),
-         ("elf_symbol_table",[65,66,67,76,83])]),["DISK_THM"]),
-       [read"%218%185%116%176%79%227%345%344$1@$0@@@%345$0@@|@|@@%218%185%116%176%79%227%345%348$1@$0@@@%345$0@@|@|@@%218%184%115%176%79%227%345%350$1@$0@@@%345$0@@|@|@@%218%180%111%176%79%227%345%354$1@$0@@@%345$0@@|@|@@%218%180%111%176%79%227%345%352$1@$0@@@%345$0@@|@|@@%218%181%112%176%79%229%343%346$1@$0@@@%343$0@@|@|@@%218%185%116%176%79%229%343%348$1@$0@@@%343$0@@|@|@@%218%184%115%176%79%229%343%350$1@$0@@@%343$0@@|@|@@%218%180%111%176%79%229%343%354$1@$0@@@%343$0@@|@|@@%218%180%111%176%79%229%343%352$1@$0@@@%343$0@@|@|@@%218%181%112%176%79%229%347%346$1@$0@@@%347$0@@|@|@@%218%185%116%176%79%229%347%344$1@$0@@@%347$0@@|@|@@%218%184%115%176%79%229%347%350$1@$0@@@%347$0@@|@|@@%218%180%111%176%79%229%347%354$1@$0@@@%347$0@@|@|@@%218%180%111%176%79%229%347%352$1@$0@@@%347$0@@|@|@@%218%181%112%176%79%228%349%346$1@$0@@@%349$0@@|@|@@%218%185%116%176%79%228%349%344$1@$0@@@%349$0@@|@|@@%218%185%116%176%79%228%349%348$1@$0@@@%349$0@@|@|@@%218%180%111%176%79%228%349%354$1@$0@@@%349$0@@|@|@@%218%180%111%176%79%228%349%352$1@$0@@@%349$0@@|@|@@%218%181%112%176%79%226%353%346$1@$0@@@%353$0@@|@|@@%218%185%116%176%79%226%353%344$1@$0@@@%353$0@@|@|@@%218%185%116%176%79%226%353%348$1@$0@@@%353$0@@|@|@@%218%184%115%176%79%226%353%350$1@$0@@@%353$0@@|@|@@%218%180%111%176%79%226%353%352$1@$0@@@%353$0@@|@|@@%218%181%112%176%79%226%351%346$1@$0@@@%351$0@@|@|@@%218%185%116%176%79%226%351%344$1@$0@@@%351$0@@|@|@@%218%185%116%176%79%226%351%348$1@$0@@@%351$0@@|@|@@%218%184%115%176%79%226%351%350$1@$0@@@%351$0@@|@|@@%218%180%111%176%79%226%351%354$1@$0@@@%351$0@@|@|@@%218%181%112%176%79%227%345%346$1@$0@@@$1%345$0@@@|@|@@%218%185%116%176%79%229%343%344$1@$0@@@$1%343$0@@@|@|@@%218%185%116%176%79%229%347%348$1@$0@@@$1%347$0@@@|@|@@%218%184%115%176%79%228%349%350$1@$0@@@$1%349$0@@@|@|@@%218%180%111%176%79%226%353%354$1@$0@@@$1%353$0@@@|@|@@%180%111%176%79%226%351%352$1@$0@@@$1%351$0@@@|@|@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"])
+    DT(((("elf_symbol_table",85),
+        [("bool",[25,26,55,180]),
+         ("elf_symbol_table",[66,67,68,77,84])]),["DISK_THM"]),
+       [read"%213%180%115%171%78%225%359%358$1@$0@@@%359$0@@|@|@@%213%180%115%171%78%225%359%362$1@$0@@@%359$0@@|@|@@%213%179%114%171%78%225%359%364$1@$0@@@%359$0@@|@|@@%213%175%110%171%78%225%359%368$1@$0@@@%359$0@@|@|@@%213%175%110%171%78%225%359%366$1@$0@@@%359$0@@|@|@@%213%176%111%171%78%227%357%360$1@$0@@@%357$0@@|@|@@%213%180%115%171%78%227%357%362$1@$0@@@%357$0@@|@|@@%213%179%114%171%78%227%357%364$1@$0@@@%357$0@@|@|@@%213%175%110%171%78%227%357%368$1@$0@@@%357$0@@|@|@@%213%175%110%171%78%227%357%366$1@$0@@@%357$0@@|@|@@%213%176%111%171%78%227%361%360$1@$0@@@%361$0@@|@|@@%213%180%115%171%78%227%361%358$1@$0@@@%361$0@@|@|@@%213%179%114%171%78%227%361%364$1@$0@@@%361$0@@|@|@@%213%175%110%171%78%227%361%368$1@$0@@@%361$0@@|@|@@%213%175%110%171%78%227%361%366$1@$0@@@%361$0@@|@|@@%213%176%111%171%78%226%363%360$1@$0@@@%363$0@@|@|@@%213%180%115%171%78%226%363%358$1@$0@@@%363$0@@|@|@@%213%180%115%171%78%226%363%362$1@$0@@@%363$0@@|@|@@%213%175%110%171%78%226%363%368$1@$0@@@%363$0@@|@|@@%213%175%110%171%78%226%363%366$1@$0@@@%363$0@@|@|@@%213%176%111%171%78%224%367%360$1@$0@@@%367$0@@|@|@@%213%180%115%171%78%224%367%358$1@$0@@@%367$0@@|@|@@%213%180%115%171%78%224%367%362$1@$0@@@%367$0@@|@|@@%213%179%114%171%78%224%367%364$1@$0@@@%367$0@@|@|@@%213%175%110%171%78%224%367%366$1@$0@@@%367$0@@|@|@@%213%176%111%171%78%224%365%360$1@$0@@@%365$0@@|@|@@%213%180%115%171%78%224%365%358$1@$0@@@%365$0@@|@|@@%213%180%115%171%78%224%365%362$1@$0@@@%365$0@@|@|@@%213%179%114%171%78%224%365%364$1@$0@@@%365$0@@|@|@@%213%175%110%171%78%224%365%368$1@$0@@@%365$0@@|@|@@%213%176%111%171%78%225%359%360$1@$0@@@$1%359$0@@@|@|@@%213%180%115%171%78%227%357%358$1@$0@@@$1%357$0@@@|@|@@%213%180%115%171%78%227%361%362$1@$0@@@$1%361$0@@@|@|@@%213%179%114%171%78%226%363%364$1@$0@@@$1%363$0@@@|@|@@%213%175%110%171%78%224%367%368$1@$0@@@$1%367$0@@@|@|@@%175%110%171%78%224%365%366$1@$0@@@$1%365$0@@@|@|@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"])
   fun op elf64_symbol_table_entry_fupdfupds x = x
     val op elf64_symbol_table_entry_fupdfupds =
-    DT(((("elf_symbol_table",85),
-        [("bool",[25,26,56,181]),("combin",[8]),
-         ("elf_symbol_table",[65,66,67,83])]),["DISK_THM"]),
-       [read"%218%181%126%181%112%176%79%231%346$1@%346$2@$0@@@%346%394$1@$2@@$0@@|@|@|@@%218%185%128%185%116%176%79%231%344$1@%344$2@$0@@@%344%396$1@$2@@$0@@|@|@|@@%218%185%128%185%116%176%79%231%348$1@%348$2@$0@@@%348%396$1@$2@@$0@@|@|@|@@%218%184%127%184%115%176%79%231%350$1@%350$2@$0@@@%350%395$1@$2@@$0@@|@|@|@@%218%180%125%180%111%176%79%231%354$1@%354$2@$0@@@%354%393$1@$2@@$0@@|@|@|@@%180%125%180%111%176%79%231%352$1@%352$2@$0@@@%352%393$1@$2@@$0@@|@|@|@@@@@@"])
+    DT(((("elf_symbol_table",86),
+        [("bool",[25,26,55,180]),("combin",[8]),
+         ("elf_symbol_table",[66,67,68,84])]),["DISK_THM"]),
+       [read"%213%176%125%176%111%171%78%229%360$1@%360$2@$0@@@%360%414$1@$2@@$0@@|@|@|@@%213%180%127%180%115%171%78%229%358$1@%358$2@$0@@@%358%416$1@$2@@$0@@|@|@|@@%213%180%127%180%115%171%78%229%362$1@%362$2@$0@@@%362%416$1@$2@@$0@@|@|@|@@%213%179%126%179%114%171%78%229%364$1@%364$2@$0@@@%364%415$1@$2@@$0@@|@|@|@@%213%175%124%175%110%171%78%229%368$1@%368$2@$0@@@%368%413$1@$2@@$0@@|@|@|@@%175%124%175%110%171%78%229%366$1@%366$2@$0@@@%366%413$1@$2@@$0@@|@|@|@@@@@@"])
   fun op elf64_symbol_table_entry_fupdfupds_comp x = x
     val op elf64_symbol_table_entry_fupdfupds_comp =
-    DT(((("elf_symbol_table",86),
-        [("bool",[14,25,26,56,58,181]),("combin",[8,9]),
-         ("elf_symbol_table",[65,66,67,83])]),["DISK_THM"]),
-       [read"%218%218%181%126%181%112%240%400%346$0@@%346$1@@@%346%394$0@$1@@@|@|@@%179%130%181%126%181%112%238%399%346$0@@%399%346$1@@$2@@@%399%346%394$0@$1@@@$2@@|@|@|@@@%218%218%185%128%185%116%240%400%344$0@@%344$1@@@%344%396$0@$1@@@|@|@@%179%130%185%128%185%116%238%399%344$0@@%399%344$1@@$2@@@%399%344%396$0@$1@@@$2@@|@|@|@@@%218%218%185%128%185%116%240%400%348$0@@%348$1@@@%348%396$0@$1@@@|@|@@%179%130%185%128%185%116%238%399%348$0@@%399%348$1@@$2@@@%399%348%396$0@$1@@@$2@@|@|@|@@@%218%218%184%127%184%115%240%400%350$0@@%350$1@@@%350%395$0@$1@@@|@|@@%179%130%184%127%184%115%238%399%350$0@@%399%350$1@@$2@@@%399%350%395$0@$1@@@$2@@|@|@|@@@%218%218%180%125%180%111%240%400%354$0@@%354$1@@@%354%393$0@$1@@@|@|@@%179%130%180%125%180%111%238%399%354$0@@%399%354$1@@$2@@@%399%354%393$0@$1@@@$2@@|@|@|@@@%218%180%125%180%111%240%400%352$0@@%352$1@@@%352%393$0@$1@@@|@|@@%179%130%180%125%180%111%238%399%352$0@@%399%352$1@@$2@@@%399%352%393$0@$1@@@$2@@|@|@|@@@@@@@"])
+    DT(((("elf_symbol_table",87),
+        [("bool",[14,25,26,55,57,180]),("combin",[8,9]),
+         ("elf_symbol_table",[66,67,68,84])]),["DISK_THM"]),
+       [read"%213%213%176%125%176%111%238%420%360$0@@%360$1@@@%360%414$0@$1@@@|@|@@%174%129%176%125%176%111%236%419%360$0@@%419%360$1@@$2@@@%419%360%414$0@$1@@@$2@@|@|@|@@@%213%213%180%127%180%115%238%420%358$0@@%358$1@@@%358%416$0@$1@@@|@|@@%174%129%180%127%180%115%236%419%358$0@@%419%358$1@@$2@@@%419%358%416$0@$1@@@$2@@|@|@|@@@%213%213%180%127%180%115%238%420%362$0@@%362$1@@@%362%416$0@$1@@@|@|@@%174%129%180%127%180%115%236%419%362$0@@%419%362$1@@$2@@@%419%362%416$0@$1@@@$2@@|@|@|@@@%213%213%179%126%179%114%238%420%364$0@@%364$1@@@%364%415$0@$1@@@|@|@@%174%129%179%126%179%114%236%419%364$0@@%419%364$1@@$2@@@%419%364%415$0@$1@@@$2@@|@|@|@@@%213%213%175%124%175%110%238%420%368$0@@%368$1@@@%368%413$0@$1@@@|@|@@%174%129%175%124%175%110%236%419%368$0@@%419%368$1@@$2@@@%419%368%413$0@$1@@@$2@@|@|@|@@@%213%175%124%175%110%238%420%366$0@@%366$1@@@%366%413$0@$1@@@|@|@@%174%129%175%124%175%110%236%419%366$0@@%419%366$1@@$2@@@%419%366%413$0@$1@@@$2@@|@|@|@@@@@@@"])
   fun op elf64_symbol_table_entry_fupdcanon x = x
     val op elf64_symbol_table_entry_fupdcanon =
-    DT(((("elf_symbol_table",87),
-        [("bool",[25,26,56,181]),
-         ("elf_symbol_table",[65,66,67,83])]),["DISK_THM"]),
-       [read"%218%181%126%185%116%176%79%231%344$1@%346$2@$0@@@%346$2@%344$1@$0@@@|@|@|@@%218%181%126%185%116%176%79%231%348$1@%346$2@$0@@@%346$2@%348$1@$0@@@|@|@|@@%218%185%128%185%116%176%79%231%348$1@%344$2@$0@@@%344$2@%348$1@$0@@@|@|@|@@%218%181%126%184%115%176%79%231%350$1@%346$2@$0@@@%346$2@%350$1@$0@@@|@|@|@@%218%185%128%184%115%176%79%231%350$1@%344$2@$0@@@%344$2@%350$1@$0@@@|@|@|@@%218%185%128%184%115%176%79%231%350$1@%348$2@$0@@@%348$2@%350$1@$0@@@|@|@|@@%218%181%126%180%111%176%79%231%354$1@%346$2@$0@@@%346$2@%354$1@$0@@@|@|@|@@%218%185%128%180%111%176%79%231%354$1@%344$2@$0@@@%344$2@%354$1@$0@@@|@|@|@@%218%185%128%180%111%176%79%231%354$1@%348$2@$0@@@%348$2@%354$1@$0@@@|@|@|@@%218%184%127%180%111%176%79%231%354$1@%350$2@$0@@@%350$2@%354$1@$0@@@|@|@|@@%218%181%126%180%111%176%79%231%352$1@%346$2@$0@@@%346$2@%352$1@$0@@@|@|@|@@%218%185%128%180%111%176%79%231%352$1@%344$2@$0@@@%344$2@%352$1@$0@@@|@|@|@@%218%185%128%180%111%176%79%231%352$1@%348$2@$0@@@%348$2@%352$1@$0@@@|@|@|@@%218%184%127%180%111%176%79%231%352$1@%350$2@$0@@@%350$2@%352$1@$0@@@|@|@|@@%180%125%180%111%176%79%231%352$1@%354$2@$0@@@%354$2@%352$1@$0@@@|@|@|@@@@@@@@@@@@@@@"])
+    DT(((("elf_symbol_table",88),
+        [("bool",[25,26,55,180]),
+         ("elf_symbol_table",[66,67,68,84])]),["DISK_THM"]),
+       [read"%213%176%125%180%115%171%78%229%358$1@%360$2@$0@@@%360$2@%358$1@$0@@@|@|@|@@%213%176%125%180%115%171%78%229%362$1@%360$2@$0@@@%360$2@%362$1@$0@@@|@|@|@@%213%180%127%180%115%171%78%229%362$1@%358$2@$0@@@%358$2@%362$1@$0@@@|@|@|@@%213%176%125%179%114%171%78%229%364$1@%360$2@$0@@@%360$2@%364$1@$0@@@|@|@|@@%213%180%127%179%114%171%78%229%364$1@%358$2@$0@@@%358$2@%364$1@$0@@@|@|@|@@%213%180%127%179%114%171%78%229%364$1@%362$2@$0@@@%362$2@%364$1@$0@@@|@|@|@@%213%176%125%175%110%171%78%229%368$1@%360$2@$0@@@%360$2@%368$1@$0@@@|@|@|@@%213%180%127%175%110%171%78%229%368$1@%358$2@$0@@@%358$2@%368$1@$0@@@|@|@|@@%213%180%127%175%110%171%78%229%368$1@%362$2@$0@@@%362$2@%368$1@$0@@@|@|@|@@%213%179%126%175%110%171%78%229%368$1@%364$2@$0@@@%364$2@%368$1@$0@@@|@|@|@@%213%176%125%175%110%171%78%229%366$1@%360$2@$0@@@%360$2@%366$1@$0@@@|@|@|@@%213%180%127%175%110%171%78%229%366$1@%358$2@$0@@@%358$2@%366$1@$0@@@|@|@|@@%213%180%127%175%110%171%78%229%366$1@%362$2@$0@@@%362$2@%366$1@$0@@@|@|@|@@%213%179%126%175%110%171%78%229%366$1@%364$2@$0@@@%364$2@%366$1@$0@@@|@|@|@@%175%124%175%110%171%78%229%366$1@%368$2@$0@@@%368$2@%366$1@$0@@@|@|@|@@@@@@@@@@@@@@@"])
   fun op elf64_symbol_table_entry_fupdcanon_comp x = x
     val op elf64_symbol_table_entry_fupdcanon_comp =
-    DT(((("elf_symbol_table",88),
-        [("bool",[14,25,26,56,58,181]),("combin",[8,9]),
-         ("elf_symbol_table",[65,66,67,83])]),["DISK_THM"]),
-       [read"%218%218%181%126%185%116%240%400%344$0@@%346$1@@@%400%346$1@@%344$0@@@|@|@@%179%130%181%126%185%116%238%399%344$0@@%399%346$1@@$2@@@%399%346$1@@%399%344$0@@$2@@@|@|@|@@@%218%218%181%126%185%116%240%400%348$0@@%346$1@@@%400%346$1@@%348$0@@@|@|@@%179%130%181%126%185%116%238%399%348$0@@%399%346$1@@$2@@@%399%346$1@@%399%348$0@@$2@@@|@|@|@@@%218%218%185%128%185%116%240%400%348$0@@%344$1@@@%400%344$1@@%348$0@@@|@|@@%179%130%185%128%185%116%238%399%348$0@@%399%344$1@@$2@@@%399%344$1@@%399%348$0@@$2@@@|@|@|@@@%218%218%181%126%184%115%240%400%350$0@@%346$1@@@%400%346$1@@%350$0@@@|@|@@%179%130%181%126%184%115%238%399%350$0@@%399%346$1@@$2@@@%399%346$1@@%399%350$0@@$2@@@|@|@|@@@%218%218%185%128%184%115%240%400%350$0@@%344$1@@@%400%344$1@@%350$0@@@|@|@@%179%130%185%128%184%115%238%399%350$0@@%399%344$1@@$2@@@%399%344$1@@%399%350$0@@$2@@@|@|@|@@@%218%218%185%128%184%115%240%400%350$0@@%348$1@@@%400%348$1@@%350$0@@@|@|@@%179%130%185%128%184%115%238%399%350$0@@%399%348$1@@$2@@@%399%348$1@@%399%350$0@@$2@@@|@|@|@@@%218%218%181%126%180%111%240%400%354$0@@%346$1@@@%400%346$1@@%354$0@@@|@|@@%179%130%181%126%180%111%238%399%354$0@@%399%346$1@@$2@@@%399%346$1@@%399%354$0@@$2@@@|@|@|@@@%218%218%185%128%180%111%240%400%354$0@@%344$1@@@%400%344$1@@%354$0@@@|@|@@%179%130%185%128%180%111%238%399%354$0@@%399%344$1@@$2@@@%399%344$1@@%399%354$0@@$2@@@|@|@|@@@%218%218%185%128%180%111%240%400%354$0@@%348$1@@@%400%348$1@@%354$0@@@|@|@@%179%130%185%128%180%111%238%399%354$0@@%399%348$1@@$2@@@%399%348$1@@%399%354$0@@$2@@@|@|@|@@@%218%218%184%127%180%111%240%400%354$0@@%350$1@@@%400%350$1@@%354$0@@@|@|@@%179%130%184%127%180%111%238%399%354$0@@%399%350$1@@$2@@@%399%350$1@@%399%354$0@@$2@@@|@|@|@@@%218%218%181%126%180%111%240%400%352$0@@%346$1@@@%400%346$1@@%352$0@@@|@|@@%179%130%181%126%180%111%238%399%352$0@@%399%346$1@@$2@@@%399%346$1@@%399%352$0@@$2@@@|@|@|@@@%218%218%185%128%180%111%240%400%352$0@@%344$1@@@%400%344$1@@%352$0@@@|@|@@%179%130%185%128%180%111%238%399%352$0@@%399%344$1@@$2@@@%399%344$1@@%399%352$0@@$2@@@|@|@|@@@%218%218%185%128%180%111%240%400%352$0@@%348$1@@@%400%348$1@@%352$0@@@|@|@@%179%130%185%128%180%111%238%399%352$0@@%399%348$1@@$2@@@%399%348$1@@%399%352$0@@$2@@@|@|@|@@@%218%218%184%127%180%111%240%400%352$0@@%350$1@@@%400%350$1@@%352$0@@@|@|@@%179%130%184%127%180%111%238%399%352$0@@%399%350$1@@$2@@@%399%350$1@@%399%352$0@@$2@@@|@|@|@@@%218%180%125%180%111%240%400%352$0@@%354$1@@@%400%354$1@@%352$0@@@|@|@@%179%130%180%125%180%111%238%399%352$0@@%399%354$1@@$2@@@%399%354$1@@%399%352$0@@$2@@@|@|@|@@@@@@@@@@@@@@@@"])
+    DT(((("elf_symbol_table",89),
+        [("bool",[14,25,26,55,57,180]),("combin",[8,9]),
+         ("elf_symbol_table",[66,67,68,84])]),["DISK_THM"]),
+       [read"%213%213%176%125%180%115%238%420%358$0@@%360$1@@@%420%360$1@@%358$0@@@|@|@@%174%129%176%125%180%115%236%419%358$0@@%419%360$1@@$2@@@%419%360$1@@%419%358$0@@$2@@@|@|@|@@@%213%213%176%125%180%115%238%420%362$0@@%360$1@@@%420%360$1@@%362$0@@@|@|@@%174%129%176%125%180%115%236%419%362$0@@%419%360$1@@$2@@@%419%360$1@@%419%362$0@@$2@@@|@|@|@@@%213%213%180%127%180%115%238%420%362$0@@%358$1@@@%420%358$1@@%362$0@@@|@|@@%174%129%180%127%180%115%236%419%362$0@@%419%358$1@@$2@@@%419%358$1@@%419%362$0@@$2@@@|@|@|@@@%213%213%176%125%179%114%238%420%364$0@@%360$1@@@%420%360$1@@%364$0@@@|@|@@%174%129%176%125%179%114%236%419%364$0@@%419%360$1@@$2@@@%419%360$1@@%419%364$0@@$2@@@|@|@|@@@%213%213%180%127%179%114%238%420%364$0@@%358$1@@@%420%358$1@@%364$0@@@|@|@@%174%129%180%127%179%114%236%419%364$0@@%419%358$1@@$2@@@%419%358$1@@%419%364$0@@$2@@@|@|@|@@@%213%213%180%127%179%114%238%420%364$0@@%362$1@@@%420%362$1@@%364$0@@@|@|@@%174%129%180%127%179%114%236%419%364$0@@%419%362$1@@$2@@@%419%362$1@@%419%364$0@@$2@@@|@|@|@@@%213%213%176%125%175%110%238%420%368$0@@%360$1@@@%420%360$1@@%368$0@@@|@|@@%174%129%176%125%175%110%236%419%368$0@@%419%360$1@@$2@@@%419%360$1@@%419%368$0@@$2@@@|@|@|@@@%213%213%180%127%175%110%238%420%368$0@@%358$1@@@%420%358$1@@%368$0@@@|@|@@%174%129%180%127%175%110%236%419%368$0@@%419%358$1@@$2@@@%419%358$1@@%419%368$0@@$2@@@|@|@|@@@%213%213%180%127%175%110%238%420%368$0@@%362$1@@@%420%362$1@@%368$0@@@|@|@@%174%129%180%127%175%110%236%419%368$0@@%419%362$1@@$2@@@%419%362$1@@%419%368$0@@$2@@@|@|@|@@@%213%213%179%126%175%110%238%420%368$0@@%364$1@@@%420%364$1@@%368$0@@@|@|@@%174%129%179%126%175%110%236%419%368$0@@%419%364$1@@$2@@@%419%364$1@@%419%368$0@@$2@@@|@|@|@@@%213%213%176%125%175%110%238%420%366$0@@%360$1@@@%420%360$1@@%366$0@@@|@|@@%174%129%176%125%175%110%236%419%366$0@@%419%360$1@@$2@@@%419%360$1@@%419%366$0@@$2@@@|@|@|@@@%213%213%180%127%175%110%238%420%366$0@@%358$1@@@%420%358$1@@%366$0@@@|@|@@%174%129%180%127%175%110%236%419%366$0@@%419%358$1@@$2@@@%419%358$1@@%419%366$0@@$2@@@|@|@|@@@%213%213%180%127%175%110%238%420%366$0@@%362$1@@@%420%362$1@@%366$0@@@|@|@@%174%129%180%127%175%110%236%419%366$0@@%419%362$1@@$2@@@%419%362$1@@%419%366$0@@$2@@@|@|@|@@@%213%213%179%126%175%110%238%420%366$0@@%364$1@@@%420%364$1@@%366$0@@@|@|@@%174%129%179%126%175%110%236%419%366$0@@%419%364$1@@$2@@@%419%364$1@@%419%366$0@@$2@@@|@|@|@@@%213%175%124%175%110%238%420%366$0@@%368$1@@@%420%368$1@@%366$0@@@|@|@@%174%129%175%124%175%110%236%419%366$0@@%419%368$1@@$2@@@%419%368$1@@%419%366$0@@$2@@@|@|@|@@@@@@@@@@@@@@@@"])
   fun op elf64_symbol_table_entry_component_equality x = x
     val op elf64_symbol_table_entry_component_equality =
-    DT(((("elf_symbol_table",89),
-        [("bool",[25,26,51,56,63,181]),("elf_symbol_table",[65,66,67,76]),
+    DT(((("elf_symbol_table",90),
+        [("bool",[25,26,50,55,62,180]),("elf_symbol_table",[66,67,68,77]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%176%81%176%83%225%231$1@$0@@%218%227%345$1@@%345$0@@@%218%229%343$1@@%343$0@@@%218%229%347$1@@%347$0@@@%218%228%349$1@@%349$0@@@%218%226%353$1@@%353$0@@@%226%351$1@@%351$0@@@@@@@@|@|@"])
+       [read"%171%80%171%82%222%229$1@$0@@%213%225%359$1@@%359$0@@@%213%227%357$1@@%357$0@@@%213%227%361$1@@%361$0@@@%213%226%363$1@@%363$0@@@%213%224%367$1@@%367$0@@@%224%365$1@@%365$0@@@@@@@@|@|@"])
   fun op elf64_symbol_table_entry_updates_eq_literal x = x
     val op elf64_symbol_table_entry_updates_eq_literal =
-    DT(((("elf_symbol_table",90),
-        [("bool",[25,26,56,181]),("combin",[12]),
-         ("elf_symbol_table",[65,66,67,83])]),["DISK_THM"]),
-       [read"%176%79%172%74%174%68%174%61%173%52%171%43%171%40%231%346%287$5@@%344%289$4@@%348%289$3@@%350%288$2@@%354%286$1@@%352%286$0@@$6@@@@@@@%346%287$5@@%344%289$4@@%348%289$3@@%350%288$2@@%354%286$1@@%352%286$0@@%264@@@@@@@|@|@|@|@|@|@|@"])
+    DT(((("elf_symbol_table",91),
+        [("bool",[25,26,55,180]),("combin",[12]),
+         ("elf_symbol_table",[66,67,68,84])]),["DISK_THM"]),
+       [read"%171%78%167%73%169%67%169%60%168%51%166%42%166%39%229%360%285$5@@%358%287$4@@%362%287$3@@%364%286$2@@%368%284$1@@%366%284$0@@$6@@@@@@@%360%285$5@@%358%287$4@@%362%287$3@@%364%286$2@@%368%284$1@@%366%284$0@@%262@@@@@@@|@|@|@|@|@|@|@"])
   fun op elf64_symbol_table_entry_literal_nchotomy x = x
     val op elf64_symbol_table_entry_literal_nchotomy =
-    DT(((("elf_symbol_table",91),
-        [("bool",[25,26,51,56,58,63,143,181]),("combin",[12]),
-         ("elf_symbol_table",[65,66,67,83]),("ind_type",[33,34]),
+    DT(((("elf_symbol_table",92),
+        [("bool",[25,26,50,55,57,62,142,180]),("combin",[12]),
+         ("elf_symbol_table",[66,67,68,84]),("ind_type",[33,34]),
          ("pair",[8,9])]),["DISK_THM"]),
-       [read"%176%79%251%74%253%68%253%61%252%52%250%43%250%40%231$6@%346%287$5@@%344%289$4@@%348%289$3@@%350%288$2@@%354%286$1@@%352%286$0@@%264@@@@@@@|@|@|@|@|@|@|@"])
+       [read"%171%78%247%73%249%67%249%60%248%51%246%42%246%39%229$6@%360%285$5@@%358%287$4@@%362%287$3@@%364%286$2@@%368%284$1@@%366%284$0@@%262@@@@@@@|@|@|@|@|@|@|@"])
   fun op FORALL_elf64_symbol_table_entry x = x
     val op FORALL_elf64_symbol_table_entry =
-    DT(((("elf_symbol_table",92),
-        [("bool",[25,26,36,51,56,58,63,143,181]),("combin",[12]),
-         ("elf_symbol_table",[65,66,67,83]),("ind_type",[33,34]),
+    DT(((("elf_symbol_table",93),
+        [("bool",[25,26,35,50,55,57,62,142,180]),("combin",[12]),
+         ("elf_symbol_table",[66,67,68,84]),("ind_type",[33,34]),
          ("pair",[8,9])]),["DISK_THM"]),
-       [read"%187%7%225%176%79$1$0@|@@%172%74%174%68%174%61%173%52%171%43%171%40$6%346%287$5@@%344%289$4@@%348%289$3@@%350%288$2@@%354%286$1@@%352%286$0@@%264@@@@@@@|@|@|@|@|@|@@|@"])
+       [read"%182%7%222%171%78$1$0@|@@%167%73%169%67%169%60%168%51%166%42%166%39$6%360%285$5@@%358%287$4@@%362%287$3@@%364%286$2@@%368%284$1@@%366%284$0@@%262@@@@@@@|@|@|@|@|@|@@|@"])
   fun op EXISTS_elf64_symbol_table_entry x = x
     val op EXISTS_elf64_symbol_table_entry =
-    DT(((("elf_symbol_table",93),
-        [("bool",[25,26,51,56,58,63,143,181]),("combin",[12]),
-         ("elf_symbol_table",[65,66,67,83]),("ind_type",[33,34]),
+    DT(((("elf_symbol_table",94),
+        [("bool",[25,26,50,55,57,62,142,180]),("combin",[12]),
+         ("elf_symbol_table",[66,67,68,84]),("ind_type",[33,34]),
          ("pair",[8,9])]),["DISK_THM"]),
-       [read"%187%7%225%255%79$1$0@|@@%251%74%253%68%253%61%252%52%250%43%250%40$6%346%287$5@@%344%289$4@@%348%289$3@@%350%288$2@@%354%286$1@@%352%286$0@@%264@@@@@@@|@|@|@|@|@|@@|@"])
+       [read"%182%7%222%251%78$1$0@|@@%247%73%249%67%249%60%248%51%246%42%246%39$6%360%285$5@@%358%287$4@@%362%287$3@@%364%286$2@@%368%284$1@@%366%284$0@@%262@@@@@@@|@|@|@|@|@|@@|@"])
   fun op elf64_symbol_table_entry_literal_11 x = x
     val op elf64_symbol_table_entry_literal_11 =
-    DT(((("elf_symbol_table",94),
-        [("combin",[12]),("elf_symbol_table",[84,89])]),["DISK_THM"]),
-       [read"%172%76%174%70%174%63%173%54%171%46%171%50%172%77%174%72%174%65%173%56%171%48%171%58%225%231%346%287$11@@%344%289$10@@%348%289$9@@%350%288$8@@%354%286$7@@%352%286$6@@%264@@@@@@@%346%287$5@@%344%289$4@@%348%289$3@@%350%288$2@@%354%286$1@@%352%286$0@@%264@@@@@@@@%218%227$11@$5@@%218%229$10@$4@@%218%229$9@$3@@%218%228$8@$2@@%218%226$7@$1@@%226$6@$0@@@@@@@|@|@|@|@|@|@|@|@|@|@|@|@"])
+    DT(((("elf_symbol_table",95),
+        [("combin",[12]),("elf_symbol_table",[85,90])]),["DISK_THM"]),
+       [read"%167%75%169%69%169%62%168%53%166%45%166%49%167%76%169%71%169%64%168%55%166%47%166%57%222%229%360%285$11@@%358%287$10@@%362%287$9@@%364%286$8@@%368%284$7@@%366%284$6@@%262@@@@@@@%360%285$5@@%358%287$4@@%362%287$3@@%364%286$2@@%368%284$1@@%366%284$0@@%262@@@@@@@@%213%225$11@$5@@%213%227$10@$4@@%213%227$9@$3@@%213%226$8@$2@@%213%224$7@$1@@%224$6@$0@@@@@@@|@|@|@|@|@|@|@|@|@|@|@|@"])
   fun op datatype_elf64_symbol_table_entry x = x
     val op datatype_elf64_symbol_table_entry =
-    DT(((("elf_symbol_table",95),[("bool",[25,171])]),["DISK_THM"]),
-       [read"%278%142%99@%94@%93@%95@%96@%98@%97@@"])
+    DT(((("elf_symbol_table",96),[("bool",[25,170])]),["DISK_THM"]),
+       [read"%278%139%98@%93@%92@%94@%95@%97@%96@@"])
   fun op elf64_symbol_table_entry_11 x = x
     val op elf64_symbol_table_entry_11 =
-    DT(((("elf_symbol_table",96),
-        [("bool",[26,51,56,63,181]),("elf_symbol_table",[65,66,67]),
+    DT(((("elf_symbol_table",97),
+        [("bool",[26,50,55,62,180]),("elf_symbol_table",[66,67,68]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%172%11%174%16%174%20%173%23%171%27%171%31%172%12%174%18%174%22%173%25%171%29%171%33%225%231%418$11@$10@$9@$8@$7@$6@@%418$5@$4@$3@$2@$1@$0@@@%218%227$11@$5@@%218%229$10@$4@@%218%229$9@$3@@%218%228$8@$2@@%218%226$7@$1@@%226$6@$0@@@@@@@|@|@|@|@|@|@|@|@|@|@|@|@"])
+       [read"%167%10%169%15%169%19%168%22%166%26%166%30%167%11%169%17%169%21%168%24%166%28%166%32%222%229%438$11@$10@$9@$8@$7@$6@@%438$5@$4@$3@$2@$1@$0@@@%213%225$11@$5@@%213%227$10@$4@@%213%227$9@$3@@%213%226$8@$2@@%213%224$7@$1@@%224$6@$0@@@@@@@|@|@|@|@|@|@|@|@|@|@|@|@"])
   fun op elf64_symbol_table_entry_case_cong x = x
     val op elf64_symbol_table_entry_case_cong =
-    DT(((("elf_symbol_table",97),
-        [("bool",[26,181]),
-         ("elf_symbol_table",[65,66,67,68])]),["DISK_THM"]),
-       [read"%176%3%176%5%183%114%248%218%231$2@$1@@%172%11%174%16%174%20%173%23%171%27%171%31%248%231$7@%418$5@$4@$3@$2@$1@$0@@@%222$6$5@$4@$3@$2@$1@$0@@%118$5@$4@$3@$2@$1@$0@@@|@|@|@|@|@|@@@%222%341$2@$0@@%341$1@%118@@@|@|@|@"])
+    DT(((("elf_symbol_table",98),
+        [("bool",[26,180]),
+         ("elf_symbol_table",[66,67,68,69])]),["DISK_THM"]),
+       [read"%171%3%171%5%178%113%244%213%229$2@$1@@%167%10%169%15%169%19%168%22%166%26%166%30%244%229$7@%438$5@$4@$3@$2@$1@$0@@@%217$6$5@$4@$3@$2@$1@$0@@%117$5@$4@$3@$2@$1@$0@@@|@|@|@|@|@|@@@%217%355$2@$0@@%355$1@%117@@@|@|@|@"])
   fun op elf64_symbol_table_entry_nchotomy x = x
     val op elf64_symbol_table_entry_nchotomy =
-    DT(((("elf_symbol_table",98),
-        [("bool",[26,181]),("elf_symbol_table",[65,66,67])]),["DISK_THM"]),
-       [read"%176%85%251%41%253%45%253%53%252%60%250%66%250%73%231$6@%418$5@$4@$3@$2@$1@$0@@|@|@|@|@|@|@|@"])
+    DT(((("elf_symbol_table",99),
+        [("bool",[26,180]),("elf_symbol_table",[66,67,68])]),["DISK_THM"]),
+       [read"%171%84%247%40%249%44%249%52%248%59%246%65%246%72%229$6@%438$5@$4@$3@$2@$1@$0@@|@|@|@|@|@|@|@"])
   fun op elf64_symbol_table_entry_Axiom x = x
     val op elf64_symbol_table_entry_Axiom =
-    DT(((("elf_symbol_table",99),
-        [("bool",[26,181]),("elf_symbol_table",[65,66,67]),
+    DT(((("elf_symbol_table",100),
+        [("bool",[26,180]),("elf_symbol_table",[66,67,68]),
          ("ind_type",[33,34]),("pair",[8,9])]),["DISK_THM"]),
-       [read"%183%114%258%124%172%11%174%16%174%20%173%23%171%27%171%31%222$6%418$5@$4@$3@$2@$1@$0@@@$7$5@$4@$3@$2@$1@$0@@|@|@|@|@|@|@|@|@"])
+       [read"%178%113%254%123%167%10%169%15%169%19%168%22%166%26%166%30%217$6%438$5@$4@$3@$2@$1@$0@@@$7$5@$4@$3@$2@$1@$0@@|@|@|@|@|@|@|@|@"])
   fun op elf64_symbol_table_entry_induction x = x
     val op elf64_symbol_table_entry_induction =
-    DT(((("elf_symbol_table",100),
-        [("bool",[26]),("elf_symbol_table",[65,66,67])]),["DISK_THM"]),
-       [read"%187%7%248%172%41%174%45%174%53%173%60%171%66%171%73$6%418$5@$4@$3@$2@$1@$0@@|@|@|@|@|@|@@%176%79$1$0@|@@|@"])
+    DT(((("elf_symbol_table",101),
+        [("bool",[26]),("elf_symbol_table",[66,67,68])]),["DISK_THM"]),
+       [read"%182%7%244%167%40%169%44%169%52%168%59%166%65%166%72$6%438$5@$4@$3@$2@$1@$0@@|@|@|@|@|@|@@%171%78$1$0@|@@|@"])
   fun op read_elf32_symbol_table_ind x = x
     val op read_elf32_symbol_table_ind =
-    DT(((("elf_symbol_table",117),
-        [("bool",[25,27,53,54,63]),("pair",[5,16]),("relation",[101]),
+    DT(((("elf_symbol_table",126),
+        [("bool",[25,27,52,53,62]),("pair",[5,16]),("relation",[101]),
          ("sat",[1,3,5,6,7,11,15])]),["DISK_THM"]),
-       [read"%188%8%248%177%100%169%38%248%169%39%248%460%244%384$1@@%219@@@$3$2@$0@@|@@$2$1@$0@@|@|@@%177%164%169%165$2$1@$0@|@|@@|@",
-        read"%177%100%169%38%169%39%248%460%244%384$1@@%219@@@%9%211$2@$0@@%211$2@$1@@@|@|@|@",
-        read"%321%9@"])
+       [read"%183%8%244%172%99%164%37%244%164%38%244%486%240%403$1@@%214@@@$3$2@$0@@|@@$2$1@$0@@|@|@@%172%161%164%162$2$1@$0@|@|@@|@",
+        read"%172%99%164%37%164%38%244%486%240%403$1@@%214@@@%9%206$2@$0@@%206$2@$1@@@|@|@|@",
+        read"%327%9@"])
   fun op read_elf32_symbol_table_def x = x
     val op read_elf32_symbol_table_def =
-    DT(((("elf_symbol_table",118),
-        [("bool",[15,58,129]),("combin",[19]),
-         ("elf_symbol_table",[115,116]),("pair",[49]),
+    DT(((("elf_symbol_table",127),
+        [("bool",[15,57,128]),("combin",[19]),
+         ("elf_symbol_table",[124,125]),("pair",[49]),
          ("relation",[121,126])]),["DISK_THM"]),
-       [read"%177%100%169%38%232%405$1@$0@@%270%244%384$0@@%219@@%419%297@@%366%406$1@$0@@%319%131%39%357%405$3@$0@@%161%419%274$2@$0@@|@||@@@@|@|@",
-        read"%177%100%169%38%169%39%248%460%244%384$1@@%219@@@%9%211$2@$0@@%211$2@$1@@@|@|@|@",
-        read"%321%9@"])
+       [read"%172%99%164%37%230%427$1@$0@@%268%240%403$0@@%214@@%439%299@@%380%428$1@$0@@%325%130%38%371%427$3@$0@@%158%439%272$2@$0@@|@||@@@@|@|@",
+        read"%172%99%164%37%164%38%244%486%240%403$1@@%214@@@%9%206$2@$0@@%206$2@$1@@@|@|@|@",
+        read"%327%9@"])
   fun op read_elf64_symbol_table_ind x = x
     val op read_elf64_symbol_table_ind =
-    DT(((("elf_symbol_table",121),
-        [("bool",[25,27,53,54,63]),("pair",[5,16]),("relation",[101]),
+    DT(((("elf_symbol_table",130),
+        [("bool",[25,27,52,53,62]),("pair",[5,16]),("relation",[101]),
          ("sat",[1,3,5,6,7,11,15])]),["DISK_THM"]),
-       [read"%188%8%248%177%100%169%38%248%169%39%248%460%244%384$1@@%219@@@$3$2@$0@@|@@$2$1@$0@@|@|@@%177%164%169%165$2$1@$0@|@|@@|@",
-        read"%177%100%169%38%169%39%248%460%244%384$1@@%219@@@%9%211$2@$0@@%211$2@$1@@@|@|@|@",
-        read"%321%9@"])
+       [read"%183%8%244%172%99%164%37%244%164%38%244%486%240%403$1@@%214@@@$3$2@$0@@|@@$2$1@$0@@|@|@@%172%161%164%162$2$1@$0@|@|@@|@",
+        read"%172%99%164%37%164%38%244%486%240%403$1@@%214@@@%9%206$2@$0@@%206$2@$1@@@|@|@|@",
+        read"%327%9@"])
   fun op read_elf64_symbol_table_def x = x
     val op read_elf64_symbol_table_def =
-    DT(((("elf_symbol_table",122),
-        [("bool",[15,58,129]),("combin",[19]),
-         ("elf_symbol_table",[119,120]),("pair",[49]),
+    DT(((("elf_symbol_table",131),
+        [("bool",[15,57,128]),("combin",[19]),
+         ("elf_symbol_table",[128,129]),("pair",[49]),
          ("relation",[121,126])]),["DISK_THM"]),
-       [read"%177%100%169%38%233%411$1@$0@@%271%244%384$0@@%219@@%420%298@@%367%412$1@$0@@%320%132%39%358%411$3@$0@@%162%420%275$2@$0@@|@||@@@@|@|@",
-        read"%177%100%169%38%169%39%248%460%244%384$1@@%219@@@%9%211$2@$0@@%211$2@$1@@@|@|@|@",
-        read"%321%9@"])
+       [read"%172%99%164%37%231%432$1@$0@@%269%240%403$0@@%214@@%440%300@@%381%433$1@$0@@%326%131%38%372%432$3@$0@@%159%440%273$2@$0@@|@||@@@@|@|@",
+        read"%172%99%164%37%164%38%244%486%240%403$1@@%214@@@%9%206$2@$0@@%206$2@$1@@@|@|@|@",
+        read"%327%9@"])
   end
   val _ = DB.bindl "elf_symbol_table"
   [("stn_undef_def",stn_undef_def,DB.Def),
@@ -1103,6 +1183,7 @@ struct
    ("stb_hios_def",stb_hios_def,DB.Def),
    ("stb_loproc_def",stb_loproc_def,DB.Def),
    ("stb_hiproc_def",stb_hiproc_def,DB.Def),
+   ("string_of_symbol_binding_def",string_of_symbol_binding_def,DB.Def),
    ("stt_notype_def",stt_notype_def,DB.Def),
    ("stt_object_def",stt_object_def,DB.Def),
    ("stt_func_def",stt_func_def,DB.Def),
@@ -1223,8 +1304,9 @@ struct
     DB.Def),
    ("instance_Basic_classes_Ord_Elf_symbol_table_elf64_symbol_table_entry_dict_def",
     instance_Basic_classes_Ord_Elf_symbol_table_elf64_symbol_table_entry_dict_def,
-    DB.Def), ("get_symbol_binding_def",get_symbol_binding_def,DB.Def),
-   ("get_symbol_type_def",get_symbol_type_def,DB.Def),
+    DB.Def),
+   ("extract_symbol_binding_def",extract_symbol_binding_def,DB.Def),
+   ("extract_symbol_type_def",extract_symbol_type_def,DB.Def),
    ("make_symbol_info_def",make_symbol_info_def,DB.Def),
    ("get_symbol_visibility_def",get_symbol_visibility_def,DB.Def),
    ("make_symbol_other_def",make_symbol_other_def,DB.Def),
@@ -1232,26 +1314,38 @@ struct
    ("is_elf64_shndx_too_large_def",is_elf64_shndx_too_large_def,DB.Def),
    ("is_elf32_null_entry_def",is_elf32_null_entry_def,DB.Def),
    ("is_elf64_null_entry_def",is_elf64_null_entry_def,DB.Def),
+   ("string_of_elf32_symbol_table_entry_def",
+    string_of_elf32_symbol_table_entry_def,
+    DB.Def),
+   ("string_of_elf64_symbol_table_entry_def",
+    string_of_elf64_symbol_table_entry_def,
+    DB.Def),
+   ("string_of_elf32_symbol_table_def",
+    string_of_elf32_symbol_table_def,
+    DB.Def),
    ("elf64_null_symbol_table_entry_def",
     elf64_null_symbol_table_entry_def,
+    DB.Def),
+   ("string_of_elf64_symbol_table_def",
+    string_of_elf64_symbol_table_def,
+    DB.Def),
+   ("instance_Show_Show_Elf_symbol_table_elf32_symbol_table_entry_dict_def",
+    instance_Show_Show_Elf_symbol_table_elf32_symbol_table_entry_dict_def,
+    DB.Def),
+   ("instance_Show_Show_Elf_symbol_table_elf64_symbol_table_entry_dict_def",
+    instance_Show_Show_Elf_symbol_table_elf64_symbol_table_entry_dict_def,
     DB.Def),
    ("read_elf32_symbol_table_entry_def",
     read_elf32_symbol_table_entry_def,
     DB.Def),
+   ("bytes_of_elf32_symbol_table_entry_def",
+    bytes_of_elf32_symbol_table_entry_def,
+    DB.Def),
    ("read_elf64_symbol_table_entry_def",
     read_elf64_symbol_table_entry_def,
     DB.Def),
-   ("read_elf32_symbol_table_tupled_primitive_def",
-    read_elf32_symbol_table_tupled_primitive_def,
-    DB.Def),
-   ("read_elf32_symbol_table_curried_def",
-    read_elf32_symbol_table_curried_def,
-    DB.Def),
-   ("read_elf64_symbol_table_tupled_primitive_def",
-    read_elf64_symbol_table_tupled_primitive_def,
-    DB.Def),
-   ("read_elf64_symbol_table_curried_def",
-    read_elf64_symbol_table_curried_def,
+   ("bytes_of_elf64_symbol_table_entry_def",
+    bytes_of_elf64_symbol_table_entry_def,
     DB.Def),
    ("get_elf32_symbol_image_address_def",
     get_elf32_symbol_image_address_def,
@@ -1261,6 +1355,8 @@ struct
     DB.Def),
    ("get_elf32_symbol_type_def",get_elf32_symbol_type_def,DB.Def),
    ("get_elf64_symbol_type_def",get_elf64_symbol_type_def,DB.Def),
+   ("get_elf32_symbol_binding_def",get_elf32_symbol_binding_def,DB.Def),
+   ("get_elf64_symbol_binding_def",get_elf64_symbol_binding_def,DB.Def),
    ("elf32_symbol_table_entry_accessors",
     elf32_symbol_table_entry_accessors,
     DB.Thm),
@@ -1376,7 +1472,7 @@ struct
    ("read_elf64_symbol_table_ind",read_elf64_symbol_table_ind,DB.Thm),
    ("read_elf64_symbol_table_def",read_elf64_symbol_table_def,DB.Thm)]
 
-  local open Portable GrammarSpecials Parse
+  local open GrammarSpecials Parse
     fun UTOFF f = Feedback.trace("Parse.unicode_trace_off_complaints",0)f
   in
   val _ = mk_local_grms [("string_tableTheory.string_table_grammars",
@@ -1432,6 +1528,12 @@ struct
   val _ = update_grms
        (UTOFF temp_overload_on)
        ("stb_hiproc", (Term.prim_mk_const { Name = "stb_hiproc", Thy = "elf_symbol_table"}))
+  val _ = update_grms
+       (UTOFF temp_overload_on)
+       ("string_of_symbol_binding", (Term.prim_mk_const { Name = "string_of_symbol_binding", Thy = "elf_symbol_table"}))
+  val _ = update_grms
+       (UTOFF temp_overload_on)
+       ("string_of_symbol_binding", (Term.prim_mk_const { Name = "string_of_symbol_binding", Thy = "elf_symbol_table"}))
   val _ = update_grms
        (UTOFF temp_overload_on)
        ("stt_notype", (Term.prim_mk_const { Name = "stt_notype", Thy = "elf_symbol_table"}))
@@ -1788,16 +1890,16 @@ struct
        ({Thy="elf_symbol_table",Name="elf64_symbol_table"}, T"list" "list" [T"elf64_symbol_table_entry" "elf_symbol_table" []])
   val _ = update_grms
        (UTOFF temp_overload_on)
-       ("get_symbol_binding", (Term.prim_mk_const { Name = "get_symbol_binding", Thy = "elf_symbol_table"}))
+       ("extract_symbol_binding", (Term.prim_mk_const { Name = "extract_symbol_binding", Thy = "elf_symbol_table"}))
   val _ = update_grms
        (UTOFF temp_overload_on)
-       ("get_symbol_binding", (Term.prim_mk_const { Name = "get_symbol_binding", Thy = "elf_symbol_table"}))
+       ("extract_symbol_binding", (Term.prim_mk_const { Name = "extract_symbol_binding", Thy = "elf_symbol_table"}))
   val _ = update_grms
        (UTOFF temp_overload_on)
-       ("get_symbol_type", (Term.prim_mk_const { Name = "get_symbol_type", Thy = "elf_symbol_table"}))
+       ("extract_symbol_type", (Term.prim_mk_const { Name = "extract_symbol_type", Thy = "elf_symbol_table"}))
   val _ = update_grms
        (UTOFF temp_overload_on)
-       ("get_symbol_type", (Term.prim_mk_const { Name = "get_symbol_type", Thy = "elf_symbol_table"}))
+       ("extract_symbol_type", (Term.prim_mk_const { Name = "extract_symbol_type", Thy = "elf_symbol_table"}))
   val _ = update_grms
        (UTOFF temp_overload_on)
        ("make_symbol_info", (Term.prim_mk_const { Name = "make_symbol_info", Thy = "elf_symbol_table"}))
@@ -1847,10 +1949,46 @@ struct
   (T"num" "num" [] --> T"list" "list" [T"char" "string" []])])
   val _ = update_grms
        (UTOFF temp_overload_on)
+       ("string_of_elf32_symbol_table_entry", (Term.prim_mk_const { Name = "string_of_elf32_symbol_table_entry", Thy = "elf_symbol_table"}))
+  val _ = update_grms
+       (UTOFF temp_overload_on)
+       ("string_of_elf32_symbol_table_entry", (Term.prim_mk_const { Name = "string_of_elf32_symbol_table_entry", Thy = "elf_symbol_table"}))
+  val _ = update_grms
+       (UTOFF temp_overload_on)
+       ("string_of_elf64_symbol_table_entry", (Term.prim_mk_const { Name = "string_of_elf64_symbol_table_entry", Thy = "elf_symbol_table"}))
+  val _ = update_grms
+       (UTOFF temp_overload_on)
+       ("string_of_elf64_symbol_table_entry", (Term.prim_mk_const { Name = "string_of_elf64_symbol_table_entry", Thy = "elf_symbol_table"}))
+  val _ = update_grms
+       (UTOFF temp_overload_on)
+       ("string_of_elf32_symbol_table", (Term.prim_mk_const { Name = "string_of_elf32_symbol_table", Thy = "elf_symbol_table"}))
+  val _ = update_grms
+       (UTOFF temp_overload_on)
+       ("string_of_elf32_symbol_table", (Term.prim_mk_const { Name = "string_of_elf32_symbol_table", Thy = "elf_symbol_table"}))
+  val _ = update_grms
+       (UTOFF temp_overload_on)
        ("elf64_null_symbol_table_entry", (Term.prim_mk_const { Name = "elf64_null_symbol_table_entry", Thy = "elf_symbol_table"}))
   val _ = update_grms
        (UTOFF temp_overload_on)
        ("elf64_null_symbol_table_entry", (Term.prim_mk_const { Name = "elf64_null_symbol_table_entry", Thy = "elf_symbol_table"}))
+  val _ = update_grms
+       (UTOFF temp_overload_on)
+       ("string_of_elf64_symbol_table", (Term.prim_mk_const { Name = "string_of_elf64_symbol_table", Thy = "elf_symbol_table"}))
+  val _ = update_grms
+       (UTOFF temp_overload_on)
+       ("string_of_elf64_symbol_table", (Term.prim_mk_const { Name = "string_of_elf64_symbol_table", Thy = "elf_symbol_table"}))
+  val _ = update_grms
+       (UTOFF temp_overload_on)
+       ("instance_Show_Show_Elf_symbol_table_elf32_symbol_table_entry_dict", (Term.prim_mk_const { Name = "instance_Show_Show_Elf_symbol_table_elf32_symbol_table_entry_dict", Thy = "elf_symbol_table"}))
+  val _ = update_grms
+       (UTOFF temp_overload_on)
+       ("instance_Show_Show_Elf_symbol_table_elf32_symbol_table_entry_dict", (Term.prim_mk_const { Name = "instance_Show_Show_Elf_symbol_table_elf32_symbol_table_entry_dict", Thy = "elf_symbol_table"}))
+  val _ = update_grms
+       (UTOFF temp_overload_on)
+       ("instance_Show_Show_Elf_symbol_table_elf64_symbol_table_entry_dict", (Term.prim_mk_const { Name = "instance_Show_Show_Elf_symbol_table_elf64_symbol_table_entry_dict", Thy = "elf_symbol_table"}))
+  val _ = update_grms
+       (UTOFF temp_overload_on)
+       ("instance_Show_Show_Elf_symbol_table_elf64_symbol_table_entry_dict", (Term.prim_mk_const { Name = "instance_Show_Show_Elf_symbol_table_elf64_symbol_table_entry_dict", Thy = "elf_symbol_table"}))
   val _ = update_grms
        (UTOFF temp_overload_on)
        ("read_elf32_symbol_table_entry", (Term.prim_mk_const { Name = "read_elf32_symbol_table_entry", Thy = "elf_symbol_table"}))
@@ -1859,28 +1997,32 @@ struct
        ("read_elf32_symbol_table_entry", (Term.prim_mk_const { Name = "read_elf32_symbol_table_entry", Thy = "elf_symbol_table"}))
   val _ = update_grms
        (UTOFF temp_overload_on)
-       ("read_elf64_symbol_table_entry", (Term.prim_mk_const { Name = "read_elf64_symbol_table_entry", Thy = "elf_symbol_table"}))
+       ("bytes_of_elf32_symbol_table_entry", (Term.prim_mk_const { Name = "bytes_of_elf32_symbol_table_entry", Thy = "elf_symbol_table"}))
+  val _ = update_grms
+       (UTOFF temp_overload_on)
+       ("bytes_of_elf32_symbol_table_entry", (Term.prim_mk_const { Name = "bytes_of_elf32_symbol_table_entry", Thy = "elf_symbol_table"}))
   val _ = update_grms
        (UTOFF temp_overload_on)
        ("read_elf64_symbol_table_entry", (Term.prim_mk_const { Name = "read_elf64_symbol_table_entry", Thy = "elf_symbol_table"}))
   val _ = update_grms
        (UTOFF temp_overload_on)
-       ("read_elf32_symbol_table_tupled", (Term.prim_mk_const { Name = "read_elf32_symbol_table_tupled", Thy = "elf_symbol_table"}))
+       ("read_elf64_symbol_table_entry", (Term.prim_mk_const { Name = "read_elf64_symbol_table_entry", Thy = "elf_symbol_table"}))
   val _ = update_grms
        (UTOFF temp_overload_on)
-       ("read_elf32_symbol_table_tupled", (Term.prim_mk_const { Name = "read_elf32_symbol_table_tupled", Thy = "elf_symbol_table"}))
+       ("bytes_of_elf64_symbol_table_entry", (Term.prim_mk_const { Name = "bytes_of_elf64_symbol_table_entry", Thy = "elf_symbol_table"}))
+  val _ = update_grms
+       (UTOFF temp_overload_on)
+       ("bytes_of_elf64_symbol_table_entry", (Term.prim_mk_const { Name = "bytes_of_elf64_symbol_table_entry", Thy = "elf_symbol_table"}))
+
+
   val _ = update_grms
        (UTOFF temp_overload_on)
        ("read_elf32_symbol_table", (Term.prim_mk_const { Name = "read_elf32_symbol_table", Thy = "elf_symbol_table"}))
   val _ = update_grms
        (UTOFF temp_overload_on)
        ("read_elf32_symbol_table", (Term.prim_mk_const { Name = "read_elf32_symbol_table", Thy = "elf_symbol_table"}))
-  val _ = update_grms
-       (UTOFF temp_overload_on)
-       ("read_elf64_symbol_table_tupled", (Term.prim_mk_const { Name = "read_elf64_symbol_table_tupled", Thy = "elf_symbol_table"}))
-  val _ = update_grms
-       (UTOFF temp_overload_on)
-       ("read_elf64_symbol_table_tupled", (Term.prim_mk_const { Name = "read_elf64_symbol_table_tupled", Thy = "elf_symbol_table"}))
+
+
   val _ = update_grms
        (UTOFF temp_overload_on)
        ("read_elf64_symbol_table", (Term.prim_mk_const { Name = "read_elf64_symbol_table", Thy = "elf_symbol_table"}))
@@ -1921,6 +2063,18 @@ struct
   val _ = update_grms
        (UTOFF temp_overload_on)
        ("get_elf64_symbol_type", (Term.prim_mk_const { Name = "get_elf64_symbol_type", Thy = "elf_symbol_table"}))
+  val _ = update_grms
+       (UTOFF temp_overload_on)
+       ("get_elf32_symbol_binding", (Term.prim_mk_const { Name = "get_elf32_symbol_binding", Thy = "elf_symbol_table"}))
+  val _ = update_grms
+       (UTOFF temp_overload_on)
+       ("get_elf32_symbol_binding", (Term.prim_mk_const { Name = "get_elf32_symbol_binding", Thy = "elf_symbol_table"}))
+  val _ = update_grms
+       (UTOFF temp_overload_on)
+       ("get_elf64_symbol_binding", (Term.prim_mk_const { Name = "get_elf64_symbol_binding", Thy = "elf_symbol_table"}))
+  val _ = update_grms
+       (UTOFF temp_overload_on)
+       ("get_elf64_symbol_binding", (Term.prim_mk_const { Name = "get_elf64_symbol_binding", Thy = "elf_symbol_table"}))
   val elf_symbol_table_grammars = Parse.current_lgrms()
   end
 
@@ -2075,7 +2229,7 @@ in
     thy = "elf_symbol_table",
     thydataty = "compute",
     data =
-        "elf_symbol_table.stn_undef_def elf_symbol_table.stv_protected_def elf_symbol_table.get_elf64_symbol_type_def elf_symbol_table.get_elf32_symbol_type_def elf_symbol_table.get_elf64_symbol_image_address_def elf_symbol_table.get_elf32_symbol_image_address_def elf_symbol_table.read_elf64_symbol_table_entry_def elf_symbol_table.read_elf32_symbol_table_entry_def elf_symbol_table.elf64_null_symbol_table_entry_def elf_symbol_table.is_elf64_null_entry_def elf_symbol_table.is_elf32_null_entry_def elf_symbol_table.is_elf64_shndx_too_large_def elf_symbol_table.is_elf32_shndx_too_large_def elf_symbol_table.make_symbol_other_def elf_symbol_table.get_symbol_visibility_def elf_symbol_table.make_symbol_info_def elf_symbol_table.get_symbol_type_def elf_symbol_table.get_symbol_binding_def elf_symbol_table.instance_Basic_classes_Ord_Elf_symbol_table_elf64_symbol_table_entry_dict_def elf_symbol_table.elf64_symbol_table_entry_compare_def elf_symbol_table.instance_Basic_classes_Ord_Elf_symbol_table_elf32_symbol_table_entry_dict_def elf_symbol_table.elf32_symbol_table_entry_compare_def elf_symbol_table.string_of_symbol_visibility_def elf_symbol_table.stv_default_def elf_symbol_table.stv_hidden_def elf_symbol_table.stv_internal_def elf_symbol_table.stt_section_def elf_symbol_table.string_of_symbol_type_def elf_symbol_table.stt_hiproc_def elf_symbol_table.stt_loproc_def elf_symbol_table.stt_hios_def elf_symbol_table.stt_loos_def elf_symbol_table.stt_tls_def elf_symbol_table.stt_common_def elf_symbol_table.stt_file_def elf_symbol_table.stt_func_def elf_symbol_table.stt_notype_def elf_symbol_table.stt_object_def elf_symbol_table.stb_loos_def elf_symbol_table.stb_hiproc_def elf_symbol_table.stb_loproc_def elf_symbol_table.stb_hios_def elf_symbol_table.stb_weak_def elf_symbol_table.stb_global_def elf_symbol_table.stb_local_def"
+        "elf_symbol_table.stn_undef_def elf_symbol_table.stv_protected_def elf_symbol_table.get_elf64_symbol_binding_def elf_symbol_table.get_elf32_symbol_binding_def elf_symbol_table.get_elf64_symbol_type_def elf_symbol_table.get_elf32_symbol_type_def elf_symbol_table.get_elf64_symbol_image_address_def elf_symbol_table.get_elf32_symbol_image_address_def elf_symbol_table.bytes_of_elf64_symbol_table_entry_def elf_symbol_table.read_elf64_symbol_table_entry_def elf_symbol_table.bytes_of_elf32_symbol_table_entry_def elf_symbol_table.read_elf32_symbol_table_entry_def elf_symbol_table.instance_Show_Show_Elf_symbol_table_elf64_symbol_table_entry_dict_def elf_symbol_table.instance_Show_Show_Elf_symbol_table_elf32_symbol_table_entry_dict_def elf_symbol_table.string_of_elf64_symbol_table_def elf_symbol_table.elf64_null_symbol_table_entry_def elf_symbol_table.string_of_elf32_symbol_table_def elf_symbol_table.string_of_elf64_symbol_table_entry_def elf_symbol_table.string_of_elf32_symbol_table_entry_def elf_symbol_table.is_elf64_null_entry_def elf_symbol_table.is_elf32_null_entry_def elf_symbol_table.is_elf64_shndx_too_large_def elf_symbol_table.is_elf32_shndx_too_large_def elf_symbol_table.make_symbol_other_def elf_symbol_table.get_symbol_visibility_def elf_symbol_table.make_symbol_info_def elf_symbol_table.extract_symbol_type_def elf_symbol_table.extract_symbol_binding_def elf_symbol_table.instance_Basic_classes_Ord_Elf_symbol_table_elf64_symbol_table_entry_dict_def elf_symbol_table.elf64_symbol_table_entry_compare_def elf_symbol_table.instance_Basic_classes_Ord_Elf_symbol_table_elf32_symbol_table_entry_dict_def elf_symbol_table.elf32_symbol_table_entry_compare_def elf_symbol_table.string_of_symbol_visibility_def elf_symbol_table.stv_hidden_def elf_symbol_table.stv_internal_def elf_symbol_table.stt_tls_def elf_symbol_table.stv_default_def elf_symbol_table.string_of_symbol_type_def elf_symbol_table.stt_hiproc_def elf_symbol_table.stt_loproc_def elf_symbol_table.stt_hios_def elf_symbol_table.stt_loos_def elf_symbol_table.stt_object_def elf_symbol_table.stt_common_def elf_symbol_table.stt_file_def elf_symbol_table.stt_section_def elf_symbol_table.stt_func_def elf_symbol_table.string_of_symbol_binding_def elf_symbol_table.stt_notype_def elf_symbol_table.stb_loos_def elf_symbol_table.stb_hiproc_def elf_symbol_table.stb_loproc_def elf_symbol_table.stb_hios_def elf_symbol_table.stb_weak_def elf_symbol_table.stb_global_def elf_symbol_table.stb_local_def"
   }
 
 val _ = if !Globals.print_thy_loads then print "done\n" else ()

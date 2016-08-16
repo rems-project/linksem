@@ -56,23 +56,23 @@ val _ = Define `
                 i0 :: i1 :: i2 :: i3  :: i4  :: i5  :: i6  :: 
                 _  :: _  :: i9 :: i10 :: i11 :: i12 :: i13 :: i14 :: i15 :: []
                     => [i0; i1; i2; i3; i4; i5; i6;
-                        (n2w : num -> 8 word) elf_osabi_gnu;
-                        (n2w : num -> 8 word)(( 1:num));
+                        (n2w : num -> unsigned_char) elf_osabi_gnu;
+                        (n2w : num -> unsigned_char) (( 1:num));
                         i9; i10; i11; i12; i13; i14; i15]
                 ))
-               ; elf64_type     := ((n2w : num -> 16 word) t)
+               ; elf64_type     := ((n2w : num -> uint16) t)
                ; elf64_machine  := (unmod.elf64_machine)
                ; elf64_version  := (unmod.elf64_version)
                ; elf64_entry    := (unmod.elf64_entry)
-               ; elf64_phoff    := ((n2w : num -> 64 word) phoff)
-               ; elf64_shoff    := ((n2w : num -> 64 word) shoff)
+               ; elf64_phoff    := ((n2w : num -> uint64) phoff)
+               ; elf64_shoff    := ((n2w : num -> uint64) shoff)
                ; elf64_flags    := (unmod.elf64_flags)
                ; elf64_ehsize   := (unmod.elf64_ehsize)
                ; elf64_phentsize:= (unmod.elf64_phentsize)
-               ; elf64_phnum    := ((n2w : num -> 16 word) phnum)
+               ; elf64_phnum    := ((n2w : num -> uint16) phnum)
                ; elf64_shentsize:= (unmod.elf64_shentsize)
-               ; elf64_shnum    := ((n2w : num -> 16 word) shnum)
-               ; elf64_shstrndx := ((n2w : num -> 16 word) shstrndx)
+               ; elf64_shnum    := ((n2w : num -> uint16) shnum)
+               ; elf64_shstrndx := ((n2w : num -> uint16) shstrndx)
                |>)
     ; reloc               := (a.reloc)
     ; section_is_special  := (\ isec .  (\ img .  (

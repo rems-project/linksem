@@ -13,14 +13,14 @@ struct
   in end;
   val _ = Theory.link_parents
           ("multimap",
-          Arbnum.fromString "1471276712",
-          Arbnum.fromString "787889")
+          Arbnum.fromString "1471355124",
+          Arbnum.fromString "334741")
           [("missing_pervasives",
-           Arbnum.fromString "1471276695",
-           Arbnum.fromString "273504"),
+           Arbnum.fromString "1471355106",
+           Arbnum.fromString "934043"),
            ("lem_set_extra",
-           Arbnum.fromString "1471269279",
-           Arbnum.fromString "653228")];
+           Arbnum.fromString "1471353338",
+           Arbnum.fromString "583754")];
   val _ = Theory.incorporate_types "multimap" [];
 
   val idvector = 

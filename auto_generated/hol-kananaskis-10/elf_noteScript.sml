@@ -32,9 +32,9 @@ val _ = new_theory "elf_note"
   *)
 val _ = Hol_datatype `
  elf32_note =
-  <| elf32_note_namesz : word32 (** The size of the name field. *)
-   ; elf32_note_descsz : word32 (** The size of the description field. *)
-   ; elf32_note_type   : word32 (** The type of the note. *)
+  <| elf32_note_namesz : uint32 (** The size of the name field. *)
+   ; elf32_note_descsz : uint32 (** The size of the description field. *)
+   ; elf32_note_type   : uint32 (** The type of the note. *)
    ; elf32_note_name   : word8 list  (** The list of bytes (of length indicated above) corresponding to the name string. *)
    ; elf32_note_desc   : word8 list  (** The list of bytes (of length indicated above) corresponding to the desc string. *)
    |>`;
@@ -44,9 +44,9 @@ val _ = Hol_datatype `
   *)
 val _ = Hol_datatype `
  elf64_note =
-  <| elf64_note_namesz : word64 (** The size of the name field. *)
-   ; elf64_note_descsz : word64 (** The size of the description field. *)
-   ; elf64_note_type   : word64 (** The type of the note. *)
+  <| elf64_note_namesz : uint64 (** The size of the name field. *)
+   ; elf64_note_descsz : uint64 (** The size of the description field. *)
+   ; elf64_note_type   : uint64 (** The type of the note. *)
    ; elf64_note_name   : word8 list   (** The list of bytes (of length indicated above) corresponding to the name string. *)
    ; elf64_note_desc   : word8 list   (** The list of bytes (of length indicated above) corresponding to the desc string. *)
    |>`;
@@ -97,7 +97,7 @@ val _ = Define `
  (obtain_elf32_note_sections endian sht bs0=  
  (let note_sects =    
 (FILTER (\ x . 
-      x.elf32_sh_type = (n2w : num -> 32 word) sht_note
+      x.elf32_sh_type = (n2w : num -> uint32) sht_note
     ) sht)
   in
     mapM (\ x . 
@@ -120,7 +120,7 @@ val _ = Define `
  (obtain_elf64_note_sections endian sht bs0=  
  (let note_sects =    
 (FILTER (\ x . 
-      x.elf64_sh_type = (n2w : num -> 32 word) sht_note
+      x.elf64_sh_type = (n2w : num -> uint32) sht_note
     ) sht)
   in
     mapM (\ x . 
@@ -143,7 +143,7 @@ val _ = Define `
  (obtain_elf32_note_segments endian pht bs0=  
  (let note_segs =    
 (FILTER (\ x . 
-      x.elf32_p_type = (n2w : num -> 32 word) elf_pt_note
+      x.elf32_p_type = (n2w : num -> uint32) elf_pt_note
     ) pht)
   in
     mapM (\ x . 
@@ -166,7 +166,7 @@ val _ = Define `
  (obtain_elf64_note_segments endian pht bs0=  
  (let note_segs =    
 (FILTER (\ x . 
-      x.elf64_p_type = (n2w : num -> 32 word) elf_pt_note
+      x.elf64_p_type = (n2w : num -> uint32) elf_pt_note
     ) pht)
   in
     mapM (\ x . 

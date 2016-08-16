@@ -43,11 +43,9 @@ val _ = new_theory "gnu_ext_symbol_versioning"
 (** [gnu_ext_elf32_symbol_version_table] is an array (linked list, here) of
   * [elf32_half] entries.
   *)
-val _ = type_abbrev( "gnu_ext_elf32_symbol_version_table" , ``: word16
-  list``);
+val _ = type_abbrev( "gnu_ext_elf32_symbol_version_table" , ``: uint16 list``);
   
-val _ = type_abbrev( "gnu_ext_elf64_symbol_version_table" , ``: word16
-  list``);
+val _ = type_abbrev( "gnu_ext_elf64_symbol_version_table" , ``: uint16 list``);
 
 (*val obtain_gnu_ext_elf32_symbol_version_table : elf32_file -> byte_sequence -> error gnu_ext_elf32_symbol_version_table*)
 val _ = Define `
@@ -55,7 +53,7 @@ val _ = Define `
  (let sht = (f1.elf32_file_section_header_table) in
   let endian = (get_elf32_header_endianness f1.elf32_file_header) in
   let vers = (FILTER (\ ent . 
-    ent.elf32_sh_type = (n2w : num -> 32 word) sht_gnu_versym
+    ent.elf32_sh_type = (n2w : num -> uint32) sht_gnu_versym
   ) sht)
   in
     (case vers of
@@ -81,7 +79,7 @@ val _ = Define `
       return []
     else
       let vers = (FILTER (\ ent . 
-          ent.elf64_sh_type = (n2w : num -> 32 word) sht_gnu_versym
+          ent.elf64_sh_type = (n2w : num -> uint32) sht_gnu_versym
         ) sht)
       in
         (case vers of
@@ -98,25 +96,25 @@ val _ = Define `
   
 val _ = Hol_datatype `
  gnu_ext_elf32_verdef =
-  <| gnu_ext_elf32_vd_version : word16
-   ; gnu_ext_elf32_vd_flags   : word16
-   ; gnu_ext_elf32_vd_ndx     : word16
-   ; gnu_ext_elf32_vd_cnt     : word16
-   ; gnu_ext_elf32_vd_hash    : word32
-   ; gnu_ext_elf32_vd_aux     : word32
-   ; gnu_ext_elf32_vd_next    : word32
+  <| gnu_ext_elf32_vd_version : uint16
+   ; gnu_ext_elf32_vd_flags   : uint16
+   ; gnu_ext_elf32_vd_ndx     : uint16
+   ; gnu_ext_elf32_vd_cnt     : uint16
+   ; gnu_ext_elf32_vd_hash    : uint32
+   ; gnu_ext_elf32_vd_aux     : uint32
+   ; gnu_ext_elf32_vd_next    : uint32
    |>`;
 
    
 val _ = Hol_datatype `
  gnu_ext_elf64_verdef =
-  <| gnu_ext_elf64_vd_version : word16
-   ; gnu_ext_elf64_vd_flags   : word16
-   ; gnu_ext_elf64_vd_ndx     : word16
-   ; gnu_ext_elf64_vd_cnt     : word16
-   ; gnu_ext_elf64_vd_hash    : word32
-   ; gnu_ext_elf64_vd_aux     : word32
-   ; gnu_ext_elf64_vd_next    : word32
+  <| gnu_ext_elf64_vd_version : uint16
+   ; gnu_ext_elf64_vd_flags   : uint16
+   ; gnu_ext_elf64_vd_ndx     : uint16
+   ; gnu_ext_elf64_vd_cnt     : uint16
+   ; gnu_ext_elf64_vd_hash    : uint32
+   ; gnu_ext_elf64_vd_aux     : uint32
+   ; gnu_ext_elf64_vd_next    : uint32
    |>`;
 
    
@@ -168,15 +166,15 @@ val _ = Define `
    
 val _ = Hol_datatype `
  gnu_ext_elf32_veraux =
-  <| gnu_ext_elf32_vda_name : word32
-   ; gnu_ext_elf32_vda_next : word32
+  <| gnu_ext_elf32_vda_name : uint32
+   ; gnu_ext_elf32_vda_next : uint32
    |>`;
 
    
 val _ = Hol_datatype `
  gnu_ext_elf64_veraux =
-  <| gnu_ext_elf64_vda_name : word32
-   ; gnu_ext_elf64_vda_next : word32
+  <| gnu_ext_elf64_vda_name : uint32
+   ; gnu_ext_elf64_vda_next : uint32
    |>`;
 
    
@@ -208,21 +206,21 @@ val _ = Define `
    
 val _ = Hol_datatype `
  gnu_ext_elf32_verneed =
-  <| gnu_ext_elf32_vn_version : word16
-   ; gnu_ext_elf32_vn_cnt     : word16
-   ; gnu_ext_elf32_vn_file    : word32
-   ; gnu_ext_elf32_vn_aux     : word32
-   ; gnu_ext_elf32_vn_next    : word32
+  <| gnu_ext_elf32_vn_version : uint16
+   ; gnu_ext_elf32_vn_cnt     : uint16
+   ; gnu_ext_elf32_vn_file    : uint32
+   ; gnu_ext_elf32_vn_aux     : uint32
+   ; gnu_ext_elf32_vn_next    : uint32
    |>`;
 
    
 val _ = Hol_datatype `
  gnu_ext_elf64_verneed =
-  <| gnu_ext_elf64_vn_version : word16
-   ; gnu_ext_elf64_vn_cnt     : word16
-   ; gnu_ext_elf64_vn_file    : word32
-   ; gnu_ext_elf64_vn_aux     : word32
-   ; gnu_ext_elf64_vn_next    : word32
+  <| gnu_ext_elf64_vn_version : uint16
+   ; gnu_ext_elf64_vn_cnt     : uint16
+   ; gnu_ext_elf64_vn_file    : uint32
+   ; gnu_ext_elf64_vn_aux     : uint32
+   ; gnu_ext_elf64_vn_next    : uint32
    |>`;
 
    
@@ -264,21 +262,21 @@ val _ = Define `
    
 val _ = Hol_datatype `
  gnu_ext_elf32_vernaux =
-  <| gnu_ext_elf32_vna_hash  : word32
-   ; gnu_ext_elf32_vna_flags : word16
-   ; gnu_ext_elf32_vna_other : word16
-   ; gnu_ext_elf32_vna_name  : word32
-   ; gnu_ext_elf32_vna_next  : word32
+  <| gnu_ext_elf32_vna_hash  : uint32
+   ; gnu_ext_elf32_vna_flags : uint16
+   ; gnu_ext_elf32_vna_other : uint16
+   ; gnu_ext_elf32_vna_name  : uint32
+   ; gnu_ext_elf32_vna_next  : uint32
    |>`;
 
    
 val _ = Hol_datatype `
  gnu_ext_elf64_vernaux =
-  <| gnu_ext_elf64_vna_hash  : word32
-   ; gnu_ext_elf64_vna_flags : word16
-   ; gnu_ext_elf64_vna_other : word16
-   ; gnu_ext_elf64_vna_name  : word32
-   ; gnu_ext_elf64_vna_next  : word32
+  <| gnu_ext_elf64_vna_hash  : uint32
+   ; gnu_ext_elf64_vna_flags : uint16
+   ; gnu_ext_elf64_vna_other : uint16
+   ; gnu_ext_elf64_vna_name  : uint32
+   ; gnu_ext_elf64_vna_next  : uint32
    |>`;
 
    

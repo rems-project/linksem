@@ -74,7 +74,7 @@ val _ = new_theory "elf_types_native_uint"
 
 val _ = Define `
  (natural_of_byte b=     
-(w2n (id b)))`;
+(w2n (I b)))`;
 
 
 (** [read_unsigned_char end bs0] reads an unsigned char from byte_sequence [bs0]
@@ -86,14 +86,14 @@ val _ = Define `
 val _ = Define `
  (read_unsigned_char endian bs0=  
  (byte_sequence$read_char bs0 >>= (\ (u1, bs1) . 
-  return (id u1, bs1))))`;
+  return (I u1, bs1))))`;
 
 
 (*val byte_of_unsigned_char : unsigned_char -> byte*)
 
 (*val bytes_of_unsigned_char : unsigned_char -> list byte*)
 val _ = Define `
- (bytes_of_unsigned_char u=  ([id u]))`;
+ (bytes_of_unsigned_char u=  ([I u]))`;
 
 
 (*val equal_unsigned_char  : unsigned_char -> unsigned_char -> bool*)
@@ -101,7 +101,7 @@ val _ = Define `
 val _ = Define `
 (instance_Show_Show_Elf_types_native_uint_unsigned_char_dict= (<|
 
-  show_method := (num_to_dec_string o w2n)|>))`;
+  show_method := (\ x. (num_to_dec_string o w2n) x)|>))`;
 
 
 (** ELF address type:
@@ -152,7 +152,7 @@ val _ = Define `
 val _ = Define `
 (instance_Show_Show_Elf_types_native_uint_elf32_addr_dict= (<|
 
-  show_method := (num_to_dec_string o w2n)|>))`;
+  show_method := (\ x. (num_to_dec_string o w2n) x)|>))`;
 
 
 (** elf64_addr type and bindings *)
@@ -210,7 +210,7 @@ val _ = Define `
 val _ = Define `
 (instance_Show_Show_Elf_types_native_uint_elf64_addr_dict= (<|
 
-  show_method := (num_to_dec_string o w2n)|>))`;
+  show_method := (\ x. (num_to_dec_string o w2n) x)|>))`;
 
 
 (** ELF half word type:
@@ -259,7 +259,7 @@ val _ = Define `
 val _ = Define `
 (instance_Show_Show_Elf_types_native_uint_elf32_half_dict= (<|
 
-  show_method := (num_to_dec_string o w2n)|>))`;
+  show_method := (\ x. (num_to_dec_string o w2n) x)|>))`;
 
 
 (** elf64_half type and bindings *)
@@ -307,7 +307,7 @@ val _ = Define `
 val _ = Define `
 (instance_Show_Show_Elf_types_native_uint_elf64_half_dict= (<|
 
-  show_method := (num_to_dec_string o w2n)|>))`;
+  show_method := (\ x. (num_to_dec_string o w2n) x)|>))`;
 
 
 (*
@@ -368,7 +368,7 @@ val _ = Define `
 val _ = Define `
 (instance_Show_Show_Elf_types_native_uint_elf32_off_dict= (<|
 
-  show_method := (num_to_dec_string o w2n)|>))`;
+  show_method := (\ x. (num_to_dec_string o w2n) x)|>))`;
 
 
 (** elf64_off type and bindings *)
@@ -416,7 +416,7 @@ val _ = Define `
 val _ = Define `
 (instance_Show_Show_Elf_types_native_uint_elf64_off_dict= (<|
 
-  show_method := (num_to_dec_string o w2n)|>))`;
+  show_method := (\ x. (num_to_dec_string o w2n) x)|>))`;
 
 
 (** ELF word type:
@@ -473,7 +473,7 @@ val _ = Define `
 val _ = Define `
 (instance_Show_Show_Elf_types_native_uint_elf32_word_dict= (<|
 
-  show_method := (num_to_dec_string o w2n)|>))`;
+  show_method := (\ x. (num_to_dec_string o w2n) x)|>))`;
 
 
 (** elf64_word type and bindings *)
@@ -523,7 +523,7 @@ val _ = Define `
 val _ = Define `
 (instance_Show_Show_Elf_types_native_uint_elf64_word_dict= (<|
 
-  show_method := (num_to_dec_string o w2n)|>))`;
+  show_method := (\ x. (num_to_dec_string o w2n) x)|>))`;
 
 
 (** ELF signed word type:
@@ -674,7 +674,7 @@ val _ = Define `
 val _ = Define `
 (instance_Show_Show_Elf_types_native_uint_elf64_xword_dict= (<|
 
-  show_method := (num_to_dec_string o w2n)|>))`;
+  show_method := (\ x. (num_to_dec_string o w2n) x)|>))`;
 
 
 (** ELF signed extra wide word type:
@@ -729,21 +729,21 @@ val _ = Define `
 val _ = Define `
  (natural_land m n=  
 ( 
-  (* For Isabelle backend...*)w2n (word_and ((n2w : num -> 64 word) m) ((n2w : num -> 64 word) n))))`;
+  (* For Isabelle backend...*)w2n (word_and ((n2w : num -> uint64) m) ((n2w : num -> uint64) n))))`;
 
 
 (*val natural_lor : natural -> natural -> natural*)
 val _ = Define `
  (natural_lor m n=  
 ( 
-  (* For Isabelle backend...*)w2n (word_or ((n2w : num -> 64 word) m) ((n2w : num -> 64 word) n))))`;
+  (* For Isabelle backend...*)w2n (word_or ((n2w : num -> uint64) m) ((n2w : num -> uint64) n))))`;
 
 
 (*val natural_lxor : natural -> natural -> natural*)
 val _ = Define `
  (natural_lxor m n=  
 ( 
-  (* For Isabelle backend...*)w2n (word_xor ((n2w : num -> 64 word) m) ((n2w : num -> 64 word) n))))`;
+  (* For Isabelle backend...*)w2n (word_xor ((n2w : num -> uint64) m) ((n2w : num -> uint64) n))))`;
 
 val _ = export_theory()
 

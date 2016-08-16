@@ -13,11 +13,11 @@ struct
   in end;
   val _ = Theory.link_parents
           ("show",
-          Arbnum.fromString "1471276683",
-          Arbnum.fromString "370384")
+          Arbnum.fromString "1471355094",
+          Arbnum.fromString "275066")
           [("elf_local",
-           Arbnum.fromString "1471276673",
-           Arbnum.fromString "429705"),
+           Arbnum.fromString "1471355081",
+           Arbnum.fromString "869525"),
            ("lem_string_extra",
            Arbnum.fromString "1471269280",
            Arbnum.fromString "343409")];

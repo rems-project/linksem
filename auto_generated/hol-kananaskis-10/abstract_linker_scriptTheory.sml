@@ -13,8 +13,8 @@ struct
   in end;
   val _ = Theory.link_parents
           ("abstract_linker_script",
-          Arbnum.fromString "1471274841",
-          Arbnum.fromString "231440")
+          Arbnum.fromString "1471355095",
+          Arbnum.fromString "699404")
           [("lem_list",
            Arbnum.fromString "1471269236",
            Arbnum.fromString "959914")];

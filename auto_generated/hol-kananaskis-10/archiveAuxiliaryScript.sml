@@ -20,7 +20,7 @@ val _ = new_theory "archiveAuxiliary"
 (* val gst = Defn.tgoal_no_defn (accum_archive_contents_def, accum_archive_contents_ind) *)
 val (accum_archive_contents_rw, accum_archive_contents_ind_rw) =
   Defn.tprove_no_defn ((accum_archive_contents_def, accum_archive_contents_ind),
-    cheat
+    cheat (* the termination proof *)
   )
 val accum_archive_contents_rw = save_thm ("accum_archive_contents_rw", accum_archive_contents_rw);
 val accum_archive_contents_ind_rw = save_thm ("accum_archive_contents_ind_rw", accum_archive_contents_ind_rw);

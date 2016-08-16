@@ -246,14 +246,14 @@ val _ = Define `
   *)
 val _ = Hol_datatype `
  elf32_program_header_table_entry =
-  <| elf32_p_type   : word32 (** Type of the segment *)
-   ; elf32_p_offset : word32  (** Offset from beginning of file for segment *)
-   ; elf32_p_vaddr  : word32 (** Virtual address for segment in memory *)
-   ; elf32_p_paddr  : word32 (** Physical address for segment *)
-   ; elf32_p_filesz : word32 (** Size of segment in file, in bytes *)
-   ; elf32_p_memsz  : word32 (** Size of segment in memory image, in bytes *)
-   ; elf32_p_flags  : word32 (** Segment flags *)
-   ; elf32_p_align  : word32 (** Segment alignment memory for memory and file *)
+  <| elf32_p_type   : uint32 (** Type of the segment *)
+   ; elf32_p_offset : uint32  (** Offset from beginning of file for segment *)
+   ; elf32_p_vaddr  : uint32 (** Virtual address for segment in memory *)
+   ; elf32_p_paddr  : uint32 (** Physical address for segment *)
+   ; elf32_p_filesz : uint32 (** Size of segment in file, in bytes *)
+   ; elf32_p_memsz  : uint32 (** Size of segment in memory image, in bytes *)
+   ; elf32_p_flags  : uint32 (** Segment flags *)
+   ; elf32_p_align  : uint32 (** Segment alignment memory for memory and file *)
    |>`;
 
 
@@ -303,14 +303,14 @@ val _ = Define `
   *)
 val _ = Hol_datatype `
  elf64_program_header_table_entry =
-  <| elf64_p_type   : word32  (** Type of the segment *)
-   ; elf64_p_flags  : word32  (** Segment flags *)
-   ; elf64_p_offset : word64   (** Offset from beginning of file for segment *)
-   ; elf64_p_vaddr  : word64  (** Virtual address for segment in memory *)
-   ; elf64_p_paddr  : word64  (** Physical address for segment *)
-   ; elf64_p_filesz : word64 (** Size of segment in file, in bytes *)
-   ; elf64_p_memsz  : word64 (** Size of segment in memory image, in bytes *)
-   ; elf64_p_align  : word64 (** Segment alignment memory for memory and file *)
+  <| elf64_p_type   : uint32  (** Type of the segment *)
+   ; elf64_p_flags  : uint32  (** Segment flags *)
+   ; elf64_p_offset : uint64   (** Offset from beginning of file for segment *)
+   ; elf64_p_vaddr  : uint64  (** Virtual address for segment in memory *)
+   ; elf64_p_paddr  : uint64  (** Physical address for segment *)
+   ; elf64_p_filesz : uint64 (** Size of segment in file, in bytes *)
+   ; elf64_p_memsz  : uint64 (** Size of segment in memory image, in bytes *)
+   ; elf64_p_align  : uint64 (** Segment alignment memory for memory and file *)
    |>`;
 
 
@@ -364,13 +364,13 @@ val _ = Define `
  (string_of_elf32_program_header_table_entry os proc entry=	
  (unlines [
 		 STRCAT"\t"  (STRCAT"Segment type: " (string_of_segment_type os proc (w2n entry.elf32_p_type)))
-	;  STRCAT"\t"  (STRCAT"Offset: " ((num_to_dec_string o w2n entry.elf32_p_offset)))
-	;  STRCAT"\t"  (STRCAT"Virtual address: " ((num_to_dec_string o w2n entry.elf32_p_vaddr)))
-	;  STRCAT"\t"  (STRCAT"Physical address: " ((num_to_dec_string o w2n entry.elf32_p_paddr)))
-	;  STRCAT"\t"  (STRCAT"Segment size (bytes): " ((num_to_dec_string o w2n entry.elf32_p_filesz)))
-	;  STRCAT"\t"  (STRCAT"Segment size in memory image (bytes): " ((num_to_dec_string o w2n entry.elf32_p_memsz)))
-	;  STRCAT"\t"  (STRCAT"Flags: " ((num_to_dec_string o w2n entry.elf32_p_flags)))
-  ;  STRCAT"\t"  (STRCAT"Alignment: " ((num_to_dec_string o w2n entry.elf32_p_align)))
+	;  STRCAT"\t"  (STRCAT"Offset: " ((num_to_dec_string o w2n) entry.elf32_p_offset))
+	;  STRCAT"\t"  (STRCAT"Virtual address: " ((num_to_dec_string o w2n) entry.elf32_p_vaddr))
+	;  STRCAT"\t"  (STRCAT"Physical address: " ((num_to_dec_string o w2n) entry.elf32_p_paddr))
+	;  STRCAT"\t"  (STRCAT"Segment size (bytes): " ((num_to_dec_string o w2n) entry.elf32_p_filesz))
+	;  STRCAT"\t"  (STRCAT"Segment size in memory image (bytes): " ((num_to_dec_string o w2n) entry.elf32_p_memsz))
+	;  STRCAT"\t"  (STRCAT"Flags: " ((num_to_dec_string o w2n) entry.elf32_p_flags))
+  ;  STRCAT"\t"  (STRCAT"Alignment: " ((num_to_dec_string o w2n) entry.elf32_p_align))
 	]))`;
 
 
@@ -383,13 +383,13 @@ val _ = Define `
  (string_of_elf64_program_header_table_entry os proc entry=  
  (unlines [
      STRCAT"\t"  (STRCAT"Segment type: " (string_of_segment_type os proc (w2n entry.elf64_p_type)))
-  ;  STRCAT"\t"  (STRCAT"Offset: " ((num_to_dec_string o w2n entry.elf64_p_offset)))
-  ;  STRCAT"\t"  (STRCAT"Virtual address: " ((num_to_dec_string o w2n entry.elf64_p_vaddr)))
-  ;  STRCAT"\t"  (STRCAT"Physical address: " ((num_to_dec_string o w2n entry.elf64_p_paddr)))
-  ;  STRCAT"\t"  (STRCAT"Segment size (bytes): " ((num_to_dec_string o w2n entry.elf64_p_filesz)))
-  ;  STRCAT"\t"  (STRCAT"Segment size in memory image (bytes): " ((num_to_dec_string o w2n entry.elf64_p_memsz)))
-  ;  STRCAT"\t"  (STRCAT"Flags: " ((num_to_dec_string o w2n entry.elf64_p_flags)))
-  ;  STRCAT"\t"  (STRCAT"Alignment: " ((num_to_dec_string o w2n entry.elf64_p_align)))
+  ;  STRCAT"\t"  (STRCAT"Offset: " ((num_to_dec_string o w2n) entry.elf64_p_offset))
+  ;  STRCAT"\t"  (STRCAT"Virtual address: " ((num_to_dec_string o w2n) entry.elf64_p_vaddr))
+  ;  STRCAT"\t"  (STRCAT"Physical address: " ((num_to_dec_string o w2n) entry.elf64_p_paddr))
+  ;  STRCAT"\t"  (STRCAT"Segment size (bytes): " ((num_to_dec_string o w2n) entry.elf64_p_filesz))
+  ;  STRCAT"\t"  (STRCAT"Segment size in memory image (bytes): " ((num_to_dec_string o w2n) entry.elf64_p_memsz))
+  ;  STRCAT"\t"  (STRCAT"Flags: " ((num_to_dec_string o w2n) entry.elf64_p_flags))
+  ;  STRCAT"\t"  (STRCAT"Alignment: " ((num_to_dec_string o w2n) entry.elf64_p_align))
   ]))`;
 
 

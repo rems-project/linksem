@@ -33,8 +33,8 @@ val _ = new_theory "elf_relocation"
   *)
 val _ = Hol_datatype `
  elf32_relocation =
-  <| elf32_r_offset : word32 (** Address at which to relocate *)
-   ; elf32_r_info   : word32 (** Symbol table index/type of relocation to apply *)
+  <| elf32_r_offset : uint32 (** Address at which to relocate *)
+   ; elf32_r_info   : uint32 (** Symbol table index/type of relocation to apply *)
    |>`;
 
 
@@ -42,9 +42,9 @@ val _ = Hol_datatype `
   *)
 val _ = Hol_datatype `
  elf32_relocation_a =
-  <| elf32_ra_offset : word32  (** Address at which to relocate *)
-   ; elf32_ra_info   : word32  (** Symbol table index/type of relocation to apply *)
-   ; elf32_ra_addend : word32 (** Addend used to compute value to be stored *)
+  <| elf32_ra_offset : uint32  (** Address at which to relocate *)
+   ; elf32_ra_info   : uint32  (** Symbol table index/type of relocation to apply *)
+   ; elf32_ra_addend : sint32 (** Addend used to compute value to be stored *)
    |>`;
 
 
@@ -52,8 +52,8 @@ val _ = Hol_datatype `
   *)
 val _ = Hol_datatype `
  elf64_relocation =
-  <| elf64_r_offset : word64  (** Address at which to relocate *)
-   ; elf64_r_info   : word64 (** Symbol table index/type of relocation to apply *)
+  <| elf64_r_offset : uint64  (** Address at which to relocate *)
+   ; elf64_r_info   : uint64 (** Symbol table index/type of relocation to apply *)
    |>`;
 
 
@@ -61,9 +61,9 @@ val _ = Hol_datatype `
   *)
 val _ = Hol_datatype `
  elf64_relocation_a =
-  <| elf64_ra_offset : word64   (** Address at which to relocate *)
-   ; elf64_ra_info   : word64  (** Symbol table index/type of relocation to apply *)
-   ; elf64_ra_addend : word64 (** Addend used to compute value to be stored *)
+  <| elf64_ra_offset : uint64   (** Address at which to relocate *)
+   ; elf64_ra_info   : uint64  (** Symbol table index/type of relocation to apply *)
+   ; elf64_ra_addend : sint64 (** Addend used to compute value to be stored *)
    |>`;
 
 
@@ -137,7 +137,7 @@ val _ = Define `
 val _ = Define `
  (extract_elf64_relocation_r_type w=  
  (let magic = ((( 65536:num) *( 65536:num)) -( 1:num)) in (* 0xffffffffL *)
-    w2n (word_and w ((n2w : num -> 64 word) magic))))`;
+    w2n (word_and w ((n2w : num -> uint64) magic))))`;
 
     
 (* Accessors *) 

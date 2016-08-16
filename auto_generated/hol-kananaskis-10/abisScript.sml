@@ -115,7 +115,7 @@ val _ = Define `
 (** Misc. ABI related stuff *)
 
 val _ = Hol_datatype `
- any_abi_feature = Amd64AbiFeature of any_abi_feature amd64_abi_feature
+ any_abi_feature = Amd64AbiFeature of amd64_abi_feature
                      | Aarch64LeAbiFeature of aarch64_le_abi_feature`;
 
 
@@ -164,31 +164,31 @@ val _ = Define `
 val _ = Define `
  (make_elf64_header data osabi abiv ma t entry shoff phoff phnum shnum shstrndx=      
  (<| elf64_ident    := ([elf_mn_mag0; elf_mn_mag1; elf_mn_mag2; elf_mn_mag3; 
-                           (n2w : num -> 8 word) elf_class_64; 
-                           (n2w : num -> 8 word) data;
-                           (n2w : num -> 8 word) elf_ev_current;
-                           (n2w : num -> 8 word) osabi;
-                           (n2w : num -> 8 word) abiv;
-                           (n2w : num -> 8 word)(( 0:num));
-                           (n2w : num -> 8 word)(( 0:num));
-                           (n2w : num -> 8 word)(( 0:num));
-                           (n2w : num -> 8 word)(( 0:num));
-                           (n2w : num -> 8 word)(( 0:num));
-                           (n2w : num -> 8 word)(( 0:num));
-                           (n2w : num -> 8 word)(( 0:num))])
-       ; elf64_type     := ((n2w : num -> 16 word) t)
-       ; elf64_machine  := ((n2w : num -> 16 word) ma)
-       ; elf64_version  := ((n2w : num -> 32 word) elf_ev_current)
-       ; elf64_entry    := ((n2w : num -> 64 word) entry)
-       ; elf64_phoff    := ((n2w : num -> 64 word) phoff)
-       ; elf64_shoff    := ((n2w : num -> 64 word) shoff)
-       ; elf64_flags    := ((n2w : num -> 32 word)(( 0:num)))
-       ; elf64_ehsize   := ((n2w : num -> 16 word)(( 64:num)))
-       ; elf64_phentsize:= ((n2w : num -> 16 word)(( 56:num)))
-       ; elf64_phnum    := ((n2w : num -> 16 word) phnum)
-       ; elf64_shentsize:= ((n2w : num -> 16 word)(( 64:num)))
-       ; elf64_shnum    := ((n2w : num -> 16 word) shnum)
-       ; elf64_shstrndx := ((n2w : num -> 16 word) shstrndx)
+                           (n2w : num -> unsigned_char) elf_class_64; 
+                           (n2w : num -> unsigned_char) data;
+                           (n2w : num -> unsigned_char) elf_ev_current;
+                           (n2w : num -> unsigned_char) osabi;
+                           (n2w : num -> unsigned_char) abiv;
+                           (n2w : num -> unsigned_char) (( 0:num));
+                           (n2w : num -> unsigned_char) (( 0:num));
+                           (n2w : num -> unsigned_char) (( 0:num));
+                           (n2w : num -> unsigned_char) (( 0:num));
+                           (n2w : num -> unsigned_char) (( 0:num));
+                           (n2w : num -> unsigned_char) (( 0:num));
+                           (n2w : num -> unsigned_char) (( 0:num))])
+       ; elf64_type     := ((n2w : num -> uint16) t)
+       ; elf64_machine  := ((n2w : num -> uint16) ma)
+       ; elf64_version  := ((n2w : num -> uint32) elf_ev_current)
+       ; elf64_entry    := ((n2w : num -> uint64) entry)
+       ; elf64_phoff    := ((n2w : num -> uint64) phoff)
+       ; elf64_shoff    := ((n2w : num -> uint64) shoff)
+       ; elf64_flags    := ((n2w : num -> uint32) (( 0:num)))
+       ; elf64_ehsize   := ((n2w : num -> uint16) (( 64:num)))
+       ; elf64_phentsize:= ((n2w : num -> uint16) (( 56:num)))
+       ; elf64_phnum    := ((n2w : num -> uint16) phnum)
+       ; elf64_shentsize:= ((n2w : num -> uint16) (( 64:num)))
+       ; elf64_shnum    := ((n2w : num -> uint16) shnum)
+       ; elf64_shstrndx := ((n2w : num -> uint16) shstrndx)
        |>))`;
 
        
@@ -270,14 +270,14 @@ val _ = Define `
     let new_p_align =  (lcm (one_if_zero (w2n phdr.elf64_p_align)) (one_if_zero isec.elf64_section_align))
     in
     SOME
-      <| elf64_p_type   := ((n2w : num -> 32 word) new_p_type)
-       ; elf64_p_flags  := ((n2w : num -> 32 word) new_p_flags)
+      <| elf64_p_type   := ((n2w : num -> uint32) new_p_type)
+       ; elf64_p_flags  := ((n2w : num -> uint32) new_p_flags)
        ; elf64_p_offset := (phdr.elf64_p_offset)
        ; elf64_p_vaddr  := (phdr.elf64_p_vaddr)
        ; elf64_p_paddr  := (phdr.elf64_p_paddr)
-       ; elf64_p_filesz := ((n2w : num -> 64 word) new_p_filesz)
-       ; elf64_p_memsz  := ((n2w : num -> 64 word) new_p_memsz)
-       ; elf64_p_align  := ((n2w : num -> 64 word) new_p_align)
+       ; elf64_p_filesz := ((n2w : num -> uint64) new_p_filesz)
+       ; elf64_p_memsz  := ((n2w : num -> uint64) new_p_memsz)
+       ; elf64_p_align  := ((n2w : num -> uint64) new_p_align)
        |>))`;
 
 
@@ -291,14 +291,14 @@ val _ = Define `
     in
     let vaddr_round_down_amount = (\ isec .  isec.elf64_section_addr - (rounded_down_vaddr isec))
     in
-  <| elf64_p_type   := ((n2w : num -> 32 word) t) (** Type of the segment *)
-   ; elf64_p_flags  := ((n2w : num -> 32 word) (phdr_flags_from_section_flags isec.elf64_section_flags isec.elf64_section_name_as_string)) (** Segment flags *)
-   ; elf64_p_offset := ((n2w : num -> 64 word) (rounded_down_offset isec)) (** Offset from beginning of file for segment *)
-   ; elf64_p_vaddr  := ((n2w : num -> 64 word) (rounded_down_vaddr isec)) (** Virtual address for segment in memory *)
-   ; elf64_p_paddr  := ((n2w : num -> 64 word)(( 0:num))) (** Physical address for segment *)
-   ; elf64_p_filesz := ((n2w : num -> 64 word) (if isec.elf64_section_type = sht_nobits then( 0:num) else isec.elf64_section_size + (offset_round_down_amount isec))) (** Size of segment in file, in bytes *)
-   ; elf64_p_memsz  := ((n2w : num -> 64 word) (isec.elf64_section_size + (vaddr_round_down_amount isec))) (** Size of segment in memory image, in bytes *)
-   ; elf64_p_align  := ((n2w : num -> 64 word) (* isec.elf64_section_align *) maxpagesize) (** Segment alignment memory for memory and file *)
+  <| elf64_p_type   := ((n2w : num -> uint32) t) (** Type of the segment *)
+   ; elf64_p_flags  := ((n2w : num -> uint32) (phdr_flags_from_section_flags isec.elf64_section_flags isec.elf64_section_name_as_string)) (** Segment flags *)
+   ; elf64_p_offset := ((n2w : num -> uint64) (rounded_down_offset isec)) (** Offset from beginning of file for segment *)
+   ; elf64_p_vaddr  := ((n2w : num -> uint64) (rounded_down_vaddr isec)) (** Virtual address for segment in memory *)
+   ; elf64_p_paddr  := ((n2w : num -> uint64) (( 0:num))) (** Physical address for segment *)
+   ; elf64_p_filesz := ((n2w : num -> uint64) (if isec.elf64_section_type = sht_nobits then( 0:num) else isec.elf64_section_size + (offset_round_down_amount isec))) (** Size of segment in file, in bytes *)
+   ; elf64_p_memsz  := ((n2w : num -> uint64) (isec.elf64_section_size + (vaddr_round_down_amount isec))) (** Size of segment in memory image, in bytes *)
+   ; elf64_p_align  := ((n2w : num -> uint64)  (* isec.elf64_section_align *)maxpagesize) (** Segment alignment memory for memory and file *)
    |>))`;
 
 
@@ -648,6 +648,7 @@ val _ = Define `
                 (NONE, _) => NONE
                 | (SOME rr, SOME(ApplyReloc, maybe_def)) =>
                     if amd64_reloc_needs_got_slot symref rr maybe_def then
+                        
                         SOME (symref.ref.ref_symname, maybe_def) 
                     else NONE
                 | (SOME rr, SOME(MakePIC, maybe_def)) => failwith "FIXME: PIC support please"
@@ -708,6 +709,7 @@ val _ = Define `
                 | (SOME rr, SOME(ApplyReloc, maybe_def)) =>
                     if amd64_reloc_needs_plt_slot symref rr maybe_def ref_is_statically_linked
                     then 
+                        
                         SOME(symref.ref.ref_symname, maybe_def) 
                     else NONE
                 | (SOME rr, SOME(MakePIC, maybe_def)) => failwith "FIXME: PIC support please"
@@ -830,9 +832,11 @@ val _ = Define `
                                 )
                         )))
                         in
+                        (*let _ = errln ("Created a PLT entry consisting of " ^ (show (length content_bytes)) ^ " bytes.")
+                        in*)
                         (this_plt_slot_base_addr, content_bytes)
                         
-                    ) : any_abi_feature plt_entry_content_fn))
+                    ) : plt_entry_content_fn))
                 ))
                 plt_symnames)
             ))) 
@@ -905,12 +909,12 @@ val _ = Define `
          * it's some distance in. What about .got.plt? *)
         (SOME(".got", (( 0:num), (got_nentries * got_entrysize))), SymbolDef(<|
               def_symname := "_GLOBAL_OFFSET_TABLE_"
-            ; def_syment :=    (<| elf64_st_name  := ((n2w : num -> 32 word)(( 0:num))) (* ignored *)
-                               ; elf64_st_info  := ((n2w : num -> 8 word)(( 0:num))) (* FIXME *)
-                               ; elf64_st_other := ((n2w : num -> 8 word)(( 0:num))) (* FIXME *)
-                               ; elf64_st_shndx := ((n2w : num -> 16 word)(( 1:num)))
-                               ; elf64_st_value := ((n2w : num -> 64 word)(( 0:num))) (* ignored *)
-                               ; elf64_st_size  := ((n2w : num -> 64 word) (got_nentries * got_entrysize)) (* FIXME: start later, smaller size? zero size? *)
+            ; def_syment :=    (<| elf64_st_name  := ((n2w : num -> uint32) (( 0:num))) (* ignored *)
+                               ; elf64_st_info  := ((n2w : num -> unsigned_char) (( 0:num))) (* FIXME *)
+                               ; elf64_st_other := ((n2w : num -> unsigned_char) (( 0:num))) (* FIXME *)
+                               ; elf64_st_shndx := ((n2w : num -> uint16) (( 1:num)))
+                               ; elf64_st_value := ((n2w : num -> uint64) (( 0:num))) (* ignored *)
+                               ; elf64_st_size  := ((n2w : num -> uint64) (got_nentries * got_entrysize)) (* FIXME: start later, smaller size? zero size? *)
                                |>)
             ; def_sym_scn :=(( 1:num))
             ; def_sym_idx :=(( 1:num))

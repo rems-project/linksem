@@ -89,36 +89,36 @@ val _ = new_theory "gnu_ext_section_to_segment_mapping"
   
 (*val elf32_section_flags : elf32_section_header_table_entry -> natural -> bool*)
 val _ = Define `
- (elf32_section_flags0 sec_hdr typ=  (~ ((word_and sec_hdr.elf32_sh_flags ((n2w : num -> 32 word) typ)) = ((n2w : num -> 32 word)(( 0:num))))))`;
+ (elf32_section_flags0 sec_hdr typ=  (~ ((word_and sec_hdr.elf32_sh_flags ((n2w : num -> uint32) typ)) = ((n2w : num -> uint32) (( 0:num))))))`;
 
     
 (*val elf64_section_flags : elf64_section_header_table_entry -> natural -> bool*)
 val _ = Define `
- (elf64_section_flags0 sec_hdr typ=  (~ ((word_and sec_hdr.elf64_sh_flags ((n2w : num -> 64 word) typ)) = ((n2w : num -> 64 word)(( 0:num))))))`;
+ (elf64_section_flags0 sec_hdr typ=  (~ ((word_and sec_hdr.elf64_sh_flags ((n2w : num -> uint64) typ)) = ((n2w : num -> uint64) (( 0:num))))))`;
 
     
 (*val elf32_section_of_type : elf32_section_header_table_entry -> natural -> bool*)
 val _ = Define `
  (elf32_section_of_type sec_hdr typ=  
- (sec_hdr.elf32_sh_type = (n2w : num -> 32 word) typ))`;
+ (sec_hdr.elf32_sh_type = (n2w : num -> uint32) typ))`;
 
   
 (*val elf64_section_of_type : elf64_section_header_table_entry -> natural -> bool*)
 val _ = Define `
  (elf64_section_of_type sec_hdr typ=  
- (sec_hdr.elf64_sh_type = (n2w : num -> 32 word) typ))`;
+ (sec_hdr.elf64_sh_type = (n2w : num -> uint32) typ))`;
 
   
 (*val elf32_segment_of_type : elf32_program_header_table_entry -> natural -> bool*)
 val _ = Define `
  (elf32_segment_of_type segment typ=  
- (segment.elf32_p_type = (n2w : num -> 32 word) typ))`;
+ (segment.elf32_p_type = (n2w : num -> uint32) typ))`;
 
   
 (*val elf64_segment_of_type : elf64_program_header_table_entry -> natural -> bool*)
 val _ = Define `
  (elf64_segment_of_type segment typ=  
- (segment.elf64_p_type = (n2w : num -> 32 word) typ))`;
+ (segment.elf64_p_type = (n2w : num -> uint32) typ))`;
 
 
 (** Only PT_LOAD, PT_GNU_RELRO and PT_TLS segments can contain SHF_TLS sections
