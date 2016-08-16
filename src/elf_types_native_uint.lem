@@ -23,7 +23,7 @@ type unsigned_char
 
 declare ocaml    target_rep type unsigned_char = `Uint32.uint32`
 declare isabelle target_rep type unsigned_char = `Elf_Types_Local.unsigned_char`
-declare hol      target_rep type unsigned_char = `word8`
+declare hol      target_rep type unsigned_char = `unsigned_char`
 declare coq      target_rep type unsigned_char = `unsigned_char`
 
 (** [string_of_unsigned_char uc] provides a string representation of unsigned
@@ -236,7 +236,7 @@ type elf64_addr
 
 declare ocaml    target_rep type elf64_addr = `Uint64.uint64`
 declare isabelle target_rep type elf64_addr = `Elf_Types_Local.uint64`
-declare hol      target_rep type elf64_addr = `word64`
+declare hol      target_rep type elf64_addr = `uint64`
 declare coq      target_rep type elf64_addr = `elf64_addr`
 
 val string_of_elf64_addr : elf64_addr -> string
@@ -350,7 +350,7 @@ type elf32_half
 
 declare ocaml    target_rep type elf32_half = `Uint32.uint32`
 declare isabelle target_rep type elf32_half = `uint16`
-declare hol      target_rep type elf32_half = `word16`
+declare hol      target_rep type elf32_half = `uint16`
 declare coq      target_rep type elf32_half = `elf32_half`
 
 val string_of_elf32_half : elf32_half -> string
@@ -422,7 +422,7 @@ type elf64_half
 
 declare ocaml    target_rep type elf64_half = `Uint32.uint32`
 declare isabelle target_rep type elf64_half = `uint16`
-declare hol      target_rep type elf64_half = `word16`
+declare hol      target_rep type elf64_half = `uint16`
 declare coq      target_rep type elf64_half = `elf64_half`
 
 val string_of_elf64_half : elf64_half -> string
@@ -514,7 +514,7 @@ type elf32_off
 
 declare ocaml    target_rep type elf32_off = `Uint32.uint32`
 declare isabelle target_rep type elf32_off = `uint32`
-declare hol      target_rep type elf32_off = `word32`
+declare hol      target_rep type elf32_off = `uint32`
 declare coq      target_rep type elf32_off = `elf32_off`
 
 val string_of_elf32_off : elf32_off -> string
@@ -593,7 +593,7 @@ type elf64_off
 
 declare ocaml    target_rep type elf64_off = `Uint64.uint64`
 declare isabelle target_rep type elf64_off = `uint64`
-declare hol      target_rep type elf64_off = `word64`
+declare hol      target_rep type elf64_off = `uint64`
 declare coq      target_rep type elf64_off = `elf64_off`
 
 val string_of_elf64_off : elf64_off -> string
@@ -675,7 +675,7 @@ type elf32_word
 
 declare ocaml    target_rep type elf32_word = `Uint32.uint32`
 declare isabelle target_rep type elf32_word = `uint32`
-declare hol      target_rep type elf32_word = `word32`
+declare hol      target_rep type elf32_word = `uint32`
 declare coq      target_rep type elf32_word = `elf32_word`
 
 val string_of_elf32_word : elf32_word -> string
@@ -772,7 +772,7 @@ type elf64_word
 
 declare ocaml    target_rep type elf64_word = `Uint32.uint32`
 declare isabelle target_rep type elf64_word = `uint32`
-declare hol      target_rep type elf64_word = `word32`
+declare hol      target_rep type elf64_word = `uint32`
 declare coq      target_rep type elf64_word = `elf64_word`
 
 val string_of_elf64_word : elf64_word -> string
@@ -861,14 +861,14 @@ type elf32_sword
 
 declare ocaml    target_rep type elf32_sword = `Int32.t`
 declare isabelle target_rep type elf32_sword = `sint32`
-declare hol      target_rep type elf32_sword = `word32`
+declare hol      target_rep type elf32_sword = `sint32`
 declare coq      target_rep type elf32_sword = `elf32_sword`
 
 val string_of_elf32_sword : elf32_sword -> string
 
 declare ocaml    target_rep function string_of_elf32_sword = `Int32.to_string`
 declare isabelle target_rep function string_of_elf32_sword = `Elf_Types_Local.string_of_sint32`
-declare hol      target_rep function string_of_elf32_sword = `num_to_dec_string` `o` `w2i`
+declare hol      target_rep function string_of_elf32_sword = `int_to_dec_string` `o` `w2i`
 
 val integer_of_elf32_sword : elf32_sword -> integer
 
@@ -923,14 +923,14 @@ type elf64_sword
 
 declare ocaml    target_rep type elf64_sword = `Int32.t`
 declare isabelle target_rep type elf64_sword = `sint32`
-declare hol      target_rep type elf64_sword = `word32`
+declare hol      target_rep type elf64_sword = `sint32`
 declare coq      target_rep type elf64_sword = `elf64_sword`
 
 val string_of_elf64_sword : elf64_sword -> string
 
 declare ocaml    target_rep function string_of_elf64_sword = `Int32.to_string`
 declare isabelle target_rep function string_of_elf64_sword = `Elf_Types_Local.string_of_sint32`
-declare hol      target_rep function string_of_elf64_sword = `num_to_dec_string` `o` `w2i`
+declare hol      target_rep function string_of_elf64_sword = `int_to_dec_string` `o` `w2i`
 
 val integer_of_elf64_sword : elf64_sword -> integer
 
@@ -987,7 +987,7 @@ type elf64_xword
 
 declare ocaml    target_rep type elf64_xword = `Uint64.uint64`
 declare isabelle target_rep type elf64_xword = `uint64`
-declare hol      target_rep type elf64_xword = `word64`
+declare hol      target_rep type elf64_xword = `uint64`
 declare coq      target_rep type elf64_xword = `elf64_xword`
 
 val string_of_elf64_xword : elf64_xword -> string
@@ -1103,14 +1103,14 @@ type elf64_sxword
 
 declare ocaml    target_rep type elf64_sxword = `Int64.t`
 declare isabelle target_rep type elf64_sxword = `sint64`
-declare hol      target_rep type elf64_sxword = `word64`
+declare hol      target_rep type elf64_sxword = `sint64`
 declare coq      target_rep type elf64_sxword = `elf64_sxword`
 
 val string_of_elf64_sxword : elf64_sxword -> string
 
 declare ocaml    target_rep function string_of_elf64_sxword = `Int64.to_string`
 declare isabelle target_rep function string_of_elf64_sxword = `Elf_Types_Local.string_of_sint64`
-declare hol      target_rep function string_of_elf64_sxword = `num_to_dec_string` `o` `w2i`
+declare hol      target_rep function string_of_elf64_sxword = `int_to_dec_string` `o` `w2i`
 
 val integer_of_elf64_sxword : elf64_sxword -> integer
 

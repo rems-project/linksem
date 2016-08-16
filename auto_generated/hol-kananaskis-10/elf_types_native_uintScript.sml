@@ -570,7 +570,7 @@ val _ = Define `
 val _ = Define `
 (instance_Show_Show_Elf_types_native_uint_elf32_sword_dict= (<|
 
-  show_method := (num_to_dec_string o w2i)|>))`;
+  show_method := (int_to_dec_string o w2i)|>))`;
 
 
 (** elf64_sword type and bindings *)
@@ -614,7 +614,7 @@ val _ = Define `
 val _ = Define `
 (instance_Show_Show_Elf_types_native_uint_elf64_sword_dict= (<|
 
-  show_method := (num_to_dec_string o w2i)|>))`;
+  show_method := (int_to_dec_string o w2i)|>))`;
 
 
 (** ELF extra wide word type:
@@ -722,7 +722,7 @@ val _ = Define `
 val _ = Define `
 (instance_Show_Show_Elf_types_native_uint_elf64_sxword_dict= (<|
 
-  show_method := (num_to_dec_string o w2i)|>))`;
+  show_method := (int_to_dec_string o w2i)|>))`;
 
 
 (*val natural_land : natural -> natural -> natural*)
