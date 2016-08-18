@@ -328,9 +328,11 @@ val _ = Define `
   isGreaterEqual_method := (\ f1 .  (\ f2 .  (IN) (elf64_symbol_table_entry_compare f1 f2) ({GT; EQ})))|>))`;
 
   
-val _ = type_abbrev( "elf32_symbol_table" , ``: elf32_symbol_table_entry list``);
+val _ = type_abbrev( "elf32_symbol_table" , ``: elf32_symbol_table_entry
+  list``);
   
-val _ = type_abbrev( "elf64_symbol_table" , ``: elf64_symbol_table_entry list``);
+val _ = type_abbrev( "elf64_symbol_table" , ``: elf64_symbol_table_entry
+  list``);
 
 (** Extraction of symbol table data *)
 
@@ -437,7 +439,8 @@ val _ = Define `
 
 (** Printing symbol table entries *)
 
-val _ = type_abbrev( "symtab_print_bundle" , ``:(num -> string) # (num -> string)``);
+val _ = type_abbrev( "symtab_print_bundle" , ``:
+  (num -> string) # (num -> string)``);
 
 (** [string_of_elf32_symbol_table_entry ent] produces a string based representation
   * of symbol table entry [ent].
@@ -617,7 +620,8 @@ val _ = Lib.with_flag (computeLib.auto_import_definitions, false) Defn.save_defn
   * and symbol binding.
   * A PPCMemism.
   *)
-val _ = type_abbrev( "symbol_address_map", ``: (string # (num # num # num # num)) list``);
+val _ = type_abbrev( "symbol_address_map"
+  , ``: (string # (num # num # num # num)) list``);
 
 (** [get_elf32_symbol_image_address symtab stbl] extracts the symbol address map
   * from the symbol table [symtab] using the string table [stbl].

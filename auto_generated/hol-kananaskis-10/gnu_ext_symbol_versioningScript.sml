@@ -43,9 +43,11 @@ val _ = new_theory "gnu_ext_symbol_versioning"
 (** [gnu_ext_elf32_symbol_version_table] is an array (linked list, here) of
   * [elf32_half] entries.
   *)
-val _ = type_abbrev( "gnu_ext_elf32_symbol_version_table" , ``: uint16 list``);
+val _ = type_abbrev( "gnu_ext_elf32_symbol_version_table" , ``: uint16
+  list``);
   
-val _ = type_abbrev( "gnu_ext_elf64_symbol_version_table" , ``: uint16 list``);
+val _ = type_abbrev( "gnu_ext_elf64_symbol_version_table" , ``: uint16
+  list``);
 
 (*val obtain_gnu_ext_elf32_symbol_version_table : elf32_file -> byte_sequence -> error gnu_ext_elf32_symbol_version_table*)
 val _ = Define `

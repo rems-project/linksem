@@ -798,6 +798,12 @@ val _ = Define `
      * What about zero-length elements?
      * Break ties on the bigger size. *)let (maybe_highest_le :  (num # string # element0)option)
      = (FOLDL (\ maybe_current_max_le .  (\ (el_name, el_rec) . 
+        (*let _ = errln ("Saw element named `" ^ el_name ^ " with startpos " ^ (
+            (match el_rec.startpos with Just addr -> ("0x" ^ (hex_string_of_natural addr)) | Nothing -> "(none)" end)
+            ^ " and length " ^
+            (match el_rec.length with Just len -> ("0x" ^ (hex_string_of_natural len)) | Nothing -> "(none)" end)
+            ))
+        in*)
         (case (maybe_current_max_le, el_rec.startpos) of
               (NONE,                                    NONE) => NONE
             | (NONE,                                    SOME this_element_pos) => if this_element_pos <= query_addr 

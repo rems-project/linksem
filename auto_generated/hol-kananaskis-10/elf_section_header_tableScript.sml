@@ -961,7 +961,8 @@ val _ = Define `
   * The first component of the type is an OS specific print function, the second is
   * a processor specific print function.
   *)
-val _ = type_abbrev( "sht_print_bundle" , ``:(num -> string) # (num -> string) # (num -> string)``);
+val _ = type_abbrev( "sht_print_bundle" , ``:
+  (num -> string) # (num -> string) # (num -> string)``);
 
 (** [string_of_elf32_section_header_table_entry sht ent] produces a string
   * representation of section header table entry [ent] using [sht], a

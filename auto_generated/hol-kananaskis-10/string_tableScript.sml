@@ -137,7 +137,7 @@ val _ = Define `
 val _ = Define `
  (insert_string s t=    
 (  
-    let (inserted_idx, new_strtab) = ((case find_string s t of
+    (*let _ = errln ("Inserting string `" ^ s ^ "' into a string table") in*)let (inserted_idx, new_strtab) = ((case find_string s t of
         NONE => (case t of
             Strings(delim, base) => (((STRLEN base):num), Strings(delim,  STRCAT base  (STRCAT s (IMPLODE [delim]))))
             )

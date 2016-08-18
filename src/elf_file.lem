@@ -272,14 +272,17 @@ let obtain_elf64_section_header_table hdr bs0 =
   * Fails if transcription fails.
   *)
 val obtain_elf32_section_header_string_table : elf32_header ->
-  elf32_section_header_table -> byte_sequence -> error string_table
+  elf32_section_header_table -> byte_sequence -> error (maybe string_table)
 let obtain_elf32_section_header_string_table hdr sht bs0 =
-  match index (natural_of_elf32_half hdr.elf32_shstrndx) sht with 
-    Nothing -> fail "no section header string table"
-    | Just x -> return x
-  end >>= fun sh ->
-  Byte_sequence.offset_and_cut (natural_of_elf32_off sh.elf32_sh_offset) (natural_of_elf32_word sh.elf32_sh_size) bs0 >>= fun sexact ->
-  return (string_table_of_byte_sequence sexact)
+  if (natural_of_elf32_half hdr.elf32_shstrndx) = shn_undef then
+    return Nothing
+  else
+    match index (natural_of_elf32_half hdr.elf32_shstrndx) sht with 
+      Nothing -> fail "no section header string table"
+      | Just x -> return x
+    end >>= fun sh ->
+    Byte_sequence.offset_and_cut (natural_of_elf32_off sh.elf32_sh_offset) (natural_of_elf32_word sh.elf32_sh_size) bs0 >>= fun sexact ->
+    return (Just (string_table_of_byte_sequence sexact))
       
 (** [obtain_elf64_section_header_string_table hdr sht bs0] reads a file's section
   * header string table from byte sequence [bs0] using information gleaned from
@@ -287,14 +290,17 @@ let obtain_elf32_section_header_string_table hdr sht bs0 =
   * Fails if transcription fails.
   *)
 val obtain_elf64_section_header_string_table : elf64_header ->
-  elf64_section_header_table -> byte_sequence -> error string_table
+  elf64_section_header_table -> byte_sequence -> error (maybe string_table)
 let obtain_elf64_section_header_string_table hdr sht bs0 =
-  match index (natural_of_elf64_half hdr.elf64_shstrndx) sht with 
-    Nothing -> fail "no section header string table"
-    | Just x -> return x
-  end >>= fun sh ->
-  Byte_sequence.offset_and_cut (natural_of_elf64_off sh.elf64_sh_offset) (natural_of_elf64_xword sh.elf64_sh_size) bs0 >>= fun sexact ->
-  return (string_table_of_byte_sequence sexact)
+  if (natural_of_elf64_half hdr.elf64_shstrndx) = shn_undef then
+    return Nothing
+  else
+    match index (natural_of_elf64_half hdr.elf64_shstrndx) sht with 
+      Nothing -> fail "no section header string table"
+      | Just x -> return x
+    end >>= fun sh ->
+    Byte_sequence.offset_and_cut (natural_of_elf64_off sh.elf64_sh_offset) (natural_of_elf64_xword sh.elf64_sh_size) bs0 >>= fun sexact ->
+    return (Just (string_table_of_byte_sequence sexact))
 
 (** [obtain_elf32_interpreted_segments pht bs0] generates the interpreted segments
   * of an ELF file from the uninterpreted program header table entries in [pht],
@@ -363,7 +369,7 @@ let obtain_elf64_interpreted_segments pht bdy =
   * read from byte sequence [bs0].  Makes working with sections easier.
   * May fail if transcription of any section fails.
   *)
-val obtain_elf32_interpreted_sections : string_table -> elf32_section_header_table
+val obtain_elf32_interpreted_sections : maybe string_table -> elf32_section_header_table
   -> byte_sequence -> error elf32_interpreted_sections
 let obtain_elf32_interpreted_sections shstrtab sht bs0 =
   mapM (fun sh ->
@@ -378,7 +384,16 @@ let obtain_elf32_interpreted_sections shstrtab sht bs0 =
     let info   = natural_of_elf32_word sh.elf32_sh_info in
     let align  = natural_of_elf32_word sh.elf32_sh_addralign in
     let entry_size = natural_of_elf32_word sh.elf32_sh_entsize in
-    let name_string = match (get_string_at name shstrtab) with Success n -> n | Fail _ -> "" end in
+    let name_string =
+      match shstrtab with
+        Nothing -> ""
+      | Just shstrtab ->
+          match (get_string_at name shstrtab) with
+            | Success n -> n
+            | Fail _ -> ""
+          end
+      end
+    in
       (if filesz = 0 then
         return Byte_sequence.empty
       else
@@ -397,7 +412,7 @@ let obtain_elf32_interpreted_sections shstrtab sht bs0 =
   * read from byte sequence [bs0].  Makes working with sections easier.
   * May fail if transcription of any section fails.
   *)
-val obtain_elf64_interpreted_sections : string_table -> elf64_section_header_table
+val obtain_elf64_interpreted_sections : maybe string_table -> elf64_section_header_table
   -> byte_sequence -> error elf64_interpreted_sections
 let obtain_elf64_interpreted_sections shstrtab sht bs0 =
   mapM (fun sh ->
@@ -412,7 +427,16 @@ let obtain_elf64_interpreted_sections shstrtab sht bs0 =
     let info   = natural_of_elf64_word  sh.elf64_sh_info in
     let align  = natural_of_elf64_xword sh.elf64_sh_addralign in
     let entry_size = natural_of_elf64_xword sh.elf64_sh_entsize in
-    let name_string = match (get_string_at name shstrtab) with Success n -> n | Fail _ -> "" end in 
+    let name_string =
+      match shstrtab with
+        Nothing -> ""
+      | Just shstrtab ->
+          match (get_string_at name shstrtab) with
+            | Success n -> n
+            | Fail _ -> ""
+          end
+      end
+    in
       (if filesz = 0 then
         return Byte_sequence.empty
       else

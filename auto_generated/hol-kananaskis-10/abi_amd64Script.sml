@@ -70,7 +70,7 @@ val _ = type_abbrev((*  'abifeature *) "plt_entry_content_fn" , ``: num -> num -
 val _ = Hol_datatype `
  amd64_abi_feature = 
     GOT0 of  ( (string # ( symbol_definition option))list)
-    | PLT0 of ( (string # ( symbol_definition option) # plt_entry_content_fn)list)`;
+    | PLT0 of ( (string # ( symbol_definition option) # 'abifeature plt_entry_content_fn)list)`;
 
     
 (*val abiFeatureCompare : forall 'abifeature. amd64_abi_feature 'abifeature -> amd64_abi_feature 'abifeature -> Basic_classes.ordering*)
