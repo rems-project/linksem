@@ -324,6 +324,18 @@ let _ =
                     let lines  = concatS (intercalate "\n" (List.map print_chunk chunks)) in
                       return lines
                 end
+              else if flag = "--debug-dump=info" then
+                Elf_file.read_elf64_file bs0 >>= fun f1 ->
+                get_elf64_file_section_header_string_table f1 >>= fun stbl ->
+                return (Harness_interface.harness_string_of_elf64_debug_info_section
+                  f1
+                  bs0
+                  string_of_gnu_ext_section_type
+                  (fun x -> show x)
+                  (fun x -> show x)
+                  f1.elf64_file_header
+                  f1.elf64_file_section_header_table
+                  stbl)
               else
                 failwith "Unimplemented (for ELF64) or unrecognised flag"
             in
