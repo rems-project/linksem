@@ -52,6 +52,8 @@ open import Gnu_ext_dynamic
 open import Gnu_ext_program_header_table
 open import Gnu_ext_section_header_table
 
+open import Dwarf
+
 let default_hdr_bdl =
   (default_os_specific_print, default_proc_specific_print)
 
@@ -327,7 +329,7 @@ let _ =
               else if flag = "--debug-dump=info" then
                 Elf_file.read_elf64_file bs0 >>= fun f1 ->
                 get_elf64_file_section_header_string_table f1 >>= fun stbl ->
-                return (Harness_interface.harness_string_of_elf64_debug_info_section
+                return (Dwarf.harness_string_of_elf64_debug_info_section
                   f1
                   bs0
                   string_of_gnu_ext_section_type
@@ -335,7 +337,8 @@ let _ =
                   (fun x -> show x)
                   f1.elf64_file_header
                   f1.elf64_file_section_header_table
-                  stbl)
+                  stbl
+                  )
               else
                 failwith "Unimplemented (for ELF64) or unrecognised flag"
             in

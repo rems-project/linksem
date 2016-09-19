@@ -49,7 +49,8 @@ LEM_ELF_SRC := byte_sequence.lem archive.lem \
 	elf_section_header_table.lem \
 	elf_relocation.lem \
 	elf_interpreted_segment.lem elf_interpreted_section.lem \
-	elf_note.lem elf_file.lem elf_dynamic.lem
+	elf_note.lem elf_file.lem elf_dynamic.lem \
+	dwarf.lem
 
 LEM_ABI_SRC := \
 	abis/abi_classes.lem memory_image.lem memory_image_orderings.lem \

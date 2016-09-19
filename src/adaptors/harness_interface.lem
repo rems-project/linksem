@@ -1152,17 +1152,3 @@ let {ocaml} harness_string_of_elf64_dynamic_section f1 bs0 os_additional_ranges 
     end
 
 
-(* ***************** experimental *********** *)
-
-val harness_string_of_elf64_debug_info_section : elf64_file -> byte_sequence -> (natural -> string) -> (natural -> string) -> (natural -> string) -> elf64_header -> elf64_section_header_table -> string_table -> string
-let {ocaml} harness_string_of_elf64_debug_info_section f1 bs0 os proc usr hdr sht stbl =
-  "debug_info PLACEHOLDER"
-
-(*
-  unlines [
-    "debug_info PLACEHOLDER There are " ^ show (List.length sht) ^ " section headers, starting at offset 0x" ^ unsafe_hex_string_of_natural 0 (natural_of_elf64_off hdr.elf64_shoff) ^ ":"
-  ; ""
-  ; "Section Headers:"
-  ; harness_string_of_elf64_sht os proc usr sht stbl
-  ] ^ harness_sht64_flag_legend (natural_of_elf64_half hdr.elf64_machine)
-*)

@@ -1,0 +1,419 @@
+open import Basic_classes
+open import Bool
+open import Function
+open import Maybe
+open import Num
+open import String
+
+open import Byte_sequence
+open import Error
+open import Hex_printing
+open import Missing_pervasives
+open import Show
+
+open import Default_printing
+
+open import Endianness
+open import String_table
+
+open import Elf_dynamic
+open import Elf_file
+open import Elf_header
+open import Elf_program_header_table
+open import Elf_relocation
+open import Elf_section_header_table
+open import Elf_symbol_table
+open import Elf_types_native_uint
+
+
+(** ***************** experimental DWARF stuff *********** *)
+
+(* hex parsing *)
+
+val natural_of_char : char -> natural 
+let natural_of_char c =
+  let naturalOrd c' = naturalFromNat (String_extra.ord c') in
+  let n = naturalOrd c in 
+  if n >= naturalOrd #'0' && n <= naturalOrd #'9' then n - naturalOrd #'0' 
+  else if n >= naturalOrd #'A' && n <= naturalOrd #'F' then n - naturalOrd #'A' + 10
+  else if n >= naturalOrd #'a' && n <= naturalOrd #'f' then n - naturalOrd #'a' + 10
+  else Assert_extra.failwith ("natural_of_char argument #'" ^ String.toString [c] ^ "' not in 0-9,A-F,a-f")
+
+
+val natural_of_hex' : list char -> natural
+let rec natural_of_hex' cs = 
+  match cs with
+  | c :: cs' -> natural_of_char c + 16 * natural_of_hex' cs'
+  | [] -> 0
+  end
+
+val natural_of_hex : string -> natural
+let natural_of_hex s =
+  let cs = String.toCharList s in
+  match cs with
+  | #'0'::#'x'::cs' -> 
+      match cs' with
+      | c :: _ -> natural_of_hex' (List.reverse cs')
+      | [] -> Assert_extra.failwith ("natural_of_hex argument \"" ^ s ^ "\" has no digits")
+      end
+  | _ -> Assert_extra.failwith ("natural_of_hex argument \"" ^ s ^ "\" does not begin 0x")
+  end
+
+
+
+
+
+(** dwarf types *)
+
+(* dwarf format *)
+
+type dwarf_format =
+  | Dwarf32
+  | Dwarf64
+
+(* tag encodings *)
+
+let DW_TAG_array_type               = natural_of_hex "0x01"
+let DW_TAG_class_type               = natural_of_hex "0x02"
+let DW_TAG_entry_point              = natural_of_hex "0x03"
+let DW_TAG_enumeration_type         = natural_of_hex "0x04"
+let DW_TAG_formal_parameter         = natural_of_hex "0x05"
+let DW_TAG_imported_declaration     = natural_of_hex "0x08"
+let DW_TAG_label                    = natural_of_hex "0x0a"
+let DW_TAG_lexical_block            = natural_of_hex "0x0b"
+let DW_TAG_member                   = natural_of_hex "0x0d"
+let DW_TAG_pointer_type             = natural_of_hex "0x0f"
+let DW_TAG_reference_type           = natural_of_hex "0x10"
+let DW_TAG_compile_unit             = natural_of_hex "0x11"
+let DW_TAG_string_type              = natural_of_hex "0x12"
+let DW_TAG_structure_type           = natural_of_hex "0x13"
+let DW_TAG_subroutine_type          = natural_of_hex "0x15"
+let DW_TAG_typedef                  = natural_of_hex "0x16"
+let DW_TAG_union_type               = natural_of_hex "0x17"
+let DW_TAG_unspecified_parameters   = natural_of_hex "0x18"
+let DW_TAG_variant                  = natural_of_hex "0x19"
+let DW_TAG_common_block             = natural_of_hex "0x1a"
+let DW_TAG_common_inclusion         = natural_of_hex "0x1b"
+let DW_TAG_inheritance              = natural_of_hex "0x1c"
+let DW_TAG_inlined_subroutine       = natural_of_hex "0x1d"
+let DW_TAG_module                   = natural_of_hex "0x1e"
+let DW_TAG_ptr_to_member_type       = natural_of_hex "0x1f"
+let DW_TAG_set_type                 = natural_of_hex "0x20"
+let DW_TAG_subrange_type            = natural_of_hex "0x21"
+let DW_TAG_with_stmt                = natural_of_hex "0x22"
+let DW_TAG_access_declaration       = natural_of_hex "0x23"
+let DW_TAG_base_type                = natural_of_hex "0x24"
+let DW_TAG_catch_block              = natural_of_hex "0x25"
+let DW_TAG_const_type               = natural_of_hex "0x26"
+let DW_TAG_constant                 = natural_of_hex "0x27"
+let DW_TAG_enumerator               = natural_of_hex "0x28"
+let DW_TAG_file_type                = natural_of_hex "0x29"
+let DW_TAG_friend                   = natural_of_hex "0x2a"
+let DW_TAG_namelist                 = natural_of_hex "0x2b"
+let DW_TAG_namelist_item            = natural_of_hex "0x2c"
+let DW_TAG_packed_type              = natural_of_hex "0x2d"
+let DW_TAG_subprogram               = natural_of_hex "0x2e"
+let DW_TAG_template_type_parameter  = natural_of_hex "0x2f"
+let DW_TAG_template_value_parameter = natural_of_hex "0x30"
+let DW_TAG_thrown_type              = natural_of_hex "0x31"
+let DW_TAG_try_block                = natural_of_hex "0x32"
+let DW_TAG_variant_part             = natural_of_hex "0x33"
+let DW_TAG_variable                 = natural_of_hex "0x34"
+let DW_TAG_volatile_type            = natural_of_hex "0x35"
+let DW_TAG_dwarf_procedure          = natural_of_hex "0x36"
+let DW_TAG_restrict_type            = natural_of_hex "0x37"
+let DW_TAG_interface_type           = natural_of_hex "0x38"
+let DW_TAG_namespace                = natural_of_hex "0x39"
+let DW_TAG_imported_module          = natural_of_hex "0x3a"
+let DW_TAG_unspecified_type         = natural_of_hex "0x3b"
+let DW_TAG_partial_unit             = natural_of_hex "0x3c"
+let DW_TAG_imported_unit            = natural_of_hex "0x3d"
+let DW_TAG_condition                = natural_of_hex "0x3f"
+let DW_TAG_shared_type              = natural_of_hex "0x40"
+let DW_TAG_type_unit                = natural_of_hex "0x41"
+let DW_TAG_rvalue_reference_type    = natural_of_hex "0x42"
+let DW_TAG_template_alias           = natural_of_hex "0x43"
+let DW_TAG_lo_user                  = natural_of_hex "0x4080"
+let DW_TAG_hi_user                  = natural_of_hex "0xffff"
+
+(* child determination encodings *)
+let DW_CHILDREN_no  = natural_of_hex "0x00"
+let DW_CHILDREN_yes = natural_of_hex "0x01"
+
+
+type dwarf_attribute_classes = 
+  | DWA_flag 
+  | DWA_reference
+  | DWA_constant
+  | DWA_string
+  | DWA_address
+  | DWA_block
+  | DWA_exprloc
+  | DWA_lineptr
+  | DWA_loclistptr
+  | DWA_macptr
+  | DWA_rangelistptr
+  | DWA_7_5_3
+  | DWA_dash
+
+(* attribute encodings *)
+
+let DW_AT_sibling              = (natural_of_hex "0x01", [DWA_reference])
+let DW_AT_location             = (natural_of_hex "0x02", [DWA_exprloc; DWA_loclistptr])
+let DW_AT_name                 = (natural_of_hex "0x03", [DWA_string])
+let DW_AT_ordering             = (natural_of_hex "0x09", [DWA_constant])
+let DW_AT_byte_size            = (natural_of_hex "0x0b", [DWA_constant; DWA_exprloc; DWA_reference])
+let DW_AT_bit_offset           = (natural_of_hex "0x0c", [DWA_constant; DWA_exprloc; DWA_reference])
+let DW_AT_bit_size             = (natural_of_hex "0x0d", [DWA_constant; DWA_exprloc; DWA_reference])
+let DW_AT_stmt_list            = (natural_of_hex "0x10", [DWA_lineptr])
+let DW_AT_low_pc               = (natural_of_hex "0x11", [DWA_address])
+let DW_AT_high_pc              = (natural_of_hex "0x12", [DWA_address; DWA_constant])
+let DW_AT_language             = (natural_of_hex "0x13", [DWA_constant])
+let DW_AT_discr                = (natural_of_hex "0x15", [DWA_reference])
+let DW_AT_discr_value          = (natural_of_hex "0x16", [DWA_constant])
+let DW_AT_visibility           = (natural_of_hex "0x17", [DWA_constant])
+let DW_AT_import               = (natural_of_hex "0x18", [DWA_reference])
+let DW_AT_string_length        = (natural_of_hex "0x19", [DWA_exprloc; DWA_loclistptr])
+let DW_AT_common_reference     = (natural_of_hex "0x1a", [DWA_reference])
+let DW_AT_comp_dir             = (natural_of_hex "0x1b", [DWA_string])
+let DW_AT_const_value          = (natural_of_hex "0x1c", [DWA_block; DWA_constant; DWA_string])
+let DW_AT_containing_type      = (natural_of_hex "0x1d", [DWA_reference])
+let DW_AT_default_value        = (natural_of_hex "0x1e", [DWA_reference])
+let DW_AT_inline               = (natural_of_hex "0x20", [DWA_constant])
+let DW_AT_is_optional          = (natural_of_hex "0x21", [DWA_flag])
+let DW_AT_lower_bound          = (natural_of_hex "0x22", [DWA_constant; DWA_exprloc; DWA_reference])
+let DW_AT_producer             = (natural_of_hex "0x25", [DWA_string])
+let DW_AT_prototyped           = (natural_of_hex "0x27", [DWA_flag])
+let DW_AT_return_addr          = (natural_of_hex "0x2a", [DWA_exprloc; DWA_loclistptr])
+let DW_AT_start_scope          = (natural_of_hex "0x2c", [DWA_constant; DWA_rangelistptr])
+let DW_AT_bit_stride           = (natural_of_hex "0x2e", [DWA_constant; DWA_exprloc; DWA_reference])
+let DW_AT_upper_bound          = (natural_of_hex "0x2f", [DWA_constant; DWA_exprloc; DWA_reference])
+let DW_AT_abstract_origin      = (natural_of_hex "0x31", [DWA_reference])
+let DW_AT_accessibility        = (natural_of_hex "0x32", [DWA_constant])
+let DW_AT_address_class        = (natural_of_hex "0x33", [DWA_constant])
+let DW_AT_artificial           = (natural_of_hex "0x34", [DWA_flag])
+let DW_AT_base_types           = (natural_of_hex "0x35", [DWA_reference])
+let DW_AT_calling_convention   = (natural_of_hex "0x36", [DWA_constant])
+let DW_AT_count                = (natural_of_hex "0x37", [DWA_constant; DWA_exprloc; DWA_reference])
+let DW_AT_data_member_location = (natural_of_hex "0x38", [DWA_constant; DWA_exprloc; DWA_loclistptr])
+let DW_AT_decl_column          = (natural_of_hex "0x39", [DWA_constant])
+let DW_AT_decl_file            = (natural_of_hex "0x3a", [DWA_constant])
+let DW_AT_decl_line            = (natural_of_hex "0x3b", [DWA_constant])
+let DW_AT_declaration          = (natural_of_hex "0x3c", [DWA_flag])
+let DW_AT_discr_list           = (natural_of_hex "0x3d", [DWA_block])
+let DW_AT_encoding             = (natural_of_hex "0x3e", [DWA_constant])
+let DW_AT_external             = (natural_of_hex "0x3f", [DWA_flag])
+let DW_AT_frame_base           = (natural_of_hex "0x40", [DWA_exprloc; DWA_loclistptr])
+let DW_AT_friend               = (natural_of_hex "0x41", [DWA_reference])
+let DW_AT_identifier_case      = (natural_of_hex "0x42", [DWA_constant])
+let DW_AT_macro_info           = (natural_of_hex "0x43", [DWA_macptr])
+let DW_AT_namelist_item        = (natural_of_hex "0x44", [DWA_reference])
+let DW_AT_priority             = (natural_of_hex "0x45", [DWA_reference])
+let DW_AT_segment              = (natural_of_hex "0x46", [DWA_exprloc; DWA_loclistptr])
+let DW_AT_specification        = (natural_of_hex "0x47", [DWA_reference])
+let DW_AT_static_link          = (natural_of_hex "0x48", [DWA_exprloc; DWA_loclistptr])
+let DW_AT_type                 = (natural_of_hex "0x49", [DWA_reference])
+let DW_AT_use_location         = (natural_of_hex "0x4a", [DWA_exprloc; DWA_loclistptr])
+let DW_AT_variable_parameter   = (natural_of_hex "0x4b", [DWA_flag])
+let DW_AT_virtuality           = (natural_of_hex "0x4c", [DWA_constant])
+let DW_AT_vtable_elem_location = (natural_of_hex "0x4d", [DWA_exprloc; DWA_loclistptr])
+let DW_AT_allocated            = (natural_of_hex "0x4e", [DWA_constant; DWA_exprloc; DWA_reference])
+let DW_AT_associated           = (natural_of_hex "0x4f", [DWA_constant; DWA_exprloc; DWA_reference])
+let DW_AT_data_location        = (natural_of_hex "0x50", [DWA_exprloc])
+let DW_AT_byte_stride          = (natural_of_hex "0x51", [DWA_constant; DWA_exprloc; DWA_reference])
+let DW_AT_entry_pc             = (natural_of_hex "0x52", [DWA_address])
+let DW_AT_use_UTF8             = (natural_of_hex "0x53", [DWA_flag])
+let DW_AT_extension            = (natural_of_hex "0x54", [DWA_reference])
+let DW_AT_ranges               = (natural_of_hex "0x55", [DWA_rangelistptr])
+let DW_AT_trampoline           = (natural_of_hex "0x56", [DWA_address; DWA_flag; DWA_reference; DWA_string])
+let DW_AT_call_column          = (natural_of_hex "0x57", [DWA_constant])
+let DW_AT_call_file            = (natural_of_hex "0x58", [DWA_constant])
+let DW_AT_call_line            = (natural_of_hex "0x59", [DWA_constant])
+let DW_AT_description          = (natural_of_hex "0x5a", [DWA_string])
+let DW_AT_binary_scale         = (natural_of_hex "0x5b", [DWA_constant])
+let DW_AT_decimal_scale        = (natural_of_hex "0x5c", [DWA_constant])
+let DW_AT_small                = (natural_of_hex "0x5d", [DWA_reference])
+let DW_AT_decimal_sign         = (natural_of_hex "0x5e", [DWA_constant])
+let DW_AT_digit_count          = (natural_of_hex "0x5f", [DWA_constant])
+let DW_AT_picture_string       = (natural_of_hex "0x60", [DWA_string])
+let DW_AT_mutable              = (natural_of_hex "0x61", [DWA_flag])
+let DW_AT_threads_scaled       = (natural_of_hex "0x62", [DWA_flag])
+let DW_AT_explicit             = (natural_of_hex "0x63", [DWA_flag])
+let DW_AT_object_pointer       = (natural_of_hex "0x64", [DWA_reference])
+let DW_AT_endianity            = (natural_of_hex "0x65", [DWA_constant])
+let DW_AT_elemental            = (natural_of_hex "0x66", [DWA_flag])
+let DW_AT_pure                 = (natural_of_hex "0x67", [DWA_flag])
+let DW_AT_recursive            = (natural_of_hex "0x68", [DWA_flag])
+let DW_AT_signature            = (natural_of_hex "0x69", [DWA_reference])
+let DW_AT_main_subprogram      = (natural_of_hex "0x6a", [DWA_flag])
+let DW_AT_data_bit_offset      = (natural_of_hex "0x6b", [DWA_constant])
+let DW_AT_const_expr           = (natural_of_hex "0x6c", [DWA_flag])
+let DW_AT_enum_class           = (natural_of_hex "0x6d", [DWA_flag])
+let DW_AT_linkage_name         = (natural_of_hex "0x6e", [DWA_string])
+let DW_AT_lo_user              = (natural_of_hex "0x2000", [DWA_dash])
+let DW_AT_hi_user              = (natural_of_hex "0x3fff", [DWA_dash])
+
+(* attribute form encodings *)
+
+let DW_FORM_addr         = (natural_of_hex "0x01", [DWA_address])
+let DW_FORM_block2       = (natural_of_hex "0x03", [DWA_block])
+let DW_FORM_block4       = (natural_of_hex "0x04", [DWA_block])
+let DW_FORM_data2        = (natural_of_hex "0x05", [DWA_constant])
+let DW_FORM_data4        = (natural_of_hex "0x06", [DWA_constant])
+let DW_FORM_data8        = (natural_of_hex "0x07", [DWA_constant])
+let DW_FORM_string       = (natural_of_hex "0x08", [DWA_string])
+let DW_FORM_block        = (natural_of_hex "0x09", [DWA_block])
+let DW_FORM_block1       = (natural_of_hex "0x0a", [DWA_block])
+let DW_FORM_data1        = (natural_of_hex "0x0b", [DWA_constant])
+let DW_FORM_flag         = (natural_of_hex "0x0c", [DWA_flag])
+let DW_FORM_sdata        = (natural_of_hex "0x0d", [DWA_constant])
+let DW_FORM_strp         = (natural_of_hex "0x0e", [DWA_string])
+let DW_FORM_udata        = (natural_of_hex "0x0f", [DWA_constant])
+let DW_FORM_ref_addr     = (natural_of_hex "0x10", [DWA_reference])
+let DW_FORM_ref1         = (natural_of_hex "0x11", [DWA_reference])
+let DW_FORM_ref2         = (natural_of_hex "0x12", [DWA_reference])
+let DW_FORM_ref4         = (natural_of_hex "0x13", [DWA_reference])
+let DW_FORM_ref8         = (natural_of_hex "0x14", [DWA_reference])
+let DW_FORM_ref_udata    = (natural_of_hex "0x15", [DWA_reference])
+let DW_FORM_indirect     = (natural_of_hex "0x16", [DWA_7_5_3])
+let DW_FORM_sec_offset   = (natural_of_hex "0x17", [DWA_lineptr; DWA_loclistptr; DWA_macptr; DWA_rangelistptr])
+let DW_FORM_exprloc      = (natural_of_hex "0x18", [DWA_exprloc])
+let DW_FORM_flag_present = (natural_of_hex "0x19", [DWA_flag])
+let DW_FORM_ref_sig8     = (natural_of_hex "0x20", [DWA_reference])
+
+type die = 
+    <|
+    die_abbreviation_code : natural;
+    die_attributes : unit;  (* TODO *)
+  |>
+
+
+type die_tree = unit (* TODO *)
+
+type dwarf_cu = 
+    <| 
+    cu_dwarf_format : dwarf_format;
+    cu_unit_length : natural;
+    cu_version : natural;
+    cu_debug_abbrev_offset : natural;
+    cu_address_size : natural;
+    cu_die_tree : die_tree;
+  |> 
+
+
+type parse_context = <| pc_bytes: list byte; pc_pos: nat |> 
+
+type parse_result 'a =
+  | PR_success of 'a * parse_context
+  | PR_fail of string * parse_context
+
+(** [(>>>=)] is the monadic binding function for [parse_result].
+  *)
+val pr_bind : forall 'a 'b. parse_result 'a -> ('a -> parse_context -> parse_result 'b) -> parse_result 'b
+let pr_bind x f =
+  match x with
+  | PR_success v pc -> f v pc
+  | PR_fail err pc  -> PR_fail err pc
+  end
+
+let parse_uint8 (pc:parse_context) : parse_result natural = 
+  match pc.pc_bytes with
+  | b0::bytes' -> 
+      let v = natural_of_byte b0 in
+      PR_success v (<| pc_bytes = bytes'; pc_pos = pc.pc_pos + 1 |>)
+  | _ -> PR_fail "parse_uint32 not given enough bytes" pc
+  end
+
+
+let parse_uint16 (pc:parse_context) : parse_result natural = 
+  match pc.pc_bytes with
+  | b0::b1::bytes' -> 
+      let v = natural_of_byte b0 + 256*natural_of_byte b1 in
+      PR_success v (<| pc_bytes = bytes'; pc_pos = pc.pc_pos + 2 |>)
+  | _ -> PR_fail "parse_uint32 not given enough bytes" pc
+  end
+
+
+let parse_uint32 (pc:parse_context) : parse_result natural = 
+  match pc.pc_bytes with
+  | b0::b1::b2::b3::bytes' -> 
+      let v = natural_of_byte b0 + 256*natural_of_byte b1 + 256*256*natural_of_byte b2 + 256*256*256*natural_of_byte b3 in
+      PR_success v (<| pc_bytes = bytes'; pc_pos = pc.pc_pos + 4 |>)
+  | _ -> PR_fail "parse_uint32 not given enough bytes" pc
+  end
+
+let parse_uint64 (pc:parse_context) : parse_result natural = 
+  match pc.pc_bytes with
+  | b0::b1::b2::b3::b4::b5::b6::b7::bytes' -> 
+      let v = natural_of_byte b0 + 256*natural_of_byte b1 + 256*256*natural_of_byte b2 + 256*256*256*natural_of_byte b3 
+          + (256*256*256*256*(natural_of_byte b4 + 256*natural_of_byte b5 + 256*256*natural_of_byte b6 + 256*256*256*natural_of_byte b7))
+      in
+      PR_success v (<| pc_bytes = bytes'; pc_pos = pc.pc_pos + 8 |>)
+  | _ -> PR_fail "parse_uint64 not given enough bytes" pc
+  end
+
+let parse_cu_unit_length (pc: parse_context) : parse_result (dwarf_format * natural) =
+  pr_bind (parse_uint32 pc) (fun x pc' ->
+    if x < natural_of_hex "0xfffffff0" then PR_success (Dwarf32,x) pc'
+    else if x <> natural_of_hex "0xffffffff" then PR_fail "bad unit_length" pc
+    else 
+      pr_bind (parse_uint64 pc') (fun x' pc'' -> 
+        PR_success (Dwarf64, x') pc')
+                      )
+
+let parse_cu_version (pc: parse_context) : parse_result natural = 
+  pr_bind (parse_uint16 pc) (fun x pc' ->
+    if x=4 then PR_success x pc'
+    else PR_fail "bad dwarf version, not equal to 4" pc)
+
+let parse_cu_debug_abbrev_offset (df: dwarf_format) (pc: parse_context) : parse_result natural =
+  (* TODO: in sanity check, assert this is within the .debug_abbrev section *)
+  match df with
+  | Dwarf32 -> parse_uint32 pc
+  | Dwarf64 -> parse_uint64 pc
+  end
+
+let parse_cu_address_size (pc: parse_context) : parse_result natural = 
+  parse_uint8 pc
+
+(*      
+let parse_cu_header (pc: parse_context) : parse_result dwarf_cu = 
+  pr_bind (parse_cu_unit_length pc) (fun (df,ul) pc' ->  
+    pr_bind (parse_cu_version pc') (fun v pc'' ->
+      pr_bind (parse_cu_debug_abbrev_offset df pc'') (fun dao pc''' -> 
+        pr_bind (parse_cu_address_size pc''') (fun as' pc'''' ->
+          PR_success ( 
+          <|
+          cu_dwarf_format = df;
+          cu_unit_length = ul;
+          cu_version = v;
+          cu_debug_abbrev_offset = dao;
+          cu_address_size = as';
+          cu_die_tree = ();
+        |>
+         )))))
+
+*)
+
+
+
+val harness_string_of_elf64_debug_info_section : elf64_file -> byte_sequence -> (natural -> string) -> (natural -> string) -> (natural -> string) -> elf64_header -> elf64_section_header_table -> string_table -> string
+let {ocaml} harness_string_of_elf64_debug_info_section f1 bs0 os proc usr hdr sht stbl =
+  let debug_info_sections = 
+    List.filter (fun x -> 
+      x.Elf_interpreted_section.elf64_section_name_as_string = ".debug_info" 
+                ) f1.elf64_file_interpreted_sections in
+  match debug_info_sections with
+  | [] -> "no .debug_info sections"
+  | x1::x2::_ -> "more than one .debug_info sections"
+  | [x] -> 
+      "debug_info section: \n" ^ Elf_interpreted_section.string_of_elf64_interpreted_section x 
+      ^ "\n"
+      ^
+        match x.Elf_interpreted_section.elf64_section_body with
+        | Sequence xs ->
+            show (List.map (fun x -> show x) xs)
+        end
+  end
+
+
