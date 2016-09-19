@@ -292,6 +292,7 @@ type die_tree = unit (* TODO *)
 
 type dwarf_cu = 
     <| 
+    cu_offset : natural; 
     cu_dwarf_format : dwarf_format;
     cu_unit_length : natural;
     cu_version : natural;
@@ -301,11 +302,12 @@ type dwarf_cu =
   |> 
 
 
-type parse_context = <| pc_bytes: list byte; pc_pos: nat |> 
+type parse_context = <| pc_bytes: list byte; pc_offset: nat |> 
 
 type parse_result 'a =
   | PR_success of 'a * parse_context
   | PR_fail of string * parse_context
+
 
 (** [(>>>=)] is the monadic binding function for [parse_result].
   *)
@@ -320,7 +322,7 @@ let parse_uint8 (pc:parse_context) : parse_result natural =
   match pc.pc_bytes with
   | b0::bytes' -> 
       let v = natural_of_byte b0 in
-      PR_success v (<| pc_bytes = bytes'; pc_pos = pc.pc_pos + 1 |>)
+      PR_success v (<| pc_bytes = bytes'; pc_offset = pc.pc_offset + 1 |>)
   | _ -> PR_fail "parse_uint32 not given enough bytes" pc
   end
 
@@ -329,7 +331,7 @@ let parse_uint16 (pc:parse_context) : parse_result natural =
   match pc.pc_bytes with
   | b0::b1::bytes' -> 
       let v = natural_of_byte b0 + 256*natural_of_byte b1 in
-      PR_success v (<| pc_bytes = bytes'; pc_pos = pc.pc_pos + 2 |>)
+      PR_success v (<| pc_bytes = bytes'; pc_offset = pc.pc_offset + 2 |>)
   | _ -> PR_fail "parse_uint32 not given enough bytes" pc
   end
 
@@ -338,7 +340,7 @@ let parse_uint32 (pc:parse_context) : parse_result natural =
   match pc.pc_bytes with
   | b0::b1::b2::b3::bytes' -> 
       let v = natural_of_byte b0 + 256*natural_of_byte b1 + 256*256*natural_of_byte b2 + 256*256*256*natural_of_byte b3 in
-      PR_success v (<| pc_bytes = bytes'; pc_pos = pc.pc_pos + 4 |>)
+      PR_success v (<| pc_bytes = bytes'; pc_offset = pc.pc_offset + 4 |>)
   | _ -> PR_fail "parse_uint32 not given enough bytes" pc
   end
 
@@ -348,7 +350,7 @@ let parse_uint64 (pc:parse_context) : parse_result natural =
       let v = natural_of_byte b0 + 256*natural_of_byte b1 + 256*256*natural_of_byte b2 + 256*256*256*natural_of_byte b3 
           + (256*256*256*256*(natural_of_byte b4 + 256*natural_of_byte b5 + 256*256*natural_of_byte b6 + 256*256*256*natural_of_byte b7))
       in
-      PR_success v (<| pc_bytes = bytes'; pc_pos = pc.pc_pos + 8 |>)
+      PR_success v (<| pc_bytes = bytes'; pc_offset = pc.pc_offset + 8 |>)
   | _ -> PR_fail "parse_uint64 not given enough bytes" pc
   end
 
@@ -363,8 +365,8 @@ let parse_cu_unit_length (pc: parse_context) : parse_result (dwarf_format * natu
 
 let parse_cu_version (pc: parse_context) : parse_result natural = 
   pr_bind (parse_uint16 pc) (fun x pc' ->
-    if x=4 then PR_success x pc'
-    else PR_fail "bad dwarf version, not equal to 4" pc)
+    (*if x=4 then *) PR_success x pc')
+    (*else PR_fail "bad dwarf version, not equal to 4" pc)*)
 
 let parse_cu_debug_abbrev_offset (df: dwarf_format) (pc: parse_context) : parse_result natural =
   (* TODO: in sanity check, assert this is within the .debug_abbrev section *)
@@ -376,7 +378,7 @@ let parse_cu_debug_abbrev_offset (df: dwarf_format) (pc: parse_context) : parse_
 let parse_cu_address_size (pc: parse_context) : parse_result natural = 
   parse_uint8 pc
 
-(*      
+      
 let parse_cu_header (pc: parse_context) : parse_result dwarf_cu = 
   pr_bind (parse_cu_unit_length pc) (fun (df,ul) pc' ->  
     pr_bind (parse_cu_version pc') (fun v pc'' ->
@@ -384,6 +386,7 @@ let parse_cu_header (pc: parse_context) : parse_result dwarf_cu =
         pr_bind (parse_cu_address_size pc''') (fun as' pc'''' ->
           PR_success ( 
           <|
+          cu_offset = naturalFromNat pc.pc_offset;
           cu_dwarf_format = df;
           cu_unit_length = ul;
           cu_version = v;
@@ -391,9 +394,24 @@ let parse_cu_header (pc: parse_context) : parse_result dwarf_cu =
           cu_address_size = as';
           cu_die_tree = ();
         |>
-         )))))
+         ) pc''''))))
 
-*)
+let pphex n = "0x" ^ unsafe_hex_string_of_natural 0 n
+
+let pp_cu_header (x:dwarf_cu) : string = 
+  "Contents of the .debug_info section:\n\n"
+  ^ "  Compilation Unit @ offset " ^ pphex x.cu_offset ^ ":\n"
+  ^ "   Length:        " ^ pphex x.cu_unit_length ^ " " ^ match x.cu_dwarf_format with Dwarf32 -> "(32-bit)" | Dwarf64 -> "(64-bit)" end ^ "\n"
+  ^ "   Version:       " ^ show x.cu_version ^ "\n"
+  ^ "   Abbrev Offset: " ^ show x.cu_debug_abbrev_offset ^ "\n"
+  ^ "   Pointer Size:  " ^ show x.cu_address_size ^ "\n"
+
+let pp_parse_result ppa pr = 
+  let pp_parse_context pc = "pc_offset = " ^ pphex (naturalFromNat pc.pc_offset) in
+  match pr with
+  | PR_success x pc -> "Parse success\n" ^ ppa x ^ "\n" ^ pp_parse_context pc
+  | PR_fail s pc -> "Parse fail\n" ^ s ^ pp_parse_context pc
+  end
 
 
 
@@ -413,7 +431,35 @@ let {ocaml} harness_string_of_elf64_debug_info_section f1 bs0 os proc usr hdr sh
         match x.Elf_interpreted_section.elf64_section_body with
         | Sequence xs ->
             show (List.map (fun x -> show x) xs)
+            ^ "\n\n"
+            ^ pp_parse_result pp_cu_header (parse_cu_header (<|pc_bytes = xs; pc_offset = 0  |>))
         end
+
+
+  end
+
+
+val harness_string_of_elf32_debug_info_section : elf32_file -> byte_sequence -> (natural -> string) -> (natural -> string) -> (natural -> string) -> elf32_header -> elf32_section_header_table -> string_table -> string
+let {ocaml} harness_string_of_elf32_debug_info_section f1 bs0 os proc usr hdr sht stbl =
+  let debug_info_sections = 
+    List.filter (fun x -> 
+      x.Elf_interpreted_section.elf32_section_name_as_string = ".debug_info" 
+                ) f1.elf32_file_interpreted_sections in
+  match debug_info_sections with
+  | [] -> "no .debug_info sections"
+  | x1::x2::_ -> "more than one .debug_info sections"
+  | [x] -> 
+      "debug_info section: \n" ^ Elf_interpreted_section.string_of_elf32_interpreted_section x 
+      ^ "\n"
+      ^
+        match x.Elf_interpreted_section.elf32_section_body with
+        | Sequence xs ->
+            show (List.map (fun x -> show x) xs)
+            ^ "\n\n"
+            ^ pp_parse_result pp_cu_header (parse_cu_header (<|pc_bytes = xs; pc_offset = 0  |>))
+        end
+
+
   end
 
 
