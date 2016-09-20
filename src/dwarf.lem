@@ -261,6 +261,21 @@ let attribute_encodings = [
 (* attribute form encodings *)
 
 
+type attribute_value =
+  | AV_addr of natural
+  | AV_block of natural * list byte
+  | AV_constantN of natural * list byte
+  | AV_constant_ULEB128 of natural
+  | AV_constant_SLEB128 of integer
+  | AV_exprloc of natural * list byte
+  | AV_flag of bool
+  | AV_sec_offset of natural
+  | AV_ref_addr of natural (* dwarf_format dependent *)
+  | AV_ref_sig8 of natural
+  | AV_string of list byte (* not including terminating null *)
+  | AV_strp of natural (* dwarf_format dependent *)
+
+
 let attribute_form_encodings = [
   ("DW_FORM_addr"        , natural_of_hex "0x01", [DWA_address])  ;
   ("DW_FORM_block2"      , natural_of_hex "0x03", [DWA_block])    ;
