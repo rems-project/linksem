@@ -72,7 +72,7 @@ type dwarf_format =
   | Dwarf32
   | Dwarf64
 
-(* tag encodings *)
+(** tag encodings *)
 let tag_encodings = [
   ("DW_TAG_array_type"               , natural_of_hex "0x01"  ); 
   ("DW_TAG_class_type"               , natural_of_hex "0x02"  ); 
@@ -140,7 +140,7 @@ let tag_encodings = [
 
 
 
-(* child determination encodings *)
+(** child determination encodings *)
 let DW_CHILDREN_no  = natural_of_hex "0x00"
 let DW_CHILDREN_yes = natural_of_hex "0x01"
 
@@ -163,7 +163,7 @@ type dwarf_attribute_classes =
 
 
 
-(* attribute encodings *)
+(** attribute encodings *)
 
 let attribute_encodings = [
   ("DW_AT_sibling"              , natural_of_hex "0x01", [DWA_reference])                                   ;
@@ -262,7 +262,7 @@ let attribute_encodings = [
   ("DW_AT_hi_user"              , natural_of_hex "0x3fff", [DWA_dash])                                      
 ]
 
-(* attribute form encodings *)
+(** attribute form encodings *)
 
 
 
@@ -311,6 +311,167 @@ type attribute_value =
   | AV_strp of natural (* dwarf_format dependent *)
 
 
+(** operation encodings *)
+
+(*
+DW_OP_addr 0x03  1   constant address (size target specific)
+DW_OP_deref 0x06 0
+DW_OP_const1u 0x08 1 1-byte constant
+DW_OP_const1s 0x09 1 1-byte constant
+DW_OP_const2u 0x0a 1 2-byte constant
+DW_OP_const2s 0x0b 1 2-byte constant
+DW_OP_const4u 0x0c 1 4-byte constant
+DW_OP_const4s 0x0d 1 4-byte constant
+DW_OP_const8u 0x0e 1 8-byte constant
+DW_OP_const8s 0x0f 1 8-byte constant
+DW_OP_constu 0x10 1 ULEB128 constant
+DW_OP_consts 0x11 1 SLEB128 constant
+DW_OP_dup 0x12 0 
+DW_OP_drop 0x13 0 
+DW_OP_over 0x14 0 
+DW_OP_pick 0x15 1  1-byte stack index
+DW_OP_swap 0x16 0 
+DW_OP_rot 0x17 0 
+DW_OP_xderef 0x18 0 
+DW_OP_abs 0x19 0 
+DW_OP_and 0x1a 0 
+DW_OP_div 0x1b 0 
+DW_OP_minus 0x1c 0 
+DW_OP_mod 0x1d 0 
+DW_OP_mul 0x1e 0 
+DW_OP_neg 0x1f 0 
+DW_OP_not 0x20 0 
+DW_OP_or 0x21 0 
+DW_OP_plus 0x22 0 
+DW_OP_plus_uconst 0x23 1  ULEB128 addend
+DW_OP_shl 0x24 0 
+DW_OP_shr 0x25 0 
+DW_OP_shra 0x26 0 
+DW_OP_xor 0x27 0 
+DW_OP_skip 0x2f 1 signed 2-byte constant
+DW_OP_bra 0x28 1 signed 2-byte constant
+DW_OP_eq 0x29 0 
+DW_OP_ge 0x2a 0 
+DW_OP_gt 0x2b 0 
+DW_OP_le 0x2c 0 
+DW_OP_lt 0x2d 0 
+DW_OP_ne 0x2e 0 
+DW_OP_lit0 0x30 0   literals 0..31 =(DW_OP_lit0 + literal)
+DW_OP_lit1 0x31 0
+DW_OP_lit2 0x32 0
+DW_OP_lit3 0x33 0
+DW_OP_lit4 0x34 0
+DW_OP_lit5 0x35 0
+DW_OP_lit6 0x36 0
+DW_OP_lit7 0x37 0
+DW_OP_lit8 0x38 0
+DW_OP_lit9 0x39 0
+DW_OP_lit10 0x3a 0
+DW_OP_lit11 0x3b 0
+DW_OP_lit12 0x3c 0
+DW_OP_lit13 0x3d 0
+DW_OP_lit14 0x3e 0
+DW_OP_lit15 0x3f 0
+DW_OP_lit16 0x40 0
+DW_OP_lit17 0x41 0
+DW_OP_lit18 0x42 0
+DW_OP_lit19 0x43 0
+DW_OP_lit20 0x44 0
+DW_OP_lit21 0x45 0
+DW_OP_lit22 0x46 0
+DW_OP_lit23 0x47 0
+DW_OP_lit24 0x48 0
+DW_OP_lit25 0x49 0
+DW_OP_lit26 0x4a 0
+DW_OP_lit27 0x4b 0
+DW_OP_lit28 0x4c 0
+DW_OP_lit29 0x4d 0
+DW_OP_lit30 0x4e 0
+DW_OP_lit31 0x4f 0
+DW_OP_reg0 0x50 1 reg 0..31 = (DW_OP_reg0 + regnum)
+DW_OP_reg1 0x51 1
+DW_OP_reg2 0x52 1
+DW_OP_reg3 0x53 1
+DW_OP_reg4 0x54 1
+DW_OP_reg5 0x55 1
+DW_OP_reg6 0x56 1
+DW_OP_reg7 0x57 1
+DW_OP_reg8 0x58 1
+DW_OP_reg9 0x59 1
+DW_OP_reg10 0x5a 1
+DW_OP_reg11 0x5b 1
+DW_OP_reg12 0x5c 1
+DW_OP_reg13 0x5d 1
+DW_OP_reg14 0x5e 1
+DW_OP_reg15 0x5f 1
+DW_OP_reg16 0x60 1
+DW_OP_reg17 0x61 1
+DW_OP_reg18 0x62 1
+DW_OP_reg19 0x63 1
+DW_OP_reg20 0x64 1
+DW_OP_reg21 0x65 1
+DW_OP_reg22 0x66 1
+DW_OP_reg23 0x67 1
+DW_OP_reg24 0x68 1
+DW_OP_reg25 0x69 1
+DW_OP_reg26 0x6a 1
+DW_OP_reg27 0x6b 1
+DW_OP_reg28 0x6c 1
+DW_OP_reg29 0x6d 1
+DW_OP_reg30 0x6e 1
+DW_OP_reg31 0x6f 1 
+DW_OP_breg0 0x70 1 base register 0..31 = (DW_OP_breg0 + regnum)
+DW_OP_breg1 0x71 1
+DW_OP_breg2 0x72 1
+DW_OP_breg3 0x73 1
+DW_OP_breg4 0x74 1
+DW_OP_breg5 0x75 1
+DW_OP_breg6 0x76 1
+DW_OP_breg7 0x77 1
+DW_OP_breg8 0x78 1
+DW_OP_breg9 0x79 1
+DW_OP_breg10 0x7a 1
+DW_OP_breg11 0x7b 1
+DW_OP_breg12 0x7c 1
+DW_OP_breg13 0x7d 1
+DW_OP_breg14 0x7e 1
+DW_OP_breg15 0x7f 1
+DW_OP_breg16 0x80 1
+DW_OP_breg17 0x81 1
+DW_OP_breg18 0x82 1
+DW_OP_breg19 0x83 1
+DW_OP_breg20 0x84 1
+DW_OP_breg21 0x85 1
+DW_OP_breg22 0x86 1
+DW_OP_breg23 0x87 1
+DW_OP_breg24 0x88 1
+DW_OP_breg25 0x89 1
+DW_OP_breg26 0x8a 1
+DW_OP_breg27 0x8b 1
+DW_OP_breg28 0x8c 1
+DW_OP_breg29 0x8d 1
+DW_OP_breg30 0x8e 1
+DW_OP_breg31 0x8f 1 
+DW_OP_regx 0x90 1 ULEB128 register
+DW_OP_fbreg 0x91 1 SLEB128 offset
+DW_OP_bregx 0x92 2 ULEB128 register followed by SLEB128 offset
+DW_OP_piece 0x93 1 ULEB128 size of piece addressed
+DW_OP_deref_size 0x94 1 1-byte size of data retrieved
+DW_OP_xderef_size 0x95 1 1-byte size of data retrieved
+DW_OP_nop 0x96 0 
+DW_OP_push_object_address 0x97 0 
+DW_OP_call2 0x98 1 2-byte offset of DIE
+DW_OP_call4 0x99 1 4-byte offset of DIE
+DW_OP_call_ref 0x9a 1 4- or 8-byte offset of DIE
+DW_OP_form_tls_address 0x9b 0 
+DW_OP_call_frame_cfa 0x9c 0 
+DW_OP_bit_piece 0x9d 2 ULEB128 size followed by ULEB128 offset
+DW_OP_implicit_value 0x9e 2 ULEB128 size followed by block of that size
+DW_OP_stack_value 0x9f 0 
+DW_OP_lo_user 0xe0 
+DW_OP_hi_user 0xff 
+*)
+
 (** dwarf representation types *)
 
 type abbreviation_declaration = 
@@ -349,6 +510,7 @@ type compilation_unit =
     cu_header : compilation_unit_header;
     cu_die : die;
     cu_abbreviations_table : abbreviations_table;
+    cu_str : list byte;
   |>
     
 
@@ -686,10 +848,34 @@ let parse_abbreviation_declaration (pc: parse_context) : parse_result (maybe abb
 let parse_abbreviations_table =
   parse_list parse_abbreviation_declaration
 
+
+(** debug_str entry *)
+
+val mydrop : forall 'a. natural -> list 'a -> maybe (list 'a)
+let rec mydrop n xs = 
+  if n=0 then Just xs 
+  else 
+    match xs with
+    | x::xs' -> mydrop (n-1) xs' 
+    | [] -> Nothing
+    end
+
+let rec null_terminated_list (acc: list byte) (xs: list byte) : list byte = 
+  match xs with
+  | [] -> List.reverse acc (* TODO: flag failure? *)
+  | x::xs' -> if natural_of_byte x = 0 then List.reverse acc else null_terminated_list (x::acc) xs'
+  end
+
+let pp_debug_str_entry (str: list byte) (n: natural) =
+  match mydrop n str with
+  | Nothing -> "strp beyond .debug_str extent"
+  | Just xs -> string_of_bytes (null_terminated_list [] xs)
+  end
+
 (** attribute values *)
 
-val pp_attribute_value : attribute_value -> string
-let pp_attribute_value v = 
+val pp_attribute_value : list byte -> attribute_value -> string
+let pp_attribute_value str v = 
   match v with
   | AV_addr x -> "AV_addr " ^ pphex x
   | AV_block n bs -> "AV_block " ^ show n ^ " " ^ ppbytes bs
@@ -703,7 +889,7 @@ let pp_attribute_value v =
   | AV_ref_sig8 n -> "AV_ref_sig8 " ^ pphex n 
   | AV_sec_offset n -> "AV_sec_offset " ^ pphex  n
   | AV_string bs -> string_of_bytes bs
-  | AV_strp n -> "AV_sec_offset " ^ pphex n 
+  | AV_strp n -> "AV_sec_offset " ^ pphex n ^ " " ^ pp_debug_str_entry str n
   end
 
 
@@ -867,15 +1053,15 @@ let parse_cuh_header (pc: parse_context) : parse_result compilation_unit_header 
 
 let pp_pos pos = "<" ^ pphex pos ^">"
 
-let pp_die_attribute (((at: natural), (af: natural)), ((pos: natural),(av:attribute_value))) : string = 
+let pp_die_attribute (str : list byte) (((at: natural), (af: natural)), ((pos: natural),(av:attribute_value))) : string = 
   pp_pos pos  ^ "   " 
   ^ pp_attribute_encoding at ^ "     : "
   ^ "(" ^ pp_attribute_form_encoding af ^ ") "
-  ^ pp_attribute_value av
+  ^ pp_attribute_value str av
   ^ "\n"
 
-val pp_die : natural -> die -> string
-let rec pp_die level die = 
+val pp_die : list byte -> natural -> die -> string
+let rec pp_die str level die = 
   "<" ^ show level ^ ">" 
   ^ pp_pos die.die_pos
   ^ ": Abbrev Number: " ^ show die.die_abbreviation_code 
@@ -884,13 +1070,13 @@ let rec pp_die level die =
     let ats = List.zip 
         die.die_abbreviation_declaration.ad_attribute_specifications 
         die.die_attribute_values in
-    (myconcat "" (List.map pp_die_attribute ats))
+    (myconcat "" (List.map (pp_die_attribute str) ats))
     ^
-      (myconcat "" (List.map (pp_die (level +1)) die.die_children))
+      (myconcat "" (List.map (pp_die str (level +1)) die.die_children))
 
 
-val parse_die : compilation_unit_header -> (natural->abbreviation_declaration) -> (parse_context -> parse_result (maybe die))
-let rec parse_die cuh find_abbreviation_declaration pc = 
+val parse_die : list byte -> compilation_unit_header -> (natural->abbreviation_declaration) -> (parse_context -> parse_result (maybe die))
+let rec parse_die str cuh find_abbreviation_declaration pc = 
   let _ = parse_debug3 ("parse_die called at " ^ pp_parse_context pc ^ "\n") in
   pr_bind (parse_ULEB128 pc) (fun abbreviation_code pc' -> 
     if abbreviation_code = 0 then PR_success Nothing pc' 
@@ -907,10 +1093,10 @@ let rec parse_die cuh find_abbreviation_declaration pc =
           die_abbreviation_declaration = ad;
           die_attribute_values = avs;
           die_children = [];
-        |> in let _ = parse_debug3 ("die_header " ^ pp_die 999 die_header) in 
+        |> in let _ = parse_debug3 ("die_header " ^ pp_die str 999 die_header) in 
 
         pr_bind 
-          (if ad.ad_has_children then parse_list (parse_die cuh find_abbreviation_declaration) pc'' else pr_return [] pc'')
+          (if ad.ad_has_children then parse_list (parse_die str cuh find_abbreviation_declaration) pc'' else pr_return [] pc'')
           (fun dies pc''' -> 
             PR_success (Just ( let die = 
                         <| 
@@ -919,7 +1105,7 @@ let rec parse_die cuh find_abbreviation_declaration pc =
                         die_abbreviation_declaration = ad;
                         die_attribute_values = avs;
                         die_children = dies;
-                      |> in (* let _ = parse_debug3 ("die entire " ^ pp_die 999 die) in *)die)) pc''')))
+                      |> in (* let _ = parse_debug3 ("die entire " ^ pp_die str 999 die) in *)die)) pc''')))
 
 
 (** compilation unit *)
@@ -934,7 +1120,9 @@ end
 
 let parse_compilation_unit 
     (debug_info_section_body: list byte) 
-    (debug_abbrev_section_body: list byte) : compilation_unit =
+    (debug_abbrev_section_body: list byte) 
+    (debug_str_section_body: list byte) 
+    : compilation_unit =
 
   let pc_abbrev = <|pc_bytes = debug_abbrev_section_body; pc_offset = 0  |> in
   let pc_info = <|pc_bytes = debug_info_section_body; pc_offset = 0  |> in
@@ -959,7 +1147,7 @@ let parse_compilation_unit
     myfindNonPure (fun ad -> ad.ad_abbreviation_code = ac) abbreviations_table  in
 
   let die = 
-    match parse_die cuh find_abbreviation_declaration pc_info' with
+    match parse_die debug_str_section_body cuh find_abbreviation_declaration pc_info' with
     | PR_fail s pc_info'' -> Assert_extra.failwith ("parse_die fail: " ^ pp_parse_fail s pc_info'')
     | PR_success (Nothing) pc_info'' -> Assert_extra.failwith ("parse_die returned Nothing: " ^ pp_parse_context pc_info'')
     | PR_success (Just die) pc_info'' -> die
@@ -969,13 +1157,14 @@ let parse_compilation_unit
     cu_header = cuh;
     cu_die = die;
     cu_abbreviations_table = abbreviations_table;
+    cu_str = debug_str_section_body;
   |>
   
 
 let pp_compilation_unit cu = 
    pp_abbreviations_table cu.cu_abbreviations_table
    ^ pp_cuh_header cu.cu_header
-   ^ pp_die 0 cu.cu_die
+   ^ pp_die cu.cu_str 0 cu.cu_die
 
 
 (** top level *)
@@ -990,29 +1179,26 @@ let just_one s xs =
 
 val harness_string_of_elf64_debug_info_section : elf64_file -> byte_sequence -> (natural -> string) -> (natural -> string) -> (natural -> string) -> elf64_header -> elf64_section_header_table -> string_table -> string
 let {ocaml} harness_string_of_elf64_debug_info_section f1 bs0 os proc usr hdr sht stbl =
-  
-  let debug_info_sections = 
-    List.filter (fun x -> 
-      x.Elf_interpreted_section.elf64_section_name_as_string = ".debug_info" 
-                ) f1.elf64_file_interpreted_sections in
-  let debug_info_section = just_one ".debug_info sections"  debug_info_sections  in
-  let debug_info_section_body =  match debug_info_section.Elf_interpreted_section.elf64_section_body with Sequence bs -> bs end in
 
-  let debug_abbrev_sections = 
-    List.filter (fun x -> 
-      x.Elf_interpreted_section.elf64_section_name_as_string = ".debug_abbrev" 
-                ) f1.elf64_file_interpreted_sections in
-  let debug_abbrev_section = just_one ".debug_abbrev sections" debug_abbrev_sections in
-  let debug_abbrev_section_body = match debug_abbrev_section.Elf_interpreted_section.elf64_section_body with Sequence bs -> bs end in
+  let extract_section_body section_name = 
+    let sections = 
+      List.filter 
+        (fun x -> 
+          x.Elf_interpreted_section.elf64_section_name_as_string = section_name
+        ) f1.elf64_file_interpreted_sections in
+    let section = just_one (section_name ^ " sections")  sections  in
+    let section_body =  match section.Elf_interpreted_section.elf64_section_body with Sequence bs -> bs end in
+    let _ = parse_debug3 (section_name ^ ": \n" ^ Elf_interpreted_section.string_of_elf64_interpreted_section section ^ "\n"
+                          ^ "  body = " ^ ppbytes2 0 section_body ^ "\n") in
+    section_body in
 
-  let _ = parse_debug3 (
-    "debug_info section: \n" ^ Elf_interpreted_section.string_of_elf64_interpreted_section debug_info_section ^ "\n"
-    ^ "  body = " ^ ppbytes2 0 debug_info_section_body ^ "\n"
-    ^ "debug_abbrev section: \n" ^ Elf_interpreted_section.string_of_elf64_interpreted_section debug_abbrev_section ^ "\n"
-    ^ "  body = " ^ ppbytes2 0 debug_abbrev_section_body ^ "\n"
-   ) in
 
-  let cu = parse_compilation_unit debug_info_section_body debug_abbrev_section_body in
+
+  let debug_abbrev_section_body = extract_section_body ".debug_abbrev" in
+  let debug_info_section_body = extract_section_body ".debug_info" in
+  let debug_str_section_body = extract_section_body ".debug_str" in
+
+  let cu = parse_compilation_unit debug_info_section_body debug_abbrev_section_body debug_str_section_body in
   pp_compilation_unit cu
                                                                                                                        
 
