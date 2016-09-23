@@ -507,7 +507,7 @@ type abbreviations_table = list abbreviation_declaration
 
 type die = 
     <|
-    die_pos : natural;
+    die_offset : natural;
     die_abbreviation_code : natural;
     die_abbreviation_declaration : abbreviation_declaration;
     die_attribute_values : list (natural (*pos*) * attribute_value);
@@ -536,10 +536,16 @@ type compilation_unit =
     <| 
     cu_header : compilation_unit_header;
     cu_die : die;
-    cu_abbreviations_table : abbreviations_table;
-    cu_str : list byte;
   |>
-    
+
+type compilation_units = list compilation_unit
+
+type dwarf = 
+    <| 
+    d_abbreviations_table : abbreviations_table;
+    d_str : list byte;
+    d_compilation_units : compilation_units;
+  |>
 
 (** basic pretty printing *)
 
@@ -942,8 +948,8 @@ let pp_operations (ops: list operation) : string =
   myconcat " " (List.map pp_operation ops)
 
 val parser_of_operation_argument_type : compilation_unit_header -> operation_argument_type -> (parse_context -> parse_result operation_argument_value)
-let parser_of_operation_argument_type cuh oad = 
-  match oad with
+let parser_of_operation_argument_type cuh oat = 
+  match oat with
     | OAT_addr -> 
         match cuh.cuh_address_size with
         | 4 -> pr_map2 (fun n -> OAV_natural n) parse_uint32
@@ -1128,8 +1134,7 @@ let parser_of_attribute_form cuh n =
 (** compilation unit header *)
 
 let pp_cuh_header (x:compilation_unit_header) : string = 
-  "Contents of the .debug_info section:\n\n"
-  ^ "  Compilation Unit @ offset " ^ pphex x.cuh_offset ^ ":\n"
+    "  Compilation Unit @ offset " ^ pphex x.cuh_offset ^ ":\n"
   ^ "   Length:        " ^ pphex x.cuh_unit_length ^ " " ^ match x.cuh_dwarf_format with Dwarf32 -> "(32-bit)" | Dwarf64 -> "(64-bit)" end ^ "\n"
   ^ "   Version:       " ^ show x.cuh_version ^ "\n"
   ^ "   Abbrev Offset: " ^ show x.cuh_debug_abbrev_offset ^ "\n"
@@ -1198,7 +1203,7 @@ let pp_die_attribute (cuh:compilation_unit_header) (str : list byte) (((at: natu
 val pp_die : compilation_unit_header -> list byte -> natural -> die -> string
 let rec pp_die cuh str level die = 
   "<" ^ show level ^ ">" 
-  ^ pp_pos die.die_pos
+  ^ pp_pos die.die_offset
   ^ ": Abbrev Number: " ^ show die.die_abbreviation_code 
   ^ " (" ^ pp_tag_encoding die.die_abbreviation_declaration.ad_tag ^")\n"
   ^
@@ -1223,7 +1228,7 @@ let rec parse_die str cuh find_abbreviation_declaration pc =
 
         let die_header = 
           <| 
-          die_pos = pc.pc_offset;
+          die_offset = pc.pc_offset;
           die_abbreviation_code = abbreviation_code;
           die_abbreviation_declaration = ad;
           die_attribute_values = avs;
@@ -1235,7 +1240,7 @@ let rec parse_die str cuh find_abbreviation_declaration pc =
           (fun dies pc''' -> 
             PR_success (Just ( let die = 
                         <| 
-                        die_pos = pc.pc_offset;
+                        die_offset = pc.pc_offset;
                         die_abbreviation_code = abbreviation_code;
                         die_abbreviation_declaration = ad;
                         die_attribute_values = avs;
@@ -1248,16 +1253,62 @@ let rec parse_die str cuh find_abbreviation_declaration pc =
 val myfindNonPure : forall 'a. ('a -> bool) -> list 'a -> 'a 
 let myfindNonPure P l = match (List.find P l) with 
   | Just e      -> e
-  | Nothing     -> Assert_extra.failwith "List_extra.findNonPure"
+  | Nothing     -> Assert_extra.failwith "myfindNonPure"
 end
 
 
 
-let parse_compilation_unit 
+let parse_compilation_unit (debug_str_section_body: list byte) (find_abbreviation_declaration : natural -> abbreviation_declaration) (pc:parse_context) : parse_result (maybe compilation_unit) 
+    =
+  
+  if pc.pc_bytes = [] then PR_success Nothing pc else
+
+  let (cuh, pc') = 
+    match parse_cuh_header pc with
+    | PR_fail s pc' -> Assert_extra.failwith ("parse_cuh_header fail: " ^ pp_parse_fail s pc')
+    | PR_success cuh pc' -> (cuh,pc')
+    end in
+
+  let _ = parse_debug3 (pp_cuh_header cuh) in 
+
+
+  match parse_die debug_str_section_body cuh find_abbreviation_declaration pc' with
+  | PR_fail s pc'' -> Assert_extra.failwith ("parse_die fail: " ^ pp_parse_fail s pc'')
+  | PR_success (Nothing) pc'' -> Assert_extra.failwith ("parse_die returned Nothing: " ^ pp_parse_context pc'')
+  | PR_success (Just die) pc'' -> 
+      let cu = 
+        <| 
+        cu_header = cuh;
+        cu_die = die;
+      |> in
+      PR_success (Just cu) pc''
+  end 
+
+
+let pp_compilation_unit debug_str_section_body cu = 
+  pp_cuh_header cu.cu_header
+  ^ pp_die cu.cu_header debug_str_section_body 0 cu.cu_die
+
+
+let parse_compilation_units (debug_str_section_body: list byte) (find_abbreviation_declaration : natural -> abbreviation_declaration) : parse_context -> parse_result (list compilation_unit) 
+    =
+  parse_list (parse_compilation_unit debug_str_section_body find_abbreviation_declaration)
+
+let pp_compilation_units debug_string_section_body (compilation_units: list compilation_unit) : string = 
+  myconcat "" (List.map (pp_compilation_unit debug_string_section_body) compilation_units)
+
+(** all dwarf info *)
+
+let pp_dwarf d = 
+   pp_abbreviations_table d.d_abbreviations_table
+   ^ pp_compilation_units d.d_str d.d_compilation_units
+
+
+let parse_dwarf
     (debug_info_section_body: list byte) 
     (debug_abbrev_section_body: list byte) 
     (debug_str_section_body: list byte) 
-    : compilation_unit =
+    : dwarf =
 
   let pc_abbrev = <|pc_bytes = debug_abbrev_section_body; pc_offset = 0  |> in
   let pc_info = <|pc_bytes = debug_info_section_body; pc_offset = 0  |> in
@@ -1268,39 +1319,23 @@ let parse_compilation_unit
     | PR_success at pc_abbrev' -> at
     end in
 
-  let _ = parse_debug3 (pp_abbreviations_table abbreviations_table) in
-
-  let (cuh, pc_info') = 
-    match parse_cuh_header pc_info with
-    | PR_fail s pc_info' -> Assert_extra.failwith ("parse_cuh_header fail: " ^ pp_parse_fail s pc_info')
-    | PR_success cuh pc_info' -> (cuh,pc_info')
-    end in
-
-  let _ = parse_debug3 (pp_cuh_header cuh) in 
-
   let find_abbreviation_declaration (ac:natural) : abbreviation_declaration = 
+    let _ = parse_debug4 ("find_abbreviation_declaration "^pphex ac) in 
     myfindNonPure (fun ad -> ad.ad_abbreviation_code = ac) abbreviations_table  in
 
-  let die = 
-    match parse_die debug_str_section_body cuh find_abbreviation_declaration pc_info' with
-    | PR_fail s pc_info'' -> Assert_extra.failwith ("parse_die fail: " ^ pp_parse_fail s pc_info'')
-    | PR_success (Nothing) pc_info'' -> Assert_extra.failwith ("parse_die returned Nothing: " ^ pp_parse_context pc_info'')
-    | PR_success (Just die) pc_info'' -> die
+  let _ = parse_debug3 (pp_abbreviations_table abbreviations_table) in
+
+  let compilation_units = 
+    match parse_compilation_units debug_str_section_body find_abbreviation_declaration pc_info with
+    | PR_fail s pc_info' ->  Assert_extra.failwith ("parse_compilation_units: " ^ pp_parse_fail s pc_info')
+    | PR_success cus pc_info' -> cus
     end in
 
     <| 
-    cu_header = cuh;
-    cu_die = die;
-    cu_abbreviations_table = abbreviations_table;
-    cu_str = debug_str_section_body;
+    d_abbreviations_table = abbreviations_table;
+    d_str = debug_str_section_body;
+    d_compilation_units = compilation_units;
   |>
-  
-
-let pp_compilation_unit cu = 
-   pp_abbreviations_table cu.cu_abbreviations_table
-   ^ pp_cuh_header cu.cu_header
-   ^ pp_die cu.cu_header cu.cu_str 0 cu.cu_die
-
 
 (** top level *)
 
@@ -1333,8 +1368,9 @@ let {ocaml} harness_string_of_elf64_debug_info_section f1 bs0 os proc usr hdr sh
   let debug_info_section_body = extract_section_body ".debug_info" in
   let debug_str_section_body = extract_section_body ".debug_str" in
 
-  let cu = parse_compilation_unit debug_info_section_body debug_abbrev_section_body debug_str_section_body in
-  pp_compilation_unit cu
+  let d = parse_dwarf debug_info_section_body debug_abbrev_section_body debug_str_section_body in
+  pp_dwarf d
+    
                                                                                                                        
 
  
