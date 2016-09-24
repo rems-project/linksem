@@ -667,12 +667,20 @@ type dwarf =
 
 (** lookup of encodings *)
 
+val lookup_Ab_b : forall 'a 'b. Eq 'a => 'a -> list ('a * 'b) -> maybe 'b
+let rec lookup_Ab_b x0 xys = 
+  match xys with
+  | [] -> Nothing
+  | (x,y)::xys' -> if x=x0 then Just y else lookup_Ab_b x0 xys'  
+  end
+
 val lookup_aB_a : forall 'a 'b. Eq 'b => 'b -> list ('a * 'b) -> maybe 'a
 let rec lookup_aB_a y0 xys = 
   match xys with
   | [] -> Nothing
   | (x,y)::xys' -> if y=y0 then Just x else lookup_aB_a y0 xys'  
   end
+
 
 val lookup_aBc_a : forall 'a 'b 'c. Eq 'b => 'b -> list ('a * 'b * 'c) -> maybe 'a
 let rec lookup_aBc_a y0 xyzs = 
@@ -702,6 +710,13 @@ let pp_tag_encoding n = pp_maybe (fun n -> lookup_aB_a n tag_encodings) n
 let pp_attribute_encoding n = pp_maybe (fun n -> lookup_aBc_a n attribute_encodings) n
 let pp_attribute_form_encoding n = pp_maybe (fun n -> lookup_aBc_a n attribute_form_encodings) n
 let pp_operation_encoding n = pp_maybe (fun n -> lookup_aBc_a n operation_encodings) n
+
+let tag_encode (s: string) : natural = 
+  match lookup_Ab_b s tag_encodings with
+  | Just n -> n
+  | Nothing -> Assert_extra.failwith "attribute_encode"
+  end
+
 
 let attribute_encode (s: string) : natural = 
   match lookup_Abc_b s attribute_encodings with
@@ -1087,7 +1102,7 @@ let pp_operation (op: operation) : string =
   op.op_string ^ " " ^ myconcat " " (List.map pp_operation_argument_value op.op_argument_values)
 
 let pp_operations (ops: list operation) : string =
-  myconcat " " (List.map pp_operation ops)
+  myconcat "; " (List.map pp_operation ops)
 
 val parser_of_operation_argument_type : p_context -> compilation_unit_header -> operation_argument_type -> (parser operation_argument_value)
 let parser_of_operation_argument_type c cuh oat = 
@@ -1344,8 +1359,8 @@ let pp_die_attribute c (cuh:compilation_unit_header) (str : list byte) (((at: na
   ^ pp_attribute_value c cuh str at av
   ^ "\n"
 
-val pp_die : p_context -> compilation_unit_header -> list byte -> natural -> die -> string
-let rec pp_die c cuh str level die = 
+val pp_die : p_context -> compilation_unit_header -> list byte -> natural -> bool -> die -> string
+let rec pp_die c cuh str level (pp_children:bool) die = 
   "<" ^ show level ^ ">" 
   ^ pp_pos die.die_offset
   ^ ": Abbrev Number: " ^ show die.die_abbreviation_code 
@@ -1356,7 +1371,7 @@ let rec pp_die c cuh str level die =
         die.die_attribute_values in
     (myconcat "" (List.map (pp_die_attribute c cuh str) ats))
     ^
-      (myconcat "" (List.map (pp_die c cuh str (level +1)) die.die_children))
+      if pp_children then myconcat "" (List.map (pp_die c cuh str (level +1) pp_children) die.die_children) else ""
 
 
 val parse_die : p_context -> list byte -> compilation_unit_header -> (natural->abbreviation_declaration) -> parser (maybe die)
@@ -1399,7 +1414,7 @@ let rec parse_die c str cuh find_abbreviation_declaration =
 let pp_compilation_unit c (debug_str_section_body: list byte) cu = 
   pp_compilation_unit_header cu.cu_header
   ^ pp_abbreviations_table cu.cu_abbreviations_table
-  ^ pp_die c cu.cu_header debug_str_section_body 0 cu.cu_die
+  ^ pp_die c cu.cu_header debug_str_section_body 0 true cu.cu_die
 
 let pp_compilation_units c debug_string_section_body (compilation_units: list compilation_unit) : string = 
   myconcat "" (List.map (pp_compilation_unit c debug_string_section_body) compilation_units)
@@ -1458,7 +1473,7 @@ let parse_compilation_units c (debug_str_section_body: list byte) (debug_abbrev_
 let pp_type_unit c (debug_str_section_body: list byte) tu = 
   pp_type_unit_header tu.tu_header
   ^ pp_abbreviations_table tu.tu_abbreviations_table
-  ^ pp_die c tu.tu_header.tuh_cuh debug_str_section_body 0 tu.tu_die
+  ^ pp_die c tu.tu_header.tuh_cuh debug_str_section_body 0 true tu.tu_die
 
 let pp_type_units c debug_string_section_body (type_units: list type_unit) : string = 
   myconcat "" (List.map (pp_type_unit c debug_string_section_body) type_units)
@@ -1507,8 +1522,8 @@ let parse_type_unit c (debug_str_section_body: list byte) (debug_abbrev_section_
       end 
 
 let parse_type_units c (debug_str_section_body: list byte) (debug_abbrev_section_body: list byte): parser (list type_unit) 
-    =
-  parse_list (parse_type_unit c debug_str_section_body debug_abbrev_section_body)
+      =
+    parse_list (parse_type_unit c debug_str_section_body debug_abbrev_section_body)
 
 (** location lists *)
 
@@ -1542,22 +1557,18 @@ let pp_location_list_item c (cuh: compilation_unit_header) (offset: natural) (x:
 
 let pp_location_list c (cuh: compilation_unit_header) ((offset:natural), (llis: list location_list_item)) =
   myconcat "" (List.map (pp_location_list_item c cuh offset) llis)
-  ^ "    " ^ pphex offset  ^ " <End of list>\n"
+(*  ^ "    " ^ pphex offset  ^ " <End of list>\n"*)
                                
 let pp_loc c (cuh: compilation_unit_header) (lls: list location_list) =
   "    Offset   Begin    End      Expression\n"
   ^  myconcat "" (List.map (pp_location_list c cuh) lls)
 
-
-(* TODO:   "The applicable base address of a location list entry is determined by the closest preceding base
-address selection entry (see below) in the same location list. If there is no such selection entry,
-then the applicable base address defaults to the base address of the compilation unit (see
-Section 3.1.1).
-" *)
+(* TODO: The applicable base address of a location list entry is determined by the closest preceding base address selection entry in the same location list. If there is no such selection entry, then the applicable base address defaults to the base address of the compilation unit - see Section 3.1.1*)
 
 
+      
 let parse_location_list_item c (cuh: compilation_unit_header) : parser (maybe location_list_item) =
-    fun (pc:parse_context) -> 
+  fun (pc:parse_context) -> 
       pr_bind 
         (parse_pair 
            (parse_uint_address_size c cuh.cuh_address_size)
@@ -1626,7 +1637,7 @@ let parse_dwarf c
 
   let pc_loc = <|pc_bytes = debug_loc_section_body; pc_offset = 0  |> in
 
-  let loc = 
+   let loc = 
     match parse_location_list_list c cuh_default pc_loc with
     | PR_fail s pc_info' ->  Assert_extra.failwith ("parse_location_list: " ^ pp_parse_fail s pc_info')
     | PR_success loc pc_loc' -> loc
@@ -1639,6 +1650,85 @@ let parse_dwarf c
    d_type_units = []; 
    d_loc = loc;
   |>
+
+
+(** analysis *)
+   
+   val find_dies_in_die : (die->bool) -> compilation_unit -> die -> list (compilation_unit * die)
+let rec find_dies_in_die (p:die->bool) (cu:compilation_unit) (d: die) = 
+   let ds = List.concatMap (find_dies_in_die p cu) d.die_children in
+   if p d then (cu,d)::ds else ds
+
+   let find_dies (p:die->bool) (d: dwarf) =
+   List.concatMap
+   (fun cu -> find_dies_in_die p cu cu.cu_die) 
+   d.d_compilation_units 
+
+
+let analyse c (d: dwarf) = 
+
+  let (cuh_default : compilation_unit_header) = let cu = myhead d.d_compilation_units in cu.cu_header in
+
+
+   let tags = List.map tag_encode ["DW_TAG_variable"; "DW_TAG_formal_parameter"] in
+   let dies (*: list (compilation_unit*die) *)= 
+   find_dies 
+   (fun die -> 
+   List.elem die.die_abbreviation_declaration.ad_tag tags
+&& 
+   List.elem 
+   (attribute_encode "DW_AT_location")
+   (List.map Tuple.fst die.die_abbreviation_declaration.ad_attribute_specifications)
+&& 
+   List.elem 
+   (attribute_encode "DW_AT_name")
+   (List.map Tuple.fst die.die_abbreviation_declaration.ad_attribute_specifications)
+
+        ) 
+        d in
+
+   myconcat "" (List.map 
+   (fun (cu,die) -> 
+
+    let ats = List.zip 
+        die.die_abbreviation_declaration.ad_attribute_specifications 
+        die.die_attribute_values in
+
+   let find_ats (s:string) = myfindNonPure (fun  (((at: natural), (af: natural)), ((pos: natural),(av:attribute_value))) -> attribute_encode s = at) ats in
+
+   let ((_,_),(_,av_name)) = find_ats "DW_AT_name" in 
+
+   let name = 
+  match av_name with 
+  | AV_string bs -> string_of_bytes bs
+  | AV_strp n -> pp_debug_str_entry d.d_str n
+  | _ -> "av_name AV not understood"
+  end in
+
+
+   let ((_,_),(_,av_location)) = find_ats "DW_AT_location" in 
+
+
+let ppd_location = 
+  match av_location with 
+  | AV_exprloc n bs -> "    "^parse_and_pp_operations c cuh_default bs^"\n"
+  | AV_block n bs -> "    "^parse_and_pp_operations c cuh_default bs^"\n"
+  | AV_sec_offset n -> 
+     let location_list = myfindNonPure (fun (n',_)-> n'=n) d.d_loc in
+     pp_location_list c cuh_default location_list 
+  | _ -> "av_location AV not understood"
+  end in 
+   
+
+
+pp_tag_encoding die.die_abbreviation_declaration.ad_tag
+^ " " ^ name ^ ":\n" ^ ppd_location ^ "\n"
+)
+
+(*   pp_die c cu.cu_header d.d_str 999 false die*)
+    dies)
+   
+
 
 
 (** top level *)
@@ -1663,7 +1753,7 @@ let {ocaml} harness_string_of_elf64_debug_info_section f1 bs0 os proc usr hdr sh
         ) f1.elf64_file_interpreted_sections in
     let section = just_one (section_name ^ " sections")  sections  in
     let section_body =  match section.Elf_interpreted_section.elf64_section_body with Sequence bs -> bs end in
-    let _ = my_debug5 (section_name ^ ": \n" ^ Elf_interpreted_section.string_of_elf64_interpreted_section section ^ "\n"
+    let _ = my_debug4 (section_name ^ ": \n" ^ Elf_interpreted_section.string_of_elf64_interpreted_section section ^ "\n"
                           ^ "  body = " ^ ppbytes2 0 section_body ^ "\n") in
     section_body in
 
@@ -1674,7 +1764,7 @@ let {ocaml} harness_string_of_elf64_debug_info_section f1 bs0 os proc usr hdr sh
 
   let d = parse_dwarf c debug_info_section_body debug_abbrev_section_body debug_str_section_body debug_loc_section_body in
   pp_dwarf c d
-    
+   ^ analyse c d    
 
 val harness_string_of_elf32_debug_info_section : elf32_file -> byte_sequence -> (natural -> string) -> (natural -> string) -> (natural -> string) -> elf32_header -> elf32_section_header_table -> string_table -> string
 let {ocaml} harness_string_of_elf32_debug_info_section f1 bs0 os proc usr hdr sht stbl =
