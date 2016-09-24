@@ -26,10 +26,23 @@ open import Elf_symbol_table
 open import Elf_types_native_uint
 
 
-(** ***************** experimental DWARF stuff *********** *)
+(** ***************** experimental DWARF reading *********** *)
+
+(** debug *)
+
+(* workaround debug.lem linking *)
+val print_endline : string -> unit
+declare ocaml target_rep function print_endline = `print_endline`
+
+let my_debug s = () (*print_endline s*)
+let my_debug2 s = () (*print_endline s*)
+let my_debug3 s = () (*print_endline s*)
+let my_debug4 s = () (*print_endline s*)
 
 
-(* hex parsing *)
+(** hex parsing *)
+
+(* should be in lem, either built-in or in pervasives *)
 
 val natural_of_char : char -> natural 
 let natural_of_char c =
@@ -39,7 +52,6 @@ let natural_of_char c =
   else if n >= naturalOrd #'A' && n <= naturalOrd #'F' then n - naturalOrd #'A' + 10
   else if n >= naturalOrd #'a' && n <= naturalOrd #'f' then n - naturalOrd #'a' + 10
   else Assert_extra.failwith ("natural_of_char argument #'" ^ String.toString [c] ^ "' not in 0-9,A-F,a-f")
-
 
 val natural_of_hex' : list char -> natural
 let rec natural_of_hex' cs = 
@@ -60,19 +72,48 @@ let natural_of_hex s =
   | _ -> Assert_extra.failwith ("natural_of_hex argument \"" ^ s ^ "\" does not begin 0x")
   end
 
+(** more missing pervasives *)
+
+(* quick hacky workaround: this is in String.lem, in src_lem_library, but the linker doesn't find it *)
+val myconcat : string -> list string -> string
+let rec myconcat sep ss =
+  match ss with
+    | [] -> ""
+    | s :: ss' ->
+      match ss' with
+      | [] -> s
+      | _ -> s ^ sep ^ myconcat sep ss'
+      end
+  end
+
+val myfindNonPure : forall 'a. ('a -> bool) -> list 'a -> 'a 
+let myfindNonPure P l = match (List.find P l) with 
+  | Just e      -> e
+  | Nothing     -> Assert_extra.failwith "myfindNonPure"
+end
 
 
 
+(** basic pretty printing *)
 
-(** dwarf types *)
+let pphex n = "0x" ^ unsafe_hex_string_of_natural 0 n
 
-(* dwarf format *)
+let ppbytes xs = show (List.map (fun x -> show x) xs)
 
-type dwarf_format =
-  | Dwarf32
-  | Dwarf64
+let rec ppbytes2 n xs = match xs with | [] -> "" | x::xs' -> "<"^pphex n^">  "^show x^"\n"^ppbytes2 (n+1) xs' end
 
-(** tag encodings *)
+(* workaround: from String *)
+val mytoString : list char -> string
+declare ocaml    target_rep function mytoString = `Xstring.implode`
+
+let string_of_bytes bs = mytoString (List.map Missing_pervasives.char_of_byte bs)
+
+
+(** dwarf encodings *)
+
+(* these encoding tables are pasted from the DWARF 4 specification *)
+
+(* tag encoding *)
 let tag_encodings = [
   ("DW_TAG_array_type"               , natural_of_hex "0x01"  ); 
   ("DW_TAG_class_type"               , natural_of_hex "0x02"  ); 
@@ -139,11 +180,13 @@ let tag_encodings = [
 ]
 
 
+(* child determination encoding *)
 
-(** child determination encodings *)
 let DW_CHILDREN_no  = natural_of_hex "0x00"
 let DW_CHILDREN_yes = natural_of_hex "0x01"
 
+
+(* attribute encoding *)
 
 type dwarf_attribute_classes = 
   | DWA_7_5_3
@@ -159,11 +202,6 @@ type dwarf_attribute_classes =
   | DWA_rangelistptr
   | DWA_reference
   | DWA_string
-
-
-
-
-(** attribute encodings *)
 
 let attribute_encodings = [
   ("DW_AT_sibling"              , natural_of_hex "0x01", [DWA_reference])                                   ;
@@ -262,10 +300,8 @@ let attribute_encodings = [
   ("DW_AT_hi_user"              , natural_of_hex "0x3fff", [DWA_dash])                                      
 ]
 
-(** attribute form encodings *)
 
-
-
+(* attribute form encoding *)
 
 let attribute_form_encodings = [
   ("DW_FORM_addr"        , natural_of_hex "0x01", [DWA_address])  ;
@@ -295,23 +331,8 @@ let attribute_form_encodings = [
   ("DW_FORM_ref_sig8"    , natural_of_hex "0x20", [DWA_reference])
 ]
 
-type attribute_value =
-  | AV_addr of natural
-  | AV_block of natural * list byte
-  | AV_constantN of natural * list byte
-  | AV_constant_SLEB128 of integer
-  | AV_constant_ULEB128 of natural
-  | AV_exprloc of natural * list byte
-  | AV_flag of bool
-  | AV_ref of natural 
-  | AV_ref_addr of natural (* dwarf_format dependent *)
-  | AV_ref_sig8 of natural
-  | AV_sec_offset of natural
-  | AV_string of list byte (* not including terminating null *)
-  | AV_strp of natural (* dwarf_format dependent *)
 
-
-(** operation encodings *)
+(* operation encoding *)
 
 type operation_argument_type =
   | OAT_addr
@@ -327,11 +348,6 @@ type operation_argument_type =
   | OAT_ULEB128
   | OAT_SLEB128
   | OAT_block
-
-type operation_argument_value = 
-  | OAV_natural of natural
-  | OAV_integer of integer
-  | OAV_block of natural * list byte
 
 let operation_encodings = [
 ("DW_OP_addr",                natural_of_hex "0x03", [OAT_addr]); (*1*) (*constant address (size target specific)*)
@@ -492,7 +508,20 @@ let operation_encodings = [
 ("DW_OP_hi_user",             natural_of_hex "0xff", [])
 ]
 
+
 (** dwarf representation types *)
+
+(* This gives a "lightly parsed" representation of some of the dwarf
+information, with the byte sequences of some of the .debug_* sections
+parsed into a structured representation.  That makes the list and tree
+structures explicit, and converts the various numeric types into just
+natural, integer, and byte sequences, but it leaves the encoding
+values as numbers rather than Lem constructors. The lem natural and 
+integer could be replaced by unsigned and signed 64-bit types. *)
+
+type dwarf_format =
+  | Dwarf32
+  | Dwarf64
 
 type abbreviation_declaration = 
     <| 
@@ -504,6 +533,20 @@ type abbreviation_declaration =
 
 type abbreviations_table = list abbreviation_declaration
 
+type attribute_value =
+  | AV_addr of natural
+  | AV_block of natural * list byte
+  | AV_constantN of natural * list byte
+  | AV_constant_SLEB128 of integer
+  | AV_constant_ULEB128 of natural
+  | AV_exprloc of natural * list byte
+  | AV_flag of bool
+  | AV_ref of natural 
+  | AV_ref_addr of natural (* dwarf_format dependent *)
+  | AV_ref_sig8 of natural
+  | AV_sec_offset of natural
+  | AV_string of list byte (* not including terminating null *)
+  | AV_strp of natural (* dwarf_format dependent *)
 
 type die = 
     <|
@@ -514,6 +557,10 @@ type die =
     die_children : list die;
   |>
 
+type operation_argument_value = 
+  | OAV_natural of natural
+  | OAV_integer of integer
+  | OAV_block of natural * list byte
 
 type operation = 
     <|
@@ -535,85 +582,85 @@ type compilation_unit_header =
 type compilation_unit = 
     <| 
     cu_header : compilation_unit_header;
+    cu_abbreviations_table : abbreviations_table;
     cu_die : die;
   |>
 
 type compilation_units = list compilation_unit
 
-type dwarf = 
+type type_unit_header = 
     <| 
-    d_abbreviations_table : abbreviations_table;
-    d_str : list byte;
-    d_compilation_units : compilation_units;
+    tuh_cuh : compilation_unit_header;
+    tuh_type_signature : natural;
+    tuh_type_offset : natural;
+  |> 
+
+type type_unit = 
+    <| 
+    tu_header : type_unit_header;
+    tu_abbreviations_table : abbreviations_table;
+    tu_die : die;
   |>
 
-(** basic pretty printing *)
-
-let pphex n = "0x" ^ unsafe_hex_string_of_natural 0 n
-
-let ppbytes xs = show (List.map (fun x -> show x) xs)
-
-let rec ppbytes2 n xs = match xs with | [] -> "" | x::xs' -> "<"^pphex n^">  "^show x^"\n"^ppbytes2 (n+1) xs' end
-
-  (* workaround: from String *)
-val mytoString : list char -> string
-declare ocaml    target_rep function mytoString = `Xstring.implode`
-
-let string_of_bytes bs = mytoString (List.map Missing_pervasives.char_of_byte bs)
+type type_units = list type_unit
+    
+type dwarf = 
+    <| 
+    d_str : list byte;
+    d_compilation_units : compilation_units;
+    d_type_units : type_units;
+  |>
 
 
-(* pp of encodings *)
+(** lookup of encodings *)
 
-val lookupb : forall 'a 'b. Eq 'b => 'b -> list ('a * 'b) -> maybe 'a
-let rec lookupb y0 xys = 
+val lookup_aB_a : forall 'a 'b. Eq 'b => 'b -> list ('a * 'b) -> maybe 'a
+let rec lookup_aB_a y0 xys = 
   match xys with
   | [] -> Nothing
-  | (x,y)::xys' -> if y=y0 then Just x else lookupb y0 xys'  
+  | (x,y)::xys' -> if y=y0 then Just x else lookup_aB_a y0 xys'  
   end
 
-val lookupc : forall 'a 'b 'c. Eq 'b => 'b -> list ('a * 'b * 'c) -> maybe 'a
-let rec lookupc y0 xyzs = 
+val lookup_aBc_a : forall 'a 'b 'c. Eq 'b => 'b -> list ('a * 'b * 'c) -> maybe 'a
+let rec lookup_aBc_a y0 xyzs = 
   match xyzs with
   | [] -> Nothing
-  | (x,y,_)::xyzs' -> if y=y0 then Just x else lookupc y0 xyzs'  
+  | (x,y,_)::xyzs' -> if y=y0 then Just x else lookup_aBc_a y0 xyzs'  
   end
 
-val lookupc2 : forall 'a 'b 'c. Eq 'b => 'b -> list ('a * 'b * 'c) -> maybe ('a*'c)
-let rec lookupc2 y0 xyzs = 
+val lookup_aBc_ac : forall 'a 'b 'c. Eq 'b => 'b -> list ('a * 'b * 'c) -> maybe ('a*'c)
+let rec lookup_aBc_ac y0 xyzs = 
   match xyzs with
   | [] -> Nothing
-  | (x,y,z)::xyzs' -> if y=y0 then Just (x,z) else lookupc2 y0 xyzs'  
+  | (x,y,z)::xyzs' -> if y=y0 then Just (x,z) else lookup_aBc_ac y0 xyzs'  
   end
 
-val lookupd : forall 'a 'b 'c. Eq 'a => 'a -> list ('a * 'b * 'c) -> maybe 'b
-let rec lookupd x0 xyzs = 
+val lookup_Abc_b : forall 'a 'b 'c. Eq 'a => 'a -> list ('a * 'b * 'c) -> maybe 'b
+let rec lookup_Abc_b x0 xyzs = 
   match xyzs with
   | [] -> Nothing
-  | (x,y,_)::xyzs' -> if x=x0 then Just y else lookupd x0 xyzs'  
+  | (x,y,_)::xyzs' -> if x=x0 then Just y else lookup_Abc_b x0 xyzs'  
   end
 
 
 let pp_maybe ppf n = match ppf n with Just s -> s | Nothing -> "encoding not found: " ^ pphex n end
 
-let pp_tag_encoding n = pp_maybe (fun n -> lookupb n tag_encodings) n
-let pp_attribute_encoding n = pp_maybe (fun n -> lookupc n attribute_encodings) n
-let pp_attribute_form_encoding n = pp_maybe (fun n -> lookupc n attribute_form_encodings) n
-let pp_operation_encoding n = pp_maybe (fun n -> lookupc n operation_encodings) n
+let pp_tag_encoding n = pp_maybe (fun n -> lookup_aB_a n tag_encodings) n
+let pp_attribute_encoding n = pp_maybe (fun n -> lookup_aBc_a n attribute_encodings) n
+let pp_attribute_form_encoding n = pp_maybe (fun n -> lookup_aBc_a n attribute_form_encodings) n
+let pp_operation_encoding n = pp_maybe (fun n -> lookup_aBc_a n operation_encodings) n
 
 let attribute_encode (s: string) : natural = 
-  match lookupd s attribute_encodings with
+  match lookup_Abc_b s attribute_encodings with
   | Just n -> n
   | Nothing -> Assert_extra.failwith "attribute_encode"
   end
 
 let attribute_form_encode (s: string) : natural = 
-  match lookupd s attribute_form_encodings with
+  match lookup_Abc_b s attribute_form_encodings with
   | Just n -> n
   | Nothing -> Assert_extra.failwith "attribute_form_encode"
   end
-
-
-
 
 
 (** basic parsing *)
@@ -626,7 +673,7 @@ type parse_result 'a =
   | PR_success of 'a * parse_context
   | PR_fail of string * parse_context
 
-
+type parser 'a = parse_context -> parse_result 'a
 
 let pp_parse_context pc = "pc_offset = " ^ pphex pc.pc_offset
 
@@ -639,27 +686,17 @@ let pp_parse_result ppa pr =
   | PR_fail s pc -> pp_parse_fail s pc  
   end
 
+(* [(>>=)] should be the monadic binding function for [parse_result].  *)
+(* but there's a type clash if we use >>=, and lem seems to output bad ocaml for >>>=. So we just use a non-infix version for now *)
 
-(* [(>>>=)] is the monadic binding function for [parse_result].  *)
-(* there's a type clash if we use >>=, and lem seems to output bad ocaml for >>>= *)
-
-(* workaround debug.lem linking *)
-val print_endline : string -> unit
-declare ocaml target_rep function print_endline = `print_endline`
-
-let parse_debug s = () (*print_endline s*)
-let parse_debug2 s = () (*print_endline s*)
-let parse_debug3 s = () (*print_endline s*)
-let parse_debug4 s = print_endline s
-
-val pr_bind : forall 'a 'b. parse_result 'a -> ('a -> parse_context -> parse_result 'b) -> parse_result 'b
+val pr_bind : forall 'a 'b. parse_result 'a -> ('a -> parser 'b) -> parse_result 'b
 let pr_bind x f =
   match x with
   | PR_success v pc -> f v pc
   | PR_fail err pc  -> PR_fail err pc
   end
 
-val pr_return : forall 'a. 'a -> (parse_context -> parse_result 'a)
+val pr_return : forall 'a. 'a -> (parser 'a)
 let pr_return x pc = PR_success x pc
 
 val pr_map : forall 'a 'b. ('a -> 'b) -> parse_result 'a -> parse_result 'b
@@ -669,47 +706,75 @@ let pr_map f x =
   | PR_fail err pc  -> PR_fail err pc
   end
 
-val pr_map2 : forall 'a 'b. ('a -> 'b) -> (parse_context -> parse_result 'a) -> (parse_context -> parse_result 'b)
+val pr_map2 : forall 'a 'b. ('a -> 'b) -> (parser 'a) -> (parser 'b)
 let pr_map2 f p = fun pc -> pr_map f (p pc)
 
 val pr_post_map1 : forall 'a 'b. (parse_result 'a) -> ('a -> 'b) -> (parse_result 'b)
 let pr_post_map1 x f = pr_map f x
 
+(*
 val pr_post_map : forall 'a 'b 'c. ('c -> parse_result 'a) -> ('a -> 'b) -> ('c -> parse_result 'b)
 let pr_post_map g f = fun x ->  pr_map f (g x)
+*)
+val pr_post_map : forall 'a 'b. (parser 'a) -> ('a -> 'b) -> (parser 'b)
+let pr_post_map p f = fun (pc: parse_context) -> pr_map f (p pc)
 
 
-val pr_with_pos : forall 'a. (parse_context -> parse_result 'a) -> (parse_context -> parse_result (natural * 'a))
+val pr_with_pos : forall 'a. (parser 'a) -> (parser (natural * 'a))
 let pr_with_pos p = fun pc -> pr_map (fun x -> (pc.pc_offset,x)) (p pc)
 
 
-val parse_pair : forall 'a 'b. (parse_context -> parse_result 'a) -> (parse_context -> parse_result 'b) -> (parse_context -> parse_result ('a * 'b))
+val parse_pair : forall 'a 'b. (parser 'a) -> (parser 'b) -> (parser ('a * 'b))
 let parse_pair p1 p2 = 
   fun pc -> 
-    let _ = parse_debug "pair " in 
+    let _ = my_debug "pair " in 
     pr_bind (p1 pc) (fun x pc' -> match p2 pc' with 
     | PR_success y pc'' -> PR_success (x,y) pc''
     | PR_fail s pc'' -> PR_fail s pc''
     end)
 
+val parse_triple : forall 'a 'b 'c. (parser 'a) -> (parser 'b) -> (parser 'c) -> parser ('a * ('b * 'c))
+let parse_triple p1 p2 p3 = 
+  parse_pair p1 (parse_pair p2 p3)
+
+val parse_quadruple : forall 'a 'b 'c 'd. (parser 'a) -> (parser 'b) -> (parser 'c) -> (parser 'd) -> parser ('a * ('b * ('c * 'd)))
+let parse_quadruple p1 p2 p3 p4 = 
+  parse_pair p1 (parse_pair p2 (parse_pair p3 p4))
+
+val parse_pentuple : forall 'a 'b 'c 'd 'e. (parser 'a) -> (parser 'b) -> (parser 'c) -> (parser 'd) -> (parser 'e) -> parser ('a * ('b * ('c * ('d * 'e))))
+let parse_pentuple p1 p2 p3 p4 p5 = 
+  parse_pair p1 (parse_pair p2 (parse_pair p3 (parse_pair p4 p5)))
+
+val parse_sextuple : forall 'a 'b 'c 'd 'e 'f. (parser 'a) -> (parser 'b) -> (parser 'c) -> (parser 'd) -> (parser 'e) -> (parser 'f) -> parser ('a * ('b * ('c * ('d * ('e * 'f)))))
+let parse_sextuple p1 p2 p3 p4 p5 p6 = 
+  parse_pair p1 (parse_pair p2 (parse_pair p3 (parse_pair p4 (parse_pair p5 p6))))
+
+val parse_dependent_pair : forall 'a 'b. (parser 'a) -> ('a -> parser 'b) -> (parser ('a * 'b))
+let parse_dependent_pair p1 p2 = 
+  fun pc -> 
+    pr_bind (p1 pc) (fun x pc' -> match p2 x pc' with 
+    | PR_success y pc'' -> PR_success (x,y) pc''
+    | PR_fail s pc'' -> PR_fail s pc''
+    end)
+
+
 
 open import List
-val parse_list' : forall 'a. (parse_context -> parse_result (maybe 'a)) -> (list 'a -> parse_context -> parse_result (list 'a))
+val parse_list' : forall 'a. (parser (maybe 'a)) -> (list 'a -> parser (list 'a))
 let rec parse_list' p1 =
-  fun acc pc ->   let _ = parse_debug "list' " in pr_bind (p1 pc) (fun mx pc' -> 
+  fun acc pc ->   let _ = my_debug "list' " in pr_bind (p1 pc) (fun mx pc' -> 
     match mx with
     | Nothing -> PR_success acc pc'
     | Just x -> parse_list' p1 (x :: acc) pc'
     end)
 
-val parse_list : forall 'a. (parse_context -> parse_result (maybe 'a)) -> (parse_context -> parse_result (list 'a))
+val parse_list : forall 'a. (parser (maybe 'a)) -> (parser (list 'a))
 let parse_list p1 = 
   pr_post_map 
     (parse_list' p1 [])
     (List.reverse) 
 
-
-val parse_parser_list : forall 'a. (list (parse_context -> parse_result 'a)) -> (parse_context -> parse_result (list 'a))
+val parse_parser_list : forall 'a. (list (parser 'a)) -> (parser (list 'a))
 let rec parse_parser_list ps = 
   match ps with
   | [] -> pr_return []
@@ -722,6 +787,9 @@ let rec parse_parser_list ps =
   end
 
 
+
+(* parsing of basic types *)
+
 let rec mytake' (n:natural) acc xs = 
   match (n,xs) with
   | (0, _) -> Just (List.reverse acc, xs)
@@ -732,11 +800,12 @@ let rec mytake' (n:natural) acc xs =
 val mytake : forall 'a.  natural -> (list 'a) -> maybe (list 'a * list 'a)
 let mytake n xs = mytake' n [] xs
 
-let parse_n_bytes (n:natural) (pc:parse_context) : parse_result (list byte) =
-  match mytake n pc.pc_bytes with
-  | Nothing -> PR_fail "parse_n_bytes" pc
-  | Just (xs,bs) -> PR_success xs (<|pc_bytes=bs; pc_offset= pc.pc_offset + naturalFromNat (List.length xs) |> )
-  end
+let parse_n_bytes (n:natural) : parser (list byte) =
+    fun (pc:parse_context) -> 
+      match mytake n pc.pc_bytes with
+      | Nothing -> PR_fail "parse_n_bytes" pc
+      | Just (xs,bs) -> PR_success xs (<|pc_bytes=bs; pc_offset= pc.pc_offset + naturalFromNat (List.length xs) |> )
+      end
 
 let rec mytakestring' acc xs = 
   match xs with
@@ -744,131 +813,127 @@ let rec mytakestring' acc xs =
   | x::xs' -> if natural_of_byte x = 0 then Just (List.reverse acc, xs') else mytakestring' (x::acc) xs'
   end
 
-let parse_string (pc:parse_context) : parse_result (list byte) =
-  match mytakestring' [] pc.pc_bytes with
-  | Nothing -> PR_fail "parse_string" pc
-  | Just (xs,bs) -> PR_success xs (<|pc_bytes=bs; pc_offset = pc.pc_offset + naturalFromNat (List.length xs) + naturalFromNat 1 |> )
-  end
+let parse_string : parser (list byte) =
+    fun (pc:parse_context) ->
+      match mytakestring' [] pc.pc_bytes with
+      | Nothing -> PR_fail "parse_string" pc
+      | Just (xs,bs) -> PR_success xs (<|pc_bytes=bs; pc_offset = pc.pc_offset + naturalFromNat (List.length xs) + naturalFromNat 1 |> )
+      end
 
+let parse_uint8 : parser natural = 
+    fun (pc:parse_context) ->
+      let _ = my_debug "uint8 " in
+      match pc.pc_bytes with
+      | b0::bytes' -> 
+          let v = natural_of_byte b0 in
+          PR_success v (<| pc_bytes = bytes'; pc_offset = pc.pc_offset + 1 |>)
+      | _ -> PR_fail "parse_uint32 not given enough bytes" pc
+      end
 
-let parse_uint8 (pc:parse_context) : parse_result natural = 
-  let _ = parse_debug "uint8 " in
-  match pc.pc_bytes with
-  | b0::bytes' -> 
-      let v = natural_of_byte b0 in
-      PR_success v (<| pc_bytes = bytes'; pc_offset = pc.pc_offset + 1 |>)
-  | _ -> PR_fail "parse_uint32 not given enough bytes" pc
-  end
+let parse_uint16 : parser natural = 
+    fun (pc:parse_context) ->
+      let _ = my_debug "uint16 " in
+      match pc.pc_bytes with
+      | b0::b1::bytes' -> 
+          let v = natural_of_byte b0 + 256*natural_of_byte b1 in
+          PR_success v (<| pc_bytes = bytes'; pc_offset = pc.pc_offset + 2 |>)
+      | _ -> PR_fail "parse_uint32 not given enough bytes" pc
+      end
 
-let parse_uint16 (pc:parse_context) : parse_result natural = 
-  let _ = parse_debug "uint16 " in
-  match pc.pc_bytes with
-  | b0::b1::bytes' -> 
-      let v = natural_of_byte b0 + 256*natural_of_byte b1 in
-      PR_success v (<| pc_bytes = bytes'; pc_offset = pc.pc_offset + 2 |>)
-  | _ -> PR_fail "parse_uint32 not given enough bytes" pc
-  end
+let parse_uint32 : parser natural = 
+    fun (pc:parse_context) ->
+      let _ = my_debug "uint32 " in
+      match pc.pc_bytes with
+      | b0::b1::b2::b3::bytes' -> 
+          let v = natural_of_byte b0 + 256*natural_of_byte b1 + 256*256*natural_of_byte b2 + 256*256*256*natural_of_byte b3 in
+          PR_success v (<| pc_bytes = bytes'; pc_offset = pc.pc_offset + 4 |>)
+      | _ -> PR_fail "parse_uint32 not given enough bytes" pc
+      end
 
-let parse_uint32 (pc:parse_context) : parse_result natural = 
-  let _ = parse_debug "uint32 " in
-  match pc.pc_bytes with
-  | b0::b1::b2::b3::bytes' -> 
-      let v = natural_of_byte b0 + 256*natural_of_byte b1 + 256*256*natural_of_byte b2 + 256*256*256*natural_of_byte b3 in
-      PR_success v (<| pc_bytes = bytes'; pc_offset = pc.pc_offset + 4 |>)
-  | _ -> PR_fail "parse_uint32 not given enough bytes" pc
-  end
+let parse_uint64 : parser natural = 
+    fun (pc:parse_context) ->
+      let _ = my_debug "uint64 " in
+      match pc.pc_bytes with
+      | b0::b1::b2::b3::b4::b5::b6::b7::bytes' -> 
+          let v = natural_of_byte b0 + 256*natural_of_byte b1 + 256*256*natural_of_byte b2 + 256*256*256*natural_of_byte b3 
+              + (256*256*256*256*(natural_of_byte b4 + 256*natural_of_byte b5 + 256*256*natural_of_byte b6 + 256*256*256*natural_of_byte b7))
+          in
+          PR_success v (<| pc_bytes = bytes'; pc_offset = pc.pc_offset + 8 |>)
+      | _ -> PR_fail "parse_uint64 not given enough bytes" pc
+      end
 
-let parse_uint64 (pc:parse_context) : parse_result natural = 
-  let _ = parse_debug "uint64 " in
-  match pc.pc_bytes with
-  | b0::b1::b2::b3::b4::b5::b6::b7::bytes' -> 
-      let v = natural_of_byte b0 + 256*natural_of_byte b1 + 256*256*natural_of_byte b2 + 256*256*256*natural_of_byte b3 
-          + (256*256*256*256*(natural_of_byte b4 + 256*natural_of_byte b5 + 256*256*natural_of_byte b6 + 256*256*256*natural_of_byte b7))
-      in
-      PR_success v (<| pc_bytes = bytes'; pc_offset = pc.pc_offset + 8 |>)
-  | _ -> PR_fail "parse_uint64 not given enough bytes" pc
-  end
+let integerFrom2sComplementNatural (n:natural) (half: natural) (all:integer) = 
+  if n < half then integerFromNatural n else integerFromNatural n - all
 
-let integerFrom2sComplementNatural (n:natural) (half: natural) (all:integer) = if n < half then integerFromNatural n else integerFromNatural n - all
+let parse_sint8 : parser integer = 
+  pr_post_map parse_uint8 (fun n -> integerFrom2sComplementNatural n 128 256)
 
-let parse_sint8 (pc:parse_context) : parse_result integer = 
-  pr_post_map1 (parse_uint8 pc) (fun n -> integerFrom2sComplementNatural n 128 256)
-let parse_sint16 (pc:parse_context) : parse_result integer = 
-  pr_post_map1 (parse_uint16 pc) (fun n -> integerFrom2sComplementNatural n (128*256) (256*256))
-let parse_sint32 (pc:parse_context) : parse_result integer = 
-  pr_post_map1 (parse_uint32 pc) (fun n -> integerFrom2sComplementNatural n (128*256*256*256) (256*256*256*256))
-let parse_sint64 (pc:parse_context) : parse_result integer = 
-  pr_post_map1 (parse_uint64 pc) (fun n -> integerFrom2sComplementNatural n (128*256*256*256*256*256*256*256) (256*256*256*256*256*256*256*256))
+let parse_sint16 : parser integer = 
+  pr_post_map parse_uint16 (fun n -> integerFrom2sComplementNatural n (128*256) (256*256))
 
+let parse_sint32 : parser integer = 
+  pr_post_map parse_uint32 (fun n -> integerFrom2sComplementNatural n (128*256*256*256) (256*256*256*256))
 
-let rec parse_ULEB128' (acc: natural) (shift_factor: natural) (pc:parse_context) : parse_result natural = 
-  let _ = parse_debug "ULEB128' " in
-  match pc.pc_bytes with
-  | b::bytes' -> 
-      let n = natural_of_byte b in
-      let acc' = (natural_land n 127) * shift_factor + acc in
-      let finished = ((natural_land n 128) = 0) in
-      let pc' = <| pc_bytes = bytes'; pc_offset = pc.pc_offset + 1 |> in
-      if finished then 
-        PR_success acc' pc'
-      else
-        parse_ULEB128' acc' (shift_factor * 128) pc'
-  | _ ->
-      PR_fail "parse_ULEB128' not given enough bytes" pc
-  end    
+let parse_sint64 : parser integer = 
+  pr_post_map parse_uint64 (fun n -> integerFrom2sComplementNatural n (128*256*256*256*256*256*256*256) (256*256*256*256*256*256*256*256))
 
-let parse_ULEB128 (pc:parse_context) : parse_result natural = 
-  parse_ULEB128' 0 1 pc
+let rec parse_ULEB128' (acc: natural) (shift_factor: natural) : parser natural = 
+    fun (pc:parse_context) ->
+      let _ = my_debug "ULEB128' " in
+      match pc.pc_bytes with
+      | b::bytes' -> 
+          let n = natural_of_byte b in
+          let acc' = (natural_land n 127) * shift_factor + acc in
+          let finished = ((natural_land n 128) = 0) in
+          let pc' = <| pc_bytes = bytes'; pc_offset = pc.pc_offset + 1 |> in
+          if finished then 
+            PR_success acc' pc'
+          else
+            parse_ULEB128' acc' (shift_factor * 128) pc'
+      | _ ->
+          PR_fail "parse_ULEB128' not given enough bytes" pc
+      end    
 
+let parse_ULEB128 : parser natural = 
+  fun (pc:parse_context) ->
+    parse_ULEB128' 0 1 pc
 
-let rec parse_SLEB128' (acc: natural) (shift_factor: natural) (pc:parse_context) : parse_result (bool * natural * natural) = 
-  let _ = parse_debug "SLEB128' " in
-  match pc.pc_bytes with
-  | b::bytes' -> 
-      let n = natural_of_byte b in
-      let acc' = acc + (natural_land n 127) * shift_factor in
-      let shift_factor' = shift_factor * 128 in
-      let finished = ((natural_land n 128) = 0) in
-      let positive = ((natural_land n 64) = 0) in
-      let pc' = <| pc_bytes = bytes'; pc_offset = pc.pc_offset + 1 |> in
-      if finished then 
-        PR_success (positive, shift_factor', acc') pc'
-      else
-        parse_SLEB128' acc' shift_factor' pc'
-  | _ ->
-      PR_fail "parse_SLEB128' not given enough bytes" pc
-  end    
+let rec parse_SLEB128' (acc: natural) (shift_factor: natural) : parser (bool * natural * natural) = 
+    fun (pc:parse_context) ->
+      let _ = my_debug "SLEB128' " in
+      match pc.pc_bytes with
+      | b::bytes' -> 
+          let n = natural_of_byte b in
+          let acc' = acc + (natural_land n 127) * shift_factor in
+          let shift_factor' = shift_factor * 128 in
+          let finished = ((natural_land n 128) = 0) in
+          let positive = ((natural_land n 64) = 0) in
+          let pc' = <| pc_bytes = bytes'; pc_offset = pc.pc_offset + 1 |> in
+          if finished then 
+            PR_success (positive, shift_factor', acc') pc'
+          else
+            parse_SLEB128' acc' shift_factor' pc'
+      | _ ->
+          PR_fail "parse_SLEB128' not given enough bytes" pc
+      end    
 
-let parse_SLEB128 (pc:parse_context) : parse_result integer = 
-  pr_bind (parse_SLEB128' 0 1 pc) (fun (positive, shift_factor, acc) pc' ->
-    let v = if positive then integerFromNatural acc else integerFromNatural acc - integerFromNatural shift_factor in
-    PR_success v pc')
+let parse_SLEB128 : parser integer = 
+    pr_post_map (parse_SLEB128' 0 1) (fun (positive, shift_factor, acc) ->
+       if positive then integerFromNatural acc else integerFromNatural acc - integerFromNatural shift_factor)
     
-let parse_nonzero_ULEB128_pair : parse_context -> parse_result (maybe (natural*natural)) =
-  let _ = parse_debug "nonzero_ULEB128_pair " in
+let parse_nonzero_ULEB128_pair : parser (maybe (natural*natural)) =
+  let _ = my_debug "nonzero_ULEB128_pair " in
   pr_post_map 
     (parse_pair parse_ULEB128 parse_ULEB128)
     (fun (n1,n2) -> if n1=0 && n2=0 then Nothing else Just (n1,n2))
 
-let parse_zero_terminated_ULEB128_pair_list : parse_context -> parse_result (list (natural*natural)) = 
-  let _ = parse_debug "zero_terminated_ULEB128_pair_list " in
+let parse_zero_terminated_ULEB128_pair_list : parser (list (natural*natural)) = 
+  let _ = my_debug "zero_terminated_ULEB128_pair_list " in
   parse_list parse_nonzero_ULEB128_pair 
 
 
 
-(** abbreviations table *)
-
-(* quick hacky workaround: this is in String.lem, in src_lem_library, but the linker doesn't find it *)
-val myconcat : string -> list string -> string
-let rec myconcat sep ss =
-  match ss with
-    | [] -> ""
-    | s :: ss' ->
-      match ss' with
-      | [] -> s
-      | _ -> s ^ sep ^ myconcat sep ss'
-      end
-  end
+(** abbreviations table: pp and parsing *)
 
 let pp_abbreviation_declaration (x:abbreviation_declaration) =
   "   " 
@@ -886,24 +951,25 @@ let pp_abbreviation_declaration (x:abbreviation_declaration) =
 let pp_abbreviations_table (x:abbreviations_table) = 
   myconcat "" (List.map pp_abbreviation_declaration x)
 
-let parse_abbreviation_declaration (pc: parse_context) : parse_result (maybe abbreviation_declaration) =
-  pr_bind (parse_ULEB128 pc) (fun n1 pc' -> 
-    if n1 = 0 then 
-      PR_success Nothing pc'
-    else 
-      pr_bind (parse_ULEB128 pc') (fun n2 pc'' -> 
-        pr_bind (parse_uint8 pc'') (fun c pc''' -> 
-          pr_post_map1 
-            (parse_zero_terminated_ULEB128_pair_list pc''')
-            (fun l ->
-              Just ( let ad = 
-                <|
-                ad_abbreviation_code = n1;
-                ad_tag = n2;
-                ad_has_children = (c<>0);
-                ad_attribute_specifications = l;
-              |> in let _ = parse_debug2 (pp_abbreviation_declaration ad) in ad)
-            ))))
+let parse_abbreviation_declaration : parser (maybe abbreviation_declaration) =
+    fun (pc: parse_context) -> 
+      pr_bind (parse_ULEB128 pc) (fun n1 pc' -> 
+        if n1 = 0 then 
+          PR_success Nothing pc'
+        else 
+          pr_bind (parse_ULEB128 pc') (fun n2 pc'' -> 
+            pr_bind (parse_uint8 pc'') (fun c pc''' -> 
+              pr_post_map1 
+                (parse_zero_terminated_ULEB128_pair_list pc''')
+                (fun l ->
+                  Just ( let ad = 
+                    <|
+                    ad_abbreviation_code = n1;
+                    ad_tag = n2;
+                    ad_has_children = (c<>0);
+                    ad_attribute_specifications = l;
+                  |> in let _ = my_debug2 (pp_abbreviation_declaration ad) in ad)
+                ))))
 
 let parse_abbreviations_table =
   parse_list parse_abbreviation_declaration
@@ -932,7 +998,7 @@ let pp_debug_str_entry (str: list byte) (n: natural) =
   | Just xs -> string_of_bytes (null_terminated_list [] xs)
   end
 
-(** operations *)
+(** operations: pp and parsing *)
 
 let pp_operation_argument_value (oav:operation_argument_value) : string =
   match oav with
@@ -947,7 +1013,7 @@ let pp_operation (op: operation) : string =
 let pp_operations (ops: list operation) : string =
   myconcat " " (List.map pp_operation ops)
 
-val parser_of_operation_argument_type : compilation_unit_header -> operation_argument_type -> (parse_context -> parse_result operation_argument_value)
+val parser_of_operation_argument_type : compilation_unit_header -> operation_argument_type -> (parser operation_argument_value)
 let parser_of_operation_argument_type cuh oat = 
   match oat with
     | OAT_addr -> 
@@ -976,12 +1042,12 @@ let parser_of_operation_argument_type cuh oat =
         pr_map (fun bs -> OAV_block n bs) (parse_n_bytes n pc')))
   end
 
-val parse_operation : compilation_unit_header -> (parse_context -> parse_result (maybe operation))
+val parse_operation : compilation_unit_header -> parser (maybe operation)
 let parse_operation cuh pc = 
   match parse_uint8 pc with
   | PR_fail s pc' -> PR_success Nothing pc
   | PR_success code pc' ->
-      match lookupc2 code operation_encodings with
+      match lookup_aBc_ac code operation_encodings with
       | Nothing -> PR_fail ("encoding not found: " ^ pphex code) pc 
       | Just (s,oats) -> 
           let ps = List.map (parser_of_operation_argument_type cuh) oats in
@@ -993,10 +1059,9 @@ let parse_operation cuh pc =
       end
   end
 
-val parse_operations : compilation_unit_header -> (parse_context -> parse_result (list operation))
+val parse_operations : compilation_unit_header -> parser (list operation)
 let parse_operations cuh =
   parse_list (parse_operation cuh)
-
 
 val parse_and_pp_operations : compilation_unit_header -> list byte -> string
 let parse_and_pp_operations cuh bs =
@@ -1008,9 +1073,8 @@ let parse_and_pp_operations cuh bs =
       ^ if pc'.pc_bytes <> [] then " Warning: extra non-parsed bytes" else ""
   end
 
-  
 
-(** attribute values *)
+(** attribute values: pp and parsing *)
 
 val pp_attribute_value : compilation_unit_header -> list byte -> natural (*attribute tag*) -> attribute_value -> string
 let pp_attribute_value cuh str at av = 
@@ -1021,7 +1085,7 @@ let pp_attribute_value cuh str at av =
   | AV_constantN n bs -> "AV_constantN " ^ show n ^ " " ^ ppbytes bs
   | AV_constant_SLEB128 i -> "AV_constant_SLEB128 " ^ show i
   | AV_constant_ULEB128 n -> "AV_constant_ULEB128 " ^ show n
-  | AV_exprloc n bs -> "AV_exprloc natural " ^ show n ^ " " ^ ppbytes bs
+  | AV_exprloc n bs -> "AV_exprloc " ^ show n ^ " " ^ ppbytes bs
       ^ " " ^ parse_and_pp_operations cuh bs
   | AV_flag b -> "AV_flag " ^ show b
   | AV_ref n -> "AV_ref " ^ pphex n
@@ -1034,7 +1098,7 @@ let pp_attribute_value cuh str at av =
   end
 
 
-val parser_of_attribute_form_non_indirect : compilation_unit_header -> natural -> (parse_context -> parse_result attribute_value)
+val parser_of_attribute_form_non_indirect : compilation_unit_header -> natural -> parser attribute_value
 let parser_of_attribute_form_non_indirect cuh n = 
 (* address*)
   if n = attribute_form_encode "DW_FORM_addr"         then 
@@ -1128,61 +1192,83 @@ let parser_of_attribute_form cuh n =
     parser_of_attribute_form_non_indirect cuh n 
 
 
+(** compilation unit header: pp and parsing *)
 
-
-
-(** compilation unit header *)
-
-let pp_cuh_header (x:compilation_unit_header) : string = 
-    "  Compilation Unit @ offset " ^ pphex x.cuh_offset ^ ":\n"
+let pp_unit_header (s:string) (x:compilation_unit_header) : string = 
+    "  " ^ s ^ " Unit @ offset " ^ pphex x.cuh_offset ^ ":\n"
   ^ "   Length:        " ^ pphex x.cuh_unit_length ^ " " ^ match x.cuh_dwarf_format with Dwarf32 -> "(32-bit)" | Dwarf64 -> "(64-bit)" end ^ "\n"
   ^ "   Version:       " ^ show x.cuh_version ^ "\n"
-  ^ "   Abbrev Offset: " ^ show x.cuh_debug_abbrev_offset ^ "\n"
+  ^ "   Abbrev Offset: " ^ pphex x.cuh_debug_abbrev_offset ^ "\n"
   ^ "   Pointer Size:  " ^ show x.cuh_address_size ^ "\n"
 
-let parse_cuh_unit_length (pc: parse_context) : parse_result (dwarf_format * natural) =
-  pr_bind (parse_uint32 pc) (fun x pc' ->
-    if x < natural_of_hex "0xfffffff0" then PR_success (Dwarf32,x) pc'
-    else if x <> natural_of_hex "0xffffffff" then PR_fail "bad unit_length" pc
-    else 
-      pr_bind (parse_uint64 pc') (fun x' pc'' -> 
-        PR_success (Dwarf64, x') pc'))
+let pp_compilation_unit_header (x:compilation_unit_header) : string = 
+  pp_unit_header "Type" x
 
-let parse_cuh_version (pc: parse_context) : parse_result natural = 
-  pr_bind (parse_uint16 pc) (fun x pc' ->
-    (*if x=4 then *) PR_success x pc')
-    (*else PR_fail "bad dwarf version, not equal to 4" pc)*)
-
-let parse_cuh_debug_abbrev_offset (df: dwarf_format) (pc: parse_context) : parse_result natural =
-  (* TODO: in sanity check, assert this is within the .debug_abbrev section *)
-  match df with
-  | Dwarf32 -> parse_uint32 pc
-  | Dwarf64 -> parse_uint64 pc
-  end
-
-let parse_cuh_address_size (pc: parse_context) : parse_result natural = 
-  parse_uint8 pc
+let parse_unit_length : parser (dwarf_format * natural) =
+    fun (pc: parse_context) -> 
+      pr_bind (parse_uint32 pc) (fun x pc' ->
+        if x < natural_of_hex "0xfffffff0" then PR_success (Dwarf32,x) pc'
+        else if x <> natural_of_hex "0xffffffff" then PR_fail "bad unit_length" pc
+        else 
+          pr_bind (parse_uint64 pc') (fun x' pc'' -> 
+            PR_success (Dwarf64, x') pc'))
       
-let parse_cuh_header (pc: parse_context) : parse_result compilation_unit_header = 
-  pr_bind (parse_cuh_unit_length pc) (fun (df,ul) pc' ->  
-    pr_bind (parse_cuh_version pc') (fun v pc'' ->
-      pr_bind (parse_cuh_debug_abbrev_offset df pc'') (fun dao pc''' -> 
-        pr_bind (parse_cuh_address_size pc''') (fun as' pc'''' ->
-          PR_success ( 
-          <|
-          cuh_offset = pc.pc_offset;
-          cuh_dwarf_format = df;
-          cuh_unit_length = ul;
-          cuh_version = v;
-          cuh_debug_abbrev_offset = dao;
-          cuh_address_size = as';
-        |>
-         ) pc''''))))
+let parse_uintDwarfN (df: dwarf_format) : parser natural =
+    match df with
+    | Dwarf32 -> parse_uint32
+    | Dwarf64 -> parse_uint64
+    end
+
+let parse_compilation_unit_header : parser compilation_unit_header = 
+    pr_post_map 
+      (pr_with_pos 
+         (parse_dependent_pair 
+            parse_unit_length
+            (fun (df,ul) -> 
+              parse_triple 
+                parse_uint16 (* version *)
+                (parse_uintDwarfN df) (* debug abbrev offset *)
+                parse_uint8 (* address_size *))))
+      (fun (offset,((df,ul), (v, (dao, as')))) -> 
+        <|
+        cuh_offset = offset;
+        cuh_dwarf_format = df;
+        cuh_unit_length = ul;
+        cuh_version = v;
+        cuh_debug_abbrev_offset = dao;
+        cuh_address_size = as';
+      |>)
 
 
-(** debugging information entries *)
+(** type unit header: pp and parsing *)
 
-(*
+(* the test binaries don't have a .debug_types section, so this isn't tested *)
+
+let pp_type_unit_header (x:type_unit_header) : string = 
+  pp_unit_header "Type" x.tuh_cuh
+  ^ "   Type Signature:  " ^ pphex x.tuh_type_signature ^ "\n"
+  ^ "   Type Offset:  " ^ pphex x.tuh_type_offset ^ "\n"
+
+      
+let parse_type_unit_header : parser type_unit_header = 
+    pr_post_map 
+      (parse_dependent_pair 
+         parse_compilation_unit_header
+         (fun cuh ->
+           parse_pair 
+             parse_uint64 (* type signature *)
+             (parse_uintDwarfN cuh.cuh_dwarf_format) (* type offset *) ))
+      (fun (cuh, (ts, to')) -> 
+        <|
+        tuh_cuh = cuh;
+        tuh_type_signature = ts;
+        tuh_type_offset = to';
+      |>)
+        
+
+(** debugging information entries: pp and parsing *)
+
+(* example pp from readelf
  <2><51>: Abbrev Number: 3 (DW_TAG_variable)
     <52>   DW_AT_name        : x	
     <54>   DW_AT_decl_file   : 1	
@@ -1215,94 +1301,163 @@ let rec pp_die cuh str level die =
       (myconcat "" (List.map (pp_die cuh str (level +1)) die.die_children))
 
 
-val parse_die : list byte -> compilation_unit_header -> (natural->abbreviation_declaration) -> (parse_context -> parse_result (maybe die))
-let rec parse_die str cuh find_abbreviation_declaration pc = 
-  let _ = parse_debug3 ("parse_die called at " ^ pp_parse_context pc ^ "\n") in
-  pr_bind (parse_ULEB128 pc) (fun abbreviation_code pc' -> 
-    if abbreviation_code = 0 then PR_success Nothing pc' 
-    else
-      let _ = parse_debug3 ("parse_die abbreviation code "^pphex abbreviation_code ^"\n") in
-      let ad = find_abbreviation_declaration abbreviation_code in
-      let attribute_value_parsers = List.map (fun (at,af) -> pr_with_pos (parser_of_attribute_form cuh af)) ad.ad_attribute_specifications in
-      pr_bind (parse_parser_list attribute_value_parsers pc') (fun avs pc'' ->
+val parse_die : list byte -> compilation_unit_header -> (natural->abbreviation_declaration) -> parser (maybe die)
+let rec parse_die str cuh find_abbreviation_declaration = 
+  fun (pc: parse_context) ->
+    let _ = my_debug3 ("parse_die called at " ^ pp_parse_context pc ^ "\n") in
+    pr_bind (parse_ULEB128 pc) (fun abbreviation_code pc' -> 
+      if abbreviation_code = 0 then PR_success Nothing pc' 
+      else
+        let _ = my_debug3 ("parse_die abbreviation code "^pphex abbreviation_code ^"\n") in
+        let ad = find_abbreviation_declaration abbreviation_code in
+        let attribute_value_parsers = List.map (fun (at,af) -> pr_with_pos (parser_of_attribute_form cuh af)) ad.ad_attribute_specifications in
+        pr_bind (parse_parser_list attribute_value_parsers pc') (fun avs pc'' ->
 
-        let die_header = 
-          <| 
-          die_offset = pc.pc_offset;
-          die_abbreviation_code = abbreviation_code;
-          die_abbreviation_declaration = ad;
-          die_attribute_values = avs;
-          die_children = [];
-        |> in let _ = parse_debug3 ("die_header " ^ pp_die cuh str 999 die_header) in 
-
-        pr_bind 
-          (if ad.ad_has_children then parse_list (parse_die str cuh find_abbreviation_declaration) pc'' else pr_return [] pc'')
-          (fun dies pc''' -> 
-            PR_success (Just ( let die = 
-                        <| 
-                        die_offset = pc.pc_offset;
-                        die_abbreviation_code = abbreviation_code;
-                        die_abbreviation_declaration = ad;
-                        die_attribute_values = avs;
-                        die_children = dies;
-                      |> in (* let _ = parse_debug3 ("die entire " ^ pp_die cuh str 999 die) in *)die)) pc''')))
-
-
-(** compilation unit *)
-                        
-val myfindNonPure : forall 'a. ('a -> bool) -> list 'a -> 'a 
-let myfindNonPure P l = match (List.find P l) with 
-  | Just e      -> e
-  | Nothing     -> Assert_extra.failwith "myfindNonPure"
-end
+(*          
+          let die_header = 
+            <| 
+            die_offset = pc.pc_offset;
+            die_abbreviation_code = abbreviation_code;
+            die_abbreviation_declaration = ad;
+            die_attribute_values = avs;
+            die_children = [];
+          |> in let _ = my_debug3 ("die_header " ^ pp_die cuh str 999 die_header) in 
+  *)          
+            pr_bind 
+              (if ad.ad_has_children then parse_list (parse_die str cuh find_abbreviation_declaration) pc'' else pr_return [] pc'')
+              (fun dies pc''' -> 
+                PR_success (Just ( let die = 
+                  <| 
+                  die_offset = pc.pc_offset;
+                  die_abbreviation_code = abbreviation_code;
+                  die_abbreviation_declaration = ad;
+                  die_attribute_values = avs;
+                  die_children = dies;
+                |> in (* let _ = my_debug3 ("die entire " ^ pp_die cuh str 999 die) in *)die)) pc''')))
 
 
+(** compilation units: pp and parsing *)
 
-let parse_compilation_unit (debug_str_section_body: list byte) (find_abbreviation_declaration : natural -> abbreviation_declaration) (pc:parse_context) : parse_result (maybe compilation_unit) 
-    =
-  
-  if pc.pc_bytes = [] then PR_success Nothing pc else
-
-  let (cuh, pc') = 
-    match parse_cuh_header pc with
-    | PR_fail s pc' -> Assert_extra.failwith ("parse_cuh_header fail: " ^ pp_parse_fail s pc')
-    | PR_success cuh pc' -> (cuh,pc')
-    end in
-
-  let _ = parse_debug3 (pp_cuh_header cuh) in 
-
-
-  match parse_die debug_str_section_body cuh find_abbreviation_declaration pc' with
-  | PR_fail s pc'' -> Assert_extra.failwith ("parse_die fail: " ^ pp_parse_fail s pc'')
-  | PR_success (Nothing) pc'' -> Assert_extra.failwith ("parse_die returned Nothing: " ^ pp_parse_context pc'')
-  | PR_success (Just die) pc'' -> 
-      let cu = 
-        <| 
-        cu_header = cuh;
-        cu_die = die;
-      |> in
-      PR_success (Just cu) pc''
-  end 
-
-
-let pp_compilation_unit debug_str_section_body cu = 
-  pp_cuh_header cu.cu_header
+let pp_compilation_unit (debug_str_section_body: list byte) cu = 
+  pp_compilation_unit_header cu.cu_header
+  ^ pp_abbreviations_table cu.cu_abbreviations_table
   ^ pp_die cu.cu_header debug_str_section_body 0 cu.cu_die
-
-
-let parse_compilation_units (debug_str_section_body: list byte) (find_abbreviation_declaration : natural -> abbreviation_declaration) : parse_context -> parse_result (list compilation_unit) 
-    =
-  parse_list (parse_compilation_unit debug_str_section_body find_abbreviation_declaration)
 
 let pp_compilation_units debug_string_section_body (compilation_units: list compilation_unit) : string = 
   myconcat "" (List.map (pp_compilation_unit debug_string_section_body) compilation_units)
 
-(** all dwarf info *)
+                        
+let parse_compilation_unit (debug_str_section_body: list byte) (debug_abbrev_section_body: list byte) : parser (maybe compilation_unit) =
+    fun (pc:parse_context) ->
+  
+      if pc.pc_bytes = [] then PR_success Nothing pc else
+      
+      let (cuh, pc') = 
+
+        match parse_compilation_unit_header pc with
+        | PR_fail s pc' -> Assert_extra.failwith ("parse_cuh_header fail: " ^ pp_parse_fail s pc')
+        | PR_success cuh pc' -> (cuh,pc')
+        end in
+
+      let _ = my_debug4 (pp_compilation_unit_header cuh) in 
+
+      let pc_abbrev = <|pc_bytes = match mydrop cuh.cuh_debug_abbrev_offset debug_abbrev_section_body with Just bs -> bs | Nothing -> Assert_extra.failwith "mydrop of debug_abbrev" end; pc_offset = cuh.cuh_debug_abbrev_offset  |> in
+
+      let abbreviations_table = 
+        match parse_abbreviations_table pc_abbrev with
+        | PR_fail s pc_abbrev' -> Assert_extra.failwith ("parse_abbrevations_table fail: " ^ pp_parse_fail s pc_abbrev')
+        | PR_success at pc_abbrev' -> at
+        end in
+
+      let _ = my_debug4 (pp_abbreviations_table abbreviations_table) in
+
+      let find_abbreviation_declaration (ac:natural) : abbreviation_declaration = 
+        let _ = my_debug4 ("find_abbreviation_declaration "^pphex ac) in 
+        myfindNonPure (fun ad -> ad.ad_abbreviation_code = ac) abbreviations_table  in
+
+      let _ = my_debug3 (pp_abbreviations_table abbreviations_table) in
+
+      match parse_die debug_str_section_body cuh find_abbreviation_declaration pc' with
+      | PR_fail s pc'' -> Assert_extra.failwith ("parse_die fail: " ^ pp_parse_fail s pc'')
+      | PR_success (Nothing) pc'' -> Assert_extra.failwith ("parse_die returned Nothing: " ^ pp_parse_context pc'')
+      | PR_success (Just die) pc'' -> 
+          let cu = 
+            <| 
+            cu_header = cuh;
+            cu_abbreviations_table = abbreviations_table;
+            cu_die = die;
+          |> in
+          PR_success (Just cu) pc''
+      end 
+
+let parse_compilation_units (debug_str_section_body: list byte) (debug_abbrev_section_body: list byte): parser (list compilation_unit) 
+    =
+  parse_list (parse_compilation_unit debug_str_section_body debug_abbrev_section_body)
+
+
+(** type units: pp and parsing *)
+
+let pp_type_unit (debug_str_section_body: list byte) tu = 
+  pp_type_unit_header tu.tu_header
+  ^ pp_abbreviations_table tu.tu_abbreviations_table
+  ^ pp_die tu.tu_header.tuh_cuh debug_str_section_body 0 tu.tu_die
+
+let pp_type_units debug_string_section_body (type_units: list type_unit) : string = 
+  myconcat "" (List.map (pp_type_unit debug_string_section_body) type_units)
+
+                        
+let parse_type_unit (debug_str_section_body: list byte) (debug_abbrev_section_body: list byte) : parser (maybe type_unit) =
+    fun (pc:parse_context) ->
+  
+      if pc.pc_bytes = [] then PR_success Nothing pc else
+      
+      let (tuh, pc') = 
+        match parse_type_unit_header pc with
+        | PR_fail s pc' -> Assert_extra.failwith ("parse_tuh_header fail: " ^ pp_parse_fail s pc')
+        | PR_success tuh pc' -> (tuh,pc')
+        end in
+
+      let _ = my_debug4 (pp_type_unit_header tuh) in 
+
+      let pc_abbrev = let n = tuh.tuh_cuh.cuh_debug_abbrev_offset in <|pc_bytes = match mydrop n debug_abbrev_section_body with Just bs -> bs | Nothing -> Assert_extra.failwith "mydrop of debug_abbrev" end; pc_offset = n  |> in
+
+      let abbreviations_table = 
+        match parse_abbreviations_table pc_abbrev with
+        | PR_fail s pc_abbrev' -> Assert_extra.failwith ("parse_abbrevations_table fail: " ^ pp_parse_fail s pc_abbrev')
+        | PR_success at pc_abbrev' -> at
+        end in
+
+      let _ = my_debug4 (pp_abbreviations_table abbreviations_table) in
+
+      let find_abbreviation_declaration (ac:natural) : abbreviation_declaration = 
+        let _ = my_debug4 ("find_abbreviation_declaration "^pphex ac) in 
+        myfindNonPure (fun ad -> ad.ad_abbreviation_code = ac) abbreviations_table  in
+
+      let _ = my_debug3 (pp_abbreviations_table abbreviations_table) in
+
+      match parse_die debug_str_section_body tuh.tuh_cuh find_abbreviation_declaration pc' with
+      | PR_fail s pc'' -> Assert_extra.failwith ("parse_die fail: " ^ pp_parse_fail s pc'')
+      | PR_success (Nothing) pc'' -> Assert_extra.failwith ("parse_die returned Nothing: " ^ pp_parse_context pc'')
+      | PR_success (Just die) pc'' -> 
+          let tu = 
+            <| 
+            tu_header = tuh;
+            tu_abbreviations_table = abbreviations_table;
+            tu_die = die;
+          |> in
+          PR_success (Just tu) pc''
+      end 
+
+let parse_type_units (debug_str_section_body: list byte) (debug_abbrev_section_body: list byte): parser (list type_unit) 
+    =
+  parse_list (parse_type_unit debug_str_section_body debug_abbrev_section_body)
+
+
+
+(** all dwarf info: pp and parsing *)
 
 let pp_dwarf d = 
-   pp_abbreviations_table d.d_abbreviations_table
-   ^ pp_compilation_units d.d_str d.d_compilation_units
-
+   pp_compilation_units d.d_str d.d_compilation_units 
 
 let parse_dwarf
     (debug_info_section_body: list byte) 
@@ -1310,35 +1465,22 @@ let parse_dwarf
     (debug_str_section_body: list byte) 
     : dwarf =
 
-  let pc_abbrev = <|pc_bytes = debug_abbrev_section_body; pc_offset = 0  |> in
   let pc_info = <|pc_bytes = debug_info_section_body; pc_offset = 0  |> in
   
-  let abbreviations_table = 
-    match parse_abbreviations_table pc_abbrev with
-    | PR_fail s pc_abbrev' -> Assert_extra.failwith ("parse_abbrevations_table fail: " ^ pp_parse_fail s pc_abbrev')
-    | PR_success at pc_abbrev' -> at
-    end in
-
-  let find_abbreviation_declaration (ac:natural) : abbreviation_declaration = 
-    let _ = parse_debug4 ("find_abbreviation_declaration "^pphex ac) in 
-    myfindNonPure (fun ad -> ad.ad_abbreviation_code = ac) abbreviations_table  in
-
-  let _ = parse_debug3 (pp_abbreviations_table abbreviations_table) in
-
   let compilation_units = 
-    match parse_compilation_units debug_str_section_body find_abbreviation_declaration pc_info with
+    match parse_compilation_units debug_str_section_body debug_abbrev_section_body pc_info with
     | PR_fail s pc_info' ->  Assert_extra.failwith ("parse_compilation_units: " ^ pp_parse_fail s pc_info')
     | PR_success cus pc_info' -> cus
     end in
 
-    <| 
-    d_abbreviations_table = abbreviations_table;
-    d_str = debug_str_section_body;
-    d_compilation_units = compilation_units;
+   <| 
+   d_str = debug_str_section_body;
+   d_compilation_units = compilation_units;
+   d_type_units = []; 
   |>
 
-(** top level *)
 
+(** top level *)
 
 let just_one s xs = 
   match xs with
@@ -1358,11 +1500,9 @@ let {ocaml} harness_string_of_elf64_debug_info_section f1 bs0 os proc usr hdr sh
         ) f1.elf64_file_interpreted_sections in
     let section = just_one (section_name ^ " sections")  sections  in
     let section_body =  match section.Elf_interpreted_section.elf64_section_body with Sequence bs -> bs end in
-    let _ = parse_debug3 (section_name ^ ": \n" ^ Elf_interpreted_section.string_of_elf64_interpreted_section section ^ "\n"
+    let _ = my_debug3 (section_name ^ ": \n" ^ Elf_interpreted_section.string_of_elf64_interpreted_section section ^ "\n"
                           ^ "  body = " ^ ppbytes2 0 section_body ^ "\n") in
     section_body in
-
-
 
   let debug_abbrev_section_body = extract_section_body ".debug_abbrev" in
   let debug_info_section_body = extract_section_body ".debug_info" in
@@ -1371,11 +1511,7 @@ let {ocaml} harness_string_of_elf64_debug_info_section f1 bs0 os proc usr hdr sh
   let d = parse_dwarf debug_info_section_body debug_abbrev_section_body debug_str_section_body in
   pp_dwarf d
     
-                                                                                                                       
-
- 
-
 
 val harness_string_of_elf32_debug_info_section : elf32_file -> byte_sequence -> (natural -> string) -> (natural -> string) -> (natural -> string) -> elf32_header -> elf32_section_header_table -> string_table -> string
 let {ocaml} harness_string_of_elf32_debug_info_section f1 bs0 os proc usr hdr sht stbl =
-"NOT IMPLEMENTED"
+  "NOT IMPLEMENTED"
