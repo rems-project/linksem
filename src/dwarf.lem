@@ -38,6 +38,7 @@ let my_debug s = () (*print_endline s*)
 let my_debug2 s = () (*print_endline s*)
 let my_debug3 s = () (*print_endline s*)
 let my_debug4 s = () (*print_endline s*)
+let my_debug5 s = print_endline s
 
 
 (** hex parsing *)
@@ -85,6 +86,10 @@ let rec myconcat sep ss =
       | _ -> s ^ sep ^ myconcat sep ss'
       end
   end
+
+val myhead : forall 'a. list 'a -> 'a
+let myhead l = match l with | x::xs -> x | [] -> Assert_extra.failwith "myhead of empty list" end
+
 
 val myfindNonPure : forall 'a. ('a -> bool) -> list 'a -> 'a 
 let myfindNonPure P l = match (List.find P l) with 
@@ -456,38 +461,38 @@ let operation_encodings = [
 ("DW_OP_reg29",               natural_of_hex "0x6d", []); (*1*)
 ("DW_OP_reg30",               natural_of_hex "0x6e", []); (*1*)
 ("DW_OP_reg31",               natural_of_hex "0x6f", []); (*1*) 
-("DW_OP_breg0",               natural_of_hex "0x70", []); (*1*) (* base register 0..31 = (DW_OP_breg0 + regnum) *)
-("DW_OP_breg1",               natural_of_hex "0x71", []); (*1*)
-("DW_OP_breg2",               natural_of_hex "0x72", []); (*1*)
-("DW_OP_breg3",               natural_of_hex "0x73", []); (*1*)
-("DW_OP_breg4",               natural_of_hex "0x74", []); (*1*)
-("DW_OP_breg5",               natural_of_hex "0x75", []); (*1*)
-("DW_OP_breg6",               natural_of_hex "0x76", []); (*1*)
-("DW_OP_breg7",               natural_of_hex "0x77", []); (*1*)
-("DW_OP_breg8",               natural_of_hex "0x78", []); (*1*)
-("DW_OP_breg9",               natural_of_hex "0x79", []); (*1*)
-("DW_OP_breg10",              natural_of_hex "0x7a", []); (*1*)
-("DW_OP_breg11",              natural_of_hex "0x7b", []); (*1*)
-("DW_OP_breg12",              natural_of_hex "0x7c", []); (*1*)
-("DW_OP_breg13",              natural_of_hex "0x7d", []); (*1*)
-("DW_OP_breg14",              natural_of_hex "0x7e", []); (*1*)
-("DW_OP_breg15",              natural_of_hex "0x7f", []); (*1*)
-("DW_OP_breg16",              natural_of_hex "0x80", []); (*1*)
-("DW_OP_breg17",              natural_of_hex "0x81", []); (*1*)
-("DW_OP_breg18",              natural_of_hex "0x82", []); (*1*)
-("DW_OP_breg19",              natural_of_hex "0x83", []); (*1*)
-("DW_OP_breg20",              natural_of_hex "0x84", []); (*1*)
-("DW_OP_breg21",              natural_of_hex "0x85", []); (*1*)
-("DW_OP_breg22",              natural_of_hex "0x86", []); (*1*)
-("DW_OP_breg23",              natural_of_hex "0x87", []); (*1*)
-("DW_OP_breg24",              natural_of_hex "0x88", []); (*1*)
-("DW_OP_breg25",              natural_of_hex "0x89", []); (*1*)
-("DW_OP_breg26",              natural_of_hex "0x8a", []); (*1*)
-("DW_OP_breg27",              natural_of_hex "0x8b", []); (*1*)
-("DW_OP_breg28",              natural_of_hex "0x8c", []); (*1*)
-("DW_OP_breg29",              natural_of_hex "0x8d", []); (*1*)
-("DW_OP_breg30",              natural_of_hex "0x8e", []); (*1*)
-("DW_OP_breg31",              natural_of_hex "0x8f", []); (*1*) 
+("DW_OP_breg0",               natural_of_hex "0x70", [OAT_SLEB128]); (*1*) (* base register 0..31 = (DW_OP_breg0 + regnum) *)
+("DW_OP_breg1",               natural_of_hex "0x71", [OAT_SLEB128]); (*1*)
+("DW_OP_breg2",               natural_of_hex "0x72", [OAT_SLEB128]); (*1*)
+("DW_OP_breg3",               natural_of_hex "0x73", [OAT_SLEB128]); (*1*)
+("DW_OP_breg4",               natural_of_hex "0x74", [OAT_SLEB128]); (*1*)
+("DW_OP_breg5",               natural_of_hex "0x75", [OAT_SLEB128]); (*1*)
+("DW_OP_breg6",               natural_of_hex "0x76", [OAT_SLEB128]); (*1*)
+("DW_OP_breg7",               natural_of_hex "0x77", [OAT_SLEB128]); (*1*)
+("DW_OP_breg8",               natural_of_hex "0x78", [OAT_SLEB128]); (*1*)
+("DW_OP_breg9",               natural_of_hex "0x79", [OAT_SLEB128]); (*1*)
+("DW_OP_breg10",              natural_of_hex "0x7a", [OAT_SLEB128]); (*1*)
+("DW_OP_breg11",              natural_of_hex "0x7b", [OAT_SLEB128]); (*1*)
+("DW_OP_breg12",              natural_of_hex "0x7c", [OAT_SLEB128]); (*1*)
+("DW_OP_breg13",              natural_of_hex "0x7d", [OAT_SLEB128]); (*1*)
+("DW_OP_breg14",              natural_of_hex "0x7e", [OAT_SLEB128]); (*1*)
+("DW_OP_breg15",              natural_of_hex "0x7f", [OAT_SLEB128]); (*1*)
+("DW_OP_breg16",              natural_of_hex "0x80", [OAT_SLEB128]); (*1*)
+("DW_OP_breg17",              natural_of_hex "0x81", [OAT_SLEB128]); (*1*)
+("DW_OP_breg18",              natural_of_hex "0x82", [OAT_SLEB128]); (*1*)
+("DW_OP_breg19",              natural_of_hex "0x83", [OAT_SLEB128]); (*1*)
+("DW_OP_breg20",              natural_of_hex "0x84", [OAT_SLEB128]); (*1*)
+("DW_OP_breg21",              natural_of_hex "0x85", [OAT_SLEB128]); (*1*)
+("DW_OP_breg22",              natural_of_hex "0x86", [OAT_SLEB128]); (*1*)
+("DW_OP_breg23",              natural_of_hex "0x87", [OAT_SLEB128]); (*1*)
+("DW_OP_breg24",              natural_of_hex "0x88", [OAT_SLEB128]); (*1*)
+("DW_OP_breg25",              natural_of_hex "0x89", [OAT_SLEB128]); (*1*)
+("DW_OP_breg26",              natural_of_hex "0x8a", [OAT_SLEB128]); (*1*)
+("DW_OP_breg27",              natural_of_hex "0x8b", [OAT_SLEB128]); (*1*)
+("DW_OP_breg28",              natural_of_hex "0x8c", [OAT_SLEB128]); (*1*)
+("DW_OP_breg29",              natural_of_hex "0x8d", [OAT_SLEB128]); (*1*)
+("DW_OP_breg30",              natural_of_hex "0x8e", [OAT_SLEB128]); (*1*)
+("DW_OP_breg31",              natural_of_hex "0x8f", [OAT_SLEB128]); (*1*) 
 ("DW_OP_regx",                natural_of_hex "0x90", [OAT_ULEB128]); (*1*) (* ULEB128 register *)
 ("DW_OP_fbreg",               natural_of_hex "0x91", [OAT_SLEB128]); (*1*) (* SLEB128 offset *)
 ("DW_OP_bregx",               natural_of_hex "0x92", [OAT_ULEB128; OAT_SLEB128]); (*2*) (* ULEB128 register followed by SLEB128 offset *)
@@ -505,8 +510,24 @@ let operation_encodings = [
 ("DW_OP_implicit_value",      natural_of_hex "0x9e", [OAT_block]); (*2*) (* ULEB128 size followed by block of that size *)
 ("DW_OP_stack_value",         natural_of_hex "0x9f", []); (*0*) 
 ("DW_OP_lo_user",             natural_of_hex "0xe0", []); 
-("DW_OP_hi_user",             natural_of_hex "0xff", [])
+("DW_OP_hi_user",             natural_of_hex "0xff", []);
+
+(* GCC also produces these for our example: 
+https://fedorahosted.org/elfutils/wiki/DwarfExtensions
+http://dwarfstd.org/ShowIssue.php?issue=100909.1 *)
+("DW_GNU_OP_entry_value",     natural_of_hex "0xf3", [OAT_block]); (*2*) (* ULEB128 size followed by DWARF expression block of that size*)
+("DW_OP_GNU_implicit_pointer", natural_of_hex "0xf2", [OAT_dwarf_format_t;OAT_SLEB128])
+
 ]
+
+
+let max_address (as': natural) : natural = 
+  match as' with
+  | 4 -> natural_of_hex "0xffffffff"
+  | 8 -> natural_of_hex "0xffffffffffffffff"
+  | _ -> Assert_extra.failwith "max_address size not 4 or 8"
+  end
+
 
 (** context for parsing and pp functions *)
 
@@ -532,13 +553,25 @@ type dwarf_format =
 
 type abbreviation_declaration = 
     <| 
-    ad_abbreviation_code : natural;
-    ad_tag : natural;
-    ad_has_children : bool;
-    ad_attribute_specifications : list (natural * natural);
+    ad_abbreviation_code: natural;
+    ad_tag: natural;
+    ad_has_children: bool;
+    ad_attribute_specifications: list (natural * natural);
   |>
 
 type abbreviations_table = list abbreviation_declaration
+
+type operation_argument_value = 
+  | OAV_natural of natural
+  | OAV_integer of integer
+  | OAV_block of natural * list byte
+
+type operation = 
+    <|
+    op_code: natural;
+    op_string: string;
+    op_argument_values: list operation_argument_value;
+  |>
 
 type attribute_value =
   | AV_addr of natural
@@ -557,65 +590,78 @@ type attribute_value =
 
 type die = 
     <|
-    die_offset : natural;
-    die_abbreviation_code : natural;
-    die_abbreviation_declaration : abbreviation_declaration;
-    die_attribute_values : list (natural (*pos*) * attribute_value);
-    die_children : list die;
-  |>
-
-type operation_argument_value = 
-  | OAV_natural of natural
-  | OAV_integer of integer
-  | OAV_block of natural * list byte
-
-type operation = 
-    <|
-    op_code : natural;
-    op_string : string;
-    op_argument_values : list operation_argument_value;
+    die_offset: natural;
+    die_abbreviation_code: natural;
+    die_abbreviation_declaration: abbreviation_declaration;
+    die_attribute_values: list (natural (*pos*) * attribute_value);
+    die_children: list die;
   |>
 
 type compilation_unit_header = 
     <| 
-    cuh_offset : natural; 
-    cuh_dwarf_format : dwarf_format;
-    cuh_unit_length : natural;
-    cuh_version : natural;
-    cuh_debug_abbrev_offset : natural;
-    cuh_address_size : natural;
+    cuh_offset: natural; 
+    cuh_dwarf_format: dwarf_format;
+    cuh_unit_length: natural;
+    cuh_version: natural;
+    cuh_debug_abbrev_offset: natural;
+    cuh_address_size: natural;
   |> 
     
 type compilation_unit = 
     <| 
-    cu_header : compilation_unit_header;
-    cu_abbreviations_table : abbreviations_table;
-    cu_die : die;
+    cu_header: compilation_unit_header;
+    cu_abbreviations_table: abbreviations_table;
+    cu_die: die;
   |>
 
 type compilation_units = list compilation_unit
 
 type type_unit_header = 
     <| 
-    tuh_cuh : compilation_unit_header;
-    tuh_type_signature : natural;
-    tuh_type_offset : natural;
+    tuh_cuh: compilation_unit_header;
+    tuh_type_signature: natural;
+    tuh_type_offset: natural;
   |> 
 
 type type_unit = 
     <| 
-    tu_header : type_unit_header;
-    tu_abbreviations_table : abbreviations_table;
-    tu_die : die;
+    tu_header: type_unit_header;
+    tu_abbreviations_table: abbreviations_table;
+    tu_die: die;
   |>
 
 type type_units = list type_unit
+
+type single_location_description = list byte
+
+type location_list_entry =
+    <|
+(*    lle_offset: natural;*)
+    lle_beginning_address_offset: natural;
+    lle_ending_address_offset: natural;
+    lle_single_location_description: single_location_description;
+  |>
+
+type base_address_selection_entry =
+    <|
+(*    base_offset: natural;*)
+    base_address: natural;
+  |>
+
+type location_list_item =
+  | LLE of location_list_entry
+  | BASE of base_address_selection_entry
+
+type location_list = natural (*offset*) * list location_list_item
+
+type location_list_list = list location_list 
     
 type dwarf = 
     <| 
-    d_str : list byte;
-    d_compilation_units : compilation_units;
-    d_type_units : type_units;
+    d_str: list byte;
+    d_compilation_units: compilation_units;
+    d_type_units: type_units;
+    d_loc: location_list_list;
   |>
 
 
@@ -810,7 +856,7 @@ let mytake n xs = mytake' n [] xs
 let parse_n_bytes (n:natural) : parser (list byte) =
     fun (pc:parse_context) -> 
       match mytake n pc.pc_bytes with
-      | Nothing -> PR_fail "parse_n_bytes" pc
+      | Nothing -> PR_fail ("parse_n_bytes n=" ^ pphex n) pc
       | Just (xs,bs) -> PR_success xs (<|pc_bytes=bs; pc_offset= pc.pc_offset + naturalFromNat (List.length xs) |> )
       end
 
@@ -947,6 +993,19 @@ let parse_nonzero_ULEB128_pair : parser (maybe (natural*natural)) =
 let parse_zero_terminated_ULEB128_pair_list : parser (list (natural*natural)) = 
   let _ = my_debug "zero_terminated_ULEB128_pair_list " in
   parse_list parse_nonzero_ULEB128_pair 
+
+let parse_uintDwarfN c (df: dwarf_format) : parser natural =
+    match df with
+    | Dwarf32 -> (parse_uint32 c)
+    | Dwarf64 -> (parse_uint64 c)
+    end
+
+let parse_uint_address_size c (as': natural) : parser natural =
+    match as' with
+    | 4 -> (parse_uint32 c)
+    | 8 -> (parse_uint64 c)
+    | _ -> Assert_extra.failwith "cuh_address_size not 4 or 8"
+    end
 
 
 
@@ -1119,11 +1178,7 @@ val parser_of_attribute_form_non_indirect : p_context -> compilation_unit_header
 let parser_of_attribute_form_non_indirect c cuh n = 
 (* address*)
   if n = attribute_form_encode "DW_FORM_addr"         then 
-    match cuh.cuh_address_size with
-    | 4 -> pr_map2 (fun n -> AV_addr n) (parse_uint32 c)
-    | 8 -> pr_map2 (fun n -> AV_addr n) (parse_uint64 c)
-    | _ -> Assert_extra.failwith "cuh_address_size not 4 or 8"
-    end
+    pr_map2 (fun n -> AV_addr n) (parse_uint_address_size c cuh.cuh_address_size)
 (* block *)
   else if n = attribute_form_encode "DW_FORM_block1"       then 
     (fun pc -> pr_bind (parse_uint8 c pc) (fun n pc' -> 
@@ -1161,10 +1216,7 @@ let parser_of_attribute_form_non_indirect c cuh n =
     pr_map2 (fun () -> AV_flag true) (pr_return ())
 (* lineptr, loclistptr, macptr, rangelistptr *)
   else if n = attribute_form_encode "DW_FORM_sec_offset"   then 
-    match cuh.cuh_dwarf_format with
-    | Dwarf32 -> pr_map2 (fun n -> AV_sec_offset n) (parse_uint32 c)
-    | Dwarf64 -> pr_map2 (fun n -> AV_sec_offset n) (parse_uint64 c)
-    end
+    pr_map2 (fun n -> AV_sec_offset n) (parse_uintDwarfN c cuh.cuh_dwarf_format)
 (* reference - first type *)
   else if n = attribute_form_encode "DW_FORM_ref1"         then 
     pr_map2 (fun n -> AV_ref n) (parse_uint8 c)
@@ -1178,10 +1230,7 @@ let parser_of_attribute_form_non_indirect c cuh n =
     pr_map2 (fun n -> AV_ref n) parse_ULEB128
 (* reference - second type *)
   else if n = attribute_form_encode "DW_FORM_ref_addr"     then 
-    match cuh.cuh_dwarf_format with
-    | Dwarf32 -> pr_map2 (fun n -> AV_ref_addr n) (parse_uint32 c)
-    | Dwarf64 -> pr_map2 (fun n -> AV_ref_addr n) (parse_uint64 c)
-    end
+    pr_map2 (fun n -> AV_ref_addr n) (parse_uintDwarfN c cuh.cuh_dwarf_format)
 (* reference - third type *)
   else if n = attribute_form_encode "DW_FORM_ref_sig8"     then 
     pr_map2 (fun n -> AV_ref_sig8 n) (parse_uint64 c)
@@ -1189,10 +1238,7 @@ let parser_of_attribute_form_non_indirect c cuh n =
   else if n = attribute_form_encode "DW_FORM_string"       then 
     pr_map2 (fun bs -> AV_string bs) parse_string
   else if n = attribute_form_encode "DW_FORM_strp"         then 
-    match cuh.cuh_dwarf_format with
-    | Dwarf32 -> pr_map2 (fun n -> AV_strp n) (parse_uint32 c)
-    | Dwarf64 -> pr_map2 (fun n -> AV_strp n) (parse_uint64 c)
-    end
+    pr_map2 (fun n -> AV_strp n) (parse_uintDwarfN c cuh.cuh_dwarf_format)
 (* indirect (cycle detection) *)
   else if n = attribute_form_encode "DW_FORM_indirect"     then 
     Assert_extra.failwith "DW_FORM_INDIRECT cycle"
@@ -1202,7 +1248,7 @@ let parser_of_attribute_form_non_indirect c cuh n =
 
 
 let parser_of_attribute_form c cuh n = 
-  if n = attribute_form_encode "DW_FORM_indirect"     then 
+  if n = attribute_form_encode "DW_FORM_indirect" then 
     (fun pc -> pr_bind (parse_ULEB128 pc) (fun n ->
       parser_of_attribute_form_non_indirect c cuh n) )
   else 
@@ -1230,11 +1276,6 @@ let parse_unit_length c : parser (dwarf_format * natural) =
           pr_bind (parse_uint64 c pc') (fun x' pc'' -> 
             PR_success (Dwarf64, x') pc'))
       
-let parse_uintDwarfN c (df: dwarf_format) : parser natural =
-    match df with
-    | Dwarf32 -> (parse_uint32 c)
-    | Dwarf64 -> (parse_uint64 c)
-    end
 
 let parse_compilation_unit_header c : parser compilation_unit_header = 
     pr_post_map 
@@ -1469,17 +1510,107 @@ let parse_type_units c (debug_str_section_body: list byte) (debug_abbrev_section
     =
   parse_list (parse_type_unit c debug_str_section_body debug_abbrev_section_body)
 
+(** location lists *)
 
+(* readelf example
+Contents of the .debug_loc section:
+
+    Offset   Begin    End      Expression
+    00000000 0000000000400168 0000000000400174 (DW_OP_reg0 (r0))
+    00000000 0000000000400174 0000000000400184 (DW_OP_GNU_entry_value: (DW_OP_reg0 (r0)); DW_OP_stack_value)
+    00000000 <End of list>
+    00000039 000000000040017c 0000000000400180 (DW_OP_lit1; DW_OP_stack_value)
+*)
+
+let pp_location_list_entry c (cuh:compilation_unit_header) (offset:natural) (x:location_list_entry) : string =
+  "    " ^ pphex offset 
+  ^ " " ^ pphex x.lle_beginning_address_offset
+  ^ " " ^ pphex x.lle_ending_address_offset
+  ^ " (" ^ parse_and_pp_operations c cuh x.lle_single_location_description ^")"
+  ^ "\n"
+
+let pp_base_address_selection_entry c (cuh:compilation_unit_header) (offset:natural) (x:base_address_selection_entry) : string =
+  "    " ^ pphex offset 
+  ^ " " ^ pphex x.base_address
+  ^ "\n"
+
+let pp_location_list_item c (cuh: compilation_unit_header) (offset: natural) (x:location_list_item) = 
+  match x with
+  | LLE lle -> pp_location_list_entry c cuh offset lle
+  | BASE base -> pp_base_address_selection_entry c cuh offset base
+  end
+
+let pp_location_list c (cuh: compilation_unit_header) ((offset:natural), (llis: list location_list_item)) =
+  myconcat "" (List.map (pp_location_list_item c cuh offset) llis)
+  ^ "    " ^ pphex offset  ^ " <End of list>\n"
+                               
+let pp_loc c (cuh: compilation_unit_header) (lls: list location_list) =
+  "    Offset   Begin    End      Expression\n"
+  ^  myconcat "" (List.map (pp_location_list c cuh) lls)
+
+
+(* TODO:   "The applicable base address of a location list entry is determined by the closest preceding base
+address selection entry (see below) in the same location list. If there is no such selection entry,
+then the applicable base address defaults to the base address of the compilation unit (see
+Section 3.1.1).
+" *)
+
+
+let parse_location_list_item c (cuh: compilation_unit_header) : parser (maybe location_list_item) =
+    fun (pc:parse_context) -> 
+      pr_bind 
+        (parse_pair 
+           (parse_uint_address_size c cuh.cuh_address_size)
+           (parse_uint_address_size c cuh.cuh_address_size)
+           pc)
+        (fun ((a1: natural),(a2:natural)) pc' ->
+          let _ = my_debug4 ("offset="^pphex pc.pc_offset ^ " begin=" ^ pphex a1 ^ " end=" ^ pphex a2) in
+          if a1=0 && a2=0 then
+            PR_success Nothing pc'
+          else if a1 = max_address cuh.cuh_address_size then
+            let x = BASE <| (*base_offset=pc.pc_offset;*) base_address=a1 |> in
+            PR_success (Just x (*(pc.pc_offset, x)*)) pc'
+          else
+            pr_bind (parse_uint16 c pc') (fun n pc'' -> 
+              pr_post_map1
+                (parse_n_bytes n pc'') 
+                (fun bs -> 
+                  let x = 
+                    LLE <| 
+                    (*lle_offset = pc.pc_offset;*)
+                    lle_beginning_address_offset = a1;
+                    lle_ending_address_offset = a2;
+                    lle_single_location_description = bs;
+                  |> in
+                  Just x (*(pc.pc_offset, x)*))
+                                        )
+        )
+
+let parse_location_list c cuh : parser (maybe location_list) 
+    = fun (pc: parse_context) -> 
+      if pc.pc_bytes = [] then 
+        PR_success Nothing pc
+      else
+        pr_post_map1 
+          (parse_list (parse_location_list_item c cuh) pc)
+          (fun llis -> (Just (pc.pc_offset, llis)))
+
+let parse_location_list_list c cuh : parser location_list_list =
+    parse_list (parse_location_list c cuh)
 
 (** all dwarf info: pp and parsing *)
 
 let pp_dwarf c d = 
    pp_compilation_units c d.d_str d.d_compilation_units 
+  ^ "\n"
+  ^ let (cuh_default : compilation_unit_header) = let cu = myhead d.d_compilation_units in cu.cu_header in
+    pp_loc c cuh_default d.d_loc
 
 let parse_dwarf c
     (debug_info_section_body: list byte) 
     (debug_abbrev_section_body: list byte) 
     (debug_str_section_body: list byte) 
+    (debug_loc_section_body: list byte) 
     : dwarf =
 
   let pc_info = <|pc_bytes = debug_info_section_body; pc_offset = 0  |> in
@@ -1490,10 +1621,23 @@ let parse_dwarf c
     | PR_success cus pc_info' -> cus
     end in
 
+  (* the DWARF4 spec doesn't seem to specify the address size used in the .debug_loc section, so we (hackishly) take it from the first compilation unit *)
+  let (cuh_default : compilation_unit_header) = let cu = myhead compilation_units in cu.cu_header in
+
+  let pc_loc = <|pc_bytes = debug_loc_section_body; pc_offset = 0  |> in
+
+  let loc = 
+    match parse_location_list_list c cuh_default pc_loc with
+    | PR_fail s pc_info' ->  Assert_extra.failwith ("parse_location_list: " ^ pp_parse_fail s pc_info')
+    | PR_success loc pc_loc' -> loc
+    end in
+
+
    <| 
    d_str = debug_str_section_body;
    d_compilation_units = compilation_units;
    d_type_units = []; 
+   d_loc = loc;
   |>
 
 
@@ -1519,15 +1663,16 @@ let {ocaml} harness_string_of_elf64_debug_info_section f1 bs0 os proc usr hdr sh
         ) f1.elf64_file_interpreted_sections in
     let section = just_one (section_name ^ " sections")  sections  in
     let section_body =  match section.Elf_interpreted_section.elf64_section_body with Sequence bs -> bs end in
-    let _ = my_debug3 (section_name ^ ": \n" ^ Elf_interpreted_section.string_of_elf64_interpreted_section section ^ "\n"
+    let _ = my_debug5 (section_name ^ ": \n" ^ Elf_interpreted_section.string_of_elf64_interpreted_section section ^ "\n"
                           ^ "  body = " ^ ppbytes2 0 section_body ^ "\n") in
     section_body in
 
   let debug_abbrev_section_body = extract_section_body ".debug_abbrev" in
   let debug_info_section_body = extract_section_body ".debug_info" in
   let debug_str_section_body = extract_section_body ".debug_str" in
+  let debug_loc_section_body = extract_section_body ".debug_loc" in
 
-  let d = parse_dwarf c debug_info_section_body debug_abbrev_section_body debug_str_section_body in
+  let d = parse_dwarf c debug_info_section_body debug_abbrev_section_body debug_str_section_body debug_loc_section_body in
   pp_dwarf c d
     
 
