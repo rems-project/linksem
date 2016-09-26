@@ -5,6 +5,9 @@ open import Maybe
 open import Num
 open import String
 
+open import List (* TODO: check why this is not imported in ELF *)
+
+
 open import Byte_sequence
 open import Error
 open import Hex_printing
@@ -96,6 +99,28 @@ let myfindNonPure P l = match (List.find P l) with
   | Just e      -> e
   | Nothing     -> Assert_extra.failwith "myfindNonPure"
 end
+
+(* natural version of List.index *)
+val index_natural : forall 'a. list 'a -> natural -> maybe 'a
+let rec index_natural l n = match l with 
+  | []      -> Nothing
+  | x :: xs -> if n = 0 then Just x else index_natural xs (n-1)
+end
+
+let partialNaturalFromInteger (i:integer) : natural =
+ if i<0 then Assert_extra.failwith "partialNaturalFromInteger" else naturalFromInteger i
+
+(*
+val shift_left_big_int : big_int -> int -> big_int
+shift_left_big_int b n returns b shifted left by n bits. Equivalent to multiplication by 2^n.
+val shift_right_big_int : big_int -> int -> big_int
+shift_right_big_int b n returns b shifted right by n bits. Equivalent to division by 2^n with the result being rounded towards minus infinity.
+*)
+val natural_nat_shift_left : natural -> nat -> natural 
+declare ocaml    target_rep function natural_nat_shift_left = `Nat_big_num.shift_left`
+
+val natural_nat_shift_right : natural -> nat -> natural 
+declare ocaml    target_rep function natural_nat_shift_right = `Nat_big_num.shift_right`
 
 
 
@@ -354,169 +379,205 @@ type operation_argument_type =
   | OAT_SLEB128
   | OAT_block
 
+type operation_argument_value = 
+  | OAV_natural of natural
+  | OAV_integer of integer
+  | OAV_block of natural * list byte
+
+type operation_stack = list natural
+
+type arithmetic_context = 
+  <|
+  ac_bitwidth: natural;
+  ac_half: natural;  (* 2 ^ (ac_bitwidth -1) *)
+  ac_all: natural;   (* 2 ^ ac_bitwidth      *)
+  ac_max: natural;   (* (2 ^ ac_bitwidth) -1 *) (* also the representation of -1 *)
+|>
+
+type operation_semantics = 
+  | OpSem_lit 
+  | OpSem_deref
+  | OpSem_stack of (arithmetic_context -> operation_stack -> list operation_argument_value -> maybe operation_stack)
+  | OpSem_not_supported
+  | OpSem_binary of (arithmetic_context -> natural -> natural -> maybe natural)
+  | OpSem_unary of (arithmetic_context -> natural -> maybe natural)
+  | OpSem_opcode_lit of natural 
+  | OpSem_breg
+  | OpSem_bregx
+  | OpSem_fbreg
+  | OpSem_deref_size
+  | OpSem_nop
+  | OpSem_piece
+  | OpSem_bitpiece
+  | OpSem_implicit_value
+  | OpSem_stack_value
+  | OpSem_call_frame_cfa
+
 let operation_encodings = [
-("DW_OP_addr",                natural_of_hex "0x03", [OAT_addr]); (*1*) (*constant address (size target specific)*)
-("DW_OP_deref",               natural_of_hex "0x06", []); (*0*)
-("DW_OP_const1u",             natural_of_hex "0x08", [OAT_uint8]); (*1*) (* 1-byte constant  *)
-("DW_OP_const1s",             natural_of_hex "0x09", [OAT_sint8]); (*1*) (* 1-byte constant  *)
-("DW_OP_const2u",             natural_of_hex "0x0a", [OAT_uint16]); (*1*) (* 2-byte constant  *)
-("DW_OP_const2s",             natural_of_hex "0x0b", [OAT_sint16]); (*1*) (* 2-byte constant  *)
-("DW_OP_const4u",             natural_of_hex "0x0c", [OAT_uint32]); (*1*) (* 4-byte constant  *)
-("DW_OP_const4s",             natural_of_hex "0x0d", [OAT_sint32]); (*1*) (* 4-byte constant  *)
-("DW_OP_const8u",             natural_of_hex "0x0e", [OAT_uint64]); (*1*) (* 8-byte constant  *)
-("DW_OP_const8s",             natural_of_hex "0x0f", [OAT_sint64]); (*1*) (* 8-byte constant  *)
-("DW_OP_constu",              natural_of_hex "0x10", [OAT_ULEB128]); (*1*) (* ULEB128 constant *)
-("DW_OP_consts",              natural_of_hex "0x11", [OAT_SLEB128]); (*1*) (* SLEB128 constant *)
-("DW_OP_dup",                 natural_of_hex "0x12", []); (*0*) 
-("DW_OP_drop",                natural_of_hex "0x13", []); (*0*) 
-("DW_OP_over",                natural_of_hex "0x14", []); (*0*) 
-("DW_OP_pick",                natural_of_hex "0x15", [OAT_uint8]); (*1*) (* 1-byte stack index *)
-("DW_OP_swap",                natural_of_hex "0x16", []); (*0*) 
-("DW_OP_rot",                 natural_of_hex "0x17", []); (*0*) 
-("DW_OP_xderef",              natural_of_hex "0x18", []); (*0*) 
-("DW_OP_abs",                 natural_of_hex "0x19", []); (*0*) 
-("DW_OP_and",                 natural_of_hex "0x1a", []); (*0*) 
-("DW_OP_div",                 natural_of_hex "0x1b", []); (*0*) 
-("DW_OP_minus",               natural_of_hex "0x1c", []); (*0*) 
-("DW_OP_mod",                 natural_of_hex "0x1d", []); (*0*) 
-("DW_OP_mul",                 natural_of_hex "0x1e", []); (*0*) 
-("DW_OP_neg",                 natural_of_hex "0x1f", []); (*0*) 
-("DW_OP_not",                 natural_of_hex "0x20", []); (*0*) 
-("DW_OP_or",                  natural_of_hex "0x21", []); (*0*) 
-("DW_OP_plus",                natural_of_hex "0x22", []); (*0*) 
-("DW_OP_plus_uconst",         natural_of_hex "0x23", [OAT_ULEB128]); (*1*) (* ULEB128 addend *)
-("DW_OP_shl",                 natural_of_hex "0x24", []); (*0*) 
-("DW_OP_shr",                 natural_of_hex "0x25", []); (*0*) 
-("DW_OP_shra",                natural_of_hex "0x26", []); (*0*) 
-("DW_OP_xor",                 natural_of_hex "0x27", []); (*0*) 
-("DW_OP_skip",                natural_of_hex "0x2f", [OAT_sint16]); (*1*) (* signed 2-byte constant *)
-("DW_OP_bra",                 natural_of_hex "0x28", [OAT_sint16]); (*1*) (* signed 2-byte constant *)
-("DW_OP_eq",                  natural_of_hex "0x29", []); (*0*) 
-("DW_OP_ge",                  natural_of_hex "0x2a", []); (*0*) 
-("DW_OP_gt",                  natural_of_hex "0x2b", []); (*0*) 
-("DW_OP_le",                  natural_of_hex "0x2c", []); (*0*) 
-("DW_OP_lt",                  natural_of_hex "0x2d", []); (*0*) 
-("DW_OP_ne",                  natural_of_hex "0x2e", []); (*0*) 
-("DW_OP_lit0",                natural_of_hex "0x30", []); (*0*) (* literals 0..31 =(DW_OP_lit0 + literal) *)
-("DW_OP_lit1",                natural_of_hex "0x31", []); (*0*)
-("DW_OP_lit2",                natural_of_hex "0x32", []); (*0*)
-("DW_OP_lit3",                natural_of_hex "0x33", []); (*0*)
-("DW_OP_lit4",                natural_of_hex "0x34", []); (*0*)
-("DW_OP_lit5",                natural_of_hex "0x35", []); (*0*)
-("DW_OP_lit6",                natural_of_hex "0x36", []); (*0*)
-("DW_OP_lit7",                natural_of_hex "0x37", []); (*0*)
-("DW_OP_lit8",                natural_of_hex "0x38", []); (*0*)
-("DW_OP_lit9",                natural_of_hex "0x39", []); (*0*)
-("DW_OP_lit10",               natural_of_hex "0x3a", []); (*0*)
-("DW_OP_lit11",               natural_of_hex "0x3b", []); (*0*)
-("DW_OP_lit12",               natural_of_hex "0x3c", []); (*0*)
-("DW_OP_lit13",               natural_of_hex "0x3d", []); (*0*)
-("DW_OP_lit14",               natural_of_hex "0x3e", []); (*0*)
-("DW_OP_lit15",               natural_of_hex "0x3f", []); (*0*)
-("DW_OP_lit16",               natural_of_hex "0x40", []); (*0*)
-("DW_OP_lit17",               natural_of_hex "0x41", []); (*0*)
-("DW_OP_lit18",               natural_of_hex "0x42", []); (*0*)
-("DW_OP_lit19",               natural_of_hex "0x43", []); (*0*)
-("DW_OP_lit20",               natural_of_hex "0x44", []); (*0*)
-("DW_OP_lit21",               natural_of_hex "0x45", []); (*0*)
-("DW_OP_lit22",               natural_of_hex "0x46", []); (*0*)
-("DW_OP_lit23",               natural_of_hex "0x47", []); (*0*)
-("DW_OP_lit24",               natural_of_hex "0x48", []); (*0*)
-("DW_OP_lit25",               natural_of_hex "0x49", []); (*0*)
-("DW_OP_lit26",               natural_of_hex "0x4a", []); (*0*)
-("DW_OP_lit27",               natural_of_hex "0x4b", []); (*0*)
-("DW_OP_lit28",               natural_of_hex "0x4c", []); (*0*)
-("DW_OP_lit29",               natural_of_hex "0x4d", []); (*0*)
-("DW_OP_lit30",               natural_of_hex "0x4e", []); (*0*)
-("DW_OP_lit31",               natural_of_hex "0x4f", []); (*0*)
-("DW_OP_reg0",                natural_of_hex "0x50", []); (*1*) (* reg 0..31 = (DW_OP_reg0 + regnum) *)
-("DW_OP_reg1",                natural_of_hex "0x51", []); (*1*)
-("DW_OP_reg2",                natural_of_hex "0x52", []); (*1*)
-("DW_OP_reg3",                natural_of_hex "0x53", []); (*1*)
-("DW_OP_reg4",                natural_of_hex "0x54", []); (*1*)
-("DW_OP_reg5",                natural_of_hex "0x55", []); (*1*)
-("DW_OP_reg6",                natural_of_hex "0x56", []); (*1*)
-("DW_OP_reg7",                natural_of_hex "0x57", []); (*1*)
-("DW_OP_reg8",                natural_of_hex "0x58", []); (*1*)
-("DW_OP_reg9",                natural_of_hex "0x59", []); (*1*)
-("DW_OP_reg10",               natural_of_hex "0x5a", []); (*1*)
-("DW_OP_reg11",               natural_of_hex "0x5b", []); (*1*)
-("DW_OP_reg12",               natural_of_hex "0x5c", []); (*1*)
-("DW_OP_reg13",               natural_of_hex "0x5d", []); (*1*)
-("DW_OP_reg14",               natural_of_hex "0x5e", []); (*1*)
-("DW_OP_reg15",               natural_of_hex "0x5f", []); (*1*)
-("DW_OP_reg16",               natural_of_hex "0x60", []); (*1*)
-("DW_OP_reg17",               natural_of_hex "0x61", []); (*1*)
-("DW_OP_reg18",               natural_of_hex "0x62", []); (*1*)
-("DW_OP_reg19",               natural_of_hex "0x63", []); (*1*)
-("DW_OP_reg20",               natural_of_hex "0x64", []); (*1*)
-("DW_OP_reg21",               natural_of_hex "0x65", []); (*1*)
-("DW_OP_reg22",               natural_of_hex "0x66", []); (*1*)
-("DW_OP_reg23",               natural_of_hex "0x67", []); (*1*)
-("DW_OP_reg24",               natural_of_hex "0x68", []); (*1*)
-("DW_OP_reg25",               natural_of_hex "0x69", []); (*1*)
-("DW_OP_reg26",               natural_of_hex "0x6a", []); (*1*)
-("DW_OP_reg27",               natural_of_hex "0x6b", []); (*1*)
-("DW_OP_reg28",               natural_of_hex "0x6c", []); (*1*)
-("DW_OP_reg29",               natural_of_hex "0x6d", []); (*1*)
-("DW_OP_reg30",               natural_of_hex "0x6e", []); (*1*)
-("DW_OP_reg31",               natural_of_hex "0x6f", []); (*1*) 
-("DW_OP_breg0",               natural_of_hex "0x70", [OAT_SLEB128]); (*1*) (* base register 0..31 = (DW_OP_breg0 + regnum) *)
-("DW_OP_breg1",               natural_of_hex "0x71", [OAT_SLEB128]); (*1*)
-("DW_OP_breg2",               natural_of_hex "0x72", [OAT_SLEB128]); (*1*)
-("DW_OP_breg3",               natural_of_hex "0x73", [OAT_SLEB128]); (*1*)
-("DW_OP_breg4",               natural_of_hex "0x74", [OAT_SLEB128]); (*1*)
-("DW_OP_breg5",               natural_of_hex "0x75", [OAT_SLEB128]); (*1*)
-("DW_OP_breg6",               natural_of_hex "0x76", [OAT_SLEB128]); (*1*)
-("DW_OP_breg7",               natural_of_hex "0x77", [OAT_SLEB128]); (*1*)
-("DW_OP_breg8",               natural_of_hex "0x78", [OAT_SLEB128]); (*1*)
-("DW_OP_breg9",               natural_of_hex "0x79", [OAT_SLEB128]); (*1*)
-("DW_OP_breg10",              natural_of_hex "0x7a", [OAT_SLEB128]); (*1*)
-("DW_OP_breg11",              natural_of_hex "0x7b", [OAT_SLEB128]); (*1*)
-("DW_OP_breg12",              natural_of_hex "0x7c", [OAT_SLEB128]); (*1*)
-("DW_OP_breg13",              natural_of_hex "0x7d", [OAT_SLEB128]); (*1*)
-("DW_OP_breg14",              natural_of_hex "0x7e", [OAT_SLEB128]); (*1*)
-("DW_OP_breg15",              natural_of_hex "0x7f", [OAT_SLEB128]); (*1*)
-("DW_OP_breg16",              natural_of_hex "0x80", [OAT_SLEB128]); (*1*)
-("DW_OP_breg17",              natural_of_hex "0x81", [OAT_SLEB128]); (*1*)
-("DW_OP_breg18",              natural_of_hex "0x82", [OAT_SLEB128]); (*1*)
-("DW_OP_breg19",              natural_of_hex "0x83", [OAT_SLEB128]); (*1*)
-("DW_OP_breg20",              natural_of_hex "0x84", [OAT_SLEB128]); (*1*)
-("DW_OP_breg21",              natural_of_hex "0x85", [OAT_SLEB128]); (*1*)
-("DW_OP_breg22",              natural_of_hex "0x86", [OAT_SLEB128]); (*1*)
-("DW_OP_breg23",              natural_of_hex "0x87", [OAT_SLEB128]); (*1*)
-("DW_OP_breg24",              natural_of_hex "0x88", [OAT_SLEB128]); (*1*)
-("DW_OP_breg25",              natural_of_hex "0x89", [OAT_SLEB128]); (*1*)
-("DW_OP_breg26",              natural_of_hex "0x8a", [OAT_SLEB128]); (*1*)
-("DW_OP_breg27",              natural_of_hex "0x8b", [OAT_SLEB128]); (*1*)
-("DW_OP_breg28",              natural_of_hex "0x8c", [OAT_SLEB128]); (*1*)
-("DW_OP_breg29",              natural_of_hex "0x8d", [OAT_SLEB128]); (*1*)
-("DW_OP_breg30",              natural_of_hex "0x8e", [OAT_SLEB128]); (*1*)
-("DW_OP_breg31",              natural_of_hex "0x8f", [OAT_SLEB128]); (*1*) 
-("DW_OP_regx",                natural_of_hex "0x90", [OAT_ULEB128]); (*1*) (* ULEB128 register *)
-("DW_OP_fbreg",               natural_of_hex "0x91", [OAT_SLEB128]); (*1*) (* SLEB128 offset *)
-("DW_OP_bregx",               natural_of_hex "0x92", [OAT_ULEB128; OAT_SLEB128]); (*2*) (* ULEB128 register followed by SLEB128 offset *)
-("DW_OP_piece",               natural_of_hex "0x93", [OAT_ULEB128]); (*1*) (* ULEB128 size of piece addressed *)
-("DW_OP_deref_size",          natural_of_hex "0x94", [OAT_uint8]); (*1*) (* 1-byte size of data retrieved *)
-("DW_OP_xderef_size",         natural_of_hex "0x95", [OAT_uint8]); (*1*) (* 1-byte size of data retrieved *)
-("DW_OP_nop",                 natural_of_hex "0x96", []); (*0*)  
-("DW_OP_push_object_address", natural_of_hex "0x97", []); (*0*)  
-("DW_OP_call2",               natural_of_hex "0x98", [OAT_uint16]); (*1*) (* 2-byte offset of DIE *)
-("DW_OP_call4",               natural_of_hex "0x99", [OAT_uint32]); (*1*) (* 4-byte offset of DIE *)
-("DW_OP_call_ref",            natural_of_hex "0x9a", [OAT_dwarf_format_t]); (*1*) (* 4- or 8-byte offset of DIE *)
-("DW_OP_form_tls_address",    natural_of_hex "0x9b", []); (*0*)  
-("DW_OP_call_frame_cfa",      natural_of_hex "0x9c", []); (*0*)  
-("DW_OP_bit_piece",           natural_of_hex "0x9d", [OAT_ULEB128; OAT_ULEB128]); (*2*) (* ULEB128 size followed by ULEB128 offset *)
-("DW_OP_implicit_value",      natural_of_hex "0x9e", [OAT_block]); (*2*) (* ULEB128 size followed by block of that size *)
-("DW_OP_stack_value",         natural_of_hex "0x9f", []); (*0*) 
-("DW_OP_lo_user",             natural_of_hex "0xe0", []); 
-("DW_OP_hi_user",             natural_of_hex "0xff", []);
+("DW_OP_addr",                natural_of_hex "0x03", [OAT_addr]                 , OpSem_lit); (*1*) (*constant address (size target specific)*)
+("DW_OP_deref",               natural_of_hex "0x06", []                         , OpSem_deref); (*0*)
+("DW_OP_const1u",             natural_of_hex "0x08", [OAT_uint8]                , OpSem_lit); (*1*) (* 1-byte constant  *)
+("DW_OP_const1s",             natural_of_hex "0x09", [OAT_sint8]                , OpSem_lit); (*1*) (* 1-byte constant  *)
+("DW_OP_const2u",             natural_of_hex "0x0a", [OAT_uint16]               , OpSem_lit); (*1*) (* 2-byte constant  *)
+("DW_OP_const2s",             natural_of_hex "0x0b", [OAT_sint16]               , OpSem_lit); (*1*) (* 2-byte constant  *)
+("DW_OP_const4u",             natural_of_hex "0x0c", [OAT_uint32]               , OpSem_lit); (*1*) (* 4-byte constant  *)
+("DW_OP_const4s",             natural_of_hex "0x0d", [OAT_sint32]               , OpSem_lit); (*1*) (* 4-byte constant  *)
+("DW_OP_const8u",             natural_of_hex "0x0e", [OAT_uint64]               , OpSem_lit); (*1*) (* 8-byte constant  *)
+("DW_OP_const8s",             natural_of_hex "0x0f", [OAT_sint64]               , OpSem_lit); (*1*) (* 8-byte constant  *)
+("DW_OP_constu",              natural_of_hex "0x10", [OAT_ULEB128]              , OpSem_lit); (*1*) (* ULEB128 constant *)
+("DW_OP_consts",              natural_of_hex "0x11", [OAT_SLEB128]              , OpSem_lit); (*1*) (* SLEB128 constant *)
+("DW_OP_dup",                 natural_of_hex "0x12", []                         , OpSem_stack (fun ac vs args -> match vs with v::vs -> Just (v::v::vs) | _ -> Nothing end)); (*0*) 
+("DW_OP_drop",                natural_of_hex "0x13", []                         , OpSem_stack (fun ac vs args -> match vs with v::vs -> Just vs | _ -> Nothing end)); (*0*) 
+("DW_OP_over",                natural_of_hex "0x14", []                         , OpSem_stack (fun ac vs args -> match vs with v::v'::vs -> Just (v'::v::v'::vs) | _ -> Nothing end)); (*0*) 
+("DW_OP_pick",                natural_of_hex "0x15", [OAT_uint8]                , OpSem_stack (fun ac vs args -> match args with [OAV_natural n] -> match index_natural vs n with Just v -> Just (v::vs) | Nothing -> Nothing end | _ -> Nothing end)); (*1*) (* 1-byte stack index *)
+("DW_OP_swap",                natural_of_hex "0x16", []                         , OpSem_stack (fun ac vs args -> match vs with v::v'::vs -> Just (v'::v::vs) | _ -> Nothing end)); (*0*) 
+("DW_OP_rot",                 natural_of_hex "0x17", []                         , OpSem_stack (fun ac vs args -> match vs with v::v'::v''::vs -> Just (v'::v''::v::vs) | _ -> Nothing end)); (*0*) 
+("DW_OP_xderef",              natural_of_hex "0x18", []                         , OpSem_not_supported); (*0*) 
+("DW_OP_abs",                 natural_of_hex "0x19", []                         , OpSem_unary (fun ac v -> if v < ac.ac_half then Just v else if v=ac.ac_max then Nothing else Just (ac.ac_all-v))); (*0*) 
+("DW_OP_and",                 natural_of_hex "0x1a", []                         , OpSem_binary (fun ac v1 v2 -> Just (natural_land v1 v2))); (*0*) 
+("DW_OP_div",                 natural_of_hex "0x1b", []                         , OpSem_not_supported) (*TODO*); (*0*) 
+("DW_OP_minus",               natural_of_hex "0x1c", []                         , OpSem_binary (fun ac v1 v2 -> Just (partialNaturalFromInteger ((integerFromNatural v1 - integerFromNatural v2) mod (integerFromNatural ac.ac_all))))); (*0*) 
+("DW_OP_mod",                 natural_of_hex "0x1d", []                         , OpSem_binary (fun ac v1 v2 -> Just (v1 mod v2))); (*0*) 
+("DW_OP_mul",                 natural_of_hex "0x1e", []                         , OpSem_binary (fun ac v1 v2 -> Just (partialNaturalFromInteger ((integerFromNatural v1 * integerFromNatural v2) mod (integerFromNatural ac.ac_all))))); (*0*) 
+("DW_OP_neg",                 natural_of_hex "0x1f", []                         , OpSem_unary (fun ac v -> if v < ac.ac_half then Just (ac.ac_max - v) else if v=ac.ac_half then Nothing else Just (ac.ac_all - v))); (*0*) 
+("DW_OP_not",                 natural_of_hex "0x20", []                         , OpSem_unary (fun ac v -> Just (natural_lxor v ac.ac_max))); (*0*)
+("DW_OP_or",                  natural_of_hex "0x21", []                         , OpSem_binary (fun ac v1 v2 -> Just (natural_lor v1 v2))); (*0*) 
+("DW_OP_plus",                natural_of_hex "0x22", []                         , OpSem_binary (fun ac v1 v2 -> Just ((v1 + v2) mod ac.ac_all))); (*0*) 
+("DW_OP_plus_uconst",         natural_of_hex "0x23", [OAT_ULEB128]              , OpSem_stack (fun ac vs args -> match args with [OAV_natural n] -> match vs with v::vs' -> let v' = (v+n) mod ac.ac_all in Just (v'::vs)  | [] -> Nothing end  | _ -> Nothing end)); (*1*) (* ULEB128 addend *)
+("DW_OP_shl",                 natural_of_hex "0x24", []                         , OpSem_binary (fun ac v1 v2 -> if v2 >= ac.ac_bitwidth then Just 0 else Just (natural_nat_shift_left v1 (natFromNatural v2)))); (*0*) 
+("DW_OP_shr",                 natural_of_hex "0x25", []                         , OpSem_binary (fun ac v1 v2 -> if v2 >= ac.ac_bitwidth then Just 0 else Just (natural_nat_shift_right v1 (natFromNatural v2)))); (*0*) 
+("DW_OP_shra",                natural_of_hex "0x26", []                         , OpSem_binary (fun ac v1 v2 -> if v1 < ac.ac_half then (if v2 >= ac.ac_bitwidth then Just 0 else Just (natural_nat_shift_right v1 (natFromNatural v2))) else (if v2 >= ac.ac_bitwidth then Just ac.ac_max  else Just (ac.ac_max - (natural_nat_shift_right (ac.ac_max - v1) (natFromNatural v2)))))); (*0*) 
+("DW_OP_xor",                 natural_of_hex "0x27", []                         , OpSem_binary (fun ac v1 v2 -> Just (natural_lxor v1 v2))); (*0*)
+("DW_OP_skip",                natural_of_hex "0x2f", [OAT_sint16]               , OpSem_not_supported); (*1*) (* signed 2-byte constant *)
+("DW_OP_bra",                 natural_of_hex "0x28", [OAT_sint16]               , OpSem_not_supported); (*1*) (* signed 2-byte constant *)
+("DW_OP_eq",                  natural_of_hex "0x29", []                         , OpSem_not_supported); (*0*) 
+("DW_OP_ge",                  natural_of_hex "0x2a", []                         , OpSem_not_supported); (*0*) 
+("DW_OP_gt",                  natural_of_hex "0x2b", []                         , OpSem_not_supported); (*0*) 
+("DW_OP_le",                  natural_of_hex "0x2c", []                         , OpSem_not_supported); (*0*) 
+("DW_OP_lt",                  natural_of_hex "0x2d", []                         , OpSem_not_supported); (*0*) 
+("DW_OP_ne",                  natural_of_hex "0x2e", []                         , OpSem_not_supported); (*0*) 
+("DW_OP_lit0",                natural_of_hex "0x30", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*) (* literals 0..31 =(DW_OP_lit0 + literal) *)
+("DW_OP_lit1",                natural_of_hex "0x31", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
+("DW_OP_lit2",                natural_of_hex "0x32", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
+("DW_OP_lit3",                natural_of_hex "0x33", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
+("DW_OP_lit4",                natural_of_hex "0x34", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
+("DW_OP_lit5",                natural_of_hex "0x35", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
+("DW_OP_lit6",                natural_of_hex "0x36", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
+("DW_OP_lit7",                natural_of_hex "0x37", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
+("DW_OP_lit8",                natural_of_hex "0x38", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
+("DW_OP_lit9",                natural_of_hex "0x39", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
+("DW_OP_lit10",               natural_of_hex "0x3a", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
+("DW_OP_lit11",               natural_of_hex "0x3b", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
+("DW_OP_lit12",               natural_of_hex "0x3c", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
+("DW_OP_lit13",               natural_of_hex "0x3d", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
+("DW_OP_lit14",               natural_of_hex "0x3e", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
+("DW_OP_lit15",               natural_of_hex "0x3f", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
+("DW_OP_lit16",               natural_of_hex "0x40", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
+("DW_OP_lit17",               natural_of_hex "0x41", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
+("DW_OP_lit18",               natural_of_hex "0x42", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
+("DW_OP_lit19",               natural_of_hex "0x43", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
+("DW_OP_lit20",               natural_of_hex "0x44", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
+("DW_OP_lit21",               natural_of_hex "0x45", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
+("DW_OP_lit22",               natural_of_hex "0x46", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
+("DW_OP_lit23",               natural_of_hex "0x47", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
+("DW_OP_lit24",               natural_of_hex "0x48", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
+("DW_OP_lit25",               natural_of_hex "0x49", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
+("DW_OP_lit26",               natural_of_hex "0x4a", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
+("DW_OP_lit27",               natural_of_hex "0x4b", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
+("DW_OP_lit28",               natural_of_hex "0x4c", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
+("DW_OP_lit29",               natural_of_hex "0x4d", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
+("DW_OP_lit30",               natural_of_hex "0x4e", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
+("DW_OP_lit31",               natural_of_hex "0x4f", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
+("DW_OP_reg0",                natural_of_hex "0x50", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*) (* reg 0..31 = (DW_OP_reg0 + regnum) *)
+("DW_OP_reg1",                natural_of_hex "0x51", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
+("DW_OP_reg2",                natural_of_hex "0x52", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
+("DW_OP_reg3",                natural_of_hex "0x53", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
+("DW_OP_reg4",                natural_of_hex "0x54", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
+("DW_OP_reg5",                natural_of_hex "0x55", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
+("DW_OP_reg6",                natural_of_hex "0x56", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
+("DW_OP_reg7",                natural_of_hex "0x57", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
+("DW_OP_reg8",                natural_of_hex "0x58", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
+("DW_OP_reg9",                natural_of_hex "0x59", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
+("DW_OP_reg10",               natural_of_hex "0x5a", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
+("DW_OP_reg11",               natural_of_hex "0x5b", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
+("DW_OP_reg12",               natural_of_hex "0x5c", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
+("DW_OP_reg13",               natural_of_hex "0x5d", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
+("DW_OP_reg14",               natural_of_hex "0x5e", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
+("DW_OP_reg15",               natural_of_hex "0x5f", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
+("DW_OP_reg16",               natural_of_hex "0x60", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
+("DW_OP_reg17",               natural_of_hex "0x61", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
+("DW_OP_reg18",               natural_of_hex "0x62", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
+("DW_OP_reg19",               natural_of_hex "0x63", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
+("DW_OP_reg20",               natural_of_hex "0x64", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
+("DW_OP_reg21",               natural_of_hex "0x65", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
+("DW_OP_reg22",               natural_of_hex "0x66", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
+("DW_OP_reg23",               natural_of_hex "0x67", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
+("DW_OP_reg24",               natural_of_hex "0x68", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
+("DW_OP_reg25",               natural_of_hex "0x69", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
+("DW_OP_reg26",               natural_of_hex "0x6a", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
+("DW_OP_reg27",               natural_of_hex "0x6b", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
+("DW_OP_reg28",               natural_of_hex "0x6c", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
+("DW_OP_reg29",               natural_of_hex "0x6d", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
+("DW_OP_reg30",               natural_of_hex "0x6e", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
+("DW_OP_reg31",               natural_of_hex "0x6f", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*) 
+("DW_OP_breg0",               natural_of_hex "0x70", [OAT_SLEB128]              , OpSem_breg); (*1*) (* base register 0..31 = (DW_OP_breg0 + regnum) *)
+("DW_OP_breg1",               natural_of_hex "0x71", [OAT_SLEB128]              , OpSem_breg); (*1*)
+("DW_OP_breg2",               natural_of_hex "0x72", [OAT_SLEB128]              , OpSem_breg); (*1*)
+("DW_OP_breg3",               natural_of_hex "0x73", [OAT_SLEB128]              , OpSem_breg); (*1*)
+("DW_OP_breg4",               natural_of_hex "0x74", [OAT_SLEB128]              , OpSem_breg); (*1*)
+("DW_OP_breg5",               natural_of_hex "0x75", [OAT_SLEB128]              , OpSem_breg); (*1*)
+("DW_OP_breg6",               natural_of_hex "0x76", [OAT_SLEB128]              , OpSem_breg); (*1*)
+("DW_OP_breg7",               natural_of_hex "0x77", [OAT_SLEB128]              , OpSem_breg); (*1*)
+("DW_OP_breg8",               natural_of_hex "0x78", [OAT_SLEB128]              , OpSem_breg); (*1*)
+("DW_OP_breg9",               natural_of_hex "0x79", [OAT_SLEB128]              , OpSem_breg); (*1*)
+("DW_OP_breg10",              natural_of_hex "0x7a", [OAT_SLEB128]              , OpSem_breg); (*1*)
+("DW_OP_breg11",              natural_of_hex "0x7b", [OAT_SLEB128]              , OpSem_breg); (*1*)
+("DW_OP_breg12",              natural_of_hex "0x7c", [OAT_SLEB128]              , OpSem_breg); (*1*)
+("DW_OP_breg13",              natural_of_hex "0x7d", [OAT_SLEB128]              , OpSem_breg); (*1*)
+("DW_OP_breg14",              natural_of_hex "0x7e", [OAT_SLEB128]              , OpSem_breg); (*1*)
+("DW_OP_breg15",              natural_of_hex "0x7f", [OAT_SLEB128]              , OpSem_breg); (*1*)
+("DW_OP_breg16",              natural_of_hex "0x80", [OAT_SLEB128]              , OpSem_breg); (*1*)
+("DW_OP_breg17",              natural_of_hex "0x81", [OAT_SLEB128]              , OpSem_breg); (*1*)
+("DW_OP_breg18",              natural_of_hex "0x82", [OAT_SLEB128]              , OpSem_breg); (*1*)
+("DW_OP_breg19",              natural_of_hex "0x83", [OAT_SLEB128]              , OpSem_breg); (*1*)
+("DW_OP_breg20",              natural_of_hex "0x84", [OAT_SLEB128]              , OpSem_breg); (*1*)
+("DW_OP_breg21",              natural_of_hex "0x85", [OAT_SLEB128]              , OpSem_breg); (*1*)
+("DW_OP_breg22",              natural_of_hex "0x86", [OAT_SLEB128]              , OpSem_breg); (*1*)
+("DW_OP_breg23",              natural_of_hex "0x87", [OAT_SLEB128]              , OpSem_breg); (*1*)
+("DW_OP_breg24",              natural_of_hex "0x88", [OAT_SLEB128]              , OpSem_breg); (*1*)
+("DW_OP_breg25",              natural_of_hex "0x89", [OAT_SLEB128]              , OpSem_breg); (*1*)
+("DW_OP_breg26",              natural_of_hex "0x8a", [OAT_SLEB128]              , OpSem_breg); (*1*)
+("DW_OP_breg27",              natural_of_hex "0x8b", [OAT_SLEB128]              , OpSem_breg); (*1*)
+("DW_OP_breg28",              natural_of_hex "0x8c", [OAT_SLEB128]              , OpSem_breg); (*1*)
+("DW_OP_breg29",              natural_of_hex "0x8d", [OAT_SLEB128]              , OpSem_breg); (*1*)
+("DW_OP_breg30",              natural_of_hex "0x8e", [OAT_SLEB128]              , OpSem_breg); (*1*)
+("DW_OP_breg31",              natural_of_hex "0x8f", [OAT_SLEB128]              , OpSem_breg); (*1*) 
+("DW_OP_regx",                natural_of_hex "0x90", [OAT_ULEB128]              , OpSem_lit); (*1*) (* ULEB128 register *)
+("DW_OP_fbreg",               natural_of_hex "0x91", [OAT_SLEB128]              , OpSem_fbreg); (*1*) (* SLEB128 offset *)
+("DW_OP_bregx",               natural_of_hex "0x92", [OAT_ULEB128; OAT_SLEB128] , OpSem_bregx); (*2*) (* ULEB128 register followed by SLEB128 offset *)
+("DW_OP_piece",               natural_of_hex "0x93", [OAT_ULEB128]              , OpSem_piece); (*1*) (* ULEB128 size of piece addressed *)
+("DW_OP_deref_size",          natural_of_hex "0x94", [OAT_uint8]                , OpSem_deref_size); (*1*) (* 1-byte size of data retrieved *)
+("DW_OP_xderef_size",         natural_of_hex "0x95", [OAT_uint8]                , OpSem_not_supported); (*1*) (* 1-byte size of data retrieved *)
+("DW_OP_nop",                 natural_of_hex "0x96", []                         , OpSem_nop); (*0*)  
+("DW_OP_push_object_address", natural_of_hex "0x97", []                         , OpSem_not_supported); (*0*)  
+("DW_OP_call2",               natural_of_hex "0x98", [OAT_uint16]               , OpSem_not_supported); (*1*) (* 2-byte offset of DIE *)
+("DW_OP_call4",               natural_of_hex "0x99", [OAT_uint32]               , OpSem_not_supported); (*1*) (* 4-byte offset of DIE *)
+("DW_OP_call_ref",            natural_of_hex "0x9a", [OAT_dwarf_format_t]       , OpSem_not_supported); (*1*) (* 4- or 8-byte offset of DIE *)
+("DW_OP_form_tls_address",    natural_of_hex "0x9b", []                         , OpSem_not_supported); (*0*)  
+("DW_OP_call_frame_cfa",      natural_of_hex "0x9c", []                         , OpSem_call_frame_cfa); (*0*)
+("DW_OP_bit_piece",           natural_of_hex "0x9d", [OAT_ULEB128; OAT_ULEB128] , OpSem_bitpiece); (*2*) (* ULEB128 size followed by ULEB128 offset *)
+("DW_OP_implicit_value",      natural_of_hex "0x9e", [OAT_block]                , OpSem_implicit_value); (*2*) (* ULEB128 size followed by block of that size *)
+("DW_OP_stack_value",         natural_of_hex "0x9f", []                         , OpSem_stack_value); (*0*) 
+(* these aren't real operations 
+("DW_OP_lo_user",             natural_of_hex "0xe0", []                         , ); 
+("DW_OP_hi_user",             natural_of_hex "0xff", []                         , );
+*)
 
 (* GCC also produces these for our example: 
 https://fedorahosted.org/elfutils/wiki/DwarfExtensions
 http://dwarfstd.org/ShowIssue.php?issue=100909.1 *)
-("DW_GNU_OP_entry_value",     natural_of_hex "0xf3", [OAT_block]); (*2*) (* ULEB128 size followed by DWARF expression block of that size*)
-("DW_OP_GNU_implicit_pointer", natural_of_hex "0xf2", [OAT_dwarf_format_t;OAT_SLEB128])
+("DW_GNU_OP_entry_value",     natural_of_hex "0xf3", [OAT_block], OpSem_not_supported); (*2*) (* ULEB128 size followed by DWARF expression block of that size*)
+("DW_OP_GNU_implicit_pointer", natural_of_hex "0xf2", [OAT_dwarf_format_t;OAT_SLEB128], OpSem_not_supported)
 
 ]
 
@@ -561,16 +622,13 @@ type abbreviation_declaration =
 
 type abbreviations_table = list abbreviation_declaration
 
-type operation_argument_value = 
-  | OAV_natural of natural
-  | OAV_integer of integer
-  | OAV_block of natural * list byte
 
 type operation = 
     <|
     op_code: natural;
     op_string: string;
     op_argument_values: list operation_argument_value;
+    op_semantics: operation_semantics;
   |>
 
 type attribute_value =
@@ -704,12 +762,28 @@ let rec lookup_Abc_b x0 xyzs =
   end
 
 
+
+val lookup_aBcd_a : forall 'a 'b 'c 'd. Eq 'b => 'b -> list ('a * 'b * 'c * 'd) -> maybe 'a
+let rec lookup_aBcd_a y0 xyzws = 
+  match xyzws with
+  | [] -> Nothing
+  | (x,y,_,_)::xyzws' -> if y=y0 then Just x else lookup_aBcd_a y0 xyzws'  
+  end
+
+val lookup_aBcd_acd : forall 'a 'b 'c 'd. Eq 'b => 'b -> list ('a * 'b * 'c * 'd) -> maybe ('a * 'c * 'd)
+let rec lookup_aBcd_acd y0 xyzws = 
+  match xyzws with
+  | [] -> Nothing
+  | (x,y,z,w)::xyzws' -> if y=y0 then Just (x,z,w) else lookup_aBcd_acd y0 xyzws'  
+  end
+
+
 let pp_maybe ppf n = match ppf n with Just s -> s | Nothing -> "encoding not found: " ^ pphex n end
 
 let pp_tag_encoding n = pp_maybe (fun n -> lookup_aB_a n tag_encodings) n
 let pp_attribute_encoding n = pp_maybe (fun n -> lookup_aBc_a n attribute_encodings) n
 let pp_attribute_form_encoding n = pp_maybe (fun n -> lookup_aBc_a n attribute_form_encodings) n
-let pp_operation_encoding n = pp_maybe (fun n -> lookup_aBc_a n operation_encodings) n
+let pp_operation_encoding n = pp_maybe (fun n -> lookup_aBcd_a n operation_encodings) n
 
 let tag_encode (s: string) : natural = 
   match lookup_Ab_b s tag_encodings with
@@ -827,7 +901,6 @@ let parse_dependent_pair p1 p2 =
 
 
 
-open import List
 val parse_list' : forall 'a. (parser (maybe 'a)) -> (list 'a -> parser (list 'a))
 let rec parse_list' p1 =
   fun acc pc ->   let _ = my_debug "list' " in pr_bind (p1 pc) (fun mx pc' -> 
@@ -940,20 +1013,26 @@ let parse_uint64 c : parser natural =
       | _ -> PR_fail "parse_uint64 not given enough bytes" pc
       end
 
-let integerFrom2sComplementNatural (n:natural) (half: natural) (all:integer) = 
+let integerFromTwosComplementNatural (n:natural) (half: natural) (all:integer) : integer = 
   if n < half then integerFromNatural n else integerFromNatural n - all
 
+let partialTwosComplementNaturalFromInteger (i:integer) (half: natural) (all:integer) : natural = 
+  if i >=0 && i < integerFromNatural half then partialNaturalFromInteger i
+  else if i >= (0-integerFromNatural half) && i < 0 then partialNaturalFromInteger (all + i)
+  else Assert_extra.failwith "partialTwosComplementNaturalFromInteger"
+
+
 let parse_sint8 c : parser integer = 
-  pr_post_map (parse_uint8 c) (fun n -> integerFrom2sComplementNatural n 128 256)
+  pr_post_map (parse_uint8 c) (fun n -> integerFromTwosComplementNatural n 128 256)
 
 let parse_sint16 c : parser integer = 
-  pr_post_map (parse_uint16 c) (fun n -> integerFrom2sComplementNatural n (128*256) (256*256))
+  pr_post_map (parse_uint16 c) (fun n -> integerFromTwosComplementNatural n (128*256) (256*256))
 
 let parse_sint32 c : parser integer = 
-  pr_post_map (parse_uint32 c) (fun n -> integerFrom2sComplementNatural n (128*256*256*256) (256*256*256*256))
+  pr_post_map (parse_uint32 c) (fun n -> integerFromTwosComplementNatural n (128*256*256*256) (256*256*256*256))
 
 let parse_sint64 c : parser integer = 
-  pr_post_map (parse_uint64 c) (fun n -> integerFrom2sComplementNatural n (128*256*256*256*256*256*256*256) (256*256*256*256*256*256*256*256))
+  pr_post_map (parse_uint64 c) (fun n -> integerFromTwosComplementNatural n (128*256*256*256*256*256*256*256) (256*256*256*256*256*256*256*256))
 
 let rec parse_ULEB128' (acc: natural) (shift_factor: natural) : parser natural = 
     fun (pc:parse_context) ->
@@ -1098,8 +1177,29 @@ let pp_operation_argument_value (oav:operation_argument_value) : string =
   | OAV_block n bs -> pphex n ^ " " ^ ppbytes bs
   end
 
+let pp_operation_semantics (os: operation_semantics) : string =
+  match os with
+  | OpSem_lit                         -> "OpSem_lit"                          
+  | OpSem_deref                       -> "OpSem_deref"                        
+  | OpSem_stack _                     -> "OpSem_stack ..."
+  | OpSem_not_supported               -> "OpSem_not_supported"
+  | OpSem_binary _                    -> "OpSem_binary ..."
+  | OpSem_unary _                     -> "OpSem_unary ..."
+  | OpSem_opcode_lit _                -> "OpSem_opcode_lit ..."
+  | OpSem_breg                        -> "OpSem_breg"                         
+  | OpSem_bregx                       -> "OpSem_bregx"                        
+  | OpSem_fbreg                       -> "OpSem_fbreg"                        
+  | OpSem_deref_size                  -> "OpSem_deref_size"                   
+  | OpSem_nop                         -> "OpSem_nop"                          
+  | OpSem_piece                       -> "OpSem_piece"                        
+  | OpSem_bitpiece                    -> "OpSem_bitpiece"                     
+  | OpSem_implicit_value              -> "OpSem_implicit_value"
+  | OpSem_stack_value                 -> "OpSem_stack_value"                  
+  | OpSem_call_frame_cfa              -> "OpSem_call_frame_cfa"                
+  end
+
 let pp_operation (op: operation) : string =
-  op.op_string ^ " " ^ myconcat " " (List.map pp_operation_argument_value op.op_argument_values)
+  op.op_string ^ " " ^ myconcat " " (List.map pp_operation_argument_value op.op_argument_values) ^ " (" ^ pp_operation_semantics op.op_semantics ^ ")"
 
 let pp_operations (ops: list operation) : string =
   myconcat "; " (List.map pp_operation ops)
@@ -1138,13 +1238,13 @@ let parse_operation c cuh pc =
   match parse_uint8 c pc with
   | PR_fail s pc' -> PR_success Nothing pc
   | PR_success code pc' ->
-      match lookup_aBc_ac code operation_encodings with
+      match lookup_aBcd_acd code operation_encodings with
       | Nothing -> PR_fail ("encoding not found: " ^ pphex code) pc 
-      | Just (s,oats) -> 
+      | Just (s,oats,opsem) -> 
           let ps = List.map (parser_of_operation_argument_type c cuh) oats in
           (pr_post_map 
             (parse_parser_list ps) 
-            (fun oavs -> Just <| op_code = code; op_string = s; op_argument_values = oavs |>)
+            (fun oavs -> Just <| op_code = code; op_string = s; op_argument_values = oavs; op_semantics = opsem |>)
           )
             pc'
       end
@@ -1563,12 +1663,12 @@ let pp_loc c (cuh: compilation_unit_header) (lls: list location_list) =
   "    Offset   Begin    End      Expression\n"
   ^  myconcat "" (List.map (pp_location_list c cuh) lls)
 
-(* TODO: The applicable base address of a location list entry is determined by the closest preceding base address selection entry in the same location list. If there is no such selection entry, then the applicable base address defaults to the base address of the compilation unit - see Section 3.1.1*)
+(* TODO: The applicable base address of a location laist entry is determined by the closest preceding base address selection entry in the same location list. If there is no such selection entry, then the applicable base address defaults to the base address of the compilation unit - see Section 3.1.1 *)
 
 
       
 let parse_location_list_item c (cuh: compilation_unit_header) : parser (maybe location_list_item) =
-  fun (pc:parse_context) -> 
+    fun (pc:parse_context) -> 
       pr_bind 
         (parse_pair 
            (parse_uint_address_size c cuh.cuh_address_size)
@@ -1597,8 +1697,8 @@ let parse_location_list_item c (cuh: compilation_unit_header) : parser (maybe lo
                                         )
         )
 
-let parse_location_list c cuh : parser (maybe location_list) 
-    = fun (pc: parse_context) -> 
+let parse_location_list c cuh : parser (maybe location_list) =
+    fun (pc: parse_context) -> 
       if pc.pc_bytes = [] then 
         PR_success Nothing pc
       else
@@ -1612,11 +1712,11 @@ let parse_location_list_list c cuh : parser location_list_list =
 (** all dwarf info: pp and parsing *)
 
 let pp_dwarf c d = 
-   pp_compilation_units c d.d_str d.d_compilation_units 
+  pp_compilation_units c d.d_str d.d_compilation_units 
   ^ "\n"
   ^ let (cuh_default : compilation_unit_header) = let cu = myhead d.d_compilation_units in cu.cu_header in
     pp_loc c cuh_default d.d_loc
-
+    
 let parse_dwarf c
     (debug_info_section_body: list byte) 
     (debug_abbrev_section_body: list byte) 
@@ -1632,16 +1732,16 @@ let parse_dwarf c
     | PR_success cus pc_info' -> cus
     end in
 
-  (* the DWARF4 spec doesn't seem to specify the address size used in the .debug_loc section, so we (hackishly) take it from the first compilation unit *)
-  let (cuh_default : compilation_unit_header) = let cu = myhead compilation_units in cu.cu_header in
+(* the DWARF4 spec doesn't seem to specify the address size used in the .debug_loc section, so we (hackishly) take it from the first compilation unit *)
+    let (cuh_default : compilation_unit_header) = let cu = myhead compilation_units in cu.cu_header in
 
-  let pc_loc = <|pc_bytes = debug_loc_section_body; pc_offset = 0  |> in
+    let pc_loc = <|pc_bytes = debug_loc_section_body; pc_offset = 0  |> in
 
-   let loc = 
-    match parse_location_list_list c cuh_default pc_loc with
-    | PR_fail s pc_info' ->  Assert_extra.failwith ("parse_location_list: " ^ pp_parse_fail s pc_info')
-    | PR_success loc pc_loc' -> loc
-    end in
+    let loc = 
+      match parse_location_list_list c cuh_default pc_loc with
+      | PR_fail s pc_info' ->  Assert_extra.failwith ("parse_location_list: " ^ pp_parse_fail s pc_info')
+      | PR_success loc pc_loc' -> loc
+      end in
 
 
    <| 
@@ -1652,82 +1752,230 @@ let parse_dwarf c
   |>
 
 
+(** interpreting locations *)
+
+
+(* cf dwarflist, btw: https://fedorahosted.org/elfutils/wiki/DwarfLint?format=txt *)
+
+(*
+
+location description ::=
+| single location description
+| location list
+
+single location description ::=
+| simple location description
+| composite location description
+
+simple location description ::=
+| memory location description : non-empty dwarf expr, value is address of all or part of object in memory
+| register location description : single DW_OP_regN or DW_OP_regx, naming a register in which all the object is
+| implicit location description : single DW_OP_implicit_value or a non-empty dwarf expr ending in DW_OP_stack_value, giving the value of all/part of object
+| empty location description : an empty dwarf expr, indicating a part or all of an object that is not represented
+
+composite location description : a list of simple location descriptions, each followed by a DW_OP_piece or DW_OP_bitpiece
+
+(the simple location description can be a register location description: https://www.mail-archive.com/dwarf-discuss@lists.dwarfstd.org/msg00271.html)
+(contradicting "A register location description must stand alone as the entire description of an object or a piece of an object.")
+
+location list entry : a list of address ranges (possibly overlapping), each with a single location description
+
+Dwarf expressions can include data-dependent control flow choices
+(though we don't see that in the examples?), so we can't statically
+determine which kind of single location description or simple location
+description we have.  We can distinguish:
+
+- empty -> simple.empty
+- DW_OP_regN/DW_OP_regx -> simple.register 
+- DW_OP_implicit_value -> simple.implicit
+- any of those followed by DW_OP_piece or DW_OP_bitpiece, perhaps followed by more composite parts -> composite part :: composite
+
+otherwise run to the end, or a DW_OP_stack_value at the end, or to
+anything (except a DO_OP_regN/DW_OP_regx) followed by a
+DW_OP_piece/DW_OP_bitpiece. Pfeh.
+
+
+actually used in our examples (ignoring GNU extentions):
+
+DW_OP_addr         literal
+DW_OP_lit1         literal
+DW_OP_const4u      literal                
+
+DW_OP_breg3 (r3)   read register value and add offset
+
+DW_OP_and          bitwise and
+DW_OP_plus         addition (mod whatever)
+
+DW_OP_deref_size                   
+DW_OP_fbreg        evaluate location description from DW_AT_frame_base attribute of the current function (which is DW_OP_call_frame_cfa in our examples) and add offset
+           
+DW_OP_implicit_value   the argument block is the actual value (not location) of the entity in question
+DW_OP_stack_value      use the value at top of stack as the actual value (not location) of the entity in question
+
+DW_OP_reg0 (r0))       read register value
+
+DW_OP_call_frame_cfa   go off to 6.4 and pull info out of .debug_frame (possibly involving other location expressions)
+
+*)
+
+type simple_location = 
+  | SL_memory of natural
+  | SL_register of natural
+  | SL_implicit of list byte
+  | SL_empty
+
+type composite_location_piece = 
+  | CLP_piece of natural * simple_location
+  | CLP_bitpiece of natural * natural * simple_location
+
+type single_location =
+  | SL_simple of simple_location
+  | SL_composite of list composite_location_piece
+
+type state = 
+    <| 
+    stack: operation_stack;
+    last_op: maybe operation;
+    location_pieces: list composite_location_piece;
+  |>
+
+(*
+
+*)
+
+
+let interpret_operation_semantics (ac: arithmetic_context) (s: state) (op: operation) : error state =
+
+  let push v = Success <| s with stack = v :: s.stack; last_op = Just op |>  in
+
+  match op.op_semantics with
+  | OpSem_nop            -> 
+      Success <| s with last_op = Just op |>
+  | OpSem_lit            -> 
+      match op.op_argument_values with
+      | [OAV_natural n] -> push n 
+      | [OAV_integer i] -> push (partialTwosComplementNaturalFromInteger i ac.ac_half (integerFromNatural ac.ac_all))
+      | _ -> Fail "OpSem_lit bad argument"
+      end
+  | OpSem_stack f        -> 
+      match f ac s.stack op.op_argument_values with 
+      | Just stack' ->  Success <| s with stack = stack'; last_op = Just op |>
+      | Nothing -> Fail "OpSem_stack failed"
+      end
+  | OpSem_not_supported  -> 
+      Fail ("OpSem_not_supported: " ^ pp_operation op)
+  | OpSem_binary f       -> 
+      match s.stack with
+      | v1::v2::vs -> 
+          match f ac v1 v2 with
+          | Just v -> push v
+          | Nothing -> Fail ("OpSem_binary error: " ^ pp_operation op)
+          end
+      | _ -> Fail "OpSem binary not given two elements on stack"
+      end
+  | OpSem_unary f        -> 
+      match s.stack with
+      | v1::vs -> 
+          match f ac v1 with
+          | Just v -> push v
+          | Nothing -> Fail ("OpSem_unary error: " ^ pp_operation op)
+          end
+      | _ -> Fail "OpSem unary not given two elements on stack"
+      end
+  | OpSem_opcode_lit base -> 
+      if op.op_code >= base && op.op_code < base + 32 then
+        push (op.op_code - base)
+      else
+        Fail "OpSem_opcode_lit opcode not within [base,base+32)"
+  | OpSem_breg           ->  Fail "OpSem_breg           not implemented"      
+  | OpSem_bregx          ->  Fail "OpSem_bregx          not implemented"
+  | OpSem_deref          ->  Fail "OpSem_deref          not implemented"
+  | OpSem_deref_size     ->  Fail "OpSem_deref_size     not implemented"
+  | OpSem_fbreg          ->  Fail "OpSem_fbreg          not implemented"
+  | OpSem_piece          ->  Fail "OpSem_piece          not implemented"
+  | OpSem_bitpiece       ->  Fail "OpSem_bitpiece       not implemented"
+  | OpSem_implicit_value ->  Fail "OpSem_implicit_value not implemented"
+  | OpSem_stack_value    ->  Fail "OpSem_stack_value    not implemented"
+  | OpSem_call_frame_cfa ->  Fail "OpSem_call_frame_cfa not implemented"
+  end
+
+
+
+
+
 (** analysis *)
    
-   val find_dies_in_die : (die->bool) -> compilation_unit -> die -> list (compilation_unit * die)
+val find_dies_in_die : (die->bool) -> compilation_unit -> die -> list (compilation_unit * die)
 let rec find_dies_in_die (p:die->bool) (cu:compilation_unit) (d: die) = 
-   let ds = List.concatMap (find_dies_in_die p cu) d.die_children in
-   if p d then (cu,d)::ds else ds
-
-   let find_dies (p:die->bool) (d: dwarf) =
-   List.concatMap
-   (fun cu -> find_dies_in_die p cu cu.cu_die) 
-   d.d_compilation_units 
-
+  let ds = List.concatMap (find_dies_in_die p cu) d.die_children in
+  if p d then (cu,d)::ds else ds
+    
+let find_dies (p:die->bool) (d: dwarf) =
+  List.concatMap
+    (fun cu -> find_dies_in_die p cu cu.cu_die) 
+    d.d_compilation_units 
 
 let analyse c (d: dwarf) = 
 
   let (cuh_default : compilation_unit_header) = let cu = myhead d.d_compilation_units in cu.cu_header in
+  
+
+  let tags = List.map tag_encode ["DW_TAG_variable"; "DW_TAG_formal_parameter"] in
+  let dies (*: list (compilation_unit*die) *)= 
+    find_dies 
+      (fun die -> 
+        List.elem die.die_abbreviation_declaration.ad_tag tags
+          && 
+        List.elem 
+          (attribute_encode "DW_AT_location")
+          (List.map Tuple.fst die.die_abbreviation_declaration.ad_attribute_specifications)
+          && 
+        List.elem 
+          (attribute_encode "DW_AT_name")
+          (List.map Tuple.fst die.die_abbreviation_declaration.ad_attribute_specifications)
+          
+      ) 
+      d in
+
+  myconcat "" (List.map 
+                 (fun (cu,die) -> 
+                   
+                   let ats = List.zip 
+                       die.die_abbreviation_declaration.ad_attribute_specifications 
+                       die.die_attribute_values in
+                   
+                   let find_ats (s:string) = myfindNonPure (fun  (((at: natural), (af: natural)), ((pos: natural),(av:attribute_value))) -> attribute_encode s = at) ats in
+                   
+                   let ((_,_),(_,av_name)) = find_ats "DW_AT_name" in 
+                   
+                   let name = 
+                     match av_name with 
+                     | AV_string bs -> string_of_bytes bs
+                     | AV_strp n -> pp_debug_str_entry d.d_str n
+                     | _ -> "av_name AV not understood"
+                     end in
 
 
-   let tags = List.map tag_encode ["DW_TAG_variable"; "DW_TAG_formal_parameter"] in
-   let dies (*: list (compilation_unit*die) *)= 
-   find_dies 
-   (fun die -> 
-   List.elem die.die_abbreviation_declaration.ad_tag tags
-&& 
-   List.elem 
-   (attribute_encode "DW_AT_location")
-   (List.map Tuple.fst die.die_abbreviation_declaration.ad_attribute_specifications)
-&& 
-   List.elem 
-   (attribute_encode "DW_AT_name")
-   (List.map Tuple.fst die.die_abbreviation_declaration.ad_attribute_specifications)
+                   let ((_,_),(_,av_location)) = find_ats "DW_AT_location" in 
 
-        ) 
-        d in
-
-   myconcat "" (List.map 
-   (fun (cu,die) -> 
-
-    let ats = List.zip 
-        die.die_abbreviation_declaration.ad_attribute_specifications 
-        die.die_attribute_values in
-
-   let find_ats (s:string) = myfindNonPure (fun  (((at: natural), (af: natural)), ((pos: natural),(av:attribute_value))) -> attribute_encode s = at) ats in
-
-   let ((_,_),(_,av_name)) = find_ats "DW_AT_name" in 
-
-   let name = 
-  match av_name with 
-  | AV_string bs -> string_of_bytes bs
-  | AV_strp n -> pp_debug_str_entry d.d_str n
-  | _ -> "av_name AV not understood"
-  end in
-
-
-   let ((_,_),(_,av_location)) = find_ats "DW_AT_location" in 
-
-
-let ppd_location = 
-  match av_location with 
-  | AV_exprloc n bs -> "    "^parse_and_pp_operations c cuh_default bs^"\n"
-  | AV_block n bs -> "    "^parse_and_pp_operations c cuh_default bs^"\n"
-  | AV_sec_offset n -> 
-     let location_list = myfindNonPure (fun (n',_)-> n'=n) d.d_loc in
-     pp_location_list c cuh_default location_list 
-  | _ -> "av_location AV not understood"
-  end in 
+                   let ppd_location = 
+                     match av_location with 
+                     | AV_exprloc n bs -> "    "^parse_and_pp_operations c cuh_default bs^"\n"
+                     | AV_block n bs -> "    "^parse_and_pp_operations c cuh_default bs^"\n"
+                     | AV_sec_offset n -> 
+                         let location_list = myfindNonPure (fun (n',_)-> n'=n) d.d_loc in
+                         pp_location_list c cuh_default location_list 
+                     | _ -> "av_location AV not understood"
+                     end in 
    
 
 
-pp_tag_encoding die.die_abbreviation_declaration.ad_tag
-^ " " ^ name ^ ":\n" ^ ppd_location ^ "\n"
-)
-
+                     pp_tag_encoding die.die_abbreviation_declaration.ad_tag
+^ " " ^ name ^ ":\n" ^ ppd_location ^ "\n" )
+                 
 (*   pp_die c cu.cu_header d.d_str 999 false die*)
-    dies)
-   
+                 dies)
+    
 
 
 
