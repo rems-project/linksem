@@ -408,7 +408,7 @@ type operation_semantics =
   | OpSem_deref_size
   | OpSem_nop
   | OpSem_piece
-  | OpSem_bitpiece
+  | OpSem_bit_piece
   | OpSem_implicit_value
   | OpSem_stack_value
   | OpSem_call_frame_cfa
@@ -565,7 +565,7 @@ let operation_encodings = [
 ("DW_OP_call_ref",            natural_of_hex "0x9a", [OAT_dwarf_format_t]       , OpSem_not_supported); (*1*) (* 4- or 8-byte offset of DIE *)
 ("DW_OP_form_tls_address",    natural_of_hex "0x9b", []                         , OpSem_not_supported); (*0*)  
 ("DW_OP_call_frame_cfa",      natural_of_hex "0x9c", []                         , OpSem_call_frame_cfa); (*0*)
-("DW_OP_bit_piece",           natural_of_hex "0x9d", [OAT_ULEB128; OAT_ULEB128] , OpSem_bitpiece); (*2*) (* ULEB128 size followed by ULEB128 offset *)
+("DW_OP_bit_piece",           natural_of_hex "0x9d", [OAT_ULEB128; OAT_ULEB128] , OpSem_bit_piece); (*2*) (* ULEB128 size followed by ULEB128 offset *)
 ("DW_OP_implicit_value",      natural_of_hex "0x9e", [OAT_block]                , OpSem_implicit_value); (*2*) (* ULEB128 size followed by block of that size *)
 ("DW_OP_stack_value",         natural_of_hex "0x9f", []                         , OpSem_stack_value); (*0*) 
 (* these aren't real operations 
@@ -580,6 +580,9 @@ http://dwarfstd.org/ShowIssue.php?issue=100909.1 *)
 ("DW_OP_GNU_implicit_pointer", natural_of_hex "0xf2", [OAT_dwarf_format_t;OAT_SLEB128], OpSem_not_supported)
 
 ]
+
+
+let vDW_OP_breg0 = natural_of_hex "0x70"
 
 
 let max_address (as': natural) : natural = 
@@ -1839,67 +1842,115 @@ type state =
     location_pieces: list composite_location_piece;
   |>
 
-(*
+let initial_state = 
+  <|
+  stack = [];
+  last_op = Nothing;
+  location_pieces = [];
+|>
+  
+type register_read_result 'a =
+  | RRR_result of natural
+  | RRR_not_currently_available
+  | RRR_bad_register_number
 
-*)
+
+type memory_read_result 'a =
+  | MRR_result of natural
+  | MRR_not_currently_available
+  | MRR_bad_address
+
+type evaluation_context = 
+    <| 
+    read_register : natural -> register_read_result natural;
+    read_memory : natural -> natural -> memory_read_result natural;
+  |>
 
 
-let interpret_operation_semantics (ac: arithmetic_context) (s: state) (op: operation) : error state =
 
-  let push v = Success <| s with stack = v :: s.stack; last_op = Just op |>  in
+let rec interpret_operation_semantics (cuh: compilation_unit_header) (ac: arithmetic_context) (ev: evaluation_context) (s: state) (op: operation) : error state =
 
-  match op.op_semantics with
-  | OpSem_nop            -> 
+  let push v vs' = Success <| s with stack = v :: vs'; last_op = Just op |>  in
+
+  let push_maybe (mv: maybe natural) vs' (err:string) = 
+    match mv with
+    | Just v -> push v vs'
+    | Nothing -> Fail (err ^ pp_operation op)
+    end in
+
+  let bregxi r i = 
+    match ev.read_register r with
+    | RRR_result v -> push (partialNaturalFromInteger ((integerFromNatural v+i) mod (integerFromNatural ac.ac_all))) s.stack
+    | RRR_not_currently_available -> Fail "RRR_not_currently_available"
+    | RRR_bad_register_number -> Fail "RRR_bad_register_number"
+    end in
+
+  let deref_size n = 
+    match s.stack with
+    | v::vs' -> 
+        match ev.read_memory v n with
+        | MRR_result v' -> push v' vs'
+        | MRR_not_currently_available -> Fail "MRR_not_currently_available"
+        | MRR_bad_address -> Fail "MRR_bad_address"
+        end
+    | _ -> Fail "OpSem unary not given an element on stack"
+    end in
+
+  match (op.op_semantics, op.op_argument_values)  with
+  | (OpSem_nop, []) -> 
       Success <| s with last_op = Just op |>
-  | OpSem_lit            -> 
-      match op.op_argument_values with
-      | [OAV_natural n] -> push n 
-      | [OAV_integer i] -> push (partialTwosComplementNaturalFromInteger i ac.ac_half (integerFromNatural ac.ac_all))
-      | _ -> Fail "OpSem_lit bad argument"
-      end
-  | OpSem_stack f        -> 
+  | (OpSem_lit, [OAV_natural n]) -> 
+      push n s.stack
+  | (OpSem_lit, [OAV_integer i]) -> 
+      push (partialTwosComplementNaturalFromInteger i ac.ac_half (integerFromNatural ac.ac_all)) s.stack
+  | (OpSem_stack f, []) -> 
       match f ac s.stack op.op_argument_values with 
       | Just stack' ->  Success <| s with stack = stack'; last_op = Just op |>
       | Nothing -> Fail "OpSem_stack failed"
       end
-  | OpSem_not_supported  -> 
+  | (OpSem_not_supported, []) -> 
       Fail ("OpSem_not_supported: " ^ pp_operation op)
-  | OpSem_binary f       -> 
+  | (OpSem_binary f, []) -> 
       match s.stack with
-      | v1::v2::vs -> 
-          match f ac v1 v2 with
-          | Just v -> push v
-          | Nothing -> Fail ("OpSem_binary error: " ^ pp_operation op)
-          end
+      | v1::v2::vs' -> push_maybe (f ac v1 v2) vs' "OpSem_binary error: "
       | _ -> Fail "OpSem binary not given two elements on stack"
       end
-  | OpSem_unary f        -> 
+  | (OpSem_unary f, []) -> 
       match s.stack with
-      | v1::vs -> 
-          match f ac v1 with
-          | Just v -> push v
-          | Nothing -> Fail ("OpSem_unary error: " ^ pp_operation op)
-          end
-      | _ -> Fail "OpSem unary not given two elements on stack"
+      | v1::vs' -> push_maybe (f ac v1) vs' "OpSem_unary error: " 
+      | _ -> Fail "OpSem unary not given an element on stack"
       end
-  | OpSem_opcode_lit base -> 
+  | (OpSem_opcode_lit base, []) -> 
       if op.op_code >= base && op.op_code < base + 32 then
-        push (op.op_code - base)
+        push (op.op_code - base) s.stack
       else
         Fail "OpSem_opcode_lit opcode not within [base,base+32)"
-  | OpSem_breg           ->  Fail "OpSem_breg           not implemented"      
-  | OpSem_bregx          ->  Fail "OpSem_bregx          not implemented"
-  | OpSem_deref          ->  Fail "OpSem_deref          not implemented"
-  | OpSem_deref_size     ->  Fail "OpSem_deref_size     not implemented"
-  | OpSem_fbreg          ->  Fail "OpSem_fbreg          not implemented"
-  | OpSem_piece          ->  Fail "OpSem_piece          not implemented"
-  | OpSem_bitpiece       ->  Fail "OpSem_bitpiece       not implemented"
-  | OpSem_implicit_value ->  Fail "OpSem_implicit_value not implemented"
-  | OpSem_stack_value    ->  Fail "OpSem_stack_value    not implemented"
-  | OpSem_call_frame_cfa ->  Fail "OpSem_call_frame_cfa not implemented"
+  | (OpSem_breg, [OAV_integer i]) ->  
+      let r = op.op_code - vDW_OP_breg0 in
+      bregxi r i
+  | (OpSem_bregx, [OAV_natural r; OAV_integer i]) -> 
+      bregxi r i
+  | (OpSem_deref, []) ->
+      deref_size cuh.cuh_address_size 
+  | (OpSem_deref_size, [OAV_natural n]) -> 
+      deref_size n
+
+
+  | (OpSem_fbreg, [OAV_integer i]) ->  Fail "OpSem_fbreg not implemented"
+  | (OpSem_piece, [OAV_natural size_bytes]) ->  Fail "OpSem_piece not implemented"
+  | (OpSem_bit_piece, [OAV_natural size_bits; OAV_natural offset_bits]) ->  Fail "OpSem_bitpiece not implemented"
+  | (OpSem_implicit_value, [OAV_block size bs]) -> Fail "OpSem_implicit_value not implemented"
+  | (OpSem_stack_value, []) ->  Fail "OpSem_stack_value not implemented"
+  | (OpSem_call_frame_cfa, []) ->  Fail "OpSem_call_frame_cfa not implemented"
+  | (_, _) ->
+      Fail ("bad OpSem invocation: op=" ^ pp_operation op ^ " arguments=" ^ myconcat "" (List.map pp_operation_argument_value op.op_argument_values))
   end
+(*
+and interpret_operation_list_semantics (cuh: compilation_unit_header) (ac: arithmetic_context) (ev: evaluation_context) (frame_base_attribute: ) (s: state) (ops: list operation) : error single_location =
 
 
+  match (op.op_semantics, op.op_argument_values)  with
+*)
 
 
 
