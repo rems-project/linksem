@@ -100,6 +100,13 @@ let myfindNonPure P l = match (List.find P l) with
   | Nothing     -> Assert_extra.failwith "myfindNonPure"
 end
 
+val myfindmaybe : forall 'a 'b.  ('a -> maybe 'b) -> list 'a -> maybe 'b
+let rec myfindmaybe f xs = 
+  match xs with
+  | [] -> Nothing
+  | x::xs' -> match f x with Just y -> Just y | Nothing -> myfindmaybe f xs' end
+  end
+
 (* natural version of List.index *)
 val index_natural : forall 'a. list 'a -> natural -> maybe 'a
 let rec index_natural l n = match l with 
@@ -122,7 +129,14 @@ declare ocaml    target_rep function natural_nat_shift_left = `Nat_big_num.shift
 val natural_nat_shift_right : natural -> nat -> natural 
 declare ocaml    target_rep function natural_nat_shift_right = `Nat_big_num.shift_right`
 
-
+val bytes_of_natural: endianness -> natural (*size*) -> natural (*value*) -> list byte
+let bytes_of_natural en size n =
+  if size = 8 then 
+    bytes_of_elf64_xword en (elf64_xword_of_natural n)
+  else if size = 4 then 
+    bytes_of_elf32_word en (elf32_word_of_natural n)
+  else
+    Assert_extra.failwith "bytes_of_natural given size that is not 4 or 8"
 
 (** basic pretty printing *)
 
@@ -402,6 +416,7 @@ type operation_semantics =
   | OpSem_binary of (arithmetic_context -> natural -> natural -> maybe natural)
   | OpSem_unary of (arithmetic_context -> natural -> maybe natural)
   | OpSem_opcode_lit of natural 
+  | OpSem_reg
   | OpSem_breg
   | OpSem_bregx
   | OpSem_fbreg
@@ -488,38 +503,38 @@ let operation_encodings = [
 ("DW_OP_lit29",               natural_of_hex "0x4d", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
 ("DW_OP_lit30",               natural_of_hex "0x4e", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
 ("DW_OP_lit31",               natural_of_hex "0x4f", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
-("DW_OP_reg0",                natural_of_hex "0x50", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*) (* reg 0..31 = (DW_OP_reg0 + regnum) *)
-("DW_OP_reg1",                natural_of_hex "0x51", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
-("DW_OP_reg2",                natural_of_hex "0x52", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
-("DW_OP_reg3",                natural_of_hex "0x53", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
-("DW_OP_reg4",                natural_of_hex "0x54", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
-("DW_OP_reg5",                natural_of_hex "0x55", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
-("DW_OP_reg6",                natural_of_hex "0x56", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
-("DW_OP_reg7",                natural_of_hex "0x57", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
-("DW_OP_reg8",                natural_of_hex "0x58", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
-("DW_OP_reg9",                natural_of_hex "0x59", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
-("DW_OP_reg10",               natural_of_hex "0x5a", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
-("DW_OP_reg11",               natural_of_hex "0x5b", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
-("DW_OP_reg12",               natural_of_hex "0x5c", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
-("DW_OP_reg13",               natural_of_hex "0x5d", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
-("DW_OP_reg14",               natural_of_hex "0x5e", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
-("DW_OP_reg15",               natural_of_hex "0x5f", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
-("DW_OP_reg16",               natural_of_hex "0x60", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
-("DW_OP_reg17",               natural_of_hex "0x61", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
-("DW_OP_reg18",               natural_of_hex "0x62", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
-("DW_OP_reg19",               natural_of_hex "0x63", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
-("DW_OP_reg20",               natural_of_hex "0x64", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
-("DW_OP_reg21",               natural_of_hex "0x65", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
-("DW_OP_reg22",               natural_of_hex "0x66", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
-("DW_OP_reg23",               natural_of_hex "0x67", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
-("DW_OP_reg24",               natural_of_hex "0x68", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
-("DW_OP_reg25",               natural_of_hex "0x69", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
-("DW_OP_reg26",               natural_of_hex "0x6a", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
-("DW_OP_reg27",               natural_of_hex "0x6b", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
-("DW_OP_reg28",               natural_of_hex "0x6c", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
-("DW_OP_reg29",               natural_of_hex "0x6d", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
-("DW_OP_reg30",               natural_of_hex "0x6e", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*)
-("DW_OP_reg31",               natural_of_hex "0x6f", []                         , OpSem_opcode_lit (natural_of_hex "0x50")); (*1*) 
+("DW_OP_reg0",                natural_of_hex "0x50", []                         , OpSem_reg); (*1*) (* reg 0..31 = (DW_OP_reg0 + regnum) *)
+("DW_OP_reg1",                natural_of_hex "0x51", []                         , OpSem_reg); (*1*)
+("DW_OP_reg2",                natural_of_hex "0x52", []                         , OpSem_reg); (*1*)
+("DW_OP_reg3",                natural_of_hex "0x53", []                         , OpSem_reg); (*1*)
+("DW_OP_reg4",                natural_of_hex "0x54", []                         , OpSem_reg); (*1*)
+("DW_OP_reg5",                natural_of_hex "0x55", []                         , OpSem_reg); (*1*)
+("DW_OP_reg6",                natural_of_hex "0x56", []                         , OpSem_reg); (*1*)
+("DW_OP_reg7",                natural_of_hex "0x57", []                         , OpSem_reg); (*1*)
+("DW_OP_reg8",                natural_of_hex "0x58", []                         , OpSem_reg); (*1*)
+("DW_OP_reg9",                natural_of_hex "0x59", []                         , OpSem_reg); (*1*)
+("DW_OP_reg10",               natural_of_hex "0x5a", []                         , OpSem_reg); (*1*)
+("DW_OP_reg11",               natural_of_hex "0x5b", []                         , OpSem_reg); (*1*)
+("DW_OP_reg12",               natural_of_hex "0x5c", []                         , OpSem_reg); (*1*)
+("DW_OP_reg13",               natural_of_hex "0x5d", []                         , OpSem_reg); (*1*)
+("DW_OP_reg14",               natural_of_hex "0x5e", []                         , OpSem_reg); (*1*)
+("DW_OP_reg15",               natural_of_hex "0x5f", []                         , OpSem_reg); (*1*)
+("DW_OP_reg16",               natural_of_hex "0x60", []                         , OpSem_reg); (*1*)
+("DW_OP_reg17",               natural_of_hex "0x61", []                         , OpSem_reg); (*1*)
+("DW_OP_reg18",               natural_of_hex "0x62", []                         , OpSem_reg); (*1*)
+("DW_OP_reg19",               natural_of_hex "0x63", []                         , OpSem_reg); (*1*)
+("DW_OP_reg20",               natural_of_hex "0x64", []                         , OpSem_reg); (*1*)
+("DW_OP_reg21",               natural_of_hex "0x65", []                         , OpSem_reg); (*1*)
+("DW_OP_reg22",               natural_of_hex "0x66", []                         , OpSem_reg); (*1*)
+("DW_OP_reg23",               natural_of_hex "0x67", []                         , OpSem_reg); (*1*)
+("DW_OP_reg24",               natural_of_hex "0x68", []                         , OpSem_reg); (*1*)
+("DW_OP_reg25",               natural_of_hex "0x69", []                         , OpSem_reg); (*1*)
+("DW_OP_reg26",               natural_of_hex "0x6a", []                         , OpSem_reg); (*1*)
+("DW_OP_reg27",               natural_of_hex "0x6b", []                         , OpSem_reg); (*1*)
+("DW_OP_reg28",               natural_of_hex "0x6c", []                         , OpSem_reg); (*1*)
+("DW_OP_reg29",               natural_of_hex "0x6d", []                         , OpSem_reg); (*1*)
+("DW_OP_reg30",               natural_of_hex "0x6e", []                         , OpSem_reg); (*1*)
+("DW_OP_reg31",               natural_of_hex "0x6f", []                         , OpSem_reg); (*1*) 
 ("DW_OP_breg0",               natural_of_hex "0x70", [OAT_SLEB128]              , OpSem_breg); (*1*) (* base register 0..31 = (DW_OP_breg0 + regnum) *)
 ("DW_OP_breg1",               natural_of_hex "0x71", [OAT_SLEB128]              , OpSem_breg); (*1*)
 ("DW_OP_breg2",               natural_of_hex "0x72", [OAT_SLEB128]              , OpSem_breg); (*1*)
@@ -582,6 +597,7 @@ http://dwarfstd.org/ShowIssue.php?issue=100909.1 *)
 ]
 
 
+let vDW_OP_reg0 = natural_of_hex "0x50"
 let vDW_OP_breg0 = natural_of_hex "0x70"
 
 
@@ -1189,6 +1205,7 @@ let pp_operation_semantics (os: operation_semantics) : string =
   | OpSem_binary _                    -> "OpSem_binary ..."
   | OpSem_unary _                     -> "OpSem_unary ..."
   | OpSem_opcode_lit _                -> "OpSem_opcode_lit ..."
+  | OpSem_reg                         -> "OpSem_reg"                         
   | OpSem_breg                        -> "OpSem_breg"                         
   | OpSem_bregx                       -> "OpSem_bregx"                        
   | OpSem_fbreg                       -> "OpSem_fbreg"                        
@@ -1821,39 +1838,29 @@ DW_OP_call_frame_cfa   go off to 6.4 and pull info out of .debug_frame (possibly
 
 *)
 
+
+(* the result of a location expression evaluation is a single_location  (or failure) *)
+
 type simple_location = 
-  | SL_memory of natural
+  | SL_memory_address of natural
   | SL_register of natural
-  | SL_implicit of list byte
+  | SL_implicit of list byte  (* used for implicit and stack values *)
   | SL_empty
 
 type composite_location_piece = 
   | CLP_piece of natural * simple_location
-  | CLP_bitpiece of natural * natural * simple_location
+  | CLP_bit_piece of natural * natural * simple_location
 
 type single_location =
   | SL_simple of simple_location
   | SL_composite of list composite_location_piece
 
-type state = 
-    <| 
-    stack: operation_stack;
-    last_op: maybe operation;
-    location_pieces: list composite_location_piece;
-  |>
+(* location expression evaluation can involve register and memory reads, via the following interface *)
 
-let initial_state = 
-  <|
-  stack = [];
-  last_op = Nothing;
-  location_pieces = [];
-|>
-  
 type register_read_result 'a =
   | RRR_result of natural
   | RRR_not_currently_available
   | RRR_bad_register_number
-
 
 type memory_read_result 'a =
   | MRR_result of natural
@@ -1866,92 +1873,217 @@ type evaluation_context =
     read_memory : natural -> natural -> memory_read_result natural;
   |>
 
+(* location expression evaluation is basically a recursive function
+down a list of operations, maintaining an operation_stack (a list of
+naturals representing machine-address-size words), the current
+simple_location, and a list of any composite_location_piece's
+accumulated so far *)
 
+type state = 
+    <| 
+    s_stack: operation_stack;
+    s_value: simple_location;
+    s_location_pieces: list composite_location_piece;
+  |>
 
-let rec interpret_operation_semantics (cuh: compilation_unit_header) (ac: arithmetic_context) (ev: evaluation_context) (s: state) (op: operation) : error state =
+let initial_state = 
+  <|
+  s_stack = [];
+  s_value = SL_empty;
+  s_location_pieces = [];
+|>
+  
+(* the main location expression evaluation function *)
 
-  let push v vs' = Success <| s with stack = v :: vs'; last_op = Just op |>  in
+let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (cuh: compilation_unit_header) (ac: arithmetic_context) (ev: evaluation_context) (mfbloc: maybe attribute_value) (pc: natural) (s: state) (ops: list operation) : error single_location =
 
-  let push_maybe (mv: maybe natural) vs' (err:string) = 
+  let push_memory_address v vs' = Success <| s with s_stack = v :: vs'; s_value = SL_memory_address v |>  in
+
+  let push_memory_address_maybe (mv: maybe natural) vs' (err:string) op = 
     match mv with
-    | Just v -> push v vs'
+    | Just v -> push_memory_address v vs'
     | Nothing -> Fail (err ^ pp_operation op)
     end in
 
   let bregxi r i = 
     match ev.read_register r with
-    | RRR_result v -> push (partialNaturalFromInteger ((integerFromNatural v+i) mod (integerFromNatural ac.ac_all))) s.stack
+    | RRR_result v -> push_memory_address (partialNaturalFromInteger ((integerFromNatural v+i) mod (integerFromNatural ac.ac_all))) s.s_stack
     | RRR_not_currently_available -> Fail "RRR_not_currently_available"
     | RRR_bad_register_number -> Fail "RRR_bad_register_number"
     end in
 
   let deref_size n = 
-    match s.stack with
+    match s.s_stack with
     | v::vs' -> 
         match ev.read_memory v n with
-        | MRR_result v' -> push v' vs'
+        | MRR_result v' -> push_memory_address v' vs'
         | MRR_not_currently_available -> Fail "MRR_not_currently_available"
         | MRR_bad_address -> Fail "MRR_bad_address"
         end
     | _ -> Fail "OpSem unary not given an element on stack"
     end in
 
-  match (op.op_semantics, op.op_argument_values)  with
-  | (OpSem_nop, []) -> 
-      Success <| s with last_op = Just op |>
-  | (OpSem_lit, [OAV_natural n]) -> 
-      push n s.stack
-  | (OpSem_lit, [OAV_integer i]) -> 
-      push (partialTwosComplementNaturalFromInteger i ac.ac_half (integerFromNatural ac.ac_all)) s.stack
-  | (OpSem_stack f, []) -> 
-      match f ac s.stack op.op_argument_values with 
-      | Just stack' ->  Success <| s with stack = stack'; last_op = Just op |>
-      | Nothing -> Fail "OpSem_stack failed"
-      end
-  | (OpSem_not_supported, []) -> 
-      Fail ("OpSem_not_supported: " ^ pp_operation op)
-  | (OpSem_binary f, []) -> 
-      match s.stack with
-      | v1::v2::vs' -> push_maybe (f ac v1 v2) vs' "OpSem_binary error: "
-      | _ -> Fail "OpSem binary not given two elements on stack"
-      end
-  | (OpSem_unary f, []) -> 
-      match s.stack with
-      | v1::vs' -> push_maybe (f ac v1) vs' "OpSem_unary error: " 
-      | _ -> Fail "OpSem unary not given an element on stack"
-      end
-  | (OpSem_opcode_lit base, []) -> 
-      if op.op_code >= base && op.op_code < base + 32 then
-        push (op.op_code - base) s.stack
+  match ops with
+  | [] -> 
+      if s.s_location_pieces = [] then 
+        Success (SL_simple s.s_value)
+      else if s.s_value = SL_empty then
+        Success (SL_composite s.s_location_pieces)
       else
-        Fail "OpSem_opcode_lit opcode not within [base,base+32)"
-  | (OpSem_breg, [OAV_integer i]) ->  
-      let r = op.op_code - vDW_OP_breg0 in
-      bregxi r i
-  | (OpSem_bregx, [OAV_natural r; OAV_integer i]) -> 
-      bregxi r i
-  | (OpSem_deref, []) ->
-      deref_size cuh.cuh_address_size 
-  | (OpSem_deref_size, [OAV_natural n]) -> 
-      deref_size n
+        (*  unclear what's supposed to happen in this case *)
+        Fail "unfinished part of composite expression"
+         
+  | op::ops' -> 
+      let es' = 
+        match (op.op_semantics, op.op_argument_values)  with
+        | (OpSem_nop, []) -> 
+            Success s
+        | (OpSem_lit, [OAV_natural n]) -> 
+            push_memory_address n s.s_stack
+        | (OpSem_lit, [OAV_integer i]) -> 
+            push_memory_address (partialTwosComplementNaturalFromInteger i ac.ac_half (integerFromNatural ac.ac_all)) s.s_stack
+        | (OpSem_stack f, []) -> 
+            match f ac s.s_stack op.op_argument_values with 
+            | Just stack' ->  
+                let value' : simple_location = match stack' with [] -> SL_empty | v'::_ -> SL_memory_address v' end in 
+                Success <| s with s_stack = stack'; s_value = value' |>
+            | Nothing -> Fail "OpSem_stack failed"
+            end
+        | (OpSem_not_supported, []) -> 
+            Fail ("OpSem_not_supported: " ^ pp_operation op)
+        | (OpSem_binary f, []) -> 
+            match s.s_stack with
+            | v1::v2::vs' -> push_memory_address_maybe (f ac v1 v2) vs' "OpSem_binary error: " op
+            | _ -> Fail "OpSem binary not given two elements on stack"
+            end
+        | (OpSem_unary f, []) -> 
+            match s.s_stack with
+            | v1::vs' -> push_memory_address_maybe (f ac v1) vs' "OpSem_unary error: " op
+            | _ -> Fail "OpSem unary not given an element on stack"
+            end
+        | (OpSem_opcode_lit base, []) -> 
+            if op.op_code >= base && op.op_code < base + 32 then
+              push_memory_address (op.op_code - base) s.s_stack
+            else
+              Fail "OpSem_opcode_lit opcode not within [base,base+32)"
+        | (OpSem_reg, []) -> 
+            (* TODO: unclear whether this should push the register id or not *)
+            let r = op.op_code - vDW_OP_reg0 in   
+            Success <| s with s_stack = r :: s.s_stack; s_value = SL_register r |>  
+        | (OpSem_breg, [OAV_integer i]) ->  
+            let r = op.op_code - vDW_OP_breg0 in
+            bregxi r i
+        | (OpSem_bregx, [OAV_natural r; OAV_integer i]) -> 
+            bregxi r i
+        | (OpSem_deref, []) ->
+            deref_size cuh.cuh_address_size 
+        | (OpSem_deref_size, [OAV_natural n]) -> 
+            deref_size n
+        | (OpSem_fbreg, [OAV_integer i]) ->  
+            match mfbloc with
+            | Just fbloc ->
+                match evaluate_location_description c dloc cuh ac ev (*mfbloc*)Nothing pc fbloc with
+                (* what to do if the recursive call also uses fbreg?  for now assume that's not allowed *)
+                | Success l ->
+                    match l with 
+                    | SL_simple (SL_memory_address a) ->
+                        let vi = ((integerFromNatural a) + i) mod (integerFromNatural ac.ac_all) in
+                        let v = partialTwosComplementNaturalFromInteger vi ac.ac_half (integerFromNatural ac.ac_all) in
+                        push_memory_address v s.s_stack
+                    | _ ->
+                        Fail "OpSem_fbreg got a non-SL_simple (SL_memory_address _) result"
+                       (* "The DW_OP_fbreg operation provides a signed LEB128
+                           offset from the address specified by the location
+                           description in the DW_AT_frame_base attribute of the
+                           current function. " 
+                          - so what to do if the location description returns a non-memory-address location?  *)
+                    end
+                | Fail e ->
+                    Fail ("OpSem_fbreg failure: " ^ e)
+                end 
+            | Nothing -> 
+                Fail "OpSem_fbreg: no frame base location description given"
+            end
 
-
-  | (OpSem_fbreg, [OAV_integer i]) ->  Fail "OpSem_fbreg not implemented"
-  | (OpSem_piece, [OAV_natural size_bytes]) ->  Fail "OpSem_piece not implemented"
-  | (OpSem_bit_piece, [OAV_natural size_bits; OAV_natural offset_bits]) ->  Fail "OpSem_bitpiece not implemented"
-  | (OpSem_implicit_value, [OAV_block size bs]) -> Fail "OpSem_implicit_value not implemented"
-  | (OpSem_stack_value, []) ->  Fail "OpSem_stack_value not implemented"
-  | (OpSem_call_frame_cfa, []) ->  Fail "OpSem_call_frame_cfa not implemented"
-  | (_, _) ->
-      Fail ("bad OpSem invocation: op=" ^ pp_operation op ^ " arguments=" ^ myconcat "" (List.map pp_operation_argument_value op.op_argument_values))
+        | (OpSem_piece, [OAV_natural size_bytes]) ->  
+            let piece = CLP_piece size_bytes s.s_value in
+            (* we allow a piece (or bit_piece) to be any simple_location, including implicit and stack values. Unclear if this is intended, esp. the latter *)
+            let stack' = [] in
+            let value' = SL_empty in
+            Success <| s with s_stack = stack'; s_value = value'; s_location_pieces = s.s_location_pieces ++ [piece] |>
+        | (OpSem_bit_piece, [OAV_natural size_bits; OAV_natural offset_bits]) -> 
+            let piece = CLP_bit_piece size_bits offset_bits s.s_value in
+            let stack' = [] in
+            let value' = SL_empty in
+            Success <| s with s_stack = stack'; s_value = value'; s_location_pieces = s.s_location_pieces ++ [piece] |>
+        | (OpSem_implicit_value, [OAV_block size bs]) -> 
+            let stack' = [] in
+            let value' = SL_implicit bs in
+            Success <| s with s_stack = stack'; s_value = value' |>
+        | (OpSem_stack_value, []) -> 
+            (* "The DW_OP_stack_value operation terminates the expression." - does
+               this refer to just the subexpression, ie allowing a stack value to be
+               a piece of a composite location, or necessarily the whole expression?
+               Why does DW_OP_stack_value have this clause while DW_OP_implicit_value
+               does not? *)
+            (* why doesn't DW_OP_stack_value have a size argument? *)
+            match s.s_stack with
+            | v::vs' -> 
+                let stack' = [] in
+                let value' = SL_implicit (bytes_of_natural c.endianness cuh.cuh_address_size v) in
+                Success <| s with s_stack = stack'; s_value = value' |>
+      
+            | _ -> Fail "OpSem_stack_value not given an element on stack"
+            end
+        | (OpSem_call_frame_cfa, []) ->  
+            Fail "OpSem_call_frame_cfa not implemented"
+        | (_, _) ->
+            Fail ("bad OpSem invocation: op=" ^ pp_operation op ^ " arguments=" ^ myconcat "" (List.map pp_operation_argument_value op.op_argument_values))
+        end 
+      in
+      match es' with
+      | Success s' ->
+          evaluate_operation_list c dloc cuh ac ev mfbloc pc s' ops'
+      | Fail e ->
+          Fail e
+      end
   end
-(*
-and interpret_operation_list_semantics (cuh: compilation_unit_header) (ac: arithmetic_context) (ev: evaluation_context) (frame_base_attribute: ) (s: state) (ops: list operation) : error single_location =
 
+and evaluate_location_description_bytes (c:p_context) (dloc: location_list_list) (cuh: compilation_unit_header) (ac: arithmetic_context) (ev: evaluation_context) (mfbloc: maybe attribute_value) (pc: natural) (bs: list byte) : error single_location =
+  let parse_context = <|pc_bytes = bs; pc_offset = 0  |> in
+  match parse_operations c cuh parse_context with
+  | PR_fail s pc' -> Fail ("evaluate_location_description_bytes: parse_operations fail: " ^ pp_parse_fail s pc')
+  | PR_success ops pc' -> 
+      if pc'.pc_bytes <> [] then 
+        Fail "evaluate_location_description_bytes: extra non-parsed bytes" 
+      else 
+        evaluate_operation_list c dloc cuh ac ev mfbloc pc initial_state ops
+  end
 
-  match (op.op_semantics, op.op_argument_values)  with
-*)
-
+and evaluate_location_description (c:p_context) (dloc: location_list_list) (cuh: compilation_unit_header) (ac: arithmetic_context) (ev: evaluation_context) (mfbloc: maybe attribute_value) (pc: natural) (loc:attribute_value) : error single_location =
+  match loc with 
+  | AV_exprloc n bs ->
+      evaluate_location_description_bytes c dloc cuh ac ev mfbloc pc bs
+  | AV_block n bs -> 
+      evaluate_location_description_bytes c dloc cuh ac ev mfbloc pc bs
+  | AV_sec_offset n -> 
+      let location_list = myfindNonPure (fun (n',_)-> n'=n) dloc in
+      let (offset,(llis:list location_list_item)) = location_list in 
+      let f (lli:location_list_item) : maybe single_location_description = 
+        match lli with
+        | LLE lle ->
+           if pc >= lle.lle_beginning_address_offset && pc < lle.lle_ending_address_offset then Just lle.lle_single_location_description else Nothing
+        | BASE _ -> 
+           Nothing  (* TODO: either refactor to do offset during parsing or update base offsets here*)
+        end in
+        match myfindmaybe f llis with
+        | Just bs ->
+            evaluate_location_description_bytes c dloc cuh ac ev mfbloc pc bs
+        | Nothing ->
+            Fail "evaluate_location_description didn't find pc in location list ranges"
+        end
+  | _ -> Fail "evaluate_location_description av_location not understood"
+  end 
 
 
 (** analysis *)
