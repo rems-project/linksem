@@ -1389,6 +1389,23 @@ let parser_of_attribute_form c cuh n =
   else 
     parser_of_attribute_form_non_indirect c cuh n 
 
+(** attribute find *)
+
+let find_name str ats : maybe string =
+  myfindmaybe 
+    (fun (((at: natural), (af: natural)), ((pos: natural),(av:attribute_value))) -> 
+      if attribute_encode "DW_AT_name" = at then 
+        let name = 
+          match av with 
+          | AV_string bs -> string_of_bytes bs
+          | AV_strp n -> pp_debug_str_entry str n
+          | _ -> "av_name AV not understood"
+          end in
+        Just name
+      else
+        Nothing)
+    ats
+
 
 (** compilation unit header: pp and parsing *)
 
@@ -1493,6 +1510,22 @@ let rec pp_die c cuh str level (pp_children:bool) die =
     ^
       if pp_children then myconcat "" (List.map (pp_die c cuh str (level +1) pp_children) die.die_children) else ""
 
+val pp_die_abbrev : p_context -> compilation_unit_header -> list byte -> natural -> bool -> die -> string
+let rec pp_die_abbrev c cuh str level (pp_children:bool) die = 
+  (toString (replicate (2 * level) #' '))
+  ^ pp_tag_encoding die.die_abbreviation_declaration.ad_tag
+  ^ " (" ^ pp_pos die.die_offset ^ ") "
+(*  ^ ": Abbrev Number: " ^ show die.die_abbreviation_code *)
+  ^
+    let ats = List.zip 
+        die.die_abbreviation_declaration.ad_attribute_specifications 
+        die.die_attribute_values in
+    (match find_name str ats with Just s -> s | Nothing -> "-" end) ^ "\n"
+    ^ (*(myconcat "" (List.map (pp_die_abbrev_attribute c cuh str) ats))*)
+
+      if pp_children then myconcat "" (List.map (pp_die_abbrev c cuh str (level +1) pp_children) die.die_children) else ""
+
+
 
 val parse_die : p_context -> list byte -> compilation_unit_header -> (natural->abbreviation_declaration) -> parser (maybe die)
 let rec parse_die c str cuh find_abbreviation_declaration = 
@@ -1538,6 +1571,15 @@ let pp_compilation_unit c (debug_str_section_body: list byte) cu =
 
 let pp_compilation_units c debug_string_section_body (compilation_units: list compilation_unit) : string = 
   myconcat "" (List.map (pp_compilation_unit c debug_string_section_body) compilation_units)
+
+
+let pp_compilation_unit_abbrev c (debug_str_section_body: list byte) cu = 
+  pp_compilation_unit_header cu.cu_header
+(*  ^ pp_abbreviations_table cu.cu_abbreviations_table*)
+  ^ pp_die_abbrev c cu.cu_header debug_str_section_body 0 true cu.cu_die
+
+let pp_compilation_units_abbrev c debug_string_section_body (compilation_units: list compilation_unit) : string = 
+  myconcat "" (List.map (pp_compilation_unit_abbrev c debug_string_section_body) compilation_units)
 
                         
 let parse_compilation_unit c (debug_str_section_body: list byte) (debug_abbrev_section_body: list byte) : parser (maybe compilation_unit) =
@@ -1732,7 +1774,10 @@ let parse_location_list_list c cuh : parser location_list_list =
 (** all dwarf info: pp and parsing *)
 
 let pp_dwarf c d = 
-  pp_compilation_units c d.d_str d.d_compilation_units 
+  "************** abbrev ****************\n"
+  ^ pp_compilation_units_abbrev c d.d_str d.d_compilation_units 
+  ^ "************** full ****************\n"
+  ^ pp_compilation_units c d.d_str d.d_compilation_units 
   ^ "\n"
   ^ let (cuh_default : compilation_unit_header) = let cu = myhead d.d_compilation_units in cu.cu_header in
     pp_loc c cuh_default d.d_loc
