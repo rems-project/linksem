@@ -437,6 +437,7 @@ type arithmetic_context =
   ac_max: natural;   (* (2 ^ ac_bitwidth) -1 *) (* also the representation of -1 *)
 |>
 
+
 type operation_semantics = 
   | OpSem_lit 
   | OpSem_deref
@@ -759,6 +760,13 @@ type location_list_item =
 type location_list = natural (*offset*) * list location_list_item
 
 type location_list_list = list location_list 
+
+type frame_base_location_description = 
+(*  | FBLD_register of byte *) (* no need to discriminate wrt expression*)
+  | FBLD_expression of single_location_description
+  | FBLD_location_list of list (natural * natural * single_location_description)
+
+
 
 
 type range_list_entry =
@@ -1257,7 +1265,7 @@ let pp_operation_semantics (os: operation_semantics) : string =
   | OpSem_deref_size                  -> "OpSem_deref_size"                   
   | OpSem_nop                         -> "OpSem_nop"                          
   | OpSem_piece                       -> "OpSem_piece"                        
-  | OpSem_bitpiece                    -> "OpSem_bitpiece"                     
+  | OpSem_bit_piece                   -> "OpSem_bitpiece"                     
   | OpSem_implicit_value              -> "OpSem_implicit_value"
   | OpSem_stack_value                 -> "OpSem_stack_value"                  
   | OpSem_call_frame_cfa              -> "OpSem_call_frame_cfa"                
@@ -1543,8 +1551,10 @@ let parse_type_unit_header c : parser type_unit_header =
 
 let pp_pos pos = "<" ^ pphex pos ^">"
 
-let pp_die_attribute c (cuh:compilation_unit_header) (str : list byte) (((at: natural), (af: natural)), ((pos: natural),(av:attribute_value))) : string = 
-  pp_pos pos  ^ "   " 
+let indent_level (level: natural) = (toString (replicate (3 * level) #' '))
+
+let pp_die_attribute c (cuh:compilation_unit_header) (str : list byte) (level: natural) (((at: natural), (af: natural)), ((pos: natural),(av:attribute_value))) : string = 
+  indent_level (level + 1) ^ pp_pos pos  ^ "   " 
   ^ pp_attribute_encoding at ^ "     : "
   ^ "(" ^ pp_attribute_form_encoding af ^ ") "
   ^ pp_attribute_value c cuh str at av
@@ -1552,7 +1562,7 @@ let pp_die_attribute c (cuh:compilation_unit_header) (str : list byte) (((at: na
 
 val pp_die : p_context -> compilation_unit_header -> list byte -> natural -> bool -> die -> string
 let rec pp_die c cuh str level (pp_children:bool) die = 
-  "<" ^ show level ^ ">" 
+  indent_level level ^ "<" ^ show level ^ ">" 
   ^ pp_pos die.die_offset
   ^ ": Abbrev Number: " ^ show die.die_abbreviation_code 
   ^ " (" ^ pp_tag_encoding die.die_abbreviation_declaration.ad_tag ^")\n"
@@ -1560,13 +1570,13 @@ let rec pp_die c cuh str level (pp_children:bool) die =
     let ats = List.zip 
         die.die_abbreviation_declaration.ad_attribute_specifications 
         die.die_attribute_values in
-    (myconcat "" (List.map (pp_die_attribute c cuh str) ats))
+    (myconcat "" (List.map (pp_die_attribute c cuh str level) ats))
     ^
       if pp_children then myconcat "" (List.map (pp_die c cuh str (level +1) pp_children) die.die_children) else ""
 
 val pp_die_abbrev : p_context -> compilation_unit_header -> list byte -> natural -> bool -> (list die) -> die -> string
 let rec pp_die_abbrev c cuh str level (pp_children:bool) parents die = 
-  (toString (replicate (2 * level) #' '))
+  indent_level level 
   ^ pp_tag_encoding die.die_abbreviation_declaration.ad_tag
   ^ " (" ^ pp_pos die.die_offset ^ ") "
 (*  ^ ": Abbrev Number: " ^ show die.die_abbreviation_code *)
@@ -1626,9 +1636,14 @@ let has_attribute (an: string) (die: die) : bool =
 (** compilation units: pp and parsing *)
 
 let pp_compilation_unit c (debug_str_section_body: list byte) cu = 
-  pp_compilation_unit_header cu.cu_header
+
+  "*** compilation unit header               ***\n"
+  ^ pp_compilation_unit_header cu.cu_header
+  ^ "\n*** compilation unit abbreviation table ***\n"
   ^ pp_abbreviations_table cu.cu_abbreviations_table
+  ^ "\n*** compilation unit die tree           ***\n"
   ^ pp_die c cu.cu_header debug_str_section_body 0 true cu.cu_die
+  ^ "\n"
 
 let pp_compilation_units c debug_string_section_body (compilation_units: list compilation_unit) : string = 
   myconcat "" (List.map (pp_compilation_unit c debug_string_section_body) compilation_units)
@@ -1953,15 +1968,15 @@ let rec interpret_range_list (base_address: natural) (rlis: list range_list_item
 let pp_dwarf d = 
   let c : p_context = <| endianness = d.d_endianness |> in
 
-  "************** abbrev ****************\n"
+  "\n************** .debug_info section - abbreviated *****************\n"
   ^ pp_compilation_units_abbrev c d.d_str d.d_compilation_units 
-  ^ "************** full ****************\n"
+  ^ "\n************** .debug_info section - full ************************\n"
   ^ pp_compilation_units c d.d_str d.d_compilation_units 
-  ^ "\n"
+  ^ "\n************** .debug_loc section: location lists ****************\n"
   ^ let (cuh_default : compilation_unit_header) = let cu = myhead d.d_compilation_units in cu.cu_header in
     pp_loc c cuh_default d.d_loc
-  ^
-    pp_ranges c cuh_default d.d_ranges
+  ^ "\n************** .debug_ranges section: range lists ****************\n"
+  ^ pp_ranges c cuh_default d.d_ranges
     
 let parse_dwarf c
     (debug_info_section_body: list byte) 
@@ -2157,6 +2172,26 @@ let initial_state =
 |>
   
 (* the main location expression evaluation function *)
+
+let arithmetic_context_of_cuh cuh = 
+  match cuh.cuh_address_size with
+  | 8 -> 
+      <|
+      ac_bitwidth = 64;
+      ac_half = naturalPow 2 32;
+      ac_all = naturalPow 2 64;
+      ac_max = (naturalPow 2 64) - 1;
+    |>
+  | 4 -> 
+      <|
+      ac_bitwidth = 32;
+      ac_half = naturalPow 2 16;
+      ac_all = naturalPow 2 32;
+      ac_max = (naturalPow 2 32) - 1;
+    |>
+  | _ -> Assert_extra.failwith "arithmetic_context_of_cuh given non-4/8 size"
+  end
+
 
 let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (cuh: compilation_unit_header) (ac: arithmetic_context) (ev: evaluation_context) (mfbloc: maybe attribute_value) (pc: natural) (s: state) (ops: list operation) : error single_location =
 
@@ -2454,7 +2489,7 @@ For each variable and formal parameter that has a DW_AT_name, we'll calculate a 
 
  *)
 
-let rec closest_enclosing_range c (dranges: range_list_list) (cu_base_address: maybe natural) (parents: list die) : maybe (list (natural * natural)) = 
+let rec closest_enclosing_range c (dranges: range_list_list) (cu_base_address: natural) (parents: list die) : maybe (list (natural * natural)) = 
   match parents with
   | [] -> Nothing
   | die::parents' ->
@@ -2470,12 +2505,7 @@ let rec closest_enclosing_range c (dranges: range_list_list) (cu_base_address: m
 
       | (_,                 Nothing,                       Just (AV_sec_offset n)) -> 
           let rlis = Tuple.snd (find_range_list dranges n) in
-          let base_address : natural = 
-            match cu_base_address with 
-            | Nothing -> 0
-            | Just n -> n
-            end in 
-          let nns = interpret_range_list base_address rlis in
+          let nns = interpret_range_list cu_base_address rlis in
           Just nns
       | (Nothing,           Nothing,                       Nothing               ) -> closest_enclosing_range c dranges cu_base_address parents' 
       | (_,                 _,                             _                     ) -> Just [] (*Assert_extra.failwith "unexpected attribute values in closest_enclosing_range"*)
@@ -2490,7 +2520,26 @@ DW_FORM_sdata or DW_FORM_udata for signed and unsigned integers respectively,
 rather than DW_FORM_data<n>.
 no kidding - if we get an AV_constantN for DW_AT_high_pc, should it be interpreted as signed or unsigned? *)
 
-let interpreted_location_of_die c (dloc: location_list_list) (dranges: range_list_list) (base_address: maybe natural) (parents: list die) (die: die) : maybe (list (natural * natural * single_location_description)) = 
+
+let rec closest_enclosing_frame_base dloc (base_address: natural) (parents: list die) : maybe frame_base_location_description = 
+  match parents with
+  | [] -> Nothing
+  | die::parents' ->
+      match find_attribute_value "DW_AT_frame_base" die with
+      | Just (AV_exprloc n bs) -> Just (FBLD_expression bs)
+      | Just (AV_block n bs) -> Just (FBLD_expression bs)
+      | Just (AV_sec_offset n) -> 
+          let (_,llis) = find_location_list dloc n in 
+          Just (FBLD_location_list (interpret_location_list base_address llis))
+      | Just _ -> Assert_extra.failwith "unexpected attribute value in closest_enclosing_frame_base"
+      | Nothing -> closest_enclosing_frame_base dloc base_address parents' 
+      end 
+  end
+
+
+
+
+let interpreted_location_of_die c (dloc: location_list_list) (dranges: range_list_list) (base_address: natural) (parents: list die) (die: die) : maybe (list (natural * natural * single_location_description)) = 
 
   let location bs = 
     match closest_enclosing_range c dranges base_address (die::parents) with
@@ -2498,12 +2547,6 @@ let interpreted_location_of_die c (dloc: location_list_list) (dranges: range_lis
         Just (List.map (fun (n1,n2) -> (n1,n2,bs)) nns)
     | Nothing -> Just [] (*Assert_extra.failwith "no enclosing range"*)
     end in
-
-  let base_address : natural = 
-    match base_address with 
-    | Nothing -> 0
-    | Just n -> n
-    end in 
 
   match find_attribute_value "DW_AT_location" die with 
   | Just (AV_exprloc n bs) -> location bs
@@ -2514,6 +2557,12 @@ let interpreted_location_of_die c (dloc: location_list_list) (dranges: range_lis
   | Nothing -> Nothing
   end 
 
+
+let cu_base_address cu = 
+  match find_attribute_value "DW_AT_low_pc" cu.cu_die with 
+  | Just (AV_addr n) -> n 
+  | _ -> 0 (*Nothing*) (*Assert_extra.failwith "no cu DW_AT_low_pc"*) 
+  end 
 
 let analyse_locations c (d: dwarf) : list ((compilation_unit * (list die) * die) * maybe (list (natural * natural * single_location_description))) = 
 
@@ -2531,10 +2580,9 @@ let analyse_locations c (d: dwarf) : list ((compilation_unit * (list die) * die)
 
   List.map 
     (fun (((cu:compilation_unit), (parents: list die), (die: die)) as x) -> 
-      let cu_base_address = match find_attribute_value "DW_AT_low_pc" cu.cu_die with Just (AV_addr n) -> Just n | _ -> Nothing (*Assert_extra.failwith "no cu DW_AT_low_pc"*) end in
-
+      let base_address = cu_base_address cu in
       let interpreted_locations : maybe (list (natural * natural * single_location_description)) = 
-        interpreted_location_of_die c d.d_loc d.d_ranges cu_base_address parents die in
+        interpreted_location_of_die c d.d_loc d.d_ranges base_address parents die in
       (x,interpreted_locations)
     ) 
     dies
@@ -2564,6 +2612,47 @@ let pp_analysed_locations3 c cuh str (als: list ((compilation_unit * (list die) 
   )
     
 
+
+let analysed_locations_at_pc 
+    (ev)
+    (d: dwarf)
+    (als: list ((compilation_unit * (list die) * die) * maybe (list (natural * natural * single_location_description))))
+    (pc: natural) 
+    : list ((compilation_unit * (list die) * die) * (list (natural * natural * single_location_description * single_location))) = 
+  
+  let c : p_context = <| endianness = d.d_endianness |> in
+  
+  let xs = 
+    List.mapMaybe 
+      (fun (cupd,mnns) ->
+        match mnns with
+        | Nothing -> Nothing
+        | Just nns -> 
+            let nns' = List.filter (fun (n1,n2,sld) -> pc >= n1 && pc < n2) nns in
+            match nns' with
+            | [] -> Nothing
+            | _ -> Just (cupd,nns')
+            end
+        end)
+      als 
+  in
+
+  List.concat 
+  (List.map 
+     (fun ((cu,parents,die),nns) -> 
+       let ac = arithmetic_context_of_cuh cu.cu_header in 
+       let base_address = cu_base_address cu in 
+       let mfbloc : maybe frame_base_location_description = 
+         closest_enclosing_frame_base d.d_loc base_address parents in
+       List.map 
+         (fun (n1,n2,sld) -> 
+           let el : error single_location = 
+             evaluate_location_description_bytes c d.d_loc cu.cu_header ac ev mfbloc pc sld in
+           ((cu,parents,die),(n1,n2,sld,el))
+         )
+         nns
+     )
+     xs)
       
 
 
@@ -2584,7 +2673,7 @@ let {ocaml} harness_string_of_elf64_debug_info_section f1 bs0 os proc usr hdr sh
 
 (*   ^ analyse_locations_raw c d    *)
 
-   ^ " ********************************\n"
+   ^ "************** analysis of location data *************************\n"
    ^ 
      let c : p_context = <| endianness = d.d_endianness |> in
      let (cuh_default : compilation_unit_header) = let cu = myhead d.d_compilation_units in cu.cu_header in
