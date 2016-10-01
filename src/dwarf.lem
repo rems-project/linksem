@@ -140,6 +140,25 @@ let bytes_of_natural en size n =
   else
     Assert_extra.failwith "bytes_of_natural given size that is not 4 or 8"
 
+(* TODO: generalise *)
+val natural_of_bytes: endianness -> list byte -> natural
+let natural_of_bytes en bs = 
+  match bs with
+  | b0::b1::b2::b3::b4::b5::b6::b7::[] -> 
+      let v = if en=Little then 
+        natural_of_byte b0 + 256*natural_of_byte b1 + 256*256*natural_of_byte b2 + 256*256*256*natural_of_byte b3 
+          + (256*256*256*256*(natural_of_byte b4 + 256*natural_of_byte b5 + 256*256*natural_of_byte b6 + 256*256*256*natural_of_byte b7))
+      else
+        natural_of_byte b7 + 256*natural_of_byte b6 + 256*256*natural_of_byte b5 + 256*256*256*natural_of_byte b4 
+          + (256*256*256*256*(natural_of_byte b3 + 256*natural_of_byte b2 + 256*256*natural_of_byte b1 + 256*256*256*natural_of_byte b0))
+      in
+      v
+  | _ -> Assert_extra.failwith "natural_of_bytes given not-8 bytes"
+  end
+
+
+
+
 (** basic pretty printing *)
 
 let pphex n = "0x" ^ unsafe_hex_string_of_natural 0 n
@@ -153,6 +172,14 @@ val mytoString : list char -> string
 declare ocaml    target_rep function mytoString = `Xstring.implode`
 
 let string_of_bytes bs = mytoString (List.map Missing_pervasives.char_of_byte bs)
+
+
+let just_one s xs = 
+  match xs with
+  | [] -> Assert_extra.failwith ("no " ^ s)
+  | x1::x2::_ -> Assert_extra.failwith ("more than one " ^ s)
+  | [x] -> x
+  end
 
 
 (** dwarf encodings *)
@@ -751,6 +778,7 @@ type range_list_list = list range_list
     
 type dwarf = 
     <| 
+    d_endianness: Endianness.endianness; (* from the ELF *)
     d_str: list byte;
     d_compilation_units: compilation_units;
     d_type_units: type_units;
@@ -1922,7 +1950,9 @@ let rec interpret_range_list (base_address: natural) (rlis: list range_list_item
 
 (** all dwarf info: pp and parsing *)
 
-let pp_dwarf c d = 
+let pp_dwarf d = 
+  let c : p_context = <| endianness = d.d_endianness |> in
+
   "************** abbrev ****************\n"
   ^ pp_compilation_units_abbrev c d.d_str d.d_compilation_units 
   ^ "************** full ****************\n"
@@ -1969,12 +1999,40 @@ let parse_dwarf c
       end in
 
    <| 
+   d_endianness = c.endianness;
    d_str = debug_str_section_body;
    d_compilation_units = compilation_units;
    d_type_units = []; 
    d_loc = loc;
    d_ranges = ranges;
   |>
+
+val extract_dwarf : elf64_file -> maybe dwarf 
+let extract_dwarf f1 = 
+
+  let (en: Endianness.endianness) = Elf_header.get_elf64_header_endianness f1.Elf_file.elf64_file_header in 
+  let (c: p_context) = <| endianness = en |> in
+  let extract_section_body section_name = 
+    let sections = 
+      List.filter 
+        (fun x -> 
+          x.Elf_interpreted_section.elf64_section_name_as_string = section_name
+        ) f1.elf64_file_interpreted_sections in
+    let section = just_one (section_name ^ " sections")  sections  in
+    let section_body =  match section.Elf_interpreted_section.elf64_section_body with Sequence bs -> bs end in
+    let _ = my_debug4 (section_name ^ ": \n" ^ Elf_interpreted_section.string_of_elf64_interpreted_section section ^ "\n"
+                          ^ "  body = " ^ ppbytes2 0 section_body ^ "\n") in
+    section_body in
+
+  let debug_abbrev_section_body = extract_section_body ".debug_abbrev" in
+  let debug_info_section_body = extract_section_body ".debug_info" in
+  let debug_str_section_body = extract_section_body ".debug_str" in
+  let debug_loc_section_body = extract_section_body ".debug_loc" in
+  let debug_ranges_section_body = [] in (*not in examples: extract_section_body ".debug_ranges" in *)
+
+  let d = parse_dwarf c debug_info_section_body debug_abbrev_section_body debug_str_section_body debug_loc_section_body debug_ranges_section_body in
+ 
+  Just d
 
 
 (** interpreting locations *)
@@ -2396,7 +2454,7 @@ For each variable and formal parameter that has a DW_AT_name, we'll calculate a 
 
  *)
 
-let rec closest_enclosing_range (dranges: range_list_list) (cu_base_address: natural) (parents: list die) : maybe (list (natural * natural)) = 
+let rec closest_enclosing_range c (dranges: range_list_list) (cu_base_address: maybe natural) (parents: list die) : maybe (list (natural * natural)) = 
   match parents with
   | [] -> Nothing
   | die::parents' ->
@@ -2407,12 +2465,20 @@ let rec closest_enclosing_range (dranges: range_list_list) (cu_base_address: nat
       | (Just (AV_addr n1), Just (AV_constant_SLEB128 i2), Nothing               ) -> Just [(n1, naturalFromInteger (integerFromNatural n1 + i2))] (* should
  be mod all? *)
       | (Just (AV_addr n1), Just (AV_constantN _ _),       Nothing               ) -> Assert_extra.failwith "AV_constantN in closest_enclosing_range"
+
+      | (Just (AV_addr n1), Just (AV_block n bs),          Nothing               ) -> let n2 = natural_of_bytes c.endianness bs in Just [(n1, n1+n2)] (* should be mod all? *) (* signed or unsigned interp? *)
+
       | (_,                 Nothing,                       Just (AV_sec_offset n)) -> 
           let rlis = Tuple.snd (find_range_list dranges n) in
-          let nns = interpret_range_list cu_base_address rlis in
+          let base_address : natural = 
+            match cu_base_address with 
+            | Nothing -> 0
+            | Just n -> n
+            end in 
+          let nns = interpret_range_list base_address rlis in
           Just nns
-      | (Nothing,           Nothing,                       Nothing               ) -> closest_enclosing_range dranges cu_base_address parents' 
-      | (_,                 _,                             _                     ) -> Assert_extra.failwith "unexpected attribute values in closest_enclosing_range"
+      | (Nothing,           Nothing,                       Nothing               ) -> closest_enclosing_range c dranges cu_base_address parents' 
+      | (_,                 _,                             _                     ) -> Just [] (*Assert_extra.failwith "unexpected attribute values in closest_enclosing_range"*)
       end
   end
 
@@ -2424,14 +2490,20 @@ DW_FORM_sdata or DW_FORM_udata for signed and unsigned integers respectively,
 rather than DW_FORM_data<n>.
 no kidding - if we get an AV_constantN for DW_AT_high_pc, should it be interpreted as signed or unsigned? *)
 
-let interpreted_location_of_die (dloc: location_list_list) (dranges: range_list_list) (base_address: natural) (parents: list die) (die: die) : maybe (list (natural * natural * single_location_description)) = 
+let interpreted_location_of_die c (dloc: location_list_list) (dranges: range_list_list) (base_address: maybe natural) (parents: list die) (die: die) : maybe (list (natural * natural * single_location_description)) = 
 
-  let location bs = match closest_enclosing_range dranges base_address (die::parents) with
-  | Just (_,rlis) -> 
-      let nns = interpret_range_list base_address rlis in
-      Just (List.map (fun (n1,n2) -> (n1,n2,bs)) nns)
-  | Nothing -> Assert_extra.failwith "no enclosing range"
-  end in
+  let location bs = 
+    match closest_enclosing_range c dranges base_address (die::parents) with
+    | Just nns -> 
+        Just (List.map (fun (n1,n2) -> (n1,n2,bs)) nns)
+    | Nothing -> Just [] (*Assert_extra.failwith "no enclosing range"*)
+    end in
+
+  let base_address : natural = 
+    match base_address with 
+    | Nothing -> 0
+    | Just n -> n
+    end in 
 
   match find_attribute_value "DW_AT_location" die with 
   | Just (AV_exprloc n bs) -> location bs
@@ -2447,21 +2519,22 @@ let analyse_locations c (d: dwarf) : list ((compilation_unit * (list die) * die)
 
   let (cuh_default : compilation_unit_header) = let cu = myhead d.d_compilation_units in cu.cu_header in
   
-  (* find all DW_TAG_variable and DW_TAG_formal_parameter dies with a DW_AT_name attribute *)
+  (* find all DW_TAG_variable and DW_TAG_formal_parameter dies with a DW_AT_name and DW_AT_location attribute *)
   let tags = List.map tag_encode ["DW_TAG_variable"; "DW_TAG_formal_parameter"] in
   let dies : list (compilation_unit * (list die) * die) = 
     find_dies 
       (fun die -> 
         List.elem die.die_abbreviation_declaration.ad_tag tags
-          && has_attribute "DW_AT_name")
+          && has_attribute "DW_AT_name" die
+          && has_attribute "DW_AT_location" die)
       d in
 
   List.map 
     (fun (((cu:compilation_unit), (parents: list die), (die: die)) as x) -> 
-      let cu_base_address = match find_attribute_value "DW_AT_low_pc" cu.cu_die with Just (AV_addr n) -> n | _ -> Assert_extra.failwith "no cu DW_AT_low_pc" end in
+      let cu_base_address = match find_attribute_value "DW_AT_low_pc" cu.cu_die with Just (AV_addr n) -> Just n | _ -> Nothing (*Assert_extra.failwith "no cu DW_AT_low_pc"*) end in
 
       let interpreted_locations : maybe (list (natural * natural * single_location_description)) = 
-        interpreted_location_of_die d.d_loc d.d_ranges cu_base_address parents die in
+        interpreted_location_of_die c d.d_loc d.d_ranges cu_base_address parents die in
       (x,interpreted_locations)
     ) 
     dies
@@ -2471,7 +2544,7 @@ let analyse_locations c (d: dwarf) : list ((compilation_unit * (list die) * die)
 let pp_analysed_locations1 c cuh (nnls: list (natural * natural * single_location_description)) : string = 
   myconcat ""
     (List.map 
-       (fun (n1,n2,bs) -> "  " ^ pphex n1 ^ "  " ^ pphex n2 ^ parse_and_pp_operations c cuh bs ^ "\n")
+       (fun (n1,n2,bs) -> "  " ^ pphex n1 ^ "  " ^ pphex n2 ^ " " ^ parse_and_pp_operations c cuh bs ^ "\n")
        nnls)
 
 let pp_analysed_locations2 c cuh mnnls = 
@@ -2496,44 +2569,27 @@ let pp_analysed_locations3 c cuh str (als: list ((compilation_unit * (list die) 
 
 (** top level *)
 
-let just_one s xs = 
-  match xs with
-  | [] -> Assert_extra.failwith ("no " ^ s)
-  | x1::x2::_ -> Assert_extra.failwith ("more than one " ^ s)
-  | [x] -> x
-  end
+
+
+
 
 val harness_string_of_elf64_debug_info_section : elf64_file -> byte_sequence -> (natural -> string) -> (natural -> string) -> (natural -> string) -> elf64_header -> elf64_section_header_table -> string_table -> string
 let {ocaml} harness_string_of_elf64_debug_info_section f1 bs0 os proc usr hdr sht stbl =
 
-  let (en: Endianness.endianness) = Elf_header.get_elf64_header_endianness f1.Elf_file.elf64_file_header in 
-  let (c: p_context) = <| endianness = en |> in
-  let extract_section_body section_name = 
-    let sections = 
-      List.filter 
-        (fun x -> 
-          x.Elf_interpreted_section.elf64_section_name_as_string = section_name
-        ) f1.elf64_file_interpreted_sections in
-    let section = just_one (section_name ^ " sections")  sections  in
-    let section_body =  match section.Elf_interpreted_section.elf64_section_body with Sequence bs -> bs end in
-    let _ = my_debug4 (section_name ^ ": \n" ^ Elf_interpreted_section.string_of_elf64_interpreted_section section ^ "\n"
-                          ^ "  body = " ^ ppbytes2 0 section_body ^ "\n") in
-    section_body in
+  let md = extract_dwarf f1 in 
+  match md with 
+  | Nothing -> "<no dwarf information extracted>"
+  | Just d -> pp_dwarf d
 
-  let debug_abbrev_section_body = extract_section_body ".debug_abbrev" in
-  let debug_info_section_body = extract_section_body ".debug_info" in
-  let debug_str_section_body = extract_section_body ".debug_str" in
-  let debug_loc_section_body = extract_section_body ".debug_loc" in
-  let debug_ranges_section_body = extract_section_body ".debug_ranges" in
 
-  let d = parse_dwarf c debug_info_section_body debug_abbrev_section_body debug_str_section_body debug_loc_section_body debug_ranges_section_body in
-  pp_dwarf c d
-   ^ analyse_locations_raw c d    
+(*   ^ analyse_locations_raw c d    *)
 
    ^ " ********************************\n"
    ^ 
+     let c : p_context = <| endianness = d.d_endianness |> in
      let (cuh_default : compilation_unit_header) = let cu = myhead d.d_compilation_units in cu.cu_header in
-     pp_analysed_locations3 c (*HACK*) cuh_default d.d_str analyse_locations c d 
+     pp_analysed_locations3 c (*HACK*) cuh_default d.d_str (analyse_locations c d )
+  end
 
 val harness_string_of_elf32_debug_info_section : elf32_file -> byte_sequence -> (natural -> string) -> (natural -> string) -> (natural -> string) -> elf32_header -> elf32_section_header_table -> string_table -> string
 let {ocaml} harness_string_of_elf32_debug_info_section f1 bs0 os proc usr hdr sht stbl =
