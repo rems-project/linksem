@@ -359,6 +359,75 @@ type range_list = natural (*offset*) * list range_list_item
 
 type range_list_list = list range_list 
 
+(* .debug_frame section: call frame instruction arguments *)
+
+type call_frame_argument_type =
+  | CFAT_address
+  | CFAT_delta1
+  | CFAT_delta2
+  | CFAT_delta4
+  | CFAT_delta_ULEB128
+  | CFAT_offset   (*ULEB128*)
+  | CFAT_sfoffset (*SLEB128*)
+  | CFAT_register (*ULEB128*)
+  | CFAT_block
+
+type call_frame_argument_value =
+  | CFAV_address of natural
+  | CFAV_delta of natural
+  | CFAV_offset of natural
+  | CFAV_sfoffset of integer
+  | CFAV_register of natural
+  | CFAV_block of list byte
+
+(* .debug_frame section *)
+
+type cie = 
+    <|
+    cie_length: natural;
+    cie_id: natural; 
+    cie_version: natural;
+    cie_augmentation: list byte; (* not including terminating null *)
+    cie_address_size: natural;
+    cie_segment_size: natural;
+    cie_code_alignment_factor: natural;
+    cie_data_alignment_factor: integer;
+    cie_return_address_register: natural;
+    cie_initial_instructions: list byte;   (*replace by parsed instructions? *)
+  |>
+
+type fde = 
+    <|
+    fde_length: natural;
+    fde_cie_pointer: natural;
+    fde_initial_location: (maybe natural) * natural;
+    fde_address_range: natural;
+    fde_instructions: list byte; (* replace by parsed instructions?*)
+  |>
+
+
+type register_rule = 
+  | RR_undefined (*A register that has this rule has no recoverable value in the previous frame.
+         (By convention, it is not preserved by a callee.)*)
+  | RR_same_value (*This register has not been modified from the previous frame. (By convention,
+          it is preserved by the callee, but the callee has not modified it.)*)
+  | RR_offset of integer (* The previous value of this register is saved at the address CFA+N where CFA
+         is the current CFA value and N is a signed offset.*)
+  | RR_val_offset of integer (* The previous value of this register is the value CFA+N where CFA is the
+             current CFA value and N is a signed offset.*)
+  | RR_register of integer (* The previous value of this register is stored in another register numbered R.*)
+  | RR_expression of single_location_description (* The previous value of this register is located at the address produced by
+             executing the DWARF expression E.*)
+  | RR_val_expression of single_location_description (* The previous value of this register is the value produced by executing the
+DWARF expression E.*)
+  | RR_architectural (*The rule is defined externally to this specification by the augmenter*)
+
+
+
+
+
+
+
 (* top-level collection of dwarf data *)
     
 type dwarf = 
@@ -647,7 +716,6 @@ let attribute_form_encodings = [
 
 (* operation encoding *)
 
-
 let operation_encodings = [
 ("DW_OP_addr",                natural_of_hex "0x03", [OAT_addr]                 , OpSem_lit); (*1*) (*constant address (size target specific)*)
 ("DW_OP_deref",               natural_of_hex "0x06", []                         , OpSem_deref); (*0*)
@@ -820,6 +888,45 @@ http://dwarfstd.org/ShowIssue.php?issue=100909.1 *)
 let vDW_OP_reg0 = natural_of_hex "0x50"
 let vDW_OP_breg0 = natural_of_hex "0x70"
 
+
+(* call frame instruction encoding *)
+
+let call_frame_instruction_encoding : list (string * natural * natural * list call_frame_argument_type) = [
+(*                            high-order 2 bits   low-order 6 bits       uniformly parsed arguments  *)
+(* instructions using low-order 6 bits for first argument *)
+("DW_CFA_advance_loc",         1,                  0,(*delta *)           []);    
+("DW_CFA_offset",              2,                  0,(*register*)         [CFAT_offset]);
+("DW_CFA_restore",             3,                  0,(*register*)         []);     
+(* instructions using low-order 6 bits as part of opcode  *)
+("DW_CFA_nop",                 0,                  natural_of_hex "0x00", []); (* *)
+("DW_CFA_set_loc",             0,                  natural_of_hex "0x01", [CFAT_address]); (* address *)
+("DW_CFA_advance_loc1",        0,                  natural_of_hex "0x02", [CFAT_delta1]); (* 1-byte delta *)
+("DW_CFA_advance_loc2",        0,                  natural_of_hex "0x03", [CFAT_delta2]); (* 2-byte delta *)
+("DW_CFA_advance_loc4",        0,                  natural_of_hex "0x04", [CFAT_delta4]); (* 4-byte delta *)
+("DW_CFA_offset_extended",     0,                  natural_of_hex "0x05", [CFAT_register; CFAT_offset]); (* ULEB128 register ULEB128 offset *)
+("DW_CFA_restore_extended",    0,                  natural_of_hex "0x06", [CFAT_register]); (* ULEB128 register *)
+("DW_CFA_undefined",           0,                  natural_of_hex "0x07", [CFAT_register]); (* ULEB128 register *)
+("DW_CFA_same_value",          0,                  natural_of_hex "0x08", [CFAT_register]); (* ULEB128 register *)
+("DW_CFA_register",            0,                  natural_of_hex "0x09", [CFAT_register; CFAT_register]); (* ULEB128 register ULEB128 register *)
+("DW_CFA_remember_state",      0,                  natural_of_hex "0x0a", []); (* *)
+("DW_CFA_restore_state",       0,                  natural_of_hex "0x0b", []); (* *)
+("DW_CFA_def_cfa",             0,                  natural_of_hex "0x0c", [CFAT_register; CFAT_offset]); (* ULEB128 register ULEB128 offset *)
+("DW_CFA_def_cfa_register",    0,                  natural_of_hex "0x0d", [CFAT_register]); (* ULEB128 register *)
+("DW_CFA_def_cfa_offset",      0,                  natural_of_hex "0x0e", [CFAT_offset]); (* ULEB128 offset *)
+("DW_CFA_def_cfa_expression",  0,                  natural_of_hex "0x0f", [CFAT_block]); (* BLOCK *)
+("DW_CFA_expression",          0,                  natural_of_hex "0x10", [CFAT_register; CFAT_block]); (* ULEB128 register BLOCK *)
+("DW_CFA_offset_extended_sf",  0,                  natural_of_hex "0x11", [CFAT_register; CFAT_sfoffset]); (* ULEB128 register SLEB128 offset *)
+("DW_CFA_def_cfa_sf",          0,                  natural_of_hex "0x12", [CFAT_register; CFAT_sfoffset]); (* ULEB128 register SLEB128 offset *)
+("DW_CFA_def_cfa_offset_sf",   0,                  natural_of_hex "0x13", [CFAT_sfoffset]); (* SLEB128 offset *)
+("DW_CFA_val_offset",          0,                  natural_of_hex "0x14", [CFAT_register; CFAT_offset]); (* ULEB128 ULEB128 *)
+("DW_CFA_val_offset_sf",       0,                  natural_of_hex "0x15", [CFAT_register; CFAT_sfoffset]); (* ULEB128 SLEB128 *)
+("DW_CFA_val_expression",      0,                  natural_of_hex "0x16", [CFAT_register; CFAT_block]) (* ULEB128 BLOCK *)
+]
+
+(*
+("DW_CFA_lo_user",             0,                  natural_of_hex "0x1c", []); (* *)
+("DW_CFA_hi_user",             0,                  natural_of_hex "0x3f", []); (* *)
+*)
 
 
 (** more missing pervasives *)
@@ -2154,23 +2261,32 @@ let extract_dwarf f1 =
 
   let (en: Endianness.endianness) = Elf_header.get_elf64_header_endianness f1.Elf_file.elf64_file_header in 
   let (c: p_context) = <| endianness = en |> in
-  let extract_section_body section_name = 
+  let extract_section_body section_name (strict: bool) = 
     let sections = 
       List.filter 
         (fun x -> 
           x.Elf_interpreted_section.elf64_section_name_as_string = section_name
         ) f1.elf64_file_interpreted_sections in
-    let section = just_one (section_name ^ " sections")  sections  in
-    let section_body =  match section.Elf_interpreted_section.elf64_section_body with Sequence bs -> bs end in
-    let _ = my_debug4 (section_name ^ ": \n" ^ Elf_interpreted_section.string_of_elf64_interpreted_section section ^ "\n"
-                          ^ "  body = " ^ ppbytes2 0 section_body ^ "\n") in
-    section_body in
+    match sections with
+    | [section] ->
+        let section_body =  match section.Elf_interpreted_section.elf64_section_body with Sequence bs -> bs end in
+        let _ = my_debug4 (section_name ^ ": \n" ^ Elf_interpreted_section.string_of_elf64_interpreted_section section ^ "\n"
+                           ^ "  body = " ^ ppbytes2 0 section_body ^ "\n") in
+        section_body
+    | [] -> 
+        if strict then 
+          Assert_extra.failwith ("multiple " ^ section_name ^ " section not present")
+        else
+          let _ = my_debug4 (section_name ^": \nnot present\n") in
+          []
+    | _ -> Assert_extra.failwith ("multiple " ^ section_name ^ " sections present")
+    end in
 
-  let debug_abbrev_section_body = extract_section_body ".debug_abbrev" in
-  let debug_info_section_body = extract_section_body ".debug_info" in
-  let debug_str_section_body = extract_section_body ".debug_str" in
-  let debug_loc_section_body = extract_section_body ".debug_loc" in
-  let debug_ranges_section_body = [] in (*not in examples: extract_section_body ".debug_ranges" in *)
+  let debug_info_section_body   = extract_section_body ".debug_info"   true  in
+  let debug_abbrev_section_body = extract_section_body ".debug_abbrev" false in
+  let debug_str_section_body    = extract_section_body ".debug_str"    false in
+  let debug_loc_section_body    = extract_section_body ".debug_loc"    false in
+  let debug_ranges_section_body = extract_section_body ".debug_ranges" false in 
 
   let d = parse_dwarf c debug_info_section_body debug_abbrev_section_body debug_str_section_body debug_loc_section_body debug_ranges_section_body in
  
