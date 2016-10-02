@@ -24,8 +24,12 @@ open import Elf_types_native_uint
 
 open import Hex_printing
 
-type executable_process_image
-  = ELF_Class_32 of elf32_executable_process_image
+type elf_file =
+  | ELF_File_32 of elf32_file
+  | ELF_File_64 of elf64_file
+
+type executable_process_image =
+  | ELF_Class_32 of elf32_executable_process_image
   | ELF_Class_64 of elf64_executable_process_image
 
 val string_of_segment_provenance : segment_provenance -> string
@@ -186,7 +190,7 @@ let {ocaml} obtain_global_symbol_init_info' bs0 =
           fail "obtain_global_symbol_init_info': ELF class unrecognised"
     end
 
-val populate_and_obtain_global_symbol_init_info : string -> error (executable_process_image * global_symbol_init_info)
+val populate_and_obtain_global_symbol_init_info : string -> error (elf_file * executable_process_image * global_symbol_init_info)
 let {ocaml} populate_and_obtain_global_symbol_init_info fname =
   (* Acquire the data from the file... *)
   Byte_sequence.acquire fname >>= fun bs0 ->
@@ -203,7 +207,7 @@ let {ocaml} populate_and_obtain_global_symbol_init_info fname =
           if Elf_program_header_table.get_elf32_static_linked f1.elf32_file_program_header_table then
             Elf_file.get_elf32_file_global_symbol_init f1 >>= fun init ->
             Elf_file.get_elf32_executable_image f1 >>= fun img ->           
-            return ((ELF_Class_32 img), init)
+            return ((ELF_File_32 f1), (ELF_Class_32 img), init)
           else
             fail "populate_and_obtain_global_symbol_init_info: not a statically linked executable"
         else if natural_of_unsigned_char c = Elf_header.elf_class_64 then
@@ -211,14 +215,14 @@ let {ocaml} populate_and_obtain_global_symbol_init_info fname =
           if Elf_program_header_table.get_elf64_static_linked f1.elf64_file_program_header_table then
             Elf_file.get_elf64_file_global_symbol_init f1 >>= fun init ->
             Elf_file.get_elf64_executable_image f1 >>= fun img ->
-            return ((ELF_Class_64 img), init)
+            return ((ELF_File_64 f1), (ELF_Class_64 img), init)
           else
             fail "populate_and_obtain_global_symbol_init_info: not a statically linked executable"
         else
           fail "populate_and_obtain_global_symbol_init_info: ELF class unrecognised"
     end
 
-val populate_and_obtain_global_symbol_init_info' : byte_sequence -> error (executable_process_image * global_symbol_init_info)
+val populate_and_obtain_global_symbol_init_info' : byte_sequence -> error (elf_file * executable_process_image * global_symbol_init_info)
 let {ocaml} populate_and_obtain_global_symbol_init_info' bs0 =
   (* Read the magic number and the flags in the header... *)
   repeatM' Elf_header.ei_nident bs0 (read_unsigned_char Endianness.default_endianness) >>= fun (ident, bs) ->
@@ -233,7 +237,7 @@ let {ocaml} populate_and_obtain_global_symbol_init_info' bs0 =
           if Elf_program_header_table.get_elf32_static_linked f1.elf32_file_program_header_table then
             Elf_file.get_elf32_file_global_symbol_init f1 >>= fun init ->
             Elf_file.get_elf32_executable_image f1 >>= fun img ->           
-            return ((ELF_Class_32 img), init)
+            return ((ELF_File_32 f1), (ELF_Class_32 img), init)
           else
             fail "populate_and_obtain_global_symbol_init_info': not a statically linked executable"
         else if natural_of_unsigned_char c = Elf_header.elf_class_64 then
@@ -241,7 +245,7 @@ let {ocaml} populate_and_obtain_global_symbol_init_info' bs0 =
           if Elf_program_header_table.get_elf64_static_linked f1.elf64_file_program_header_table then
             Elf_file.get_elf64_file_global_symbol_init f1 >>= fun init ->
             Elf_file.get_elf64_executable_image f1 >>= fun img ->
-            return ((ELF_Class_64 img), init)
+            return ((ELF_File_64 f1), (ELF_Class_64 img), init)
           else
             fail "populate_and_obtain_global_symbol_init_info': not a statically linked executable"
         else

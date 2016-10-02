@@ -32,21 +32,29 @@ open import Elf_types_native_uint
 
 (* 
 
-This defines a representation of some of the DWARF debug information, 
-with parsing functions to extract it from the byte sequences of the 
+This defines a representation of some of the DWARF debug information,
+with parsing functions to extract it from the byte sequences of the
 relevant ELF sections, and pretty-printing function to dump it in a
-human-readable form, similar to that of readelf.   
+human-readable form, similar to that of readelf.  The main functions
+for this are:
+
+val extract_dwarf : elf64_file -> maybe dwarf 
+val pp_dwarf : dwarf -> string
 
 It also defines evaluation of DWARF expressions and analysis functions
 to convert the variable location information to a form suitable for
 looking up variable names from machine addresses that arise during
-execution.
+execution.  The main functions for this are:
+
+val analyse_locations : dwarf -> analysed_location_data
+val analysed_locations_at_pc : evaluation_context -> dwarf -> analysed_location_data -> natural -> analysed_location_data_at_pc
+val names_of_address : dwarf -> analysed_location_data_at_pc -> natural -> list string
 
 The definitions are deliberately simple-minded, to be quick to write,
 easy to see the correspondence to the DWARF text specification, and
 potentially support generation of theorem-prover definitions in
 future.  They are in a pure functional style, making the information
-dependencies explicit.  They are not optimised for performance, though
+dependencies explicit.  They are not written for performance, though
 they may be efficient enough for small examples as-is.  They are
 written in Lem, and compiled from that to executable OCaml.
 
@@ -225,8 +233,8 @@ type memory_read_result 'a =
 
 type evaluation_context = 
     <| 
-    read_register : natural -> register_read_result natural;
-    read_memory : natural -> natural -> memory_read_result natural;
+    read_register: natural -> register_read_result natural;
+    read_memory: natural -> natural -> memory_read_result natural;
   |>
 
 
@@ -2169,6 +2177,32 @@ let extract_dwarf f1 =
   Just d
 
 
+(** pp locations *)
+
+val pp_simple_location : simple_location -> string
+let pp_simple_location sl = 
+  match sl with
+  | SL_memory_address n -> pphex n
+  | SL_register n -> "reg" ^ show n
+  | SL_implicit bs -> "value: " ^ ppbytes bs
+  | SL_empty -> "<empty>"
+  end
+
+val pp_composite_location_piece : composite_location_piece -> string
+let pp_composite_location_piece clp =
+  match clp with 
+  | CLP_piece n sl -> "piece (" ^ show n ^ ") " ^ pp_simple_location sl
+  | CLP_bit_piece n1 n2 sl -> "bit_piece (" ^ show n1 ^ "," ^ show n2 ^ ") " ^ pp_simple_location sl
+  end
+
+val pp_single_location: single_location -> string
+let pp_single_location sl = 
+  match sl with
+  | SL_simple sl -> pp_simple_location sl
+  | SL_composite clps -> "composite: " ^ myconcat ", " (List.map pp_composite_location_piece clps)
+  end
+
+
 (** interpreting locations *)
 
 
@@ -2637,7 +2671,10 @@ let cu_base_address cu =
   end 
 
 
-let analyse_locations c (d: dwarf) : analysed_location_data = 
+val analyse_locations : dwarf -> analysed_location_data
+let analyse_locations (d: dwarf) : analysed_location_data = 
+
+  let c : p_context = <| endianness = d.d_endianness |> in
 
   let (cuh_default : compilation_unit_header) = let cu = myhead d.d_compilation_units in cu.cu_header in
   
@@ -2683,9 +2720,37 @@ let pp_analysed_locations3 c cuh str (als: analysed_location_data) : string =
        )
        als
   )
+
+let pp_analysed_location_data (d: dwarf) (als: analysed_location_data) : string = 
+  let c : p_context = <| endianness = d.d_endianness |> in
+  let (cuh_default : compilation_unit_header) = let cu = myhead d.d_compilation_units in cu.cu_header in
+  pp_analysed_locations3 c (*HACK*) cuh_default d.d_str als
+
+
+
+(* 
+type analysed_location_data_at_pc = list ((compilation_unit * (list die) * die) * (natural * natural * single_location_description * error single_location)) 
+*)
     
+let pp_analysed_location_data_at_pc (d: dwarf) (alspc: analysed_location_data_at_pc) : string = 
+  myconcat "" (List.map
+    (fun ((cu,parents,die),(n1,n2,sld,esl)) -> 
+      let name = 
+        match find_name_of_die d.d_str die with
+        | Just s ->  s
+        | Nothing -> "<no name>\n"
+        end in
+      match esl with
+      | Success sl -> 
+          name ^ " at " ^ pp_single_location sl ^"\n"
+            
+      | Fail e -> "<fail: " ^ e ^ ">\n"
+      end
+    )
+    alspc)
 
 
+val analysed_locations_at_pc : evaluation_context -> dwarf -> analysed_location_data -> natural -> analysed_location_data_at_pc
 let analysed_locations_at_pc 
     (ev)
     (d: dwarf)
@@ -2727,8 +2792,7 @@ List.concat
      )
      xs)
       
-
-
+val names_of_address : dwarf -> analysed_location_data_at_pc -> natural -> list string
 let names_of_address
     (d: dwarf)
     (alspc: analysed_location_data_at_pc)
@@ -2769,9 +2833,8 @@ let {ocaml} harness_string_of_elf64_debug_info_section f1 bs0 os proc usr hdr sh
 
    ^ "************** analysis of location data *************************\n"
    ^ 
-     let c : p_context = <| endianness = d.d_endianness |> in
-     let (cuh_default : compilation_unit_header) = let cu = myhead d.d_compilation_units in cu.cu_header in
-     pp_analysed_locations3 c (*HACK*) cuh_default d.d_str (analyse_locations c d )
+     let als = analyse_locations d  in
+     pp_analysed_location_data d als 
   end
 
 val harness_string_of_elf32_debug_info_section : elf32_file -> byte_sequence -> (natural -> string) -> (natural -> string) -> (natural -> string) -> elf32_header -> elf32_section_header_table -> string_table -> string
