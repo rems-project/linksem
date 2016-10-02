@@ -1,5 +1,3 @@
-(* can a location list be referenced from multiple compilation units, with different base addresses? *)
-
 open import Basic_classes
 open import Bool
 open import Function
@@ -8,7 +6,6 @@ open import Num
 open import String
 
 open import List (* TODO: check why this is not imported in ELF *)
-
 
 open import Byte_sequence
 open import Error
@@ -33,6 +30,71 @@ open import Elf_types_native_uint
 
 (** ***************** experimental DWARF reading *********** *)
 
+(* 
+
+This defines a representation of some of the DWARF debug information, 
+with parsing functions to extract it from the byte sequences of the 
+relevant ELF sections, and pretty-printing function to dump it in a
+human-readable form, similar to that of readelf.   
+
+It also defines evaluation of DWARF expressions and analysis functions
+to convert the variable location information to a form suitable for
+looking up variable names from machine addresses that arise during
+execution.
+
+The definitions are deliberately simple-minded, to be quick to write,
+easy to see the correspondence to the DWARF text specification, and
+potentially support generation of theorem-prover definitions in
+future.  They are in a pure functional style, making the information
+dependencies explicit.  They are not optimised for performance, though
+they may be efficient enough for small examples as-is.  They are
+written in Lem, and compiled from that to executable OCaml.
+
+The development follows the DWARF 4 pdf specification at http://www.dwarfstd.org/
+It doesn't cover the GNU extensions 
+(at https://fedorahosted.org/elfutils/wiki/DwarfExtensions).
+The representation, parsing, and pretty printing are mostly complete for the 
+data in these DWARF ELF sections:
+
+.debug_abbrev
+.debug_info
+.debug_types
+.debug_loc
+.debug_str
+.debug_ranges
+
+The following DWARF ELF sections are not covered:
+
+.debug_frame
+.debug_aranges
+.debug_line
+.debug_macinfo
+.debug_pubnames
+.debug_pubtypes
+
+The evaluation of DWARF expressions covers only some of the operations
+- probably enough for common cases.
+
+The analysis of DWARF location data should be enough to look up names
+from the addresses of variables and formal parameters.  It does not 
+currently handle the DWARF type data, so will not be useful for accesses
+strictly within the extent of a variable or parameter. 
+
+The 'dwarf' type gives a lightly parsed representation of some of
+the dwarf information, with the byte sequences of the above .debug_*
+sections parsed into a structured representation.  That makes the list
+and tree structures explicit, and converts the various numeric types
+into just natural, integer, and byte sequences, but it leaves the
+encoding values as numbers rather than Lem constructors. The lem
+natural and integer could be replaced by unsigned and signed 64-bit
+types. 
+
+*)
+
+(* some spec ambiguities: *)
+(* can a location list be referenced from multiple compilation units, with different base addresses? *)
+
+
 (** debug *)
 
 (* workaround debug.lem linking *)
@@ -46,9 +108,280 @@ let my_debug4 s = () (*print_endline s*)
 let my_debug5 s = print_endline s
 
 
+(** dwarf representation types *)
+
+type dwarf_attribute_classes = 
+  | DWA_7_5_3
+  | DWA_address
+  | DWA_block
+  | DWA_constant
+  | DWA_dash
+  | DWA_exprloc
+  | DWA_flag 
+  | DWA_lineptr
+  | DWA_loclistptr
+  | DWA_macptr
+  | DWA_rangelistptr
+  | DWA_reference
+  | DWA_string
+
+(* operations and expression evalution *)
+
+type operation_argument_type =
+  | OAT_addr
+  | OAT_dwarf_format_t
+  | OAT_uint8
+  | OAT_uint16
+  | OAT_uint32
+  | OAT_uint64
+  | OAT_sint8
+  | OAT_sint16
+  | OAT_sint32
+  | OAT_sint64
+  | OAT_ULEB128
+  | OAT_SLEB128
+  | OAT_block
+
+type operation_argument_value = 
+  | OAV_natural of natural
+  | OAV_integer of integer
+  | OAV_block of natural * list byte
+
+type operation_stack = list natural
+
+type arithmetic_context = 
+  <|
+  ac_bitwidth: natural;
+  ac_half: natural;  (* 2 ^ (ac_bitwidth -1) *)
+  ac_all: natural;   (* 2 ^ ac_bitwidth      *)
+  ac_max: natural;   (* (2 ^ ac_bitwidth) -1 *) (* also the representation of -1 *)
+|>
+
+type operation_semantics = 
+  | OpSem_lit 
+  | OpSem_deref
+  | OpSem_stack of (arithmetic_context -> operation_stack -> list operation_argument_value -> maybe operation_stack)
+  | OpSem_not_supported
+  | OpSem_binary of (arithmetic_context -> natural -> natural -> maybe natural)
+  | OpSem_unary of (arithmetic_context -> natural -> maybe natural)
+  | OpSem_opcode_lit of natural 
+  | OpSem_reg
+  | OpSem_breg
+  | OpSem_bregx
+  | OpSem_fbreg
+  | OpSem_deref_size
+  | OpSem_nop
+  | OpSem_piece
+  | OpSem_bit_piece
+  | OpSem_implicit_value
+  | OpSem_stack_value
+  | OpSem_call_frame_cfa
+
+type operation = 
+    <|
+    op_code: natural;
+    op_string: string;
+    op_argument_values: list operation_argument_value;
+    op_semantics: operation_semantics;
+  |>
+
+
+(* the result of a location expression evaluation is a single_location  (or failure) *)
+
+type simple_location = 
+  | SL_memory_address of natural
+  | SL_register of natural
+  | SL_implicit of list byte  (* used for implicit and stack values *)
+  | SL_empty
+
+type composite_location_piece = 
+  | CLP_piece of natural * simple_location
+  | CLP_bit_piece of natural * natural * simple_location
+
+type single_location =
+  | SL_simple of simple_location
+  | SL_composite of list composite_location_piece
+
+(* location expression evaluation is a stack machine operating over the following state *)
+
+type state = 
+    <| 
+    s_stack: operation_stack;
+    s_value: simple_location;
+    s_location_pieces: list composite_location_piece;
+  |>
+
+(* location expression evaluation can involve register and memory reads, via the following interface *)
+
+type register_read_result 'a =
+  | RRR_result of natural
+  | RRR_not_currently_available
+  | RRR_bad_register_number
+
+type memory_read_result 'a =
+  | MRR_result of natural
+  | MRR_not_currently_available
+  | MRR_bad_address
+
+type evaluation_context = 
+    <| 
+    read_register : natural -> register_read_result natural;
+    read_memory : natural -> natural -> memory_read_result natural;
+  |>
+
+
+(* dwarf sections *)
+
+type dwarf_format =
+  | Dwarf32
+  | Dwarf64
+
+(* .debug_abbrev section *)
+
+type abbreviation_declaration = 
+    <| 
+    ad_abbreviation_code: natural;
+    ad_tag: natural;
+    ad_has_children: bool;
+    ad_attribute_specifications: list (natural * natural);
+  |>
+
+type abbreviations_table = list abbreviation_declaration
+
+(* .debug_info section *)
+
+type attribute_value =
+  | AV_addr of natural
+  | AV_block of natural * list byte
+  | AV_constantN of natural * list byte
+  | AV_constant_SLEB128 of integer
+  | AV_constant_ULEB128 of natural
+  | AV_exprloc of natural * list byte
+  | AV_flag of bool
+  | AV_ref of natural 
+  | AV_ref_addr of natural (* dwarf_format dependent *)
+  | AV_ref_sig8 of natural
+  | AV_sec_offset of natural
+  | AV_string of list byte (* not including terminating null *)
+  | AV_strp of natural (* dwarf_format dependent *)
+
+type die = 
+    <|
+    die_offset: natural;
+    die_abbreviation_code: natural;
+    die_abbreviation_declaration: abbreviation_declaration;
+    die_attribute_values: list (natural (*pos*) * attribute_value);
+    die_children: list die;
+  |>
+
+type compilation_unit_header = 
+    <| 
+    cuh_offset: natural; 
+    cuh_dwarf_format: dwarf_format;
+    cuh_unit_length: natural;
+    cuh_version: natural;
+    cuh_debug_abbrev_offset: natural;
+    cuh_address_size: natural;
+  |> 
+    
+type compilation_unit = 
+    <| 
+    cu_header: compilation_unit_header;
+    cu_abbreviations_table: abbreviations_table;
+    cu_die: die;
+  |>
+
+type compilation_units = list compilation_unit
+
+(* .debug_type section *)
+
+type type_unit_header = 
+    <| 
+    tuh_cuh: compilation_unit_header;
+    tuh_type_signature: natural;
+    tuh_type_offset: natural;
+  |> 
+
+type type_unit = 
+    <| 
+    tu_header: type_unit_header;
+    tu_abbreviations_table: abbreviations_table;
+    tu_die: die;
+  |>
+
+type type_units = list type_unit
+
+(* .debug_loc section *)
+
+type single_location_description = list byte
+
+type location_list_entry =
+    <|
+    lle_beginning_address_offset: natural;
+    lle_ending_address_offset: natural;
+    lle_single_location_description: single_location_description;
+  |>
+
+type base_address_selection_entry =
+    <|
+    base_address: natural;
+  |>
+
+type location_list_item =
+  | LLI_lle of location_list_entry
+  | LLI_base of base_address_selection_entry
+
+type location_list = natural (*offset*) * list location_list_item
+
+type location_list_list = list location_list 
+
+(* .debug_ranges section *)
+
+type range_list_entry =
+    <|
+    rle_beginning_address_offset: natural;
+    rle_ending_address_offset: natural;
+  |>
+
+type range_list_item =
+  | RLI_rle of range_list_entry
+  | RLI_base of base_address_selection_entry
+
+type range_list = natural (*offset*) * list range_list_item
+
+type range_list_list = list range_list 
+
+(* top-level collection of dwarf data *)
+    
+type dwarf = 
+    <| 
+    d_endianness: Endianness.endianness; (* from the ELF *)
+    d_str: list byte;
+    d_compilation_units: compilation_units;
+    d_type_units: type_units;
+    d_loc: location_list_list;
+    d_ranges: range_list_list;
+  |>
+
+(* analysed location data *)
+
+type analysed_location_data = list ((compilation_unit * (list die) * die) * maybe (list (natural * natural * single_location_description)))
+
+type analysed_location_data_at_pc = list ((compilation_unit * (list die) * die) * (natural * natural * single_location_description * error single_location)) 
+
+(** context for parsing and pp functions *)
+
+type p_context = 
+    <|
+    endianness: Endianness.endianness;
+  |>
+
+
+
+
 (** hex parsing *)
 
-(* should be in lem, either built-in or in pervasives *)
+(* this should be in lem, either built-in or in pervasives *)
 
 val natural_of_char : char -> natural 
 let natural_of_char c =
@@ -78,36 +411,6 @@ let natural_of_hex s =
   | _ -> Assert_extra.failwith ("natural_of_hex argument \"" ^ s ^ "\" does not begin 0x")
   end
 
-(** more missing pervasives *)
-
-(* quick hacky workaround: this is in String.lem, in src_lem_library, but the linker doesn't find it *)
-val myconcat : string -> list string -> string
-let rec myconcat sep ss =
-  match ss with
-    | [] -> ""
-    | s :: ss' ->
-      match ss' with
-      | [] -> s
-      | _ -> s ^ sep ^ myconcat sep ss'
-      end
-  end
-
-val myhead : forall 'a. list 'a -> 'a
-let myhead l = match l with | x::xs -> x | [] -> Assert_extra.failwith "myhead of empty list" end
-
-
-val myfindNonPure : forall 'a. ('a -> bool) -> list 'a -> 'a 
-let myfindNonPure P l = match (List.find P l) with 
-  | Just e      -> e
-  | Nothing     -> Assert_extra.failwith "myfindNonPure"
-end
-
-val myfindmaybe : forall 'a 'b.  ('a -> maybe 'b) -> list 'a -> maybe 'b
-let rec myfindmaybe f xs = 
-  match xs with
-  | [] -> Nothing
-  | x::xs' -> match f x with Just y -> Just y | Nothing -> myfindmaybe f xs' end
-  end
 
 (* natural version of List.index *)
 val index_natural : forall 'a. list 'a -> natural -> maybe 'a
@@ -119,67 +422,11 @@ end
 let partialNaturalFromInteger (i:integer) : natural =
  if i<0 then Assert_extra.failwith "partialNaturalFromInteger" else naturalFromInteger i
 
-(*
-val shift_left_big_int : big_int -> int -> big_int
-shift_left_big_int b n returns b shifted left by n bits. Equivalent to multiplication by 2^n.
-val shift_right_big_int : big_int -> int -> big_int
-shift_right_big_int b n returns b shifted right by n bits. Equivalent to division by 2^n with the result being rounded towards minus infinity.
-*)
 val natural_nat_shift_left : natural -> nat -> natural 
 declare ocaml    target_rep function natural_nat_shift_left = `Nat_big_num.shift_left`
 
 val natural_nat_shift_right : natural -> nat -> natural 
 declare ocaml    target_rep function natural_nat_shift_right = `Nat_big_num.shift_right`
-
-val bytes_of_natural: endianness -> natural (*size*) -> natural (*value*) -> list byte
-let bytes_of_natural en size n =
-  if size = 8 then 
-    bytes_of_elf64_xword en (elf64_xword_of_natural n)
-  else if size = 4 then 
-    bytes_of_elf32_word en (elf32_word_of_natural n)
-  else
-    Assert_extra.failwith "bytes_of_natural given size that is not 4 or 8"
-
-(* TODO: generalise *)
-val natural_of_bytes: endianness -> list byte -> natural
-let natural_of_bytes en bs = 
-  match bs with
-  | b0::b1::b2::b3::b4::b5::b6::b7::[] -> 
-      let v = if en=Little then 
-        natural_of_byte b0 + 256*natural_of_byte b1 + 256*256*natural_of_byte b2 + 256*256*256*natural_of_byte b3 
-          + (256*256*256*256*(natural_of_byte b4 + 256*natural_of_byte b5 + 256*256*natural_of_byte b6 + 256*256*256*natural_of_byte b7))
-      else
-        natural_of_byte b7 + 256*natural_of_byte b6 + 256*256*natural_of_byte b5 + 256*256*256*natural_of_byte b4 
-          + (256*256*256*256*(natural_of_byte b3 + 256*natural_of_byte b2 + 256*256*natural_of_byte b1 + 256*256*256*natural_of_byte b0))
-      in
-      v
-  | _ -> Assert_extra.failwith "natural_of_bytes given not-8 bytes"
-  end
-
-
-
-
-(** basic pretty printing *)
-
-let pphex n = "0x" ^ unsafe_hex_string_of_natural 0 n
-
-let ppbytes xs = show (List.map (fun x -> show x) xs)
-
-let rec ppbytes2 n xs = match xs with | [] -> "" | x::xs' -> "<"^pphex n^">  "^show x^"\n"^ppbytes2 (n+1) xs' end
-
-(* workaround: from String *)
-val mytoString : list char -> string
-declare ocaml    target_rep function mytoString = `Xstring.implode`
-
-let string_of_bytes bs = mytoString (List.map Missing_pervasives.char_of_byte bs)
-
-
-let just_one s xs = 
-  match xs with
-  | [] -> Assert_extra.failwith ("no " ^ s)
-  | x1::x2::_ -> Assert_extra.failwith ("more than one " ^ s)
-  | [x] -> x
-  end
 
 
 (** dwarf encodings *)
@@ -255,26 +502,11 @@ let tag_encodings = [
 
 (* child determination encoding *)
 
-let DW_CHILDREN_no  = natural_of_hex "0x00"
-let DW_CHILDREN_yes = natural_of_hex "0x01"
+let vDW_CHILDREN_no  = natural_of_hex "0x00"
+let vDW_CHILDREN_yes = natural_of_hex "0x01"
 
 
 (* attribute encoding *)
-
-type dwarf_attribute_classes = 
-  | DWA_7_5_3
-  | DWA_address
-  | DWA_block
-  | DWA_constant
-  | DWA_dash
-  | DWA_exprloc
-  | DWA_flag 
-  | DWA_lineptr
-  | DWA_loclistptr
-  | DWA_macptr
-  | DWA_rangelistptr
-  | DWA_reference
-  | DWA_string
 
 let attribute_encodings = [
   ("DW_AT_sibling"              , natural_of_hex "0x01", [DWA_reference])                                   ;
@@ -407,56 +639,6 @@ let attribute_form_encodings = [
 
 (* operation encoding *)
 
-type operation_argument_type =
-  | OAT_addr
-  | OAT_dwarf_format_t
-  | OAT_uint8
-  | OAT_uint16
-  | OAT_uint32
-  | OAT_uint64
-  | OAT_sint8
-  | OAT_sint16
-  | OAT_sint32
-  | OAT_sint64
-  | OAT_ULEB128
-  | OAT_SLEB128
-  | OAT_block
-
-type operation_argument_value = 
-  | OAV_natural of natural
-  | OAV_integer of integer
-  | OAV_block of natural * list byte
-
-type operation_stack = list natural
-
-type arithmetic_context = 
-  <|
-  ac_bitwidth: natural;
-  ac_half: natural;  (* 2 ^ (ac_bitwidth -1) *)
-  ac_all: natural;   (* 2 ^ ac_bitwidth      *)
-  ac_max: natural;   (* (2 ^ ac_bitwidth) -1 *) (* also the representation of -1 *)
-|>
-
-
-type operation_semantics = 
-  | OpSem_lit 
-  | OpSem_deref
-  | OpSem_stack of (arithmetic_context -> operation_stack -> list operation_argument_value -> maybe operation_stack)
-  | OpSem_not_supported
-  | OpSem_binary of (arithmetic_context -> natural -> natural -> maybe natural)
-  | OpSem_unary of (arithmetic_context -> natural -> maybe natural)
-  | OpSem_opcode_lit of natural 
-  | OpSem_reg
-  | OpSem_breg
-  | OpSem_bregx
-  | OpSem_fbreg
-  | OpSem_deref_size
-  | OpSem_nop
-  | OpSem_piece
-  | OpSem_bit_piece
-  | OpSem_implicit_value
-  | OpSem_stack_value
-  | OpSem_call_frame_cfa
 
 let operation_encodings = [
 ("DW_OP_addr",                natural_of_hex "0x03", [OAT_addr]                 , OpSem_lit); (*1*) (*constant address (size target specific)*)
@@ -631,168 +813,100 @@ let vDW_OP_reg0 = natural_of_hex "0x50"
 let vDW_OP_breg0 = natural_of_hex "0x70"
 
 
+
+(** more missing pervasives *)
+
+(* quick hacky workaround: this is in String.lem, in src_lem_library, but the linker doesn't find it *)
+val myconcat : string -> list string -> string
+let rec myconcat sep ss =
+  match ss with
+    | [] -> ""
+    | s :: ss' ->
+      match ss' with
+      | [] -> s
+      | _ -> s ^ sep ^ myconcat sep ss'
+      end
+  end
+
+val myhead : forall 'a. list 'a -> 'a
+let myhead l = match l with | x::xs -> x | [] -> Assert_extra.failwith "myhead of empty list" end
+
+
+val myfindNonPure : forall 'a. ('a -> bool) -> list 'a -> 'a 
+let myfindNonPure P l = match (List.find P l) with 
+  | Just e      -> e
+  | Nothing     -> Assert_extra.failwith "myfindNonPure"
+end
+
+val myfindmaybe : forall 'a 'b.  ('a -> maybe 'b) -> list 'a -> maybe 'b
+let rec myfindmaybe f xs = 
+  match xs with
+  | [] -> Nothing
+  | x::xs' -> match f x with Just y -> Just y | Nothing -> myfindmaybe f xs' end
+  end
+
+
+
+
+val bytes_of_natural: endianness -> natural (*size*) -> natural (*value*) -> list byte
+let bytes_of_natural en size n =
+  if size = 8 then 
+    bytes_of_elf64_xword en (elf64_xword_of_natural n)
+  else if size = 4 then 
+    bytes_of_elf32_word en (elf32_word_of_natural n)
+  else
+    Assert_extra.failwith "bytes_of_natural given size that is not 4 or 8"
+
+(* TODO: generalise *)
+val natural_of_bytes: endianness -> list byte -> natural
+let natural_of_bytes en bs = 
+  match bs with
+  | b0::b1::b2::b3::b4::b5::b6::b7::[] -> 
+      let v = if en=Little then 
+        natural_of_byte b0 + 256*natural_of_byte b1 + 256*256*natural_of_byte b2 + 256*256*256*natural_of_byte b3 
+          + (256*256*256*256*(natural_of_byte b4 + 256*natural_of_byte b5 + 256*256*natural_of_byte b6 + 256*256*256*natural_of_byte b7))
+      else
+        natural_of_byte b7 + 256*natural_of_byte b6 + 256*256*natural_of_byte b5 + 256*256*256*natural_of_byte b4 
+          + (256*256*256*256*(natural_of_byte b3 + 256*natural_of_byte b2 + 256*256*natural_of_byte b1 + 256*256*256*natural_of_byte b0))
+      in
+      v
+  | _ -> Assert_extra.failwith "natural_of_bytes given not-8 bytes"
+  end
+
+
+
+
+(** basic pretty printing *)
+
+let pphex n = "0x" ^ unsafe_hex_string_of_natural 0 n
+
+let ppbytes xs = show (List.map (fun x -> show x) xs)
+
+let rec ppbytes2 n xs = match xs with | [] -> "" | x::xs' -> "<"^pphex n^">  "^show x^"\n"^ppbytes2 (n+1) xs' end
+
+(* workaround: from String *)
+val mytoString : list char -> string
+declare ocaml    target_rep function mytoString = `Xstring.implode`
+
+let string_of_bytes bs = mytoString (List.map Missing_pervasives.char_of_byte bs)
+
+
+let just_one s xs = 
+  match xs with
+  | [] -> Assert_extra.failwith ("no " ^ s)
+  | x1::x2::_ -> Assert_extra.failwith ("more than one " ^ s)
+  | [x] -> x
+  end
+
+
+
+
 let max_address (as': natural) : natural = 
   match as' with
   | 4 -> natural_of_hex "0xffffffff"
   | 8 -> natural_of_hex "0xffffffffffffffff"
   | _ -> Assert_extra.failwith "max_address size not 4 or 8"
   end
-
-
-(** context for parsing and pp functions *)
-
-type p_context = 
-    <|
-    endianness: Endianness.endianness;
-  |>
-
-
-(** dwarf representation types *)
-
-(* This gives a "lightly parsed" representation of some of the dwarf
-information, with the byte sequences of some of the .debug_* sections
-parsed into a structured representation.  That makes the list and tree
-structures explicit, and converts the various numeric types into just
-natural, integer, and byte sequences, but it leaves the encoding
-values as numbers rather than Lem constructors. The lem natural and 
-integer could be replaced by unsigned and signed 64-bit types. *)
-
-type dwarf_format =
-  | Dwarf32
-  | Dwarf64
-
-type abbreviation_declaration = 
-    <| 
-    ad_abbreviation_code: natural;
-    ad_tag: natural;
-    ad_has_children: bool;
-    ad_attribute_specifications: list (natural * natural);
-  |>
-
-type abbreviations_table = list abbreviation_declaration
-
-
-type operation = 
-    <|
-    op_code: natural;
-    op_string: string;
-    op_argument_values: list operation_argument_value;
-    op_semantics: operation_semantics;
-  |>
-
-type attribute_value =
-  | AV_addr of natural
-  | AV_block of natural * list byte
-  | AV_constantN of natural * list byte
-  | AV_constant_SLEB128 of integer
-  | AV_constant_ULEB128 of natural
-  | AV_exprloc of natural * list byte
-  | AV_flag of bool
-  | AV_ref of natural 
-  | AV_ref_addr of natural (* dwarf_format dependent *)
-  | AV_ref_sig8 of natural
-  | AV_sec_offset of natural
-  | AV_string of list byte (* not including terminating null *)
-  | AV_strp of natural (* dwarf_format dependent *)
-
-type die = 
-    <|
-    die_offset: natural;
-    die_abbreviation_code: natural;
-    die_abbreviation_declaration: abbreviation_declaration;
-    die_attribute_values: list (natural (*pos*) * attribute_value);
-    die_children: list die;
-  |>
-
-type compilation_unit_header = 
-    <| 
-    cuh_offset: natural; 
-    cuh_dwarf_format: dwarf_format;
-    cuh_unit_length: natural;
-    cuh_version: natural;
-    cuh_debug_abbrev_offset: natural;
-    cuh_address_size: natural;
-  |> 
-    
-type compilation_unit = 
-    <| 
-    cu_header: compilation_unit_header;
-    cu_abbreviations_table: abbreviations_table;
-    cu_die: die;
-  |>
-
-type compilation_units = list compilation_unit
-
-type type_unit_header = 
-    <| 
-    tuh_cuh: compilation_unit_header;
-    tuh_type_signature: natural;
-    tuh_type_offset: natural;
-  |> 
-
-type type_unit = 
-    <| 
-    tu_header: type_unit_header;
-    tu_abbreviations_table: abbreviations_table;
-    tu_die: die;
-  |>
-
-type type_units = list type_unit
-
-type single_location_description = list byte
-
-type location_list_entry =
-    <|
-    lle_beginning_address_offset: natural;
-    lle_ending_address_offset: natural;
-    lle_single_location_description: single_location_description;
-  |>
-
-type base_address_selection_entry =
-    <|
-    base_address: natural;
-  |>
-
-type location_list_item =
-  | LLI_lle of location_list_entry
-  | LLI_base of base_address_selection_entry
-
-type location_list = natural (*offset*) * list location_list_item
-
-type location_list_list = list location_list 
-
-type frame_base_location_description = 
-(*  | FBLD_register of byte *) (* no need to discriminate wrt expression*)
-  | FBLD_expression of single_location_description
-  | FBLD_location_list of list (natural * natural * single_location_description)
-
-
-
-
-type range_list_entry =
-    <|
-    rle_beginning_address_offset: natural;
-    rle_ending_address_offset: natural;
-  |>
-
-type range_list_item =
-  | RLI_rle of range_list_entry
-  | RLI_base of base_address_selection_entry
-
-type range_list = natural (*offset*) * list range_list_item
-
-type range_list_list = list range_list 
-
-    
-type dwarf = 
-    <| 
-    d_endianness: Endianness.endianness; (* from the ELF *)
-    d_str: list byte;
-    d_compilation_units: compilation_units;
-    d_type_units: type_units;
-    d_loc: location_list_list;
-    d_ranges: range_list_list;
-  |>
 
 
 (** lookup of encodings *)
@@ -1459,6 +1573,12 @@ let find_name str ats : maybe string =
         Nothing)
     ats
 
+let find_name_of_die str die : maybe string = 
+  let ats = List.zip 
+      die.die_abbreviation_declaration.ad_attribute_specifications 
+      die.die_attribute_values in
+  find_name str ats
+
 let find_attribute_value (an: string) (die:die) : maybe attribute_value =
   let at = attribute_encode an in
   let ats = List.zip 
@@ -1806,7 +1926,7 @@ let pp_loc c (cuh: compilation_unit_header) (lls: list location_list) =
 determined by the closest preceding base address selection entry in
 the same location list. If there is no such selection entry, then the
 applicable base address defaults to the base address of the
-compilation unit *)
+compilation unit.  That is handled by the interpret_location_list below *)
 
 
       
@@ -1855,6 +1975,8 @@ let parse_location_list_list c cuh : parser location_list_list =
 let find_location_list dloc n : location_list = 
   myfindNonPure (fun (n',_)-> n'=n) dloc
   (* fails if location list not found *)
+
+(* interpretation of a location list applies the base_address and LLI_base offsets to give a list indexed by concrete address ranges *)
 
 let rec interpret_location_list (base_address: natural) (llis: list location_list_item) : list (natural * natural * single_location_description) =
   match llis with
@@ -1905,13 +2027,8 @@ let pp_ranges c (cuh: compilation_unit_header) (rls: list range_list) =
   "    Offset   Begin    End      Expression\n"
   ^  myconcat "" (List.map (pp_range_list c cuh) rls)
 
-(* Note that this is just pp'ing the raw range list data - Section
-3.1.1 says (for location lists and range lists): The applicable base
-address of a location list entry is determined by the closest
-preceding base address selection entry in the same location list. If
-there is no such selection entry, then the applicable base address
-defaults to the base address of the compilation unit *)
-
+(* Note that this is just pp'ing the raw range list data - see also
+the interpret_range_list below *)
 
       
 let parse_range_list_item c (cuh: compilation_unit_header) : parser (maybe range_list_item) =
@@ -1952,6 +2069,8 @@ let parse_range_list_list c cuh : parser range_list_list =
 let find_range_list dranges n : range_list = 
   myfindNonPure (fun (n',_)-> n'=n) dranges
   (* fails if range list not found *)
+
+(* interpretation of a range list applies the base_address and RLI_base offsets to give a list of concrete address ranges *)
 
 let rec interpret_range_list (base_address: natural) (rlis: list range_list_item) : list (natural * natural) =
   match rlis with
@@ -2117,52 +2236,6 @@ DW_OP_call_frame_cfa   go off to 6.4 and pull info out of .debug_frame (possibly
 *)
 
 
-(* the result of a location expression evaluation is a single_location  (or failure) *)
-
-type simple_location = 
-  | SL_memory_address of natural
-  | SL_register of natural
-  | SL_implicit of list byte  (* used for implicit and stack values *)
-  | SL_empty
-
-type composite_location_piece = 
-  | CLP_piece of natural * simple_location
-  | CLP_bit_piece of natural * natural * simple_location
-
-type single_location =
-  | SL_simple of simple_location
-  | SL_composite of list composite_location_piece
-
-(* location expression evaluation can involve register and memory reads, via the following interface *)
-
-type register_read_result 'a =
-  | RRR_result of natural
-  | RRR_not_currently_available
-  | RRR_bad_register_number
-
-type memory_read_result 'a =
-  | MRR_result of natural
-  | MRR_not_currently_available
-  | MRR_bad_address
-
-type evaluation_context = 
-    <| 
-    read_register : natural -> register_read_result natural;
-    read_memory : natural -> natural -> memory_read_result natural;
-  |>
-
-(* location expression evaluation is basically a recursive function
-down a list of operations, maintaining an operation_stack (a list of
-naturals representing machine-address-size words), the current
-simple_location, and a list of any composite_location_piece's
-accumulated so far *)
-
-type state = 
-    <| 
-    s_stack: operation_stack;
-    s_value: simple_location;
-    s_location_pieces: list composite_location_piece;
-  |>
 
 let initial_state = 
   <|
@@ -2172,6 +2245,14 @@ let initial_state =
 |>
   
 (* the main location expression evaluation function *)
+
+(* location expression evaluation is basically a recursive function
+down a list of operations, maintaining an operation_stack (a list of
+naturals representing machine-address-size words), the current
+simple_location, and a list of any composite_location_piece's
+accumulated so far *)
+
+
 
 let arithmetic_context_of_cuh cuh = 
   match cuh.cuh_address_size with
@@ -2397,7 +2478,7 @@ let find_dies (p:die->bool) (d: dwarf) : list (compilation_unit * (list die) * d
     d.d_compilation_units 
 
 
-(* simple-minded analysis of location *)
+(** simple-minded analysis of location *)
 
 let analyse_locations_raw c (d: dwarf) = 
 
@@ -2449,7 +2530,7 @@ let analyse_locations_raw c (d: dwarf) =
        dies)
     
 
-(* more proper analysis of locations *)
+(** more proper analysis of locations *)
 
 
 
@@ -2469,7 +2550,6 @@ appropriate.
 
 
 (*  
-
 if there's a DW_AT_location that's a location list (DW_FORM_sec_offset/AV_sec_offset) : use that for both the range(s) and location; interpret the range(s) wrt the applicable base address of the compilation unit 
 
 if there's a DW_AT_location that's a location expression (DW_FORM_exprloc/AV_exprloc or DW_block/AV_block), look for the closest enclosing range:
@@ -2484,10 +2564,7 @@ or a location list (what happens if the ranges of that location list
 don't cover where we are?)
 
 For each variable and formal parameter that has a DW_AT_name, we'll calculate a list of pairs of a concrete (low,high) range and a location expression.
-
-
-
- *)
+*)
 
 let rec closest_enclosing_range c (dranges: range_list_list) (cu_base_address: natural) (parents: list die) : maybe (list (natural * natural)) = 
   match parents with
@@ -2521,17 +2598,12 @@ rather than DW_FORM_data<n>.
 no kidding - if we get an AV_constantN for DW_AT_high_pc, should it be interpreted as signed or unsigned? *)
 
 
-let rec closest_enclosing_frame_base dloc (base_address: natural) (parents: list die) : maybe frame_base_location_description = 
+let rec closest_enclosing_frame_base dloc (base_address: natural) (parents: list die) : maybe attribute_value = 
   match parents with
   | [] -> Nothing
   | die::parents' ->
       match find_attribute_value "DW_AT_frame_base" die with
-      | Just (AV_exprloc n bs) -> Just (FBLD_expression bs)
-      | Just (AV_block n bs) -> Just (FBLD_expression bs)
-      | Just (AV_sec_offset n) -> 
-          let (_,llis) = find_location_list dloc n in 
-          Just (FBLD_location_list (interpret_location_list base_address llis))
-      | Just _ -> Assert_extra.failwith "unexpected attribute value in closest_enclosing_frame_base"
+      | Just av -> Just av
       | Nothing -> closest_enclosing_frame_base dloc base_address parents' 
       end 
   end
@@ -2564,7 +2636,8 @@ let cu_base_address cu =
   | _ -> 0 (*Nothing*) (*Assert_extra.failwith "no cu DW_AT_low_pc"*) 
   end 
 
-let analyse_locations c (d: dwarf) : list ((compilation_unit * (list die) * die) * maybe (list (natural * natural * single_location_description))) = 
+
+let analyse_locations c (d: dwarf) : analysed_location_data = 
 
   let (cuh_default : compilation_unit_header) = let cu = myhead d.d_compilation_units in cu.cu_header in
   
@@ -2601,7 +2674,7 @@ let pp_analysed_locations2 c cuh mnnls =
   | Nothing -> "  <no locations>\n"
   end
 
-let pp_analysed_locations3 c cuh str (als: list ((compilation_unit * (list die) * die) * maybe (list (natural * natural * single_location_description)))) : string = 
+let pp_analysed_locations3 c cuh str (als: analysed_location_data) : string = 
   myconcat "\n"
     (List.map 
        (fun ((cu,parents,die),mnnls) ->
@@ -2616,10 +2689,10 @@ let pp_analysed_locations3 c cuh str (als: list ((compilation_unit * (list die) 
 let analysed_locations_at_pc 
     (ev)
     (d: dwarf)
-    (als: list ((compilation_unit * (list die) * die) * maybe (list (natural * natural * single_location_description))))
+    (als: analysed_location_data)
     (pc: natural) 
-    : list ((compilation_unit * (list die) * die) * (list (natural * natural * single_location_description * single_location))) = 
-  
+    : analysed_location_data_at_pc
+    =  
   let c : p_context = <| endianness = d.d_endianness |> in
   
   let xs = 
@@ -2635,14 +2708,14 @@ let analysed_locations_at_pc
             end
         end)
       als 
-  in
+in 
 
-  List.concat 
+List.concat
   (List.map 
      (fun ((cu,parents,die),nns) -> 
        let ac = arithmetic_context_of_cuh cu.cu_header in 
        let base_address = cu_base_address cu in 
-       let mfbloc : maybe frame_base_location_description = 
+       let mfbloc : maybe attribute_value = 
          closest_enclosing_frame_base d.d_loc base_address parents in
        List.map 
          (fun (n1,n2,sld) -> 
@@ -2656,10 +2729,31 @@ let analysed_locations_at_pc
       
 
 
-(** top level *)
+let names_of_address
+    (d: dwarf)
+    (alspc: analysed_location_data_at_pc)
+    (address: natural)
+ : list string
+    = 
+  List.mapMaybe 
+    (fun ((cu,parents,die),(n1,n2,sld,esl)) -> 
+      match esl with
+      | Success (SL_simple (SL_memory_address a)) -> 
+          if a=address then 
+            match find_name_of_die d.d_str die with
+            | Just s -> Just s
+            | Nothing -> Nothing
+            end
+          else 
+            Nothing
+      | Fail e -> Nothing (* just suppress? *)
+      end
+    )
+    alspc
 
 
 
+(** top level for main_elf*)
 
 
 val harness_string_of_elf64_debug_info_section : elf64_file -> byte_sequence -> (natural -> string) -> (natural -> string) -> (natural -> string) -> elf64_header -> elf64_section_header_table -> string_table -> string
