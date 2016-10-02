@@ -2735,6 +2735,7 @@ type analysed_location_data_at_pc = list ((compilation_unit * (list die) * die) 
 let pp_analysed_location_data_at_pc (d: dwarf) (alspc: analysed_location_data_at_pc) : string = 
   myconcat "" (List.map
     (fun ((cu,parents,die),(n1,n2,sld,esl)) -> 
+      "          " ^ 
       let name = 
         match find_name_of_die d.d_str die with
         | Just s ->  s
@@ -2742,9 +2743,9 @@ let pp_analysed_location_data_at_pc (d: dwarf) (alspc: analysed_location_data_at
         end in
       match esl with
       | Success sl -> 
-          name ^ " at " ^ pp_single_location sl ^"\n"
+          name ^ " @ " ^ pp_single_location sl ^"\n"
             
-      | Fail e -> "<fail: " ^ e ^ ">\n"
+      | Fail e -> name ^ " @ " ^ "<fail: " ^ e ^ ">\n"
       end
     )
     alspc)
