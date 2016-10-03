@@ -389,8 +389,8 @@ type call_frame_argument_value =
 
 type call_frame_instruction = 
   | DW_CFA_advance_loc         of cfa_delta 
-  | DW_CFA_offset              of cfa_offset
-  | DW_CFA_restore
+  | DW_CFA_offset              of cfa_register * cfa_offset
+  | DW_CFA_restore             of cfa_register
   | DW_CFA_nop 
   | DW_CFA_set_loc             of cfa_address
   | DW_CFA_advance_loc1        of cfa_delta
@@ -1152,6 +1152,13 @@ let rec lookup_aBcd_acd y0 xyzws =
   | (x,y,z,w)::xyzws' -> if y=y0 then Just (x,z,w) else lookup_aBcd_acd y0 xyzws'  
   end
 
+val lookup_abCde_de : forall 'a 'b 'c 'd 'e. Eq 'c => 'c -> list ('a * 'b * 'c * 'd * 'e) -> maybe ('d * 'e)
+let rec lookup_abCde_de z0 xyzwus = 
+  match xyzwus with
+  | [] -> Nothing
+  | (x,y,z,w,u)::xyzwus' -> if z=z0 then Just (w,u) else lookup_abCde_de z0 xyzwus'  
+  end
+
 
 let pp_maybe ppf n = match ppf n with Just s -> s | Nothing -> "encoding not found: " ^ pphex n end
 
@@ -1599,16 +1606,9 @@ val parser_of_operation_argument_type : p_context -> compilation_unit_header -> 
 let parser_of_operation_argument_type c cuh oat = 
   match oat with
     | OAT_addr -> 
-        match cuh.cuh_address_size with
-        | 4 -> pr_map2 (fun n -> OAV_natural n) (parse_uint32 c)
-        | 8 -> pr_map2 (fun n -> OAV_natural n) (parse_uint64 c)
-        | _ -> Assert_extra.failwith "cuh_address_size not 4 or 8"
-        end
+        pr_map2 (fun n -> OAV_natural n) (parse_uint_address_size c cuh.cuh_address_size)
     | OAT_dwarf_format_t ->
-        match cuh.cuh_dwarf_format with
-        | Dwarf32 -> pr_map2 (fun n -> OAV_natural n) (parse_uint32 c)
-        | Dwarf64 -> pr_map2 (fun n -> OAV_natural n) (parse_uint64 c)
-        end
+        pr_map2 (fun n -> OAV_natural n) (parse_uintDwarfN c cuh.cuh_dwarf_format)
     | OAT_uint8   -> pr_map2 (fun n -> OAV_natural n) (parse_uint8)
     | OAT_uint16  -> pr_map2 (fun n -> OAV_natural n) (parse_uint16 c)
     | OAT_uint32  -> pr_map2 (fun n -> OAV_natural n) (parse_uint32 c)
@@ -2332,39 +2332,112 @@ let pp_cfa_sfoffset i = show i
 
 let pp_call_frame_instruction i = 
   match i with
-  | DW_CFA_advance_loc d          -> "DW_CFA_advance_loc" ^ pp_cfa_delta d
-  | DW_CFA_offset n               -> "DW_CFA_offset" ^ pp_cfa_offset n
-  | DW_CFA_restore                -> "DW_CFA_restore" 
+  | DW_CFA_advance_loc d          -> "DW_CFA_advance_loc" ^ " " ^ pp_cfa_delta d
+  | DW_CFA_offset r n             -> "DW_CFA_offset" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_offset n
+  | DW_CFA_restore r              -> "DW_CFA_restore" ^ " " ^ pp_cfa_register r
   | DW_CFA_nop                    -> "DW_CFA_nop" 
-  | DW_CFA_set_loc a              -> "DW_CFA_set_loc" ^ pp_cfa_address a
-  | DW_CFA_advance_loc1 d         -> "DW_CFA_advance_loc1" ^ pp_cfa_delta d
-  | DW_CFA_advance_loc2 d         -> "DW_CFA_advance_loc2" ^ pp_cfa_delta d
-  | DW_CFA_advance_loc4 d         -> "DW_CFA_advance_loc4" ^ pp_cfa_delta d
-  | DW_CFA_offset_extended r n    -> "DW_CFA_offset_extended" ^ pp_cfa_register r ^ " " ^ pp_cfa_offset n
-  | DW_CFA_restore_extended r     -> "DW_CFA_restore_extended" ^ pp_cfa_register r
-  | DW_CFA_undefined r            -> "DW_CFA_undefined" ^ pp_cfa_register r
-  | DW_CFA_same_value r           -> "DW_CFA_same_value" ^ pp_cfa_register r
-  | DW_CFA_register r1 r2         -> "DW_CFA_register" ^ pp_cfa_register r1 ^ " " ^ pp_cfa_register r2
+  | DW_CFA_set_loc a              -> "DW_CFA_set_loc" ^ " " ^ pp_cfa_address a
+  | DW_CFA_advance_loc1 d         -> "DW_CFA_advance_loc1" ^ " " ^ pp_cfa_delta d
+  | DW_CFA_advance_loc2 d         -> "DW_CFA_advance_loc2" ^ " " ^ pp_cfa_delta d
+  | DW_CFA_advance_loc4 d         -> "DW_CFA_advance_loc4" ^ " " ^ pp_cfa_delta d
+  | DW_CFA_offset_extended r n    -> "DW_CFA_offset_extended" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_offset n
+  | DW_CFA_restore_extended r     -> "DW_CFA_restore_extended" ^ " " ^ pp_cfa_register r
+  | DW_CFA_undefined r            -> "DW_CFA_undefined" ^ " " ^ pp_cfa_register r
+  | DW_CFA_same_value r           -> "DW_CFA_same_value" ^ " " ^ pp_cfa_register r
+  | DW_CFA_register r1 r2         -> "DW_CFA_register" ^ " " ^ pp_cfa_register r1 ^ " " ^ pp_cfa_register r2
   | DW_CFA_remember_state         -> "DW_CFA_remember_state" 
   | DW_CFA_restore_state          -> "DW_CFA_restore_state" 
-  | DW_CFA_def_cfa r n            -> "DW_CFA_def_cfa" ^ pp_cfa_register r ^ " " ^ pp_cfa_offset n
-  | DW_CFA_def_cfa_register r     -> "DW_CFA_def_cfa_register" ^ pp_cfa_register r
-  | DW_CFA_def_cfa_offset n       -> "DW_CFA_def_cfa_offset" ^ pp_cfa_offset n
-  | DW_CFA_def_cfa_expression b   -> "DW_CFA_def_cfa_expression" ^ pp_cfa_block b
-  | DW_CFA_expression r b         -> "DW_CFA_expression" ^ pp_cfa_register r ^ " " ^ pp_cfa_block b
-  | DW_CFA_offset_extended_sf r i -> "DW_CFA_offset_extended_sf" ^ pp_cfa_register r ^ " " ^ pp_cfa_sfoffset i
-  | DW_CFA_def_cfa_sf r i         -> "DW_CFA_def_cfa_sf" ^ pp_cfa_register r ^ " " ^ pp_cfa_sfoffset i
-  | DW_CFA_def_cfa_offset_sf i    -> "DW_CFA_def_cfa_offset_sf" ^ pp_cfa_sfoffset i
-  | DW_CFA_val_offset r n         -> "DW_CFA_val_offset" ^ pp_cfa_register r ^ " " ^ pp_cfa_offset n
+  | DW_CFA_def_cfa r n            -> "DW_CFA_def_cfa" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_offset n
+  | DW_CFA_def_cfa_register r     -> "DW_CFA_def_cfa_register" ^ " " ^ pp_cfa_register r
+  | DW_CFA_def_cfa_offset n       -> "DW_CFA_def_cfa_offset" ^ " " ^ pp_cfa_offset n
+  | DW_CFA_def_cfa_expression b   -> "DW_CFA_def_cfa_expression" ^ " " ^ pp_cfa_block b
+  | DW_CFA_expression r b         -> "DW_CFA_expression" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_block b
+  | DW_CFA_offset_extended_sf r i -> "DW_CFA_offset_extended_sf" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_sfoffset i
+  | DW_CFA_def_cfa_sf r i         -> "DW_CFA_def_cfa_sf" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_sfoffset i
+  | DW_CFA_def_cfa_offset_sf i    -> "DW_CFA_def_cfa_offset_sf" ^ " " ^ pp_cfa_sfoffset i
+  | DW_CFA_val_offset r n         -> "DW_CFA_val_offset" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_offset n
   | DW_CFA_val_offset_sf r i      -> "DW_CFA_val_offset_sf" ^ pp_cfa_register r ^ " " ^ pp_cfa_sfoffset i
-  | DW_CFA_val_expression r b     -> "DW_CFA_val_expression" ^ pp_cfa_register r ^ " " ^ pp_cfa_block b
+  | DW_CFA_val_expression r b     -> "DW_CFA_val_expression" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_block b
   end
 
-let pp_call_frame_instructions is = List.map (fun i -> "  " ^ pp_call_frame_instruction i ^ "\n") is
+let pp_call_frame_instructions is = myconcat "" (List.map (fun i -> "  " ^ pp_call_frame_instruction i ^ "\n") is)
 
-let pp_call_frame_instructions' bs = ppbytes bs ^ "\n"
 
-let pp_cie cie =
+let parser_of_call_frame_argument_type c cuh (cfat: call_frame_argument_type) : parser call_frame_argument_value =
+    match cfat with
+    | CFAT_address       -> pr_map2 (fun n -> CFAV_address n) (parse_uint_address_size c cuh.cuh_address_size)
+    | CFAT_delta1        -> pr_map2 (fun n -> CFAV_delta n) (parse_uint8)
+    | CFAT_delta2        -> pr_map2 (fun n -> CFAV_delta n) (parse_uint16 c)
+    | CFAT_delta4        -> pr_map2 (fun n -> CFAV_delta n) (parse_uint32 c)
+    | CFAT_delta_ULEB128 -> pr_map2 (fun n -> CFAV_delta n) (parse_ULEB128)
+    | CFAT_offset        -> pr_map2 (fun n -> CFAV_offset n) (parse_ULEB128)
+    | CFAT_sfoffset      -> pr_map2 (fun n -> CFAV_sfoffset n) (parse_SLEB128)
+    | CFAT_register      -> pr_map2 (fun n -> CFAV_register n) (parse_ULEB128)
+    | CFAT_block -> 
+      (fun pc -> pr_bind (parse_ULEB128 pc) (fun n pc' -> 
+        pr_map (fun bs -> CFAV_block bs) (parse_n_bytes n pc')))
+    end
+
+let parse_call_frame_instruction c cuh : parser (maybe call_frame_instruction) =
+    fun pc ->
+      match pc.pc_bytes with
+      | [] -> PR_success Nothing pc
+      | b::bs' ->
+          let pc' = <| pc_bytes = bs'; pc_offset = pc.pc_offset + 1 |> in
+          let ch = unsigned_char_of_byte b in
+          let high_bits = unsigned_char_land ch (unsigned_char_of_natural 192) in
+          let low_bits = natural_of_unsigned_char (unsigned_char_land ch (unsigned_char_of_natural 63)) in
+          if high_bits = unsigned_char_of_natural 0 then
+            match lookup_abCde_de low_bits call_frame_instruction_encoding with
+            | Just ((args: list call_frame_argument_type), result) ->
+                let ps = List.map (parser_of_call_frame_argument_type c cuh) args in
+                let p = 
+                  pr_post_map
+                    (parse_parser_list ps)
+                    result in
+                match p pc' with 
+                | PR_success (Just cfi) pc'' -> PR_success (Just cfi) pc''
+                | PR_success (Nothing) pc'' -> Assert_extra.failwith "bad call frame instruction argument 1"
+                | PR_fail s pc'' -> Assert_extra.failwith "bad call frame instruction argument 2"
+                end
+            | Nothing -> Assert_extra.failwith ("can't parse " ^ show b ^ " as call frame instruction") pc 
+            end
+          else            
+            if high_bits = unsigned_char_of_natural 64 then 
+              PR_success (Just (DW_CFA_advance_loc low_bits)) pc'
+            else if high_bits = unsigned_char_of_natural 192 then 
+              PR_success (Just (DW_CFA_restore low_bits)) pc'
+            else
+                let p = parser_of_call_frame_argument_type c cuh CFAT_offset in
+                match p pc' with 
+                | PR_success (CFAV_offset n) pc'' -> PR_success (Just (DW_CFA_offset low_bits n)) pc''
+                | PR_success _ pc'' -> Assert_extra.failwith "bad call frame instruction argument 3"
+                | PR_fail s pc'' -> Assert_extra.failwith "bad call frame instruction argument 4"
+                end
+      end
+
+let parse_call_frame_instructions c cuh : parser (list call_frame_instruction) =
+    parse_list (parse_call_frame_instruction c cuh)
+
+val parse_and_pp_call_frame_instructions : p_context -> compilation_unit_header -> list byte -> string
+let parse_and_pp_call_frame_instructions c cuh bs =
+  let pc = <|pc_bytes = bs; pc_offset = 0  |> in
+  match parse_call_frame_instructions c cuh pc with
+  | PR_fail s pc' -> "parse_call_frame_instructions fail: " ^ pp_parse_fail s pc'
+  | PR_success is pc' ->
+      pp_call_frame_instructions is 
+      ^ if pc'.pc_bytes <> [] then " Warning: extra non-parsed bytes" else ""
+  end
+
+
+
+let pp_call_frame_instructions' c cuh bs = 
+  (* ppbytes bs ^ "\n" *)
+  parse_and_pp_call_frame_instructions c cuh bs
+
+
+
+let pp_cie c cuh cie =
   pphex cie.cie_offset
   ^ " " ^ pphex cie.cie_length   
   ^ " " ^ pphex cie.cie_id
@@ -2375,31 +2448,32 @@ let pp_cie cie =
   ^ "  Data alignment factor: " ^ show cie.cie_data_alignment_factor ^ "\n"
   ^ "  Return address column: " ^ show cie.cie_return_address_register ^ "\n"
   ^ "\n"
-  ^ pp_call_frame_instructions' cie.cie_initial_instructions
+  ^ pp_call_frame_instructions' c cuh cie.cie_initial_instructions
 
 (*    cie_address_size: natural;  (* not shown by readelf - must match compilation unit *)*)
 (*    cie_segment_size: natural;  (* not shown by readelf *)*)
 (* readelf says "Return address column", but the DWARF spec says "Return address register" *)
 
 
-let pp_fde fde = 
+let pp_fde c cuh fde = 
   pphex fde.fde_offset
   ^ " " ^ pphex fde.fde_length   
   ^ " " ^ pphex fde.fde_cie_pointer  (* not what this field of readelf output is *)
   ^ " FDE"
   ^ " cie=" ^ pphex fde.fde_cie_pointer (* duplicated?? *)
   ^ " pc=" ^ match fde.fde_initial_location_segment_selector with Nothing -> "" | Just segment_selector -> "("^pphex segment_selector^")" end ^ pphex fde.fde_initial_location_address ^ ".." ^ pphex (fde.fde_initial_location_address + fde.fde_address_range) ^ "\n"
-  ^ pp_call_frame_instructions' fde.fde_instructions
+  ^ pp_call_frame_instructions' c cuh fde.fde_instructions
 
-let pp_frame_info_element fie =
+let pp_frame_info_element c cuh fie =
   match fie with
-  | FIE_cie cie -> pp_cie cie
-  | FIE_fde fde -> pp_fde fde
+  | FIE_cie cie -> pp_cie c cuh cie
+  | FIE_fde fde -> pp_fde c cuh fde
   end
 
-let pp_frame_info fi = 
+let pp_frame_info c cuh fi = 
   "Contents of the .debug_frame section:\n\n"
-  ^ myconcat "\n" (List.map pp_frame_info_element fi) 
+  ^ myconcat "\n" (List.map (pp_frame_info_element c cuh) fi) 
+
 
 
 let rec find_cie fi cie_id =
@@ -2416,7 +2490,7 @@ let parse_initial_location c cuh mss mas' : parser ((maybe natural) * natural) =
     (parse_uint_address_size c (match mas' with Just n -> n | Nothing -> cuh.cuh_address_size end))
 
 
-let parse_call_frame_instructions offset' ul = 
+let parse_call_frame_instruction_bytes offset' ul = 
   fun (pc: parse_context) ->
     parse_n_bytes (ul - (pc.pc_offset - offset')) pc
 
@@ -2450,7 +2524,7 @@ let parse_frame_info_element c cuh (fi: list frame_info_element) : parser frame_
                 parse_ULEB128 (* code_alignment_factor *)
                 parse_SLEB128 (* data_alignment_factor *)
                 parse_ULEB128 (* return address register *)
-                (parse_call_frame_instructions offset' ul)))
+                (parse_call_frame_instruction_bytes offset' ul)))
           (fun ( (v,(aug,(mas',mss))), (caf,(daf,(rar,is))) ) ->
             FIE_cie 
               ( 
@@ -2471,12 +2545,12 @@ let parse_frame_info_element c cuh (fi: list frame_info_element) : parser frame_
       else 
         (* parse fde *)
         let cie = find_cie fi cie_id in
-        let _ = my_debug4 (pp_cie cie) in 
+        let _ = my_debug4 (pp_cie c cuh cie) in 
         pr_post_map 
           (parse_triple 
              (parse_initial_location c cuh cie.cie_segment_size cie.cie_address_size) (*(segment selector and target address)*)
              (parse_uint_address_size c (match cie.cie_address_size with Just n -> n | Nothing -> cuh.cuh_address_size end)) (* address_range (target address) *)
-             (parse_call_frame_instructions offset' ul)
+             (parse_call_frame_instruction_bytes offset' ul)
           )
           (fun ( (ss,adr), (ar, is)) -> 
             FIE_fde 
@@ -2535,7 +2609,7 @@ let pp_dwarf d =
   ^ "\n************** .debug_ranges section: range lists ****************\n"
   ^ pp_ranges c cuh_default d.d_ranges
   ^ "\n************** .debug_frame section: frame info   ****************\n"
-  ^ pp_frame_info d.d_frame_info
+  ^ pp_frame_info c cuh_default d.d_frame_info
 
     
 let parse_dwarf c
