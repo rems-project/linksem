@@ -92,15 +92,15 @@ The 'dwarf' type gives a lightly parsed representation of some of
 the dwarf information, with the byte sequences of the above .debug_*
 sections parsed into a structured representation.  That makes the list
 and tree structures explicit, and converts the various numeric types
-into just natural, integer, and byte sequences, but it leaves the
+into just natural, integer, and byte sequences, but it leaves most of the
 encoding values as numbers rather than Lem constructors. The lem
 natural and integer could be replaced by unsigned and signed 64-bit
 types. 
 
 *)
 
-(* some spec ambiguities: *)
-(* can a location list be referenced from multiple compilation units, with different base addresses? *)
+(* some spec ambiguities (more in comments in-line below): *)
+(*  can a location list be referenced from multiple compilation units, with different base addresses? *)
 
 
 (** debug *)
@@ -359,7 +359,14 @@ type range_list = natural (*offset*) * list range_list_item
 
 type range_list_list = list range_list 
 
-(* .debug_frame section: call frame instruction arguments *)
+(* .debug_frame section: call frame instructions *)
+
+type cfa_address = natural
+type cfa_block = list byte
+type cfa_delta = natural
+type cfa_offset = natural
+type cfa_register = natural
+type cfa_sfoffset = integer
 
 type call_frame_argument_type =
   | CFAT_address
@@ -373,17 +380,47 @@ type call_frame_argument_type =
   | CFAT_block
 
 type call_frame_argument_value =
-  | CFAV_address of natural
-  | CFAV_delta of natural
-  | CFAV_offset of natural
-  | CFAV_sfoffset of integer
-  | CFAV_register of natural
-  | CFAV_block of list byte
+  | CFAV_address of cfa_address
+  | CFAV_block of cfa_block
+  | CFAV_delta of cfa_delta
+  | CFAV_offset of cfa_offset
+  | CFAV_register of cfa_register
+  | CFAV_sfoffset of cfa_sfoffset
 
-(* .debug_frame section *)
+type call_frame_instruction = 
+  | DW_CFA_advance_loc         of cfa_delta 
+  | DW_CFA_offset              of cfa_offset
+  | DW_CFA_restore
+  | DW_CFA_nop 
+  | DW_CFA_set_loc             of cfa_address
+  | DW_CFA_advance_loc1        of cfa_delta
+  | DW_CFA_advance_loc2        of cfa_delta
+  | DW_CFA_advance_loc4        of cfa_delta
+  | DW_CFA_offset_extended     of cfa_register * cfa_offset
+  | DW_CFA_restore_extended    of cfa_register
+  | DW_CFA_undefined           of cfa_register
+  | DW_CFA_same_value          of cfa_register
+  | DW_CFA_register            of cfa_register * cfa_register
+  | DW_CFA_remember_state
+  | DW_CFA_restore_state
+  | DW_CFA_def_cfa             of cfa_register * cfa_offset
+  | DW_CFA_def_cfa_register    of cfa_register
+  | DW_CFA_def_cfa_offset      of cfa_offset
+  | DW_CFA_def_cfa_expression  of cfa_block
+  | DW_CFA_expression          of cfa_register * cfa_block
+  | DW_CFA_offset_extended_sf  of cfa_register * cfa_sfoffset
+  | DW_CFA_def_cfa_sf          of cfa_register * cfa_sfoffset
+  | DW_CFA_def_cfa_offset_sf   of cfa_sfoffset
+  | DW_CFA_val_offset          of cfa_register * cfa_offset
+  | DW_CFA_val_offset_sf       of cfa_register * cfa_sfoffset
+  | DW_CFA_val_expression      of cfa_register * cfa_block
+
+
+(* .debug_frame section: top-level *)
 
 type cie = 
     <|
+    cie_offset: natural;
     cie_length: natural;
     cie_id: natural; 
     cie_version: natural;
@@ -398,12 +435,19 @@ type cie =
 
 type fde = 
     <|
+    fde_offset: natural;
     fde_length: natural;
     fde_cie_pointer: natural;
     fde_initial_location: (maybe natural) * natural;
     fde_address_range: natural;
     fde_instructions: list byte; (* replace by parsed instructions?*)
   |>
+
+type frame_info_element = 
+  | FIE_cie of cie
+  | FIE_fde of fde
+
+type frame_info = list frame_info_element
 
 
 type register_rule = 
@@ -891,36 +935,64 @@ let vDW_OP_breg0 = natural_of_hex "0x70"
 
 (* call frame instruction encoding *)
 
-let call_frame_instruction_encoding : list (string * natural * natural * list call_frame_argument_type) = [
+
+
+let call_frame_instruction_encoding : list (string * natural * natural * list call_frame_argument_type * ((list call_frame_argument_value) -> maybe call_frame_instruction)) = [
 (*                            high-order 2 bits   low-order 6 bits       uniformly parsed arguments  *)
+
 (* instructions using low-order 6 bits for first argument *)
+(*
 ("DW_CFA_advance_loc",         1,                  0,(*delta *)           []);    
 ("DW_CFA_offset",              2,                  0,(*register*)         [CFAT_offset]);
 ("DW_CFA_restore",             3,                  0,(*register*)         []);     
+*)
 (* instructions using low-order 6 bits as part of opcode  *)
-("DW_CFA_nop",                 0,                  natural_of_hex "0x00", []); (* *)
-("DW_CFA_set_loc",             0,                  natural_of_hex "0x01", [CFAT_address]); (* address *)
-("DW_CFA_advance_loc1",        0,                  natural_of_hex "0x02", [CFAT_delta1]); (* 1-byte delta *)
-("DW_CFA_advance_loc2",        0,                  natural_of_hex "0x03", [CFAT_delta2]); (* 2-byte delta *)
-("DW_CFA_advance_loc4",        0,                  natural_of_hex "0x04", [CFAT_delta4]); (* 4-byte delta *)
-("DW_CFA_offset_extended",     0,                  natural_of_hex "0x05", [CFAT_register; CFAT_offset]); (* ULEB128 register ULEB128 offset *)
-("DW_CFA_restore_extended",    0,                  natural_of_hex "0x06", [CFAT_register]); (* ULEB128 register *)
-("DW_CFA_undefined",           0,                  natural_of_hex "0x07", [CFAT_register]); (* ULEB128 register *)
-("DW_CFA_same_value",          0,                  natural_of_hex "0x08", [CFAT_register]); (* ULEB128 register *)
-("DW_CFA_register",            0,                  natural_of_hex "0x09", [CFAT_register; CFAT_register]); (* ULEB128 register ULEB128 register *)
-("DW_CFA_remember_state",      0,                  natural_of_hex "0x0a", []); (* *)
-("DW_CFA_restore_state",       0,                  natural_of_hex "0x0b", []); (* *)
-("DW_CFA_def_cfa",             0,                  natural_of_hex "0x0c", [CFAT_register; CFAT_offset]); (* ULEB128 register ULEB128 offset *)
-("DW_CFA_def_cfa_register",    0,                  natural_of_hex "0x0d", [CFAT_register]); (* ULEB128 register *)
-("DW_CFA_def_cfa_offset",      0,                  natural_of_hex "0x0e", [CFAT_offset]); (* ULEB128 offset *)
-("DW_CFA_def_cfa_expression",  0,                  natural_of_hex "0x0f", [CFAT_block]); (* BLOCK *)
-("DW_CFA_expression",          0,                  natural_of_hex "0x10", [CFAT_register; CFAT_block]); (* ULEB128 register BLOCK *)
-("DW_CFA_offset_extended_sf",  0,                  natural_of_hex "0x11", [CFAT_register; CFAT_sfoffset]); (* ULEB128 register SLEB128 offset *)
-("DW_CFA_def_cfa_sf",          0,                  natural_of_hex "0x12", [CFAT_register; CFAT_sfoffset]); (* ULEB128 register SLEB128 offset *)
-("DW_CFA_def_cfa_offset_sf",   0,                  natural_of_hex "0x13", [CFAT_sfoffset]); (* SLEB128 offset *)
-("DW_CFA_val_offset",          0,                  natural_of_hex "0x14", [CFAT_register; CFAT_offset]); (* ULEB128 ULEB128 *)
-("DW_CFA_val_offset_sf",       0,                  natural_of_hex "0x15", [CFAT_register; CFAT_sfoffset]); (* ULEB128 SLEB128 *)
-("DW_CFA_val_expression",      0,                  natural_of_hex "0x16", [CFAT_register; CFAT_block]) (* ULEB128 BLOCK *)
+("DW_CFA_nop",                 0,                  natural_of_hex "0x00", [], (* *)
+ fun avs -> match avs with [] -> Just (DW_CFA_nop) | _ -> Nothing end);
+("DW_CFA_set_loc",             0,                  natural_of_hex "0x01", [CFAT_address], (* address *)
+ fun avs -> match avs with [CFAV_address a] -> Just (DW_CFA_set_loc a) | _ -> Nothing end);
+("DW_CFA_advance_loc1",        0,                  natural_of_hex "0x02", [CFAT_delta1], (* 1-byte delta *)
+ fun avs -> match avs with [CFAV_delta d] -> Just (DW_CFA_advance_loc1 d) | _ -> Nothing end);
+("DW_CFA_advance_loc2",        0,                  natural_of_hex "0x03", [CFAT_delta2], (* 2-byte delta *)
+ fun avs -> match avs with [CFAV_delta d] -> Just (DW_CFA_advance_loc2 d) | _ -> Nothing end);
+("DW_CFA_advance_loc4",        0,                  natural_of_hex "0x04", [CFAT_delta4], (* 4-byte delta *)
+ fun avs -> match avs with [CFAV_delta d] -> Just (DW_CFA_advance_loc4 d) | _ -> Nothing end);
+("DW_CFA_offset_extended",     0,                  natural_of_hex "0x05", [CFAT_register; CFAT_offset], (* ULEB128 register ULEB128 offset *)
+ fun avs -> match avs with [CFAV_register r; CFAV_offset n] -> Just (DW_CFA_offset_extended r n) | _ -> Nothing end);
+("DW_CFA_restore_extended",    0,                  natural_of_hex "0x06", [CFAT_register], (* ULEB128 register *)
+ fun avs -> match avs with [CFAV_register r] -> Just (DW_CFA_restore_extended r) | _ -> Nothing end);
+("DW_CFA_undefined",           0,                  natural_of_hex "0x07", [CFAT_register], (* ULEB128 register *)
+ fun avs -> match avs with [CFAV_register r] -> Just (DW_CFA_undefined r) | _ -> Nothing end);
+("DW_CFA_same_value",          0,                  natural_of_hex "0x08", [CFAT_register], (* ULEB128 register *)
+ fun avs -> match avs with [CFAV_register r] -> Just (DW_CFA_same_value r) | _ -> Nothing end);
+("DW_CFA_register",            0,                  natural_of_hex "0x09", [CFAT_register; CFAT_register], (* ULEB128 register ULEB128 register *)
+ fun avs -> match avs with [CFAV_register r1; CFAV_register r2] -> Just (DW_CFA_register r1 r2) | _ -> Nothing end);
+("DW_CFA_remember_state",      0,                  natural_of_hex "0x0a", [], (* *)
+ fun avs -> match avs with [] -> Just (DW_CFA_remember_state) | _ -> Nothing end);
+("DW_CFA_restore_state",       0,                  natural_of_hex "0x0b", [], (* *)
+ fun avs -> match avs with [] -> Just (DW_CFA_restore_state) | _ -> Nothing end);
+("DW_CFA_def_cfa",             0,                  natural_of_hex "0x0c", [CFAT_register; CFAT_offset], (* ULEB128 register ULEB128 offset *)
+ fun avs -> match avs with [CFAV_register r; CFAV_offset n] -> Just (DW_CFA_def_cfa r n) | _ -> Nothing end);
+("DW_CFA_def_cfa_register",    0,                  natural_of_hex "0x0d", [CFAT_register], (* ULEB128 register *)
+ fun avs -> match avs with [CFAV_register r] -> Just (DW_CFA_def_cfa_register r) | _ -> Nothing end);
+("DW_CFA_def_cfa_offset",      0,                  natural_of_hex "0x0e", [CFAT_offset], (* ULEB128 offset *)
+ fun avs -> match avs with [CFAV_offset n] -> Just (DW_CFA_def_cfa_offset n) | _ -> Nothing end);
+("DW_CFA_def_cfa_expression",  0,                  natural_of_hex "0x0f", [CFAT_block], (* BLOCK *)
+ fun avs -> match avs with [CFAV_block b] -> Just (DW_CFA_def_cfa_expression b) | _ -> Nothing end);
+("DW_CFA_expression",          0,                  natural_of_hex "0x10", [CFAT_register; CFAT_block], (* ULEB128 register BLOCK *)
+ fun avs -> match avs with [CFAV_register r; CFAV_block b] -> Just (DW_CFA_expression r b) | _ -> Nothing end);
+("DW_CFA_offset_extended_sf",  0,                  natural_of_hex "0x11", [CFAT_register; CFAT_sfoffset], (* ULEB128 register SLEB128 offset *)
+ fun avs -> match avs with [CFAV_register r; CFAV_sfoffset i] -> Just (DW_CFA_offset_extended_sf r i) | _ -> Nothing end);
+("DW_CFA_def_cfa_sf",          0,                  natural_of_hex "0x12", [CFAT_register; CFAT_sfoffset], (* ULEB128 register SLEB128 offset *)
+ fun avs -> match avs with [CFAV_register r; CFAV_sfoffset i] -> Just (DW_CFA_def_cfa_sf r i) | _ -> Nothing end);
+("DW_CFA_def_cfa_offset_sf",   0,                  natural_of_hex "0x13", [CFAT_sfoffset], (* SLEB128 offset *)
+ fun avs -> match avs with [CFAV_sfoffset i] -> Just (DW_CFA_def_cfa_offset_sf i) | _ -> Nothing end);
+("DW_CFA_val_offset",          0,                  natural_of_hex "0x14", [CFAT_register; CFAT_offset], (* ULEB128 ULEB128 *)
+ fun avs -> match avs with [CFAV_register r; CFAV_offset n] -> Just (DW_CFA_val_offset r n) | _ -> Nothing end);
+("DW_CFA_val_offset_sf",       0,                  natural_of_hex "0x15", [CFAT_register; CFAT_sfoffset], (* ULEB128 SLEB128 *)
+ fun avs -> match avs with [CFAV_register r; CFAV_sfoffset i] -> Just (DW_CFA_val_offset_sf r i) | _ -> Nothing end);
+("DW_CFA_val_expression",      0,                  natural_of_hex "0x16", [CFAT_register; CFAT_block], (* ULEB128 BLOCK *)
+ fun avs -> match avs with [CFAV_register r; CFAV_block b] -> Just (DW_CFA_val_expression r b) | _ -> Nothing end)
 ]
 
 (*
@@ -2194,6 +2266,170 @@ let rec interpret_range_list (base_address: natural) (rlis: list range_list_item
   | RLI_rle rle :: rlis' -> (base_address+rle.rle_beginning_address_offset, base_address+rle.rle_ending_address_offset) :: interpret_range_list base_address rlis'
   end
 
+(** frame information *)
+
+(* readelf example
+
+Contents of the .debug_frame section:
+
+00000000 0000000c ffffffff CIE
+  Version:               1
+  Augmentation:          ""
+  Code alignment factor: 4
+  Data alignment factor: -8
+  Return address column: 65
+
+  DW_CFA_def_cfa: r1 ofs 0
+
+00000010 00000024 00000000 FDE cie=00000000 pc=100000b0..10000120
+  DW_CFA_advance_loc: 8 to 100000b8
+  DW_CFA_def_cfa_offset: 80
+  DW_CFA_offset: r31 at cfa-8
+  DW_CFA_advance_loc: 4 to 100000bc
+  DW_CFA_def_cfa_register: r31
+  DW_CFA_advance_loc: 80 to 1000010c
+  DW_CFA_def_cfa: r1 ofs 0
+  DW_CFA_nop
+  DW_CFA_nop
+  DW_CFA_nop
+  DW_CFA_nop
+
+00000038 00000024 00000000 FDE cie=00000000 pc=10000120..100001a4
+  DW_CFA_advance_loc: 16 to 10000130
+  DW_CFA_def_cfa_offset: 144
+  DW_CFA_offset_extended_sf: r65 at cfa+16
+  DW_CFA_offset: r31 at cfa-8
+  DW_CFA_advance_loc: 4 to 10000134
+  DW_CFA_def_cfa_register: r31
+  DW_CFA_advance_loc: 84 to 10000188
+  DW_CFA_def_cfa: r1 ofs 0
+*)
+
+
+let pp_cfa_address a = pphex a
+let pp_cfa_block b = ppbytes b
+let pp_cfa_delta d = pphex d
+let pp_cfa_offset n = pphex n
+let pp_cfa_register r = show r
+let pp_cfa_sfoffset i = show i
+
+let pp_call_frame_instruction i = 
+  match i with
+  | DW_CFA_advance_loc d          -> "DW_CFA_advance_loc" ^ pp_cfa_delta d
+  | DW_CFA_offset n               -> "DW_CFA_offset" ^ pp_cfa_offset n
+  | DW_CFA_restore                -> "DW_CFA_restore" 
+  | DW_CFA_nop                    -> "DW_CFA_nop" 
+  | DW_CFA_set_loc a              -> "DW_CFA_set_loc" ^ pp_cfa_address a
+  | DW_CFA_advance_loc1 d         -> "DW_CFA_advance_loc1" ^ pp_cfa_delta d
+  | DW_CFA_advance_loc2 d         -> "DW_CFA_advance_loc2" ^ pp_cfa_delta d
+  | DW_CFA_advance_loc4 d         -> "DW_CFA_advance_loc4" ^ pp_cfa_delta d
+  | DW_CFA_offset_extended r n    -> "DW_CFA_offset_extended" ^ pp_cfa_register r ^ " " ^ pp_cfa_offset n
+  | DW_CFA_restore_extended r     -> "DW_CFA_restore_extended" ^ pp_cfa_register r
+  | DW_CFA_undefined r            -> "DW_CFA_undefined" ^ pp_cfa_register r
+  | DW_CFA_same_value r           -> "DW_CFA_same_value" ^ pp_cfa_register r
+  | DW_CFA_register r1 r2         -> "DW_CFA_register" ^ pp_cfa_register r1 ^ " " ^ pp_cfa_register r2
+  | DW_CFA_remember_state         -> "DW_CFA_remember_state" 
+  | DW_CFA_restore_state          -> "DW_CFA_restore_state" 
+  | DW_CFA_def_cfa r n            -> "DW_CFA_def_cfa" ^ pp_cfa_register r ^ " " ^ pp_cfa_offset n
+  | DW_CFA_def_cfa_register r     -> "DW_CFA_def_cfa_register" ^ pp_cfa_register r
+  | DW_CFA_def_cfa_offset n       -> "DW_CFA_def_cfa_offset" ^ pp_cfa_offset n
+  | DW_CFA_def_cfa_expression b   -> "DW_CFA_def_cfa_expression" ^ pp_cfa_block b
+  | DW_CFA_expression r b         -> "DW_CFA_expression" ^ pp_cfa_register r ^ " " ^ pp_cfa_block b
+  | DW_CFA_offset_extended_sf r i -> "DW_CFA_offset_extended_sf" ^ pp_cfa_register r ^ " " ^ pp_cfa_sfoffset i
+  | DW_CFA_def_cfa_sf r i         -> "DW_CFA_def_cfa_sf" ^ pp_cfa_register r ^ " " ^ pp_cfa_sfoffset i
+  | DW_CFA_def_cfa_offset_sf i    -> "DW_CFA_def_cfa_offset_sf" ^ pp_cfa_sfoffset i
+  | DW_CFA_val_offset r n         -> "DW_CFA_val_offset" ^ pp_cfa_register r ^ " " ^ pp_cfa_offset n
+  | DW_CFA_val_offset_sf r i      -> "DW_CFA_val_offset_sf" ^ pp_cfa_register r ^ " " ^ pp_cfa_sfoffset i
+  | DW_CFA_val_expression r b     -> "DW_CFA_val_expression" ^ pp_cfa_register r ^ " " ^ pp_cfa_block b
+  end
+
+let pp_call_frame_instructions is = List.map (fun i -> "  " ^ pp_call_frame_instruction i ^ "\n") is
+
+let pp_cie cie =
+  pphex cie.cie_offset
+  ^ " " ^ pphex cie.cie_length   
+  ^ " " ^ pphex cie.cie_id
+  ^ " CIE\n"
+  ^ "  Version:                " ^ show cie.cie_version ^ "\n"
+  ^ "  Augmentation:           \""^ show (mytoString (List.map char_of_byte cie.cie_augmentation)) ^ "\"\n"
+  ^ "  Code alignment factor: " ^ show cie.cie_code_alignment_factor ^ "\n"
+  ^ "  Data alignment factor: " ^ show cie.cie_data_alignment_factor ^ "\n"
+  ^ "  Return address column: " ^ show cie.cie_return_address_register ^ "\n"
+  ^ "\n"
+(*  ^ pp_call_frame_instructions cie.cie_initial_instructions*)
+
+(*    cie_address_size: natural;  (* not shown by readelf - must match compilation unit *)*)
+(*    cie_segment_size: natural;  (* not shown by readelf *)*)
+(* readelf says "Return address column", but the DWARF spec says "Return address register" *)
+
+
+let pp_fde fde = 
+  pphex fde.fde_offset
+  ^ " " ^ pphex fde.fde_length   
+  ^ " " ^ pphex fde.fde_cie_pointer  (* not what this field of readelf output is *)
+  ^ " FDE"
+  ^ " cie=" ^ pphex fde.fde_cie_pointer (* duplicated?? *)
+  ^ " pc=" ^ match Tuple.fst fde.fde_initial_location with Nothing -> "" | Just segment_selector -> "("^pphex segment_selector^")" end ^ pphex (Tuple.snd fde.fde_initial_location) ^ ".." ^ pphex (Tuple.snd fde.fde_initial_location + fde.fde_address_range) ^ "\n"
+(*  ^ pp_call_frame_instructions fde.fde_instructions*)
+
+let pp_frame_info_element fie =
+  match fie with
+  | FIE_cie cie -> pp_cie cie
+  | FIE_fde fde -> pp_fde fde
+  end
+
+let pp_frame_info fi = 
+  "Contents of the .debug_frame section:\n\n"
+  ^ myconcat "\n" (List.map pp_frame_info_element fi) 
+
+
+(*
+let parse_frame_info_element =
+  parse_dependent_pair
+    (pr_post_map 
+       (pr_with_pos 
+          (parse_dependent_pair 
+             (parse_unit_length c)
+             (fun (df,ul) -> 
+               (parse_uintDwarfN c df) (* CIE_id (cie) or CIE_pointer (fde) *)
+             ))))
+    (fun (offset,((df,ul),cie)) ->
+      if cie = 
+        match df with 
+        | Dwarf32 -> natural_of_hex "0xffffffff"
+        | Dwarf64 -> natural_of_hex "0xffffffffffffffff"
+        end 
+     then (* parse cie *)
+parse_uint8  (* version *)
+parse_string (* augmentation *)
+parse_uint8  (* address_size *)
+parse_uint8  (* segment_size *)
+parse_ULEB128 (* code_alignment_factor *)
+parse_SLEB128 (* data_alignment_factor *)
+parse_ULEB128 (* return address register *)
+parse_call_frame_instructions
+parse_padding
+
+     else (* parse fde *)
+parse_initial_location (segment selector and target address)
+parse_uint_address_size  (* address_range (target address) *)
+parse_call_frame_instructions
+parse_padding
+    )
+
+                (parse_uint8 c) (* address_size *))))
+      (fun (offset,((df,ul), (v, (dao, as')))) -> 
+        <|
+        cuh_offset = offset;
+        cuh_dwarf_format = df;
+        cuh_unit_length = ul;
+        cuh_version = v;
+        cuh_debug_abbrev_offset = dao;
+        cuh_address_size = as';
+      |>)
+  
+*)
+
 
 
 
@@ -2293,7 +2529,7 @@ let extract_dwarf f1 =
   Just d
 
 
-(** pp locations *)
+(** pp of locations *)
 
 val pp_simple_location : simple_location -> string
 let pp_simple_location sl = 
@@ -2319,8 +2555,7 @@ let pp_single_location sl =
   end
 
 
-(** interpreting locations *)
-
+(** evaluation of location expressions *)
 
 (* cf dwarflist, btw: https://fedorahosted.org/elfutils/wiki/DwarfLint?format=txt *)
 
@@ -2613,6 +2848,7 @@ and evaluate_location_description (c:p_context) (dloc: location_list_list) (cuh:
         end
   | _ -> Fail "evaluate_location_description av_location not understood"
   end 
+
 
 
 (** analysis *)
