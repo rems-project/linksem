@@ -112,7 +112,7 @@ declare ocaml target_rep function print_endline = `print_endline`
 let my_debug s = () (*print_endline s*)
 let my_debug2 s = () (*print_endline s*)
 let my_debug3 s = () (*print_endline s*)
-let my_debug4 s = () (*print_endline s*)
+let my_debug4 s = print_endline s
 let my_debug5 s = print_endline s
 
 
@@ -425,8 +425,8 @@ type cie =
     cie_id: natural; 
     cie_version: natural;
     cie_augmentation: list byte; (* not including terminating null *)
-    cie_address_size: natural;
-    cie_segment_size: natural;
+    cie_address_size: maybe natural;
+    cie_segment_size: maybe natural;
     cie_code_alignment_factor: natural;
     cie_data_alignment_factor: integer;
     cie_return_address_register: natural;
@@ -438,7 +438,8 @@ type fde =
     fde_offset: natural;
     fde_length: natural;
     fde_cie_pointer: natural;
-    fde_initial_location: (maybe natural) * natural;
+    fde_initial_location_segment_selector: maybe natural;
+    fde_initial_location_address: natural;
     fde_address_range: natural;
     fde_instructions: list byte; (* replace by parsed instructions?*)
   |>
@@ -482,6 +483,7 @@ type dwarf =
     d_type_units: type_units;
     d_loc: location_list_list;
     d_ranges: range_list_list;
+    d_frame_info: frame_info;
   |>
 
 (* analysed location data *)
@@ -1272,6 +1274,11 @@ let parse_dependent_pair p1 p2 =
     | PR_fail s pc'' -> PR_fail s pc''
     end)
 
+val parse_dependent : forall 'a 'b. (parser 'a) -> ('a -> parser 'b) -> (parser 'b)
+let parse_dependent p1 p2 = 
+  fun pc -> 
+    pr_bind (p1 pc) (fun x pc' -> p2 x pc')
+
 
 
 val parse_list' : forall 'a. (parser (maybe 'a)) -> (list 'a -> parser (list 'a))
@@ -1334,7 +1341,7 @@ let parse_string : parser (list byte) =
       | Just (xs,bs) -> PR_success xs (<|pc_bytes=bs; pc_offset = pc.pc_offset + naturalFromNat (List.length xs) + naturalFromNat 1 |> )
       end
 
-let parse_uint8 c : parser natural = 
+let parse_uint8 : parser natural = 
     fun (pc:parse_context) ->
       let _ = my_debug "uint8 " in
       match pc.pc_bytes with
@@ -1395,8 +1402,8 @@ let partialTwosComplementNaturalFromInteger (i:integer) (half: natural) (all:int
   else Assert_extra.failwith "partialTwosComplementNaturalFromInteger"
 
 
-let parse_sint8 c : parser integer = 
-  pr_post_map (parse_uint8 c) (fun n -> integerFromTwosComplementNatural n 128 256)
+let parse_sint8 : parser integer = 
+  pr_post_map (parse_uint8) (fun n -> integerFromTwosComplementNatural n 128 256)
 
 let parse_sint16 c : parser integer = 
   pr_post_map (parse_uint16 c) (fun n -> integerFromTwosComplementNatural n (128*256) (256*256))
@@ -1471,6 +1478,16 @@ let parse_uint_address_size c (as': natural) : parser natural =
     match as' with
     | 4 -> (parse_uint32 c)
     | 8 -> (parse_uint64 c)
+    | _ -> Assert_extra.failwith ("cuh_address_size not 4 or 8: " ^ show as')
+    end
+
+let parse_uint_segment_selector_size c (ss: natural) : parser (maybe natural) =
+    match ss with
+    | 0 -> pr_return Nothing
+    | 1 -> pr_post_map (parse_uint8)    (fun n -> Just n)
+    | 2 -> pr_post_map (parse_uint16 c) (fun n -> Just n)
+    | 4 -> pr_post_map (parse_uint32 c) (fun n -> Just n)
+    | 8 -> pr_post_map (parse_uint64 c) (fun n -> Just n)
     | _ -> Assert_extra.failwith "cuh_address_size not 4 or 8"
     end
 
@@ -1501,7 +1518,7 @@ let parse_abbreviation_declaration c : parser (maybe abbreviation_declaration) =
           PR_success Nothing pc'
         else 
           pr_bind (parse_ULEB128 pc') (fun n2 pc'' -> 
-            pr_bind (parse_uint8 c pc'') (fun c pc''' -> 
+            pr_bind (parse_uint8 pc'') (fun c pc''' -> 
               pr_post_map1 
                 (parse_zero_terminated_ULEB128_pair_list pc''')
                 (fun l ->
@@ -1592,11 +1609,11 @@ let parser_of_operation_argument_type c cuh oat =
         | Dwarf32 -> pr_map2 (fun n -> OAV_natural n) (parse_uint32 c)
         | Dwarf64 -> pr_map2 (fun n -> OAV_natural n) (parse_uint64 c)
         end
-    | OAT_uint8   -> pr_map2 (fun n -> OAV_natural n) (parse_uint8 c)
+    | OAT_uint8   -> pr_map2 (fun n -> OAV_natural n) (parse_uint8)
     | OAT_uint16  -> pr_map2 (fun n -> OAV_natural n) (parse_uint16 c)
     | OAT_uint32  -> pr_map2 (fun n -> OAV_natural n) (parse_uint32 c)
     | OAT_uint64  -> pr_map2 (fun n -> OAV_natural n) (parse_uint64 c)
-    | OAT_sint8   -> pr_map2 (fun n -> OAV_integer n) (parse_sint8 c)
+    | OAT_sint8   -> pr_map2 (fun n -> OAV_integer n) (parse_sint8)
     | OAT_sint16  -> pr_map2 (fun n -> OAV_integer n) (parse_sint16 c)
     | OAT_sint32  -> pr_map2 (fun n -> OAV_integer n) (parse_sint32 c)
     | OAT_sint64  -> pr_map2 (fun n -> OAV_integer n) (parse_sint64 c)
@@ -1609,7 +1626,7 @@ let parser_of_operation_argument_type c cuh oat =
 
 val parse_operation : p_context -> compilation_unit_header -> parser (maybe operation)
 let parse_operation c cuh pc = 
-  match parse_uint8 c pc with
+  match parse_uint8 pc with
   | PR_fail s pc' -> PR_success Nothing pc
   | PR_success code pc' ->
       match lookup_aBcd_acd code operation_encodings with
@@ -1670,7 +1687,7 @@ let parser_of_attribute_form_non_indirect c cuh n =
     pr_map2 (fun n -> AV_addr n) (parse_uint_address_size c cuh.cuh_address_size)
 (* block *)
   else if n = attribute_form_encode "DW_FORM_block1"       then 
-    (fun pc -> pr_bind (parse_uint8 c pc) (fun n pc' -> 
+    (fun pc -> pr_bind (parse_uint8 pc) (fun n pc' -> 
       pr_map (fun bs -> AV_block n bs) (parse_n_bytes n pc')))
   else if n = attribute_form_encode "DW_FORM_block2"       then 
     (fun pc -> pr_bind (parse_uint16 c pc) (fun n pc' -> 
@@ -1700,7 +1717,7 @@ let parser_of_attribute_form_non_indirect c cuh n =
       pr_map (fun bs -> AV_exprloc n bs) (parse_n_bytes n pc')))
 (* flag *)
   else if n = attribute_form_encode "DW_FORM_flag"         then 
-    pr_map2 (fun n -> AV_flag (n<>0)) (parse_uint8 c)
+    pr_map2 (fun n -> AV_flag (n<>0)) (parse_uint8)
   else if n = attribute_form_encode "DW_FORM_flag_present" then 
     pr_map2 (fun () -> AV_flag true) (pr_return ())
 (* lineptr, loclistptr, macptr, rangelistptr *)
@@ -1708,7 +1725,7 @@ let parser_of_attribute_form_non_indirect c cuh n =
     pr_map2 (fun n -> AV_sec_offset n) (parse_uintDwarfN c cuh.cuh_dwarf_format)
 (* reference - first type *)
   else if n = attribute_form_encode "DW_FORM_ref1"         then 
-    pr_map2 (fun n -> AV_ref n) (parse_uint8 c)
+    pr_map2 (fun n -> AV_ref n) (parse_uint8)
   else if n = attribute_form_encode "DW_FORM_ref2"         then 
     pr_map2 (fun n -> AV_ref n) (parse_uint16 c)
   else if n = attribute_form_encode "DW_FORM_ref4"         then 
@@ -1807,7 +1824,7 @@ let parse_compilation_unit_header c : parser compilation_unit_header =
               parse_triple 
                 (parse_uint16 c) (* version *)
                 (parse_uintDwarfN c df) (* debug abbrev offset *)
-                (parse_uint8 c) (* address_size *))))
+                (parse_uint8) (* address_size *))))
       (fun (offset,((df,ul), (v, (dao, as')))) -> 
         <|
         cuh_offset = offset;
@@ -2345,6 +2362,8 @@ let pp_call_frame_instruction i =
 
 let pp_call_frame_instructions is = List.map (fun i -> "  " ^ pp_call_frame_instruction i ^ "\n") is
 
+let pp_call_frame_instructions' bs = ppbytes bs ^ "\n"
+
 let pp_cie cie =
   pphex cie.cie_offset
   ^ " " ^ pphex cie.cie_length   
@@ -2356,7 +2375,7 @@ let pp_cie cie =
   ^ "  Data alignment factor: " ^ show cie.cie_data_alignment_factor ^ "\n"
   ^ "  Return address column: " ^ show cie.cie_return_address_register ^ "\n"
   ^ "\n"
-(*  ^ pp_call_frame_instructions cie.cie_initial_instructions*)
+  ^ pp_call_frame_instructions' cie.cie_initial_instructions
 
 (*    cie_address_size: natural;  (* not shown by readelf - must match compilation unit *)*)
 (*    cie_segment_size: natural;  (* not shown by readelf *)*)
@@ -2369,8 +2388,8 @@ let pp_fde fde =
   ^ " " ^ pphex fde.fde_cie_pointer  (* not what this field of readelf output is *)
   ^ " FDE"
   ^ " cie=" ^ pphex fde.fde_cie_pointer (* duplicated?? *)
-  ^ " pc=" ^ match Tuple.fst fde.fde_initial_location with Nothing -> "" | Just segment_selector -> "("^pphex segment_selector^")" end ^ pphex (Tuple.snd fde.fde_initial_location) ^ ".." ^ pphex (Tuple.snd fde.fde_initial_location + fde.fde_address_range) ^ "\n"
-(*  ^ pp_call_frame_instructions fde.fde_instructions*)
+  ^ " pc=" ^ match fde.fde_initial_location_segment_selector with Nothing -> "" | Just segment_selector -> "("^pphex segment_selector^")" end ^ pphex fde.fde_initial_location_address ^ ".." ^ pphex (fde.fde_initial_location_address + fde.fde_address_range) ^ "\n"
+  ^ pp_call_frame_instructions' fde.fde_instructions
 
 let pp_frame_info_element fie =
   match fie with
@@ -2383,52 +2402,120 @@ let pp_frame_info fi =
   ^ myconcat "\n" (List.map pp_frame_info_element fi) 
 
 
-(*
-let parse_frame_info_element =
-  parse_dependent_pair
-    (pr_post_map 
-       (pr_with_pos 
-          (parse_dependent_pair 
-             (parse_unit_length c)
-             (fun (df,ul) -> 
-               (parse_uintDwarfN c df) (* CIE_id (cie) or CIE_pointer (fde) *)
-             ))))
-    (fun (offset,((df,ul),cie)) ->
-      if cie = 
+let rec find_cie fi cie_id =
+  match fi with
+  | [] -> Assert_extra.failwith "find_cie: cie_id not found"
+  | FIE_fde _ :: fi' -> find_cie fi' cie_id
+  | FIE_cie cie :: fi' -> if cie_id = cie.cie_offset then cie else find_cie fi' cie_id
+  end
+
+let parse_initial_location c cuh mss mas' : parser ((maybe natural) * natural) = (*(segment selector and target address)*)
+    (* assume segment selector size is zero unless given explicitly.  Probably we need to do something architecture-specific for earlier dwarf versions?*)
+  parse_pair
+    (parse_uint_segment_selector_size c (match mss with Just n -> n | Nothing -> 0 end))
+    (parse_uint_address_size c (match mas' with Just n -> n | Nothing -> cuh.cuh_address_size end))
+
+
+let parse_call_frame_instructions offset' ul = 
+  fun (pc: parse_context) ->
+    parse_n_bytes (ul - (pc.pc_offset - offset')) pc
+
+let parse_frame_info_element c cuh (fi: list frame_info_element) : parser frame_info_element =
+  parse_dependent
+    (pr_with_pos 
+       (parse_dependent_pair 
+          (parse_unit_length c)
+          (fun (df,ul) -> 
+            pr_with_pos
+              (parse_uintDwarfN c df) (* CIE_id (cie) or CIE_pointer (fde) *)
+          )))
+    (fun (offset,((df,ul),(offset',cie_id))) ->
+      if (cie_id = 
         match df with 
         | Dwarf32 -> natural_of_hex "0xffffffff"
         | Dwarf64 -> natural_of_hex "0xffffffffffffffff"
-        end 
-     then (* parse cie *)
-parse_uint8  (* version *)
-parse_string (* augmentation *)
-parse_uint8  (* address_size *)
-parse_uint8  (* segment_size *)
-parse_ULEB128 (* code_alignment_factor *)
-parse_SLEB128 (* data_alignment_factor *)
-parse_ULEB128 (* return address register *)
-parse_call_frame_instructions
-parse_padding
+        end) 
+      then 
+        (* parse cie *)
+        pr_post_map 
+          (parse_pair 
+             (parse_dependent_pair
+                parse_uint8  (* version *)
+                (fun v -> 
+                  parse_triple 
+                    parse_string (* augmentation *)
+                    (if v=4 then pr_post_map parse_uint8 (fun i->Just i) else pr_return Nothing) (* address_size *) 
+                    (if v=4 then pr_post_map parse_uint8 (fun i->Just i) else pr_return Nothing)))  (* segment_size *) 
+             (parse_quadruple
+                parse_ULEB128 (* code_alignment_factor *)
+                parse_SLEB128 (* data_alignment_factor *)
+                parse_ULEB128 (* return address register *)
+                (parse_call_frame_instructions offset' ul)))
+          (fun ( (v,(aug,(mas',mss))), (caf,(daf,(rar,is))) ) ->
+            FIE_cie 
+              ( 
+                <|
+                cie_offset = offset;
+                cie_length = ul;
+                cie_id = cie_id;
+                cie_version = v;
+                cie_augmentation = aug;
+                cie_address_size = mas';
+                cie_segment_size = mss;
+                cie_code_alignment_factor = caf;
+                cie_data_alignment_factor = daf;
+                cie_return_address_register = rar;
+                cie_initial_instructions = is;
+            |>))
 
-     else (* parse fde *)
-parse_initial_location (segment selector and target address)
-parse_uint_address_size  (* address_range (target address) *)
-parse_call_frame_instructions
-parse_padding
+      else 
+        (* parse fde *)
+        let cie = find_cie fi cie_id in
+        let _ = my_debug4 (pp_cie cie) in 
+        pr_post_map 
+          (parse_triple 
+             (parse_initial_location c cuh cie.cie_segment_size cie.cie_address_size) (*(segment selector and target address)*)
+             (parse_uint_address_size c (match cie.cie_address_size with Just n -> n | Nothing -> cuh.cuh_address_size end)) (* address_range (target address) *)
+             (parse_call_frame_instructions offset' ul)
+          )
+          (fun ( (ss,adr), (ar, is)) -> 
+            FIE_fde 
+              ( 
+                <|
+                fde_offset = offset;
+                fde_length = ul;
+                fde_cie_pointer = cie_id;
+                fde_initial_location_segment_selector = ss;
+                fde_initial_location_address = adr;
+                fde_address_range = ar;
+                fde_instructions = is;
+            |> ) )
     )
 
-                (parse_uint8 c) (* address_size *))))
-      (fun (offset,((df,ul), (v, (dao, as')))) -> 
-        <|
-        cuh_offset = offset;
-        cuh_dwarf_format = df;
-        cuh_unit_length = ul;
-        cuh_version = v;
-        cuh_debug_abbrev_offset = dao;
-        cuh_address_size = as';
-      |>)
+(* you can't even parse an fde without accessing the cie it refers to
+(to determine the segment selector size).  Gratuitous complexity or what? 
+Hence the following, which should be made more tail-recursive.  *)
+
+val parse_dependent_list' : forall 'a. (list 'a -> parser 'a) -> list 'a -> parser (list 'a)
+let rec parse_dependent_list' p1 acc =
+  fun pc ->  
+    if pc.pc_bytes = [] then 
+      PR_success (List.reverse acc) pc
+    else
+      pr_bind 
+        (p1 acc pc) 
+        (fun x pc' -> 
+          parse_dependent_list' p1 (x::acc) pc')
+
+val parse_dependent_list : forall 'a. (list 'a -> parser 'a) -> parser (list 'a)
+let parse_dependent_list p1 = parse_dependent_list' p1 [] 
+
+
+let parse_frame_info c cuh : parser frame_info
+      = 
+    parse_dependent_list (parse_frame_info_element c cuh)
   
-*)
+
 
 
 
@@ -2447,6 +2534,9 @@ let pp_dwarf d =
     pp_loc c cuh_default d.d_loc
   ^ "\n************** .debug_ranges section: range lists ****************\n"
   ^ pp_ranges c cuh_default d.d_ranges
+  ^ "\n************** .debug_frame section: frame info   ****************\n"
+  ^ pp_frame_info d.d_frame_info
+
     
 let parse_dwarf c
     (debug_info_section_body: list byte) 
@@ -2454,6 +2544,7 @@ let parse_dwarf c
     (debug_str_section_body: list byte) 
     (debug_loc_section_body: list byte) 
     (debug_ranges_section_body: list byte) 
+    (debug_frame_section_body: list byte) 
     : dwarf =
 
   let pc_info = <|pc_bytes = debug_info_section_body; pc_offset = 0  |> in
@@ -2465,23 +2556,31 @@ let parse_dwarf c
     end in
 
 (* the DWARF4 spec doesn't seem to specify the address size used in the .debug_loc section, so we (hackishly) take it from the first compilation unit *)
-    let (cuh_default : compilation_unit_header) = let cu = myhead compilation_units in cu.cu_header in
+  let (cuh_default : compilation_unit_header) = let cu = myhead compilation_units in cu.cu_header in
 
-    let pc_loc = <|pc_bytes = debug_loc_section_body; pc_offset = 0  |> in
+  let pc_loc = <|pc_bytes = debug_loc_section_body; pc_offset = 0  |> in
 
-    let loc = 
-      match parse_location_list_list c cuh_default pc_loc with
-      | PR_fail s pc_info' ->  Assert_extra.failwith ("parse_location_list: " ^ pp_parse_fail s pc_info')
-      | PR_success loc pc_loc' -> loc
-      end in
+  let loc = 
+    match parse_location_list_list c cuh_default pc_loc with
+    | PR_fail s pc_info' ->  Assert_extra.failwith ("parse_location_list: " ^ pp_parse_fail s pc_info')
+    | PR_success loc pc_loc' -> loc
+    end in
 
-    let pc_ranges = <|pc_bytes = debug_ranges_section_body; pc_offset = 0  |> in
+  let pc_ranges = <|pc_bytes = debug_ranges_section_body; pc_offset = 0  |> in
 
-    let ranges = 
-      match parse_range_list_list c cuh_default pc_ranges with
-      | PR_fail s pc_info' ->  Assert_extra.failwith ("parse_range_list: " ^ pp_parse_fail s pc_info')
-      | PR_success loc pc_loc' -> loc
-      end in
+  let ranges = 
+    match parse_range_list_list c cuh_default pc_ranges with
+    | PR_fail s pc_info' ->  Assert_extra.failwith ("parse_range_list: " ^ pp_parse_fail s pc_info')
+    | PR_success r pc_loc' -> r
+    end in
+
+  let pc_frame = <|pc_bytes = debug_frame_section_body; pc_offset = 0  |> in
+
+  let fi = 
+    match parse_frame_info c cuh_default pc_frame with
+    | PR_fail s pc_info' ->  Assert_extra.failwith ("parse_frame_info: " ^ pp_parse_fail s pc_info')
+    | PR_success fi pc_loc' -> fi
+    end in
 
    <| 
    d_endianness = c.endianness;
@@ -2490,6 +2589,7 @@ let parse_dwarf c
    d_type_units = []; 
    d_loc = loc;
    d_ranges = ranges;
+   d_frame_info = fi;
   |>
 
 val extract_dwarf : elf64_file -> maybe dwarf 
@@ -2523,8 +2623,9 @@ let extract_dwarf f1 =
   let debug_str_section_body    = extract_section_body ".debug_str"    false in
   let debug_loc_section_body    = extract_section_body ".debug_loc"    false in
   let debug_ranges_section_body = extract_section_body ".debug_ranges" false in 
+  let debug_frame_section_body  = extract_section_body ".debug_frame" false in 
 
-  let d = parse_dwarf c debug_info_section_body debug_abbrev_section_body debug_str_section_body debug_loc_section_body debug_ranges_section_body in
+  let d = parse_dwarf c debug_info_section_body debug_abbrev_section_body debug_str_section_body debug_loc_section_body debug_ranges_section_body debug_frame_section_body in
  
   Just d
 
