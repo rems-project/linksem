@@ -112,7 +112,7 @@ declare ocaml target_rep function print_endline = `print_endline`
 let my_debug s = () (*print_endline s*)
 let my_debug2 s = () (*print_endline s*)
 let my_debug3 s = () (*print_endline s*)
-let my_debug4 s = print_endline s
+let my_debug4 s = () (*print_endline s*)
 let my_debug5 s = print_endline s
 
 
@@ -3237,7 +3237,7 @@ let evaluate_call_frame_instruction (fi: frame_info) (cie: cie) (state: cfa_stat
   | DW_CFA_def_cfa_register r     -> 
       match state.cs_current_row.ctr_cfa with
       | CR_register r' i ->
-          update_cfa (CR_register r' i)
+          update_cfa (CR_register r i)
       | _ -> Assert_extra.failwith "DW_CFA_def_cfa_register: current rule is not CR_register"
       end
   | DW_CFA_def_cfa_offset n       -> 
