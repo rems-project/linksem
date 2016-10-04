@@ -3016,13 +3016,16 @@ let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (evalua
         | (OpSem_fbreg, [OAV_integer i]) ->  
             match mfbloc with
             | Just fbloc ->
+                (*let _ = my_debug5 ("OpSem_fbreg (" ^ show i ^ ")\n") in*)
                 match evaluate_location_description c dloc evaluated_frame_info  cuh ac ev (*mfbloc*)Nothing pc fbloc with
                 (* what to do if the recursive call also uses fbreg?  for now assume that's not allowed *)
                 | Success l ->
                     match l with 
                     | SL_simple (SL_memory_address a) ->
+                        (*let _ = my_debug5 ("OpSem_fbreg: a = "^ pphex a ^ "\n") in*)
                         let vi = ((integerFromNatural a) + i) mod (integerFromNatural ac.ac_all) in
-                        let v = partialTwosComplementNaturalFromInteger vi ac.ac_half (integerFromNatural ac.ac_all) in
+                        (*let _ = my_debug5 ("OpSem_fbreg: v = "^ show vi ^ "\n") in*)
+                        let v = partialNaturalFromInteger vi (*ac.ac_half (integerFromNatural ac.ac_all)*) in
                         push_memory_address v s.s_stack
                     | _ ->
                         Fail "OpSem_fbreg got a non-SL_simple (SL_memory_address _) result"
