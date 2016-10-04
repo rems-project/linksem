@@ -429,8 +429,9 @@ type cie =
     cie_segment_size: maybe natural;
     cie_code_alignment_factor: natural;
     cie_data_alignment_factor: integer;
-    cie_return_address_register: natural;
-    cie_initial_instructions: list byte;   (*replace by parsed instructions? *)
+    cie_return_address_register: cfa_register;
+    cie_initial_instructions_bytes: list byte;
+    cie_initial_instructions: list call_frame_instruction;
   |>
 
 type fde = 
@@ -441,7 +442,8 @@ type fde =
     fde_initial_location_segment_selector: maybe natural;
     fde_initial_location_address: natural;
     fde_address_range: natural;
-    fde_instructions: list byte; (* replace by parsed instructions?*)
+    fde_instructions_bytes: list byte;
+    fde_instructions: list call_frame_instruction;
   |>
 
 type frame_info_element = 
@@ -450,6 +452,13 @@ type frame_info_element =
 
 type frame_info = list frame_info_element
 
+
+(* evaluated cfa data *)
+
+type cfa_rule = 
+  | CR_undefined
+  | CR_register of cfa_register * integer
+  | CR_expression of single_location_description 
 
 type register_rule = 
   | RR_undefined (*A register that has this rule has no recoverable value in the previous frame.
@@ -460,14 +469,29 @@ type register_rule =
          is the current CFA value and N is a signed offset.*)
   | RR_val_offset of integer (* The previous value of this register is the value CFA+N where CFA is the
              current CFA value and N is a signed offset.*)
-  | RR_register of integer (* The previous value of this register is stored in another register numbered R.*)
+  | RR_register of natural (* The previous value of this register is stored in another register numbered R.*)
   | RR_expression of single_location_description (* The previous value of this register is located at the address produced by
              executing the DWARF expression E.*)
   | RR_val_expression of single_location_description (* The previous value of this register is the value produced by executing the
 DWARF expression E.*)
   | RR_architectural (*The rule is defined externally to this specification by the augmenter*)
 
+type register_rule_map = list (cfa_register * register_rule)
 
+type cfa_table_row = 
+    <|
+    ctr_loc: natural;
+    ctr_cfa: cfa_rule;
+    ctr_regs: register_rule_map;
+  |>
+
+type cfa_state = 
+    <| 
+    cs_current_row: cfa_table_row;
+    cs_previous_rows: list cfa_table_row;
+    cs_initial_instructions_row: cfa_table_row;
+    cs_row_stack: list cfa_table_row;
+  |>
 
 
 
@@ -1063,6 +1087,12 @@ let natural_of_bytes en bs =
   end
 
 
+val bigunionListMap : forall 'a 'b. SetType 'b => ('a -> set 'b) -> list 'a -> set 'b
+let rec bigunionListMap f xs = 
+  match xs with
+  | [] -> {}
+  | x::xs' -> Set.(union) (f x)  (bigunionListMap f xs')
+  end
 
 
 (** basic pretty printing *)
@@ -2323,39 +2353,65 @@ Contents of the .debug_frame section:
 *)
 
 
+
 let pp_cfa_address a = pphex a
 let pp_cfa_block b = ppbytes b
 let pp_cfa_delta d = pphex d
-let pp_cfa_offset n = pphex n
-let pp_cfa_register r = show r
+(*let pp_cfa_offset n = pphex n
+let pp_cfa_register r = show r*)
 let pp_cfa_sfoffset i = show i
+
+let pp_cfa_register r = "r"^show r (*TODO: arch-specific register names *)
+
+let pp_cfa_offset (i:integer) = if i=0 then "" else if i<0 then show i else "+" ^ show i
+
+let pp_cfa_rule (cr:cfa_rule) : string = 
+  match cr with
+  | CR_undefined -> "u"
+  | CR_register r i -> pp_cfa_register r ^ pp_cfa_offset i 
+  | CR_expression bs -> "exp" 
+  end
+
+let pp_register_rule (rr:register_rule) : string =  (*TODO make this more readelf-like *)
+  match rr with
+  | RR_undefined -> "u"
+  | RR_same_value -> "s" 
+  | RR_offset i -> "c" ^ pp_cfa_offset i
+  | RR_val_offset i -> "val(c" ^ pp_cfa_offset i ^ ")"
+  | RR_register r -> pp_cfa_register r
+  | RR_expression bs -> "exp"
+  | RR_val_expression bs -> "val(exp)"
+  | RR_architectural -> ""
+  end
+
+
 
 let pp_call_frame_instruction i = 
   match i with
   | DW_CFA_advance_loc d          -> "DW_CFA_advance_loc" ^ " " ^ pp_cfa_delta d
-  | DW_CFA_offset r n             -> "DW_CFA_offset" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_offset n
+  | DW_CFA_offset r n             -> "DW_CFA_offset" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_offset (integerFromNatural n)
   | DW_CFA_restore r              -> "DW_CFA_restore" ^ " " ^ pp_cfa_register r
   | DW_CFA_nop                    -> "DW_CFA_nop" 
   | DW_CFA_set_loc a              -> "DW_CFA_set_loc" ^ " " ^ pp_cfa_address a
   | DW_CFA_advance_loc1 d         -> "DW_CFA_advance_loc1" ^ " " ^ pp_cfa_delta d
   | DW_CFA_advance_loc2 d         -> "DW_CFA_advance_loc2" ^ " " ^ pp_cfa_delta d
   | DW_CFA_advance_loc4 d         -> "DW_CFA_advance_loc4" ^ " " ^ pp_cfa_delta d
-  | DW_CFA_offset_extended r n    -> "DW_CFA_offset_extended" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_offset n
+  | DW_CFA_offset_extended r n    -> "DW_CFA_offset_extended" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_offset (integerFromNatural n)
   | DW_CFA_restore_extended r     -> "DW_CFA_restore_extended" ^ " " ^ pp_cfa_register r
   | DW_CFA_undefined r            -> "DW_CFA_undefined" ^ " " ^ pp_cfa_register r
   | DW_CFA_same_value r           -> "DW_CFA_same_value" ^ " " ^ pp_cfa_register r
   | DW_CFA_register r1 r2         -> "DW_CFA_register" ^ " " ^ pp_cfa_register r1 ^ " " ^ pp_cfa_register r2
   | DW_CFA_remember_state         -> "DW_CFA_remember_state" 
   | DW_CFA_restore_state          -> "DW_CFA_restore_state" 
-  | DW_CFA_def_cfa r n            -> "DW_CFA_def_cfa" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_offset n
+  | DW_CFA_def_cfa r n            -> "DW_CFA_def_cfa" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_offset (integerFromNatural n)
   | DW_CFA_def_cfa_register r     -> "DW_CFA_def_cfa_register" ^ " " ^ pp_cfa_register r
-  | DW_CFA_def_cfa_offset n       -> "DW_CFA_def_cfa_offset" ^ " " ^ pp_cfa_offset n
+  | DW_CFA_def_cfa_offset n       -> "DW_CFA_def_cfa_offset" ^ " " ^ pp_cfa_offset (integerFromNatural n)
   | DW_CFA_def_cfa_expression b   -> "DW_CFA_def_cfa_expression" ^ " " ^ pp_cfa_block b
   | DW_CFA_expression r b         -> "DW_CFA_expression" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_block b
   | DW_CFA_offset_extended_sf r i -> "DW_CFA_offset_extended_sf" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_sfoffset i
   | DW_CFA_def_cfa_sf r i         -> "DW_CFA_def_cfa_sf" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_sfoffset i
   | DW_CFA_def_cfa_offset_sf i    -> "DW_CFA_def_cfa_offset_sf" ^ " " ^ pp_cfa_sfoffset i
-  | DW_CFA_val_offset r n         -> "DW_CFA_val_offset" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_offset n
+  | DW_CFA_val_offset r n         -> "DW_CFA_val_offset" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_offset (integerFromNatural n)
   | DW_CFA_val_offset_sf r i      -> "DW_CFA_val_offset_sf" ^ pp_cfa_register r ^ " " ^ pp_cfa_sfoffset i
   | DW_CFA_val_expression r b     -> "DW_CFA_val_expression" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_block b
   end
@@ -2448,7 +2504,8 @@ let pp_cie c cuh cie =
   ^ "  Data alignment factor: " ^ show cie.cie_data_alignment_factor ^ "\n"
   ^ "  Return address column: " ^ show cie.cie_return_address_register ^ "\n"
   ^ "\n"
-  ^ pp_call_frame_instructions' c cuh cie.cie_initial_instructions
+  ^ ppbytes cie.cie_initial_instructions_bytes ^ "\n"
+  ^ pp_call_frame_instructions cie.cie_initial_instructions
 
 (*    cie_address_size: natural;  (* not shown by readelf - must match compilation unit *)*)
 (*    cie_segment_size: natural;  (* not shown by readelf *)*)
@@ -2462,7 +2519,8 @@ let pp_fde c cuh fde =
   ^ " FDE"
   ^ " cie=" ^ pphex fde.fde_cie_pointer (* duplicated?? *)
   ^ " pc=" ^ match fde.fde_initial_location_segment_selector with Nothing -> "" | Just segment_selector -> "("^pphex segment_selector^")" end ^ pphex fde.fde_initial_location_address ^ ".." ^ pphex (fde.fde_initial_location_address + fde.fde_address_range) ^ "\n"
-  ^ pp_call_frame_instructions' c cuh fde.fde_instructions
+  ^ ppbytes fde.fde_instructions_bytes
+  ^ pp_call_frame_instructions fde.fde_instructions
 
 let pp_frame_info_element c cuh fie =
   match fie with
@@ -2473,6 +2531,7 @@ let pp_frame_info_element c cuh fie =
 let pp_frame_info c cuh fi = 
   "Contents of the .debug_frame section:\n\n"
   ^ myconcat "\n" (List.map (pp_frame_info_element c cuh) fi) 
+  ^ "\n"
 
 
 
@@ -2511,7 +2570,7 @@ let parse_frame_info_element c cuh (fi: list frame_info_element) : parser frame_
         end) 
       then 
         (* parse cie *)
-        pr_post_map 
+        pr_post_map
           (parse_pair 
              (parse_dependent_pair
                 parse_uint8  (* version *)
@@ -2525,22 +2584,29 @@ let parse_frame_info_element c cuh (fi: list frame_info_element) : parser frame_
                 parse_SLEB128 (* data_alignment_factor *)
                 parse_ULEB128 (* return address register *)
                 (parse_call_frame_instruction_bytes offset' ul)))
-          (fun ( (v,(aug,(mas',mss))), (caf,(daf,(rar,is))) ) ->
-            FIE_cie 
-              ( 
-                <|
-                cie_offset = offset;
-                cie_length = ul;
-                cie_id = cie_id;
-                cie_version = v;
-                cie_augmentation = aug;
-                cie_address_size = mas';
-                cie_segment_size = mss;
-                cie_code_alignment_factor = caf;
-                cie_data_alignment_factor = daf;
-                cie_return_address_register = rar;
-                cie_initial_instructions = is;
-            |>))
+          (fun ( (v,(aug,(mas',mss))), (caf,(daf,(rar,bs))) ) ->
+            let pc = <|pc_bytes = bs; pc_offset = 0  |> in
+            match parse_call_frame_instructions c cuh pc with
+            | PR_success is _ ->
+                FIE_cie 
+                  ( 
+                    <|
+                    cie_offset = offset;
+                    cie_length = ul;
+                    cie_id = cie_id;
+                    cie_version = v;
+                    cie_augmentation = aug;
+                    cie_address_size = mas';
+                    cie_segment_size = mss;
+                    cie_code_alignment_factor = caf;
+                    cie_data_alignment_factor = daf;
+                    cie_return_address_register = rar;
+                    cie_initial_instructions_bytes = bs;
+                    cie_initial_instructions = is;
+                  |>)
+            | PR_fail s _ -> Assert_extra.failwith s
+            end
+          )
 
       else 
         (* parse fde *)
@@ -2552,18 +2618,25 @@ let parse_frame_info_element c cuh (fi: list frame_info_element) : parser frame_
              (parse_uint_address_size c (match cie.cie_address_size with Just n -> n | Nothing -> cuh.cuh_address_size end)) (* address_range (target address) *)
              (parse_call_frame_instruction_bytes offset' ul)
           )
-          (fun ( (ss,adr), (ar, is)) -> 
-            FIE_fde 
-              ( 
-                <|
-                fde_offset = offset;
-                fde_length = ul;
-                fde_cie_pointer = cie_id;
-                fde_initial_location_segment_selector = ss;
-                fde_initial_location_address = adr;
-                fde_address_range = ar;
-                fde_instructions = is;
-            |> ) )
+          (fun ( (ss,adr), (ar, bs)) -> 
+            let pc = <|pc_bytes = bs; pc_offset = 0  |> in
+            match parse_call_frame_instructions c cuh pc with
+            | PR_success is _ ->
+                FIE_fde 
+                  ( 
+                    <|
+                    fde_offset = offset;
+                    fde_length = ul;
+                    fde_cie_pointer = cie_id;
+                    fde_initial_location_segment_selector = ss;
+                    fde_initial_location_address = adr;
+                    fde_address_range = ar;
+                    fde_instructions_bytes = bs;
+                    fde_instructions = is;
+                  |> ) 
+            | PR_fail s _ -> Assert_extra.failwith s
+            end
+         )
     )
 
 (* you can't even parse an fde without accessing the cie it refers to
@@ -3013,7 +3086,7 @@ and evaluate_location_description (c:p_context) (dloc: location_list_list) (cuh:
         | LLI_lle lle ->
            if pc >= lle.lle_beginning_address_offset && pc < lle.lle_ending_address_offset then Just lle.lle_single_location_description else Nothing
         | LLI_base _ -> 
-           Nothing  (* TODO: either refactor to do offset during parsing or update base offsets here*)
+           Nothing  (* TODO: either refactor to do offset during parsing or update base offsets here. Should refactor to use "interpreted". *)
         end in
         match myfindmaybe f llis with
         | Just bs ->
@@ -3023,6 +3096,253 @@ and evaluate_location_description (c:p_context) (dloc: location_list_list) (cuh:
         end
   | _ -> Fail "evaluate_location_description av_location not understood"
   end 
+
+
+(** register maps *)
+
+val rrp_update : register_rule_map -> cfa_register -> register_rule -> register_rule_map
+let rrp_update rrp r rr = (r,rr)::rrp
+
+val rrp_lookup : cfa_register -> register_rule_map -> register_rule
+let rrp_lookup r rrp = 
+  match List.lookup r rrp with
+  | Just rr -> rr
+  | Nothing -> RR_undefined
+  end
+
+val rrp_empty : register_rule_map
+let rrp_empty = []
+
+
+
+
+(** pp of evaluated cfa information from .debug_frame *)
+(* readelf --debug-dump=frames-interp test/a.out 
+
+Contents of the .eh_frame section:
+
+00000000 00000014 00000000 CIE "zR" cf=1 df=-8 ra=16
+   LOC           CFA      ra      
+0000000000000000 rsp+8    c-8   
+
+00000018 00000024 0000001c FDE cie=00000000 pc=004003b0..004003d0
+   LOC           CFA      ra      
+00000000004003b0 rsp+16   c-8   
+00000000004003b6 rsp+24   c-8   
+00000000004003c0 exp      c-8   
+
+00000040 0000001c 00000044 FDE cie=00000000 pc=004004b4..004004ba
+   LOC           CFA      rbp   ra      
+00000000004004b4 rsp+8    u     c-8   
+00000000004004b5 rsp+16   c-16  c-8   
+00000000004004b8 rbp+16   c-16  c-8   
+00000000004004b9 rsp+8    c-16  c-8   
+
+00000060 00000024 00000064 FDE cie=00000000 pc=004004c0..00400549
+   LOC           CFA      rbx   rbp   r12   r13   r14   r15   ra      
+00000000004004c0 rsp+8    u     u     u     u     u     u     c-8   
+00000000004004d1 rsp+8    u     c-48  c-40  u     u     u     c-8   
+00000000004004f0 rsp+64   c-56  c-48  c-40  c-32  c-24  c-16  c-8   
+0000000000400548 rsp+8    c-56  c-48  c-40  c-32  c-24  c-16  c-8   
+
+00000088 00000014 0000008c FDE cie=00000000 pc=00400550..00400552
+   LOC           CFA      ra      
+0000000000400550 rsp+8    c-8   
+
+000000a0 ZERO terminator
+*)
+
+
+
+val mytoList        : forall 'a. SetType 'a => set 'a -> list 'a
+declare ocaml    target_rep function mytoList = `Pset.elements`
+
+let register_footprint_rrp (rrp: register_rule_map) : set cfa_register = 
+  Set.fromList (List.map Tuple.fst rrp)
+
+let register_footprint (rows: list cfa_table_row) : list cfa_register = 
+  mytoList (bigunionListMap (fun row -> register_footprint_rrp row.ctr_regs) rows)
+
+
+val max_lengths : list (list string) -> list natural
+let rec max_lengths xss =
+  match xss with
+  | [] -> Assert_extra.failwith "max_lengths"
+  | xs::xss' -> 
+      let lens = List.map (fun x -> naturalFromNat (String.stringLength x)) xs in
+      if xss' = [] then lens
+      else
+        let lens' = max_lengths xss' in 
+        let z = List.zip lens lens' in
+        let lens'' = List.map (fun (l1,l2)-> max l1 l2) z in
+        lens''
+  end
+
+let rec pad_row xs lens = 
+  match (xs,lens) with
+  | ([],[]) -> []
+  | (x::xs', len::lens') -> right_space_padded_to len x ::  pad_row xs' lens'
+  end
+
+let pad_rows (xss : list (list string)) : string = 
+  let lens = max_lengths xss in
+  myconcat "" (List.map (fun xs -> myconcat " " (pad_row xs lens) ^ "\n") xss)
+
+let pp_evaluated_fde (rows: list cfa_table_row) : string =
+  let regs = register_footprint rows in
+  let header : list string = "LOC" :: "CFA" :: List.map pp_cfa_register regs in
+  let ppd_rows : list (list string) = 
+    List.map (fun row -> pphex row.ctr_loc :: pp_cfa_rule row.ctr_cfa :: List.map (fun r -> pp_register_rule (rrp_lookup r row.ctr_regs)) regs) rows  in
+  pad_rows (header :: ppd_rows)
+      
+
+
+
+
+
+(** evaluation of cfa information from .debug_frame *)
+
+let evaluate_call_frame_instruction (fi: frame_info) (cie: cie) (state: cfa_state) (cfi: call_frame_instruction) : cfa_state =
+
+  let create_row (loc: natural) = 
+    let row = <| state.cs_current_row with ctr_loc = loc |> in
+    <| state with cs_current_row = row; cs_previous_rows = state.cs_current_row::state.cs_previous_rows |> in
+
+  let update_cfa (cr:cfa_rule) =
+    let row = <| state.cs_current_row with ctr_cfa = cr |> in
+    <| state with cs_current_row = row |> in
+
+  let update_reg r rr = 
+    let row = <| state.cs_current_row with ctr_regs = rrp_update state.cs_current_row.ctr_regs r rr |> in 
+    <| state with cs_current_row = row |> in
+
+  match cfi with
+  (* Row Creation Instructions *)
+  | DW_CFA_set_loc a              -> 
+      create_row a
+  | DW_CFA_advance_loc d          -> 
+      create_row (state.cs_current_row.ctr_loc + d * cie.cie_code_alignment_factor)
+  | DW_CFA_advance_loc1 d         -> 
+      create_row (state.cs_current_row.ctr_loc + d * cie.cie_code_alignment_factor)
+  | DW_CFA_advance_loc2 d         -> 
+      create_row (state.cs_current_row.ctr_loc + d * cie.cie_code_alignment_factor)
+  | DW_CFA_advance_loc4 d         -> 
+      create_row (state.cs_current_row.ctr_loc + d * cie.cie_code_alignment_factor)
+
+  (* CFA Definition Instructions *)
+  | DW_CFA_def_cfa r n            -> 
+      update_cfa (CR_register r (integerFromNatural n))
+  | DW_CFA_def_cfa_sf r i         -> 
+      update_cfa (CR_register r (i * cie.cie_data_alignment_factor))
+  | DW_CFA_def_cfa_register r     -> 
+      match state.cs_current_row.ctr_cfa with
+      | CR_register r' i ->
+          update_cfa (CR_register r' i)
+      | _ -> Assert_extra.failwith "DW_CFA_def_cfa_register: current rule is not CR_register"
+      end
+  | DW_CFA_def_cfa_offset n       -> 
+      match state.cs_current_row.ctr_cfa with
+      | CR_register r i ->
+          update_cfa (CR_register r (integerFromNatural n))
+      | _ -> Assert_extra.failwith "DW_CFA_def_cfa_offset: current rule is not CR_register"
+      end
+  | DW_CFA_def_cfa_offset_sf i    -> 
+      match state.cs_current_row.ctr_cfa with
+      | CR_register r i' ->
+          update_cfa (CR_register r (i' * cie.cie_data_alignment_factor))
+      | _ -> Assert_extra.failwith "DW_CFA_def_cfa_offset_sf: current rule is not CR_register"
+      end
+  | DW_CFA_def_cfa_expression b   -> 
+      update_cfa (CR_expression b)
+
+  (* Register Rule Instrutions *)
+  | DW_CFA_undefined r            -> 
+      update_reg r (RR_undefined)
+  | DW_CFA_same_value r           -> 
+      update_reg r (RR_same_value)
+  | DW_CFA_offset r n             -> 
+      update_reg r (RR_offset ((integerFromNatural n) * cie.cie_data_alignment_factor))
+  | DW_CFA_offset_extended r n    -> 
+      update_reg r (RR_offset ((integerFromNatural n) * cie.cie_data_alignment_factor))
+  | DW_CFA_offset_extended_sf r i -> 
+      update_reg r (RR_offset (i * cie.cie_data_alignment_factor))
+  | DW_CFA_val_offset r n         -> 
+      update_reg r (RR_val_offset ((integerFromNatural n) * cie.cie_data_alignment_factor))
+  | DW_CFA_val_offset_sf r i      -> 
+      update_reg r (RR_val_offset (i * cie.cie_data_alignment_factor))
+  | DW_CFA_register r1 r2         -> 
+      update_reg r1 (RR_register r2)
+  | DW_CFA_expression r b         -> 
+      update_reg r (RR_expression b)
+  | DW_CFA_val_expression r b     -> 
+      update_reg r (RR_val_expression b)
+  | DW_CFA_restore r              -> 
+      update_reg r (rrp_lookup r state.cs_initial_instructions_row.ctr_regs)
+(* RR_undefined if the lookup fails? *)
+  | DW_CFA_restore_extended r     -> 
+      update_reg r (rrp_lookup r state.cs_initial_instructions_row.ctr_regs)
+     
+(* Row State Instructions *)
+(* do these also push and restore the CFA rule? *)
+  | DW_CFA_remember_state         -> 
+      <| state with cs_row_stack = state.cs_current_row :: state.cs_row_stack |>
+  | DW_CFA_restore_state          -> 
+      match state.cs_row_stack with 
+      | r::rs -> <| state with cs_current_row = r; cs_row_stack = rs |>
+      | [] -> Assert_extra.failwith "DW_CFA_restore_state: empty row stack"
+      end
+(* Padding Instruction *)
+  | DW_CFA_nop                    -> 
+      state
+
+  end
+
+
+
+let rec evaluate_call_frame_instructions (fi: frame_info) (cie: cie) (state: cfa_state) (cfis: list call_frame_instruction) : cfa_state =
+  match cfis with
+  | [] -> state 
+  | cfi::cfis' -> 
+      let state' = evaluate_call_frame_instruction fi cie state cfi in
+      evaluate_call_frame_instructions fi cie state' cfis'
+  end
+
+
+let rec evaluate_call_frame_instructions_terminated (fi: frame_info) (cie: cie) (final_location: natural) (state: cfa_state) (cfis: list call_frame_instruction) : cfa_state =
+  let state' = evaluate_call_frame_instructions fi cie state cfis in
+  evaluate_call_frame_instruction fi cie state' (DW_CFA_set_loc final_location)
+
+
+
+let evaluate_fde (fi: frame_info) (fde:fde) : list cfa_table_row = 
+  let cie = find_cie fi fde.fde_cie_pointer in
+  let final_location = fde.fde_initial_location_address + fde.fde_address_range in
+  let initial_cfa_state  = 
+    let initial_row = 
+      <|
+      ctr_loc = fde.fde_initial_location_address;
+      ctr_cfa = CR_undefined;
+      ctr_regs = rrp_empty;
+    |> in
+    <|
+    cs_current_row = initial_row;
+    cs_previous_rows = [];
+    cs_initial_instructions_row = initial_row;
+    cs_row_stack = [];
+  |> 
+  in
+  let state' = 
+    evaluate_call_frame_instructions fi cie initial_cfa_state cie.cie_initial_instructions in
+  let initial_row' = state'.cs_current_row in
+  let state'' = <| initial_cfa_state with cs_current_row = initial_row'; cs_initial_instructions_row = initial_row' |> in
+  let state''' = 
+    evaluate_call_frame_instructions_terminated fi cie final_location state'' fde.fde_instructions in
+  List.reverse (state'''.cs_current_row:: state'''.cs_previous_rows)
+ 
+
+
+
+
 
 
 
@@ -3359,10 +3679,18 @@ let {ocaml} harness_string_of_elf64_debug_info_section f1 bs0 os proc usr hdr sh
 
 (*   ^ analyse_locations_raw c d    *)
 
+   ^ "************** evaluation of frame data *************************\n"
+   ^ 
+     let evaluated_frame_info : list (list cfa_table_row) = List.mapMaybe (fun fie -> match fie with FIE_fde fde -> Just (evaluate_fde d.d_frame_info fde) | FIE_cie _ -> Nothing end) d.d_frame_info in
+     myconcat "\n" (List.map pp_evaluated_fde evaluated_frame_info)
+
    ^ "************** analysis of location data *************************\n"
    ^ 
      let als = analyse_locations d  in
      pp_analysed_location_data d als 
+
+
+
   end
 
 val harness_string_of_elf32_debug_info_section : elf32_file -> byte_sequence -> (natural -> string) -> (natural -> string) -> (natural -> string) -> elf32_header -> elf32_section_header_table -> string_table -> string
