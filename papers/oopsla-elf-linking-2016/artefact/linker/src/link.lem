@@ -322,10 +322,8 @@ let strip_metadata_sections reloc_decisions a img =
         end
     ) (zip section_tags section_ranges)
     in
-    let discarded_elements_map = List.foldl (fun m -> (fun (el_name, range_tag) -> 
-        let _ = errln ("Discarding a metadata element named `" ^ el_name ^ "'") in
-        Map.insert el_name range_tag m
-        )) Map.empty discarded_sections_with_element_name
+    let discarded_elements_map = List.foldl (fun m -> (fun (el_name, range_tag) -> Map.insert el_name range_tag m)) 
+        Map.empty discarded_sections_with_element_name
     in
     let filtered_image = Memory_image.filter_elements (fun (el_name, el) -> not (Map.member el_name discarded_elements_map)) img
     in
@@ -406,10 +404,7 @@ let expand_sections_for_one_image a options bindings_by_name linkable_idx item s
          * that need to go directly into the output file. That's what the strip_relocs
          * argument is for. FIXME: refactor this into two functions.
          *)
-        let stripped_img_with_reloc_sections = if strip_relocs
-            then let _ = errln ("Discarding metadata sections from image of `" ^ fname ^ "'") in
-            strip_metadata_sections reloc_decisions a marked_img 
-            else marked_img
+        let stripped_img_with_reloc_sections = if strip_relocs then strip_metadata_sections reloc_decisions a marked_img else marked_img
         in
         (* Now we have a whole new image! It differs from the old one in that 
          * - non-special sections have been stripped
@@ -899,7 +894,6 @@ let link script a options linkables =
     )) () remaining_relocs
     in
     (* Before we relocate, we concretise any ABI features that we've linked in. *)
-    let _ = errln "Asking ABI to concretise support structures" in
     let unrelocated_concrete_output_image = a.concretise_support unrelocated_output_image
     in
     let output_image = relocate_output_image a bindings_by_name unrelocated_concrete_output_image

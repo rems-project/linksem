@@ -244,20 +244,10 @@ let get_empty_memory_image = fun _ -> <|
 |>
 
 (* Basic ELFy and ABI-y things. *)
-(* "Special" sections are those that necessarily require special treatment by the 
- * linker. Examples include symbol tables and relocation tables. There are some
- * grey areas, such as .eh_frame, debug info, and string tables. For us, the rule
- * is that if we have special code to create them, i.e. that we don't rely on
- * ordinary section concatenation during the linker script interpretation, they
- * should be special -- it means strip_metadata_sections will remove them from
- * the image, they won't be seen by the linker script, and that it's *our* job
- * to reinstate them afterwards (as we do with symtab and strtab, for example). *)
-(* FIXME: this shouldn't really be here, but needs to be in some low-lying module;
- * keeping it out of elf_* for now to avoid duplication into elf64_, elf32_. *)
+(* FIXME: shouldn't really be here, but need to be in some low-lying module, and 
+ * keeping out of elf_* for now to avoid duplication into elf64_, elf32_. *)
 let elf_section_is_special s f = s.elf64_section_type <> sht_progbits
                      && s.elf64_section_type <> sht_nobits
-                     && s.elf64_section_type <> sht_fini_array
-                     && s.elf64_section_type <> sht_init_array
 
 (* This record collects things that ABIs may or must define. 
  * 
