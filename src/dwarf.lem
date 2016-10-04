@@ -494,7 +494,8 @@ type cfa_state =
   |>
 
 
-
+type evaluated_frame_info = 
+    list (fde * list cfa_table_row)
 
 
 (* top-level collection of dwarf data *)
@@ -1056,6 +1057,13 @@ let rec myfindmaybe f xs =
   match xs with
   | [] -> Nothing
   | x::xs' -> match f x with Just y -> Just y | Nothing -> myfindmaybe f xs' end
+  end
+
+val myfind : forall 'a.  ('a -> bool) -> list 'a -> maybe 'a
+let rec myfind f xs = 
+  match xs with
+  | [] -> Nothing
+  | x::xs' -> match f x with true -> Just x | false -> myfind f xs' end
   end
 
 
@@ -2906,8 +2914,22 @@ let arithmetic_context_of_cuh cuh =
   | _ -> Assert_extra.failwith "arithmetic_context_of_cuh given non-4/8 size"
   end
 
+let find_cfa_table_row_for_pc (evaluated_frame_info: evaluated_frame_info) (pc: natural) : cfa_table_row = 
+  match 
+    myfind
+      (fun (fde,rows) -> pc >= fde.fde_initial_location_address && pc < fde.fde_initial_location_address + fde.fde_address_range) 
+      evaluated_frame_info 
+  with
+  | Just (fde,rows) -> 
+      match myfind (fun row -> pc >= row.ctr_loc) rows with
+      | Just row -> row
+      | Nothing -> Assert_extra.failwith "evaluate_cfa: no matchine row"
+      end
+  | Nothing -> Assert_extra.failwith "evaluate_cfa: no fde encloding pc"
+  end
 
-let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (cuh: compilation_unit_header) (ac: arithmetic_context) (ev: evaluation_context) (mfbloc: maybe attribute_value) (pc: natural) (s: state) (ops: list operation) : error single_location =
+
+let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (evaluated_frame_info: evaluated_frame_info) (cuh: compilation_unit_header) (ac: arithmetic_context) (ev: evaluation_context) (mfbloc: maybe attribute_value) (pc: natural) (s: state) (ops: list operation) : error single_location =
 
   let push_memory_address v vs' = Success <| s with s_stack = v :: vs'; s_value = SL_memory_address v |>  in
 
@@ -2921,7 +2943,7 @@ let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (cuh: c
     match ev.read_register r with
     | RRR_result v -> push_memory_address (partialNaturalFromInteger ((integerFromNatural v+i) mod (integerFromNatural ac.ac_all))) s.s_stack
     | RRR_not_currently_available -> Fail "RRR_not_currently_available"
-    | RRR_bad_register_number -> Fail "RRR_bad_register_number"
+    | RRR_bad_register_number -> Fail ("RRR_bad_register_number " ^ show r)
     end in
 
   let deref_size n = 
@@ -2994,7 +3016,7 @@ let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (cuh: c
         | (OpSem_fbreg, [OAV_integer i]) ->  
             match mfbloc with
             | Just fbloc ->
-                match evaluate_location_description c dloc cuh ac ev (*mfbloc*)Nothing pc fbloc with
+                match evaluate_location_description c dloc evaluated_frame_info  cuh ac ev (*mfbloc*)Nothing pc fbloc with
                 (* what to do if the recursive call also uses fbreg?  for now assume that's not allowed *)
                 | Success l ->
                     match l with 
@@ -3048,20 +3070,30 @@ let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (cuh: c
             | _ -> Fail "OpSem_stack_value not given an element on stack"
             end
         | (OpSem_call_frame_cfa, []) ->  
-            Fail "OpSem_call_frame_cfa not implemented"
+            let row = find_cfa_table_row_for_pc evaluated_frame_info pc in
+            match row.ctr_cfa with
+            | CR_undefined -> 
+                Assert_extra.failwith "evaluate_cfa of CR_undefined"
+            | CR_register r i -> 
+                bregxi r i  (* same behaviour as an OpSem_bregx *)
+            | CR_expression bs -> 
+                Assert_extra.failwith "CR_expression"
+                (*TODO: fix result type - not this evaluate_location_description_bytes c dloc evaluated_frame_info cuh ac ev mfbloc pc bs*)
+                  (* TODO: restrict allowed OpSem_* in that recursive call *)
+            end
         | (_, _) ->
             Fail ("bad OpSem invocation: op=" ^ pp_operation op ^ " arguments=" ^ myconcat "" (List.map pp_operation_argument_value op.op_argument_values))
         end 
       in
       match es' with
       | Success s' ->
-          evaluate_operation_list c dloc cuh ac ev mfbloc pc s' ops'
+          evaluate_operation_list c dloc evaluated_frame_info  cuh ac ev mfbloc pc s' ops'
       | Fail e ->
           Fail e
       end
   end
 
-and evaluate_location_description_bytes (c:p_context) (dloc: location_list_list) (cuh: compilation_unit_header) (ac: arithmetic_context) (ev: evaluation_context) (mfbloc: maybe attribute_value) (pc: natural) (bs: list byte) : error single_location =
+and evaluate_location_description_bytes (c:p_context) (dloc: location_list_list) (evaluated_frame_info: evaluated_frame_info) (cuh: compilation_unit_header) (ac: arithmetic_context) (ev: evaluation_context) (mfbloc: maybe attribute_value) (pc: natural) (bs: list byte) : error single_location =
   let parse_context = <|pc_bytes = bs; pc_offset = 0  |> in
   match parse_operations c cuh parse_context with
   | PR_fail s pc' -> Fail ("evaluate_location_description_bytes: parse_operations fail: " ^ pp_parse_fail s pc')
@@ -3069,15 +3101,15 @@ and evaluate_location_description_bytes (c:p_context) (dloc: location_list_list)
       if pc'.pc_bytes <> [] then 
         Fail "evaluate_location_description_bytes: extra non-parsed bytes" 
       else 
-        evaluate_operation_list c dloc cuh ac ev mfbloc pc initial_state ops
+        evaluate_operation_list c dloc evaluated_frame_info  cuh ac ev mfbloc pc initial_state ops
   end
 
-and evaluate_location_description (c:p_context) (dloc: location_list_list) (cuh: compilation_unit_header) (ac: arithmetic_context) (ev: evaluation_context) (mfbloc: maybe attribute_value) (pc: natural) (loc:attribute_value) : error single_location =
+and evaluate_location_description (c:p_context) (dloc: location_list_list) (evaluated_frame_info: evaluated_frame_info) (cuh: compilation_unit_header) (ac: arithmetic_context) (ev: evaluation_context) (mfbloc: maybe attribute_value) (pc: natural) (loc:attribute_value) : error single_location =
   match loc with 
   | AV_exprloc n bs ->
-      evaluate_location_description_bytes c dloc cuh ac ev mfbloc pc bs
+      evaluate_location_description_bytes c dloc evaluated_frame_info  cuh ac ev mfbloc pc bs
   | AV_block n bs -> 
-      evaluate_location_description_bytes c dloc cuh ac ev mfbloc pc bs
+      evaluate_location_description_bytes c dloc evaluated_frame_info  cuh ac ev mfbloc pc bs
   | AV_sec_offset n -> 
       let location_list = find_location_list dloc n in 
       let (offset,(llis:list location_list_item)) = location_list in 
@@ -3090,12 +3122,13 @@ and evaluate_location_description (c:p_context) (dloc: location_list_list) (cuh:
         end in
         match myfindmaybe f llis with
         | Just bs ->
-            evaluate_location_description_bytes c dloc cuh ac ev mfbloc pc bs
+            evaluate_location_description_bytes c dloc evaluated_frame_info  cuh ac ev mfbloc pc bs
         | Nothing ->
             Fail "evaluate_location_description didn't find pc in location list ranges"
         end
   | _ -> Fail "evaluate_location_description av_location not understood"
   end 
+
 
 
 (** register maps *)
@@ -3188,7 +3221,7 @@ let pad_rows (xss : list (list string)) : string =
   let lens = max_lengths xss in
   myconcat "" (List.map (fun xs -> myconcat " " (pad_row xs lens) ^ "\n") xss)
 
-let pp_evaluated_fde (rows: list cfa_table_row) : string =
+let pp_evaluated_fde (fde, (rows: list cfa_table_row)) : string =
   let regs = register_footprint rows in
   let header : list string = "LOC" :: "CFA" :: List.map pp_cfa_register regs in
   let ppd_rows : list (list string) = 
@@ -3308,10 +3341,11 @@ let rec evaluate_call_frame_instructions (fi: frame_info) (cie: cie) (state: cfa
   end
 
 
+(*
 let rec evaluate_call_frame_instructions_terminated (fi: frame_info) (cie: cie) (final_location: natural) (state: cfa_state) (cfis: list call_frame_instruction) : cfa_state =
   let state' = evaluate_call_frame_instructions fi cie state cfis in
   evaluate_call_frame_instruction fi cie state' (DW_CFA_set_loc final_location)
-
+*)
 
 
 let evaluate_fde (fi: frame_info) (fde:fde) : list cfa_table_row = 
@@ -3336,12 +3370,17 @@ let evaluate_fde (fi: frame_info) (fde:fde) : list cfa_table_row =
   let initial_row' = state'.cs_current_row in
   let state'' = <| initial_cfa_state with cs_current_row = initial_row'; cs_initial_instructions_row = initial_row' |> in
   let state''' = 
-    evaluate_call_frame_instructions_terminated fi cie final_location state'' fde.fde_instructions in
+    evaluate_call_frame_instructions fi cie (*final_location*) state'' fde.fde_instructions in
   List.reverse (state'''.cs_current_row:: state'''.cs_previous_rows)
  
 
 
 
+let evaluate_frame_info (d: dwarf) : evaluated_frame_info = 
+  List.mapMaybe (fun fie -> match fie with FIE_fde fde -> Just (fde, (evaluate_fde d.d_frame_info fde)) | FIE_cie _ -> Nothing end) d.d_frame_info 
+
+let pp_evaluated_frame_info (efi: evaluated_frame_info) = 
+  myconcat "\n" (List.map pp_evaluated_fde efi)
 
 
 
@@ -3598,10 +3637,11 @@ let pp_analysed_location_data_at_pc (d: dwarf) (alspc: analysed_location_data_at
     alspc)
 
 
-val analysed_locations_at_pc : evaluation_context -> dwarf -> analysed_location_data -> natural -> analysed_location_data_at_pc
+val analysed_locations_at_pc : evaluation_context -> dwarf -> evaluated_frame_info -> analysed_location_data -> natural -> analysed_location_data_at_pc
 let analysed_locations_at_pc 
     (ev)
     (d: dwarf)
+    (evaluated_frame_info: evaluated_frame_info)
     (als: analysed_location_data)
     (pc: natural) 
     : analysed_location_data_at_pc
@@ -3633,7 +3673,7 @@ List.concat
        List.map 
          (fun (n1,n2,sld) -> 
            let el : error single_location = 
-             evaluate_location_description_bytes c d.d_loc cu.cu_header ac ev mfbloc pc sld in
+             evaluate_location_description_bytes c d.d_loc evaluated_frame_info cu.cu_header ac ev mfbloc pc sld in
            ((cu,parents,die),(n1,n2,sld,el))
          )
          nns
@@ -3681,8 +3721,8 @@ let {ocaml} harness_string_of_elf64_debug_info_section f1 bs0 os proc usr hdr sh
 
    ^ "************** evaluation of frame data *************************\n"
    ^ 
-     let evaluated_frame_info : list (list cfa_table_row) = List.mapMaybe (fun fie -> match fie with FIE_fde fde -> Just (evaluate_fde d.d_frame_info fde) | FIE_cie _ -> Nothing end) d.d_frame_info in
-     myconcat "\n" (List.map pp_evaluated_fde evaluated_frame_info)
+     let efi = evaluate_frame_info d in
+     pp_evaluated_frame_info efi 
 
    ^ "************** analysis of location data *************************\n"
    ^ 
