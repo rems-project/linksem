@@ -44,7 +44,8 @@ val pp_dwarf : dwarf -> string
 It also defines evaluation of DWARF expressions and analysis functions
 to convert the variable location information to a form suitable for
 looking up variable names from machine addresses that arise during
-execution.  The main functions for this are:
+execution, including the call frame address calculation.  The main
+functions for this are:
 
 val analyse_locations : dwarf -> analysed_location_data
 val analysed_locations_at_pc : evaluation_context -> dwarf -> analysed_location_data -> natural -> analysed_location_data_at_pc
@@ -70,10 +71,10 @@ data in these DWARF ELF sections:
 .debug_loc
 .debug_str
 .debug_ranges
+.debug_frame (without augmentations)
 
 The following DWARF ELF sections are not covered:
 
-.debug_frame
 .debug_aranges
 .debug_line
 .debug_macinfo
@@ -2464,7 +2465,7 @@ let parse_call_frame_instruction c cuh : parser (maybe call_frame_instruction) =
                 | PR_success (Nothing) pc'' -> Assert_extra.failwith "bad call frame instruction argument 1"
                 | PR_fail s pc'' -> Assert_extra.failwith "bad call frame instruction argument 2"
                 end
-            | Nothing -> Assert_extra.failwith ("can't parse " ^ show b ^ " as call frame instruction") pc 
+            | Nothing -> Assert_extra.failwith ("can't parse " ^ show b ^ " as call frame instruction")
             end
           else            
             if high_bits = unsigned_char_of_natural 64 then 
