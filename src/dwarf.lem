@@ -3048,12 +3048,12 @@ let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (evalua
             (* we allow a piece (or bit_piece) to be any simple_location, including implicit and stack values. Unclear if this is intended, esp. the latter *)
             let stack' = [] in
             let value' = SL_empty in
-            Success <| s with s_stack = stack'; s_value = value'; s_location_pieces = s.s_location_pieces ++ [piece] |>
+            Success <| s_stack = stack'; s_value = value'; s_location_pieces = s.s_location_pieces ++ [piece] |>
         | (OpSem_bit_piece, [OAV_natural size_bits; OAV_natural offset_bits]) -> 
             let piece = CLP_bit_piece size_bits offset_bits s.s_value in
             let stack' = [] in
             let value' = SL_empty in
-            Success <| s with s_stack = stack'; s_value = value'; s_location_pieces = s.s_location_pieces ++ [piece] |>
+            Success <| s_stack = stack'; s_value = value'; s_location_pieces = s.s_location_pieces ++ [piece] |>
         | (OpSem_implicit_value, [OAV_block size bs]) -> 
             let stack' = [] in
             let value' = SL_implicit bs in
