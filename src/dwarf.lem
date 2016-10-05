@@ -518,6 +518,15 @@ type analysed_location_data = list ((compilation_unit * (list die) * die) * mayb
 
 type analysed_location_data_at_pc = list ((compilation_unit * (list die) * die) * (natural * natural * single_location_description * error single_location)) 
 
+type dwarf_static =
+    <|
+    ds_dwarf: dwarf;
+    ds_analysed_location_data: analysed_location_data;
+    ds_evaluated_frame_info: evaluated_frame_info;
+  |>
+
+type dwarf_dynamic_at_pc = analysed_location_data_at_pc
+
 (** context for parsing and pp functions *)
 
 type p_context = 
@@ -3707,6 +3716,29 @@ let names_of_address
     )
     alspc
 
+
+(** *)
+
+val extract_dwarf_static : elf64_file -> maybe dwarf_static
+let extract_dwarf_static f1 =
+  match extract_dwarf f1 with
+  | Nothing -> Nothing
+  | Just dwarf ->
+      let ald : analysed_location_data = 
+        analyse_locations dwarf in 
+      let efi : evaluated_frame_info = 
+        evaluate_frame_info dwarf in 
+      let ds =     
+        <|
+        ds_dwarf = dwarf;
+        ds_analysed_location_data = ald;
+        ds_evaluated_frame_info = efi;
+      |> in
+      Just ds
+  end
+
+
+            
 
 
 (** top level for main_elf*)
