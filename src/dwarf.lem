@@ -3698,7 +3698,7 @@ let names_of_address
     (d: dwarf)
     (alspc: analysed_location_data_at_pc)
     (address: natural)
- : list string
+    : list string
     = 
   List.mapMaybe 
     (fun ((cu,parents,die),(n1,n2,sld,esl)) -> 
@@ -3711,6 +3711,7 @@ let names_of_address
             end
           else 
             Nothing
+      | Success _ ->  Nothing (* just suppress? *)
       | Fail e -> Nothing (* just suppress? *)
       end
     )
