@@ -38,18 +38,31 @@ relevant ELF sections, and pretty-printing function to dump it in a
 human-readable form, similar to that of readelf.  The main functions
 for this are:
 
-val extract_dwarf : elf64_file -> maybe dwarf 
-val pp_dwarf : dwarf -> string
+  val extract_dwarf : elf64_file -> maybe dwarf 
+  val pp_dwarf : dwarf -> string
 
 It also defines evaluation of DWARF expressions and analysis functions
 to convert the variable location information to a form suitable for
 looking up variable names from machine addresses that arise during
 execution, including the call frame address calculation.  The main
-functions for this are:
+types and functions for this are:
 
-val analyse_locations : dwarf -> analysed_location_data
-val analysed_locations_at_pc : evaluation_context -> dwarf -> analysed_location_data -> natural -> analysed_location_data_at_pc
-val names_of_address : dwarf -> analysed_location_data_at_pc -> natural -> list string
+  type analysed_location_data
+  val analyse_locations : dwarf -> analysed_location_data
+
+  type evaluated_frame_info
+  val evaluate_frame_info : dwarf -> evaluated_frame_info 
+
+  type dwarf_static   
+  val extract_dwarf_static : elf64_file -> maybe dwarf_static
+
+The last collects all the above - information that can be computed statically.
+
+Then to do lookup from addresses to source-code names, we have:
+
+  type analysed_location_data_at_pc
+  val analysed_locations_at_pc : evaluation_context -> dwarf -> evaluated_frame_info -> analysed_location_data -> natural -> analysed_location_data_at_pc
+  val names_of_address : dwarf -> analysed_location_data_at_pc -> natural -> list string
 
 The definitions are deliberately simple-minded, to be quick to write,
 easy to see the correspondence to the DWARF text specification, and
@@ -3388,7 +3401,7 @@ let evaluate_fde (fi: frame_info) (fde:fde) : list cfa_table_row =
  
 
 
-
+val evaluate_frame_info : dwarf -> evaluated_frame_info 
 let evaluate_frame_info (d: dwarf) : evaluated_frame_info = 
   List.mapMaybe (fun fie -> match fie with FIE_fde fde -> Just (fde, (evaluate_fde d.d_frame_info fde)) | FIE_cie _ -> Nothing end) d.d_frame_info 
 
