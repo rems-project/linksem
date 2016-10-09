@@ -3557,18 +3557,24 @@ let rec closest_enclosing_frame_base dloc (base_address: natural) (parents: list
 
 
 
-let interpreted_location_of_die c (dloc: location_list_list) (dranges: range_list_list) (base_address: natural) (parents: list die) (die: die) : maybe (list (natural * natural * single_location_description)) = 
+let interpreted_location_of_die c cuh (dloc: location_list_list) (dranges: range_list_list) (base_address: natural) (parents: list die) (die: die) : maybe (list (natural * natural * single_location_description)) = 
 
+  (* for a simple location expression bs, we look in the enclosing die
+  tree to find the associated pc range *)
   let location bs = 
     match closest_enclosing_range c dranges base_address (die::parents) with
     | Just nns -> 
         Just (List.map (fun (n1,n2) -> (n1,n2,bs)) nns)
-    | Nothing -> Just [] (*Assert_extra.failwith "no enclosing range"*)
+    | Nothing -> 
+        (* if there is no such range, we take the full 0 - 0xfff.fff range*)
+        Just [(0,(arithmetic_context_of_cuh cuh).ac_max,bs)]
     end in
 
   match find_attribute_value "DW_AT_location" die with 
   | Just (AV_exprloc n bs) -> location bs
   | Just (AV_block n bs) -> location bs
+  (* while for a location list, we take the associated pc range from
+  each element of the list *)
   | Just (AV_sec_offset n) -> 
       let (_,llis) = find_location_list dloc n in 
       Just (interpret_location_list base_address llis)
@@ -3604,7 +3610,7 @@ let analyse_locations (d: dwarf) : analysed_location_data =
     (fun (((cu:compilation_unit), (parents: list die), (die: die)) as x) -> 
       let base_address = cu_base_address cu in
       let interpreted_locations : maybe (list (natural * natural * single_location_description)) = 
-        interpreted_location_of_die c d.d_loc d.d_ranges base_address parents die in
+        interpreted_location_of_die c cuh_default d.d_loc d.d_ranges base_address parents die in
       (x,interpreted_locations)
     ) 
     dies
