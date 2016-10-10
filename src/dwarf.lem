@@ -512,6 +512,89 @@ type evaluated_frame_info =
     list (fde * list cfa_table_row)
 
 
+(* line number *)
+
+type line_number_argument_type =
+  | LNAT_address
+  | LNAT_ULEB128
+  | LNAT_SLEB128
+  | LNAT_uint16
+  | LNAT_string
+
+type line_number_argument_value =
+  | LNAV_address of natural
+  | LNAV_ULEB128 of natural
+  | LNAV_SLEB128 of integer
+  | LNAV_uint16 of natural
+  | LNAV_string of list byte (* not including terminating null *)
+
+type line_number_operation =
+  (* standard *)
+  | DW_LNS_copy               
+  | DW_LNS_advance_pc of natural
+  | DW_LNS_advance_line of integer
+  | DW_LNS_set_file of natural
+  | DW_LNS_set_column of natural
+  | DW_LNS_negate_stmt        
+  | DW_LNS_set_basic_block    
+  | DW_LNS_const_add_pc       
+  | DW_LNS_fixed_advance_pc of natural
+  | DW_LNS_set_prologue_end   
+  | DW_LNS_set_epilogue_begin 
+  | DW_LNS_set_isa of natural
+  (* extended *)
+  | DW_LNE_end_sequence     
+  | DW_LNE_set_address of natural  
+  | DW_LNE_define_file of (list byte) * natural * natural * natural
+  | DW_LNE_set_discriminator of natural
+  (* special *)
+  | DW_LN_special of natural * natural 
+
+type line_number_file_entry = 
+    <|
+    lnfe_path: list byte;
+    lnfe_directory_index: natural;
+    lnfe_last_modification: natural;
+    lnfe_length: natural;
+  |> 
+
+type line_number_header = 
+    <| 
+    lnh_offset: natural; 
+    lnh_dwarf_format: dwarf_format;
+    lnh_unit_length: natural;
+    lnh_version: natural;
+    lnh_header_length: natural;
+    lnh_minimum_instruction_length: natural;
+    lnh_maximum_operations_per_instruction: natural;
+    lnh_default_is_stmt: bool;
+    lnh_line_base: integer;
+    lnh_line_range: natural;
+    lnh_opcode_base: natural;
+    lnh_standard_opcode_lengths: list natural;
+    lnh_include_directories: list (list byte);
+    lnh_file_names: list line_number_file_entry;
+  |> 
+
+(* line number evaluation *)
+
+type line_number_registers = 
+    <|
+    lnr_address: natural;
+    lnr_op_index: natural;
+    lnr_file: natural;
+    lnr_line: natural;
+    lnr_column: natural;
+    lnr_is_stmt: bool;
+    lnr_basic_block: bool;
+    lnr_end_sequence: bool;
+    lnr_prologue_end: bool;
+    lnr_epilogue_begin: bool;
+  |>
+
+
+   
+
 (* top-level collection of dwarf data *)
     
 type dwarf = 
@@ -985,8 +1068,6 @@ let vDW_OP_breg0 = natural_of_hex "0x70"
 
 (* call frame instruction encoding *)
 
-
-
 let call_frame_instruction_encoding : list (string * natural * natural * list call_frame_argument_type * ((list call_frame_argument_value) -> maybe call_frame_instruction)) = [
 (*                            high-order 2 bits   low-order 6 bits       uniformly parsed arguments  *)
 
@@ -1049,6 +1130,78 @@ let call_frame_instruction_encoding : list (string * natural * natural * list ca
 ("DW_CFA_lo_user",             0,                  natural_of_hex "0x1c", []); (* *)
 ("DW_CFA_hi_user",             0,                  natural_of_hex "0x3f", []); (* *)
 *)
+
+
+(* line number encodings *)
+
+let line_number_standard_encodings = [
+  ("DW_LNS_copy"               , natural_of_hex "0x01", [             ],     
+   fun lnvs -> match lnvs with [] -> Just DW_LNS_copy                              | _ -> Nothing end);
+  ("DW_LNS_advance_pc"         , natural_of_hex "0x02", [LNAT_ULEB128 ],  
+   fun lnvs -> match lnvs with [LNAV_ULEB128 n] -> Just (DW_LNS_advance_pc n)      | _ -> Nothing end);
+  ("DW_LNS_advance_line"       , natural_of_hex "0x03", [LNAT_SLEB128 ],  
+   fun lnvs -> match lnvs with [LNAV_SLEB128 i] -> Just (DW_LNS_advance_line i)    | _ -> Nothing end);
+  ("DW_LNS_set_file"           , natural_of_hex "0x04", [LNAT_ULEB128 ], 
+   fun lnvs -> match lnvs with [LNAV_ULEB128 n] -> Just (DW_LNS_set_file n)        | _ -> Nothing end);      
+  ("DW_LNS_set_column"         , natural_of_hex "0x05", [LNAT_ULEB128 ],    
+   fun lnvs -> match lnvs with [LNAV_ULEB128 n] -> Just (DW_LNS_set_column n)      | _ -> Nothing end);   
+  ("DW_LNS_negate_stmt"        , natural_of_hex "0x06", [             ], 
+   fun lnvs -> match lnvs with [] -> Just (DW_LNS_negate_stmt)                     | _ -> Nothing end);                       
+  ("DW_LNS_set_basic_block"    , natural_of_hex "0x07", [             ],  
+   fun lnvs -> match lnvs with [] -> Just (DW_LNS_set_basic_block)                 | _ -> Nothing end);               
+  ("DW_LNS_const_add_pc"       , natural_of_hex "0x08", [             ], 
+   fun lnvs -> match lnvs with [] -> Just (DW_LNS_const_add_pc)                    | _ -> Nothing end);                
+  ("DW_LNS_fixed_advance_pc"   , natural_of_hex "0x09", [LNAT_uint16  ], 
+   fun lnvs -> match lnvs with [LNAV_uint16 n] -> Just (DW_LNS_fixed_advance_pc n) | _ -> Nothing end);   
+  ("DW_LNS_set_prologue_end"   , natural_of_hex "0x0a", [             ],
+   fun lnvs -> match lnvs with [] -> Just (DW_LNS_set_prologue_end)                | _ -> Nothing end);         
+  ("DW_LNS_set_epilogue_begin" , natural_of_hex "0x0b", [             ],
+   fun lnvs -> match lnvs with [] -> Just (DW_LNS_set_epilogue_begin)              | _ -> Nothing end);         
+  ("DW_LNS_set_isa"            , natural_of_hex "0x0c", [LNAT_ULEB128 ], 
+   fun lnvs -> match lnvs with [LNAV_ULEB128 n] -> Just (DW_LNS_set_isa n)         | _ -> Nothing end)
+]
+
+let line_number_extended_encodings = [
+  ("DW_LNE_end_sequence"       , natural_of_hex "0x01", [],  
+   fun lnvs -> match lnvs with [] -> Just (DW_LNE_end_sequence)                      | _ -> Nothing end);             
+  ("DW_LNE_set_address"        , natural_of_hex "0x02", [LNAT_address], 
+   fun lnvs -> match lnvs with [LNAV_address n] -> Just (DW_LNE_set_address n)          | _ -> Nothing end);                                 
+  ("DW_LNE_define_file"        , natural_of_hex "0x03", [LNAT_string; LNAT_ULEB128; LNAT_ULEB128; LNAT_ULEB128], 
+   fun lnvs -> match lnvs with [LNAV_string s; LNAV_ULEB128 n1; LNAV_ULEB128 n2; LNAV_ULEB128 n3] -> Just (DW_LNE_define_file s n1 n2 n3) | _ -> Nothing end);    
+  ("DW_LNE_set_discriminator"  , natural_of_hex "0x04", [LNAT_ULEB128],    
+   fun lnvs -> match lnvs with [LNAV_ULEB128 n] -> Just (DW_LNE_set_discriminator n)  | _ -> Nothing end)             (* new in Dwarf 4*)
+]
+
+
+(*
+(DW_LNE_lo_user            , natural_of_hex "0x80", "DW_LNE_lo_user");
+(DW_LNE_hi_user            , natural_of_hex "0xff", "DW_LNE_hi_user");
+*)
+
+
+let pp_line_number_operation lno = 
+  match lno with
+  | DW_LNS_copy               -> "DW_LNS_copy"
+  | DW_LNS_advance_pc n       -> "DW_LNS_advance_pc" ^ " " ^ show n 
+  | DW_LNS_advance_line i     -> "DW_LNS_advance_line" ^ " " ^ show i 
+  | DW_LNS_set_file n         -> "DW_LNS_set_file" ^ " " ^ show n
+  | DW_LNS_set_column n       -> "DW_LNS_set_column" ^ " " ^ show n
+  | DW_LNS_negate_stmt        -> "DW_LNS_negate_stmt"
+  | DW_LNS_set_basic_block    -> "DW_LNS_set_basic_block"
+  | DW_LNS_const_add_pc       -> "DW_LNS_const_add_pc"
+  | DW_LNS_fixed_advance_pc n -> "DW_LNS_fixed_advance_pc" ^ " " ^ show n
+  | DW_LNS_set_prologue_end   -> "DW_LNS_set_prologue_end"
+  | DW_LNS_set_epilogue_begin -> "DW_LNS_set_epilogue_begin"
+  | DW_LNS_set_isa n          -> "DW_LNS_set_isa" ^ " " ^ show n 
+  | DW_LNE_end_sequence           -> "DW_LNE_end_sequence" 
+  | DW_LNE_set_address n          -> "DW_LNE_set_address" ^ " " ^ show n       
+  | DW_LNE_define_file s n1 n2 n3 -> "DW_LNE_define_file" ^ " " ^ show s ^ " " ^ show n1 ^ " " ^ show n2 ^ " " ^ show n3
+  | DW_LNE_set_discriminator n    -> "DW_LNE_set_discriminator" ^ " " ^ show n 
+  | DW_LN_special n1 n2          -> "DW_LN_special" ^ " " ^ show n1 ^ " " ^ show n2
+  end
+
+(* booleans encoded as a single byte containing the value 0 for “false,” and a non-zero value for “true.” *)
+
 
 
 (** more missing pervasives *)
@@ -2694,7 +2847,58 @@ let parse_frame_info c cuh : parser frame_info
     parse_dependent_list (parse_frame_info_element c cuh)
   
 
+(* line number .debug_line *)
 
+(*
+let parse_compilation_unit_header c : parser compilation_unit_header = 
+    pr_post_map 
+      (pr_with_pos 
+         (parse_dependent_pair 
+            (parse_unit_length c)
+            (fun (df,ul) -> 
+              parse_triple 
+                (parse_uint16 c) (* version *)
+                (parse_uintDwarfN c df) (* debug abbrev offset *)
+                (parse_uint8) (* address_size *))))
+      (fun (offset,((df,ul), (v, (dao, as')))) -> 
+        <|
+        cuh_offset = offset;
+        cuh_dwarf_format = df;
+        cuh_unit_length = ul;
+        cuh_version = v;
+        cuh_debug_abbrev_offset = dao;
+        cuh_address_size = as';
+      |>)
+
+    <| 
+    lnh_offset: natural; 
+    lnh_dwarf_format: dwarf_format;
+    lnh_unit_length: natural;
+    lnh_version: natural;
+    lnh_header_length: natural;
+    lnh_minimum_instruction_length: natural;
+    lnh_maximum_operations_per_instruction: natural;
+    lnh_default_is_stmt: bool;
+    lnh_line_base: integer;
+    lnh_line_range: natural;
+    lnh_opcode_base: natural;
+    lnh_standard_opcode_lengths: list natural;
+    lnh_include_directories: list (list byte);
+    lnh_file_names: list line_number_file_entry;
+  |> 
+
+
+let parser_of_line_number_argument_type c cuh (lnat: line_number_argument_type) : parser line_number_argument_value =
+    match lnat with
+    | LNAT_address -> pr_map2 (fun n -> LNAV_address n) (parse_uint_address_size c cuh.cuh_address_size)
+    | LNAT_ULEB128 -> pr_map2 (fun n -> LNAV_ULEB128 n) (parse_ULEB128)
+    | LNAT_SLEB128 -> pr_map2 (fun i -> LNAV_SLEB128 i) (parse_SLEB128)
+    | LNAT_uint16  -> pr_map2 (fun n -> LNAV_uint16 n) (parse_uint16)
+    | LNAT_string  -> pr_map2 (fun s -> LNAV_string s) (parse_string)
+    end
+
+
+*)
 
 
 
