@@ -1562,6 +1562,18 @@ let parse_string : parser (list byte) =
       | Just (xs,bs) -> PR_success xs (<|pc_bytes=bs; pc_offset = pc.pc_offset + naturalFromNat (List.length xs) + naturalFromNat 1 |> )
       end
 
+
+let parse_nonempty_string : parser (list byte) =
+    fun (pc:parse_context) ->
+      match mytakestring' [] pc.pc_bytes with
+      | Nothing -> PR_fail "parse_string" pc
+      | Just (xs,bs) -> 
+          let pc' = (<|pc_bytes=bs; pc_offset = pc.pc_offset + naturalFromNat (List.length xs) + naturalFromNat 1 |> ) in
+          if bs = [] then PR_success (Nothing) pc'
+          else PR_success (Just xs) pc'
+      end
+
+
 let parse_uint8 : parser natural = 
     fun (pc:parse_context) ->
       let _ = my_debug "uint8 " in
@@ -2847,28 +2859,38 @@ let parse_frame_info c cuh : parser frame_info
     parse_dependent_list (parse_frame_info_element c cuh)
   
 
-(* line number .debug_line *)
+(** line number .debug_line *)
 
 (*
-let parse_compilation_unit_header c : parser compilation_unit_header = 
+let parse_line_number_header c : parser compilation_unit_header = 
     pr_post_map 
       (pr_with_pos 
          (parse_dependent_pair 
             (parse_unit_length c)
             (fun (df,ul) -> 
-              parse_triple 
-                (parse_uint16 c) (* version *)
-                (parse_uintDwarfN c df) (* debug abbrev offset *)
-                (parse_uint8) (* address_size *))))
-      (fun (offset,((df,ul), (v, (dao, as')))) -> 
-        <|
-        cuh_offset = offset;
-        cuh_dwarf_format = df;
-        cuh_unit_length = ul;
-        cuh_version = v;
-        cuh_debug_abbrev_offset = dao;
-        cuh_address_size = as';
-      |>)
+              parse_dependent_pair
+                (parse_pair
+                   (parse_quituple
+                      (parse_uint16 c)        (* version *)
+                      (parse_uintDwarfN c df) (* header_length *)
+                      (parse_uint8)           (* minimum_instruction_length *)
+                      (parse_uint8)           (* maximum_instruction_length *)
+                      (parse_uint8)           (* maximum_operations_per_instruction *)
+                   )
+                   (parse_quadruple
+                      (parse_uint8)           (* default_is_stmt *)
+                      (parse_sint8)           (* line_base *)
+                      (parse_uint8)           (* line_range *)
+                      (parse_uint8)           (* opcode_base *)
+                   ))
+                (fun ((v,hl,minil,maxil,maxopi),(dis,lb,lr,ob)) ->
+                  parse_pair
+                    (parse_uint8_array (ob-1))
+                    (parse_list parse_nonempty_string)
+
+
+*(fun (sols, ids) -> 
+
 
     <| 
     lnh_offset: natural; 
