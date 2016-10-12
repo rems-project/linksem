@@ -606,6 +606,7 @@ type dwarf =
     d_loc: location_list_list;
     d_ranges: range_list_list;
     d_frame_info: frame_info;
+    d_line_info: list line_number_header;
   |>
 
 (* analysed location data *)
@@ -1568,8 +1569,9 @@ let parse_non_empty_string : parser (maybe (list byte)) =
       match mytakestring' [] pc.pc_bytes with
       | Nothing -> PR_fail "parse_string" pc
       | Just (xs,bs) -> 
+          (*let _ = my_debug5 ("**" ^string_of_bytes xs ^ "**\n") in *)
           let pc' = (<|pc_bytes=bs; pc_offset = pc.pc_offset + naturalFromNat (List.length xs) + naturalFromNat 1 |> ) in
-          if bs = [] then PR_success (Nothing) pc'
+          if xs = [] then PR_success (Nothing) pc'
           else PR_success (Just xs) pc'
       end
 
@@ -2021,9 +2023,11 @@ let find_attribute_value (an: string) (die:die) : maybe attribute_value =
 
 (** compilation unit header: pp and parsing *)
 
+let pp_dwarf_format df = match df with Dwarf32 -> "(32-bit)" | Dwarf64 -> "(64-bit)" end
+
 let pp_unit_header (s:string) (x:compilation_unit_header) : string = 
     "  " ^ s ^ " Unit @ offset " ^ pphex x.cuh_offset ^ ":\n"
-  ^ "   Length:        " ^ pphex x.cuh_unit_length ^ " " ^ match x.cuh_dwarf_format with Dwarf32 -> "(32-bit)" | Dwarf64 -> "(64-bit)" end ^ "\n"
+  ^ "   Length:        " ^ pphex x.cuh_unit_length ^ " " ^ pp_dwarf_format x.cuh_dwarf_format ^ "\n"
   ^ "   Version:       " ^ show x.cuh_version ^ "\n"
   ^ "   Abbrev Offset: " ^ pphex x.cuh_debug_abbrev_offset ^ "\n"
   ^ "   Pointer Size:  " ^ show x.cuh_address_size ^ "\n"
@@ -2895,11 +2899,11 @@ let parse_line_number_header c : parser line_number_header =
        (fun (pos,(df,ul)) -> 
          parse_dependent
            (parse_pair
-              (parse_quadruple
+              (parse_triple
                  (parse_uint16 c)        (* version *)
                  (parse_uintDwarfN c df) (* header_length *)
                  (parse_uint8)           (* minimum_instruction_length *)
-                 (parse_uint8)           (* maximum_operations_per_instruction *)
+             (*    (parse_uint8)           (* maximum_operations_per_instruction *) NOT IN DWARF 2*)
               )
               (parse_quadruple
                  (parse_uint8)           (* default_is_stmt *)
@@ -2907,11 +2911,11 @@ let parse_line_number_header c : parser line_number_header =
                  (parse_uint8)           (* line_range *)
                  (parse_uint8)           (* opcode_base *)
               ))
-           (fun ((v,(hl,(minil,maxopi))),(dis,(lb,(lr,ob)))) ->
+           (fun ((v,(hl,(minil(*,maxopi*)))),(dis,(lb,(lr,ob)))) ->
              pr_post_map 
                (parse_triple
                   (pr_post_map (parse_n_bytes (ob-1)) (List.map natural_of_byte))  (* standard_opcode_lengths *)
-                  (parse_list parse_non_empty_string) (* include_directories *)
+                  ((*pr_return [[]]*) parse_list parse_non_empty_string) (* include_directories *)
                   (parse_list parse_line_number_file_entry) (* file names *)
                )
                (fun (sols, (ids, fns)) ->
@@ -2922,7 +2926,7 @@ let parse_line_number_header c : parser line_number_header =
                  lnh_version = v;
                  lnh_header_length = hl;
                  lnh_minimum_instruction_length = minil;
-                 lnh_maximum_operations_per_instruction = maxopi;
+                 lnh_maximum_operations_per_instruction = 1 (*maxopi*);
                  lnh_default_is_stmt = (dis<>0);
                  lnh_line_base = lb;
                  lnh_line_range = lr;
@@ -2937,6 +2941,32 @@ let parse_line_number_header c : parser line_number_header =
     )
 
 
+let pp_line_number_file_entry lnfe = 
+ "lnfe_path = " ^ string_of_bytes lnfe.lnfe_path ^ "\n"
+^ "lnfe_directory_index " ^ show lnfe.lnfe_directory_index ^ "\n"
+^ "lnfe_last_modification = " ^ show lnfe.lnfe_last_modification ^ "\n"
+^ "lnfe_length = " ^ show lnfe.lnfe_length ^ "\n"  
+
+
+let pp_line_number_header lnh = 
+ "offset =                              " ^ show lnh.lnh_offset ^ "\n"
+^ "dwarf_format =                       " ^ pp_dwarf_format lnh.lnh_dwarf_format ^ "\n"
+^ "unit_length =                        " ^ show lnh.lnh_unit_length ^ "\n"
+^ "version =                            " ^ show lnh.lnh_version ^ "\n"
+^ "header_length =                      " ^ show lnh.lnh_header_length ^ "\n"
+^ "minimum_instruction_length =         " ^ show lnh.lnh_minimum_instruction_length ^ "\n"
+^ "maximum_operations_per_instruction = " ^ show lnh.lnh_maximum_operations_per_instruction ^ "\n"
+^ "default_is_stmt =                    " ^ show lnh.lnh_default_is_stmt ^ "\n"
+^ "line_base =                          " ^ show lnh.lnh_line_base ^ "\n"
+^ "line_range =                         " ^ show lnh.lnh_line_range ^ "\n"
+^ "opcode_base =                        " ^ show lnh.lnh_opcode_base ^ "\n"
+^ "standard_opcode_lengths =            " ^ show lnh.lnh_standard_opcode_lengths ^ "\n"
+^ "include_directories =                " ^ myconcat ", " (List.map string_of_bytes  lnh.lnh_include_directories) ^ "\n"
+^ "file_names =                         \n" ^ myconcat "\n" (List.map pp_line_number_file_entry  lnh.lnh_file_names) ^ "\n"
+
+
+
+
 
 let parser_of_line_number_argument_type c cuh (lnat: line_number_argument_type) : parser line_number_argument_value =
     match lnat with
@@ -2947,9 +2977,28 @@ let parser_of_line_number_argument_type c cuh (lnat: line_number_argument_type) 
     | LNAT_string  -> pr_map2 (fun s -> LNAV_string s) (parse_string)
     end
 
+let parse_line_number_info c (d_line: list byte) (cu: compilation_unit) : line_number_header =
+  match find_attribute_value "DW_AT_stmt_list" cu.cu_die with
+  | Just (AV_sec_offset n) -> 
+      let pc = <| pc_bytes = d_line; pc_offset = n|> in
+      match parse_line_number_header c pc with
+      | PR_success lnh pc' ->
+          let _ = print_endline (pp_line_number_header lnh) in
+          lnh
+      | PR_fail s pc' -> Assert_extra.failwith ("parse_line_number_header failed: " ^ s)
+      end
+  | Just _ -> Assert_extra.failwith "compilation unit DW_AT_stmt_list attribute was not an AV_sec_offset"
+  | _ -> Assert_extra.failwith "compilation unit did not have a DW_AT_stmt_list attribute"
+  end
 
 
+let parse_line_number_infos c debug_line_section_body compilation_units 
+    =
+  List.map (parse_line_number_info c debug_line_section_body) compilation_units
 
+let pp_line_info li
+    =
+  myconcat "\n" (List.map (pp_line_number_header) li)
 
 
 (** all dwarf info: pp and parsing *)
@@ -2968,6 +3017,8 @@ let pp_dwarf d =
   ^ pp_ranges c cuh_default d.d_ranges
   ^ "\n************** .debug_frame section: frame info   ****************\n"
   ^ pp_frame_info c cuh_default d.d_frame_info
+  ^ "\n************** .debug_line section: line number info   ****************\n"
+  ^ pp_line_info d.d_line_info
 
     
 let parse_dwarf c
@@ -2977,6 +3028,7 @@ let parse_dwarf c
     (debug_loc_section_body: list byte) 
     (debug_ranges_section_body: list byte) 
     (debug_frame_section_body: list byte) 
+    (debug_line_section_body: list byte) 
     : dwarf =
 
   let pc_info = <|pc_bytes = debug_info_section_body; pc_offset = 0  |> in
@@ -3014,6 +3066,8 @@ let parse_dwarf c
     | PR_success fi pc_loc' -> fi
     end in
 
+  let li = parse_line_number_infos c debug_line_section_body compilation_units in
+
    <| 
    d_endianness = c.endianness;
    d_str = debug_str_section_body;
@@ -3022,6 +3076,7 @@ let parse_dwarf c
    d_loc = loc;
    d_ranges = ranges;
    d_frame_info = fi;
+   d_line_info = li;
   |>
 
 val extract_dwarf : elf64_file -> maybe dwarf 
@@ -3056,8 +3111,9 @@ let extract_dwarf f1 =
   let debug_loc_section_body    = extract_section_body ".debug_loc"    false in
   let debug_ranges_section_body = extract_section_body ".debug_ranges" false in 
   let debug_frame_section_body  = extract_section_body ".debug_frame" false in 
+  let debug_line_section_body   = extract_section_body ".debug_line" false in 
 
-  let d = parse_dwarf c debug_info_section_body debug_abbrev_section_body debug_str_section_body debug_loc_section_body debug_ranges_section_body debug_frame_section_body in
+  let d = parse_dwarf c debug_info_section_body debug_abbrev_section_body debug_str_section_body debug_loc_section_body debug_ranges_section_body debug_frame_section_body debug_line_section_body in
  
   Just d
 
