@@ -1562,8 +1562,8 @@ let parse_string : parser (list byte) =
       | Just (xs,bs) -> PR_success xs (<|pc_bytes=bs; pc_offset = pc.pc_offset + naturalFromNat (List.length xs) + naturalFromNat 1 |> )
       end
 
-
-let parse_nonempty_string : parser (list byte) =
+(* parse a null-terminated string; return Nothing if it is empty, Just s otherwise *)
+let parse_non_empty_string : parser (maybe (list byte)) =
     fun (pc:parse_context) ->
       match mytakestring' [] pc.pc_bytes with
       | Nothing -> PR_fail "parse_string" pc
@@ -2861,53 +2861,81 @@ let parse_frame_info c cuh : parser frame_info
 
 (** line number .debug_line *)
 
-(*
-let parse_line_number_header c : parser compilation_unit_header = 
-    pr_post_map 
-      (pr_with_pos 
-         (parse_dependent_pair 
-            (parse_unit_length c)
-            (fun (df,ul) -> 
-              parse_dependent_pair
-                (parse_pair
-                   (parse_quituple
-                      (parse_uint16 c)        (* version *)
-                      (parse_uintDwarfN c df) (* header_length *)
-                      (parse_uint8)           (* minimum_instruction_length *)
-                      (parse_uint8)           (* maximum_instruction_length *)
-                      (parse_uint8)           (* maximum_operations_per_instruction *)
-                   )
-                   (parse_quadruple
-                      (parse_uint8)           (* default_is_stmt *)
-                      (parse_sint8)           (* line_base *)
-                      (parse_uint8)           (* line_range *)
-                      (parse_uint8)           (* opcode_base *)
-                   ))
-                (fun ((v,hl,minil,maxil,maxopi),(dis,lb,lr,ob)) ->
-                  parse_pair
-                    (parse_uint8_array (ob-1))
-                    (parse_list parse_nonempty_string)
+let parse_line_number_file_entry : parser (maybe line_number_file_entry)
+      =
+    parse_dependent
+      (parse_non_empty_string)
+      (fun ms -> 
+        match ms with
+        | Nothing -> 
+            pr_return Nothing
+        | Just s ->
+            pr_post_map
+              (parse_triple
+                 parse_ULEB128
+                 parse_ULEB128
+                 parse_ULEB128
+              )
+              (fun (n1,(n2,n3)) ->
+                (Just 
+                <|
+                lnfe_path = s;
+                lnfe_directory_index = n1;
+                lnfe_last_modification = n2;
+                lnfe_length = n3;
+              |> )
+              )
+         end
+      )
 
+let parse_line_number_header c : parser line_number_header = 
+    (parse_dependent
+       ((pr_with_pos 
+           (parse_unit_length c) ))
+       (fun (pos,(df,ul)) -> 
+         parse_dependent
+           (parse_pair
+              (parse_quadruple
+                 (parse_uint16 c)        (* version *)
+                 (parse_uintDwarfN c df) (* header_length *)
+                 (parse_uint8)           (* minimum_instruction_length *)
+                 (parse_uint8)           (* maximum_operations_per_instruction *)
+              )
+              (parse_quadruple
+                 (parse_uint8)           (* default_is_stmt *)
+                 (parse_sint8)           (* line_base *)
+                 (parse_uint8)           (* line_range *)
+                 (parse_uint8)           (* opcode_base *)
+              ))
+           (fun ((v,(hl,(minil,maxopi))),(dis,(lb,(lr,ob)))) ->
+             pr_post_map 
+               (parse_triple
+                  (pr_post_map (parse_n_bytes (ob-1)) (List.map natural_of_byte))  (* standard_opcode_lengths *)
+                  (parse_list parse_non_empty_string) (* include_directories *)
+                  (parse_list parse_line_number_file_entry) (* file names *)
+               )
+               (fun (sols, (ids, fns)) ->
+                 <| 
+                 lnh_offset = pos;
+                 lnh_dwarf_format = df;
+                 lnh_unit_length = ul;
+                 lnh_version = v;
+                 lnh_header_length = hl;
+                 lnh_minimum_instruction_length = minil;
+                 lnh_maximum_operations_per_instruction = maxopi;
+                 lnh_default_is_stmt = (dis<>0);
+                 lnh_line_base = lb;
+                 lnh_line_range = lr;
+                 lnh_opcode_base = ob;
+                 lnh_standard_opcode_lengths = sols;
+                 lnh_include_directories = ids;
+                 lnh_file_names = fns;
+               |> 
+               )
+           )
+       )
+    )
 
-*(fun (sols, ids) -> 
-
-
-    <| 
-    lnh_offset: natural; 
-    lnh_dwarf_format: dwarf_format;
-    lnh_unit_length: natural;
-    lnh_version: natural;
-    lnh_header_length: natural;
-    lnh_minimum_instruction_length: natural;
-    lnh_maximum_operations_per_instruction: natural;
-    lnh_default_is_stmt: bool;
-    lnh_line_base: integer;
-    lnh_line_range: natural;
-    lnh_opcode_base: natural;
-    lnh_standard_opcode_lengths: list natural;
-    lnh_include_directories: list (list byte);
-    lnh_file_names: list line_number_file_entry;
-  |> 
 
 
 let parser_of_line_number_argument_type c cuh (lnat: line_number_argument_type) : parser line_number_argument_value =
@@ -2915,12 +2943,12 @@ let parser_of_line_number_argument_type c cuh (lnat: line_number_argument_type) 
     | LNAT_address -> pr_map2 (fun n -> LNAV_address n) (parse_uint_address_size c cuh.cuh_address_size)
     | LNAT_ULEB128 -> pr_map2 (fun n -> LNAV_ULEB128 n) (parse_ULEB128)
     | LNAT_SLEB128 -> pr_map2 (fun i -> LNAV_SLEB128 i) (parse_SLEB128)
-    | LNAT_uint16  -> pr_map2 (fun n -> LNAV_uint16 n) (parse_uint16)
+    | LNAT_uint16  -> pr_map2 (fun n -> LNAV_uint16 n) (parse_uint16 c)
     | LNAT_string  -> pr_map2 (fun s -> LNAV_string s) (parse_string)
     end
 
 
-*)
+
 
 
 
