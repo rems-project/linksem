@@ -135,6 +135,10 @@ let my_debug5 s = print_endline s
 (** **  dwarf representation types  **************************** *)
 (** ************************************************************ *)
 
+type elf_file = 
+  | Elf32 of elf32_file
+  | Elf64 of elf64_file
+
 type dwarf_attribute_classes = 
   | DWA_7_5_3
   | DWA_address
@@ -1267,7 +1271,25 @@ let natural_of_bytes en bs =
           + (256*256*256*256*(natural_of_byte b3 + 256*natural_of_byte b2 + 256*256*natural_of_byte b1 + 256*256*256*natural_of_byte b0))
       in
       v
-  | _ -> Assert_extra.failwith "natural_of_bytes given not-8 bytes"
+  | b0::b1::b2::b3::[] -> 
+      let v = if en=Little then 
+        natural_of_byte b0 + 256*natural_of_byte b1 + 256*256*natural_of_byte b2 + 256*256*256*natural_of_byte b3 
+      else
+        natural_of_byte b3 + 256*natural_of_byte b2 + 256*256*natural_of_byte b1 + 256*256*256*natural_of_byte b0 
+
+      in
+      v
+  | b0::b1::[] -> 
+      let v = if en=Little then 
+        natural_of_byte b0 + 256*natural_of_byte b1 
+      else
+        natural_of_byte b1 + 256*natural_of_byte b0
+
+      in
+      v
+  | b0::[] -> 
+      natural_of_byte b0 
+  | _ -> Assert_extra.failwith "natural_of_bytes given not-8/4/2/1 bytes"
   end
 
 
@@ -3106,16 +3128,19 @@ let parse_line_number_program c (cuh:compilation_unit_header) : parser line_numb
      )
 
 let parse_line_number_info c (d_line: list byte) (cu: compilation_unit) : line_number_program =
+  let f n = 
+    let d_line' = match mydrop n d_line with Just xs -> xs | Nothing -> Assert_extra.failwith "parse_line_number_info drop" end in
+    let pc = <| pc_bytes = d_line'; pc_offset = n|> in
+    match parse_line_number_program c cu.cu_header pc with
+    | PR_success lnp pc' ->
+        (*let _ = print_endline (pp_line_number_program lnp) in*)
+        lnp
+    | PR_fail s pc' -> Assert_extra.failwith ("parse_line_number_header failed: " ^ s)
+    end in
   match find_attribute_value "DW_AT_stmt_list" cu.cu_die with
-  | Just (AV_sec_offset n) -> 
-      let d_line' = match mydrop n d_line with Just xs -> xs | Nothing -> Assert_extra.failwith "parse_line_number_info drop" end in
-      let pc = <| pc_bytes = d_line'; pc_offset = n|> in
-      match parse_line_number_program c cu.cu_header pc with
-      | PR_success lnp pc' ->
-          (*let _ = print_endline (pp_line_number_program lnp) in*)
-          lnp
-      | PR_fail s pc' -> Assert_extra.failwith ("parse_line_number_header failed: " ^ s)
-      end
+  | Just (AV_sec_offset n) -> f n
+  | Just (AV_block n bs) -> f (natural_of_bytes c.endianness bs)
+        (* a 32-bit MIPS example used a 4-byte AV_block not AV_sec_offset *)
   | Just _ -> Assert_extra.failwith "compilation unit DW_AT_stmt_list attribute was not an AV_sec_offset"
   | _ -> Assert_extra.failwith "compilation unit did not have a DW_AT_stmt_list attribute"
   end
@@ -3168,6 +3193,9 @@ let parse_dwarf c
     | PR_success cus pc_info' -> cus
     end in
 
+  (*let _ = my_debug5 (pp_compilation_units c debug_str_section_body compilation_units) in*)
+
+
 (* the DWARF4 spec doesn't seem to specify the address size used in the .debug_loc section, so we (hackishly) take it from the first compilation unit *)
   let (cuh_default : compilation_unit_header) = let cu = myhead compilation_units in cu.cu_header in
 
@@ -3208,31 +3236,56 @@ let parse_dwarf c
    d_line_info = li;
   |>
 
-val extract_dwarf : elf64_file -> maybe dwarf 
-let extract_dwarf f1 = 
+val extract_dwarf : elf_file -> maybe dwarf 
+let extract_dwarf f = 
 
-  let (en: Endianness.endianness) = Elf_header.get_elf64_header_endianness f1.Elf_file.elf64_file_header in 
+  let (en: Endianness.endianness) = 
+    match f with
+    | Elf32 f32 -> Elf_header.get_elf32_header_endianness f32.Elf_file.elf32_file_header 
+    | Elf64 f64 -> Elf_header.get_elf64_header_endianness f64.Elf_file.elf64_file_header 
+    end in
   let (c: p_context) = <| endianness = en |> in
   let extract_section_body section_name (strict: bool) = 
-    let sections = 
-      List.filter 
-        (fun x -> 
-          x.Elf_interpreted_section.elf64_section_name_as_string = section_name
-        ) f1.elf64_file_interpreted_sections in
-    match sections with
-    | [section] ->
-        let section_body =  match section.Elf_interpreted_section.elf64_section_body with Sequence bs -> bs end in
-        let _ = my_debug4 (section_name ^ ": \n" ^ Elf_interpreted_section.string_of_elf64_interpreted_section section ^ "\n"
-                           ^ "  body = " ^ ppbytes2 0 section_body ^ "\n") in
-        section_body
-    | [] -> 
-        if strict then 
-          Assert_extra.failwith ("multiple " ^ section_name ^ " section not present")
-        else
-          let _ = my_debug4 (section_name ^": \nnot present\n") in
-          []
-    | _ -> Assert_extra.failwith ("multiple " ^ section_name ^ " sections present")
-    end in
+    match f with
+    | Elf32 f32 -> 
+        let sections = 
+          List.filter 
+            (fun x -> 
+              x.Elf_interpreted_section.elf32_section_name_as_string = section_name
+            ) f32.elf32_file_interpreted_sections in
+        match sections with
+        | [section] ->
+            let section_body =  match section.Elf_interpreted_section.elf32_section_body with Sequence bs -> bs end in
+            let _ = my_debug4 (section_name ^ (": \n" ^ (Elf_interpreted_section.string_of_elf32_interpreted_section section ^ "\n"
+                           ^ "  body = " ^ ppbytes2 0 section_body ^ "\n"))) in
+            section_body
+        | [] -> 
+            if strict then 
+              Assert_extra.failwith ("" ^ section_name ^ " section not present")
+            else
+              []
+        | _ -> Assert_extra.failwith ("multiple " ^ section_name ^ " sections present")
+        end 
+
+
+    | Elf64 f64 -> 
+        let sections = 
+          List.filter 
+            (fun x -> 
+              x.Elf_interpreted_section.elf64_section_name_as_string = section_name
+            ) f64.elf64_file_interpreted_sections in
+        match sections with
+        | [section] ->
+            let section_body =  match section.Elf_interpreted_section.elf64_section_body with Sequence bs -> bs end in
+            section_body
+        | [] -> 
+            if strict then 
+              Assert_extra.failwith ("" ^ section_name ^ " section not present")
+            else
+              []
+        | _ -> Assert_extra.failwith ("multiple " ^ section_name ^ " sections present")
+        end 
+    end in 
 
   let debug_info_section_body   = extract_section_body ".debug_info"   true  in
   let debug_abbrev_section_body = extract_section_body ".debug_abbrev" false in
@@ -4382,7 +4435,7 @@ CU: /var/local/stephen/work/devel/rsem/ppcmem2/system/tests-adhoc/simple-malloc/
 (** **  collecting all the statically calculated analysis info   *)
 (** ************************************************************ *)
 
-val extract_dwarf_static : elf64_file -> maybe dwarf_static
+val extract_dwarf_static : elf_file -> maybe dwarf_static
 let extract_dwarf_static f1 =
   match extract_dwarf f1 with
   | Nothing -> Nothing
@@ -4407,10 +4460,8 @@ let extract_dwarf_static f1 =
 (** **  top level for main_elf  ******************************** *)
 (** ************************************************************ *)
 
-
-val harness_string_of_elf64_debug_info_section : elf64_file -> byte_sequence -> (natural -> string) -> (natural -> string) -> (natural -> string) -> elf64_header -> elf64_section_header_table -> string_table -> string
-let {ocaml} harness_string_of_elf64_debug_info_section f1 bs0 os proc usr hdr sht stbl =
-
+val harness_string_of_elf : elf_file -> byte_sequence -> string
+let harness_string_of_elf f1 bs =
   let md = extract_dwarf f1 in 
   match md with 
   | Nothing -> "<no dwarf information extracted>"
@@ -4432,11 +4483,14 @@ let {ocaml} harness_string_of_elf64_debug_info_section f1 bs0 os proc usr hdr sh
    ^ "************** line info *************************\n"
    ^ 
      myconcat "\n" (List.map (fun lnp -> pp_line_number_program lnp ^ "\n" ^ (pp_line_number_registerss (evaluate_line_number_program lnp))) d.d_line_info)
-
-
-
   end
 
-val harness_string_of_elf32_debug_info_section : elf32_file -> byte_sequence -> (natural -> string) -> (natural -> string) -> (natural -> string) -> elf32_header -> elf32_section_header_table -> string_table -> string
-let {ocaml} harness_string_of_elf32_debug_info_section f1 bs0 os proc usr hdr sht stbl =
-  "NOT IMPLEMENTED"
+
+val harness_string_of_elf64_debug_info_section : elf64_file -> byte_sequence -> (*(natural -> string) -> (natural -> string) -> (natural -> string) -> elf64_header -> elf64_section_header_table -> string_table -> *) string
+let {ocaml} harness_string_of_elf64_debug_info_section f1 bs0 (*os proc usr hdr sht stbl*) =
+  harness_string_of_elf (Elf64 f1) bs0
+
+val harness_string_of_elf32_debug_info_section : elf32_file -> byte_sequence -> (* (natural -> string) -> (natural -> string) -> (natural -> string) -> elf32_header -> elf32_section_header_table -> string_table ->*) string
+let {ocaml} harness_string_of_elf32_debug_info_section f1 bs0 (*os proc usr hdr sht stbl*) =
+  harness_string_of_elf (Elf32 f1) bs0
+

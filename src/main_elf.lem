@@ -265,14 +265,14 @@ let _ =
                 Elf_file.read_elf32_file bs0 >>= fun f1 ->
                 get_elf32_file_section_header_string_table f1 >>= fun stbl ->
                 return (Dwarf.harness_string_of_elf32_debug_info_section
-                  f1
+                  f1 
                   bs0
-                  string_of_gnu_ext_section_type
+                  (*string_of_gnu_ext_section_type
                   (fun x -> show x)
                   (fun x -> show x)
                   f1.elf32_file_header
                   f1.elf32_file_section_header_table
-                  stbl
+                  stbl*)
                   )
               else
                 failwith "Unrecognised flag"
@@ -345,12 +345,12 @@ let _ =
                 return (Dwarf.harness_string_of_elf64_debug_info_section
                   f1
                   bs0
-                  string_of_gnu_ext_section_type
+                  (*string_of_gnu_ext_section_type
                   (fun x -> show x)
                   (fun x -> show x)
                   f1.elf64_file_header
                   f1.elf64_file_section_header_table
-                  stbl
+                  stbl*)
                   )
               else
                 failwith "Unimplemented (for ELF64) or unrecognised flag"
