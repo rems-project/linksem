@@ -73,6 +73,8 @@ they may be efficient enough for small examples as-is.  They are
 written in Lem, and compiled from that to executable OCaml.
 
 The development follows the DWARF 4 pdf specification at http://www.dwarfstd.org/
+though tweaked in places where our examples use earlier versions.  It doesn't 
+systematically cover all the DWARF versions. 
 It doesn't cover the GNU extensions 
 (at https://fedorahosted.org/elfutils/wiki/DwarfExtensions).
 The representation, parsing, and pretty printing are mostly complete for the 
@@ -85,11 +87,11 @@ data in these DWARF ELF sections:
 .debug_str
 .debug_ranges
 .debug_frame (without augmentations)
+.debug_line
 
 The following DWARF ELF sections are not covered:
 
 .debug_aranges
-.debug_line
 .debug_macinfo
 .debug_pubnames
 .debug_pubtypes
@@ -102,14 +104,13 @@ from the addresses of variables and formal parameters.  It does not
 currently handle the DWARF type data, so will not be useful for accesses
 strictly within the extent of a variable or parameter. 
 
-The 'dwarf' type gives a lightly parsed representation of some of
-the dwarf information, with the byte sequences of the above .debug_*
+The 'dwarf' type gives a lightly parsed representation of some of the
+dwarf information, with the byte sequences of the above .debug_*
 sections parsed into a structured representation.  That makes the list
 and tree structures explicit, and converts the various numeric types
-into just natural, integer, and byte sequences, but it leaves most of the
-encoding values as numbers rather than Lem constructors. The lem
-natural and integer could be replaced by unsigned and signed 64-bit
-types. 
+into just natural, integer, and byte sequences.  The lem natural and
+integer could be replaced by unsigned and signed 64-bit types; that'd
+probably be better for execution but not for theorem-prover use. 
 
 *)
 
@@ -130,7 +131,9 @@ let my_debug4 s = () (*print_endline s*)
 let my_debug5 s = print_endline s
 
 
-(** dwarf representation types *)
+(** ************************************************************ *)
+(** **  dwarf representation types  **************************** *)
+(** ************************************************************ *)
 
 type dwarf_attribute_classes = 
   | DWA_7_5_3
@@ -548,7 +551,7 @@ type line_number_operation =
   | DW_LNE_define_file of (list byte) * natural * natural * natural
   | DW_LNE_set_discriminator of natural
   (* special *)
-  | DW_LN_special of natural (* the operation advance *)
+  | DW_LN_special of natural (* the adjusted opcode *)
 
 type line_number_file_entry = 
     <|
@@ -596,6 +599,8 @@ type line_number_registers =
     lnr_end_sequence: bool;
     lnr_prologue_end: bool;
     lnr_epilogue_begin: bool;
+    lnr_isa: natural;
+    lnr_discriminator: natural;
   |>
 
 
@@ -639,6 +644,9 @@ type p_context =
 
 
 
+(** ************************************************************ *)
+(** **  missing pervasives  ************************************ *)
+(** ************************************************************ *)
 
 (** hex parsing *)
 
@@ -690,7 +698,10 @@ val natural_nat_shift_right : natural -> nat -> natural
 declare ocaml    target_rep function natural_nat_shift_right = `Nat_big_num.shift_right`
 
 
-(** dwarf encodings *)
+
+(** ************************************************************ *)
+(** **  dwarf encodings  *************************************** *)
+(** ************************************************************ *)
 
 (* these encoding tables are pasted from the DWARF 4 specification *)
 
@@ -1190,8 +1201,10 @@ let line_number_extended_encodings = [
 (* booleans encoded as a single byte containing the value 0 for “false,” and a non-zero value for “true.” *)
 
 
+(** ************************************************************ *)
+(** ** more missing pervasives and bits  *********************** *)
+(** ************************************************************ *)
 
-(** more missing pervasives *)
 
 (* quick hacky workaround: this is in String.lem, in src_lem_library, but the linker doesn't find it *)
 val myconcat : string -> list string -> string
@@ -1398,7 +1411,10 @@ let attribute_form_encode (s: string) : natural =
   end
 
 
-(** basic parsing *)
+
+(** ************************************************************ *)
+(** **  parser combinators and primitives  ********************* *)
+(** ************************************************************ *)
 
 (* parsing combinators *)
 
@@ -1745,6 +1761,11 @@ let parse_uint_segment_selector_size c (ss: natural) : parser (maybe natural) =
     | _ -> Assert_extra.failwith "cuh_address_size not 4 or 8"
     end
 
+
+
+(** ************************************************************ *)
+(** **  parsing and pretty printing of .debug_* sections  ****** *)
+(** ************************************************************ *)
 
 
 (** abbreviations table: pp and parsing *)
@@ -2336,7 +2357,7 @@ let parse_type_units c (debug_str_section_body: list byte) (debug_abbrev_section
       =
     parse_list (parse_type_unit c debug_str_section_body debug_abbrev_section_body)
 
-(** location lists *)
+(** location lists, pp and parsing *)
 
 (* readelf example
 Contents of the .debug_loc section:
@@ -2439,7 +2460,7 @@ let rec interpret_location_list (base_address: natural) (llis: list location_lis
   end
 
 
-(** range lists *)
+(** range lists, pp and parsing *)
 
 (* readelf example
 Contents of the .debug_aranges section:
@@ -2532,7 +2553,7 @@ let rec interpret_range_list (base_address: natural) (rlis: list range_list_item
   | RLI_rle rle :: rlis' -> (base_address+rle.rle_beginning_address_offset, base_address+rle.rle_ending_address_offset) :: interpret_range_list base_address rlis'
   end
 
-(** frame information *)
+(** frame information, pp and parsing *)
 
 (* readelf example
 
@@ -2882,7 +2903,7 @@ let parse_frame_info c cuh : parser frame_info
     parse_dependent_list (parse_frame_info_element c cuh)
   
 
-(** line number .debug_line *)
+(** line numbers .debug_line, pp and parsing *)
 
 let pp_line_number_file_entry lnfe = 
  "lnfe_path = " ^ string_of_bytes lnfe.lnfe_path ^ "\n"
@@ -3043,8 +3064,7 @@ let parse_line_number_operation c (cuh: compilation_unit_header) (lnh: line_numb
       else if opcode >= lnh.lnh_opcode_base then 
         (* parse special opcode *)
         let adjusted_opcode = opcode - lnh.lnh_opcode_base in
-        let operation_advance = adjusted_opcode / lnh.lnh_line_range in
-        pr_return (DW_LN_special operation_advance)
+        pr_return (DW_LN_special adjusted_opcode)
       else 
         (* parse standard opcode *)
         match lookup_aBcd_acd opcode line_number_standard_encodings with
@@ -3225,6 +3245,11 @@ let extract_dwarf f1 =
   let d = parse_dwarf c debug_info_section_body debug_abbrev_section_body debug_str_section_body debug_loc_section_body debug_ranges_section_body debug_frame_section_body debug_line_section_body in
  
   Just d
+
+
+(** ************************************************************ *)
+(** ****** location evaluation  ******************************** *)
+(** ************************************************************ *)
 
 
 (** pp of locations *)
@@ -3576,6 +3601,12 @@ and evaluate_location_description (c:p_context) (dloc: location_list_list) (eval
 
 
 
+
+
+(** ************************************************************ *)
+(** ****  evaluation of frame information ********************** *)
+(** ************************************************************ *)
+
 (** register maps *)
 
 val rrp_update : register_rule_map -> cfa_register -> register_rule -> register_rule_map
@@ -3590,7 +3621,6 @@ let rrp_lookup r rrp =
 
 val rrp_empty : register_rule_map
 let rrp_empty = []
-
 
 
 
@@ -3673,9 +3703,6 @@ let pp_evaluated_fde (fde, (rows: list cfa_table_row)) : string =
     List.map (fun row -> pphex row.ctr_loc :: pp_cfa_rule row.ctr_cfa :: List.map (fun r -> pp_register_rule (rrp_lookup r row.ctr_regs)) regs) rows  in
   pad_rows (header :: ppd_rows)
       
-
-
-
 
 
 (** evaluation of cfa information from .debug_frame *)
@@ -3786,13 +3813,6 @@ let rec evaluate_call_frame_instructions (fi: frame_info) (cie: cie) (state: cfa
   end
 
 
-(*
-let rec evaluate_call_frame_instructions_terminated (fi: frame_info) (cie: cie) (final_location: natural) (state: cfa_state) (cfis: list call_frame_instruction) : cfa_state =
-  let state' = evaluate_call_frame_instructions fi cie state cfis in
-  evaluate_call_frame_instruction fi cie state' (DW_CFA_set_loc final_location)
-*)
-
-
 let evaluate_fde (fi: frame_info) (fde:fde) : list cfa_table_row = 
   let cie = find_cie fi fde.fde_cie_pointer in
   let final_location = fde.fde_initial_location_address + fde.fde_address_range in
@@ -3829,6 +3849,9 @@ let pp_evaluated_frame_info (efi: evaluated_frame_info) =
 
 
 
+(** ************************************************************ *)
+(** **  analysis of location and frame data for reverse mapping  *)
+(** ************************************************************ *)
 
 (** analysis *)
    
@@ -3896,8 +3919,6 @@ let analyse_locations_raw c (d: dwarf) =
     
 
 (** more proper analysis of locations *)
-
-
 
 (*  TODO: handle this:
 In a variable entry representing the definition of a variable (that is, with no
@@ -4065,10 +4086,6 @@ let pp_analysed_location_data (d: dwarf) (als: analysed_location_data) : string 
 
 
 
-(* 
-type analysed_location_data_at_pc = list ((compilation_unit * (list die) * die) * (natural * natural * single_location_description * error single_location)) 
-*)
-    
 let pp_analysed_location_data_at_pc (d: dwarf) (alspc: analysed_location_data_at_pc) : string = 
   myconcat "" (List.map
     (fun ((cu,parents,die),(n1,n2,sld,esl)) -> 
@@ -4156,7 +4173,214 @@ let names_of_address
     alspc
 
 
-(** *)
+(** ************************************************************ *)
+(** **  evaluation of line-number info                           *)
+(** ************************************************************ *)
+
+let initial_line_number_registers (lnh: line_number_header) : line_number_registers = 
+    <|
+    lnr_address = 0;
+    lnr_op_index = 0;
+    lnr_file = 1;
+    lnr_line = 1;
+    lnr_column = 0;
+    lnr_is_stmt = lnh.lnh_default_is_stmt;
+    lnr_basic_block = false;
+    lnr_end_sequence = false;
+    lnr_prologue_end = false;
+    lnr_epilogue_begin = false;
+    lnr_isa = 0;
+    lnr_discriminator =0;
+  |>
+
+
+
+let evaluate_line_number_operation 
+    (lnh: line_number_header) 
+    ((s: line_number_registers), (lnrs: list line_number_registers)) 
+    (lno: line_number_operation) 
+    : line_number_registers * list line_number_registers =
+
+  let new_address s operation_advance = s.lnr_address +
+      lnh.lnh_minimum_instruction_length *
+      ((s.lnr_op_index + operation_advance)/lnh.lnh_maximum_operations_per_instruction) in
+  let new_op_index s operation_advance =
+    (s.lnr_op_index + operation_advance) mod lnh.lnh_maximum_operations_per_instruction in 
+
+  match lno with
+  | DW_LN_special adjusted_opcode -> 
+      let operation_advance = adjusted_opcode / lnh.lnh_line_range in
+      let line_increment = lnh.lnh_line_base + integerFromNatural (adjusted_opcode mod lnh.lnh_line_range) in
+      let s' = 
+        <| s with 
+         lnr_line = partialNaturalFromInteger ((integerFromNatural s.lnr_line) + line_increment);
+         lnr_address = new_address s operation_advance;
+         lnr_op_index = new_op_index s operation_advance;
+      |> in
+      let lnrs' = s'::lnrs in
+      let s'' =
+        <| s' with
+           lnr_basic_block = false;
+           lnr_prologue_end = false;
+           lnr_epilogue_begin = false;
+           lnr_discriminator = 0;
+        |> in
+      (s'', lnrs')
+  | DW_LNS_copy                   -> 
+      let lnrs' = s::lnrs in
+      let s' =
+        <| s with
+           lnr_basic_block = false;
+           lnr_prologue_end = false;
+           lnr_epilogue_begin = false;
+           lnr_discriminator = 0;
+        |> in
+      (s', lnrs')
+  | DW_LNS_advance_pc operation_advance -> 
+      let s' = 
+        <| s with 
+         lnr_address = new_address s operation_advance;
+         lnr_op_index = new_op_index s operation_advance;
+      |> in
+      (s', lnrs)
+  | DW_LNS_advance_line line_increment -> 
+      let s' = <| s with lnr_line = partialNaturalFromInteger ((integerFromNatural s.lnr_line) + line_increment) |> in (s', lnrs)
+  | DW_LNS_set_file n             -> 
+      let s' = <| s with lnr_file = n |> in (s', lnrs)
+  | DW_LNS_set_column n           -> 
+      let s' = <| s with lnr_column = n |> in (s', lnrs)
+  | DW_LNS_negate_stmt            -> 
+      let s' = <| s with lnr_is_stmt = not s.lnr_is_stmt |> in (s', lnrs)
+  | DW_LNS_set_basic_block        -> 
+      let s' = <| s with lnr_basic_block = true |> in (s', lnrs)
+  | DW_LNS_const_add_pc           -> 
+      let opcode = 255 in 
+      let adjusted_opcode = opcode - lnh.lnh_opcode_base in
+      let operation_advance = adjusted_opcode / lnh.lnh_line_range in
+      let s' = 
+        <| s with 
+         lnr_address = new_address s operation_advance;
+         lnr_op_index = new_op_index s operation_advance;
+      |> in
+      (s', lnrs)
+  | DW_LNS_fixed_advance_pc n     -> 
+      let s' = 
+        <| s with 
+         lnr_address = s.lnr_address + n;
+         lnr_op_index = 0;
+      |> in
+      (s', lnrs)
+  | DW_LNS_set_prologue_end       -> 
+      let s' = <| s with lnr_prologue_end = true |> in (s', lnrs)
+  | DW_LNS_set_epilogue_begin     -> 
+      let s' = <| s with lnr_epilogue_begin = true |> in (s', lnrs)
+  | DW_LNS_set_isa n              ->  
+      let s' = <| s with lnr_isa = n |> in (s', lnrs)
+  | DW_LNE_end_sequence           -> 
+      let s' = <| s with lnr_end_sequence = true |> in 
+      let lnrs' = s' :: lnrs in
+      let s'' = initial_line_number_registers lnh in
+      (s'', lnrs')
+  | DW_LNE_set_address n          ->  
+      let s' = 
+        <| s with 
+         lnr_address = n;
+         lnr_op_index = 0;
+      |> in
+      (s', lnrs)
+  | DW_LNE_define_file s n1 n2 n3 -> 
+      Assert_extra.failwith "DW_LNE_define_file not implemented" 
+  | DW_LNE_set_discriminator n    -> 
+      let s' = <| s with lnr_discriminator = n |> in (s', lnrs)
+  end
+
+let rec evaluate_line_number_operations 
+    (lnh: line_number_header) 
+    ((s: line_number_registers), (lnrs: list line_number_registers)) 
+    (lnos: list line_number_operation) 
+    : line_number_registers * list line_number_registers =
+  match lnos with
+  | [] -> (s,lnrs) 
+  | lno :: lnos' ->
+      let (s',lnrs') = 
+        evaluate_line_number_operation lnh (s,lnrs) lno in
+      evaluate_line_number_operations lnh (s',lnrs') lnos'
+  end    
+
+let evaluate_line_number_program 
+    (lnp:line_number_program) 
+    : list line_number_registers =
+  List.reverse (Tuple.snd (evaluate_line_number_operations lnp.lnp_header ((initial_line_number_registers lnp.lnp_header),[]) lnp.lnp_operations))
+
+
+let pp_line_number_registers lnr =
+  ""
+  ^ "address = " ^        pphex lnr.lnr_address       ^ "\n"
+  ^ "op_index = " ^       show lnr.lnr_op_index       ^ "\n"
+  ^ "file = " ^           show lnr.lnr_file           ^ "\n"
+  ^ "line = " ^           show lnr.lnr_line           ^ "\n"
+  ^ "column = " ^         show lnr.lnr_column         ^ "\n"
+  ^ "is_stmt = " ^        show lnr.lnr_is_stmt        ^ "\n"
+  ^ "basic_block = " ^    show lnr.lnr_basic_block    ^ "\n"
+  ^ "end_sequence = " ^   show lnr.lnr_end_sequence   ^ "\n"
+  ^ "prologue_end = " ^   show lnr.lnr_prologue_end   ^ "\n"
+  ^ "epilogue_begin = " ^ show lnr.lnr_epilogue_begin ^ "\n"
+  ^ "isa = " ^            show lnr.lnr_isa            ^ "\n"
+  ^ "discriminator = " ^  pphex lnr.lnr_discriminator ^ "\n"
+
+let pp_line_number_registers_tight lnr : list string =
+  [
+   pphex lnr.lnr_address       ; 
+   show lnr.lnr_op_index       ; 
+   show lnr.lnr_file           ; 
+   show lnr.lnr_line           ; 
+   show lnr.lnr_column         ; 
+   show lnr.lnr_is_stmt        ; 
+   show lnr.lnr_basic_block    ; 
+   show lnr.lnr_end_sequence   ; 
+   show lnr.lnr_prologue_end   ; 
+   show lnr.lnr_epilogue_begin ; 
+   show lnr.lnr_isa            ; 
+   pphex lnr.lnr_discriminator 
+ ]
+
+let pp_line_number_registerss lnrs = 
+  pad_rows 
+    (
+     ["address"; "op_index"; "file"; "line"; "column"; "is_stmt"; "basic_block"; "end_sequence"; "prologue_end"; "epilogue_begin"; "isa"; "discriminator"]
+     ::
+       (List.map pp_line_number_registers_tight lnrs)
+    )
+
+(* readef example:
+Decoded dump of debug contents of section .debug_line:
+
+CU: /var/local/stephen/work/devel/rsem/ppcmem2/system/tests-adhoc/simple-malloc/test-concurrent.c:
+File name                            Line number    Starting address
+test-concurrent.c                             11            0x400144
+
+test-concurrent.c                             12            0x40014c
+test-concurrent.c                             13            0x400154
+test-concurrent.c                             14            0x400158
+test-concurrent.c                             17            0x400160
+
+/var/local/stephen/work/devel/rsem/ppcmem2/system/tests-adhoc/simple-malloc/../thread_start_aarch64.h:
+thread_start_aarch64.h                        34            0x400168
+thread_start_aarch64.h                        36            0x400174
+
+/var/local/stephen/work/devel/rsem/ppcmem2/system/tests-adhoc/simple-malloc/test-concurrent.c:
+test-concurrent.c                             19            0x400174
+
+test-concurrent.c                             20            0x40017c
+test-concurrent.c                             22            0x400180
+
+CU: /var/local/stephen/work/devel/rsem/ppcmem2/system/tests-adhoc/simple-malloc/malloc.c:
+...
+*)
+
+(** ************************************************************ *)
+(** **  collecting all the statically calculated analysis info   *)
+(** ************************************************************ *)
 
 val extract_dwarf_static : elf64_file -> maybe dwarf_static
 let extract_dwarf_static f1 =
@@ -4179,8 +4403,9 @@ let extract_dwarf_static f1 =
 
             
 
-
-(** top level for main_elf*)
+(** ************************************************************ *)
+(** **  top level for main_elf  ******************************** *)
+(** ************************************************************ *)
 
 
 val harness_string_of_elf64_debug_info_section : elf64_file -> byte_sequence -> (natural -> string) -> (natural -> string) -> (natural -> string) -> elf64_header -> elf64_section_header_table -> string_table -> string
@@ -4203,6 +4428,10 @@ let {ocaml} harness_string_of_elf64_debug_info_section f1 bs0 os proc usr hdr sh
    ^ 
      let als = analyse_locations d  in
      pp_analysed_location_data d als 
+
+   ^ "************** line info *************************\n"
+   ^ 
+     myconcat "\n" (List.map (fun lnp -> pp_line_number_program lnp ^ "\n" ^ (pp_line_number_registerss (evaluate_line_number_program lnp))) d.d_line_info)
 
 
 
