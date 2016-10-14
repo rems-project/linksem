@@ -61,7 +61,7 @@ The last collects all the above - information that can be computed statically.
 Then to do lookup from addresses to source-code names, we have:
 
   type analysed_location_data_at_pc
-  val analysed_locations_at_pc : evaluation_context -> dwarf -> evaluated_frame_info -> analysed_location_data -> natural -> analysed_location_data_at_pc
+  val analysed_locations_at_pc : evaluation_context -> dwarf_static -> natural -> analysed_location_data_at_pc
   val names_of_address : dwarf -> analysed_location_data_at_pc -> natural -> list string
 
 The definitions are deliberately simple-minded, to be quick to write,
@@ -135,9 +135,6 @@ let my_debug5 s = print_endline s
 (** **  dwarf representation types  **************************** *)
 (** ************************************************************ *)
 
-type elf_file = 
-  | Elf32 of elf32_file
-  | Elf64 of elf64_file
 
 type dwarf_attribute_classes = 
   | DWA_7_5_3
@@ -630,11 +627,16 @@ type analysed_location_data = list ((compilation_unit * (list die) * die) * mayb
 
 type analysed_location_data_at_pc = list ((compilation_unit * (list die) * die) * (natural * natural * single_location_description * error single_location)) 
 
+(* evaluated line data *)
+
+type evaluated_line_info = list (line_number_header * list line_number_registers) 
+
 type dwarf_static =
     <|
     ds_dwarf: dwarf;
     ds_analysed_location_data: analysed_location_data;
     ds_evaluated_frame_info: evaluated_frame_info;
+    ds_evaluated_line_info: evaluated_line_info;
   |>
 
 type dwarf_dynamic_at_pc = analysed_location_data_at_pc
@@ -1246,6 +1248,12 @@ let rec myfind f xs =
   | x::xs' -> match f x with true -> Just x | false -> myfind f xs' end
   end
 
+val myfiltermaybe : forall 'a 'b.  ('a -> maybe 'b) -> list 'a -> list 'b
+let rec myfiltermaybe f xs = 
+  match xs with
+  | [] -> []
+  | x::xs' -> match f x with Just y -> y::myfiltermaybe f xs'| Nothing -> myfiltermaybe f xs' end
+  end
 
 
 
@@ -1309,6 +1317,14 @@ let rec mytake' (n:natural) acc xs =
 
 val mytake : forall 'a.  natural -> (list 'a) -> maybe (list 'a * list 'a)
 let mytake n xs = mytake' n [] xs
+
+val mynth : forall 'a.  natural -> (list 'a) -> maybe 'a
+let rec mynth (n:natural) xs = 
+  match (n,xs) with
+  | (0, x::xs') -> Just x
+  | (0, []) -> Nothing (*Assert_extra.failwith "mynth"*)
+  | (_, x::xs') -> mynth (n-1) xs'
+  end
 
 
 (** basic pretty printing *)
@@ -3241,13 +3257,13 @@ let extract_dwarf f =
 
   let (en: Endianness.endianness) = 
     match f with
-    | Elf32 f32 -> Elf_header.get_elf32_header_endianness f32.Elf_file.elf32_file_header 
-    | Elf64 f64 -> Elf_header.get_elf64_header_endianness f64.Elf_file.elf64_file_header 
+    | ELF_File_32 f32 -> Elf_header.get_elf32_header_endianness f32.Elf_file.elf32_file_header 
+    | ELF_File_64 f64 -> Elf_header.get_elf64_header_endianness f64.Elf_file.elf64_file_header 
     end in
   let (c: p_context) = <| endianness = en |> in
   let extract_section_body section_name (strict: bool) = 
     match f with
-    | Elf32 f32 -> 
+    | ELF_File_32 f32 -> 
         let sections = 
           List.filter 
             (fun x -> 
@@ -3268,7 +3284,7 @@ let extract_dwarf f =
         end 
 
 
-    | Elf64 f64 -> 
+    | ELF_File_64 f64 -> 
         let sections = 
           List.filter 
             (fun x -> 
@@ -4158,16 +4174,14 @@ let pp_analysed_location_data_at_pc (d: dwarf) (alspc: analysed_location_data_at
     alspc)
 
 
-val analysed_locations_at_pc : evaluation_context -> dwarf -> evaluated_frame_info -> analysed_location_data -> natural -> analysed_location_data_at_pc
+val analysed_locations_at_pc : evaluation_context -> dwarf_static -> natural -> analysed_location_data_at_pc
 let analysed_locations_at_pc 
     (ev)
-    (d: dwarf)
-    (evaluated_frame_info: evaluated_frame_info)
-    (als: analysed_location_data)
+    (ds: dwarf_static)
     (pc: natural) 
     : analysed_location_data_at_pc
     =  
-  let c : p_context = <| endianness = d.d_endianness |> in
+  let c : p_context = <| endianness = ds.ds_dwarf.d_endianness |> in
   
   let xs = 
     List.mapMaybe 
@@ -4181,7 +4195,7 @@ let analysed_locations_at_pc
             | _ -> Just (cupd,nns')
             end
         end)
-      als 
+      ds.ds_analysed_location_data
 in 
 
 List.concat
@@ -4190,11 +4204,11 @@ List.concat
        let ac = arithmetic_context_of_cuh cu.cu_header in 
        let base_address = cu_base_address cu in 
        let mfbloc : maybe attribute_value = 
-         closest_enclosing_frame_base d.d_loc base_address parents in
+         closest_enclosing_frame_base ds.ds_dwarf.d_loc base_address parents in
        List.map 
          (fun (n1,n2,sld) -> 
            let el : error single_location = 
-             evaluate_location_description_bytes c d.d_loc evaluated_frame_info cu.cu_header ac ev mfbloc pc sld in
+             evaluate_location_description_bytes c ds.ds_dwarf.d_loc ds.ds_evaluated_frame_info cu.cu_header ac ev mfbloc pc sld in
            ((cu,parents,die),(n1,n2,sld,el))
          )
          nns
@@ -4245,8 +4259,6 @@ let initial_line_number_registers (lnh: line_number_header) : line_number_regist
     lnr_isa = 0;
     lnr_discriminator =0;
   |>
-
-
 
 let evaluate_line_number_operation 
     (lnh: line_number_header) 
@@ -4342,7 +4354,7 @@ let evaluate_line_number_operation
       |> in
       (s', lnrs)
   | DW_LNE_define_file s n1 n2 n3 -> 
-      Assert_extra.failwith "DW_LNE_define_file not implemented" 
+      Assert_extra.failwith "DW_LNE_define_file not implemented"  (*TODO: add to file list in header - but why is this in the spec? *)
   | DW_LNE_set_discriminator n    -> 
       let s' = <| s with lnr_discriminator = n |> in (s', lnrs)
   end
@@ -4405,6 +4417,9 @@ let pp_line_number_registerss lnrs =
        (List.map pp_line_number_registers_tight lnrs)
     )
 
+let pp_evaluated_line_info (eli: evaluated_line_info) : string = 
+  myconcat "\n" (List.map (fun (lnh,lnrs) -> pp_line_number_header lnh ^ "\n" ^ pp_line_number_registerss lnrs) eli)
+
 (* readef example:
 Decoded dump of debug contents of section .debug_line:
 
@@ -4431,6 +4446,28 @@ CU: /var/local/stephen/work/devel/rsem/ppcmem2/system/tests-adhoc/simple-malloc/
 ...
 *)
 
+
+let source_lines_of_address (ds:dwarf_static) (a: natural) : list (string * natural * line_number_registers) = 
+  List.concat
+    (List.map 
+       (fun (lnh, lnrs) -> 
+         myfiltermaybe
+           (fun lnr ->
+             if a = lnr.lnr_address && not lnr.lnr_end_sequence then
+               match mynth (lnr.lnr_file - 1) lnh.lnh_file_names with
+               | Just lnfe -> 
+                   Just (string_of_bytes lnfe.lnfe_path, lnr.lnr_line, lnr)
+               | Nothing ->
+                   Just ("<source_lines_of_address: file entry not found>", 0, lnr)
+               end
+             else
+               Nothing)
+           lnrs
+       )
+    ds.ds_evaluated_line_info 
+    )
+
+
 (** ************************************************************ *)
 (** **  collecting all the statically calculated analysis info   *)
 (** ************************************************************ *)
@@ -4444,11 +4481,14 @@ let extract_dwarf_static f1 =
         analyse_locations dwarf in 
       let efi : evaluated_frame_info = 
         evaluate_frame_info dwarf in 
+      let eli : evaluated_line_info = 
+        List.map (fun lnp -> (lnp.lnp_header, evaluate_line_number_program lnp)) dwarf.d_line_info in
       let ds =     
         <|
         ds_dwarf = dwarf;
         ds_analysed_location_data = ald;
         ds_evaluated_frame_info = efi;
+        ds_evaluated_line_info = eli;
       |> in
       Just ds
   end
@@ -4462,35 +4502,26 @@ let extract_dwarf_static f1 =
 
 val harness_string_of_elf : elf_file -> byte_sequence -> string
 let harness_string_of_elf f1 bs =
-  let md = extract_dwarf f1 in 
-  match md with 
+  let mds = extract_dwarf_static f1 in 
+  match mds with 
   | Nothing -> "<no dwarf information extracted>"
-  | Just d -> pp_dwarf d
-
-
-(*   ^ analyse_locations_raw c d    *)
-
+  | Just ds -> 
+      pp_dwarf ds.ds_dwarf
+      (*   ^ analyse_locations_raw c d    *)
    ^ "************** evaluation of frame data *************************\n"
-   ^ 
-     let efi = evaluate_frame_info d in
-     pp_evaluated_frame_info efi 
-
+   ^ pp_evaluated_frame_info ds.ds_evaluated_frame_info
    ^ "************** analysis of location data *************************\n"
-   ^ 
-     let als = analyse_locations d  in
-     pp_analysed_location_data d als 
-
+   ^ pp_analysed_location_data ds.ds_dwarf ds.ds_analysed_location_data
    ^ "************** line info *************************\n"
-   ^ 
-     myconcat "\n" (List.map (fun lnp -> pp_line_number_program lnp ^ "\n" ^ (pp_line_number_registerss (evaluate_line_number_program lnp))) d.d_line_info)
+   ^ pp_evaluated_line_info ds.ds_evaluated_line_info
   end
 
 
 val harness_string_of_elf64_debug_info_section : elf64_file -> byte_sequence -> (*(natural -> string) -> (natural -> string) -> (natural -> string) -> elf64_header -> elf64_section_header_table -> string_table -> *) string
 let {ocaml} harness_string_of_elf64_debug_info_section f1 bs0 (*os proc usr hdr sht stbl*) =
-  harness_string_of_elf (Elf64 f1) bs0
+  harness_string_of_elf (ELF_File_64 f1) bs0
 
 val harness_string_of_elf32_debug_info_section : elf32_file -> byte_sequence -> (* (natural -> string) -> (natural -> string) -> (natural -> string) -> elf32_header -> elf32_section_header_table -> string_table ->*) string
 let {ocaml} harness_string_of_elf32_debug_info_section f1 bs0 (*os proc usr hdr sht stbl*) =
-  harness_string_of_elf (Elf32 f1) bs0
+  harness_string_of_elf (ELF_File_32 f1) bs0
 

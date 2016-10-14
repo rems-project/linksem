@@ -24,10 +24,6 @@ open import Elf_types_native_uint
 
 open import Hex_printing
 
-type elf_file =
-  | ELF_File_32 of elf32_file
-  | ELF_File_64 of elf64_file
-
 type executable_process_image =
   | ELF_Class_32 of elf32_executable_process_image
   | ELF_Class_64 of elf64_executable_process_image

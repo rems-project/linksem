@@ -121,6 +121,14 @@ type elf64_file =
    ; elf64_file_bits_and_bobs        : list (natural * byte_sequence) (** The uninterpreted "rubbish" that may appear in gaps in the binary file. *)
    |>
 
+
+type elf_file =
+  | ELF_File_32 of elf32_file
+  | ELF_File_64 of elf64_file
+
+
+
+
 (** [bytes_of_elf64_file f1] blits ELF file [f1] to a byte sequence, ready for
   * writing to a binary file.  Fails if the invariant on [elf64_file] mentioned
   * above is not respected.
