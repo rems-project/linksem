@@ -1072,7 +1072,11 @@ let get_elf32_file_global_symbol_init f3 =
           let chunks =
             List.filter (fun (chunk, _) ->
               addr >= chunk.elf32_segment_base &&
-                addr + size <= chunk.elf32_segment_base + chunk.elf32_segment_size
+                (if size > 0
+                 then addr + size <= chunk.elf32_segment_base + chunk.elf32_segment_size
+                 (* We don't consider a zero-size symbol one byte after a section
+                    (i.e. addr = segment_base + segment_size) to be inside that section. *)
+                 else addr + size < chunk.elf32_segment_base + chunk.elf32_segment_size)
             ) img
           in
             match chunks with
@@ -1107,7 +1111,11 @@ let get_elf64_file_global_symbol_init f3 =
           let chunks =
             List.filter (fun (chunk, _) ->
               addr >= chunk.elf64_segment_base &&
-                addr + size <= chunk.elf64_segment_base + chunk.elf64_segment_size
+                (if size > 0
+                 then addr + size <= chunk.elf64_segment_base + chunk.elf64_segment_size
+                 (* We don't consider a zero-size symbol one byte after a section
+                    (i.e. addr = segment_base + segment_size) to be inside that section. *)
+                 else addr + size < chunk.elf64_segment_base + chunk.elf64_segment_size)
             ) img
           in
             match chunks with
