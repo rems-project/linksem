@@ -111,7 +111,7 @@ translations
 text\<open>Syntax for everything else.\<close>
 syntax
   syntax_lift_literal_int  :: "int \<Rightarrow> expr" ("\<lceil>/ _ /\<rceil>i" [75]75)
-  syntax_lift_literal_bool :: "int \<Rightarrow> expr" ("\<lceil>/ _ /\<rceil>b" [75]75)
+  syntax_lift_literal_bool :: "bool \<Rightarrow> expr" ("\<lceil>/ _ /\<rceil>b" [75]75)
   syntax_call              :: "ident \<Rightarrow> expr list \<Rightarrow> expr" ("_\<lparr>/ _/ \<rparr>" [60,60]60)
   syntax_if_then_else      :: "expr \<Rightarrow> expr \<Rightarrow> expr \<Rightarrow> expr" ("If/ _/ Then/ _/ Else/ _/ End" [60,60,60]60)
 translations
