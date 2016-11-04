@@ -2858,8 +2858,8 @@ let parse_frame_info_element c cuh (fi: list frame_info_element) : parser frame_
                 (fun v -> 
                   parse_triple 
                     parse_string (* augmentation *)
-                    (if v=4 then pr_post_map parse_uint8 (fun i->Just i) else pr_return Nothing) (* address_size *) 
-                    (if v=4 then pr_post_map parse_uint8 (fun i->Just i) else pr_return Nothing)))  (* segment_size *) 
+                    (if v=4 || v=46 then pr_post_map parse_uint8 (fun i->Just i) else pr_return Nothing) (* address_size *) 
+                    (if v=4 || v=46 then pr_post_map parse_uint8 (fun i->Just i) else pr_return Nothing)))  (* segment_size *) 
              (parse_quadruple
                 parse_ULEB128 (* code_alignment_factor *)
                 parse_SLEB128 (* data_alignment_factor *)
