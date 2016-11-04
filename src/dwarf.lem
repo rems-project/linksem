@@ -432,7 +432,7 @@ type call_frame_instruction =
   | DW_CFA_val_offset          of cfa_register * cfa_offset
   | DW_CFA_val_offset_sf       of cfa_register * cfa_sfoffset
   | DW_CFA_val_expression      of cfa_register * cfa_block
-
+  | DW_CFA_unknown             of byte 
 
 (* .debug_frame section: top-level *)
 
@@ -2692,6 +2692,7 @@ let pp_call_frame_instruction i =
   | DW_CFA_val_offset r n         -> "DW_CFA_val_offset" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_offset (integerFromNatural n)
   | DW_CFA_val_offset_sf r i      -> "DW_CFA_val_offset_sf" ^ pp_cfa_register r ^ " " ^ pp_cfa_sfoffset i
   | DW_CFA_val_expression r b     -> "DW_CFA_val_expression" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_block b
+  | DW_CFA_unknown bt             -> "DW_CFA_unknown" ^ " " ^ show bt
   end
 
 let pp_call_frame_instructions is = myconcat "" (List.map (fun i -> "  " ^ pp_call_frame_instruction i ^ "\n") is)
@@ -2734,7 +2735,9 @@ let parse_call_frame_instruction c cuh : parser (maybe call_frame_instruction) =
                 | PR_success (Nothing) pc'' -> Assert_extra.failwith "bad call frame instruction argument 1"
                 | PR_fail s pc'' -> Assert_extra.failwith "bad call frame instruction argument 2"
                 end
-            | Nothing -> Assert_extra.failwith ("can't parse " ^ show b ^ " as call frame instruction")
+            | Nothing -> 
+                (*Assert_extra.failwith ("can't parse " ^ show b ^ " as call frame instruction")*)
+                PR_success (Just (DW_CFA_unknown b)) pc'
             end
           else            
             if high_bits = unsigned_char_of_natural 64 then 
@@ -2797,7 +2800,7 @@ let pp_fde c cuh fde =
   ^ " FDE"
   ^ " cie=" ^ pphex fde.fde_cie_pointer (* duplicated?? *)
   ^ " pc=" ^ match fde.fde_initial_location_segment_selector with Nothing -> "" | Just segment_selector -> "("^pphex segment_selector^")" end ^ pphex fde.fde_initial_location_address ^ ".." ^ pphex (fde.fde_initial_location_address + fde.fde_address_range) ^ "\n"
-  ^ ppbytes fde.fde_instructions_bytes
+  ^ ppbytes fde.fde_instructions_bytes ^ "\n"
   ^ pp_call_frame_instructions fde.fde_instructions
 
 let pp_frame_info_element c cuh fie =
@@ -3234,6 +3237,8 @@ let parse_dwarf c
   let pc_frame = <|pc_bytes = debug_frame_section_body; pc_offset = 0  |> in
 
   let fi = 
+    let _ = my_debug5 ("debug_frame_section_body:\n" ^ ppbytes2 0 debug_frame_section_body) in
+
     match parse_frame_info c cuh_default pc_frame with
     | PR_fail s pc_info' ->  Assert_extra.failwith ("parse_frame_info: " ^ pp_parse_fail s pc_info')
     | PR_success fi pc_loc' -> fi
@@ -3869,6 +3874,10 @@ let evaluate_call_frame_instruction (fi: frame_info) (cie: cie) (state: cfa_stat
   | DW_CFA_nop                    -> 
       state
 
+(* Unknown *)
+  | DW_CFA_unknown b              ->
+      Assert_extra.failwith ("evaluate_call_frame_instruction: DW_CFA_unknown " ^ show b)
+
   end
 
 
@@ -4477,6 +4486,8 @@ let extract_dwarf_static f1 =
   match extract_dwarf f1 with
   | Nothing -> Nothing
   | Just dwarf ->
+      let _ = my_debug5 (pp_dwarf dwarf) in
+
       let ald : analysed_location_data = 
         analyse_locations dwarf in 
       let efi : evaluated_frame_info = 
