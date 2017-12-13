@@ -11,7 +11,7 @@ LEM ?= $(LEMDIR)/lem
 CONTRIB ?= ../contrib
 UINT ?= $(CONTRIB)/ocaml-uint/_build/lib
 
-OCAML_LEM_INCLUDES ?= -I $(LEMDIR)/ocaml-lib/ \
+OCAML_LEM_INCLUDES ?= -I $(LEMDIR)/ocaml-lib/num_impl_zarith -I $(LEMDIR)/ocaml-lib/ \
 -I $(LEMDIR)/ocaml-lib/dependencies/zarith/
 
 $(warning MAKECMDGOALS is $(MAKECMDGOALS))
@@ -102,7 +102,7 @@ LEM_LINK_SRC := elf_memory_image.lem elf_memory_image_of_elf64_file.lem command_
 LEM_MODEL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC))
 
 LEM_MODEL_TP_THY := $(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC) test_image.lem import_everything.lem
-OCAML_LIB_OBJS := unix.cma str.cma nums.cma zarith.cma nat_num.cmo big_int_impl.cmo nat_big_num.cmo uint.cma
+OCAML_LIB_OBJS := unix.cma str.cma nums.cma zarith.cma nat_num.cmo big_int_impl.cmo nat_big_num.cmo rational_impl.cmo rational.cmo uint.cma
 LEM_OCAML_OBJS := lem.cmo lem_basic_classes.cmo lem_function.cmo lem_list.cmo lem_num.cmo lem_sorting.cmo \
     xstring.cmo pset.cmo pmap.cmo lem_maybe.cmo lem_map.cmo lem_set.cmo lem_string_extra.cmo
 
