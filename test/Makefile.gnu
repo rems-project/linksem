@@ -9,7 +9,7 @@ OBJECTS ?= $(BASENAME).o
 
 default: $(OUTPUTS) repeat
 
-LDFLAGS := -static
+LDFLAGS ?= -static
 
 # Avoid LTO/plugin cruft in our link commands, for now.
 LDFLAGS += -fno-lto
@@ -49,9 +49,21 @@ $(BASENAME).env: $(BASENAME).cmd
 $(BASENAME).collect-cmd: $(BASENAME).cmd
 	cat "$<" | grep /collect > "$@"
 
+ifeq ($(filter -static,$(LDFLAGS)),)
+LIB_SUFFIXES := so a
+else
+LIB_SUFFIXES := a
+endif
+
 $(BASENAME).repeat-cmd: $(BASENAME).collect-cmd $(BASENAME).env
 	unquote () { \
 		eval echo "$$1"; \
+	}; \
+	lds_to_cmdline () { \
+		sed 's/AS_NEEDED *(\([^)]*\))/--as-needed \1 --no-as-needed/g' | \
+		sed 's/OUTPUT_FORMAT(\([^)]*\))//g' | \
+		sed 's/GROUP *(\([^)]*\))/--start-group \1 --end-group/g' | \
+		tr '\n' ' ' | sed 's^/\*.*\*/^^'; \
 	}; \
 	for arg in $$( cat "$<" ); do \
 		unquoted_arg="$$( unquote "$$arg" )"; \
@@ -59,14 +71,29 @@ $(BASENAME).repeat-cmd: $(BASENAME).collect-cmd $(BASENAME).env
 			(*/collect*) \
 				echo "ld" ;; \
 			(/*) cp "$$unquoted_arg" ./ && echo $$(basename "$$unquoted_arg" );; \
-			(-l*) ( . ./$(BASENAME).env && echo $$LIBRARY_PATH | tr ':' '\n' | while read line; do \
-					search_fname="$$line"/lib$$( echo "$$unquoted_arg" | sed 's/^-l//' ).a; \
-					if [ -e "$$search_fname" ]; then \
-						cp "$$search_fname" ./ && echo $$(basename "$$search_fname") && break; \
+			(-l*) ( . ./$(BASENAME).env && \
+					tmpfile=$$(mktemp) && \
+					echo $$LIBRARY_PATH | tr ':' '\n' > $$tmpfile && \
+					found="" && for suffix in $(LIB_SUFFIXES); do while read line ; do \
+					search_fname_stem="$$line"/lib$$( echo "$$unquoted_arg" | sed 's/^-l//'); \
+					if [ -e "$$search_fname_stem".$$suffix ]; then \
+						echo -n "Found: " 1>&2; \
+						cp "$$search_fname_stem".$$suffix ./ && \
+						found="$$search_fname_stem".$$suffix && \
+						(file "$$found" 2>&1 | grep ASCII >/dev/null && (for word in $$(cat "$$found" | lds_to_cmdline); do \
+							case "$$word" in \
+								(/*) cp "$$word" ./ && basename "$$word";; \
+								(*) echo "$$word" ;; \
+							esac; \
+						    done) || \
+						    echo $$(basename "$$search_fname_stem".$$suffix) ) | tee /dev/stderr; break 2; \
 					else \
-						echo "Did not find $$search_fname; trying next in path" 1>&2; \
+						echo "Did not find $$search_fname_stem.$$suffix; trying next in path" 1>&2; \
 					fi; \
-				done ) \
+				done < "$$tmpfile"; \
+				if [ -z "$$found" ]; then echo "Did not find $$unquoted_arg with suffix $$suffix" 1>&2; fi; done; \
+				rm -f "$$tmpfile"; \
+				) \
 				;; \
 			(-L*) ;; \
 			(-f*) ;; \
@@ -83,4 +110,4 @@ repeat: $(OBJECTS) $(BASENAME).repeat-cmd
 $(BASENAME).with-relocs: $(OBJECTS) $(BASENAME).repeat-cmd
 	eval $$( cat $(BASENAME).repeat-cmd | sed 's/^ld/ld -q/' | sed 's#-o $(BASENAME)#-o $@#' )
 clean:
-	rm -f $(OUTPUTS) *.o *.a
+	rm -f $(OUTPUTS) *.o *.a *.so *.so.*
