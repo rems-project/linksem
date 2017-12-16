@@ -1,3 +1,5 @@
+open Stdint
+
 type uint32 = Nat_big_num.num
 
 (* 2^32 - 1 *)

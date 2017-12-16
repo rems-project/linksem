@@ -9,7 +9,7 @@ REPOROOT := $(dir $(THIS_MAKEFILE))/..
 LEMDIR ?= ../../lem
 LEM ?= $(LEMDIR)/lem
 CONTRIB ?= ../contrib
-UINT ?= $(CONTRIB)/ocaml-uint/_build/lib
+UINT ?= $(CONTRIB)/ocaml-stdint/_build/lib
 
 # Lem optionally vendors the zarith dependency, but currently
 # we don't use that -- just assume the host system has zarith.
@@ -111,7 +111,7 @@ LEM_LINK_SRC := elf_memory_image.lem elf_memory_image_of_elf64_file.lem command_
 LEM_MODEL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC))
 
 LEM_MODEL_TP_THY := $(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC) test_image.lem import_everything.lem
-OCAML_LIB_OBJS := unix.cma str.cma nums.cma -package zarith nat_num.cmo big_int_impl.cmo nat_big_num.cmo rational_impl.cmo rational.cmo uint.cma
+OCAML_LIB_OBJS := unix.cma str.cma nums.cma -package zarith nat_num.cmo big_int_impl.cmo nat_big_num.cmo rational_impl.cmo rational.cmo stdint.cma
 LEM_OCAML_OBJS := lem.cmo lem_basic_classes.cmo lem_function.cmo lem_list.cmo lem_num.cmo lem_sorting.cmo \
     xstring.cmo pset.cmo pmap.cmo lem_maybe.cmo lem_map.cmo lem_set.cmo lem_string_extra.cmo
 
@@ -187,7 +187,7 @@ $(OCAML_LEM_INCLUDES) \
 -I abis -I abis/amd64 -I abis/power64 -I abis/aarch64 -I abis/x86 -I abis/mips64 -I gnu_extensions \
 -g
 
-main_elf main_link main_elf.opt main_link.opt scratch scratch.opt: OCAMLFIND_PACKAGES := #-package batteries -package uint
+main_elf main_link main_elf.opt main_link.opt scratch scratch.opt: OCAMLFIND_PACKAGES := #-package batteries -package stdint
 
 scratch scratch.opt: OCAML_LEM_SRC += $(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC))
@@ -244,7 +244,7 @@ ocaml_with_ocamlbuild: lem-all-ocaml
   -cflag -g \
   -lflags 'unix.cma str.cma nums.cma' \
   -cflags '-I $(UINT)' \
-  -lflags '-I $(UINT) uint.cma' \
+  -lflags '-I $(UINT) stdint.cma' \
   -cflags -dllpath,$(UINT) \
   main_elf.byte 
 

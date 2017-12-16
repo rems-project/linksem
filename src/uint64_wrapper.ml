@@ -1,3 +1,5 @@
+open Stdint
+
 type uint64
   = Nat_big_num.num
 
