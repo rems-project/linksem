@@ -1,16 +1,17 @@
 .PHONY: default
-default: build-all
-
-.PHONY: build-all
-build-all: build-contrib build
-
-.PHONY: build-contrib
-build-contrib:
-	$(MAKE) -C contrib
+default: build
 
 .PHONY: build
 build:
 	$(MAKE) -C src
+
+.PHONY: install
+install:
+	$(MAKE) -C src install
+
+.PHONY: uninstall
+uninstall:
+	$(MAKE) -C src uninstall
 
 .PHONY: clean
 clean:
