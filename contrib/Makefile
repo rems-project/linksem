@@ -1,14 +1,17 @@
+OCAML_STDINT_VERSION = 0.3.0
+
 dummy: all
 
-all: ocaml-uint/_build/lib/uint.cma
+all: ocaml-stdint/_build/lib/stdint.cma
 
-ocaml-uint/_build/lib/uint.cma: ocaml-uint-master.tar.gz
-	mkdir -p ocaml-uint
-	tar -zxf ocaml-uint-master.tar.gz -C ocaml-uint --strip-components=1
-	make -C ocaml-uint configure > /dev/null
-	make -C ocaml-uint all
+ocaml-stdint/_build/lib/stdint.cma: ocaml-stdint-$(OCAML_STDINT_VERSION).tar.gz
+	mkdir -p ocaml-stdint
+	tar -zxf $< -C ocaml-stdint --strip-components=1
+	make -C ocaml-stdint configure > /dev/null
+	make -C ocaml-stdint all
 
 clean:
 	rm -rf ocaml-uint
+	rm -rf ocaml-stdint
 
 .PHONY: dummy all clean
