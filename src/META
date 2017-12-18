@@ -1,0 +1,5 @@
+# META file of package linksem:
+description = "Formalisation of the linking of ELF object code, and related notions"
+requires = "linksem_zarith"
+requires(nozarith) = "linksem_num"
+version = "0.0.0"

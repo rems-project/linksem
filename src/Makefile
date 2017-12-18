@@ -9,26 +9,25 @@ REPOROOT := $(dir $(THIS_MAKEFILE))/..
 LEMDIR ?= ../../lem
 LEM ?= $(LEMDIR)/lem
 CONTRIB ?= ../contrib
-UINT ?= $(CONTRIB)/ocaml-stdint/_build/lib
 
+
+$(warning MAKECMDGOALS is $(MAKECMDGOALS))
+ifneq ($(MAKECMDGOALS),clean)
 # Lem optionally vendors the zarith dependency, but currently
 # we don't use that -- just assume the host system has zarith.
 ifeq ($(shell ocamlfind query zarith),)
 $(error "No zarith installed [anywhere ocamlfind can find it]; install it (opam install zarith || apt-get install libzarith-ocaml{,-dev} || yum install ocaml-zarith), or use make install_dependencies in lem/ocaml-lib, or hack $(THIS_MAKEFILE) to use Lem's vendored copy locally.")
 endif
-OCAML_LEM_INCLUDES ?= \
--I $(LEMDIR)/ocaml-lib/_build_zarith \
--I $(LEMDIR)/ocaml-lib/_build_zarith/num_impl_zarith \
--I $(LEMDIR)/ocaml-lib/ 
-#\
-#-I $(LEMDIR)/ocaml-lib/dependencies/zarith/
+# assume the host system has stdint
+ifeq ($(shell ocamlfind query stdint),)
+$(error "No stdint installed [anywhere ocamlfind can find it]; install it (opam install stdint), or use 'make install' in linksem/contrib")
+endif
+# assume the host system has lem
+ifeq ($(shell ocamlfind query lem),)
+$(error "No lem installed [anywhere ocamlfind can find it]; please install it ('make install' from lem/ocaml-lib)")
+endif
+endif
 
-$(warning MAKECMDGOALS is $(MAKECMDGOALS))
-ifneq ($(MAKECMDGOALS),clean)
-ifeq ($(realpath $(UINT)),)
-$(error Please run make in $(REPOROOT)/contrib or set UINT)
-endif
-endif
 
 LEM_UTIL_SRC := default_printing.lem missing_pervasives.lem show.lem endianness.lem multimap.lem error.lem
 # Some of the utility code is directly in ML, some in Lem; order matters!
@@ -111,12 +110,13 @@ LEM_LINK_SRC := elf_memory_image.lem elf_memory_image_of_elf64_file.lem command_
 LEM_MODEL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC))
 
 LEM_MODEL_TP_THY := $(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC) test_image.lem import_everything.lem
-OCAML_LIB_OBJS := unix.cma str.cma nums.cma -package zarith nat_num.cmo big_int_impl.cmo nat_big_num.cmo rational_impl.cmo rational.cmo stdint.cma
-LEM_OCAML_OBJS := lem.cmo lem_basic_classes.cmo lem_function.cmo lem_list.cmo lem_num.cmo lem_sorting.cmo \
-    xstring.cmo pset.cmo pmap.cmo lem_maybe.cmo lem_map.cmo lem_set.cmo lem_string_extra.cmo
 
-OCAML_LIB_OBJS_OPT := $(patsubst %.cma,%.cmxa,$(patsubst %.cmo,%.cmx,$(OCAML_LIB_OBJS)))
-LEM_OCAML_OBJS_OPT := $(patsubst %.cma,%.cmxa,$(patsubst %.cmo,%.cmx,$(LEM_OCAML_OBJS)))
+OCAMLFIND_PACKAGES := -package stdint -package lem
+
+OCAMLFLAGS := -I adaptors \
+  -I abis -I abis/amd64 -I abis/power64 -I abis/aarch64 -I abis/x86 -I abis/mips64 \
+  -I gnu_extensions \
+  -g
 
 # Want the following order:
 # OCaml library
@@ -127,7 +127,10 @@ LEM_OCAML_OBJS_OPT := $(patsubst %.cma,%.cmxa,$(patsubst %.cmo,%.cmx,$(LEM_OCAML
 # Lem ABI code
 # Lem linking code
 
-default: lem-all-ocaml linksem.cma linksem.cmxa main_elf main_elf.opt main_link main_link.opt
+default: lem_ocaml_sentinel
+default: build_zarith/linksem.cma build_zarith/linksem.cmxa
+default: build_num/linksem.cma build_num/linksem.cmxa
+default: main_elf main_elf.opt main_link main_link.opt
 
 ldgram.y.hacked: ldgram.y
 	cat "$<" | \
@@ -137,9 +140,9 @@ ldgram.y.hacked: ldgram.y
 	grep '\([:|;]\|[A-Za-z0-9_]\{2,\}\)' | \
 	tail -n+35 > "$@" || rm -f "$@"
 
-.PHONY: lem-all-ocaml
-lem-all-ocaml: $(filter-out error.lem,$(LEM_UTIL_SRC)) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC) main_link.lem main_elf.lem scratch.lem
+lem_ocaml_sentinel: $(filter-out error.lem,$(LEM_UTIL_SRC)) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC) main_link.lem main_elf.lem scratch.lem
 	$(LEM) -ocaml -only_changed_output $+
+	touch $@
 
 .PHONY: isa-extraction
 isa-extraction:
@@ -167,6 +170,8 @@ coq-extraction:
 	mv */*/*.v ../auto_generated/coq/
 
 clean:
+	rm -f lem_ocaml_sentinel
+	rm -rf build_zarith build_num
 	rm -f $(filter-out error.ml,$(LEM_MODEL_ML))
 	rm -f main_elf.ml main_link.ml
 	rm -f main_elf main_link main_elf.opt main_link.opt
@@ -180,15 +185,6 @@ clean:
 
 ocaml: main_elf
 
-main_elf main_link main_elf.opt main_link.opt scratch linksem.cma linksem.cmxa: OCAMLFLAGS += \
--I $(UINT) \
-$(OCAML_LEM_INCLUDES) \
--I adaptors \
--I abis -I abis/amd64 -I abis/power64 -I abis/aarch64 -I abis/x86 -I abis/mips64 -I gnu_extensions \
--g
-
-main_elf main_link main_elf.opt main_link.opt scratch scratch.opt: OCAMLFIND_PACKAGES := #-package batteries -package stdint
-
 scratch scratch.opt: OCAML_LEM_SRC += $(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC))
 
@@ -200,52 +196,83 @@ main_link main_link.opt: OCAML_LEM_SRC += $(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) 
 	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_LINK_SRC))
 
-linksem.cma: $(ALL_UTIL_ML) lem-all-ocaml
-	ocamlfind ocamlc $(OCAMLFLAGS) -a -o "$@" \
-	$(OCAML_LIB_OBJS) \
-	$(LEM_OCAML_OBJS) \
-	$(ALL_UTIL_ML) \
-	$(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
-	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC)) \
-	$(patsubst %.lem,%.ml,$(LEM_LINK_SRC))
+build_zarith/linksem.cma build_zarith/linksem.cmxa build_num/linksem.cma build_num/linksem.cmxa: ML_SOURCES := $(ALL_UTIL_ML) \
+  $(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
+  $(patsubst %.lem,%.ml,$(LEM_ABI_SRC)) \
+  $(patsubst %.lem,%.ml,$(LEM_LINK_SRC))
 
-linksem.cmxa: $(ALL_UTIL_ML) lem-all-ocaml
-	ocamlfind ocamlopt $(OCAMLFLAGS) -a -o "$@" \
-	-I $(sort $(dir $(patsubst %.cmx,%.cmi,$(LEM_OCAML_OBJS_OPT)))) \
-	$(ALL_UTIL_ML) \
-	$(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
-	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC)) \
-	$(patsubst %.lem,%.ml,$(LEM_LINK_SRC))
+build_num/linksem.cma: OCAMLFIND_PACKAGES += -predicates nozarith
+build_zarith/linksem.cma build_num/linksem.cma: build_%/linksem.cma: $(ALL_UTIL_ML) lem_ocaml_sentinel
+	mkdir -p "$(dir $@)"
+	ocamlfind ocamlc -c $(OCAMLFLAGS) $(OCAMLFIND_PACKAGES) $(ML_SOURCES)
+	ocamlfind ocamlc -a -o "$@" $(OCAMLFLAGS) $(patsubst %.ml,%.cmo,$(ML_SOURCES))
+	mv $(patsubst %.ml,%.cmi,$(ML_SOURCES)) "$(dir $@)"
+	cp META.$* "$(dir $@)"/META
 
+build_num/linksem.cmxa: OCAMLFIND_PACKAGES += -predicates nozarith
+build_zarith/linksem.cmxa build_num/linksem.cmxa: build_%/linksem.cmxa: $(ALL_UTIL_ML) lem_ocaml_sentinel
+	mkdir -p "$(dir $@)"
+	ocamlfind ocamlopt -c $(OCAMLFLAGS) $(OCAMLFIND_PACKAGES) $(ML_SOURCES)
+	ocamlfind ocamlopt -a -o "$@" $(OCAMLFLAGS) $(patsubst %.ml,%.cmx,$(ML_SOURCES))
+	mv $(patsubst %.ml,%.cmi,$(ML_SOURCES)) "$(dir $@)"
+	mv $(patsubst %.ml,%.cmx,$(ML_SOURCES)) "$(dir $@)"
+	cp META.$* "$(dir $@)"/META
 
-main_elf main_link scratch: %: %.ml $(ALL_UTIL_ML) lem-all-ocaml
+INSTALLDIR := $(shell ocamlfind printconf destdir)
+LINKSEMVERSION := $(shell git describe --dirty --always)
+
+$(INSTALLDIR)/linksem_zarith/META $(INSTALLDIR)/linksem_num/META: $(INSTALLDIR)/linksem_%/META: build_%/linksem.cma build_%/linksem.cmxa
+	-ocamlfind remove linksem_$*
+	ocamlfind install -patch-version "$(LINKSEMVERSION)" linksem_$* \
+	  build_$*/META \
+	  $^ \
+	  build_$*/linksem.a\
+	  build_$*/*.cmi \
+	  build_$*/*.cmx
+	touch $@
+
+.PHONY: install_zarith install_num
+install_zarith install_num: install_%: $(INSTALLDIR)/linksem_%/META
+
+$(INSTALLDIR)/linksem/META: META
+	-ocamlfind remove linksem
+	ocamlfind install -patch-version "$(LINKSEMVERSION)" linksem META
+	touch $@
+
+.PHONY: install
+install: $(INSTALLDIR)/linksem/META install_zarith install_num
+
+.PHONY: uninstall
+uninstall:
+	-ocamlfind remove linksem
+	-ocamlfind remove linksem_zarith
+	-ocamlfind remove linksem_num
+
+main_elf main_link: OCAMLFIND_PACKAGES += -package unix -package str
+main_elf main_link scratch: %: %.ml $(ALL_UTIL_ML) lem_ocaml_sentinel
 	ocamlfind ocamlc $(OCAMLFLAGS) -o "$@" -g \
-	$(OCAML_LIB_OBJS) \
-	$(LEM_OCAML_OBJS) \
+	$(OCAMLFIND_PACKAGES) \
 	$(ALL_UTIL_ML) \
 	$(OCAML_LEM_SRC) \
-	"$<" $(OCAMLFIND_PACKAGES) \
+	"$<" \
 	-linkpkg
 
-main_elf.opt main_link.opt scratch.opt: %.opt: %.ml $(ALL_UTIL_ML) lem-all-ocaml
+main_elf.opt main_link.opt: OCAMLFIND_PACKAGES += -package unix -package str
+main_elf.opt main_link.opt scratch.opt: %.opt: %.ml $(ALL_UTIL_ML) lem_ocaml_sentinel
 	ocamlfind ocamlopt $(OCAMLFLAGS) -p -o "$@" -g \
-	$(OCAML_LIB_OBJS_OPT) \
-	$(LEM_OCAML_OBJS_OPT) \
+	$(OCAMLFIND_PACKAGES) \
 	$(ALL_UTIL_ML) \
 	$(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_LINK_SRC)) \
-	"$<" $(OCAMLFIND_PACKAGES) \
+	"$<" \
 	-linkpkg
 
-ocaml_with_ocamlbuild: lem-all-ocaml
+ocaml_with_ocamlbuild: lem_ocaml_sentinel
 	ocamlbuild -classic-display \
   -X $(CONTRIB) \
   -cflag -g \
-  -lflags 'unix.cma str.cma nums.cma' \
-  -cflags '-I $(UINT)' \
-  -lflags '-I $(UINT) stdint.cma' \
-  -cflags -dllpath,$(UINT) \
+  -pkg 'unix str stdint lem' \
   main_elf.byte 
 
 clean_with_ocamlbuild:
@@ -253,9 +280,9 @@ clean_with_ocamlbuild:
 
 stacktrace:
 	export OCAMLRUNPARAM=b; \
-	ocamlfind ocamlc -I $(LEMDIR)/ocaml-lib/_build/ unix.cma str.cma nums.cma nat_num.cmo lem.cmo lem_function.cmo lem_list.cmo -linkpkg -g missing_pervasives.ml show.ml endianness.ml error.ml ml_bindings.ml default_printing.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml string_table.ml elf_section_header_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file3.ml elf_executable_file5.ml elf_linking_file2.ml elf_linking_file3.ml elf_relocation.ml sail_interface.ml main_elf.ml
+	ocamlfind ocamlc -package unix -package str -package stdint -package lem -linkpkg -g missing_pervasives.ml show.ml endianness.ml error.ml ml_bindings.ml default_printing.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml string_table.ml elf_section_header_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file3.ml elf_executable_file5.ml elf_linking_file2.ml elf_linking_file3.ml elf_relocation.ml sail_interface.ml main_elf.ml
 
-oldall: lem-all-ocaml camlp4 ocaml
+oldall: lem_ocaml_sentinel camlp4 ocaml
 
 all: ocaml
 
@@ -264,4 +291,4 @@ execute:
 
 go: all execute
 
-go-debug: lem-all-ocaml stacktrace execute
+go-debug: lem_ocaml_sentinel stacktrace execute
