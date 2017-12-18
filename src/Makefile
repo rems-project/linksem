@@ -24,7 +24,7 @@ $(error "No stdint installed [anywhere ocamlfind can find it]; install it (opam 
 endif
 # assume the host system has lem
 ifeq ($(shell ocamlfind query lem),)
-$(error "No lem installed [anywhere ocamlfind can find it]; please install it ('make install' from lem/ocaml-lib)")
+$(error "No lem installed [anywhere ocamlfind can find it]; please install it ('make install' from lem/ocaml-lib || 'make local-install' from lem/ocaml-lib and add lem/ocaml-lib/local to OCAMLPATH)")
 endif
 endif
 
