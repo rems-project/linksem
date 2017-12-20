@@ -106,7 +106,7 @@ LEM_MODEL_TP_THY := $(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC
 
 # WARNING: if you add packages that are not supported by js_of_ocaml the
 # rmem/ppcmem2 web-interface will not build.
-OCAMLFIND_PACKAGES := -package lem
+OCAMLFIND_PACKAGES := -package lem -package num
 
 OCAMLFLAGS := -I adaptors \
   -I abis -I abis/amd64 -I abis/power64 -I abis/aarch64 -I abis/x86 -I abis/mips64 \
