@@ -1,6 +1,6 @@
 # META file of package linksem_num:
 description = "Formalisation of the linking of ELF object code, and related notions (using the Num library)"
-requires = "lem_num"
+requires = "lem_num num"
 version = "0.0.0"
 archive(byte) = "linksem.cma"
 archive(native) = "linksem.cmxa"
