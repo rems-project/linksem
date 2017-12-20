@@ -38,12 +38,17 @@ declare {isabelle} rename function fail = error_fail
 (** [(>>=)] is the monadic binding function for [error].
   *)
 val (>>=) : forall 'a 'b. error 'a -> ('a -> error 'b) -> error 'b
-let (>>=) x f =
+let bind x f =
 	match x with
 		| Success s -> f s
 		| Fail err  -> Fail err
 	end
-	
+let ~{ocaml} (>>=) x f = bind x f
+(* the generated OCaml is "let >>= x f = .." (without the infix parentheses),
+to work around this we declare it inline for OCaml (I'm not sure about other
+backends) *)
+let inline {ocaml} (>>=) x f = bind x f
+
 (** [as_maybe e] drops an [error] value into a [maybe] value, throwing away
   * error information.
   *)

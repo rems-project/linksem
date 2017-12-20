@@ -1,4 +1,3 @@
-open Stdint
 open Endianness
 open Error
 
@@ -141,7 +140,8 @@ let rec list_index_big_int index xs =
 let argv_list = Array.to_list Sys.argv
 ;;
 
-let nat_big_num_of_uint64 x = 
+let nat_big_num_of_uint64 x = x
+(*
     (* Nat_big_num can only be made from signed integers at present. 
      * Workaround: make an int64, and if negative, add the high bit
      * in the big-num domain. *)
@@ -155,3 +155,4 @@ let nat_big_num_of_uint64 x =
             (Nat_big_num.of_int64 (Uint64.to_int64 lower_by_2_to_63))
             (Nat_big_num.shift_left (Nat_big_num.of_int 1) 63)
         )
+*)
