@@ -26,8 +26,6 @@ The top-level directory structure is as follows:
 
   * 'auto_generated' contains proof assistant theories automatically extracted
     from the base models by the Lem tool. Note that these theories are extracted on an ad hoc basis and are not guaranteed to be in lock-step with the latest specification from which they are derived.
-  * 'contrib' contains useful and/or necessary library code from third-parties
-    needed to build the formalisation.
   * 'doc' contains various specifications, standards documents and/or other
     useful documents necessary for the formalisation.
   * 'src' contains the latest formalisation. It is further divided into the
@@ -42,9 +40,9 @@ The top-level directory structure is as follows:
 
 ## Build process
 
-To build the model from a fresh Mercurial checkout (assuming your current working directory is `linksem`), `cd` into `src` and type `make`.
+To build the model from a fresh git checkout (assuming your current working directory is `linksem`), `cd` into `src` and type `make`.
 
-This will make all dependencies in `contrib` (if needed), build the Lem model (extracting OCaml files) and build these files with the OCaml compiler.
+This will build the Lem model (extracting OCaml files) and build these files with the OCaml compiler.
 
 ## Known issues
 

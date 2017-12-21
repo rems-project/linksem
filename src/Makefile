@@ -1,14 +1,12 @@
 # This should work for everyone: 
 # make
-# (but make sure you've run `make' in the contrib/ directory. Or 
-#  run `make' from the top level, like a user should.)
+# (but make sure you've run `make' from the top level, like a user should.)
 
 THIS_MAKEFILE := $(realpath $(lastword $(MAKEFILE_LIST)))
 REPOROOT := $(dir $(THIS_MAKEFILE))/..
 
 LEMDIR ?= ../../lem
 LEM ?= $(LEMDIR)/lem
-CONTRIB ?= ../contrib
 
 
 $(warning MAKECMDGOALS is $(MAKECMDGOALS))
@@ -16,15 +14,11 @@ ifneq ($(MAKECMDGOALS),clean)
 # Lem optionally vendors the zarith dependency, but currently
 # we don't use that -- just assume the host system has zarith.
 ifeq ($(shell ocamlfind query zarith),)
-$(error "No zarith installed [anywhere ocamlfind can find it]; install it (opam install zarith || apt-get install libzarith-ocaml{,-dev} || yum install ocaml-zarith), or use make install_dependencies in lem/ocaml-lib, or hack $(THIS_MAKEFILE) to use Lem's vendored copy locally.")
-endif
-# assume the host system has stdint
-ifeq ($(shell ocamlfind query stdint),)
-$(error "No stdint installed [anywhere ocamlfind can find it]; install it (opam install stdint), or use 'make install' in linksem/contrib")
+$(error No zarith installed [anywhere ocamlfind can find it]; install it (opam install zarith || apt-get install libzarith-ocaml{,-dev} || yum install ocaml-zarith), or use make install_dependencies in lem/ocaml-lib, or hack $(THIS_MAKEFILE) to use Lem's vendored copy locally.)
 endif
 # assume the host system has lem
 ifeq ($(shell ocamlfind query lem),)
-$(error "No lem installed [anywhere ocamlfind can find it]; please install it ('make install' from lem/ocaml-lib)")
+$(error No lem installed [anywhere ocamlfind can find it]; please install it ('make install' from lem/ocaml-lib || 'make local-install' from lem/ocaml-lib and add lem/ocaml-lib/local to OCAMLPATH))
 endif
 endif
 
@@ -40,8 +34,7 @@ ALL_UTIL_ML := \
 	default_printing.ml \
 	byte_sequence_wrapper.ml \
 	# missing_pervasivesAuxiliary.ml
-
-#uint16_wrapper.ml uint32_wrapper.ml uint64_wrapper.ml 
+ALL_UTIL_ML_WO_LEM := $(filter-out $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC)) $(patsubst %.lem,%Auxiliary.ml,$(LEM_UTIL_SRC)),$(ALL_UTIL_ML))
 
 # Nasty cycle:
 # show depends on missing_pervasives
@@ -111,7 +104,9 @@ LEM_MODEL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_S
 
 LEM_MODEL_TP_THY := $(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC) test_image.lem import_everything.lem
 
-OCAMLFIND_PACKAGES := -package stdint -package lem
+# WARNING: if you add packages that are not supported by js_of_ocaml the
+# rmem/ppcmem2 web-interface will not build.
+OCAMLFIND_PACKAGES := -package num -package lem
 
 OCAMLFLAGS := -I adaptors \
   -I abis -I abis/amd64 -I abis/power64 -I abis/aarch64 -I abis/x86 -I abis/mips64 \
@@ -127,6 +122,7 @@ OCAMLFLAGS := -I adaptors \
 # Lem ABI code
 # Lem linking code
 
+.PHONY: default
 default: lem_ocaml_sentinel
 default: build_zarith/linksem.cma build_zarith/linksem.cmxa
 default: build_num/linksem.cma build_num/linksem.cmxa
@@ -140,7 +136,7 @@ ldgram.y.hacked: ldgram.y
 	grep '\([:|;]\|[A-Za-z0-9_]\{2,\}\)' | \
 	tail -n+35 > "$@" || rm -f "$@"
 
-lem_ocaml_sentinel: $(filter-out error.lem,$(LEM_UTIL_SRC)) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC) main_link.lem main_elf.lem scratch.lem
+lem_ocaml_sentinel: $(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC) main_link.lem main_elf.lem scratch.lem
 	$(LEM) -ocaml -only_changed_output $+
 	touch $@
 
@@ -172,7 +168,7 @@ coq-extraction:
 clean:
 	rm -f lem_ocaml_sentinel
 	rm -rf build_zarith build_num
-	rm -f $(filter-out error.ml,$(LEM_MODEL_ML))
+	rm -f $(LEM_MODEL_ML)
 	rm -f main_elf.ml main_link.ml
 	rm -f main_elf main_link main_elf.opt main_link.opt
 	rm -rf *~
@@ -181,7 +177,7 @@ clean:
 	rm -f abis/*/*.cmi abis/*/*.cmo abis/*/*.cmx abis/*/*.o
 	rm -f adaptors/*.cmi adaptors/*.cmo adaptors/*.cmx adaptors/*.o
 	rm -f gnu_extensions/*.cmi gnu_extensions/*.cmo gnu_extensions/*.cmx gnu_extensions/*.o
-	rm -f $(filter-out error.ml,$(patsubst %.lem,%.ml,$(LEM_UTIL_SRC))) $(patsubst %.lem,%Auxiliary.ml,$(LEM_UTIL_SRC))
+	rm -f $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC)) $(patsubst %.lem,%Auxiliary.ml,$(LEM_UTIL_SRC))
 
 ocaml: main_elf
 
@@ -202,7 +198,7 @@ build_zarith/linksem.cma build_zarith/linksem.cmxa build_num/linksem.cma build_n
   $(patsubst %.lem,%.ml,$(LEM_LINK_SRC))
 
 build_num/linksem.cma: OCAMLFIND_PACKAGES += -predicates nozarith
-build_zarith/linksem.cma build_num/linksem.cma: build_%/linksem.cma: $(ALL_UTIL_ML) lem_ocaml_sentinel
+build_zarith/linksem.cma build_num/linksem.cma: build_%/linksem.cma: $(ALL_UTIL_ML_WO_LEM) lem_ocaml_sentinel
 	mkdir -p "$(dir $@)"
 	ocamlfind ocamlc -c $(OCAMLFLAGS) $(OCAMLFIND_PACKAGES) $(ML_SOURCES)
 	ocamlfind ocamlc -a -o "$@" $(OCAMLFLAGS) $(patsubst %.ml,%.cmo,$(ML_SOURCES))
@@ -210,7 +206,7 @@ build_zarith/linksem.cma build_num/linksem.cma: build_%/linksem.cma: $(ALL_UTIL_
 	cp META.$* "$(dir $@)"/META
 
 build_num/linksem.cmxa: OCAMLFIND_PACKAGES += -predicates nozarith
-build_zarith/linksem.cmxa build_num/linksem.cmxa: build_%/linksem.cmxa: $(ALL_UTIL_ML) lem_ocaml_sentinel
+build_zarith/linksem.cmxa build_num/linksem.cmxa: build_%/linksem.cmxa: $(ALL_UTIL_ML_WO_LEM) lem_ocaml_sentinel
 	mkdir -p "$(dir $@)"
 	ocamlfind ocamlopt -c $(OCAMLFLAGS) $(OCAMLFIND_PACKAGES) $(ML_SOURCES)
 	ocamlfind ocamlopt -a -o "$@" $(OCAMLFLAGS) $(patsubst %.ml,%.cmx,$(ML_SOURCES))
@@ -249,7 +245,7 @@ uninstall:
 	-ocamlfind remove linksem_num
 
 main_elf main_link: OCAMLFIND_PACKAGES += -package unix -package str
-main_elf main_link scratch: %: %.ml $(ALL_UTIL_ML) lem_ocaml_sentinel
+main_elf main_link scratch: %: %.ml $(ALL_UTIL_ML_WO_LEM) lem_ocaml_sentinel
 	ocamlfind ocamlc $(OCAMLFLAGS) -o "$@" -g \
 	$(OCAMLFIND_PACKAGES) \
 	$(ALL_UTIL_ML) \
@@ -258,7 +254,7 @@ main_elf main_link scratch: %: %.ml $(ALL_UTIL_ML) lem_ocaml_sentinel
 	-linkpkg
 
 main_elf.opt main_link.opt: OCAMLFIND_PACKAGES += -package unix -package str
-main_elf.opt main_link.opt scratch.opt: %.opt: %.ml $(ALL_UTIL_ML) lem_ocaml_sentinel
+main_elf.opt main_link.opt scratch.opt: %.opt: %.ml $(ALL_UTIL_ML_WO_LEM) lem_ocaml_sentinel
 	ocamlfind ocamlopt $(OCAMLFLAGS) -p -o "$@" -g \
 	$(OCAMLFIND_PACKAGES) \
 	$(ALL_UTIL_ML) \
@@ -270,9 +266,8 @@ main_elf.opt main_link.opt scratch.opt: %.opt: %.ml $(ALL_UTIL_ML) lem_ocaml_sen
 
 ocaml_with_ocamlbuild: lem_ocaml_sentinel
 	ocamlbuild -classic-display \
-  -X $(CONTRIB) \
   -cflag -g \
-  -pkg 'unix str stdint lem' \
+  -pkg 'unix str lem' \
   main_elf.byte 
 
 clean_with_ocamlbuild:
@@ -280,7 +275,7 @@ clean_with_ocamlbuild:
 
 stacktrace:
 	export OCAMLRUNPARAM=b; \
-	ocamlfind ocamlc -package unix -package str -package stdint -package lem -linkpkg -g missing_pervasives.ml show.ml endianness.ml error.ml ml_bindings.ml default_printing.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml string_table.ml elf_section_header_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file3.ml elf_executable_file5.ml elf_linking_file2.ml elf_linking_file3.ml elf_relocation.ml sail_interface.ml main_elf.ml
+	ocamlfind ocamlc -package unix -package str -package lem -linkpkg -g missing_pervasives.ml show.ml endianness.ml error.ml ml_bindings.ml default_printing.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml string_table.ml elf_section_header_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file3.ml elf_executable_file5.ml elf_linking_file2.ml elf_linking_file3.ml elf_relocation.ml sail_interface.ml main_elf.ml
 
 oldall: lem_ocaml_sentinel camlp4 ocaml
 

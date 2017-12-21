@@ -15,5 +15,4 @@ uninstall:
 
 .PHONY: clean
 clean:
-	$(MAKE) -C contrib clean
 	$(MAKE) -C src clean
