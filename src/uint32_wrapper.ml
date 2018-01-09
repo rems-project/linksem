@@ -2,7 +2,9 @@ type uint32 = Nat_big_num.num
 
 (* 2^32 - 1 *)
 let max_int =
-  Nat_big_num.of_string "4294967295"
+  Nat_big_num.sub
+    (Nat_big_num.pow_int_positive 2 32)
+    (Nat_big_num.of_int 1)
 ;;
 
 let add l r =
