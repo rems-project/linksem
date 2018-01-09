@@ -61,7 +61,7 @@ let bytes_of_elf32_file ef =
     if List.length ef.elf32_file_section_header_table =
       List.length ef.elf32_file_interpreted_sections then
       let segs_zip  = List.zip ef.elf32_file_program_header_table ef.elf32_file_interpreted_segments in
-      let sects_zip = List.zip ef.elf32_file_section_header_table ef.elf32_file_interpreted_sections in
+      let sects_zip = List.zip ef.elf32_file_section_header_table (List.reverse ef.elf32_file_interpreted_sections) in
       let segs_layout =
         List.map (fun (seg, interp_seg) ->
           (natural_of_elf32_off seg.elf32_p_offset, interp_seg.elf32_segment_body)
