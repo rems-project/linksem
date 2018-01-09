@@ -2,9 +2,9 @@ type uint64 = Nat_big_num.num
 
 (* 2^64 - 1 *)
 let max_int =
-  let x = Nat_big_num.of_string "4294967296" in
-  let y = Nat_big_num.mul x (Nat_big_num.of_int 2) in
-    Nat_big_num.sub y (Nat_big_num.of_int 1)
+  Nat_big_num.sub
+    (Nat_big_num.pow_int_positive 2 64)
+    (Nat_big_num.of_int 1)
 ;;
 
 let add l r =
@@ -82,17 +82,21 @@ let of_bigint (u : Nat_big_num.num) : uint64 =
 ;;
 
 let to_bytes u : char * char * char * char * char * char * char * char =
-  let u1 = Nat_big_num.mul (Nat_big_num.of_string "4278190080") (Nat_big_num.of_string "255") in (* 0xFF00000000 *)
-  let u2 = Nat_big_num.mul (Nat_big_num.of_string "4278190080") (Nat_big_num.of_string "65280") in (* 0xFF0000000000 *)
-  let u3 = Nat_big_num.mul (Nat_big_num.of_string "4278190080") (Nat_big_num.of_string "16711680") in (* 0xFF000000000000 *)
-  let u4 = Nat_big_num.mul (Nat_big_num.of_string "4278190080") (Nat_big_num.of_string "4278190080") in (* 0xFF00000000000000 *)
-  let b0 = Char.chr (Nat_big_num.to_int (logand u (Nat_big_num.of_string "255"))) in (* 0xFF *)
-  let b1 = Char.chr (Nat_big_num.to_int (shift_right (logand u (Nat_big_num.of_string "65280")) 8)) in (* 0xFF00 *)
-  let b2 = Char.chr (Nat_big_num.to_int (shift_right (logand u (Nat_big_num.of_string "16711680")) 16)) in (* 0xFF0000 *)
-  let b3 = Char.chr (Nat_big_num.to_int (shift_right (logand u (Nat_big_num.of_string "4278190080")) 24)) in (* 0xFF000000 *)
-  let b4 = Char.chr (Nat_big_num.to_int (shift_right (logand u u1) 32)) in (* 0xFF00000000 *)
-  let b5 = Char.chr (Nat_big_num.to_int (shift_right (logand u u2) 40)) in (* 0xFF0000000000 *)
-  let b6 = Char.chr (Nat_big_num.to_int (shift_right (logand u u3) 48)) in (* 0xFF000000000000 *)
-  let b7 = Char.chr (Nat_big_num.to_int (shift_right (logand u u4) 56)) in (* 0xFF00000000000000 *)
+  let ff = of_string "255" in
+  let b0 = logand u ff |> to_int |> Char.chr in
+  let u = shift_right u 8 in
+  let b1 = logand u ff |> to_int |> Char.chr in
+  let u = shift_right u 8 in
+  let b2 = logand u ff |> to_int |> Char.chr in
+  let u = shift_right u 8 in
+  let b3 = logand u ff |> to_int |> Char.chr in
+  let u = shift_right u 8 in
+  let b4 = logand u ff |> to_int |> Char.chr in
+  let u = shift_right u 8 in
+  let b5 = logand u ff |> to_int |> Char.chr in
+  let u = shift_right u 8 in
+  let b6 = logand u ff |> to_int |> Char.chr in
+  let u = shift_right u 8 in
+  let b7 = logand u ff |> to_int |> Char.chr in
     b0,b1,b2,b3,b4,b5,b6,b7
 ;;
