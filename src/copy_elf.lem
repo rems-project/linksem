@@ -1,0 +1,218 @@
+(** [main_elf], the main module for the test program of the ELF development.
+  * Run like so:
+  *   ./main_elf.opt --FLAG BINARY
+  * where:
+  *   BINARY is an ELF binary
+  *   FLAG   is in the set { file-header, program-headers, section-headers,
+  *                            dynamic, relocs, symbols }
+  *
+  *)
+
+open import Basic_classes
+open import Function
+open import Maybe
+open import List
+open import Num
+open import String
+open import Tuple
+
+open import Byte_sequence
+open import Default_printing
+open import Error
+open import Hex_printing
+open import Missing_pervasives
+open import Show
+open import Assert_extra
+
+open import Endianness
+
+open import Elf_dynamic
+open import Elf_header
+open import Elf_file
+open import Elf_program_header_table
+open import Elf_section_header_table
+open import Elf_types_native_uint
+
+open import Harness_interface
+open import Sail_interface
+
+open import Abi_aarch64_relocation
+
+open import Abi_amd64_elf_header
+open import Abi_amd64_relocation
+open import Abi_amd64_serialisation
+
+open import Abi_power64_dynamic
+
+open import Abi_x86_relocation
+
+open import Abi_power64_relocation
+
+open import Gnu_ext_dynamic
+open import Gnu_ext_program_header_table
+open import Gnu_ext_section_header_table
+
+open import Dwarf
+
+let default_hdr_bdl =
+  (default_os_specific_print, default_proc_specific_print)
+
+let default_pht_bdl =
+  (default_os_specific_print, default_proc_specific_print)
+
+let default_sht_bdl =
+  (default_os_specific_print, default_proc_specific_print, default_user_specific_print)
+
+
+(* unrolled and made tail recursive for efficiency on large ELF files...*)
+val chunks : list string -> list (list string) -> list (list string) * nat
+let rec chunks (ss : list string) (accum : list (list string)) =
+  match ss with
+    | s1::s2::s3::s4::s5::s6::s7::s8::s9::s10::s11::s12::s13::s14::s15::s16::ss ->
+        chunks ss ([s2^s1;s4^s3;s6^s5;s8^s7;s10^s9;s12^s11;s14^s13;s16^s15]::accum)
+    | s1::s2::s3::s4::s5::s6::s7::s8::s9::s10::s11::s12::s13::s14::s15::[] ->
+        let buff    = [s2^s1;s4^s3;s6^s5;s8^s7;s10^s9;s12^s11;s14^s13;"00"^s15] in
+          (List.reverse accum ++ [buff], 15)
+    | s1::s2::s3::s4::s5::s6::s7::s8::s9::s10::s11::s12::s13::s14::ss ->
+        let bits    = replicate 1 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = [s2^s1;s4^s3;s6^s5;s8^s7;s10^s9;s12^s11;s14^s13] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 14)
+    | s1::s2::s3::s4::s5::s6::s7::s8::s9::s10::s11::s12::s13::[] ->
+        let bits    = replicate 1 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = [s2^s1;s4^s3;s6^s5;s8^s7;s10^s9;s12^s11;"00"^s13] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 13)
+    | s1::s2::s3::s4::s5::s6::s7::s8::s9::s10::s11::s12::[] ->
+        let bits    = replicate 2 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = [s2^s1;s4^s3;s6^s5;s8^s7;s10^s9;s12^s11] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 12)
+    | s1::s2::s3::s4::s5::s6::s7::s8::s9::s10::s11::[] ->
+        let bits    = replicate 2 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = [s2^s1;s4^s3;s6^s5;s8^s7;s10^s9;"00"^s11] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 11)
+    | s1::s2::s3::s4::s5::s6::s7::s8::s9::s10::[] ->
+        let bits    = replicate 3 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = [s2^s1;s4^s3;s6^s5;s8^s7;s10^s9] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 10)
+    | s1::s2::s3::s4::s5::s6::s7::s8::s9::[] ->
+        let bits    = replicate 3 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = [s2^s1;s4^s3;s6^s5;s8^s7;"00"^s9] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 9)
+    | s1::s2::s3::s4::s5::s6::s7::s8::[] ->
+        let bits    = replicate 4 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = [s2^s1;s4^s3;s6^s5;s8^s7] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 8)
+    | s1::s2::s3::s4::s5::s6::s7::[] ->
+        let bits    = replicate 4 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = [s2^s1;s4^s3;s6^s5;"00"^s7] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 7)
+    | s1::s2::s3::s4::s5::s6::[] ->
+        let bits    = replicate 5 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = [s2^s1;s4^s3;s6^s5] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 6)
+    | s1::s2::s3::s4::s5::[] ->
+        let bits    = replicate 5 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = [s2^s1;s4^s3;"00"^s5] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 5)
+    | s1::s2::s3::s4::[] ->
+        let bits    = replicate 6 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = [s2^s1;s4^s3] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 4)
+    | s1::s2::s3::[] ->
+        let bits    = replicate 6 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = [s2^s1;"00"^s3] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 3)
+    | s1::s2::[] ->
+        let bits    = replicate 7 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = [s2^s1] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 2)
+    | s1::[] ->
+        let bits    = replicate 7 "    " in
+        let fixed   = intercalate " " bits in
+        let buff    = ["00"^s1] ++ [concatS fixed] in
+          (List.reverse accum ++ [buff], 1)
+    | [] -> (List.reverse accum, 0)
+  end
+  
+val provide_offsets : (list (list string) * nat) -> list (string * list string)
+let provide_offsets (ss, ed) =
+  List.mapi (fun i x ->
+    let hx = unsafe_hex_string_of_natural 7 ((naturalFromNat i) * 16) in
+      (hx, x)) ss
+  ++
+    if ed = 0 then
+      [(unsafe_hex_string_of_natural 7 ((naturalFromNat (List.length ss)) * 16), [])]
+    else
+      [(unsafe_hex_string_of_natural 7 (((naturalFromNat (List.length ss - 1)) * 16) + naturalFromNat ed), [])]
+
+val create_chunks : byte_sequence -> list (string * list string)
+let create_chunks bs0 =
+  let ss = List.map (fun x ->
+    unsafe_hex_string_of_natural 2 (natural_of_byte x))
+    (Byte_sequence.byte_list_of_byte_sequence bs0)
+  in
+    provide_offsets (chunks ss [])
+    
+val print_chunk : string * list string -> string
+let print_chunk (off, ss) =
+  match ss with
+    | [] -> off
+    | _  -> off ^ " " ^ concatS (intercalate " " ss)
+  end
+    
+val obtain_abi_specific_string_of_reloc_type : natural -> (natural -> string)
+let obtain_abi_specific_string_of_reloc_type mach =
+  if mach = elf_ma_ppc64 then
+    string_of_ppc64_relocation_type
+  else if mach = elf_ma_386 then
+    string_of_x86_relocation_type
+  else if mach = elf_ma_aarch64 then
+    string_of_aarch64_relocation_type
+  else if mach = elf_ma_x86_64 then
+    string_of_amd64_relocation_type
+  (*else if mach = elf_ma_mips then
+    string_of_mips64_relocation_type*)
+  else
+    const "Cannot deduce ABI"
+    
+let _ =
+  let res =
+    let (inputfile, outputfile) =
+      match argv with
+        | progname::inputfile::outputfile::more -> (inputfile, outputfile)
+        | _                           -> failwith "usage: copy_elf <input> <output>"
+      end
+    in
+    Byte_sequence.acquire inputfile    >>= fun bs0 ->
+    repeatM' Elf_header.ei_nident bs0 (read_unsigned_char Endianness.default_endianness) >>= fun (ident, bs) ->
+    match List.index ident 4 with
+      | Nothing -> failwith "ELF ident transcription error"
+      | Just c  ->
+        if natural_of_unsigned_char c = Elf_header.elf_class_32 then
+            read_elf32_file bs0 >>= fun f ->
+            bytes_of_elf32_file f >>= fun bs ->
+            Byte_sequence.serialise outputfile bs
+        else if natural_of_unsigned_char c = Elf_header.elf_class_64 then
+            read_elf64_file bs0 >>= fun f ->
+            bytes_of_elf64_file f >>= fun bs -> 
+            Byte_sequence.serialise outputfile bs
+        else
+          failwith "ELF ident transcription error"
+    end
+  in
+    match res with
+      | Fail err  -> Missing_pervasives.errln ("[!]: " ^ err)
+      | Success e -> Missing_pervasives.outln (show e)
+    end

@@ -8,7 +8,8 @@ REPOROOT := $(dir $(THIS_MAKEFILE))/..
 LEMDIR ?= ../../lem
 LEM ?= $(LEMDIR)/lem
 
-
+$(info OCAMLPATH is $(OCAMLPATH))
+export OCAMLPATH := $(OCAMLPATH)
 $(warning MAKECMDGOALS is $(MAKECMDGOALS))
 ifneq ($(MAKECMDGOALS),clean)
 # Lem optionally vendors the zarith dependency, but currently
@@ -17,7 +18,7 @@ ifeq ($(shell ocamlfind query zarith),)
 $(error No zarith installed [anywhere ocamlfind can find it]; install it (opam install zarith || apt-get install libzarith-ocaml{,-dev} || yum install ocaml-zarith), or use make install_dependencies in lem/ocaml-lib, or hack $(THIS_MAKEFILE) to use Lem's vendored copy locally.)
 endif
 # assume the host system has lem
-ifeq ($(shell ocamlfind query lem),)
+ifeq ($(shell printenv | grep CAML 1>&2 && env OCAMLPATH=$(OCAMLPATH) ocamlfind query lem),)
 $(error No lem installed [anywhere ocamlfind can find it]; please install it ('make install' from lem/ocaml-lib || 'make local-install' from lem/ocaml-lib and add lem/ocaml-lib/local to OCAMLPATH))
 endif
 endif
@@ -126,7 +127,7 @@ OCAMLFLAGS := -I adaptors \
 default: lem_ocaml_sentinel
 default: build_zarith/linksem.cma build_zarith/linksem.cmxa
 default: build_num/linksem.cma build_num/linksem.cmxa
-default: main_elf main_elf.opt main_link main_link.opt
+default: main_elf main_elf.opt main_link main_link.opt copy_elf copy_elf.opt
 
 ldgram.y.hacked: ldgram.y
 	cat "$<" | \
@@ -136,7 +137,9 @@ ldgram.y.hacked: ldgram.y
 	grep '\([:|;]\|[A-Za-z0-9_]\{2,\}\)' | \
 	tail -n+35 > "$@" || rm -f "$@"
 
-lem_ocaml_sentinel: $(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC) main_link.lem main_elf.lem scratch.lem
+ALL_LEM_SRC := $(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC) main_link.lem main_elf.lem scratch.lem copy_elf.lem
+$(patsubst %.lem,%.ml,$(ALL_LEM_SRC)): lem_ocaml_sentinel
+lem_ocaml_sentinel: $(ALL_LEM_SRC)
 	$(LEM) -ocaml -only_changed_output $+
 	touch $@
 
@@ -169,8 +172,8 @@ clean:
 	rm -f lem_ocaml_sentinel
 	rm -rf build_zarith build_num
 	rm -f $(LEM_MODEL_ML)
-	rm -f main_elf.ml main_link.ml
-	rm -f main_elf main_link main_elf.opt main_link.opt
+	rm -f main_elf.ml main_link.ml copy_elf.ml
+	rm -f main_elf main_link main_elf.opt main_link.opt copy_elf copy_elf.opt
 	rm -rf *~
 	rm -f *.cmi *.cmo *.cmx *.o
 	rm -f abis/*.cmi abis/*.cmo abis/*.cmx abis/*.o
@@ -179,7 +182,7 @@ clean:
 	rm -f gnu_extensions/*.cmi gnu_extensions/*.cmo gnu_extensions/*.cmx gnu_extensions/*.o
 	rm -f $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC)) $(patsubst %.lem,%Auxiliary.ml,$(LEM_UTIL_SRC))
 
-ocaml: main_elf
+ocaml: main_elf copy_elf
 
 scratch scratch.opt: OCAML_LEM_SRC += $(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC))
@@ -189,6 +192,10 @@ main_elf main_elf.opt: OCAML_LEM_SRC += $(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_LINK_SRC))
 
 main_link main_link.opt: OCAML_LEM_SRC += $(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
+	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC)) \
+	$(patsubst %.lem,%.ml,$(LEM_LINK_SRC))
+
+copy_elf copy_elf.opt: OCAML_LEM_SRC += $(patsubst %.lem,%.ml,$(LEM_ELF_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_ABI_SRC)) \
 	$(patsubst %.lem,%.ml,$(LEM_LINK_SRC))
 
@@ -244,8 +251,8 @@ uninstall:
 	-ocamlfind remove linksem_zarith
 	-ocamlfind remove linksem_num
 
-main_elf main_link: OCAMLFIND_PACKAGES += -package unix -package str
-main_elf main_link scratch: %: %.ml $(ALL_UTIL_ML_WO_LEM) lem_ocaml_sentinel
+copy_elf main_elf main_link: OCAMLFIND_PACKAGES += -package unix -package str
+copy_elf main_elf main_link scratch: %: %.ml $(ALL_UTIL_ML_WO_LEM) lem_ocaml_sentinel
 	ocamlfind ocamlc $(OCAMLFLAGS) -o "$@" -g \
 	$(OCAMLFIND_PACKAGES) \
 	$(ALL_UTIL_ML) \
@@ -253,8 +260,8 @@ main_elf main_link scratch: %: %.ml $(ALL_UTIL_ML_WO_LEM) lem_ocaml_sentinel
 	"$<" \
 	-linkpkg
 
-main_elf.opt main_link.opt: OCAMLFIND_PACKAGES += -package unix -package str
-main_elf.opt main_link.opt scratch.opt: %.opt: %.ml $(ALL_UTIL_ML_WO_LEM) lem_ocaml_sentinel
+copy_elf.opt main_elf.opt main_link.opt: OCAMLFIND_PACKAGES += -package unix -package str
+copy_elf.opt main_elf.opt main_link.opt scratch.opt: %.opt: %.ml $(ALL_UTIL_ML_WO_LEM) lem_ocaml_sentinel
 	ocamlfind ocamlopt $(OCAMLFLAGS) -p -o "$@" -g \
 	$(OCAMLFIND_PACKAGES) \
 	$(ALL_UTIL_ML) \
@@ -275,7 +282,7 @@ clean_with_ocamlbuild:
 
 stacktrace:
 	export OCAMLRUNPARAM=b; \
-	ocamlfind ocamlc -package unix -package str -package lem -linkpkg -g missing_pervasives.ml show.ml endianness.ml error.ml ml_bindings.ml default_printing.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml string_table.ml elf_section_header_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file3.ml elf_executable_file5.ml elf_linking_file2.ml elf_linking_file3.ml elf_relocation.ml sail_interface.ml main_elf.ml
+	ocamlfind ocamlc -package unix -package str -package lem -linkpkg -g missing_pervasives.ml show.ml endianness.ml error.ml ml_bindings.ml default_printing.ml elf_types.ml elf_header.ml elf_file1.ml elf_program_header_table.ml elf_executable_file2.ml string_table.ml elf_section_header_table.ml elf_interpreted_segment.ml elf_symbol_table.ml elf_executable_file3.ml elf_executable_file5.ml elf_linking_file2.ml elf_linking_file3.ml elf_relocation.ml sail_interface.ml main_elf.ml copy_elf.ml
 
 oldall: lem_ocaml_sentinel camlp4 ocaml
 
