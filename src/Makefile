@@ -225,8 +225,8 @@ INSTALLDIR := $(shell ocamlfind printconf destdir)
 LINKSEMVERSION := $(shell git describe --dirty --always)
 
 $(INSTALLDIR)/linksem_zarith/META $(INSTALLDIR)/linksem_num/META: $(INSTALLDIR)/linksem_%/META: build_%/linksem.cma build_%/linksem.cmxa
-	-ocamlfind remove linksem_$*
-	ocamlfind install -patch-version "$(LINKSEMVERSION)" linksem_$* \
+	-ocamlfind remove -destdir $(INSTALLDIR) linksem_$*
+	ocamlfind install -destdir $(INSTALLDIR) -patch-version "$(LINKSEMVERSION)" linksem_$* \
 	  build_$*/META \
 	  $^ \
 	  build_$*/linksem.a\
@@ -238,18 +238,25 @@ $(INSTALLDIR)/linksem_zarith/META $(INSTALLDIR)/linksem_num/META: $(INSTALLDIR)/
 install_zarith install_num: install_%: $(INSTALLDIR)/linksem_%/META
 
 $(INSTALLDIR)/linksem/META: META
-	-ocamlfind remove linksem
-	ocamlfind install -patch-version "$(LINKSEMVERSION)" linksem META
+	-ocamlfind remove -destdir $(INSTALLDIR) linksem
+	ocamlfind install -destdir $(INSTALLDIR) -patch-version "$(LINKSEMVERSION)" linksem META
 	touch $@
 
 .PHONY: install
 install: $(INSTALLDIR)/linksem/META install_zarith install_num
 
+LOCALINSTALDIR := local
+.PHONY: local-install
+local-install:
+	mkdir -p $(LOCALINSTALDIR)
+	$(MAKE) INSTALLDIR=$(LOCALINSTALDIR) install
+
 .PHONY: uninstall
 uninstall:
-	-ocamlfind remove linksem
-	-ocamlfind remove linksem_zarith
-	-ocamlfind remove linksem_num
+	-ocamlfind remove -destdir $(INSTALLDIR) linksem
+	-ocamlfind remove -destdir $(INSTALLDIR) linksem_zarith
+	-ocamlfind remove -destdir $(INSTALLDIR) linksem_num
+
 
 copy_elf main_elf main_link: OCAMLFIND_PACKAGES += -package unix -package str
 copy_elf main_elf main_link scratch: %: %.ml $(ALL_UTIL_ML_WO_LEM) lem_ocaml_sentinel
