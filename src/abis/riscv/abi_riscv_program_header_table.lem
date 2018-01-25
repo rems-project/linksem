@@ -1,0 +1,25 @@
+(** [abi_riscv_program_header_table], program header table specific definitions
+  * for the RISCV ABI.
+  *)
+
+open import Basic_classes
+open import Bool
+open import Num
+open import String
+
+(** New segment types. *)
+
+(** [string_of_abi_riscv_elf_segment_type m] produces a string based representation
+  * of RISCV segment type [m].
+  *)
+val string_of_abi_riscv_elf_segment_type : natural -> string
+let string_of_abi_riscv_elf_segment_type m =
+    "Invalid RISCV segment type"
+
+(** [abi_riscv_is_valid_program_interpreter s] checks whether the program interpreter
+  * string is valid for RISCV ABI.
+  * See Section XXX FIXME
+  *)
+val abi_riscv_is_valid_program_interpreter : string -> bool
+let abi_riscv_is_valid_program_interpreter s =
+  s = "/lib/ld64.so.1"

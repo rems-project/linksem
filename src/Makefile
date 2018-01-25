@@ -85,6 +85,13 @@ LEM_ABI_SRC := \
 	abis/mips64/abi_mips64.lem \
 	abis/x86/abi_x86_relocation.lem \
 	abis/power64/abi_power64_relocation.lem \
+	abis/riscv/abi_riscv_elf_header.lem \
+	abis/riscv/abi_riscv_program_header_table.lem \
+	abis/riscv/abi_riscv_relocation.lem \
+	abis/riscv/abi_riscv_section_header_table.lem \
+	abis/riscv/abi_riscv_serialisation.lem \
+	abis/riscv/abi_riscv_symbol_table.lem \
+	abis/riscv/abi_riscv.lem \
 	gnu_extensions/gnu_ext_types_native_uint.lem \
 	gnu_extensions/gnu_ext_section_header_table.lem \
 	gnu_extensions/gnu_ext_dynamic.lem \
@@ -110,7 +117,7 @@ LEM_MODEL_TP_THY := $(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC
 OCAMLFIND_PACKAGES := -package num -package lem
 
 OCAMLFLAGS := -I adaptors \
-  -I abis -I abis/amd64 -I abis/power64 -I abis/aarch64 -I abis/x86 -I abis/mips64 \
+  -I abis -I abis/amd64 -I abis/power64 -I abis/aarch64 -I abis/x86 -I abis/mips64 -I abis/riscv \
   -I gnu_extensions \
   -g
 

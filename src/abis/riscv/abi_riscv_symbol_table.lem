@@ -1,0 +1,21 @@
+(** [abi_mips64_symbol_table], MIPS64 ABI specific definitions for the ELF symbol
+  * table.
+  *)
+
+open import Basic_classes
+open import Num
+open import Gnu_ext_abi
+
+(** MIPS64 specific symbol types.  See doc/ifunc.txt and Section XXX FIXME of the
+  * ABI.
+  *)
+
+(** [string_of_abi_mips64_symbol_type m] produces a string based representation
+  * of MIPS64 symbol type [m].
+  *)
+val string_of_abi_mips64_symbol_type : natural -> string
+let {ocaml} string_of_abi_mips64_symbol_type m =
+  if m = stt_gnu_ifunc then
+    "GNU_IFUNC"
+  else
+    "Invalid MIPS64 symbol type"
