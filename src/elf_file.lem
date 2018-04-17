@@ -61,7 +61,7 @@ let bytes_of_elf32_file ef =
     if List.length ef.elf32_file_section_header_table =
       List.length ef.elf32_file_interpreted_sections then
       let segs_zip  = List.zip ef.elf32_file_program_header_table ef.elf32_file_interpreted_segments in
-      let sects_zip = List.zip ef.elf32_file_section_header_table (List.reverse ef.elf32_file_interpreted_sections) in
+      let sects_zip = List.zip ef.elf32_file_section_header_table ef.elf32_file_interpreted_sections in
       let segs_layout =
         List.map (fun (seg, interp_seg) ->
           (natural_of_elf32_off seg.elf32_p_offset, interp_seg.elf32_segment_body)
@@ -273,7 +273,7 @@ let obtain_elf64_section_header_table hdr bs0 =
       (* Byte sequence irrelevant below as exact size used... *)
       read_elf64_section_header_table ssize endian sexact >>= fun (sht, _) ->
       return sht
-      
+
 (** [obtain_elf32_section_header_string_table hdr sht bs0] reads a file's section
   * header string table from byte sequence [bs0] using information gleaned from
   * the file header [hdr] and section header table [sht].
@@ -285,13 +285,13 @@ let obtain_elf32_section_header_string_table hdr sht bs0 =
   if (natural_of_elf32_half hdr.elf32_shstrndx) = shn_undef then
     return Nothing
   else
-    match index (natural_of_elf32_half hdr.elf32_shstrndx) sht with 
+    match index (natural_of_elf32_half hdr.elf32_shstrndx) sht with
       Nothing -> fail "no section header string table"
       | Just x -> return x
     end >>= fun sh ->
     Byte_sequence.offset_and_cut (natural_of_elf32_off sh.elf32_sh_offset) (natural_of_elf32_word sh.elf32_sh_size) bs0 >>= fun sexact ->
     return (Just (string_table_of_byte_sequence sexact))
-      
+
 (** [obtain_elf64_section_header_string_table hdr sht bs0] reads a file's section
   * header string table from byte sequence [bs0] using information gleaned from
   * the file header [hdr] and section header table [sht].
@@ -303,7 +303,7 @@ let obtain_elf64_section_header_string_table hdr sht bs0 =
   if (natural_of_elf64_half hdr.elf64_shstrndx) = shn_undef then
     return Nothing
   else
-    match index (natural_of_elf64_half hdr.elf64_shstrndx) sht with 
+    match index (natural_of_elf64_half hdr.elf64_shstrndx) sht with
       Nothing -> fail "no section header string table"
       | Just x -> return x
     end >>= fun sh ->
@@ -562,7 +562,7 @@ val obtain_elf64_bits_and_bobs : elf64_header -> elf64_program_header_table -> e
   -> elf64_section_header_table -> elf64_interpreted_sections -> byte_sequence -> error (list (natural * byte_sequence))
 let obtain_elf64_bits_and_bobs hdr segs interp_segs sects interp_sects bs0 =
   let hdr_off_len  = (0, natural_of_elf64_half hdr.elf64_ehsize) in
-  
+
   let pht_off      = natural_of_elf64_off hdr.elf64_phoff in
   let pht_len      = natural_of_elf64_half hdr.elf64_phentsize * natural_of_elf64_half hdr.elf64_phnum in
   let pht_off_len  = (pht_off, pht_off + pht_len) in
@@ -680,17 +680,17 @@ let get_elf64_file_section_header_string_table f3 =
           let strings  = Byte_sequence.string_of_byte_sequence rel in
           return (String_table.mk_string_table strings Missing_pervasives.null_char)
     end
-    
+
 val find_elf32_symbols_by_symtab_idx : natural -> elf32_file -> error (elf32_symbol_table * string_table * natural)
 let find_elf32_symbols_by_symtab_idx sec_idx f =
     match List.index f.elf32_file_interpreted_sections (natFromNatural sec_idx) with
         Nothing -> fail "impossible: interpreted section found but not indexable"
         | Just sec -> return sec
-    end >>= fun sec -> 
+    end >>= fun sec ->
     match List.index f.elf32_file_interpreted_sections (natFromNatural sec.elf32_section_link) with
         Nothing -> fail "no associated strtab"
         | Just strs -> return strs
-    end >>= fun strs -> 
+    end >>= fun strs ->
     let strings = Byte_sequence.string_of_byte_sequence strs.elf32_section_body in
     let strtab = String_table.mk_string_table strings null_char in
     let endian = get_elf32_header_endianness f.elf32_file_header in
@@ -700,7 +700,7 @@ let find_elf32_symbols_by_symtab_idx sec_idx f =
 val find_elf32_symtab_by_type : natural -> elf32_file -> error (elf32_symbol_table * string_table * natural)
 let find_elf32_symtab_by_type t f =
     let found_symtab_index = find_index (fun sh -> sh.elf32_section_type = t) f.elf32_file_interpreted_sections in
-    match found_symtab_index with 
+    match found_symtab_index with
         Nothing -> fail "no such symtab"
         | Just sec_idx -> return sec_idx
     end >>= fun sec_idx -> find_elf32_symbols_by_symtab_idx sec_idx f
@@ -710,11 +710,11 @@ let find_elf64_symbols_by_symtab_idx sec_idx f =
     match List.index f.elf64_file_interpreted_sections (natFromNatural sec_idx) with
         Nothing -> fail "impossible: interpreted section found but not indexable"
         | Just sec -> return sec
-    end >>= fun sec -> 
+    end >>= fun sec ->
     match List.index f.elf64_file_interpreted_sections (natFromNatural sec.elf64_section_link) with
         Nothing -> fail "no associated strtab"
         | Just strs -> return strs
-    end >>= fun strs -> 
+    end >>= fun strs ->
     let strings = Byte_sequence.string_of_byte_sequence strs.elf64_section_body in
     let strtab = String_table.mk_string_table strings null_char in
     let endian = get_elf64_header_endianness f.elf64_file_header in
@@ -724,7 +724,7 @@ let find_elf64_symbols_by_symtab_idx sec_idx f =
 val find_elf64_symtab_by_type : natural -> elf64_file -> error (elf64_symbol_table * string_table * natural)
 let find_elf64_symtab_by_type t f =
     let found_symtab_index = find_index (fun sh -> sh.elf64_section_type = t) f.elf64_file_interpreted_sections in
-    match found_symtab_index with 
+    match found_symtab_index with
         Nothing -> fail "no such symtab"
         | Just sec_idx -> return sec_idx
     end >>= fun sec_idx -> find_elf64_symbols_by_symtab_idx sec_idx f
@@ -882,8 +882,8 @@ let get_elf64_file_dynamic_symbol_table ef =
       | _ ->
         fail "obtain_elf64_dynamic_symbol_table: an ELF file may only have one symbol table of type SHT_DYNSYM"
     end
-    
-(** [get_elf32_file_symbol_table_by_index f1 index] returns the ELF file [f1] 
+
+(** [get_elf32_file_symbol_table_by_index f1 index] returns the ELF file [f1]
   * symbol table that is pointed to by the section header table entry at index
   * [index].  May fail if index is out of range, or otherwise.
   *)
@@ -898,8 +898,8 @@ let get_elf32_symbol_table_by_index ef link =
       | Just sym ->
         read_elf32_symbol_table endian sym.elf32_section_body
     end
-    
-(** [get_elf32_file_string_table_by_index f1 index] returns the ELF file [f1] 
+
+(** [get_elf32_file_string_table_by_index f1 index] returns the ELF file [f1]
   * string table that is pointed to by the section header table entry at index
   * [index].  May fail if index is out of range, or otherwise.
   *)
@@ -912,8 +912,8 @@ let get_elf32_string_table_by_index ef link =
       | Nothing  -> fail "get_elf32_string_table_by_index: invalid index"
       | Just sym -> return (mk_string_table (Byte_sequence.string_of_byte_sequence sym.elf32_section_body) Missing_pervasives.null_char)
     end
-    
-(** [get_elf64_file_symbol_table_by_index f1 index] returns the ELF file [f1] 
+
+(** [get_elf64_file_symbol_table_by_index f1 index] returns the ELF file [f1]
   * symbol table that is pointed to by the section header table entry at index
   * [index].  May fail if index is out of range, or otherwise.
   *)
@@ -928,8 +928,8 @@ let get_elf64_symbol_table_by_index ef link =
       | Just sym ->
         read_elf64_symbol_table endian sym.elf64_section_body
     end
-    
-(** [get_elf64_file_string_table_by_index f1 index] returns the ELF file [f1] 
+
+(** [get_elf64_file_string_table_by_index f1 index] returns the ELF file [f1]
   * string table that is pointed to by the section header table entry at index
   * [index].  May fail if index is out of range, or otherwise.
   *)
@@ -1012,7 +1012,7 @@ let get_elf32_executable_image f3 =
   * executable ELF file.  May fail if extraction is impossible.
   *)
 val get_elf64_executable_image : elf64_file -> error elf64_executable_process_image
-let get_elf64_executable_image f3 = 
+let get_elf64_executable_image f3 =
   if is_elf64_executable_file f3.elf64_file_header then
     let entr = f3.elf64_file_header.elf64_entry in
     let segs = f3.elf64_file_interpreted_segments in
@@ -1189,10 +1189,10 @@ let {ocaml} string_of_elf64_file hdr_bdl pht_bdl sht_bdl f3 =
   * TODO: move elsewhere.  Check whether this is still being used.
   *)
 val flag_is_set : natural -> natural -> bool
-let flag_is_set flag v = 
-    (* HACK: convert to elf64_xword first. Flags never live 
+let flag_is_set flag v =
+    (* HACK: convert to elf64_xword first. Flags never live
      * in objects bigger than 64 bits. *)
-    elf64_xword_land 
-            (elf64_xword_of_natural v) 
+    elf64_xword_land
+            (elf64_xword_of_natural v)
             (elf64_xword_of_natural flag)
     = (elf64_xword_of_natural flag)
