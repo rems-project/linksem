@@ -1,21 +1,18 @@
-open Big_int
-
 open Error
 
 let acquire_char_list (fname : string) =
   let char_list = ref [] in
+  let ic = open_in_bin fname in
   try
-    let ic = open_in_bin fname in
     while true do
       let c = input_char ic in
       let _ = char_list := c :: !char_list in
-        ()
+      ()
     done;
-    let _ = close_in ic in
     Fail "acquire_char_list: the impossible happened"
   with End_of_file ->
+    let _ = close_in ic in
     Success (List.rev !char_list)
-;;
 
 let serialise_char_list (fname : string) bytes =
   let rec go oc bytes =
@@ -30,4 +27,3 @@ let serialise_char_list (fname : string) bytes =
         Success ()
     with _ ->
       Fail "serialise_char_list: unable to open file for writing"
-;;
