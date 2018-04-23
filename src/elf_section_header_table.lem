@@ -205,7 +205,7 @@ let string_of_section_type os proc user i =
   else if i = sht_symtab_shndx then
     "SYMTAB_SHNDX"
   else if i >= sht_loos && i <= sht_hios then
-    os i 
+    os i
   else if i >= sht_loproc && i <= sht_hiproc then
     proc i
   else if i >= sht_louser && i <= sht_hiuser then
@@ -319,7 +319,7 @@ type elf32_compression_header =
 (** Type [elf64_compression_header] provides information about the compression and
   * decompression of compressed sections.  All compressed sections on ELF64 begin
   * with an [elf64_compression_header] entry.
-  *)   
+  *)
 type elf64_compression_header =
   <| elf64_chdr_type      : elf64_word  (** Specified the compression algorithm *)
    ; elf64_chdr_reserved  : elf64_word  (** Reserved. *)
@@ -329,7 +329,7 @@ type elf64_compression_header =
 
 (** This section is compressed with the ZLIB algorithm.  The compressed data begins
   * at the first byte immediately following the end of the compression header.
-  *)   
+  *)
 let elfcompress_zlib   : natural = 1
 
 (** Values in these ranges are reserved for OS-specific semantics.
@@ -376,7 +376,7 @@ let read_elf64_compression_header ed bs0 =
 (** [elf32_section_header_table_entry] is the type of entries in the section
   * header table in 32-bit ELF files.  Each entry in the table details a section
   * in the body of the ELF file.
-  *) 
+  *)
 type elf32_section_header_table_entry =
   <| elf32_sh_name      : elf32_word (** Name of the section *)
    ; elf32_sh_type      : elf32_word (** Type of the section and its semantics *)
@@ -389,47 +389,47 @@ type elf32_section_header_table_entry =
    ; elf32_sh_addralign : elf32_word (** Alignment constraints for section *)
    ; elf32_sh_entsize   : elf32_word (** Size of each entry in table, if section is one *)
    |>
-   
+
 let (elf32_null_section_header : elf32_section_header_table_entry) =
   <| elf32_sh_name      = elf32_word_of_natural 0
    ; elf32_sh_type      = elf32_word_of_natural 0
    ; elf32_sh_flags     = elf32_word_of_natural 0
    ; elf32_sh_addr      = elf32_addr_of_natural 0
-   ; elf32_sh_offset    = elf32_off_of_natural 0 
+   ; elf32_sh_offset    = elf32_off_of_natural 0
    ; elf32_sh_size      = elf32_word_of_natural 0
    ; elf32_sh_link      = elf32_word_of_natural 0
    ; elf32_sh_info      = elf32_word_of_natural 0
    ; elf32_sh_addralign = elf32_word_of_natural 0
    ; elf32_sh_entsize   = elf32_word_of_natural 0
    |>
-   
+
 (** [compare_elf32_section_header_table_entry ent1 ent2] is an ordering comparison
   * function on section header table entries suitable for use in constructing
   * sets, finite maps and other ordered data types.
   *)
 val compare_elf32_section_header_table_entry : elf32_section_header_table_entry ->
   elf32_section_header_table_entry -> ordering
-let compare_elf32_section_header_table_entry h1 h2 = 
-   compare 
+let compare_elf32_section_header_table_entry h1 h2 =
+   compare
     [natural_of_elf32_word h1.elf32_sh_name;
-    natural_of_elf32_word h1.elf32_sh_type; 
+    natural_of_elf32_word h1.elf32_sh_type;
     natural_of_elf32_word h1.elf32_sh_flags;
-    natural_of_elf32_addr h1.elf32_sh_addr; 
+    natural_of_elf32_addr h1.elf32_sh_addr;
     natural_of_elf32_off h1.elf32_sh_offset;
-    natural_of_elf32_word h1.elf32_sh_size; 
-    natural_of_elf32_word h1.elf32_sh_link; 
-    natural_of_elf32_word h1.elf32_sh_info; 
-    natural_of_elf32_word h1.elf32_sh_addralign; 
+    natural_of_elf32_word h1.elf32_sh_size;
+    natural_of_elf32_word h1.elf32_sh_link;
+    natural_of_elf32_word h1.elf32_sh_info;
+    natural_of_elf32_word h1.elf32_sh_addralign;
     natural_of_elf32_word h1.elf32_sh_entsize]
     [natural_of_elf32_word h2.elf32_sh_name;
-    natural_of_elf32_word h2.elf32_sh_type; 
+    natural_of_elf32_word h2.elf32_sh_type;
     natural_of_elf32_word h2.elf32_sh_flags;
-    natural_of_elf32_addr h2.elf32_sh_addr; 
+    natural_of_elf32_addr h2.elf32_sh_addr;
     natural_of_elf32_off h2.elf32_sh_offset;
-    natural_of_elf32_word h2.elf32_sh_size; 
-    natural_of_elf32_word h2.elf32_sh_link; 
-    natural_of_elf32_word h2.elf32_sh_info; 
-    natural_of_elf32_word h2.elf32_sh_addralign; 
+    natural_of_elf32_word h2.elf32_sh_size;
+    natural_of_elf32_word h2.elf32_sh_link;
+    natural_of_elf32_word h2.elf32_sh_info;
+    natural_of_elf32_word h2.elf32_sh_addralign;
     natural_of_elf32_word h2.elf32_sh_entsize]
 
 instance (Ord elf32_section_header_table_entry)
@@ -443,7 +443,7 @@ end
 (** [elf64_section_header_table_entry] is the type of entries in the section
   * header table in 64-bit ELF files.  Each entry in the table details a section
   * in the body of the ELF file.
-  *) 
+  *)
 type elf64_section_header_table_entry =
   <| elf64_sh_name      : elf64_word  (** Name of the section *)
    ; elf64_sh_type      : elf64_word  (** Type of the section and its semantics *)
@@ -456,16 +456,16 @@ type elf64_section_header_table_entry =
    ; elf64_sh_addralign : elf64_xword (** Alignment constraints for section *)
    ; elf64_sh_entsize   : elf64_xword (** Size of each entry in table, if section is one *)
    |>
-   
+
 let (elf64_null_section_header : elf64_section_header_table_entry) =
-  <| elf64_sh_name      = elf64_word_of_natural 0 
-   ; elf64_sh_type      = elf64_word_of_natural 0 
+  <| elf64_sh_name      = elf64_word_of_natural 0
+   ; elf64_sh_type      = elf64_word_of_natural 0
    ; elf64_sh_flags     = elf64_xword_of_natural 0
-   ; elf64_sh_addr      = elf64_addr_of_natural 0 
-   ; elf64_sh_offset    = elf64_off_of_natural 0  
+   ; elf64_sh_addr      = elf64_addr_of_natural 0
+   ; elf64_sh_offset    = elf64_off_of_natural 0
    ; elf64_sh_size      = elf64_xword_of_natural 0
-   ; elf64_sh_link      = elf64_word_of_natural 0 
-   ; elf64_sh_info      = elf64_word_of_natural 0 
+   ; elf64_sh_link      = elf64_word_of_natural 0
+   ; elf64_sh_info      = elf64_word_of_natural 0
    ; elf64_sh_addralign = elf64_xword_of_natural 0
    ; elf64_sh_entsize   = elf64_xword_of_natural 0
    |>
@@ -476,27 +476,27 @@ let (elf64_null_section_header : elf64_section_header_table_entry) =
   *)
 val compare_elf64_section_header_table_entry : elf64_section_header_table_entry ->
   elf64_section_header_table_entry -> ordering
-let compare_elf64_section_header_table_entry h1 h2 = 
-   compare 
+let compare_elf64_section_header_table_entry h1 h2 =
+   compare
     [natural_of_elf64_word h1.elf64_sh_name;
-    natural_of_elf64_word h1.elf64_sh_type; 
+    natural_of_elf64_word h1.elf64_sh_type;
     natural_of_elf64_xword h1.elf64_sh_flags;
-    natural_of_elf64_addr h1.elf64_sh_addr; 
+    natural_of_elf64_addr h1.elf64_sh_addr;
     natural_of_elf64_off h1.elf64_sh_offset;
-    natural_of_elf64_xword h1.elf64_sh_size; 
-    natural_of_elf64_word h1.elf64_sh_link; 
-    natural_of_elf64_word h1.elf64_sh_info; 
-    natural_of_elf64_xword h1.elf64_sh_addralign; 
+    natural_of_elf64_xword h1.elf64_sh_size;
+    natural_of_elf64_word h1.elf64_sh_link;
+    natural_of_elf64_word h1.elf64_sh_info;
+    natural_of_elf64_xword h1.elf64_sh_addralign;
     natural_of_elf64_xword h1.elf64_sh_entsize]
     [natural_of_elf64_word h2.elf64_sh_name;
-    natural_of_elf64_word h2.elf64_sh_type; 
+    natural_of_elf64_word h2.elf64_sh_type;
     natural_of_elf64_xword h2.elf64_sh_flags;
-    natural_of_elf64_addr h2.elf64_sh_addr; 
+    natural_of_elf64_addr h2.elf64_sh_addr;
     natural_of_elf64_off h2.elf64_sh_offset;
-    natural_of_elf64_xword h2.elf64_sh_size; 
-    natural_of_elf64_word h2.elf64_sh_link; 
-    natural_of_elf64_word h2.elf64_sh_info; 
-    natural_of_elf64_xword h2.elf64_sh_addralign; 
+    natural_of_elf64_xword h2.elf64_sh_size;
+    natural_of_elf64_word h2.elf64_sh_link;
+    natural_of_elf64_word h2.elf64_sh_info;
+    natural_of_elf64_xword h2.elf64_sh_addralign;
     natural_of_elf64_xword h2.elf64_sh_entsize]
 
 instance (Ord elf64_section_header_table_entry)
@@ -616,7 +616,7 @@ val bytes_of_elf32_section_header_table : endianness ->
   elf32_section_header_table -> byte_sequence
 let bytes_of_elf32_section_header_table endian tbl =
   Byte_sequence.concat (List.map (bytes_of_elf32_section_header_table_entry endian) tbl)
-  
+
 (** [bytes_of_elf64_section_header_table ed tbl] blits section header table [tbl]
   * to a byte sequence assuming endianness [ed].
   *)
@@ -637,9 +637,9 @@ let rec read_elf32_section_header_table' endian bs0 =
     return []
   else
     read_elf32_section_header_table_entry endian bs0 >>= fun (entry, bs1) ->
-    read_elf32_section_header_table' endian bs1 >>= fun tail ->
-    return (entry::tail)
-    
+    read_elf32_section_header_table' endian bs1 >>= fun sht ->
+    return (sht ++ [entry])
+
 (** [read_elf64_section_header_table' ed bs0] parses an ELF64 section header table
   * from byte sequence [bs0] assuming endianness [ed].  Assumes [bs0] is of the
   * exact length required to parse the entire table.
@@ -652,8 +652,8 @@ let rec read_elf64_section_header_table' endian bs0 =
     return []
   else
     read_elf64_section_header_table_entry endian bs0 >>= fun (entry, bs1) ->
-    read_elf64_section_header_table' endian bs1 >>= fun tail ->
-    return (entry::tail)
+    read_elf64_section_header_table' endian bs1 >>= fun sht ->
+    return (sht ++ [entry])
 
 (** [read_elf32_section_header_table sz ed bs0] parses an ELF32 section header
   * table from a [sz] sized prefix of byte sequence [bs0] assuming endianness
@@ -719,7 +719,7 @@ let is_elf32_addr_addralign_correct ent =
       align = 0 || align = 1 (* TODO: or a power of two *)
     else
       false
-    
+
 (** [is_elf64_addr_addralign_correct ent] checks whether an internal address
   * alignment constraint is met on section header table [ent].
   * TODO: needs tweaking to add in power-of-two constraint, too.
@@ -752,7 +752,7 @@ let is_valid_elf32_section_header_table tbl =
         elf32_size_correct x tbl
         (* XXX: more correctness criteria in time *)
   end
-  
+
 (** [is_valid_elf64_section_header_table sht] checks whether all entries of
   * section header table [sht] are valid.
   *)
@@ -866,7 +866,7 @@ let string_of_elf64_section_header_table_entry' (os, proc, user) stbl entry =
   * functionality, in order to produce a [Show] instance for section header
   * table entries.
   *)
-  
+
 val string_of_elf32_section_header_table_entry_default : elf32_section_header_table_entry -> string
 let string_of_elf32_section_header_table_entry_default =
   string_of_elf32_section_header_table_entry
@@ -906,7 +906,7 @@ val string_of_elf64_section_header_table : sht_print_bundle ->
   elf64_section_header_table -> string
 let string_of_elf64_section_header_table sht_bdl tbl =
   unlines (List.map (string_of_elf64_section_header_table_entry sht_bdl) tbl)
-  
+
 val string_of_elf64_section_header_table_default : elf64_section_header_table ->
   string
 let string_of_elf64_section_header_table_default =
@@ -924,7 +924,7 @@ val string_of_elf64_section_header_table' : sht_print_bundle -> string_table ->
   elf64_section_header_table -> string
 let string_of_elf64_section_header_table' sht_bdl stbl tbl =
   unlines (List.map (string_of_elf64_section_header_table_entry' sht_bdl stbl) tbl)
-  
+
 (** Section to segment mappings *)
 
 (** [elf32_tbss_special shdr seg] implements the ELF_TBSS_SPECIAL macro from readelf:
@@ -942,7 +942,7 @@ let is_elf32_tbss_special sec_hdr segment =
   (elf32_word_land sec_hdr.elf32_sh_flags (elf32_word_of_natural shf_tls)) <> elf32_word_of_natural 0 &&
     ((natural_of_elf32_word sec_hdr.elf32_sh_type) = sht_nobits) &&
     ((natural_of_elf32_word segment.elf32_p_type) <> elf_pt_tls)
-    
+
 (** [elf64_tbss_special shdr seg] implements the ELF_TBSS_SPECIAL macro from readelf:
   *
   * #define ELF_TBSS_SPECIAL(sec_hdr, segment)			\
@@ -983,7 +983,7 @@ let rec get_elf32_section_to_segment_mapping hdr sects pent isin stbl =
           get_elf32_section_to_segment_mapping hdr xs pent isin stbl >>= fun tl ->
           return (str :: tl)
   end
-  
+
 (** [get_elf64_section_to_segment_mapping hdr sht pht isin stbl] computes the
   * section to segment mapping for an ELF file using information in the section
   * header table [sht], program header table [pht] and file header [hdr].  A
@@ -1008,7 +1008,7 @@ let rec get_elf64_section_to_segment_mapping hdr sects pent isin stbl =
           get_elf64_section_to_segment_mapping hdr xs pent isin stbl >>= fun tl ->
           return (str :: tl)
   end
-  
+
 (** Section groups *)
 
 (** This is a COMDAT group and may duplicate other COMDAT groups in other object
@@ -1044,7 +1044,7 @@ let obtain_elf32_section_group_indices endian sht bs0 =
             return (flag, xs)
       end
     ) filtered
-    
+
 (** [obtain_elf64_section_group_indices endian sht bs0] extracts all section header
   * table indices of sections that are marked as being part of a section group.
   *)
@@ -1074,7 +1074,7 @@ let obtain_elf64_section_group_indices endian sht bs0 =
 val obtain_elf32_tls_template : elf32_section_header_table -> elf32_section_header_table
 let obtain_elf32_tls_template sht =
   List.filter (fun ent ->
-    let flags = natural_of_elf32_word ent.elf32_sh_flags in  
+    let flags = natural_of_elf32_word ent.elf32_sh_flags in
       natural_land flags shf_tls <> 0) sht
 
 (** [obtain_elf64_tls_template sht] extracts the TLS template (i.e. all sections
@@ -1083,9 +1083,9 @@ let obtain_elf32_tls_template sht =
 val obtain_elf64_tls_template : elf64_section_header_table -> elf64_section_header_table
 let obtain_elf64_tls_template sht =
   List.filter (fun ent ->
-    let flags = natural_of_elf64_xword ent.elf64_sh_flags in  
+    let flags = natural_of_elf64_xword ent.elf64_sh_flags in
       natural_land flags shf_tls <> 0) sht
-      
+
 (** [obtain_elf32_hash_table endian sht bs0] extracts a hash table from an ELF file
   * providing a section of type SHT_HASH exists in section header table [sht].
   * Extraction is from byte sequence [bs0] assuming endianness [endian].  The
@@ -1111,7 +1111,7 @@ let obtain_elf32_hash_table endian sht bs0 =
         return (nbucket, nchain, buckets, chain)
       | _   -> fail "obtain_elf32_hash_table: multiple section header table entries of type sht_hash"
     end
-    
+
 (** [obtain_elf64_hash_table endian sht bs0] extracts a hash table from an ELF file
   * providing a section of type SHT_HASH exists in section header table [sht].
   * Extraction is from byte sequence [bs0] assuming endianness [endian].  The
