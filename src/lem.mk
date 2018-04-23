@@ -30,8 +30,8 @@ LEM_UTIL_SRC := default_printing.lem missing_pervasives.lem show.lem endianness.
 # GAH. doing a topsort manually is a sign of failure.
 ALL_UTIL_ML := \
 	uint64_wrapper.ml uint32_wrapper.ml \
-	show.ml endianness.ml error.ml ml_bindings.ml missing_pervasives.ml multimap.ml \
-	multimapAuxiliary.ml default_printing.ml  byte_sequence_wrapper.ml
+	show.ml endianness.ml error.ml ml_bindings.ml missing_pervasives.ml \
+	default_printing.ml  byte_sequence_wrapper.ml
 	# missing_pervasivesAuxiliary.ml
 ALL_UTIL_ML_WO_LEM := $(filter-out $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC)) $(patsubst %.lem,%Auxiliary.ml,$(LEM_UTIL_SRC)),$(ALL_UTIL_ML))
 
