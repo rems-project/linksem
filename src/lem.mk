@@ -5,8 +5,7 @@
 THIS_MAKEFILE := $(realpath $(lastword $(MAKEFILE_LIST)))
 REPOROOT := $(dir $(THIS_MAKEFILE))/..
 
-LEMDIR ?= ../../lem
-LEM ?= $(LEMDIR)/lem
+LEM ?= lem
 
 $(info OCAMLPATH is $(OCAMLPATH))
 export OCAMLPATH := $(OCAMLPATH)

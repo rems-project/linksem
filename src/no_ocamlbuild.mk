@@ -46,7 +46,8 @@ build_zarith/linksem.cmxa build_num/linksem.cmxa: build_%/linksem.cmxa: $(ALL_UT
 	cp META.$* "$(dir $@)"/META
 
 INSTALLDIR := $(shell ocamlfind printconf destdir)
-LINKSEMVERSION := $(shell git describe --dirty --always)
+LINKSEMRELEASE := 0.1
+LINKSEMVERSION := $(shell git describe --dirty --always || echo $(LINKSEMRELEASE))
 
 $(INSTALLDIR)/linksem_zarith/META $(INSTALLDIR)/linksem_num/META: $(INSTALLDIR)/linksem_%/META: build_%/linksem.cma build_%/linksem.cmxa
 	-ocamlfind remove -destdir $(INSTALLDIR) linksem_$*
