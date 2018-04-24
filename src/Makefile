@@ -1,4 +1,4 @@
-USE_OCAMLBUILD ?= true
+USE_OCAMLBUILD ?= false
 
 ifeq "$(USE_OCAMLBUILD)" "false"
 	include no_ocamlbuild.mk
