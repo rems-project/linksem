@@ -638,7 +638,7 @@ let rec read_elf32_section_header_table' endian bs0 =
   else
     read_elf32_section_header_table_entry endian bs0 >>= fun (entry, bs1) ->
     read_elf32_section_header_table' endian bs1 >>= fun sht ->
-    return (sht ++ [entry])
+    return (entry :: sht)
 
 (** [read_elf64_section_header_table' ed bs0] parses an ELF64 section header table
   * from byte sequence [bs0] assuming endianness [ed].  Assumes [bs0] is of the
@@ -653,7 +653,7 @@ let rec read_elf64_section_header_table' endian bs0 =
   else
     read_elf64_section_header_table_entry endian bs0 >>= fun (entry, bs1) ->
     read_elf64_section_header_table' endian bs1 >>= fun sht ->
-    return (sht ++ [entry])
+    return (entry :: sht)
 
 (** [read_elf32_section_header_table sz ed bs0] parses an ELF32 section header
   * table from a [sz] sized prefix of byte sequence [bs0] assuming endianness
