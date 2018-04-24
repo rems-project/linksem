@@ -86,14 +86,14 @@ let rec repeatM' count seed action =
     action seed >>= fun (head, seed) ->
     repeatM' (count - 1) seed action >>= fun (tail, seed) ->
     return (head::tail, seed)
-	
+
 (** [mapM f xs] maps [f] across [xs], failing if [f] fails on any element of [xs].
   *)
 val mapM' : forall 'a 'b. ('a -> error 'b) -> list 'a -> error (list 'b) -> error (list 'b)
-let rec mapM' f xs acc =
+let rec mapM' f xs rev_acc =
 	match xs with
-		| []    -> acc
-		| x::xs -> mapM' f xs (acc >>= fun tl -> f x >>= fun hd -> return (hd::tl))
+		| []    -> rev_acc >>= fun rev_acc -> return (List.reverse rev_acc)
+		| x::xs -> mapM' f xs (rev_acc >>= fun tl -> f x >>= fun hd -> return (hd::tl))
 	end
 
 val mapM : forall 'a 'b. ('a -> error 'b) -> list 'a -> error (list 'b)
