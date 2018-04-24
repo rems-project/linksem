@@ -6,5 +6,5 @@ include lem.mk
 clean: lem-clean
 	ocamlbuild -clean
 
-%.byte %.native: lem_ocaml_sentinel $(ALL_UTIL_ML)
+%.byte %.native: lem_ocaml_sentinel $(ALL_UTIL_ML_WO_LEM)
 	ocamlbuild -cflag -g -pkg 'unix str lem' $(INCLUDEFLAGS) "$@"
