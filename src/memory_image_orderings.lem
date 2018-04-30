@@ -30,7 +30,7 @@ open import Abi_classes
 open import Missing_pervasives
 
 val elfFileFeatureCompare : elf_file_feature -> elf_file_feature -> Basic_classes.ordering
-let elfFileFeatureCompare f1 f2 = 
+let elfFileFeatureCompare f1 f2 =
     (* order is: *)
     match (f1, f2) with
         (ElfHeader(x1), ElfHeader(x2)) -> (* equal tags, so ... *) compare x1 x2
@@ -56,7 +56,7 @@ let elfFileFeatureCompare f1 f2 =
     end
 
 val elfFileFeatureTagEquiv : elf_file_feature -> elf_file_feature -> bool
-let elfFileFeatureTagEquiv f1 f2 = 
+let elfFileFeatureTagEquiv f1 f2 =
     (* order is: *)
     match (f1, f2) with
         (ElfHeader(x1), ElfHeader(x2)) -> (* equal tags, so ... *) true
@@ -77,7 +77,7 @@ end
 
 val tagCompare : forall 'abifeature. Ord 'abifeature =>
     range_tag 'abifeature -> range_tag 'abifeature -> Basic_classes.ordering
-let tagCompare k1 k2 = 
+let tagCompare k1 k2 =
     match (k1, k2) with
         (ImageBase, ImageBase) -> EQ
         | (ImageBase, _) -> LT
@@ -117,7 +117,7 @@ instance forall 'abifeature. Ord 'abifeature => (Ord range_tag 'abifeature)
 end
 
 val tagEquiv : forall 'abifeature. AbiFeatureTagEquiv 'abifeature => range_tag 'abifeature -> range_tag 'abifeature -> bool
-let tagEquiv k1 k2 = 
+let tagEquiv k1 k2 =
     match (k1, k2) with
         (ImageBase, ImageBase) -> true
         | (EntryPoint, EntryPoint) -> true
@@ -132,17 +132,17 @@ let tagEquiv k1 k2 =
 
 
 val unique_tag_matching : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature => range_tag 'abifeature -> annotated_memory_image 'abifeature -> range_tag 'abifeature
-let unique_tag_matching tag img = 
+let unique_tag_matching tag img =
     match Multimap.lookupBy tagEquiv tag img.by_tag with
         [] -> failwith "no tag match found"
         | [(t, r)] -> t
-        | x -> failwith ("more than one tag match") (* (ranges: " ^ 
+        | x -> failwith ("more than one tag match") (* (ranges: " ^
             (show (List.map (fun (t, r) -> r) x))
             ^  ") when asserted unique")" *)
     end
-    
+
 val tagged_ranges_matching_tag : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature => range_tag 'abifeature -> annotated_memory_image 'abifeature -> list (range_tag 'abifeature * maybe element_range)
-let tagged_ranges_matching_tag tag img = 
+let tagged_ranges_matching_tag tag img =
     Multimap.lookupBy tagEquiv tag img.by_tag
 
 val element_range_compare : element_range -> element_range -> Basic_classes.ordering
@@ -153,7 +153,7 @@ val unique_tag_matching_at_range_exact : forall 'abifeature. Ord 'abifeature, Ab
     -> range_tag 'abifeature
     -> annotated_memory_image 'abifeature
     -> range_tag 'abifeature
-let unique_tag_matching_at_range_exact r tag img = 
+let unique_tag_matching_at_range_exact r tag img =
     (* 1. find tags a unique range labelled as ELF section header table. *)
     let (_, (allRangeMatches : list (range_tag 'abifeature))) = unzip (Multimap.lookupBy (=) r img.by_range)
     in
@@ -166,7 +166,7 @@ let unique_tag_matching_at_range_exact r tag img =
     end
 
 val symbol_def_ranges : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature => annotated_memory_image 'abifeature -> (list (range_tag 'abifeature) * list (maybe element_range))
-let symbol_def_ranges img = 
+let symbol_def_ranges img =
     (* find all element ranges labelled as ELF symbols *)
     let (tags, maybe_ranges) = unzip (
         tagged_ranges_matching_tag (SymbolDef(null_symbol_definition)) img
@@ -179,53 +179,52 @@ val name_of_symbol_def : symbol_definition -> string
 let name_of_symbol_def sym = sym.def_symname
 
 val defined_symbols_and_ranges : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature => annotated_memory_image 'abifeature -> list ((maybe element_range) * symbol_definition)
-let defined_symbols_and_ranges img = 
-    List.mapMaybe (fun (tag, maybeRange) -> 
+let defined_symbols_and_ranges img =
+    List.mapMaybe (fun (tag, maybeRange) ->
         match tag with
             SymbolDef(ent) -> Just (maybeRange, ent)
             | _ -> failwith "impossible: non-symbol def in list of symbol defs"
         end) (tagged_ranges_matching_tag (SymbolDef(null_symbol_definition)) img)
-    
+
 val make_ranges_definite : list (maybe element_range) -> list element_range
-let make_ranges_definite rs = 
+let make_ranges_definite rs =
     List.map (fun (maybeR : maybe element_range) -> match maybeR with
             Just r -> r
             | Nothing -> failwith "impossible: range not definite, but asserted to be"
         end) rs
 
-val find_defs_matching : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature => symbol_definition -> annotated_memory_image 'abifeature -> list ((maybe element_range) * symbol_definition)
-let find_defs_matching bound_def img = 
-    let (ranges_and_defs : list (maybe element_range * symbol_definition)) = defined_symbols_and_ranges img
-    in 
-    (*let _ = errln ("Searching (among " ^ (show (length ranges_and_defs)) ^ ") for the bound-to symbol `" ^ bound_def.def_symname 
-        ^ "', which came from linkable idx " ^ 
-        (show bound_def.def_linkable_idx) ^ ", section " ^ 
-        (show bound_def.def_syment.elf64_st_shndx) ^ 
-        ", symtab shndx " ^ (show bound_def.def_sym_scn) ^ 
+(* val find_defs_matching : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature => symbol_definition -> annotated_memory_image 'abifeature (* list (maybe element_range * symbol_definition) *) -> list ((maybe element_range) * symbol_definition) *)
+val find_defs_matching : symbol_definition -> list (maybe element_range * symbol_definition) -> list ((maybe element_range) * symbol_definition)
+let find_defs_matching bound_def ranges_and_defs =
+    (*let _ = errln ("Searching (among " ^ (show (length ranges_and_defs)) ^ ") for the bound-to symbol `" ^ bound_def.def_symname
+        ^ "', which came from linkable idx " ^
+        (show bound_def.def_linkable_idx) ^ ", section " ^
+        (show bound_def.def_syment.elf64_st_shndx) ^
+        ", symtab shndx " ^ (show bound_def.def_sym_scn) ^
         ", symind " ^ (show bound_def.def_sym_idx))
     in*)
-    List.mapMaybe (fun (maybe_some_range, some_def) -> 
+    List.mapMaybe (fun (maybe_some_range, some_def) ->
        (* let _ = errln ("Considering one: `" ^ some_def.def_symname ^ "'") in *)
        (* match maybe_some_range with
             Nothing -> failwith "symbol definition not over a definite range"
             | Just some_range -> *)
-                (* if some_def.def_symname = bound_def.def_symname 
+                (* if some_def.def_symname = bound_def.def_symname
                 && some_def.def_linkable_idx = bound_def.def_linkable_idx then
-                if some_def = bound_def 
+                if some_def = bound_def
                     then Just(maybe_some_range, some_def) else Nothing*)
                     (*let _ = errln ("Found one in the same linkable: syment is " ^
                         (show some_def.def_syment))
-                    in*) 
-                (*else*) if some_def = bound_def 
+                    in*)
+                (*else*) if some_def = bound_def
                             then (
                                 (*let _ = errln ("Found one: syment is " ^ (show some_def.def_syment))
                                 in*)
                                 Just(maybe_some_range, some_def)
                             )
                             else if some_def.def_symname = bound_def.def_symname then
-                                (*let _ = errln ("Warning: passing over name-matching def with section " ^ 
-                                    (show some_def.def_syment.elf64_st_shndx) ^ 
-                                    ", symtab shndx " ^ (show some_def.def_sym_scn) ^ 
+                                (*let _ = errln ("Warning: passing over name-matching def with section " ^
+                                    (show some_def.def_syment.elf64_st_shndx) ^
+                                    ", symtab shndx " ^ (show some_def.def_sym_scn) ^
                                     ", symind " ^ (show some_def.def_sym_idx) ^
                                     ", linkable idx " ^ (show some_def.def_linkable_idx))
                                 in*) Nothing
@@ -235,21 +234,22 @@ let find_defs_matching bound_def img =
 
 
 val defined_symbols : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature =>  annotated_memory_image 'abifeature -> list symbol_definition
-let defined_symbols img = 
+let defined_symbols img =
     let (all_symbol_tags, all_symbol_ranges) = symbol_def_ranges img in
-    List.mapMaybe (fun tag -> 
+    List.mapMaybe (fun tag ->
         match tag with
             SymbolDef(ent) -> Just ent
             | _ -> failwith "impossible: non-symbol def in list of symbol defs"
         end) all_symbol_tags
 
 
-let default_get_reloc_symaddr bound_def_in_input output_img maybe_reloc = 
-    match find_defs_matching bound_def_in_input output_img with
+val default_get_reloc_symaddr : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature => symbol_definition -> annotated_memory_image 'abifeature -> list (maybe element_range * symbol_definition) -> maybe reloc_site -> natural
+let default_get_reloc_symaddr bound_def_in_input output_img ranges_and_defs maybe_reloc =
+    match find_defs_matching bound_def_in_input ranges_and_defs with
         [] -> failwith ("internal error: bound-to symbol (name `" ^ bound_def_in_input.def_symname ^ "') not defined")
         | (maybe_range, d) :: more ->
-            let v = 
-                match maybe_range with 
+            let v =
+                match maybe_range with
                     Just(el_name, (start, len)) ->
                     match element_and_offset_to_address (el_name, start) output_img with
                         Just a -> a
@@ -262,7 +262,7 @@ let default_get_reloc_symaddr bound_def_in_input output_img maybe_reloc =
                             else failwith "no range for non-ABS symbol"
                 end
             in
-            match more with 
+            match more with
                 [] -> v
                 | _ -> (*let _ = errln ("FIXME: internal error: more than one def matching bound def `" ^
                     bound_def_in_input.def_symname ^ "'")
