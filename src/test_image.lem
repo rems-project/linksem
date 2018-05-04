@@ -53,7 +53,7 @@ let (ref_and_reloc_rec : symbol_reference_and_reloc_site) =
     ; maybe_def_bound_to = Nothing
     ; maybe_reloc = Just(
       <|
-            ref_relent  = 
+            ref_relent  =
                 <| elf64_ra_offset = elf64_addr_of_natural 0
                  ; elf64_ra_info   = elf64_xword_of_natural r_x86_64_32
                  ; elf64_ra_addend = elf64_sxword_of_integer 0
@@ -65,7 +65,7 @@ let (ref_and_reloc_rec : symbol_reference_and_reloc_site) =
     )
   |>
 
-let def_rec = 
+let def_rec =
    <| def_symname = "test"
     ; def_syment =    <| elf64_st_name  = elf64_word_of_natural 0
                        ; elf64_st_info  = unsigned_char_of_natural 0
@@ -86,8 +86,8 @@ let meta offset = [
 ]
 
 
-let img (addr : nat) (data_size : nat) instr_bytes = 
-    let initial_img = 
+let img (addr : nat) (data_size : nat) instr_bytes =
+    let initial_img =
      <|
         elements = Map.fromList [(".text", <|
              startpos = Just 4194304
@@ -102,11 +102,11 @@ let img (addr : nat) (data_size : nat) instr_bytes =
           ]
         ; by_range = Set.fromList (meta (addr - 4194316))
         ; by_tag = by_tag_from_by_range (Set.fromList (meta (addr - 4194316)))
-     |> 
-    in 
+     |>
+    in
     let ref_input_item
-     = ("test.o", Reloc(Sequence([])), ((File(Filename("blah"), Command_line.null_input_file_options)), [InCommandLine(0)]))
-    in 
+     = ("test.o", Reloc(Byte_sequence.empty), ((File(Filename("blah"), Command_line.null_input_file_options)), [InCommandLine(0)]))
+    in
     let ref_linkable_item = (RelocELF(initial_img), ref_input_item, Input_list.null_input_options)
     in
     let bindings_by_name = Map.fromList [

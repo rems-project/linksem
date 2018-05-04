@@ -1,0 +1,132 @@
+(** [byte_sequence_generic.lem], a list of bytes used for ELF I/O and other
+  * basic tasks in the ELF model.
+  *)
+
+open import Basic_classes
+open import Bool
+open import List
+open import Num
+open import String
+open import Assert_extra
+
+open import Error
+open import Missing_pervasives
+open import Show
+
+(** A [byte_sequence], [bs], denotes a consecutive list of bytes.  Can be read
+  * from or written to a binary file.  Most basic type in the ELF formalisation.
+  * This is a slow, generic byte sequence implementation.
+  *)
+type byte_sequence = list byte
+
+val empty : byte_sequence
+let empty = []
+
+val read_char : byte_sequence -> error (byte * byte_sequence)
+let read_char bs =
+  match bs with
+    | []    -> fail "read_char: sequence is empty"
+    | x::xs -> return (x, xs)
+  end
+
+val acquire : string -> error byte_sequence
+let acquire filename = fail "acquire: not available on this backend"
+declare ocaml target_rep function acquire = `Byte_sequence_wrapper.acquire_byte_list`
+
+val serialise : string -> byte_sequence -> error unit
+let serialise filename bs = fail "serialise: not available on this backend"
+declare ocaml target_rep function serialise = `Byte_sequence_wrapper.serialise_byte_list`
+
+val create : natural -> byte -> byte_sequence
+let create count c = List.replicate (natFromNatural count) c
+
+val zeros : natural -> byte_sequence
+let zeros len =
+  create len Missing_pervasives.null_byte
+
+val length : byte_sequence -> natural
+let length ts =
+  naturalFromNat (List.length ts)
+
+val concat : list byte_sequence -> byte_sequence
+let rec concat ts =
+  match ts with
+    | [] -> []
+    | x::xs -> x ++ (concat xs)
+  end
+declare {isabelle} rename function concat = concat_byte_sequence
+
+val zero_pad_to_length : natural -> byte_sequence -> byte_sequence
+let zero_pad_to_length len bs =
+  let curlen = length bs in
+    if curlen >= len then
+      bs
+    else
+      concat [bs ; (zeros (len - curlen))]
+
+val byte_sequence_of_byte_list : list byte -> byte_sequence
+let byte_sequence_of_byte_list l = l
+
+(** [char_list_of_byte_list bs] converts byte list [bs] into a list of characters.
+  * Implemented as a primitive in OCaml and Isabelle.
+  * TODO: is this actually being used in the Isabelle backend?  All string functions
+  * should be factored out by target-specific definitions.
+  *)
+val char_list_of_byte_list : list byte -> list char
+declare ocaml    target_rep function char_list_of_byte_list = `Byte_sequence_wrapper.char_list_of_byte_list`
+declare isabelle target_rep function char_list_of_byte_list xs = `List.map` `Elf_Types_Local.char_of_unsigned_char` xs
+declare hol      target_rep function char_list_of_byte_list = `MAP` (`CHR` `o` `w2n`)
+declare coq      target_rep function char_list_of_byte_list = `char_list_of_byte_list`
+
+val char_list_of_byte_sequence : byte_sequence -> list char
+let char_list_of_byte_sequence = char_list_of_byte_list
+
+(** [string_of_byte_sequence bs0] converts byte sequence [bs0] into a string
+  * representation.
+  *)
+val string_of_byte_sequence : byte_sequence -> string
+let string_of_byte_sequence ts =
+  let cs = char_list_of_byte_sequence ts in
+    String.toString cs
+
+val byte_list_of_byte_sequence : byte_sequence -> list byte
+let byte_list_of_byte_sequence bs = bs
+
+val equal : byte_sequence -> byte_sequence -> bool
+let rec equal left right =
+  match (left, right) with
+    | ([], []) -> true
+    | ((x::xs), (y::ys)) ->
+        x = y && equal xs ys
+    | (_, _) -> false
+  end
+let inline {isabelle} equal = unsafe_structural_equality
+
+val dropbytes : natural -> byte_sequence -> error byte_sequence
+let rec dropbytes count ts =
+  if count = Missing_pervasives.naturalZero then
+    return ts
+  else
+    match ts with
+      | []    -> fail "dropbytes: cannot drop more bytes than are contained in sequence"
+      | x::xs -> dropbytes (count - 1) xs
+    end
+
+val takebytes_r_with_length: nat -> natural -> byte_sequence -> error byte_sequence
+let rec takebytes_r_with_length count ts_length ts =
+  if ts_length >= (naturalFromNat count) then
+    return (list_take_with_accum count [] ts)
+  else
+    fail "takebytes: cannot take more bytes than are contained in sequence"
+
+val takebytes : natural -> byte_sequence -> error (byte_sequence)
+let takebytes count ts =
+  let result = takebytes_r_with_length (Missing_pervasives.unsafe_nat_of_natural count) (Missing_pervasives.length ts) ts in
+    result
+
+val takebytes_with_length : natural -> natural -> byte_sequence -> error byte_sequence
+let takebytes_with_length count ts_length ts =
+  (* let _ = Missing_pervasives.errs ("Trying to take " ^ (show count) ^ " bytes from sequence of " ^ (show (List.length ts)) ^ "\n") in *)
+  let result = takebytes_r_with_length (Missing_pervasives.unsafe_nat_of_natural count) ts_length ts in
+  (*let _ = Missing_pervasives.errs ("Succeeded\n") in *)
+    result

@@ -731,9 +731,9 @@ let pattern_possible_starts_in_one_byte_sequence pattern seq offset =
     accum_pattern_possible_starts_in_one_byte_sequence pattern (List.length pattern) seq (List.length seq) offset []
 
 val byte_pattern_of_byte_sequence : byte_sequence -> list (maybe byte)
-let byte_pattern_of_byte_sequence seq = match seq with
-    Sequence(bs) -> List.map (fun b -> Just b) bs
-end
+let byte_pattern_of_byte_sequence seq =
+    let l = byte_list_of_byte_sequence seq in
+    List.map (fun b -> Just b) l
 
 val compute_virtual_address_adjustment : natural -> natural -> natural -> natural
 let compute_virtual_address_adjustment max_page_size offset vaddr =

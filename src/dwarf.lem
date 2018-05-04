@@ -30,7 +30,7 @@ open import Elf_types_native_uint
 
 (** ***************** experimental DWARF reading *********** *)
 
-(* 
+(*
 
 This defines a representation of some of the DWARF debug information,
 with parsing functions to extract it from the byte sequences of the
@@ -38,7 +38,7 @@ relevant ELF sections, and pretty-printing function to dump it in a
 human-readable form, similar to that of readelf.  The main functions
 for this are:
 
-  val extract_dwarf : elf64_file -> maybe dwarf 
+  val extract_dwarf : elf64_file -> maybe dwarf
   val pp_dwarf : dwarf -> string
 
 It also defines evaluation of DWARF expressions and analysis functions
@@ -51,9 +51,9 @@ types and functions for this are:
   val analyse_locations : dwarf -> analysed_location_data
 
   type evaluated_frame_info
-  val evaluate_frame_info : dwarf -> evaluated_frame_info 
+  val evaluate_frame_info : dwarf -> evaluated_frame_info
 
-  type dwarf_static   
+  type dwarf_static
   val extract_dwarf_static : elf64_file -> maybe dwarf_static
 
 The last collects all the above - information that can be computed statically.
@@ -73,11 +73,11 @@ they may be efficient enough for small examples as-is.  They are
 written in Lem, and compiled from that to executable OCaml.
 
 The development follows the DWARF 4 pdf specification at http://www.dwarfstd.org/
-though tweaked in places where our examples use earlier versions.  It doesn't 
-systematically cover all the DWARF versions. 
-It doesn't cover the GNU extensions 
+though tweaked in places where our examples use earlier versions.  It doesn't
+systematically cover all the DWARF versions.
+It doesn't cover the GNU extensions
 (at https://fedorahosted.org/elfutils/wiki/DwarfExtensions).
-The representation, parsing, and pretty printing are mostly complete for the 
+The representation, parsing, and pretty printing are mostly complete for the
 data in these DWARF ELF sections:
 
 .debug_abbrev
@@ -100,9 +100,9 @@ The evaluation of DWARF expressions covers only some of the operations
 - probably enough for common cases.
 
 The analysis of DWARF location data should be enough to look up names
-from the addresses of variables and formal parameters.  It does not 
+from the addresses of variables and formal parameters.  It does not
 currently handle the DWARF type data, so will not be useful for accesses
-strictly within the extent of a variable or parameter. 
+strictly within the extent of a variable or parameter.
 
 The 'dwarf' type gives a lightly parsed representation of some of the
 dwarf information, with the byte sequences of the above .debug_*
@@ -110,7 +110,7 @@ sections parsed into a structured representation.  That makes the list
 and tree structures explicit, and converts the various numeric types
 into just natural, integer, and byte sequences.  The lem natural and
 integer could be replaced by unsigned and signed 64-bit types; that'd
-probably be better for execution but not for theorem-prover use. 
+probably be better for execution but not for theorem-prover use.
 
 *)
 
@@ -136,14 +136,14 @@ let my_debug5 s = print_endline s
 (** ************************************************************ *)
 
 
-type dwarf_attribute_classes = 
+type dwarf_attribute_classes =
   | DWA_7_5_3
   | DWA_address
   | DWA_block
   | DWA_constant
   | DWA_dash
   | DWA_exprloc
-  | DWA_flag 
+  | DWA_flag
   | DWA_lineptr
   | DWA_loclistptr
   | DWA_macptr
@@ -168,14 +168,14 @@ type operation_argument_type =
   | OAT_SLEB128
   | OAT_block
 
-type operation_argument_value = 
+type operation_argument_value =
   | OAV_natural of natural
   | OAV_integer of integer
   | OAV_block of natural * list byte
 
 type operation_stack = list natural
 
-type arithmetic_context = 
+type arithmetic_context =
   <|
   ac_bitwidth: natural;
   ac_half: natural;  (* 2 ^ (ac_bitwidth -1) *)
@@ -183,14 +183,14 @@ type arithmetic_context =
   ac_max: natural;   (* (2 ^ ac_bitwidth) -1 *) (* also the representation of -1 *)
 |>
 
-type operation_semantics = 
-  | OpSem_lit 
+type operation_semantics =
+  | OpSem_lit
   | OpSem_deref
   | OpSem_stack of (arithmetic_context -> operation_stack -> list operation_argument_value -> maybe operation_stack)
   | OpSem_not_supported
   | OpSem_binary of (arithmetic_context -> natural -> natural -> maybe natural)
   | OpSem_unary of (arithmetic_context -> natural -> maybe natural)
-  | OpSem_opcode_lit of natural 
+  | OpSem_opcode_lit of natural
   | OpSem_reg
   | OpSem_breg
   | OpSem_bregx
@@ -203,7 +203,7 @@ type operation_semantics =
   | OpSem_stack_value
   | OpSem_call_frame_cfa
 
-type operation = 
+type operation =
     <|
     op_code: natural;
     op_string: string;
@@ -214,13 +214,13 @@ type operation =
 
 (* the result of a location expression evaluation is a single_location  (or failure) *)
 
-type simple_location = 
+type simple_location =
   | SL_memory_address of natural
   | SL_register of natural
   | SL_implicit of list byte  (* used for implicit and stack values *)
   | SL_empty
 
-type composite_location_piece = 
+type composite_location_piece =
   | CLP_piece of natural * simple_location
   | CLP_bit_piece of natural * natural * simple_location
 
@@ -230,8 +230,8 @@ type single_location =
 
 (* location expression evaluation is a stack machine operating over the following state *)
 
-type state = 
-    <| 
+type state =
+    <|
     s_stack: operation_stack;
     s_value: simple_location;
     s_location_pieces: list composite_location_piece;
@@ -249,8 +249,8 @@ type memory_read_result 'a =
   | MRR_not_currently_available
   | MRR_bad_address
 
-type evaluation_context = 
-    <| 
+type evaluation_context =
+    <|
     read_register: natural -> register_read_result natural;
     read_memory: natural -> natural -> memory_read_result natural;
   |>
@@ -264,8 +264,8 @@ type dwarf_format =
 
 (* .debug_abbrev section *)
 
-type abbreviation_declaration = 
-    <| 
+type abbreviation_declaration =
+    <|
     ad_abbreviation_code: natural;
     ad_tag: natural;
     ad_has_children: bool;
@@ -284,14 +284,14 @@ type attribute_value =
   | AV_constant_ULEB128 of natural
   | AV_exprloc of natural * list byte
   | AV_flag of bool
-  | AV_ref of natural 
+  | AV_ref of natural
   | AV_ref_addr of natural (* dwarf_format dependent *)
   | AV_ref_sig8 of natural
   | AV_sec_offset of natural
   | AV_string of list byte (* not including terminating null *)
   | AV_strp of natural (* dwarf_format dependent *)
 
-type die = 
+type die =
     <|
     die_offset: natural;
     die_abbreviation_code: natural;
@@ -300,18 +300,18 @@ type die =
     die_children: list die;
   |>
 
-type compilation_unit_header = 
-    <| 
-    cuh_offset: natural; 
+type compilation_unit_header =
+    <|
+    cuh_offset: natural;
     cuh_dwarf_format: dwarf_format;
     cuh_unit_length: natural;
     cuh_version: natural;
     cuh_debug_abbrev_offset: natural;
     cuh_address_size: natural;
-  |> 
-    
-type compilation_unit = 
-    <| 
+  |>
+
+type compilation_unit =
+    <|
     cu_header: compilation_unit_header;
     cu_abbreviations_table: abbreviations_table;
     cu_die: die;
@@ -321,15 +321,15 @@ type compilation_units = list compilation_unit
 
 (* .debug_type section *)
 
-type type_unit_header = 
-    <| 
+type type_unit_header =
+    <|
     tuh_cuh: compilation_unit_header;
     tuh_type_signature: natural;
     tuh_type_offset: natural;
-  |> 
+  |>
 
-type type_unit = 
-    <| 
+type type_unit =
+    <|
     tu_header: type_unit_header;
     tu_abbreviations_table: abbreviations_table;
     tu_die: die;
@@ -359,7 +359,7 @@ type location_list_item =
 
 type location_list = natural (*offset*) * list location_list_item
 
-type location_list_list = list location_list 
+type location_list_list = list location_list
 
 (* .debug_ranges section *)
 
@@ -375,7 +375,7 @@ type range_list_item =
 
 type range_list = natural (*offset*) * list range_list_item
 
-type range_list_list = list range_list 
+type range_list_list = list range_list
 
 (* .debug_frame section: call frame instructions *)
 
@@ -405,11 +405,11 @@ type call_frame_argument_value =
   | CFAV_register of cfa_register
   | CFAV_sfoffset of cfa_sfoffset
 
-type call_frame_instruction = 
-  | DW_CFA_advance_loc         of cfa_delta 
+type call_frame_instruction =
+  | DW_CFA_advance_loc         of cfa_delta
   | DW_CFA_offset              of cfa_register * cfa_offset
   | DW_CFA_restore             of cfa_register
-  | DW_CFA_nop 
+  | DW_CFA_nop
   | DW_CFA_set_loc             of cfa_address
   | DW_CFA_advance_loc1        of cfa_delta
   | DW_CFA_advance_loc2        of cfa_delta
@@ -432,15 +432,15 @@ type call_frame_instruction =
   | DW_CFA_val_offset          of cfa_register * cfa_offset
   | DW_CFA_val_offset_sf       of cfa_register * cfa_sfoffset
   | DW_CFA_val_expression      of cfa_register * cfa_block
-  | DW_CFA_unknown             of byte 
+  | DW_CFA_unknown             of byte
 
 (* .debug_frame section: top-level *)
 
-type cie = 
+type cie =
     <|
     cie_offset: natural;
     cie_length: natural;
-    cie_id: natural; 
+    cie_id: natural;
     cie_version: natural;
     cie_augmentation: list byte; (* not including terminating null *)
     cie_address_size: maybe natural;
@@ -452,7 +452,7 @@ type cie =
     cie_initial_instructions: list call_frame_instruction;
   |>
 
-type fde = 
+type fde =
     <|
     fde_offset: natural;
     fde_length: natural;
@@ -464,7 +464,7 @@ type fde =
     fde_instructions: list call_frame_instruction;
   |>
 
-type frame_info_element = 
+type frame_info_element =
   | FIE_cie of cie
   | FIE_fde of fde
 
@@ -473,12 +473,12 @@ type frame_info = list frame_info_element
 
 (* evaluated cfa data *)
 
-type cfa_rule = 
+type cfa_rule =
   | CR_undefined
   | CR_register of cfa_register * integer
-  | CR_expression of single_location_description 
+  | CR_expression of single_location_description
 
-type register_rule = 
+type register_rule =
   | RR_undefined (*A register that has this rule has no recoverable value in the previous frame.
          (By convention, it is not preserved by a callee.)*)
   | RR_same_value (*This register has not been modified from the previous frame. (By convention,
@@ -496,15 +496,15 @@ DWARF expression E.*)
 
 type register_rule_map = list (cfa_register * register_rule)
 
-type cfa_table_row = 
+type cfa_table_row =
     <|
     ctr_loc: natural;
     ctr_cfa: cfa_rule;
     ctr_regs: register_rule_map;
   |>
 
-type cfa_state = 
-    <| 
+type cfa_state =
+    <|
     cs_current_row: cfa_table_row;
     cs_previous_rows: list cfa_table_row;
     cs_initial_instructions_row: cfa_table_row;
@@ -512,7 +512,7 @@ type cfa_state =
   |>
 
 
-type evaluated_frame_info = 
+type evaluated_frame_info =
     list (fde * list cfa_table_row)
 
 
@@ -534,37 +534,37 @@ type line_number_argument_value =
 
 type line_number_operation =
   (* standard *)
-  | DW_LNS_copy               
+  | DW_LNS_copy
   | DW_LNS_advance_pc of natural
   | DW_LNS_advance_line of integer
   | DW_LNS_set_file of natural
   | DW_LNS_set_column of natural
-  | DW_LNS_negate_stmt        
-  | DW_LNS_set_basic_block    
-  | DW_LNS_const_add_pc       
+  | DW_LNS_negate_stmt
+  | DW_LNS_set_basic_block
+  | DW_LNS_const_add_pc
   | DW_LNS_fixed_advance_pc of natural
-  | DW_LNS_set_prologue_end   
-  | DW_LNS_set_epilogue_begin 
+  | DW_LNS_set_prologue_end
+  | DW_LNS_set_epilogue_begin
   | DW_LNS_set_isa of natural
   (* extended *)
-  | DW_LNE_end_sequence     
-  | DW_LNE_set_address of natural  
+  | DW_LNE_end_sequence
+  | DW_LNE_set_address of natural
   | DW_LNE_define_file of (list byte) * natural * natural * natural
   | DW_LNE_set_discriminator of natural
   (* special *)
   | DW_LN_special of natural (* the adjusted opcode *)
 
-type line_number_file_entry = 
+type line_number_file_entry =
     <|
     lnfe_path: list byte;
     lnfe_directory_index: natural;
     lnfe_last_modification: natural;
     lnfe_length: natural;
-  |> 
+  |>
 
-type line_number_header = 
-    <| 
-    lnh_offset: natural; 
+type line_number_header =
+    <|
+    lnh_offset: natural;
     lnh_dwarf_format: dwarf_format;
     lnh_unit_length: natural;
     lnh_version: natural;
@@ -578,7 +578,7 @@ type line_number_header =
     lnh_standard_opcode_lengths: list natural;
     lnh_include_directories: list (list byte);
     lnh_file_names: list line_number_file_entry;
-  |> 
+  |>
 
 type line_number_program =
     <|
@@ -588,7 +588,7 @@ type line_number_program =
 
 (* line number evaluation *)
 
-type line_number_registers = 
+type line_number_registers =
     <|
     lnr_address: natural;
     lnr_op_index: natural;
@@ -605,12 +605,12 @@ type line_number_registers =
   |>
 
 
-   
+
 
 (* top-level collection of dwarf data *)
-    
-type dwarf = 
-    <| 
+
+type dwarf =
+    <|
     d_endianness: Endianness.endianness; (* from the ELF *)
     d_str: list byte;
     d_compilation_units: compilation_units;
@@ -625,11 +625,11 @@ type dwarf =
 
 type analysed_location_data = list ((compilation_unit * (list die) * die) * maybe (list (natural * natural * single_location_description)))
 
-type analysed_location_data_at_pc = list ((compilation_unit * (list die) * die) * (natural * natural * single_location_description * error single_location)) 
+type analysed_location_data_at_pc = list ((compilation_unit * (list die) * die) * (natural * natural * single_location_description * error single_location))
 
 (* evaluated line data *)
 
-type evaluated_line_info = list (line_number_header * list line_number_registers) 
+type evaluated_line_info = list (line_number_header * list line_number_registers)
 
 type dwarf_static =
     <|
@@ -643,7 +643,7 @@ type dwarf_dynamic_at_pc = analysed_location_data_at_pc
 
 (** context for parsing and pp functions *)
 
-type p_context = 
+type p_context =
     <|
     endianness: Endianness.endianness;
   |>
@@ -658,17 +658,17 @@ type p_context =
 
 (* this should be in lem, either built-in or in pervasives *)
 
-val natural_of_char : char -> natural 
+val natural_of_char : char -> natural
 let natural_of_char c =
   let naturalOrd c' = naturalFromNat (String_extra.ord c') in
-  let n = naturalOrd c in 
-  if n >= naturalOrd #'0' && n <= naturalOrd #'9' then n - naturalOrd #'0' 
+  let n = naturalOrd c in
+  if n >= naturalOrd #'0' && n <= naturalOrd #'9' then n - naturalOrd #'0'
   else if n >= naturalOrd #'A' && n <= naturalOrd #'F' then n - naturalOrd #'A' + 10
   else if n >= naturalOrd #'a' && n <= naturalOrd #'f' then n - naturalOrd #'a' + 10
   else Assert_extra.failwith ("natural_of_char argument #'" ^ String.toString [c] ^ "' not in 0-9,A-F,a-f")
 
 val natural_of_hex' : list char -> natural
-let rec natural_of_hex' cs = 
+let rec natural_of_hex' cs =
   match cs with
   | c :: cs' -> natural_of_char c + 16 * natural_of_hex' cs'
   | [] -> 0
@@ -678,7 +678,7 @@ val natural_of_hex : string -> natural
 let natural_of_hex s =
   let cs = String.toCharList s in
   match cs with
-  | #'0'::#'x'::cs' -> 
+  | #'0'::#'x'::cs' ->
       match cs' with
       | c :: _ -> natural_of_hex' (List.reverse cs')
       | [] -> Assert_extra.failwith ("natural_of_hex argument \"" ^ s ^ "\" has no digits")
@@ -689,7 +689,7 @@ let natural_of_hex s =
 
 (* natural version of List.index *)
 val index_natural : forall 'a. list 'a -> natural -> maybe 'a
-let rec index_natural l n = match l with 
+let rec index_natural l n = match l with
   | []      -> Nothing
   | x :: xs -> if n = 0 then Just x else index_natural xs (n-1)
 end
@@ -697,10 +697,10 @@ end
 let partialNaturalFromInteger (i:integer) : natural =
  if i<0 then Assert_extra.failwith "partialNaturalFromInteger" else naturalFromInteger i
 
-val natural_nat_shift_left : natural -> nat -> natural 
+val natural_nat_shift_left : natural -> nat -> natural
 declare ocaml    target_rep function natural_nat_shift_left = `Nat_big_num.shift_left`
 
-val natural_nat_shift_right : natural -> nat -> natural 
+val natural_nat_shift_right : natural -> nat -> natural
 declare ocaml    target_rep function natural_nat_shift_right = `Nat_big_num.shift_right`
 
 
@@ -713,67 +713,67 @@ declare ocaml    target_rep function natural_nat_shift_right = `Nat_big_num.shif
 
 (* tag encoding *)
 let tag_encodings = [
-  ("DW_TAG_array_type"               , natural_of_hex "0x01"  ); 
-  ("DW_TAG_class_type"               , natural_of_hex "0x02"  ); 
-  ("DW_TAG_entry_point"              , natural_of_hex "0x03"  ); 
-  ("DW_TAG_enumeration_type"         , natural_of_hex "0x04"  ); 
-  ("DW_TAG_formal_parameter"         , natural_of_hex "0x05"  ); 
-  ("DW_TAG_imported_declaration"     , natural_of_hex "0x08"  ); 
-  ("DW_TAG_label"                    , natural_of_hex "0x0a"  ); 
-  ("DW_TAG_lexical_block"            , natural_of_hex "0x0b"  ); 
-  ("DW_TAG_member"                   , natural_of_hex "0x0d"  ); 
-  ("DW_TAG_pointer_type"             , natural_of_hex "0x0f"  ); 
-  ("DW_TAG_reference_type"           , natural_of_hex "0x10"  ); 
-  ("DW_TAG_compile_unit"             , natural_of_hex "0x11"  ); 
-  ("DW_TAG_string_type"              , natural_of_hex "0x12"  ); 
-  ("DW_TAG_structure_type"           , natural_of_hex "0x13"  ); 
-  ("DW_TAG_subroutine_type"          , natural_of_hex "0x15"  ); 
-  ("DW_TAG_typedef"                  , natural_of_hex "0x16"  ); 
-  ("DW_TAG_union_type"               , natural_of_hex "0x17"  ); 
-  ("DW_TAG_unspecified_parameters"   , natural_of_hex "0x18"  ); 
-  ("DW_TAG_variant"                  , natural_of_hex "0x19"  ); 
-  ("DW_TAG_common_block"             , natural_of_hex "0x1a"  ); 
-  ("DW_TAG_common_inclusion"         , natural_of_hex "0x1b"  ); 
-  ("DW_TAG_inheritance"              , natural_of_hex "0x1c"  ); 
-  ("DW_TAG_inlined_subroutine"       , natural_of_hex "0x1d"  ); 
-  ("DW_TAG_module"                   , natural_of_hex "0x1e"  ); 
-  ("DW_TAG_ptr_to_member_type"       , natural_of_hex "0x1f"  ); 
-  ("DW_TAG_set_type"                 , natural_of_hex "0x20"  ); 
-  ("DW_TAG_subrange_type"            , natural_of_hex "0x21"  ); 
-  ("DW_TAG_with_stmt"                , natural_of_hex "0x22"  ); 
-  ("DW_TAG_access_declaration"       , natural_of_hex "0x23"  ); 
-  ("DW_TAG_base_type"                , natural_of_hex "0x24"  ); 
-  ("DW_TAG_catch_block"              , natural_of_hex "0x25"  ); 
-  ("DW_TAG_const_type"               , natural_of_hex "0x26"  ); 
-  ("DW_TAG_constant"                 , natural_of_hex "0x27"  ); 
-  ("DW_TAG_enumerator"               , natural_of_hex "0x28"  ); 
-  ("DW_TAG_file_type"                , natural_of_hex "0x29"  ); 
-  ("DW_TAG_friend"                   , natural_of_hex "0x2a"  ); 
-  ("DW_TAG_namelist"                 , natural_of_hex "0x2b"  ); 
-  ("DW_TAG_namelist_item"            , natural_of_hex "0x2c"  ); 
-  ("DW_TAG_packed_type"              , natural_of_hex "0x2d"  ); 
-  ("DW_TAG_subprogram"               , natural_of_hex "0x2e"  ); 
-  ("DW_TAG_template_type_parameter"  , natural_of_hex "0x2f"  ); 
-  ("DW_TAG_template_value_parameter" , natural_of_hex "0x30"  ); 
-  ("DW_TAG_thrown_type"              , natural_of_hex "0x31"  ); 
-  ("DW_TAG_try_block"                , natural_of_hex "0x32"  ); 
-  ("DW_TAG_variant_part"             , natural_of_hex "0x33"  ); 
-  ("DW_TAG_variable"                 , natural_of_hex "0x34"  ); 
-  ("DW_TAG_volatile_type"            , natural_of_hex "0x35"  ); 
-  ("DW_TAG_dwarf_procedure"          , natural_of_hex "0x36"  ); 
-  ("DW_TAG_restrict_type"            , natural_of_hex "0x37"  ); 
-  ("DW_TAG_interface_type"           , natural_of_hex "0x38"  ); 
-  ("DW_TAG_namespace"                , natural_of_hex "0x39"  ); 
-  ("DW_TAG_imported_module"          , natural_of_hex "0x3a"  ); 
-  ("DW_TAG_unspecified_type"         , natural_of_hex "0x3b"  ); 
-  ("DW_TAG_partial_unit"             , natural_of_hex "0x3c"  ); 
-  ("DW_TAG_imported_unit"            , natural_of_hex "0x3d"  ); 
-  ("DW_TAG_condition"                , natural_of_hex "0x3f"  ); 
-  ("DW_TAG_shared_type"              , natural_of_hex "0x40"  ); 
-  ("DW_TAG_type_unit"                , natural_of_hex "0x41"  ); 
-  ("DW_TAG_rvalue_reference_type"    , natural_of_hex "0x42"  ); 
-  ("DW_TAG_template_alias"           , natural_of_hex "0x43"  ); 
-  ("DW_TAG_lo_user"                  , natural_of_hex "0x4080"); 
+  ("DW_TAG_array_type"               , natural_of_hex "0x01"  );
+  ("DW_TAG_class_type"               , natural_of_hex "0x02"  );
+  ("DW_TAG_entry_point"              , natural_of_hex "0x03"  );
+  ("DW_TAG_enumeration_type"         , natural_of_hex "0x04"  );
+  ("DW_TAG_formal_parameter"         , natural_of_hex "0x05"  );
+  ("DW_TAG_imported_declaration"     , natural_of_hex "0x08"  );
+  ("DW_TAG_label"                    , natural_of_hex "0x0a"  );
+  ("DW_TAG_lexical_block"            , natural_of_hex "0x0b"  );
+  ("DW_TAG_member"                   , natural_of_hex "0x0d"  );
+  ("DW_TAG_pointer_type"             , natural_of_hex "0x0f"  );
+  ("DW_TAG_reference_type"           , natural_of_hex "0x10"  );
+  ("DW_TAG_compile_unit"             , natural_of_hex "0x11"  );
+  ("DW_TAG_string_type"              , natural_of_hex "0x12"  );
+  ("DW_TAG_structure_type"           , natural_of_hex "0x13"  );
+  ("DW_TAG_subroutine_type"          , natural_of_hex "0x15"  );
+  ("DW_TAG_typedef"                  , natural_of_hex "0x16"  );
+  ("DW_TAG_union_type"               , natural_of_hex "0x17"  );
+  ("DW_TAG_unspecified_parameters"   , natural_of_hex "0x18"  );
+  ("DW_TAG_variant"                  , natural_of_hex "0x19"  );
+  ("DW_TAG_common_block"             , natural_of_hex "0x1a"  );
+  ("DW_TAG_common_inclusion"         , natural_of_hex "0x1b"  );
+  ("DW_TAG_inheritance"              , natural_of_hex "0x1c"  );
+  ("DW_TAG_inlined_subroutine"       , natural_of_hex "0x1d"  );
+  ("DW_TAG_module"                   , natural_of_hex "0x1e"  );
+  ("DW_TAG_ptr_to_member_type"       , natural_of_hex "0x1f"  );
+  ("DW_TAG_set_type"                 , natural_of_hex "0x20"  );
+  ("DW_TAG_subrange_type"            , natural_of_hex "0x21"  );
+  ("DW_TAG_with_stmt"                , natural_of_hex "0x22"  );
+  ("DW_TAG_access_declaration"       , natural_of_hex "0x23"  );
+  ("DW_TAG_base_type"                , natural_of_hex "0x24"  );
+  ("DW_TAG_catch_block"              , natural_of_hex "0x25"  );
+  ("DW_TAG_const_type"               , natural_of_hex "0x26"  );
+  ("DW_TAG_constant"                 , natural_of_hex "0x27"  );
+  ("DW_TAG_enumerator"               , natural_of_hex "0x28"  );
+  ("DW_TAG_file_type"                , natural_of_hex "0x29"  );
+  ("DW_TAG_friend"                   , natural_of_hex "0x2a"  );
+  ("DW_TAG_namelist"                 , natural_of_hex "0x2b"  );
+  ("DW_TAG_namelist_item"            , natural_of_hex "0x2c"  );
+  ("DW_TAG_packed_type"              , natural_of_hex "0x2d"  );
+  ("DW_TAG_subprogram"               , natural_of_hex "0x2e"  );
+  ("DW_TAG_template_type_parameter"  , natural_of_hex "0x2f"  );
+  ("DW_TAG_template_value_parameter" , natural_of_hex "0x30"  );
+  ("DW_TAG_thrown_type"              , natural_of_hex "0x31"  );
+  ("DW_TAG_try_block"                , natural_of_hex "0x32"  );
+  ("DW_TAG_variant_part"             , natural_of_hex "0x33"  );
+  ("DW_TAG_variable"                 , natural_of_hex "0x34"  );
+  ("DW_TAG_volatile_type"            , natural_of_hex "0x35"  );
+  ("DW_TAG_dwarf_procedure"          , natural_of_hex "0x36"  );
+  ("DW_TAG_restrict_type"            , natural_of_hex "0x37"  );
+  ("DW_TAG_interface_type"           , natural_of_hex "0x38"  );
+  ("DW_TAG_namespace"                , natural_of_hex "0x39"  );
+  ("DW_TAG_imported_module"          , natural_of_hex "0x3a"  );
+  ("DW_TAG_unspecified_type"         , natural_of_hex "0x3b"  );
+  ("DW_TAG_partial_unit"             , natural_of_hex "0x3c"  );
+  ("DW_TAG_imported_unit"            , natural_of_hex "0x3d"  );
+  ("DW_TAG_condition"                , natural_of_hex "0x3f"  );
+  ("DW_TAG_shared_type"              , natural_of_hex "0x40"  );
+  ("DW_TAG_type_unit"                , natural_of_hex "0x41"  );
+  ("DW_TAG_rvalue_reference_type"    , natural_of_hex "0x42"  );
+  ("DW_TAG_template_alias"           , natural_of_hex "0x43"  );
+  ("DW_TAG_lo_user"                  , natural_of_hex "0x4080");
   ("DW_TAG_hi_user"                  , natural_of_hex "0xffff")
 ]
 
@@ -880,7 +880,7 @@ let attribute_encodings = [
   ("DW_AT_enum_class"           , natural_of_hex "0x6d", [DWA_flag])                                        ;
   ("DW_AT_linkage_name"         , natural_of_hex "0x6e", [DWA_string])                                      ;
   ("DW_AT_lo_user"              , natural_of_hex "0x2000", [DWA_dash])                                      ;
-  ("DW_AT_hi_user"              , natural_of_hex "0x3fff", [DWA_dash])                                      
+  ("DW_AT_hi_user"              , natural_of_hex "0x3fff", [DWA_dash])
 ]
 
 
@@ -930,36 +930,36 @@ let operation_encodings = [
 ("DW_OP_const8s",             natural_of_hex "0x0f", [OAT_sint64]               , OpSem_lit); (*1*) (* 8-byte constant  *)
 ("DW_OP_constu",              natural_of_hex "0x10", [OAT_ULEB128]              , OpSem_lit); (*1*) (* ULEB128 constant *)
 ("DW_OP_consts",              natural_of_hex "0x11", [OAT_SLEB128]              , OpSem_lit); (*1*) (* SLEB128 constant *)
-("DW_OP_dup",                 natural_of_hex "0x12", []                         , OpSem_stack (fun ac vs args -> match vs with v::vs -> Just (v::v::vs) | _ -> Nothing end)); (*0*) 
-("DW_OP_drop",                natural_of_hex "0x13", []                         , OpSem_stack (fun ac vs args -> match vs with v::vs -> Just vs | _ -> Nothing end)); (*0*) 
-("DW_OP_over",                natural_of_hex "0x14", []                         , OpSem_stack (fun ac vs args -> match vs with v::v'::vs -> Just (v'::v::v'::vs) | _ -> Nothing end)); (*0*) 
+("DW_OP_dup",                 natural_of_hex "0x12", []                         , OpSem_stack (fun ac vs args -> match vs with v::vs -> Just (v::v::vs) | _ -> Nothing end)); (*0*)
+("DW_OP_drop",                natural_of_hex "0x13", []                         , OpSem_stack (fun ac vs args -> match vs with v::vs -> Just vs | _ -> Nothing end)); (*0*)
+("DW_OP_over",                natural_of_hex "0x14", []                         , OpSem_stack (fun ac vs args -> match vs with v::v'::vs -> Just (v'::v::v'::vs) | _ -> Nothing end)); (*0*)
 ("DW_OP_pick",                natural_of_hex "0x15", [OAT_uint8]                , OpSem_stack (fun ac vs args -> match args with [OAV_natural n] -> match index_natural vs n with Just v -> Just (v::vs) | Nothing -> Nothing end | _ -> Nothing end)); (*1*) (* 1-byte stack index *)
-("DW_OP_swap",                natural_of_hex "0x16", []                         , OpSem_stack (fun ac vs args -> match vs with v::v'::vs -> Just (v'::v::vs) | _ -> Nothing end)); (*0*) 
-("DW_OP_rot",                 natural_of_hex "0x17", []                         , OpSem_stack (fun ac vs args -> match vs with v::v'::v''::vs -> Just (v'::v''::v::vs) | _ -> Nothing end)); (*0*) 
-("DW_OP_xderef",              natural_of_hex "0x18", []                         , OpSem_not_supported); (*0*) 
-("DW_OP_abs",                 natural_of_hex "0x19", []                         , OpSem_unary (fun ac v -> if v < ac.ac_half then Just v else if v=ac.ac_max then Nothing else Just (ac.ac_all-v))); (*0*) 
-("DW_OP_and",                 natural_of_hex "0x1a", []                         , OpSem_binary (fun ac v1 v2 -> Just (natural_land v1 v2))); (*0*) 
-("DW_OP_div",                 natural_of_hex "0x1b", []                         , OpSem_not_supported) (*TODO*); (*0*) 
-("DW_OP_minus",               natural_of_hex "0x1c", []                         , OpSem_binary (fun ac v1 v2 -> Just (partialNaturalFromInteger ((integerFromNatural v1 - integerFromNatural v2) mod (integerFromNatural ac.ac_all))))); (*0*) 
-("DW_OP_mod",                 natural_of_hex "0x1d", []                         , OpSem_binary (fun ac v1 v2 -> Just (v1 mod v2))); (*0*) 
-("DW_OP_mul",                 natural_of_hex "0x1e", []                         , OpSem_binary (fun ac v1 v2 -> Just (partialNaturalFromInteger ((integerFromNatural v1 * integerFromNatural v2) mod (integerFromNatural ac.ac_all))))); (*0*) 
-("DW_OP_neg",                 natural_of_hex "0x1f", []                         , OpSem_unary (fun ac v -> if v < ac.ac_half then Just (ac.ac_max - v) else if v=ac.ac_half then Nothing else Just (ac.ac_all - v))); (*0*) 
+("DW_OP_swap",                natural_of_hex "0x16", []                         , OpSem_stack (fun ac vs args -> match vs with v::v'::vs -> Just (v'::v::vs) | _ -> Nothing end)); (*0*)
+("DW_OP_rot",                 natural_of_hex "0x17", []                         , OpSem_stack (fun ac vs args -> match vs with v::v'::v''::vs -> Just (v'::v''::v::vs) | _ -> Nothing end)); (*0*)
+("DW_OP_xderef",              natural_of_hex "0x18", []                         , OpSem_not_supported); (*0*)
+("DW_OP_abs",                 natural_of_hex "0x19", []                         , OpSem_unary (fun ac v -> if v < ac.ac_half then Just v else if v=ac.ac_max then Nothing else Just (ac.ac_all-v))); (*0*)
+("DW_OP_and",                 natural_of_hex "0x1a", []                         , OpSem_binary (fun ac v1 v2 -> Just (natural_land v1 v2))); (*0*)
+("DW_OP_div",                 natural_of_hex "0x1b", []                         , OpSem_not_supported) (*TODO*); (*0*)
+("DW_OP_minus",               natural_of_hex "0x1c", []                         , OpSem_binary (fun ac v1 v2 -> Just (partialNaturalFromInteger ((integerFromNatural v1 - integerFromNatural v2) mod (integerFromNatural ac.ac_all))))); (*0*)
+("DW_OP_mod",                 natural_of_hex "0x1d", []                         , OpSem_binary (fun ac v1 v2 -> Just (v1 mod v2))); (*0*)
+("DW_OP_mul",                 natural_of_hex "0x1e", []                         , OpSem_binary (fun ac v1 v2 -> Just (partialNaturalFromInteger ((integerFromNatural v1 * integerFromNatural v2) mod (integerFromNatural ac.ac_all))))); (*0*)
+("DW_OP_neg",                 natural_of_hex "0x1f", []                         , OpSem_unary (fun ac v -> if v < ac.ac_half then Just (ac.ac_max - v) else if v=ac.ac_half then Nothing else Just (ac.ac_all - v))); (*0*)
 ("DW_OP_not",                 natural_of_hex "0x20", []                         , OpSem_unary (fun ac v -> Just (natural_lxor v ac.ac_max))); (*0*)
-("DW_OP_or",                  natural_of_hex "0x21", []                         , OpSem_binary (fun ac v1 v2 -> Just (natural_lor v1 v2))); (*0*) 
-("DW_OP_plus",                natural_of_hex "0x22", []                         , OpSem_binary (fun ac v1 v2 -> Just ((v1 + v2) mod ac.ac_all))); (*0*) 
+("DW_OP_or",                  natural_of_hex "0x21", []                         , OpSem_binary (fun ac v1 v2 -> Just (natural_lor v1 v2))); (*0*)
+("DW_OP_plus",                natural_of_hex "0x22", []                         , OpSem_binary (fun ac v1 v2 -> Just ((v1 + v2) mod ac.ac_all))); (*0*)
 ("DW_OP_plus_uconst",         natural_of_hex "0x23", [OAT_ULEB128]              , OpSem_stack (fun ac vs args -> match args with [OAV_natural n] -> match vs with v::vs' -> let v' = (v+n) mod ac.ac_all in Just (v'::vs)  | [] -> Nothing end  | _ -> Nothing end)); (*1*) (* ULEB128 addend *)
-("DW_OP_shl",                 natural_of_hex "0x24", []                         , OpSem_binary (fun ac v1 v2 -> if v2 >= ac.ac_bitwidth then Just 0 else Just (natural_nat_shift_left v1 (natFromNatural v2)))); (*0*) 
-("DW_OP_shr",                 natural_of_hex "0x25", []                         , OpSem_binary (fun ac v1 v2 -> if v2 >= ac.ac_bitwidth then Just 0 else Just (natural_nat_shift_right v1 (natFromNatural v2)))); (*0*) 
-("DW_OP_shra",                natural_of_hex "0x26", []                         , OpSem_binary (fun ac v1 v2 -> if v1 < ac.ac_half then (if v2 >= ac.ac_bitwidth then Just 0 else Just (natural_nat_shift_right v1 (natFromNatural v2))) else (if v2 >= ac.ac_bitwidth then Just ac.ac_max  else Just (ac.ac_max - (natural_nat_shift_right (ac.ac_max - v1) (natFromNatural v2)))))); (*0*) 
+("DW_OP_shl",                 natural_of_hex "0x24", []                         , OpSem_binary (fun ac v1 v2 -> if v2 >= ac.ac_bitwidth then Just 0 else Just (natural_nat_shift_left v1 (natFromNatural v2)))); (*0*)
+("DW_OP_shr",                 natural_of_hex "0x25", []                         , OpSem_binary (fun ac v1 v2 -> if v2 >= ac.ac_bitwidth then Just 0 else Just (natural_nat_shift_right v1 (natFromNatural v2)))); (*0*)
+("DW_OP_shra",                natural_of_hex "0x26", []                         , OpSem_binary (fun ac v1 v2 -> if v1 < ac.ac_half then (if v2 >= ac.ac_bitwidth then Just 0 else Just (natural_nat_shift_right v1 (natFromNatural v2))) else (if v2 >= ac.ac_bitwidth then Just ac.ac_max  else Just (ac.ac_max - (natural_nat_shift_right (ac.ac_max - v1) (natFromNatural v2)))))); (*0*)
 ("DW_OP_xor",                 natural_of_hex "0x27", []                         , OpSem_binary (fun ac v1 v2 -> Just (natural_lxor v1 v2))); (*0*)
 ("DW_OP_skip",                natural_of_hex "0x2f", [OAT_sint16]               , OpSem_not_supported); (*1*) (* signed 2-byte constant *)
 ("DW_OP_bra",                 natural_of_hex "0x28", [OAT_sint16]               , OpSem_not_supported); (*1*) (* signed 2-byte constant *)
-("DW_OP_eq",                  natural_of_hex "0x29", []                         , OpSem_not_supported); (*0*) 
-("DW_OP_ge",                  natural_of_hex "0x2a", []                         , OpSem_not_supported); (*0*) 
-("DW_OP_gt",                  natural_of_hex "0x2b", []                         , OpSem_not_supported); (*0*) 
-("DW_OP_le",                  natural_of_hex "0x2c", []                         , OpSem_not_supported); (*0*) 
-("DW_OP_lt",                  natural_of_hex "0x2d", []                         , OpSem_not_supported); (*0*) 
-("DW_OP_ne",                  natural_of_hex "0x2e", []                         , OpSem_not_supported); (*0*) 
+("DW_OP_eq",                  natural_of_hex "0x29", []                         , OpSem_not_supported); (*0*)
+("DW_OP_ge",                  natural_of_hex "0x2a", []                         , OpSem_not_supported); (*0*)
+("DW_OP_gt",                  natural_of_hex "0x2b", []                         , OpSem_not_supported); (*0*)
+("DW_OP_le",                  natural_of_hex "0x2c", []                         , OpSem_not_supported); (*0*)
+("DW_OP_lt",                  natural_of_hex "0x2d", []                         , OpSem_not_supported); (*0*)
+("DW_OP_ne",                  natural_of_hex "0x2e", []                         , OpSem_not_supported); (*0*)
 ("DW_OP_lit0",                natural_of_hex "0x30", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*) (* literals 0..31 =(DW_OP_lit0 + literal) *)
 ("DW_OP_lit1",                natural_of_hex "0x31", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
 ("DW_OP_lit2",                natural_of_hex "0x32", []                         , OpSem_opcode_lit (natural_of_hex "0x30")); (*0*)
@@ -1023,7 +1023,7 @@ let operation_encodings = [
 ("DW_OP_reg28",               natural_of_hex "0x6c", []                         , OpSem_reg); (*1*)
 ("DW_OP_reg29",               natural_of_hex "0x6d", []                         , OpSem_reg); (*1*)
 ("DW_OP_reg30",               natural_of_hex "0x6e", []                         , OpSem_reg); (*1*)
-("DW_OP_reg31",               natural_of_hex "0x6f", []                         , OpSem_reg); (*1*) 
+("DW_OP_reg31",               natural_of_hex "0x6f", []                         , OpSem_reg); (*1*)
 ("DW_OP_breg0",               natural_of_hex "0x70", [OAT_SLEB128]              , OpSem_breg); (*1*) (* base register 0..31 = (DW_OP_breg0 + regnum) *)
 ("DW_OP_breg1",               natural_of_hex "0x71", [OAT_SLEB128]              , OpSem_breg); (*1*)
 ("DW_OP_breg2",               natural_of_hex "0x72", [OAT_SLEB128]              , OpSem_breg); (*1*)
@@ -1055,29 +1055,29 @@ let operation_encodings = [
 ("DW_OP_breg28",              natural_of_hex "0x8c", [OAT_SLEB128]              , OpSem_breg); (*1*)
 ("DW_OP_breg29",              natural_of_hex "0x8d", [OAT_SLEB128]              , OpSem_breg); (*1*)
 ("DW_OP_breg30",              natural_of_hex "0x8e", [OAT_SLEB128]              , OpSem_breg); (*1*)
-("DW_OP_breg31",              natural_of_hex "0x8f", [OAT_SLEB128]              , OpSem_breg); (*1*) 
+("DW_OP_breg31",              natural_of_hex "0x8f", [OAT_SLEB128]              , OpSem_breg); (*1*)
 ("DW_OP_regx",                natural_of_hex "0x90", [OAT_ULEB128]              , OpSem_lit); (*1*) (* ULEB128 register *)
 ("DW_OP_fbreg",               natural_of_hex "0x91", [OAT_SLEB128]              , OpSem_fbreg); (*1*) (* SLEB128 offset *)
 ("DW_OP_bregx",               natural_of_hex "0x92", [OAT_ULEB128; OAT_SLEB128] , OpSem_bregx); (*2*) (* ULEB128 register followed by SLEB128 offset *)
 ("DW_OP_piece",               natural_of_hex "0x93", [OAT_ULEB128]              , OpSem_piece); (*1*) (* ULEB128 size of piece addressed *)
 ("DW_OP_deref_size",          natural_of_hex "0x94", [OAT_uint8]                , OpSem_deref_size); (*1*) (* 1-byte size of data retrieved *)
 ("DW_OP_xderef_size",         natural_of_hex "0x95", [OAT_uint8]                , OpSem_not_supported); (*1*) (* 1-byte size of data retrieved *)
-("DW_OP_nop",                 natural_of_hex "0x96", []                         , OpSem_nop); (*0*)  
-("DW_OP_push_object_address", natural_of_hex "0x97", []                         , OpSem_not_supported); (*0*)  
+("DW_OP_nop",                 natural_of_hex "0x96", []                         , OpSem_nop); (*0*)
+("DW_OP_push_object_address", natural_of_hex "0x97", []                         , OpSem_not_supported); (*0*)
 ("DW_OP_call2",               natural_of_hex "0x98", [OAT_uint16]               , OpSem_not_supported); (*1*) (* 2-byte offset of DIE *)
 ("DW_OP_call4",               natural_of_hex "0x99", [OAT_uint32]               , OpSem_not_supported); (*1*) (* 4-byte offset of DIE *)
 ("DW_OP_call_ref",            natural_of_hex "0x9a", [OAT_dwarf_format_t]       , OpSem_not_supported); (*1*) (* 4- or 8-byte offset of DIE *)
-("DW_OP_form_tls_address",    natural_of_hex "0x9b", []                         , OpSem_not_supported); (*0*)  
+("DW_OP_form_tls_address",    natural_of_hex "0x9b", []                         , OpSem_not_supported); (*0*)
 ("DW_OP_call_frame_cfa",      natural_of_hex "0x9c", []                         , OpSem_call_frame_cfa); (*0*)
 ("DW_OP_bit_piece",           natural_of_hex "0x9d", [OAT_ULEB128; OAT_ULEB128] , OpSem_bit_piece); (*2*) (* ULEB128 size followed by ULEB128 offset *)
 ("DW_OP_implicit_value",      natural_of_hex "0x9e", [OAT_block]                , OpSem_implicit_value); (*2*) (* ULEB128 size followed by block of that size *)
-("DW_OP_stack_value",         natural_of_hex "0x9f", []                         , OpSem_stack_value); (*0*) 
-(* these aren't real operations 
-("DW_OP_lo_user",             natural_of_hex "0xe0", []                         , ); 
+("DW_OP_stack_value",         natural_of_hex "0x9f", []                         , OpSem_stack_value); (*0*)
+(* these aren't real operations
+("DW_OP_lo_user",             natural_of_hex "0xe0", []                         , );
 ("DW_OP_hi_user",             natural_of_hex "0xff", []                         , );
 *)
 
-(* GCC also produces these for our example: 
+(* GCC also produces these for our example:
 https://fedorahosted.org/elfutils/wiki/DwarfExtensions
 http://dwarfstd.org/ShowIssue.php?issue=100909.1 *)
 ("DW_GNU_OP_entry_value",     natural_of_hex "0xf3", [OAT_block], OpSem_not_supported); (*2*) (* ULEB128 size followed by DWARF expression block of that size*)
@@ -1097,9 +1097,9 @@ let call_frame_instruction_encoding : list (string * natural * natural * list ca
 
 (* instructions using low-order 6 bits for first argument *)
 (*
-("DW_CFA_advance_loc",         1,                  0,(*delta *)           []);    
+("DW_CFA_advance_loc",         1,                  0,(*delta *)           []);
 ("DW_CFA_offset",              2,                  0,(*register*)         [CFAT_offset]);
-("DW_CFA_restore",             3,                  0,(*register*)         []);     
+("DW_CFA_restore",             3,                  0,(*register*)         []);
 *)
 (* instructions using low-order 6 bits as part of opcode  *)
 ("DW_CFA_nop",                 0,                  natural_of_hex "0x00", [], (* *)
@@ -1159,40 +1159,40 @@ let call_frame_instruction_encoding : list (string * natural * natural * list ca
 (* line number encodings *)
 
 let line_number_standard_encodings = [
-  ("DW_LNS_copy"               , natural_of_hex "0x01", [             ],     
+  ("DW_LNS_copy"               , natural_of_hex "0x01", [             ],
    fun lnvs -> match lnvs with [] -> Just  DW_LNS_copy                              | _ -> Nothing end);
-  ("DW_LNS_advance_pc"         , natural_of_hex "0x02", [LNAT_ULEB128 ],  
+  ("DW_LNS_advance_pc"         , natural_of_hex "0x02", [LNAT_ULEB128 ],
    fun lnvs -> match lnvs with [LNAV_ULEB128 n] -> Just  (DW_LNS_advance_pc n)      | _ -> Nothing end);
-  ("DW_LNS_advance_line"       , natural_of_hex "0x03", [LNAT_SLEB128 ],  
+  ("DW_LNS_advance_line"       , natural_of_hex "0x03", [LNAT_SLEB128 ],
    fun lnvs -> match lnvs with [LNAV_SLEB128 i] -> Just  (DW_LNS_advance_line i)    | _ -> Nothing end);
-  ("DW_LNS_set_file"           , natural_of_hex "0x04", [LNAT_ULEB128 ], 
-   fun lnvs -> match lnvs with [LNAV_ULEB128 n] -> Just  (DW_LNS_set_file n)        | _ -> Nothing end);      
-  ("DW_LNS_set_column"         , natural_of_hex "0x05", [LNAT_ULEB128 ],    
-   fun lnvs -> match lnvs with [LNAV_ULEB128 n] -> Just  (DW_LNS_set_column n)      | _ -> Nothing end);   
-  ("DW_LNS_negate_stmt"        , natural_of_hex "0x06", [             ], 
-   fun lnvs -> match lnvs with [] -> Just  (DW_LNS_negate_stmt)                     | _ -> Nothing end);                       
-  ("DW_LNS_set_basic_block"    , natural_of_hex "0x07", [             ],  
-   fun lnvs -> match lnvs with [] -> Just  (DW_LNS_set_basic_block)                 | _ -> Nothing end);               
-  ("DW_LNS_const_add_pc"       , natural_of_hex "0x08", [             ], 
-   fun lnvs -> match lnvs with [] -> Just  (DW_LNS_const_add_pc)                    | _ -> Nothing end);                
-  ("DW_LNS_fixed_advance_pc"   , natural_of_hex "0x09", [LNAT_uint16  ], 
-   fun lnvs -> match lnvs with [LNAV_uint16 n] -> Just  (DW_LNS_fixed_advance_pc n) | _ -> Nothing end);   
+  ("DW_LNS_set_file"           , natural_of_hex "0x04", [LNAT_ULEB128 ],
+   fun lnvs -> match lnvs with [LNAV_ULEB128 n] -> Just  (DW_LNS_set_file n)        | _ -> Nothing end);
+  ("DW_LNS_set_column"         , natural_of_hex "0x05", [LNAT_ULEB128 ],
+   fun lnvs -> match lnvs with [LNAV_ULEB128 n] -> Just  (DW_LNS_set_column n)      | _ -> Nothing end);
+  ("DW_LNS_negate_stmt"        , natural_of_hex "0x06", [             ],
+   fun lnvs -> match lnvs with [] -> Just  (DW_LNS_negate_stmt)                     | _ -> Nothing end);
+  ("DW_LNS_set_basic_block"    , natural_of_hex "0x07", [             ],
+   fun lnvs -> match lnvs with [] -> Just  (DW_LNS_set_basic_block)                 | _ -> Nothing end);
+  ("DW_LNS_const_add_pc"       , natural_of_hex "0x08", [             ],
+   fun lnvs -> match lnvs with [] -> Just  (DW_LNS_const_add_pc)                    | _ -> Nothing end);
+  ("DW_LNS_fixed_advance_pc"   , natural_of_hex "0x09", [LNAT_uint16  ],
+   fun lnvs -> match lnvs with [LNAV_uint16 n] -> Just  (DW_LNS_fixed_advance_pc n) | _ -> Nothing end);
   ("DW_LNS_set_prologue_end"   , natural_of_hex "0x0a", [             ],
-   fun lnvs -> match lnvs with [] -> Just  (DW_LNS_set_prologue_end)                | _ -> Nothing end);         
+   fun lnvs -> match lnvs with [] -> Just  (DW_LNS_set_prologue_end)                | _ -> Nothing end);
   ("DW_LNS_set_epilogue_begin" , natural_of_hex "0x0b", [             ],
-   fun lnvs -> match lnvs with [] -> Just  (DW_LNS_set_epilogue_begin)              | _ -> Nothing end);         
-  ("DW_LNS_set_isa"            , natural_of_hex "0x0c", [LNAT_ULEB128 ], 
+   fun lnvs -> match lnvs with [] -> Just  (DW_LNS_set_epilogue_begin)              | _ -> Nothing end);
+  ("DW_LNS_set_isa"            , natural_of_hex "0x0c", [LNAT_ULEB128 ],
    fun lnvs -> match lnvs with [LNAV_ULEB128 n] -> Just  (DW_LNS_set_isa n)         | _ -> Nothing end)
 ]
 
 let line_number_extended_encodings = [
-  ("DW_LNE_end_sequence"       , natural_of_hex "0x01", [],  
-   fun lnvs -> match lnvs with [] -> Just  (DW_LNE_end_sequence)                      | _ -> Nothing end);             
-  ("DW_LNE_set_address"        , natural_of_hex "0x02", [LNAT_address], 
-   fun lnvs -> match lnvs with [LNAV_address n] -> Just  (DW_LNE_set_address n)          | _ -> Nothing end);                                 
-  ("DW_LNE_define_file"        , natural_of_hex "0x03", [LNAT_string; LNAT_ULEB128; LNAT_ULEB128; LNAT_ULEB128], 
-   fun lnvs -> match lnvs with [LNAV_string s; LNAV_ULEB128 n1; LNAV_ULEB128 n2; LNAV_ULEB128 n3] -> Just  (DW_LNE_define_file s n1 n2 n3) | _ -> Nothing end);    
-  ("DW_LNE_set_discriminator"  , natural_of_hex "0x04", [LNAT_ULEB128],    
+  ("DW_LNE_end_sequence"       , natural_of_hex "0x01", [],
+   fun lnvs -> match lnvs with [] -> Just  (DW_LNE_end_sequence)                      | _ -> Nothing end);
+  ("DW_LNE_set_address"        , natural_of_hex "0x02", [LNAT_address],
+   fun lnvs -> match lnvs with [LNAV_address n] -> Just  (DW_LNE_set_address n)          | _ -> Nothing end);
+  ("DW_LNE_define_file"        , natural_of_hex "0x03", [LNAT_string; LNAT_ULEB128; LNAT_ULEB128; LNAT_ULEB128],
+   fun lnvs -> match lnvs with [LNAV_string s; LNAV_ULEB128 n1; LNAV_ULEB128 n2; LNAV_ULEB128 n3] -> Just  (DW_LNE_define_file s n1 n2 n3) | _ -> Nothing end);
+  ("DW_LNE_set_discriminator"  , natural_of_hex "0x04", [LNAT_ULEB128],
    fun lnvs -> match lnvs with [LNAV_ULEB128 n] -> Just  (DW_LNE_set_discriminator n)  | _ -> Nothing end)             (* new in Dwarf 4*)
 ]
 
@@ -1228,28 +1228,28 @@ val myhead : forall 'a. list 'a -> 'a
 let myhead l = match l with | x::xs -> x | [] -> Assert_extra.failwith "myhead of empty list" end
 
 
-val myfindNonPure : forall 'a. ('a -> bool) -> list 'a -> 'a 
-let myfindNonPure P l = match (List.find P l) with 
+val myfindNonPure : forall 'a. ('a -> bool) -> list 'a -> 'a
+let myfindNonPure P l = match (List.find P l) with
   | Just e      -> e
   | Nothing     -> Assert_extra.failwith "myfindNonPure"
 end
 
 val myfindmaybe : forall 'a 'b.  ('a -> maybe 'b) -> list 'a -> maybe 'b
-let rec myfindmaybe f xs = 
+let rec myfindmaybe f xs =
   match xs with
   | [] -> Nothing
   | x::xs' -> match f x with Just y -> Just y | Nothing -> myfindmaybe f xs' end
   end
 
 val myfind : forall 'a.  ('a -> bool) -> list 'a -> maybe 'a
-let rec myfind f xs = 
+let rec myfind f xs =
   match xs with
   | [] -> Nothing
   | x::xs' -> match f x with true -> Just x | false -> myfind f xs' end
   end
 
 val myfiltermaybe : forall 'a 'b.  ('a -> maybe 'b) -> list 'a -> list 'b
-let rec myfiltermaybe f xs = 
+let rec myfiltermaybe f xs =
   match xs with
   | [] -> []
   | x::xs' -> match f x with Just y -> y::myfiltermaybe f xs'| Nothing -> myfiltermaybe f xs' end
@@ -1259,56 +1259,56 @@ let rec myfiltermaybe f xs =
 
 val bytes_of_natural: endianness -> natural (*size*) -> natural (*value*) -> list byte
 let bytes_of_natural en size n =
-  if size = 8 then 
+  if size = 8 then
     bytes_of_elf64_xword en (elf64_xword_of_natural n)
-  else if size = 4 then 
+  else if size = 4 then
     bytes_of_elf32_word en (elf32_word_of_natural n)
   else
     Assert_extra.failwith "bytes_of_natural given size that is not 4 or 8"
 
 (* TODO: generalise *)
 val natural_of_bytes: endianness -> list byte -> natural
-let natural_of_bytes en bs = 
+let natural_of_bytes en bs =
   match bs with
-  | b0::b1::b2::b3::b4::b5::b6::b7::[] -> 
-      let v = if en=Little then 
-        natural_of_byte b0 + 256*natural_of_byte b1 + 256*256*natural_of_byte b2 + 256*256*256*natural_of_byte b3 
+  | b0::b1::b2::b3::b4::b5::b6::b7::[] ->
+      let v = if en=Little then
+        natural_of_byte b0 + 256*natural_of_byte b1 + 256*256*natural_of_byte b2 + 256*256*256*natural_of_byte b3
           + (256*256*256*256*(natural_of_byte b4 + 256*natural_of_byte b5 + 256*256*natural_of_byte b6 + 256*256*256*natural_of_byte b7))
       else
-        natural_of_byte b7 + 256*natural_of_byte b6 + 256*256*natural_of_byte b5 + 256*256*256*natural_of_byte b4 
+        natural_of_byte b7 + 256*natural_of_byte b6 + 256*256*natural_of_byte b5 + 256*256*256*natural_of_byte b4
           + (256*256*256*256*(natural_of_byte b3 + 256*natural_of_byte b2 + 256*256*natural_of_byte b1 + 256*256*256*natural_of_byte b0))
       in
       v
-  | b0::b1::b2::b3::[] -> 
-      let v = if en=Little then 
-        natural_of_byte b0 + 256*natural_of_byte b1 + 256*256*natural_of_byte b2 + 256*256*256*natural_of_byte b3 
+  | b0::b1::b2::b3::[] ->
+      let v = if en=Little then
+        natural_of_byte b0 + 256*natural_of_byte b1 + 256*256*natural_of_byte b2 + 256*256*256*natural_of_byte b3
       else
-        natural_of_byte b3 + 256*natural_of_byte b2 + 256*256*natural_of_byte b1 + 256*256*256*natural_of_byte b0 
+        natural_of_byte b3 + 256*natural_of_byte b2 + 256*256*natural_of_byte b1 + 256*256*256*natural_of_byte b0
 
       in
       v
-  | b0::b1::[] -> 
-      let v = if en=Little then 
-        natural_of_byte b0 + 256*natural_of_byte b1 
+  | b0::b1::[] ->
+      let v = if en=Little then
+        natural_of_byte b0 + 256*natural_of_byte b1
       else
         natural_of_byte b1 + 256*natural_of_byte b0
 
       in
       v
-  | b0::[] -> 
-      natural_of_byte b0 
+  | b0::[] ->
+      natural_of_byte b0
   | _ -> Assert_extra.failwith "natural_of_bytes given not-8/4/2/1 bytes"
   end
 
 
 val bigunionListMap : forall 'a 'b. SetType 'b => ('a -> set 'b) -> list 'a -> set 'b
-let rec bigunionListMap f xs = 
+let rec bigunionListMap f xs =
   match xs with
   | [] -> {}
   | x::xs' -> Set.(union) (f x)  (bigunionListMap f xs')
   end
 
-let rec mytake' (n:natural) acc xs = 
+let rec mytake' (n:natural) acc xs =
   match (n,xs) with
   | (0, _) -> Just (List.reverse acc, xs)
   | (_, []) -> Nothing
@@ -1319,7 +1319,7 @@ val mytake : forall 'a.  natural -> (list 'a) -> maybe (list 'a * list 'a)
 let mytake n xs = mytake' n [] xs
 
 val mynth : forall 'a.  natural -> (list 'a) -> maybe 'a
-let rec mynth (n:natural) xs = 
+let rec mynth (n:natural) xs =
   match (n,xs) with
   | (0, x::xs') -> Just x
   | (0, []) -> Nothing (*Assert_extra.failwith "mynth"*)
@@ -1342,7 +1342,7 @@ declare ocaml    target_rep function mytoString = `Xstring.implode`
 let string_of_bytes bs = mytoString (List.map Missing_pervasives.char_of_byte bs)
 
 
-let just_one s xs = 
+let just_one s xs =
   match xs with
   | [] -> Assert_extra.failwith ("no " ^ s)
   | x1::x2::_ -> Assert_extra.failwith ("more than one " ^ s)
@@ -1352,7 +1352,7 @@ let just_one s xs =
 
 
 
-let max_address (as': natural) : natural = 
+let max_address (as': natural) : natural =
   match as' with
   | 4 -> natural_of_hex "0xffffffff"
   | 8 -> natural_of_hex "0xffffffffffffffff"
@@ -1363,62 +1363,62 @@ let max_address (as': natural) : natural =
 (** lookup of encodings *)
 
 val lookup_Ab_b : forall 'a 'b. Eq 'a => 'a -> list ('a * 'b) -> maybe 'b
-let rec lookup_Ab_b x0 xys = 
+let rec lookup_Ab_b x0 xys =
   match xys with
   | [] -> Nothing
-  | (x,y)::xys' -> if x=x0 then Just y else lookup_Ab_b x0 xys'  
+  | (x,y)::xys' -> if x=x0 then Just y else lookup_Ab_b x0 xys'
   end
 
 val lookup_aB_a : forall 'a 'b. Eq 'b => 'b -> list ('a * 'b) -> maybe 'a
-let rec lookup_aB_a y0 xys = 
+let rec lookup_aB_a y0 xys =
   match xys with
   | [] -> Nothing
-  | (x,y)::xys' -> if y=y0 then Just x else lookup_aB_a y0 xys'  
+  | (x,y)::xys' -> if y=y0 then Just x else lookup_aB_a y0 xys'
   end
 
 
 val lookup_aBc_a : forall 'a 'b 'c. Eq 'b => 'b -> list ('a * 'b * 'c) -> maybe 'a
-let rec lookup_aBc_a y0 xyzs = 
+let rec lookup_aBc_a y0 xyzs =
   match xyzs with
   | [] -> Nothing
-  | (x,y,_)::xyzs' -> if y=y0 then Just x else lookup_aBc_a y0 xyzs'  
+  | (x,y,_)::xyzs' -> if y=y0 then Just x else lookup_aBc_a y0 xyzs'
   end
 
 val lookup_aBc_ac : forall 'a 'b 'c. Eq 'b => 'b -> list ('a * 'b * 'c) -> maybe ('a*'c)
-let rec lookup_aBc_ac y0 xyzs = 
+let rec lookup_aBc_ac y0 xyzs =
   match xyzs with
   | [] -> Nothing
-  | (x,y,z)::xyzs' -> if y=y0 then Just (x,z) else lookup_aBc_ac y0 xyzs'  
+  | (x,y,z)::xyzs' -> if y=y0 then Just (x,z) else lookup_aBc_ac y0 xyzs'
   end
 
 val lookup_Abc_b : forall 'a 'b 'c. Eq 'a => 'a -> list ('a * 'b * 'c) -> maybe 'b
-let rec lookup_Abc_b x0 xyzs = 
+let rec lookup_Abc_b x0 xyzs =
   match xyzs with
   | [] -> Nothing
-  | (x,y,_)::xyzs' -> if x=x0 then Just y else lookup_Abc_b x0 xyzs'  
+  | (x,y,_)::xyzs' -> if x=x0 then Just y else lookup_Abc_b x0 xyzs'
   end
 
 
 
 val lookup_aBcd_a : forall 'a 'b 'c 'd. Eq 'b => 'b -> list ('a * 'b * 'c * 'd) -> maybe 'a
-let rec lookup_aBcd_a y0 xyzws = 
+let rec lookup_aBcd_a y0 xyzws =
   match xyzws with
   | [] -> Nothing
-  | (x,y,_,_)::xyzws' -> if y=y0 then Just x else lookup_aBcd_a y0 xyzws'  
+  | (x,y,_,_)::xyzws' -> if y=y0 then Just x else lookup_aBcd_a y0 xyzws'
   end
 
 val lookup_aBcd_acd : forall 'a 'b 'c 'd. Eq 'b => 'b -> list ('a * 'b * 'c * 'd) -> maybe ('a * 'c * 'd)
-let rec lookup_aBcd_acd y0 xyzws = 
+let rec lookup_aBcd_acd y0 xyzws =
   match xyzws with
   | [] -> Nothing
-  | (x,y,z,w)::xyzws' -> if y=y0 then Just (x,z,w) else lookup_aBcd_acd y0 xyzws'  
+  | (x,y,z,w)::xyzws' -> if y=y0 then Just (x,z,w) else lookup_aBcd_acd y0 xyzws'
   end
 
 val lookup_abCde_de : forall 'a 'b 'c 'd 'e. Eq 'c => 'c -> list ('a * 'b * 'c * 'd * 'e) -> maybe ('d * 'e)
-let rec lookup_abCde_de z0 xyzwus = 
+let rec lookup_abCde_de z0 xyzwus =
   match xyzwus with
   | [] -> Nothing
-  | (x,y,z,w,u)::xyzwus' -> if z=z0 then Just (w,u) else lookup_abCde_de z0 xyzwus'  
+  | (x,y,z,w,u)::xyzwus' -> if z=z0 then Just (w,u) else lookup_abCde_de z0 xyzwus'
   end
 
 
@@ -1429,20 +1429,20 @@ let pp_attribute_encoding n = pp_maybe (fun n -> lookup_aBc_a n attribute_encodi
 let pp_attribute_form_encoding n = pp_maybe (fun n -> lookup_aBc_a n attribute_form_encodings) n
 let pp_operation_encoding n = pp_maybe (fun n -> lookup_aBcd_a n operation_encodings) n
 
-let tag_encode (s: string) : natural = 
+let tag_encode (s: string) : natural =
   match lookup_Ab_b s tag_encodings with
   | Just n -> n
   | Nothing -> Assert_extra.failwith "attribute_encode"
   end
 
 
-let attribute_encode (s: string) : natural = 
+let attribute_encode (s: string) : natural =
   match lookup_Abc_b s attribute_encodings with
   | Just n -> n
   | Nothing -> Assert_extra.failwith "attribute_encode"
   end
 
-let attribute_form_encode (s: string) : natural = 
+let attribute_form_encode (s: string) : natural =
   match lookup_Abc_b s attribute_form_encodings with
   | Just n -> n
   | Nothing -> Assert_extra.failwith "attribute_form_encode"
@@ -1456,7 +1456,7 @@ let attribute_form_encode (s: string) : natural =
 
 (* parsing combinators *)
 
-type parse_context = <| pc_bytes: list byte; pc_offset: natural |> 
+type parse_context = <| pc_bytes: list byte; pc_offset: natural |>
 
 type parse_result 'a =
   | PR_success of 'a * parse_context
@@ -1466,13 +1466,13 @@ type parser 'a = parse_context -> parse_result 'a
 
 let pp_parse_context pc = "pc_offset = " ^ pphex pc.pc_offset
 
-let pp_parse_fail s pc = 
+let pp_parse_fail s pc =
   "Parse fail\n" ^ s ^ " at " ^ pp_parse_context pc ^ "\n"
 
-let pp_parse_result ppa pr = 
+let pp_parse_result ppa pr =
   match pr with
   | PR_success x pc -> "Parse success\n" ^ ppa x ^ "\n" ^ pp_parse_context pc ^ "\n"
-  | PR_fail s pc -> pp_parse_fail s pc  
+  | PR_fail s pc -> pp_parse_fail s pc
   end
 
 (* [(>>=)] should be the monadic binding function for [parse_result].  *)
@@ -1514,65 +1514,65 @@ let pr_with_pos p = fun pc -> pr_map (fun x -> (pc.pc_offset,x)) (p pc)
 
 
 val parse_pair : forall 'a 'b. (parser 'a) -> (parser 'b) -> (parser ('a * 'b))
-let parse_pair p1 p2 = 
-  fun pc -> 
-    let _ = my_debug "pair " in 
-    pr_bind (p1 pc) (fun x pc' -> match p2 pc' with 
+let parse_pair p1 p2 =
+  fun pc ->
+    let _ = my_debug "pair " in
+    pr_bind (p1 pc) (fun x pc' -> match p2 pc' with
     | PR_success y pc'' -> PR_success (x,y) pc''
     | PR_fail s pc'' -> PR_fail s pc''
     end)
 
 val parse_triple : forall 'a 'b 'c. (parser 'a) -> (parser 'b) -> (parser 'c) -> parser ('a * ('b * 'c))
-let parse_triple p1 p2 p3 = 
+let parse_triple p1 p2 p3 =
   parse_pair p1 (parse_pair p2 p3)
 
 val parse_quadruple : forall 'a 'b 'c 'd. (parser 'a) -> (parser 'b) -> (parser 'c) -> (parser 'd) -> parser ('a * ('b * ('c * 'd)))
-let parse_quadruple p1 p2 p3 p4 = 
+let parse_quadruple p1 p2 p3 p4 =
   parse_pair p1 (parse_pair p2 (parse_pair p3 p4))
 
 val parse_pentuple : forall 'a 'b 'c 'd 'e. (parser 'a) -> (parser 'b) -> (parser 'c) -> (parser 'd) -> (parser 'e) -> parser ('a * ('b * ('c * ('d * 'e))))
-let parse_pentuple p1 p2 p3 p4 p5 = 
+let parse_pentuple p1 p2 p3 p4 p5 =
   parse_pair p1 (parse_pair p2 (parse_pair p3 (parse_pair p4 p5)))
 
 val parse_sextuple : forall 'a 'b 'c 'd 'e 'f. (parser 'a) -> (parser 'b) -> (parser 'c) -> (parser 'd) -> (parser 'e) -> (parser 'f) -> parser ('a * ('b * ('c * ('d * ('e * 'f)))))
-let parse_sextuple p1 p2 p3 p4 p5 p6 = 
+let parse_sextuple p1 p2 p3 p4 p5 p6 =
   parse_pair p1 (parse_pair p2 (parse_pair p3 (parse_pair p4 (parse_pair p5 p6))))
 
 val parse_dependent_pair : forall 'a 'b. (parser 'a) -> ('a -> parser 'b) -> (parser ('a * 'b))
-let parse_dependent_pair p1 p2 = 
-  fun pc -> 
-    pr_bind (p1 pc) (fun x pc' -> match p2 x pc' with 
+let parse_dependent_pair p1 p2 =
+  fun pc ->
+    pr_bind (p1 pc) (fun x pc' -> match p2 x pc' with
     | PR_success y pc'' -> PR_success (x,y) pc''
     | PR_fail s pc'' -> PR_fail s pc''
     end)
 
 val parse_dependent : forall 'a 'b. (parser 'a) -> ('a -> parser 'b) -> (parser 'b)
-let parse_dependent p1 p2 = 
-  fun pc -> 
+let parse_dependent p1 p2 =
+  fun pc ->
     pr_bind (p1 pc) (fun x pc' -> p2 x pc')
 
 
 
 val parse_list' : forall 'a. (parser (maybe 'a)) -> (list 'a -> parser (list 'a))
 let rec parse_list' p1 =
-  fun acc pc ->   let _ = my_debug "list' " in pr_bind (p1 pc) (fun mx pc' -> 
+  fun acc pc ->   let _ = my_debug "list' " in pr_bind (p1 pc) (fun mx pc' ->
     match mx with
     | Nothing -> PR_success acc pc'
     | Just x -> parse_list' p1 (x :: acc) pc'
     end)
 
 val parse_list : forall 'a. (parser (maybe 'a)) -> (parser (list 'a))
-let parse_list p1 = 
-  pr_post_map 
+let parse_list p1 =
+  pr_post_map
     (parse_list' p1 [])
-    (List.reverse) 
+    (List.reverse)
 
 val parse_parser_list : forall 'a. (list (parser 'a)) -> (parser (list 'a))
-let rec parse_parser_list ps = 
+let rec parse_parser_list ps =
   match ps with
   | [] -> pr_return []
-  | p::ps' -> 
-      (fun pc -> pr_bind (p pc) (fun x pc' -> 
+  | p::ps' ->
+      (fun pc -> pr_bind (p pc) (fun x pc' ->
         match parse_parser_list ps' pc' with
         | PR_success xs pc'' -> PR_success (x::xs) pc''
         | PR_fail s pc'' -> PR_fail s pc''
@@ -1584,11 +1584,11 @@ let parse_maybe p =
   fun pc ->
     match pc.pc_bytes with
     | [] -> pr_return Nothing pc
-    | _ -> 
+    | _ ->
         match p pc with
         | PR_success v pc'' -> PR_success (Just v) pc''
         | PR_fail s pc'' -> PR_fail s pc''
-        end        
+        end
     end
 
 val parse_demaybe : forall 'a. string ->parser (maybe 'a) -> parser 'a
@@ -1617,13 +1617,13 @@ let parse_restrict_length n p =
 
 
 let parse_n_bytes (n:natural) : parser (list byte) =
-    fun (pc:parse_context) -> 
+    fun (pc:parse_context) ->
       match mytake n pc.pc_bytes with
       | Nothing -> PR_fail ("parse_n_bytes n=" ^ pphex n) pc
       | Just (xs,bs) -> PR_success xs (<|pc_bytes=bs; pc_offset= pc.pc_offset + naturalFromNat (List.length xs) |> )
       end
 
-let rec mytakestring' acc xs = 
+let rec mytakestring' acc xs =
   match xs with
   | [] -> Nothing
   | x::xs' -> if natural_of_byte x = 0 then Just (List.reverse acc, xs') else mytakestring' (x::acc) xs'
@@ -1641,7 +1641,7 @@ let parse_non_empty_string : parser (maybe (list byte)) =
     fun (pc:parse_context) ->
       match mytakestring' [] pc.pc_bytes with
       | Nothing -> PR_fail "parse_string" pc
-      | Just (xs,bs) -> 
+      | Just (xs,bs) ->
           (*let _ = my_debug5 ("**" ^string_of_bytes xs ^ "**\n") in *)
           let pc' = (<|pc_bytes=bs; pc_offset = pc.pc_offset + naturalFromNat (List.length xs) + naturalFromNat 1 |> ) in
           if xs = [] then PR_success (Nothing) pc'
@@ -1649,132 +1649,132 @@ let parse_non_empty_string : parser (maybe (list byte)) =
       end
 
 
-let parse_uint8 : parser natural = 
+let parse_uint8 : parser natural =
     fun (pc:parse_context) ->
       let _ = my_debug "uint8 " in
       match pc.pc_bytes with
-      | b0::bytes' -> 
+      | b0::bytes' ->
           let v = natural_of_byte b0 in
           PR_success v (<| pc_bytes = bytes'; pc_offset = pc.pc_offset + 1 |>)
       | _ -> PR_fail "parse_uint32 not given enough bytes" pc
       end
 
-let parse_uint16 c : parser natural = 
+let parse_uint16 c : parser natural =
     fun (pc:parse_context) ->
       let _ = my_debug "uint16 " in
       match pc.pc_bytes with
-      | b0::b1::bytes' -> 
-          let v = if c.endianness=Little then 
-            natural_of_byte b0 + 256*natural_of_byte b1 
-          else 
+      | b0::b1::bytes' ->
+          let v = if c.endianness=Little then
+            natural_of_byte b0 + 256*natural_of_byte b1
+          else
             natural_of_byte b1 + 256*natural_of_byte b0 in
           PR_success v (<| pc_bytes = bytes'; pc_offset = pc.pc_offset + 2 |>)
       | _ -> PR_fail "parse_uint32 not given enough bytes" pc
       end
 
-let parse_uint32 c : parser natural = 
+let parse_uint32 c : parser natural =
     fun (pc:parse_context) ->
       let _ = my_debug "uint32 " in
       match pc.pc_bytes with
-      | b0::b1::b2::b3::bytes' -> 
-          let v = if c.endianness=Little then 
-            natural_of_byte b0 + 256*natural_of_byte b1 + 256*256*natural_of_byte b2 + 256*256*256*natural_of_byte b3 
-          else 
+      | b0::b1::b2::b3::bytes' ->
+          let v = if c.endianness=Little then
+            natural_of_byte b0 + 256*natural_of_byte b1 + 256*256*natural_of_byte b2 + 256*256*256*natural_of_byte b3
+          else
             natural_of_byte b3 + 256*natural_of_byte b2 + 256*256*natural_of_byte b1 + 256*256*256*natural_of_byte b0 in
           PR_success v (<| pc_bytes = bytes'; pc_offset = pc.pc_offset + 4 |>)
       | _ -> PR_fail "parse_uint32 not given enough bytes" pc
       end
 
-let parse_uint64 c : parser natural = 
+let parse_uint64 c : parser natural =
     fun (pc:parse_context) ->
       let _ = my_debug "uint64 " in
       match pc.pc_bytes with
-      | b0::b1::b2::b3::b4::b5::b6::b7::bytes' -> 
-          let v = if c.endianness=Little then 
-            natural_of_byte b0 + 256*natural_of_byte b1 + 256*256*natural_of_byte b2 + 256*256*256*natural_of_byte b3 
+      | b0::b1::b2::b3::b4::b5::b6::b7::bytes' ->
+          let v = if c.endianness=Little then
+            natural_of_byte b0 + 256*natural_of_byte b1 + 256*256*natural_of_byte b2 + 256*256*256*natural_of_byte b3
               + (256*256*256*256*(natural_of_byte b4 + 256*natural_of_byte b5 + 256*256*natural_of_byte b6 + 256*256*256*natural_of_byte b7))
           else
-            natural_of_byte b7 + 256*natural_of_byte b6 + 256*256*natural_of_byte b5 + 256*256*256*natural_of_byte b4 
+            natural_of_byte b7 + 256*natural_of_byte b6 + 256*256*natural_of_byte b5 + 256*256*256*natural_of_byte b4
               + (256*256*256*256*(natural_of_byte b3 + 256*natural_of_byte b2 + 256*256*natural_of_byte b1 + 256*256*256*natural_of_byte b0))
           in
           PR_success v (<| pc_bytes = bytes'; pc_offset = pc.pc_offset + 8 |>)
       | _ -> PR_fail "parse_uint64 not given enough bytes" pc
       end
 
-let integerFromTwosComplementNatural (n:natural) (half: natural) (all:integer) : integer = 
+let integerFromTwosComplementNatural (n:natural) (half: natural) (all:integer) : integer =
   if n < half then integerFromNatural n else integerFromNatural n - all
 
-let partialTwosComplementNaturalFromInteger (i:integer) (half: natural) (all:integer) : natural = 
+let partialTwosComplementNaturalFromInteger (i:integer) (half: natural) (all:integer) : natural =
   if i >=0 && i < integerFromNatural half then partialNaturalFromInteger i
   else if i >= (0-integerFromNatural half) && i < 0 then partialNaturalFromInteger (all + i)
   else Assert_extra.failwith "partialTwosComplementNaturalFromInteger"
 
 
-let parse_sint8 : parser integer = 
+let parse_sint8 : parser integer =
   pr_post_map (parse_uint8) (fun n -> integerFromTwosComplementNatural n 128 256)
 
-let parse_sint16 c : parser integer = 
+let parse_sint16 c : parser integer =
   pr_post_map (parse_uint16 c) (fun n -> integerFromTwosComplementNatural n (128*256) (256*256))
 
-let parse_sint32 c : parser integer = 
+let parse_sint32 c : parser integer =
   pr_post_map (parse_uint32 c) (fun n -> integerFromTwosComplementNatural n (128*256*256*256) (256*256*256*256))
 
-let parse_sint64 c : parser integer = 
+let parse_sint64 c : parser integer =
   pr_post_map (parse_uint64 c) (fun n -> integerFromTwosComplementNatural n (128*256*256*256*256*256*256*256) (256*256*256*256*256*256*256*256))
 
-let rec parse_ULEB128' (acc: natural) (shift_factor: natural) : parser natural = 
+let rec parse_ULEB128' (acc: natural) (shift_factor: natural) : parser natural =
     fun (pc:parse_context) ->
       let _ = my_debug "ULEB128' " in
       match pc.pc_bytes with
-      | b::bytes' -> 
+      | b::bytes' ->
           let n = natural_of_byte b in
           let acc' = (natural_land n 127) * shift_factor + acc in
           let finished = ((natural_land n 128) = 0) in
           let pc' = <| pc_bytes = bytes'; pc_offset = pc.pc_offset + 1 |> in
-          if finished then 
+          if finished then
             PR_success acc' pc'
           else
             parse_ULEB128' acc' (shift_factor * 128) pc'
       | _ ->
           PR_fail "parse_ULEB128' not given enough bytes" pc
-      end    
+      end
 
-let parse_ULEB128 : parser natural = 
+let parse_ULEB128 : parser natural =
   fun (pc:parse_context) ->
     parse_ULEB128' 0 1 pc
 
-let rec parse_SLEB128' (acc: natural) (shift_factor: natural) : parser (bool * natural * natural) = 
+let rec parse_SLEB128' (acc: natural) (shift_factor: natural) : parser (bool * natural * natural) =
     fun (pc:parse_context) ->
       let _ = my_debug "SLEB128' " in
       match pc.pc_bytes with
-      | b::bytes' -> 
+      | b::bytes' ->
           let n = natural_of_byte b in
           let acc' = acc + (natural_land n 127) * shift_factor in
           let shift_factor' = shift_factor * 128 in
           let finished = ((natural_land n 128) = 0) in
           let positive = ((natural_land n 64) = 0) in
           let pc' = <| pc_bytes = bytes'; pc_offset = pc.pc_offset + 1 |> in
-          if finished then 
+          if finished then
             PR_success (positive, shift_factor', acc') pc'
           else
             parse_SLEB128' acc' shift_factor' pc'
       | _ ->
           PR_fail "parse_SLEB128' not given enough bytes" pc
-      end    
+      end
 
-let parse_SLEB128 : parser integer = 
+let parse_SLEB128 : parser integer =
     pr_post_map (parse_SLEB128' 0 1) (fun (positive, shift_factor, acc) ->
        if positive then integerFromNatural acc else integerFromNatural acc - integerFromNatural shift_factor)
-    
+
 let parse_nonzero_ULEB128_pair : parser (maybe (natural*natural)) =
   let _ = my_debug "nonzero_ULEB128_pair " in
-  pr_post_map 
+  pr_post_map
     (parse_pair parse_ULEB128 parse_ULEB128)
     (fun (n1,n2) -> if n1=0 && n2=0 then Nothing else Just (n1,n2))
 
-let parse_zero_terminated_ULEB128_pair_list : parser (list (natural*natural)) = 
+let parse_zero_terminated_ULEB128_pair_list : parser (list (natural*natural)) =
   let _ = my_debug "zero_terminated_ULEB128_pair_list " in
-  parse_list parse_nonzero_ULEB128_pair 
+  parse_list parse_nonzero_ULEB128_pair
 
 let parse_uintDwarfN c (df: dwarf_format) : parser natural =
     match df with
@@ -1809,33 +1809,33 @@ let parse_uint_segment_selector_size c (ss: natural) : parser (maybe natural) =
 (** abbreviations table: pp and parsing *)
 
 let pp_abbreviation_declaration (x:abbreviation_declaration) =
-  "   " 
-  ^ show x.ad_abbreviation_code ^ "      " 
-  ^ pp_tag_encoding x.ad_tag ^ "    " 
+  "   "
+  ^ show x.ad_abbreviation_code ^ "      "
+  ^ pp_tag_encoding x.ad_tag ^ "    "
   ^ (if x.ad_has_children then "[has children]" else "[no children]")
   ^ "\n"
 (*  ^ " "^show (List.length x.ad_attribute_specifications) ^ " attributes\n"*)
-  ^ myconcat "" 
-      (List.map 
+  ^ myconcat ""
+      (List.map
          (fun (n1,n2) ->
-           "    " ^ pp_attribute_encoding n1 ^ "     " ^ pp_attribute_form_encoding n2 ^ "\n") 
+           "    " ^ pp_attribute_encoding n1 ^ "     " ^ pp_attribute_form_encoding n2 ^ "\n")
          x.ad_attribute_specifications)
 
-let pp_abbreviations_table (x:abbreviations_table) = 
+let pp_abbreviations_table (x:abbreviations_table) =
   myconcat "" (List.map (pp_abbreviation_declaration) x)
 
 let parse_abbreviation_declaration c : parser (maybe abbreviation_declaration) =
-    fun (pc: parse_context) -> 
-      pr_bind (parse_ULEB128 pc) (fun n1 pc' -> 
-        if n1 = 0 then 
+    fun (pc: parse_context) ->
+      pr_bind (parse_ULEB128 pc) (fun n1 pc' ->
+        if n1 = 0 then
           PR_success Nothing pc'
-        else 
-          pr_bind (parse_ULEB128 pc') (fun n2 pc'' -> 
-            pr_bind (parse_uint8 pc'') (fun c pc''' -> 
-              pr_post_map1 
+        else
+          pr_bind (parse_ULEB128 pc') (fun n2 pc'' ->
+            pr_bind (parse_uint8 pc'') (fun c pc''' ->
+              pr_post_map1
                 (parse_zero_terminated_ULEB128_pair_list pc''')
                 (fun l ->
-                  Just ( let ad = 
+                  Just ( let ad =
                     <|
                     ad_abbreviation_code = n1;
                     ad_tag = n2;
@@ -1851,15 +1851,15 @@ let parse_abbreviations_table c =
 (** debug_str entry *)
 
 val mydrop : forall 'a. natural -> list 'a -> maybe (list 'a)
-let rec mydrop n xs = 
-  if n=0 then Just xs 
-  else 
+let rec mydrop n xs =
+  if n=0 then Just xs
+  else
     match xs with
-    | x::xs' -> mydrop (n-1) xs' 
+    | x::xs' -> mydrop (n-1) xs'
     | [] -> Nothing
     end
 
-let rec null_terminated_list (acc: list byte) (xs: list byte) : list byte = 
+let rec null_terminated_list (acc: list byte) (xs: list byte) : list byte =
   match xs with
   | [] -> List.reverse acc (* TODO: flag failure? *)
   | x::xs' -> if natural_of_byte x = 0 then List.reverse acc else null_terminated_list (x::acc) xs'
@@ -1882,24 +1882,24 @@ let pp_operation_argument_value (oav:operation_argument_value) : string =
 
 let pp_operation_semantics (os: operation_semantics) : string =
   match os with
-  | OpSem_lit                         -> "OpSem_lit"                          
-  | OpSem_deref                       -> "OpSem_deref"                        
+  | OpSem_lit                         -> "OpSem_lit"
+  | OpSem_deref                       -> "OpSem_deref"
   | OpSem_stack _                     -> "OpSem_stack ..."
   | OpSem_not_supported               -> "OpSem_not_supported"
   | OpSem_binary _                    -> "OpSem_binary ..."
   | OpSem_unary _                     -> "OpSem_unary ..."
   | OpSem_opcode_lit _                -> "OpSem_opcode_lit ..."
-  | OpSem_reg                         -> "OpSem_reg"                         
-  | OpSem_breg                        -> "OpSem_breg"                         
-  | OpSem_bregx                       -> "OpSem_bregx"                        
-  | OpSem_fbreg                       -> "OpSem_fbreg"                        
-  | OpSem_deref_size                  -> "OpSem_deref_size"                   
-  | OpSem_nop                         -> "OpSem_nop"                          
-  | OpSem_piece                       -> "OpSem_piece"                        
-  | OpSem_bit_piece                   -> "OpSem_bitpiece"                     
+  | OpSem_reg                         -> "OpSem_reg"
+  | OpSem_breg                        -> "OpSem_breg"
+  | OpSem_bregx                       -> "OpSem_bregx"
+  | OpSem_fbreg                       -> "OpSem_fbreg"
+  | OpSem_deref_size                  -> "OpSem_deref_size"
+  | OpSem_nop                         -> "OpSem_nop"
+  | OpSem_piece                       -> "OpSem_piece"
+  | OpSem_bit_piece                   -> "OpSem_bitpiece"
   | OpSem_implicit_value              -> "OpSem_implicit_value"
-  | OpSem_stack_value                 -> "OpSem_stack_value"                  
-  | OpSem_call_frame_cfa              -> "OpSem_call_frame_cfa"                
+  | OpSem_stack_value                 -> "OpSem_stack_value"
+  | OpSem_call_frame_cfa              -> "OpSem_call_frame_cfa"
   end
 
 let pp_operation (op: operation) : string =
@@ -1909,9 +1909,9 @@ let pp_operations (ops: list operation) : string =
   myconcat "; " (List.map pp_operation ops)
 
 val parser_of_operation_argument_type : p_context -> compilation_unit_header -> operation_argument_type -> (parser operation_argument_value)
-let parser_of_operation_argument_type c cuh oat = 
+let parser_of_operation_argument_type c cuh oat =
   match oat with
-    | OAT_addr -> 
+    | OAT_addr ->
         pr_map2 (fun n -> OAV_natural n) (parse_uint_address_size c cuh.cuh_address_size)
     | OAT_dwarf_format_t ->
         pr_map2 (fun n -> OAV_natural n) (parse_uintDwarfN c cuh.cuh_dwarf_format)
@@ -1926,21 +1926,21 @@ let parser_of_operation_argument_type c cuh oat =
     | OAT_ULEB128 -> pr_map2 (fun n -> OAV_natural n) parse_ULEB128
     | OAT_SLEB128 -> pr_map2 (fun n -> OAV_integer n) parse_SLEB128
     | OAT_block   ->
-      (fun pc -> pr_bind (parse_ULEB128 pc) (fun n pc' -> 
+      (fun pc -> pr_bind (parse_ULEB128 pc) (fun n pc' ->
         pr_map (fun bs -> OAV_block n bs) (parse_n_bytes n pc')))
   end
 
 val parse_operation : p_context -> compilation_unit_header -> parser (maybe operation)
-let parse_operation c cuh pc = 
+let parse_operation c cuh pc =
   match parse_uint8 pc with
   | PR_fail s pc' -> PR_success Nothing pc
   | PR_success code pc' ->
       match lookup_aBcd_acd code operation_encodings with
-      | Nothing -> PR_fail ("encoding not found: " ^ pphex code) pc 
-      | Just (s,oats,opsem) -> 
+      | Nothing -> PR_fail ("encoding not found: " ^ pphex code) pc
+      | Just (s,oats,opsem) ->
           let ps = List.map (parser_of_operation_argument_type c cuh) oats in
-          (pr_post_map 
-            (parse_parser_list ps) 
+          (pr_post_map
+            (parse_parser_list ps)
             (fun oavs -> Just <| op_code = code; op_string = s; op_argument_values = oavs; op_semantics = opsem |>)
           )
             pc'
@@ -1957,7 +1957,7 @@ let parse_and_pp_operations c cuh bs =
   match parse_operations c cuh pc with
   | PR_fail s pc' -> "parse_operations fail: " ^ pp_parse_fail s pc'
   | PR_success ops pc' ->
-      pp_operations ops 
+      pp_operations ops
       ^ if pc'.pc_bytes <> [] then " Warning: extra non-parsed bytes" else ""
   end
 
@@ -1965,7 +1965,7 @@ let parse_and_pp_operations c cuh bs =
 (** attribute values: pp and parsing *)
 
 val pp_attribute_value : p_context -> compilation_unit_header -> list byte -> natural (*attribute tag*) -> attribute_value -> string
-let pp_attribute_value c cuh str at av = 
+let pp_attribute_value c cuh str at av =
   match av with
   | AV_addr x -> "AV_addr " ^ pphex x
   | AV_block n bs -> "AV_block " ^ show n ^ " " ^ ppbytes bs
@@ -1977,103 +1977,103 @@ let pp_attribute_value c cuh str at av =
       ^ " " ^ parse_and_pp_operations c cuh bs
   | AV_flag b -> "AV_flag " ^ show b
   | AV_ref n -> "AV_ref " ^ pphex n
-  | AV_ref_addr n -> "AV_ref_addr " ^ pphex n 
-  | AV_ref_sig8 n -> "AV_ref_sig8 " ^ pphex n 
+  | AV_ref_addr n -> "AV_ref_addr " ^ pphex n
+  | AV_ref_sig8 n -> "AV_ref_sig8 " ^ pphex n
   | AV_sec_offset n -> "AV_sec_offset " ^ pphex  n
   | AV_string bs -> string_of_bytes bs
-  | AV_strp n -> "AV_sec_offset " ^ pphex n ^ " " 
+  | AV_strp n -> "AV_sec_offset " ^ pphex n ^ " "
       ^ pp_debug_str_entry str n
   end
 
 
 val parser_of_attribute_form_non_indirect : p_context -> compilation_unit_header -> natural -> parser attribute_value
-let parser_of_attribute_form_non_indirect c cuh n = 
+let parser_of_attribute_form_non_indirect c cuh n =
 (* address*)
-  if n = attribute_form_encode "DW_FORM_addr"         then 
+  if n = attribute_form_encode "DW_FORM_addr"         then
     pr_map2 (fun n -> AV_addr n) (parse_uint_address_size c cuh.cuh_address_size)
 (* block *)
-  else if n = attribute_form_encode "DW_FORM_block1"       then 
-    (fun pc -> pr_bind (parse_uint8 pc) (fun n pc' -> 
+  else if n = attribute_form_encode "DW_FORM_block1"       then
+    (fun pc -> pr_bind (parse_uint8 pc) (fun n pc' ->
       pr_map (fun bs -> AV_block n bs) (parse_n_bytes n pc')))
-  else if n = attribute_form_encode "DW_FORM_block2"       then 
-    (fun pc -> pr_bind (parse_uint16 c pc) (fun n pc' -> 
+  else if n = attribute_form_encode "DW_FORM_block2"       then
+    (fun pc -> pr_bind (parse_uint16 c pc) (fun n pc' ->
       pr_map (fun bs -> AV_block n bs) (parse_n_bytes n pc')))
-  else if n = attribute_form_encode "DW_FORM_block4"       then 
-    (fun pc -> pr_bind (parse_uint32 c pc) (fun n pc' -> 
+  else if n = attribute_form_encode "DW_FORM_block4"       then
+    (fun pc -> pr_bind (parse_uint32 c pc) (fun n pc' ->
       pr_map (fun bs -> AV_block n bs) (parse_n_bytes n pc')))
-  else if n = attribute_form_encode "DW_FORM_block"        then 
-    (fun pc -> pr_bind (parse_ULEB128 pc) (fun n pc' -> 
+  else if n = attribute_form_encode "DW_FORM_block"        then
+    (fun pc -> pr_bind (parse_ULEB128 pc) (fun n pc' ->
       pr_map (fun bs -> AV_block n bs) (parse_n_bytes n pc')))
 (* constant *)
-  else if n = attribute_form_encode "DW_FORM_data1"        then 
+  else if n = attribute_form_encode "DW_FORM_data1"        then
     pr_map2 (fun bs -> AV_block 1 bs) (parse_n_bytes 1)
-  else if n = attribute_form_encode "DW_FORM_data2"        then 
+  else if n = attribute_form_encode "DW_FORM_data2"        then
     pr_map2 (fun bs -> AV_block 2 bs) (parse_n_bytes 2)
-  else if n = attribute_form_encode "DW_FORM_data4"        then 
+  else if n = attribute_form_encode "DW_FORM_data4"        then
     pr_map2 (fun bs -> AV_block 4 bs) (parse_n_bytes 4)
-  else if n = attribute_form_encode "DW_FORM_data8"        then 
+  else if n = attribute_form_encode "DW_FORM_data8"        then
     pr_map2 (fun bs -> AV_block 8 bs) (parse_n_bytes 8)
-  else if n = attribute_form_encode "DW_FORM_sdata"        then 
+  else if n = attribute_form_encode "DW_FORM_sdata"        then
     pr_map2 (fun i -> AV_constant_SLEB128 i) parse_SLEB128
-  else if n = attribute_form_encode "DW_FORM_udata"        then 
+  else if n = attribute_form_encode "DW_FORM_udata"        then
     pr_map2 (fun n -> AV_constant_ULEB128 n) parse_ULEB128
 (* exprloc *)
-  else if n = attribute_form_encode "DW_FORM_exprloc"      then 
-    (fun pc -> pr_bind (parse_ULEB128 pc) (fun n pc' -> 
+  else if n = attribute_form_encode "DW_FORM_exprloc"      then
+    (fun pc -> pr_bind (parse_ULEB128 pc) (fun n pc' ->
       pr_map (fun bs -> AV_exprloc n bs) (parse_n_bytes n pc')))
 (* flag *)
-  else if n = attribute_form_encode "DW_FORM_flag"         then 
+  else if n = attribute_form_encode "DW_FORM_flag"         then
     pr_map2 (fun n -> AV_flag (n<>0)) (parse_uint8)
-  else if n = attribute_form_encode "DW_FORM_flag_present" then 
+  else if n = attribute_form_encode "DW_FORM_flag_present" then
     pr_map2 (fun () -> AV_flag true) (pr_return ())
 (* lineptr, loclistptr, macptr, rangelistptr *)
-  else if n = attribute_form_encode "DW_FORM_sec_offset"   then 
+  else if n = attribute_form_encode "DW_FORM_sec_offset"   then
     pr_map2 (fun n -> AV_sec_offset n) (parse_uintDwarfN c cuh.cuh_dwarf_format)
 (* reference - first type *)
-  else if n = attribute_form_encode "DW_FORM_ref1"         then 
+  else if n = attribute_form_encode "DW_FORM_ref1"         then
     pr_map2 (fun n -> AV_ref n) (parse_uint8)
-  else if n = attribute_form_encode "DW_FORM_ref2"         then 
+  else if n = attribute_form_encode "DW_FORM_ref2"         then
     pr_map2 (fun n -> AV_ref n) (parse_uint16 c)
-  else if n = attribute_form_encode "DW_FORM_ref4"         then 
+  else if n = attribute_form_encode "DW_FORM_ref4"         then
     pr_map2 (fun n -> AV_ref n) (parse_uint32 c)
-  else if n = attribute_form_encode "DW_FORM_ref8"         then 
+  else if n = attribute_form_encode "DW_FORM_ref8"         then
     pr_map2 (fun n -> AV_ref n) (parse_uint64 c)
-  else if n = attribute_form_encode "DW_FORM_ref_udata"    then 
+  else if n = attribute_form_encode "DW_FORM_ref_udata"    then
     pr_map2 (fun n -> AV_ref n) parse_ULEB128
 (* reference - second type *)
-  else if n = attribute_form_encode "DW_FORM_ref_addr"     then 
+  else if n = attribute_form_encode "DW_FORM_ref_addr"     then
     pr_map2 (fun n -> AV_ref_addr n) (parse_uintDwarfN c cuh.cuh_dwarf_format)
 (* reference - third type *)
-  else if n = attribute_form_encode "DW_FORM_ref_sig8"     then 
+  else if n = attribute_form_encode "DW_FORM_ref_sig8"     then
     pr_map2 (fun n -> AV_ref_sig8 n) (parse_uint64 c)
 (* string *)
-  else if n = attribute_form_encode "DW_FORM_string"       then 
+  else if n = attribute_form_encode "DW_FORM_string"       then
     pr_map2 (fun bs -> AV_string bs) parse_string
-  else if n = attribute_form_encode "DW_FORM_strp"         then 
+  else if n = attribute_form_encode "DW_FORM_strp"         then
     pr_map2 (fun n -> AV_strp n) (parse_uintDwarfN c cuh.cuh_dwarf_format)
 (* indirect (cycle detection) *)
-  else if n = attribute_form_encode "DW_FORM_indirect"     then 
+  else if n = attribute_form_encode "DW_FORM_indirect"     then
     Assert_extra.failwith "DW_FORM_INDIRECT cycle"
 (* unknown *)
   else
     Assert_extra.failwith "parser_of_attribute_form_non_indirect: unknown attribute form"
 
 
-let parser_of_attribute_form c cuh n = 
-  if n = attribute_form_encode "DW_FORM_indirect" then 
+let parser_of_attribute_form c cuh n =
+  if n = attribute_form_encode "DW_FORM_indirect" then
     (fun pc -> pr_bind (parse_ULEB128 pc) (fun n ->
       parser_of_attribute_form_non_indirect c cuh n) )
-  else 
-    parser_of_attribute_form_non_indirect c cuh n 
+  else
+    parser_of_attribute_form_non_indirect c cuh n
 
 (** attribute find *)
 
 let find_name str ats : maybe string =
-  myfindmaybe 
-    (fun (((at: natural), (af: natural)), ((pos: natural),(av:attribute_value))) -> 
-      if attribute_encode "DW_AT_name" = at then 
-        let name = 
-          match av with 
+  myfindmaybe
+    (fun (((at: natural), (af: natural)), ((pos: natural),(av:attribute_value))) ->
+      if attribute_encode "DW_AT_name" = at then
+        let name =
+          match av with
           | AV_string bs -> string_of_bytes bs
           | AV_strp n -> pp_debug_str_entry str n
           | _ -> "av_name AV not understood"
@@ -2083,57 +2083,57 @@ let find_name str ats : maybe string =
         Nothing)
     ats
 
-let find_name_of_die str die : maybe string = 
-  let ats = List.zip 
-      die.die_abbreviation_declaration.ad_attribute_specifications 
+let find_name_of_die str die : maybe string =
+  let ats = List.zip
+      die.die_abbreviation_declaration.ad_attribute_specifications
       die.die_attribute_values in
   find_name str ats
 
 let find_attribute_value (an: string) (die:die) : maybe attribute_value =
   let at = attribute_encode an in
-  let ats = List.zip 
-      die.die_abbreviation_declaration.ad_attribute_specifications 
+  let ats = List.zip
+      die.die_abbreviation_declaration.ad_attribute_specifications
       die.die_attribute_values in
-  myfindmaybe 
-    (fun  (((at': natural), (af: natural)), ((pos: natural),(av:attribute_value))) -> 
-      if at' = at then Just av else Nothing) 
+  myfindmaybe
+    (fun  (((at': natural), (af: natural)), ((pos: natural),(av:attribute_value))) ->
+      if at' = at then Just av else Nothing)
     ats
 
 (** compilation unit header: pp and parsing *)
 
 let pp_dwarf_format df = match df with Dwarf32 -> "(32-bit)" | Dwarf64 -> "(64-bit)" end
 
-let pp_unit_header (s:string) (x:compilation_unit_header) : string = 
+let pp_unit_header (s:string) (x:compilation_unit_header) : string =
     "  " ^ s ^ " Unit @ offset " ^ pphex x.cuh_offset ^ ":\n"
   ^ "   Length:        " ^ pphex x.cuh_unit_length ^ " " ^ pp_dwarf_format x.cuh_dwarf_format ^ "\n"
   ^ "   Version:       " ^ show x.cuh_version ^ "\n"
   ^ "   Abbrev Offset: " ^ pphex x.cuh_debug_abbrev_offset ^ "\n"
   ^ "   Pointer Size:  " ^ show x.cuh_address_size ^ "\n"
 
-let pp_compilation_unit_header (x:compilation_unit_header) : string = 
+let pp_compilation_unit_header (x:compilation_unit_header) : string =
   pp_unit_header "Compilation" x
 
 let parse_unit_length c : parser (dwarf_format * natural) =
-    fun (pc: parse_context) -> 
+    fun (pc: parse_context) ->
       pr_bind (parse_uint32 c pc) (fun x pc' ->
         if x < natural_of_hex "0xfffffff0" then PR_success (Dwarf32,x) pc'
         else if x <> natural_of_hex "0xffffffff" then PR_fail "bad unit_length" pc
-        else 
-          pr_bind (parse_uint64 c pc') (fun x' pc'' -> 
+        else
+          pr_bind (parse_uint64 c pc') (fun x' pc'' ->
             PR_success (Dwarf64, x') pc'))
-      
 
-let parse_compilation_unit_header c : parser compilation_unit_header = 
-    pr_post_map 
-      (pr_with_pos 
-         (parse_dependent_pair 
+
+let parse_compilation_unit_header c : parser compilation_unit_header =
+    pr_post_map
+      (pr_with_pos
+         (parse_dependent_pair
             (parse_unit_length c)
-            (fun (df,ul) -> 
-              parse_triple 
+            (fun (df,ul) ->
+              parse_triple
                 (parse_uint16 c) (* version *)
                 (parse_uintDwarfN c df) (* debug abbrev offset *)
                 (parse_uint8) (* address_size *))))
-      (fun (offset,((df,ul), (v, (dao, as')))) -> 
+      (fun (offset,((df,ul), (v, (dao, as')))) ->
         <|
         cuh_offset = offset;
         cuh_dwarf_format = df;
@@ -2148,36 +2148,36 @@ let parse_compilation_unit_header c : parser compilation_unit_header =
 
 (* the test binaries don't have a .debug_types section, so this isn't tested *)
 
-let pp_type_unit_header (x:type_unit_header) : string = 
+let pp_type_unit_header (x:type_unit_header) : string =
   pp_unit_header "Type" x.tuh_cuh
   ^ "   Type Signature:  " ^ pphex x.tuh_type_signature ^ "\n"
   ^ "   Type Offset:  " ^ pphex x.tuh_type_offset ^ "\n"
 
-      
-let parse_type_unit_header c : parser type_unit_header = 
-    pr_post_map 
-      (parse_dependent_pair 
+
+let parse_type_unit_header c : parser type_unit_header =
+    pr_post_map
+      (parse_dependent_pair
          (parse_compilation_unit_header c)
          (fun cuh ->
-           parse_pair 
+           parse_pair
              (parse_uint64 c) (* type signature *)
              (parse_uintDwarfN c cuh.cuh_dwarf_format) (* type offset *) ))
-      (fun (cuh, (ts, to')) -> 
+      (fun (cuh, (ts, to')) ->
         <|
         tuh_cuh = cuh;
         tuh_type_signature = ts;
         tuh_type_offset = to';
       |>)
-        
+
 
 (** debugging information entries: pp and parsing *)
 
 (* example pp from readelf
  <2><51>: Abbrev Number: 3 (DW_TAG_variable)
-    <52>   DW_AT_name        : x	
-    <54>   DW_AT_decl_file   : 1	
-    <55>   DW_AT_decl_line   : 2	
-    <56>   DW_AT_type        : <0x6a>	
+    <52>   DW_AT_name        : x
+    <54>   DW_AT_decl_file   : 1
+    <55>   DW_AT_decl_line   : 2
+    <56>   DW_AT_type        : <0x6a>
     <5a>   DW_AT_location    : 2 byte block: 91 6c 	(DW_OP_fbreg: -20)
 *)
 
@@ -2185,40 +2185,40 @@ let pp_pos pos = "<" ^ pphex pos ^">"
 
 let indent_level (level: natural) = (toString (replicate (3 * level) #' '))
 
-let pp_die_attribute c (cuh:compilation_unit_header) (str : list byte) (level: natural) (((at: natural), (af: natural)), ((pos: natural),(av:attribute_value))) : string = 
-  indent_level (level + 1) ^ pp_pos pos  ^ "   " 
+let pp_die_attribute c (cuh:compilation_unit_header) (str : list byte) (level: natural) (((at: natural), (af: natural)), ((pos: natural),(av:attribute_value))) : string =
+  indent_level (level + 1) ^ pp_pos pos  ^ "   "
   ^ pp_attribute_encoding at ^ "     : "
   ^ "(" ^ pp_attribute_form_encoding af ^ ") "
   ^ pp_attribute_value c cuh str at av
   ^ "\n"
 
 val pp_die : p_context -> compilation_unit_header -> list byte -> natural -> bool -> die -> string
-let rec pp_die c cuh str level (pp_children:bool) die = 
-  indent_level level ^ "<" ^ show level ^ ">" 
+let rec pp_die c cuh str level (pp_children:bool) die =
+  indent_level level ^ "<" ^ show level ^ ">"
   ^ pp_pos die.die_offset
-  ^ ": Abbrev Number: " ^ show die.die_abbreviation_code 
+  ^ ": Abbrev Number: " ^ show die.die_abbreviation_code
   ^ " (" ^ pp_tag_encoding die.die_abbreviation_declaration.ad_tag ^")\n"
   ^
-    let ats = List.zip 
-        die.die_abbreviation_declaration.ad_attribute_specifications 
+    let ats = List.zip
+        die.die_abbreviation_declaration.ad_attribute_specifications
         die.die_attribute_values in
     (myconcat "" (List.map (pp_die_attribute c cuh str level) ats))
     ^
       if pp_children then myconcat "" (List.map (pp_die c cuh str (level +1) pp_children) die.die_children) else ""
 
 val pp_die_abbrev : p_context -> compilation_unit_header -> list byte -> natural -> bool -> (list die) -> die -> string
-let rec pp_die_abbrev c cuh str level (pp_children:bool) parents die = 
-  indent_level level 
+let rec pp_die_abbrev c cuh str level (pp_children:bool) parents die =
+  indent_level level
   ^ pp_tag_encoding die.die_abbreviation_declaration.ad_tag
   ^ " (" ^ pp_pos die.die_offset ^ ") "
 (*  ^ ": Abbrev Number: " ^ show die.die_abbreviation_code *)
   ^
-    let ats = List.zip 
-        die.die_abbreviation_declaration.ad_attribute_specifications 
+    let ats = List.zip
+        die.die_abbreviation_declaration.ad_attribute_specifications
         die.die_attribute_values in
-    (match find_name str ats with Just s -> s | Nothing -> "-" end) 
+    (match find_name str ats with Just s -> s | Nothing -> "-" end)
     ^ "   :  " ^ myconcat " : " (List.map (fun die' ->  pp_tag_encoding die'.die_abbreviation_declaration.ad_tag) parents)
-    ^ "\n"            
+    ^ "\n"
     ^ (*(myconcat "" (List.map (pp_die_abbrev_attribute c cuh str) ats))*)
 
       if pp_children then myconcat "" (List.map (pp_die_abbrev c cuh str (level +1) pp_children (die::parents)) die.die_children) else ""
@@ -2226,32 +2226,32 @@ let rec pp_die_abbrev c cuh str level (pp_children:bool) parents die =
 
 
 val parse_die : p_context -> list byte -> compilation_unit_header -> (natural->abbreviation_declaration) -> parser (maybe die)
-let rec parse_die c str cuh find_abbreviation_declaration = 
+let rec parse_die c str cuh find_abbreviation_declaration =
   fun (pc: parse_context) ->
     let _ = my_debug3 ("parse_die called at " ^ pp_parse_context pc ^ "\n") in
-    pr_bind (parse_ULEB128 pc) (fun abbreviation_code pc' -> 
-      if abbreviation_code = 0 then PR_success Nothing pc' 
+    pr_bind (parse_ULEB128 pc) (fun abbreviation_code pc' ->
+      if abbreviation_code = 0 then PR_success Nothing pc'
       else
         let _ = my_debug3 ("parse_die abbreviation code "^pphex abbreviation_code ^"\n") in
         let ad = find_abbreviation_declaration abbreviation_code in
         let attribute_value_parsers = List.map (fun (at,af) -> pr_with_pos (parser_of_attribute_form c cuh af)) ad.ad_attribute_specifications in
         pr_bind (parse_parser_list attribute_value_parsers pc') (fun avs pc'' ->
 
-(*          
-          let die_header = 
-            <| 
+(*
+          let die_header =
+            <|
             die_offset = pc.pc_offset;
             die_abbreviation_code = abbreviation_code;
             die_abbreviation_declaration = ad;
             die_attribute_values = avs;
             die_children = [];
-          |> in let _ = my_debug3 ("die_header " ^ pp_die cuh str 999 die_header) in 
-  *)          
-            pr_bind 
+          |> in let _ = my_debug3 ("die_header " ^ pp_die cuh str 999 die_header) in
+  *)
+            pr_bind
               (if ad.ad_has_children then parse_list (parse_die c str cuh find_abbreviation_declaration) pc'' else pr_return [] pc'')
-              (fun dies pc''' -> 
-                PR_success (Just ( let die = 
-                  <| 
+              (fun dies pc''' ->
+                PR_success (Just ( let die =
+                  <|
                   die_offset = pc.pc_offset;
                   die_abbreviation_code = abbreviation_code;
                   die_abbreviation_declaration = ad;
@@ -2259,15 +2259,15 @@ let rec parse_die c str cuh find_abbreviation_declaration =
                   die_children = dies;
                 |> in (* let _ = my_debug3 ("die entire " ^ pp_die cuh str 999 die) in *)die)) pc''')))
 
-let has_attribute (an: string) (die: die) : bool = 
-  List.elem 
+let has_attribute (an: string) (die: die) : bool =
+  List.elem
     (attribute_encode an)
     (List.map Tuple.fst die.die_abbreviation_declaration.ad_attribute_specifications)
 
 
 (** compilation units: pp and parsing *)
 
-let pp_compilation_unit c (debug_str_section_body: list byte) cu = 
+let pp_compilation_unit c (debug_str_section_body: list byte) cu =
 
   "*** compilation unit header               ***\n"
   ^ pp_compilation_unit_header cu.cu_header
@@ -2277,36 +2277,36 @@ let pp_compilation_unit c (debug_str_section_body: list byte) cu =
   ^ pp_die c cu.cu_header debug_str_section_body 0 true cu.cu_die
   ^ "\n"
 
-let pp_compilation_units c debug_string_section_body (compilation_units: list compilation_unit) : string = 
+let pp_compilation_units c debug_string_section_body (compilation_units: list compilation_unit) : string =
   myconcat "" (List.map (pp_compilation_unit c debug_string_section_body) compilation_units)
 
 
-let pp_compilation_unit_abbrev c (debug_str_section_body: list byte) cu = 
+let pp_compilation_unit_abbrev c (debug_str_section_body: list byte) cu =
   pp_compilation_unit_header cu.cu_header
 (*  ^ pp_abbreviations_table cu.cu_abbreviations_table*)
   ^ pp_die_abbrev c cu.cu_header debug_str_section_body 0 true [] cu.cu_die
 
-let pp_compilation_units_abbrev c debug_string_section_body (compilation_units: list compilation_unit) : string = 
+let pp_compilation_units_abbrev c debug_string_section_body (compilation_units: list compilation_unit) : string =
   myconcat "" (List.map (pp_compilation_unit_abbrev c debug_string_section_body) compilation_units)
 
-                        
+
 let parse_compilation_unit c (debug_str_section_body: list byte) (debug_abbrev_section_body: list byte) : parser (maybe compilation_unit) =
     fun (pc:parse_context) ->
-  
+
       if pc.pc_bytes = [] then PR_success Nothing pc else
-      
-      let (cuh, pc') = 
+
+      let (cuh, pc') =
 
         match parse_compilation_unit_header c pc with
         | PR_fail s pc' -> Assert_extra.failwith ("parse_cuh_header fail: " ^ pp_parse_fail s pc')
         | PR_success cuh pc' -> (cuh,pc')
         end in
 
-      let _ = my_debug4 (pp_compilation_unit_header cuh) in 
+      let _ = my_debug4 (pp_compilation_unit_header cuh) in
 
       let pc_abbrev = <|pc_bytes = match mydrop cuh.cuh_debug_abbrev_offset debug_abbrev_section_body with Just bs -> bs | Nothing -> Assert_extra.failwith "mydrop of debug_abbrev" end; pc_offset = cuh.cuh_debug_abbrev_offset  |> in
 
-      let abbreviations_table = 
+      let abbreviations_table =
         match parse_abbreviations_table c pc_abbrev with
         | PR_fail s pc_abbrev' -> Assert_extra.failwith ("parse_abbrevations_table fail: " ^ pp_parse_fail s pc_abbrev')
         | PR_success at pc_abbrev' -> at
@@ -2314,8 +2314,8 @@ let parse_compilation_unit c (debug_str_section_body: list byte) (debug_abbrev_s
 
       let _ = my_debug4 (pp_abbreviations_table abbreviations_table) in
 
-      let find_abbreviation_declaration (ac:natural) : abbreviation_declaration = 
-        let _ = my_debug4 ("find_abbreviation_declaration "^pphex ac) in 
+      let find_abbreviation_declaration (ac:natural) : abbreviation_declaration =
+        let _ = my_debug4 ("find_abbreviation_declaration "^pphex ac) in
         myfindNonPure (fun ad -> ad.ad_abbreviation_code = ac) abbreviations_table  in
 
       let _ = my_debug3 (pp_abbreviations_table abbreviations_table) in
@@ -2323,48 +2323,48 @@ let parse_compilation_unit c (debug_str_section_body: list byte) (debug_abbrev_s
       match parse_die c debug_str_section_body cuh find_abbreviation_declaration pc' with
       | PR_fail s pc'' -> Assert_extra.failwith ("parse_die fail: " ^ pp_parse_fail s pc'')
       | PR_success (Nothing) pc'' -> Assert_extra.failwith ("parse_die returned Nothing: " ^ pp_parse_context pc'')
-      | PR_success (Just die) pc'' -> 
-          let cu = 
-            <| 
+      | PR_success (Just die) pc'' ->
+          let cu =
+            <|
             cu_header = cuh;
             cu_abbreviations_table = abbreviations_table;
             cu_die = die;
           |> in
           PR_success (Just cu) pc''
-      end 
+      end
 
-let parse_compilation_units c (debug_str_section_body: list byte) (debug_abbrev_section_body: list byte): parser (list compilation_unit) 
+let parse_compilation_units c (debug_str_section_body: list byte) (debug_abbrev_section_body: list byte): parser (list compilation_unit)
     =
   parse_list (parse_compilation_unit c debug_str_section_body debug_abbrev_section_body)
 
 
 (** type units: pp and parsing *)
 
-let pp_type_unit c (debug_str_section_body: list byte) tu = 
+let pp_type_unit c (debug_str_section_body: list byte) tu =
   pp_type_unit_header tu.tu_header
   ^ pp_abbreviations_table tu.tu_abbreviations_table
   ^ pp_die c tu.tu_header.tuh_cuh debug_str_section_body 0 true tu.tu_die
 
-let pp_type_units c debug_string_section_body (type_units: list type_unit) : string = 
+let pp_type_units c debug_string_section_body (type_units: list type_unit) : string =
   myconcat "" (List.map (pp_type_unit c debug_string_section_body) type_units)
 
-                        
+
 let parse_type_unit c (debug_str_section_body: list byte) (debug_abbrev_section_body: list byte) : parser (maybe type_unit) =
     fun (pc:parse_context) ->
-  
+
       if pc.pc_bytes = [] then PR_success Nothing pc else
-      
-      let (tuh, pc') = 
+
+      let (tuh, pc') =
         match parse_type_unit_header c pc with
         | PR_fail s pc' -> Assert_extra.failwith ("parse_tuh_header fail: " ^ pp_parse_fail s pc')
         | PR_success tuh pc' -> (tuh,pc')
         end in
 
-      let _ = my_debug4 (pp_type_unit_header tuh) in 
+      let _ = my_debug4 (pp_type_unit_header tuh) in
 
       let pc_abbrev = let n = tuh.tuh_cuh.cuh_debug_abbrev_offset in <|pc_bytes = match mydrop n debug_abbrev_section_body with Just bs -> bs | Nothing -> Assert_extra.failwith "mydrop of debug_abbrev" end; pc_offset = n  |> in
 
-      let abbreviations_table = 
+      let abbreviations_table =
         match parse_abbreviations_table c pc_abbrev with
         | PR_fail s pc_abbrev' -> Assert_extra.failwith ("parse_abbrevations_table fail: " ^ pp_parse_fail s pc_abbrev')
         | PR_success at pc_abbrev' -> at
@@ -2372,8 +2372,8 @@ let parse_type_unit c (debug_str_section_body: list byte) (debug_abbrev_section_
 
       let _ = my_debug4 (pp_abbreviations_table abbreviations_table) in
 
-      let find_abbreviation_declaration (ac:natural) : abbreviation_declaration = 
-        let _ = my_debug4 ("find_abbreviation_declaration "^pphex ac) in 
+      let find_abbreviation_declaration (ac:natural) : abbreviation_declaration =
+        let _ = my_debug4 ("find_abbreviation_declaration "^pphex ac) in
         myfindNonPure (fun ad -> ad.ad_abbreviation_code = ac) abbreviations_table  in
 
       let _ = my_debug3 (pp_abbreviations_table abbreviations_table) in
@@ -2381,17 +2381,17 @@ let parse_type_unit c (debug_str_section_body: list byte) (debug_abbrev_section_
       match parse_die c debug_str_section_body tuh.tuh_cuh find_abbreviation_declaration pc' with
       | PR_fail s pc'' -> Assert_extra.failwith ("parse_die fail: " ^ pp_parse_fail s pc'')
       | PR_success (Nothing) pc'' -> Assert_extra.failwith ("parse_die returned Nothing: " ^ pp_parse_context pc'')
-      | PR_success (Just die) pc'' -> 
-          let tu = 
-            <| 
+      | PR_success (Just die) pc'' ->
+          let tu =
+            <|
             tu_header = tuh;
             tu_abbreviations_table = abbreviations_table;
             tu_die = die;
           |> in
           PR_success (Just tu) pc''
-      end 
+      end
 
-let parse_type_units c (debug_str_section_body: list byte) (debug_abbrev_section_body: list byte): parser (list type_unit) 
+let parse_type_units c (debug_str_section_body: list byte) (debug_abbrev_section_body: list byte): parser (list type_unit)
       =
     parse_list (parse_type_unit c debug_str_section_body debug_abbrev_section_body)
 
@@ -2408,18 +2408,18 @@ Contents of the .debug_loc section:
 *)
 
 let pp_location_list_entry c (cuh:compilation_unit_header) (offset:natural) (x:location_list_entry) : string =
-  "    " ^ pphex offset 
+  "    " ^ pphex offset
   ^ " " ^ pphex x.lle_beginning_address_offset
   ^ " " ^ pphex x.lle_ending_address_offset
   ^ " (" ^ parse_and_pp_operations c cuh x.lle_single_location_description ^")"
   ^ "\n"
 
 let pp_base_address_selection_entry c (cuh:compilation_unit_header) (offset:natural) (x:base_address_selection_entry) : string =
-  "    " ^ pphex offset 
+  "    " ^ pphex offset
   ^ " " ^ pphex x.base_address
   ^ "\n"
 
-let pp_location_list_item c (cuh: compilation_unit_header) (offset: natural) (x:location_list_item) = 
+let pp_location_list_item c (cuh: compilation_unit_header) (offset: natural) (x:location_list_item) =
   match x with
   | LLI_lle lle -> pp_location_list_entry c cuh offset lle
   | LLI_base base -> pp_base_address_selection_entry c cuh offset base
@@ -2428,7 +2428,7 @@ let pp_location_list_item c (cuh: compilation_unit_header) (offset: natural) (x:
 let pp_location_list c (cuh: compilation_unit_header) ((offset:natural), (llis: list location_list_item)) =
   myconcat "" (List.map (pp_location_list_item c cuh offset) llis)
 (*  ^ "    " ^ pphex offset  ^ " <End of list>\n"*)
-                               
+
 let pp_loc c (cuh: compilation_unit_header) (lls: list location_list) =
   "    Offset   Begin    End      Expression\n"
   ^  myconcat "" (List.map (pp_location_list c cuh) lls)
@@ -2441,11 +2441,11 @@ applicable base address defaults to the base address of the
 compilation unit.  That is handled by the interpret_location_list below *)
 
 
-      
+
 let parse_location_list_item c (cuh: compilation_unit_header) : parser (maybe location_list_item) =
-    fun (pc:parse_context) -> 
-      pr_bind 
-        (parse_pair 
+    fun (pc:parse_context) ->
+      pr_bind
+        (parse_pair
            (parse_uint_address_size c cuh.cuh_address_size)
            (parse_uint_address_size c cuh.cuh_address_size)
            pc)
@@ -2457,12 +2457,12 @@ let parse_location_list_item c (cuh: compilation_unit_header) : parser (maybe lo
             let x = LLI_base <| (*base_offset=pc.pc_offset;*) base_address=a1 |> in
             PR_success (Just x (*(pc.pc_offset, x)*)) pc'
           else
-            pr_bind (parse_uint16 c pc') (fun n pc'' -> 
+            pr_bind (parse_uint16 c pc') (fun n pc'' ->
               pr_post_map1
-                (parse_n_bytes n pc'') 
-                (fun bs -> 
-                  let x = 
-                    LLI_lle <| 
+                (parse_n_bytes n pc'')
+                (fun bs ->
+                  let x =
+                    LLI_lle <|
                     (*lle_offset = pc.pc_offset;*)
                     lle_beginning_address_offset = a1;
                     lle_ending_address_offset = a2;
@@ -2473,18 +2473,18 @@ let parse_location_list_item c (cuh: compilation_unit_header) : parser (maybe lo
         )
 
 let parse_location_list c cuh : parser (maybe location_list) =
-    fun (pc: parse_context) -> 
-      if pc.pc_bytes = [] then 
+    fun (pc: parse_context) ->
+      if pc.pc_bytes = [] then
         PR_success Nothing pc
       else
-        pr_post_map1 
+        pr_post_map1
           (parse_list (parse_location_list_item c cuh) pc)
           (fun llis -> (Just (pc.pc_offset, llis)))
 
 let parse_location_list_list c cuh : parser location_list_list =
     parse_list (parse_location_list c cuh)
 
-let find_location_list dloc n : location_list = 
+let find_location_list dloc n : location_list =
   myfindNonPure (fun (n',_)-> n'=n) dloc
   (* fails if location list not found *)
 
@@ -2510,8 +2510,8 @@ Contents of the .debug_aranges section:
   Segment Size:             0
 
     Address            Length
-    00000000100000e8 0000000000000090 
-    0000000000000000 0000000000000000 
+    00000000100000e8 0000000000000090
+    0000000000000000 0000000000000000
   Length:                   44
   Version:                  2
   Offset into .debug_info:  0x1de
@@ -2520,12 +2520,12 @@ Contents of the .debug_aranges section:
 *)
 
 let pp_range_list_entry c (cuh:compilation_unit_header) (offset:natural) (x:range_list_entry) : string =
-  "    " ^ pphex offset 
+  "    " ^ pphex offset
   ^ " " ^ pphex x.rle_beginning_address_offset
   ^ " " ^ pphex x.rle_ending_address_offset
   ^ "\n"
 
-let pp_range_list_item c (cuh: compilation_unit_header) (offset: natural) (x:range_list_item) = 
+let pp_range_list_item c (cuh: compilation_unit_header) (offset: natural) (x:range_list_item) =
   match x with
   | RLI_rle rle -> pp_range_list_entry c cuh offset rle
   | RLI_base base -> pp_base_address_selection_entry c cuh offset base
@@ -2534,7 +2534,7 @@ let pp_range_list_item c (cuh: compilation_unit_header) (offset: natural) (x:ran
 let pp_range_list c (cuh: compilation_unit_header) ((offset:natural), (rlis: list range_list_item)) =
   myconcat "" (List.map (pp_range_list_item c cuh offset) rlis)
 (*  ^ "    " ^ pphex offset  ^ " <End of list>\n"*)
-                               
+
 let pp_ranges c (cuh: compilation_unit_header) (rls: list range_list) =
   "    Offset   Begin    End      Expression\n"
   ^  myconcat "" (List.map (pp_range_list c cuh) rls)
@@ -2542,11 +2542,11 @@ let pp_ranges c (cuh: compilation_unit_header) (rls: list range_list) =
 (* Note that this is just pp'ing the raw range list data - see also
 the interpret_range_list below *)
 
-      
+
 let parse_range_list_item c (cuh: compilation_unit_header) : parser (maybe range_list_item) =
-    fun (pc:parse_context) -> 
-      pr_bind 
-        (parse_pair 
+    fun (pc:parse_context) ->
+      pr_bind
+        (parse_pair
            (parse_uint_address_size c cuh.cuh_address_size)
            (parse_uint_address_size c cuh.cuh_address_size)
            pc)
@@ -2558,8 +2558,8 @@ let parse_range_list_item c (cuh: compilation_unit_header) : parser (maybe range
             let x = RLI_base <| base_address=a1 |> in
             PR_success (Just x) pc'
           else
-            let x = 
-              RLI_rle <| 
+            let x =
+              RLI_rle <|
                     rle_beginning_address_offset = a1;
                     rle_ending_address_offset = a2;
                   |> in
@@ -2567,18 +2567,18 @@ let parse_range_list_item c (cuh: compilation_unit_header) : parser (maybe range
         )
 
 let parse_range_list c cuh : parser (maybe range_list) =
-    fun (pc: parse_context) -> 
-      if pc.pc_bytes = [] then 
+    fun (pc: parse_context) ->
+      if pc.pc_bytes = [] then
         PR_success Nothing pc
       else
-        pr_post_map1 
+        pr_post_map1
           (parse_list (parse_range_list_item c cuh) pc)
           (fun rlis -> (Just (pc.pc_offset, rlis)))
 
 let parse_range_list_list c cuh : parser range_list_list =
     parse_list (parse_range_list c cuh)
 
-let find_range_list dranges n : range_list = 
+let find_range_list dranges n : range_list =
   myfindNonPure (fun (n',_)-> n'=n) dranges
   (* fails if range list not found *)
 
@@ -2643,17 +2643,17 @@ let pp_cfa_register r = "r"^show r (*TODO: arch-specific register names *)
 
 let pp_cfa_offset (i:integer) = if i=0 then "" else if i<0 then show i else "+" ^ show i
 
-let pp_cfa_rule (cr:cfa_rule) : string = 
+let pp_cfa_rule (cr:cfa_rule) : string =
   match cr with
   | CR_undefined -> "u"
-  | CR_register r i -> pp_cfa_register r ^ pp_cfa_offset i 
-  | CR_expression bs -> "exp" 
+  | CR_register r i -> pp_cfa_register r ^ pp_cfa_offset i
+  | CR_expression bs -> "exp"
   end
 
 let pp_register_rule (rr:register_rule) : string =  (*TODO make this more readelf-like *)
   match rr with
   | RR_undefined -> "u"
-  | RR_same_value -> "s" 
+  | RR_same_value -> "s"
   | RR_offset i -> "c" ^ pp_cfa_offset i
   | RR_val_offset i -> "val(c" ^ pp_cfa_offset i ^ ")"
   | RR_register r -> pp_cfa_register r
@@ -2664,12 +2664,12 @@ let pp_register_rule (rr:register_rule) : string =  (*TODO make this more readel
 
 
 
-let pp_call_frame_instruction i = 
+let pp_call_frame_instruction i =
   match i with
   | DW_CFA_advance_loc d          -> "DW_CFA_advance_loc" ^ " " ^ pp_cfa_delta d
   | DW_CFA_offset r n             -> "DW_CFA_offset" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_offset (integerFromNatural n)
   | DW_CFA_restore r              -> "DW_CFA_restore" ^ " " ^ pp_cfa_register r
-  | DW_CFA_nop                    -> "DW_CFA_nop" 
+  | DW_CFA_nop                    -> "DW_CFA_nop"
   | DW_CFA_set_loc a              -> "DW_CFA_set_loc" ^ " " ^ pp_cfa_address a
   | DW_CFA_advance_loc1 d         -> "DW_CFA_advance_loc1" ^ " " ^ pp_cfa_delta d
   | DW_CFA_advance_loc2 d         -> "DW_CFA_advance_loc2" ^ " " ^ pp_cfa_delta d
@@ -2679,8 +2679,8 @@ let pp_call_frame_instruction i =
   | DW_CFA_undefined r            -> "DW_CFA_undefined" ^ " " ^ pp_cfa_register r
   | DW_CFA_same_value r           -> "DW_CFA_same_value" ^ " " ^ pp_cfa_register r
   | DW_CFA_register r1 r2         -> "DW_CFA_register" ^ " " ^ pp_cfa_register r1 ^ " " ^ pp_cfa_register r2
-  | DW_CFA_remember_state         -> "DW_CFA_remember_state" 
-  | DW_CFA_restore_state          -> "DW_CFA_restore_state" 
+  | DW_CFA_remember_state         -> "DW_CFA_remember_state"
+  | DW_CFA_restore_state          -> "DW_CFA_restore_state"
   | DW_CFA_def_cfa r n            -> "DW_CFA_def_cfa" ^ " " ^ pp_cfa_register r ^ " " ^ pp_cfa_offset (integerFromNatural n)
   | DW_CFA_def_cfa_register r     -> "DW_CFA_def_cfa_register" ^ " " ^ pp_cfa_register r
   | DW_CFA_def_cfa_offset n       -> "DW_CFA_def_cfa_offset" ^ " " ^ pp_cfa_offset (integerFromNatural n)
@@ -2708,8 +2708,8 @@ let parser_of_call_frame_argument_type c cuh (cfat: call_frame_argument_type) : 
     | CFAT_offset        -> pr_map2 (fun n -> CFAV_offset n) (parse_ULEB128)
     | CFAT_sfoffset      -> pr_map2 (fun n -> CFAV_sfoffset n) (parse_SLEB128)
     | CFAT_register      -> pr_map2 (fun n -> CFAV_register n) (parse_ULEB128)
-    | CFAT_block -> 
-      (fun pc -> pr_bind (parse_ULEB128 pc) (fun n pc' -> 
+    | CFAT_block ->
+      (fun pc -> pr_bind (parse_ULEB128 pc) (fun n pc' ->
         pr_map (fun bs -> CFAV_block bs) (parse_n_bytes n pc')))
     end
 
@@ -2726,27 +2726,27 @@ let parse_call_frame_instruction c cuh : parser (maybe call_frame_instruction) =
             match lookup_abCde_de low_bits call_frame_instruction_encoding with
             | Just ((args: list call_frame_argument_type), result) ->
                 let ps = List.map (parser_of_call_frame_argument_type c cuh) args in
-                let p = 
+                let p =
                   pr_post_map
                     (parse_parser_list ps)
                     result in
-                match p pc' with 
+                match p pc' with
                 | PR_success (Just cfi) pc'' -> PR_success (Just cfi) pc''
                 | PR_success (Nothing) pc'' -> Assert_extra.failwith "bad call frame instruction argument 1"
                 | PR_fail s pc'' -> Assert_extra.failwith "bad call frame instruction argument 2"
                 end
-            | Nothing -> 
+            | Nothing ->
                 (*Assert_extra.failwith ("can't parse " ^ show b ^ " as call frame instruction")*)
                 PR_success (Just (DW_CFA_unknown b)) pc'
             end
-          else            
-            if high_bits = unsigned_char_of_natural 64 then 
+          else
+            if high_bits = unsigned_char_of_natural 64 then
               PR_success (Just (DW_CFA_advance_loc low_bits)) pc'
-            else if high_bits = unsigned_char_of_natural 192 then 
+            else if high_bits = unsigned_char_of_natural 192 then
               PR_success (Just (DW_CFA_restore low_bits)) pc'
             else
                 let p = parser_of_call_frame_argument_type c cuh CFAT_offset in
-                match p pc' with 
+                match p pc' with
                 | PR_success (CFAV_offset n) pc'' -> PR_success (Just (DW_CFA_offset low_bits n)) pc''
                 | PR_success _ pc'' -> Assert_extra.failwith "bad call frame instruction argument 3"
                 | PR_fail s pc'' -> Assert_extra.failwith "bad call frame instruction argument 4"
@@ -2762,13 +2762,13 @@ let parse_and_pp_call_frame_instructions c cuh bs =
   match parse_call_frame_instructions c cuh pc with
   | PR_fail s pc' -> "parse_call_frame_instructions fail: " ^ pp_parse_fail s pc'
   | PR_success is pc' ->
-      pp_call_frame_instructions is 
+      pp_call_frame_instructions is
       ^ if pc'.pc_bytes <> [] then " Warning: extra non-parsed bytes" else ""
   end
 
 
 
-let pp_call_frame_instructions' c cuh bs = 
+let pp_call_frame_instructions' c cuh bs =
   (* ppbytes bs ^ "\n" *)
   parse_and_pp_call_frame_instructions c cuh bs
 
@@ -2776,7 +2776,7 @@ let pp_call_frame_instructions' c cuh bs =
 
 let pp_cie c cuh cie =
   pphex cie.cie_offset
-  ^ " " ^ pphex cie.cie_length   
+  ^ " " ^ pphex cie.cie_length
   ^ " " ^ pphex cie.cie_id
   ^ " CIE\n"
   ^ "  Version:                " ^ show cie.cie_version ^ "\n"
@@ -2793,9 +2793,9 @@ let pp_cie c cuh cie =
 (* readelf says "Return address column", but the DWARF spec says "Return address register" *)
 
 
-let pp_fde c cuh fde = 
+let pp_fde c cuh fde =
   pphex fde.fde_offset
-  ^ " " ^ pphex fde.fde_length   
+  ^ " " ^ pphex fde.fde_length
   ^ " " ^ pphex fde.fde_cie_pointer  (* not what this field of readelf output is *)
   ^ " FDE"
   ^ " cie=" ^ pphex fde.fde_cie_pointer (* duplicated?? *)
@@ -2809,9 +2809,9 @@ let pp_frame_info_element c cuh fie =
   | FIE_fde fde -> pp_fde c cuh fde
   end
 
-let pp_frame_info c cuh fi = 
+let pp_frame_info c cuh fi =
   "Contents of the .debug_frame section:\n\n"
-  ^ myconcat "\n" (List.map (pp_frame_info_element c cuh) fi) 
+  ^ myconcat "\n" (List.map (pp_frame_info_element c cuh) fi)
   ^ "\n"
 
 
@@ -2830,36 +2830,36 @@ let parse_initial_location c cuh mss mas' : parser ((maybe natural) * natural) =
     (parse_uint_address_size c (match mas' with Just n -> n | Nothing -> cuh.cuh_address_size end))
 
 
-let parse_call_frame_instruction_bytes offset' ul = 
+let parse_call_frame_instruction_bytes offset' ul =
   fun (pc: parse_context) ->
     parse_n_bytes (ul - (pc.pc_offset - offset')) pc
 
 let parse_frame_info_element c cuh (fi: list frame_info_element) : parser frame_info_element =
   parse_dependent
-    (pr_with_pos 
-       (parse_dependent_pair 
+    (pr_with_pos
+       (parse_dependent_pair
           (parse_unit_length c)
-          (fun (df,ul) -> 
+          (fun (df,ul) ->
             pr_with_pos
               (parse_uintDwarfN c df) (* CIE_id (cie) or CIE_pointer (fde) *)
           )))
     (fun (offset,((df,ul),(offset',cie_id))) ->
-      if (cie_id = 
-        match df with 
+      if (cie_id =
+        match df with
         | Dwarf32 -> natural_of_hex "0xffffffff"
         | Dwarf64 -> natural_of_hex "0xffffffffffffffff"
-        end) 
-      then 
+        end)
+      then
         (* parse cie *)
         pr_post_map
-          (parse_pair 
+          (parse_pair
              (parse_dependent_pair
                 parse_uint8  (* version *)
-                (fun v -> 
-                  parse_triple 
+                (fun v ->
+                  parse_triple
                     parse_string (* augmentation *)
-                    (if v=4 || v=46 then pr_post_map parse_uint8 (fun i->Just i) else pr_return Nothing) (* address_size *) 
-                    (if v=4 || v=46 then pr_post_map parse_uint8 (fun i->Just i) else pr_return Nothing)))  (* segment_size *) 
+                    (if v=4 || v=46 then pr_post_map parse_uint8 (fun i->Just i) else pr_return Nothing) (* address_size *)
+                    (if v=4 || v=46 then pr_post_map parse_uint8 (fun i->Just i) else pr_return Nothing)))  (* segment_size *)
              (parse_quadruple
                 parse_ULEB128 (* code_alignment_factor *)
                 parse_SLEB128 (* data_alignment_factor *)
@@ -2869,8 +2869,8 @@ let parse_frame_info_element c cuh (fi: list frame_info_element) : parser frame_
             let pc = <|pc_bytes = bs; pc_offset = 0  |> in
             match parse_call_frame_instructions c cuh pc with
             | PR_success is _ ->
-                FIE_cie 
-                  ( 
+                FIE_cie
+                  (
                     <|
                     cie_offset = offset;
                     cie_length = ul;
@@ -2889,22 +2889,22 @@ let parse_frame_info_element c cuh (fi: list frame_info_element) : parser frame_
             end
           )
 
-      else 
+      else
         (* parse fde *)
         let cie = find_cie fi cie_id in
-        let _ = my_debug4 (pp_cie c cuh cie) in 
-        pr_post_map 
-          (parse_triple 
+        let _ = my_debug4 (pp_cie c cuh cie) in
+        pr_post_map
+          (parse_triple
              (parse_initial_location c cuh cie.cie_segment_size cie.cie_address_size) (*(segment selector and target address)*)
              (parse_uint_address_size c (match cie.cie_address_size with Just n -> n | Nothing -> cuh.cuh_address_size end)) (* address_range (target address) *)
              (parse_call_frame_instruction_bytes offset' ul)
           )
-          (fun ( (ss,adr), (ar, bs)) -> 
+          (fun ( (ss,adr), (ar, bs)) ->
             let pc = <|pc_bytes = bs; pc_offset = 0  |> in
             match parse_call_frame_instructions c cuh pc with
             | PR_success is _ ->
-                FIE_fde 
-                  ( 
+                FIE_fde
+                  (
                     <|
                     fde_offset = offset;
                     fde_length = ul;
@@ -2914,46 +2914,46 @@ let parse_frame_info_element c cuh (fi: list frame_info_element) : parser frame_
                     fde_address_range = ar;
                     fde_instructions_bytes = bs;
                     fde_instructions = is;
-                  |> ) 
+                  |> )
             | PR_fail s _ -> Assert_extra.failwith s
             end
          )
     )
 
 (* you can't even parse an fde without accessing the cie it refers to
-(to determine the segment selector size).  Gratuitous complexity or what? 
+(to determine the segment selector size).  Gratuitous complexity or what?
 Hence the following, which should be made more tail-recursive.  *)
 
 val parse_dependent_list' : forall 'a. (list 'a -> parser 'a) -> list 'a -> parser (list 'a)
 let rec parse_dependent_list' p1 acc =
-  fun pc ->  
-    if pc.pc_bytes = [] then 
+  fun pc ->
+    if pc.pc_bytes = [] then
       PR_success (List.reverse acc) pc
     else
-      pr_bind 
-        (p1 acc pc) 
-        (fun x pc' -> 
+      pr_bind
+        (p1 acc pc)
+        (fun x pc' ->
           parse_dependent_list' p1 (x::acc) pc')
 
 val parse_dependent_list : forall 'a. (list 'a -> parser 'a) -> parser (list 'a)
-let parse_dependent_list p1 = parse_dependent_list' p1 [] 
+let parse_dependent_list p1 = parse_dependent_list' p1 []
 
 
 let parse_frame_info c cuh : parser frame_info
-      = 
+      =
     parse_dependent_list (parse_frame_info_element c cuh)
-  
+
 
 (** line numbers .debug_line, pp and parsing *)
 
-let pp_line_number_file_entry lnfe = 
+let pp_line_number_file_entry lnfe =
  "lnfe_path = " ^ string_of_bytes lnfe.lnfe_path ^ "\n"
 ^ "lnfe_directory_index " ^ show lnfe.lnfe_directory_index ^ "\n"
 ^ "lnfe_last_modification = " ^ show lnfe.lnfe_last_modification ^ "\n"
-^ "lnfe_length = " ^ show lnfe.lnfe_length ^ "\n"  
+^ "lnfe_length = " ^ show lnfe.lnfe_length ^ "\n"
 
 
-let pp_line_number_header lnh = 
+let pp_line_number_header lnh =
   "offset =                             " ^ pphex lnh.lnh_offset ^ "\n"
 ^ "dwarf_format =                       " ^ pp_dwarf_format lnh.lnh_dwarf_format ^ "\n"
 ^ "unit_length =                        " ^ show lnh.lnh_unit_length ^ "\n"
@@ -2969,11 +2969,11 @@ let pp_line_number_header lnh =
 ^ "include_directories =                " ^ myconcat ", " (List.map string_of_bytes  lnh.lnh_include_directories) ^ "\n"
 ^ "file_names =                         \n\n" ^ myconcat "\n" (List.map pp_line_number_file_entry  lnh.lnh_file_names) ^ "\n"
 
-let pp_line_number_operation lno = 
+let pp_line_number_operation lno =
   match lno with
   | DW_LNS_copy               -> "DW_LNS_copy"
-  | DW_LNS_advance_pc n       -> "DW_LNS_advance_pc" ^ " " ^ show n 
-  | DW_LNS_advance_line i     -> "DW_LNS_advance_line" ^ " " ^ show i 
+  | DW_LNS_advance_pc n       -> "DW_LNS_advance_pc" ^ " " ^ show n
+  | DW_LNS_advance_line i     -> "DW_LNS_advance_line" ^ " " ^ show i
   | DW_LNS_set_file n         -> "DW_LNS_set_file" ^ " " ^ show n
   | DW_LNS_set_column n       -> "DW_LNS_set_column" ^ " " ^ show n
   | DW_LNS_negate_stmt        -> "DW_LNS_negate_stmt"
@@ -2982,15 +2982,15 @@ let pp_line_number_operation lno =
   | DW_LNS_fixed_advance_pc n -> "DW_LNS_fixed_advance_pc" ^ " " ^ show n
   | DW_LNS_set_prologue_end   -> "DW_LNS_set_prologue_end"
   | DW_LNS_set_epilogue_begin -> "DW_LNS_set_epilogue_begin"
-  | DW_LNS_set_isa n          -> "DW_LNS_set_isa" ^ " " ^ show n 
-  | DW_LNE_end_sequence           -> "DW_LNE_end_sequence" 
-  | DW_LNE_set_address n          -> "DW_LNE_set_address" ^ " " ^ pphex n       
+  | DW_LNS_set_isa n          -> "DW_LNS_set_isa" ^ " " ^ show n
+  | DW_LNE_end_sequence           -> "DW_LNE_end_sequence"
+  | DW_LNE_set_address n          -> "DW_LNE_set_address" ^ " " ^ pphex n
   | DW_LNE_define_file s n1 n2 n3 -> "DW_LNE_define_file" ^ " " ^ show s ^ " " ^ show n1 ^ " " ^ show n2 ^ " " ^ show n3
-  | DW_LNE_set_discriminator n    -> "DW_LNE_set_discriminator" ^ " " ^ show n 
-  | DW_LN_special n           -> "DW_LN_special" ^ " " ^ show n 
+  | DW_LNE_set_discriminator n    -> "DW_LNE_set_discriminator" ^ " " ^ show n
+  | DW_LN_special n           -> "DW_LN_special" ^ " " ^ show n
   end
 
-let pp_line_number_program lnp = 
+let pp_line_number_program lnp =
   pp_line_number_header lnp.lnp_header
   ^ "[" ^ myconcat ", " (List.map pp_line_number_operation lnp.lnp_operations) ^ "]\n"
 
@@ -3000,9 +3000,9 @@ let parse_line_number_file_entry : parser (maybe line_number_file_entry)
       =
     parse_dependent
       (parse_non_empty_string)
-      (fun ms -> 
+      (fun ms ->
         match ms with
-        | Nothing -> 
+        | Nothing ->
             pr_return Nothing
         | Just s ->
             pr_post_map
@@ -3012,7 +3012,7 @@ let parse_line_number_file_entry : parser (maybe line_number_file_entry)
                  parse_ULEB128
               )
               (fun (n1,(n2,n3)) ->
-                (Just 
+                (Just
                 <|
                 lnfe_path = s;
                 lnfe_directory_index = n1;
@@ -3023,11 +3023,11 @@ let parse_line_number_file_entry : parser (maybe line_number_file_entry)
          end
       )
 
-let parse_line_number_header c : parser line_number_header = 
+let parse_line_number_header c : parser line_number_header =
     (parse_dependent
-       ((pr_with_pos 
+       ((pr_with_pos
            (parse_unit_length c) ))
-       (fun (pos,(df,ul)) -> 
+       (fun (pos,(df,ul)) ->
          parse_dependent
            (parse_pair
               (parse_triple
@@ -3043,14 +3043,14 @@ let parse_line_number_header c : parser line_number_header =
                  (parse_uint8)           (* opcode_base *)
               ))
            (fun ((v,(hl,(minil(*,maxopi*)))),(dis,(lb,(lr,ob)))) ->
-             pr_post_map 
+             pr_post_map
                (parse_triple
                   (pr_post_map (parse_n_bytes (ob-1)) (List.map natural_of_byte))  (* standard_opcode_lengths *)
                   ((*pr_return [[]]*) parse_list parse_non_empty_string) (* include_directories *)
                   (parse_list parse_line_number_file_entry) (* file names *)
                )
                (fun (sols, (ids, fns)) ->
-                 <| 
+                 <|
                  lnh_offset = pos;
                  lnh_dwarf_format = df;
                  lnh_unit_length = ul;
@@ -3065,7 +3065,7 @@ let parse_line_number_header c : parser line_number_header =
                  lnh_standard_opcode_lengths = sols;
                  lnh_include_directories = ids;
                  lnh_file_names = fns;
-               |> 
+               |>
                )
            )
        )
@@ -3083,11 +3083,11 @@ let parser_of_line_number_argument_type c (cuh: compilation_unit_header) (lnat: 
 let parse_line_number_operation c (cuh: compilation_unit_header) (lnh: line_number_header) : parser line_number_operation =
   parse_dependent
     parse_uint8
-    (fun opcode -> 
+    (fun opcode ->
       if opcode=0 then
         (* parse extended opcode *)
         parse_dependent
-          (parse_pair 
+          (parse_pair
              parse_ULEB128
              parse_uint8)
           (fun (size,opcode') ->
@@ -3102,11 +3102,11 @@ let parse_line_number_operation c (cuh: compilation_unit_header) (lnh: line_numb
                 Assert_extra.failwith ("parse_line_number_operation extended opcode not found: " ^ show opcode')
             end)
             (* it's not clear what the ULEB128 size field is for, as the extended opcides all seem to have well-defined sizes.  perhaps there can be extra padding that needs to be absorbed? *)
-      else if opcode >= lnh.lnh_opcode_base then 
+      else if opcode >= lnh.lnh_opcode_base then
         (* parse special opcode *)
         let adjusted_opcode = opcode - lnh.lnh_opcode_base in
         pr_return (DW_LN_special adjusted_opcode)
-      else 
+      else
         (* parse standard opcode *)
         match lookup_aBcd_acd opcode line_number_standard_encodings with
         | Just (_, arg_types, result) ->
@@ -3119,7 +3119,7 @@ let parse_line_number_operation c (cuh: compilation_unit_header) (lnh: line_numb
             Assert_extra.failwith ("parse_line_number_operation standard opcode not found: " ^ show opcode)
               (* the standard_opcode_lengths machinery is intended to allow vendor specific extension instructions to be parsed and ignored, but here we couldn't usefully process such instructions in any case, so we just fail *)
         end)
-        
+
 
 let parse_line_number_operations c (cuh:compilation_unit_header) (lnh:line_number_header) : parser (list line_number_operation) =
     parse_list (parse_maybe (parse_line_number_operation c cuh lnh))
@@ -3132,22 +3132,22 @@ let parse_line_number_program c (cuh:compilation_unit_header) : parser line_numb
     parse_dependent
       (parse_line_number_header c)
       (fun lnh ->
-        let byte_count_of_operations = 
-          lnh.lnh_unit_length - (lnh.lnh_header_length + 2 + (match lnh.lnh_dwarf_format with Dwarf32 -> 4 | Dwarf64 -> 8 end)) in 
+        let byte_count_of_operations =
+          lnh.lnh_unit_length - (lnh.lnh_header_length + 2 + (match lnh.lnh_dwarf_format with Dwarf32 -> 4 | Dwarf64 -> 8 end)) in
        pr_post_map
-         (parse_restrict_length 
-           byte_count_of_operations 
+         (parse_restrict_length
+           byte_count_of_operations
            (parse_line_number_operations c cuh lnh)
          )
          (fun ops ->
-           <| 
+           <|
            lnp_header = lnh;
            lnp_operations = ops;
          |>)
      )
 
 let parse_line_number_info c (d_line: list byte) (cu: compilation_unit) : line_number_program =
-  let f n = 
+  let f n =
     let d_line' = match mydrop n d_line with Just xs -> xs | Nothing -> Assert_extra.failwith "parse_line_number_info drop" end in
     let pc = <| pc_bytes = d_line'; pc_offset = n|> in
     match parse_line_number_program c cu.cu_header pc with
@@ -3165,7 +3165,7 @@ let parse_line_number_info c (d_line: list byte) (cu: compilation_unit) : line_n
   end
 
 
-let parse_line_number_infos c debug_line_section_body compilation_units 
+let parse_line_number_infos c debug_line_section_body compilation_units
     =
   List.map (parse_line_number_info c debug_line_section_body) compilation_units
 
@@ -3176,13 +3176,13 @@ let pp_line_info li
 
 (** all dwarf info: pp and parsing *)
 
-let pp_dwarf d = 
+let pp_dwarf d =
   let c : p_context = <| endianness = d.d_endianness |> in
 
   "\n************** .debug_info section - abbreviated *****************\n"
-  ^ pp_compilation_units_abbrev c d.d_str d.d_compilation_units 
+  ^ pp_compilation_units_abbrev c d.d_str d.d_compilation_units
   ^ "\n************** .debug_info section - full ************************\n"
-  ^ pp_compilation_units c d.d_str d.d_compilation_units 
+  ^ pp_compilation_units c d.d_str d.d_compilation_units
   ^ "\n************** .debug_loc section: location lists ****************\n"
   ^ let (cuh_default : compilation_unit_header) = let cu = myhead d.d_compilation_units in cu.cu_header in
     pp_loc c cuh_default d.d_loc
@@ -3193,20 +3193,21 @@ let pp_dwarf d =
   ^ "\n************** .debug_line section: line number info   ****************\n"
   ^ pp_line_info d.d_line_info
 
-    
+
+(* TODO: don't use lists of bytes here! *)
 let parse_dwarf c
-    (debug_info_section_body: list byte) 
-    (debug_abbrev_section_body: list byte) 
-    (debug_str_section_body: list byte) 
-    (debug_loc_section_body: list byte) 
-    (debug_ranges_section_body: list byte) 
-    (debug_frame_section_body: list byte) 
-    (debug_line_section_body: list byte) 
+    (debug_info_section_body: list byte)
+    (debug_abbrev_section_body: list byte)
+    (debug_str_section_body: list byte)
+    (debug_loc_section_body: list byte)
+    (debug_ranges_section_body: list byte)
+    (debug_frame_section_body: list byte)
+    (debug_line_section_body: list byte)
     : dwarf =
 
   let pc_info = <|pc_bytes = debug_info_section_body; pc_offset = 0  |> in
-  
-  let compilation_units = 
+
+  let compilation_units =
     match parse_compilation_units c debug_str_section_body debug_abbrev_section_body pc_info with
     | PR_fail s pc_info' ->  Assert_extra.failwith ("parse_compilation_units: " ^ pp_parse_fail s pc_info')
     | PR_success cus pc_info' -> cus
@@ -3220,7 +3221,7 @@ let parse_dwarf c
 
   let pc_loc = <|pc_bytes = debug_loc_section_body; pc_offset = 0  |> in
 
-  let loc = 
+  let loc =
     match parse_location_list_list c cuh_default pc_loc with
     | PR_fail s pc_info' ->  Assert_extra.failwith ("parse_location_list: " ^ pp_parse_fail s pc_info')
     | PR_success loc pc_loc' -> loc
@@ -3228,7 +3229,7 @@ let parse_dwarf c
 
   let pc_ranges = <|pc_bytes = debug_ranges_section_body; pc_offset = 0  |> in
 
-  let ranges = 
+  let ranges =
     match parse_range_list_list c cuh_default pc_ranges with
     | PR_fail s pc_info' ->  Assert_extra.failwith ("parse_range_list: " ^ pp_parse_fail s pc_info')
     | PR_success r pc_loc' -> r
@@ -3236,7 +3237,7 @@ let parse_dwarf c
 
   let pc_frame = <|pc_bytes = debug_frame_section_body; pc_offset = 0  |> in
 
-  let fi = 
+  let fi =
     let _ = my_debug5 ("debug_frame_section_body:\n" ^ ppbytes2 0 debug_frame_section_body) in
 
     match parse_frame_info c cuh_default pc_frame with
@@ -3246,78 +3247,77 @@ let parse_dwarf c
 
   let li = parse_line_number_infos c debug_line_section_body compilation_units in
 
-   <| 
+   <|
    d_endianness = c.endianness;
    d_str = debug_str_section_body;
    d_compilation_units = compilation_units;
-   d_type_units = []; 
+   d_type_units = [];
    d_loc = loc;
    d_ranges = ranges;
    d_frame_info = fi;
    d_line_info = li;
   |>
 
-val extract_dwarf : elf_file -> maybe dwarf 
-let extract_dwarf f = 
+val extract_dwarf : elf_file -> maybe dwarf
+let extract_dwarf f =
 
-  let (en: Endianness.endianness) = 
+  let (en: Endianness.endianness) =
     match f with
-    | ELF_File_32 f32 -> Elf_header.get_elf32_header_endianness f32.Elf_file.elf32_file_header 
-    | ELF_File_64 f64 -> Elf_header.get_elf64_header_endianness f64.Elf_file.elf64_file_header 
+    | ELF_File_32 f32 -> Elf_header.get_elf32_header_endianness f32.Elf_file.elf32_file_header
+    | ELF_File_64 f64 -> Elf_header.get_elf64_header_endianness f64.Elf_file.elf64_file_header
     end in
   let (c: p_context) = <| endianness = en |> in
-  let extract_section_body section_name (strict: bool) = 
+  let extract_section_body section_name (strict: bool) =
     match f with
-    | ELF_File_32 f32 -> 
-        let sections = 
-          List.filter 
-            (fun x -> 
+    | ELF_File_32 f32 ->
+        let sections =
+          List.filter
+            (fun x ->
               x.Elf_interpreted_section.elf32_section_name_as_string = section_name
             ) f32.elf32_file_interpreted_sections in
         match sections with
         | [section] ->
-            let section_body =  match section.Elf_interpreted_section.elf32_section_body with Sequence bs -> bs end in
+            let section_body = byte_list_of_byte_sequence section.Elf_interpreted_section.elf32_section_body in
             let _ = my_debug4 (section_name ^ (": \n" ^ (Elf_interpreted_section.string_of_elf32_interpreted_section section ^ "\n"
                            ^ "  body = " ^ ppbytes2 0 section_body ^ "\n"))) in
             section_body
-        | [] -> 
-            if strict then 
+        | [] ->
+            if strict then
               Assert_extra.failwith ("" ^ section_name ^ " section not present")
             else
               []
         | _ -> Assert_extra.failwith ("multiple " ^ section_name ^ " sections present")
-        end 
+        end
 
 
-    | ELF_File_64 f64 -> 
-        let sections = 
-          List.filter 
-            (fun x -> 
+    | ELF_File_64 f64 ->
+        let sections =
+          List.filter
+            (fun x ->
               x.Elf_interpreted_section.elf64_section_name_as_string = section_name
             ) f64.elf64_file_interpreted_sections in
         match sections with
         | [section] ->
-            let section_body =  match section.Elf_interpreted_section.elf64_section_body with Sequence bs -> bs end in
-            section_body
-        | [] -> 
-            if strict then 
+            byte_list_of_byte_sequence section.Elf_interpreted_section.elf64_section_body
+        | [] ->
+            if strict then
               Assert_extra.failwith ("" ^ section_name ^ " section not present")
             else
               []
         | _ -> Assert_extra.failwith ("multiple " ^ section_name ^ " sections present")
-        end 
-    end in 
+        end
+    end in
 
   let debug_info_section_body   = extract_section_body ".debug_info"   true  in
   let debug_abbrev_section_body = extract_section_body ".debug_abbrev" false in
   let debug_str_section_body    = extract_section_body ".debug_str"    false in
   let debug_loc_section_body    = extract_section_body ".debug_loc"    false in
-  let debug_ranges_section_body = extract_section_body ".debug_ranges" false in 
-  let debug_frame_section_body  = extract_section_body ".debug_frame" false in 
-  let debug_line_section_body   = extract_section_body ".debug_line" false in 
+  let debug_ranges_section_body = extract_section_body ".debug_ranges" false in
+  let debug_frame_section_body  = extract_section_body ".debug_frame" false in
+  let debug_line_section_body   = extract_section_body ".debug_line" false in
 
   let d = parse_dwarf c debug_info_section_body debug_abbrev_section_body debug_str_section_body debug_loc_section_body debug_ranges_section_body debug_frame_section_body debug_line_section_body in
- 
+
   Just d
 
 
@@ -3329,7 +3329,7 @@ let extract_dwarf f =
 (** pp of locations *)
 
 val pp_simple_location : simple_location -> string
-let pp_simple_location sl = 
+let pp_simple_location sl =
   match sl with
   | SL_memory_address n -> pphex n
   | SL_register n -> "reg" ^ show n
@@ -3339,13 +3339,13 @@ let pp_simple_location sl =
 
 val pp_composite_location_piece : composite_location_piece -> string
 let pp_composite_location_piece clp =
-  match clp with 
+  match clp with
   | CLP_piece n sl -> "piece (" ^ show n ^ ") " ^ pp_simple_location sl
   | CLP_bit_piece n1 n2 sl -> "bit_piece (" ^ show n1 ^ "," ^ show n2 ^ ") " ^ pp_simple_location sl
   end
 
 val pp_single_location: single_location -> string
-let pp_single_location sl = 
+let pp_single_location sl =
   match sl with
   | SL_simple sl -> pp_simple_location sl
   | SL_composite clps -> "composite: " ^ myconcat ", " (List.map pp_composite_location_piece clps)
@@ -3385,7 +3385,7 @@ determine which kind of single location description or simple location
 description we have.  We can distinguish:
 
 - empty -> simple.empty
-- DW_OP_regN/DW_OP_regx -> simple.register 
+- DW_OP_regN/DW_OP_regx -> simple.register
 - DW_OP_implicit_value -> simple.implicit
 - any of those followed by DW_OP_piece or DW_OP_bitpiece, perhaps followed by more composite parts -> composite part :: composite
 
@@ -3398,16 +3398,16 @@ actually used in our examples (ignoring GNU extentions):
 
 DW_OP_addr         literal
 DW_OP_lit1         literal
-DW_OP_const4u      literal                
+DW_OP_const4u      literal
 
 DW_OP_breg3 (r3)   read register value and add offset
 
 DW_OP_and          bitwise and
 DW_OP_plus         addition (mod whatever)
 
-DW_OP_deref_size                   
+DW_OP_deref_size
 DW_OP_fbreg        evaluate location description from DW_AT_frame_base attribute of the current function (which is DW_OP_call_frame_cfa in our examples) and add offset
-           
+
 DW_OP_implicit_value   the argument block is the actual value (not location) of the entity in question
 DW_OP_stack_value      use the value at top of stack as the actual value (not location) of the entity in question
 
@@ -3419,13 +3419,13 @@ DW_OP_call_frame_cfa   go off to 6.4 and pull info out of .debug_frame (possibly
 
 
 
-let initial_state = 
+let initial_state =
   <|
   s_stack = [];
   s_value = SL_empty;
   s_location_pieces = [];
 |>
-  
+
 (* the main location expression evaluation function *)
 
 (* location expression evaluation is basically a recursive function
@@ -3436,16 +3436,16 @@ accumulated so far *)
 
 
 
-let arithmetic_context_of_cuh cuh = 
+let arithmetic_context_of_cuh cuh =
   match cuh.cuh_address_size with
-  | 8 -> 
+  | 8 ->
       <|
       ac_bitwidth = 64;
       ac_half = naturalPow 2 32;
       ac_all = naturalPow 2 64;
       ac_max = (naturalPow 2 64) - 1;
     |>
-  | 4 -> 
+  | 4 ->
       <|
       ac_bitwidth = 32;
       ac_half = naturalPow 2 16;
@@ -3455,13 +3455,13 @@ let arithmetic_context_of_cuh cuh =
   | _ -> Assert_extra.failwith "arithmetic_context_of_cuh given non-4/8 size"
   end
 
-let find_cfa_table_row_for_pc (evaluated_frame_info: evaluated_frame_info) (pc: natural) : cfa_table_row = 
-  match 
+let find_cfa_table_row_for_pc (evaluated_frame_info: evaluated_frame_info) (pc: natural) : cfa_table_row =
+  match
     myfind
-      (fun (fde,rows) -> pc >= fde.fde_initial_location_address && pc < fde.fde_initial_location_address + fde.fde_address_range) 
-      evaluated_frame_info 
+      (fun (fde,rows) -> pc >= fde.fde_initial_location_address && pc < fde.fde_initial_location_address + fde.fde_address_range)
+      evaluated_frame_info
   with
-  | Just (fde,rows) -> 
+  | Just (fde,rows) ->
       match myfind (fun row -> pc >= row.ctr_loc) rows with
       | Just row -> row
       | Nothing -> Assert_extra.failwith "evaluate_cfa: no matchine row"
@@ -3474,22 +3474,22 @@ let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (evalua
 
   let push_memory_address v vs' = Success <| s with s_stack = v :: vs'; s_value = SL_memory_address v |>  in
 
-  let push_memory_address_maybe (mv: maybe natural) vs' (err:string) op = 
+  let push_memory_address_maybe (mv: maybe natural) vs' (err:string) op =
     match mv with
     | Just v -> push_memory_address v vs'
     | Nothing -> Fail (err ^ pp_operation op)
     end in
 
-  let bregxi r i = 
+  let bregxi r i =
     match ev.read_register r with
     | RRR_result v -> push_memory_address (partialNaturalFromInteger ((integerFromNatural v+i) mod (integerFromNatural ac.ac_all))) s.s_stack
     | RRR_not_currently_available -> Fail "RRR_not_currently_available"
     | RRR_bad_register_number -> Fail ("RRR_bad_register_number " ^ show r)
     end in
 
-  let deref_size n = 
+  let deref_size n =
     match s.s_stack with
-    | v::vs' -> 
+    | v::vs' ->
         match ev.read_memory v n with
         | MRR_result v' -> push_memory_address v' vs'
         | MRR_not_currently_available -> Fail "MRR_not_currently_available"
@@ -3499,69 +3499,69 @@ let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (evalua
     end in
 
   match ops with
-  | [] -> 
-      if s.s_location_pieces = [] then 
+  | [] ->
+      if s.s_location_pieces = [] then
         Success (SL_simple s.s_value)
       else if s.s_value = SL_empty then
         Success (SL_composite s.s_location_pieces)
       else
         (*  unclear what's supposed to happen in this case *)
         Fail "unfinished part of composite expression"
-         
-  | op::ops' -> 
-      let es' = 
+
+  | op::ops' ->
+      let es' =
         match (op.op_semantics, op.op_argument_values)  with
-        | (OpSem_nop, []) -> 
+        | (OpSem_nop, []) ->
             Success s
-        | (OpSem_lit, [OAV_natural n]) -> 
+        | (OpSem_lit, [OAV_natural n]) ->
             push_memory_address n s.s_stack
-        | (OpSem_lit, [OAV_integer i]) -> 
+        | (OpSem_lit, [OAV_integer i]) ->
             push_memory_address (partialTwosComplementNaturalFromInteger i ac.ac_half (integerFromNatural ac.ac_all)) s.s_stack
-        | (OpSem_stack f, []) -> 
-            match f ac s.s_stack op.op_argument_values with 
-            | Just stack' ->  
-                let value' : simple_location = match stack' with [] -> SL_empty | v'::_ -> SL_memory_address v' end in 
+        | (OpSem_stack f, []) ->
+            match f ac s.s_stack op.op_argument_values with
+            | Just stack' ->
+                let value' : simple_location = match stack' with [] -> SL_empty | v'::_ -> SL_memory_address v' end in
                 Success <| s with s_stack = stack'; s_value = value' |>
             | Nothing -> Fail "OpSem_stack failed"
             end
-        | (OpSem_not_supported, []) -> 
+        | (OpSem_not_supported, []) ->
             Fail ("OpSem_not_supported: " ^ pp_operation op)
-        | (OpSem_binary f, []) -> 
+        | (OpSem_binary f, []) ->
             match s.s_stack with
             | v1::v2::vs' -> push_memory_address_maybe (f ac v1 v2) vs' "OpSem_binary error: " op
             | _ -> Fail "OpSem binary not given two elements on stack"
             end
-        | (OpSem_unary f, []) -> 
+        | (OpSem_unary f, []) ->
             match s.s_stack with
             | v1::vs' -> push_memory_address_maybe (f ac v1) vs' "OpSem_unary error: " op
             | _ -> Fail "OpSem unary not given an element on stack"
             end
-        | (OpSem_opcode_lit base, []) -> 
+        | (OpSem_opcode_lit base, []) ->
             if op.op_code >= base && op.op_code < base + 32 then
               push_memory_address (op.op_code - base) s.s_stack
             else
               Fail "OpSem_opcode_lit opcode not within [base,base+32)"
-        | (OpSem_reg, []) -> 
+        | (OpSem_reg, []) ->
             (* TODO: unclear whether this should push the register id or not *)
-            let r = op.op_code - vDW_OP_reg0 in   
-            Success <| s with s_stack = r :: s.s_stack; s_value = SL_register r |>  
-        | (OpSem_breg, [OAV_integer i]) ->  
+            let r = op.op_code - vDW_OP_reg0 in
+            Success <| s with s_stack = r :: s.s_stack; s_value = SL_register r |>
+        | (OpSem_breg, [OAV_integer i]) ->
             let r = op.op_code - vDW_OP_breg0 in
             bregxi r i
-        | (OpSem_bregx, [OAV_natural r; OAV_integer i]) -> 
+        | (OpSem_bregx, [OAV_natural r; OAV_integer i]) ->
             bregxi r i
         | (OpSem_deref, []) ->
-            deref_size cuh.cuh_address_size 
-        | (OpSem_deref_size, [OAV_natural n]) -> 
+            deref_size cuh.cuh_address_size
+        | (OpSem_deref_size, [OAV_natural n]) ->
             deref_size n
-        | (OpSem_fbreg, [OAV_integer i]) ->  
+        | (OpSem_fbreg, [OAV_integer i]) ->
             match mfbloc with
             | Just fbloc ->
                 (*let _ = my_debug5 ("OpSem_fbreg (" ^ show i ^ ")\n") in*)
                 match evaluate_location_description c dloc evaluated_frame_info  cuh ac ev (*mfbloc*)Nothing pc fbloc with
                 (* what to do if the recursive call also uses fbreg?  for now assume that's not allowed *)
                 | Success l ->
-                    match l with 
+                    match l with
                     | SL_simple (SL_memory_address a) ->
                         (*let _ = my_debug5 ("OpSem_fbreg: a = "^ pphex a ^ "\n") in*)
                         let vi = ((integerFromNatural a) + i) mod (integerFromNatural ac.ac_all) in
@@ -3573,32 +3573,32 @@ let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (evalua
                        (* "The DW_OP_fbreg operation provides a signed LEB128
                            offset from the address specified by the location
                            description in the DW_AT_frame_base attribute of the
-                           current function. " 
+                           current function. "
                           - so what to do if the location description returns a non-memory-address location?  *)
                     end
                 | Fail e ->
                     Fail ("OpSem_fbreg failure: " ^ e)
-                end 
-            | Nothing -> 
+                end
+            | Nothing ->
                 Fail "OpSem_fbreg: no frame base location description given"
             end
 
-        | (OpSem_piece, [OAV_natural size_bytes]) ->  
+        | (OpSem_piece, [OAV_natural size_bytes]) ->
             let piece = CLP_piece size_bytes s.s_value in
             (* we allow a piece (or bit_piece) to be any simple_location, including implicit and stack values. Unclear if this is intended, esp. the latter *)
             let stack' = [] in
             let value' = SL_empty in
             Success <| s_stack = stack'; s_value = value'; s_location_pieces = s.s_location_pieces ++ [piece] |>
-        | (OpSem_bit_piece, [OAV_natural size_bits; OAV_natural offset_bits]) -> 
+        | (OpSem_bit_piece, [OAV_natural size_bits; OAV_natural offset_bits]) ->
             let piece = CLP_bit_piece size_bits offset_bits s.s_value in
             let stack' = [] in
             let value' = SL_empty in
             Success <| s_stack = stack'; s_value = value'; s_location_pieces = s.s_location_pieces ++ [piece] |>
-        | (OpSem_implicit_value, [OAV_block size bs]) -> 
+        | (OpSem_implicit_value, [OAV_block size bs]) ->
             let stack' = [] in
             let value' = SL_implicit bs in
             Success <| s with s_stack = stack'; s_value = value' |>
-        | (OpSem_stack_value, []) -> 
+        | (OpSem_stack_value, []) ->
             (* "The DW_OP_stack_value operation terminates the expression." - does
                this refer to just the subexpression, ie allowing a stack value to be
                a piece of a composite location, or necessarily the whole expression?
@@ -3606,28 +3606,28 @@ let rec evaluate_operation_list (c:p_context) (dloc: location_list_list) (evalua
                does not? *)
             (* why doesn't DW_OP_stack_value have a size argument? *)
             match s.s_stack with
-            | v::vs' -> 
+            | v::vs' ->
                 let stack' = [] in
                 let value' = SL_implicit (bytes_of_natural c.endianness cuh.cuh_address_size v) in
                 Success <| s with s_stack = stack'; s_value = value' |>
-      
+
             | _ -> Fail "OpSem_stack_value not given an element on stack"
             end
-        | (OpSem_call_frame_cfa, []) ->  
+        | (OpSem_call_frame_cfa, []) ->
             let row = find_cfa_table_row_for_pc evaluated_frame_info pc in
             match row.ctr_cfa with
-            | CR_undefined -> 
+            | CR_undefined ->
                 Assert_extra.failwith "evaluate_cfa of CR_undefined"
-            | CR_register r i -> 
+            | CR_register r i ->
                 bregxi r i  (* same behaviour as an OpSem_bregx *)
-            | CR_expression bs -> 
+            | CR_expression bs ->
                 Assert_extra.failwith "CR_expression"
                 (*TODO: fix result type - not this evaluate_location_description_bytes c dloc evaluated_frame_info cuh ac ev mfbloc pc bs*)
                   (* TODO: restrict allowed OpSem_* in that recursive call *)
             end
         | (_, _) ->
             Fail ("bad OpSem invocation: op=" ^ pp_operation op ^ " arguments=" ^ myconcat "" (List.map pp_operation_argument_value op.op_argument_values))
-        end 
+        end
       in
       match es' with
       | Success s' ->
@@ -3641,27 +3641,27 @@ and evaluate_location_description_bytes (c:p_context) (dloc: location_list_list)
   let parse_context = <|pc_bytes = bs; pc_offset = 0  |> in
   match parse_operations c cuh parse_context with
   | PR_fail s pc' -> Fail ("evaluate_location_description_bytes: parse_operations fail: " ^ pp_parse_fail s pc')
-  | PR_success ops pc' -> 
-      if pc'.pc_bytes <> [] then 
-        Fail "evaluate_location_description_bytes: extra non-parsed bytes" 
-      else 
+  | PR_success ops pc' ->
+      if pc'.pc_bytes <> [] then
+        Fail "evaluate_location_description_bytes: extra non-parsed bytes"
+      else
         evaluate_operation_list c dloc evaluated_frame_info  cuh ac ev mfbloc pc initial_state ops
   end
 
 and evaluate_location_description (c:p_context) (dloc: location_list_list) (evaluated_frame_info: evaluated_frame_info) (cuh: compilation_unit_header) (ac: arithmetic_context) (ev: evaluation_context) (mfbloc: maybe attribute_value) (pc: natural) (loc:attribute_value) : error single_location =
-  match loc with 
+  match loc with
   | AV_exprloc n bs ->
       evaluate_location_description_bytes c dloc evaluated_frame_info  cuh ac ev mfbloc pc bs
-  | AV_block n bs -> 
+  | AV_block n bs ->
       evaluate_location_description_bytes c dloc evaluated_frame_info  cuh ac ev mfbloc pc bs
-  | AV_sec_offset n -> 
-      let location_list = find_location_list dloc n in 
-      let (offset,(llis:list location_list_item)) = location_list in 
-      let f (lli:location_list_item) : maybe single_location_description = 
+  | AV_sec_offset n ->
+      let location_list = find_location_list dloc n in
+      let (offset,(llis:list location_list_item)) = location_list in
+      let f (lli:location_list_item) : maybe single_location_description =
         match lli with
         | LLI_lle lle ->
            if pc >= lle.lle_beginning_address_offset && pc < lle.lle_ending_address_offset then Just lle.lle_single_location_description else Nothing
-        | LLI_base _ -> 
+        | LLI_base _ ->
            Nothing  (* TODO: either refactor to do offset during parsing or update base offsets here. Should refactor to use "interpreted". *)
         end in
         match myfindmaybe f llis with
@@ -3671,7 +3671,7 @@ and evaluate_location_description (c:p_context) (dloc: location_list_list) (eval
             Fail "evaluate_location_description didn't find pc in location list ranges"
         end
   | _ -> Fail "evaluate_location_description av_location not understood"
-  end 
+  end
 
 
 
@@ -3687,7 +3687,7 @@ val rrp_update : register_rule_map -> cfa_register -> register_rule -> register_
 let rrp_update rrp r rr = (r,rr)::rrp
 
 val rrp_lookup : cfa_register -> register_rule_map -> register_rule
-let rrp_lookup r rrp = 
+let rrp_lookup r rrp =
   match List.lookup r rrp with
   | Just rr -> rr
   | Nothing -> RR_undefined
@@ -3699,37 +3699,37 @@ let rrp_empty = []
 
 
 (** pp of evaluated cfa information from .debug_frame *)
-(* readelf --debug-dump=frames-interp test/a.out 
+(* readelf --debug-dump=frames-interp test/a.out
 
 Contents of the .eh_frame section:
 
 00000000 00000014 00000000 CIE "zR" cf=1 df=-8 ra=16
-   LOC           CFA      ra      
-0000000000000000 rsp+8    c-8   
+   LOC           CFA      ra
+0000000000000000 rsp+8    c-8
 
 00000018 00000024 0000001c FDE cie=00000000 pc=004003b0..004003d0
-   LOC           CFA      ra      
-00000000004003b0 rsp+16   c-8   
-00000000004003b6 rsp+24   c-8   
-00000000004003c0 exp      c-8   
+   LOC           CFA      ra
+00000000004003b0 rsp+16   c-8
+00000000004003b6 rsp+24   c-8
+00000000004003c0 exp      c-8
 
 00000040 0000001c 00000044 FDE cie=00000000 pc=004004b4..004004ba
-   LOC           CFA      rbp   ra      
-00000000004004b4 rsp+8    u     c-8   
-00000000004004b5 rsp+16   c-16  c-8   
-00000000004004b8 rbp+16   c-16  c-8   
-00000000004004b9 rsp+8    c-16  c-8   
+   LOC           CFA      rbp   ra
+00000000004004b4 rsp+8    u     c-8
+00000000004004b5 rsp+16   c-16  c-8
+00000000004004b8 rbp+16   c-16  c-8
+00000000004004b9 rsp+8    c-16  c-8
 
 00000060 00000024 00000064 FDE cie=00000000 pc=004004c0..00400549
-   LOC           CFA      rbx   rbp   r12   r13   r14   r15   ra      
-00000000004004c0 rsp+8    u     u     u     u     u     u     c-8   
-00000000004004d1 rsp+8    u     c-48  c-40  u     u     u     c-8   
-00000000004004f0 rsp+64   c-56  c-48  c-40  c-32  c-24  c-16  c-8   
-0000000000400548 rsp+8    c-56  c-48  c-40  c-32  c-24  c-16  c-8   
+   LOC           CFA      rbx   rbp   r12   r13   r14   r15   ra
+00000000004004c0 rsp+8    u     u     u     u     u     u     c-8
+00000000004004d1 rsp+8    u     c-48  c-40  u     u     u     c-8
+00000000004004f0 rsp+64   c-56  c-48  c-40  c-32  c-24  c-16  c-8
+0000000000400548 rsp+8    c-56  c-48  c-40  c-32  c-24  c-16  c-8
 
 00000088 00000014 0000008c FDE cie=00000000 pc=00400550..00400552
-   LOC           CFA      ra      
-0000000000400550 rsp+8    c-8   
+   LOC           CFA      ra
+0000000000400550 rsp+8    c-8
 
 000000a0 ZERO terminator
 *)
@@ -3739,10 +3739,10 @@ Contents of the .eh_frame section:
 val mytoList        : forall 'a. SetType 'a => set 'a -> list 'a
 declare ocaml    target_rep function mytoList = `Pset.elements`
 
-let register_footprint_rrp (rrp: register_rule_map) : set cfa_register = 
+let register_footprint_rrp (rrp: register_rule_map) : set cfa_register =
   Set.fromList (List.map Tuple.fst rrp)
 
-let register_footprint (rows: list cfa_table_row) : list cfa_register = 
+let register_footprint (rows: list cfa_table_row) : list cfa_register =
   mytoList (bigunionListMap (fun row -> register_footprint_rrp row.ctr_regs) rows)
 
 
@@ -3750,40 +3750,40 @@ val max_lengths : list (list string) -> list natural
 let rec max_lengths xss =
   match xss with
   | [] -> Assert_extra.failwith "max_lengths"
-  | xs::xss' -> 
+  | xs::xss' ->
       let lens = List.map (fun x -> naturalFromNat (String.stringLength x)) xs in
       if xss' = [] then lens
       else
-        let lens' = max_lengths xss' in 
+        let lens' = max_lengths xss' in
         let z = List.zip lens lens' in
         let lens'' = List.map (fun (l1,l2)-> max l1 l2) z in
         lens''
   end
 
-let rec pad_row xs lens = 
+let rec pad_row xs lens =
   match (xs,lens) with
   | ([],[]) -> []
   | (x::xs', len::lens') -> right_space_padded_to len x ::  pad_row xs' lens'
   end
 
-let pad_rows (xss : list (list string)) : string = 
+let pad_rows (xss : list (list string)) : string =
   let lens = max_lengths xss in
   myconcat "" (List.map (fun xs -> myconcat " " (pad_row xs lens) ^ "\n") xss)
 
 let pp_evaluated_fde (fde, (rows: list cfa_table_row)) : string =
   let regs = register_footprint rows in
   let header : list string = "LOC" :: "CFA" :: List.map pp_cfa_register regs in
-  let ppd_rows : list (list string) = 
+  let ppd_rows : list (list string) =
     List.map (fun row -> pphex row.ctr_loc :: pp_cfa_rule row.ctr_cfa :: List.map (fun r -> pp_register_rule (rrp_lookup r row.ctr_regs)) regs) rows  in
   pad_rows (header :: ppd_rows)
-      
+
 
 
 (** evaluation of cfa information from .debug_frame *)
 
 let evaluate_call_frame_instruction (fi: frame_info) (cie: cie) (state: cfa_state) (cfi: call_frame_instruction) : cfa_state =
 
-  let create_row (loc: natural) = 
+  let create_row (loc: natural) =
     let row = <| state.cs_current_row with ctr_loc = loc |> in
     <| state with cs_current_row = row; cs_previous_rows = state.cs_current_row::state.cs_previous_rows |> in
 
@@ -3791,87 +3791,87 @@ let evaluate_call_frame_instruction (fi: frame_info) (cie: cie) (state: cfa_stat
     let row = <| state.cs_current_row with ctr_cfa = cr |> in
     <| state with cs_current_row = row |> in
 
-  let update_reg r rr = 
-    let row = <| state.cs_current_row with ctr_regs = rrp_update state.cs_current_row.ctr_regs r rr |> in 
+  let update_reg r rr =
+    let row = <| state.cs_current_row with ctr_regs = rrp_update state.cs_current_row.ctr_regs r rr |> in
     <| state with cs_current_row = row |> in
 
   match cfi with
   (* Row Creation Instructions *)
-  | DW_CFA_set_loc a              -> 
+  | DW_CFA_set_loc a              ->
       create_row a
-  | DW_CFA_advance_loc d          -> 
+  | DW_CFA_advance_loc d          ->
       create_row (state.cs_current_row.ctr_loc + d * cie.cie_code_alignment_factor)
-  | DW_CFA_advance_loc1 d         -> 
+  | DW_CFA_advance_loc1 d         ->
       create_row (state.cs_current_row.ctr_loc + d * cie.cie_code_alignment_factor)
-  | DW_CFA_advance_loc2 d         -> 
+  | DW_CFA_advance_loc2 d         ->
       create_row (state.cs_current_row.ctr_loc + d * cie.cie_code_alignment_factor)
-  | DW_CFA_advance_loc4 d         -> 
+  | DW_CFA_advance_loc4 d         ->
       create_row (state.cs_current_row.ctr_loc + d * cie.cie_code_alignment_factor)
 
   (* CFA Definition Instructions *)
-  | DW_CFA_def_cfa r n            -> 
+  | DW_CFA_def_cfa r n            ->
       update_cfa (CR_register r (integerFromNatural n))
-  | DW_CFA_def_cfa_sf r i         -> 
+  | DW_CFA_def_cfa_sf r i         ->
       update_cfa (CR_register r (i * cie.cie_data_alignment_factor))
-  | DW_CFA_def_cfa_register r     -> 
+  | DW_CFA_def_cfa_register r     ->
       match state.cs_current_row.ctr_cfa with
       | CR_register r' i ->
           update_cfa (CR_register r i)
       | _ -> Assert_extra.failwith "DW_CFA_def_cfa_register: current rule is not CR_register"
       end
-  | DW_CFA_def_cfa_offset n       -> 
+  | DW_CFA_def_cfa_offset n       ->
       match state.cs_current_row.ctr_cfa with
       | CR_register r i ->
           update_cfa (CR_register r (integerFromNatural n))
       | _ -> Assert_extra.failwith "DW_CFA_def_cfa_offset: current rule is not CR_register"
       end
-  | DW_CFA_def_cfa_offset_sf i    -> 
+  | DW_CFA_def_cfa_offset_sf i    ->
       match state.cs_current_row.ctr_cfa with
       | CR_register r i' ->
           update_cfa (CR_register r (i' * cie.cie_data_alignment_factor))
       | _ -> Assert_extra.failwith "DW_CFA_def_cfa_offset_sf: current rule is not CR_register"
       end
-  | DW_CFA_def_cfa_expression b   -> 
+  | DW_CFA_def_cfa_expression b   ->
       update_cfa (CR_expression b)
 
   (* Register Rule Instrutions *)
-  | DW_CFA_undefined r            -> 
+  | DW_CFA_undefined r            ->
       update_reg r (RR_undefined)
-  | DW_CFA_same_value r           -> 
+  | DW_CFA_same_value r           ->
       update_reg r (RR_same_value)
-  | DW_CFA_offset r n             -> 
+  | DW_CFA_offset r n             ->
       update_reg r (RR_offset ((integerFromNatural n) * cie.cie_data_alignment_factor))
-  | DW_CFA_offset_extended r n    -> 
+  | DW_CFA_offset_extended r n    ->
       update_reg r (RR_offset ((integerFromNatural n) * cie.cie_data_alignment_factor))
-  | DW_CFA_offset_extended_sf r i -> 
+  | DW_CFA_offset_extended_sf r i ->
       update_reg r (RR_offset (i * cie.cie_data_alignment_factor))
-  | DW_CFA_val_offset r n         -> 
+  | DW_CFA_val_offset r n         ->
       update_reg r (RR_val_offset ((integerFromNatural n) * cie.cie_data_alignment_factor))
-  | DW_CFA_val_offset_sf r i      -> 
+  | DW_CFA_val_offset_sf r i      ->
       update_reg r (RR_val_offset (i * cie.cie_data_alignment_factor))
-  | DW_CFA_register r1 r2         -> 
+  | DW_CFA_register r1 r2         ->
       update_reg r1 (RR_register r2)
-  | DW_CFA_expression r b         -> 
+  | DW_CFA_expression r b         ->
       update_reg r (RR_expression b)
-  | DW_CFA_val_expression r b     -> 
+  | DW_CFA_val_expression r b     ->
       update_reg r (RR_val_expression b)
-  | DW_CFA_restore r              -> 
+  | DW_CFA_restore r              ->
       update_reg r (rrp_lookup r state.cs_initial_instructions_row.ctr_regs)
 (* RR_undefined if the lookup fails? *)
-  | DW_CFA_restore_extended r     -> 
+  | DW_CFA_restore_extended r     ->
       update_reg r (rrp_lookup r state.cs_initial_instructions_row.ctr_regs)
-     
+
 (* Row State Instructions *)
 (* do these also push and restore the CFA rule? *)
-  | DW_CFA_remember_state         -> 
+  | DW_CFA_remember_state         ->
       <| state with cs_row_stack = state.cs_current_row :: state.cs_row_stack |>
-  | DW_CFA_restore_state          -> 
-      match state.cs_row_stack with 
+  | DW_CFA_restore_state          ->
+      match state.cs_row_stack with
       | r::rs -> <| state with cs_current_row = r; cs_row_stack = rs |>
       | [] -> Assert_extra.failwith "DW_CFA_restore_state: empty row stack"
       end
 (* Padding Instruction *)
-  | DW_CFA_nop                    -> 
+  | DW_CFA_nop                    ->
       state
 
 (* Unknown *)
@@ -3884,18 +3884,18 @@ let evaluate_call_frame_instruction (fi: frame_info) (cie: cie) (state: cfa_stat
 
 let rec evaluate_call_frame_instructions (fi: frame_info) (cie: cie) (state: cfa_state) (cfis: list call_frame_instruction) : cfa_state =
   match cfis with
-  | [] -> state 
-  | cfi::cfis' -> 
+  | [] -> state
+  | cfi::cfis' ->
       let state' = evaluate_call_frame_instruction fi cie state cfi in
       evaluate_call_frame_instructions fi cie state' cfis'
   end
 
 
-let evaluate_fde (fi: frame_info) (fde:fde) : list cfa_table_row = 
+let evaluate_fde (fi: frame_info) (fde:fde) : list cfa_table_row =
   let cie = find_cie fi fde.fde_cie_pointer in
   let final_location = fde.fde_initial_location_address + fde.fde_address_range in
-  let initial_cfa_state  = 
-    let initial_row = 
+  let initial_cfa_state  =
+    let initial_row =
       <|
       ctr_loc = fde.fde_initial_location_address;
       ctr_cfa = CR_undefined;
@@ -3906,23 +3906,23 @@ let evaluate_fde (fi: frame_info) (fde:fde) : list cfa_table_row =
     cs_previous_rows = [];
     cs_initial_instructions_row = initial_row;
     cs_row_stack = [];
-  |> 
+  |>
   in
-  let state' = 
+  let state' =
     evaluate_call_frame_instructions fi cie initial_cfa_state cie.cie_initial_instructions in
   let initial_row' = state'.cs_current_row in
   let state'' = <| initial_cfa_state with cs_current_row = initial_row'; cs_initial_instructions_row = initial_row' |> in
-  let state''' = 
+  let state''' =
     evaluate_call_frame_instructions fi cie (*final_location*) state'' fde.fde_instructions in
   List.reverse (state'''.cs_current_row:: state'''.cs_previous_rows)
- 
 
 
-val evaluate_frame_info : dwarf -> evaluated_frame_info 
-let evaluate_frame_info (d: dwarf) : evaluated_frame_info = 
-  List.mapMaybe (fun fie -> match fie with FIE_fde fde -> Just (fde, (evaluate_fde d.d_frame_info fde)) | FIE_cie _ -> Nothing end) d.d_frame_info 
 
-let pp_evaluated_frame_info (efi: evaluated_frame_info) = 
+val evaluate_frame_info : dwarf -> evaluated_frame_info
+let evaluate_frame_info (d: dwarf) : evaluated_frame_info =
+  List.mapMaybe (fun fie -> match fie with FIE_fde fde -> Just (fde, (evaluate_fde d.d_frame_info fde)) | FIE_cie _ -> Nothing end) d.d_frame_info
+
+let pp_evaluated_frame_info (efi: evaluated_frame_info) =
   myconcat "\n" (List.map pp_evaluated_fde efi)
 
 
@@ -3932,69 +3932,69 @@ let pp_evaluated_frame_info (efi: evaluated_frame_info) =
 (** ************************************************************ *)
 
 (** analysis *)
-   
+
 val find_dies_in_die : (die->bool) -> compilation_unit -> list die -> die -> list (compilation_unit * (list die) * die)
-let rec find_dies_in_die (p:die->bool) (cu:compilation_unit) (parents: list die) (d: die) = 
+let rec find_dies_in_die (p:die->bool) (cu:compilation_unit) (parents: list die) (d: die) =
   let ds = List.concatMap (find_dies_in_die p cu (d::parents)) d.die_children in
   if p d then (cu,parents,d)::ds else ds
-    
+
 let find_dies (p:die->bool) (d: dwarf) : list (compilation_unit * (list die) * die) =
   List.concatMap
-    (fun cu -> find_dies_in_die p cu [] cu.cu_die) 
-    d.d_compilation_units 
+    (fun cu -> find_dies_in_die p cu [] cu.cu_die)
+    d.d_compilation_units
 
 
 (** simple-minded analysis of location *)
 
-let analyse_locations_raw c (d: dwarf) = 
+let analyse_locations_raw c (d: dwarf) =
 
   let (cuh_default : compilation_unit_header) = let cu = myhead d.d_compilation_units in cu.cu_header in
-  
+
   (* find all DW_TAG_variable and DW_TAG_formal_parameter dies with a DW_AT_name attribute *)
   let tags = List.map tag_encode ["DW_TAG_variable"; "DW_TAG_formal_parameter"] in
-  let dies : list (compilation_unit * (list die) * die) = 
-    find_dies 
-      (fun die -> 
+  let dies : list (compilation_unit * (list die) * die) =
+    find_dies
+      (fun die ->
         List.elem die.die_abbreviation_declaration.ad_tag tags
-          && has_attribute "DW_AT_name" die) 
+          && has_attribute "DW_AT_name" die)
       d in
 
-  myconcat "" 
-    (List.map 
-       (fun (cu,parents,die) -> 
-         
-         let ats = List.zip 
-             die.die_abbreviation_declaration.ad_attribute_specifications 
+  myconcat ""
+    (List.map
+       (fun (cu,parents,die) ->
+
+         let ats = List.zip
+             die.die_abbreviation_declaration.ad_attribute_specifications
              die.die_attribute_values in
-         
+
          let find_ats (s:string) = myfindNonPure (fun  (((at: natural), (af: natural)), ((pos: natural),(av:attribute_value))) -> attribute_encode s = at) ats in
-         
-         let ((_,_),(_,av_name)) = find_ats "DW_AT_name" in 
-         
-         let name = 
-           match av_name with 
+
+         let ((_,_),(_,av_name)) = find_ats "DW_AT_name" in
+
+         let name =
+           match av_name with
            | AV_string bs -> string_of_bytes bs
            | AV_strp n -> pp_debug_str_entry d.d_str n
            | _ -> "av_name AV not understood"
            end in
 
 
-         let ((_,_),(_,av_location)) = find_ats "DW_AT_location" in 
+         let ((_,_),(_,av_location)) = find_ats "DW_AT_location" in
 
-         let ppd_location = 
-           match av_location with 
+         let ppd_location =
+           match av_location with
            | AV_exprloc n bs -> "    "^parse_and_pp_operations c cuh_default bs^"\n"
            | AV_block n bs -> "    "^parse_and_pp_operations c cuh_default bs^"\n"
-           | AV_sec_offset n -> 
+           | AV_sec_offset n ->
                let location_list = myfindNonPure (fun (n',_)-> n'=n) d.d_loc in
-               pp_location_list c cuh_default location_list 
+               pp_location_list c cuh_default location_list
            | _ -> "av_location AV not understood"
-           end in 
-   
+           end in
+
          pp_tag_encoding die.die_abbreviation_declaration.ad_tag ^ " " ^ name ^ ":\n" ^ ppd_location ^ "\n" )
-                 
+
        dies)
-    
+
 
 (** more proper analysis of locations *)
 
@@ -4013,13 +4013,13 @@ appropriate.
 *)
 
 
-(*  
-if there's a DW_AT_location that's a location list (DW_FORM_sec_offset/AV_sec_offset) : use that for both the range(s) and location; interpret the range(s) wrt the applicable base address of the compilation unit 
+(*
+if there's a DW_AT_location that's a location list (DW_FORM_sec_offset/AV_sec_offset) : use that for both the range(s) and location; interpret the range(s) wrt the applicable base address of the compilation unit
 
 if there's a DW_AT_location that's a location expression (DW_FORM_exprloc/AV_exprloc or DW_block/AV_block), look for the closest enclosing range:
  - DW_AT_low_pc (AV_addr) and no DW_AT_high_pc or DW_AT_ranges: just the singleton address
  - DW_AT_low_pc (AV_addr) and DW_AT_high_pc (either an absolute AV_addr or an offset AV_constantN/AV_constant_SLEB128/AV_constantULEB128) : that range
- - DW_AT_ranges (DW_FORM_sec_offset/AV_sec_offset) : get a range list from .debug_ranges; interpret wrt the applicable base address of the compilation unit 
+ - DW_AT_ranges (DW_FORM_sec_offset/AV_sec_offset) : get a range list from .debug_ranges; interpret wrt the applicable base address of the compilation unit
  - for compilation units: a DW_AT_ranges together with a DW_AT_low_pc to specify the default base address to use in interpeting location and range lists
 
 DW_OP_fbreg in location expressions evaluate the DW_AT_frame_base of
@@ -4030,13 +4030,13 @@ don't cover where we are?)
 For each variable and formal parameter that has a DW_AT_name, we'll calculate a list of pairs of a concrete (low,high) range and a location expression.
 *)
 
-let rec closest_enclosing_range c (dranges: range_list_list) (cu_base_address: natural) (parents: list die) : maybe (list (natural * natural)) = 
+let rec closest_enclosing_range c (dranges: range_list_list) (cu_base_address: natural) (parents: list die) : maybe (list (natural * natural)) =
   match parents with
   | [] -> Nothing
   | die::parents' ->
       match (find_attribute_value "DW_AT_low_pc" die, find_attribute_value "DW_AT_high_pc" die, find_attribute_value "DW_AT_ranges" die) with
       | (Just (AV_addr n),  Nothing,                       Nothing               ) -> Just [(n,n+1)]   (* unclear if this case is used? *)
-      | (Just (AV_addr n1), Just (AV_addr n2),             Nothing               ) -> Just [(n1,n2)] 
+      | (Just (AV_addr n1), Just (AV_addr n2),             Nothing               ) -> Just [(n1,n2)]
       | (Just (AV_addr n1), Just (AV_constant_ULEB128 n2), Nothing               ) -> Just [(n1, n1+n2)] (* should be mod all? *)
       | (Just (AV_addr n1), Just (AV_constant_SLEB128 i2), Nothing               ) -> Just [(n1, naturalFromInteger (integerFromNatural n1 + i2))] (* should
  be mod all? *)
@@ -4044,11 +4044,11 @@ let rec closest_enclosing_range c (dranges: range_list_list) (cu_base_address: n
 
       | (Just (AV_addr n1), Just (AV_block n bs),          Nothing               ) -> let n2 = natural_of_bytes c.endianness bs in Just [(n1, n1+n2)] (* should be mod all? *) (* signed or unsigned interp? *)
 
-      | (_,                 Nothing,                       Just (AV_sec_offset n)) -> 
+      | (_,                 Nothing,                       Just (AV_sec_offset n)) ->
           let rlis = Tuple.snd (find_range_list dranges n) in
           let nns = interpret_range_list cu_base_address rlis in
           Just nns
-      | (Nothing,           Nothing,                       Nothing               ) -> closest_enclosing_range c dranges cu_base_address parents' 
+      | (Nothing,           Nothing,                       Nothing               ) -> closest_enclosing_range c dranges cu_base_address parents'
       | (_,                 _,                             _                     ) -> Just [] (*Assert_extra.failwith "unexpected attribute values in closest_enclosing_range"*)
       end
   end
@@ -4062,94 +4062,94 @@ rather than DW_FORM_data<n>.
 no kidding - if we get an AV_constantN for DW_AT_high_pc, should it be interpreted as signed or unsigned? *)
 
 
-let rec closest_enclosing_frame_base dloc (base_address: natural) (parents: list die) : maybe attribute_value = 
+let rec closest_enclosing_frame_base dloc (base_address: natural) (parents: list die) : maybe attribute_value =
   match parents with
   | [] -> Nothing
   | die::parents' ->
       match find_attribute_value "DW_AT_frame_base" die with
       | Just av -> Just av
-      | Nothing -> closest_enclosing_frame_base dloc base_address parents' 
-      end 
+      | Nothing -> closest_enclosing_frame_base dloc base_address parents'
+      end
   end
 
 
 
 
-let interpreted_location_of_die c cuh (dloc: location_list_list) (dranges: range_list_list) (base_address: natural) (parents: list die) (die: die) : maybe (list (natural * natural * single_location_description)) = 
+let interpreted_location_of_die c cuh (dloc: location_list_list) (dranges: range_list_list) (base_address: natural) (parents: list die) (die: die) : maybe (list (natural * natural * single_location_description)) =
 
   (* for a simple location expression bs, we look in the enclosing die
   tree to find the associated pc range *)
-  let location bs = 
+  let location bs =
     match closest_enclosing_range c dranges base_address (die::parents) with
-    | Just nns -> 
+    | Just nns ->
         Just (List.map (fun (n1,n2) -> (n1,n2,bs)) nns)
-    | Nothing -> 
+    | Nothing ->
         (* if there is no such range, we take the full 0 - 0xfff.fff range*)
         Just [(0,(arithmetic_context_of_cuh cuh).ac_max,bs)]
     end in
 
-  match find_attribute_value "DW_AT_location" die with 
+  match find_attribute_value "DW_AT_location" die with
   | Just (AV_exprloc n bs) -> location bs
   | Just (AV_block n bs) -> location bs
   (* while for a location list, we take the associated pc range from
   each element of the list *)
-  | Just (AV_sec_offset n) -> 
-      let (_,llis) = find_location_list dloc n in 
+  | Just (AV_sec_offset n) ->
+      let (_,llis) = find_location_list dloc n in
       Just (interpret_location_list base_address llis)
   | Nothing -> Nothing
-  end 
+  end
 
 
-let cu_base_address cu = 
-  match find_attribute_value "DW_AT_low_pc" cu.cu_die with 
-  | Just (AV_addr n) -> n 
-  | _ -> 0 (*Nothing*) (*Assert_extra.failwith "no cu DW_AT_low_pc"*) 
-  end 
+let cu_base_address cu =
+  match find_attribute_value "DW_AT_low_pc" cu.cu_die with
+  | Just (AV_addr n) -> n
+  | _ -> 0 (*Nothing*) (*Assert_extra.failwith "no cu DW_AT_low_pc"*)
+  end
 
 
 val analyse_locations : dwarf -> analysed_location_data
-let analyse_locations (d: dwarf) : analysed_location_data = 
+let analyse_locations (d: dwarf) : analysed_location_data =
 
   let c : p_context = <| endianness = d.d_endianness |> in
 
   let (cuh_default : compilation_unit_header) = let cu = myhead d.d_compilation_units in cu.cu_header in
-  
+
   (* find all DW_TAG_variable and DW_TAG_formal_parameter dies with a DW_AT_name and DW_AT_location attribute *)
   let tags = List.map tag_encode ["DW_TAG_variable"; "DW_TAG_formal_parameter"] in
-  let dies : list (compilation_unit * (list die) * die) = 
-    find_dies 
-      (fun die -> 
+  let dies : list (compilation_unit * (list die) * die) =
+    find_dies
+      (fun die ->
         List.elem die.die_abbreviation_declaration.ad_tag tags
           && has_attribute "DW_AT_name" die
           && has_attribute "DW_AT_location" die)
       d in
 
-  List.map 
-    (fun (((cu:compilation_unit), (parents: list die), (die: die)) as x) -> 
+  List.map
+    (fun (((cu:compilation_unit), (parents: list die), (die: die)) as x) ->
       let base_address = cu_base_address cu in
-      let interpreted_locations : maybe (list (natural * natural * single_location_description)) = 
+      let interpreted_locations : maybe (list (natural * natural * single_location_description)) =
         interpreted_location_of_die c cuh_default d.d_loc d.d_ranges base_address parents die in
       (x,interpreted_locations)
-    ) 
+    )
     dies
 
 
 
-let pp_analysed_locations1 c cuh (nnls: list (natural * natural * single_location_description)) : string = 
+let pp_analysed_locations1 c cuh (nnls: list (natural * natural * single_location_description)) : string =
   myconcat ""
-    (List.map 
+    (List.map
        (fun (n1,n2,bs) -> "  " ^ pphex n1 ^ "  " ^ pphex n2 ^ " " ^ parse_and_pp_operations c cuh bs ^ "\n")
        nnls)
 
-let pp_analysed_locations2 c cuh mnnls = 
+let pp_analysed_locations2 c cuh mnnls =
   match mnnls with
   | Just nnls -> pp_analysed_locations1 c cuh nnls
   | Nothing -> "  <no locations>\n"
   end
 
-let pp_analysed_locations3 c cuh str (als: analysed_location_data) : string = 
+let pp_analysed_locations3 c cuh str (als: analysed_location_data) : string =
   myconcat "\n"
-    (List.map 
+    (List.map
        (fun ((cu,parents,die),mnnls) ->
          pp_die_abbrev c cuh str 0 false parents die
          ^ pp_analysed_locations2 c cuh mnnls
@@ -4157,26 +4157,26 @@ let pp_analysed_locations3 c cuh str (als: analysed_location_data) : string =
        als
   )
 
-let pp_analysed_location_data (d: dwarf) (als: analysed_location_data) : string = 
+let pp_analysed_location_data (d: dwarf) (als: analysed_location_data) : string =
   let c : p_context = <| endianness = d.d_endianness |> in
   let (cuh_default : compilation_unit_header) = let cu = myhead d.d_compilation_units in cu.cu_header in
   pp_analysed_locations3 c (*HACK*) cuh_default d.d_str als
 
 
 
-let pp_analysed_location_data_at_pc (d: dwarf) (alspc: analysed_location_data_at_pc) : string = 
+let pp_analysed_location_data_at_pc (d: dwarf) (alspc: analysed_location_data_at_pc) : string =
   myconcat "" (List.map
-    (fun ((cu,parents,die),(n1,n2,sld,esl)) -> 
-      "          " ^ 
-      let name = 
+    (fun ((cu,parents,die),(n1,n2,sld,esl)) ->
+      "          " ^
+      let name =
         match find_name_of_die d.d_str die with
         | Just s ->  s
         | Nothing -> "<no name>\n"
         end in
       match esl with
-      | Success sl -> 
+      | Success sl ->
           name ^ " @ " ^ pp_single_location sl ^"\n"
-            
+
       | Fail e -> name ^ " @ " ^ "<fail: " ^ e ^ ">\n"
       end
     )
@@ -4184,20 +4184,20 @@ let pp_analysed_location_data_at_pc (d: dwarf) (alspc: analysed_location_data_at
 
 
 val analysed_locations_at_pc : evaluation_context -> dwarf_static -> natural -> analysed_location_data_at_pc
-let analysed_locations_at_pc 
+let analysed_locations_at_pc
     (ev)
     (ds: dwarf_static)
-    (pc: natural) 
+    (pc: natural)
     : analysed_location_data_at_pc
-    =  
+    =
   let c : p_context = <| endianness = ds.ds_dwarf.d_endianness |> in
-  
-  let xs = 
-    List.mapMaybe 
+
+  let xs =
+    List.mapMaybe
       (fun (cupd,mnns) ->
         match mnns with
         | Nothing -> Nothing
-        | Just nns -> 
+        | Just nns ->
             let nns' = List.filter (fun (n1,n2,sld) -> pc >= n1 && pc < n2) nns in
             match nns' with
             | [] -> Nothing
@@ -4205,42 +4205,42 @@ let analysed_locations_at_pc
             end
         end)
       ds.ds_analysed_location_data
-in 
+in
 
 List.concat
-  (List.map 
-     (fun ((cu,parents,die),nns) -> 
-       let ac = arithmetic_context_of_cuh cu.cu_header in 
-       let base_address = cu_base_address cu in 
-       let mfbloc : maybe attribute_value = 
+  (List.map
+     (fun ((cu,parents,die),nns) ->
+       let ac = arithmetic_context_of_cuh cu.cu_header in
+       let base_address = cu_base_address cu in
+       let mfbloc : maybe attribute_value =
          closest_enclosing_frame_base ds.ds_dwarf.d_loc base_address parents in
-       List.map 
-         (fun (n1,n2,sld) -> 
-           let el : error single_location = 
+       List.map
+         (fun (n1,n2,sld) ->
+           let el : error single_location =
              evaluate_location_description_bytes c ds.ds_dwarf.d_loc ds.ds_evaluated_frame_info cu.cu_header ac ev mfbloc pc sld in
            ((cu,parents,die),(n1,n2,sld,el))
          )
          nns
      )
      xs)
-      
+
 val names_of_address : dwarf -> analysed_location_data_at_pc -> natural -> list string
 let names_of_address
     (d: dwarf)
     (alspc: analysed_location_data_at_pc)
     (address: natural)
     : list string
-    = 
-  List.mapMaybe 
-    (fun ((cu,parents,die),(n1,n2,sld,esl)) -> 
+    =
+  List.mapMaybe
+    (fun ((cu,parents,die),(n1,n2,sld,esl)) ->
       match esl with
-      | Success (SL_simple (SL_memory_address a)) -> 
-          if a=address then 
+      | Success (SL_simple (SL_memory_address a)) ->
+          if a=address then
             match find_name_of_die d.d_str die with
             | Just s -> Just s
             | Nothing -> Nothing
             end
-          else 
+          else
             Nothing
       | Success _ ->  Nothing (* just suppress? *)
       | Fail e -> Nothing (* just suppress? *)
@@ -4253,7 +4253,7 @@ let names_of_address
 (** **  evaluation of line-number info                           *)
 (** ************************************************************ *)
 
-let initial_line_number_registers (lnh: line_number_header) : line_number_registers = 
+let initial_line_number_registers (lnh: line_number_header) : line_number_registers =
     <|
     lnr_address = 0;
     lnr_op_index = 0;
@@ -4269,24 +4269,24 @@ let initial_line_number_registers (lnh: line_number_header) : line_number_regist
     lnr_discriminator =0;
   |>
 
-let evaluate_line_number_operation 
-    (lnh: line_number_header) 
-    ((s: line_number_registers), (lnrs: list line_number_registers)) 
-    (lno: line_number_operation) 
+let evaluate_line_number_operation
+    (lnh: line_number_header)
+    ((s: line_number_registers), (lnrs: list line_number_registers))
+    (lno: line_number_operation)
     : line_number_registers * list line_number_registers =
 
   let new_address s operation_advance = s.lnr_address +
       lnh.lnh_minimum_instruction_length *
       ((s.lnr_op_index + operation_advance)/lnh.lnh_maximum_operations_per_instruction) in
   let new_op_index s operation_advance =
-    (s.lnr_op_index + operation_advance) mod lnh.lnh_maximum_operations_per_instruction in 
+    (s.lnr_op_index + operation_advance) mod lnh.lnh_maximum_operations_per_instruction in
 
   match lno with
-  | DW_LN_special adjusted_opcode -> 
+  | DW_LN_special adjusted_opcode ->
       let operation_advance = adjusted_opcode / lnh.lnh_line_range in
       let line_increment = lnh.lnh_line_base + integerFromNatural (adjusted_opcode mod lnh.lnh_line_range) in
-      let s' = 
-        <| s with 
+      let s' =
+        <| s with
          lnr_line = partialNaturalFromInteger ((integerFromNatural s.lnr_line) + line_increment);
          lnr_address = new_address s operation_advance;
          lnr_op_index = new_op_index s operation_advance;
@@ -4300,7 +4300,7 @@ let evaluate_line_number_operation
            lnr_discriminator = 0;
         |> in
       (s'', lnrs')
-  | DW_LNS_copy                   -> 
+  | DW_LNS_copy                   ->
       let lnrs' = s::lnrs in
       let s' =
         <| s with
@@ -4310,79 +4310,79 @@ let evaluate_line_number_operation
            lnr_discriminator = 0;
         |> in
       (s', lnrs')
-  | DW_LNS_advance_pc operation_advance -> 
-      let s' = 
-        <| s with 
+  | DW_LNS_advance_pc operation_advance ->
+      let s' =
+        <| s with
          lnr_address = new_address s operation_advance;
          lnr_op_index = new_op_index s operation_advance;
       |> in
       (s', lnrs)
-  | DW_LNS_advance_line line_increment -> 
+  | DW_LNS_advance_line line_increment ->
       let s' = <| s with lnr_line = partialNaturalFromInteger ((integerFromNatural s.lnr_line) + line_increment) |> in (s', lnrs)
-  | DW_LNS_set_file n             -> 
+  | DW_LNS_set_file n             ->
       let s' = <| s with lnr_file = n |> in (s', lnrs)
-  | DW_LNS_set_column n           -> 
+  | DW_LNS_set_column n           ->
       let s' = <| s with lnr_column = n |> in (s', lnrs)
-  | DW_LNS_negate_stmt            -> 
+  | DW_LNS_negate_stmt            ->
       let s' = <| s with lnr_is_stmt = not s.lnr_is_stmt |> in (s', lnrs)
-  | DW_LNS_set_basic_block        -> 
+  | DW_LNS_set_basic_block        ->
       let s' = <| s with lnr_basic_block = true |> in (s', lnrs)
-  | DW_LNS_const_add_pc           -> 
-      let opcode = 255 in 
+  | DW_LNS_const_add_pc           ->
+      let opcode = 255 in
       let adjusted_opcode = opcode - lnh.lnh_opcode_base in
       let operation_advance = adjusted_opcode / lnh.lnh_line_range in
-      let s' = 
-        <| s with 
+      let s' =
+        <| s with
          lnr_address = new_address s operation_advance;
          lnr_op_index = new_op_index s operation_advance;
       |> in
       (s', lnrs)
-  | DW_LNS_fixed_advance_pc n     -> 
-      let s' = 
-        <| s with 
+  | DW_LNS_fixed_advance_pc n     ->
+      let s' =
+        <| s with
          lnr_address = s.lnr_address + n;
          lnr_op_index = 0;
       |> in
       (s', lnrs)
-  | DW_LNS_set_prologue_end       -> 
+  | DW_LNS_set_prologue_end       ->
       let s' = <| s with lnr_prologue_end = true |> in (s', lnrs)
-  | DW_LNS_set_epilogue_begin     -> 
+  | DW_LNS_set_epilogue_begin     ->
       let s' = <| s with lnr_epilogue_begin = true |> in (s', lnrs)
-  | DW_LNS_set_isa n              ->  
+  | DW_LNS_set_isa n              ->
       let s' = <| s with lnr_isa = n |> in (s', lnrs)
-  | DW_LNE_end_sequence           -> 
-      let s' = <| s with lnr_end_sequence = true |> in 
+  | DW_LNE_end_sequence           ->
+      let s' = <| s with lnr_end_sequence = true |> in
       let lnrs' = s' :: lnrs in
       let s'' = initial_line_number_registers lnh in
       (s'', lnrs')
-  | DW_LNE_set_address n          ->  
-      let s' = 
-        <| s with 
+  | DW_LNE_set_address n          ->
+      let s' =
+        <| s with
          lnr_address = n;
          lnr_op_index = 0;
       |> in
       (s', lnrs)
-  | DW_LNE_define_file s n1 n2 n3 -> 
+  | DW_LNE_define_file s n1 n2 n3 ->
       Assert_extra.failwith "DW_LNE_define_file not implemented"  (*TODO: add to file list in header - but why is this in the spec? *)
-  | DW_LNE_set_discriminator n    -> 
+  | DW_LNE_set_discriminator n    ->
       let s' = <| s with lnr_discriminator = n |> in (s', lnrs)
   end
 
-let rec evaluate_line_number_operations 
-    (lnh: line_number_header) 
-    ((s: line_number_registers), (lnrs: list line_number_registers)) 
-    (lnos: list line_number_operation) 
+let rec evaluate_line_number_operations
+    (lnh: line_number_header)
+    ((s: line_number_registers), (lnrs: list line_number_registers))
+    (lnos: list line_number_operation)
     : line_number_registers * list line_number_registers =
   match lnos with
-  | [] -> (s,lnrs) 
+  | [] -> (s,lnrs)
   | lno :: lnos' ->
-      let (s',lnrs') = 
+      let (s',lnrs') =
         evaluate_line_number_operation lnh (s,lnrs) lno in
       evaluate_line_number_operations lnh (s',lnrs') lnos'
-  end    
+  end
 
-let evaluate_line_number_program 
-    (lnp:line_number_program) 
+let evaluate_line_number_program
+    (lnp:line_number_program)
     : list line_number_registers =
   List.reverse (Tuple.snd (evaluate_line_number_operations lnp.lnp_header ((initial_line_number_registers lnp.lnp_header),[]) lnp.lnp_operations))
 
@@ -4404,29 +4404,29 @@ let pp_line_number_registers lnr =
 
 let pp_line_number_registers_tight lnr : list string =
   [
-   pphex lnr.lnr_address       ; 
-   show lnr.lnr_op_index       ; 
-   show lnr.lnr_file           ; 
-   show lnr.lnr_line           ; 
-   show lnr.lnr_column         ; 
-   show lnr.lnr_is_stmt        ; 
-   show lnr.lnr_basic_block    ; 
-   show lnr.lnr_end_sequence   ; 
-   show lnr.lnr_prologue_end   ; 
-   show lnr.lnr_epilogue_begin ; 
-   show lnr.lnr_isa            ; 
-   pphex lnr.lnr_discriminator 
+   pphex lnr.lnr_address       ;
+   show lnr.lnr_op_index       ;
+   show lnr.lnr_file           ;
+   show lnr.lnr_line           ;
+   show lnr.lnr_column         ;
+   show lnr.lnr_is_stmt        ;
+   show lnr.lnr_basic_block    ;
+   show lnr.lnr_end_sequence   ;
+   show lnr.lnr_prologue_end   ;
+   show lnr.lnr_epilogue_begin ;
+   show lnr.lnr_isa            ;
+   pphex lnr.lnr_discriminator
  ]
 
-let pp_line_number_registerss lnrs = 
-  pad_rows 
+let pp_line_number_registerss lnrs =
+  pad_rows
     (
      ["address"; "op_index"; "file"; "line"; "column"; "is_stmt"; "basic_block"; "end_sequence"; "prologue_end"; "epilogue_begin"; "isa"; "discriminator"]
      ::
        (List.map pp_line_number_registers_tight lnrs)
     )
 
-let pp_evaluated_line_info (eli: evaluated_line_info) : string = 
+let pp_evaluated_line_info (eli: evaluated_line_info) : string =
   myconcat "\n" (List.map (fun (lnh,lnrs) -> pp_line_number_header lnh ^ "\n" ^ pp_line_number_registerss lnrs) eli)
 
 (* readef example:
@@ -4456,15 +4456,15 @@ CU: /var/local/stephen/work/devel/rsem/ppcmem2/system/tests-adhoc/simple-malloc/
 *)
 
 
-let source_lines_of_address (ds:dwarf_static) (a: natural) : list (string * natural * line_number_registers) = 
+let source_lines_of_address (ds:dwarf_static) (a: natural) : list (string * natural * line_number_registers) =
   List.concat
-    (List.map 
-       (fun (lnh, lnrs) -> 
+    (List.map
+       (fun (lnh, lnrs) ->
          myfiltermaybe
            (fun lnr ->
              if a = lnr.lnr_address && not lnr.lnr_end_sequence then
                match mynth (lnr.lnr_file - 1) lnh.lnh_file_names with
-               | Just lnfe -> 
+               | Just lnfe ->
                    Just (string_of_bytes lnfe.lnfe_path, lnr.lnr_line, lnr)
                | Nothing ->
                    Just ("<source_lines_of_address: file entry not found>", 0, lnr)
@@ -4473,7 +4473,7 @@ let source_lines_of_address (ds:dwarf_static) (a: natural) : list (string * natu
                Nothing)
            lnrs
        )
-    ds.ds_evaluated_line_info 
+    ds.ds_evaluated_line_info
     )
 
 
@@ -4488,13 +4488,13 @@ let extract_dwarf_static f1 =
   | Just dwarf ->
       let _ = my_debug5 (pp_dwarf dwarf) in
 
-      let ald : analysed_location_data = 
-        analyse_locations dwarf in 
-      let efi : evaluated_frame_info = 
-        evaluate_frame_info dwarf in 
-      let eli : evaluated_line_info = 
+      let ald : analysed_location_data =
+        analyse_locations dwarf in
+      let efi : evaluated_frame_info =
+        evaluate_frame_info dwarf in
+      let eli : evaluated_line_info =
         List.map (fun lnp -> (lnp.lnp_header, evaluate_line_number_program lnp)) dwarf.d_line_info in
-      let ds =     
+      let ds =
         <|
         ds_dwarf = dwarf;
         ds_analysed_location_data = ald;
@@ -4505,7 +4505,7 @@ let extract_dwarf_static f1 =
   end
 
 
-            
+
 
 (** ************************************************************ *)
 (** **  top level for main_elf  ******************************** *)
@@ -4513,10 +4513,10 @@ let extract_dwarf_static f1 =
 
 val harness_string_of_elf : elf_file -> byte_sequence -> string
 let harness_string_of_elf f1 bs =
-  let mds = extract_dwarf_static f1 in 
-  match mds with 
+  let mds = extract_dwarf_static f1 in
+  match mds with
   | Nothing -> "<no dwarf information extracted>"
-  | Just ds -> 
+  | Just ds ->
       pp_dwarf ds.ds_dwarf
       (*   ^ analyse_locations_raw c d    *)
    ^ "************** evaluation of frame data *************************\n"
@@ -4535,4 +4535,3 @@ let {ocaml} harness_string_of_elf64_debug_info_section f1 bs0 (*os proc usr hdr 
 val harness_string_of_elf32_debug_info_section : elf32_file -> byte_sequence -> (* (natural -> string) -> (natural -> string) -> (natural -> string) -> elf32_header -> elf32_section_header_table -> string_table ->*) string
 let {ocaml} harness_string_of_elf32_debug_info_section f1 bs0 (*os proc usr hdr sht stbl*) =
   harness_string_of_elf (ELF_File_32 f1) bs0
-
