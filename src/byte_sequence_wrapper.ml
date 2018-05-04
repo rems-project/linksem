@@ -59,7 +59,6 @@ let zero_pad_to_length len bs =
   if pad <= 0 then
     bs
   else
-    (* TODO *)
     let grow = (capacity bs) - len in
     let prev_len = Bytes.length bs.bytes in
     let b = if grow > 0 then
