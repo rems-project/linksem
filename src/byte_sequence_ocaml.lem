@@ -1,0 +1,93 @@
+(** [byte_sequence_ocaml.lem], a list of bytes used for ELF I/O and other basic
+  * tasks in the ELF model.
+  *)
+
+open import Basic_classes
+open import Bool
+open import List
+open import Num
+open import String
+open import Assert_extra
+
+open import Error
+open import Missing_pervasives
+open import Show
+
+(** A [byte_sequence], [bs], denotes a consecutive list of bytes.  Can be read
+  * from or written to a binary file.  Most basic type in the ELF formalisation.
+  * This is a faster OCaml byte sequence implementation.
+  *)
+type byte_sequence
+declare ocaml target_rep type byte_sequence = `Byte_sequence_wrapper.byte_sequence`
+
+val compare_byte_sequence : byte_sequence -> byte_sequence -> ordering
+declare ocaml target_rep function compare_byte_sequence = `Byte_sequence_wrapper.compare`
+
+instance (Ord byte_sequence)
+    let compare = compare_byte_sequence
+    let (<) = fun f1 -> (fun f2 -> (compare_byte_sequence f1 f2 = LT))
+    let (<=) = fun f1 -> (fun f2 -> let result = compare_byte_sequence f1 f2 in result = LT || result = EQ)
+    let (>) = fun f1 -> (fun f2 -> (compare_byte_sequence f1 f2 = GT))
+    let (>=) = fun f1 -> (fun f2 -> let result = compare_byte_sequence f1 f2 in result = GT || result = EQ)
+end
+
+val string_of_byte_sequence : byte_sequence -> string
+declare ocaml target_rep function string_of_byte_sequence = `Byte_sequence_wrapper.to_string`
+
+instance (Show byte_sequence)
+    let show = string_of_byte_sequence
+end
+
+val equal : byte_sequence -> byte_sequence -> bool
+declare ocaml target_rep function equal = `Byte_sequence_wrapper.equal`
+
+instance (Eq byte_sequence)
+    let (=) = equal
+    let (<>) l r = not (equal l r)
+end
+
+(* See byte_sequence_generic.lem for a description of these functions *)
+
+val empty : byte_sequence
+declare ocaml target_rep function empty = `Byte_sequence_wrapper.empty`
+
+val acquire : string -> error byte_sequence
+declare ocaml target_rep function acquire = `Byte_sequence_wrapper.acquire`
+
+val serialise : string -> byte_sequence -> error unit
+declare ocaml target_rep function serialise = `Byte_sequence_wrapper.serialise`
+
+val read_char : byte_sequence -> error (byte * byte_sequence)
+declare ocaml target_rep function read_char = `Byte_sequence_wrapper.read_char`
+
+val create : natural -> byte -> byte_sequence
+declare ocaml target_rep function create = `Byte_sequence_wrapper.big_num_make`
+
+val length : byte_sequence -> natural
+declare ocaml target_rep function length = `Byte_sequence_wrapper.big_num_length`
+
+val concat : list byte_sequence -> byte_sequence
+declare ocaml target_rep function concat = `Byte_sequence_wrapper.concat`
+
+val zero_pad_to_length : natural -> byte_sequence -> byte_sequence
+declare ocaml target_rep function zero_pad_to_length = `Byte_sequence_wrapper.big_num_zero_pad_to_length`
+
+val byte_sequence_of_byte_list : list byte -> byte_sequence
+declare ocaml target_rep function byte_sequence_of_byte_list = `Byte_sequence_wrapper.from_char_list`
+
+val char_list_of_byte_sequence : byte_sequence -> list char
+declare ocaml target_rep function char_list_of_byte_sequence = `Byte_sequence_wrapper.to_char_list`
+
+val byte_list_of_byte_sequence : byte_sequence -> list byte
+declare ocaml target_rep function byte_list_of_byte_sequence = `Byte_sequence_wrapper.to_char_list`
+
+val dropbytes : natural -> byte_sequence -> error byte_sequence
+declare ocaml target_rep function dropbytes = `Byte_sequence_wrapper.big_num_dropbytes`
+
+val takebytes : natural -> byte_sequence -> error (byte_sequence)
+declare ocaml target_rep function takebytes = `Byte_sequence_wrapper.big_num_takebytes`
+
+val takebytes_with_length : natural -> natural -> byte_sequence -> error byte_sequence
+let takebytes_with_length count ts_length ts =
+  if length ts <> ts_length then fail "takebytes_with_length: invalid length"
+  else takebytes count ts

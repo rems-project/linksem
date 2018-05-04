@@ -6,6 +6,7 @@ THIS_MAKEFILE := $(realpath $(lastword $(MAKEFILE_LIST)))
 REPOROOT := $(dir $(THIS_MAKEFILE))/..
 
 LEM ?= lem
+USE_GENERIC_BYTE_SEQUENCE ?= false
 
 $(info OCAMLPATH is $(OCAMLPATH))
 export OCAMLPATH := $(OCAMLPATH)
@@ -22,6 +23,11 @@ $(error No lem installed [anywhere ocamlfind can find it]; please install it ('m
 endif
 endif
 
+ifeq "$(USE_GENERIC_BYTE_SEQUENCE)" "true"
+OCAML_BYTE_SEQUENCE_IMPL=byte_sequence_generic.lem
+else
+OCAML_BYTE_SEQUENCE_IMPL=byte_sequence_ocaml.lem
+endif
 
 LEM_UTIL_SRC := default_printing.lem missing_pervasives.lem show.lem endianness.lem multimap.lem error.lem
 # Some of the utility code is directly in ML, some in Lem; order matters!
@@ -30,7 +36,7 @@ LEM_UTIL_SRC := default_printing.lem missing_pervasives.lem show.lem endianness.
 ALL_UTIL_ML := \
 	uint64_wrapper.ml uint32_wrapper.ml \
 	show.ml endianness.ml error.ml ml_bindings.ml missing_pervasives.ml multimap.ml \
-	multimapAuxiliary.ml default_printing.ml  byte_sequence_wrapper.ml
+	multimapAuxiliary.ml default_printing.ml byte_sequence_wrapper.ml
 	# missing_pervasivesAuxiliary.ml
 ALL_UTIL_ML_WO_LEM := $(filter-out $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC)) $(patsubst %.lem,%Auxiliary.ml,$(LEM_UTIL_SRC)),$(ALL_UTIL_ML))
 
@@ -107,7 +113,7 @@ LEM_LINK_SRC := elf_memory_image.lem elf_memory_image_of_elf64_file.lem command_
 # LEM_MODEL_ML includes all OCaml except for the main programs
 LEM_MODEL_ML := $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC))
 
-LEM_MODEL_TP_THY := $(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC) test_image.lem import_everything.lem
+LEM_MODEL_TP_THY := $(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC) byte_sequence_generic.lem test_image.lem import_everything.lem
 
 # WARNING: if you add packages that are not supported by js_of_ocaml the
 # rmem/ppcmem2 web-interface will not build.
@@ -135,16 +141,18 @@ ldgram.y.hacked: ldgram.y
 	grep '\([:|;]\|[A-Za-z0-9_]\{2,\}\)' | \
 	tail -n+35 > "$@" || rm -f "$@"
 
-ALL_LEM_SRC := $(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC) main_link.lem main_elf.lem scratch.lem copy_elf.lem
+ALL_LEM_SRC := $(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC) $(OCAML_BYTE_SEQUENCE_IMPL) main_link.lem main_elf.lem scratch.lem copy_elf.lem
 $(patsubst %.lem,%.ml,$(ALL_LEM_SRC)): lem_ocaml_sentinel
 lem_ocaml_sentinel: $(ALL_LEM_SRC)
-	$(LEM) -ocaml -only_changed_output $+
+	cp $(OCAML_BYTE_SEQUENCE_IMPL) byte_sequence_impl.lem
+	$(LEM) -ocaml -only_changed_output $+ byte_sequence_impl.lem
 	touch $@
 
 .PHONY: isa-extraction
 isa-extraction:
+	cp byte_sequence_generic.lem byte_sequence_impl.lem
 	$(LEM) -isa -only_changed_output -add_full_isa_lib_path \
-	$(LEM_MODEL_TP_THY)
+	$(LEM_MODEL_TP_THY) byte_sequence_impl.lem
 	ls -1 *.thy | grep -v ^Error.thy | xargs -I{} mv {} ../auto_generated/isabelle/
 	mv */*.thy ../auto_generated/isabelle/
 	mv */*/*.thy ../auto_generated/isabelle/
@@ -152,16 +160,18 @@ isa-extraction:
 
 .PHONY: hol-extraction
 hol-extraction:
+	cp byte_sequence_generic.lem byte_sequence_impl.lem
 	$(LEM) -hol -only_changed_output \
-	$(LEM_MODEL_TP_THY)
+	$(LEM_MODEL_TP_THY) byte_sequence_impl.lem
 	ls -1 *.sml | grep -v ^errorScript.sml | xargs -I{} mv {} ../auto_generated/hol-kananaskis-10/
 	mv */*Script.sml ../auto_generated/hol-kananaskis-10/
 	mv */*/*Script.sml ../auto_generated/hol-kananaskis-10/
 
 .PHONY: coq-extraction
 coq-extraction:
+	cp byte_sequence_generic.lem byte_sequence_impl.lem
 	$(LEM) -coq -only_changed_output -add_full_isa_lib_path \
-	$(LEM_MODEL_TP_THY)
+	$(LEM_MODEL_TP_THY) byte_sequence_impl.lem
 	mv *.v ../auto_generated/coq/
 	mv */*.v ../auto_generated/coq/
 	mv */*/*.v ../auto_generated/coq/
@@ -171,3 +181,5 @@ lem-clean:
 	rm -f $(LEM_MODEL_ML)
 	rm -f main_elf.ml main_link.ml copy_elf.ml
 	rm -f $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC)) $(patsubst %.lem,%Auxiliary.ml,$(LEM_UTIL_SRC))
+	rm -f scratch.ml
+	rm -f byte_sequence_impl.lem byte_sequence_impl.ml byte_sequence_generic.ml byte_sequence_ocaml.ml

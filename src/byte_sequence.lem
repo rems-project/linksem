@@ -1,7 +1,3 @@
-(** [byte_sequence.lem], a list of bytes used for ELF I/O and other basic tasks
-  * in the ELF model.
-  *)
-
 open import Basic_classes
 open import Bool
 open import List
@@ -12,121 +8,72 @@ open import Assert_extra
 open import Error
 open import Missing_pervasives
 open import Show
+open import Byte_sequence_impl
 
-(** A [byte_sequence], [bs], denotes a consecutive list of bytes.  Can be read
-  * from or written to a binary file.  Most basic type in the ELF formalisation.
+(** [byte_sequence.lem], a list of bytes used for ELF I/O and other basic tasks
+  * in the ELF model.
   *)
-type byte_sequence
-(* type byte_sequence = list byte *)
-declare ocaml target_rep type byte_sequence = `Byte_sequence_wrapper.byte_sequence`
-
-val compare_byte_sequence : byte_sequence -> byte_sequence -> ordering
-(* let compare_byte_sequence = compare *)
-declare ocaml target_rep function compare_byte_sequence = `Byte_sequence_wrapper.compare`
-
-instance (Ord byte_sequence)
-    let compare = compare_byte_sequence
-    let (<) = fun f1 -> (fun f2 -> (compare_byte_sequence f1 f2 = LT))
-    let (<=) = fun f1 -> (fun f2 -> let result = compare_byte_sequence f1 f2 in result = LT || result = EQ)
-    let (>) = fun f1 -> (fun f2 -> (compare_byte_sequence f1 f2 = GT))
-    let (>=) = fun f1 -> (fun f2 -> let result = compare_byte_sequence f1 f2 in result = GT || result = EQ)
-end
+type byte_sequence = Byte_sequence_impl.byte_sequence
 
 val empty : byte_sequence
-(* let empty = [] *)
-declare ocaml target_rep function empty = `Byte_sequence_wrapper.empty`
-
-(** [acquire fname] exhaustively reads in a byte_sequence from a file pointed to
-  * by filename [fname].  Fails if the file does not exist, or if the transcription
-  * otherwise fails.
-  *)
-val acquire : string -> error byte_sequence
-declare ocaml target_rep function acquire = `Byte_sequence_wrapper.acquire`
-
-(** [serialise_byte_list fname bs] writes a list of bytes, [bs], to a binary file
-  * pointed to by filename [fname].  Fails if the transcription fails.  Implemented
-  * as a primitive in OCaml.
-  *)
-val serialise : string -> byte_sequence -> error unit
-declare ocaml target_rep function serialise = `Byte_sequence_wrapper.serialise`
+let empty = Byte_sequence_impl.empty
 
 (** [read_char bs0] reads a single byte from byte sequence [bs0] and returns the
   * remainder of the byte sequence.  Fails if [bs0] is empty.
   * TODO: rename to read_byte, probably.
   *)
 val read_char : byte_sequence -> error (byte * byte_sequence)
-(* let read_char ts =
-  match ts with
-    | []    -> fail "read_char: sequence is empty"
-    | x::xs -> return (x, xs)
-  end *)
-declare ocaml target_rep function read_char = `Byte_sequence_wrapper.read_char`
+let read_char = Byte_sequence_impl.read_char
 
-(** [repeat cnt b] creates a list of length [cnt] containing only [b].
-  * TODO: move into missing_pervasives.lem.
+(* There's no generic implementation for those two *)
+
+(** [acquire fname] exhaustively reads in a byte_sequence from a file pointed to
+  * by filename [fname].  Fails if the file does not exist, or if the transcription
+  * otherwise fails.
   *)
-(* val repeat' : natural -> byte -> byte_sequence -> byte_sequence
-let rec repeat' count c acc =
-  match count with
-    | 0 -> acc
-    | m -> repeat' (count - 1) c (c::acc)
-  end *)
+val acquire : string -> error byte_sequence
+let acquire = Byte_sequence_impl.acquire
 
-val repeat : natural -> byte -> byte_sequence
-(* let repeat count c = repeat' count c [] *)
-declare ocaml target_rep function repeat = `Byte_sequence_wrapper.big_num_make`
+(** [serialise_byte_list fname bs] writes a list of bytes, [bs], to a binary file
+  * pointed to by filename [fname].  Fails if the transcription fails.  Implemented
+  * as a primitive in OCaml.
+  *)
+val serialise : string -> byte_sequence -> error unit
+let serialise = Byte_sequence_impl.serialise
 
 (** [create cnt b] creates a byte sequence of length [cnt] containing only [b].
   *)
 val create : natural -> byte -> byte_sequence
-let create count c =
-  repeat count c
+let create = Byte_sequence_impl.create
 
 (** [zeros cnt] creates a byte sequence of length [cnt] containing only 0, the
   * null byte.
   *)
 val zeros : natural -> byte_sequence
-let zeros m =
-  create m Missing_pervasives.null_byte
+let zeros len =
+  create len Missing_pervasives.null_byte
 
 (** [length bs0] returns the length of [bs0].
   *)
 val length : byte_sequence -> natural
-(* let length ts =
-  naturalFromNat (List.length ts) *)
-(* let inline {ocaml} length bs = ... *)
-declare ocaml target_rep function length = `Byte_sequence_wrapper.big_num_length`
+let length = Byte_sequence_impl.length
 
 (** [concat bs] concatenates a list of byte sequences, [bs], into a single byte
   * sequence, maintaining byte order across the sequences.
   *)
 val concat : list byte_sequence -> byte_sequence
-(* let rec concat ts =
-  match ts with
-    | []                 -> Sequence []
-    | ((Sequence x)::xs) ->
-      match concat xs with
-        | Sequence tail -> Sequence (x ++ tail)
-      end
-  end *)
 declare {isabelle} rename function concat = concat_byte_sequence
-declare ocaml target_rep function concat = `Byte_sequence_wrapper.concat`
+let concat = Byte_sequence_impl.concat
 
 (** [zero_pad_to_length len bs0] pads (on the right) consecutive zeros until the
   * resulting byte sequence is [len] long.  Returns [bs0] if [bs0] is already of
   * greater length than [len].
   *)
 val zero_pad_to_length : natural -> byte_sequence -> byte_sequence
-(* let zero_pad_to_length len bs =
-  let curlen = length bs in
-    if curlen >= len then
-      bs
-    else
-      concat [bs ; (zeros (len - curlen))] *)
-declare ocaml target_rep function zero_pad_to_length = `Byte_sequence_wrapper.big_num_zero_pad_to_length`
+let zero_pad_to_length = Byte_sequence_impl.zero_pad_to_length
 
 val byte_sequence_of_byte_list : list byte -> byte_sequence
-declare ocaml target_rep function byte_sequence_of_byte_list = `Byte_sequence_wrapper.from_char_list`
+let byte_sequence_of_byte_list = Byte_sequence_impl.byte_sequence_of_byte_list
 
 (** [from_byte_lists bs] concatenates a list of bytes [bs] and creates a byte
   * sequence from their contents.  Maintains byte order in [bs].
@@ -135,81 +82,34 @@ val from_byte_lists : list (list byte) -> byte_sequence
 let from_byte_lists l =
   concat (List.map byte_sequence_of_byte_list l)
 
-(** [char_list_of_byte_list bs] converts byte list [bs] into a list of characters.
-  * Implemented as a primitive in OCaml and Isabelle.
-  * TODO: is this actually being used in the Isabelle backend?  All string functions
-  * should be factored out by target-specific definitions.
-  *)
-val char_list_of_byte_list : byte_sequence -> list char
-declare ocaml    target_rep function char_list_of_byte_list = ``
-declare isabelle target_rep function char_list_of_byte_list xs = `List.map` `Elf_Types_Local.char_of_unsigned_char` xs
-declare hol      target_rep function char_list_of_byte_list = `MAP` (`CHR` `o` `w2n`)
-declare coq      target_rep function char_list_of_byte_list = `char_list_of_byte_list`
-
 (** [string_of_byte_sequence bs0] converts byte sequence [bs0] into a string
   * representation.
   *)
 val string_of_byte_sequence : byte_sequence -> string
-(* let string_of_byte_sequence (Sequence ts) =
-  let cs = char_list_of_byte_list ts in
-    String.toString cs *)
-declare ocaml target_rep function string_of_byte_sequence = `Byte_sequence_wrapper.to_string`
+let string_of_byte_sequence = Byte_sequence_impl.string_of_byte_sequence
 
 val char_list_of_byte_sequence : byte_sequence -> list char
-declare ocaml target_rep function char_list_of_byte_sequence = `Byte_sequence_wrapper.to_char_list`
+let char_list_of_byte_sequence = Byte_sequence_impl.char_list_of_byte_sequence
 
 val byte_list_of_byte_sequence : byte_sequence -> list byte
-declare ocaml target_rep function byte_list_of_byte_sequence = `Byte_sequence_wrapper.to_char_list`
+let byte_list_of_byte_sequence = Byte_sequence_impl.byte_list_of_byte_sequence
 
 (** [equal bs0 bs1] checks whether two byte sequences, [bs0] and [bs1], are equal.
   *)
 val equal : byte_sequence -> byte_sequence -> bool
-(* let rec equal left right =
-  match (left, right) with
-    | (Sequence [], Sequence []) -> true
-    | (Sequence (x::xs), Sequence (y::ys)) ->
-        x = y && equal (Sequence xs) (Sequence ys)
-    | (_, _) -> false
-  end *)
-let inline {isabelle} equal = unsafe_structural_equality
-declare ocaml target_rep function equal = `Byte_sequence_wrapper.equal`
+let equal = Byte_sequence_impl.equal
 
 (** [dropbytes cnt bs0] drops [cnt] bytes from byte sequence [bs0].  Fails if
   * [cnt] is greater than the length of [bs0].
   *)
 val dropbytes : natural -> byte_sequence -> error byte_sequence
-(* let rec dropbytes count ts =
-  if count = Missing_pervasives.naturalZero then
-    return ts
-  else
-    match ts with
-      | []    -> fail "dropbytes: cannot drop more bytes than are contained in sequence"
-      | x::xs -> dropbytes (count - 1) xs
-    end *)
-declare ocaml target_rep function dropbytes = `Byte_sequence_wrapper.big_num_dropbytes`
-
-(* val takebytes_r_with_length: nat -> natural -> byte_sequence -> error byte_sequence
-let rec takebytes_r_with_length count ts_length ts =
-  if ts_length >= (naturalFromNat count) then
-    return (Sequence (list_take_with_accum count [] ts))
-  else
-    fail "takebytes: cannot take more bytes than are contained in sequence" *)
+let dropbytes = Byte_sequence_impl.dropbytes
 
 val takebytes : natural -> byte_sequence -> error (byte_sequence)
-(* let takebytes count ts =
-  let result = takebytes_r_with_length (Missing_pervasives.unsafe_nat_of_natural count) (Missing_pervasives.length ts) ts in
-    result *)
-declare ocaml target_rep function takebytes = `Byte_sequence_wrapper.big_num_takebytes`
+let takebytes = Byte_sequence_impl.takebytes
 
 val takebytes_with_length : natural -> natural -> byte_sequence -> error byte_sequence
-(* let takebytes_with_length count ts_length ts =
-  (* let _ = Missing_pervasives.errs ("Trying to take " ^ (show count) ^ " bytes from sequence of " ^ (show (List.length ts)) ^ "\n") in *)
-  let result = takebytes_r_with_length (Missing_pervasives.unsafe_nat_of_natural count) ts_length ts in
-  (*let _ = Missing_pervasives.errs ("Succeeded\n") in *)
-    result *)
-let takebytes_with_length count ts_length ts =
-  if length ts <> ts_length then fail "takebytes_with_length: invalid length"
-  else takebytes count ts
+let takebytes_with_length = Byte_sequence_impl.takebytes_with_length
 
 (** [read_2_bytes_le bs0] reads two bytes from [bs0], returning them in
   * little-endian order, and returns the remainder of [bs0].  Fails if [bs0] has
@@ -297,13 +197,10 @@ let partition idx bs0 =
   return (l, r)
 
 val partition_with_length : natural -> natural -> byte_sequence -> error (byte_sequence * byte_sequence)
-(* let partition_with_length idx bs0_length bs0 =
+let partition_with_length idx bs0_length bs0 =
   takebytes_with_length idx bs0_length bs0 >>= fun l ->
   dropbytes idx bs0 >>= fun r ->
-  return (l, r) *)
-let partition_with_length idx bs0_length bs0 =
-  if length bs0 <> bs0_length then fail "partition_with_length: invalid length"
-  else partition idx bs0
+  return (l, r)
 
 (** [offset_and_cut off cut bs0] first cuts [off] bytes off [bs0], then cuts
   * the resulting byte sequence to length [cut].  Fails if [off] is greater than
@@ -315,12 +212,3 @@ let offset_and_cut off cut bs0 =
   dropbytes off bs0 >>= fun bs1 ->
   takebytes cut bs1 >>= fun res ->
   return res
-
-instance (Show byte_sequence)
-  let show = string_of_byte_sequence
-end
-
-instance (Eq byte_sequence)
-  let (=) = equal
-  let (<>) l r = not (equal l r)
-end

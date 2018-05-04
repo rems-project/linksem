@@ -4,7 +4,7 @@ open Error
 open List
 
 type byte_sequence = {
-  bytes: bytes;
+  bytes: Bytes.t;
   start: int;
   len: int
 }
@@ -73,7 +73,7 @@ let zero_pad_to_length len bs =
 let to_string bs =
   Bytes.sub_string bs.bytes bs.start bs.len
 
-(* TODO: remove me, byte lists are lame *)
+(* Note: byte lists are lame *)
 let to_char_list bs =
   List.init bs.len (fun i -> get bs i)
 
@@ -118,7 +118,7 @@ let takebytes len bs =
   else
     Success { bs with len }
 
-(* Big_num bindings *)
+(* Lem bindings, OCaml implementation *)
 
 let big_num_length bs =
   Nat_big_num.of_int (length bs)
@@ -134,3 +134,21 @@ let big_num_dropbytes len bs =
 
 let big_num_takebytes len bs =
   takebytes (Nat_big_num.to_int len) bs
+
+let takebytes_with_length count bs_length bs =
+  if length bs <> (Nat_big_num.to_int bs_length) then
+    fail "takebytes_with_length: invalid length"
+  else
+    big_num_takebytes count bs
+
+(* Lem bindings, generic implementation *)
+
+let char_list_of_byte_list l = l
+
+let acquire_byte_list filename =
+  match acquire filename with
+  | Success bs -> Success (to_char_list bs)
+  | Fail msg -> Fail msg
+
+let serialise_byte_list filename l =
+  serialise filename (from_char_list l)
