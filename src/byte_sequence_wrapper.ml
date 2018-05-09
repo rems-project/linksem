@@ -72,9 +72,17 @@ let zero_pad_to_length len bs =
 let to_string bs =
   Bytes.sub_string bs.bytes bs.start bs.len
 
+let rec list_init_tailrec_aux acc i n f =
+  if i >= n then acc
+  else list_init_tailrec_aux (f i :: acc) (i+1) n f
+
+let list_init len f =
+  List.rev (list_init_tailrec_aux [] 0 len f)
+
 (* Note: byte lists are lame *)
 let to_char_list bs =
-  List.init bs.len (fun i -> get bs i)
+  (* TODO: OCaml >= 4.06 has List.init, use that instead *)
+  list_init bs.len (fun i -> get bs i)
 
 let from_char_list l =
   let buf = Buffer.create 16 in
