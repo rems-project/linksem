@@ -1,19 +1,13 @@
 opam-version: "1.2"
 name: "linksem"
-version: "0.1"
+version: "0.2"
 maintainer: "Stephen Kell <Stephen.Kell@cl.cam.ac.uk>"
 authors: ["Stephen Kell" "Dominic Mulligan" "Peter Sewell"]
 homepage: "https://github.com/rems-project/linksem"
 bug-reports: "https://github.com/rems-project/linksem/issues"
 license: "?"
 dev-repo: "https://github.com/rems-project/linksem"
-build: [
-  [make]
-]
+build: [make]
 install: [make "install"]
 remove: [make "uninstall"]
-depends: [
-  "ocamlfind"
-  "ocamlbuild"
-  "lem"
-]
+depends: ["ocamlfind" "ocamlbuild" "lem" {>= "2018-05-11"}]
