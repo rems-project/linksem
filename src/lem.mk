@@ -141,6 +141,8 @@ ldgram.y.hacked: ldgram.y
 	grep '\([:|;]\|[A-Za-z0-9_]\{2,\}\)' | \
 	tail -n+35 > "$@" || rm -f "$@"
 
+byte_sequence_impl.ml: lem_ocaml_sentinel $(OCAML_BYTE_SEQUENCE_IMPL)
+
 ALL_LEM_SRC := $(LEM_UTIL_SRC) $(LEM_ELF_SRC) $(LEM_ABI_SRC) $(LEM_LINK_SRC) $(OCAML_BYTE_SEQUENCE_IMPL) main_link.lem main_elf.lem scratch.lem copy_elf.lem
 $(patsubst %.lem,%.ml,$(ALL_LEM_SRC)): lem_ocaml_sentinel
 lem_ocaml_sentinel: $(ALL_LEM_SRC)
