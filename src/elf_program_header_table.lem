@@ -10,6 +10,7 @@
   * written in the way that they are.
   *)
 
+open import Assert_extra
 open import Basic_classes
 open import Bool
 open import Function
@@ -87,7 +88,7 @@ let string_of_segment_type os proc pt =
 		proc pt
 	else
 		"Undefined or invalid segment type"
-		
+
 (** Segments permission flags *)
 
 (** Execute bit *)
@@ -160,31 +161,39 @@ let allowable_permissions_of_permission m =
     return 7
   else
     fail "exact_permission_of_permission: invalid permission flag"
-    
+
+(** [elf64_interpreted_program_header_flags w] extracts a boolean triple of flags
+  * from the flags field of an interpreted segment.
+  *)
+val parse_elf_segment_permissions : natural -> (bool * bool * bool)
+let parse_elf_segment_permissions m =
+  if m = 0 then
+    (false, false, false)
+  else if m = elf_pf_x then
+    (false, false, true)
+  else if m = elf_pf_w then
+    (false, true, false)
+  else if m = elf_pf_r then
+    (true, false, false)
+  else if m = elf_pf_x + elf_pf_w then
+    (false, true, true)
+  else if m = elf_pf_x + elf_pf_r then
+    (true, false, true)
+  else if m = elf_pf_w + elf_pf_r then
+    (true, true, false)
+  else if m = elf_pf_x + elf_pf_r + elf_pf_w then
+    (true, true, true)
+  else
+    failwith "Invalid permisssion flag"
+
 (** [string_of_elf_segment_permissions m] produces a string-based representation
   * of an ELF segment's permission field.
   * TODO: expand this as is needed by the validation tests.
   *)
 val string_of_elf_segment_permissions : natural -> string
 let string_of_elf_segment_permissions m =
-  if m = 0 then
-    "  "
-  else if m = elf_pf_x then
-    "  E"
-  else if m = elf_pf_w then
-    " W "
-  else if m = elf_pf_r then
-    "R  "
-  else if m = elf_pf_x + elf_pf_w then
-    " WE"
-  else if m = elf_pf_x + elf_pf_r then
-    "R E"
-  else if m = elf_pf_w + elf_pf_r then
-    "RW "
-  else if m = elf_pf_x + elf_pf_r + elf_pf_w then
-    "RWE"
-  else
-    "Invalid permisssion flag"
+  let (r, w, x) = parse_elf_segment_permissions m in
+  (if r then "R" else " ") ^ (if w then "W" else " ") ^ (if x then "X" else " ")
 
 (** Program header table entry type *)
 
@@ -209,13 +218,13 @@ type elf32_program_header_table_entry =
   *)
 val compare_elf32_program_header_table_entry : elf32_program_header_table_entry ->
   elf32_program_header_table_entry -> ordering
-let compare_elf32_program_header_table_entry h1 h2 = 
+let compare_elf32_program_header_table_entry h1 h2 =
     compare [natural_of_elf32_word h1.elf32_p_type;
     natural_of_elf32_off h1.elf32_p_offset;
     natural_of_elf32_addr h1.elf32_p_vaddr;
     natural_of_elf32_addr h1.elf32_p_paddr;
     natural_of_elf32_word h1.elf32_p_filesz;
-    natural_of_elf32_word h1.elf32_p_memsz; 
+    natural_of_elf32_word h1.elf32_p_memsz;
     natural_of_elf32_word h1.elf32_p_flags;
     natural_of_elf32_word h1.elf32_p_align]
     [natural_of_elf32_word h2.elf32_p_type;
@@ -223,7 +232,7 @@ let compare_elf32_program_header_table_entry h1 h2 =
     natural_of_elf32_addr h2.elf32_p_vaddr;
     natural_of_elf32_addr h2.elf32_p_paddr;
     natural_of_elf32_word h2.elf32_p_filesz;
-    natural_of_elf32_word h2.elf32_p_memsz; 
+    natural_of_elf32_word h2.elf32_p_memsz;
     natural_of_elf32_word h2.elf32_p_flags;
     natural_of_elf32_word h2.elf32_p_align]
 
@@ -256,13 +265,13 @@ type elf64_program_header_table_entry =
   *)
 val compare_elf64_program_header_table_entry : elf64_program_header_table_entry ->
   elf64_program_header_table_entry -> ordering
-let compare_elf64_program_header_table_entry h1 h2 = 
+let compare_elf64_program_header_table_entry h1 h2 =
     compare [natural_of_elf64_word h1.elf64_p_type;
     natural_of_elf64_off h1.elf64_p_offset;
     natural_of_elf64_addr h1.elf64_p_vaddr;
     natural_of_elf64_addr h1.elf64_p_paddr;
     natural_of_elf64_xword h1.elf64_p_filesz;
-    natural_of_elf64_xword h1.elf64_p_memsz; 
+    natural_of_elf64_xword h1.elf64_p_memsz;
     natural_of_elf64_word h1.elf64_p_flags;
     natural_of_elf64_xword h1.elf64_p_align]
     [natural_of_elf64_word h2.elf64_p_type;
@@ -270,7 +279,7 @@ let compare_elf64_program_header_table_entry h1 h2 =
     natural_of_elf64_addr h2.elf64_p_vaddr;
     natural_of_elf64_addr h2.elf64_p_paddr;
     natural_of_elf64_xword h2.elf64_p_filesz;
-    natural_of_elf64_xword h2.elf64_p_memsz; 
+    natural_of_elf64_xword h2.elf64_p_memsz;
     natural_of_elf64_word h2.elf64_p_flags;
     natural_of_elf64_xword h2.elf64_p_align]
 
@@ -282,7 +291,7 @@ instance (Ord elf64_program_header_table_entry)
     let (>=) = fun f1 -> (fun f2 -> Set.member (compare_elf64_program_header_table_entry f1 f2) {GT; EQ})
 end
 
-  
+
 (** [string_of_elf32_program_header_table_entry os proc et] produces a string
   * representation of a 32-bit program header table entry using [os] and [proc]
   * to render OS- and processor-specific entries.
@@ -336,7 +345,7 @@ let string_of_elf64_program_header_table_entry_default =
   string_of_elf64_program_header_table_entry
     (const "*Default OS specific print*")
       (const "*Default processor specific print*")
-	
+
 instance (Show elf32_program_header_table_entry)
 	let show = string_of_elf32_program_header_table_entry_default
 end
@@ -362,7 +371,7 @@ let bytes_of_elf32_program_header_table_entry endian entry =
   ; bytes_of_elf32_word endian entry.elf32_p_flags
   ; bytes_of_elf32_word endian entry.elf32_p_align
   ]
-  
+
 (** [bytes_of_elf64_program_header_table_entry ed ent] blits a 64-bit program
   * header table entry [ent] into a byte sequence assuming endianness [ed].
   *)
@@ -445,7 +454,7 @@ let bytes_of_elf32_program_header_table endian tbl =
 
 (** [bytes_of_elf64_program_header_table ed tbl] blits an ELF64 program header
   * table into a byte sequence assuming endianness [ed].
-  *)  
+  *)
 let bytes_of_elf64_program_header_table endian tbl =
   Byte_sequence.concat (List.map (bytes_of_elf64_program_header_table_entry endian) tbl)
 
@@ -560,7 +569,7 @@ let get_elf32_static_linked pht =
 val get_elf64_static_linked : elf64_program_header_table -> bool
 let get_elf64_static_linked pht =
   not (get_elf64_dynamic_linked pht)
-  
+
 (** [get_elf32_requested_interpreter ent bs0] extracts the requested interpreter
   * of a dynamically linkable ELF file from that file's program header table
   * entry of type PT_INTERP, [ent].  Interpreter string is extracted from byte
@@ -577,7 +586,7 @@ let get_elf32_requested_interpreter pent bs0 =
       return (Byte_sequence.string_of_byte_sequence cut)
   else
     fail "get_elf32_requested_interpreter: not an INTERP segment header"
-  
+
 (** [get_elf64_requested_interpreter ent bs0] extracts the requested interpreter
   * of a dynamically linkable ELF file from that file's program header table
   * entry of type PT_INTERP, [ent].  Interpreter string is extracted from byte
