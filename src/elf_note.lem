@@ -114,6 +114,9 @@ let read_elf32_note endian bs0 =
   read_elf32_word endian bs0 >>= fun (typ, bs0) ->
   Byte_sequence.partition (note_align (natural_of_elf32_word namesz)) bs0 >>= fun (name, bs0) ->
   Byte_sequence.partition (note_align (natural_of_elf32_word descsz)) bs0 >>= fun (desc, bs0) ->
+  (* Strip padding and NULL terminator *)
+  Byte_sequence.takebytes (natural_of_elf32_word namesz - 1) name >>= fun (name) ->
+  Byte_sequence.takebytes (natural_of_elf32_word descsz - 1) desc >>= fun (desc) ->
   let note = <|
     elf32_note_namesz = namesz;
     elf32_note_descsz = descsz;
@@ -134,6 +137,9 @@ let read_elf64_note endian bs0 =
   read_elf64_word endian bs0 >>= fun (typ, bs0) ->
   Byte_sequence.partition (note_align (natural_of_elf64_word namesz)) bs0 >>= fun (name, bs0) ->
   Byte_sequence.partition (note_align (natural_of_elf64_word descsz)) bs0 >>= fun (desc, bs0) ->
+  (* Strip padding and NULL terminator *)
+  Byte_sequence.takebytes (natural_of_elf64_word namesz - 1) name >>= fun (name) ->
+  Byte_sequence.takebytes (natural_of_elf64_word descsz - 1) desc >>= fun (desc) ->
   let note = <|
     elf64_note_namesz = namesz;
     elf64_note_descsz = descsz;
