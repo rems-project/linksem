@@ -98,6 +98,22 @@ let nt_arm_sve : natural = natural_of_hex "0x405" (** ARM Scalable Vector Extens
 
 let nt_version : natural = 1 (** Contains a version string. *)
 
+
+type elf64_nt_file_entry =
+  <| elf64_nt_file_entry_start : elf64_xword
+   ; elf64_nt_file_entry_end : elf64_xword
+   ; elf64_nt_file_entry_offset : elf64_xword
+   ; elf64_nt_file_entry_filename : string
+   |>
+
+(** [elf64_nt_file] represents the contents of a NT_FILE note.
+  *)
+type elf64_nt_file =
+  <| elf64_nt_file_count : elf64_xword
+   ; elf64_nt_file_page_size : elf64_xword
+   ; elf64_nt_file_entries : list elf64_nt_file_entry
+   |>
+
 (* Note names and descriptions are 4-byte aligned (even ELF64 notes) *)
 val note_align : natural -> natural
 let note_align n =
@@ -114,9 +130,9 @@ let read_elf32_note endian bs0 =
   read_elf32_word endian bs0 >>= fun (typ, bs0) ->
   Byte_sequence.partition (note_align (natural_of_elf32_word namesz)) bs0 >>= fun (name, bs0) ->
   Byte_sequence.partition (note_align (natural_of_elf32_word descsz)) bs0 >>= fun (desc, bs0) ->
-  (* Strip padding and NULL terminator *)
-  Byte_sequence.takebytes (natural_of_elf32_word namesz - 1) name >>= fun (name) ->
-  Byte_sequence.takebytes (natural_of_elf32_word descsz - 1) desc >>= fun (desc) ->
+  (* Strip padding *)
+  Byte_sequence.takebytes (natural_of_elf32_word namesz) name >>= fun (name) ->
+  Byte_sequence.takebytes (natural_of_elf32_word descsz) desc >>= fun (desc) ->
   let note = <|
     elf32_note_namesz = namesz;
     elf32_note_descsz = descsz;
@@ -137,9 +153,9 @@ let read_elf64_note endian bs0 =
   read_elf64_word endian bs0 >>= fun (typ, bs0) ->
   Byte_sequence.partition (note_align (natural_of_elf64_word namesz)) bs0 >>= fun (name, bs0) ->
   Byte_sequence.partition (note_align (natural_of_elf64_word descsz)) bs0 >>= fun (desc, bs0) ->
-  (* Strip padding and NULL terminator *)
-  Byte_sequence.takebytes (natural_of_elf64_word namesz - 1) name >>= fun (name) ->
-  Byte_sequence.takebytes (natural_of_elf64_word descsz - 1) desc >>= fun (desc) ->
+  (* Strip padding *)
+  Byte_sequence.takebytes (natural_of_elf64_word namesz) name >>= fun (name) ->
+  Byte_sequence.takebytes (natural_of_elf64_word descsz) desc >>= fun (desc) ->
   let note = <|
     elf64_note_namesz = namesz;
     elf64_note_descsz = descsz;
@@ -282,11 +298,77 @@ let obtain_elf64_note_section_and_segments endian pht sht bs0 =
   *)
 val name_string_of_elf32_note : elf32_note -> string
 let name_string_of_elf32_note note =
-  Byte_sequence.string_of_byte_sequence note.elf32_note_name
+  (* Strip NULL terminator *)
+  match Byte_sequence.takebytes (natural_of_elf32_word note.elf32_note_namesz - 1) note.elf32_note_name with
+    | Success bs -> Byte_sequence.string_of_byte_sequence bs
+    | Fail err -> Assert_extra.failwith err
+  end
 
 (** [name_string_of_elf64_note note] extracts the name string of an ELF note
   * section, interpreting the section's uninterpreted name field as a string.
   *)
 val name_string_of_elf64_note : elf64_note -> string
 let name_string_of_elf64_note note =
-  Byte_sequence.string_of_byte_sequence note.elf64_note_name
+  (* Strip NULL terminator *)
+  match Byte_sequence.takebytes (natural_of_elf64_word note.elf64_note_namesz - 1) note.elf64_note_name with
+    | Success bs -> Byte_sequence.string_of_byte_sequence bs
+    | Fail err -> Assert_extra.failwith err
+  end
+
+(* Functions to parse specific note types *)
+
+val read_string' : byte_sequence -> error (list byte * byte_sequence)
+let rec read_string' bs =
+  Byte_sequence.read_char bs >>= fun (b, bs) ->
+  if b = Missing_pervasives.null_byte then
+    return ([], bs)
+  else
+    read_string' bs >>= fun (next, bs) ->
+    return (b :: next, bs)
+
+(* Parses a single NULL-terminated string *)
+val read_string : byte_sequence -> error (string * byte_sequence)
+let read_string bs =
+  read_string' bs >>= fun (l, bs) ->
+  return (Byte_sequence.string_of_byte_sequence (Byte_sequence.byte_sequence_of_byte_list l), bs)
+
+val read_elf64_nt_file_entry : endianness -> byte_sequence -> string -> error (elf64_nt_file_entry * byte_sequence)
+let read_elf64_nt_file_entry endian bs filename =
+  read_elf64_xword endian bs >>= fun (map_start, bs) ->
+  read_elf64_xword endian bs >>= fun (map_end, bs) ->
+  read_elf64_xword endian bs >>= fun (file_offset, bs) ->
+  let e = <|
+    elf64_nt_file_entry_start = map_start;
+    elf64_nt_file_entry_end = map_end;
+    elf64_nt_file_entry_offset = file_offset;
+    elf64_nt_file_entry_filename = filename
+  |> in
+  return (e, bs)
+
+val read_elf64_nt_file_entries : endianness -> byte_sequence -> byte_sequence -> error (list elf64_nt_file_entry)
+let rec read_elf64_nt_file_entries endian entries_bs filenames_bs =
+  if Byte_sequence.length entries_bs = 0 then
+    if Byte_sequence.length filenames_bs <> 0 then
+      fail "read_nt_file_entries: malformed filenames (trailing data)"
+    else
+      return []
+  else
+    read_string filenames_bs >>= fun (filename, filenames_bs) ->
+    read_elf64_nt_file_entry endian entries_bs filename >>= fun (e, entries_bs) ->
+    read_elf64_nt_file_entries endian entries_bs filenames_bs >>= fun (next) ->
+    return (e :: next)
+
+(* See https://sourceware.org/ml/binutils/2012-10/msg00309.html *)
+val read_elf64_nt_file : endianness -> byte_sequence -> error elf64_nt_file
+let read_elf64_nt_file endian bs =
+  read_elf64_xword endian bs >>= fun (count, bs) ->
+  read_elf64_xword endian bs >>= fun (page_size, bs) ->
+  let addr_size = 8 in
+  (* read_nt_file_entry reads 3 elf64_xword values *)
+  Byte_sequence.partition (3 * addr_size * (natural_of_elf64_xword count)) bs >>= fun (entries_bs, filenames_bs) ->
+  read_elf64_nt_file_entries endian entries_bs filenames_bs >>= fun (entries) ->
+  return <|
+    elf64_nt_file_count = count;
+    elf64_nt_file_page_size = page_size;
+    elf64_nt_file_entries = entries
+  |>
