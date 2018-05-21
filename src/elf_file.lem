@@ -330,7 +330,7 @@ let obtain_elf32_interpreted_segments pht bdy =
     let memsz    = natural_of_elf32_word ph.elf32_p_memsz in
     let typ      = natural_of_elf32_word ph.elf32_p_type  in
     let align    = natural_of_elf32_word ph.elf32_p_align in
-    let flags    = elf32_interpret_program_header_flags ph.elf32_p_flags in
+    let flags    = parse_elf_segment_permissions (natural_of_elf32_word ph.elf32_p_flags) in
       if memsz < size then
         fail "obtain_elf32_interpreted_segments: memory size of segment cannot be less than file size"
       else
@@ -361,7 +361,7 @@ let obtain_elf64_interpreted_segments pht bdy =
     let memsz    = natural_of_elf64_xword ph.elf64_p_memsz in
     let typ      = natural_of_elf64_word  ph.elf64_p_type  in
     let align    = natural_of_elf64_xword ph.elf64_p_align in
-    let flags    = elf64_interpret_program_header_flags ph.elf64_p_flags in
+    let flags    = parse_elf_segment_permissions (natural_of_elf64_word ph.elf64_p_flags) in
       if memsz < size then
         fail "obtain_elf64_interpreted_segments: memory size of segment cannot be less than file size"
       else
