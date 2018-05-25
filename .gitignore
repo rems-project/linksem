@@ -9,7 +9,7 @@ src/**/*.ml
 !src/uint32_wrapper.ml
 !src/uint64_wrapper.ml
 !src/ml_bindings.ml
-!src/byte_sequence_bindings.ml
+!src/byte_sequence_wrapper.ml
 !src/src_lem_library/*.ml
 
 *.opt
