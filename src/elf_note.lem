@@ -98,6 +98,10 @@ let nt_arm_sve : natural = natural_of_hex "0x405" (** ARM Scalable Vector Extens
 
 let nt_version : natural = 1 (** Contains a version string. *)
 
+(* Legal values for auxiliary vector entry types. *)
+
+let at_null : natural = 0 (* End of vector *)
+let at_execfn : natural = 31 (* Filename of executable. *)
 
 type elf64_nt_file_entry =
   <| elf64_nt_file_entry_start : elf64_xword
@@ -112,6 +116,12 @@ type elf64_nt_file =
   <| elf64_nt_file_count : elf64_xword
    ; elf64_nt_file_page_size : elf64_xword
    ; elf64_nt_file_entries : list elf64_nt_file_entry
+   |>
+
+(** Auxiliary vector *)
+type elf64_auxv =
+  <| elf64_auxv_type : elf64_xword
+   ; elf64_auxv_value : elf64_xword
    |>
 
 (* Note names and descriptions are 4-byte aligned (even ELF64 notes) *)
@@ -372,3 +382,25 @@ let read_elf64_nt_file endian bs =
     elf64_nt_file_page_size = page_size;
     elf64_nt_file_entries = entries
   |>
+
+val read_elf64_auxv : endianness -> byte_sequence -> error (elf64_auxv * byte_sequence)
+let read_elf64_auxv endian bs =
+  read_elf64_xword endian bs >>= fun (typ, bs) ->
+  read_elf64_xword endian bs >>= fun (value, bs) ->
+  let av = <|
+    elf64_auxv_type = typ;
+    elf64_auxv_value = value
+  |> in
+  return (av, bs)
+
+val read_all_elf64_auxv : endianness -> byte_sequence -> error (list elf64_auxv)
+let rec read_all_elf64_auxv endian bs =
+  if Byte_sequence.length bs = 0 then
+    fail "read_all_elf64_auxv: EOF before reading a NULL auxv"
+  else
+    read_elf64_auxv endian bs >>= fun (av, bs) ->
+    if (natural_of_elf64_xword av.elf64_auxv_type) = at_null then
+      return []
+    else
+      read_all_elf64_auxv endian bs >>= fun (next) ->
+      return (av :: next)
