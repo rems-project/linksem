@@ -55,7 +55,7 @@ LEM_ELF_SRC := byte_sequence.lem archive.lem \
 	elf_relocation.lem \
 	elf_interpreted_segment.lem elf_interpreted_section.lem \
 	elf_note.lem elf_file.lem elf_dynamic.lem \
-	dwarf.lem
+	dwarf.lem auxv.lem
 
 LEM_ABI_SRC := \
 	abis/abi_classes.lem memory_image.lem memory_image_orderings.lem \
@@ -80,6 +80,7 @@ LEM_ABI_SRC := \
 	abis/amd64/abi_amd64_section_header_table.lem \
 	abis/amd64/abi_amd64_symbol_table.lem \
 	abis/amd64/abi_amd64.lem \
+	abis/mips64/abi_mips64_dynamic.lem \
 	abis/mips64/abi_mips64_elf_header.lem \
 	abis/mips64/abi_mips64_serialisation.lem \
 	abis/mips64/abi_mips64_program_header_table.lem \

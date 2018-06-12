@@ -1,0 +1,119 @@
+open import Basic_classes
+open import Num
+open import String
+
+open import Error
+open import Missing_pervasives
+open import Show
+open import String_table
+
+open import Elf_dynamic
+open import Elf_types_native_uint
+
+let abi_mips64_dt_rld_version : natural = natural_of_hex "0x70000001" (** Runtime linker interface version *)
+let abi_mips64_dt_flags : natural = natural_of_hex "0x70000005" (** Flags *)
+let abi_mips64_dt_base_address : natural = natural_of_hex "0x70000006" (** Base address *)
+let abi_mips64_dt_local_gotno : natural = natural_of_hex "0x7000000a" (** Number of local GOT entries *)
+let abi_mips64_dt_symtabno : natural = natural_of_hex "0x70000011" (** Number of DYNSYM entries *)
+let abi_mips64_dt_unrefextno : natural = natural_of_hex "0x70000012" (** First external DYNSYM *)
+let abi_mips64_dt_gotsym : natural = natural_of_hex "0x70000013" (** First GOT entry in DYNSYM *)
+(** An alternative description of the classic MIPS RLD_MAP that is usable
+    in a PIE as it stores a relative offset from the address of the tag
+    rather than an absolute address. *)
+let abi_mips64_dt_rld_map_rel : natural = natural_of_hex "0x70000035"
+
+val string_of_abi_mips64_dynamic_tag : natural -> string
+let string_of_abi_mips64_dynamic_tag m =
+  if m = abi_mips64_dt_rld_version then
+    "MIPS64_RLD_VERSION"
+  else if m = abi_mips64_dt_flags then
+    "MIPS64_FLAGS"
+  else if m = abi_mips64_dt_base_address then
+    "MIPS64_BASE_ADDRESS"
+  else if m = abi_mips64_dt_local_gotno then
+    "MIPS64_LOCAL_GOTNO"
+  else if m = abi_mips64_dt_symtabno then
+    "MIPS64_SYMTABNO"
+  else if m = abi_mips64_dt_unrefextno then
+    "MIPS64_RLD_UNREFEXTNO"
+  else if m = abi_mips64_dt_gotsym then
+    "MIPS64_RLD_GOTSYM"
+  else if m = abi_mips64_dt_rld_map_rel then
+    "MIPS64_RLD_MAP_REL"
+  else
+    "Invalid MIPS64 dynamic tag 0x" ^ (hex_string_of_natural m)
+
+val abi_mips64_tag_correspondence_of_tag : natural -> error tag_correspondence
+let abi_mips64_tag_correspondence_of_tag m =
+  if m = abi_mips64_dt_rld_version then
+    return C_Val
+  else if m = abi_mips64_dt_flags then
+    return C_Val
+  else if m = abi_mips64_dt_base_address then
+    return C_Ptr
+  else if m = abi_mips64_dt_local_gotno then
+    return C_Val
+  else if m = abi_mips64_dt_symtabno then
+    return C_Val
+  else if m = abi_mips64_dt_unrefextno then
+    return C_Val
+  else if m = abi_mips64_dt_gotsym then
+    return C_Val
+  else if m = abi_mips64_dt_rld_map_rel then
+    return C_Ptr
+  else
+    fail ("abi_mips64_tag_correspondence_of_tag: invalid MIPS64 dynamic tag 0x" ^ (hex_string_of_natural m))
+
+val abi_mips64_elf64_value_of_elf64_dyn : elf64_dyn -> string_table -> error elf64_dyn_value
+let abi_mips64_elf64_value_of_elf64_dyn dyn stbl =
+  let tag = naturalFromInteger (integer_of_elf64_sxword dyn.elf64_dyn_tag) in
+  if tag = abi_mips64_dt_rld_version then
+    match dyn.elf64_dyn_d_un with
+      | D_Val v -> return v
+      | _ -> fail "abi_mips64_elf64_value_of_elf64_dyn: RLD_VERSION must be a Val"
+    end >>= fun v ->
+    return (Numeric (natural_of_elf64_xword v))
+  else if tag = abi_mips64_dt_flags then
+    match dyn.elf64_dyn_d_un with
+      | D_Val v -> return v
+      | _ -> fail "abi_mips64_elf64_value_of_elf64_dyn: FLAGS must be a Val"
+    end >>= fun flags ->
+    return (Flags (natural_of_elf64_xword flags))
+  else if tag = abi_mips64_dt_base_address then
+    match dyn.elf64_dyn_d_un with
+      | D_Ptr v -> return v
+      | _ -> fail "abi_mips64_elf64_value_of_elf64_dyn: BASE_ADDRESS must be a PTR"
+    end >>= fun v ->
+    return (Address v)
+  else if tag = abi_mips64_dt_local_gotno then
+    match dyn.elf64_dyn_d_un with
+      | D_Val v -> return v
+      | _ -> fail "abi_mips64_elf64_value_of_elf64_dyn: LOCAL_GOTNO must be a Val"
+    end >>= fun v ->
+    return (Numeric (natural_of_elf64_xword v))
+  else if tag = abi_mips64_dt_symtabno then
+    match dyn.elf64_dyn_d_un with
+      | D_Val v -> return v
+      | _ -> fail "abi_mips64_elf64_value_of_elf64_dyn: SYMTABNO must be a Val"
+    end >>= fun v ->
+    return (Numeric (natural_of_elf64_xword v))
+  else if tag = abi_mips64_dt_unrefextno then
+    match dyn.elf64_dyn_d_un with
+      | D_Val v -> return v
+      | _ -> fail "abi_mips64_elf64_value_of_elf64_dyn: UNREFEXTNO must be a Val"
+    end >>= fun v ->
+    return (Numeric (natural_of_elf64_xword v))
+  else if tag = abi_mips64_dt_gotsym then
+    match dyn.elf64_dyn_d_un with
+      | D_Val v -> return v
+      | _ -> fail "abi_mips64_elf64_value_of_elf64_dyn: GOTSYM must be a Val"
+    end >>= fun v ->
+    return (Numeric (natural_of_elf64_xword v))
+  else if tag = abi_mips64_dt_rld_map_rel then
+    match dyn.elf64_dyn_d_un with
+      | D_Ptr v -> return v
+      | _ -> fail "abi_mips64_elf64_value_of_elf64_dyn: RLD_MAP_REL must be a PTR"
+    end >>= fun v ->
+    return (Address v)
+  else
+    fail ("abi_mips64_elf64_value_of_elf64_dyn: invalid MIPS64 dynamic tag 0x" ^ (hex_string_of_natural tag))
