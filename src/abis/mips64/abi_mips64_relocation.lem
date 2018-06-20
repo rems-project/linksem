@@ -6,20 +6,210 @@ open import Basic_classes
 open import Map
 open import Maybe
 open import Num
+open import Show
 open import String
 
+open import Assert_extra
 open import Error
 open import Missing_pervasives
-open import Assert_extra
 
-open import Elf_types_native_uint
 open import Elf_file
 open import Elf_header
 open import Elf_relocation
 open import Elf_symbol_table
+open import Elf_types_native_uint
 open import Memory_image
 
 open import Abi_classes
 open import Abi_utilities
 
-(* FIXME: this file *)
+(* Relocation types *)
+
+let r_mips_none : natural = 0 (** No reloc *)
+let r_mips_16 : natural = 1 (** Direct 16 bit *)
+let r_mips_32 : natural = 2 (** Direct 32 bit *)
+let r_mips_rel32 : natural = 3 (** PC relative 32 bit *)
+let r_mips_26 : natural = 4 (** Direct 26 bit shifted *)
+let r_mips_hi16 : natural = 5 (** High 16 bit *)
+let r_mips_lo16 : natural = 6 (** Low 16 bit *)
+let r_mips_gprel16 : natural = 7 (** GP relative 16 bit *)
+let r_mips_literal : natural = 8 (** 16 bit literal entry *)
+let r_mips_got16 : natural = 9 (** 16 bit GOT entry *)
+let r_mips_pc16 : natural = 10 (** PC relative 16 bit *)
+let r_mips_call16 : natural = 11 (** 16 bit GOT entry for function *)
+let r_mips_gprel32 : natural = 12 (** GP relative 32 bit *)
+
+let r_mips_shift5 : natural = 16
+let r_mips_shift6 : natural = 17
+let r_mips_64 : natural = 18
+let r_mips_got_disp : natural = 19
+let r_mips_got_page : natural = 20
+let r_mips_got_ofst : natural = 21
+let r_mips_got_hi16 : natural = 22
+let r_mips_got_lo16 : natural = 23
+let r_mips_sub : natural = 24
+let r_mips_insert_a : natural = 25
+let r_mips_insert_b : natural = 26
+let r_mips_delete : natural = 27
+let r_mips_higher : natural = 28
+let r_mips_highest : natural = 29
+let r_mips_call_hi16 : natural = 30
+let r_mips_call_lo16 : natural = 31
+let r_mips_scn_disp : natural = 32
+let r_mips_rel16 : natural = 33
+let r_mips_add_immediate : natural = 34
+let r_mips_pjump : natural = 35
+let r_mips_relgot : natural = 36
+let r_mips_jalr : natural = 37
+let r_mips_tls_dtpmod32 : natural = 38 (** Module number 32 bit *)
+let r_mips_tls_dtprel32 : natural = 39 (** Module-relative offset 32 bit *)
+let r_mips_tls_dtpmod64 : natural = 40 (** Module number 64 bit *)
+let r_mips_tls_dtprel64 : natural = 41 (** Module-relative offset 64 bit *)
+let r_mips_tls_gd : natural = 42 (** 16 bit GOT offset for GD *)
+let r_mips_tls_ldm : natural = 43 (** 16 bit GOT offset for LDM *)
+let r_mips_tls_dtprel_hi16 : natural = 44 (** Module-relative offset, high 16 bits *)
+let r_mips_tls_dtprel_lo16 : natural = 45 (** Module-relative offset, low 16 bits *)
+let r_mips_tls_gottprel : natural = 46 (** 16 bit GOT offset for IE *)
+let r_mips_tls_tprel32 : natural = 47 (** TP-relative offset, 32 bit *)
+let r_mips_tls_tprel64 : natural = 48 (** TP-relative offset, 64 bit *)
+let r_mips_tls_tprel_hi16 : natural = 49 (** TP-relative offset, high 16 bits *)
+let r_mips_tls_tprel_lo16 : natural = 50 (** TP-relative offset, low 16 bits *)
+let r_mips_glob_dat : natural = 51
+let r_mips_copy : natural = 126
+let r_mips_jump_slot : natural = 127
+
+(* TODO: borrowed from Dwarf, this should probbaly go somewhere else *)
+val natural_nat_shift_right : natural -> nat -> natural
+declare ocaml target_rep function natural_nat_shift_right = `Nat_big_num.shift_right`
+
+let byte_mask : natural = natural_of_hex "0xFF"
+
+val get_mips64_relocation_subtypes : natural -> (natural * natural * natural)
+let get_mips64_relocation_subtypes rel_type =
+  let type1 = natural_land rel_type byte_mask in
+  let type2 = natural_land (natural_nat_shift_right rel_type 8) byte_mask in
+  let type3 = natural_land (natural_nat_shift_right rel_type 16) byte_mask in
+  (type1, type2, type3)
+
+val string_of_mips64_relocation_subtype : natural -> string
+let string_of_mips64_relocation_subtype rel_type =
+  if rel_type = r_mips_none then
+    "R_MIPS_NONE"
+  else if rel_type = r_mips_16 then
+    "R_MIPS_16"
+  else if rel_type = r_mips_32 then
+    "R_MIPS_32"
+  else if rel_type = r_mips_rel32 then
+    "R_MIPS_REL32"
+  else if rel_type = r_mips_26 then
+    "R_MIPS_26"
+  else if rel_type = r_mips_hi16 then
+    "R_MIPS_HI16"
+  else if rel_type = r_mips_lo16 then
+    "R_MIPS_LO16"
+  else if rel_type = r_mips_gprel16 then
+    "R_MIPS_GPREL16"
+  else if rel_type = r_mips_literal then
+    "R_MIPS_LITERAL"
+  else if rel_type = r_mips_got16 then
+    "R_MIPS_GOT16"
+  else if rel_type = r_mips_pc16 then
+    "R_MIPS_PC16"
+  else if rel_type = r_mips_call16 then
+    "R_MIPS_CALL16"
+  else if rel_type = r_mips_gprel32 then
+    "R_MIPS_GPREL32"
+  else if rel_type = r_mips_shift5 then
+    "R_MIPS_SHIFT5"
+  else if rel_type = r_mips_shift6 then
+    "R_MIPS_SHIFT6"
+  else if rel_type = r_mips_64 then
+    "R_MIPS_64"
+  else if rel_type = r_mips_got_disp then
+    "R_MIPS_GOT_DISP"
+  else if rel_type = r_mips_got_page then
+    "R_MIPS_GOT_PAGE"
+  else if rel_type = r_mips_got_ofst then
+    "R_MIPS_GOT_OFST"
+  else if rel_type = r_mips_got_hi16 then
+    "R_MIPS_GOT_HI16"
+  else if rel_type = r_mips_got_lo16 then
+    "R_MIPS_GOT_LO16"
+  else if rel_type = r_mips_sub then
+    "R_MIPS_SUB"
+  else if rel_type = r_mips_insert_a then
+    "R_MIPS_INSERT_A"
+  else if rel_type = r_mips_insert_b then
+    "R_MIPS_INSERT_B"
+  else if rel_type = r_mips_delete then
+    "R_MIPS_DELETE"
+  else if rel_type = r_mips_higher then
+    "R_MIPS_HIGHER"
+  else if rel_type = r_mips_highest then
+    "R_MIPS_HIGHEST"
+  else if rel_type = r_mips_call_hi16 then
+    "R_MIPS_CALL_HI16"
+  else if rel_type = r_mips_call_lo16 then
+    "R_MIPS_CALL_LO16"
+  else if rel_type = r_mips_scn_disp then
+    "R_MIPS_SCN_DISP"
+  else if rel_type = r_mips_rel16 then
+    "R_MIPS_REL16"
+  else if rel_type = r_mips_add_immediate then
+    "R_MIPS_ADD_IMMEDIATE"
+  else if rel_type = r_mips_pjump then
+    "R_MIPS_PJUMP"
+  else if rel_type = r_mips_relgot then
+    "R_MIPS_RELGOT"
+  else if rel_type = r_mips_jalr then
+    "R_MIPS_JALR"
+  else if rel_type = r_mips_tls_dtpmod32 then
+    "R_MIPS_TLS_DTPMOD32"
+  else if rel_type = r_mips_tls_dtprel32 then
+    "R_MIPS_TLS_DTPREL32"
+  else if rel_type = r_mips_tls_dtpmod64 then
+    "R_MIPS_TLS_DTPMOD64"
+  else if rel_type = r_mips_tls_dtprel64 then
+    "R_MIPS_TLS_DTPREL64"
+  else if rel_type = r_mips_tls_gd then
+    "R_MIPS_TLS_GD"
+  else if rel_type = r_mips_tls_ldm then
+    "R_MIPS_TLS_LDM"
+  else if rel_type = r_mips_tls_dtprel_hi16 then
+    "R_MIPS_TLS_DTPREL_HI16"
+  else if rel_type = r_mips_tls_dtprel_lo16 then
+    "R_MIPS_TLS_DTPREL_LO16"
+  else if rel_type = r_mips_tls_gottprel then
+    "R_MIPS_TLS_GOTTPREL"
+  else if rel_type = r_mips_tls_tprel32 then
+    "R_MIPS_TLS_TPREL32"
+  else if rel_type = r_mips_tls_tprel64 then
+    "R_MIPS_TLS_TPREL64"
+  else if rel_type = r_mips_tls_tprel_hi16 then
+    "R_MIPS_TLS_TPREL_HI16"
+  else if rel_type = r_mips_tls_tprel_lo16 then
+    "R_MIPS_TLS_TPREL_LO16"
+  else if rel_type = r_mips_glob_dat then
+    "R_MIPS_GLOB_DAT"
+  else if rel_type = r_mips_copy then
+    "R_MIPS_COPY"
+  else if rel_type = r_mips_jump_slot then
+    "R_MIPS_JUMP_SLOT"
+  else
+    "[Invalid MIPS relocation 0x" ^ (hex_string_of_natural rel_type) ^ "]"
+
+val string_of_mips64_relocation_type : natural -> string
+let string_of_mips64_relocation_type rel_type =
+  let (type1, type2, type3) = get_mips64_relocation_subtypes rel_type in
+  (string_of_mips64_relocation_subtype type1)
+    ^ "/" ^ (string_of_mips64_relocation_subtype type2)
+    ^ "/" ^ (string_of_mips64_relocation_subtype type3)
+
+val mips64_reloc : forall 'abifeature. reloc_fn 'abifeature
+let mips64_reloc r =
+  match (string_of_mips64_relocation_type r) with
+    | "R_MIPS_NONE/R_MIPS_NONE/R_MIPS_NONE" -> (false, fun img -> (fun site_addr -> (fun rr -> (0, fun s -> fun a -> fun e -> e))))
+    | (* TODO *) "R_MIPS_REL32/R_MIPS_64/R_MIPS_NONE" -> (false, fun img -> (fun site_addr -> (fun rr -> (8, fun s -> fun a -> fun e -> e))))
+    | (* TODO *) "R_MIPS_TLS_TPREL64/R_MIPS_NONE/R_MIPS_NONE" -> (false, fun img -> (fun site_addr -> (fun rr -> (8, fun s -> fun a -> fun e -> e))))
+    | _ -> failwith ("unrecognised relocation " ^ (string_of_mips64_relocation_type r))
+  end
