@@ -208,8 +208,8 @@ let string_of_mips64_relocation_type rel_type =
 val mips64_reloc : forall 'abifeature. reloc_fn 'abifeature
 let mips64_reloc r =
   match (string_of_mips64_relocation_type r) with
-    | "R_MIPS_NONE/R_MIPS_NONE/R_MIPS_NONE" -> (false, fun img -> (fun site_addr -> (fun rr -> (0, fun s -> fun a -> fun e -> e))))
-    | (* TODO *) "R_MIPS_REL32/R_MIPS_64/R_MIPS_NONE" -> (false, fun img -> (fun site_addr -> (fun rr -> (8, fun s -> fun a -> fun e -> e))))
-    | (* TODO *) "R_MIPS_TLS_TPREL64/R_MIPS_NONE/R_MIPS_NONE" -> (false, fun img -> (fun site_addr -> (fun rr -> (8, fun s -> fun a -> fun e -> e))))
+    | "R_MIPS_NONE/R_MIPS_NONE/R_MIPS_NONE" -> (false, fun img -> (fun site_addr -> (fun rr -> (0, fun s -> fun a -> fun e -> failwith "mips64_reloc: tried to apply a R_MIPS_NONE/R_MIPS_NONE/R_MIPS_NONE relocation"))))
+    | (* TODO *) "R_MIPS_REL32/R_MIPS_64/R_MIPS_NONE" -> (false, fun img -> (fun site_addr -> (fun rr -> (8, fun s -> fun a -> fun e -> failwith "amd64_reloc: unimplemented R_MIPS_REL32/R_MIPS_64/R_MIPS_NONE"))))
+    | (* TODO *) "R_MIPS_TLS_TPREL64/R_MIPS_NONE/R_MIPS_NONE" -> (false, fun img -> (fun site_addr -> (fun rr -> (8, fun s -> fun a -> fun e -> failwith "amd64_reloc: unimplemented R_MIPS_TLS_TPREL64/R_MIPS_NONE/R_MIPS_NONE"))))
     | _ -> failwith ("unrecognised relocation " ^ (string_of_mips64_relocation_type r))
   end
