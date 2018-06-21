@@ -82,6 +82,7 @@ LEM_ABI_SRC := \
 	abis/amd64/abi_amd64.lem \
 	abis/mips64/abi_mips64_dynamic.lem \
 	abis/mips64/abi_mips64_elf_header.lem \
+	abis/mips64/abi_mips64_relocation.lem \
 	abis/mips64/abi_mips64_serialisation.lem \
 	abis/mips64/abi_mips64_program_header_table.lem \
 	abis/mips64/abi_mips64_section_header_table.lem \
