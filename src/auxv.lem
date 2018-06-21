@@ -1,0 +1,137 @@
+open import Basic_classes
+open import List
+open import Num
+
+open import Byte_sequence
+open import Endianness
+open import Error
+open import Missing_pervasives
+
+open import Elf_types_native_uint
+
+open import String
+open import Show
+
+(* Legal values for auxiliary vector entry types. *)
+
+let at_null : natural = 0 (** End of vector *)
+let at_ignore : natural = 1 (** Entry should be ignored *)
+let at_execfd : natural = 2 (** File descriptor of program *)
+let at_phdr : natural = 3 (** Program headers for program *)
+let at_phent : natural = 4 (** Size of program header entry *)
+let at_phnum : natural = 5 (** Number of program headers *)
+let at_pagesz : natural = 6 (** System page size *)
+let at_base : natural = 7 (** Base address of interpreter *)
+let at_flags : natural = 8 (** Flags *)
+let at_entry : natural = 9 (** Entry point of program *)
+let at_notelf : natural = 10 (** Program is not ELF *)
+let at_uid : natural = 11 (** Real uid *)
+let at_euid : natural = 12 (** Effective uid *)
+let at_gid : natural = 13 (** Real gid *)
+let at_egid : natural = 14 (** Effective gid *)
+let at_clktck : natural = 17 (** Frequency of times() *)
+(* Some more special a_type values describing the hardware. *)
+let at_platform : natural = 15 (** String identifying platform. *)
+let at_hwcap : natural = 16 (** Machine-dependent hints about processor capabilities. *)
+(* This entry gives some information about the FPU initialization performed by the kernel. *)
+let at_fpucw : natural = 18 (** Used FPU control word. *)
+(* Cache block sizes. *)
+let at_dcachebsize : natural = 19 (** Data cache block size. *)
+let at_icachebsize : natural = 20 (** Instruction cache block size. *)
+let at_ucachebsize : natural = 21 (** Unified cache block size. *)
+(* A special ignored value for PPC, used by the kernel to control the interpretation of the AUXV. Must be > 16. *)
+let at_ignoreppc : natural = 22 (** Entry should be ignored. *)
+let at_secure : natural = 23 (** Boolean, was exec setuid-like? *)
+let at_base_platform : natural = 24 (** String identifying real platforms.*)
+let at_random : natural = 25 (** Address of 16 random bytes. *)
+let at_hwcap2 : natural = 26 (** More machine-dependent hints about processor capabilities. *)
+let at_execfn : natural = 31 (** Filename of executable. *)
+(* Pointer to the global system page used for system calls and other nice things. *)
+let at_sysinfo : natural = 32
+let at_sysinfo_ehdr : natural = 33
+
+(** Auxiliary vector *)
+type elf64_auxv = <|
+  elf64_auxv_type : elf64_xword;
+  elf64_auxv_value : elf64_xword
+|>
+
+(* Defined in include/uapi/linux/elfcore.h *)
+type elf64_siginfo = <|
+  elf64_si_signo : elf64_xword;
+  elf64_si_code : elf64_xword;
+  elf64_si_errno : elf64_xword
+|>
+
+(* Defined in include/uapi/linux/elfcore.h *)
+type elf64_prstatus = <|
+  elf64_pr_info : elf64_siginfo;
+|>
+
+val read_elf64_auxv : endianness -> byte_sequence -> error (elf64_auxv * byte_sequence)
+let read_elf64_auxv endian bs =
+  read_elf64_xword endian bs >>= fun (typ, bs) ->
+  read_elf64_xword endian bs >>= fun (value, bs) ->
+  let av = <|
+    elf64_auxv_type = typ;
+    elf64_auxv_value = value
+  |> in
+  return (av, bs)
+
+val read_all_elf64_auxv : endianness -> byte_sequence -> error (list elf64_auxv)
+let rec read_all_elf64_auxv endian bs =
+  if Byte_sequence.length bs = 0 then
+    fail "read_all_elf64_auxv: EOF before reading a NULL auxv"
+  else
+    read_elf64_auxv endian bs >>= fun (av, bs) ->
+    if (natural_of_elf64_xword av.elf64_auxv_type) = at_null then
+      return []
+    else
+      read_all_elf64_auxv endian bs >>= fun (next) ->
+      return (av :: next)
+
+val read_elf64_siginfo : endianness -> byte_sequence -> error (unit * byte_sequence)
+let read_elf64_siginfo endian bs =
+  read_elf64_word endian bs >>= fun (signo, bs) ->
+  read_elf64_word endian bs >>= fun (code, bs) ->
+  read_elf64_word endian bs >>= fun (errno, bs) ->
+  let _ = Missing_pervasives.errln ("siginfo " ^
+    (hex_string_of_natural (natural_of_elf64_word signo)) ^ " " ^
+    (hex_string_of_natural (natural_of_elf64_word code)) ^ " " ^
+    (hex_string_of_natural (natural_of_elf64_word errno))
+  ) in
+  return ((), bs)
+
+val read_elf64_gregset : endianness -> byte_sequence -> error (unit * byte_sequence)
+let read_elf64_gregset endian bs =
+  read_elf64_xword endian bs >>= fun (r15, bs) ->
+  read_elf64_xword endian bs >>= fun (r14, bs) ->
+  let _ = Missing_pervasives.errln ("gregset"
+    ^ " r15=" ^ (hex_string_of_natural (natural_of_elf64_xword r15))
+    ^ " r14=" ^ (hex_string_of_natural (natural_of_elf64_xword r14))
+  ) in
+  return ((), bs)
+
+val read_elf64_prstatus : endianness -> byte_sequence -> error (unit)
+let read_elf64_prstatus endian bs =
+  read_elf64_siginfo endian bs >>= fun (siginfo, bs) ->
+  read_elf64_half endian bs >>= fun (cursig, bs) ->
+  read_elf64_xword endian bs >>= fun (sigpend, bs) ->
+  read_elf64_xword endian bs >>= fun (sighold, bs) ->
+  read_elf64_word endian bs >>= fun (pid, bs) ->
+  read_elf64_word endian bs >>= fun (ppid, bs) ->
+  read_elf64_word endian bs >>= fun (pgrp, bs) ->
+  read_elf64_word endian bs >>= fun (sid, bs) ->
+  (* TODO: parse these `struct timeval` *)
+  Byte_sequence.dropbytes (16 * 4) bs >>= fun bs ->
+  read_elf64_gregset endian bs >>= fun (gregset, bs) ->
+  let _ = Missing_pervasives.errln ("prstatus"
+     ^ " cursig=" ^ (hex_string_of_natural (natural_of_elf64_half cursig))
+     ^ " sigpend=" ^ (hex_string_of_natural (natural_of_elf64_xword sigpend))
+     ^ " sighold=" ^ (hex_string_of_natural (natural_of_elf64_xword sighold))
+     ^ " pid=" ^ (string_of_elf64_word pid)
+     ^ " ppid=" ^ (string_of_elf64_word ppid)
+     ^ " pgrp=" ^ (string_of_elf64_word pgrp)
+     ^ " sid=" ^ (string_of_elf64_word sid)
+  ) in
+  return ()
