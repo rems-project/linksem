@@ -213,10 +213,9 @@ let elf64_file_of_elf_memory_image a make_concrete fname img =
            ; elf64_section_align = isec.elf64_section_align
            ; elf64_section_entsize = isec.elf64_section_entsize
            ; elf64_section_body =
-                (* TODO: don't use lists of bytes here! *)
                 let pad_fn = if flag_is_set shf_execinstr isec.elf64_section_flags then a.pad_data else a.pad_code
                 in
-                byte_sequence_of_byte_list (concretise_byte_pattern [] 0 (make_concrete el).contents pad_fn)
+                concretise_byte_pattern (make_concrete el).contents pad_fn
            ; elf64_section_name_as_string = isec.elf64_section_name_as_string
            |>
         | forall ((off, (isec, (el_name, el_range))) MEM (zip section_file_offsets element_section_tag_pairs_sorted_by_address))

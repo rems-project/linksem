@@ -654,39 +654,6 @@ type p_context =
 (** **  missing pervasives  ************************************ *)
 (** ************************************************************ *)
 
-(** hex parsing *)
-
-(* this should be in lem, either built-in or in pervasives *)
-
-val natural_of_char : char -> natural
-let natural_of_char c =
-  let naturalOrd c' = naturalFromNat (String_extra.ord c') in
-  let n = naturalOrd c in
-  if n >= naturalOrd #'0' && n <= naturalOrd #'9' then n - naturalOrd #'0'
-  else if n >= naturalOrd #'A' && n <= naturalOrd #'F' then n - naturalOrd #'A' + 10
-  else if n >= naturalOrd #'a' && n <= naturalOrd #'f' then n - naturalOrd #'a' + 10
-  else Assert_extra.failwith ("natural_of_char argument #'" ^ String.toString [c] ^ "' not in 0-9,A-F,a-f")
-
-val natural_of_hex' : list char -> natural
-let rec natural_of_hex' cs =
-  match cs with
-  | c :: cs' -> natural_of_char c + 16 * natural_of_hex' cs'
-  | [] -> 0
-  end
-
-val natural_of_hex : string -> natural
-let natural_of_hex s =
-  let cs = String.toCharList s in
-  match cs with
-  | #'0'::#'x'::cs' ->
-      match cs' with
-      | c :: _ -> natural_of_hex' (List.reverse cs')
-      | [] -> Assert_extra.failwith ("natural_of_hex argument \"" ^ s ^ "\" has no digits")
-      end
-  | _ -> Assert_extra.failwith ("natural_of_hex argument \"" ^ s ^ "\" does not begin 0x")
-  end
-
-
 (* natural version of List.index *)
 val index_natural : forall 'a. list 'a -> natural -> maybe 'a
 let rec index_natural l n = match l with

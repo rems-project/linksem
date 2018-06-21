@@ -24,20 +24,101 @@ type elf32_note =
   <| elf32_note_namesz : elf32_word (** The size of the name field. *)
    ; elf32_note_descsz : elf32_word (** The size of the description field. *)
    ; elf32_note_type   : elf32_word (** The type of the note. *)
-   ; elf32_note_name   : list byte  (** The list of bytes (of length indicated above) corresponding to the name string. *)
-   ; elf32_note_desc   : list byte  (** The list of bytes (of length indicated above) corresponding to the desc string. *)
+   ; elf32_note_name   : byte_sequence (** The byte sequence corresponding to the name string. *)
+   ; elf32_note_desc   : byte_sequence (** The byte sequence corresponding to the desc string. *)
    |>
-   
+
 (** [elf64_note] represents the contents of a .note section or segment.
   *)
 type elf64_note =
-  <| elf64_note_namesz : elf64_xword (** The size of the name field. *)
-   ; elf64_note_descsz : elf64_xword (** The size of the description field. *)
-   ; elf64_note_type   : elf64_xword (** The type of the note. *)
-   ; elf64_note_name   : list byte   (** The list of bytes (of length indicated above) corresponding to the name string. *)
-   ; elf64_note_desc   : list byte   (** The list of bytes (of length indicated above) corresponding to the desc string. *)
+  <| elf64_note_namesz : elf64_word (** The size of the name field. *)
+   ; elf64_note_descsz : elf64_word (** The size of the description field. *)
+   ; elf64_note_type   : elf64_word (** The type of the note. *)
+   ; elf64_note_name   : byte_sequence (** The byte sequence corresponding to the name string. *)
+   ; elf64_note_desc   : byte_sequence (** The byte sequence corresponding to the desc string. *)
    |>
-   
+
+(* Legal values for note segment descriptor types for core files. *)
+
+let nt_prstatus : natural = 1 (** Contains copy of prstatus struct *)
+let nt_fpregset : natural = 2 (** Contains copy of fpregset struct *)
+let nt_prpsinfo : natural = 3 (** Contains copy of prpsinfo struct *)
+let nt_prxreg : natural = 4 (** Contains copy of prxregset struct *)
+let nt_taskstruct : natural = 4 (** Contains copy of task structure *)
+let nt_platform : natural = 5 (** String from sysinfo(SI_PLATFORM) *)
+let nt_auxv : natural = 6 (** Contains copy of auxv array *)
+let nt_gwindows : natural = 7 (** Contains copy of gwindows struct *)
+let nt_asrs : natural = 8 (** Contains copy of asrset struct *)
+let nt_pstatus : natural = 10 (** Contains copy of pstatus struct *)
+let nt_psinfo : natural = 13 (** Contains copy of psinfo struct *)
+let nt_prcred : natural = 14 (** Contains copy of prcred struct *)
+let nt_utsname : natural = 15 (** Contains copy of utsname struct *)
+let nt_lwpstatus : natural = 16 (** Contains copy of lwpstatus struct *)
+let nt_lwpsinfo : natural = 17 (** Contains copy of lwpinfo struct *)
+let nt_prfpxreg : natural = 20 (** Contains copy of fprxregset struct *)
+let nt_siginfo : natural = natural_of_hex "0x53494749" (** Contains copy of siginfo_t, size might increase *)
+let nt_file : natural = natural_of_hex "0x46494c45" (** Contains information about mapped files *)
+let nt_prxfpreg : natural = natural_of_hex "0x46e62b7f" (** Contains copy of user_fxsr_struct *)
+let nt_ppc_vmx : natural = natural_of_hex "0x100" (** PowerPC Altivec/VMX registers *)
+let nt_ppc_spe : natural = natural_of_hex "0x101" (** PowerPC SPE/EVR registers *)
+let nt_ppc_vsx : natural = natural_of_hex "0x102" (** PowerPC VSX registers *)
+let nt_ppc_tar : natural = natural_of_hex "0x103" (** Target Address Register *)
+let nt_ppc_ppr : natural = natural_of_hex "0x104" (** Program Priority Register *)
+let nt_ppc_dscr : natural = natural_of_hex "0x105" (** Data Stream Control Register *)
+let nt_ppc_ebb : natural = natural_of_hex "0x106" (** Event Based Branch Registers *)
+let nt_ppc_pmu : natural = natural_of_hex "0x107" (** Performance Monitor Registers *)
+let nt_ppc_tm_cgpr : natural = natural_of_hex "0x108" (** TM checkpointed GPR Registers *)
+let nt_ppc_tm_cfpr : natural = natural_of_hex "0x109" (** TM checkpointed FPR Registers *)
+let nt_ppc_tm_cvmx : natural = natural_of_hex "0x10a" (** TM checkpointed VMX Registers *)
+let nt_ppc_tm_cvsx : natural = natural_of_hex "0x10b" (** TM checkpointed VSX Registers *)
+let nt_ppc_tm_spr : natural = natural_of_hex "0x10c" (** TM Special Purpose Registers *)
+let nt_ppc_tm_ctar : natural = natural_of_hex "0x10d" (** TM checkpointed Target Address Register *)
+let nt_ppc_tm_cppr : natural = natural_of_hex "0x10e" (** TM checkpointed Program Priority Register *)
+let nt_ppc_tm_cdscr : natural = natural_of_hex "0x10f" (** TM checkpointed Data Stream Control Register *)
+let nt_386_tls : natural = natural_of_hex "0x200" (** i386 TLS slots (struct user_desc) *)
+let nt_386_ioperm : natural = natural_of_hex "0x201" (** x86 io permission bitmap (1=deny) *)
+let nt_x86_xstate : natural = natural_of_hex "0x202" (** x86 extended state using xsave *)
+let nt_s390_high_gprs : natural = natural_of_hex "0x300" (** s390 upper register halves *)
+let nt_s390_timer : natural = natural_of_hex "0x301" (** s390 timer register *)
+let nt_s390_todcmp : natural = natural_of_hex "0x302" (** s390 TOD clock comparator register *)
+let nt_s390_todpreg : natural = natural_of_hex "0x303" (** s390 TOD programmable register *)
+let nt_s390_ctrs : natural = natural_of_hex "0x304" (** s390 control registers *)
+let nt_s390_prefix : natural = natural_of_hex "0x305" (** s390 prefix register *)
+let nt_s390_last_break : natural = natural_of_hex "0x306" (** s390 breaking event address *)
+let nt_s390_system_call : natural = natural_of_hex "0x307" (** s390 system call restart data *)
+let nt_s390_tdb : natural = natural_of_hex "0x308" (** s390 transaction diagnostic block *)
+let nt_arm_vfp : natural = natural_of_hex "0x400" (** ARM VFP/NEON registers *)
+let nt_arm_tls : natural = natural_of_hex "0x401" (** ARM TLS register *)
+let nt_arm_hw_break : natural = natural_of_hex "0x402" (** ARM hardware breakpoint registers *)
+let nt_arm_hw_watch : natural = natural_of_hex "0x403" (** ARM hardware watchpoint registers *)
+let nt_arm_system_call : natural = natural_of_hex "0x404" (** ARM system call number *)
+let nt_arm_sve : natural = natural_of_hex "0x405" (** ARM Scalable Vector Extension registers *)
+
+(* Legal values for the note segment descriptor types for object files. *)
+
+let nt_version : natural = 1 (** Contains a version string. *)
+
+
+(** [elf32_nt_file] represents the contents of a NT_FILE note. *)
+type elf64_nt_file_entry =
+  <| elf64_nt_file_entry_start : elf64_xword
+   ; elf64_nt_file_entry_end : elf64_xword
+   ; elf64_nt_file_entry_offset : elf64_xword
+   ; elf64_nt_file_entry_filename : string
+   |>
+
+(** [elf64_nt_file] represents the contents of a NT_FILE note. *)
+type elf64_nt_file =
+  <| elf64_nt_file_count : elf64_xword
+   ; elf64_nt_file_page_size : elf64_xword
+   ; elf64_nt_file_entries : list elf64_nt_file_entry
+   |>
+
+(* Note names and descriptions are 4-byte aligned (even ELF64 notes) *)
+val note_align : natural -> natural
+let note_align n =
+  ((n + 3) / 4) * 4
+
 (** [read_elf32_note endian bs0] transcribes an ELF note section from byte
   * sequence [bs0] assuming endianness [endian].  May fail if transcription fails
   * (i.e. if the byte sequence is not sufficiently long).
@@ -47,27 +128,61 @@ let read_elf32_note endian bs0 =
   read_elf32_word endian bs0 >>= fun (namesz, bs0) ->
   read_elf32_word endian bs0 >>= fun (descsz, bs0) ->
   read_elf32_word endian bs0 >>= fun (typ, bs0) ->
-  repeatM' (natural_of_elf32_word namesz) bs0 read_char >>= fun (name, bs0) ->
-  repeatM' (natural_of_elf32_word descsz) bs0 read_char >>= fun (desc, bs0) ->
-  return (<| elf32_note_namesz = namesz; elf32_note_descsz = descsz;
-    elf32_note_type = typ; elf32_note_name = name; elf32_note_desc = desc |>,
-      bs0)
-      
+  Byte_sequence.partition (note_align (natural_of_elf32_word namesz)) bs0 >>= fun (name, bs0) ->
+  Byte_sequence.partition (note_align (natural_of_elf32_word descsz)) bs0 >>= fun (desc, bs0) ->
+  (* Strip padding *)
+  Byte_sequence.takebytes (natural_of_elf32_word namesz) name >>= fun (name) ->
+  Byte_sequence.takebytes (natural_of_elf32_word descsz) desc >>= fun (desc) ->
+  let note = <|
+    elf32_note_namesz = namesz;
+    elf32_note_descsz = descsz;
+    elf32_note_type = typ;
+    elf32_note_name = name;
+    elf32_note_desc = desc
+  |> in
+  return (note, bs0)
+
 (** [read_elf64_note endian bs0] transcribes an ELF note section from byte
   * sequence [bs0] assuming endianness [endian].  May fail if transcription fails
   * (i.e. if the byte sequence is not sufficiently long).
   *)
 val read_elf64_note : endianness -> byte_sequence -> error (elf64_note * byte_sequence)
 let read_elf64_note endian bs0 =
-  read_elf64_xword endian bs0 >>= fun (namesz, bs0) ->
-  read_elf64_xword endian bs0 >>= fun (descsz, bs0) ->
-  read_elf64_xword endian bs0 >>= fun (typ, bs0) ->
-  repeatM' (natural_of_elf64_xword namesz) bs0 read_char >>= fun (name, bs0) ->
-  repeatM' (natural_of_elf64_xword descsz) bs0 read_char >>= fun (desc, bs0) ->
-  return (<| elf64_note_namesz = namesz; elf64_note_descsz = descsz;
-    elf64_note_type = typ; elf64_note_name = name; elf64_note_desc = desc |>,
-      bs0)
-      
+  read_elf64_word endian bs0 >>= fun (namesz, bs0) ->
+  read_elf64_word endian bs0 >>= fun (descsz, bs0) ->
+  read_elf64_word endian bs0 >>= fun (typ, bs0) ->
+  Byte_sequence.partition (note_align (natural_of_elf64_word namesz)) bs0 >>= fun (name, bs0) ->
+  Byte_sequence.partition (note_align (natural_of_elf64_word descsz)) bs0 >>= fun (desc, bs0) ->
+  (* Strip padding *)
+  Byte_sequence.takebytes (natural_of_elf64_word namesz) name >>= fun (name) ->
+  Byte_sequence.takebytes (natural_of_elf64_word descsz) desc >>= fun (desc) ->
+  let note = <|
+    elf64_note_namesz = namesz;
+    elf64_note_descsz = descsz;
+    elf64_note_type = typ;
+    elf64_note_name = name;
+    elf64_note_desc = desc
+  |> in
+  return (note, bs0)
+
+val read_all_elf32_notes : endianness -> byte_sequence -> error (list elf32_note)
+let rec read_all_elf32_notes endian bs =
+  if Byte_sequence.length bs = 0 then
+    return []
+  else
+    read_elf32_note endian bs >>= fun (note, next_bs) ->
+    read_all_elf32_notes endian next_bs >>= fun next_notes ->
+    return (note :: next_notes)
+
+val read_all_elf64_notes : endianness -> byte_sequence -> error (list elf64_note)
+let rec read_all_elf64_notes endian bs =
+  if Byte_sequence.length bs = 0 then
+    return []
+  else
+    read_elf64_note endian bs >>= fun (note, next_bs) ->
+    read_all_elf64_notes endian next_bs >>= fun next_notes ->
+    return (note :: next_notes)
+
 (** [obtain_elf32_note_sections endian sht bs0] returns all note sections present
   * in an ELF file, as indicated by the file's section header table [sht], reading
   * them from byte sequence [bs0] assuming endianness [endian].  May fail if
@@ -81,14 +196,14 @@ let obtain_elf32_note_sections endian sht bs0 =
       x.elf32_sh_type = elf32_word_of_natural sht_note
     ) sht
   in
-    mapM (fun x ->
+    foldM (fun notes x ->
       let offset = natural_of_elf32_off x.elf32_sh_offset in
-      let size   = natural_of_elf32_word x.elf32_sh_size in
+      let size = natural_of_elf32_word x.elf32_sh_size in
       Byte_sequence.offset_and_cut offset size bs0 >>= fun rel ->
-      read_elf32_note endian rel >>= fun (note, _) ->
-      return note
-    ) note_sects
-    
+      read_all_elf32_notes endian rel >>= fun sec_notes ->
+      return (sec_notes ++ notes)
+    ) [] note_sects
+
 (** [obtain_elf64_note_sections endian sht bs0] returns all note sections present
   * in an ELF file, as indicated by the file's section header table [sht], reading
   * them from byte sequence [bs0] assuming endianness [endian].  May fail if
@@ -102,14 +217,14 @@ let obtain_elf64_note_sections endian sht bs0 =
       x.elf64_sh_type = elf64_word_of_natural sht_note
     ) sht
   in
-    mapM (fun x ->
+    foldM (fun notes x ->
       let offset = natural_of_elf64_off x.elf64_sh_offset in
       let size   = natural_of_elf64_xword x.elf64_sh_size in
       Byte_sequence.offset_and_cut offset size bs0 >>= fun rel ->
-      read_elf64_note endian rel >>= fun (note, _) ->
-      return note
-    ) note_sects
-    
+      read_all_elf64_notes endian rel >>= fun sec_notes ->
+      return (sec_notes ++ notes)
+    ) [] note_sects
+
 (** [obtain_elf32_note_segments endian pht bs0] returns all note segments present
   * in an ELF file, as indicated by the file's program header table [pht], reading
   * them from byte sequence [bs0] assuming endianness [endian].  May fail if
@@ -123,14 +238,14 @@ let obtain_elf32_note_segments endian pht bs0 =
       x.elf32_p_type = elf32_word_of_natural elf_pt_note
     ) pht
   in
-    mapM (fun x ->
+    foldM (fun notes x ->
       let offset = natural_of_elf32_off x.elf32_p_offset in
-      let size   = natural_of_elf32_word x.elf32_p_filesz in
+      let size = natural_of_elf32_word x.elf32_p_filesz in
       Byte_sequence.offset_and_cut offset size bs0 >>= fun rel ->
-      read_elf32_note endian rel >>= fun (note, _) ->
-      return note
-    ) note_segs
-    
+      read_all_elf32_notes endian rel >>= fun seg_notes ->
+      return (seg_notes ++ notes)
+    ) [] note_segs
+
 (** [obtain_elf64_note_segments endian pht bs0] returns all note segments present
   * in an ELF file, as indicated by the file's program header table [pht], reading
   * them from byte sequence [bs0] assuming endianness [endian].  May fail if
@@ -144,14 +259,14 @@ let obtain_elf64_note_segments endian pht bs0 =
       x.elf64_p_type = elf64_word_of_natural elf_pt_note
     ) pht
   in
-    mapM (fun x ->
+    foldM (fun notes x ->
       let offset = natural_of_elf64_off x.elf64_p_offset in
-      let size   = natural_of_elf64_xword x.elf64_p_filesz in
+      let size = natural_of_elf64_xword x.elf64_p_filesz in
       Byte_sequence.offset_and_cut offset size bs0 >>= fun rel ->
-      read_elf64_note endian rel >>= fun (note, _) ->
-      return note
-    ) note_segs
-    
+      read_all_elf64_notes endian rel >>= fun seg_notes ->
+      return (seg_notes ++ notes)
+    ) [] note_segs
+
 (** [obtain_elf32_note_section_and_segments endian pht sht bs0] returns all note
   * sections and segments present in an ELF file, as indicated by the file's
   * program header table [pht] and section header table [sht], reading
@@ -164,7 +279,7 @@ let obtain_elf32_note_section_and_segments endian pht sht bs0 =
   obtain_elf32_note_segments endian pht bs0 >>= fun pht_notes ->
   obtain_elf32_note_sections endian sht bs0 >>= fun sht_notes ->
   return (pht_notes ++ sht_notes)
-  
+
 (** [obtain_elf64_note_section_and_segments endian pht sht bs0] returns all note
   * sections and segments present in an ELF file, as indicated by the file's
   * program header table [pht] and section header table [sht], reading
@@ -177,19 +292,84 @@ let obtain_elf64_note_section_and_segments endian pht sht bs0 =
   obtain_elf64_note_segments endian pht bs0 >>= fun pht_notes ->
   obtain_elf64_note_sections endian sht bs0 >>= fun sht_notes ->
   return (pht_notes ++ sht_notes)
-    
+
 (** [name_string_of_elf32_note note] extracts the name string of an ELF note
   * section, interpreting the section's uninterpreted name field as a string.
   *)
 val name_string_of_elf32_note : elf32_note -> string
 let name_string_of_elf32_note note =
-  let bs0   = Byte_sequence.from_byte_lists [note.elf32_note_name] in
-    Byte_sequence.string_of_byte_sequence bs0
-  
+  (* Strip NULL terminator *)
+  match Byte_sequence.takebytes (natural_of_elf32_word note.elf32_note_namesz - 1) note.elf32_note_name with
+    | Success bs -> Byte_sequence.string_of_byte_sequence bs
+    | Fail err -> Assert_extra.failwith err
+  end
+
 (** [name_string_of_elf64_note note] extracts the name string of an ELF note
   * section, interpreting the section's uninterpreted name field as a string.
-  *)  
+  *)
 val name_string_of_elf64_note : elf64_note -> string
 let name_string_of_elf64_note note =
-  let bs0   = Byte_sequence.from_byte_lists [note.elf64_note_name] in
-    Byte_sequence.string_of_byte_sequence bs0 
+  (* Strip NULL terminator *)
+  match Byte_sequence.takebytes (natural_of_elf64_word note.elf64_note_namesz - 1) note.elf64_note_name with
+    | Success bs -> Byte_sequence.string_of_byte_sequence bs
+    | Fail err -> Assert_extra.failwith err
+  end
+
+(* Functions to parse specific note types *)
+
+val read_string' : byte_sequence -> error (list byte * byte_sequence)
+let rec read_string' bs =
+  Byte_sequence.read_char bs >>= fun (b, bs) ->
+  if b = Missing_pervasives.null_byte then
+    return ([], bs)
+  else
+    read_string' bs >>= fun (next, bs) ->
+    return (b :: next, bs)
+
+(* Parses a single NULL-terminated string *)
+(* TODO: move this somewhere else *)
+val read_string : byte_sequence -> error (string * byte_sequence)
+let read_string bs =
+  read_string' bs >>= fun (l, bs) ->
+  return (Byte_sequence.string_of_byte_sequence (Byte_sequence.byte_sequence_of_byte_list l), bs)
+
+val read_elf64_nt_file_entry : endianness -> byte_sequence -> string -> error (elf64_nt_file_entry * byte_sequence)
+let read_elf64_nt_file_entry endian bs filename =
+  read_elf64_xword endian bs >>= fun (map_start, bs) ->
+  read_elf64_xword endian bs >>= fun (map_end, bs) ->
+  read_elf64_xword endian bs >>= fun (file_offset, bs) ->
+  let e = <|
+    elf64_nt_file_entry_start = map_start;
+    elf64_nt_file_entry_end = map_end;
+    elf64_nt_file_entry_offset = file_offset;
+    elf64_nt_file_entry_filename = filename
+  |> in
+  return (e, bs)
+
+val read_elf64_nt_file_entries : endianness -> byte_sequence -> byte_sequence -> error (list elf64_nt_file_entry)
+let rec read_elf64_nt_file_entries endian entries_bs filenames_bs =
+  if Byte_sequence.length entries_bs = 0 then
+    if Byte_sequence.length filenames_bs <> 0 then
+      fail "read_nt_file_entries: malformed filenames (trailing data)"
+    else
+      return []
+  else
+    read_string filenames_bs >>= fun (filename, filenames_bs) ->
+    read_elf64_nt_file_entry endian entries_bs filename >>= fun (e, entries_bs) ->
+    read_elf64_nt_file_entries endian entries_bs filenames_bs >>= fun (next) ->
+    return (e :: next)
+
+(* See https://sourceware.org/ml/binutils/2012-10/msg00309.html *)
+val read_elf64_nt_file : endianness -> byte_sequence -> error elf64_nt_file
+let read_elf64_nt_file endian bs =
+  read_elf64_xword endian bs >>= fun (count, bs) ->
+  read_elf64_xword endian bs >>= fun (page_size, bs) ->
+  let addr_size = 8 in
+  (* read_nt_file_entry reads 3 elf64_xword values *)
+  Byte_sequence.partition (3 * addr_size * (natural_of_elf64_xword count)) bs >>= fun (entries_bs, filenames_bs) ->
+  read_elf64_nt_file_entries endian entries_bs filenames_bs >>= fun (entries) ->
+  return <|
+    elf64_nt_file_count = count;
+    elf64_nt_file_page_size = page_size;
+    elf64_nt_file_entries = entries
+  |>

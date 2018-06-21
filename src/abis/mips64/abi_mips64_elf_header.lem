@@ -15,10 +15,10 @@ open import Elf_types_native_uint
 open import Endianness
 
 val abi_mips64_data_encoding : natural
-let abi_mips64_data_encoding = elf_data_2msb
+let abi_mips64_data_encoding = elf_data_2lsb
 
 val abi_mips64_endianness : endianness
-let abi_mips64_endianness = Big (* Must match above *)
+let abi_mips64_endianness = Little (* Must match above *)
 
 val abi_mips64_file_class : natural
 let abi_mips64_file_class = elf_class_64

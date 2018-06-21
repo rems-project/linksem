@@ -523,8 +523,8 @@ let rec relax_byte_pattern bytes cares =
 
 type pad_fn = natural -> list byte
 
-val concretise_byte_pattern : list byte -> natural -> list (maybe byte) -> pad_fn -> list byte
-let rec concretise_byte_pattern rev_acc acc_pad bs pad =
+val concretise_byte_pattern' : list byte -> natural -> list (maybe byte) -> pad_fn -> list byte
+let rec concretise_byte_pattern' rev_acc acc_pad bs pad =
     match bs with
         [] ->
             let padding_bytes = if acc_pad > 0 then pad acc_pad else []
@@ -533,10 +533,15 @@ let rec concretise_byte_pattern rev_acc acc_pad bs pad =
             (* flush accumulated padding *)
             let padding_bytes = if acc_pad > 0 then pad acc_pad else []
             in
-            concretise_byte_pattern (b :: ((List.reverse padding_bytes) ++ rev_acc)) 0 more pad
+            concretise_byte_pattern' (b :: ((List.reverse padding_bytes) ++ rev_acc)) 0 more pad
         | Nothing :: more ->
-            concretise_byte_pattern rev_acc (acc_pad+1) more pad
+            concretise_byte_pattern' rev_acc (acc_pad+1) more pad
     end
+
+val concretise_byte_pattern : list (maybe byte) -> pad_fn -> byte_sequence
+let rec concretise_byte_pattern pb pad =
+    (* TODO: don't use lists of bytes *)
+    byte_sequence_of_byte_list (concretise_byte_pattern' [] 0 pb pad)
 
 val byte_option_matches_byte : maybe byte -> byte -> bool
 let byte_option_matches_byte optb b =
