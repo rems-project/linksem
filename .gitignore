@@ -15,9 +15,14 @@ src/**/*.ml
 *.opt
 
 src/main_elf
+src/main_elf.native
 src/main_link
+src/main_link.native
 src/copy_elf
+src/copy_elf.native
 src/lem_ocaml_sentinel
 
 src/build_num
 src/build_zarith
+src/_build
+src/byte_sequence_impl.lem
