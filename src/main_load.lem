@@ -650,7 +650,15 @@ let extract_all_relocs_as_symbol_references f =
     |>
   ) all_relocs
 
-let apply_relocations f img img_addr =
+let find_sym syms name =
+  List.foldl (fun maybe_sym (sym_name, sym_entry, sym_addr) ->
+    if name = sym_name then
+      Just (sym_entry, sym_addr)
+    else
+      maybe_sym
+  ) Nothing syms
+
+let apply_relocations f img img_addr syms =
   (* let rela_addr = img_addr + (natural_of_hex "0x000000201018") in
   let rela = [
     Just (byte_of_natural (natural_of_hex "0xa0"));
@@ -676,31 +684,38 @@ let apply_relocations f img img_addr =
       | Just r -> r
     end in
     let rel_type = get_elf64_relocation_a_type reloc_site.ref_relent in
-    (* let _ = Missing_pervasives.errln ("elf64_st_size: " ^ (show symref_and_reloc_site.ref.ref_syment.elf64_st_size)) in *)
     let offset = natural_of_elf64_addr reloc_site.ref_relent.elf64_ra_offset in
     let addend = integer_of_elf64_sxword reloc_site.ref_relent.elf64_ra_addend in
     let addr = img_addr + offset in
-    (* let _ = Missing_pervasives.errln ("ref: " ^ symref_and_reloc_site.ref.ref_symname) in *)
     let (is_absolute, applyfn) = abi.reloc rel_type in
     let (width, calcfn) = applyfn img addr symref_and_reloc_site in
     let _ = Missing_pervasives.errln ("Relocation of type 0x" ^ (hex_string_of_natural rel_type) ^ " at 0x" ^ (hex_string_of_natural addr) ^ ", size 0x" ^ (hex_string_of_natural width) ^ " in " ^ (show_section_at_addr f offset)) in
 
-    (* let symaddr = 0 in
-    let existing_bytes = assert_unwrap_maybe (read_memory_image img addr width) in
-    let existing_field = List.foldl (fun acc b ->
-        acc * 256 + (natural_of_byte b)
-    ) 0 existing_bytes in
-    let new_field_value = calcfn symaddr addend existing_field in
-    (* TODO: don't hardcode little endian *)
-    let field_bytes = natural_to_le_byte_list new_field_value in
-    let padding = List.replicate ((natFromNatural width) - (List.length field_bytes)) (byte_of_natural 0) in
-    let field_bp = List.map (fun b -> Just b) (field_bytes ++ padding) in
-    let _ = Missing_pervasives.errln ("  0x" ^ (hex_string_of_natural existing_field) ^ " addend=0x" ^ (hex_string_of_natural (naturalFromInteger addend)) ^ " to 0x" ^ (hex_string_of_natural new_field_value)) in
-    (* write_memory_image img addr field_bp *) *)
+    let maybe_sym =
+      (* TODO: remove these special cases, especially the last one *)
+      if symref_and_reloc_site.ref.ref_symname <> "" && rel_type <> natural_of_hex "0x25" && rel_type <> natural_of_hex "0x1" then
+        find_sym syms symref_and_reloc_site.ref.ref_symname
+      else
+        Nothing
+    in
 
-    mask_memory_image img addr width
-
-    (* img *)
+    match maybe_sym with
+      | Just (sym_entry, sym_addr) ->
+        let existing_bytes = assert_unwrap_maybe (read_memory_image img addr width) in
+        let existing_field = List.foldl (fun acc b ->
+            acc * 256 + (natural_of_byte b)
+        ) 0 existing_bytes in
+        let new_field_value = calcfn sym_addr addend existing_field in
+        (* TODO: don't hardcode little endian *)
+        let field_bytes = natural_to_le_byte_list new_field_value in
+        let padding = List.replicate ((natFromNatural width) - (List.length field_bytes)) (byte_of_natural 0) in
+        let field_bp = List.map (fun b -> Just b) (field_bytes ++ padding) in
+        let _ = Missing_pervasives.errln ("  `" ^ symref_and_reloc_site.ref.ref_symname ^ "` existing=0x" ^ (hex_string_of_natural existing_field) ^ " addend=0x" ^ (hex_string_of_natural (naturalFromInteger addend)) ^ " to 0x" ^ (hex_string_of_natural new_field_value)) in
+        write_memory_image img addr field_bp
+      | Nothing ->
+        let _ = Missing_pervasives.errln ("  Didn't find a matching symbol for `" ^ symref_and_reloc_site.ref.ref_symname ^ "`, giving up on this one") in
+        mask_memory_image img addr width
+    end
   (* ) tags_and_ranges in *)
   ) img symbol_refs_and_reloc_sites
 
@@ -826,7 +841,49 @@ let has_dynamic_section f =
   ) f.elf64_file_section_header_table in
   dyn_secs <> []
 
-let rec check_binary core_file core_img is_loaded maybe_root_path nt_file_entries binary_filename =
+let extract_dynsyms f offset existing_syms =
+  let results = List.mapi (fun scnidx scn ->
+    let scnidx = naturalFromNat scnidx in
+    if scn.elf64_section_type = sht_dynsym then
+      find_elf64_symbols_by_symtab_idx scnidx f >>= fun triple ->
+      let syms = Elf_memory_image.extract_all_symbols triple in
+      let syms = List.filter (fun (sym_name, sym_entry, scnidx, symidx) ->
+        let sym_binding = get_elf64_symbol_binding sym_entry in
+        let sym_value = natural_of_elf64_addr sym_entry.elf64_st_value in
+        (sym_binding = Elf_symbol_table.stb_global || sym_binding = Elf_symbol_table.stb_weak)
+          (* TODO: is this acceptable? *)
+          && sym_value <> 0
+      ) syms in
+      let syms = List.map (fun (sym_name, sym_entry, scnidx, symidx) ->
+        (* let _ = Missing_pervasives.errln ("Library exports dynamic symbol: " ^ sym_name) in *)
+        (sym_name, sym_entry, offset + natural_of_elf64_addr sym_entry.elf64_st_value)
+      ) syms in
+      let syms = List.foldl (fun syms sym ->
+        let (sym_name, sym_entry, sym_addr) = sym in
+        let sym_binding = get_elf64_symbol_binding sym_entry in
+        match find_sym existing_syms sym_name with
+          | Just (existing_entry, existing_addr) ->
+            if get_elf64_symbol_binding existing_entry = Elf_symbol_table.stb_weak && sym_binding <> Elf_symbol_table.stb_weak then
+              (* Existing symbol is weak and the new one isn't, replace it *)
+              let _ = Missing_pervasives.errln ("Overriding weak symbol `" ^ sym_name ^ "`, 0x" ^ (hex_string_of_natural existing_addr) ^ " -> 0x" ^ (hex_string_of_natural sym_addr)) in
+              sym :: syms
+            else
+              let _ = Missing_pervasives.errln ("Multiple definitions of " ^ sym_name ^ ", only keeping the first one") in
+              syms
+          | Nothing ->
+            sym :: syms
+        end
+      ) [] syms in
+      return syms
+    else
+      return []
+  ) f.elf64_file_interpreted_sections in
+  Error.foldM (fun all_syms res ->
+    res >>= fun syms ->
+    return (all_syms ++ syms)
+  ) [] results
+
+let rec check_binary core_file core_img is_loaded maybe_root_path nt_file_entries dynsyms binary_filename =
   let root_path = match maybe_root_path with
     | Just root_path -> root_path ^ "/"
     | Nothing -> ""
@@ -846,7 +903,6 @@ let rec check_binary core_file core_img is_loaded maybe_root_path nt_file_entrie
   let binary_img =
     if is_loaded then
       let binary_img = mask_data_sections binary_file binary_img in
-      (* let binary_img = mask_relocations binary_file binary_img in (* TODO: remove me *) *)
       binary_img
     else
       let _ = Missing_pervasives.errln "Not masking memory image" in
@@ -867,27 +923,19 @@ let rec check_binary core_file core_img is_loaded maybe_root_path nt_file_entrie
   let _ = Missing_pervasives.errln "Binary image after translation:" in
   let _ = print_memory_image binary_img in
 
-  let binary_img =
-    if is_loaded then
-      let binary_img = apply_relocations binary_file binary_img binary_offset in
-      binary_img
-    else
-      binary_img
-  in
-
-  let (n_bytes, n_masked) = get_memory_image_stats binary_img in
-  let _ = Missing_pervasives.errln ((show n_bytes) ^ " bytes, " ^ (show n_masked) ^ " masked bytes") in
-
-  let comparison_res = compare_memory_image core_img binary_img (nt_file_entries, binary_file) in
+  let _ = Missing_pervasives.errln ("Extracting dynamic symbols from " ^ binary_filename) in
+  extract_dynsyms binary_file binary_offset dynsyms >>= fun binary_dynsyms ->
+  let _ = Missing_pervasives.errln ("Binary exports " ^ (show (List.length binary_dynsyms)) ^ " dynamic symbols") in
+  let dynsyms = dynsyms ++ binary_dynsyms in
 
   (* Result contains the number of linked libraries *)
   let linked_libs_res =
     if not is_loaded then
       let _ = Missing_pervasives.errln "Core file hasn't been loaded; not checking linked libraries" in
-      return 0
+      return (0, dynsyms)
     else if not (has_dynamic_section binary_file) then
       let _ = Missing_pervasives.errln "Binary doesn't have a .dynamic section; not checking linked libraries" in
-      return 0
+      return (0, dynsyms)
     else
       let _ = Missing_pervasives.errln "Checking linked libraries" in
       (* TODO: do not hardcode this *)
@@ -907,19 +955,35 @@ let rec check_binary core_file core_img is_loaded maybe_root_path nt_file_entrie
         end
       ) dyn_dt_needed in
       let _ = List.map (fun s -> Missing_pervasives.errln ("DT_NEEDED: " ^ s)) dt_needed in
-      let res = Error.mapM (fun library_filepath ->
-        check_binary core_file core_img is_loaded maybe_root_path nt_file_entries library_filepath
-      ) dt_needed in
-      res >>= fun _ ->
-      return (naturalFromNat (List.length dyn_dt_needed))
+      let res = Error.foldM (fun dynsyms library_filepath ->
+        check_binary core_file core_img is_loaded maybe_root_path nt_file_entries dynsyms library_filepath
+      ) dynsyms dt_needed in
+      res >>= fun dynsyms ->
+      return (naturalFromNat (List.length dyn_dt_needed), dynsyms)
   in
+
+  linked_libs_res >>= fun (libs_count, dynsyms) ->
+  let _ = Missing_pervasives.errln ("OK: " ^ (show libs_count) ^ " libraries linked to " ^ binary_filepath ^ " match!") in
+
+  let binary_img =
+    if is_loaded then
+      let _ = Missing_pervasives.errln ("Applying relocations in " ^ binary_filename) in
+      let binary_img = apply_relocations binary_file binary_img binary_offset dynsyms in
+      binary_img
+    else
+      binary_img
+  in
+
+  let (n_bytes, n_masked) = get_memory_image_stats binary_img in
+  let _ = Missing_pervasives.errln ((show n_bytes) ^ " bytes, " ^ (show n_masked) ^ " masked bytes") in
+
+  let _ = Missing_pervasives.errln ("Checking memory image of " ^ binary_filename) in
+  let comparison_res = compare_memory_image core_img binary_img (nt_file_entries, binary_file) in
 
   comparison_res >>= fun () ->
   let _ = Missing_pervasives.errln ("OK: " ^ binary_filepath ^ " matches!") in
-  linked_libs_res >>= fun num_libs ->
-  let _ = Missing_pervasives.errln ("OK: " ^ (show num_libs) ^ " libraries linked to " ^ binary_filepath ^ " match!") in
 
-  return ()
+  return dynsyms
 
 let process_file core_filepath maybe_root_path =
   load_file core_filepath >>= fun (core_bs, core_file) ->
@@ -947,7 +1011,7 @@ let process_file core_filepath maybe_root_path =
     | Nothing -> true
   end in
 
-  check_binary core_file core_img is_loaded maybe_root_path nt_file_entries binary_filename >>= fun _ ->
+  check_binary core_file core_img is_loaded maybe_root_path nt_file_entries [] binary_filename >>= fun _ ->
 
   return ()
 
@@ -963,5 +1027,5 @@ let _ =
   end in
   match process_file core_filepath maybe_root_path with
     | Fail err -> failwith err
-    | Success e -> Missing_pervasives.outln (show e)
+    | Success () -> Missing_pervasives.outln "OK: ALL GREEN"
   end
