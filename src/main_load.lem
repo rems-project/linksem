@@ -36,6 +36,9 @@ open import Missing_pervasives
 open import Abi_mips64
 open import Abi_mips64_dynamic
 
+open import Abi_amd64
+open import Abi_amd64_relocation
+
 let unwrap_maybe_or_fail err_msg maybe =
   match maybe with
     | Just v -> return v
@@ -703,7 +706,12 @@ let apply_relocations f raw_img img img_addr syms =
     else
       let existing_bytes = unwrap_maybe (read_memory_image raw_img addr width) in
       (* TODO: remove these special cases *)
-      if rel_type <> 37 && rel_type <> 18 then
+      (* TODO: fix r_x86_64_tpoff64 *)
+      if Abi_amd64.header_is_amd64 f.elf64_file_header &&
+          (rel_type = r_x86_64_irelative || rel_type = r_x86_64_tpoff64) then
+        let _ = Missing_pervasives.errln ("  Giving up on this one") in
+        mask_memory_image img addr width
+      else
         let existing_bytes = assert_unwrap_maybe (read_memory_image raw_img addr width) in
         let existing_field = List.foldl (fun acc b ->
             acc * 256 + (natural_of_byte b)
@@ -715,9 +723,6 @@ let apply_relocations f raw_img img img_addr syms =
         let field_bp = List.map (fun b -> Just b) (field_bytes ++ padding) in
         let _ = Missing_pervasives.errln ("  Relocating `" ^ symref_and_reloc_site.ref.ref_symname ^ "` (existing=0x" ^ (hex_string_of_natural existing_field) ^ " addend=" ^ (show addend) ^ ") to 0x" ^ (hex_string_of_natural new_field_value)) in
         write_memory_image img addr field_bp
-      else
-        let _ = Missing_pervasives.errln ("  Giving up on this one") in
-        mask_memory_image img addr width
   (* ) tags_and_ranges in *)
   ) img symbol_refs_and_reloc_sites
 
