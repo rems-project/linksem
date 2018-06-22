@@ -559,14 +559,15 @@ let mask_memory_image img start len =
   let bp = List.replicate (natFromNatural len) Nothing in
   write_memory_image img start bp
 
+let is_data_section sec =
+  false
+  || sec.elf64_section_name_as_string = ".data"
+  || sec.elf64_section_name_as_string = ".dynamic"
+  || sec.elf64_section_name_as_string = ".data.rel.ro" (* TODO: remove me *)
+  || sec.elf64_section_name_as_string = ".rld_map" (* TODO: remove me *)
+
 let mask_data_sections f img =
-  let data_sections = List.filter (fun sec ->
-      false
-      || sec.elf64_section_name_as_string = ".data"
-      || sec.elf64_section_name_as_string = ".dynamic"
-      || sec.elf64_section_name_as_string = ".data.rel.ro" (* TODO: remove me *)
-      || sec.elf64_section_name_as_string = ".rld_map" (* TODO: remove me *)
-  ) f.elf64_file_interpreted_sections in
+  let data_sections = List.filter is_data_section f.elf64_file_interpreted_sections in
   List.foldl (fun img sec ->
     let _ = Missing_pervasives.errln ("Masking " ^ sec.elf64_section_name_as_string ^ " at 0x" ^ (hex_string_of_natural sec.elf64_section_addr) ^ ", size 0x" ^ (hex_string_of_natural sec.elf64_section_size)) in
     mask_memory_image img sec.elf64_section_addr sec.elf64_section_size
@@ -629,10 +630,9 @@ let extract_all_relocs_as_symbol_references f =
             failwith "reloc references symbol that does not exist"
             (*("reloc at index " ^ (show rel_idx) ^ " references symbol (index " ^ (show sym_idx) ^
             ") that does not exist: symtab (index " ^ (show symtab_idx) ^ ") has " ^ (show (length quads)) ^ " entries")*)
-      end
+        end
     end
-  ))
-  in
+  )) in
   (*let _ = Missing_pervasives.errs ("Extracted " ^ (show (length all_relocs)) ^ " reloc references (rel_scn, rel_idx, src_scn): "
       ^ (show (List.map (fun (rel_scn, rel_idx, srcscn, rela) -> (rel_scn, rel_idx, srcscn)) all_relocs)) ^ "\n")
   in*)
@@ -675,20 +675,35 @@ let apply_relocations f raw_img img img_addr syms =
     let offset = natural_of_elf64_addr reloc_site.ref_relent.elf64_ra_offset in
     let addend = integer_of_elf64_sxword reloc_site.ref_relent.elf64_ra_addend in
     let addr = img_addr + offset in
+    (* TODO: support is_absolute? *)
     let (is_absolute, applyfn) = abi.reloc rel_type in
     let (width, calcfn) = applyfn img addr symref_and_reloc_site in
-    let _ = Missing_pervasives.errln ("Relocation of type 0x" ^ (hex_string_of_natural rel_type) ^ " at 0x" ^ (hex_string_of_natural addr) ^ ", size 0x" ^ (hex_string_of_natural width) ^ " in " ^ (show_section_at_addr f offset)) in
+    let _ = Missing_pervasives.errln ("Relocation of type 0x" ^ (hex_string_of_natural rel_type) ^ " at 0x" ^ (hex_string_of_natural addr) ^ " (offset 0x" ^ (hex_string_of_natural offset) ^ "), size 0x" ^ (hex_string_of_natural width) ^ " in " ^ (show_section_at_addr f offset)) in
 
     let maybe_sym =
       (* TODO: remove these special cases, especially the last one *)
-      if symref_and_reloc_site.ref.ref_symname <> "" && rel_type <> natural_of_hex "0x25" then
+      if symref_and_reloc_site.ref.ref_symname <> "" then
         find_sym syms symref_and_reloc_site.ref.ref_symname
       else
         Nothing
     in
 
-    match maybe_sym with
-      | Just (sym_entry, sym_addr) ->
+    let sym_addr = match maybe_sym with
+      | Just (sym_entry, sym_addr) -> sym_addr
+      | Nothing -> 0 (* This isn't pretty, but doing something else would be complicated *)
+    end in
+
+    let is_in_data_section = match get_section_at_addr f offset with
+      | Just sec -> is_data_section sec
+      | Nothing -> false
+    end in
+    if is_in_data_section then
+      let _ = Missing_pervasives.errln "  Relocation inside a data section, ignoring" in
+      img
+    else
+      let existing_bytes = unwrap_maybe (read_memory_image raw_img addr width) in
+      (* TODO: remove these special cases *)
+      if rel_type <> 37 && rel_type <> 18 then
         let existing_bytes = assert_unwrap_maybe (read_memory_image raw_img addr width) in
         let existing_field = List.foldl (fun acc b ->
             acc * 256 + (natural_of_byte b)
@@ -698,12 +713,11 @@ let apply_relocations f raw_img img img_addr syms =
         let field_bytes = natural_to_le_byte_list new_field_value in
         let padding = List.replicate ((natFromNatural width) - (List.length field_bytes)) (byte_of_natural 0) in
         let field_bp = List.map (fun b -> Just b) (field_bytes ++ padding) in
-        let _ = Missing_pervasives.errln ("  `" ^ symref_and_reloc_site.ref.ref_symname ^ "` existing=0x" ^ (hex_string_of_natural existing_field) ^ " addend=0x" ^ (hex_string_of_natural (naturalFromInteger addend)) ^ " to 0x" ^ (hex_string_of_natural new_field_value)) in
+        let _ = Missing_pervasives.errln ("  Relocating `" ^ symref_and_reloc_site.ref.ref_symname ^ "` (existing=0x" ^ (hex_string_of_natural existing_field) ^ " addend=" ^ (show addend) ^ ") to 0x" ^ (hex_string_of_natural new_field_value)) in
         write_memory_image img addr field_bp
-      | Nothing ->
-        let _ = Missing_pervasives.errln ("  Didn't find a matching symbol for `" ^ symref_and_reloc_site.ref.ref_symname ^ "`, giving up on this one") in
+      else
+        let _ = Missing_pervasives.errln ("  Giving up on this one") in
         mask_memory_image img addr width
-    end
   (* ) tags_and_ranges in *)
   ) img symbol_refs_and_reloc_sites
 
@@ -970,10 +984,13 @@ let rec check_binary core_file core_img is_loaded maybe_root_path nt_file_entrie
   let _ = Missing_pervasives.errln ("Checking memory image of " ^ binary_filename) in
   let comparison_res = compare_memory_image core_img binary_img (nt_file_entries, binary_file) in
 
-  comparison_res >>= fun () ->
-  let _ = Missing_pervasives.errln ("OK: " ^ binary_filepath ^ " matches!") in
-
-  return dynsyms
+  match comparison_res with
+    | Success () ->
+      let _ = Missing_pervasives.errln ("OK: " ^ binary_filepath ^ " matches!") in
+      return dynsyms
+    | Fail msg ->
+      Error.fail (binary_filepath ^ " mismatches: " ^ msg)
+  end
 
 let process_file core_filepath maybe_root_path =
   load_file core_filepath >>= fun (core_bs, core_file) ->
