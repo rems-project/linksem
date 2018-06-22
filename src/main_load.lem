@@ -661,9 +661,7 @@ let find_sym syms name =
       maybe_sym
   ) Nothing syms
 
-(* We need the unmasked, raw image because we'll read values from maybe-masked
-   regions. *)
-let apply_relocations f raw_img img img_addr syms =
+let apply_relocations f img img_addr syms =
   let abi = get_file_abi f in
   let symbol_refs_and_reloc_sites = extract_all_relocs_as_symbol_references f in
   (* let tags_and_ranges = Multimap.lookupBy Memory_image_orderings.tagEquiv (SymbolRef(null_symbol_reference_and_reloc_site)) img.by_tag in *)
@@ -704,7 +702,6 @@ let apply_relocations f raw_img img img_addr syms =
       let _ = Missing_pervasives.errln "  Relocation inside a data section, ignoring" in
       img
     else
-      let existing_bytes = unwrap_maybe (read_memory_image raw_img addr width) in
       (* TODO: remove these special cases *)
       (* TODO: fix r_x86_64_tpoff64 *)
       if Abi_amd64.header_is_amd64 f.elf64_file_header &&
@@ -712,7 +709,7 @@ let apply_relocations f raw_img img img_addr syms =
         let _ = Missing_pervasives.errln ("  Giving up on this one") in
         mask_memory_image img addr width
       else
-        let existing_bytes = assert_unwrap_maybe (read_memory_image raw_img addr width) in
+        let existing_bytes = assert_unwrap_maybe (read_memory_image img addr width) in
         let existing_field = List.foldl (fun acc b ->
             acc * 256 + (natural_of_byte b)
         ) 0 existing_bytes in
@@ -903,8 +900,7 @@ let rec check_binary core_file core_img is_loaded maybe_root_path nt_file_entrie
   let _ = Missing_pervasives.errln "Binary file:" in
   let _ = print_elf64_phdr binary_file in
 
-  let binary_raw_img = load_memory_image binary_file in
-  let binary_img = binary_raw_img in
+  let binary_img = load_memory_image binary_file in
   let _ = Missing_pervasives.errln "Binary image:" in
   let _ = print_memory_image binary_img in
 
@@ -928,7 +924,6 @@ let rec check_binary core_file core_img is_loaded maybe_root_path nt_file_entrie
   let binary_offset = get_memory_image_offset binary_img binary_addr in
   let _ = Missing_pervasives.errln ("Translating binary image +0x" ^ (hex_string_of_natural binary_offset)) in
   let binary_img = translate_memory_image binary_img binary_offset in
-  let binary_raw_img = translate_memory_image binary_raw_img binary_offset in
   let _ = Missing_pervasives.errln "Binary image after translation:" in
   let _ = print_memory_image binary_img in
 
@@ -977,7 +972,7 @@ let rec check_binary core_file core_img is_loaded maybe_root_path nt_file_entrie
   let binary_img =
     if is_loaded then
       let _ = Missing_pervasives.errln ("Applying relocations in " ^ binary_filename) in
-      let binary_img = apply_relocations binary_file binary_raw_img binary_img binary_offset dynsyms in
+      let binary_img = apply_relocations binary_file binary_img binary_offset dynsyms in
       binary_img
     else
       binary_img
