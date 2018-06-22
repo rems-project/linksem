@@ -1227,6 +1227,20 @@ let amd64_plt_slot_addr img rr raw_addr =
             end
     end
 
+(** [amd64_base_addr rr site_addr] computes back the base address at which a
+  * shared object has been loaded into memory during execution. It's kind of
+  * lame to have this function because the linker will do the opposite operation
+  * when relocating, but I don't want to add a new argument to the reloc
+  * function. *)
+val amd64_base_addr : symbol_reference_and_reloc_site -> natural -> natural
+let amd64_base_addr rr site_addr =
+    let reloc_site = match rr.maybe_reloc with
+    | Nothing -> failwith "amd64_base_addr: no reloc site during relocation"
+    | Just r -> r
+    end in
+    let offset = natural_of_elf64_addr reloc_site.ref_relent.elf64_ra_offset in
+    site_addr - offset
+
 (** [amd64_reloc r] yields a function that applies relocations of type [r]. *)
 val amd64_reloc : reloc_fn any_abi_feature
 let amd64_reloc r =
@@ -1240,7 +1254,7 @@ let amd64_reloc r =
     | "R_X86_64_COPY" ->            (false, fun img -> (fun site_addr -> (fun rr -> (size_of_copy_reloc img rr, fun s -> fun a -> fun e -> failwith "amd64_reloc: unimplemented R_X86_64_COPY" (* FIXME *)))))
     | "R_X86_64_GLOB_DAT" ->        (false, fun img -> (fun site_addr -> (fun rr -> (8, fun s -> fun a -> fun e -> s))))
     | "R_X86_64_JUMP_SLOT" ->       (false, fun img -> (fun site_addr -> (fun rr -> (8, fun s -> fun a -> fun e -> s))))
-    | "R_X86_64_RELATIVE" ->        (true,  fun img -> (fun site_addr -> (fun rr -> (8, fun s -> fun a -> fun e -> failwith "amd64_reloc: unimplemented R_X86_64_RELATIVE" (* FIXME *)))))
+    | "R_X86_64_RELATIVE" ->        (true,  fun img -> (fun site_addr -> (fun rr -> (8, fun s -> fun a -> fun e -> i2n (n2i (amd64_base_addr rr site_addr) + a)))))
     | "R_X86_64_GOTPCREL" ->        (false, fun img -> (fun site_addr -> (fun rr -> (4, fun s -> fun a -> fun e -> i2n_signed 32 ((n2i (amd64_got_slot_addr img rr)) + a - (n2i site_addr)) ))) )
     | "R_X86_64_32" ->              (true,  fun img -> (fun site_addr -> (fun rr -> (4, fun s -> fun a -> fun e -> i2n (n2i s + a)))))
     | "R_X86_64_32S" ->             (true,  fun img -> (fun site_addr -> (fun rr -> (4, fun s -> fun a -> fun e -> i2n_signed 32 ((n2i s) + a)))))
