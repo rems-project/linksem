@@ -716,18 +716,51 @@ let apply_relocations f img img_addr syms =
         mask_memory_image img addr width
       else
         let existing_bytes = assert_unwrap_maybe (read_memory_image img addr width) in
-        let existing_field = List.foldl (fun acc b ->
-            acc * 256 + (natural_of_byte b)
-        ) 0 existing_bytes in
-        let new_field_value = calcfn sym_addr addend existing_field in
         (* TODO: don't hardcode little endian *)
-        let field_bytes = natural_to_le_byte_list new_field_value in
-        let padding = List.replicate ((natFromNatural width) - (List.length field_bytes)) (byte_of_natural 0) in
-        let field_bp = List.map (fun b -> Just b) (field_bytes ++ padding) in
-        let _ = Missing_pervasives.errln ("  Relocating `" ^ symref_and_reloc_site.ref.ref_symname ^ "` (existing=0x" ^ (hex_string_of_natural existing_field) ^ " addend=" ^ (show addend) ^ ") to 0x" ^ (hex_string_of_natural new_field_value)) in
+        let existing_value = Memory_image.natural_of_le_byte_list existing_bytes in
+        let new_value = calcfn sym_addr addend existing_value in
+        (* TODO: don't hardcode little endian *)
+        let field_bytes = Memory_image.natural_to_le_byte_list_padded_to width new_value in
+        let field_bp = List.map (fun b -> Just b) field_bytes in
+        let _ = Missing_pervasives.errln ("  Relocating `" ^ symref_and_reloc_site.ref.ref_symname ^ "` (existing=0x" ^ (hex_string_of_natural existing_value) ^ " addend=" ^ (show addend) ^ ") to 0x" ^ (hex_string_of_natural new_value)) in
         write_memory_image img addr field_bp
   (* ) tags_and_ranges in *)
   ) img symbol_refs_and_reloc_sites
+
+val apply_mips64_got_relocations' : forall 'abifeature. annotated_memory_image 'abifeature -> natural -> natural -> natural -> annotated_memory_image 'abifeature
+let rec apply_mips64_got_relocations' img base pltgot_entry_addr local_gotno =
+  if local_gotno = 0 then img else
+  let width = 8 in (* Address width *)
+  let existing_bytes = assert_unwrap_maybe (read_memory_image img pltgot_entry_addr width) in
+  (* TODO: don't hardcode little endian *)
+  let existing_value = Memory_image.natural_of_le_byte_list existing_bytes in
+  let new_value = base + existing_value in
+  (* TODO: don't hardcode little endian *)
+  let field_bytes = Memory_image.natural_to_le_byte_list_padded_to width new_value in
+  let field_bp = List.map (fun b -> Just b) field_bytes in
+  let _ = Missing_pervasives.errln ("  Relocating MIPS64 .got entry from 0x" ^ (hex_string_of_natural existing_value) ^ " to 0x" ^ (hex_string_of_natural new_value)) in
+  let img = write_memory_image img pltgot_entry_addr field_bp in
+  apply_mips64_got_relocations' img base (pltgot_entry_addr + width) (local_gotno - 1)
+
+(* MIPS uses an ugly packed form for GOT relocations *)
+let apply_mips64_got_relocations f img base dyns =
+  let maybe_local_gotno = List.find (fun (tag, _) ->
+    tag = Abi_mips64_dynamic.abi_mips64_dt_local_gotno
+  ) dyns in
+  match maybe_local_gotno with
+    | Just (_, Numeric local_gotno) ->
+      let maybe_pltgot_offset = List.find (fun (tag, _) -> tag = Elf_dynamic.dt_pltgot) dyns in
+      let pltgot_offset = match maybe_pltgot_offset with
+        | Just (_, Address pltgot) -> pltgot
+        | Nothing -> failwith "apply_mips64_got_relocations: missing DT_PLTGOT in .dynamic"
+      end in
+      let pltgot_addr = base + natural_of_elf64_addr pltgot_offset in
+      let _ = Missing_pervasives.errln ("Applying " ^ (show local_gotno) ^ " MIPS64 .got relocations") in
+      apply_mips64_got_relocations' img base pltgot_addr local_gotno
+    | Nothing ->
+      let _ = Missing_pervasives.errln "Not applying MIPS64 .got relocations: missing DT_LOCAL_GOTNO" in
+      img
+  end
 
 let get_first_mapped_address nt_file_entries filename =
   List.foldl (fun first nt_file_entry ->
@@ -938,6 +971,8 @@ let rec check_binary core_file core_img is_loaded maybe_root_path nt_file_entrie
   let _ = Missing_pervasives.errln ("Binary exports " ^ (show (List.length binary_dynsyms)) ^ " dynamic symbols") in
   let dynsyms = dynsyms ++ binary_dynsyms in
 
+  read_dynamic binary_bs binary_file >>= fun dyns ->
+
   (* Result contains the number of linked libraries *)
   let linked_libs_res =
     if not is_loaded then
@@ -955,7 +990,6 @@ let rec check_binary core_file core_img is_loaded maybe_root_path nt_file_entrie
         else
           "/usr/lib"
       in
-      read_dynamic binary_bs binary_file >>= fun dyns ->
       let dyn_dt_needed = List.filter (fun (tag, _) -> tag = Elf_dynamic.dt_needed) dyns in
       let _ = Missing_pervasives.errln ("Found " ^ (show (List.length dyn_dt_needed)) ^ " linked libraries") in
       let dt_needed = List.map (fun (_, dyn_value) ->
@@ -979,6 +1013,12 @@ let rec check_binary core_file core_img is_loaded maybe_root_path nt_file_entrie
     if is_loaded then
       let _ = Missing_pervasives.errln ("Applying relocations in " ^ binary_filename) in
       let binary_img = apply_relocations binary_file binary_img binary_offset dynsyms in
+      let binary_img =
+        if Abi_mips64.header_is_mips64 binary_file.elf64_file_header then
+          apply_mips64_got_relocations binary_file binary_img binary_offset dyns
+        else
+          binary_img
+      in
       binary_img
     else
       binary_img

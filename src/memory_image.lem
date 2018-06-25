@@ -744,6 +744,12 @@ val compute_virtual_address_adjustment : natural -> natural -> natural -> natura
 let compute_virtual_address_adjustment max_page_size offset vaddr =
   (vaddr - offset) mod max_page_size
 
+val natural_of_le_byte_list : list byte -> natural
+let natural_of_le_byte_list bytes =
+  List.foldl (fun acc b ->
+      acc * 256 + (natural_of_byte b)
+  ) 0 (List.reverse bytes)
+
 val extract_natural_field : natural -> element -> natural -> natural
 let extract_natural_field width element offset =
     (* Read n bytes from the contents *)
@@ -752,9 +758,7 @@ let extract_natural_field width element offset =
     let bytes = List.map (fun mb -> match mb with Nothing -> byte_of_natural 0 | Just mb -> mb end) maybe_bytes
     in
     (* FIXME: do we want little- or big-endian? *)
-    List.foldl (fun acc -> fun next_byte ->
-        acc * 256 + (natural_of_byte next_byte)
-    ) (0 : natural) bytes
+    natural_of_le_byte_list bytes
 
 val natural_to_le_byte_list : natural -> list byte
 let rec natural_to_le_byte_list n =
