@@ -681,6 +681,12 @@ let apply_relocations f img img_addr syms =
     let (width, calcfn) = applyfn img addr symref_and_reloc_site in
     let _ = Missing_pervasives.errln ("Relocation of type 0x" ^ (hex_string_of_natural rel_type) ^ " at 0x" ^ (hex_string_of_natural addr) ^ " (offset 0x" ^ (hex_string_of_natural offset) ^ "), size 0x" ^ (hex_string_of_natural width) ^ " in " ^ (show_section_at_addr f offset)) in
 
+    (* TODO: is there a way to make this nicer? *)
+    if rel_type = 0 then
+      let _ = Missing_pervasives.errln "  Skipping NONE relocation" in
+      img
+    else
+
     let maybe_sym =
       (* TODO: remove these special cases, especially the last one *)
       if symref_and_reloc_site.ref.ref_symname <> "" then
