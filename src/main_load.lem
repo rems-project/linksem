@@ -730,6 +730,7 @@ let apply_relocations f img img_addr syms =
 val apply_mips64_got_relocations' : forall 'abifeature. annotated_memory_image 'abifeature -> natural -> natural -> natural -> annotated_memory_image 'abifeature
 let rec apply_mips64_got_relocations' img base pltgot_entry_addr local_gotno =
   if local_gotno = 0 then img else
+  let _ = Missing_pervasives.errln ("MIPS .got relocation at 0x" ^ (hex_string_of_natural pltgot_entry_addr)) in
   let width = 8 in (* Address width *)
   let existing_bytes = assert_unwrap_maybe (read_memory_image img pltgot_entry_addr width) in
   (* TODO: don't hardcode little endian *)
@@ -926,6 +927,12 @@ let extract_dynsyms f offset existing_syms =
     return (all_syms ++ syms)
   ) [] results
 
+let string_contains s substr =
+  match Missing_pervasives.find_substring substr s with
+    | Just _ -> true
+    | Nothing -> false
+  end
+
 let rec check_binary core_file core_img is_loaded maybe_root_path nt_file_entries dynsyms binary_filename =
   let root_path = match maybe_root_path with
     | Just root_path -> root_path ^ "/"
@@ -993,7 +1000,15 @@ let rec check_binary core_file core_img is_loaded maybe_root_path nt_file_entrie
       let _ = Missing_pervasives.errln ("Found " ^ (show (List.length dyn_dt_needed)) ^ " linked libraries") in
       let dt_needed = List.map (fun (_, dyn_value) ->
         match dyn_value with
-          | Library s -> realpath (ld_library_path ^ "/" ^ s) (* TODO *)
+          | Library s ->
+            (* TODO: remove this hack *)
+            let ld_library_path =
+              if s = "libc.so" && Abi_mips64.header_is_mips64 binary_file.elf64_file_header && string_contains binary_filepath "musl" then
+                "/lib/mips64el-linux-musl"
+              else
+                ld_library_path
+            in
+            realpath (ld_library_path ^ "/" ^ s) (* TODO: improve this *)
           | _ -> failwith "got a dt_needed with something else than a Library"
         end
       ) dyn_dt_needed in
@@ -1059,10 +1074,7 @@ let process_file core_filepath maybe_root_path =
 
   (* Data sections have to be masked if coredump has been generated after _start *)
   (* TODO: add a flag instead of this hacky thing *)
-  let is_loaded = match Missing_pervasives.find_substring "start" core_filepath with
-    | Just _ -> false
-    | Nothing -> true
-  end in
+  let is_loaded = not (string_contains core_filepath "start") in
 
   check_binary core_file core_img is_loaded maybe_root_path nt_file_entries [] binary_filename >>= fun _ ->
 
