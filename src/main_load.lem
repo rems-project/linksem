@@ -971,16 +971,14 @@ let rec check_binary core_file core_img is_loaded maybe_root_path nt_file_entrie
   let _ = Missing_pervasives.errln ("Binary exports " ^ (show (List.length binary_dynsyms)) ^ " dynamic symbols") in
   let dynsyms = dynsyms ++ binary_dynsyms in
 
-  read_dynamic binary_bs binary_file >>= fun dyns ->
-
   (* Result contains the number of linked libraries *)
   let linked_libs_res =
     if not is_loaded then
       let _ = Missing_pervasives.errln "Core file hasn't been loaded; not checking linked libraries" in
-      return (0, dynsyms)
+      return (0, [], [])
     else if not (has_dynamic_section binary_file) then
       let _ = Missing_pervasives.errln "Binary doesn't have a .dynamic section; not checking linked libraries" in
-      return (0, dynsyms)
+      return (0, [], [])
     else
       let _ = Missing_pervasives.errln "Checking linked libraries" in
       (* TODO: do not hardcode this *)
@@ -990,6 +988,7 @@ let rec check_binary core_file core_img is_loaded maybe_root_path nt_file_entrie
         else
           "/usr/lib"
       in
+      read_dynamic binary_bs binary_file >>= fun dyns ->
       let dyn_dt_needed = List.filter (fun (tag, _) -> tag = Elf_dynamic.dt_needed) dyns in
       let _ = Missing_pervasives.errln ("Found " ^ (show (List.length dyn_dt_needed)) ^ " linked libraries") in
       let dt_needed = List.map (fun (_, dyn_value) ->
@@ -1003,10 +1002,10 @@ let rec check_binary core_file core_img is_loaded maybe_root_path nt_file_entrie
         check_binary core_file core_img is_loaded maybe_root_path nt_file_entries dynsyms library_filepath
       ) dynsyms dt_needed in
       res >>= fun dynsyms ->
-      return (naturalFromNat (List.length dyn_dt_needed), dynsyms)
+      return (naturalFromNat (List.length dyn_dt_needed), dynsyms, dyns)
   in
 
-  linked_libs_res >>= fun (libs_count, dynsyms) ->
+  linked_libs_res >>= fun (libs_count, dynsyms, dyns) ->
   let _ = Missing_pervasives.errln ("OK: " ^ (show libs_count) ^ " libraries linked to " ^ binary_filepath ^ " match!") in
 
   let binary_img =
@@ -1014,7 +1013,8 @@ let rec check_binary core_file core_img is_loaded maybe_root_path nt_file_entrie
       let _ = Missing_pervasives.errln ("Applying relocations in " ^ binary_filename) in
       let binary_img = apply_relocations binary_file binary_img binary_offset dynsyms in
       let binary_img =
-        if Abi_mips64.header_is_mips64 binary_file.elf64_file_header then
+        if Abi_mips64.header_is_mips64 binary_file.elf64_file_header &&
+            has_dynamic_section binary_file then
           apply_mips64_got_relocations binary_file binary_img binary_offset dyns
         else
           binary_img
@@ -1080,5 +1080,5 @@ let _ =
   end in
   match process_file core_filepath maybe_root_path with
     | Fail err -> failwith err
-    | Success () -> Missing_pervasives.outln "OK: ALL GREEN"
+    | Success () -> Missing_pervasives.errln "OK: ALL GREEN"
   end
