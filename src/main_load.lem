@@ -772,7 +772,6 @@ let rec apply_mips64_global_got_relocations' abi f img dynsyms syms base got_ent
         | Nothing -> 0 (* This isn't pretty, but doing something else would be complicated *)
       end in
 
-      let _ = Missing_pervasives.errln ("HELLO " ^ sym_name ^ " " ^ (show sym_addr) ^ " " ^ (show maybe_sym)) in
       (* let sym_addr = base + natural_of_elf64_addr sym_entry.elf64_st_value in *)
       let symref_and_reloc_site = null_symbol_reference_and_reloc_site in
       let img = apply_relocation abi f img base reloc symref_and_reloc_site sym_addr in
@@ -998,6 +997,11 @@ let extract_dynsyms f offset existing_syms =
             if get_elf64_symbol_binding existing_entry = Elf_symbol_table.stb_weak && sym_binding <> Elf_symbol_table.stb_weak then
               (* Existing symbol is weak and the new one isn't, replace it *)
               let _ = Missing_pervasives.errln ("Overriding weak symbol `" ^ sym_name ^ "`, 0x" ^ (hex_string_of_natural existing_addr) ^ " -> 0x" ^ (hex_string_of_natural sym_addr)) in
+              sym :: syms
+            else if natural_of_elf64_half existing_entry.elf64_st_shndx = 0 && natural_of_elf64_half sym_entry.elf64_st_shndx <> 0 then
+              (* Existing symbol has an undefined ndx and the new one has a defined one, replace it *)
+              (* TODO: why is this the right thing to do? *)
+              let _ = Missing_pervasives.errln ("Overriding symbol with undefined ndx `" ^ sym_name ^ "`, 0x" ^ (hex_string_of_natural existing_addr) ^ " -> 0x" ^ (hex_string_of_natural sym_addr)) in
               sym :: syms
             else
               let _ = Missing_pervasives.errln ("Multiple definitions of " ^ sym_name ^ ", only keeping the first one") in
