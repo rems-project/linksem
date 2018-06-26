@@ -661,7 +661,49 @@ let find_sym syms name =
       maybe_sym
   ) Nothing syms
 
-let apply_relocations f img img_addr syms =
+val apply_relocation : forall 'abifeature. abi 'abifeature -> elf64_file -> annotated_memory_image 'abifeature -> natural -> elf64_relocation_a -> symbol_reference_and_reloc_site -> natural -> annotated_memory_image 'abifeature
+let apply_relocation abi f img base reloc symref_and_reloc_site sym_addr =
+  let rel_type = get_elf64_relocation_a_type reloc in
+  let offset = natural_of_elf64_addr reloc.elf64_ra_offset in
+  let addend = integer_of_elf64_sxword reloc.elf64_ra_addend in
+  let addr = base + offset in
+  (* TODO: support is_absolute? *)
+  let (is_absolute, applyfn) = abi.reloc rel_type in
+  let (width, calcfn) = applyfn img addr symref_and_reloc_site in
+  let _ = Missing_pervasives.errln ("Relocation of type 0x" ^ (hex_string_of_natural rel_type) ^ " at 0x" ^ (hex_string_of_natural addr) ^ " (offset 0x" ^ (hex_string_of_natural offset) ^ "), size 0x" ^ (hex_string_of_natural width) ^ " in " ^ (show_section_at_addr f offset)) in
+
+  (* TODO: is there a way to make this nicer? *)
+  if rel_type = 0 then
+    let _ = Missing_pervasives.errln "  Skipping NONE relocation" in
+    img
+  else
+
+  let is_in_data_section = match get_section_at_addr f offset with
+    | Just sec -> is_data_section sec
+    | Nothing -> false
+  end in
+  if is_in_data_section then
+    let _ = Missing_pervasives.errln "  Relocation inside a data section, ignoring" in
+    img
+  else
+    (* TODO: remove these special cases *)
+    (* TODO: fix r_x86_64_tpoff64 *)
+    if Abi_amd64.header_is_amd64 f.elf64_file_header &&
+        (rel_type = r_x86_64_irelative || rel_type = r_x86_64_tpoff64) then
+      let _ = Missing_pervasives.errln ("  Giving up on this one") in
+      mask_memory_image img addr width
+    else
+      let existing_bytes = assert_unwrap_maybe (read_memory_image img addr width) in
+      (* TODO: don't hardcode little endian *)
+      let existing_value = Memory_image.natural_of_le_byte_list existing_bytes in
+      let new_value = calcfn sym_addr addend existing_value in
+      (* TODO: don't hardcode little endian *)
+      let field_bytes = Memory_image.natural_to_le_byte_list_padded_to width new_value in
+      let field_bp = List.map (fun b -> Just b) field_bytes in
+      let _ = Missing_pervasives.errln ("  Relocating `" ^ symref_and_reloc_site.ref.ref_symname ^ "` (existing=0x" ^ (hex_string_of_natural existing_value) ^ " addend=" ^ (show addend) ^ ") to 0x" ^ (hex_string_of_natural new_value)) in
+      write_memory_image img addr field_bp
+
+let apply_all_relocations f img base syms =
   let abi = get_file_abi f in
   let symbol_refs_and_reloc_sites = extract_all_relocs_as_symbol_references f in
   (* let tags_and_ranges = Multimap.lookupBy Memory_image_orderings.tagEquiv (SymbolRef(null_symbol_reference_and_reloc_site)) img.by_tag in *)
@@ -672,20 +714,6 @@ let apply_relocations f img img_addr syms =
       | Nothing -> failwith "impossible: no reloc site during relocation"
       | Just r -> r
     end in
-    let rel_type = get_elf64_relocation_a_type reloc_site.ref_relent in
-    let offset = natural_of_elf64_addr reloc_site.ref_relent.elf64_ra_offset in
-    let addend = integer_of_elf64_sxword reloc_site.ref_relent.elf64_ra_addend in
-    let addr = img_addr + offset in
-    (* TODO: support is_absolute? *)
-    let (is_absolute, applyfn) = abi.reloc rel_type in
-    let (width, calcfn) = applyfn img addr symref_and_reloc_site in
-    let _ = Missing_pervasives.errln ("Relocation of type 0x" ^ (hex_string_of_natural rel_type) ^ " at 0x" ^ (hex_string_of_natural addr) ^ " (offset 0x" ^ (hex_string_of_natural offset) ^ "), size 0x" ^ (hex_string_of_natural width) ^ " in " ^ (show_section_at_addr f offset)) in
-
-    (* TODO: is there a way to make this nicer? *)
-    if rel_type = 0 then
-      let _ = Missing_pervasives.errln "  Skipping NONE relocation" in
-      img
-    else
 
     let maybe_sym =
       (* TODO: remove these special cases, especially the last one *)
@@ -700,30 +728,7 @@ let apply_relocations f img img_addr syms =
       | Nothing -> 0 (* This isn't pretty, but doing something else would be complicated *)
     end in
 
-    let is_in_data_section = match get_section_at_addr f offset with
-      | Just sec -> is_data_section sec
-      | Nothing -> false
-    end in
-    if is_in_data_section then
-      let _ = Missing_pervasives.errln "  Relocation inside a data section, ignoring" in
-      img
-    else
-      (* TODO: remove these special cases *)
-      (* TODO: fix r_x86_64_tpoff64 *)
-      if Abi_amd64.header_is_amd64 f.elf64_file_header &&
-          (rel_type = r_x86_64_irelative || rel_type = r_x86_64_tpoff64) then
-        let _ = Missing_pervasives.errln ("  Giving up on this one") in
-        mask_memory_image img addr width
-      else
-        let existing_bytes = assert_unwrap_maybe (read_memory_image img addr width) in
-        (* TODO: don't hardcode little endian *)
-        let existing_value = Memory_image.natural_of_le_byte_list existing_bytes in
-        let new_value = calcfn sym_addr addend existing_value in
-        (* TODO: don't hardcode little endian *)
-        let field_bytes = Memory_image.natural_to_le_byte_list_padded_to width new_value in
-        let field_bp = List.map (fun b -> Just b) field_bytes in
-        let _ = Missing_pervasives.errln ("  Relocating `" ^ symref_and_reloc_site.ref.ref_symname ^ "` (existing=0x" ^ (hex_string_of_natural existing_value) ^ " addend=" ^ (show addend) ^ ") to 0x" ^ (hex_string_of_natural new_value)) in
-        write_memory_image img addr field_bp
+    apply_relocation abi f img base reloc_site.ref_relent symref_and_reloc_site sym_addr
   (* ) tags_and_ranges in *)
   ) img symbol_refs_and_reloc_sites
 
@@ -743,30 +748,22 @@ let rec apply_mips64_local_got_relocations img base got_entry_addr local_gotno =
   let img = write_memory_image img got_entry_addr field_bp in
   apply_mips64_local_got_relocations img base (got_entry_addr + width) (local_gotno - 1)
 
-val apply_mips64_global_got_relocations' : forall 'abifeature. abi 'abifeature -> annotated_memory_image 'abifeature -> list (string * elf64_symbol_table_entry * natural (* scnidx *) * natural (* symidx *)) -> natural -> natural -> natural -> (annotated_memory_image 'abifeature * natural)
-let rec apply_mips64_global_got_relocations' abi img syms base got_entry_addr symtabno =
+val apply_mips64_global_got_relocations' : forall 'abifeature. abi 'abifeature -> elf64_file -> annotated_memory_image 'abifeature -> list (string * elf64_symbol_table_entry * natural (* scnidx *) * natural (* symidx *)) -> natural -> natural -> natural -> (annotated_memory_image 'abifeature * natural)
+let rec apply_mips64_global_got_relocations' abi f img syms base got_entry_addr symtabno =
   if symtabno = 0 then (img, got_entry_addr) else
   match syms with
     | (sym_name, sym_entry, scnidx, symidx) :: syms ->
-      let rel_type = Abi_mips64_relocation.r_mips_jump_slot in
+      let reloc = <|
+        elf64_ra_offset = elf64_addr_of_natural (got_entry_addr - base);
+        elf64_ra_info = elf64_xword_of_natural Abi_mips64_relocation.r_mips_jump_slot;
+        elf64_ra_addend = elf64_sxword_of_integer 0
+      |> in
       let sym_addr = base + natural_of_elf64_addr sym_entry.elf64_st_value in
-      let addend = 0 in
-      let addr = got_entry_addr in
-      (* TODO: wrap the following in a apply_relocation function *)
-      let (is_absolute, applyfn) = abi.reloc rel_type in
-      let (width, calcfn) = applyfn img addr null_symbol_reference_and_reloc_site in
-      let _ = Missing_pervasives.errln ("MIPS global .got relocation `" ^ sym_name ^ "` (remaining: " ^ (show symtabno) ^ ") of type 0x" ^ (hex_string_of_natural rel_type) ^ " at 0x" ^ (hex_string_of_natural addr) ^ ", size 0x" ^ (hex_string_of_natural width) ^ ", symidx " ^ (show symidx)) in
-      let existing_bytes = assert_unwrap_maybe (read_memory_image img addr width) in
-      (* TODO: don't hardcode little endian *)
-      let existing_value = Memory_image.natural_of_le_byte_list existing_bytes in
-      let new_value = calcfn sym_addr addend existing_value in
-      (* TODO: don't hardcode little endian *)
-      let field_bytes = Memory_image.natural_to_le_byte_list_padded_to width new_value in
-      let field_bp = List.map (fun b -> Just b) field_bytes in
-      let _ = Missing_pervasives.errln ("  Relocating (existing=0x" ^ (hex_string_of_natural existing_value) ^ ", symaddr = 0x" ^ (hex_string_of_natural sym_addr) ^ ") to 0x" ^ (hex_string_of_natural new_value)) in
-      let img = write_memory_image img addr field_bp in
+      let symref_and_reloc_site = null_symbol_reference_and_reloc_site in
+      let img = apply_relocation abi f img base reloc symref_and_reloc_site sym_addr in
 
-      apply_mips64_global_got_relocations' abi img syms base (got_entry_addr + width) (symtabno - 1)
+      let width = 8 in (* Address width *)
+      apply_mips64_global_got_relocations' abi f img syms base (got_entry_addr + width) (symtabno - 1)
     | _ -> failwith "apply_mips64_global_got_relocations': not enough symbols"
   end
 
@@ -789,7 +786,7 @@ let apply_mips64_global_got_relocations f img base got_addr symtab_addr gotsym s
   in
   let syms = List.drop (natFromNatural gotsym) syms in
   let abi = get_file_abi f in
-  let (img, _) = apply_mips64_global_got_relocations' abi img syms base got_addr (symtabno - gotsym) in
+  let (img, _) = apply_mips64_global_got_relocations' abi f img syms base got_addr (symtabno - gotsym) in
   img
 
 (* MIPS uses an ugly packed form for GOT relocations. See musl's do_mips_relocs
@@ -1102,7 +1099,7 @@ let rec check_binary core_file core_img is_loaded maybe_root_path nt_file_entrie
   let binary_img =
     if is_loaded then
       let _ = Missing_pervasives.errln ("Applying relocations in " ^ binary_filename) in
-      let binary_img = apply_relocations binary_file binary_img binary_offset dynsyms in
+      let binary_img = apply_all_relocations binary_file binary_img binary_offset dynsyms in
       let binary_img =
         if Abi_mips64.header_is_mips64 binary_file.elf64_file_header &&
             has_dynamic_section binary_file then
