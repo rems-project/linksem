@@ -565,6 +565,7 @@ let mask_memory_image img start len =
 let is_data_section sec =
   false
   || sec.elf64_section_name_as_string = ".data"
+  || sec.elf64_section_name_as_string = ".sdata" (* TODO: investigate this one *)
   || sec.elf64_section_name_as_string = ".dynamic"
   || sec.elf64_section_name_as_string = ".data.rel.ro" (* TODO: remove me *)
   || sec.elf64_section_name_as_string = ".rld_map" (* TODO: remove me *)
@@ -699,7 +700,7 @@ let apply_relocation abi f img base reloc symref_and_reloc_site sym_addr =
       (* TODO: don't hardcode little endian *)
       let field_bytes = Memory_image.natural_to_le_byte_list_padded_to width new_value in
       let field_bp = List.map (fun b -> Just b) field_bytes in
-      let _ = Missing_pervasives.errln ("  Relocating `" ^ symref_and_reloc_site.ref.ref_symname ^ "` (existing=0x" ^ (hex_string_of_natural existing_value) ^ " addend=" ^ (show addend) ^ ") to 0x" ^ (hex_string_of_natural new_value)) in
+      let _ = Missing_pervasives.errln ("  Relocating `" ^ symref_and_reloc_site.ref.ref_symname ^ "` (existing=0x" ^ (hex_string_of_natural existing_value) ^ " addend=" ^ (show addend) ^ ") to 0x" ^ (hex_string_of_natural new_value) ^ " (symbol address 0x" ^ (hex_string_of_natural sym_addr) ^ ")") in
       write_memory_image img addr field_bp
 
 let apply_all_relocations f img base syms =
@@ -731,11 +732,13 @@ let apply_all_relocations f img base syms =
   (* ) tags_and_ranges in *)
   ) img symbol_refs_and_reloc_sites
 
+let mips64_address_size : natural = 8
+
 val apply_mips64_local_got_relocations : forall 'abifeature. annotated_memory_image 'abifeature -> natural -> natural -> natural -> (annotated_memory_image 'abifeature * natural)
 let rec apply_mips64_local_got_relocations img base got_entry_addr local_gotno =
   if local_gotno = 0 then (img, got_entry_addr) else
   let _ = Missing_pervasives.errln ("MIPS local .got relocation at 0x" ^ (hex_string_of_natural got_entry_addr) ^ " (remaining: " ^ (show local_gotno) ^ ")") in
-  let width = 8 in (* Address width *)
+  let width = mips64_address_size in
   let existing_bytes = assert_unwrap_maybe (read_memory_image img got_entry_addr width) in
   (* TODO: don't hardcode little endian *)
   let existing_value = Memory_image.natural_of_le_byte_list existing_bytes in
@@ -772,16 +775,17 @@ let rec apply_mips64_global_got_relocations' abi f img dynsyms syms base got_ent
         | Nothing -> 0 (* This isn't pretty, but doing something else would be complicated *)
       end in
 
+      let _ = Missing_pervasives.errln ("sym_name=" ^ sym_name) in
+
       (* let sym_addr = base + natural_of_elf64_addr sym_entry.elf64_st_value in *)
       let symref_and_reloc_site = null_symbol_reference_and_reloc_site in
       let img = apply_relocation abi f img base reloc symref_and_reloc_site sym_addr in
 
-      let width = 8 in (* Address width *)
-      apply_mips64_global_got_relocations' abi f img dynsyms syms base (got_entry_addr + width) (symtabno - 1)
+      apply_mips64_global_got_relocations' abi f img dynsyms syms base (got_entry_addr + mips64_address_size) (symtabno - 1)
     | _ -> failwith "apply_mips64_global_got_relocations': not enough symbols"
   end
 
-let apply_mips64_global_got_relocations f img dynsyms base got_addr symtab_addr gotsym symtabno =
+let apply_mips64_global_got_relocations f img dynsyms base got_entry_addr symtab_addr gotsym symtabno =
   let symtab_triples = mapMaybei (fun scnidx -> (fun isec ->
     if isec.elf64_section_addr = natural_of_elf64_addr symtab_addr then
       match find_elf64_symbols_by_symtab_idx scnidx f with
@@ -800,7 +804,7 @@ let apply_mips64_global_got_relocations f img dynsyms base got_addr symtab_addr 
   in
   let syms = List.drop (natFromNatural gotsym) syms in
   let abi = get_file_abi f in
-  let (img, _) = apply_mips64_global_got_relocations' abi f img dynsyms syms base got_addr (symtabno - gotsym) in
+  let (img, _) = apply_mips64_global_got_relocations' abi f img dynsyms syms base got_entry_addr (symtabno - gotsym) in
   img
 
 (* MIPS uses an ugly packed form for GOT relocations. See musl's do_mips_relocs
@@ -812,15 +816,28 @@ let apply_mips64_got_relocations f img dynsyms base dyns =
     | Nothing -> failwith "apply_mips64_got_relocations: missing DT_PLTGOT in .dynamic"
   end in
   let got_addr = base + natural_of_elf64_addr got_offset in
+  let got_entry_addr = got_addr in
 
   (* Apply local .git relocs *)
   let maybe_local_gotno = List.find (fun (tag, _) ->
     tag = Abi_mips64_dynamic.abi_mips64_dt_local_gotno
   ) dyns in
-  let (img, got_addr) = match maybe_local_gotno with
+  let (img, got_entry_addr) = match maybe_local_gotno with
     | Just (_, Numeric local_gotno) ->
+      (* The first entry is reserved to hold the address of the entry point in
+         the dynamic linker to call when lazy resolving text symbols. The second
+         entry is reserved by DSOs linked with GNU's ld to hold the base address
+         of the loaded DSO. GNU DSOs have the MSB of the second entry set to 1.
+         IRL, some ld.so implementations skip both (uclibc), some relocate both
+         (musl), so we'll just don't check those two.
+         TODO: check the MSB of the second entry and only mask it if it's GNU. *)
+      let reserved_num = 2 in
+      let img = mask_memory_image img got_entry_addr (reserved_num * mips64_address_size) in
+      let got_entry_addr = got_addr + reserved_num * mips64_address_size in
+      let local_gotno = local_gotno - reserved_num in
+
       let _ = Missing_pervasives.errln ("Applying " ^ (show local_gotno) ^ " MIPS64 local .got relocations") in
-      apply_mips64_local_got_relocations img base got_addr local_gotno
+      apply_mips64_local_got_relocations img base got_entry_addr local_gotno
     | Nothing ->
       let _ = Missing_pervasives.errln "Not applying MIPS64 .got relocations: missing DT_LOCAL_GOTNO" in
       (img, got_addr)
@@ -848,7 +865,7 @@ let apply_mips64_got_relocations f img dynsyms base dyns =
     | Just (_, Numeric symtabno) -> symtabno
     | Nothing -> failwith "apply_mips64_got_relocations: missing DT_MIPS_SYMTABNO in .dynamic"
   end in
-  apply_mips64_global_got_relocations f img dynsyms base got_addr symtab_addr gotsym symtabno
+  apply_mips64_global_got_relocations f img dynsyms base got_entry_addr symtab_addr gotsym symtabno
 
 let get_first_mapped_address nt_file_entries filename =
   List.foldl (fun first nt_file_entry ->
