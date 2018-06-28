@@ -48,7 +48,7 @@ type integer_bit_width
   | U32       (** Unsigned 32 bit *)
   | U48       (** Unsigned 48 bit *)
   | U64       (** Unsigned 64 bit *)
-  
+
 (** [natural_of_integer_bit_width i] computes the bit width of integer bit width
   * [i].
   *)
@@ -77,7 +77,7 @@ let natural_of_integer_bit_width i =
     | U64      -> 64
     | I64X2    -> 128
   end
-  
+
 (** [relocation_operator] records the operators used to calculate relocations by
   * the various ABIs.  Each ABI will only use a subset of these, and they should
   * be interpreted on a per-ABI basis.  As more ABIs are added, more operators
@@ -106,16 +106,16 @@ type relocation_operator
   | HigherA
   | Highest
   | HighestA
-  
+
 (** [relocation_operator2] is a binary relocation operator, as detailed above.
   *)
 type relocation_operator2 =
   | GTLSIdx
-  
+
 (** Generalising and abstracting over relocation calculations and their return
   * types
   *)
-  
+
 type val_map 'k 'v =
   Map.map 'k 'v
 
@@ -125,7 +125,7 @@ let lookupM key val_map =
     | Nothing -> fail "lookupM: key not found in val_map"
     | Just j  -> return j
   end
-  
+
 (** Some relocations may fail, for example:
   * Page 58, Power ABI: relocation types whose Field column is marked with an
   * asterisk are subject to failure is the value computed does not fit in the
@@ -136,7 +136,7 @@ type can_fail 'a
   = CanFail                       (** [CanFail] signals a potential failing relocation calculation when width constraints are invalidated *)
   | CanFailOnTest of ('a -> bool) (** [CanFailOnTest p] signals a potentially failing relocation calculation when predicate [p] on the result of the calculation returns [false] *)
   | CannotFail                    (** [CannotFail] states the relocation calculation cannot fail and bit-width constraints should be ignored *)
-  
+
 (** [relocation_operator_expression] is an AST of expressions describing a relocation
   * calculation.  An AST is used as it allows us to unify the treatment of relocation
   * calculation: rather than passing in dozens of functions to the calculation function
@@ -154,7 +154,7 @@ type relocation_operator_expression 'a
   | Plus   of (relocation_operator_expression 'a * relocation_operator_expression 'a)                        (** Add two expressions. *)
   | Minus  of (relocation_operator_expression 'a * relocation_operator_expression 'a)                        (** Subtract two expressions. *)
   | RShift of (relocation_operator_expression 'a * natural)                                                  (** Right shift the result of an expression [m] places. *)
-  
+
 type relocation_frame 'addr 'res =
   | Copy
   | NoCopy of (Map.map 'addr (relocation_operator_expression 'res * integer_bit_width * can_fail 'res))
@@ -166,21 +166,21 @@ let size_of_def rr =
     natural_of_elf64_xword sm.elf64_st_size
 
 val size_of_copy_reloc : forall 'abifeature. annotated_memory_image 'abifeature -> symbol_reference_and_reloc_site -> natural
-let size_of_copy_reloc img rr = 
+let size_of_copy_reloc img rr =
     (* it's the minimum of the two definition symbol sizes. FIXME: for now, just use the rr *)
     size_of_def rr
 
-val reloc_site_address : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature => 
+val reloc_site_address : forall 'abifeature. Ord 'abifeature, AbiFeatureTagEquiv 'abifeature =>
     annotated_memory_image 'abifeature -> symbol_reference_and_reloc_site -> natural
-let reloc_site_address img rr = 
+let reloc_site_address img rr =
     (* find the element range that's tagged with this reloc site *)
     let found_kvs = Multimap.lookupBy (=) (SymbolRef(rr)) img.by_tag
     in
     match found_kvs with
         [] -> failwith "impossible: reloc site not marked in memory image"
-        | [(_, maybe_range)] -> match maybe_range with 
+        | [(_, maybe_range)] -> match maybe_range with
                 Nothing -> failwith "impossible: reloc site has no element range"
-                | Just (el_name, el_range) -> 
+                | Just (el_name, el_range) ->
                     let element_addr = match Map.lookup el_name img.elements with
                         Nothing -> failwith "impossible: non-existent element"
                         | Just el -> match el.startpos with
@@ -189,7 +189,7 @@ let reloc_site_address img rr =
                         end
                     end
                     in
-                    let site_offset = (* match rr.maybe_reloc with 
+                    let site_offset = (* match rr.maybe_reloc with
                         Just reloc -> natural_of_elf64_addr reloc.ref_relent.elf64_ra_offset
                         | Nothing -> failwith "symbol reference with range but no reloc site"
                     end*) (let (start, _) = el_range in start)
@@ -198,3 +198,12 @@ let reloc_site_address img rr =
             end
         | _ -> failwith "error: more than one address with identical relocation record"
     end
+
+(** Extracting useful information from relocs *)
+
+val parse_elf64_relocation_info : elf64_xword -> (natural (* type *) * natural (* symbol *))
+let parse_elf64_relocation_info w =
+  let mask = elf64_xword_of_natural (natural_of_hex "0xffffffff") in
+  let typ = natural_of_elf64_xword (elf64_xword_land w mask) in
+  let sym = natural_of_elf64_xword (elf64_xword_rshift w 32) in
+  (typ, sym)

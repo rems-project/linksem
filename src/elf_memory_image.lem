@@ -47,41 +47,41 @@ let (empty_elf_memory_image : elf_memory_image) = <|
 |>
 
 (* HMM. For the elf_ident, I don't really want to express it this way.
- * I want something more bidirectional: something that can tell me 
- * not only that a given ident is valid for a given ABI, but also, 
+ * I want something more bidirectional: something that can tell me
+ * not only that a given ident is valid for a given ABI, but also,
  * to *construct* an ident for a given abstract ELF file satisfying x.
- * This is very much like a lens. 
- * 
+ * This is very much like a lens.
+ *
  * Similarly for relocs, I might want a way to map back to an allowable
- * *concrete* representation, from some *abstract* description of the 
+ * *concrete* representation, from some *abstract* description of the
  * reloc's intent (i.e. a symbol binding: "point this reference at symbol
- * Foo"), given the constraints imposed by the ABI (such as "use only 
- * RELA, not rel". FIXME: figure out how to lensify what we're doing. *) 
+ * Foo"), given the constraints imposed by the ABI (such as "use only
+ * RELA, not rel". FIXME: figure out how to lensify what we're doing. *)
 
 type elf_range_tag = range_tag any_abi_feature
 
 let null_section_header_table = ElfSectionHeaderTable([])
 let null_program_header_table = ElfProgramHeaderTable([])
-let null_elf_header = <| 
+let null_elf_header = <|
      elf64_ident    = []
-   ; elf64_type     = elf64_half_of_natural 0  
-   ; elf64_machine  = elf64_half_of_natural 0  
-   ; elf64_version  = elf64_word_of_natural 0  
-   ; elf64_entry    = elf64_addr_of_natural 0  
-   ; elf64_phoff    = elf64_off_of_natural 0   
-   ; elf64_shoff    = elf64_off_of_natural 0   
-   ; elf64_flags    = elf64_word_of_natural 0  
-   ; elf64_ehsize   = elf64_half_of_natural 0  
-   ; elf64_phentsize= elf64_half_of_natural 0  
-   ; elf64_phnum    = elf64_half_of_natural 0  
-   ; elf64_shentsize= elf64_half_of_natural 0  
-   ; elf64_shnum    = elf64_half_of_natural 0  
-   ; elf64_shstrndx = elf64_half_of_natural 0  
+   ; elf64_type     = elf64_half_of_natural 0
+   ; elf64_machine  = elf64_half_of_natural 0
+   ; elf64_version  = elf64_word_of_natural 0
+   ; elf64_entry    = elf64_addr_of_natural 0
+   ; elf64_phoff    = elf64_off_of_natural 0
+   ; elf64_shoff    = elf64_off_of_natural 0
+   ; elf64_flags    = elf64_word_of_natural 0
+   ; elf64_ehsize   = elf64_half_of_natural 0
+   ; elf64_phentsize= elf64_half_of_natural 0
+   ; elf64_phnum    = elf64_half_of_natural 0
+   ; elf64_shentsize= elf64_half_of_natural 0
+   ; elf64_shnum    = elf64_half_of_natural 0
+   ; elf64_shstrndx = elf64_half_of_natural 0
    |>
 
-(* Here we build the image of a file in file offset space. 
+(* Here we build the image of a file in file offset space.
  * To transform to memory space, we
- * 
+ *
  * - switch positions to be addresses
  * - switch lengths of nobits etc. to be memory lengths
  * - PROBLEM: an offset might map to >1 virtual address.
@@ -90,7 +90,7 @@ let null_elf_header = <|
  *   -- i.e. sections, ELF header, SHT and PHT are all file features.
  * - PROBLEM: the memory image might only contain part of an element.
  *   We need to reflect this truncatedness somehow in the label.
- * 
+ *
  * Is the offset-space view really useful?
  * SORT OF: want to be able to make an image out of relocatable ELF files
  * that have no address assignments or phdrs yet.
@@ -98,17 +98,17 @@ let null_elf_header = <|
  * All allocatable sections become elements with Nothing as their address.
  * The remainder of the ELF file *should* be represented as labels.
  * But, hmm, some stuff like the ELF header and SHT will likely get discarded.
- * 
+ *
  * In short, we should work entirely with memory space.
  * Then
- * 
+ *
  * - do we want to encode the aliasing of multiple virtual addresses
  *   down to single "features" in offset-space, like multiple mappings
  *   of the ELF header, say?
  *)
 
 val offset_to_vaddr_mappings : elf64_file -> natural -> list (natural * elf64_interpreted_segment)
-let offset_to_vaddr_mappings f off = 
+let offset_to_vaddr_mappings f off =
     List.mapMaybe (fun ph ->
         if off >= ph.elf64_segment_offset
             && off < ph.elf64_segment_base + ph.elf64_segment_size
@@ -120,11 +120,11 @@ val gensym : string -> string
 let gensym hint = hint (* FIXME: remember duplicates *)
 
 val extract_symbol : (elf64_symbol_table * string_table * natural) -> natural -> maybe (string * elf64_symbol_table_entry)
-let extract_symbol symtab_triple symidx = 
+let extract_symbol symtab_triple symidx =
     let (symtab, strtab, scnidx) = symtab_triple
     in
     match index symidx symtab with
-        Just ent -> 
+        Just ent ->
             match (get_string_at (natural_of_elf64_word ent.elf64_st_name) strtab) with
                 Success str -> Just (str, ent)
                 | Fail _ -> Just ("", ent)    (* ELF doesn't distinguish "no string" from "empty string" *)
@@ -143,7 +143,7 @@ let extract_satisfying_symbols symtab_triple pred =
     mapMaybei (fun symidx -> (fun ent ->
         (match (get_string_at (natural_of_elf64_word ent.elf64_st_name) strtab) with
             Success str ->
-                (* exclude those that don't match *) 
+                (* exclude those that don't match *)
                 if (pred ent)
                 then Just(str, ent, scnidx, symidx)
                 else Nothing
@@ -152,15 +152,15 @@ let extract_satisfying_symbols symtab_triple pred =
                 Nothing
         end)
         )) symtab
-        
-val extract_all_symbols : (elf64_symbol_table * string_table * natural) -> list (string * elf64_symbol_table_entry * natural (* scnidx *) * natural (* symidx *))
-let extract_all_symbols symtab_triple = extract_satisfying_symbols symtab_triple (fun _ -> true) 
 
-let definitions_pred = fun ent -> (natural_of_elf64_half ent.elf64_st_shndx) <> stn_undef 
+val extract_all_symbols : (elf64_symbol_table * string_table * natural) -> list (string * elf64_symbol_table_entry * natural (* scnidx *) * natural (* symidx *))
+let extract_all_symbols symtab_triple = extract_satisfying_symbols symtab_triple (fun _ -> true)
+
+let definitions_pred = fun ent -> (natural_of_elf64_half ent.elf64_st_shndx) <> stn_undef
 let references_pred = fun ent -> (natural_of_elf64_half ent.elf64_st_shndx) = stn_undef && (not (is_elf64_null_entry ent))
 
 val extract_definitions_from_symtab_of_type : natural -> elf64_file -> list symbol_definition
-let extract_definitions_from_symtab_of_type t e = 
+let extract_definitions_from_symtab_of_type t e =
     match (find_elf64_symtab_by_type t e >>= fun symtab -> (
         let (allsyms : list (string * elf64_symbol_table_entry * natural (* scnidx *) * natural (* symidx *)))
          = extract_satisfying_symbols symtab definitions_pred
@@ -177,42 +177,42 @@ let extract_definitions_from_symtab_of_type t e =
     )) with Fail _ -> [] | Success x -> x end
 
 val extract_references_from_symtab_of_type : natural -> elf64_file -> list symbol_reference
-let extract_references_from_symtab_of_type t e = 
+let extract_references_from_symtab_of_type t e =
     match (find_elf64_symtab_by_type t e >>= fun symtab -> (
     let (allsyms : list (string * elf64_symbol_table_entry * natural (* scnidx *) * natural (* symidx *)))
      = extract_satisfying_symbols symtab references_pred
     in
-    let (extracted : list symbol_reference) = 
+    let (extracted : list symbol_reference) =
         mapMaybei (fun symidx -> (fun (str, ent, scnidx, symidx) -> Just <|
                    ref_symname = str
                  ; ref_syment = ent
                  ; ref_sym_scn = scnidx
                  ; ref_sym_idx = symidx
                  |>)) allsyms
-    in 
+    in
     (*let _ = Missing_pervasives.errs ("Extracted " ^ (show (length allsyms)) ^ " undefined references: "
         ^ (show (List.map (fun (str, _, scnidx, symidx) -> (str, scnidx, symidx)) allsyms)) ^ "\n")
 (*       ^ " (syminds "
         ^ (show (List.map (fun extracted -> extracted.ref_sym_idx) x)) ^ ", symnames "
         ^ (show (List.map (fun extracted -> extracted.ref_symname) x)) ^ ")") *)
-    
+
     in*) return extracted
     )) with Fail _ -> [] | Success x -> x end
 
 val extract_all_relocs : string -> elf64_file -> list (natural (* scn *) * natural (* rel idx *) * natural (* rel src scn *) * elf64_relocation_a)
-let extract_all_relocs fname e = 
-    let (all_rel_sections : list (natural * elf64_interpreted_section)) = mapMaybei (fun i -> (fun isec -> 
+let extract_all_relocs fname e =
+    let (all_rel_sections : list (natural * elf64_interpreted_section)) = mapMaybei (fun i -> (fun isec ->
         if isec.elf64_section_type = sht_rel then Just (i, isec) else Nothing
     )) e.elf64_file_interpreted_sections
     in
-    (*let _ = Missing_pervasives.errln ("File " ^ fname ^ " has " ^ (show (length all_rel_sections)) ^ 
+    (*let _ = Missing_pervasives.errln ("File " ^ fname ^ " has " ^ (show (length all_rel_sections)) ^
         " rel sections (indices " ^ (show (List.map (fun (scn, _) -> scn) all_rel_sections)) ^ ")")
     in*)
-    let (all_rela_sections : list (natural * elf64_interpreted_section)) = mapMaybei (fun i -> (fun isec -> 
+    let (all_rela_sections : list (natural * elf64_interpreted_section)) = mapMaybei (fun i -> (fun isec ->
         if isec.elf64_section_type = sht_rela then Just (i, isec) else Nothing
-    )) e.elf64_file_interpreted_sections 
+    )) e.elf64_file_interpreted_sections
     in
-    (*let _ = Missing_pervasives.errln ("File " ^ fname ^ " has " ^ (show (length all_rela_sections)) ^ 
+    (*let _ = Missing_pervasives.errln ("File " ^ fname ^ " has " ^ (show (length all_rela_sections)) ^
         " rela sections (indices " ^ (show (List.map (fun (scn, _) -> scn) all_rela_sections)) ^ ")")
     in*)
     let rel_to_rela = fun rel -> <|
@@ -226,22 +226,22 @@ let extract_all_relocs fname e =
     (* Build per-section lists of rels paired with their originating section id.
      * We also pair each element with its index *in that section*, and then flatten
      * the whole lot using mapConcat. *)
-    let (all_rels_list : list (natural * natural * natural * elf64_relocation_a)) = list_reverse_concat_map (fun (scn, isec) -> 
+    let (all_rels_list : list (natural * natural * natural * elf64_relocation_a)) = list_reverse_concat_map (fun (scn, isec) ->
         match read_elf64_relocation_section   isec.elf64_section_size endian isec.elf64_section_body
         with
-            Success (relocs, _) -> 
-                (*let _ = Missing_pervasives.errln ("Rel section with index " ^ (show scn) ^ " has " ^ (show (length relocs)) ^ 
+            Success (relocs, _) ->
+                (*let _ = Missing_pervasives.errln ("Rel section with index " ^ (show scn) ^ " has " ^ (show (length relocs)) ^
                     " entries")
                 in*)
                 mapMaybei (fun idx -> (fun rel -> Just (scn, idx, isec.elf64_section_info, rel_to_rela rel))) relocs
             | Fail _ -> []
         end) all_rel_sections
-    in 
-    let (all_relas_list : list (natural * natural * natural * elf64_relocation_a)) = list_reverse_concat_map (fun (scn, isec) -> 
+    in
+    let (all_relas_list : list (natural * natural * natural * elf64_relocation_a)) = list_reverse_concat_map (fun (scn, isec) ->
         match read_elf64_relocation_a_section isec.elf64_section_size endian isec.elf64_section_body
         with
-            Success (relocs, _) -> 
-            (*let _ = Missing_pervasives.errln ("Rela section with index " ^ (show scn) ^ " has " ^ (show (length relocs)) ^ 
+            Success (relocs, _) ->
+            (*let _ = Missing_pervasives.errln ("Rela section with index " ^ (show scn) ^ " has " ^ (show (length relocs)) ^
                 " entries")
             in*)
             mapMaybei (fun idx -> (fun rela -> Just (scn, idx, isec.elf64_section_info, rela))) relocs
@@ -252,14 +252,21 @@ let extract_all_relocs fname e =
 
 val extract_all_relocs_as_symbol_references : string -> elf64_file -> list symbol_reference_and_reloc_site
 let extract_all_relocs_as_symbol_references fname e
-=   let all_relocs = extract_all_relocs fname e
+=   let maybe_guessed_abi = List.find (fun abi ->
+        abi.is_valid_elf_header e.elf64_file_header
+    ) Abis.all_abis in
+    let a = match maybe_guessed_abi with
+        | Just a -> a
+        | Nothing -> failwith "extract_all_relocs_as_symbol_references: unknown ABI"
+    end in
+    let all_relocs = extract_all_relocs fname e
     in
     let all_symtab_triples_by_scnidx = mapMaybei (fun scnidx -> (fun isec ->
         if isec.elf64_section_type = sht_symtab
         then
             let found = find_elf64_symbols_by_symtab_idx scnidx e
             in
-            match found with 
+            match found with
                 Fail _ -> Nothing
                 | Success triple -> Just (scnidx, triple)
             end
@@ -271,7 +278,7 @@ let extract_all_relocs_as_symbol_references fname e
     in
     (*let _ = Missing_pervasives.errln ("All extracted symtabs by scnidx: " ^ (show (Set_extra.toList (Map.toSet all_extracted_symtabs_by_scnidx))))
     in*)
-    let ref_for_relocation_a_in_section_index = fun rel_scn_idx -> (fun rel_idx -> (fun rela -> 
+    let ref_for_relocation_a_in_section_index = fun rel_scn_idx -> (fun rel_idx -> (fun rela ->
         let rela_isec = match index rel_scn_idx e.elf64_file_interpreted_sections with
             Just x -> x
             | Nothing -> failwith "relocation references nonexistent section"
@@ -282,7 +289,7 @@ let extract_all_relocs_as_symbol_references fname e
         match Map.lookup symtab_idx all_extracted_symtabs_by_scnidx with
             Nothing -> failwith "referenced symtab does not exist"
             | Just quads ->
-                let sym_idx = get_elf64_relocation_a_sym rela
+                let (_, sym_idx) = a.parse_reloc_info rela.elf64_ra_info
                 in
                 let maybe_quad = Missing_pervasives.index sym_idx quads
                 in
@@ -293,7 +300,7 @@ let extract_all_relocs_as_symbol_references fname e
                          ; ref_sym_scn = symtab_idx
                          ; ref_sym_idx = sym_idx
                          |>
-                    | Nothing -> failwith "reloc references symbol that does not exist" (*("reloc at index " ^ (show rel_idx) ^ " references symbol (index " ^ (show sym_idx) ^ 
+                    | Nothing -> failwith "reloc references symbol that does not exist" (*("reloc at index " ^ (show rel_idx) ^ " references symbol (index " ^ (show sym_idx) ^
                         ") that does not exist: symtab (index " ^ (show symtab_idx) ^ ") has " ^ (show (length quads)) ^ " entries")*)
                 end
         end
@@ -304,7 +311,7 @@ let extract_all_relocs_as_symbol_references fname e
     in*)
     List.map (fun (scn, idx, srcscn, rela) -> <|
           ref = (* NOTE that a reference is not necessarily to an undefined symbol! *) ref_for_relocation_a_in_section_index scn idx rela
-        ; maybe_reloc = Just 
+        ; maybe_reloc = Just
            <| ref_relent = rela
             ; ref_rel_scn = scn
             ; ref_rel_idx = idx

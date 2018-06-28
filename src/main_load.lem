@@ -565,7 +565,8 @@ let mask_memory_image img start len =
 let is_data_section sec =
   false
   || sec.elf64_section_name_as_string = ".data"
-  || sec.elf64_section_name_as_string = ".sdata" (* TODO: investigate this one *)
+  || sec.elf64_section_name_as_string = ".sdata" (* initialized short data *)
+  || sec.elf64_section_name_as_string = ".sbss" (* uninitialized short data *)
   || sec.elf64_section_name_as_string = ".dynamic"
   || sec.elf64_section_name_as_string = ".data.rel.ro" (* TODO: remove me *)
   || sec.elf64_section_name_as_string = ".rld_map" (* TODO: remove me *)
@@ -582,7 +583,7 @@ let mask_relocations f img =
   let abi = get_file_abi f in
   List.foldl (fun img (scn, rel_idx, rel_src_scn, rel) ->
     let addr = natural_of_elf64_addr rel.elf64_ra_offset in
-    let rel_type = Elf_relocation.get_elf64_relocation_a_type rel in
+    let (rel_type, _) = abi.parse_reloc_info rel.elf64_ra_info in
     let (is_absolute, applyfn) = abi.reloc rel_type in
     let (width, calcfn) = applyfn img addr Memory_image.null_symbol_reference_and_reloc_site in
     let _ = Missing_pervasives.errln ("Masking relocation of type 0x" ^ (hex_string_of_natural rel_type) ^ " at 0x" ^ (hex_string_of_natural addr) ^ ", size 0x" ^ (hex_string_of_natural width) ^ " in " ^ (show_section_at_addr f addr)) in
@@ -590,7 +591,7 @@ let mask_relocations f img =
     mask_memory_image img addr width
   ) img all_relocs
 
-let extract_all_relocs_as_symbol_references f =
+let extract_all_relocs_as_symbol_references abi f =
   let all_relocs = Elf_memory_image.extract_all_relocs "<input file>" f in
   let all_symtab_triples_by_scnidx = mapMaybei (fun scnidx -> (fun isec ->
     if isec.elf64_section_type = sht_symtab || isec.elf64_section_type = sht_dynsym then
@@ -619,7 +620,7 @@ let extract_all_relocs_as_symbol_references f =
     match Map.lookup symtab_idx all_extracted_symtabs_by_scnidx with
       | Nothing -> failwith ("referenced symtab does not exist: " ^ (show symtab_idx))
       | Just quads ->
-        let sym_idx = get_elf64_relocation_a_sym rela in
+        let (_, sym_idx) = abi.parse_reloc_info rela.elf64_ra_info in
         let maybe_quad = Missing_pervasives.index sym_idx quads in
         match maybe_quad with
           | Just(symname, syment, scnidx, symidx) ->
@@ -630,7 +631,7 @@ let extract_all_relocs_as_symbol_references f =
               ref_sym_idx = sym_idx
             |>
           | Nothing ->
-            failwith "reloc references symbol that does not exist"
+            failwith ("reloc references symbol that does not exist: 0x" ^ (hex_string_of_natural sym_idx))
             (*("reloc at index " ^ (show rel_idx) ^ " references symbol (index " ^ (show sym_idx) ^
             ") that does not exist: symtab (index " ^ (show symtab_idx) ^ ") has " ^ (show (length quads)) ^ " entries")*)
         end
@@ -663,7 +664,7 @@ let find_sym syms name =
 
 val apply_relocation : forall 'abifeature. abi 'abifeature -> elf64_file -> annotated_memory_image 'abifeature -> natural -> elf64_relocation_a -> symbol_reference_and_reloc_site -> natural -> annotated_memory_image 'abifeature
 let apply_relocation abi f img base reloc symref_and_reloc_site sym_addr =
-  let rel_type = get_elf64_relocation_a_type reloc in
+  let (rel_type, _) = abi.parse_reloc_info reloc.elf64_ra_info in
   let offset = natural_of_elf64_addr reloc.elf64_ra_offset in
   let addend = integer_of_elf64_sxword reloc.elf64_ra_addend in
   let addr = base + offset in
@@ -705,7 +706,7 @@ let apply_relocation abi f img base reloc symref_and_reloc_site sym_addr =
 
 let apply_all_relocations f img base syms =
   let abi = get_file_abi f in
-  let symbol_refs_and_reloc_sites = extract_all_relocs_as_symbol_references f in
+  let symbol_refs_and_reloc_sites = extract_all_relocs_as_symbol_references abi f in
   (* let tags_and_ranges = Multimap.lookupBy Memory_image_orderings.tagEquiv (SymbolRef(null_symbol_reference_and_reloc_site)) img.by_tag in *)
   let _ = Missing_pervasives.errln ("Number of symbol refs: " ^ (show (List.length symbol_refs_and_reloc_sites))) in
   (* let _ = List.map (fun (tag, maybe_range) -> *)
@@ -757,7 +758,7 @@ let rec apply_mips64_global_got_relocations' abi f img dynsyms syms base got_ent
     | (sym_name, sym_entry, scnidx, symidx) :: syms ->
       let reloc = <|
         elf64_ra_offset = elf64_addr_of_natural (got_entry_addr - base);
-        elf64_ra_info = elf64_xword_of_natural Abi_mips64_relocation.r_mips_jump_slot;
+        elf64_ra_info = elf64_xword_lshift (elf64_xword_of_natural Abi_mips64_relocation.r_mips_jump_slot) 56;
         elf64_ra_addend = elf64_sxword_of_integer 0
       |> in
 

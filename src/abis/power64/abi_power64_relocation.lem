@@ -350,7 +350,7 @@ let abi_ppc64_apply_relocation rel s_val b_val p_val l_val g_val r_val m_val
           toc_val dtpmod_val tprel_val dtprel_val gottlsgd_val gottlsld_val
           gottprel_val gotdtprel_val ef =
   if is_elf64_relocatable_file ef.elf64_file_header then
-    let rel_type = extract_elf64_relocation_r_type rel.elf64_ra_info in
+    let (rel_type, _) = parse_elf64_relocation_info rel.elf64_ra_info in
     let a_val    = integer_of_elf64_sxword rel.elf64_ra_addend in
       (** No width, no calculation *)
       if rel_type = r_ppc64_none then
@@ -616,7 +616,7 @@ let abi_ppc64_apply_relocation rel s_val b_val p_val l_val g_val r_val m_val
       	let result = RShift(Lift (s_val + a_val), 2) in
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, Half16ds, CanFail))
-      (** Width: Half16ds Calculation: #lo((S + A) >> 2) *)    
+      (** Width: Half16ds Calculation: #lo((S + A) >> 2) *)
       else if rel_type = r_ppc64_addr16_lo_ds then
       	let result = Apply(Lo, RShift(Lift (s_val + a_val), 2)) in
       	let addr   = rel.elf64_ra_offset in
@@ -827,6 +827,6 @@ let abi_ppc64_apply_relocation rel s_val b_val p_val l_val g_val r_val m_val
       	let addr   = rel.elf64_ra_offset in
       	return (Map.singleton addr (result, I16, CannotFail))
       else
-        fail "abi_ppc64_apply_relocation: unrecognised relocation type"  
+        fail "abi_ppc64_apply_relocation: unrecognised relocation type"
   else
   	fail "abi_ppc64_apply_relocation: not a relocatable file"

@@ -377,6 +377,7 @@ type abi 'abifeature = (* forall 'abifeature. *)
     ; generate_support   : (* list (list reloc_site_resolution) ->  *)list (string * annotated_memory_image 'abifeature) -> annotated_memory_image 'abifeature
     ; concretise_support : annotated_memory_image 'abifeature -> annotated_memory_image 'abifeature
     ; get_reloc_symaddr  : symbol_definition -> annotated_memory_image 'abifeature -> list (maybe element_range * symbol_definition) -> maybe reloc_site -> natural
+    ; parse_reloc_info   : elf64_xword -> (natural (* type *) * natural (* symbol *))
     |>
 
 val align_up_to : natural -> natural -> natural

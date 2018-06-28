@@ -319,6 +319,7 @@ let tls_extend a =
     ; generate_support    = a.generate_support
     ; concretise_support  = a.concretise_support
     ; get_reloc_symaddr   = a.get_reloc_symaddr
+    ; parse_reloc_info    = a.parse_reloc_info
     |>
 
 (* We use these snappily-named functions in relocation calculations. *)
@@ -387,6 +388,7 @@ let (null_abi : abi any_abi_feature) = <|
     ; generate_support = (* fun _ -> *) fun _ -> get_empty_memory_image ()
     ; concretise_support = fun img -> img
     ; get_reloc_symaddr = default_get_reloc_symaddr
+    ; parse_reloc_info = parse_elf64_relocation_info
     |>
 
 val got_entry_ordering : (string * maybe symbol_definition) -> (string * maybe symbol_definition) -> Basic_classes.ordering
@@ -399,7 +401,8 @@ match maybe_def with
 end
 
 let amd64_reloc_needs_got_slot =  fun symref -> fun rr -> fun maybe_def ->
-    if (get_elf64_relocation_a_type rr.ref_relent IN {
+    let (rel_type, _) = parse_elf64_relocation_info rr.ref_relent.elf64_ra_info in
+    if (rel_type IN {
         r_x86_64_got32; r_x86_64_gotpcrel; r_x86_64_gottpoff; r_x86_64_gotoff64; r_x86_64_gotpc32 (* ; r_x86_64_gotpc32_tlsdesc *)
     }) then
        true
@@ -423,7 +426,8 @@ let amd64_reloc_needs_got_slot =  fun symref -> fun rr -> fun maybe_def ->
 
 
 let amd64_reloc_needs_plt_slot (symref : symbol_reference_and_reloc_site) rr maybe_def ref_is_statically_linked =
-    if (get_elf64_relocation_a_type rr.ref_relent IN {
+    let (rel_type, _) = parse_elf64_relocation_info rr.ref_relent.elf64_ra_info in
+    if (rel_type IN {
         r_x86_64_plt32      (* NOTE: when generating shared libs, it starts to matter
                              * where the definition is -- anything that is locally interposable
                              * or undefined will need a slot. See amd64_get_reloc_symaddr. *)
@@ -1302,6 +1306,7 @@ let sysv_amd64_std_abi =
     ; generate_support = amd64_generate_support
     ; concretise_support = amd64_concretise_support
     ; get_reloc_symaddr = amd64_get_reloc_symaddr
+    ; parse_reloc_info = parse_elf64_relocation_info
     |>
 
 val sysv_aarch64_le_std_abi : abi any_abi_feature
@@ -1323,6 +1328,7 @@ let sysv_aarch64_le_std_abi =
     ; generate_support = (* fun _ -> *) fun _ -> get_empty_memory_image ()
     ; concretise_support = fun img -> img
     ; get_reloc_symaddr = default_get_reloc_symaddr
+    ; parse_reloc_info = parse_elf64_relocation_info
     |>
 
 val sysv_mips64_std_abi : abi any_abi_feature
@@ -1338,12 +1344,13 @@ let sysv_mips64_std_abi = <|
     ; symbol_is_generated_by_linker = (fun symname -> symname = "_GLOBAL_OFFSET_TABLE_")
     ; make_phdrs = make_default_phdrs
     ; max_phnum = 2
-    ; guess_entry_point = find_start_symbol_address
+    ; guess_entry_point = find_start_symbol_address (* TODO: on MIPS it's __start, not _start *)
     ; pad_data = pad_zeroes
     ; pad_code = pad_zeroes
     ; generate_support = (* fun _ -> *) fun _ -> get_empty_memory_image ()
     ; concretise_support = fun img -> img
     ; get_reloc_symaddr = default_get_reloc_symaddr
+    ; parse_reloc_info = abi_mips_parse_elf64_relocation_info
     |>
 
 val all_abis : list (abi any_abi_feature)

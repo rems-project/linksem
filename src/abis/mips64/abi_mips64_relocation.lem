@@ -214,3 +214,16 @@ let mips64_reloc r =
     | (* TODO *) "R_MIPS_JUMP_SLOT/R_MIPS_NONE/R_MIPS_NONE" -> (false, fun img -> (fun site_addr -> (fun rr -> (8, fun s -> fun a -> fun e -> s))))
     | _ -> failwith ("unrecognised relocation " ^ (string_of_mips64_relocation_type r))
   end
+
+(* MIPS has a non-standard encoding for reloc info.
+   See https://sourceware.org/ml/libc-alpha/2003-03/msg00224.html *)
+val abi_mips_parse_elf64_relocation_info : elf64_xword -> (natural (* type *) * natural (* symbol *))
+let abi_mips_parse_elf64_relocation_info w =
+  let mask = elf64_xword_of_natural (natural_of_hex "0xffffffff") in
+  let sym = natural_of_elf64_xword (elf64_xword_land w mask) in
+  let typ = natural_of_elf64_xword (elf64_xword_rshift w 32) in
+
+  let (s1, s2, s3, s4) = quad_of_elf32_word (elf32_word_of_natural typ) in
+  let typ = natural_of_elf32_word (elf32_word_of_quad s4 s3 s2 s1) in
+
+  (typ, sym)

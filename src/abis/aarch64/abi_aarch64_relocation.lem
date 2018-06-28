@@ -423,7 +423,7 @@ let aarch64_le_reloc r =
     (false, (fun img -> (fun site_addr -> (fun rr -> (0, fun s -> fun a -> fun e -> e)))))
   else
     (false, noop_reloc_apply)
-    
+
 (** [abi_aarch64_apply_relocation rel s_val p_val got_val ef] produces an AST
   * of the relocation calculation for relocation type [rel] using [s_val], [p_val],
   * and [got_val] as primitive components.
@@ -437,7 +437,7 @@ val abi_aarch64_apply_relocation : elf64_relocation_a -> integer -> integer ->
     error (Map.map elf64_addr (relocation_operator_expression integer * integer_bit_width * can_fail integer))
 let abi_aarch64_apply_relocation rel s_val p_val got_val ef =
   if is_elf64_relocatable_file ef.elf64_file_header then
-    let rel_type = get_elf64_relocation_a_type rel in
+    let (rel_type, _) = parse_elf64_relocation_info rel.elf64_ra_info in
     let a_val    = integer_of_elf64_sxword rel.elf64_ra_addend in
       (** No width, no calculation *)
       if rel_type = r_aarch64_none then
