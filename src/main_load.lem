@@ -567,6 +567,8 @@ let is_data_section sec =
   || sec.elf64_section_name_as_string = ".data"
   || sec.elf64_section_name_as_string = ".sdata" (* initialized short data *)
   || sec.elf64_section_name_as_string = ".sbss" (* uninitialized short data *)
+  || sec.elf64_section_name_as_string = ".tdata" (* initialized thread-local data *)
+  || sec.elf64_section_name_as_string = ".tbss" (* uninitialized thread-local data *)
   || sec.elf64_section_name_as_string = ".dynamic"
   || sec.elf64_section_name_as_string = ".data.rel.ro" (* TODO: remove me *)
   || sec.elf64_section_name_as_string = ".rld_map" (* TODO: remove me *)
@@ -713,7 +715,7 @@ let apply_all_relocations f img base syms =
   List.foldl (fun img symref_and_reloc_site ->
     let reloc_site = match symref_and_reloc_site.maybe_reloc with
       | Nothing -> failwith "impossible: no reloc site during relocation"
-      | Just r -> r
+      | Just rs -> rs
     end in
 
     let maybe_sym =

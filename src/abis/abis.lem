@@ -1240,7 +1240,7 @@ val amd64_base_addr : symbol_reference_and_reloc_site -> natural -> natural
 let amd64_base_addr rr site_addr =
     let reloc_site = match rr.maybe_reloc with
     | Nothing -> failwith "amd64_base_addr: no reloc site during relocation"
-    | Just r -> r
+    | Just rs -> rs
     end in
     let offset = natural_of_elf64_addr reloc_site.ref_relent.elf64_ra_offset in
     site_addr - offset
