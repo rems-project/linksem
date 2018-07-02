@@ -221,7 +221,7 @@ let mips64_reloc r =
     (* TODO: not sure if always adding the base address is a good idea. Might be
        better to make the caller do so only if the symbol is undefined. *)
     | "R_MIPS_REL32/R_MIPS_64/R_MIPS_NONE" -> (false, fun img -> (fun site_addr -> (fun rr -> (8, fun s -> fun a -> fun ea -> (i2n (a - n2i ea + n2i s)) + (mips64_base_addr rr site_addr)))))
-    | "R_MIPS_TLS_TPREL64/R_MIPS_NONE/R_MIPS_NONE" -> (false, fun img -> (fun site_addr -> (fun rr -> (8, fun s -> fun a -> fun ea -> i2n (n2i s + a)))))
+    | (* TODO *) "R_MIPS_TLS_TPREL64/R_MIPS_NONE/R_MIPS_NONE" -> (false, fun img -> (fun site_addr -> (fun rr -> (8, fun s -> fun a -> fun ea -> i2n (n2i s + a)))))
     | "R_MIPS_JUMP_SLOT/R_MIPS_NONE/R_MIPS_NONE" -> (false, fun img -> (fun site_addr -> (fun rr -> (8, fun s -> fun a -> fun ea -> s))))
     | _ -> failwith ("unrecognised relocation " ^ (string_of_mips64_relocation_type r))
   end
