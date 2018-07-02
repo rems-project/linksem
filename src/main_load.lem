@@ -35,6 +35,7 @@ open import Missing_pervasives
 
 open import Abi_mips64
 open import Abi_mips64_dynamic
+open import Abi_mips64_relocation
 
 open import Abi_amd64
 open import Abi_amd64_relocation
@@ -664,6 +665,14 @@ let find_sym syms name =
       maybe_sym
   ) Nothing syms
 
+let is_unsupported_relocation_type f rel_type =
+  if Abi_amd64.header_is_amd64 f.elf64_file_header then
+    rel_type = r_x86_64_irelative || rel_type = r_x86_64_tpoff64
+  else if Abi_mips64.header_is_mips64 f.elf64_file_header then
+    rel_type = r_mips_tls_tprel64
+  else
+    false
+
 val apply_relocation : forall 'abifeature. abi 'abifeature -> elf64_file -> annotated_memory_image 'abifeature -> natural -> elf64_relocation_a -> symbol_reference_and_reloc_site -> natural -> annotated_memory_image 'abifeature
 let apply_relocation abi f img base reloc symref_and_reloc_site sym_addr =
   let (rel_type, _) = abi.parse_reloc_info reloc.elf64_ra_info in
@@ -691,8 +700,7 @@ let apply_relocation abi f img base reloc symref_and_reloc_site sym_addr =
   else
     (* TODO: remove these special cases *)
     (* TODO: fix r_x86_64_tpoff64 *)
-    if Abi_amd64.header_is_amd64 f.elf64_file_header &&
-        (rel_type = r_x86_64_irelative || rel_type = r_x86_64_tpoff64) then
+    if is_unsupported_relocation_type f rel_type then
       let _ = Missing_pervasives.errln ("  Giving up on this one") in
       mask_memory_image img addr width
     else
@@ -867,16 +875,6 @@ let apply_mips64_got_relocations f img dynsyms base dyns =
     | Nothing -> failwith "apply_mips64_got_relocations: missing DT_MIPS_SYMTABNO in .dynamic"
   end in
   let (img, got_entry_addr) = apply_mips64_global_got_relocations f img dynsyms base got_entry_addr symtab_addr gotsym symtabno in
-
-  (* Mask all remaining entries *)
-  let maybe_got = List.find (fun sec ->
-    natural_of_elf64_addr got_offset = sec.elf64_section_addr && sec.elf64_section_size <> 0
-  ) f.elf64_file_interpreted_sections in
-  let got = assert_unwrap_maybe maybe_got in
-  let got_stop = got_addr + got.elf64_section_size in
-  let remaining = got_stop - got_entry_addr in
-  let _ = Missing_pervasives.errln ("Masking 0x" ^ (hex_string_of_natural remaining) ^ " remaining bytes in .got") in
-  let img = mask_memory_image img got_entry_addr remaining in
 
   img
 
