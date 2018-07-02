@@ -726,6 +726,7 @@ let apply_all_relocations f img base syms =
         Nothing
     in
 
+    (* TODO: hard fail if symbol name is non-empty but find_sym returns Nothing? *)
     let sym_addr = match maybe_sym with
       | Just (sym_entry, sym_addr) -> sym_addr
       | Nothing -> 0 (* This isn't pretty, but doing something else would be complicated *)
@@ -778,8 +779,6 @@ let rec apply_mips64_global_got_relocations' abi f img dynsyms syms base got_ent
         | Nothing -> 0 (* This isn't pretty, but doing something else would be complicated *)
       end in
 
-      let _ = Missing_pervasives.errln ("sym_name=" ^ sym_name) in
-
       (* let sym_addr = base + natural_of_elf64_addr sym_entry.elf64_st_value in *)
       let symref_and_reloc_site = null_symbol_reference_and_reloc_site in
       let img = apply_relocation abi f img base reloc symref_and_reloc_site sym_addr in
@@ -789,7 +788,7 @@ let rec apply_mips64_global_got_relocations' abi f img dynsyms syms base got_ent
   end
 
 let apply_mips64_global_got_relocations f img dynsyms base got_entry_addr symtab_addr gotsym symtabno =
-  let symtab_triples = mapMaybei (fun scnidx -> (fun isec ->
+  let symtab_triples = mapMaybei (fun scnidx isec ->
     if isec.elf64_section_addr = natural_of_elf64_addr symtab_addr then
       match find_elf64_symbols_by_symtab_idx scnidx f with
         | Fail _ -> Nothing
@@ -797,7 +796,7 @@ let apply_mips64_global_got_relocations f img dynsyms base got_entry_addr symtab
       end
     else
       Nothing
-  )) f.elf64_file_interpreted_sections in
+  ) f.elf64_file_interpreted_sections in
   let (syms : list (string * elf64_symbol_table_entry * natural (* scnidx *) * natural (* symidx *))) =
     match symtab_triples with
       | [triple] -> Elf_memory_image.extract_all_symbols triple
@@ -807,8 +806,7 @@ let apply_mips64_global_got_relocations f img dynsyms base got_entry_addr symtab
   in
   let syms = List.drop (natFromNatural gotsym) syms in
   let abi = get_file_abi f in
-  let (img, _) = apply_mips64_global_got_relocations' abi f img dynsyms syms base got_entry_addr (symtabno - gotsym) in
-  img
+  apply_mips64_global_got_relocations' abi f img dynsyms syms base got_entry_addr (symtabno - gotsym)
 
 (* MIPS uses an ugly packed form for GOT relocations. See musl's do_mips_relocs
    function. *)
@@ -868,7 +866,19 @@ let apply_mips64_got_relocations f img dynsyms base dyns =
     | Just (_, Numeric symtabno) -> symtabno
     | Nothing -> failwith "apply_mips64_got_relocations: missing DT_MIPS_SYMTABNO in .dynamic"
   end in
-  apply_mips64_global_got_relocations f img dynsyms base got_entry_addr symtab_addr gotsym symtabno
+  let (img, got_entry_addr) = apply_mips64_global_got_relocations f img dynsyms base got_entry_addr symtab_addr gotsym symtabno in
+
+  (* Mask all remaining entries *)
+  let maybe_got = List.find (fun sec ->
+    natural_of_elf64_addr got_offset = sec.elf64_section_addr && sec.elf64_section_size <> 0
+  ) f.elf64_file_interpreted_sections in
+  let got = assert_unwrap_maybe maybe_got in
+  let got_stop = got_addr + got.elf64_section_size in
+  let remaining = got_stop - got_entry_addr in
+  let _ = Missing_pervasives.errln ("Masking 0x" ^ (hex_string_of_natural remaining) ^ " remaining bytes in .got") in
+  let img = mask_memory_image img got_entry_addr remaining in
+
+  img
 
 let get_first_mapped_address nt_file_entries filename =
   List.foldl (fun first nt_file_entry ->
