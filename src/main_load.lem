@@ -912,9 +912,38 @@ let get_segment_at_offset f offset =
     | _ -> failwith ("get_segment_at_offset: multiple segments found at offset 0x" ^ (hex_string_of_natural offset))
   end
 
-(* Check that the file has been mmapped at only one place and that the offsets are preserved *)
-let check_mmaped_memory_image nt_file_entries binary_filename binary_file binary_addr =
-  Error.foldM (fun () nt_file_entry ->
+(** Check that the offsets between sections are preserved.
+
+    For each LOAD segment in the binary, compute the virtual address where it
+    should have been loaded, check that a page has been mmapped there, and check
+    that the mmapped file offset is correct. *)
+let check_mmaped_memory_image nt_file_entries binary_filename binary_file binary_delta =
+  (* TODO: check the file has been mmaped at only one place? *)
+  Error.foldM (fun () seg ->
+    if seg.elf64_segment_type <> Elf_program_header_table.elf_pt_load then return () else
+    let seg_addr = seg.elf64_segment_base + binary_delta in
+    (* let _ = Missing_pervasives.errln ("Checking LOAD segment at 0x" ^ (hex_string_of_natural seg.elf64_segment_base) ^ ", virtual address 0x" ^ (hex_string_of_natural seg_addr)) in *)
+    match get_nt_file_entry_at nt_file_entries seg_addr with
+      | Just nt_file_entry ->
+        if nt_file_entry.elf64_nt_file_entry_filename = binary_filename then
+          let page_start = natural_of_elf64_xword nt_file_entry.elf64_nt_file_entry_start in
+          let page_file_offset = natural_of_elf64_xword nt_file_entry.elf64_nt_file_entry_offset in
+          (* let _ = Missing_pervasives.errln ("  Matching page has virtual address 0x" ^ (hex_string_of_natural page_start) ^ " and offset 0x" ^ (hex_string_of_natural page_file_offset)) in *)
+          let seg_offset_in_page = seg_addr - page_start in
+          (* let _ = Missing_pervasives.errln ("  Segment offset in page: 0x" ^ (hex_string_of_natural seg_offset_in_page)) in *)
+          let expected_seg_file_offset = page_file_offset + seg_offset_in_page in
+          if seg.elf64_segment_offset = expected_seg_file_offset then
+            return ()
+          else
+            Error.fail ("check_mmaped_memory_image: LOAD segment at 0x" ^ (hex_string_of_natural seg.elf64_segment_base) ^ " has invalid offset: has 0x" ^ (hex_string_of_natural seg.elf64_segment_offset) ^ ", expected 0x" ^ (hex_string_of_natural expected_seg_file_offset))
+        else
+          Error.fail ("check_mmaped_memory_image: LOAD segment at 0x" ^ (hex_string_of_natural seg.elf64_segment_base) ^ " has been mmapped to another file: " ^ nt_file_entry.elf64_nt_file_entry_filename)
+      | Nothing ->
+        Error.fail ("check_mmaped_memory_image: LOAD segment at 0x" ^ (hex_string_of_natural seg.elf64_segment_base) ^ " has not been mmapped at 0x" ^ (hex_string_of_natural seg_addr))
+    end
+  ) () binary_file.elf64_file_interpreted_segments
+
+  (* Error.foldM (fun () nt_file_entry ->
     if nt_file_entry.elf64_nt_file_entry_filename <> binary_filename then return () else
     let mmapped_addr = natural_of_elf64_xword nt_file_entry.elf64_nt_file_entry_start in
     let file_offset = natural_of_elf64_xword nt_file_entry.elf64_nt_file_entry_offset in
@@ -932,9 +961,9 @@ let check_mmaped_memory_image nt_file_entries binary_filename binary_file binary
         else
           return ()
     end
-  ) () nt_file_entries
+  ) () nt_file_entries *)
 
-let get_memory_image_offset img addr =
+let get_memory_image_delta img addr =
   let img_addr = assert_unwrap_maybe (get_first_memory_image_address img) in
   addr - img_addr
 
@@ -1084,17 +1113,17 @@ let rec check_binary core_file core_img is_loaded maybe_root_path nt_file_entrie
 
   let _ = Missing_pervasives.errln ("Searching binary " ^ binary_filename ^ " in mmap table") in
   unwrap_maybe (get_first_mapped_address nt_file_entries binary_filename) >>= fun binary_addr ->
-  (* TODO: disabled because it's buggy, fix it *)
-  (* check_mmaped_memory_image nt_file_entries binary_filename binary_file binary_addr >>= fun () -> *)
   let _ = Missing_pervasives.errln ("Binary has been mapped at 0x" ^ (hex_string_of_natural binary_addr)) in
-  let binary_offset = get_memory_image_offset binary_img binary_addr in
-  let _ = Missing_pervasives.errln ("Translating binary image +0x" ^ (hex_string_of_natural binary_offset)) in
-  let binary_img = translate_memory_image binary_img binary_offset in
+  let binary_delta = get_memory_image_delta binary_img binary_addr in
+  let _ = Missing_pervasives.errln ("Binary has delta 0x" ^ (hex_string_of_natural binary_delta)) in
+  check_mmaped_memory_image nt_file_entries binary_filename binary_file binary_delta >>= fun () ->
+  let _ = Missing_pervasives.errln "Translating binary image" in
+  let binary_img = translate_memory_image binary_img binary_delta in
   let _ = Missing_pervasives.errln "Binary image after translation:" in
   let _ = print_memory_image binary_img in
 
   let _ = Missing_pervasives.errln ("Extracting dynamic symbols from " ^ binary_filename) in
-  extract_dynsyms binary_file binary_offset dynsyms >>= fun binary_dynsyms ->
+  extract_dynsyms binary_file binary_delta dynsyms >>= fun binary_dynsyms ->
   let _ = Missing_pervasives.errln ("Binary exports " ^ (show (List.length binary_dynsyms)) ^ " dynamic symbols") in
   let dynsyms = dynsyms ++ binary_dynsyms in
 
@@ -1146,11 +1175,11 @@ let rec check_binary core_file core_img is_loaded maybe_root_path nt_file_entrie
   let binary_img =
     if is_loaded then
       let _ = Missing_pervasives.errln ("Applying relocations in " ^ binary_filename) in
-      let binary_img = apply_all_relocations binary_file binary_img binary_offset dynsyms in
+      let binary_img = apply_all_relocations binary_file binary_img binary_delta dynsyms in
       let binary_img =
         if Abi_mips64.header_is_mips64 binary_file.elf64_file_header &&
             has_dynamic_section binary_file then
-          apply_mips64_got_relocations binary_file binary_img dynsyms binary_offset dyns
+          apply_mips64_got_relocations binary_file binary_img dynsyms binary_delta dyns
         else
           binary_img
       in
