@@ -5,3 +5,6 @@ declare ocaml target_rep function realpath = `Filesystem_wrapper.realpath`
 
 val readdir : string -> error (list string)
 declare ocaml target_rep function readdir = `Filesystem_wrapper.readdir`
+
+val file_exists : string -> bool
+declare ocaml target_rep function file_exists = `Sys.file_exists`

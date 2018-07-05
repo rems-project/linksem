@@ -1,0 +1,27 @@
+open import Basic_classes
+open import Bool
+open import List
+open import String
+
+open import Byte_sequence
+open import Error
+open import Filesystem
+open import Missing_pervasives
+
+val read_ldconfig_paths : string -> error (list string)
+let read_ldconfig_paths root =
+  (* Here we assume that /etc/ld.so.conf only includes /etc/ld.so.conf.d/*.conf.
+     This seems to be the case on most systems. *)
+  (* TODO: parse /etc/ld.so.conf *)
+  let config_dirname = "/etc/ld.so.conf.d" in
+  (* TODO: some systems have "/lib64" and "/usr/lib64" as default dirs *)
+  let default_dirs = ["/usr/lib"; "/lib"] in
+  Filesystem.readdir (root ^ config_dirname) >>= fun filenames ->
+  Error.foldM (fun acc filename ->
+    Byte_sequence.acquire (root ^ config_dirname ^ "/" ^ filename) >>= fun bs ->
+    let s = Byte_sequence.string_of_byte_sequence bs in
+    let dirs = List.filter (fun dir ->
+      dir <> "" && (String_extra.nth dir 0) <> #'#'
+    ) (split_string_on_char s #'\n') in
+    return (dirs ++ acc)
+  ) default_dirs filenames

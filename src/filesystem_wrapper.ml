@@ -26,6 +26,7 @@ let rec realpath p =
 
 let readdir dirname =
   try
-    return (Sys.readdir dirname)
+    let a = Sys.readdir dirname in
+    return (Array.to_list a)
   with Sys_error err ->
     fail ("readdir: " ^ err)

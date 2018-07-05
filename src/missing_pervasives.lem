@@ -428,6 +428,10 @@ declare hol      target_rep function find_substring = `ARB`
 declare isabelle target_rep function find_substring = `undefined`
 declare coq      target_rep function find_substring = `find_substring`
 
+val string_contains : string -> string -> bool
+let string_contains s substr =
+  find_substring substr s <> Nothing
+
 (** [string_of_nat m] produces a string representation of natural number [m]. *)
 val string_of_nat : nat -> string
 declare ocaml target_rep function string_of_nat = `string_of_int`

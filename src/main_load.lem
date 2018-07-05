@@ -31,6 +31,7 @@ open import Gnu_ext_dynamic
 open import Gnu_ext_program_header_table
 open import Gnu_ext_section_header_table
 open import Harness_interface
+open import Ldconfig
 open import Memory_image
 open import Missing_pervasives
 
@@ -50,14 +51,14 @@ let unwrap_maybe_or_fail err_msg maybe =
 let unwrap_maybe maybe =
   unwrap_maybe_or_fail "unwrap_maybe: nothing" maybe
 
-let unwrap_result res =
+let assert_unwrap_result res =
   match res with
     | Success v -> v
     | Fail err -> failwith err
   end
 
 let assert_unwrap_maybe maybe =
-  unwrap_result (unwrap_maybe maybe)
+  assert_unwrap_result (unwrap_maybe maybe)
 
 let get_file_abi f =
   let guessed_abi = List.find (fun abi ->
@@ -1031,17 +1032,21 @@ let extract_dynsyms f offset existing_syms =
     return (all_syms ++ syms)
   ) [] results
 
-let string_contains s substr =
-  match Missing_pervasives.find_substring substr s with
-    | Just _ -> true
-    | Nothing -> false
+let rec find_library root_path ld_library_paths soname =
+  match ld_library_paths with
+    | [] ->
+      Error.fail ("find_library: cannot find library `" ^ soname ^ "`")
+    | dir :: ld_library_paths ->
+      (* TODO: this is a hack to skip 32-bit library dirs. Instead we should load the DSO and check its header *)
+      if Missing_pervasives.string_contains dir "32" then find_library root_path ld_library_paths soname else
+      let filename = dir ^ "/" ^ soname in
+      if Filesystem.file_exists (root_path ^ filename) then
+        return filename
+      else
+        find_library root_path ld_library_paths soname
   end
 
-let rec check_binary core_file core_img is_loaded maybe_root_path nt_file_entries dynsyms binary_filename =
-  let root_path = match maybe_root_path with
-    | Just root_path -> root_path ^ "/"
-    | Nothing -> ""
-  end in
+let rec check_binary ldconfig_paths core_file core_img is_loaded root_path nt_file_entries dynsyms binary_filename =
   let binary_filepath = realpath (root_path ^ binary_filename) in
   let binary_filename = assert_unwrap_maybe (Missing_pervasives.string_suffix (naturalFromNat (String.stringLength root_path)) binary_filepath) in
 
@@ -1067,7 +1072,8 @@ let rec check_binary core_file core_img is_loaded maybe_root_path nt_file_entrie
   let _ = Missing_pervasives.errln ((show n_bytes) ^ " bytes, " ^ (show n_masked) ^ " masked bytes after masking") in
 
   let _ = Missing_pervasives.errln ("Searching binary " ^ binary_filename ^ " in mmap table") in
-  unwrap_maybe (get_first_mapped_address nt_file_entries binary_filename) >>= fun binary_addr ->
+  let errmsg = "check_binary: cannot find `" ^ binary_filename ^ "` in the mmap table" in
+  unwrap_maybe_or_fail errmsg (get_first_mapped_address nt_file_entries binary_filename) >>= fun binary_addr ->
   let _ = Missing_pervasives.errln ("Binary has been mapped at 0x" ^ (hex_string_of_natural binary_addr)) in
   let binary_delta = get_memory_image_delta binary_img binary_addr in
   let _ = Missing_pervasives.errln ("Binary has delta 0x" ^ (hex_string_of_natural binary_delta)) in
@@ -1092,33 +1098,26 @@ let rec check_binary core_file core_img is_loaded maybe_root_path nt_file_entrie
       return (0, [], [])
     else
       let _ = Missing_pervasives.errln "Checking linked libraries" in
-      (* TODO: do not hardcode this *)
-      let ld_library_path =
-        if Abi_mips64.header_is_mips64 binary_file.elf64_file_header then
-          "/lib/mips64el-linux-gnuabi64"
-        else
-          "/usr/lib"
-      in
       read_dynamic binary_bs binary_file >>= fun dyns ->
       let dyn_dt_needed = List.filter (fun (tag, _) -> tag = Elf_dynamic.dt_needed) dyns in
       let _ = Missing_pervasives.errln ("Found " ^ (show (List.length dyn_dt_needed)) ^ " linked libraries") in
       let dt_needed = List.map (fun (_, dyn_value) ->
         match dyn_value with
-          | Library s ->
+          | Library soname ->
             (* TODO: remove this hack *)
-            let ld_library_path =
-              if s = "libc.so" && Abi_mips64.header_is_mips64 binary_file.elf64_file_header && string_contains binary_filepath "musl" then
-                "/lib/mips64el-linux-musl"
+            let paths =
+              if soname = "libc.so" && Abi_mips64.header_is_mips64 binary_file.elf64_file_header && Missing_pervasives.string_contains binary_filepath "musl" then
+                ["/lib/mips64el-linux-musl"]
               else
-                ld_library_path
+                ldconfig_paths
             in
-            realpath (ld_library_path ^ "/" ^ s) (* TODO: improve this *)
+            let _ = Missing_pervasives.errln ("Searching needed library `" ^ soname ^ "`") in
+            assert_unwrap_result (find_library root_path paths soname)
           | _ -> failwith "got a dt_needed with something else than a Library"
         end
       ) dyn_dt_needed in
-      let _ = List.map (fun s -> Missing_pervasives.errln ("DT_NEEDED: " ^ s)) dt_needed in
       let res = Error.foldM (fun dynsyms library_filepath ->
-        check_binary core_file core_img is_loaded maybe_root_path nt_file_entries dynsyms library_filepath
+        check_binary ldconfig_paths core_file core_img is_loaded root_path nt_file_entries dynsyms library_filepath
       ) dynsyms dt_needed in
       res >>= fun dynsyms ->
       return (naturalFromNat (List.length dyn_dt_needed), dynsyms, dyns)
@@ -1158,6 +1157,13 @@ let rec check_binary core_file core_img is_loaded maybe_root_path nt_file_entrie
   end
 
 let process_file core_filepath maybe_root_path =
+  let root_path = match maybe_root_path with
+    | Just root_path -> root_path ^ "/"
+    | Nothing -> ""
+  end in
+
+  Ldconfig.read_ldconfig_paths root_path >>= fun ldconfig_paths ->
+
   load_file core_filepath >>= fun (core_bs, core_file) ->
   let elf_type = natural_of_elf64_half core_file.elf64_file_header.elf64_type in
   if elf_type <> Elf_header.elf_ft_core then Error.fail (core_filepath ^ ": not a core file") else
@@ -1178,9 +1184,9 @@ let process_file core_filepath maybe_root_path =
 
   (* Data sections have to be masked if coredump has been generated after _start *)
   (* TODO: add a flag instead of this hacky thing *)
-  let is_loaded = not (string_contains core_filepath "start") in
+  let is_loaded = not (Missing_pervasives.string_contains core_filepath "start") in
 
-  check_binary core_file core_img is_loaded maybe_root_path nt_file_entries [] binary_filename >>= fun _ ->
+  check_binary ldconfig_paths core_file core_img is_loaded root_path nt_file_entries [] binary_filename >>= fun _ ->
 
   return ()
 
