@@ -150,16 +150,6 @@ let get_all_nt_file_entries_in nt_file_entries filename offset =
       filename = e.elf64_nt_file_entry_filename
   ) nt_file_entries
 
-val file_offset_to_virtual_addresses : elf64_file -> list elf64_nt_file_entry -> (string * natural) -> list natural
-let file_offset_to_virtual_addresses f nt_file_entries (filename, offset) =
-  (* TODO: don't hardcode this *)
-  let offset = offset - (natural_of_hex "0x200000") in
-  let matching_nt_file_entries = get_all_nt_file_entries_in nt_file_entries filename offset in
-  List.map (fun nt_file_entry ->
-    let offset_in_entry = offset - (natural_of_elf64_xword nt_file_entry.elf64_nt_file_entry_offset) in
-    (natural_of_elf64_xword nt_file_entry.elf64_nt_file_entry_start) + offset_in_entry
-  ) matching_nt_file_entries
-
 let read_nt_file_entries endian note_segs =
   Error.foldM (fun nt_file_entries note_seg ->
     let note_name = name_string_of_elf64_note note_seg in
@@ -240,12 +230,6 @@ let load_file filename =
         Assert_extra.failwith "Unknown ELF ident"
   end
 
-let unwrap_symref tag =
-  match tag with
-    | SymbolRef(symref) -> symref
-    | _ -> failwith "unwrap_symref: tag is not a symbol reference"
-  end
-
 let print_memory_image img =
   let _ = Missing_pervasives.errln "Memory image:" in
   Map.mapi (fun k e ->
@@ -269,12 +253,6 @@ let find_memory_image_element f img =
   ) Nothing elements
 
 let memory_image_element_at img addr =
-  find_memory_image_element (fun e ->
-    let start = assert_unwrap_maybe e.startpos in
-    addr = start
-  ) img
-
-let memory_image_element_in img addr =
   find_memory_image_element (fun e ->
     let start = assert_unwrap_maybe e.startpos in
     let len = assert_unwrap_maybe e.length in
@@ -437,7 +415,7 @@ let show_section_at nt_file_entries f addr =
 let rec extract_memory_byte_pattern img start len =
   if len = 0 then return [] else
   let err_msg = "extract_memory_byte_pattern: no core image element at 0x" ^ (hex_string_of_natural start) in
-  unwrap_maybe_or_fail err_msg (memory_image_element_in img start) >>= fun el ->
+  unwrap_maybe_or_fail err_msg (memory_image_element_at img start) >>= fun el ->
   let el_start = assert_unwrap_maybe el.startpos in
   let el_len = assert_unwrap_maybe el.length in
   let _ = Missing_pervasives.errln ("  Matching with core image element at 0x" ^ (hex_string_of_natural el_start) ^ ", length 0x" ^ (hex_string_of_natural el_len)) in
@@ -571,7 +549,7 @@ let is_data_section sec =
   || sec.elf64_section_name_as_string = ".tdata" (* initialized thread-local data *)
   || sec.elf64_section_name_as_string = ".tbss" (* uninitialized thread-local data *)
   || sec.elf64_section_name_as_string = ".dynamic"
-  || sec.elf64_section_name_as_string = ".data.rel.ro" (* TODO: remove me *)
+  || sec.elf64_section_name_as_string = ".data.rel.ro" (* TODO: remove me? *)
   || sec.elf64_section_name_as_string = ".rld_map" (* TODO: remove me *)
 
 let mask_data_sections f img =
@@ -699,7 +677,6 @@ let apply_relocation abi f img base reloc symref_and_reloc_site sym_addr =
     img
   else
     (* TODO: remove these special cases *)
-    (* TODO: fix r_x86_64_tpoff64 *)
     if is_unsupported_relocation_type f rel_type then
       let _ = Missing_pervasives.errln ("  Giving up on this one") in
       mask_memory_image img addr width
@@ -942,26 +919,6 @@ let check_mmaped_memory_image nt_file_entries binary_filename binary_file binary
         Error.fail ("check_mmaped_memory_image: LOAD segment at 0x" ^ (hex_string_of_natural seg.elf64_segment_base) ^ " has not been mmapped at 0x" ^ (hex_string_of_natural seg_addr))
     end
   ) () binary_file.elf64_file_interpreted_segments
-
-  (* Error.foldM (fun () nt_file_entry ->
-    if nt_file_entry.elf64_nt_file_entry_filename <> binary_filename then return () else
-    let mmapped_addr = natural_of_elf64_xword nt_file_entry.elf64_nt_file_entry_start in
-    let file_offset = natural_of_elf64_xword nt_file_entry.elf64_nt_file_entry_offset in
-    let mmapped_len = natural_of_elf64_xword nt_file_entry.elf64_nt_file_entry_end - mmapped_addr in
-    let _ = Missing_pervasives.errln ("Checking mmapped_addr=0x" ^ (hex_string_of_natural mmapped_addr) ^ " file_offset=0x" ^ (hex_string_of_natural file_offset)) in
-    (* TODO: using mmapped_len/2 is kind of a hack, but I haven't found a better way. HMMM. *)
-    match get_segment_at_offset binary_file (file_offset + mmapped_len/2) with
-      | Nothing -> Error.fail ("check_mmaped_memory_image: failed to get segment at offset 0x" ^ (hex_string_of_natural file_offset))
-      | Just seg ->
-        let _ = Missing_pervasives.errln ("  Got segment at offset 0x" ^ (hex_string_of_natural seg.elf64_segment_offset) ^ " with size 0x" ^ (hex_string_of_natural seg.elf64_segment_size) ^ ", address 0x" ^ (hex_string_of_natural seg.elf64_segment_base)) in
-        let want_offset = mmapped_addr - binary_addr in
-        let has_offset = seg.elf64_segment_base + file_offset - seg.elf64_segment_offset in
-        if want_offset <> has_offset then
-          Error.fail ("Mmapped file " ^ binary_filename ^ " at 0x" ^ (hex_string_of_natural mmapped_addr) ^ " has wrong offset: want 0x" ^ (hex_string_of_natural want_offset) ^ ", has 0x" ^ (hex_string_of_natural has_offset))
-        else
-          return ()
-    end
-  ) () nt_file_entries *)
 
 let get_memory_image_delta img addr =
   let img_addr = assert_unwrap_maybe (get_first_memory_image_address img) in
