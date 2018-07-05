@@ -25,6 +25,7 @@ open import Elf_relocation
 open import Elf_section_header_table
 open import Elf_symbol_table
 open import Elf_types_native_uint
+open import Filesystem
 open import Gnu_ext_abi
 open import Gnu_ext_dynamic
 open import Gnu_ext_program_header_table
@@ -57,9 +58,6 @@ let unwrap_result res =
 
 let assert_unwrap_maybe maybe =
   unwrap_result (unwrap_maybe maybe)
-
-val realpath : string -> string
-declare ocaml target_rep function realpath = `Ml_bindings.realpath`
 
 let get_file_abi f =
   let guessed_abi = List.find (fun abi ->

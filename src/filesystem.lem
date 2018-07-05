@@ -1,0 +1,7 @@
+open import Error
+
+val realpath : string -> string
+declare ocaml target_rep function realpath = `Filesystem_wrapper.realpath`
+
+val readdir : string -> error (list string)
+declare ocaml target_rep function readdir = `Filesystem_wrapper.readdir`

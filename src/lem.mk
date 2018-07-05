@@ -29,14 +29,15 @@ else
 OCAML_BYTE_SEQUENCE_IMPL=byte_sequence_ocaml.lem
 endif
 
-LEM_UTIL_SRC := default_printing.lem missing_pervasives.lem show.lem endianness.lem multimap.lem error.lem
+LEM_UTIL_SRC := default_printing.lem missing_pervasives.lem show.lem endianness.lem multimap.lem error.lem filesystem.lem
 # Some of the utility code is directly in ML, some in Lem; order matters!
 # NOTE: LEM_UTIL_SRC and ALL_UTIL_ML need to be kept in sync manually.
 # GAH. doing a topsort manually is a sign of failure.
 ALL_UTIL_ML := \
 	uint64_wrapper.ml uint32_wrapper.ml \
 	show.ml endianness.ml error.ml ml_bindings.ml missing_pervasives.ml multimap.ml \
-	multimapAuxiliary.ml default_printing.ml byte_sequence_wrapper.ml byte_sequence_impl.ml
+	multimapAuxiliary.ml default_printing.ml byte_sequence_wrapper.ml byte_sequence_impl.ml \
+	filesystem_wrapper.ml
 	# missing_pervasivesAuxiliary.ml
 ALL_UTIL_ML_WO_LEM := $(filter-out $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC)) $(patsubst %.lem,%Auxiliary.ml,$(LEM_UTIL_SRC)),$(ALL_UTIL_ML))
 
