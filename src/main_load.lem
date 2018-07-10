@@ -172,7 +172,8 @@ let read_nt_auxv_value endian note_segs f auxv_type =
   Error.foldM (fun value note_seg ->
     let note_name = name_string_of_elf64_note note_seg in
     let note_type = natural_of_elf64_word note_seg.elf64_note_type in
-    if note_name = "CORE" && note_type = Elf_note.nt_auxv then
+    if (note_name = "CORE" && note_type = Elf_note.nt_auxv)
+        || (note_name = "FreeBSD" && note_type = Elf_note.nt_procstat_auxv) then
       Auxv.read_all_elf64_auxv endian note_seg.elf64_note_desc >>= fun note_auxv_list ->
       Error.foldM (fun value auxv ->
         if (natural_of_elf64_xword auxv.elf64_auxv_type) = auxv_type then
@@ -192,7 +193,8 @@ let read_nt_prstatus endian note_segs =
   Error.foldM (fun value note_seg ->
     let note_name = name_string_of_elf64_note note_seg in
     let note_type = natural_of_elf64_word note_seg.elf64_note_type in
-    if note_name = "CORE" && note_type = Elf_note.nt_prstatus then
+    if (note_name = "CORE" || note_name = "FreeBSD")
+        && note_type = Elf_note.nt_prstatus then
       Auxv.read_elf64_prstatus endian note_seg.elf64_note_desc >>= fun prstatus ->
       return (Just prstatus)
     else
@@ -1156,7 +1158,7 @@ let rec check_binary ldconfig_paths core_file core_img is_loaded root_path nt_fi
       Error.fail (binary_filepath ^ " mismatches: " ^ msg)
   end
 
-let process_file core_filepath maybe_root_path =
+let process_file core_filepath maybe_root_path maybe_binary_filename =
   let root_path = match maybe_root_path with
     | Just root_path -> root_path ^ "/"
     | Nothing -> ""
@@ -1170,10 +1172,24 @@ let process_file core_filepath maybe_root_path =
   let endian = get_elf64_header_endianness core_file.elf64_file_header in
   Elf_note.obtain_elf64_note_segments endian core_file.elf64_file_program_header_table core_bs >>= fun note_segs ->
   read_nt_file_entries endian note_segs >>= fun nt_file_entries ->
-  read_nt_auxv_execfn endian note_segs core_file >>= fun execfn ->
+  read_nt_auxv_execfn endian note_segs core_file >>= fun maybe_execfn ->
   read_nt_prstatus endian note_segs >>= fun prstatus ->
 
-  unwrap_maybe execfn >>= fun binary_filename ->
+  let binary_filename_res = match (maybe_binary_filename, maybe_execfn) with
+    | (Just binary_filename, Just execfn) ->
+      let _ =
+        if binary_filename <> execfn then
+          Missing_pervasives.errln ("warning: binary filename `" ^ binary_filename ^ "` mismatches EXECFN `" ^ execfn ^ "`")
+        else
+          ()
+      in
+      return binary_filename
+    | (Just binary_filename, Nothing) -> return binary_filename
+    | (Nothing, Just execfn) -> return execfn
+    | (Nothing, Nothing) ->
+      Error.fail "process_file: cannot find EXECFN in ELF notes, please provide the binary filename"
+  end in
+  binary_filename_res >>= fun binary_filename ->
 
   let _ = Missing_pervasives.errln "Core file:" in
   let _ = print_elf64_phdr core_file in
@@ -1195,12 +1211,13 @@ let _ =
     | _::args -> args
     | _ -> []
   end in
-  let (core_filepath, maybe_root_path) = match args with
-    | [core_filepath] -> (core_filepath, Nothing)
-    | [core_filepath; root_path] -> (core_filepath, Just root_path)
-    | _ -> Assert_extra.failwith "usage: main_load <core-file> [root]"
+  let (core_filepath, maybe_root_path, maybe_binary_filename) = match args with
+    | [core_filepath] -> (core_filepath, Nothing, Nothing)
+    | [core_filepath; root_path] -> (core_filepath, Just root_path, Nothing)
+    | [core_filepath; root_path; binary_filename] -> (core_filepath, Just root_path, Just binary_filename)
+    | _ -> Assert_extra.failwith "usage: main_load <core-file> [root] [binary-filename]"
   end in
-  match process_file core_filepath maybe_root_path with
+  match process_file core_filepath maybe_root_path maybe_binary_filename with
     | Fail err -> failwith err
     | Success () -> Missing_pervasives.errln "OK: ALL GREEN"
   end

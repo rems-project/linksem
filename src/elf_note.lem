@@ -98,6 +98,18 @@ let nt_arm_sve : natural = natural_of_hex "0x405" (** ARM Scalable Vector Extens
 
 let nt_version : natural = 1 (** Contains a version string. *)
 
+(* FreeBSD-specific *)
+
+let nt_procstat_proc : natural = 8 (** Procstat proc data. *)
+let nt_procstat_files : natural = 9 (** Procstat files data. *)
+let nt_procstat_vmmap : natural = 10 (** Procstat vmmap data. *)
+let nt_procstat_groups : natural = 11 (** Procstat groups data. *)
+let nt_procstat_umask : natural = 12 (** Procstat umask data. *)
+let nt_procstat_rlimit : natural = 13 (** Procstat rlimit data. *)
+let nt_procstat_osrel : natural = 14 (** Procstat osreldate data. *)
+let nt_procstat_psstrings : natural = 15 (** Procstat ps_strings data. *)
+let nt_procstat_auxv : natural = 16 (** Procstat auxv data. *)
+
 
 (** [elf32_nt_file] represents the contents of a NT_FILE note. *)
 type elf64_nt_file_entry =
