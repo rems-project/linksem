@@ -174,7 +174,19 @@ let read_nt_auxv_value endian note_segs f auxv_type =
     let note_type = natural_of_elf64_word note_seg.elf64_note_type in
     if (note_name = "CORE" && note_type = Elf_note.nt_auxv)
         || (note_name = "FreeBSD" && note_type = Elf_note.nt_procstat_auxv) then
-      Auxv.read_all_elf64_auxv endian note_seg.elf64_note_desc >>= fun note_auxv_list ->
+      let bs = note_seg.elf64_note_desc in
+      let bs_res = if note_name = "FreeBSD" then
+        (* FreeBSD sticks an uint32_t at the begining with the struct size *)
+        read_elf64_word endian bs >>= fun (item_size, bs) ->
+        if natural_of_elf64_word item_size <> 16 then (* This is sizeof(Elf64_Auxinfo) *)
+          Error.fail ("read_nt_auxv_value: unsupported AUXV struct size: " ^ (show item_size))
+        else
+          return bs
+      else
+        return bs
+      in
+      bs_res >>= fun bs ->
+      Auxv.read_all_elf64_auxv endian bs >>= fun note_auxv_list ->
       Error.foldM (fun value auxv ->
         if (natural_of_elf64_xword auxv.elf64_auxv_type) = auxv_type then
           let v = natural_of_elf64_xword auxv.elf64_auxv_value in
