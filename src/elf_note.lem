@@ -469,3 +469,26 @@ val read_elf64_nt_procstat_psstrings : endianness -> byte_sequence -> error elf6
 let read_elf64_nt_procstat_psstrings endian bs =
   read_elf64_addr endian bs >>= fun (addr, _) ->
   return addr
+
+(* Some various structs one can find in notes *)
+
+(** [elf64_psstrings] is FreeBSD's `struct ps_strings` *)
+type elf64_psstrings = <|
+  elf64_psstrings_argvstr : elf64_addr;
+  elf64_psstrings_nargvstr : elf64_word; (** the number of argument strings *)
+  elf64_psstrings_envstr : elf64_addr;
+  elf64_psstrings_nenvstr : elf64_word; (** the number of environment strings *)
+|>
+
+val read_elf64_psstrings : endianness -> byte_sequence -> error elf64_psstrings
+let read_elf64_psstrings endian bs =
+  read_elf64_addr endian bs >>= fun (argvstr, bs) ->
+  read_elf64_word endian bs >>= fun (nargvstr, bs) ->
+  read_elf64_addr endian bs >>= fun (envstr, bs) ->
+  read_elf64_word endian bs >>= fun (nenvstr, _) ->
+  return <|
+    elf64_psstrings_argvstr = argvstr;
+    elf64_psstrings_nargvstr = nargvstr;
+    elf64_psstrings_envstr = envstr;
+    elf64_psstrings_nenvstr = nenvstr;
+  |>

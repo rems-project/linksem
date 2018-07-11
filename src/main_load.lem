@@ -257,27 +257,6 @@ let read_nt_auxv_execfn endian note_segs f =
     | Nothing -> return Nothing
   end
 
-(** `struct ps_strings` *)
-(* TODO: move this somewhere else *)
-type elf64_psstrings = <|
-  elf64_psstrings_argvstr : elf64_addr; (** first of 0 or more argument strings *)
-  elf64_psstrings_nargvstr : elf64_word; (** the number of argument strings *)
-  elf64_psstrings_envstr : elf64_addr; (** first of 0 or more environment strings *)
-  elf64_psstrings_nenvstr : elf64_word; (** the number of environment strings *)
-|>
-
-let read_elf64_psstrings endian bs =
-  read_elf64_addr endian bs >>= fun (argvstr, bs) ->
-  read_elf64_word endian bs >>= fun (nargvstr, bs) ->
-  read_elf64_addr endian bs >>= fun (envstr, bs) ->
-  read_elf64_word endian bs >>= fun (nenvstr, bs) ->
-  return <|
-    elf64_psstrings_argvstr = argvstr;
-    elf64_psstrings_nargvstr = nargvstr;
-    elf64_psstrings_envstr = envstr;
-    elf64_psstrings_nenvstr = nenvstr;
-  |>
-
 let read_nt_procstat_psstrings_argv0 endian note_segs f =
   Error.foldM (fun value note_seg ->
     let note_name = name_string_of_elf64_note note_seg in
@@ -290,7 +269,7 @@ let read_nt_procstat_psstrings_argv0 endian note_segs f =
       Elf_note.read_elf64_nt_procstat_psstrings endian bs >>= fun psstrings_addr ->
       let psstrings_addr = natural_of_elf64_addr psstrings_addr in
       get_segment_byte_sequence_at f psstrings_addr >>= fun psstrings_bs ->
-      read_elf64_psstrings endian psstrings_bs >>= fun psstrings ->
+      Elf_note.read_elf64_psstrings endian psstrings_bs >>= fun psstrings ->
       let argvstr_addr = natural_of_elf64_addr psstrings.elf64_psstrings_argvstr in
       get_segment_byte_sequence_at f argvstr_addr >>= fun argvstr_bs ->
       read_elf64_addr endian argvstr_bs >>= fun (argv0_addr, _) ->
