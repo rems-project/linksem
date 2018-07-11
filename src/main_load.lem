@@ -269,6 +269,51 @@ let read_nt_auxv_execfn endian note_segs f =
     | Nothing -> return Nothing
   end
 
+(** `struct ps_strings` *)
+(* TODO: move this somewhere else *)
+type elf64_psstrings = <|
+  elf64_psstrings_argvstr : elf64_addr; (** first of 0 or more argument strings *)
+  elf64_psstrings_nargvstr : elf64_word; (** the number of argument strings *)
+  elf64_psstrings_envstr : elf64_addr; (** first of 0 or more environment strings *)
+  elf64_psstrings_nenvstr : elf64_word; (** the number of environment strings *)
+|>
+
+let read_elf64_psstrings endian bs =
+  read_elf64_addr endian bs >>= fun (argvstr, bs) ->
+  read_elf64_word endian bs >>= fun (nargvstr, bs) ->
+  read_elf64_addr endian bs >>= fun (envstr, bs) ->
+  read_elf64_word endian bs >>= fun (nenvstr, bs) ->
+  return <|
+    elf64_psstrings_argvstr = argvstr;
+    elf64_psstrings_nargvstr = nargvstr;
+    elf64_psstrings_envstr = envstr;
+    elf64_psstrings_nenvstr = nenvstr;
+  |>
+
+let read_nt_procstat_psstrings_argv0 endian note_segs f =
+  Error.foldM (fun value note_seg ->
+    let note_name = name_string_of_elf64_note note_seg in
+    let note_type = natural_of_elf64_word note_seg.elf64_note_type in
+    if (note_name = "FreeBSD") && note_type = Elf_note.nt_procstat_psstrings then
+      (* FreeBSD sticks an uint32_t at the begining with the struct size *)
+      read_elf64_word endian note_seg.elf64_note_desc >>= fun (item_size, bs) ->
+      if natural_of_elf64_word item_size <> 8 then Error.fail ("read_nt_procstat_psstrings: unsupported PSSTRINGS struct size: " ^ (show item_size)) else
+      (* Triple indirection, just because we like it *)
+      Elf_note.read_elf64_nt_procstat_psstrings endian bs >>= fun psstrings_addr ->
+      let psstrings_addr = natural_of_elf64_addr psstrings_addr in
+      get_segment_byte_sequence_at f psstrings_addr >>= fun psstrings_bs ->
+      read_elf64_psstrings endian psstrings_bs >>= fun psstrings ->
+      let argvstr_addr = natural_of_elf64_addr psstrings.elf64_psstrings_argvstr in
+      get_segment_byte_sequence_at f argvstr_addr >>= fun argvstr_bs ->
+      read_elf64_addr endian argvstr_bs >>= fun (argv0_addr, _) ->
+      let argv0_addr = natural_of_elf64_addr argv0_addr in
+      get_segment_byte_sequence_at f argv0_addr >>= fun argv0_bs ->
+      Elf_note.read_string argv0_bs >>= fun (argv0str, _) ->
+      return (Just argv0str)
+    else
+      return value
+  ) Nothing note_segs
+
 let load_file filename =
   let endian = Endianness.default_endianness in
   Byte_sequence.acquire filename >>= fun bs ->
@@ -1233,21 +1278,28 @@ let process_file core_filepath maybe_root_path maybe_binary_filename =
   let mmap_table = nt_file_entries ++ nt_procstat_vmmap in
   if List.null mmap_table then Error.fail ("process_file: mmap table of core file `" ^ core_filepath ^ "` is empty") else
   read_nt_auxv_execfn endian note_segs core_file >>= fun maybe_execfn ->
+  read_nt_procstat_psstrings_argv0 endian note_segs core_file >>= fun maybe_psstrings_argv0 ->
   read_nt_prstatus endian note_segs >>= fun prstatus ->
 
-  let binary_filename_res = match (maybe_binary_filename, maybe_execfn) with
-    | (Just binary_filename, Just execfn) ->
+  let maybe_detected_binary_filename = match maybe_execfn with
+    | Just _ -> maybe_execfn
+    | Nothing -> maybe_psstrings_argv0
+  end in
+  let _ = Missing_pervasives.errln ("Detected binary filename: " ^ (show maybe_detected_binary_filename)) in
+
+  let binary_filename_res = match (maybe_binary_filename, maybe_detected_binary_filename) with
+    | (Just binary_filename, Just detected_binary_filename) ->
       let _ =
-        if binary_filename <> execfn then
-          Missing_pervasives.errln ("warning: binary filename `" ^ binary_filename ^ "` mismatches EXECFN `" ^ execfn ^ "`")
+        if binary_filename <> detected_binary_filename then
+          Missing_pervasives.errln ("warning: binary filename `" ^ binary_filename ^ "` mismatches detected filename `" ^ detected_binary_filename ^ "`")
         else
           ()
       in
       return binary_filename
     | (Just binary_filename, Nothing) -> return binary_filename
-    | (Nothing, Just execfn) -> return execfn
+    | (Nothing, Just detected_binary_filename) -> return detected_binary_filename
     | (Nothing, Nothing) ->
-      Error.fail "process_file: cannot find EXECFN in ELF notes, please provide the binary filename"
+      Error.fail "process_file: cannot detect binary filename in ELF notes, please provide it"
   end in
   binary_filename_res >>= fun binary_filename ->
 

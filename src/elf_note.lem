@@ -464,3 +464,8 @@ let rec read_elf64_nt_procstat_vmmap endian bs =
     read_elf64_nt_procstat_vmentry endian bs >>= fun (e, bs) ->
     read_elf64_nt_procstat_vmmap endian bs >>= fun (next) ->
     return (e :: next)
+
+val read_elf64_nt_procstat_psstrings : endianness -> byte_sequence -> error elf64_addr
+let read_elf64_nt_procstat_psstrings endian bs =
+  read_elf64_addr endian bs >>= fun (addr, _) ->
+  return addr
