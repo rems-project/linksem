@@ -243,18 +243,6 @@ let read_nt_auxv_value endian note_segs f auxv_type =
       return value
   ) Nothing note_segs
 
-let read_nt_prstatus endian note_segs =
-  Error.foldM (fun value note_seg ->
-    let note_name = name_string_of_elf64_note note_seg in
-    let note_type = natural_of_elf64_word note_seg.elf64_note_type in
-    if (note_name = "CORE" || note_name = "FreeBSD")
-        && note_type = Elf_note.nt_prstatus then
-      Auxv.read_elf64_prstatus endian note_seg.elf64_note_desc >>= fun prstatus ->
-      return (Just prstatus)
-    else
-      return value
-  ) Nothing note_segs
-
 let get_segment_byte_sequence_at f addr =
   get_segment_at f addr >>= fun seg ->
   Byte_sequence.dropbytes (addr - seg.elf64_segment_base) seg.elf64_segment_body
@@ -1272,15 +1260,15 @@ let process_file core_filepath maybe_root_path maybe_binary_filename =
   if elf_type <> Elf_header.elf_ft_core then Error.fail ("process_file: `" ^ core_filepath ^ "` is not a core file") else
   let endian = get_elf64_header_endianness core_file.elf64_file_header in
   Elf_note.obtain_elf64_note_segments endian core_file.elf64_file_program_header_table core_bs >>= fun note_segs ->
+
   read_nt_file_entries endian note_segs >>= fun nt_file_entries ->
   read_nt_procstat_vmmap endian note_segs >>= fun nt_procstat_vmmap ->
   (* TODO: don't allow both mmap table types to be present at the same time *)
   let mmap_table = nt_file_entries ++ nt_procstat_vmmap in
   if List.null mmap_table then Error.fail ("process_file: mmap table of core file `" ^ core_filepath ^ "` is empty") else
+
   read_nt_auxv_execfn endian note_segs core_file >>= fun maybe_execfn ->
   read_nt_procstat_psstrings_argv0 endian note_segs core_file >>= fun maybe_psstrings_argv0 ->
-  read_nt_prstatus endian note_segs >>= fun prstatus ->
-
   let maybe_detected_binary_filename = match maybe_execfn with
     | Just _ -> maybe_execfn
     | Nothing -> maybe_psstrings_argv0
