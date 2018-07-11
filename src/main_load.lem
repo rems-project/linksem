@@ -42,6 +42,14 @@ open import Abi_mips64_relocation
 open import Abi_amd64
 open import Abi_amd64_relocation
 
+(** A mmap table entry suitable for both Linux and FreeBSD. *)
+type mmap_entry = <|
+  mmap_entry_start : natural;
+  mmap_entry_end : natural;
+  mmap_entry_offset : natural;
+  mmap_entry_path : string
+|>
+
 let unwrap_maybe_or_fail err_msg maybe =
   match maybe with
     | Just v -> return v
@@ -129,43 +137,77 @@ let get_segment_at f addr =
     | _ -> Error.fail ("get_segment_at: multiple segments found at " ^ (hex_string_of_natural addr))
   end
 
-let get_nt_file_entry_at nt_file_entries addr =
+val get_mmap_entry_at : list mmap_entry -> natural -> maybe mmap_entry
+let get_mmap_entry_at mmap_table addr =
   let l = List.filter (fun e ->
-    addr >= (natural_of_elf64_xword e.elf64_nt_file_entry_start) &&
-      addr < (natural_of_elf64_xword e.elf64_nt_file_entry_end)
-  ) nt_file_entries in
+    addr >= e.mmap_entry_start && addr < e.mmap_entry_end
+  ) mmap_table in
   match l with
     | [e] -> Just e
     | [] -> Nothing
-    | _ -> failwith ("get_nt_file_entry_at: multiple NT_FILE entries found at " ^ (hex_string_of_natural addr))
+    | _ -> failwith ("get_mmap_entry_at: multiple NT_FILE entries found at " ^ (hex_string_of_natural addr))
   end
 
-let get_all_nt_file_entries_in nt_file_entries filename offset =
-  List.filter (fun e ->
-    let e_offet = natural_of_elf64_xword e.elf64_nt_file_entry_offset in
-    let e_len = (natural_of_elf64_xword e.elf64_nt_file_entry_end) - (natural_of_elf64_xword e.elf64_nt_file_entry_start) in
-    offset >= e_offet &&
-      offset < e_offet + e_len &&
-      filename = e.elf64_nt_file_entry_filename
-  ) nt_file_entries
-
 let read_nt_file_entries endian note_segs =
-  Error.foldM (fun nt_file_entries note_seg ->
+  Error.foldM (fun acc note_seg ->
     let note_name = name_string_of_elf64_note note_seg in
     let note_type = natural_of_elf64_word note_seg.elf64_note_type in
     if note_name = "CORE" && note_type = Elf_note.nt_file then
       Elf_note.read_elf64_nt_file endian note_seg.elf64_note_desc >>= fun nt_file ->
-      let _ = List.map (fun e ->
+      let entries = List.map (fun e ->
         let _ = Missing_pervasives.errln "NT_FILE:" in
         let _ = Missing_pervasives.errln ("  start: " ^ (hex_string_of_natural (natural_of_elf64_xword e.elf64_nt_file_entry_start))) in
         let _ = Missing_pervasives.errln ("  end: " ^ (hex_string_of_natural (natural_of_elf64_xword e.elf64_nt_file_entry_end))) in
         let _ = Missing_pervasives.errln ("  offset: " ^ (hex_string_of_natural (natural_of_elf64_xword e.elf64_nt_file_entry_offset))) in
         let _ = Missing_pervasives.errln ("  filename: " ^ e.elf64_nt_file_entry_filename) in
-        return ()
+
+        <|
+          mmap_entry_start = natural_of_elf64_xword e.elf64_nt_file_entry_start;
+          mmap_entry_end = natural_of_elf64_xword e.elf64_nt_file_entry_end;
+          mmap_entry_offset = natural_of_elf64_xword e.elf64_nt_file_entry_offset;
+          mmap_entry_path = e.elf64_nt_file_entry_filename
+        |>
       ) nt_file.elf64_nt_file_entries in
-      return (nt_file.elf64_nt_file_entries ++ nt_file_entries)
+      return (acc ++ entries)
     else
-      return nt_file_entries
+      return acc
+  ) [] note_segs
+
+let read_nt_procstat_vmmap endian note_segs =
+  Error.foldM (fun acc note_seg ->
+    let note_name = name_string_of_elf64_note note_seg in
+    let note_type = natural_of_elf64_word note_seg.elf64_note_type in
+    if note_name = "FreeBSD" && note_type = Elf_note.nt_procstat_vmmap then
+      (* FreeBSD sticks an uint32_t at the begining with the struct size *)
+      read_elf64_word endian note_seg.elf64_note_desc >>= fun (item_size, bs) ->
+      let item_size_res =
+        if natural_of_elf64_word item_size <> natural_of_hex "0x488" then (* This is sizeof(struct kinfo_vmentry) *)
+          Error.fail ("read_nt_auxv_value: unsupported VMMAP struct size: " ^ (show item_size))
+        else
+          return ()
+      in
+      item_size_res >>= fun () ->
+
+      Elf_note.read_elf64_nt_procstat_vmmap endian bs >>= fun entries ->
+
+      let entries = List.map (fun e ->
+        let _ = Missing_pervasives.errln "NT_PROCSTAT_VMMAP:" in
+        let _ = Missing_pervasives.errln ("  start: " ^ (hex_string_of_natural (natural_of_elf64_xword e.elf64_nt_procstat_vmentry_start))) in
+        let _ = Missing_pervasives.errln ("  end: " ^ (hex_string_of_natural (natural_of_elf64_xword e.elf64_nt_procstat_vmentry_end))) in
+        let _ = Missing_pervasives.errln ("  offset: " ^ (hex_string_of_natural (natural_of_elf64_xword e.elf64_nt_procstat_vmentry_offset))) in
+        let _ = Missing_pervasives.errln ("  path: " ^ e.elf64_nt_procstat_vmentry_path) in
+
+        <|
+          mmap_entry_start = natural_of_elf64_xword e.elf64_nt_procstat_vmentry_start;
+          mmap_entry_end = natural_of_elf64_xword e.elf64_nt_procstat_vmentry_end;
+          mmap_entry_offset = natural_of_elf64_xword e.elf64_nt_procstat_vmentry_offset;
+          mmap_entry_path = e.elf64_nt_procstat_vmentry_path
+        |>
+      ) entries in
+
+      return (acc ++ entries)
+    else
+      return acc
   ) [] note_segs
 
 let read_nt_auxv_value endian note_segs f auxv_type =
@@ -408,18 +450,19 @@ let show_section_at_addr f addr =
       "[unknown section at 0x" ^ (hex_string_of_natural addr) ^ "]"
   end
 
-let show_section_at nt_file_entries f addr =
-  match get_nt_file_entry_at nt_file_entries addr with
-    | Just nt_file_entry ->
-      let entry_offset = natural_of_elf64_xword nt_file_entry.elf64_nt_file_entry_offset in
-      let offset_in_entry = addr - natural_of_elf64_xword nt_file_entry.elf64_nt_file_entry_start in
+val show_section_at : list mmap_entry -> elf64_file -> natural -> string
+let show_section_at mmap_table f addr =
+  match get_mmap_entry_at mmap_table addr with
+    | Just e ->
+      let entry_offset = e.mmap_entry_offset in
+      let offset_in_entry = addr - e.mmap_entry_start in
       let file_offset = entry_offset + offset_in_entry in
       match get_section_at_offset f file_offset with
         | Just section ->
           let offset_in_section = file_offset - section.elf64_section_offset in
           "[section at 0x" ^ (hex_string_of_natural addr) ^ ", " ^ section.elf64_section_name_as_string ^ "+0x" ^ (hex_string_of_natural offset_in_section) ^ "]"
         | Nothing ->
-          "[unknown section at 0x" ^ (hex_string_of_natural addr) ^ " with NT_FILE at 0x" ^ (hex_string_of_natural (natural_of_elf64_xword nt_file_entry.elf64_nt_file_entry_start)) ^ "]"
+          "[unknown section at 0x" ^ (hex_string_of_natural addr) ^ " with NT_FILE at 0x" ^ (hex_string_of_natural e.mmap_entry_start) ^ "]"
       end
     | Nothing ->
       "[unknown section at 0x" ^ (hex_string_of_natural addr) ^ " without NT_FILE]"
@@ -444,7 +487,7 @@ let rec extract_memory_byte_pattern img start len =
   else
     return bp
 
-let compare_memory_image core_img binary_img (* for debugging: *) (nt_file_entries, binary_file) =
+let compare_memory_image core_img binary_img (* for debugging: *) (mmap_table, binary_file) =
   let binary_elements = Map_extra.toList binary_img.elements in
   let results = List.map (fun (_, binary_el) ->
     let start = assert_unwrap_maybe binary_el.startpos in
@@ -462,7 +505,7 @@ let compare_memory_image core_img binary_img (* for debugging: *) (nt_file_entri
       | BytePatternMismatch (mismatch_offset, err_msg) ->
         let mismatch_addr = start + mismatch_offset in
         let _ = Missing_pervasives.errln err_msg in
-        let _ = Missing_pervasives.errln ("  Memory image element at 0x" ^ (hex_string_of_natural start) ^ " mismatches at offset 0x" ^ (hex_string_of_natural mismatch_addr) ^ " in " ^ (show_section_at nt_file_entries binary_file mismatch_addr) ^ " :(") in
+        let _ = Missing_pervasives.errln ("  Memory image element at 0x" ^ (hex_string_of_natural start) ^ " mismatches at offset 0x" ^ (hex_string_of_natural mismatch_addr) ^ " in " ^ (show_section_at mmap_table binary_file mismatch_addr) ^ " :(") in
         let _ = Missing_pervasives.errln "Addr         | Binary                                  | Core                                   " in
         let _ = print_two_byte_patterns start binary_bp core_bp in
         Error.fail "Mismatch"
@@ -868,17 +911,17 @@ let apply_mips64_got_relocations f img dynsyms base dyns =
 
   img
 
-let get_first_mapped_address nt_file_entries filename =
-  List.foldl (fun first nt_file_entry ->
-    if nt_file_entry.elf64_nt_file_entry_filename <> filename then first else
-    let start = natural_of_elf64_xword nt_file_entry.elf64_nt_file_entry_start in
-    let len = (natural_of_elf64_xword nt_file_entry.elf64_nt_file_entry_end) - start in
+let get_first_mapped_address mmap_table filename =
+  List.foldl (fun first e ->
+    if e.mmap_entry_path <> filename then first else
+    let start = e.mmap_entry_start in
+    let len = e.mmap_entry_end - start in
     if len = 0 then first else
     match first with
       | Just first -> Just (if start < first then start else first)
       | Nothing -> Just start
     end
-  ) Nothing nt_file_entries
+  ) Nothing mmap_table
 
 let get_first_memory_image_address img =
   let elements = Map_extra.toList img.elements in
@@ -907,17 +950,17 @@ let get_segment_at_offset f offset =
     For each LOAD segment in the binary, compute the virtual address where it
     should have been loaded, check that a page has been mmapped there, and check
     that the mmapped file offset is correct. *)
-let check_mmaped_memory_image nt_file_entries binary_filename binary_file binary_delta =
+let check_mmaped_memory_image mmap_table binary_filename binary_file binary_delta =
   (* TODO: check the file has been mmaped at only one place? *)
   Error.foldM (fun () seg ->
     if seg.elf64_segment_type <> Elf_program_header_table.elf_pt_load then return () else
     let seg_addr = seg.elf64_segment_base + binary_delta in
     (* let _ = Missing_pervasives.errln ("Checking LOAD segment at 0x" ^ (hex_string_of_natural seg.elf64_segment_base) ^ ", virtual address 0x" ^ (hex_string_of_natural seg_addr)) in *)
-    match get_nt_file_entry_at nt_file_entries seg_addr with
-      | Just nt_file_entry ->
-        if nt_file_entry.elf64_nt_file_entry_filename = binary_filename then
-          let page_start = natural_of_elf64_xword nt_file_entry.elf64_nt_file_entry_start in
-          let page_file_offset = natural_of_elf64_xword nt_file_entry.elf64_nt_file_entry_offset in
+    match get_mmap_entry_at mmap_table seg_addr with
+      | Just e ->
+        if e.mmap_entry_path = binary_filename then
+          let page_start = e.mmap_entry_start in
+          let page_file_offset = e.mmap_entry_offset in
           (* let _ = Missing_pervasives.errln ("  Matching page has virtual address 0x" ^ (hex_string_of_natural page_start) ^ " and offset 0x" ^ (hex_string_of_natural page_file_offset)) in *)
           let seg_offset_in_page = seg_addr - page_start in
           (* let _ = Missing_pervasives.errln ("  Segment offset in page: 0x" ^ (hex_string_of_natural seg_offset_in_page)) in *)
@@ -927,7 +970,7 @@ let check_mmaped_memory_image nt_file_entries binary_filename binary_file binary
           else
             Error.fail ("check_mmaped_memory_image: LOAD segment at 0x" ^ (hex_string_of_natural seg.elf64_segment_base) ^ " has invalid offset: has 0x" ^ (hex_string_of_natural seg.elf64_segment_offset) ^ ", expected 0x" ^ (hex_string_of_natural expected_seg_file_offset))
         else
-          Error.fail ("check_mmaped_memory_image: LOAD segment at 0x" ^ (hex_string_of_natural seg.elf64_segment_base) ^ " has been mmapped to another file: " ^ nt_file_entry.elf64_nt_file_entry_filename)
+          Error.fail ("check_mmaped_memory_image: LOAD segment at 0x" ^ (hex_string_of_natural seg.elf64_segment_base) ^ " has been mmapped to another file: " ^ e.mmap_entry_path)
       | Nothing ->
         Error.fail ("check_mmaped_memory_image: LOAD segment at 0x" ^ (hex_string_of_natural seg.elf64_segment_base) ^ " has not been mmapped at 0x" ^ (hex_string_of_natural seg_addr))
     end
@@ -1060,7 +1103,7 @@ let rec find_library root_path ld_library_paths soname =
         find_library root_path ld_library_paths soname
   end
 
-let rec check_binary ldconfig_paths core_file core_img is_loaded root_path nt_file_entries dynsyms binary_filename =
+let rec check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_table dynsyms binary_filename =
   let binary_filepath = realpath (root_path ^ binary_filename) in
   let binary_filename = assert_unwrap_maybe (Missing_pervasives.string_suffix (naturalFromNat (String.stringLength root_path)) binary_filepath) in
 
@@ -1087,11 +1130,11 @@ let rec check_binary ldconfig_paths core_file core_img is_loaded root_path nt_fi
 
   let _ = Missing_pervasives.errln ("Searching binary " ^ binary_filename ^ " in mmap table") in
   let errmsg = "check_binary: cannot find `" ^ binary_filename ^ "` in the mmap table" in
-  unwrap_maybe_or_fail errmsg (get_first_mapped_address nt_file_entries binary_filename) >>= fun binary_addr ->
+  unwrap_maybe_or_fail errmsg (get_first_mapped_address mmap_table binary_filename) >>= fun binary_addr ->
   let _ = Missing_pervasives.errln ("Binary has been mapped at 0x" ^ (hex_string_of_natural binary_addr)) in
   let binary_delta = get_memory_image_delta binary_img binary_addr in
   let _ = Missing_pervasives.errln ("Binary has delta 0x" ^ (hex_string_of_natural binary_delta)) in
-  check_mmaped_memory_image nt_file_entries binary_filename binary_file binary_delta >>= fun () ->
+  check_mmaped_memory_image mmap_table binary_filename binary_file binary_delta >>= fun () ->
   let _ = Missing_pervasives.errln "Translating binary image" in
   let binary_img = translate_memory_image binary_img binary_delta in
   let _ = Missing_pervasives.errln "Binary image after translation:" in
@@ -1131,7 +1174,7 @@ let rec check_binary ldconfig_paths core_file core_img is_loaded root_path nt_fi
         end
       ) dyn_dt_needed in
       let res = Error.foldM (fun dynsyms library_filepath ->
-        check_binary ldconfig_paths core_file core_img is_loaded root_path nt_file_entries dynsyms library_filepath
+        check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_table dynsyms library_filepath
       ) dynsyms dt_needed in
       res >>= fun dynsyms ->
       return (naturalFromNat (List.length dyn_dt_needed), dynsyms, dyns)
@@ -1160,7 +1203,7 @@ let rec check_binary ldconfig_paths core_file core_img is_loaded root_path nt_fi
   let _ = Missing_pervasives.errln ((show n_bytes) ^ " bytes, " ^ (show n_masked) ^ " masked bytes") in
 
   let _ = Missing_pervasives.errln ("Checking memory image of " ^ binary_filename) in
-  let comparison_res = compare_memory_image core_img binary_img (nt_file_entries, binary_file) in
+  let comparison_res = compare_memory_image core_img binary_img (mmap_table, binary_file) in
 
   match comparison_res with
     | Success () ->
@@ -1180,10 +1223,14 @@ let process_file core_filepath maybe_root_path maybe_binary_filename =
 
   load_file core_filepath >>= fun (core_bs, core_file) ->
   let elf_type = natural_of_elf64_half core_file.elf64_file_header.elf64_type in
-  if elf_type <> Elf_header.elf_ft_core then Error.fail (core_filepath ^ ": not a core file") else
+  if elf_type <> Elf_header.elf_ft_core then Error.fail ("process_file: `" ^ core_filepath ^ "` is not a core file") else
   let endian = get_elf64_header_endianness core_file.elf64_file_header in
   Elf_note.obtain_elf64_note_segments endian core_file.elf64_file_program_header_table core_bs >>= fun note_segs ->
   read_nt_file_entries endian note_segs >>= fun nt_file_entries ->
+  read_nt_procstat_vmmap endian note_segs >>= fun nt_procstat_vmmap ->
+  (* TODO: don't allow both mmap table types to be present at the same time *)
+  let mmap_table = nt_file_entries ++ nt_procstat_vmmap in
+  if List.null mmap_table then Error.fail ("process_file: mmap table of core file `" ^ core_filepath ^ "` is empty") else
   read_nt_auxv_execfn endian note_segs core_file >>= fun maybe_execfn ->
   read_nt_prstatus endian note_segs >>= fun prstatus ->
 
@@ -1214,7 +1261,7 @@ let process_file core_filepath maybe_root_path maybe_binary_filename =
   (* TODO: add a flag instead of this hacky thing *)
   let is_loaded = not (Missing_pervasives.string_contains core_filepath "start") in
 
-  check_binary ldconfig_paths core_file core_img is_loaded root_path nt_file_entries [] binary_filename >>= fun _ ->
+  check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_table [] binary_filename >>= fun _ ->
 
   return ()
 

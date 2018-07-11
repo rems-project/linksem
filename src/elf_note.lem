@@ -111,7 +111,7 @@ let nt_procstat_psstrings : natural = 15 (** Procstat ps_strings data. *)
 let nt_procstat_auxv : natural = 16 (** Procstat auxv data. *)
 
 
-(** [elf32_nt_file] represents the contents of a NT_FILE note. *)
+(** [elf64_nt_file_entry] represents the contents of a NT_FILE note entry. *)
 type elf64_nt_file_entry =
   <| elf64_nt_file_entry_start : elf64_xword
    ; elf64_nt_file_entry_end : elf64_xword
@@ -124,6 +124,28 @@ type elf64_nt_file =
   <| elf64_nt_file_count : elf64_xword
    ; elf64_nt_file_page_size : elf64_xword
    ; elf64_nt_file_entries : list elf64_nt_file_entry
+   |>
+
+(** [elf64_nt_procstat_vmentry] represents the contents of a FreeBSD
+    NT_PROCSTAT_VMMAP note entry (see `struct kinfo_vmentry`). *)
+type elf64_nt_procstat_vmentry =
+  <| elf64_nt_procstat_vmentry_type : elf64_word (** Type of map entry. *)
+   ; elf64_nt_procstat_vmentry_start : elf64_xword (** Starting address. *)
+   ; elf64_nt_procstat_vmentry_end : elf64_xword (** Finishing address. *)
+   ; elf64_nt_procstat_vmentry_offset : elf64_xword (** Mapping offset in object *)
+   ; elf64_nt_procstat_vmentry_vn_fileid : elf64_xword (** inode number if vnode *)
+   ; elf64_nt_procstat_vmentry_vn_fsid : elf64_word (** dev_t of vnode location *)
+   ; elf64_nt_procstat_vmentry_flags : elf64_word (** Flags on map entry. *)
+   ; elf64_nt_procstat_vmentry_resident : elf64_word (** Number of resident pages. *)
+   ; elf64_nt_procstat_vmentry_protection : elf64_word (** Protection bitmask. *)
+   ; elf64_nt_procstat_vmentry_ref_count : elf64_word (** VM obj ref count. *)
+   ; elf64_nt_procstat_vmentry_shadow_count : elf64_word (** VM obj shadow count. *)
+   ; elf64_nt_procstat_vmentry_vn_type : elf64_word (** Vnode type. *)
+   ; elf64_nt_procstat_vmentry_vn_size : elf64_xword (** File size. *)
+   ; elf64_nt_procstat_vmentry_vn_rdev : elf64_word (** Device id if device. *)
+   ; elf64_nt_procstat_vmentry_vn_mode : elf64_half (** File mode. *)
+   ; elf64_nt_procstat_vmentry_status : elf64_half (** Status flags. *)
+   ; elf64_nt_procstat_vmentry_path : string (** Path to VM obj, if any. *)
    |>
 
 (* Note names and descriptions are 4-byte aligned (even ELF64 notes) *)
@@ -385,3 +407,60 @@ let read_elf64_nt_file endian bs =
     elf64_nt_file_page_size = page_size;
     elf64_nt_file_entries = entries
   |>
+
+val read_elf64_nt_procstat_vmentry : endianness -> byte_sequence -> error (elf64_nt_procstat_vmentry * byte_sequence)
+let read_elf64_nt_procstat_vmentry endian bs =
+  let bs_len_before = Byte_sequence.length bs in
+  read_elf64_word endian bs >>= fun (structsize, bs) ->
+  read_elf64_word endian bs >>= fun (type_, bs) ->
+  read_elf64_xword endian bs >>= fun (start, bs) ->
+  read_elf64_xword endian bs >>= fun (end_, bs) ->
+  read_elf64_xword endian bs >>= fun (offset, bs) ->
+  read_elf64_xword endian bs >>= fun (vn_fileid, bs) ->
+  read_elf64_word endian bs >>= fun (vn_fsid, bs) ->
+  read_elf64_word endian bs >>= fun (flags, bs) ->
+  read_elf64_word endian bs >>= fun (resident, bs) ->
+  read_elf64_word endian bs >>= fun (protection, bs) ->
+  read_elf64_word endian bs >>= fun (ref_count, bs) ->
+  read_elf64_word endian bs >>= fun (shadow_count, bs) ->
+  read_elf64_word endian bs >>= fun (vn_type, bs) ->
+  read_elf64_xword endian bs >>= fun (vn_size, bs) ->
+  read_elf64_word endian bs >>= fun (vn_rdev, bs) ->
+  read_elf64_half endian bs >>= fun (vn_mode, bs) ->
+  read_elf64_half endian bs >>= fun (status, bs) ->
+  read_elf64_word endian bs >>= fun (vn_rdev, bs) ->
+  Byte_sequence.dropbytes (12 * 4) bs >>= fun bs -> (* int _kve_ispare[12] *)
+  let bs_len_after = Byte_sequence.length bs in
+  let remaining = (natural_of_elf64_word structsize) - (bs_len_before - bs_len_after) in
+  (* path_bs is NULL-terminated *)
+  Byte_sequence.partition remaining bs >>= fun (path_bs, bs) ->
+  read_string path_bs >>= fun (path, _) ->
+  let e = <|
+    elf64_nt_procstat_vmentry_type = type_;
+    elf64_nt_procstat_vmentry_start = start;
+    elf64_nt_procstat_vmentry_end = end_;
+    elf64_nt_procstat_vmentry_offset = offset;
+    elf64_nt_procstat_vmentry_vn_fileid = vn_fileid;
+    elf64_nt_procstat_vmentry_vn_fsid = vn_fsid;
+    elf64_nt_procstat_vmentry_flags = flags;
+    elf64_nt_procstat_vmentry_resident = resident;
+    elf64_nt_procstat_vmentry_protection = protection;
+    elf64_nt_procstat_vmentry_ref_count = ref_count;
+    elf64_nt_procstat_vmentry_shadow_count = shadow_count;
+    elf64_nt_procstat_vmentry_vn_type = vn_type;
+    elf64_nt_procstat_vmentry_vn_size = vn_size;
+    elf64_nt_procstat_vmentry_vn_rdev = vn_rdev;
+    elf64_nt_procstat_vmentry_vn_mode = vn_mode;
+    elf64_nt_procstat_vmentry_status = status;
+    elf64_nt_procstat_vmentry_path = path;
+  |> in
+  return (e, bs)
+
+val read_elf64_nt_procstat_vmmap : endianness -> byte_sequence -> error (list elf64_nt_procstat_vmentry)
+let rec read_elf64_nt_procstat_vmmap endian bs =
+  if Byte_sequence.length bs = 0 then
+    return []
+  else
+    read_elf64_nt_procstat_vmentry endian bs >>= fun (e, bs) ->
+    read_elf64_nt_procstat_vmmap endian bs >>= fun (next) ->
+    return (e :: next)
