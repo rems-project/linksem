@@ -10,8 +10,8 @@ open import Show
   * with [err] as the reason.
   *)
 type error 'a
-	= Success of 'a
-	| Fail of string
+  = Success of 'a
+  | Fail of string
 
 (** [return] is the monadic lifting function for [error], representing a successful
   * computation.
@@ -39,10 +39,10 @@ declare {isabelle} rename function fail = error_fail
   *)
 val (>>=) : forall 'a 'b. error 'a -> ('a -> error 'b) -> error 'b
 let bind x f =
-	match x with
-		| Success s -> f s
-		| Fail err  -> Fail err
-	end
+  match x with
+    | Success s -> f s
+    | Fail err  -> Fail err
+  end
 let ~{ocaml} (>>=) x f = bind x f
 (* the generated OCaml is "let >>= x f = .." (without the infix parentheses),
 to work around this we declare it inline for OCaml (I'm not sure about other
@@ -58,6 +58,13 @@ let as_maybe e =
   match e with
     | Fail err -> Nothing
     | Success s -> Just s
+  end
+
+val of_maybe : forall 'a. string -> maybe 'a -> error 'a
+let of_maybe err_msg m =
+  match m with
+    | Just v -> Success v
+    | Nothing -> Fail err_msg
   end
 
 (** [repeatM count action] fails if [action] is a failing computation, or
@@ -91,10 +98,10 @@ let rec repeatM' count seed action =
   *)
 val mapM' : forall 'a 'b. ('a -> error 'b) -> list 'a -> error (list 'b) -> error (list 'b)
 let rec mapM' f xs rev_acc =
-	match xs with
-		| []    -> rev_acc >>= fun rev_acc -> return (List.reverse rev_acc)
-		| x::xs -> mapM' f xs (rev_acc >>= fun tl -> f x >>= fun hd -> return (hd::tl))
-	end
+  match xs with
+    | []    -> rev_acc >>= fun rev_acc -> return (List.reverse rev_acc)
+    | x::xs -> mapM' f xs (rev_acc >>= fun tl -> f x >>= fun hd -> return (hd::tl))
+  end
 
 val mapM : forall 'a 'b. ('a -> error 'b) -> list 'a -> error (list 'b)
 let mapM f xs = mapM' f xs (return [])
@@ -113,11 +120,11 @@ let rec foldM f e xs =
   *)
 val string_of_error : forall 'a. Show 'a => error 'a -> string
 let string_of_error e =
-	match e with
-		| Fail err -> "Fail: " ^ err
-		| Success s -> show s
-	end
+  match e with
+    | Fail err -> "Fail: " ^ err
+    | Success s -> show s
+  end
 
 instance forall 'a. Show 'a => (Show (error 'a))
-	let show = string_of_error
+  let show = string_of_error
 end
