@@ -349,6 +349,18 @@ let name_string_of_elf64_note note =
     | Fail err -> Assert_extra.failwith err
   end
 
+(** [read_freebsd_note_desc] unwraps a FreeBSD note description, checking that
+    the size of  *)
+val read_elf64_freebsd_note_desc : endianness -> elf64_note -> natural -> error byte_sequence
+let read_elf64_freebsd_note_desc endian note struct_size =
+  let note_name = name_string_of_elf64_note note in
+  if note_name <> "FreeBSD" then Error.fail ("read_elf64_freebsd_note_desc: `" ^ note_name ^ "` isn't a FreeBSD note") else
+  read_elf64_word endian note.elf64_note_desc >>= fun (size, bs) ->
+  if natural_of_elf64_word size <> struct_size then
+    Error.fail ("read_elf64_freebsd_note_desc: unsupported struct size for FreeBSD note type " ^ (show note.elf64_note_type) ^ " (has " ^ (show size) ^ ", want " ^ (show struct_size) ^ ")")
+  else
+    return bs
+
 (* Functions to parse specific note types *)
 
 val read_string' : byte_sequence -> error (list byte * byte_sequence)

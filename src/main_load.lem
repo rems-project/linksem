@@ -178,16 +178,8 @@ let read_nt_procstat_vmmap endian note_segs =
     let note_name = name_string_of_elf64_note note_seg in
     let note_type = natural_of_elf64_word note_seg.elf64_note_type in
     if note_name = "FreeBSD" && note_type = Elf_note.nt_procstat_vmmap then
-      (* FreeBSD sticks an uint32_t at the begining with the struct size *)
-      read_elf64_word endian note_seg.elf64_note_desc >>= fun (item_size, bs) ->
-      let item_size_res =
-        if natural_of_elf64_word item_size <> natural_of_hex "0x488" then (* This is sizeof(struct kinfo_vmentry) *)
-          Error.fail ("read_nt_auxv_value: unsupported VMMAP struct size: " ^ (show item_size))
-        else
-          return ()
-      in
-      item_size_res >>= fun () ->
-
+      let struct_size = natural_of_hex "0x488" in (* sizeof(struct kinfo_vmentry) *)
+      read_elf64_freebsd_note_desc endian note_seg struct_size >>= fun bs ->
       Elf_note.read_elf64_nt_procstat_vmmap endian bs >>= fun entries ->
 
       let entries = List.map (fun e ->
@@ -218,12 +210,7 @@ let read_nt_auxv_value endian note_segs f auxv_type =
         || (note_name = "FreeBSD" && note_type = Elf_note.nt_procstat_auxv) then
       let bs = note_seg.elf64_note_desc in
       let bs_res = if note_name = "FreeBSD" then
-        (* FreeBSD sticks an uint32_t at the begining with the struct size *)
-        read_elf64_word endian bs >>= fun (item_size, bs) ->
-        if natural_of_elf64_word item_size <> 16 then (* This is sizeof(Elf64_Auxinfo) *)
-          Error.fail ("read_nt_auxv_value: unsupported AUXV struct size: " ^ (show item_size))
-        else
-          return bs
+        read_elf64_freebsd_note_desc endian note_seg 16 (* sizeof(Elf_Auxvinfo) *)
       else
         return bs
       in
@@ -234,7 +221,7 @@ let read_nt_auxv_value endian note_segs f auxv_type =
           let v = natural_of_elf64_xword auxv.elf64_auxv_value in
           match value with
             | Nothing -> return (Just v)
-            | Just _ -> Error.fail ("read_nt_auxv_execfn: duplicate value for type " ^ (show auxv_type))
+            | Just _ -> Error.fail ("read_nt_auxv_value: duplicate value for type " ^ (show auxv_type))
           end
         else
           return value
@@ -262,9 +249,8 @@ let read_nt_procstat_psstrings_argv0 endian note_segs f =
     let note_name = name_string_of_elf64_note note_seg in
     let note_type = natural_of_elf64_word note_seg.elf64_note_type in
     if (note_name = "FreeBSD") && note_type = Elf_note.nt_procstat_psstrings then
-      (* FreeBSD sticks an uint32_t at the begining with the struct size *)
-      read_elf64_word endian note_seg.elf64_note_desc >>= fun (item_size, bs) ->
-      if natural_of_elf64_word item_size <> 8 then Error.fail ("read_nt_procstat_psstrings: unsupported PSSTRINGS struct size: " ^ (show item_size)) else
+      let item_size = 8 in (* Size of an address *)
+      read_elf64_freebsd_note_desc endian note_seg item_size >>= fun bs ->
       (* Triple indirection, just because we like it *)
       Elf_note.read_elf64_nt_procstat_psstrings endian bs >>= fun psstrings_addr ->
       let psstrings_addr = natural_of_elf64_addr psstrings_addr in
@@ -305,26 +291,14 @@ let print_memory_image img =
     Missing_pervasives.errln ("  element: " ^ k ^ " start=0x" ^ (hex_string_of_natural start) ^ " len=0x" ^ (hex_string_of_natural len) ^ " contents_len=0x" ^ (hex_string_of_natural (naturalFromNat (List.length e.contents))))
   ) img.elements
 
-let find_memory_image_element f img =
-  let elements = Map_extra.toList img.elements in
-  List.foldl (fun maybe_res (_, e) ->
-    let ok = f e in
-    match maybe_res with
-      | Just _ ->
-        if ok then Nothing
-        else maybe_res
-      | Nothing ->
-        if ok then Just e
-        else maybe_res
-    end
-  ) Nothing elements
-
 let memory_image_element_at img addr =
-  find_memory_image_element (fun e ->
+  let elements = Map_extra.toList img.elements in
+  let maybe_tuple = List.find (fun (_, e) ->
     let start = assert_unwrap_maybe e.startpos in
     let len = assert_unwrap_maybe e.length in
     addr >= start && addr < start + len
-  ) img
+  ) elements in
+  Maybe.map (fun (_, e) -> e) maybe_tuple
 
 val byte_pattern_skip : natural -> byte_pattern -> byte_pattern
 let rec byte_pattern_skip offset bp =
@@ -482,7 +456,7 @@ let show_section_at mmap_table f addr =
 
 let rec extract_memory_byte_pattern img start len =
   if len = 0 then return [] else
-  let err_msg = "extract_memory_byte_pattern: no core image element at 0x" ^ (hex_string_of_natural start) in
+  let err_msg = "extract_memory_byte_pattern: no core image element at 0x" ^ (hex_string_of_natural start) ^ ", it may be missing from the core file" in
   unwrap_maybe_or_fail err_msg (memory_image_element_at img start) >>= fun el ->
   let el_start = assert_unwrap_maybe el.startpos in
   let el_len = assert_unwrap_maybe el.length in
