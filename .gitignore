@@ -19,6 +19,8 @@ src/main_elf
 src/main_elf.native
 src/main_link
 src/main_link.native
+src/main_load
+src/main_load.native
 src/copy_elf
 src/copy_elf.native
 src/lem_ocaml_sentinel
