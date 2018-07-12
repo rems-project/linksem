@@ -53,7 +53,7 @@ type mmap_entry = <|
 let unwrap_maybe_or_fail err_msg maybe =
   match maybe with
     | Just v -> return v
-    | Nothing -> (* Error.fail err_msg *) failwith err_msg
+    | Nothing -> Error.fail err_msg
   end
 
 let unwrap_maybe maybe =
@@ -120,21 +120,16 @@ let print_elf64_phdr f =
   ) f.elf64_file_program_header_table in
   ()
 
-let get_exec_segments f =
-  List.filter (fun seg ->
-    let (r, w, x) = seg.elf64_segment_flags in
-    x
-  ) f.elf64_file_interpreted_segments
-
 let get_segment_at f addr =
   let l = List.filter (fun seg ->
-    addr >= seg.elf64_segment_base &&
+    seg.elf64_segment_type = Elf_program_header_table.elf_pt_load &&
+      addr >= seg.elf64_segment_base &&
       addr < seg.elf64_segment_base + seg.elf64_segment_size
   ) f.elf64_file_interpreted_segments in
   match l with
     | [seg] -> return seg
-    | [] -> Error.fail ("get_segment_at: no segment found at " ^ (hex_string_of_natural addr))
-    | _ -> Error.fail ("get_segment_at: multiple segments found at " ^ (hex_string_of_natural addr))
+    | [] -> Error.fail ("get_segment_at: no segment found at 0x" ^ (hex_string_of_natural addr))
+    | _ -> Error.fail ("get_segment_at: multiple segments found at 0x" ^ (hex_string_of_natural addr))
   end
 
 val get_mmap_entry_at : list mmap_entry -> natural -> maybe mmap_entry
@@ -145,7 +140,7 @@ let get_mmap_entry_at mmap_table addr =
   match l with
     | [e] -> Just e
     | [] -> Nothing
-    | _ -> failwith ("get_mmap_entry_at: multiple NT_FILE entries found at " ^ (hex_string_of_natural addr))
+    | _ -> failwith ("get_mmap_entry_at: multiple NT_FILE entries found at 0x" ^ (hex_string_of_natural addr))
   end
 
 let read_nt_file_entries endian note_segs =
@@ -155,12 +150,13 @@ let read_nt_file_entries endian note_segs =
     if note_name = "CORE" && note_type = Elf_note.nt_file then
       Elf_note.read_elf64_nt_file endian note_seg.elf64_note_desc >>= fun nt_file ->
       let entries = List.map (fun e ->
-        let _ = Missing_pervasives.errln "NT_FILE:" in
-        let _ = Missing_pervasives.errln ("  start: " ^ (hex_string_of_natural (natural_of_elf64_xword e.elf64_nt_file_entry_start))) in
-        let _ = Missing_pervasives.errln ("  end: " ^ (hex_string_of_natural (natural_of_elf64_xword e.elf64_nt_file_entry_end))) in
-        let _ = Missing_pervasives.errln ("  offset: " ^ (hex_string_of_natural (natural_of_elf64_xword e.elf64_nt_file_entry_offset))) in
-        let _ = Missing_pervasives.errln ("  filename: " ^ e.elf64_nt_file_entry_filename) in
-
+        let _ = Missing_pervasives.errln (
+          "NT_FILE"
+          ^ " start=0x" ^ (hex_string_of_natural (natural_of_elf64_xword e.elf64_nt_file_entry_start))
+          ^ " end=0x" ^ (hex_string_of_natural (natural_of_elf64_xword e.elf64_nt_file_entry_end))
+          ^ " offset=0x" ^ (hex_string_of_natural (natural_of_elf64_xword e.elf64_nt_file_entry_offset))
+          ^ " filename=`" ^ e.elf64_nt_file_entry_filename ^ "`"
+        ) in
         <|
           mmap_entry_start = natural_of_elf64_xword e.elf64_nt_file_entry_start;
           mmap_entry_end = natural_of_elf64_xword e.elf64_nt_file_entry_end;
@@ -183,12 +179,13 @@ let read_nt_procstat_vmmap endian note_segs =
       Elf_note.read_elf64_nt_procstat_vmmap endian bs >>= fun entries ->
 
       let entries = List.map (fun e ->
-        let _ = Missing_pervasives.errln "NT_PROCSTAT_VMMAP:" in
-        let _ = Missing_pervasives.errln ("  start: " ^ (hex_string_of_natural (natural_of_elf64_xword e.elf64_nt_procstat_vmentry_start))) in
-        let _ = Missing_pervasives.errln ("  end: " ^ (hex_string_of_natural (natural_of_elf64_xword e.elf64_nt_procstat_vmentry_end))) in
-        let _ = Missing_pervasives.errln ("  offset: " ^ (hex_string_of_natural (natural_of_elf64_xword e.elf64_nt_procstat_vmentry_offset))) in
-        let _ = Missing_pervasives.errln ("  path: " ^ e.elf64_nt_procstat_vmentry_path) in
-
+        let _ = Missing_pervasives.errln (
+          "NT_PROCSTAT_VMMAP"
+          ^ " start=0x" ^ (hex_string_of_natural (natural_of_elf64_xword e.elf64_nt_procstat_vmentry_start))
+          ^ " end=0x" ^ (hex_string_of_natural (natural_of_elf64_xword e.elf64_nt_procstat_vmentry_end))
+          ^ " offset=0x" ^ (hex_string_of_natural (natural_of_elf64_xword e.elf64_nt_procstat_vmentry_offset))
+          ^ " path=`" ^ e.elf64_nt_procstat_vmentry_path ^ "`"
+        ) in
         <|
           mmap_entry_start = natural_of_elf64_xword e.elf64_nt_procstat_vmentry_start;
           mmap_entry_end = natural_of_elf64_xword e.elf64_nt_procstat_vmentry_end;
@@ -483,18 +480,32 @@ let compare_memory_image core_img binary_img (* for debugging: *) (mmap_table, b
     let _ = Missing_pervasives.errln ("Comparing memory element at 0x" ^ (hex_string_of_natural start) ^ ", length 0x" ^ (hex_string_of_natural len)) in
 
     let binary_bp = binary_el.contents in
-    extract_memory_byte_pattern core_img start len >>= fun core_bp ->
-    match compare_byte_pattern core_bp binary_bp with
-      | BytePatternMatch ->
-        let _ = Missing_pervasives.errln ("  Memory image element at 0x" ^ (hex_string_of_natural start) ^ " matches!") in
-        return ()
-      | BytePatternMismatch (mismatch_offset, err_msg) ->
-        let mismatch_addr = start + mismatch_offset in
-        let _ = Missing_pervasives.errln err_msg in
-        let _ = Missing_pervasives.errln ("  Memory image element at 0x" ^ (hex_string_of_natural start) ^ " mismatches at offset 0x" ^ (hex_string_of_natural mismatch_addr) ^ " in " ^ (show_section_at mmap_table binary_file mismatch_addr) ^ " :(") in
-        let _ = Missing_pervasives.errln "Addr         | Binary                                  | Core                                   " in
-        let _ = print_two_byte_patterns start binary_bp core_bp in
-        Error.fail "Mismatch"
+    match extract_memory_byte_pattern core_img start len with
+      | Success core_bp ->
+        match compare_byte_pattern core_bp binary_bp with
+          | BytePatternMatch ->
+            let _ = Missing_pervasives.errln ("  Memory image element at 0x" ^ (hex_string_of_natural start) ^ " matches!") in
+            return ()
+          | BytePatternMismatch (mismatch_offset, err_msg) ->
+            let mismatch_addr = start + mismatch_offset in
+            let _ = Missing_pervasives.errln err_msg in
+            let _ = Missing_pervasives.errln ("  Memory image element at 0x" ^ (hex_string_of_natural start) ^ " mismatches at offset 0x" ^ (hex_string_of_natural mismatch_addr) ^ " in " ^ (show_section_at mmap_table binary_file mismatch_addr) ^ " :(") in
+            let _ = Missing_pervasives.errln "Addr         | Binary                                  | Core                                   " in
+            let _ = print_two_byte_patterns start binary_bp core_bp in
+            Error.fail "Mismatch"
+        end
+      | Fail err ->
+        (* FreeBSD doesn't include read-only mmapped regions in coredumps *)
+        (* TODO: handle PIE executables *)
+        (* TODO: check mmap table too? *)
+        get_segment_at binary_file start >>= fun seg ->
+        let (r, w, x) = seg.elf64_segment_flags in
+        if not w then
+          let _ = Missing_pervasives.errln ("  Warning: memory image element at 0x" ^ (hex_string_of_natural start) ^ " is not included in the core file") in
+          let _ = Missing_pervasives.errln ("  Skipping because it is read-only") in
+          return ()
+        else
+          Error.fail err
     end
   ) binary_elements in
   let _ = List.map (fun res ->
@@ -923,7 +934,8 @@ let get_first_memory_image_address img =
 
 let get_segment_at_offset f offset =
   let l = List.filter (fun seg ->
-    offset >= seg.elf64_segment_offset &&
+    seg.elf64_segment_type = Elf_program_header_table.elf_pt_load &&
+      offset >= seg.elf64_segment_offset &&
       offset < seg.elf64_segment_offset + seg.elf64_segment_size
   ) f.elf64_file_interpreted_segments in
   match l with
@@ -1168,7 +1180,9 @@ let rec check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_
   in
 
   linked_libs_res >>= fun (libs_count, dynsyms, dyns) ->
-  let _ = Missing_pervasives.errln ("OK: " ^ (show libs_count) ^ " libraries linked to " ^ binary_filepath ^ " match!") in
+  let _ = if libs_count > 0 then
+    Missing_pervasives.errln ("OK: " ^ (show libs_count) ^ " libraries linked to " ^ binary_filepath ^ " match!")
+  else () in
 
   let binary_img =
     if is_loaded then
