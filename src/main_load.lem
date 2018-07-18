@@ -458,7 +458,7 @@ let rec extract_memory_byte_pattern img start len =
   else
     return bp
 
-let compare_memory_image core_img binary_img (* for debugging: *) (mmap_table, binary_file) =
+let compare_memory_image core_img binary_img (* for debugging: *) (mmap_table, binary_file, binary_base) =
   let binary_elements = Map_extra.toList binary_img.elements in
   let results = List.map (fun (_, binary_el) ->
     let start = assert_unwrap_maybe binary_el.startpos in
@@ -484,9 +484,8 @@ let compare_memory_image core_img binary_img (* for debugging: *) (mmap_table, b
         end
       | Fail err ->
         (* FreeBSD doesn't include read-only mmapped regions in coredumps *)
-        (* TODO: handle PIE executables *)
         (* TODO: check mmap table too? *)
-        get_load_segment_at binary_file start >>= fun seg ->
+        get_load_segment_at binary_file (start - binary_base) >>= fun seg ->
         let (r, w, x) = seg.elf64_segment_flags in
         if not w then
           let _ = Missing_pervasives.errln ("  Warning: memory image element at 0x" ^ (hex_string_of_natural start) ^ " is not included in the core file") in
@@ -1235,7 +1234,7 @@ let rec check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_
   let _ = Missing_pervasives.errln ((show n_bytes) ^ " bytes, " ^ (show n_masked) ^ " masked bytes") in
 
   let _ = Missing_pervasives.errln ("Checking memory image of " ^ binary_filename) in
-  let comparison_res = compare_memory_image core_img binary_img (mmap_table, binary_file) in
+  let comparison_res = compare_memory_image core_img binary_img (mmap_table, binary_file, binary_delta) in
 
   match comparison_res with
     | Success () ->
