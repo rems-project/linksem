@@ -128,7 +128,7 @@ let get_mmap_entry_at mmap_table addr =
   match l with
     | [e] -> Just e
     | [] -> Nothing
-    | _ -> failwith ("get_mmap_entry_at: multiple NT_FILE entries found at 0x" ^ (hex_string_of_natural addr))
+    | _ -> failwith ("get_mmap_entry_at: multiple mmap entries found at 0x" ^ (hex_string_of_natural addr))
   end
 
 let read_nt_file_entries endian note_segs =
@@ -763,6 +763,28 @@ let apply_all_relocations f img base syms =
   (* ) tags_and_ranges in *)
   ) img symbol_refs_and_reloc_sites
 
+let amd64_address_size : natural = 8
+
+let init_amd64_pltgot img base dyns =
+  let maybe_pltgot_offset = List.find (fun (tag, _) ->
+    tag = Elf_dynamic.dt_pltgot
+  ) dyns in
+  match maybe_pltgot_offset with
+    | Just (_, Address pltgot_offset) ->
+      let pltgot_addr = base + natural_of_elf64_addr pltgot_offset in
+      let _ = Missing_pervasives.errln ("Initializing PLTGOT at 0x" ^ (hex_string_of_natural pltgot_addr)) in
+      (* The second entry contains a linker-specific value. FreeBSD's rtld-elf
+         uses it to store ta pointer to an internal data structure, glibc's
+         linker leaves it zeroed. *)
+      let img = mask_memory_image img (pltgot_addr + amd64_address_size) amd64_address_size in
+      (* The third entry contains the dynamic linker entry point *)
+      let img = mask_memory_image img (pltgot_addr + 2 * amd64_address_size) amd64_address_size in
+      img
+    | Nothing ->
+      let _ = Missing_pervasives.errln ("Missing DT_PLTGOT in .dynamic, skipping PLTGOT initialization") in
+      img
+  end
+
 let mips64_address_size : natural = 8
 
 val apply_mips64_local_got_relocations : forall 'abifeature. annotated_memory_image 'abifeature -> natural -> natural -> natural -> (annotated_memory_image 'abifeature * natural)
@@ -846,7 +868,7 @@ let apply_mips64_got_relocations f img dynsyms base dyns =
   let got_addr = base + natural_of_elf64_addr got_offset in
   let got_entry_addr = got_addr in
 
-  (* Apply local .git relocs *)
+  (* Apply local .got relocs *)
   let maybe_local_gotno = List.find (fun (tag, _) ->
     tag = Abi_mips64_dynamic.abi_mips64_dt_local_gotno
   ) dyns in
@@ -1049,6 +1071,7 @@ let extract_dynsyms f offset existing_syms =
       let syms = List.foldl (fun syms sym ->
         let (sym_name, sym_entry, sym_addr) = sym in
         let sym_binding = get_elf64_symbol_binding sym_entry in
+        (* let _ = Missing_pervasives.errln ("Processing symbol `" ^ sym_name ^ "`, 0x" ^ (hex_string_of_natural sym_addr) ^ ", binding=" ^ (show sym_binding)) in *)
         match find_sym existing_syms sym_name with
           | Just (existing_entry, existing_addr) ->
             if get_elf64_symbol_binding existing_entry = Elf_symbol_table.stb_weak && sym_binding <> Elf_symbol_table.stb_weak then
@@ -1181,6 +1204,9 @@ let rec check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_
         if Abi_mips64.header_is_mips64 binary_file.elf64_file_header &&
             has_dynamic_section binary_file then
           apply_mips64_got_relocations binary_file binary_img dynsyms binary_delta dyns
+        else if Abi_amd64.header_is_amd64 binary_file.elf64_file_header &&
+            has_dynamic_section binary_file then
+          init_amd64_pltgot binary_img binary_delta dyns
         else
           binary_img
       in
