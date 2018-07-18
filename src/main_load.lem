@@ -1155,6 +1155,20 @@ let rec check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_
   let _ = Missing_pervasives.errln ("Binary exports " ^ (show (List.length binary_dynsyms)) ^ " dynamic symbols") in
   let dynsyms = dynsyms ++ binary_dynsyms in
 
+  (* TODO: libraries' INTERP should be ignored *)
+  let maybe_interp_seg = List.find (fun seg ->
+    seg.elf64_segment_type = Elf_program_header_table.elf_pt_interp
+  ) binary_file.elf64_file_interpreted_segments in
+  let dynsyms_res = match maybe_interp_seg with
+    | Just interp_seg ->
+      Elf_note.read_string interp_seg.elf64_segment_body >>= fun (interp, _) ->
+      let _ = Missing_pervasives.errln ("Requesting program interpreter: " ^ interp) in
+      check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_table dynsyms interp
+    | Nothing ->
+      return dynsyms
+  end in
+  dynsyms_res >>= fun dynsyms ->
+
   (* Result contains the number of linked libraries *)
   let linked_libs_res =
     if not is_loaded then
@@ -1171,7 +1185,9 @@ let rec check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_
       let dt_needed_res = Error.mapM (fun (_, dyn_value) ->
         match dyn_value with
           | Library soname ->
-            (* TODO: remove this hack *)
+            (* TODO: remove this hack. This probably just means keeping a list
+               of loaded SONAME strings and check it's not already loaded now
+               that we support INTERP segments. *)
             let paths =
               if soname = "libc.so" && Abi_mips64.header_is_mips64 binary_file.elf64_file_header && Missing_pervasives.string_contains binary_filepath "musl" then
                 ["/lib/mips64el-linux-musl"]
