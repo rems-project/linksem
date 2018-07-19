@@ -20,6 +20,7 @@ open import Error
 open import Elf_dynamic
 open import Elf_file
 open import Elf_header
+open import Elf_interpreted_section
 open import Elf_section_header_table
 open import Elf_symbol_table
 open import Elf_types_native_uint
@@ -31,57 +32,23 @@ open import Gnu_ext_dynamic
 open import Gnu_ext_section_header_table
 
 (** [gnu_ext_elf32_symbol_version_table] is an array (linked list, here) of
-  * [elf32_half] entries.
+  * [elf32_half] entries.  It has as many entries as the dynamic symbol table
+  * (DT_SYMTAB).  I.e., each symbol table entry has its associated entry in the
+  * symbol version table.
   *)
 type gnu_ext_elf32_symbol_version_table =
   list elf32_half
-  
+
 type gnu_ext_elf64_symbol_version_table =
   list elf64_half
 
-val obtain_gnu_ext_elf32_symbol_version_table : elf32_file -> byte_sequence -> error gnu_ext_elf32_symbol_version_table
-let obtain_gnu_ext_elf32_symbol_version_table f1 bs0 =
-  let sht = f1.elf32_file_section_header_table in
-  let endian = get_elf32_header_endianness f1.elf32_file_header in
-  let vers = List.filter (fun ent ->
-    ent.elf32_sh_type = elf32_word_of_natural sht_gnu_versym
-  ) sht
-  in
-    match vers with
-      | []    -> return []
-      | [ver] ->
-        let off = natural_of_elf32_off  ver.elf32_sh_offset in
-        let siz = natural_of_elf32_word ver.elf32_sh_size in
-        let lnk = natural_of_elf32_word ver.elf32_sh_link in
-        get_elf32_symbol_table_by_index f1 lnk >>= fun symtab ->
-        let dlen = naturalFromNat (List.length symtab) in
-        Byte_sequence.offset_and_cut off siz bs0         >>= fun ver      ->
-        Error.repeatM' dlen bs0 (read_elf32_half endian) >>= fun (ver, _) ->
-        return ver
-      | _     -> fail "obtain_gnu_ext_elf32_symbol_version_table: multiple sections of type .gnu_versym present in file"
-    end
- 
-val obtain_gnu_ext_elf64_symbol_version_table : endianness -> elf64_section_header_table -> elf64_symbol_table -> byte_sequence -> error gnu_ext_elf64_symbol_version_table
-let obtain_gnu_ext_elf64_symbol_version_table endian sht dynsym bs0 =
-  let dlen = naturalFromNat (List.length dynsym) in
-    if dlen = 0 then
-      return []
-    else
-      let vers = List.filter (fun ent ->
-          ent.elf64_sh_type = elf64_word_of_natural sht_gnu_versym
-        ) sht
-      in
-        match vers with
-          | []    -> return []
-          | [ver] ->
-            let off = natural_of_elf64_off   ver.elf64_sh_offset in
-            let siz = natural_of_elf64_xword ver.elf64_sh_size in
-            Byte_sequence.offset_and_cut off siz bs0         >>= fun ver      ->
-            Error.repeatM' dlen bs0 (read_elf64_half endian) >>= fun (ver, _) ->
-            return ver
-          | _     -> fail "obtain_gnu_ext_elf64_symbol_version_table: multiple sections of type .gnu_versym present in file"
-        end
-  
+val read_gnu_ext_elf64_versym_table : endianness -> byte_sequence -> error gnu_ext_elf64_symbol_version_table
+let rec read_gnu_ext_elf64_versym_table endian bs =
+  if Byte_sequence.length bs = 0 then return [] else
+  read_elf64_half endian bs >>= fun (v, bs) ->
+  read_gnu_ext_elf64_versym_table endian bs >>= fun next ->
+  return (v :: next)
+
 type gnu_ext_elf32_verdef =
   <| gnu_ext_elf32_vd_version : elf32_half
    ; gnu_ext_elf32_vd_flags   : elf32_half
@@ -91,7 +58,7 @@ type gnu_ext_elf32_verdef =
    ; gnu_ext_elf32_vd_aux     : elf32_word
    ; gnu_ext_elf32_vd_next    : elf32_word
    |>
-   
+
 type gnu_ext_elf64_verdef =
   <| gnu_ext_elf64_vd_version : elf64_half
    ; gnu_ext_elf64_vd_flags   : elf64_half
@@ -101,7 +68,7 @@ type gnu_ext_elf64_verdef =
    ; gnu_ext_elf64_vd_aux     : elf64_word
    ; gnu_ext_elf64_vd_next    : elf64_word
    |>
-   
+
 val string_of_gnu_ext_elf32_verdef : gnu_ext_elf32_verdef -> string
 let {ocaml} string_of_gnu_ext_elf32_verdef verdef =
   unlines [
@@ -111,7 +78,7 @@ let {ocaml} string_of_gnu_ext_elf32_verdef verdef =
   ; "Count: " ^ show verdef.gnu_ext_elf32_vd_cnt
   ; "Hash: " ^ show verdef.gnu_ext_elf32_vd_hash
   ]
-  
+
 val string_of_gnu_ext_elf64_verdef : gnu_ext_elf64_verdef -> string
 let {ocaml} string_of_gnu_ext_elf64_verdef verdef =
   unlines [
@@ -121,7 +88,7 @@ let {ocaml} string_of_gnu_ext_elf64_verdef verdef =
   ; "Count: " ^ show verdef.gnu_ext_elf64_vd_cnt
   ; "Hash: " ^ show verdef.gnu_ext_elf64_vd_hash
   ]
-   
+
 val read_gnu_ext_elf32_verdef : endianness -> byte_sequence -> error (gnu_ext_elf32_verdef * byte_sequence)
 let read_gnu_ext_elf32_verdef endian bs0 =
   read_elf32_half endian bs0 >>= fun (ver, bs0) ->
@@ -135,7 +102,7 @@ let read_gnu_ext_elf32_verdef endian bs0 =
       gnu_ext_elf32_vd_ndx = ndx; gnu_ext_elf32_vd_cnt = cnt;
         gnu_ext_elf32_vd_hash = hsh; gnu_ext_elf32_vd_aux = aux;
       gnu_ext_elf32_vd_next = nxt |>, bs0)
-      
+
 val read_gnu_ext_elf64_verdef : endianness -> byte_sequence -> error (gnu_ext_elf64_verdef * byte_sequence)
 let read_gnu_ext_elf64_verdef endian bs0 =
   read_elf64_half endian bs0 >>= fun (ver, bs0) ->
@@ -149,43 +116,133 @@ let read_gnu_ext_elf64_verdef endian bs0 =
       gnu_ext_elf64_vd_ndx = ndx; gnu_ext_elf64_vd_cnt = cnt;
         gnu_ext_elf64_vd_hash = hsh; gnu_ext_elf64_vd_aux = aux;
       gnu_ext_elf64_vd_next = nxt |>, bs0)
-      
+
 val gnu_ext_elf32_verdef_size : natural
 let gnu_ext_elf32_verdef_size =
   160
-  
+
 val gnu_ext_elf64_verdef_size : natural
 let gnu_ext_elf64_verdef_size =
   256
-   
+
 type gnu_ext_elf32_veraux =
   <| gnu_ext_elf32_vda_name : elf32_word
    ; gnu_ext_elf32_vda_next : elf32_word
    |>
-   
+
 type gnu_ext_elf64_veraux =
   <| gnu_ext_elf64_vda_name : elf64_word
    ; gnu_ext_elf64_vda_next : elf64_word
    |>
-   
+
 val gnu_ext_elf32_veraux_size : natural
 let gnu_ext_elf32_veraux_size = 64
 
 val gnu_ext_elf64_veraux_size : natural
 let gnu_ext_elf64_veraux_size = 128
-   
+
 val read_gnu_ext_elf32_veraux : endianness -> byte_sequence -> error (gnu_ext_elf32_veraux * byte_sequence)
 let read_gnu_ext_elf32_veraux endian bs0 =
   read_elf32_word endian bs0 >>= fun (nme, bs0) ->
   read_elf32_word endian bs0 >>= fun (nxt, bs0) ->
     return (<| gnu_ext_elf32_vda_name = nme; gnu_ext_elf32_vda_next = nxt |>, bs0)
-    
+
 val read_gnu_ext_elf64_veraux : endianness -> byte_sequence -> error (gnu_ext_elf64_veraux * byte_sequence)
 let read_gnu_ext_elf64_veraux endian bs0 =
   read_elf64_word endian bs0 >>= fun (nme, bs0) ->
   read_elf64_word endian bs0 >>= fun (nxt, bs0) ->
     return (<| gnu_ext_elf64_vda_name = nme; gnu_ext_elf64_vda_next = nxt |>, bs0)
-   
+
+val read_gnu_ext_elf64_veraux_table : endianness -> natural -> byte_sequence -> error (list gnu_ext_elf64_veraux * byte_sequence)
+let rec read_gnu_ext_elf64_veraux_table endian vd_cnt bs =
+  if vd_cnt = 0 then return ([], bs) else
+  read_gnu_ext_elf64_veraux endian bs >>= fun (veraux, _) ->
+  let vda_next = natural_of_elf64_word veraux.gnu_ext_elf64_vda_next in
+  Byte_sequence.dropbytes vda_next bs >>= fun bs ->
+  read_gnu_ext_elf64_veraux_table endian (vd_cnt - 1) bs >>= fun (veraux_table, bs) ->
+  return (veraux :: veraux_table, bs)
+
+val read_gnu_ext_elf64_verdef_table : endianness -> natural -> byte_sequence -> error (list (gnu_ext_elf64_verdef * list gnu_ext_elf64_veraux) * byte_sequence)
+let rec read_gnu_ext_elf64_verdef_table endian verdefnum bs =
+  if verdefnum = 0 then return ([], bs) else
+  read_gnu_ext_elf64_verdef endian bs >>= fun (verdef, _) ->
+  let vd_version = natural_of_elf64_half verdef.gnu_ext_elf64_vd_version in
+  let vd_aux = natural_of_elf64_word verdef.gnu_ext_elf64_vd_aux in
+  let vd_cnt = natural_of_elf64_half verdef.gnu_ext_elf64_vd_cnt in
+  let vd_next = natural_of_elf64_word verdef.gnu_ext_elf64_vd_next in
+  if vd_version <> 1 then Error.fail ("read_gnu_ext_elf64_verdef_table: unsupported version " ^ (show vd_version)) else
+  Byte_sequence.dropbytes vd_aux bs >>= fun aux_bs ->
+  read_gnu_ext_elf64_veraux_table endian vd_cnt aux_bs >>= fun (veraux_table, _) ->
+  Byte_sequence.dropbytes vd_next bs >>= fun bs ->
+  read_gnu_ext_elf64_verdef_table endian (verdefnum - 1) bs >>= fun (verdef_table, bs) ->
+  return (((verdef, veraux_table) :: verdef_table), bs)
+
+type gnu_ext_interpreted_verdef_version = <|
+  gnu_ext_interpreted_verdef_version : natural;
+  gnu_ext_interpreted_verdef_flags : natural;
+  gnu_ext_interpreted_verdef_ndx : natural;
+  gnu_ext_interpreted_verdef_hash : natural;
+  gnu_ext_interpreted_verdef_aux : list string
+|>
+
+type gnu_ext_interpreted_verdef =
+  | GnuExtInterpretedVerdefLocal
+  | GnuExtInterpretedVerdefGlobal
+  | GnuExtInterpretedVerdefVersion of gnu_ext_interpreted_verdef_version
+
+val obtain_interpreted_gnu_ext_elf64_verdef_table : elf64_file -> natural -> natural -> error (list gnu_ext_interpreted_verdef)
+let obtain_interpreted_gnu_ext_elf64_verdef_table f verdef verdefnum =
+  let endian = get_elf64_header_endianness f.elf64_file_header in
+  let maybe_verdef_scn = List.find (fun scn ->
+    scn.elf64_section_addr = verdef
+  ) f.elf64_file_interpreted_sections in
+  match maybe_verdef_scn with
+    | Just scn -> return scn
+    | Nothing -> fail ("obtain_gnu_ext_elf64_gnu_ext_interpreted_verdef_table: no verdef section at 0x" ^ (hex_string_of_natural verdef))
+  end >>= fun verdef_scn ->
+  match List.index f.elf64_file_interpreted_sections (natFromNatural verdef_scn.elf64_section_link) with
+    | Just strs -> return strs
+    | Nothing -> fail "obtain_gnu_ext_elf64_gnu_ext_interpreted_verdef_table: no associated strtab"
+  end >>= fun strs ->
+  let strings = Byte_sequence.string_of_byte_sequence strs.elf64_section_body in
+  let strtab = String_table.mk_string_table strings null_char in
+  read_gnu_ext_elf64_verdef_table endian verdefnum verdef_scn.elf64_section_body >>= fun (verdef_table, _) ->
+  Error.mapM (fun (verdef, veraux_table) ->
+    Error.mapM (fun veraux ->
+      let vda_name = natural_of_elf64_word veraux.gnu_ext_elf64_vda_name in
+      String_table.get_string_at vda_name strtab
+    ) veraux_table >>= fun veraux_table ->
+    return <|
+      gnu_ext_interpreted_verdef_version = natural_of_elf64_half verdef.gnu_ext_elf64_vd_version;
+      gnu_ext_interpreted_verdef_flags = natural_of_elf64_half verdef.gnu_ext_elf64_vd_flags;
+      gnu_ext_interpreted_verdef_ndx = natural_of_elf64_half verdef.gnu_ext_elf64_vd_ndx;
+      gnu_ext_interpreted_verdef_hash = natural_of_elf64_word verdef.gnu_ext_elf64_vd_hash;
+      gnu_ext_interpreted_verdef_aux = veraux_table
+    |>
+  ) verdef_table >>= fun verdef_table ->
+
+  let maybe_versym_scn = List.find (fun scn ->
+    scn.elf64_section_type = sht_gnu_versym
+  ) f.elf64_file_interpreted_sections in
+  match maybe_versym_scn with
+    | Just scn -> return scn
+    | Nothing -> fail ("obtain_gnu_ext_elf64_gnu_ext_interpreted_verdef_table: no versym section")
+  end >>= fun versym_scn ->
+  read_gnu_ext_elf64_versym_table endian versym_scn.elf64_section_body >>= fun versym_table ->
+
+  Error.mapM (fun ndx ->
+    match natural_of_elf64_half ndx with
+      | 0 -> return GnuExtInterpretedVerdefLocal
+      | 1 -> return GnuExtInterpretedVerdefGlobal
+      | ndx ->
+        match List.find (fun verdef -> verdef.gnu_ext_interpreted_verdef_ndx = ndx) verdef_table with
+          | Just verdef -> return (GnuExtInterpretedVerdefVersion verdef)
+          | Nothing -> return GnuExtInterpretedVerdefGlobal (* TODO: wtf *)
+          (* | Nothing -> fail ("obtain_gnu_ext_elf64_gnu_ext_interpreted_verdef_table: cannot find verdef with ndx " ^ (show ndx)) *)
+        end
+    end
+  ) versym_table
+
 type gnu_ext_elf32_verneed =
   <| gnu_ext_elf32_vn_version : elf32_half
    ; gnu_ext_elf32_vn_cnt     : elf32_half
@@ -193,7 +250,7 @@ type gnu_ext_elf32_verneed =
    ; gnu_ext_elf32_vn_aux     : elf32_word
    ; gnu_ext_elf32_vn_next    : elf32_word
    |>
-   
+
 type gnu_ext_elf64_verneed =
   <| gnu_ext_elf64_vn_version : elf64_half
    ; gnu_ext_elf64_vn_cnt     : elf64_half
@@ -201,13 +258,13 @@ type gnu_ext_elf64_verneed =
    ; gnu_ext_elf64_vn_aux     : elf64_word
    ; gnu_ext_elf64_vn_next    : elf64_word
    |>
-   
+
 val gnu_ext_elf32_verneed_size : natural
 let gnu_ext_elf32_verneed_size = 128
 
 val gnu_ext_elf64_verneed_size : natural
 let gnu_ext_elf64_verneed_size = 224
-   
+
 val read_gnu_ext_elf32_verneed : endianness -> byte_sequence -> error (gnu_ext_elf32_verneed * byte_sequence)
 let read_gnu_ext_elf32_verneed endian bs0 =
   read_elf32_half endian bs0 >>= fun (ver, bs0) ->
@@ -229,7 +286,7 @@ let read_gnu_ext_elf64_verneed endian bs0 =
     return (<| gnu_ext_elf64_vn_version = ver; gnu_ext_elf64_vn_cnt = cnt;
       gnu_ext_elf64_vn_file = fle; gnu_ext_elf64_vn_aux = aux;
         gnu_ext_elf64_vn_next = nxt |>, bs0)
-   
+
 type gnu_ext_elf32_vernaux =
   <| gnu_ext_elf32_vna_hash  : elf32_word
    ; gnu_ext_elf32_vna_flags : elf32_half
@@ -237,7 +294,7 @@ type gnu_ext_elf32_vernaux =
    ; gnu_ext_elf32_vna_name  : elf32_word
    ; gnu_ext_elf32_vna_next  : elf32_word
    |>
-   
+
 type gnu_ext_elf64_vernaux =
   <| gnu_ext_elf64_vna_hash  : elf64_word
    ; gnu_ext_elf64_vna_flags : elf64_half
@@ -245,7 +302,7 @@ type gnu_ext_elf64_vernaux =
    ; gnu_ext_elf64_vna_name  : elf64_word
    ; gnu_ext_elf64_vna_next  : elf64_word
    |>
-   
+
 val string_of_gnu_ext_elf32_vernaux : gnu_ext_elf32_vernaux -> string
 let {ocaml} string_of_gnu_ext_elf32_vernaux vernaux =
   unlines [
@@ -255,7 +312,7 @@ let {ocaml} string_of_gnu_ext_elf32_vernaux vernaux =
   ; "Name: " ^ show vernaux.gnu_ext_elf32_vna_name
   ; "Next: " ^ show vernaux.gnu_ext_elf32_vna_next
   ]
-  
+
 val string_of_gnu_ext_elf64_vernaux : gnu_ext_elf64_vernaux -> string
 let {ocaml} string_of_gnu_ext_elf64_vernaux vernaux =
   unlines [
@@ -265,13 +322,13 @@ let {ocaml} string_of_gnu_ext_elf64_vernaux vernaux =
   ; "Name: " ^ show vernaux.gnu_ext_elf64_vna_name
   ; "Next: " ^ show vernaux.gnu_ext_elf64_vna_next
   ]
-   
+
 val gnu_ext_elf32_vernaux_size : natural
 let gnu_ext_elf32_vernaux_size = 16
 
 val gnu_ext_elf64_vernaux_size : natural
 let gnu_ext_elf64_vernaux_size = 224
-   
+
 val read_gnu_ext_elf32_vernaux : endianness -> byte_sequence -> error (gnu_ext_elf32_vernaux * byte_sequence)
 let read_gnu_ext_elf32_vernaux endian bs0 =
   read_elf32_word endian bs0 >>= fun (hsh, bs0) ->

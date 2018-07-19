@@ -30,6 +30,7 @@ open import Gnu_ext_abi
 open import Gnu_ext_dynamic
 open import Gnu_ext_program_header_table
 open import Gnu_ext_section_header_table
+open import Gnu_ext_symbol_versioning
 open import Harness_interface
 open import Ldconfig
 open import Memory_image
@@ -675,10 +676,17 @@ let extract_all_relocs_as_symbol_references abi f =
     |>
   ) all_relocs
 
+type dynamic_symbol = <|
+  dynamic_symbol_name : string;
+  dynamic_symbol_entry : elf64_symbol_table_entry;
+  dynamic_symbol_value : natural;
+  dynamic_symbol_version : maybe string
+|>
+
 let find_sym syms name =
-  List.foldl (fun maybe_sym (sym_name, sym_entry, sym_addr) ->
-    if name = sym_name then
-      Just (sym_entry, sym_addr)
+  List.foldl (fun maybe_sym sym ->
+    if name = sym.dynamic_symbol_name then
+      Just (sym.dynamic_symbol_entry, sym.dynamic_symbol_value)
     else
       maybe_sym
   ) Nothing syms
@@ -802,7 +810,7 @@ let rec apply_mips64_local_got_relocations img base got_entry_addr local_gotno =
   let img = write_memory_image img got_entry_addr field_bp in
   apply_mips64_local_got_relocations img base (got_entry_addr + width) (local_gotno - 1)
 
-val apply_mips64_global_got_relocations' : forall 'abifeature. abi 'abifeature -> elf64_file -> annotated_memory_image 'abifeature -> list (string * Elf_symbol_table.elf64_symbol_table_entry * natural) -> list (string * elf64_symbol_table_entry * natural (* scnidx *) * natural (* symidx *)) -> natural -> natural -> natural -> (annotated_memory_image 'abifeature * natural)
+val apply_mips64_global_got_relocations' : forall 'abifeature. abi 'abifeature -> elf64_file -> annotated_memory_image 'abifeature -> list dynamic_symbol -> list (string * elf64_symbol_table_entry * natural (* scnidx *) * natural (* symidx *)) -> natural -> natural -> natural -> (annotated_memory_image 'abifeature * natural)
 let rec apply_mips64_global_got_relocations' abi f img dynsyms syms base got_entry_addr symtabno =
   if symtabno = 0 then (img, got_entry_addr) else
   match syms with
@@ -1050,53 +1058,113 @@ let has_dynamic_section f =
   ) f.elf64_file_section_header_table in
   dyn_secs <> []
 
-let extract_dynsyms f offset existing_syms =
-  let results = List.mapi (fun scnidx scn ->
-    let scnidx = naturalFromNat scnidx in
-    if scn.elf64_section_type = sht_dynsym then
-      find_elf64_symbols_by_symtab_idx scnidx f >>= fun triple ->
-      let syms = Elf_memory_image.extract_all_symbols triple in
-      let syms = List.filter (fun (sym_name, sym_entry, scnidx, symidx) ->
-        let sym_binding = get_elf64_symbol_binding sym_entry in
-        let sym_value = natural_of_elf64_addr sym_entry.elf64_st_value in
-        (sym_binding = Elf_symbol_table.stb_global || sym_binding = Elf_symbol_table.stb_weak)
-          (* TODO: is this acceptable? *)
-          && sym_value <> 0
-      ) syms in
-      let syms = List.map (fun (sym_name, sym_entry, scnidx, symidx) ->
-        (* let _ = Missing_pervasives.errln ("Library exports dynamic symbol: " ^ sym_name) in *)
-        (sym_name, sym_entry, offset + natural_of_elf64_addr sym_entry.elf64_st_value)
-      ) syms in
-      let syms = List.foldl (fun syms sym ->
-        let (sym_name, sym_entry, sym_addr) = sym in
-        let sym_binding = get_elf64_symbol_binding sym_entry in
-        (* let _ = Missing_pervasives.errln ("Processing symbol `" ^ sym_name ^ "`, 0x" ^ (hex_string_of_natural sym_addr) ^ ", binding=" ^ (show sym_binding)) in *)
-        match find_sym existing_syms sym_name with
-          | Just (existing_entry, existing_addr) ->
-            if get_elf64_symbol_binding existing_entry = Elf_symbol_table.stb_weak && sym_binding <> Elf_symbol_table.stb_weak then
-              (* Existing symbol is weak and the new one isn't, replace it *)
-              let _ = Missing_pervasives.errln ("Overriding weak symbol `" ^ sym_name ^ "`, 0x" ^ (hex_string_of_natural existing_addr) ^ " -> 0x" ^ (hex_string_of_natural sym_addr)) in
-              sym :: syms
-            else if natural_of_elf64_half existing_entry.elf64_st_shndx = 0 && natural_of_elf64_half sym_entry.elf64_st_shndx <> 0 then
-              (* Existing symbol has an undefined ndx and the new one has a defined one, replace it *)
-              (* TODO: why is this the right thing to do? *)
-              let _ = Missing_pervasives.errln ("Overriding symbol with undefined ndx `" ^ sym_name ^ "`, 0x" ^ (hex_string_of_natural existing_addr) ^ " -> 0x" ^ (hex_string_of_natural sym_addr)) in
-              sym :: syms
-            else
-              let _ = Missing_pervasives.errln ("Multiple definitions of " ^ sym_name ^ ", only keeping the first one") in
-              syms
+let extract_verdef_table f dyns =
+  let maybe_dt_verdef = List.find (fun (tag, _) -> tag = Gnu_ext_dynamic.elf_dt_gnu_verdef) dyns in
+  match maybe_dt_verdef with
+    | Just (_, Address dt_verdef) ->
+      let dt_verdef = natural_of_elf64_addr dt_verdef in
+      let maybe_dt_verdefnum = List.find (fun (tag, _) -> tag = Gnu_ext_dynamic.elf_dt_gnu_verdefnum) dyns in
+      match maybe_dt_verdefnum with
+        | Just (_, Numeric dt_verdefnum) -> return dt_verdefnum
+        | Nothing -> Error.fail "DT_VERDEF is defined, but DT_VERDEFNUM isn't"
+      end >>= fun dt_verdefnum ->
+      let _ = Missing_pervasives.errln ("Reading " ^ (show dt_verdefnum) ^ " verdef entries from DT_VERNUM at 0x" ^ (hex_string_of_natural dt_verdef)) in
+      obtain_interpreted_gnu_ext_elf64_verdef_table f dt_verdef dt_verdefnum >>= fun verdef_table ->
+      return (Just verdef_table)
+    | Nothing ->
+      return Nothing
+  end
+
+let extract_dynsyms f base existing_syms dyns =
+  let maybe_dt_symtab = List.find (fun (tag, _) -> tag = Elf_dynamic.dt_symtab) dyns in
+  match maybe_dt_symtab with
+    | Just (_, Address dt_symtab) ->
+      let dt_symtab = natural_of_elf64_addr dt_symtab in
+      let maybe_symtab_scnidx = List.findIndex (fun scn ->
+        scn.elf64_section_addr = dt_symtab
+      ) f.elf64_file_interpreted_sections in
+      match maybe_symtab_scnidx with
+        | Just scnidx -> return (naturalFromNat scnidx)
+        | Nothing -> Error.fail ("extract_dynsyms: no symtab section at 0x" ^ (hex_string_of_natural dt_symtab))
+      end
+    | Nothing ->
+      Error.fail "extract_dynsyms: missing DT_SYMTAB in .dynamic"
+  end >>= fun symtab_scnidx ->
+  let symtab_scn = assert_unwrap_maybe (List.index f.elf64_file_interpreted_sections (natFromNatural symtab_scnidx)) in
+
+  find_elf64_symbols_by_symtab_idx symtab_scnidx f >>= fun triple ->
+  let syms = Elf_memory_image.extract_all_symbols triple in
+  let syms = List.filter (fun (sym_name, sym_entry, scnidx, symidx) ->
+    let sym_binding = get_elf64_symbol_binding sym_entry in
+    let sym_value = natural_of_elf64_addr sym_entry.elf64_st_value in
+    (sym_binding = Elf_symbol_table.stb_global || sym_binding = Elf_symbol_table.stb_weak)
+      (* TODO: is this acceptable? *)
+      && sym_value <> 0
+  ) syms in
+  let syms = List.map (fun (sym_name, sym_entry, scnidx, symidx) ->
+    (* let _ = Missing_pervasives.errln ("Library exports dynamic symbol: " ^ sym_name) in *)
+    let sym_value = base + natural_of_elf64_addr sym_entry.elf64_st_value in
+    let sym = <|
+      dynamic_symbol_name = sym_name;
+      dynamic_symbol_entry = sym_entry;
+      dynamic_symbol_value = sym_value;
+      dynamic_symbol_version = Nothing
+    |> in
+    (sym, symidx)
+  ) syms in
+
+  extract_verdef_table f dyns >>= fun maybe_verdef_table ->
+  let syms = match maybe_verdef_table with
+    | Just verdef_table ->
+      if List.length verdef_table < List.length syms then failwith "extract_dynsyms: verdef table too short" else
+      List.foldl (fun syms (sym, symidx) ->
+        match List.index verdef_table (natFromNatural symidx) with
+          | Just (GnuExtInterpretedVerdefVersion verdef) ->
+            List.map (fun verdef_aux ->
+              (* let _ = Missing_pervasives.errln ("Symbol `" ^ sym.dynamic_symbol_name ^ "`, version `" ^ verdef_aux ^ "`") in *)
+              <|
+                dynamic_symbol_name = sym.dynamic_symbol_name;
+                dynamic_symbol_entry = sym.dynamic_symbol_entry;
+                dynamic_symbol_value = sym.dynamic_symbol_value;
+                dynamic_symbol_version = Just verdef_aux
+              |>
+            ) verdef.gnu_ext_interpreted_verdef_aux
+          | Just _ ->
+            (* let _ = Missing_pervasives.errln ("Symbol `" ^ sym.dynamic_symbol_name ^ "`, no version") in *)
+            [sym] (* TODO: ignore local dynsyms? *)
           | Nothing ->
-            sym :: syms
-        end
-      ) [] syms in
-      return syms
-    else
-      return []
-  ) f.elf64_file_interpreted_sections in
-  Error.foldM (fun all_syms res ->
-    res >>= fun syms ->
-    return (all_syms ++ syms)
-  ) [] results
+            failwith "extract_dynsyms: cannot get verdef table entry"
+        end ++ syms
+      ) [] syms
+    | Nothing ->
+      List.map (fun (sym, symidx) -> sym) syms
+  end in
+
+  let syms = List.foldl (fun syms sym ->
+    let sym_name = sym.dynamic_symbol_name in
+    let sym_entry = sym.dynamic_symbol_entry in
+    let sym_addr = sym.dynamic_symbol_value in
+    let sym_binding = get_elf64_symbol_binding sym_entry in
+    (* let _ = Missing_pervasives.errln ("Processing symbol `" ^ sym_name ^ "`, 0x" ^ (hex_string_of_natural sym_addr) ^ ", binding=" ^ (show sym_binding)) in *)
+    match find_sym existing_syms sym_name with
+      | Just (existing_entry, existing_addr) ->
+        if get_elf64_symbol_binding existing_entry = Elf_symbol_table.stb_weak && sym_binding <> Elf_symbol_table.stb_weak then
+          (* Existing symbol is weak and the new one isn't, replace it *)
+          let _ = Missing_pervasives.errln ("Overriding weak symbol `" ^ sym_name ^ "`, 0x" ^ (hex_string_of_natural existing_addr) ^ " -> 0x" ^ (hex_string_of_natural sym_addr)) in
+          sym :: syms
+        else if natural_of_elf64_half existing_entry.elf64_st_shndx = 0 && natural_of_elf64_half sym_entry.elf64_st_shndx <> 0 then
+          (* Existing symbol has an undefined ndx and the new one has a defined one, replace it *)
+          (* TODO: why is this the right thing to do? *)
+          let _ = Missing_pervasives.errln ("Overriding symbol with undefined ndx `" ^ sym_name ^ "`, 0x" ^ (hex_string_of_natural existing_addr) ^ " -> 0x" ^ (hex_string_of_natural sym_addr)) in
+          sym :: syms
+        else
+          let _ = Missing_pervasives.errln ("Multiple definitions of " ^ sym_name ^ ", only keeping the first one") in
+          syms
+      | Nothing ->
+        sym :: syms
+    end
+  ) [] syms in
+  return syms
 
 let rec find_library root_path ld_library_paths soname =
   match ld_library_paths with
@@ -1149,9 +1217,26 @@ let rec check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_
   let _ = Missing_pervasives.errln "Binary image after translation:" in
   let _ = print_memory_image binary_img in
 
-  let _ = Missing_pervasives.errln ("Extracting dynamic symbols from " ^ binary_filename) in
-  extract_dynsyms binary_file binary_delta dynsyms >>= fun binary_dynsyms ->
-  let _ = Missing_pervasives.errln ("Binary exports " ^ (show (List.length binary_dynsyms)) ^ " dynamic symbols") in
+  let maybe_dyns_res =
+    if has_dynamic_section binary_file then
+      let _ = Missing_pervasives.errln ("Reading .dynamic section") in
+      read_dynamic binary_bs binary_file >>= fun dyns ->
+      return (Just dyns)
+    else
+      return Nothing
+  in
+  maybe_dyns_res >>= fun maybe_dyns ->
+
+  match maybe_dyns with
+    | Just dyns ->
+      let _ = Missing_pervasives.errln ("Extracting dynamic symbols from " ^ binary_filename) in
+      extract_dynsyms binary_file binary_delta dynsyms dyns >>= fun binary_dynsyms ->
+      let _ = Missing_pervasives.errln ("Binary exports " ^ (show (List.length binary_dynsyms)) ^ " dynamic symbols") in
+      return binary_dynsyms
+    | Nothing ->
+      return []
+  end >>= fun binary_dynsyms ->
+
   let dynsyms = dynsyms ++ binary_dynsyms in
 
   (* TODO: libraries' INTERP should be ignored *)
@@ -1173,37 +1258,41 @@ let rec check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_
     if not is_loaded then
       let _ = Missing_pervasives.errln "Core file hasn't been loaded; not checking linked libraries" in
       return (0, [], [])
-    else if not (has_dynamic_section binary_file) then
-      let _ = Missing_pervasives.errln "Binary doesn't have a .dynamic section; not checking linked libraries" in
-      return (0, [], [])
     else
-      let _ = Missing_pervasives.errln "Checking linked libraries" in
-      read_dynamic binary_bs binary_file >>= fun dyns ->
-      let dyn_dt_needed = List.filter (fun (tag, _) -> tag = Elf_dynamic.dt_needed) dyns in
-      let _ = Missing_pervasives.errln ("Found " ^ (show (List.length dyn_dt_needed)) ^ " linked libraries") in
-      let dt_needed_res = Error.mapM (fun (_, dyn_value) ->
-        match dyn_value with
-          | Library soname ->
-            (* TODO: remove this hack. This probably just means keeping a list
-               of loaded SONAME strings and check it's not already loaded now
-               that we support INTERP segments. *)
-            let paths =
-              if soname = "libc.so" && Abi_mips64.header_is_mips64 binary_file.elf64_file_header && Missing_pervasives.string_contains binary_filepath "musl" then
-                ["/lib/mips64el-linux-musl"]
-              else
-                ldconfig_paths
-            in
-            let _ = Missing_pervasives.errln ("Searching needed library `" ^ soname ^ "`") in
-            find_library root_path paths soname
-          | _ -> Error.fail "got a DT_NEEDED with something else than a Library"
-        end
-      ) dyn_dt_needed in
-      dt_needed_res >>= fun dt_needed ->
-      let check_res = Error.foldM (fun dynsyms library_filepath ->
-        check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_table dynsyms library_filepath
-      ) dynsyms dt_needed in
-      check_res >>= fun dynsyms ->
-      return (naturalFromNat (List.length dyn_dt_needed), dynsyms, dyns)
+      match maybe_dyns with
+        | Nothing ->
+          let _ = Missing_pervasives.errln "Binary doesn't have a .dynamic section; not checking linked libraries" in
+          return (0, [], [])
+        | Just dyns ->
+          let _ = Missing_pervasives.errln "Checking linked libraries" in
+          read_dynamic binary_bs binary_file >>= fun dyns ->
+
+          let dyn_dt_needed = List.filter (fun (tag, _) -> tag = Elf_dynamic.dt_needed) dyns in
+          let _ = Missing_pervasives.errln ("Found " ^ (show (List.length dyn_dt_needed)) ^ " linked libraries") in
+          let dt_needed_res = Error.mapM (fun (_, dyn_value) ->
+            match dyn_value with
+              | Library soname ->
+                (* TODO: remove this hack. This probably just means keeping a list
+                   of loaded SONAME strings and check it's not already loaded now
+                   that we support INTERP segments. *)
+                let paths =
+                  if soname = "libc.so" && Abi_mips64.header_is_mips64 binary_file.elf64_file_header && Missing_pervasives.string_contains binary_filepath "musl" then
+                    ["/lib/mips64el-linux-musl"]
+                  else
+                    ldconfig_paths
+                in
+                let _ = Missing_pervasives.errln ("Searching needed library `" ^ soname ^ "`") in
+                find_library root_path paths soname
+              | _ -> Error.fail "got a DT_NEEDED with something else than a Library"
+            end
+          ) dyn_dt_needed in
+          dt_needed_res >>= fun dt_needed ->
+          let check_res = Error.foldM (fun dynsyms library_filepath ->
+            check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_table dynsyms library_filepath
+          ) dynsyms dt_needed in
+          check_res >>= fun dynsyms ->
+          return (naturalFromNat (List.length dyn_dt_needed), dynsyms, dyns)
+      end
   in
 
   linked_libs_res >>= fun (libs_count, dynsyms, dyns) ->
