@@ -1058,24 +1058,7 @@ let has_dynamic_section f =
   ) f.elf64_file_section_header_table in
   dyn_secs <> []
 
-let extract_verdef_table f dyns =
-  let maybe_dt_verdef = List.find (fun (tag, _) -> tag = Gnu_ext_dynamic.elf_dt_gnu_verdef) dyns in
-  match maybe_dt_verdef with
-    | Just (_, Address dt_verdef) ->
-      let dt_verdef = natural_of_elf64_addr dt_verdef in
-      let maybe_dt_verdefnum = List.find (fun (tag, _) -> tag = Gnu_ext_dynamic.elf_dt_gnu_verdefnum) dyns in
-      match maybe_dt_verdefnum with
-        | Just (_, Numeric dt_verdefnum) -> return dt_verdefnum
-        | Nothing -> Error.fail "DT_VERDEF is defined, but DT_VERDEFNUM isn't"
-      end >>= fun dt_verdefnum ->
-      let _ = Missing_pervasives.errln ("Reading " ^ (show dt_verdefnum) ^ " verdef entries from DT_VERNUM at 0x" ^ (hex_string_of_natural dt_verdef)) in
-      obtain_interpreted_gnu_ext_elf64_verdef_table f dt_verdef dt_verdefnum >>= fun verdef_table ->
-      return (Just verdef_table)
-    | Nothing ->
-      return Nothing
-  end
-
-let extract_dynsyms f base existing_syms dyns =
+let extract_dynsyms f base existing_syms dyns maybe_versym_table =
   let maybe_dt_symtab = List.find (fun (tag, _) -> tag = Elf_dynamic.dt_symtab) dyns in
   match maybe_dt_symtab with
     | Just (_, Address dt_symtab) ->
@@ -1098,8 +1081,8 @@ let extract_dynsyms f base existing_syms dyns =
     let sym_binding = get_elf64_symbol_binding sym_entry in
     let sym_value = natural_of_elf64_addr sym_entry.elf64_st_value in
     (sym_binding = Elf_symbol_table.stb_global || sym_binding = Elf_symbol_table.stb_weak)
-      (* TODO: is this acceptable? *)
-      && sym_value <> 0
+      (* We're only interested in symbols defined in this DSO *)
+      && natural_of_elf64_half sym_entry.elf64_st_shndx <> 0
   ) syms in
   let syms = List.map (fun (sym_name, sym_entry, scnidx, symidx) ->
     (* let _ = Missing_pervasives.errln ("Library exports dynamic symbol: " ^ sym_name) in *)
@@ -1113,15 +1096,19 @@ let extract_dynsyms f base existing_syms dyns =
     (sym, symidx)
   ) syms in
 
-  extract_verdef_table f dyns >>= fun maybe_verdef_table ->
-  let syms = match maybe_verdef_table with
-    | Just verdef_table ->
-      if List.length verdef_table < List.length syms then failwith "extract_dynsyms: verdef table too short" else
-      List.foldl (fun syms (sym, symidx) ->
-        match List.index verdef_table (natFromNatural symidx) with
-          | Just (GnuExtInterpretedVerdefVersion verdef) ->
+  match maybe_versym_table with
+    | Just versym_table ->
+      if List.length versym_table.gnu_ext_interpreted_versym_table_entries < List.length syms then
+        Error.fail "extract_dynsyms: versym table too short"
+      else
+        return ()
+      >>= fun () ->
+      Error.foldM (fun syms (sym, symidx) ->
+        get_gnu_ext_interpreted_verdef versym_table symidx >>= fun verdef_lookup ->
+        let sym_syms = match verdef_lookup with
+          | GnuExtInterpretedVerdefVersion verdef ->
             List.map (fun verdef_aux ->
-              (* let _ = Missing_pervasives.errln ("Symbol `" ^ sym.dynamic_symbol_name ^ "`, version `" ^ verdef_aux ^ "`") in *)
+              let _ = Missing_pervasives.errln ("Symbol `" ^ sym.dynamic_symbol_name ^ "`, version `" ^ verdef_aux ^ "`") in
               <|
                 dynamic_symbol_name = sym.dynamic_symbol_name;
                 dynamic_symbol_entry = sym.dynamic_symbol_entry;
@@ -1129,16 +1116,15 @@ let extract_dynsyms f base existing_syms dyns =
                 dynamic_symbol_version = Just verdef_aux
               |>
             ) verdef.gnu_ext_interpreted_verdef_aux
-          | Just _ ->
-            (* let _ = Missing_pervasives.errln ("Symbol `" ^ sym.dynamic_symbol_name ^ "`, no version") in *)
-            [sym] (* TODO: ignore local dynsyms? *)
-          | Nothing ->
-            failwith "extract_dynsyms: cannot get verdef table entry"
-        end ++ syms
+          | GnuExtInterpretedVerdefHidden _ -> []
+          | _ -> [sym] (* TODO: ignore local dynsyms? *)
+        end in
+        return (sym_syms ++ syms)
       ) [] syms
     | Nothing ->
-      List.map (fun (sym, symidx) -> sym) syms
-  end in
+      let syms = List.map (fun (sym, symidx) -> sym) syms in
+      return syms
+  end >>= fun syms ->
 
   let syms = List.foldl (fun syms sym ->
     let sym_name = sym.dynamic_symbol_name in
@@ -1229,8 +1215,9 @@ let rec check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_
 
   match maybe_dyns with
     | Just dyns ->
+      obtain_gnu_ext_elf64_interpreted_versym_table binary_file dyns >>= fun maybe_versym_table ->
       let _ = Missing_pervasives.errln ("Extracting dynamic symbols from " ^ binary_filename) in
-      extract_dynsyms binary_file binary_delta dynsyms dyns >>= fun binary_dynsyms ->
+      extract_dynsyms binary_file binary_delta dynsyms dyns maybe_versym_table >>= fun binary_dynsyms ->
       let _ = Missing_pervasives.errln ("Binary exports " ^ (show (List.length binary_dynsyms)) ^ " dynamic symbols") in
       return binary_dynsyms
     | Nothing ->
