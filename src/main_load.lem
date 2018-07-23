@@ -680,7 +680,8 @@ type dynamic_symbol = <|
   dynamic_symbol_name : string;
   dynamic_symbol_entry : elf64_symbol_table_entry;
   dynamic_symbol_value : natural;
-  dynamic_symbol_version : maybe string
+  dynamic_symbol_version : maybe string;
+  dynamic_symbol_version_base : bool
 |>
 
 let find_sym syms name version =
@@ -688,13 +689,31 @@ let find_sym syms name version =
   let version_matches = List.filter (fun sym -> sym.dynamic_symbol_version = version) matches in
   match version_matches with
     | [] ->
-      match matches with
-        | [] -> Nothing
-        | [sym] -> Just (sym.dynamic_symbol_entry, sym.dynamic_symbol_value)
-        | _ -> Nothing
+      match version with
+        | Just _ ->
+          (* Reference requested a specific version, we don't have it *)
+          Nothing
+        | Nothing ->
+          (* Reference without version *)
+          match matches with
+            | [] -> Nothing
+            | [sym] ->
+              (* If there is exactly one version for which this symbol is
+                 defined, then this version is accepted. *)
+              Just sym
+            | _ ->
+              (* Multiple results with different versions, fallback to base
+                 definition *)
+              (* TODO: add support for: 2 is the name given later to the
+                 baseline of symbols once the library started using symbol
+                 versioning *)
+              List.find (fun sym -> sym.dynamic_symbol_version_base) matches
+          end
       end
-    | [sym] -> Just (sym.dynamic_symbol_entry, sym.dynamic_symbol_value)
-    | _ -> Nothing
+    | [sym] ->
+      Just sym
+    | _ ->
+      failwith ("find_sym: multiple symbols for `" ^ name ^ "` version " ^ (show version))
   end
 
 let is_unsupported_relocation_type f rel_type =
@@ -758,26 +777,37 @@ let apply_all_relocations f img base syms dynsym_scnidx maybe_versym_table =
       | Just rs -> rs
     end in
 
+    let sym_name = symref_and_reloc_site.ref.ref_symname in
     let maybe_sym =
-      if symref_and_reloc_site.ref.ref_symname <> "" then
-        let sym_name = symref_and_reloc_site.ref.ref_symname in
+      if sym_name <> "" then
         let sym_scn = symref_and_reloc_site.ref.ref_sym_scn in
         if dynsym_scnidx <> sym_scn then Nothing else (* TODO: is this supposed to happen anyway? *)
         let sym_idx = symref_and_reloc_site.ref.ref_sym_idx in
         let maybe_sym_version = match maybe_versym_table with
           | Just versym_table ->
+            (* TODO: unify get_gnu_ext_interpreted_verneed and get_gnu_ext_interpreted_verdef *)
             match get_gnu_ext_interpreted_verneed versym_table sym_idx with
-              | Success Nothing ->
-                Nothing
+              | Success Nothing -> Nothing
               | Success (Just vernaux) ->
+                (* TODO: handle vernaux.gnu_ext_interpreted_vernaux_verneed.gnu_ext_interpreted_verneed_file *)
                 Just vernaux.gnu_ext_interpreted_vernaux_name
               | Fail errmsg ->
                 (* TODO: failwith errmsg *)
-                Nothing
+                (* No verneed found, maybe this DSO is defining the symbol and has a reloc bound to it *)
+                match get_gnu_ext_interpreted_verdef versym_table sym_idx with
+                  | Success (GnuExtInterpretedVerdefVersion verdef) ->
+                    match verdef.gnu_ext_interpreted_verdef_aux with
+                      | name :: _ -> Just name
+                      | [] -> Nothing
+                    end
+                  | _ ->
+                    Nothing
+                end
             end
           | Nothing ->
             Nothing
         end in
+        let _ = Missing_pervasives.errln ("Searching for symbol `" ^ sym_name ^ "`, version " ^ (show maybe_sym_version)) in
         find_sym syms sym_name maybe_sym_version
       else
         Nothing
@@ -785,7 +815,7 @@ let apply_all_relocations f img base syms dynsym_scnidx maybe_versym_table =
 
     (* TODO: hard fail if symbol name is non-empty but find_sym returns Nothing? *)
     let sym_addr = match maybe_sym with
-      | Just (sym_entry, sym_addr) -> sym_addr
+      | Just sym -> sym.dynamic_symbol_value
       | Nothing -> 0 (* This isn't pretty, but doing something else would be complicated *)
     end in
 
@@ -854,7 +884,7 @@ let rec apply_mips64_global_got_relocations' abi f img dynsyms syms base got_ent
       in
 
       let sym_addr = match maybe_sym with
-        | Just (sym_entry, sym_addr) -> sym_addr
+        | Just sym -> sym.dynamic_symbol_value
         | Nothing -> 0 (* This isn't pretty, but doing something else would be complicated *)
       end in
 
@@ -1100,7 +1130,8 @@ let extract_dynsyms f base existing_syms symtab_scnidx maybe_versym_table =
       dynamic_symbol_name = sym_name;
       dynamic_symbol_entry = sym_entry;
       dynamic_symbol_value = sym_value;
-      dynamic_symbol_version = Nothing
+      dynamic_symbol_version = Nothing;
+      dynamic_symbol_version_base = false
     |> in
     (sym, symidx)
   ) syms in
@@ -1122,7 +1153,11 @@ let extract_dynsyms f base existing_syms symtab_scnidx maybe_versym_table =
                 dynamic_symbol_name = sym.dynamic_symbol_name;
                 dynamic_symbol_entry = sym.dynamic_symbol_entry;
                 dynamic_symbol_value = sym.dynamic_symbol_value;
-                dynamic_symbol_version = Just verdef_aux
+                dynamic_symbol_version = Just verdef_aux;
+                dynamic_symbol_version_base =
+                  (* TODO: what's the difference between those two? *)
+                  verdef.gnu_ext_interpreted_verdef_ndx = gnu_ext_verdef_base_unspecified
+                  || verdef.gnu_ext_interpreted_verdef_ndx = gnu_ext_verdef_base_versioned
               |>
             ) verdef.gnu_ext_interpreted_verdef_aux
           | GnuExtInterpretedVerdefHidden _ -> []
@@ -1141,9 +1176,12 @@ let extract_dynsyms f base existing_syms symtab_scnidx maybe_versym_table =
     let sym_addr = sym.dynamic_symbol_value in
     let sym_version = sym.dynamic_symbol_version in
     let sym_binding = get_elf64_symbol_binding sym_entry in
-    (* let _ = Missing_pervasives.errln ("Processing symbol `" ^ sym_name ^ "`, 0x" ^ (hex_string_of_natural sym_addr) ^ ", binding=" ^ (show sym_binding)) in *)
-    match find_sym existing_syms sym_name sym_version with
-      | Just (existing_entry, existing_addr) ->
+    let _ = Missing_pervasives.errln ("Processing symbol `" ^ sym_name ^ "`, 0x" ^ (hex_string_of_natural sym_addr) ^ ", binding=" ^ (show sym_binding) ^ ", version=" ^ (show sym_version)) in
+    let maybe_existing = List.find (fun sym -> sym.dynamic_symbol_name = sym_name && sym.dynamic_symbol_version = sym_version) existing_syms in
+    match maybe_existing with
+      | Just existing ->
+        let existing_entry = existing.dynamic_symbol_entry in
+        let existing_addr = existing.dynamic_symbol_value in
         if get_elf64_symbol_binding existing_entry = Elf_symbol_table.stb_weak && sym_binding <> Elf_symbol_table.stb_weak then
           (* Existing symbol is weak and the new one isn't, replace it *)
           let _ = Missing_pervasives.errln ("Overriding weak symbol `" ^ sym_name ^ "`, 0x" ^ (hex_string_of_natural existing_addr) ^ " -> 0x" ^ (hex_string_of_natural sym_addr)) in

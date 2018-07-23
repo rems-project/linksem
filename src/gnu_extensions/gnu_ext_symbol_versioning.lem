@@ -31,6 +31,27 @@ open import Show
 open import Gnu_ext_dynamic
 open import Gnu_ext_section_header_table
 
+(* Legal values for vd_version (version revision) *)
+let gnu_ext_ver_def_none : natural = 0 (** No version *)
+let gnu_ext_ver_def_current : natural = 1 (** Current version *)
+
+(* Legal values for vd_flags (version information flags) *)
+let gnu_ext_ver_flg_base : natural = 1 (** Version definition of file itself *)
+let gnu_ext_ver_flg_weak : natural = 2 (** Weak version identifier *)
+
+(* Versym symbol index values *)
+let gnu_ext_ver_ndx_local : natural = 0 (** Symbol is local *)
+let gnu_ext_ver_ndx_global : natural = 1 (** Symbol is global *)
+let gnu_ext_ver_ndx_loreserve : natural = natural_of_hex "0xff00" (** Beginning of reserved entries *)
+let gnu_ext_ver_ndx_eliminate : natural = natural_of_hex "0xff00" (** Symbol is to be eliminated *)
+
+(* Legal values for vn_version (version revision) *)
+let gnu_ext_ver_need_none : natural = 0 (** No version *)
+let gnu_ext_ver_need_current : natural = 1 (** Current version *)
+
+(* Legal values for vna_flags *)
+(* gnu_ext_ver_flg_weak *)
+
 (** [gnu_ext_elf32_symbol_version_table] is an array (linked list, here) of
   * [elf32_half] entries.  It has as many entries as the dynamic symbol table
   * (DT_SYMTAB).  I.e., each symbol table entry has its associated entry in the
@@ -341,6 +362,12 @@ type gnu_ext_interpreted_versym_table = <|
   gnu_ext_interpreted_versym_table_verdef : list gnu_ext_interpreted_verdef;
   gnu_ext_interpreted_versym_table_verneed : list gnu_ext_interpreted_vernaux
 |>
+
+(** The unspecified name for the base definition. *)
+let gnu_ext_verdef_base_unspecified : natural = 1
+(** The name given later to the baseline of symbols once the library started
+    using symbol versioning. *)
+let gnu_ext_verdef_base_versioned : natural = 2
 
 (* TODO: borrowed from Dwarf, this should probbaly go somewhere else *)
 val natural_nat_shift_right : natural -> nat -> natural
