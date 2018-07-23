@@ -683,13 +683,19 @@ type dynamic_symbol = <|
   dynamic_symbol_version : maybe string
 |>
 
-let find_sym syms name =
-  List.foldl (fun maybe_sym sym ->
-    if name = sym.dynamic_symbol_name then
-      Just (sym.dynamic_symbol_entry, sym.dynamic_symbol_value)
-    else
-      maybe_sym
-  ) Nothing syms
+let find_sym syms name version =
+  let matches = List.filter (fun sym -> sym.dynamic_symbol_name = name) syms in
+  let version_matches = List.filter (fun sym -> sym.dynamic_symbol_version = version) matches in
+  match version_matches with
+    | [] ->
+      match matches with
+        | [] -> Nothing
+        | [sym] -> Just (sym.dynamic_symbol_entry, sym.dynamic_symbol_value)
+        | _ -> Nothing
+      end
+    | [sym] -> Just (sym.dynamic_symbol_entry, sym.dynamic_symbol_value)
+    | _ -> Nothing
+  end
 
 let is_unsupported_relocation_type f rel_type =
   (* TODO: add support for TLS relocs *)
@@ -740,7 +746,7 @@ let apply_relocation abi f img base reloc symref_and_reloc_site sym_addr =
       let _ = Missing_pervasives.errln ("  Relocating `" ^ symref_and_reloc_site.ref.ref_symname ^ "` (existing=0x" ^ (hex_string_of_natural existing_value) ^ " addend=" ^ (show addend) ^ ") to 0x" ^ (hex_string_of_natural new_value) ^ " (symbol address 0x" ^ (hex_string_of_natural sym_addr) ^ ")") in
       write_memory_image img addr field_bp
 
-let apply_all_relocations f img base syms =
+let apply_all_relocations f img base syms dynsym_scnidx maybe_versym_table =
   let abi = get_file_abi f in
   let symbol_refs_and_reloc_sites = extract_all_relocs_as_symbol_references abi f in
   (* let tags_and_ranges = Multimap.lookupBy Memory_image_orderings.tagEquiv (SymbolRef(null_symbol_reference_and_reloc_site)) img.by_tag in *)
@@ -753,9 +759,26 @@ let apply_all_relocations f img base syms =
     end in
 
     let maybe_sym =
-      (* TODO: remove these special cases, especially the last one *)
       if symref_and_reloc_site.ref.ref_symname <> "" then
-        find_sym syms symref_and_reloc_site.ref.ref_symname
+        let sym_name = symref_and_reloc_site.ref.ref_symname in
+        let sym_scn = symref_and_reloc_site.ref.ref_sym_scn in
+        if dynsym_scnidx <> sym_scn then Nothing else (* TODO: is this supposed to happen anyway? *)
+        let sym_idx = symref_and_reloc_site.ref.ref_sym_idx in
+        let maybe_sym_version = match maybe_versym_table with
+          | Just versym_table ->
+            match get_gnu_ext_interpreted_verneed versym_table sym_idx with
+              | Success Nothing ->
+                Nothing
+              | Success (Just vernaux) ->
+                Just vernaux.gnu_ext_interpreted_vernaux_name
+              | Fail errmsg ->
+                (* TODO: failwith errmsg *)
+                Nothing
+            end
+          | Nothing ->
+            Nothing
+        end in
+        find_sym syms sym_name maybe_sym_version
       else
         Nothing
     in
@@ -825,7 +848,7 @@ let rec apply_mips64_global_got_relocations' abi f img dynsyms syms base got_ent
       let maybe_sym =
         (* TODO: remove these special cases, especially the last one *)
         if sym_name <> "" then
-          find_sym dynsyms sym_name
+          find_sym dynsyms sym_name Nothing (* TODO: symbol versioning? *)
         else
           Nothing
       in
@@ -1058,21 +1081,7 @@ let has_dynamic_section f =
   ) f.elf64_file_section_header_table in
   dyn_secs <> []
 
-let extract_dynsyms f base existing_syms dyns maybe_versym_table =
-  let maybe_dt_symtab = List.find (fun (tag, _) -> tag = Elf_dynamic.dt_symtab) dyns in
-  match maybe_dt_symtab with
-    | Just (_, Address dt_symtab) ->
-      let dt_symtab = natural_of_elf64_addr dt_symtab in
-      let maybe_symtab_scnidx = List.findIndex (fun scn ->
-        scn.elf64_section_addr = dt_symtab
-      ) f.elf64_file_interpreted_sections in
-      match maybe_symtab_scnidx with
-        | Just scnidx -> return (naturalFromNat scnidx)
-        | Nothing -> Error.fail ("extract_dynsyms: no symtab section at 0x" ^ (hex_string_of_natural dt_symtab))
-      end
-    | Nothing ->
-      Error.fail "extract_dynsyms: missing DT_SYMTAB in .dynamic"
-  end >>= fun symtab_scnidx ->
+let extract_dynsyms f base existing_syms symtab_scnidx maybe_versym_table =
   let symtab_scn = assert_unwrap_maybe (List.index f.elf64_file_interpreted_sections (natFromNatural symtab_scnidx)) in
 
   find_elf64_symbols_by_symtab_idx symtab_scnidx f >>= fun triple ->
@@ -1108,7 +1117,7 @@ let extract_dynsyms f base existing_syms dyns maybe_versym_table =
         let sym_syms = match verdef_lookup with
           | GnuExtInterpretedVerdefVersion verdef ->
             List.map (fun verdef_aux ->
-              let _ = Missing_pervasives.errln ("Symbol `" ^ sym.dynamic_symbol_name ^ "`, version `" ^ verdef_aux ^ "`") in
+              (* let _ = Missing_pervasives.errln ("Symbol `" ^ sym.dynamic_symbol_name ^ "`, version `" ^ verdef_aux ^ "`") in *)
               <|
                 dynamic_symbol_name = sym.dynamic_symbol_name;
                 dynamic_symbol_entry = sym.dynamic_symbol_entry;
@@ -1130,9 +1139,10 @@ let extract_dynsyms f base existing_syms dyns maybe_versym_table =
     let sym_name = sym.dynamic_symbol_name in
     let sym_entry = sym.dynamic_symbol_entry in
     let sym_addr = sym.dynamic_symbol_value in
+    let sym_version = sym.dynamic_symbol_version in
     let sym_binding = get_elf64_symbol_binding sym_entry in
     (* let _ = Missing_pervasives.errln ("Processing symbol `" ^ sym_name ^ "`, 0x" ^ (hex_string_of_natural sym_addr) ^ ", binding=" ^ (show sym_binding)) in *)
-    match find_sym existing_syms sym_name with
+    match find_sym existing_syms sym_name sym_version with
       | Just (existing_entry, existing_addr) ->
         if get_elf64_symbol_binding existing_entry = Elf_symbol_table.stb_weak && sym_binding <> Elf_symbol_table.stb_weak then
           (* Existing symbol is weak and the new one isn't, replace it *)
@@ -1144,7 +1154,7 @@ let extract_dynsyms f base existing_syms dyns maybe_versym_table =
           let _ = Missing_pervasives.errln ("Overriding symbol with undefined ndx `" ^ sym_name ^ "`, 0x" ^ (hex_string_of_natural existing_addr) ^ " -> 0x" ^ (hex_string_of_natural sym_addr)) in
           sym :: syms
         else
-          let _ = Missing_pervasives.errln ("Multiple definitions of " ^ sym_name ^ ", only keeping the first one") in
+          let _ = Missing_pervasives.errln ("Multiple definitions of `" ^ sym_name ^ "` version " ^ (show sym_version) ^ ", only keeping the first one") in
           syms
       | Nothing ->
         sym :: syms
@@ -1164,6 +1174,22 @@ let rec find_library root_path ld_library_paths soname =
         return filename
       else
         find_library root_path ld_library_paths soname
+  end
+
+let get_dynsym_section_index f dyns =
+  let maybe_dt_symtab = List.find (fun (tag, _) -> tag = Elf_dynamic.dt_symtab) dyns in
+  match maybe_dt_symtab with
+    | Just (_, Address dt_symtab) ->
+      let dt_symtab = natural_of_elf64_addr dt_symtab in
+      let maybe_symtab_scnidx = List.findIndex (fun scn ->
+        scn.elf64_section_addr = dt_symtab
+      ) f.elf64_file_interpreted_sections in
+      match maybe_symtab_scnidx with
+        | Just scnidx -> return (naturalFromNat scnidx)
+        | Nothing -> Error.fail ("get_dynsym_section: no symtab section at 0x" ^ (hex_string_of_natural dt_symtab))
+      end
+    | Nothing ->
+      Error.fail "get_dynsym_section: missing DT_SYMTAB in .dynamic"
   end
 
 let rec check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_table dynsyms binary_filename =
@@ -1215,14 +1241,16 @@ let rec check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_
 
   match maybe_dyns with
     | Just dyns ->
+      get_dynsym_section_index binary_file dyns >>= fun dynsym_scnidx ->
+      let _ = Missing_pervasives.errln ("Extracting dynamic symbol version info from " ^ binary_filename ^ " (if any)") in
       obtain_gnu_ext_elf64_interpreted_versym_table binary_file dyns >>= fun maybe_versym_table ->
       let _ = Missing_pervasives.errln ("Extracting dynamic symbols from " ^ binary_filename) in
-      extract_dynsyms binary_file binary_delta dynsyms dyns maybe_versym_table >>= fun binary_dynsyms ->
+      extract_dynsyms binary_file binary_delta dynsyms dynsym_scnidx maybe_versym_table >>= fun binary_dynsyms ->
       let _ = Missing_pervasives.errln ("Binary exports " ^ (show (List.length binary_dynsyms)) ^ " dynamic symbols") in
-      return binary_dynsyms
+      return (dynsym_scnidx, binary_dynsyms, maybe_versym_table)
     | Nothing ->
-      return []
-  end >>= fun binary_dynsyms ->
+      return (0, [], Nothing)
+  end >>= fun (dynsym_scnidx, binary_dynsyms, maybe_versym_table) ->
 
   let dynsyms = dynsyms ++ binary_dynsyms in
 
@@ -1290,7 +1318,7 @@ let rec check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_
   let binary_img =
     if is_loaded then
       let _ = Missing_pervasives.errln ("Applying relocations in " ^ binary_filename) in
-      let binary_img = apply_all_relocations binary_file binary_img binary_delta dynsyms in
+      let binary_img = apply_all_relocations binary_file binary_img binary_delta dynsyms dynsym_scnidx maybe_versym_table in
       let binary_img =
         if Abi_mips64.header_is_mips64 binary_file.elf64_file_header &&
             has_dynamic_section binary_file then

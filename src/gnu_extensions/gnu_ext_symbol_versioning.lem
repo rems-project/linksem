@@ -531,4 +531,26 @@ let get_gnu_ext_interpreted_verdef tbl symidx =
       end
   end
 
-val get_gnu_ext_interpreted_verneed : gnu_ext_interpreted_versym_table -> natural -> error gnu_ext_interpreted_vernaux
+val get_gnu_ext_interpreted_verneed : gnu_ext_interpreted_versym_table -> natural -> error (maybe gnu_ext_interpreted_vernaux)
+let get_gnu_ext_interpreted_verneed tbl symidx =
+  match List.index tbl.gnu_ext_interpreted_versym_table_entries (natFromNatural symidx) with
+    | Just entry -> return entry
+    | Nothing -> Error.fail ("get_gnu_ext_interpreted_verneed: cannot find symbol " ^ (show symidx))
+  end >>= fun entry ->
+  let ndx = entry.gnu_ext_interpreted_versym_entry_value in
+  (* TODO: only do this if the reference doesn't use versioning *)
+  match ndx with
+    | 1 -> return Nothing
+    | 2 -> return Nothing
+    | _ ->
+      let maybe_vernaux = List.find (fun vernaux ->
+        let _ = Missing_pervasives.errln ((show vernaux.gnu_ext_interpreted_vernaux_other) ^ " " ^ (show ndx)) in
+        vernaux.gnu_ext_interpreted_vernaux_other = ndx
+      ) tbl.gnu_ext_interpreted_versym_table_verneed in
+      match maybe_vernaux with
+        | Just vernaux ->
+          return (Just vernaux)
+        | Nothing ->
+          Error.fail ("get_gnu_ext_interpreted_verneed: cannot find vernaux " ^ (show ndx))
+      end
+  end
