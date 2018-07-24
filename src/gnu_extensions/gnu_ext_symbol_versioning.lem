@@ -336,7 +336,8 @@ type gnu_ext_interpreted_verdef = <|
   gnu_ext_interpreted_verdef_flags : natural;
   gnu_ext_interpreted_verdef_ndx : natural;
   gnu_ext_interpreted_verdef_hash : natural;
-  gnu_ext_interpreted_verdef_aux : list string
+  gnu_ext_interpreted_verdef_name : string;
+  gnu_ext_interpreted_verdef_parents : list string
 |>
 
 type gnu_ext_interpreted_verneed = <|
@@ -434,12 +435,17 @@ let obtain_gnu_ext_elf64_interpreted_verdef_table endian f dyns =
           let vda_name = natural_of_elf64_word veraux.gnu_ext_elf64_vda_name in
           String_table.get_string_at vda_name strtab
         ) veraux_table >>= fun veraux_table ->
+        match veraux_table with
+          | [] -> Error.fail "obtain_gnu_ext_elf64_gnu_ext_interpreted_verdef_table: verdef is missing a name"
+          | name :: parents -> return (name, parents)
+        end >>= fun (name, parents) ->
         return <|
           gnu_ext_interpreted_verdef_version = natural_of_elf64_half verdef.gnu_ext_elf64_vd_version;
           gnu_ext_interpreted_verdef_flags = natural_of_elf64_half verdef.gnu_ext_elf64_vd_flags;
           gnu_ext_interpreted_verdef_ndx = natural_of_elf64_half verdef.gnu_ext_elf64_vd_ndx;
           gnu_ext_interpreted_verdef_hash = natural_of_elf64_word verdef.gnu_ext_elf64_vd_hash;
-          gnu_ext_interpreted_verdef_aux = veraux_table
+          gnu_ext_interpreted_verdef_name = name;
+          gnu_ext_interpreted_verdef_parents = parents
         |>
       ) verdef_table >>= fun verdef_table ->
 

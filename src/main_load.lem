@@ -796,10 +796,7 @@ let apply_all_relocations f img base syms dynsym_scnidx maybe_versym_table =
                 (* No verneed found, maybe this DSO is defining the symbol and has a reloc bound to it *)
                 match get_gnu_ext_interpreted_verdef versym_table sym_idx with
                   | Success (GnuExtInterpretedVerdefVersion verdef) ->
-                    match verdef.gnu_ext_interpreted_verdef_aux with
-                      | name :: _ -> Just name
-                      | [] -> Nothing
-                    end
+                    Just verdef.gnu_ext_interpreted_verdef_name
                   | _ ->
                     Nothing
                 end
@@ -1159,7 +1156,7 @@ let extract_dynsyms f base existing_syms symtab_scnidx maybe_versym_table =
                   verdef.gnu_ext_interpreted_verdef_ndx = gnu_ext_verdef_base_unspecified
                   || verdef.gnu_ext_interpreted_verdef_ndx = gnu_ext_verdef_base_versioned
               |>
-            ) verdef.gnu_ext_interpreted_verdef_aux
+            ) (verdef.gnu_ext_interpreted_verdef_name :: verdef.gnu_ext_interpreted_verdef_parents)
           | GnuExtInterpretedVerdefHidden _ -> []
           | _ -> [sym] (* TODO: ignore local dynsyms? *)
         end in
