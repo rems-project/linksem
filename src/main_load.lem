@@ -1230,8 +1230,8 @@ let get_dynsym_section_index f dyns =
       Error.fail "get_dynsym_section: missing DT_SYMTAB in .dynamic"
   end
 
-let rec check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_table dynsyms binary_filename =
-  let binary_filepath = realpath (root_path ^ binary_filename) in
+let rec check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_table dynsyms binary_filename is_root =
+  Filesystem.realpath (root_path ^ binary_filename) >>= fun binary_filepath ->
   let binary_filename = assert_unwrap_maybe (Missing_pervasives.string_suffix (naturalFromNat (String.stringLength root_path)) binary_filepath) in
 
   let _ = Missing_pervasives.errln ("Loading binary from " ^ binary_filepath) in
@@ -1292,15 +1292,30 @@ let rec check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_
 
   let dynsyms = dynsyms ++ binary_dynsyms in
 
-  (* TODO: libraries' INTERP should be ignored *)
-  let maybe_interp_seg = List.find (fun seg ->
-    seg.elf64_segment_type = Elf_program_header_table.elf_pt_interp
-  ) binary_file.elf64_file_interpreted_segments in
-  let dynsyms_res = match maybe_interp_seg with
+  let maybe_interp_seg =
+    if is_root then
+      List.find (fun seg ->
+        seg.elf64_segment_type = Elf_program_header_table.elf_pt_interp
+      ) binary_file.elf64_file_interpreted_segments
+    else
+      Nothing (* libraries' INTERP should be ignored *)
+  in
+  match maybe_interp_seg with
     | Just interp_seg ->
       Elf_note.read_string interp_seg.elf64_segment_body >>= fun (interp, _) ->
+      (* TODO: remove this special case *)
+      if interp = "/lib64/ld-linux-x86-64.so.2" then
+        let _ = Missing_pervasives.errln ("Ignoring requested interpreter " ^ interp) in
+        return Nothing
+      else
+        return (Just interp)
+    | Nothing ->
+      return Nothing
+  end >>= fun maybe_interp ->
+  let dynsyms_res = match maybe_interp with
+    | Just interp ->
       let _ = Missing_pervasives.errln ("Requesting program interpreter: " ^ interp) in
-      check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_table dynsyms interp
+      check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_table dynsyms interp false
     | Nothing ->
       return dynsyms
   end in
@@ -1341,7 +1356,7 @@ let rec check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_
           ) dyn_dt_needed in
           dt_needed_res >>= fun dt_needed ->
           let check_res = Error.foldM (fun dynsyms library_filepath ->
-            check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_table dynsyms library_filepath
+            check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_table dynsyms library_filepath false
           ) dynsyms dt_needed in
           check_res >>= fun dynsyms ->
           return (naturalFromNat (List.length dyn_dt_needed), dynsyms, dyns)
@@ -1441,7 +1456,7 @@ let process_file core_filepath maybe_root_path maybe_binary_filename =
   (* TODO: add a flag instead of this hacky thing *)
   let is_loaded = not (Missing_pervasives.string_contains core_filepath "start") in
 
-  check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_table [] binary_filename >>= fun _ ->
+  check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_table [] binary_filename true >>= fun _ ->
 
   return ()
 
