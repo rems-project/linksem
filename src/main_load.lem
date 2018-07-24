@@ -838,7 +838,7 @@ let init_amd64_pltgot img base dyns =
       let img = mask_memory_image img (pltgot_addr + 2 * amd64_address_size) amd64_address_size in
       img
     | Nothing ->
-      let _ = Missing_pervasives.errln ("Missing DT_PLTGOT in .dynamic, skipping PLTGOT initialization") in
+      let _ = Missing_pervasives.errln ("No DT_PLTGOT in .dynamic, skipping PLTGOT initialization") in
       img
   end
 
@@ -1108,6 +1108,21 @@ let has_dynamic_section f =
   ) f.elf64_file_section_header_table in
   dyn_secs <> []
 
+let sym_add_verdef sym verdef =
+  List.map (fun verdef_aux ->
+    (* let _ = Missing_pervasives.errln ("Symbol `" ^ sym.dynamic_symbol_name ^ "`, version `" ^ verdef_aux ^ "`") in *)
+    <|
+      dynamic_symbol_name = sym.dynamic_symbol_name;
+      dynamic_symbol_entry = sym.dynamic_symbol_entry;
+      dynamic_symbol_value = sym.dynamic_symbol_value;
+      dynamic_symbol_version = Just verdef_aux;
+      dynamic_symbol_version_base =
+        (* TODO: what's the difference between those two? *)
+        verdef.gnu_ext_interpreted_verdef_ndx = gnu_ext_verdef_base_unspecified
+        || verdef.gnu_ext_interpreted_verdef_ndx = gnu_ext_verdef_base_versioned
+    |>
+  ) (verdef.gnu_ext_interpreted_verdef_name :: verdef.gnu_ext_interpreted_verdef_parents)
+
 let extract_dynsyms f base existing_syms symtab_scnidx maybe_versym_table =
   let symtab_scn = assert_unwrap_maybe (List.index f.elf64_file_interpreted_sections (natFromNatural symtab_scnidx)) in
 
@@ -1121,7 +1136,7 @@ let extract_dynsyms f base existing_syms symtab_scnidx maybe_versym_table =
       && natural_of_elf64_half sym_entry.elf64_st_shndx <> 0
   ) syms in
   let syms = List.map (fun (sym_name, sym_entry, scnidx, symidx) ->
-    (* let _ = Missing_pervasives.errln ("Library exports dynamic symbol: " ^ sym_name) in *)
+    let _ = Missing_pervasives.errln ("Library exports dynamic symbol: " ^ sym_name) in
     let sym_value = base + natural_of_elf64_addr sym_entry.elf64_st_value in
     let sym = <|
       dynamic_symbol_name = sym_name;
@@ -1144,20 +1159,10 @@ let extract_dynsyms f base existing_syms symtab_scnidx maybe_versym_table =
         get_gnu_ext_interpreted_verdef versym_table symidx >>= fun verdef_lookup ->
         let sym_syms = match verdef_lookup with
           | GnuExtInterpretedVerdefVersion verdef ->
-            List.map (fun verdef_aux ->
-              (* let _ = Missing_pervasives.errln ("Symbol `" ^ sym.dynamic_symbol_name ^ "`, version `" ^ verdef_aux ^ "`") in *)
-              <|
-                dynamic_symbol_name = sym.dynamic_symbol_name;
-                dynamic_symbol_entry = sym.dynamic_symbol_entry;
-                dynamic_symbol_value = sym.dynamic_symbol_value;
-                dynamic_symbol_version = Just verdef_aux;
-                dynamic_symbol_version_base =
-                  (* TODO: what's the difference between those two? *)
-                  verdef.gnu_ext_interpreted_verdef_ndx = gnu_ext_verdef_base_unspecified
-                  || verdef.gnu_ext_interpreted_verdef_ndx = gnu_ext_verdef_base_versioned
-              |>
-            ) (verdef.gnu_ext_interpreted_verdef_name :: verdef.gnu_ext_interpreted_verdef_parents)
-          | GnuExtInterpretedVerdefHidden _ -> []
+            sym_add_verdef sym verdef
+          | GnuExtInterpretedVerdefHidden verdef ->
+            (* TODO: symbol is hidden and cannot be referenced outside of this object *)
+            sym_add_verdef sym verdef
           | _ -> [sym] (* TODO: ignore local dynsyms? *)
         end in
         return (sym_syms ++ syms)
