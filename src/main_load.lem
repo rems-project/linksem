@@ -1310,8 +1310,11 @@ let rec check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_
   match maybe_interp_seg with
     | Just interp_seg ->
       Elf_note.read_string interp_seg.elf64_segment_body >>= fun (interp, _) ->
-      (* TODO: remove this special case *)
-      if interp = "/lib64/ld-linux-x86-64.so.2" then
+      (* TODO: these are glibc's ld.so. They need special treatement because
+         they expect their relocations to be linked to libc.so even if they
+         don't depend on it. There's probably a special pre-linker code that
+         runs in ld.so to do this - should investigate this. *)
+      if interp = "/lib64/ld-linux-x86-64.so.2" || interp = "/lib64/ld.so.1" then
         let _ = Missing_pervasives.errln ("Ignoring requested interpreter " ^ interp) in
         return Nothing
       else
