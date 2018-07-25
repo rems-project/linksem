@@ -765,6 +765,30 @@ let apply_relocation abi f img base reloc symref_and_reloc_site sym_addr =
       let _ = Missing_pervasives.errln ("  Relocating `" ^ symref_and_reloc_site.ref.ref_symname ^ "` (existing=0x" ^ (hex_string_of_natural existing_value) ^ " addend=" ^ (show addend) ^ ") to 0x" ^ (hex_string_of_natural new_value) ^ " (symbol address 0x" ^ (hex_string_of_natural sym_addr) ^ ")") in
       write_memory_image img addr field_bp
 
+let get_sym_ref_version dynsym_scnidx maybe_versym_table sym_name sym_scn sym_idx =
+  if dynsym_scnidx <> sym_scn then Nothing else
+  match maybe_versym_table with
+    | Just versym_table ->
+      (* TODO: unify get_gnu_ext_interpreted_verneed and get_gnu_ext_interpreted_verdef *)
+      match get_gnu_ext_interpreted_verneed versym_table sym_idx with
+        | Success Nothing -> Nothing
+        | Success (Just vernaux) ->
+          (* TODO: handle vernaux.gnu_ext_interpreted_vernaux_verneed.gnu_ext_interpreted_verneed_file *)
+          Just vernaux.gnu_ext_interpreted_vernaux_name
+        | Fail errmsg ->
+          (* TODO: failwith errmsg *)
+          (* No verneed found, maybe this DSO is defining the symbol and has a reloc bound to it *)
+          match get_gnu_ext_interpreted_verdef versym_table sym_idx with
+            | Success (GnuExtInterpretedVerdefVersion verdef) ->
+              Just verdef.gnu_ext_interpreted_verdef_name
+            | _ ->
+              Nothing
+          end
+      end
+    | Nothing ->
+      Nothing
+  end
+
 let apply_all_relocations f img base syms dynsym_scnidx maybe_versym_table =
   let abi = get_file_abi f in
   let symbol_refs_and_reloc_sites = extract_all_relocs_as_symbol_references abi f in
@@ -781,29 +805,8 @@ let apply_all_relocations f img base syms dynsym_scnidx maybe_versym_table =
     let maybe_sym =
       if sym_name <> "" then
         let sym_scn = symref_and_reloc_site.ref.ref_sym_scn in
-        if dynsym_scnidx <> sym_scn then Nothing else (* TODO: is this supposed to happen anyway? *)
         let sym_idx = symref_and_reloc_site.ref.ref_sym_idx in
-        let maybe_sym_version = match maybe_versym_table with
-          | Just versym_table ->
-            (* TODO: unify get_gnu_ext_interpreted_verneed and get_gnu_ext_interpreted_verdef *)
-            match get_gnu_ext_interpreted_verneed versym_table sym_idx with
-              | Success Nothing -> Nothing
-              | Success (Just vernaux) ->
-                (* TODO: handle vernaux.gnu_ext_interpreted_vernaux_verneed.gnu_ext_interpreted_verneed_file *)
-                Just vernaux.gnu_ext_interpreted_vernaux_name
-              | Fail errmsg ->
-                (* TODO: failwith errmsg *)
-                (* No verneed found, maybe this DSO is defining the symbol and has a reloc bound to it *)
-                match get_gnu_ext_interpreted_verdef versym_table sym_idx with
-                  | Success (GnuExtInterpretedVerdefVersion verdef) ->
-                    Just verdef.gnu_ext_interpreted_verdef_name
-                  | _ ->
-                    Nothing
-                end
-            end
-          | Nothing ->
-            Nothing
-        end in
+        let maybe_sym_version = get_sym_ref_version dynsym_scnidx maybe_versym_table sym_name sym_scn sym_idx in
         let _ = Missing_pervasives.errln ("Searching for symbol `" ^ sym_name ^ "`, version " ^ (show maybe_sym_version)) in
         find_sym syms sym_name maybe_sym_version
       else
@@ -860,8 +863,7 @@ let rec apply_mips64_local_got_relocations img base got_entry_addr local_gotno =
   let img = write_memory_image img got_entry_addr field_bp in
   apply_mips64_local_got_relocations img base (got_entry_addr + width) (local_gotno - 1)
 
-val apply_mips64_global_got_relocations' : forall 'abifeature. abi 'abifeature -> elf64_file -> annotated_memory_image 'abifeature -> list dynamic_symbol -> list (string * elf64_symbol_table_entry * natural (* scnidx *) * natural (* symidx *)) -> natural -> natural -> natural -> (annotated_memory_image 'abifeature * natural)
-let rec apply_mips64_global_got_relocations' abi f img dynsyms syms base got_entry_addr symtabno =
+let rec apply_mips64_global_got_relocations' abi f img dynsyms syms dynsym_scnidx maybe_versym_table base got_entry_addr (symtabno : natural) =
   if symtabno = 0 then (img, got_entry_addr) else
   match syms with
     | (sym_name, sym_entry, scnidx, symidx) :: syms ->
@@ -875,6 +877,8 @@ let rec apply_mips64_global_got_relocations' abi f img dynsyms syms base got_ent
       let maybe_sym =
         (* TODO: remove these special cases, especially the last one *)
         if sym_name <> "" then
+          let maybe_sym_version = get_sym_ref_version dynsym_scnidx maybe_versym_table sym_name scnidx symidx in
+          let _ = Missing_pervasives.errln ("Searching for symbol `" ^ sym_name ^ "`, version " ^ (show maybe_sym_version)) in
           find_sym dynsyms sym_name Nothing (* TODO: symbol versioning? *)
         else
           Nothing
@@ -889,11 +893,11 @@ let rec apply_mips64_global_got_relocations' abi f img dynsyms syms base got_ent
       let symref_and_reloc_site = null_symbol_reference_and_reloc_site in
       let img = apply_relocation abi f img base reloc symref_and_reloc_site sym_addr in
 
-      apply_mips64_global_got_relocations' abi f img dynsyms syms base (got_entry_addr + mips64_address_size) (symtabno - 1)
+      apply_mips64_global_got_relocations' abi f img dynsyms syms dynsym_scnidx maybe_versym_table base (got_entry_addr + mips64_address_size) (symtabno - 1)
     | _ -> failwith "apply_mips64_global_got_relocations': not enough symbols"
   end
 
-let apply_mips64_global_got_relocations f img dynsyms base got_entry_addr symtab_addr gotsym symtabno =
+let apply_mips64_global_got_relocations f img dynsyms dynsym_scnidx maybe_versym_table base got_entry_addr symtab_addr gotsym symtabno =
   let symtab_triples = mapMaybei (fun scnidx isec ->
     if isec.elf64_section_addr = natural_of_elf64_addr symtab_addr then
       match find_elf64_symbols_by_symtab_idx scnidx f with
@@ -912,11 +916,11 @@ let apply_mips64_global_got_relocations f img dynsyms base got_entry_addr symtab
   in
   let syms = List.drop (natFromNatural gotsym) syms in
   let abi = get_file_abi f in
-  apply_mips64_global_got_relocations' abi f img dynsyms syms base got_entry_addr (symtabno - gotsym)
+  apply_mips64_global_got_relocations' abi f img dynsyms syms dynsym_scnidx maybe_versym_table base got_entry_addr (symtabno - gotsym)
 
 (* MIPS uses an ugly packed form for GOT relocations. See musl's do_mips_relocs
    function. *)
-let apply_mips64_got_relocations f img dynsyms base dyns =
+let apply_mips64_got_relocations f img dynsyms base dyns dynsym_scnidx maybe_versym_table =
   let maybe_got_offset = List.find (fun (tag, _) -> tag = Elf_dynamic.dt_pltgot) dyns in
   let got_offset = match maybe_got_offset with
     | Just (_, Address got) -> got
@@ -972,7 +976,7 @@ let apply_mips64_got_relocations f img dynsyms base dyns =
     | Just (_, Numeric symtabno) -> symtabno
     | Nothing -> failwith "apply_mips64_got_relocations: missing DT_MIPS_SYMTABNO in .dynamic"
   end in
-  let (img, got_entry_addr) = apply_mips64_global_got_relocations f img dynsyms base got_entry_addr symtab_addr gotsym symtabno in
+  let (img, got_entry_addr) = apply_mips64_global_got_relocations f img dynsyms dynsym_scnidx maybe_versym_table base got_entry_addr symtab_addr gotsym symtabno in
 
   img
 
@@ -1378,7 +1382,7 @@ let rec check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_
       let binary_img =
         if Abi_mips64.header_is_mips64 binary_file.elf64_file_header &&
             has_dynamic_section binary_file then
-          apply_mips64_got_relocations binary_file binary_img dynsyms binary_delta dyns
+          apply_mips64_got_relocations binary_file binary_img dynsyms binary_delta dyns dynsym_scnidx maybe_versym_table
         else if Abi_amd64.header_is_amd64 binary_file.elf64_file_header &&
             has_dynamic_section binary_file then
           init_amd64_pltgot binary_img binary_delta dyns
