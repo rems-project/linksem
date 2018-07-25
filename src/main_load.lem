@@ -879,7 +879,7 @@ let rec apply_mips64_global_got_relocations' abi f img dynsyms syms dynsym_scnid
         if sym_name <> "" then
           let maybe_sym_version = get_sym_ref_version dynsym_scnidx maybe_versym_table sym_name scnidx symidx in
           let _ = Missing_pervasives.errln ("Searching for symbol `" ^ sym_name ^ "`, version " ^ (show maybe_sym_version)) in
-          find_sym dynsyms sym_name Nothing (* TODO: symbol versioning? *)
+          find_sym dynsyms sym_name maybe_sym_version
         else
           Nothing
       in
