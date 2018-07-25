@@ -1233,7 +1233,8 @@ let get_dynsym_section_index f dyns =
   end
 
 let rec check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_table dynsyms binary_filename is_root =
-  Filesystem.realpath (root_path ^ binary_filename) >>= fun binary_filepath ->
+  Filesystem.realpath_in root_path (root_path ^ binary_filename) >>= fun binary_filepath ->
+  let _ = Missing_pervasives.errln ("Resolved symlinks: " ^ (root_path ^ binary_filename) ^ " -> " ^ binary_filepath) in
   let binary_filename = assert_unwrap_maybe (Missing_pervasives.string_suffix (naturalFromNat (String.stringLength root_path)) binary_filepath) in
 
   let _ = Missing_pervasives.errln ("Loading binary from " ^ binary_filepath) in

@@ -27,12 +27,12 @@ let readlink p =
 let is_abs_path p =
   String.get p 0 = '/'
 
-let readlink_abs p =
+let readlink_abs root p =
   match readlink p with
     | Success target ->
       let target =
         if is_abs_path target then
-          target
+          root ^ target
         else
           let l = String.split_on_char '/' p in
           let l = replace_last l target in
@@ -42,12 +42,11 @@ let readlink_abs p =
     | Fail err ->
       Error.fail err
 
-(* The OCaml's stdlib is retarded and doesn't have realpath *)
 (* TODO: this doesn't support relative paths *)
-let rec realpath p =
-  match readlink_abs p with
+let rec realpath_in root p =
+  match readlink_abs root p with
     | Success p -> (
-      match realpath p with
+      match realpath_in root p with
         | Success p -> (
           let l = String.split_on_char '/' p in
           let (l, maybe_last) = pop_last l in
@@ -55,7 +54,7 @@ let rec realpath p =
             | ([""], _) | (_, None) -> return p
             | (_, Some filename) -> (
               let parent = String.concat "/" l in
-              match realpath parent with
+              match realpath_in root parent with
                 | Success parent -> return (parent ^ "/" ^ filename)
                 | Fail err -> Error.fail err
               )
@@ -65,6 +64,10 @@ let rec realpath p =
     | Fail _ ->
       (* TODO: this is ugly, but this is OCaml *)
       return p
+
+(* The OCaml's stdlib is retarded and doesn't have realpath *)
+let realpath p =
+  realpath_in "" p
 
 let readdir dirname =
   try

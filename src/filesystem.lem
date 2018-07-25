@@ -3,6 +3,9 @@ open import Error
 val readlink : string -> error (string)
 declare ocaml target_rep function readlink = `Filesystem_wrapper.readlink`
 
+val realpath_in : string -> string -> error (string)
+declare ocaml target_rep function realpath_in = `Filesystem_wrapper.realpath_in`
+
 val realpath : string -> error (string)
 declare ocaml target_rep function realpath = `Filesystem_wrapper.realpath`
 
