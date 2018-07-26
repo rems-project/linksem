@@ -362,9 +362,10 @@ let obtain_elf64_interpreted_segments pht bdy =
     let typ      = natural_of_elf64_word  ph.elf64_p_type  in
     let align    = natural_of_elf64_xword ph.elf64_p_align in
     let flags    = parse_elf_segment_permissions (natural_of_elf64_word ph.elf64_p_flags) in
-      if memsz < size then
-        fail "obtain_elf64_interpreted_segments: memory size of segment cannot be less than file size"
-      else
+      (* TODO: this happens in coredumps, just disabling this check for now *)
+      (* if memsz < size then
+        fail ("obtain_elf64_interpreted_segments: memory size of segment (0x" ^ (hex_string_of_natural memsz) ^ ") cannot be less than file size (0x" ^ (hex_string_of_natural size) ^ ")")
+      else *)
         return <| elf64_segment_body = relevant; elf64_segment_type = typ;
                     elf64_segment_size = size; elf64_segment_memsz = memsz;
                     elf64_segment_base  = vaddr; elf64_segment_flags = flags;
