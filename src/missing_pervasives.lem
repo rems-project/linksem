@@ -715,3 +715,9 @@ let natural_of_hex s =
       end
   | _ -> Assert_extra.failwith ("natural_of_hex argument \"" ^ s ^ "\" does not begin 0x")
   end
+
+let assert_unwrap_maybe maybe =
+  match maybe with
+    | Just v -> v
+    | Nothing -> failwith "assert_unwrap_maybe: nothing"
+  end

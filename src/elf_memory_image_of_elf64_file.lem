@@ -11,6 +11,7 @@ open import Num
 open import Maybe
 open import Assert_extra
 
+open import Byte_pattern
 open import Byte_sequence
 open import Default_printing
 open import Error

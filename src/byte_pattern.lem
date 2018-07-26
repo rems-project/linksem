@@ -1,0 +1,171 @@
+open import Basic_classes
+open import Assert_extra
+open import Bool
+open import List
+open import Maybe
+open import Num
+
+open import Byte_sequence
+open import Missing_pervasives
+
+(** A byte pattern element can be undefined if it doesn't have a known fixed
+    value. *)
+type byte_pattern_element = maybe byte
+
+(* TODO: replace with two byte sequences (one used as a mask) *)
+type byte_pattern = list byte_pattern_element
+
+val make_byte_pattern_revacc : byte_pattern -> list byte -> list bool -> byte_pattern
+let rec make_byte_pattern_revacc revacc bytes cares =
+    match bytes with
+          [] -> reverse revacc
+        | b :: bs -> match cares with
+                care :: more -> make_byte_pattern_revacc ((if not care then Nothing else Just b) :: revacc) bs more
+              | _ -> failwith "make_byte_pattern: unequal length"
+              end
+    end
+
+val make_byte_pattern : list byte -> list bool -> byte_pattern
+let rec make_byte_pattern bytes cares =
+    make_byte_pattern_revacc [] bytes cares
+
+val relax_byte_pattern_revacc : byte_pattern -> byte_pattern -> list bool -> byte_pattern
+let rec relax_byte_pattern_revacc revacc bytes cares =
+    match bytes with
+          [] -> reverse revacc
+        | b :: bs -> match cares with
+                care :: more -> relax_byte_pattern_revacc ((if not care then Nothing else b) :: revacc) bs more
+              | _ -> failwith ("relax_byte_pattern: unequal length")
+              end
+    end
+
+val relax_byte_pattern : byte_pattern -> list bool -> byte_pattern
+let rec relax_byte_pattern bytes cares =
+    relax_byte_pattern_revacc [] bytes cares
+
+type pad_fn = natural -> list byte
+
+val concretise_byte_pattern' : list byte -> natural -> byte_pattern -> pad_fn -> list byte
+let rec concretise_byte_pattern' rev_acc acc_pad bs pad =
+    match bs with
+        [] ->
+            let padding_bytes = if acc_pad > 0 then pad acc_pad else []
+            in List.reverse ((List.reverse padding_bytes) ++ rev_acc)
+        | Just(b) :: more ->
+            (* flush accumulated padding *)
+            let padding_bytes = if acc_pad > 0 then pad acc_pad else []
+            in
+            concretise_byte_pattern' (b :: ((List.reverse padding_bytes) ++ rev_acc)) 0 more pad
+        | Nothing :: more ->
+            concretise_byte_pattern' rev_acc (acc_pad+1) more pad
+    end
+
+val concretise_byte_pattern : byte_pattern -> pad_fn -> byte_sequence
+let rec concretise_byte_pattern pb pad =
+    (* TODO: don't use lists of bytes *)
+    byte_sequence_of_byte_list (concretise_byte_pattern' [] 0 pb pad)
+
+val byte_option_matches_byte : maybe byte -> byte -> bool
+let byte_option_matches_byte optb b =
+    match optb with
+            Nothing -> true
+        |   Just some -> some = b
+    end
+
+val byte_list_matches_pattern : byte_pattern -> list byte -> bool
+let rec byte_list_matches_pattern pattern bytes =
+    match pattern with
+        [] -> true
+        | optbyte :: more -> match bytes with
+                [] -> false
+                | abyte :: morebytes ->
+                    byte_option_matches_byte optbyte abyte
+                 && byte_list_matches_pattern more morebytes
+            end
+    end
+
+val append_to_byte_pattern_at_offset : natural -> byte_pattern -> byte_pattern -> byte_pattern
+let append_to_byte_pattern_at_offset offset pat1 pat2 =
+    let pad_length = offset - Missing_pervasives.length pat1
+    in
+    if pad_length < 0 then failwith "can't append at offset already used"
+    else pat1 ++ (List.replicate (unsafe_nat_of_natural pad_length) Nothing) ++ pat2
+
+val accum_pattern_possible_starts_in_one_byte_sequence : byte_pattern -> nat -> list byte -> nat -> natural -> list natural -> list natural
+let rec accum_pattern_possible_starts_in_one_byte_sequence pattern pattern_len seq seq_len offset accum =
+    (* let _ = Missing_pervasives.errs ("At offset " ^ (show offset) ^ "... ")
+    in *)
+    match pattern with
+        [] -> (* let _ = Missing_pervasives.errs ("terminating with hit (empty pattern)\n") in *)
+            offset :: accum
+        | bpe :: more_bpes -> (* nonempty, so check for nonempty seq *)
+            match seq with
+                [] -> (*let _ = Missing_pervasives.errs ("terminating with miss (empty pattern)\n")
+                    in *) accum (* ran out of bytes in the sequence, so no match *)
+                | byte :: more_bytes -> let matched_this_byte =
+                            byte_option_matches_byte bpe byte
+                       in
+                       (* let _ = Missing_pervasives.errs ("Byte " ^ (show byte) ^ " matched " ^ (show byte_pattern) ^ "? " ^ (show matched_this_byte) ^ "; ")
+                       in *)
+                       let sequence_long_enough = (seq_len >= pattern_len)
+                       in
+                       (* let _ = Missing_pervasives.errs ("enough bytes remaining (" ^ (show seq_len) ^ ") to match rest of pattern (" ^ (show pattern_len) ^ ")? " ^ (show sequence_long_enough) ^ "; ")
+                       in *)
+                       let matched_here = matched_this_byte && sequence_long_enough &&
+                        byte_list_matches_pattern more_bpes more_bytes
+                       in
+                       (* let _ = Missing_pervasives.errs ("matched pattern anchored here? " ^ (show matched_this_byte) ^ "\n")
+                       in *)
+                       accum_pattern_possible_starts_in_one_byte_sequence
+                           pattern pattern_len
+                           more_bytes (seq_len - 1)
+                           (offset + 1)
+                           (if matched_here then offset :: accum else accum)
+            end
+    end
+
+val byte_pattern_of_byte_sequence : byte_sequence -> byte_pattern
+let byte_pattern_of_byte_sequence seq =
+    let l = byte_list_of_byte_sequence seq in
+    List.map (fun b -> Just b) l
+
+(* Prefer using byte sequences when possible *)
+val byte_pattern_to_byte_list : byte_pattern -> list byte
+let byte_pattern_to_byte_list bp =
+  List.map (fun maybe_b ->
+    match maybe_b with
+      | Just b -> b
+      | Nothing -> failwith "byte_pattern_to_byte_sequence: attempt to read a masked byte"
+    end
+  ) bp
+
+val byte_pattern_to_byte_sequence : byte_pattern -> byte_sequence
+let byte_pattern_to_byte_sequence bp =
+  let l = byte_pattern_to_byte_list bp in
+  byte_sequence_of_byte_list l
+
+val byte_pattern_skip : natural -> byte_pattern -> byte_pattern
+let rec byte_pattern_skip offset bp =
+  if offset < 0 then
+    failwith "byte_pattern_skip: cannot skip a negative number of bytes"
+  else if offset = 0 then
+    bp
+  else
+    match bp with
+      | _ :: bp -> byte_pattern_skip (offset - 1) bp
+      | [] -> failwith "byte_pattern_skip: skipped past end"
+    end
+
+val write_byte_pattern : byte_pattern -> natural -> byte_pattern -> byte_pattern
+let write_byte_pattern bp offset sub_bp =
+  if sub_bp = [] then bp else
+  let len = List.length sub_bp in
+  let (prefix, bp) = List.splitAt (natFromNatural offset) bp in
+  let (old, suffix) = List.splitAt len bp in
+  (* We don't want to change the byte pattern length *)
+  let _ = if suffix = [] && List.length old <> len then failwith "write_byte_pattern: write past end" else () in
+  prefix ++ sub_bp ++ suffix
+
+val read_byte_pattern : byte_pattern -> natural -> natural -> byte_pattern
+let read_byte_pattern bp offset len =
+  List.take (natFromNatural len) (List.drop (natFromNatural offset) bp)

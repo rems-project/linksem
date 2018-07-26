@@ -12,6 +12,7 @@ open import Abi_utilities
 open import Abis
 open import Assert_extra
 open import Auxv
+open import Byte_pattern
 open import Byte_sequence
 open import Elf_dynamic
 open import Elf_file
@@ -50,12 +51,6 @@ type mmap_entry = <|
   mmap_entry_offset : natural;
   mmap_entry_path : string
 |>
-
-let assert_unwrap_maybe maybe =
-  match maybe with
-    | Just v -> v
-    | Nothing -> failwith "assert_unwrap_maybe: nothing"
-  end
 
 let get_file_abi f =
   let guessed_abi = List.find (fun abi ->
@@ -286,18 +281,6 @@ let memory_image_element_at img addr =
   ) elements in
   Maybe.map (fun (_, e) -> e) maybe_tuple
 
-val byte_pattern_skip : natural -> byte_pattern -> byte_pattern
-let rec byte_pattern_skip offset bp =
-  if offset < 0 then
-    failwith "byte_pattern_skip: cannot skip a negative number of bytes"
-  else if offset = 0 then
-    bp
-  else
-    match bp with
-      | _ :: bp -> byte_pattern_skip (offset - 1) bp
-      | [] -> failwith "byte_pattern_skip: skipped past end"
-    end
-
 type byte_pattern_compare_result =
   | BytePatternMatch
   | BytePatternMismatch of (natural * string)
@@ -440,9 +423,9 @@ let show_section_at mmap_table f addr =
       "[unknown section at 0x" ^ (hex_string_of_natural addr) ^ " without NT_FILE]"
   end
 
-let rec extract_memory_byte_pattern img start len =
+let rec extract_memory_image_byte_pattern img start len =
   if len = 0 then return [] else
-  let err_msg = "extract_memory_byte_pattern: no core image element at 0x" ^ (hex_string_of_natural start) ^ ", it may be missing from the core file" in
+  let err_msg = "extract_memory_image_byte_pattern: no core image element at 0x" ^ (hex_string_of_natural start) ^ ", it may be missing from the core file" in
   Error.of_maybe err_msg (memory_image_element_at img start) >>= fun el ->
   let el_start = assert_unwrap_maybe el.startpos in
   let el_len = assert_unwrap_maybe el.length in
@@ -454,7 +437,7 @@ let rec extract_memory_byte_pattern img start len =
   let stop = start + len in
   let el_stop = el_start + el_len in
   if stop > el_stop then
-    extract_memory_byte_pattern img el_stop (stop - el_stop) >>= fun next ->
+    extract_memory_image_byte_pattern img el_stop (stop - el_stop) >>= fun next ->
     return (bp ++ next)
   else
     return bp
@@ -469,7 +452,7 @@ let compare_memory_image core_img binary_img (* for debugging: *) (mmap_table, b
     let _ = Missing_pervasives.errln ("Comparing memory element at 0x" ^ (hex_string_of_natural start) ^ ", length 0x" ^ (hex_string_of_natural len)) in
 
     let binary_bp = binary_el.contents in
-    match extract_memory_byte_pattern core_img start len with
+    match extract_memory_image_byte_pattern core_img start len with
       | Success core_bp ->
         match compare_byte_pattern core_bp binary_bp with
           | BytePatternMatch ->
@@ -503,84 +486,6 @@ let compare_memory_image core_img binary_img (* for debugging: *) (mmap_table, b
     end
   ) results in
   Error.foldM (fun _ res -> res) () results
-
-val write_byte_pattern : byte_pattern -> natural -> byte_pattern -> byte_pattern
-let write_byte_pattern bp offset sub_bp =
-  if sub_bp = [] then bp else
-  let len = List.length sub_bp in
-  let (prefix, bp) = List.splitAt (natFromNatural offset) bp in
-  let (old, suffix) = List.splitAt len bp in
-  (* We don't want to change the byte pattern length *)
-  let _ = if suffix = [] && List.length old <> len then failwith "write_byte_pattern: write past end" else () in
-  prefix ++ sub_bp ++ suffix
-
-val read_memory_image : forall 'abifeature. annotated_memory_image 'abifeature -> natural -> natural -> maybe (list byte)
-let read_memory_image img start len =
-  let stop = start + len in
-  let elements = Map_extra.toList img.elements in
-  List.foldl (fun maybe_field (_, el) ->
-    let el_start = assert_unwrap_maybe el.startpos in
-    (* let el_len = assert_unwrap_maybe el.length in *)
-    let el_len = naturalFromNat (List.length el.contents) in (* TODO? *)
-    let el_stop = el_start + el_len in
-    (* Do not allow reading fields across elements *)
-    if start >= el_start && stop <= el_stop then
-      (* TODO: check consistency if maybe_field is not Nothing *)
-      let offset = start - el_start in
-      let bp = List.take (natFromNatural len) (List.drop (natFromNatural offset) el.contents) in
-      let l = List.map (fun maybe_b ->
-        match maybe_b with
-          | Just b -> b
-          | Nothing -> failwith "read_memory_image: attempted to read a masked byte"
-        end
-      ) bp in
-      Just l
-    else
-      maybe_field
-  ) Nothing elements
-
-val write_memory_image : forall 'abifeature. annotated_memory_image 'abifeature -> natural -> byte_pattern -> annotated_memory_image 'abifeature
-let write_memory_image img start bp =
-  if bp = [] then img else
-  let len = naturalFromNat (List.length bp) in
-  let stop = start + len in
-  let elements = Map.map (fun el ->
-    let el_start = assert_unwrap_maybe el.startpos in
-    (* let el_len = assert_unwrap_maybe el.length in *)
-    let el_len = naturalFromNat (List.length el.contents) in (* TODO? *)
-    let el_stop = el_start + el_len in
-    let contents =
-      if start >= el_start && start < el_stop then
-        let write_start = start - el_start in
-        let write_max_len = el_stop - start in
-        let write_bp = List.take (natFromNatural write_max_len) bp in
-        (* let _ = Missing_pervasives.errln ("  Masking at 0x" ^ (hex_string_of_natural el_start) ^ "+0x" ^ (hex_string_of_natural write_start) ^ " max_len=0x" ^ (hex_string_of_natural write_max_len) ^ " len=0x" ^ (hex_string_of_natural (naturalFromNat (List.length write_bp)))) in *)
-        write_byte_pattern el.contents write_start write_bp
-      else if stop >= el_start && stop < el_stop then
-        (* Case el_start < start is handled above *)
-        let _ = Assert_extra.ensure (el_start >= start) "write_memory_image: internal failure" in
-        let write_bp = List.drop (natFromNatural (el_start - start)) bp in
-        (* let _ = Missing_pervasives.errln ("  Masking at 0x" ^ (hex_string_of_natural el_start) ^ "+0 len=0x" ^ (hex_string_of_natural (naturalFromNat (List.length write_bp)))) in *)
-        write_byte_pattern el.contents 0 write_bp
-      else
-        el.contents
-    in
-    <|
-      startpos = Just el_start;
-      length = Just el_len;
-      contents = contents
-    |>
-  ) img.elements in
-  <|
-    elements = elements;
-    by_range = img.by_range;
-    by_tag = img.by_tag
-  |>
-
-let mask_memory_image img start len =
-  if len = 0 then img else
-  let bp = List.replicate (natFromNatural len) Nothing in
-  write_memory_image img start bp
 
 let is_data_section sec =
   false
