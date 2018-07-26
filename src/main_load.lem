@@ -1113,19 +1113,17 @@ let has_dynamic_section f =
   dyn_secs <> []
 
 let sym_add_verdef sym verdef =
-  List.map (fun verdef_aux ->
-    (* let _ = Missing_pervasives.errln ("Symbol `" ^ sym.dynamic_symbol_name ^ "`, version `" ^ verdef_aux ^ "`") in *)
-    <|
-      dynamic_symbol_name = sym.dynamic_symbol_name;
-      dynamic_symbol_entry = sym.dynamic_symbol_entry;
-      dynamic_symbol_value = sym.dynamic_symbol_value;
-      dynamic_symbol_version = Just verdef_aux;
-      dynamic_symbol_version_base =
-        (* TODO: what's the difference between those two? *)
-        verdef.gnu_ext_interpreted_verdef_ndx = gnu_ext_verdef_base_unspecified
-        || verdef.gnu_ext_interpreted_verdef_ndx = gnu_ext_verdef_base_versioned
-    |>
-  ) (verdef.gnu_ext_interpreted_verdef_name :: verdef.gnu_ext_interpreted_verdef_parents)
+  (* let _ = Missing_pervasives.errln ("Symbol `" ^ sym.dynamic_symbol_name ^ "`, version `" ^ verdef_aux ^ "`") in *)
+  <|
+    dynamic_symbol_name = sym.dynamic_symbol_name;
+    dynamic_symbol_entry = sym.dynamic_symbol_entry;
+    dynamic_symbol_value = sym.dynamic_symbol_value;
+    dynamic_symbol_version = Just verdef.gnu_ext_interpreted_verdef_name;
+    dynamic_symbol_version_base =
+      (* TODO: what's the difference between those two? *)
+      verdef.gnu_ext_interpreted_verdef_ndx = gnu_ext_verdef_base_unspecified
+      || verdef.gnu_ext_interpreted_verdef_ndx = gnu_ext_verdef_base_versioned
+  |>
 
 let extract_dynsyms f base existing_syms symtab_scnidx maybe_versym_table =
   let symtab_scn = assert_unwrap_maybe (List.index f.elf64_file_interpreted_sections (natFromNatural symtab_scnidx)) in
@@ -1161,15 +1159,15 @@ let extract_dynsyms f base existing_syms symtab_scnidx maybe_versym_table =
       >>= fun () ->
       Error.foldM (fun syms (sym, symidx) ->
         get_gnu_ext_interpreted_verdef versym_table symidx >>= fun verdef_lookup ->
-        let sym_syms = match verdef_lookup with
+        let versioned_sym = match verdef_lookup with
           | GnuExtInterpretedVerdefVersion verdef ->
             sym_add_verdef sym verdef
           | GnuExtInterpretedVerdefHidden verdef ->
             (* TODO: symbol is hidden and cannot be referenced outside of this object *)
             sym_add_verdef sym verdef
-          | _ -> [sym] (* TODO: ignore local dynsyms? *)
+          | _ -> sym (* TODO: ignore local dynsyms? *)
         end in
-        return (sym_syms ++ syms)
+        return (versioned_sym :: syms)
       ) [] syms
     | Nothing ->
       let syms = List.map (fun (sym, symidx) -> sym) syms in
