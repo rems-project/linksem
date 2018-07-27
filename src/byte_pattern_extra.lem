@@ -1,0 +1,92 @@
+open import Basic_classes
+open import String
+open import Maybe
+open import Num
+open import Bool
+
+open import Byte_pattern
+open import Missing_pervasives
+open import Show
+
+type byte_pattern_compare_result =
+  | BytePatternMatch
+  | BytePatternMismatch of (natural * string)
+
+let rec compare_byte_pattern' offset core_bp binary_bp =
+  match (core_bp, binary_bp) with
+    | (_, []) ->
+      BytePatternMatch
+    | ((Just core_b)::core_bp, (Just binary_b)::binary_bp) ->
+      if core_b <> binary_b then
+        let err_msg = "compare_byte_pattern: mismatch at offset 0x" ^ (hex_string_of_natural offset) ^ ": byte " ^ (show core_b) ^ " vs. " ^ (show binary_b) in
+        BytePatternMismatch (offset, err_msg)
+      else
+        compare_byte_pattern' (offset + 1) core_bp binary_bp
+    | (_::core_bp, Nothing::binary_bp) ->
+      compare_byte_pattern' (offset + 1) core_bp binary_bp
+    | (maybe_core_b::_, maybe_binary_b::_) ->
+      let err_msg = "compare_byte_pattern: mismatch at offset 0x" ^ (hex_string_of_natural offset) ^ ": " ^ (show maybe_core_b) ^ " vs. " ^ (show maybe_binary_b) in
+      BytePatternMismatch (offset, err_msg)
+    | (_, _) ->
+      let err_msg = "compare_byte_pattern: mismatch at offset 0x" ^ (hex_string_of_natural offset) ^ ": length mismatch" in
+      BytePatternMismatch (offset, err_msg)
+  end
+
+val compare_byte_pattern : byte_pattern -> byte_pattern -> byte_pattern_compare_result
+let compare_byte_pattern = compare_byte_pattern' 0
+
+val print_byte_pattern_line' : natural -> natural -> byte_pattern -> unit
+let rec print_byte_pattern_line' offset len bp =
+  if len = 0 then () else
+  let (s, bp) = match bp with
+    | [] -> ("  ", [])
+    | maybe_b::bp ->
+      let s = match maybe_b with
+        | Nothing -> "--"
+        | Just b -> show b
+      end in
+      (s, bp)
+  end in
+  let s = if offset mod 2 = 1 && (len - 1) > 0 then s ^ " " else s in
+  let _ = Missing_pervasives.errs s in
+  print_byte_pattern_line' (offset + 1) (len - 1) bp
+
+val print_byte_pattern_line : natural -> byte_pattern -> unit
+let print_byte_pattern_line = print_byte_pattern_line' 0
+
+val fixed_hex_string_of_natural : natural -> natural -> string
+let rec fixed_hex_string_of_natural len n =
+    if len = 0 then ""
+    else (fixed_hex_string_of_natural (len - 1) (n / 16)) ^ (toString [Missing_pervasives.hex_char_of_nibble (n mod 16)])
+
+let print_byte_pattern_addr_size : natural = 12
+let print_byte_pattern_line_size : natural = 16
+
+val print_byte_pattern : natural -> byte_pattern -> unit
+let rec print_byte_pattern start bp =
+  if bp = [] then () else
+  let _ = Missing_pervasives.errs ((fixed_hex_string_of_natural print_byte_pattern_addr_size start) ^ " ") in
+  let (line, bp) = List.splitAt (natFromNatural print_byte_pattern_line_size) bp in
+  let _ = print_byte_pattern_line print_byte_pattern_line_size line in
+  let _ = Missing_pervasives.errs "\n" in
+  print_byte_pattern (start + print_byte_pattern_line_size) bp
+
+val print_two_byte_patterns : natural -> byte_pattern -> byte_pattern -> unit
+let rec print_two_byte_patterns start bp1 bp2 =
+  if bp1 = [] && bp2 = [] then () else
+  let was_bp1_empty = bp1 = [] in (* If only bp1 is empty, print one extra line *)
+  let _ = Missing_pervasives.errs ((fixed_hex_string_of_natural print_byte_pattern_addr_size start) ^ " | ") in
+  let (line1, bp1) = List.splitAt (natFromNatural print_byte_pattern_line_size) bp1 in
+  let (line2, bp2) = List.splitAt (natFromNatural print_byte_pattern_line_size) bp2 in
+  let _ = print_byte_pattern_line print_byte_pattern_line_size line1 in
+  let _ = Missing_pervasives.errs " | " in
+  let _ = print_byte_pattern_line print_byte_pattern_line_size line2 in
+  let _ = match compare_byte_pattern line2 line1 with
+    | BytePatternMatch -> ()
+    | BytePatternMismatch (_, err_msg) -> Missing_pervasives.errs " X" (* Missing_pervasives.errs (" " ^ err_msg) *)
+  end in
+  let _ = Missing_pervasives.errs "\n" in
+  if was_bp1_empty then
+    Missing_pervasives.errln "             |                                         |                   […]                  "
+  else
+    print_two_byte_patterns (start + print_byte_pattern_line_size) bp1 bp2

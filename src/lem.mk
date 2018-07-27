@@ -48,8 +48,8 @@ ALL_UTIL_ML_WO_LEM := $(filter-out $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC)) $(pats
 # endianness depends on show
 # -- Show should be split up. For now, just split off the problematic byte stuff into Missing_pervasives.
 
-LEM_ELF_SRC := byte_sequence.lem byte_pattern.lem archive.lem \
-	elf_types_native_uint.lem hex_printing.lem \
+LEM_ELF_SRC := byte_sequence.lem byte_pattern.lem byte_pattern_extra.lem \
+	archive.lem elf_types_native_uint.lem hex_printing.lem \
 	string_table.lem \
 	elf_header.lem elf_symbol_table.lem elf_program_header_table.lem \
 	elf_section_header_table.lem \
