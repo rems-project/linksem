@@ -763,3 +763,12 @@ let mask_memory_image img start len =
   if len = 0 then img else
   let bp = List.replicate (natFromNatural len) Nothing in
   write_memory_image img start bp
+
+let memory_image_element_at img addr =
+  let elements = Map_extra.toList img.elements in
+  let maybe_tuple = List.find (fun (_, e) ->
+    let start = assert_unwrap_maybe e.startpos in
+    let len = assert_unwrap_maybe e.length in
+    addr >= start && addr < start + len
+  ) elements in
+  Maybe.map (fun (_, e) -> e) maybe_tuple

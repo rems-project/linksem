@@ -44,13 +44,7 @@ open import Abi_mips64_relocation
 open import Abi_amd64
 open import Abi_amd64_relocation
 
-(** A mmap table entry suitable for both Linux and FreeBSD. *)
-type mmap_entry = <|
-  mmap_entry_start : natural;
-  mmap_entry_end : natural;
-  mmap_entry_offset : natural;
-  mmap_entry_path : string
-|>
+
 
 let get_file_abi f =
   let guessed_abi = List.find (fun abi ->
@@ -116,110 +110,15 @@ let get_load_segment_at f addr =
     | _ -> Error.fail ("get_load_segment_at: multiple segments found at 0x" ^ (hex_string_of_natural addr))
   end
 
-val get_mmap_entry_at : list mmap_entry -> natural -> maybe mmap_entry
-let get_mmap_entry_at mmap_table addr =
-  let l = List.filter (fun e ->
-    addr >= e.mmap_entry_start && addr < e.mmap_entry_end
-  ) mmap_table in
-  match l with
-    | [e] -> Just e
-    | [] -> Nothing
-    | _ -> failwith ("get_mmap_entry_at: multiple mmap entries found at 0x" ^ (hex_string_of_natural addr))
-  end
-
-let read_nt_file_entries endian note_segs =
-  Error.foldM (fun acc note_seg ->
-    let note_name = name_string_of_elf64_note note_seg in
-    let note_type = natural_of_elf64_word note_seg.elf64_note_type in
-    if note_name = "CORE" && note_type = Elf_note.nt_file then
-      Elf_note.read_elf64_nt_file endian note_seg.elf64_note_desc >>= fun nt_file ->
-      let entries = List.map (fun e ->
-        let _ = Missing_pervasives.errln (
-          "NT_FILE"
-          ^ " start=0x" ^ (hex_string_of_natural (natural_of_elf64_xword e.elf64_nt_file_entry_start))
-          ^ " end=0x" ^ (hex_string_of_natural (natural_of_elf64_xword e.elf64_nt_file_entry_end))
-          ^ " offset=0x" ^ (hex_string_of_natural (natural_of_elf64_xword e.elf64_nt_file_entry_offset))
-          ^ " filename=`" ^ e.elf64_nt_file_entry_filename ^ "`"
-        ) in
-        <|
-          mmap_entry_start = natural_of_elf64_xword e.elf64_nt_file_entry_start;
-          mmap_entry_end = natural_of_elf64_xword e.elf64_nt_file_entry_end;
-          mmap_entry_offset = natural_of_elf64_xword e.elf64_nt_file_entry_offset;
-          mmap_entry_path = e.elf64_nt_file_entry_filename
-        |>
-      ) nt_file.elf64_nt_file_entries in
-      return (acc ++ entries)
-    else
-      return acc
-  ) [] note_segs
-
-let read_nt_procstat_vmmap endian note_segs =
-  Error.foldM (fun acc note_seg ->
-    let note_name = name_string_of_elf64_note note_seg in
-    let note_type = natural_of_elf64_word note_seg.elf64_note_type in
-    if note_name = "FreeBSD" && note_type = Elf_note.nt_procstat_vmmap then
-      let struct_size = natural_of_hex "0x488" in (* sizeof(struct kinfo_vmentry) *)
-      read_elf64_freebsd_note_desc endian note_seg struct_size >>= fun bs ->
-      Elf_note.read_elf64_nt_procstat_vmmap endian bs >>= fun entries ->
-
-      let entries = List.map (fun e ->
-        let _ = Missing_pervasives.errln (
-          "NT_PROCSTAT_VMMAP"
-          ^ " start=0x" ^ (hex_string_of_natural (natural_of_elf64_xword e.elf64_nt_procstat_vmentry_start))
-          ^ " end=0x" ^ (hex_string_of_natural (natural_of_elf64_xword e.elf64_nt_procstat_vmentry_end))
-          ^ " offset=0x" ^ (hex_string_of_natural (natural_of_elf64_xword e.elf64_nt_procstat_vmentry_offset))
-          ^ " path=`" ^ e.elf64_nt_procstat_vmentry_path ^ "`"
-        ) in
-        <|
-          mmap_entry_start = natural_of_elf64_xword e.elf64_nt_procstat_vmentry_start;
-          mmap_entry_end = natural_of_elf64_xword e.elf64_nt_procstat_vmentry_end;
-          mmap_entry_offset = natural_of_elf64_xword e.elf64_nt_procstat_vmentry_offset;
-          mmap_entry_path = e.elf64_nt_procstat_vmentry_path
-        |>
-      ) entries in
-
-      return (acc ++ entries)
-    else
-      return acc
-  ) [] note_segs
-
-let read_nt_auxv_value endian note_segs f auxv_type =
-  Error.foldM (fun value note_seg ->
-    let note_name = name_string_of_elf64_note note_seg in
-    let note_type = natural_of_elf64_word note_seg.elf64_note_type in
-    if (note_name = "CORE" && note_type = Elf_note.nt_auxv)
-        || (note_name = "FreeBSD" && note_type = Elf_note.nt_procstat_auxv) then
-      let bs = note_seg.elf64_note_desc in
-      let bs_res = if note_name = "FreeBSD" then
-        read_elf64_freebsd_note_desc endian note_seg 16 (* sizeof(Elf_Auxvinfo) *)
-      else
-        return bs
-      in
-      bs_res >>= fun bs ->
-      Auxv.read_all_elf64_auxv endian bs >>= fun note_auxv_list ->
-      Error.foldM (fun value auxv ->
-        if (natural_of_elf64_xword auxv.elf64_auxv_type) = auxv_type then
-          let v = natural_of_elf64_xword auxv.elf64_auxv_value in
-          match value with
-            | Nothing -> return (Just v)
-            | Just _ -> Error.fail ("read_nt_auxv_value: duplicate value for type " ^ (show auxv_type))
-          end
-        else
-          return value
-      ) value note_auxv_list
-    else
-      return value
-  ) Nothing note_segs
-
-let get_segment_byte_sequence_at f addr =
+let get_load_segment_byte_sequence_at f addr =
   get_load_segment_at f addr >>= fun seg ->
   Byte_sequence.dropbytes (addr - seg.elf64_segment_base) seg.elf64_segment_body
 
 let read_nt_auxv_execfn endian note_segs f =
-  read_nt_auxv_value endian note_segs f Auxv.at_execfn >>= fun addr ->
+  read_nt_auxv_value endian note_segs Auxv.at_execfn >>= fun addr ->
   match addr with
     | Just addr ->
-      get_segment_byte_sequence_at f addr >>= fun value_bs ->
+      get_load_segment_byte_sequence_at f addr >>= fun value_bs ->
       Elf_note.read_string value_bs >>= fun (s, _) ->
       return (Just s)
     | Nothing -> return Nothing
@@ -235,13 +134,13 @@ let read_nt_procstat_psstrings_argv0 endian note_segs f =
       (* Triple indirection, just because we like it *)
       Elf_note.read_elf64_nt_procstat_psstrings endian bs >>= fun psstrings_addr ->
       let psstrings_addr = natural_of_elf64_addr psstrings_addr in
-      get_segment_byte_sequence_at f psstrings_addr >>= fun psstrings_bs ->
+      get_load_segment_byte_sequence_at f psstrings_addr >>= fun psstrings_bs ->
       Elf_note.read_elf64_psstrings endian psstrings_bs >>= fun psstrings ->
       let argvstr_addr = natural_of_elf64_addr psstrings.elf64_psstrings_argvstr in
-      get_segment_byte_sequence_at f argvstr_addr >>= fun argvstr_bs ->
+      get_load_segment_byte_sequence_at f argvstr_addr >>= fun argvstr_bs ->
       read_elf64_addr endian argvstr_bs >>= fun (argv0_addr, _) ->
       let argv0_addr = natural_of_elf64_addr argv0_addr in
-      get_segment_byte_sequence_at f argv0_addr >>= fun argv0_bs ->
+      get_load_segment_byte_sequence_at f argv0_addr >>= fun argv0_bs ->
       Elf_note.read_string argv0_bs >>= fun (argv0str, _) ->
       return (Just argv0str)
     else
@@ -271,15 +170,6 @@ let print_memory_image img =
     let len = assert_unwrap_maybe e.length in
     Missing_pervasives.errln ("  element: " ^ k ^ " start=0x" ^ (hex_string_of_natural start) ^ " len=0x" ^ (hex_string_of_natural len) ^ " contents_len=0x" ^ (hex_string_of_natural (naturalFromNat (List.length e.contents))))
   ) img.elements
-
-let memory_image_element_at img addr =
-  let elements = Map_extra.toList img.elements in
-  let maybe_tuple = List.find (fun (_, e) ->
-    let start = assert_unwrap_maybe e.startpos in
-    let len = assert_unwrap_maybe e.length in
-    addr >= start && addr < start + len
-  ) elements in
-  Maybe.map (fun (_, e) -> e) maybe_tuple
 
 type byte_pattern_compare_result =
   | BytePatternMatch
@@ -1328,10 +1218,7 @@ let process_file core_filepath maybe_root_path maybe_binary_filename =
   let endian = get_elf64_header_endianness core_file.elf64_file_header in
   Elf_note.obtain_elf64_note_segments endian core_file.elf64_file_program_header_table core_bs >>= fun note_segs ->
 
-  read_nt_file_entries endian note_segs >>= fun nt_file_entries ->
-  read_nt_procstat_vmmap endian note_segs >>= fun nt_procstat_vmmap ->
-  (* TODO: don't allow both mmap table types to be present at the same time *)
-  let mmap_table = nt_file_entries ++ nt_procstat_vmmap in
+  read_mmap_table endian note_segs >>= fun mmap_table ->
   if List.null mmap_table then Error.fail ("process_file: mmap table of core file `" ^ core_filepath ^ "` is empty") else
 
   read_nt_auxv_execfn endian note_segs core_file >>= fun maybe_execfn ->
