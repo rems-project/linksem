@@ -250,34 +250,34 @@ let rec extract_memory_image_byte_pattern img start len =
   else
     return bp
 
-let compare_memory_image core_img binary_img (* for debugging: *) (mmap_table, binary_file, binary_base) =
-  let binary_elements = Map_extra.toList binary_img.elements in
-  let results = List.map (fun (_, binary_el) ->
-    let start = assert_unwrap_maybe binary_el.startpos in
-    (* let len = assert_unwrap_maybe binary_el.length in *)
-    let len = naturalFromNat (List.length binary_el.contents) in
+let compare_memory_image core_img object_img (* for debugging: *) (mmap_table, object_file, object_base) =
+  let object_elements = Map_extra.toList object_img.elements in
+  let results = List.map (fun (_, object_el) ->
+    let start = assert_unwrap_maybe object_el.startpos in
+    (* let len = assert_unwrap_maybe object_el.length in *)
+    let len = naturalFromNat (List.length object_el.contents) in
     if len = 0 then return () else
     let _ = Missing_pervasives.errln ("Comparing memory element at 0x" ^ (hex_string_of_natural start) ^ ", length 0x" ^ (hex_string_of_natural len)) in
 
-    let binary_bp = binary_el.contents in
+    let object_bp = object_el.contents in
     match extract_memory_image_byte_pattern core_img start len with
       | Success core_bp ->
-        match compare_byte_pattern core_bp binary_bp with
+        match compare_byte_pattern core_bp object_bp with
           | BytePatternMatch ->
             let _ = Missing_pervasives.errln ("  Memory image element at 0x" ^ (hex_string_of_natural start) ^ " matches!") in
             return ()
           | BytePatternMismatch (mismatch_offset, err_msg) ->
             let mismatch_addr = start + mismatch_offset in
             let _ = Missing_pervasives.errln err_msg in
-            let _ = Missing_pervasives.errln ("  Memory image element at 0x" ^ (hex_string_of_natural start) ^ " mismatches at offset 0x" ^ (hex_string_of_natural mismatch_addr) ^ " in " ^ (show_section_at mmap_table binary_file mismatch_addr) ^ " :(") in
-            let _ = Missing_pervasives.errln "Addr         | Binary                                  | Core                                   " in
-            let _ = print_two_byte_patterns start binary_bp core_bp in
+            let _ = Missing_pervasives.errln ("  Memory image element at 0x" ^ (hex_string_of_natural start) ^ " mismatches at offset 0x" ^ (hex_string_of_natural mismatch_addr) ^ " in " ^ (show_section_at mmap_table object_file mismatch_addr) ^ " :(") in
+            let _ = Missing_pervasives.errln "Addr         | object                                  | Core                                   " in
+            let _ = print_two_byte_patterns start object_bp core_bp in
             Error.fail "Mismatch"
         end
       | Fail err ->
         (* FreeBSD doesn't include read-only mmapped regions in coredumps *)
         (* TODO: check mmap table too? *)
-        get_load_segment_at binary_file (start - binary_base) >>= fun seg ->
+        get_load_segment_at object_file (start - object_base) >>= fun seg ->
         let (r, w, x) = seg.elf64_segment_flags in
         if not w then
           let _ = Missing_pervasives.errln ("  Warning: memory image element at 0x" ^ (hex_string_of_natural start) ^ " is not included in the core file") in
@@ -286,7 +286,7 @@ let compare_memory_image core_img binary_img (* for debugging: *) (mmap_table, b
         else
           Error.fail err
     end
-  ) binary_elements in
+  ) object_elements in
   let _ = List.map (fun res ->
     match res with
       | Success _ -> ()
@@ -730,18 +730,18 @@ let get_load_segment_at_offset f offset =
 
 (** Check that the offsets between sections are preserved.
 
-    For each LOAD segment in the binary, compute the virtual address where it
+    For each LOAD segment in the object, compute the virtual address where it
     should have been loaded, check that a page has been mmapped there, and check
     that the mmapped file offset is correct. *)
-let check_mmaped_memory_image mmap_table binary_filename binary_file binary_delta =
+let check_mmaped_memory_image mmap_table object_filename object_file object_delta =
   (* TODO: check the file has been mmaped at only one place? *)
   Error.foldM (fun () seg ->
     if seg.elf64_segment_type <> Elf_program_header_table.elf_pt_load then return () else
-    let seg_addr = seg.elf64_segment_base + binary_delta in
+    let seg_addr = seg.elf64_segment_base + object_delta in
     (* let _ = Missing_pervasives.errln ("Checking LOAD segment at 0x" ^ (hex_string_of_natural seg.elf64_segment_base) ^ ", virtual address 0x" ^ (hex_string_of_natural seg_addr)) in *)
     match get_mmap_entry_at mmap_table seg_addr with
       | Just e ->
-        if e.mmap_entry_path = binary_filename then
+        if e.mmap_entry_path = object_filename then
           let page_start = e.mmap_entry_start in
           let page_file_offset = e.mmap_entry_offset in
           (* let _ = Missing_pervasives.errln ("  Matching page has virtual address 0x" ^ (hex_string_of_natural page_start) ^ " and offset 0x" ^ (hex_string_of_natural page_file_offset)) in *)
@@ -757,7 +757,7 @@ let check_mmaped_memory_image mmap_table binary_filename binary_file binary_delt
       | Nothing ->
         Error.fail ("check_mmaped_memory_image: LOAD segment at 0x" ^ (hex_string_of_natural seg.elf64_segment_base) ^ " has not been mmapped at 0x" ^ (hex_string_of_natural seg_addr))
     end
-  ) () binary_file.elf64_file_interpreted_segments
+  ) () object_file.elf64_file_interpreted_segments
 
 let get_memory_image_delta img addr =
   let img_addr = assert_unwrap_maybe (get_first_memory_image_address img) in
@@ -947,48 +947,48 @@ let get_dynsym_section_index f dyns =
       Error.fail "get_dynsym_section: missing DT_SYMTAB in .dynamic"
   end
 
-let rec check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_table dynsyms binary_filename is_root =
-  Filesystem.realpath_in root_path (root_path ^ binary_filename) >>= fun binary_filepath ->
-  let _ = Missing_pervasives.errln ("Resolved symlinks: " ^ (root_path ^ binary_filename) ^ " -> " ^ binary_filepath) in
-  let binary_filename = assert_unwrap_maybe (Missing_pervasives.string_suffix (naturalFromNat (String.stringLength root_path)) binary_filepath) in
+let rec check_object ldconfig_paths core_file core_img is_loaded root_path mmap_table dynsyms object_filename is_root =
+  Filesystem.realpath_in root_path (root_path ^ object_filename) >>= fun object_filepath ->
+  let _ = Missing_pervasives.errln ("Resolved symlinks: " ^ (root_path ^ object_filename) ^ " -> " ^ object_filepath) in
+  let object_filename = assert_unwrap_maybe (Missing_pervasives.string_suffix (naturalFromNat (String.stringLength root_path)) object_filepath) in
 
-  let _ = Missing_pervasives.errln ("Loading binary from " ^ binary_filepath) in
-  load_file binary_filepath >>= fun (binary_bs, binary_file) ->
-  let _ = Missing_pervasives.errln "Binary file:" in
-  let _ = print_elf64_phdr binary_file in
+  let _ = Missing_pervasives.errln ("Loading object from " ^ object_filepath) in
+  load_file object_filepath >>= fun (object_bs, object_file) ->
+  let _ = Missing_pervasives.errln "object file:" in
+  let _ = print_elf64_phdr object_file in
 
-  let binary_img = load_memory_image binary_file in
-  let _ = Missing_pervasives.errln "Binary image:" in
-  let _ = print_memory_image binary_img in
+  let object_img = load_memory_image object_file in
+  let _ = Missing_pervasives.errln "object image:" in
+  let _ = print_memory_image object_img in
 
-  let binary_img =
+  let object_img =
     if is_loaded then
-      let binary_img = mask_data_sections binary_file binary_img in
-      binary_img
+      let object_img = mask_data_sections object_file object_img in
+      object_img
     else
       let _ = Missing_pervasives.errln "Not masking memory image" in
-      binary_img
+      object_img
   in
 
-  let (n_bytes, n_masked) = get_memory_image_stats binary_img in
+  let (n_bytes, n_masked) = get_memory_image_stats object_img in
   let _ = Missing_pervasives.errln ((show n_bytes) ^ " bytes, " ^ (show n_masked) ^ " masked bytes after masking") in
 
-  let _ = Missing_pervasives.errln ("Searching binary " ^ binary_filename ^ " in mmap table") in
-  let errmsg = "check_binary: cannot find `" ^ binary_filename ^ "` in the mmap table" in
-  Error.of_maybe errmsg (get_first_mapped_address mmap_table binary_filename) >>= fun binary_addr ->
-  let _ = Missing_pervasives.errln ("Binary has been mapped at 0x" ^ (hex_string_of_natural binary_addr)) in
-  let binary_delta = get_memory_image_delta binary_img binary_addr in
-  let _ = Missing_pervasives.errln ("Binary has delta 0x" ^ (hex_string_of_natural binary_delta)) in
-  check_mmaped_memory_image mmap_table binary_filename binary_file binary_delta >>= fun () ->
-  let _ = Missing_pervasives.errln "Translating binary image" in
-  let binary_img = translate_memory_image binary_img binary_delta in
-  let _ = Missing_pervasives.errln "Binary image after translation:" in
-  let _ = print_memory_image binary_img in
+  let _ = Missing_pervasives.errln ("Searching object " ^ object_filename ^ " in mmap table") in
+  let errmsg = "check_object: cannot find `" ^ object_filename ^ "` in the mmap table" in
+  Error.of_maybe errmsg (get_first_mapped_address mmap_table object_filename) >>= fun object_addr ->
+  let _ = Missing_pervasives.errln ("object has been mapped at 0x" ^ (hex_string_of_natural object_addr)) in
+  let object_delta = get_memory_image_delta object_img object_addr in
+  let _ = Missing_pervasives.errln ("object has delta 0x" ^ (hex_string_of_natural object_delta)) in
+  check_mmaped_memory_image mmap_table object_filename object_file object_delta >>= fun () ->
+  let _ = Missing_pervasives.errln "Translating object image" in
+  let object_img = translate_memory_image object_img object_delta in
+  let _ = Missing_pervasives.errln "object image after translation:" in
+  let _ = print_memory_image object_img in
 
   let maybe_dyns_res =
-    if has_dynamic_section binary_file then
+    if has_dynamic_section object_file then
       let _ = Missing_pervasives.errln ("Reading .dynamic section") in
-      read_dynamic binary_bs binary_file >>= fun dyns ->
+      read_dynamic object_bs object_file >>= fun dyns ->
       return (Just dyns)
     else
       return Nothing
@@ -997,24 +997,24 @@ let rec check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_
 
   match maybe_dyns with
     | Just dyns ->
-      get_dynsym_section_index binary_file dyns >>= fun dynsym_scnidx ->
-      let _ = Missing_pervasives.errln ("Extracting dynamic symbol version info from " ^ binary_filename ^ " (if any)") in
-      obtain_gnu_ext_elf64_interpreted_versym_table binary_file dyns >>= fun maybe_versym_table ->
-      let _ = Missing_pervasives.errln ("Extracting dynamic symbols from " ^ binary_filename) in
-      extract_dynsyms binary_file binary_delta dynsyms dynsym_scnidx maybe_versym_table >>= fun binary_dynsyms ->
-      let _ = Missing_pervasives.errln ("Binary exports " ^ (show (List.length binary_dynsyms)) ^ " dynamic symbols") in
-      return (dynsym_scnidx, binary_dynsyms, maybe_versym_table)
+      get_dynsym_section_index object_file dyns >>= fun dynsym_scnidx ->
+      let _ = Missing_pervasives.errln ("Extracting dynamic symbol version info from " ^ object_filename ^ " (if any)") in
+      obtain_gnu_ext_elf64_interpreted_versym_table object_file dyns >>= fun maybe_versym_table ->
+      let _ = Missing_pervasives.errln ("Extracting dynamic symbols from " ^ object_filename) in
+      extract_dynsyms object_file object_delta dynsyms dynsym_scnidx maybe_versym_table >>= fun object_dynsyms ->
+      let _ = Missing_pervasives.errln ("object exports " ^ (show (List.length object_dynsyms)) ^ " dynamic symbols") in
+      return (dynsym_scnidx, object_dynsyms, maybe_versym_table)
     | Nothing ->
       return (0, [], Nothing)
-  end >>= fun (dynsym_scnidx, binary_dynsyms, maybe_versym_table) ->
+  end >>= fun (dynsym_scnidx, object_dynsyms, maybe_versym_table) ->
 
-  let dynsyms = dynsyms ++ binary_dynsyms in
+  let dynsyms = dynsyms ++ object_dynsyms in
 
   let maybe_interp_seg =
     if is_root then
       List.find (fun seg ->
         seg.elf64_segment_type = Elf_program_header_table.elf_pt_interp
-      ) binary_file.elf64_file_interpreted_segments
+      ) object_file.elf64_file_interpreted_segments
     else
       Nothing (* libraries' INTERP should be ignored *)
   in
@@ -1036,7 +1036,7 @@ let rec check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_
   let dynsyms_res = match maybe_interp with
     | Just interp ->
       let _ = Missing_pervasives.errln ("Requesting program interpreter: " ^ interp) in
-      check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_table dynsyms interp false
+      check_object ldconfig_paths core_file core_img is_loaded root_path mmap_table dynsyms interp false
     | Nothing ->
       return dynsyms
   end in
@@ -1050,11 +1050,11 @@ let rec check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_
     else
       match maybe_dyns with
         | Nothing ->
-          let _ = Missing_pervasives.errln "Binary doesn't have a .dynamic section; not checking linked libraries" in
+          let _ = Missing_pervasives.errln "object doesn't have a .dynamic section; not checking linked libraries" in
           return (0, [], [])
         | Just dyns ->
           let _ = Missing_pervasives.errln "Checking linked libraries" in
-          read_dynamic binary_bs binary_file >>= fun dyns ->
+          read_dynamic object_bs object_file >>= fun dyns ->
 
           let dyn_dt_needed = List.filter (fun (tag, _) -> tag = Elf_dynamic.dt_needed) dyns in
           let _ = Missing_pervasives.errln ("Found " ^ (show (List.length dyn_dt_needed)) ^ " linked libraries") in
@@ -1065,7 +1065,7 @@ let rec check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_
                    of loaded SONAME strings and check it's not already loaded now
                    that we support INTERP segments. *)
                 let paths =
-                  if soname = "libc.so" && Abi_mips64.header_is_mips64 binary_file.elf64_file_header && Missing_pervasives.string_contains binary_filepath "musl" then
+                  if soname = "libc.so" && Abi_mips64.header_is_mips64 object_file.elf64_file_header && Missing_pervasives.string_contains object_filepath "musl" then
                     ["/lib/mips64el-linux-musl"]
                   else
                     ldconfig_paths
@@ -1077,7 +1077,7 @@ let rec check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_
           ) dyn_dt_needed in
           dt_needed_res >>= fun dt_needed ->
           let check_res = Error.foldM (fun dynsyms library_filepath ->
-            check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_table dynsyms library_filepath false
+            check_object ldconfig_paths core_file core_img is_loaded root_path mmap_table dynsyms library_filepath false
           ) dynsyms dt_needed in
           check_res >>= fun dynsyms ->
           return (naturalFromNat (List.length dyn_dt_needed), dynsyms, dyns)
@@ -1086,43 +1086,43 @@ let rec check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_
 
   linked_libs_res >>= fun (libs_count, dynsyms, dyns) ->
   let _ = if libs_count > 0 then
-    Missing_pervasives.errln ("OK: " ^ (show libs_count) ^ " libraries linked to " ^ binary_filepath ^ " match!")
+    Missing_pervasives.errln ("OK: " ^ (show libs_count) ^ " libraries linked to " ^ object_filepath ^ " match!")
   else () in
 
-  let binary_img =
+  let object_img =
     if is_loaded then
-      let _ = Missing_pervasives.errln ("Applying relocations in " ^ binary_filename) in
-      let binary_img = apply_all_relocations binary_file binary_img binary_delta dynsyms dynsym_scnidx maybe_versym_table in
-      let binary_img =
-        if Abi_mips64.header_is_mips64 binary_file.elf64_file_header &&
-            has_dynamic_section binary_file then
-          apply_mips64_got_relocations binary_file binary_img dynsyms binary_delta dyns dynsym_scnidx maybe_versym_table
-        else if Abi_amd64.header_is_amd64 binary_file.elf64_file_header &&
-            has_dynamic_section binary_file then
-          init_amd64_pltgot binary_img binary_delta dyns
+      let _ = Missing_pervasives.errln ("Applying relocations in " ^ object_filename) in
+      let object_img = apply_all_relocations object_file object_img object_delta dynsyms dynsym_scnidx maybe_versym_table in
+      let object_img =
+        if Abi_mips64.header_is_mips64 object_file.elf64_file_header &&
+            has_dynamic_section object_file then
+          apply_mips64_got_relocations object_file object_img dynsyms object_delta dyns dynsym_scnidx maybe_versym_table
+        else if Abi_amd64.header_is_amd64 object_file.elf64_file_header &&
+            has_dynamic_section object_file then
+          init_amd64_pltgot object_img object_delta dyns
         else
-          binary_img
+          object_img
       in
-      binary_img
+      object_img
     else
-      binary_img
+      object_img
   in
 
-  let (n_bytes, n_masked) = get_memory_image_stats binary_img in
+  let (n_bytes, n_masked) = get_memory_image_stats object_img in
   let _ = Missing_pervasives.errln ((show n_bytes) ^ " bytes, " ^ (show n_masked) ^ " masked bytes") in
 
-  let _ = Missing_pervasives.errln ("Checking memory image of " ^ binary_filename) in
-  let comparison_res = compare_memory_image core_img binary_img (mmap_table, binary_file, binary_delta) in
+  let _ = Missing_pervasives.errln ("Checking memory image of " ^ object_filename) in
+  let comparison_res = compare_memory_image core_img object_img (mmap_table, object_file, object_delta) in
 
   match comparison_res with
     | Success () ->
-      let _ = Missing_pervasives.errln ("OK: " ^ binary_filepath ^ " matches!") in
+      let _ = Missing_pervasives.errln ("OK: " ^ object_filepath ^ " matches!") in
       return dynsyms
     | Fail msg ->
-      Error.fail (binary_filepath ^ " mismatches: " ^ msg)
+      Error.fail (object_filepath ^ " mismatches: " ^ msg)
   end
 
-let process_file core_filepath maybe_root_path maybe_binary_filename =
+let process_file core_filepath maybe_root_path maybe_object_filename =
   let root_path = match maybe_root_path with
     | Just root_path -> root_path ^ "/"
     | Nothing -> ""
@@ -1141,27 +1141,27 @@ let process_file core_filepath maybe_root_path maybe_binary_filename =
 
   read_nt_auxv_execfn endian note_segs core_file >>= fun maybe_execfn ->
   read_nt_procstat_psstrings_argv0 endian note_segs core_file >>= fun maybe_psstrings_argv0 ->
-  let maybe_detected_binary_filename = match maybe_execfn with
+  let maybe_detected_object_filename = match maybe_execfn with
     | Just _ -> maybe_execfn
     | Nothing -> maybe_psstrings_argv0
   end in
-  let _ = Missing_pervasives.errln ("Detected binary filename: " ^ (show maybe_detected_binary_filename)) in
+  let _ = Missing_pervasives.errln ("Detected object filename: " ^ (show maybe_detected_object_filename)) in
 
-  let binary_filename_res = match (maybe_binary_filename, maybe_detected_binary_filename) with
-    | (Just binary_filename, Just detected_binary_filename) ->
+  let object_filename_res = match (maybe_object_filename, maybe_detected_object_filename) with
+    | (Just object_filename, Just detected_object_filename) ->
       let _ =
-        if binary_filename <> detected_binary_filename then
-          Missing_pervasives.errln ("warning: binary filename `" ^ binary_filename ^ "` mismatches detected filename `" ^ detected_binary_filename ^ "`")
+        if object_filename <> detected_object_filename then
+          Missing_pervasives.errln ("warning: object filename `" ^ object_filename ^ "` mismatches detected filename `" ^ detected_object_filename ^ "`")
         else
           ()
       in
-      return binary_filename
-    | (Just binary_filename, Nothing) -> return binary_filename
-    | (Nothing, Just detected_binary_filename) -> return detected_binary_filename
+      return object_filename
+    | (Just object_filename, Nothing) -> return object_filename
+    | (Nothing, Just detected_object_filename) -> return detected_object_filename
     | (Nothing, Nothing) ->
-      Error.fail "process_file: cannot detect binary filename in ELF notes, please provide it"
+      Error.fail "process_file: cannot detect object filename in ELF notes, please provide it"
   end in
-  binary_filename_res >>= fun binary_filename ->
+  object_filename_res >>= fun object_filename ->
 
   let _ = Missing_pervasives.errln "Core file:" in
   let _ = print_elf64_phdr core_file in
@@ -1174,7 +1174,7 @@ let process_file core_filepath maybe_root_path maybe_binary_filename =
   (* TODO: add a flag instead of this hacky thing *)
   let is_loaded = not (Missing_pervasives.string_contains core_filepath "start") in
 
-  check_binary ldconfig_paths core_file core_img is_loaded root_path mmap_table [] binary_filename true >>= fun _ ->
+  check_object ldconfig_paths core_file core_img is_loaded root_path mmap_table [] object_filename true >>= fun _ ->
 
   return ()
 
@@ -1183,13 +1183,13 @@ let _ =
     | _::args -> args
     | _ -> []
   end in
-  let (core_filepath, maybe_root_path, maybe_binary_filename) = match args with
+  let (core_filepath, maybe_root_path, maybe_object_filename) = match args with
     | [core_filepath] -> (core_filepath, Nothing, Nothing)
     | [core_filepath; root_path] -> (core_filepath, Just root_path, Nothing)
-    | [core_filepath; root_path; binary_filename] -> (core_filepath, Just root_path, Just binary_filename)
-    | _ -> Assert_extra.failwith "usage: main_load <core-file> [root] [binary-filename]"
+    | [core_filepath; root_path; object_filename] -> (core_filepath, Just root_path, Just object_filename)
+    | _ -> Assert_extra.failwith "usage: main_load <core-file> [root] [object-filename]"
   end in
-  match process_file core_filepath maybe_root_path maybe_binary_filename with
+  match process_file core_filepath maybe_root_path maybe_object_filename with
     | Fail err -> failwith err
     | Success () -> Missing_pervasives.errln "OK: ALL GREEN"
   end
