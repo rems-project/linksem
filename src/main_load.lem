@@ -46,7 +46,6 @@ open import Abi_amd64
 open import Abi_amd64_relocation
 
 
-
 let get_file_abi f =
   let guessed_abi = List.find (fun abi ->
     abi.is_valid_elf_header f.elf64_file_header
@@ -947,7 +946,24 @@ let get_dynsym_section_index f dyns =
       Error.fail "get_dynsym_section: missing DT_SYMTAB in .dynamic"
   end
 
-let rec check_object ldconfig_paths core_file core_img is_loaded root_path mmap_table dynsyms object_filename is_root =
+let get_soname dyns =
+  let maybe_dt_soname = List.find (fun (tag, _) -> tag = Elf_dynamic.dt_soname) dyns in
+  match maybe_dt_soname with
+    | Just (_, SOName dt_soname) -> Just dt_soname
+    | Nothing -> Nothing
+  end
+
+type linkmap = <|
+  linkmap_dynsyms : list dynamic_symbol;
+  linkmap_sonames : list string
+|>
+
+let null_linkmap = <|
+  linkmap_dynsyms = [];
+  linkmap_sonames = []
+|>
+
+let rec check_object ldconfig_paths core_file core_img is_loaded root_path mmap_table linkmap object_filename is_root =
   Filesystem.realpath_in root_path (root_path ^ object_filename) >>= fun object_filepath ->
   let _ = Missing_pervasives.errln ("Resolved symlinks: " ^ (root_path ^ object_filename) ^ " -> " ^ object_filepath) in
   let object_filename = assert_unwrap_maybe (Missing_pervasives.string_suffix (naturalFromNat (String.stringLength root_path)) object_filepath) in
@@ -995,20 +1011,38 @@ let rec check_object ldconfig_paths core_file core_img is_loaded root_path mmap_
   in
   maybe_dyns_res >>= fun maybe_dyns ->
 
+  (* Add SONAME to linkmap *)
+  let linkmap = match maybe_dyns with
+    | Just dyns ->
+      match get_soname dyns with
+        | Just soname ->
+          let _ = Missing_pervasives.errln ("Object has SONAME `" ^ soname ^ "`") in
+          <|
+            linkmap_dynsyms = linkmap.linkmap_dynsyms;
+            linkmap_sonames = soname :: linkmap.linkmap_sonames;
+          |>
+        | Nothing -> linkmap
+      end
+    | Nothing -> linkmap
+  end in
+
   match maybe_dyns with
     | Just dyns ->
       get_dynsym_section_index object_file dyns >>= fun dynsym_scnidx ->
       let _ = Missing_pervasives.errln ("Extracting dynamic symbol version info from " ^ object_filename ^ " (if any)") in
       obtain_gnu_ext_elf64_interpreted_versym_table object_file dyns >>= fun maybe_versym_table ->
       let _ = Missing_pervasives.errln ("Extracting dynamic symbols from " ^ object_filename) in
-      extract_dynsyms object_file object_delta dynsyms dynsym_scnidx maybe_versym_table >>= fun object_dynsyms ->
-      let _ = Missing_pervasives.errln ("object exports " ^ (show (List.length object_dynsyms)) ^ " dynamic symbols") in
+      extract_dynsyms object_file object_delta linkmap.linkmap_dynsyms dynsym_scnidx maybe_versym_table >>= fun object_dynsyms ->
+      let _ = Missing_pervasives.errln ("Object exports " ^ (show (List.length object_dynsyms)) ^ " dynamic symbols") in
       return (dynsym_scnidx, object_dynsyms, maybe_versym_table)
     | Nothing ->
       return (0, [], Nothing)
   end >>= fun (dynsym_scnidx, object_dynsyms, maybe_versym_table) ->
 
-  let dynsyms = dynsyms ++ object_dynsyms in
+  let linkmap = <|
+    linkmap_dynsyms = linkmap.linkmap_dynsyms ++ object_dynsyms;
+    linkmap_sonames = linkmap.linkmap_sonames
+  |> in
 
   let maybe_interp_seg =
     if is_root then
@@ -1033,58 +1067,75 @@ let rec check_object ldconfig_paths core_file core_img is_loaded root_path mmap_
     | Nothing ->
       return Nothing
   end >>= fun maybe_interp ->
-  let dynsyms_res = match maybe_interp with
+  match maybe_interp with
     | Just interp ->
       let _ = Missing_pervasives.errln ("Requesting program interpreter: " ^ interp) in
-      check_object ldconfig_paths core_file core_img is_loaded root_path mmap_table dynsyms interp false
+      let linkmap =
+        (* TODO: musl's libc.so is missing SONAME. See:
+           - http://git.musl-libc.org/cgit/musl/commit/?id=dfdc337b3b276e6ea0e4786ede699f4d0d93dc40
+           - https://git.alpinelinux.org/cgit/aports/tree/main/musl/APKBUILD#n60
+         *)
+        if Missing_pervasives.string_contains interp "musl" then
+          <|
+            linkmap_dynsyms = linkmap.linkmap_dynsyms;
+            linkmap_sonames = "libc.so" :: linkmap.linkmap_sonames;
+          |>
+        else
+          linkmap
+      in
+      check_object ldconfig_paths core_file core_img is_loaded root_path mmap_table linkmap interp false
     | Nothing ->
-      return dynsyms
-  end in
-  dynsyms_res >>= fun dynsyms ->
+      return linkmap
+  end >>= fun linkmap ->
 
   (* Result contains the number of linked libraries *)
   let linked_libs_res =
     if not is_loaded then
       let _ = Missing_pervasives.errln "Core file hasn't been loaded; not checking linked libraries" in
-      return (0, [], [])
+      return (0, linkmap, [])
     else
       match maybe_dyns with
         | Nothing ->
           let _ = Missing_pervasives.errln "object doesn't have a .dynamic section; not checking linked libraries" in
-          return (0, [], [])
+          return (0, linkmap, [])
         | Just dyns ->
           let _ = Missing_pervasives.errln "Checking linked libraries" in
           read_dynamic object_bs object_file >>= fun dyns ->
 
           let dyn_dt_needed = List.filter (fun (tag, _) -> tag = Elf_dynamic.dt_needed) dyns in
           let _ = Missing_pervasives.errln ("Found " ^ (show (List.length dyn_dt_needed)) ^ " linked libraries") in
-          let dt_needed_res = Error.mapM (fun (_, dyn_value) ->
+          Error.mapM (fun (_, dyn_value) ->
             match dyn_value with
-              | Library soname ->
-                (* TODO: remove this hack. This probably just means keeping a list
-                   of loaded SONAME strings and check it's not already loaded now
-                   that we support INTERP segments. *)
-                let paths =
-                  if soname = "libc.so" && Abi_mips64.header_is_mips64 object_file.elf64_file_header && Missing_pervasives.string_contains object_filepath "musl" then
-                    ["/lib/mips64el-linux-musl"]
-                  else
-                    ldconfig_paths
-                in
-                let _ = Missing_pervasives.errln ("Searching needed library `" ^ soname ^ "`") in
-                find_library root_path paths soname
+              | Library soname -> return soname
               | _ -> Error.fail "got a DT_NEEDED with something else than a Library"
             end
-          ) dyn_dt_needed in
-          dt_needed_res >>= fun dt_needed ->
-          let check_res = Error.foldM (fun dynsyms library_filepath ->
-            check_object ldconfig_paths core_file core_img is_loaded root_path mmap_table dynsyms library_filepath false
-          ) dynsyms dt_needed in
-          check_res >>= fun dynsyms ->
-          return (naturalFromNat (List.length dyn_dt_needed), dynsyms, dyns)
+          ) dyn_dt_needed >>= fun sonames ->
+          Error.mapM (fun soname ->
+            (* TODO: remove this hack. This probably just means keeping a list
+                   of loaded SONAME strings and check it's not already loaded now
+                   that we support INTERP segments. *)
+            let paths =
+              if soname = "libc.so" && Abi_mips64.header_is_mips64 object_file.elf64_file_header && Missing_pervasives.string_contains object_filepath "musl" then
+                ["/lib/mips64el-linux-musl"]
+              else
+                ldconfig_paths
+            in
+            let _ = Missing_pervasives.errln ("Searching needed library `" ^ soname ^ "`") in
+            find_library root_path paths soname >>= fun library_filepath ->
+            return (soname, library_filepath)
+          ) sonames >>= fun sonames_and_lib_paths ->
+          Error.foldM (fun linkmap (soname, library_filepath) ->
+            if List.elem soname linkmap.linkmap_sonames then
+              let _ = Missing_pervasives.errln ("check_object: skipping dependency `" ^ soname ^ "` because it has already been loaded") in
+              return linkmap
+            else
+              check_object ldconfig_paths core_file core_img is_loaded root_path mmap_table linkmap library_filepath false
+          ) linkmap sonames_and_lib_paths >>= fun linkmap ->
+          return (naturalFromNat (List.length dyn_dt_needed), linkmap, dyns)
       end
   in
 
-  linked_libs_res >>= fun (libs_count, dynsyms, dyns) ->
+  linked_libs_res >>= fun (libs_count, linkmap, dyns) ->
   let _ = if libs_count > 0 then
     Missing_pervasives.errln ("OK: " ^ (show libs_count) ^ " libraries linked to " ^ object_filepath ^ " match!")
   else () in
@@ -1092,11 +1143,11 @@ let rec check_object ldconfig_paths core_file core_img is_loaded root_path mmap_
   let object_img =
     if is_loaded then
       let _ = Missing_pervasives.errln ("Applying relocations in " ^ object_filename) in
-      let object_img = apply_all_relocations object_file object_img object_delta dynsyms dynsym_scnidx maybe_versym_table in
+      let object_img = apply_all_relocations object_file object_img object_delta linkmap.linkmap_dynsyms dynsym_scnidx maybe_versym_table in
       let object_img =
         if Abi_mips64.header_is_mips64 object_file.elf64_file_header &&
             has_dynamic_section object_file then
-          apply_mips64_got_relocations object_file object_img dynsyms object_delta dyns dynsym_scnidx maybe_versym_table
+          apply_mips64_got_relocations object_file object_img linkmap.linkmap_dynsyms object_delta dyns dynsym_scnidx maybe_versym_table
         else if Abi_amd64.header_is_amd64 object_file.elf64_file_header &&
             has_dynamic_section object_file then
           init_amd64_pltgot object_img object_delta dyns
@@ -1117,16 +1168,21 @@ let rec check_object ldconfig_paths core_file core_img is_loaded root_path mmap_
   match comparison_res with
     | Success () ->
       let _ = Missing_pervasives.errln ("OK: " ^ object_filepath ^ " matches!") in
-      return dynsyms
+      return linkmap
     | Fail msg ->
       Error.fail (object_filepath ^ " mismatches: " ^ msg)
   end
 
-let process_file core_filepath maybe_root_path maybe_object_filename =
-  let root_path = match maybe_root_path with
-    | Just root_path -> root_path ^ "/"
-    | Nothing -> ""
-  end in
+type load_args = <|
+  core_filepath : string;
+  root_path : string;
+  object_filename : maybe string;
+  additional_object_filename : maybe string
+|>
+
+let process_file args =
+  let core_filepath = args.core_filepath in
+  let root_path = args.root_path in
 
   Ldconfig.read_ldconfig_paths root_path >>= fun ldconfig_paths ->
 
@@ -1147,7 +1203,7 @@ let process_file core_filepath maybe_root_path maybe_object_filename =
   end in
   let _ = Missing_pervasives.errln ("Detected object filename: " ^ (show maybe_detected_object_filename)) in
 
-  let object_filename_res = match (maybe_object_filename, maybe_detected_object_filename) with
+  let object_filename_res = match (args.object_filename, maybe_detected_object_filename) with
     | (Just object_filename, Just detected_object_filename) ->
       let _ =
         if object_filename <> detected_object_filename then
@@ -1174,22 +1230,67 @@ let process_file core_filepath maybe_root_path maybe_object_filename =
   (* TODO: add a flag instead of this hacky thing *)
   let is_loaded = not (Missing_pervasives.string_contains core_filepath "start") in
 
-  check_object ldconfig_paths core_file core_img is_loaded root_path mmap_table [] object_filename true >>= fun _ ->
+  check_object ldconfig_paths core_file core_img is_loaded root_path mmap_table null_linkmap object_filename true >>= fun dynsyms ->
+
+  match args.additional_object_filename with
+    | Just additional_object_filename ->
+      let _ = Missing_pervasives.errln ("Loading additonnal object: " ^ additional_object_filename) in
+      check_object ldconfig_paths core_file core_img is_loaded root_path mmap_table dynsyms additional_object_filename false
+    | Nothing ->
+      return dynsyms
+  end >>= fun _ ->
 
   return ()
 
+type load_arg =
+  | CoreFilepath of string
+  | RootPath of string
+  | ObjectFilename of string
+  | AdditionalObjectFilename of string
+
+let rec parse_args argv =
+  if argv = [] then [] else
+  let (parsed, argv) = match argv with
+    | [core_filepath] -> (CoreFilepath core_filepath, [])
+    | "-r" :: root_path :: argv -> (RootPath root_path, argv)
+    | "-f" :: object_filename :: argv -> (ObjectFilename object_filename, argv)
+    | "-l" :: additional_object_filename :: argv -> (AdditionalObjectFilename additional_object_filename, argv)
+    | _ -> Assert_extra.failwith "usage: main_load [options] <core-file>"
+  end in
+  parsed :: (parse_args argv)
+
+let find_arg f args =
+  List.foldl (fun maybe_value arg ->
+    match (f arg, maybe_value) with
+      | (Nothing, _) -> maybe_value
+      | (Just v, Nothing) -> Just v
+      | (Just _, Just _) -> Assert_extra.failwith "find_arg: duplicate argument"
+    end
+  ) Nothing args
+
+let collect_args args =
+  let core_filepath = match find_arg (fun arg -> match arg with CoreFilepath v -> Just v | _ -> Nothing end) args with
+    | Just core_filepath -> core_filepath
+    | Nothing -> Assert_extra.failwith "usage: main_load [options] <core-file>"
+  end in
+  let root_path = match find_arg (fun arg -> match arg with RootPath v -> Just v | _ -> Nothing end) args with
+    | Just root_path -> root_path
+    | Nothing -> ""
+  end in
+  <|
+    core_filepath = core_filepath;
+    root_path = root_path;
+    object_filename = find_arg (fun arg -> match arg with ObjectFilename v -> Just v | _ -> Nothing end) args;
+    additional_object_filename = find_arg (fun arg -> match arg with AdditionalObjectFilename v -> Just v | _ -> Nothing end) args
+  |>
+
 let _ =
-  let args = match Missing_pervasives.argv with
+  let argv = match Missing_pervasives.argv with
     | _::args -> args
     | _ -> []
   end in
-  let (core_filepath, maybe_root_path, maybe_object_filename) = match args with
-    | [core_filepath] -> (core_filepath, Nothing, Nothing)
-    | [core_filepath; root_path] -> (core_filepath, Just root_path, Nothing)
-    | [core_filepath; root_path; object_filename] -> (core_filepath, Just root_path, Just object_filename)
-    | _ -> Assert_extra.failwith "usage: main_load <core-file> [root] [object-filename]"
-  end in
-  match process_file core_filepath maybe_root_path maybe_object_filename with
+  let args = collect_args (parse_args argv) in
+  match process_file args with
     | Fail err -> failwith err
     | Success () -> Missing_pervasives.errln "OK: ALL GREEN"
   end
