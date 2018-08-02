@@ -577,11 +577,18 @@ let rec apply_mips64_local_got_relocations endian img base got_entry_addr local_
 
 let rec apply_mips64_global_got_relocations' abi f img dynsyms syms dynsym_scnidx maybe_versym_table base got_entry_addr (symtabno : natural) =
   if symtabno = 0 then (img, got_entry_addr) else
+  let endian = get_elf64_header_endianness f.elf64_file_header in
   match syms with
     | (sym_name, sym_entry, scnidx, symidx) :: syms ->
+      let ra_info = elf64_xword_of_natural Abi_mips64_relocation.r_mips_jump_slot in
+      let ra_info = match endian with
+        | Little -> elf64_xword_lshift ra_info 56
+        | Big -> ra_info
+      end in
+
       let reloc = <|
         elf64_ra_offset = elf64_addr_of_natural (got_entry_addr - base);
-        elf64_ra_info = elf64_xword_lshift (elf64_xword_of_natural Abi_mips64_relocation.r_mips_jump_slot) 56;
+        elf64_ra_info = ra_info;
         elf64_ra_addend = elf64_sxword_of_integer 0
       |> in
 
