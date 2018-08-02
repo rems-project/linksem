@@ -1147,8 +1147,9 @@ let rec check_object ldconfig_paths core_file core_img is_loaded root_path mmap_
       let _ = Missing_pervasives.errln ("Applying relocations in " ^ object_filename) in
       let object_img = apply_all_relocations object_file object_img object_delta linkmap.linkmap_dynsyms dynsym_scnidx maybe_versym_table in
       let object_img =
-        if Abi_mips64.header_is_mips64 object_file.elf64_file_header &&
-            has_dynamic_section object_file then
+        if (Abi_mips64.header_is_mips64 object_file.elf64_file_header
+              || Abi_cheri_mips64.header_is_cheri_mips64 object_file.elf64_file_header)
+            && has_dynamic_section object_file then
           apply_mips64_got_relocations object_file object_img linkmap.linkmap_dynsyms object_delta dyns dynsym_scnidx maybe_versym_table
         else if Abi_amd64.header_is_amd64 object_file.elf64_file_header &&
             has_dynamic_section object_file then
