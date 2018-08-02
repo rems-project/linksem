@@ -1375,7 +1375,7 @@ let sysv_cheri_mips64_std_abi = <|
     ; generate_support = (* fun _ -> *) fun _ -> get_empty_memory_image ()
     ; concretise_support = fun img -> img
     ; get_reloc_symaddr = default_get_reloc_symaddr
-    ; parse_reloc_info = abi_mips_parse_elf64_relocation_info (* TODO *)
+    ; parse_reloc_info = parse_elf64_relocation_info
     |>
 
 val all_abis : list (abi any_abi_feature)
