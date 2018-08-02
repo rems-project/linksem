@@ -45,6 +45,7 @@ open import Abi_mips64_relocation
 open import Abi_amd64
 open import Abi_amd64_relocation
 
+open import Abi_cheri_mips64
 
 let get_file_abi f =
   let guessed_abi = List.find (fun abi ->
@@ -798,7 +799,8 @@ let read_dynamic bs f =
   let os_dyn = gnu_ext_elf64_value_of_elf64_dyn in
   (* TODO: do not hardcode these *)
   let (proc, proc_dyn) =
-    if Abi_mips64.header_is_mips64 f.elf64_file_header then
+    if Abi_mips64.header_is_mips64 f.elf64_file_header ||
+        Abi_cheri_mips64.header_is_cheri_mips64 f.elf64_file_header then
       (
         Abi_mips64_dynamic.abi_mips64_tag_correspondence_of_tag,
         Abi_mips64_dynamic.abi_mips64_elf64_value_of_elf64_dyn
