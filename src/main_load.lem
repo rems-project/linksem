@@ -435,8 +435,9 @@ let is_unsupported_relocation_type f rel_type =
   if Abi_amd64.header_is_amd64 f.elf64_file_header then
     rel_type = r_x86_64_irelative || rel_type = r_x86_64_tpoff64
       || rel_type = r_x86_64_dtpoff64 || rel_type = r_x86_64_dtpmod64
-  else if Abi_mips64.header_is_mips64 f.elf64_file_header then
-    rel_type = r_mips_tls_tprel64
+  else if Abi_mips64.header_is_mips64 f.elf64_file_header
+      || Abi_cheri_mips64.header_is_cheri_mips64 f.elf64_file_header then
+    rel_type = r_mips_tls_tprel64 || rel_type = r_mips_tls_dtpmod64
   else
     false
 
