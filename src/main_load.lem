@@ -806,7 +806,7 @@ let read_dynamic bs f =
     else
       (* These are no-ops *)
       (
-        (fun _ -> Error.fail "tag_correspondence_of_tag: unknown tag"),
+        (fun tag -> Error.fail ("tag_correspondence_of_tag: unknown tag 0x" ^ (hex_string_of_natural tag))),
         (fun _ _ -> Error.fail "elf64_value_of_elf64_dyn: unknown tag")
       )
   in

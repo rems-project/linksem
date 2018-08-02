@@ -38,6 +38,9 @@ open import Abi_mips64
 open import Abi_mips64_elf_header
 open import Abi_mips64_relocation
 
+open import Abi_cheri_mips64
+open import Abi_cheri_mips64_elf_header
+
 open import Gnu_ext_abi
 
 open import Abi_classes
@@ -1334,7 +1337,7 @@ let sysv_aarch64_le_std_abi =
 val sysv_mips64_std_abi : abi any_abi_feature
 let sysv_mips64_std_abi = <|
       is_valid_elf_header = header_is_mips64
-    ; make_elf_header = make_elf64_header elf_data_2lsb elf_osabi_none 0 elf_ma_mips
+    ; make_elf_header = make_elf64_header abi_mips64_data_encoding elf_osabi_none 0 elf_ma_mips
     ; reloc = mips64_reloc
     ; section_is_special = elf_section_is_special
     ; section_is_large = (fun s -> (fun f -> false))
@@ -1353,5 +1356,33 @@ let sysv_mips64_std_abi = <|
     ; parse_reloc_info = abi_mips_parse_elf64_relocation_info
     |>
 
+val sysv_cheri_mips64_std_abi : abi any_abi_feature
+let sysv_cheri_mips64_std_abi = <|
+      is_valid_elf_header = header_is_cheri_mips64
+    ; make_elf_header = make_elf64_header abi_cheri_mips64_data_encoding elf_osabi_none 0 elf_ma_mips
+    ; reloc = mips64_reloc (* TODO *)
+    ; section_is_special = elf_section_is_special
+    ; section_is_large = (fun s -> (fun f -> false))
+    ; maxpagesize = abi_cheri_mips64_page_size_max
+    ; minpagesize = abi_cheri_mips64_page_size_min
+    ; commonpagesize = 4096
+    ; symbol_is_generated_by_linker = (fun symname -> symname = "_GLOBAL_OFFSET_TABLE_")
+    ; make_phdrs = make_default_phdrs
+    ; max_phnum = 2
+    ; guess_entry_point = find_start_symbol_address (* TODO: on MIPS it's __start, not _start *)
+    ; pad_data = pad_zeroes
+    ; pad_code = pad_zeroes
+    ; generate_support = (* fun _ -> *) fun _ -> get_empty_memory_image ()
+    ; concretise_support = fun img -> img
+    ; get_reloc_symaddr = default_get_reloc_symaddr
+    ; parse_reloc_info = abi_mips_parse_elf64_relocation_info (* TODO *)
+    |>
+
 val all_abis : list (abi any_abi_feature)
-let all_abis = [sysv_amd64_std_abi; sysv_aarch64_le_std_abi; sysv_mips64_std_abi; null_abi]
+let all_abis = [
+  sysv_amd64_std_abi;
+  sysv_aarch64_le_std_abi;
+  sysv_mips64_std_abi;
+  sysv_cheri_mips64_std_abi;
+  null_abi
+]

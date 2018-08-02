@@ -1,0 +1,7 @@
+open import Num
+
+(* Relocation types *)
+
+let r_mips_cheri_absptr : natural = 70
+let r_mips_cheri_size : natural = 71
+let r_mips_cheri_capability : natural = 90
