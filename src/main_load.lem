@@ -37,6 +37,7 @@ open import Harness_interface
 open import Ldconfig
 open import Memory_image
 open import Missing_pervasives
+open import Endianness
 
 open import Abi_mips64
 open import Abi_mips64_dynamic
@@ -441,6 +442,7 @@ let is_unsupported_relocation_type f rel_type =
 
 val apply_relocation : forall 'abifeature. abi 'abifeature -> elf64_file -> annotated_memory_image 'abifeature -> natural -> elf64_relocation_a -> symbol_reference_and_reloc_site -> natural -> annotated_memory_image 'abifeature
 let apply_relocation abi f img base reloc symref_and_reloc_site sym_addr =
+  let endian = get_elf64_header_endianness f.elf64_file_header in
   let (rel_type, _) = abi.parse_reloc_info reloc.elf64_ra_info in
   let offset = natural_of_elf64_addr reloc.elf64_ra_offset in
   let addend = integer_of_elf64_sxword reloc.elf64_ra_addend in
@@ -469,11 +471,9 @@ let apply_relocation abi f img base reloc symref_and_reloc_site sym_addr =
       mask_memory_image img addr width
     else
       let existing_bytes = assert_unwrap_maybe (read_memory_image img addr width) in
-      (* TODO: don't hardcode little endian *)
-      let existing_value = Memory_image.natural_of_le_byte_list existing_bytes in
+      let existing_value = Memory_image.natural_of_byte_list endian existing_bytes in
       let new_value = calcfn sym_addr addend existing_value in
-      (* TODO: don't hardcode little endian *)
-      let field_bytes = Memory_image.natural_to_le_byte_list_padded_to width new_value in
+      let field_bytes = Memory_image.natural_to_byte_list_padded_to endian width new_value in
       let field_bp = List.map (fun b -> Just b) field_bytes in
       let _ = Missing_pervasives.errln ("  Relocating `" ^ symref_and_reloc_site.ref.ref_symname ^ "` (existing=0x" ^ (hex_string_of_natural existing_value) ^ " addend=" ^ (show addend) ^ ") to 0x" ^ (hex_string_of_natural new_value) ^ " (symbol address 0x" ^ (hex_string_of_natural sym_addr) ^ ")") in
       write_memory_image img addr field_bp
@@ -560,21 +560,19 @@ let init_amd64_pltgot img base dyns =
 
 let mips64_address_size : natural = 8
 
-val apply_mips64_local_got_relocations : forall 'abifeature. annotated_memory_image 'abifeature -> natural -> natural -> natural -> (annotated_memory_image 'abifeature * natural)
-let rec apply_mips64_local_got_relocations img base got_entry_addr local_gotno =
+val apply_mips64_local_got_relocations : forall 'abifeature. endianness -> annotated_memory_image 'abifeature -> natural -> natural -> natural -> (annotated_memory_image 'abifeature * natural)
+let rec apply_mips64_local_got_relocations endian img base got_entry_addr local_gotno =
   if local_gotno = 0 then (img, got_entry_addr) else
   let _ = Missing_pervasives.errln ("MIPS local .got relocation at 0x" ^ (hex_string_of_natural got_entry_addr) ^ " (remaining: " ^ (show local_gotno) ^ ")") in
   let width = mips64_address_size in
   let existing_bytes = assert_unwrap_maybe (read_memory_image img got_entry_addr width) in
-  (* TODO: don't hardcode little endian *)
-  let existing_value = Memory_image.natural_of_le_byte_list existing_bytes in
+  let existing_value = Memory_image.natural_of_byte_list endian existing_bytes in
   let new_value = base + existing_value in
-  (* TODO: don't hardcode little endian *)
-  let field_bytes = Memory_image.natural_to_le_byte_list_padded_to width new_value in
+  let field_bytes = Memory_image.natural_to_byte_list_padded_to endian width new_value in
   let field_bp = List.map (fun b -> Just b) field_bytes in
   let _ = Missing_pervasives.errln ("  Relocating MIPS64 local .got entry from 0x" ^ (hex_string_of_natural existing_value) ^ " to 0x" ^ (hex_string_of_natural new_value)) in
   let img = write_memory_image img got_entry_addr field_bp in
-  apply_mips64_local_got_relocations img base (got_entry_addr + width) (local_gotno - 1)
+  apply_mips64_local_got_relocations endian img base (got_entry_addr + width) (local_gotno - 1)
 
 let rec apply_mips64_global_got_relocations' abi f img dynsyms syms dynsym_scnidx maybe_versym_table base got_entry_addr (symtabno : natural) =
   if symtabno = 0 then (img, got_entry_addr) else
@@ -661,7 +659,8 @@ let apply_mips64_got_relocations f img dynsyms base dyns dynsym_scnidx maybe_ver
       let local_gotno = local_gotno - reserved_num in
 
       let _ = Missing_pervasives.errln ("Applying " ^ (show local_gotno) ^ " MIPS64 local .got relocations") in
-      apply_mips64_local_got_relocations img base got_entry_addr local_gotno
+      let endian = get_elf64_header_endianness f.elf64_file_header in
+      apply_mips64_local_got_relocations endian img base got_entry_addr local_gotno
     | Nothing ->
       let _ = Missing_pervasives.errln "Not applying MIPS64 .got relocations: missing DT_LOCAL_GOTNO" in
       (img, got_addr)

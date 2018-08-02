@@ -26,6 +26,7 @@ open import Elf_section_header_table
 open import Elf_symbol_table
 open import Elf_types_native_uint
 open import Elf_relocation
+open import Endianness
 
 open import Missing_pervasives
 
@@ -629,11 +630,22 @@ val compute_virtual_address_adjustment : natural -> natural -> natural -> natura
 let compute_virtual_address_adjustment max_page_size offset vaddr =
   (vaddr - offset) mod max_page_size
 
-val natural_of_le_byte_list : list byte -> natural
-let natural_of_le_byte_list bytes =
+val natural_of_be_byte_list : list byte -> natural
+let natural_of_be_byte_list bytes =
   List.foldl (fun acc b ->
       acc * 256 + (natural_of_byte b)
-  ) 0 (List.reverse bytes)
+  ) 0 bytes
+
+val natural_of_le_byte_list : list byte -> natural
+let natural_of_le_byte_list bytes =
+  natural_of_be_byte_list (List.reverse bytes)
+
+val natural_of_byte_list : endianness -> list byte -> natural
+let natural_of_byte_list endian bytes =
+  match endian with
+    | Big -> natural_of_be_byte_list bytes
+    | Little -> natural_of_le_byte_list bytes
+  end
 
 val extract_natural_field : natural -> element -> natural -> natural
 let extract_natural_field width element offset =
@@ -649,11 +661,33 @@ val natural_to_le_byte_list : natural -> list byte
 let rec natural_to_le_byte_list n =
     (byte_of_natural (n mod 256)) :: (let d = n/256 in if d = 0 then [] else natural_to_le_byte_list (n / 256))
 
+val natural_to_be_byte_list : natural -> list byte
+let natural_to_be_byte_list n =
+    List.reverse (natural_to_le_byte_list n)
+
+val natural_to_byte_list : endianness -> natural -> list byte
+let natural_to_byte_list endian n =
+    match endian with
+      | Big -> natural_to_be_byte_list n
+      | Little -> natural_to_le_byte_list n
+    end
+
 val natural_to_le_byte_list_padded_to : natural -> natural -> list byte
 let rec natural_to_le_byte_list_padded_to width n =
     let bytes = natural_to_le_byte_list n
     in
     bytes ++ (replicate (width - length bytes) (byte_of_natural 0))
+
+val natural_to_be_byte_list_padded_to : natural -> natural -> list byte
+let natural_to_be_byte_list_padded_to width n =
+    List.reverse (natural_to_le_byte_list_padded_to width n)
+
+val natural_to_byte_list_padded_to : endianness -> natural -> natural -> list byte
+let natural_to_byte_list_padded_to endian width n =
+    match endian with
+      | Big -> natural_to_be_byte_list_padded_to width n
+      | Little -> natural_to_le_byte_list_padded_to width n
+    end
 
 val n2i : natural -> integer
 let n2i = integerFromNatural
