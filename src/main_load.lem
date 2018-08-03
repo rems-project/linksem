@@ -1147,12 +1147,12 @@ let rec check_object ldconfig_paths core_file core_img is_loaded root_path mmap_
             end
           ) dyn_dt_needed >>= fun sonames ->
           Error.mapM (fun soname ->
-            (* TODO: remove this hack. This probably just means keeping a list
-                   of loaded SONAME strings and check it's not already loaded now
-                   that we support INTERP segments. *)
+            (* TODO: remove this hack. *)
             let paths =
               if soname = "libc.so" && Abi_mips64.header_is_mips64 object_file.elf64_file_header && Missing_pervasives.string_contains object_filepath "musl" then
                 ["/lib/mips64el-linux-musl"]
+              else if header_is_pure_cheri_mips64 object_file.elf64_file_header then
+                ["/usr/libcheri"]
               else
                 ldconfig_paths
             in
