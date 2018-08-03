@@ -1,0 +1,74 @@
+open import Basic_classes
+open import Maybe
+open import Num
+open import String
+
+open import Error
+open import Missing_pervasives
+open import Show
+open import String_table
+
+open import Elf_dynamic
+open import Elf_types_native_uint
+
+open import Abi_mips64_dynamic
+
+let abi_cheri_dt___caprelocs : natural = natural_of_hex "0x7000c000" (** start of __cap_relocs section *)
+let abi_cheri_dt___caprelocssz : natural = natural_of_hex "0x7000c001" (** size of __cap_relocs section *)
+
+val string_of_abi_cheri_dynamic_tag : natural -> maybe string
+let string_of_abi_cheri_dynamic_tag m =
+  if m = abi_cheri_dt___caprelocs then
+    Just "CHERI___CAPRELOCS"
+  else if m = abi_cheri_dt___caprelocssz then
+    Just "CHERI___CAPRELOCSSZ"
+  else
+    Nothing
+
+val string_of_abi_cheri_mips64_dynamic_tag : natural -> string
+let string_of_abi_cheri_mips64_dynamic_tag m =
+  match string_of_abi_cheri_dynamic_tag m with
+    | Just s -> s
+    | Nothing -> string_of_abi_mips64_dynamic_tag m
+  end
+
+val abi_cheri_tag_correspondence_of_tag : natural -> error tag_correspondence
+let abi_cheri_tag_correspondence_of_tag m =
+  if m = abi_cheri_dt___caprelocs then
+    return C_Ptr
+  else if m = abi_cheri_dt___caprelocssz then
+    return C_Val
+  else
+    fail ("abi_cheri_tag_correspondence_of_tag: invalid CHERI dynamic tag 0x" ^ (hex_string_of_natural m))
+
+val abi_cheri_mips64_tag_correspondence_of_tag : natural -> error tag_correspondence
+let abi_cheri_mips64_tag_correspondence_of_tag m =
+  match abi_cheri_tag_correspondence_of_tag m with
+    | Success v -> return v
+    | Fail _ -> abi_mips64_tag_correspondence_of_tag m
+  end
+
+val abi_cheri_elf64_value_of_elf64_dyn : elf64_dyn -> string_table -> error elf64_dyn_value
+let abi_cheri_elf64_value_of_elf64_dyn dyn stbl =
+  let tag = naturalFromInteger (integer_of_elf64_sxword dyn.elf64_dyn_tag) in
+  if tag = abi_cheri_dt___caprelocs then
+    match dyn.elf64_dyn_d_un with
+      | D_Ptr v -> return v
+      | _ -> fail "abi_cheri_elf64_value_of_elf64_dyn: __CAPRELOCS must be a PTR"
+    end >>= fun v ->
+    return (Address v)
+  else if tag = abi_cheri_dt___caprelocssz then
+    match dyn.elf64_dyn_d_un with
+      | D_Val v -> return v
+      | _ -> fail "abi_cheri_elf64_value_of_elf64_dyn: __CAPSRELOCSSZ must be a Val"
+    end >>= fun v ->
+    return (Numeric (natural_of_elf64_xword v))
+  else
+    fail ("abi_cheri_elf64_value_of_elf64_dyn: invalid CHERI dynamic tag 0x" ^ (hex_string_of_natural tag))
+
+val abi_cheri_mips64_elf64_value_of_elf64_dyn : elf64_dyn -> string_table -> error elf64_dyn_value
+let abi_cheri_mips64_elf64_value_of_elf64_dyn dyn stbl =
+  match abi_cheri_elf64_value_of_elf64_dyn dyn stbl with
+    | Success v -> return v
+    | Fail _ -> abi_mips64_elf64_value_of_elf64_dyn dyn stbl
+  end
