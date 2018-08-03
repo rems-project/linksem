@@ -1,7 +1,43 @@
+open import Basic_classes
+open import String
 open import Num
+
+open import Elf_file
+open import Elf_header
+open import Elf_relocation
+open import Elf_symbol_table
+open import Elf_types_native_uint
+open import Memory_image
+
+open import Abi_mips64_relocation
 
 (* Relocation types *)
 
 let r_mips_cheri_absptr : natural = 70
 let r_mips_cheri_size : natural = 71
 let r_mips_cheri_capability : natural = 90
+
+val string_of_cheri_mips_relocation_subtype : natural -> string
+let string_of_cheri_mips_relocation_subtype rel_type =
+  if rel_type = r_mips_cheri_absptr then
+    "R_MIPS_CHERI_ABSPTR"
+  else if rel_type = r_mips_cheri_absptr then
+    "R_MIPS_CHERI_SIZE"
+  else if rel_type = r_mips_cheri_capability then
+    "R_MIPS_CHERI_CAPABILITY"
+  else
+    string_of_mips64_relocation_subtype rel_type
+
+val string_of_cheri_mips64_relocation_type : natural -> string
+let string_of_cheri_mips64_relocation_type rel_type =
+  let (type1, type2, type3) = get_mips64_relocation_subtypes rel_type in
+  (string_of_cheri_mips_relocation_subtype type1)
+    ^ "/" ^ (string_of_cheri_mips_relocation_subtype type2)
+    ^ "/" ^ (string_of_cheri_mips_relocation_subtype type3)
+
+val cheri_mips64_reloc : forall 'abifeature. reloc_fn 'abifeature
+let cheri_mips64_reloc r =
+  match (string_of_cheri_mips64_relocation_type r) with
+    | "R_MIPS_CHERI_CAPABILITY/R_MIPS_NONE/R_MIPS_NONE" -> (false, fun img -> (fun site_addr -> (fun rr -> (32 (* TODO: this is only for CHERI256 *), fun s -> fun a -> fun ea -> failwith "cheri_mips64_reloc: unimplemented R_MIPS_CHERI_CAPABILITY"))))
+    | _ -> mips64_reloc r
+  end

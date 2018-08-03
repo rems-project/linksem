@@ -40,6 +40,7 @@ open import Abi_mips64_relocation
 
 open import Abi_cheri_mips64
 open import Abi_cheri_mips64_elf_header
+open import Abi_cheri_mips64_relocation
 
 open import Gnu_ext_abi
 
@@ -1360,7 +1361,7 @@ val sysv_cheri_mips64_std_abi : abi any_abi_feature
 let sysv_cheri_mips64_std_abi = <|
       is_valid_elf_header = header_is_cheri_mips64
     ; make_elf_header = make_elf64_header abi_cheri_mips64_data_encoding elf_osabi_none 0 elf_ma_mips
-    ; reloc = mips64_reloc (* TODO *)
+    ; reloc = cheri_mips64_reloc
     ; section_is_special = elf_section_is_special
     ; section_is_large = (fun s -> (fun f -> false))
     ; maxpagesize = abi_cheri_mips64_page_size_max
