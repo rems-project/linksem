@@ -592,8 +592,8 @@ let get_mmap_entry_at mmap_table addr =
     | _ -> failwith ("get_mmap_entry_at: multiple mmap entries found at 0x" ^ (hex_string_of_natural addr))
   end
 
-let read_nt_auxv_value endian note_segs auxv_type =
-  Error.foldM (fun value note_seg ->
+let read_all_elf64_nt_auxv endian note_segs =
+  Error.foldM (fun auxv_list note_seg ->
     let note_name = name_string_of_elf64_note note_seg in
     let note_type = natural_of_elf64_word note_seg.elf64_note_type in
     if (note_name = "CORE" && note_type = nt_auxv)
@@ -605,17 +605,8 @@ let read_nt_auxv_value endian note_segs auxv_type =
         return bs
       in
       bs_res >>= fun bs ->
-      Auxv.read_all_elf64_auxv endian bs >>= fun note_auxv_list ->
-      Error.foldM (fun value auxv ->
-        if (natural_of_elf64_xword auxv.elf64_auxv_type) = auxv_type then
-          let v = natural_of_elf64_xword auxv.elf64_auxv_value in
-          match value with
-            | Nothing -> return (Just v)
-            | Just _ -> Error.fail ("read_nt_auxv_value: duplicate value for type " ^ (show auxv_type))
-          end
-        else
-          return value
-      ) value note_auxv_list
+      Auxv.read_all_elf64_auxv endian bs >>= fun l ->
+      return (auxv_list ++ l)
     else
-      return value
-  ) Nothing note_segs
+      return auxv_list
+  ) [] note_segs

@@ -1,6 +1,9 @@
 open import Basic_classes
 open import List
+open import Maybe
 open import Num
+open import Show
+open import String
 
 open import Byte_sequence
 open import Endianness
@@ -8,9 +11,6 @@ open import Error
 open import Missing_pervasives
 
 open import Elf_types_native_uint
-
-open import String
-open import Show
 
 (* Legal values for auxiliary vector entry types. *)
 
@@ -89,3 +89,15 @@ let rec read_all_elf64_auxv endian bs =
     else
       read_all_elf64_auxv endian bs >>= fun (next) ->
       return (av :: next)
+
+val find_elf64_auxv_value : list elf64_auxv -> natural -> error (maybe natural)
+let find_elf64_auxv_value auxv_list auxv_type =
+  Error.foldM (fun value auxv ->
+    if (natural_of_elf64_xword auxv.elf64_auxv_type) = auxv_type then
+      match value with
+        | Nothing -> return (Just (natural_of_elf64_xword auxv.elf64_auxv_value))
+        | Just _ -> Error.fail ("find_elf64_auxv_value: duplicate value for type " ^ (show auxv_type))
+      end
+    else
+      return value
+  ) Nothing auxv_list

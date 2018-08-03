@@ -116,9 +116,9 @@ let get_load_segment_byte_sequence_at f addr =
   get_load_segment_at f addr >>= fun seg ->
   Byte_sequence.dropbytes (addr - seg.elf64_segment_base) seg.elf64_segment_body
 
-let read_nt_auxv_execfn endian note_segs f =
-  read_nt_auxv_value endian note_segs Auxv.at_execfn >>= fun addr ->
-  match addr with
+let read_nt_auxv_execfn endian auxv f =
+  Auxv.find_elf64_auxv_value auxv Auxv.at_execfn >>= fun maybe_addr ->
+  match maybe_addr with
     | Just addr ->
       get_load_segment_byte_sequence_at f addr >>= fun value_bs ->
       Elf_note.read_string value_bs >>= fun (s, _) ->
@@ -1225,7 +1225,15 @@ let process_file args =
   read_mmap_table endian note_segs >>= fun mmap_table ->
   if List.null mmap_table then Error.fail ("process_file: mmap table of core file `" ^ core_filepath ^ "` is empty") else
 
-  read_nt_auxv_execfn endian note_segs core_file >>= fun maybe_execfn ->
+  (
+    if header_is_pure_cheri_mips64 core_file.elf64_file_header then
+      return [] (* TODO: pure CHERI auxv contains capabilities *)
+    else
+      let _ = Missing_pervasives.errln "Reading auxiliary vector" in
+      read_all_elf64_nt_auxv endian note_segs
+  ) >>= fun auxv ->
+
+  read_nt_auxv_execfn endian auxv core_file >>= fun maybe_execfn ->
   read_nt_procstat_psstrings_argv0 endian note_segs core_file >>= fun maybe_psstrings_argv0 ->
   let maybe_detected_object_filename = match maybe_execfn with
     | Just _ -> maybe_execfn

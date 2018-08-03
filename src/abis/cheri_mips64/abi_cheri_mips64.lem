@@ -16,3 +16,8 @@ let header_is_cheri_mips64 h =
     && is_valid_abi_cheri_mips64_machine_architecture (natural_of_elf64_half h.elf64_machine)
     && is_valid_abi_cheri_mips64_magic_number h.elf64_ident
     && is_valid_abi_cheri256_mips64_flag (natural_of_elf64_word h.elf64_flags)
+
+val header_is_pure_cheri_mips64 : elf64_header -> bool
+let header_is_pure_cheri_mips64 h =
+  header_is_cheri_mips64 h
+    && is_pure_abi_cheri_mips64_flag (natural_of_elf64_word h.elf64_flags)

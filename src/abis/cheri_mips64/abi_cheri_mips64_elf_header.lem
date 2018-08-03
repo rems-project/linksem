@@ -50,6 +50,10 @@ let is_valid_abi_cheri_mips64_magic_number magic =
       end
   end
 
+val is_pure_abi_cheri_mips64_flag : natural -> bool
+let is_pure_abi_cheri_mips64_flag flags =
+  natural_land flags ef_mips_abi_cheriabi <> 0
+
 val is_valid_abi_cheri256_mips64_flag : natural -> bool
 let is_valid_abi_cheri256_mips64_flag flags =
   natural_land flags ef_mips_mach_cheri256 <> 0
