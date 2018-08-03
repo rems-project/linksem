@@ -127,6 +127,8 @@ let read_nt_auxv_execfn endian auxv f =
   end
 
 let read_nt_procstat_psstrings_argv0 endian note_segs f =
+  (* TODO: parse PSSTRINGS on pure CHERI ABIs *)
+  if header_is_pure_cheri_mips64 f.elf64_file_header then return Nothing else
   Error.foldM (fun value note_seg ->
     let note_name = name_string_of_elf64_note note_seg in
     let note_type = natural_of_elf64_word note_seg.elf64_note_type in
