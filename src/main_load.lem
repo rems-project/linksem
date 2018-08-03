@@ -399,14 +399,26 @@ type dynamic_symbol = <|
 |>
 
 let find_sym syms name version =
+  (* TODO: index symbols by name to speed up lookups *)
   let matches = List.filter (fun sym -> sym.dynamic_symbol_name = name) syms in
   let version_matches = List.filter (fun sym -> sym.dynamic_symbol_version = version) matches in
   match version_matches with
     | [] ->
       match version with
         | Just _ ->
-          (* Reference requested a specific version, we don't have it *)
-          Nothing
+          (* Reference requested a specific version, accept only if the
+             definition doesn't use symbol versioning. *)
+          match matches with
+            | [sym] ->
+              (* TODO: check the reference doesn't come from the same file as
+                 this symbol (if it's the case, fatal error). *)
+              (* Make sure the definition doesn't use symbol versioning *)
+              match sym.dynamic_symbol_version with
+                | Just _ -> Nothing
+                | Nothing -> Just sym
+              end
+            | _ -> Nothing
+          end
         | Nothing ->
           (* Reference without version *)
           match matches with
@@ -859,7 +871,7 @@ let extract_dynsyms f base existing_syms symtab_scnidx maybe_versym_table =
       && natural_of_elf64_half sym_entry.elf64_st_shndx <> 0
   ) syms in
   let syms = List.map (fun (sym_name, sym_entry, scnidx, symidx) ->
-    let _ = Missing_pervasives.errln ("Library exports dynamic symbol: " ^ sym_name) in
+    (* let _ = Missing_pervasives.errln ("Library exports dynamic symbol: " ^ sym_name) in *)
     let sym_value = base + natural_of_elf64_addr sym_entry.elf64_st_value in
     let sym = <|
       dynamic_symbol_name = sym_name;
@@ -895,6 +907,7 @@ let extract_dynsyms f base existing_syms symtab_scnidx maybe_versym_table =
       return syms
   end >>= fun syms ->
 
+  (* Filter out symbols that are ignored because already defined in another object *)
   let syms = List.foldl (fun syms sym ->
     let sym_name = sym.dynamic_symbol_name in
     let sym_entry = sym.dynamic_symbol_entry in
@@ -902,11 +915,14 @@ let extract_dynsyms f base existing_syms symtab_scnidx maybe_versym_table =
     let sym_version = sym.dynamic_symbol_version in
     let sym_binding = get_elf64_symbol_binding sym_entry in
     let _ = Missing_pervasives.errln ("Processing symbol `" ^ sym_name ^ "`, 0x" ^ (hex_string_of_natural sym_addr) ^ ", binding=" ^ (show sym_binding) ^ ", version=" ^ (show sym_version)) in
-    let maybe_existing = List.find (fun sym -> sym.dynamic_symbol_name = sym_name && sym.dynamic_symbol_version = sym_version) existing_syms in
+    (* Check if this symbol has already been defined in another object. Only
+       check the symbol name, we don't care about the version here. *)
+    let maybe_existing = find_sym existing_syms sym_name Nothing in
     match maybe_existing with
       | Just existing ->
         let existing_entry = existing.dynamic_symbol_entry in
         let existing_addr = existing.dynamic_symbol_value in
+        let existing_version = existing.dynamic_symbol_version in
         if get_elf64_symbol_binding existing_entry = Elf_symbol_table.stb_weak && sym_binding <> Elf_symbol_table.stb_weak then
           (* Existing symbol is weak and the new one isn't, replace it *)
           let _ = Missing_pervasives.errln ("Overriding weak symbol `" ^ sym_name ^ "`, 0x" ^ (hex_string_of_natural existing_addr) ^ " -> 0x" ^ (hex_string_of_natural sym_addr)) in
@@ -915,6 +931,10 @@ let extract_dynsyms f base existing_syms symtab_scnidx maybe_versym_table =
           (* Existing symbol has an undefined ndx and the new one has a defined one, replace it *)
           (* TODO: why is this the right thing to do? *)
           let _ = Missing_pervasives.errln ("Overriding symbol with undefined ndx `" ^ sym_name ^ "`, 0x" ^ (hex_string_of_natural existing_addr) ^ " -> 0x" ^ (hex_string_of_natural sym_addr)) in
+          sym :: syms
+        else if existing_version <> Nothing && sym_version <> Nothing && sym_version <> existing_version then
+          (* Existing symbol has a version, and this symbol has a different version: keep both *)
+          let _ = Missing_pervasives.errln ("Adding new version `" ^ (show sym_version) ^ "` of symbol `" ^ sym_name ^ "` (already have: `" ^ (show existing_version) ^ "`)") in
           sym :: syms
         else
           let _ = Missing_pervasives.errln ("Multiple definitions of `" ^ sym_name ^ "` version " ^ (show sym_version) ^ ", only keeping the first one") in
