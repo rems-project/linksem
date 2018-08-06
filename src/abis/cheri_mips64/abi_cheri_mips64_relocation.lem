@@ -1,13 +1,17 @@
-open import Basic_classes
-open import String
-open import Num
 open import Assert_extra
+open import Basic_classes
+open import Num
+open import String
+open import List
 
+open import Byte_sequence
 open import Elf_file
 open import Elf_header
 open import Elf_relocation
 open import Elf_symbol_table
 open import Elf_types_native_uint
+open import Endianness
+open import Error
 open import Memory_image
 
 open import Abi_mips64_relocation
@@ -42,3 +46,32 @@ let cheri_mips64_reloc r =
     | "R_MIPS_CHERI_CAPABILITY/R_MIPS_NONE/R_MIPS_NONE" -> (false, fun img -> (fun site_addr -> (fun rr -> (32 (* TODO: this is only for CHERI256 *), fun s -> fun a -> fun ea -> Assert_extra.failwith "cheri_mips64_reloc: unimplemented R_MIPS_CHERI_CAPABILITY"))))
     | _ -> mips64_reloc r
   end
+
+
+(* CHERI __cap_relocs section *)
+
+type cheri_mips64_cap_reloc = <|
+  cheri_mips64_cap_reloc_location : elf64_xword;
+  cheri_mips64_cap_reloc_object : elf64_xword;
+  cheri_mips64_cap_reloc_offset : elf64_xword;
+  cheri_mips64_cap_reloc_size : elf64_xword;
+  cheri_mips64_cap_reloc_permissions : elf64_xword
+|>
+
+val read_cheri_mips64_cap_relocs : endianness -> byte_sequence -> error (list cheri_mips64_cap_reloc)
+let rec read_cheri_mips64_cap_relocs endian bs =
+  if Byte_sequence.length bs = 0 then return [] else
+  read_elf64_xword endian bs >>= fun (location, bs) ->
+  read_elf64_xword endian bs >>= fun (obj, bs) ->
+  read_elf64_xword endian bs >>= fun (offset, bs) ->
+  read_elf64_xword endian bs >>= fun (size, bs) ->
+  read_elf64_xword endian bs >>= fun (permissions, bs) ->
+  let cap_reloc = <|
+    cheri_mips64_cap_reloc_location = location;
+    cheri_mips64_cap_reloc_object = obj;
+    cheri_mips64_cap_reloc_offset = offset;
+    cheri_mips64_cap_reloc_size = size;
+    cheri_mips64_cap_reloc_permissions = permissions
+  |> in
+  read_cheri_mips64_cap_relocs endian bs >>= fun next ->
+  return (cap_reloc :: next)
