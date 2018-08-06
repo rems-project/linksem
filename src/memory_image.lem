@@ -755,6 +755,11 @@ let read_memory_image img start len =
       maybe_field
   ) Nothing elements
 
+val read_memory_image_byte_sequence : forall 'abifeature. annotated_memory_image 'abifeature -> natural -> natural -> maybe byte_sequence
+let read_memory_image_byte_sequence img start len =
+  let maybe_bl = read_memory_image img start len in
+  Maybe.map byte_sequence_of_byte_list maybe_bl
+
 val write_memory_image : forall 'abifeature. annotated_memory_image 'abifeature -> natural -> byte_pattern -> annotated_memory_image 'abifeature
 let write_memory_image img start bp =
   if bp = [] then img else

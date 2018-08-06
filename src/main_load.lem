@@ -716,12 +716,13 @@ let apply_mips64_got_relocations f img dynsyms base dyns dynsym_scnidx maybe_ver
 
   img
 
-let apply_cheri_mips64_cap_relocations f img dyns =
+(* This function must be called after normal relocs have been applied *)
+let apply_cheri_mips64_cap_relocations f img base dyns =
   let maybe_cap_relocs = List.find (fun (tag, _) ->
     tag = Abi_cheri_mips64_dynamic.abi_cheri_dt___caprelocs
   ) dyns in
   let cap_relocs_addr = match maybe_cap_relocs with
-    | Just (_, Address cap_relocs_addr) -> cap_relocs_addr
+    | Just (_, Address cap_relocs_addr) -> natural_of_elf64_addr cap_relocs_addr
     | Nothing -> failwith "apply_cheri_mips64_cap_relocations: missing DT_CHERI___CAPRELOCS in .dynamic"
   end in
   let maybe_cap_relocssz = List.find (fun (tag, _) ->
@@ -732,25 +733,19 @@ let apply_cheri_mips64_cap_relocations f img dyns =
     | Nothing -> failwith "apply_cheri_mips64_cap_relocations: missing DT_CHERI___CAPRELOCSSZ in .dynamic"
   end in
 
-  let cap_relocs_addr = natural_of_elf64_addr cap_relocs_addr in
-  let maybe_cap_relocs = List.find (fun scn ->
-    scn.elf64_section_addr = cap_relocs_addr
-  ) f.elf64_file_interpreted_sections in
-  let cap_relocs_scn = match maybe_cap_relocs with
-    | Just cap_relocs_scn -> cap_relocs_scn
-    | Nothing -> failwith "apply_cheri_mips64_cap_relocations: DT_CHERI___CAPRELOCS doesn't reference a section"
+  (* We need to read our memory image because some relocations have been applied
+     to the __cap_relocs section. *)
+  let cap_relocs_bs = match read_memory_image_byte_sequence img (base + cap_relocs_addr) cap_relocssz with
+    | Just bs -> bs
+    | Nothing -> failwith "apply_cheri_mips64_cap_relocations: cannot dereference DT_CHERI___CAPRELOCS"
   end in
 
-  if Byte_sequence.length cap_relocs_scn.elf64_section_body <> cap_relocssz then
-    failwith "apply_cheri_mips64_cap_relocations: DT_CHERI___CAPRELOCSSZ doesn't match section length"
-  else
-
   let endian = get_elf64_header_endianness f.elf64_file_header in
-  let cap_relocs = match read_cheri_mips64_cap_relocs endian cap_relocs_scn.elf64_section_body with
+  let cap_relocs = match read_cheri_mips64_cap_relocs endian cap_relocs_bs with
     | Success cap_relocs -> cap_relocs
     | Fail errmsg -> failwith errmsg
   end in
-  let _ = Missing_pervasives.errln "__CAPRELOCS:" in
+  let _ = Missing_pervasives.errln "__cap_relocs:" in
   let _ = List.map (fun reloc ->
     Missing_pervasives.errln (
       "  loc=0x" ^ (hex_string_of_natural (natural_of_elf64_xword reloc.cheri_mips64_cap_reloc_location))
@@ -1241,7 +1236,7 @@ let rec check_object ldconfig_paths core_file core_img is_loaded root_path mmap_
       in
       let object_img =
         if Abi_cheri_mips64.header_is_cheri_mips64 object_file.elf64_file_header then
-          apply_cheri_mips64_cap_relocations object_file object_img dyns
+          apply_cheri_mips64_cap_relocations object_file object_img object_delta dyns
         else
           object_img
       in
