@@ -458,8 +458,8 @@ let is_unsupported_relocation_type f rel_type =
   else
     false
 
-val apply_relocation : forall 'abifeature. abi 'abifeature -> elf64_file -> annotated_memory_image 'abifeature -> natural -> elf64_relocation_a -> symbol_reference_and_reloc_site -> maybe natural -> annotated_memory_image 'abifeature
-let apply_relocation abi f img base reloc symref_and_reloc_site maybe_sym_addr =
+val apply_relocation : forall 'abifeature. abi 'abifeature -> elf64_file -> annotated_memory_image 'abifeature -> natural -> elf64_relocation_a -> symbol_reference_and_reloc_site -> maybe natural -> bool -> annotated_memory_image 'abifeature
+let apply_relocation abi f img base reloc symref_and_reloc_site maybe_sym_addr ignore_data_sections =
   let endian = get_elf64_header_endianness f.elf64_file_header in
   let (rel_type, _) = abi.parse_reloc_info reloc.elf64_ra_info in
   let offset = natural_of_elf64_addr reloc.elf64_ra_offset in
@@ -476,10 +476,15 @@ let apply_relocation abi f img base reloc symref_and_reloc_site maybe_sym_addr =
     img
   else
 
-  let is_in_data_section = match get_section_at_addr f offset with
-    | Just sec -> is_data_section sec
-    | Nothing -> false
-  end in
+  let is_in_data_section =
+    if ignore_data_sections then
+      false
+    else
+      match get_section_at_addr f offset with
+        | Just sec -> is_data_section sec
+        | Nothing -> false
+      end
+  in
   if is_in_data_section then
     let _ = Missing_pervasives.errln "  Relocation inside a data section, ignoring" in
     img
@@ -529,7 +534,7 @@ let get_sym_ref_version dynsym_scnidx maybe_versym_table sym_name sym_scn sym_id
       Nothing
   end
 
-let apply_all_relocations f img base syms dynsym_scnidx maybe_versym_table =
+let apply_all_relocations f img base syms dynsym_scnidx maybe_versym_table ignore_data_sections =
   let abi = get_file_abi f in
   let symbol_refs_and_reloc_sites = extract_all_relocs_as_symbol_references abi f in
   (* let tags_and_ranges = Multimap.lookupBy Memory_image_orderings.tagEquiv (SymbolRef(null_symbol_reference_and_reloc_site)) img.by_tag in *)
@@ -565,7 +570,7 @@ let apply_all_relocations f img base syms dynsym_scnidx maybe_versym_table =
         Just 0 (* This isn't pretty, but doing something else would be complicated *)
     end in
 
-    apply_relocation abi f img base reloc_site.ref_relent symref_and_reloc_site maybe_sym_addr
+    apply_relocation abi f img base reloc_site.ref_relent symref_and_reloc_site maybe_sym_addr ignore_data_sections
   (* ) tags_and_ranges in *)
   ) img symbol_refs_and_reloc_sites
 
@@ -607,7 +612,7 @@ let rec apply_mips64_local_got_relocations endian img base got_entry_addr local_
   let img = write_memory_image img got_entry_addr field_bp in
   apply_mips64_local_got_relocations endian img base (got_entry_addr + width) (local_gotno - 1)
 
-let rec apply_mips64_global_got_relocations' abi f img dynsyms syms dynsym_scnidx maybe_versym_table base got_entry_addr (symtabno : natural) =
+let rec apply_mips64_global_got_relocations' abi f img dynsyms syms dynsym_scnidx maybe_versym_table base got_entry_addr (symtabno : natural) ignore_data_sections =
   if symtabno = 0 then (img, got_entry_addr) else
   let endian = get_elf64_header_endianness f.elf64_file_header in
   match syms with
@@ -649,13 +654,13 @@ let rec apply_mips64_global_got_relocations' abi f img dynsyms syms dynsym_scnid
 
       (* let sym_addr = base + natural_of_elf64_addr sym_entry.elf64_st_value in *)
       let symref_and_reloc_site = null_symbol_reference_and_reloc_site in
-      let img = apply_relocation abi f img base reloc symref_and_reloc_site maybe_sym_addr in
+      let img = apply_relocation abi f img base reloc symref_and_reloc_site maybe_sym_addr ignore_data_sections in
 
-      apply_mips64_global_got_relocations' abi f img dynsyms syms dynsym_scnidx maybe_versym_table base (got_entry_addr + mips64_address_size) (symtabno - 1)
+      apply_mips64_global_got_relocations' abi f img dynsyms syms dynsym_scnidx maybe_versym_table base (got_entry_addr + mips64_address_size) (symtabno - 1) ignore_data_sections
     | _ -> failwith "apply_mips64_global_got_relocations': not enough symbols"
   end
 
-let apply_mips64_global_got_relocations f img dynsyms dynsym_scnidx maybe_versym_table base got_entry_addr symtab_addr gotsym symtabno =
+let apply_mips64_global_got_relocations f img dynsyms dynsym_scnidx maybe_versym_table base got_entry_addr symtab_addr gotsym symtabno ignore_data_sections =
   let symtab_triples = mapMaybei (fun scnidx isec ->
     if isec.elf64_section_addr = natural_of_elf64_addr symtab_addr then
       match find_elf64_symbols_by_symtab_idx scnidx f with
@@ -674,11 +679,11 @@ let apply_mips64_global_got_relocations f img dynsyms dynsym_scnidx maybe_versym
   in
   let syms = List.drop (natFromNatural gotsym) syms in
   let abi = get_file_abi f in
-  apply_mips64_global_got_relocations' abi f img dynsyms syms dynsym_scnidx maybe_versym_table base got_entry_addr (symtabno - gotsym)
+  apply_mips64_global_got_relocations' abi f img dynsyms syms dynsym_scnidx maybe_versym_table base got_entry_addr (symtabno - gotsym) ignore_data_sections
 
 (* MIPS uses an ugly packed form for GOT relocations. See musl's do_mips_relocs
    function. *)
-let apply_mips64_got_relocations f img dynsyms base dyns dynsym_scnidx maybe_versym_table =
+let apply_mips64_got_relocations f img dynsyms base dyns dynsym_scnidx maybe_versym_table ignore_data_sections =
   let maybe_got_offset = List.find (fun (tag, _) -> tag = Elf_dynamic.dt_pltgot) dyns in
   let got_offset = match maybe_got_offset with
     | Just (_, Address got) -> got
@@ -735,12 +740,12 @@ let apply_mips64_got_relocations f img dynsyms base dyns dynsym_scnidx maybe_ver
     | Just (_, Numeric symtabno) -> symtabno
     | Nothing -> failwith "apply_mips64_got_relocations: missing DT_MIPS_SYMTABNO in .dynamic"
   end in
-  let (img, got_entry_addr) = apply_mips64_global_got_relocations f img dynsyms dynsym_scnidx maybe_versym_table base got_entry_addr symtab_addr gotsym symtabno in
+  let (img, got_entry_addr) = apply_mips64_global_got_relocations f img dynsyms dynsym_scnidx maybe_versym_table base got_entry_addr symtab_addr gotsym symtabno ignore_data_sections in
 
   img
 
 (* This function must be called after normal relocs have been applied *)
-let apply_cheri_mips64_cap_relocations f img base dyns =
+let apply_cheri_mips64_cap_relocations f img base dyns ignore_data_sections =
   let maybe_cap_relocs = List.find (fun (tag, _) ->
     tag = Abi_cheri_mips64_dynamic.abi_cheri_dt___caprelocs
   ) dyns in
@@ -774,6 +779,21 @@ let apply_cheri_mips64_cap_relocations f img base dyns =
     let obj = natural_of_elf64_xword reloc.cheri_mips64_cap_reloc_object in
     let offset = natural_of_elf64_xword reloc.cheri_mips64_cap_reloc_offset in
     let size = natural_of_elf64_xword reloc.cheri_mips64_cap_reloc_size in
+
+    let is_in_data_section =
+      if ignore_data_sections then
+        false
+      else
+        match get_section_at_addr f (loc - base) with
+          | Just sec -> is_data_section sec
+          | Nothing -> false
+        end
+    in
+    if is_in_data_section then
+      let _ = Missing_pervasives.errln ("Skipping __cap_relocs relocation at 0x" ^ (hex_string_of_natural loc) ^ ": in a data section") in
+      img
+    else
+
     let (cursor, cap_base, len) =
       if obj = 0 then
         (0, 0, 0)
@@ -1086,10 +1106,18 @@ let null_linkmap = <|
   linkmap_sonames = []
 |>
 
-let rec check_object ldconfig_paths core_file core_img is_loaded root_path mmap_table linkmap object_filename is_root =
-  Filesystem.realpath_in root_path (root_path ^ object_filename) >>= fun object_filepath ->
-  let _ = Missing_pervasives.errln ("Resolved symlinks: " ^ (root_path ^ object_filename) ^ " -> " ^ object_filepath) in
-  let object_filename = assert_unwrap_maybe (Missing_pervasives.string_suffix (naturalFromNat (String.stringLength root_path)) object_filepath) in
+type check_args = <|
+  check_ldconfig_paths : list string;
+  check_is_loaded : bool;
+  check_root_path : string;
+  check_mmap_table : list mmap_entry;
+  check_data_sections : bool
+|>
+
+let rec check_object args core_file core_img linkmap object_filename is_root =
+  Filesystem.realpath_in args.check_root_path (args.check_root_path ^ object_filename) >>= fun object_filepath ->
+  let _ = Missing_pervasives.errln ("Resolved symlinks: " ^ (args.check_root_path ^ object_filename) ^ " -> " ^ object_filepath) in
+  let object_filename = assert_unwrap_maybe (Missing_pervasives.string_suffix (naturalFromNat (String.stringLength args.check_root_path)) object_filepath) in
 
   let _ = Missing_pervasives.errln ("Loading object from " ^ object_filepath) in
   load_file object_filepath >>= fun (object_bs, object_file) ->
@@ -1101,11 +1129,11 @@ let rec check_object ldconfig_paths core_file core_img is_loaded root_path mmap_
   let _ = print_memory_image object_img in
 
   let object_img =
-    if is_loaded then
+    if args.check_is_loaded && not args.check_data_sections then
       let object_img = mask_data_sections object_file object_img in
       object_img
     else
-      let _ = Missing_pervasives.errln "Not masking memory image" in
+      let _ = Missing_pervasives.errln "Not masking memory image data sections" in
       object_img
   in
 
@@ -1114,11 +1142,11 @@ let rec check_object ldconfig_paths core_file core_img is_loaded root_path mmap_
 
   let _ = Missing_pervasives.errln ("Searching object " ^ object_filename ^ " in mmap table") in
   let errmsg = "check_object: cannot find `" ^ object_filename ^ "` in the mmap table" in
-  Error.of_maybe errmsg (get_first_mapped_address mmap_table object_filename) >>= fun object_addr ->
+  Error.of_maybe errmsg (get_first_mapped_address args.check_mmap_table object_filename) >>= fun object_addr ->
   let _ = Missing_pervasives.errln ("object has been mapped at 0x" ^ (hex_string_of_natural object_addr)) in
   let object_delta = get_memory_image_delta object_img object_addr in
   let _ = Missing_pervasives.errln ("object has delta 0x" ^ (hex_string_of_natural object_delta)) in
-  check_mmaped_memory_image mmap_table object_filename object_file object_delta >>= fun () ->
+  check_mmaped_memory_image args.check_mmap_table object_filename object_file object_delta >>= fun () ->
   let _ = Missing_pervasives.errln "Translating object image" in
   let object_img = translate_memory_image object_img object_delta in
   let _ = Missing_pervasives.errln "object image after translation:" in
@@ -1206,14 +1234,14 @@ let rec check_object ldconfig_paths core_file core_img is_loaded root_path mmap_
         else
           linkmap
       in
-      check_object ldconfig_paths core_file core_img is_loaded root_path mmap_table linkmap interp false
+      check_object args core_file core_img linkmap interp false
     | Nothing ->
       return linkmap
   end >>= fun linkmap ->
 
   (* Result contains the number of linked libraries *)
   let linked_libs_res =
-    if not is_loaded then
+    if not args.check_is_loaded then
       let _ = Missing_pervasives.errln "Core file hasn't been loaded; not checking linked libraries" in
       return (0, linkmap, [])
     else
@@ -1241,10 +1269,10 @@ let rec check_object ldconfig_paths core_file core_img is_loaded root_path mmap_
               else if header_is_pure_cheri_mips64 object_file.elf64_file_header then
                 ["/usr/libcheri"]
               else
-                ldconfig_paths
+                args.check_ldconfig_paths
             in
             let _ = Missing_pervasives.errln ("Searching needed library `" ^ soname ^ "`") in
-            find_library root_path paths soname >>= fun library_filepath ->
+            find_library args.check_root_path paths soname >>= fun library_filepath ->
             return (soname, library_filepath)
           ) sonames >>= fun sonames_and_lib_paths ->
           Error.foldM (fun linkmap (soname, library_filepath) ->
@@ -1252,7 +1280,7 @@ let rec check_object ldconfig_paths core_file core_img is_loaded root_path mmap_
               let _ = Missing_pervasives.errln ("check_object: skipping dependency `" ^ soname ^ "` because it has already been loaded") in
               return linkmap
             else
-              check_object ldconfig_paths core_file core_img is_loaded root_path mmap_table linkmap library_filepath false
+              check_object args core_file core_img linkmap library_filepath false
           ) linkmap sonames_and_lib_paths >>= fun linkmap ->
           return (naturalFromNat (List.length dyn_dt_needed), linkmap, dyns)
       end
@@ -1264,14 +1292,14 @@ let rec check_object ldconfig_paths core_file core_img is_loaded root_path mmap_
   else () in
 
   let object_img =
-    if is_loaded then
+    if args.check_is_loaded then
       let _ = Missing_pervasives.errln ("Applying relocations in " ^ object_filename) in
-      let object_img = apply_all_relocations object_file object_img object_delta linkmap.linkmap_dynsyms dynsym_scnidx maybe_versym_table in
+      let object_img = apply_all_relocations object_file object_img object_delta linkmap.linkmap_dynsyms dynsym_scnidx maybe_versym_table args.check_data_sections in
       let object_img =
         if (Abi_mips64.header_is_mips64 object_file.elf64_file_header
               || Abi_cheri_mips64.header_is_cheri_mips64 object_file.elf64_file_header)
             && has_dynamic_section object_file then
-          apply_mips64_got_relocations object_file object_img linkmap.linkmap_dynsyms object_delta dyns dynsym_scnidx maybe_versym_table
+          apply_mips64_got_relocations object_file object_img linkmap.linkmap_dynsyms object_delta dyns dynsym_scnidx maybe_versym_table args.check_data_sections
         else if Abi_amd64.header_is_amd64 object_file.elf64_file_header &&
             has_dynamic_section object_file then
           init_amd64_pltgot object_img object_delta dyns
@@ -1280,7 +1308,7 @@ let rec check_object ldconfig_paths core_file core_img is_loaded root_path mmap_
       in
       let object_img =
         if Abi_cheri_mips64.header_is_cheri_mips64 object_file.elf64_file_header then
-          apply_cheri_mips64_cap_relocations object_file object_img object_delta dyns
+          apply_cheri_mips64_cap_relocations object_file object_img object_delta dyns args.check_data_sections
         else
           object_img
       in
@@ -1293,7 +1321,7 @@ let rec check_object ldconfig_paths core_file core_img is_loaded root_path mmap_
   let _ = Missing_pervasives.errln ((show n_bytes) ^ " bytes, " ^ (show n_masked) ^ " masked bytes") in
 
   let _ = Missing_pervasives.errln ("Checking memory image of " ^ object_filename) in
-  let comparison_res = compare_memory_image core_img object_img (mmap_table, object_file, object_delta) in
+  let comparison_res = compare_memory_image core_img object_img (args.check_mmap_table, object_file, object_delta) in
 
   match comparison_res with
     | Success () ->
@@ -1304,15 +1332,16 @@ let rec check_object ldconfig_paths core_file core_img is_loaded root_path mmap_
   end
 
 type load_args = <|
-  core_filepath : string;
-  root_path : string;
-  object_filename : maybe string;
-  additional_object_filename : maybe string
+  load_core_filepath : string;
+  load_root_path : string;
+  load_object_filename : maybe string;
+  load_additional_object_filename : maybe string;
+  load_check_data_sections : bool
 |>
 
 let process_file args =
-  let core_filepath = args.core_filepath in
-  let root_path = args.root_path in
+  let core_filepath = args.load_core_filepath in
+  let root_path = args.load_root_path in
 
   Ldconfig.read_ldconfig_paths root_path >>= fun ldconfig_paths ->
 
@@ -1341,7 +1370,7 @@ let process_file args =
   end in
   let _ = Missing_pervasives.errln ("Detected object filename: " ^ (show maybe_detected_object_filename)) in
 
-  let object_filename_res = match (args.object_filename, maybe_detected_object_filename) with
+  let object_filename_res = match (args.load_object_filename, maybe_detected_object_filename) with
     | (Just object_filename, Just detected_object_filename) ->
       let _ =
         if object_filename <> detected_object_filename then
@@ -1368,12 +1397,20 @@ let process_file args =
   (* TODO: add a flag instead of this hacky thing *)
   let is_loaded = not (Missing_pervasives.string_contains core_filepath "start") in
 
-  check_object ldconfig_paths core_file core_img is_loaded root_path mmap_table null_linkmap object_filename true >>= fun dynsyms ->
+  let check_args = <|
+    check_ldconfig_paths = ldconfig_paths;
+    check_is_loaded = is_loaded;
+    check_root_path = root_path;
+    check_mmap_table = mmap_table;
+    check_data_sections = args.load_check_data_sections
+  |> in
 
-  match args.additional_object_filename with
+  check_object check_args core_file core_img null_linkmap object_filename true >>= fun dynsyms ->
+
+  match args.load_additional_object_filename with
     | Just additional_object_filename ->
       let _ = Missing_pervasives.errln ("Loading additonnal object: " ^ additional_object_filename) in
-      check_object ldconfig_paths core_file core_img is_loaded root_path mmap_table dynsyms additional_object_filename false
+      check_object check_args core_file core_img dynsyms additional_object_filename false
     | Nothing ->
       return dynsyms
   end >>= fun _ ->
@@ -1385,17 +1422,52 @@ type load_arg =
   | RootPath of string
   | ObjectFilename of string
   | AdditionalObjectFilename of string
+  | CheckDataSections
+
+let print_help () =
+  let _ = Missing_pervasives.outln (
+    "usage: main_load [options] <core-file>\n"
+    ^ "\n"
+    ^ "Options:\n"
+    ^ "  -r <root-path>          Specify the root path. This is required when\n"
+    ^ "                          checking coredumps generated on other machines\n"
+    ^ "                          (for instance, on a VM). The root directory\n"
+    ^ "                          must not have been modified since the coredump\n"
+    ^ "                          generation.\n"
+    ^ "  -f <filename>           Specify the filename of the binary relative to\n"
+    ^ "                          the root path. This is sometimes required when\n"
+    ^ "                          it cannot be extracted from the coredump.\n"
+    ^ "  -l <additional-object>  Load an additional object. The argument is a\n"
+    ^ "                          filename relative to the root path. This is\n"
+    ^ "                          useful when checking `ld.so <binary>` for\n"
+    ^ "                          instance.\n"
+    ^ "  -d                      Also check data sections. This is disabled by\n"
+    ^ "                          default because of constructors. This is useful\n"
+    ^ "                          for constructor-free binaries (e.g. linked with\n"
+    ^ "                          musl instead of glibc) and for linkers that\n"
+    ^ "                          support disabling constructors (e.g.\n"
+    ^ "                          LD_SKIP_INIT_FUNCS and LD_CHERI_SKIP_INIT_FUNCS\n"
+    ^ "                          on the CheriBSD `rtld-cheri-elf` linker).\n"
+    ^ "  -h, --help              Show this help message.\n"
+  ) in
+  Assert_extra.failwith ""
 
 let rec parse_args argv =
   if argv = [] then [] else
   let (parsed, argv) = match argv with
-    | [core_filepath] -> (CoreFilepath core_filepath, [])
     | "-r" :: root_path :: argv -> (RootPath root_path, argv)
     | "-f" :: object_filename :: argv -> (ObjectFilename object_filename, argv)
     | "-l" :: additional_object_filename :: argv -> (AdditionalObjectFilename additional_object_filename, argv)
-    | _ -> Assert_extra.failwith "usage: main_load [options] <core-file>"
+    | "-d" :: argv -> (CheckDataSections, argv)
+    | "-h" :: _ -> print_help ()
+    | "--help" :: _ -> print_help ()
+    | [core_filepath] -> (CoreFilepath core_filepath, [])
+    | _ -> print_help ()
   end in
   parsed :: (parse_args argv)
+
+let has_arg f args =
+  Maybe.isJust (List.find f args)
 
 let find_arg f args =
   List.foldl (fun maybe_value arg ->
@@ -1416,10 +1488,11 @@ let collect_args args =
     | Nothing -> ""
   end in
   <|
-    core_filepath = core_filepath;
-    root_path = root_path;
-    object_filename = find_arg (fun arg -> match arg with ObjectFilename v -> Just v | _ -> Nothing end) args;
-    additional_object_filename = find_arg (fun arg -> match arg with AdditionalObjectFilename v -> Just v | _ -> Nothing end) args
+    load_core_filepath = core_filepath;
+    load_root_path = root_path;
+    load_object_filename = find_arg (fun arg -> match arg with ObjectFilename v -> Just v | _ -> Nothing end) args;
+    load_additional_object_filename = find_arg (fun arg -> match arg with AdditionalObjectFilename v -> Just v | _ -> Nothing end) args;
+    load_check_data_sections = has_arg (fun arg -> match arg with CheckDataSections -> true | _ -> false end) args
   |>
 
 let _ =

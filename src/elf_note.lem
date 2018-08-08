@@ -575,6 +575,7 @@ let read_nt_procstat_vmmap endian note_segs =
       return acc
   ) [] note_segs
 
+val read_mmap_table : endianness -> list elf64_note -> error (list mmap_entry)
 let read_mmap_table endian note_segs =
   read_nt_file_entries endian note_segs >>= fun nt_file_entries ->
   read_nt_procstat_vmmap endian note_segs >>= fun nt_procstat_vmmap ->
