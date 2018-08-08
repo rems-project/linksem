@@ -309,7 +309,7 @@ let is_data_section sec =
   || sec.elf64_section_name_as_string = ".tdata" (* initialized thread-local data *)
   || sec.elf64_section_name_as_string = ".tbss" (* uninitialized thread-local data *)
   || sec.elf64_section_name_as_string = ".dynamic"
-  (* || sec.elf64_section_name_as_string = ".data.rel.ro" (* TODO: remove me? *) *)
+  || sec.elf64_section_name_as_string = ".data.rel.ro" (* TODO: remove me? *)
   || sec.elf64_section_name_as_string = ".rld_map" (* TODO: remove me *)
 
 let mask_data_sections f img =
@@ -458,8 +458,8 @@ let is_unsupported_relocation_type f rel_type =
   else
     false
 
-val apply_relocation : forall 'abifeature. abi 'abifeature -> elf64_file -> annotated_memory_image 'abifeature -> natural -> elf64_relocation_a -> symbol_reference_and_reloc_site -> natural -> annotated_memory_image 'abifeature
-let apply_relocation abi f img base reloc symref_and_reloc_site sym_addr =
+val apply_relocation : forall 'abifeature. abi 'abifeature -> elf64_file -> annotated_memory_image 'abifeature -> natural -> elf64_relocation_a -> symbol_reference_and_reloc_site -> maybe natural -> annotated_memory_image 'abifeature
+let apply_relocation abi f img base reloc symref_and_reloc_site maybe_sym_addr =
   let endian = get_elf64_header_endianness f.elf64_file_header in
   let (rel_type, _) = abi.parse_reloc_info reloc.elf64_ra_info in
   let offset = natural_of_elf64_addr reloc.elf64_ra_offset in
@@ -484,17 +484,26 @@ let apply_relocation abi f img base reloc symref_and_reloc_site sym_addr =
     let _ = Missing_pervasives.errln "  Relocation inside a data section, ignoring" in
     img
   else
-    if is_unsupported_relocation_type f rel_type then
-      let _ = Missing_pervasives.errln ("  Giving up on this one") in
-      mask_memory_image img addr width
-    else
-      let existing_bytes = assert_unwrap_maybe (read_memory_image img addr width) in
-      let existing_value = Memory_image.natural_of_byte_list endian existing_bytes in
-      let new_value = calcfn sym_addr addend existing_value in
-      let field_bytes = Memory_image.natural_to_byte_list_padded_to endian width new_value in
-      let field_bp = List.map (fun b -> Just b) field_bytes in
-      let _ = Missing_pervasives.errln ("  Relocating `" ^ symref_and_reloc_site.ref.ref_symname ^ "` (existing=0x" ^ (hex_string_of_natural existing_value) ^ " addend=" ^ (show addend) ^ ") to 0x" ^ (hex_string_of_natural new_value) ^ " (symbol address 0x" ^ (hex_string_of_natural sym_addr) ^ ")") in
-      write_memory_image img addr field_bp
+    let maybe_sym_addr =
+      if is_unsupported_relocation_type f rel_type then
+        let _ = Missing_pervasives.errln ("  Giving up on this one: unsupported relocation type") in
+        Nothing
+      else
+        maybe_sym_addr
+    in
+    match maybe_sym_addr with
+      | Just sym_addr ->
+        let existing_bytes = assert_unwrap_maybe (read_memory_image img addr width) in
+        let existing_value = Memory_image.natural_of_byte_list endian existing_bytes in
+        let new_value = calcfn sym_addr addend existing_value in
+        let field_bytes = Memory_image.natural_to_byte_list_padded_to endian width new_value in
+        let field_bp = List.map (fun b -> Just b) field_bytes in
+        let _ = Missing_pervasives.errln ("  Relocating `" ^ symref_and_reloc_site.ref.ref_symname ^ "` (existing=0x" ^ (hex_string_of_natural existing_value) ^ " addend=" ^ (show addend) ^ ") to 0x" ^ (hex_string_of_natural new_value) ^ " (symbol address 0x" ^ (hex_string_of_natural sym_addr) ^ ")") in
+        write_memory_image img addr field_bp
+      | Nothing ->
+        let _ = Missing_pervasives.errln ("  Masking relocation for `" ^ symref_and_reloc_site.ref.ref_symname ^ "`") in
+        mask_memory_image img addr width
+    end
 
 let get_sym_ref_version dynsym_scnidx maybe_versym_table sym_name sym_scn sym_idx =
   if dynsym_scnidx <> sym_scn then Nothing else
@@ -545,12 +554,18 @@ let apply_all_relocations f img base syms dynsym_scnidx maybe_versym_table =
     in
 
     (* TODO: hard fail if symbol name is non-empty but find_sym returns Nothing? *)
-    let sym_addr = match maybe_sym with
-      | Just sym -> sym.dynamic_symbol_value
-      | Nothing -> 0 (* This isn't pretty, but doing something else would be complicated *)
+    let maybe_sym_addr = match maybe_sym with
+      | Just sym ->
+        if get_elf64_symbol_type sym.dynamic_symbol_entry = stt_gnu_ifunc then
+          let _ = Missing_pervasives.errln "  Symbol is an ifunc" in
+          Nothing
+        else
+          Just sym.dynamic_symbol_value
+      | Nothing ->
+        Just 0 (* This isn't pretty, but doing something else would be complicated *)
     end in
 
-    apply_relocation abi f img base reloc_site.ref_relent symref_and_reloc_site sym_addr
+    apply_relocation abi f img base reloc_site.ref_relent symref_and_reloc_site maybe_sym_addr
   (* ) tags_and_ranges in *)
   ) img symbol_refs_and_reloc_sites
 
@@ -620,14 +635,21 @@ let rec apply_mips64_global_got_relocations' abi f img dynsyms syms dynsym_scnid
           Nothing
       in
 
-      let sym_addr = match maybe_sym with
-        | Just sym -> sym.dynamic_symbol_value
-        | Nothing -> 0 (* This isn't pretty, but doing something else would be complicated *)
+      (* TODO: hard fail if symbol name is non-empty but find_sym returns Nothing? *)
+      let maybe_sym_addr = match maybe_sym with
+        | Just sym ->
+          if get_elf64_symbol_type sym.dynamic_symbol_entry = stt_gnu_ifunc then
+            let _ = Missing_pervasives.errln "  Symbol is an ifunc" in
+            Nothing
+          else
+            Just sym.dynamic_symbol_value
+        | Nothing ->
+          Just 0 (* This isn't pretty, but doing something else would be complicated *)
       end in
 
       (* let sym_addr = base + natural_of_elf64_addr sym_entry.elf64_st_value in *)
       let symref_and_reloc_site = null_symbol_reference_and_reloc_site in
-      let img = apply_relocation abi f img base reloc symref_and_reloc_site sym_addr in
+      let img = apply_relocation abi f img base reloc symref_and_reloc_site maybe_sym_addr in
 
       apply_mips64_global_got_relocations' abi f img dynsyms syms dynsym_scnidx maybe_versym_table base (got_entry_addr + mips64_address_size) (symtabno - 1)
     | _ -> failwith "apply_mips64_global_got_relocations': not enough symbols"
