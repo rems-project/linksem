@@ -309,7 +309,7 @@ let is_data_section sec =
   || sec.elf64_section_name_as_string = ".tdata" (* initialized thread-local data *)
   || sec.elf64_section_name_as_string = ".tbss" (* uninitialized thread-local data *)
   || sec.elf64_section_name_as_string = ".dynamic"
-  (* || sec.elf64_section_name_as_string = ".data.rel.ro" (* TODO: remove me? *) *)
+  || sec.elf64_section_name_as_string = ".data.rel.ro" (* TODO: remove me? *)
   || sec.elf64_section_name_as_string = ".rld_map" (* TODO: remove me *)
 
 let mask_data_sections f img =
@@ -458,8 +458,8 @@ let is_unsupported_relocation_type f rel_type =
   else
     false
 
-val apply_relocation : forall 'abifeature. abi 'abifeature -> elf64_file -> annotated_memory_image 'abifeature -> natural -> elf64_relocation_a -> symbol_reference_and_reloc_site -> maybe natural -> bool -> annotated_memory_image 'abifeature
-let apply_relocation abi f img base reloc symref_and_reloc_site maybe_sym_addr ignore_data_sections =
+val apply_relocation : forall 'abifeature. abi 'abifeature -> elf64_file -> annotated_memory_image 'abifeature -> natural -> elf64_relocation_a -> symbol_reference_and_reloc_site -> maybe dynamic_symbol -> bool -> annotated_memory_image 'abifeature
+let apply_relocation abi f img base reloc symref_and_reloc_site maybe_sym ignore_data_sections =
   let endian = get_elf64_header_endianness f.elf64_file_header in
   let (rel_type, _) = abi.parse_reloc_info reloc.elf64_ra_info in
   let offset = natural_of_elf64_addr reloc.elf64_ra_offset in
@@ -489,6 +489,18 @@ let apply_relocation abi f img base reloc symref_and_reloc_site maybe_sym_addr i
     let _ = Missing_pervasives.errln "  Relocation inside a data section, ignoring" in
     img
   else
+    (* TODO: hard fail if symbol name is non-empty but find_sym returns Nothing? *)
+    let maybe_sym_addr = match maybe_sym with
+      | Just sym ->
+        if get_elf64_symbol_type sym.dynamic_symbol_entry = stt_gnu_ifunc then
+          let _ = Missing_pervasives.errln "  Symbol is an ifunc" in
+          Nothing
+        else
+          Just sym.dynamic_symbol_value
+      | Nothing ->
+        Just 0 (* This isn't pretty, but doing something else would be complicated *)
+    end in
+
     let maybe_sym_addr =
       if is_unsupported_relocation_type f rel_type then
         let _ = Missing_pervasives.errln ("  Giving up on this one: unsupported relocation type") in
@@ -568,19 +580,7 @@ let apply_all_relocations f img base syms dynsym_scnidx maybe_versym_table ignor
         Nothing
     in
 
-    (* TODO: hard fail if symbol name is non-empty but find_sym returns Nothing? *)
-    let maybe_sym_addr = match maybe_sym with
-      | Just sym ->
-        if get_elf64_symbol_type sym.dynamic_symbol_entry = stt_gnu_ifunc then
-          let _ = Missing_pervasives.errln "  Symbol is an ifunc" in
-          Nothing
-        else
-          Just sym.dynamic_symbol_value
-      | Nothing ->
-        Just 0 (* This isn't pretty, but doing something else would be complicated *)
-    end in
-
-    apply_relocation abi f img base reloc_site.ref_relent symref_and_reloc_site maybe_sym_addr ignore_data_sections
+    apply_relocation abi f img base reloc_site.ref_relent symref_and_reloc_site maybe_sym ignore_data_sections
   (* ) tags_and_ranges in *)
   ) img symbol_refs_and_reloc_sites
 
@@ -650,21 +650,9 @@ let rec apply_mips64_global_got_relocations' abi f img dynsyms syms dynsym_scnid
           Nothing
       in
 
-      (* TODO: hard fail if symbol name is non-empty but find_sym returns Nothing? *)
-      let maybe_sym_addr = match maybe_sym with
-        | Just sym ->
-          if get_elf64_symbol_type sym.dynamic_symbol_entry = stt_gnu_ifunc then
-            let _ = Missing_pervasives.errln "  Symbol is an ifunc" in
-            Nothing
-          else
-            Just sym.dynamic_symbol_value
-        | Nothing ->
-          Just 0 (* This isn't pretty, but doing something else would be complicated *)
-      end in
-
       (* let sym_addr = base + natural_of_elf64_addr sym_entry.elf64_st_value in *)
       let symref_and_reloc_site = null_symbol_reference_and_reloc_site in
-      let img = apply_relocation abi f img base reloc symref_and_reloc_site maybe_sym_addr ignore_data_sections in
+      let img = apply_relocation abi f img base reloc symref_and_reloc_site maybe_sym ignore_data_sections in
 
       apply_mips64_global_got_relocations' abi f img dynsyms syms dynsym_scnidx maybe_versym_table base (got_entry_addr + mips64_address_size) (symtabno - 1) ignore_data_sections
     | _ -> failwith "apply_mips64_global_got_relocations': not enough symbols"
@@ -996,7 +984,13 @@ let extract_dynsyms f base existing_syms symtab_scnidx maybe_versym_table =
   ) syms in
   let syms = List.map (fun (sym_name, sym_entry, scnidx, symidx) ->
     (* let _ = Missing_pervasives.errln ("Library exports dynamic symbol: " ^ sym_name) in *)
-    let sym_value = base + natural_of_elf64_addr sym_entry.elf64_st_value in
+    let is_abs = (natural_of_elf64_half sym_entry.elf64_st_shndx) = shn_abs in
+    let sym_value =
+      if is_abs then
+        natural_of_elf64_addr sym_entry.elf64_st_value
+      else
+        base + natural_of_elf64_addr sym_entry.elf64_st_value
+    in
     let sym = <|
       dynamic_symbol_name = sym_name;
       dynamic_symbol_entry = sym_entry;
@@ -1051,7 +1045,7 @@ let extract_dynsyms f base existing_syms symtab_scnidx maybe_versym_table =
           (* Existing symbol is weak and the new one isn't, replace it *)
           let _ = Missing_pervasives.errln ("Overriding weak symbol `" ^ sym_name ^ "`, 0x" ^ (hex_string_of_natural existing_addr) ^ " -> 0x" ^ (hex_string_of_natural sym_addr)) in
           sym :: syms
-        else if natural_of_elf64_half existing_entry.elf64_st_shndx = 0 && natural_of_elf64_half sym_entry.elf64_st_shndx <> 0 then
+        else if natural_of_elf64_half existing_entry.elf64_st_shndx = shn_undef && natural_of_elf64_half sym_entry.elf64_st_shndx <> 0 then
           (* Existing symbol has an undefined ndx and the new one has a defined one, replace it *)
           (* TODO: why is this the right thing to do? *)
           let _ = Missing_pervasives.errln ("Overriding symbol with undefined ndx `" ^ sym_name ^ "`, 0x" ^ (hex_string_of_natural existing_addr) ^ " -> 0x" ^ (hex_string_of_natural sym_addr)) in
@@ -1346,7 +1340,8 @@ type load_args = <|
   load_root_path : string;
   load_object_filename : maybe string;
   load_additional_object_filename : maybe string;
-  load_check_data_sections : bool
+  load_check_data_sections : bool;
+  load_library_paths : list string
 |>
 
 let process_file args =
@@ -1354,6 +1349,7 @@ let process_file args =
   let root_path = args.load_root_path in
 
   Ldconfig.read_ldconfig_paths root_path >>= fun ldconfig_paths ->
+  let ldconfig_paths = args.load_library_paths ++ ldconfig_paths in
 
   load_file core_filepath >>= fun (core_bs, core_file) ->
   let elf_type = natural_of_elf64_half core_file.elf64_file_header.elf64_type in
@@ -1433,6 +1429,7 @@ type load_arg =
   | ObjectFilename of string
   | AdditionalObjectFilename of string
   | CheckDataSections
+  | LibraryPath of string
 
 let print_help () =
   let _ = Missing_pervasives.outln (
@@ -1458,6 +1455,7 @@ let print_help () =
     ^ "                          support disabling constructors (e.g.\n"
     ^ "                          LD_SKIP_INIT_FUNCS and LD_CHERI_SKIP_INIT_FUNCS\n"
     ^ "                          on the CheriBSD `rtld-cheri-elf` linker).\n"
+    ^ "  --library-path <path>   Add an additional library search path.\n"
     ^ "  -h, --help              Show this help message.\n"
   ) in
   Assert_extra.failwith ""
@@ -1469,6 +1467,7 @@ let rec parse_args argv =
     | "-f" :: object_filename :: argv -> (ObjectFilename object_filename, argv)
     | "-l" :: additional_object_filename :: argv -> (AdditionalObjectFilename additional_object_filename, argv)
     | "-d" :: argv -> (CheckDataSections, argv)
+    | "--library-path" :: library_path :: argv -> (LibraryPath library_path, argv)
     | "-h" :: _ -> print_help ()
     | "--help" :: _ -> print_help ()
     | [core_filepath] -> (CoreFilepath core_filepath, [])
@@ -1488,6 +1487,14 @@ let find_arg f args =
     end
   ) Nothing args
 
+let accumulate_args f args =
+  List.foldl (fun l arg ->
+    match f arg with
+      | Just v -> v :: l
+      | Nothing -> l
+    end
+  ) [] args
+
 let collect_args args =
   let core_filepath = match find_arg (fun arg -> match arg with CoreFilepath v -> Just v | _ -> Nothing end) args with
     | Just core_filepath -> core_filepath
@@ -1502,7 +1509,8 @@ let collect_args args =
     load_root_path = root_path;
     load_object_filename = find_arg (fun arg -> match arg with ObjectFilename v -> Just v | _ -> Nothing end) args;
     load_additional_object_filename = find_arg (fun arg -> match arg with AdditionalObjectFilename v -> Just v | _ -> Nothing end) args;
-    load_check_data_sections = has_arg (fun arg -> match arg with CheckDataSections -> true | _ -> false end) args
+    load_check_data_sections = has_arg (fun arg -> match arg with CheckDataSections -> true | _ -> false end) args;
+    load_library_paths = accumulate_args (fun arg -> match arg with LibraryPath p -> Just p | _ -> Nothing end) args
   |>
 
 let _ =
