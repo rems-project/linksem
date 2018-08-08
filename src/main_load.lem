@@ -309,7 +309,7 @@ let is_data_section sec =
   || sec.elf64_section_name_as_string = ".tdata" (* initialized thread-local data *)
   || sec.elf64_section_name_as_string = ".tbss" (* uninitialized thread-local data *)
   || sec.elf64_section_name_as_string = ".dynamic"
-  || sec.elf64_section_name_as_string = ".data.rel.ro" (* TODO: remove me? *)
+  (* || sec.elf64_section_name_as_string = ".data.rel.ro" (* TODO: remove me? *) *)
   || sec.elf64_section_name_as_string = ".rld_map" (* TODO: remove me *)
 
 let mask_data_sections f img =
@@ -498,13 +498,23 @@ let apply_relocation abi f img base reloc symref_and_reloc_site maybe_sym_addr i
     in
     match maybe_sym_addr with
       | Just sym_addr ->
-        let existing_bytes = assert_unwrap_maybe (read_memory_image img addr width) in
-        let existing_value = Memory_image.natural_of_byte_list endian existing_bytes in
-        let new_value = calcfn sym_addr addend existing_value in
-        let field_bytes = Memory_image.natural_to_byte_list_padded_to endian width new_value in
-        let field_bp = List.map (fun b -> Just b) field_bytes in
-        let _ = Missing_pervasives.errln ("  Relocating `" ^ symref_and_reloc_site.ref.ref_symname ^ "` (existing=0x" ^ (hex_string_of_natural existing_value) ^ " addend=" ^ (show addend) ^ ") to 0x" ^ (hex_string_of_natural new_value) ^ " (symbol address 0x" ^ (hex_string_of_natural sym_addr) ^ ")") in
-        write_memory_image img addr field_bp
+        if header_is_pure_cheri_mips64 f.elf64_file_header
+            && rel_type = r_mips_cheri_capability then
+          (* CHERI capability relocations are special snowflakes, they aren't
+             just an address. *)
+          (* TODO: find a better solution *)
+          let cap_bp = abi_cheri_mips64_write_capability_byte_pattern endian Nothing
+            Nothing Nothing Nothing (Just 42) (Just 42) (Just 42) in (* TODO *)
+          let _ = Missing_pervasives.errln ("  Relocating CHERI capability `" ^ symref_and_reloc_site.ref.ref_symname ^ "`") in
+          write_memory_image img addr cap_bp
+        else
+          let existing_bytes = assert_unwrap_maybe (read_memory_image img addr width) in
+          let existing_value = Memory_image.natural_of_byte_list endian existing_bytes in
+          let new_value = calcfn sym_addr addend existing_value in
+          let field_bytes = Memory_image.natural_to_byte_list_padded_to endian width new_value in
+          let field_bp = List.map (fun b -> Just b) field_bytes in
+          let _ = Missing_pervasives.errln ("  Relocating `" ^ symref_and_reloc_site.ref.ref_symname ^ "` (existing=0x" ^ (hex_string_of_natural existing_value) ^ " addend=" ^ (show addend) ^ ") to 0x" ^ (hex_string_of_natural new_value) ^ " (symbol address 0x" ^ (hex_string_of_natural sym_addr) ^ ")") in
+          write_memory_image img addr field_bp
       | Nothing ->
         let _ = Missing_pervasives.errln ("  Masking relocation for `" ^ symref_and_reloc_site.ref.ref_symname ^ "`") in
         mask_memory_image img addr width
