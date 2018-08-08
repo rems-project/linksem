@@ -98,6 +98,7 @@ LEM_ABI_SRC := \
 	abis/riscv/abi_riscv_serialisation.lem \
 	abis/riscv/abi_riscv_symbol_table.lem \
 	abis/riscv/abi_riscv.lem \
+	abis/cheri_mips64/abi_cheri_mips64_capability.lem \
 	abis/cheri_mips64/abi_cheri_mips64_dynamic.lem \
 	abis/cheri_mips64/abi_cheri_mips64_elf_header.lem \
 	abis/cheri_mips64/abi_cheri_mips64_relocation.lem \

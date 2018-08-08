@@ -1,12 +1,14 @@
-open import Basic_classes
 open import Assert_extra
+open import Basic_classes
 open import Bool
 open import List
 open import Maybe
 open import Num
+open import String
 
 open import Byte_sequence
 open import Missing_pervasives
+open import Show
 
 (** A byte pattern element can be undefined if it doesn't have a known fixed
     value. *)
@@ -14,6 +16,25 @@ type byte_pattern_element = maybe byte
 
 (* TODO: replace with two byte sequences (one used as a mask) *)
 type byte_pattern = list byte_pattern_element
+
+val string_of_byte_pattern : byte_pattern -> string
+let rec string_of_byte_pattern bp =
+  let parts = List.map (fun maybe_b ->
+    match maybe_b with
+      | Nothing -> "--"
+      | Just b -> show b
+    end
+  ) bp in
+  let (_, s) = List.foldl (fun (n, s) part ->
+    let s =
+      if n mod 2 = 0 && s <> "" then
+        s ^ " " ^ part
+      else
+        s ^ part
+    in
+    (n + 1, s)
+  ) ((0 : natural), "") parts in
+  s
 
 val make_byte_pattern_revacc : byte_pattern -> list byte -> list bool -> byte_pattern
 let rec make_byte_pattern_revacc revacc bytes cares =
@@ -28,6 +49,14 @@ let rec make_byte_pattern_revacc revacc bytes cares =
 val make_byte_pattern : list byte -> list bool -> byte_pattern
 let rec make_byte_pattern bytes cares =
     make_byte_pattern_revacc [] bytes cares
+
+val byte_list_to_byte_pattern : list byte -> byte_pattern
+let byte_list_to_byte_pattern bl =
+  List.map (fun b -> Just b) bl
+
+val init_byte_pattern : natural -> byte_pattern
+let init_byte_pattern len =
+  List.replicate (natFromNatural len) Nothing
 
 val relax_byte_pattern_revacc : byte_pattern -> byte_pattern -> list bool -> byte_pattern
 let rec relax_byte_pattern_revacc revacc bytes cares =
