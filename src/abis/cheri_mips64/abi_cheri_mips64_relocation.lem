@@ -1,8 +1,8 @@
 open import Assert_extra
 open import Basic_classes
+open import List
 open import Num
 open import String
-open import List
 
 open import Byte_sequence
 open import Elf_file
@@ -13,6 +13,7 @@ open import Elf_types_native_uint
 open import Endianness
 open import Error
 open import Memory_image
+open import Missing_pervasives
 
 open import Abi_mips64_relocation
 
@@ -50,6 +51,8 @@ let cheri_mips64_reloc r =
 
 (* CHERI __cap_relocs section *)
 
+let abi_cheri_mips64_function_reloc_flag = natural_of_hex "0x8000000000000000"
+
 type cheri_mips64_cap_reloc = <|
   cheri_mips64_cap_reloc_location : elf64_xword;
   cheri_mips64_cap_reloc_object : elf64_xword;
@@ -75,3 +78,8 @@ let rec read_cheri_mips64_cap_relocs endian bs =
   |> in
   read_cheri_mips64_cap_relocs endian bs >>= fun next ->
   return (cap_reloc :: next)
+
+val cheri_mips64_cap_reloc_is_function : cheri_mips64_cap_reloc -> bool
+let cheri_mips64_cap_reloc_is_function reloc =
+  let perms = natural_of_elf64_xword reloc.cheri_mips64_cap_reloc_permissions in
+  natural_land perms abi_cheri_mips64_function_reloc_flag <> 0

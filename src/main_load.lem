@@ -747,12 +747,23 @@ let apply_cheri_mips64_cap_relocations f img base dyns =
     | Fail errmsg -> failwith errmsg
   end in
   let img = List.foldl (fun img reloc ->
-    let loc = natural_of_elf64_xword reloc.cheri_mips64_cap_reloc_location in (* = base (in capability vocabulary) *)
+    let is_func = cheri_mips64_cap_reloc_is_function reloc in
+    let loc = natural_of_elf64_xword reloc.cheri_mips64_cap_reloc_location in
     let obj = natural_of_elf64_xword reloc.cheri_mips64_cap_reloc_object in
     let offset = natural_of_elf64_xword reloc.cheri_mips64_cap_reloc_offset in
-    let size = natural_of_elf64_xword reloc.cheri_mips64_cap_reloc_size in (* = length *)
-    let cursor = obj + offset in
-    let cap_base = obj in
+    let size = natural_of_elf64_xword reloc.cheri_mips64_cap_reloc_size in
+    let (cursor, cap_base, len) =
+      if obj = 0 then
+        (0, 0, 0)
+      else
+        let cursor = obj + offset in
+        if is_func then
+          (cursor, 0, size)
+        else
+          (cursor, obj, size)
+    in
+    let cap_bp = abi_cheri_mips64_write_capability_byte_pattern endian Nothing
+      Nothing Nothing Nothing (Just cursor) (Just cap_base) (Just len) in
     let _ = Missing_pervasives.errln (
       "Applying __cap_relocs relocation at 0x" ^ (hex_string_of_natural loc)
         ^ " offset=0x" ^ (hex_string_of_natural offset)
@@ -760,9 +771,9 @@ let apply_cheri_mips64_cap_relocations f img base dyns =
         ^ " object=0x" ^ (hex_string_of_natural obj)
         ^ " cursor=0x" ^ (hex_string_of_natural cursor)
         ^ " base=0x" ^ (hex_string_of_natural cap_base)
+        ^ " len=0x" ^ (hex_string_of_natural len)
+        ^ " is_func=" ^ (show is_func)
     ) in
-    let cap_bp = abi_cheri_mips64_write_capability_byte_pattern endian Nothing
-      Nothing Nothing Nothing (Just cursor) (Just cap_base) (Just size) in
     let _ = Missing_pervasives.errln (string_of_byte_pattern cap_bp) in
     write_memory_image img loc cap_bp
   ) img cap_relocs in
