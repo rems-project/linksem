@@ -32,6 +32,27 @@ let readlink p =
 let is_abs_path p =
   String.get p 0 = '/'
 
+let rec normalize' first l =
+  match l with
+    | s :: ".." :: t -> normalize' false t
+    | "" :: t ->
+      let t = normalize' false t in
+      if first then "" :: t else t
+    | s :: t -> s :: (normalize' false t)
+    | [] -> []
+
+let normalize p =
+  let l = String.split_on_char '/' p in
+  let l = normalize' true l in
+  String.concat "/" l
+
+let to_absolute working_dir p =
+  let _ = Printf.printf "HEY: %s %s\n" working_dir p in
+  if is_abs_path p then
+    normalize p
+  else
+    normalize (working_dir ^ "/" ^ p)
+
 let readlink_abs root p =
   match readlink p with
     | Success target ->

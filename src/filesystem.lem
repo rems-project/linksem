@@ -3,6 +3,12 @@ open import Error
 val dirname : string -> string
 declare ocaml target_rep function dirname = `Filesystem_wrapper.dirname`
 
+val normalize : string -> string
+declare ocaml target_rep function normalize = `Filesystem_wrapper.normalize`
+
+val to_absolute : string -> string -> string
+declare ocaml target_rep function to_absolute = `Filesystem_wrapper.to_absolute`
+
 val readlink : string -> error (string)
 declare ocaml target_rep function readlink = `Filesystem_wrapper.readlink`
 

@@ -1245,6 +1245,7 @@ let rec check_object args core_file core_img linkmap object_filename is_root =
   end >>= fun maybe_interp ->
   match maybe_interp with
     | Just interp ->
+      let interp = Filesystem.to_absolute (Filesystem.dirname object_filepath) interp in
       let _ = Missing_pervasives.errln ("Requesting program interpreter: " ^ interp) in
       let linkmap =
         (* TODO: musl's libc.so is missing SONAME. See:
