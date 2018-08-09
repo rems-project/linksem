@@ -443,8 +443,10 @@ let find_sym syms name version =
       end
     | [sym] ->
       Just sym
-    | _ ->
-      failwith ("find_sym: multiple symbols for `" ^ name ^ "` version " ^ (show version))
+    | sym :: _ ->
+      Just sym (* When overriding symbols we just add the new one before in the list *)
+    (* | _ ->
+      failwith ("find_sym: multiple symbols for `" ^ name ^ "` version " ^ (show version)) *)
   end
 
 let is_unsupported_relocation_type f rel_type =
@@ -1054,6 +1056,10 @@ let extract_dynsyms f base existing_syms symtab_scnidx maybe_versym_table =
           (* Existing symbol has a version, and this symbol has a different version: keep both *)
           let _ = Missing_pervasives.errln ("Adding new version `" ^ (show sym_version) ^ "` of symbol `" ^ sym_name ^ "` (already have: `" ^ (show existing_version) ^ "`)") in
           sym :: syms
+        (* else if get_elf64_symbol_binding existing_entry = Elf_symbol_table.stb_weak && sym_binding = Elf_symbol_table.stb_weak then
+          (* TODO: is this really the right thing to do? *)
+          let _ = Missing_pervasives.errln ("Overriding weak symbol with another weak symbol `" ^ sym_name ^ "`, 0x" ^ (hex_string_of_natural existing_addr) ^ " -> 0x" ^ (hex_string_of_natural sym_addr)) in
+          sym :: syms *)
         else
           let _ = Missing_pervasives.errln ("Multiple definitions of `" ^ sym_name ^ "` version " ^ (show sym_version) ^ ", only keeping the first one") in
           syms
@@ -1190,17 +1196,28 @@ let rec check_object args core_file core_img linkmap object_filename is_root =
 
   (* Add RPATH to ld search path *)
   (* TODO: add RUNPATH support too *)
-  let rpath = match maybe_dyns with
-    | Just dyns ->
-      match get_rpath dyns with
-        | Just rpath ->
-          let _ = Missing_pervasives.errln ("Object has RPATH `" ^ rpath ^ "`") in
-          Ldconfig.parse_runpath rpath object_filepath
-        | Nothing -> []
+  let maybe_rpath =
+    if is_root then
+      match maybe_dyns with
+        | Just dyns -> get_rpath dyns
+        | Nothing -> Nothing
       end
-    | Nothing -> []
+    else
+      Nothing (* libraries' RPATH should be ignored *)
+  in
+  let args = match maybe_rpath with
+    | Just rpath ->
+      let _ = Missing_pervasives.errln ("Object has RPATH `" ^ rpath ^ "`") in
+      let paths = Ldconfig.parse_runpath rpath object_filepath in
+      <|
+        check_ldconfig_paths = paths ++ args.check_ldconfig_paths;
+        check_is_loaded = args.check_is_loaded;
+        check_root_path = args.check_root_path;
+        check_mmap_table = args.check_mmap_table;
+        check_data_sections = args.check_data_sections
+      |>
+    | Nothing -> args
   end in
-  let ldconfig_paths = rpath ++ args.check_ldconfig_paths in
 
   match maybe_dyns with
     | Just dyns ->
@@ -1216,7 +1233,7 @@ let rec check_object args core_file core_img linkmap object_filename is_root =
   end >>= fun (dynsym_scnidx, object_dynsyms, maybe_versym_table) ->
 
   let linkmap = <|
-    linkmap_dynsyms = linkmap.linkmap_dynsyms ++ object_dynsyms;
+    linkmap_dynsyms = object_dynsyms ++ linkmap.linkmap_dynsyms;
     linkmap_sonames = linkmap.linkmap_sonames
   |> in
 
@@ -1235,8 +1252,9 @@ let rec check_object args core_file core_img linkmap object_filename is_root =
          they expect their relocations to be linked to libc.so even if they
          don't depend on it. There's probably a special pre-linker code that
          runs in ld.so to do this - should investigate this. *)
-      if interp = "/lib64/ld-linux-x86-64.so.2" || interp = "/lib64/ld.so.1" then
-        let _ = Missing_pervasives.errln ("Ignoring requested interpreter " ^ interp) in
+      if interp = "/lib64/ld-linux-x86-64.so.2" || interp = "/lib64/ld.so.1"
+          || Missing_pervasives.string_contains interp "/ld-linux" then
+        let _ = Missing_pervasives.errln "Ignoring request to load GNU's ld.so" in
         return Nothing
       else
         return (Just interp)
@@ -1287,6 +1305,7 @@ let rec check_object args core_file core_img linkmap object_filename is_root =
               | _ -> Error.fail "got a DT_NEEDED with something else than a Library"
             end
           ) dyn_dt_needed >>= fun sonames ->
+
           Error.mapM (fun soname ->
             (* TODO: remove this hack. *)
             let paths =
@@ -1295,12 +1314,13 @@ let rec check_object args core_file core_img linkmap object_filename is_root =
               else if header_is_pure_cheri_mips64 object_file.elf64_file_header then
                 ["/usr/libcheri"]
               else
-                ldconfig_paths
+                args.check_ldconfig_paths
             in
             let _ = Missing_pervasives.errln ("Searching needed library `" ^ soname ^ "`") in
             find_library args.check_root_path paths soname >>= fun library_filepath ->
             return (soname, library_filepath)
           ) sonames >>= fun sonames_and_lib_paths ->
+
           Error.foldM (fun linkmap (soname, library_filepath) ->
             if List.elem soname linkmap.linkmap_sonames then
               let _ = Missing_pervasives.errln ("check_object: skipping dependency `" ^ soname ^ "` because it has already been loaded") in

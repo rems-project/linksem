@@ -69,10 +69,10 @@ let readlink_abs root p =
       Error.fail err
 
 (* TODO: this doesn't support relative paths *)
-let rec realpath_in root p =
+let rec realpath_in' root p =
   match readlink_abs root p with
     | Success p -> (
-      match realpath_in root p with
+      match realpath_in' root p with
         | Success p -> (
           let l = String.split_on_char '/' p in
           let (l, maybe_last) = pop_last l in
@@ -80,7 +80,7 @@ let rec realpath_in root p =
             | ([""], _) | (_, None) -> return p
             | (_, Some filename) -> (
               let parent = String.concat "/" l in
-              match realpath_in root parent with
+              match realpath_in' root parent with
                 | Success parent -> return (parent ^ "/" ^ filename)
                 | Fail err -> Error.fail err
               )
@@ -90,6 +90,11 @@ let rec realpath_in root p =
     | Fail _ ->
       (* TODO: this is ugly, but this is OCaml *)
       return p
+
+let rec realpath_in root p =
+  match realpath_in' root p with
+    | Success p -> return (normalize p)
+    | Fail err -> Error.fail err
 
 (* The OCaml's stdlib is retarded and doesn't have realpath *)
 let realpath p =
