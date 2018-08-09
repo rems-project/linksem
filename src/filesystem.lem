@@ -1,5 +1,8 @@
 open import Error
 
+val dirname : string -> string
+declare ocaml target_rep function dirname = `Filesystem_wrapper.dirname`
+
 val readlink : string -> error (string)
 declare ocaml target_rep function readlink = `Filesystem_wrapper.readlink`
 

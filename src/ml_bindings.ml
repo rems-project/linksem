@@ -158,3 +158,9 @@ let nat_big_num_of_uint64 x = x
 *)
 
 let split_string_on_char s c = String.split_on_char c s
+
+let string_replace s substr repl =
+  (* Why the hell do we need to use the whole regexp machinery for simple string
+     replacements? *)
+  let r = Str.regexp_string substr in
+  Str.global_replace r repl s

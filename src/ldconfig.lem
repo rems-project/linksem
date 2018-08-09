@@ -27,3 +27,16 @@ let read_ldconfig_paths root =
     ) (split_string_on_char s #'\n') in
     return (dirs ++ acc)
   ) default_dirs filenames
+
+val parse_runpath : string -> string -> list string
+let parse_runpath runpath object_path =
+  let object_dirname = Filesystem.dirname object_path in
+  let l = split_string_on_char runpath #':' in
+  List.map (fun p ->
+    let p = string_replace p "$ORIGIN" object_dirname in
+    let p = string_replace p "${ORIGIN}" object_dirname in
+    (* TODO: 64-bit hardcoded *)
+    let p = string_replace p "$LIB" "lib64" in
+    let p = string_replace p "${LIB}" "lib64" in
+    p
+  ) l

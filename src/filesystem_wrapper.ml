@@ -18,6 +18,11 @@ let rec pop_last l =
       let (t, maybe_last) = pop_last t in
       (h :: t, maybe_last)
 
+let dirname p =
+  let l = String.split_on_char '/' p in
+  let (l, _) = pop_last l in
+  String.concat "/" l
+
 let readlink p =
   try
     return (Unix.readlink p)

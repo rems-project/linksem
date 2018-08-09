@@ -1100,6 +1100,13 @@ let get_soname dyns =
     | Nothing -> Nothing
   end
 
+let get_rpath dyns =
+  let maybe_dt_rpath = List.find (fun (tag, _) -> tag = Elf_dynamic.dt_rpath) dyns in
+  match maybe_dt_rpath with
+    | Just (_, RPath dt_rpath) -> Just dt_rpath
+    | Nothing -> Nothing
+  end
+
 type linkmap = <|
   linkmap_dynsyms : list dynamic_symbol;
   linkmap_sonames : list string
@@ -1180,6 +1187,20 @@ let rec check_object args core_file core_img linkmap object_filename is_root =
       end
     | Nothing -> linkmap
   end in
+
+  (* Add RPATH to ld search path *)
+  (* TODO: add RUNPATH support too *)
+  let rpath = match maybe_dyns with
+    | Just dyns ->
+      match get_rpath dyns with
+        | Just rpath ->
+          let _ = Missing_pervasives.errln ("Object has RPATH `" ^ rpath ^ "`") in
+          Ldconfig.parse_runpath rpath object_filepath
+        | Nothing -> []
+      end
+    | Nothing -> []
+  end in
+  let ldconfig_paths = rpath ++ args.check_ldconfig_paths in
 
   match maybe_dyns with
     | Just dyns ->
@@ -1273,7 +1294,7 @@ let rec check_object args core_file core_img linkmap object_filename is_root =
               else if header_is_pure_cheri_mips64 object_file.elf64_file_header then
                 ["/usr/libcheri"]
               else
-                args.check_ldconfig_paths
+                ldconfig_paths
             in
             let _ = Missing_pervasives.errln ("Searching needed library `" ^ soname ^ "`") in
             find_library args.check_root_path paths soname >>= fun library_filepath ->
