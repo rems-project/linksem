@@ -808,6 +808,7 @@ let apply_cheri_mips64_cap_relocations f img base dyns ignore_data_sections =
       Nothing Nothing Nothing (Just cursor) (Just cap_base) (Just len) in
     let _ = Missing_pervasives.errln (
       "Applying __cap_relocs relocation at 0x" ^ (hex_string_of_natural loc)
+        ^ " in " ^ (show_section_at_addr f (loc - base))
         ^ " offset=0x" ^ (hex_string_of_natural offset)
         ^ " size=0x" ^ (hex_string_of_natural size)
         ^ " object=0x" ^ (hex_string_of_natural obj)
@@ -816,7 +817,7 @@ let apply_cheri_mips64_cap_relocations f img base dyns ignore_data_sections =
         ^ " len=0x" ^ (hex_string_of_natural len)
         ^ " is_func=" ^ (show is_func)
     ) in
-    let _ = Missing_pervasives.errln (string_of_byte_pattern cap_bp) in
+    (* let _ = Missing_pervasives.errln (string_of_byte_pattern cap_bp) in *)
     write_memory_image img loc cap_bp
   ) img cap_relocs in
 
