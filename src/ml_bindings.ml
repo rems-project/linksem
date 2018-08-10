@@ -157,7 +157,22 @@ let nat_big_num_of_uint64 x = x
         )
 *)
 
-let split_string_on_char s c = String.split_on_char c s
+(* TODO: String.split_on_char is not available on old OCaml versions *)
+(* let split_string_on_char s c = String.split_on_char c s *)
+let split_string_on_char str c =
+  if str = "" then []
+  else
+    let rec loop acc offset =
+      try (
+        let index = String.rindex_from str offset c in
+        if index = offset then
+          loop (""::acc) (index - 1)
+        else
+          let token = String.sub str (index + 1) (offset - index) in
+          loop (token::acc) (index - 1)
+      ) with Not_found -> (String.sub str 0 (offset + 1))::acc
+    in
+    loop [] (String.length str - 1)
 
 let string_replace s substr repl =
   (* Why the hell do we need to use the whole regexp machinery for simple string
