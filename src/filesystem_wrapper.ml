@@ -19,7 +19,7 @@ let rec pop_last l =
       (h :: t, maybe_last)
 
 let dirname p =
-  let l = String.split_on_char '/' p in
+  let l = Ml_bindings.split_string_on_char p '/' in
   let (l, _) = pop_last l in
   String.concat "/" l
 
@@ -42,7 +42,7 @@ let rec normalize' first l =
     | [] -> []
 
 let normalize p =
-  let l = String.split_on_char '/' p in
+  let l = Ml_bindings.split_string_on_char p '/' in
   let l = normalize' true l in
   String.concat "/" l
 
@@ -60,7 +60,7 @@ let readlink_abs root p =
         if is_abs_path target then
           root ^ target
         else
-          let l = String.split_on_char '/' p in
+          let l = Ml_bindings.split_string_on_char p '/' in
           let l = replace_last l target in
           String.concat "/" l
       in
@@ -74,7 +74,7 @@ let rec realpath_in' root p =
     | Success p -> (
       match realpath_in' root p with
         | Success p -> (
-          let l = String.split_on_char '/' p in
+          let l = Ml_bindings.split_string_on_char p '/' in
           let (l, maybe_last) = pop_last l in
           match (l, maybe_last) with
             | ([""], _) | (_, None) -> return p
