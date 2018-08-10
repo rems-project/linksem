@@ -37,7 +37,7 @@ ALL_UTIL_ML := \
 	uint64_wrapper.ml uint32_wrapper.ml \
 	show.ml endianness.ml error.ml ml_bindings.ml missing_pervasives.ml multimap.ml \
 	multimapAuxiliary.ml default_printing.ml byte_sequence_wrapper.ml byte_sequence_impl.ml \
-	filesystem_wrapper.ml
+	filesystem.ml filesystem_wrapper.ml
 	# missing_pervasivesAuxiliary.ml
 ALL_UTIL_ML_WO_LEM := $(filter-out $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC)) $(patsubst %.lem,%Auxiliary.ml,$(LEM_UTIL_SRC)),$(ALL_UTIL_ML))
 
@@ -50,13 +50,13 @@ ALL_UTIL_ML_WO_LEM := $(filter-out $(patsubst %.lem,%.ml,$(LEM_UTIL_SRC)) $(pats
 
 LEM_ELF_SRC := byte_sequence.lem byte_pattern.lem byte_pattern_extra.lem \
 	archive.lem elf_types_native_uint.lem hex_printing.lem \
-	string_table.lem \
+	string_table.lem auxv.lem \
 	elf_header.lem elf_symbol_table.lem elf_program_header_table.lem \
 	elf_section_header_table.lem \
 	elf_relocation.lem \
 	elf_interpreted_segment.lem elf_interpreted_section.lem \
 	elf_note.lem elf_file.lem elf_dynamic.lem \
-	dwarf.lem auxv.lem ldconfig.lem
+	dwarf.lem ldconfig.lem
 
 LEM_ABI_SRC := \
 	abis/abi_classes.lem memory_image.lem memory_image_orderings.lem \
